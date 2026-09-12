@@ -1,3 +1,4 @@
+import { drawHomeCourtyard } from "./home-courtyard";
 import type { WorldDecor, WorldPath } from "../world";
 
 export type StaticTileColors = {
@@ -19,6 +20,7 @@ export type StaticTileTreeBounds = {
 
 export type StaticTileScene = {
   tileSize: number;
+  homeCourtyard?: boolean;
   colors: StaticTileColors;
   paths: WorldPath[];
   decor: WorldDecor[];
@@ -52,6 +54,11 @@ function paintGroundAndPaths(context: TileContext, scene: StaticTileScene, tileX
   const originY = tileY * scene.tileSize;
   context.fillStyle = scene.colors.ground;
   context.fillRect(0, 0, scene.tileSize, scene.tileSize);
+  if (scene.homeCourtyard) {
+    context.save(); context.translate(-originX, -originY);
+    drawHomeCourtyard(context); context.restore();
+    return;
+  }
   for (const path of scene.paths) {
     context.fillStyle = scene.colors.path;
     context.fillRect(path.x - originX, path.y - originY, path.w, path.h);

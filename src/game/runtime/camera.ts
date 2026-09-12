@@ -64,10 +64,12 @@ function targetPosition(
   return {
     x: duelCenter
       ? duelCenter.x - visibleW / 2
-      : clamp(player.x - visibleW / 2, 0, Math.max(0, WORLD.w - visibleW)),
+      : visibleW >= WORLD.w ? (WORLD.w - visibleW) / 2
+        : clamp(player.x - visibleW / 2, 0, WORLD.w - visibleW),
     y: duelCenter
       ? duelCenter.y - visibleH / 2
-      : clamp(player.y - visibleH * verticalFocus, 0, Math.max(0, WORLD.h - visibleH)),
+      : visibleH >= WORLD.h ? (WORLD.h - visibleH) / 2
+        : clamp(player.y - visibleH * verticalFocus, 0, WORLD.h - visibleH),
   };
 }
 

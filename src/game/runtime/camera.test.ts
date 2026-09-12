@@ -1,3 +1,5 @@
+import { WORLD } from "../constants";
+import { HOME_WORLD_WIDTH, HOME_WORLD_HEIGHT } from "../../../shared/home";
 import { describe, expect, it } from "vitest";
 import {
   createCamera,
@@ -20,6 +22,21 @@ describe("runtime camera", () => {
     expect(camera.zoom).toBeLessThanOrEqual(2);
     expect(camera.x).toBeGreaterThanOrEqual(0);
     expect(camera.y).toBeGreaterThanOrEqual(0);
+  });
+
+  it("centers Home when a desktop viewport is wider than the lawn", () => {
+    const original = { ...WORLD };
+    try {
+      WORLD.w = HOME_WORLD_WIDTH;
+      WORLD.h = HOME_WORLD_HEIGHT;
+      const wideViewport = { width: 2560, height: 900 };
+      const camera = createCamera();
+      snapCameraToPlayer(camera, { ...player, x: 600, y: 950 }, wideViewport);
+      expect(wideViewport.width / camera.zoom).toBeGreaterThan(WORLD.w);
+      expect((WORLD.w / 2 - camera.x) * camera.zoom).toBeCloseTo(wideViewport.width / 2);
+    } finally {
+      Object.assign(WORLD, original);
+    }
   });
 
   it("centers the duel arena when dueling", () => {

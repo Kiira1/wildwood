@@ -145,8 +145,8 @@ export function createDepthWorldRenderer(options: {
           item.y - height > endY + cullPadding
         ) continue;
       } else if (item.type === "upgradeBench") {
-        const width = Math.round(180 * item.s);
-        const height = Math.round(120 * item.s);
+        const width = Math.round(210 * item.s);
+        const height = Math.round(210 * item.s);
         if (
           item.x + width / 2 < camera.x - cullPadding ||
           item.x - width / 2 > camera.x + visibleW + cullPadding ||

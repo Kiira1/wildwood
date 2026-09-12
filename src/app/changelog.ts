@@ -1,4 +1,9 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.657": [
+    "Rebuilt Home with a stone courtyard, workshop and research stations, and a larger lawn.",
+    "Centered Home on wide desktop screens and tightened station activation distance.",
+    "Hidden the auto-farm button while at Home.",
+  ],
   "0.656": [
     "Unified banner proportions and near-black window themes, with cleaner Inventory and Profile layouts.",
     "Improved leaderboard podium alignment, rank sizes, and toolbar colors.",
@@ -1650,6 +1655,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.657": "2026-09-12",
   "0.656": "2026-09-11",
   "0.655": "2026-09-11",
   "0.654": "2026-09-11",

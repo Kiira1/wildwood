@@ -4,11 +4,11 @@ import { HOME_EXTERIOR_MAP_ID, HOME_EXTERIOR_SPAWN } from "../../shared/home";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
 describe("single player home travel", () => {
-  it("constrains home movement to its 1000 by 1000 boundary", () => {
+  it("constrains home movement to its 1200 by 1500 boundary", () => {
     const f = crystalFixture();
     f.run(server.changeMap, { mapId: HOME_EXTERIOR_MAP_ID, x: 1200, y: 1800 });
     f.run(server.updateMovementState, { x: 1500, y: 1800, vx: 0, vy: 0, simulationTick: 1, motionEpoch: 1, sequence: 1 });
-    expect(f.db.playerMotion.identity.find(f.ctx.sender)).toMatchObject({ x: 983, y: 983 });
+    expect(f.db.playerMotion.identity.find(f.ctx.sender)).toMatchObject({ x: 1183, y: 1483 });
   });
   it("uses the root for home movement while enemy maps use shards", () => {
     const f = crystalFixture();
@@ -16,7 +16,7 @@ describe("single player home travel", () => {
     f.seed("shardRuntime", { id: 0, role: "root", enabled: true });
     f.run(server.changeMap, { mapId: HOME_EXTERIOR_MAP_ID, x: 1200, y: 1800 });
     expect(f.db.mapShardMember.identity.find(f.ctx.sender)).toBeNull();
-    f.run(server.prepareWorldActionPosition, { x: 380, y: 414 });
+    f.run(server.prepareWorldActionPosition, { x: 480, y: 664 });
     f.run(server.changeMap, { mapId: HOME_EXTERIOR_MAP_ID, x: 380, y: 414 });
     expect(f.db.player.identity.find(f.ctx.sender)).toMatchObject({ mapId: "crystal_hollows", x: 1200, y: 1800 });
     expect(f.db.mapShardMember.identity.find(f.ctx.sender).mapId).toBe("crystal_hollows");
@@ -32,7 +32,7 @@ describe("single player home travel", () => {
     f.patch("player", { mapId: "intermediate_snowlands", x: 800, y: 710 });
     expect(() => f.run(server.startItemUpgrade, { slot: 1, itemId: "starter_bow" })).toThrow("Touch the Upgrade Bench first");
     f.run(server.changeMap, { mapId: HOME_EXTERIOR_MAP_ID, x: 800, y: 710 });
-    f.run(server.prepareWorldActionPosition, { x: 380, y: 414 });
+    f.run(server.prepareWorldActionPosition, { x: 480, y: 664 });
     f.run(server.startItemUpgrade, { slot: 1, itemId: "starter_bow" });
     expect(f.db.activeItemUpgrade.identity.find(f.ctx.sender)).toMatchObject({ itemId: "starter_bow", targetLevel: 1 });
   });
@@ -43,7 +43,7 @@ describe("single player home travel", () => {
     expect(f.db.player.identity.find(f.ctx.sender)).toMatchObject({ mapId: HOME_EXTERIOR_MAP_ID, ...HOME_EXTERIOR_SPAWN });
     expect(f.db.playerLastLocation.identity.find(f.ctx.sender).mapId).toBe(HOME_EXTERIOR_MAP_ID);
     expect(f.db.playerMotionIdentity.identity.find(f.ctx.sender).isVisible).toBe(false);
-    f.patch("player", { x: 380, y: 414 });
+    f.patch("player", { x: 480, y: 664 });
     f.run(server.changeMap, { mapId: HOME_EXTERIOR_MAP_ID, x: 380, y: 414 });
     expect(f.db.player.identity.find(f.ctx.sender)).toMatchObject({ mapId: "crystal_hollows", x: 1234.5, y: 2345.25, facing: Math.PI });
   });

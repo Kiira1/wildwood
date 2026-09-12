@@ -2,7 +2,7 @@ import { ingestStoreEvent } from "./gem-store-events";
 import { gemPurchaseTables } from "./gem-purchase-tables";
 import { createGemPurchaseService } from "./gem-purchase-service";
 import { rescaleEndgameProgress, rescaleRankingConflict, rescaleRankingStats } from "../../shared/endgame-power-rescale";
-import { HOME_EXTERIOR_MAP_ID, HOME_EXTERIOR_SPAWN, HOME_BENCH_POSITION, HOME_WORLD_SIZE } from "../../shared/home";
+import { HOME_EXTERIOR_MAP_ID, HOME_EXTERIOR_SPAWN, HOME_BENCH_POSITION, HOME_WORLD_WIDTH, HOME_WORLD_HEIGHT } from "../../shared/home";
 import { insertSnapshotRow, updateSnapshotRow, deleteSnapshotRow } from "./shard-snapshot-writes";
 import { decodeShardSnapshot, encodeShardSnapshot } from "../../shared/shard-wire";
 import { coordinateShard, validateCoordinatorConfig } from "./shard-coordinator";
@@ -424,7 +424,7 @@ const DREADREAPER_RESPAWN_MICROS = 45_000_000n;
 const VOLTWARDEN_RESPAWN_MICROS = 45_000_000n;
 const GRAVEBLOOM_RESPAWN_MICROS = 45_000_000n;
 const AEGIS_PRIME_RESPAWN_MICROS = 45_000_000n;
-const UPGRADE_BENCH_USE_RANGE = 150;
+const UPGRADE_BENCH_USE_RANGE = 75;
 const UPGRADE_BENCH_SLOT_ONE = 1;
 const UPGRADE_BENCH_SLOT_TWO = 2;
 const BOSS_REGEN_DELAY_MICROS = 180_000_000n;
@@ -2931,8 +2931,8 @@ function analyticalMotionAt(motion: any, sampledAtMicros: bigint) {
     anchoredAtMicros: motion.lastInputAt.microsSinceUnixEpoch,
   }, sampledAtMicros);
   if (motion.mapId === HOME_EXTERIOR_MAP_ID) {
-    sampled.x = Math.max(PLAYER_RADIUS, Math.min(HOME_WORLD_SIZE - PLAYER_RADIUS, sampled.x));
-    sampled.y = Math.max(PLAYER_RADIUS, Math.min(HOME_WORLD_SIZE - PLAYER_RADIUS, sampled.y));
+    sampled.x = Math.max(PLAYER_RADIUS, Math.min(HOME_WORLD_WIDTH - PLAYER_RADIUS, sampled.x));
+    sampled.y = Math.max(PLAYER_RADIUS, Math.min(HOME_WORLD_HEIGHT - PLAYER_RADIUS, sampled.y));
   }
   return {
     ...motion,
@@ -9918,7 +9918,7 @@ function applyMovementState(
   if (sequence <= current.lastInputSequence || ["countdown", "active", "finishing"].includes(activeDuelFor(ctx, ctx.sender)?.status)) return;
   if (![x, y, vx, vy, simulationTick, motionEpoch].every(Number.isFinite)) throw new SenderError("Movement state values must be finite");
 
-  const bounds = current.mapId === HOME_EXTERIOR_MAP_ID ? { width: HOME_WORLD_SIZE, height: HOME_WORLD_SIZE } : WORLD;
+  const bounds = current.mapId === HOME_EXTERIOR_MAP_ID ? { width: HOME_WORLD_WIDTH, height: HOME_WORLD_HEIGHT } : WORLD;
   const clampedX = Math.max(PLAYER_RADIUS, Math.min(bounds.width - PLAYER_RADIUS, x));
   const clampedY = Math.max(PLAYER_RADIUS, Math.min(bounds.height - PLAYER_RADIUS, y));
   const boundedVx = Math.max(-MAX_PACKED_PLAYER_VELOCITY, Math.min(MAX_PACKED_PLAYER_VELOCITY, vx));

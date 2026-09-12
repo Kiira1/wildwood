@@ -1,3 +1,4 @@
+import { drawHomeCourtyard, drawHomeResearchDesk, drawHomeStationSign } from "./home-courtyard";
 import { drawIonRoads } from "./ion-ground";
 import { drawVerdantRoads } from "./verdant-ground";
 import { drawNeonRoads } from "./neon-ground";
@@ -220,6 +221,7 @@ export function createWorldRenderer(options: WorldRendererOptions) {
     const lavaRocks = hasLavaRocks();
     cachedStaticScene = {
       tileSize: STATIC_TILE_SIZE,
+      homeCourtyard: options.getMapId() === "home_exterior",
       colors: mapColors(),
       paths: options.paths,
       decor: lavaRocks ? options.decor.filter((decor) => decor.type !== "lavaRock") : options.decor,
@@ -603,6 +605,9 @@ export function createWorldRenderer(options: WorldRendererOptions) {
     const colors = mapColors();
     ctx.fillStyle = colors.ground;
     ctx.fillRect(0, 0, visible.width, visible.height);
+    if (options.getMapId() === "home_exterior") {
+      ctx.save(); ctx.translate(-camera.x, -camera.y); drawHomeCourtyard(ctx); ctx.restore(); return;
+    }
     if (options.getMapId() === NEON_BASTION_MAP_ID) { drawNeonRoads(ctx, options.paths, camera, visible); return; }
 if (options.getMapId() === VERDANT_CATACOMBS_MAP_ID) { drawVerdantRoads(ctx, options.paths, camera, visible); return; }
 if (options.getMapId() === ION_CITADEL_MAP_ID) { drawIonRoads(ctx, options.paths, camera, visible); return; }
@@ -766,21 +771,10 @@ if (options.getMapId() === ION_CITADEL_MAP_ID) { drawIonRoads(ctx, options.paths
     const visible = visibleSize();
     const x = snapToWorldPixel(bench.x - camera.x);
     const y = snapToWorldPixel(bench.y - camera.y);
-    if (x < -120 || y < -160 || x > visible.width + 120 || y > visible.height + 50) return;
+    if (x < -120 || y < -210 || x > visible.width + 120 || y > visible.height + 210) return;
     if (bench.label === "Tech Research") {
-      ctx.save();
-      options.drawShadow(x, y - 27, 130, .2);
-      ctx.fillStyle = "#354e61"; ctx.fillRect(x - 58, y - 78, 116, 46);
-      ctx.fillStyle = "#c2a87d"; ctx.fillRect(x - 67, y - 89, 134, 15);
-      ctx.fillStyle = "#182c45"; ctx.fillRect(x - 43, y - 152, 86, 62);
-      ctx.strokeStyle = "#8cecff"; ctx.lineWidth = 4; ctx.strokeRect(x - 40, y - 149, 80, 56);
-      ctx.translate(x, y - 122); ctx.rotate(options.getGameTime() * .6);
-      ctx.strokeStyle = "#adf7fa"; ctx.strokeRect(-14, -14, 28, 28);
-      ctx.restore();
-      drawScreenSpaceAt(ctx, camera.zoom, x, y - 168, () => {
-        ctx.textAlign = "center"; ctx.font = '900 13px Arial';
-        options.outlinedText("Tech Research", 0, 0, "#adf7fa", 4);
-      });
+      drawHomeResearchDesk(ctx, x, y - 8, options.getGameTime());
+      drawHomeStationSign(ctx, x, y, true);
       return;
     }
     if (!options.upgradeBench.complete || options.upgradeBench.naturalWidth <= 0) return;
@@ -805,6 +799,9 @@ if (options.getMapId() === ION_CITADEL_MAP_ID) { drawIonRoads(ctx, options.paths
       ctx.shadowBlur = 8;
       ctx.drawImage(upgrade.itemSprite, itemCenterX - itemWidth / 2, itemCenterY - itemHeight / 2, itemWidth, itemHeight);
       ctx.restore();
+    }
+    if (options.getMapId() === "home_exterior") {
+      drawHomeStationSign(ctx, x, y, false, upgrade?.timer); return;
     }
     drawScreenSpaceAt(ctx, camera.zoom, x, y - height, () => {
       ctx.textAlign = "center";

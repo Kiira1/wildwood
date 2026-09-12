@@ -1,7 +1,7 @@
 import { createIonCitadelLayout } from "./ion-layout";
 import { createVerdantCatacombsLayout } from "./verdant-layout";
 import { createNeonBastionLayout } from "./neon-layout";
-import { HOME_EXTERIOR_MAP_ID, HOME_BENCH_POSITION, HOME_RESEARCH_POSITION } from "../../shared/home";
+import { HOME_EXTERIOR_MAP_ID, HOME_BENCH_POSITION, HOME_RESEARCH_POSITION, HOME_ART_OFFSET, HOME_WORLD_WIDTH, HOME_WORLD_HEIGHT } from "../../shared/home";
 import { createExpansionLayout } from "./expansion-layouts";
 import { BOSS_ENEMY_SAFE_DISTANCE, WORLD } from "./constants";
 import { CAMPS, ENEMY_TYPES, type EnemyKind } from "./enemies";
@@ -732,11 +732,11 @@ function createDuskfallOrchardLayout() { return createExpansionLayout(true, DUSK
 
 export function createWorldLayout(playerSpawn: Point, mapId: MapId = TUTORIAL_FOREST_MAP_ID) {
   if (mapId === HOME_EXTERIOR_MAP_ID) return {
-    paths: [{ x: 240, y: 380, w: 520, h: 140 }, { x: 450, y: 510, w: 100, h: 300 }],
+    paths: [{ x: 230, y: 344, w: 540, h: 275 }, { x: 400, y: 530, w: 200, h: 140 }, { x: 450, y: 650, w: 100, h: 225 }].map(path => ({ ...path, x: path.x + HOME_ART_OFFSET.x, y: path.y + HOME_ART_OFFSET.y })),
     decor: [
       { type: "upgradeBench", ...HOME_BENCH_POSITION, s: 1, label: "Upgrade Bench" },
       { type: "upgradeBench", ...HOME_RESEARCH_POSITION, s: 1, label: "Tech Research" },
-      ...[100, 900].flatMap(x => [180, 420, 720, 940].map((y, variant) => ({ type: "tree", x, y, s: 1, variant }))),
+      ...[100, HOME_WORLD_WIDTH - 100].flatMap(x => [180, 420, 720, 940, HOME_WORLD_HEIGHT - 100].map((y, variant) => ({ type: "tree", x, y, s: 1, variant }))),
     ] as WorldDecor[],
   };
   const saved = savedMapDesign(mapId);

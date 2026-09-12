@@ -1,5 +1,5 @@
 import { bindPlayerNameTags } from "./app/player-name-tags";
-import { HOME_RESEARCH_POSITION, HOME_WORLD_SIZE } from "../shared/home";
+import { HOME_RESEARCH_POSITION, HOME_WORLD_WIDTH, HOME_WORLD_HEIGHT } from "../shared/home";
 import { WORLD_WIDTH, WORLD_HEIGHT } from "../shared/rules";
 import { createGuildPanel } from "./ui/guild-panel";
 import { isDeveloperIdentity } from "./app/developer";
@@ -221,8 +221,8 @@ import {
 
   function setCurrentMap(mapId: MapId) {
     currentMapId = mapId;
-    WORLD.w = mapId === "home_exterior" ? HOME_WORLD_SIZE : WORLD_WIDTH;
-    WORLD.h = mapId === "home_exterior" ? HOME_WORLD_SIZE : WORLD_HEIGHT;
+    WORLD.w = mapId === "home_exterior" ? HOME_WORLD_WIDTH : WORLD_WIDTH;
+    WORLD.h = mapId === "home_exterior" ? HOME_WORLD_HEIGHT : WORLD_HEIGHT;
     void prepareMapAssets(mapId);
     preloadAdjacentMapAssets(mapId);
     gameElements.techTreeBtn.setAttribute("aria-label", mapId === "home_exterior" ? "Return to enemy map" : "Teleport home");
@@ -1423,7 +1423,7 @@ import {
   let touchingResearch = false;
   function updateHomeStations() {
     const home = currentMapId === "home_exterior";
-    const touching = home && !mapController.isMapTransitioning() && Math.hypot(player.x - HOME_RESEARCH_POSITION.x, player.y - (HOME_RESEARCH_POSITION.y - 36)) < 85;
+    const touching = home && !mapController.isMapTransitioning() && Math.hypot(player.x - HOME_RESEARCH_POSITION.x, player.y - (HOME_RESEARCH_POSITION.y - 36)) < 42.5;
     if (touching && !touchingResearch) { playerInput.clear(); techTree.open(); }
     touchingResearch = touching;
     upgradeBenchController.updateTouch();
@@ -1839,7 +1839,7 @@ import {
 
   createAutoFarmPanel({
     farm: autoFarm, mapName: () => MAP_CONFIG[currentMapId].name,
-    visible: () => Boolean(session?.isRunning()) && player.hp > 0 && !isDueling() && !mapController.isMapTransitioning() && !mapController.isCutsceneActive(),
+    visible: () => currentMapId !== "home_exterior" && Boolean(session?.isRunning()) && player.hp > 0 && !isDueling() && !mapController.isMapTransitioning() && !mapController.isCutsceneActive(),
     unavailable: farmUnavailable,
     setPaused: (paused) => setGameplayPause("autofarm-picker", paused),
     clearInput: () => { playerInput.clear(); player.moving = false; coop?.correctMovementPosition?.(player.x, player.y, true); },

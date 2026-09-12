@@ -67,8 +67,8 @@ export const UPGRADE_SLOT_UNLOCK_CONFIRMATION = gemSpendConfirmationText(
   UPGRADE_BENCH_SECOND_SLOT_GEM_COST,
 );
 export const UPGRADE_BENCH_TOUCH_OFFSET_Y = -36;
-const UPGRADE_BENCH_TOUCH_RADIUS_X = 108;
-const UPGRADE_BENCH_TOUCH_RADIUS_Y = 78;
+const UPGRADE_BENCH_TOUCH_RADIUS_X = 54;
+const UPGRADE_BENCH_TOUCH_RADIUS_Y = 39;
 const UPGRADE_SLOTS = [1, 2] as const;
 
 function formatRemaining(milliseconds: number) {

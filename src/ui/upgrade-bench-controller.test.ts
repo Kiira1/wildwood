@@ -20,6 +20,10 @@ describe("upgrade bench touch latch", () => {
     const bench = { x: 800, y: 710 };
     expect(UPGRADE_BENCH_TOUCH_OFFSET_Y).toBe(-36);
     expect(playerTouchesUpgradeBench({ x: 800, y: 674 }, bench)).toBe(true);
+    expect(playerTouchesUpgradeBench({ x: 854, y: 674 }, bench)).toBe(true);
+    expect(playerTouchesUpgradeBench({ x: 855, y: 674 }, bench)).toBe(false);
+    expect(playerTouchesUpgradeBench({ x: 800, y: 713 }, bench)).toBe(true);
+    expect(playerTouchesUpgradeBench({ x: 800, y: 714 }, bench)).toBe(false);
     expect(playerTouchesUpgradeBench({ x: 800, y: 595 }, bench)).toBe(false);
     expect(playerTouchesUpgradeBench({ x: 800, y: 753 }, bench)).toBe(false);
   });
