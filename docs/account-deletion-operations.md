@@ -1,0 +1,52 @@
+# Handling WildStat privacy and deletion requests
+
+The owner confirmed on September 12, 2026 that support@wildstatmmo.com is a working
+inbox they monitor and can use for privacy/account-deletion requests. The public
+request path is email-based; it is not an automatic deletion button.
+
+## Receive and verify
+
+1. Acknowledge the request and record the receipt date in the support conversation.
+   The public target is completion within 30 days of verification. Explain any
+   extension or exception to the requester.
+2. Verify ownership using the existing authentication account email or an
+   authenticated in-game support request. Never accept a display name alone as
+   proof; names are public. Never request a password, bearer token, or sign-in code.
+   Help guests verify ownership through their existing session where available;
+   do not require reinstallation to submit a request.
+3. Confirm the request covers the complete account or specified data only. Explain
+   loss of character progress and virtual items before irreversible removal.
+
+## Fulfil a verified request
+
+This is an operator workflow requiring authorized database and authentication
+administration. Do not label a request complete just because the email arrived.
+
+- Identify the registered identity and any linked guest identities. Prevent a live
+  session, map lease, or queued shard result from restoring deleted account state.
+- Remove the authentication account through SpacetimeAuth administration and
+  revoke its active access. Do not delete the player's separate Google account.
+- Remove associated player data from the root database and every applicable map
+  shard: profile, progress, inventory, research, currency, saved locations,
+  rankings, social/guild associations, messages/reply evidence, reports, sessions,
+  diagnostics, purchase-service records, and identity-linked migration backups.
+- Request corresponding deletion from providers where the developer cannot
+  directly remove the data. Record and communicate any legitimate retention
+  exception and its period. Do not invent a provider backup-expiration deadline.
+- Verify absence through owner-authorized queries and check that reconnecting or
+  replaying old shard messages does not restore the account. Preserve other
+  players' independent records and shared guilds.
+- Notify the requester when complete and state any remaining retention exception.
+  A minimal support record may be retained while needed for the request or a
+  legitimate unresolved dispute; it must not be used to restore gameplay data.
+
+## Existing code limitation
+
+The `removePlayerIdentityData` server helper is not a complete standalone account
+deletion API. Its exposed `devDeleteLegacyPlayer` caller intentionally refuses
+normal registered accounts. Do not remove those legacy safety checks or use
+Reset Progress as account deletion. A verified request for a normal account needs
+an owner-authorized targeted maintenance operation, including the provider and
+map-shard steps above. Test that operation on fixtures before touching live data.
+
+No real player data was deleted as part of creating the policy/request pages.

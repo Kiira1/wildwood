@@ -34,6 +34,22 @@ export function bindSettingsTabs(tabs: HTMLButtonElement[], panels: HTMLElement[
 export function installSettingsTabs(doc: Document) {
   const settings = doc.getElementById("settingsPanel");
   if (!settings || doc.getElementById("settingsTabs")) return;
+  const privacy = doc.createElement("div");
+  privacy.className = "setting-support";
+  privacy.id = "privacySettings";
+  for (const [label, path] of [
+    ["Privacy policy", "privacy.html"],
+    ["Account and data deletion", "delete-account.html"],
+  ]) {
+    const link = doc.createElement("a");
+    link.textContent = label;
+    // Absolute public URLs also work inside the native app's local WebView.
+    link.href = `https://wildstatmmo.com/${path}`;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    privacy.append(link);
+  }
+  settings.append(privacy);
   const tablist = doc.createElement("div");
   tablist.id = "settingsTabs";
   tablist.className = "settings-tabs";
