@@ -316,8 +316,9 @@ const afterUpdateGateShell = String.raw`
 </div>
 
 <div id="techTreeOverlay" hidden>
-  <section class="tech-tree-window" role="dialog" aria-modal="true" aria-label="Tech tree">
+  <section class="tech-tree-window" role="dialog" aria-modal="true" aria-labelledby="techTreeTitle">
     <header class="tech-tree-header">
+      <h2 id="techTreeTitle" class="window-banner window-banner--blue"><span>Tech Research</span></h2>
       <div id="techTreeActive" class="tech-tree-active" aria-live="polite">NO RESEARCH ACTIVE</div>
     </header>
     <div class="tech-tree-viewport">

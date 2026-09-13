@@ -31,6 +31,7 @@ export type WorldRenderRuntimeOptions = {
   viewport: () => Viewport;
   minimapBounds?: () => MinimapBounds | null;
   devicePixelRatio: () => number;
+  drawMapHazards?: () => void;
   currentMapId: () => MapId;
   gameTime: () => number;
   nowMs: () => number;
@@ -464,6 +465,7 @@ export function createWorldRenderRuntime(options: WorldRenderRuntimeOptions) {
       drawProfileCharacterPreview: frame.drawProfileCharacterPreview,
       worldOccluded: frame.worldOccluded,
       updateSpeechBubbles: frame.updateSpeechBubbles,
+      drawMapHazards: options.drawMapHazards,
       drawGround: world.drawGround,
       drawStaticWorld: world.drawStaticWorld,
       drawDuelArena: actor.drawDuelArena,

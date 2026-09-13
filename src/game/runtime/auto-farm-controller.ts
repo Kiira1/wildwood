@@ -1,5 +1,6 @@
+import { isProceduralMap } from '../../../shared/procedural-maps';
 import { WORLD } from '../constants';
-import type { EnemyKind } from '../enemies';
+import type { EnemyDefinition, EnemyKind } from '../enemies';
 import type { SpawnSite } from '../world';
 import type { Circle, EnemyState, PlayerState, Position } from './types';
 import type { Movement } from './player-input-controller';
@@ -20,7 +21,10 @@ export function createAutoFarmController(options: {
   speed: () => number;
   obstacles: () => Circle[];
 }) {
-  let selected: EnemyKind | null = null;
+  let selected: string | null = null;
+  let selectedType: EnemyKind | null = null;
+  let selectedCamp: string | null = null;
+  let selectedLabel = "";
   let active = false;
   let startedMap = '';
   let status = 'Choose an enemy to begin';
@@ -30,17 +34,26 @@ export function createAutoFarmController(options: {
   let lastGoal: Position | null = null;
   const { player, enemies, spawnSites } = options;
   const distance = (point: Position) => Math.hypot(point.x - player.x, point.y - player.y);
-  const validEnemy = (enemy: EnemyState) => !enemy.dead && !enemy.remoteCombatGhost && enemy.type === selected && enemy.hp > 0;
+  const validEnemy = (enemy: EnemyState) => !enemy.dead && !enemy.remoteCombatGhost && !enemy.generatedBoss && enemy.type === selectedType && (!selectedCamp || enemy.campName === selectedCamp) && enemy.hp > 0;
 
+  const choiceKey = (site: Pick<SpawnSite, 'type' | 'campName'>) =>
+    isProceduralMap(options.mapId()) ? `${site.type}:${site.campName}` : site.type;
   function choices() {
-    const counts = new Map<EnemyKind, { type: EnemyKind; alive: number; total: number }>();
+    const counts = new Map<string, { key: string; type: EnemyKind; label: string; camp: string | null;
+      alive: number; total: number; reward?: EnemyDefinition['reward']; maxReward?: number }>();
     for (const site of spawnSites) {
-      const choice = counts.get(site.type) ?? { type: site.type, alive: 0, total: 0 };
+      const key = choiceKey(site), camp = isProceduralMap(options.mapId()) ? site.campName : null;
+      const choice = counts.get(key) ?? { key, type: site.type, label: camp ?? site.type, camp,
+        alive: 0, total: 0, ...(site.definition ? { reward: { ...site.definition.reward }, maxReward: site.definition.reward.amount } : {}) };
       choice.total++;
-      counts.set(site.type, choice);
+      if (choice.reward && site.definition) {
+        choice.reward.amount = Math.min(choice.reward.amount, site.definition.reward.amount);
+        choice.maxReward = Math.max(choice.maxReward ?? 0, site.definition.reward.amount);
+      }
+      counts.set(key, choice);
     }
-    for (const enemy of enemies) if (!enemy.dead && !enemy.remoteCombatGhost && enemy.hp > 0) {
-      const choice = counts.get(enemy.type);
+    for (const enemy of enemies) if (!enemy.dead && !enemy.remoteCombatGhost && !enemy.generatedBoss && enemy.hp > 0) {
+      const choice = counts.get(choiceKey(enemy));
       if (choice) choice.alive++;
     }
     return [...counts.values()];
@@ -61,11 +74,15 @@ export function createAutoFarmController(options: {
     else if (reason) stop(reason);
   }
 
-  function start(type: EnemyKind) {
+  function start(key: string) {
     const reason = options.unavailable();
     if (reason) { stop(reason); return false; }
-    if (!spawnSites.some(site => site.type === type)) { stop('No matching enemies in this map'); return false; }
-    selected = type;
+    const choice = choices().find(choice => choice.key === key);
+    if (!choice) { stop('No matching enemies in this map'); return false; }
+    selected = key;
+    selectedType = choice.type;
+    selectedCamp = choice.camp;
+    selectedLabel = choice.label;
     active = true;
     startedMap = options.mapId();
     target = null;
@@ -95,11 +112,11 @@ export function createAutoFarmController(options: {
     }
     let threat: EnemyState | null = null;
     for (const enemy of enemies) {
-      if (isEnemyAttackingPlayer(enemy, options.localIdentity?.()) && (!threat || distance(enemy) < distance(threat))) threat = enemy;
+      if (!enemy.generatedBoss && isEnemyAttackingPlayer(enemy, options.localIdentity?.()) && (!threat || distance(enemy) < distance(threat))) threat = enemy;
     }
     let destination: Position | null = threat ?? target;
     if (!destination) {
-      for (const site of spawnSites) if (site.type === selected && (!destination || distance(site) < distance(destination))) destination = site;
+      for (const site of spawnSites) if (choiceKey(site) === selected && (!destination || distance(site) < distance(destination))) destination = site;
     }
     if (!destination) { stop('No matching enemies in this map'); return idle(); }
     const range = Math.max(8, player.attackRange * .78);
@@ -134,7 +151,8 @@ export function createAutoFarmController(options: {
   }
 
   return { start, stop, refresh, choices, movement,
-    state: () => ({ active, selected, status: active && options.paused() ? 'Paused' : status }),
-    targetType: () => active ? selected : null,
+    state: () => ({ active, selected, selectedLabel, status: active && options.paused() ? 'Paused' : status }),
+    targetType: () => active ? selectedType : null,
+    targetCamp: () => active ? selectedCamp : null,
   };
 }

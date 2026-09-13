@@ -123,16 +123,16 @@ export function createAdjacentMapAssetPreloader<MapKey extends string>(options: 
         scheduleNext(retryDelayMs);
         return;
       }
-      while (destinationIndex < destinations.length && options.mapAssetsReady(destinations[destinationIndex])) {
-        destinationIndex += 1;
-      }
-      const destination = destinations[destinationIndex];
-      if (!destination) return;
-      destinationIndex += 1;
-      try {
-        await options.prepareMapAssets(destination);
-      } catch {
-        // Portal travel retains its normal retry/error handling if a warmup fails.
+      while (destinationIndex < destinations.length) {
+        const destination = destinations[destinationIndex++];
+        try {
+          if (options.mapAssetsReady(destination)) continue;
+          await options.prepareMapAssets(destination);
+        } catch {
+          // Readiness checks can fail too. Optional warmup must not produce an
+          // unhandled rejection; portal travel owns visible retry/error handling.
+        }
+        break;
       }
       if (generation === queueGeneration && destinationIndex < destinations.length) {
         scheduleNext(betweenMapsDelayMs);

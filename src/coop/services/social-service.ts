@@ -4,6 +4,7 @@ import type { ChatReportReason } from "../../../shared/chat-report";
 import { normalizePlayerGender } from "../../../shared/player-gender";
 import type { ChatMessage } from "../contracts";
 import type { ReducerPort } from "../ports";
+import { withRequestDeadline } from "./request-deadline";
 
 type Dependencies = {
   reducers: ReducerPort; localIdentity: () => string; notify: () => void;
@@ -59,7 +60,22 @@ export function createSocialService(deps: Dependencies) {
     try { await mutate(connection => connection.reducers.sendSocialMessage({ channel, target, message, replyToMessageId })); return { ok: true }; }
     catch (error) { return { ok: false, error: deps.reducers.errorMessage(error) }; }
   }
+  function presentation(row: MessageRow): SocialMessage {
+    deps.rememberSender?.({ identity: row.sender.toHexString(), identityValue: row.sender, name: row.senderName, isGuest: row.senderIsGuest ?? true });
+    return { ...row, sender: row.sender.toHexString(), recipient: row.recipient.toHexString(),
+      guildId: String(row.guildId), replayId: 0n, senderGender: normalizePlayerGender(row.senderGender),
+      sentAtMs: Number(row.sentAt.microsSinceUnixEpoch / 1_000n) };
+  }
   const api = {
+    async loadChatHistory(channel: "guild" | "dm", peer: string, beforeId: bigint) {
+      const current = request();
+      const hub = hubRevision;
+      const page = await withRequestDeadline(current.connection.procedures.getSocialChatHistory({ channel, peer, beforeId }));
+      current.check();
+      if (hub !== hubRevision) throw new Error("Conversation changed. Reopen chat.");
+      return { messages: page.messages.map(presentation), hasMore: page.hasMore, beforeId: page.messages[0]?.id ?? beforeId };
+    },
+    historyRevision: () => hubRevision,
     revision: () => revision,
     friends: () => snapshot.friends,
     currentGuild: () => snapshot.currentGuild,
@@ -114,10 +130,7 @@ export function createSocialService(deps: Dependencies) {
     removeHub() { snapshot = emptySnapshot(); messages.clear(); orderedMessages = null; hubRevision++; changed(); },
     upsertMessage(row: MessageRow) {
       orderedMessages = null;
-      deps.rememberSender?.({ identity: row.sender.toHexString(), identityValue: row.sender, name: row.senderName, isGuest: row.senderIsGuest ?? true });
-      messages.set(row.id, { ...row, sender: row.sender.toHexString(), recipient: row.recipient.toHexString(),
-        guildId: String(row.guildId), replayId: 0n, senderGender: normalizePlayerGender(row.senderGender),
-        sentAtMs: Number(row.sentAt.microsSinceUnixEpoch / 1_000n) }); changed();
+      messages.set(row.id, presentation(row)); changed();
     },
     removeMessage(row: { id: bigint }) { if (messages.delete(row.id)) { orderedMessages = null; changed(); } },
   }, resetSession() { generation++; pending = null; snapshot = emptySnapshot(); messages.clear(); orderedMessages = null; hubRevision++; changed(); } };

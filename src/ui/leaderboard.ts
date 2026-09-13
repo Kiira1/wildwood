@@ -33,11 +33,11 @@ export function leaderboardValueKey(stat: LeaderboardStat): "power" | "damage" |
   return stat === "health" ? "maxHp" : stat === "time" ? "playedSeconds" : stat;
 }
 
-export function sortedLeaderboardEntries(stat: LeaderboardStat, entries: LeaderboardEntry[], limit = 100) {
+export function sortedLeaderboardEntries(stat: LeaderboardStat, entries: LeaderboardEntry[], limit = 104) {
   const valueKey = leaderboardValueKey(stat);
   return entries
     .filter((entry) => Number.isFinite(entry[valueKey]))
-    .sort((a, b) => b[valueKey] - a[valueKey] || a.name.localeCompare(b.name))
+    .sort((a, b) => a.rank && b.rank ? a.rank - b.rank : b[valueKey] - a[valueKey] || a.name.localeCompare(b.name) || a.identity.localeCompare(b.identity))
     .slice(0, limit);
 }
 
@@ -52,7 +52,9 @@ export function leaderboardValueText(stat: LeaderboardStat, entry: LeaderboardEn
 
 /** Visual order is third, first, second so the winner owns the center podium. */
 export function leaderboardPodiumEntries(stat: LeaderboardStat, entries: LeaderboardEntry[]) {
-  const [first, second, third] = sortedLeaderboardEntries(stat, entries, 3);
+  const sorted = sortedLeaderboardEntries(stat, entries, 3);
+  const [first, second, third] = entries.some(entry => entry.rank !== undefined)
+    ? [1, 2, 3].map(rank => sorted.find(entry => entry.rank === rank)) : sorted;
   return [
     { rank: 3 as const, entry: third },
     { rank: 1 as const, entry: first },
@@ -159,7 +161,7 @@ export function renderLeaderboard(
     row.classList.toggle("is-local", entry.identity === localIdentity);
     const rank = document.createElement("span");
     rank.className = "leaderboard-rank";
-    rank.textContent = `#${index + 1}`;
+    rank.textContent = `#${entry.rank ?? index + 1}`;
 
     const name = document.createElement("button");
     name.className = "leaderboard-name";

@@ -1,9 +1,10 @@
-import type { Identity } from "spacetimedb";
+import { Identity } from "spacetimedb";
 import { SenderError } from "spacetimedb/server";
 import type { ModuleReducerCtx, ModuleViewCtx } from "./index";
 import { SOCIAL_FRIEND_LIMIT, SOCIAL_REQUEST_LIMIT, SOCIAL_MESSAGE_LIMIT, type SocialSnapshot } from "../../shared/social";
 import { GUILD_MEMBER_LIMIT } from "../../shared/guilds";
 import { moderatePublicChatMessage } from "./chat-moderation";
+import { chatPage } from "../../shared/chat-page";
 type Ctx = ModuleReducerCtx;
 /** Shared by reducer/procedure/view contexts; this service's read functions never mutate. */
 export type SocialReadCtx = Pick<ModuleViewCtx, "db" | "sender">;
@@ -18,6 +19,11 @@ function blocked(ctx: SocialReadCtx, a: Identity, b: Identity) {
 function target(ctx: SocialReadCtx, value: string) {
   const needle = value.normalize("NFKC").trim().toLowerCase();
   if (!needle || needle.length > 128) return fail("Enter a player username.");
+  if (/^(?:0x)?[a-f0-9]{64}$/.test(needle)) {
+    const found = ctx.db.playerProfile.identity.find(Identity.fromString(needle.replace(/^0x/, ""))) ?? fail("Player not found.");
+    if (same(found.identity, ctx.sender)) fail("Choose another player.");
+    return found;
+  }
   // Existing profiles have no name index; reject ambiguous display names rather than choosing an arbitrary account.
   const matches = [...ctx.db.playerProfile.iter()].filter(row => hex(row.identity).toLowerCase() === needle || row.displayName.normalize("NFKC").toLowerCase() === needle);
   if (matches.length !== 1) return fail(matches.length ? "That username is ambiguous. Choose the player from your friends list." : "Player not found.");
@@ -47,6 +53,20 @@ export function visibleSocialMessages(ctx: SocialReadCtx) {
     if (!blocked(ctx, ctx.sender, row.sender)) rows.set(row.id, row);
   }
   return [...rows.values()].map(row => row.replyToMessageId && blocked(ctx, ctx.sender, row.replySender) ? { ...row, replyToMessageId: 0n, replyToSenderName: "", replyToMessage: "" } : row).sort((a, b) => a.id < b.id ? -1 : 1);
+}
+export function latestSocialMessages(ctx: SocialReadCtx) {
+  const visible = visibleSocialMessages(ctx);
+  // Bound initial/live payloads even for accounts with many conversations.
+  return [...chatPage(visible.filter(row => row.channel === "guild")).messages,
+    ...chatPage(visible.filter(row => row.channel === "dm")).messages];
+}
+export function socialHistoryPage(ctx: SocialReadCtx, channel: string, peer: string, beforeId: bigint) {
+  if (channel !== "guild" && channel !== "dm") fail("Unknown chat channel.");
+  const recipient = channel === "dm" ? target(ctx, peer).identity : null;
+  if (channel === "guild" && !ctx.db.guildMember.identity.find(ctx.sender)) fail("Join a guild first.");
+  if (recipient) assertContact(ctx, recipient);
+  return chatPage(visibleSocialMessages(ctx).filter(row => row.channel === channel &&
+    (!recipient || row.conversation === dmKey(ctx.sender, recipient))), beforeId);
 }
 export function socialSnapshot(ctx: SocialReadCtx, signedIn = true): SocialSnapshot {
   const member = ctx.db.guildMember.identity.find(ctx.sender);

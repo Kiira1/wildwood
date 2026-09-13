@@ -22,6 +22,7 @@ export function schema(tables: Parameters<typeof sdkSchema>[0]) {
     clientConnected: register,
     clientDisconnected: register,
     view: register,
+    anonymousView: register,
   };
 }
 

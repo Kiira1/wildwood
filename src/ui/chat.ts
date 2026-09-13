@@ -17,6 +17,7 @@ import {
 } from "./chat-message-actions";
 
 import { createChatUnreadTracker } from "./chat-unread";
+import { createChatHistory, type ChatHistoryPage } from "./chat-history";
 import { createChatChannelPicker, type ChatChannel, type ChatConversation } from "./chat-channels";
 
 const CHAT_ENABLED_KEY = "wildwood-chat-enabled-v1";
@@ -52,6 +53,8 @@ type ChatMessage = {
 
 type CoopClient = {
   social?: {
+    historyRevision?: () => number;
+    loadChatHistory?: (channel: "guild" | "dm", peer: string, beforeId: bigint) => Promise<ChatHistoryPage<ChatMessage>>;
     revision: () => number;
     guildMessages: () => ChatMessage[];
     privateMessages: (username: string) => ChatMessage[];
@@ -68,8 +71,10 @@ type CoopClient = {
   profileIcon?: (identity: string) => number;
   playerGender?: (identity: string) => PlayerGender;
   chatRevision?: () => number;
+  chatHistoryRevision?: () => number;
   isPlayerBlocked?: (identity: string) => boolean;
   chatMessages?: () => ChatMessage[];
+  loadChatHistory?: (beforeId: bigint) => Promise<ChatHistoryPage<ChatMessage>>;
   sendChatMessage?: (message: string, replyToMessageId?: bigint) => Promise<{ ok: boolean; error?: string }>;
   reportChatMessage?: (messageId: bigint, reason: ChatReportReason) => Promise<{ ok: boolean; error?: string }>;
 };
@@ -113,6 +118,13 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
   let submitting = false;
   const unread = createChatUnreadTracker();
   const drafts = new Map<string, string>();
+  const history = createChatHistory<ChatMessage>();
+  const historyActions = document.createElement("div");
+  historyActions.className = "chat-history-actions";
+  const olderButton = document.createElement("button"), latestButton = document.createElement("button");
+  olderButton.type = latestButton.type = "button";
+  olderButton.textContent = "Load older"; latestButton.textContent = "Latest messages";
+  historyActions.append(olderButton, latestButton);
   const channelPicker = createChatChannelPicker((nextChannel, username, identity) => {
     drafts.set(conversationKey(), elements.input.value);
     channel = nextChannel;
@@ -125,10 +137,34 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
     setPendingReply(null);
     renderedRevision = "";
     refresh();
+    if (large && channel !== "public") void loadHistory(true);
     if (channel !== "public") void getCoop()?.social?.loadSocial().then(refresh).catch(() => showMessage("COULD NOT REFRESH SOCIAL CONTACTS", "#ff9b91"));
   });
 
   function conversationKey() { return `${channel}:${channel === "private" ? privatePeerIdentity || privatePeer.toLowerCase() : channel === "guild" ? guildContext : ""}`; }
+  function currentMessages() {
+    const coop = getCoop();
+    return (channel === "public" ? coop?.chatMessages?.() : channel === "guild" ? coop?.social?.guildMessages()
+      : privatePeer ? coop?.social?.privateMessages(privatePeerIdentity || privatePeer) : []) ?? [];
+  }
+  async function loadHistory(latest = false) {
+    if (!large || !enabled) return;
+    const coop = getCoop(), key = conversationKey(), identity = coop?.localIdentity?.();
+    const fetch = channel === "public" ? coop?.loadChatHistory : coop?.social?.loadChatHistory
+      ? (beforeId: bigint) => coop.social!.loadChatHistory!(channel === "guild" ? "guild" : "dm", privatePeerIdentity || privatePeer, beforeId) : undefined;
+    if (!fetch) return;
+    try {
+      const pending = history.load(fetch, currentMessages(), latest);
+      refresh();
+      const changed = await pending;
+      if (changed && key === conversationKey() && identity === getCoop()?.localIdentity?.()) {
+        refresh();
+        if (latest) elements.messages.scrollTop = elements.messages.scrollHeight;
+      }
+    } catch (error) {
+      if (key === conversationKey() && identity === getCoop()?.localIdentity?.()) showMessage(error instanceof Error ? error.message : "COULD NOT LOAD HISTORY · TRY AGAIN", "#ff9b91");
+    } finally { refresh(); }
+  }
   let nextExpiryAt = 0;
   let chatCooldownUntil = 0;
   let chatCooldownTimer: number | null = null;
@@ -205,6 +241,7 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
       setPendingReply(null);
     }
     updateHeight();
+    if (large && channel !== "public") void loadHistory(true);
     if (closingComposer) {
       if (layoutRecoveryTimer !== null) window.clearTimeout(layoutRecoveryTimer);
       requestAnimationFrame(() => requestAnimationFrame(() => onLayoutChange?.()));
@@ -270,7 +307,13 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
     if (pendingReply && coop?.isPlayerBlocked?.(pendingReply.sender)) setPendingReply(null);
 
     const now = Date.now();
-    const revision = `${conversationKey()}:${coop?.chatRevision?.() ?? -1}:${coop?.social?.revision() ?? -1}:${coop?.localIdentity?.() ?? ""}:${enabled}:${large}`;
+    history.select(`${identity}:${conversationKey()}:${coop?.social?.historyRevision?.() ?? 0}:${coop?.chatHistoryRevision?.() ?? 0}:${large}`);
+    const historyState = history.state();
+    historyActions.hidden = !large;
+    olderButton.disabled = historyState.loading || !historyState.hasMore;
+    olderButton.textContent = historyState.loading ? "Loading…" : historyState.hasMore ? "Load older" : "No older messages";
+    latestButton.hidden = !historyState.frozen;
+    const revision = `${conversationKey()}:${coop?.chatRevision?.() ?? -1}:${coop?.social?.revision() ?? -1}:${coop?.localIdentity?.() ?? ""}:${enabled}:${large}:${historyState.revision}`;
     if (revision === renderedRevision && now < nextExpiryAt) return;
     const conversations = coop?.social?.privateConversations() ?? [];
     if (privatePeer && !privatePeerIdentity) {
@@ -283,15 +326,16 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
     channelPicker.refresh(coop?.social?.friends() ?? [], conversations, coop?.social?.currentGuild()?.name ?? "", unreadCounts);
     const previousScrollTop = elements.messages.scrollTop;
     const previousScrollHeight = elements.messages.scrollHeight;
+    const anchor = [...elements.messages.children].find(child => (child as HTMLElement).offsetTop + (child as HTMLElement).offsetHeight > previousScrollTop) as HTMLElement | undefined;
+    const anchorId = anchor?.dataset.messageId;
+    const anchorOffset = anchor ? anchor.offsetTop - previousScrollTop : 0;
     const distanceFromBottom = previousScrollHeight - elements.messages.clientHeight - previousScrollTop;
-    const followNewestMessage = !large || renderedRevision === "" || distanceFromBottom <= 16;
-    const channelMessages = channel === "public" ? coop?.chatMessages?.()
-      : channel === "guild" ? coop?.social?.guildMessages()
-      : privatePeer ? coop?.social?.privateMessages(privatePeerIdentity || privatePeer) : [];
+    const followNewestMessage = !large || renderedRevision === "" || (!historyState.frozen && distanceFromBottom <= 16);
+    const channelMessages = history.messages(currentMessages());
     const allMessages = (channelMessages ?? []).filter((message) =>
       now - message.sentAtMs < CHAT_DISPLAY_TTL_MS && !coop?.isPlayerBlocked?.(message.sender)
       && (channel !== "public" || shouldShowGlobalChatMessage(message.senderName))
-    ).slice(-100);
+    );
     // Do not rely on scrolling hidden rows in compact mode. Its DOM contains
     // exactly the newest two rows in the same oldest-to-newest order as the
     // expanded view.
@@ -302,6 +346,7 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
     for (const message of messages) {
       const line = document.createElement("div");
       line.className = "chat-line";
+      line.dataset.messageId = String(message.id);
       const time = document.createElement("span");
       time.className = "chat-time";
       time.textContent = formatChatTime(new Date(message.sentAtMs));
@@ -432,16 +477,25 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
     if (followNewestMessage) {
       elements.messages.scrollTop = elements.messages.scrollHeight;
     } else {
+      const restored = anchorId ? [...elements.messages.children].find(child => (child as HTMLElement).dataset.messageId === anchorId) as HTMLElement | undefined : undefined;
       // Appended messages do not move history being read. If old messages
       // expire from the top, compensate only for the removed height.
       const heightChange = elements.messages.scrollHeight - previousScrollHeight;
-      elements.messages.scrollTop = Math.max(0, previousScrollTop + Math.min(0, heightChange));
+      elements.messages.scrollTop = Math.max(0, restored ? restored.offsetTop - anchorOffset : previousScrollTop + Math.min(0, heightChange));
     }
   }
 
   function init() {
     messageActions.init();
     elements.panel.insertBefore(channelPicker.root, elements.messages);
+    channelPicker.root.append(historyActions);
+    olderButton.addEventListener("click", () => { void loadHistory(); });
+    latestButton.addEventListener("click", () => { void loadHistory(true); });
+    elements.messages.addEventListener("scroll", () => {
+      if (!large || !enabled) return;
+      if (elements.messages.scrollHeight - elements.messages.clientHeight - elements.messages.scrollTop > 16) history.freeze(currentMessages());
+      if (elements.messages.scrollTop <= 1) void loadHistory();
+    });
     elements.toggle.addEventListener("click", () => {
       enabled = !enabled;
       updateVisibility();

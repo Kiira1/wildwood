@@ -9,6 +9,7 @@ import { isDeveloperIdentity } from "./app/developer";
 import { GAME_VERSION } from "./game/runtime/game-settings";
 import { createVirtualPlayerLoadTest } from "./coop/services/virtual-player-load-test";
 import { createReconnectWatchdog } from "./coop/services/reconnect-watchdog";
+import { guardConnectionActivity } from "./coop/services/connection-activity";
 import { createReconnectScheduler } from "./coop/services/reconnect-scheduler";
 import {
   createConnectionLifecycle,
@@ -728,7 +729,7 @@ function connect() {
   startupTelemetryRuntime.beginConnectionAttempt(generation, connectionLifecycle.snapshot().attempt);
   onChange();
   try {
-    connection = DbConnection.builder()
+    connection = guardConnectionActivity(DbConnection.builder()
     .withUri(host)
     .withDatabaseName(databaseName)
     .withToken(accountService.accountToken() || accountService.guestToken() || undefined)
@@ -826,7 +827,6 @@ function connect() {
             retryFailedConnection("subscription-error", "World sync failed");
           },
           afterHydrated: () => {
-            if (worldEntryGeneration === generation) void playerProfileService.loadLeaderboardSnapshot();
             progressionService.flushPendingProgress();
           },
         });
@@ -874,7 +874,7 @@ function connect() {
       onChange?.();
       scheduleReconnect();
     })
-    .build();
+    .build());
   } catch (error) {
     if (generation !== connectionGeneration) return;
     console.warn("WildStat SpacetimeDB connection setup failed:", error);

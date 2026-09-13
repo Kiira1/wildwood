@@ -1,0 +1,35 @@
+import { afterEach, expect, it, vi } from "vitest";
+import { parseHTML } from "linkedom";
+import { createEndlessTravelControl } from "./endless-travel-control";
+
+afterEach(() => vi.unstubAllGlobals());
+it("submits map 40 once, hides without permission, and recovers from a failed trip", async () => {
+  const { document, Event } = parseHTML("<html><body></body></html>");
+  vi.stubGlobal("document", document);
+  let allowed = false;
+  let resolve!: (success: boolean) => void;
+  const travel = vi.fn(() => new Promise<boolean>(done => { resolve = done; }));
+  const showMessage = vi.fn();
+  const control = createEndlessTravelControl(document.body, { allowed: () => allowed, travel, showMessage });
+  const submit = () => control.element.dispatchEvent(new Event("submit", { cancelable: true }));
+  const input = control.element.querySelector("input")!;
+  expect(control.element.hidden).toBe(true);
+  submit();
+  expect(travel).not.toHaveBeenCalled();
+  allowed = true;
+  control.render();
+  input.value = "1.5";
+  submit();
+  expect(travel).not.toHaveBeenCalled();
+  input.value = "40";
+  submit();
+  submit();
+  expect(travel).toHaveBeenCalledExactlyOnceWith(40);
+  expect(input.disabled).toBe(true);
+  resolve(false);
+  await vi.waitFor(() => expect(input.disabled).toBe(false));
+  expect(showMessage).toHaveBeenLastCalledWith("TELEPORT UNAVAILABLE · TRY AGAIN", "#ffbc91");
+  allowed = false;
+  control.render();
+  expect(control.element.hidden).toBe(true);
+});

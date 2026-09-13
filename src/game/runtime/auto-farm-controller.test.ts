@@ -39,6 +39,36 @@ function setup(obstacles: Circle[] = []) {
 }
 
 describe('autofarm', () => {
+  it('keeps same-species generated camps separate when routing', () => {
+    const s = setup(); s.setMap('endless_1');
+    const armor = s.add('Bramble', 550, 500), health = s.add('Bramble', 1500, 500);
+    armor.campName = s.spawnSites[0].campName = 'Armor Camp';
+    health.campName = s.spawnSites[1].campName = 'Health Camp';
+    const choices = s.farm.choices();
+    expect(choices).toHaveLength(2);
+    const choice = choices.find(c => c.camp === 'Health Camp')!;
+    expect(s.farm.start(choice.key)).toBe(true);
+    expect(s.tick().x).toBeGreaterThan(0);
+    expect(s.farm.targetType()).toBe('Bramble');
+    expect(s.farm.targetCamp()).toBe('Health Camp');
+    health.dead = true;
+    expect(s.tick().x).toBeGreaterThan(0);
+  });
+
+  it('never detours toward an engaged generated boss', () => {
+    const s = setup(); s.setMap('endless_1');
+    const target = s.add('Bramble', 1500, 500);
+    target.campName = s.spawnSites[0].campName = 'Health Camp';
+    const boss = s.add('Bramble', 500, 900);
+    Object.assign(boss, { generatedBoss: true, engaged: true, aggroTargetId: null, campName: 'Warden' });
+    s.spawnSites.pop(); // Bosses are not regular respawning camp sites.
+    expect(s.farm.choices()).toHaveLength(1);
+    s.farm.start(s.farm.choices()[0].key);
+    expect(s.tick()).toEqual({ x: 1, y: 0, source: 'keyboard' });
+    target.dead = true;
+    expect(s.tick().y).toBe(0);
+  });
+
   it('walks to the selected type at ordinary speed and stops inside attack range', () => {
     const s = setup();
     s.add('Needle', 500, 520);

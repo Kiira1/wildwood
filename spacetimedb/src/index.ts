@@ -1,3 +1,7 @@
+import { leaderboardPageTables, writeLeaderboardPages, readLeaderboardWindow } from "./leaderboard-pages";
+import { chatPage } from "../../shared/chat-page";
+import { generateMap, isProceduralMap, proceduralMapId, PROCEDURAL_ENTRY_MAP, PROCEDURAL_ENTRY_BOSS } from "../../shared/procedural-maps";
+import { proceduralMapTables, proceduralBossKey, clearProceduralProgress, mergeProceduralProgress, generatedMapUnlocked, ensureProceduralBoss, damageProceduralBoss } from "./procedural-maps";
 import { ingestStoreEvent } from "./gem-store-events";
 import { gemPurchaseTables } from "./gem-purchase-tables";
 import { createGemPurchaseService } from "./gem-purchase-service";
@@ -10,7 +14,7 @@ import { mapShardingTables, mapShardRouteType, rootShardingEnabled, isMapShard, 
 import { compressLegacyMapPower } from "../../shared/map-power-rescale";
 import { advanceDuelCombat, duelOutcome, DUEL_COMBAT_VERSION } from "../../shared/duel-combat";
 import { createPlayerMotionFrameSampler, playerMotionSampleAt } from "../../shared/player-motion-sample";
-import { schema, SenderError, table, t, type InferSchema, type ReducerCtx } from "spacetimedb/server";
+import { schema, SenderError, table, t, type InferSchema, type ReducerCtx, type ViewCtx } from "spacetimedb/server";
 import { Identity, ScheduleAt, Timestamp } from "spacetimedb";
 import { attackForestPrototype, beginForestPrototype } from "./forest-reward-prototype";
 import { portalCutsceneBit, unlockedPortalCutsceneMask } from "../../shared/portal-cutscenes";
@@ -78,7 +82,7 @@ import {
 import { HIDDEN_COSMETIC_ITEM_ID, isHiddenCosmeticItem, resolveEquipmentAppearance } from "../../shared/equipment-appearance";
 import { migrateGuildTags } from "./player-name-tags";
 import { socialTables } from "./social-tables";
-import { createSocialService, socialSnapshot, visibleSocialMessages, removeSocialAccount, mergeSocialAccount } from "./social-service";
+import { createSocialService, socialSnapshot, visibleSocialMessages, latestSocialMessages, socialHistoryPage, removeSocialAccount, mergeSocialAccount } from "./social-service";
 import { guildTables } from "./guild-tables";
 import { createGuildService } from "./guild-service";
 import type { DuelFighter } from "../../shared/duel-combat";
@@ -240,7 +244,7 @@ const LEGACY_CLIENT_ERRORS = {
 const WORLD = { width: WORLD_WIDTH, height: WORLD_HEIGHT };
 const MAX_PACKED_PLAYER_VELOCITY = 0x7fff / PLAYER_VELOCITY_SCALE;
 const PLAYER_ZONE_SIZE = 1_000;
-const VALID_MAP_IDS = new Set<string>([...MAP_IDS, HOME_EXTERIOR_MAP_ID]);
+const VALID_MAP_IDS = { has: (id: string) => MAP_IDS.includes(id) || id === HOME_EXTERIOR_MAP_ID || isProceduralMap(id) };
 const LEGACY_FROSTWIND_EXPANSE_MAP_ID = "frostwind_expanse";
 
 function canonicalMapId(mapId: string) {
@@ -330,8 +334,7 @@ const MOTION_DETAIL_FRAME_INTERVAL_MICROS = 1_000_000n / BigInt(PLAYER_MOTION_DE
 const MAP_FRAME_INTERVAL_MICROS = 1_000_000n / BigInt(PLAYER_MAP_FRAME_HZ);
 const VIRTUAL_PLAYER_RUN_LIFETIME_MICROS = 3_600_000_000n;
 const MODULE_MIGRATION_VERSION = 31;
-const LEADERBOARD_LIMIT = 100;
-const LEADERBOARD_REFRESH_VERSION = 9;
+const LEADERBOARD_REFRESH_VERSION = 10;
 const DUEL_REQUEST_COOLDOWN_MICROS = 120_000_000n;
 const DISPLAY_NAME_COOLDOWN_MICROS = 2_592_000_000_000n;
 // Beta support: let players correct names freely. Re-enable after account-link
@@ -956,8 +959,8 @@ const playerItemDrop = table(
   },
 );
 
-// Compact public ranking snapshot. Clients load it only when rankings are
-// needed, keeping it outside the hot gameplay subscription.
+// Shared periodic ranking snapshot. Clients fetch only server-selected rank
+// windows; this table stays outside all normal client subscriptions.
 const leaderboardEntry = table(
   { public: true },
   {
@@ -1693,6 +1696,8 @@ const shardCoordinatorSchedule = table(
   { scheduledId: t.u64().primaryKey(), scheduledAt: t.scheduleAt() },
 );
 const spacetimedb = schema({
+  ...proceduralMapTables,
+  ...leaderboardPageTables,
   ...gemPurchaseTables,
   homeReturnLocation,
   ...guildTables,
@@ -3307,7 +3312,8 @@ function savedWorldLocation(ctx: any, identity: any, progress: any) {
     mapId = progress.desertUnlocked ? BEGINNER_DESERT_MAP_ID : TUTORIAL_FOREST_MAP_ID;
   }
   if (mapId === BEGINNER_DESERT_MAP_ID && !progress.desertUnlocked) mapId = TUTORIAL_FOREST_MAP_ID;
-  const fallback = mapId === HOME_EXTERIOR_MAP_ID ? HOME_EXTERIOR_SPAWN : mapId === TUTORIAL_FOREST_MAP_ID ? PLAYER_SPAWN : MAP_ARRIVALS[mapId as keyof typeof MAP_ARRIVALS];
+  if (isProceduralMap(mapId) && !hasEndlessTravelAccess(ctx, identity) && !generatedMapUnlocked(mapId, ctx.db.proceduralProgress.identity.find(identity)?.completed ?? 0, Boolean(progress.bossRewardClaims & BOSS_REWARD_CLAIM_BITS[PROCEDURAL_ENTRY_BOSS]))) mapId = TUTORIAL_FOREST_MAP_ID;
+  const fallback = isProceduralMap(mapId) ? generateMap(mapId).arrival : mapId === HOME_EXTERIOR_MAP_ID ? HOME_EXTERIOR_SPAWN : mapId === TUTORIAL_FOREST_MAP_ID ? PLAYER_SPAWN : MAP_ARRIVALS[mapId as keyof typeof MAP_ARRIVALS];
   const useSavedPosition = mapId === requestedMap;
   const x = useSavedPosition && Number.isFinite(saved?.x)
     ? Math.max(PLAYER_RADIUS, Math.min(WORLD.width - PLAYER_RADIUS, saved.x))
@@ -3400,27 +3406,8 @@ function refreshLeaderboard(ctx: any) {
     });
   }
 
-  const byName = (a: any, b: any) => a.displayName.localeCompare(b.displayName);
-  const selected = new Map<string, any>();
-  for (const candidate of [...candidates].sort((a, b) => b.power - a.power || byName(a, b)).slice(0, LEADERBOARD_LIMIT)) {
-    selected.set(candidate.identityKey, candidate);
-  }
-  for (const candidate of [...candidates].sort((a, b) => b.damage - a.damage || byName(a, b)).slice(0, LEADERBOARD_LIMIT)) {
-    selected.set(candidate.identityKey, candidate);
-  }
-  for (const candidate of [...candidates].sort((a, b) => b.maxHp - a.maxHp || byName(a, b)).slice(0, LEADERBOARD_LIMIT)) {
-    selected.set(candidate.identityKey, candidate);
-  }
-  for (const candidate of [...candidates].sort((a, b) => b.armor - a.armor || byName(a, b)).slice(0, LEADERBOARD_LIMIT)) {
-    selected.set(candidate.identityKey, candidate);
-  }
-  for (const candidate of [...candidates].sort((a, b) => b.regen - a.regen || byName(a, b)).slice(0, LEADERBOARD_LIMIT)) {
-    selected.set(candidate.identityKey, candidate);
-  }
-  for (const candidate of [...candidates].sort((a, b) => Number(b.playedMicros - a.playedMicros) || byName(a, b)).slice(0, LEADERBOARD_LIMIT)) {
-    selected.set(candidate.identityKey, candidate);
-  }
-
+  writeLeaderboardPages(ctx, candidates);
+  const selected = new Map(candidates.map(candidate => [candidate.identityKey, candidate]));
   for (const current of [...ctx.db.leaderboardEntry.iter()] as any[]) {
     if (!selected.has(current.identity.toHexString())) ctx.db.leaderboardEntry.identity.delete(current.identity);
   }
@@ -3842,7 +3829,7 @@ function writeProgressAndPresentation(ctx: any, progress: any) {
     updateSnapshotRow(ctx, "player", nextPlayer);
     syncPlayerMotionIdentity(ctx, playerWithMotion(ctx, nextPlayer));
   }
-  refreshLeaderboard(ctx);
+  // Ranking snapshots refresh in maintenance, never in the combat/reward path.
 }
 
 function publishItemDrop(ctx: any, identity: any, itemId: string, alreadyOwned: boolean) {
@@ -4424,6 +4411,7 @@ function removeVirtualPlayerData(ctx: any, identity: any, adjustPresence = true,
  * leaderboard removal.
  */
 function removePlayerIdentityData(ctx: any, identity: any) {
+  clearProceduralProgress(ctx, identity);
   removeSocialAccount(ctx, identity);
   guildService.removeAccount(ctx, identity);
   ctx.db.playerNameTag.identity.delete(identity);
@@ -8227,6 +8215,7 @@ export const claimGuestAccount = spacetimedb.reducer(
     if (accountProgress) updateSnapshotRow(ctx, "playerProgress", nextProgress);
     else insertSnapshotRow(ctx, "playerProgress", nextProgress);
 
+    mergeProceduralProgress(ctx, link.guest);
     const guestLocation = ctx.db.playerLastLocation.identity.find(link.guest);
     const accountLocation = ctx.db.playerLastLocation.identity.find(ctx.sender);
     if (guestLocation) {
@@ -9626,6 +9615,7 @@ export const resetPlayerProgress = spacetimedb.reducer(
   (ctx) => {
     const activePlayer = requireControllingPlayer(ctx);
     if (activeDuelFor(ctx, ctx.sender)) throw new SenderError("Finish your duel before resetting progress.");
+    clearProceduralProgress(ctx, ctx.sender);
     const current = ctx.db.playerProgress.identity.find(ctx.sender);
     const next = defaultPlayerProgress(ctx.sender);
     const history = ctx.db.playerCutsceneHistory.identity.find(ctx.sender);
@@ -10127,7 +10117,16 @@ export const changeMap = spacetimedb.reducer(
       throw new SenderError(`Defeat Miremaw before entering ${MAP_DISPLAY_NAMES[CRYSTAL_HOLLOWS_MAP_ID]}.`);
     }
 
-    const sourcePortal = MAP_PORTALS[current.mapId as keyof typeof MAP_PORTALS]?.find((portal) => portal.destination === mapId);
+    if (isProceduralMap(mapId) && !generatedMapUnlocked(mapId,
+      ctx.db.proceduralProgress.identity.find(ctx.sender)?.completed ?? 0,
+      Boolean(currentProgress && (currentProgress.bossRewardClaims & BOSS_REWARD_CLAIM_BITS[PROCEDURAL_ENTRY_BOSS])))) {
+      throw new SenderError("Defeat the previous map's boss first.");
+    }
+    const sourcePortals = isProceduralMap(current.mapId)
+      ? generateMap(current.mapId).portals.map(portal => ({ ...portal, y:portal.y-portal.height*.32 }))
+      : [...(MAP_PORTALS[current.mapId as keyof typeof MAP_PORTALS] ?? []),
+        ...(current.mapId === PROCEDURAL_ENTRY_MAP ? [{x:580,y:617,destination:proceduralMapId(1)}] : [])];
+    const sourcePortal = sourcePortals.find((portal) => portal.destination === mapId);
     if (!sourcePortal) throw new SenderError("Maps are not connected.");
     // Movement is client-authoritative. Validate the coordinate from this
     // discrete portal action instead of a potentially one-heartbeat-old
@@ -10135,7 +10134,7 @@ export const changeMap = spacetimedb.reducer(
     const portalDistance = Math.hypot(x - sourcePortal.x, y - sourcePortal.y);
     if (portalDistance > MAP_PORTAL_USE_RANGE) throw new SenderError("Move closer to the portal.");
 
-    const arrival = MAP_ARRIVALS[mapId as keyof typeof MAP_ARRIVALS];
+    const arrival = isProceduralMap(mapId) ? generateMap(mapId).arrival : MAP_ARRIVALS[mapId as keyof typeof MAP_ARRIVALS];
     transitionPlayerMap(ctx, current, mapId, arrival);
   },
 );
@@ -10576,7 +10575,7 @@ export const seedTemporaryGuild = spacetimedb.reducer((ctx) => {
 // depend on guild membership and blocks, so leaving or blocking revokes access.
 export const mySocialMessages = spacetimedb.view(
   { name: "my_social_messages", public: true }, t.array(socialTables.socialMessage.rowType),
-  ctx => visibleSocialMessages(ctx),
+  ctx => latestSocialMessages(ctx),
 );
 const socialHubRow = t.row("SocialHubPayload", { identity: t.identity().primaryKey(), snapshot: t.string() });
 export const mySocialHub = spacetimedb.view(
@@ -10591,6 +10590,14 @@ function requireSocialPlayer(ctx: ModuleReducerCtx) {
 export const getSocialHub = spacetimedb.procedure({}, t.string(), ctx => ctx.withTx(tx => {
   requireSocialPlayer(tx); return JSON.stringify(socialSnapshot(tx, hasSpacetimeAuthAccount(tx)));
 }));
+export const getSocialChatHistory = spacetimedb.procedure(
+  { channel: t.string(), peer: t.string(), beforeId: t.u64() },
+  t.object("SocialChatPage", { messages: t.array(socialTables.socialMessage.rowType), hasMore: t.bool() }),
+  (ctx, { channel, peer, beforeId }) => ctx.withTx(tx => {
+    requireSocialPlayer(tx);
+    return socialHistoryPage(tx, channel, peer, beforeId);
+  }),
+);
 export const friendAction = spacetimedb.reducer({ action: t.string(), target: t.string() }, (ctx, { action, target }) => {
   requireSocialPlayer(ctx); socialService.friendAction(ctx, action, target);
 });
@@ -10731,4 +10738,88 @@ export const devGemPurchaseReview = spacetimedb.view(
   { name: "dev_gem_purchase_review", public: true }, t.array(gemPurchaseTables.gemStoreReceipt.rowType),
   (ctx) => isDeveloperIdentity(ctx.sender) || isDatabaseOwnerIdentity(ctx.sender)
     ? [...ctx.db.gemStoreReceipt.iter()].filter(row => row.status === "review" || row.status === "refund_review") : [],
+);
+
+export type GameViewContext = ViewCtx<InferSchema<typeof spacetimedb>>;
+export type GameReducerContext = ReducerCtx<InferSchema<typeof spacetimedb>>;
+
+function hasEndlessTravelAccess(ctx: GameViewContext | GameReducerContext, identity: Identity) {
+  return isDeveloperIdentity(identity) || Boolean(ctx.db.endlessTravelAccess.identity.find(identity));
+}
+
+export const myEndlessTravelAccess = spacetimedb.view(
+  { public: true }, t.option(proceduralMapTables.endlessTravelAccess.rowType),
+  (ctx) => hasEndlessTravelAccess(ctx, ctx.sender) ? { identity: ctx.sender } : undefined,
+);
+
+export const devSetEndlessTravelAccess = spacetimedb.reducer(
+  { identity: t.identity(), enabled: t.bool() }, (ctx, { identity, enabled }) => {
+    if (!isDatabaseOwnerIdentity(ctx.sender)) requireDeveloper(ctx);
+    if (isMapShard(ctx)) throw new SenderError("Use the world connection.");
+    const existing = ctx.db.endlessTravelAccess.identity.find(identity);
+    if (enabled && !existing) ctx.db.endlessTravelAccess.insert({ identity });
+    else if (!enabled && existing) ctx.db.endlessTravelAccess.identity.delete(identity);
+  },
+);
+
+export const devTeleportEndless = spacetimedb.reducer(
+  { number: t.f64() }, (ctx, { number }) => {
+    const player = requireControllingPlayer(ctx);
+    if (!hasEndlessTravelAccess(ctx, ctx.sender)) throw new SenderError("Developer travel access required.");
+    if (isDeveloperIdentity(ctx.sender)) requireDeveloper(ctx);
+    if (isMapShard(ctx)) throw new SenderError("Use the world connection.");
+    if (!Number.isSafeInteger(number) || number < 1) throw new SenderError("Enter a positive whole map number.");
+    if (player.hp <= 0) throw new SenderError("Respawn before teleporting.");
+    if (activeDuelFor(ctx, ctx.sender)) throw new SenderError("Finish the duel before teleporting.");
+    const mapId = proceduralMapId(number);
+    const moved = transitionPlayerMap(ctx, player, mapId, generateMap(mapId).arrival);
+    persistWorldLocation(ctx, moved);
+  },
+);
+
+export const myProceduralBoss = spacetimedb.view(
+  { public: true }, t.option(proceduralMapTables.proceduralInstanceBoss.rowType), (ctx) => {
+    const player = ctx.db.player.identity.find(ctx.sender);
+    const key = player && proceduralBossKey(ctx, player.mapId);
+    return key ? ctx.db.proceduralInstanceBoss.key.find(key) ?? undefined : undefined;
+  },
+);
+
+export const prepareProceduralBoss = spacetimedb.reducer({ mapId:t.string() }, (ctx, {mapId}) => {
+  const player = requireControllingPlayer(ctx);
+  if (player.mapId !== mapId) return;
+  const key = proceduralBossKey(ctx, mapId);
+  if (key) ensureProceduralBoss(ctx, mapId, key);
+});
+export const hitProceduralBoss = spacetimedb.reducer({ mapId:t.string(), bossKey:t.string(), encounter:t.u64(), hits:t.u32(), x:t.f64(), y:t.f64() }, (ctx, action) => {
+  const player = requireControllingPlayer(ctx);
+  if (activeDuelFor(ctx, ctx.sender)) return;
+  const progress = ctx.db.playerProgress.identity.find(ctx.sender);
+  if (!progress || !isProceduralMap(player.mapId) || action.mapId !== player.mapId) return;
+  if (proceduralBossKey(ctx, player.mapId) !== action.bossKey) return;
+  damageProceduralBoss(ctx, { ...action, mapId:player.mapId, attackRange:progress.attackRange,
+    attackInterval:attackIntervalForProgress(progress), projectiles:progress.projectileCount,
+    damage:(hits,hp) => bossDamageWithCriticals(ctx, progress, hits, hp, player.mapId, generateMap(player.mapId).boss),
+    reward:(identity,amount) => {
+      const earned = ctx.db.playerProgress.identity.find(identity);
+      if (earned) writeProgressAndPresentation(ctx, { ...earned, regen:Math.min(MAX_PLAYER_STAT, earned.regen + amount * researchStatRewardMultiplier(ctx.db.playerResearch.identity.find(identity))) });
+    },
+  });
+});
+
+export const getLeaderboardWindow = spacetimedb.procedure(
+  { stat: t.string() }, t.array(t.object("RankedLeaderboardPlayer", { rank: t.u32(), entry: leaderboardEntry.rowType })),
+  (ctx, { stat }) => ctx.withTx(tx => readLeaderboardWindow(tx, stat)),
+);
+
+export const latestChatMessages = spacetimedb.anonymousView(
+  { public: true }, t.array(chatMessage.rowType),
+  ctx => chatPage([...ctx.db.chatMessage.iter()].filter(row => row.senderName.length > 0)).messages,
+);
+export const getChatHistory = spacetimedb.procedure(
+  { beforeId: t.u64() }, t.object("PublicChatPage", { messages: t.array(chatMessage.rowType), hasMore: t.bool() }),
+  (ctx, { beforeId }) => ctx.withTx(tx => {
+    requireControllingPlayer(tx);
+    return chatPage([...tx.db.chatMessage.iter()].filter(row => row.senderName.length > 0), beforeId);
+  }),
 );

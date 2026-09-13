@@ -61,7 +61,8 @@ describe("private social interactions", () => {
   it("bounds retained messages and rejects cross-conversation reply snapshots", () => {
     const f = fixture(); f.friend(); f.actor("1");
     for (let n = 0; n < 105; n++) f.send("dm", "Player 2", `Message ${n}`);
-    expect(f.visible()).toHaveLength(100); expect(f.visible()[0].message).toBe("Message 5");
+    expect(f.db.socialMessage.count()).toBe(100n);
+    expect(f.visible()).toHaveLength(50); expect(f.visible()[0].message).toBe("Message 55");
     f.run(server.createGuild, { name: "Rose" }); expect(() => f.send("guild", "", "Reply", 105n)).toThrow("conversation");
   });
   it("erases quoted content on deletion and carries relationships/messages through linking", () => {

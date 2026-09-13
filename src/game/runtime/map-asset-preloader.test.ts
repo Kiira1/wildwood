@@ -85,6 +85,28 @@ describe("adjacent map asset preloading", () => {
     expect(prepareMapAssets).toHaveBeenCalledTimes(1);
   });
 
+  it("continues warming adjacent maps when a readiness check throws", async () => {
+    const scheduler = controlledScheduler();
+    const prepareMapAssets = vi.fn(async () => {});
+    const preloader = createAdjacentMapAssetPreloader({
+      mapConfig,
+      mapAssetsReady: (mapId) => {
+        if (mapId === "forward") throw new Error("Missing sprite group");
+        return false;
+      },
+      prepareMapAssets,
+      availability: () => "ready",
+      schedule: scheduler.schedule,
+    });
+    preloader.queueFrom("middle");
+    scheduler.runNext();
+    await Promise.resolve();
+    expect(prepareMapAssets).not.toHaveBeenCalled();
+    scheduler.runNext();
+    await Promise.resolve();
+    expect(prepareMapAssets).toHaveBeenCalledWith("back");
+  });
+
   it("waits for spare frame capacity and abandons superseded routes", () => {
     const scheduler = controlledScheduler();
     let availability: "wait" | "ready" = "wait";

@@ -1,4 +1,6 @@
+import { isProceduralMap } from "../../../shared/procedural-maps";
 import { DbConnection, tables } from "../../module_bindings";
+import { guardConnectionActivity } from "./connection-activity";
 import type { Identity } from "spacetimedb";
 import { MAP_IDS, PROTOCOL_VERSION, TUTORIAL_FOREST_MAP_ID } from "../../../shared/rules";
 import type { BaseSubscriptionHandlers } from "./base-subscription";
@@ -73,7 +75,7 @@ export function createMapShardClient(options: {
       } else timer = setTimeout(connectRegion, Math.min(5_000, 1_000 * failures));
       options.changed();
     };
-    const conn = DbConnection.builder().withUri(options.host).withDatabaseName(wanted.databaseName).withToken(root.token)
+    const conn = guardConnectionActivity(DbConnection.builder().withUri(options.host).withDatabaseName(wanted.databaseName).withToken(root.token)
       .onConnect(async connection => {
         if (!current()) { connection.disconnect(); return; }
         try {
@@ -118,15 +120,15 @@ export function createMapShardClient(options: {
           const boss = BOSSES[MAP_IDS.indexOf(wanted.mapId)];
           const bossTable = (connection.db as any)[`${boss}Boss`];
           const resultTable = (connection.db as any)[`${boss}Result`];
-          bind(bossTable, (h as any)[`${boss}Boss`]);
-          bind(resultTable, (h as any)[`${boss}Result`]);
+          if (bossTable) bind(bossTable, (h as any)[`${boss}Boss`]);
+          if (resultTable) bind(resultTable, (h as any)[`${boss}Result`]);
           const own = connection.identity!;
           connection.subscriptionBuilder().onApplied(() => {
             if (!current()) return;
             for (const row of connection.db.player.iter()) h.player(row);
             for (const row of connection.db.playerMotionIdentity.iter()) h.motionIdentity(row);
-            for (const row of bossTable.iter()) (h as any)[`${boss}Boss`](row);
-            for (const row of resultTable.iter()) (h as any)[`${boss}Result`](row);
+            for (const row of bossTable?.iter() ?? []) (h as any)[`${boss}Boss`](row);
+            for (const row of resultTable?.iter() ?? []) (h as any)[`${boss}Result`](row);
             if (timer) clearTimeout(timer);
             timer = undefined;
             failures = 0;
@@ -138,10 +140,10 @@ export function createMapShardClient(options: {
             tables.bossHitResult.where(row => row.identity.eq(own)),
             tables.player.where(row => row.identity.eq(own)),
             tables.playerMotionIdentity.where(row => row.identity.eq(own)),
-            (tables as any)[`${boss}Boss`], (tables as any)[`${boss}Result`],
+            ...(boss ? [(tables as any)[`${boss}Boss`], (tables as any)[`${boss}Result`]] : []),
           ]);
         } catch (error) { retry(error); }
-      }).onDisconnect((_ctx, error) => retry(error)).onConnectError((_ctx, error) => retry(error)).build();
+      }).onDisconnect((_ctx, error) => retry(error)).onConnectError((_ctx, error) => retry(error)).build());
     region = conn;
     timer = setTimeout(() => retry(new Error("Map connection timed out")), 12_000);
   }
@@ -193,7 +195,7 @@ export function createMapShardClient(options: {
     enabled: () => route !== null,
     ready: () => routeKnown && (route === null || hydrated),
     rootHandlers: Object.fromEntries(Object.entries(options.handlers).map(([key, handler]) => [key,
-      REGIONAL_HANDLERS.has(key) || /(?:Boss|Result)$/.test(key) ? (row: any) => { if (routeKnown && !route) (handler as (row: any) => void)(row); } : handler,
+      REGIONAL_HANDLERS.has(key) || /(?:Boss|Result)$/.test(key) ? (row: any) => { if (routeKnown && (!route || key === "bossHitResult" && isProceduralMap(row.mapId) && route.mapId === row.mapId)) (handler as (row: any) => void)(row); } : handler,
     ])) as BaseSubscriptionHandlers,
     attach(root: DbConnection, identity: Identity) {
       this.clear();

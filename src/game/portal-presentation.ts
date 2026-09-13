@@ -1,3 +1,4 @@
+import { generateMap, isProceduralMap } from "../../shared/procedural-maps";
 import {
   ADVANCED_LAVA_WASTES_MAP_ID,
   BEGINNER_DESERT_MAP_ID,
@@ -30,12 +31,12 @@ const PORTAL_DESTINATION_COLORS: Record<MapId, string> = {
 };
 
 export function portalDestinationColor(destination: MapId) {
-  return PORTAL_DESTINATION_COLORS[destination];
+  return isProceduralMap(destination) ? generateMap(destination).palette.path : PORTAL_DESTINATION_COLORS[destination];
 }
 
-/** Keeps Night Forest's black portal label readable without changing its map marker. */
+/** White labels keep Night Forest and the pale Endless portals readable. */
 export function portalDestinationTextColor(destination: MapId) {
-  return destination === INFERNAL_DEPTHS_MAP_ID ? "#ffffff" : portalDestinationColor(destination);
+  return destination === INFERNAL_DEPTHS_MAP_ID || isProceduralMap(destination) ? "#ffffff" : portalDestinationColor(destination);
 }
 
 /** Draws the shared pixel-arch marker used by both map sizes. */

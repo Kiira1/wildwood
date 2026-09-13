@@ -1,0 +1,138 @@
+import { describe, expect, it, vi } from "vitest";
+import { createProceduralBossController } from "./procedural-boss-controller";
+import { createGameBootstrap } from "./game-bootstrap";
+import { createEnemyLifecycle } from "./enemy-lifecycle";
+
+function harness() {
+  const state = createGameBootstrap();
+  let map = "endless_1",
+    now = 10000;
+  let available = true;
+  const row = {
+    key: "endless_1:root",
+    mapId: map,
+    encounter: 1n,
+    hp: 1000,
+    maxHp: 1000,
+    respawnAtMicros: 0n,
+  };
+  const hit = vi.fn(),
+    damagePlayer = vi.fn(() => true),
+    burst = vi.fn(),
+    shot = vi.fn();
+  const lifecycle = createEnemyLifecycle(
+    state.enemies,
+    state.spawnSites,
+    burst,
+  );
+  const controller = createProceduralBossController({
+    mapId: () => map,
+    state: () => ({ boss: available ? { ...row, mapId: map } : null }),
+    serverNow: () => now,
+    enemies: state.enemies,
+    player: state.player,
+    spawn: lifecycle.spawnFromSite,
+    hit,
+    damagePlayer,
+    burst,
+    shot,
+  });
+  return {
+    ...state,
+    row,
+    controller,
+    hit,
+    damagePlayer,
+    burst,
+    shot,
+    setAvailable: (value: boolean) => {
+      available = value;
+    },
+    setMap: (next: string) => {
+      map = next;
+    },
+    advance: (ms: number) => {
+      now += ms;
+      controller.update(ms / 1000);
+    },
+  };
+}
+describe("generic boss runtime", () => {
+  it("spawns only one boss and never grants client-side boss damage or rewards", () => {
+    const h = harness();
+    h.controller.update(0.016);
+    h.controller.update(0.016);
+    expect(h.enemies.filter((e) => e.generatedBoss)).toHaveLength(1);
+    const boss = h.controller.boss()!;
+    expect(h.controller.hit(boss)).toBe(true);
+    expect(boss.hp).toBe(1000);
+    h.advance(60);
+    expect(h.hit).toHaveBeenCalledWith(
+      "endless_1",
+      "endless_1:root",
+      1n,
+      1,
+      h.player.x,
+      h.player.y,
+    );
+    h.row.hp = 0;
+    h.controller.update(0.016);
+    expect(h.controller.boss()).toBeNull();
+    expect(h.burst).toHaveBeenCalledTimes(1);
+  });
+  it("discards queued hits on travel and reconstructs a shared boss after respawn", () => {
+    const h = harness();
+    h.controller.update(0.016);
+    h.controller.hit(h.controller.boss()!);
+    h.setMap("ion_citadel");
+    h.advance(100);
+    expect(h.hit).not.toHaveBeenCalled();
+    h.enemies.length = 0;
+    h.setMap("endless_1");
+    h.controller.update(0.016);
+    expect(h.controller.boss()).not.toBeNull();
+    h.enemies.length = 0;
+    h.controller.update(0.016);
+    expect(h.enemies.filter((e) => e.generatedBoss)).toHaveLength(1);
+  });
+  it("discards stale targets and pending hits on disconnect or instance change", () => {
+    const h = harness();
+    h.controller.update(0.016);
+    const old = h.controller.boss()!;
+    h.controller.hit(old);
+    h.setAvailable(false);
+    h.advance(60);
+    expect(old.dead).toBe(true);
+    expect(h.controller.boss()).toBeNull();
+    h.setAvailable(true);
+    h.row.key = "endless_1:other-instance";
+    h.advance(60);
+    expect(h.controller.boss()).not.toBe(old);
+    expect(h.hit).not.toHaveBeenCalled();
+    h.setMap("endless_2");
+    expect(h.controller.boss()).toBeNull();
+    h.controller.hit(h.enemies.at(-1)!);
+    h.advance(60);
+    expect(h.hit).not.toHaveBeenCalled();
+  });
+  it("requires a full visible windup after entry, suspension, and clock corrections", () => {
+    const h = harness();
+    h.controller.update(0.016);
+    const boss = h.controller.boss()!;
+    h.player.x = boss.x + 200;
+    h.player.y = boss.y;
+    h.player.hp = 100;
+    for (let i = 0; i < 13; i++) h.advance(100);
+    expect(h.damagePlayer).not.toHaveBeenCalled();
+    h.advance(100);
+    expect(h.damagePlayer).toHaveBeenCalledTimes(1);
+    h.advance(15_000);
+    expect(h.damagePlayer).toHaveBeenCalledTimes(1);
+    for (let i = 0; i < 13; i++) h.advance(100);
+    expect(h.damagePlayer).toHaveBeenCalledTimes(2);
+    h.advance(-20_000);
+    expect(h.damagePlayer).toHaveBeenCalledTimes(2);
+    for (let i = 0; i < 14; i++) h.advance(100);
+    expect(h.damagePlayer).toHaveBeenCalledTimes(3);
+  });
+});

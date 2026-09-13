@@ -82,12 +82,15 @@ import DevDeleteLegacyPlayerReducer from "./dev_delete_legacy_player_reducer";
 import DevRepairPlayerJoinedAtReducer from "./dev_repair_player_joined_at_reducer";
 import DevResetDailyGemBonusReducer from "./dev_reset_daily_gem_bonus_reducer";
 import DevSetAccessAuditLabelReducer from "./dev_set_access_audit_label_reducer";
+import DevSetEndlessTravelAccessReducer from "./dev_set_endless_travel_access_reducer";
+import DevTeleportEndlessReducer from "./dev_teleport_endless_reducer";
 import DevUpdatePlayerSaveReducer from "./dev_update_player_save_reducer";
 import EnterRegionalWorldReducer from "./enter_regional_world_reducer";
 import EnterWorldReducer from "./enter_world_reducer";
 import FriendActionReducer from "./friend_action_reducer";
 import FulfillGemPurchaseReducer from "./fulfill_gem_purchase_reducer";
 import GuildInviteActionReducer from "./guild_invite_action_reducer";
+import HitProceduralBossReducer from "./hit_procedural_boss_reducer";
 import IngestGemStoreEventReducer from "./ingest_gem_store_event_reducer";
 import InstallShardPlayerReducer from "./install_shard_player_reducer";
 import JoinGuildReducer from "./join_guild_reducer";
@@ -95,6 +98,7 @@ import JoinVirtualPlayerLoadTestReducer from "./join_virtual_player_load_test_re
 import KickGuildMemberReducer from "./kick_guild_member_reducer";
 import LeaveGuildReducer from "./leave_guild_reducer";
 import MarkPortalCutsceneSeenReducer from "./mark_portal_cutscene_seen_reducer";
+import PrepareProceduralBossReducer from "./prepare_procedural_boss_reducer";
 import PrepareWorldActionPositionReducer from "./prepare_world_action_position_reducer";
 import PulseDuelReducer from "./pulse_duel_reducer";
 import RecordDesertEnemyDefeatReducer from "./record_desert_enemy_defeat_reducer";
@@ -143,8 +147,11 @@ import UnlockSecondUpgradeSlotReducer from "./unlock_second_upgrade_slot_reducer
 import UpdateMovementStateReducer from "./update_movement_state_reducer";
 
 // Import all procedure arg schemas
+import * as GetChatHistoryProcedure from "./get_chat_history_procedure";
 import * as GetGuildHubProcedure from "./get_guild_hub_procedure";
 import * as GetGuildReplayProcedure from "./get_guild_replay_procedure";
+import * as GetLeaderboardWindowProcedure from "./get_leaderboard_window_procedure";
+import * as GetSocialChatHistoryProcedure from "./get_social_chat_history_procedure";
 import * as GetSocialHubProcedure from "./get_social_hub_procedure";
 import * as SynchronizeMapShardProcedure from "./synchronize_map_shard_procedure";
 
@@ -177,6 +184,7 @@ import IronhornBossRow from "./ironhorn_boss_table";
 import IronhornResultRow from "./ironhorn_result_table";
 import KoiShogunBossRow from "./koi_shogun_boss_table";
 import KoiShogunResultRow from "./koi_shogun_result_table";
+import LatestChatMessagesRow from "./latest_chat_messages_table";
 import LeaderboardEntryRow from "./leaderboard_entry_table";
 import LocalMovementDemandRow from "./local_movement_demand_table";
 import MagmaliskBossRow from "./magmalisk_boss_table";
@@ -187,11 +195,13 @@ import MiremawResultRow from "./miremaw_result_table";
 import MyBalanceApologyNoticeRow from "./my_balance_apology_notice_table";
 import MyCutsceneHistoryRow from "./my_cutscene_history_table";
 import MyDailyGemBonusRow from "./my_daily_gem_bonus_table";
+import MyEndlessTravelAccessRow from "./my_endless_travel_access_table";
 import MyGemPurchasesRow from "./my_gem_purchases_table";
 import MyGemWalletRow from "./my_gem_wallet_table";
 import MyInventoryCapacityRow from "./my_inventory_capacity_table";
 import MyMapShardRouteRow from "./my_map_shard_route_table";
 import MyPlayerBlocksRow from "./my_player_blocks_table";
+import MyProceduralBossRow from "./my_procedural_boss_table";
 import MySocialHubRow from "./my_social_hub_table";
 import MySocialMessagesRow from "./my_social_messages_table";
 import MyUpgradeBenchRow from "./my_upgrade_bench_table";
@@ -212,6 +222,8 @@ import PlayerProgressRow from "./player_progress_table";
 import PlayerResearchRow from "./player_research_table";
 import PrismshellBossRow from "./prismshell_boss_table";
 import PrismshellResultRow from "./prismshell_result_table";
+import ProceduralBossRow from "./procedural_boss_table";
+import ProceduralProgressRow from "./procedural_progress_table";
 import SpiderBossRow from "./spider_boss_table";
 import SpiderResultRow from "./spider_result_table";
 import TempestKirinBossRow from "./tempest_kirin_boss_table";
@@ -784,6 +796,28 @@ const tablesSchema = __schema({
       { name: 'prismshell_result_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, PrismshellResultRow),
+  proceduralBoss: __table({
+    name: 'procedural_boss',
+    indexes: [
+      { accessor: 'mapId', name: 'procedural_boss_map_id_idx_btree', algorithm: 'btree', columns: [
+        'mapId',
+      ] },
+    ],
+    constraints: [
+      { name: 'procedural_boss_map_id_key', constraint: 'unique', columns: ['mapId'] },
+    ],
+  }, ProceduralBossRow),
+  proceduralProgress: __table({
+    name: 'procedural_progress',
+    indexes: [
+      { accessor: 'identity', name: 'procedural_progress_identity_idx_btree', algorithm: 'btree', columns: [
+        'identity',
+      ] },
+    ],
+    constraints: [
+      { name: 'procedural_progress_identity_key', constraint: 'unique', columns: ['identity'] },
+    ],
+  }, ProceduralProgressRow),
   spiderBoss: __table({
     name: 'spider_boss',
     indexes: [
@@ -911,6 +945,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, DevGemPurchaseReviewRow),
+  latestChatMessages: __table({
+    name: 'latest_chat_messages',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, LatestChatMessagesRow),
   localMovementDemand: __table({
     name: 'local_movement_demand',
     indexes: [
@@ -939,6 +980,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, MyDailyGemBonusRow),
+  myEndlessTravelAccess: __table({
+    name: 'my_endless_travel_access',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MyEndlessTravelAccessRow),
   myGemPurchases: __table({
     name: 'my_gem_purchases',
     indexes: [
@@ -974,6 +1022,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, MyPlayerBlocksRow),
+  myProceduralBoss: __table({
+    name: 'my_procedural_boss',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MyProceduralBossRow),
   mySocialHub: __table({
     name: 'my_social_hub',
     indexes: [
@@ -1047,12 +1102,15 @@ const reducersSchema = __reducers(
   __reducerSchema("dev_repair_player_joined_at", DevRepairPlayerJoinedAtReducer),
   __reducerSchema("dev_reset_daily_gem_bonus", DevResetDailyGemBonusReducer),
   __reducerSchema("dev_set_access_audit_label", DevSetAccessAuditLabelReducer),
+  __reducerSchema("dev_set_endless_travel_access", DevSetEndlessTravelAccessReducer),
+  __reducerSchema("dev_teleport_endless", DevTeleportEndlessReducer),
   __reducerSchema("dev_update_player_save", DevUpdatePlayerSaveReducer),
   __reducerSchema("enter_regional_world", EnterRegionalWorldReducer),
   __reducerSchema("enter_world", EnterWorldReducer),
   __reducerSchema("friend_action", FriendActionReducer),
   __reducerSchema("fulfill_gem_purchase", FulfillGemPurchaseReducer),
   __reducerSchema("guild_invite_action", GuildInviteActionReducer),
+  __reducerSchema("hit_procedural_boss", HitProceduralBossReducer),
   __reducerSchema("ingest_gem_store_event", IngestGemStoreEventReducer),
   __reducerSchema("install_shard_player", InstallShardPlayerReducer),
   __reducerSchema("join_guild", JoinGuildReducer),
@@ -1060,6 +1118,7 @@ const reducersSchema = __reducers(
   __reducerSchema("kick_guild_member", KickGuildMemberReducer),
   __reducerSchema("leave_guild", LeaveGuildReducer),
   __reducerSchema("mark_portal_cutscene_seen", MarkPortalCutsceneSeenReducer),
+  __reducerSchema("prepare_procedural_boss", PrepareProceduralBossReducer),
   __reducerSchema("prepare_world_action_position", PrepareWorldActionPositionReducer),
   __reducerSchema("pulse_duel", PulseDuelReducer),
   __reducerSchema("record_desert_enemy_defeat", RecordDesertEnemyDefeatReducer),
@@ -1110,8 +1169,11 @@ const reducersSchema = __reducers(
 
 /** The schema information for all procedures in this module. This is defined the same way as the procedures would have been defined in the server. */
 const proceduresSchema = __procedures(
+  __procedureSchema("get_chat_history", GetChatHistoryProcedure.params, GetChatHistoryProcedure.returnType),
   __procedureSchema("get_guild_hub", GetGuildHubProcedure.params, GetGuildHubProcedure.returnType),
   __procedureSchema("get_guild_replay", GetGuildReplayProcedure.params, GetGuildReplayProcedure.returnType),
+  __procedureSchema("get_leaderboard_window", GetLeaderboardWindowProcedure.params, GetLeaderboardWindowProcedure.returnType),
+  __procedureSchema("get_social_chat_history", GetSocialChatHistoryProcedure.params, GetSocialChatHistoryProcedure.returnType),
   __procedureSchema("get_social_hub", GetSocialHubProcedure.params, GetSocialHubProcedure.returnType),
   __procedureSchema("synchronize_map_shard", SynchronizeMapShardProcedure.params, SynchronizeMapShardProcedure.returnType),
 );

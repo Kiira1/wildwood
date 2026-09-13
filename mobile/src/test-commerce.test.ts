@@ -14,7 +14,7 @@ vi.mock('@capacitor-community/admob', () => ({
     return { remove: async () => { sdk.listeners.delete(name); } };
   }) },
 }));
-import { createTestPurchases, validateTestPurchaseConfig } from './test-purchases';
+import { createTestPurchases, optionalTestPurchases, validateTestPurchaseConfig } from './test-purchases';
 import { createTestAds } from './test-ads';
 const config = { revenueCatTestApiKey: 'test_example', productIds: ['gems_test'] };
 
@@ -30,6 +30,12 @@ beforeEach(() => {
 });
 
 describe('purchase preview boundaries', () => {
+  it('omits the purchase bridge and never initializes RevenueCat without an explicit test configuration', () => {
+    expect(optionalTestPurchases({})).toBeUndefined();
+    expect(optionalTestPurchases(undefined)).toBeUndefined();
+    expect(sdk.configure).not.toHaveBeenCalled();
+    expect(sdk.getProducts).not.toHaveBeenCalled();
+  });
   it('rejects production and secret keys before touching the SDK', async () => {
     for (const key of ['appl_live', 'goog_live', 'sk_secret', '']) {
       await expect(createTestPurchases({ ...config, revenueCatTestApiKey: key }).load()).rejects.toThrow('Test Store');

@@ -6,6 +6,7 @@ import {
   VIRTUAL_PLAYER_SAVE_INTERVAL_MS,
 } from "../../shared/virtual-player-load-test";
 import { createDevPanelController } from "./dev-panel-controller";
+import { createEndlessTravelControl } from "./endless-travel-control";
 import { createGameActionsController } from "./game-actions-controller";
 import { createLeaderboardController } from "./leaderboard-controller";
 import { createOverlaysController } from "./overlays-controller";
@@ -42,7 +43,13 @@ export function createTechTreePanel(d: Record<string, any>) {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function createDevPanel(d: Record<string, any>) {
   const { coop } = d;
-  return createDevPanelController({
+  const travel = createEndlessTravelControl(document.getElementById("developerSettingsRow")!.parentElement!, {
+    allowed: () => coop?.canTeleportEndless?.() === true,
+    travel: d.teleportEndless,
+    showMessage: d.showMessage,
+  });
+  document.getElementById("developerSettingsRow")!.after(travel.element);
+  const panel = createDevPanelController({
     forestPrototype: {
       state: () => coop?.forestRewardPrototypeState?.() ?? null,
       send: (action) => coop?.devForestRewardPrototype?.(action),
@@ -61,6 +68,10 @@ export function createDevPanel(d: Record<string, any>) {
     closeCompetingWindows: d.closeCompetingWindows,
     showMessage: d.showMessage,
   });
+  return { ...panel, setDeveloperAccess(developer: boolean) {
+    panel.setDeveloperAccess(developer);
+    travel.render();
+  } };
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

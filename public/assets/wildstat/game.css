@@ -440,7 +440,7 @@
   .inventory-drag-ghost .boot-pixel-icon { transform: scale(1.6); }
 
   .visually-hidden { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border: 0 !important; }
-  .upgrade-bench-panel { position: fixed; inset: 0 0 var(--toolbar-height); z-index: 11; display: grid; place-items: center; padding: max(12px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) 14px max(14px, env(safe-area-inset-left)); overflow: hidden; background: var(--window-surface-brown); color: #f4f3e8; pointer-events: auto; }
+  .upgrade-bench-panel { grid-template-rows: auto minmax(0, 1fr); position: fixed; inset: 0 0 var(--toolbar-height); z-index: 11; display: grid; place-items: center; padding: max(12px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) 14px max(14px, env(safe-area-inset-left)); overflow: hidden; background: var(--window-surface-brown); color: #f4f3e8; pointer-events: auto; }
   .upgrade-bench-panel[hidden] { display: none; }
   .upgrade-bench-content { display: grid; place-items: center; align-content: center; gap: 13px; width: min(100%, 390px); min-height: 0; text-align: center; }
   .upgrade-bench-prompt { margin: 0; color: #f6f3e7; font-size: var(--font-readable-body); font-weight: 900; line-height: var(--line-height-readable); letter-spacing: .03em; }
@@ -2418,7 +2418,7 @@
 
   #techTreeOverlay { z-index: 12; padding: 0; background: rgba(0,0,0,.78); }
   .tech-tree-window { position: relative; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; width: 100%; height: 100%; overflow: hidden; background: var(--window-surface-blue); border: 2px solid #000; border-bottom: 0; color: var(--text); text-align: left; }
-  .tech-tree-header { z-index: 2; display: flex; align-items: center; gap: 12px; min-height: 62px; padding: 10px max(14px, env(safe-area-inset-right)) 10px max(14px, env(safe-area-inset-left)); border-bottom: 2px solid rgba(202,207,214,.3); background: rgba(10,12,15,.94); }
+  .tech-tree-header { z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 4px; min-height: 62px; padding: 10px max(14px, env(safe-area-inset-right)) 10px max(14px, env(safe-area-inset-left)); border-bottom: 0; background: transparent; }
   .tech-tree-active { min-width: 0; margin: 0 auto; color: #c2c7ce; font-size: clamp(7px, 1.7vw, 10px); letter-spacing: .06em; text-align: center; }
   .tech-tree-viewport { position: relative; min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-width: none; }
   .tech-tree-viewport::-webkit-scrollbar { display: none; }
@@ -3311,6 +3311,9 @@
 .chat-private-picker button { min-height: 40px; margin: 0; font-size: 12px; }
 .chat-private-picker select { grid-column: 1 / -1; width: 100%; }
 .chat-channel-status { padding: 5px 2px 0; color: #d7d2ca; font-size: 11px; line-height: 1.3; }
+.chat-history-actions { display: flex; justify-content: space-between; gap: 8px; padding-top: 4px; }
+.chat-history-actions[hidden] { display: none; }
+.chat-history-actions button { margin: 0; padding: 5px 8px; min-height: 32px; font-size: 11px; }
 
 .chat-manage-friends { grid-column: 1 / -1; }
 
@@ -3405,3 +3408,6 @@
   .inventory-panel > .window-banner,
   .guild-window > .window-banner { margin-top: max(10px, env(safe-area-inset-top)); }
   .leaderboard-modal > .window-banner { grid-row: 1; }
+
+  .window-banner.window-banner--blue { --banner-filter: hue-rotate(90deg) saturate(.85); }
+  .window-banner--long > span { font-size: 5.5cqw; }

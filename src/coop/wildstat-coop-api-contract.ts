@@ -4,6 +4,9 @@ import type { wildstatCoop } from "../wildstat-coop";
 // removes, renames, or accidentally exposes a method without an intentional
 // contract update.
 type ExpectedApiKey =
+  | "proceduralMapState"
+  | "proceduralMapUnlocked"
+  | "hitProceduralBoss"
   | "social"
   | "guild"
   | "acceptLegalTerms"
@@ -45,6 +48,8 @@ type ExpectedApiKey =
   | "devForestRewardPrototype"
   | "forestRewardPrototypeState"
   | "developerPresenceVisible"
+  | "canTeleportEndless"
+  | "devTeleportEndless"
   | "drainBossHitResults"
   | "dragonBoss"
   | "dragonResult"
@@ -80,6 +85,8 @@ type ExpectedApiKey =
   | "leaderboardEntries"
   | "loadDuelReplay"
   | "loadLeaderboardSnapshot"
+  | "loadChatHistory"
+  | "chatHistoryRevision"
   | "loadPlayerProfile"
   | "localDisplayName"
   | "localDuel"

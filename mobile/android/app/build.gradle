@@ -1,5 +1,14 @@
 apply plugin: 'com.android.application'
 
+// Keep the upload key and its passwords outside source control.
+def uploadProperties = new Properties()
+def uploadPropertiesFile = rootProject.file('keystore.properties')
+if (uploadPropertiesFile.exists()) {
+    uploadPropertiesFile.withInputStream { uploadProperties.load(it) }
+}
+def gameVersion = new groovy.json.JsonSlurper().parse(rootProject.file('../../public/version.json')).version
+
+
 android {
     namespace = "com.wildstatmmo.preview"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -7,8 +16,8 @@ android {
         applicationId "com.wildstatmmo.preview"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode = (project.findProperty("wildstatVersionCode") ?: "1").toInteger()
+        versionName gameVersion
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,8 +25,19 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        if (uploadPropertiesFile.exists()) {
+            release {
+                storeFile rootProject.file(uploadProperties['storeFile'])
+                storePassword uploadProperties['storePassword']
+                keyAlias uploadProperties['keyAlias']
+                keyPassword uploadProperties['keyPassword']
+            }
+        }
+    }
     buildTypes {
         release {
+            if (uploadPropertiesFile.exists()) signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
@@ -51,4 +71,17 @@ try {
     }
 } catch(Exception e) {
     logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+}
+
+// Internal testing is still a release build: RevenueCat Test Store keys crash it.
+tasks.register('verifyReleaseCommerce') {
+    doLast {
+        def manifest = file('src/main/assets/public/native-build.json')
+        if (!manifest.exists() || new groovy.json.JsonSlurper().parse(manifest).testPurchasesEnabled != false) {
+            throw new GradleException('Release bundles must disable Test Store purchases. Run npm --prefix mobile run build, then cap sync android.')
+        }
+    }
+}
+tasks.configureEach {
+    if (name == 'preReleaseBuild') dependsOn('verifyReleaseCommerce')
 }

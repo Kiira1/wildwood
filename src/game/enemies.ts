@@ -739,19 +739,21 @@ export function createMapScopedEnemySpriteAssets<Kind extends string, MapKey ext
     }
     return [kind, { size: source.size, image: imageAssets.get(source.src)!.image }];
   })) as Record<Kind, LoadedEnemySprite>;
-  const assetsByMap = new Map(Object.entries<readonly Kind[]>(enemyKindsByMap).map(([mapId, kinds]) => {
+  const assetsByMap = new Map<MapKey, ReturnType<typeof createLazyEnemyImage>[]>();
+  function mapAssets(mapId: MapKey) {
+    const cached = assetsByMap.get(mapId);
+    if (cached) return cached;
+    const kinds = enemyKindsByMap[mapId];
+    if (!kinds) throw new Error(`Missing enemy sprite group for ${mapId}.`);
     const mapSources = new Set<string>();
     for (const kind of kinds) {
       const source = spriteSources[kind];
       if (!source) throw new Error(`Missing enemy sprite layout for ${kind}.`);
       for (const assetSource of enemySpriteAssetSources(source)) mapSources.add(assetSource);
     }
-    return [mapId as MapKey, [...mapSources].map((source) => imageAssets.get(source)!)];
-  }));
-
-  function mapAssets(mapId: MapKey) {
-    const assets = assetsByMap.get(mapId);
-    if (!assets) throw new Error(`Missing enemy sprite group for ${mapId}.`);
+    const assets = [...mapSources].map(source => imageAssets.get(source)!);
+    if (assetsByMap.size >= 32) assetsByMap.delete(assetsByMap.keys().next().value!);
+    assetsByMap.set(mapId, assets);
     return assets;
   }
 

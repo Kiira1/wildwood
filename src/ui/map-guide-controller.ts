@@ -1,3 +1,4 @@
+import { generateMap, isProceduralMap } from "../../shared/procedural-maps";
 import { canvasRenderPixelRatio } from "../game/runtime/render-budget";
 import {
   DARK_METAL_HELMET,
@@ -143,7 +144,7 @@ const MAP_GUIDE_REWARD_LABELS: Record<RewardType, string> = {
 };
 
 export function mapGuideDrops(mapId: MapId) {
-  return MAP_GUIDE_DROPS[mapId];
+  return isProceduralMap(mapId) ? [] : MAP_GUIDE_DROPS[mapId];
 }
 
 /** Groups the live spawn layout into readable reward zones for the enlarged map. */
@@ -160,9 +161,7 @@ export function mapGuideZones(spawnSites: readonly SpawnSite[]): MapGuideZone[] 
     const y = sites.reduce((sum, site) => sum + site.y, 0) / sites.length;
     const radius = Math.max(120, ...sites.map((site) => Math.hypot(site.x - x, site.y - y) + 80));
     const rewardTypes = new Set<RewardType>();
-    for (const enemyType of new Set(sites.map((site) => site.type))) {
-      rewardTypes.add(ENEMY_TYPES[enemyType].reward.type);
-    }
+    for (const site of sites) rewardTypes.add((site.definition ?? ENEMY_TYPES[site.type]).reward.type);
     const rewards = [...rewardTypes].map((type) => ({
       type,
       label: MAP_GUIDE_REWARD_LABELS[type],
@@ -293,7 +292,7 @@ export function createMapGuideController(elements: MapGuideElements, dependencie
     const context = canvas.getContext("2d");
     if (!context) return;
     const mapId = dependencies.currentMapId();
-    const theme = MAP_GUIDE_THEMES[mapId];
+    const theme = isProceduralMap(mapId) ? { ...generateMap(mapId).palette, glow: generateMap(mapId).palette.accent } : MAP_GUIDE_THEMES[mapId];
     const scaleX = width / WORLD.w;
     const scaleY = height / WORLD.h;
     context.setTransform(dpr, 0, 0, dpr, 0, 0);

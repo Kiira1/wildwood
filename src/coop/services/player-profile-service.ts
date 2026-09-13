@@ -1,4 +1,7 @@
-import type { Identity } from "spacetimedb";
+import { withRequestDeadline } from "./request-deadline";
+import { unsubscribeIfActive, type ActiveSubscription } from "./subscription-handoff";
+import type { LeaderboardStat } from "../../../shared/leaderboard-window";
+import { Identity } from "spacetimedb";
 import { tables, type DbConnection } from "../../module_bindings";
 import { createEmptyResearchRanks } from "../../../shared/research";
 import { normalizePlayerGender } from "../../../shared/player-gender";
@@ -67,11 +70,11 @@ export function createPlayerProfileService(dependencies: PlayerProfileServiceDep
   const leaderboardEntries = new Map<string, LeaderboardEntry>();
   const profilePlayerMaps = new Map<string, string>();
   const playerProfileLoads = new Map<string, Promise<PlayerProfileData | null>>();
-  let leaderboardSnapshotSubscription: { unsubscribe: () => void } | null = null;
-  let leaderboardSnapshotLoad: Promise<LeaderboardEntry[]> | null = null;
-  let cancelLeaderboardSnapshotLoad: (() => void) | null = null;
+  let leaderboardGeneration = 0;
+  const leaderboardRequests = new Map<LeaderboardStat, Promise<LeaderboardEntry[]>>();
   let activeIdentity = "";
-  let activeSubscription: { unsubscribe: () => void } | null = null;
+  let activeSubscription: ActiveSubscription | null = null;
+  let profileGeneration = 0;
   let cancelActiveLoad: (() => void) | null = null;
 
   function activePlayerMap(identity: string) {
@@ -102,7 +105,8 @@ export function createPlayerProfileService(dependencies: PlayerProfileServiceDep
   }
 
   function releasePlayerProfile() {
-    activeSubscription?.unsubscribe();
+    profileGeneration++;
+    unsubscribeIfActive(activeSubscription);
     cancelActiveLoad?.();
     cancelActiveLoad = null;
     if (activeIdentity && activeIdentity !== dependencies.localIdentity()) {
@@ -120,11 +124,13 @@ export function createPlayerProfileService(dependencies: PlayerProfileServiceDep
     const loading = playerProfileLoads.get(identity);
     if (loading) return loading;
     const connection = dependencies.connection();
-    const dbIdentity = dependencies.directory.identityFor(identity) ?? dependencies.developerIdentityFor(identity);
+    const dbIdentity = dependencies.directory.identityFor(identity) ?? dependencies.developerIdentityFor(identity)
+      ?? (/^[a-f0-9]{64}$/i.test(identity) ? Identity.fromString(identity) : undefined);
     if (!connection || !dbIdentity) return Promise.resolve(null);
 
     releasePlayerProfile();
     activeIdentity = identity;
+    const generation = profileGeneration;
 
     let settled = false;
     const request = new Promise<PlayerProfileData | null>((resolve) => {
@@ -139,10 +145,15 @@ export function createPlayerProfileService(dependencies: PlayerProfileServiceDep
       };
       const cancel = () => finish(null);
       cancelActiveLoad = cancel;
-      activeSubscription = connection
+      let handle: ActiveSubscription | null = null;
+      try {
+      handle = connection
         .subscriptionBuilder()
         .onApplied(() => {
-          if (dependencies.connection() !== connection || activeIdentity !== identity) return finish(null);
+          if (generation !== profileGeneration || dependencies.connection() !== connection || activeIdentity !== identity) {
+            unsubscribeIfActive(handle);
+            return finish(null);
+          }
           for (const row of connection.db.playerProgress.iter()) {
             if (row.identity.toHexString() === identity) dependencies.progression.tables.upsertProgress(row);
           }
@@ -168,7 +179,10 @@ export function createPlayerProfileService(dependencies: PlayerProfileServiceDep
           }
           finish(cachedPlayerProfile(identity));
         })
-        .onError(() => finish(null))
+        .onError(() => {
+          if (generation === profileGeneration) releasePlayerProfile();
+          finish(null);
+        })
         .subscribe([
           tables.playerProfile.where((profile) => profile.identity.eq(dbIdentity)),
           tables.playerAccountStatus.where((status) => status.identity.eq(dbIdentity)),
@@ -178,6 +192,12 @@ export function createPlayerProfileService(dependencies: PlayerProfileServiceDep
           tables.playerItemUpgrade.where((upgrade) => upgrade.identity.eq(dbIdentity)),
           tables.player.where((player) => player.identity.eq(dbIdentity)),
         ]);
+      if (generation === profileGeneration) activeSubscription = handle;
+      else unsubscribeIfActive(handle);
+      } catch {
+        if (generation === profileGeneration) releasePlayerProfile();
+        finish(null);
+      }
       if (!settled) {
         timeoutId = window.setTimeout(() => {
           if (activeIdentity === identity) releasePlayerProfile();
@@ -190,66 +210,27 @@ export function createPlayerProfileService(dependencies: PlayerProfileServiceDep
     return request;
   }
 
-  function loadLeaderboardSnapshot(): Promise<LeaderboardEntry[]> {
-    if (leaderboardSnapshotLoad) return leaderboardSnapshotLoad;
+  function loadLeaderboardSnapshot(stat: LeaderboardStat = "power"): Promise<LeaderboardEntry[]> {
+    const existing = leaderboardRequests.get(stat);
+    if (existing) return existing;
     const connection = dependencies.connection();
-    if (!connection) return Promise.resolve([]);
-
-    let settled = false;
-    const request = new Promise<LeaderboardEntry[]>((resolve) => {
-      let subscription: { unsubscribe: () => void } | null = null;
-      let unsubscribeAfterSubscribe = false;
-      let timeoutId: number | null = null;
-      const release = () => {
-        if (subscription) {
-          const current = subscription;
-          current.unsubscribe();
-          subscription = null;
-          if (leaderboardSnapshotSubscription === current) leaderboardSnapshotSubscription = null;
-        } else {
-          unsubscribeAfterSubscribe = true;
-        }
-      };
-      const finish = (entries: LeaderboardEntry[]) => {
-        if (settled) return;
-        settled = true;
-        if (timeoutId !== null) window.clearTimeout(timeoutId);
-        leaderboardSnapshotLoad = null;
-        cancelLeaderboardSnapshotLoad = null;
-        release();
-        resolve(entries);
-      };
-      cancelLeaderboardSnapshotLoad = () => finish([]);
-      timeoutId = window.setTimeout(() => finish([]), SUBSCRIPTION_LOAD_TIMEOUT_MS);
-
-      subscription = connection
-        .subscriptionBuilder()
-        .onApplied(() => {
-          if (dependencies.connection() !== connection) return finish([]);
-          leaderboardEntries.clear();
-          for (const row of connection.db.leaderboardEntry.iter()) {
-            const entry = leaderboardEntryFromRow(row);
-            leaderboardEntries.set(entry.identity, entry);
-            dependencies.directory.rememberPresentation({
-              identity: entry.identity,
-              identityValue: row.identity,
-              displayName: entry.name,
-              profileIcon: row.profileIcon,
-              skinTone: entry.skinTone,
-              gender: entry.gender,
-              isGuest: entry.isGuest,
-            });
-          }
-          dependencies.notify();
-          finish([...leaderboardEntries.values()]);
-        })
-        .onError(() => finish([]))
-        .subscribe([tables.leaderboardEntry]);
-      leaderboardSnapshotSubscription = subscription;
-      if (unsubscribeAfterSubscribe) release();
-    });
-    leaderboardSnapshotLoad = request;
-    if (settled) leaderboardSnapshotLoad = null;
+    if (!connection?.isActive) return Promise.reject(new Error("Not connected. Try again."));
+    const generation = leaderboardGeneration;
+    const identity = dependencies.localIdentity();
+    const request = withRequestDeadline(connection.procedures.getLeaderboardWindow({ stat })).then(rows => {
+      if (generation !== leaderboardGeneration || connection !== dependencies.connection() || identity !== dependencies.localIdentity()) throw new Error("Session changed. Reopen the leaderboard.");
+      const entries = rows.map(({ rank, entry: row }) => {
+        const entry = { ...leaderboardEntryFromRow(row), rank };
+        dependencies.directory.rememberPresentation({ identity: entry.identity, identityValue: row.identity,
+          displayName: entry.name, profileIcon: row.profileIcon, skinTone: entry.skinTone, gender: entry.gender, isGuest: entry.isGuest });
+        return entry;
+      });
+      leaderboardEntries.clear();
+      for (const entry of entries) leaderboardEntries.set(entry.identity, entry);
+      dependencies.notify();
+      return entries;
+    }).finally(() => { if (leaderboardRequests.get(stat) === request) leaderboardRequests.delete(stat); });
+    leaderboardRequests.set(stat, request);
     return request;
   }
 
@@ -290,11 +271,8 @@ export function createPlayerProfileService(dependencies: PlayerProfileServiceDep
     loadLeaderboardSnapshot,
     clearSession() {
       releasePlayerProfile();
-      cancelLeaderboardSnapshotLoad?.();
-      leaderboardSnapshotSubscription?.unsubscribe();
-      leaderboardSnapshotSubscription = null;
-      leaderboardSnapshotLoad = null;
-      cancelLeaderboardSnapshotLoad = null;
+      leaderboardGeneration++;
+      leaderboardRequests.clear();
       leaderboardEntries.clear();
       profilePlayerMaps.clear();
       playerProfileLoads.clear();

@@ -1,3 +1,4 @@
+import { isProceduralMap } from "../../../shared/procedural-maps";
 import { DUEL_PLATFORM_ART_SOURCE, DUEL_SPACE_BACKGROUND_SOURCE } from "../duel";
 import { requiredCanvasContext } from "./dom";
 import { scheduleBackgroundTask, yieldToUser } from "./scheduler";
@@ -361,15 +362,15 @@ export function createAssetPreprocessor(onWorldAssetReady: () => void) {
     mapAssets[mapId] = [...groups].flatMap((group) => assetGroups[group]);
   }
   function ensureMapAssets(mapId: MapId) {
-    return Promise.all(mapAssets[mapId].map((asset) => asset.load())).then(() => undefined);
+    return Promise.all((isProceduralMap(mapId) ? [] : mapAssets[mapId]).map((asset) => asset.load())).then(() => undefined);
   }
 
   function mapAssetsReady(mapId: MapId) {
-    return mapAssets[mapId].every((asset) => asset.settled());
+    return (isProceduralMap(mapId) ? [] : mapAssets[mapId]).every((asset) => asset.settled());
   }
 
   function mapAssetLoadFailed(mapId: MapId) {
-    return mapAssets[mapId].some((asset) => asset.failed());
+    return (isProceduralMap(mapId) ? [] : mapAssets[mapId]).some((asset) => asset.failed());
   }
 
   function ensureDuelAssets() {

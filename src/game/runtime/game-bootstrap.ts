@@ -1,3 +1,5 @@
+import { generateMap, proceduralMapId, PROCEDURAL_ENTRY_MAP } from "../../../shared/procedural-maps";
+import { withGeneratedMaps } from "../procedural-maps";
 import { WORLD } from "../constants";
 import { BASIC_PAPER_HAT, STARTER_STONE, TRAILBLAZER_BOOTS, type EquipmentSlot, type InventoryState } from "../inventory";
 import { loadActorShadowSprite, loadEnemySprites, type EnemyKind } from "../enemies";
@@ -81,7 +83,7 @@ export function createGameBootstrap() {
   const gravebloomCrystalBursts: GravebloomCrystalBurst[] = [];
   const aegisPrimeCrystalBursts: AegisPrimeCrystalBurst[] = [];
   const startSpawn = { x: 360, y: 360 };
-  const mapConfig = {
+  const authoredMapConfig = {
     home_exterior: { name: "Home", portal: null, arrival: { x: 500, y: 700 } },
     [TUTORIAL_FOREST_MAP_ID]: editedMapEntry(TUTORIAL_FOREST_MAP_ID, {
       name: MAP_DISPLAY_NAMES[TUTORIAL_FOREST_MAP_ID],
@@ -167,6 +169,11 @@ export function createGameBootstrap() {
       arrival: { x: 580, y: 770 },
     }),
   } satisfies Record<MapId, BootstrapMapEntry>;
+  const mapConfig = withGeneratedMaps<BootstrapMapEntry>(authoredMapConfig, id => {
+    const map = generateMap(id);
+    return { name: map.name, arrival: map.arrival, portal: { ...map.portals[0], destination: map.portals[0].destination as MapId }, secondaryPortal: map.portals[1] ? { ...map.portals[1], destination: map.portals[1].destination as MapId } : undefined };
+  }) as typeof authoredMapConfig & Record<MapId, BootstrapMapEntry>;
+  mapConfig[PROCEDURAL_ENTRY_MAP].secondaryPortal = { x: 580, y: 680, width: 198, height: 198, depth: 680, destination: proceduralMapId(1) };
   const player: PlayerState = {
     x: startSpawn.x, y: startSpawn.y, r: 17,
     speed: PLAYER_SPEED,
@@ -535,10 +542,15 @@ export function createGameBootstrapAssets(options: {
   onPlayerAppearanceAssetReady: () => void;
 }) {
   const preprocessedAssets = createAssetPreprocessor(options.onWorldArtReady);
-  const editedEnemySpriteGroups = {} as Record<MapId, readonly EnemyKind[]>;
+  const spriteKinds = (mapId: MapId) => [...new Set([
+    ...MAP_ENEMY_SPRITE_GROUPS[mapId],
+    ...(savedMapDesign(mapId)?.spawnCamps.flatMap((camp) => camp.types) ?? []),
+  ])];
+  // Generated IDs are intentionally not enumerable. Preserve their lazy lookup
+  // when layering saved map edits over the authored groups.
+  const editedEnemySpriteGroups = withGeneratedMaps<readonly EnemyKind[]>({}, spriteKinds);
   for (const mapId of Object.keys(MAP_ENEMY_SPRITE_GROUPS) as MapId[]) {
-    const editedTypes = savedMapDesign(mapId)?.spawnCamps.flatMap((camp) => camp.types) ?? [];
-    editedEnemySpriteGroups[mapId] = [...new Set([...MAP_ENEMY_SPRITE_GROUPS[mapId], ...editedTypes])];
+    editedEnemySpriteGroups[mapId] = spriteKinds(mapId);
   }
   const enemyAssets = loadEnemySprites(editedEnemySpriteGroups, options.onWorldArtReady);
   let actorShadowReady = false;

@@ -1,3 +1,4 @@
+import { generateMap, isProceduralMap } from "../../shared/procedural-maps";
 import "./stat-graph.css";
 
 import { BOSS_DAMAGE_PROFILES } from "../game/boss-damage";
@@ -379,7 +380,7 @@ export const AUTHORED_STAT_GRAPH: readonly StatGraphRow[] = (() => {
     const values = mapValues(map, regularRewards);
     const row: StatGraphRow = {
       mapId: map.id,
-      name: MAP_DISPLAY_NAMES[map.id],
+      name: isProceduralMap(map.id) ? generateMap(map.id).name : MAP_DISPLAY_NAMES[map.id],
       values,
       multipliers: mapMultipliers(values, previous),
       regularRewards,

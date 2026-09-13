@@ -1,3 +1,4 @@
+import { generatedMapContent, withGeneratedMaps } from "../procedural-maps";
 import {
   ADVANCED_LAVA_WASTES_MAP_ID,
   BEGINNER_DESERT_MAP_ID,
@@ -38,7 +39,7 @@ export type MapAssetGroup = {
 };
 
 /** Source-of-truth for every image-backed asset that is gated by the active map. */
-export const MAP_ASSET_GROUPS = {
+const AUTHORED_MAP_ASSET_GROUPS = {
   home_exterior: { art: ["forestDecor", "snowDecor"], enemies: [] },
   [TUTORIAL_FOREST_MAP_ID]: {
     art: ["forestBoss", "forestDecor"],
@@ -97,8 +98,10 @@ export const MAP_ASSET_GROUPS = {
   },
 } as const satisfies Record<MapId, MapAssetGroup>;
 
+export const MAP_ASSET_GROUPS = withGeneratedMaps<MapAssetGroup>(AUTHORED_MAP_ASSET_GROUPS, id => ({ art: [], enemies: generatedMapContent(id).kinds }));
+
 /** Map-keyed view consumed by the regular-enemy image loader. */
-export const MAP_ENEMY_SPRITE_GROUPS: Record<MapId, readonly EnemyKind[]> = {
+export const MAP_ENEMY_SPRITE_GROUPS = withGeneratedMaps<readonly EnemyKind[]>({
   home_exterior: [],
   [TUTORIAL_FOREST_MAP_ID]: MAP_ASSET_GROUPS[TUTORIAL_FOREST_MAP_ID].enemies,
   [BEGINNER_DESERT_MAP_ID]: MAP_ASSET_GROUPS[BEGINNER_DESERT_MAP_ID].enemies,
@@ -110,4 +113,4 @@ export const MAP_ENEMY_SPRITE_GROUPS: Record<MapId, readonly EnemyKind[]> = {
   [CLOUDSPIRE_MAP_ID]: MAP_ASSET_GROUPS[CLOUDSPIRE_MAP_ID].enemies,
   [MOONFEN_MAP_ID]: MAP_ASSET_GROUPS[MOONFEN_MAP_ID].enemies,
   [CRYSTAL_HOLLOWS_MAP_ID]: MAP_ASSET_GROUPS[CRYSTAL_HOLLOWS_MAP_ID].enemies, [CLOCKWORK_RUINS_MAP_ID]: MAP_ASSET_GROUPS[CLOCKWORK_RUINS_MAP_ID].enemies, [DUSKFALL_ORCHARD_MAP_ID]: MAP_ASSET_GROUPS[DUSKFALL_ORCHARD_MAP_ID].enemies, [NEON_BASTION_MAP_ID]: MAP_ASSET_GROUPS[NEON_BASTION_MAP_ID].enemies, [VERDANT_CATACOMBS_MAP_ID]: MAP_ASSET_GROUPS[VERDANT_CATACOMBS_MAP_ID].enemies, [ION_CITADEL_MAP_ID]: MAP_ASSET_GROUPS[ION_CITADEL_MAP_ID].enemies,
-};
+}, id => MAP_ASSET_GROUPS[id].enemies);

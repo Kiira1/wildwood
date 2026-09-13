@@ -1,3 +1,4 @@
+import { isProceduralMap } from "../../shared/procedural-maps";
 import { HOME_EXTERIOR_MAP_ID } from "../../shared/home";
 import { table, t, SenderError } from "spacetimedb/server";
 import { MAP_IDS } from "../../shared/rules";
@@ -113,7 +114,7 @@ export function assignMapShard(ctx: any, player: any) {
   warmMapShard(ctx, player.mapId);
 }
 export function validateShardMap(mapId: string) {
-  if (!MAP_IDS.includes(mapId)) throw new SenderError("Unknown shard map");
+  if (!MAP_IDS.includes(mapId) && !isProceduralMap(mapId)) throw new SenderError("Unknown shard map");
 }
 export function queueShardReward(ctx: any, identity: any, boss: string) {
   if (!isMapShard(ctx)) return false;

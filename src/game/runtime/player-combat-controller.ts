@@ -68,7 +68,7 @@ export function attackReadyAtWithoutTarget(nextAttackAtSeconds: number, nowSecon
 }
 
 export type PlayerCombatController = {
-  attackNearest: (enemyType?: EnemyKind | null) => void;
+  attackNearest: (enemyType?: EnemyKind | null, campName?: string | null) => void;
   updateProjectiles: (dt: number) => void;
   damagePlayer: (amount: number) => boolean;
   clearPendingBossHits: () => void;
@@ -131,6 +131,7 @@ export function createPlayerCombatController(options: {
   isDueling: () => boolean;
   scheduleEnemyRespawn: (site: SpawnSite) => void;
   incrementKills: () => void;
+  hitGeneratedBoss?: (enemy: EnemyState) => boolean;
   recordForestEnemyDefeat: () => void;
   recordDesertEnemyDefeat: () => void;
   recordSnowEnemyDefeat: () => void;
@@ -337,7 +338,7 @@ export function createPlayerCombatController(options: {
     player.throwClock = 0;
   }
 
-  function attackNearest(enemyType: EnemyKind | null = null) {
+  function attackNearest(enemyType: EnemyKind | null = null, campName: string | null = null) {
     const nowSeconds = options.nowSeconds();
     syncAttackTimeline(nowSeconds);
     let target: EnemyState | BossTarget | null = null;
@@ -352,8 +353,9 @@ export function createPlayerCombatController(options: {
     );
     let defending = false;
     for (const enemy of targetCandidates) {
+      if (enemyType && enemy.generatedBoss) continue;
       const threat = Boolean(enemyType && isEnemyAttackingPlayer(enemy, options.localIdentity?.()));
-      if (enemyType && ((!threat && enemy.type !== enemyType) || enemy.remoteCombatGhost)) continue;
+      if (enemyType && ((!threat && (enemy.type !== enemyType || Boolean(campName && enemy.campName !== campName))) || enemy.remoteCombatGhost)) continue;
       const distance = distanceSquared(player, enemy);
       if (distance >= player.attackRange * player.attackRange) continue;
       if ((threat && !defending) || (threat === defending && distance < best)) {
@@ -399,7 +401,7 @@ export function createPlayerCombatController(options: {
     incrementKills();
     const site = spawnSites[enemy.siteId];
     if (site) scheduleEnemyRespawn(site);
-    const base = ENEMY_TYPES[enemy.type];
+    const base = enemy.definition ?? ENEMY_TYPES[enemy.type];
     applyReward(enemy.reward, enemy.x, enemy.y);
     if (isTutorialMap()) recordForestEnemyDefeat();
     if (isDesertMap() && !base.elite) recordDesertEnemyDefeat();
@@ -514,7 +516,7 @@ export function createPlayerCombatController(options: {
         projectile.x = startX + (endX - startX) * hit.t;
         projectile.y = startY + (endY - startY) * hit.t;
         const target = hit.enemy;
-        if (!target.isBoss) spawnDamageNumber(target.x, target.y, projectile.damage, projectile.critical);
+        if (!target.isBoss && !target.generatedBoss) spawnDamageNumber(target.x, target.y, projectile.damage, projectile.critical);
         target.hurt = .12;
         projectile.life = 0;
         if (target.isBoss) {
@@ -564,6 +566,8 @@ export function createPlayerCombatController(options: {
             pendingDragonHits += 1;
             dragonHitBatchTimer = DRAGON_HIT_BATCH_DELAY;
           }
+        } else if (options.hitGeneratedBoss?.(target)) {
+          // Generated bosses use authoritative health and shared first-clear unlocks.
         } else {
           engageEnemy(target);
           target.hp -= projectile.damage;

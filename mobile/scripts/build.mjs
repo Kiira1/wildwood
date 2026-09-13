@@ -6,22 +6,25 @@ import { build } from '../../node_modules/esbuild/lib/main.js';
 
 const mobile = fileURLToPath(new URL("..", import.meta.url));
 const root = resolve(mobile, "..");
+const testPurchasesEnabled = process.argv.includes("--test-purchases");
 let commerceConfig = {};
-try {
-  const input = JSON.parse(await readFile(resolve(mobile, 'commerce.local.json'), 'utf8'));
-  // Bundle only the two public settings, never unrelated local account details.
-  commerceConfig = { revenueCatTestApiKey: input.revenueCatTestApiKey, productIds: input.productIds };
-  if (!/^test_[A-Za-z0-9_-]+$/.test(commerceConfig.revenueCatTestApiKey ?? '')) {
-    throw new Error('Phone preview accepts only a RevenueCat Test Store public key (test_…).');
+if (testPurchasesEnabled) {
+  try {
+    const input = JSON.parse(await readFile(resolve(mobile, 'commerce.local.json'), 'utf8'));
+    // Bundle only the two public settings, never unrelated local account details.
+    commerceConfig = { revenueCatTestApiKey: input.revenueCatTestApiKey, productIds: input.productIds };
+    if (!/^test_[A-Za-z0-9_-]+$/.test(commerceConfig.revenueCatTestApiKey ?? '')) {
+      throw new Error('Phone preview accepts only a RevenueCat Test Store public key (test_…).');
+    }
+    if (!Array.isArray(commerceConfig.productIds) || commerceConfig.productIds.length < 1 ||
+        commerceConfig.productIds.length > 10 ||
+        commerceConfig.productIds.some(id => typeof id !== 'string' || !/^[A-Za-z0-9._-]{1,150}$/.test(id)) ||
+        new Set(commerceConfig.productIds).size !== commerceConfig.productIds.length) {
+      throw new Error('Configure 1–10 unique Test Store product IDs.');
+    }
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
   }
-  if (!Array.isArray(commerceConfig.productIds) || commerceConfig.productIds.length < 1 ||
-      commerceConfig.productIds.length > 10 ||
-      commerceConfig.productIds.some(id => typeof id !== 'string' || !/^[A-Za-z0-9._-]{1,150}$/.test(id)) ||
-      new Set(commerceConfig.productIds).size !== commerceConfig.productIds.length) {
-    throw new Error('Configure 1–10 unique Test Store product IDs.');
-  }
-} catch (error) {
-  if (error.code !== 'ENOENT') throw error;
 }
 const result = spawnSync("npm", ["run", "build:client"], { cwd: root, stdio: "inherit" });
 if (result.status !== 0) process.exit(result.status ?? 1);
@@ -31,6 +34,7 @@ const webDir = resolve(mobile, "www");
 await rm(webDir, { recursive: true, force: true });
 await mkdir(webDir, { recursive: true });
 await cp(resolve(root, "dist"), webDir, { recursive: true });
+await writeFile(resolve(webDir, "native-build.json"), JSON.stringify({ testPurchasesEnabled }));
 const path = resolve(webDir, "index.html");
 let html = await readFile(path, "utf8");
 if (!html.includes("</head>")) throw new Error("Game shell is missing </head>");

@@ -83,7 +83,9 @@ Native dependencies have their own lockfile. Generated assets, native build
 outputs, IDE user settings and local signing configuration remain local. There
 are no server/schema changes or release/deploy steps in these commands. The
 native wrapper now includes AdMob demo rewarded ads and a RevenueCat Test Store
-purchase lab. See [commerce testing](../docs/commerce-testing.md). Web builds
+purchase lab, enabled only by building with `--test-purchases` for local debug
+builds. Default builds leave shop purchases disabled, and Android release builds
+reject Test Store assets. See [commerce testing](../docs/commerce-testing.md). Web builds
 retain their existing ad placeholder.
 
 The user owns visual/device QA: movement, notch/home indicator spacing, keyboard

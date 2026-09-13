@@ -12,10 +12,11 @@ export function createEnemyLifecycle(
   spawnBurst: SpawnBurst,
 ) {
   function spawnFromSite(site: SpawnSite) {
-    const base = ENEMY_TYPES[site.type];
+    const base = site.definition ?? ENEMY_TYPES[site.type];
     const maxHp = base.hp;
     enemies.push({
       type: site.type,
+      definition: site.definition,
       siteId: site.id,
       campName: site.campName,
       groupAggro: site.groupAggro,

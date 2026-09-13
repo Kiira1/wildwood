@@ -78,7 +78,7 @@ export function createEnemySimulation(
   }
 
   function regularAggroRadius(enemy: EnemyState) {
-    const base = ENEMY_TYPES[enemy.type];
+    const base = (enemy.definition ?? ENEMY_TYPES[enemy.type]);
     return base.elite
       ? enemy.aggroRadius
       : Math.max(0, BASE_ATTACK_RANGE - REGULAR_ENEMY_AGGRO_PADDING);
@@ -200,9 +200,9 @@ export function createEnemySimulation(
     for (const enemy of enemies) {
       enemy.combatTargetX = undefined;
       enemy.combatTargetY = undefined;
-      if (enemy.dead) continue;
+      if (enemy.dead || enemy.generatedBoss) continue;
 
-      const base = ENEMY_TYPES[enemy.type];
+      const base = (enemy.definition ?? ENEMY_TYPES[enemy.type]);
       const ambient = regularEnemyAmbientPose(mapId, enemy.siteId, enemy.homeX, enemy.homeY, serverNowMs);
       enemy.phase = ambient.phase;
       enemy.hurt = Math.max(0, enemy.hurt - dt);

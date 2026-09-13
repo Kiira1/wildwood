@@ -315,7 +315,7 @@ export function createActorRenderer(options: {
   }
 
   function enemyLabels(type: string, reward: EnemyDefinition["reward"]) {
-    const cacheKey = `${type}:${reward.amount}`;
+    const cacheKey = `${type}:${reward.type}:${reward.amount}`;
     const cached = enemyLabelCache.get(cacheKey);
     if (cached) return cached;
     const labels = {
@@ -634,8 +634,9 @@ export function createActorRenderer(options: {
     const y = screenY(enemy.y);
     if (x < -80 || y < -80 || x > width + 80 || y > height + 80) return;
 
-    const base = ENEMY_TYPES[enemy.type];
-    const sprite = options.enemySprites[enemy.type];
+    const base = enemy.definition ?? ENEMY_TYPES[enemy.type];
+    const sourceSprite = options.enemySprites[enemy.type];
+    const sprite = enemy.generatedBoss && sourceSprite ? { ...sourceSprite, size: sourceSprite.size * 2.4 } : sourceSprite;
     const layers = sprite?.layers;
     const image = sprite?.image;
     const imageReady = Boolean(image?.complete && image.naturalWidth > 0);
@@ -763,7 +764,7 @@ export function createActorRenderer(options: {
       ctx.fillRect(barX, barY, Math.round(barW * hpRatio), barH);
 
       ctx.textAlign = "center";
-      const labels = enemyLabels(enemy.type, { ...enemy.reward, amount: enemy.reward.amount * options.rewardMultiplier() });
+      const labels = enemyLabels(enemy.generatedBoss ? enemy.campName : enemy.type, { ...enemy.reward, amount: enemy.reward.amount * options.rewardMultiplier() });
       ctx.drawImage(labels.name.canvas, -labels.name.width / 2, barY - 4 - labels.name.anchorY, labels.name.width, labels.name.height);
 
       ctx.font = '900 10px "Arial Rounded MT Bold", "Arial Rounded MT", Arial, sans-serif';

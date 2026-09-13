@@ -1,3 +1,5 @@
+import { isProceduralMap, proceduralMapId } from "../shared/procedural-maps";
+import { createProceduralBossController } from "./game/runtime/procedural-boss-controller";
 import { bindPlayerNameTags } from "./app/player-name-tags";
 import { HOME_RESEARCH_POSITION, HOME_WORLD_WIDTH, HOME_WORLD_HEIGHT } from "../shared/home";
 import { WORLD_WIDTH, WORLD_HEIGHT } from "../shared/rules";
@@ -490,12 +492,18 @@ import {
       const config = MAP_CONFIG[currentMapId];
       const obstacles = [config.portal, "secondaryPortal" in config ? config.secondaryPortal : null].flatMap(portal => portal
         ? [{ x: portal.x, y: portal.y - portal.height * .32, r: Math.max(60, portal.width * .6) + player.r + 24 }] : []);
-      const mapBoss = farmBosses.get(currentMapId);
+      const mapBoss = proceduralBoss.boss() ?? farmBosses.get(currentMapId);
       if (mapBoss && !mapBoss.dead) obstacles.push({ x: mapBoss.x, y: mapBoss.y, r: mapBoss.r + player.r + 40 });
       return obstacles;
     },
   });
   let playerCombat: PlayerCombatController;
+  const proceduralBoss = createProceduralBossController({
+    mapId: () => currentMapId, state: mapId => coop?.proceduralMapState(mapId) ?? {boss:null},
+    serverNow: () => coop?.serverNowMs?.() ?? Date.now(), enemies, player, spawn: spawnFromSite,
+    hit: (mapId,bossKey,encounter,hits,x,y) => coop?.hitProceduralBoss(mapId,bossKey,encounter,hits,x,y),
+    damagePlayer: damage => playerCombat.damagePlayer(damage), burst: spawnBurst, shot: projectileStore.spawnEnemyShot,
+  });
   const enemySimulation = createEnemySimulation(
     enemies,
     projectileStore.spawnEnemyShot,
@@ -624,6 +632,7 @@ import {
     minAttackInterval: MIN_ATTACK_INTERVAL,
     effectiveArmor,
     isDueling,
+    hitGeneratedBoss: proceduralBoss.hit,
     scheduleEnemyRespawn: regularEnemyRespawnBoost.schedule,
     incrementKills: () => { totalKills += 1; },
     recordForestEnemyDefeat: () => coop?.recordForestEnemyDefeat?.(),
@@ -747,7 +756,9 @@ import {
     syncStoppedPosition: () => coop?.correctMovementPosition?.(player.x, player.y, true),
     resetPresentationState: presentation.reset,
     fadeToWorld,
-    mapUnlocked: (mapId) => mapId === BEGINNER_DESERT_MAP_ID
+    mapUnlocked: (mapId) => isProceduralMap(mapId)
+      ? Boolean(coop?.proceduralMapUnlocked(mapId))
+      : mapId === BEGINNER_DESERT_MAP_ID
       ? Boolean(coop?.savedProgress?.()?.desertUnlocked)
       : mapId === INTERMEDIATE_SNOWLANDS_MAP_ID
         ? Boolean(coop?.savedProgress?.()?.snowlandsUnlocked)
@@ -988,6 +999,7 @@ import {
   }
   refreshMinimapBounds();
   const worldRenderRuntime = createWorldRenderRuntime({
+    drawMapHazards: () => proceduralBoss.draw(ctx, camera),
     ctx,
     staticWorldLayer,
     camera,
@@ -1166,7 +1178,7 @@ import {
     regenerationMultiplier,
     healthMultiplier,
     syncMovementState: (x, y, vx, vy, inputSource, force, interestArea) => coop?.syncMovementState?.(x, y, vx, vy, inputSource, force, interestArea),
-    autoAttack: () => playerCombat.attackNearest(autoFarm.targetType()),
+    autoAttack: () => playerCombat.attackNearest(autoFarm.targetType(), autoFarm.targetCamp()),
     isAutoAttackEnabled: () => isWeaponItem(inventory.equippedRightHand || inventory.equippedLeftHand),
     activeDuel,
     isDueling,
@@ -1360,7 +1372,7 @@ import {
 
   const leaderboard = createLeaderboardPanel({ e: gameElements, options: {
     entries: () => coop?.leaderboardEntries?.() ?? [],
-    loadSnapshot: async () => coop?.loadLeaderboardSnapshot?.() ?? [],
+    loadSnapshot: async (stat: import("./ui/leaderboard").LeaderboardStat) => coop?.loadLeaderboardSnapshot?.(stat) ?? [],
     localIdentity: () => coop?.localIdentity?.() || "",
     isDeveloper: isDeveloperIdentity,
     paintProfileIcon: (canvas: HTMLCanvasElement, identity: string) => paintProfileIconCanvas(canvas, coop?.profileIcon?.(identity) ?? 0),
@@ -1387,6 +1399,21 @@ import {
 
   const devPanel = createDevPanel({
     coop,
+    teleportEndless: async (number: number) => {
+      if (!coop?.canTeleportEndless?.()) return false;
+      autoFarm.stop("Autofarm stopped for teleport");
+      const changed = await mapController.teleportToMap(proceduralMapId(number), async () => {
+        const result = await coop.devTeleportEndless(number);
+        if (!result.ok && result.error) showMessage(result.error, "#ffbc91");
+        return result.ok;
+      });
+      if (changed) {
+        settingsPanel.hidden = true;
+        settingsBtn.setAttribute("aria-expanded", "false");
+        devPanel.close();
+      }
+      return changed;
+    },
     getMetrics: () => ({
       performance: performanceMonitor.snapshot(),
       enemies: enemies.length,
@@ -1497,7 +1524,9 @@ import {
     paths,
     spawnSites,
     player,
-    boss: () => currentMapId === TUTORIAL_FOREST_MAP_ID
+    boss: () => isProceduralMap(currentMapId)
+      ? (() => { const target = proceduralBoss.boss(); return target ? { x: target.x, y: target.y, name: target.campName, dead: target.dead } : null; })()
+      : currentMapId === TUTORIAL_FOREST_MAP_ID
       ? { x: boss.x, y: boss.y, name: "Dragon", dead: boss.dead }
       : currentMapId === BEGINNER_DESERT_MAP_ID
         ? { x: spiderBoss.x, y: spiderBoss.y, name: "Desert Scorpion", dead: spiderBoss.dead }
@@ -1590,7 +1619,7 @@ import {
   session = createGameSessionController({
     player, camera, viewport: canvasRuntime.viewport,
     tutorialMapId: TUTORIAL_FOREST_MAP_ID, desertMapId: BEGINNER_DESERT_MAP_ID, snowMapId: INTERMEDIATE_SNOWLANDS_MAP_ID, lavaMapId: ADVANCED_LAVA_WASTES_MAP_ID, infernalMapId: INFERNAL_DEPTHS_MAP_ID, waterMapId: WATER_REACH_MAP_ID, samuraiMapId: SAMURAI_GARDEN_MAP_ID, cloudspireMapId: CLOUDSPIRE_MAP_ID, moonfenMapId: MOONFEN_MAP_ID, crystalHollowsMapId: CRYSTAL_HOLLOWS_MAP_ID, clockworkRuinsMapId: CLOCKWORK_RUINS_MAP_ID, duskfallOrchardMapId: DUSKFALL_ORCHARD_MAP_ID, neonBastionMapId: NEON_BASTION_MAP_ID, verdantCatacombsMapId: VERDANT_CATACOMBS_MAP_ID, ionCitadelMapId: ION_CITADEL_MAP_ID,
-    validMapIds: Object.keys(MAP_CONFIG),
+    validMapIds: Object.keys(MAP_CONFIG) as MapId[],
     getMapId: () => currentMapId, setMapId: (mapId) => { setCurrentMap(mapId as MapId); },
     serverMapId: () => coop?.localState?.()?.mapId,
     serverPlayerState: () => coop?.localState?.() ?? undefined,
@@ -1625,7 +1654,7 @@ import {
     syncDragon: bossController.syncDragonState, syncSpider: bossController.syncSpiderState, syncFrostclaw: bossController.syncFrostclawState, syncMagmalisk: bossController.syncMagmaliskState, syncGloomroot: bossController.syncGloomrootState, syncTidewyrm: bossController.syncTidewyrmState, syncKoiShogun: bossController.syncKoiShogunState, syncTempestKirin: bossController.syncTempestKirinState, syncMiremaw: bossController.syncMiremawState, syncPrismshell: bossController.syncPrismshellState, syncIronhorn: bossController.syncIronhornState, syncDreadreaper: bossController.syncDreadreaperState, syncVoltwarden: bossController.syncVoltwardenState, syncGravebloom: bossController.syncGravebloomState, syncAegisPrime: bossController.syncAegisPrimeState,
     cutsceneActive: mapController.isCutsceneActive, updateCutscene: mapController.updatePortalCutscene,
     updatePlayer: (dt) => { if (!mapController.isMapTransitioning()) playerController.update(dt); }, updateUpgradeBench: updateHomeStations, updatePortal: mapController.updatePortal,
-    updateEnemies: enemySimulation.update, updateDragon: bossController.updateBoss, updateSpider: bossController.updateSpiderBoss, updateFrostclaw: bossController.updateFrostclawBoss, updateMagmalisk: bossController.updateMagmaliskBoss, updateGloomroot: bossController.updateGloomrootBoss, updateTidewyrm: bossController.updateTidewyrmBoss, updateKoiShogun: bossController.updateKoiShogunBoss, updateTempestKirin: bossController.updateTempestKirinBoss, updateMiremaw: bossController.updateMiremawBoss, updatePrismshell: bossController.updatePrismshellBoss, updateIronhorn: bossController.updateIronhornBoss, updateDreadreaper: bossController.updateDreadreaperBoss, updateVoltwarden: bossController.updateVoltwardenBoss, updateGravebloom: bossController.updateGravebloomBoss, updateAegisPrime: bossController.updateAegisPrimeBoss,
+    updateEnemies: (dt) => { proceduralBoss.update(dt); enemySimulation.update(dt); }, updateDragon: bossController.updateBoss, updateSpider: bossController.updateSpiderBoss, updateFrostclaw: bossController.updateFrostclawBoss, updateMagmalisk: bossController.updateMagmaliskBoss, updateGloomroot: bossController.updateGloomrootBoss, updateTidewyrm: bossController.updateTidewyrmBoss, updateKoiShogun: bossController.updateKoiShogunBoss, updateTempestKirin: bossController.updateTempestKirinBoss, updateMiremaw: bossController.updateMiremawBoss, updatePrismshell: bossController.updatePrismshellBoss, updateIronhorn: bossController.updateIronhornBoss, updateDreadreaper: bossController.updateDreadreaperBoss, updateVoltwarden: bossController.updateVoltwardenBoss, updateGravebloom: bossController.updateGravebloomBoss, updateAegisPrime: bossController.updateAegisPrimeBoss,
     updateProjectiles: playerCombat.updateProjectiles, updateRespawns,
     clearDuelCombat: () => { autoFarm.stop("Autofarm stopped for duel"); projectileStore.clear(); playerCombat.clearPendingBossHits(); },
     updateEffects: effects.update, updateHud: () => updateHud(),

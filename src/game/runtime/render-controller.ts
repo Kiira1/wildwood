@@ -41,6 +41,7 @@ export function createRenderController(options: {
   drawProfileCharacterPreview: () => void;
   worldOccluded?: () => boolean;
   updateSpeechBubbles: () => void;
+  drawMapHazards?: () => void;
   drawGround: () => void;
   drawStaticWorld: (
     offsetX?: number,
@@ -260,7 +261,7 @@ export function createRenderController(options: {
     const projectilesRenderedByWebGL = staticWorldRenderedByWebGL && projectileBatch.complete;
     const particlesRenderedByWebGL = staticWorldRenderedByWebGL && particleBatch.complete;
     drawDuelArena(isArenaScene(), DUEL_ARENA);
-    if (!isDueling()) drawDecor();
+    if (!isDueling()) { drawDecor(); options.drawMapHazards?.(); }
     if (!isDueling() && currentMapIsTutorial()) drawBossTelegraphs();
     if (!isDueling() && currentMapIsDesert()) drawSpiderTelegraphs();
     if (!isDueling() && currentMapIsSnow()) drawFrostclawTelegraphs();

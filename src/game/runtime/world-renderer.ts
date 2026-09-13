@@ -924,7 +924,7 @@ if (options.getMapId() === ION_CITADEL_MAP_ID) { drawIonRoads(ctx, options.paths
     draw.save();
     draw.globalAlpha = options.getMapId() === options.infernalMapId ? .5 : 1;
     draw.fillStyle = "#ff5d5d"; for (const enemy of options.enemies) {
-      const marker = ENEMY_TYPES[enemy.type].elite ? 5 : 3;
+      const marker = enemy.generatedBoss || (enemy.definition ?? ENEMY_TYPES[enemy.type]).elite ? 5 : 3;
       draw.fillRect(innerX + enemy.x * sx - 1, innerY + enemy.y * sy - 1, marker, marker);
     }
     draw.restore();

@@ -85,6 +85,7 @@ export type BaseSubscriptionHandlers = {
   socialMessage: RowHandler;
   removeSocialMessage: RowHandler;
   chatMessage: RowHandler;
+  removeChatMessage: RowHandler;
   playerBlock: RowHandler;
   removePlayerBlock: RowHandler;
   duel: RowHandler;
@@ -177,7 +178,7 @@ type BaseSubscriptionHandlerSources = {
     upsertAegisPrimeResult: BaseSubscriptionHandlers["aegisPrimeResult"];
   };
   social?: { upsertHub: RowHandler; removeHub: RowHandler; upsertMessage: RowHandler; removeMessage: RowHandler };
-  chat: { upsert: BaseSubscriptionHandlers["chatMessage"]; upsertBlock: RowHandler; removeBlock: RowHandler };
+  chat: { upsert: BaseSubscriptionHandlers["chatMessage"]; upsertBlock: RowHandler; removeBlock: RowHandler; remove: RowHandler };
   duel: { upsert: BaseSubscriptionHandlers["duel"]; remove: BaseSubscriptionHandlers["removeDuel"] };
 };
 
@@ -254,6 +255,7 @@ export function createBaseSubscriptionHandlers(sources: BaseSubscriptionHandlerS
     socialMessage: sources.social?.upsertMessage ?? (() => {}),
     removeSocialMessage: sources.social?.removeMessage ?? (() => {}),
     chatMessage: chat.upsert,
+    removeChatMessage: chat.remove,
     playerBlock: chat.upsertBlock,
     removePlayerBlock: chat.removeBlock,
     duel: duel.upsert,
@@ -422,8 +424,9 @@ export function startBaseSubscription(dependencies: BaseSubscriptionDependencies
   connection.db.mySocialMessages.onInsert((_ctx, row) => { if (shouldHandle()) handlers.socialMessage(row); });
   connection.db.mySocialMessages.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.socialMessage(row); });
   connection.db.mySocialMessages.onDelete((_ctx, row) => { if (shouldHandle()) handlers.removeSocialMessage(row); });
-  connection.db.chatMessage.onInsert((_ctx, row) => { if (shouldHandle()) handlers.chatMessage(row); });
-  connection.db.chatMessage.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.chatMessage(row); });
+  connection.db.latestChatMessages.onInsert((_ctx, row) => { if (shouldHandle()) handlers.chatMessage(row); });
+  connection.db.latestChatMessages.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.chatMessage(row); });
+  connection.db.latestChatMessages.onDelete((_ctx, row) => { if (shouldHandle()) handlers.removeChatMessage(row); });
   connection.db.myPlayerBlocks.onInsert((_ctx, row) => { if (shouldHandle()) handlers.playerBlock(row); });
   connection.db.myPlayerBlocks.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.playerBlock(row); });
   connection.db.myPlayerBlocks.onDelete((_ctx, row) => { if (shouldHandle()) handlers.removePlayerBlock(row); });
@@ -492,7 +495,7 @@ export function startBaseSubscription(dependencies: BaseSubscriptionDependencies
             tables.prismshellResult, tables.ironhornResult, tables.dreadreaperResult, tables.voltwardenResult, tables.gravebloomResult, tables.aegisPrimeResult,
       tables.mySocialHub,
       tables.mySocialMessages,
-      tables.chatMessage,
+      tables.latestChatMessages,
       tables.myPlayerBlocks,
       tables.duel.where((duel) => duel.challenger.eq(dependencies.identity)),
 ]),
@@ -556,7 +559,7 @@ export function startBaseSubscription(dependencies: BaseSubscriptionDependencies
           for (const row of connection.db.myPlayerBlocks.iter()) handlers.playerBlock(row);
           for (const row of connection.db.mySocialHub.iter()) handlers.socialHub(row);
           for (const row of connection.db.mySocialMessages.iter()) handlers.socialMessage(row);
-          for (const row of connection.db.chatMessage.iter()) handlers.chatMessage(row);
+          for (const row of connection.db.latestChatMessages.iter()) handlers.chatMessage(row);
           for (const row of connection.db.duel.iter()) handlers.duel(row);
         });
         return;

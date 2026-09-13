@@ -408,6 +408,11 @@ export const DuelResolutionSchedule = __t.object("DuelResolutionSchedule", {
 });
 export type DuelResolutionSchedule = __Infer<typeof DuelResolutionSchedule>;
 
+export const EndlessTravelAccess = __t.object("EndlessTravelAccess", {
+  identity: __t.identity(),
+});
+export type EndlessTravelAccess = __Infer<typeof EndlessTravelAccess>;
+
 export const ForestRewardPrototype = __t.object("ForestRewardPrototype", {
   identity: __t.identity(),
   encounter: __t.u64(),
@@ -792,6 +797,9 @@ export const KoiShogunResult = __t.object("KoiShogunResult", {
 });
 export type KoiShogunResult = __Infer<typeof KoiShogunResult>;
 
+export const LatestChatMessages = __t.object("LatestChatMessages", {});
+export type LatestChatMessages = __Infer<typeof LatestChatMessages>;
+
 export const LeaderboardEntry = __t.object("LeaderboardEntry", {
   identity: __t.identity(),
   displayName: __t.string(),
@@ -814,12 +822,30 @@ export const LeaderboardEntry = __t.object("LeaderboardEntry", {
 });
 export type LeaderboardEntry = __Infer<typeof LeaderboardEntry>;
 
+export const LeaderboardPosition = __t.object("LeaderboardPosition", {
+  identity: __t.identity(),
+  ranks: __t.array(__t.u32()),
+});
+export type LeaderboardPosition = __Infer<typeof LeaderboardPosition>;
+
+export const LeaderboardRankPage = __t.object("LeaderboardRankPage", {
+  key: __t.string(),
+  identities: __t.array(__t.identity()),
+});
+export type LeaderboardRankPage = __Infer<typeof LeaderboardRankPage>;
+
 export const LeaderboardRefreshState = __t.object("LeaderboardRefreshState", {
   id: __t.u32(),
   refreshedAtMicros: __t.u64(),
   version: __t.u32(),
 });
 export type LeaderboardRefreshState = __Infer<typeof LeaderboardRefreshState>;
+
+export const LeaderboardSize = __t.object("LeaderboardSize", {
+  id: __t.u8(),
+  total: __t.u32(),
+});
+export type LeaderboardSize = __Infer<typeof LeaderboardSize>;
 
 export const LocalMovementDemand = __t.object("LocalMovementDemand", {});
 export type LocalMovementDemand = __Infer<typeof LocalMovementDemand>;
@@ -983,6 +1009,9 @@ export type MyCutsceneHistory = __Infer<typeof MyCutsceneHistory>;
 export const MyDailyGemBonus = __t.object("MyDailyGemBonus", {});
 export type MyDailyGemBonus = __Infer<typeof MyDailyGemBonus>;
 
+export const MyEndlessTravelAccess = __t.object("MyEndlessTravelAccess", {});
+export type MyEndlessTravelAccess = __Infer<typeof MyEndlessTravelAccess>;
+
 export const MyGemPurchases = __t.object("MyGemPurchases", {});
 export type MyGemPurchases = __Infer<typeof MyGemPurchases>;
 
@@ -997,6 +1026,9 @@ export type MyMapShardRoute = __Infer<typeof MyMapShardRoute>;
 
 export const MyPlayerBlocks = __t.object("MyPlayerBlocks", {});
 export type MyPlayerBlocks = __Infer<typeof MyPlayerBlocks>;
+
+export const MyProceduralBoss = __t.object("MyProceduralBoss", {});
+export type MyProceduralBoss = __Infer<typeof MyProceduralBoss>;
 
 export const MySocialHub = __t.object("MySocialHub", {});
 export type MySocialHub = __Infer<typeof MySocialHub>;
@@ -1448,6 +1480,69 @@ export const PrismshellResult = __t.object("PrismshellResult", {
 });
 export type PrismshellResult = __Infer<typeof PrismshellResult>;
 
+export const ProceduralBoss = __t.object("ProceduralBoss", {
+  mapId: __t.string(),
+  encounter: __t.u64(),
+  hp: __t.f64(),
+  maxHp: __t.f64(),
+  respawnAtMicros: __t.u64(),
+});
+export type ProceduralBoss = __Infer<typeof ProceduralBoss>;
+
+export const ProceduralContribution = __t.object("ProceduralContribution", {
+  key: __t.string(),
+  mapId: __t.string(),
+  identity: __t.identity(),
+  encounter: __t.u64(),
+  damage: __t.f64(),
+  windowAt: __t.u64(),
+  hits: __t.u32(),
+});
+export type ProceduralContribution = __Infer<typeof ProceduralContribution>;
+
+export const ProceduralInstanceBoss = __t.object("ProceduralInstanceBoss", {
+  key: __t.string(),
+  mapId: __t.string(),
+  encounter: __t.u64(),
+  hp: __t.f64(),
+  maxHp: __t.f64(),
+  respawnAtMicros: __t.u64(),
+});
+export type ProceduralInstanceBoss = __Infer<typeof ProceduralInstanceBoss>;
+
+export const ProceduralInstanceContribution = __t.object("ProceduralInstanceContribution", {
+  key: __t.string(),
+  bossKey: __t.string(),
+  identity: __t.identity(),
+  encounter: __t.u64(),
+  damage: __t.f64(),
+  windowAt: __t.u64(),
+  hits: __t.u32(),
+});
+export type ProceduralInstanceContribution = __Infer<typeof ProceduralInstanceContribution>;
+
+export const ProceduralProgress = __t.object("ProceduralProgress", {
+  identity: __t.identity(),
+  completed: __t.f64(),
+});
+export type ProceduralProgress = __Infer<typeof ProceduralProgress>;
+
+export const PublicChatPage = __t.object("PublicChatPage", {
+  get messages() {
+    return __t.array(ChatMessage);
+  },
+  hasMore: __t.bool(),
+});
+export type PublicChatPage = __Infer<typeof PublicChatPage>;
+
+export const RankedLeaderboardPlayer = __t.object("RankedLeaderboardPlayer", {
+  rank: __t.u32(),
+  get entry() {
+    return LeaderboardEntry;
+  },
+});
+export type RankedLeaderboardPlayer = __Infer<typeof RankedLeaderboardPlayer>;
+
 export const ResearchCompletionSchedule = __t.object("ResearchCompletionSchedule", {
   scheduledId: __t.u64(),
   scheduledAt: __t.scheduleAt(),
@@ -1573,6 +1668,14 @@ export const ShardTransferBarrier = __t.object("ShardTransferBarrier", {
   expiresAt: __t.u64(),
 });
 export type ShardTransferBarrier = __Infer<typeof ShardTransferBarrier>;
+
+export const SocialChatPage = __t.object("SocialChatPage", {
+  get messages() {
+    return __t.array(SocialMessage);
+  },
+  hasMore: __t.bool(),
+});
+export type SocialChatPage = __Infer<typeof SocialChatPage>;
 
 export const SocialFriend = __t.object("SocialFriend", {
   key: __t.string(),

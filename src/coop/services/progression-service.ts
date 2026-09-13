@@ -1,3 +1,4 @@
+import { createProceduralMapService } from "./procedural-map-service";
 import { syncResearchNotification } from "../../app/native-research-notifications";
 import type { Identity } from "spacetimedb";
 import { normalizedInventorySlotsUnlocked } from "../../../shared/gems";
@@ -486,6 +487,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
       },
     },
     api: {
+      ...createProceduralMapService(dependencies.reducers),
       hasSeenPortalCutscene: cutscenes.hasSeen,
       markPortalCutsceneSeen: cutscenes.mark,
       setOnItemDrop(callback: ((drop: { itemId: string; alreadyOwned: boolean }) => void) | null) {

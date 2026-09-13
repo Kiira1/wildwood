@@ -27,6 +27,9 @@ export async function prepareMapTransition(
   prepareAssets: () => Promise<void>,
 ) {
   const assetsReady = prepareAssets();
+  // Asset rejection may arrive before the reducer reply, including a denied
+  // move. Handle it immediately; awaiting below still propagates a real failure.
+  void assetsReady.catch(() => {});
   const changed = await changeMap();
   if (!changed) return false;
   await assetsReady;
@@ -35,6 +38,7 @@ export async function prepareMapTransition(
 
 export type MapController = {
   teleportHome: () => Promise<boolean>;
+  teleportToMap: (destination: MapId, request: () => Promise<boolean>) => Promise<boolean>;
   activePortal: () => MapPortal | null;
   secondaryPortal: () => MapPortal | null;
   portalIsUnlocked: (portal: MapPortal) => boolean;
@@ -151,8 +155,9 @@ export function createMapController(options: {
   if (!initialPortal) throw new Error("Tutorial map requires an introductory portal.");
   let portalCutscenePortal: MapPortal = initialPortal;
 
-  async function teleportHome() {
+  async function teleport(destination?: MapId, request?: () => Promise<boolean>) {
     if (!running() || player.hp <= 0 || isDueling() || mapTransitioning || portalCutscene.active) return false;
+    if (destination === getCurrentMapId()) return true;
     mapTransitioning = true;
     const attempt = ++mapLoadGeneration;
     const returning = getCurrentMapId() === "home_exterior";
@@ -168,10 +173,10 @@ export function createMapController(options: {
       const travel = async () => {
         await new Promise(resolve => setTimeout(resolve, 650));
         if (!current()) return false;
-        const changed = await changeMap("home_exterior", player.x, player.y);
+        const changed = request ? await request() : await changeMap("home_exterior", player.x, player.y);
         if (!current() || !changed) return false;
         let state = localMapState();
-        while (current() && (!state || (state.mapId === "home_exterior") === returning)) {
+        while (current() && (!state || (destination ? state.mapId !== destination : (state.mapId === "home_exterior") === returning))) {
           await new Promise(resolve => setTimeout(resolve, 25));
           state = localMapState();
         }
@@ -413,7 +418,8 @@ export function createMapController(options: {
   }
 
   return {
-    teleportHome,
+    teleportHome: () => teleport(),
+    teleportToMap: (destination, request) => teleport(destination, request),
     activePortal,
     secondaryPortal,
     portalIsUnlocked,

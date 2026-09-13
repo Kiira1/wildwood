@@ -16,7 +16,7 @@ export type LeaderboardControllerElements = {
 
 export type LeaderboardControllerHooks = {
   entries: () => LeaderboardEntry[];
-  loadSnapshot: () => Promise<LeaderboardEntry[]>;
+  loadSnapshot: (stat: LeaderboardStat) => Promise<LeaderboardEntry[]>;
   localIdentity: () => string;
   isDeveloper: (identity: string) => boolean;
   paintProfileIcon: (canvas: HTMLCanvasElement, identity: string) => void;
@@ -29,6 +29,10 @@ export function createLeaderboardController(elements: LeaderboardControllerEleme
   let stat: LeaderboardStat = "power";
   let snapshot: LeaderboardEntry[] = [];
   let loading = false;
+  let requestGeneration = 0;
+  let snapshotIdentity = "";
+  let error = "";
+  const snapshots = new Map<LeaderboardStat, LeaderboardEntry[]>();
   let podiumPlayers: RenderedLeaderboardPodiumPlayer[] = [];
 
   let nameTagRevision = -1;
@@ -43,6 +47,7 @@ export function createLeaderboardController(elements: LeaderboardControllerEleme
       return;
     }
     elements.loading.hidden = true;
+    elements.empty.textContent = error || "NO PLAYERS YET";
     const actions = {
       isDeveloper: hooks.isDeveloper,
       paintProfileIcon: hooks.paintProfileIcon,
@@ -57,11 +62,12 @@ export function createLeaderboardController(elements: LeaderboardControllerEleme
 
   function drawPodium() {
     if (elements.overlay.hidden) return;
+    if (snapshotIdentity !== hooks.localIdentity()) { close(); return; }
     if (nameTagRevision !== playerNameTagsRevision()) render();
     for (const player of podiumPlayers) hooks.drawPodiumCharacter(player.canvas, player.entry, player.rank);
   }
 
-  function select(requested: string) {
+  async function select(requested: string) {
     stat = setLeaderboardTab({
       tabs: elements.tabs,
       rows: elements.rows,
@@ -69,7 +75,25 @@ export function createLeaderboardController(elements: LeaderboardControllerEleme
       valueHeading: elements.valueHeading,
     }, requested);
     elements.overlay.dataset.stat = stat;
+    const requestedStat = stat;
+    const generation = ++requestGeneration;
+    error = "";
+    snapshot = snapshots.get(stat) ?? [];
+    loading = !snapshots.has(stat);
     render();
+    if (!loading) return;
+    try {
+      const entries = await hooks.loadSnapshot(requestedStat);
+      if (generation !== requestGeneration || elements.overlay.hidden || snapshotIdentity !== hooks.localIdentity()) return;
+      snapshots.set(requestedStat, entries);
+      snapshot = entries;
+    } catch (failure) {
+      if (generation !== requestGeneration || elements.overlay.hidden) return;
+      snapshot = [];
+      error = failure instanceof Error ? failure.message : "COULD NOT LOAD · SELECT A TAB TO RETRY";
+    } finally {
+      if (generation === requestGeneration && !elements.overlay.hidden) { loading = false; render(); }
+    }
   }
 
   async function open() {
@@ -77,17 +101,13 @@ export function createLeaderboardController(elements: LeaderboardControllerEleme
     elements.overlay.hidden = false;
     elements.button.setAttribute("aria-expanded", "true");
     snapshot = [];
-    loading = true;
-    select(stat);
-    try {
-      snapshot = await hooks.loadSnapshot();
-    } finally {
-      loading = false;
-      if (!elements.overlay.hidden) render();
-    }
+    snapshots.clear();
+    snapshotIdentity = hooks.localIdentity();
+    await select(stat);
   }
 
   function close() {
+    requestGeneration++;
     elements.overlay.hidden = true;
     elements.button.setAttribute("aria-expanded", "false");
   }

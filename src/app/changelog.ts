@@ -1,4 +1,11 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.658": [
+    "Added Endless maps after Ion Citadel, with a new boss and four camps on each map.",
+    "Endless maps gradually change color and use one enemy species per map.",
+    "Fixed Endless auto-farm targeting, portal loading, and reconnect edge cases.",
+    "Leaderboards now load the top three and nearby ranks; chat loads 50 messages at a time with older history on scroll.",
+    "Improved profile loading and prevented the Android shop from opening with a test purchase key.",
+  ],
   "0.657": [
     "Rebuilt Home with a stone courtyard, workshop and research stations, and a larger lawn.",
     "Centered Home on wide desktop screens and tightened station activation distance.",
@@ -1655,6 +1662,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.658": "2026-09-12",
   "0.657": "2026-09-12",
   "0.656": "2026-09-11",
   "0.655": "2026-09-11",

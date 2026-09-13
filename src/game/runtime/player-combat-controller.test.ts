@@ -104,6 +104,38 @@ describe("player attack timing", () => {
     expect(state.player.combatFacing).toBe(0);
   });
 
+  it("autofarm aims within the chosen camp when every camp shares a species", () => {
+    const state = createCombatHarness();
+    state.enemies.length = 0;
+    Object.assign(state.player, { x: 500, y: 500, attackRange: 250 });
+    const lifecycle = createEnemyLifecycle(state.enemies, state.spawnSites, () => {});
+    for (const [id, campName, x, y] of [[0, "Armor Camp", 550, 500], [1, "Health Camp", 500, 650]] as const)
+      lifecycle.spawnFromSite({ id, campName, type: "Bramble", x, y, leashRange: 600, alive: false, respawnAt: 0 });
+    state.controller.attackNearest("Bramble", "Health Camp");
+    expect(state.player.combatFacing).toBeCloseTo(Math.PI / 2);
+    state.enemies[1].dead = true;
+    state.controller.attackNearest("Bramble", "Health Camp");
+    expect(state.player.combatFacing).toBeNull();
+  });
+
+  it("autofarm ignores an engaged generated boss even when it shares the farm species", () => {
+    const state = createCombatHarness();
+    state.enemies.length = 0;
+    state.boss.dead = true;
+    Object.assign(state.player, { x: 500, y: 500, attackRange: 250 });
+    const lifecycle = createEnemyLifecycle(state.enemies, state.spawnSites, () => {});
+    for (const [id, campName, x, y] of [[0, "Warden", 550, 500], [1, "Health Camp", 500, 650]] as const)
+      lifecycle.spawnFromSite({ id, campName, type: "Bramble", x, y, leashRange: 600, alive: false, respawnAt: 0 });
+    Object.assign(state.enemies[0], { generatedBoss: true, engaged: true, aggroTargetId: null });
+    state.controller.attackNearest("Bramble", "Health Camp");
+    expect(state.player.combatFacing).toBeCloseTo(Math.PI / 2);
+    state.enemies[1].dead = true;
+    state.controller.attackNearest("Bramble", "Health Camp");
+    expect(state.player.combatFacing).toBeNull();
+    state.controller.attackNearest();
+    expect(state.player.combatFacing).toBe(0);
+  });
+
   it("autofarm aims only at the chosen type and leaves bosses out of targeting", () => {
     const state = createCombatHarness();
     state.enemies.length = 0;

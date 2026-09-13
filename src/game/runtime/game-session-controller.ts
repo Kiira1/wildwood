@@ -1,3 +1,4 @@
+import { isProceduralMap } from "../../../shared/procedural-maps";
 import { DUEL_ARENA } from "../duel";
 import { snapCameraToPlayer, updateCamera } from "./camera";
 import type { PlayerState } from "./types";
@@ -304,7 +305,7 @@ export function createGameSessionController(dependencies: SessionDependencies) {
     dependencies.hideGameOver();
     paused = false;
     const serverMapId = dependencies.serverMapId();
-    if (serverMapId && dependencies.validMapIds.includes(serverMapId)) dependencies.setMapId(serverMapId);
+    if (serverMapId && (dependencies.validMapIds.includes(serverMapId) || isProceduralMap(serverMapId))) dependencies.setMapId(serverMapId);
     dependencies.mapMusicSync();
     dependencies.resetPlayer(hasStarted);
     const serverState = dependencies.serverPlayerState();

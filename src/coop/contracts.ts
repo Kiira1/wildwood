@@ -132,6 +132,7 @@ export type PlayerProfileData = {
 };
 
 export type LeaderboardEntry = {
+  rank?: number;
   identity: string;
   name: string;
   gender: PlayerGender;

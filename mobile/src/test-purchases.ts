@@ -48,3 +48,10 @@ export function createTestPurchases(config: unknown) {
 
   return { load, buy };
 }
+
+/** Store builds omit the test configuration entirely; never initialize the SDK. */
+export function optionalTestPurchases(config: unknown) {
+  if (!config || typeof config !== 'object' || !('revenueCatTestApiKey' in config)) return undefined;
+  validateTestPurchaseConfig(config);
+  return { mode: 'test' as const, ...createTestPurchases(config) };
+}

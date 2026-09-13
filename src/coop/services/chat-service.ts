@@ -5,6 +5,7 @@ import { normalizePlayerGender } from "../../../shared/player-gender";
 import type { ChatMessage } from "../contracts";
 import type { ReducerPort } from "../ports";
 import { playerReportValidationError } from "../../../shared/player-safety";
+import { withRequestDeadline } from "./request-deadline";
 
 type ChatServiceDependencies = {
   reducers: ReducerPort;
@@ -42,8 +43,9 @@ export function createChatService(dependencies: ChatServiceDependencies) {
   const blocks = new Map<string, { identity: Identity; name: string }>();
   let session = 0;
   let presentationRevision = 0;
+  let privacyRevision = 0;
 
-  function changed() { presentationRevision += 1; dependencies.notify(); }
+  function changed() { privacyRevision++; presentationRevision += 1; dependencies.notify(); }
   function upsertBlock(row: { owner: Identity; target: Identity; targetName: string }) {
     if (row.owner.toHexString() !== dependencies.localIdentity()) return;
     blocks.set(row.target.toHexString(), { identity: row.target, name: row.targetName });
@@ -55,8 +57,7 @@ export function createChatService(dependencies: ChatServiceDependencies) {
     changed();
   }
 
-  function upsert(row: ChatRow) {
-    const existingIndex = messages.findIndex((message) => message.id === row.id);
+  function presentation(row: ChatRow): ChatMessage {
     const sender = row.sender.toHexString();
     if (!isPresenceChatMessage(row.senderName)) {
       dependencies.rememberSender({
@@ -66,7 +67,7 @@ export function createChatService(dependencies: ChatServiceDependencies) {
         isGuest: row.senderIsGuest,
       });
     }
-    const message = {
+    return {
       id: row.id,
       sender,
       senderName: row.senderName,
@@ -81,17 +82,35 @@ export function createChatService(dependencies: ChatServiceDependencies) {
       replyToMessage: row.replyToMessage,
       sentAtMs: Number(row.sentAt.microsSinceUnixEpoch / 1_000n),
     };
+  }
+  function upsert(row: ChatRow) {
+    const existingIndex = messages.findIndex((message) => message.id === row.id);
+    const message = presentation(row);
     if (existingIndex >= 0) messages[existingIndex] = message;
     else messages.push(message);
     messages.sort((left, right) => left.id < right.id ? -1 : 1);
-    while (messages.length > 100) messages.shift();
+    while (messages.length > 50) messages.shift();
     presentationRevision += 1;
     dependencies.notify();
   }
 
   return {
-    tables: { upsert, upsertBlock, removeBlock },
+    tables: { upsert, upsertBlock, removeBlock, remove(row: { id: bigint }) {
+      const index = messages.findIndex(message => message.id === row.id);
+      if (index >= 0) { messages.splice(index, 1); presentationRevision++; dependencies.notify(); }
+    } },
     api: {
+      chatHistoryRevision: () => privacyRevision,
+      async loadChatHistory(beforeId: bigint) {
+        const connection = dependencies.reducers.connection(), started = session, privacy = privacyRevision;
+        if (!connection?.isActive || dependencies.reducers.protocolBlocked()) throw new Error("Reconnect to load chat history.");
+        const page = await withRequestDeadline(connection.procedures.getChatHistory({ beforeId }));
+        if (session !== started || privacy !== privacyRevision || connection !== dependencies.reducers.connection()) throw new Error("Session changed. Reopen chat.");
+        const blockedNames = new Set([...blocks.values()].map(block => block.name));
+        return { hasMore: page.hasMore, messages: page.messages.map(presentation).filter(row => !blocks.has(row.sender)).map(row =>
+          blockedNames.has(row.replyToSenderName) ? { ...row, replyToSenderName: "", replyToMessage: "" } : row),
+          beforeId: page.messages[0]?.id ?? beforeId };
+      },
       chatMessages: () => {
         const blockedMessageIds = new Set(messages.filter((message) => blocks.has(message.sender)).map((message) => message.id));
         const blockedNames = new Set([...blocks.values()].map((block) => block.name));
@@ -176,6 +195,7 @@ export function createChatService(dependencies: ChatServiceDependencies) {
     },
     resetSession() {
       session += 1;
+      privacyRevision++;
       blocks.clear();
       messages.length = 0;
       presentationRevision += 1;

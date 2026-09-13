@@ -54,6 +54,8 @@ export type EnemyShot = Circle & {
 };
 
 export type EnemyState = Circle & {
+  definition?: EnemyDefinition;
+  generatedBoss?: boolean;
   isBoss?: false;
   type: EnemyKind;
   siteId: number;

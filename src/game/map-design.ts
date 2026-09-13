@@ -1,3 +1,4 @@
+import { generateMap, isProceduralMap } from "../../shared/procedural-maps";
 import storedMapDesigns from "./map-designs.json";
 import type { MapId, SpawnCamp, WorldDecor, WorldPath } from "./world";
 
@@ -218,6 +219,13 @@ export function savedMapName(mapId: string) {
 export function mapVisualTheme(mapId: MapId): MapVisualTheme {
   const cached = resolvedThemeCache.get(mapId);
   if (cached) return cached;
+  if (isProceduralMap(mapId)) {
+    const palette = generateMap(mapId).palette;
+    const theme = { ...palette, decorColors: { grass: [palette.accent], rock: [palette.pathDetail, palette.path] } };
+    if (resolvedThemeCache.size >= 48) resolvedThemeCache.delete(resolvedThemeCache.keys().next().value!);
+    resolvedThemeCache.set(mapId, theme);
+    return theme;
+  }
   const defaults = DEFAULT_MAP_THEMES[mapId];
   const saved = document.maps?.[mapId]?.status === "live" ? document.maps[mapId].theme : null;
   const resolved = !saved ? clone(defaults) : {

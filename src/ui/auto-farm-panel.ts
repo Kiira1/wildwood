@@ -1,4 +1,4 @@
-import { ENEMY_TYPES, REWARD_DATA, rewardLabel, type EnemyKind } from '../game/enemies';
+import { ENEMY_TYPES, REWARD_DATA, rewardLabel, rewardAmountLabel, rewardStatLabel } from '../game/enemies';
 import type { AutoFarmController } from '../game/runtime/auto-farm-controller';
 
 const farmIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3l14 14-2 2L3 5V3h2zm14 0L5 17l2 2L21 5V3h-2zM3 16l5 5m8 0l5-5M4 20l-1 1m17-1l1 1"/></svg>';
@@ -28,7 +28,7 @@ export function createAutoFarmPanel(options: {
   const list = element('.farm-choices');
   const startButton = element<HTMLButtonElement>('.farm-start');
   const selection = element('.farm-selection');
-  let draft: EnemyKind | null = null;
+  let draft: string | null = null;
   let priorFocus: HTMLElement | null = null;
   let choiceKey = '';
 
@@ -44,27 +44,29 @@ export function createAutoFarmPanel(options: {
 
   function renderChoices() {
     const choices = options.farm.choices();
-    const key = `${options.mapName()}:${choices.map(c => `${c.type}:${c.total}`).join('|')}`;
+    const key = `${options.mapName()}:${choices.map(c => `${c.key}:${c.total}:${c.reward?.amount}:${c.maxReward}`).join('|')}`;
     if (key !== choiceKey) {
       choiceKey = key;
       element('.farm-map').textContent = options.mapName();
       const previousType = (document.activeElement as HTMLElement | null)?.dataset?.enemy;
       list.replaceChildren();
-      if (draft && !choices.some(choice => choice.type === draft)) draft = null;
+      if (draft && !choices.some(choice => choice.key === draft)) draft = null;
       for (const choice of choices) {
-        const definition = ENEMY_TYPES[choice.type];
+        const reward = choice.reward ?? ENEMY_TYPES[choice.type].reward;
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'farm-enemy';
-        button.dataset.enemy = choice.type;
-        button.style.setProperty('--farm-stat-color', REWARD_DATA[definition.reward.type].color);
+        button.dataset.enemy = choice.key;
+        button.style.setProperty('--farm-stat-color', REWARD_DATA[reward.type].color);
         button.innerHTML = '<span class="farm-enemy-mark" aria-hidden="true"></span><span class="farm-enemy-copy"><strong></strong><span class="farm-reward"></span></span><span class="farm-check" aria-hidden="true">✓</span>';
         button.querySelector('strong')!.textContent = `${choice.total} × ${choice.type}`;
-        button.querySelector('.farm-enemy-mark')!.textContent = ({ damage: '⚔', health: '♥', speed: '↗', armor: '◇', regen: '+' })[definition.reward.type];
-        button.querySelector('.farm-reward')!.textContent = rewardLabel(definition.reward);
-        button.addEventListener('click', () => { draft = choice.type; updateSelection(); });
+        button.querySelector('.farm-enemy-mark')!.textContent = ({ damage: '⚔', health: '♥', speed: '↗', armor: '◇', regen: '+' })[reward.type];
+        button.querySelector('.farm-reward')!.textContent = choice.maxReward && choice.maxReward > reward.amount
+          ? `${rewardAmountLabel(reward)}–${rewardAmountLabel({ ...reward, amount: choice.maxReward }).slice(1)} ${rewardStatLabel(reward)}`
+          : rewardLabel(reward);
+        button.addEventListener('click', () => { draft = choice.key; updateSelection(); });
         list.append(button);
-        if (previousType === choice.type) button.focus();
+        if (previousType === choice.key) button.focus();
       }
       if (!choices.length) {
         const empty = document.createElement('p');
@@ -106,9 +108,9 @@ export function createAutoFarmPanel(options: {
     const state = options.farm.state();
     floating.classList.toggle('is-farming', state.active);
     toggle.setAttribute('aria-pressed', String(state.active));
-    toggle.setAttribute('aria-label', state.active ? `Stop farming ${state.selected}` : 'Set up autofarm');
+    toggle.setAttribute('aria-label', state.active ? `Stop farming ${state.selectedLabel}` : 'Set up autofarm');
     toggle.setAttribute('aria-haspopup', state.active ? 'false' : 'dialog');
-    toggle.title = state.active ? `${state.selected} · ${state.status} · Tap to stop` : 'Autofarm · Choose enemy';
+    toggle.title = state.active ? `${state.selectedLabel} · ${state.status} · Tap to stop` : 'Autofarm · Choose enemy';
     if (sheet.open) renderChoices();
   }
 

@@ -1,4 +1,5 @@
 import { DbConnection, tables } from "../../module_bindings";
+import { guardConnectionActivity } from "./connection-activity";
 import { reducerErrorMessage } from "./reducer-errors";
 import type { SubscriptionHandle } from "../../module_bindings";
 import type { Identity } from "spacetimedb";
@@ -483,7 +484,7 @@ export function createVirtualPlayerLoadTest(dependencies: VirtualPlayerLoadTestD
       }, CONNECT_TIMEOUT_MS);
 
       try {
-        attemptConnection = DbConnection.builder()
+        attemptConnection = guardConnectionActivity(DbConnection.builder()
           .withUri(dependencies.host)
           .withDatabaseName(dependencies.databaseName)
           .onConnect((conn, identity) => {
@@ -554,7 +555,7 @@ export function createVirtualPlayerLoadTest(dependencies: VirtualPlayerLoadTestD
             finish(false);
             if (bot.connection === attemptConnection) disconnectBot(bot);
           })
-          .build();
+          .build());
         bot.connection = attemptConnection;
       } catch {
         finish(false);

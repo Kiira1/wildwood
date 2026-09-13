@@ -2,11 +2,12 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { parseHTML } from 'linkedom';
 import { createAutoFarmPanel } from './auto-farm-panel';
 import { createAutoFarmController } from '../game/runtime/auto-farm-controller';
+import { createSpawnSites } from '../game/world';
 import { createGameBootstrap } from '../game/runtime/game-bootstrap';
 
 let destroy: (() => void) | undefined;
 afterEach(() => { destroy?.(); destroy = undefined; vi.unstubAllGlobals(); });
-function setup(empty = false) {
+function setup(empty = false, map = "forest") {
   const { document, window } = parseHTML('<html><body><div id="hud"><div id="chatPanel"></div></div></body></html>');
   vi.stubGlobal('window', window); vi.stubGlobal('document', document); vi.stubGlobal('HTMLElement', window.HTMLElement);
   const state = createGameBootstrap();
@@ -14,7 +15,7 @@ function setup(empty = false) {
   state.spawnSites.length = 0;
   if (!empty) state.spawnSites.push({ id: 1, type: 'Bramble', x: 1200, y: 500, campName: 'Test', leashRange: 500, alive: false, respawnAt: 50 });
   let unavailable: string | null = null, visible = true;
-  const farm = createAutoFarmController({ ...state, mapId: () => 'forest', unavailable: () => unavailable, paused: () => false, speed: () => 300, obstacles: () => [] });
+  const farm = createAutoFarmController({ ...state, mapId: () => map, unavailable: () => unavailable, paused: () => false, speed: () => 300, obstacles: () => [] });
   const pause = vi.fn(), clearInput = vi.fn();
   const panel = createAutoFarmPanel({ farm, mapName: () => 'Tutorial Forest', visible: () => visible,
     unavailable: () => unavailable, setPaused: pause, clearInput });
@@ -22,7 +23,7 @@ function setup(empty = false) {
   const sheet = document.querySelector<HTMLDialogElement>('dialog')!;
   Object.assign(sheet, { showModal() { sheet.open = true; }, close() { sheet.open = false; } });
   const click = (selector: string) => document.querySelector(selector)!.dispatchEvent(new window.Event('click', { bubbles: true }));
-  return { farm, panel, document, window, sheet, pause, clearInput, click,
+  return { ...state, farm, panel, document, window, sheet, pause, clearInput, click,
     setUnavailable: (value: string | null) => { unavailable = value; }, setVisible: (value: boolean) => { visible = value; } };
 }
 it('opens the picker, requires a selection, starts farming, and stops from the floating button', () => {
@@ -61,4 +62,19 @@ it('explains an empty map and disables starting when gameplay becomes unavailabl
   expect(s.sheet.open).toBe(false);
   expect(s.document.querySelector<HTMLElement>('.farm-floating')!.hidden).toBe(true);
   expect(s.pause).toHaveBeenLastCalledWith(false);
+});
+
+it('shows four reward camp choices for a generated map with one species', () => {
+  const s = setup(true, 'endless_1');
+  s.spawnSites.push(...createSpawnSites({x: 580, y: 770}, 'endless_1'));
+  s.click('.farm-toggle');
+  const choices = [...s.document.querySelectorAll('.farm-enemy')];
+  expect(choices).toHaveLength(4);
+  const damage = choices.find(button => button.querySelector('.farm-reward')?.textContent?.includes('DAMAGE'))!;
+  expect(damage.textContent).toContain(`13 × ${s.spawnSites[0].type}`);
+  expect(damage.querySelector('.farm-reward')!.textContent).toContain('–');
+  expect(s.document.querySelector('.farm-choices')!.textContent).not.toContain('Attack Speed');
+  damage.dispatchEvent(new s.window.Event('click', { bubbles: true }));
+  s.click('.farm-start');
+  expect(s.farm.targetCamp()).toBe('Damage Camp');
 });

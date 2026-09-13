@@ -1,3 +1,5 @@
+import { isProceduralMap, type ProceduralMapId } from "../../shared/procedural-maps";
+import { generatedMapContent } from "./procedural-maps";
 import { createIonCitadelLayout } from "./ion-layout";
 import { createVerdantCatacombsLayout } from "./verdant-layout";
 import { createNeonBastionLayout } from "./neon-layout";
@@ -34,6 +36,7 @@ export type WorldDecor = WorldDecorPlacement & (
   | { type: "lilyPad"; s: number; variant: number }
 );
 export type SpawnSite = {
+  definition?: import("./enemies").EnemyDefinition;
   id: number;
   x: number;
   y: number;
@@ -63,6 +66,7 @@ export const VERDANT_CATACOMBS_MAP_ID = "verdant_catacombs";
 export const ION_CITADEL_MAP_ID = "ion_citadel";
 export const UPGRADE_BENCH_POSITION = HOME_BENCH_POSITION;
 export type MapId =
+  | ProceduralMapId
   | typeof HOME_EXTERIOR_MAP_ID
   | typeof TUTORIAL_FOREST_MAP_ID
   | typeof BEGINNER_DESERT_MAP_ID
@@ -739,6 +743,7 @@ export function createWorldLayout(playerSpawn: Point, mapId: MapId = TUTORIAL_FO
       ...[100, HOME_WORLD_WIDTH - 100].flatMap(x => [180, 420, 720, 940, HOME_WORLD_HEIGHT - 100].map((y, variant) => ({ type: "tree", x, y, s: 1, variant }))),
     ] as WorldDecor[],
   };
+  if (isProceduralMap(mapId)) { const content = generatedMapContent(mapId); return { paths: content.map.paths, decor: content.decor }; }
   const saved = savedMapDesign(mapId);
   if (saved) {
     return {
@@ -818,6 +823,7 @@ export function createWorldLayout(playerSpawn: Point, mapId: MapId = TUTORIAL_FO
 
 export function mapSpawnCamps(mapId: MapId = TUTORIAL_FOREST_MAP_ID): readonly SpawnCamp[] {
   if (mapId === HOME_EXTERIOR_MAP_ID) return [];
+  if (isProceduralMap(mapId)) return generatedMapContent(mapId).camps;
   const saved = savedMapDesign(mapId);
   if (saved?.spawnCamps.length) return saved.spawnCamps.map((camp) => ({ ...camp, types: [...camp.types] }));
   return mapId === BEGINNER_DESERT_MAP_ID
@@ -842,6 +848,7 @@ export function mapSpawnCamps(mapId: MapId = TUTORIAL_FOREST_MAP_ID): readonly S
 }
 
 export function createSpawnSites(boss: Point, mapId: MapId = TUTORIAL_FOREST_MAP_ID): SpawnSite[] {
+  if (isProceduralMap(mapId)) return generatedMapContent(mapId).sites;
   if (mapId === HOME_EXTERIOR_MAP_ID) return [];
   const sites: SpawnSite[] = [];
   const camps = mapSpawnCamps(mapId);

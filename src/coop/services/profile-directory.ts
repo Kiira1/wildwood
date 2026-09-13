@@ -74,8 +74,18 @@ export function createProfileDirectory(dependencies: ProfileDirectoryDependencie
   const guests = new Map<string, boolean>();
   let localDisplayName = "";
   let localReady = false;
+  function trimPresentations() {
+    if (identities.size <= 2048) return;
+    for (const identity of identities.keys()) {
+      if (identity === dependencies.localIdentity() || dependencies.shouldRetain(identity)) continue;
+      identities.delete(identity); names.delete(identity); icons.delete(identity); sprites.delete(identity);
+      skinTones.delete(identity); genders.delete(identity); guests.delete(identity);
+      if (identities.size <= 2048) break;
+    }
+  }
 
   function rememberPresentation(presentation: ProfilePresentation) {
+    identities.delete(presentation.identity);
     identities.set(presentation.identity, presentation.identityValue);
     names.set(presentation.identity, presentation.displayName);
     if (presentation.profileIcon !== undefined) {
@@ -90,6 +100,7 @@ export function createProfileDirectory(dependencies: ProfileDirectoryDependencie
     }
     if (presentation.gender !== undefined) genders.set(presentation.identity, normalizePlayerGender(presentation.gender));
     if (presentation.isGuest !== undefined) guests.set(presentation.identity, presentation.isGuest);
+    trimPresentations();
   }
 
   function upsertProfile(row: ProfileRow) {
@@ -273,9 +284,11 @@ export function createProfileDirectory(dependencies: ProfileDirectoryDependencie
     guestFor: (identity: string) => guests.get(identity),
     rememberPresentation,
     rememberChatSender(sender: { identity: string; identityValue: Identity; name: string; isGuest: boolean }) {
+      identities.delete(sender.identity);
       identities.set(sender.identity, sender.identityValue);
       if (!names.has(sender.identity)) names.set(sender.identity, sender.name);
       if (!guests.has(sender.identity)) guests.set(sender.identity, sender.isGuest);
+      trimPresentations();
     },
     prepareSession(displayName: string) {
       localReady = false;

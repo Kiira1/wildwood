@@ -24,6 +24,7 @@ function portalArrivalHarness(destinationArrival: { x: number; y: number }) {
   const controller = createMapController({
     mapConfig: {
       ...bootstrap.mapConfig,
+      endless_40: bootstrap.mapConfig.endless_40,
       [tutorialMapId]: {
         portal: { x: 100, y: 100, width: 100, height: 100, depth: 100, destination: desertMapId },
         arrival: { x: 100, y: 168 },
@@ -103,6 +104,38 @@ function portalArrivalHarness(destinationArrival: { x: number; y: number }) {
 
 afterEach(() => { vi.unstubAllGlobals(); endHomeTeleport(); vi.useRealTimers(); });
 
+describe("developer direct travel", () => {
+  it("waits for server arrival and lazy art before switching to Endless 40", async () => {
+    vi.useFakeTimers();
+    const f = portalArrivalHarness({ x: 300, y: 400 });
+    let finishAssets!: () => void;
+    f.prepareMapAssets.mockImplementationOnce(() => new Promise<void>(resolve => { finishAssets = resolve; }));
+    const request = vi.fn(async () => true);
+    const pending = f.controller.teleportToMap("endless_40", request);
+    await vi.advanceTimersByTimeAsync(650);
+    expect(request).toHaveBeenCalledOnce();
+    expect(f.currentMapId()).toBe("tutorial_forest");
+    f.setServerMap({ mapId: "endless_40", x: 580, y: 770, facing: 1 });
+    await vi.advanceTimersByTimeAsync(25);
+    expect(f.prepareMapAssets).toHaveBeenCalledWith("endless_40");
+    expect(f.currentMapId()).toBe("tutorial_forest");
+    finishAssets();
+    expect(await pending).toBe(true);
+    expect(f.currentMapId()).toBe("endless_40");
+    expect(f.player).toMatchObject({ x: 580, y: 770, facing: 1 });
+    expect(f.controller.isMapTransitioning()).toBe(false);
+  });
+  it("releases the transition when permission is denied", async () => {
+    vi.useFakeTimers();
+    const f = portalArrivalHarness({ x: 300, y: 400 });
+    const pending = f.controller.teleportToMap("endless_40", async () => false);
+    await vi.advanceTimersByTimeAsync(650);
+    expect(await pending).toBe(false);
+    expect(f.controller.isMapTransitioning()).toBe(false);
+    expect(f.currentMapId()).toBe("tutorial_forest");
+  });
+});
+
 describe("cutscene completion", () => {
   it.each([false, true])("persists normal completion but not developer previews: preview=%s", (preview) => {
     vi.stubGlobal("document", { body: { classList: { add: vi.fn(), remove: vi.fn() } } });
@@ -179,6 +212,10 @@ describe("portal arrival activation", () => {
 });
 
 describe("map asset transition gate", () => {
+  it("handles asset failure even when the server rejects the move", async () => {
+    await expect(prepareMapTransition(() => false, () => Promise.reject(new Error("missing art")))).resolves.toBe(false);
+    await new Promise(resolve => setTimeout(resolve, 0));
+  });
   it("starts destination art beside the server move and waits for it before arrival", async () => {
     let finishAssets!: () => void;
     const assetsReady = new Promise<void>((resolve) => { finishAssets = resolve; });
