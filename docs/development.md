@@ -57,20 +57,18 @@ Install dependencies once:
 npm ci
 ```
 
-On macOS, double-click `Run Wildstat Local.command` in the `launchers/` folder for the complete local stack. It opens the database in a second Terminal window, publishes and builds current code, starts the web server, then opens the game. Press Control-C in both Terminal windows when finished.
+On macOS, double-click `Run Wildstat Local.command` in the `launchers/` folder. It starts the local database if needed and opens the live game at `http://127.0.0.1:8000`. Leave both terminals and the browser tab open while editing:
 
-For a complete local stack, run these in separate terminals:
+- CSS changes update the current screen in place, without restarting the game.
+- Client code, UI markup, and asset changes rebuild as needed and refresh the same tab.
+- Server and shared-rule changes publish to `http://127.0.0.1:3000`, regenerate bindings, rebuild the client, and refresh. Local saves are preserved; incompatible schema changes stop with an error instead of deleting data.
+- Failed builds leave the last successful browser bundles available. Fix the error and save again to retry.
 
-```sh
-spacetime start
-npm run spacetime:publish:local
-npm run build:client
-npm run serve:dist
-```
+The watcher always uses `wildwood-balance-local`, preserving the existing local guest storage keys and the local-only movement/respawn boosts. Its bundles live in memory, so production and mobile builds in `dist/` cannot overwrite the running local game. It does not publish to Maincloud.
 
-Open `http://127.0.0.1:8000`.
+Alternatively, start `spacetime start` in one terminal, then run `npm run dev:local -- --open` in another. `WILDSTAT_LOCAL_PORT` can select a different browser port for an isolated test. Stop with Control-C when finished. Opening the launcher again reuses the existing live server.
 
-`localhost` connects to `ws://localhost:3000`. A private Wi-Fi hostname/IP connects to port 3000 on that same host (for example `ws://192.168.0.137:3000`), so LAN test clients join the local database too. GitHub Pages connects to the production database at `wss://maincloud.spacetimedb.com`.
+When switching from the old launcher for the first time, stop its Python web-server terminal once to free port 8000. The database can remain running.
 
 ### Balance Lab
 
