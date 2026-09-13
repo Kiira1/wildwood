@@ -47,3 +47,31 @@ it("shows errors, allows retry, and ignores responses after closing", async () =
   expect(f.elements.overlay.hidden).toBe(true);
   expect(f.elements.rows.textContent).not.toContain("Late");
 });
+
+it("keeps the preview mounted during a stat fetch and reuses cached tab results", async () => {
+  const f = fixture();
+  const opening = f.controller.open();
+  expect(f.elements.podium.hidden).toBe(false);
+  expect(f.elements.podium.children).toHaveLength(3);
+  f.pending[0].resolve([entry(1, "Power winner")]);
+  await opening;
+  const previousPlayer = f.elements.podium.firstElementChild;
+  const switching = f.controller.select("health");
+  expect(f.elements.podium.hidden).toBe(false);
+  expect(f.elements.podium.getAttribute("aria-busy")).toBe("true");
+  expect(f.elements.podium.firstElementChild).toBe(previousPlayer);
+  expect(f.elements.podium.textContent).toContain("Power winner");
+  f.pending[1].resolve([entry(1, "Health winner")]);
+  await switching;
+  expect(f.elements.podium.getAttribute("aria-busy")).toBe("false");
+  expect(f.elements.podium.textContent).toContain("Health winner");
+  await f.controller.select("power");
+  expect(f.loadSnapshot).toHaveBeenCalledTimes(2);
+  expect(f.elements.podium.hidden).toBe(false);
+  expect(f.elements.podium.textContent).toContain("Power winner");
+  const failed = f.controller.select("regen");
+  f.pending[2].reject(new Error("Offline"));
+  await failed;
+  expect(f.elements.podium.hidden).toBe(false);
+  expect(f.elements.podium.textContent).not.toContain("Power winner");
+});

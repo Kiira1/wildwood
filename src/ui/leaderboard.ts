@@ -137,7 +137,8 @@ export function renderLeaderboardPodium(
     return slot;
   });
   podium.replaceChildren(...slots);
-  podium.hidden = rendered.length === 0;
+  // The forest and podium remain visible during loading, empty results, and errors.
+  podium.hidden = false;
   return rendered;
 }
 

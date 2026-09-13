@@ -38,12 +38,12 @@ export function createLeaderboardController(elements: LeaderboardControllerEleme
   let nameTagRevision = -1;
   function render() {
     nameTagRevision = playerNameTagsRevision();
+    elements.podium.setAttribute("aria-busy", String(loading));
     if (loading) {
       elements.rows.hidden = true;
       elements.empty.hidden = true;
       elements.loading.hidden = false;
-      elements.podium.hidden = true;
-      podiumPlayers = [];
+      // Keep the scene and current characters mounted until the next stat is ready.
       return;
     }
     elements.loading.hidden = true;
@@ -57,6 +57,7 @@ export function createLeaderboardController(elements: LeaderboardControllerEleme
       },
     };
     podiumPlayers = renderLeaderboardPodium(elements.podium, stat, snapshot, actions);
+    for (const player of podiumPlayers) hooks.drawPodiumCharacter(player.canvas, player.entry, player.rank);
     renderLeaderboard({ rows: elements.rows, empty: elements.empty }, stat, snapshot, hooks.localIdentity(), actions);
   }
 
@@ -103,6 +104,11 @@ export function createLeaderboardController(elements: LeaderboardControllerEleme
     snapshot = [];
     snapshots.clear();
     snapshotIdentity = hooks.localIdentity();
+    // Start each opening with an empty scene, never another account's preview.
+    podiumPlayers = renderLeaderboardPodium(elements.podium, stat, [], {
+      isDeveloper: hooks.isDeveloper,
+      openProfile: hooks.openProfile,
+    });
     await select(stat);
   }
 

@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.660": [
+    "Leaderboard previews now stay visible while switching stats, with players updated when the new rankings arrive.",
+  ],
   "0.659": [
     "Added a Damage Flash setting, disabled by default.",
     "Added light toolbar haptics on mobile with a setting enabled by default.",
@@ -1666,6 +1669,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.660": "2026-09-13",
   "0.659": "2026-09-13",
   "0.658": "2026-09-12",
   "0.657": "2026-09-12",
