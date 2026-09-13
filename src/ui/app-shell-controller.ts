@@ -1,3 +1,4 @@
+import { installFeedbackSettings } from "./feedback-settings";
 import type { MapMusicController } from "../game/runtime/audio";
 import { requiredElement } from "../game/runtime/dom";
 import {
@@ -35,6 +36,11 @@ type AppShellDependencies = {
 
 /** Settings, audio lifecycle, fullscreen, and shell account/connection status. */
 export function createAppShellController(dependencies: AppShellDependencies) {
+  let feedbackStorage: Storage | undefined;
+  try { feedbackStorage = window.localStorage; } catch {}
+  const feedback = installFeedbackSettings(document, feedbackStorage, () => {
+    window.dispatchEvent(new Event("wildstat:toolbar-haptic"));
+  });
   const screenShakeToggle = requiredElement<HTMLButtonElement>("screenShakeToggle");
   const attackRangeToggle = requiredElement<HTMLButtonElement>("attackRangeToggle");
   const lowPerformanceToggle = requiredElement<HTMLButtonElement>("lowPerformanceToggle");
@@ -204,6 +210,7 @@ export function createAppShellController(dependencies: AppShellDependencies) {
     fpsVisible: () => fpsVisible,
     lowPerformanceMode: () => lowPerformanceMode,
     screenShakeEnabled: () => screenShakeEnabled,
+    damageFlashEnabled: feedback.damageFlashEnabled,
     refreshFullscreen,
     refreshSettings,
     refreshStatus,

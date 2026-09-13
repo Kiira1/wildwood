@@ -1,3 +1,4 @@
+import { Haptics, ImpactStyle } from "@capacitor/haptics";
 import { installResearchNotifications } from './research-notifications';
 import { installNativeAuth } from './native-auth';
 import { Capacitor } from '@capacitor/core';
@@ -9,6 +10,9 @@ import type { WildstatNativeBridge } from '../../src/app/native-ads';
 declare const __TEST_PURCHASE_CONFIG__: unknown;
 const platform = Capacitor.getPlatform();
 if (platform === 'ios' || platform === 'android') {
+  window.addEventListener("wildstat:toolbar-haptic", () => {
+    void Haptics.impact({ style: ImpactStyle.Light }).catch(() => {});
+  });
   installNativeAuth();
   installResearchNotifications(platform);
   const testPurchases = optionalTestPurchases(__TEST_PURCHASE_CONFIG__);

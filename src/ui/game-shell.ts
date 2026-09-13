@@ -1,3 +1,4 @@
+import { installFeedbackControls } from "./feedback-settings";
 import { installSettingsTabs } from "./settings-tabs";
 
 const beforeStartShell = String.raw`
@@ -386,6 +387,7 @@ export function installGameShell(doc: Document = document) {
   // Settings opens above the profile, outside the toolbar’s lower stacking context.
   const settingsPanel = doc.getElementById("settingsPanel");
   if (settingsPanel && settingsPanel.parentElement !== doc.body) doc.body.append(settingsPanel);
+  installFeedbackControls(doc);
   installSettingsTabs(doc);
   const start = doc.getElementById("start");
   if (!start) throw new Error("WildStat startup shell is missing #start");

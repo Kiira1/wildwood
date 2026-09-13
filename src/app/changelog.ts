@@ -1,4 +1,8 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.659": [
+    "Added a Damage Flash setting, disabled by default.",
+    "Added light toolbar haptics on mobile with a setting enabled by default.",
+  ],
   "0.658": [
     "Added Endless maps after Ion Citadel, with a new boss and four camps on each map.",
     "Endless maps gradually change color and use one enemy species per map.",
@@ -1662,6 +1666,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.659": "2026-09-13",
   "0.658": "2026-09-12",
   "0.657": "2026-09-12",
   "0.656": "2026-09-11",

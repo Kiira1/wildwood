@@ -1,5 +1,5 @@
 const SETTINGS_GROUPS = [
-  { id: "game", label: "Game", selectors: ["#screenShakeToggle", "#attackRangeToggle", "#chatToggle", "#fullscreenToggle", "#lowPerformanceToggle", "#fpsToggle", "#latencyToggle"] },
+  { id: "game", label: "Game", selectors: ["#screenShakeToggle", "#damageFlashToggle", "#toolbarHapticsToggle", "#attackRangeToggle", "#chatToggle", "#fullscreenToggle", "#lowPerformanceToggle", "#fpsToggle", "#latencyToggle"] },
   { id: "audio", label: "Audio", selectors: ["#musicVolume", "#sfxVolume"] },
   { id: "account", label: "Account", selectors: ["#accountButton", "#accountStatus", ".setting-support", ".setting-legal", "#developerSettingsRow", ".setting-reset"] },
 ] as const;

@@ -1228,7 +1228,7 @@ import {
     screenShake: () => screenShake,
     screenShakeEnabled: () => appShell.screenShakeEnabled(),
     attackRangeVisible: () => appShell.attackRangeVisible(),
-    flash: () => flash,
+    flash: () => appShell.damageFlashEnabled() ? flash : 0,
     projectiles,
     enemyShots,
     particles: effects.particles,
