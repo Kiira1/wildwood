@@ -10,6 +10,7 @@ import {
   type PlayerGender,
 } from "../../../shared/player-gender";
 import type { ReducerPort } from "../ports";
+import { createChatPortraits } from "./chat-portraits";
 
 export type ProfilePresentation = {
   identity: string;
@@ -72,6 +73,10 @@ export function createProfileDirectory(dependencies: ProfileDirectoryDependencie
   const genders = new Map<string, PlayerGender>();
   const identities = new Map<string, Identity>();
   const guests = new Map<string, boolean>();
+  const chatPortraits = createChatPortraits({
+    connection: () => dependencies.reducers?.connection() ?? null,
+    changed: () => { dependencies.markChatPresentationChanged(); dependencies.notify(); },
+  });
   let localDisplayName = "";
   let localReady = false;
   function trimPresentations() {
@@ -187,7 +192,9 @@ export function createProfileDirectory(dependencies: ProfileDirectoryDependencie
         return [...names].some(([identity, name]) => identity !== dependencies.localIdentity() && name.toLocaleLowerCase() === normalized);
       },
       profileIcon(identity = dependencies.localIdentity()) {
-        return icons.get(identity) ?? 0;
+        const sender = identities.get(identity);
+        if (!icons.has(identity) && sender) chatPortraits.request(sender);
+        return icons.get(identity) ?? chatPortraits.icon(identity) ?? 0;
       },
       playerSprite(identity = dependencies.localIdentity()) {
         return sprites.get(identity) ?? 0;
@@ -288,6 +295,7 @@ export function createProfileDirectory(dependencies: ProfileDirectoryDependencie
       identities.set(sender.identity, sender.identityValue);
       if (!names.has(sender.identity)) names.set(sender.identity, sender.name);
       if (!guests.has(sender.identity)) guests.set(sender.identity, sender.isGuest);
+      if (!icons.has(sender.identity)) chatPortraits.request(sender.identityValue);
       trimPresentations();
     },
     prepareSession(displayName: string) {
@@ -295,6 +303,7 @@ export function createProfileDirectory(dependencies: ProfileDirectoryDependencie
       localDisplayName = displayName;
     },
     clearSession() {
+      chatPortraits.clear();
       clearPlayerNameTags();
       names.clear();
       icons.clear();

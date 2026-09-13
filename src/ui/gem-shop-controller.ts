@@ -19,7 +19,7 @@ export function createGemShopController(options: {
       </header>
       <div class="gem-shop-scroll">
         <div class="gem-shop-packs"></div>
-        <p class="gem-shop-notice">Purchases coming soon · Prices in USD</p>
+        <p class="gem-shop-notice">Purchases coming soon</p>
       </div>
       <footer class="window-back-footer">
         <button class="gem-shop-back window-back-button" type="button">Back</button>

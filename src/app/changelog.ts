@@ -1,4 +1,8 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.665": [
+    "Fixed missing chat portraits and added batched loading for other players’ pictures.",
+    "Removed the Shop Back button outline and temporarily hid gem price cards while preserving their spacing.",
+  ],
   "0.664": [
     "Fixed guest registration losing the Home return location and added recovery for players already stuck at Home.",
     "Added a five-second cooldown after using the Home toolbar teleport.",
@@ -1683,6 +1687,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.665": "2026-09-13",
   "0.664": "2026-09-13",
   "0.663": "2026-09-13",
   "0.662": "2026-09-13",

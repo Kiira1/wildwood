@@ -17,7 +17,7 @@ it('keeps web checkout disabled and explains availability even if a test bridge 
   expect(buttons.every(button => button.disabled)).toBe(true);
   buttons.forEach(button => button.dispatchEvent(new window.Event('click')));
   expect(load).not.toHaveBeenCalled(); expect(buy).not.toHaveBeenCalled();
-  expect(document.querySelector('.gem-shop-notice')?.textContent).toBe('Purchases coming soon · Prices in USD');
+  expect(document.querySelector('.gem-shop-notice')?.textContent).toBe('Purchases coming soon');
 });
 
 it('opens without blocking the toolbar and closes when another toolbar window is chosen', () => {
