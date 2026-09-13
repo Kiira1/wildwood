@@ -7,6 +7,7 @@ type CharacterPreviewSceneOptions = {
   skinTone: number;
   appearance: EquipmentAppearance | null;
   scale: number;
+  characterOffsetY?: number;
   now?: number;
 };
 
@@ -39,7 +40,7 @@ export function drawCharacterPreviewScene(
   ctx.imageSmoothingEnabled = false;
   drawStartingPlayer(ctx, playerAppearanceAssets, {
     x: width / 2,
-    y: height / 2 + 4,
+    y: height / 2 + 4 + (options.characterOffsetY ?? 0),
     facing: 0,
     moving: true,
     gameTime: now / 1_000,

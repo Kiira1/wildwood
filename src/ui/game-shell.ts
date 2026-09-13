@@ -200,12 +200,12 @@ const afterUpdateGateShell = String.raw`
     <h2 id="leaderboardTitle" class="window-banner window-banner--gold"><span>Leaderboard</span></h2>
     <section id="leaderboardPodium" class="leaderboard-podium" aria-label="Top three players" hidden></section>
     <div class="profile-tabs leaderboard-tabs" role="tablist" aria-label="Leaderboard stat">
-      <button id="leaderboardPowerTab" class="profile-tab is-active" type="button" role="tab" aria-selected="true">POWER</button>
-      <button id="leaderboardDamageTab" class="profile-tab" type="button" role="tab" aria-selected="false">DAMAGE</button>
-      <button id="leaderboardHealthTab" class="profile-tab" type="button" role="tab" aria-selected="false">HEALTH</button>
-      <button id="leaderboardArmorTab" class="profile-tab" type="button" role="tab" aria-selected="false">ARMOR</button>
-      <button id="leaderboardRegenTab" class="profile-tab" type="button" role="tab" aria-selected="false">REGEN</button>
-      <button id="leaderboardTimeTab" class="profile-tab" type="button" role="tab" aria-selected="false">TIME</button>
+      <button id="leaderboardPowerTab" class="profile-tab is-active" type="button" role="tab" aria-selected="true" aria-label="Power"></button>
+      <button id="leaderboardDamageTab" class="profile-tab" type="button" role="tab" aria-selected="false" aria-label="Damage"></button>
+      <button id="leaderboardHealthTab" class="profile-tab" type="button" role="tab" aria-selected="false" aria-label="Health"></button>
+      <button id="leaderboardArmorTab" class="profile-tab" type="button" role="tab" aria-selected="false" aria-label="Armor"></button>
+      <button id="leaderboardRegenTab" class="profile-tab" type="button" role="tab" aria-selected="false" aria-label="Regen"></button>
+      <button id="leaderboardTimeTab" class="profile-tab" type="button" role="tab" aria-selected="false" aria-label="Time"></button>
     </div>
     <div class="leaderboard-column-headings" aria-hidden="true"><span>RANK · PLAYER</span><span id="leaderboardValueHeading">POWER</span></div>
     <ol id="leaderboardRows" class="leaderboard-rows"></ol>

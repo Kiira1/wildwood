@@ -27,6 +27,7 @@ vi.mock("../../module_bindings", () => ({
   } },
 }));
 import { createMapShardClient } from "./map-shard-client";
+import { retryAfterMissingWorldPresence } from "./world-presence-recovery";
 function setup() {
   let route: any = null;
   let apply: any;
@@ -41,11 +42,15 @@ function setup() {
   const recoverSession = vi.fn();
   const ready = vi.fn();
   const resetWorld = vi.fn();
+  const recoverPresence = vi.fn(async () => true);
+  const sent: Promise<unknown>[] = [];
   const client = createMapShardClient({ root: () => root, host: "wss://test", tabId: () => "tab",
     recoverSession, handlers, worldReady: ready, changed: vi.fn(), resetWorld,
-    port: { handleFailure: vi.fn(), sendReducer: (_action: any, fn: any) => fn(root) } as any });
+    port: { handleFailure: vi.fn(), sendReducer: (_action: any, fn: any, rejected: any, accepted: any) => {
+      sent.push(retryAfterMissingWorldPresence(() => fn(root), recoverPresence).then(accepted, rejected));
+    } } as any });
   client.attach(root, {} as any);
-  return { client, root, handlers, ready, resetWorld, recoverSession, apply: () => apply(),
+  return { client, root, handlers, ready, resetWorld, recoverSession, recoverPresence, sent, apply: () => apply(),
     route(value: any) { route = value; change(); },
   };
 }
@@ -217,6 +222,38 @@ it("hands a regional player back to the root for Home and replays the arrival", 
   expect(s.client.port.connection()).toBe(s.root);
   expect(s.handlers.player).toHaveBeenCalledWith(homePlayer);
   expect(s.client.ready()).toBe(true);
+  s.client.clear();
+});
+
+it("does not rejoin the account for a late movement rejection from the map left for Home", async () => {
+  const s = setup(); s.apply(); s.route(forest); await Promise.resolve();
+  const previous = await hydrateLatest();
+  let rejectMovement!: (error: Error) => void;
+  previous.reducers.updateMovementState.mockImplementationOnce(() => new Promise((_resolve, reject) => { rejectMovement = reject; }));
+  const rejected = vi.fn();
+  s.client.port.sendReducer("movement", conn => conn.reducers.updateMovementState({} as any), rejected);
+  s.root.db.player.iter = () => [{ mapId: "home_exterior", x: 500, y: 700 }];
+  s.route(null); await Promise.resolve();
+  rejectMovement(new Error("Enter Wildwood first."));
+  await Promise.all(s.sent);
+  expect(s.recoverPresence).not.toHaveBeenCalled();
+  expect(s.recoverSession).not.toHaveBeenCalled();
+  expect(rejected).toHaveBeenCalledOnce();
+  expect(previous.reducers.updateMovementState).toHaveBeenCalledOnce();
+  expect(s.client.port.connection()).toBe(s.root);
+  expect(s.client.ready()).toBe(true);
+  s.client.clear();
+});
+
+it("still recovers genuinely missing presence on the current connection", async () => {
+  const s = setup(); s.apply();
+  s.root.reducers.setSpeed.mockRejectedValueOnce(new Error("Enter Wildwood first."));
+  const accepted = vi.fn();
+  s.client.port.sendReducer("speed", conn => conn.reducers.setSpeed({ speed: 180 }), undefined, accepted);
+  await Promise.all(s.sent);
+  expect(s.recoverPresence).toHaveBeenCalledOnce();
+  expect(s.root.reducers.setSpeed).toHaveBeenCalledTimes(2);
+  expect(accepted).toHaveBeenCalledOnce();
   s.client.clear();
 });
 

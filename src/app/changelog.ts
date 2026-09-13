@@ -1,4 +1,9 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.668": [
+    "Fixed late responses from a departed map triggering account recovery after teleporting Home.",
+    "Simplified leaderboard stat tabs to symbols, removed podium number prefixes, and reduced the first-place name size.",
+    "Moved profile characters lower and enlarged the power text above them.",
+  ],
   "0.667": [
     "Duels can now be started from Home, including against players at Home.",
     "Simplified guild navigation, with Manage friends opening a dedicated window.",
@@ -1702,6 +1707,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.668": "2026-09-13",
   "0.667": "2026-09-13",
   "0.666": "2026-09-13",
   "0.665": "2026-09-13",

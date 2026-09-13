@@ -113,7 +113,7 @@ export function renderLeaderboardPodium(
     pedestal.className = "leaderboard-podium-step";
     const rankLabel = document.createElement("span");
     rankLabel.className = "leaderboard-podium-rank-label";
-    rankLabel.textContent = `#${rank}`;
+    rankLabel.textContent = String(rank);
     pedestal.append(rankLabel);
 
     if (!entry) {

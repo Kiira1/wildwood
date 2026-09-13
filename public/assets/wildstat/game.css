@@ -2518,7 +2518,7 @@
   .profile-name-edit[hidden] { display: none; }
   .player-profile-presence { margin-top: 4px; color: var(--muted); font-size: 8px; letter-spacing: .08em; }
   .player-profile-presence.is-online { color: #72ef58; }
-  #playerProfilePower { position: absolute; z-index: 2; top: 6px; left: 62px; right: 62px; display: flex; align-items: center; justify-content: center; gap: 3px; color: #fff; font: 900 14px/1 var(--player-name-font); white-space: nowrap; -webkit-text-stroke: var(--text-outline-width) #000; paint-order: stroke fill; text-shadow: var(--text-shadow); pointer-events: none; }
+  #playerProfilePower { position: absolute; z-index: 2; top: 6px; left: 62px; right: 62px; display: flex; align-items: center; justify-content: center; gap: 3px; color: #fff; font: 900 18px/1 var(--player-name-font); white-space: nowrap; -webkit-text-stroke: var(--text-outline-width) #000; paint-order: stroke fill; text-shadow: var(--text-shadow); pointer-events: none; }
   #playerProfilePower .power-icon { width: 18px; height: 18px; }
   .power-label { color: var(--gold); }
   .power-value { color: #fff; }
@@ -2837,7 +2837,7 @@
   .leaderboard-podium-rank-1::before { content: ""; position: absolute; bottom: 12.5cqw; left: 0; width: 100%; aspect-ratio: 2; background: url("ui/leaderboard/champion-laurels.svg") center / contain no-repeat; pointer-events: none; }
   .leaderboard-podium-rank-1::after { content: ""; position: absolute; top: 13.5cqw; left: 5%; width: 90%; height: 6cqw; background: url("ui/leaderboard/champion-rays.svg") center / 100% 100% no-repeat; pointer-events: none; }
   .leaderboard-podium-rank-1 canvas.leaderboard-podium-canvas { height: 23cqw; }
-  .leaderboard-podium-rank-1 .leaderboard-podium-name { color: #ffdf54; font-size: 4.1cqw; }
+  .leaderboard-podium-rank-1 .leaderboard-podium-name { color: #ffdf54; font-size: 3.4cqw; }
   .leaderboard-podium-rank-1 .leaderboard-podium-rank-label { font-size: 6.7cqw; }
   .leaderboard-podium-rank-1 .leaderboard-podium-step { height: 12cqw; background: linear-gradient(#ffdf57, #dfb52f); --podium-laurel-color: #ae841b; }
   .leaderboard-podium-rank-2 .leaderboard-podium-step { height: 9cqw; background: linear-gradient(#d4dddc, #98a6a6); --podium-laurel-color: #e5ece8; }
@@ -2997,7 +2997,6 @@
     .player-profile-title-row { gap: 7px; }
     .player-profile-header h2 { font-size: clamp(11px, 3.8vw, 16px); }
     .player-profile-presence { margin-top: 2px; font-size: 7px; line-height: 1.15; }
-    #playerProfilePower { font-size: 10px; }
     .player-profile-modal .profile-tabs { margin: 8px 0 5px; }
     .player-profile-modal .profile-tab { padding: 5px 9px; font-size: 9px; }
     .player-profile-modal .profile-grid { gap: 4px; }
@@ -3022,7 +3021,6 @@
 
   @media (max-width: 420px) {
     .player-profile-title-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; }
-    #playerProfilePower { width: 100%; margin: 0; font-size: 9px; text-align: right; }
   }
 
   .upgrade-modal {

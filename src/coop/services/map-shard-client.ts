@@ -168,9 +168,17 @@ export function createMapShardClient(options: {
     sendReducer(action, callback, rejected, accepted) {
       const connection = port.connection();
       if (!connection) { rejected?.(); return; }
-      options.port.sendReducer(action, () => {
+      options.port.sendReducer(action, async () => {
         if (connection !== port.connection() || !connection.isActive) throw new Error("Map connection changed");
-        return callback(connection);
+        try {
+          return await callback(connection);
+        } catch (error) {
+          // Revoking the departed shard can reject movement still in flight.
+          // Do not let that stale "Enter WildStat first" response trigger the
+          // root port's account recovery after Home is already playable.
+          if (connection !== port.connection() || !connection.isActive) throw new Error("Map connection changed");
+          throw error;
+        }
       }, rejected, accepted);
     },
   };

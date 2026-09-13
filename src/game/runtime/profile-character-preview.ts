@@ -67,6 +67,7 @@ export function createProfileCharacterPreview(
       skinTone,
       appearance,
       scale: Math.min(.72, widthScale),
+      characterOffsetY: 8,
     });
   }
 
