@@ -9783,7 +9783,6 @@ export const requestDuel = spacetimedb.reducer(
   { opponent: t.identity() },
   (ctx, { opponent }) => {
     const challenger = requireControllingPlayer(ctx);
-    if (challenger.mapId === HOME_EXTERIOR_MAP_ID || ctx.db.player.identity.find(opponent)?.mapId === HOME_EXTERIOR_MAP_ID) throw new SenderError("Home is single player.");
     if (sameIdentity(opponent, ctx.sender)) throw new SenderError("You cannot duel yourself.");
     if (playersBlocked(ctx, ctx.sender, opponent)) throw new SenderError("Duel unavailable for this player.");
     if (isVirtualPlayer(ctx, opponent) || isVirtualPlayer(ctx, ctx.sender)) {
@@ -10579,8 +10578,7 @@ export const seedTemporaryGuild = spacetimedb.reducer((ctx) => {
   }
   const candidates = [...ctx.db.leaderboardEntry.iter()]
     .filter(row => !ctx.db.guildMember.identity.find(row.identity) && ctx.db.playerProgress.identity.find(row.identity)
-      && ctx.db.playerProfile.identity.find(row.identity) && !isVirtualPlayer(ctx, row.identity)
-      && (ctx.db.guildAccount.identity.find(row.identity)?.joinAfter ?? 0n) <= ctx.timestamp.microsSinceUnixEpoch)
+      && ctx.db.playerProfile.identity.find(row.identity) && !isVirtualPlayer(ctx, row.identity))
     .sort((a, b) => a.powerLevel - b.powerLevel || a.identity.toHexString().localeCompare(b.identity.toHexString()))
     .slice(0, 20);
   if (candidates.length !== 20) throw new SenderError("Need twenty unassigned leaderboard players.");

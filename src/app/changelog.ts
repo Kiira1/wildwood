@@ -1,4 +1,13 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.667": [
+    "Duels can now be started from Home, including against players at Home.",
+    "Simplified guild navigation, with Manage friends opening a dedicated window.",
+    "Guild battles automatically open a fullscreen replay with staggered left/right teams, player names, and health bars.",
+    "Removed the guild leave/rejoin cooldown.",
+    "Autofarm permanently unlocks after defeating the Dragon.",
+    "Moved the Tutorial Forest spawn beside the portal and capped desktop leaderboard width.",
+    "Fixed hidden developer controls appearing in settings.",
+  ],
   "0.666": [
     "Starting forest enemies fight individually, with Brambles farther down and Spitters closer to spawn.",
     "Spitter damage reduced to 20. New characters start with 0.2 health regeneration per second.",
@@ -1693,6 +1702,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.667": "2026-09-13",
   "0.666": "2026-09-13",
   "0.665": "2026-09-13",
   "0.664": "2026-09-13",

@@ -22,8 +22,8 @@ export const MAP_EDITOR_GAMEPLAY_OVERRIDES: Readonly<Record<string, MapEditorGam
   "tutorial_forest": {
     "name": "Tutorial Forest",
     "arrival": {
-      "x": 875,
-      "y": 900
+      "x": 1025,
+      "y": 850
     },
     "boss": {
       "x": 4040,

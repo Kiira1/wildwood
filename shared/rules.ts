@@ -1,5 +1,6 @@
 // Browser- and server-safe values. Keep this module free of DOM, Node, and
 // SpacetimeDB imports so both runtime targets use one gameplay contract.
+import { MAP_EDITOR_GAMEPLAY_OVERRIDES } from "./map-editor-overrides";
 import {
   BOSS_BASE_MAX_HP,
   bossRewardValue,
@@ -10,7 +11,8 @@ import {
 
 export const WORLD_WIDTH = 4800;
 export const WORLD_HEIGHT = 4800;
-export const PLAYER_SPAWN = { x: 360, y: 360 } as const;
+export const PLAYER_SPAWN: Readonly<{ x: number; y: number }> =
+  MAP_EDITOR_GAMEPLAY_OVERRIDES.tutorial_forest?.arrival ?? { x: 360, y: 360 };
 export const PLAYER_RADIUS = 17;
 export const PLAYER_BASE_HP = 100;
 export const PLAYER_BASE_REGEN = 0.2;

@@ -22,6 +22,7 @@ import {
   MAP_DISPLAY_NAMES,
   PLAYER_BASE_HP,
   PLAYER_BASE_REGEN,
+  PLAYER_SPAWN,
   PLAYER_SPEED,
   SPIDER_MAX_HP,
   TEMPEST_KIRIN_MAX_HP,
@@ -83,7 +84,7 @@ export function createGameBootstrap() {
   const voltwardenCrystalBursts: VoltwardenCrystalBurst[] = [];
   const gravebloomCrystalBursts: GravebloomCrystalBurst[] = [];
   const aegisPrimeCrystalBursts: AegisPrimeCrystalBurst[] = [];
-  const startSpawn = { x: 360, y: 360 };
+  const startSpawn = { ...PLAYER_SPAWN };
   const authoredMapConfig = {
     home_exterior: { name: "Home", portal: null, arrival: { x: 500, y: 700 } },
     [TUTORIAL_FOREST_MAP_ID]: editedMapEntry(TUTORIAL_FOREST_MAP_ID, {

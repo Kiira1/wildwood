@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { Timestamp } from "spacetimedb";
 import { crystalFixture, identity, server } from "../../tests/helpers/crystal-hollows-fixture";
 import { HOME_EXTERIOR_MAP_ID, HOME_EXTERIOR_SPAWN } from "../../shared/home";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
@@ -56,13 +57,43 @@ describe("single player home travel", () => {
       expect(f.db.player.identity.find(f.ctx.sender).x).toBe(x);
     }
   });
-  it("keeps return locations separate for different players and prevents home duels", () => {
+  it("keeps return locations separate for different players", () => {
     const f = crystalFixture();
     const other = identity("b");
     f.seed("homeReturnLocation", { identity: other, mapId: "tutorial_forest", x: 300, y: 400, facing: 0 });
     f.run(server.changeMap, { mapId: HOME_EXTERIOR_MAP_ID, x: 1500, y: 1800 });
     expect(f.db.homeReturnLocation.identity.find(other).x).toBe(300);
-    expect(() => f.run(server.requestDuel, { opponent: other })).toThrow("Home is single player");
+  });
+  it.each([
+    [true, false], [false, true], [true, true],
+  ])("allows duels with challenger at Home=%s and opponent at Home=%s", (challengerHome, opponentHome) => {
+    const f = crystalFixture();
+    const other = identity("b");
+    f.progress(other);
+    f.seed("playerProfile", { identity: other, displayName: "Opponent" });
+    f.seed("player", { ...f.db.player.identity.find(f.ctx.sender), identity: other,
+      mapId: opponentHome ? HOME_EXTERIOR_MAP_ID : "tutorial_forest", x: 500, y: 700 });
+    if (challengerHome) f.run(server.changeMap, { mapId: HOME_EXTERIOR_MAP_ID, x: 1500, y: 1800 });
+    const origin = f.db.player.identity.find(f.ctx.sender);
+    const opponentBefore = f.db.player.identity.find(other);
+    const returnBefore = f.db.homeReturnLocation.identity.find(f.ctx.sender);
+    f.run(server.requestDuel, { opponent: other });
+    const duel = [...f.db.duel.iter()][0];
+    expect(duel).toMatchObject({ status: "countdown", challengerOriginX: origin.x, challengerOriginY: origin.y });
+    f.ctx.timestamp = new Timestamp(duel.endsAtMicros + 1_000_000n);
+    f.run(server.pulseDuel);
+    const finishing = f.db.duel.id.find(duel.id);
+    expect(finishing.status).toBe("finishing");
+    f.ctx.timestamp = new Timestamp(finishing.endsAtMicros);
+    f.run(server.pulseDuel);
+    expect(f.db.duelReplay.id.find(duel.id)).not.toBeNull();
+    expect(f.db.player.identity.find(f.ctx.sender)).toMatchObject({ mapId: origin.mapId, x: origin.x, y: origin.y });
+    expect(f.db.player.identity.find(other)).toEqual(opponentBefore);
+    expect(f.db.homeReturnLocation.identity.find(f.ctx.sender)).toEqual(returnBefore);
+    if (challengerHome) {
+      f.run(server.changeMap, { mapId: HOME_EXTERIOR_MAP_ID, x: origin.x, y: origin.y });
+      expect(f.db.player.identity.find(f.ctx.sender)).toMatchObject({ mapId: "crystal_hollows", x: 1500, y: 1800 });
+    }
   });
 });
 

@@ -602,6 +602,7 @@
     font-size: 12px;
   }
 
+  .setting-row[hidden] { display: none; }
   .setting-row + .setting-row { margin-top: 9px; }
 
   .setting-volume { align-items: center; }
@@ -2618,7 +2619,7 @@
   #profileNameInput { flex: 1; width: 0; }
   #savePlayerNameBtn { min-width: 0; margin: 0; padding: 4px 8px; border-width: 1px; border-radius: 5px; font-size: 11px; line-height: 1; text-transform: none; }
   .modal.leaderboard-modal {
-    --leaderboard-content-width: min(720px, 100%);
+    --leaderboard-content-width: min(520px, 100%);
     display: grid;
     grid-template-rows: auto auto auto auto minmax(0, 1fr) auto;
     width: 100%;

@@ -320,6 +320,15 @@ describe("Home", () => {
 
 
 describe("regional group aggro", () => {
+  it("uses the forest portal-side arrival for starting and respawning players", () => {
+    const bootstrap = createGameBootstrap();
+    const { arrival, portal } = bootstrap.mapConfig[TUTORIAL_FOREST_MAP_ID];
+    expect(bootstrap.startSpawn).toEqual(arrival);
+    expect(bootstrap.player).toMatchObject(arrival);
+    expect(arrival.x - portal.x).toBe(150);
+    expect(arrival.y).toBe(portal.y);
+    expect(Math.hypot(arrival.x - portal.x, arrival.y - (portal.y - portal.height * .32))).toBeGreaterThan(125);
+  });
   it("starts new characters with passive recovery", () => {
     expect(createGameBootstrap().player.regen).toBe(0.2);
   });

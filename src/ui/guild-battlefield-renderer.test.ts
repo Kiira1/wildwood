@@ -23,3 +23,30 @@ it("uses bounded high-DPI continuous equipment poses and the actual weapon proje
   expect(paintArrowProjectile).toHaveBeenCalled(); expect(paintRockProjectile).toHaveBeenCalled();
   renderer.dispose();
 });
+
+it("fits full teams in portrait and landscape while retaining names and numeric HP bars", () => {
+  const paintText = vi.fn();
+  const context = new Proxy({}, { get: (_target, key) => key === "fillText" ? paintText : vi.fn(), set: () => true }) as CanvasRenderingContext2D;
+  const doc = { defaultView: { devicePixelRatio: 2 }, createElement: () => ({ width: 0, height: 0, getContext: () => context }) };
+  const canvas = { ownerDocument: doc, clientWidth: 390, clientHeight: 844, width: 0, height: 0 };
+  const team = (prefix: string) => Array.from({ length: 20 }, (_, i) => ({ identity: `${prefix}${i}`, name: `${prefix}${i}`, fighter: { maxHp: 100, damage: 0, armor: 0, regen: 0, attackRate: 1 } }));
+  const timeline = buildGuildReplayTimeline(simulateGuildBattle(team("A"), team("B")));
+  const stone = { naturalWidth: 0 } as HTMLImageElement;
+  const renderer = createGuildBattlefieldRenderer(canvas as unknown as HTMLCanvasElement, context, timeline, 20,
+    { player: { basicFrontLeg: stone, basicBackLeg: stone, equipment: {} }, prepare: async () => {}, trees: stone, treeBounds: () => [] });
+  const portrait = renderer.draw(0, true);
+  expect(canvas.width).toBe(780); expect(canvas.height).toBe(1688);
+  expect(Math.max(...portrait.slice(0, 20).map(actor => actor.x))).toBeLessThan(Math.min(...portrait.slice(20).map(actor => actor.x)));
+  expect(new Set(portrait.slice(0, 20).map(actor => actor.y)).size).toBe(20);
+  expect(new Set(portrait.slice(20).map(actor => actor.y)).size).toBe(20);
+  expect(portrait.every(actor => actor.x >= 50 && actor.x <= 340 && actor.y >= 150 && actor.y <= 665)).toBe(true);
+  expect(paintText.mock.calls.filter(([text]) => text === "100 / 100")).toHaveLength(40);
+  for (const fighter of timeline.fighters) expect(paintText.mock.calls.some(([text]) => text === fighter.name)).toBe(true);
+  renderer.draw(10, true);
+  expect(renderer.draw(0, true)).toEqual(portrait);
+  canvas.clientWidth = 844; canvas.clientHeight = 390;
+  const landscape = renderer.draw(0, true);
+  expect(canvas.width).toBe(1688); expect(canvas.height).toBe(780);
+  expect(Math.max(...landscape.slice(0, 20).map(actor => actor.x))).toBeLessThan(Math.min(...landscape.slice(20).map(actor => actor.x)));
+  renderer.dispose();
+});

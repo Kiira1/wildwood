@@ -4,9 +4,9 @@ export type { GuildFighter } from "./guild-combat";
 
 export const GUILD_MEMBER_LIMIT = 20;
 export const GUILD_DAILY_ATTACKS = 3;
-export const GUILD_MEMBERSHIP_COOLDOWN = 86_400_000_000n;
+export const GUILD_DAY_MICROS = 86_400_000_000n;
 export const GUILD_RANKING_LIMIT = 50;
-export const guildDay = (now: bigint) => Number(now / 86_400_000_000n);
+export const guildDay = (now: bigint) => Number(now / GUILD_DAY_MICROS);
 // Monday UTC, rather than the Unix epoch's Thursday.
 export const guildWeek = (now: bigint) => Math.floor((guildDay(now) + 3) / 7);
 export function normalizeGuildName(value: string) {

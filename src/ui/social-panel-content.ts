@@ -45,18 +45,9 @@ function controls(ctx: Context) {
 export function renderFriends(parent: HTMLElement, ctx: Context) {
   const { node, button, heading, row, form } = controls(ctx);
   const s = ctx.snapshot;
-  heading(parent, "Stay in touch", "Add a player by username to chat privately and invite them to your guild.");
+
   form(parent, "friend", "Player username", "Add friend", "requestFriend");
-  if (s.guildInvitations.length) {
-    heading(parent, "Guild invitations", "Accept an invitation to join the guild.");
-    for (const invite of s.guildInvitations) {
-      const actions = row(parent, invite.guildName, `Invited by ${invite.inviterName}`);
-      const accept = button("Join guild", () => ctx.act({ action: "acceptGuildInvite", invitationId: invite.id }), `join-invite-${invite.id}`, "primary");
-      accept.disabled ||= Boolean(s.currentGuild);
-      actions.append(accept, button("Decline", () => ctx.act({ action: "declineGuildInvite", invitationId: invite.id }), `decline-invite-${invite.id}`, "quiet"));
-    }
-    if (s.currentGuild) parent.append(node("p", "Leave your current guild before accepting another invitation.", "guild-callout"));
-  }
+  renderReceivedGuildInvites(parent, ctx);
   if (s.incomingRequests.length) {
     heading(parent, "Friend requests", `${s.incomingRequests.length} waiting for you`);
     for (const request of s.incomingRequests) {
@@ -82,11 +73,26 @@ export function renderFriends(parent: HTMLElement, ctx: Context) {
   }
 }
 
+export function renderReceivedGuildInvites(parent: HTMLElement, ctx: Context) {
+  const { node, button, heading, row } = controls(ctx);
+  const s = ctx.snapshot;
+  if (s.guildInvitations.length) {
+    heading(parent, "Guild invitations", "");
+    for (const invite of s.guildInvitations) {
+      const actions = row(parent, invite.guildName, `Invited by ${invite.inviterName}`);
+      const accept = button("Join guild", () => ctx.act({ action: "acceptGuildInvite", invitationId: invite.id }), `join-invite-${invite.id}`, "primary");
+      accept.disabled ||= Boolean(s.currentGuild);
+      actions.append(accept, button("Decline", () => ctx.act({ action: "declineGuildInvite", invitationId: invite.id }), `decline-invite-${invite.id}`, "quiet"));
+    }
+    if (s.currentGuild) parent.append(node("p", "Leave your current guild before accepting another invitation.", "guild-callout"));
+  }
+}
+
 export function renderGuildInvites(parent: HTMLElement, ctx: Context, memberIdentities: string[]) {
   const { node, button, heading, row, form } = controls(ctx);
   const disclosure = node("details", "", "guild-disclosure social-invite");
   disclosure.append(node("summary", "Invite players"));
-  heading(disclosure, "Grow your guild", "Invite a player by username or choose a friend.");
+
   form(disclosure, "invite", "Player username", "Send invitation", "inviteGuild");
   const pending = ctx.snapshot.outgoingGuildInvitations;
   const eligible = ctx.snapshot.friends.filter(friend => !memberIdentities.includes(friend.identity))
@@ -98,7 +104,7 @@ export function renderGuildInvites(parent: HTMLElement, ctx: Context, memberIden
     row(disclosure, friend.name, friend.online === undefined ? "" : friend.online ? "Online" : "Offline").append(inviteButton);
   }
   if (pending.length) {
-    heading(disclosure, "Pending invitations", "Invitations remain available until accepted, declined, or revoked.");
+    heading(disclosure, "Pending invitations", "");
     for (const invite of pending) row(disclosure, invite.name, "Pending").append(
       button("Revoke", () => ctx.act({ action: "revokeGuildInvite", invitationId: invite.id }), `revoke-${invite.id}`, "quiet"));
   }

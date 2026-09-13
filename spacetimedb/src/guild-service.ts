@@ -4,7 +4,7 @@ import { Range, SenderError } from "spacetimedb/server";
 import type { ModuleReducerCtx } from "./index";
 import type { DuelFighter } from "../../shared/duel-combat";
 import {
-  GUILD_MEMBER_LIMIT, GUILD_DAILY_ATTACKS, GUILD_MEMBERSHIP_COOLDOWN,
+  GUILD_MEMBER_LIMIT, GUILD_DAILY_ATTACKS, GUILD_DAY_MICROS,
   GUILD_RANKING_LIMIT, guildDay, guildWeek, normalizeGuildName, resolveGuildBattle,
   type GuildFighter, type GuildSnapshot, type GuildStanding,
 } from "../../shared/guilds";
@@ -42,7 +42,8 @@ function account(ctx: Ctx, identity: Identity) {
 }
 function assertCanJoin(ctx: Ctx) {
   if (ctx.db.guildMember.identity.find(ctx.sender)) fail("Leave your current guild first.");
-  if (account(ctx, ctx.sender).joinAfter > now(ctx)) fail("You can join another guild 24 hours after leaving.");
+  const previous = account(ctx, ctx.sender);
+  if (previous.joinAfter !== 0n) ctx.db.guildAccount.identity.update({ ...previous, joinAfter: 0n });
 }
 function writeRanking(ctx: Ctx, guild: Guild) {
   ctx.db.guildRank.guildId.delete(guild.id);
@@ -97,7 +98,7 @@ function removeMember(ctx: Ctx, member: Member) {
   ctx.db.guildMember.identity.delete(member.identity);
   syncGuildTag(ctx, member.identity);
   const previous = account(ctx, member.identity);
-  ctx.db.guildAccount.identity.update({ ...previous, joinAfter: now(ctx) + GUILD_MEMBERSHIP_COOLDOWN });
+  ctx.db.guildAccount.identity.update({ ...previous, joinAfter: 0n });
   if (!guild) return;
   if (guild.members <= 1) {
     ctx.db.guild.id.delete(guild.id);
@@ -232,8 +233,8 @@ export function createGuildService(deps: { fighterFor(ctx: Ctx, identity: Identi
           challengedToday: challengedToday.has(String(row.id)) });
       }
       return { identity: key(ctx.sender), serverNow: String(now(ctx)), week,
-        nextWeekAt: String(BigInt((week + 1) * 7 - 3) * GUILD_MEMBERSHIP_COOLDOWN),
-        joinAfter: String(ctx.db.guildAccount.identity.find(ctx.sender)?.joinAfter ?? 0n), signedIn,
+        nextWeekAt: String(BigInt((week + 1) * 7 - 3) * GUILD_DAY_MICROS),
+        joinAfter: "0", signedIn,
         guild: guild ? { id: String(guild.id), name: guild.name, leader: key(guild.leader),
           attacksRemaining: GUILD_DAILY_ATTACKS - guild.attacks, score: guild.score,
           members: members(ctx, guild.id).map(row => ({ identity: key(row.identity), name: row.name,
@@ -265,7 +266,7 @@ export function createGuildService(deps: { fighterFor(ctx: Ctx, identity: Identi
         && guestHistory.lastAttackDay === guildDay(now(ctx)) && guestHistory.attackGuild !== 0n && previous.attackGuild !== 0n
         && guestHistory.attackGuild !== previous.attackGuild;
       ctx.db.guildAccount.identity.update({ ...previous, lastAttackDay: history.lastAttackDay, attackGuild: conflictingAttacks ? 18_446_744_073_709_551_615n : history.attackGuild,
-        joinAfter: guestHistory && guestHistory.joinAfter > previous.joinAfter ? guestHistory.joinAfter : previous.joinAfter });
+        joinAfter: 0n });
       ctx.db.guildAccount.identity.delete(guest);
       for (const ref of ctx.db.guildReportParticipant.identity.filter(guest)) {
         const row = ctx.db.guildBattleReport.key.find(ref.reportKey);

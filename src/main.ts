@@ -475,7 +475,11 @@ import {
     [MOONFEN_MAP_ID, miremawBoss], [CRYSTAL_HOLLOWS_MAP_ID, prismshellBoss],
     [CLOCKWORK_RUINS_MAP_ID, ironhornBoss], [DUSKFALL_ORCHARD_MAP_ID, dreadreaperBoss], [NEON_BASTION_MAP_ID, voltwardenBoss], [VERDANT_CATACOMBS_MAP_ID, gravebloomBoss], [ION_CITADEL_MAP_ID, aegisPrimeBoss],
   ]);
+  // Dragon credit permanently unlocks the Desert; reuse that saved milestone
+  // so autofarm never depends on the current boss's health or respawn state.
+  const farmUnlocked = () => Boolean(coop?.savedProgress?.()?.desertUnlocked);
   const farmUnavailable = () => {
+    if (!farmUnlocked()) return "Defeat the Dragon to unlock autofarm";
     if (!session?.isRunning() || player.hp <= 0) return "Start your adventure to farm";
     if (isDueling()) return "Autofarm stopped for duel";
     if (mapController.isMapTransitioning() || mapController.isCutsceneActive()) return "Autofarm stopped for travel";
@@ -1869,7 +1873,7 @@ import {
 
   createAutoFarmPanel({
     farm: autoFarm, mapName: () => MAP_CONFIG[currentMapId].name,
-    visible: () => currentMapId !== "home_exterior" && Boolean(session?.isRunning()) && player.hp > 0 && !isDueling() && !mapController.isMapTransitioning() && !mapController.isCutsceneActive(),
+    visible: () => farmUnlocked() && currentMapId !== "home_exterior" && Boolean(session?.isRunning()) && player.hp > 0 && !isDueling() && !mapController.isMapTransitioning() && !mapController.isCutsceneActive(),
     unavailable: farmUnavailable,
     setPaused: (paused) => setGameplayPause("autofarm-picker", paused),
     clearInput: () => { playerInput.clear(); player.moving = false; coop?.correctMovementPosition?.(player.x, player.y, true); },

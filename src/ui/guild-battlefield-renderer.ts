@@ -1,3 +1,6 @@
+import { formatCompactNumber } from "./number-format";
+import { WORLD_HEALTH_BAR_HEIGHT } from "../game/runtime/game-settings";
+import { healthBarTextY } from "../game/runtime/health-bar-layout";
 import { canvasRenderPixelRatio } from "../game/runtime/render-budget";
 import { drawStartingPlayer, type PlayerAppearanceAssets } from "../game/player-appearance";
 import { projectileKindForWeapon } from "../game/item-presentation";
@@ -10,7 +13,6 @@ import { replayEventIndex, type GuildReplayTimeline } from "./guild-replay-timel
 
 export type GuildReplayAssets = { player: PlayerAppearanceAssets; prepare: () => Promise<void>; trees: HTMLImageElement; treeBounds: () => StaticTileTreeBounds[] };
 const WIDTH = 1000, HEIGHT = 640;
-const TEAM_COLORS = ["#b9e7ff", "#ffccb2"];
 
 /** Ground is cached at the display's resolution. Characters and equipped weapons
  * use the live renderer directly, with continuous aiming and attack clocks. */
@@ -19,6 +21,32 @@ export function createGuildBattlefieldRenderer(canvas: HTMLCanvasElement, ctx: C
   const ground = doc.createElement("canvas");
   const groundContext = ground.getContext("2d");
   const decor: WorldDecor[] = [];
+  // Stable visual offsets open up the ranks without changing recorded combat.
+  // The same offset follows each actor, their aim point, and incoming shots.
+  const offsets = timeline.fighters.map((fighter, i) => {
+    const index = i < split ? i : i - split;
+    const count = i < split ? split : timeline.fighters.length - split;
+    const rows = Math.min(5, count), columns = Math.ceil(count / rows);
+    const row = index % rows, column = Math.floor(index / rows);
+    let seed = 0;
+    for (const letter of fighter.identity) seed = (Math.imul(seed, 31) + letter.charCodeAt(0)) >>> 0;
+    return count === 1 ? { x: 0, y: 0 } : {
+      x: (row % 2 ? 18 : -18) + seed % 13 - 6,
+      y: (column - (columns - 1) / 2) * 86 / columns + (seed >>> 8) % 11 - 5,
+    };
+  });
+  const stagger = (point: { x: number; y: number }, index: number) => ({
+    x: point.x + offsets[index].x, y: point.y + offsets[index].y,
+  });
+  const bounds = { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity };
+  for (const frame of timeline.frames) for (const [i, position] of frame.actors.entries()) {
+    const actor = stagger(position, i);
+    bounds.minX = Math.min(bounds.minX, actor.x); bounds.maxX = Math.max(bounds.maxX, actor.x);
+    bounds.minY = Math.min(bounds.minY, actor.y); bounds.maxY = Math.max(bounds.maxY, actor.y);
+  }
+  let viewWidth = 900, viewHeight = 576, ratio = 1;
+  let project = (point: { x: number; y: number }) => point;
+
   let seed = 73421;
   const random = () => { seed = Math.imul(seed, 1664525) + 1013904223 | 0; return (seed >>> 0) / 4294967296; };
   for (let i = 0; i < 450; i++) {
@@ -28,12 +56,26 @@ export function createGuildBattlefieldRenderer(canvas: HTMLCanvasElement, ctx: C
   }
   for (const [x, y, size] of [[48, 145, .8], [955, 493, .9], [840, 588, .6], [154, 58, .7], [44, 418, .55], [925, 103, .5]]) decor.push({ type: "rock", x, y, s: size, variant: 0 });
   function resize() {
-    const width = Math.max(1, canvas.clientWidth || 900), dpr = canvasRenderPixelRatio(doc.defaultView?.devicePixelRatio || 1);
-    const pixelWidth = Math.round(width * dpr), pixelHeight = Math.round(width * HEIGHT / WIDTH * dpr);
+    const width = Math.max(1, canvas.clientWidth || 900), height = Math.max(1, canvas.clientHeight || width * HEIGHT / WIDTH);
+    const dpr = canvasRenderPixelRatio(doc.defaultView?.devicePixelRatio || 1);
+    const pixelWidth = Math.round(width * dpr), pixelHeight = Math.round(height * dpr);
     if (canvas.width === pixelWidth && canvas.height === pixelHeight && ground.width === pixelWidth) return;
+    viewWidth = width; viewHeight = height; ratio = dpr;
+    const parent = canvas.parentElement;
+    const safeTop = parent && doc.defaultView ? parseFloat(doc.defaultView.getComputedStyle(parent).paddingTop) || 0 : 0;
+    const left = Math.min(54, width * .14), top = Math.min(155 + safeTop, height * .4);
+    const fieldW = Math.max(1, width - left * 2), fieldH = Math.max(1, height - top - Math.min(180, height * .32));
+    // Keep attackers left and defenders right at every screen orientation.
+    const spanX = Math.max(620, bounds.maxX - bounds.minX);
+    const spanY = Math.max(344, bounds.maxY - bounds.minY);
+    const centerX = (bounds.minX + bounds.maxX) / 2;
+    const centerY = (bounds.minY + bounds.maxY) / 2;
+    project = point => ({ x: width / 2 + (point.x - centerX) / spanX * fieldW,
+      y: top + fieldH / 2 + (point.y - centerY) / spanY * fieldH });
     canvas.width = pixelWidth; canvas.height = pixelHeight; ground.width = pixelWidth; ground.height = pixelHeight;
     if (!groundContext) return;
-    groundContext.setTransform(pixelWidth / WIDTH, 0, 0, pixelHeight / HEIGHT, 0, 0);
+    const groundScale = Math.max(pixelWidth / WIDTH, pixelHeight / HEIGHT);
+    groundContext.setTransform(groundScale, 0, 0, groundScale, (pixelWidth - WIDTH * groundScale) / 2, (pixelHeight - HEIGHT * groundScale) / 2);
     paintStaticTile(groundContext, { tileSize: WIDTH, colors: mapVisualTheme("tutorial_forest"), paths: [], decor,
       treeBounds: [], treeShadowsVisible: false, snowPineAspect: 1 }, 0, 0);
     groundContext.imageSmoothingEnabled = true; groundContext.imageSmoothingQuality = "high";
@@ -48,10 +90,10 @@ export function createGuildBattlefieldRenderer(canvas: HTMLCanvasElement, ctx: C
   }
   function draw(time: number, showNames: boolean) {
     resize();
-    ctx.setTransform(canvas.width / WIDTH, 0, 0, canvas.height / HEIGHT, 0, 0);
+    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
     ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
-    ctx.drawImage(ground, 0, 0, WIDTH, HEIGHT);
-    const actors = timeline.sample(time);
+    ctx.drawImage(ground, 0, 0, viewWidth, viewHeight);
+    const actors = timeline.sample(time).map((actor, i) => ({ ...actor, ...project(stagger(actor, i)) }));
     const order = actors.map((_, i) => i).sort((a, b) => actors[a].y - actors[b].y);
     for (const i of order) {
       const actor = actors[i], fighter = timeline.fighters[i], diedAt = timeline.deaths[i];
@@ -60,13 +102,10 @@ export function createGuildBattlefieldRenderer(canvas: HTMLCanvasElement, ctx: C
       const side = i < split ? 0 : 1;
       const eventIndex = replayEventIndex(timeline.attacks[i], time - .35, event => event.launch);
       const attack = timeline.attacks[i].slice(eventIndex, eventIndex + 3).find(event => time >= event.launch - .12 && time <= event.launch + .30);
-      const target = attack ? attack.to : actors[actor.target];
+      const target = attack ? project(stagger(attack.to, attack.target)) : actors[actor.target];
       const aim = target ? Math.atan2(target.y - actor.y, target.x - actor.x) : side ? Math.PI : 0;
       const throwClock = attack ? Math.max(0, .42 - (time - (attack.launch - .12))) : 0;
       ctx.fillStyle = "#0b2e2438"; ctx.beginPath(); ctx.ellipse(actor.x, actor.y + 24, 17, 5, 0, 0, Math.PI * 2); ctx.fill();
-      if (deathAge < 0) {
-        ctx.strokeStyle = TEAM_COLORS[side]; ctx.lineWidth = 1.5; ctx.globalAlpha = .7; ctx.stroke(); ctx.globalAlpha = 1;
-      }
       ctx.save();
       let alpha = 1;
       if (deathAge >= 0) {
@@ -78,13 +117,29 @@ export function createGuildBattlefieldRenderer(canvas: HTMLCanvasElement, ctx: C
         facing: aim, combatFacing: aim, moving: actor.moving && deathAge < 0, gameTime: time + i * .137,
         throwClock, alpha, smooth: true });
       ctx.restore();
-      if (deathAge >= 0) continue;
-      const barY = actor.y - 66;
-      ctx.fillStyle = "#103727"; ctx.fillRect(actor.x - 20, barY, 40, 6);
-      ctx.fillStyle = TEAM_COLORS[side]; ctx.fillRect(actor.x - 19, barY + 1, 38 * actor.hp / fighter.fighter.maxHp, 4);
+    }
+    // Paint labels after every character so neighboring sprites cannot cover them.
+    for (const [i, actor] of actors.entries()) {
+      if (actor.hp <= 0) continue;
+      const fighter = timeline.fighters[i];
+      const barW = Math.min(80, Math.max(48, viewWidth / 5 - 14)), barH = WORLD_HEALTH_BAR_HEIGHT;
+      const barY = actor.y - 66, barX = actor.x - barW / 2;
+      const fill = Math.round(barW * Math.max(0, Math.min(1, actor.hp / fighter.fighter.maxHp)));
+      ctx.fillStyle = "rgba(0,0,0,.88)"; ctx.fillRect(barX - 2, barY - 2, barW + 4, barH + 4);
+      ctx.fillStyle = "#402326"; ctx.fillRect(barX, barY, barW, barH);
+      ctx.fillStyle = "#19d64b"; ctx.fillRect(barX, barY, fill, barH);
+      ctx.fillStyle = "rgba(255,255,255,.25)"; ctx.fillRect(barX, barY, fill, 1);
+      ctx.font = '900 10px "Arial Rounded MT Bold", "Arial Rounded MT", Arial, sans-serif';
+      ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.lineJoin = "round";
+      ctx.strokeStyle = "#000"; ctx.lineWidth = 2; ctx.fillStyle = "#fff";
+      const health = `${formatCompactNumber(Math.ceil(actor.hp))} / ${formatCompactNumber(Math.ceil(fighter.fighter.maxHp))}`;
+      ctx.strokeText(health, actor.x, healthBarTextY(barY, barH), barW - 2);
+      ctx.fillText(health, actor.x, healthBarTextY(barY, barH), barW - 2);
       if (showNames) {
-        ctx.font = "600 12px system-ui"; ctx.textAlign = "center"; ctx.lineJoin = "round"; ctx.strokeStyle = "#193f2d"; ctx.lineWidth = 3; ctx.fillStyle = "#fff";
-        ctx.strokeText(fighter.name, actor.x, barY - 5); ctx.fillText(fighter.name, actor.x, barY - 5);
+        ctx.font = '900 11px "Arial Rounded MT Bold", "Arial Rounded MT", Arial, sans-serif';
+        ctx.lineWidth = 3;
+        ctx.strokeText(fighter.name, actor.x, barY - 10, barW + 12);
+        ctx.fillText(fighter.name, actor.x, barY - 10, barW + 12);
       }
     }
     // Launch before the authoritative hit: the projectile arrives as HP changes,
@@ -92,18 +147,19 @@ export function createGuildBattlefieldRenderer(canvas: HTMLCanvasElement, ctx: C
     const start = replayEventIndex(timeline.shots, time - .5, event => event.launch);
     for (let i = start; i < timeline.shots.length; i++) {
       const shot = timeline.shots[i]; if (shot.launch > time) break;
+      const from = project(stagger(shot.from, shot.actor)), to = project(stagger(shot.to, shot.target));
       const weapon = timeline.fighters[shot.actor].appearance?.rightHandItem || timeline.fighters[shot.actor].appearance?.leftHandItem;
       const kind = projectileKindForWeapon(weapon);
       if (time < shot.impact) {
         const progress = (time - shot.launch) / (shot.impact - shot.launch);
-        const x = shot.from.x + (shot.to.x - shot.from.x) * progress, y = shot.from.y + (shot.to.y - shot.from.y) * progress;
-        const angle = Math.atan2(shot.to.y - shot.from.y, shot.to.x - shot.from.x);
+        const x = from.x + (to.x - from.x) * progress, y = from.y + (to.y - from.y) * progress;
+        const angle = Math.atan2(to.y - from.y, to.x - from.x);
         if (kind === "ARROW") paintArrowProjectile(ctx, x, y, angle);
         else if (kind === "ROCK") paintRockProjectile(ctx, assets.player.equipment[weapon!]?.sprite, weapon, x, y, angle + progress * Math.PI * 2);
       } else if (time - shot.impact < .16) {
         const progress = (time - shot.impact) / .16;
         ctx.globalAlpha = 1 - progress; ctx.strokeStyle = "#fff3c5"; ctx.lineWidth = 2;
-        for (let ray = 0; ray < 4; ray++) { const angle = ray * Math.PI / 2 + .4; ctx.beginPath(); ctx.moveTo(shot.to.x + Math.cos(angle) * (3 + progress * 5), shot.to.y + Math.sin(angle) * (3 + progress * 5)); ctx.lineTo(shot.to.x + Math.cos(angle) * (6 + progress * 7), shot.to.y + Math.sin(angle) * (6 + progress * 7)); ctx.stroke(); }
+        for (let ray = 0; ray < 4; ray++) { const angle = ray * Math.PI / 2 + .4; ctx.beginPath(); ctx.moveTo(to.x + Math.cos(angle) * (3 + progress * 5), to.y + Math.sin(angle) * (3 + progress * 5)); ctx.lineTo(to.x + Math.cos(angle) * (6 + progress * 7), to.y + Math.sin(angle) * (6 + progress * 7)); ctx.stroke(); }
         ctx.globalAlpha = 1;
       }
     }

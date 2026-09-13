@@ -29,6 +29,44 @@ function setup(snapshot = fixture(), socialApi?: SocialApi) {
 async function settled() { for (let i = 0; i < 10; i++) await Promise.resolve(); }
 
 describe("guild panel", () => {
+  it("places creation and invitations ahead of discovery", async () => {
+    const g = fixture(); g.guild = null;
+    const social: SocialSnapshot = { identity: "a", signedIn: true, friends: [], incomingRequests: [], outgoingRequests: [],
+      guildInvitations: [{ id: "8", guildId: "2", guildName: "MOON", inviterName: "B" }],
+      outgoingGuildInvitations: [], currentGuild: null };
+    const api = { loadSocial: vi.fn(async () => social), socialAction: vi.fn(async () => {}), revision: () => 1, snapshot: () => social } as unknown as SocialApi;
+    const h = setup(g, api); h.panel.open(); await settled();
+    const content = h.document.querySelector(".guild-content")!.textContent!;
+    expect(content.indexOf("Create a guild")).toBeLessThan(content.indexOf("Open guilds"));
+    expect(content.indexOf("Guild invitations")).toBeLessThan(content.indexOf("Open guilds"));
+    h.click("Join guild"); await settled();
+    expect(api.socialAction).toHaveBeenCalledWith({ action: "acceptGuildInvite", invitationId: "8" });
+  });
+  it("uses Back to cancel a pending destructive action", async () => {
+    const h = setup(); h.panel.open(); await settled();
+    expect(h.find("Manage A")).toBeUndefined();
+    h.click("Manage B"); h.click("Remove member"); h.click("Back");
+    expect(h.panel.isOpen()).toBe(true);
+    expect(h.document.querySelector(".guild-confirm")).toBeNull();
+    expect(h.api.guildAction).not.toHaveBeenCalled();
+  });
+  it("opens battle history first for regular members", async () => {
+    const g = fixture(); g.identity = "d";
+    const h = setup(g); h.panel.open("battles"); await settled();
+    expect(h.find("Battle history")?.getAttribute("aria-pressed")).toBe("true");
+    expect(h.find("Challenge")).toBeUndefined();
+  });
+  it("opens Manage friends as its own window and returns to the previous guild section", async () => {
+    const h = setup(); h.panel.open("rankings"); await settled();
+    h.click("Manage friends");
+    expect(h.document.querySelector("#guildTitle")?.textContent).toBe("Friends");
+    expect(h.document.querySelector(".guild-tabs")).toBeNull();
+    h.click("Back");
+    expect(h.panel.isOpen()).toBe(true);
+    expect(h.find("Rankings")?.getAttribute("aria-current")).toBe("page");
+    expect(h.document.querySelector("#guildTitle")?.textContent).toBe("Guilds");
+    expect(h.api.loadGuild).toHaveBeenCalledTimes(1);
+  });
   it("toggles closed from the Guild toolbar button without reopening or refetching", async () => {
     const h = setup();
     const toggle = h.document.getElementById("guildBtn")!;
@@ -46,7 +84,7 @@ describe("guild panel", () => {
   });
   it("keeps navigation focused and reuses the loaded snapshot across sections", async () => {
     const h = setup(); h.panel.open(); await settled();
-    expect([...h.document.querySelectorAll(".guild-tabs button")].map(node => node.textContent)).toEqual(["Guild", "Battles", "Rankings", "Friends"]);
+    expect([...h.document.querySelectorAll(".guild-tabs button")].map(node => node.textContent)).toEqual(["My guild", "Battles", "Rankings"]);
     expect(h.document.querySelectorAll(".guild-champion")).toHaveLength(0);
     expect(h.find("Transfer leadership")).toBeUndefined();
     expect(h.find("Remove member")).toBeUndefined();
@@ -83,6 +121,23 @@ describe("guild panel", () => {
     expect(h.api.guildAction).toHaveBeenCalledExactlyOnceWith({ kind: "challenge", opponentGuildId: "2" });
     expect(h.document.body.textContent).toContain("Battle complete.");
   });
+  it("automatically plays the newly completed challenge and returns to history", async () => {
+    const g = fixture(), h = setup(g);
+    h.panel.open("battles"); await settled();
+    const fighter = (identity: string) => ({ identity, name: identity, fighter: { maxHp: 100, damage: 10, armor: 0, regen: 0, attackRate: 1 } });
+    const battle = { id: "new", attackerId: "1", defenderId: "2", attacker: "FIRE", defender: "MOON", at: "2000000",
+      result: resolveGuildBattle([fighter("a")], [fighter("b")]) };
+    h.api.loadGuild.mockResolvedValue({ ...g, battles: [battle] });
+    h.click("Challenge"); h.click("Start battle"); await settled();
+    expect(h.document.querySelector(".guild-overlay--replay canvas")).not.toBeNull();
+    expect(h.api.guildAction).toHaveBeenCalledTimes(1);
+    h.click("Back");
+    expect(h.panel.isOpen()).toBe(true);
+    expect(h.find("Battle history")?.getAttribute("aria-pressed")).toBe("true");
+    expect(h.find("Replay")).toBeDefined();
+    h.click("Refresh"); await settled();
+    expect(h.document.querySelector("canvas")).toBeNull();
+  });
   it.each(["challenged", "no-attacks", "ineligible", "opponent-not-ready"])("disables unavailable challenges: %s", async reason => {
     const g = fixture();
     if (reason === "challenged") g.directory[0].challengedToday = true;
@@ -92,13 +147,13 @@ describe("guild panel", () => {
     const h = setup(g); h.panel.open("battles"); await settled();
     expect((h.find("Challenge") ?? h.find("Challenged") ?? h.find("Not ready"))?.disabled).toBe(true);
   });
-  it("allows guests to join and create, but respects membership cooldown", async () => {
+  it("allows joining and creating even when old snapshots contain a membership cooldown", async () => {
     const g = fixture(); g.guild = null; g.signedIn = false;
     const h = setup(g); h.panel.open(); await settled();
     expect(h.find("Join")?.disabled).toBe(false); expect(h.find("Create a guild")?.disabled).toBe(false);
     h.api.loadGuild.mockResolvedValue({ ...g, signedIn: true, joinAfter: "999999999999999999" });
     h.click("Refresh"); await settled();
-    expect(h.find("Join")?.disabled).toBe(true); expect(h.find("Create a guild")?.disabled).toBe(true);
+    expect(h.find("Join")?.disabled).toBe(false); expect(h.find("Create a guild")?.disabled).toBe(false);
   });
   it("renders user names as text and only reveals the creation form on request", async () => {
     const g = fixture(); g.guild = null; g.directory[0].name = '<img src=x onerror="attack()">';
@@ -116,7 +171,7 @@ describe("guild panel", () => {
     const fighter = { damage: 4, maxHp: 30, armor: 0, regen: 0, attackRate: 1 };
     const result = resolveGuildBattle(["a", "b", "c"].map(name => ({ identity: name, name, fighter })), ["d", "e", "f"].map(name => ({ identity: name, name, fighter })));
     g.battles = [{ id: "1", attackerId: "2", defenderId: "1", attacker: "Moonlight", defender: "Wildwood", at: "1000000", result: { ...result, version: 2, attackerSurvivors: 3, defenderSurvivors: 0, outcome: "VICTORY" } }];
-    const h = setup(g); h.panel.open("battles"); await settled();
+    const h = setup(g); h.panel.open("battles"); await settled(); h.click("Battle history");
     const report = h.document.querySelector(".guild-report-summary")!;
     expect(report.textContent).toContain("Defeat"); expect(h.find("Replay")).toBeDefined();
     expect(report.textContent).toContain("vs Moonlight"); expect(report.textContent).toContain("Defense");
@@ -125,7 +180,7 @@ describe("guild panel", () => {
     const g = fixture();
     const member = (name: string) => ({ identity: name, name, fighter: { damage: 4, maxHp: 30, armor: 0, regen: 0, attackRate: 1 } });
     g.battles = [{ id: "1", attackerId: "1", defenderId: "2", attacker: "Wildwood", defender: "Moonlight", at: "1000000", result: resolveGuildBattle([member("a")], [member("b")]) }];
-    const h = setup(g); h.panel.open("battles"); await settled();
+    const h = setup(g); h.panel.open("battles"); await settled(); h.click("Battle history");
     expect(h.document.querySelector("canvas")).toBeNull();
     h.click("Replay"); await settled();
     expect(h.document.querySelector(".guild-window--replay > .guild-replay canvas")).not.toBeNull();

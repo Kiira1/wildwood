@@ -4,7 +4,7 @@ import { Identity, Timestamp, createMemoryDatabase } from "../../tests/helpers/s
 import { socialTables } from "./social-tables";
 import { guildTables } from "./guild-tables";
 import { createGuildService } from "./guild-service";
-import { GUILD_MEMBERSHIP_COOLDOWN, guildDay, guildWeek, normalizeGuildName } from "../../shared/guilds";
+import { GUILD_DAY_MICROS, guildDay, guildWeek, normalizeGuildName } from "../../shared/guilds";
 import type { DuelFighter } from "../../shared/duel-combat";
 
 vi.mock("spacetimedb/server", async () => ({ ...(await import("../../tests/helpers/spacetime-module")),
@@ -18,7 +18,7 @@ function fixture() {
   // the test registration shim consumes identical structural table metadata.
   const memory = createMemoryDatabase(schema({ ...guildTables, ...socialTables } as unknown as Parameters<typeof schema>[0]));
   const db = memory.db;
-  const ctx = { db, sender: identity(1), timestamp: new Timestamp(20_000n * GUILD_MEMBERSHIP_COOLDOWN) };
+  const ctx = { db, sender: identity(1), timestamp: new Timestamp(20_000n * GUILD_DAY_MICROS) };
   const stats = new Map<string, DuelFighter>();
   const reads = { guild: 0, guildRank: 0 };
   let insertedRank: bigint | null = null;
@@ -76,17 +76,20 @@ describe("guild membership and authoritative rosters", () => {
     f.run(1, ctx => f.service.transfer(ctx, identity(2)));
     expect(f.db.guild.id.find(id).leader.equals(identity(2))).toBe(true);
   });
-  it("allows initial play immediately but preserves the exact leave/rejoin cooldown", () => {
+  it("allows immediate joining and creation after leaving or removal, including old cooldowns", () => {
     const f = fixture();
     const a = f.makeGuild(1), b = f.makeGuild(10);
     f.run(2, ctx => f.service.leave(ctx));
     expect(f.db.guild.id.find(a).members).toBe(2);
-    expect(() => f.run(2, ctx => f.service.join(ctx, b))).toThrow("24 hours");
-    f.advance(GUILD_MEMBERSHIP_COOLDOWN - 1n);
-    expect(() => f.run(2, ctx => f.service.create(ctx, "NewG"))).toThrow("24 hours");
-    f.advance(1n);
+    const account = f.db.guildAccount.identity.find(identity(2));
+    f.db.guildAccount.identity.update({ ...account, joinAfter: f.ctx.timestamp.microsSinceUnixEpoch + GUILD_DAY_MICROS });
+    expect(f.run(2, ctx => f.service.snapshot(ctx)).joinAfter).toBe("0");
     f.run(2, ctx => f.service.join(ctx, b));
     expect(f.db.guildMember.identity.find(identity(2)).eligibleAt).toBe(f.ctx.timestamp.microsSinceUnixEpoch);
+    expect(f.db.guildAccount.identity.find(identity(2)).joinAfter).toBe(0n);
+    f.run(10, ctx => f.service.kick(ctx, identity(2)));
+    f.run(2, ctx => f.service.create(ctx, "NewG"));
+    expect(f.db.guildMember.identity.find(identity(2))).toBeDefined();
   });
   it("transfers leadership deterministically and deletes empty guilds", () => {
     const f = fixture();
@@ -170,7 +173,7 @@ describe("asynchronous battles and bounded standings", () => {
     expect(directory.find(row => row.id === String(opponent))?.challengedToday).toBe(true);
     expect(directory.find(row => row.id === String(untouched))?.challengedToday).toBe(false);
     expect(f.run(10, ctx => f.service.snapshot(ctx)).directory.every(row => !row.challengedToday)).toBe(true);
-    f.advance(GUILD_MEMBERSHIP_COOLDOWN);
+    f.advance(GUILD_DAY_MICROS);
     expect(f.run(1, ctx => f.service.snapshot(ctx)).directory.every(row => !row.challengedToday)).toBe(true);
   });
   it("enforces daily attack budget and resets it at the UTC day boundary", () => {
@@ -179,7 +182,7 @@ describe("asynchronous battles and bounded standings", () => {
     const targets = [10, 20, 30, 40].map(who => f.makeGuild(who));
     for (const target of targets.slice(0, 3)) f.run(1, ctx => f.service.challenge(ctx, target));
     expect(() => f.run(1, ctx => f.service.challenge(ctx, targets[3]))).toThrow("three attacks");
-    f.advance(GUILD_MEMBERSHIP_COOLDOWN);
+    f.advance(GUILD_DAY_MICROS);
     f.run(1, ctx => f.service.challenge(ctx, targets[0]));
     expect(f.run(1, ctx => f.service.snapshot(ctx)).guild?.attacksRemaining).toBe(2);
   });
@@ -203,7 +206,7 @@ describe("asynchronous battles and bounded standings", () => {
     const a = f.makeGuild(1), b = f.makeGuild(10);
     for (let battle = 0; battle < 12; battle++) {
       f.run(1, ctx => f.service.challenge(ctx, b));
-      f.advance(GUILD_MEMBERSHIP_COOLDOWN);
+      f.advance(GUILD_DAY_MICROS);
     }
     expect([...f.db.guildBattleReport.guildId.filter(a)]).toHaveLength(10);
     expect([...f.db.guildBattleReport.guildId.filter(b)]).toHaveLength(10);
