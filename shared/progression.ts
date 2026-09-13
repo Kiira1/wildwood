@@ -28,7 +28,7 @@ export const FOREST_LANE_BASES: Record<ForestProgressionLane, ForestLaneBase> = 
   Bramble: { hp: 42, damage: 14, reward: { type: "health", amount: 7 } },
   Needle: { hp: 90, damage: 24, reward: { type: "speed", amount: .05 } },
   Mossback: { hp: 180, damage: 29, reward: { type: "armor", amount: 1 } },
-  Spitter: { hp: 24, damage: 48, reward: { type: "damage", amount: 1 } },
+  Spitter: { hp: 24, damage: 20, reward: { type: "damage", amount: 1 } },
   Brood: { hp: 220, damage: 56, reward: { type: "regen", amount: 1 } },
   Cindermaw: { hp: 360, damage: 86, reward: { type: "damage", amount: 3 } },
   "King Slime": { hp: 500, damage: 143, reward: { type: "health", amount: 15 } },

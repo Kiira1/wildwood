@@ -320,8 +320,16 @@ describe("Home", () => {
 
 
 describe("regional group aggro", () => {
+  it("starts new characters with passive recovery", () => {
+    expect(createGameBootstrap().player.regen).toBe(0.2);
+  });
+  it("lets newcomers fight forest enemies individually", () => {
+    const sites = createSpawnSites({ x: 4040, y: 4240 }, TUTORIAL_FOREST_MAP_ID);
+    expect(sites.every(site => !site.groupAggro)).toBe(true);
+    expect(sites.filter(site => site.campName === "Ember Fen").every(site => site.leashRange < 900)).toBe(true);
+  });
   it.each([
-    TUTORIAL_FOREST_MAP_ID, BEGINNER_DESERT_MAP_ID, INTERMEDIATE_SNOWLANDS_MAP_ID,
+    BEGINNER_DESERT_MAP_ID, INTERMEDIATE_SNOWLANDS_MAP_ID,
     ADVANCED_LAVA_WASTES_MAP_ID, INFERNAL_DEPTHS_MAP_ID, WATER_REACH_MAP_ID,
     SAMURAI_GARDEN_MAP_ID, CLOUDSPIRE_MAP_ID, MOONFEN_MAP_ID,
     CRYSTAL_HOLLOWS_MAP_ID, CLOCKWORK_RUINS_MAP_ID, DUSKFALL_ORCHARD_MAP_ID,

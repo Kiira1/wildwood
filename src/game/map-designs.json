@@ -3121,7 +3121,7 @@
         {
           "name": "Ember Fen",
           "x": 850,
-          "y": 1450,
+          "y": 1700,
           "minRadius": 230,
           "radius": 420,
           "count": 6,
@@ -3133,7 +3133,7 @@
         },
         {
           "name": "Thornshot Rise",
-          "x": 2300,
+          "x": 1750,
           "y": 800,
           "minRadius": 210,
           "radius": 360,

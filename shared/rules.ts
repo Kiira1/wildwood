@@ -13,6 +13,7 @@ export const WORLD_HEIGHT = 4800;
 export const PLAYER_SPAWN = { x: 360, y: 360 } as const;
 export const PLAYER_RADIUS = 17;
 export const PLAYER_BASE_HP = 100;
+export const PLAYER_BASE_REGEN = 0.2;
 export const PLAYER_SPEED = 180;
 export const BOOTS_SPEED_BONUS = 0;
 export const MOVE_SPEED_RESEARCH_BONUS_PER_RANK = .02;

@@ -104,7 +104,6 @@ const afterUpdateGateShell = String.raw`
           </div>
           <div id="playerProfilePresence" class="player-profile-presence">CHECKING STATUS</div>
         </div>
-        <div id="playerProfilePower"><span class="power-label">Power:</span> <span class="power-value">0</span></div>
       </div>
       <button id="settingsBtn" class="profile-settings-button" type="button" aria-label="Open settings" aria-expanded="false" aria-controls="settingsPanel" title="Settings" hidden><img src="assets/wildstat/icons/Icon_Settings.png" alt="" aria-hidden="true"></button>
     </header>
@@ -123,6 +122,7 @@ const afterUpdateGateShell = String.raw`
     </div>
     <div id="profileCharacterPreview" class="profile-character-preview character-loadout-preview" aria-label="Player character and equipped items">
       <canvas id="profileCharacterCanvas" class="profile-character-canvas character-preview-canvas" width="240" height="136" aria-hidden="true"></canvas>
+      <div id="playerProfilePower" aria-label="Power 0"><span class="power-value">0</span><img class="power-icon" src="assets/wildstat/icons/Icon_Battle_Candy_v2.png" alt="" aria-hidden="true"></div>
       <button id="profileEquippedHeadSlot" class="equipment-slot profile-equipment-slot slot-head" type="button" data-slot="head"><span>HEAD</span></button>
       <button id="profileEquippedChestSlot" class="equipment-slot profile-equipment-slot slot-chest" type="button" data-slot="chest"><span>ARMOR</span></button>
       <div class="profile-character-stage">

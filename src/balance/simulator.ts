@@ -102,6 +102,7 @@ import {
   MAX_BASE_ATTACKS_PER_SECOND,
   MIN_ATTACK_INTERVAL,
   PLAYER_BASE_HP,
+  PLAYER_BASE_REGEN,
   PLAYER_PROJECTILE_SPEED,
   PLAYER_SPEED,
   SPIDER_REWARD_DAMAGE,
@@ -1719,7 +1720,7 @@ function simulateTrial(
   const state: MutableSimulationState = {
     time: 0,
     mapIndex: 0,
-    stats: { damage: 4, maxHp: PLAYER_BASE_HP, attackRate: DEFAULT_ATTACK_INTERVAL, armor: 0, regen: 0 },
+    stats: { damage: 4, maxHp: PLAYER_BASE_HP, attackRate: DEFAULT_ATTACK_INTERVAL, armor: 0, regen: PLAYER_BASE_REGEN },
     research: createEmptyResearchRanks(),
     equipped: { head: BASIC_PAPER_HAT, chest: "", weapon: STARTER_STONE },
     ownedItems: new Set([BASIC_PAPER_HAT, STARTER_STONE]),

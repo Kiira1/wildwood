@@ -22,6 +22,7 @@ describe("authored late-map incoming damage", () => {
 
   it("preserves the tutorial and keeps extra armor useful", () => {
     expect(ENEMY_TYPES.Bramble.damage).toBe(14);
+    expect(ENEMY_TYPES.Spitter.damage).toBe(20);
     const build = lateMapReferenceBuild(3), hit = ENEMY_TYPES["Geode Guardian"].damage;
     expect(damageAfterArmor(hit, build.armor * 10)).toBeLessThan(damageAfterArmor(hit, build.armor));
   });

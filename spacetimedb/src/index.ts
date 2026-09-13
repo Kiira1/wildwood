@@ -204,6 +204,7 @@ import {
   NAME_ADJECTIVES,
   NAME_CREATURES,
   PLAYER_BASE_HP,
+  PLAYER_BASE_REGEN,
   PLAYER_PROJECTILE_SPEED,
   PLAYER_RADIUS,
   PLAYER_SPAWN,
@@ -2120,7 +2121,7 @@ function defaultPlayerProgress(identity: any) {
     projectileCount: 1,
     attackRange: DEFAULT_ATTACK_RANGE,
     armor: 0,
-    regen: 0,
+    regen: PLAYER_BASE_REGEN,
     speed: PLAYER_SPEED,
     bootsCollected: true,
     inventoryJson: JSON.stringify([BASIC_PAPER_HAT, STARTER_STONE, TRAILBLAZER_BOOTS]),
@@ -3623,7 +3624,7 @@ function hasFreshProgress(progress: any) {
     progress.projectileCount === defaultProgress.projectileCount &&
     progress.attackRange === defaultProgress.attackRange &&
     progress.armor === defaultProgress.armor &&
-    progress.regen === defaultProgress.regen &&
+    (progress.regen === 0 || Math.abs(progress.regen - defaultProgress.regen) < 1e-6) &&
     progress.speed === defaultProgress.speed &&
     (progress.speedOverride ?? 0) === 0 &&
     progress.bootsCollected === defaultProgress.bootsCollected &&

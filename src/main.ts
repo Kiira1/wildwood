@@ -96,6 +96,7 @@ import {
   MAX_PLAYER_STAT,
   MIN_ATTACK_INTERVAL,
   PLAYER_BASE_HP as BASE_PLAYER_HP,
+  PLAYER_BASE_REGEN,
   PLAYER_SPEED as BASE_PLAYER_SPEED,
   PLAYER_SPAWN,
 } from "../shared/rules";
@@ -1119,7 +1120,7 @@ import {
     clearTransientCombat: () => { projectileStore.clear(); effects.clear(); enemySimulation.clearRemoteCombat(); },
     getCurrentMapId: () => currentMapId,
     mapSpawn: (mapId) => mapId === TUTORIAL_FOREST_MAP_ID ? START_SPAWN : MAP_CONFIG[mapId].arrival,
-    initialStats: { maxHp: BASE_PLAYER_HP, damage: 4, attackRate: STARTING_ATTACK_INTERVAL, projectileSpeed: BASE_PROJECTILE_SPEED, projectileCount: 1, attackRange: BASE_ATTACK_RANGE, armor: 0, regen: 0, speed: BASE_PLAYER_SPEED * localTestMultiplier },
+    initialStats: { maxHp: BASE_PLAYER_HP, damage: 4, attackRate: STARTING_ATTACK_INTERVAL, projectileSpeed: BASE_PROJECTILE_SPEED, projectileCount: 1, attackRange: BASE_ATTACK_RANGE, armor: 0, regen: PLAYER_BASE_REGEN, speed: BASE_PLAYER_SPEED * localTestMultiplier },
     invalidateStaticWorld,
     spawnFromSite,
     clearPlayerCombat: () => { playerCombat.clearPendingThrow(); playerCombat.clearPendingBossHits(); },

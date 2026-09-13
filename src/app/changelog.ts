@@ -1,4 +1,10 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.666": [
+    "Starting forest enemies fight individually, with Brambles farther down and Spitters closer to spawn.",
+    "Spitter damage reduced to 20. New characters start with 0.2 health regeneration per second.",
+    "Home teleport shows its cooldown directly on the button.",
+    "Improved profile character preview proportions, equipment slots, and power display.",
+  ],
   "0.665": [
     "Fixed missing chat portraits and added batched loading for other players’ pictures.",
     "Removed the Shop Back button outline and temporarily hid gem price cards while preserving their spacing.",
@@ -1687,6 +1693,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.666": "2026-09-13",
   "0.665": "2026-09-13",
   "0.664": "2026-09-13",
   "0.663": "2026-09-13",

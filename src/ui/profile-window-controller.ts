@@ -52,9 +52,11 @@ export function createProfileWindowController(elements: {
   }
 
   function renderPower(value: string) {
-    const label = document.createElement("span"); label.className = "power-label"; label.textContent = "Power:";
     const number = document.createElement("span"); number.className = "power-value"; number.textContent = value;
-    elements.power.replaceChildren(label, " ", number);
+    const icon = document.createElement("img"); icon.className = "power-icon";
+    icon.src = "assets/wildstat/icons/Icon_Battle_Candy_v2.png"; icon.alt = ""; icon.setAttribute("aria-hidden", "true");
+    elements.power.setAttribute("aria-label", `Power ${value}`);
+    elements.power.replaceChildren(number, icon);
   }
 
   function updateSkinChoices(value: number) {

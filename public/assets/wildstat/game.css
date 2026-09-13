@@ -229,6 +229,11 @@
     pointer-events: none;
   }
   .tech-tree-button { position: relative; }
+  .home-teleport-cooldown { position: absolute; top: calc((100% - env(safe-area-inset-bottom, 0px) - 44px) / 2); left: 50%; display: grid; place-items: center; width: 31px; height: 31px; transform: translateX(-50%); border-radius: 50%; background: #152c3e; color: #fff; font: 900 17px/1 var(--font-rounded); text-shadow: 0 1px 2px #000; pointer-events: none; }
+  .home-teleport-cooldown::before { position: absolute; inset: -2px; border-radius: 50%; background: conic-gradient(#8bd6ff var(--cooldown-progress, 100%), rgba(139,214,255,.16) 0); -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 0); mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 0); content: ""; }
+  .home-teleport-cooldown[hidden] { display: none; }
+  #techTreeBtn.is-home-cooldown { opacity: 1; }
+  #techTreeBtn.is-home-cooldown .toolbar-icon { visibility: hidden; }
   .tech-tree-notice { position: absolute; top: 12%; left: calc(50% + 8px); width: 8px; height: 8px; border: 1px solid #fff; border-radius: 50%; background: #e63d3d; box-shadow: 0 1px 0 #000; pointer-events: none; }
   .tech-tree-notice[hidden] { display: none; }
 
@@ -2512,17 +2517,19 @@
   .profile-name-edit[hidden] { display: none; }
   .player-profile-presence { margin-top: 4px; color: var(--muted); font-size: 8px; letter-spacing: .08em; }
   .player-profile-presence.is-online { color: #72ef58; }
-  #playerProfilePower { margin-left: auto; font-size: 11px; white-space: nowrap; text-align: right; }
+  #playerProfilePower { position: absolute; z-index: 2; top: 6px; left: 62px; right: 62px; display: flex; align-items: center; justify-content: center; gap: 3px; color: #fff; font: 900 14px/1 var(--player-name-font); white-space: nowrap; -webkit-text-stroke: var(--text-outline-width) #000; paint-order: stroke fill; text-shadow: var(--text-shadow); pointer-events: none; }
+  #playerProfilePower .power-icon { width: 18px; height: 18px; }
   .power-label { color: var(--gold); }
   .power-value { color: #fff; }
-  .profile-character-preview { --inventory-line: rgba(255,255,255,.17); --inventory-muted: #aebcaf; position: relative; display: grid; grid-template-columns: 54px minmax(0, 1fr) 54px; grid-template-rows: repeat(2, 44px); justify-content: center; align-content: center; align-items: stretch; gap: 2px 4px; height: 112px; min-height: 112px; margin: 5px 0 2px; padding: 4px; overflow: visible; }
+  .profile-character-preview { --inventory-line: rgba(255,255,255,.17); --inventory-muted: #aebcaf; position: relative; display: grid; grid-template-columns: 54px minmax(0, 1fr) 54px; grid-template-rows: repeat(2, 54px); justify-content: center; align-content: center; align-items: stretch; gap: 2px 4px; height: 132px; min-height: 132px; margin: 5px 0 2px; padding: 4px; overflow: visible; }
   .profile-character-stage { position: relative; z-index: 1; grid-column: 2; grid-row: 1 / span 2; min-width: 0; min-height: 0; overflow: visible; border-radius: 3px; background: transparent; pointer-events: none; }
-  .profile-equipment-slot { grid-template-rows: 12px minmax(0, 1fr); gap: 1px; height: 44px; min-height: 44px; aspect-ratio: auto; padding: 2px; border-radius: 5px; cursor: pointer; }
-  .profile-equipment-slot.is-equipped { cursor: pointer; }
+  .profile-equipment-slot { grid-template-rows: 12px minmax(0, 1fr); gap: 1px; width: 54px; height: 54px; min-height: 54px; aspect-ratio: 1; padding: 2px; border-radius: 5px; cursor: pointer; }
+  .profile-equipment-slot.is-equipped { border-color: var(--inventory-line); cursor: pointer; }
   .profile-equipment-slot:disabled { cursor: default; opacity: .72; }
   .profile-equipment-slot .equipment-slot-label { font-size: 7px; }
+  .profile-equipment-slot.is-equipped .equipment-slot-label { visibility: hidden; }
   .profile-equipment-slot .equipment-slot-name { display: none; }
-  .profile-equipment-slot .inventory-item-art { max-width: 30px; max-height: 23px; }
+  .profile-equipment-slot .inventory-item-art { max-width: 30px; max-height: 33px; }
   .profile-equipment-slot .boot-pixel-icon { transform: scale(.82); }
   .profile-equipment-slot .inventory-upgrade-level { top: auto; right: 1px; bottom: 1px; min-width: 16px; padding: 1px 2px; font-size: 7px; }
   .profile-equipment-slot.is-cosmetic { border-color: #d990bc; background: linear-gradient(rgba(67,40,58,.62), rgba(36,21,31,.70)); }
