@@ -1352,6 +1352,7 @@ import {
   });
 
   guildPanel = createGuildPanel({
+    lowPerformanceMode: appShell.lowPerformanceMode,
     replayAssets: { player: playerAppearanceAssets, prepare: () => assets.ensureMapAssets("home_exterior"), trees: assets.treeSpritesheet, treeBounds: assets.treeSpriteBounds },
     api: () => coop?.guild,
     socialApi: () => coop?.social,
@@ -1632,6 +1633,7 @@ import {
     accountInConflict: () => Boolean(coop?.accountState?.().sessionConflict),
     lowPerformanceMode: appShell.lowPerformanceMode,
     presentationInputActive: () => playerInput.movement().source !== "none",
+    isReplayActive: () => duelRuntime.isReplayActive(),
     ensureMusicPlaying: appShell.ensureMusicPlaying,
     hideStart: startup.hideStart,
     hideGameOver: () => { localPlayerDeath = null; deathScreen.hide(); },

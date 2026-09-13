@@ -72,6 +72,30 @@ function interpolatedMotionDeltas(refreshRate: number, frameCount: number) {
 }
 
 describe("game session frame scheduling", () => {
+  it.each([false, true])("keeps an idle duel replay smooth with Low Performance Mode=%s", (lowPerformanceMode) => {
+    vi.stubGlobal("document", { hidden: false, addEventListener: vi.fn() });
+    vi.stubGlobal("requestAnimationFrame", vi.fn());
+    const render = vi.fn();
+    let replayActive = true;
+    try {
+      const session = createGameSessionController({
+        render, lowPerformanceMode: () => lowPerformanceMode, isReplayActive: () => replayActive,
+        presentationInputActive: () => false, recordPerformance: vi.fn(),
+        performancePanelVisible: () => false, fpsDisplayVisible: () => false,
+      } as any);
+      // No running world or input: a replay remains viewable while dead/paused.
+      const start = performance.now() + 10_000;
+      session.loop(start);
+      render.mockClear();
+      for (let index = 1; index <= 120; index++) session.loop(start + index * 1000 / 120);
+      expect(render).toHaveBeenCalledTimes(lowPerformanceMode ? 30 : 60);
+      replayActive = false;
+      session.loop(start + 2_000);
+      render.mockClear();
+      for (let index = 1; index <= 120; index++) session.loop(start + 2_000 + index * 1000 / 120);
+      expect(render).toHaveBeenCalledTimes(30);
+    } finally { vi.unstubAllGlobals(); }
+  });
   it("does no update or render work while the document is hidden", () => {
     vi.stubGlobal("document", { hidden: true, addEventListener: vi.fn() });
     vi.stubGlobal("requestAnimationFrame", vi.fn());

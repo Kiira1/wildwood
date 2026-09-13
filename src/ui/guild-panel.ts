@@ -16,6 +16,7 @@ type Options = {
   onClose: () => void;
   document?: Document;
   replayAssets?: GuildReplayAssets;
+  lowPerformanceMode?: () => boolean;
 };
 const number = (value: number) => new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(value);
 const date = (micros: string) => new Date(Number(BigInt(micros) / 1000n));
@@ -338,7 +339,7 @@ export function createGuildPanel(options: Options) {
     dialog.replaceChildren();
     if (activeReplay?.result.version === 2) {
       const battle = activeReplay;
-      replay = createGuildBattleReplay(dialog, activeReplay.result, [battle.attacker, battle.defender], options.replayAssets, backFromReplay);
+      replay = createGuildBattleReplay(dialog, activeReplay.result, [battle.attacker, battle.defender], options.replayAssets, backFromReplay, options.lowPerformanceMode);
       dialog.querySelector("h3")!.id = "guildTitle";
       return;
     }

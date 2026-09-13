@@ -30,6 +30,26 @@ it("caps a 120 Hz guild replay at 60 rendered FPS without slowing playback", asy
     expect(Number((h.document.querySelector("input") as HTMLInputElement).value)).toBeCloseTo(1);
   } finally { replay.dispose(); renderer.mockRestore(); }
 });
+it("honors changes to Low Performance Mode without changing replay speed", async () => {
+  const h = setup();
+  const draw = vi.fn(() => [{ hp: 100 }, { hp: 100 }] as any);
+  const renderer = vi.spyOn(battlefield, "createGuildBattlefieldRenderer").mockReturnValue({ draw, dispose: vi.fn() });
+  let lowPerformance = true;
+  const replay = createGuildBattleReplay(h.host, h.battle, ["Fire", "Moon"],
+    { prepare: async () => {} } as GuildReplayAssets, undefined, () => lowPerformance);
+  try {
+    await settle(); draw.mockClear();
+    for (let index = 0; index <= 360; index++) h.frame(100 + index * 1000 / 120);
+    expect(draw).toHaveBeenCalledTimes(91);
+    expect(Number((h.document.querySelector("input") as HTMLInputElement).value)).toBeCloseTo(3);
+    lowPerformance = false;
+    h.frame(4100); draw.mockClear();
+    for (let index = 1; index <= 120; index++) h.frame(4100 + index * 1000 / 120);
+    expect(draw).toHaveBeenCalledTimes(60);
+    // The existing long-stall clamp adds .25s across the deliberate 1s gap.
+    expect(Number((h.document.querySelector("input") as HTMLInputElement).value)).toBeCloseTo(4.25);
+  } finally { replay.dispose(); renderer.mockRestore(); }
+});
 it("supports pause, seek, restart and releases the animation callback on close", async () => {
   const h = setup(), replay = createGuildBattleReplay(h.host, h.battle, ["Fire", "Moon"]);
   await settle(); expect(h.scheduled.size).toBe(1);

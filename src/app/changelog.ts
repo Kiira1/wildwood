@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.669": [
+    "Duel and guild battle replays stay at 60 FPS while idle, with a 30 FPS cap in Low Performance Mode.",
+  ],
   "0.668": [
     "Fixed late responses from a departed map triggering account recovery after teleporting Home.",
     "Simplified leaderboard stat tabs to symbols, removed podium number prefixes, and reduced the first-place name size.",
@@ -1707,6 +1710,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.669": "2026-09-13",
   "0.668": "2026-09-13",
   "0.667": "2026-09-13",
   "0.666": "2026-09-13",

@@ -6,7 +6,7 @@ export type { GuildReplayAssets } from "./guild-battlefield-renderer";
 
 /** A single fitted canvas; deterministic frames are computed once, never from
  * the render loop. No world simulation, network polling, or per-actor DOM. */
-export function createGuildBattleReplay(parent: HTMLElement, battle: GuildBattleResult, names: [string, string], assets?: GuildReplayAssets, onBack?: () => void) {
+export function createGuildBattleReplay(parent: HTMLElement, battle: GuildBattleResult, names: [string, string], assets?: GuildReplayAssets, onBack?: () => void, lowPerformanceMode: () => boolean = () => false) {
   const doc = parent.ownerDocument, win = doc.defaultView;
   const root = doc.createElement("section"); root.className = "guild-replay";
   const title = doc.createElement("h3"); title.textContent = `[${names[0]}] vs [${names[1]}]`;
@@ -45,7 +45,7 @@ export function createGuildBattleReplay(parent: HTMLElement, battle: GuildBattle
     request = 0;
     if (disposed || !playing || doc.hidden) { last = 0; return; }
     if (!frameDeadlineReached(timestamp, nextFrameAt)) { schedule(); return; }
-    nextFrameAt = nextPresentationDeadline(timestamp, nextFrameAt);
+    nextFrameAt = nextPresentationDeadline(timestamp, nextFrameAt, lowPerformanceMode() ? 30 : 60);
     if (last) elapsed = Math.min(endTime, elapsed + Math.min(.25, (timestamp - last) / 1000) * rate);
     last = timestamp;
     if (elapsed >= endTime) playing = false;
