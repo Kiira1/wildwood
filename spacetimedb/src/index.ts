@@ -8224,6 +8224,17 @@ export const claimGuestAccount = spacetimedb.reducer(
       else ctx.db.playerLastLocation.insert(nextLocation);
     }
 
+    const guestHomeReturn = ctx.db.homeReturnLocation.identity.find(link.guest);
+    if (guestHomeReturn) {
+      const nextHomeReturn = { ...guestHomeReturn, identity: ctx.sender };
+      if (ctx.db.homeReturnLocation.identity.find(ctx.sender)) ctx.db.homeReturnLocation.identity.update(nextHomeReturn);
+      else ctx.db.homeReturnLocation.insert(nextHomeReturn);
+      ctx.db.homeReturnLocation.identity.delete(link.guest);
+    } else if (guestLocation?.mapId === HOME_EXTERIOR_MAP_ID && ctx.db.homeReturnLocation.identity.find(ctx.sender)) {
+      // Never borrow a different save's return point when importing a Home save.
+      ctx.db.homeReturnLocation.identity.delete(ctx.sender);
+    }
+
     const guestResearch = ctx.db.playerResearch.identity.find(link.guest);
     const accountResearch = ctx.db.playerResearch.identity.find(ctx.sender);
     if (guestResearch) {
@@ -8314,8 +8325,11 @@ export const claimGuestAccount = spacetimedb.reducer(
       insertSnapshotRow(ctx, "playerProfile", { identity: ctx.sender, displayName: guestProfile.displayName, profileIcon: guestProfile.profileIcon, playerSprite: guestProfile.playerSprite, skinTone: guestProfile.skinTone, gender: guestProfile.gender });
     } else if (guestProfile?.gender && accountProfile?.gender === PLAYER_GENDER_UNSET) {
       updateSnapshotRow(ctx, "playerProfile", { ...accountProfile, gender: guestProfile.gender });
-    } else if (guestProfile?.gender && !accountProfile) {
-      insertSnapshotRow(ctx, "playerProfile", { identity: ctx.sender, displayName: generatedDisplayName(ctx.sender), profileIcon: 0, playerSprite: 0, skinTone: 3, gender: guestProfile.gender });
+    } else if (!accountProfile) {
+      // Registration can claim the save before enterWorld creates a profile.
+      // Guild membership transfer below requires the destination profile even
+      // when the guest never selected a gender or custom display name.
+      insertSnapshotRow(ctx, "playerProfile", { identity: ctx.sender, displayName: generatedDisplayName(ctx.sender), profileIcon: 0, playerSprite: 0, skinTone: 3, gender: guestProfile?.gender ?? PLAYER_GENDER_UNSET });
     }
     if (transferGuestName && guestProfile) {
       syncDisplayNamePresentation(ctx, ctx.sender, guestProfile.displayName);
@@ -10059,8 +10073,12 @@ export const changeMap = spacetimedb.reducer(
       if (current.hp <= 0) throw new SenderError("Respawn before teleporting home.");
       if (current.mapId === HOME_EXTERIOR_MAP_ID) {
         const saved = ctx.db.homeReturnLocation.identity.find(ctx.sender);
-        if (!saved) throw new SenderError("Home return location unavailable.");
-        transitionPlayerMap(ctx, current, saved.mapId, saved, saved.facing);
+        // Recover already-linked accounts whose older client/server omitted
+        // their Home return record. Keep their stats and unlocks intact.
+        const destination = saved && saved.mapId !== HOME_EXTERIOR_MAP_ID && VALID_MAP_IDS.has(saved.mapId)
+          && [saved.x, saved.y, saved.facing].every(Number.isFinite)
+          ? saved : { mapId: TUTORIAL_FOREST_MAP_ID, ...PLAYER_SPAWN, facing: 0 };
+        transitionPlayerMap(ctx, current, destination.mapId, destination, destination.facing);
       } else {
         if (![x, y].every(Number.isFinite) || x < PLAYER_RADIUS || y < PLAYER_RADIUS || x > WORLD.width - PLAYER_RADIUS || y > WORLD.height - PLAYER_RADIUS) throw new SenderError("Invalid teleport position.");
         const saved = { identity: ctx.sender, mapId: current.mapId, x, y, facing: current.facing };

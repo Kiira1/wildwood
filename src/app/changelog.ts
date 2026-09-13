@@ -1,4 +1,8 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.664": [
+    "Fixed guest registration losing the Home return location and added recovery for players already stuck at Home.",
+    "Added a five-second cooldown after using the Home toolbar teleport.",
+  ],
   "0.663": [
     "Chat now loads older messages as you scroll up, with a small down arrow to return to the latest messages.",
     "Simplified chat tabs to white text with thin dividers and an underline for the selected channel.",
@@ -1679,6 +1683,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.664": "2026-09-13",
   "0.663": "2026-09-13",
   "0.662": "2026-09-13",
   "0.661": "2026-09-13",

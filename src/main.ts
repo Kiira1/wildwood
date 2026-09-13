@@ -4,6 +4,7 @@ import { bindPlayerNameTags } from "./app/player-name-tags";
 import { HOME_RESEARCH_POSITION, HOME_WORLD_WIDTH, HOME_WORLD_HEIGHT } from "../shared/home";
 import { WORLD_WIDTH, WORLD_HEIGHT } from "../shared/rules";
 import { createGuildPanel } from "./ui/guild-panel";
+import { bindHomeTeleportButton } from "./ui/home-teleport-button";
 import { isDeveloperIdentity } from "./app/developer";
 import { nativeBridgeForRuntime } from "./app/native-ads";
 import {
@@ -1441,11 +1442,10 @@ import {
     showMessage,
   });
 
-  gameElements.techTreeBtn.addEventListener("click", () => {
-    techTree.close(); upgradeBenchController.close();
-    void mapController.teleportHome().then(changed => {
-      if (!changed) showMessage("TELEPORT UNAVAILABLE", "#ffbc91");
-    }).catch(() => showMessage("TELEPORT FAILED · TRY AGAIN", "#ffbc91"));
+  bindHomeTeleportButton(gameElements.techTreeBtn, {
+    beforeTeleport: () => { techTree.close(); upgradeBenchController.close(); },
+    teleport: () => mapController.teleportHome(),
+    showFailure: failed => showMessage(failed ? "TELEPORT FAILED · TRY AGAIN" : "TELEPORT UNAVAILABLE", "#ffbc91"),
   });
   let touchingResearch = false;
   function updateHomeStations() {

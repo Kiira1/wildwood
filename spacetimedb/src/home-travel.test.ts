@@ -65,3 +65,35 @@ describe("single player home travel", () => {
     expect(() => f.run(server.requestDuel, { opponent: other })).toThrow("Home is single player");
   });
 });
+
+it("lets an already-stranded Home account return safely without changing progression", () => {
+  const f = crystalFixture();
+  f.run(server.changeMap, { mapId: HOME_EXTERIOR_MAP_ID, x: 1234, y: 2345 });
+  f.db.homeReturnLocation.identity.delete(f.ctx.sender);
+  const progress = f.db.playerProgress.identity.find(f.ctx.sender);
+  f.run(server.changeMap, { mapId: HOME_EXTERIOR_MAP_ID, x: 500, y: 700 });
+  expect(f.db.player.identity.find(f.ctx.sender).mapId).toBe("tutorial_forest");
+  expect(f.db.playerLastLocation.identity.find(f.ctx.sender).mapId).toBe("tutorial_forest");
+  expect(f.db.playerProgress.identity.find(f.ctx.sender)).toEqual(progress);
+});
+
+it("transfers a guest's Home return position during registration", async () => {
+  const { SPACETIME_AUTH_ISSUER, SPACETIME_AUTH_CLIENT_ID, ATTACK_BALANCE_VERSION } = await import("../../shared/rules");
+  const f = crystalFixture();
+  const guest = identity("2");
+  f.db.playerProgress.identity.delete(f.ctx.sender);
+  f.db.playerProfile.identity.delete(f.ctx.sender);
+  f.progress(guest, { crystalHollowsUnlocked: true });
+  f.seed("playerBalanceVersion", { identity: guest, version: ATTACK_BALANCE_VERSION });
+  f.seed("playerLastLocation", { identity: guest, mapId: HOME_EXTERIOR_MAP_ID, ...HOME_EXTERIOR_SPAWN, facing: 0 });
+  f.seed("homeReturnLocation", { identity: guest, mapId: "crystal_hollows", x: 1234, y: 2345, facing: 1 });
+  f.seed("accountLink", { code: "home-link", guest, createdAt: f.ctx.timestamp });
+  f.ctx.senderAuth = { jwt: { issuer: SPACETIME_AUTH_ISSUER, audience: [SPACETIME_AUTH_CLIENT_ID] } };
+  f.run(server.claimGuestAccount, { code: "home-link" });
+  expect(f.db.homeReturnLocation.identity.find(guest)).toBeNull();
+  expect(f.db.playerProfile.identity.find(f.ctx.sender)).not.toBeNull();
+  f.patch("player", { mapId: HOME_EXTERIOR_MAP_ID, ...HOME_EXTERIOR_SPAWN });
+  f.run(server.changeMap, { mapId: HOME_EXTERIOR_MAP_ID, x: 500, y: 700 });
+  expect(f.db.player.identity.find(f.ctx.sender)).toMatchObject({ mapId: "crystal_hollows", x: 1234, y: 2345, facing: 1 });
+  expect(f.db.playerProgress.identity.find(f.ctx.sender).crystalHollowsUnlocked).toBe(true);
+});
