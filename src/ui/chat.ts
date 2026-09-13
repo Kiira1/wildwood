@@ -119,12 +119,18 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
   const unread = createChatUnreadTracker();
   const drafts = new Map<string, string>();
   const history = createChatHistory<ChatMessage>();
-  const historyActions = document.createElement("div");
-  historyActions.className = "chat-history-actions";
-  const olderButton = document.createElement("button"), latestButton = document.createElement("button");
-  olderButton.type = latestButton.type = "button";
-  olderButton.textContent = "Load older"; latestButton.textContent = "Latest messages";
-  historyActions.append(olderButton, latestButton);
+  const latestButton = document.createElement("button");
+  latestButton.id = "chatLatestBtn";
+  latestButton.type = "button";
+  latestButton.textContent = "↓";
+  latestButton.setAttribute("aria-label", "Jump to latest messages");
+  latestButton.hidden = true;
+  let lastScrollTop = 0;
+  function refreshLatestButton() {
+    const distance = elements.messages.scrollHeight - elements.messages.clientHeight - elements.messages.scrollTop;
+    latestButton.hidden = !large || !enabled || distance <= 80;
+    latestButton.disabled = history.state().loading;
+  }
   const channelPicker = createChatChannelPicker((nextChannel, username, identity) => {
     drafts.set(conversationKey(), elements.input.value);
     channel = nextChannel;
@@ -309,10 +315,7 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
     const now = Date.now();
     history.select(`${identity}:${conversationKey()}:${coop?.social?.historyRevision?.() ?? 0}:${coop?.chatHistoryRevision?.() ?? 0}:${large}`);
     const historyState = history.state();
-    historyActions.hidden = !large;
-    olderButton.disabled = historyState.loading || !historyState.hasMore;
-    olderButton.textContent = historyState.loading ? "Loading…" : historyState.hasMore ? "Load older" : "No older messages";
-    latestButton.hidden = !historyState.frozen;
+    refreshLatestButton();
     const revision = `${conversationKey()}:${coop?.chatRevision?.() ?? -1}:${coop?.social?.revision() ?? -1}:${coop?.localIdentity?.() ?? ""}:${enabled}:${large}:${historyState.revision}`;
     if (revision === renderedRevision && now < nextExpiryAt) return;
     const conversations = coop?.social?.privateConversations() ?? [];
@@ -483,18 +486,25 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
       const heightChange = elements.messages.scrollHeight - previousScrollHeight;
       elements.messages.scrollTop = Math.max(0, restored ? restored.offsetTop - anchorOffset : previousScrollTop + Math.min(0, heightChange));
     }
+    lastScrollTop = elements.messages.scrollTop;
+    refreshLatestButton();
   }
 
   function init() {
     messageActions.init();
     elements.panel.insertBefore(channelPicker.root, elements.messages);
-    channelPicker.root.append(historyActions);
-    olderButton.addEventListener("click", () => { void loadHistory(); });
+    elements.form.append(latestButton);
     latestButton.addEventListener("click", () => { void loadHistory(true); });
     elements.messages.addEventListener("scroll", () => {
       if (!large || !enabled) return;
-      if (elements.messages.scrollHeight - elements.messages.clientHeight - elements.messages.scrollTop > 16) history.freeze(currentMessages());
-      if (elements.messages.scrollTop <= 1) void loadHistory();
+      const top = elements.messages.scrollTop;
+      const scrollingUp = top < lastScrollTop;
+      lastScrollTop = top;
+      const distance = elements.messages.scrollHeight - elements.messages.clientHeight - top;
+      if (distance > 16) history.freeze(currentMessages());
+      refreshLatestButton();
+      if (scrollingUp && top <= 80) void loadHistory();
+      else if (distance <= 16 && history.state().frozen && !history.state().loading) void loadHistory(true);
     });
     elements.toggle.addEventListener("click", () => {
       enabled = !enabled;

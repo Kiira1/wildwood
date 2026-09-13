@@ -1,4 +1,8 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.663": [
+    "Chat now loads older messages as you scroll up, with a small down arrow to return to the latest messages.",
+    "Simplified chat tabs to white text with thin dividers and an underline for the selected channel.",
+  ],
   "0.662": [
     "Duel replay arenas now fill the screen behind the Back button, without reserving space for the hidden toolbar.",
   ],
@@ -1675,6 +1679,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.663": "2026-09-13",
   "0.662": "2026-09-13",
   "0.661": "2026-09-13",
   "0.660": "2026-09-13",
