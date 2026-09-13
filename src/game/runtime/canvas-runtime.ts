@@ -2,7 +2,8 @@ import { createCanvasPrimitives } from "../canvas";
 import { requiredCanvasContext } from "./dom";
 import { canvasRenderPixelRatio } from "./render-budget";
 
-export function gameplayBottomInset(toolbarHeight: number) {
+export function gameplayBottomInset(toolbarHeight: number, fullScreenScene = false) {
+  if (fullScreenScene) return 0;
   return Number.isFinite(toolbarHeight) ? Math.max(0, toolbarHeight) : 0;
 }
 

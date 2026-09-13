@@ -125,9 +125,8 @@ import {
   const canvasRuntime = createCanvasRuntime({
     canvas,
     transparent: Boolean(staticWorldLayer),
-    bottomInset: () => document.body.classList.contains("is-cutscene")
-      ? 0
-      : gameplayBottomInset(toolbar.getBoundingClientRect().height),
+    bottomInset: () => gameplayBottomInset(toolbar.getBoundingClientRect().height,
+      document.body.matches(".is-cutscene, .is-replaying")),
     getActorShadowSprite: () => actorShadowSprite,
   });
   const { ctx, outlinedWorldText, fillWorldText, pixelCircle, roundRect, drawActorShadow } = canvasRuntime;
@@ -1109,6 +1108,7 @@ import {
     now: () => performance.now(),
     nowMs: () => Date.now(),
     replayTitle: duelReplayTitle,
+    resizeViewport: canvasRuntime.resize,
     duelResult: duelResultEl,
     duelReplay: duelReplayEl,
     duelCountdown: duelCountdownEl,

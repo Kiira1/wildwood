@@ -5,6 +5,11 @@ describe("gameplay canvas bottom inset", () => {
   it("reserves only the toolbar so compact chat overlays the world", () => {
     expect(gameplayBottomInset(64)).toBe(64);
   });
+
+  it("fills the screen behind replay controls and restores the gameplay toolbar space", () => {
+    expect(canvasViewportMetrics(390, 844, gameplayBottomInset(64, true), 3).height).toBe(844);
+    expect(canvasViewportMetrics(390, 844, gameplayBottomInset(64, false), 3).height).toBe(780);
+  });
 });
 
 describe("gameplay canvas viewport", () => {

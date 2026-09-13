@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.662": [
+    "Duel replay arenas now fill the screen behind the Back button, without reserving space for the hidden toolbar.",
+  ],
   "0.661": [
     "Duel replays now use the standard red Back button at the bottom and keep replay information below the phone notch.",
   ],
@@ -1672,6 +1675,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.662": "2026-09-13",
   "0.661": "2026-09-13",
   "0.660": "2026-09-13",
   "0.659": "2026-09-13",

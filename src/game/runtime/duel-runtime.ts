@@ -20,6 +20,7 @@ export function createDuelRuntime(hooks: {
   now: () => number;
   nowMs: () => number;
   replayTitle: HTMLElement;
+  resizeViewport: () => void;
   duelResult: HTMLElement;
   duelReplay: HTMLElement;
   duelCountdown: HTMLElement;
@@ -63,6 +64,7 @@ export function createDuelRuntime(hooks: {
     hooks.duelResult.hidden = true;
     hooks.duelReplay.hidden = false;
     document.body.classList.add("is-replaying");
+    hooks.resizeViewport();
   }
 
   function closeReplay() {
@@ -70,6 +72,7 @@ export function createDuelRuntime(hooks: {
     presentation.clearReplay();
     hooks.duelCountdown.hidden = true;
     document.body.classList.remove("is-replaying");
+    hooks.resizeViewport();
   }
 
   function closeReplayWindow() {
