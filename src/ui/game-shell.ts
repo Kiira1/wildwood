@@ -344,8 +344,10 @@ const afterUpdateGateShell = String.raw`
 <div id="duelReplay" hidden>
   <div id="duelReplayHud">
     <span id="duelReplayTitle">Duel Replay · Observer</span>
-    <button id="closeDuelReplayBtn" class="secondary-button" type="button">EXIT REPLAY</button>
   </div>
+  <footer class="window-back-footer">
+    <button id="closeDuelReplayBtn" class="window-back-button" type="button">Back</button>
+  </footer>
 </div>
 
 `;

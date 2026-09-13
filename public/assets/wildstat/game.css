@@ -2963,9 +2963,10 @@
   .chat-name:hover { filter: brightness(1.2); }
   #duelReplay { position: fixed; inset: 0; z-index: 10; background: #42494b; }
   #duelReplay[hidden] { display: none; }
-  #duelReplayHud { position: fixed; top: 12px; left: 50%; display: flex; align-items: center; gap: 10px; transform: translateX(-50%); color: #eef1ee; font: 900 11px var(--font-rounded); letter-spacing: .08em; white-space: nowrap; }
-  .duel-replay-player-name { display: inline-flex; align-items: center; gap: 3px; }
-  #duelReplayHud button { margin: 0; padding: 7px 10px; border-width: 2px; border-radius: 7px; font-size: 11px; }
+  #duelReplayHud { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 12px); right: var(--hud-safe-right); left: var(--hud-safe-left); display: flex; justify-content: center; color: #eef1ee; font: 900 11px/1.5 var(--font-rounded); letter-spacing: .08em; text-align: center; }
+  #duelReplayTitle { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+  .duel-replay-player-name { display: inline-flex; align-items: center; gap: 3px; max-width: 100%; }
+  #duelReplay > .window-back-footer { position: absolute; right: 0; bottom: 0; left: 0; padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--window-back-bottom-gap)); pointer-events: auto; }
   body.is-replaying #hud { display: none; }
   body.is-replaying #duelReplay { display: block; background: transparent; pointer-events: none; }
   body.is-replaying #duelReplayHud { pointer-events: auto; z-index: 11; }

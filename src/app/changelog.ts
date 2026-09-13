@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.661": [
+    "Duel replays now use the standard red Back button at the bottom and keep replay information below the phone notch.",
+  ],
   "0.660": [
     "Leaderboard previews now stay visible while switching stats, with players updated when the new rankings arrive.",
   ],
@@ -1669,6 +1672,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.661": "2026-09-13",
   "0.660": "2026-09-13",
   "0.659": "2026-09-13",
   "0.658": "2026-09-12",
