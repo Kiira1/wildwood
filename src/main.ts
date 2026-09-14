@@ -1,4 +1,5 @@
 import { createItemGiftController } from "./ui/item-gift-controller";
+import { createReconnectRecovery } from "./ui/reconnect-recovery";
 import { isProceduralMap, proceduralMapId } from "../shared/procedural-maps";
 import { createProceduralBossController } from "./game/runtime/procedural-boss-controller";
 import { bindPlayerNameTags } from "./app/player-name-tags";
@@ -1722,6 +1723,19 @@ import {
   });
   refreshDailyGemBonus = () => { developerItemGift.refresh(); dailyGemBonus.refresh(); };
 
+  const reconnectRecovery = createReconnectRecovery({
+    now: () => performance.now(),
+    retry: () => { coop?.retryConnection?.(); },
+    reload: () => {
+      // Never reload into account choice unless the active session handoff was saved.
+      if (!coop?.prepareUpdateReload?.(GAME_VERSION)) return false;
+      const url = new URL(window.location.href);
+      url.searchParams.set("v", GAME_VERSION);
+      window.location.replace(url.href);
+      return true;
+    },
+  });
+
   function refreshReconnectOverlay() {
     const reconnecting = Boolean(coop?.isReconnectingAfterWake?.());
     const account = coop?.accountState?.();
@@ -1730,7 +1744,10 @@ import {
     const diagnostics = coop?.connectionDiagnostics?.();
     const showReconnectOverlay = reconnecting && !waitingForServer && !accountRecoveryRequired;
     reconnectOverlayEl.hidden = !showReconnectOverlay;
-    reconnectDetailEl.textContent = diagnostics?.phase === "connecting"
+    const extended = reconnectRecovery.update(showReconnectOverlay);
+    reconnectRetryBtn.textContent = extended ? "RELOAD GAME" : "RETRY NOW";
+    reconnectDetailEl.textContent = extended ? "Taking longer than usual. Reload to restore your session."
+      : diagnostics?.phase === "connecting"
       ? "Connecting to WildStat…"
       : diagnostics?.phase === "preparing-session"
         ? "Restoring your session…"
@@ -1747,7 +1764,7 @@ import {
   reconnectRetryBtn.addEventListener("click", () => {
     reconnectRetryBtn.disabled = true;
     reconnectDetailEl.textContent = "Retrying connection now…";
-    coop?.retryConnection?.();
+    reconnectRecovery.activate();
   });
 
   startupCoordinator = createStartupCoordinator({

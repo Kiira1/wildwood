@@ -982,6 +982,32 @@ export const MiremawResult = __t.object("MiremawResult", {
 });
 export type MiremawResult = __Infer<typeof MiremawResult>;
 
+export const ModerationAction = __t.object("ModerationAction", {
+  id: __t.u64(),
+  targetIdentity: __t.string(),
+  targetName: __t.string(),
+  channel: __t.string(),
+  messageId: __t.string(),
+  action: __t.string(),
+  reason: __t.string(),
+  actorType: __t.string(),
+  actorIdentity: __t.string(),
+  actorName: __t.string(),
+  rule: __t.string(),
+  reportTable: __t.string(),
+  reportId: __t.string(),
+  before: __t.string(),
+  after: __t.string(),
+  recordedAt: __t.timestamp(),
+});
+export type ModerationAction = __Infer<typeof ModerationAction>;
+
+export const ModerationHead = __t.object("ModerationHead", {
+  id: __t.u8(),
+  lastId: __t.u64(),
+});
+export type ModerationHead = __Infer<typeof ModerationHead>;
+
 export const ModuleMigrationState = __t.object("ModuleMigrationState", {
   id: __t.u32(),
   version: __t.u32(),
@@ -1540,6 +1566,13 @@ export const ProceduralProgress = __t.object("ProceduralProgress", {
   completed: __t.f64(),
 });
 export type ProceduralProgress = __Infer<typeof ProceduralProgress>;
+
+export const PublicChatCursor = __t.object("PublicChatCursor", {
+  id: __t.u8(),
+  firstId: __t.u64(),
+  lastId: __t.u64(),
+});
+export type PublicChatCursor = __Infer<typeof PublicChatCursor>;
 
 export const PublicChatPage = __t.object("PublicChatPage", {
   get messages() {

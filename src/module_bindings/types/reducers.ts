@@ -53,6 +53,7 @@ import DevCopyPlayerCombatStatsReducer from "../dev_copy_player_combat_stats_red
 import DevDeleteBugReportReducer from "../dev_delete_bug_report_reducer";
 import DevDeleteLegacyPlayerReducer from "../dev_delete_legacy_player_reducer";
 import DevDeliverAlphaTesterGiftsReducer from "../dev_deliver_alpha_tester_gifts_reducer";
+import DevRepairDisplayNameReducer from "../dev_repair_display_name_reducer";
 import DevRepairPlayerJoinedAtReducer from "../dev_repair_player_joined_at_reducer";
 import DevResetDailyGemBonusReducer from "../dev_reset_daily_gem_bonus_reducer";
 import DevSetAccessAuditLabelReducer from "../dev_set_access_audit_label_reducer";
@@ -168,6 +169,7 @@ export type DevCopyPlayerCombatStatsParams = __Infer<typeof DevCopyPlayerCombatS
 export type DevDeleteBugReportParams = __Infer<typeof DevDeleteBugReportReducer>;
 export type DevDeleteLegacyPlayerParams = __Infer<typeof DevDeleteLegacyPlayerReducer>;
 export type DevDeliverAlphaTesterGiftsParams = __Infer<typeof DevDeliverAlphaTesterGiftsReducer>;
+export type DevRepairDisplayNameParams = __Infer<typeof DevRepairDisplayNameReducer>;
 export type DevRepairPlayerJoinedAtParams = __Infer<typeof DevRepairPlayerJoinedAtReducer>;
 export type DevResetDailyGemBonusParams = __Infer<typeof DevResetDailyGemBonusReducer>;
 export type DevSetAccessAuditLabelParams = __Infer<typeof DevSetAccessAuditLabelReducer>;

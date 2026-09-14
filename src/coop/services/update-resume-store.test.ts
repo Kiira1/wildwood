@@ -11,6 +11,11 @@ function memoryStorage() {
 }
 
 describe("forced-update session resume", () => {
+  it("reports a failed handoff when storage is unavailable", () => {
+    const storage = memoryStorage();
+    storage.setItem = () => { throw new Error("Storage blocked"); };
+    expect(createUpdateResumeStore(storage, "resume").write("0.681", "account")).toBe(false);
+  });
   it("restores the same session mode once for the requested release", () => {
     const storage = memoryStorage();
     const store = createUpdateResumeStore(storage, "resume", () => 1_000);

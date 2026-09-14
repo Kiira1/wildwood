@@ -766,7 +766,7 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
       if (signedIn) sessionApproved = true;
     },
     prepareUpdateReload(version: string) {
-      if (lastPlayableSessionMode) dependencies.updateResumeStore.write(version, lastPlayableSessionMode);
+      return lastPlayableSessionMode ? dependencies.updateResumeStore.write(version, lastPlayableSessionMode) : false;
     },
     finishHydration() { updateResumePending = false; },
     async claimAccountLink(connection: DbConnection, signedIn: boolean, isCurrent: () => boolean) {

@@ -1,9 +1,10 @@
+import { recordModerationAction } from "./moderation-history";
 import { Identity } from "spacetimedb";
 import { SenderError } from "spacetimedb/server";
 import type { ModuleReducerCtx, ModuleViewCtx } from "./index";
 import { SOCIAL_FRIEND_LIMIT, SOCIAL_REQUEST_LIMIT, SOCIAL_MESSAGE_LIMIT, type SocialConversation, type SocialSnapshot } from "../../shared/social";
 import { GUILD_MEMBER_LIMIT } from "../../shared/guilds";
-import { moderatePublicChatMessage } from "./chat-moderation";
+import { moderatePublicChatMessage, chatModerationReason, MODERATION_RULE_VERSION } from "./chat-moderation";
 import { chatPage } from "../../shared/chat-page";
 type Ctx = ModuleReducerCtx;
 /** Shared by reducer/procedure/view contexts; this service's read functions never mutate. */
@@ -164,11 +165,16 @@ export function createSocialService(deps: { joinGuild(ctx: Ctx, guildId: bigint)
       if (cooldown) ctx.db.chatCooldown.identity.update({ ...cooldown, lastSentAt: ctx.timestamp });
       else ctx.db.chatCooldown.insert({ identity: ctx.sender, lastSentAt: ctx.timestamp });
       const moderated = moderatePublicChatMessage(text);
-      ctx.db.socialMessage.insert({ id: 0n, channel, conversation, guildId, sender: ctx.sender, recipient,
+      const inserted = ctx.db.socialMessage.insert({ id: 0n, channel, conversation, guildId, sender: ctx.sender, recipient,
         recipientName: channel === "dm" ? name(ctx, recipient) : "", senderName: profile.displayName, senderGender: profile.gender,
         powerLevel: ctx.db.player.identity.find(ctx.sender)?.powerLevel ?? 0, senderIsGuest: ctx.db.playerAccountStatus.identity.find(ctx.sender)?.isGuest ?? true,
         message: moderated.message, moderated: moderated.moderated, sentAt: ctx.timestamp,
         replySender: reply?.sender ?? ctx.sender, replyToMessageId: reply?.id ?? 0n, replyToSenderName: reply?.senderName ?? "", replyToMessage: reply?.message ?? "" });
+      if (moderated.moderated) recordModerationAction(ctx, {
+        targetIdentity: ctx.sender.toHexString(), targetName: profile.displayName, channel, messageId: inserted.id,
+        action: "Message filtered", reason: chatModerationReason(text) ?? "Disallowed content",
+        actorType: "automatic", rule: MODERATION_RULE_VERSION, before: text, after: moderated.message,
+      });
       if (channel === "guild") pruneGuildMessages(ctx, conversation);
     },
   };

@@ -126,25 +126,35 @@ export function normalizeModerationText(message: string) {
     .replace(/(^| )f+\s*(?:u+\s*)?c+\s*k+(?= |$)/g, "$1fuck");
 }
 
-export function shouldModeratePublicChatMessage(message: string) {
+export const MODERATION_RULE_VERSION = "content-filter-v3";
+
+export function chatModerationReason(message: string): string | null {
   const folded = foldForModeration(message);
   const normalized = normalizeModerationText(message);
-  if (SEVERE_HATE_PATTERNS.some((pattern) => pattern.test(folded))) return true;
-  if (EXPLICIT_SEXUAL_PATTERNS.some((pattern) => pattern.test(folded))) return true;
-  if (SEXUAL_SOLICITATION_PATTERNS.some((pattern) => pattern.test(normalized))) return true;
-  if (DIRECTED_SEXUAL_INSULT_PATTERN.test(normalized)) return true;
-  if (CREDIBLE_THREAT_PATTERNS.some((pattern) => pattern.test(folded))) return true;
-  if (INVITE_LINK_PATTERNS.some((pattern) => pattern.test(folded))) return true;
-  if (NORMALIZED_INVITE_PATTERNS.some((pattern) => pattern.test(normalized))) return true;
-  if (CREDENTIAL_REQUEST_PATTERN.test(folded)) return true;
-  if (PERSONAL_INFORMATION_REQUEST_PATTERNS.some((pattern) => pattern.test(normalized))) return true;
-  return LINK_PATTERN.test(folded) && GEM_SCAM_PATTERN.test(folded);
+  if (SEVERE_HATE_PATTERNS.some(pattern => pattern.test(folded))) return "Hateful language";
+  if (EXPLICIT_SEXUAL_PATTERNS.some(pattern => pattern.test(folded))) return "Explicit sexual content";
+  if (SEXUAL_SOLICITATION_PATTERNS.some(pattern => pattern.test(normalized))) return "Sexual solicitation";
+  if (DIRECTED_SEXUAL_INSULT_PATTERN.test(normalized)) return "Sexual harassment";
+  if (CREDIBLE_THREAT_PATTERNS.some(pattern => pattern.test(folded))) return "Threat of real-world harm";
+  if (INVITE_LINK_PATTERNS.some(pattern => pattern.test(folded)) || NORMALIZED_INVITE_PATTERNS.some(pattern => pattern.test(normalized))) return "Invite link";
+  if (CREDENTIAL_REQUEST_PATTERN.test(folded)) return "Request for account credentials";
+  if (PERSONAL_INFORMATION_REQUEST_PATTERNS.some(pattern => pattern.test(normalized))) return "Request for personal information";
+  return LINK_PATTERN.test(folded) && GEM_SCAM_PATTERN.test(folded) ? "Gem scam link" : null;
+}
+
+export function shouldModeratePublicChatMessage(message: string) {
+  return chatModerationReason(message) !== null;
+}
+
+export function displayNameModerationReason(displayName: string): string | null {
+  const reason = chatModerationReason(displayName);
+  if (reason) return reason;
+  const compact = normalizeModerationText(displayName).replace(/\s/g, "");
+  return CHILD_NUDITY_NAME_PATTERN.test(compact) ? "Sexualized reference to a child" : null;
 }
 
 export function isPublicDisplayNameAllowed(displayName: string) {
-  if (shouldModeratePublicChatMessage(displayName)) return false;
-  const compact = normalizeModerationText(displayName).replace(/\s/g, "");
-  return !CHILD_NUDITY_NAME_PATTERN.test(compact);
+  return displayNameModerationReason(displayName) === null;
 }
 
 export function moderatePublicChatMessage(message: string) {

@@ -1,8 +1,9 @@
+import { moderationTables, recordModerationAction, readModerationHistory } from "./moderation-history";
 import { playerItemGift, deliverAlphaTesterGifts, claimItemGift, removeItemGifts, mergeItemGifts } from "./item-gifts";
 import { moderateReportedMessage } from "./chat-report-moderation";
 import { PLAYER_SKIN_TONES } from "../../shared/player-skin-tones";
 import { leaderboardPageTables, writeLeaderboardPages, readLeaderboardWindow } from "./leaderboard-pages";
-import { chatPage } from "../../shared/chat-page";
+import { publicChatCursor, updatePublicChatCursor, readPublicChatPage } from "./public-chat-history";
 import { generateMap, isProceduralMap, proceduralMapId, PROCEDURAL_ENTRY_MAP, PROCEDURAL_ENTRY_BOSS } from "../../shared/procedural-maps";
 import { proceduralMapTables, proceduralBossKey, clearProceduralProgress, mergeProceduralProgress, generatedMapUnlocked, ensureProceduralBoss, damageProceduralBoss } from "./procedural-maps";
 import { ingestStoreEvent } from "./gem-store-events";
@@ -38,7 +39,8 @@ import {
   isSelectedPlayerGender,
 } from "../../shared/player-gender";
 import { duelAnnouncementText } from "../../shared/duel-announcement";
-import { isPublicDisplayNameAllowed, moderatePublicChatMessage } from "./chat-moderation";
+import { syncDisplayNameHistory } from "./display-name-history";
+import { isPublicDisplayNameAllowed, moderatePublicChatMessage, chatModerationReason, displayNameModerationReason, MODERATION_RULE_VERSION } from "./chat-moderation";
 import { isChatReportReason } from "../../shared/chat-report";
 import { TERMS_VERSION, isEligiblePlayerAgeBand } from "../../shared/legal";
 import { nextChatReportRateState } from "./chat-report-rate-limit";
@@ -330,7 +332,6 @@ const MAP_PORTAL_USE_RANGE = 125;
 const CHAT_MESSAGE_MAX_LENGTH = 250;
 const CHAT_COOLDOWN_MICROS = 3_000_000n;
 const CHAT_HISTORY_RETENTION_MICROS = 86_400_000_000n;
-const CHAT_HISTORY_MAX_ROWS = 200;
 const DUEL_REPLAY_RETENTION_MICROS = CHAT_HISTORY_RETENTION_MICROS;
 const MAINTENANCE_INTERVAL_MICROS = 60_000_000n;
 const LEADERBOARD_REFRESH_INTERVAL_MICROS = 900_000_000n;
@@ -1700,6 +1701,8 @@ const shardCoordinatorSchedule = table(
   { scheduledId: t.u64().primaryKey(), scheduledAt: t.scheduleAt() },
 );
 const spacetimedb = schema({
+  ...moderationTables,
+  publicChatCursor,
   ...proceduralMapTables,
   ...leaderboardPageTables,
   ...gemPurchaseTables,
@@ -2088,11 +2091,7 @@ function syncDisplayNamePresentation(ctx: any, identity: any, displayName: strin
       table.identity.update({ ...contribution, displayName });
     }
   }
-    for (const message of [...ctx.db.chatMessage.iter()] as any[]) {
-    if (sameIdentity(message.sender, identity) && message.senderName && message.senderName !== displayName) {
-      ctx.db.chatMessage.id.update({ ...message, senderName: displayName });
-    }
-  }
+  syncDisplayNameHistory(ctx, identity, displayName);
   for (const duel of [...ctx.db.duel.byChallenger.filter(identity)] as any[]) {
     if (duel.challengerName !== displayName) updateSnapshotRow(ctx, "duel", { ...duel, challengerName: displayName });
   }
@@ -2101,7 +2100,7 @@ function syncDisplayNamePresentation(ctx: any, identity: any, displayName: strin
   }
 }
 
-function repairModeratedDisplayName(ctx: any, profile: any) {
+function repairModeratedDisplayName(ctx: any, profile: any, actorType: "automatic" | "owner" = "automatic") {
   if (isPublicDisplayNameAllowed(profile.displayName)) return profile;
   const displayName = generatedDisplayName(profile.identity);
   const repaired = { ...profile, displayName };
@@ -2112,8 +2111,27 @@ function repairModeratedDisplayName(ctx: any, profile: any) {
     ctx.db.playerNameCooldown.identity.delete(profile.identity);
   }
   syncDisplayNamePresentation(ctx, profile.identity, displayName);
+  recordModerationAction(ctx, { targetIdentity: profile.identity.toHexString(), targetName: displayName,
+    channel: "profile", action: "Name changed", reason: displayNameModerationReason(profile.displayName) ?? "Disallowed username",
+    actorType, rule: MODERATION_RULE_VERSION, before: profile.displayName, after: displayName });
   return repaired;
 }
+
+// Targeted moderation for existing/offline accounts. Never edit combat stats
+// just to repair a name, and refuse a stale request if the owner renamed first.
+export const devRepairDisplayName = spacetimedb.reducer(
+  { identity: t.identity(), expectedDisplayName: t.string() },
+  (ctx, { identity, expectedDisplayName }) => {
+    if (!isDatabaseOwnerIdentity(ctx.sender)) throw new SenderError("Database owner required.");
+    const profile = ctx.db.playerProfile.identity.find(identity);
+    if (!profile) throw new SenderError("Player profile not found.");
+    if (profile.displayName !== expectedDisplayName) throw new SenderError("Player name changed; repair refused.");
+    // Also reconcile retained history when this account was already repaired.
+    if (isPublicDisplayNameAllowed(profile.displayName)) syncDisplayNamePresentation(ctx, identity, profile.displayName);
+    else repairModeratedDisplayName(ctx, profile, "owner");
+    refreshLeaderboard(ctx);
+  },
+);
 
 function defaultPlayerProgress(identity: any) {
   return {
@@ -5982,15 +6000,6 @@ function finishDragonEncounter(ctx: any, dragon: any) {
   });
 }
 
-function trimChatHistory(ctx: any) {
-  const messages = [...ctx.db.chatMessage.iter()] as Array<{ id: bigint }>;
-  if (messages.length <= CHAT_HISTORY_MAX_ROWS) return;
-  messages.sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
-  for (const message of messages.slice(0, messages.length - CHAT_HISTORY_MAX_ROWS)) {
-    ctx.db.chatMessage.id.delete(message.id);
-  }
-}
-
 function insertChatMessage(
   ctx: any,
   sender: any,
@@ -6003,7 +6012,7 @@ function insertChatMessage(
 ) {
   const progress = ctx.db.playerProgress.identity.find(sender);
   const profile = ctx.db.playerProfile.identity.find(sender);
-  ctx.db.chatMessage.insert({
+  const inserted = ctx.db.chatMessage.insert({
     id: 0n,
     sender,
     senderName,
@@ -6019,7 +6028,8 @@ function insertChatMessage(
     replyToMessage: reply?.message ?? "",
     guildReplayKey,
   });
-  trimChatHistory(ctx);
+  updatePublicChatCursor(ctx, inserted.id);
+  return inserted;
 }
 
 function returnDuelPlayer(ctx: any, identity: any, x: number, y: number) {
@@ -6177,7 +6187,7 @@ function clearExpiredHistory(ctx: any) {
 
   for (const id of staleMessageIds) ctx.db.chatMessage.id.delete(id);
   for (const id of staleReplayIds) ctx.db.duelReplay.id.delete(id);
-  trimChatHistory(ctx);
+  updatePublicChatCursor(ctx);
 }
 
 function trimStartupTelemetry(ctx: ModuleReducerCtx) {
@@ -9753,7 +9763,7 @@ function sendPlayerChatMessage(ctx: ModuleReducerCtx, message: string, replyToMe
   }
 
   const moderatedMessage = moderatePublicChatMessage(normalized);
-  insertChatMessage(
+  const inserted = insertChatMessage(
     ctx,
     ctx.sender,
     profile.displayName,
@@ -9762,6 +9772,11 @@ function sendPlayerChatMessage(ctx: ModuleReducerCtx, message: string, replyToMe
     moderatedMessage.moderated,
     reply,
   );
+  if (moderatedMessage.moderated) recordModerationAction(ctx, {
+    targetIdentity: ctx.sender.toHexString(), targetName: profile.displayName, channel: "world", messageId: inserted.id,
+    action: "Message filtered", reason: chatModerationReason(normalized) ?? "Disallowed content",
+    actorType: "automatic", rule: MODERATION_RULE_VERSION, before: normalized, after: moderatedMessage.message,
+  });
 }
 
 export const sendChatMessage = spacetimedb.reducer(
@@ -9794,7 +9809,7 @@ export const reportChatMessage = spacetimedb.reducer(
     consumeReportRate(ctx);
 
     const reporterName = ctx.db.playerProfile.identity.find(ctx.sender)?.displayName ?? "PLAYER";
-    ctx.db.chatMessageReport.insert({
+    const report = ctx.db.chatMessageReport.insert({
       id: 0n,
       reporter: ctx.sender,
       reporterName,
@@ -9810,7 +9825,10 @@ export const reportChatMessage = spacetimedb.reducer(
       replyToSenderName: message.replyToSenderName,
       replyToMessage: message.replyToMessage,
     });
-    if (isDeveloperIdentity(ctx.sender) && hasSpacetimeAuthAccount(ctx)) moderateReportedMessage(ctx, "public", messageId);
+    if (isDeveloperIdentity(ctx.sender) && hasSpacetimeAuthAccount(ctx)) {
+      moderateReportedMessage(ctx, "public", messageId, reason, "chat_message_report", report.id.toString());
+      ctx.db.chatMessageReport.id.update({ ...report, status: "resolved" });
+    }
   },
 );
 
@@ -10671,12 +10689,15 @@ export const reportSocialMessage = spacetimedb.reducer({ messageId: t.u64(), rea
   ctx.db.socialReport.insert({ key, reporter: ctx.sender, accused: row.sender, messageId, message: row.message, reason, reportedAt: ctx.timestamp });
   // Reuse the existing developer player-report inbox so private-chat reports
   // reach moderation without placing their text in any public chat table.
-  ctx.db.playerReport.insert({ id: 0n, reporter: ctx.sender,
+  const report = ctx.db.playerReport.insert({ id: 0n, reporter: ctx.sender,
     reporterName: ctx.db.playerProfile.identity.find(ctx.sender)?.displayName ?? "PLAYER",
     target: row.sender, targetName: row.senderName, reason,
     note: `[${row.channel === "dm" ? "Private message" : "Guild chat"} #${row.id}] ${row.message}`,
     status: "pending", reportedAt: ctx.timestamp });
-  if (isDeveloperIdentity(ctx.sender) && hasSpacetimeAuthAccount(ctx)) moderateReportedMessage(ctx, "social", messageId);
+  if (isDeveloperIdentity(ctx.sender) && hasSpacetimeAuthAccount(ctx)) {
+    moderateReportedMessage(ctx, "social", messageId, reason, "social_report", key);
+    ctx.db.playerReport.id.update({ ...report, status: "resolved" });
+  }
 });
 
 
@@ -10868,12 +10889,20 @@ export const getLeaderboardWindow = spacetimedb.procedure(
 
 export const latestChatMessages = spacetimedb.anonymousView(
   { public: true }, t.array(chatMessage.rowType),
-  ctx => chatPage([...ctx.db.chatMessage.iter()].filter(row => row.senderName.length > 0)).messages,
+  ctx => readPublicChatPage(ctx).messages,
 );
 export const getChatHistory = spacetimedb.procedure(
   { beforeId: t.u64() }, t.object("PublicChatPage", { messages: t.array(chatMessage.rowType), hasMore: t.bool() }),
   (ctx, { beforeId }) => ctx.withTx(tx => {
     requireControllingPlayer(tx);
-    return chatPage([...tx.db.chatMessage.iter()].filter(row => row.senderName.length > 0), beforeId);
+    return readPublicChatPage(tx, beforeId);
+  }),
+);
+
+// Private evidence is fetched only on demand, never through a public view.
+export const getModerationHistory = spacetimedb.procedure({ beforeId: t.u64() }, t.string(),
+  (ctx, { beforeId }) => ctx.withTx(tx => {
+    if (!isDatabaseOwnerIdentity(tx.sender)) requireDeveloperSession(tx);
+    return JSON.stringify(readModerationHistory(tx, beforeId));
   }),
 );

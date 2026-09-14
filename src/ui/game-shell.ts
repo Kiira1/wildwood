@@ -252,10 +252,12 @@ const afterUpdateGateShell = String.raw`
   <div class="modal dev-audit-modal" role="dialog" aria-modal="true" aria-label="Developer tools">
     <div class="dev-audit-tabs" role="tablist" aria-label="Developer tools">
       <button id="devControlsTab" class="profile-tab is-active" type="button" role="tab" aria-selected="true">Controls</button>
+      <button id="devModerationTab" class="profile-tab" type="button" role="tab" aria-selected="false">Moderation</button>
       <button id="devBugReportsTab" class="profile-tab" type="button" role="tab" aria-selected="false">Bug reports</button>
       <button id="devCutscenesTab" class="profile-tab" type="button" role="tab" aria-selected="false">Cutscenes</button>
       <button id="devPerformanceTab" class="profile-tab" type="button" role="tab" aria-selected="false">Performance</button>
     </div>
+    <section id="devModerationPanel" role="tabpanel" aria-labelledby="devModerationTab" hidden></section>
     <section id="devControlsPanel" role="tabpanel" aria-labelledby="devControlsTab">
       <div class="setting-row">
         <span>DEVELOPER NAME TAG</span>

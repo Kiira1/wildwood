@@ -81,6 +81,7 @@ import DevCopyPlayerCombatStatsReducer from "./dev_copy_player_combat_stats_redu
 import DevDeleteBugReportReducer from "./dev_delete_bug_report_reducer";
 import DevDeleteLegacyPlayerReducer from "./dev_delete_legacy_player_reducer";
 import DevDeliverAlphaTesterGiftsReducer from "./dev_deliver_alpha_tester_gifts_reducer";
+import DevRepairDisplayNameReducer from "./dev_repair_display_name_reducer";
 import DevRepairPlayerJoinedAtReducer from "./dev_repair_player_joined_at_reducer";
 import DevResetDailyGemBonusReducer from "./dev_reset_daily_gem_bonus_reducer";
 import DevSetAccessAuditLabelReducer from "./dev_set_access_audit_label_reducer";
@@ -154,6 +155,7 @@ import * as GetChatHistoryProcedure from "./get_chat_history_procedure";
 import * as GetGuildHubProcedure from "./get_guild_hub_procedure";
 import * as GetGuildReplayProcedure from "./get_guild_replay_procedure";
 import * as GetLeaderboardWindowProcedure from "./get_leaderboard_window_procedure";
+import * as GetModerationHistoryProcedure from "./get_moderation_history_procedure";
 import * as GetSocialChatHistoryProcedure from "./get_social_chat_history_procedure";
 import * as GetSocialHubProcedure from "./get_social_hub_procedure";
 import * as SynchronizeMapShardProcedure from "./synchronize_map_shard_procedure";
@@ -1112,6 +1114,7 @@ const reducersSchema = __reducers(
   __reducerSchema("dev_delete_bug_report", DevDeleteBugReportReducer),
   __reducerSchema("dev_delete_legacy_player", DevDeleteLegacyPlayerReducer),
   __reducerSchema("dev_deliver_alpha_tester_gifts", DevDeliverAlphaTesterGiftsReducer),
+  __reducerSchema("dev_repair_display_name", DevRepairDisplayNameReducer),
   __reducerSchema("dev_repair_player_joined_at", DevRepairPlayerJoinedAtReducer),
   __reducerSchema("dev_reset_daily_gem_bonus", DevResetDailyGemBonusReducer),
   __reducerSchema("dev_set_access_audit_label", DevSetAccessAuditLabelReducer),
@@ -1187,6 +1190,7 @@ const proceduresSchema = __procedures(
   __procedureSchema("get_guild_hub", GetGuildHubProcedure.params, GetGuildHubProcedure.returnType),
   __procedureSchema("get_guild_replay", GetGuildReplayProcedure.params, GetGuildReplayProcedure.returnType),
   __procedureSchema("get_leaderboard_window", GetLeaderboardWindowProcedure.params, GetLeaderboardWindowProcedure.returnType),
+  __procedureSchema("get_moderation_history", GetModerationHistoryProcedure.params, GetModerationHistoryProcedure.returnType),
   __procedureSchema("get_social_chat_history", GetSocialChatHistoryProcedure.params, GetSocialChatHistoryProcedure.returnType),
   __procedureSchema("get_social_hub", GetSocialHubProcedure.params, GetSocialHubProcedure.returnType),
   __procedureSchema("synchronize_map_shard", SynchronizeMapShardProcedure.params, SynchronizeMapShardProcedure.returnType),

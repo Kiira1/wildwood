@@ -31,6 +31,12 @@ describe("developer report moderation", () => {
     if (channel === "public") expect(f.db.chatMessage.id.find(1n)).toMatchObject({ replayId: 0n, guildReplayKey: "" });
     const reports = channel === "public" ? f.db.chatMessageReport : f.db.socialReport;
     expect([...reports.iter()][0].message).toBe("Original message");
+    const action = [...f.db.moderationAction.iter()][0];
+    expect(action).toMatchObject({ action: "Message removed", reason: "harassment", actorType: "developer",
+      actorIdentity: developer.toHexString(), before: "Original message", after: MODERATED_CHAT_MESSAGE,
+      messageId: "1", reportTable: channel === "public" ? "chat_message_report" : "social_report" });
+    expect(action.reportId).toBeTruthy();
+    expect([...(channel === "public" ? f.db.chatMessageReport : f.db.playerReport).iter()][0].status).toBe("resolved");
     expect(() => f.run(reducer, { messageId: 1n, reason: "harassment" })).toThrow("already reported");
   });
   it.each([[false, true], [true, false]])("requires both the developer identity and authentication (%s, %s)", (dev, authenticated) => {
@@ -39,6 +45,7 @@ describe("developer report moderation", () => {
     f.run(server.reportSocialMessage, { messageId: 1n, reason: "harassment" });
     expect(f.db.chatMessage.id.find(1n).message).toBe("Original message");
     expect(f.db.socialMessage.id.find(1n).message).toBe("Original message");
+    expect(f.db.moderationAction.count()).toBe(0n);
   });
   it("does not give developers access to report other people's private conversations", () => {
     const f = fixture();

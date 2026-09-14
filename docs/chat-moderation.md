@@ -1,6 +1,6 @@
 # Chat Moderation Plan
 
-Status: lightweight content filtering, private message/profile reports, and character-synced blocking implemented in v0.610 (protocol 83); additional guardrails and moderator review UI remain planned. Last reviewed: 2026-09-03.
+Status: server filtering, private reports, blocking, and private moderation action history are implemented. Developer tools include an on-demand history viewer; a general report-review queue remains future work. Last reviewed: 2026-09-14.
 
 ## Profile safety controls (September 3)
 
@@ -25,7 +25,7 @@ WildStat already routes public chat through one `sendChatMessage` reducer and bo
 - 250-character maximum.
 - Three-second server cooldown per sender.
 - 24-hour retention.
-- Maximum of 200 public chat rows.
+- No public message-count cap. Clients load the latest 50, then earlier pages of 50 as the player scrolls up. A private cursor supports indexed page reads; daily history is not transmitted to every client.
 - Private `/bug` reports that never enter public chat.
 
 Global login and leave messages are currently disabled. If friend-only presence messages return later, they should use a separate targeted path rather than public World Chat.
@@ -50,7 +50,7 @@ An accepted normal message should require only:
 - One or two primary-key lookups.
 - A scan of no more than 250 characters.
 - One public message insert.
-- The existing bounded history trim.
+- The existing 24-hour cleanup.
 
 The dominant scaling cost is broadcasting each accepted global message to every subscribed player, not scanning 250 characters for blocked terms. Never query every recipient's block list while inserting a message.
 
@@ -167,3 +167,20 @@ If abuse becomes significant, make guest chat read-only first. If global chat ba
 - Confirm block and report rows cannot be subscribed to by other players.
 - Load-test a global message burst and verify the singleton bucket bounds accepted inserts and fanout.
 - Before release, build and publish the server, regenerate bindings for schema or reducer changes, deploy the matching client, and recheck the current Apple and Google policies.
+
+
+## Private moderation history (September 14)
+
+Open Settings → Developer tools → Moderation. The newest 50 actions load when the tab opens. Expand an entry for Before/After evidence, the account/message identifiers, moderator or automatic rule, and linked report. Refresh fetches the newest page; Load older fetches the next 50. Closing the tab clears the evidence from its DOM and invalidates pending requests.
+
+`moderation_action` and its monotonically increasing `moderation_head` cursor are private. No client subscription or public view exposes them. `get_moderation_history` permits the database owner or the authenticated developer with a supported session. Each page uses at most 50 indexed lookups. Ordinary accounts and unauthenticated developer identities are rejected server-side.
+
+Recorded decisions:
+
+- Automatic World, Guild, and private-message filtering: submitted text, displayed replacement, server-assigned message ID, affected account/name, category, and `content-filter-v3` rule version.
+- Automatic existing-username repair and owner-requested forced name changes: previous/new names, reason, affected account, rule version, and automatic/owner actor.
+- Developer message reports: original text, replacement, affected message/account, developer identity/name, report reason and reference. The associated report inbox row is marked resolved. Reporting content already filtered records a review instead of pretending it was removed again.
+
+Every record receives a server timestamp and is committed in the same transaction as its action. Failures roll both back. Routine messages and rejected invalid submissions produce no audit entry; a reducer rejection rolls back all its writes. No reducer allows callers to fabricate, edit, or delete history entries. Ordinary voluntary renames and personal blocks are not moderation decisions.
+
+Recording starts with deployment; past decisions are not retroactively attributed to a guessed actor or timestamp. Private evidence survives public chat's 24-hour cleanup and is currently retained without automatic expiry, including after associated report/message rows are deleted. Retention changes or privacy-request handling must explicitly account for this table; it must not be accidentally swept with public chat. This history is a review aid, not a tamper-proof ledger against the database owner.

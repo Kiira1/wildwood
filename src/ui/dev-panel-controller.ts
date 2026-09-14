@@ -1,3 +1,4 @@
+import { createModerationHistoryPanel, type ModerationHistoryLoader } from "./moderation-history-panel";
 import { requiredElement } from "../game/runtime/dom";
 import { createForestRewardPrototypePanel, type ForestPrototypePanelDependencies } from "./forest-reward-prototype-panel";
 import type { PerformanceSnapshot } from "../game/runtime/performance-monitor";
@@ -7,7 +8,7 @@ import {
   normalizeVirtualPlayerCount,
 } from "../../shared/virtual-player-load-test";
 
-type DevPanelTab = "controls" | "bugs" | "cutscenes" | "performance";
+type DevPanelTab = "moderation" | "controls" | "bugs" | "cutscenes" | "performance";
 
 type BugReportEntry = {
   id: bigint;
@@ -48,6 +49,7 @@ type DevPanelDependencies = {
   getVirtualPlayerLoadTest: () => VirtualPlayerLoadTestState;
   startVirtualPlayers: (count: number) => Promise<{ ok?: boolean; error?: string; connected?: number; requested?: number } | undefined> | undefined;
   stopVirtualPlayers: () => Promise<{ ok?: boolean; error?: string } | undefined> | undefined;
+  loadModerationHistory: ModerationHistoryLoader;
   getBugReports: () => BugReportEntry[];
   deleteBugReport: (id: bigint) => Promise<{ ok?: boolean; error?: string } | undefined> | undefined;
   getMetrics: () => DevPanelMetrics;
@@ -64,15 +66,18 @@ export function createDevPanelController(dependencies: DevPanelDependencies) {
   const tabs: Record<DevPanelTab, HTMLElement> = {
     controls: requiredElement("devControlsTab"),
     bugs: requiredElement("devBugReportsTab"),
+    moderation: requiredElement("devModerationTab"),
     cutscenes: requiredElement("devCutscenesTab"),
     performance: requiredElement("devPerformanceTab"),
   };
   const tabPanels: Record<DevPanelTab, HTMLElement> = {
     controls: requiredElement("devControlsPanel"),
     bugs: requiredElement("devBugReportsPanel"),
+    moderation: requiredElement("devModerationPanel"),
     cutscenes: requiredElement("devCutscenesPanel"),
     performance: requiredElement("devPerformancePanel"),
   };
+  const moderation = createModerationHistoryPanel(tabPanels.moderation, dependencies.loadModerationHistory);
   const nameTagToggle = requiredElement<HTMLButtonElement>("devNameTagToggle");
   const presenceStatus = requiredElement("devPresenceStatus");
   const presenceToggle = requiredElement<HTMLButtonElement>("devPresenceToggle");
@@ -105,6 +110,8 @@ export function createDevPanelController(dependencies: DevPanelDependencies) {
   };
 
   function setTab(tab: DevPanelTab) {
+    if (tab === "moderation") moderation.open();
+    else moderation.clear();
     for (const [name, element] of Object.entries(tabs) as [DevPanelTab, HTMLElement][]) {
       const selected = name === tab;
       element.classList.toggle("is-active", selected);
@@ -207,6 +214,7 @@ export function createDevPanelController(dependencies: DevPanelDependencies) {
   }
 
   function close() {
+    moderation.clear();
     panel.hidden = true;
     button.setAttribute("aria-expanded", "false");
   }

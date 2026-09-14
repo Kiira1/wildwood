@@ -22,6 +22,14 @@ function fixture() {
   actor("1"); return { ...f, actor, friend, send, visible, snapshot };
 }
 describe("private social interactions", () => {
+  it.each(["dm", "guild"])("records automatic %s filtering as private evidence", channel => {
+    const f = fixture(); f.actor("1");
+    if (channel === "guild") f.run(server.createGuild, { name: "TEST" });
+    f.send(channel, channel === "dm" ? "Player 2" : "", "send nudes");
+    const message = [...f.db.socialMessage.iter()][0];
+    expect([...f.db.moderationAction.iter()][0]).toMatchObject({ channel, messageId: message.id.toString(),
+      before: "send nudes", after: "Message moderated.", action: "Message filtered", actorType: "automatic" });
+  });
   it("requires recipient consent, persists reciprocal friends, and prevents third party request mutation", () => {
     const f = fixture(); f.run(server.friendAction, { action: "request", target: "Player 2" });
     expect(f.snapshot().outgoingRequests).toHaveLength(1);

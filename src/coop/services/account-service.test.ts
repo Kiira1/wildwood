@@ -420,3 +420,13 @@ it("keeps an admitted account approved while a portal reconnects without approvi
   service.markPlayable(true);
   expect(service.api.accountState()).toMatchObject({ signedIn: false, gameSessionApproved: true });
 });
+
+it.each([true, false])("preserves the admitted session for a recovery reload (account=%s)", signedIn => {
+  const { service, session } = setup({ accountToken: signedIn ? accountToken() : undefined, knownAccount: signedIn });
+  expect(service.prepareUpdateReload("0.681")).toBe(false);
+  service.markPlayable(signedIn);
+  expect(service.prepareUpdateReload("0.681")).toBe(true);
+  const store = createUpdateResumeStore(session, "update-resume");
+  expect(store.consume("0.681")).toBe(signedIn ? "account" : "guest");
+  expect(store.consume("0.681")).toBeNull();
+});

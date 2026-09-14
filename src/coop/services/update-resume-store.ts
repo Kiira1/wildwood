@@ -29,9 +29,13 @@ export function createUpdateResumeStore(
 ) {
   return {
     write(version: string, mode: UpdateResumeMode) {
-      if (!version) return;
+      if (!version) return false;
       const intent: UpdateResumeIntent = { version, mode, createdAt: now() };
-      try { storage.setItem(key, JSON.stringify(intent)); } catch {}
+      try {
+        const serialized = JSON.stringify(intent);
+        storage.setItem(key, serialized);
+        return storage.getItem(key) === serialized;
+      } catch { return false; }
     },
 
     consume(version: string): UpdateResumeMode | null {

@@ -57,8 +57,8 @@ type WildStatRuntime = Window & {
 
 const LATENCY_SAMPLE_INTERVAL_MS = 1_000;
 const LATENCY_SMOOTHING = .25;
-const WAKE_RECONNECT_WATCHDOG_MS = 10_000;
-const WAKE_RECONNECT_FALLBACK_MS = 4_000;
+// Allow normal connection/session deadlines to recover before restarting a stalled attempt.
+const WAKE_RECONNECT_WATCHDOG_MS = 45_000;
 const CONNECTION_OPEN_TIMEOUT_MS = 15_000;
 const SESSION_PREPARE_TIMEOUT_MS = 20_000;
 const SUBSCRIPTION_HYDRATION_TIMEOUT_MS = 20_000;
@@ -157,9 +157,6 @@ const reconnectWatchdog = createReconnectWatchdog({
   delayMs: WAKE_RECONNECT_WATCHDOG_MS,
   shouldWatch: () => wakeReconnectVisible && !document.hidden && !protocolBlocked && !worldEntryBlocked,
   onTimeout: restartStalledWakeConnection,
-  deadlineMs: WAKE_RECONNECT_FALLBACK_MS,
-  shouldUseDeadline: () => wakeReconnectVisible && !document.hidden && !protocolBlocked && !worldEntryBlocked,
-  onDeadline: () => window.location.reload(),
   schedule: (callback, delayMs) => window.setTimeout(callback, delayMs),
   cancel: (timer) => window.clearTimeout(timer),
 });
@@ -902,7 +899,7 @@ export const wildstatCoop = {
   },
   retryConnection,
   prepareUpdateReload(version: string) {
-    accountService.prepareUpdateReload(version);
+    return accountService.prepareUpdateReload(version);
   },
   virtualPlayerLoadTestState() {
     return virtualPlayerLoadTest.state();
