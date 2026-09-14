@@ -61,7 +61,7 @@ describe("guild root reducer integration", () => {
     expect(() => f.run(server.transferGuildLeadership, { identity: identity("3") })).toThrow("member");
     expect(() => f.run(server.kickGuildMember, { identity: identity("3") })).toThrow("not in your guild");
     f.actor("2");
-    expect(() => f.run(server.kickGuildMember, { identity: identity("1") })).toThrow("leader");
+    expect(() => f.run(server.kickGuildMember, { identity: identity("1") })).toThrow("President");
     expect(f.db.guild.id.find(ours)).toMatchObject({ members: 2, champions: 0 });
     expect(f.db.guild.id.find(theirs)).toMatchObject({ members: 2, champions: 0 });
     expect(f.db.guild.id.find(ours).leader.equals(identity("1"))).toBe(true);

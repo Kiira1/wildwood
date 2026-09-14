@@ -1,4 +1,11 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.670": [
+    "Guild Presidents can appoint a Vice President who can also start battles.",
+    "Guild battle replays show white damage numbers with smaller characters and more spacing.",
+    "Added Direct message to the chat message menu and automatic moderation for developer reports.",
+    "New characters start with a random skin color. Guest registration preserves their color.",
+    "Widened leaderboard podium names and corrected Snowlands rewards exceeding Lava Lake.",
+  ],
   "0.669": [
     "Duel and guild battle replays stay at 60 FPS while idle, with a 30 FPS cap in Low Performance Mode.",
   ],
@@ -1710,6 +1717,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.670": "2026-09-13",
   "0.669": "2026-09-13",
   "0.668": "2026-09-13",
   "0.667": "2026-09-13",

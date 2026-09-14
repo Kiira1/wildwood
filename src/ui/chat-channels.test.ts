@@ -72,6 +72,22 @@ describe("chat channels", () => {
     expect(openReplay).toHaveBeenCalledOnce();
     expect(openReplay.mock.calls[0][0].detail).toEqual({ reportKey: "1:42" });
   });
+  it("opens the sender's private conversation from the action between Copy and Reply", async () => {
+    const h = setup();
+    h.document.getElementById("chatSizeToggle")!.click();
+    h.document.querySelector(".chat-text")!.dispatchEvent(new h.window.Event("click"));
+    const button = h.document.getElementById("chatMessageDirectMessageBtn")!;
+    expect(button.hidden).toBe(false);
+    expect(button.previousElementSibling?.id).toBe("chatMessageCopyBtn");
+    expect(button.nextElementSibling?.id).toBe("chatMessageReplyBtn");
+    button.click();
+    expect(h.history()).toContain("private only");
+    expect(h.coop.social.privateMessages).toHaveBeenCalledWith("friend");
+    expect(h.document.getElementById("chatReplyComposer")!.hidden).toBe(true);
+    await h.submit("Hi Moss");
+    expect(h.coop.social.sendPrivateMessage).toHaveBeenCalledWith("friend", "Hi Moss", 0n);
+    expect(h.coop.sendChatMessage).not.toHaveBeenCalled();
+  });
   it("deduplicates friends and incoming conversations by username", () => {
     expect(mergeChatConversations([{ identity: "1", name: "Moss" }], [{ identity: "1", name: "moss" }, { identity: "2", name: "Oak" }])).toHaveLength(2);
   });

@@ -56,6 +56,46 @@ function fixture() {
 }
 
 describe("guild membership and authoritative rosters", () => {
+  it("lets the President appoint one Vice President with shared battle access only", () => {
+    const f = fixture(), a = f.makeGuild(1), b = f.makeGuild(10), c = f.makeGuild(20);
+    expect(f.db.guildMember.identity.find(identity(2)).vicePresident).toBe(false);
+    expect(() => f.run(2, ctx => f.service.setVicePresident(ctx, identity(3), true))).toThrow("President");
+    expect(() => f.run(1, ctx => f.service.setVicePresident(ctx, identity(10), true))).toThrow("member");
+    expect(() => f.run(1, ctx => f.service.setVicePresident(ctx, identity(1), true))).toThrow("cannot also");
+    f.run(1, ctx => f.service.setVicePresident(ctx, identity(2), true));
+    expect(f.run(2, ctx => f.service.snapshot(ctx)).guild?.vicePresident).toBe(identity(2).toHexString());
+    expect(() => f.run(2, ctx => f.service.kick(ctx, identity(3)))).toThrow("President");
+    expect(() => f.run(2, ctx => f.service.transfer(ctx, identity(3)))).toThrow("President");
+    f.run(2, ctx => f.service.challenge(ctx, b));
+    expect(f.run(1, ctx => f.service.snapshot(ctx)).guild?.attacksRemaining).toBe(2);
+    expect(() => f.run(1, ctx => f.service.challenge(ctx, b))).toThrow("already challenged");
+    f.run(1, ctx => f.service.setVicePresident(ctx, identity(3), true));
+    expect(f.db.guildMember.identity.find(identity(2)).vicePresident).toBe(false);
+    expect(() => f.run(2, ctx => f.service.challenge(ctx, c))).toThrow("President");
+    f.run(3, ctx => f.service.challenge(ctx, c));
+    expect(f.db.guild.id.find(a).attacks).toBe(2);
+    f.run(1, ctx => f.service.setVicePresident(ctx, identity(3), false));
+    expect(f.run(1, ctx => f.service.snapshot(ctx)).guild?.vicePresident).toBeNull();
+  });
+  it("handles Vice President succession, transfer, removal, rejoining and registration", () => {
+    const f = fixture(), a = f.makeGuild(1);
+    f.run(1, ctx => f.service.setVicePresident(ctx, identity(3), true));
+    f.run(1, ctx => f.service.leave(ctx));
+    expect(f.db.guild.id.find(a).leader.equals(identity(3))).toBe(true);
+    expect(f.db.guildMember.identity.find(identity(3)).vicePresident).toBe(false);
+    f.run(3, ctx => f.service.setVicePresident(ctx, identity(2), true));
+    f.run(3, ctx => f.service.mergeGuest(ctx, identity(2), identity(30)));
+    expect(f.run(3, ctx => f.service.snapshot(ctx)).guild?.vicePresident).toBe(identity(30).toHexString());
+    f.run(3, ctx => f.service.transfer(ctx, identity(30)));
+    expect(f.run(30, ctx => f.service.snapshot(ctx)).guild?.vicePresident).toBeNull();
+    f.run(30, ctx => f.service.setVicePresident(ctx, identity(3), true));
+    f.run(30, ctx => f.service.kick(ctx, identity(3)));
+    f.run(3, ctx => f.service.join(ctx, a));
+    expect(f.db.guildMember.identity.find(identity(3)).vicePresident).toBe(false);
+    f.run(30, ctx => f.service.setVicePresident(ctx, identity(3), true));
+    f.run(30, ctx => f.service.removeAccount(ctx, identity(3)));
+    expect(f.run(30, ctx => f.service.snapshot(ctx)).guild?.vicePresident).toBeNull();
+  });
   it("normalizes names, rejects duplicate names and duplicate membership", () => {
     const f = fixture();
     f.run(1, ctx => f.service.create(ctx, "  Rose  "));
@@ -70,8 +110,8 @@ describe("guild membership and authoritative rosters", () => {
     const id = f.makeGuild(1);
     for (let who = 4; who <= 20; who++) f.run(who, ctx => f.service.join(ctx, id));
     expect(() => f.run(21, ctx => f.service.join(ctx, id))).toThrow("full");
-    expect(() => f.run(2, ctx => f.service.kick(ctx, identity(3)))).toThrow("leader");
-    expect(() => f.run(2, ctx => f.service.transfer(ctx, identity(3)))).toThrow("leader");
+    expect(() => f.run(2, ctx => f.service.kick(ctx, identity(3)))).toThrow("President");
+    expect(() => f.run(2, ctx => f.service.transfer(ctx, identity(3)))).toThrow("President");
     expect(() => f.run(1, ctx => f.service.transfer(ctx, identity(30)))).toThrow("member");
     f.run(1, ctx => f.service.transfer(ctx, identity(2)));
     expect(f.db.guild.id.find(id).leader.equals(identity(2))).toBe(true);
@@ -190,7 +230,7 @@ describe("asynchronous battles and bounded standings", () => {
     const f = fixture();
     const a = f.makeGuild(1), b = f.makeGuild(10);
     expect(() => f.run(1, ctx => f.service.challenge(ctx, a))).toThrow("another");
-    expect(() => f.run(2, ctx => f.service.challenge(ctx, b))).toThrow("leader");
+    expect(() => f.run(2, ctx => f.service.challenge(ctx, b))).toThrow("President");
     const waiting = f.db.guildMember.identity.find(identity(12));
     f.db.guildMember.identity.update({ ...waiting, eligibleAt: f.ctx.timestamp.microsSinceUnixEpoch + 1n });
     expect(() => f.run(1, ctx => f.service.challenge(ctx, b))).toThrow("not yet eligible");

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { damageAfterArmor } from "./combat";
 import { desertLaneCombatValue, desertLaneRewardValue, referenceBuildForMap, ENCOUNTER_PROFILES,
-  DESERT_REFERENCE, FOREST_LANE_BASES, desertBossHealthAt, bossHeavyHitAt, MAP_STAT_GROWTH, campaignEnemyRewardMultiplier } from "./progression";
+  DESERT_REFERENCE, FOREST_LANE_BASES, desertBossHealthAt, bossHeavyHitAt, MAP_STAT_GROWTH, CAMPAIGN_ENEMY_REWARD_MULTIPLIERS, CURRENT_ROLE_LANES, campaignEnemyRewardMultiplier } from "./progression";
 
 describe("encounter experience contract", () => {
   it("awards 36 health for a Desert regent", () => {
@@ -34,6 +34,14 @@ describe("encounter experience contract", () => {
       }
       expect(desertBossHealthAt(tier) / (build.damage / build.attackInterval * MAP_STAT_GROWTH)).toBeCloseTo(90);
       expect(damageAfterArmor(bossHeavyHitAt(tier), build.armor * MAP_STAT_GROWTH) / (build.maxHp * MAP_STAT_GROWTH)).toBeCloseTo(.25, 3);
+    }
+  });
+  it("increases every campaign enemy role's payout on each subsequent map", () => {
+    for (const lane of Object.values(CURRENT_ROLE_LANES)) {
+      for (let tier = 1; tier < CAMPAIGN_ENEMY_REWARD_MULTIPLIERS.length; tier++) {
+        expect(desertLaneRewardValue(lane, tier).amount, `${lane} entering tier ${tier}`)
+          .toBeGreaterThan(desertLaneRewardValue(lane, tier - 1).amount);
+      }
     }
   });
   it("isolates tutorial edits from campaign stats", () => {

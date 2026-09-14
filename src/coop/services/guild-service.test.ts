@@ -8,7 +8,7 @@ function deferred<T>() {
   return { promise, resolve };
 }
 function harness() {
-  const connection = { isActive: true, reducers: { joinGuild: vi.fn(async (_args: unknown) => {}) },
+  const connection = { isActive: true, reducers: { setGuildVicePresident: vi.fn(async (_args: unknown) => {}), joinGuild: vi.fn(async (_args: unknown) => {}) },
     procedures: { getGuildHub: vi.fn(async (_args: unknown) => JSON.stringify({ directory: [] })) } };
   let active = connection;
   let identity = "first";
@@ -19,6 +19,15 @@ function harness() {
 }
 
 describe("Guild service", () => {
+  it("sends Vice President appointment and removal through the authenticated reducer", async () => {
+    const h = harness();
+    for (const enabled of [true, false]) {
+      await h.service.api.guildAction({ kind: "vicePresident", identity: "a".repeat(64), enabled });
+      const args = h.connection.reducers.setGuildVicePresident.mock.lastCall![0] as { identity: { toHexString(): string }; enabled: boolean };
+      expect(args.identity.toHexString()).toBe("a".repeat(64));
+      expect(args.enabled).toBe(enabled);
+    }
+  });
   it("reads one paged snapshot on demand without subscribing", async () => {
     const h = harness();
     expect(h.connection.procedures.getGuildHub).not.toHaveBeenCalled();

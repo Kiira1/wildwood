@@ -13,6 +13,8 @@ import { replayEventIndex, type GuildReplayTimeline } from "./guild-replay-timel
 
 export type GuildReplayAssets = { player: PlayerAppearanceAssets; prepare: () => Promise<void>; trees: HTMLImageElement; treeBounds: () => StaticTileTreeBounds[] };
 const WIDTH = 1000, HEIGHT = 640;
+const CHARACTER_SCALE = .85;
+const DAMAGE_POPUP_SECONDS = .8;
 
 /** Ground is cached at the display's resolution. Characters and equipped weapons
  * use the live renderer directly, with continuous aiming and attack clocks. */
@@ -31,8 +33,8 @@ export function createGuildBattlefieldRenderer(canvas: HTMLCanvasElement, ctx: C
     let seed = 0;
     for (const letter of fighter.identity) seed = (Math.imul(seed, 31) + letter.charCodeAt(0)) >>> 0;
     return count === 1 ? { x: 0, y: 0 } : {
-      x: (row % 2 ? 18 : -18) + seed % 13 - 6,
-      y: (column - (columns - 1) / 2) * 86 / columns + (seed >>> 8) % 11 - 5,
+      x: (row % 2 ? 24 : -24) + seed % 13 - 6,
+      y: (column - (columns - 1) / 2) * 104 / columns + (seed >>> 8) % 11 - 5,
     };
   });
   const stagger = (point: { x: number; y: number }, index: number) => ({
@@ -105,17 +107,17 @@ export function createGuildBattlefieldRenderer(canvas: HTMLCanvasElement, ctx: C
       const target = attack ? project(stagger(attack.to, attack.target)) : actors[actor.target];
       const aim = target ? Math.atan2(target.y - actor.y, target.x - actor.x) : side ? Math.PI : 0;
       const throwClock = attack ? Math.max(0, .42 - (time - (attack.launch - .12))) : 0;
-      ctx.fillStyle = "#0b2e2438"; ctx.beginPath(); ctx.ellipse(actor.x, actor.y + 24, 17, 5, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#0b2e2438"; ctx.beginPath(); ctx.ellipse(actor.x, actor.y + 24 * CHARACTER_SCALE, 17 * CHARACTER_SCALE, 5 * CHARACTER_SCALE, 0, 0, Math.PI * 2); ctx.fill();
       ctx.save();
       let alpha = 1;
       if (deathAge >= 0) {
         const pose = playerDeathPose(diedAt * 1000, time * 1000, fighter.identity);
-        ctx.translate(actor.x, actor.y + 24); ctx.rotate(pose.bodyRotation); ctx.scale(1, pose.bodyScaleY); ctx.translate(-actor.x, -actor.y - 24);
+        ctx.translate(actor.x, actor.y + 24 * CHARACTER_SCALE); ctx.rotate(pose.bodyRotation); ctx.scale(1, pose.bodyScaleY); ctx.translate(-actor.x, -actor.y - 24 * CHARACTER_SCALE);
         alpha = Math.max(0, 1 - Math.max(0, deathAge - .6) / .5);
       }
       drawStartingPlayer(ctx, assets.player, { ...fighter.appearance, x: actor.x, y: actor.y - 5,
         facing: aim, combatFacing: aim, moving: actor.moving && deathAge < 0, gameTime: time + i * .137,
-        throwClock, alpha, smooth: true });
+        throwClock, alpha, scale: CHARACTER_SCALE, smooth: true });
       ctx.restore();
     }
     // Paint labels after every character so neighboring sprites cannot cover them.
@@ -123,7 +125,7 @@ export function createGuildBattlefieldRenderer(canvas: HTMLCanvasElement, ctx: C
       if (actor.hp <= 0) continue;
       const fighter = timeline.fighters[i];
       const barW = Math.min(80, Math.max(48, viewWidth / 5 - 14)), barH = WORLD_HEALTH_BAR_HEIGHT;
-      const barY = actor.y - 66, barX = actor.x - barW / 2;
+      const barY = actor.y - 58, barX = actor.x - barW / 2;
       const fill = Math.round(barW * Math.max(0, Math.min(1, actor.hp / fighter.fighter.maxHp)));
       ctx.fillStyle = "rgba(0,0,0,.88)"; ctx.fillRect(barX - 2, barY - 2, barW + 4, barH + 4);
       ctx.fillStyle = "#402326"; ctx.fillRect(barX, barY, barW, barH);
@@ -163,6 +165,23 @@ export function createGuildBattlefieldRenderer(canvas: HTMLCanvasElement, ctx: C
         ctx.globalAlpha = 1;
       }
     }
+    // Time-based events remain correct when seeking, restarting, or skipping frames.
+    const damageStart = replayEventIndex(timeline.damage, time - DAMAGE_POPUP_SECONDS, event => event.time);
+    ctx.save();
+    ctx.font = '900 14px "Arial Rounded MT Bold", "Arial Rounded MT", Arial, sans-serif';
+    ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.lineJoin = "round";
+    ctx.fillStyle = "#fff"; ctx.strokeStyle = "#000"; ctx.lineWidth = 3;
+    for (let i = damageStart; i < timeline.damage.length; i++) {
+      const hit = timeline.damage[i]; if (hit.time > time) break;
+      const age = (time - hit.time) / DAMAGE_POPUP_SECONDS;
+      const point = project(stagger(hit, hit.target));
+      const x = point.x + ((hit.target % 3) - 1) * 9;
+      const y = point.y - 28 - age * 30;
+      ctx.globalAlpha = Math.min(1, (1 - age) * 3);
+      const label = formatCompactNumber(Math.round(hit.amount));
+      ctx.strokeText(label, x, y); ctx.fillText(label, x, y);
+    }
+    ctx.restore();
     return actors;
   }
   return { draw, dispose() { ground.width = 0; ground.height = 0; } };

@@ -665,6 +665,7 @@ export const GuildMember = __t.object("GuildMember", {
   champion: __t.bool(),
   fighter: __t.string(),
   power: __t.f64(),
+  vicePresident: __t.bool(),
 });
 export type GuildMember = __Infer<typeof GuildMember>;
 

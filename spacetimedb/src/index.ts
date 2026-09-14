@@ -1,3 +1,5 @@
+import { moderateReportedMessage } from "./chat-report-moderation";
+import { PLAYER_SKIN_TONES } from "../../shared/player-skin-tones";
 import { leaderboardPageTables, writeLeaderboardPages, readLeaderboardWindow } from "./leaderboard-pages";
 import { chatPage } from "../../shared/chat-page";
 import { generateMap, isProceduralMap, proceduralMapId, PROCEDURAL_ENTRY_MAP, PROCEDURAL_ENTRY_BOSS } from "../../shared/procedural-maps";
@@ -6229,7 +6231,7 @@ function enterWorldPresence(ctx: any, tabId: string, forceTakeover = false) {
       displayName: generatedDisplayName(ctx.sender),
       profileIcon: 0,
       playerSprite: 0,
-      skinTone: 3,
+      skinTone: ctx.random.integerInRange(0, PLAYER_SKIN_TONES.length - 1),
       gender: PLAYER_GENDER_UNSET,
     });
   } else {
@@ -8330,7 +8332,11 @@ export const claimGuestAccount = spacetimedb.reducer(
       // Registration can claim the save before enterWorld creates a profile.
       // Guild membership transfer below requires the destination profile even
       // when the guest never selected a gender or custom display name.
-      insertSnapshotRow(ctx, "playerProfile", { identity: ctx.sender, displayName: generatedDisplayName(ctx.sender), profileIcon: 0, playerSprite: 0, skinTone: 3, gender: guestProfile?.gender ?? PLAYER_GENDER_UNSET });
+      insertSnapshotRow(ctx, "playerProfile", { identity: ctx.sender, displayName: generatedDisplayName(ctx.sender), profileIcon: 0, playerSprite: 0, skinTone: guestProfile?.skinTone ?? ctx.random.integerInRange(0, PLAYER_SKIN_TONES.length - 1), gender: guestProfile?.gender ?? PLAYER_GENDER_UNSET });
+    }
+    if (guestProfile && accountProfile && !preserveAccountName && !transferGuestName) {
+      const linkedProfile = ctx.db.playerProfile.identity.find(ctx.sender)!;
+      updateSnapshotRow(ctx, "playerProfile", { ...linkedProfile, skinTone: guestProfile.skinTone });
     }
     if (transferGuestName && guestProfile) {
       syncDisplayNamePresentation(ctx, ctx.sender, guestProfile.displayName);
@@ -8674,7 +8680,7 @@ export const setDisplayName = spacetimedb.reducer(
     if (existing) {
       updateSnapshotRow(ctx, "playerProfile", { ...existing, displayName: normalized });
     } else {
-      insertSnapshotRow(ctx, "playerProfile", { identity: ctx.sender, displayName: normalized, profileIcon: 0, playerSprite: 0, skinTone: 3, gender: PLAYER_GENDER_UNSET });
+      insertSnapshotRow(ctx, "playerProfile", { identity: ctx.sender, displayName: normalized, profileIcon: 0, playerSprite: 0, skinTone: ctx.random.integerInRange(0, PLAYER_SKIN_TONES.length - 1), gender: PLAYER_GENDER_UNSET });
     }
     if (cooldown) ctx.db.playerNameCooldown.identity.update({ ...cooldown, changedAt: ctx.timestamp });
     else ctx.db.playerNameCooldown.insert({ identity: ctx.sender, changedAt: ctx.timestamp });
@@ -9027,7 +9033,7 @@ export const setSkinTone = spacetimedb.reducer(
   { skinTone: t.u32() },
   (ctx, { skinTone }) => {
     requireControllingPlayer(ctx);
-    if (!Number.isInteger(skinTone) || skinTone > 19) throw new SenderError("Skin tone must be between 0 and 19.");
+    if (!Number.isInteger(skinTone) || skinTone >= PLAYER_SKIN_TONES.length) throw new SenderError("Skin tone must be between 0 and 19.");
     const profile = ctx.db.playerProfile.identity.find(ctx.sender);
     if (!profile) throw new SenderError("Player profile not found.");
     if (profile.skinTone === skinTone) return;
@@ -9776,6 +9782,7 @@ export const reportChatMessage = spacetimedb.reducer(
       replyToSenderName: message.replyToSenderName,
       replyToMessage: message.replyToMessage,
     });
+    if (isDeveloperIdentity(ctx.sender) && hasSpacetimeAuthAccount(ctx)) moderateReportedMessage(ctx, "public", messageId);
   },
 );
 
@@ -10552,6 +10559,7 @@ export const createGuild = spacetimedb.reducer({ name: t.string() }, (ctx, { nam
 export const joinGuild = spacetimedb.reducer({ guildId: t.u64() }, (ctx, { guildId }) => { requireGuildPlayer(ctx); guildService.join(ctx, guildId); });
 export const leaveGuild = spacetimedb.reducer((ctx) => { requireGuildPlayer(ctx); guildService.leave(ctx); });
 export const transferGuildLeadership = spacetimedb.reducer({ identity: t.identity() }, (ctx, { identity }) => { requireGuildPlayer(ctx); guildService.transfer(ctx, identity); });
+export const setGuildVicePresident = spacetimedb.reducer({ identity: t.identity(), enabled: t.bool() }, (ctx, { identity, enabled }) => { requireGuildPlayer(ctx); guildService.setVicePresident(ctx, identity, enabled); });
 export const kickGuildMember = spacetimedb.reducer({ identity: t.identity() }, (ctx, { identity }) => { requireGuildPlayer(ctx); guildService.kick(ctx, identity); });
 export const challengeGuild = spacetimedb.reducer({ opponentGuildId: t.u64() }, (ctx, { opponentGuildId }) => { requireGuildPlayer(ctx); guildService.challenge(ctx, opponentGuildId); });
 export const getGuildHub = spacetimedb.procedure({ afterId: t.u64() }, t.string(), (ctx, { afterId }) => ctx.withTx(tx => {
@@ -10640,6 +10648,7 @@ export const reportSocialMessage = spacetimedb.reducer({ messageId: t.u64(), rea
     target: row.sender, targetName: row.senderName, reason,
     note: `[${row.channel === "dm" ? "Private message" : "Guild chat"} #${row.id}] ${row.message}`,
     status: "pending", reportedAt: ctx.timestamp });
+  if (isDeveloperIdentity(ctx.sender) && hasSpacetimeAuthAccount(ctx)) moderateReportedMessage(ctx, "social", messageId);
 });
 
 

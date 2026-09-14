@@ -10,6 +10,7 @@ const guild = table({ name: "guild", public: false }, {
 const guildMember = table({ name: "guild_member", public: false }, {
   identity: t.identity().primaryKey(), guildId: t.u64().index("btree"), name: t.string(),
   joinedAt: t.u64(), eligibleAt: t.u64(), champion: t.bool(), fighter: t.string(), power: t.f64(),
+  vicePresident: t.bool().default(false),
 });
 const guildAccount = table({ name: "guild_account", public: false }, {
   identity: t.identity().primaryKey(), joinAfter: t.u64(), lastAttackDay: t.u32(), attackGuild: t.u64(),

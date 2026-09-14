@@ -181,6 +181,7 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
     getLocalIdentity: () => getCoop()?.localIdentity?.() ?? "",
     onWatchReplay: (replayId) => onOpenReplay?.(replayId),
     onWatchGuildReplay: (reportKey) => window.dispatchEvent(new CustomEvent("wildwood:open-guild-replay", { detail: { reportKey } })),
+    onDirectMessage: (target) => { openPrivate(target.senderName, target.sender); focusChatReplyInput(elements.input); },
     onReply: (target) => setPendingReply(target, true),
     reportMessage: async (messageId, reason) => {
       const coop = getCoop();
@@ -603,16 +604,18 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
     refresh();
   }
 
+  function openPrivate(username: string, identity?: string) {
+    if (!username.trim()) return;
+    enabled = true;
+    updateVisibility();
+    channelPicker.select("private", username, identity);
+    setLarge(true);
+  }
+
   return {
     init,
     refresh,
-    openPrivate: (username: string, identity?: string) => {
-      if (!username.trim()) return;
-      enabled = true;
-      updateVisibility();
-      channelPicker.select("private", username, identity);
-      setLarge(true);
-    },
+    openPrivate,
     minimize: () => { if (large) setLarge(false); },
     isMaximized: () => large,
   };

@@ -58,6 +58,19 @@ describe("Crystal Hollows unlock and identity lifecycle", () => {
     expect(f.db.accountLink.code.find("test-link")).toBeNull();
   });
 
+  it.each([false, true])("keeps a generated-name guest's skin when registering (account profile exists: %s)", (hasProfile) => {
+    const f = crystalFixture(), guest = identity("2");
+    f.db.playerProgress.identity.delete(f.ctx.sender);
+    if (hasProfile) f.patch("playerProfile", { displayName: "Lucky Moth 378", skinTone: 3 });
+    else f.db.playerProfile.identity.delete(f.ctx.sender);
+    f.progress(guest);
+    f.seed("playerProfile", { identity: guest, displayName: "Lucky Moth 379", skinTone: 17 });
+    f.seed("accountLink", { code: "skin-link", guest, createdAt: f.ctx.timestamp });
+    f.ctx.senderAuth = { jwt: { issuer: SPACETIME_AUTH_ISSUER, audience: [SPACETIME_AUTH_CLIENT_ID] } };
+    f.run(server.claimGuestAccount, { code: "skin-link" });
+    expect(f.db.playerProfile.identity.find(f.ctx.sender).skinTone).toBe(17);
+  });
+
   it("renames the contributor without changing credited damage", () => {
     const f = crystalFixture();
     f.attack();

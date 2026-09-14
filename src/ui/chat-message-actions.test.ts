@@ -35,15 +35,23 @@ describe("chat message actions", () => {
     expect(messageActionAvailability(target, "local-player")).toEqual({
       watchReplay: false,
       copy: true,
+      directMessage: true,
       reply: true,
       report: true,
     });
     expect(messageActionAvailability({ ...target, replayId: 2n }, "local-player")).toEqual({
       watchReplay: true,
       copy: false,
+      directMessage: true,
       reply: true,
       report: true,
     });
+  });
+
+  it("hides Direct message for your own messages and system messages", () => {
+    expect(messageActionAvailability(target, target.sender).directMessage).toBe(false);
+    expect(messageActionAvailability({ ...target, senderName: "" }, "local").directMessage).toBe(false);
+    expect(messageActionAvailability({ ...target, sender: "" }, "local").directMessage).toBe(false);
   });
 
   it("dismisses on a deliberate pull or a quick downward swipe", () => {
@@ -53,7 +61,7 @@ describe("chat message actions", () => {
   });
   it("offers Watch Replay for a guild announcement without player report or reply actions", () => {
     expect(messageActionAvailability({ ...target, guildReplayKey: "1:42" }, "local-player")).toEqual({
-      watchReplay: true, copy: false, reply: false, report: false,
+      watchReplay: true, copy: false, directMessage: false, reply: false, report: false,
     });
   });
 });

@@ -24,6 +24,7 @@ export type ChatMessageActionElements = {
   menu: HTMLElement;
   watchReplayButton: HTMLButtonElement;
   copyButton: HTMLButtonElement;
+  directMessageButton: HTMLButtonElement;
   replyButton: HTMLButtonElement;
   reportButton: HTMLButtonElement;
   reportForm: HTMLFormElement;
@@ -37,6 +38,7 @@ type ChatMessageActionsOptions = {
   getLocalIdentity: () => string;
   onWatchReplay: (replayId: bigint) => void;
   onWatchGuildReplay?: (reportKey: string) => void;
+  onDirectMessage: (target: ChatMessageActionTarget) => void;
   onReply: (target: ChatMessageActionTarget) => void;
   reportMessage: (messageId: bigint, reason: ChatReportReason) => Promise<{ ok: boolean; error?: string }>;
   showMessage: (text: string, color?: string) => void;
@@ -54,6 +56,7 @@ export function messageActionAvailability(target: ChatMessageActionTarget, local
   return {
     watchReplay: isReplay,
     copy: !isReplay,
+    directMessage: shouldOfferMessageReport(target, localIdentity),
     reply: Boolean(target.senderName) && !target.guildReplayKey,
     report: shouldOfferMessageReport(target, localIdentity),
   };
@@ -88,6 +91,7 @@ export function createChatMessageActionsController({
   getLocalIdentity,
   onWatchReplay,
   onWatchGuildReplay,
+  onDirectMessage,
   onReply,
   reportMessage,
   showMessage,
@@ -134,6 +138,7 @@ export function createChatMessageActionsController({
     elements.reportForm.hidden = true;
     elements.watchReplayButton.hidden = !availability.watchReplay;
     elements.copyButton.hidden = !availability.copy;
+    elements.directMessageButton.hidden = !availability.directMessage;
     elements.replyButton.hidden = !availability.reply;
     elements.reportButton.hidden = !availability.report;
   }
@@ -234,6 +239,12 @@ export function createChatMessageActionsController({
           showMessage("MESSAGE COPIED", "#c9a6ff");
         })
         .catch(() => showMessage("COPY FAILED", "#ff9b91"));
+    });
+    elements.directMessageButton.addEventListener("click", () => {
+      if (!selectedMessage || !messageActionAvailability(selectedMessage, getLocalIdentity()).directMessage) return;
+      const target = selectedMessage;
+      close(false);
+      onDirectMessage(target);
     });
     elements.replyButton.addEventListener("click", () => {
       if (!selectedMessage) return;

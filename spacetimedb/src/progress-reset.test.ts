@@ -38,6 +38,21 @@ describe("progress reset returns the character to the tutorial", () => {
     }
   });
 
+  it.each([0, 9, 19])("assigns new characters random tone %i once and preserves it on re-entry", (tone) => {
+    const f = crystalFixture();
+    f.db.playerProfile.identity.delete(f.ctx.sender);
+    const roll = vi.spyOn(f.ctx.random, "integerInRange").mockReturnValue(tone);
+    f.run(server.acceptTerms, { termsVersion: TERMS_VERSION, ageBand: AGE_BAND_ADULT });
+    f.run(server.enterWorld, { tabId: "skin-test" });
+    expect(f.db.playerProfile.identity.find(f.ctx.sender).skinTone).toBe(tone);
+    expect(roll).toHaveBeenCalledExactlyOnceWith(0, 19);
+    roll.mockReturnValue(5);
+    f.run(server.enterWorld, { tabId: "skin-test" });
+    f.run(server.resetPlayerProgress);
+    expect(f.db.playerProfile.identity.find(f.ctx.sender).skinTone).toBe(tone);
+    expect(roll).toHaveBeenCalledTimes(1);
+  });
+
   it("preserves an already owned beta helmet across reset", () => {
     const f = crystalFixture();
     f.patch("playerProgress", { inventoryJson: JSON.stringify([SUPERIOR_GOLDEN_HELMET]) });

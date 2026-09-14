@@ -98,6 +98,7 @@ import SetDeveloperNameTagReducer from "../set_developer_name_tag_reducer";
 import SetDeveloperPresenceReducer from "../set_developer_presence_reducer";
 import SetDisplayNameReducer from "../set_display_name_reducer";
 import SetGenderReducer from "../set_gender_reducer";
+import SetGuildVicePresidentReducer from "../set_guild_vice_president_reducer";
 import SetPlayerBlockedReducer from "../set_player_blocked_reducer";
 import SetPlayerMotionInterestReducer from "../set_player_motion_interest_reducer";
 import SetPlayerSpriteReducer from "../set_player_sprite_reducer";
@@ -210,6 +211,7 @@ export type SetDeveloperNameTagParams = __Infer<typeof SetDeveloperNameTagReduce
 export type SetDeveloperPresenceParams = __Infer<typeof SetDeveloperPresenceReducer>;
 export type SetDisplayNameParams = __Infer<typeof SetDisplayNameReducer>;
 export type SetGenderParams = __Infer<typeof SetGenderReducer>;
+export type SetGuildVicePresidentParams = __Infer<typeof SetGuildVicePresidentReducer>;
 export type SetPlayerBlockedParams = __Infer<typeof SetPlayerBlockedReducer>;
 export type SetPlayerMotionInterestParams = __Infer<typeof SetPlayerMotionInterestReducer>;
 export type SetPlayerSpriteParams = __Infer<typeof SetPlayerSpriteReducer>;

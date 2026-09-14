@@ -26,7 +26,7 @@ function requireMember(ctx: Ctx) {
 function requireLeader(ctx: Ctx) {
   const member = requireMember(ctx);
   const guild = ctx.db.guild.id.find(member.guildId) ?? fail("Guild no longer exists.");
-  if (!guild.leader.equals(ctx.sender)) fail("Only the guild leader can do this.");
+  if (!guild.leader.equals(ctx.sender)) fail("Only the guild President can do this.");
   return guild;
 }
 function currentGuild(ctx: Ctx, guild: Guild) {
@@ -108,11 +108,15 @@ function removeMember(ctx: Ctx, member: Member) {
     writeRanking(ctx, { ...guild, members: 0 });
     return;
   }
-  const remaining = members(ctx, guild.id).sort((a, b) => a.joinedAt < b.joinedAt ? -1 : a.joinedAt > b.joinedAt ? 1 : key(a.identity).localeCompare(key(b.identity)));
+  const remaining = members(ctx, guild.id).sort((a, b) => Number(b.vicePresident) - Number(a.vicePresident)
+    || (a.joinedAt < b.joinedAt ? -1 : a.joinedAt > b.joinedAt ? 1 : key(a.identity).localeCompare(key(b.identity))));
   const updated = { ...currentGuild(ctx, guild), members: guild.members - 1,
     champions: guild.champions - Number(member.champion),
     leader: guild.leader.equals(member.identity) ? remaining[0].identity : guild.leader };
   ctx.db.guild.id.update(updated);
+  if (guild.leader.equals(member.identity) && remaining[0].vicePresident) {
+    ctx.db.guildMember.identity.update({ ...remaining[0], vicePresident: false });
+  }
   if (guild.leader.equals(member.identity)) for (const row of ctx.db.socialGuildInvite.guildId.filter(guild.id)) ctx.db.socialGuildInvite.id.delete(row.id);
   writeRanking(ctx, updated);
 }
@@ -135,7 +139,7 @@ export function createGuildService(deps: { fighterFor(ctx: Ctx, identity: Identi
   function insertMember(ctx: Ctx, guildId: bigint) {
     const { name } = deps.fighterFor(ctx, ctx.sender);
     ctx.db.guildMember.insert({ identity: ctx.sender, guildId, name, joinedAt: now(ctx),
-      eligibleAt: now(ctx), champion: false, fighter: "", power: 0 });
+      eligibleAt: now(ctx), champion: false, fighter: "", power: 0, vicePresident: false });
     syncGuildTag(ctx, ctx.sender);
   }
   return {
@@ -162,7 +166,7 @@ export function createGuildService(deps: { fighterFor(ctx: Ctx, identity: Identi
     leave(ctx: Ctx) { removeMember(ctx, requireMember(ctx)); },
     kick(ctx: Ctx, identity: Identity) {
       const guild = requireLeader(ctx);
-      if (ctx.sender.equals(identity)) fail("Use Leave guild to leave or transfer leadership first.");
+      if (ctx.sender.equals(identity)) fail("Use Leave guild to leave or appoint a new President first.");
       const member = ctx.db.guildMember.identity.find(identity);
       if (!member || member.guildId !== guild.id) fail("That player is not in your guild.");
       removeMember(ctx, member);
@@ -172,10 +176,26 @@ export function createGuildService(deps: { fighterFor(ctx: Ctx, identity: Identi
       const member = ctx.db.guildMember.identity.find(identity);
       if (!member || member.guildId !== guild.id) fail("Choose a member of your guild.");
       ctx.db.guild.id.update({ ...guild, leader: identity });
+      if (member.vicePresident) ctx.db.guildMember.identity.update({ ...member, vicePresident: false });
       for (const row of ctx.db.socialGuildInvite.guildId.filter(guild.id)) ctx.db.socialGuildInvite.id.delete(row.id);
     },
+    setVicePresident(ctx: Ctx, identity: Identity, enabled: boolean) {
+      const guild = requireLeader(ctx);
+      const member = ctx.db.guildMember.identity.find(identity);
+      if (!member || member.guildId !== guild.id) fail("Choose a member of your guild.");
+      if (guild.leader.equals(identity)) fail("The President cannot also be Vice President.");
+      if (enabled) for (const previous of members(ctx, guild.id)) {
+        if (previous.vicePresident && !previous.identity.equals(identity)) {
+          ctx.db.guildMember.identity.update({ ...previous, vicePresident: false });
+        }
+      }
+      ctx.db.guildMember.identity.update({ ...member, vicePresident: enabled });
+    },
     challenge(ctx: Ctx, opponentId: bigint) {
-      const guild = currentGuild(ctx, requireLeader(ctx));
+      const member = requireMember(ctx);
+      const stored = ctx.db.guild.id.find(member.guildId) ?? fail("Guild no longer exists.");
+      if (!stored.leader.equals(ctx.sender) && !member.vicePresident) fail("Only the President or Vice President can start battles.");
+      const guild = currentGuild(ctx, stored);
       if (guild.id === opponentId) fail("Challenge another guild.");
       const opponent = ctx.db.guild.id.find(opponentId) ?? fail("That guild no longer exists.");
       if (guild.attacks >= GUILD_DAILY_ATTACKS) fail("Your guild has used its three attacks today.");
@@ -236,6 +256,7 @@ export function createGuildService(deps: { fighterFor(ctx: Ctx, identity: Identi
         nextWeekAt: String(BigInt((week + 1) * 7 - 3) * GUILD_DAY_MICROS),
         joinAfter: "0", signedIn,
         guild: guild ? { id: String(guild.id), name: guild.name, leader: key(guild.leader),
+          vicePresident: members(ctx, guild.id).find(row => row.vicePresident)?.identity.toHexString() ?? null,
           attacksRemaining: GUILD_DAILY_ATTACKS - guild.attacks, score: guild.score,
           members: members(ctx, guild.id).map(row => ({ identity: key(row.identity), name: row.name,
             eligibleAt: String(row.eligibleAt) })) } : null,

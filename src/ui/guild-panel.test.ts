@@ -29,6 +29,23 @@ function setup(snapshot = fixture(), socialApi?: SocialApi) {
 async function settled() { for (let i = 0; i < 10; i++) await Promise.resolve(); }
 
 describe("guild panel", () => {
+  it("lets the President appoint and remove a Vice President", async () => {
+    const g = fixture(), h = setup(g); h.panel.open(); await settled();
+    expect(h.document.body.textContent).toContain("President");
+    h.click("Manage B"); h.click("Make Vice President"); h.click("Appoint"); await settled();
+    expect(h.api.guildAction).toHaveBeenCalledWith({ kind: "vicePresident", identity: "b", enabled: true });
+    g.guild!.vicePresident = "b"; h.panel.open(); await settled();
+    h.click("Manage B"); h.click("Remove Vice President"); h.click("Remove role"); await settled();
+    expect(h.api.guildAction).toHaveBeenCalledWith({ kind: "vicePresident", identity: "b", enabled: false });
+  });
+  it("gives the Vice President battle controls without membership management", async () => {
+    const g = fixture(); g.identity = "b"; g.guild!.vicePresident = "b";
+    const h = setup(g); h.panel.open(); await settled();
+    expect(h.document.body.textContent).toContain("You’re the Vice President");
+    expect(h.find("Manage C")).toBeUndefined();
+    h.click("Battles"); h.click("Challenge"); h.click("Start battle"); await settled();
+    expect(h.api.guildAction).toHaveBeenCalledWith({ kind: "challenge", opponentGuildId: "2" });
+  });
   it("places creation and invitations ahead of discovery", async () => {
     const g = fixture(); g.guild = null;
     const social: SocialSnapshot = { identity: "a", signedIn: true, friends: [], incomingRequests: [], outgoingRequests: [],
@@ -86,18 +103,18 @@ describe("guild panel", () => {
     const h = setup(); h.panel.open(); await settled();
     expect([...h.document.querySelectorAll(".guild-tabs button")].map(node => node.textContent)).toEqual(["My guild", "Battles", "Rankings"]);
     expect(h.document.querySelectorAll(".guild-champion")).toHaveLength(0);
-    expect(h.find("Transfer leadership")).toBeUndefined();
+    expect(h.find("Make President")).toBeUndefined();
     expect(h.find("Remove member")).toBeUndefined();
     h.click("Rankings"); h.click("Battles");
     expect(h.api.loadGuild).toHaveBeenCalledTimes(1);
   });
   it("reveals management only for the selected member and confirms leadership changes", async () => {
     const h = setup(); h.panel.open(); await settled(); h.click("Manage B");
-    h.click("Transfer leadership");
+    h.click("Make President");
     expect(h.api.guildAction).not.toHaveBeenCalled();
-    expect(h.document.body.textContent).toContain("Make B leader?");
+    expect(h.document.body.textContent).toContain("Make B President?");
     h.click("Cancel"); expect(h.api.guildAction).not.toHaveBeenCalled();
-    h.click("Transfer leadership"); h.click("Transfer leadership"); await settled();
+    h.click("Make President"); h.click("Make President"); await settled();
     expect(h.api.guildAction).toHaveBeenCalledExactlyOnceWith({ kind: "transfer", identity: "b" });
   });
   it("has no champion selection and includes every member in the challenge", async () => {

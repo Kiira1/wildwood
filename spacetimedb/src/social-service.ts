@@ -107,7 +107,7 @@ export function createSocialService(deps: { joinGuild(ctx: Ctx, guildId: bigint)
       if (action === "invite") {
         const membership = ctx.db.guildMember.identity.find(ctx.sender) ?? fail("Join a guild first.");
         const guild = ctx.db.guild.id.find(membership.guildId) ?? fail("Guild no longer exists.");
-        if (!same(guild.leader, ctx.sender)) fail("Only the guild leader can invite players.");
+        if (!same(guild.leader, ctx.sender)) fail("Only the guild President can invite players.");
         if (guild.members >= GUILD_MEMBER_LIMIT) fail("This guild is full.");
         const peer = target(ctx, value).identity; assertContact(ctx, peer);
         if (ctx.db.guildMember.identity.find(peer)) fail("That player already belongs to a guild.");
@@ -119,7 +119,7 @@ export function createSocialService(deps: { joinGuild(ctx: Ctx, guildId: bigint)
       if (!["accept", "decline", "revoke"].includes(action)) fail("Unknown invitation action.");
       const row = ctx.db.socialGuildInvite.id.find(invitationId) ?? fail("Invitation no longer exists.");
       const guild = ctx.db.guild.id.find(row.guildId);
-      if (action === "revoke") { if (!guild || !same(guild.leader, ctx.sender)) fail("Only the guild leader can revoke invitations."); }
+      if (action === "revoke") { if (!guild || !same(guild.leader, ctx.sender)) fail("Only the guild President can revoke invitations."); }
       else if (!same(row.recipient, ctx.sender)) fail("This invitation is not yours.");
       if (action === "accept") {
         if (!guild || !same(guild.leader, row.sender)) fail("This invitation is no longer valid.");

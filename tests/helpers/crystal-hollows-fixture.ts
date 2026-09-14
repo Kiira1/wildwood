@@ -15,7 +15,7 @@ export function crystalFixture() {
     db, sender: identity("1"), connectionId: new ConnectionId(1n) as ConnectionId | null,
     timestamp: new Timestamp(10_000_000n),
     senderAuth: {} as { jwt?: { issuer: string; audience: string[] } },
-    random: () => .5,
+    random: Object.assign(() => .5, { integerInRange: (min: number, max: number) => Math.floor((min + max) / 2) }),
   };
   const seed = (table: string, row: Record<string, unknown>) => db[table].insert(storage.row(table, row));
   const progress = (who = ctx.sender, overrides: Record<string, unknown> = {}) => seed("playerProgress", {

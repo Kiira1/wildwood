@@ -10,7 +10,8 @@ export const REGULAR_REWARD_CYCLE_SCALE = .6 * (52 * 60 / MAP_TARGET_SECONDS) * 
 // Desert, Snowlands, Lava, Infernal, Water, Samurai, Cloudspire, Moonfen,
 // Crystal Hollows, Clockwork Ruins, Duskfall Orchard, Neon Bastion, Verdant Catacombs, Ion Citadel. Match Desert's farming
 // time plus 20 minutes per later map, accounting for each map's camps, travel, equipment, and research.
-export const CAMPAIGN_ENEMY_REWARD_MULTIPLIERS: readonly number[] = [1.0, 5.415, 1.5, 0.975, 0.799, 0.648, 0.554, 0.417, 0.362, 0.332, 0.301, 0.275, 0.253, 0.232];
+// Snowlands uses the base payout: its former 5.415x bonus exceeded Lava rewards.
+export const CAMPAIGN_ENEMY_REWARD_MULTIPLIERS: readonly number[] = [1.0, 1.0, 1.5, 0.975, 0.799, 0.648, 0.554, 0.417, 0.362, 0.332, 0.301, 0.275, 0.253, 0.232];
 export function campaignEnemyRewardMultiplier(mapIndex: number) {
   return CAMPAIGN_ENEMY_REWARD_MULTIPLIERS[mapIndex] ?? 1.16;
 }

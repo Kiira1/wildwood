@@ -80,6 +80,7 @@ export function createGuildPanel(options: Options) {
   }
   function now() { return Date.now() + clockOffset; }
   function isLeader() { return snapshot?.guild?.leader === snapshot?.identity; }
+  function canStartBattles() { return Boolean(snapshot?.guild && (isLeader() || snapshot.guild.vicePresident === snapshot.identity)); }
   function ask(title: string, detail: string, label: string, action: GuildAction) {
     confirmation = { title, detail, label, action }; render();
     dialog.querySelector<HTMLElement>(".guild-confirm button")?.focus();
@@ -186,7 +187,7 @@ export function createGuildPanel(options: Options) {
       const item = row(list, entry.name, `${entry.members}/${GUILD_MEMBER_LIMIT} members`);
       item.prepend(mark(entry.name, "guild-avatar"));
       if (!challenge) item.append(button(entry.members >= GUILD_MEMBER_LIMIT ? "Full" : "Join", () => act({ kind: "join", guildId: entry.id }), "secondary", !canJoin() || entry.members >= GUILD_MEMBER_LIMIT, `join-${entry.id}`));
-      else if (isLeader()) {
+      else if (canStartBattles()) {
         const ready = g.guild!.members.length > 0 && g.guild!.members.every(member => date(member.eligibleAt).getTime() <= now());
         const disabled = !ready || !g.guild!.attacksRemaining || !entry.members || entry.challengedToday;
         item.append(button(entry.challengedToday ? "Challenged" : !entry.members ? "Not ready" : "Challenge", () => ask(
@@ -202,7 +203,7 @@ export function createGuildPanel(options: Options) {
   function renderMember(parent: HTMLElement, member: Member) {
     const g = snapshot!, own = g.guild!;
     const self = member.identity === g.identity;
-    const detail = [member.identity === own.leader ? "Leader" : "Member", self ? "You" : ""].filter(Boolean).join(" · ");
+    const detail = [member.identity === own.leader ? "President" : member.identity === own.vicePresident ? "Vice President" : "Member", self ? "You" : ""].filter(Boolean).join(" · ");
     const item = row(parent, `${playerNamePrefix(member.identity)}${member.name}`, detail); item.prepend(mark(member.name, "guild-avatar"));
     if (isLeader() && !self) {
       const control = button("···", () => { managedMember = managedMember === member.identity ? null : member.identity; render(); }, "icon", false, `manage-${member.identity}`);
@@ -210,7 +211,11 @@ export function createGuildPanel(options: Options) {
       if (managedMember === member.identity) {
         const menu = element("div", undefined, "guild-member-actions");
         if (!self) menu.append(
-          button("Transfer leadership", () => ask(`Make ${member.name} leader?`, "You will become a member. Only the new leader can manage the guild and start battles.", "Transfer leadership", { kind: "transfer", identity: member.identity }), "quiet"),
+          button(member.identity === own.vicePresident ? "Remove Vice President" : "Make Vice President", () => ask(
+            member.identity === own.vicePresident ? `Remove ${member.name} as Vice President?` : `Make ${member.name} Vice President?`,
+            member.identity === own.vicePresident ? "They will remain a member." : "They can start guild battles. Replaces your current Vice President.",
+            member.identity === own.vicePresident ? "Remove role" : "Appoint", { kind: "vicePresident", identity: member.identity, enabled: member.identity !== own.vicePresident }), "quiet"),
+          button("Make President", () => ask(`Make ${member.name} President?`, "You will become a member.", "Make President", { kind: "transfer", identity: member.identity }), "quiet"),
           button("Remove member", () => ask(`Remove ${member.name}?`, "They will be removed from your guild.", "Remove member", { kind: "kick", identity: member.identity }), "danger"));
         parent.append(menu);
       }
@@ -220,7 +225,7 @@ export function createGuildPanel(options: Options) {
     const g = snapshot!;
     if (!g.guild) {
       const intro = element("div", undefined, "guild-intro");
-      intro.append(element("h3", "Find your guild"));
+      intro.append(element("h3", "Find your Guild"));
       body.append(intro);
       renderCreate(body);
       if (social) renderReceivedGuildInvites(body, socialContext());
@@ -230,7 +235,7 @@ export function createGuildPanel(options: Options) {
     const own = g.guild;
     const identity = element("div", undefined, "guild-identity");
     const copy = element("div");
-    copy.append(element("h3", own.name), element("p", isLeader() ? "You’re the guild leader" : "Your guild"));
+    copy.append(element("h3", own.name), element("p", isLeader() ? "You’re the President" : own.vicePresident === g.identity ? "You’re the Vice President" : "Your guild"));
     identity.append(mark(own.name), copy); body.append(identity);
     const stats = element("div", undefined, "guild-stats");
     for (const [value, label] of [[`${own.members.length}/${GUILD_MEMBER_LIMIT}`, "Members"], [number(own.score), "Weekly points"], [String(own.attacksRemaining), "Attacks left"]]) {
@@ -239,9 +244,10 @@ export function createGuildPanel(options: Options) {
     if (isLeader() && social) renderGuildInvites(body, socialContext(), own.members.map(member => member.identity));
     heading(body, "Members", `${own.members.length} of ${GUILD_MEMBER_LIMIT}`);
     const roster = element("div", undefined, "guild-list"); body.append(roster);
-    [...own.members].sort((a, b) => Number(b.identity === own.leader) - Number(a.identity === own.leader) || a.name.localeCompare(b.name)).forEach(member => renderMember(roster, member));
+    const roleOrder = (member: Member) => member.identity === own.leader ? 2 : member.identity === own.vicePresident ? 1 : 0;
+    [...own.members].sort((a, b) => roleOrder(b) - roleOrder(a) || a.name.localeCompare(b.name)).forEach(member => renderMember(roster, member));
     const settings = element("details", undefined, "guild-disclosure"); settings.append(element("summary", "Guild options"));
-    settings.append(button("Leave guild", () => ask("Leave this guild?", isLeader() ? own.members.length > 1 ? "Leadership passes to the longest-serving member." : "Leaving will disband the guild." : "You can join another guild immediately.", "Leave guild", { kind: "leave" }), "danger")); body.append(settings);
+    settings.append(button("Leave guild", () => ask("Leave this guild?", isLeader() ? own.members.length > 1 ? own.vicePresident ? "The Vice President becomes President." : "The longest-serving member becomes President." : "Leaving will disband the guild." : "You can join another guild immediately.", "Leave guild", { kind: "leave" }), "danger")); body.append(settings);
   }
   function renderReports(body: HTMLElement) {
     const g = snapshot!;
@@ -271,7 +277,7 @@ export function createGuildPanel(options: Options) {
       const message = empty(body, "Guild battles", "Join a guild to battle.");
       message.append(button("Find a guild", () => switchSection("guild"), "primary")); return;
     }
-    const view = battleView ?? (isLeader() ? "opponents" : "history");
+    const view = battleView ?? (canStartBattles() ? "opponents" : "history");
     const tabs = element("div", undefined, "guild-battle-tabs");
     tabs.setAttribute("role", "group"); tabs.setAttribute("aria-label", "Guild battles");
     for (const [key, label] of [["opponents", "Find opponent"], ["history", "Battle history"]] as const) {
@@ -282,7 +288,7 @@ export function createGuildPanel(options: Options) {
     if (view === "history") renderReports(body);
     else {
       heading(body, "Choose an opponent", `${own.attacksRemaining} attacks left · Resets 00:00 UTC`);
-      if (!isLeader()) body.append(element("p", "Only the leader can challenge.", "guild-callout"));
+      if (!canStartBattles()) body.append(element("p", "Only the President or Vice President can challenge.", "guild-callout"));
       else if (!own.attacksRemaining) body.append(element("p", "All attacks used. More at 00:00 UTC.", "guild-callout"));
       else {
         const readyAt = Math.max(...own.members.map(member => date(member.eligibleAt).getTime()));

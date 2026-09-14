@@ -50,3 +50,26 @@ it("fits full teams in portrait and landscape while retaining names and numeric 
   expect(Math.max(...landscape.slice(0, 20).map(actor => actor.x))).toBeLessThan(Math.min(...landscape.slice(20).map(actor => actor.x)));
   renderer.dispose();
 });
+
+it("draws white damage popups on impact and handles expiry and rewind", () => {
+  const text: { label: string; color: unknown }[] = [];
+  const state: Record<string, unknown> = {};
+  const context = new Proxy(state, {
+    get: (target, key: string) => key === "fillText" ? (label: string) => text.push({ label, color: target.fillStyle }) : target[key] ?? vi.fn(),
+    set: (target, key: string, value) => { target[key] = value; return true; },
+  }) as unknown as CanvasRenderingContext2D;
+  const doc = { defaultView: { devicePixelRatio: 1 }, createElement: () => ({ width: 0, height: 0, getContext: () => context }) };
+  const canvas = { ownerDocument: doc, clientWidth: 390, clientHeight: 844, width: 0, height: 0 };
+  const member = (identity: string) => ({ identity, name: identity, fighter: { maxHp: 100, damage: 73, armor: 0, regen: 0, attackRate: 3 }, range: 160 });
+  const timeline = buildGuildReplayTimeline(simulateGuildBattle([member("a")], [member("b")]));
+  const image = { naturalWidth: 0 } as HTMLImageElement;
+  const renderer = createGuildBattlefieldRenderer(canvas as unknown as HTMLCanvasElement, context, timeline, 1,
+    { player: { basicFrontLeg: image, basicBackLeg: image, equipment: {} }, prepare: async () => {}, trees: image, treeBounds: () => [] });
+  const popups = (time: number) => { text.length = 0; renderer.draw(time, false); return text.filter(row => row.label === "73"); };
+  const time = timeline.damage[0].time;
+  expect(popups(time - .01)).toHaveLength(0);
+  expect(popups(time)).toEqual([{ label: "73", color: "#fff" }, { label: "73", color: "#fff" }]);
+  expect(popups(time + .9)).toHaveLength(0);
+  expect(popups(time)).toHaveLength(2);
+  renderer.dispose();
+});

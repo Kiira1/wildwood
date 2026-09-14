@@ -52,7 +52,7 @@ describe("private social interactions", () => {
     f.actor("3"); expect(() => f.run(server.guildInviteAction, { action: "accept", target: "", invitationId: 1n })).toThrow("not yours");
     f.actor("2"); expect(f.snapshot().guildInvitations).toHaveLength(1);
     f.run(server.guildInviteAction, { action: "accept", target: "", invitationId: 1n });
-    expect(() => f.run(server.guildInviteAction, { action: "invite", target: "Player 3", invitationId: 0n })).toThrow("leader");
+    expect(() => f.run(server.guildInviteAction, { action: "invite", target: "Player 3", invitationId: 0n })).toThrow("President");
     f.send("guild", "", "Guild hello"); f.actor("1"); expect(f.visible()).toHaveLength(1);
     f.actor("3"); expect(f.visible()).toHaveLength(0);
     f.actor("2"); f.run(server.leaveGuild); expect(f.visible()).toHaveLength(0);

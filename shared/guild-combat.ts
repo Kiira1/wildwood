@@ -29,6 +29,9 @@ export function initialGuildCombat(attackers: GuildFighter[], defenders: GuildFi
   })) };
 }
 const living = (actors: GuildActorState[], from: number, to: number) => actors.slice(from, to).filter(actor => actor.hp > 0).length;
+export function guildAttackDamage(attacker: DuelFighter, defender: DuelFighter, time: number, count = 1) {
+  return count * damageAfterArmor(attacker.damage * duelHitMultiplier(time, 1), defender.armor);
+}
 export function guildCombatFinished(frame: GuildCombatFrame, split: number) {
   return frame.time >= GUILD_COMBAT_LIMIT || !living(frame.actors, 0, split) || !living(frame.actors, split, frame.actors.length);
 }
@@ -63,7 +66,7 @@ export function advanceGuildCombat(fighters: GuildFighter[], split: number, prev
     actor.cooldown -= GUILD_COMBAT_STEP;
     if (distance <= reach + .01 && actor.cooldown <= 1e-9) {
       const count = 1 + Math.floor(Math.max(0, -actor.cooldown - 1e-9) / stats.attackRate);
-      hits[actor.target] += count * damageAfterArmor(stats.damage * duelHitMultiplier(time, 1), fighters[actor.target].fighter.armor);
+      hits[actor.target] += guildAttackDamage(stats, fighters[actor.target].fighter, time, count);
       actor.attacks += count; actor.hitAt = time; actor.cooldown += count * stats.attackRate;
     } else if (distance > reach + .01) actor.cooldown = Math.max(0, actor.cooldown);
   }
