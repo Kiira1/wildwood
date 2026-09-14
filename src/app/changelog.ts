@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.684": [
+    "Replay buttons now use a simple black-and-white icon.",
+  ],
   "0.683": [
     "Tap Original on a reply to jump to the original chat message.",
     "Guild battle replay characters now use normal gameplay size.",
@@ -1772,6 +1775,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.684": "2026-09-14",
   "0.683": "2026-09-14",
   "0.682": "2026-09-14",
   "0.681": "2026-09-14",
