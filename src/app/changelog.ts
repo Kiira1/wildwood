@@ -1,4 +1,9 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.679": [
+    "Updated the character head and helmet fit.",
+    "Fixed gender and power icons flickering in chat.",
+    "Improved sprite alignment tools and shared sword grips.",
+  ],
   "0.678": [
     "Keeps signed-in players in the game during reconnects and prevents portal transitions from waiting indefinitely.",
     "Inventory stays stacked on desktop, with simpler item slots and a smaller item inspection window.",
@@ -1751,6 +1756,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.679": "2026-09-13",
   "0.678": "2026-09-13",
   "0.677": "2026-09-13",
   "0.676": "2026-09-13",

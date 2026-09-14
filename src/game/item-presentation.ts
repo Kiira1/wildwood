@@ -1,3 +1,5 @@
+import type { WeaponCategory } from "./equipment-alignment";
+import type { LayerAdjustment } from "./player-layer-alignment";
 import {
   BASIC_PAPER_HAT,
   DARK_METAL_HELMET,
@@ -39,6 +41,8 @@ export type WorldSpritePresentation = {
   bottom?: number;
   top?: number;
   handAction?: "THROW" | "BOW";
+  weaponCategory?: WeaponCategory;
+  alignment?: LayerAdjustment;
 };
 
 export type WorldLegPresentation = {

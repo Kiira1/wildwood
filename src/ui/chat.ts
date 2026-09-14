@@ -1,4 +1,4 @@
-import { appendPlayerNameTags } from "../app/player-name-tags";
+import { appendPlayerNameTags, playerNamePrefix } from "../app/player-name-tags";
 import {
   duelReplayIsInteractive,
   formatChatTime,
@@ -109,6 +109,7 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
   let enabled = true;
   let large = false;
   let renderedRevision = "";
+  let renderedRows = new Map<string, { signature: string; element: HTMLDivElement }>();
   let channel: ChatChannel = "public";
   let privatePeer = "";
   let privatePeerIdentity = "";
@@ -362,8 +363,23 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
     const messages = large ? allMessages : allMessages.slice(-2);
     renderedRevision = revision;
     nextExpiryAt = channel !== "private" && allMessages.length > 0 ? allMessages[0].sentAtMs + CHAT_DISPLAY_TTL_MS : Number.POSITIVE_INFINITY;
-    elements.messages.replaceChildren();
+    // Social refreshes and incoming messages must not detach unchanged image
+    // elements: recreating them makes gender/power icons flash while repainting.
+    const nextRows = new Map<string, { signature: string; element: HTMLDivElement }>();
     for (const message of messages) {
+      const cachedGender = normalizePlayerGender(coop?.playerGender?.(message.sender));
+      const displayedGender = cachedGender !== PLAYER_GENDER_UNSET ? cachedGender : message.senderGender;
+      const guest = !!coop?.isGuest?.(message.sender);
+      const iconIndex = Math.max(0, Math.min(63, Math.floor(coop?.profileIcon?.(message.sender) ?? 0)));
+      const rowKey = `${identity}:${conversationKey()}:${large}:${message.id}`;
+      const signature = JSON.stringify([
+        message.sender, message.senderName, message.message, String(message.replayId), message.guildReplayKey,
+        message.powerLevel, displayedGender, message.moderated, String(message.replyToMessageId),
+        message.replyToSenderName, message.replyToMessage, message.sentAtMs, guest, iconIndex,
+        playerNamePrefix(message.sender),
+      ]);
+      const previous = renderedRows.get(rowKey);
+      if (previous?.signature === signature) { nextRows.set(rowKey, previous); continue; }
       const line = document.createElement("div");
       line.className = "chat-line";
       line.dataset.messageId = String(message.id);
@@ -393,10 +409,6 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
       text.appendChild(messageBody);
       const displayName = message.senderName || (message.replayId > 0n ? "DUEL" : "PLAYER");
       const displayIdentity = message.sender;
-      const cachedGender = normalizePlayerGender(coop?.playerGender?.(displayIdentity));
-      const displayedGender = cachedGender !== PLAYER_GENDER_UNSET
-        ? cachedGender
-        : message.senderGender;
       const displayedPower = message.powerLevel;
       const name = document.createElement("span");
       name.className = "chat-name";
@@ -409,7 +421,7 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
       nameText.textContent = displayName;
       nameCore.append(nameText);
       appendPlayerGenderIcon(nameCore, displayedGender);
-      if (coop?.isGuest?.(displayIdentity)) nameCore.append(document.createTextNode(" (guest)"));
+      if (guest) nameCore.append(document.createTextNode(" (guest)"));
       name.appendChild(nameCore);
       if (displayedPower > 0) {
         const power = document.createElement("span");
@@ -456,7 +468,6 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
         event.preventDefault();
         openPlayer(event);
       });
-      const iconIndex = Math.max(0, Math.min(63, Math.floor(coop?.profileIcon?.(displayIdentity) ?? 0)));
       icon.style.backgroundPosition = `${PROFILE_PORTRAIT_POSITION_START + (iconIndex % 8) * PROFILE_PORTRAIT_POSITION_STEP}% ${PROFILE_PORTRAIT_POSITION_START + Math.floor(iconIndex / 8) * PROFILE_PORTRAIT_POSITION_STEP}%`;
       const content = document.createElement("div");
       content.className = "chat-message-content";
@@ -498,8 +509,19 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
         replay.addEventListener("click", openMessageActions);
         messageBody.append(" ", replay);
       }
-      elements.messages.appendChild(line);
+      nextRows.set(rowKey, { signature, element: line });
     }
+    const retained = new Set([...nextRows.values()].map(row => row.element));
+    for (const child of [...elements.messages.children]) {
+      if (!retained.has(child as HTMLDivElement)) child.remove();
+    }
+    let cursor = elements.messages.firstElementChild;
+    for (const { element } of nextRows.values()) {
+      if (element !== cursor) elements.messages.insertBefore(element, cursor);
+      cursor = element.nextElementSibling;
+    }
+    // Keep only displayed rows, including when switching channels or accounts.
+    renderedRows = nextRows;
     if (followNewestMessage) {
       elements.messages.scrollTop = elements.messages.scrollHeight;
     } else {

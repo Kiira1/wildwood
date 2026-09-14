@@ -1,3 +1,7 @@
+import { defaultWeaponAlignment } from "./equipment-alignment";
+import { EXPANSION_HEAD_FRAME, DEFAULT_HEAD_ALIGNMENT } from "./player-head-template";
+import { drawPlayerHead, drawPlayerEyes } from "./player-face";
+import { drawAlignedPlayerLayer, type PlayerLayer, type PlayerLayerAlignment, type LayerBounds } from "./player-layer-alignment";
 import { BASIC_PAPER_HAT, STARTER_STONE } from "./inventory";
 import { ITEM_PRESENTATIONS, itemPresentation, type WorldSpritePresentation } from "./item-presentation";
 import { PLAYER_WORLD_SCALE } from "./player-render-scale";
@@ -205,21 +209,11 @@ function drawEgg(ctx: CanvasRenderingContext2D, width: number, height: number, i
   ctx.bezierCurveTo(left, top + eggHeight * .2, left + eggWidth * .22, top, middle, top); ctx.closePath(); ctx.fill();
 }
 
-function drawPillHead(ctx: CanvasRenderingContext2D, width: number, height: number, skin: string) {
-  const pill = (inset: number, fill: string) => {
-    const pillWidth = width - inset * 2, pillHeight = height - inset * 2, radius = pillHeight / 2, left = inset, top = inset;
-    ctx.fillStyle = fill; ctx.beginPath(); ctx.moveTo(left + radius, top); ctx.lineTo(left + pillWidth - radius, top);
-    ctx.arc(left + pillWidth - radius, top + radius, radius, -Math.PI / 2, Math.PI / 2);
-    ctx.lineTo(left + radius, top + pillHeight); ctx.arc(left + radius, top + radius, radius, Math.PI / 2, Math.PI * 1.5); ctx.closePath(); ctx.fill();
-  };
-  pill(0, "#000"); pill(3.5, skin);
-  ctx.fillStyle = "#000"; ctx.beginPath(); ctx.arc(width * .42, height * .51, 5.7, 0, Math.PI * 2); ctx.arc(width * .77, height * .51, 5.7, 0, Math.PI * 2); ctx.fill();
-}
 
 export function drawStartingPlayer(
   ctx: CanvasRenderingContext2D,
   assets: PlayerAppearanceAssets,
-  options: { x: number; y: number; facing: number; combatFacing?: number | null; moving?: boolean; gameTime: number; throwClock?: number; skinTone?: number; headItem?: string; chestItem?: string; feetItem?: string; rightHandItem?: string; leftHandItem?: string; alpha?: number; scale?: number; smooth?: boolean },
+  options: { x: number; y: number; facing: number; combatFacing?: number | null; moving?: boolean; gameTime: number; throwClock?: number; skinTone?: number; headItem?: string; chestItem?: string; feetItem?: string; rightHandItem?: string; leftHandItem?: string; alpha?: number; scale?: number; smooth?: boolean; alignment?: PlayerLayerAlignment; helmetOpacity?: number; presentationOverrides?: Record<string, WorldSpritePresentation>; onLayerBounds?: (layer: PlayerLayer, bounds: LayerBounds) => void },
 ) {
   const scale = options.scale ?? PLAYER_WORLD_SCALE;
   const walkFrame = options.moving ? Math.floor(options.gameTime * 10) % 3 + 1 : 0;
@@ -234,16 +228,17 @@ export function drawStartingPlayer(
   const handStateKnown = options.rightHandItem !== undefined || options.leftHandItem !== undefined;
   const heldItem = options.rightHandItem || options.leftHandItem || (!handStateKnown ? STARTER_STONE : "");
   const heldInLeftHand = Boolean(heldItem && options.leftHandItem === heldItem);
-  const heldPresentation = itemPresentation(heldItem)?.world;
+  const heldPresentation = options.presentationOverrides?.[heldItem] ?? itemPresentation(heldItem)?.world;
   const heldSpritePresentation = heldPresentation?.kind === "SPRITE" && heldPresentation.layer === "HAND"
     ? heldPresentation
     : undefined;
   const bowHeld = heldSpritePresentation?.handAction === "BOW";
-  // Bows use the actor's exact center anchor. Other held items retain their
-  // tuned hand positions and animation offsets.
+  // Keep the grip attached to the same hand in local character space.
+  // The actor transform mirrors it when turning; a second facing-dependent
+  // offset here would make the weapon slide sideways across the hand.
   let heldX = bowHeld
     ? bowHeldAnchorX(heldInLeftHand, facingLeft)
-    : heldInLeftHand ? (facingLeft ? -11 : 30) : (facingLeft ? 30 : -11);
+    : heldInLeftHand ? 30 : -11;
   let heldY = heldSpritePresentation?.top ?? 116;
   const bowAlignment = heldSpritePresentation?.handAction === "BOW"
     ? bowHeldAlignment(heldInLeftHand)
@@ -286,42 +281,51 @@ export function drawStartingPlayer(
   const backLeg = feetAssets?.backLeg ?? assets.basicBackLeg;
   const frontLeg = feetAssets?.frontLeg ?? assets.basicFrontLeg;
   const headItem = options.headItem === undefined ? BASIC_PAPER_HAT : options.headItem;
-  const drawLayer = (target: CanvasRenderingContext2D, asset: HTMLImageElement, x: number, y: number, width = asset.naturalWidth, height = asset.naturalHeight) => {
-    if (readyImage(asset)) target.drawImage(asset, x, y, width, height);
+  const drawLayer = (target: CanvasRenderingContext2D, asset: HTMLImageElement, x: number, y: number, width = asset.naturalWidth, height = asset.naturalHeight, layer?: PlayerLayer, report = false) => {
+    if (!readyImage(asset)) return;
+    if (!layer) { target.drawImage(asset, x, y, width, height); return; }
+    drawAlignedPlayerLayer(target, layer, { x, y, width, height }, options.alignment?.[layer] ?? (layer === "weapon" ? defaultWeaponAlignment(heldSpritePresentation) : undefined),
+      () => {
+        if (layer === "helmet") target.globalAlpha *= options.helmetOpacity ?? 1;
+        target.drawImage(asset, x, y, width, height);
+      }, report ? options.onLayerBounds : undefined);
   };
-  const drawEquippedSprite = (target: CanvasRenderingContext2D, itemId: string | undefined, layer: WorldSpritePresentation["layer"], gaitY = 0) => {
+  const drawEquippedSprite = (target: CanvasRenderingContext2D, itemId: string | undefined, layer: WorldSpritePresentation["layer"], gaitY = 0, report = false) => {
     if (!itemId) return;
-    const presentation = itemPresentation(itemId)?.world;
+    const presentation = options.presentationOverrides?.[itemId] ?? itemPresentation(itemId)?.world;
     const asset = assets.equipment[itemId]?.sprite;
     if (!asset || presentation?.kind !== "SPRITE" || presentation.layer !== layer) return;
     const width = presentation.width ?? asset.naturalWidth;
     const height = presentation.height ?? asset.naturalHeight;
     const y = presentation.top ?? (presentation.bottom ?? height) - height + gaitY;
-    drawLayer(target, asset, 90 - width / 2, y, width, height);
+    drawLayer(target, asset, 90 - width / 2, y, width, height, layer === "HEAD" ? "helmet" : "chest", report);
   };
   const bodyAssetsReady = readyImage(backLeg) && readyImage(frontLeg) && [
     { itemId: options.chestItem, layer: "CHEST" as const },
     { itemId: headItem, layer: "HEAD" as const },
   ].every(({ itemId, layer }) => {
     if (!itemId) return true;
-    const presentation = itemPresentation(itemId)?.world;
+    const presentation = options.presentationOverrides?.[itemId] ?? itemPresentation(itemId)?.world;
     if (presentation?.kind !== "SPRITE" || presentation.layer !== layer) return true;
     return readyImage(assets.equipment[itemId]?.sprite);
   });
-  const drawBody = (target: CanvasRenderingContext2D) => {
-    drawLayer(target, backLeg, 90 - backLeg.naturalWidth / 2 - 8 + gait.back.x, 171 - backLeg.naturalHeight + gait.back.y);
-    drawLayer(target, frontLeg, 90 - frontLeg.naturalWidth / 2 + 8 + gait.front.x, 171 - frontLeg.naturalHeight + gait.front.y);
-    target.save();
-    target.translate(90 - 41.4675 / 2, 157 - 45.315);
-    drawEgg(target, 41.4675, 45.315, 0, "#000");
-    drawEgg(target, 41.4675, 45.315, 3, skinToneColor(options.skinTone));
-    target.restore();
-    drawEquippedSprite(target, options.chestItem, "CHEST");
-    target.save();
-    target.translate(90 - 61.75 / 2, 104 - 40 + 15 + gait.head);
-    drawPillHead(target, 61.75, 40, skinToneColor(options.skinTone));
-    target.restore();
-    drawEquippedSprite(target, headItem, "HEAD", gait.head);
+  const drawBody = (target: CanvasRenderingContext2D, report = false) => {
+    drawLayer(target, backLeg, 90 - backLeg.naturalWidth / 2 - 8 + gait.back.x, 171 - backLeg.naturalHeight + gait.back.y, backLeg.naturalWidth, backLeg.naturalHeight, "backLeg", report);
+    drawLayer(target, frontLeg, 90 - frontLeg.naturalWidth / 2 + 8 + gait.front.x, 171 - frontLeg.naturalHeight + gait.front.y, frontLeg.naturalWidth, frontLeg.naturalHeight, "frontLeg", report);
+    const body = { x: 90 - 41.4675 / 2, y: 157 - 45.315, width: 41.4675, height: 45.315 };
+    drawAlignedPlayerLayer(target, "body", body, options.alignment?.body, () => {
+      target.translate(body.x, body.y);
+      drawEgg(target, body.width, body.height, 0, "#000");
+      drawEgg(target, body.width, body.height, 3, skinToneColor(options.skinTone));
+    }, report ? options.onLayerBounds : undefined);
+    drawEquippedSprite(target, options.chestItem, "CHEST", 0, report);
+    const head = { ...EXPANSION_HEAD_FRAME, y: EXPANSION_HEAD_FRAME.y + gait.head };
+    drawAlignedPlayerLayer(target, "head", head, options.alignment?.head ?? DEFAULT_HEAD_ALIGNMENT, () => {
+      target.translate(head.x, head.y);
+      drawPlayerHead(target, head.width, head.height, skinToneColor(options.skinTone));
+      drawPlayerEyes(target, head.width, head.height, options.alignment?.eyes, report ? options.onLayerBounds : undefined);
+    }, report ? options.onLayerBounds : undefined);
+    drawEquippedSprite(target, headItem, "HEAD", gait.head, report);
   };
 
   ctx.save();
@@ -346,12 +350,15 @@ export function drawStartingPlayer(
       : 0;
     ctx.rotate(baseRotation + runMotion.rotation);
     ctx.scale(bowAlignment.scaleX, 1);
-    drawLayer(ctx, asset, -width / 2, -height / 2, width, height);
+    drawLayer(ctx, asset, -width / 2, -height / 2, width, height, "weapon", true);
     ctx.restore();
   };
   const bodyResolution = options.smooth ? 2 : 1;
   const bodyCacheKey = [
     bodyResolution,
+    options.alignment ? JSON.stringify(options.alignment) : "{}",
+    options.presentationOverrides ? JSON.stringify(options.presentationOverrides) : "",
+    options.helmetOpacity ?? 1,
     skinToneColor(options.skinTone),
     headItem,
     options.chestItem ?? "",
@@ -364,6 +371,9 @@ export function drawStartingPlayer(
     : null;
   if (bodyCanvas) ctx.drawImage(bodyCanvas, 0, 0, PLAYER_BODY_WIDTH, PLAYER_BODY_HEIGHT);
   else drawBody(ctx);
+  if (options.onLayerBounds) {
+    ctx.save(); ctx.globalAlpha = 0; drawBody(ctx, true); ctx.restore();
+  }
   // Keep weapons readable above armor from every facing and hand position.
   drawHeldItem();
   ctx.restore();

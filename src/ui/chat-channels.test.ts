@@ -18,7 +18,7 @@ function setup() {
   vi.stubGlobal("Element", window.Element);
   vi.stubGlobal("requestAnimationFrame", (callback: () => void) => { callback(); return 0; });
   const row = (message: string, id = 1n) => ({ id, sender: "friend", senderName: "Moss", message,
-    replayId: 0n, powerLevel: 0, senderGender: 0 as const, moderated: false,
+    replayId: 0n, powerLevel: 0, senderGender: 0 as 0 | 1 | 2, moderated: false,
     replyToMessageId: 0n, replyToSenderName: "", replyToMessage: "", sentAtMs: Date.now() });
   const coop = {
     localIdentity: () => "me", chatRevision: () => 1,
@@ -50,6 +50,41 @@ function setup() {
 }
 
 describe("chat channels", () => {
+  it.each([false, true])("retains gender and power image nodes through unrelated refreshes (fullscreen=%s)", (fullscreen) => {
+    const h = setup();
+    let revision = 2;
+    const first = { ...h.coop.chatMessages()[0], senderGender: 1 as const, powerLevel: 120 };
+    let rows = [first];
+    h.coop.chatMessages = () => rows;
+    h.coop.chatRevision = () => revision;
+    h.coop.social.revision = () => revision;
+    if (fullscreen) h.document.getElementById("chatSizeToggle")!.click();
+    h.chat.refresh();
+    const line = h.document.querySelector('.chat-line[data-message-id="1"]')!;
+    const gender = line.querySelector(".player-gender-icon")!;
+    const power = line.querySelector(".chat-power-icon")!;
+    const remove = vi.spyOn(line, "remove");
+    const insert = vi.spyOn(h.document.getElementById("chatMessages")!, "insertBefore");
+    for (let i = 0; i < 5; i++) { revision++; h.chat.refresh(); }
+    expect(insert).not.toHaveBeenCalled();
+    expect(remove).not.toHaveBeenCalled();
+    expect(h.document.querySelector(".player-gender-icon")).toBe(gender);
+    expect(h.document.querySelector(".chat-power-icon")).toBe(power);
+    rows = [first, { ...first, id: 2n, message: "new message" }];
+    revision++; h.chat.refresh();
+    expect(h.document.querySelector('.chat-line[data-message-id="1"]')).toBe(line);
+    expect(line.querySelector(".chat-power-icon")).toBe(power);
+    expect(remove).not.toHaveBeenCalled();
+    rows = [{ ...first, moderated: true }, rows[1]];
+    revision++; h.chat.refresh();
+    const moderated = h.document.querySelector('.chat-line[data-message-id="1"]')!;
+    expect(moderated.textContent).toContain("Message moderated.");
+    if (fullscreen) {
+      moderated.querySelector<HTMLElement>(".chat-text")!.click();
+      expect(h.document.getElementById("chatMessageActionPreview")!.textContent).toContain("Message moderated.");
+    }
+  });
+
   it("renders guild replays as normal chat bubbles and opens them through replay actions", () => {
     const h = setup();
     vi.stubGlobal("CustomEvent", h.window.CustomEvent);

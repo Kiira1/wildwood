@@ -1,0 +1,43 @@
+:root{color-scheme:dark;font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#111416;color:#edf0ef;font-synthesis:none}
+*{box-sizing:border-box}body{margin:0}button,input,select{font:inherit}
+button,select,input[type=number],.file-button{border:1px solid #3a4245;background:#202629;color:inherit;border-radius:7px;min-height:36px;padding:6px 10px}
+button,.file-button,summary{cursor:pointer}button:hover:not(:disabled),.file-button:hover{background:#313b3e;border-color:#71817e}button:disabled{opacity:.35;cursor:default}
+button.primary{background:#b7e5cd;color:#14271d;border-color:#b7e5cd;font-weight:650}
+button:focus-visible,select:focus-visible,input:focus-visible,canvas:focus-visible,a:focus-visible,summary:focus-visible{outline:2px solid #a6d9c3;outline-offset:3px}
+input[type=checkbox]{accent-color:#b7e5cd}h1,h2,p,figure{margin:0}h1{font-size:25px;letter-spacing:-.8px;font-weight:650}
+h2{font-size:13px;font-weight:650;color:#dce5df;margin-bottom:13px}.eyebrow{font-size:10px;letter-spacing:2px;color:#91b6a3}
+.app-header{max-width:1440px;margin:auto;padding:22px 28px;display:flex;justify-content:space-between;gap:20px;align-items:center}
+.header-actions{display:flex;align-items:center;gap:16px}#saveStatus{font-size:12px;color:#9caaa4;max-width:290px}
+main{max-width:1440px;margin:auto;padding:0 28px 28px;display:grid;grid-template-columns:248px minmax(0,1fr);gap:22px}
+.sidebar{background:#191e20;border:1px solid #303638;border-radius:12px;padding:18px;align-self:start}.sidebar section+section{margin-top:25px}
+.sidebar label{display:grid;gap:6px;color:#aab6b1;font-size:12px;margin-bottom:13px}select{width:100%;max-width:100%}
+.layers{display:grid;gap:4px}.layers button{display:flex;align-items:center;justify-content:space-between;text-align:left;border-color:transparent;background:transparent}
+.layers button[aria-pressed=true]{background:#2b3a34;color:#caf0dc;border-color:#557265}.layers small{color:#91a49a;font-size:10px}
+.sidebar details{margin-top:22px;border-top:1px solid #343c3c;padding-top:16px;color:#aebbb5;font-size:12px}
+.file-actions{display:grid;gap:10px;margin-top:14px}.file-button{display:block!important;text-align:center;margin:0!important}input[type=file]{display:none}a{color:#abd6c0}
+.workspace{min-width:0}.preview-controls{display:flex;align-items:end;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.preview-controls label{display:grid;gap:5px;font-size:11px;color:#aab6b1}.preview-controls select{width:auto;min-width:68px}
+.preview-controls .check{display:flex;align-items:center;gap:5px;height:36px}
+.previews{display:grid;grid-template-columns:1fr 1fr;border:1px solid #37433c;border-radius:12px;overflow:hidden;background:#202b25}
+.previews figure{min-width:0;position:relative}.previews figure+figure{border-left:1px solid #3b4b41}
+figcaption{display:flex;justify-content:space-between;gap:6px;padding:12px 15px;color:#e6ede8;background:#19241e;font-size:12px}
+figcaption span{color:#93b4a1;font-size:11px}canvas{width:100%;height:390px;display:block;image-rendering:pixelated}
+#preview{cursor:grab;touch-action:none}#preview:active{cursor:grabbing}
+.preview-footer{display:flex;justify-content:space-between;align-items:center;gap:10px;color:#8e9e95;font-size:11px;padding:12px 2px}
+.preview-footer label{display:flex;align-items:center;gap:8px}.preview-footer select{min-height:30px;padding:3px 7px;font-size:11px}
+.inspector{background:#191e20;border:1px solid #303638;border-radius:12px;padding:18px}
+.inspector-heading{display:flex;align-items:center;justify-content:space-between;margin-bottom:15px}.inspector-heading h2{margin:0;font-size:15px}
+.inspector-heading button{min-height:29px;font-size:12px;padding:4px 9px}
+.adjustments{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) auto;align-items:end;gap:12px}
+.adjustments label{display:grid;gap:7px;font-size:12px;color:#aab6b1}.adjustments input{width:100%;font-variant-numeric:tabular-nums}
+.inspector p{font-size:11px;color:#8e9e95;margin-top:14px}.workspace-footer{padding:16px 2px;display:flex;gap:15px;justify-content:space-between;font-size:11px;color:#829489}
+#assetStatus[data-error=true],#saveStatus[data-error=true]{color:#ffb0a0}
+@media(max-width:900px){main{grid-template-columns:210px minmax(0,1fr);padding:0 16px 20px;gap:14px}.app-header{padding:18px 16px}.previews{grid-template-columns:1fr}.previews figure:first-child{display:none}canvas{height:380px}.adjustments{grid-template-columns:repeat(3,1fr)}.adjustments button{grid-column:1/-1}.workspace-footer{flex-direction:column;gap:5px}}
+@media(max-width:600px){main{display:flex;flex-direction:column}.workspace{order:-1}.sidebar{width:100%}.app-header{align-items:start}.header-actions{flex-direction:column-reverse;align-items:end;gap:6px}h1{font-size:21px}canvas{height:320px}.preview-footer>span{max-width:180px}.preview-controls{gap:7px}}
+
+.weapon-navigation{display:flex;gap:8px}.weapon-navigation button{flex:1;font-size:12px}.library-status{font-size:11px;color:#91a49a;margin:9px 0 15px}.basis-label{display:flex;align-items:center;gap:12px;font-size:12px;color:#aab6b1;margin-bottom:16px}.basis-label select{max-width:280px}.previews figcaption{height:70px;align-items:center}figcaption label{display:flex;align-items:center;gap:8px}figcaption select{font-size:12px;min-height:30px;padding:4px 6px;width:auto}figcaption span{text-align:right;max-width:150px}
+.baseline-hint{font-size:12px;color:#b4c7bd;padding:12px 2px 0}
+
+.weapon-transforms:not([hidden]){display:flex;gap:10px;margin-top:14px}.weapon-transforms button[aria-pressed=true]{background:#2b3a34;color:#caf0dc;border-color:#557265}#preview[data-picking-grip=true]{cursor:crosshair}
+
+.face-tools p,.head-sources p{color:#91a49a;font-size:11px;margin-bottom:12px}.face-tools>div{display:flex;gap:7px;margin-bottom:13px}.face-tools button{font-size:12px;flex:1}.eye-controls:not([hidden]){display:flex;margin-top:14px}.eye-controls label{display:grid;gap:6px;font-size:12px;color:#aab6b1}.eye-controls input{max-width:140px}.head-gallery{display:grid;grid-template-columns:1fr 1fr;gap:10px}.head-gallery a{display:grid;gap:5px;justify-items:center;font-size:10px;text-decoration:none}.head-gallery img{width:80px;height:70px;object-fit:contain;image-rendering:pixelated}

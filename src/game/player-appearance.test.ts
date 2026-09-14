@@ -73,7 +73,7 @@ describe("held weapon running motion", () => {
         const draws: string[] = [];
         const context = {
           save() {}, restore() {}, translate() {}, scale() {}, rotate() {},
-          beginPath() {}, moveTo() {}, lineTo() {}, arc() {}, bezierCurveTo() {}, closePath() {}, fill() {},
+          stroke() {}, beginPath() {}, moveTo() {}, lineTo() {}, arc() {}, bezierCurveTo() {}, closePath() {}, fill() {},
           drawImage(asset: HTMLImageElement) { draws.push((asset as unknown as { name: string }).name); },
         } as unknown as CanvasRenderingContext2D;
         drawStartingPlayer(context, assets, {
