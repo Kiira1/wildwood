@@ -257,6 +257,52 @@ it("still recovers genuinely missing presence on the current connection", async 
   s.client.clear();
 });
 
+it("stops root movement after an assigned-shard rejection and restores routing on reconnect", async () => {
+  const s = setup(); s.apply();
+  const pending: ((error: Error) => void)[] = [];
+  s.root.reducers.updateMovementState = vi.fn(() => new Promise((_resolve, reject) => pending.push(reject)));
+  const movement = (conn: any) => conn.reducers.updateMovementState({});
+  const rejected = vi.fn();
+  s.client.port.sendReducer("movement", movement, rejected);
+  s.client.port.sendReducer("movement", movement, rejected);
+  for (const reject of pending) reject(new Error("Connect to the assigned map shard"));
+  await Promise.all(s.sent);
+  expect(s.recoverSession).toHaveBeenCalledOnce();
+  expect(s.recoverPresence).not.toHaveBeenCalled();
+  // If the app is hidden, the outer connection lifecycle defers reconnect.
+  // Keep the recovery signal until wake rebuilds this attachment.
+  expect(s.client.needsRouteRecovery()).toBe(true);
+  expect(s.client.ready()).toBe(false);
+  expect(s.client.port.connection()).toBeNull();
+  // A queued old subscription callback cannot reopen the rejected fallback.
+  s.apply();
+  s.client.port.sendReducer("movement", movement, rejected);
+  expect(s.root.reducers.updateMovementState).toHaveBeenCalledTimes(2);
+  expect(rejected).toHaveBeenCalledTimes(3);
+  s.client.attach(s.root, {} as any);
+  expect(s.client.needsRouteRecovery()).toBe(false);
+  s.route(forest); await Promise.resolve();
+  const region = await hydrateLatest();
+  s.client.port.sendReducer("movement", movement);
+  await Promise.all(s.sent);
+  expect(region.reducers.updateMovementState).toHaveBeenCalledOnce();
+  expect(s.client.ready()).toBe(true);
+  s.client.clear();
+});
+
+it("keeps valid Home movement on the root without reconnecting", async () => {
+  const s = setup();
+  s.root.db.player.iter = () => [{ mapId: "home_exterior" }];
+  s.root.reducers.updateMovementState = vi.fn(async () => {});
+  s.apply();
+  s.client.port.sendReducer("movement", conn => conn.reducers.updateMovementState({} as any));
+  await Promise.all(s.sent);
+  expect(s.root.reducers.updateMovementState).toHaveBeenCalledOnce();
+  expect(s.recoverSession).not.toHaveBeenCalled();
+  expect(s.client.ready()).toBe(true);
+  s.client.clear();
+});
+
 
 it("uses the active account token for every portal connection", async () => {
   const s = setup(); s.apply(); s.route(forest); await Promise.resolve();

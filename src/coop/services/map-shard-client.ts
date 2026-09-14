@@ -23,6 +23,7 @@ export function createMapShardClient(options: {
   let failures = 0;
   let routeError: Error | null = null;
   let routeKnown = true;
+  let rootRoutingRejected = false;
   let timer: ReturnType<typeof setTimeout> | undefined;
   let attachedRoot: DbConnection | null = null;
   const mapWaiters = new Set<(error?: Error) => void>();
@@ -177,6 +178,17 @@ export function createMapShardClient(options: {
           // Do not let that stale "Enter WildStat first" response trigger the
           // root port's account recovery after Home is already playable.
           if (connection !== port.connection() || !connection.isActive) throw new Error("Map connection changed");
+          if (connection === options.root() && /connect to the assigned map shard/i.test(error instanceof Error ? error.message : String(error))) {
+            // A missing/stale route must not leave movement falling back to
+            // the account server forever. Freeze that fallback immediately,
+            // then rebuild admission and routing with the existing session.
+            rootRoutingRejected = true;
+            routeKnown = false;
+            options.resetWorld();
+            options.changed();
+            options.recoverSession();
+            throw new Error("Map connection changed");
+          }
           throw error;
         }
       }, rejected, accepted);
@@ -201,6 +213,7 @@ export function createMapShardClient(options: {
       if (hydrated && region?.isActive) void region.reducers.recordPlayerDeath({}).catch(() => {});
     },
     enabled: () => route !== null,
+    needsRouteRecovery: () => rootRoutingRejected,
     ready: () => routeKnown && (route === null || hydrated),
     rootHandlers: Object.fromEntries(Object.entries(options.handlers).map(([key, handler]) => [key,
       REGIONAL_HANDLERS.has(key) || /(?:Boss|Result)$/.test(key) ? (row: any) => { if (routeKnown && (!route || key === "bossHitResult" && isProceduralMap(row.mapId) && route.mapId === row.mapId)) (handler as (row: any) => void)(row); } : handler,
@@ -210,7 +223,7 @@ export function createMapShardClient(options: {
       attachedRoot = root;
       routeKnown = false;
       const apply = () => {
-        if (attachedRoot !== root) return;
+        if (attachedRoot !== root || rootRoutingRejected) return;
         const wasKnown = routeKnown;
         routeKnown = true;
         const next = root.db.myMapShardRoute.identity.find(identity) ?? null;
@@ -236,6 +249,6 @@ export function createMapShardClient(options: {
       root.subscriptionBuilder().onApplied(apply).onError(() => { if (attachedRoot === root) options.port.handleFailure("map routing", new Error("Map route subscription failed")); })
         .subscribe(tables.myMapShardRoute);
     },
-    clear() { failures = 0; routeError = null; attachedRoot = null; route = null; routeKnown = true; closeRegion(); notifyMapWaiters(new Error("Map connection closed")); },
+    clear() { failures = 0; routeError = null; rootRoutingRejected = false; attachedRoot = null; route = null; routeKnown = true; closeRegion(); notifyMapWaiters(new Error("Map connection closed")); },
   };
 }

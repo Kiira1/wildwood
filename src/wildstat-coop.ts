@@ -681,7 +681,7 @@ function reconnectAfterWake(force = false, hiddenForMs = 0) {
   }
   if (connecting || resumeProbePromise) return;
   const conn = connection;
-  if (force || !conn?.isActive) {
+  if (force || mapShardClient.needsRouteRecovery() || !conn?.isActive) {
     restartStalledWakeConnection();
     return;
   }

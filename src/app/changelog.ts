@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.681": [
+    "Fixed map connection recovery when movement reaches the wrong server, including after returning to the app.",
+  ],
   "0.680": [
     "Improved username checks and chat moderation while keeping normal gameplay banter allowed.",
   ],
@@ -1759,6 +1762,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.681": "2026-09-14",
   "0.680": "2026-09-14",
   "0.679": "2026-09-13",
   "0.678": "2026-09-13",
