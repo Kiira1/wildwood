@@ -87,11 +87,13 @@ function setup(prepareResetRoute?: () => () => Promise<void>) {
   });
   const savePlayerProgress = vi.fn(async (): Promise<void> => {});
   const resetPlayerProgress = vi.fn(async (): Promise<void> => {});
-  const connection = { reducers: { savePlayerProgress, resetPlayerProgress } };
+  const claimDeveloperItemGift = vi.fn(async (): Promise<void> => {});
+  const entry = { ready: true, blocked: false };
+  const connection = { reducers: { savePlayerProgress, resetPlayerProgress, claimDeveloperItemGift } };
   const reducers = {
     connection: () => connection,
     protocolBlocked: () => false,
-    worldEntryBlocked: () => false,
+    worldEntryBlocked: () => entry.blocked,
     runWorldReducer: async <T>(reducer: () => T | PromiseLike<T>) => await reducer(),
     sendReducer: vi.fn(),
     errorMessage: (error: unknown) => String(error),
@@ -102,7 +104,7 @@ function setup(prepareResetRoute?: () => () => Promise<void>) {
     reducers,
     notify,
     localIdentity: () => identity,
-    worldEntryReady: () => true,
+    worldEntryReady: () => entry.ready,
     hydrationReady: () => true,
     activeProfileIdentity: () => identity,
     completeAccountReturn: vi.fn(),
@@ -112,11 +114,35 @@ function setup(prepareResetRoute?: () => () => Promise<void>) {
     pendingProgressKey: "pending-progress",
     prepareResetRoute,
   });
-  return { notify, savePlayerProgress, resetPlayerProgress, service };
+  return { notify, savePlayerProgress, resetPlayerProgress, service, entry, claimDeveloperItemGift };
 }
 
 describe("local progression profile snapshots", () => {
   afterEach(() => vi.unstubAllGlobals());
+
+  it("keeps gifts pending until world entry is ready and never submits claims from a blocked session", async () => {
+    const h = setup();
+    h.service.tables.upsertItemGift({ identity: { toHexString: () => identity } as never, key: "gift", itemId: "superior_golden_helmet" });
+    h.entry.ready = false;
+    expect(h.service.api.pendingItemGift()).toBeNull();
+    expect((await h.service.api.claimItemGift("gift")).ok).toBe(false);
+    h.entry.ready = true; h.entry.blocked = true;
+    expect(h.service.api.pendingItemGift()).toBeNull();
+    expect((await h.service.api.claimItemGift("gift")).ok).toBe(false);
+    expect(h.claimDeveloperItemGift).not.toHaveBeenCalled();
+    h.entry.blocked = false;
+    expect(h.service.api.pendingItemGift()?.key).toBe("gift");
+    expect((await h.service.api.claimItemGift("gift")).ok).toBe(true);
+    expect(h.claimDeveloperItemGift).toHaveBeenCalledExactlyOnceWith({ key: "gift" });
+  });
+
+  it("rechecks gift claim readiness after draining progress", async () => {
+    const h = setup();
+    const result = h.service.api.claimItemGift("gift");
+    h.entry.blocked = true;
+    expect((await result).ok).toBe(false);
+    expect(h.claimDeveloperItemGift).not.toHaveBeenCalled();
+  });
 
   it.each([true, false])("clears cutscene history only after an acknowledged character reset: success=%s", async (success) => {
     const { resetPlayerProgress, service } = setup();

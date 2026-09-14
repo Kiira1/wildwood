@@ -59,7 +59,7 @@ export function createItemGiftController(hooks: Hooks) {
     visible = show;
   }
   async function claim() {
-    if (!displayed || pending || celebrating || completed.has(displayed.key)) return;
+    if (!hooks.canShow() || !displayed || pending || celebrating || completed.has(displayed.key)) return;
     const gift = displayed, identity = owner, started = generation;
     pending = true;
     refresh();

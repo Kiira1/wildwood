@@ -208,7 +208,7 @@ const afterUpdateGateShell = String.raw`
       <button id="leaderboardRegenTab" class="profile-tab" type="button" role="tab" aria-selected="false" aria-label="Regen"></button>
       <button id="leaderboardTimeTab" class="profile-tab" type="button" role="tab" aria-selected="false" aria-label="Time"></button>
     </div>
-    <div class="leaderboard-column-headings" aria-hidden="true"><span>RANK · PLAYER</span><span id="leaderboardValueHeading">POWER</span></div>
+    <div class="leaderboard-column-headings" aria-hidden="true"><span>RANK</span><span class="leaderboard-player-heading">PLAYER</span><span id="leaderboardValueHeading">POWER</span></div>
     <ol id="leaderboardRows" class="leaderboard-rows"></ol>
     <div id="leaderboardLoading" class="leaderboard-loading" role="status" aria-label="Loading leaderboard" hidden><span class="leaderboard-spinner" aria-hidden="true"></span></div>
     <div id="leaderboardEmpty" class="profile-loading" hidden>NO RANKINGS YET</div>

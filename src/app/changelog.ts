@@ -1,4 +1,12 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.677": [
+    "Leaderboard ranking tabs are square and fit in one row, with clearer column-heading spacing and alignment.",
+    "Includes restored profile equipment art and gift/session readiness fixes.",
+  ],
+  "0.676": [
+    "Restored equipped item art in profile preview slots, including on mobile.",
+    "Gift claims wait for world entry, and tabs stop retrying entry after a known session conflict.",
+  ],
   "0.675": [
     "Mini chat marks replies with a small reply: prefix.",
   ],
@@ -1736,6 +1744,8 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.677": "2026-09-13",
+  "0.676": "2026-09-13",
   "0.675": "2026-09-13",
   "0.674": "2026-09-13",
   "0.673": "2026-09-13",

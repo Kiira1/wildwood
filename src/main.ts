@@ -1701,7 +1701,7 @@ import {
   });
 
   const developerItemGift = createItemGiftController({
-    canShow: () => session.hasStarted() && !balanceApologyGift.isOpen(),
+    canShow: () => session.hasStarted() && Boolean(coop?.isConnected?.()) && !coop?.accountState?.().sessionConflict && !balanceApologyGift.isOpen(),
     identity: () => coop?.localIdentity?.() ?? "",
     gift: () => coop?.pendingItemGift?.() ?? null,
     claim: async key => coop?.claimItemGift?.(key),

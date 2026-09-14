@@ -511,10 +511,12 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
       gemBalance: () => gemBalance,
       dailyGemBonusClaimable: () => dailyGemBonusClaimable,
       claimDailyGemBonus: reducerResult("daily Gem claim", (connection) => connection.reducers.claimDailyGemBonus({})),
-      pendingItemGift: (): PendingItemGift | null => itemGifts.values().next().value ?? null,
+      pendingItemGift: (): PendingItemGift | null => dependencies.worldEntryReady() && !dependencies.reducers.worldEntryBlocked()
+        ? itemGifts.values().next().value ?? null : null,
       claimItemGift: (key: string) => reducerResult("item gift claim", async connection => {
+        if (dependencies.reducers.worldEntryBlocked() || !dependencies.worldEntryReady()) throw new Error("Reconnect to claim your gift.");
         if (!await drain()) throw new Error("Progress is still syncing. Try again shortly.");
-        if (connection !== dependencies.reducers.connection()) throw new Error("Session changed. Try again.");
+        if (connection !== dependencies.reducers.connection() || dependencies.reducers.worldEntryBlocked() || !dependencies.worldEntryReady()) throw new Error("Session changed. Try again.");
         await connection.reducers.claimDeveloperItemGift({ key });
       })(),
       balanceApologyGiftAmount: () => balanceApologyGiftAmount,

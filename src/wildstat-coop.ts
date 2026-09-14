@@ -290,7 +290,7 @@ function sendReducer(action: string, reducer: () => unknown, onRejected?: () => 
 }
 
 function requestWorldEntry(): Promise<boolean> {
-  if (protocolBlocked || !connection) return Promise.resolve(false);
+  if (protocolBlocked || worldEntryBlocked || !connection) return Promise.resolve(false);
   if (worldEntryGeneration === connectionGeneration) return Promise.resolve(true);
   if (worldEntryPromise) return worldEntryPromise;
   const conn = connection;
