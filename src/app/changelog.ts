@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.685": [
+    "Samurai Gardens enemies can now drop the red Samurai Hat, granting +100% max health and +120% regeneration.",
+  ],
   "0.684": [
     "Replay buttons now use a simple black-and-white icon.",
   ],
@@ -1775,6 +1778,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.685": "2026-09-14",
   "0.684": "2026-09-14",
   "0.683": "2026-09-14",
   "0.682": "2026-09-14",

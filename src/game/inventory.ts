@@ -7,6 +7,7 @@ import {
   itemDefinition,
   itemFitsEquipmentSlot,
   INFERNAL_DROP_ITEM_IDS,
+  SAMURAI_DROP_ITEM_IDS,
   LAVA_BOSS_DROP_ITEM_IDS,
   LAVA_DROP_ITEM_IDS,
   MAX_FOREST_ITEM_COUNT,
@@ -28,6 +29,7 @@ import {
 export {
   BASIC_PAPER_HAT,
   DARK_METAL_HELMET,
+  SAMURAI_HAT,
   FIRE_METAL_BOW,
   FIRE_METAL_HELMET,
   FROST_ARMOR,
@@ -257,7 +259,9 @@ export function normaliseInventory(itemIds: unknown, equippedFeet: unknown, equi
     Array(Math.min(MAX_FOREST_ITEM_COUNT, requested.filter((requestedId) => canonicalItemId(requestedId) === itemId).length)).fill(itemId));
   const infernalDropItems = INFERNAL_DROP_ITEM_IDS.flatMap((itemId) =>
     Array(Math.min(MAX_FOREST_ITEM_COUNT, requested.filter((requestedId) => canonicalItemId(requestedId) === itemId).length)).fill(itemId));
-  const items = [...STARTER_ITEM_IDS, ...developerItems, ...(hasBoots ? [TRAILBLAZER_BOOTS] : []), ...forestDropItems, ...desertDropItems, ...snowDropItems, ...snowBossDropItems, ...lavaDropItems, ...infernalDropItems];
+  const samuraiDropItems = SAMURAI_DROP_ITEM_IDS.flatMap((itemId) =>
+    Array(Math.min(MAX_FOREST_ITEM_COUNT, requested.filter((requestedId) => canonicalItemId(requestedId) === itemId).length)).fill(itemId));
+  const items = [...STARTER_ITEM_IDS, ...developerItems, ...(hasBoots ? [TRAILBLAZER_BOOTS] : []), ...forestDropItems, ...desertDropItems, ...snowDropItems, ...snowBossDropItems, ...lavaDropItems, ...infernalDropItems, ...samuraiDropItems];
   const headItems = items.filter((itemId) => itemDefinition(itemId)?.slot === "HEAD");
   const chestItems = items.filter((itemId) => itemDefinition(itemId)?.slot === "CHEST");
   const handItems = items.filter((itemId) => itemDefinition(itemId)?.slot === "HAND");

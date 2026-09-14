@@ -2,6 +2,8 @@ import { generateMap, isProceduralMap } from "../../shared/procedural-maps";
 import { canvasRenderPixelRatio } from "../game/runtime/render-budget";
 import {
   DARK_METAL_HELMET,
+  SAMURAI_HAT,
+  SAMURAI_HAT_ITEM_DROP_DENOMINATOR,
   DESERT_ITEM_DROP_DENOMINATOR,
   FIRE_METAL_BOW,
   FIRE_METAL_HELMET,
@@ -115,7 +117,9 @@ const MAP_GUIDE_DROPS: Record<MapId, readonly MapGuideDrop[]> = {
     { itemId: DARK_METAL_HELMET, denominator: NIGHT_FOREST_HELMET_ITEM_DROP_DENOMINATOR, source: "Any regular Night Forest enemy" },
   ],
   [WATER_REACH_MAP_ID]: [],
-  [SAMURAI_GARDEN_MAP_ID]: [],
+  [SAMURAI_GARDEN_MAP_ID]: [
+    { itemId: SAMURAI_HAT, denominator: SAMURAI_HAT_ITEM_DROP_DENOMINATOR, source: "Any regular Samurai Gardens enemy" },
+  ],
   [CLOUDSPIRE_MAP_ID]: [],
   [MOONFEN_MAP_ID]: [],
   [CRYSTAL_HOLLOWS_MAP_ID]: [], [CLOCKWORK_RUINS_MAP_ID]: [], [DUSKFALL_ORCHARD_MAP_ID]: [], [NEON_BASTION_MAP_ID]: [], [VERDANT_CATACOMBS_MAP_ID]: [], [ION_CITADEL_MAP_ID]: [],

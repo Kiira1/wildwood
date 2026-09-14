@@ -95,6 +95,9 @@ import {
   BASIC_PAPER_HAT,
   canonicalItemId,
   DARK_METAL_HELMET,
+  SAMURAI_HAT,
+  SAMURAI_DROP_ITEM_IDS,
+  SAMURAI_HAT_ITEM_DROP_DENOMINATOR,
   DESERT_DROP_ITEM_IDS,
   DESERT_ITEM_DROP_DENOMINATOR,
   DEVELOPER_ITEM_IDS,
@@ -3773,6 +3776,8 @@ function inventoryForProgress(progress: any) {
     ...LAVA_DROP_ITEM_IDS.flatMap((itemId) =>
       Array(inventoryJsonItemQuantity(progress.inventoryJson, itemId)).fill(itemId)),
     ...LAVA_BOSS_DROP_ITEM_IDS.flatMap((itemId) =>
+      Array(inventoryJsonItemQuantity(progress.inventoryJson, itemId)).fill(itemId)),
+    ...SAMURAI_DROP_ITEM_IDS.flatMap((itemId) =>
       Array(inventoryJsonItemQuantity(progress.inventoryJson, itemId)).fill(itemId)),
     ...INFERNAL_DROP_ITEM_IDS.flatMap((itemId) =>
       Array(inventoryJsonItemQuantity(progress.inventoryJson, itemId)).fill(itemId)),
@@ -9609,6 +9614,17 @@ export const recordLavaEnemyDefeat = spacetimedb.reducer(
   (ctx) => {
     const activePlayer = requireControllingPlayer(ctx);
     if (activeDuelFor(ctx, ctx.sender)) return;
+    if (activePlayer.mapId === SAMURAI_GARDEN_MAP_ID) {
+      if (ctx.random.integerInRange(1, SAMURAI_HAT_ITEM_DROP_DENOMINATOR) !== 1) return;
+      const current = ctx.db.playerProgress.identity.find(ctx.sender) ?? defaultPlayerProgress(ctx.sender);
+      const alreadyOwned = playerOwnsItem(ctx, ctx.sender, SAMURAI_HAT);
+      publishItemDrop(ctx, ctx.sender, SAMURAI_HAT, alreadyOwned);
+      const next = alreadyOwned ? { ...current } : restoreItemToProgress(current, SAMURAI_HAT);
+      next.inventoryJson = JSON.stringify(inventoryForProgress(next));
+      if (ctx.db.playerProgress.identity.find(ctx.sender)) updateSnapshotRow(ctx, "playerProgress", next);
+      else insertSnapshotRow(ctx, "playerProgress", next);
+      return;
+    }
     if (activePlayer.mapId === INFERNAL_DEPTHS_MAP_ID) {
       const nightBowDropped = ctx.random.integerInRange(1, NIGHT_FOREST_BOW_ITEM_DROP_DENOMINATOR) === 1;
       const fireMetalBowDropped = ctx.random.integerInRange(1, INFERNAL_ITEM_DROP_DENOMINATOR) === 1;

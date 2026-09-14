@@ -6,6 +6,7 @@ export const SUPERIOR_GOLDEN_HELMET = "superior_golden_helmet";
 export const WOOD_FULL_HELM = "wood_full_helm";
 export const FIRE_METAL_HELMET = "fire_metal_helmet";
 export const DARK_METAL_HELMET = "dark_metal_helmet";
+export const SAMURAI_HAT = "samurai_hat";
 export const LEGENDARY_WHITE_GOLD_ARMOR = "legendary_white_gold_armor";
 export const TRAILBLAZER_BOOTS = "trailblazer_boots";
 export const STARTER_STONE = "starter_stone";
@@ -31,6 +32,7 @@ export const LAVA_BOSS_ITEM_DROP_DENOMINATOR = 25;
 export const INFERNAL_ITEM_DROP_DENOMINATOR = 1_000;
 export const NIGHT_FOREST_BOW_ITEM_DROP_DENOMINATOR = 100;
 export const NIGHT_FOREST_HELMET_ITEM_DROP_DENOMINATOR = 1_300;
+export const SAMURAI_HAT_ITEM_DROP_DENOMINATOR = 1_300;
 export const SNOW_BOSS_ITEM_DROP_DENOMINATOR = 25;
 export const SNOW_BOSS_ARMOR_DROP_DENOMINATOR = 5;
 export const MAX_OWNED_ITEM_COUNT = 1;
@@ -45,7 +47,7 @@ export const ITEM_UPGRADE_DURATION_GROWTH = 1.4;
 
 export type ItemSlot = "HEAD" | "CHEST" | "FEET" | "HAND";
 export type EquipmentSlot = "HEAD" | "CHEST" | "FEET" | "RIGHT_HAND" | "LEFT_HAND";
-export type ItemAcquisition = "STARTER" | "PROGRESSION" | "DEVELOPER" | "FOREST_DROP" | "DESERT_DROP" | "SNOW_DROP" | "SNOW_BOSS_DROP" | "LAVA_DROP" | "LAVA_BOSS_DROP" | "INFERNAL_DROP";
+export type ItemAcquisition = "STARTER" | "PROGRESSION" | "DEVELOPER" | "FOREST_DROP" | "DESERT_DROP" | "SNOW_DROP" | "SNOW_BOSS_DROP" | "LAVA_DROP" | "LAVA_BOSS_DROP" | "INFERNAL_DROP" | "SAMURAI_DROP";
 export type ProjectileKind = "ROCK" | "ARROW";
 
 export type ItemDefinition = {
@@ -116,6 +118,15 @@ export const ITEM_DEFINITIONS = {
       maxHealthMultiplierBonus: .6,
       regenerationMultiplierBonus: .8,
     },
+  },
+  [SAMURAI_HAT]: {
+    id: SAMURAI_HAT,
+    name: "SAMURAI HAT",
+    slot: "HEAD",
+    acquisition: "SAMURAI_DROP",
+    description: "A crimson samurai helmet carried by Samurai Gardens monsters that strengthens health and regeneration.",
+    stats: ["MAX HEALTH +100%", "REGEN +120%"],
+    modifiers: { maxHealthMultiplierBonus: 1, regenerationMultiplierBonus: 1.2 },
   },
   [LEGENDARY_WHITE_GOLD_ARMOR]: {
     id: LEGENDARY_WHITE_GOLD_ARMOR,
@@ -294,6 +305,9 @@ export const LAVA_DROP_ITEM_IDS = Object.values(ITEM_DEFINITIONS)
 export const LAVA_BOSS_DROP_ITEM_IDS = Object.values(ITEM_DEFINITIONS)
   .filter((item) => item.acquisition === "LAVA_BOSS_DROP")
   .map((item) => item.id) as ItemId[];
+export const SAMURAI_DROP_ITEM_IDS = Object.values(ITEM_DEFINITIONS)
+  .filter((item) => item.acquisition === "SAMURAI_DROP")
+  .map((item) => item.id);
 export const INFERNAL_DROP_ITEM_IDS = Object.values(ITEM_DEFINITIONS)
   .filter((item) => item.acquisition === "INFERNAL_DROP")
   .map((item) => item.id) as ItemId[];

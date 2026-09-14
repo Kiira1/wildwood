@@ -23,6 +23,8 @@ import {
 import {
   BASIC_PAPER_HAT,
   DARK_METAL_HELMET,
+  SAMURAI_HAT,
+  SAMURAI_HAT_ITEM_DROP_DENOMINATOR,
   DESERT_ITEM_DROP_DENOMINATOR,
   FIRE_METAL_BOW,
   FIRE_METAL_HELMET,
@@ -801,7 +803,9 @@ function createMapDefinitions(): BalanceMapDefinition[] {
       id: SAMURAI_GARDEN_MAP_ID,
       name: MAP_DISPLAY_NAMES[SAMURAI_GARDEN_MAP_ID],
       arrival: bootstrap.mapConfig[SAMURAI_GARDEN_MAP_ID].arrival,
-      regularDrops: [],
+      regularDrops: [
+        { itemId: SAMURAI_HAT, denominator: SAMURAI_HAT_ITEM_DROP_DENOMINATOR, eligible: always },
+      ],
       boss: {
         kind: "koiShogun",
         name: "Koi Shogun",

@@ -406,7 +406,7 @@ export function createPlayerCombatController(options: {
     if (isTutorialMap()) recordForestEnemyDefeat();
     if (isDesertMap() && !base.elite) recordDesertEnemyDefeat();
     if (isSnowMap()) recordSnowEnemyDefeat();
-    if (isLavaMap() || isInfernalMap()) recordLavaEnemyDefeat();
+    if (isLavaMap() || isInfernalMap() || isSamuraiMap()) recordLavaEnemyDefeat();
     spawnBurst(enemy.x, enemy.y, DEATH_PARTICLE_COLOR, base.elite ? 28 : 12, base.elite ? 150 : 90);
   }
 
