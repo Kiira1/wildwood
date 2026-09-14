@@ -1,0 +1,30 @@
+import { expect, it, vi } from "vitest";
+vi.mock("spacetimedb/server", () => ({ SenderError: class SenderError extends Error {} }));
+import { deliverDisconnectCompensation } from "./disconnect-compensation";
+const player = { toHexString: () => "player" };
+function setup() {
+  const receipts = new Map(); const notices = new Map();
+  const ctx: any = { timestamp: {}, db: {
+    playerProgress: { identity: { find: () => ({}) } }, virtualPlayer: { identity: { find: () => null } },
+    gemTransaction: { externalReference: { find: (key: string) => receipts.get(key) } },
+    balanceApologyNotice: { identity: { find: (id: any) => notices.get(id), update: (row: any) => notices.set(row.identity, row) }, insert: (row: any) => notices.set(row.identity, row) },
+  } };
+  const credit = vi.fn((input: any) => { receipts.set(input.externalReference, input); });
+  return { ctx, credit, receipts, notices, deliver: (recipients: any[] = [player]) => deliverDisconnectCompensation(ctx, recipients, credit) };
+}
+it("credits a guest or registered character exactly once even after notice dismissal", () => {
+  const s = setup(); s.deliver([player, player]); s.notices.clear(); s.deliver();
+  expect(s.credit).toHaveBeenCalledOnce(); expect(s.credit.mock.calls[0][0].delta).toBe(20n); expect(s.notices.size).toBe(0);
+});
+it("preserves an existing unacknowledged gift while adding compensation", () => {
+  const s = setup(); s.notices.set(player, { identity: player, amount: 10n }); s.deliver();
+  expect(s.notices.get(player).amount).toBe(30n); expect(s.credit.mock.calls[0][0].delta).toBe(20n);
+});
+it("skips deleted characters and virtual players", () => {
+  const s = setup(); s.ctx.db.playerProgress.identity.find = () => null; s.deliver();
+  s.ctx.db.playerProgress.identity.find = () => ({}); s.ctx.db.virtualPlayer.identity.find = () => ({}); s.deliver();
+  expect(s.credit).not.toHaveBeenCalled();
+});
+it("bounds delivery batches before awarding any gems", () => {
+  const s = setup(); expect(() => s.deliver(Array(101).fill(player))).toThrow("at most 100"); expect(s.credit).not.toHaveBeenCalled();
+});

@@ -519,7 +519,7 @@ const baseSubscriptionHandlers = createBaseSubscriptionHandlers({
 });
 
 mapShardClient = createMapShardClient({
-  host, root: () => connection, port: reducerPort, handlers: baseSubscriptionHandlers,
+  host, root: () => connection, port: reducerPort, handlers: baseSubscriptionHandlers, resolveToken: accountService.connectionToken,
   tabId: () => accountService.tabId(), changed: onChange, recoverSession: () => { retryConnection(); },
   resetWorld: () => { presenceService.clearSession(true); presenceService.beginSession(false); bossService.resetSession(); },
   worldReady: () => presenceService.activateSubscriptions(),
@@ -707,7 +707,7 @@ function connect() {
   if (!accountService.canConnect()) return;
   connecting = true;
   const generation = ++connectionGeneration;
-  const signedIn = Boolean(accountService.accountToken());
+  const signedIn = Boolean(accountService.connectionCredential());
   connectionLifecycle.beginAttempt(CONNECTION_OPEN_TIMEOUT_MS);
   startupTelemetryRuntime.beginConnectionAttempt(generation, connectionLifecycle.snapshot().attempt);
   onChange();
@@ -715,8 +715,8 @@ function connect() {
     connection = guardConnectionActivity(DbConnection.builder()
     .withUri(host)
     .withDatabaseName(databaseName)
-    .withWSFn(diagnosticWebSocket(recordConnectionDiagnostic, { transport: "account", database: databaseName, isCurrent: () => generation === connectionGeneration }))
-    .withToken(accountService.accountToken() || accountService.guestToken() || undefined)
+    .withWSFn(diagnosticWebSocket(recordConnectionDiagnostic, { transport: "account", database: databaseName, isCurrent: () => generation === connectionGeneration }, accountService.connectionToken))
+    .withToken(accountService.connectionCredential() || accountService.guestToken() || undefined)
     .onConnect((conn: DbConnection, identity: Identity, token: string) => {
       if (generation !== connectionGeneration) {
         conn.disconnect();

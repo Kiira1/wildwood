@@ -1,0 +1,24 @@
+import { SenderError } from "spacetimedb/server";
+import type { Identity } from "spacetimedb";
+import type { ModuleReducerCtx } from "./index";
+
+export const DISCONNECT_GIFT_CAMPAIGN = "disconnect-compensation:2026-09-14";
+export const DISCONNECT_GIFT_AMOUNT = 20n;
+
+type Credit = (input: { identity: Identity; delta: bigint; kind: string; note: string; externalReference: string }) => void;
+
+/** Credit immediately; the existing apology popup only acknowledges receipt.
+ * The ledger reference survives dismissal and makes retries safe. */
+export function deliverDisconnectCompensation(ctx: ModuleReducerCtx, recipients: Identity[], credit: Credit) {
+  if (recipients.length > 100) throw new SenderError("Send at most 100 gifts at a time.");
+  for (const identity of recipients) {
+    if (!ctx.db.playerProgress.identity.find(identity) || ctx.db.virtualPlayer.identity.find(identity)) continue;
+    const externalReference = `${DISCONNECT_GIFT_CAMPAIGN}:${identity.toHexString()}`;
+    if (ctx.db.gemTransaction.externalReference.find(externalReference)) continue;
+    credit({ identity, delta: DISCONNECT_GIFT_AMOUNT, kind: "disconnect_compensation",
+      note: "20 gems from the developer. Sorry for the disconnect issues, and thanks for sticking with us!", externalReference });
+    const previous = ctx.db.balanceApologyNotice.identity.find(identity);
+    if (previous) ctx.db.balanceApologyNotice.identity.update({ ...previous, amount: previous.amount + DISCONNECT_GIFT_AMOUNT });
+    else ctx.db.balanceApologyNotice.insert({ identity, amount: DISCONNECT_GIFT_AMOUNT, createdAt: ctx.timestamp });
+  }
+}

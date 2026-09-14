@@ -1,3 +1,4 @@
+import { AccountRenewalRequired, createAccountTokenRenewal } from "./account-token-renewal";
 import { recordConnectionDiagnostic } from "./connection-diagnostic-runtime";
 import { syncResearchNotification } from "../../app/native-research-notifications";
 import type { DbConnection } from "../../module_bindings";
@@ -81,11 +82,12 @@ type AccountLinkTransaction = { code: string; guestIdentity: string };
 
 const AUTHORIZATION_ENDPOINT = `${SPACETIME_AUTH_ISSUER}/auth`;
 const TOKEN_ENDPOINT = `${SPACETIME_AUTH_ISSUER}/token`;
-const AUTH_SCOPE = "openid profile email";
+const AUTH_SCOPE = "openid profile email offline_access";
 const TOKEN_EXCHANGE_TIMEOUT_MS = 15_000;
 
 type TokenResponse = {
   id_token?: unknown;
+  refresh_token?: unknown;
   error?: unknown;
   error_description?: unknown;
 };
@@ -162,15 +164,15 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
   let updateResumePending = dependencies.updateResumeMode !== null;
   let lastPlayableSessionMode: UpdateResumeMode | null = null;
   let takeoverRequested = false;
+  const renewal = createAccountTokenRenewal(localStorage, keys.accountTokenKey);
 
   function accountToken() {
     try {
-      const token = localStorage.getItem(keys.accountTokenKey);
+      const token = renewal.stored();
       if (!token) return null;
       inspectSpacetimeIdToken(token);
       return token;
     } catch {
-      try { localStorage.removeItem(keys.accountTokenKey); } catch {}
       return null;
     }
   }
@@ -446,7 +448,7 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
         throw new Error(detail);
       }
       await dependencies.validateAccountIdToken(result.id_token, expectedNonce);
-      localStorage.setItem(keys.accountTokenKey, result.id_token);
+      renewal.save(result.id_token, result.refresh_token);
       rememberAccount();
       notice = "SIGNED IN";
       outcome = "success";
@@ -524,7 +526,7 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
     // lightweight sign-in shell instead of leaving it on "Verifying Sign-In".
     dependencies.notify();
     if (callbackOutcome === "failed") return;
-    const token = accountToken();
+    const token = renewal.stored();
     if (!token && hasKnownAccount() && !guestSessionExplicit) {
       if (dependencies.updateResumeMode === "account") {
         notice = "REOPENING SIGN-IN";
@@ -556,6 +558,18 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
     if (token || guestSessionExplicit || guestToken()) dependencies.connect();
   }
 
+  async function connectionToken(token: string, force = false) {
+    if (token === guestToken()) return token;
+    try { return await renewal.resolve(token, force); }
+    catch (error) {
+      if (error instanceof AccountRenewalRequired && sessionApproved && !outboundAuthNavigationPending) {
+        notice = "RESTORING SIGN-IN";
+        await startAccountSignIn();
+      }
+      throw error;
+    }
+  }
+
   const api = {
     accountState() {
       const signedIn = Boolean(dependencies.connection()?.isActive && dependencies.connectedSignedIn());
@@ -564,7 +578,7 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
         knownAccount: hasKnownAccount(),
         signInRequired: hasKnownAccount() && !signedIn && !guestSessionExplicit,
         guestSessionApproved: guestSessionExplicit,
-        gameSessionApproved: guestSessionExplicit || Boolean(accountToken() && sessionApproved),
+        gameSessionApproved: guestSessionExplicit || Boolean(sessionApproved && (renewal.stored() || returnPending)),
         authInProgress: callbackPending,
         returningFromSignIn: returnPending || updateResumePending,
         signInReady: hasKnownAccount() || !guestToken() || Boolean(dependencies.connection()?.isActive),
@@ -608,7 +622,7 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
         const connection = dependencies.connection();
         if (connection?.isActive && dependencies.connectedSignedIn()) return { ok: true, redirecting: false };
         clearTabValue(keys.authRetryKey);
-        if (accountToken() && hasKnownAccount()) {
+        if (renewal.stored() && hasKnownAccount()) {
           sessionApproved = true;
           notice = "OPENING CHARACTER";
           dependencies.notify();
@@ -703,6 +717,7 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
       await syncResearchNotification(null);
       nativeAuth()?.cancel();
       dependencies.disconnectVirtualPlayers();
+      renewal.clear();
       try {
         localStorage.removeItem(keys.accountTokenKey);
         localStorage.removeItem(keys.knownAccountKey);
@@ -719,6 +734,7 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
         dependencies.connection()?.isActive && dependencies.connectedSignedIn(),
       ) || Boolean(accountToken());
       dependencies.disconnectVirtualPlayers();
+      renewal.clear();
       clearStoredToken(keys.accountTokenKey);
       clearTabValue(keys.accountLinkKey);
       clearAuthTransaction();
@@ -740,6 +756,8 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
   return {
     api,
     accountToken,
+    connectionToken,
+    connectionCredential: renewal.stored,
     guestToken,
     hasKnownAccount,
     isGuestSessionExplicit: () => guestSessionExplicit,
@@ -826,13 +844,14 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
       }
     },
     canConnect() {
-      if (!accountToken() && !guestToken() && !guestSessionExplicit) return false;
-      if (accountToken() && hasKnownAccount() && !sessionApproved) {
+      if (outboundAuthNavigationPending || callbackPending) return false;
+      if (!renewal.stored() && !guestToken() && !guestSessionExplicit) return false;
+      if (renewal.stored() && hasKnownAccount() && !sessionApproved) {
         notice = "SIGN-IN REQUIRED";
         dependencies.notify();
         return false;
       }
-      if (!accountToken() && hasKnownAccount() && !guestSessionExplicit) {
+      if (!renewal.stored() && hasKnownAccount() && !guestSessionExplicit) {
         notice = "SIGN-IN REQUIRED";
         dependencies.notify();
         return false;
@@ -874,6 +893,10 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
     handleStorageEvent(event: StorageEvent) {
       if (event.oldValue === event.newValue) return;
       if (event.key === keys.accountTokenKey) {
+        try {
+          if (event.oldValue && event.newValue &&
+            inspectSpacetimeIdToken(event.oldValue, { allowExpired: true }).sub === inspectSpacetimeIdToken(event.newValue).sub) return;
+        } catch {}
         if (!accountMigrationPending()) window.location.reload();
         return;
       }

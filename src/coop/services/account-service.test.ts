@@ -446,3 +446,32 @@ describe("connection authentication failures", () => {
     expect(local.getItem(keys.accountTokenKey)).toBeNull();
   });
 });
+
+it("retains an admitted account and its expired credential during wake recovery", () => {
+  const token = accountToken({ exp: Math.floor(Date.now() / 1000) - 10 });
+  const { service, local } = setup({ accountToken: token, knownAccount: true });
+  service.markPlayable(true);
+  expect(service.accountToken()).toBeNull();
+  expect(service.connectionCredential()).toBe(token);
+  expect(service.canConnect()).toBe(true);
+  expect(service.api.accountState().gameSessionApproved).toBe(true);
+  expect(local.getItem(keys.accountTokenKey)).toBe(token);
+});
+
+it("does not reload gameplay when another tab renews the same account", () => {
+  const old = accountToken({ exp: Math.floor(Date.now() / 1000) - 10 });
+  const { service } = setup({ accountToken: accountToken(), knownAccount: true });
+  service.handleStorageEvent({ key: keys.accountTokenKey, oldValue: old, newValue: accountToken() } as StorageEvent);
+  expect(window.location.reload).not.toHaveBeenCalled();
+  service.handleStorageEvent({ key: keys.accountTokenKey, oldValue: old, newValue: accountToken({ sub: "someone-else" }) } as StorageEvent);
+  expect(window.location.reload).toHaveBeenCalledOnce();
+});
+
+it("stores a refresh grant after a verified callback and removes it on switching to guest", async () => {
+  const { service, local } = setup({ authCallback: true });
+  stubTokenRequest(new FakeTokenRequest(200, { id_token: accountToken(), refresh_token: "refresh-grant" }));
+  await service.restoreKnownAccount();
+  expect(JSON.parse(local.getItem(`${keys.accountTokenKey}:refresh`)!)).toMatchObject({ subject: "account-subject", token: "refresh-grant", nonce: "expected-nonce" });
+  service.api.continueAsGuest();
+  expect(local.getItem(`${keys.accountTokenKey}:refresh`)).toBeNull();
+});

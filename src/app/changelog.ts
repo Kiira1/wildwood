@@ -1,4 +1,9 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.687": [
+    "Fixed expired sign-ins interrupting portals and reconnects.",
+    "Improved recovery after returning from the background.",
+    "20 gems for existing players—sorry for the disconnect issues, and thanks for sticking with us!",
+  ],
   "0.686": [
     "Temporary connection verification errors now retry without clearing your saved login.",
     "Added connection diagnostics to investigate disconnects and portal travel failures.",
@@ -1782,6 +1787,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.687": "2026-09-14",
   "0.686": "2026-09-14",
   "0.685": "2026-09-14",
   "0.684": "2026-09-14",

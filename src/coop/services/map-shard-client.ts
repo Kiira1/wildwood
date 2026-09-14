@@ -15,6 +15,7 @@ export function createMapShardClient(options: {
   host: string; tabId: () => string;
   root: () => DbConnection | null; port: ReducerPort; handlers: BaseSubscriptionHandlers;
   recoverSession: () => void;
+  resolveToken?: (token: string, force: boolean) => Promise<string>;
   changed: () => void; resetWorld: () => void; worldReady: () => void;
 }) {
   let region: DbConnection | null = null;
@@ -81,7 +82,7 @@ export function createMapShardClient(options: {
       options.changed();
     };
     const conn = guardConnectionActivity(DbConnection.builder().withUri(options.host).withDatabaseName(wanted.databaseName).withToken(root.token)
-      .withWSFn(diagnosticWebSocket(recordConnectionDiagnostic, { transport: "map", database: wanted.databaseName, mapId: wanted.mapId, isCurrent: current }))
+      .withWSFn(diagnosticWebSocket(recordConnectionDiagnostic, { transport: "map", database: wanted.databaseName, mapId: wanted.mapId, isCurrent: current }, options.resolveToken))
       .onConnect(async connection => {
         if (!current()) { connection.disconnect(); return; }
         try {

@@ -7,6 +7,7 @@ type Factory = Parameters<ReturnType<typeof DbConnection.builder>["withWSFn"]>[0
 export function diagnosticWebSocket(
   record: (kind: ConnectionEventKind, data: Partial<ConnectionDiagnostic>) => void,
   context: { transport: string; database: string; mapId?: string; isCurrent?: () => boolean },
+  resolveToken?: (token: string, force: boolean) => Promise<string>,
 ): Factory {
   return async args => {
     const started = performance.now();
@@ -16,9 +17,24 @@ export function diagnosticWebSocket(
     };
     let temporaryToken: string | undefined;
     if (args.authToken) {
+      if (context.isCurrent?.() === false) throw new Error("Connection superseded");
       const tokenUrl = new URL("v1/identity/websocket-token", args.url);
       tokenUrl.protocol = args.url.protocol === "wss:" ? "https:" : "http:";
-      const response = await fetch(tokenUrl, { method: "POST", headers: { Authorization: `Bearer ${args.authToken}` } });
+      let credential = resolveToken ? await resolveToken(args.authToken, false) : args.authToken;
+      const exchange = async () => {
+        if (context.isCurrent?.() === false) throw new Error("Connection superseded");
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 15_000);
+        try { return await fetch(tokenUrl, { method: "POST", signal: controller.signal, headers: { Authorization: `Bearer ${credential}` } }); }
+        finally { clearTimeout(timeout); }
+      };
+      let response = await exchange();
+      if (response.status === 401 && resolveToken) {
+        if (context.isCurrent?.() === false) throw new Error("Connection superseded");
+        report("connect-error", { detail: "token-exchange-http-401; renewing" });
+        credential = await resolveToken(credential, true);
+        response = await exchange();
+      }
       if (!response.ok) { report("connect-error", { detail: `token-exchange-http-${response.status}` }); throw new Error(`Failed to verify token: HTTP ${response.status} ${response.statusText}`); }
       temporaryToken = (await response.json()).token;
     }
@@ -27,6 +43,7 @@ export function diagnosticWebSocket(
     url.searchParams.set("compression", { gzip: "Gzip", brotli: "Brotli", none: "None" }[args.compression]);
     if (args.lightMode) url.searchParams.set("light", "true");
     if (args.confirmedReads !== undefined) url.searchParams.set("confirmed", String(args.confirmedReads));
+    if (context.isCurrent?.() === false) throw new Error("Connection superseded");
     const socket = new WebSocket(url.toString(), args.wsProtocol);
     socket.binaryType = "arraybuffer";
     socket.addEventListener("close", event => report("socket-close", { code: event.code, clean: event.wasClean, detail: event.reason }));

@@ -105,7 +105,7 @@ function numericDate(value: unknown) {
  */
 export function inspectSpacetimeIdToken(
   token: string,
-  options: { expectedNonce?: string; nowMs?: number } = {},
+  options: { expectedNonce?: string; nowMs?: number; allowExpired?: boolean } = {},
 ): ValidatedIdTokenClaims {
   const { header, claims } = parseIdToken(token);
   if (header.alg !== "RS256" || typeof header.kid !== "string" || !header.kid || header.kid.length > 256) {
@@ -137,7 +137,7 @@ export function inspectSpacetimeIdToken(
   if (claims.azp !== undefined && claims.azp !== SPACETIME_AUTH_CLIENT_ID) throw new OidcIdTokenError("claims");
 
   const nowSeconds = (options.nowMs ?? Date.now()) / 1_000;
-  if (expiresAt <= nowSeconds + MINIMUM_TOKEN_LIFETIME_SECONDS) throw new OidcIdTokenError("claims");
+  if (!options.allowExpired && expiresAt <= nowSeconds + MINIMUM_TOKEN_LIFETIME_SECONDS) throw new OidcIdTokenError("claims");
   if (issuedAt > nowSeconds + CLOCK_SKEW_SECONDS || issuedAt >= expiresAt) throw new OidcIdTokenError("claims");
   const notBefore = numericDate(claims.nbf);
   if (claims.nbf !== undefined && (notBefore === null || notBefore > nowSeconds + CLOCK_SKEW_SECONDS)) {
@@ -201,7 +201,7 @@ function matchingSigningKey(jwks: JwksResponse, kid: string) {
 export async function verifySpacetimeIdToken(
   token: string,
   options: {
-    expectedNonce: string;
+    expectedNonce?: string;
     nowMs?: number;
     jwks?: JwksResponse;
     subtle?: SubtleCrypto;

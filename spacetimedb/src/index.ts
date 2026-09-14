@@ -1,3 +1,4 @@
+import { deliverDisconnectCompensation } from "./disconnect-compensation";
 import { connectionDiagnosticTables, recordConnectionDiagnostics, cleanupConnectionDiagnostics } from "./connection-diagnostics";
 import { moderationTables, recordModerationAction, readModerationHistory } from "./moderation-history";
 import { playerItemGift, deliverAlphaTesterGifts, claimItemGift, removeItemGifts, mergeItemGifts } from "./item-gifts";
@@ -9381,6 +9382,14 @@ export const claimDeveloperItemGift = spacetimedb.reducer({ key: t.string() }, (
     if (!playerOwnsItem(ctx, ctx.sender, itemId)) updateSnapshotRow(ctx, "playerProgress", restoreItemToProgress(progress, itemId));
   });
 });
+
+export const devDeliverDisconnectCompensation = spacetimedb.reducer(
+  { recipients: t.array(t.identity()) }, (ctx, { recipients }) => {
+    if (!isDatabaseOwnerIdentity(ctx.sender)) requireDeveloper(ctx);
+    if (isMapShard(ctx)) throw new SenderError("Use the world connection.");
+    deliverDisconnectCompensation(ctx, recipients, input => { applyGemBalanceChange(ctx, input); });
+  },
+);
 
 export const acknowledgeBalanceApologyGift = spacetimedb.reducer((ctx) => {
   requireControllingPlayer(ctx);
