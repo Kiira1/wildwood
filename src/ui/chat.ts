@@ -369,6 +369,12 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
       const messageBody = document.createElement("span");
       messageBody.className = "chat-message-body";
       messageBody.textContent = shownMessage;
+      if (!large && message.replyToMessageId > 0n) {
+        const replyPrefix = document.createElement("span");
+        replyPrefix.className = "chat-reply-prefix";
+        replyPrefix.textContent = "reply: ";
+        messageBody.prepend(replyPrefix);
+      }
       text.appendChild(messageBody);
       const displayName = message.senderName || (message.replayId > 0n ? "DUEL" : "PLAYER");
       const displayIdentity = message.sender;

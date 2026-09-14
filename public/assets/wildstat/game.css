@@ -1460,6 +1460,7 @@
   .chat-power-icon { width: 13px; height: 13px; }
   .chat-text { grid-column: 2 / 4; grid-row: 2; min-height: 19px; padding: 3px 11px; border-radius: 5px; background: rgba(255,255,255,.09); color: var(--text); font-family: var(--player-name-font); font-size: 11.25px; font-weight: 900; line-height: 1.5; }
   .chat-message-body { display: block; min-width: 0; white-space: pre-wrap; }
+  .chat-reply-prefix { font-size: .82em; -webkit-text-stroke: 0; }
   .chat-reply-preview { display: block; min-width: 0; margin: 0 0 3px; overflow: hidden; color: rgba(235,232,226,.58); font-size: .82em; font-weight: 800; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; -webkit-text-stroke: 0; text-shadow: none; }
   .chat-text.is-moderated .chat-message-body { font-style: italic; }
   .chat-line.has-replay .chat-text { grid-column: 2 / 4; }
