@@ -430,3 +430,19 @@ it.each([true, false])("preserves the admitted session for a recovery reload (ac
   expect(store.consume("0.681")).toBe(signedIn ? "account" : "guest");
   expect(store.consume("0.681")).toBeNull();
 });
+
+
+describe("connection authentication failures", () => {
+  afterEach(() => vi.unstubAllGlobals());
+  it.each(["Failed to verify token: Bad Gateway", "Failed to verify token: HTTP 503 Service Unavailable", "Failed to fetch"])("keeps saved credentials for temporary failure: %s", message => {
+    const token = accountToken();
+    const { service, local } = setup({ accountToken: token, knownAccount: true });
+    expect(service.onConnectError(true, new Error(message))).toBe(false);
+    expect(local.getItem(keys.accountTokenKey)).toBe(token);
+  });
+  it("still requires sign-in for an explicit unauthorized response", () => {
+    const { service, local } = setup({ accountToken: accountToken(), knownAccount: true });
+    expect(service.onConnectError(true, new Error("Failed to verify token: HTTP 401 Unauthorized"))).toBe(true);
+    expect(local.getItem(keys.accountTokenKey)).toBeNull();
+  });
+});

@@ -1,3 +1,6 @@
+import { consumeUpdateResumeMode } from "./coop/services/update-resume-browser";
+import { configureConnectionDiagnostics, recordConnectionDiagnostic, flushConnectionDiagnostics } from "./coop/services/connection-diagnostic-runtime";
+import { diagnosticWebSocket } from "./coop/services/diagnostic-websocket";
 import { enterWorldAfterConsent } from "./coop/services/world-entry-consent";
 import { accountStorageKeys } from "./coop/services/account-storage-keys";
 import { createCommunityServices } from "./coop/services/community-services";
@@ -22,7 +25,7 @@ import { connectionGateState } from "./coop/services/connection-gate-state";
 import { retryAfterMissingWorldPresence } from "./coop/services/world-presence-recovery";
 import { reducerErrorMessage } from "./coop/services/reducer-errors";
 import { shouldRetainProfilePresentation } from "./coop/services/profile-presence";
-import { createUpdateResumeStore, inferLegacyUpdateResumeMode, type UpdateResumeMode } from "./coop/services/update-resume-store";
+import { createUpdateResumeStore } from "./coop/services/update-resume-store";
 import {
   PLAYER_SPAWN,
   PROTOCOL_VERSION,
@@ -75,35 +78,7 @@ const {
 } = accountStorageKeys(host, databaseName);
 const updateResumeStore = createUpdateResumeStore(sessionStorage, updateResumeKey);
 
-function consumeUpdateResumeMode(): UpdateResumeMode | null {
-  const requestedVersion = new URL(window.location.href).searchParams.get("v") ?? "";
-  const explicitMode = updateResumeStore.consume(requestedVersion);
-  if (requestedVersion !== GAME_VERSION) return null;
-
-  try {
-    const consumedVersion = sessionStorage.getItem(updateResumeConsumedKey) ?? "";
-    if (explicitMode) {
-      sessionStorage.setItem(updateResumeConsumedKey, requestedVersion);
-      return explicitMode;
-    }
-
-    // Clients predating the explicit handoff still leave a per-tab world ID.
-    // Consume it once so the first deployment of this feature also resumes.
-    const legacyMode = inferLegacyUpdateResumeMode({
-      requestedVersion,
-      currentVersion: GAME_VERSION,
-      hadPlayableTab: Boolean(sessionStorage.getItem(authTabKey)),
-      hasAccountToken: Boolean(localStorage.getItem(accountTokenKey)),
-      consumedVersion,
-    });
-    if (legacyMode) sessionStorage.setItem(updateResumeConsumedKey, requestedVersion);
-    return legacyMode;
-  } catch {
-    return explicitMode;
-  }
-}
-
-const updateResumeMode = consumeUpdateResumeMode();
+const updateResumeMode = consumeUpdateResumeMode({ version: GAME_VERSION, store: updateResumeStore, consumedKey: updateResumeConsumedKey, tabKey: authTabKey, tokenKey: accountTokenKey });
 let connection: DbConnection | null = null;
 let localIdentity = "";
 let localDbIdentity: Identity | null = null;
@@ -141,6 +116,13 @@ const startupTelemetryRuntime = createStartupTelemetryRuntime({
   },
 });
 startupTelemetryRuntime.startPageLoadMeasurement();
+configureConnectionDiagnostics({ storageKey: `${authTabKey}:connection-diagnostics`,
+  snapshot: () => ({ owner: localIdentity, mapId: presenceService.currentMapId(), database: databaseName,
+    transport: "account", phase: connectionLifecycle.snapshot().phase, attempt: connectionLifecycle.snapshot().attempt,
+    lastActivityAgeMs: performance.now() - lastServerActivityAt, latencyMs: latencyMs ?? 0 }),
+  submit: () => connection?.isActive && connection.identity?.toHexString() === localIdentity
+    ? payload => connection!.reducers.recordConnectionDiagnostic({ payload }) : null,
+});
 
 /** Coalesces table hydration into one UI refresh instead of one per row. */
 function onChange() {
@@ -175,7 +157,7 @@ const connectionLifecycle = createConnectionLifecycle({
   scheduleTimer: (callback, delayMs) => window.setTimeout(callback, delayMs),
   cancelTimer: (timer) => window.clearTimeout(timer),
   onTimeout: (phase) => handleConnectionTimeout(phase),
-  onIssue: (issue) => console.warn("WildStat connection lifecycle failure:", issue),
+  onIssue: (issue) => { recordConnectionDiagnostic("lifecycle-failure", { detail: `${issue.code}: ${issue.message}` }); console.warn("WildStat connection lifecycle failure:", issue); },
 });
 
 const pageWakeTracker = createPageWakeTracker({
@@ -237,6 +219,7 @@ function recordLatency(startedAt: number) {
 function handleReducerFailure(action: string, error: unknown) {
   const message = reducerErrorMessage(error);
   if (/active in another tab/i.test(message)) {
+    recordConnectionDiagnostic("session-blocked", { detail: `${action}: ${message}` });
     startupTelemetryRuntime.failConnection("session-error");
     worldEntryBlocked = true;
     connectionLifecycle.transition("blocked");
@@ -254,6 +237,7 @@ function handleReducerFailure(action: string, error: unknown) {
   // Do not let an old tab keep retrying saves or movement after Maincloud has
   // moved to a new protocol. Pending progress stays in local storage so the
   // freshly loaded client can submit it safely.
+  recordConnectionDiagnostic("session-blocked", { detail: `${action}: ${message}` });
   protocolBlocked = true;
   startupTelemetryRuntime.failConnection("session-error");
   connectionLifecycle.transition("blocked");
@@ -559,6 +543,7 @@ function clearRealtimeCaches() {
 
 function abandonConnection(disconnectTransport: boolean) {
   const staleConnection = connection;
+  if (disconnectTransport && staleConnection) recordConnectionDiagnostic("connection-reset", { intentional: true, detail: connectionLifecycle.snapshot().issue?.code ?? "session-restart" });
   connection = null;
   connecting = false;
   hydrationReady = false;
@@ -730,6 +715,7 @@ function connect() {
     connection = guardConnectionActivity(DbConnection.builder()
     .withUri(host)
     .withDatabaseName(databaseName)
+    .withWSFn(diagnosticWebSocket(recordConnectionDiagnostic, { transport: "account", database: databaseName, isCurrent: () => generation === connectionGeneration }))
     .withToken(accountService.accountToken() || accountService.guestToken() || undefined)
     .onConnect((conn: DbConnection, identity: Identity, token: string) => {
       if (generation !== connectionGeneration) {
@@ -808,6 +794,7 @@ function connect() {
           batch: batchChanges,
           handlers: mapShardClient.rootHandlers,
           onHydrated: () => {
+            recordConnectionDiagnostic("reconnected");
             hydrationReady = true;
             startupTelemetryRuntime.completeConnection(generation);
             connectionLifecycle.ready();
@@ -819,6 +806,7 @@ function connect() {
             sessionGeneration += 1;
             onChange();
             startupTelemetryRuntime.flush();
+            void flushConnectionDiagnostics();
           },
           onError: (event) => {
             console.error("WildStat SpacetimeDB subscription error:", event);
@@ -857,6 +845,7 @@ function connect() {
     })
     .onConnectError((_ctx: ErrorContext, error: Error) => {
       if (generation !== connectionGeneration) return;
+      recordConnectionDiagnostic("connect-error", { detail: reducerErrorMessage(error) });
       const hadPlayableSession = hydrationReady || sessionGeneration > 0;
       abandonConnection(false);
       if (accountService.onConnectError(signedIn, error)) {

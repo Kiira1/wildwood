@@ -1,3 +1,4 @@
+import { recordConnectionDiagnostic } from "../coop/services/connection-diagnostic-runtime";
 import { enforceLatestVersion } from "../app/version";
 import {
   createStartupStateMachine,
@@ -59,6 +60,10 @@ export function createStartupCoordinator(dependencies: StartupCoordinatorDepende
   }
 
   function renderState(state: StartupState, changed = true) {
+    if (changed && ["account-choice", "session-conflict", "connection-failed", "verifying-sign-in"].includes(state.value) && (dependencies.hasStarted() || dependencies.isRunning())) {
+      const account = dependencies.accountState();
+      recordConnectionDiagnostic("title-screen", { detail: `${state.value}; signedIn:${!!account?.signedIn}; approved:${!!account?.gameSessionApproved}; guest:${!!account?.guestSessionApproved}; conflict:${!!account?.sessionConflict}; ${account?.connectionIssue?.message ?? ""}` });
+    }
     switch (state.value) {
       case "session-conflict":
         dependencies.showSessionConflict();

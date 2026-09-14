@@ -184,6 +184,26 @@ export const ChatMessageReportRateLimit = __t.object("ChatMessageReportRateLimit
 });
 export type ChatMessageReportRateLimit = __Infer<typeof ChatMessageReportRateLimit>;
 
+export const ConnectionDiagnostic = __t.object("ConnectionDiagnostic", {
+  id: __t.string(),
+  identity: __t.identity(),
+  playerName: __t.string(),
+  kind: __t.string(),
+  mapId: __t.string(),
+  clientVersion: __t.string(),
+  occurredAt: __t.timestamp(),
+  receivedAt: __t.timestamp(),
+  detailsJson: __t.string(),
+});
+export type ConnectionDiagnostic = __Infer<typeof ConnectionDiagnostic>;
+
+export const ConnectionDiagnosticRate = __t.object("ConnectionDiagnosticRate", {
+  identity: __t.identity(),
+  startedAt: __t.timestamp(),
+  count: __t.u32(),
+});
+export type ConnectionDiagnosticRate = __Infer<typeof ConnectionDiagnosticRate>;
+
 export const DailyGemBonus = __t.object("DailyGemBonus", {
   identity: __t.identity(),
   claimableDayKey: __t.string(),

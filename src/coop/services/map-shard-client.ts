@@ -1,3 +1,5 @@
+import { recordConnectionDiagnostic } from "./connection-diagnostic-runtime";
+import { diagnosticWebSocket } from "./diagnostic-websocket";
 import { isProceduralMap } from "../../../shared/procedural-maps";
 import { DbConnection, tables } from "../../module_bindings";
 import { guardConnectionActivity } from "./connection-activity";
@@ -45,7 +47,8 @@ export function createMapShardClient(options: {
       finish(routeError ?? undefined);
     });
   }
-  function closeRegion() {
+  function closeRegion(reason = "map-session-reset") {
+    if (region) recordConnectionDiagnostic("connection-reset", { transport: "map", database: route?.databaseName ?? "unknown", mapId: route?.mapId, intentional: true, detail: reason });
     generation++;
     hydrated = false;
     if (timer) clearTimeout(timer);
@@ -62,8 +65,9 @@ export function createMapShardClient(options: {
     const current = () => attempt === generation && attachedRoot === root;
     const retry = (error?: unknown) => {
       if (!current()) return;
+      recordConnectionDiagnostic("map-retry", { transport: "map", database: wanted.databaseName, mapId: wanted.mapId, attempt: failures + 1, detail: error instanceof Error ? error.message : "map-connection-closed" });
       const message = error instanceof Error ? error.message : "Map connection failed";
-      closeRegion();
+      closeRegion("map-retry");
       options.resetWorld();
       failures++;
       if (failures >= 5 || /updated\. refresh|account identity|active in another tab/i.test(message)) {
@@ -77,6 +81,7 @@ export function createMapShardClient(options: {
       options.changed();
     };
     const conn = guardConnectionActivity(DbConnection.builder().withUri(options.host).withDatabaseName(wanted.databaseName).withToken(root.token)
+      .withWSFn(diagnosticWebSocket(recordConnectionDiagnostic, { transport: "map", database: wanted.databaseName, mapId: wanted.mapId, isCurrent: current }))
       .onConnect(async connection => {
         if (!current()) { connection.disconnect(); return; }
         try {
@@ -93,8 +98,7 @@ export function createMapShardClient(options: {
           const reducers = new Proxy(connection.reducers, { get(target, key) {
             if (key === "changeMap") return async (args: Parameters<typeof root.reducers.changeMap>[0]) => {
               await root.reducers.changeMap(args);
-              // The root commits before the destination shard is admitted and
-              // hydrated. Keep the portal transition open through that handoff.
+              // Root acknowledgment precedes destination admission/hydration.
               await waitForMap(args.mapId, root);
             };
             const source = ["changeMap", "setSpeed", "recordPlayerDeath"].includes(String(key)) ? root.reducers : target;
@@ -132,6 +136,7 @@ export function createMapShardClient(options: {
             for (const row of resultTable?.iter() ?? []) (h as any)[`${boss}Result`](row);
             if (timer) clearTimeout(timer);
             timer = undefined;
+            recordConnectionDiagnostic("reconnected", { transport: "map", database: wanted.databaseName, mapId: wanted.mapId, attempt: failures });
             failures = 0;
             hydrated = true;
             options.worldReady();
@@ -150,7 +155,7 @@ export function createMapShardClient(options: {
   }
   function update(next: Route | null) {
     if (route?.databaseName === next?.databaseName && route?.mapId === next?.mapId && route?.generation === next?.generation && route?.ready === next?.ready) return;
-    closeRegion();
+    closeRegion("route-change");
     route = next;
     failures = 0;
     routeError = null;

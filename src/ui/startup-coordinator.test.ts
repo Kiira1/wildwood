@@ -1,3 +1,5 @@
+import { recordConnectionDiagnostic } from "../coop/services/connection-diagnostic-runtime";
+vi.mock("../coop/services/connection-diagnostic-runtime", () => ({ recordConnectionDiagnostic: vi.fn() }));
 import { describe, expect, it, vi } from "vitest";
 import { createStartupCoordinator } from "./startup-coordinator";
 
@@ -223,4 +225,17 @@ describe("startup screen coordination", () => {
     expect(restartLoading).toHaveBeenCalledTimes(1);
     expect(coordinator.state()).toEqual({ value: "loading-runtime" });
   });
+});
+
+
+it("records the reason when an active player returns to account choice, once per transition", () => {
+  vi.mocked(recordConnectionDiagnostic).mockClear();
+  const deps = dependencies(true);
+  let approved = true;
+  const coordinator = createStartupCoordinator({ ...deps.values, accountState: () => ({ gameSessionApproved: approved }) });
+  coordinator.finishStartup();
+  approved = false;
+  coordinator.finishStartup(); coordinator.finishStartup();
+  expect(recordConnectionDiagnostic).toHaveBeenCalledOnce();
+  expect(recordConnectionDiagnostic).toHaveBeenCalledWith("title-screen", expect.objectContaining({ detail: expect.stringContaining("account-choice;") }));
 });

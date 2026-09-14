@@ -1,3 +1,4 @@
+import { recordConnectionDiagnostic } from "./connection-diagnostic-runtime";
 import { syncResearchNotification } from "../../app/native-research-notifications";
 import type { DbConnection } from "../../module_bindings";
 import { NATIVE_AUTH_CANCEL, NATIVE_AUTH_REDIRECT, nativeAuth } from "../../app/native-auth";
@@ -698,6 +699,7 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
       }
     },
     async signOut() {
+      recordConnectionDiagnostic("user-sign-out", { intentional: true });
       await syncResearchNotification(null);
       nativeAuth()?.cancel();
       dependencies.disconnectVirtualPlayers();
@@ -766,6 +768,7 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
       if (signedIn) sessionApproved = true;
     },
     prepareUpdateReload(version: string) {
+      recordConnectionDiagnostic("update-reload", { intentional: true, detail: `version:${version}` });
       return lastPlayableSessionMode ? dependencies.updateResumeStore.write(version, lastPlayableSessionMode) : false;
     },
     finishHydration() { updateResumePending = false; },
@@ -837,8 +840,9 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
       return true;
     },
     onConnectError(signedIn: boolean, error: Error) {
-      const rejectedToken = /401|unauthorized|verify token/i.test(String(error?.message || error));
+      const rejectedToken = /\b401\b|\b403\b|unauthorized|forbidden|invalid token/i.test(String(error?.message || error));
       if (!rejectedToken) return false;
+      recordConnectionDiagnostic("session-blocked", { detail: `authentication-rejected: ${error.message}` });
       clearStoredToken(signedIn ? keys.accountTokenKey : keys.guestTokenKey);
       if (signedIn && hasKnownAccount()) {
         const alreadyRetried = readTabValue(keys.authRetryKey) === "true";

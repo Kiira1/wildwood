@@ -76,6 +76,7 @@ import MarkPortalCutsceneSeenReducer from "../mark_portal_cutscene_seen_reducer"
 import PrepareProceduralBossReducer from "../prepare_procedural_boss_reducer";
 import PrepareWorldActionPositionReducer from "../prepare_world_action_position_reducer";
 import PulseDuelReducer from "../pulse_duel_reducer";
+import RecordConnectionDiagnosticReducer from "../record_connection_diagnostic_reducer";
 import RecordDesertEnemyDefeatReducer from "../record_desert_enemy_defeat_reducer";
 import RecordForestEnemyDefeatReducer from "../record_forest_enemy_defeat_reducer";
 import RecordLavaEnemyDefeatReducer from "../record_lava_enemy_defeat_reducer";
@@ -192,6 +193,7 @@ export type MarkPortalCutsceneSeenParams = __Infer<typeof MarkPortalCutsceneSeen
 export type PrepareProceduralBossParams = __Infer<typeof PrepareProceduralBossReducer>;
 export type PrepareWorldActionPositionParams = __Infer<typeof PrepareWorldActionPositionReducer>;
 export type PulseDuelParams = __Infer<typeof PulseDuelReducer>;
+export type RecordConnectionDiagnosticParams = __Infer<typeof RecordConnectionDiagnosticReducer>;
 export type RecordDesertEnemyDefeatParams = __Infer<typeof RecordDesertEnemyDefeatReducer>;
 export type RecordForestEnemyDefeatParams = __Infer<typeof RecordForestEnemyDefeatReducer>;
 export type RecordLavaEnemyDefeatParams = __Infer<typeof RecordLavaEnemyDefeatReducer>;

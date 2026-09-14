@@ -1,3 +1,4 @@
+import { recordConnectionDiagnostic } from "./connection-diagnostic-runtime";
 import { isProceduralMap } from "../../../shared/procedural-maps";
 import type { Identity } from "spacetimedb";
 import { tables, type SubscriptionHandle } from "../../module_bindings";
@@ -916,6 +917,7 @@ export function createPresenceService(dependencies: PresenceServiceDependencies)
         syncMovementState(x, y, velocity.vx, velocity.vy, "keyboard", true);
       },
       async changeMap(mapId: string, x: number, y: number) {
+        recordConnectionDiagnostic("portal-start", { detail: `destination:${mapId}` });
         const connection = dependencies.reducers.connection();
         if (
           dependencies.reducers.protocolBlocked() ||
@@ -927,8 +929,10 @@ export function createPresenceService(dependencies: PresenceServiceDependencies)
         ) return false;
         try {
           await dependencies.reducers.runWorldReducer(() => connection.reducers.changeMap({ mapId, x, y }));
+          recordConnectionDiagnostic("portal-complete", { detail: `destination:${mapId}` });
           return true;
         } catch (error) {
+          recordConnectionDiagnostic("portal-failed", { detail: `destination:${mapId}; ${error instanceof Error ? error.message : "map-change-failed"}` });
           dependencies.reducers.handleFailure("map change", error);
           return false;
         }

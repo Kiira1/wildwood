@@ -16,7 +16,7 @@ vi.mock("../../module_bindings", () => ({
         subscribe() { connection.queries.push(query); return query; },
       }; return query; },
     };
-    const builder: any = { withUri: () => builder, withToken(token: string) { connection.token = token; return builder; },
+    const builder: any = { withWSFn: () => builder, withUri: () => builder, withToken(token: string) { connection.token = token; return builder; },
       withDatabaseName(name: string) { connection.database = name; return builder; },
       onConnect(fn: any) { connection.connect = () => fn(connection); return builder; },
       onDisconnect(fn: any) { connection.disconnected = fn; return builder; },

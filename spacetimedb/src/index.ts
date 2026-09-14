@@ -1,3 +1,4 @@
+import { connectionDiagnosticTables, recordConnectionDiagnostics, cleanupConnectionDiagnostics } from "./connection-diagnostics";
 import { moderationTables, recordModerationAction, readModerationHistory } from "./moderation-history";
 import { playerItemGift, deliverAlphaTesterGifts, claimItemGift, removeItemGifts, mergeItemGifts } from "./item-gifts";
 import { moderateReportedMessage } from "./chat-report-moderation";
@@ -1773,6 +1774,7 @@ const spacetimedb = schema({
   playerBlock,
   playerReport,
   bugReport,
+  ...connectionDiagnosticTables,
   startupTelemetryEvent,
   startupTelemetryRateLimit,
   duel,
@@ -6589,6 +6591,7 @@ export const cleanupStartupTelemetry = spacetimedb.reducer(
   { schedule: startupTelemetryCleanupSchedule.rowType },
   (ctx, _args) => {
     if (isMapShard(ctx)) return;
+    cleanupConnectionDiagnostics(ctx);
     trimStartupTelemetry(ctx);
     clearExpiredStartupTelemetryRateLimits(ctx);
   },
@@ -8104,6 +8107,14 @@ export const registerProtocol = spacetimedb.reducer(
     for (const { slot, active } of activeItemUpgradeEntriesFor(ctx, ctx.sender)) {
       reconcileActiveItemUpgrade(ctx, active, slot);
     }
+  },
+);
+
+export const recordConnectionDiagnostic = spacetimedb.reducer(
+  { payload: t.string() },
+  (ctx, { payload }) => {
+    requireSession(ctx);
+    recordConnectionDiagnostics(ctx, payload);
   },
 );
 
