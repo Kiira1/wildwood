@@ -119,3 +119,17 @@ Device check: enable the switch, start research, background/lock the phone, and
 wait for its finish time. Also verify turning the switch off or speeding up the
 research cancels the scheduled reminder. Android SDK installation remains needed
 for an Android build on this Mac.
+
+## Android update prompt
+
+Android builds check Google Play at startup, on foreground return, and at most
+once every five active minutes. The in-game Update button opens the app's Play
+Store listing; Later snoozes that build for eight hours. Availability comes from
+Google Play for the current tester and installed version code, so publishing a
+web update or uploading an unreleased bundle does not trigger the prompt.
+
+Testers must install a build containing this feature once before it can announce
+future builds. Validate the complete flow using a Play-installed internal test
+build and a newer available version code. Sideloads and offline checks can return
+no update; neither blocks gameplay. No separate release-version feed needs to be
+maintained. See [Google's update API](https://developer.android.com/guide/playcore/in-app-updates/kotlin-java).

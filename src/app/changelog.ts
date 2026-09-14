@@ -1,4 +1,11 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.672": [
+    "Private chat opens a player conversation list. Private messages no longer expire or get automatically trimmed.",
+  ],
+  "0.671": [
+    "Android players see an Update button when Google Play has a newer build available for their account.",
+    "Fixed world entry requests arriving before Terms acceptance was saved, and preserved acceptance after failed entry.",
+  ],
   "0.670": [
     "Guild Presidents can appoint a Vice President who can also start battles.",
     "Guild battle replays show white damage numbers with smaller characters and more spacing.",
@@ -1717,6 +1724,8 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.672": "2026-09-13",
+  "0.671": "2026-09-13",
   "0.670": "2026-09-13",
   "0.669": "2026-09-13",
   "0.668": "2026-09-13",

@@ -23,6 +23,13 @@ function harness() {
   return { service, connection, drain, row, replace() { active = { ...connection }; } };
 }
 describe("private social client state", () => {
+  it("keeps archived conversation names when their messages are outside the live page", async () => {
+    const h = harness();
+    h.connection.procedures.getSocialHub.mockResolvedValue(JSON.stringify({ ...snapshot, conversations: [{ identity: cara.toHexString(), name: "Cara" }] }));
+    await h.service.api.loadSocial();
+    expect(h.service.api.privateConversations()).toContainEqual({ identity: cara.toHexString(), name: "Cara" });
+    expect(h.service.api.privateMessages(cara.toHexString())).toEqual([]);
+  });
   it("keeps guild and each private conversation separate, including outbound messages", async () => {
     const h = harness(); await h.service.api.loadSocial();
     h.service.tables.upsertMessage(h.row(1n, "guild"));

@@ -89,6 +89,9 @@ export function createSocialService(deps: Dependencies) {
         const identity = mine ? row.recipient : row.sender;
         if (!peers.has(identity)) peers.set(identity, { identity, name: snapshot.friends.find(friend => friend.identity === identity)?.name ?? (mine ? row.recipientName : row.senderName) });
       }
+      for (const person of snapshot.conversations ?? []) {
+        if (!peers.has(person.identity)) peers.set(person.identity, person);
+      }
       return [...peers.values()];
     },
     async loadSocial(): Promise<SocialSnapshot> {

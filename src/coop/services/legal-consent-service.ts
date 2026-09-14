@@ -45,18 +45,26 @@ export function createLegalConsentService(dependencies: LegalConsentDependencies
     try { dependencies.storage.setItem(dependencies.storageKey, JSON.stringify(next)); } catch {}
   }
 
-  async function sendToServer(connection: DbConnection, next: StoredLegalConsent) {
-    await connection.reducers.acceptTerms({
-      termsVersion: next.termsVersion,
-      ageBand: next.ageBand,
+  const synced = new WeakMap<DbConnection, { key: string; pending: Promise<void> }>();
+  function sendToServer(connection: DbConnection, next: StoredLegalConsent) {
+    const key = `${next.termsVersion}:${next.ageBand}`;
+    const current = synced.get(connection);
+    if (current?.key === key) return current.pending;
+    const pending = Promise.resolve().then(() => connection.reducers.acceptTerms({
+      termsVersion: next.termsVersion, ageBand: next.ageBand,
+    })).catch(error => {
+      if (synced.get(connection)?.pending === pending) synced.delete(connection);
+      throw error;
     });
+    synced.set(connection, { key, pending });
+    return pending;
   }
 
   async function syncConnection(connection: DbConnection) {
     if (!consent) return false;
     try {
       await sendToServer(connection, consent);
-      return true;
+      return dependencies.connection() === connection && connection.isActive;
     } catch (error) {
       dependencies.handleFailure("terms acceptance", error);
       dependencies.notify();
@@ -86,12 +94,16 @@ export function createLegalConsentService(dependencies: LegalConsentDependencies
       }
     }
 
-    if (connection?.isActive && dependencies.protocolReady() && dependencies.shouldEnterWorld()) {
+    // Acceptance is complete independently of world entry. Do not make the
+    // player repeat it after a failed entry or a reconnect during submission.
+    store(next);
+    dependencies.notify();
+    const current = dependencies.connection();
+    if (current?.isActive && dependencies.protocolReady() && dependencies.shouldEnterWorld()) {
+      if (!await syncConnection(current)) return { ok: false, error: "Could not save your agreement. Try again." };
       const entered = await dependencies.requestWorldEntry();
       if (!entered) return { ok: false, error: "Could not enter WildStat. Try again." };
     }
-    store(next);
-    dependencies.notify();
     return { ok: true };
   }
 

@@ -65,14 +65,23 @@ export function socialHistoryPage(ctx: SocialReadCtx, channel: string, peer: str
   const recipient = channel === "dm" ? target(ctx, peer).identity : null;
   if (channel === "guild" && !ctx.db.guildMember.identity.find(ctx.sender)) fail("Join a guild first.");
   if (recipient) assertContact(ctx, recipient);
-  return chatPage(visibleSocialMessages(ctx).filter(row => row.channel === channel &&
-    (!recipient || row.conversation === dmKey(ctx.sender, recipient))), beforeId);
+  const conversation = recipient ? dmKey(ctx.sender, recipient) : `guild:${ctx.db.guildMember.identity.find(ctx.sender)!.guildId}`;
+  const rows = [...ctx.db.socialMessage.conversation.filter(conversation)]
+    .filter(row => !blocked(ctx, ctx.sender, row.sender))
+    .map(row => row.replyToMessageId && blocked(ctx, ctx.sender, row.replySender)
+      ? { ...row, replyToMessageId: 0n, replyToSenderName: "", replyToMessage: "" } : row);
+  return chatPage(rows, beforeId);
 }
 export function socialSnapshot(ctx: SocialReadCtx, signedIn = true): SocialSnapshot {
   const member = ctx.db.guildMember.identity.find(ctx.sender);
   const guild = member ? ctx.db.guild.id.find(member.guildId) : null;
   return {
     identity: hex(ctx.sender), signedIn,
+    // Keep conversation discovery independent of the latest 50 live messages.
+    conversations: [...new Map(visibleSocialMessages(ctx).filter(row => row.channel === "dm").map(row => {
+      const peer = same(row.sender, ctx.sender) ? row.recipient : row.sender;
+      return [hex(peer), { identity: hex(peer), name: name(ctx, peer) }] as const;
+    })).values()].sort((a, b) => a.identity.localeCompare(b.identity)),
     friends: [...ctx.db.socialFriend.owner.filter(ctx.sender)].filter(row => !blocked(ctx, ctx.sender, row.peer)).map(row => ({ identity: hex(row.peer), name: name(ctx, row.peer) })),
     incomingRequests: [...ctx.db.socialRequest.recipient.filter(ctx.sender)].filter(row => !blocked(ctx, row.sender, row.recipient)).map(row => ({ id: String(row.id), identity: hex(row.sender), name: name(ctx, row.sender) })),
     outgoingRequests: [...ctx.db.socialRequest.sender.filter(ctx.sender)].filter(row => !blocked(ctx, row.sender, row.recipient)).map(row => ({ id: String(row.id), identity: hex(row.recipient), name: name(ctx, row.recipient) })),
@@ -152,18 +161,14 @@ export function createSocialService(deps: { joinGuild(ctx: Ctx, guildId: bigint)
         powerLevel: ctx.db.player.identity.find(ctx.sender)?.powerLevel ?? 0, senderIsGuest: ctx.db.playerAccountStatus.identity.find(ctx.sender)?.isGuest ?? true,
         message: moderated.message, moderated: moderated.moderated, sentAt: ctx.timestamp,
         replySender: reply?.sender ?? ctx.sender, replyToMessageId: reply?.id ?? 0n, replyToSenderName: reply?.senderName ?? "", replyToMessage: reply?.message ?? "" });
-      pruneSocialMessages(ctx, conversation, channel === "dm" ? [ctx.sender, recipient] : []);
+      if (channel === "guild") pruneGuildMessages(ctx, conversation);
     },
   };
 }
-function pruneSocialMessages(ctx: Ctx, conversation: string, participants: Identity[]) {
+// Private messages are retained indefinitely; only guild chat is automatically trimmed.
+function pruneGuildMessages(ctx: Ctx, conversation: string) {
   const history = [...ctx.db.socialMessage.conversation.filter(conversation)].sort((a, b) => a.id < b.id ? -1 : 1);
   for (const row of history.slice(0, Math.max(0, history.length - SOCIAL_MESSAGE_LIMIT))) ctx.db.socialMessage.id.delete(row.id);
-  // Bound all DMs even across repeated unfriend/re-friend cycles and account links.
-  for (const who of participants) {
-    const rows = [...new Map([...ctx.db.socialMessage.sender.filter(who), ...ctx.db.socialMessage.recipient.filter(who)].filter(row => row.channel === "dm").map(row => [row.id, row])).values()].sort((a, b) => a.id < b.id ? -1 : 1);
-    for (const row of rows.slice(0, Math.max(0, rows.length - 500))) ctx.db.socialMessage.id.delete(row.id);
-  }
 }
 /** Account erasure removes private content and relationships through indexed references. */
 export function removeSocialAccount(ctx: Ctx, who: Identity) {
@@ -196,8 +201,6 @@ export function mergeSocialAccount(ctx: Ctx, guest: Identity, account: Identity)
     if (row.channel === "dm" && same(sender, recipient)) ctx.db.socialMessage.id.delete(row.id);
     else ctx.db.socialMessage.id.update({ ...row, sender, recipient, senderName: name(ctx, sender), recipientName: row.channel === "dm" ? name(ctx, recipient) : "", conversation: row.channel === "dm" ? dmKey(sender, recipient) : row.conversation });
   }
-  const conversations = new Set([...ctx.db.socialMessage.sender.filter(account), ...ctx.db.socialMessage.recipient.filter(account)].filter(row => row.channel === "dm").map(row => row.conversation));
-  for (const conversation of conversations) pruneSocialMessages(ctx, conversation, [account]);
   for (const row of ctx.db.socialMessage.replySender.filter(guest)) ctx.db.socialMessage.id.update({ ...row, replySender: account });
   for (const row of ctx.db.playerReport.iter()) {
     if (same(row.reporter, guest) || same(row.target, guest)) ctx.db.playerReport.id.update({ ...row,

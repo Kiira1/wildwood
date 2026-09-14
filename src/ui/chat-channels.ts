@@ -28,14 +28,14 @@ export function createChatChannelPicker(onChange: (channel: ChatChannel, usernam
     button.type = "button";
     button.textContent = channel[0].toUpperCase() + channel.slice(1);
     button.setAttribute("role", "tab");
-    button.addEventListener("click", () => select(channel, peer, peerIdentity));
+    button.addEventListener("click", () => select(channel, channel === "private" ? "" : peer, channel === "private" ? undefined : peerIdentity));
     button.addEventListener("keydown", (event) => {
       if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
       event.preventDefault();
       const channels = [...buttons.keys()];
       const index = channels.indexOf(channel);
       const next = event.key === "Home" ? 0 : event.key === "End" ? 2 : (index + (event.key === "ArrowRight" ? 1 : 2)) % 3;
-      select(channels[next], peer, peerIdentity);
+      select(channels[next], channels[next] === "private" ? "" : peer, channels[next] === "private" ? undefined : peerIdentity);
       buttons.get(channels[next])?.focus();
     });
     buttons.set(channel, button);
@@ -52,12 +52,14 @@ export function createChatChannelPicker(onChange: (channel: ChatChannel, usernam
   const open = document.createElement("button");
   open.type = "submit";
   open.textContent = "Open";
-  const contacts = document.createElement("select");
-  contacts.setAttribute("aria-label", "Friends and private conversations");
-  contacts.addEventListener("change", () => {
-    const person = people.find(person => person.identity === contacts.value);
-    if (person) select("private", person.name, person.identity);
-  });
+  const contacts = document.createElement("div");
+  contacts.className = "chat-conversations";
+  contacts.setAttribute("aria-label", "Private conversations");
+  const conversationHeader = document.createElement("button");
+  conversationHeader.type = "button";
+  conversationHeader.className = "chat-conversation-back";
+  conversationHeader.setAttribute("aria-label", "Back to conversations");
+  conversationHeader.addEventListener("click", () => select("private", ""));
   picker.addEventListener("submit", (event) => {
     event.preventDefault();
     if (username.value.trim()) select("private", username.value.trim());
@@ -67,18 +69,21 @@ export function createChatChannelPicker(onChange: (channel: ChatChannel, usernam
   manageFriends.textContent = "Manage friends";
   manageFriends.className = "chat-manage-friends";
   manageFriends.addEventListener("click", () => window.dispatchEvent(new CustomEvent("wildwood:open-friends")));
-  picker.append(username, open, contacts, manageFriends);
+  picker.append(username, open, manageFriends);
   const status = document.createElement("div");
   status.className = "chat-channel-status";
   status.setAttribute("aria-live", "polite");
-  root.append(tabs, picker, status);
+  root.append(tabs, picker, conversationHeader, status);
 
   function update() {
     for (const [channel, button] of buttons) {
       button.setAttribute("aria-selected", String(channel === selected));
       button.tabIndex = channel === selected ? 0 : -1;
     }
-    picker.hidden = selected !== "private";
+    picker.hidden = selected !== "private" || Boolean(peer);
+    contacts.hidden = selected !== "private" || Boolean(peer);
+    conversationHeader.hidden = selected !== "private" || !peer;
+    conversationHeader.textContent = `‹  ${peer}`;
     username.value = peer;
   }
   function select(channel: ChatChannel, nextPeer: string, identity?: string) {
@@ -107,21 +112,37 @@ export function createChatChannelPicker(onChange: (channel: ChatChannel, usernam
     if (signature !== contactSignature) {
       contactSignature = signature;
       contacts.replaceChildren();
-      const placeholder = document.createElement("option");
-      placeholder.value = "";
-      placeholder.textContent = "Friends & conversations";
-      contacts.append(placeholder);
+      if (!people.length) {
+        const empty = document.createElement("p");
+        empty.className = "chat-conversations-empty";
+        empty.textContent = "No conversations yet";
+        contacts.append(empty);
+      }
       for (const person of people) {
-        const option = document.createElement("option");
-        option.value = person.identity;
+        const row = document.createElement("button");
+        row.type = "button";
+        row.className = "chat-conversation-row";
+        row.dataset.identity = person.identity;
+        const label = document.createElement("span");
+        label.textContent = person.name;
+        row.append(label);
         const count = unread.conversations.get(person.identity) ?? 0;
-        option.textContent = count ? `${person.name} (${count} unread)` : person.name;
-        contacts.append(option);
+        if (count) {
+          const badge = document.createElement("span");
+          badge.className = "chat-conversation-unread";
+          badge.textContent = String(count);
+          row.append(badge);
+        }
+        row.setAttribute("aria-label", count ? `${person.name}, ${count} unread messages` : person.name);
+        row.addEventListener("click", () => select("private", person.name, person.identity));
+        contacts.append(row);
       }
     }
     status.textContent = selected === "guild" ? (guildName ? `Guild: ${guildName}` : "Join or create a guild to chat with members.")
-      : selected === "private" ? (peer ? `Private conversation with ${peer}` : "Enter a friend’s username or choose a conversation.") : "Public chat";
+      : selected === "private" ? "" : "Public chat";
+    status.hidden = selected === "private";
+    conversationHeader.textContent = `‹  ${peer}`;
   }
   update();
-  return { root, select, refresh };
+  return { root, conversations: contacts, select, refresh };
 }

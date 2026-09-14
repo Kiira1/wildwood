@@ -88,6 +88,30 @@ describe("chat channels", () => {
     expect(h.coop.social.sendPrivateMessage).toHaveBeenCalledWith("friend", "Hi Moss", 0n);
     expect(h.coop.sendChatMessage).not.toHaveBeenCalled();
   });
+  it("opens Private as a player list and preserves a conversation draft when returning to it", async () => {
+    const h = setup();
+    h.document.getElementById("chatSizeToggle")!.click();
+    h.button("Private").click();
+    expect(h.document.querySelector(".chat-private-picker select")).toBeNull();
+    expect(h.document.getElementById("chatPanel")!.classList.contains("is-private-inbox")).toBe(true);
+    h.document.querySelector<HTMLButtonElement>(".chat-conversation-row")!.click();
+    expect(h.history()).toContain("private only");
+    expect(h.document.getElementById("chatPanel")!.classList.contains("is-private-inbox")).toBe(false);
+    h.input.value = "draft for Moss";
+    h.document.querySelector<HTMLButtonElement>(".chat-conversation-back")!.click();
+    expect(h.document.getElementById("chatPanel")!.classList.contains("is-private-inbox")).toBe(true);
+    h.document.querySelector<HTMLButtonElement>(".chat-conversation-row")!.click();
+    expect(h.input.value).toBe("draft for Moss");
+    await h.submit(h.input.value);
+    expect(h.coop.social.sendPrivateMessage).toHaveBeenCalledWith("friend", "draft for Moss", 0n);
+  });
+  it("keeps private messages older than 24 hours visible", () => {
+    const h = setup();
+    const old = { ...h.coop.social.privateMessages()[0], sentAtMs: Date.now() - 7 * 86_400_000 };
+    h.coop.social.privateMessages.mockReturnValue([old]);
+    h.window.dispatchEvent(new h.window.CustomEvent("wildwood:open-private-chat", { detail: { username: "Moss", identity: "friend" } }));
+    expect(h.history()).toContain("private only");
+  });
   it("deduplicates friends and incoming conversations by username", () => {
     expect(mergeChatConversations([{ identity: "1", name: "Moss" }], [{ identity: "1", name: "moss" }, { identity: "2", name: "Oak" }])).toHaveLength(2);
   });
@@ -130,7 +154,7 @@ describe("chat channels", () => {
     h.coop.social.revision = () => 2;
     h.chat.refresh();
     expect(h.button("Private").textContent).toBe("Private · 1");
-    expect(h.document.querySelector(".chat-private-picker select")!.textContent).toContain("Moss (1 unread)");
+    expect(h.document.querySelector(".chat-conversation-row")!.getAttribute("aria-label")).toBe("Moss, 1 unread messages");
     h.window.dispatchEvent(new h.window.CustomEvent("wildwood:open-private-chat", { detail: { username: "Moss", identity: "friend" } }));
     expect(h.button("Private").textContent).toBe("Private");
   });
@@ -141,6 +165,7 @@ describe("chat channels", () => {
     h.chat.refresh();
     h.button("Public").click();
     h.button("Private").click();
+    h.document.querySelector<HTMLButtonElement>('.chat-conversation-row[data-identity="friend"]')!.click();
     await h.submit("for the same person");
     expect(h.coop.social.sendPrivateMessage).toHaveBeenCalledWith("friend", "for the same person", 0n);
   });

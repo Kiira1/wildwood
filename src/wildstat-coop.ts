@@ -1,3 +1,4 @@
+import { enterWorldAfterConsent } from "./coop/services/world-entry-consent";
 import { accountStorageKeys } from "./coop/services/account-storage-keys";
 import { createCommunityServices } from "./coop/services/community-services";
 import { createConnectionStatusApi } from "./coop/services/connection-status-api";
@@ -294,7 +295,7 @@ function requestWorldEntry(): Promise<boolean> {
   if (worldEntryPromise) return worldEntryPromise;
   const conn = connection;
   const generation = connectionGeneration;
-  worldEntryPromise = Promise.resolve(conn.reducers.enterWorld({ tabId: accountService.tabId() }))
+  worldEntryPromise = enterWorldAfterConsent(conn, accountService.tabId(), accountService.syncLegalConsent, () => connection === conn && generation === connectionGeneration)
     .then(() => {
       if (connection !== conn || generation !== connectionGeneration) return false;
       worldEntryBlocked = false;

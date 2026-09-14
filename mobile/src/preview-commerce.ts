@@ -1,3 +1,4 @@
+import { installAndroidUpdates } from './android-updates';
 import { Haptics, ImpactStyle } from "@capacitor/haptics";
 import { installResearchNotifications } from './research-notifications';
 import { installNativeAuth } from './native-auth';
@@ -14,6 +15,7 @@ if (platform === 'ios' || platform === 'android') {
     void Haptics.impact({ style: ImpactStyle.Light }).catch(() => {});
   });
   installNativeAuth();
+  if (platform === 'android') installAndroidUpdates();
   installResearchNotifications(platform);
   const testPurchases = optionalTestPurchases(__TEST_PURCHASE_CONFIG__);
   if (testPurchases) (window as unknown as { wildstatTestPurchases: NativeTestPurchases }).wildstatTestPurchases = testPurchases;

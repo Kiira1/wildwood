@@ -128,7 +128,7 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
   let lastScrollTop = 0;
   function refreshLatestButton() {
     const distance = elements.messages.scrollHeight - elements.messages.clientHeight - elements.messages.scrollTop;
-    latestButton.hidden = !large || !enabled || distance <= 80;
+    latestButton.hidden = !large || !enabled || (channel === "private" && !privatePeer) || distance <= 80;
     latestButton.disabled = history.state().loading;
   }
   const channelPicker = createChatChannelPicker((nextChannel, username, identity) => {
@@ -154,7 +154,7 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
       : privatePeer ? coop?.social?.privateMessages(privatePeerIdentity || privatePeer) : []) ?? [];
   }
   async function loadHistory(latest = false) {
-    if (!large || !enabled) return;
+    if (!large || !enabled || (channel === "private" && !privatePeer)) return;
     const coop = getCoop(), key = conversationKey(), identity = coop?.localIdentity?.();
     const fetch = channel === "public" ? coop?.loadChatHistory : coop?.social?.loadChatHistory
       ? (beforeId: bigint) => coop.social!.loadChatHistory!(channel === "guild" ? "guild" : "dm", privatePeerIdentity || privatePeer, beforeId) : undefined;
@@ -313,6 +313,7 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
     }
     if (pendingReply && coop?.isPlayerBlocked?.(pendingReply.sender)) setPendingReply(null);
 
+    elements.panel.classList.toggle("is-private-inbox", channel === "private" && !privatePeer);
     const now = Date.now();
     history.select(`${identity}:${conversationKey()}:${coop?.social?.historyRevision?.() ?? 0}:${coop?.chatHistoryRevision?.() ?? 0}:${large}`);
     const historyState = history.state();
@@ -337,7 +338,7 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
     const followNewestMessage = !large || renderedRevision === "" || (!historyState.frozen && distanceFromBottom <= 16);
     const channelMessages = history.messages(currentMessages());
     const allMessages = (channelMessages ?? []).filter((message) =>
-      now - message.sentAtMs < CHAT_DISPLAY_TTL_MS && !coop?.isPlayerBlocked?.(message.sender)
+      (channel === "private" || now - message.sentAtMs < CHAT_DISPLAY_TTL_MS) && !coop?.isPlayerBlocked?.(message.sender)
       && (channel !== "public" || shouldShowGlobalChatMessage(message.senderName))
     );
     // Do not rely on scrolling hidden rows in compact mode. Its DOM contains
@@ -345,7 +346,7 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
     // expanded view.
     const messages = large ? allMessages : allMessages.slice(-2);
     renderedRevision = revision;
-    nextExpiryAt = allMessages.length > 0 ? allMessages[0].sentAtMs + CHAT_DISPLAY_TTL_MS : Number.POSITIVE_INFINITY;
+    nextExpiryAt = channel !== "private" && allMessages.length > 0 ? allMessages[0].sentAtMs + CHAT_DISPLAY_TTL_MS : Number.POSITIVE_INFINITY;
     elements.messages.replaceChildren();
     for (const message of messages) {
       const line = document.createElement("div");
@@ -494,10 +495,11 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
   function init() {
     messageActions.init();
     elements.panel.insertBefore(channelPicker.root, elements.messages);
+    elements.panel.insertBefore(channelPicker.conversations, elements.messages);
     elements.form.append(latestButton);
     latestButton.addEventListener("click", () => { void loadHistory(true); });
     elements.messages.addEventListener("scroll", () => {
-      if (!large || !enabled) return;
+      if (!large || !enabled || (channel === "private" && !privatePeer)) return;
       const top = elements.messages.scrollTop;
       const scrollingUp = top < lastScrollTop;
       lastScrollTop = top;

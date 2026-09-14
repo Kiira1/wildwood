@@ -1,6 +1,7 @@
 /** Social records are private to their participants; IDs are decimal/hex strings on UI boundaries. */
 export type SocialSnapshot = {
   identity: string; signedIn: boolean;
+  conversations?: { identity: string; name: string }[];
   friends: { identity: string; name: string; online?: boolean }[];
   incomingRequests: { id: string; identity: string; name: string }[];
   outgoingRequests: { id: string; identity: string; name: string }[];
