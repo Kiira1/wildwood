@@ -1,4 +1,9 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.673": [
+    "Private conversations show profile pictures and latest-message previews, with the standard Back button for navigation.",
+    "Private messages no longer require friendship.",
+    "Renamed the Alpha Tester Helmet and added a developer gift claim popup for today's new accounts and guests.",
+  ],
   "0.672": [
     "Private chat opens a player conversation list. Private messages no longer expire or get automatically trimmed.",
   ],
@@ -1724,6 +1729,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.673": "2026-09-13",
   "0.672": "2026-09-13",
   "0.671": "2026-09-13",
   "0.670": "2026-09-13",

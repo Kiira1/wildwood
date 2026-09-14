@@ -22,6 +22,8 @@ export type BaseSubscriptionHandlers = {
   removeGemWallet: RowHandler;
   dailyGemBonus: RowHandler;
   removeDailyGemBonus: RowHandler;
+  itemGift: RowHandler;
+  removeItemGift: RowHandler;
   balanceApologyNotice: RowHandler;
   removeBalanceApologyNotice: RowHandler;
   upgradeBench: RowHandler;
@@ -126,6 +128,8 @@ type BaseSubscriptionHandlerSources = {
     removeGemWallet: BaseSubscriptionHandlers["removeGemWallet"];
     upsertDailyGemBonus: BaseSubscriptionHandlers["dailyGemBonus"];
     removeDailyGemBonus: BaseSubscriptionHandlers["removeDailyGemBonus"];
+    upsertItemGift: BaseSubscriptionHandlers["itemGift"];
+    removeItemGift: BaseSubscriptionHandlers["removeItemGift"];
     upsertBalanceApologyNotice: BaseSubscriptionHandlers["balanceApologyNotice"];
     removeBalanceApologyNotice: BaseSubscriptionHandlers["removeBalanceApologyNotice"];
     upsertUpgradeBench: BaseSubscriptionHandlers["upgradeBench"];
@@ -202,6 +206,8 @@ export function createBaseSubscriptionHandlers(sources: BaseSubscriptionHandlerS
     removeGemWallet: progression.removeGemWallet,
     dailyGemBonus: progression.upsertDailyGemBonus,
     removeDailyGemBonus: progression.removeDailyGemBonus,
+    itemGift: progression.upsertItemGift,
+    removeItemGift: progression.removeItemGift,
     balanceApologyNotice: progression.upsertBalanceApologyNotice,
     removeBalanceApologyNotice: progression.removeBalanceApologyNotice,
     upgradeBench: progression.upsertUpgradeBench,
@@ -311,6 +317,9 @@ export function startBaseSubscription(dependencies: BaseSubscriptionDependencies
   connection.db.myDailyGemBonus.onInsert((_ctx, row) => { if (shouldHandle()) handlers.dailyGemBonus(row); });
   connection.db.myDailyGemBonus.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.dailyGemBonus(row); });
   connection.db.myDailyGemBonus.onDelete((_ctx, row) => { if (shouldHandle()) handlers.removeDailyGemBonus(row); });
+  connection.db.myItemGifts.onInsert((_ctx, row) => { if (shouldHandle()) handlers.itemGift(row); });
+  connection.db.myItemGifts.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.itemGift(row); });
+  connection.db.myItemGifts.onDelete((_ctx, row) => { if (shouldHandle()) handlers.removeItemGift(row); });
   connection.db.myBalanceApologyNotice.onInsert((_ctx, row) => { if (shouldHandle()) handlers.balanceApologyNotice(row); });
   connection.db.myBalanceApologyNotice.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.balanceApologyNotice(row); });
   connection.db.myBalanceApologyNotice.onDelete((_ctx, row) => { if (shouldHandle()) handlers.removeBalanceApologyNotice(row); });
@@ -468,6 +477,7 @@ export function startBaseSubscription(dependencies: BaseSubscriptionDependencies
       tables.myGemWallet,
       tables.myDailyGemBonus,
       tables.myBalanceApologyNotice,
+      tables.myItemGifts,
       tables.myUpgradeBench,
       tables.myInventoryCapacity,
       tables.myCutsceneHistory,
@@ -507,6 +517,7 @@ export function startBaseSubscription(dependencies: BaseSubscriptionDependencies
           for (const row of connection.db.myGemWallet.iter()) handlers.gemWallet(row);
           for (const row of connection.db.myDailyGemBonus.iter()) handlers.dailyGemBonus(row);
           for (const row of connection.db.myBalanceApologyNotice.iter()) handlers.balanceApologyNotice(row);
+          for (const row of connection.db.myItemGifts.iter()) handlers.itemGift(row);
           for (const row of connection.db.myUpgradeBench.iter()) handlers.upgradeBench(row);
           for (const row of connection.db.myInventoryCapacity.iter()) handlers.inventoryCapacity(row);
           for (const row of connection.db.myCutsceneHistory.iter()) handlers.cutsceneHistory(row);

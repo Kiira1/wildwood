@@ -42,10 +42,10 @@ it("retains private history beyond both old caps and discovers conversations out
   createSocialService({ joinGuild() {} }).sendMessage(f.ctx as never, "dm", peer.toHexString(), "new", 0n);
   expect([...f.db.socialMessage.iter()]).toHaveLength(603);
   expect(latestSocialMessages(f.ctx as never)).toHaveLength(50);
-  expect(socialSnapshot(f.ctx as never).conversations).toContainEqual({ identity: olderPeer.toHexString(), name: "Old friend" });
+  expect(socialSnapshot(f.ctx as never).conversations).toContainEqual(expect.objectContaining({ identity: olderPeer.toHexString(), name: "Old friend" }));
   expect(socialHistoryPage(f.ctx as never, "dm", peer.toHexString(), 52n).messages.map(row => row.id)).toEqual(Array.from({ length: 50 }, (_, i) => BigInt(i + 2)));
   expect(socialHistoryPage(f.ctx as never, "dm", olderPeer.toHexString(), 0n).messages[0].id).toBe(1n);
   f.seed("playerBlock", { key: `${f.ctx.sender.toHexString()}:${olderPeer.toHexString()}`, owner: f.ctx.sender, blocked: olderPeer });
-  expect(socialSnapshot(f.ctx as never).conversations).not.toContainEqual({ identity: olderPeer.toHexString(), name: "Old friend" });
+  expect(socialSnapshot(f.ctx as never).conversations).not.toContainEqual(expect.objectContaining({ identity: olderPeer.toHexString(), name: "Old friend" }));
   expect(() => socialHistoryPage(f.ctx as never, "dm", olderPeer.toHexString(), 0n)).toThrow(/unavailable/);
 });

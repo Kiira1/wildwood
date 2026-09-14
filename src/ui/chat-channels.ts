@@ -1,14 +1,17 @@
 import type { ChatUnreadCounts } from "./chat-unread";
 
 export type ChatChannel = "public" | "guild" | "private";
-export type ChatConversation = { identity: string; name: string };
+export type ChatConversation = import("../../shared/social").SocialConversation;
 
 export function mergeChatConversations(friends: ChatConversation[], conversations: ChatConversation[]) {
   const names = new Map<string, ChatConversation>();
   for (const person of [...conversations, ...friends]) {
-    if (person.name.trim()) names.set(person.identity || person.name.trim().toLowerCase(), person);
+    if (person.name.trim()) {
+      const key = person.identity || person.name.trim().toLowerCase();
+      names.set(key, { ...names.get(key), ...person });
+    }
   }
-  return [...names.values()].sort((a, b) => a.name.localeCompare(b.name));
+  return [...names.values()].sort((a, b) => (b.lastSentAtMs ?? 0) - (a.lastSentAtMs ?? 0) || a.name.localeCompare(b.name));
 }
 
 export function createChatChannelPicker(onChange: (channel: ChatChannel, username: string, identity?: string) => void) {
@@ -45,7 +48,7 @@ export function createChatChannelPicker(onChange: (channel: ChatChannel, usernam
   picker.className = "chat-private-picker";
   const username = document.createElement("input");
   username.type = "text";
-  username.placeholder = "Friend username";
+  username.placeholder = "Player username";
   username.setAttribute("aria-label", "Private message recipient username");
   username.autocomplete = "off";
   username.maxLength = 40;
@@ -55,11 +58,8 @@ export function createChatChannelPicker(onChange: (channel: ChatChannel, usernam
   const contacts = document.createElement("div");
   contacts.className = "chat-conversations";
   contacts.setAttribute("aria-label", "Private conversations");
-  const conversationHeader = document.createElement("button");
-  conversationHeader.type = "button";
-  conversationHeader.className = "chat-conversation-back";
-  conversationHeader.setAttribute("aria-label", "Back to conversations");
-  conversationHeader.addEventListener("click", () => select("private", ""));
+  const conversationHeader = document.createElement("div");
+  conversationHeader.className = "chat-conversation-heading";
   picker.addEventListener("submit", (event) => {
     event.preventDefault();
     if (username.value.trim()) select("private", username.value.trim());
@@ -83,7 +83,7 @@ export function createChatChannelPicker(onChange: (channel: ChatChannel, usernam
     picker.hidden = selected !== "private" || Boolean(peer);
     contacts.hidden = selected !== "private" || Boolean(peer);
     conversationHeader.hidden = selected !== "private" || !peer;
-    conversationHeader.textContent = `‹  ${peer}`;
+    conversationHeader.textContent = peer;
     username.value = peer;
   }
   function select(channel: ChatChannel, nextPeer: string, identity?: string) {
@@ -125,7 +125,20 @@ export function createChatChannelPicker(onChange: (channel: ChatChannel, usernam
         row.dataset.identity = person.identity;
         const label = document.createElement("span");
         label.textContent = person.name;
-        row.append(label);
+        label.className = "chat-conversation-name";
+        const portrait = document.createElement("span");
+        portrait.className = "chat-profile-icon chat-conversation-portrait";
+        portrait.setAttribute("aria-hidden", "true");
+        const index = Math.max(0, Math.min(63, Math.floor(person.profileIcon ?? 0)));
+        const zoom = 1.03, step = zoom / (8 * zoom - 1) * 100, start = (zoom - 1) / 2 / (8 * zoom - 1) * 100;
+        portrait.style.backgroundPosition = `${start + (index % 8) * step}% ${start + Math.floor(index / 8) * step}%`;
+        const content = document.createElement("span");
+        content.className = "chat-conversation-content";
+        const preview = document.createElement("span");
+        preview.className = "chat-conversation-preview";
+        preview.textContent = person.lastMessage ? `${person.lastMessageMine ? "You: " : ""}${person.lastMessage.replace(/\s+/g, " ")}` : "";
+        content.append(label, preview);
+        row.append(portrait, content);
         const count = unread.conversations.get(person.identity) ?? 0;
         if (count) {
           const badge = document.createElement("span");
@@ -141,7 +154,7 @@ export function createChatChannelPicker(onChange: (channel: ChatChannel, usernam
     status.textContent = selected === "guild" ? (guildName ? `Guild: ${guildName}` : "Join or create a guild to chat with members.")
       : selected === "private" ? "" : "Public chat";
     status.hidden = selected === "private";
-    conversationHeader.textContent = `‹  ${peer}`;
+    conversationHeader.textContent = peer;
   }
   update();
   return { root, conversations: contacts, select, refresh };

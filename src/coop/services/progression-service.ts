@@ -1,3 +1,4 @@
+import type { PendingItemGift } from "../../../shared/item-gifts";
 import { createProceduralMapService } from "./procedural-map-service";
 import { syncResearchNotification } from "../../app/native-research-notifications";
 import type { Identity } from "spacetimedb";
@@ -106,6 +107,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
   let gemBalance = 0n;
   let dailyGemBonusClaimable = false;
   let balanceApologyGiftAmount = 0n;
+  const itemGifts = new Map<string, PendingItemGift>();
   let secondUpgradeSlotUnlocked = false;
   let inventorySlotsUnlocked = 0;
   let pendingProgress: ProgressSave | null = null;
@@ -451,6 +453,16 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
         dailyGemBonusClaimable = false;
         dependencies.notify();
       },
+      upsertItemGift(row: PendingItemGift & { identity: Identity }) {
+        if (row.identity.toHexString() !== dependencies.localIdentity()) return;
+        itemGifts.set(row.key, { key: row.key, itemId: row.itemId });
+        dependencies.notify();
+      },
+      removeItemGift(row: { key: string; identity: Identity }) {
+        if (row.identity.toHexString() !== dependencies.localIdentity()) return;
+        itemGifts.delete(row.key);
+        dependencies.notify();
+      },
       upsertBalanceApologyNotice(row: { identity: Identity; amount: bigint }) {
         if (row.identity.toHexString() !== dependencies.localIdentity()) return;
         balanceApologyGiftAmount = row.amount;
@@ -499,6 +511,12 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
       gemBalance: () => gemBalance,
       dailyGemBonusClaimable: () => dailyGemBonusClaimable,
       claimDailyGemBonus: reducerResult("daily Gem claim", (connection) => connection.reducers.claimDailyGemBonus({})),
+      pendingItemGift: (): PendingItemGift | null => itemGifts.values().next().value ?? null,
+      claimItemGift: (key: string) => reducerResult("item gift claim", async connection => {
+        if (!await drain()) throw new Error("Progress is still syncing. Try again shortly.");
+        if (connection !== dependencies.reducers.connection()) throw new Error("Session changed. Try again.");
+        await connection.reducers.claimDeveloperItemGift({ key });
+      })(),
       balanceApologyGiftAmount: () => balanceApologyGiftAmount,
       acknowledgeBalanceApologyGift: reducerResult("balance apology acknowledgement", (connection) => connection.reducers.acknowledgeBalanceApologyGift({})),
       savedProgress() {
@@ -714,6 +732,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
       activeResearch = null;
       activeItemUpgrades.clear();
       balanceApologyGiftAmount = 0n;
+      itemGifts.clear();
       secondUpgradeSlotUnlocked = false;
       inventorySlotsUnlocked = 0;
     },
@@ -728,6 +747,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
       gemBalance = 0n;
       dailyGemBonusClaimable = false;
       balanceApologyGiftAmount = 0n;
+      itemGifts.clear();
       secondUpgradeSlotUnlocked = false;
       inventorySlotsUnlocked = 0;
       progressByIdentity.clear();
@@ -741,6 +761,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
       activeResearch = null;
       activeItemUpgrades.clear();
       balanceApologyGiftAmount = 0n;
+      itemGifts.clear();
       secondUpgradeSlotUnlocked = false;
       inventorySlotsUnlocked = 0;
     },

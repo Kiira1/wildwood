@@ -38,7 +38,17 @@ describe("private social client state", () => {
     expect(h.service.api.guildMessages().map(row => row.id)).toEqual([1n]);
     expect(h.service.api.privateMessages("bOB").map(row => row.id)).toEqual([2n]);
     expect(h.service.api.privateMessages("Cara").map(row => row.id)).toEqual([3n]);
-    expect(h.service.api.privateConversations()).toEqual([{ identity: cara.toHexString(), name: "Cara" }, { identity: bob.toHexString(), name: "Bob" }]);
+    expect(h.service.api.privateConversations()).toMatchObject([{ identity: cara.toHexString(), name: "Cara", lastMessage: "Hello", lastMessageMine: true }, { identity: bob.toHexString(), name: "Bob", lastMessage: "Hello", lastMessageMine: false }]);
+  });
+  it("updates previews without resetting paged history on every incoming message", () => {
+    const h = harness();
+    const base = { ...snapshot, conversations: [{ identity: bob.toHexString(), name: "Bob", lastMessage: "one", lastSentAtMs: 1 }] };
+    h.service.tables.upsertHub({ identity: alice, snapshot: JSON.stringify(base) });
+    const revision = h.service.api.historyRevision();
+    h.service.tables.upsertHub({ identity: alice, snapshot: JSON.stringify({ ...base,
+      conversations: [{ ...base.conversations[0], lastMessage: "two", lastSentAtMs: 2 }] }) });
+    expect(h.service.api.historyRevision()).toBe(revision);
+    expect(h.service.api.privateConversations()[0].lastMessage).toBe("two");
   });
   it("removes revoked rows immediately and clears every cache on session change", async () => {
     const h = harness(); await h.service.api.loadSocial(); h.service.tables.upsertMessage(h.row(1n, "dm"));

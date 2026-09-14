@@ -98,12 +98,26 @@ describe("chat channels", () => {
     expect(h.history()).toContain("private only");
     expect(h.document.getElementById("chatPanel")!.classList.contains("is-private-inbox")).toBe(false);
     h.input.value = "draft for Moss";
-    h.document.querySelector<HTMLButtonElement>(".chat-conversation-back")!.click();
+    h.document.getElementById("chatBackBtn")!.click();
     expect(h.document.getElementById("chatPanel")!.classList.contains("is-private-inbox")).toBe(true);
     h.document.querySelector<HTMLButtonElement>(".chat-conversation-row")!.click();
     expect(h.input.value).toBe("draft for Moss");
     await h.submit(h.input.value);
     expect(h.coop.social.sendPrivateMessage).toHaveBeenCalledWith("friend", "draft for Moss", 0n);
+  });
+  it("shows portraits and latest-message previews and closes the inbox with the regular Back button", () => {
+    const h = setup();
+    h.coop.social.privateConversations = () => [{ identity: "friend", name: "Moss", profileIcon: 19,
+      lastMessage: "See you soon", lastSentAtMs: Date.now(), lastMessageMine: true }];
+    h.coop.social.revision = () => 2;
+    h.document.getElementById("chatSizeToggle")!.click();
+    h.button("Private").click();
+    expect(h.document.querySelector(".chat-conversation-back")).toBeNull();
+    expect(h.document.querySelector(".chat-conversation-preview")!.textContent).toBe("You: See you soon");
+    expect(h.document.querySelector<HTMLElement>(".chat-conversation-portrait")!.style.backgroundPosition).not.toBe("");
+    expect((h.document.getElementById("chatBackBtn") as HTMLButtonElement).hidden).toBe(false);
+    h.document.getElementById("chatBackBtn")!.click();
+    expect(h.document.getElementById("chatPanel")!.classList.contains("is-large")).toBe(false);
   });
   it("keeps private messages older than 24 hours visible", () => {
     const h = setup();

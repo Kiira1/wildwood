@@ -1,5 +1,5 @@
 import type { Identity } from "spacetimedb";
-import type { SocialAction, SocialSnapshot } from "../../../shared/social";
+import type { SocialAction, SocialSnapshot, SocialConversation } from "../../../shared/social";
 import type { ChatReportReason } from "../../../shared/chat-report";
 import { normalizePlayerGender } from "../../../shared/player-gender";
 import type { ChatMessage } from "../contracts";
@@ -26,7 +26,7 @@ export function createSocialService(deps: Dependencies) {
   let snapshot = emptySnapshot();
   const messages = new Map<bigint, SocialMessage>();
   let orderedMessages: SocialMessage[] | null = null;
-  let generation = 0, revision = 0, hubRevision = 0;
+  let generation = 0, revision = 0, hubRevision = 0, snapshotRevision = 0;
   let pending: symbol | null = null;
   function changed() { revision++; deps.notify(); }
   function request() {
@@ -83,22 +83,25 @@ export function createSocialService(deps: Dependencies) {
     guildMessages: () => sorted().filter(row => row.channel === "guild" && row.guildId === snapshot.currentGuild?.id),
     privateMessages: (target: string) => sorted().filter(row => row.channel === "dm" && peerMatches(row, target)),
     privateConversations: () => {
-      const peers = new Map<string, { identity: string; name: string }>();
+      const peers = new Map<string, SocialConversation>();
       for (const row of [...sorted()].reverse()) if (row.channel === "dm") {
         const mine = row.sender === deps.localIdentity();
         const identity = mine ? row.recipient : row.sender;
-        if (!peers.has(identity)) peers.set(identity, { identity, name: snapshot.friends.find(friend => friend.identity === identity)?.name ?? (mine ? row.recipientName : row.senderName) });
+        if (!peers.has(identity)) peers.set(identity, { identity,
+          name: snapshot.friends.find(friend => friend.identity === identity)?.name ?? (mine ? row.recipientName : row.senderName),
+          lastMessage: row.message, lastSentAtMs: row.sentAtMs, lastMessageMine: mine });
       }
       for (const person of snapshot.conversations ?? []) {
-        if (!peers.has(person.identity)) peers.set(person.identity, person);
+        const live = peers.get(person.identity);
+        peers.set(person.identity, !live || (person.lastSentAtMs ?? 0) >= (live.lastSentAtMs ?? 0) ? person : { ...person, ...live });
       }
       return [...peers.values()];
     },
     async loadSocial(): Promise<SocialSnapshot> {
-      const current = request(), started = hubRevision;
+      const current = request(), started = snapshotRevision;
       const result = await current.connection.procedures.getSocialHub({});
       current.check();
-      if (hubRevision === started) { snapshot = JSON.parse(result) as SocialSnapshot; changed(); }
+      if (snapshotRevision === started) { snapshot = JSON.parse(result) as SocialSnapshot; changed(); }
       return snapshot;
     },
     async socialAction(action: SocialAction) {
@@ -128,7 +131,11 @@ export function createSocialService(deps: Dependencies) {
   return { api, tables: {
     upsertHub(row: { identity: Identity; snapshot: string }) {
       if (row.identity.toHexString() !== deps.localIdentity()) return;
-      snapshot = JSON.parse(row.snapshot) as SocialSnapshot; hubRevision++; changed();
+      const next = JSON.parse(row.snapshot) as SocialSnapshot;
+      const access = (value: SocialSnapshot) => JSON.stringify([value.identity, value.currentGuild?.id,
+        value.friends.map(person => person.identity).sort(), (value.conversations ?? []).map(person => person.identity).sort()]);
+      if (access(next) !== access(snapshot)) hubRevision++;
+      snapshot = next; snapshotRevision++; changed();
     },
     removeHub() { snapshot = emptySnapshot(); messages.clear(); orderedMessages = null; hubRevision++; changed(); },
     upsertMessage(row: MessageRow) {

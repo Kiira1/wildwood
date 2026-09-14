@@ -1,7 +1,7 @@
 import { Identity } from "spacetimedb";
 import { SenderError } from "spacetimedb/server";
 import type { ModuleReducerCtx, ModuleViewCtx } from "./index";
-import { SOCIAL_FRIEND_LIMIT, SOCIAL_REQUEST_LIMIT, SOCIAL_MESSAGE_LIMIT, type SocialSnapshot } from "../../shared/social";
+import { SOCIAL_FRIEND_LIMIT, SOCIAL_REQUEST_LIMIT, SOCIAL_MESSAGE_LIMIT, type SocialConversation, type SocialSnapshot } from "../../shared/social";
 import { GUILD_MEMBER_LIMIT } from "../../shared/guilds";
 import { moderatePublicChatMessage } from "./chat-moderation";
 import { chatPage } from "../../shared/chat-page";
@@ -72,17 +72,26 @@ export function socialHistoryPage(ctx: SocialReadCtx, channel: string, peer: str
       ? { ...row, replyToMessageId: 0n, replyToSenderName: "", replyToMessage: "" } : row);
   return chatPage(rows, beforeId);
 }
+function conversationSummaries(ctx: SocialReadCtx): SocialConversation[] {
+  const peers = new Map<string, SocialConversation & { latestId: bigint }>();
+  for (const row of [...ctx.db.socialMessage.sender.filter(ctx.sender), ...ctx.db.socialMessage.recipient.filter(ctx.sender)]) {
+    if (row.channel !== "dm" || blocked(ctx, row.sender, row.recipient)) continue;
+    const mine = same(row.sender, ctx.sender), peer = mine ? row.recipient : row.sender, identity = hex(peer);
+    if ((peers.get(identity)?.latestId ?? -1n) >= row.id) continue;
+    const profile = ctx.db.playerProfile.identity.find(peer);
+    peers.set(identity, { identity, name: profile?.displayName ?? "Deleted player", profileIcon: profile?.profileIcon ?? 0,
+      lastMessage: row.message, lastMessageMine: mine, lastSentAtMs: Number(row.sentAt.microsSinceUnixEpoch / 1000n), latestId: row.id });
+  }
+  return [...peers.values()].sort((a, b) => a.identity.localeCompare(b.identity)).map(({ latestId: _id, ...person }) => person);
+}
 export function socialSnapshot(ctx: SocialReadCtx, signedIn = true): SocialSnapshot {
   const member = ctx.db.guildMember.identity.find(ctx.sender);
   const guild = member ? ctx.db.guild.id.find(member.guildId) : null;
   return {
     identity: hex(ctx.sender), signedIn,
     // Keep conversation discovery independent of the latest 50 live messages.
-    conversations: [...new Map(visibleSocialMessages(ctx).filter(row => row.channel === "dm").map(row => {
-      const peer = same(row.sender, ctx.sender) ? row.recipient : row.sender;
-      return [hex(peer), { identity: hex(peer), name: name(ctx, peer) }] as const;
-    })).values()].sort((a, b) => a.identity.localeCompare(b.identity)),
-    friends: [...ctx.db.socialFriend.owner.filter(ctx.sender)].filter(row => !blocked(ctx, ctx.sender, row.peer)).map(row => ({ identity: hex(row.peer), name: name(ctx, row.peer) })),
+    conversations: conversationSummaries(ctx),
+    friends: [...ctx.db.socialFriend.owner.filter(ctx.sender)].filter(row => !blocked(ctx, ctx.sender, row.peer)).map(row => ({ identity: hex(row.peer), name: name(ctx, row.peer), profileIcon: ctx.db.playerProfile.identity.find(row.peer)?.profileIcon ?? 0 })),
     incomingRequests: [...ctx.db.socialRequest.recipient.filter(ctx.sender)].filter(row => !blocked(ctx, row.sender, row.recipient)).map(row => ({ id: String(row.id), identity: hex(row.sender), name: name(ctx, row.sender) })),
     outgoingRequests: [...ctx.db.socialRequest.sender.filter(ctx.sender)].filter(row => !blocked(ctx, row.sender, row.recipient)).map(row => ({ id: String(row.id), identity: hex(row.recipient), name: name(ctx, row.recipient) })),
     guildInvitations: [...ctx.db.socialGuildInvite.recipient.filter(ctx.sender)].flatMap(row => {
@@ -146,7 +155,6 @@ export function createSocialService(deps: { joinGuild(ctx: Ctx, guildId: bigint)
         guildId = membership.guildId; conversation = `guild:${guildId}`;
       } else if (channel === "dm") {
         recipient = target(ctx, value).identity; assertContact(ctx, recipient);
-        if (!ctx.db.socialFriend.key.find(friendKey(ctx.sender, recipient))) fail("Add this player as a friend before messaging.");
         conversation = dmKey(ctx.sender, recipient);
       } else fail("Unknown chat channel.");
       const reply = replyToMessageId ? ctx.db.socialMessage.id.find(replyToMessageId) : null;

@@ -33,9 +33,9 @@ describe("private social interactions", () => {
     f.run(server.friendAction, { action: "remove", target: identity("2").toHexString() });
     f.actor("2"); expect(f.snapshot().friends).toHaveLength(0);
   });
-  it("confines DMs to participants, checks friendship, and revokes blocked content", () => {
-    const f = fixture(); expect(() => f.send("dm", "Player 2")).toThrow("friend");
-    f.friend(); f.actor("1"); f.send("dm", "Player 2", "Private hello");
+  it("allows DMs without friendship, confines them to participants, and revokes blocked content", () => {
+    const f = fixture(); f.send("dm", "Player 2", "Private hello");
+    expect(f.snapshot().friends).toHaveLength(0);
     expect(f.visible()[0].message).toBe("Private hello");
     f.actor("3"); expect(f.visible()).toHaveLength(0);
     expect(() => f.run(server.reportSocialMessage, { messageId: 1n, reason: "harassment" })).toThrow();

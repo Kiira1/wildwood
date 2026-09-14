@@ -524,7 +524,11 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
       setLarge(true);
     }, { capture: true });
     elements.sizeToggle.addEventListener("click", toggleLarge);
-    elements.backButton.addEventListener("click", () => setLarge(false));
+    elements.backButton.addEventListener("click", (event) => {
+      event.stopPropagation();
+      if (channel === "private" && privatePeer) channelPicker.select("private", "");
+      else setLarge(false);
+    });
     elements.form.addEventListener("submit", async (event) => {
       event.preventDefault();
       if (submitting) return;
@@ -541,7 +545,7 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
       }
       const coop = getCoop();
       if (channel === "private" && !privatePeer) {
-        showMessage("CHOOSE A FRIEND TO MESSAGE", "#ff9b91");
+        showMessage("CHOOSE A PLAYER TO MESSAGE", "#ff9b91");
         return;
       }
       if (channel === "guild" && !coop?.social?.currentGuild()) {

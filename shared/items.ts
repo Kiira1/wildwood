@@ -78,10 +78,10 @@ export const ITEM_DEFINITIONS = {
   },
   [SUPERIOR_GOLDEN_HELMET]: {
     id: SUPERIOR_GOLDEN_HELMET,
-    name: "BETA TESTER GOLDEN HELMET",
+    name: "ALPHA TESTER HELMET",
     slot: "HEAD",
     acquisition: "DEVELOPER",
-    description: "A gleaming winged helmet for Wildstat beta testers.",
+    description: "A gleaming winged helmet for Wildstat alpha testers.",
     stats: ["COSMETIC · NO STATS"],
   },
   [WOOD_FULL_HELM]: {

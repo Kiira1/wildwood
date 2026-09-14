@@ -49,6 +49,7 @@ import ChallengeGuildReducer from "./challenge_guild_reducer";
 import ChangeMapReducer from "./change_map_reducer";
 import CheckpointShardLocationReducer from "./checkpoint_shard_location_reducer";
 import ClaimDailyGemBonusReducer from "./claim_daily_gem_bonus_reducer";
+import ClaimDeveloperItemGiftReducer from "./claim_developer_item_gift_reducer";
 import ClaimGuestAccountReducer from "./claim_guest_account_reducer";
 import ConfigureGemCommerceReducer from "./configure_gem_commerce_reducer";
 import ConfigureShardCoordinatorReducer from "./configure_shard_coordinator_reducer";
@@ -79,6 +80,7 @@ import DevClearVirtualPlayersReducer from "./dev_clear_virtual_players_reducer";
 import DevCopyPlayerCombatStatsReducer from "./dev_copy_player_combat_stats_reducer";
 import DevDeleteBugReportReducer from "./dev_delete_bug_report_reducer";
 import DevDeleteLegacyPlayerReducer from "./dev_delete_legacy_player_reducer";
+import DevDeliverAlphaTesterGiftsReducer from "./dev_deliver_alpha_tester_gifts_reducer";
 import DevRepairPlayerJoinedAtReducer from "./dev_repair_player_joined_at_reducer";
 import DevResetDailyGemBonusReducer from "./dev_reset_daily_gem_bonus_reducer";
 import DevSetAccessAuditLabelReducer from "./dev_set_access_audit_label_reducer";
@@ -200,6 +202,7 @@ import MyEndlessTravelAccessRow from "./my_endless_travel_access_table";
 import MyGemPurchasesRow from "./my_gem_purchases_table";
 import MyGemWalletRow from "./my_gem_wallet_table";
 import MyInventoryCapacityRow from "./my_inventory_capacity_table";
+import MyItemGiftsRow from "./my_item_gifts_table";
 import MyMapShardRouteRow from "./my_map_shard_route_table";
 import MyPlayerBlocksRow from "./my_player_blocks_table";
 import MyProceduralBossRow from "./my_procedural_boss_table";
@@ -1009,6 +1012,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, MyInventoryCapacityRow),
+  myItemGifts: __table({
+    name: 'my_item_gifts',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MyItemGiftsRow),
   myMapShardRoute: __table({
     name: 'my_map_shard_route',
     indexes: [
@@ -1070,6 +1080,7 @@ const reducersSchema = __reducers(
   __reducerSchema("change_map", ChangeMapReducer),
   __reducerSchema("checkpoint_shard_location", CheckpointShardLocationReducer),
   __reducerSchema("claim_daily_gem_bonus", ClaimDailyGemBonusReducer),
+  __reducerSchema("claim_developer_item_gift", ClaimDeveloperItemGiftReducer),
   __reducerSchema("claim_guest_account", ClaimGuestAccountReducer),
   __reducerSchema("configure_gem_commerce", ConfigureGemCommerceReducer),
   __reducerSchema("configure_shard_coordinator", ConfigureShardCoordinatorReducer),
@@ -1100,6 +1111,7 @@ const reducersSchema = __reducers(
   __reducerSchema("dev_copy_player_combat_stats", DevCopyPlayerCombatStatsReducer),
   __reducerSchema("dev_delete_bug_report", DevDeleteBugReportReducer),
   __reducerSchema("dev_delete_legacy_player", DevDeleteLegacyPlayerReducer),
+  __reducerSchema("dev_deliver_alpha_tester_gifts", DevDeliverAlphaTesterGiftsReducer),
   __reducerSchema("dev_repair_player_joined_at", DevRepairPlayerJoinedAtReducer),
   __reducerSchema("dev_reset_daily_gem_bonus", DevResetDailyGemBonusReducer),
   __reducerSchema("dev_set_access_audit_label", DevSetAccessAuditLabelReducer),

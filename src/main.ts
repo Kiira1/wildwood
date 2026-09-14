@@ -1,3 +1,4 @@
+import { createItemGiftController } from "./ui/item-gift-controller";
 import { isProceduralMap, proceduralMapId } from "../shared/procedural-maps";
 import { createProceduralBossController } from "./game/runtime/procedural-boss-controller";
 import { bindPlayerNameTags } from "./app/player-name-tags";
@@ -1699,17 +1700,27 @@ import {
     afterDismiss: () => refreshDailyGemBonus(),
   });
 
+  const developerItemGift = createItemGiftController({
+    canShow: () => session.hasStarted() && !balanceApologyGift.isOpen(),
+    identity: () => coop?.localIdentity?.() ?? "",
+    gift: () => coop?.pendingItemGift?.() ?? null,
+    claim: async key => coop?.claimItemGift?.(key),
+    setPaused: paused => { if (paused) guildPanel?.close(); setGameplayPause("developer-item-gift", paused); },
+    showMessage,
+    afterDismiss: () => refreshDailyGemBonus(),
+  });
+
   const dailyGemBonus = createDailyGemBonusController({
     overlay: dailyGemBonusEl,
     claimButton: dailyGemClaimBtn,
   }, {
-    canShow: () => session.hasStarted() && !balanceApologyGift.isOpen() && coop?.accountState?.().signedIn === true,
+    canShow: () => session.hasStarted() && !balanceApologyGift.isOpen() && !developerItemGift.isOpen() && coop?.accountState?.().signedIn === true,
     claimable: () => coop?.dailyGemBonusClaimable?.() === true,
     claim: async () => coop?.claimDailyGemBonus?.(),
     setPaused: (paused) => { if (paused) guildPanel?.close(); setGameplayPause("daily-gem-bonus", paused); },
     showMessage,
   });
-  refreshDailyGemBonus = dailyGemBonus.refresh;
+  refreshDailyGemBonus = () => { developerItemGift.refresh(); dailyGemBonus.refresh(); };
 
   function refreshReconnectOverlay() {
     const reconnecting = Boolean(coop?.isReconnectingAfterWake?.());
@@ -1793,7 +1804,7 @@ import {
       recordGameplayReady();
       finishStartup();
       balanceApologyGift.refresh();
-      dailyGemBonus.refresh();
+      refreshDailyGemBonus();
       applyGameplayPauseState();
     };
     const shouldWarmStaticWorld = firstStart && Boolean(staticWorldLayer?.prepare());
@@ -1810,7 +1821,7 @@ import {
     flash = 0;
     session.end();
     balanceApologyGift.refresh();
-    dailyGemBonus.refresh();
+    refreshDailyGemBonus();
   }
 
   bindGameInteractionListeners({
@@ -1911,7 +1922,7 @@ import {
     syncLifetimeKills: progress.syncLifetimeKills,
     refreshGemCounter,
     refreshBalanceApologyGift: balanceApologyGift.refresh,
-    refreshDailyGemBonus: dailyGemBonus.refresh,
+    refreshDailyGemBonus,
     refreshOpenProfile: () => {
       playerSafety.refresh();
       const identity = profileWindow.identity();

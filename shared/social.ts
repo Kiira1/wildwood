@@ -1,8 +1,12 @@
+export type SocialConversation = {
+  identity: string; name: string; profileIcon?: number;
+  lastMessage?: string; lastSentAtMs?: number; lastMessageMine?: boolean;
+};
 /** Social records are private to their participants; IDs are decimal/hex strings on UI boundaries. */
 export type SocialSnapshot = {
   identity: string; signedIn: boolean;
-  conversations?: { identity: string; name: string }[];
-  friends: { identity: string; name: string; online?: boolean }[];
+  conversations?: SocialConversation[];
+  friends: (SocialConversation & { online?: boolean })[];
   incomingRequests: { id: string; identity: string; name: string }[];
   outgoingRequests: { id: string; identity: string; name: string }[];
   guildInvitations: { id: string; guildId: string; guildName: string; inviterName: string }[];

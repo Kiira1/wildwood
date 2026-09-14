@@ -27,6 +27,8 @@ type ExpectedApiKey =
   | "changeMap"
   | "chatMessages"
   | "chatRevision"
+  | "claimItemGift"
+  | "pendingItemGift"
   | "claimDailyGemBonus"
   | "connect"
   | "connectionDiagnostics"

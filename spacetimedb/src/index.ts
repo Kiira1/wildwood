@@ -1,3 +1,4 @@
+import { playerItemGift, deliverAlphaTesterGifts, claimItemGift, removeItemGifts, mergeItemGifts } from "./item-gifts";
 import { moderateReportedMessage } from "./chat-report-moderation";
 import { PLAYER_SKIN_TONES } from "../../shared/player-skin-tones";
 import { leaderboardPageTables, writeLeaderboardPages, readLeaderboardWindow } from "./leaderboard-pages";
@@ -1725,6 +1726,7 @@ const spacetimedb = schema({
   gemTransaction,
   dailyGemBonus,
   balanceApologyNotice,
+  playerItemGift,
   playerUpgradeBench,
   playerInventoryCapacity,
   playerCutsceneHistory,
@@ -4352,6 +4354,7 @@ function removeVirtualPlayerData(ctx: any, identity: any, adjustPresence = true,
   if (ctx.db.playerBalanceVersion.identity.find(identity)) ctx.db.playerBalanceVersion.identity.delete(identity);
   if (ctx.db.playerGemWallet.identity.find(identity)) ctx.db.playerGemWallet.identity.delete(identity);
   if (ctx.db.balanceApologyNotice.identity.find(identity)) ctx.db.balanceApologyNotice.identity.delete(identity);
+  removeItemGifts(ctx, identity);
   if (ctx.db.playerUpgradeBench.identity.find(identity)) ctx.db.playerUpgradeBench.identity.delete(identity);
   if (ctx.db.playerInventoryCapacity.identity.find(identity)) ctx.db.playerInventoryCapacity.identity.delete(identity);
   if (ctx.db.playerCutsceneHistory.identity.find(identity)) ctx.db.playerCutsceneHistory.identity.delete(identity);
@@ -4441,6 +4444,7 @@ function removePlayerIdentityData(ctx: any, identity: any) {
   if (ctx.db.playerGemWallet.identity.find(identity)) ctx.db.playerGemWallet.identity.delete(identity);
   if (ctx.db.dailyGemBonus.identity.find(identity)) ctx.db.dailyGemBonus.identity.delete(identity);
   if (ctx.db.balanceApologyNotice.identity.find(identity)) ctx.db.balanceApologyNotice.identity.delete(identity);
+  removeItemGifts(ctx, identity);
   if (ctx.db.playerUpgradeBench.identity.find(identity)) ctx.db.playerUpgradeBench.identity.delete(identity);
   if (ctx.db.playerInventoryCapacity.identity.find(identity)) ctx.db.playerInventoryCapacity.identity.delete(identity);
   if (ctx.db.playerCutsceneHistory.identity.find(identity)) ctx.db.playerCutsceneHistory.identity.delete(identity);
@@ -8207,6 +8211,7 @@ export const claimGuestAccount = spacetimedb.reducer(
     });
     mergeGuestGemWallet(ctx, link.guest, ctx.sender, link.code);
     mergeBalanceApologyNotice(ctx, link.guest, ctx.sender);
+    mergeItemGifts(ctx, link.guest, ctx.sender);
     const guestBalance = ctx.db.playerBalanceVersion.identity.find(link.guest);
     const guestBalanceVersion = guestBalance?.version ?? 0;
     const guestAttackRate = guestBalanceVersion >= 1 ? guestProgress.attackRate : guestProgress.attackRate * 2;
@@ -9325,6 +9330,29 @@ export const claimDailyGemBonus = spacetimedb.reducer((ctx) => {
     lastClaimedDayKey: dayKey,
     revision: state.revision + 1n,
     updatedAt: ctx.timestamp,
+  });
+});
+
+export const myItemGifts = spacetimedb.view(
+  { name: "my_item_gifts", public: true }, t.array(playerItemGift.rowType),
+  ctx => [...ctx.db.playerItemGift.identity.filter(ctx.sender)].filter(gift => !gift.claimed),
+);
+
+export const devDeliverAlphaTesterGifts = spacetimedb.reducer(
+  { recipients: t.array(t.identity()) }, (ctx, { recipients }) => {
+    if (!isDatabaseOwnerIdentity(ctx.sender)) requireDeveloper(ctx);
+    if (isMapShard(ctx)) throw new SenderError("Use the world connection.");
+    deliverAlphaTesterGifts(ctx, recipients);
+  },
+);
+
+export const claimDeveloperItemGift = spacetimedb.reducer({ key: t.string() }, (ctx, { key }) => {
+  requireControllingPlayer(ctx);
+  if (isMapShard(ctx)) throw new SenderError("Use the world connection.");
+  claimItemGift(ctx, key, itemId => {
+    const progress = ctx.db.playerProgress.identity.find(ctx.sender);
+    if (!progress) throw new SenderError("Player unavailable.");
+    if (!playerOwnsItem(ctx, ctx.sender, itemId)) updateSnapshotRow(ctx, "playerProgress", restoreItemToProgress(progress, itemId));
   });
 });
 

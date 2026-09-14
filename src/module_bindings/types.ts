@@ -1022,6 +1022,9 @@ export type MyGemWallet = __Infer<typeof MyGemWallet>;
 export const MyInventoryCapacity = __t.object("MyInventoryCapacity", {});
 export type MyInventoryCapacity = __Infer<typeof MyInventoryCapacity>;
 
+export const MyItemGifts = __t.object("MyItemGifts", {});
+export type MyItemGifts = __Infer<typeof MyItemGifts>;
+
 export const MyMapShardRoute = __t.object("MyMapShardRoute", {});
 export type MyMapShardRoute = __Infer<typeof MyMapShardRoute>;
 
@@ -1167,6 +1170,16 @@ export const PlayerItemDrop = __t.object("PlayerItemDrop", {
   droppedAt: __t.timestamp(),
 });
 export type PlayerItemDrop = __Infer<typeof PlayerItemDrop>;
+
+export const PlayerItemGift = __t.object("PlayerItemGift", {
+  key: __t.string(),
+  identity: __t.identity(),
+  campaign: __t.string(),
+  itemId: __t.string(),
+  claimed: __t.bool(),
+  createdAt: __t.timestamp(),
+});
+export type PlayerItemGift = __Infer<typeof PlayerItemGift>;
 
 export const PlayerItemUpgrade = __t.object("PlayerItemUpgrade", {
   key: __t.string(),
