@@ -35,17 +35,23 @@ describe("chat message actions", () => {
     expect(messageActionAvailability(target, "local-player")).toEqual({
       watchReplay: false,
       copy: true,
+      original: false,
       directMessage: true,
       reply: true,
       report: true,
     });
     expect(messageActionAvailability({ ...target, replayId: 2n }, "local-player")).toEqual({
       watchReplay: true,
-      copy: false,
+      copy: false, original: false,
       directMessage: true,
       reply: true,
       report: true,
     });
+  });
+
+  it("offers Original only on replies", () => {
+    expect(messageActionAvailability({ ...target, replyToMessageId: 3n }, "local").original).toBe(true);
+    expect(messageActionAvailability({ ...target, replyToMessageId: 0n }, "local").original).toBe(false);
   });
 
   it("hides Direct message for your own messages and system messages", () => {
@@ -59,9 +65,9 @@ describe("chat message actions", () => {
     expect(shouldDismissMessageActionSheet(32, 320, 45)).toBe(true);
     expect(shouldDismissMessageActionSheet(32, 320, 500)).toBe(false);
   });
-  it("offers Watch Replay for a guild announcement without player report or reply actions", () => {
+  it("offers Watch Replay and Reply for a guild announcement without player report actions", () => {
     expect(messageActionAvailability({ ...target, guildReplayKey: "1:42" }, "local-player")).toEqual({
-      watchReplay: true, copy: false, directMessage: false, reply: false, report: false,
+      watchReplay: true, copy: false, original: false, directMessage: false, reply: true, report: false,
     });
   });
 });

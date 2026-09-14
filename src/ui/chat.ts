@@ -133,7 +133,7 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
   let lastScrollTop = 0;
   function refreshLatestButton() {
     const distance = elements.messages.scrollHeight - elements.messages.clientHeight - elements.messages.scrollTop;
-    latestButton.hidden = !large || !enabled || (channel === "private" && !privatePeer) || distance <= 80;
+    latestButton.hidden = !large || !enabled || (channel === "private" && !privatePeer) || (distance <= 80 && !history.state().detached);
     latestButton.disabled = history.state().loading;
   }
   const channelPicker = createChatChannelPicker((nextChannel, username, identity) => {
@@ -176,6 +176,39 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
       if (key === conversationKey() && identity === getCoop()?.localIdentity?.()) showMessage(error instanceof Error ? error.message : "COULD NOT LOAD HISTORY · TRY AGAIN", "#ff9b91");
     } finally { refresh(); }
   }
+  async function goToOriginal(id: bigint) {
+    if (id <= 0n || !large) return;
+    const coop = getCoop(), key = conversationKey(), identity = coop?.localIdentity?.();
+    const current = () => large && key === conversationKey() && identity === getCoop()?.localIdentity?.();
+    const findLine = () => elements.messages.querySelector<HTMLElement>(`[data-message-id="${id}"]`);
+    try {
+      if (!findLine()) {
+        const selectedChannel = channel, peer = privatePeerIdentity || privatePeer;
+        const fetch = selectedChannel === "public" ? coop?.loadChatHistory : coop?.social?.loadChatHistory
+          ? (before: bigint) => coop.social!.loadChatHistory!(selectedChannel === "guild" ? "guild" : "dm", peer, before) : undefined;
+        if (!fetch) throw new Error("Reconnect to load the original message.");
+        const pending = history.seek(fetch, id);
+        refresh();
+        const found = await pending;
+        if (!current()) return;
+        refresh();
+        if (!found) throw new Error("Original message is no longer available.");
+      }
+      if (!current()) return;
+      const line = findLine();
+      if (!line) throw new Error("Original message is no longer available.");
+      history.freeze(currentMessages());
+      const bounds = line.getBoundingClientRect(), viewport = elements.messages.getBoundingClientRect();
+      elements.messages.scrollTop += bounds.top - viewport.top - (elements.messages.clientHeight - bounds.height) / 2;
+      line.classList.add("is-original-message");
+      window.setTimeout(() => line.classList.remove("is-original-message"), 2_000);
+      line.querySelector<HTMLElement>(".chat-text")?.focus({ preventScroll: true });
+      lastScrollTop = elements.messages.scrollTop;
+      refreshLatestButton();
+    } catch (error) {
+      if (current()) showMessage(error instanceof Error ? error.message : "Could not load the original message.", "#ff9b91");
+    }
+  }
   let nextExpiryAt = 0;
   let chatCooldownUntil = 0;
   let chatCooldownTimer: number | null = null;
@@ -186,6 +219,7 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
     getLocalIdentity: () => getCoop()?.localIdentity?.() ?? "",
     onWatchReplay: (replayId) => onOpenReplay?.(replayId),
     onWatchGuildReplay: (reportKey) => window.dispatchEvent(new CustomEvent("wildwood:open-guild-replay", { detail: { reportKey } })),
+    onOriginal: (target) => { void goToOriginal(target.replyToMessageId ?? 0n); },
     onDirectMessage: (target) => { openPrivate(target.senderName, target.sender); focusChatReplyInput(elements.input); },
     onReply: (target) => setPendingReply(target, true),
     reportMessage: async (messageId, reason) => {
@@ -455,6 +489,7 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
           message: shownMessage,
           replayId: message.replayId,
           guildReplayKey,
+          replyToMessageId: message.replyToMessageId,
         });
       };
       const icon = document.createElement("span");
@@ -552,7 +587,7 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
       if (distance > 16) history.freeze(currentMessages());
       refreshLatestButton();
       if (scrollingUp && top <= 80) void loadHistory();
-      else if (distance <= 16 && history.state().frozen && !history.state().loading) void loadHistory(true);
+      else if (distance <= 16 && history.state().frozen && !history.state().detached && !history.state().loading) void loadHistory(true);
       else if (distance <= 16) refresh();
     });
     elements.toggle.addEventListener("click", () => {

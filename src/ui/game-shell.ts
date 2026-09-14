@@ -39,6 +39,7 @@ const beforeStartShell = String.raw`
     <div id="chatMessageActionMenu" class="chat-message-action-menu">
       <button id="chatMessageWatchReplayBtn" class="chat-message-action-button" type="button" hidden><span class="chat-message-watch-replay-icon" aria-hidden="true"></span>Watch Replay</button>
       <button id="chatMessageCopyBtn" class="chat-message-action-button" type="button"><span aria-hidden="true">⧉</span>Copy</button>
+      <button id="chatMessageOriginalBtn" class="chat-message-action-button" type="button" aria-label="Go to original message" hidden><span aria-hidden="true">↥</span>Original</button>
       <button id="chatMessageDirectMessageBtn" class="chat-message-action-button" type="button"><span aria-hidden="true">✉</span>Direct message</button>
       <button id="chatMessageReplyBtn" class="chat-message-action-button" type="button"><span aria-hidden="true">↩</span>Reply</button>
       <button id="chatMessageReportBtn" class="chat-message-action-button is-danger" type="button"><span aria-hidden="true">!</span>Report</button>

@@ -5,11 +5,11 @@ const merge = <T extends Message>(a: T[], b: T[]) => [...new Map([...a, ...b].ma
 
 /** Cursor pages are isolated to one conversation/session. Live traffic cannot evict history being read. */
 export function createChatHistory<T extends Message>() {
-  let context = "", generation = 0, revision = 0, loading = false, frozen = false, hasMore = true;
+  let context = "", generation = 0, revision = 0, loading = false, frozen = false, detached = false, hasMore = true;
   let rows: T[] = [], cursor = 0n;
   function select(key: string) {
     if (key === context) return;
-    context = key; generation++; revision++; loading = false; frozen = false; hasMore = true; rows = []; cursor = 0n;
+    context = key; generation++; revision++; loading = false; frozen = false; detached = false; hasMore = true; rows = []; cursor = 0n;
   }
   function messages(live: T[]) {
     rows = frozen ? rows.map(row => live.find(current => current.id === row.id) ?? row) : merge(rows, live).slice(-50);
@@ -19,7 +19,7 @@ export function createChatHistory<T extends Message>() {
   async function load(fetch: (before: bigint) => Promise<ChatHistoryPage<T>>, live: T[], latest = false) {
     if (loading || (!latest && !hasMore)) return false;
     const attempt = generation;
-    if (latest) { frozen = false; cursor = 0n; }
+    if (latest) { frozen = false; detached = false; cursor = 0n; }
     else { freeze(live); cursor = cursor || rows[0]?.id || 0n; }
     loading = true; revision++;
     try {
@@ -34,5 +34,17 @@ export function createChatHistory<T extends Message>() {
       if (attempt === generation) { loading = false; revision++; }
     }
   }
-  return { select, messages, freeze, load, state: () => ({ revision, loading, hasMore, frozen }) };
+  async function seek(fetch: (before: bigint) => Promise<ChatHistoryPage<T>>, id: bigint) {
+    if (loading) throw new Error("Messages are loading. Try again.");
+    const attempt = generation;
+    loading = true; revision++;
+    try {
+      const page = await fetch(id + 1n);
+      if (attempt !== generation || !page.messages.some(row => row.id === id)) return false;
+      rows = page.messages; cursor = page.beforeId; hasMore = page.hasMore;
+      frozen = true; detached = true; revision++;
+      return true;
+    } finally { if (attempt === generation) { loading = false; revision++; } }
+  }
+  return { select, messages, freeze, load, seek, state: () => ({ revision, loading, hasMore, frozen, detached }) };
 }

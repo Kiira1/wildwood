@@ -1,4 +1,9 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.683": [
+    "Tap Original on a reply to jump to the original chat message.",
+    "Guild battle replay characters now use normal gameplay size.",
+    "Reply to public guild battle announcements and spot replays with simpler play buttons.",
+  ],
   "0.682": [
     "Fixed reconnects unexpectedly returning players to sign-in. Retry immediately or reload with your session preserved if recovery takes longer.",
     "World chat now keeps 24 hours of messages without a 200-message cap, loading earlier messages 50 at a time.",
@@ -1767,6 +1772,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.683": "2026-09-14",
   "0.682": "2026-09-14",
   "0.681": "2026-09-14",
   "0.680": "2026-09-14",

@@ -36,6 +36,8 @@ Do not use `--delete-data=always` outside local development. It destroys the sel
 
 WildStat uses SpacetimeAuth Magic Link with public client ID `client_03426HMgkAEmdC23XTZRKZ`.
 
+Google sign-in has a separate credential pair: in **SpacetimeAuth → Identity Providers → Google**, use the Google Cloud **Web application** OAuth client ID (ending in `.apps.googleusercontent.com`) and its matching secret. Do not put WildStat's `client_...` SpacetimeAuth ID in that provider field: Google rejects it with `401: invalid_client — The OAuth client was not found`. Keep the existing SpacetimeAuth client ID in the game code. Register `https://auth.spacetimedb.com/interactions/federated/callback/google` as the Google client's authorized redirect URI. See the [SpacetimeAuth provider setup guide](https://spacetimedb.com/docs/core-concepts/authentication/spacetimeauth/configuring-a-project/).
+
 Configure this exact redirect URI in the SpacetimeAuth project:
 
 ```text

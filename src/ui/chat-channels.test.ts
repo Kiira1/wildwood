@@ -85,7 +85,7 @@ describe("chat channels", () => {
     }
   });
 
-  it("renders guild replays as normal chat bubbles and opens them through replay actions", () => {
+  it("opens guild replay announcements and sends public replies to them", async () => {
     const h = setup();
     vi.stubGlobal("CustomEvent", h.window.CustomEvent);
     const announcement = { ...h.coop.chatMessages()[0], senderName: "GUILDS", guildReplayKey: "1:42", message: "Oak defeated Pine" };
@@ -100,12 +100,17 @@ describe("chat channels", () => {
     h.document.getElementById("chatSizeToggle")!.click();
     h.document.querySelector<HTMLElement>(".chat-replay")!.click();
     expect(h.document.getElementById("chatMessageActionTitle")!.textContent).toBe("Guild battle replay");
-    expect(h.document.getElementById("chatMessageReplyBtn")!.hidden).toBe(true);
+    expect(h.document.getElementById("chatMessageReplyBtn")!.hidden).toBe(false);
     const openReplay = vi.fn();
     h.window.addEventListener("wildwood:open-guild-replay", openReplay);
     h.document.getElementById("chatMessageWatchReplayBtn")!.click();
     expect(openReplay).toHaveBeenCalledOnce();
     expect(openReplay.mock.calls[0][0].detail).toEqual({ reportKey: "1:42" });
+    h.document.querySelector<HTMLElement>(".chat-replay")!.click();
+    h.document.getElementById("chatMessageReplyBtn")!.click();
+    expect(h.document.getElementById("chatReplyComposer")!.textContent).toContain("Oak defeated Pine");
+    await h.submit("Good battle!");
+    expect(h.coop.sendChatMessage).toHaveBeenCalledWith("Good battle!", announcement.id);
   });
   it("opens the sender's private conversation from the action between Copy and Reply", async () => {
     const h = setup();
@@ -113,7 +118,9 @@ describe("chat channels", () => {
     h.document.querySelector(".chat-text")!.dispatchEvent(new h.window.Event("click"));
     const button = h.document.getElementById("chatMessageDirectMessageBtn")!;
     expect(button.hidden).toBe(false);
-    expect(button.previousElementSibling?.id).toBe("chatMessageCopyBtn");
+    expect(button.previousElementSibling?.id).toBe("chatMessageOriginalBtn");
+    expect(button.previousElementSibling?.previousElementSibling?.id).toBe("chatMessageCopyBtn");
+    expect(h.document.getElementById("chatMessageOriginalBtn")!.hidden).toBe(true);
     expect(button.nextElementSibling?.id).toBe("chatMessageReplyBtn");
     button.click();
     expect(h.history()).toContain("private only");
@@ -122,6 +129,42 @@ describe("chat channels", () => {
     await h.submit("Hi Moss");
     expect(h.coop.social.sendPrivateMessage).toHaveBeenCalledWith("friend", "Hi Moss", 0n);
     expect(h.coop.sendChatMessage).not.toHaveBeenCalled();
+  });
+  it("shows Original below Copy on replies and highlights a loaded original", async () => {
+    const h = setup();
+    const first = h.coop.chatMessages()[0];
+    h.coop.chatMessages = () => [first, { ...first, id: 2n, message: "reply", replyToMessageId: 1n }];
+    h.document.getElementById("chatSizeToggle")!.click();
+    const original = h.document.querySelector<HTMLElement>('.chat-line[data-message-id="1"]')!;
+    original.getBoundingClientRect = () => ({ top: 200, height: 40 } as DOMRect);
+    h.document.getElementById("chatMessages")!.getBoundingClientRect = () => ({ top: 0 } as DOMRect);
+    h.document.querySelector<HTMLElement>('.chat-line[data-message-id="2"] .chat-text')!.click();
+    const button = h.document.getElementById("chatMessageOriginalBtn")!;
+    expect(button.hidden).toBe(false);
+    expect(button.previousElementSibling?.id).toBe("chatMessageCopyBtn");
+    button.click();
+    await settle();
+    expect(original.classList.contains("is-original-message")).toBe(true);
+    expect(h.showMessage).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(2_000);
+    expect(original.classList.contains("is-original-message")).toBe(false);
+  });
+  it("fetches an unloaded original without merging a gap into the latest messages", async () => {
+    const h = setup();
+    const first = { ...h.coop.chatMessages()[0], message: "older original" };
+    h.coop.chatMessages = () => [{ ...first, id: 100n, message: "reply", replyToMessageId: 1n }];
+    const load = vi.fn(async () => ({ messages: [first], beforeId: 1n, hasMore: false }));
+    Object.assign(h.coop, { loadChatHistory: load });
+    h.window.HTMLElement.prototype.getBoundingClientRect = () => ({ top: 0, height: 40 } as DOMRect);
+    h.document.getElementById("chatSizeToggle")!.click();
+    h.document.querySelector<HTMLElement>('.chat-line[data-message-id="100"] .chat-text')!.click();
+    h.document.getElementById("chatMessageOriginalBtn")!.click();
+    await settle();
+    expect(load).toHaveBeenCalledWith(2n);
+    expect(h.history()).toContain("older original");
+    expect(h.document.querySelector('.chat-line[data-message-id="100"]')).toBeNull();
+    expect(h.document.querySelector('.is-original-message[data-message-id="1"]')).not.toBeNull();
+    expect(h.showMessage).not.toHaveBeenCalled();
   });
   it("opens Private as a player list and preserves a conversation draft when returning to it", async () => {
     const h = setup();

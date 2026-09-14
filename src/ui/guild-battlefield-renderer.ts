@@ -3,6 +3,7 @@ import { WORLD_HEALTH_BAR_HEIGHT } from "../game/runtime/game-settings";
 import { healthBarTextY } from "../game/runtime/health-bar-layout";
 import { canvasRenderPixelRatio } from "../game/runtime/render-budget";
 import { drawStartingPlayer, type PlayerAppearanceAssets } from "../game/player-appearance";
+import { PLAYER_WORLD_SCALE } from "../game/player-render-scale";
 import { projectileKindForWeapon } from "../game/item-presentation";
 import { paintArrowProjectile, paintRockProjectile } from "../game/runtime/weapon-projectile-renderer";
 import { paintStaticTile, type StaticTileTreeBounds } from "../game/runtime/static-tile-painter";
@@ -13,7 +14,6 @@ import { replayEventIndex, type GuildReplayTimeline } from "./guild-replay-timel
 
 export type GuildReplayAssets = { player: PlayerAppearanceAssets; prepare: () => Promise<void>; trees: HTMLImageElement; treeBounds: () => StaticTileTreeBounds[] };
 const WIDTH = 1000, HEIGHT = 640;
-const CHARACTER_SCALE = .85;
 const DAMAGE_POPUP_SECONDS = .8;
 
 /** Ground is cached at the display's resolution. Characters and equipped weapons
@@ -107,17 +107,17 @@ export function createGuildBattlefieldRenderer(canvas: HTMLCanvasElement, ctx: C
       const target = attack ? project(stagger(attack.to, attack.target)) : actors[actor.target];
       const aim = target ? Math.atan2(target.y - actor.y, target.x - actor.x) : side ? Math.PI : 0;
       const throwClock = attack ? Math.max(0, .42 - (time - (attack.launch - .12))) : 0;
-      ctx.fillStyle = "#0b2e2438"; ctx.beginPath(); ctx.ellipse(actor.x, actor.y + 24 * CHARACTER_SCALE, 17 * CHARACTER_SCALE, 5 * CHARACTER_SCALE, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#0b2e2438"; ctx.beginPath(); ctx.ellipse(actor.x, actor.y + 24, 17 * PLAYER_WORLD_SCALE, 5 * PLAYER_WORLD_SCALE, 0, 0, Math.PI * 2); ctx.fill();
       ctx.save();
       let alpha = 1;
       if (deathAge >= 0) {
         const pose = playerDeathPose(diedAt * 1000, time * 1000, fighter.identity);
-        ctx.translate(actor.x, actor.y + 24 * CHARACTER_SCALE); ctx.rotate(pose.bodyRotation); ctx.scale(1, pose.bodyScaleY); ctx.translate(-actor.x, -actor.y - 24 * CHARACTER_SCALE);
+        ctx.translate(actor.x, actor.y + 24); ctx.rotate(pose.bodyRotation); ctx.scale(1, pose.bodyScaleY); ctx.translate(-actor.x, -actor.y - 24);
         alpha = Math.max(0, 1 - Math.max(0, deathAge - .6) / .5);
       }
       drawStartingPlayer(ctx, assets.player, { ...fighter.appearance, x: actor.x, y: actor.y - 5,
         facing: aim, combatFacing: aim, moving: actor.moving && deathAge < 0, gameTime: time + i * .137,
-        throwClock, alpha, scale: CHARACTER_SCALE, smooth: true });
+        throwClock, alpha, scale: PLAYER_WORLD_SCALE, smooth: true });
       ctx.restore();
     }
     // Paint labels after every character so neighboring sprites cannot cover them.

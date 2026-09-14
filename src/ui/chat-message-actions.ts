@@ -12,6 +12,7 @@ export type ChatMessageActionTarget = {
   message: string;
   replayId: bigint;
   guildReplayKey?: string;
+  replyToMessageId?: bigint;
 };
 
 export type ChatMessageActionElements = {
@@ -24,6 +25,7 @@ export type ChatMessageActionElements = {
   menu: HTMLElement;
   watchReplayButton: HTMLButtonElement;
   copyButton: HTMLButtonElement;
+  originalButton: HTMLButtonElement;
   directMessageButton: HTMLButtonElement;
   replyButton: HTMLButtonElement;
   reportButton: HTMLButtonElement;
@@ -38,6 +40,7 @@ type ChatMessageActionsOptions = {
   getLocalIdentity: () => string;
   onWatchReplay: (replayId: bigint) => void;
   onWatchGuildReplay?: (reportKey: string) => void;
+  onOriginal: (target: ChatMessageActionTarget) => void;
   onDirectMessage: (target: ChatMessageActionTarget) => void;
   onReply: (target: ChatMessageActionTarget) => void;
   reportMessage: (messageId: bigint, reason: ChatReportReason) => Promise<{ ok: boolean; error?: string }>;
@@ -56,8 +59,9 @@ export function messageActionAvailability(target: ChatMessageActionTarget, local
   return {
     watchReplay: isReplay,
     copy: !isReplay,
+    original: (target.replyToMessageId ?? 0n) > 0n,
     directMessage: shouldOfferMessageReport(target, localIdentity),
-    reply: Boolean(target.senderName) && !target.guildReplayKey,
+    reply: Boolean(target.senderName),
     report: shouldOfferMessageReport(target, localIdentity),
   };
 }
@@ -91,6 +95,7 @@ export function createChatMessageActionsController({
   getLocalIdentity,
   onWatchReplay,
   onWatchGuildReplay,
+  onOriginal,
   onDirectMessage,
   onReply,
   reportMessage,
@@ -138,6 +143,7 @@ export function createChatMessageActionsController({
     elements.reportForm.hidden = true;
     elements.watchReplayButton.hidden = !availability.watchReplay;
     elements.copyButton.hidden = !availability.copy;
+    elements.originalButton.hidden = !availability.original;
     elements.directMessageButton.hidden = !availability.directMessage;
     elements.replyButton.hidden = !availability.reply;
     elements.reportButton.hidden = !availability.report;
@@ -239,6 +245,12 @@ export function createChatMessageActionsController({
           showMessage("MESSAGE COPIED", "#c9a6ff");
         })
         .catch(() => showMessage("COPY FAILED", "#ff9b91"));
+    });
+    elements.originalButton.addEventListener("click", () => {
+      if (!selectedMessage || !messageActionAvailability(selectedMessage, getLocalIdentity()).original) return;
+      const target = selectedMessage;
+      close(false);
+      onOriginal(target);
     });
     elements.directMessageButton.addEventListener("click", () => {
       if (!selectedMessage || !messageActionAvailability(selectedMessage, getLocalIdentity()).directMessage) return;

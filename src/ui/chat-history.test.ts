@@ -46,3 +46,36 @@ it("allows retry after failure and advances past an entirely blocked page", asyn
   await history.load(fetch, rows(151, 50));
   expect(fetch).toHaveBeenCalledWith(101n);
 });
+it("jumps directly to a bounded page around an original and keeps newer traffic separate", async () => {
+  const history = createChatHistory<{ id: bigint }>();
+  history.select("me:public");
+  history.messages(rows(951, 50));
+  const fetch = vi.fn(async () => ({ messages: rows(101, 50), beforeId: 101n, hasMore: true }));
+  expect(await history.seek(fetch, 150n)).toBe(true);
+  expect(fetch).toHaveBeenCalledExactlyOnceWith(151n);
+  expect(history.messages(rows(1001, 50))).toEqual(rows(101, 50));
+  expect(history.state()).toMatchObject({ frozen: true, detached: true });
+  await history.load(async () => ({ messages: rows(1001, 50), beforeId: 1001n, hasMore: true }), [], true);
+  expect(history.state().detached).toBe(false);
+  expect(history.messages([])).toEqual(rows(1001, 50));
+});
+it("leaves the current conversation intact when the original is missing or its request fails", async () => {
+  const history = createChatHistory<{ id: bigint }>();
+  history.select("me:public");
+  history.messages(rows(951, 50));
+  expect(await history.seek(async () => ({ messages: rows(1, 20), beforeId: 1n, hasMore: false }), 25n)).toBe(false);
+  await expect(history.seek(async () => { throw new Error("offline"); }, 25n)).rejects.toThrow("offline");
+  expect(history.messages([])).toEqual(rows(951, 50));
+  expect(history.state()).toMatchObject({ loading: false, detached: false });
+});
+it("discards an original lookup after switching conversations", async () => {
+  const history = createChatHistory<{ id: bigint }>();
+  history.select("me:dm:first");
+  let resolve!: (page: { messages: { id: bigint }[]; beforeId: bigint; hasMore: boolean }) => void;
+  const pending = history.seek(() => new Promise(done => { resolve = done; }), 25n);
+  history.select("me:dm:second");
+  resolve({ messages: rows(1, 25), beforeId: 1n, hasMore: false });
+  expect(await pending).toBe(false);
+  expect(history.messages([])).toEqual([]);
+  expect(history.state()).toMatchObject({ loading: false, detached: false });
+});

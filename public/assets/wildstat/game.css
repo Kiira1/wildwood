@@ -1307,7 +1307,7 @@
   .chat-message-action-button:hover,
   .chat-message-action-button:focus-visible { background: rgba(255,255,255,.07); outline: 0; }
   .chat-message-action-button > span { display: grid; width: 25px; height: 25px; place-items: center; border-radius: 7px; background: rgba(255,255,255,.1); color: #ddd9d1; font-size: 17px; -webkit-text-stroke: 0; text-shadow: none; }
-  .chat-message-action-button > .chat-message-watch-replay-icon { background: center / contain no-repeat url("duel-replay-play-medallion-v1.png"); mix-blend-mode: screen; }
+  .chat-message-action-button > .chat-message-watch-replay-icon { background: center / contain no-repeat url("replay-play.svg"); }
   .chat-message-action-button.is-danger { color: #ff9a9a; }
   .chat-message-action-button.is-danger > span { background: rgba(201,69,69,.18); color: #ff9a9a; }
   .chat-message-report-form { display: grid; grid-template-rows: minmax(0, 1fr) auto; min-height: 0; padding: 8px 0 0; }
@@ -2502,7 +2502,7 @@
   .duel-stat-row { padding: 8px; border: 1px solid rgba(255,255,255,.16); border-radius: 7px; background: rgba(0,0,0,.2); }
   .duel-stat-name, .duel-status-name { display: inline-flex; align-items: center; gap: 3px; color: var(--gold); font-weight: 900; }
   #watchDuelReplayBtn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 34px; margin-top: 8px; padding: 3px 13px; border-color: transparent; background: transparent; font-size: 13px; line-height: 1; }
-  .duel-replay-play-icon { display: block; width: 25px; height: 25px; background: center / contain no-repeat url("duel-replay-play-medallion-v1.png"); mix-blend-mode: screen; -webkit-text-stroke: 0; text-shadow: none; }
+  .duel-replay-play-icon { display: block; width: 25px; height: 25px; background: center / contain no-repeat url("replay-play.svg"); -webkit-text-stroke: 0; text-shadow: none; }
   #dragonWorldNotice { position: fixed; top: 142px; left: 50%; z-index: 9; display: grid; gap: 3px; min-width: min(350px, calc(100vw - 30px)); padding: 10px 16px; border: 2px solid rgba(255,101,90,.68); border-radius: 9px; background: rgba(13,22,17,.94); color: #fff; text-align: center; pointer-events: none; transform: translateX(-50%); animation: dragon-world-notice 6s ease forwards; }
   #dragonWorldNotice[hidden] { display: none; }
   #dragonWorldNotice strong { color: #ff8a65; font-size: 14px; }
@@ -3004,7 +3004,7 @@
     box-shadow: inset 1px 2px 3px rgba(255, 255, 255, .42), 0 3px 0 #202424, 0 7px 14px rgba(0, 0, 0, .28);
   }
   .chat-replay { display: inline-grid; place-items: center; width: 25px; min-width: 25px; height: 25px; margin: 0 0 0 3px; padding: 0; border: 0; border-radius: 4px; background: transparent; line-height: 1; vertical-align: middle; }
-  .chat-replay-icon { width: 25px; height: 25px; background: center / contain no-repeat url("duel-replay-play-medallion-v1.png"); mix-blend-mode: screen; -webkit-text-stroke: 0; text-shadow: none; }
+  .chat-replay-icon { width: 25px; height: 25px; background: center / contain no-repeat url("replay-play.svg"); -webkit-text-stroke: 0; text-shadow: none; }
 
   @media (max-width: 520px) {
     .duel-stats { grid-template-columns: 1fr; }
@@ -3487,3 +3487,5 @@
 .moderation-history-meta { color: #b9bec5; font-size: 11px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .moderation-history-entry pre { font: inherit; white-space: pre-wrap; overflow-wrap: anywhere; margin: 4px 0 12px; }
 .moderation-history-entry[open] summary { margin-bottom: 12px; }
+
+.chat-line.is-original-message { background: rgba(255, 255, 255, .14); border-radius: 4px; }
