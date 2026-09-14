@@ -1,3 +1,4 @@
+import { preserveClaimedGiftItems } from "../../../shared/item-gifts";
 import { rescaleEndgameProgress } from "../../../shared/endgame-power-rescale";
 import { compressLegacyMapPower } from "../../../shared/map-power-rescale";
 import {
@@ -173,7 +174,7 @@ export function mergeProgress(saved: PlayerProgress, pending: ProgressSave): Pla
     regen: Math.max(saved.regen, pending.regen),
     speed: Math.max(saved.speed, pending.speed),
     bootsCollected: saved.bootsCollected || pending.bootsCollected,
-    inventoryJson: pending.inventoryJson,
+    inventoryJson: preserveClaimedGiftItems(pending.inventoryJson, saved.inventoryJson),
     equippedHead: pending.equippedHead,
     equippedChest: pending.equippedChest,
     equippedFeet: pending.equippedFeet,

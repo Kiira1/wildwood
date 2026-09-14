@@ -93,3 +93,48 @@ it("loads chat avatars without opening a full player profile and invalidates cha
   directory.clearSession();
   expect(directory.api.profileIcon(key)).toBe(0);
 });
+
+it("retries failed and missing portraits without another render or profile visit", async () => {
+  const f = fixture();
+  f.portraits.request(identity(1));
+  await vi.advanceTimersByTimeAsync(0);
+  f.requests[0].fail();
+  await vi.advanceTimersByTimeAsync(5_000);
+  expect(f.requests).toHaveLength(2);
+  f.requests[1].apply(); // A snapshot can apply without the requested row.
+  await vi.advanceTimersByTimeAsync(10_000);
+  expect(f.requests).toHaveLength(3);
+  f.rows([{ identity: identity(1), profileIcon: 31 }]);
+  f.requests[2].apply();
+  expect(f.portraits.icon(identity(1).toHexString())).toBe(31);
+  expect(f.changed).toHaveBeenCalledTimes(2);
+  await vi.advanceTimersByTimeAsync(60_000);
+  expect(f.requests).toHaveLength(3);
+});
+
+it("waits for connection readiness and cancels queued retries on session cleanup", async () => {
+  const f = fixture();
+  f.connection.isActive = false;
+  f.portraits.request(identity(1));
+  await vi.advanceTimersByTimeAsync(1_000);
+  expect(f.requests).toHaveLength(0);
+  f.connection.isActive = true;
+  await vi.advanceTimersByTimeAsync(1_000);
+  f.requests[0].fail();
+  f.portraits.clear();
+  await vi.advanceTimersByTimeAsync(60_000);
+  expect(f.requests).toHaveLength(1);
+});
+
+it("bounds automatic retries when a player's profile is unavailable", async () => {
+  const f = fixture();
+  f.portraits.request(identity(1));
+  await vi.advanceTimersByTimeAsync(0);
+  f.requests[0].fail();
+  await vi.advanceTimersByTimeAsync(5_000);
+  f.requests[1].fail();
+  await vi.advanceTimersByTimeAsync(10_000);
+  f.requests[2].fail();
+  await vi.advanceTimersByTimeAsync(60_000);
+  expect(f.requests).toHaveLength(3);
+});

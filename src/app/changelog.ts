@@ -1,4 +1,8 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.674": [
+    "Claimed helmet gifts now appear in the bag immediately without refreshing, including while older progress saves are pending.",
+    "Chat retries missing profile pictures automatically. Private conversation portraits stay square, and equipped items fill their profile preview slots.",
+  ],
   "0.673": [
     "Private conversations show profile pictures and latest-message previews, with the standard Back button for navigation.",
     "Private messages no longer require friendship.",
@@ -1729,6 +1733,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.674": "2026-09-13",
   "0.673": "2026-09-13",
   "0.672": "2026-09-13",
   "0.671": "2026-09-13",

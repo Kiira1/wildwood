@@ -1,3 +1,5 @@
+import { ALPHA_TESTER_GIFT_ITEM } from "../../../shared/item-gifts";
+import { mergeProgress } from "../../coop/services/progress";
 import { describe, expect, it, vi } from "vitest";
 import { createGameBootstrap } from "./game-bootstrap";
 import { createProgressController } from "./progress-controller";
@@ -44,9 +46,10 @@ function savedProgress(): PlayerProgress {
 }
 
 describe("loaded progress reconciliation", () => {
-  it("restores faster attack rate and regeneration without requiring a reload", () => {
+  it("reconciles stat rewards and claimed gift ownership after initial load without replacing equipment", () => {
     const state = createGameBootstrap();
     let saved = savedProgress();
+    const renderInventory = vi.fn();
     const controller = createProgressController({
       player: state.player,
       inventory: state.inventory,
@@ -62,7 +65,7 @@ describe("loaded progress reconciliation", () => {
       researchVitalityRank: () => 0,
       healthMultiplier: () => 1,
       setAppliedVitalityRank: vi.fn(),
-      renderInventory: vi.fn(),
+      renderInventory,
       onLoaded: vi.fn(),
     });
     controller.load();
@@ -74,5 +77,18 @@ describe("loaded progress reconciliation", () => {
 
     expect(state.player.attackRate).toBe(1.2);
     expect(state.player.regen).toBe(0.6);
+
+    // An already-running claimant receives server ownership while an earlier
+    // local save still contains the inventory from before the gift was claimed.
+    const pending = { ...saved, enemyKills: 0 };
+    const headBefore = state.inventory.equippedHead;
+    const baseItems = [...state.inventory.itemIds];
+    saved = mergeProgress({ ...saved, inventoryJson: JSON.stringify([...baseItems, ALPHA_TESTER_GIFT_ITEM]) }, pending);
+    renderInventory.mockClear();
+    controller.load(); controller.load();
+    expect(state.inventory.itemIds.filter(item => item === ALPHA_TESTER_GIFT_ITEM)).toHaveLength(1);
+    expect(state.inventory.equippedHead).toBe(headBefore);
+    expect(state.inventory.itemIds).toEqual([...baseItems, ALPHA_TESTER_GIFT_ITEM]);
+    expect(renderInventory).toHaveBeenCalledOnce();
   });
 });

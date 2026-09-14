@@ -1,3 +1,4 @@
+import { claimedGiftItemIds } from "../../../shared/item-gifts";
 import { BASE_ATTACK_RANGE, BASE_PROJECTILE_SPEED } from "../constants";
 import { clamp } from "../math";
 import { inventoryFromSave, serialiseInventory, TRAILBLAZER_BOOTS, type EquipmentSlot, type InventoryState } from "../inventory";
@@ -105,6 +106,13 @@ export function createProgressController(dependencies: ProgressDependencies) {
           dependencies.player.regen,
           boundedProgressValue(saved.regen, dependencies.player.regen, 0, MAX_PLAYER_STAT),
         );
+        // A gift can arrive after initial load. Merge its permanent ownership
+        // without replacing locally edited equipment or consumable quantities.
+        const granted = claimedGiftItemIds(saved.inventoryJson).filter(item => !dependencies.inventory.itemIds.includes(item));
+        if (granted.length) {
+          dependencies.inventory.itemIds.push(...granted);
+          dependencies.renderInventory();
+        }
         applyMovementSpeed(saved, dependencies.inventory.equippedFeet === TRAILBLAZER_BOOTS);
       }
       return;
