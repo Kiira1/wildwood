@@ -1,3 +1,4 @@
+import { createReleaseNotesIndicator } from "../ui/release-notes-unread";
 import { renderUpdateNotice } from "../ui/overlays";
 
 type StartupReleaseNote = {
@@ -37,10 +38,12 @@ export function createStartupReleaseNotes(
 ) {
   const render = hooks.render ?? renderUpdateNotice;
   let hasNotes = false;
+  const indicator = createReleaseNotesIndicator(elements.toggle, hooks.releases);
 
   function setOpen(open: boolean) {
     const expanded = open && hasNotes;
     elements.overlay.hidden = !expanded;
+    if (expanded) indicator.markRead();
     elements.toggle.setAttribute("aria-expanded", String(expanded));
   }
 
@@ -50,6 +53,7 @@ export function createStartupReleaseNotes(
 
   function show() {
     const releases = hooks.releases();
+    indicator.refresh();
     hasNotes = releases.length > 0;
     if (!hasNotes) {
       hide();
@@ -65,6 +69,7 @@ export function createStartupReleaseNotes(
 
   function dispose() {
     elements.toggle.removeEventListener("click", toggle);
+    indicator.dispose();
   }
 
   setOpen(false);

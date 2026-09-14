@@ -165,6 +165,7 @@ const afterUpdateGateShell = String.raw`
 </div>
 
 <div id="itemInspectionPanel" class="item-inspection-panel" role="dialog" aria-modal="true" aria-labelledby="itemInspectionTitle" hidden>
+  <section class="item-inspection-window">
   <div class="item-inspection-header">
     <div class="item-inspection-title-block">
       <div class="item-inspection-kicker">ITEM DETAILS</div>
@@ -175,6 +176,7 @@ const afterUpdateGateShell = String.raw`
   <footer class="window-back-footer">
     <button id="itemInspectionBack" class="item-inspection-back window-back-button" type="button">Back</button>
   </footer>
+  </section>
 </div>
 
 <div id="profileNameEditor" hidden>

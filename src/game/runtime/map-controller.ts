@@ -26,14 +26,16 @@ export async function prepareMapTransition(
   changeMap: () => Promise<boolean | undefined> | boolean | undefined,
   prepareAssets: () => Promise<void>,
 ) {
-  const assetsReady = prepareAssets();
-  // Asset rejection may arrive before the reducer reply, including a denied
-  // move. Handle it immediately; awaiting below still propagates a real failure.
-  void assetsReady.catch(() => {});
-  const changed = await changeMap();
-  if (!changed) return false;
-  await assetsReady;
-  return true;
+  return withMapDeadline((async () => {
+    const assetsReady = prepareAssets();
+    // Asset rejection may arrive before the reducer reply, including a denied
+    // move. Handle it immediately; awaiting below still propagates a real failure.
+    void assetsReady.catch(() => {});
+    const changed = await changeMap();
+    if (!changed) return false;
+    await assetsReady;
+    return true;
+  })());
 }
 
 export type MapController = {

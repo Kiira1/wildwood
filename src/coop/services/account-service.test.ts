@@ -413,3 +413,10 @@ describe("account service startup identity selection", () => {
     expect(restartConnectionForIdentityChange).toHaveBeenCalledTimes(1);
   });
 });
+
+it("keeps an admitted account approved while a portal reconnects without approving a signed-out session", () => {
+  const { service } = setup({ accountToken: accountToken(), knownAccount: true });
+  expect(service.api.accountState().gameSessionApproved).toBe(false);
+  service.markPlayable(true);
+  expect(service.api.accountState()).toMatchObject({ signedIn: false, gameSessionApproved: true });
+});

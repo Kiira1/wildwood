@@ -16,7 +16,7 @@ import {
   type ChatMessageActionTarget,
 } from "./chat-message-actions";
 
-import { createChatUnreadTracker } from "./chat-unread";
+import { createChatUnreadTracker, formatChatUnreadCount } from "./chat-unread";
 import { createChatHistory, type ChatHistoryPage } from "./chat-history";
 import { createChatChannelPicker, type ChatChannel, type ChatConversation } from "./chat-channels";
 
@@ -117,6 +117,10 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
   let submissionGeneration = 0;
   let submitting = false;
   const unread = createChatUnreadTracker();
+  const unreadBadge = document.createElement("span");
+  unreadBadge.id = "chatUnreadBadge";
+  unreadBadge.hidden = true;
+  unreadBadge.setAttribute("role", "status");
   const drafts = new Map<string, string>();
   const history = createChatHistory<ChatMessage>();
   const latestButton = document.createElement("button");
@@ -303,6 +307,7 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
     }
     const nextGuildContext = String(coop?.social?.currentGuild()?.id ?? "");
     if (nextGuildContext !== guildContext) {
+      unread.resetGuild();
       drafts.delete(`guild:${guildContext}`);
       guildContext = nextGuildContext;
       if (channel === "guild") {
@@ -318,16 +323,26 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
     history.select(`${identity}:${conversationKey()}:${coop?.social?.historyRevision?.() ?? 0}:${coop?.chatHistoryRevision?.() ?? 0}:${large}`);
     const historyState = history.state();
     refreshLatestButton();
-    const revision = `${conversationKey()}:${coop?.chatRevision?.() ?? -1}:${coop?.social?.revision() ?? -1}:${coop?.localIdentity?.() ?? ""}:${enabled}:${large}:${historyState.revision}`;
+    const distanceToLatest = elements.messages.scrollHeight - elements.messages.clientHeight - elements.messages.scrollTop;
+    const readingLatest = enabled && large && document.visibilityState !== "hidden"
+      && (renderedRevision === "" || (!historyState.frozen && !(distanceToLatest > 16)));
+    const revision = `${readingLatest}:${conversationKey()}:${coop?.chatRevision?.() ?? -1}:${coop?.social?.revision() ?? -1}:${coop?.localIdentity?.() ?? ""}:${enabled}:${large}:${historyState.revision}`;
     if (revision === renderedRevision && now < nextExpiryAt) return;
     const conversations = coop?.social?.privateConversations() ?? [];
     if (privatePeer && !privatePeerIdentity) {
       privatePeerIdentity = [...(coop?.social?.friends() ?? []), ...conversations]
         .find(person => person.name.toLowerCase() === privatePeer.toLowerCase())?.identity ?? "";
     }
-    const unreadCounts = unread.refresh(identity, coop?.social?.guildMessages() ?? [],
-      new Map(conversations.map(person => [person.identity, coop?.social?.privateMessages(person.identity) ?? []])),
-      enabled && large ? channel === "guild" ? "guild" : channel === "private" ? `private:${privatePeerIdentity || privatePeer}` : null : null);
+    const eligibleUnread = (rows: ChatMessage[]) => rows.filter(message => !coop?.isPlayerBlocked?.(message.sender));
+    const unreadCounts = unread.refresh(identity, eligibleUnread(coop?.social?.guildMessages() ?? []),
+      new Map(conversations.map(person => [person.identity, eligibleUnread(coop?.social?.privateMessages(person.identity) ?? [])])),
+      readingLatest ? channel === "public" ? "world" : channel === "guild" ? "guild"
+        : privatePeer ? `private:${privatePeerIdentity || privatePeer}` : null : null,
+      eligibleUnread(coop?.chatMessages?.() ?? []).filter(message => shouldShowGlobalChatMessage(message.senderName)));
+    const unreadTotal = unreadCounts.world + unreadCounts.guild + unreadCounts.private;
+    unreadBadge.textContent = formatChatUnreadCount(unreadTotal);
+    unreadBadge.hidden = large || unreadTotal === 0;
+    unreadBadge.setAttribute("aria-label", `${unreadTotal} unread messages`);
     channelPicker.refresh(coop?.social?.friends() ?? [], conversations, coop?.social?.currentGuild()?.name ?? "", unreadCounts);
     const previousScrollTop = elements.messages.scrollTop;
     const previousScrollHeight = elements.messages.scrollHeight;
@@ -503,6 +518,8 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
     elements.panel.insertBefore(channelPicker.root, elements.messages);
     elements.panel.insertBefore(channelPicker.conversations, elements.messages);
     elements.form.append(latestButton);
+    elements.panel.append(unreadBadge);
+    document.addEventListener("visibilitychange", refresh);
     latestButton.addEventListener("click", () => { void loadHistory(true); });
     elements.messages.addEventListener("scroll", () => {
       if (!large || !enabled || (channel === "private" && !privatePeer)) return;
@@ -514,6 +531,7 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
       refreshLatestButton();
       if (scrollingUp && top <= 80) void loadHistory();
       else if (distance <= 16 && history.state().frozen && !history.state().loading) void loadHistory(true);
+      else if (distance <= 16) refresh();
     });
     elements.toggle.addEventListener("click", () => {
       enabled = !enabled;

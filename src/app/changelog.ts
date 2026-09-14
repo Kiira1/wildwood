@@ -1,4 +1,11 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.678": [
+    "Keeps signed-in players in the game during reconnects and prevents portal transitions from waiting indefinitely.",
+    "Inventory stays stacked on desktop, with simpler item slots and a smaller item inspection window.",
+    "Red unread badges show new world, guild, and private messages on mini chat and channel tabs.",
+    "Tap the in-game version to open release notes. A red dot marks unread updates.",
+    "Larger online-player and version labels, a lower video reward button, and page-scroll protection for the web app.",
+  ],
   "0.677": [
     "Leaderboard ranking tabs are square and fit in one row, with clearer column-heading spacing and alignment.",
     "Includes restored profile equipment art and gift/session readiness fixes.",
@@ -1744,6 +1751,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.678": "2026-09-13",
   "0.677": "2026-09-13",
   "0.676": "2026-09-13",
   "0.675": "2026-09-13",

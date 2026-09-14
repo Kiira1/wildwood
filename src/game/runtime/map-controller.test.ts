@@ -421,3 +421,13 @@ it.each(["reject", "stall"])("allows reconciliation to retry after assets %s", a
   expect(h.currentMapId()).toBe("home_exterior");
   expectPlayerVisible();
 });
+
+it("bounds portal waits even when the map reducer never acknowledges", async () => {
+  vi.useFakeTimers();
+  try {
+    const pending = prepareMapTransition(() => new Promise<boolean>(() => {}), async () => {});
+    const result = expect(pending).rejects.toThrow("Map transition timed out");
+    await vi.advanceTimersByTimeAsync(30_000);
+    await result;
+  } finally { vi.useRealTimers(); }
+});

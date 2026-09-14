@@ -1,4 +1,4 @@
-import type { ChatUnreadCounts } from "./chat-unread";
+import { formatChatUnreadCount, type ChatUnreadCounts } from "./chat-unread";
 
 export type ChatChannel = "public" | "guild" | "private";
 export type ChatConversation = import("../../shared/social").SocialConversation;
@@ -22,6 +22,7 @@ export function createChatChannelPicker(onChange: (channel: ChatChannel, usernam
   tabs.setAttribute("role", "tablist");
   tabs.setAttribute("aria-label", "Chat channel");
   const buttons = new Map<ChatChannel, HTMLButtonElement>();
+  const badges = new Map<ChatChannel, HTMLSpanElement>();
   let selected: ChatChannel = "public";
   let peer = "";
   let peerIdentity: string | undefined;
@@ -29,7 +30,18 @@ export function createChatChannelPicker(onChange: (channel: ChatChannel, usernam
   for (const channel of ["public", "guild", "private"] as const) {
     const button = document.createElement("button");
     button.type = "button";
-    button.textContent = channel[0].toUpperCase() + channel.slice(1);
+    const label = document.createElement("span");
+    label.className = "chat-channel-label";
+    const name = document.createElement("span");
+    name.className = "chat-channel-name";
+    name.textContent = channel[0].toUpperCase() + channel.slice(1);
+    const badge = document.createElement("span");
+    badge.className = "chat-channel-unread";
+    badge.hidden = true;
+    badge.setAttribute("aria-hidden", "true");
+    label.append(name, badge);
+    button.append(label);
+    badges.set(channel, badge);
     button.setAttribute("role", "tab");
     button.addEventListener("click", () => select(channel, channel === "private" ? "" : peer, channel === "private" ? undefined : peerIdentity));
     button.addEventListener("keydown", (event) => {
@@ -103,9 +115,11 @@ export function createChatChannelPicker(onChange: (channel: ChatChannel, usernam
       peer = currentPeer.name;
     }
     for (const [channel, button] of buttons) {
-      const count = channel === "guild" ? unread.guild : channel === "private" ? unread.private : 0;
+      const count = channel === "guild" ? unread.guild : channel === "private" ? unread.private : unread.world;
       const label = channel[0].toUpperCase() + channel.slice(1);
-      button.textContent = count ? `${label} · ${count}` : label;
+      const badge = badges.get(channel)!;
+      badge.textContent = formatChatUnreadCount(count);
+      badge.hidden = count === 0;
       button.setAttribute("aria-label", count ? `${label}, ${count} unread messages` : label);
     }
     const signature = JSON.stringify([people, [...unread.conversations]]);

@@ -1,3 +1,4 @@
+import { createReleaseNotesIndicator } from "./release-notes-unread";
 import { renderUpdateNotice } from "./overlays";
 
 export function createOverlaysController(elements: {
@@ -13,15 +14,18 @@ export function createOverlaysController(elements: {
   showMessage: (message: string, color: string) => void;
 }) {
   let hasUpdateNotes = false;
+  const notesIndicator = createReleaseNotesIndicator(elements.update.toggle, hooks.releases);
 
   function setUpdateNoticeOpen(open: boolean) {
     const expanded = open && hasUpdateNotes;
     elements.update.overlay.hidden = !expanded;
+    if (expanded) notesIndicator.markRead();
     elements.update.toggle.setAttribute("aria-expanded", String(expanded));
   }
 
   function showUpdateNotice() {
     const releases = hooks.releases();
+    notesIndicator.refresh();
     hasUpdateNotes = releases.length > 0;
     if (!hasUpdateNotes) {
       setUpdateNoticeOpen(false);

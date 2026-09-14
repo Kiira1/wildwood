@@ -759,7 +759,12 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
     storeGuestToken(token: string) {
       try { localStorage.setItem(keys.guestTokenKey, token); } catch {}
     },
-    markPlayable(signedIn: boolean) { lastPlayableSessionMode = signedIn ? "account" : "guest"; },
+    markPlayable(signedIn: boolean) {
+      lastPlayableSessionMode = signedIn ? "account" : "guest";
+      // Keep an already admitted account in the game while transport recovers.
+      // Otherwise a restored-token login falls back to sign-in on shard retry.
+      if (signedIn) sessionApproved = true;
+    },
     prepareUpdateReload(version: string) {
       if (lastPlayableSessionMode) dependencies.updateResumeStore.write(version, lastPlayableSessionMode);
     },

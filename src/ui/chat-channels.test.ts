@@ -37,7 +37,7 @@ function setup() {
   const showMessage = vi.fn();
   const chat = createChatRuntimeController({ getCoop: () => coop, showMessage, openReplay: vi.fn() });
   chat.init();
-  const button = (text: string) => [...document.querySelectorAll<HTMLButtonElement>(".chat-channel-tabs button")].find(node => node.textContent?.split(" · ")[0] === text)!;
+  const button = (text: string) => [...document.querySelectorAll<HTMLButtonElement>(".chat-channel-tabs button")].find(node => node.querySelector(".chat-channel-name")?.textContent === text)!;
   const input = document.getElementById("chatInput")! as HTMLTextAreaElement;
   input.setSelectionRange = vi.fn();
   const submit = async (text: string) => {
@@ -167,7 +167,9 @@ describe("chat channels", () => {
     h.coop.social.privateConversations = () => [{ identity: "friend", name: "Moss" }];
     h.coop.social.revision = () => 2;
     h.chat.refresh();
-    expect(h.button("Private").textContent).toBe("Private · 1");
+    expect(h.button("Private").querySelector(".chat-channel-name")!.textContent).toBe("Private");
+    expect(h.button("Private").querySelector(".chat-channel-unread")!.textContent).toBe("1");
+    expect((h.button("Private").querySelector(".chat-channel-unread") as HTMLElement).hidden).toBe(false);
     expect(h.document.querySelector(".chat-conversation-row")!.getAttribute("aria-label")).toBe("Moss, 1 unread messages");
     h.window.dispatchEvent(new h.window.CustomEvent("wildwood:open-private-chat", { detail: { username: "Moss", identity: "friend" } }));
     expect(h.button("Private").textContent).toBe("Private");
@@ -231,5 +233,51 @@ describe("chat channels", () => {
     expect(h.input.value).toBe("still writing");
     h.button("Public").click();
     expect(h.input.value).toBe("");
+  });
+});
+
+describe("mini chat unread badge", () => {
+  it("totals world, guild and private arrivals and clears channels independently", () => {
+    const h = setup();
+    const badge = h.document.getElementById("chatUnreadBadge")!;
+    expect(badge.hidden).toBe(true);
+    const world = h.coop.chatMessages()[0];
+    const guild = h.coop.social.guildMessages()[0];
+    vi.advanceTimersByTime(1000);
+    h.coop.chatMessages = () => [world, { ...world, id: 2n, sentAtMs: Date.now() }];
+    h.coop.social.guildMessages = () => [guild, { ...guild, id: 4n, sentAtMs: Date.now() }];
+    h.coop.social.privateConversations = () => [{ identity: "friend", name: "Moss" }];
+    h.coop.chatRevision = () => 2;
+    h.coop.social.revision = () => 2;
+    h.chat.refresh();
+    expect(badge.textContent).toBe("3");
+    expect(badge.hidden).toBe(false);
+    h.chat.refresh();
+    expect(badge.textContent).toBe("3");
+    h.document.getElementById("chatSizeToggle")!.click();
+    expect(badge.hidden).toBe(true);
+    h.chat.minimize();
+    expect(badge.textContent).toBe("2");
+    h.document.getElementById("chatSizeToggle")!.click();
+    h.button("Guild").click();
+    h.chat.minimize();
+    expect(badge.textContent).toBe("1");
+    h.window.dispatchEvent(new h.window.CustomEvent("wildwood:open-private-chat", { detail: { username: "Moss", identity: "friend" } }));
+    h.chat.minimize();
+    expect(badge.hidden).toBe(true);
+  });
+
+  it("keeps messages unread when full chat is in a hidden browser tab", () => {
+    const h = setup();
+    h.document.getElementById("chatSizeToggle")!.click();
+    Object.defineProperty(h.document, "visibilityState", { value: "hidden", configurable: true });
+    const world = h.coop.chatMessages()[0];
+    h.coop.chatMessages = () => [world, { ...world, id: 2n }];
+    h.coop.chatRevision = () => 2;
+    h.chat.refresh();
+    expect(h.document.getElementById("chatUnreadBadge")!.textContent).toBe("1");
+    Object.defineProperty(h.document, "visibilityState", { value: "visible", configurable: true });
+    h.document.dispatchEvent(new h.window.Event("visibilitychange"));
+    expect(h.document.getElementById("chatUnreadBadge")!.textContent).toBe("");
   });
 });
