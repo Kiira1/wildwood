@@ -34,6 +34,8 @@ Public messages now pass through a small server-side, high-confidence set for se
 
 ## Message path and cost
 
+September 14 filter additions: display names reject child/nudity combinations, including joined words, separators, repeated letters, and common leetspeak. Directed sexual insults are redacted in World, Guild, and private chat and rejected in names. Ordinary names, mild swearing, and combat banter remain allowed. Existing disallowed player names use the next-entry repair described above, with an immediate free rename; these checks do not ban accounts or scan historical messages.
+
 ```text
 Controlling-player check
   -> account, rules, and mute lookup

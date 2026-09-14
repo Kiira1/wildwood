@@ -60,6 +60,36 @@ describe("public chat moderation", () => {
     expect(shouldModeratePublicChatMessage("I will kill your lava boss")).toBe(false);
   });
 
+  it.each([
+    "Eat my ass", "KISS MY ASS", "suck my dick", "lick your balls", "eatmyass",
+    "e.a.t m.y a.s.s", "eat my @ss", "suck my d1ck", "Ｅａｔ ｍｙ ａｓｓ",
+    "eat my a\u200bs\u200bs", "eeaaat my assss", "eat my a$$", "eat my @$$",
+  ])("moderates directed sexual insults: %s", (message) => {
+    expect(moderatePublicChatMessage(message)).toEqual({ message: MODERATED_CHAT_MESSAGE, moderated: true });
+    expect(isPublicDisplayNameAllowed(message)).toBe(false);
+  });
+
+  it.each([
+    "A naked little boy", "NakedLittleBoy", "Naked_Little_Boy", "n4k3d l1ttl3 b0y",
+    "n a k e d k i d", "NudeGirl", "ToplessTeen", "BottomlessBaby", "NakedYoungChild",
+    "NakedTinyGirl", "NakedLilBoy", "KidNaked", "ANakedLittleBoy123", "nnaked little boy",
+  ])("rejects child-nudity-themed names: %s", (name) => {
+    expect(isPublicDisplayNameAllowed(name)).toBe(false);
+  });
+
+  it.each(["Fartin", "Hassan", "Assassin", "Scunthorpe", "Boysen", "BabyDragon", "TeenTitan", "ChildOfLight", "NakedMoleRat"])("keeps harmless names allowed: %s", (name) => {
+    expect(isPublicDisplayNameAllowed(name)).toBe(true);
+  });
+
+  it.each([
+    "That boss kicked my ass", "You suck at duels", "I need to eat my food",
+    "My assassin needs better gear", "The boss can eat my assassin alive",
+    "My character is naked without armor", "The kids are playing", "That was a damn close duel",
+    "Please report usernames about naked children",
+  ])("keeps gameplay banter and ordinary discussion: %s", (message) => {
+    expect(shouldModeratePublicChatMessage(message)).toBe(false);
+  });
+
   it("catches invite links and high-confidence scams", () => {
     expect(shouldModeratePublicChatMessage("join https://discord.gg/example")).toBe(true);
     expect(shouldModeratePublicChatMessage("join discord dot gg example")).toBe(true);

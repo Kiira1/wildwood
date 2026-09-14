@@ -65,6 +65,27 @@ const SEXUAL_SOLICITATION_PATTERNS = [
   /\bfucking\s*(?:me|you|u)\b/,
 ] as const;
 
+// Match only complete directed phrases, including spaced-out letters. Do not
+// block standalone body-part words or gameplay phrases like "kicked my ass".
+const spacedTerm = (word: string) => word.split("").map(letter => `${letter}+`).join("\\s*");
+const termChoices = (words: string[]) => `(?:${words.map(spacedTerm).join("|")})`;
+const DIRECTED_SEXUAL_INSULT_PATTERN = new RegExp(
+  `\\b${termChoices(["eat", "lick", "suck", "kiss"])}\\s*`
+  + `${termChoices(["my", "your", "ur", "his", "her", "their"])}\\s*`
+  + `${termChoices(["ass", "arse", "dick", "cock", "balls", "pussy"])}\\b`,
+);
+
+// Names have no surrounding conversational context. Check compact forms too,
+// so joining the words or inserting underscores cannot bypass this rule.
+// Keep this name-only: ordinary discussion about children or an unequipped
+// character should not disappear from chat.
+const childName = termChoices(["boy", "boys", "girl", "girls", "kid", "kids", "child", "children", "teen", "teens", "baby", "babies"]);
+const nudityName = termChoices(["naked", "nude", "topless", "bottomless"]);
+const childQualifier = `${termChoices(["little", "young", "tiny", "lil"])}?`;
+const CHILD_NUDITY_NAME_PATTERN = new RegExp(
+  `${nudityName}${childQualifier}${childName}|${childName}${childQualifier}${nudityName}`,
+);
+
 const PERSONAL_INFORMATION_REQUEST_PATTERNS = [
   /\b(?:send|give|tell|share)\s*(?:me\s*)?(?:your|ur)\s*(?:home\s*)?(?:address|phone\s*number|email(?:\s*address)?|full\s*name|real\s*name|location)\b/,
   /\b(?:what\s*is|what\s*s|whats)\s*(?:your|ur)\s*(?:home\s*)?(?:address|phone\s*number|email(?:\s*address)?|full\s*name|real\s*name|location)\b/,
@@ -91,6 +112,9 @@ function foldForModeration(message: string) {
 
 export function normalizeModerationText(message: string) {
   const normalized = foldForModeration(message)
+    // Leading/trailing symbols are normally punctuation. Recognize these
+    // specific body-part evasions without folding every @mention or dollar sign.
+    .replace(/(^|[^a-z0-9])(?:@s{2,}|[a@]\${2,})(?=$|[^a-z0-9])/g, "$1ass")
     .replace(/([a-z0-9])\1{2,}/g, "$1$1")
     .replace(/[^a-z0-9]+/g, " ")
     .trim()
@@ -108,6 +132,7 @@ export function shouldModeratePublicChatMessage(message: string) {
   if (SEVERE_HATE_PATTERNS.some((pattern) => pattern.test(folded))) return true;
   if (EXPLICIT_SEXUAL_PATTERNS.some((pattern) => pattern.test(folded))) return true;
   if (SEXUAL_SOLICITATION_PATTERNS.some((pattern) => pattern.test(normalized))) return true;
+  if (DIRECTED_SEXUAL_INSULT_PATTERN.test(normalized)) return true;
   if (CREDIBLE_THREAT_PATTERNS.some((pattern) => pattern.test(folded))) return true;
   if (INVITE_LINK_PATTERNS.some((pattern) => pattern.test(folded))) return true;
   if (NORMALIZED_INVITE_PATTERNS.some((pattern) => pattern.test(normalized))) return true;
@@ -117,7 +142,9 @@ export function shouldModeratePublicChatMessage(message: string) {
 }
 
 export function isPublicDisplayNameAllowed(displayName: string) {
-  return !shouldModeratePublicChatMessage(displayName);
+  if (shouldModeratePublicChatMessage(displayName)) return false;
+  const compact = normalizeModerationText(displayName).replace(/\s/g, "");
+  return !CHILD_NUDITY_NAME_PATTERN.test(compact);
 }
 
 export function moderatePublicChatMessage(message: string) {

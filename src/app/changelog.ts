@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.680": [
+    "Improved username checks and chat moderation while keeping normal gameplay banter allowed.",
+  ],
   "0.679": [
     "Updated the character head and helmet fit.",
     "Fixed gender and power icons flickering in chat.",
@@ -1756,6 +1759,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.680": "2026-09-14",
   "0.679": "2026-09-13",
   "0.678": "2026-09-13",
   "0.677": "2026-09-13",
