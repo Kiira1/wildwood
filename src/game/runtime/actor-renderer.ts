@@ -176,7 +176,7 @@ export function createActorRenderer(options: {
   nowMs: () => number;
   localDeath: () => PlayerDeathAnimationState | null;
   remoteDeath: (identity: string) => PlayerDeathAnimationState | null;
-  drawPlayerAppearance: (actor: { x: number; y: number; facing: number; combatFacing?: number | null; moving?: boolean; throwClock?: number; identity?: string; id?: string; headItem?: string; chestItem?: string; feetItem?: string; rightHandItem?: string; leftHandItem?: string }, alpha: number) => void;
+  drawPlayerAppearance: (actor: { skinTone?: number; x: number; y: number; facing: number; combatFacing?: number | null; moving?: boolean; throwClock?: number; identity?: string; id?: string; headItem?: string; chestItem?: string; feetItem?: string; rightHandItem?: string; leftHandItem?: string }, alpha: number) => void;
   localHeadItem: () => string;
   localChestItem: () => string;
   localFeetItem: () => string;
@@ -331,7 +331,7 @@ export function createActorRenderer(options: {
   }
 
   function drawPlayerSprite(
-    actor: { x: number; y: number; facing: number; combatFacing?: number | null; moving?: boolean; throwClock?: number; identity?: string; id?: string; headItem?: string; chestItem?: string; feetItem?: string; rightHandItem?: string; leftHandItem?: string },
+    actor: { skinTone?: number; x: number; y: number; facing: number; combatFacing?: number | null; moving?: boolean; throwClock?: number; identity?: string; id?: string; headItem?: string; chestItem?: string; feetItem?: string; rightHandItem?: string; leftHandItem?: string },
     alpha = 1,
   ) {
     options.drawPlayerAppearance(actor, alpha);
@@ -358,7 +358,7 @@ export function createActorRenderer(options: {
   }
 
   function drawDeadPlayer(
-    actor: { identity?: string; id?: string; headItem?: string; chestItem?: string; feetItem?: string; rightHandItem?: string; leftHandItem?: string },
+    actor: { skinTone?: number; identity?: string; id?: string; headItem?: string; chestItem?: string; feetItem?: string; rightHandItem?: string; leftHandItem?: string },
     death: PlayerDeathAnimationState,
     alpha: number,
     persistFinalPose = false,

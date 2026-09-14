@@ -404,6 +404,14 @@ import {
     inventorySlotsUnlocked: () => coop?.inventorySlotsUnlocked?.() ?? 0,
     gemBalance: () => coop?.gemBalance?.() ?? 0n,
     unlockInventorySlot: async () => coop?.unlockInventorySlot?.(),
+    destroyEquipment: async (itemId) => {
+      const result = await coop?.destroyEquipment?.(itemId);
+      if (result?.ok) {
+        setInventoryItemQuantity(inventory, itemId, 0);
+        applyPlayerMaxHealthMultiplier(player, healthMultiplier());
+      }
+      return result;
+    },
     showMessage,
     move: (itemId, destination) => {
       if (!moveInventoryItem(inventory, itemId, destination)) return false;
@@ -1203,7 +1211,11 @@ import {
   });
   const renderController = worldRenderRuntime.createFrameRenderer({
     bootsPickup,
-    remotePlayers: () => enemySimulation.renderRemotePlayers(coop?.remotePlayers?.() ?? []),
+    remotePlayers: () => [
+      ...enemySimulation.renderRemotePlayers(coop?.remotePlayers?.() ?? [])
+        .filter((other) => !coop?.remotePlayerDeath?.(other.id)),
+      ...(coop?.remotePlayerCorpses?.() ?? []),
+    ],
     mapPlayerMarkers: () => coop?.mapPlayerMarkers?.() ?? [],
     isDueling,
     isArenaScene,
@@ -1319,7 +1331,7 @@ import {
       minimizeMaximizedChat();
       return coop?.requestDuel?.(identity);
     },
-    isNameTaken: (name) => coop?.isDisplayNameTaken?.(name) ?? false, setDisplayName: async (name) => coop?.setDisplayName?.(name), itemInspection: itemInspectionController, showMessage,
+    isNameTaken: (name) => coop?.isDisplayNameTaken?.(name) ?? false, setDisplayName: async (name) => coop?.setDisplayName?.(name), itemInspection: itemInspectionController, destructionActions: inventoryController.destructionActions, showMessage,
   });
   new ResizeObserver(() => { if (profileCharacterPreview.resize()) profileWindow.drawPreview(); }).observe(profileCharacterCanvas);
   new ResizeObserver(() => {

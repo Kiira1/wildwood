@@ -520,7 +520,7 @@
   .item-inspection-stats span { padding: 5px 6px; border: 1px solid rgba(224,170,66,.4); border-radius: 5px; background: rgba(151,101,26,.18); }
   .item-inspection-stats [data-stat-kind="armor"] { color: var(--stat-armor); }
   .item-inspection-stats [data-stat-kind="regen"] { color: var(--stat-regen); }
-  .item-inspection-actions { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 160px)); justify-content: center; gap: 8px; width: 100%; }
+  .item-inspection-actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; width: 100%; }
   .item-inspection-actions:empty { display: none; }
   .item-inspection-actions button { min-width: 0; min-height: 44px; margin: 0; padding: 8px; border: 2px solid #312a22; border-radius: 8px; box-shadow: 0 3px 0 rgba(59,46,31,.36); color: #fff; font-size: var(--font-readable-min); line-height: 1.15; }
   .item-inspection-actions button:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(59,46,31,.36); }
@@ -1493,7 +1493,16 @@
   .window-back-footer { display: grid; flex: 0 0 auto; place-items: center; min-height: 60px; padding: 7px max(10px, env(safe-area-inset-right)) var(--window-back-bottom-gap) max(10px, env(safe-area-inset-left)); }
   .settings-panel > .window-back-footer { margin-top: auto; }
   #chatForm button.window-back-button,
+  .item-inspection-actions button.window-back-button,
   .window-back-button { display: flex; align-items: center; justify-content: center; width: min(150px, 44vw); min-width: 0; height: 44px; min-height: 44px; margin: 0 auto; padding: 0 8px 2px; border: 2px solid #351010; border-radius: 8px; background: linear-gradient(#c85050, #842f34); box-shadow: 0 3px 0 #351519; color: #fff; font: 900 11px/1 var(--font-rounded); -webkit-text-stroke: var(--text-outline-width) #000; paint-order: stroke fill; text-shadow: var(--text-shadow); }
+
+  .item-inspection-actions button.item-inspection-destroy {
+    flex: 0 0 44px; width: 44px; height: 44px; min-height: 44px; padding: 8px;
+  }
+  .item-inspection-actions button.item-inspection-destroy:active { box-shadow: 0 1px 0 #351519; }
+  .item-inspection-actions button:not(.item-inspection-destroy) { flex: 0 1 160px; }
+  .item-inspection-actions button.item-inspection-destroy:disabled { opacity: .55; }
+  .item-inspection-destroy svg { flex: none; }
 
   #chatInput,
   #profileNameInput {

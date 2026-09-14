@@ -1,4 +1,8 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.689": [
+    "Other players’ bodies remain on the map for two minutes after death.",
+    "Destroy unwanted dropped equipment from item details using the red trash button.",
+  ],
   "0.688": [
     "Increased the Samurai Hat drop chance to 0.8% (1 in 125) per regular Samurai Gardens enemy.",
   ],
@@ -1790,6 +1794,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.689": "2026-09-14",
   "0.688": "2026-09-14",
   "0.687": "2026-09-14",
   "0.686": "2026-09-14",

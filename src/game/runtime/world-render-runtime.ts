@@ -276,7 +276,7 @@ export function createWorldRenderRuntime(options: WorldRenderRuntimeOptions) {
     drawPlayerAppearance: (rendered, alpha) => drawStartingPlayer(options.ctx, options.playerAppearanceAssets, {
       ...rendered,
       gameTime: options.gameTime(),
-      skinTone: options.skinTone(rendered.identity ?? rendered.id) ?? DEFAULT_SKIN_TONE,
+      skinTone: rendered.skinTone ?? options.skinTone(rendered.identity ?? rendered.id) ?? DEFAULT_SKIN_TONE,
       alpha,
     }),
     localHeadItem: () => options.equippedItems().head,

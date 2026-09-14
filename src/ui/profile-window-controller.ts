@@ -1,7 +1,7 @@
 import type { PlayerProfileData } from "../wildstat-coop";
 import { PLAYER_GENDER_UNSET, isSelectedPlayerGender, playerGenderLabel, type PlayerGender } from "../../shared/player-gender";
 import { appendPlayerGenderIcon } from "./player-gender";
-import type { ItemInspectionController } from "./item-inspection-controller";
+import type { ItemInspectionController, ItemInspectionAction } from "./item-inspection-controller";
 import {
   PROFILE_EQUIPMENT_SLOTS,
   profileEquipmentPresentation,
@@ -30,6 +30,7 @@ export function createProfileWindowController(elements: {
   isDueling: () => boolean; duelCooldownMs: () => number; requestDuel: (identity: string) => Promise<{ ok?: boolean; error?: string } | undefined>;
   isNameTaken: (name: string) => boolean; setDisplayName: (name: string) => Promise<{ ok?: boolean; error?: string } | undefined>;
   itemInspection: ItemInspectionController;
+  destructionActions?: (itemId: string) => ItemInspectionAction[];
   showMessage: (text: string, color: string) => void;
   isBlocked: (identity: string) => boolean;
   openSafety: (identity: string, name: string, action: "report" | "block") => void;
@@ -111,6 +112,7 @@ export function createProfileWindowController(elements: {
       itemId: presentation.inspectionItemId,
       upgradeLevel: profileData.itemUpgradeLevels[presentation.inspectionItemId] ?? 0,
       context: presentation.context,
+      actions: identity === api.localIdentity() ? api.destructionActions?.(presentation.inspectionItemId) : undefined,
     });
   }
 

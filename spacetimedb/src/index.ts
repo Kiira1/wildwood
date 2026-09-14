@@ -1,3 +1,4 @@
+import { canDestroyEquipment } from "../../shared/items";
 import { deliverDisconnectCompensation } from "./disconnect-compensation";
 import { connectionDiagnosticTables, recordConnectionDiagnostics, cleanupConnectionDiagnostics } from "./connection-diagnostics";
 import { moderationTables, recordModerationAction, readModerationHistory } from "./moderation-history";
@@ -9489,6 +9490,25 @@ export const startItemUpgrade = spacetimedb.reducer(
     insertActiveItemUpgrade(ctx, slot, nextActive);
     writeProgressAndPresentation(ctx, removeItemFromProgress(progress, canonical));
     ensureItemUpgradeCompletionSchedule(ctx, nextActive, slot);
+  },
+);
+
+/** Inventory ownership is authoritative; a stale client save cannot restore deleted gear. */
+export const destroyEquipment = spacetimedb.reducer(
+  { itemId: t.string() },
+  (ctx, { itemId }) => {
+    requireControllingPlayer(ctx);
+    if (activeDuelFor(ctx, ctx.sender)) throw new SenderError("Finish your duel first.");
+    const canonical = canonicalItemId(itemId);
+    if (!canonical || !canDestroyEquipment(canonical)) throw new SenderError("This item cannot be destroyed.");
+    if (activeItemUpgradeEntriesFor(ctx, ctx.sender).some(({ active }) => active.itemId === canonical)) {
+      throw new SenderError("Cancel this item's upgrade first.");
+    }
+    const progress = ctx.db.playerProgress.identity.find(ctx.sender);
+    if (!progress || !progressHasItem(progress, canonical)) throw new SenderError("That item is not in your inventory.");
+    const key = itemUpgradeKey(ctx.sender, canonical);
+    if (ctx.db.playerItemUpgrade.key.find(key)) deleteSnapshotRow(ctx, "playerItemUpgrade", key);
+    writeProgressAndPresentation(ctx, removeItemFromProgress(progress, canonical));
   },
 );
 

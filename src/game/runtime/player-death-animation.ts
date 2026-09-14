@@ -1,7 +1,7 @@
 import { clamp } from "../math";
 
 export const PLAYER_DEATH_FALL_DURATION_MS = 850;
-export const PLAYER_DEATH_REMOTE_HOLD_MS = 4_250;
+export const PLAYER_DEATH_REMOTE_HOLD_MS = 120_000;
 
 export type PlayerDeathAnimationState = {
   id: string;

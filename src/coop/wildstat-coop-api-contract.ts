@@ -116,6 +116,7 @@ type ExpectedApiKey =
   | "releasePlayerProfile"
   | "remotePlayerCount"
   | "remotePlayerDeath"
+  | "remotePlayerCorpses"
   | "remoteCombatStats"
   | "remotePlayers"
   | "reportChatMessage"
@@ -165,6 +166,7 @@ type ExpectedApiKey =
   | "tidewyrmBoss"
   | "tidewyrmResult"
   | "unlockInventorySlot"
+  | "destroyEquipment"
   | "unlockSecondUpgradeSlot"
   | "updatePlayerSave"
   | "virtualPlayerLoadTestState";

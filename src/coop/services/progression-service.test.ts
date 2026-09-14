@@ -89,7 +89,8 @@ function setup(prepareResetRoute?: () => () => Promise<void>) {
   const resetPlayerProgress = vi.fn(async (): Promise<void> => {});
   const claimDeveloperItemGift = vi.fn(async (): Promise<void> => {});
   const entry = { ready: true, blocked: false };
-  const connection = { reducers: { savePlayerProgress, resetPlayerProgress, claimDeveloperItemGift } };
+  const destroyEquipment = vi.fn(async () => {});
+  const connection = { reducers: { savePlayerProgress, resetPlayerProgress, claimDeveloperItemGift, destroyEquipment } };
   const reducers = {
     connection: () => connection,
     protocolBlocked: () => false,
@@ -114,11 +115,32 @@ function setup(prepareResetRoute?: () => () => Promise<void>) {
     pendingProgressKey: "pending-progress",
     prepareResetRoute,
   });
-  return { notify, savePlayerProgress, resetPlayerProgress, service, entry, claimDeveloperItemGift };
+  return { notify, savePlayerProgress, resetPlayerProgress, service, entry, claimDeveloperItemGift, destroyEquipment };
 }
 
 describe("local progression profile snapshots", () => {
   afterEach(() => vi.unstubAllGlobals());
+
+  it("removes confirmed destruction from cached and pending inventory without losing earned stats", async () => {
+    const h = setup();
+    const saved = { ...progress(), inventoryJson: '["samurai_hat"]', equippedHead: "samurai_hat", cosmeticHead: "samurai_hat" };
+    h.service.tables.upsertProgress({ ...saved, identity: { toHexString: () => identity } } as any);
+    h.service.api.saveProgress(saveFrom(saved, { damage: 123 }), false);
+    expect((await h.service.api.destroyEquipment("samurai_hat")).ok).toBe(true);
+    const current = h.service.api.savedProgress()!;
+    expect(current.damage).toBe(123);
+    expect(JSON.parse(current.inventoryJson)).not.toContain("samurai_hat");
+    expect(current.equippedHead).toBe(""); expect(current.cosmeticHead).toBe("");
+  });
+
+  it("preserves inventory after rejected destruction", async () => {
+    const h = setup();
+    const saved = { ...progress(), inventoryJson: '["samurai_hat"]', equippedHead: "samurai_hat" };
+    h.service.tables.upsertProgress({ ...saved, identity: { toHexString: () => identity } } as any);
+    h.destroyEquipment.mockRejectedValueOnce(new Error("Finish your duel first."));
+    expect((await h.service.api.destroyEquipment("samurai_hat")).ok).toBe(false);
+    expect(h.service.api.savedProgress()!.equippedHead).toBe("samurai_hat");
+  });
 
   it("keeps gifts pending until world entry is ready and never submits claims from a blocked session", async () => {
     const h = setup();

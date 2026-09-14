@@ -500,3 +500,9 @@ export function equipmentRegenerationMultiplier(
     equipmentStatBonus(headItemId, headUpgradeLevel, headBonus) +
     equipmentStatBonus(chestItemId, chestUpgradeLevel, chestBonus);
 }
+
+/** Permanent unlocks and starter items are restored by inventory normalization. */
+export function canDestroyEquipment(itemId: unknown) {
+  const item = itemDefinition(canonicalItemId(itemId));
+  return !!item && item.acquisition.endsWith("_DROP");
+}

@@ -4,7 +4,7 @@ import {
   type InventoryState,
 } from "../game/inventory";
 import { requiredElement } from "../game/runtime/dom";
-import { itemDefinition } from "../../shared/items";
+import { canDestroyEquipment, itemDefinition, itemDisplayName } from "../../shared/items";
 import { inventoryMoveActions, inventoryWeaponSlot, renderInventoryView, type InventoryMode } from "./hud";
 import type { ItemInspectionController } from "./item-inspection-controller";
 import { bindLongPress } from "./long-press";
@@ -28,6 +28,7 @@ type InventoryDependencies = {
   itemInspection: ItemInspectionController;
   inventorySlotsUnlocked: () => number;
   gemBalance: () => bigint;
+  destroyEquipment: (itemId: string) => Promise<{ ok: boolean; error?: string } | undefined>;
   unlockInventorySlot: () => Promise<{ ok: boolean; error?: string } | undefined>;
   confirmGemSpend?: (message: string) => boolean;
   showMessage: (message: string, color?: string) => void;
@@ -109,15 +110,33 @@ export function createInventoryController(dependencies: InventoryDependencies) {
       upgradeLevel: dependencies.upgradeLevel(itemId),
       context,
       description,
-      actions: inventoryMoveActions(dependencies.inventory, itemId, location, mode).map((action) => ({
+      actions: [...inventoryMoveActions(dependencies.inventory, itemId, location, mode).map((action) => ({
         label: action.label,
         kind: action.destination === "BAG" ? "SECONDARY" as const : "PRIMARY" as const,
         disabled: action.disabled,
         onActivate: () => {
           if (move(itemId, action.destination)) dependencies.itemInspection.close();
         },
-      })),
+      })), ...destructionActions(itemId)],
     });
+  }
+
+  function destructionActions(itemId: string) {
+    if (!dependencies.inventory.itemIds.includes(itemId)) return [];
+    return canDestroyEquipment(itemId) ? [{
+      label: "Destroy item",
+      kind: "DESTROY" as const,
+      onActivate: async () => {
+        if (!confirm(`Destroy ${itemDisplayName(itemId, dependencies.upgradeLevel(itemId))} permanently?`)) return;
+        dependencies.itemInspection.close();
+        const result = await dependencies.destroyEquipment(itemId);
+        if (result?.ok) {
+          clearInventorySelection(dependencies.inventory);
+          render();
+          dependencies.showMessage("ITEM DESTROYED", "#ff9b91");
+        } else dependencies.showMessage(result?.error ?? "NOT CONNECTED", "#ff9b91");
+      },
+    }] : [];
   }
 
   function render() {
@@ -272,6 +291,7 @@ export function createInventoryController(dependencies: InventoryDependencies) {
   cancelDrag = inventoryDrag.cancel;
 
   return {
+    destructionActions,
     render,
     prepareOpen: () => {
       cancelDrag();

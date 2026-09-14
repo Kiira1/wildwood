@@ -1,3 +1,4 @@
+import { withoutDestroyedEquipment } from "./destroyed-equipment";
 import type { PendingItemGift } from "../../../shared/item-gifts";
 import { createProceduralMapService } from "./procedural-map-service";
 import { syncResearchNotification } from "../../app/native-research-notifications";
@@ -545,6 +546,21 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
       },
       secondUpgradeSlotUnlocked: () => secondUpgradeSlotUnlocked,
       inventorySlotsUnlocked: () => inventorySlotsUnlocked,
+      async destroyEquipment(itemId: string) {
+        const identity = dependencies.localIdentity();
+        const result = await reducerResult("destroy equipment", (connection) => connection.reducers.destroyEquipment({ itemId }))();
+        if (result.ok && identity !== dependencies.localIdentity()) return { ok: false, error: "ACCOUNT CHANGED" };
+        if (result.ok) {
+          if (localProgress) {
+            localProgress = withoutDestroyedEquipment(localProgress, itemId);
+            progressByIdentity.set(identity, localProgress);
+          }
+          if (pendingProgress) pendingProgress = store.write(identity, withoutDestroyedEquipment(pendingProgress, itemId));
+          upgradeLevelsByIdentity.get(identity)?.delete(itemId);
+          dependencies.notify();
+        }
+        return result;
+      },
       async unlockInventorySlot() {
         if (dependencies.reducers.protocolBlocked()) return { ok: false, error: "UPDATE REQUIRED" };
         const connection = dependencies.reducers.connection();

@@ -74,6 +74,7 @@ import DamageTempestKirinFromPositionReducer from "./damage_tempest_kirin_from_p
 import DamageTidewyrmFromPositionReducer from "./damage_tidewyrm_from_position_reducer";
 import DamageVoltwardenFromPositionReducer from "./damage_voltwarden_from_position_reducer";
 import DeliverShardRewardReducer from "./deliver_shard_reward_reducer";
+import DestroyEquipmentReducer from "./destroy_equipment_reducer";
 import DevAdjustGemsReducer from "./dev_adjust_gems_reducer";
 import DevBeginVirtualPlayerLoadTestReducer from "./dev_begin_virtual_player_load_test_reducer";
 import DevClearVirtualPlayersReducer from "./dev_clear_virtual_players_reducer";
@@ -81,6 +82,7 @@ import DevCopyPlayerCombatStatsReducer from "./dev_copy_player_combat_stats_redu
 import DevDeleteBugReportReducer from "./dev_delete_bug_report_reducer";
 import DevDeleteLegacyPlayerReducer from "./dev_delete_legacy_player_reducer";
 import DevDeliverAlphaTesterGiftsReducer from "./dev_deliver_alpha_tester_gifts_reducer";
+import DevDeliverDisconnectCompensationReducer from "./dev_deliver_disconnect_compensation_reducer";
 import DevRepairDisplayNameReducer from "./dev_repair_display_name_reducer";
 import DevRepairPlayerJoinedAtReducer from "./dev_repair_player_joined_at_reducer";
 import DevResetDailyGemBonusReducer from "./dev_reset_daily_gem_bonus_reducer";
@@ -1108,6 +1110,7 @@ const reducersSchema = __reducers(
   __reducerSchema("damage_tidewyrm_from_position", DamageTidewyrmFromPositionReducer),
   __reducerSchema("damage_voltwarden_from_position", DamageVoltwardenFromPositionReducer),
   __reducerSchema("deliver_shard_reward", DeliverShardRewardReducer),
+  __reducerSchema("destroy_equipment", DestroyEquipmentReducer),
   __reducerSchema("dev_adjust_gems", DevAdjustGemsReducer),
   __reducerSchema("dev_begin_virtual_player_load_test", DevBeginVirtualPlayerLoadTestReducer),
   __reducerSchema("dev_clear_virtual_players", DevClearVirtualPlayersReducer),
@@ -1115,6 +1118,7 @@ const reducersSchema = __reducers(
   __reducerSchema("dev_delete_bug_report", DevDeleteBugReportReducer),
   __reducerSchema("dev_delete_legacy_player", DevDeleteLegacyPlayerReducer),
   __reducerSchema("dev_deliver_alpha_tester_gifts", DevDeliverAlphaTesterGiftsReducer),
+  __reducerSchema("dev_deliver_disconnect_compensation", DevDeliverDisconnectCompensationReducer),
   __reducerSchema("dev_repair_display_name", DevRepairDisplayNameReducer),
   __reducerSchema("dev_repair_player_joined_at", DevRepairPlayerJoinedAtReducer),
   __reducerSchema("dev_reset_daily_gem_bonus", DevResetDailyGemBonusReducer),

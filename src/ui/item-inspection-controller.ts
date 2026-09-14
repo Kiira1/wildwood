@@ -8,9 +8,9 @@ import {
 
 export type ItemInspectionAction = {
   label: string;
-  kind?: "PRIMARY" | "SECONDARY";
+  kind?: "PRIMARY" | "SECONDARY" | "DESTROY";
   disabled?: boolean;
-  onActivate: () => void;
+  onActivate: () => void | Promise<void>;
 };
 
 export type ItemInspectionRequest = {
@@ -92,9 +92,19 @@ export function createItemInspectionController(elements: ItemInspectionElements)
       const button = document.createElement("button");
       button.type = "button";
       button.className = action.kind === "SECONDARY" ? "item-inspection-action-secondary" : "item-inspection-action-primary";
-      button.textContent = itemInspectionButtonLabel(action.label);
+      if (action.kind === "DESTROY") {
+        button.className = "window-back-button item-inspection-destroy";
+        button.setAttribute("aria-label", "Destroy item");
+        button.title = "Destroy item";
+        button.innerHTML = '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7"/></svg>';
+      } else button.textContent = itemInspectionButtonLabel(action.label);
       button.disabled = action.disabled === true;
-      button.addEventListener("click", action.onActivate);
+      button.addEventListener("click", async () => {
+        if (button.disabled) return;
+        button.disabled = true;
+        try { await action.onActivate(); }
+        finally { button.disabled = action.disabled === true; }
+      });
       actionRow.append(button);
     }
 

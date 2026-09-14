@@ -1,3 +1,4 @@
+import { createRemoteCorpses } from "./remote-corpses";
 import { recordConnectionDiagnostic } from "./connection-diagnostic-runtime";
 import { isProceduralMap } from "../../../shared/procedural-maps";
 import type { Identity } from "spacetimedb";
@@ -220,6 +221,7 @@ export function createPresenceService(dependencies: PresenceServiceDependencies)
   const detailedMotionIdentities = new Set<string>();
   const detailedMotionReadyNetworkIds = new Set<number>();
   const remotePlayerDeaths = new Map<string, RemotePlayerDeath>();
+  const corpses = createRemoteCorpses();
   const speedSyncTracker = createSpeedSyncTracker();
   let mapPlayerSubscription: SubscriptionHandle | null = null;
   let mapSubscriptionGeneration = 0;
@@ -668,14 +670,16 @@ export function createPresenceService(dependencies: PresenceServiceDependencies)
     if (row.mapId !== currentMapId) return;
     const identity = motionIdentities.get(row.networkId);
     if (!identity || identity === dependencies.localIdentity() || !players.has(identity)) return;
-    remotePlayerDeaths.set(identity, {
+    const death = {
       id: identity,
       mapId: row.mapId,
       x: row.playerX,
       y: row.playerY,
       facing: row.facing,
       startedAtMs: performance.now(),
-    });
+    };
+    remotePlayerDeaths.set(identity, death);
+    corpses.add(players.get(identity)!, death, presentations.get(identity)?.skinTone);
   }
 
   function upsertWorldStatus(row: { id: number; onlinePlayers: number }) {
@@ -975,7 +979,10 @@ export function createPresenceService(dependencies: PresenceServiceDependencies)
         localMotionNetworkId,
         regularEnemyLocalPosition(),
       ),
+      remotePlayerCorpses: () => corpses.players(currentMapId, performance.now()),
       remotePlayerDeath(identity: string) {
+        const corpse = corpses.death(identity, currentMapId, performance.now());
+        if (corpse) return corpse;
         const death = remotePlayerDeaths.get(identity);
         if (!death) return null;
         if (death.mapId !== currentMapId || performance.now() - death.startedAtMs > REMOTE_PLAYER_DEATH_TTL_MS) {
@@ -1037,7 +1044,7 @@ export function createPresenceService(dependencies: PresenceServiceDependencies)
       motionInterestInFlight = false;
       advanceLocalMotionEpoch();
       speedSyncTracker.reset();
-      if (identityChanged) localState = null;
+      if (identityChanged) { localState = null; corpses.clear(); }
     },
     markDisconnected() {
       serverClockAnchor = null;
@@ -1055,6 +1062,7 @@ export function createPresenceService(dependencies: PresenceServiceDependencies)
       players.clear();
       presentations.clear();
       remotePlayerDeaths.clear();
+      if (!preserveOnlineCount) corpses.clear();
       mapPlayerMarkers.clear();
       motionIdentities.clear();
       activeMotionIdentities.clear();

@@ -46,6 +46,7 @@ import DamageTempestKirinFromPositionReducer from "../damage_tempest_kirin_from_
 import DamageTidewyrmFromPositionReducer from "../damage_tidewyrm_from_position_reducer";
 import DamageVoltwardenFromPositionReducer from "../damage_voltwarden_from_position_reducer";
 import DeliverShardRewardReducer from "../deliver_shard_reward_reducer";
+import DestroyEquipmentReducer from "../destroy_equipment_reducer";
 import DevAdjustGemsReducer from "../dev_adjust_gems_reducer";
 import DevBeginVirtualPlayerLoadTestReducer from "../dev_begin_virtual_player_load_test_reducer";
 import DevClearVirtualPlayersReducer from "../dev_clear_virtual_players_reducer";
@@ -53,6 +54,7 @@ import DevCopyPlayerCombatStatsReducer from "../dev_copy_player_combat_stats_red
 import DevDeleteBugReportReducer from "../dev_delete_bug_report_reducer";
 import DevDeleteLegacyPlayerReducer from "../dev_delete_legacy_player_reducer";
 import DevDeliverAlphaTesterGiftsReducer from "../dev_deliver_alpha_tester_gifts_reducer";
+import DevDeliverDisconnectCompensationReducer from "../dev_deliver_disconnect_compensation_reducer";
 import DevRepairDisplayNameReducer from "../dev_repair_display_name_reducer";
 import DevRepairPlayerJoinedAtReducer from "../dev_repair_player_joined_at_reducer";
 import DevResetDailyGemBonusReducer from "../dev_reset_daily_gem_bonus_reducer";
@@ -163,6 +165,7 @@ export type DamageTempestKirinFromPositionParams = __Infer<typeof DamageTempestK
 export type DamageTidewyrmFromPositionParams = __Infer<typeof DamageTidewyrmFromPositionReducer>;
 export type DamageVoltwardenFromPositionParams = __Infer<typeof DamageVoltwardenFromPositionReducer>;
 export type DeliverShardRewardParams = __Infer<typeof DeliverShardRewardReducer>;
+export type DestroyEquipmentParams = __Infer<typeof DestroyEquipmentReducer>;
 export type DevAdjustGemsParams = __Infer<typeof DevAdjustGemsReducer>;
 export type DevBeginVirtualPlayerLoadTestParams = __Infer<typeof DevBeginVirtualPlayerLoadTestReducer>;
 export type DevClearVirtualPlayersParams = __Infer<typeof DevClearVirtualPlayersReducer>;
@@ -170,6 +173,7 @@ export type DevCopyPlayerCombatStatsParams = __Infer<typeof DevCopyPlayerCombatS
 export type DevDeleteBugReportParams = __Infer<typeof DevDeleteBugReportReducer>;
 export type DevDeleteLegacyPlayerParams = __Infer<typeof DevDeleteLegacyPlayerReducer>;
 export type DevDeliverAlphaTesterGiftsParams = __Infer<typeof DevDeliverAlphaTesterGiftsReducer>;
+export type DevDeliverDisconnectCompensationParams = __Infer<typeof DevDeliverDisconnectCompensationReducer>;
 export type DevRepairDisplayNameParams = __Infer<typeof DevRepairDisplayNameReducer>;
 export type DevRepairPlayerJoinedAtParams = __Infer<typeof DevRepairPlayerJoinedAtReducer>;
 export type DevResetDailyGemBonusParams = __Infer<typeof DevResetDailyGemBonusReducer>;
