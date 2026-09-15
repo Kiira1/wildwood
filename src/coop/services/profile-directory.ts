@@ -184,6 +184,7 @@ export function createProfileDirectory(dependencies: ProfileDirectoryDependencie
         catch (error) { return { ok: false, error: dependencies.reducers.errorMessage(error) }; }
       },
       localDisplayName: () => localDisplayName,
+      hasChosenDisplayName: () => localReady && Boolean(localDisplayName) && localDisplayName !== generatedDisplayName(dependencies.localIdentity()),
       playerDisplayName(identity: string) {
         return names.get(identity) ?? generatedDisplayName(identity);
       },
@@ -214,7 +215,14 @@ export function createProfileDirectory(dependencies: ProfileDirectoryDependencie
         const connection = dependencies.reducers.connection();
         if (!connection) return { ok: false, error: "NOT CONNECTED" };
         try {
+          const identity = dependencies.localIdentity();
           await dependencies.reducers.runWorldReducer(() => connection.reducers.setDisplayName({ displayName }));
+          if (identity === dependencies.localIdentity()) {
+            localDisplayName = displayName.trim().replace(/\s+/g, " ");
+            names.set(identity, localDisplayName);
+            dependencies.rememberCharacter(localDisplayName);
+            dependencies.notify();
+          }
           return { ok: true };
         } catch (error) {
           const message = dependencies.reducers.errorMessage(error);

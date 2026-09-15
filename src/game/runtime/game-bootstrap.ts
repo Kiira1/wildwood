@@ -1,3 +1,4 @@
+import { ONBOARDING_MAP_ID, ONBOARDING_WORLD } from "../../../shared/onboarding";
 import { generateMap, proceduralMapId, PROCEDURAL_ENTRY_MAP } from "../../../shared/procedural-maps";
 import { withGeneratedMaps } from "../procedural-maps";
 import { WORLD } from "../constants";
@@ -21,6 +22,7 @@ import {
   MAGMALISK_MAX_HP,
   MAP_DISPLAY_NAMES,
   PLAYER_BASE_HP,
+  PLAYER_BASE_DAMAGE,
   PLAYER_BASE_REGEN,
   PLAYER_SPAWN,
   PLAYER_SPEED,
@@ -86,6 +88,7 @@ export function createGameBootstrap() {
   const aegisPrimeCrystalBursts: AegisPrimeCrystalBurst[] = [];
   const startSpawn = { ...PLAYER_SPAWN };
   const authoredMapConfig = {
+    [ONBOARDING_MAP_ID]: { name: "First Steps", portal: null, arrival: ONBOARDING_WORLD.spawn },
     home_exterior: { name: "Home", portal: null, arrival: { x: 500, y: 700 } },
     [TUTORIAL_FOREST_MAP_ID]: editedMapEntry(TUTORIAL_FOREST_MAP_ID, {
       name: MAP_DISPLAY_NAMES[TUTORIAL_FOREST_MAP_ID],
@@ -182,7 +185,7 @@ export function createGameBootstrap() {
     hp: PLAYER_BASE_HP,
     baseMaxHp: PLAYER_BASE_HP,
     maxHp: PLAYER_BASE_HP,
-    damage: 4,
+    damage: PLAYER_BASE_DAMAGE,
     attackRate: DEFAULT_ATTACK_INTERVAL,
     projectileSpeed: BASE_PROJECTILE_SPEED,
     projectileCount: 1,

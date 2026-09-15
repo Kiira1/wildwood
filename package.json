@@ -17,6 +17,7 @@
     "balance:lab": "vite --config config/vite.balance.config.ts --host 127.0.0.1 --open /balance-lab.html",
     "balance:stat-graph": "vite --config config/vite.stat-graph.config.ts --host 127.0.0.1 --open /balance-stat-graph.html",
     "balance:simulate": "tsx scripts/balance-report.ts",
+    "tutorial:text": "node scripts/tutorial-editor-server.mjs",
     "map:editor": "node scripts/map-editor-server.mjs",
     "test:unit": "vitest run --exclude src/balance/simulator.test.ts",
     "test:unit:watch": "vitest --exclude src/balance/simulator.test.ts",

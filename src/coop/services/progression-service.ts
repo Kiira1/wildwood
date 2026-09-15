@@ -1,3 +1,4 @@
+import { ONBOARDING_DAMAGE_REWARD, ONBOARDING_REGEN_REWARD, ONBOARDING_STEP } from "../../../shared/onboarding";
 import { withoutDestroyedEquipment } from "./destroyed-equipment";
 import type { PendingItemGift } from "../../../shared/item-gifts";
 import { createProceduralMapService } from "./procedural-map-service";
@@ -111,6 +112,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
   const itemGifts = new Map<string, PendingItemGift>();
   let secondUpgradeSlotUnlocked = false;
   let inventorySlotsUnlocked = 0;
+  let onboardingStep = 0;
   let pendingProgress: ProgressSave | null = null;
   let saveInFlightUntil = 0;
   let savePromise: Promise<boolean> | null = null;
@@ -454,6 +456,16 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
         dailyGemBonusClaimable = false;
         dependencies.notify();
       },
+      upsertOnboarding(row: { identity: Identity; step: number }) {
+        if (row.identity.toHexString() !== dependencies.localIdentity()) return;
+        onboardingStep = row.step;
+        dependencies.notify();
+      },
+      removeOnboarding(row: { identity: Identity }) {
+        if (row.identity.toHexString() !== dependencies.localIdentity()) return;
+        onboardingStep = 0;
+        dependencies.notify();
+      },
       upsertItemGift(row: PendingItemGift & { identity: Identity }) {
         if (row.identity.toHexString() !== dependencies.localIdentity()) return;
         itemGifts.set(row.key, { key: row.key, itemId: row.itemId });
@@ -719,6 +731,25 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
           return result;
         } finally { resetPending = false; }
       },
+      onboardingStep: () => onboardingStep,
+      async completeOnboardingStep(step: number) {
+        const identity = dependencies.localIdentity();
+        const before = localProgress;
+        const previousStep = onboardingStep;
+        const result = await reducerResult("tutorial", connection => connection.reducers.completeOnboardingStep({ step }))();
+        if (result.ok && identity === dependencies.localIdentity()) {
+          onboardingStep = Math.max(onboardingStep, step);
+          if (before && localProgress && previousStep < step) {
+            localProgress = { ...localProgress,
+              damage: Math.max(localProgress.damage, before.damage + (step === ONBOARDING_STEP.regen ? ONBOARDING_DAMAGE_REWARD : 0)),
+              regen: Math.max(localProgress.regen, before.regen + (step === ONBOARDING_STEP.death ? ONBOARDING_REGEN_REWARD : 0)),
+            };
+            progressByIdentity.set(identity, localProgress);
+          }
+          dependencies.notify();
+        }
+        return result;
+      },
       beginAdventure() {
         if (dependencies.reducers.protocolBlocked() || !dependencies.reducers.connection()) return;
         dependencies.reducers.sendReducer("adventure start", (connection) => connection.reducers.beginAdventure({}));
@@ -751,6 +782,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
       activeItemUpgrades.clear();
       balanceApologyGiftAmount = 0n;
       itemGifts.clear();
+      onboardingStep = 0;
       secondUpgradeSlotUnlocked = false;
       inventorySlotsUnlocked = 0;
     },
@@ -766,6 +798,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
       dailyGemBonusClaimable = false;
       balanceApologyGiftAmount = 0n;
       itemGifts.clear();
+      onboardingStep = 0;
       secondUpgradeSlotUnlocked = false;
       inventorySlotsUnlocked = 0;
       progressByIdentity.clear();
@@ -780,6 +813,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
       activeItemUpgrades.clear();
       balanceApologyGiftAmount = 0n;
       itemGifts.clear();
+      onboardingStep = 0;
       secondUpgradeSlotUnlocked = false;
       inventorySlotsUnlocked = 0;
     },

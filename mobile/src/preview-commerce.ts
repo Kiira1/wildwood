@@ -1,3 +1,4 @@
+import { installNativeKeepScreenOn } from "./keep-screen-on";
 import { installAndroidUpdates } from './android-updates';
 import { Haptics, ImpactStyle } from "@capacitor/haptics";
 import { installResearchNotifications } from './research-notifications';
@@ -14,6 +15,7 @@ if (platform === 'ios' || platform === 'android') {
   window.addEventListener("wildstat:toolbar-haptic", () => {
     void Haptics.impact({ style: ImpactStyle.Light }).catch(() => {});
   });
+  installNativeKeepScreenOn();
   installNativeAuth();
   if (platform === 'android') installAndroidUpdates();
   installResearchNotifications(platform);

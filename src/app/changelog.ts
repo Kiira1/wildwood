@@ -1,4 +1,13 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.690": [
+    "New players start on a private tutorial map with movement, stats, combat, and a quick lesson about respawning. Skip ahead or choose your name before entering the forest.",
+    "Added a Keep screen on setting and improved the item details layout.",
+    "Leaderboards open around your rank and load more players as you scroll.",
+    "Endless bosses now show nearby player attacks and reveal newly unlocked portals, with less server work per hit.",
+    "Your own body remains on the map for two minutes after death, including after you respawn.",
+    "Night Forest enemies can drop Black Boots: +25 movement speed after five seconds out of combat.",
+    "New equipment drops in Water Reach, Samurai Gardens, Cloudspire, and Moonfen.",
+  ],
   "0.689": [
     "Other players’ bodies remain on the map for two minutes after death.",
     "Destroy unwanted dropped equipment from item details using the red trash button.",
@@ -1794,6 +1803,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.690": "2026-09-14",
   "0.689": "2026-09-14",
   "0.688": "2026-09-14",
   "0.687": "2026-09-14",

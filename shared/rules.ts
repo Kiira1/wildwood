@@ -15,6 +15,7 @@ export const PLAYER_SPAWN: Readonly<{ x: number; y: number }> =
   MAP_EDITOR_GAMEPLAY_OVERRIDES.tutorial_forest?.arrival ?? { x: 360, y: 360 };
 export const PLAYER_RADIUS = 17;
 export const PLAYER_BASE_HP = 100;
+export const PLAYER_BASE_DAMAGE = 3;
 export const PLAYER_BASE_REGEN = 0.2;
 export const PLAYER_SPEED = 180;
 export const BOOTS_SPEED_BONUS = 0;
@@ -170,6 +171,7 @@ export const NEON_BASTION_MAP_ID = "neon_bastion";
 export const VERDANT_CATACOMBS_MAP_ID = "verdant_catacombs";
 export const ION_CITADEL_MAP_ID = "ion_citadel";
 export const MAP_DISPLAY_NAMES = {
+  first_steps: "First Steps",
   home_exterior: "Home",
   [TUTORIAL_FOREST_MAP_ID]: "Tutorial Forest",
   [BEGINNER_DESERT_MAP_ID]: "Beginner Desert",

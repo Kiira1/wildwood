@@ -33,7 +33,7 @@ export function leaderboardValueKey(stat: LeaderboardStat): "power" | "damage" |
   return stat === "health" ? "maxHp" : stat === "time" ? "playedSeconds" : stat;
 }
 
-export function sortedLeaderboardEntries(stat: LeaderboardStat, entries: LeaderboardEntry[], limit = 104) {
+export function sortedLeaderboardEntries(stat: LeaderboardStat, entries: LeaderboardEntry[], limit = Infinity) {
   const valueKey = leaderboardValueKey(stat);
   return entries
     .filter((entry) => Number.isFinite(entry[valueKey]))
@@ -159,6 +159,8 @@ export function renderLeaderboard(
   sorted.forEach((entry, index) => {
     const row = document.createElement("li");
     row.className = "leaderboard-row";
+    row.dataset.identity = entry.identity;
+    row.dataset.rank = String(entry.rank ?? index + 1);
     row.classList.toggle("is-local", entry.identity === localIdentity);
     const rank = document.createElement("span");
     rank.className = "leaderboard-rank";

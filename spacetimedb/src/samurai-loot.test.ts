@@ -9,7 +9,7 @@ vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module
 function samuraiFixture() {
   const f = crystalFixture();
   f.patch("player", { mapId: SAMURAI_GARDEN_MAP_ID });
-  f.ctx.random.integerInRange = vi.fn(() => 1);
+  f.ctx.random.integerInRange = vi.fn((_min, max) => max === SAMURAI_HAT_ITEM_DROP_DENOMINATOR ? 1 : max);
   return f;
 }
 
@@ -39,7 +39,7 @@ describe("Samurai Gardens helmet drop", () => {
 
   it("does not award a helmet on a missed roll", () => {
     const f = samuraiFixture();
-    f.ctx.random.integerInRange = () => 2;
+    f.ctx.random.integerInRange = (_min, max) => max;
     f.run(server.recordLavaEnemyDefeat);
     expect(f.db.playerProgress.identity.find(f.ctx.sender).inventoryJson).toBe("[]");
     expect([...f.db.playerItemDrop.iter()]).toHaveLength(0);

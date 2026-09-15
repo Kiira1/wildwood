@@ -1,3 +1,4 @@
+import { BLACK_BOOTS, BLACK_BOOTS_DROP_DENOMINATOR } from "../../shared/items";
 import { describe, expect, it } from "vitest";
 import {
   DARK_METAL_HELMET,
@@ -54,6 +55,7 @@ describe("map guide", () => {
       [NIGHT_BOW, NIGHT_FOREST_BOW_ITEM_DROP_DENOMINATOR],
       [FIRE_METAL_BOW, INFERNAL_ITEM_DROP_DENOMINATOR],
       [DARK_METAL_HELMET, NIGHT_FOREST_HELMET_ITEM_DROP_DENOMINATOR],
+      [BLACK_BOOTS, BLACK_BOOTS_DROP_DENOMINATOR],
     ]);
     expect(mapGuideDropChance(25)).toBe("4%");
     expect(mapGuideDropChance(30)).toBe("3.3%");

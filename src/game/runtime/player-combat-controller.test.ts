@@ -81,6 +81,33 @@ function createCombatHarness(overrides: Partial<Parameters<typeof createPlayerCo
 }
 
 describe("player attack timing", () => {
+  it("routes a tutorial kill to its acknowledgement without ordinary loot, stats, or respawns", () => {
+    const saveProgress = vi.fn(), loot = vi.fn(), schedule = vi.fn(), killed = vi.fn(() => true);
+    let now = 0;
+    const state = createCombatHarness({ isTutorialMap: () => false, nowSeconds: () => now,
+      onEnemyDefeated: killed, saveProgress, recordForestEnemyDefeat: loot, scheduleEnemyRespawn: schedule });
+    Object.assign(state.player, { x: 500, y: 500, damage: 4, attackRange: 200 });
+    createEnemyLifecycle(state.enemies, state.spawnSites, () => {}).spawnFromSite({ id: 0, type: "Spitter", x: 550, y: 500,
+      campName: "First Steps", leashRange: 500, alive: false, respawnAt: 0 });
+    const enemy = state.enemies[0]; enemy.hp = enemy.maxHp = 10;
+    for (let i = 0; i < 300; i++) { now += 1 / 60; state.controller.attackNearest(); state.controller.updateProjectiles(1 / 60); }
+    expect(killed).toHaveBeenCalledOnce();
+    expect(state.player.damage).toBe(4);
+    expect(saveProgress).not.toHaveBeenCalled(); expect(loot).not.toHaveBeenCalled(); expect(schedule).not.toHaveBeenCalled();
+  });
+
+  it("marks actual attack starts and accepted damage as combat for travel boots", () => {
+    const combat = vi.fn();
+    const state = createCombatHarness({ onCombat: combat });
+    Object.assign(state.player, { x: 500, y: 500, attackRange: 200 }); state.boss.dead = true;
+    state.controller.attackNearest(); expect(combat).not.toHaveBeenCalled();
+    createEnemyLifecycle(state.enemies, state.spawnSites, () => {}).spawnFromSite({ id: 0, type: "Spitter", x: 550, y: 500,
+      campName: "Test", leashRange: 500, alive: false, respawnAt: 0 });
+    state.controller.attackNearest(); expect(combat).toHaveBeenCalledOnce();
+    state.controller.damagePlayer(5); expect(combat).toHaveBeenCalledTimes(2);
+    state.controller.damagePlayer(5); expect(combat).toHaveBeenCalledTimes(2);
+  });
+
   it("prioritizes an aggroed attacker over its selected farm type, then returns to farming", () => {
     const state = createCombatHarness({ localIdentity: () => "my-account" });
     state.enemies.length = 0;
@@ -350,6 +377,36 @@ describe("player attack timing", () => {
     state.controller.updateProjectiles(.2);
 
     expect(recordSnowEnemyDefeat).toHaveBeenCalledOnce();
+  });
+  it.each(["water_reach", "samurai_garden", "cloudspire", "moonfen"])("records a %s loot roll when a regular enemy dies", mapId => {
+    const recordLavaEnemyDefeat = vi.fn();
+    const state = createCombatHarness({
+      isTutorialMap: () => false,
+      currentMapId: () => mapId,
+      recordLavaEnemyDefeat,
+    });
+    const site = {
+      id: 0,
+      x: 200,
+      y: 100,
+      campName: "Test Snow Camp",
+      type: "Frost Raider" as const,
+      leashRange: 300,
+      alive: false,
+      respawnAt: 0,
+    };
+    state.spawnSites.push(site);
+    createEnemyLifecycle(state.enemies, state.spawnSites, () => {}).spawnFromSite(site);
+    state.enemies[0].hp = 1;
+    const projectile = state.projectileStore.acquirePlayerProjectile();
+    Object.assign(projectile, {
+      x: 0, y: 100, vx: 1_000, vy: 0, r: 6, damage: 25,
+      critical: false, hitLife: 1, life: 1, trail: 1,
+    });
+
+    state.controller.updateProjectiles(.2);
+
+    expect(recordLavaEnemyDefeat).toHaveBeenCalledOnce();
   });
 });
 

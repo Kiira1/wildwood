@@ -1,3 +1,4 @@
+import { ONBOARDING_MAP_ID, ONBOARDING_ART_OFFSET } from "../../shared/onboarding";
 import { isProceduralMap, type ProceduralMapId } from "../../shared/procedural-maps";
 import { generatedMapContent } from "./procedural-maps";
 import { createIonCitadelLayout } from "./ion-layout";
@@ -66,6 +67,7 @@ export const VERDANT_CATACOMBS_MAP_ID = "verdant_catacombs";
 export const ION_CITADEL_MAP_ID = "ion_citadel";
 export const UPGRADE_BENCH_POSITION = HOME_BENCH_POSITION;
 export type MapId =
+  | typeof ONBOARDING_MAP_ID
   | ProceduralMapId
   | typeof HOME_EXTERIOR_MAP_ID
   | typeof TUTORIAL_FOREST_MAP_ID
@@ -735,6 +737,14 @@ function createClockworkRuinsLayout() { return createExpansionLayout(false, CLOC
 function createDuskfallOrchardLayout() { return createExpansionLayout(true, DUSKFALL_ORCHARD_CAMPS); }
 
 export function createWorldLayout(playerSpawn: Point, mapId: MapId = TUTORIAL_FOREST_MAP_ID) {
+  if (mapId === ONBOARDING_MAP_ID) return {
+    paths: [{ x: 450, y: 380, w: 100, h: 390 }, { x: 415, y: 660, w: 170, h: 130 }].map(path => ({ ...path, x: path.x + ONBOARDING_ART_OFFSET.x, y: path.y + ONBOARDING_ART_OFFSET.y })),
+    decor: [
+      ...[100, 900].flatMap(x => [170, 420, 760, 1010].map((y, variant) => ({ type: "tree" as const, x, y, s: 1, variant }))),
+      ...[220, 780].flatMap(x => [240, 600, 940].map((y, variant) => ({ type: "grass" as const, x, y, variant }))),
+      { type: "rock" as const, x: 760, y: 850, s: .75, variant: 0 },
+    ].map(item => ({ ...item, x: item.x + ONBOARDING_ART_OFFSET.x, y: item.y + ONBOARDING_ART_OFFSET.y })),
+  };
   if (mapId === HOME_EXTERIOR_MAP_ID) return {
     paths: [{ x: 230, y: 344, w: 540, h: 275 }, { x: 400, y: 530, w: 200, h: 140 }, { x: 450, y: 650, w: 100, h: 225 }].map(path => ({ ...path, x: path.x + HOME_ART_OFFSET.x, y: path.y + HOME_ART_OFFSET.y })),
     decor: [
@@ -822,7 +832,7 @@ export function createWorldLayout(playerSpawn: Point, mapId: MapId = TUTORIAL_FO
 }
 
 export function mapSpawnCamps(mapId: MapId = TUTORIAL_FOREST_MAP_ID): readonly SpawnCamp[] {
-  if (mapId === HOME_EXTERIOR_MAP_ID) return [];
+  if (mapId === HOME_EXTERIOR_MAP_ID || mapId === ONBOARDING_MAP_ID) return [];
   if (isProceduralMap(mapId)) return generatedMapContent(mapId).camps;
   const saved = savedMapDesign(mapId);
   if (saved?.spawnCamps.length) return saved.spawnCamps.map((camp) => ({ ...camp, types: [...camp.types] }));
@@ -849,7 +859,7 @@ export function mapSpawnCamps(mapId: MapId = TUTORIAL_FOREST_MAP_ID): readonly S
 
 export function createSpawnSites(boss: Point, mapId: MapId = TUTORIAL_FOREST_MAP_ID): SpawnSite[] {
   if (isProceduralMap(mapId)) return generatedMapContent(mapId).sites;
-  if (mapId === HOME_EXTERIOR_MAP_ID) return [];
+  if (mapId === HOME_EXTERIOR_MAP_ID || mapId === ONBOARDING_MAP_ID) return [];
   const sites: SpawnSite[] = [];
   const camps = mapSpawnCamps(mapId);
   assertCampContracts(camps);

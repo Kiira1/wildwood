@@ -168,12 +168,12 @@ const afterUpdateGateShell = String.raw`
 <div id="itemInspectionPanel" class="item-inspection-panel" role="dialog" aria-modal="true" aria-labelledby="itemInspectionTitle" hidden>
   <section class="item-inspection-window">
   <div class="item-inspection-header">
-    <div class="item-inspection-title-block">
-      <div class="item-inspection-kicker">ITEM DETAILS</div>
-      <h2 id="itemInspectionTitle" class="window-title">ITEM</h2>
-    </div>
+    <div class="item-inspection-kicker">ITEM DETAILS</div>
+    <div class="item-inspection-tools"></div>
   </div>
-  <div id="itemInspectionContent" class="item-inspection-content"></div>
+  <div id="itemInspectionContent" class="item-inspection-content">
+    <h2 id="itemInspectionTitle">Item</h2>
+  </div>
   <footer class="window-back-footer">
     <button id="itemInspectionBack" class="item-inspection-back window-back-button" type="button">Back</button>
   </footer>

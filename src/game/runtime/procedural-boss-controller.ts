@@ -18,7 +18,8 @@ type BossRow = {
 };
 export function createProceduralBossController(options: {
   mapId: () => string;
-  state: (mapId: string) => { boss: BossRow | null };
+  state: (mapId: string) => { boss: BossRow | null; ready?: boolean; completed?: number };
+  revealPortal?: () => boolean;
   serverNow: () => number;
   enemies: EnemyState[];
   player: PlayerState;
@@ -59,6 +60,7 @@ export function createProceduralBossController(options: {
     lastUpdateAt: number | null = null;
   let pendingHits = 0,
     flushAt = 0;
+  let observedCompleted: number | null = null, pendingReveal = false;
   let definition: ReturnType<typeof generateMap> | null = null;
   function resetAttacks() {
     attackElapsed = shotElapsed = 0;
@@ -76,12 +78,20 @@ export function createProceduralBossController(options: {
     const snapshot = options.state(next);
     if (next !== mapId) {
       mapId = next;
+      observedCompleted = null;
+      pendingReveal = false;
       definition = isProceduralMap(mapId) ? generateMap(mapId) : null;
       discardBoss();
       encounter = 0n;
       bossKey = "";
     }
     if (!isProceduralMap(mapId)) return;
+    if (snapshot.ready !== false && snapshot.completed !== undefined) {
+      if (observedCompleted !== null && observedCompleted < definition!.number && snapshot.completed >= definition!.number)
+        pendingReveal = true;
+      observedCompleted = snapshot.completed;
+    }
+    if (pendingReveal && options.player.hp > 0 && options.revealPortal?.()) pendingReveal = false;
     const map = definition!,
       row = snapshot.boss;
     if (!row || row.mapId !== mapId) {
@@ -203,12 +213,16 @@ export function createProceduralBossController(options: {
   }
   return {
     update,
+    remoteTarget: () => boss && options.mapId() === mapId ? {
+      kind: `procedural:${bossKey}` as const, encounter, alive: !boss.dead,
+      x: boss.x, y: boss.y, radius: boss.r,
+    } : null,
     boss: () => (boss && !boss.dead && options.mapId() === mapId ? boss : null),
     hit(enemy: EnemyState) {
       if (!enemy.generatedBoss) return false;
       if (enemy === boss && !boss.dead && options.mapId() === mapId) {
-        pendingHits = Math.min(20, pendingHits + 1);
-        if (pendingHits === 1) flushAt = options.serverNow() / 1000 + 0.05;
+        pendingHits = Math.min(100, pendingHits + 1);
+        if (pendingHits === 1) flushAt = options.serverNow() / 1000 + 0.25;
       }
       return true;
     },

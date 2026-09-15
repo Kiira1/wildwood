@@ -7,7 +7,8 @@ function harness() {
   const state = createGameBootstrap();
   let map = "endless_1",
     now = 10000;
-  let available = true;
+  let available = true, completed = 0;
+  const revealPortal = vi.fn(() => true);
   const row = {
     key: "endless_1:root",
     mapId: map,
@@ -27,7 +28,8 @@ function harness() {
   );
   const controller = createProceduralBossController({
     mapId: () => map,
-    state: () => ({ boss: available ? { ...row, mapId: map } : null }),
+    state: () => ({ boss: available ? { ...row, mapId: map } : null, ready: available, completed }),
+    revealPortal,
     serverNow: () => now,
     enemies: state.enemies,
     player: state.player,
@@ -45,6 +47,8 @@ function harness() {
     damagePlayer,
     burst,
     shot,
+    revealPortal,
+    setCompleted: (value: number) => { completed = value; },
     setAvailable: (value: boolean) => {
       available = value;
     },
@@ -66,7 +70,7 @@ describe("generic boss runtime", () => {
     const boss = h.controller.boss()!;
     expect(h.controller.hit(boss)).toBe(true);
     expect(boss.hp).toBe(1000);
-    h.advance(60);
+    h.advance(260);
     expect(h.hit).toHaveBeenCalledWith(
       "endless_1",
       "endless_1:root",
@@ -101,18 +105,18 @@ describe("generic boss runtime", () => {
     const old = h.controller.boss()!;
     h.controller.hit(old);
     h.setAvailable(false);
-    h.advance(60);
+    h.advance(260);
     expect(old.dead).toBe(true);
     expect(h.controller.boss()).toBeNull();
     h.setAvailable(true);
     h.row.key = "endless_1:other-instance";
-    h.advance(60);
+    h.advance(260);
     expect(h.controller.boss()).not.toBe(old);
     expect(h.hit).not.toHaveBeenCalled();
     h.setMap("endless_2");
     expect(h.controller.boss()).toBeNull();
     h.controller.hit(h.enemies.at(-1)!);
-    h.advance(60);
+    h.advance(260);
     expect(h.hit).not.toHaveBeenCalled();
   });
   it("requires a full visible windup after entry, suspension, and clock corrections", () => {
@@ -135,4 +139,39 @@ describe("generic boss runtime", () => {
     for (let i = 0; i < 14; i++) h.advance(100);
     expect(h.damagePlayer).toHaveBeenCalledTimes(3);
   });
+});
+
+it("reveals a newly earned portal once, waits through death, and ignores initial saved unlocks", () => {
+  const h = harness();
+  h.controller.update(.016);
+  h.player.hp = 0;
+  h.row.hp = 0;
+  h.setCompleted(1);
+  h.controller.update(.016);
+  expect(h.revealPortal).not.toHaveBeenCalled();
+  h.player.hp = 100;
+  h.controller.update(.016);
+  h.controller.update(.016);
+  expect(h.revealPortal).toHaveBeenCalledOnce();
+  const loaded = harness();
+  loaded.setCompleted(1);
+  loaded.controller.update(.016);
+  expect(loaded.revealPortal).not.toHaveBeenCalled();
+});
+it("batches projectile hits and exposes a map-instance-scoped remote visual target", () => {
+  const h = harness();
+  h.controller.update(.016);
+  const boss = h.controller.boss()!;
+  expect(h.controller.remoteTarget()).toMatchObject({ kind: "procedural:endless_1:root", encounter: 1n, alive: true });
+  for (let i = 0; i < 5; i++) {
+    h.controller.hit(boss);
+    h.advance(50);
+  }
+  expect(h.hit).toHaveBeenCalledOnce();
+  expect(h.hit.mock.calls[0][3]).toBe(5);
+  h.row.hp = 0;
+  h.controller.update(.016);
+  expect(h.controller.remoteTarget()?.alive).toBe(false);
+  h.setMap("endless_2");
+  expect(h.controller.remoteTarget()).toBeNull();
 });

@@ -54,6 +54,8 @@ export type EnemyShot = Circle & {
 };
 
 export type EnemyState = Circle & {
+  displayName?: string;
+  hideStatus?: boolean;
   definition?: EnemyDefinition;
   generatedBoss?: boolean;
   isBoss?: false;

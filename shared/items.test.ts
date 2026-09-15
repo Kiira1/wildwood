@@ -1,3 +1,4 @@
+import { BLACK_BOOTS } from "./items";
 import { describe, expect, it } from "vitest";
 import {
   BASIC_PAPER_HAT,
@@ -65,7 +66,7 @@ describe("equipment catalog", () => {
     expect(SNOW_BOSS_DROP_ITEM_IDS).toEqual([FROST_BOW, FROST_ARMOR]);
     expect(LAVA_DROP_ITEM_IDS).toEqual([FIRE_METAL_HELMET, MAGMA_ARMOR]);
     expect(LAVA_BOSS_DROP_ITEM_IDS).toEqual([LAVA_BOW]);
-    expect(INFERNAL_DROP_ITEM_IDS).toEqual([DARK_METAL_HELMET, NIGHT_BOW, FIRE_METAL_BOW]);
+    expect(INFERNAL_DROP_ITEM_IDS).toEqual([DARK_METAL_HELMET, BLACK_BOOTS, NIGHT_BOW, FIRE_METAL_BOW]);
     expect(FOREST_ITEM_DROP_DENOMINATOR).toBe(25);
     expect(DESERT_ITEM_DROP_DENOMINATOR).toBe(50);
     expect(SNOW_ITEM_DROP_DENOMINATOR).toBe(50);

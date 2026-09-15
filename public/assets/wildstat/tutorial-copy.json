@@ -1,0 +1,19 @@
+{
+  "moveTitle": "Movement",
+  "moveTouchHint": "Drag to move",
+  "moveKeyboardHint": "Move with WASD or arrow keys",
+  "firstEnemyTitle": "Defeat the enemy slime",
+  "combatHint": "Move close to attack automatically",
+  "regenEnemyTitle": "Different enemies reward different stats",
+  "damageRewardTitle": "You now have",
+  "damageRewardHint": "+1 damage",
+  "regenRewardTitle": "And",
+  "regenRewardHint": "One last tip...",
+  "deathTitle": "If you die…",
+  "deathHint": "You keep your stats and return to spawn.",
+  "completeTitle": "Complete",
+  "completeHint": "Teleporting you out now...",
+  "profileTitle": "Tap yourself to see your stats",
+  "profileHint": "Close the window when you’re ready.",
+  "usernameTitle": "Choose a username"
+}

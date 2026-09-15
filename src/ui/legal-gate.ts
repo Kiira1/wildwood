@@ -4,8 +4,6 @@ type LegalGateElements = {
   panel: HTMLElement;
   ageSlider: HTMLInputElement;
   ageOutput: HTMLOutputElement;
-  agreement: HTMLInputElement;
-  termsLink: HTMLAnchorElement;
   continueButton: HTMLButtonElement;
   status: HTMLElement;
 };
@@ -25,8 +23,6 @@ export function legalGateElements(documentValue = document): LegalGateElements {
     panel: get("legalGatePanel"),
     ageSlider: get("legalAgeSlider"),
     ageOutput: get<HTMLOutputElement>("legalAgeOutput"),
-    agreement: get<HTMLInputElement>("legalTermsAgreement"),
-    termsLink: get<HTMLAnchorElement>("legalTermsLink"),
     continueButton: get<HTMLButtonElement>("legalContinueBtn"),
     status: get("legalGateStatus"),
   };
@@ -50,18 +46,14 @@ export function createLegalGateController(
     elements.ageOutput.textContent = ageSelected
       ? age >= AGE_SLIDER_MAX ? `${AGE_SLIDER_MAX}+` : String(age)
       : "";
-    elements.agreement.disabled = !eligible || pending;
-    if (!eligible) elements.agreement.checked = false;
-    elements.continueButton.disabled = pending || !eligible || !elements.agreement.checked;
+    elements.continueButton.disabled = pending || !eligible;
     elements.continueButton.textContent = pending ? "Saving…" : "Continue";
     elements.status.classList.toggle("is-blocked", ageSelected && !eligible);
     elements.status.textContent = statusOverride || (!ageSelected
       ? "Select your age to continue."
       : !eligible
         ? `WildStat is currently available to players age ${MINIMUM_PLAYER_AGE} and older.`
-        : !elements.agreement.checked
-          ? "Review and agree to the Terms to continue."
-          : "");
+        : "");
   }
 
   async function accept() {
@@ -86,31 +78,18 @@ export function createLegalGateController(
     render();
   }
 
-  function onAgreementChange() {
-    statusOverride = "";
-    render();
-  }
-
-  function onTermsLinkClick(event: Event) {
-    event.stopPropagation();
-  }
-
   function onContinue() {
     void accept();
   }
 
   elements.ageSlider.addEventListener("input", onAgeInput);
   elements.ageSlider.addEventListener("click", onAgeInput);
-  elements.agreement.addEventListener("change", onAgreementChange);
-  elements.termsLink.addEventListener("click", onTermsLinkClick);
   elements.continueButton.addEventListener("click", onContinue);
 
   return {
     dispose() {
       elements.ageSlider.removeEventListener("input", onAgeInput);
       elements.ageSlider.removeEventListener("click", onAgeInput);
-      elements.agreement.removeEventListener("change", onAgreementChange);
-      elements.termsLink.removeEventListener("click", onTermsLinkClick);
       elements.continueButton.removeEventListener("click", onContinue);
     },
     hide() { elements.panel.hidden = true; },

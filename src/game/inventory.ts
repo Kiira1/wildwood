@@ -8,6 +8,9 @@ import {
   itemFitsEquipmentSlot,
   INFERNAL_DROP_ITEM_IDS,
   SAMURAI_DROP_ITEM_IDS,
+  WATER_DROP_ITEM_IDS,
+  CLOUDSPIRE_DROP_ITEM_IDS,
+  MOONFEN_DROP_ITEM_IDS,
   LAVA_BOSS_DROP_ITEM_IDS,
   LAVA_DROP_ITEM_IDS,
   MAX_FOREST_ITEM_COUNT,
@@ -259,9 +262,9 @@ export function normaliseInventory(itemIds: unknown, equippedFeet: unknown, equi
     Array(Math.min(MAX_FOREST_ITEM_COUNT, requested.filter((requestedId) => canonicalItemId(requestedId) === itemId).length)).fill(itemId));
   const infernalDropItems = INFERNAL_DROP_ITEM_IDS.flatMap((itemId) =>
     Array(Math.min(MAX_FOREST_ITEM_COUNT, requested.filter((requestedId) => canonicalItemId(requestedId) === itemId).length)).fill(itemId));
-  const samuraiDropItems = SAMURAI_DROP_ITEM_IDS.flatMap((itemId) =>
+  const laterMapDropItems = [...WATER_DROP_ITEM_IDS, ...SAMURAI_DROP_ITEM_IDS, ...CLOUDSPIRE_DROP_ITEM_IDS, ...MOONFEN_DROP_ITEM_IDS].flatMap((itemId) =>
     Array(Math.min(MAX_FOREST_ITEM_COUNT, requested.filter((requestedId) => canonicalItemId(requestedId) === itemId).length)).fill(itemId));
-  const items = [...STARTER_ITEM_IDS, ...developerItems, ...(hasBoots ? [TRAILBLAZER_BOOTS] : []), ...forestDropItems, ...desertDropItems, ...snowDropItems, ...snowBossDropItems, ...lavaDropItems, ...infernalDropItems, ...samuraiDropItems];
+  const items = [...STARTER_ITEM_IDS, ...developerItems, ...(hasBoots ? [TRAILBLAZER_BOOTS] : []), ...forestDropItems, ...desertDropItems, ...snowDropItems, ...snowBossDropItems, ...lavaDropItems, ...infernalDropItems, ...laterMapDropItems];
   const headItems = items.filter((itemId) => itemDefinition(itemId)?.slot === "HEAD");
   const chestItems = items.filter((itemId) => itemDefinition(itemId)?.slot === "CHEST");
   const handItems = items.filter((itemId) => itemDefinition(itemId)?.slot === "HAND");
@@ -273,7 +276,7 @@ export function normaliseInventory(itemIds: unknown, equippedFeet: unknown, equi
     ? ""
     : typeof equippedHead === "string" && headItems.includes(equippedHead) ? equippedHead : BASIC_PAPER_HAT;
   const savedChest = typeof equippedChest === "string" && chestItems.includes(equippedChest) ? equippedChest : "";
-  const savedFeet = hasBoots && equippedFeet === TRAILBLAZER_BOOTS ? TRAILBLAZER_BOOTS : "";
+  const savedFeet = typeof equippedFeet === "string" && items.includes(equippedFeet) && itemDefinition(equippedFeet)?.slot === "FEET" ? equippedFeet : "";
   const resolvedRightHand = savedRightHand || (!handStateWasSaved && !savedLeftHand ? STARTER_STONE : "");
   const resolvedLeftHand = savedRightHand ? "" : savedLeftHand;
   const ownedItemIds = new Set(items);

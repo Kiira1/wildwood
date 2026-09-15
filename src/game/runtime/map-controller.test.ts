@@ -97,6 +97,7 @@ function portalArrivalHarness(destinationArrival: { x: number; y: number }) {
   return {
     changeMap, controller, currentMapId: () => currentMapId, desertMapId, player, markPortalCutsceneSeen,
     bootstrap, prepareMapAssets,
+    setMap: (value: MapId) => { currentMapId = value; },
     setUnlocked: (value: boolean) => { unlocked = value; },
     setServerMap: (value: typeof serverMap) => { serverMap = value; },
   };
@@ -430,4 +431,17 @@ it("bounds portal waits even when the map reducer never acknowledges", async () 
     await vi.advanceTimersByTimeAsync(30_000);
     await result;
   } finally { vi.useRealTimers(); }
+});
+
+it("reveals the next Endless portal without submitting an unsupported campaign cutscene key", () => {
+  vi.stubGlobal("document", { body: { classList: { add: vi.fn(), remove: vi.fn() } } });
+  const h = portalArrivalHarness({ x: 300, y: 400 });
+  h.setMap("endless_40");
+  expect(h.controller.startProceduralPortalCutscene()).toBe(true);
+  expect(h.controller.cutscenePortal().destination).toBe("endless_41");
+  expect(h.prepareMapAssets).toHaveBeenCalledWith("endless_41");
+  expect(h.controller.startProceduralPortalCutscene()).toBe(false);
+  h.controller.updatePortalCutscene(20);
+  expect(h.controller.isCutsceneActive()).toBe(false);
+  expect(h.markPortalCutsceneSeen).not.toHaveBeenCalled();
 });

@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tutorial text</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#111916;color:#fff;font:16px/1.5 system-ui,sans-serif}main{max-width:850px;margin:auto;padding:28px 20px 110px}h1{font-size:28px;margin:0}h2{font-size:19px;margin:0 0 16px}p{color:#c8d5cd;margin:8px 0 24px}section{padding:24px 0;border-bottom:1px solid #405046}label{display:block;font-size:14px;color:#c8d5cd;margin:14px 0 6px}input,textarea{width:100%;border:1px solid #64776b;border-radius:7px;padding:12px;background:#1d2923;color:white;font:16px/1.4 system-ui}textarea{resize:vertical;min-height:70px}input:focus,textarea:focus{outline:2px solid #87c79f;outline-offset:2px}.savebar{position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:center;align-items:center;gap:16px;padding:16px;background:#18261f;border-top:1px solid #405046}button{background:#a93632;color:white;font:700 16px system-ui;border:2px solid #471612;border-radius:8px;padding:12px 28px;min-height:48px;cursor:pointer}button:disabled{opacity:.6;cursor:default}#status{font-size:14px;max-width:340px}code{color:#fff}.preview{padding:24px;text-align:center;background:#31945b;border-radius:8px;margin-bottom:18px}.preview strong{display:block;font-weight:900;font-size:24px}.preview span{display:block;margin-top:8px;font-weight:700}.preview strong,.preview span{text-shadow:0 2px 3px #102518,1px 0 #102518,-1px 0 #102518}small{color:#b5c5bb}a{color:#b4dec2}
+</style>
+<main>
+<h1>Tutorial text</h1>
+<p>Edit each message, then save. Your wording becomes part of the game’s next release.</p>
+<div class="preview" aria-label="Text preview"><strong id="previewTitle">Try moving</strong><span id="previewHint">Drag to move</span></div>
+<small>Preview shows the field you’re editing. Explanations appear together at the top center of the map.</small>
+<form id="editor"></form>
+</main>
+<div class="savebar"><button id="save" type="submit" form="editor" disabled>Save changes</button><span id="status" role="status">Loading…</span></div>
+<script>if (location.protocol === "file:") location.replace("http://127.0.0.1:4175/");</script>
+<script type="module">
+if (location.protocol !== "file:") {
+const groups=[
+ ['1 · Movement',['moveTitle','Heading'],['moveTouchHint','Touch instruction'],['moveKeyboardHint','Keyboard instruction']],
+ ['2 · Your stats',['profileTitle','Heading'],['profileHint','Explanation']],
+ ['3 · First enemy',['firstEnemyTitle','Heading'],['combatHint','Combat instruction']],
+ ['4 · Regeneration enemy',['regenEnemyTitle','Heading']],
+ ['5 · Death lesson',['deathTitle','Heading'],['deathHint','Explanation']],
+ ['Tutorial complete',['completeTitle','Heading'],['completeHint','Explanation']],
+ ['Username',['usernameTitle','Heading']],
+];
+const editor=document.querySelector('#editor'),save=document.querySelector('#save'),status=document.querySelector('#status');
+let dirty=false,loaded={};
+try{
+ const response=await fetch('/copy');if(!response.ok)throw Error('Could not load tutorial text.');loaded=await response.json();
+ for(const [title,...fields] of groups){
+  const section=document.createElement('section'),heading=document.createElement('h2');heading.textContent=title;section.append(heading);
+  for(const [key,label] of fields){
+   const caption=document.createElement('label');caption.textContent=label;caption.htmlFor=key;
+   const input=document.createElement(key.endsWith('Title')?'input':'textarea');input.name=input.id=key;input.value=loaded[key];input.maxLength=240;input.required=true;
+   const preview=()=>{const titleKey=fields.find(([k])=>k.endsWith('Title'))?.[0],hintKey=key.endsWith('Title')?fields.find(([k])=>!k.endsWith('Title'))?.[0]:key;
+    document.querySelector('#previewTitle').textContent=(editor.elements[titleKey]?.value||loaded[titleKey]||'').replaceAll('{before}','4').replaceAll('{after}','5');
+    document.querySelector('#previewHint').textContent=editor.elements[hintKey]?.value||loaded[hintKey]||(title==='4 · Regeneration enemy'?editor.elements.combatHint.value:'');};
+   input.addEventListener('focus',preview);input.addEventListener('input',()=>{dirty=true;save.disabled=false;status.textContent='Unsaved changes';preview();});section.append(caption,input);
+  }editor.append(section);
+ }status.textContent='Ready to edit';
+}catch(error){status.textContent=error.message;}
+editor.addEventListener('submit',async event=>{
+ event.preventDefault();save.disabled=true;status.textContent='Saving…';
+ try{const data={...loaded,...Object.fromEntries(new FormData(editor))};const response=await fetch('/copy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});const result=await response.json();if(!response.ok)throw Error(result.error||'Save failed.');dirty=false;status.textContent='Saved to the game. Refresh it to see your wording.';}
+ catch(error){status.textContent=error.message;save.disabled=false;}
+});
+window.addEventListener('beforeunload',event=>{if(dirty){event.preventDefault();event.returnValue='';}});
+}
+</script>
+</html>

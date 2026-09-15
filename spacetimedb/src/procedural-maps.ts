@@ -1,6 +1,6 @@
 import { table, t, SenderError } from "spacetimedb/server";
 import {
-  generateMap,
+  proceduralMapCore,
   generatedBossStats,
   isProceduralMap,
   proceduralMapNumber,
@@ -130,7 +130,7 @@ export function ensureProceduralBoss(
       ctx.timestamp.microsSinceUnixEpoch < current.respawnAtMicros)
   )
     return current;
-  const maxHp = generatedBossStats(generateMap(mapId)).hp;
+  const maxHp = generatedBossStats(proceduralMapCore(mapId)).hp;
   const next = {
     key,
     mapId,
@@ -146,22 +146,17 @@ export function ensureProceduralBoss(
   else ctx.db.proceduralInstanceBoss.insert(next);
   return next;
 }
-export function acceptedGeneratedHits(
-  requested: number,
-  projectiles: number,
-  intervalMicros: bigint,
-  now: bigint,
-  previous: { windowAt: bigint; hits: number } | null,
-) {
-  const fresh = !previous || now - previous.windowAt >= intervalMicros;
-  return {
-    windowAt: fresh ? now : previous.windowAt,
-    hits: Math.max(
-      0,
-      Math.min(20, requested, projectiles - (fresh ? 0 : previous.hits)),
-    ),
-    priorHits: fresh ? 0 : previous.hits,
-  };
+/** A quarter-second token bucket accepts batches without banking long idle periods. */
+export function acceptedGeneratedBatchHits(requested: number, projectiles: number, intervalMicros: bigint, now: bigint,
+  previous: { windowAt: bigint; hits: number } | null) {
+  const interval = intervalMicros > 0n ? intervalMicros : 1n;
+  const volley = Math.max(1, Math.min(20, projectiles));
+  const capacity = Math.min(100, Math.max(volley, Math.ceil(250_000 / Number(interval)) * volley));
+  const elapsed = previous && now > previous.windowAt ? now - previous.windowAt : 0n;
+  const cycles = elapsed / interval;
+  const priorHits = previous ? Math.max(0, previous.hits - Math.min(100, Number(cycles)) * volley) : 0;
+  return { windowAt: previous ? previous.windowAt + cycles * interval : now,
+    hits: Math.max(0, Math.min(100, requested, capacity - priorHits)), priorHits };
 }
 export function damageProceduralBoss(
   ctx: GameReducerContext,
@@ -181,7 +176,7 @@ export function damageProceduralBoss(
 ) {
   const { mapId } = options;
   if (!isProceduralMap(mapId)) throw new SenderError("Unknown generated map");
-  const map = generateMap(mapId),
+  const map = proceduralMapCore(mapId),
     boss = ensureProceduralBoss(ctx, mapId, options.bossKey);
   if (boss.encounter !== options.encounter || boss.hp <= 0) return;
   if (![options.x, options.y].every(Number.isFinite))
@@ -194,7 +189,7 @@ export function damageProceduralBoss(
   const key = `${options.bossKey}:${ctx.sender.toHexString()}`;
   const previous = ctx.db.proceduralInstanceContribution.key.find(key);
   const continuing = previous?.encounter === boss.encounter ? previous : null;
-  const accepted = acceptedGeneratedHits(
+  const accepted = acceptedGeneratedBatchHits(
     options.hits,
     options.projectiles,
     BigInt(Math.max(1, Math.round(options.attackInterval * 1e6))),
@@ -211,7 +206,8 @@ export function damageProceduralBoss(
     bossKey: options.bossKey,
     identity: ctx.sender,
     encounter: boss.encounter,
-    damage: (continuing?.damage ?? 0) + damage,
+    // Only participation matters for this reward; retain the deployed numeric field.
+    damage: damage > 0 || (continuing?.damage ?? 0) > 0 ? 1 : 0,
     windowAt: accepted.windowAt,
     hits: accepted.priorHits + accepted.hits,
   };
@@ -225,6 +221,7 @@ export function damageProceduralBoss(
       hp === 0 ? ctx.timestamp.microsSinceUnixEpoch + 60_000_000n : 0n,
   });
   if (hp > 0) return;
+  const rewardAmount = generatedBossStats(map).reward.amount * 10;
   for (const row of ctx.db.proceduralInstanceContribution.byBoss.filter(
     options.bossKey,
   )) {
@@ -236,7 +233,7 @@ export function damageProceduralBoss(
       if (progress) ctx.db.proceduralProgress.identity.update(next);
       else ctx.db.proceduralProgress.insert(next);
     }
-    options.reward(row.identity, generatedBossStats(map).reward.amount * 10);
+    options.reward(row.identity, rewardAmount);
   }
 }
 

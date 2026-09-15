@@ -337,25 +337,29 @@ export function createGameSessionController(dependencies: SessionDependencies) {
     dependencies.showGameOver();
   }
 
-  function fadeToWorld(onBlack: () => void) {
+  function fadeToWorld(onBlack: () => void | Promise<void>, durationMs = 180) {
     if (fading) return;
     fading = true;
     const fade = dependencies.fadeElement;
+    fade.style.transitionDuration = `${durationMs}ms`;
     fade.hidden = false;
     void fade.offsetWidth;
     fade.classList.add("is-visible");
-    window.setTimeout(() => {
-      onBlack();
-      snapCameraToPlayer(dependencies.camera, dependencies.player, dependencies.viewport());
-      dependencies.resetPresentationState();
-      requestAnimationFrame(() => {
-        fade.classList.remove("is-visible");
-        window.setTimeout(() => {
-          fade.hidden = true;
-          fading = false;
-        }, 180);
-      });
-    }, 180);
+    window.setTimeout(async () => {
+      try { await onBlack(); }
+      finally {
+        snapCameraToPlayer(dependencies.camera, dependencies.player, dependencies.viewport());
+        dependencies.resetPresentationState();
+        requestAnimationFrame(() => {
+          fade.classList.remove("is-visible");
+          window.setTimeout(() => {
+            fade.hidden = true;
+            fading = false;
+            fade.style.transitionDuration = "";
+          }, durationMs);
+        });
+      }
+    }, durationMs);
   }
 
   return {

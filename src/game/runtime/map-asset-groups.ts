@@ -1,3 +1,4 @@
+import { ONBOARDING_MAP_ID } from "../../../shared/onboarding";
 import { generatedMapContent, withGeneratedMaps } from "../procedural-maps";
 import {
   ADVANCED_LAVA_WASTES_MAP_ID,
@@ -40,6 +41,7 @@ export type MapAssetGroup = {
 
 /** Source-of-truth for every image-backed asset that is gated by the active map. */
 const AUTHORED_MAP_ASSET_GROUPS = {
+  [ONBOARDING_MAP_ID]: { art: ["forestDecor"], enemies: ["Spitter", "Brood"] },
   home_exterior: { art: ["forestDecor", "snowDecor"], enemies: [] },
   [TUTORIAL_FOREST_MAP_ID]: {
     art: ["forestBoss", "forestDecor"],
@@ -102,6 +104,7 @@ export const MAP_ASSET_GROUPS = withGeneratedMaps<MapAssetGroup>(AUTHORED_MAP_AS
 
 /** Map-keyed view consumed by the regular-enemy image loader. */
 export const MAP_ENEMY_SPRITE_GROUPS = withGeneratedMaps<readonly EnemyKind[]>({
+  [ONBOARDING_MAP_ID]: ["Spitter", "Brood"],
   home_exterior: [],
   [TUTORIAL_FOREST_MAP_ID]: MAP_ASSET_GROUPS[TUTORIAL_FOREST_MAP_ID].enemies,
   [BEGINNER_DESERT_MAP_ID]: MAP_ASSET_GROUPS[BEGINNER_DESERT_MAP_ID].enemies,

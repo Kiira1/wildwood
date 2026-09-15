@@ -14,3 +14,11 @@ export function leaderboardWindowRanks(rank: number, total: number) {
   for (let i = start; i <= end; i++) ranks.add(i);
   return [...ranks].sort((a, b) => a - b);
 }
+
+export type LeaderboardPage<Entry> = {
+  entries: Entry[];
+  startRank: number;
+  endRank: number;
+  localRank: number;
+  total: number;
+};

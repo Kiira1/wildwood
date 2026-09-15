@@ -53,12 +53,30 @@ export function readLeaderboardWindow(ctx: Pick<GameViewContext, "db" | "sender"
   const stat = leaderboardStat(requested);
   const rank = ctx.db.leaderboardPosition.identity.find(ctx.sender)?.ranks[LEADERBOARD_STATS.indexOf(stat)] ?? 0;
   const total = ctx.db.leaderboardSize.id.find(0)?.total ?? 0;
+  return readRanks(ctx, stat, leaderboardWindowRanks(rank, total));
+}
+
+function readRanks(ctx: Pick<GameViewContext, "db" | "sender">, stat: string, ranks: number[]) {
   const pages = new Map<number, Identity[]>();
-  return leaderboardWindowRanks(rank, total).flatMap(rank => {
+  return ranks.flatMap(rank => {
     const page = Math.floor((rank - 1) / LEADERBOARD_PAGE_SIZE);
     if (!pages.has(page)) pages.set(page, ctx.db.leaderboardRankPage.key.find(`${stat}:${page}`)?.identities ?? []);
     const identity = pages.get(page)![(rank - 1) % LEADERBOARD_PAGE_SIZE];
     const entry = identity && ctx.db.leaderboardEntry.identity.find(identity);
     return entry ? [{ rank, entry }] : [];
   });
+}
+
+/** Zero starts at the viewer; subsequent requests read at most 100 indexed ranks. */
+export function readLeaderboardPage(ctx: Pick<GameViewContext, "db" | "sender">, requested: string, requestedStart: number, requestedCount: number) {
+  const stat = leaderboardStat(requested);
+  const localRank = ctx.db.leaderboardPosition.identity.find(ctx.sender)?.ranks[LEADERBOARD_STATS.indexOf(stat)] ?? 0;
+  const total = ctx.db.leaderboardSize.id.find(0)?.total ?? 0;
+  const initial = requestedStart === 0;
+  const startRank = initial ? Math.max(1, localRank - 50) : Math.max(1, Math.floor(requestedStart));
+  const count = initial ? localRank > 0 ? 101 : 100 : Math.max(1, Math.min(LEADERBOARD_PAGE_SIZE, Math.floor(requestedCount)));
+  const endRank = Math.min(total, initial && localRank > 0 ? localRank + 50 : startRank + count - 1);
+  const ranks = initial ? leaderboardWindowRanks(localRank, total)
+    : Array.from({ length: Math.max(0, endRank - startRank + 1) }, (_, index) => startRank + index);
+  return { entries: readRanks(ctx, stat, ranks), startRank, endRank, localRank, total };
 }

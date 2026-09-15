@@ -1,3 +1,4 @@
+import { BLACK_BOOTS, BLACK_BOOTS_DROP_DENOMINATOR } from "../../shared/items";
 import { BALANCE_TARGET_MAP_DURATION_STEP_SECONDS } from "../../shared/rules";
 import { isUpgradeableItem, itemUpgradeDurationMs, MAX_ITEM_UPGRADE_LEVEL } from "../../shared/items";
 import { BOSS_TARGET_SECONDS } from "../../shared/progression";
@@ -104,6 +105,7 @@ import {
   MAX_BASE_ATTACKS_PER_SECOND,
   MIN_ATTACK_INTERVAL,
   PLAYER_BASE_HP,
+  PLAYER_BASE_DAMAGE,
   PLAYER_BASE_REGEN,
   PLAYER_PROJECTILE_SPEED,
   PLAYER_SPEED,
@@ -763,6 +765,7 @@ function createMapDefinitions(): BalanceMapDefinition[] {
         { itemId: NIGHT_BOW, denominator: NIGHT_FOREST_BOW_ITEM_DROP_DENOMINATOR, eligible: always },
         { itemId: FIRE_METAL_BOW, denominator: INFERNAL_ITEM_DROP_DENOMINATOR, eligible: always },
         { itemId: DARK_METAL_HELMET, denominator: NIGHT_FOREST_HELMET_ITEM_DROP_DENOMINATOR, eligible: always },
+        { itemId: BLACK_BOOTS, denominator: BLACK_BOOTS_DROP_DENOMINATOR, eligible: always },
       ],
       boss: {
         kind: "gloomroot",
@@ -1724,7 +1727,7 @@ function simulateTrial(
   const state: MutableSimulationState = {
     time: 0,
     mapIndex: 0,
-    stats: { damage: 4, maxHp: PLAYER_BASE_HP, attackRate: DEFAULT_ATTACK_INTERVAL, armor: 0, regen: PLAYER_BASE_REGEN },
+    stats: { damage: PLAYER_BASE_DAMAGE, maxHp: PLAYER_BASE_HP, attackRate: DEFAULT_ATTACK_INTERVAL, armor: 0, regen: PLAYER_BASE_REGEN },
     research: createEmptyResearchRanks(),
     equipped: { head: BASIC_PAPER_HAT, chest: "", weapon: STARTER_STONE },
     ownedItems: new Set([BASIC_PAPER_HAT, STARTER_STONE]),

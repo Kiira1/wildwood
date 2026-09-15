@@ -232,3 +232,19 @@ describe("production generated map reducers", () => {
     );
   });
 });
+
+it("shares the attack budget between cached clients and the new batch endpoint", () => {
+  const f = fixture();
+  f.run(server.changeMap, { mapId: "endless_1", x: 580, y: 617 });
+  f.patch("playerProgress", { damage: 10, attackRate: 1, projectileCount: 1 });
+  f.run(server.prepareProceduralBoss, { mapId: "endless_1" });
+  const boss = f.db.proceduralInstanceBoss.key.find("endless_1:root");
+  f.db.proceduralInstanceBoss.key.update({ ...boss, hp: 10000, maxHp: 10000 });
+  const action = { mapId: "endless_1", bossKey: boss.key, encounter: boss.encounter, hits: 100, x: 4050, y: 4050 };
+  f.run(server.hitProceduralBossBatch, action);
+  const hp = f.db.proceduralInstanceBoss.key.find(boss.key).hp;
+  expect(hp).toBeLessThan(10000);
+  f.run(server.hitProceduralBoss, action);
+  f.run(server.hitProceduralBossBatch, action);
+  expect(f.db.proceduralInstanceBoss.key.find(boss.key).hp).toBe(hp);
+});

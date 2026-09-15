@@ -51,6 +51,7 @@ import CheckpointShardLocationReducer from "./checkpoint_shard_location_reducer"
 import ClaimDailyGemBonusReducer from "./claim_daily_gem_bonus_reducer";
 import ClaimDeveloperItemGiftReducer from "./claim_developer_item_gift_reducer";
 import ClaimGuestAccountReducer from "./claim_guest_account_reducer";
+import CompleteOnboardingStepReducer from "./complete_onboarding_step_reducer";
 import ConfigureGemCommerceReducer from "./configure_gem_commerce_reducer";
 import ConfigureShardCoordinatorReducer from "./configure_shard_coordinator_reducer";
 import ConfigureShardingReducer from "./configure_sharding_reducer";
@@ -92,10 +93,12 @@ import DevTeleportEndlessReducer from "./dev_teleport_endless_reducer";
 import DevUpdatePlayerSaveReducer from "./dev_update_player_save_reducer";
 import EnterRegionalWorldReducer from "./enter_regional_world_reducer";
 import EnterWorldReducer from "./enter_world_reducer";
+import EnterWorldWithTutorialReducer from "./enter_world_with_tutorial_reducer";
 import FriendActionReducer from "./friend_action_reducer";
 import FulfillGemPurchaseReducer from "./fulfill_gem_purchase_reducer";
 import GuildInviteActionReducer from "./guild_invite_action_reducer";
 import HitProceduralBossReducer from "./hit_procedural_boss_reducer";
+import HitProceduralBossBatchReducer from "./hit_procedural_boss_batch_reducer";
 import IngestGemStoreEventReducer from "./ingest_gem_store_event_reducer";
 import InstallShardPlayerReducer from "./install_shard_player_reducer";
 import JoinGuildReducer from "./join_guild_reducer";
@@ -157,6 +160,7 @@ import UpdateMovementStateReducer from "./update_movement_state_reducer";
 import * as GetChatHistoryProcedure from "./get_chat_history_procedure";
 import * as GetGuildHubProcedure from "./get_guild_hub_procedure";
 import * as GetGuildReplayProcedure from "./get_guild_replay_procedure";
+import * as GetLeaderboardPageProcedure from "./get_leaderboard_page_procedure";
 import * as GetLeaderboardWindowProcedure from "./get_leaderboard_window_procedure";
 import * as GetModerationHistoryProcedure from "./get_moderation_history_procedure";
 import * as GetSocialChatHistoryProcedure from "./get_social_chat_history_procedure";
@@ -209,6 +213,7 @@ import MyGemWalletRow from "./my_gem_wallet_table";
 import MyInventoryCapacityRow from "./my_inventory_capacity_table";
 import MyItemGiftsRow from "./my_item_gifts_table";
 import MyMapShardRouteRow from "./my_map_shard_route_table";
+import MyOnboardingRow from "./my_onboarding_table";
 import MyPlayerBlocksRow from "./my_player_blocks_table";
 import MyProceduralBossRow from "./my_procedural_boss_table";
 import MySocialHubRow from "./my_social_hub_table";
@@ -1031,6 +1036,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, MyMapShardRouteRow),
+  myOnboarding: __table({
+    name: 'my_onboarding',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MyOnboardingRow),
   myPlayerBlocks: __table({
     name: 'my_player_blocks',
     indexes: [
@@ -1087,6 +1099,7 @@ const reducersSchema = __reducers(
   __reducerSchema("claim_daily_gem_bonus", ClaimDailyGemBonusReducer),
   __reducerSchema("claim_developer_item_gift", ClaimDeveloperItemGiftReducer),
   __reducerSchema("claim_guest_account", ClaimGuestAccountReducer),
+  __reducerSchema("complete_onboarding_step", CompleteOnboardingStepReducer),
   __reducerSchema("configure_gem_commerce", ConfigureGemCommerceReducer),
   __reducerSchema("configure_shard_coordinator", ConfigureShardCoordinatorReducer),
   __reducerSchema("configure_sharding", ConfigureShardingReducer),
@@ -1128,10 +1141,12 @@ const reducersSchema = __reducers(
   __reducerSchema("dev_update_player_save", DevUpdatePlayerSaveReducer),
   __reducerSchema("enter_regional_world", EnterRegionalWorldReducer),
   __reducerSchema("enter_world", EnterWorldReducer),
+  __reducerSchema("enter_world_with_tutorial", EnterWorldWithTutorialReducer),
   __reducerSchema("friend_action", FriendActionReducer),
   __reducerSchema("fulfill_gem_purchase", FulfillGemPurchaseReducer),
   __reducerSchema("guild_invite_action", GuildInviteActionReducer),
   __reducerSchema("hit_procedural_boss", HitProceduralBossReducer),
+  __reducerSchema("hit_procedural_boss_batch", HitProceduralBossBatchReducer),
   __reducerSchema("ingest_gem_store_event", IngestGemStoreEventReducer),
   __reducerSchema("install_shard_player", InstallShardPlayerReducer),
   __reducerSchema("join_guild", JoinGuildReducer),
@@ -1195,6 +1210,7 @@ const proceduresSchema = __procedures(
   __procedureSchema("get_chat_history", GetChatHistoryProcedure.params, GetChatHistoryProcedure.returnType),
   __procedureSchema("get_guild_hub", GetGuildHubProcedure.params, GetGuildHubProcedure.returnType),
   __procedureSchema("get_guild_replay", GetGuildReplayProcedure.params, GetGuildReplayProcedure.returnType),
+  __procedureSchema("get_leaderboard_page", GetLeaderboardPageProcedure.params, GetLeaderboardPageProcedure.returnType),
   __procedureSchema("get_leaderboard_window", GetLeaderboardWindowProcedure.params, GetLeaderboardWindowProcedure.returnType),
   __procedureSchema("get_moderation_history", GetModerationHistoryProcedure.params, GetModerationHistoryProcedure.returnType),
   __procedureSchema("get_social_chat_history", GetSocialChatHistoryProcedure.params, GetSocialChatHistoryProcedure.returnType),

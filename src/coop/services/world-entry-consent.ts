@@ -8,5 +8,5 @@ export async function enterWorldAfterConsent(
   if (!isCurrent()) throw new Error('Session changed. Try again.');
   if (!await syncConsent(connection)) throw new Error('Review and accept the WildStat Terms to continue.');
   if (!isCurrent()) throw new Error('Session changed. Try again.');
-  await connection.reducers.enterWorld({ tabId });
+  await connection.reducers.enterWorldWithTutorial({ tabId, forceTakeover: false });
 }

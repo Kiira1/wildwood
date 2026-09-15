@@ -91,15 +91,16 @@ export function proceduralPalette(index: number) {
     accent: hslHex(hue, saturation, 65),
   };
 }
-export function generateMap(id: ProceduralMapId): GeneratedMap {
+export function proceduralMapCore(id: string) {
   const number = proceduralMapNumber(id);
   if (number === null) throw new RangeError("Invalid generated map");
+  return { number, tier: Math.min(60, PROCEDURAL_FIRST_TIER + number - 1),
+    arrival: { x: 580, y: 770 }, boss: { x: 4050, y: 4050 } };
+}
+export function generateMap(id: ProceduralMapId): GeneratedMap {
+  const { number, tier, arrival, boss } = proceduralMapCore(id);
   const seed = Math.imul(number, 2654435761) ^ PROCEDURAL_MAP_VERSION;
   const random = mapRandom(seed);
-  // Float32 saves and combat must remain finite. Further maps still vary at the stat ceiling.
-  const tier = Math.min(60, PROCEDURAL_FIRST_TIER + number - 1);
-  const arrival = { x: 580, y: 770 };
-  const boss = { x: 4050, y: 4050 };
   const slots = [
     { x: 1150, y: 1250 },
     { x: 3050, y: 1100 },
@@ -184,7 +185,7 @@ export function generateMap(id: ProceduralMapId): GeneratedMap {
   };
 }
 export function generatedEnemyStats(
-  map: GeneratedMap,
+  map: Pick<GeneratedMap, "tier">,
   lane: ForestProgressionLane,
 ) {
   const reward = desertLaneRewardValue(lane, map.tier);
@@ -193,7 +194,7 @@ export function generatedEnemyStats(
     campaignEnemyRewardMultiplier(map.tier);
   return { ...desertLaneCombatValue(lane, map.tier), reward };
 }
-export function generatedBossStats(map: GeneratedMap) {
+export function generatedBossStats(map: Pick<GeneratedMap, "tier">) {
   return {
     hp: desertBossHealthAt(map.tier),
     damage: bossHeavyHitAt(map.tier),

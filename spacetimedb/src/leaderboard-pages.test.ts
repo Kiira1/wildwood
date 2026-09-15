@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { crystalFixture, identity } from "../../tests/helpers/crystal-hollows-fixture";
-import { readLeaderboardWindow, writeLeaderboardPages } from "./leaderboard-pages";
+import { readLeaderboardPage, readLeaderboardWindow, writeLeaderboardPages } from "./leaderboard-pages";
 import { LEADERBOARD_STATS } from "../../shared/leaderboard-window";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
@@ -25,6 +25,21 @@ describe("indexed leaderboard windows", () => {
     if (total > 104) expect(rows.slice(3).map(row => row.rank)).toEqual(Array.from({ length: 101 }, (_, n) => mine - 50 + n));
     expect(pageRead.mock.calls.length).toBeLessThanOrEqual(3);
     expect(entryRead.mock.calls.length).toBeLessThanOrEqual(104);
+  });
+  it("bounds arbitrary pages to 100 lookups and returns the actual population boundary", () => {
+    const entryRead = vi.fn((rank: number) => ({ identity: rank }));
+    const pageRead = vi.fn((key: string) => ({ identities: Array.from({ length: 100 }, (_, i) => Number(key.split(":")[1]) * 100 + i + 1) }));
+    const ctx = { sender: 50_000, db: {
+      leaderboardPosition: { identity: { find: () => ({ ranks: LEADERBOARD_STATS.map(() => 50_000) }) } },
+      leaderboardSize: { id: { find: () => ({ total: 100_000 }) } },
+      leaderboardRankPage: { key: { find: pageRead } }, leaderboardEntry: { identity: { find: entryRead } },
+    } };
+    const page = readLeaderboardPage(ctx as never, "regen", 49951, 100000);
+    expect(page).toMatchObject({ startRank: 49951, endRank: 50050, localRank: 50000, total: 100000 });
+    expect(page.entries).toHaveLength(100);
+    expect(pageRead).toHaveBeenCalledTimes(2); expect(entryRead).toHaveBeenCalledTimes(100);
+    expect(readLeaderboardPage(ctx as never, "regen", 99991, 100).entries).toHaveLength(10);
+    expect(readLeaderboardPage(ctx as never, "regen", 100001, 100).entries).toHaveLength(0);
   });
   it("keeps stat-specific ranks, breaks identical ties by identity, and removes deleted players", () => {
     const f = crystalFixture();

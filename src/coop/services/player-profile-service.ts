@@ -1,6 +1,6 @@
 import { withRequestDeadline } from "./request-deadline";
 import { unsubscribeIfActive, type ActiveSubscription } from "./subscription-handoff";
-import type { LeaderboardStat } from "../../../shared/leaderboard-window";
+import type { LeaderboardStat, LeaderboardPage } from "../../../shared/leaderboard-window";
 import { Identity } from "spacetimedb";
 import { tables, type DbConnection } from "../../module_bindings";
 import { createEmptyResearchRanks } from "../../../shared/research";
@@ -72,6 +72,7 @@ export function createPlayerProfileService(dependencies: PlayerProfileServiceDep
   const playerProfileLoads = new Map<string, Promise<PlayerProfileData | null>>();
   let leaderboardGeneration = 0;
   const leaderboardRequests = new Map<LeaderboardStat, Promise<LeaderboardEntry[]>>();
+  const leaderboardPages = new Map<string, Promise<LeaderboardPage<LeaderboardEntry>>>();
   let activeIdentity = "";
   let activeSubscription: ActiveSubscription | null = null;
   let profileGeneration = 0;
@@ -234,6 +235,27 @@ export function createPlayerProfileService(dependencies: PlayerProfileServiceDep
     return request;
   }
 
+  function loadLeaderboardPage(stat: LeaderboardStat, startRank = 0, count = 100): Promise<LeaderboardPage<LeaderboardEntry>> {
+    const key = `${stat}:${startRank}:${count}`;
+    const existing = leaderboardPages.get(key);
+    if (existing) return existing;
+    const connection = dependencies.connection();
+    if (!connection?.isActive) return Promise.reject(new Error("Not connected. Try again."));
+    const generation = leaderboardGeneration, identity = dependencies.localIdentity();
+    const request = withRequestDeadline(connection.procedures.getLeaderboardPage({ stat, startRank, count })).then(page => {
+      if (generation !== leaderboardGeneration || connection !== dependencies.connection() || identity !== dependencies.localIdentity()) throw new Error("Session changed. Reopen the leaderboard.");
+      const entries = page.entries.map(({ rank, entry: row }) => {
+        const entry = { ...leaderboardEntryFromRow(row), rank };
+        dependencies.directory.rememberPresentation({ identity: entry.identity, identityValue: row.identity,
+          displayName: entry.name, profileIcon: row.profileIcon, skinTone: entry.skinTone, gender: entry.gender, isGuest: entry.isGuest });
+        return entry;
+      });
+      return { ...page, entries };
+    }).finally(() => { if (leaderboardPages.get(key) === request) leaderboardPages.delete(key); });
+    leaderboardPages.set(key, request);
+    return request;
+  }
+
   return {
     api: {
       leaderboardEntries() {
@@ -243,6 +265,7 @@ export function createPlayerProfileService(dependencies: PlayerProfileServiceDep
         }));
       },
       loadLeaderboardSnapshot,
+      loadLeaderboardPage,
       playerProfile(identity = dependencies.localIdentity()) {
         const profile = cachedPlayerProfile(identity);
         return profile
@@ -273,6 +296,7 @@ export function createPlayerProfileService(dependencies: PlayerProfileServiceDep
       releasePlayerProfile();
       leaderboardGeneration++;
       leaderboardRequests.clear();
+      leaderboardPages.clear();
       leaderboardEntries.clear();
       profilePlayerMaps.clear();
       playerProfileLoads.clear();

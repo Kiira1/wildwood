@@ -40,11 +40,13 @@ export function itemInspectionButtonLabel(label: string) {
 /** Standalone item window shared by inventory and future item-bearing screens. */
 export function createItemInspectionController(elements: ItemInspectionElements) {
   let returnFocus: HTMLElement | null = null;
+  const tools = elements.panel.querySelector<HTMLElement>(".item-inspection-tools")!;
 
   function close() {
     if (elements.panel.hidden) return;
     elements.panel.hidden = true;
     elements.content.replaceChildren();
+    tools.replaceChildren();
     const focusTarget = returnFocus;
     returnFocus = null;
     if (focusTarget?.isConnected) focusTarget.focus({ preventScroll: true });
@@ -58,10 +60,13 @@ export function createItemInspectionController(elements: ItemInspectionElements)
       returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     }
 
-    elements.title.textContent = itemDisplayName(item.id, level);
+    elements.title.textContent = itemInspectionButtonLabel(itemDisplayName(item.id, level));
     const icon = document.createElement("div");
     icon.className = "item-inspection-icon";
     icon.innerHTML = itemArtMarkup(item.id, false);
+    const preview = document.createElement("div");
+    preview.className = "item-inspection-preview";
+    preview.append(elements.title, icon);
 
     const copy = document.createElement("div");
     copy.className = "item-inspection-copy";
@@ -88,6 +93,7 @@ export function createItemInspectionController(elements: ItemInspectionElements)
 
     const actionRow = document.createElement("div");
     actionRow.className = "item-inspection-actions";
+    tools.replaceChildren();
     for (const action of request.actions ?? []) {
       const button = document.createElement("button");
       button.type = "button";
@@ -105,10 +111,11 @@ export function createItemInspectionController(elements: ItemInspectionElements)
         try { await action.onActivate(); }
         finally { button.disabled = action.disabled === true; }
       });
-      actionRow.append(button);
+      if (action.kind === "DESTROY") tools.append(button);
+      else actionRow.append(button);
     }
 
-    elements.content.replaceChildren(icon, copy, actionRow);
+    elements.content.replaceChildren(preview, copy, actionRow);
     elements.panel.hidden = false;
     elements.back.focus({ preventScroll: true });
     return true;

@@ -182,7 +182,7 @@ export function createProceduralMapService(port: ReducerPort) {
       )
         return;
       port.sendReducer("generated boss hit", (conn) =>
-        conn.reducers.hitProceduralBoss({
+        conn.reducers.hitProceduralBossBatch({
           mapId,
           bossKey,
           encounter,

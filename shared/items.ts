@@ -6,8 +6,24 @@ export const SUPERIOR_GOLDEN_HELMET = "superior_golden_helmet";
 export const WOOD_FULL_HELM = "wood_full_helm";
 export const FIRE_METAL_HELMET = "fire_metal_helmet";
 export const DARK_METAL_HELMET = "dark_metal_helmet";
+export const CLOUDSPIRE_ARMOR = "cloudspire_armor";
+export const MOONFEN_ARMOR = "moonfen_armor";
+export const CLOUDSPIRE_BOW = "cloudspire_bow";
+export const CLOUDSPIRE_HELMET = "cloudspire_helmet";
+export const SKY_BOW = "sky_bow";
+export const SKY_BOW_DROP_NUMERATOR = 7;
+export const SKY_BOW_DROP_DENOMINATOR = 1_000; // Exactly 0.7%, independently of armor.
+export const WATER_ARMOR = "water_armor";
+export const WATER_ARMOR_DROP_DENOMINATOR = 100; // 1% per regular Water Reach enemy.
+export const SAMURAI_BOW = "samurai_bow";
+export const SAMURAI_BOW_DROP_NUMERATOR = 13;
+export const SAMURAI_BOW_DROP_DENOMINATOR = 2_000; // Exactly 0.65%, independently of the helmet.
 export const SAMURAI_HAT = "samurai_hat";
 export const LEGENDARY_WHITE_GOLD_ARMOR = "legendary_white_gold_armor";
+export const BLACK_BOOTS = "black_boots";
+export const BLACK_BOOTS_DROP_DENOMINATOR = 50;
+export const BLACK_BOOTS_SPEED_BONUS = 25;
+export const BLACK_BOOTS_COMBAT_DELAY_MS = 5_000;
 export const TRAILBLAZER_BOOTS = "trailblazer_boots";
 export const STARTER_STONE = "starter_stone";
 export const STARTER_BOW = "starter_bow";
@@ -47,7 +63,7 @@ export const ITEM_UPGRADE_DURATION_GROWTH = 1.4;
 
 export type ItemSlot = "HEAD" | "CHEST" | "FEET" | "HAND";
 export type EquipmentSlot = "HEAD" | "CHEST" | "FEET" | "RIGHT_HAND" | "LEFT_HAND";
-export type ItemAcquisition = "STARTER" | "PROGRESSION" | "DEVELOPER" | "FOREST_DROP" | "DESERT_DROP" | "SNOW_DROP" | "SNOW_BOSS_DROP" | "LAVA_DROP" | "LAVA_BOSS_DROP" | "INFERNAL_DROP" | "SAMURAI_DROP";
+export type ItemAcquisition = "STARTER" | "PROGRESSION" | "DEVELOPER" | "FOREST_DROP" | "DESERT_DROP" | "SNOW_DROP" | "SNOW_BOSS_DROP" | "LAVA_DROP" | "LAVA_BOSS_DROP" | "INFERNAL_DROP" | "SAMURAI_DROP" | "WATER_DROP" | "CLOUDSPIRE_DROP" | "MOONFEN_DROP";
 export type ProjectileKind = "ROCK" | "ARROW";
 
 export type ItemDefinition = {
@@ -143,6 +159,14 @@ export const ITEM_DEFINITIONS = {
     acquisition: "PROGRESSION",
     description: "Your starting leather boots. No stats, just style.",
     stats: ["COSMETIC · NO STATS"],
+  },
+  [BLACK_BOOTS]: {
+    id: BLACK_BOOTS,
+    name: "BLACK BOOTS",
+    slot: "FEET",
+    acquisition: "INFERNAL_DROP",
+    description: "Quiet boots from Night Forest. Speed returns after 5 seconds without attacking or taking a hit.",
+    stats: ["OUT OF COMBAT MOVE SPEED +25", "REACTIVATES AFTER 5 SECONDS"],
   },
   [STARTER_STONE]: {
     id: STARTER_STONE,
@@ -256,6 +280,69 @@ export const ITEM_DEFINITIONS = {
       regenerationMultiplierBonus: .4,
     },
   },
+  [CLOUDSPIRE_ARMOR]: {
+    id: CLOUDSPIRE_ARMOR,
+    name: "CLOUDSPIRE ARMOR",
+    slot: "CHEST",
+    acquisition: "CLOUDSPIRE_DROP",
+    description: "Golden armor carried by Cloudspire monsters that strengthens health and regeneration.",
+    stats: ["MAX HEALTH +120%", "REGEN +120%"],
+    modifiers: { maxHealthMultiplierBonus: 1.2, regenerationMultiplierBonus: 1.2 },
+  },
+  [MOONFEN_ARMOR]: {
+    id: MOONFEN_ARMOR,
+    name: "MOONFEN ARMOR",
+    slot: "CHEST",
+    acquisition: "MOONFEN_DROP",
+    description: "Green armor carried by Moonfen monsters that strengthens health and regeneration.",
+    stats: ["MAX HEALTH +140%", "REGEN +140%"],
+    modifiers: { maxHealthMultiplierBonus: 1.4, regenerationMultiplierBonus: 1.4 },
+  },
+  [CLOUDSPIRE_BOW]: {
+    id: CLOUDSPIRE_BOW,
+    name: "CLOUDSPIRE BOW",
+    slot: "HAND",
+    acquisition: "CLOUDSPIRE_DROP",
+    description: "A golden bow carried by Cloudspire monsters that strengthens every shot.",
+    stats: ["DAMAGE +120%"],
+    weapon: { mode: "RANGED", projectile: "ARROW", damageMultiplierBonus: 1.2 },
+  },
+  [CLOUDSPIRE_HELMET]: {
+    id: CLOUDSPIRE_HELMET,
+    name: "CLOUDSPIRE HELMET",
+    slot: "HEAD",
+    acquisition: "CLOUDSPIRE_DROP",
+    description: "A golden helmet carried by Cloudspire monsters that strengthens health and regeneration.",
+    stats: ["MAX HEALTH +120%", "REGEN +140%"],
+    modifiers: { maxHealthMultiplierBonus: 1.2, regenerationMultiplierBonus: 1.4 },
+  },
+  [SAMURAI_BOW]: {
+    id: SAMURAI_BOW,
+    name: "SAMURAI BOW",
+    slot: "HAND",
+    acquisition: "SAMURAI_DROP",
+    description: "A magenta bow carried by Samurai Gardens monsters that doubles weapon damage.",
+    stats: ["DAMAGE +100%"],
+    weapon: { mode: "RANGED", projectile: "ARROW", damageMultiplierBonus: 1 },
+  },
+  [SKY_BOW]: {
+    id: SKY_BOW,
+    name: "SKY BOW",
+    slot: "HAND",
+    acquisition: "WATER_DROP",
+    description: "A sky-blue bow carried by Water Reach monsters that amplifies every shot.",
+    stats: ["DAMAGE +80%"],
+    weapon: { mode: "RANGED", projectile: "ARROW", damageMultiplierBonus: .8 },
+  },
+  [WATER_ARMOR]: {
+    id: WATER_ARMOR,
+    name: "WATER ARMOR",
+    slot: "CHEST",
+    acquisition: "WATER_DROP",
+    description: "Blue-gray armor carried by Water Reach monsters that strengthens health and regeneration.",
+    stats: ["MAX HEALTH +80%", "REGEN +80%"],
+    modifiers: { maxHealthMultiplierBonus: .8, regenerationMultiplierBonus: .8 },
+  },
   [MAGMA_ARMOR]: {
     id: MAGMA_ARMOR,
     name: "MAGMA ARMOR",
@@ -305,6 +392,15 @@ export const LAVA_DROP_ITEM_IDS = Object.values(ITEM_DEFINITIONS)
 export const LAVA_BOSS_DROP_ITEM_IDS = Object.values(ITEM_DEFINITIONS)
   .filter((item) => item.acquisition === "LAVA_BOSS_DROP")
   .map((item) => item.id) as ItemId[];
+export const MOONFEN_DROP_ITEM_IDS = Object.values(ITEM_DEFINITIONS)
+  .filter((item) => item.acquisition === "MOONFEN_DROP")
+  .map((item) => item.id);
+export const CLOUDSPIRE_DROP_ITEM_IDS = Object.values(ITEM_DEFINITIONS)
+  .filter((item) => item.acquisition === "CLOUDSPIRE_DROP")
+  .map((item) => item.id);
+export const WATER_DROP_ITEM_IDS = Object.values(ITEM_DEFINITIONS)
+  .filter((item) => item.acquisition === "WATER_DROP")
+  .map((item) => item.id);
 export const SAMURAI_DROP_ITEM_IDS = Object.values(ITEM_DEFINITIONS)
   .filter((item) => item.acquisition === "SAMURAI_DROP")
   .map((item) => item.id);

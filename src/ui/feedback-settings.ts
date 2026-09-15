@@ -39,6 +39,7 @@ export function installFeedbackControls(doc: Document) {
   for (const [id, label, enabled] of [
     ["damageFlashToggle", "DAMAGE FLASH", false],
     ["toolbarHapticsToggle", "TOOLBAR HAPTICS", true],
+    ["keepScreenOnToggle", "KEEP SCREEN ON", false],
   ] as const) {
     if (doc.getElementById(id)) continue;
     const row = doc.createElement("div");

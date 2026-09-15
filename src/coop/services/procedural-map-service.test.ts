@@ -32,7 +32,7 @@ function harness() {
       myProceduralBoss: { iter: () => bosses.values() },
       myEndlessTravelAccess: { iter: () => [] },
     },
-    reducers: { prepareProceduralBoss: prepare, hitProceduralBoss: hit },
+    reducers: { prepareProceduralBoss: prepare, hitProceduralBossBatch: hit },
     subscriptionBuilder: () => {
       let applied = () => {},
         error = (_ctx: any) => {};

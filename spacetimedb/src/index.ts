@@ -1,3 +1,6 @@
+import { regularMapLoot } from "../../shared/regular-map-loot";
+import { BLACK_BOOTS, BLACK_BOOTS_DROP_DENOMINATOR, BLACK_BOOTS_SPEED_BONUS } from "../../shared/items";
+import { playerOnboarding, advanceOnboarding, mergeOnboarding, needsOnboarding } from "./onboarding";
 import { canDestroyEquipment } from "../../shared/items";
 import { deliverDisconnectCompensation } from "./disconnect-compensation";
 import { connectionDiagnosticTables, recordConnectionDiagnostics, cleanupConnectionDiagnostics } from "./connection-diagnostics";
@@ -5,9 +8,9 @@ import { moderationTables, recordModerationAction, readModerationHistory } from 
 import { playerItemGift, deliverAlphaTesterGifts, claimItemGift, removeItemGifts, mergeItemGifts } from "./item-gifts";
 import { moderateReportedMessage } from "./chat-report-moderation";
 import { PLAYER_SKIN_TONES } from "../../shared/player-skin-tones";
-import { leaderboardPageTables, writeLeaderboardPages, readLeaderboardWindow } from "./leaderboard-pages";
+import { leaderboardPageTables, writeLeaderboardPages, readLeaderboardWindow, readLeaderboardPage } from "./leaderboard-pages";
 import { publicChatCursor, updatePublicChatCursor, readPublicChatPage } from "./public-chat-history";
-import { generateMap, isProceduralMap, proceduralMapId, PROCEDURAL_ENTRY_MAP, PROCEDURAL_ENTRY_BOSS } from "../../shared/procedural-maps";
+import { generateMap, proceduralMapCore, isProceduralMap, proceduralMapId, PROCEDURAL_ENTRY_MAP, PROCEDURAL_ENTRY_BOSS } from "../../shared/procedural-maps";
 import { proceduralMapTables, proceduralBossKey, clearProceduralProgress, mergeProceduralProgress, generatedMapUnlocked, ensureProceduralBoss, damageProceduralBoss } from "./procedural-maps";
 import { ingestStoreEvent } from "./gem-store-events";
 import { gemPurchaseTables } from "./gem-purchase-tables";
@@ -98,9 +101,10 @@ import {
   BASIC_PAPER_HAT,
   canonicalItemId,
   DARK_METAL_HELMET,
-  SAMURAI_HAT,
   SAMURAI_DROP_ITEM_IDS,
-  SAMURAI_HAT_ITEM_DROP_DENOMINATOR,
+  WATER_DROP_ITEM_IDS,
+  CLOUDSPIRE_DROP_ITEM_IDS,
+  MOONFEN_DROP_ITEM_IDS,
   DESERT_DROP_ITEM_IDS,
   DESERT_ITEM_DROP_DENOMINATOR,
   DEVELOPER_ITEM_IDS,
@@ -215,6 +219,7 @@ import {
   NAME_ADJECTIVES,
   NAME_CREATURES,
   PLAYER_BASE_HP,
+  PLAYER_BASE_DAMAGE,
   PLAYER_BASE_REGEN,
   PLAYER_PROJECTILE_SPEED,
   PLAYER_RADIUS,
@@ -1736,6 +1741,7 @@ const spacetimedb = schema({
   dailyGemBonus,
   balanceApologyNotice,
   playerItemGift,
+  playerOnboarding,
   playerUpgradeBench,
   playerInventoryCapacity,
   playerCutsceneHistory,
@@ -2144,7 +2150,7 @@ function defaultPlayerProgress(identity: any) {
   return {
     identity,
     maxHp: PLAYER_BASE_HP,
-    damage: 4,
+    damage: PLAYER_BASE_DAMAGE,
     attackRate: DEFAULT_ATTACK_INTERVAL,
     projectileSpeed: PLAYER_PROJECTILE_SPEED,
     projectileCount: 1,
@@ -2890,9 +2896,9 @@ function bossDamageWithCriticals(ctx: any, progress: any, hits: number, hp: numb
   const research = ctx.db.playerResearch.identity.find(ctx.sender);
   const chance = Math.max(0, Math.min(100, research?.criticalChance ?? 0));
   const multiplier = 1.05 + Math.max(0, research?.criticalDamage ?? 0) * .05;
-  const baseDamage = Math.max(1, researchedDamage(ctx, ctx.sender, progress.damage));
-  let total = 0, critical = false;
-  for (let hit = 0; hit < hits; hit++) {
+  const baseDamage = Math.max(1, researchedDamage(ctx, ctx.sender, progress.damage, progress, research));
+  let total = chance === 0 ? baseDamage * hits : 0, critical = false;
+  for (let hit = 0; chance > 0 && hit < hits; hit++) {
     const crit = chance > 0 && ctx.random.integerInRange(1, 100) <= chance;
     total += baseDamage * (crit ? multiplier : 1);
     critical ||= crit;
@@ -2902,9 +2908,9 @@ function bossDamageWithCriticals(ctx: any, progress: any, hits: number, hp: numb
   return damage;
 }
 
-function researchedDamage(ctx: any, identity: any, damage: number) {
-  const rank = ctx.db.playerResearch.identity.find(identity)?.warcraft ?? 0;
-  const progress = ctx.db.playerProgress.identity.find(identity);
+function researchedDamage(ctx: any, identity: any, damage: number, knownProgress?: any, knownResearch?: any) {
+  const rank = (knownResearch === undefined ? ctx.db.playerResearch.identity.find(identity) : knownResearch)?.warcraft ?? 0;
+  const progress = knownProgress ?? ctx.db.playerProgress.identity.find(identity);
   const weaponItem = progress ? equippedRightHandForProgress(progress) || equippedLeftHandForProgress(progress) : "";
   const headItem = progress ? equippedHeadForProgress(progress) : "";
   const chestItem = progress ? equippedChestForProgress(progress) : "";
@@ -3781,7 +3787,7 @@ function inventoryForProgress(progress: any) {
       Array(inventoryJsonItemQuantity(progress.inventoryJson, itemId)).fill(itemId)),
     ...LAVA_BOSS_DROP_ITEM_IDS.flatMap((itemId) =>
       Array(inventoryJsonItemQuantity(progress.inventoryJson, itemId)).fill(itemId)),
-    ...SAMURAI_DROP_ITEM_IDS.flatMap((itemId) =>
+    ...[...SAMURAI_DROP_ITEM_IDS, ...WATER_DROP_ITEM_IDS, ...CLOUDSPIRE_DROP_ITEM_IDS, ...MOONFEN_DROP_ITEM_IDS].flatMap((itemId) =>
       Array(inventoryJsonItemQuantity(progress.inventoryJson, itemId)).fill(itemId)),
     ...INFERNAL_DROP_ITEM_IDS.flatMap((itemId) =>
       Array(inventoryJsonItemQuantity(progress.inventoryJson, itemId)).fill(itemId)),
@@ -4382,6 +4388,7 @@ function removeVirtualPlayerData(ctx: any, identity: any, adjustPresence = true,
   if (ctx.db.playerGemWallet.identity.find(identity)) ctx.db.playerGemWallet.identity.delete(identity);
   if (ctx.db.balanceApologyNotice.identity.find(identity)) ctx.db.balanceApologyNotice.identity.delete(identity);
   removeItemGifts(ctx, identity);
+  if (ctx.db.playerOnboarding.identity.find(identity)) ctx.db.playerOnboarding.identity.delete(identity);
   if (ctx.db.playerUpgradeBench.identity.find(identity)) ctx.db.playerUpgradeBench.identity.delete(identity);
   if (ctx.db.playerInventoryCapacity.identity.find(identity)) ctx.db.playerInventoryCapacity.identity.delete(identity);
   if (ctx.db.playerCutsceneHistory.identity.find(identity)) ctx.db.playerCutsceneHistory.identity.delete(identity);
@@ -4472,6 +4479,7 @@ function removePlayerIdentityData(ctx: any, identity: any) {
   if (ctx.db.dailyGemBonus.identity.find(identity)) ctx.db.dailyGemBonus.identity.delete(identity);
   if (ctx.db.balanceApologyNotice.identity.find(identity)) ctx.db.balanceApologyNotice.identity.delete(identity);
   removeItemGifts(ctx, identity);
+  if (ctx.db.playerOnboarding.identity.find(identity)) ctx.db.playerOnboarding.identity.delete(identity);
   if (ctx.db.playerUpgradeBench.identity.find(identity)) ctx.db.playerUpgradeBench.identity.delete(identity);
   if (ctx.db.playerInventoryCapacity.identity.find(identity)) ctx.db.playerInventoryCapacity.identity.delete(identity);
   if (ctx.db.playerCutsceneHistory.identity.find(identity)) ctx.db.playerCutsceneHistory.identity.delete(identity);
@@ -6223,7 +6231,7 @@ function clearExpiredStartupTelemetryRateLimits(ctx: ModuleReducerCtx) {
   for (const sender of expiredSenders) ctx.db.startupTelemetryRateLimit.sender.delete(sender);
 }
 
-function enterWorldPresence(ctx: any, tabId: string, forceTakeover = false) {
+function enterWorldPresence(ctx: any, tabId: string, forceTakeover = false, supportsTutorial = false) {
   const session = requireSupportedSessionProtocol(ctx);
   requireCurrentLegalConsent(ctx);
   if (!ctx.connectionId) return;
@@ -6268,6 +6276,7 @@ function enterWorldPresence(ctx: any, tabId: string, forceTakeover = false) {
   let existingProgress: any = ctx.db.playerProgress.identity.find(ctx.sender);
   if (!existingProgress) {
     existingProgress = defaultPlayerProgress(ctx.sender);
+    if (supportsTutorial && !existingProfile && !virtualRegistration) ctx.db.playerOnboarding.insert({ identity: ctx.sender, step: 1 });
     insertSnapshotRow(ctx, "playerProgress", existingProgress);
     markPlayerBalanceCurrent(ctx);
   } else {
@@ -6361,9 +6370,17 @@ const isInIonCitadel = existingPlayer?.mapId === ION_CITADEL_MAP_ID || Boolean(e
 
   const existing = playerWithMotion(ctx, ctx.db.player.identity.find(ctx.sender));
   const presencePreference = ctx.db.developerPresencePreference.identity.find(ctx.sender);
-  const visibleOnEntry = isDeveloperIdentity(ctx.sender)
+  // Cached mobile builds cannot complete the new tutorial. Returning through a
+  // legacy entry safely skips it without rewards rather than hiding the player.
+  if (!supportsTutorial && needsOnboarding(ctx, ctx.sender)) {
+    const onboarding = ctx.db.playerOnboarding.identity.find(ctx.sender)!;
+    ctx.db.playerOnboarding.identity.update({ ...onboarding, step: 6 });
+    existingProgress = { ...existingProgress, introComplete: true };
+    updateSnapshotRow(ctx, "playerProgress", existingProgress);
+  }
+  const visibleOnEntry = !needsOnboarding(ctx, ctx.sender) && (isDeveloperIdentity(ctx.sender)
     ? presencePreference?.visible ?? existing?.isVisible ?? false
-    : true;
+    : true);
   if (isDeveloperIdentity(ctx.sender) && !presencePreference) {
     ctx.db.developerPresencePreference.insert({ identity: ctx.sender, visible: visibleOnEntry });
   }
@@ -8186,6 +8203,13 @@ export const enterWorld = spacetimedb.reducer({ tabId: t.string() }, (ctx, { tab
   else enterWorldPresence(ctx, tabId);
 });
 
+/** Only tutorial-capable clients use this additive entry point. */
+export const enterWorldWithTutorial = spacetimedb.reducer({ tabId: t.string(), forceTakeover: t.bool() }, (ctx, { tabId, forceTakeover }) => {
+  requireSupportedSessionProtocol(ctx);
+  if (isMapShard(ctx)) throw new SenderError("Connect to the account database.");
+  enterWorldPresence(ctx, tabId, forceTakeover, true);
+});
+
 export const takeOverSession = spacetimedb.reducer({ tabId: t.string() }, (ctx, { tabId }) => {
   requireSupportedSessionProtocol(ctx);
   enterWorldPresence(ctx, tabId, true);
@@ -8240,6 +8264,7 @@ export const claimGuestAccount = spacetimedb.reducer(
     mergeGuestGemWallet(ctx, link.guest, ctx.sender, link.code);
     mergeBalanceApologyNotice(ctx, link.guest, ctx.sender);
     mergeItemGifts(ctx, link.guest, ctx.sender);
+    mergeOnboarding(ctx, link.guest, ctx.sender);
     const guestBalance = ctx.db.playerBalanceVersion.identity.find(link.guest);
     const guestBalanceVersion = guestBalance?.version ?? 0;
     const guestAttackRate = guestBalanceVersion >= 1 ? guestProgress.attackRate : guestProgress.attackRate * 2;
@@ -9654,12 +9679,17 @@ export const recordLavaEnemyDefeat = spacetimedb.reducer(
   (ctx) => {
     const activePlayer = requireControllingPlayer(ctx);
     if (activeDuelFor(ctx, ctx.sender)) return;
-    if (activePlayer.mapId === SAMURAI_GARDEN_MAP_ID) {
-      if (ctx.random.integerInRange(1, SAMURAI_HAT_ITEM_DROP_DENOMINATOR) !== 1) return;
+    const loot = regularMapLoot(activePlayer.mapId);
+    if (loot.length) {
+      const drops = loot.filter(drop => ctx.random.integerInRange(1, drop.outcomes) <= drop.wins).map(drop => drop.itemId);
+      if (!drops.length) return;
       const current = ctx.db.playerProgress.identity.find(ctx.sender) ?? defaultPlayerProgress(ctx.sender);
-      const alreadyOwned = playerOwnsItem(ctx, ctx.sender, SAMURAI_HAT);
-      publishItemDrop(ctx, ctx.sender, SAMURAI_HAT, alreadyOwned);
-      const next = alreadyOwned ? { ...current } : restoreItemToProgress(current, SAMURAI_HAT);
+      let next = { ...current };
+      for (const itemId of drops) {
+        const alreadyOwned = playerOwnsItem(ctx, ctx.sender, itemId);
+        publishItemDrop(ctx, ctx.sender, itemId, alreadyOwned);
+        if (!alreadyOwned) next = restoreItemToProgress(next, itemId);
+      }
       next.inventoryJson = JSON.stringify(inventoryForProgress(next));
       if (ctx.db.playerProgress.identity.find(ctx.sender)) updateSnapshotRow(ctx, "playerProgress", next);
       else insertSnapshotRow(ctx, "playerProgress", next);
@@ -9669,9 +9699,15 @@ export const recordLavaEnemyDefeat = spacetimedb.reducer(
       const nightBowDropped = ctx.random.integerInRange(1, NIGHT_FOREST_BOW_ITEM_DROP_DENOMINATOR) === 1;
       const fireMetalBowDropped = ctx.random.integerInRange(1, INFERNAL_ITEM_DROP_DENOMINATOR) === 1;
       const helmetDropped = ctx.random.integerInRange(1, NIGHT_FOREST_HELMET_ITEM_DROP_DENOMINATOR) === 1;
-      if (!nightBowDropped && !fireMetalBowDropped && !helmetDropped) return;
+      const bootsDropped = ctx.random.integerInRange(1, BLACK_BOOTS_DROP_DENOMINATOR) === 1;
+      if (!nightBowDropped && !fireMetalBowDropped && !helmetDropped && !bootsDropped) return;
       const current = ctx.db.playerProgress.identity.find(ctx.sender) ?? defaultPlayerProgress(ctx.sender);
       let next = { ...current };
+      if (bootsDropped) {
+        const alreadyOwned = playerOwnsItem(ctx, ctx.sender, BLACK_BOOTS);
+        publishItemDrop(ctx, ctx.sender, BLACK_BOOTS, alreadyOwned);
+        if (!alreadyOwned) next = restoreItemToProgress(next, BLACK_BOOTS);
+      }
       if (nightBowDropped) {
         const alreadyOwned = playerOwnsItem(ctx, ctx.sender, NIGHT_BOW);
         publishItemDrop(ctx, ctx.sender, NIGHT_BOW, alreadyOwned);
@@ -9713,6 +9749,25 @@ export const recordLavaEnemyDefeat = spacetimedb.reducer(
     else insertSnapshotRow(ctx, "playerProgress", next);
   },
 );
+
+export const myOnboarding = spacetimedb.view(
+  { name: "my_onboarding", public: true }, t.array(playerOnboarding.rowType),
+  ctx => { const state = ctx.db.playerOnboarding.identity.find(ctx.sender); return state ? [state] : []; },
+);
+
+export const completeOnboardingStep = spacetimedb.reducer({ step: t.u8() }, (ctx, { step }) => {
+  requireControllingPlayer(ctx);
+  if (isMapShard(ctx)) throw new SenderError("Use your account connection for the tutorial.");
+  advanceOnboarding(ctx, step, progress => writeProgressAndPresentation(ctx, progress));
+  if (step === 6) {
+    const player = ctx.db.player.identity.find(ctx.sender)!;
+    const visible = !isDeveloperIdentity(ctx.sender) || (ctx.db.developerPresencePreference.identity.find(ctx.sender)?.visible ?? false);
+    const next = { ...player, isVisible: visible };
+    updateSnapshotRow(ctx, "player", next);
+    syncPlayerMotionIdentity(ctx, playerWithMotion(ctx, next));
+    syncPlayerMapMarker(ctx, next, true);
+  }
+});
 
 export const beginAdventure = spacetimedb.reducer(
   {},
@@ -10281,7 +10336,11 @@ export const setSpeed = spacetimedb.reducer(
       : current.feetItem === TRAILBLAZER_BOOTS;
     const moveSpeedRank = research?.moveSpeed ?? 0;
     const expectedSpeed = effectivePlayerMovementSpeed(bootsEquipped, moveSpeedRank, progress?.speedOverride ?? 0);
-    if (!movementSpeedsMatch(speed, expectedSpeed)) throw new SenderError("Unsupported player speed");
+    // Regular-enemy combat runs locally. Permit its two exact movement states,
+    // while checking ownership/equipment here and never saving a temporary bonus.
+    const blackBootsEquipped = progress && equippedFeetForProgress(progress) === BLACK_BOOTS;
+    const restingSpeed = expectedSpeed + (blackBootsEquipped ? BLACK_BOOTS_SPEED_BONUS : 0);
+    if (!movementSpeedsMatch(speed, expectedSpeed) && !movementSpeedsMatch(speed, restingSpeed)) throw new SenderError("Unsupported player speed");
 
     const nextPlayer = {
       ...current,
@@ -10922,7 +10981,8 @@ export const prepareProceduralBoss = spacetimedb.reducer({ mapId:t.string() }, (
   const key = proceduralBossKey(ctx, mapId);
   if (key) ensureProceduralBoss(ctx, mapId, key);
 });
-export const hitProceduralBoss = spacetimedb.reducer({ mapId:t.string(), bossKey:t.string(), encounter:t.u64(), hits:t.u32(), x:t.f64(), y:t.f64() }, (ctx, action) => {
+const proceduralHitArgs = { mapId:t.string(), bossKey:t.string(), encounter:t.u64(), hits:t.u32(), x:t.f64(), y:t.f64() };
+function applyProceduralBossHit(ctx: GameReducerContext, action: { mapId: string; bossKey: string; encounter: bigint; hits: number; x: number; y: number }) {
   const player = requireControllingPlayer(ctx);
   if (activeDuelFor(ctx, ctx.sender)) return;
   const progress = ctx.db.playerProgress.identity.find(ctx.sender);
@@ -10930,17 +10990,25 @@ export const hitProceduralBoss = spacetimedb.reducer({ mapId:t.string(), bossKey
   if (proceduralBossKey(ctx, player.mapId) !== action.bossKey) return;
   damageProceduralBoss(ctx, { ...action, mapId:player.mapId, attackRange:progress.attackRange,
     attackInterval:attackIntervalForProgress(progress), projectiles:progress.projectileCount,
-    damage:(hits,hp) => bossDamageWithCriticals(ctx, progress, hits, hp, player.mapId, generateMap(player.mapId).boss),
+    damage:(hits,hp) => bossDamageWithCriticals(ctx, progress, hits, hp, player.mapId, proceduralMapCore(player.mapId).boss),
     reward:(identity,amount) => {
       const earned = ctx.db.playerProgress.identity.find(identity);
       if (earned) writeProgressAndPresentation(ctx, { ...earned, regen:Math.min(MAX_PLAYER_STAT, earned.regen + amount * researchStatRewardMultiplier(ctx.db.playerResearch.identity.find(identity))) });
     },
   });
-});
+}
+export const hitProceduralBoss = spacetimedb.reducer(proceduralHitArgs, (ctx, action) => applyProceduralBossHit(ctx, action));
+export const hitProceduralBossBatch = spacetimedb.reducer(proceduralHitArgs, (ctx, action) => applyProceduralBossHit(ctx, action));
 
+const rankedLeaderboardPlayer = t.object("RankedLeaderboardPlayer", { rank: t.u32(), entry: leaderboardEntry.rowType });
 export const getLeaderboardWindow = spacetimedb.procedure(
-  { stat: t.string() }, t.array(t.object("RankedLeaderboardPlayer", { rank: t.u32(), entry: leaderboardEntry.rowType })),
+  { stat: t.string() }, t.array(rankedLeaderboardPlayer),
   (ctx, { stat }) => ctx.withTx(tx => readLeaderboardWindow(tx, stat)),
+);
+export const getLeaderboardPage = spacetimedb.procedure(
+  { stat: t.string(), startRank: t.u32(), count: t.u32() },
+  t.object("LeaderboardPage", { entries: t.array(rankedLeaderboardPlayer), startRank: t.u32(), endRank: t.u32(), localRank: t.u32(), total: t.u32() }),
+  (ctx, { stat, startRank, count }) => ctx.withTx(tx => readLeaderboardPage(tx, stat, startRank, count)),
 );
 
 export const latestChatMessages = spacetimedb.anonymousView(

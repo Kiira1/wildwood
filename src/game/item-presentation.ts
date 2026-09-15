@@ -2,8 +2,16 @@ import type { WeaponCategory } from "./equipment-alignment";
 import type { LayerAdjustment } from "./player-layer-alignment";
 import {
   BASIC_PAPER_HAT,
+  BLACK_BOOTS,
   DARK_METAL_HELMET,
   SAMURAI_HAT,
+  WATER_ARMOR,
+  SKY_BOW,
+  SAMURAI_BOW,
+  CLOUDSPIRE_BOW,
+  CLOUDSPIRE_ARMOR,
+  MOONFEN_ARMOR,
+  CLOUDSPIRE_HELMET,
   FIRE_METAL_BOW,
   FIRE_METAL_HELMET,
   FROST_ARMOR,
@@ -98,6 +106,46 @@ export const ITEM_PRESENTATIONS: Partial<Record<ItemId, ItemPresentation>> = {
     inventory: { source: `${PLAYER_PARTS}/frost-armor.png`, equippedWidth: 34, equippedHeight: 31 },
     world: { kind: "SPRITE", source: `${PLAYER_PARTS}/frost-armor.png`, layer: "CHEST", width: 76, height: 68, top: 100 },
   },
+  [CLOUDSPIRE_ARMOR]: {
+    inventory: { source: `${PLAYER_PARTS}/cloudspire-armor.png`, equippedWidth: 34, equippedHeight: 31 },
+    world: { kind: "SPRITE", source: `${PLAYER_PARTS}/cloudspire-armor.png`, layer: "CHEST", width: 76, height: 68, top: 100 },
+  },
+  [MOONFEN_ARMOR]: {
+    inventory: { source: `${PLAYER_PARTS}/moonfen-armor.png`, equippedWidth: 34, equippedHeight: 31 },
+    world: { kind: "SPRITE", source: `${PLAYER_PARTS}/moonfen-armor.png`, layer: "CHEST", width: 76, height: 68, top: 100 },
+  },
+  [CLOUDSPIRE_HELMET]: {
+    inventory: { source: `${PLAYER_PARTS}/cloudspire-helmet.png`, equippedWidth: 30, equippedHeight: 27 },
+    world: { kind: "SPRITE", source: `${PLAYER_PARTS}/cloudspire-helmet.png`, layer: "HEAD", bottom: 144 },
+  },
+  [CLOUDSPIRE_BOW]: {
+    inventory: { source: `${PLAYER_PARTS}/cloudspire-bow.png`, equippedWidth: 44, equippedHeight: 34 },
+    world: {
+      kind: "SPRITE", source: `${PLAYER_PARTS}/cloudspire-bow.png`, layer: "HAND",
+      width: 115, height: 63, top: 106, handAction: "BOW",
+    },
+    projectile: "ARROW",
+  },
+  [SAMURAI_BOW]: {
+    inventory: { source: `${PLAYER_PARTS}/samurai-bow.png`, equippedWidth: 44, equippedHeight: 34 },
+    world: {
+      kind: "SPRITE", source: `${PLAYER_PARTS}/samurai-bow.png`, layer: "HAND",
+      width: 115, height: 63, top: 106, handAction: "BOW",
+    },
+    projectile: "ARROW",
+  },
+  [SKY_BOW]: {
+    inventory: { source: `${PLAYER_PARTS}/sky-bow.png`, equippedWidth: 44, equippedHeight: 34 },
+    world: {
+      kind: "SPRITE", source: `${PLAYER_PARTS}/sky-bow.png`, layer: "HAND",
+      width: 115, height: 63, top: 106, handAction: "BOW",
+    },
+    projectile: "ARROW",
+  },
+  [WATER_ARMOR]: {
+    inventory: { source: `${PLAYER_PARTS}/water-armor.png`, equippedWidth: 34, equippedHeight: 31 },
+    world: { kind: "SPRITE", source: `${PLAYER_PARTS}/water-armor.png`, layer: "CHEST", width: 76, height: 68, top: 100 },
+  },
   [MAGMA_ARMOR]: {
     inventory: { source: `${PLAYER_PARTS}/magma-armor.png`, equippedWidth: 34, equippedHeight: 31 },
     world: { kind: "SPRITE", source: `${PLAYER_PARTS}/magma-armor.png`, layer: "CHEST", width: 76, height: 68, top: 100 },
@@ -108,6 +156,14 @@ export const ITEM_PRESENTATIONS: Partial<Record<ItemId, ItemPresentation>> = {
       kind: "LEGS",
       frontSource: `${PLAYER_PARTS}/boots-leg-front.png`,
       backSource: `${PLAYER_PARTS}/boots-leg-back.png`,
+    },
+  },
+  [BLACK_BOOTS]: {
+    inventory: { fallback: "BOOTS" },
+    world: {
+      kind: "LEGS",
+      frontSource: `${PLAYER_PARTS}/black-boots-leg-front.svg`,
+      backSource: `${PLAYER_PARTS}/black-boots-leg-back.svg`,
     },
   },
   [STARTER_STONE]: {
@@ -229,7 +285,7 @@ export function itemArtMarkup(itemId: string, hidden = true) {
     ].filter(Boolean).join("; ");
     return `<span class="inventory-item-art" style="${style}"${aria}></span>`;
   }
-  return '<span class="boot-pixel-icon" aria-hidden="true"><i></i><i></i></span>';
+  return `<span class="boot-pixel-icon"${itemId === BLACK_BOOTS ? ' style="filter: grayscale(1) brightness(.45)"' : ""} aria-hidden="true"><i></i><i></i></span>`;
 }
 
 export function projectileKindForWeapon(itemId: string | undefined) {

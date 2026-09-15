@@ -1,3 +1,4 @@
+import { BLACK_BOOTS, BLACK_BOOTS_DROP_DENOMINATOR } from "../../shared/items";
 import { generateMap, isProceduralMap } from "../../shared/procedural-maps";
 import { canvasRenderPixelRatio } from "../game/runtime/render-budget";
 import {
@@ -92,6 +93,7 @@ export type MapGuideZone = {
 };
 
 const MAP_GUIDE_DROPS: Record<MapId, readonly MapGuideDrop[]> = {
+  first_steps: [],
   home_exterior: [],
   [TUTORIAL_FOREST_MAP_ID]: [
     { itemId: STARTER_BOW, denominator: FOREST_ITEM_DROP_DENOMINATOR, source: "Any regular forest enemy" },
@@ -115,6 +117,7 @@ const MAP_GUIDE_DROPS: Record<MapId, readonly MapGuideDrop[]> = {
     { itemId: NIGHT_BOW, denominator: NIGHT_FOREST_BOW_ITEM_DROP_DENOMINATOR, source: "Any regular Night Forest enemy" },
     { itemId: FIRE_METAL_BOW, denominator: INFERNAL_ITEM_DROP_DENOMINATOR, source: "Any regular Night Forest enemy" },
     { itemId: DARK_METAL_HELMET, denominator: NIGHT_FOREST_HELMET_ITEM_DROP_DENOMINATOR, source: "Any regular Night Forest enemy" },
+        { itemId: BLACK_BOOTS, denominator: BLACK_BOOTS_DROP_DENOMINATOR, source: "Any regular Night Forest enemy" },
   ],
   [WATER_REACH_MAP_ID]: [],
   [SAMURAI_GARDEN_MAP_ID]: [
@@ -126,6 +129,7 @@ const MAP_GUIDE_DROPS: Record<MapId, readonly MapGuideDrop[]> = {
 };
 
 const MAP_GUIDE_THEMES: Record<MapId, { ground: string; path: string; glow: string }> = {
+  first_steps: { ground: "#31945b", path: "#8b6551", glow: "#65e889" },
   home_exterior: { ground: "#488761", path: "#b29a78", glow: "#82e9ff" },
   [TUTORIAL_FOREST_MAP_ID]: { ground: "#31945b", path: "#8b6551", glow: "#65e889" },
   [BEGINNER_DESERT_MAP_ID]: { ground: "#d9a95f", path: "#c48b4b", glow: "#ffe09a" },

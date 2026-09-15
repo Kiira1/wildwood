@@ -9,7 +9,7 @@ const PROJECTILE_FLIGHT_SECONDS = .18;
 const BOSS_HIT_RANGE_TOLERANCE = 60;
 
 export type RemoteBossSimulationTarget = {
-  kind: BossSimulationKind;
+  kind: BossSimulationKind | `procedural:${string}`;
   encounter: bigint;
   alive: boolean;
   x: number;

@@ -1,3 +1,4 @@
+import { regularMapLoot } from "../../../shared/regular-map-loot";
 import { isEnemyAttackingPlayer } from "./enemy-threat";
 import { PLAYER_KNOCKBACK_FORCE, WORLD } from "../constants";
 import { damageAfterArmor } from "../combat";
@@ -156,6 +157,8 @@ export function createPlayerCombatController(options: {
   spawnDamageNumber: (x: number, y: number, amount: number, critical?: boolean, damageTaken?: boolean) => void;
   drainBossHitResults?: () => { mapId: string; x: number; y: number; damage: number; critical: boolean }[];
   currentMapId?: () => string;
+  onEnemyDefeated?: (enemy: EnemyState) => boolean;
+  onCombat?: () => void;
   playBowAttackSound?: () => void;
   logPickup: (text: string, color: string) => void;
   saveProgress: () => void;
@@ -230,6 +233,7 @@ export function createPlayerCombatController(options: {
     scheduledAtSeconds?: number,
   ) {
     if (pendingPlayerAttack) return false;
+    options.onCombat?.();
     const scheduledAt = scheduledAtSeconds ?? (
       nextAttackAtSeconds > 0 && nowSeconds - nextAttackAtSeconds <= MAX_SCHEDULE_LATE_SECONDS
         ? nextAttackAtSeconds
@@ -398,6 +402,10 @@ export function createPlayerCombatController(options: {
   function killEnemy(enemy: EnemyState) {
     if (enemy.dead) return;
     enemy.dead = true;
+    if (options.onEnemyDefeated?.(enemy)) {
+      spawnBurst(enemy.x, enemy.y, DEATH_PARTICLE_COLOR, 12, 90);
+      return;
+    }
     incrementKills();
     const site = spawnSites[enemy.siteId];
     if (site) scheduleEnemyRespawn(site);
@@ -406,7 +414,7 @@ export function createPlayerCombatController(options: {
     if (isTutorialMap()) recordForestEnemyDefeat();
     if (isDesertMap() && !base.elite) recordDesertEnemyDefeat();
     if (isSnowMap()) recordSnowEnemyDefeat();
-    if (isLavaMap() || isInfernalMap() || isSamuraiMap()) recordLavaEnemyDefeat();
+    if (isLavaMap() || isInfernalMap() || regularMapLoot(options.currentMapId?.() ?? "").length > 0) recordLavaEnemyDefeat();
     spawnBurst(enemy.x, enemy.y, DEATH_PARTICLE_COLOR, base.elite ? 28 : 12, base.elite ? 150 : 90);
   }
 
@@ -422,6 +430,7 @@ export function createPlayerCombatController(options: {
   function damagePlayer(amount: number) {
     if (isDueling() || player.hurtClock > 0) return false;
     const dealt = damageAfterArmor(amount, effectiveArmor());
+    if (dealt > 0) options.onCombat?.();
     player.hp -= dealt;
     spawnDamageNumber(player.x, player.y, dealt, false, true);
     player.hurtClock = .1;

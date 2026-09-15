@@ -48,6 +48,7 @@ export type MapController = {
   updatePortal: (dt: number) => void;
   loadMap: (mapId: MapId, x: number, y: number, facing?: number) => void;
   reconcileMapFromServer: () => void;
+  startProceduralPortalCutscene: () => boolean;
   startDragonPortalCutscene: (preview?: boolean) => void;
   startSnowlandsPortalCutscene: (preview?: boolean) => void;
   startLavaPortalCutscene: (preview?: boolean) => void;
@@ -414,7 +415,7 @@ export function createMapController(options: {
     resizeViewport();
     const wasPreview = portalCutscenePreview;
     portalCutscenePreview = false;
-    if (!wasPreview) options.markPortalCutsceneSeen(portalCutsceneSeenKey);
+    if (!wasPreview && portalCutsceneSeenKey) options.markPortalCutsceneSeen(portalCutsceneSeenKey);
     onCutsceneFinished(wasPreview);
     return false;
   }
@@ -429,6 +430,14 @@ export function createMapController(options: {
     updatePortal,
     loadMap,
     reconcileMapFromServer,
+    startProceduralPortalCutscene: () => {
+      if (mapTransitioning || portalCutscene.active || isDueling()) return false;
+      const mapId = getCurrentMapId();
+      const portal = mapConfig[mapId].secondaryPortal;
+      if (!mapId.startsWith("endless_") || !portal) return false;
+      startMapPortalCutscene(mapId, false, portal, "");
+      return true;
+    },
     startDragonPortalCutscene,
     startSnowlandsPortalCutscene,
     startLavaPortalCutscene,

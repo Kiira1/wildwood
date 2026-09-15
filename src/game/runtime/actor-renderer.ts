@@ -740,7 +740,7 @@ export function createActorRenderer(options: {
     }
     ctx.restore();
 
-    if (!options.enemyTextVisible(enemy) || deathProgress > 0) return;
+    if (enemy.hideStatus || !options.enemyTextVisible(enemy) || deathProgress > 0) return;
 
     const spriteTop = spriteBounds.top;
     const spriteBottom = spriteBounds.bottom;
@@ -764,7 +764,7 @@ export function createActorRenderer(options: {
       ctx.fillRect(barX, barY, Math.round(barW * hpRatio), barH);
 
       ctx.textAlign = "center";
-      const labels = enemyLabels(enemy.generatedBoss ? enemy.campName : enemy.type, { ...enemy.reward, amount: enemy.reward.amount * options.rewardMultiplier() });
+      const labels = enemyLabels(enemy.displayName ?? (enemy.generatedBoss ? enemy.campName : enemy.type), { ...enemy.reward, amount: enemy.reward.amount * options.rewardMultiplier() });
       ctx.drawImage(labels.name.canvas, -labels.name.width / 2, barY - 4 - labels.name.anchorY, labels.name.width, labels.name.height);
 
       ctx.font = '900 10px "Arial Rounded MT Bold", "Arial Rounded MT", Arial, sans-serif';

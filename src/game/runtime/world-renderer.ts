@@ -977,6 +977,7 @@ if (options.getMapId() === ION_CITADEL_MAP_ID) { drawIonRoads(ctx, options.paths
   }
 
   function drawMinimap(remotePlayers: MapPlayerMarker[]) {
+    if (options.getMapId() === "first_steps") return;
     const view = viewport();
     const layout = minimapDrawLayout(view.width, options.getMinimapBounds?.());
     const { size } = layout;

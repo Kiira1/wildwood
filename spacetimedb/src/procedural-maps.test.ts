@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { Identity } from "spacetimedb";
 import {
-  acceptedGeneratedHits,
+  acceptedGeneratedBatchHits,
   damageProceduralBoss,
   ensureProceduralBoss,
   generatedMapUnlocked,
@@ -64,16 +64,6 @@ describe("generated shared boss and durable unlocks", () => {
     expect(generatedMapUnlocked("endless_1", 0, true)).toBe(true);
     expect(generatedMapUnlocked("endless_3", 1, true)).toBe(false);
     expect(generatedMapUnlocked("endless_3", 2, true)).toBe(true);
-  });
-  it("rejects extra hits in a cooldown and cannot bank idle attacks", () => {
-    expect(
-      acceptedGeneratedHits(20, 2, 100n, 110n, { windowAt: 100n, hits: 2 })
-        .hits,
-    ).toBe(0);
-    expect(
-      acceptedGeneratedHits(20, 2, 100n, 100000n, { windowAt: 100n, hits: 2 })
-        .hits,
-    ).toBe(2);
   });
   it("ignores stale encounters and remote attacks, rewards a shared clear once, then respawns", () => {
     const { ctx, progress } = harness();
@@ -147,4 +137,29 @@ describe("generated shared boss and durable unlocks", () => {
     expect(h.progress.identity.find(h.identity)).toBeNull();
     expect(h.boss.key.find(a.key).hp).toBe(a.maxHp / 2);
   });
+});
+
+it("bounds batches by earned attack cycles and cannot bank idle time or replay a spent batch", () => {
+  const first = acceptedGeneratedBatchHits(100, 2, 50_000n, 1_000_000n, null);
+  expect(first.hits).toBe(10);
+  const previous = { windowAt: first.windowAt, hits: first.priorHits + first.hits };
+  expect(acceptedGeneratedBatchHits(100, 2, 50_000n, 1_000_000n, previous).hits).toBe(0);
+  expect(acceptedGeneratedBatchHits(100, 2, 50_000n, 1_050_000n, previous).hits).toBe(2);
+  expect(acceptedGeneratedBatchHits(100, 2, 50_000n, 100_000_000n, previous).hits).toBe(10);
+  expect(acceptedGeneratedBatchHits(100, 1, 1_000_000n, 1_000_000n, null).hits).toBe(1);
+});
+it("records participation once in meaning, validates batch damage, and pays each contributor once", () => {
+  const h = harness();
+  const boss = ensureProceduralBoss(h.ctx, "endless_1", "endless_1:root");
+  const reward = vi.fn(), damage = vi.fn(() => boss.maxHp / 2);
+  const action = { mapId: "endless_1", bossKey: boss.key, encounter: boss.encounter,
+    hits: 5, x: 4050, y: 4050, attackRange: 600, attackInterval: .05, projectiles: 1, damage, reward };
+  damageProceduralBoss(h.ctx, action);
+  expect([...h.contribution.data.values()][0].damage).toBe(1);
+  damageProceduralBoss(h.ctx, action);
+  expect(damage).toHaveBeenCalledOnce();
+  Object.assign(h.ctx, { timestamp: { microsSinceUnixEpoch: 1_250_000n } });
+  damageProceduralBoss(h.ctx, action);
+  damageProceduralBoss(h.ctx, action);
+  expect(reward).toHaveBeenCalledExactlyOnceWith(h.identity, expect.any(Number));
 });

@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { parseHTML } from "linkedom";
 import { nextPresentationDeadline } from "./render-budget";
 import { MIN_ATTACK_INTERVAL } from "../../../shared/rules";
 import {
@@ -72,6 +73,36 @@ function interpolatedMotionDeltas(refreshRate: number, frameCount: number) {
 }
 
 describe("game session frame scheduling", () => {
+  it("holds the slower fade at black until the username step finishes", async () => {
+    vi.useFakeTimers();
+    const { document } = parseHTML('<html><body><div id="fade" hidden></div></body></html>');
+    vi.stubGlobal("document", document);
+    vi.stubGlobal("window", { setTimeout });
+    vi.stubGlobal("requestAnimationFrame", (callback: () => void) => setTimeout(callback, 0));
+    const fadeElement = document.querySelector<HTMLElement>("#fade")!;
+    let finishName!: () => void;
+    const onBlack = vi.fn(() => new Promise<void>(resolve => { finishName = resolve; }));
+    try {
+      const session = createGameSessionController({ fadeElement, camera: { x: 0, y: 0, zoom: 1 },
+        player: { x: 1800, y: 1370, attackRange: 155 }, viewport: () => ({ width: 1200, height: 800 }),
+        resetPresentationState: vi.fn(),
+      } as any);
+      session.fadeToWorld(onBlack, 700);
+      await vi.advanceTimersByTimeAsync(699);
+      expect(onBlack).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(1);
+      await vi.advanceTimersByTimeAsync(5000);
+      expect(fadeElement.classList.contains("is-visible")).toBe(true);
+      finishName();
+      await vi.advanceTimersByTimeAsync(1);
+      expect(fadeElement.classList.contains("is-visible")).toBe(false);
+      await vi.advanceTimersByTimeAsync(700);
+      expect(fadeElement.hidden).toBe(true);
+      session.fadeToWorld(() => {});
+      expect(fadeElement.style.transitionDuration).toBe("180ms");
+      await vi.runAllTimersAsync();
+    } finally { vi.useRealTimers(); vi.unstubAllGlobals(); }
+  });
   it.each([false, true])("keeps an idle duel replay smooth with Low Performance Mode=%s", (lowPerformanceMode) => {
     vi.stubGlobal("document", { hidden: false, addEventListener: vi.fn() });
     vi.stubGlobal("requestAnimationFrame", vi.fn());

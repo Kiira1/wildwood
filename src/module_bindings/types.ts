@@ -843,6 +843,17 @@ export const LeaderboardEntry = __t.object("LeaderboardEntry", {
 });
 export type LeaderboardEntry = __Infer<typeof LeaderboardEntry>;
 
+export const LeaderboardPage = __t.object("LeaderboardPage", {
+  get entries() {
+    return __t.array(RankedLeaderboardPlayer);
+  },
+  startRank: __t.u32(),
+  endRank: __t.u32(),
+  localRank: __t.u32(),
+  total: __t.u32(),
+});
+export type LeaderboardPage = __Infer<typeof LeaderboardPage>;
+
 export const LeaderboardPosition = __t.object("LeaderboardPosition", {
   identity: __t.identity(),
   ranks: __t.array(__t.u32()),
@@ -1073,6 +1084,9 @@ export type MyItemGifts = __Infer<typeof MyItemGifts>;
 
 export const MyMapShardRoute = __t.object("MyMapShardRoute", {});
 export type MyMapShardRoute = __Infer<typeof MyMapShardRoute>;
+
+export const MyOnboarding = __t.object("MyOnboarding", {});
+export type MyOnboarding = __Infer<typeof MyOnboarding>;
 
 export const MyPlayerBlocks = __t.object("MyPlayerBlocks", {});
 export type MyPlayerBlocks = __Infer<typeof MyPlayerBlocks>;
@@ -1374,6 +1388,12 @@ export const PlayerNameTag = __t.object("PlayerNameTag", {
   showDevTag: __t.bool(),
 });
 export type PlayerNameTag = __Infer<typeof PlayerNameTag>;
+
+export const PlayerOnboarding = __t.object("PlayerOnboarding", {
+  identity: __t.identity(),
+  step: __t.u8(),
+});
+export type PlayerOnboarding = __Infer<typeof PlayerOnboarding>;
 
 export const PlayerPowerRebaseBackup = __t.object("PlayerPowerRebaseBackup", {
   identity: __t.identity(),

@@ -692,7 +692,7 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
       notice = "SIGNING OUT OTHER TAB…";
       dependencies.notify();
       try {
-        await connection.reducers.takeOverSession({ tabId: authTabId() });
+        await connection.reducers.enterWorldWithTutorial({ tabId: authTabId(), forceTakeover: true });
         if (dependencies.connection() !== connection) return { ok: false, error: "CONNECTION CHANGED" };
         takeoverRequested = false;
         dependencies.setWorldEntryBlocked(false);
@@ -828,7 +828,7 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
       notice = "SIGNING OUT OTHER TAB…";
       dependencies.notify();
       try {
-        await connection.reducers.takeOverSession({ tabId: authTabId() });
+        await connection.reducers.enterWorldWithTutorial({ tabId: authTabId(), forceTakeover: true });
         if (!isCurrent()) return false;
         takeoverRequested = false;
         dependencies.setWorldEntryBlocked(false);

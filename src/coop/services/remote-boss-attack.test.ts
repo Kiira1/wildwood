@@ -48,3 +48,13 @@ describe("seeded remote boss attack visuals", () => {
     expect(remoteBossAttackFrame({ ...active, playerX: 1_000 })).toBeNull();
   });
 });
+
+it("reconstructs procedural attacks with independent phases for each instance", () => {
+  const request: RemoteBossAttackFrameOptions = {
+    boss: { kind: "procedural:endless_40:shard-a", encounter: 3n, alive: true, x: 300, y: 100, radius: 95 },
+    playerId: "other", playerX: 100, playerY: 100, attackInterval: 1, attackRange: 200, projectileCount: 2, serverNowMs: 20_000,
+  };
+  const started = remoteBossAttackStartedAtMs(request);
+  expect(remoteBossAttackFrame({ ...request, serverNowMs: started + 210 })?.visual).toMatchObject({ targetX: 300, targetY: 100, hits: 2 });
+  expect(remoteBossAttackStartedAtMs({ ...request, boss: { ...request.boss, kind: "procedural:endless_40:shard-b" } })).not.toBe(started);
+});

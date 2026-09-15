@@ -1,5 +1,5 @@
 import { expect, it, vi } from "vitest";
-import { createProfileDirectory } from "./profile-directory";
+import { createProfileDirectory, generatedDisplayName } from "./profile-directory";
 import type { Identity } from "spacetimedb";
 it("prunes inactive sender metadata after a busy chat session without evicting the current player", () => {
   const directory = createProfileDirectory({ localIdentity: () => "me", shouldRetain: (id: string) => id === "visible", notify: vi.fn() } as never);
@@ -10,4 +10,27 @@ it("prunes inactive sender metadata after a busy chat session without evicting t
   expect(directory.identityFor("9999")).toBeDefined();
   expect(directory.identityFor("me")).toBeDefined();
   expect(directory.identityFor("visible")).toBeDefined();
+});
+
+it("recognizes a saved profile name before the subscription catches up and after reconnect", async () => {
+  const identity = { toHexString: () => "me" } as Identity;
+  const directory = createProfileDirectory({
+    localIdentity: () => "me", shouldRetain: () => true, notify: vi.fn(),
+    rememberCharacter: vi.fn(), rememberGender: vi.fn(), completeAccountReturn: vi.fn(),
+    renameRemotePlayer: vi.fn(), markChatPresentationChanged: vi.fn(), localIsGuestFallback: () => true,
+    reducers: { protocolBlocked: () => false, connection: () => ({ reducers: { setDisplayName: vi.fn() } }),
+      runWorldReducer: async (call: () => void) => { call(); } },
+  } as never);
+  const profile = { identity, displayName: generatedDisplayName("me"), profileIcon: 0, playerSprite: 0 };
+  directory.tables.upsertProfile(profile);
+  expect(directory.api.hasChosenDisplayName()).toBe(false);
+  await directory.api.setDisplayName("  Chosen Name  ");
+  expect(directory.api.localDisplayName()).toBe("Chosen Name");
+  expect(directory.api.hasChosenDisplayName()).toBe(true);
+  directory.prepareSession("Chosen Name");
+  directory.tables.upsertProfile({ ...profile, displayName: "Chosen Name" });
+  expect(directory.api.hasChosenDisplayName()).toBe(true);
+  // Even a deliberately chosen name that resembles a generated name is retained.
+  directory.tables.upsertProfile({ ...profile, displayName: generatedDisplayName("another-account") });
+  expect(directory.api.hasChosenDisplayName()).toBe(true);
 });

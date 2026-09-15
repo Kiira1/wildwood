@@ -1,3 +1,7 @@
+import { createLocalCorpses } from "./game/runtime/local-corpses";
+import { ONBOARDING_MAP_ID, ONBOARDING_WORLD } from "../shared/onboarding";
+import { createOutOfCombatSpeed } from "./game/runtime/out-of-combat-speed";
+import { createOnboardingTutorial } from "./ui/onboarding-tutorial";
 import { createItemGiftController } from "./ui/item-gift-controller";
 import { createReconnectRecovery } from "./ui/reconnect-recovery";
 import { isProceduralMap, proceduralMapId } from "../shared/procedural-maps";
@@ -98,6 +102,7 @@ import {
   MAX_PLAYER_STAT,
   MIN_ATTACK_INTERVAL,
   PLAYER_BASE_HP as BASE_PLAYER_HP,
+  PLAYER_BASE_DAMAGE,
   PLAYER_BASE_REGEN,
   PLAYER_SPEED as BASE_PLAYER_SPEED,
   PLAYER_SPAWN,
@@ -130,7 +135,7 @@ import {
     canvas,
     transparent: Boolean(staticWorldLayer),
     bottomInset: () => gameplayBottomInset(toolbar.getBoundingClientRect().height,
-      document.body.matches(".is-cutscene, .is-replaying")),
+      document.body.matches(".is-cutscene, .is-replaying, .is-onboarding")),
     getActorShadowSprite: () => actorShadowSprite,
   });
   const { ctx, outlinedWorldText, fillWorldText, pixelCircle, roundRect, drawActorShadow } = canvasRuntime;
@@ -152,6 +157,7 @@ import {
   const overlays = createGameOverlays({ e: gameElements, coop, version: GAME_VERSION, applyProfileIcon: (element: HTMLElement, index: number) => applyProfileIcon(element, index), showMessage, afterIconSet: () => { applyProfileIcon(playerHudProfileIcon, coop?.profileIcon?.() ?? 0); if (profileWindow.identity() === coop?.localIdentity?.()) applyProfileIcon(playerProfileIcon, coop?.profileIcon?.() ?? 0); } });
 
   let startupCoordinator!: ReturnType<typeof createStartupCoordinator>;
+  const localCorpses = createLocalCorpses();
   let localPlayerDeath: PlayerDeathAnimationState | null = null;
 
   const deathScreen = createDeathScreenController({
@@ -220,14 +226,16 @@ import {
   const enemyLifecycle = createEnemyLifecycle(enemies, spawnSites, spawnBurst);
   const { spawnFromSite, engageEnemy, updateRespawns } = enemyLifecycle;
   let currentMapId: MapId = TUTORIAL_FOREST_MAP_ID;
+  let onboarding: ReturnType<typeof createOnboardingTutorial> | undefined;
+  const inTutorial = () => currentMapId === ONBOARDING_MAP_ID;
   let prepareMapAssets: (mapId: MapId) => Promise<void> = () => Promise.resolve();
   let preloadAdjacentMapAssets: (mapId: MapId) => void = () => {};
   let cancelAdjacentMapAssetPreload = () => {};
 
   function setCurrentMap(mapId: MapId) {
     currentMapId = mapId;
-    WORLD.w = mapId === "home_exterior" ? HOME_WORLD_WIDTH : WORLD_WIDTH;
-    WORLD.h = mapId === "home_exterior" ? HOME_WORLD_HEIGHT : WORLD_HEIGHT;
+    WORLD.w = mapId === ONBOARDING_MAP_ID ? ONBOARDING_WORLD.width : mapId === "home_exterior" ? HOME_WORLD_WIDTH : WORLD_WIDTH;
+    WORLD.h = mapId === ONBOARDING_MAP_ID ? ONBOARDING_WORLD.height : mapId === "home_exterior" ? HOME_WORLD_HEIGHT : WORLD_HEIGHT;
     void prepareMapAssets(mapId);
     preloadAdjacentMapAssets(mapId);
     gameElements.techTreeBtn.setAttribute("aria-label", mapId === "home_exterior" ? "Return to enemy map" : "Teleport home");
@@ -474,8 +482,8 @@ import {
     joystick: joystickEl,
     stick: stickEl,
     running: () => session.isRunning(),
-    onTapPlayer: openPlayerAtScreenPoint,
-    onEscape: () => inputEscapeHandler(),
+    onTapPlayer: (x, y) => { if (!inTutorial() || onboarding?.canOpenProfile()) openPlayerAtScreenPoint(x, y); },
+    onEscape: () => inTutorial() && playerProfileEl.hidden ? true : inputEscapeHandler(),
   });
   const farmBosses = new Map<string, { x: number; y: number; r: number; dead: boolean }>([
     [TUTORIAL_FOREST_MAP_ID, boss], [BEGINNER_DESERT_MAP_ID, spiderBoss],
@@ -502,7 +510,7 @@ import {
     localIdentity: () => coop?.localIdentity?.(),
     unavailable: farmUnavailable,
     paused: () => Boolean(session?.isPaused()) || document.hidden,
-    speed: () => player.speed * researchMovementSpeedMultiplier(),
+    speed: () => player.speed * movementMultiplier(),
     obstacles: () => {
       const config = MAP_CONFIG[currentMapId];
       const obstacles = [config.portal, "secondaryPortal" in config ? config.secondaryPortal : null].flatMap(portal => portal
@@ -516,6 +524,7 @@ import {
   const proceduralBoss = createProceduralBossController({
     mapId: () => currentMapId, state: mapId => coop?.proceduralMapState(mapId) ?? {boss:null},
     serverNow: () => coop?.serverNowMs?.() ?? Date.now(), enemies, player, spawn: spawnFromSite,
+    revealPortal: () => mapController.startProceduralPortalCutscene(),
     hit: (mapId,bossKey,encounter,hits,x,y) => coop?.hitProceduralBoss(mapId,bossKey,encounter,hits,x,y),
     damagePlayer: damage => playerCombat.damagePlayer(damage), burst: spawnBurst, shot: projectileStore.spawnEnemyShot,
   });
@@ -530,11 +539,12 @@ import {
       currentMapId: () => currentMapId,
       serverNowMs: () => coop?.serverNowMs?.() ?? Date.now(),
       localIdentity: () => coop?.localIdentity?.(),
-      localAggroPosition: () => coop?.regularEnemyLocalPosition?.() ?? coop?.localState?.() ?? player,
-      remotePlayers: () => (coop?.remotePlayers?.() ?? [])
+      localAggroPosition: () => inTutorial() ? player : coop?.regularEnemyLocalPosition?.() ?? coop?.localState?.() ?? player,
+      remotePlayers: () => (inTutorial() ? [] : coop?.remotePlayers?.() ?? [])
         .filter((remote) => !coop?.remotePlayerDeath?.(remote.id)),
       remoteCombatStats: (identity) => coop?.remoteCombatStats?.(identity),
       remoteBoss: () => {
+        if (isProceduralMap(currentMapId)) return proceduralBoss.remoteTarget();
         const target = currentMapId === TUTORIAL_FOREST_MAP_ID
           ? { kind: "dragon" as const, state: boss }
           : currentMapId === BEGINNER_DESERT_MAP_ID
@@ -587,6 +597,9 @@ import {
     criticalDamageMultiplier: researchCriticalDamageMultiplier,
     applyVitality: applyVitalityResearch,
   } = research;
+  const travelSpeed = createOutOfCombatSpeed();
+  const movementMultiplier = () => researchMovementSpeedMultiplier()
+    + travelSpeed.bonus(inventory.equippedFeet, isDueling()) / Math.max(1, player.speed);
   const regenerationMultiplier = () => equipmentRegenerationMultiplier(
     inventory.equippedHead,
     inventory.equippedChest,
@@ -614,6 +627,8 @@ import {
   });
 
   playerCombat = createPlayerCombatController({
+    onCombat: travelSpeed.markCombat,
+    onEnemyDefeated: () => onboarding?.enemyDefeated() ?? false,
     player, enemies, spawnSites, projectileStore, boss, spiderBoss, frostclawBoss, magmaliskBoss, gloomrootBoss, tidewyrmBoss, koiShogunBoss, tempestKirinBoss, miremawBoss, prismshellBoss, ironhornBoss, dreadreaperBoss, voltwardenBoss, gravebloomBoss, aegisPrimeBoss,
     nowSeconds: () => session?.gameTime() ?? 0,
     serverNowMs: () => coop?.serverNowMs?.() ?? Date.now(),
@@ -674,7 +689,7 @@ import {
     saveProgress,
     setHitFlash: () => { flash = .22; },
     addScreenShake: (amount) => { screenShake = Math.max(screenShake, amount); },
-    recordDeath: () => { void coop?.recordPlayerDeath?.(); },
+    recordDeath: () => { if (!inTutorial()) void coop?.recordPlayerDeath?.(); },
     endGame,
   });
 
@@ -766,9 +781,9 @@ import {
     resizeViewport: canvasRuntime.resize,
     isDueling,
     running: () => session.isRunning(),
-    localMapState: () => coop?.localState?.(),
+    localMapState: () => inTutorial() ? null : coop?.localState?.(),
     changeMap: (mapId, x, y) => coop?.changeMap?.(mapId, x, y),
-    syncStoppedPosition: () => coop?.correctMovementPosition?.(player.x, player.y, true),
+    syncStoppedPosition: () => { if (!inTutorial()) coop?.correctMovementPosition?.(player.x, player.y, true); },
     resetPresentationState: presentation.reset,
     fadeToWorld,
     mapUnlocked: (mapId) => isProceduralMap(mapId)
@@ -1025,7 +1040,7 @@ import {
     gameTime: () => session.gameTime(),
     nowMs: () => performance.now(),
     localDeath: () => localPlayerDeath,
-    remoteDeath: (identity) => coop?.remotePlayerDeath?.(identity) ?? null,
+    remoteDeath: (identity) => localCorpses.death(identity, currentMapId, performance.now()) ?? coop?.remotePlayerDeath?.(identity) ?? null,
     isArenaScene,
     mapName: (mapId) => MAP_CONFIG[mapId].name,
     tutorialMapId: TUTORIAL_FOREST_MAP_ID,
@@ -1134,7 +1149,7 @@ import {
     clearTransientCombat: () => { projectileStore.clear(); effects.clear(); enemySimulation.clearRemoteCombat(); },
     getCurrentMapId: () => currentMapId,
     mapSpawn: (mapId) => mapId === TUTORIAL_FOREST_MAP_ID ? START_SPAWN : MAP_CONFIG[mapId].arrival,
-    initialStats: { maxHp: BASE_PLAYER_HP, damage: 4, attackRate: STARTING_ATTACK_INTERVAL, projectileSpeed: BASE_PROJECTILE_SPEED, projectileCount: 1, attackRange: BASE_ATTACK_RANGE, armor: 0, regen: PLAYER_BASE_REGEN, speed: BASE_PLAYER_SPEED * localTestMultiplier },
+    initialStats: { maxHp: BASE_PLAYER_HP, damage: PLAYER_BASE_DAMAGE, attackRate: STARTING_ATTACK_INTERVAL, projectileSpeed: BASE_PROJECTILE_SPEED, projectileCount: 1, attackRange: BASE_ATTACK_RANGE, armor: 0, regen: PLAYER_BASE_REGEN, speed: BASE_PLAYER_SPEED * localTestMultiplier },
     invalidateStaticWorld,
     spawnFromSite,
     clearPlayerCombat: () => { playerCombat.clearPendingThrow(); playerCombat.clearPendingBossHits(); },
@@ -1162,7 +1177,7 @@ import {
       runtimeHud.clearTransientUi();
       updateHud(true);
     },
-    movement: (dt) => autoFarm.movement(playerInput.movement(), dt),
+    movement: (dt) => onboarding?.blocksInput() ? { x: 0, y: 0, source: "none" } : autoFarm.movement(playerInput.movement(), dt),
     isMapTransitioning: () => mapController.isMapTransitioning(),
     resolvePortalCollision: () => mapController.resolvePortalCollision(),
     resolveDragonCollision: () => bossController.resolveDragonCollision(),
@@ -1189,13 +1204,13 @@ import {
     viewport: () => ({ ...canvasRuntime.viewport(), zoom: camera.zoom }),
     cameraPosition: () => camera,
     isConnected: () => Boolean(coop?.isConnected?.()),
-    syncSpeed: (speed) => { if (coop) coop.syncSpeed(speed); },
-    movementSpeedMultiplier: researchMovementSpeedMultiplier,
+    syncSpeed: (speed) => { if (coop && !inTutorial()) coop.syncSpeed(speed); },
+    movementSpeedMultiplier: movementMultiplier,
     regenerationMultiplier,
     healthMultiplier,
-    syncMovementState: (x, y, vx, vy, inputSource, force, interestArea) => coop?.syncMovementState?.(x, y, vx, vy, inputSource, force, interestArea),
+    syncMovementState: (x, y, vx, vy, inputSource, force, interestArea) => { if (!inTutorial()) coop?.syncMovementState?.(x, y, vx, vy, inputSource, force, interestArea); },
     autoAttack: () => playerCombat.attackNearest(autoFarm.targetType(), autoFarm.targetCamp()),
-    isAutoAttackEnabled: () => isWeaponItem(inventory.equippedRightHand || inventory.equippedLeftHand),
+    isAutoAttackEnabled: () => !onboarding?.blocksInput() && isWeaponItem(inventory.equippedRightHand || inventory.equippedLeftHand),
     activeDuel,
     isDueling,
     localIdentity: () => coop?.localIdentity?.(),
@@ -1211,12 +1226,13 @@ import {
   });
   const renderController = worldRenderRuntime.createFrameRenderer({
     bootsPickup,
-    remotePlayers: () => [
+    remotePlayers: () => inTutorial() ? [] : [
       ...enemySimulation.renderRemotePlayers(coop?.remotePlayers?.() ?? [])
         .filter((other) => !coop?.remotePlayerDeath?.(other.id)),
       ...(coop?.remotePlayerCorpses?.() ?? []),
+      ...localCorpses.players(coop?.localIdentity?.() ?? "", currentMapId, performance.now(), localPlayerDeath),
     ],
-    mapPlayerMarkers: () => coop?.mapPlayerMarkers?.() ?? [],
+    mapPlayerMarkers: () => inTutorial() ? [] : coop?.mapPlayerMarkers?.() ?? [],
     isDueling,
     isArenaScene,
     duelAssetsReady: assets.duelAssetsReady,
@@ -1255,10 +1271,12 @@ import {
   });
 
   function saveProgress(immediate = false) {
+    if (inTutorial()) return;
     progress.save(immediate);
   }
 
   function loadProgress() {
+    if (inTutorial()) return;
     progress.load();
   }
 
@@ -1299,6 +1317,12 @@ import {
     beforeOpen: () => { guildPanel?.close(); playerInput.clear(); },
   });
 
+  let pendingProfileNameSave: Promise<{ ok?: boolean; error?: string } | undefined> | undefined;
+  function saveProfileName(name: string) {
+    const request = Promise.resolve(coop?.setDisplayName?.(name));
+    pendingProfileNameSave = request;
+    return request.finally(() => { if (pendingProfileNameSave === request) pendingProfileNameSave = undefined; });
+  }
   const profileWindow = createProfileWindowController({
     window: playerProfileEl, name: playerProfileNameEl, guest: playerProfileGuestLabel, presence: playerProfilePresenceEl, power: playerProfilePowerEl, icon: playerProfileIcon, loading: playerProfileLoadingEl,
     overviewTab: profileOverviewTab, statsTab: profileStatsTab, overviewPanel: profileOverviewPanel, statsPanel: profileStatsPanel,
@@ -1331,7 +1355,7 @@ import {
       minimizeMaximizedChat();
       return coop?.requestDuel?.(identity);
     },
-    isNameTaken: (name) => coop?.isDisplayNameTaken?.(name) ?? false, setDisplayName: async (name) => coop?.setDisplayName?.(name), itemInspection: itemInspectionController, destructionActions: inventoryController.destructionActions, showMessage,
+    isNameTaken: (name) => coop?.isDisplayNameTaken?.(name) ?? false, setDisplayName: saveProfileName, itemInspection: itemInspectionController, destructionActions: inventoryController.destructionActions, showMessage,
   });
   new ResizeObserver(() => { if (profileCharacterPreview.resize()) profileWindow.drawPreview(); }).observe(profileCharacterCanvas);
   new ResizeObserver(() => {
@@ -1393,7 +1417,10 @@ import {
 
   const leaderboard = createLeaderboardPanel({ e: gameElements, options: {
     entries: () => coop?.leaderboardEntries?.() ?? [],
-    loadSnapshot: async (stat: import("./ui/leaderboard").LeaderboardStat) => coop?.loadLeaderboardSnapshot?.(stat) ?? [],
+    loadPage: async (stat: import("./ui/leaderboard").LeaderboardStat, startRank = 0, count = 100) => {
+      if (!coop) throw new Error("Not connected. Try again.");
+      return coop.loadLeaderboardPage(stat, startRank, count);
+    },
     localIdentity: () => coop?.localIdentity?.() || "",
     isDeveloper: isDeveloperIdentity,
     paintProfileIcon: (canvas: HTMLCanvasElement, identity: string) => paintProfileIconCanvas(canvas, coop?.profileIcon?.(identity) ?? 0),
@@ -1464,7 +1491,7 @@ import {
 
   bindHomeTeleportButton(gameElements.techTreeBtn, {
     beforeTeleport: () => { techTree.close(); upgradeBenchController.close(); },
-    teleport: () => mapController.teleportHome(),
+    teleport: () => inTutorial() ? Promise.resolve(false) : mapController.teleportHome(),
     showFailure: failed => showMessage(failed ? "TELEPORT FAILED · TRY AGAIN" : "TELEPORT UNAVAILABLE", "#ffbc91"),
   });
   let touchingResearch = false;
@@ -1641,8 +1668,8 @@ import {
     tutorialMapId: TUTORIAL_FOREST_MAP_ID, desertMapId: BEGINNER_DESERT_MAP_ID, snowMapId: INTERMEDIATE_SNOWLANDS_MAP_ID, lavaMapId: ADVANCED_LAVA_WASTES_MAP_ID, infernalMapId: INFERNAL_DEPTHS_MAP_ID, waterMapId: WATER_REACH_MAP_ID, samuraiMapId: SAMURAI_GARDEN_MAP_ID, cloudspireMapId: CLOUDSPIRE_MAP_ID, moonfenMapId: MOONFEN_MAP_ID, crystalHollowsMapId: CRYSTAL_HOLLOWS_MAP_ID, clockworkRuinsMapId: CLOCKWORK_RUINS_MAP_ID, duskfallOrchardMapId: DUSKFALL_ORCHARD_MAP_ID, neonBastionMapId: NEON_BASTION_MAP_ID, verdantCatacombsMapId: VERDANT_CATACOMBS_MAP_ID, ionCitadelMapId: ION_CITADEL_MAP_ID,
     validMapIds: Object.keys(MAP_CONFIG) as MapId[],
     getMapId: () => currentMapId, setMapId: (mapId) => { setCurrentMap(mapId as MapId); },
-    serverMapId: () => coop?.localState?.()?.mapId,
-    serverPlayerState: () => coop?.localState?.() ?? undefined,
+    serverMapId: () => inTutorial() ? ONBOARDING_MAP_ID : coop?.localState?.()?.mapId,
+    serverPlayerState: () => inTutorial() ? undefined : coop?.localState?.() ?? undefined,
     connected: () => Boolean(coop?.isConnected?.()),
     accountInConflict: () => Boolean(coop?.accountState?.().sessionConflict),
     lowPerformanceMode: appShell.lowPerformanceMode,
@@ -1660,11 +1687,15 @@ import {
         facing: player.facing,
         startedAtMs: performance.now(),
       };
+      if (!inTutorial() && !isDueling()) localCorpses.add(coop?.localIdentity?.() ?? "", currentMapId, {
+        ...equipmentAppearance(inventory), id: localPlayerDeath.id, name: "", power: 0,
+        x: player.x, y: player.y, speed: player.speed, facing: player.facing, moving: false,
+      }, localPlayerDeath, coop?.skinTone?.() ?? DEFAULT_SKIN_TONE);
       mapMusic.playDeathSound();
       deathScreen.show();
     },
     beginAdventure: () => { coop?.beginAdventure?.(); },
-    syncStoppedPosition: () => { coop?.correctMovementPosition?.(player.x, player.y, true); },
+    syncStoppedPosition: () => { if (!inTutorial()) coop?.correctMovementPosition?.(player.x, player.y, true); },
     resetPlayer: (preserveStats) => {
       worldProgression.hideBootUpgrade();
       playerController.reset(preserveStats, progress.hasSavedProgress());
@@ -1674,12 +1705,12 @@ import {
     isDueling, activeDuel,
     syncDragon: bossController.syncDragonState, syncSpider: bossController.syncSpiderState, syncFrostclaw: bossController.syncFrostclawState, syncMagmalisk: bossController.syncMagmaliskState, syncGloomroot: bossController.syncGloomrootState, syncTidewyrm: bossController.syncTidewyrmState, syncKoiShogun: bossController.syncKoiShogunState, syncTempestKirin: bossController.syncTempestKirinState, syncMiremaw: bossController.syncMiremawState, syncPrismshell: bossController.syncPrismshellState, syncIronhorn: bossController.syncIronhornState, syncDreadreaper: bossController.syncDreadreaperState, syncVoltwarden: bossController.syncVoltwardenState, syncGravebloom: bossController.syncGravebloomState, syncAegisPrime: bossController.syncAegisPrimeState,
     cutsceneActive: mapController.isCutsceneActive, updateCutscene: mapController.updatePortalCutscene,
-    updatePlayer: (dt) => { if (!mapController.isMapTransitioning()) playerController.update(dt); }, updateUpgradeBench: updateHomeStations, updatePortal: mapController.updatePortal,
+    updatePlayer: (dt) => { if (!mapController.isMapTransitioning() && !(inTutorial() && player.hp <= 0)) playerController.update(dt); }, updateUpgradeBench: updateHomeStations, updatePortal: mapController.updatePortal,
     updateEnemies: (dt) => { proceduralBoss.update(dt); enemySimulation.update(dt); }, updateDragon: bossController.updateBoss, updateSpider: bossController.updateSpiderBoss, updateFrostclaw: bossController.updateFrostclawBoss, updateMagmalisk: bossController.updateMagmaliskBoss, updateGloomroot: bossController.updateGloomrootBoss, updateTidewyrm: bossController.updateTidewyrmBoss, updateKoiShogun: bossController.updateKoiShogunBoss, updateTempestKirin: bossController.updateTempestKirinBoss, updateMiremaw: bossController.updateMiremawBoss, updatePrismshell: bossController.updatePrismshellBoss, updateIronhorn: bossController.updateIronhornBoss, updateDreadreaper: bossController.updateDreadreaperBoss, updateVoltwarden: bossController.updateVoltwardenBoss, updateGravebloom: bossController.updateGravebloomBoss, updateAegisPrime: bossController.updateAegisPrimeBoss,
-    updateProjectiles: playerCombat.updateProjectiles, updateRespawns,
+    updateProjectiles: playerCombat.updateProjectiles, updateRespawns: time => { if (!inTutorial()) updateRespawns(time); },
     clearDuelCombat: () => { autoFarm.stop("Autofarm stopped for duel"); projectileStore.clear(); playerCombat.clearPendingBossHits(); },
     updateEffects: effects.update, updateHud: () => updateHud(),
-    updateVisuals: (dt) => { flash = Math.max(0, flash - dt); screenShake *= Math.pow(.01, dt); },
+    updateVisuals: (dt) => { onboarding?.update(dt); flash = Math.max(0, flash - dt); screenShake *= Math.pow(.01, dt); },
     updateMessage: runtimeHud.updateMessage,
     capturePresentationState: presentation.capture,
     resetPresentationState: presentation.reset,
@@ -1705,7 +1736,7 @@ import {
     title: balanceApologyGiftTitle,
     continueButton: balanceApologyContinueBtn,
   }, {
-    canShow: () => session.hasStarted(),
+    canShow: () => session.hasStarted() && !inTutorial(),
     amount: () => coop?.balanceApologyGiftAmount?.() ?? 0n,
     acknowledge: async () => coop?.acknowledgeBalanceApologyGift?.(),
     setPaused: (paused) => { if (paused) guildPanel?.close(); setGameplayPause("balance-apology-gift", paused); },
@@ -1714,7 +1745,7 @@ import {
   });
 
   const developerItemGift = createItemGiftController({
-    canShow: () => session.hasStarted() && Boolean(coop?.isConnected?.()) && !coop?.accountState?.().sessionConflict && !balanceApologyGift.isOpen(),
+    canShow: () => session.hasStarted() && !inTutorial() && Boolean(coop?.isConnected?.()) && !coop?.accountState?.().sessionConflict && !balanceApologyGift.isOpen(),
     identity: () => coop?.localIdentity?.() ?? "",
     gift: () => coop?.pendingItemGift?.() ?? null,
     claim: async key => coop?.claimItemGift?.(key),
@@ -1727,7 +1758,7 @@ import {
     overlay: dailyGemBonusEl,
     claimButton: dailyGemClaimBtn,
   }, {
-    canShow: () => session.hasStarted() && !balanceApologyGift.isOpen() && !developerItemGift.isOpen() && coop?.accountState?.().signedIn === true,
+    canShow: () => session.hasStarted() && !inTutorial() && !balanceApologyGift.isOpen() && !developerItemGift.isOpen() && coop?.accountState?.().signedIn === true,
     claimable: () => coop?.dailyGemBonusClaimable?.() === true,
     claim: async () => coop?.claimDailyGemBonus?.(),
     setPaused: (paused) => { if (paused) guildPanel?.close(); setGameplayPause("daily-gem-bonus", paused); },
@@ -1779,6 +1810,35 @@ import {
     reconnectRecovery.activate();
   });
 
+  onboarding = createOnboardingTutorial({
+    step: () => coop?.onboardingStep?.() ?? 0,
+    identity: () => coop?.localIdentity?.() ?? "",
+    connected: () => Boolean(coop?.isConnected?.()),
+    stats: () => ({ damage: coop?.savedProgress?.()?.damage ?? player.damage, regen: coop?.savedProgress?.()?.regen ?? player.regen }),
+    complete: async step => coop?.completeOnboardingStep?.(step),
+    player, enemies, sites: spawnSites, spawn: spawnFromSite,
+    enter: mapId => {
+      mapController.loadMap(mapId, ONBOARDING_WORLD.spawn.x, ONBOARDING_WORLD.spawn.y);
+      session.start(false, false);
+      canvasRuntime.resize();
+    },
+    respawn: () => {
+      localPlayerDeath = null;
+      playerController.reset(true, true);
+      presentation.reset();
+    },
+    clearCombat: () => { projectileStore.clear(); playerCombat.clearPendingThrow(); },
+    clearInput: playerInput.clear,
+    logPickup,
+    fadeToWorld: (action, duration) => session.fadeToWorld(action, duration),
+    profileOpen: () => !playerProfileEl.hidden,
+    setName: async name => coop?.setDisplayName?.(name),
+    hasChosenName: () => coop?.hasChosenDisplayName?.() ?? false,
+    waitForNameSave: async () => { try { await pendingProfileNameSave; } catch {} },
+    closeWindows: () => { profileWindow.close(); itemInspectionController.close(); },
+    cancel: () => { canvasRuntime.resize(); profileWindow.close(); setCurrentMap(TUTORIAL_FOREST_MAP_ID); session.stop(); session.setHasStarted(false); loadProgress(); finishStartup(); },
+  });
+
   startupCoordinator = createStartupCoordinator({
     version: GAME_VERSION,
     gameUpdateGate: gameUpdateGateEl,
@@ -1797,7 +1857,8 @@ import {
     showLoading: startup.showLoading,
     showNewPlayerIntro: () => {
       recordGameplayReady();
-      startup.showNewPlayerIntro();
+      if (onboarding?.required()) startGame(false);
+      else startup.showNewPlayerIntro();
     },
     hideStart: startup.hideStart,
     isLoadingSequenceComplete: startup.isLoadingSequenceComplete,
@@ -1817,6 +1878,18 @@ import {
   startupCoordinator.startVersionPolling();
 
   function startGame(markIntro = true, restoreServerPosition = true) {
+    if (onboarding?.isActive()) return;
+    if (onboarding?.required()) {
+      onboarding.start(() => {
+        canvasRuntime.resize();
+        setCurrentMap(TUTORIAL_FOREST_MAP_ID);
+        loadProgress();
+        const saved = coop?.savedProgress?.();
+        if (saved) { player.damage = Math.max(player.damage, saved.damage); player.regen = Math.max(player.regen, saved.regen); }
+        startGame(markIntro, restoreServerPosition);
+      });
+      return;
+    }
     const firstStart = !session.hasStarted();
     const appearance = equipmentAppearance(inventory);
     warmPlayerAppearanceCache(playerAppearanceAssets, {
@@ -1845,6 +1918,15 @@ import {
   }
 
   function endGame() {
+    if (onboarding?.died()) {
+      localPlayerDeath = { id: coop?.localIdentity?.() ?? "local-player", x: player.x, y: player.y, facing: player.facing, startedAtMs: performance.now() };
+      if (!inTutorial() && !isDueling()) localCorpses.add(coop?.localIdentity?.() ?? "", currentMapId, {
+        ...equipmentAppearance(inventory), id: localPlayerDeath.id, name: "", power: 0,
+        x: player.x, y: player.y, speed: player.speed, facing: player.facing, moving: false,
+      }, localPlayerDeath, coop?.skinTone?.() ?? DEFAULT_SKIN_TONE);
+      mapMusic.playDeathSound();
+      return;
+    }
     cancelAdjacentMapAssetPreload();
     screenShake = 0;
     flash = 0;
@@ -1967,9 +2049,10 @@ import {
     resetMovementSync: playerController.resetMovementSync,
     running: session.isRunning,
     syncPlayerState: () => {
-      coop?.syncSpeed?.(player.speed * researchMovementSpeedMultiplier());
+      if (inTutorial()) return;
+      coop?.syncSpeed?.(player.speed * movementMultiplier());
       const movement = playerInput.movement();
-      const movementSpeed = player.speed * researchMovementSpeedMultiplier();
+      const movementSpeed = player.speed * movementMultiplier();
       coop?.syncMovementState?.(
         player.x,
         player.y,
@@ -1979,7 +2062,7 @@ import {
         true,
       );
     },
-    reconcileMap: mapController.reconcileMapFromServer,
+    reconcileMap: () => { if (!inTutorial()) mapController.reconcileMapFromServer(); },
     syncBossState: () => {
       if (currentMapId === TUTORIAL_FOREST_MAP_ID) bossController.syncDragonState();
       if (currentMapId === BEGINNER_DESERT_MAP_ID) bossController.syncSpiderState();

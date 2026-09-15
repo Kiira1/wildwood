@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { DARK_METAL_HELMET, FIRE_METAL_BOW, FIRE_METAL_HELMET, FROST_ARMOR, FROST_BOW, IRON_BOW, LAVA_BOW, MAGMA_ARMOR, NIGHT_BOW, SNOW_BOW, STARTER_BOW, STARTER_STONE, WOOD_FULL_HELM, WOODEN_ARMOR } from "../../shared/items";
+import { CLOUDSPIRE_ARMOR, CLOUDSPIRE_BOW, CLOUDSPIRE_HELMET, MOONFEN_ARMOR, WATER_ARMOR, SKY_BOW, SAMURAI_BOW, DARK_METAL_HELMET, FIRE_METAL_BOW, FIRE_METAL_HELMET, FROST_ARMOR, FROST_BOW, IRON_BOW, LAVA_BOW, MAGMA_ARMOR, NIGHT_BOW, SNOW_BOW, STARTER_BOW, STARTER_STONE, WOOD_FULL_HELM, WOODEN_ARMOR } from "../../shared/items";
 import { itemArtMarkup, itemPresentation, projectileKindForWeapon } from "./item-presentation";
 
 describe("item presentation", () => {
@@ -125,4 +125,20 @@ describe("item presentation", () => {
       top: 100,
     });
   });
+});
+
+it.each([
+  [CLOUDSPIRE_ARMOR, "cloudspire-armor", "2aa54995030dae1377b126b2e167114230566c1cdfd78de5ad36daa15c69af01", "CHEST"],
+  [MOONFEN_ARMOR, "moonfen-armor", "063df036b33cd53a87c4daf5733d2eecac892f945288b2f2142d0fd84db87098", "CHEST"],
+  [CLOUDSPIRE_BOW, "cloudspire-bow", "105755316ae5d53b6e75bb1ae846adb703f13b0d8876beaf010490cdc2662d36", "HAND"],
+  [CLOUDSPIRE_HELMET, "cloudspire-helmet", "83208f9c74f3f011a4e72e75db01b87314620b8810b92d0627b8c3f52b13cec7", "HEAD"],
+  [WATER_ARMOR, "water-armor", "ddcd46e6d4d53980513f103dbee19f1e5c71ec6ab4a8ec161eed65590f5bb297", "CHEST"],
+  [SKY_BOW, "sky-bow", "79fbe31c3a854a47e2d1860f93e2ef5b454c63e3bc92ae0a03518d9719952407", "HAND"],
+  [SAMURAI_BOW, "samurai-bow", "95d2edfb06b4f6f8d72c6263e7f6ebde6678c52247f7fca010d1b930ce2d7b3c", "HAND"],
+])("uses the exact vendor art for %s in inventory and on the character", (id, file, hash, layer) => {
+  const asset = readFileSync(new URL(`../../public/assets/wildstat/player-parts/${file}.png`, import.meta.url));
+  expect(createHash("sha256").update(asset).digest("hex")).toBe(hash);
+  expect(itemArtMarkup(id)).toContain(`${file}.png`);
+  expect(itemPresentation(id)?.world).toMatchObject({ kind: "SPRITE", layer });
+  if (layer === "HAND") expect(projectileKindForWeapon(id)).toBe("ARROW");
 });
