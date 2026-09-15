@@ -1,3 +1,6 @@
+import { regularMapLoot } from "../../shared/regular-map-loot";
+import { WATER_ARMOR, SKY_BOW, SAMURAI_HAT, SAMURAI_BOW, CLOUDSPIRE_HELMET, CLOUDSPIRE_BOW, CLOUDSPIRE_ARMOR, MOONFEN_ARMOR } from "../../shared/items";
+import { WATER_REACH_MAP_ID, SAMURAI_GARDEN_MAP_ID, CLOUDSPIRE_MAP_ID, MOONFEN_MAP_ID } from "../../shared/rules";
 import { BLACK_BOOTS, BLACK_BOOTS_DROP_DENOMINATOR } from "../../shared/items";
 import { describe, expect, it } from "vitest";
 import {
@@ -61,6 +64,19 @@ describe("map guide", () => {
     expect(mapGuideDropChance(30)).toBe("3.3%");
     expect(mapGuideDropChance(LAVA_ITEM_DROP_DENOMINATOR)).toBe("0.08%");
     expect(mapGuideDropChance(LAVA_HELMET_ITEM_DROP_DENOMINATOR)).toBe("0.05%");
+  });
+
+  it.each([
+    [WATER_REACH_MAP_ID, [[WATER_ARMOR, "1%"], [SKY_BOW, "0.70%"]]],
+    [SAMURAI_GARDEN_MAP_ID, [[SAMURAI_HAT, "0.80%"], [SAMURAI_BOW, "0.65%"]]],
+    [CLOUDSPIRE_MAP_ID, [[CLOUDSPIRE_HELMET, "0.80%"], [CLOUDSPIRE_BOW, "0.50%"], [CLOUDSPIRE_ARMOR, "0.70%"]]],
+    [MOONFEN_MAP_ID, [[MOONFEN_ARMOR, "0.70%"]]],
+  ] as const)("shows every server drop and its exact chance for %s", (mapId, expected) => {
+    const drops = mapGuideDrops(mapId);
+    expect(drops.map(drop => [drop.itemId, mapGuideDropChance(drop.denominator, drop.numerator)])).toEqual(expected);
+    expect(drops.map(drop => [drop.itemId, drop.numerator, drop.denominator])).toEqual(
+      regularMapLoot(mapId).map(drop => [drop.itemId, drop.wins, drop.outcomes]),
+    );
   });
 
   it("summarizes the stats players need when evaluating a drop", () => {

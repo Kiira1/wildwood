@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.691": [
+    "The map guide now shows the new Water Reach, Samurai Gardens, Cloudspire, and Moonfen item drops with their correct drop chances.",
+  ],
   "0.690": [
     "New players start on a private tutorial map with movement, stats, combat, and a quick lesson about respawning. Skip ahead or choose your name before entering the forest.",
     "Added a Keep screen on setting and improved the item details layout.",
@@ -1803,6 +1806,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.691": "2026-09-14",
   "0.690": "2026-09-14",
   "0.689": "2026-09-14",
   "0.688": "2026-09-14",

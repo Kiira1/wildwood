@@ -1,10 +1,9 @@
+import { regularMapLoot } from "../../shared/regular-map-loot";
 import { BLACK_BOOTS, BLACK_BOOTS_DROP_DENOMINATOR } from "../../shared/items";
 import { generateMap, isProceduralMap } from "../../shared/procedural-maps";
 import { canvasRenderPixelRatio } from "../game/runtime/render-budget";
 import {
   DARK_METAL_HELMET,
-  SAMURAI_HAT,
-  SAMURAI_HAT_ITEM_DROP_DENOMINATOR,
   DESERT_ITEM_DROP_DENOMINATOR,
   FIRE_METAL_BOW,
   FIRE_METAL_HELMET,
@@ -81,6 +80,7 @@ type MapGuideDependencies = {
 export type MapGuideDrop = {
   itemId: ItemId;
   denominator: number;
+  numerator?: number;
   source: string;
 };
 
@@ -117,12 +117,10 @@ const MAP_GUIDE_DROPS: Record<MapId, readonly MapGuideDrop[]> = {
     { itemId: NIGHT_BOW, denominator: NIGHT_FOREST_BOW_ITEM_DROP_DENOMINATOR, source: "Any regular Night Forest enemy" },
     { itemId: FIRE_METAL_BOW, denominator: INFERNAL_ITEM_DROP_DENOMINATOR, source: "Any regular Night Forest enemy" },
     { itemId: DARK_METAL_HELMET, denominator: NIGHT_FOREST_HELMET_ITEM_DROP_DENOMINATOR, source: "Any regular Night Forest enemy" },
-        { itemId: BLACK_BOOTS, denominator: BLACK_BOOTS_DROP_DENOMINATOR, source: "Any regular Night Forest enemy" },
+    { itemId: BLACK_BOOTS, denominator: BLACK_BOOTS_DROP_DENOMINATOR, source: "Any regular Night Forest enemy" },
   ],
   [WATER_REACH_MAP_ID]: [],
-  [SAMURAI_GARDEN_MAP_ID]: [
-    { itemId: SAMURAI_HAT, denominator: SAMURAI_HAT_ITEM_DROP_DENOMINATOR, source: "Any regular Samurai Gardens enemy" },
-  ],
+  [SAMURAI_GARDEN_MAP_ID]: [],
   [CLOUDSPIRE_MAP_ID]: [],
   [MOONFEN_MAP_ID]: [],
   [CRYSTAL_HOLLOWS_MAP_ID]: [], [CLOCKWORK_RUINS_MAP_ID]: [], [DUSKFALL_ORCHARD_MAP_ID]: [], [NEON_BASTION_MAP_ID]: [], [VERDANT_CATACOMBS_MAP_ID]: [], [ION_CITADEL_MAP_ID]: [],
@@ -151,8 +149,15 @@ const MAP_GUIDE_REWARD_LABELS: Record<RewardType, string> = {
   regen: "Hp/Sec",
 };
 
-export function mapGuideDrops(mapId: MapId) {
-  return isProceduralMap(mapId) ? [] : MAP_GUIDE_DROPS[mapId];
+export function mapGuideDrops(mapId: MapId): readonly MapGuideDrop[] {
+  if (isProceduralMap(mapId)) return [];
+  const regularDrops = regularMapLoot(mapId).map<MapGuideDrop>(({ itemId, wins, outcomes }) => ({
+    itemId,
+    numerator: wins,
+    denominator: outcomes,
+    source: "Any regular enemy",
+  }));
+  return [...MAP_GUIDE_DROPS[mapId], ...regularDrops];
 }
 
 /** Groups the live spawn layout into readable reward zones for the enlarged map. */
@@ -179,8 +184,8 @@ export function mapGuideZones(spawnSites: readonly SpawnSite[]): MapGuideZone[] 
   });
 }
 
-export function mapGuideDropChance(denominator: number) {
-  const percent = 100 / denominator;
+export function mapGuideDropChance(denominator: number, numerator = 1) {
+  const percent = 100 * numerator / denominator;
   const precision = Number.isInteger(percent) ? 0 : percent < 1 ? 2 : 1;
   return `${percent.toFixed(precision)}%`;
 }
@@ -276,7 +281,7 @@ export function createMapGuideController(elements: MapGuideElements, dependencie
       const chanceLabel = document.createElement("span");
       chanceLabel.textContent = "Drop Chance";
       const chanceValue = document.createElement("strong");
-      chanceValue.textContent = mapGuideDropChance(drop.denominator);
+      chanceValue.textContent = mapGuideDropChance(drop.denominator, drop.numerator);
       chance.append(chanceLabel, chanceValue);
 
       card.append(art, copy, chance);
