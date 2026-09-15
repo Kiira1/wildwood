@@ -3556,10 +3556,9 @@
 }
 .scheduled-update[hidden] { display: none; }
 .scheduled-update > span { text-shadow: inherit; }
-.scheduled-update--blocking {
-  inset: 0; transform: none; max-width: none; display: grid; place-items: center;
-  padding: max(24px, env(safe-area-inset-top)) 24px max(24px, env(safe-area-inset-bottom));
-  pointer-events: auto; background: #0b0d10ed; font-size: 14px;
+#gameUpdateGate[data-scheduled-update] {
+  display: grid;
+  z-index: 100000;
 }
 
 .stat-reward-toast.is-capped .stat-reward-arrow { visibility: hidden; }

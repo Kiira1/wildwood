@@ -2,6 +2,7 @@ import { SenderError, SyncResponse, type InferSchema, type ReducerCtx, type Proc
 import { TimeDuration, type Identity } from "spacetimedb";
 import type database from "./index";
 import { allowedAvatarFrame, type AvatarFrame, type PatreonStatus } from "../../shared/avatar-frames";
+import { encodePatreonForm, patreonCallbackParams } from "./patreon-url";
 import { verifyPatreonIdentity } from "./patreon-verification";
 
 type Schema = InferSchema<typeof database>;
@@ -30,7 +31,7 @@ export function beginPatreonLink(ctx: Tx, state: string) {
   if (existing) ctx.db.patreonPending.state.delete(existing.state);
   // Supplied by browser crypto.getRandomValues, not the module's timestamp-seeded RNG.
   ctx.db.patreonPending.insert({ state, identity: ctx.sender, expiresAtMs: now + 10 * 60_000 });
-  const query = new URLSearchParams({ response_type: "code", client_id: config.clientId, redirect_uri: config.redirectUri,
+  const query = encodePatreonForm({ response_type: "code", client_id: config.clientId, redirect_uri: config.redirectUri,
     scope: "identity identity.memberships", state });
   return `https://www.patreon.com/oauth2/authorize?${query}`;
 }
@@ -38,7 +39,7 @@ export function beginPatreonLink(ctx: Tx, state: string) {
 function tokenRequest(ctx: Context, config: Config, grant: Record<string, string>) {
   const response = ctx.http.fetch("https://www.patreon.com/api/oauth2/token", {
     method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({ client_id: config.clientId, client_secret: config.clientSecret, ...grant }).toString(),
+    body: encodePatreonForm({ client_id: config.clientId, client_secret: config.clientSecret, ...grant }).toString(),
     timeout: new TimeDuration(10_000_000n),
   });
   if (response.status < 200 || response.status >= 300) throw new Error("Patreon token exchange failed");
@@ -48,7 +49,7 @@ function tokenRequest(ctx: Context, config: Config, grant: Record<string, string
 }
 
 function membershipRequest(ctx: Context, config: Config, accessToken: string) {
-  const query = new URLSearchParams({ include: "memberships.currently_entitled_tiers,memberships.campaign",
+  const query = encodePatreonForm({ include: "memberships.currently_entitled_tiers,memberships.campaign",
     "fields[member]": "patron_status,last_charge_status,is_free_trial" });
   const response = ctx.http.fetch(`https://www.patreon.com/api/oauth2/v2/identity?${query}`, {
     headers: { authorization: `Bearer ${accessToken}` }, timeout: new TimeDuration(10_000_000n),
@@ -112,7 +113,7 @@ export function unlinkPatreon(ctx: Tx, identity = ctx.sender) {
 }
 
 export function patreonCallback(ctx: HandlerContext<Schema>, uri: string) {
-  const params = new URL(uri, "https://maincloud.spacetimedb.com").searchParams;
+  const params = patreonCallbackParams(uri);
   const state = params.get("state") ?? "", code = params.get("code") ?? "";
   let message = "This link expired. Return to WildStat and try Connect Patreon again.";
   let ok = false;

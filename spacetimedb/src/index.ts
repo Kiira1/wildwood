@@ -1,3 +1,4 @@
+import { validPatreonRedirect } from "./patreon-url";
 import { releaseNotice, releaseAcknowledgement, writeReleaseWindow, acknowledgeReleaseWindow } from "./release-control";
 import { PERSONAL_BOSS_COMBAT, personalBossDefinition } from "../../shared/personal-bosses";
 import { enemyDefeatBudget, acceptEnemyDefeats } from "./enemy-defeats";
@@ -11031,8 +11032,7 @@ export const getSocialChatHistoryWithReactions = spacetimedb.procedure(
 export const configurePatreon = spacetimedb.reducer({ clientId: t.string(), clientSecret: t.string(), campaignId: t.string(), silverTierId: t.string(), goldTierId: t.string(), redirectUri: t.string() }, (ctx, config) => {
   if (!isDatabaseOwnerIdentity(ctx.sender) || isMapShard(ctx)) throw new SenderError("Database owner required.");
   if (!config.clientId || !config.clientSecret || !/^\d+$/.test(config.campaignId) || !/^\d+$/.test(config.silverTierId) || !/^\d+$/.test(config.goldTierId) || config.silverTierId === config.goldTierId) throw new SenderError("Invalid Patreon configuration.");
-  const redirect = new URL(config.redirectUri);
-  if (redirect.protocol !== "https:" || redirect.hostname !== "maincloud.spacetimedb.com" || redirect.search || redirect.hash || !/^\/v1\/database\/[a-zA-Z0-9_-]+\/route\/patreon\/callback$/.test(redirect.pathname)) throw new SenderError("Use the database's Patreon callback URL.");
+  if (!validPatreonRedirect(config.redirectUri)) throw new SenderError("Use the database's Patreon callback URL.");
   const row = { id: 0, ...config };
   if (ctx.db.patreonConfig.id.find(0)) ctx.db.patreonConfig.id.update(row); else ctx.db.patreonConfig.insert(row);
 });

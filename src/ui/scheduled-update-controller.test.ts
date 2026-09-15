@@ -62,3 +62,20 @@ describe("planned update handoff", () => {
     expect(await result).toBe(false); expect(f.d.pause).toHaveBeenLastCalledWith(false);
   });
 });
+
+it("uses the existing update screen and preserves its independent protocol gate", async () => {
+  const { parseHTML } = await import("linkedom");
+  const { createScheduledUpdateView } = await import("./scheduled-update-controller");
+  const { document } = parseHTML('<html><body><div id="gameUpdateGate" hidden>Game Updating</div></body></html>');
+  const render = createScheduledUpdateView(document as unknown as Document);
+  const gate = document.getElementById("gameUpdateGate")!;
+  render({ text: "Saving progress…", blocking: true, urgent: false });
+  expect(gate.hasAttribute("data-scheduled-update")).toBe(true);
+  expect(document.querySelector(".scheduled-update")!.hasAttribute("hidden")).toBe(true);
+  render({ text: "", blocking: false, urgent: false });
+  expect(gate.hasAttribute("data-scheduled-update")).toBe(false);
+  expect(gate.hasAttribute("hidden")).toBe(true);
+  gate.removeAttribute("hidden");
+  render({ text: "Update in 2:00", blocking: false, urgent: false });
+  expect(gate.hasAttribute("hidden")).toBe(false);
+});

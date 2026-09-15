@@ -105,3 +105,16 @@ it("rejects forged/expired OAuth callbacks without contacting Patreon", () => {
   expect(patreonCallback(f.ctx, `https://example.com?state=${"a".repeat(64)}&code=x`).status).toBe(400);
   expect(f.http.fetch).not.toHaveBeenCalled();
 });
+
+it("builds login and callback responses in the server runtime without URL globals", () => {
+  const f = fixture();
+  vi.stubGlobal("URL", undefined);
+  vi.stubGlobal("URLSearchParams", undefined);
+  try {
+    expect(beginPatreonLink(f.ctx, "f".repeat(64))).toContain("scope=identity+identity.memberships");
+    expect(patreonCallback(f.ctx, "/patreon/callback?state=%XX").status).toBe(400);
+    f.http.fetch.mockReturnValueOnce(reply({ access_token: "new", refresh_token: "next" })).mockReturnValueOnce(reply(membership()));
+    expect(patreonCallback(f.ctx, `/patreon/callback?state=${"f".repeat(64)}&code=valid%2Bcode`).status).toBe(200);
+    expect(f.http.fetch.mock.calls[0][1].body).toContain("code=valid%2Bcode");
+  } finally { vi.unstubAllGlobals(); }
+});

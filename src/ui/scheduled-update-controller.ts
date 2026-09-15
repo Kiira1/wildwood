@@ -91,13 +91,16 @@ export function createScheduledUpdateView(documentValue = document) {
   const text = documentValue.createElement("span");
   element.append(text);
   documentValue.body.append(element);
+  const updateGate = documentValue.getElementById("gameUpdateGate");
   let previous = "";
   return (view: UpdateView) => {
     const key = JSON.stringify(view);
     if (key === previous) return;
     previous = key;
-    element.hidden = !view.text;
-    element.classList.toggle("scheduled-update--blocking", view.blocking);
+    // Share the standard update screen without taking ownership of its hidden
+    // state: protocol updates may still need it after this release is cancelled.
+    updateGate?.toggleAttribute("data-scheduled-update", view.blocking);
+    element.hidden = !view.text || view.blocking;
     element.classList.toggle("scheduled-update--urgent", view.urgent);
     text.textContent = view.text;
   };
