@@ -10,7 +10,7 @@ function fixture() {
 it("counts distinct reactions and credits each received heart only once", () => {
   const f = fixture();
   f.react(); f.react(); f.react("like");
-  expect(readChatReactions(f.ctx as any, "public", 1n)).toEqual({ counts: { like: 1, heart: 1 }, selected: ["like", "heart"] });
+  expect(readChatReactions(f.ctx as any, "public", 1n)).toEqual({ counts: { like: 1 }, selected: ["like"] });
   expect(f.db.playerChatHearts.identity.find(f.author).chatHeartsReceived).toBe(1n);
   f.react("heart", false); f.react("heart", true);
   expect(f.db.playerChatHearts.identity.find(f.author).chatHeartsReceived).toBe(1n);
@@ -87,4 +87,36 @@ it("merges lifetime totals and deduplicates overlapping guest reactions", () => 
   expect(f.db.playerChatHearts.identity.find(account).chatHeartsReceived).toBe(8n);
   expect(f.db.playerChatHearts.identity.find(f.ctx.sender)).toBeNull();
   expect(readChatReactions({ ...f.ctx, sender: account } as any, "public", 1n).counts).toEqual({ like: 1 });
+});
+
+it("switches one player's reaction without changing other players' reactions", () => {
+  const f = fixture(), other = { ...f.ctx, sender: identity("3") } as any;
+  f.react("like");
+  setChatReaction(other, "public", 1n, "like", true);
+  f.react("laugh");
+  expect(readChatReactions(f.ctx as any, "public", 1n)).toEqual({ counts: { like: 1, laugh: 1 }, selected: ["laugh"] });
+  f.react("laugh"); // Retried selection cannot increase the count.
+  f.react("like", false); // A stale removal cannot clear the newer selection.
+  expect(readChatReactions(f.ctx as any, "public", 1n).selected).toEqual(["laugh"]);
+  f.react("laugh", false);
+  expect(readChatReactions(f.ctx as any, "public", 1n)).toEqual({ counts: { like: 1 }, selected: [] });
+});
+it("cleans up existing multiple selections on the next selection", () => {
+  const f = fixture();
+  for (const reaction of ["like", "laugh", "heart"]) {
+    f.seed("chatReaction", { key: `public:1:${f.ctx.sender.toHexString()}:${reaction}`, messageKey: "public:1",
+      actor: f.ctx.sender, reaction, active: true, heartCredited: reaction === "heart" });
+  }
+  f.seed("chatReactionSummary", { key: "public:1", countsJson: JSON.stringify({ like: 1, laugh: 1, heart: 1 }) });
+  f.react("heart");
+  expect(readChatReactions(f.ctx as any, "public", 1n)).toEqual({ counts: { heart: 1 }, selected: ["heart"] });
+});
+it("keeps one reaction when guest and account selections differ", () => {
+  const f = fixture(), account = identity("4");
+  f.react("laugh");
+  setChatReaction({ ...f.ctx, sender: account } as any, "public", 1n, "heart", true);
+  mergeAccountReactions(f.ctx as any, f.ctx.sender, account);
+  expect(readChatReactions({ ...f.ctx, sender: account } as any, "public", 1n)).toEqual({ counts: { laugh: 1 }, selected: ["laugh"] });
+  setChatReaction({ ...f.ctx, sender: account } as any, "public", 1n, "heart", true);
+  expect(f.db.playerChatHearts.identity.find(f.author).chatHeartsReceived).toBe(1n);
 });

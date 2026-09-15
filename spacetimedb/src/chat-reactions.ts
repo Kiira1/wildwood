@@ -44,12 +44,31 @@ export function readChatReactions(ctx: ReadContext, channel: string, id: bigint)
   return { counts: chatReactionCounts(reactionCountsFor(ctx, channel, id)), selected: CHAT_REACTIONS
     .filter(reaction => ctx.db.chatReaction.key.find(prefix + reaction.id)?.active).map(reaction => reaction.id) };
 }
+/** Four indexed lookups keep switching atomic without scanning other players. */
+function clearOtherReactions(ctx: ModuleReducerCtx, target: string, actor: Identity, keep: string,
+  counts: ReturnType<typeof chatReactionCounts>) {
+  let changed = false;
+  for (const { id } of CHAT_REACTIONS) {
+    if (id === keep) continue;
+    const previous = ctx.db.chatReaction.key.find(`${target}:${actor.toHexString()}:${id}`);
+    if (!previous?.active) continue;
+    ctx.db.chatReaction.key.update({ ...previous, active: false });
+    counts[id] = Math.max(0, (counts[id] ?? 0) - 1);
+    changed = true;
+  }
+  return changed;
+}
 export function setChatReaction(ctx: ModuleReducerCtx, channel: string, id: bigint, reaction: string, active: boolean) {
   if (!isChatReaction(reaction)) throw new SenderError("Unknown reaction.");
   const row = readableMessage(ctx, channel, id);
   const target = messageKey(channel, id), key = `${target}:${ctx.sender.toHexString()}:${reaction}`;
   const previous = ctx.db.chatReaction.key.find(key);
-  if (Boolean(previous?.active) === active) return;
+  const counts = chatReactionCounts(reactionCountsFor(ctx, channel, id));
+  const switched = active && clearOtherReactions(ctx, target, ctx.sender, reaction, counts);
+  if (Boolean(previous?.active) === active) {
+    if (switched) writeCounts(ctx, target, counts);
+    return;
+  }
   const creditHeart = reaction === "heart" && active && !previous?.heartCredited && !row.sender.equals(ctx.sender);
   const next = { key, messageKey: target, actor: ctx.sender, reaction, active, heartCredited: Boolean(previous?.heartCredited || creditHeart) };
   if (previous) ctx.db.chatReaction.key.update(next);
@@ -60,7 +79,6 @@ export function setChatReaction(ctx: ModuleReducerCtx, channel: string, id: bigi
     if (lifetime) ctx.db.playerChatHearts.identity.update(total);
     else ctx.db.playerChatHearts.insert(total);
   }
-  const counts = chatReactionCounts(reactionCountsFor(ctx, channel, id));
   counts[reaction] = Math.max(0, (counts[reaction] ?? 0) + (active ? 1 : -1));
   writeCounts(ctx, target, counts);
 }
@@ -90,19 +108,19 @@ export function mergeAccountReactions(ctx: ModuleReducerCtx, guest: Identity, ac
     if (accountHearts) ctx.db.playerChatHearts.identity.update(total); else ctx.db.playerChatHearts.insert(total);
     ctx.db.playerChatHearts.identity.delete(guest);
   }
-  for (const previous of ctx.db.chatReaction.actor.filter(guest)) {
+  for (const previous of [...ctx.db.chatReaction.actor.filter(guest)]) {
     const key = `${previous.messageKey}:${account.toHexString()}:${previous.reaction}`;
     const existing = ctx.db.chatReaction.key.find(key);
     ctx.db.chatReaction.key.delete(previous.key);
     const next = { ...previous, key, actor: account,
       active: Boolean(previous.active || existing?.active), heartCredited: Boolean(previous.heartCredited || existing?.heartCredited) };
     if (existing) ctx.db.chatReaction.key.update(next); else ctx.db.chatReaction.insert(next);
-    if (!previous.active || !existing?.active || !isChatReaction(previous.reaction)) continue;
+    if (!next.active || !isChatReaction(previous.reaction)) continue;
     const [channel, id] = previous.messageKey.split(":");
-    const row = channel === "public" ? ctx.db.chatMessage.id.find(BigInt(id)) : ctx.db.socialMessage.id.find(BigInt(id));
-    if (!row) continue;
     const counts = chatReactionCounts(reactionCountsFor(ctx, channel, BigInt(id)));
-    counts[previous.reaction] = Math.max(0, (counts[previous.reaction] ?? 0) - 1);
-    writeCounts(ctx, previous.messageKey, counts);
+    const switched = clearOtherReactions(ctx, previous.messageKey, account, previous.reaction, counts);
+    const duplicate = previous.active && existing?.active;
+    if (duplicate) counts[previous.reaction] = Math.max(0, (counts[previous.reaction] ?? 0) - 1);
+    if (switched || duplicate) writeCounts(ctx, previous.messageKey, counts);
   }
 }
