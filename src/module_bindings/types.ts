@@ -184,6 +184,22 @@ export const ChatMessageReportRateLimit = __t.object("ChatMessageReportRateLimit
 });
 export type ChatMessageReportRateLimit = __Infer<typeof ChatMessageReportRateLimit>;
 
+export const ChatReaction = __t.object("ChatReaction", {
+  key: __t.string(),
+  messageKey: __t.string(),
+  actor: __t.identity(),
+  reaction: __t.string(),
+  active: __t.bool(),
+  heartCredited: __t.bool(),
+});
+export type ChatReaction = __Infer<typeof ChatReaction>;
+
+export const ChatReactionSummary = __t.object("ChatReactionSummary", {
+  key: __t.string(),
+  countsJson: __t.string(),
+});
+export type ChatReactionSummary = __Infer<typeof ChatReactionSummary>;
+
 export const ConnectionDiagnostic = __t.object("ConnectionDiagnostic", {
   id: __t.string(),
   identity: __t.identity(),
@@ -821,6 +837,9 @@ export type KoiShogunResult = __Infer<typeof KoiShogunResult>;
 export const LatestChatMessages = __t.object("LatestChatMessages", {});
 export type LatestChatMessages = __Infer<typeof LatestChatMessages>;
 
+export const LatestChatMessagesWithReactions = __t.object("LatestChatMessagesWithReactions", {});
+export type LatestChatMessagesWithReactions = __Infer<typeof LatestChatMessagesWithReactions>;
+
 export const LeaderboardEntry = __t.object("LeaderboardEntry", {
   identity: __t.identity(),
   displayName: __t.string(),
@@ -1100,6 +1119,9 @@ export type MySocialHub = __Infer<typeof MySocialHub>;
 export const MySocialMessages = __t.object("MySocialMessages", {});
 export type MySocialMessages = __Infer<typeof MySocialMessages>;
 
+export const MySocialMessagesWithReactions = __t.object("MySocialMessagesWithReactions", {});
+export type MySocialMessagesWithReactions = __Infer<typeof MySocialMessagesWithReactions>;
+
 export const MyUpgradeBench = __t.object("MyUpgradeBench", {});
 export type MyUpgradeBench = __Infer<typeof MyUpgradeBench>;
 
@@ -1167,6 +1189,12 @@ export const PlayerBlock = __t.object("PlayerBlock", {
   targetName: __t.string(),
 });
 export type PlayerBlock = __Infer<typeof PlayerBlock>;
+
+export const PlayerChatHearts = __t.object("PlayerChatHearts", {
+  identity: __t.identity(),
+  chatHeartsReceived: __t.u64(),
+});
+export type PlayerChatHearts = __Infer<typeof PlayerChatHearts>;
 
 export const PlayerController = __t.object("PlayerController", {
   identity: __t.identity(),
@@ -1622,6 +1650,33 @@ export const PublicChatPage = __t.object("PublicChatPage", {
 });
 export type PublicChatPage = __Infer<typeof PublicChatPage>;
 
+export const PublicChatPageWithReactions = __t.object("PublicChatPageWithReactions", {
+  get messages() {
+    return __t.array(PublicChatWithReactions);
+  },
+  hasMore: __t.bool(),
+});
+export type PublicChatPageWithReactions = __Infer<typeof PublicChatPageWithReactions>;
+
+export const PublicChatWithReactions = __t.object("PublicChatWithReactions", {
+  id: __t.u64(),
+  sender: __t.identity(),
+  senderName: __t.string(),
+  message: __t.string(),
+  sentAt: __t.timestamp(),
+  replayId: __t.u64(),
+  senderIsGuest: __t.bool(),
+  powerLevel: __t.f32(),
+  senderGender: __t.u8(),
+  moderated: __t.bool(),
+  replyToMessageId: __t.u64(),
+  replyToSenderName: __t.string(),
+  replyToMessage: __t.string(),
+  guildReplayKey: __t.string(),
+  reactionCountsJson: __t.string(),
+});
+export type PublicChatWithReactions = __Infer<typeof PublicChatWithReactions>;
+
 export const RankedLeaderboardPlayer = __t.object("RankedLeaderboardPlayer", {
   rank: __t.u32(),
   get entry() {
@@ -1629,6 +1684,13 @@ export const RankedLeaderboardPlayer = __t.object("RankedLeaderboardPlayer", {
   },
 });
 export type RankedLeaderboardPlayer = __Infer<typeof RankedLeaderboardPlayer>;
+
+export const RegularEnemyLootCursor = __t.object("RegularEnemyLootCursor", {
+  key: __t.string(),
+  identity: __t.identity(),
+  sequence: __t.u64(),
+});
+export type RegularEnemyLootCursor = __Infer<typeof RegularEnemyLootCursor>;
 
 export const ResearchCompletionSchedule = __t.object("ResearchCompletionSchedule", {
   scheduledId: __t.u64(),
@@ -1763,6 +1825,37 @@ export const SocialChatPage = __t.object("SocialChatPage", {
   hasMore: __t.bool(),
 });
 export type SocialChatPage = __Infer<typeof SocialChatPage>;
+
+export const SocialChatPageWithReactions = __t.object("SocialChatPageWithReactions", {
+  get messages() {
+    return __t.array(SocialChatWithReactions);
+  },
+  hasMore: __t.bool(),
+});
+export type SocialChatPageWithReactions = __Infer<typeof SocialChatPageWithReactions>;
+
+export const SocialChatWithReactions = __t.object("SocialChatWithReactions", {
+  id: __t.u64(),
+  channel: __t.string(),
+  conversation: __t.string(),
+  guildId: __t.u64(),
+  sender: __t.identity(),
+  recipient: __t.identity(),
+  recipientName: __t.string(),
+  senderName: __t.string(),
+  senderGender: __t.u8(),
+  powerLevel: __t.f64(),
+  senderIsGuest: __t.bool(),
+  message: __t.string(),
+  moderated: __t.bool(),
+  sentAt: __t.timestamp(),
+  replySender: __t.identity(),
+  replyToMessageId: __t.u64(),
+  replyToSenderName: __t.string(),
+  replyToMessage: __t.string(),
+  reactionCountsJson: __t.string(),
+});
+export type SocialChatWithReactions = __Infer<typeof SocialChatWithReactions>;
 
 export const SocialFriend = __t.object("SocialFriend", {
   key: __t.string(),

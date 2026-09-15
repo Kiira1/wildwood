@@ -74,6 +74,7 @@ export type RemotePlayerDeath = {
 };
 
 export type ChatMessage = {
+  reactionCountsJson?: string;
   guildReplayKey?: string;
   id: bigint;
   sender: string;
@@ -113,6 +114,7 @@ export type ActiveItemUpgrade = {
 };
 
 export type PlayerLifetime = {
+  chatHeartsReceived?: number;
   joinedAtMs: number;
   playedSeconds: number;
   sessionStartedAtMs: number;

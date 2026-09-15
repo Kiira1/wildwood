@@ -53,6 +53,7 @@ export function createInventoryController(dependencies: InventoryDependencies) {
   const content = requiredElement("inventoryContent");
   const loadout = panel.querySelector<HTMLElement>(".inventory-loadout");
   const bagSection = items.closest<HTMLElement>(".bag-section");
+  let renderedState = "";
   let mode: InventoryMode = "EQUIPMENT";
   let cancelDrag = () => {};
   let unlockingSlot = false;
@@ -140,6 +141,11 @@ export function createInventoryController(dependencies: InventoryDependencies) {
   }
 
   function render() {
+    const inventory = dependencies.inventory;
+    const nextState = JSON.stringify([mode, inventory, dependencies.inventorySlotsUnlocked(), unlockingSlot,
+      inventory.itemIds.map(itemId => dependencies.upgradeLevel(itemId))]);
+    if (nextState === renderedState) return;
+    renderedState = nextState;
     const cosmeticsActive = mode === "COSMETICS";
     equipmentTab.classList.toggle("is-active", !cosmeticsActive);
     equipmentTab.setAttribute("aria-selected", String(!cosmeticsActive));

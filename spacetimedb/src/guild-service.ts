@@ -1,3 +1,4 @@
+import { removeMessageReactions } from "./chat-reactions";
 import { syncGuildTag } from "./player-name-tags";
 import type { Identity } from "spacetimedb";
 import { Range, SenderError } from "spacetimedb/server";
@@ -103,7 +104,7 @@ function removeMember(ctx: Ctx, member: Member) {
   if (guild.members <= 1) {
     ctx.db.guild.id.delete(guild.id);
     for (const row of ctx.db.socialGuildInvite.guildId.filter(guild.id)) ctx.db.socialGuildInvite.id.delete(row.id);
-    for (const row of ctx.db.socialMessage.conversation.filter(`guild:${guild.id}`)) ctx.db.socialMessage.id.delete(row.id);
+    for (const row of ctx.db.socialMessage.conversation.filter(`guild:${guild.id}`)) { removeMessageReactions(ctx, "social", row.id); ctx.db.socialMessage.id.delete(row.id); }
     for (const row of ctx.db.guildBattleReport.guildId.filter(guild.id)) deleteReport(ctx, row.key);
     writeRanking(ctx, { ...guild, members: 0 });
     return;

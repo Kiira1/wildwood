@@ -32,6 +32,7 @@ const beforeStartShell = String.raw`
     <div id="chatMessageActionDrag" class="chat-message-action-drag" aria-label="Swipe down to close">
       <span class="chat-message-action-handle" aria-hidden="true"></span>
     </div>
+    <div id="chatMessageReactions" class="chat-message-reaction-picker" role="group" aria-label="React to message"></div>
     <header class="chat-message-action-header">
       <h2 id="chatMessageActionTitle">Message</h2>
       <p id="chatMessageActionPreview"></p>
@@ -96,7 +97,10 @@ const afterUpdateGateShell = String.raw`
 <div id="playerProfile" hidden>
   <div class="modal player-profile-modal" role="dialog" aria-modal="true" aria-labelledby="playerProfileName">
     <header class="player-profile-header">
-      <button id="playerProfileIcon" class="profile-icon profile-window-icon" type="button" aria-label="Player profile icon"></button>
+      <div class="profile-avatar-column">
+        <button id="playerProfileIcon" class="profile-icon profile-window-icon" type="button" aria-label="Player profile icon"></button>
+        <div class="profile-heart-total" aria-label="Lifetime hearts received"><span aria-hidden="true">❤️</span><span id="playerProfileHearts">0</span></div>
+      </div>
       <div class="player-profile-title-row">
         <div class="player-profile-identity">
           <div class="player-profile-name-row">

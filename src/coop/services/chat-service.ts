@@ -1,3 +1,4 @@
+import type { ChatReaction, ChatReactionState } from "../../../shared/chat-reactions";
 import type { Identity } from "spacetimedb";
 import type { ChatReportReason } from "../../../shared/chat-report";
 import { isPresenceChatMessage } from "../../../shared/presence-chat";
@@ -22,6 +23,7 @@ type ChatServiceDependencies = {
 };
 
 type ChatRow = {
+  reactionCountsJson?: string;
   guildReplayKey?: string;
   id: bigint;
   sender: Identity;
@@ -68,6 +70,7 @@ export function createChatService(dependencies: ChatServiceDependencies) {
       });
     }
     return {
+      reactionCountsJson: row.reactionCountsJson ?? "{}",
       id: row.id,
       sender,
       senderName: row.senderName,
@@ -100,11 +103,23 @@ export function createChatService(dependencies: ChatServiceDependencies) {
       if (index >= 0) { messages.splice(index, 1); presentationRevision++; dependencies.notify(); }
     } },
     api: {
+      async loadChatMessageReactions(channel: string, messageId: bigint): Promise<ChatReactionState> {
+        const connection = dependencies.reducers.connection(), started = session;
+        if (!connection?.isActive || dependencies.reducers.protocolBlocked()) throw new Error("Reconnect to react.");
+        const value = await withRequestDeadline(connection.procedures.getChatMessageReactions({ channel, messageId }));
+        if (session !== started || connection !== dependencies.reducers.connection()) throw new Error("Session changed.");
+        return JSON.parse(value) as ChatReactionState;
+      },
+      async setChatMessageReaction(channel: string, messageId: bigint, reaction: ChatReaction, active: boolean) {
+        const connection = dependencies.reducers.connection();
+        if (!connection?.isActive || dependencies.reducers.protocolBlocked()) throw new Error("Reconnect to react.");
+        await withRequestDeadline(dependencies.reducers.runWorldReducer(() => connection.reducers.setChatMessageReaction({ channel, messageId, reaction, active })));
+      },
       chatHistoryRevision: () => privacyRevision,
       async loadChatHistory(beforeId: bigint) {
         const connection = dependencies.reducers.connection(), started = session, privacy = privacyRevision;
         if (!connection?.isActive || dependencies.reducers.protocolBlocked()) throw new Error("Reconnect to load chat history.");
-        const page = await withRequestDeadline(connection.procedures.getChatHistory({ beforeId }));
+        const page = await withRequestDeadline(connection.procedures.getChatHistoryWithReactions({ beforeId }));
         if (session !== started || privacy !== privacyRevision || connection !== dependencies.reducers.connection()) throw new Error("Session changed. Reopen chat.");
         const blockedNames = new Set([...blocks.values()].map(block => block.name));
         return { hasMore: page.hasMore, messages: page.messages.map(presentation).filter(row => !blocks.has(row.sender)).map(row =>

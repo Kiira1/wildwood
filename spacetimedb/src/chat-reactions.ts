@@ -1,0 +1,108 @@
+import { table, t, SenderError } from "spacetimedb/server";
+import type { Identity } from "spacetimedb";
+import type { ModuleReducerCtx, ModuleViewCtx } from "./index";
+import { CHAT_REACTIONS, chatReactionCounts, isChatReaction } from "../../shared/chat-reactions";
+export const chatReaction = table({ name: "chat_reaction" }, {
+  key: t.string().primaryKey(), messageKey: t.string().index("btree"),
+  actor: t.identity().index("btree"), reaction: t.string(),
+  active: t.bool().default(true), heartCredited: t.bool().default(false),
+});
+// Separate records preserve the wire schemas used by installed mobile builds.
+export const chatReactionSummary = table({ name: "chat_reaction_summary" }, {
+  key: t.string().primaryKey(), countsJson: t.string(),
+});
+export const playerChatHearts = table({ name: "player_chat_hearts", public: true }, {
+  identity: t.identity().primaryKey(), chatHeartsReceived: t.u64(),
+});
+export function reactionCountsFor(ctx: Pick<ModuleViewCtx, "db">, channel: string, id: bigint) {
+  return ctx.db.chatReactionSummary.key.find(messageKey(channel, id))?.countsJson ?? "{}";
+}
+function writeCounts(ctx: ModuleReducerCtx, key: string, counts: ReturnType<typeof chatReactionCounts>) {
+  const next = { key, countsJson: JSON.stringify(counts) };
+  if (ctx.db.chatReactionSummary.key.find(key)) ctx.db.chatReactionSummary.key.update(next);
+  else ctx.db.chatReactionSummary.insert(next);
+}
+type ReadContext = Pick<ModuleViewCtx, "db" | "sender">;
+const messageKey = (channel: string, id: bigint) => `${channel}:${id}`;
+function readableMessage(ctx: ReadContext, channel: string, id: bigint) {
+  if (channel !== "public" && channel !== "social") throw new SenderError("Unknown chat channel.");
+  const row = channel === "public" ? ctx.db.chatMessage.id.find(id) : ctx.db.socialMessage.id.find(id);
+  if (!row || row.moderated) throw new SenderError("Message unavailable.");
+  const blocked = (a: Identity, b: Identity) => Boolean(
+    ctx.db.playerBlock.key.find(`${a.toHexString()}:${b.toHexString()}`) || ctx.db.playerBlock.key.find(`${b.toHexString()}:${a.toHexString()}`));
+  if (blocked(ctx.sender, row.sender)) throw new SenderError("Message unavailable.");
+  if ("channel" in row) {
+    if (row.channel === "dm") {
+      if ((!row.sender.equals(ctx.sender) && !row.recipient.equals(ctx.sender)) || blocked(row.sender, row.recipient)) throw new SenderError("Message unavailable.");
+    } else if (row.channel !== "guild" || ctx.db.guildMember.identity.find(ctx.sender)?.guildId !== row.guildId) throw new SenderError("Message unavailable.");
+  }
+  return row;
+}
+export function readChatReactions(ctx: ReadContext, channel: string, id: bigint) {
+  readableMessage(ctx, channel, id);
+  const prefix = `${messageKey(channel, id)}:${ctx.sender.toHexString()}:`;
+  return { counts: chatReactionCounts(reactionCountsFor(ctx, channel, id)), selected: CHAT_REACTIONS
+    .filter(reaction => ctx.db.chatReaction.key.find(prefix + reaction.id)?.active).map(reaction => reaction.id) };
+}
+export function setChatReaction(ctx: ModuleReducerCtx, channel: string, id: bigint, reaction: string, active: boolean) {
+  if (!isChatReaction(reaction)) throw new SenderError("Unknown reaction.");
+  const row = readableMessage(ctx, channel, id);
+  const target = messageKey(channel, id), key = `${target}:${ctx.sender.toHexString()}:${reaction}`;
+  const previous = ctx.db.chatReaction.key.find(key);
+  if (Boolean(previous?.active) === active) return;
+  const creditHeart = reaction === "heart" && active && !previous?.heartCredited && !row.sender.equals(ctx.sender);
+  const next = { key, messageKey: target, actor: ctx.sender, reaction, active, heartCredited: Boolean(previous?.heartCredited || creditHeart) };
+  if (previous) ctx.db.chatReaction.key.update(next);
+  else ctx.db.chatReaction.insert(next);
+  if (creditHeart) {
+    const lifetime = ctx.db.playerChatHearts.identity.find(row.sender);
+    const total = { identity: row.sender, chatHeartsReceived: (lifetime?.chatHeartsReceived ?? 0n) + 1n };
+    if (lifetime) ctx.db.playerChatHearts.identity.update(total);
+    else ctx.db.playerChatHearts.insert(total);
+  }
+  const counts = chatReactionCounts(reactionCountsFor(ctx, channel, id));
+  counts[reaction] = Math.max(0, (counts[reaction] ?? 0) + (active ? 1 : -1));
+  writeCounts(ctx, target, counts);
+}
+export function removeMessageReactions(ctx: ModuleReducerCtx, channel: string, id: bigint) {
+  ctx.db.chatReactionSummary.key.delete(messageKey(channel, id));
+  for (const row of ctx.db.chatReaction.messageKey.filter(messageKey(channel, id))) ctx.db.chatReaction.key.delete(row.key);
+}
+export function removeAccountReactions(ctx: ModuleReducerCtx, actor: Identity) {
+  ctx.db.playerChatHearts.identity.delete(actor);
+  for (const reaction of ctx.db.chatReaction.actor.filter(actor)) {
+    const [channel, id] = reaction.messageKey.split(":");
+    const row = channel === "public" ? ctx.db.chatMessage.id.find(BigInt(id)) : ctx.db.socialMessage.id.find(BigInt(id));
+    ctx.db.chatReaction.key.delete(reaction.key);
+    if (!row || !reaction.active || !isChatReaction(reaction.reaction)) continue;
+    const counts = chatReactionCounts(reactionCountsFor(ctx, channel, BigInt(id)));
+    counts[reaction.reaction] = Math.max(0, (counts[reaction.reaction] ?? 0) - 1);
+    writeCounts(ctx, reaction.messageKey, counts);
+  }
+}
+
+/** Preserve a guest's selections/credit history through registration. */
+export function mergeAccountReactions(ctx: ModuleReducerCtx, guest: Identity, account: Identity) {
+  const guestHearts = ctx.db.playerChatHearts.identity.find(guest);
+  if (guestHearts) {
+    const accountHearts = ctx.db.playerChatHearts.identity.find(account);
+    const total = { identity: account, chatHeartsReceived: guestHearts.chatHeartsReceived + (accountHearts?.chatHeartsReceived ?? 0n) };
+    if (accountHearts) ctx.db.playerChatHearts.identity.update(total); else ctx.db.playerChatHearts.insert(total);
+    ctx.db.playerChatHearts.identity.delete(guest);
+  }
+  for (const previous of ctx.db.chatReaction.actor.filter(guest)) {
+    const key = `${previous.messageKey}:${account.toHexString()}:${previous.reaction}`;
+    const existing = ctx.db.chatReaction.key.find(key);
+    ctx.db.chatReaction.key.delete(previous.key);
+    const next = { ...previous, key, actor: account,
+      active: Boolean(previous.active || existing?.active), heartCredited: Boolean(previous.heartCredited || existing?.heartCredited) };
+    if (existing) ctx.db.chatReaction.key.update(next); else ctx.db.chatReaction.insert(next);
+    if (!previous.active || !existing?.active || !isChatReaction(previous.reaction)) continue;
+    const [channel, id] = previous.messageKey.split(":");
+    const row = channel === "public" ? ctx.db.chatMessage.id.find(BigInt(id)) : ctx.db.socialMessage.id.find(BigInt(id));
+    if (!row) continue;
+    const counts = chatReactionCounts(reactionCountsFor(ctx, channel, BigInt(id)));
+    counts[previous.reaction] = Math.max(0, (counts[previous.reaction] ?? 0) - 1);
+    writeCounts(ctx, previous.messageKey, counts);
+  }
+}

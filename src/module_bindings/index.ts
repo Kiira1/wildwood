@@ -114,6 +114,7 @@ import RecordDesertEnemyDefeatReducer from "./record_desert_enemy_defeat_reducer
 import RecordForestEnemyDefeatReducer from "./record_forest_enemy_defeat_reducer";
 import RecordLavaEnemyDefeatReducer from "./record_lava_enemy_defeat_reducer";
 import RecordPlayerDeathReducer from "./record_player_death_reducer";
+import RecordRegularEnemyDefeatsReducer from "./record_regular_enemy_defeats_reducer";
 import RecordSnowEnemyDefeatReducer from "./record_snow_enemy_defeat_reducer";
 import RecordStartupTelemetryReducer from "./record_startup_telemetry_reducer";
 import RegisterProtocolReducer from "./register_protocol_reducer";
@@ -131,6 +132,7 @@ import SeedTemporaryGuildReducer from "./seed_temporary_guild_reducer";
 import SendChatMessageReducer from "./send_chat_message_reducer";
 import SendChatReplyReducer from "./send_chat_reply_reducer";
 import SendSocialMessageReducer from "./send_social_message_reducer";
+import SetChatMessageReactionReducer from "./set_chat_message_reaction_reducer";
 import SetDeveloperNameTagReducer from "./set_developer_name_tag_reducer";
 import SetDeveloperPresenceReducer from "./set_developer_presence_reducer";
 import SetDisplayNameReducer from "./set_display_name_reducer";
@@ -158,12 +160,15 @@ import UpdateMovementStateReducer from "./update_movement_state_reducer";
 
 // Import all procedure arg schemas
 import * as GetChatHistoryProcedure from "./get_chat_history_procedure";
+import * as GetChatHistoryWithReactionsProcedure from "./get_chat_history_with_reactions_procedure";
+import * as GetChatMessageReactionsProcedure from "./get_chat_message_reactions_procedure";
 import * as GetGuildHubProcedure from "./get_guild_hub_procedure";
 import * as GetGuildReplayProcedure from "./get_guild_replay_procedure";
 import * as GetLeaderboardPageProcedure from "./get_leaderboard_page_procedure";
 import * as GetLeaderboardWindowProcedure from "./get_leaderboard_window_procedure";
 import * as GetModerationHistoryProcedure from "./get_moderation_history_procedure";
 import * as GetSocialChatHistoryProcedure from "./get_social_chat_history_procedure";
+import * as GetSocialChatHistoryWithReactionsProcedure from "./get_social_chat_history_with_reactions_procedure";
 import * as GetSocialHubProcedure from "./get_social_hub_procedure";
 import * as SynchronizeMapShardProcedure from "./synchronize_map_shard_procedure";
 
@@ -197,6 +202,7 @@ import IronhornResultRow from "./ironhorn_result_table";
 import KoiShogunBossRow from "./koi_shogun_boss_table";
 import KoiShogunResultRow from "./koi_shogun_result_table";
 import LatestChatMessagesRow from "./latest_chat_messages_table";
+import LatestChatMessagesWithReactionsRow from "./latest_chat_messages_with_reactions_table";
 import LeaderboardEntryRow from "./leaderboard_entry_table";
 import LocalMovementDemandRow from "./local_movement_demand_table";
 import MagmaliskBossRow from "./magmalisk_boss_table";
@@ -218,9 +224,11 @@ import MyPlayerBlocksRow from "./my_player_blocks_table";
 import MyProceduralBossRow from "./my_procedural_boss_table";
 import MySocialHubRow from "./my_social_hub_table";
 import MySocialMessagesRow from "./my_social_messages_table";
+import MySocialMessagesWithReactionsRow from "./my_social_messages_with_reactions_table";
 import MyUpgradeBenchRow from "./my_upgrade_bench_table";
 import PlayerRow from "./player_table";
 import PlayerAccountStatusRow from "./player_account_status_table";
+import PlayerChatHeartsRow from "./player_chat_hearts_table";
 import PlayerDeathFrameRow from "./player_death_frame_table";
 import PlayerItemDropRow from "./player_item_drop_table";
 import PlayerItemUpgradeRow from "./player_item_upgrade_table";
@@ -621,6 +629,17 @@ const tablesSchema = __schema({
       { name: 'player_account_status_identity_key', constraint: 'unique', columns: ['identity'] },
     ],
   }, PlayerAccountStatusRow),
+  playerChatHearts: __table({
+    name: 'player_chat_hearts',
+    indexes: [
+      { accessor: 'identity', name: 'player_chat_hearts_identity_idx_btree', algorithm: 'btree', columns: [
+        'identity',
+      ] },
+    ],
+    constraints: [
+      { name: 'player_chat_hearts_identity_key', constraint: 'unique', columns: ['identity'] },
+    ],
+  }, PlayerChatHeartsRow),
   playerDeathFrame: __table({
     name: 'player_death_frame',
     indexes: [
@@ -966,6 +985,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, LatestChatMessagesRow),
+  latestChatMessagesWithReactions: __table({
+    name: 'latest_chat_messages_with_reactions',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, LatestChatMessagesWithReactionsRow),
   localMovementDemand: __table({
     name: 'local_movement_demand',
     indexes: [
@@ -1071,6 +1097,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, MySocialMessagesRow),
+  mySocialMessagesWithReactions: __table({
+    name: 'my_social_messages_with_reactions',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MySocialMessagesWithReactionsRow),
   myUpgradeBench: __table({
     name: 'my_upgrade_bench',
     indexes: [
@@ -1162,6 +1195,7 @@ const reducersSchema = __reducers(
   __reducerSchema("record_forest_enemy_defeat", RecordForestEnemyDefeatReducer),
   __reducerSchema("record_lava_enemy_defeat", RecordLavaEnemyDefeatReducer),
   __reducerSchema("record_player_death", RecordPlayerDeathReducer),
+  __reducerSchema("record_regular_enemy_defeats", RecordRegularEnemyDefeatsReducer),
   __reducerSchema("record_snow_enemy_defeat", RecordSnowEnemyDefeatReducer),
   __reducerSchema("record_startup_telemetry", RecordStartupTelemetryReducer),
   __reducerSchema("register_protocol", RegisterProtocolReducer),
@@ -1179,6 +1213,7 @@ const reducersSchema = __reducers(
   __reducerSchema("send_chat_message", SendChatMessageReducer),
   __reducerSchema("send_chat_reply", SendChatReplyReducer),
   __reducerSchema("send_social_message", SendSocialMessageReducer),
+  __reducerSchema("set_chat_message_reaction", SetChatMessageReactionReducer),
   __reducerSchema("set_developer_name_tag", SetDeveloperNameTagReducer),
   __reducerSchema("set_developer_presence", SetDeveloperPresenceReducer),
   __reducerSchema("set_display_name", SetDisplayNameReducer),
@@ -1208,12 +1243,15 @@ const reducersSchema = __reducers(
 /** The schema information for all procedures in this module. This is defined the same way as the procedures would have been defined in the server. */
 const proceduresSchema = __procedures(
   __procedureSchema("get_chat_history", GetChatHistoryProcedure.params, GetChatHistoryProcedure.returnType),
+  __procedureSchema("get_chat_history_with_reactions", GetChatHistoryWithReactionsProcedure.params, GetChatHistoryWithReactionsProcedure.returnType),
+  __procedureSchema("get_chat_message_reactions", GetChatMessageReactionsProcedure.params, GetChatMessageReactionsProcedure.returnType),
   __procedureSchema("get_guild_hub", GetGuildHubProcedure.params, GetGuildHubProcedure.returnType),
   __procedureSchema("get_guild_replay", GetGuildReplayProcedure.params, GetGuildReplayProcedure.returnType),
   __procedureSchema("get_leaderboard_page", GetLeaderboardPageProcedure.params, GetLeaderboardPageProcedure.returnType),
   __procedureSchema("get_leaderboard_window", GetLeaderboardWindowProcedure.params, GetLeaderboardWindowProcedure.returnType),
   __procedureSchema("get_moderation_history", GetModerationHistoryProcedure.params, GetModerationHistoryProcedure.returnType),
   __procedureSchema("get_social_chat_history", GetSocialChatHistoryProcedure.params, GetSocialChatHistoryProcedure.returnType),
+  __procedureSchema("get_social_chat_history_with_reactions", GetSocialChatHistoryWithReactionsProcedure.params, GetSocialChatHistoryWithReactionsProcedure.returnType),
   __procedureSchema("get_social_hub", GetSocialHubProcedure.params, GetSocialHubProcedure.returnType),
   __procedureSchema("synchronize_map_shard", SynchronizeMapShardProcedure.params, SynchronizeMapShardProcedure.returnType),
 );

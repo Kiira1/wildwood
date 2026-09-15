@@ -35,3 +35,22 @@ describe("movement speed synchronization", () => {
     expect(tracker.begin(225.5, 2)).toBe(true);
   });
 });
+
+it("does not resend against lagging regional snapshots after a root acknowledgement", () => {
+  const tracker = createSpeedSyncTracker();
+  tracker.observe(180, 0);
+  expect(tracker.begin(205, 0)).toBe(true); tracker.accept(205, 10);
+  for (let now = 20; now < 2_000; now += 20) {
+    tracker.observe(180, now);
+    expect(tracker.begin(205, now)).toBe(false);
+  }
+  tracker.observe(205, 2_000);
+  expect(tracker.begin(205, 2_500)).toBe(false);
+});
+it("does not let repeated observations cancel rejection backoff", () => {
+  const tracker = createSpeedSyncTracker(); tracker.observe(180);
+  tracker.begin(205, 0); tracker.reject(205, 10);
+  tracker.observe(180, 20);
+  expect(tracker.begin(205, 20)).toBe(false);
+  expect(tracker.begin(205, 1_010)).toBe(true);
+});

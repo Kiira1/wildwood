@@ -8,7 +8,7 @@ function fixture() {
   const connection = {
     isActive: true,
     procedures: { getLeaderboardPage: vi.fn() },
-    db: Object.fromEntries(["playerProgress", "playerLifetime", "playerResearch", "playerItemUpgrade", "playerProfile", "playerAccountStatus", "player"].map(name => [name, { iter: () => [] }])),
+    db: Object.fromEntries(["playerChatHearts", "playerProgress", "playerLifetime", "playerResearch", "playerItemUpgrade", "playerProfile", "playerAccountStatus", "player"].map(name => [name, { iter: () => [] }])),
     subscriptionBuilder() {
       let applied = () => {}, ready = false;
       const unsubscribe = vi.fn(() => { if (!ready) throw new Error("Cannot unsubscribe pending"); });

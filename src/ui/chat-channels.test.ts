@@ -81,7 +81,8 @@ describe("chat channels", () => {
     expect(moderated.textContent).toContain("Message moderated.");
     if (fullscreen) {
       moderated.querySelector<HTMLElement>(".chat-text")!.click();
-      expect(h.document.getElementById("chatMessageActionPreview")!.textContent).toContain("Message moderated.");
+      expect(h.document.getElementById("chatMessageActionTitle")!.parentElement!.hidden).toBe(true);
+      expect(h.document.getElementById("chatMessageReactions")!.hidden).toBe(true);
     }
   });
 
@@ -99,7 +100,8 @@ describe("chat channels", () => {
     expect(h.document.querySelector(".chat-replay")).toBeNull();
     h.document.getElementById("chatSizeToggle")!.click();
     h.document.querySelector<HTMLElement>(".chat-replay")!.click();
-    expect(h.document.getElementById("chatMessageActionTitle")!.textContent).toBe("Guild battle replay");
+    expect(h.document.getElementById("chatMessageActionTitle")!.parentElement!.hidden).toBe(true);
+    expect(h.document.getElementById("chatMessageReactions")!.textContent).toBe("👍😂❤️👎");
     expect(h.document.getElementById("chatMessageReplyBtn")!.hidden).toBe(false);
     const openReplay = vi.fn();
     h.window.addEventListener("wildwood:open-guild-replay", openReplay);

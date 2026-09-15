@@ -86,6 +86,7 @@ import RecordDesertEnemyDefeatReducer from "../record_desert_enemy_defeat_reduce
 import RecordForestEnemyDefeatReducer from "../record_forest_enemy_defeat_reducer";
 import RecordLavaEnemyDefeatReducer from "../record_lava_enemy_defeat_reducer";
 import RecordPlayerDeathReducer from "../record_player_death_reducer";
+import RecordRegularEnemyDefeatsReducer from "../record_regular_enemy_defeats_reducer";
 import RecordSnowEnemyDefeatReducer from "../record_snow_enemy_defeat_reducer";
 import RecordStartupTelemetryReducer from "../record_startup_telemetry_reducer";
 import RegisterProtocolReducer from "../register_protocol_reducer";
@@ -103,6 +104,7 @@ import SeedTemporaryGuildReducer from "../seed_temporary_guild_reducer";
 import SendChatMessageReducer from "../send_chat_message_reducer";
 import SendChatReplyReducer from "../send_chat_reply_reducer";
 import SendSocialMessageReducer from "../send_social_message_reducer";
+import SetChatMessageReactionReducer from "../set_chat_message_reaction_reducer";
 import SetDeveloperNameTagReducer from "../set_developer_name_tag_reducer";
 import SetDeveloperPresenceReducer from "../set_developer_presence_reducer";
 import SetDisplayNameReducer from "../set_display_name_reducer";
@@ -208,6 +210,7 @@ export type RecordDesertEnemyDefeatParams = __Infer<typeof RecordDesertEnemyDefe
 export type RecordForestEnemyDefeatParams = __Infer<typeof RecordForestEnemyDefeatReducer>;
 export type RecordLavaEnemyDefeatParams = __Infer<typeof RecordLavaEnemyDefeatReducer>;
 export type RecordPlayerDeathParams = __Infer<typeof RecordPlayerDeathReducer>;
+export type RecordRegularEnemyDefeatsParams = __Infer<typeof RecordRegularEnemyDefeatsReducer>;
 export type RecordSnowEnemyDefeatParams = __Infer<typeof RecordSnowEnemyDefeatReducer>;
 export type RecordStartupTelemetryParams = __Infer<typeof RecordStartupTelemetryReducer>;
 export type RegisterProtocolParams = __Infer<typeof RegisterProtocolReducer>;
@@ -225,6 +228,7 @@ export type SeedTemporaryGuildParams = __Infer<typeof SeedTemporaryGuildReducer>
 export type SendChatMessageParams = __Infer<typeof SendChatMessageReducer>;
 export type SendChatReplyParams = __Infer<typeof SendChatReplyReducer>;
 export type SendSocialMessageParams = __Infer<typeof SendSocialMessageReducer>;
+export type SetChatMessageReactionParams = __Infer<typeof SetChatMessageReactionReducer>;
 export type SetDeveloperNameTagParams = __Infer<typeof SetDeveloperNameTagReducer>;
 export type SetDeveloperPresenceParams = __Infer<typeof SetDeveloperPresenceReducer>;
 export type SetDisplayNameParams = __Infer<typeof SetDisplayNameReducer>;

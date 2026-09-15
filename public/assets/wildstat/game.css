@@ -3516,3 +3516,17 @@
 .leaderboard-page-loader { display: flex; align-items: center; justify-content: center; min-height: 40px; list-style: none; }
 .leaderboard-page-loader .leaderboard-spinner { width: 18px; height: 18px; }
 .leaderboard-page-loader button { border: 0; background: none; box-shadow: none; color: white; padding: 10px 16px; cursor: pointer; }
+
+/* Compact reaction chips sit beneath the bubble without changing message layout. */
+.chat-message-reaction-picker { display: flex; align-items: center; justify-content: space-around; gap: 8px; padding: 2px 4px 10px; }
+.chat-message-reaction-picker button { width: 48px; height: 44px; padding: 0; border: 0; border-radius: 10px; background: transparent; box-shadow: none; font-size: 26px; line-height: 1; }
+.chat-message-reaction-picker button[aria-pressed="true"] { background: rgba(255,255,255,.16); }
+.chat-message-reaction-picker button:disabled { opacity: .45; }
+#chatPanel.is-large .chat-text.has-reactions { position: relative; overflow: visible; }
+.chat-bubble-reactions { position: absolute; top: calc(100% + 4px); left: 2px; right: auto; display: flex; flex-direction: row; direction: ltr; align-items: center; gap: 3px; padding: 0; line-height: 1; white-space: nowrap; pointer-events: none; }
+.chat-bubble-reaction { display: inline-flex; align-items: center; justify-content: center; gap: 3px; height: 19px; padding: 0 4px; border: 1px solid rgba(255,255,255,.4); border-radius: 3px; background: transparent; box-shadow: 0 0 3px .25px rgba(255,244,214,.45), 0 0 5px rgba(255,235,190,.2), inset 0 0 3px rgba(255,244,214,.18); box-sizing: border-box; font-size: 15px; -webkit-text-stroke: 0; text-shadow: none; }
+.chat-reaction-count { color: #fff; font-family: var(--player-name-font); font-size: 10px; font-weight: 900; line-height: 1; }
+
+.profile-avatar-column { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 0 0 auto; }
+.profile-heart-total { display: flex; align-items: center; justify-content: center; gap: 4px; color: #fff; font-size: 14px; font-weight: 900; line-height: 1; white-space: nowrap; }
+.profile-heart-total > span:first-child { font-size: 15px; -webkit-text-stroke: 0; text-shadow: none; }

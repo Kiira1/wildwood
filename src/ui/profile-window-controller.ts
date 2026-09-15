@@ -159,6 +159,8 @@ export function createProfileWindowController(elements: {
     renderPower(api.formatPower(profile));
     elements.duel.hidden = own; elements.duel.dataset.identity = own ? "" : profile.identity; updateDuelButton();
     const lifetime = profile.lifetime;
+    const hearts = elements.window.querySelector<HTMLElement>("#playerProfileHearts");
+    if (hearts) hearts.textContent = (lifetime.chatHeartsReceived ?? 0).toLocaleString();
     elements.joined.textContent = new Date(lifetime.joinedAtMs).toLocaleDateString([], { year: "numeric", month: "short", day: "numeric" });
     const activeSeconds = online ? Math.max(0, (Date.now() - lifetime.sessionStartedAtMs) / 1000) : 0;
     elements.timePlayed.textContent = api.formatPlayedTime(lifetime.playedSeconds + activeSeconds); elements.kills.textContent = Math.round(lifetime.enemyKills).toLocaleString();
@@ -171,6 +173,8 @@ export function createProfileWindowController(elements: {
 
   async function open(nextIdentity: string, fallbackName = "PLAYER") {
     if (!nextIdentity) return;
+    const hearts = elements.window.querySelector<HTMLElement>("#playerProfileHearts");
+    if (hearts) hearts.textContent = "0";
     identity = nextIdentity; profileData = null; elements.duel.hidden = nextIdentity === api.localIdentity(); elements.duel.dataset.identity = nextIdentity; updateDuelButton();
     elements.window.hidden = false; api.renderName(elements.name, nextIdentity, fallbackName, api.playerGender(nextIdentity)); elements.guest.hidden = !api.isGuest(nextIdentity);
     const online = api.isOnline(nextIdentity); elements.presence.textContent = online ? "Online" : "CHECKING LAST SEEN"; elements.presence.classList.toggle("is-online", online);

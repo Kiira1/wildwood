@@ -7,17 +7,24 @@ import { type Infer as __Infer } from "spacetimedb";
 
 // Import all procedure arg schemas
 import * as GetChatHistoryProcedure from "../get_chat_history_procedure";
+import * as GetChatHistoryWithReactionsProcedure from "../get_chat_history_with_reactions_procedure";
+import * as GetChatMessageReactionsProcedure from "../get_chat_message_reactions_procedure";
 import * as GetGuildHubProcedure from "../get_guild_hub_procedure";
 import * as GetGuildReplayProcedure from "../get_guild_replay_procedure";
 import * as GetLeaderboardPageProcedure from "../get_leaderboard_page_procedure";
 import * as GetLeaderboardWindowProcedure from "../get_leaderboard_window_procedure";
 import * as GetModerationHistoryProcedure from "../get_moderation_history_procedure";
 import * as GetSocialChatHistoryProcedure from "../get_social_chat_history_procedure";
+import * as GetSocialChatHistoryWithReactionsProcedure from "../get_social_chat_history_with_reactions_procedure";
 import * as GetSocialHubProcedure from "../get_social_hub_procedure";
 import * as SynchronizeMapShardProcedure from "../synchronize_map_shard_procedure";
 
 export type GetChatHistoryArgs = __Infer<typeof GetChatHistoryProcedure.params>;
 export type GetChatHistoryResult = __Infer<typeof GetChatHistoryProcedure.returnType>;
+export type GetChatHistoryWithReactionsArgs = __Infer<typeof GetChatHistoryWithReactionsProcedure.params>;
+export type GetChatHistoryWithReactionsResult = __Infer<typeof GetChatHistoryWithReactionsProcedure.returnType>;
+export type GetChatMessageReactionsArgs = __Infer<typeof GetChatMessageReactionsProcedure.params>;
+export type GetChatMessageReactionsResult = __Infer<typeof GetChatMessageReactionsProcedure.returnType>;
 export type GetGuildHubArgs = __Infer<typeof GetGuildHubProcedure.params>;
 export type GetGuildHubResult = __Infer<typeof GetGuildHubProcedure.returnType>;
 export type GetGuildReplayArgs = __Infer<typeof GetGuildReplayProcedure.params>;
@@ -30,6 +37,8 @@ export type GetModerationHistoryArgs = __Infer<typeof GetModerationHistoryProced
 export type GetModerationHistoryResult = __Infer<typeof GetModerationHistoryProcedure.returnType>;
 export type GetSocialChatHistoryArgs = __Infer<typeof GetSocialChatHistoryProcedure.params>;
 export type GetSocialChatHistoryResult = __Infer<typeof GetSocialChatHistoryProcedure.returnType>;
+export type GetSocialChatHistoryWithReactionsArgs = __Infer<typeof GetSocialChatHistoryWithReactionsProcedure.params>;
+export type GetSocialChatHistoryWithReactionsResult = __Infer<typeof GetSocialChatHistoryWithReactionsProcedure.returnType>;
 export type GetSocialHubArgs = __Infer<typeof GetSocialHubProcedure.params>;
 export type GetSocialHubResult = __Infer<typeof GetSocialHubProcedure.returnType>;
 export type SynchronizeMapShardArgs = __Infer<typeof SynchronizeMapShardProcedure.params>;

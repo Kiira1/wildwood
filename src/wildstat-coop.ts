@@ -406,6 +406,7 @@ const progressionService = createProgressionService({
   commitStoppedPosition: (position, sequence) => presenceService.commitStoppedPosition(position, sequence),
   storage: localStorage,
   pendingProgressKey,
+  lootTabId: () => accountService.tabId(),
 });
 
 playerProfileService = createPlayerProfileService({
@@ -425,6 +426,7 @@ const remoteCombatStatsService = createRemoteCombatStatsService({
 });
 
 presenceService = createPresenceService({
+  drainEnemyLoot: progressionService.drainEnemyLoot,
   reducers: mapReducerPort,
   changes: { notify: onChange, batch: batchChanges },
   localIdentity: () => localIdentity,

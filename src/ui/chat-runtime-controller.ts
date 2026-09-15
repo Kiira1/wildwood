@@ -27,6 +27,7 @@ export function createChatRuntimeController(options: Pick<ChatOptions, "getCoop"
         backdrop: requiredElement<HTMLButtonElement>("chatMessageActionsBackdrop"),
         sheet: requiredElement("chatMessageActionSheet"),
         drag: requiredElement("chatMessageActionDrag"),
+        reactions: requiredElement("chatMessageReactions"),
         title: requiredElement("chatMessageActionTitle"),
         preview: requiredElement("chatMessageActionPreview"),
         menu: requiredElement("chatMessageActionMenu"),

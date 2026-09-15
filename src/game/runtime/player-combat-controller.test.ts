@@ -51,11 +51,8 @@ function createCombatHarness(overrides: Partial<Parameters<typeof createPlayerCo
     effectiveArmor: () => 0,
     isDueling: () => false,
     scheduleEnemyRespawn: noop,
+    recordRegularEnemyDefeat: noop,
     incrementKills: noop,
-    recordForestEnemyDefeat: noop,
-    recordDesertEnemyDefeat: noop,
-    recordSnowEnemyDefeat: noop,
-    recordLavaEnemyDefeat: noop,
     damageDragon: noop,
     damageSpider: noop,
     damageFrostclaw: noop,
@@ -85,7 +82,7 @@ describe("player attack timing", () => {
     const saveProgress = vi.fn(), loot = vi.fn(), schedule = vi.fn(), killed = vi.fn(() => true);
     let now = 0;
     const state = createCombatHarness({ isTutorialMap: () => false, nowSeconds: () => now,
-      onEnemyDefeated: killed, saveProgress, recordForestEnemyDefeat: loot, scheduleEnemyRespawn: schedule });
+      onEnemyDefeated: killed, saveProgress, recordRegularEnemyDefeat: loot, scheduleEnemyRespawn: schedule });
     Object.assign(state.player, { x: 500, y: 500, damage: 4, attackRange: 200 });
     createEnemyLifecycle(state.enemies, state.spawnSites, () => {}).spawnFromSite({ id: 0, type: "Spitter", x: 550, y: 500,
       campName: "First Steps", leashRange: 500, alive: false, respawnAt: 0 });
@@ -316,11 +313,8 @@ describe("player attack timing", () => {
       effectiveArmor: () => 0,
       isDueling: () => false,
       scheduleEnemyRespawn: noop,
-      incrementKills: noop,
-      recordForestEnemyDefeat: noop,
-      recordDesertEnemyDefeat: noop,
-      recordSnowEnemyDefeat: noop,
-      recordLavaEnemyDefeat: noop,
+    recordRegularEnemyDefeat: noop,
+    incrementKills: noop,
       damageDragon: noop,
       damageSpider: noop,
       damageFrostclaw: noop,
@@ -349,11 +343,11 @@ describe("player attack timing", () => {
   });
 
   it("records a Snowlands loot roll when a regular enemy dies", () => {
-    const recordSnowEnemyDefeat = vi.fn();
+    const recordRegularEnemyDefeat = vi.fn();
     const state = createCombatHarness({
       isTutorialMap: () => false,
       isSnowMap: () => true,
-      recordSnowEnemyDefeat,
+      recordRegularEnemyDefeat,
     });
     const site = {
       id: 0,
@@ -376,14 +370,14 @@ describe("player attack timing", () => {
 
     state.controller.updateProjectiles(.2);
 
-    expect(recordSnowEnemyDefeat).toHaveBeenCalledOnce();
+    expect(recordRegularEnemyDefeat).toHaveBeenCalledOnce();
   });
   it.each(["water_reach", "samurai_garden", "cloudspire", "moonfen"])("records a %s loot roll when a regular enemy dies", mapId => {
-    const recordLavaEnemyDefeat = vi.fn();
+    const recordRegularEnemyDefeat = vi.fn();
     const state = createCombatHarness({
       isTutorialMap: () => false,
       currentMapId: () => mapId,
-      recordLavaEnemyDefeat,
+      recordRegularEnemyDefeat,
     });
     const site = {
       id: 0,
@@ -406,7 +400,7 @@ describe("player attack timing", () => {
 
     state.controller.updateProjectiles(.2);
 
-    expect(recordLavaEnemyDefeat).toHaveBeenCalledOnce();
+    expect(recordRegularEnemyDefeat).toHaveBeenCalledOnce();
   });
 });
 

@@ -84,3 +84,21 @@ it("survives pending/disconnected marker cleanup and discards a late subscriptio
   for (const subscription of subscriptions) subscription.active = true;
   expect(() => presence.clearSession()).not.toThrow();
 });
+
+it("drains regular-enemy loot before a portal changes the authoritative map", async () => {
+  let finish!: (value: boolean) => void;
+  const changeMap = vi.fn(async () => {});
+  const connection = { reducers: { changeMap } };
+  const presence = createPresenceService({
+    drainEnemyLoot: () => new Promise(resolve => { finish = resolve; }),
+    reducers: { connection: () => connection, protocolBlocked: () => false, worldEntryBlocked: () => false,
+      runWorldReducer: (action: () => unknown) => action(), handleFailure: vi.fn() },
+  } as any);
+  const travel = presence.api.changeMap("home_exterior", 100, 100);
+  expect(changeMap).not.toHaveBeenCalled();
+  finish(true); expect(await travel).toBe(true);
+  expect(changeMap).toHaveBeenCalledOnce();
+  const blocked = presence.api.changeMap("tutorial_forest", 100, 100);
+  finish(false); expect(await blocked).toBe(false);
+  expect(changeMap).toHaveBeenCalledOnce();
+});

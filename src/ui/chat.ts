@@ -1,3 +1,5 @@
+import { appendChatReactions } from "./chat-reactions";
+import type { ChatReaction, ChatReactionState } from "../../shared/chat-reactions";
 import { appendPlayerNameTags, playerNamePrefix } from "../app/player-name-tags";
 import {
   duelReplayIsInteractive,
@@ -36,6 +38,7 @@ export function focusChatReplyInput(input: Pick<HTMLTextAreaElement, "focus" | "
 }
 
 type ChatMessage = {
+  reactionCountsJson?: string;
   guildReplayKey?: string;
   id: bigint;
   sender: string;
@@ -52,6 +55,8 @@ type ChatMessage = {
 };
 
 type CoopClient = {
+  loadChatMessageReactions?: (channel: string, id: bigint) => Promise<ChatReactionState>;
+  setChatMessageReaction?: (channel: string, id: bigint, reaction: ChatReaction, active: boolean) => Promise<void>;
   social?: {
     historyRevision?: () => number;
     loadChatHistory?: (channel: "guild" | "dm", peer: string, beforeId: bigint) => Promise<ChatHistoryPage<ChatMessage>>;
@@ -108,6 +113,8 @@ type ChatOptions = {
 export function createChatController({ elements, getCoop, showMessage, onOpenReplay, onOpenPlayer, onLayoutChange }: ChatOptions) {
   let enabled = true;
   let large = false;
+  let reactionRevision = 0;
+  const reactionOverrides = new Map<string, { source: string | undefined; value: string }>();
   let renderedRevision = "";
   let renderedRows = new Map<string, { signature: string; element: HTMLDivElement }>();
   let channel: ChatChannel = "public";
@@ -216,6 +223,22 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
   let pendingReply: ChatMessageActionTarget | null = null;
   const messageActions = createChatMessageActionsController({
     elements: elements.messageActions,
+    loadReactions: async target => {
+      const coop = getCoop();
+      if (!coop?.loadChatMessageReactions) throw new Error("Reconnect to react.");
+      return coop.loadChatMessageReactions(target.channel ?? "public", target.id);
+    },
+    setReaction: async (target, reaction, active) => {
+      const coop = getCoop(), owner = coop?.localIdentity?.();
+      if (!coop?.setChatMessageReaction || !coop.loadChatMessageReactions) throw new Error("Reconnect to react.");
+      await coop.setChatMessageReaction(target.channel ?? "public", target.id, reaction, active);
+      const state = await coop.loadChatMessageReactions(target.channel ?? "public", target.id);
+      if (owner !== getCoop()?.localIdentity?.()) throw new Error("Session changed.");
+      reactionOverrides.set(`${target.channel}:${target.id}`, { source: target.reactionCountsJson, value: JSON.stringify(state.counts) });
+      if (reactionOverrides.size > 500) reactionOverrides.delete(reactionOverrides.keys().next().value!);
+      reactionRevision++; refresh();
+      return state;
+    },
     getLocalIdentity: () => getCoop()?.localIdentity?.() ?? "",
     onWatchReplay: (replayId) => onOpenReplay?.(replayId),
     onWatchGuildReplay: (reportKey) => window.dispatchEvent(new CustomEvent("wildwood:open-guild-replay", { detail: { reportKey } })),
@@ -330,6 +353,7 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
     const identity = coop?.localIdentity?.() ?? "";
     if (identity !== sessionIdentity) {
       sessionIdentity = identity;
+      reactionOverrides.clear();
       unread.reset();
       submissionGeneration++;
       submitting = false;
@@ -361,7 +385,7 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
     const distanceToLatest = elements.messages.scrollHeight - elements.messages.clientHeight - elements.messages.scrollTop;
     const readingLatest = enabled && large && document.visibilityState !== "hidden"
       && (renderedRevision === "" || (!historyState.frozen && !(distanceToLatest > 16)));
-    const revision = `${readingLatest}:${conversationKey()}:${coop?.chatRevision?.() ?? -1}:${coop?.social?.revision() ?? -1}:${coop?.localIdentity?.() ?? ""}:${enabled}:${large}:${historyState.revision}`;
+    const revision = `${reactionRevision}:${readingLatest}:${conversationKey()}:${coop?.chatRevision?.() ?? -1}:${coop?.social?.revision() ?? -1}:${coop?.localIdentity?.() ?? ""}:${enabled}:${large}:${historyState.revision}`;
     if (revision === renderedRevision && now < nextExpiryAt) return;
     const conversations = coop?.social?.privateConversations() ?? [];
     if (privatePeer && !privatePeerIdentity) {
@@ -405,12 +429,15 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
       const displayedGender = cachedGender !== PLAYER_GENDER_UNSET ? cachedGender : message.senderGender;
       const guest = !!coop?.isGuest?.(message.sender);
       const iconIndex = Math.max(0, Math.min(63, Math.floor(coop?.profileIcon?.(message.sender) ?? 0)));
+      const reactionChannel = channel === "public" ? "public" : "social";
+      const reactionOverride = reactionOverrides.get(`${reactionChannel}:${message.id}`);
+      const reactionCountsJson = reactionOverride?.source === message.reactionCountsJson ? reactionOverride?.value : message.reactionCountsJson;
       const rowKey = `${identity}:${conversationKey()}:${large}:${message.id}`;
       const signature = JSON.stringify([
         message.sender, message.senderName, message.message, String(message.replayId), message.guildReplayKey,
         message.powerLevel, displayedGender, message.moderated, String(message.replyToMessageId),
         message.replyToSenderName, message.replyToMessage, message.sentAtMs, guest, iconIndex,
-        playerNamePrefix(message.sender),
+        playerNamePrefix(message.sender), large ? reactionCountsJson : "",
       ]);
       const previous = renderedRows.get(rowKey);
       if (previous?.signature === signature) { nextRows.set(rowKey, previous); continue; }
@@ -483,6 +510,7 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
       const openMessageActions = (event: Event) => {
         event.stopPropagation();
         messageActions.open({
+          channel: reactionChannel, reactionCountsJson: message.reactionCountsJson, moderated: message.moderated,
           id: message.id,
           sender: message.sender,
           senderName: displayName,
@@ -509,6 +537,7 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
       content.append(name, text);
       line.append(time, icon, content);
       if (large) {
+        if (!message.moderated) appendChatReactions(text, reactionCountsJson);
         text.classList.add("is-actionable");
         text.setAttribute("role", "button");
         text.setAttribute("tabindex", "0");

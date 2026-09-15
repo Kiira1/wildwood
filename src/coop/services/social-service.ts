@@ -12,6 +12,7 @@ type Dependencies = {
   rememberSender?: (sender: { identity: string; identityValue: Identity; name: string; isGuest: boolean }) => void;
 };
 type MessageRow = {
+  reactionCountsJson?: string;
   id: bigint; channel: string; guildId: bigint; sender: Identity; recipient: Identity;
   senderName: string; recipientName: string; senderGender: number; powerLevel: number; senderIsGuest?: boolean;
   message: string; moderated: boolean; sentAt: { microsSinceUnixEpoch: bigint };
@@ -70,7 +71,7 @@ export function createSocialService(deps: Dependencies) {
     async loadChatHistory(channel: "guild" | "dm", peer: string, beforeId: bigint) {
       const current = request();
       const hub = hubRevision;
-      const page = await withRequestDeadline(current.connection.procedures.getSocialChatHistory({ channel, peer, beforeId }));
+      const page = await withRequestDeadline(current.connection.procedures.getSocialChatHistoryWithReactions({ channel, peer, beforeId }));
       current.check();
       if (hub !== hubRevision) throw new Error("Conversation changed. Reopen chat.");
       return { messages: page.messages.map(presentation), hasMore: page.hasMore, beforeId: page.messages[0]?.id ?? beforeId };

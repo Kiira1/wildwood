@@ -104,6 +104,7 @@ export function bossTargetsFromMapSamples(
 }
 
 type PresenceServiceDependencies = {
+  drainEnemyLoot?: () => Promise<boolean>;
   reducers: ReducerPort;
   changes: ChangePort;
   localIdentity: () => string;
@@ -435,7 +436,7 @@ export function createPresenceService(dependencies: PresenceServiceDependencies)
       // again at sequence 1 would silently discard movement until it catches up.
       nextPositionSequence = Math.max(nextPositionSequence, row.lastInputSequence);
       localMotionEpoch = row.motionEpoch & 0xffff;
-      speedSyncTracker.observe(row.speed);
+      speedSyncTracker.observe(row.speed, performance.now());
       const nextMapId = row.mapId || TUTORIAL_FOREST_MAP_ID;
       const firstLocalState = localState === null;
       const presenceChanged = dependencies.developer.api.developerPresenceVisible() !== row.isVisible;
@@ -911,7 +912,7 @@ export function createPresenceService(dependencies: PresenceServiceDependencies)
           "speed sync",
           (connection) => connection.reducers.setSpeed({ speed }),
           () => speedSyncTracker.reject(speed, performance.now()),
-          () => speedSyncTracker.accept(speed),
+          () => speedSyncTracker.accept(speed, performance.now()),
         );
       },
       syncMovementState,
@@ -932,6 +933,7 @@ export function createPresenceService(dependencies: PresenceServiceDependencies)
           !isProceduralMap(mapId) && !["home_exterior", TUTORIAL_FOREST_MAP_ID, BEGINNER_DESERT_MAP_ID, INTERMEDIATE_SNOWLANDS_MAP_ID, ADVANCED_LAVA_WASTES_MAP_ID, INFERNAL_DEPTHS_MAP_ID, WATER_REACH_MAP_ID, SAMURAI_GARDEN_MAP_ID, CLOUDSPIRE_MAP_ID, MOONFEN_MAP_ID, CRYSTAL_HOLLOWS_MAP_ID, CLOCKWORK_RUINS_MAP_ID, DUSKFALL_ORCHARD_MAP_ID, NEON_BASTION_MAP_ID, VERDANT_CATACOMBS_MAP_ID, ION_CITADEL_MAP_ID].includes(mapId)
         ) return false;
         try {
+          if (dependencies.drainEnemyLoot && !await dependencies.drainEnemyLoot()) throw new Error("Item drops are still syncing. Try the portal again.");
           await dependencies.reducers.runWorldReducer(() => connection.reducers.changeMap({ mapId, x, y }));
           recordConnectionDiagnostic("portal-complete", { detail: `destination:${mapId}` });
           return true;

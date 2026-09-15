@@ -54,6 +54,7 @@ export type BaseSubscriptionHandlers = {
   removeActiveItemUpgrade: (row: any, slot: 1 | 2) => void;
   itemDrop: RowHandler;
   lifetime: RowHandler;
+  chatHearts: RowHandler;
   dragonBoss: RowHandler;
   dragonResult: RowHandler;
   spiderBoss: RowHandler;
@@ -126,6 +127,7 @@ type BaseSubscriptionHandlerSources = {
     upsertActiveItemUpgrade: BaseSubscriptionHandlers["activeItemUpgrade"];
     removeActiveItemUpgrade: BaseSubscriptionHandlers["removeActiveItemUpgrade"];
     upsertLifetime: BaseSubscriptionHandlers["lifetime"];
+    upsertChatHearts: BaseSubscriptionHandlers["chatHearts"];
     upsertGemWallet: BaseSubscriptionHandlers["gemWallet"];
     removeGemWallet: BaseSubscriptionHandlers["removeGemWallet"];
     upsertDailyGemBonus: BaseSubscriptionHandlers["dailyGemBonus"];
@@ -242,6 +244,7 @@ export function createBaseSubscriptionHandlers(sources: BaseSubscriptionHandlerS
     removeActiveItemUpgrade: progression.removeActiveItemUpgrade,
     itemDrop: progression.upsertItemDrop,
     lifetime: progression.upsertLifetime,
+    chatHearts: progression.upsertChatHearts,
     dragonBoss: boss.upsertDragon,
     dragonResult: boss.upsertDragonResult,
     spiderBoss: boss.upsertSpider,
@@ -374,6 +377,9 @@ export function startBaseSubscription(dependencies: BaseSubscriptionDependencies
   connection.db.activeItemUpgradeSlotTwo.onDelete((_ctx, row) => { if (shouldHandle()) handlers.removeActiveItemUpgrade(row, 2); });
   connection.db.playerItemDrop.onInsert((_ctx, row) => { if (shouldHandle()) handlers.itemDrop(row); });
   connection.db.playerItemDrop.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.itemDrop(row); });
+  connection.db.playerChatHearts.onInsert((_ctx, row) => { if (shouldHandle()) handlers.chatHearts(row); });
+  connection.db.playerChatHearts.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.chatHearts(row); });
+  connection.db.playerChatHearts.onDelete((_ctx, row) => { if (shouldHandle()) handlers.chatHearts({ ...row, chatHeartsReceived: 0n }); });
   connection.db.playerLifetime.onInsert((_ctx, row) => { if (shouldHandle()) handlers.lifetime(row); });
   connection.db.playerLifetime.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.lifetime(row); });
   connection.db.dragonBoss.onInsert((_ctx, row) => { if (shouldHandle()) handlers.dragonBoss(row); });
@@ -439,12 +445,12 @@ export function startBaseSubscription(dependencies: BaseSubscriptionDependencies
   connection.db.mySocialHub.onInsert((_ctx, row) => { if (shouldHandle()) handlers.socialHub(row); });
   connection.db.mySocialHub.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.socialHub(row); });
   connection.db.mySocialHub.onDelete((_ctx, row) => { if (shouldHandle()) handlers.removeSocialHub(row); });
-  connection.db.mySocialMessages.onInsert((_ctx, row) => { if (shouldHandle()) handlers.socialMessage(row); });
-  connection.db.mySocialMessages.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.socialMessage(row); });
-  connection.db.mySocialMessages.onDelete((_ctx, row) => { if (shouldHandle()) handlers.removeSocialMessage(row); });
-  connection.db.latestChatMessages.onInsert((_ctx, row) => { if (shouldHandle()) handlers.chatMessage(row); });
-  connection.db.latestChatMessages.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.chatMessage(row); });
-  connection.db.latestChatMessages.onDelete((_ctx, row) => { if (shouldHandle()) handlers.removeChatMessage(row); });
+  connection.db.mySocialMessagesWithReactions.onInsert((_ctx, row) => { if (shouldHandle()) handlers.socialMessage(row); });
+  connection.db.mySocialMessagesWithReactions.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.socialMessage(row); });
+  connection.db.mySocialMessagesWithReactions.onDelete((_ctx, row) => { if (shouldHandle()) handlers.removeSocialMessage(row); });
+  connection.db.latestChatMessagesWithReactions.onInsert((_ctx, row) => { if (shouldHandle()) handlers.chatMessage(row); });
+  connection.db.latestChatMessagesWithReactions.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.chatMessage(row); });
+  connection.db.latestChatMessagesWithReactions.onDelete((_ctx, row) => { if (shouldHandle()) handlers.removeChatMessage(row); });
   connection.db.myPlayerBlocks.onInsert((_ctx, row) => { if (shouldHandle()) handlers.playerBlock(row); });
   connection.db.myPlayerBlocks.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.playerBlock(row); });
   connection.db.myPlayerBlocks.onDelete((_ctx, row) => { if (shouldHandle()) handlers.removePlayerBlock(row); });
@@ -501,6 +507,7 @@ export function startBaseSubscription(dependencies: BaseSubscriptionDependencies
       tables.activeItemUpgrade.where((upgrade) => upgrade.identity.eq(dependencies.identity)),
       tables.activeItemUpgradeSlotTwo.where((upgrade) => upgrade.identity.eq(dependencies.identity)),
       tables.playerItemDrop.where((drop) => drop.identity.eq(dependencies.identity)),
+      tables.playerChatHearts.where(row => row.identity.eq(dependencies.identity)),
       tables.playerLifetime.where((lifetime) => lifetime.identity.eq(dependencies.identity)),
       // Rare completion events retain rewards earned before leaving a boss map.
       tables.dragonResult,
@@ -514,8 +521,8 @@ export function startBaseSubscription(dependencies: BaseSubscriptionDependencies
       tables.miremawResult,
             tables.prismshellResult, tables.ironhornResult, tables.dreadreaperResult, tables.voltwardenResult, tables.gravebloomResult, tables.aegisPrimeResult,
       tables.mySocialHub,
-      tables.mySocialMessages,
-      tables.latestChatMessages,
+      tables.mySocialMessagesWithReactions,
+      tables.latestChatMessagesWithReactions,
       tables.myPlayerBlocks,
       tables.duel.where((duel) => duel.challenger.eq(dependencies.identity)),
 ]),
@@ -545,6 +552,7 @@ export function startBaseSubscription(dependencies: BaseSubscriptionDependencies
           for (const row of connection.db.activeItemUpgrade.iter()) handlers.activeItemUpgrade(row, 1);
           for (const row of connection.db.activeItemUpgradeSlotTwo.iter()) handlers.activeItemUpgrade(row, 2);
           for (const row of connection.db.playerItemDrop.iter()) handlers.itemDrop(row);
+          for (const row of connection.db.playerChatHearts.iter()) handlers.chatHearts(row);
           for (const row of connection.db.playerLifetime.iter()) handlers.lifetime(row);
           for (const row of connection.db.playerMotionIdentity.iter()) handlers.motionIdentity(row);
           for (const row of connection.db.player.iter()) handlers.player(row);
@@ -580,8 +588,8 @@ export function startBaseSubscription(dependencies: BaseSubscriptionDependencies
           for (const row of connection.db.aegisPrimeResult.iter()) handlers.aegisPrimeResult(row);
           for (const row of connection.db.myPlayerBlocks.iter()) handlers.playerBlock(row);
           for (const row of connection.db.mySocialHub.iter()) handlers.socialHub(row);
-          for (const row of connection.db.mySocialMessages.iter()) handlers.socialMessage(row);
-          for (const row of connection.db.latestChatMessages.iter()) handlers.chatMessage(row);
+          for (const row of connection.db.mySocialMessagesWithReactions.iter()) handlers.socialMessage(row);
+          for (const row of connection.db.latestChatMessagesWithReactions.iter()) handlers.chatMessage(row);
           for (const row of connection.db.duel.iter()) handlers.duel(row);
         });
         return;

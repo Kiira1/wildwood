@@ -5,11 +5,13 @@ import type { LeaderboardPage } from "../../shared/leaderboard-window";
 
 type Direction = "above" | "below";
 type Window = Omit<LeaderboardPage<LeaderboardEntry>, "entries"> & {
+  loadedAt: number;
   entries: LeaderboardEntry[];
   podium: LeaderboardEntry[];
   busy?: Direction;
   error?: Direction;
 };
+const CACHE_MS = 60_000;
 const MAX_ROWS = 501;
 const EDGE_DISTANCE = 100;
 export type LeaderboardControllerElements = {
@@ -110,6 +112,7 @@ export function createLeaderboardController(elements: LeaderboardControllerEleme
     elements.overlay.dataset.stat = stat;
     const requestedStat = stat, generation = ++requestGeneration;
     error = ""; snapshot = snapshots.get(stat);
+    if (snapshot && Date.now() - snapshot.loadedAt >= CACHE_MS) snapshot = undefined;
     // A tab always reopens at the viewer, even after its old neighborhood was evicted.
     if (snapshot?.localRank && !snapshot.entries.some(row => row.identity === hooks.localIdentity())) snapshot = undefined;
     loading = !snapshot;
@@ -118,7 +121,7 @@ export function createLeaderboardController(elements: LeaderboardControllerEleme
     try {
       const page = await hooks.loadPage(requestedStat);
       if (generation !== requestGeneration || elements.overlay.hidden || snapshotIdentity !== hooks.localIdentity()) return;
-      snapshot = { ...page, entries: page.entries.filter(row => row.rank! >= page.startRank && row.rank! <= page.endRank),
+      snapshot = { ...page, loadedAt: Date.now(), entries: page.entries.filter(row => row.rank! >= page.startRank && row.rank! <= page.endRank),
         podium: page.entries.filter(row => row.rank! <= 3) };
       snapshots.set(requestedStat, snapshot);
     } catch (failure) {
@@ -167,8 +170,11 @@ export function createLeaderboardController(elements: LeaderboardControllerEleme
   }
   async function open() {
     hooks.beforeOpen(); elements.overlay.hidden = false; elements.button.setAttribute("aria-expanded", "true");
-    snapshot = undefined; snapshots.clear(); snapshotIdentity = hooks.localIdentity();
-    podiumPlayers = renderLeaderboardPodium(elements.podium, stat, [], actions);
+    if (snapshotIdentity !== hooks.localIdentity()) {
+      snapshots.clear(); snapshot = undefined;
+      podiumPlayers = renderLeaderboardPodium(elements.podium, stat, [], actions);
+    }
+    snapshotIdentity = hooks.localIdentity();
     await select(stat);
   }
   function close() { requestGeneration++; elements.overlay.hidden = true; elements.button.setAttribute("aria-expanded", "false"); }

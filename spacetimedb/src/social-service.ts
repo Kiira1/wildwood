@@ -1,3 +1,4 @@
+import { removeMessageReactions } from "./chat-reactions";
 import { recordModerationAction } from "./moderation-history";
 import { Identity } from "spacetimedb";
 import { SenderError } from "spacetimedb/server";
@@ -182,14 +183,14 @@ export function createSocialService(deps: { joinGuild(ctx: Ctx, guildId: bigint)
 // Private messages are retained indefinitely; only guild chat is automatically trimmed.
 function pruneGuildMessages(ctx: Ctx, conversation: string) {
   const history = [...ctx.db.socialMessage.conversation.filter(conversation)].sort((a, b) => a.id < b.id ? -1 : 1);
-  for (const row of history.slice(0, Math.max(0, history.length - SOCIAL_MESSAGE_LIMIT))) ctx.db.socialMessage.id.delete(row.id);
+  for (const row of history.slice(0, Math.max(0, history.length - SOCIAL_MESSAGE_LIMIT))) { removeMessageReactions(ctx, "social", row.id); ctx.db.socialMessage.id.delete(row.id); }
 }
 /** Account erasure removes private content and relationships through indexed references. */
 export function removeSocialAccount(ctx: Ctx, who: Identity) {
   for (const row of [...ctx.db.socialFriend.owner.filter(who), ...ctx.db.socialFriend.peer.filter(who)]) ctx.db.socialFriend.key.delete(row.key);
   for (const row of requests(ctx, who)) ctx.db.socialRequest.id.delete(row.id);
   for (const row of [...ctx.db.socialGuildInvite.sender.filter(who), ...ctx.db.socialGuildInvite.recipient.filter(who)]) ctx.db.socialGuildInvite.id.delete(row.id);
-  for (const row of [...ctx.db.socialMessage.sender.filter(who), ...ctx.db.socialMessage.recipient.filter(who)]) ctx.db.socialMessage.id.delete(row.id);
+  for (const row of [...ctx.db.socialMessage.sender.filter(who), ...ctx.db.socialMessage.recipient.filter(who)]) { removeMessageReactions(ctx, "social", row.id); ctx.db.socialMessage.id.delete(row.id); }
   for (const row of ctx.db.socialMessage.replySender.filter(who)) ctx.db.socialMessage.id.update({ ...row, replyToMessageId: 0n, replyToSenderName: "", replyToMessage: "", replySender: row.sender });
   for (const row of [...ctx.db.socialReport.reporter.filter(who), ...ctx.db.socialReport.accused.filter(who)]) ctx.db.socialReport.key.delete(row.key);
 }
@@ -212,7 +213,7 @@ export function mergeSocialAccount(ctx: Ctx, guest: Identity, account: Identity)
   }
   for (const row of [...new Map([...ctx.db.socialMessage.sender.filter(guest), ...ctx.db.socialMessage.recipient.filter(guest)].map(row => [row.id, row])).values()]) {
     const sender = same(row.sender, guest) ? account : row.sender, recipient = same(row.recipient, guest) ? account : row.recipient;
-    if (row.channel === "dm" && same(sender, recipient)) ctx.db.socialMessage.id.delete(row.id);
+    if (row.channel === "dm" && same(sender, recipient)) { removeMessageReactions(ctx, "social", row.id); ctx.db.socialMessage.id.delete(row.id); }
     else ctx.db.socialMessage.id.update({ ...row, sender, recipient, senderName: name(ctx, sender), recipientName: row.channel === "dm" ? name(ctx, recipient) : "", conversation: row.channel === "dm" ? dmKey(sender, recipient) : row.conversation });
   }
   for (const row of ctx.db.socialMessage.replySender.filter(guest)) ctx.db.socialMessage.id.update({ ...row, replySender: account });

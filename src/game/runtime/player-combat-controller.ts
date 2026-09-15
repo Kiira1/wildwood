@@ -131,12 +131,9 @@ export function createPlayerCombatController(options: {
   effectiveArmor: () => number;
   isDueling: () => boolean;
   scheduleEnemyRespawn: (site: SpawnSite) => void;
+  recordRegularEnemyDefeat: (mapId: string) => void;
   incrementKills: () => void;
   hitGeneratedBoss?: (enemy: EnemyState) => boolean;
-  recordForestEnemyDefeat: () => void;
-  recordDesertEnemyDefeat: () => void;
-  recordSnowEnemyDefeat: () => void;
-  recordLavaEnemyDefeat: () => void;
   damageDragon: (hits: number) => void;
   damageSpider: (hits: number) => void;
   damageFrostclaw: (hits: number) => void;
@@ -171,7 +168,7 @@ export function createPlayerCombatController(options: {
     player, enemies, spawnSites, projectileStore, boss, spiderBoss, frostclawBoss, magmaliskBoss, gloomrootBoss, tidewyrmBoss, koiShogunBoss, tempestKirinBoss, miremawBoss, prismshellBoss, ironhornBoss, dreadreaperBoss, voltwardenBoss, gravebloomBoss, aegisPrimeBoss,
     isTutorialMap, isDesertMap, isSnowMap, isLavaMap, isInfernalMap, isWaterMap, isSamuraiMap, isCloudspireMap, isMoonfenMap, isCrystalHollowsMap, isClockworkRuinsMap, isDuskfallOrchardMap, isNeonBastionMap, isVerdantCatacombsMap, isIonCitadelMap, engageEnemy, researchDamageMultiplier, researchCriticalChance, researchCriticalDamageMultiplier,
     researchRewardMultiplier, minAttackInterval, effectiveArmor, isDueling, scheduleEnemyRespawn,
-    incrementKills, recordForestEnemyDefeat, recordDesertEnemyDefeat, recordSnowEnemyDefeat, recordLavaEnemyDefeat, damageDragon, damageSpider, damageFrostclaw, damageMagmalisk, damageGloomroot, damageTidewyrm, damageKoiShogun, damageTempestKirin, damageMiremaw, damagePrismshell, damageIronhorn, damageDreadreaper, damageVoltwarden, damageGravebloom, damageAegisPrime, spawnBurst, spawnParticle,
+    incrementKills, recordRegularEnemyDefeat, damageDragon, damageSpider, damageFrostclaw, damageMagmalisk, damageGloomroot, damageTidewyrm, damageKoiShogun, damageTempestKirin, damageMiremaw, damagePrismshell, damageIronhorn, damageDreadreaper, damageVoltwarden, damageGravebloom, damageAegisPrime, spawnBurst, spawnParticle,
     spawnDamageNumber, logPickup, saveProgress, setHitFlash, addScreenShake, recordDeath, endGame,
   } = options;
   const { projectiles, enemyShots } = projectileStore;
@@ -411,10 +408,8 @@ export function createPlayerCombatController(options: {
     if (site) scheduleEnemyRespawn(site);
     const base = enemy.definition ?? ENEMY_TYPES[enemy.type];
     applyReward(enemy.reward, enemy.x, enemy.y);
-    if (isTutorialMap()) recordForestEnemyDefeat();
-    if (isDesertMap() && !base.elite) recordDesertEnemyDefeat();
-    if (isSnowMap()) recordSnowEnemyDefeat();
-    if (isLavaMap() || isInfernalMap() || regularMapLoot(options.currentMapId?.() ?? "").length > 0) recordLavaEnemyDefeat();
+    const mapId = options.currentMapId?.() ?? (isTutorialMap() ? "tutorial_forest" : isDesertMap() ? "beginner_desert" : isSnowMap() ? "intermediate_snowlands" : isLavaMap() ? "advanced_lava_wastes" : isInfernalMap() ? "infernal_depths" : "");
+    if (regularMapLoot(mapId).length && !(isDesertMap() && base.elite)) recordRegularEnemyDefeat(mapId);
     spawnBurst(enemy.x, enemy.y, DEATH_PARTICLE_COLOR, base.elite ? 28 : 12, base.elite ? 150 : 90);
   }
 

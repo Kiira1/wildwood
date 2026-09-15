@@ -1,4 +1,10 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.692": [
+    "React to chat messages with thumbs up, laughs, hearts, or thumbs down. Reactions appear beneath each message.",
+    "Profiles now show the total hearts received from other players in chat.",
+    "Leaderboard and inventory windows reopen faster by keeping recent content cached.",
+    "Reduced server work for enemy drops, saving progress, and movement speed updates.",
+  ],
   "0.691": [
     "The map guide now shows the new Water Reach, Samurai Gardens, Cloudspire, and Moonfen item drops with their correct drop chances.",
   ],
@@ -1806,6 +1812,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.692": "2026-09-14",
   "0.691": "2026-09-14",
   "0.690": "2026-09-14",
   "0.689": "2026-09-14",

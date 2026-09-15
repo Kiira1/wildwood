@@ -1,5 +1,6 @@
-import { regularMapLoot } from "../../shared/regular-map-loot";
-import { BLACK_BOOTS, BLACK_BOOTS_DROP_DENOMINATOR, BLACK_BOOTS_SPEED_BONUS } from "../../shared/items";
+import { chatReactionSummary, playerChatHearts, reactionCountsFor, chatReaction, readChatReactions, setChatReaction, removeMessageReactions, removeAccountReactions, mergeAccountReactions } from "./chat-reactions";
+import { regularEnemyLootCursor, acceptRegularEnemyLootBatch, rollRegularEnemyLoot } from "./regular-enemy-loot";
+import { BLACK_BOOTS, BLACK_BOOTS_SPEED_BONUS } from "../../shared/items";
 import { playerOnboarding, advanceOnboarding, mergeOnboarding, needsOnboarding } from "./onboarding";
 import { canDestroyEquipment } from "../../shared/items";
 import { deliverDisconnectCompensation } from "./disconnect-compensation";
@@ -100,42 +101,28 @@ import type { DuelFighter } from "../../shared/duel-combat";
 import {
   BASIC_PAPER_HAT,
   canonicalItemId,
-  DARK_METAL_HELMET,
   SAMURAI_DROP_ITEM_IDS,
   WATER_DROP_ITEM_IDS,
   CLOUDSPIRE_DROP_ITEM_IDS,
   MOONFEN_DROP_ITEM_IDS,
   DESERT_DROP_ITEM_IDS,
-  DESERT_ITEM_DROP_DENOMINATOR,
   DEVELOPER_ITEM_IDS,
   equipmentDamageMultiplier,
   equipmentMaxHealthMultiplier,
   equipmentRegenerationMultiplier,
-  FIRE_METAL_BOW,
-  FIRE_METAL_HELMET,
-  FOREST_ITEM_DROP_DENOMINATOR,
   FROST_ARMOR,
   FROST_BOW,
-  inventoryJsonItemQuantity,
   itemDefinition,
   isUpgradeableItem,
   itemFitsEquipmentSlot,
   itemUpgradeDurationMs,
-  IRON_BOW,
   INFERNAL_DROP_ITEM_IDS,
-  INFERNAL_ITEM_DROP_DENOMINATOR,
-  NIGHT_FOREST_HELMET_ITEM_DROP_DENOMINATOR,
-  NIGHT_FOREST_BOW_ITEM_DROP_DENOMINATOR,
-  NIGHT_BOW,
   LAVA_BOSS_DROP_ITEM_IDS,
   LAVA_BOSS_ITEM_DROP_DENOMINATOR,
   LAVA_BOW,
   LAVA_DROP_ITEM_IDS,
-  LAVA_ITEM_DROP_DENOMINATOR,
-  LAVA_HELMET_ITEM_DROP_DENOMINATOR,
   MAX_FOREST_ITEM_COUNT,
   MAX_ITEM_UPGRADE_LEVEL,
-  MAGMA_ARMOR,
   normalizeItemUpgradeLevel,
   STARTER_BOW,
   STARTER_STONE,
@@ -143,12 +130,9 @@ import {
   SNOW_BOSS_ARMOR_DROP_DENOMINATOR,
   SNOW_BOSS_DROP_ITEM_IDS,
   SNOW_BOSS_ITEM_DROP_DENOMINATOR,
-  SNOW_BOW,
   SNOW_DROP_ITEM_IDS,
-  SNOW_ITEM_DROP_DENOMINATOR,
   SUPERIOR_GOLDEN_HELMET,
   TRAILBLAZER_BOOTS,
-  WOOD_FULL_HELM,
   WOODEN_ARMOR,
 } from "../../shared/items";
 import {
@@ -1742,6 +1726,8 @@ const spacetimedb = schema({
   balanceApologyNotice,
   playerItemGift,
   playerOnboarding,
+  regularEnemyLootCursor,
+  chatReaction, chatReactionSummary, playerChatHearts,
   playerUpgradeBench,
   playerInventoryCapacity,
   playerCutsceneHistory,
@@ -1936,6 +1922,7 @@ function transferPlayerBlocks(ctx: ModuleReducerCtx, guest: Identity, account: I
 }
 
 function removePlayerSafetyData(ctx: ModuleReducerCtx, identity: Identity) {
+  removeAccountReactions(ctx, identity);
   for (const row of [...ctx.db.playerBlock.byOwner.filter(identity), ...ctx.db.playerBlock.byTarget.filter(identity)]) {
     ctx.db.playerBlock.key.delete(row.key);
   }
@@ -3764,35 +3751,28 @@ function forestItemCountForProgress(progress: any, itemId: string, field: "bowCo
 }
 
 function inventoryForProgress(progress: any) {
-  let hasBetaTesterGoldenHelmet = isDeveloperIdentity(progress.identity);
-  try {
-    hasBetaTesterGoldenHelmet ||= JSON.parse(progress.inventoryJson ?? "[]").includes(SUPERIOR_GOLDEN_HELMET);
-  } catch {}
-  const developerItems = isDeveloperIdentity(progress.identity)
-    ? DEVELOPER_ITEM_IDS
-    : hasBetaTesterGoldenHelmet ? [SUPERIOR_GOLDEN_HELMET] : [];
+  // Decode once. Previously every catalog item reparsed the same JSON payload.
+  let saved: unknown[] = [];
+  try { const value = JSON.parse(progress.inventoryJson ?? "[]"); if (Array.isArray(value)) saved = value; } catch {}
+  const owned = new Set(saved.map(canonicalItemId).filter(Boolean));
+  const developer = isDeveloperIdentity(progress.identity);
+  const forestCount = (itemId: string, field: string) => Math.max(0, Math.min(MAX_FOREST_ITEM_COUNT,
+    Math.max(Number.isInteger(progress[field]) ? progress[field] : 0, saved.filter(id => id === itemId).length)));
   return [
     ...STARTER_ITEM_IDS,
-    ...developerItems,
+    ...(developer ? DEVELOPER_ITEM_IDS : saved.includes(SUPERIOR_GOLDEN_HELMET) ? [SUPERIOR_GOLDEN_HELMET] : []),
     ...(progress.bootsCollected ? [TRAILBLAZER_BOOTS] : []),
-    ...Array(forestItemCountForProgress(progress, STARTER_BOW, "bowCount")).fill(STARTER_BOW),
-    ...Array(forestItemCountForProgress(progress, WOODEN_ARMOR, "woodenArmorCount")).fill(WOODEN_ARMOR),
-    ...DESERT_DROP_ITEM_IDS.flatMap((itemId) =>
-      Array(inventoryJsonItemQuantity(progress.inventoryJson, itemId)).fill(itemId)),
-    ...SNOW_DROP_ITEM_IDS.flatMap((itemId) =>
-      Array(inventoryJsonItemQuantity(progress.inventoryJson, itemId)).fill(itemId)),
-    ...SNOW_BOSS_DROP_ITEM_IDS.flatMap((itemId) =>
-      Array(inventoryJsonItemQuantity(progress.inventoryJson, itemId)).fill(itemId)),
-    ...LAVA_DROP_ITEM_IDS.flatMap((itemId) =>
-      Array(inventoryJsonItemQuantity(progress.inventoryJson, itemId)).fill(itemId)),
-    ...LAVA_BOSS_DROP_ITEM_IDS.flatMap((itemId) =>
-      Array(inventoryJsonItemQuantity(progress.inventoryJson, itemId)).fill(itemId)),
-    ...[...SAMURAI_DROP_ITEM_IDS, ...WATER_DROP_ITEM_IDS, ...CLOUDSPIRE_DROP_ITEM_IDS, ...MOONFEN_DROP_ITEM_IDS].flatMap((itemId) =>
-      Array(inventoryJsonItemQuantity(progress.inventoryJson, itemId)).fill(itemId)),
-    ...INFERNAL_DROP_ITEM_IDS.flatMap((itemId) =>
-      Array(inventoryJsonItemQuantity(progress.inventoryJson, itemId)).fill(itemId)),
+    ...Array(forestCount(STARTER_BOW, "bowCount")).fill(STARTER_BOW),
+    ...Array(forestCount(WOODEN_ARMOR, "woodenArmorCount")).fill(WOODEN_ARMOR),
+    ...OWNED_EQUIPMENT_DROP_IDS.filter(id => owned.has(id)),
   ];
 }
+
+const OWNED_EQUIPMENT_DROP_IDS = [
+  ...DESERT_DROP_ITEM_IDS, ...SNOW_DROP_ITEM_IDS, ...SNOW_BOSS_DROP_ITEM_IDS,
+  ...LAVA_DROP_ITEM_IDS, ...LAVA_BOSS_DROP_ITEM_IDS, ...SAMURAI_DROP_ITEM_IDS,
+  ...WATER_DROP_ITEM_IDS, ...CLOUDSPIRE_DROP_ITEM_IDS, ...MOONFEN_DROP_ITEM_IDS, ...INFERNAL_DROP_ITEM_IDS,
+];
 
 function inventoryWithBetaHelmet(progress: any, grant: boolean) {
   const inventory = inventoryForProgress(progress);
@@ -3870,7 +3850,7 @@ function writeProgressAndPresentation(ctx: any, progress: any) {
   // Ranking snapshots refresh in maintenance, never in the combat/reward path.
 }
 
-function publishItemDrop(ctx: any, identity: any, itemId: string, alreadyOwned: boolean) {
+function publishItemDrop(ctx: any, identity: any, itemId: string, alreadyOwned: boolean, quantity = 1) {
   const key = itemUpgradeKey(identity, itemId);
   const current = ctx.db.playerItemDrop.key.find(key);
   const next = {
@@ -3878,7 +3858,7 @@ function publishItemDrop(ctx: any, identity: any, itemId: string, alreadyOwned: 
     identity,
     itemId,
     alreadyOwned,
-    sequence: (current?.sequence ?? 0n) + 1n,
+    sequence: (current?.sequence ?? 0n) + BigInt(quantity),
     droppedAt: ctx.timestamp,
   };
   if (current) ctx.db.playerItemDrop.key.update(next);
@@ -3886,19 +3866,16 @@ function publishItemDrop(ctx: any, identity: any, itemId: string, alreadyOwned: 
 }
 
 
-function equippedHeadForProgress(progress: any) {
-  const inventory = inventoryForProgress(progress);
+function equippedHeadForProgress(progress: any, inventory = inventoryForProgress(progress)) {
   if (progress.equippedHead === "") return "";
   return inventory.includes(progress.equippedHead) ? progress.equippedHead : BASIC_PAPER_HAT;
 }
 
-function equippedChestForProgress(progress: any) {
-  const inventory = inventoryForProgress(progress);
+function equippedChestForProgress(progress: any, inventory = inventoryForProgress(progress)) {
   return inventory.includes(progress.equippedChest) ? progress.equippedChest : "";
 }
 
-function equippedFeetForProgress(progress: any) {
-  const inventory = inventoryForProgress(progress);
+function equippedFeetForProgress(progress: any, inventory = inventoryForProgress(progress)) {
   return inventory.includes(progress.equippedFeet) ? progress.equippedFeet : "";
 }
 
@@ -3918,21 +3895,18 @@ function canonicalSavedHand(progress: any, field: "equippedRightHand" | "equippe
     : "";
 }
 
-function equippedRightHandForProgress(progress: any) {
-  const inventory = inventoryForProgress(progress);
+function equippedRightHandForProgress(progress: any, inventory = inventoryForProgress(progress)) {
   const saved = canonicalSavedHand(progress, "equippedRightHand");
   if (saved && inventory.includes(saved)) return saved;
   return savedInventoryHasHandItem(progress) ? "" : STARTER_STONE;
 }
 
-function equippedLeftHandForProgress(progress: any) {
-  const inventory = inventoryForProgress(progress);
+function equippedLeftHandForProgress(progress: any, inventory = inventoryForProgress(progress)) {
   const saved = canonicalSavedHand(progress, "equippedLeftHand");
   return saved && inventory.includes(saved) ? saved : "";
 }
 
-function cosmeticEquipmentForProgress(progress: any) {
-  const inventory = inventoryForProgress(progress);
+function cosmeticEquipmentForProgress(progress: any, inventory = inventoryForProgress(progress)) {
   const ownedItemIds = new Set(inventory);
   const itemFor = (field: "cosmeticHead" | "cosmeticChest" | "cosmeticFeet" | "cosmeticRightHand" | "cosmeticLeftHand", slot: "HEAD" | "CHEST" | "FEET" | "RIGHT_HAND" | "LEFT_HAND") => {
     if (isHiddenCosmeticItem(progress[field])) return HIDDEN_COSMETIC_ITEM_ID;
@@ -3949,15 +3923,15 @@ function cosmeticEquipmentForProgress(progress: any) {
   };
 }
 
-function equipmentPresentationForProgress(progress: any) {
-  const rightHandItem = equippedRightHandForProgress(progress);
-  const cosmetics = cosmeticEquipmentForProgress(progress);
+function equipmentPresentationForProgress(progress: any, inventory = inventoryForProgress(progress)) {
+  const rightHandItem = equippedRightHandForProgress(progress, inventory);
+  const cosmetics = cosmeticEquipmentForProgress(progress, inventory);
   return resolveEquipmentAppearance({
-    equippedFeet: equippedFeetForProgress(progress),
-    equippedHead: equippedHeadForProgress(progress),
-    equippedChest: equippedChestForProgress(progress),
+    equippedFeet: equippedFeetForProgress(progress, inventory),
+    equippedHead: equippedHeadForProgress(progress, inventory),
+    equippedChest: equippedChestForProgress(progress, inventory),
     equippedRightHand: rightHandItem,
-    equippedLeftHand: rightHandItem ? "" : equippedLeftHandForProgress(progress),
+    equippedLeftHand: rightHandItem ? "" : equippedLeftHandForProgress(progress, inventory),
     ...cosmetics,
   });
 }
@@ -4388,6 +4362,7 @@ function removeVirtualPlayerData(ctx: any, identity: any, adjustPresence = true,
   if (ctx.db.playerGemWallet.identity.find(identity)) ctx.db.playerGemWallet.identity.delete(identity);
   if (ctx.db.balanceApologyNotice.identity.find(identity)) ctx.db.balanceApologyNotice.identity.delete(identity);
   removeItemGifts(ctx, identity);
+  for (const cursor of ctx.db.regularEnemyLootCursor.identity.filter(identity)) ctx.db.regularEnemyLootCursor.key.delete(cursor.key);
   if (ctx.db.playerOnboarding.identity.find(identity)) ctx.db.playerOnboarding.identity.delete(identity);
   if (ctx.db.playerUpgradeBench.identity.find(identity)) ctx.db.playerUpgradeBench.identity.delete(identity);
   if (ctx.db.playerInventoryCapacity.identity.find(identity)) ctx.db.playerInventoryCapacity.identity.delete(identity);
@@ -4479,6 +4454,7 @@ function removePlayerIdentityData(ctx: any, identity: any) {
   if (ctx.db.dailyGemBonus.identity.find(identity)) ctx.db.dailyGemBonus.identity.delete(identity);
   if (ctx.db.balanceApologyNotice.identity.find(identity)) ctx.db.balanceApologyNotice.identity.delete(identity);
   removeItemGifts(ctx, identity);
+  for (const cursor of ctx.db.regularEnemyLootCursor.identity.filter(identity)) ctx.db.regularEnemyLootCursor.key.delete(cursor.key);
   if (ctx.db.playerOnboarding.identity.find(identity)) ctx.db.playerOnboarding.identity.delete(identity);
   if (ctx.db.playerUpgradeBench.identity.find(identity)) ctx.db.playerUpgradeBench.identity.delete(identity);
   if (ctx.db.playerInventoryCapacity.identity.find(identity)) ctx.db.playerInventoryCapacity.identity.delete(identity);
@@ -4537,6 +4513,7 @@ function removePlayerIdentityData(ctx: any, identity: any) {
   for (const message of [...ctx.db.chatMessage.iter() as Iterable<any>]) {
     if (!sameIdentity(message.sender, identity)) continue;
     removedMessageIds.add(message.id);
+    removeMessageReactions(ctx, "public", message.id);
     ctx.db.chatMessage.id.delete(message.id);
   }
 
@@ -6202,7 +6179,7 @@ function clearExpiredHistory(ctx: any) {
     if (replay.createdAt.microsSinceUnixEpoch < replayCutoff) staleReplayIds.push(replay.id);
   }
 
-  for (const id of staleMessageIds) ctx.db.chatMessage.id.delete(id);
+  for (const id of staleMessageIds) { removeMessageReactions(ctx, "public", id); ctx.db.chatMessage.id.delete(id); }
   for (const id of staleReplayIds) ctx.db.duelReplay.id.delete(id);
   updatePublicChatCursor(ctx);
 }
@@ -8431,6 +8408,7 @@ export const claimGuestAccount = spacetimedb.reducer(
     syncPlayerMotionIdentity(ctx, playerWithMotion(ctx, ctx.db.player.identity.find(ctx.sender)));
     guildService.mergeGuest(ctx, link.guest, ctx.sender);
     mergeSocialAccount(ctx, link.guest, ctx.sender);
+    mergeAccountReactions(ctx, link.guest, ctx.sender);
     const guestAccountStatus = ctx.db.playerAccountStatus.identity.find(link.guest);
     if (guestAccountStatus) deleteSnapshotRow(ctx, "playerAccountStatus", link.guest);
     const guestLeaderboardEntry = ctx.db.leaderboardEntry.identity.find(link.guest);
@@ -9240,7 +9218,7 @@ export const savePlayerProgress = spacetimedb.reducer(
       cosmeticFeet: progress.cosmeticFeet,
       cosmeticRightHand: progress.cosmeticRightHand,
       cosmeticLeftHand: progress.cosmeticLeftHand,
-    });
+    }, inventory);
     const next = {
       identity: ctx.sender,
       maxHp: Math.max(base.maxHp, normalized.maxHp),
@@ -9277,9 +9255,10 @@ export const savePlayerProgress = spacetimedb.reducer(
     };
     if (!current) insertSnapshotRow(ctx, "playerProgress", next);
     else if (!samePlayerProgressValues(current, next)) updateSnapshotRow(ctx, "playerProgress", next);
+    const equipment = equipmentPresentationForProgress(next, inventory);
     const leaderboard = ctx.db.leaderboardEntry.identity.find(ctx.sender);
     if (leaderboard) {
-      const appearance = leaderboardAppearanceForProgress(next, ctx.db.playerProfile.identity.find(ctx.sender));
+      const appearance = { skinTone: ctx.db.playerProfile.identity.find(ctx.sender)?.skinTone ?? 3, ...equipment };
       if (
         leaderboard.skinTone !== appearance.skinTone ||
         leaderboard.headItem !== appearance.headItem ||
@@ -9297,7 +9276,7 @@ export const savePlayerProgress = spacetimedb.reducer(
     const presentation = {
       ...powerFieldsForProgress(ctx, next),
       speed: effectiveMovementSpeedForProgress(ctx, next),
-      ...equipmentPresentationForProgress(next),
+      ...equipment,
     };
     if (
       activePlayer.power !== presentation.power ||
@@ -9599,156 +9578,57 @@ export const recordPlayerDeath = spacetimedb.reducer(
   },
 );
 
-/** Records one client-simulated forest defeat; server RNG owns durable loot. */
-export const recordForestEnemyDefeat = spacetimedb.reducer(
-  {},
-  (ctx) => {
-    const activePlayer = requireControllingPlayer(ctx);
-    if (activePlayer.mapId !== TUTORIAL_FOREST_MAP_ID || activeDuelFor(ctx, ctx.sender)) return;
-    const current = ctx.db.playerProgress.identity.find(ctx.sender) ?? defaultPlayerProgress(ctx.sender);
-    const bowDropped = ctx.random.integerInRange(1, FOREST_ITEM_DROP_DENOMINATOR) === 1;
-    const woodenArmorDropped = ctx.random.integerInRange(1, FOREST_ITEM_DROP_DENOMINATOR) === 1;
-    if (!bowDropped && !woodenArmorDropped) return;
+function awardRegularEnemyLoot(ctx: ReducerCtx<InferSchema<typeof spacetimedb>>, mapId: string, count: number) {
+  const drops = rollRegularEnemyLoot(ctx, mapId, count);
+  if (!drops.size) return;
+  const current = ctx.db.playerProgress.identity.find(ctx.sender);
+  let next = current ?? defaultPlayerProgress(ctx.sender);
+  const owned = new Set(inventoryForProgress(next));
+  for (const { active } of activeItemUpgradeEntriesFor(ctx, ctx.sender)) owned.add(active.itemId);
+  let inventoryChanged = false;
+  for (const [itemId, quantity] of drops) {
+    const alreadyOwned = owned.has(itemId);
+    publishItemDrop(ctx, ctx.sender, itemId, alreadyOwned, quantity);
+    if (!alreadyOwned) {
+      next = restoreItemToProgress(next, itemId);
+      owned.add(itemId);
+      inventoryChanged = true;
+    }
+  }
+  if (!inventoryChanged) return;
+  if (current) updateSnapshotRow(ctx, "playerProgress", next);
+  else insertSnapshotRow(ctx, "playerProgress", next);
+}
 
-    let next = { ...current };
-    if (bowDropped) {
-      const alreadyOwned = playerOwnsItem(ctx, ctx.sender, STARTER_BOW);
-      publishItemDrop(ctx, ctx.sender, STARTER_BOW, alreadyOwned);
-      if (!alreadyOwned) next = restoreItemToProgress(next, STARTER_BOW);
-    }
-    if (woodenArmorDropped) {
-      const alreadyOwned = playerOwnsItem(ctx, ctx.sender, WOODEN_ARMOR);
-      publishItemDrop(ctx, ctx.sender, WOODEN_ARMOR, alreadyOwned);
-      if (!alreadyOwned) next = restoreItemToProgress(next, WOODEN_ARMOR);
-    }
-    next.inventoryJson = JSON.stringify(inventoryForProgress(next));
-    if (ctx.db.playerProgress.identity.find(ctx.sender)) updateSnapshotRow(ctx, "playerProgress", next);
-    else insertSnapshotRow(ctx, "playerProgress", next);
+/** Current clients send bounded, ordered batches; one server RNG roll per item per kill. */
+export const recordRegularEnemyDefeats = spacetimedb.reducer(
+  { streamId: t.string(), sequence: t.u64(), mapId: t.string(), count: t.u16() },
+  (ctx, batch) => {
+    const player = requireControllingPlayer(ctx);
+    if (activeDuelFor(ctx, ctx.sender)) throw new SenderError("Enemy loot is unavailable during a duel.");
+    if (acceptRegularEnemyLootBatch(ctx, batch, player.mapId)) awardRegularEnemyLoot(ctx, batch.mapId, batch.count);
   },
 );
 
-/** Records one regular Beginner Desert defeat; both 1/50 equipment rolls are independent. */
-export const recordDesertEnemyDefeat = spacetimedb.reducer(
-  {},
-  (ctx) => {
-    const activePlayer = requireControllingPlayer(ctx);
-    if (activePlayer.mapId !== BEGINNER_DESERT_MAP_ID || activeDuelFor(ctx, ctx.sender)) return;
-    const helmDropped = ctx.random.integerInRange(1, DESERT_ITEM_DROP_DENOMINATOR) === 1;
-    const bowDropped = ctx.random.integerInRange(1, DESERT_ITEM_DROP_DENOMINATOR) === 1;
-    if (!helmDropped && !bowDropped) return;
-
-    const current = ctx.db.playerProgress.identity.find(ctx.sender) ?? defaultPlayerProgress(ctx.sender);
-    let next = { ...current };
-    if (helmDropped) {
-      const alreadyOwned = playerOwnsItem(ctx, ctx.sender, WOOD_FULL_HELM);
-      publishItemDrop(ctx, ctx.sender, WOOD_FULL_HELM, alreadyOwned);
-      if (!alreadyOwned) next = restoreItemToProgress(next, WOOD_FULL_HELM);
-    }
-    if (bowDropped) {
-      const alreadyOwned = playerOwnsItem(ctx, ctx.sender, IRON_BOW);
-      publishItemDrop(ctx, ctx.sender, IRON_BOW, alreadyOwned);
-      if (!alreadyOwned) next = restoreItemToProgress(next, IRON_BOW);
-    }
-    next.inventoryJson = JSON.stringify([...new Set(inventoryForProgress(next))]);
-    if (ctx.db.playerProgress.identity.find(ctx.sender)) updateSnapshotRow(ctx, "playerProgress", next);
-    else insertSnapshotRow(ctx, "playerProgress", next);
-  },
-);
-
-/** Records one regular Snowlands defeat; the white bow has an exact 1/50 roll. */
-export const recordSnowEnemyDefeat = spacetimedb.reducer(
-  {},
-  (ctx) => {
-    const activePlayer = requireControllingPlayer(ctx);
-    if (activePlayer.mapId !== INTERMEDIATE_SNOWLANDS_MAP_ID || activeDuelFor(ctx, ctx.sender)) return;
-    if (ctx.random.integerInRange(1, SNOW_ITEM_DROP_DENOMINATOR) !== 1) return;
-
-    const current = ctx.db.playerProgress.identity.find(ctx.sender) ?? defaultPlayerProgress(ctx.sender);
-    const alreadyOwned = playerOwnsItem(ctx, ctx.sender, SNOW_BOW);
-    publishItemDrop(ctx, ctx.sender, SNOW_BOW, alreadyOwned);
-    const next = alreadyOwned ? current : restoreItemToProgress(current, SNOW_BOW);
-    next.inventoryJson = JSON.stringify([...new Set(inventoryForProgress(next))]);
-    if (ctx.db.playerProgress.identity.find(ctx.sender)) updateSnapshotRow(ctx, "playerProgress", next);
-    else insertSnapshotRow(ctx, "playerProgress", next);
-  },
-);
-
-/** Records one regular late-game monster defeat; server RNG owns every independent item roll. */
-export const recordLavaEnemyDefeat = spacetimedb.reducer(
-  {},
-  (ctx) => {
-    const activePlayer = requireControllingPlayer(ctx);
-    if (activeDuelFor(ctx, ctx.sender)) return;
-    const loot = regularMapLoot(activePlayer.mapId);
-    if (loot.length) {
-      const drops = loot.filter(drop => ctx.random.integerInRange(1, drop.outcomes) <= drop.wins).map(drop => drop.itemId);
-      if (!drops.length) return;
-      const current = ctx.db.playerProgress.identity.find(ctx.sender) ?? defaultPlayerProgress(ctx.sender);
-      let next = { ...current };
-      for (const itemId of drops) {
-        const alreadyOwned = playerOwnsItem(ctx, ctx.sender, itemId);
-        publishItemDrop(ctx, ctx.sender, itemId, alreadyOwned);
-        if (!alreadyOwned) next = restoreItemToProgress(next, itemId);
-      }
-      next.inventoryJson = JSON.stringify(inventoryForProgress(next));
-      if (ctx.db.playerProgress.identity.find(ctx.sender)) updateSnapshotRow(ctx, "playerProgress", next);
-      else insertSnapshotRow(ctx, "playerProgress", next);
-      return;
-    }
-    if (activePlayer.mapId === INFERNAL_DEPTHS_MAP_ID) {
-      const nightBowDropped = ctx.random.integerInRange(1, NIGHT_FOREST_BOW_ITEM_DROP_DENOMINATOR) === 1;
-      const fireMetalBowDropped = ctx.random.integerInRange(1, INFERNAL_ITEM_DROP_DENOMINATOR) === 1;
-      const helmetDropped = ctx.random.integerInRange(1, NIGHT_FOREST_HELMET_ITEM_DROP_DENOMINATOR) === 1;
-      const bootsDropped = ctx.random.integerInRange(1, BLACK_BOOTS_DROP_DENOMINATOR) === 1;
-      if (!nightBowDropped && !fireMetalBowDropped && !helmetDropped && !bootsDropped) return;
-      const current = ctx.db.playerProgress.identity.find(ctx.sender) ?? defaultPlayerProgress(ctx.sender);
-      let next = { ...current };
-      if (bootsDropped) {
-        const alreadyOwned = playerOwnsItem(ctx, ctx.sender, BLACK_BOOTS);
-        publishItemDrop(ctx, ctx.sender, BLACK_BOOTS, alreadyOwned);
-        if (!alreadyOwned) next = restoreItemToProgress(next, BLACK_BOOTS);
-      }
-      if (nightBowDropped) {
-        const alreadyOwned = playerOwnsItem(ctx, ctx.sender, NIGHT_BOW);
-        publishItemDrop(ctx, ctx.sender, NIGHT_BOW, alreadyOwned);
-        if (!alreadyOwned) next = restoreItemToProgress(next, NIGHT_BOW);
-      }
-      if (fireMetalBowDropped) {
-        const alreadyOwned = playerOwnsItem(ctx, ctx.sender, FIRE_METAL_BOW);
-        publishItemDrop(ctx, ctx.sender, FIRE_METAL_BOW, alreadyOwned);
-        if (!alreadyOwned) next = restoreItemToProgress(next, FIRE_METAL_BOW);
-      }
-      if (helmetDropped) {
-        const alreadyOwned = playerOwnsItem(ctx, ctx.sender, DARK_METAL_HELMET);
-        publishItemDrop(ctx, ctx.sender, DARK_METAL_HELMET, alreadyOwned);
-        if (!alreadyOwned) next = restoreItemToProgress(next, DARK_METAL_HELMET);
-      }
-      next.inventoryJson = JSON.stringify([...new Set(inventoryForProgress(next))]);
-      if (ctx.db.playerProgress.identity.find(ctx.sender)) updateSnapshotRow(ctx, "playerProgress", next);
-      else insertSnapshotRow(ctx, "playerProgress", next);
-      return;
-    }
-    if (activePlayer.mapId !== ADVANCED_LAVA_WASTES_MAP_ID) return;
-    const armorDropped = ctx.random.integerInRange(1, LAVA_ITEM_DROP_DENOMINATOR) === 1;
-    const helmetDropped = ctx.random.integerInRange(1, LAVA_HELMET_ITEM_DROP_DENOMINATOR) === 1;
-    if (!armorDropped && !helmetDropped) return;
-    const current = ctx.db.playerProgress.identity.find(ctx.sender) ?? defaultPlayerProgress(ctx.sender);
-    let next = { ...current };
-    if (armorDropped) {
-      const alreadyOwned = playerOwnsItem(ctx, ctx.sender, MAGMA_ARMOR);
-      publishItemDrop(ctx, ctx.sender, MAGMA_ARMOR, alreadyOwned);
-      if (!alreadyOwned) next = restoreItemToProgress(next, MAGMA_ARMOR);
-    }
-    if (helmetDropped) {
-      const alreadyOwned = playerOwnsItem(ctx, ctx.sender, FIRE_METAL_HELMET);
-      publishItemDrop(ctx, ctx.sender, FIRE_METAL_HELMET, alreadyOwned);
-      if (!alreadyOwned) next = restoreItemToProgress(next, FIRE_METAL_HELMET);
-    }
-    next.inventoryJson = JSON.stringify([...new Set(inventoryForProgress(next))]);
-    if (ctx.db.playerProgress.identity.find(ctx.sender)) updateSnapshotRow(ctx, "playerProgress", next);
-    else insertSnapshotRow(ctx, "playerProgress", next);
-  },
-);
+// Compatibility endpoints for installed clients through 0.691. New clients use
+// record_regular_enemy_defeats; removing these wire names would break old apps.
+export const recordForestEnemyDefeat = spacetimedb.reducer({}, ctx => {
+  const player = requireControllingPlayer(ctx);
+  if (player.mapId === TUTORIAL_FOREST_MAP_ID && !activeDuelFor(ctx, ctx.sender)) awardRegularEnemyLoot(ctx, player.mapId, 1);
+});
+export const recordDesertEnemyDefeat = spacetimedb.reducer({}, ctx => {
+  const player = requireControllingPlayer(ctx);
+  if (player.mapId === BEGINNER_DESERT_MAP_ID && !activeDuelFor(ctx, ctx.sender)) awardRegularEnemyLoot(ctx, player.mapId, 1);
+});
+export const recordSnowEnemyDefeat = spacetimedb.reducer({}, ctx => {
+  const player = requireControllingPlayer(ctx);
+  if (player.mapId === INTERMEDIATE_SNOWLANDS_MAP_ID && !activeDuelFor(ctx, ctx.sender)) awardRegularEnemyLoot(ctx, player.mapId, 1);
+});
+export const recordLavaEnemyDefeat = spacetimedb.reducer({}, ctx => {
+  const player = requireControllingPlayer(ctx);
+  if (![TUTORIAL_FOREST_MAP_ID, BEGINNER_DESERT_MAP_ID, INTERMEDIATE_SNOWLANDS_MAP_ID].includes(player.mapId) &&
+      !activeDuelFor(ctx, ctx.sender)) awardRegularEnemyLoot(ctx, player.mapId, 1);
+});
 
 export const myOnboarding = spacetimedb.view(
   { name: "my_onboarding", public: true }, t.array(playerOnboarding.rowType),
@@ -10325,20 +10205,20 @@ export const setSpeed = spacetimedb.reducer(
   { speed: t.f32() },
   (ctx, { speed }) => {
     const current = requireControllingPlayer(ctx);
+    if (movementSpeedsMatch(speed, current.speed)) return;
 
     // Speed remains server-authoritative. Move Speed research is a legitimate
     // client-side movement multiplier, so validate its exact server record
     // instead of treating every researched speed as a malformed packet.
     const progress = ctx.db.playerProgress.identity.find(ctx.sender);
     const research = ctx.db.playerResearch.identity.find(ctx.sender);
-    const bootsEquipped = progress
-      ? equippedFeetForProgress(progress) === TRAILBLAZER_BOOTS
-      : current.feetItem === TRAILBLAZER_BOOTS;
+    const feet = progress ? equippedFeetForProgress(progress) : current.feetItem;
+    const bootsEquipped = feet === TRAILBLAZER_BOOTS;
     const moveSpeedRank = research?.moveSpeed ?? 0;
     const expectedSpeed = effectivePlayerMovementSpeed(bootsEquipped, moveSpeedRank, progress?.speedOverride ?? 0);
     // Regular-enemy combat runs locally. Permit its two exact movement states,
     // while checking ownership/equipment here and never saving a temporary bonus.
-    const blackBootsEquipped = progress && equippedFeetForProgress(progress) === BLACK_BOOTS;
+    const blackBootsEquipped = progress && feet === BLACK_BOOTS;
     const restingSpeed = expectedSpeed + (blackBootsEquipped ? BLACK_BOOTS_SPEED_BONUS : 0);
     if (!movementSpeedsMatch(speed, expectedSpeed) && !movementSpeedsMatch(speed, restingSpeed)) throw new SenderError("Unsupported player speed");
 
@@ -10773,6 +10653,17 @@ function requireSocialPlayer(ctx: ModuleReducerCtx) {
   requireControllingPlayer(ctx);
   if (isMapShard(ctx) || isVirtualPlayer(ctx, ctx.sender)) throw new SenderError("Use your main character connection.");
 }
+export const getChatMessageReactions = spacetimedb.procedure(
+  { channel: t.string(), messageId: t.u64() }, t.string(), (ctx, { channel, messageId }) => ctx.withTx(tx => {
+    requireSocialPlayer(tx); return JSON.stringify(readChatReactions(tx, channel, messageId));
+  }),
+);
+export const setChatMessageReaction = spacetimedb.reducer(
+  { channel: t.string(), messageId: t.u64(), reaction: t.string(), active: t.bool() },
+  (ctx, { channel, messageId, reaction, active }) => {
+    requireSocialPlayer(ctx); setChatReaction(ctx, channel, messageId, reaction, active);
+  },
+);
 export const getSocialHub = spacetimedb.procedure({}, t.string(), ctx => ctx.withTx(tx => {
   requireSocialPlayer(tx); return JSON.stringify(socialSnapshot(tx, hasSpacetimeAuthAccount(tx)));
 }));
@@ -11028,5 +10919,34 @@ export const getModerationHistory = spacetimedb.procedure({ beforeId: t.u64() },
   (ctx, { beforeId }) => ctx.withTx(tx => {
     if (!isDatabaseOwnerIdentity(tx.sender)) requireDeveloperSession(tx);
     return JSON.stringify(readModerationHistory(tx, beforeId));
+  }),
+);
+
+// New clients subscribe to extended views; existing app schemas remain unchanged.
+const publicChatWithReactions = t.row("PublicChatWithReactions", { ...chatMessage.rowType.row, reactionCountsJson: t.string() });
+const socialChatWithReactions = t.row("SocialChatWithReactions", { ...socialTables.socialMessage.rowType.row, reactionCountsJson: t.string() });
+export const latestChatMessagesWithReactions = spacetimedb.anonymousView(
+  { public: true }, t.array(publicChatWithReactions),
+  ctx => readPublicChatPage(ctx).messages.map(row => ({ ...row, reactionCountsJson: row.moderated ? "{}" : reactionCountsFor(ctx, "public", row.id) })),
+);
+export const mySocialMessagesWithReactions = spacetimedb.view(
+  { public: true }, t.array(socialChatWithReactions),
+  ctx => latestSocialMessages(ctx).map(row => ({ ...row, reactionCountsJson: row.moderated ? "{}" : reactionCountsFor(ctx, "social", row.id) })),
+);
+export const getChatHistoryWithReactions = spacetimedb.procedure(
+  { beforeId: t.u64() }, t.object("PublicChatPageWithReactions", { messages: t.array(publicChatWithReactions), hasMore: t.bool() }),
+  (ctx, { beforeId }) => ctx.withTx(tx => {
+    requireControllingPlayer(tx);
+    const page = readPublicChatPage(tx, beforeId);
+    return { ...page, messages: page.messages.map(row => ({ ...row, reactionCountsJson: row.moderated ? "{}" : reactionCountsFor(tx, "public", row.id) })) };
+  }),
+);
+export const getSocialChatHistoryWithReactions = spacetimedb.procedure(
+  { channel: t.string(), peer: t.string(), beforeId: t.u64() },
+  t.object("SocialChatPageWithReactions", { messages: t.array(socialChatWithReactions), hasMore: t.bool() }),
+  (ctx, { channel, peer, beforeId }) => ctx.withTx(tx => {
+    requireSocialPlayer(tx);
+    const page = socialHistoryPage(tx, channel, peer, beforeId);
+    return { ...page, messages: page.messages.map(row => ({ ...row, reactionCountsJson: row.moderated ? "{}" : reactionCountsFor(tx, "social", row.id) })) };
   }),
 );

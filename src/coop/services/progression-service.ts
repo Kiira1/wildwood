@@ -1,3 +1,5 @@
+import { createRegularEnemyLootQueue } from "./regular-enemy-loot-queue";
+import { REGULAR_ENEMY_LOOT_DELAY_MS } from "../../../shared/regular-map-loot";
 import { ONBOARDING_DAMAGE_REWARD, ONBOARDING_REGEN_REWARD, ONBOARDING_STEP } from "../../../shared/onboarding";
 import { withoutDestroyedEquipment } from "./destroyed-equipment";
 import type { PendingItemGift } from "../../../shared/item-gifts";
@@ -30,6 +32,7 @@ type ProgressionServiceDependencies = {
   reducers: ReducerPort;
   notify: () => void;
   localIdentity: () => string;
+  lootTabId?: () => string;
   worldEntryReady: () => boolean;
   hydrationReady: () => boolean;
   activeProfileIdentity: () => string;
@@ -83,6 +86,7 @@ type ProgressRow = { identity: Identity } & Omit<
 };
 
 type LifetimeRow = {
+  chatHeartsReceived?: bigint;
   identity: Identity;
   joinedAt: { microsSinceUnixEpoch: bigint };
   playedMicros: bigint;
@@ -98,9 +102,19 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
     storage: dependencies.storage,
     send: async (cutscene, generation) => (await reducerResult("cutscene history", (connection) => connection.reducers.markPortalCutsceneSeen({ cutscene, generation }))()).ok,
   });
+  const enemyLoot = createRegularEnemyLootQueue({
+    identity: dependencies.localIdentity,
+    tabId: dependencies.lootTabId ?? (() => "current-tab"),
+    storage: dependencies.storage,
+    send: async request => {
+      if (!dependencies.worldEntryReady() || dependencies.reducers.worldEntryBlocked()) return false;
+      return (await reducerResult("regular enemy loot", connection => connection.reducers.recordRegularEnemyDefeats(request))()).ok;
+    },
+  });
   const progressByIdentity = new Map<string, PlayerProgress>();
   const researchByIdentity = new Map<string, PlayerResearch>();
   const upgradeLevelsByIdentity = new Map<string, Map<string, number>>();
+  const heartsByIdentity = new Map<string, number>();
   const lifetimeByIdentity = new Map<string, PlayerLifetime>();
   const activeItemUpgrades = new Map<UpgradeBenchSlot, ActiveItemUpgrade>();
   let localProgress: PlayerProgress | null = null;
@@ -215,11 +229,13 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
   }
 
   function flush(force = false) {
+    void enemyLoot.flush();
     void cutscenes.flush();
     void flushAsync(force);
   }
 
   async function drain() {
+    if (!await enemyLoot.flush()) return false;
     if (!await cutscenes.flush()) return false;
     for (let attempt = 0; attempt < 3 && pendingProgress; attempt += 1) {
       if (!await flushAsync(true)) return false;
@@ -388,6 +404,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
 
   function upsertLifetime(row: LifetimeRow) {
     lifetimeByIdentity.set(row.identity.toHexString(), {
+      chatHeartsReceived: heartsByIdentity.get(row.identity.toHexString()) ?? Number(row.chatHeartsReceived ?? 0n),
       joinedAtMs: Number(row.joinedAt.microsSinceUnixEpoch / 1_000n),
       playedSeconds: Number(row.playedMicros) / 1_000_000,
       sessionStartedAtMs: Number(row.sessionStartedAt.microsSinceUnixEpoch / 1_000n),
@@ -413,6 +430,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
     };
   }
 
+  const lootTimer = window.setInterval(() => { void enemyLoot.flush(); }, REGULAR_ENEMY_LOOT_DELAY_MS);
   const pageHide = () => flush(true);
   const flushTimer = window.setInterval(() => flush(), 30_000);
   window.addEventListener("pagehide", pageHide);
@@ -436,6 +454,13 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
       upsertActiveItemUpgrade,
       removeActiveItemUpgrade,
       upsertLifetime,
+      upsertChatHearts(row: { identity: Identity; chatHeartsReceived: bigint }) {
+        const key = row.identity.toHexString(), count = Number(row.chatHeartsReceived);
+        heartsByIdentity.set(key, count);
+        const lifetime = lifetimeByIdentity.get(key);
+        if (lifetime) lifetimeByIdentity.set(key, { ...lifetime, chatHeartsReceived: count });
+        dependencies.notify();
+      },
       upsertGemWallet(row: { identity: Identity; balance: bigint }) {
         if (row.identity.toHexString() !== dependencies.localIdentity()) return;
         gemBalance = row.balance;
@@ -671,21 +696,9 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
           dependencies.reducers.handleFailure("death tracking", error);
         }
       },
-      recordForestEnemyDefeat() {
-        if (dependencies.reducers.protocolBlocked() || !dependencies.reducers.connection()) return;
-        dependencies.reducers.sendReducer("forest enemy defeat", (connection) => connection.reducers.recordForestEnemyDefeat({}));
-      },
-      recordDesertEnemyDefeat() {
-        if (dependencies.reducers.protocolBlocked() || !dependencies.reducers.connection()) return;
-        dependencies.reducers.sendReducer("desert enemy defeat", (connection) => connection.reducers.recordDesertEnemyDefeat({}));
-      },
-      recordSnowEnemyDefeat() {
-        if (dependencies.reducers.protocolBlocked() || !dependencies.reducers.connection()) return;
-        dependencies.reducers.sendReducer("snow enemy defeat", (connection) => connection.reducers.recordSnowEnemyDefeat({}));
-      },
-      recordLavaEnemyDefeat() {
-        if (dependencies.reducers.protocolBlocked() || !dependencies.reducers.connection()) return;
-        dependencies.reducers.sendReducer("lava enemy defeat", (connection) => connection.reducers.recordLavaEnemyDefeat({}));
+      recordRegularEnemyDefeat(mapId: string) {
+        if (resetPending || dependencies.reducers.protocolBlocked() || dependencies.reducers.worldEntryBlocked()) return;
+        enemyLoot.record(mapId);
       },
       saveProgress(progress: ProgressSave, immediate = false) {
         persistPending(progress);
@@ -721,6 +734,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
           }
           if (result.ok) {
             void syncResearchNotification(null);
+            enemyLoot.reset();
             cutscenes.reset();
             let restartError: string | undefined;
             try { await finishRoute?.(); }
@@ -764,6 +778,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
     researchFor: (identity: string) => researchByIdentity.get(identity),
     lifetimeFor: (identity: string) => lifetimeByIdentity.get(identity),
     upgradeLevelsFor,
+    drainEnemyLoot: enemyLoot.flush,
     drainPendingProgress: drain,
     flushPendingProgress: flush,
     clearPendingProgress: clearPending,
@@ -771,6 +786,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
       saveInFlightUntil = Number.POSITIVE_INFINITY;
     },
     beginSession(identityChanged: boolean) {
+      enemyLoot.begin();
       cutscenes.begin();
       pendingProgress = store.read(dependencies.localIdentity());
       saveInFlightUntil = 0;
@@ -790,9 +806,10 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
       progressByIdentity.delete(identity);
       researchByIdentity.delete(identity);
       upgradeLevelsByIdentity.delete(identity);
-      lifetimeByIdentity.delete(identity);
+      lifetimeByIdentity.delete(identity); heartsByIdentity.delete(identity);
     },
     clearSession() {
+      enemyLoot.clear();
       cutscenes.clear();
       gemBalance = 0n;
       dailyGemBonusClaimable = false;
@@ -805,7 +822,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
       researchByIdentity.clear();
       upgradeLevelsByIdentity.clear();
       activeItemUpgrades.clear();
-      lifetimeByIdentity.clear();
+      lifetimeByIdentity.clear(); heartsByIdentity.clear();
     },
     markDisconnected() {
       localResearch = createEmptyResearchRanks();
@@ -818,6 +835,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
       inventorySlotsUnlocked = 0;
     },
     dispose() {
+      window.clearInterval(lootTimer);
       window.clearInterval(flushTimer);
       window.removeEventListener("pagehide", pageHide);
     },

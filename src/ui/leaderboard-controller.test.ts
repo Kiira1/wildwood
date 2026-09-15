@@ -139,3 +139,23 @@ it("caps mounted rows while allowing discarded ranges to be loaded again", async
   f.pending[6].resolvePage(page(450, 549, 500, 100_000)); await back;
   expect(f.elements.rows.querySelector(".is-local")).not.toBeNull();
 });
+
+it("reuses ranking data for a minute across closes and then refreshes", async () => {
+  const now = vi.spyOn(Date, "now").mockReturnValue(1_000);
+  try {
+    const f = fixture();
+    const opening = f.controller.open(); f.pending[0].resolvePage(page(450, 550)); await opening;
+    f.controller.close();
+    now.mockReturnValue(60_999);
+    await f.controller.open();
+    expect(f.loadPage).toHaveBeenCalledTimes(1);
+    f.controller.close(); now.mockReturnValue(61_001);
+    const refresh = f.controller.open();
+    expect(f.loadPage).toHaveBeenCalledTimes(2);
+    f.pending[1].resolvePage(page(460, 560)); await refresh;
+    f.controller.close(); f.identity("someone else");
+    const other = f.controller.open();
+    expect(f.loadPage).toHaveBeenCalledTimes(3);
+    f.pending[2].resolvePage(page(1, 50)); await other;
+  } finally { now.mockRestore(); }
+});

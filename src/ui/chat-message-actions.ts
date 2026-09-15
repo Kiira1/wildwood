@@ -1,3 +1,4 @@
+import { CHAT_REACTIONS, type ChatReaction, type ChatReactionState } from "../../shared/chat-reactions";
 import {
   CHAT_REPORT_REASONS,
   type ChatReportReason,
@@ -6,6 +7,9 @@ import {
 const CHAT_ACTION_SHEET_TRANSITION_MS = 300;
 
 export type ChatMessageActionTarget = {
+  channel?: "public" | "social";
+  reactionCountsJson?: string;
+  moderated?: boolean;
   id: bigint;
   sender: string;
   senderName: string;
@@ -20,6 +24,7 @@ export type ChatMessageActionElements = {
   backdrop: HTMLButtonElement;
   sheet: HTMLElement;
   drag: HTMLElement;
+  reactions: HTMLElement;
   title: HTMLElement;
   preview: HTMLElement;
   menu: HTMLElement;
@@ -37,6 +42,8 @@ export type ChatMessageActionElements = {
 
 type ChatMessageActionsOptions = {
   elements: ChatMessageActionElements;
+  loadReactions: (target: ChatMessageActionTarget) => Promise<ChatReactionState>;
+  setReaction: (target: ChatMessageActionTarget, reaction: ChatReaction, active: boolean) => Promise<ChatReactionState>;
   getLocalIdentity: () => string;
   onWatchReplay: (replayId: bigint) => void;
   onWatchGuildReplay?: (reportKey: string) => void;
@@ -93,6 +100,8 @@ async function copyText(text: string) {
 export function createChatMessageActionsController({
   elements,
   getLocalIdentity,
+  loadReactions,
+  setReaction,
   onWatchReplay,
   onWatchGuildReplay,
   onOriginal,
@@ -101,6 +110,8 @@ export function createChatMessageActionsController({
   reportMessage,
   showMessage,
 }: ChatMessageActionsOptions) {
+  let selectedReactions: ChatReaction[] = [];
+  let reactionPending = false;
   let selectedMessage: ChatMessageActionTarget | null = null;
   let selectedReason: ChatReportReason | null = null;
   let previousFocus: HTMLElement | null = null;
@@ -135,10 +146,9 @@ export function createChatMessageActionsController({
     const availability = messageActionAvailability(selectedMessage, getLocalIdentity());
     reportPending = false;
     selectReason(null);
-    elements.title.textContent = selectedMessage.guildReplayKey ? "Guild battle replay" : selectedMessage.replayId > 0n
-      ? `Duel replay from ${selectedMessage.senderName || "Player"}`
-      : `Message from ${selectedMessage.senderName || "Player"}`;
-    elements.preview.textContent = selectedMessage.message.replace(/\s+/g, " ");
+    elements.title.textContent = "Message actions";
+    elements.title.parentElement!.hidden = true;
+    elements.reactions.hidden = Boolean(selectedMessage.moderated);
     elements.menu.hidden = false;
     elements.reportForm.hidden = true;
     elements.watchReplayButton.hidden = !availability.watchReplay;
@@ -152,6 +162,8 @@ export function createChatMessageActionsController({
   function showReportForm() {
     if (!selectedMessage || elements.reportButton.hidden) return;
     selectReason(null);
+    elements.title.parentElement!.hidden = false;
+    elements.reactions.hidden = true;
     elements.title.textContent = "Report Message";
     elements.preview.textContent = `Reporting ${selectedMessage.senderName}`;
     elements.menu.hidden = true;
@@ -189,6 +201,21 @@ export function createChatMessageActionsController({
     elements.layer.classList.remove("is-dragging");
     elements.layer.hidden = false;
     showActionMenu();
+    selectedReactions = [];
+    reactionPending = true;
+    updateReactions();
+    const openedRevision = presentationRevision;
+    if (!target.moderated) void loadReactions(target).then(state => {
+      if (openedRevision !== presentationRevision) return;
+      selectedReactions = state.selected;
+      reactionPending = false;
+      updateReactions();
+    }).catch(() => {
+      if (openedRevision !== presentationRevision) return;
+      reactionPending = true;
+      updateReactions();
+      showMessage("REACTIONS UNAVAILABLE · TRY AGAIN", "#ff9b91");
+    });
     requestAnimationFrame(() => {
       elements.layer.classList.add("is-open");
       const firstAction = elements.watchReplayButton.hidden
@@ -211,7 +238,34 @@ export function createChatMessageActionsController({
     setDragOffset(0);
   }
 
+  function updateReactions() {
+    for (const button of elements.reactions.querySelectorAll<HTMLButtonElement>("button")) {
+      button.disabled = reactionPending;
+      button.setAttribute("aria-pressed", String(selectedReactions.includes(button.dataset.reaction as ChatReaction)));
+    }
+  }
+
   function init() {
+    elements.reactions.replaceChildren(...CHAT_REACTIONS.map(({ id, emoji, label }) => {
+      const button = document.createElement("button");
+      button.type = "button"; button.textContent = emoji; button.dataset.reaction = id;
+      button.setAttribute("aria-label", label); button.setAttribute("aria-pressed", "false");
+      button.addEventListener("click", async () => {
+        if (!selectedMessage || reactionPending) return;
+        const target = selectedMessage, revision = presentationRevision;
+        reactionPending = true; updateReactions();
+        try {
+          const state = await setReaction(target, id, !selectedReactions.includes(id));
+          if (revision !== presentationRevision) return;
+          selectedReactions = state.selected;
+          close();
+        } catch (error) {
+          if (revision === presentationRevision) { reactionPending = false; updateReactions(); }
+          showMessage(error instanceof Error ? error.message : "REACTION FAILED", "#ff9b91");
+        }
+      });
+      return button;
+    }));
     elements.reportReasons.replaceChildren(...CHAT_REPORT_REASONS.map(({ value, label }) => {
       const button = document.createElement("button");
       button.className = "chat-message-report-reason";

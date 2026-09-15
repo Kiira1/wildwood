@@ -1,33 +1,14 @@
 import { regularMapLoot } from "../../shared/regular-map-loot";
-import { BLACK_BOOTS, BLACK_BOOTS_DROP_DENOMINATOR } from "../../shared/items";
 import { generateMap, isProceduralMap } from "../../shared/procedural-maps";
 import { canvasRenderPixelRatio } from "../game/runtime/render-budget";
 import {
-  DARK_METAL_HELMET,
-  DESERT_ITEM_DROP_DENOMINATOR,
-  FIRE_METAL_BOW,
-  FIRE_METAL_HELMET,
-  FOREST_ITEM_DROP_DENOMINATOR,
   FROST_ARMOR,
   FROST_BOW,
-  IRON_BOW,
-  INFERNAL_ITEM_DROP_DENOMINATOR,
-  NIGHT_FOREST_HELMET_ITEM_DROP_DENOMINATOR,
-  NIGHT_FOREST_BOW_ITEM_DROP_DENOMINATOR,
-  NIGHT_BOW,
   ITEM_DEFINITIONS,
   LAVA_BOSS_ITEM_DROP_DENOMINATOR,
   LAVA_BOW,
-  LAVA_ITEM_DROP_DENOMINATOR,
-  LAVA_HELMET_ITEM_DROP_DENOMINATOR,
-  MAGMA_ARMOR,
   SNOW_BOSS_ARMOR_DROP_DENOMINATOR,
   SNOW_BOSS_ITEM_DROP_DENOMINATOR,
-  SNOW_BOW,
-  SNOW_ITEM_DROP_DENOMINATOR,
-  STARTER_BOW,
-  WOOD_FULL_HELM,
-  WOODEN_ARMOR,
   type ItemDefinition,
   type ItemId,
 } from "../../shared/items";
@@ -96,28 +77,17 @@ const MAP_GUIDE_DROPS: Record<MapId, readonly MapGuideDrop[]> = {
   first_steps: [],
   home_exterior: [],
   [TUTORIAL_FOREST_MAP_ID]: [
-    { itemId: STARTER_BOW, denominator: FOREST_ITEM_DROP_DENOMINATOR, source: "Any regular forest enemy" },
-    { itemId: WOODEN_ARMOR, denominator: FOREST_ITEM_DROP_DENOMINATOR, source: "Any regular forest enemy" },
   ],
   [BEGINNER_DESERT_MAP_ID]: [
-    { itemId: WOOD_FULL_HELM, denominator: DESERT_ITEM_DROP_DENOMINATOR, source: "Any regular desert enemy" },
-    { itemId: IRON_BOW, denominator: DESERT_ITEM_DROP_DENOMINATOR, source: "Any regular desert enemy" },
   ],
   [INTERMEDIATE_SNOWLANDS_MAP_ID]: [
-    { itemId: SNOW_BOW, denominator: SNOW_ITEM_DROP_DENOMINATOR, source: "Any regular Snowlands enemy" },
     { itemId: FROST_ARMOR, denominator: SNOW_BOSS_ARMOR_DROP_DENOMINATOR, source: "Boss" },
     { itemId: FROST_BOW, denominator: SNOW_BOSS_ITEM_DROP_DENOMINATOR, source: "Boss" },
   ],
   [ADVANCED_LAVA_WASTES_MAP_ID]: [
-    { itemId: MAGMA_ARMOR, denominator: LAVA_ITEM_DROP_DENOMINATOR, source: "Any regular lava enemy" },
-    { itemId: FIRE_METAL_HELMET, denominator: LAVA_HELMET_ITEM_DROP_DENOMINATOR, source: "Any regular lava enemy" },
     { itemId: LAVA_BOW, denominator: LAVA_BOSS_ITEM_DROP_DENOMINATOR, source: "Boss" },
   ],
   [INFERNAL_DEPTHS_MAP_ID]: [
-    { itemId: NIGHT_BOW, denominator: NIGHT_FOREST_BOW_ITEM_DROP_DENOMINATOR, source: "Any regular Night Forest enemy" },
-    { itemId: FIRE_METAL_BOW, denominator: INFERNAL_ITEM_DROP_DENOMINATOR, source: "Any regular Night Forest enemy" },
-    { itemId: DARK_METAL_HELMET, denominator: NIGHT_FOREST_HELMET_ITEM_DROP_DENOMINATOR, source: "Any regular Night Forest enemy" },
-    { itemId: BLACK_BOOTS, denominator: BLACK_BOOTS_DROP_DENOMINATOR, source: "Any regular Night Forest enemy" },
   ],
   [WATER_REACH_MAP_ID]: [],
   [SAMURAI_GARDEN_MAP_ID]: [],
@@ -157,7 +127,7 @@ export function mapGuideDrops(mapId: MapId): readonly MapGuideDrop[] {
     denominator: outcomes,
     source: "Any regular enemy",
   }));
-  return [...MAP_GUIDE_DROPS[mapId], ...regularDrops];
+  return [...regularDrops, ...MAP_GUIDE_DROPS[mapId]];
 }
 
 /** Groups the live spawn layout into readable reward zones for the enlarged map. */
