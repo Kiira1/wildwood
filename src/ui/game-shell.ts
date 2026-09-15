@@ -363,6 +363,9 @@ const afterUpdateGateShell = String.raw`
 `;
 
 export function installGameShell(doc: Document = document) {
+  if (!doc.getElementById("playerVisibilityToggle")) {
+    doc.getElementById("hudGemWallet")?.insertAdjacentHTML("afterend", `<button id="playerVisibilityToggle" class="player-visibility-toggle" type="button" aria-label="Show other players" aria-pressed="false"></button>`);
+  }
   const toolbar = doc.getElementById("toolbar");
   for (const [id, label, icon] of [
     ["guildBtn", "Guilds", "Icon_Guild.svg"],

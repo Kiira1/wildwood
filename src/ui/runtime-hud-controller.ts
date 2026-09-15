@@ -74,6 +74,8 @@ export function createRuntimeHudController(dependencies: RuntimeHudDependencies)
   const { elements } = dependencies;
   let messageClock = 0;
   let nextHudUpdateAt = 0;
+  let nextOnlineCountUpdateAt = 0;
+  let playerCount = 0;
   const itemDropQueue: ItemDropRevealDetails[] = [];
   let itemDropActive = false;
   let itemDropTimer: number | null = null;
@@ -262,13 +264,15 @@ export function createRuntimeHudController(dependencies: RuntimeHudDependencies)
     nextHudUpdateAt = now + 100;
     dependencies.applyVitalityResearch();
     dependencies.updateTechNotice();
-    const remoteCount = dependencies.remotePlayerCount();
-    const reportedOnline = dependencies.onlinePlayerCount();
     // Global presence belongs to the account connection and remains valid
     // while a portal replaces the regional connection. Full disconnect clears it.
-    const playerCount = Number.isFinite(reportedOnline)
-      ? reportedOnline ?? 0
-      : dependencies.connected() ? remoteCount + 1 : 0;
+    if (force || now >= nextOnlineCountUpdateAt) {
+      nextOnlineCountUpdateAt = now + 2_000;
+      const reportedOnline = dependencies.onlinePlayerCount();
+      playerCount = Number.isFinite(reportedOnline)
+        ? reportedOnline ?? 0
+        : dependencies.connected() ? dependencies.remotePlayerCount() + 1 : 0;
+    }
     const developer = dependencies.isDeveloper();
     dependencies.applyProfileIcon(elements.playerIcon, dependencies.profileIcon());
     dependencies.setDeveloperAccess(developer);

@@ -240,6 +240,8 @@ export function createPresenceService(dependencies: PresenceServiceDependencies)
   let desiredMotionNetworkIds: number[] = [];
   let submittedMotionNetworkIds: number[] = [];
   let motionInterestInFlight = false;
+  let motionInterestNeedsSync = true;
+  let remotePlayersVisible = false;
   let missingMotionDetailSince: number | null = null;
   let lastMotionDetailRecoveryAt = Number.NEGATIVE_INFINITY;
   let lastSentMovement: SentMovementState | null = null;
@@ -372,16 +374,18 @@ export function createPresenceService(dependencies: PresenceServiceDependencies)
       !connection?.isActive ||
       !dependencies.hydrationReady() ||
       !dependencies.worldEntryReady() ||
-      samePlayerMotionInterest(desiredMotionNetworkIds, submittedMotionNetworkIds)
+      (!motionInterestNeedsSync && samePlayerMotionInterest(desiredMotionNetworkIds, submittedMotionNetworkIds))
     ) return;
     const submitted = [...desiredMotionNetworkIds];
     submittedMotionNetworkIds = submitted;
     motionInterestInFlight = true;
+    motionInterestNeedsSync = false;
     dependencies.reducers.sendReducer(
       "motion interest",
       (current) => current.reducers.setPlayerMotionInterest({ networkIds: submitted }),
       () => {
         motionInterestInFlight = false;
+        motionInterestNeedsSync = true;
         if (samePlayerMotionInterest(submittedMotionNetworkIds, submitted)) submittedMotionNetworkIds = [];
       },
       () => {
@@ -395,7 +399,7 @@ export function createPresenceService(dependencies: PresenceServiceDependencies)
     if (mapPlayerSubscriptionTransitioning) return;
     const now = performance.now();
     const position = localState;
-    const next = position
+    const next = remotePlayersVisible && position
       ? selectPlayerMotionInterest({
         samples: latestMapSamples,
         originX: position.x,
@@ -542,6 +546,7 @@ export function createPresenceService(dependencies: PresenceServiceDependencies)
 
   function upsertMotionIdentity(row: PlayerPresentationRow) {
     const identity = row.identity.toHexString();
+    if (!remotePlayersVisible && identity !== dependencies.localIdentity()) return;
     const presentationChanged = !samePlayerPresentation(presentations.get(identity), row);
     if (identity === dependencies.localIdentity()) localMotionNetworkId = row.networkId;
     if (identity !== dependencies.localIdentity() && (!row.isVisible || row.mapId !== currentMapId)) {
@@ -595,6 +600,7 @@ export function createPresenceService(dependencies: PresenceServiceDependencies)
   }
 
   function upsertPlayerMotionFrame(row: { emittedAt: { microsSinceUnixEpoch: bigint }; playerCount: number; payload: Uint8Array }) {
+    if (!remotePlayersVisible) return;
     let samples;
     try {
       samples = decodePlayerMotionFrame(row.payload, row.playerCount);
@@ -645,7 +651,7 @@ export function createPresenceService(dependencies: PresenceServiceDependencies)
   }
 
   function upsertPlayerMapFrame(row: { mapId: string; emittedAt: { microsSinceUnixEpoch: bigint }; playerCount: number; payload: Uint8Array }) {
-    if (row.mapId !== currentMapId) return;
+    if (!remotePlayersVisible || row.mapId !== currentMapId) return;
     let samples;
     try {
       samples = decodePlayerMapFrame(row.payload, row.playerCount);
@@ -669,6 +675,7 @@ export function createPresenceService(dependencies: PresenceServiceDependencies)
   }
 
   function upsertPlayerDeathFrame(row: { mapId: string; networkId: number; playerX: number; playerY: number; facing: number }) {
+    if (!remotePlayersVisible) return;
     if (row.mapId !== currentMapId) return;
     const identity = motionIdentities.get(row.networkId);
     if (!identity || identity === dependencies.localIdentity() || !players.has(identity)) return;
@@ -712,6 +719,7 @@ export function createPresenceService(dependencies: PresenceServiceDependencies)
   }
 
   function refreshMapMarkerSubscription(force = false) {
+    if (!remotePlayersVisible) return;
     const connection = dependencies.reducers.connection();
     const selfIdentity = dependencies.localDbIdentity();
     if (!connection?.isActive || !dependencies.hydrationReady() || !selfIdentity) return;
@@ -780,6 +788,7 @@ export function createPresenceService(dependencies: PresenceServiceDependencies)
   }
 
   function refreshMapPlayerSubscription(force = false) {
+    if (!remotePlayersVisible) return;
     const connection = dependencies.reducers.connection();
     const selfIdentity = dependencies.localDbIdentity();
     if (!connection?.isActive || !dependencies.hydrationReady() || !selfIdentity) return;
@@ -908,6 +917,32 @@ export function createPresenceService(dependencies: PresenceServiceDependencies)
       upsertReleaseNotice,
     },
     api: {
+      setRemotePlayersVisible(visible: boolean) {
+        if (remotePlayersVisible === visible) return;
+        remotePlayersVisible = visible;
+        if (visible) {
+          refreshMapPlayerSubscription(true);
+          refreshMapMarkerSubscription(true);
+        } else {
+          releaseMapPlayerSubscription();
+          releaseMapMarkerSubscription();
+          players.clear();
+          presentations.clear();
+          motionIdentities.clear();
+          activeMotionIdentities.clear();
+          detailedMotionIdentities.clear();
+          detailedMotionReadyNetworkIds.clear();
+          remotePlayerDeaths.clear();
+          corpses.clear();
+          mapPlayerMarkers.clear();
+          playerMaps.clear();
+          latestMapSamples = [];
+          desiredMotionNetworkIds = [];
+          motionInterestNeedsSync = true;
+          refreshMotionInterest();
+        }
+        dependencies.changes.notify();
+      },
       releaseWindow: () => releaseWindow,
       localState: () => localState,
       syncSpeed(speed: number) {
@@ -955,7 +990,7 @@ export function createPresenceService(dependencies: PresenceServiceDependencies)
       remotePlayers() {
         const result = remotePlayerRenderBuffer;
         result.length = 0;
-        if (currentMapId === "home_exterior") return result;
+        if (!remotePlayersVisible || currentMapId === "home_exterior") return result;
         const now = performance.now();
         const consensusServerAtMs = estimatedServerNowMs(now) - REGULAR_ENEMY_CONSENSUS_DELAY_MS;
         for (const player of players.values()) {
@@ -981,7 +1016,7 @@ export function createPresenceService(dependencies: PresenceServiceDependencies)
         return result;
       },
       remotePlayerCount() {
-        return currentMapId === "home_exterior" ? 0 : detailedMotionIdentities.size;
+        return !remotePlayersVisible || currentMapId === "home_exterior" ? 0 : detailedMotionIdentities.size;
       },
       serverNowMs: () => estimatedServerNowMs(),
       regularEnemyLocalPosition: () => regularEnemyLocalPosition(),
@@ -990,7 +1025,7 @@ export function createPresenceService(dependencies: PresenceServiceDependencies)
         localMotionNetworkId,
         regularEnemyLocalPosition(),
       ),
-      remotePlayerCorpses: () => corpses.players(currentMapId, performance.now()),
+      remotePlayerCorpses: () => remotePlayersVisible ? corpses.players(currentMapId, performance.now()) : [],
       remotePlayerDeath(identity: string) {
         const corpse = corpses.death(identity, currentMapId, performance.now());
         if (corpse) return corpse;
@@ -1002,9 +1037,10 @@ export function createPresenceService(dependencies: PresenceServiceDependencies)
         }
         return { ...death };
       },
-      mapPlayerMarkers: () => currentMapId === "home_exterior" ? [] : [...mapPlayerMarkers.values()],
+      mapPlayerMarkers: () => !remotePlayersVisible || currentMapId === "home_exterior" ? [] : [...mapPlayerMarkers.values()],
       onlinePlayerCount: () => onlinePlayerCount,
       hasRemotePlayerInArea(minX: number, minY: number, maxX: number, maxY: number) {
+        if (!remotePlayersVisible) return false;
         for (const player of players.values()) {
           if (player.id === dependencies.localIdentity() || !detailedMotionIdentities.has(player.id)) continue;
           const latest = player.samples[player.samples.length - 1];
@@ -1045,6 +1081,7 @@ export function createPresenceService(dependencies: PresenceServiceDependencies)
     activateSubscriptions() {
       refreshMapPlayerSubscription(true);
       refreshMapMarkerSubscription(true);
+      refreshMotionInterest();
     },
     beginSession(identityChanged: boolean) {
       serverClockAnchor = null;
@@ -1052,6 +1089,7 @@ export function createPresenceService(dependencies: PresenceServiceDependencies)
       nextPositionSequence = 0;
       localSimulationTick = 0;
       submittedMotionNetworkIds = [];
+      motionInterestNeedsSync = true;
       motionInterestInFlight = false;
       advanceLocalMotionEpoch();
       speedSyncTracker.reset();
@@ -1063,6 +1101,7 @@ export function createPresenceService(dependencies: PresenceServiceDependencies)
       nextPositionSequence = 0;
       localSimulationTick = 0;
       submittedMotionNetworkIds = [];
+      motionInterestNeedsSync = true;
       motionInterestInFlight = false;
       speedSyncTracker.reset();
     },

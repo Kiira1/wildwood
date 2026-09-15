@@ -1233,6 +1233,14 @@
   .hud-gem-wallet { position: fixed; top: calc(var(--hud-safe-top) + var(--player-hud-visual-height) + 6px); left: var(--hud-safe-left); z-index: 5; display: flex; align-items: center; gap: 4px; min-height: 28px; padding: 3px 8px 3px 5px; border: 2px solid var(--hud-frame); border-radius: var(--hud-radius-small); background: var(--hud-surface); box-shadow: 0 2px 0 rgba(0,0,0,.35); font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; line-height: 1; pointer-events: none; }
   .hud-gem-icon { display: block; width: 20px; height: 20px; object-fit: contain; }
   .hud-gem-balance { color: #fff; font-size: 11px; font-weight: 900; text-shadow: 0 1px #071c29; }
+  .hud-secondary-controls { position: fixed; top: calc(var(--hud-safe-top) + var(--player-hud-visual-height) + 6px); left: var(--hud-safe-left); z-index: 5; display: flex; align-items: center; gap: 3px; pointer-events: auto; }
+  .hud-secondary-controls .hud-gem-wallet { position: static; }
+  .player-visibility-toggle { display: grid; place-items: center; width: 40px; height: 32px; margin: 0; padding: 6px 9px; border: 0; border-radius: 6px; background: transparent; box-shadow: none; color: #fff; cursor: pointer; touch-action: manipulation; }
+  .player-visibility-toggle svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 1px 1px #000); }
+  .player-visibility-toggle:disabled { opacity: .65; cursor: default; }
+  .player-visibility-toggle[aria-pressed="false"]:not(:disabled) { opacity: .65; }
+  .player-visibility-toggle[aria-pressed="true"] .player-visibility-slash { display: none; }
+  .player-visibility-toggle:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
 
   .daily-gem-bonus { position: fixed; inset: 0 0 var(--toolbar-height); z-index: 18; display: grid; place-items: center; padding: 18px; background: rgba(8, 7, 10, .78); pointer-events: auto; }
   .daily-gem-bonus[hidden] { display: none; }
@@ -3548,3 +3556,6 @@
 }
 
 .stat-reward-toast.is-capped .stat-reward-arrow { visibility: hidden; }
+
+.player-visibility-toggle { position: relative; }
+.player-visibility-countdown { position: absolute; right: 0; bottom: 0; font-size: 11px; line-height: 1; color: white; text-shadow: 0 1px 2px #000, 1px 0 2px #000; pointer-events: none; }

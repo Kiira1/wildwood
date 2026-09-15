@@ -1,4 +1,8 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.697": [
+    "Added an eye button below your profile to show or hide other players. It starts off, remembers your choice, and has a 20-second cooldown.",
+    "Reduced remote-player updates while hidden and refreshes the online-player count every two seconds.",
+  ],
   "0.696": [
     "Fixed upgraded equipment missing from your inventory after reconnecting.",
     "Added advance countdowns and progress-saving checks for future planned updates.",
@@ -1835,6 +1839,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.697": "2026-09-15",
   "0.696": "2026-09-15",
   "0.695": "2026-09-15",
   "0.694": "2026-09-15",

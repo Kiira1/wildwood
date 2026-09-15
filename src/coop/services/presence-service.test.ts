@@ -67,11 +67,12 @@ it("survives pending/disconnected marker cleanup and discards a late subscriptio
   };
   const presence = createPresenceService({
     localIdentity: () => identity.toHexString(), localDbIdentity: () => identity,
-    reducers: { connection: () => connection }, hydrationReady: () => true,
+    reducers: { connection: () => connection, protocolBlocked: () => false, worldEntryBlocked: () => false },
+    hydrationReady: () => true, worldEntryReady: () => false,
     changes: { notify() {} },
   } as any);
   presence.tables.upsertWorldStatus({ id: 0, onlinePlayers: 2 });
-  presence.activateSubscriptions();
+  presence.api.setRemotePlayersVisible(true);
   expect(subscriptions).toHaveLength(2);
   expect(() => presence.clearSession(true)).not.toThrow();
   expect(presence.api.onlinePlayerCount()).toBe(2);
@@ -101,4 +102,49 @@ it("drains regular-enemy loot before a portal changes the authoritative map", as
   const blocked = presence.api.changeMap("tutorial_forest", 100, 100);
   finish(false); expect(await blocked).toBe(false);
   expect(changeMap).toHaveBeenCalledOnce();
+});
+
+it("defaults to no remote subscriptions and fences late data when visibility is switched off", () => {
+  const identity = new Identity("1".repeat(64));
+  const subscriptions: any[] = [];
+  const setPlayerMotionInterest = vi.fn();
+  const connection = {
+    isActive: true, reducers: { setPlayerMotionInterest },
+    db: { playerMotionIdentity: { iter: () => [] } },
+    subscriptionBuilder() {
+      const handle: any = {
+        active: false, isActive: () => handle.active, isEnded: () => false,
+        unsubscribe: vi.fn(),
+        onApplied(fn: () => void) { handle.applied = fn; return handle; },
+        onError() { return handle; },
+        subscribe() { subscriptions.push(handle); return handle; },
+      };
+      return handle;
+    },
+  };
+  const presence = createPresenceService({
+    localIdentity: () => identity.toHexString(), localDbIdentity: () => identity,
+    hydrationReady: () => true, worldEntryReady: () => true,
+    reducers: { connection: () => connection, protocolBlocked: () => false, worldEntryBlocked: () => false,
+      sendReducer: (_name: string, run: any, _reject: any, accept: any) => { run(connection); accept?.(); } },
+    changes: { notify() {}, batch: (run: () => void) => run() },
+  } as any);
+  presence.activateSubscriptions();
+  expect(subscriptions).toHaveLength(0);
+  expect(setPlayerMotionInterest).toHaveBeenLastCalledWith({ networkIds: [] });
+  presence.api.setRemotePlayersVisible(true);
+  expect(subscriptions).toHaveLength(2);
+  presence.api.setRemotePlayersVisible(false);
+  expect(presence.activeSubscriptionCount()).toBe(0);
+  expect(setPlayerMotionInterest).toHaveBeenCalledTimes(2);
+  for (const handle of subscriptions) { handle.active = true; handle.applied(); expect(handle.unsubscribe).toHaveBeenCalledOnce(); }
+  expect(presence.api.remotePlayers()).toEqual([]);
+  expect(presence.api.mapPlayerMarkers()).toEqual([]);
+  expect(presence.api.remotePlayerCorpses()).toEqual([]);
+  presence.markDisconnected();
+  presence.activateSubscriptions();
+  expect(subscriptions).toHaveLength(2);
+  expect(setPlayerMotionInterest).toHaveBeenCalledTimes(3);
+  presence.api.setRemotePlayersVisible(true);
+  expect(subscriptions).toHaveLength(4);
 });

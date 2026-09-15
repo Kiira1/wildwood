@@ -1,3 +1,4 @@
+import { createPlayerVisibilityToggle } from "./ui/player-visibility-toggle";
 import { createScheduledUpdateController, createScheduledUpdateView } from "./ui/scheduled-update-controller";
 import { enforceLatestVersion } from "./app/version";
 import { createPersonalBosses } from "./game/runtime/personal-bosses";
@@ -499,6 +500,10 @@ import {
   // Dragon credit permanently unlocks the Desert; reuse that saved milestone
   // so autofarm never depends on the current boss's health or respawn state.
   const farmUnlocked = () => Boolean(coop?.savedProgress?.()?.desertUnlocked);
+  createPlayerVisibilityToggle({
+    button: gameElements.playerVisibilityToggle,
+    setVisible: (visible) => coop?.setRemotePlayersVisible(visible), storage: localStorage,
+  });
   const farmUnavailable = () => {
     if (!farmUnlocked()) return "Defeat the Dragon to unlock autofarm";
     if (!session?.isRunning() || player.hp <= 0) return "Start your adventure to farm";

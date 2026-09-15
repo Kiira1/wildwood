@@ -91,6 +91,13 @@ it("keeps the account-wide online count through a regional handoff, then clears 
   const controller = createRuntimeHudController(dependencies as any);
   controller.updateHud(true);
   expect(vi.mocked(renderPlayerHud).mock.lastCall?.[3]).toBe(2);
+  online = 5;
+  vi.advanceTimersByTime(1_900);
+  controller.updateHud();
+  expect(vi.mocked(renderPlayerHud).mock.lastCall?.[3]).toBe(2);
+  vi.advanceTimersByTime(100);
+  controller.updateHud();
+  expect(vi.mocked(renderPlayerHud).mock.lastCall?.[3]).toBe(5);
   online = 0;
   controller.updateHud(true);
   expect(vi.mocked(renderPlayerHud).mock.lastCall?.[3]).toBe(0);

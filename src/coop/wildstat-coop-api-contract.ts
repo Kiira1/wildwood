@@ -122,6 +122,7 @@ type ExpectedApiKey =
   | "remotePlayerCorpses"
   | "remoteCombatStats"
   | "remotePlayers"
+  | "setRemotePlayersVisible"
   | "loadChatMessageReactions"
   | "setChatMessageReaction"
   | "reportChatMessage"
