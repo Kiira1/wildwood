@@ -1,3 +1,5 @@
+// Pre-cutover shared boss regression coverage. Current personal combat is tested separately.
+vi.mock("../../shared/personal-bosses", async (original) => ({ ...await original<typeof import("../../shared/personal-bosses")>(), PERSONAL_BOSS_COMBAT: false }));
 import { describe, expect, it, vi } from "vitest";
 import { BOSS_REWARD_CLAIM_BITS } from "../../shared/rules";
 import { generateMap } from "../../shared/procedural-maps";

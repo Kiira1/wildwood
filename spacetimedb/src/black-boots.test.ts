@@ -1,3 +1,4 @@
+import { reportEnemy } from "../../tests/helpers/enemy-defeat";
 import { expect, it, vi } from "vitest";
 import { BLACK_BOOTS, BLACK_BOOTS_DROP_DENOMINATOR } from "../../shared/items";
 import { INFERNAL_DEPTHS_MAP_ID } from "../../shared/rules";
@@ -7,13 +8,13 @@ vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module
 it("rolls black boots independently at 2% in Night Forest and keeps equipped feet on reload", () => {
   const f = crystalFixture(); f.patch("player", { mapId: INFERNAL_DEPTHS_MAP_ID });
   f.ctx.random.integerInRange = vi.fn((_min, max) => max === BLACK_BOOTS_DROP_DENOMINATOR ? 1 : 2);
-  f.run(server.recordLavaEnemyDefeat);
+  reportEnemy(f);
   const progress = f.db.playerProgress.identity.find(f.ctx.sender);
   expect(JSON.parse(progress.inventoryJson)).toContain(BLACK_BOOTS);
   const inventory = inventoryFromSave(progress.inventoryJson, BLACK_BOOTS, "", "", false);
   expect(inventory.equippedFeet).toBe(BLACK_BOOTS);
   expect([...f.db.playerItemDrop.iter()]).toMatchObject([{ itemId: BLACK_BOOTS, alreadyOwned: false }]);
-  f.run(server.recordLavaEnemyDefeat);
+  reportEnemy(f);
   expect(JSON.parse(f.db.playerProgress.identity.find(f.ctx.sender).inventoryJson).filter((id: string) => id === BLACK_BOOTS)).toHaveLength(1);
 });
 it("rejects unowned or cosmetic-only speed boosts and accepts the exact equipped bonus", () => {

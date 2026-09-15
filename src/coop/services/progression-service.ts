@@ -1,5 +1,5 @@
+import { LOADOUT_FIELDS } from "../../../shared/combat-progress";
 import { withRequestDeadline } from "./request-deadline";
-import { LOADOUT_FIELDS, COMBAT_PROGRESS_FIELDS, combatProgressSnapshot, mergeCombatStats } from "../../../shared/combat-progress";
 import type { EnemyLootRequest } from "./regular-enemy-loot-queue";
 import { createRegularEnemyLootQueue } from "./regular-enemy-loot-queue";
 import { REGULAR_ENEMY_LOOT_DELAY_MS } from "../../../shared/regular-map-loot";
@@ -109,11 +109,6 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
     identity: dependencies.localIdentity,
     tabId: dependencies.lootTabId ?? (() => "current-tab"),
     storage: dependencies.storage,
-    captureProgress: () => {
-      if (!pendingProgress || !localProgress || savePromise || Date.now() < saveInFlightUntil) return undefined;
-      if (!LOADOUT_FIELDS.every(field => pendingProgress![field] === localProgress![field])) return undefined;
-      return combatProgressSnapshot(pendingProgress);
-    },
     send: sendCombatBatch,
   });
   const progressByIdentity = new Map<string, PlayerProgress>();
@@ -136,7 +131,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
   let saveInFlightUntil = 0;
   let savePromise: Promise<boolean> | null = null;
   let resetPending = false;
-  let checkpointEpoch = 0;
+  let restoredSave = false;
   let itemDropListener: ((drop: { itemId: string; alreadyOwned: boolean }) => void) | null = null;
   let itemUpgradeListener: ((upgrade: { itemId: string; level: number }) => void) | null = null;
 
@@ -163,25 +158,6 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
     dependencies.notify();
   }
 
-  function promoteConfirmedStats(identity: string, snapshot: ProgressSave) {
-    if (identity !== dependencies.localIdentity() || !localProgress) return;
-    // A successful save confirms the monotonic combat fields even if the SDK's
-    // table update is delivered after the reducer promise. Keep server-owned
-    // inventory/equipment fields untouched; their subscribed row remains the
-    // authority for any normalization performed by the reducer.
-    localProgress = {
-      ...localProgress,
-      maxHp: Math.max(localProgress.maxHp, snapshot.maxHp),
-      damage: Math.max(localProgress.damage, snapshot.damage),
-      attackRate: Math.min(localProgress.attackRate, snapshot.attackRate),
-      projectileCount: Math.max(localProgress.projectileCount, snapshot.projectileCount),
-      armor: Math.max(localProgress.armor, snapshot.armor),
-      regen: Math.max(localProgress.regen, snapshot.regen),
-      bootsCollected: localProgress.bootsCollected || snapshot.bootsCollected,
-    };
-    progressByIdentity.set(identity, localProgress);
-  }
-
   function flushAsync(force = false): Promise<boolean> {
     if (resetPending) return Promise.resolve(false);
     if (savePromise) {
@@ -198,6 +174,13 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
     ) return Promise.resolve(!pendingProgress);
     if (!dependencies.worldEntryReady()) return Promise.resolve(false);
     if (!force && Date.now() < saveInFlightUntil) return Promise.resolve(false);
+    // Equipment acknowledgements must not clear the prediction for a kill batch
+    // that is still on its way to the server.
+    if (enemyLoot.hasPending()) return enemyLoot.flush(force).then(ok => ok ? flushAsync(force) : false);
+    if (localProgress && LOADOUT_FIELDS.every(field => pendingProgress![field] === localProgress![field])) {
+      if (!enemyLoot.hasPending()) clearPending();
+      return Promise.resolve(true);
+    }
     const identity = dependencies.localIdentity();
     const snapshot = copyProgress(pendingProgress);
     saveInFlightUntil = Date.now() + 30_000;
@@ -208,7 +191,6 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
           pendingProgress &&
           sameProgressSave(pendingProgress, snapshot)
         ) {
-          promoteConfirmedStats(identity, snapshot);
           clearPending(identity);
           dependencies.notify();
         }
@@ -234,33 +216,13 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
     return savePromise;
   }
 
-  async function sendCombatBatch(request: EnemyLootRequest): Promise<boolean> {
-    if (!dependencies.worldEntryReady() || dependencies.reducers.worldEntryBlocked()) return false;
-    const identity = dependencies.localIdentity(), epoch = checkpointEpoch;
-    if (request.progress && savePromise) await savePromise;
-    if (identity !== dependencies.localIdentity() || epoch !== checkpointEpoch || resetPending) return false;
-    const result = reducerResult("combat checkpoint", connection => withRequestDeadline(connection.reducers.recordCombatCheckpoint(request), 3_500))();
-    if (!request.progress) return (await result).ok;
-    const snapshot = request.progress;
-    const nextSaveAt = Date.now() + 30_000;
-    saveInFlightUntil = nextSaveAt;
-    const tracked = result.then(result => {
-      if (identity !== dependencies.localIdentity() || epoch !== checkpointEpoch) return false;
-      if (!result.ok) { saveInFlightUntil = 0; return false; }
-      if (localProgress) {
-        localProgress = mergeCombatStats(localProgress, snapshot);
-        progressByIdentity.set(identity, localProgress);
-        // Never acknowledge newer kills or an equipment edit using an older receipt.
-        if (pendingProgress && LOADOUT_FIELDS.every(field => pendingProgress![field] === localProgress![field]) &&
-            COMBAT_PROGRESS_FIELDS.every(field => field === "attackRate"
-              ? snapshot[field] <= pendingProgress![field] : snapshot[field] >= pendingProgress![field])) clearPending(identity);
-      }
-      saveInFlightUntil = Math.max(saveInFlightUntil, nextSaveAt);
-      dependencies.notify();
-      return true;
-    }).finally(() => { if (savePromise === tracked) savePromise = null; });
-    savePromise = tracked;
-    return tracked;
+  async function sendCombatBatch(request: EnemyLootRequest): Promise<boolean | "discard"> {
+    if (!dependencies.worldEntryReady() || dependencies.reducers.worldEntryBlocked() || resetPending) return false;
+    const result = await reducerResult("enemy defeats", connection => withRequestDeadline(connection.reducers.recordEnemyDefeats({
+      streamId: request.streamId, sequence: request.sequence, mapId: request.mapId, enemies: request.enemies,
+    }), 3_500))();
+    if (!result.ok && /Enemy defeats belong to another map|Invalid enemy for this map/.test(result.error ?? "")) return "discard";
+    return result.ok;
   }
 
   function flush(force = false) {
@@ -322,6 +284,12 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
       return;
     }
     localProgress = progress;
+    if (restoredSave && pendingProgress) {
+      pendingProgress = { ...pendingProgress, maxHp: progress.maxHp, damage: progress.damage,
+        attackRate: progress.attackRate, armor: progress.armor, regen: progress.regen,
+        projectileCount: progress.projectileCount, bootsCollected: progress.bootsCollected };
+    }
+    restoredSave = false;
     dependencies.completeAccountReturn();
     if (pendingProgress && progressCovers(localProgress, pendingProgress)) clearPending();
     else flush();
@@ -731,9 +699,10 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
           dependencies.reducers.handleFailure("death tracking", error);
         }
       },
-      recordRegularEnemyDefeat(mapId: string) {
+      recordRegularEnemyDefeat(mapId: string, enemy: string) {
         if (resetPending || dependencies.reducers.protocolBlocked() || dependencies.reducers.worldEntryBlocked()) return;
-        enemyLoot.record(mapId);
+        enemyLoot.record(mapId, enemy);
+        if (enemy === "boss") void enemyLoot.flush();
       },
       saveProgress(progress: ProgressSave, immediate = false) {
         persistPending(progress);
@@ -821,10 +790,10 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
       saveInFlightUntil = Number.POSITIVE_INFINITY;
     },
     beginSession(identityChanged: boolean) {
-      checkpointEpoch++;
       enemyLoot.begin();
       cutscenes.begin();
       pendingProgress = store.read(dependencies.localIdentity());
+      restoredSave = true;
       saveInFlightUntil = 0;
       if (!identityChanged) return;
       void syncResearchNotification(null);
@@ -845,7 +814,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
       lifetimeByIdentity.delete(identity); heartsByIdentity.delete(identity);
     },
     clearSession() {
-      checkpointEpoch++;
+
       enemyLoot.clear();
       cutscenes.clear();
       gemBalance = 0n;
@@ -872,7 +841,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
       inventorySlotsUnlocked = 0;
     },
     dispose() {
-      checkpointEpoch++;
+
       enemyLoot.clear();
       window.clearInterval(lootTimer);
       window.clearInterval(flushTimer);

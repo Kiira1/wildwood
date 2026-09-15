@@ -1,4 +1,4 @@
-import { regularMapLoot } from "../../../shared/regular-map-loot";
+import { isProceduralMap } from "../../../shared/procedural-maps";
 import { isEnemyAttackingPlayer } from "./enemy-threat";
 import { PLAYER_KNOCKBACK_FORCE, WORLD } from "../constants";
 import { damageAfterArmor } from "../combat";
@@ -135,9 +135,10 @@ export function createPlayerCombatController(options: {
   effectiveArmor: () => number;
   isDueling: () => boolean;
   scheduleEnemyRespawn: (site: SpawnSite) => void;
-  recordRegularEnemyDefeat: (mapId: string) => void;
+  recordRegularEnemyDefeat: (mapId: string, enemy: string) => void;
   incrementKills: () => void;
-  hitGeneratedBoss?: (enemy: EnemyState) => boolean;
+  hitPersonalBoss?: (damage: number, x: number, y: number, critical: boolean) => void;
+  hitGeneratedBoss?: (enemy: EnemyState, damage: number) => boolean;
   damageDragon: (hits: number) => void;
   damageSpider: (hits: number) => void;
   damageFrostclaw: (hits: number) => void;
@@ -457,7 +458,7 @@ export function createPlayerCombatController(options: {
     const base = enemy.definition ?? ENEMY_TYPES[enemy.type];
     applyReward(enemy.reward, enemy.x, enemy.y);
     const mapId = options.currentMapId?.() ?? (isTutorialMap() ? "tutorial_forest" : isDesertMap() ? "beginner_desert" : isSnowMap() ? "intermediate_snowlands" : isLavaMap() ? "advanced_lava_wastes" : isInfernalMap() ? "infernal_depths" : "");
-    if (regularMapLoot(mapId).length && !(isDesertMap() && base.elite)) recordRegularEnemyDefeat(mapId);
+    recordRegularEnemyDefeat(mapId, isProceduralMap(mapId) ? `site:${enemy.siteId}` : enemy.type);
     spawnBurst(enemy.x, enemy.y, DEATH_PARTICLE_COLOR, base.elite ? 28 : 12, base.elite ? 150 : 90);
   }
 
@@ -571,7 +572,9 @@ export function createPlayerCombatController(options: {
         if (!target.isBoss && !target.generatedBoss) spawnDamageNumber(target.x, target.y, projectile.damage, projectile.critical);
         target.hurt = .12;
         projectile.life = 0;
-        if (target.isBoss) {
+        if (target.isBoss && options.hitPersonalBoss) {
+          options.hitPersonalBoss(projectile.damage, target.x, target.y, projectile.critical === true);
+        } else if (target.isBoss) {
           if ("bossKind" in target && target.bossKind === "spider") {
             pendingSpiderHits += 1;
             spiderHitBatchTimer = SPIDER_HIT_BATCH_DELAY;
@@ -618,7 +621,7 @@ export function createPlayerCombatController(options: {
             pendingDragonHits += 1;
             dragonHitBatchTimer = DRAGON_HIT_BATCH_DELAY;
           }
-        } else if (options.hitGeneratedBoss?.(target)) {
+        } else if (options.hitGeneratedBoss?.(target, projectile.damage)) {
           // Generated bosses use authoritative health and shared first-clear unlocks.
         } else {
           engageEnemy(target);

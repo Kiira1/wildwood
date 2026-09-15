@@ -1,8 +1,9 @@
+import { reportEnemy } from "../../tests/helpers/enemy-defeat";
 import { describe, expect, it, vi } from "vitest";
 import { SAMURAI_HAT, SAMURAI_HAT_ITEM_DROP_DENOMINATOR, itemMaxHealthMultiplier, itemRegenerationMultiplier } from "../../shared/items";
 import { SAMURAI_GARDEN_MAP_ID } from "../../shared/rules";
 import { inventoryFromSave, inventoryItemQuantity, serialiseInventory } from "../../src/game/inventory";
-import { crystalFixture, server } from "../../tests/helpers/crystal-hollows-fixture";
+import { crystalFixture } from "../../tests/helpers/crystal-hollows-fixture";
 
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
@@ -16,7 +17,7 @@ function samuraiFixture() {
 describe("Samurai Gardens helmet drop", () => {
   it("awards a helmet that survives inventory reload and can occupy the head slot", () => {
     const f = samuraiFixture();
-    f.run(server.recordLavaEnemyDefeat);
+    reportEnemy(f);
     expect(f.ctx.random.integerInRange).toHaveBeenCalledWith(1, SAMURAI_HAT_ITEM_DROP_DENOMINATOR);
     const progress = f.db.playerProgress.identity.find(f.ctx.sender);
     const inventory = inventoryFromSave(progress.inventoryJson, "", SAMURAI_HAT, "", false);
@@ -30,8 +31,8 @@ describe("Samurai Gardens helmet drop", () => {
 
   it("reports a repeat drop without duplicating the item", () => {
     const f = samuraiFixture();
-    f.run(server.recordLavaEnemyDefeat);
-    f.run(server.recordLavaEnemyDefeat);
+    reportEnemy(f);
+    reportEnemy(f);
     const saved = JSON.parse(f.db.playerProgress.identity.find(f.ctx.sender).inventoryJson);
     expect(saved.filter((id: string) => id === SAMURAI_HAT)).toHaveLength(1);
     expect([...f.db.playerItemDrop.iter()]).toMatchObject([{ itemId: SAMURAI_HAT, alreadyOwned: true, sequence: 2n }]);
@@ -40,7 +41,7 @@ describe("Samurai Gardens helmet drop", () => {
   it("does not award a helmet on a missed roll", () => {
     const f = samuraiFixture();
     f.ctx.random.integerInRange = (_min, max) => max;
-    f.run(server.recordLavaEnemyDefeat);
+    reportEnemy(f);
     expect(f.db.playerProgress.identity.find(f.ctx.sender).inventoryJson).toBe("[]");
     expect([...f.db.playerItemDrop.iter()]).toHaveLength(0);
   });
@@ -48,7 +49,7 @@ describe("Samurai Gardens helmet drop", () => {
   it("does not roll Samurai loot from another map", () => {
     const f = samuraiFixture();
     f.patch("player", { mapId: "crystal_hollows" });
-    f.run(server.recordLavaEnemyDefeat);
+    reportEnemy(f);
     expect(f.ctx.random.integerInRange).not.toHaveBeenCalled();
     expect([...f.db.playerItemDrop.iter()]).toHaveLength(0);
   });

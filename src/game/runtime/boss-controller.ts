@@ -280,6 +280,7 @@ export type BossController = {
  * The application entry point supplies DOM and multiplayer boundaries only.
  */
 export function createBossController(options: {
+  serverOwnsRewards?: boolean;
   boss: DragonBossState;
   spiderBoss: SpiderBossState;
   frostclawBoss: FrostclawBossState;
@@ -920,7 +921,7 @@ function resetMiremawBoss() {
     const damageReward = scaledReward("damage", SPIDER_REWARD_DAMAGE);
     const healthReward = scaledReward("health", SPIDER_REWARD_HEALTH);
     const encounterKey = String(result.encounter);
-    if (!locallyRewardedSpiderEncounters.has(encounterKey)) {
+    if (!options.serverOwnsRewards && !locallyRewardedSpiderEncounters.has(encounterKey)) {
       // The authoritative reward arrives through the server result. Mirror it
       // into the active runtime now so the overhead HP and Power labels change
       // in the same frame as the reward notice, not after a later save sync.
@@ -948,7 +949,7 @@ function resetMiremawBoss() {
     const healthReward = scaledReward("health", FROSTCLAW_REWARD_HEALTH);
     const armorReward = scaledReward("armor", FROSTCLAW_REWARD_ARMOR);
     const encounterKey = String(result.encounter);
-    if (!locallyRewardedFrostclawEncounters.has(encounterKey)) {
+    if (!options.serverOwnsRewards && !locallyRewardedFrostclawEncounters.has(encounterKey)) {
       locallyRewardedFrostclawEncounters.add(encounterKey);
       player.damage += damageReward.amount;
       addPlayerBaseMaxHealth(player, healthReward.amount, options.healthMultiplier?.() ?? 1);
@@ -976,7 +977,7 @@ function resetMiremawBoss() {
     const armorReward = scaledReward("armor", MAGMALISK_REWARD_ARMOR);
     const regenReward = scaledReward("regen", MAGMALISK_REWARD_REGEN);
     const encounterKey = String(result.encounter);
-    if (!locallyRewardedMagmaliskEncounters.has(encounterKey)) {
+    if (!options.serverOwnsRewards && !locallyRewardedMagmaliskEncounters.has(encounterKey)) {
       locallyRewardedMagmaliskEncounters.add(encounterKey);
       player.damage += damageReward.amount;
       addPlayerBaseMaxHealth(player, healthReward.amount, options.healthMultiplier?.() ?? 1);
@@ -1006,7 +1007,7 @@ function resetMiremawBoss() {
     const armorReward = scaledReward("armor", GLOOMROOT_REWARD_ARMOR);
     const regenReward = scaledReward("regen", GLOOMROOT_REWARD_REGEN);
     const encounterKey = String(result.encounter);
-    if (!locallyRewardedGloomrootEncounters.has(encounterKey)) {
+    if (!options.serverOwnsRewards && !locallyRewardedGloomrootEncounters.has(encounterKey)) {
       locallyRewardedGloomrootEncounters.add(encounterKey);
       player.damage += damageReward.amount;
       addPlayerBaseMaxHealth(player, healthReward.amount, options.healthMultiplier?.() ?? 1);
@@ -1036,7 +1037,7 @@ function resetMiremawBoss() {
     const armorReward = scaledReward("armor", TIDEWYRM_REWARD_ARMOR);
     const regenReward = scaledReward("regen", TIDEWYRM_REWARD_REGEN);
     const encounterKey = String(result.encounter);
-    if (!locallyRewardedTidewyrmEncounters.has(encounterKey)) {
+    if (!options.serverOwnsRewards && !locallyRewardedTidewyrmEncounters.has(encounterKey)) {
       locallyRewardedTidewyrmEncounters.add(encounterKey);
       player.damage += damageReward.amount;
       addPlayerBaseMaxHealth(player, healthReward.amount, options.healthMultiplier?.() ?? 1);
@@ -1061,7 +1062,7 @@ function resetMiremawBoss() {
     const armorReward = scaledReward("armor", KOI_SHOGUN_REWARD_ARMOR);
     const regenReward = scaledReward("regen", KOI_SHOGUN_REWARD_REGEN);
     const encounterKey = String(result.encounter);
-    if (!locallyRewardedKoiShogunEncounters.has(encounterKey)) {
+    if (!options.serverOwnsRewards && !locallyRewardedKoiShogunEncounters.has(encounterKey)) {
       locallyRewardedKoiShogunEncounters.add(encounterKey);
       player.damage += damageReward.amount;
       addPlayerBaseMaxHealth(player, healthReward.amount, options.healthMultiplier?.() ?? 1);
@@ -1086,7 +1087,7 @@ function resetMiremawBoss() {
     const armorReward = scaledReward("armor", TEMPEST_KIRIN_REWARD_ARMOR);
     const regenReward = scaledReward("regen", TEMPEST_KIRIN_REWARD_REGEN);
     const encounterKey = String(result.encounter);
-    if (!locallyRewardedTempestKirinEncounters.has(encounterKey)) {
+    if (!options.serverOwnsRewards && !locallyRewardedTempestKirinEncounters.has(encounterKey)) {
       locallyRewardedTempestKirinEncounters.add(encounterKey);
       player.damage += damageReward.amount;
       addPlayerBaseMaxHealth(player, healthReward.amount, options.healthMultiplier?.() ?? 1);
@@ -1111,7 +1112,7 @@ function showMiremawResult(result: BossResult | null | undefined) {
     const armorReward = scaledReward("armor", MIREMAW_REWARD_ARMOR);
     const regenReward = scaledReward("regen", MIREMAW_REWARD_REGEN);
     const encounterKey = String(result.encounter);
-    if (!locallyRewardedMiremawEncounters.has(encounterKey)) {
+    if (!options.serverOwnsRewards && !locallyRewardedMiremawEncounters.has(encounterKey)) {
       locallyRewardedMiremawEncounters.add(encounterKey);
       player.damage += damageReward.amount;
       addPlayerBaseMaxHealth(player, healthReward.amount, options.healthMultiplier?.() ?? 1);
@@ -1136,7 +1137,7 @@ function showMiremawResult(result: BossResult | null | undefined) {
     const armorReward = scaledReward("armor", PRISMSHELL_REWARD_ARMOR);
     const regenReward = scaledReward("regen", PRISMSHELL_REWARD_REGEN);
     const encounterKey = String(result.encounter);
-    if (!locallyRewardedPrismshellEncounters.has(encounterKey)) {
+    if (!options.serverOwnsRewards && !locallyRewardedPrismshellEncounters.has(encounterKey)) {
       locallyRewardedPrismshellEncounters.add(encounterKey);
       player.damage += damageReward.amount;
       addPlayerBaseMaxHealth(player, healthReward.amount, options.healthMultiplier?.() ?? 1);
@@ -1160,7 +1161,7 @@ function showMiremawResult(result: BossResult | null | undefined) {
     const armorReward = scaledReward("armor", IRONHORN_REWARD_ARMOR);
     const regenReward = scaledReward("regen", IRONHORN_REWARD_REGEN);
     const encounterKey = String(result.encounter);
-    if (!locallyRewardedIronhornEncounters.has(encounterKey)) {
+    if (!options.serverOwnsRewards && !locallyRewardedIronhornEncounters.has(encounterKey)) {
       locallyRewardedIronhornEncounters.add(encounterKey);
       player.damage += damageReward.amount;
       addPlayerBaseMaxHealth(player, healthReward.amount, options.healthMultiplier?.() ?? 1);
@@ -1184,7 +1185,7 @@ function showMiremawResult(result: BossResult | null | undefined) {
     const armorReward = scaledReward("armor", DREADREAPER_REWARD_ARMOR);
     const regenReward = scaledReward("regen", DREADREAPER_REWARD_REGEN);
     const encounterKey = String(result.encounter);
-    if (!locallyRewardedDreadreaperEncounters.has(encounterKey)) {
+    if (!options.serverOwnsRewards && !locallyRewardedDreadreaperEncounters.has(encounterKey)) {
       locallyRewardedDreadreaperEncounters.add(encounterKey);
       player.damage += damageReward.amount;
       addPlayerBaseMaxHealth(player, healthReward.amount, options.healthMultiplier?.() ?? 1);
@@ -1208,7 +1209,7 @@ function showMiremawResult(result: BossResult | null | undefined) {
     const armorReward = scaledReward("armor", VOLTWARDEN_REWARD_ARMOR);
     const regenReward = scaledReward("regen", VOLTWARDEN_REWARD_REGEN);
     const encounterKey = String(result.encounter);
-    if (!locallyRewardedVoltwardenEncounters.has(encounterKey)) {
+    if (!options.serverOwnsRewards && !locallyRewardedVoltwardenEncounters.has(encounterKey)) {
       locallyRewardedVoltwardenEncounters.add(encounterKey);
       player.damage += damageReward.amount;
       addPlayerBaseMaxHealth(player, healthReward.amount, options.healthMultiplier?.() ?? 1);
@@ -1232,7 +1233,7 @@ function showMiremawResult(result: BossResult | null | undefined) {
     const armorReward = scaledReward("armor", GRAVEBLOOM_REWARD_ARMOR);
     const regenReward = scaledReward("regen", GRAVEBLOOM_REWARD_REGEN);
     const encounterKey = String(result.encounter);
-    if (!locallyRewardedGravebloomEncounters.has(encounterKey)) {
+    if (!options.serverOwnsRewards && !locallyRewardedGravebloomEncounters.has(encounterKey)) {
       locallyRewardedGravebloomEncounters.add(encounterKey);
       player.damage += damageReward.amount;
       addPlayerBaseMaxHealth(player, healthReward.amount, options.healthMultiplier?.() ?? 1);
@@ -1256,7 +1257,7 @@ function showMiremawResult(result: BossResult | null | undefined) {
     const armorReward = scaledReward("armor", AEGIS_PRIME_REWARD_ARMOR);
     const regenReward = scaledReward("regen", AEGIS_PRIME_REWARD_REGEN);
     const encounterKey = String(result.encounter);
-    if (!locallyRewardedAegisPrimeEncounters.has(encounterKey)) {
+    if (!options.serverOwnsRewards && !locallyRewardedAegisPrimeEncounters.has(encounterKey)) {
       locallyRewardedAegisPrimeEncounters.add(encounterKey);
       player.damage += damageReward.amount;
       addPlayerBaseMaxHealth(player, healthReward.amount, options.healthMultiplier?.() ?? 1);
@@ -1301,7 +1302,7 @@ function showMiremawResult(result: BossResult | null | undefined) {
     if (!localContribution) return;
     const damageReward = scaledReward("damage", DRAGON_REWARD_DAMAGE);
     const encounterKey = String(result.encounter);
-    if (!locallyRewardedDragonEncounters.has(encounterKey)) {
+    if (!options.serverOwnsRewards && !locallyRewardedDragonEncounters.has(encounterKey)) {
       locallyRewardedDragonEncounters.add(encounterKey);
       player.damage += damageReward.amount;
       logPickup(rewardLabel(damageReward), "#ff655a");

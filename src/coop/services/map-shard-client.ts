@@ -144,10 +144,8 @@ export function createMapShardClient(options: {
             notifyMapWaiters();
             options.changed();
           }).onError(ctx => retry(ctx.event)).subscribe([
-            tables.bossHitResult.where(row => row.identity.eq(own)),
             tables.player.where(row => row.identity.eq(own)),
             tables.playerMotionIdentity.where(row => row.identity.eq(own)),
-            ...(boss ? [(tables as any)[`${boss}Boss`], (tables as any)[`${boss}Result`]] : []),
           ]);
         } catch (error) { retry(error); }
       }).onDisconnect((_ctx, error) => retry(error)).onConnectError((_ctx, error) => retry(error)).build());

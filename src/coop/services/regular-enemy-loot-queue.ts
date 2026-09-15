@@ -1,18 +1,17 @@
-import { isCombatProgress, type CombatProgress } from "../../../shared/combat-progress";
+import { combatMap, type EnemyDefeat } from "../../../shared/enemy-defeats";
 import { withRequestDeadline } from "./request-deadline";
-import { regularMapLoot, REGULAR_ENEMY_LOOT_BATCH_MAX } from "../../../shared/regular-map-loot";
+import { REGULAR_ENEMY_LOOT_BATCH_MAX } from "../../../shared/regular-map-loot";
 
-type Batch = { sequence: number; mapId: string; count: number; sealed: boolean; progress?: CombatProgress };
+type Batch = { sequence: number; mapId: string; count: number; sealed: boolean; enemies: EnemyDefeat[] };
 type State = { streamId: string; nextSequence: number; batches: Batch[] };
-export type EnemyLootRequest = { streamId: string; sequence: bigint; mapId: string; count: number; progress?: CombatProgress };
+export type EnemyLootRequest = { streamId: string; sequence: bigint; mapId: string; count: number; enemies: EnemyDefeat[] };
 
 /** Persist before sending and retry the same sequence after an interrupted reply. */
 export function createRegularEnemyLootQueue(options: {
   identity: () => string;
   tabId: () => string;
   storage: Storage;
-  captureProgress?: () => CombatProgress | undefined;
-  send: (request: EnemyLootRequest) => Promise<boolean>;
+  send: (request: EnemyLootRequest) => Promise<boolean | "discard">;
 }) {
   let owner = "", key = "", epoch = 0;
   let state: State | null = null;
@@ -25,16 +24,16 @@ export function createRegularEnemyLootQueue(options: {
     epoch++;
     inFlight = null;
     owner = options.identity();
-    key = owner ? `wildstat-enemy-loot-v1:${owner}:${options.tabId()}` : "";
+    key = owner ? `wildstat-enemy-defeats-v2:${owner}:${options.tabId()}` : "";
     state = null;
     if (!owner) return;
     try {
       const saved = JSON.parse(options.storage.getItem(key) ?? "null") as State | null;
       if (saved && typeof saved.streamId === "string" && Number.isSafeInteger(saved.nextSequence) &&
           saved.nextSequence > 0 && Array.isArray(saved.batches) && saved.batches.every(batch =>
-            Number.isSafeInteger(batch.sequence) && batch.sequence > 0 && regularMapLoot(batch.mapId).length > 0 &&
+            Number.isSafeInteger(batch.sequence) && batch.sequence > 0 && combatMap(batch.mapId) &&
             Number.isInteger(batch.count) && batch.count > 0 && batch.count <= REGULAR_ENEMY_LOOT_BATCH_MAX &&
-            (batch.progress === undefined || isCombatProgress(batch.progress)))) state = saved;
+            (Array.isArray(batch.enemies) && batch.enemies.every(entry => typeof entry.enemy === "string" && Number.isInteger(entry.count) && entry.count > 0) && batch.enemies.reduce((sum, entry) => sum + entry.count, 0) === batch.count))) state = saved;
     } catch {}
     state ??= empty();
   }
@@ -52,15 +51,21 @@ export function createRegularEnemyLootQueue(options: {
       while (current.batches.length && (drain || sent < batchLimit)) {
         const batch = current.batches[0];
         if (!batch.sealed) {
-          batch.progress = options.captureProgress?.();
           batch.sealed = true;
         }
         persist();
-        let accepted = false;
-        try { accepted = await withRequestDeadline(options.send({ streamId: current.streamId, sequence: BigInt(batch.sequence), mapId: batch.mapId, count: batch.count, progress: batch.progress }), 4_000); } catch {}
+        let accepted: boolean | "discard" = false;
+        try { accepted = await withRequestDeadline(options.send({ streamId: current.streamId, sequence: BigInt(batch.sequence), mapId: batch.mapId, count: batch.count, enemies: batch.enemies }), 4_000); } catch {}
         if (epoch !== runEpoch || options.identity() !== runOwner) return false;
         if (!accepted) return false;
         current.batches.shift();
+        if (accepted === "discard") {
+          // A forced map change can invalidate unaccepted reports. Start a fresh
+          // ordered stream so that rejection cannot block future valid rewards.
+          current.streamId = crypto.randomUUID();
+          current.batches.forEach((remaining, index) => { remaining.sequence = index + 1; });
+          current.nextSequence = current.batches.length + 1;
+        }
         sent++;
         persist();
       }
@@ -71,12 +76,17 @@ export function createRegularEnemyLootQueue(options: {
   }
   return {
     begin, flush,
-    record(mapId: string) {
+    hasPending: () => Boolean(state?.batches.length),
+    record(mapId: string, enemy: string) {
       if (owner !== options.identity()) begin();
-      if (!owner || !state || !regularMapLoot(mapId).length) return;
+      if (!owner || !state || !combatMap(mapId) || !enemy) return;
       const tail = state.batches.at(-1);
-      if (tail && !tail.sealed && tail.mapId === mapId && tail.count < REGULAR_ENEMY_LOOT_BATCH_MAX) tail.count++;
-      else state.batches.push({ sequence: state.nextSequence++, mapId, count: 1, sealed: false });
+      if (tail && !tail.sealed && tail.mapId === mapId && tail.count < REGULAR_ENEMY_LOOT_BATCH_MAX) {
+        tail.count++;
+        const entry = tail.enemies.find(entry => entry.enemy === enemy);
+        if (entry) entry.count++; else tail.enemies.push({ enemy, count: 1 });
+      }
+      else state.batches.push({ sequence: state.nextSequence++, mapId, count: 1, enemies: [{ enemy, count: 1 }], sealed: false });
       persist();
       if (state.batches[0].count >= REGULAR_ENEMY_LOOT_BATCH_MAX) void flush();
     },

@@ -47,20 +47,15 @@ describe("account and gameplay query scopes", () => {
     expect(f.requests[0].queries.map(q => q.name)).toEqual(["playerProfile", "playerProgress", "playerAccountStatus"]);
   });
 
-  it("subscribes to only the map's boss and seeds private history before its results", () => {
+  it("hydrates private history without shared boss subscriptions", () => {
     const f = fixture();
-    f.subscription.refresh(true, "beginner_desert");
-    expect(f.requests[0].queries.some(q => /Boss/.test(q.name))).toBe(false);
-    expect(f.requests[0].queries.some(q => q.name === "spiderResult")).toBe(true);
-    expect(f.requests[1].queries.map(q => q.name)).toEqual(["spiderBoss"]);
-    f.rows.spiderResult = [{}];
-    f.requests[1].applied();
-    expect(f.handled).not.toContain("spiderResult");
-    f.rows.myCutsceneHistory = [{}];
-    f.requests[0].applied();
-    expect(f.handled.indexOf("cutsceneHistory")).toBeLessThan(f.handled.indexOf("spiderResult"));
+    f.subscription.refresh(true, "beginner_desert", false);
+    expect(f.requests).toHaveLength(1);
+    expect(f.requests[0].queries.some(q => /Boss|Result/.test(q.name))).toBe(false);
+    f.rows.myCutsceneHistory = [{}]; f.requests[0].applied();
+    expect(f.handled).toContain("cutsceneHistory");
     expect(f.ready).toHaveBeenCalledOnce();
-    f.subscription.refresh(true, "water_reach");
-    expect(f.requests[2].queries.map(q => q.name)).toEqual(["tidewyrmBoss"]);
+    f.subscription.refresh(true, "water_reach", false);
+    expect(f.requests).toHaveLength(1);
   });
 });

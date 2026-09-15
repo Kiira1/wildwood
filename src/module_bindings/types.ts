@@ -460,6 +460,20 @@ export const EndlessTravelAccess = __t.object("EndlessTravelAccess", {
 });
 export type EndlessTravelAccess = __Infer<typeof EndlessTravelAccess>;
 
+export const EnemyDefeat = __t.object("EnemyDefeat", {
+  enemy: __t.string(),
+  count: __t.u16(),
+});
+export type EnemyDefeat = __Infer<typeof EnemyDefeat>;
+
+export const EnemyDefeatBudget = __t.object("EnemyDefeatBudget", {
+  key: __t.string(),
+  identity: __t.identity(),
+  tokens: __t.f64(),
+  updatedAtMicros: __t.u64(),
+});
+export type EnemyDefeatBudget = __Infer<typeof EnemyDefeatBudget>;
+
 export const ForestRewardPrototype = __t.object("ForestRewardPrototype", {
   identity: __t.identity(),
   encounter: __t.u64(),

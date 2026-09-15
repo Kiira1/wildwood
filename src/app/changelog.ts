@@ -1,4 +1,11 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.695": [
+    "20 gems for existing players—thanks for testing the new combat changes!",
+    "Boss fights are now personal, including Endless bosses. Defeat your own boss to earn its rewards and unlock the next map.",
+    "Enemy rewards are calculated by the server from enemies defeated on your current map.",
+    "Kills sync in 15-second batches with room for large groups and delayed connections. Boss clears sync right away.",
+    "Improved reward recovery and prevented duplicate rewards when retrying interrupted requests.",
+  ],
   "0.694": [
     "Your character and weapon keep a steadier facing direction when nearby enemies are equally close.",
     "Reduced server work for saving stats, movement speed, and map updates.",
@@ -1822,6 +1829,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.695": "2026-09-15",
   "0.694": "2026-09-15",
   "0.693": "2026-09-14",
   "0.692": "2026-09-14",

@@ -85,13 +85,13 @@ function setup(prepareResetRoute?: () => () => Promise<void>) {
     addEventListener: vi.fn(),
     removeEventListener: vi.fn(),
   });
-  const recordCombatCheckpoint = vi.fn(async (_request: any): Promise<void> => {});
+  const recordEnemyDefeats = vi.fn(async (_request: any): Promise<void> => {});
   const savePlayerProgress = vi.fn(async (): Promise<void> => {});
   const resetPlayerProgress = vi.fn(async (): Promise<void> => {});
   const claimDeveloperItemGift = vi.fn(async (): Promise<void> => {});
   const entry = { ready: true, blocked: false };
   const destroyEquipment = vi.fn(async () => {});
-  const connection = { reducers: { recordCombatCheckpoint, savePlayerProgress, resetPlayerProgress, claimDeveloperItemGift, destroyEquipment } };
+  const connection = { reducers: { recordEnemyDefeats, savePlayerProgress, resetPlayerProgress, claimDeveloperItemGift, destroyEquipment } };
   const reducers = {
     connection: () => connection,
     protocolBlocked: () => false,
@@ -116,7 +116,7 @@ function setup(prepareResetRoute?: () => () => Promise<void>) {
     pendingProgressKey: "pending-progress",
     prepareResetRoute,
   });
-  return { recordCombatCheckpoint, notify, savePlayerProgress, resetPlayerProgress, service, entry, claimDeveloperItemGift, destroyEquipment };
+  return { recordEnemyDefeats, notify, savePlayerProgress, resetPlayerProgress, service, entry, claimDeveloperItemGift, destroyEquipment };
 }
 
 describe("local progression profile snapshots", () => {
@@ -221,7 +221,7 @@ describe("local progression profile snapshots", () => {
     service.dispose();
   });
 
-  it("publishes attack speed and regeneration immediately and keeps them after save acknowledgement", async () => {
+  it("predicts stats immediately but only confirms server-provided rewards", async () => {
     const { notify, savePlayerProgress, service } = setup();
     const server = progress();
     service.tables.upsertProgress({
@@ -238,24 +238,25 @@ describe("local progression profile snapshots", () => {
 
     await service.drainPendingProgress();
 
-    expect(savePlayerProgress).toHaveBeenCalledWith(pending);
-    expect(service.progressFor(identity)).toMatchObject({ attackRate: 1.2, regen: 0.6 });
+    expect(savePlayerProgress).not.toHaveBeenCalled();
+    expect(service.progressFor(identity)).toMatchObject({ attackRate: server.attackRate, regen: server.regen });
     service.dispose();
   });
 });
 
-describe("combined combat checkpoints", () => {
-  it("sends due stats with the loot batch and avoids a second progress reducer", async () => {
+describe("server-calculated defeat batches", () => {
+  it("sends only enemy counts and avoids a redundant stat save", async () => {
     const h = setup(); const base = progress();
     h.service.tables.upsertProgress({ ...base, identity: { toHexString: () => identity } } as never);
     h.service.api.saveProgress(saveFrom(base, { damage: 20, enemyKills: 10 }));
-    h.service.api.recordRegularEnemyDefeat("water_reach");
+    h.service.api.recordRegularEnemyDefeat("water_reach", "Tide Raider");
     expect(await h.service.drainPendingProgress()).toBe(true);
-    expect(h.recordCombatCheckpoint).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
-      count: 1, progress: expect.objectContaining({ damage: 20, enemyKills: 10 }),
+    expect(h.recordEnemyDefeats).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
+      enemies: [{ enemy: "Tide Raider", count: 1 }],
     }));
     expect(h.savePlayerProgress).not.toHaveBeenCalled();
-    expect(h.service.progressFor(identity)?.damage).toBe(20);
+    expect(h.service.progressFor(identity)?.damage).toBe(base.damage);
+    expect(h.recordEnemyDefeats.mock.calls[0][0]).not.toHaveProperty("progress");
     h.service.dispose();
   });
 
@@ -263,9 +264,9 @@ describe("combined combat checkpoints", () => {
     const h = setup(); const base = progress();
     h.service.tables.upsertProgress({ ...base, identity: { toHexString: () => identity } } as never);
     h.service.api.saveProgress(saveFrom(base, { equippedHead: "samurai_hat", damage: 20 }));
-    h.service.api.recordRegularEnemyDefeat("water_reach");
+    h.service.api.recordRegularEnemyDefeat("water_reach", "Tide Raider");
     expect(await h.service.drainPendingProgress()).toBe(true);
-    expect(h.recordCombatCheckpoint.mock.calls[0][0].progress).toBeUndefined();
+    expect(h.recordEnemyDefeats.mock.calls[0][0].progress).toBeUndefined();
     expect(h.savePlayerProgress).toHaveBeenCalledTimes(1);
     h.service.dispose();
   });
@@ -273,15 +274,15 @@ describe("combined combat checkpoints", () => {
   it("does not clear newer progress when an older batch is acknowledged", async () => {
     const h = setup(); const base = progress(); let finish!: () => void;
     h.service.tables.upsertProgress({ ...base, identity: { toHexString: () => identity } } as never);
-    h.recordCombatCheckpoint.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+    h.recordEnemyDefeats.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
     h.service.api.saveProgress(saveFrom(base, { damage: 20 }));
-    h.service.api.recordRegularEnemyDefeat("water_reach");
+    h.service.api.recordRegularEnemyDefeat("water_reach", "Tide Raider");
     const first = h.service.drainEnemyLoot();
     h.service.api.saveProgress(saveFrom(base, { damage: 30, enemyKills: 2 }));
     finish(); await first;
     expect(h.service.progressFor(identity)?.damage).toBe(30);
     await h.service.drainPendingProgress();
-    expect(h.savePlayerProgress).toHaveBeenCalledWith(expect.objectContaining({ damage: 30, enemyKills: 2 }));
+    expect(h.savePlayerProgress).not.toHaveBeenCalled();
     h.service.dispose();
   });
 
@@ -290,14 +291,14 @@ describe("combined combat checkpoints", () => {
     try {
       const h = setup(); const base = progress();
       h.service.tables.upsertProgress({ ...base, identity: { toHexString: () => identity } } as never);
-      h.recordCombatCheckpoint.mockImplementationOnce(() => new Promise(() => {}));
+      h.recordEnemyDefeats.mockImplementationOnce(() => new Promise(() => {}));
       h.service.api.saveProgress(saveFrom(base, { damage: 20 }));
-      h.service.api.recordRegularEnemyDefeat("water_reach");
+      h.service.api.recordRegularEnemyDefeat("water_reach", "Tide Raider");
       const first = h.service.drainEnemyLoot();
       await vi.advanceTimersByTimeAsync(4_001);
       expect(await first).toBe(false);
       expect(await h.service.drainPendingProgress()).toBe(true);
-      expect(h.recordCombatCheckpoint.mock.calls[1][0]).toEqual(h.recordCombatCheckpoint.mock.calls[0][0]);
+      expect(h.recordEnemyDefeats.mock.calls[1][0]).toEqual(h.recordEnemyDefeats.mock.calls[0][0]);
       expect(h.savePlayerProgress).not.toHaveBeenCalled();
       h.service.dispose();
     } finally { vi.useRealTimers(); }
@@ -313,14 +314,14 @@ describe("combined combat checkpoints", () => {
 it("does not acknowledge a newer session with an old checkpoint response", async () => {
   const h = setup(); const base = progress(); let finish!: () => void;
   h.service.tables.upsertProgress({ ...base, identity: { toHexString: () => identity } } as never);
-  h.recordCombatCheckpoint.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+  h.recordEnemyDefeats.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
   h.service.api.saveProgress(saveFrom(base, { damage: 20 }));
-  h.service.api.recordRegularEnemyDefeat("water_reach");
+  h.service.api.recordRegularEnemyDefeat("water_reach", "Tide Raider");
   const first = h.service.drainEnemyLoot();
   h.service.beginSession(false);
   h.service.api.saveProgress(saveFrom(base, { damage: 30, enemyKills: 2 }));
   finish(); expect(await first).toBe(false);
   expect(await h.service.drainPendingProgress()).toBe(true);
-  expect(h.savePlayerProgress).toHaveBeenCalledWith(expect.objectContaining({ damage: 30 }));
+  expect(h.savePlayerProgress).not.toHaveBeenCalled();
   h.service.dispose();
 });

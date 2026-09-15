@@ -115,16 +115,14 @@ describe("generated map subscription lifecycle", () => {
     expect(h.api.proceduralMapState("endless_2").boss?.mapId).toBe("endless_2");
     expect(h.subscriptions).toHaveLength(1);
   });
-  it("waits for hydration and suppresses duplicate preparation", async () => {
+  it("waits for unlock hydration without creating shared bosses", () => {
     const h = harness();
     h.api.proceduralMapState("endless_1");
     expect(h.prepare).not.toHaveBeenCalled();
     h.subscriptions[0].applied();
     h.api.proceduralMapState("endless_1");
     h.api.proceduralMapState("endless_1");
-    await vi.waitFor(() =>
-      expect(h.prepare).toHaveBeenCalledExactlyOnceWith({ mapId: "endless_1" }),
-    );
+    expect(h.prepare).not.toHaveBeenCalled();
     h.disconnect();
     expect(h.api.proceduralMapState("endless_1").ready).toBe(false);
   });
@@ -181,34 +179,11 @@ describe("generated map subscription lifecycle", () => {
     h.setBlocked(true);
     expect(h.api.proceduralMapState("endless_2").boss).toBeNull();
   });
-  it("does not let an old preparation promise block or clear the next map request", async () => {
-    vi.useFakeTimers();
+  it("keeps map changes free of boss preparation reducers", () => {
     const h = harness();
-    let finishOld!: () => void;
-    h.prepare.mockImplementationOnce(
-      () =>
-        new Promise<void>((resolve) => {
-          finishOld = resolve;
-        }),
-    );
-    h.prepare.mockImplementationOnce(() => new Promise<void>(() => {}));
-    h.api.proceduralMapState("endless_1");
-    h.subscriptions[0].applied();
-    h.api.proceduralMapState("endless_1");
-    await vi.advanceTimersByTimeAsync(0);
-    h.api.proceduralMapState("endless_2");
-    await vi.advanceTimersByTimeAsync(0);
-    expect(h.prepare).toHaveBeenCalledTimes(2);
-    finishOld();
-    await vi.advanceTimersByTimeAsync(3000);
-    h.api.proceduralMapState("endless_2");
-    expect(h.prepare).toHaveBeenCalledTimes(2);
-    h.subscriptions[0].fail();
-    await vi.advanceTimersByTimeAsync(3000);
-    h.api.proceduralMapState("endless_2");
-    h.subscriptions[1].applied();
-    h.api.proceduralMapState("endless_2");
-    await vi.advanceTimersByTimeAsync(0);
-    expect(h.prepare).toHaveBeenCalledTimes(3);
+    h.api.proceduralMapState("endless_1"); h.subscriptions[0].applied();
+    for (let map = 1; map <= 40; map++) h.api.proceduralMapState(`endless_${map}`);
+    expect(h.subscriptions).toHaveLength(1);
+    expect(h.prepare).not.toHaveBeenCalled();
   });
 });

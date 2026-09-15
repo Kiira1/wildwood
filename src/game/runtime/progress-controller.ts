@@ -11,7 +11,7 @@ import {
   MAX_ARMOR,
   MAX_PLAYER_STAT,
   MIN_ATTACK_INTERVAL,
-  PLAYER_BASE_HP,
+  PLAYER_BASE_HP, PLAYER_BASE_DAMAGE,
   PLAYER_BASE_REGEN,
   PLAYER_SPEED,
   playerBaseMovementSpeed,
@@ -38,8 +38,6 @@ type ProgressDependencies = {
   renderInventory: () => void;
   onLoaded: () => void;
 };
-
-type LegacyProgress = { stats: Partial<PlayerProgress>; bootsCollected?: unknown };
 
 /** Server progress persistence, legacy migration, bounds checks, and load state. */
 export function createProgressController(dependencies: ProgressDependencies) {
@@ -94,18 +92,15 @@ export function createProgressController(dependencies: ProgressDependencies) {
     const saved = dependencies.getSavedProgress();
     if (progressLoaded && progressLoadedIdentity === progressIdentity) {
       if (saved) {
-        // A local reward is persisted before its throttled server save. Reapply
-        // the monotonic combat fields on later co-op notifications so a startup
-        // or subscription race cannot leave attack speed or regeneration at an
-        // older runtime value until the next page load.
-        dependencies.player.attackRate = Math.min(
-          dependencies.player.attackRate,
-          boundedProgressValue(saved.attackRate, dependencies.player.attackRate, MIN_ATTACK_INTERVAL, 10),
-        );
-        dependencies.player.regen = Math.max(
-          dependencies.player.regen,
-          boundedProgressValue(saved.regen, dependencies.player.regen, 0, MAX_PLAYER_STAT),
-        );
+        // The service includes still-pending local defeats. Reconcile every stat
+        // so delayed receipts/reconnects cannot strand rewards until a reload.
+        const player = dependencies.player;
+        player.damage = boundedProgressValue(saved.damage, player.damage, 1, MAX_PLAYER_STAT);
+        player.armor = boundedProgressValue(saved.armor, player.armor, 0, MAX_ARMOR);
+        player.attackRate = boundedProgressValue(saved.attackRate, player.attackRate, MIN_ATTACK_INTERVAL, 10);
+        player.regen = boundedProgressValue(saved.regen, player.regen, 0, MAX_PLAYER_STAT);
+        player.projectileCount = saved.projectileCount;
+        if (player.baseMaxHp !== saved.maxHp) setPlayerBaseMaxHealth(player, saved.maxHp, dependencies.healthMultiplier());
         // A gift can arrive after initial load. Merge its permanent ownership
         // without replacing locally edited equipment or consumable quantities.
         const granted = claimedGiftItemIds(saved.inventoryJson).filter(item => !dependencies.inventory.itemIds.includes(item));
@@ -120,11 +115,7 @@ export function createProgressController(dependencies: ProgressDependencies) {
     if (!saved) return;
     syncLifetimeKills(progressIdentity);
 
-    const legacy = readLegacyProgress(dependencies.legacyStorageKey);
-    const serverIsDefault = isDefaultProgress(saved);
-    const source = legacy && serverIsDefault
-      ? { ...legacy.stats, bootsCollected: legacy.bootsCollected === true }
-      : saved;
+    const source = saved;
     if (waitingForFreshStart && saved.introComplete) return;
 
     applyProgress(source);
@@ -132,10 +123,6 @@ export function createProgressController(dependencies: ProgressDependencies) {
     progressLoaded = true;
     progressLoadedIdentity = progressIdentity;
     waitingForFreshStart = false;
-    if (legacy && serverIsDefault) {
-      save(false);
-      try { localStorage.removeItem(dependencies.legacyStorageKey); } catch {}
-    }
     startupKind = !saved.introComplete && isDefaultProgress(source) ? "new" : "returning";
     dependencies.onLoaded();
   }
@@ -215,24 +202,9 @@ function boundedProgressValue(value: number | undefined, fallback: number, min: 
   return Number.isFinite(value) ? clamp(value as number, min, max) : fallback;
 }
 
-function readLegacyProgress(storageKey: string): LegacyProgress | null {
-  try {
-    const candidate: unknown = JSON.parse(localStorage.getItem(storageKey) ?? "null");
-    if (!candidate || typeof candidate !== "object" || !("stats" in candidate)) return null;
-    const stats = (candidate as { stats?: unknown }).stats;
-    if (!stats || typeof stats !== "object") return null;
-    return {
-      stats: stats as Partial<PlayerProgress>,
-      bootsCollected: (candidate as { bootsCollected?: unknown }).bootsCollected,
-    };
-  } catch {
-    return null;
-  }
-}
-
 function isDefaultProgress(progress: Partial<PlayerProgress>) {
   return progress.maxHp === PLAYER_BASE_HP &&
-    progress.damage === 4 &&
+    progress.damage === PLAYER_BASE_DAMAGE &&
     progress.attackRate === DEFAULT_ATTACK_INTERVAL &&
     progress.projectileSpeed === BASE_PROJECTILE_SPEED &&
     progress.projectileCount === 1 &&

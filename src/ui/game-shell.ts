@@ -21,7 +21,7 @@ const beforeStartShell = String.raw`
       <img src="assets/wildstat/gems/gem-icon-v2.png" alt="" draggable="false" />
     </div>
     <h2 id="balanceApologyGiftTitle">+10 GEMS</h2>
-    <p id="balanceApologyGiftCopy" class="balance-apology-gift-copy">SORRY FOR THE RECENT ISSUES.<br />THANK YOU FOR STICKING WITH US.</p>
+    <p id="balanceApologyGiftCopy" class="balance-apology-gift-copy">A GIFT FROM THE DEVELOPER.<br />THANK YOU FOR TESTING WILDSTAT.</p>
     <button id="balanceApologyContinueBtn" class="daily-gem-claim-button" type="button">CONTINUE</button>
   </section>
 </div>

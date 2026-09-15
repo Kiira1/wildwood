@@ -130,7 +130,7 @@ function onChange() {
     batchedChangePending = true;
     return;
   }
-  sessionSubscriptions?.refresh(worldEntryGeneration === connectionGeneration && worldEntryGeneration !== 0, presenceService.currentMapId(), !mapShardClient?.enabled());
+  sessionSubscriptions?.refresh(worldEntryGeneration === connectionGeneration && worldEntryGeneration !== 0, presenceService.currentMapId(), false);
   changeListener?.();
   startupChangeListener?.();
 }

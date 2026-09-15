@@ -18,9 +18,7 @@ export function createProceduralMapService(port: ReducerPort) {
     handle: ActiveSubscription | null;
     ready: boolean;
   } | null = null;
-  let nextSubscribe = 0,
-    nextPrepare = 0;
-  let preparing: object | null = null;
+  let nextSubscribe = 0;
   let prepareMap = "";
   const blocked = () => port.protocolBlocked() || port.worldEntryBlocked();
   function refresh(mapId: string) {
@@ -29,8 +27,7 @@ export function createProceduralMapService(port: ReducerPort) {
       unsubscribeIfActive(subscription?.handle ?? null);
       connection = conn;
       subscription = null;
-      nextSubscribe = nextPrepare = 0;
-      preparing = null;
+      nextSubscribe = 0;
     }
     if (!conn?.isActive || blocked()) return null;
     if (!subscription && Date.now() >= nextSubscribe) {
@@ -43,9 +40,7 @@ export function createProceduralMapService(port: ReducerPort) {
         if (subscription !== attempt) return;
         unsubscribeIfActive(attempt.handle);
         subscription = null;
-        preparing = null;
-        nextPrepare = 0;
-        nextSubscribe = Date.now() + 3000;
+          nextSubscribe = Date.now() + 3000;
         port.handleFailure("generated map subscription", error);
       };
       try {
@@ -63,7 +58,6 @@ export function createProceduralMapService(port: ReducerPort) {
             tables.proceduralProgress.where((row) =>
               row.identity.eq(conn.identity!),
             ),
-            tables.myProceduralBoss,
             tables.myEndlessTravelAccess,
           ]);
       } catch (error) {
@@ -72,43 +66,6 @@ export function createProceduralMapService(port: ReducerPort) {
     }
     if (prepareMap !== mapId) {
       prepareMap = mapId;
-      preparing = null;
-      nextPrepare = 0;
-    }
-    if (
-      subscription?.ready &&
-      isProceduralMap(mapId) &&
-      Date.now() >= nextPrepare &&
-      !preparing
-    ) {
-      const boss = [...conn.db.myProceduralBoss.iter()].find(
-        (row) => row.mapId === mapId,
-      );
-      if (
-        !boss ||
-        (boss.hp <= 0 && Date.now() >= Number(boss.respawnAtMicros / 1000n))
-      ) {
-        const request = {};
-        preparing = request;
-        nextPrepare = Date.now() + 2000;
-        const attempt = subscription;
-        // Catch synchronous transport failures as well as rejected reducer promises.
-        void Promise.resolve()
-          .then(() => {
-            if (
-              conn === connection &&
-              subscription === attempt &&
-              preparing === request &&
-              conn.isActive &&
-              !blocked()
-            )
-              return conn.reducers.prepareProceduralBoss({ mapId });
-          })
-          .catch((error) => port.handleFailure("generated boss", error))
-          .finally(() => {
-            if (preparing === request) preparing = null;
-          });
-      }
     }
     return conn;
   }

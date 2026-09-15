@@ -1,3 +1,5 @@
+// Pre-cutover shared boss regression coverage. Current personal combat is tested separately.
+vi.mock("../../shared/personal-bosses", async (original) => ({ ...await original<typeof import("../../shared/personal-bosses")>(), PERSONAL_BOSS_COMBAT: false }));
 import { describe, expect, it, vi } from "vitest";
 import { ConnectionId, Timestamp } from "spacetimedb";
 import { BOSS_REWARD_CLAIM_BITS, PRISMSHELL_MAX_HP, PRISMSHELL_REWARD_DAMAGE, PRISMSHELL_REWARD_HEALTH } from "../../shared/rules";

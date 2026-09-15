@@ -70,13 +70,16 @@ describe("loaded progress reconciliation", () => {
     });
     controller.load();
 
-    saved = { ...saved, attackRate: 1.2, regen: 0.6 };
+    saved = { ...saved, attackRate: 1.2, regen: 0.6, damage: 9, armor: 3, maxHp: 150 };
     state.player.attackRate = 1.56;
     state.player.regen = 0;
     controller.load();
 
     expect(state.player.attackRate).toBe(1.2);
     expect(state.player.regen).toBe(0.6);
+    expect(state.player.damage).toBe(9);
+    expect(state.player.armor).toBe(3);
+    expect(state.player.baseMaxHp).toBe(150);
 
     // An already-running claimant receives server ownership while an earlier
     // local save still contains the inventory from before the gift was claimed.

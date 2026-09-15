@@ -1,6 +1,6 @@
 import { expect, it, vi } from "vitest";
 vi.mock("spacetimedb/server", () => ({ SenderError: class SenderError extends Error {} }));
-import { deliverDisconnectCompensation } from "./disconnect-compensation";
+import { deliverDisconnectCompensation, deliverCombatUpdateGift } from "./disconnect-compensation";
 const player = { toHexString: () => "player" };
 function setup() {
   const receipts = new Map(); const notices = new Map();
@@ -27,4 +27,14 @@ it("skips deleted characters and virtual players", () => {
 });
 it("bounds delivery batches before awarding any gems", () => {
   const s = setup(); expect(() => s.deliver(Array(101).fill(player))).toThrow("at most 100"); expect(s.credit).not.toHaveBeenCalled();
+});
+
+it("credits the combat update separately from the disconnect gift, exactly once", () => {
+  const s = setup(); s.deliver();
+  deliverCombatUpdateGift(s.ctx, [player, player] as any, s.credit);
+  expect(s.credit).toHaveBeenCalledTimes(2);
+  expect(s.credit.mock.calls[1][0]).toMatchObject({ delta: 20n, kind: "combat_update_gift", externalReference: "combat-update:0.695:player" });
+  expect(s.notices.get(player).amount).toBe(40n);
+  s.notices.clear(); deliverCombatUpdateGift(s.ctx, [player] as any, s.credit);
+  expect(s.credit).toHaveBeenCalledTimes(2); expect(s.notices.size).toBe(0);
 });

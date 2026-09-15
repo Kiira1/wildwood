@@ -9,11 +9,11 @@ it("bounds inventory decoding during a normal combat progress save", () => {
   try {
     f.run(server.savePlayerProgress, { ...base, damage: base.damage + 1, enemyKills: 2 });
     expect(parse.mock.calls.length).toBeLessThanOrEqual(12);
-    expect(f.db.playerProgress.identity.find(f.ctx.sender).damage).toBe(base.damage + 1);
+    expect(f.db.playerProgress.identity.find(f.ctx.sender).damage).toBe(base.damage);
   } finally { parse.mockRestore(); }
 });
 
-it("keeps server-owned inventory, unlocks, and monotonic stats when saving", () => {
+it("keeps server-owned inventory, unlocks, and ignores client combat stats when saving", () => {
   const f = crystalFixture();
   const inventoryJson = '["sky_bow","water_armor","sky_bow","not-an-item"]';
   f.patch("playerProgress", { inventoryJson, desertUnlocked: true });
@@ -29,7 +29,7 @@ it("keeps server-owned inventory, unlocks, and monotonic stats when saving", () 
   expect(saved.inventoryJson).not.toContain("not-an-item");
   expect(saved.equippedRightHand).toBe("sky_bow");
   expect(saved.equippedChest).toBe("water_armor");
-  expect(f.db.playerLifetime.identity.find(f.ctx.sender).enemyKills).toBe(5n);
+  expect(f.db.playerLifetime.identity.find(f.ctx.sender)?.enemyKills ?? 0n).toBe(0n);
 });
 
 it("makes unchanged speed requests no-ops without inventory decoding or presentation writes", () => {
@@ -43,7 +43,7 @@ it("makes unchanged speed requests no-ops without inventory decoding or presenta
   } finally { parse.mockRestore(); }
 });
 
-it("saves combat stats without decoding inventory or resetting resting speed", () => {
+it("ignores combat stat uploads without decoding inventory or resetting resting speed", () => {
   const f = crystalFixture();
   f.patch("playerProgress", { equippedFeet: "black_boots", inventoryJson: '["black_boots"]' });
   f.patch("player", { feetItem: "black_boots", speed: 205 });
@@ -53,7 +53,7 @@ it("saves combat stats without decoding inventory or resetting resting speed", (
   expect(parse).not.toHaveBeenCalled();
   parse.mockRestore();
   expect(f.db.player.identity.find(f.ctx.sender).speed).toBe(205);
-  expect(f.db.playerProgress.identity.find(f.ctx.sender).damage).toBe(base.damage + 1);
+  expect(f.db.playerProgress.identity.find(f.ctx.sender).damage).toBe(base.damage);
 });
 
 it("does not rewrite progress or presentation for an unchanged checkpoint", () => {
@@ -86,4 +86,15 @@ it("preserves the active black-boots bonus during an unrelated equipment edit", 
   f.run(server.savePlayerProgress, { ...base, equippedChest: "water_armor", enemyKills: 3 });
   expect(f.db.player.identity.find(f.ctx.sender).speed).toBe(205);
   expect(f.db.playerProgress.identity.find(f.ctx.sender).equippedChest).toBe("water_armor");
+});
+
+it("does not accept forged stats, kills or boots through an equipment save", () => {
+  const f = crystalFixture(), base = f.db.playerProgress.identity.find(f.ctx.sender);
+  f.run(server.savePlayerProgress, { ...base, damage: 1e25, maxHp: 1e25, armor: 1e25, regen: 1e25,
+    attackRate: 0.01, projectileCount: 20, enemyKills: 4_000_000_000, bootsCollected: true,
+    equippedHead: "fake-item", inventoryJson: '["fake-item"]' });
+  const result = f.db.playerProgress.identity.find(f.ctx.sender);
+  for (const key of ["damage", "maxHp", "armor", "regen", "attackRate", "projectileCount", "bootsCollected"])
+    expect(result[key]).toBe(base[key]);
+  expect(f.db.playerLifetime.identity.find(f.ctx.sender)?.enemyKills ?? 0n).toBe(0n);
 });

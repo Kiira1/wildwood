@@ -1,10 +1,13 @@
-import { LOADOUT_FIELDS, COMBAT_PROGRESS_FIELDS, mergeCombatStats, type CombatProgress } from "../../shared/combat-progress";
+import { PERSONAL_BOSS_COMBAT, personalBossDefinition } from "../../shared/personal-bosses";
+import { enemyDefeatBudget, acceptEnemyDefeats } from "./enemy-defeats";
+import { applyEnemyRewards } from "../../shared/enemy-defeats";
+import { LOADOUT_FIELDS } from "../../shared/combat-progress";
 import { chatReactionSummary, playerChatHearts, reactionCountsFor, chatReaction, readChatReactions, setChatReaction, removeMessageReactions, removeAccountReactions, mergeAccountReactions } from "./chat-reactions";
-import { regularEnemyLootCursor, acceptRegularEnemyLootBatch, rollRegularEnemyLoot, canReplayRegularEnemyLoot } from "./regular-enemy-loot";
+import { regularEnemyLootCursor, rollRegularEnemyLoot } from "./regular-enemy-loot";
 import { BLACK_BOOTS, BLACK_BOOTS_SPEED_BONUS } from "../../shared/items";
 import { playerOnboarding, advanceOnboarding, mergeOnboarding, needsOnboarding } from "./onboarding";
 import { canDestroyEquipment } from "../../shared/items";
-import { deliverDisconnectCompensation } from "./disconnect-compensation";
+import { deliverDisconnectCompensation, deliverCombatUpdateGift } from "./disconnect-compensation";
 import { connectionDiagnosticTables, recordConnectionDiagnostics, cleanupConnectionDiagnostics } from "./connection-diagnostics";
 import { moderationTables, recordModerationAction, readModerationHistory } from "./moderation-history";
 import { playerItemGift, deliverAlphaTesterGifts, claimItemGift, removeItemGifts, mergeItemGifts } from "./item-gifts";
@@ -12,7 +15,7 @@ import { moderateReportedMessage } from "./chat-report-moderation";
 import { PLAYER_SKIN_TONES } from "../../shared/player-skin-tones";
 import { leaderboardPageTables, writeLeaderboardPages, readLeaderboardWindow, readLeaderboardPage } from "./leaderboard-pages";
 import { publicChatCursor, updatePublicChatCursor, readPublicChatPage } from "./public-chat-history";
-import { generateMap, proceduralMapCore, isProceduralMap, proceduralMapId, PROCEDURAL_ENTRY_MAP, PROCEDURAL_ENTRY_BOSS } from "../../shared/procedural-maps";
+import { generateMap, generatedBossStats, proceduralMapCore, isProceduralMap, proceduralMapId, PROCEDURAL_ENTRY_MAP, PROCEDURAL_ENTRY_BOSS } from "../../shared/procedural-maps";
 import { proceduralMapTables, proceduralBossKey, clearProceduralProgress, mergeProceduralProgress, generatedMapUnlocked, ensureProceduralBoss, damageProceduralBoss } from "./procedural-maps";
 import { ingestStoreEvent } from "./gem-store-events";
 import { gemPurchaseTables } from "./gem-purchase-tables";
@@ -1727,7 +1730,7 @@ const spacetimedb = schema({
   balanceApologyNotice,
   playerItemGift,
   playerOnboarding,
-  regularEnemyLootCursor,
+  regularEnemyLootCursor, enemyDefeatBudget,
   chatReaction, chatReactionSummary, playerChatHearts,
   playerUpgradeBench,
   playerInventoryCapacity,
@@ -4357,6 +4360,7 @@ function removeVirtualPlayerData(ctx: any, identity: any, adjustPresence = true,
   if (ctx.db.playerGemWallet.identity.find(identity)) ctx.db.playerGemWallet.identity.delete(identity);
   if (ctx.db.balanceApologyNotice.identity.find(identity)) ctx.db.balanceApologyNotice.identity.delete(identity);
   removeItemGifts(ctx, identity);
+  for (const budget of ctx.db.enemyDefeatBudget.identity.filter(identity)) ctx.db.enemyDefeatBudget.key.delete(budget.key);
   for (const cursor of ctx.db.regularEnemyLootCursor.identity.filter(identity)) ctx.db.regularEnemyLootCursor.key.delete(cursor.key);
   if (ctx.db.playerOnboarding.identity.find(identity)) ctx.db.playerOnboarding.identity.delete(identity);
   if (ctx.db.playerUpgradeBench.identity.find(identity)) ctx.db.playerUpgradeBench.identity.delete(identity);
@@ -4449,6 +4453,7 @@ function removePlayerIdentityData(ctx: any, identity: any) {
   if (ctx.db.dailyGemBonus.identity.find(identity)) ctx.db.dailyGemBonus.identity.delete(identity);
   if (ctx.db.balanceApologyNotice.identity.find(identity)) ctx.db.balanceApologyNotice.identity.delete(identity);
   removeItemGifts(ctx, identity);
+  for (const budget of ctx.db.enemyDefeatBudget.identity.filter(identity)) ctx.db.enemyDefeatBudget.key.delete(budget.key);
   for (const cursor of ctx.db.regularEnemyLootCursor.identity.filter(identity)) ctx.db.regularEnemyLootCursor.key.delete(cursor.key);
   if (ctx.db.playerOnboarding.identity.find(identity)) ctx.db.playerOnboarding.identity.delete(identity);
   if (ctx.db.playerUpgradeBench.identity.find(identity)) ctx.db.playerUpgradeBench.identity.delete(identity);
@@ -4958,6 +4963,7 @@ function ensureAegisPrimeBoss(ctx: any) {
 
 
 function regenerateIdleBosses(ctx: any, mapId?: string) {
+  if (PERSONAL_BOSS_COMBAT) return;
   const now = ctx.timestamp.microsSinceUnixEpoch;
   const regenerate = (current: any, update: (next: any) => void) => {
     if (!current.alive || current.hp <= 0 || current.hp >= current.maxHp) return;
@@ -6971,6 +6977,7 @@ export const respawnAegisPrime = spacetimedb.reducer(
 
 
 function applyDragonDamage(ctx: any, requestedHits: number, clientPosition?: { x: number; y: number }) {
+  if (PERSONAL_BOSS_COMBAT) throw new SenderError("WildStat updated. Refresh to continue.");
   requireMapWorkload(ctx);
   if (isMapShard(ctx) && ctx.db.shardAdmission.identity.find(ctx.sender)?.inDuel) return;
   const activePlayer = requireControllingPlayer(ctx);
@@ -7053,6 +7060,7 @@ export const damageDragonFromPosition = spacetimedb.reducer(
 );
 
 function applySpiderDamage(ctx: any, requestedHits: number, clientPosition?: { x: number; y: number }) {
+  if (PERSONAL_BOSS_COMBAT) throw new SenderError("WildStat updated. Refresh to continue.");
   requireMapWorkload(ctx);
   if (isMapShard(ctx) && ctx.db.shardAdmission.identity.find(ctx.sender)?.inDuel) return;
   const activePlayer = requireControllingPlayer(ctx);
@@ -7132,6 +7140,7 @@ export const damageSpiderFromPosition = spacetimedb.reducer(
 );
 
 function applyFrostclawDamage(ctx: any, requestedHits: number, clientPosition?: { x: number; y: number }) {
+  if (PERSONAL_BOSS_COMBAT) throw new SenderError("WildStat updated. Refresh to continue.");
   requireMapWorkload(ctx);
   if (isMapShard(ctx) && ctx.db.shardAdmission.identity.find(ctx.sender)?.inDuel) return;
   const activePlayer = requireControllingPlayer(ctx);
@@ -7206,6 +7215,7 @@ export const damageFrostclawFromPosition = spacetimedb.reducer(
 );
 
 function applyMagmaliskDamage(ctx: any, requestedHits: number, clientPosition?: { x: number; y: number }) {
+  if (PERSONAL_BOSS_COMBAT) throw new SenderError("WildStat updated. Refresh to continue.");
   requireMapWorkload(ctx);
   if (isMapShard(ctx) && ctx.db.shardAdmission.identity.find(ctx.sender)?.inDuel) return;
   const activePlayer = requireControllingPlayer(ctx);
@@ -7280,6 +7290,7 @@ export const damageMagmaliskFromPosition = spacetimedb.reducer(
 );
 
 function applyGloomrootDamage(ctx: any, requestedHits: number, clientPosition?: { x: number; y: number }) {
+  if (PERSONAL_BOSS_COMBAT) throw new SenderError("WildStat updated. Refresh to continue.");
   requireMapWorkload(ctx);
   if (isMapShard(ctx) && ctx.db.shardAdmission.identity.find(ctx.sender)?.inDuel) return;
   const activePlayer = requireControllingPlayer(ctx);
@@ -7354,6 +7365,7 @@ export const damageGloomrootFromPosition = spacetimedb.reducer(
 );
 
 function applyTidewyrmDamage(ctx: any, requestedHits: number, clientPosition?: { x: number; y: number }) {
+  if (PERSONAL_BOSS_COMBAT) throw new SenderError("WildStat updated. Refresh to continue.");
   requireMapWorkload(ctx);
   if (isMapShard(ctx) && ctx.db.shardAdmission.identity.find(ctx.sender)?.inDuel) return;
   const activePlayer = requireControllingPlayer(ctx);
@@ -7428,6 +7440,7 @@ export const damageTidewyrmFromPosition = spacetimedb.reducer(
 );
 
 function applyKoiShogunDamage(ctx: any, requestedHits: number, clientPosition?: { x: number; y: number }) {
+  if (PERSONAL_BOSS_COMBAT) throw new SenderError("WildStat updated. Refresh to continue.");
   requireMapWorkload(ctx);
   if (isMapShard(ctx) && ctx.db.shardAdmission.identity.find(ctx.sender)?.inDuel) return;
   const activePlayer = requireControllingPlayer(ctx);
@@ -7502,6 +7515,7 @@ export const damageKoiShogunFromPosition = spacetimedb.reducer(
 );
 
 function applyTempestKirinDamage(ctx: any, requestedHits: number, clientPosition?: { x: number; y: number }) {
+  if (PERSONAL_BOSS_COMBAT) throw new SenderError("WildStat updated. Refresh to continue.");
   requireMapWorkload(ctx);
   if (isMapShard(ctx) && ctx.db.shardAdmission.identity.find(ctx.sender)?.inDuel) return;
   const activePlayer = requireControllingPlayer(ctx);
@@ -7575,6 +7589,7 @@ export const damageTempestKirinFromPosition = spacetimedb.reducer(
   (ctx, { hits, x, y }) => applyTempestKirinDamage(ctx, hits, { x, y }),
 );
 function applyMiremawDamage(ctx: any, requestedHits: number, clientPosition?: { x: number; y: number }) {
+  if (PERSONAL_BOSS_COMBAT) throw new SenderError("WildStat updated. Refresh to continue.");
   requireMapWorkload(ctx);
   if (isMapShard(ctx) && ctx.db.shardAdmission.identity.find(ctx.sender)?.inDuel) return;
   const activePlayer = requireControllingPlayer(ctx);
@@ -7643,6 +7658,7 @@ function applyMiremawDamage(ctx: any, requestedHits: number, clientPosition?: { 
   else ctx.db.miremawBoss.id.update(nextMiremaw);
 }
 function applyPrismshellDamage(ctx: any, requestedHits: number, clientPosition?: { x: number; y: number }) {
+  if (PERSONAL_BOSS_COMBAT) throw new SenderError("WildStat updated. Refresh to continue.");
   requireMapWorkload(ctx);
   if (isMapShard(ctx) && ctx.db.shardAdmission.identity.find(ctx.sender)?.inDuel) return;
   const activePlayer = requireControllingPlayer(ctx);
@@ -7711,6 +7727,7 @@ function applyPrismshellDamage(ctx: any, requestedHits: number, clientPosition?:
   else ctx.db.prismshellBoss.id.update(nextPrismshell);
 }
 function applyIronhornDamage(ctx: any, requestedHits: number, clientPosition?: { x: number; y: number }) {
+  if (PERSONAL_BOSS_COMBAT) throw new SenderError("WildStat updated. Refresh to continue.");
   requireMapWorkload(ctx);
   if (isMapShard(ctx) && ctx.db.shardAdmission.identity.find(ctx.sender)?.inDuel) return;
   const activePlayer = requireControllingPlayer(ctx);
@@ -7779,6 +7796,7 @@ function applyIronhornDamage(ctx: any, requestedHits: number, clientPosition?: {
   else ctx.db.ironhornBoss.id.update(nextIronhorn);
 }
 function applyDreadreaperDamage(ctx: any, requestedHits: number, clientPosition?: { x: number; y: number }) {
+  if (PERSONAL_BOSS_COMBAT) throw new SenderError("WildStat updated. Refresh to continue.");
   requireMapWorkload(ctx);
   if (isMapShard(ctx) && ctx.db.shardAdmission.identity.find(ctx.sender)?.inDuel) return;
   const activePlayer = requireControllingPlayer(ctx);
@@ -7847,6 +7865,7 @@ function applyDreadreaperDamage(ctx: any, requestedHits: number, clientPosition?
   else ctx.db.dreadreaperBoss.id.update(nextDreadreaper);
 }
 function applyVoltwardenDamage(ctx: any, requestedHits: number, clientPosition?: { x: number; y: number }) {
+  if (PERSONAL_BOSS_COMBAT) throw new SenderError("WildStat updated. Refresh to continue.");
   requireMapWorkload(ctx);
   if (isMapShard(ctx) && ctx.db.shardAdmission.identity.find(ctx.sender)?.inDuel) return;
   const activePlayer = requireControllingPlayer(ctx);
@@ -7915,6 +7934,7 @@ function applyVoltwardenDamage(ctx: any, requestedHits: number, clientPosition?:
   else ctx.db.voltwardenBoss.id.update(nextVoltwarden);
 }
 function applyGravebloomDamage(ctx: any, requestedHits: number, clientPosition?: { x: number; y: number }) {
+  if (PERSONAL_BOSS_COMBAT) throw new SenderError("WildStat updated. Refresh to continue.");
   requireMapWorkload(ctx);
   if (isMapShard(ctx) && ctx.db.shardAdmission.identity.find(ctx.sender)?.inDuel) return;
   const activePlayer = requireControllingPlayer(ctx);
@@ -7983,6 +8003,7 @@ function applyGravebloomDamage(ctx: any, requestedHits: number, clientPosition?:
   else ctx.db.gravebloomBoss.id.update(nextGravebloom);
 }
 function applyAegisPrimeDamage(ctx: any, requestedHits: number, clientPosition?: { x: number; y: number }) {
+  if (PERSONAL_BOSS_COMBAT) throw new SenderError("WildStat updated. Refresh to continue.");
   requireMapWorkload(ctx);
   if (isMapShard(ctx) && ctx.db.shardAdmission.identity.find(ctx.sender)?.inDuel) return;
   const activePlayer = requireControllingPlayer(ctx);
@@ -9140,26 +9161,6 @@ export const devUpdatePlayerSave = spacetimedb.reducer(
   },
 );
 
-// Stat saves reuse the server-owned loadout. No inventory decoding, appearance
-// rebuilding, or temporary movement-speed rewrite is needed for an ordinary kill.
-function saveCombatProgress(ctx: any, activePlayer: any, base: any, progress: CombatProgress, write = true) {
-  const next = mergeCombatStats(base, progress);
-  const changed = COMBAT_PROGRESS_FIELDS.some(field => field !== "enemyKills" && next[field] !== base[field]);
-  if (changed) {
-    if (write) updateSnapshotRow(ctx, "playerProgress", next);
-    const power = powerFieldsForProgress(ctx, next);
-    if (activePlayer.power !== power.power || activePlayer.powerLevel !== power.powerLevel) {
-      const updated = { ...activePlayer, ...power };
-      updateSnapshotRow(ctx, "player", updated);
-      syncPlayerMotionIdentity(ctx, playerWithMotion(ctx, updated));
-    }
-  }
-  const lifetime = ensurePlayerLifetime(ctx);
-  const kills = Number.isFinite(progress.enemyKills) ? BigInt(Math.max(0, Math.min(0xffffffff, Math.floor(progress.enemyKills)))) : lifetime.enemyKills;
-  if (kills > lifetime.enemyKills) ctx.db.playerLifetime.identity.update({ ...lifetime, enemyKills: kills });
-  return next;
-}
-
 export const savePlayerProgress = spacetimedb.reducer(
   {
     maxHp: t.f32(),
@@ -9190,25 +9191,9 @@ export const savePlayerProgress = spacetimedb.reducer(
     const current = ctx.db.playerProgress.identity.find(ctx.sender);
     const base = current ?? defaultPlayerProgress(ctx.sender);
     if (current && LOADOUT_FIELDS.every(field => progress[field] === base[field])) {
-      saveCombatProgress(ctx, activePlayer, base, progress);
       return;
     }
-    const bounded = (value: number, min: number, max: number, fallback: number) =>
-      Number.isFinite(value) ? Math.max(min, Math.min(max, value)) : fallback;
-    const normalized = {
-      maxHp: bounded(progress.maxHp, 1, MAX_PLAYER_STAT, base.maxHp),
-      damage: bounded(progress.damage, 1, MAX_PLAYER_STAT, base.damage),
-      attackRate: bounded(progress.attackRate, MIN_ATTACK_INTERVAL, 10, base.attackRate),
-      projectileSpeed: PLAYER_PROJECTILE_SPEED,
-      projectileCount: Number.isInteger(progress.projectileCount)
-        ? Math.max(1, Math.min(20, progress.projectileCount))
-        : base.projectileCount,
-      armor: bounded(progress.armor, 0, MAX_ARMOR, base.armor),
-      regen: bounded(progress.regen, 0, MAX_PLAYER_STAT, base.regen),
-      speed: bounded(progress.speed, 1, 2_000, base.speed),
-      bootsCollected: progress.bootsCollected === true,
-    };
-    const bootsCollected = base.bootsCollected || normalized.bootsCollected;
+    const bootsCollected = base.bootsCollected;
     const inventorySource = { ...base, identity: ctx.sender, bootsCollected };
     const inventory = inventoryForProgress(inventorySource);
     const inventoryJson = JSON.stringify(inventory);
@@ -9241,14 +9226,14 @@ export const savePlayerProgress = spacetimedb.reducer(
     }, inventory);
     const next = {
       identity: ctx.sender,
-      maxHp: Math.max(base.maxHp, normalized.maxHp),
-      damage: Math.max(base.damage, normalized.damage),
-      attackRate: Math.min(base.attackRate, normalized.attackRate),
+      maxHp: base.maxHp,
+      damage: base.damage,
+      attackRate: base.attackRate,
       projectileSpeed: PLAYER_PROJECTILE_SPEED,
-      projectileCount: Math.max(base.projectileCount, normalized.projectileCount),
+      projectileCount: base.projectileCount,
       attackRange: DEFAULT_ATTACK_RANGE,
-      armor: Math.max(base.armor, normalized.armor),
-      regen: Math.max(base.regen, normalized.regen),
+      armor: base.armor,
+      regen: base.regen,
       speed: playerBaseMovementSpeed(equippedFeet === TRAILBLAZER_BOOTS),
       speedOverride: base.speedOverride ?? 0,
       bootsCollected,
@@ -9287,11 +9272,6 @@ export const savePlayerProgress = spacetimedb.reducer(
         leaderboard.rightHandItem !== appearance.rightHandItem ||
         leaderboard.leftHandItem !== appearance.leftHandItem
       ) ctx.db.leaderboardEntry.identity.update({ ...leaderboard, ...appearance });
-    }
-    const lifetime = ensurePlayerLifetime(ctx);
-    const boundedKills = BigInt(Math.max(0, Math.min(4_294_967_295, Math.floor(progress.enemyKills))));
-    if (boundedKills > lifetime.enemyKills) {
-      ctx.db.playerLifetime.identity.update({ ...lifetime, enemyKills: boundedKills });
     }
     const presentation = {
       ...powerFieldsForProgress(ctx, next),
@@ -9416,6 +9396,14 @@ export const devDeliverDisconnectCompensation = spacetimedb.reducer(
     if (!isDatabaseOwnerIdentity(ctx.sender)) requireDeveloper(ctx);
     if (isMapShard(ctx)) throw new SenderError("Use the world connection.");
     deliverDisconnectCompensation(ctx, recipients, input => { applyGemBalanceChange(ctx, input); });
+  },
+);
+
+export const devDeliverCombatUpdateGift = spacetimedb.reducer(
+  { recipients: t.array(t.identity()) }, (ctx, { recipients }) => {
+    if (!isDatabaseOwnerIdentity(ctx.sender)) requireDeveloper(ctx);
+    if (isMapShard(ctx)) throw new SenderError("Use the world connection.");
+    deliverCombatUpdateGift(ctx, recipients, input => { applyGemBalanceChange(ctx, input); });
   },
 );
 
@@ -9624,17 +9612,54 @@ function awardRegularEnemyLoot(ctx: ReducerCtx<InferSchema<typeof spacetimedb>>,
   return next;
 }
 
-/** Compatibility batch endpoint for installed 0.692–0.693 clients. */
-export const recordRegularEnemyDefeats = spacetimedb.reducer(
-  { streamId: t.string(), sequence: t.u64(), mapId: t.string(), count: t.u16() },
+/** Only enemy identities/counts cross the wire; all reward values are server-owned. */
+export const recordEnemyDefeats = spacetimedb.reducer(
+  { streamId: t.string(), sequence: t.u64(), mapId: t.string(), enemies: t.array(t.object("EnemyDefeat", { enemy: t.string(), count: t.u16() })) },
   (ctx, batch) => {
     const player = requireControllingPlayer(ctx);
-    if (activeDuelFor(ctx, ctx.sender)) throw new SenderError("Enemy loot is unavailable during a duel.");
-    if (acceptRegularEnemyLootBatch(ctx, batch, player.mapId)) awardRegularEnemyLoot(ctx, batch.mapId, batch.count);
+    if (isMapShard(ctx) || activeDuelFor(ctx, ctx.sender)) throw new SenderError("Enemy rewards require your account world connection.");
+    const accepted = acceptEnemyDefeats(ctx, batch, player.mapId);
+    if (!accepted) return;
+    const base = ctx.db.playerProgress.identity.find(ctx.sender) ?? defaultPlayerProgress(ctx.sender);
+    if (accepted.rewards.some(reward => reward.type !== "boss")) {
+      const next = applyEnemyRewards(base, accepted.rewards, researchStatRewardMultiplier(ctx.db.playerResearch.identity.find(ctx.sender)));
+      const rewarded = awardRegularEnemyLoot(ctx, batch.mapId, accepted.lootCount, { progress: next });
+      updateSnapshotRow(ctx, "playerProgress", rewarded);
+      const power = powerFieldsForProgress(ctx, rewarded);
+      if (player.power !== power.power || player.powerLevel !== power.powerLevel) {
+        const nextPlayer = { ...player, ...power };
+        updateSnapshotRow(ctx, "player", nextPlayer);
+        syncPlayerMotionIdentity(ctx, playerWithMotion(ctx, nextPlayer));
+      }
+    }
+    for (const reward of accepted.rewards) {
+      if (reward.type !== "boss") continue;
+      const boss = personalBossDefinition(batch.mapId)!;
+      for (let clear = 0; clear < reward.count; clear++) {
+        if (boss.kind !== "procedural") shardRewardHandlers[boss.kind](ctx, ctx.sender);
+        else {
+          const map = generateMap(batch.mapId as `endless_${number}`);
+          const previous = ctx.db.proceduralProgress.identity.find(ctx.sender);
+          const row = { identity: ctx.sender, completed: Math.max(previous?.completed ?? 0, map.number) };
+          if (previous) ctx.db.proceduralProgress.identity.update(row); else ctx.db.proceduralProgress.insert(row);
+          const progress = ctx.db.playerProgress.identity.find(ctx.sender)!;
+          writeProgressAndPresentation(ctx, { ...progress, regen: Math.min(MAX_PLAYER_STAT, progress.regen + generatedBossStats(map).reward.amount * 10 * researchStatRewardMultiplier(ctx.db.playerResearch.identity.find(ctx.sender))) });
+        }
+      }
+    }
+    const lifetime = ensurePlayerLifetime(ctx);
+    ctx.db.playerLifetime.identity.update({ ...lifetime, enemyKills: lifetime.enemyKills + BigInt(accepted.count) });
   },
 );
 
-/** The same receipt covers both loot and its optional due stat checkpoint. */
+/** Retained wire shape: obsolete clients must update before submitting rewards. */
+export const recordRegularEnemyDefeats = spacetimedb.reducer(
+  { streamId: t.string(), sequence: t.u64(), mapId: t.string(), count: t.u16() },
+  (ctx, _batch) => { requireControllingPlayer(ctx); throw new SenderError("WildStat updated. Refresh to continue.");
+  },
+);
+
+/** Retired client-stat checkpoint. Never accept its supplied totals. */
 export const recordCombatCheckpoint = spacetimedb.reducer(
   { streamId: t.string(), sequence: t.u64(), mapId: t.string(), count: t.u16(),
     progress: t.option(t.object("CombatProgressCheckpoint", {
@@ -9642,42 +9667,19 @@ export const recordCombatCheckpoint = spacetimedb.reducer(
       armor: t.f64(), regen: t.f64(), enemyKills: t.u32(),
     })),
   },
-  (ctx, batch) => {
-    const player = requireControllingPlayer(ctx);
-    if (activeDuelFor(ctx, ctx.sender)) throw new SenderError("Enemy loot is unavailable during a duel.");
-    // Regular combat is client-simulated. An interrupted batch may belong to a
-    // previously unlocked map after reconnecting, but never to a locked map.
-    if (!acceptRegularEnemyLootBatch(ctx, batch, player.mapId,
-      () => canReplayRegularEnemyLoot(batch.mapId, ctx.db.playerProgress.identity.find(ctx.sender)))) return;
-    if (!batch.progress) { awardRegularEnemyLoot(ctx, batch.mapId, batch.count); return; }
-    const current = ctx.db.playerProgress.identity.find(ctx.sender);
-    const base = current ?? defaultPlayerProgress(ctx.sender);
-    const next = saveCombatProgress(ctx, player, base, batch.progress, false);
-    const rewarded = awardRegularEnemyLoot(ctx, batch.mapId, batch.count, { progress: next });
-    // One durable progress/snapshot write, even when a stat save also wins loot.
-    if (!current) insertSnapshotRow(ctx, "playerProgress", rewarded);
-    else if (!samePlayerProgressValues(base, rewarded)) updateSnapshotRow(ctx, "playerProgress", rewarded);
+  (ctx, _batch) => { requireControllingPlayer(ctx); throw new SenderError("WildStat updated. Refresh to continue.");
   },
 );
 
-// Compatibility endpoints for installed clients through 0.691. New clients use
-// record_combat_checkpoint; removing these wire names would break old apps.
-export const recordForestEnemyDefeat = spacetimedb.reducer({}, ctx => {
-  const player = requireControllingPlayer(ctx);
-  if (player.mapId === TUTORIAL_FOREST_MAP_ID && !activeDuelFor(ctx, ctx.sender)) awardRegularEnemyLoot(ctx, player.mapId, 1);
+// Keep historical wire names to return an explicit update error. All new reward
+// traffic uses record_enemy_defeats, including maps without item drops.
+export const recordForestEnemyDefeat = spacetimedb.reducer({}, ctx => { requireControllingPlayer(ctx); throw new SenderError("WildStat updated. Refresh to continue.");
 });
-export const recordDesertEnemyDefeat = spacetimedb.reducer({}, ctx => {
-  const player = requireControllingPlayer(ctx);
-  if (player.mapId === BEGINNER_DESERT_MAP_ID && !activeDuelFor(ctx, ctx.sender)) awardRegularEnemyLoot(ctx, player.mapId, 1);
+export const recordDesertEnemyDefeat = spacetimedb.reducer({}, ctx => { requireControllingPlayer(ctx); throw new SenderError("WildStat updated. Refresh to continue.");
 });
-export const recordSnowEnemyDefeat = spacetimedb.reducer({}, ctx => {
-  const player = requireControllingPlayer(ctx);
-  if (player.mapId === INTERMEDIATE_SNOWLANDS_MAP_ID && !activeDuelFor(ctx, ctx.sender)) awardRegularEnemyLoot(ctx, player.mapId, 1);
+export const recordSnowEnemyDefeat = spacetimedb.reducer({}, ctx => { requireControllingPlayer(ctx); throw new SenderError("WildStat updated. Refresh to continue.");
 });
-export const recordLavaEnemyDefeat = spacetimedb.reducer({}, ctx => {
-  const player = requireControllingPlayer(ctx);
-  if (![TUTORIAL_FOREST_MAP_ID, BEGINNER_DESERT_MAP_ID, INTERMEDIATE_SNOWLANDS_MAP_ID].includes(player.mapId) &&
-      !activeDuelFor(ctx, ctx.sender)) awardRegularEnemyLoot(ctx, player.mapId, 1);
+export const recordLavaEnemyDefeat = spacetimedb.reducer({}, ctx => { requireControllingPlayer(ctx); throw new SenderError("WildStat updated. Refresh to continue.");
 });
 
 export const myOnboarding = spacetimedb.view(
@@ -10917,6 +10919,7 @@ export const myProceduralBoss = spacetimedb.view(
 );
 
 export const prepareProceduralBoss = spacetimedb.reducer({ mapId:t.string() }, (ctx, {mapId}) => {
+  if (PERSONAL_BOSS_COMBAT) return;
   const player = requireControllingPlayer(ctx);
   if (player.mapId !== mapId) return;
   const key = proceduralBossKey(ctx, mapId);
@@ -10924,6 +10927,7 @@ export const prepareProceduralBoss = spacetimedb.reducer({ mapId:t.string() }, (
 });
 const proceduralHitArgs = { mapId:t.string(), bossKey:t.string(), encounter:t.u64(), hits:t.u32(), x:t.f64(), y:t.f64() };
 function applyProceduralBossHit(ctx: GameReducerContext, action: { mapId: string; bossKey: string; encounter: bigint; hits: number; x: number; y: number }) {
+  if (PERSONAL_BOSS_COMBAT) throw new SenderError("WildStat updated. Refresh to continue.");
   const player = requireControllingPlayer(ctx);
   if (activeDuelFor(ctx, ctx.sender)) return;
   const progress = ctx.db.playerProgress.identity.find(ctx.sender);

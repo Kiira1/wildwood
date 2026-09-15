@@ -1,3 +1,4 @@
+import { createPersonalBosses } from "./game/runtime/personal-bosses";
 import { createLocalCorpses } from "./game/runtime/local-corpses";
 import { ONBOARDING_MAP_ID, ONBOARDING_WORLD } from "../shared/onboarding";
 import { createOutOfCombatSpeed } from "./game/runtime/out-of-combat-speed";
@@ -521,11 +522,16 @@ import {
     },
   });
   let playerCombat: PlayerCombatController;
+  const personalBosses = createPersonalBosses({
+    mapId: () => currentMapId, identity: () => coop?.localIdentity?.() ?? "local-player",
+    alive: () => player.hp > 0, now: () => Date.now(),
+    defeated: mapId => coop?.recordRegularEnemyDefeat?.(mapId, "boss"),
+  });
   const proceduralBoss = createProceduralBossController({
-    mapId: () => currentMapId, state: mapId => coop?.proceduralMapState(mapId) ?? {boss:null},
+    mapId: () => currentMapId, state: mapId => ({ ...coop?.proceduralMapState(mapId), boss: personalBosses.proceduralState(mapId) }),
     serverNow: () => coop?.serverNowMs?.() ?? Date.now(), enemies, player, spawn: spawnFromSite,
     revealPortal: () => mapController.startProceduralPortalCutscene(),
-    hit: (mapId,bossKey,encounter,hits,x,y) => coop?.hitProceduralBoss(mapId,bossKey,encounter,hits,x,y),
+    hit: () => {},
     damagePlayer: damage => playerCombat.damagePlayer(damage), burst: spawnBurst, shot: projectileStore.spawnEnemyShot,
   });
   const enemySimulation = createEnemySimulation(
@@ -543,37 +549,7 @@ import {
       remotePlayers: () => (inTutorial() ? [] : coop?.remotePlayers?.() ?? [])
         .filter((remote) => !coop?.remotePlayerDeath?.(remote.id)),
       remoteCombatStats: (identity) => coop?.remoteCombatStats?.(identity),
-      remoteBoss: () => {
-        if (isProceduralMap(currentMapId)) return proceduralBoss.remoteTarget();
-        const target = currentMapId === TUTORIAL_FOREST_MAP_ID
-          ? { kind: "dragon" as const, state: boss }
-          : currentMapId === BEGINNER_DESERT_MAP_ID
-            ? { kind: "spider" as const, state: spiderBoss }
-            : currentMapId === INTERMEDIATE_SNOWLANDS_MAP_ID
-              ? { kind: "frostclaw" as const, state: frostclawBoss }
-              : currentMapId === ADVANCED_LAVA_WASTES_MAP_ID
-                ? { kind: "magmalisk" as const, state: magmaliskBoss }
-                : currentMapId === INFERNAL_DEPTHS_MAP_ID
-                  ? { kind: "gloomroot" as const, state: gloomrootBoss }
-                  : currentMapId === WATER_REACH_MAP_ID
-                    ? { kind: "tidewyrm" as const, state: tidewyrmBoss }
-                    : currentMapId === SAMURAI_GARDEN_MAP_ID
-                      ? { kind: "koiShogun" as const, state: koiShogunBoss }
-                      : currentMapId === CLOUDSPIRE_MAP_ID
-                        ? { kind: "tempestKirin" as const, state: tempestKirinBoss }
-                        : currentMapId === MOONFEN_MAP_ID
-                          ? { kind: "miremaw" as const, state: miremawBoss }
-                          : currentMapId === CRYSTAL_HOLLOWS_MAP_ID ? { kind: "prismshell" as const, state: prismshellBoss } : currentMapId === CLOCKWORK_RUINS_MAP_ID ? { kind: "ironhorn" as const, state: ironhornBoss } : currentMapId === ION_CITADEL_MAP_ID ? { kind: "aegisPrime" as const, state: aegisPrimeBoss } : currentMapId === VERDANT_CATACOMBS_MAP_ID ? { kind: "gravebloom" as const, state: gravebloomBoss } : currentMapId === NEON_BASTION_MAP_ID ? { kind: "voltwarden" as const, state: voltwardenBoss } : currentMapId === DUSKFALL_ORCHARD_MAP_ID ? { kind: "dreadreaper" as const, state: dreadreaperBoss } : null;
-        if (!target || target.state.encounter === null) return null;
-        return {
-          kind: target.kind,
-          encounter: target.state.encounter,
-          alive: !target.state.dead,
-          x: target.state.x,
-          y: target.state.y,
-          radius: target.state.r,
-        };
-      },
+      remoteBoss: () => null,
       spawnDamageNumber,
       spawnBurst,
     },
@@ -662,9 +638,10 @@ import {
     minAttackInterval: MIN_ATTACK_INTERVAL,
     effectiveArmor,
     isDueling,
-    hitGeneratedBoss: proceduralBoss.hit,
+    hitGeneratedBoss: (enemy, damage) => { if (!enemy.generatedBoss) return false; personalBosses.hit(currentMapId, damage); spawnDamageNumber(enemy.x, enemy.y, damage, false); return true; },
+    hitPersonalBoss: (damage, x, y, critical) => { personalBosses.hit(currentMapId, damage); spawnDamageNumber(x, y, damage, critical); },
     scheduleEnemyRespawn: regularEnemyRespawnBoost.schedule,
-    recordRegularEnemyDefeat: (mapId) => coop?.recordRegularEnemyDefeat?.(mapId),
+    recordRegularEnemyDefeat: (mapId, enemy) => coop?.recordRegularEnemyDefeat?.(mapId, enemy),
     incrementKills: () => { totalKills += 1; },
     drainBossHitResults: () => coop?.drainBossHitResults?.() ?? [],
     currentMapId: () => currentMapId,
@@ -834,6 +811,7 @@ import {
   const { activePortal, secondaryPortal, portalIsUnlocked, startDragonPortalCutscene, startSnowlandsPortalCutscene, startLavaPortalCutscene, startInfernalPortalCutscene, startWaterPortalCutscene, startSamuraiPortalCutscene } = mapController;
 
   const bossController = createBossController({
+    serverOwnsRewards: true,
     boss,
     spiderBoss,
     frostclawBoss,
@@ -855,48 +833,29 @@ import {
     miremawBogBursts,
     prismshellCrystalBursts, ironhornCrystalBursts, dreadreaperCrystalBursts, voltwardenCrystalBursts, gravebloomCrystalBursts, aegisPrimeCrystalBursts,
     player,
-    getDragonBoss: () => coop?.dragonBoss?.(),
-    getSpiderBoss: () => coop?.spiderBoss?.(),
-    getFrostclawBoss: () => coop?.frostclawBoss?.(),
-    getMagmaliskBoss: () => coop?.magmaliskBoss?.(),
-    getGloomrootBoss: () => coop?.gloomrootBoss?.(),
-    getTidewyrmBoss: () => coop?.tidewyrmBoss?.(),
-    getKoiShogunBoss: () => coop?.koiShogunBoss?.(),
-    getTempestKirinBoss: () => coop?.tempestKirinBoss?.(),
-    getMiremawBoss: () => coop?.miremawBoss?.(),
-    getPrismshellBoss: () => coop?.prismshellBoss?.(), getIronhornBoss: () => coop?.ironhornBoss?.(), getDreadreaperBoss: () => coop?.dreadreaperBoss?.(), getVoltwardenBoss: () => coop?.voltwardenBoss?.(), getGravebloomBoss: () => coop?.gravebloomBoss?.(), getAegisPrimeBoss: () => coop?.aegisPrimeBoss?.(),
-    getDragonResult: () => coop?.dragonResult?.(),
-    getSpiderResult: () => coop?.spiderResult?.(),
-    getFrostclawResult: () => coop?.frostclawResult?.(),
-    getMagmaliskResult: () => coop?.magmaliskResult?.(),
-    getGloomrootResult: () => coop?.gloomrootResult?.(),
-    getTidewyrmResult: () => coop?.tidewyrmResult?.(),
-    getKoiShogunResult: () => coop?.koiShogunResult?.(),
-    getTempestKirinResult: () => coop?.tempestKirinResult?.(),
-    getMiremawResult: () => coop?.miremawResult?.(),
-    getPrismshellResult: () => coop?.prismshellResult?.(), getIronhornResult: () => coop?.ironhornResult?.(), getDreadreaperResult: () => coop?.dreadreaperResult?.(), getVoltwardenResult: () => coop?.voltwardenResult?.(), getGravebloomResult: () => coop?.gravebloomResult?.(), getAegisPrimeResult: () => coop?.aegisPrimeResult?.(),
+    getDragonBoss: () => personalBosses.state("tutorial_forest"),
+    getSpiderBoss: () => personalBosses.state("beginner_desert"),
+    getFrostclawBoss: () => personalBosses.state("intermediate_snowlands"),
+    getMagmaliskBoss: () => personalBosses.state("advanced_lava_wastes"),
+    getGloomrootBoss: () => personalBosses.state("infernal_depths"),
+    getTidewyrmBoss: () => personalBosses.state("water_reach"),
+    getKoiShogunBoss: () => personalBosses.state("samurai_garden"),
+    getTempestKirinBoss: () => personalBosses.state("cloudspire"),
+    getMiremawBoss: () => personalBosses.state("moonfen"),
+    getPrismshellBoss: () => personalBosses.state("crystal_hollows"), getIronhornBoss: () => personalBosses.state("clockwork_ruins"), getDreadreaperBoss: () => personalBosses.state("duskfall_orchard"), getVoltwardenBoss: () => personalBosses.state("neon_bastion"), getGravebloomBoss: () => personalBosses.state("verdant_catacombs"), getAegisPrimeBoss: () => personalBosses.state("ion_citadel"),
+    getDragonResult: () => personalBosses.result("tutorial_forest"),
+    getSpiderResult: () => personalBosses.result("beginner_desert"),
+    getFrostclawResult: () => personalBosses.result("intermediate_snowlands"),
+    getMagmaliskResult: () => personalBosses.result("advanced_lava_wastes"),
+    getGloomrootResult: () => personalBosses.result("infernal_depths"),
+    getTidewyrmResult: () => personalBosses.result("water_reach"),
+    getKoiShogunResult: () => personalBosses.result("samurai_garden"),
+    getTempestKirinResult: () => personalBosses.result("cloudspire"),
+    getMiremawResult: () => personalBosses.result("moonfen"),
+    getPrismshellResult: () => personalBosses.result("crystal_hollows"), getIronhornResult: () => personalBosses.result("clockwork_ruins"), getDreadreaperResult: () => personalBosses.result("duskfall_orchard"), getVoltwardenResult: () => personalBosses.result("neon_bastion"), getGravebloomResult: () => personalBosses.result("verdant_catacombs"), getAegisPrimeResult: () => personalBosses.result("ion_citadel"),
     localIdentity: () => coop?.localIdentity?.(),
     serverNowMs: () => coop?.serverNowMs?.() ?? Date.now(),
-    bossTargets: () => {
-      const sharedTargets = coop?.bossTargets?.() ?? [];
-      if (sharedTargets.length > 0) return sharedTargets;
-      const targets: Array<{ id: string; x: number; y: number }> = [];
-      const localPosition = coop?.regularEnemyLocalPosition?.() ?? player;
-      targets.push({
-        id: coop?.localIdentity?.() ?? "local-player",
-        x: localPosition.x,
-        y: localPosition.y,
-      });
-      for (const remote of coop?.remotePlayers?.() ?? []) {
-        if (coop?.remotePlayerDeath?.(remote.id)) continue;
-        targets.push({
-          id: remote.id,
-          x: remote.simulationX ?? remote.x,
-          y: remote.simulationY ?? remote.y,
-        });
-      }
-      return targets;
-    },
+    bossTargets: () => player.hp > 0 ? [{ id: coop?.localIdentity?.() ?? "local-player", x: player.x, y: player.y }] : [],
     running: () => session.isRunning(),
     currentMapIsDesert: () => currentMapId === BEGINNER_DESERT_MAP_ID,
     currentMapIsSnow: () => currentMapId === INTERMEDIATE_SNOWLANDS_MAP_ID,

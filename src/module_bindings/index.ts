@@ -83,6 +83,7 @@ import DevCopyPlayerCombatStatsReducer from "./dev_copy_player_combat_stats_redu
 import DevDeleteBugReportReducer from "./dev_delete_bug_report_reducer";
 import DevDeleteLegacyPlayerReducer from "./dev_delete_legacy_player_reducer";
 import DevDeliverAlphaTesterGiftsReducer from "./dev_deliver_alpha_tester_gifts_reducer";
+import DevDeliverCombatUpdateGiftReducer from "./dev_deliver_combat_update_gift_reducer";
 import DevDeliverDisconnectCompensationReducer from "./dev_deliver_disconnect_compensation_reducer";
 import DevRepairDisplayNameReducer from "./dev_repair_display_name_reducer";
 import DevRepairPlayerJoinedAtReducer from "./dev_repair_player_joined_at_reducer";
@@ -112,6 +113,7 @@ import PulseDuelReducer from "./pulse_duel_reducer";
 import RecordCombatCheckpointReducer from "./record_combat_checkpoint_reducer";
 import RecordConnectionDiagnosticReducer from "./record_connection_diagnostic_reducer";
 import RecordDesertEnemyDefeatReducer from "./record_desert_enemy_defeat_reducer";
+import RecordEnemyDefeatsReducer from "./record_enemy_defeats_reducer";
 import RecordForestEnemyDefeatReducer from "./record_forest_enemy_defeat_reducer";
 import RecordLavaEnemyDefeatReducer from "./record_lava_enemy_defeat_reducer";
 import RecordPlayerDeathReducer from "./record_player_death_reducer";
@@ -1165,6 +1167,7 @@ const reducersSchema = __reducers(
   __reducerSchema("dev_delete_bug_report", DevDeleteBugReportReducer),
   __reducerSchema("dev_delete_legacy_player", DevDeleteLegacyPlayerReducer),
   __reducerSchema("dev_deliver_alpha_tester_gifts", DevDeliverAlphaTesterGiftsReducer),
+  __reducerSchema("dev_deliver_combat_update_gift", DevDeliverCombatUpdateGiftReducer),
   __reducerSchema("dev_deliver_disconnect_compensation", DevDeliverDisconnectCompensationReducer),
   __reducerSchema("dev_repair_display_name", DevRepairDisplayNameReducer),
   __reducerSchema("dev_repair_player_joined_at", DevRepairPlayerJoinedAtReducer),
@@ -1194,6 +1197,7 @@ const reducersSchema = __reducers(
   __reducerSchema("record_combat_checkpoint", RecordCombatCheckpointReducer),
   __reducerSchema("record_connection_diagnostic", RecordConnectionDiagnosticReducer),
   __reducerSchema("record_desert_enemy_defeat", RecordDesertEnemyDefeatReducer),
+  __reducerSchema("record_enemy_defeats", RecordEnemyDefeatsReducer),
   __reducerSchema("record_forest_enemy_defeat", RecordForestEnemyDefeatReducer),
   __reducerSchema("record_lava_enemy_defeat", RecordLavaEnemyDefeatReducer),
   __reducerSchema("record_player_death", RecordPlayerDeathReducer),

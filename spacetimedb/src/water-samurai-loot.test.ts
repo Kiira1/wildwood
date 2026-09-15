@@ -1,7 +1,8 @@
+import { reportEnemy } from "../../tests/helpers/enemy-defeat";
 import { expect, it, vi } from "vitest";
 import { CLOUDSPIRE_ARMOR, CLOUDSPIRE_BOW, CLOUDSPIRE_HELMET, MOONFEN_ARMOR, WATER_ARMOR, SKY_BOW, SAMURAI_BOW, SAMURAI_HAT, weaponDamageMultiplier, itemMaxHealthMultiplier, itemRegenerationMultiplier } from "../../shared/items";
 import { inventoryFromSave, inventoryItemQuantity, serialiseInventory } from "../../src/game/inventory";
-import { crystalFixture, server } from "../../tests/helpers/crystal-hollows-fixture";
+import { crystalFixture } from "../../tests/helpers/crystal-hollows-fixture";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
 it.each([
@@ -19,7 +20,7 @@ it.each([
   const armorMax = mapId === "water_reach" ? 100 : 125;
   const bowMax = mapId === "water_reach" ? 1000 : 2000;
   f.ctx.random.integerInRange = vi.fn((_min, max) => max === armorMax ? armorRoll : bowRoll);
-  f.run(server.recordLavaEnemyDefeat);
+  reportEnemy(f);
   expect(f.ctx.random.integerInRange).toHaveBeenCalledWith(1, armorMax);
   expect(f.ctx.random.integerInRange).toHaveBeenCalledWith(1, bowMax);
   expect([...f.db.playerItemDrop.iter()].map((row: any) => row.itemId)).toEqual(expected);
@@ -34,8 +35,8 @@ it("keeps Water Reach equipment through reloads and repeat drops without duplica
   const f = crystalFixture();
   f.patch("player", { mapId: "water_reach" });
   f.ctx.random.integerInRange = () => 1;
-  f.run(server.recordLavaEnemyDefeat);
-  f.run(server.recordLavaEnemyDefeat);
+  reportEnemy(f);
+  reportEnemy(f);
   const progress = f.db.playerProgress.identity.find(f.ctx.sender);
   const inventory = inventoryFromSave(progress.inventoryJson, "", "", WATER_ARMOR, false, false, SKY_BOW);
   const reloaded = inventoryFromSave(serialiseInventory(inventory), "", "", WATER_ARMOR, false, false, SKY_BOW);
@@ -53,7 +54,7 @@ it("keeps Water Reach equipment through reloads and repeat drops without duplica
 it.each(["home_exterior", "crystal_hollows", "endless_1"])("does not roll these drops in %s", mapId => {
   const f = crystalFixture(); f.patch("player", { mapId });
   f.ctx.random.integerInRange = vi.fn(() => 1);
-  f.run(server.recordLavaEnemyDefeat);
+  if (mapId === "home_exterior") expect(() => reportEnemy(f)).toThrow(); else reportEnemy(f);
   expect(f.ctx.random.integerInRange).not.toHaveBeenCalled();
 });
 
@@ -67,24 +68,24 @@ it.each([
   f.patch("player", { mapId });
   let roll = wins + 1;
   f.ctx.random.integerInRange = vi.fn((_min, max) => max === outcomes ? roll : max);
-  f.run(server.recordLavaEnemyDefeat);
+  reportEnemy(f);
   expect([...f.db.playerItemDrop.iter()]).toEqual([]);
   roll = wins;
-  f.run(server.recordLavaEnemyDefeat);
+  reportEnemy(f);
   expect(f.ctx.random.integerInRange).toHaveBeenCalledWith(1, outcomes);
   expect([...f.db.playerItemDrop.iter()]).toMatchObject([{ itemId, alreadyOwned: false }]);
   const progress = f.db.playerProgress.identity.find(f.ctx.sender);
   const inventory = inventoryFromSave(progress.inventoryJson, "", slot === "HEAD" ? itemId : "", slot === "CHEST" ? itemId : "", false, false, slot === "HAND" ? itemId : "");
   expect(inventoryItemQuantity(inventory, itemId)).toBe(1);
   expect(slot === "HEAD" ? inventory.equippedHead : slot === "HAND" ? inventory.equippedRightHand : inventory.equippedChest).toBe(itemId);
-  f.run(server.recordLavaEnemyDefeat);
+  reportEnemy(f);
   expect(JSON.parse(f.db.playerProgress.identity.find(f.ctx.sender).inventoryJson).filter((id: string) => id === itemId)).toHaveLength(1);
 });
 
 it("can grant all three Cloudspire items from independent successful rolls", () => {
   const f = crystalFixture(); f.patch("player", { mapId: "cloudspire" });
   f.ctx.random.integerInRange = () => 1;
-  f.run(server.recordLavaEnemyDefeat);
+  reportEnemy(f);
   const saved = inventoryFromSave(f.db.playerProgress.identity.find(f.ctx.sender).inventoryJson, "", "", "", false);
   for (const id of [CLOUDSPIRE_HELMET, CLOUDSPIRE_BOW, CLOUDSPIRE_ARMOR]) expect(inventoryItemQuantity(saved, id)).toBe(1);
   expect(weaponDamageMultiplier(CLOUDSPIRE_BOW)).toBe(2.2);
