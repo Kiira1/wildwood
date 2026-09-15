@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.698": [
+    "Join the WildStat Discord using the new button beside the chat tabs.",
+  ],
   "0.697": [
     "Added an eye button below your profile to show or hide other players. It starts off, remembers your choice, and has a 20-second cooldown.",
     "Reduced remote-player updates while hidden and refreshes the online-player count every two seconds.",
@@ -1839,6 +1842,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.698": "2026-09-15",
   "0.697": "2026-09-15",
   "0.696": "2026-09-15",
   "0.695": "2026-09-15",

@@ -3334,6 +3334,11 @@
 #chatPanel.is-large .chat-channels { grid-row: 1; min-width: 0; }
 #chatPanel.is-large #chatMessages { grid-row: 2; }
 #chatPanel.is-large #chatForm { grid-row: 3; }
+.chat-channel-navigation { display: grid; grid-template-columns: minmax(0, 1fr) 44px; align-items: center; }
+.chat-discord-link { display: grid; place-items: center; width: 44px; height: 44px; color: #fff; border-left: 1px solid rgba(255,255,255,.2); text-decoration: none; touch-action: manipulation; }
+.chat-discord-link svg { width: 22px; height: 22px; }
+.chat-discord-link:hover { color: #cdd1ff; }
+.chat-discord-link:focus-visible { outline: 1px solid #fff; outline-offset: -3px; }
 .chat-channel-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; }
 .chat-channel-tabs button { min-width: 0; min-height: 44px; margin: 0; padding: 8px 5px; border: 0; border-radius: 0; background: transparent; box-shadow: none; color: #fff; font-size: 13px; }
 .chat-channel-label { position: relative; display: inline-block; }
