@@ -188,6 +188,13 @@ describe("progress persistence rules", () => {
     expect(progressCovers({ ...merged, cosmeticHead: "different" }, pending)).toBe(false);
   });
 
+  it("uses server ownership despite queued inventory from before a completion or removal", () => {
+    const completed = '["basic_paper_hat","trailblazer_boots","moonfen_armor"]';
+    expect(mergeProgress({ ...saved, inventoryJson: completed }, pending).inventoryJson).toBe(completed);
+    expect(mergeProgress({ ...saved, inventoryJson: "[]" }, pending).inventoryJson).toBe("[]");
+    expect(mergeProgress({ ...saved, inventoryJson: completed }, pending).equippedHead).toBe(pending.equippedHead);
+  });
+
   it("preserves the server-owned Samurai Garden unlock while merging local gains", () => {
     expect(mergeProgress({ ...saved, samuraiUnlocked: true }, pending).samuraiUnlocked).toBe(true);
   });

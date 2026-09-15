@@ -198,6 +198,9 @@ export const MAP_IDS: readonly string[] = [
 ];
 
 export const PROTOCOL_VERSION = 104;
+// Add a previous version only after reviewing wire/schema and security compatibility.
+// Protocol 103 must remain blocked: it predates authoritative kill rewards.
+export const COMPATIBLE_PROTOCOL_VERSIONS: readonly number[] = [PROTOCOL_VERSION];
 export const SPACETIME_AUTH_ISSUER = "https://auth.spacetimedb.com/oidc";
 export const SPACETIME_AUTH_CLIENT_ID = "client_03426HMgkAEmdC23XTZRKZ";
 

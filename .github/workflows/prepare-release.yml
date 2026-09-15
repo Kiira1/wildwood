@@ -1,0 +1,43 @@
+name: Prepare release artifacts
+run-name: Prepare release ${{ inputs.ticket }}
+on:
+  workflow_dispatch:
+    inputs:
+      ticket:
+        description: Unique release operation ID
+        required: true
+        type: string
+      ref:
+        description: Commit or release branch to prepare
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            mobile/package-lock.json
+      - name: Validate and build before announcing an update
+        run: |
+          npm ci
+          npm ci --prefix mobile
+          npm run check:release
+          npm run typecheck:coop
+          npm run test:unit
+          npm run build:client
+          git rev-parse HEAD > dist/release-commit.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: prepared-web
+          path: dist
+          retention-days: 7

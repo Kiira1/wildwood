@@ -1,9 +1,9 @@
-import { claimedGiftItemIds } from "../../../shared/item-gifts";
+import { canonicalItemId, itemDefinition } from "../../../shared/items";
 import { BASE_ATTACK_RANGE, BASE_PROJECTILE_SPEED } from "../constants";
 import { clamp } from "../math";
 import { inventoryFromSave, serialiseInventory, TRAILBLAZER_BOOTS, type EquipmentSlot, type InventoryState } from "../inventory";
 import type { PlayerState } from "./types";
-import { setPlayerBaseMaxHealth } from "./player-health";
+import { applyPlayerMaxHealthMultiplier, setPlayerBaseMaxHealth } from "./player-health";
 import type { PlayerProgress, ProgressSave } from "../../coop/services/progress";
 import {
   DEFAULT_ATTACK_INTERVAL,
@@ -48,6 +48,32 @@ export function createProgressController(dependencies: ProgressDependencies) {
   let startupKind: "new" | "returning" | null = null;
   let lifetimeKillsIdentity = "";
   let movementSpeedOverride = 0;
+  let ownershipJson = "";
+  let ownedItems: string[] = [];
+
+  function reconcileInventory(saved: PlayerProgress) {
+    // Cache decoding, but compare the current bag too: reconnect hydration can
+    // miss the one-shot completion callback even when the snapshot is unchanged.
+    if (ownershipJson !== saved.inventoryJson) {
+      let parsed: unknown;
+      try { parsed = JSON.parse(saved.inventoryJson); } catch { return; }
+      if (!Array.isArray(parsed)) return;
+      ownedItems = parsed.map(canonicalItemId).filter(item => item !== undefined);
+      ownershipJson = saved.inventoryJson;
+    }
+    const inventory = dependencies.inventory;
+    if (inventory.itemIds.length === ownedItems.length &&
+      inventory.itemIds.every((item, index) => item === ownedItems[index])) return;
+    inventory.itemIds = [...ownedItems];
+    // Keep local loadout choices. Server ownership still determines what can
+    // be equipped; upgrading/destroying an item must not leave ghost equipment.
+    for (const field of ["equippedHead", "equippedChest", "equippedFeet", "equippedRightHand", "equippedLeftHand",
+      "cosmeticHead", "cosmeticChest", "cosmeticFeet", "cosmeticRightHand", "cosmeticLeftHand"] as const) {
+      if (itemDefinition(inventory[field]) && !ownedItems.includes(inventory[field])) inventory[field] = "";
+    }
+    applyPlayerMaxHealthMultiplier(dependencies.player, dependencies.healthMultiplier());
+    dependencies.renderInventory();
+  }
 
   function save(immediate = false) {
     const { player, inventory, bootsPickup } = dependencies;
@@ -101,13 +127,7 @@ export function createProgressController(dependencies: ProgressDependencies) {
         player.regen = boundedProgressValue(saved.regen, player.regen, 0, MAX_PLAYER_STAT);
         player.projectileCount = saved.projectileCount;
         if (player.baseMaxHp !== saved.maxHp) setPlayerBaseMaxHealth(player, saved.maxHp, dependencies.healthMultiplier());
-        // A gift can arrive after initial load. Merge its permanent ownership
-        // without replacing locally edited equipment or consumable quantities.
-        const granted = claimedGiftItemIds(saved.inventoryJson).filter(item => !dependencies.inventory.itemIds.includes(item));
-        if (granted.length) {
-          dependencies.inventory.itemIds.push(...granted);
-          dependencies.renderInventory();
-        }
+        reconcileInventory(saved);
         applyMovementSpeed(saved, dependencies.inventory.equippedFeet === TRAILBLAZER_BOOTS);
       }
       return;

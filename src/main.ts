@@ -1,3 +1,5 @@
+import { createScheduledUpdateController, createScheduledUpdateView } from "./ui/scheduled-update-controller";
+import { enforceLatestVersion } from "./app/version";
 import { createPersonalBosses } from "./game/runtime/personal-bosses";
 import { createLocalCorpses } from "./game/runtime/local-corpses";
 import { ONBOARDING_MAP_ID, ONBOARDING_WORLD } from "../shared/onboarding";
@@ -1795,7 +1797,22 @@ import {
     cancel: () => { canvasRuntime.resize(); profileWindow.close(); setCurrentMap(TUTORIAL_FOREST_MAP_ID); session.stop(); session.setHasStarted(false); loadProgress(); finishStartup(); },
   });
 
+  const scheduledUpdate = createScheduledUpdateController({
+    now: () => Date.now(), release: () => coop?.releaseWindow?.() ?? null,
+    forcedUpdateRequired: () => coop?.accountState?.().updating === true,
+    playing: () => session.hasStarted(), pause: paused => setGameplayPause("scheduled-update", paused),
+    save: () => saveProgress(true), drain: async () => await coop?.drainForUpdate?.() ?? true,
+    acknowledge: async id => { await coop?.acknowledgeRelease?.(id); },
+    rememberSession: version => coop?.prepareUpdateReload?.(version) ?? false,
+    render: createScheduledUpdateView(),
+    checkVersion: () => enforceLatestVersion(GAME_VERSION, version => startupCoordinator.showGameUpdating(version), updateHandoff),
+  });
+  const updateHandoff = { canReload: scheduledUpdate.canReload, beforeReload: scheduledUpdate.prepareReload };
+  window.setInterval(scheduledUpdate.tick, 250);
+  document.addEventListener("visibilitychange", scheduledUpdate.tick);
+
   startupCoordinator = createStartupCoordinator({
+    updateHandoff,
     version: GAME_VERSION,
     gameUpdateGate: gameUpdateGateEl,
     accountState: () => coop?.accountState?.(),

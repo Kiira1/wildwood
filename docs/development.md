@@ -210,3 +210,7 @@ Publishing the server is a separate production operation; pushing `main` only de
 - GitHub Pages workflow: `.github/workflows/pages.yml`
 - Production SpacetimeDB database: `wildwood-coop` on `maincloud`
 - SpacetimeAuth redirect URI: `https://tydoskus.github.io/wildwood/`
+
+## Planned updates
+
+Use [scheduled releases](scheduled-releases.md) to prepare artifacts before a five-minute in-game countdown, wait for progress acknowledgements, and publish only changed servers. The immediate release helper above remains available for urgent hotfixes.

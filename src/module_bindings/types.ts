@@ -1717,6 +1717,19 @@ export const RegularEnemyLootCursor = __t.object("RegularEnemyLootCursor", {
 });
 export type RegularEnemyLootCursor = __Infer<typeof RegularEnemyLootCursor>;
 
+export const ReleaseAcknowledgement = __t.object("ReleaseAcknowledgement", {
+  identity: __t.identity(),
+  releaseId: __t.string(),
+  acknowledgedAt: __t.timestamp(),
+});
+export type ReleaseAcknowledgement = __Infer<typeof ReleaseAcknowledgement>;
+
+export const ReleaseNotice = __t.object("ReleaseNotice", {
+  id: __t.u32(),
+  releaseJson: __t.string(),
+});
+export type ReleaseNotice = __Infer<typeof ReleaseNotice>;
+
 export const ResearchCompletionSchedule = __t.object("ResearchCompletionSchedule", {
   scheduledId: __t.u64(),
   scheduledAt: __t.scheduleAt(),

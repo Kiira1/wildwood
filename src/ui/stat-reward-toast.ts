@@ -9,6 +9,7 @@ export type StatRewardToastModel = StatRewardPresentation & {
   stat: string;
   amount: string;
   value: number;
+  capped: boolean;
 };
 
 const STAT_REWARD_PRESENTATION: Readonly<Record<string, StatRewardPresentation>> = {
@@ -51,21 +52,22 @@ export function formatStatRewardToastAmount(stat: string, value: number) {
   return `+${formatCompactNumber(value)}`;
 }
 
-export function statRewardToastModel(text: string): StatRewardToastModel | null {
+export function statRewardToastModel(text: string, attackSpeedCapped = false): StatRewardToastModel | null {
   const match = /^(\+\S+)\s+(.+)$/.exec(text.trim());
   if (!match) return null;
   const stat = match[2];
   const presentation = STAT_REWARD_PRESENTATION[stat];
   const value = statRewardValue(match[1]);
   if (!presentation || value === null) return null;
-  return { stat, amount: match[1], value, ...presentation };
+  const capped = stat === "ATK/SEC" && attackSpeedCapped;
+  return { stat, amount: capped ? "Capped" : match[1], value: capped ? 0 : value, capped, ...presentation };
 }
 
-export function createStatRewardToast(text: string, color: string) {
+export function createStatRewardToast(text: string, color: string, attackSpeedCapped = false) {
   const entry = document.createElement("div");
   entry.className = "pickup";
 
-  const model = statRewardToastModel(text);
+  const model = statRewardToastModel(text, attackSpeedCapped);
   if (!model) {
     entry.textContent = text;
     entry.style.color = color;
@@ -73,6 +75,7 @@ export function createStatRewardToast(text: string, color: string) {
   }
 
   entry.classList.add("stat-reward-toast");
+  entry.classList.toggle("is-capped", model.capped);
   entry.style.setProperty("--stat-reward-accent", color);
   entry.setAttribute("role", "status");
   entry.setAttribute("aria-label", `${model.label} ${model.amount}`);

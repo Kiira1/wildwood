@@ -1,3 +1,4 @@
+import { MIN_ATTACK_INTERVAL } from "../../shared/rules";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createRuntimeHudController } from "./runtime-hud-controller";
 import { renderPlayerHud } from "./hud";
@@ -57,10 +58,12 @@ class TestElement {
 
 function setupHud() {
   const pickupLog = new TestElement();
+  const player = { attackRate: 1.56 };
   const controller = createRuntimeHudController({
     elements: { pickupLog, message: new TestElement(), itemDropReveal: new TestElement() },
+    player,
   } as unknown as Parameters<typeof createRuntimeHudController>[0]);
-  return { controller, pickupLog };
+  return { controller, pickupLog, player };
 }
 
 beforeEach(() => {
@@ -94,6 +97,22 @@ it("keeps the account-wide online count through a regional handoff, then clears 
 });
 
 describe("runtime reward notifications", () => {
+  it("changes an existing attack-speed popup to Capped and keeps repeated capped rewards there", () => {
+    const { controller, pickupLog, player } = setupHud();
+    controller.logPickup("+0.25 ATK/SEC", "#fff");
+    const entry = pickupLog.children[0];
+    expect(entry.querySelector(".stat-reward-value")?.textContent).toBe("+0.25");
+    player.attackRate = MIN_ATTACK_INTERVAL;
+    controller.logPickup("+0.25 ATK/SEC", "#fff");
+    controller.logPickup("+0.25 ATK/SEC", "#fff");
+    expect(pickupLog.children).toHaveLength(1);
+    expect(entry.querySelector(".stat-reward-value")?.textContent).toBe("Capped");
+    expect(entry.getAttribute("aria-label")).toBe("Attack Speed Capped");
+    expect(entry.classList.contains("is-capped")).toBe(true);
+    controller.logPickup("+1 DAMAGE", "#fff");
+    expect(pickupLog.children[1].querySelector(".stat-reward-value")?.textContent).toBe("+1");
+  });
+
   it("updates only the amount on the same card without restarting its entrance", () => {
     const { controller, pickupLog } = setupHud();
     controller.logPickup("+1 DAMAGE", "#ff655a");

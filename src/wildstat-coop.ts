@@ -889,6 +889,11 @@ export const wildstatCoop = {
     return startupTelemetryRuntime.beginStage(stage);
   },
   retryConnection,
+  drainForUpdate: () => progressionService.drainPendingProgress(),
+  acknowledgeRelease: async (id: string) => {
+    if (!connection?.isActive) throw new Error("Not connected");
+    await connection.reducers.acknowledgeRelease({ id });
+  },
   prepareUpdateReload(version: string) {
     return accountService.prepareUpdateReload(version);
   },

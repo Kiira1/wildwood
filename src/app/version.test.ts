@@ -35,3 +35,32 @@ describe("game version comparison", () => {
     expect(isNewerGameVersion("index.html", "0.484")).toBe(false);
   });
 });
+
+describe("acknowledged update navigation", () => {
+  it("waits for the handoff instead of reloading while a save is pending", async () => {
+    vi.resetModules(); vi.useFakeTimers();
+    const replace = vi.fn();
+    vi.stubGlobal("window", { location: { href: "https://example.test/game", replace }, history: { replaceState: vi.fn() }, setTimeout });
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ version: "0.696" }) })));
+    const { enforceLatestVersion } = await import("./version");
+    let finish!: (ok: boolean) => void;
+    const detected = vi.fn();
+    enforceLatestVersion("0.695", detected, { canReload: () => true, beforeReload: () => new Promise(resolve => { finish = resolve; }) });
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(replace).not.toHaveBeenCalled(); expect(detected).not.toHaveBeenCalled();
+    finish(true); await vi.advanceTimersByTimeAsync(701);
+    expect(replace).toHaveBeenCalledWith("https://example.test/game?v=0.696");
+    vi.useRealTimers();
+  });
+  it("does not navigate if a planned update is still holding the client", async () => {
+    vi.resetModules(); vi.useFakeTimers();
+    const replace = vi.fn(), beforeReload = vi.fn(async () => true);
+    vi.stubGlobal("window", { location: { href: "https://example.test/game", replace }, history: { replaceState: vi.fn() }, setTimeout });
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ version: "0.696" }) })));
+    const { enforceLatestVersion } = await import("./version");
+    enforceLatestVersion("0.695", vi.fn(), { canReload: () => false, beforeReload });
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(beforeReload).not.toHaveBeenCalled(); expect(replace).not.toHaveBeenCalled();
+    vi.useRealTimers();
+  });
+});

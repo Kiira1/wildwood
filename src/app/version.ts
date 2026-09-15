@@ -25,7 +25,9 @@ export function isNewerGameVersion(candidate: unknown, current: string) {
   return false;
 }
 
-export function enforceLatestVersion(version: string, onUpdateDetected?: UpdateDetected) {
+export function enforceLatestVersion(version: string, onUpdateDetected?: UpdateDetected, handoff?: {
+  canReload: () => boolean; beforeReload: (version: string) => Promise<boolean>;
+}) {
   clearLoadedVersionQuery(version);
   if (versionCheckInFlight || reloadScheduled) return;
   versionCheckInFlight = true;
@@ -33,15 +35,16 @@ export function enforceLatestVersion(version: string, onUpdateDetected?: UpdateD
   // detected, but it is intentionally infrequent (boot plus two-minute poll).
   fetch(`version.json?cache=${Date.now()}`, { cache: "no-store" })
     .then((response) => response.ok ? response.json() : null)
-    .then((release) => {
+    .then(async (release) => {
       // CDN edges can briefly return an older version.json than the bundled
       // client. Only a strictly newer release is an update.
       if (!isNewerGameVersion(release?.version, version)) return;
       const url = new URL(window.location.href);
       if (url.searchParams.get("v") === release.version || url.searchParams.has("code") || url.searchParams.has("error")) return;
+      if (handoff && (!handoff.canReload() || !await handoff.beforeReload(release.version) || !handoff.canReload())) return;
       reloadScheduled = true;
-      // A short handoff makes an automatic reload understandable instead of
-      // looking like a failed sign-in or a stalled connection.
+      // The active game has acknowledged pending rewards/loadout before we
+      // navigate. Keep the existing session-preserving update presentation.
       onUpdateDetected?.(release.version);
       url.searchParams.set("v", release.version);
       window.setTimeout(() => window.location.replace(url.toString()), 700);

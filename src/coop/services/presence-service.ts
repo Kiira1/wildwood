@@ -1,3 +1,4 @@
+import { parseReleaseWindow } from "../../../shared/release-window";
 import { createRemoteCorpses } from "./remote-corpses";
 import { recordConnectionDiagnostic } from "./connection-diagnostic-runtime";
 import { isProceduralMap } from "../../../shared/procedural-maps";
@@ -683,6 +684,12 @@ export function createPresenceService(dependencies: PresenceServiceDependencies)
     corpses.add(players.get(identity)!, death, presentations.get(identity)?.skinTone);
   }
 
+  let releaseWindow = parseReleaseWindow(null);
+  function upsertReleaseNotice(row: { id: number; releaseJson: string }) {
+    if (row.id !== 0) return;
+    releaseWindow = parseReleaseWindow(row.releaseJson);
+    dependencies.changes.notify();
+  }
   function upsertWorldStatus(row: { id: number; onlinePlayers: number }) {
     if (row.id !== 0) return;
     onlinePlayerCount = Math.max(0, row.onlinePlayers);
@@ -898,8 +905,10 @@ export function createPresenceService(dependencies: PresenceServiceDependencies)
       upsertPlayerMapFrame,
       upsertPlayerDeathFrame,
       upsertWorldStatus,
+      upsertReleaseNotice,
     },
     api: {
+      releaseWindow: () => releaseWindow,
       localState: () => localState,
       syncSpeed(speed: number) {
         if (

@@ -1,4 +1,10 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.696": [
+    "Fixed upgraded equipment missing from your inventory after reconnecting.",
+    "Added advance countdowns and progress-saving checks for future planned updates.",
+    "Attack Speed reward popups now say Capped when you reach the limit.",
+    "Improved the green reward timer text and number shadows.",
+  ],
   "0.695": [
     "20 gems for existing players—thanks for testing the new combat changes!",
     "Boss fights are now personal, including Endless bosses. Defeat your own boss to earn its rewards and unlock the next map.",
@@ -1829,6 +1835,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.696": "2026-09-15",
   "0.695": "2026-09-15",
   "0.694": "2026-09-15",
   "0.693": "2026-09-14",

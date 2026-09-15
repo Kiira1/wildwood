@@ -41,6 +41,7 @@ type StartupCoordinatorDependencies = {
   startGame: () => void;
   retryConnection: () => boolean | void;
   prepareUpdateReload: (latestVersion: string) => void;
+  updateHandoff?: { canReload: () => boolean; beforeReload: (version: string) => Promise<boolean> };
 };
 
 /** Coordinates startup readiness, account protocol gating, and version polling. */
@@ -168,14 +169,14 @@ export function createStartupCoordinator(dependencies: StartupCoordinatorDepende
       machine.dispatch({ type: "update-detected" });
     }
     dependencies.gameUpdateGate.hidden = machine.state().value !== "updating";
-    if (account?.updating) enforceLatestVersion(dependencies.version, showGameUpdating);
+    if (account?.updating) enforceLatestVersion(dependencies.version, showGameUpdating, dependencies.updateHandoff);
   }
 
   function startVersionPolling() {
-    enforceLatestVersion(dependencies.version, showGameUpdating);
-    window.setInterval(() => enforceLatestVersion(dependencies.version, showGameUpdating), 120_000);
+    enforceLatestVersion(dependencies.version, showGameUpdating, dependencies.updateHandoff);
+    window.setInterval(() => enforceLatestVersion(dependencies.version, showGameUpdating, dependencies.updateHandoff), 120_000);
     window.setInterval(() => {
-      if (dependencies.accountState()?.updating) enforceLatestVersion(dependencies.version, showGameUpdating);
+      if (dependencies.accountState()?.updating) enforceLatestVersion(dependencies.version, showGameUpdating, dependencies.updateHandoff);
     }, 5_000);
   }
 

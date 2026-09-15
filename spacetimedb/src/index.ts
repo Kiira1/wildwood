@@ -1,3 +1,4 @@
+import { releaseNotice, releaseAcknowledgement, writeReleaseWindow, acknowledgeReleaseWindow } from "./release-control";
 import { PERSONAL_BOSS_COMBAT, personalBossDefinition } from "../../shared/personal-bosses";
 import { enemyDefeatBudget, acceptEnemyDefeats } from "./enemy-defeats";
 import { applyEnemyRewards } from "../../shared/enemy-defeats";
@@ -215,6 +216,7 @@ import {
   PLAYER_SPEED,
   playerBaseMovementSpeed,
   PROTOCOL_VERSION,
+  COMPATIBLE_PROTOCOL_VERSIONS,
   SAMURAI_GARDEN_MAP_ID,
   SPIDER_MAX_HP,
   SPIDER_REWARD_DAMAGE,
@@ -1747,6 +1749,8 @@ const spacetimedb = schema({
   playerAccountStatus,
   playerLegalConsent,
   worldStatus,
+  releaseAcknowledgement,
+  releaseNotice,
   leaderboardRefreshState,
   moduleMigrationState,
   playerLifetime,
@@ -3508,7 +3512,7 @@ function requireSession(ctx: any) {
 }
 
 function isSupportedProtocol(protocolVersion: number) {
-  return protocolVersion === PROTOCOL_VERSION;
+  return COMPATIBLE_PROTOCOL_VERSIONS.includes(protocolVersion);
 }
 
 function requireCurrentLegalConsent(ctx: any) {
@@ -8101,6 +8105,19 @@ export const damageAegisPrimeFromPosition = spacetimedb.reducer(
   (ctx, { hits, x, y }) => applyAegisPrimeDamage(ctx, hits, { x, y }),
 );
 
+
+// Release control stays on the account database; no map publish is needed for notices.
+export const setReleaseWindow = spacetimedb.reducer(
+  { id: t.string(), version: t.string(), phase: t.string(), startsAt: t.f64(), reload: t.bool() },
+  (ctx, args) => {
+    if (!isDatabaseOwnerIdentity(ctx.sender)) throw new SenderError("Database owner required.");
+    writeReleaseWindow(ctx, args);
+  },
+);
+export const acknowledgeRelease = spacetimedb.reducer({ id: t.string() }, (ctx, { id }) => {
+  requireControllingPlayer(ctx);
+  acknowledgeReleaseWindow(ctx, id);
+});
 
 export const registerProtocol = spacetimedb.reducer(
   { protocolVersion: t.u32() },

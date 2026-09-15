@@ -1,3 +1,4 @@
+import { MIN_ATTACK_INTERVAL } from "../../shared/rules";
 import type { PlayerState, RuntimeDuelReplay, RuntimeDuelState } from "../game/runtime/types";
 import { createDuelResultStatRow } from "./duel-result";
 import { renderPlayerHud } from "./hud";
@@ -106,18 +107,20 @@ export function createRuntimeHudController(dependencies: RuntimeHudDependencies)
   }
 
   function logPickup(text: string, color: string) {
-    const model = statRewardToastModel(text);
+    const attackSpeedCapped = dependencies.player.attackRate <= MIN_ATTACK_INTERVAL + 1e-7;
+    const model = statRewardToastModel(text, attackSpeedCapped);
     const active = model ? activeStatRewards.get(model.stat) : undefined;
     if (model && active && active.entry.parentElement === elements.pickupLog) {
-      active.total += model.value;
-      const amount = formatStatRewardToastAmount(model.stat, active.total);
+      active.total = model.capped ? 0 : active.total + model.value;
+      const amount = model.capped ? model.amount : formatStatRewardToastAmount(model.stat, active.total);
+      active.entry.classList.toggle("is-capped", model.capped);
       active.entry.querySelector<HTMLElement>(".stat-reward-value")!.textContent = amount;
       active.entry.setAttribute("aria-label", `${model.label} ${amount}`);
       refreshStatRewardLifetime(model.stat, active);
       return;
     }
 
-    const entry = createStatRewardToast(text, color);
+    const entry = createStatRewardToast(text, color, attackSpeedCapped);
     elements.pickupLog.appendChild(entry);
     if (!model) {
       window.setTimeout(() => entry.remove(), 2_400);

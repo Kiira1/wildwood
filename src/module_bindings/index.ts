@@ -37,6 +37,7 @@ import {
 import AcceptDuelReducer from "./accept_duel_reducer";
 import AcceptTermsReducer from "./accept_terms_reducer";
 import AcknowledgeBalanceApologyGiftReducer from "./acknowledge_balance_apology_gift_reducer";
+import AcknowledgeReleaseReducer from "./acknowledge_release_reducer";
 import AcknowledgeShardRewardReducer from "./acknowledge_shard_reward_reducer";
 import AcknowledgeShardRewardsReducer from "./acknowledge_shard_rewards_reducer";
 import AttackForestRewardPrototypeReducer from "./attack_forest_reward_prototype_reducer";
@@ -145,6 +146,7 @@ import SetPlayerBlockedReducer from "./set_player_blocked_reducer";
 import SetPlayerMotionInterestReducer from "./set_player_motion_interest_reducer";
 import SetPlayerSpriteReducer from "./set_player_sprite_reducer";
 import SetProfileIconReducer from "./set_profile_icon_reducer";
+import SetReleaseWindowReducer from "./set_release_window_reducer";
 import SetSkinToneReducer from "./set_skin_tone_reducer";
 import SetSpeedReducer from "./set_speed_reducer";
 import ShardMemberReadyReducer from "./shard_member_ready_reducer";
@@ -249,6 +251,7 @@ import PrismshellBossRow from "./prismshell_boss_table";
 import PrismshellResultRow from "./prismshell_result_table";
 import ProceduralBossRow from "./procedural_boss_table";
 import ProceduralProgressRow from "./procedural_progress_table";
+import ReleaseNoticeRow from "./release_notice_table";
 import SpiderBossRow from "./spider_boss_table";
 import SpiderResultRow from "./spider_result_table";
 import TempestKirinBossRow from "./tempest_kirin_boss_table";
@@ -854,6 +857,17 @@ const tablesSchema = __schema({
       { name: 'procedural_progress_identity_key', constraint: 'unique', columns: ['identity'] },
     ],
   }, ProceduralProgressRow),
+  releaseNotice: __table({
+    name: 'release_notice',
+    indexes: [
+      { accessor: 'id', name: 'release_notice_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+    ],
+    constraints: [
+      { name: 'release_notice_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, ReleaseNoticeRow),
   spiderBoss: __table({
     name: 'spider_boss',
     indexes: [
@@ -1121,6 +1135,7 @@ const reducersSchema = __reducers(
   __reducerSchema("accept_duel", AcceptDuelReducer),
   __reducerSchema("accept_terms", AcceptTermsReducer),
   __reducerSchema("acknowledge_balance_apology_gift", AcknowledgeBalanceApologyGiftReducer),
+  __reducerSchema("acknowledge_release", AcknowledgeReleaseReducer),
   __reducerSchema("acknowledge_shard_reward", AcknowledgeShardRewardReducer),
   __reducerSchema("acknowledge_shard_rewards", AcknowledgeShardRewardsReducer),
   __reducerSchema("attack_forest_reward_prototype", AttackForestRewardPrototypeReducer),
@@ -1229,6 +1244,7 @@ const reducersSchema = __reducers(
   __reducerSchema("set_player_motion_interest", SetPlayerMotionInterestReducer),
   __reducerSchema("set_player_sprite", SetPlayerSpriteReducer),
   __reducerSchema("set_profile_icon", SetProfileIconReducer),
+  __reducerSchema("set_release_window", SetReleaseWindowReducer),
   __reducerSchema("set_skin_tone", SetSkinToneReducer),
   __reducerSchema("set_speed", SetSpeedReducer),
   __reducerSchema("shard_member_ready", ShardMemberReadyReducer),

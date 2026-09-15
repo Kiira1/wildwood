@@ -1,4 +1,3 @@
-import { preserveClaimedGiftItems } from "../../../shared/item-gifts";
 import { rescaleEndgameProgress } from "../../../shared/endgame-power-rescale";
 import { compressLegacyMapPower } from "../../../shared/map-power-rescale";
 import {
@@ -174,7 +173,9 @@ export function mergeProgress(saved: PlayerProgress, pending: ProgressSave): Pla
     regen: Math.max(saved.regen, pending.regen),
     speed: Math.max(saved.speed, pending.speed),
     bootsCollected: saved.bootsCollected || pending.bootsCollected,
-    inventoryJson: preserveClaimedGiftItems(pending.inventoryJson, saved.inventoryJson),
+    // Ownership comes from the server. A queued loadout save can predate an
+    // upgrade completion, destruction, or drop, including across reconnects.
+    inventoryJson: saved.inventoryJson,
     equippedHead: pending.equippedHead,
     equippedChest: pending.equippedChest,
     equippedFeet: pending.equippedFeet,

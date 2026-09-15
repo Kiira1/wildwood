@@ -43,6 +43,7 @@ export type BaseSubscriptionHandlers = {
   accountStatus: RowHandler;
   removeAccountStatus: RowHandler;
   worldStatus: RowHandler;
+  releaseNotice: RowHandler;
   progress: RowHandler;
   research: RowHandler;
   removeResearch: RowHandler;
@@ -107,6 +108,7 @@ type BaseSubscriptionHandlerSources = {
     upsertMotionIdentity: BaseSubscriptionHandlers["motionIdentity"];
     removeMotionIdentity: BaseSubscriptionHandlers["removeMotionIdentity"];
     upsertWorldStatus: BaseSubscriptionHandlers["worldStatus"];
+    upsertReleaseNotice: BaseSubscriptionHandlers["releaseNotice"];
   };
   profile: {
     upsertNameTag: RowHandler;
@@ -233,6 +235,7 @@ export function createBaseSubscriptionHandlers(sources: BaseSubscriptionHandlerS
     accountStatus: profile.upsertAccountStatus,
     removeAccountStatus: profile.removeAccountStatus,
     worldStatus: presence.upsertWorldStatus,
+    releaseNotice: presence.upsertReleaseNotice,
     progress: progression.upsertProgress,
     research: progression.upsertResearch,
     removeResearch: progression.removeResearch,
@@ -356,6 +359,8 @@ export function startBaseSubscription(dependencies: BaseSubscriptionDependencies
   connection.db.playerAccountStatus.onInsert((_ctx, row) => { if (shouldHandle()) handlers.accountStatus(row); });
   connection.db.playerAccountStatus.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.accountStatus(row); });
   connection.db.playerAccountStatus.onDelete((_ctx, row) => { if (shouldHandle()) handlers.removeAccountStatus(row); });
+  connection.db.releaseNotice.onInsert((_ctx, row) => { if (shouldHandle()) handlers.releaseNotice(row); });
+  connection.db.releaseNotice.onUpdate((_ctx, _old, row) => { if (shouldHandle()) handlers.releaseNotice(row); });
   connection.db.worldStatus.onInsert((_ctx, row) => { if (shouldHandle()) handlers.worldStatus(row); });
   connection.db.worldStatus.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.worldStatus(row); });
   connection.db.playerProgress.onInsert((_ctx, row) => { if (shouldHandle()) handlers.progress(row); });
@@ -499,6 +504,7 @@ export function startBaseSubscription(dependencies: BaseSubscriptionDependencies
       ...(dependencies.includeDeveloperTables ? [tables.devAccessAudit, tables.devBugReports, tables.devForestRewardPrototype] : []),
       tables.playerAccountStatus.where((status) => status.identity.eq(dependencies.identity)),
       tables.worldStatus,
+      tables.releaseNotice,
       tables.playerProgress.where((progress) => progress.identity.eq(dependencies.identity)),
       tables.playerResearch.where((research) => research.identity.eq(dependencies.identity)),
       tables.activeResearch.where((research) => research.identity.eq(dependencies.identity)),
@@ -532,6 +538,7 @@ export function startBaseSubscription(dependencies: BaseSubscriptionDependencies
           for (const row of connection.db.devForestRewardPrototype.iter()) handlers.forestPrototype(row);
           for (const row of connection.db.playerAccountStatus.iter()) handlers.accountStatus(row);
           for (const row of connection.db.worldStatus.iter()) handlers.worldStatus(row);
+          for (const row of connection.db.releaseNotice.iter()) handlers.releaseNotice(row);
           for (const row of connection.db.playerProgress.iter()) handlers.progress(row);
           for (const row of connection.db.playerResearch.iter()) handlers.research(row);
           for (const row of connection.db.activeResearch.iter()) handlers.activeResearch(row);

@@ -1,3 +1,4 @@
+import { MOONFEN_ARMOR, CLOUDSPIRE_BOW } from "../../../shared/items";
 import { ALPHA_TESTER_GIFT_ITEM } from "../../../shared/item-gifts";
 import { mergeProgress } from "../../coop/services/progress";
 import { describe, expect, it, vi } from "vitest";
@@ -94,4 +95,41 @@ describe("loaded progress reconciliation", () => {
     expect(state.inventory.itemIds).toEqual([...baseItems, ALPHA_TESTER_GIFT_ITEM]);
     expect(renderInventory).toHaveBeenCalledOnce();
   });
+
+  it("repairs a bag after missed completion hydration and removes items held by upgrades", () => {
+    const state = createGameBootstrap();
+    let saved = { ...savedProgress(), inventoryJson: JSON.stringify(["basic_paper_hat", "starter_stone", CLOUDSPIRE_BOW]) };
+    const renderInventory = vi.fn();
+    const controller = createProgressController({
+      player: state.player, inventory: state.inventory, bootsPickup: state.bootsPickup,
+      legacyStorageKey: "unused", getSavedProgress: () => saved,
+      saveRemoteProgress: vi.fn(), localIdentity: () => "player", lifetimeEnemyKills: () => 0,
+      isDeveloper: () => false, getTotalKills: () => 0, setTotalKills: vi.fn(),
+      researchVitalityRank: () => 0, healthMultiplier: () => 1,
+      setAppliedVitalityRank: vi.fn(), renderInventory, onLoaded: vi.fn(),
+    });
+    controller.load();
+    state.inventory.equippedRightHand = CLOUDSPIRE_BOW;
+    const pending = { ...saved, enemyKills: 0 };
+    saved = mergeProgress({ ...saved, inventoryJson: JSON.stringify([...state.inventory.itemIds, MOONFEN_ARMOR]) }, pending);
+    controller.load();
+    expect(state.inventory.itemIds).toContain(MOONFEN_ARMOR);
+    expect(state.inventory.equippedRightHand).toBe(CLOUDSPIRE_BOW);
+
+    // No new completion event and even the same server snapshot must repair
+    // a stale runtime bag after reconnect, without duplicating the reward.
+    state.inventory.itemIds = state.inventory.itemIds.filter(item => item !== MOONFEN_ARMOR);
+    renderInventory.mockClear();
+    controller.load(); controller.load();
+    expect(state.inventory.itemIds.filter(item => item === MOONFEN_ARMOR)).toHaveLength(1);
+    expect(renderInventory).toHaveBeenCalledOnce();
+
+    state.inventory.equippedChest = MOONFEN_ARMOR;
+    saved = { ...saved, inventoryJson: pending.inventoryJson };
+    controller.load();
+    expect(state.inventory.itemIds).not.toContain(MOONFEN_ARMOR);
+    expect(state.inventory.equippedChest).toBe("");
+    expect(state.inventory.equippedRightHand).toBe(CLOUDSPIRE_BOW);
+  });
+
 });

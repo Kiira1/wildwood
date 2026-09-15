@@ -43,7 +43,10 @@
     "sharding:smoke": "tsx scripts/sharding/smoke-local.ts",
     "commerce:serve": "tsx services/gem-verifier/server.ts",
     "commerce:typecheck": "tsc -p services/gem-verifier/tsconfig.json",
-    "commerce:test": "vitest run services/gem-verifier/handler.test.ts spacetimedb/src/gem-store-events.test.ts spacetimedb/src/gem-purchase-service.test.ts"
+    "commerce:test": "vitest run services/gem-verifier/handler.test.ts spacetimedb/src/gem-store-events.test.ts spacetimedb/src/gem-purchase-service.test.ts",
+    "release:prepare": "node scripts/releases/cli.mjs prepare",
+    "release:rollout": "node scripts/releases/cli.mjs rollout",
+    "release:cancel": "node scripts/releases/cli.mjs cancel"
   },
   "dependencies": {
     "spacetimedb": "2.9.0"

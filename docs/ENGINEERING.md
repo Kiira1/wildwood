@@ -35,7 +35,7 @@ Keep static definitions and pure calculations outside `main.ts`. `main.ts` is a 
 - Run `npm run build:client` before every player-facing commit. Generated `dist/` files are never committed; GitHub Pages builds the same artifact in CI.
 - Run `npm run typecheck:coop`, `npm run test:unit`, `npm run build:client`, `npm run check:release`, and `git diff --check` before release.
 - Run `npm run test:unit` when changing combat, inventory, duel replay, or progress persistence rules.
-- Use `npm run release:live` for a complete client-only release. Use `npm run release -- <version>` only when preparing release/cache versions manually, then add the matching entry in `src/app/changelog.ts`.
+- Use the prepared countdown flow in [scheduled-releases.md](scheduled-releases.md) for planned releases after its one-time activation. `npm run release:live` remains the immediate client-only hotfix path. Use `npm run release -- <version>` only when preparing release/cache versions manually, then add the matching entry in `src/app/changelog.ts`.
 - For incompatible server changes, update the shared protocol constant, publish Maincloud and matching map shards, regenerate bindings when reducer/schema signatures change, then deploy the matching client.
 - Never publish production with destructive database flags.
 - Keep pending saves scoped to player identity. Never share browser-pending progress across guest and account identities.

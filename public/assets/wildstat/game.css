@@ -976,7 +976,7 @@
   }
 
   .respawn-boost-status[hidden] { display: none; }
-  .respawn-boost-status span { font-variant-numeric: tabular-nums; }
+  .respawn-boost-status span { font-variant-numeric: tabular-nums; text-shadow: inherit; }
 
   .respawn-ad-prompt {
     position: fixed;
@@ -3530,3 +3530,21 @@
 .profile-avatar-column { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 0 0 auto; }
 .profile-heart-total { display: flex; align-items: center; justify-content: center; gap: 4px; color: #fff; font-size: 14px; font-weight: 900; line-height: 1; white-space: nowrap; }
 .profile-heart-total > span:first-child { font-size: 15px; -webkit-text-stroke: 0; text-shadow: none; }
+
+/* Match the ad reward timer; countdowns never take layout space. */
+.scheduled-update {
+  position: fixed; top: calc(env(safe-area-inset-top, 0px) + clamp(64px, 12vh, 112px)); left: 50%;
+  transform: translateX(-50%); z-index: 100000; pointer-events: none;
+  color: #72ef58; font: 900 var(--font-readable-min)/1.2 var(--font-rounded); letter-spacing: .025em;
+  text-align: center; text-shadow: 1px 2px 0 #000; max-width: calc(100% - 24px);
+  font-variant-numeric: tabular-nums;
+}
+.scheduled-update[hidden] { display: none; }
+.scheduled-update > span { text-shadow: inherit; }
+.scheduled-update--blocking {
+  inset: 0; transform: none; max-width: none; display: grid; place-items: center;
+  padding: max(24px, env(safe-area-inset-top)) 24px max(24px, env(safe-area-inset-bottom));
+  pointer-events: auto; background: #0b0d10ed; font-size: 14px;
+}
+
+.stat-reward-toast.is-capped .stat-reward-arrow { visibility: hidden; }
