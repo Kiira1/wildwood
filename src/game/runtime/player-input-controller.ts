@@ -1,8 +1,10 @@
+import { createDesktopMovement, type DesktopMovementOptions } from "./desktop-movement";
+
 export type MovementInputSource = "keyboard" | "touch" | "none";
 export type Movement = { x: number; y: number; source: MovementInputSource };
 
 export type PlayerInputController = {
-  movement: () => Movement;
+  movement: (dt?: number) => Movement;
   clear: () => void;
   stopTouchMove: () => void;
   keys: { clear: () => void };
@@ -48,17 +50,19 @@ export function radialJoystickInput(
   };
 }
 
-/** Owns keyboard, touch joystick, player taps, and browser zoom prevention. */
+/** Owns keyboard, desktop pointing, touch joystick, player taps, and zoom prevention. */
 export function createPlayerInputController(options: {
   canvas: HTMLCanvasElement;
   joystick: HTMLElement;
   stick: HTMLElement;
   running: () => boolean;
-  onTapPlayer: (clientX: number, clientY: number) => void;
+  onTapPlayer: (clientX: number, clientY: number) => boolean | void;
   onEscape: () => boolean;
+  desktop?: DesktopMovementOptions;
 }): PlayerInputController {
   const { canvas, joystick, stick, running, onTapPlayer, onEscape } = options;
   const keys = new Set<string>();
+  const desktop = options.desktop && createDesktopMovement(canvas, options.desktop, onTapPlayer);
   const touch = { active: false, id: null as number | null, originX: 0, originY: 0, x: 0, y: 0, moved: false };
 
   function clear() {
@@ -67,6 +71,8 @@ export function createPlayerInputController(options: {
   }
 
   function stopTouchMove() {
+    // Existing travel/modal callers stop all pointing input, including a click destination.
+    desktop?.clear();
     touch.active = false;
     touch.id = null;
     touch.x = 0;
@@ -80,6 +86,7 @@ export function createPlayerInputController(options: {
     if (!running() || touch.active) return;
     const point = event.changedTouches[0];
     if (!point) return;
+    desktop?.clear();
     touch.active = true;
     touch.id = point.identifier;
     touch.originX = point.clientX;
@@ -116,13 +123,15 @@ export function createPlayerInputController(options: {
   }
 
   window.addEventListener("keydown", (event) => {
-    if (event.code === "Escape" && onEscape()) return;
+    if (event.code === "Escape") { desktop?.clear(); if (onEscape()) return; }
     if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
     if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(event.code)) event.preventDefault();
     keys.add(event.code);
+    if (["KeyA", "KeyD", "KeyW", "KeyS", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.code)) desktop?.clear();
   });
   window.addEventListener("keyup", (event) => keys.delete(event.code));
   window.addEventListener("blur", () => clear());
+  document.addEventListener("visibilitychange", () => { if (document.hidden) clear(); });
   window.addEventListener("wheel", (event) => { if (event.ctrlKey) event.preventDefault(); }, { passive: false });
   canvas.addEventListener("touchstart", (event) => {
     event.preventDefault();
@@ -133,15 +142,25 @@ export function createPlayerInputController(options: {
     moveTouch(event);
   }, { passive: false });
   canvas.addEventListener("touchend", endTouch, { passive: false });
-  canvas.addEventListener("touchcancel", endTouch, { passive: false });
-  canvas.addEventListener("click", (event) => onTapPlayer(event.clientX, event.clientY));
+  canvas.addEventListener("touchcancel", stopTouchMove, { passive: false });
+  canvas.addEventListener("click", (event) => {
+    // Mouse/pen taps are handled on press; touch taps use touchend.
+    if (!desktop || event.detail === 0) onTapPlayer(event.clientX, event.clientY);
+  });
 
   return {
-    movement: () => {
+    movement: (dt) => {
       const left = keys.has("KeyA") || keys.has("ArrowLeft");
       const right = keys.has("KeyD") || keys.has("ArrowRight");
       const up = keys.has("KeyW") || keys.has("ArrowUp");
       const down = keys.has("KeyS") || keys.has("ArrowDown");
+      const keyboard = left || right || up || down;
+      if (keyboard || touch.active) desktop?.clear();
+      const pointing = !keyboard && !touch.active ? desktop?.movement(dt) : undefined;
+      if (pointing && (pointing.x || pointing.y)) {
+        // Reuse the existing desktop movement protocol; no extra network messages.
+        return { ...pointing, source: "keyboard" };
+      }
       return {
         x: (right ? 1 : 0) - (left ? 1 : 0) + touch.x,
         y: (down ? 1 : 0) - (up ? 1 : 0) + touch.y,

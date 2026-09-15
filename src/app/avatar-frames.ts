@@ -20,11 +20,16 @@ function paint(element: HTMLElement) {
   if (element.dataset.avatarFrame === frame) return;
   element.dataset.avatarFrame = frame;
   let overlay = element.querySelector<HTMLImageElement>(":scope > .avatar-frame-art");
-  if (frame === "none") { overlay?.remove(); return; }
+  let glow = element.querySelector<HTMLElement>(":scope > .avatar-frame-glow");
+  if (frame === "none") { overlay?.remove(); glow?.remove(); return; }
   if (!overlay) {
     overlay = document.createElement("img"); overlay.className = "avatar-frame-art";
     overlay.src = AVATAR_FRAME_ASSET; overlay.alt = ""; overlay.setAttribute("aria-hidden", "true");
     element.append(overlay);
+  }
+  if (!glow) {
+    glow = document.createElement("span"); glow.className = "avatar-frame-glow";
+    glow.setAttribute("aria-hidden", "true"); element.append(glow);
   }
 }
 

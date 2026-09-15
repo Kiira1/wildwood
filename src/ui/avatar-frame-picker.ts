@@ -49,7 +49,11 @@ export function createAvatarFramePicker(actions: SupporterActions, showMessage: 
   for (const frame of ["none", "silver", "gold"] as const) {
     const button = document.createElement("button"); button.type = "button"; button.dataset.frame = frame;
     const preview = document.createElement("span"); preview.className = "avatar-frame-choice-art";
-    if (frame !== "none") { const image = document.createElement("img"); image.src = AVATAR_FRAME_ASSET; image.alt = ""; preview.append(image); }
+    if (frame !== "none") {
+      const image = document.createElement("img"); image.src = AVATAR_FRAME_ASSET; image.alt = "";
+      const glow = document.createElement("span"); glow.className = "avatar-frame-glow"; glow.setAttribute("aria-hidden", "true");
+      preview.append(image, glow);
+    }
     const name = document.createElement("span"); name.textContent = frame[0].toUpperCase() + frame.slice(1);
     button.append(preview, name); button.setAttribute("aria-label", `Use ${frame} frame`); button.disabled = true;
     button.addEventListener("click", () => void run(async () => { const value = await actions.setAvatarFrame(frame); showMessage("FRAME UPDATED", "#72ef58"); return value; }));

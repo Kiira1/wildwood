@@ -1,4 +1,9 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.706": [
+    "Desktop players can click to move or hold the mouse button to steer. Keyboard controls remain available.",
+    "Silver supporter frames are brighter and easier to see.",
+    "Silver and Gold frames now have a slowly moving glow in chat and profiles.",
+  ],
   "0.705": [
     "Faster portal connection setup and improved recovery when returning to the game.",
     "Fixed supporter frames in chat and profiles, with improved frame fit.",

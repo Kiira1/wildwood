@@ -488,8 +488,14 @@ import {
     joystick: joystickEl,
     stick: stickEl,
     running: () => session.isRunning(),
-    onTapPlayer: (x, y) => { if (!inTutorial() || onboarding?.canOpenProfile()) openPlayerAtScreenPoint(x, y); },
+    onTapPlayer: (x, y) => (!inTutorial() || onboarding?.canOpenProfile()) ? openPlayerAtScreenPoint(x, y) : false,
     onEscape: () => inTutorial() && playerProfileEl.hidden ? true : inputEscapeHandler(),
+    desktop: {
+      canMove: () => Boolean(session?.isRunning()) && !session.isPaused() && player.hp > 0 && !isArenaScene() && !mapController.isMapTransitioning() && !mapController.isCutsceneActive() && !onboarding?.blocksInput(),
+      player: () => player, speed: () => player.speed * movementMultiplier(),
+      view: () => ({ ...camera, ...canvasRuntime.viewport() }),
+      bounds: () => ({ width: WORLD.w, height: WORLD.h, inset: player.r }),
+    },
   });
   const farmBosses = new Map<string, { x: number; y: number; r: number; dead: boolean }>([
     [TUTORIAL_FOREST_MAP_ID, boss], [BEGINNER_DESERT_MAP_ID, spiderBoss],
@@ -1142,7 +1148,7 @@ import {
       runtimeHud.clearTransientUi();
       updateHud(true);
     },
-    movement: (dt) => onboarding?.blocksInput() ? { x: 0, y: 0, source: "none" } : autoFarm.movement(playerInput.movement(), dt),
+    movement: (dt) => onboarding?.blocksInput() ? { x: 0, y: 0, source: "none" } : autoFarm.movement(playerInput.movement(dt), dt),
     isMapTransitioning: () => mapController.isMapTransitioning(),
     resolvePortalCollision: () => mapController.resolvePortalCollision(),
     resolveDragonCollision: () => bossController.resolveDragonCollision(),

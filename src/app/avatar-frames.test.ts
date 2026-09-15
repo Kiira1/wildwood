@@ -27,12 +27,15 @@ it("shares membership, lookups, and sign-out across separately built game and ne
   for (const el of [chat, profile]) {
     expect(el.dataset.avatarFrame).toBe("gold");
     expect(el.querySelectorAll(".avatar-frame-art")).toHaveLength(1);
+    expect(el.querySelectorAll(".avatar-frame-glow")).toHaveLength(1);
   }
   network.updateAvatarFrame({ ...gold(), frame: "silver" });
   expect(profile.dataset.avatarFrame).toBe("silver");
   network.clearAvatarFrames();
   expect(chat.dataset.avatarFrame).toBe("none");
   expect(profile.querySelector("img")).toBeNull();
+  expect(chat.querySelector(".avatar-frame-glow")).toBeNull();
+  expect(profile.querySelector(".avatar-frame-glow")).toBeNull();
 });
 
 it("shares a cached lookup across repeated renders and portraits while a request is pending", async () => {
