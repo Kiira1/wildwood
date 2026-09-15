@@ -54,6 +54,10 @@ type ChatMessageActionsOptions = {
   showMessage: (text: string, color?: string) => void;
 };
 
+export function canReactToMessage(target: ChatMessageActionTarget, localIdentity: string) {
+  return Boolean(localIdentity && target.sender && target.sender !== localIdentity && !target.moderated);
+}
+
 export function shouldOfferMessageReport(target: ChatMessageActionTarget, localIdentity: string) {
   return Boolean(target.sender)
     && !target.guildReplayKey
@@ -148,7 +152,7 @@ export function createChatMessageActionsController({
     selectReason(null);
     elements.title.textContent = "Message actions";
     elements.title.parentElement!.hidden = true;
-    elements.reactions.hidden = Boolean(selectedMessage.moderated);
+    elements.reactions.hidden = !canReactToMessage(selectedMessage, getLocalIdentity());
     elements.menu.hidden = false;
     elements.reportForm.hidden = true;
     elements.watchReplayButton.hidden = !availability.watchReplay;
@@ -205,7 +209,7 @@ export function createChatMessageActionsController({
     reactionPending = true;
     updateReactions();
     const openedRevision = presentationRevision;
-    if (!target.moderated) void loadReactions(target).then(state => {
+    if (canReactToMessage(target, getLocalIdentity())) void loadReactions(target).then(state => {
       if (openedRevision !== presentationRevision) return;
       selectedReactions = state.selected;
       reactionPending = false;
@@ -251,7 +255,7 @@ export function createChatMessageActionsController({
       button.type = "button"; button.textContent = emoji; button.dataset.reaction = id;
       button.setAttribute("aria-label", label); button.setAttribute("aria-pressed", "false");
       button.addEventListener("click", async () => {
-        if (!selectedMessage || reactionPending) return;
+        if (!selectedMessage || reactionPending || !canReactToMessage(selectedMessage, getLocalIdentity())) return;
         const target = selectedMessage, revision = presentationRevision;
         reactionPending = true; updateReactions();
         try {

@@ -61,6 +61,7 @@ function clearOtherReactions(ctx: ModuleReducerCtx, target: string, actor: Ident
 export function setChatReaction(ctx: ModuleReducerCtx, channel: string, id: bigint, reaction: string, active: boolean) {
   if (!isChatReaction(reaction)) throw new SenderError("Unknown reaction.");
   const row = readableMessage(ctx, channel, id);
+  if (active && row.sender.equals(ctx.sender)) throw new SenderError("You cannot react to your own message.");
   const target = messageKey(channel, id), key = `${target}:${ctx.sender.toHexString()}:${reaction}`;
   const previous = ctx.db.chatReaction.key.find(key);
   const counts = chatReactionCounts(reactionCountsFor(ctx, channel, id));

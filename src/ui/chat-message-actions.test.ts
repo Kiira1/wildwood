@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { focusChatReplyInput } from "./chat";
 import {
   messageActionAvailability,
+  canReactToMessage,
   shouldDismissMessageActionSheet,
   shouldOfferMessageReport,
 } from "./chat-message-actions";
@@ -70,4 +71,12 @@ describe("chat message actions", () => {
       watchReplay: true, copy: false, original: false, directMessage: false, reply: true, report: false,
     });
   });
+});
+
+it("offers reactions only for another player's unmoderated message", () => {
+  expect(canReactToMessage(target, "local-player")).toBe(true);
+  expect(canReactToMessage(target, target.sender)).toBe(false);
+  expect(canReactToMessage({ ...target, moderated: true }, "local-player")).toBe(false);
+  expect(canReactToMessage({ ...target, sender: "" }, "local-player")).toBe(false);
+  expect(canReactToMessage(target, "")).toBe(false);
 });

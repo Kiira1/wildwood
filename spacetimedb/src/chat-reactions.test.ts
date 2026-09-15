@@ -22,9 +22,10 @@ it("counts distinct reactions and credits each received heart only once", () => 
   expect([...f.db.chatReaction.iter()]).toHaveLength(0);
   expect(f.db.playerChatHearts.identity.find(f.author).chatHeartsReceived).toBe(2n);
 });
-it("allows self reactions without granting lifetime hearts", () => {
+it("rejects self reactions without changing counts or lifetime hearts", () => {
   const f = fixture();
-  setChatReaction({ ...f.ctx, sender: f.author } as any, "public", 1n, "heart", true);
+  expect(() => setChatReaction({ ...f.ctx, sender: f.author } as any, "public", 1n, "heart", true)).toThrow("own message");
+  expect(f.db.chatReactionSummary.key.find("public:1")).toBeNull();
   expect(f.db.playerChatHearts.identity.find(f.author)).toBeNull();
 });
 it("protects private/guild messages and keeps message id namespaces separate", () => {
@@ -119,4 +120,15 @@ it("keeps one reaction when guest and account selections differ", () => {
   expect(readChatReactions({ ...f.ctx, sender: account } as any, "public", 1n)).toEqual({ counts: { laugh: 1 }, selected: ["laugh"] });
   setChatReaction({ ...f.ctx, sender: account } as any, "public", 1n, "heart", true);
   expect(f.db.playerChatHearts.identity.find(f.author).chatHeartsReceived).toBe(1n);
+});
+
+it("rejects reactions to your own private and guild messages", () => {
+  const f = fixture();
+  for (const channel of ["dm", "guild"]) {
+    f.seed("socialMessage", { id: channel === "dm" ? 2n : 3n, channel, sender: f.ctx.sender, recipient: f.author, guildId: 7n, message: "My message" });
+  }
+  f.seed("guildMember", { identity: f.ctx.sender, guildId: 7n });
+  for (const messageId of [2n, 3n]) expect(() => f.run(server.setChatMessageReaction,
+    { channel: "social", messageId, reaction: "like", active: true })).toThrow("own message");
+  expect([...f.db.chatReaction.iter()]).toHaveLength(0);
 });
