@@ -12,6 +12,7 @@ vi.mock('@capacitor/browser', () => ({ Browser: {
 import { installNativeAuth } from './native-auth';
 import { NATIVE_AUTH_CALLBACK, NATIVE_AUTH_REDIRECT, type NativeAuthBridge } from '../../src/app/native-auth';
 import { SPACETIME_AUTH_ISSUER, SPACETIME_AUTH_CLIENT_ID } from '../../shared/rules';
+import { accountLogoutUrl } from '../../src/coop/services/account-logout';
 function storage() {
   const values = new Map<string, string>();
   return { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => values.set(key, value), removeItem: (key: string) => values.delete(key), clear: () => values.clear() };
@@ -108,4 +109,42 @@ it('allows retry after cancelling an iOS session', async () => {
   await begin(win);
   await win.wildstatNativeAuth!.open(mocks.authenticate.mock.calls[0]![0].url, []);
   expect(mocks.authenticate).toHaveBeenCalledTimes(2);
+});
+
+it.each(['android', 'ios'])('ends the %s provider session and returns without restoring login credentials', async (platform) => {
+  mocks.platform = platform;
+  const { local, session, replace, win } = setup();
+  installNativeAuth();
+  mocks.authenticate.mockResolvedValueOnce({ url: `${NATIVE_AUTH_CALLBACK}?state=logout-state` });
+  const url = accountLogoutUrl('id-token', NATIVE_AUTH_REDIRECT, 'logout-state');
+  await win.wildstatNativeAuth!.signOut!(url);
+  if (platform === 'android') {
+    expect(mocks.open).toHaveBeenCalledWith({ url });
+    mocks.listeners.appUrlOpen({ url: `${NATIVE_AUTH_CALLBACK}?state=wrong` });
+    expect(replace).not.toHaveBeenCalled();
+    mocks.listeners.appUrlOpen({ url: `${NATIVE_AUTH_CALLBACK}?state=logout-state&code=unexpected` });
+    expect(replace).not.toHaveBeenCalled();
+    mocks.listeners.appUrlOpen({ url: `${NATIVE_AUTH_CALLBACK}?state=logout-state` });
+  }
+  expect(replace).toHaveBeenCalledWith('capacitor://localhost/');
+  expect(local.getItem('wildstat.native-auth.pending')).toBeNull();
+  expect(session.getItem('verifier')).toBeNull();
+});
+
+it('restores a pending logout after Android reload without accepting a login callback', async () => {
+  const { local, replace, win } = setup();
+  installNativeAuth();
+  await win.wildstatNativeAuth!.signOut!(accountLogoutUrl(null, NATIVE_AUTH_REDIRECT, 'logout-state'));
+  mocks.launch = `${NATIVE_AUTH_CALLBACK}?state=logout-state`;
+  installNativeAuth();
+  expect(await win.wildstatNativeAuth!.ready).toBe(true);
+  expect(replace).toHaveBeenCalledWith('capacitor://localhost/');
+  expect(local.getItem('wildstat.native-auth.pending')).toBeNull();
+});
+
+it('rejects an unapproved native sign-out destination before opening the browser', async () => {
+  const { win } = setup();
+  installNativeAuth();
+  await expect(win.wildstatNativeAuth!.signOut!(accountLogoutUrl(null, 'https://other.example/', 'logout-state'))).rejects.toThrow('Invalid native sign-out');
+  expect(mocks.open).not.toHaveBeenCalled();
 });

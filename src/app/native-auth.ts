@@ -6,18 +6,23 @@ export const NATIVE_AUTH_CANCEL = 'wildstat:native-auth-cancel';
 export type NativeAuthBridge = {
   ready: Promise<boolean>;
   open: (url: string, keys: string[]) => Promise<void>;
+  signOut?: (url: string) => Promise<void>;
   cancel: () => void;
 };
 export function nativeAuth(): NativeAuthBridge | undefined {
   return isNativePreview() ? (window as unknown as { wildstatNativeAuth?: NativeAuthBridge }).wildstatNativeAuth : undefined;
 }
 
-export function parseNativeCallback(raw: string, state: string): URLSearchParams | null {
+export function parseNativeCallback(raw: string, state: string, mode: "sign-in" | "sign-out" = "sign-in"): URLSearchParams | null {
   try {
     const url = new URL(raw);
     if (`${url.protocol}//${url.host}${url.pathname}` !== NATIVE_AUTH_CALLBACK || url.username || url.password || url.hash) return null;
     for (const key of url.searchParams.keys()) if (url.searchParams.getAll(key).length !== 1) return null;
     if (!state || url.searchParams.get('state') !== state) return null;
+    if (mode === 'sign-out') {
+      if (url.searchParams.has('code') || url.searchParams.has('error')) return null;
+      return new URLSearchParams({ state });
+    }
     if (Boolean(url.searchParams.get('code')) === Boolean(url.searchParams.get('error'))) return null;
     const result = new URLSearchParams();
     for (const key of ['state', 'code', 'error', 'iss']) {

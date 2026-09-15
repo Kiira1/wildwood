@@ -24,7 +24,8 @@ public class WildStatAuthPlugin: CAPPlugin, CAPBridgedPlugin, ASWebAuthenticatio
         DispatchQueue.main.async {
             guard self.session == nil else { call.reject("Sign-in already open"); return }
             guard let raw = call.getString("url"), let url = URL(string: raw),
-                  url.scheme == "https", url.host == "auth.spacetimedb.com", url.path == "/oidc/auth",
+                  url.scheme == "https", url.host == "auth.spacetimedb.com",
+                  ["/oidc/auth", "/oidc/session/end"].contains(url.path),
                   let window = self.bridge?.viewController?.view.window else {
                 call.reject("Unable to open sign-in"); return
             }

@@ -19,4 +19,12 @@ describe('native authentication callbacks', () => {
   it('passes only OAuth response fields to the app', () => {
     expect(parseNativeCallback(`${NATIVE_AUTH_CALLBACK}?state=expected&code=one&redirect=https://evil.example`, 'expected')?.has('redirect')).toBe(false);
   });
+  it('accepts state-only logout only for a matching sign-out transaction', () => {
+    const raw = `${NATIVE_AUTH_CALLBACK}?state=expected`;
+    expect(parseNativeCallback(raw, 'expected')).toBeNull();
+    expect(parseNativeCallback(raw, 'expected', 'sign-out')?.toString()).toBe('state=expected');
+    expect(parseNativeCallback(raw, 'wrong', 'sign-out')).toBeNull();
+    expect(parseNativeCallback(`${raw}&code=unexpected`, 'expected', 'sign-out')).toBeNull();
+    expect(parseNativeCallback(`${raw}&error=unexpected`, 'expected', 'sign-out')).toBeNull();
+  });
 });

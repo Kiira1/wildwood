@@ -1,7 +1,10 @@
 (() => {
   const query = new URLSearchParams(window.location.search);
   history.replaceState({}, '', window.location.pathname);
-  const valid = query.get('state') && Boolean(query.get('code')) !== Boolean(query.get('error')) &&
+  // OIDC logout returns only state. The native bridge accepts this only for a
+  // matching pending sign-out; it can never authenticate or restore a token.
+  const signOut = query.has('state') && [...query.keys()].every(key => key === 'state');
+  const valid = query.get('state') && (signOut || Boolean(query.get('code')) !== Boolean(query.get('error'))) &&
     [...query.keys()].every(key => query.getAll(key).length === 1);
   if (!valid) {
     document.getElementById('fallback').hidden = false;

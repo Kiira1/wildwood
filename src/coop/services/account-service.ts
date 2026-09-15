@@ -1,4 +1,5 @@
 import { AccountRenewalRequired, createAccountTokenRenewal } from "./account-token-renewal";
+import { accountLogoutUrl } from "./account-logout";
 import { recordConnectionDiagnostic } from "./connection-diagnostic-runtime";
 import { syncResearchNotification } from "../../app/native-research-notifications";
 import type { DbConnection } from "../../module_bindings";
@@ -160,6 +161,7 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
   })();
   let outboundAuthNavigationPending = false;
   let signInPreparing = false;
+  let signingOut = false;
   let sessionApproved = returnPending || dependencies.updateResumeMode === "account";
   let updateResumePending = dependencies.updateResumeMode !== null;
   let lastPlayableSessionMode: UpdateResumeMode | null = null;
@@ -448,6 +450,8 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
         throw new Error(detail);
       }
       await dependencies.validateAccountIdToken(result.id_token, expectedNonce);
+      // A late OAuth response must not restore credentials after Sign Out.
+      if (signingOut) return "failed";
       renewal.save(result.id_token, result.refresh_token);
       rememberAccount();
       notice = "SIGNED IN";
@@ -473,9 +477,9 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
     return outcome;
   }
 
-  async function startAccountSignIn() {
+  async function startAccountSignIn(forceLogin = false) {
     // Lock before PKCE hashing yields, so startup and taps share one transaction.
-    if (outboundAuthNavigationPending || callbackPending) return;
+    if (signingOut || outboundAuthNavigationPending || callbackPending) return;
     outboundAuthNavigationPending = true;
     try {
       try {
@@ -486,6 +490,7 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
       const state = randomUrlSafe(24);
       const nonce = randomUrlSafe(24);
       const challenge = await sha256UrlSafe(verifier);
+      if (signingOut) return;
       writeTabValue(keys.authStateKey, state);
       writeTabValue(keys.authVerifierKey, verifier);
       writeTabValue(keys.authNonceKey, nonce);
@@ -500,6 +505,9 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
         code_challenge: challenge,
         code_challenge_method: "S256",
       }).toString();
+      // Explicit sign-in must let the player choose email or Google again.
+      // Automatic token renewal keeps the existing provider session seamless.
+      if (forceLogin) url.searchParams.set("prompt", "login");
       dependencies.notify();
       if (isNativePreview()) {
         try {
@@ -522,6 +530,7 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
     const bridge = nativeAuth();
     if (bridge && await bridge.ready) return;
     const callbackOutcome = await completeAccountCallback();
+    if (signingOut) return;
     // Callback failures and invalid/expired OAuth state must repaint the
     // lightweight sign-in shell instead of leaving it on "Verifying Sign-In".
     dependencies.notify();
@@ -559,6 +568,7 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
   }
 
   async function connectionToken(token: string, force = false) {
+    if (signingOut) throw new Error("Signed out");
     if (token === guestToken()) return token;
     try { return await renewal.resolve(token, force); }
     catch (error) {
@@ -572,7 +582,7 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
 
   const api = {
     accountState() {
-      const signedIn = Boolean(dependencies.connection()?.isActive && dependencies.connectedSignedIn());
+      const signedIn = !signingOut && Boolean(dependencies.connection()?.isActive && dependencies.connectedSignedIn());
       return {
         signedIn,
         knownAccount: hasKnownAccount(),
@@ -608,6 +618,7 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
       return currentGender ?? rememberedAccountGender();
     },
     async signIn() {
+      if (signingOut) return { ok: false, error: "SIGNING OUT" };
       if (signInPreparing || outboundAuthNavigationPending || callbackPending) {
         return { ok: true, redirecting: true };
       }
@@ -632,14 +643,14 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
         if (hasKnownAccount() && !connection) {
           notice = "OPENING SIGN-IN";
           dependencies.notify();
-          await startAccountSignIn();
+          await startAccountSignIn(true);
           return { ok: true, redirecting: true };
         }
         if (!connection) {
           if (!guestToken()) {
             notice = "OPENING REGISTRATION";
             dependencies.notify();
-            await startAccountSignIn();
+            await startAccountSignIn(true);
             return { ok: true, redirecting: true };
           }
           notice = "WAIT FOR SERVER";
@@ -672,7 +683,7 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
         markAccountMigrationPending();
         notice = "PREPARING SIGN-IN";
         dependencies.notify();
-        await startAccountSignIn();
+        await startAccountSignIn(true);
         return { ok: true, redirecting: true };
       } finally {
         signInPreparing = false;
@@ -713,21 +724,43 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
       }
     },
     async signOut() {
+      if (signingOut) return;
+      signingOut = true;
+      const idToken = renewal.stored();
       recordConnectionDiagnostic("user-sign-out", { intentional: true });
-      await syncResearchNotification(null);
+      // Notification plugins must never hold account sign-out open.
+      void syncResearchNotification(null);
       nativeAuth()?.cancel();
       dependencies.disconnectVirtualPlayers();
+      sessionApproved = false;
+      guestSessionExplicit = false;
+      updateResumePending = false;
+      lastPlayableSessionMode = null;
       renewal.clear();
       try {
         localStorage.removeItem(keys.accountTokenKey);
         localStorage.removeItem(keys.knownAccountKey);
         localStorage.removeItem(keys.accountMigrationPendingKey);
+        localStorage.removeItem(keys.knownAccountCharacterKey);
+        localStorage.removeItem(keys.knownAccountGenderKey);
       } catch {}
       clearTabValue(keys.accountLinkKey);
       clearAuthTransaction();
-      window.location.reload();
+      clearTabValue(keys.authRetryKey);
+      clearAccountReturnPending();
+      dependencies.updateResumeStore.clear();
+      dependencies.connection()?.disconnect();
+      notice = "SIGNED OUT";
+      dependencies.notify();
+      const url = accountLogoutUrl(idToken, redirectUri(), isNativePreview() ? randomUrlSafe(24) : undefined);
+      if (isNativePreview()) {
+        try { await nativeAuth()?.signOut?.(url); }
+        catch { /* Local credentials are already cleared; explicit login prompts again. */ }
+        window.location.reload();
+      } else window.location.assign(url);
     },
     continueAsGuest() {
+      if (signingOut) return { ok: false, error: "SIGNING OUT" };
       void syncResearchNotification(null);
       nativeAuth()?.cancel();
       const mustChangeIdentity = Boolean(
@@ -844,6 +877,7 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
       }
     },
     canConnect() {
+      if (signingOut) return false;
       if (outboundAuthNavigationPending || callbackPending) return false;
       if (!renewal.stored() && !guestToken() && !guestSessionExplicit) return false;
       if (renewal.stored() && hasKnownAccount() && !sessionApproved) {

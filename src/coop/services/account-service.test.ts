@@ -112,7 +112,8 @@ function setup(options: {
   const notify = vi.fn();
   const restartConnectionForIdentityChange = vi.fn();
   const requestWorldEntry = vi.fn(async () => true);
-  const connection = options.signedIn ? { isActive: true, reducers: {} } : null;
+  const disconnect = vi.fn();
+  const connection = options.signedIn ? { isActive: true, reducers: {}, disconnect } : null;
   const service = createAccountService({
     keys,
     updateResumeMode: null,
@@ -146,7 +147,7 @@ function setup(options: {
       inspectSpacetimeIdToken(token, { expectedNonce })
     )),
   });
-  return { assign, connect, local, session, notify, replaceState, requestWorldEntry, restartConnectionForIdentityChange, service };
+  return { assign, connect, disconnect, local, session, notify, replaceState, requestWorldEntry, restartConnectionForIdentityChange, service };
 }
 
 describe("account service startup identity selection", () => {
@@ -340,6 +341,7 @@ describe("account service startup identity selection", () => {
     expect(connect).not.toHaveBeenCalled();
     const authorizationUrl = new URL(assign.mock.calls[0][0]);
     expect(authorizationUrl.searchParams.get("nonce")).toBe(session.getItem(keys.authNonceKey));
+    expect(authorizationUrl.searchParams.get("prompt")).toBe("login");
     expect(session.getItem(keys.authNonceKey)).toMatch(/^[A-Za-z0-9_-]{32}$/);
   });
 
@@ -411,6 +413,85 @@ describe("account service startup identity selection", () => {
     expect(local.getItem(keys.knownAccountKey)).toBe("true");
     expect(service.api.accountState().guestSessionApproved).toBe(true);
     expect(restartConnectionForIdentityChange).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("complete account sign-out", () => {
+  afterEach(() => { vi.unstubAllGlobals(); });
+
+  it("clears account credentials, cancels update resume, disconnects, and ends the provider session", async () => {
+    const token = accountToken();
+    const { service, local, session, disconnect, assign } = setup({ accountToken: token, knownAccount: true, signedIn: true, guestToken: "guest-save" });
+    local.setItem(`${keys.accountTokenKey}:refresh`, "refresh-secret");
+    local.setItem(keys.knownAccountCharacterKey, "Previous Character");
+    session.setItem(keys.authReturnUiKey, "true");
+    session.setItem(keys.authRetryKey, "true");
+    session.setItem(keys.authNonceKey, "nonce");
+    session.setItem(keys.accountLinkKey, "pending-link");
+    service.markPlayable(true);
+    expect(service.prepareUpdateReload("test-version")).toBe(true);
+
+    await service.api.signOut();
+    await service.api.signOut();
+
+    expect(local.getItem(keys.accountTokenKey)).toBeNull();
+    expect(local.getItem(`${keys.accountTokenKey}:refresh`)).toBeNull();
+    expect(local.getItem(keys.knownAccountKey)).toBeNull();
+    expect(local.getItem(keys.knownAccountCharacterKey)).toBeNull();
+    expect(local.getItem(keys.guestTokenKey)).toBe("guest-save");
+    for (const key of [keys.authReturnUiKey, keys.authRetryKey, keys.authNonceKey, keys.accountLinkKey, "update-resume"]) expect(session.getItem(key)).toBeNull();
+    expect(disconnect).toHaveBeenCalledOnce();
+    expect(service.canConnect()).toBe(false);
+    await expect(service.connectionToken(token)).rejects.toThrow("Signed out");
+    expect(service.api.accountState()).toMatchObject({ signedIn: false, gameSessionApproved: false });
+    expect(assign).toHaveBeenCalledOnce();
+    const url = new URL(assign.mock.calls[0][0]);
+    expect(url.origin + url.pathname).toBe(`${SPACETIME_AUTH_ISSUER}/session/end`);
+    expect(url.searchParams.get("id_token_hint")).toBe(token);
+    expect(url.searchParams.get("post_logout_redirect_uri")).toBe("https://wildstat.example/game");
+    expect(url.searchParams.get("client_id")).toBe(SPACETIME_AUTH_CLIENT_ID);
+    expect(url.href).not.toContain("refresh-secret");
+  });
+
+  it("does not wait for a stuck notification plugin before signing out on mobile", async () => {
+    const { service, local, assign } = setup({ accountToken: accountToken(), knownAccount: true, signedIn: true });
+    const signOut = vi.fn(async (_url: string) => {});
+    Object.assign(window, {
+      WILDSTAT_NATIVE_PREVIEW: true,
+      wildstatResearchNotifications: { sync: () => new Promise(() => {}) },
+      wildstatNativeAuth: { ready: Promise.resolve(false), open: vi.fn(), cancel: vi.fn(), signOut },
+    });
+    await service.api.signOut();
+    expect(local.getItem(keys.accountTokenKey)).toBeNull();
+    expect(assign).not.toHaveBeenCalled();
+    expect(window.location.reload).toHaveBeenCalledOnce();
+    const url = new URL(signOut.mock.calls[0][0] as string);
+    expect(url.searchParams.get("post_logout_redirect_uri")).toBe("https://wildstatmmo.com/app-auth/");
+    expect(url.searchParams.get("state")).toMatch(/^[A-Za-z0-9_-]{32}$/);
+  });
+
+  it("cannot restore a token from a callback that completes after sign-out", async () => {
+    const request = new FakeTokenRequest(200, { id_token: accountToken() }, false);
+    stubTokenRequest(request);
+    const { service, local, connect } = setup({ authCallback: true });
+    const restoring = service.restoreKnownAccount();
+    await service.api.signOut();
+    request.onload?.({} as ProgressEvent);
+    await restoring;
+    expect(local.getItem(keys.accountTokenKey)).toBeNull();
+    expect(connect).not.toHaveBeenCalled();
+    expect(service.canConnect()).toBe(false);
+  });
+
+  it("cannot finish preparing a new sign-in after the player signs out", async () => {
+    const { service, assign, session } = setup();
+    const starting = service.api.signIn();
+    await service.api.signOut();
+    await starting;
+    expect(assign).toHaveBeenCalledOnce();
+    expect(new URL(assign.mock.calls[0][0]).pathname).toBe("/oidc/session/end");
+    expect(session.getItem(keys.authVerifierKey)).toBeNull();
+    expect(session.getItem(keys.authStateKey)).toBeNull();
   });
 });
 

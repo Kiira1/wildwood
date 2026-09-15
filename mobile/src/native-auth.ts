@@ -6,7 +6,7 @@ import { SPACETIME_AUTH_CLIENT_ID, SPACETIME_AUTH_ISSUER } from '../../shared/ru
 
 const STORAGE_KEY = 'wildstat.native-auth.pending';
 const MAX_AGE = 10 * 60_000;
-type Pending = { started: number; state: string; values: Record<string, string> };
+type Pending = { started: number; state: string; values: Record<string, string>; mode?: 'sign-in' | 'sign-out' };
 const iosAuth = registerPlugin<{ authenticate(options: { url: string }): Promise<{ url?: string; cancelled?: boolean }>; cancel(): Promise<void> }>('WildStatAuth');
 
 export function installNativeAuth() {
@@ -24,13 +24,15 @@ export function installNativeAuth() {
       const pending = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null') as Pending | null;
       if (!pending) return;
       if (Date.now() - pending.started > MAX_AGE || pending.started > Date.now()) { cancel(); return; }
-      const query = parseNativeCallback(raw, pending.state);
+      const query = parseNativeCallback(raw, pending.state, pending.mode);
       if (!query || (query.has('iss') && query.get('iss') !== SPACETIME_AUTH_ISSUER)) return;
-      for (const [key, value] of Object.entries(pending.values)) sessionStorage.setItem(key, value);
+      if (pending.mode !== 'sign-out') {
+        for (const [key, value] of Object.entries(pending.values)) sessionStorage.setItem(key, value);
+      }
       cancel();
       navigating = true;
       const destination = new URL(window.location.href);
-      destination.search = query.toString();
+      destination.search = pending.mode === 'sign-out' ? '' : query.toString();
       destination.hash = '';
       if (!ios) void Browser.close().catch(() => {});
       window.location.replace(destination.toString());
@@ -53,6 +55,31 @@ export function installNativeAuth() {
   const bridge: NativeAuthBridge = {
     ready,
     cancel() { cancel(); if (ios) void iosAuth.cancel().catch(() => {}); },
+    async signOut(raw) {
+      await ready;
+      // Finish cancelling the previous iOS session before opening its logout.
+      if (ios) await iosAuth.cancel();
+      cancel();
+      navigating = false;
+      const url = new URL(raw);
+      if (`${url.origin}${url.pathname}` !== `${SPACETIME_AUTH_ISSUER}/session/end` ||
+          url.searchParams.get('client_id') !== SPACETIME_AUTH_CLIENT_ID ||
+          url.searchParams.get('post_logout_redirect_uri') !== redirectUri || !url.searchParams.get('state')) {
+        throw new Error('Invalid native sign-out request');
+      }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        started: Date.now(), state: url.searchParams.get('state'), values: {}, mode: 'sign-out',
+      }));
+      active = true;
+      try {
+        if (ios) {
+          const result = await iosAuth.authenticate({ url: raw });
+          if (navigating) return;
+          if (result.url) receive(result.url);
+          else cancel();
+        } else await Browser.open({ url: raw });
+      } catch (error) { cancel(); throw error; }
+    },
     async open(raw, keys) {
       await ready;
       if (active || navigating) return;

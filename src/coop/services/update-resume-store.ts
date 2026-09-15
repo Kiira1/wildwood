@@ -28,6 +28,7 @@ export function createUpdateResumeStore(
   now: () => number = Date.now,
 ) {
   return {
+    clear() { try { storage.removeItem(key); } catch {} },
     write(version: string, mode: UpdateResumeMode) {
       if (!version) return false;
       const intent: UpdateResumeIntent = { version, mode, createdAt: now() };
