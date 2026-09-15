@@ -9,7 +9,7 @@ export const regularEnemyLootCursor = table({ name: "regular_enemy_loot_cursor" 
 type Context = ReducerCtx<InferSchema<typeof schema>>;
 export function acceptRegularEnemyLootBatch(ctx: Context, batch: {
   streamId: string; sequence: bigint; mapId: string; count: number;
-}, activeMapId: string) {
+}, activeMapId: string, canReplayMap?: () => boolean) {
   if (!/^[a-zA-Z0-9-]{16,80}$/.test(batch.streamId) || batch.sequence < 1n ||
       !Number.isInteger(batch.count) || batch.count < 1 || batch.count > REGULAR_ENEMY_LOOT_BATCH_MAX) {
     throw new SenderError("Invalid enemy loot batch.");
@@ -19,7 +19,7 @@ export function acceptRegularEnemyLootBatch(ctx: Context, batch: {
   // A lost acknowledgement can be retried after travel without rolling again.
   if (batch.sequence <= (previous?.sequence ?? 0n)) return false;
   if (batch.sequence !== (previous?.sequence ?? 0n) + 1n) throw new SenderError("Enemy loot batches must arrive in order.");
-  if (batch.mapId !== activeMapId || !regularMapLoot(batch.mapId).length) throw new SenderError("Enemy loot belongs to another map.");
+  if (!regularMapLoot(batch.mapId).length || (batch.mapId !== activeMapId && !canReplayMap?.())) throw new SenderError("Enemy loot belongs to another map.");
   const next = { key, identity: ctx.sender, sequence: batch.sequence };
   if (previous) ctx.db.regularEnemyLootCursor.key.update(next);
   else ctx.db.regularEnemyLootCursor.insert(next);
@@ -38,4 +38,14 @@ export function rollRegularEnemyLoot(ctx: Pick<Context, "random">, mapId: string
     }
   }
   return rewards;
+}
+
+const LOOT_MAP_UNLOCKS: Record<string, string> = {
+  beginner_desert: "desertUnlocked", intermediate_snowlands: "snowlandsUnlocked",
+  advanced_lava_wastes: "lavaUnlocked", infernal_depths: "infernalUnlocked",
+  water_reach: "waterUnlocked", samurai_garden: "samuraiUnlocked",
+  cloudspire: "cloudspireUnlocked", moonfen: "moonfenUnlocked",
+};
+export function canReplayRegularEnemyLoot(mapId: string, progress: any) {
+  return Boolean(progress && (mapId === "tutorial_forest" || progress[LOOT_MAP_UNLOCKS[mapId]] === true));
 }

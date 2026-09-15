@@ -1,15 +1,17 @@
+import { isCombatProgress, type CombatProgress } from "../../../shared/combat-progress";
 import { withRequestDeadline } from "./request-deadline";
 import { regularMapLoot, REGULAR_ENEMY_LOOT_BATCH_MAX } from "../../../shared/regular-map-loot";
 
-type Batch = { sequence: number; mapId: string; count: number; sealed: boolean };
+type Batch = { sequence: number; mapId: string; count: number; sealed: boolean; progress?: CombatProgress };
 type State = { streamId: string; nextSequence: number; batches: Batch[] };
-export type EnemyLootRequest = { streamId: string; sequence: bigint; mapId: string; count: number };
+export type EnemyLootRequest = { streamId: string; sequence: bigint; mapId: string; count: number; progress?: CombatProgress };
 
 /** Persist before sending and retry the same sequence after an interrupted reply. */
 export function createRegularEnemyLootQueue(options: {
   identity: () => string;
   tabId: () => string;
   storage: Storage;
+  captureProgress?: () => CombatProgress | undefined;
   send: (request: EnemyLootRequest) => Promise<boolean>;
 }) {
   let owner = "", key = "", epoch = 0;
@@ -31,25 +33,35 @@ export function createRegularEnemyLootQueue(options: {
       if (saved && typeof saved.streamId === "string" && Number.isSafeInteger(saved.nextSequence) &&
           saved.nextSequence > 0 && Array.isArray(saved.batches) && saved.batches.every(batch =>
             Number.isSafeInteger(batch.sequence) && batch.sequence > 0 && regularMapLoot(batch.mapId).length > 0 &&
-            Number.isInteger(batch.count) && batch.count > 0 && batch.count <= REGULAR_ENEMY_LOOT_BATCH_MAX)) state = saved;
+            Number.isInteger(batch.count) && batch.count > 0 && batch.count <= REGULAR_ENEMY_LOOT_BATCH_MAX &&
+            (batch.progress === undefined || isCombatProgress(batch.progress)))) state = saved;
     } catch {}
     state ??= empty();
   }
-  function flush(): Promise<boolean> {
+  function flush(drain = false): Promise<boolean> {
     if (owner !== options.identity()) begin();
-    if (inFlight) return inFlight;
+    if (inFlight) {
+      const runEpoch = epoch;
+      return drain ? inFlight.then(ok => ok && epoch === runEpoch ? flush(true) : false) : inFlight;
+    }
     if (!owner || !state?.batches.length) return Promise.resolve(true);
     const current = state, runEpoch = epoch, runOwner = owner;
+    const batchLimit = current.batches.length;
     const run = async () => {
-      while (current.batches.length) {
+      let sent = 0;
+      while (current.batches.length && (drain || sent < batchLimit)) {
         const batch = current.batches[0];
-        batch.sealed = true;
+        if (!batch.sealed) {
+          batch.progress = options.captureProgress?.();
+          batch.sealed = true;
+        }
         persist();
         let accepted = false;
-        try { accepted = await withRequestDeadline(options.send({ streamId: current.streamId, sequence: BigInt(batch.sequence), mapId: batch.mapId, count: batch.count }), 4_000); } catch {}
+        try { accepted = await withRequestDeadline(options.send({ streamId: current.streamId, sequence: BigInt(batch.sequence), mapId: batch.mapId, count: batch.count, progress: batch.progress }), 4_000); } catch {}
         if (epoch !== runEpoch || options.identity() !== runOwner) return false;
         if (!accepted) return false;
         current.batches.shift();
+        sent++;
         persist();
       }
       return true;

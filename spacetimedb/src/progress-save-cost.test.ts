@@ -42,3 +42,48 @@ it("makes unchanged speed requests no-ops without inventory decoding or presenta
     expect(parse).not.toHaveBeenCalled();
   } finally { parse.mockRestore(); }
 });
+
+it("saves combat stats without decoding inventory or resetting resting speed", () => {
+  const f = crystalFixture();
+  f.patch("playerProgress", { equippedFeet: "black_boots", inventoryJson: '["black_boots"]' });
+  f.patch("player", { feetItem: "black_boots", speed: 205 });
+  const base = f.db.playerProgress.identity.find(f.ctx.sender);
+  const parse = vi.spyOn(JSON, "parse");
+  f.run(server.savePlayerProgress, { ...base, damage: base.damage + 1, enemyKills: 3 });
+  expect(parse).not.toHaveBeenCalled();
+  parse.mockRestore();
+  expect(f.db.player.identity.find(f.ctx.sender).speed).toBe(205);
+  expect(f.db.playerProgress.identity.find(f.ctx.sender).damage).toBe(base.damage + 1);
+});
+
+it("does not rewrite progress or presentation for an unchanged checkpoint", () => {
+  const f = crystalFixture();
+  const base = f.db.playerProgress.identity.find(f.ctx.sender);
+  f.run(server.savePlayerProgress, { ...base, enemyKills: 3 });
+  const player = vi.spyOn(f.db.player.identity, "update");
+  const progress = vi.spyOn(f.db.playerProgress.identity, "update");
+  const lifetime = vi.spyOn(f.db.playerLifetime.identity, "update");
+  f.run(server.savePlayerProgress, { ...base, enemyKills: 3 });
+  expect(player).not.toHaveBeenCalled();
+  expect(progress).not.toHaveBeenCalled();
+  expect(lifetime).not.toHaveBeenCalled();
+});
+
+it("removes the temporary boots bonus when those boots are unequipped", () => {
+  const f = crystalFixture();
+  f.patch("playerProgress", { equippedFeet: "black_boots", inventoryJson: '["black_boots"]' });
+  f.patch("player", { feetItem: "black_boots", speed: 205 });
+  const base = f.db.playerProgress.identity.find(f.ctx.sender);
+  f.run(server.savePlayerProgress, { ...base, equippedFeet: "", enemyKills: 3 });
+  expect(f.db.player.identity.find(f.ctx.sender).speed).toBe(180);
+});
+
+it("preserves the active black-boots bonus during an unrelated equipment edit", () => {
+  const f = crystalFixture();
+  f.patch("playerProgress", { equippedFeet: "black_boots", inventoryJson: '["black_boots","water_armor"]' });
+  f.patch("player", { feetItem: "black_boots", speed: 205 });
+  const base = f.db.playerProgress.identity.find(f.ctx.sender);
+  f.run(server.savePlayerProgress, { ...base, equippedChest: "water_armor", enemyKills: 3 });
+  expect(f.db.player.identity.find(f.ctx.sender).speed).toBe(205);
+  expect(f.db.playerProgress.identity.find(f.ctx.sender).equippedChest).toBe("water_armor");
+});

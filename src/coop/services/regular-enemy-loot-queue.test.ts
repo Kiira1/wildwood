@@ -17,7 +17,7 @@ it("combines kills, keeps source maps separate, and bounds batches", async () =>
   await f.queue.flush();
   expect(f.send.mock.calls.map(([r]) => [r.mapId, r.count, r.sequence])).toEqual([["cloudspire", 25, 1n], ["moonfen", 1, 2n]]);
   for (let i = 0; i < 205; i++) f.queue.record("cloudspire");
-  await f.queue.flush();
+  await f.queue.flush(true);
   expect(f.send.mock.calls.slice(2).map(([r]) => r.count)).toEqual([100, 100, 5]);
 });
 it("persists an unacknowledged batch and never adds kills to a retry", async () => {
@@ -53,4 +53,39 @@ it("bounds a stalled acknowledgement and retries its unchanged sequence", async 
     await f.queue.flush();
     expect(f.send.mock.calls[1][0]).toEqual(f.send.mock.calls[0][0]);
   } finally { vi.useRealTimers(); }
+});
+
+it("waits for the next interval for kills arriving during an ordinary flush", async () => {
+  const f = fixture(); let finish!: (ok: boolean) => void;
+  f.send.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+  f.queue.record("water_reach"); const pending = f.queue.flush();
+  for (let i = 0; i < 20; i++) f.queue.record("water_reach");
+  finish(true); await pending;
+  expect(f.send).toHaveBeenCalledTimes(1);
+  await f.queue.flush();
+  expect(f.send.mock.calls[1][0]).toMatchObject({ count: 20, sequence: 2n });
+});
+
+it("a portal drain includes kills queued during an existing ordinary request", async () => {
+  const f = fixture(); let finish!: (ok: boolean) => void;
+  f.send.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+  f.queue.record("water_reach"); void f.queue.flush();
+  f.queue.record("water_reach"); const drain = f.queue.flush(true);
+  finish(true); expect(await drain).toBe(true);
+  expect(f.send).toHaveBeenCalledTimes(2);
+});
+
+it("persists the original stat checkpoint through failures and reloads", async () => {
+  const f = fixture();
+  const progress = { maxHp: 100, damage: 10, attackRate: 1, projectileCount: 1, armor: 0, regen: 1, enemyKills: 5 };
+  const captureProgress = vi.fn(() => ({ ...progress }));
+  const queue = createRegularEnemyLootQueue({ ...f.options, captureProgress });
+  f.send.mockResolvedValueOnce(false);
+  queue.record("water_reach"); await queue.flush();
+  progress.damage = 50;
+  const restored = createRegularEnemyLootQueue({ ...f.options, captureProgress });
+  await restored.flush();
+  expect(captureProgress).toHaveBeenCalledTimes(1);
+  expect(f.send.mock.calls[1][0]).toEqual(f.send.mock.calls[0][0]);
+  expect(f.send.mock.calls[1][0].progress?.damage).toBe(10);
 });

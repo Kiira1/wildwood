@@ -109,6 +109,7 @@ import MarkPortalCutsceneSeenReducer from "./mark_portal_cutscene_seen_reducer";
 import PrepareProceduralBossReducer from "./prepare_procedural_boss_reducer";
 import PrepareWorldActionPositionReducer from "./prepare_world_action_position_reducer";
 import PulseDuelReducer from "./pulse_duel_reducer";
+import RecordCombatCheckpointReducer from "./record_combat_checkpoint_reducer";
 import RecordConnectionDiagnosticReducer from "./record_connection_diagnostic_reducer";
 import RecordDesertEnemyDefeatReducer from "./record_desert_enemy_defeat_reducer";
 import RecordForestEnemyDefeatReducer from "./record_forest_enemy_defeat_reducer";
@@ -1190,6 +1191,7 @@ const reducersSchema = __reducers(
   __reducerSchema("prepare_procedural_boss", PrepareProceduralBossReducer),
   __reducerSchema("prepare_world_action_position", PrepareWorldActionPositionReducer),
   __reducerSchema("pulse_duel", PulseDuelReducer),
+  __reducerSchema("record_combat_checkpoint", RecordCombatCheckpointReducer),
   __reducerSchema("record_connection_diagnostic", RecordConnectionDiagnosticReducer),
   __reducerSchema("record_desert_enemy_defeat", RecordDesertEnemyDefeatReducer),
   __reducerSchema("record_forest_enemy_defeat", RecordForestEnemyDefeatReducer),

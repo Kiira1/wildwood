@@ -200,6 +200,17 @@ export const ChatReactionSummary = __t.object("ChatReactionSummary", {
 });
 export type ChatReactionSummary = __Infer<typeof ChatReactionSummary>;
 
+export const CombatProgressCheckpoint = __t.object("CombatProgressCheckpoint", {
+  maxHp: __t.f64(),
+  damage: __t.f64(),
+  attackRate: __t.f64(),
+  projectileCount: __t.u32(),
+  armor: __t.f64(),
+  regen: __t.f64(),
+  enemyKills: __t.u32(),
+});
+export type CombatProgressCheckpoint = __Infer<typeof CombatProgressCheckpoint>;
+
 export const ConnectionDiagnostic = __t.object("ConnectionDiagnostic", {
   id: __t.string(),
   identity: __t.identity(),

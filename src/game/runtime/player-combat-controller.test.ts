@@ -449,3 +449,78 @@ it("routes Ion Citadel projectile hits exclusively to Aegis Prime", () => {
   expect(damageAegisPrime).toHaveBeenCalled();
   expect(damageGravebloom).not.toHaveBeenCalled();
 });
+
+describe("stable player combat aim", () => {
+  function aimHarness() {
+    let now = 0;
+    const state = createCombatHarness({ nowSeconds: () => now, localIdentity: () => "me" });
+    state.enemies.length = 0;
+    state.boss.dead = true;
+    Object.assign(state.player, { x: 500, y: 500, attackRange: 200 });
+    const lifecycle = createEnemyLifecycle(state.enemies, state.spawnSites, () => {});
+    for (const [id, x] of [[0, 450], [1, 551]] as const) lifecycle.spawnFromSite({
+      id, x, y: 500, type: "Spitter", campName: "Test", leashRange: 500, alive: false, respawnAt: 0,
+    });
+    return { ...state, aim(type: "Spitter" | null = null) { now += 1 / 60; state.controller.attackNearest(type); } };
+  }
+  it("keeps body and weapon facing steady through opposite-side distance jitter and candidate reorderings", () => {
+    const f = aimHarness(), [left, right] = f.enemies;
+    f.aim();
+    for (let frame = 0; frame < 120; frame++) {
+      left.x = 450 + (frame % 2 ? -1 : 1);
+      right.x = 550 + (frame % 2 ? -1 : 1);
+      f.enemies.reverse();
+      f.aim();
+      expect(f.player.facing).toBe(Math.PI);
+      expect(f.player.combatFacing).toBe(Math.PI);
+    }
+    right.x = 525;
+    for (let frame = 0; frame < 6; frame++) f.aim();
+    expect(f.player.combatFacing).toBe(0);
+  });
+  it.each(["dead", "out of range", "removed"])("immediately reacquires when the retained enemy is %s", reason => {
+    const f = aimHarness(), left = f.enemies[0];
+    f.aim();
+    if (reason === "dead") left.dead = true;
+    else if (reason === "out of range") left.x = 100;
+    else f.enemies.splice(0, 1);
+    f.aim();
+    expect(f.player.combatFacing).toBe(0);
+  });
+  it("lets an active threat override near-tie retention during autofarm", () => {
+    const f = aimHarness(), right = f.enemies[1];
+    f.aim("Spitter");
+    right.engaged = true; right.aggroTargetId = "me";
+    for (let frame = 0; frame < 6; frame++) f.aim("Spitter");
+    expect(f.player.combatFacing).toBe(0);
+  });
+  it("limits candidate searches while continuing to track the retained target each frame", () => {
+    const f = aimHarness(), [left, right] = f.enemies;
+    let rightPositionReads = 0;
+    Object.defineProperty(right, "x", { configurable: true, get() { rightPositionReads++; return 551; } });
+    f.aim();
+    rightPositionReads = 0;
+    for (let frame = 0; frame < 60; frame++) {
+      left.y = 500 + frame / 10;
+      f.aim();
+      expect(f.player.combatFacing).toBeCloseTo(Math.atan2(left.y - 500, -50));
+    }
+    // One direct position read per search; a full-frame search would read it 60 times.
+    expect(rightPositionReads).toBeGreaterThanOrEqual(10);
+    expect(rightPositionReads).toBeLessThanOrEqual(13);
+  });
+  it("does not mirror the body or held weapon for tiny vertical-aim crossings", () => {
+    const f = aimHarness(), [enemy, other] = f.enemies;
+    other.dead = true;
+    enemy.y = 450;
+    for (let frame = 0; frame < 90; frame++) {
+      enemy.x = 500 + (frame % 2 ? -1 : 1);
+      f.aim();
+      expect(Math.cos(f.player.facing)).toBeGreaterThan(0);
+      expect(f.player.combatFacing).toBeCloseTo(Math.atan2(-50, enemy.x - 500));
+    }
+    enemy.x = 495;
+    f.aim();
+    expect(Math.cos(f.player.facing)).toBeLessThan(0);
+  });
+});

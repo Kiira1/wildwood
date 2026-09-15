@@ -1,5 +1,6 @@
+import { LOADOUT_FIELDS, COMBAT_PROGRESS_FIELDS, mergeCombatStats, type CombatProgress } from "../../shared/combat-progress";
 import { chatReactionSummary, playerChatHearts, reactionCountsFor, chatReaction, readChatReactions, setChatReaction, removeMessageReactions, removeAccountReactions, mergeAccountReactions } from "./chat-reactions";
-import { regularEnemyLootCursor, acceptRegularEnemyLootBatch, rollRegularEnemyLoot } from "./regular-enemy-loot";
+import { regularEnemyLootCursor, acceptRegularEnemyLootBatch, rollRegularEnemyLoot, canReplayRegularEnemyLoot } from "./regular-enemy-loot";
 import { BLACK_BOOTS, BLACK_BOOTS_SPEED_BONUS } from "../../shared/items";
 import { playerOnboarding, advanceOnboarding, mergeOnboarding, needsOnboarding } from "./onboarding";
 import { canDestroyEquipment } from "../../shared/items";
@@ -3181,15 +3182,9 @@ function removePlayerRealtimeState(ctx: any, identity: any) {
   if (mapping) ctx.db.playerMotionIdentity.networkId.delete(mapping.networkId);
 }
 
-function sharedMapCounts(ctx: any) {
-  const counts = new Map<string, number>();
-  for (const state of ctx.db.playerMotionMapState.iter() as Iterable<any>) counts.set(state.mapId, state.playerCount);
-  return counts;
-}
-
 function hasSharedMap(ctx: any) {
   for (const state of ctx.db.playerMotionMapState.iter() as Iterable<any>) {
-    if (state.playerCount > 1) return true;
+    if (state.mapId !== HOME_EXTERIOR_MAP_ID && state.playerCount > 1 && state.visibleCount > 0) return true;
   }
   return false;
 }
@@ -6646,23 +6641,24 @@ export const publishMotionDetailFrames = spacetimedb.reducer(
 export const publishMapFrames = spacetimedb.reducer(
   { schedule: mapFrameSchedule.rowType },
   (ctx, _args) => {
-    const mapCounts = sharedMapCounts(ctx);
     let continuePublishing = false;
-    for (const count of mapCounts.values()) {
-      if (count > 1) {
-        continuePublishing = true;
-        break;
-      }
-    }
+    let sampleVisiblePlayers = false;
     const maps = new Map<string, PlayerMapSample[]>();
-    // Emit one final single-player/empty-visible snapshot before stopping so
-    // clients clear dots belonging to players who just left or hid.
-    for (const [mapId, count] of mapCounts) if (count > 0) maps.set(mapId, []);
-    for (const motion of ctx.db.playerMotion.iter() as Iterable<any>) {
-      if (!motion.isVisible) continue;
-      const samples = maps.get(motion.mapId) ?? [];
-      samples.push(motionSample(motion, ctx.timestamp.microsSinceUnixEpoch));
-      maps.set(motion.mapId, samples);
+    for (const state of ctx.db.playerMotionMapState.iter() as Iterable<any>) {
+      // Home is private: it has no remote minimap dots or observers to serve.
+      if (state.mapId === HOME_EXTERIOR_MAP_ID || state.playerCount === 0) continue;
+      if (state.playerCount > 1 && state.visibleCount > 0) continuePublishing = true;
+      sampleVisiblePlayers ||= state.visibleCount > 0;
+      // Keep a final single/empty frame to clear dots after a departure or hide.
+      maps.set(state.mapId, []);
+    }
+    // Regional databases already contain one map. A second index on this hot
+    // movement table would add write cost without narrowing those scans.
+    // The root's private-home-only case never reads motion rows at all.
+    if (sampleVisiblePlayers) {
+      for (const motion of ctx.db.playerMotion.iter() as Iterable<any>) {
+        if (motion.isVisible) maps.get(motion.mapId)?.push(motionSample(motion, ctx.timestamp.microsSinceUnixEpoch));
+      }
     }
     for (const [mapId, samples] of maps) {
       const compacted = compactPlayerMapSamples(samples, WORLD.width, WORLD.height);
@@ -9144,6 +9140,26 @@ export const devUpdatePlayerSave = spacetimedb.reducer(
   },
 );
 
+// Stat saves reuse the server-owned loadout. No inventory decoding, appearance
+// rebuilding, or temporary movement-speed rewrite is needed for an ordinary kill.
+function saveCombatProgress(ctx: any, activePlayer: any, base: any, progress: CombatProgress, write = true) {
+  const next = mergeCombatStats(base, progress);
+  const changed = COMBAT_PROGRESS_FIELDS.some(field => field !== "enemyKills" && next[field] !== base[field]);
+  if (changed) {
+    if (write) updateSnapshotRow(ctx, "playerProgress", next);
+    const power = powerFieldsForProgress(ctx, next);
+    if (activePlayer.power !== power.power || activePlayer.powerLevel !== power.powerLevel) {
+      const updated = { ...activePlayer, ...power };
+      updateSnapshotRow(ctx, "player", updated);
+      syncPlayerMotionIdentity(ctx, playerWithMotion(ctx, updated));
+    }
+  }
+  const lifetime = ensurePlayerLifetime(ctx);
+  const kills = Number.isFinite(progress.enemyKills) ? BigInt(Math.max(0, Math.min(0xffffffff, Math.floor(progress.enemyKills)))) : lifetime.enemyKills;
+  if (kills > lifetime.enemyKills) ctx.db.playerLifetime.identity.update({ ...lifetime, enemyKills: kills });
+  return next;
+}
+
 export const savePlayerProgress = spacetimedb.reducer(
   {
     maxHp: t.f32(),
@@ -9173,6 +9189,10 @@ export const savePlayerProgress = spacetimedb.reducer(
     const activePlayer = requireControllingPlayer(ctx);
     const current = ctx.db.playerProgress.identity.find(ctx.sender);
     const base = current ?? defaultPlayerProgress(ctx.sender);
+    if (current && LOADOUT_FIELDS.every(field => progress[field] === base[field])) {
+      saveCombatProgress(ctx, activePlayer, base, progress);
+      return;
+    }
     const bounded = (value: number, min: number, max: number, fallback: number) =>
       Number.isFinite(value) ? Math.max(min, Math.min(max, value)) : fallback;
     const normalized = {
@@ -9275,7 +9295,10 @@ export const savePlayerProgress = spacetimedb.reducer(
     }
     const presentation = {
       ...powerFieldsForProgress(ctx, next),
-      speed: effectiveMovementSpeedForProgress(ctx, next),
+      speed: effectiveMovementSpeedForProgress(ctx, next) + (
+        base.equippedFeet === BLACK_BOOTS && next.equippedFeet === BLACK_BOOTS &&
+        movementSpeedsMatch(activePlayer.speed, effectiveMovementSpeedForProgress(ctx, base) + BLACK_BOOTS_SPEED_BONUS)
+          ? BLACK_BOOTS_SPEED_BONUS : 0),
       ...equipment,
     };
     if (
@@ -9578,10 +9601,10 @@ export const recordPlayerDeath = spacetimedb.reducer(
   },
 );
 
-function awardRegularEnemyLoot(ctx: ReducerCtx<InferSchema<typeof spacetimedb>>, mapId: string, count: number) {
+function awardRegularEnemyLoot(ctx: ReducerCtx<InferSchema<typeof spacetimedb>>, mapId: string, count: number, checkpoint?: { progress: any }) {
   const drops = rollRegularEnemyLoot(ctx, mapId, count);
-  if (!drops.size) return;
-  const current = ctx.db.playerProgress.identity.find(ctx.sender);
+  if (!drops.size) return checkpoint?.progress;
+  const current = checkpoint?.progress ?? ctx.db.playerProgress.identity.find(ctx.sender);
   let next = current ?? defaultPlayerProgress(ctx.sender);
   const owned = new Set(inventoryForProgress(next));
   for (const { active } of activeItemUpgradeEntriesFor(ctx, ctx.sender)) owned.add(active.itemId);
@@ -9595,12 +9618,13 @@ function awardRegularEnemyLoot(ctx: ReducerCtx<InferSchema<typeof spacetimedb>>,
       inventoryChanged = true;
     }
   }
-  if (!inventoryChanged) return;
+  if (!inventoryChanged || checkpoint) return next;
   if (current) updateSnapshotRow(ctx, "playerProgress", next);
   else insertSnapshotRow(ctx, "playerProgress", next);
+  return next;
 }
 
-/** Current clients send bounded, ordered batches; one server RNG roll per item per kill. */
+/** Compatibility batch endpoint for installed 0.692–0.693 clients. */
 export const recordRegularEnemyDefeats = spacetimedb.reducer(
   { streamId: t.string(), sequence: t.u64(), mapId: t.string(), count: t.u16() },
   (ctx, batch) => {
@@ -9610,8 +9634,34 @@ export const recordRegularEnemyDefeats = spacetimedb.reducer(
   },
 );
 
+/** The same receipt covers both loot and its optional due stat checkpoint. */
+export const recordCombatCheckpoint = spacetimedb.reducer(
+  { streamId: t.string(), sequence: t.u64(), mapId: t.string(), count: t.u16(),
+    progress: t.option(t.object("CombatProgressCheckpoint", {
+      maxHp: t.f64(), damage: t.f64(), attackRate: t.f64(), projectileCount: t.u32(),
+      armor: t.f64(), regen: t.f64(), enemyKills: t.u32(),
+    })),
+  },
+  (ctx, batch) => {
+    const player = requireControllingPlayer(ctx);
+    if (activeDuelFor(ctx, ctx.sender)) throw new SenderError("Enemy loot is unavailable during a duel.");
+    // Regular combat is client-simulated. An interrupted batch may belong to a
+    // previously unlocked map after reconnecting, but never to a locked map.
+    if (!acceptRegularEnemyLootBatch(ctx, batch, player.mapId,
+      () => canReplayRegularEnemyLoot(batch.mapId, ctx.db.playerProgress.identity.find(ctx.sender)))) return;
+    if (!batch.progress) { awardRegularEnemyLoot(ctx, batch.mapId, batch.count); return; }
+    const current = ctx.db.playerProgress.identity.find(ctx.sender);
+    const base = current ?? defaultPlayerProgress(ctx.sender);
+    const next = saveCombatProgress(ctx, player, base, batch.progress, false);
+    const rewarded = awardRegularEnemyLoot(ctx, batch.mapId, batch.count, { progress: next });
+    // One durable progress/snapshot write, even when a stat save also wins loot.
+    if (!current) insertSnapshotRow(ctx, "playerProgress", rewarded);
+    else if (!samePlayerProgressValues(base, rewarded)) updateSnapshotRow(ctx, "playerProgress", rewarded);
+  },
+);
+
 // Compatibility endpoints for installed clients through 0.691. New clients use
-// record_regular_enemy_defeats; removing these wire names would break old apps.
+// record_combat_checkpoint; removing these wire names would break old apps.
 export const recordForestEnemyDefeat = spacetimedb.reducer({}, ctx => {
   const player = requireControllingPlayer(ctx);
   if (player.mapId === TUTORIAL_FOREST_MAP_ID && !activeDuelFor(ctx, ctx.sender)) awardRegularEnemyLoot(ctx, player.mapId, 1);

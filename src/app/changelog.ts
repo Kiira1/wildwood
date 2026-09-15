@@ -1,4 +1,10 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.694": [
+    "Your character and weapon keep a steadier facing direction when nearby enemies are equally close.",
+    "Reduced server work for saving stats, movement speed, and map updates.",
+    "Enemy item drops sync in batches every 15 seconds, with early syncing when traveling. Drop chances are unchanged.",
+    "Improved reward recovery after interrupted connections and preserved the Black Boots speed bonus during stat saves.",
+  ],
   "0.693": [
     "Choose one reaction per message. Selecting another emoji switches your reaction; tapping the same one removes it.",
     "Reaction buttons are hidden on your own messages, and self-reactions are blocked.",
@@ -1816,6 +1822,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.694": "2026-09-15",
   "0.693": "2026-09-14",
   "0.692": "2026-09-14",
   "0.691": "2026-09-14",

@@ -40,6 +40,10 @@ const GRAVEBLOOM_HIT_BATCH_DELAY = .1;
 const AEGIS_PRIME_HIT_BATCH_DELAY = .1;
 const DEATH_PARTICLE_COLOR = "#e53935";
 const TARGET_GRID_CELL_SIZE = 160;
+// Collision settling must not flip aim between equally close enemies every frame.
+const TARGET_SWITCH_DISTANCE = 12;
+const TARGET_SEARCH_INTERVAL_SECONDS = .08;
+const FACING_HORIZONTAL_DEAD_ZONE = 3;
 const IDLE_TARGET_RECHECK_SECONDS = .08;
 const MAX_SCHEDULE_LATE_SECONDS = .05;
 
@@ -174,6 +178,14 @@ export function createPlayerCombatController(options: {
   const { projectiles, enemyShots } = projectileStore;
   const targetGrid = createSpatialGrid<EnemyState>(TARGET_GRID_CELL_SIZE, WORLD.w, WORLD.h);
   const targetCandidates: EnemyState[] = [];
+  let retainedTarget: EnemyState | BossTarget | null = null;
+  let nextTargetSearchAt = 0;
+  let searchedEnemyCount = -1;
+  let searchedEnemyType: EnemyKind | null = null;
+  let searchedCampName: string | null = null;
+  let searchedRange = 0;
+  let searchedBoss: BossTarget | null = null;
+  let searchedBossAlive = false;
   let maxEnemyRadius = 0;
   let pendingPlayerAttack: PendingPlayerAttack | null = null;
   let nextAttackAtSeconds = 0;
@@ -223,6 +235,12 @@ export function createPlayerCombatController(options: {
     return null;
   }
 
+  function faceTarget(target: AttackTarget) {
+    const dx = target.x - player.x;
+    // Keep the body/held-weapon mirror stable when aiming almost vertically.
+    if (Math.abs(dx) > FACING_HORIZONTAL_DEAD_ZONE) player.facing = Math.atan2(target.y - player.y, dx);
+  }
+
   function fireAt(
     target: AttackTarget,
     attackInterval: number,
@@ -237,7 +255,7 @@ export function createPlayerCombatController(options: {
         : nowSeconds
     );
     const timestamps = absoluteAttackTimestamps(scheduledAt, attackInterval);
-    player.facing = Math.atan2(target.y - player.y, target.x - player.x);
+    faceTarget(target);
     player.throwClock = attackAnimationClockAt(timestamps, nowSeconds);
     pendingPlayerAttack = { target, timestamps, projectileReleased: false };
     nextAttackAtSeconds = timestamps.nextAttackAtSeconds;
@@ -339,37 +357,67 @@ export function createPlayerCombatController(options: {
     player.throwClock = 0;
   }
 
-  function attackNearest(enemyType: EnemyKind | null = null, campName: string | null = null) {
-    const nowSeconds = options.nowSeconds();
-    syncAttackTimeline(nowSeconds);
+  function targetIsEligible(target: EnemyState | BossTarget, enemyType: EnemyKind | null, campName: string | null, mapBoss: BossTarget | null) {
+    if (target.dead) return false;
+    if (target.isBoss) return !enemyType && target === mapBoss &&
+      Math.max(0, Math.hypot(player.x - target.x, player.y - target.y) - target.r) < player.attackRange;
+    if (distanceSquared(player, target) >= player.attackRange * player.attackRange) return false;
+    if (!enemyType) return true;
+    return !target.generatedBoss && !target.remoteCombatGhost &&
+      (isEnemyAttackingPlayer(target, options.localIdentity?.()) ||
+        (target.type === enemyType && (!campName || target.campName === campName)));
+  }
+
+  function findAttackTarget(enemyType: EnemyKind | null, campName: string | null, mapBoss: BossTarget | null) {
     let target: EnemyState | BossTarget | null = null;
     let best = player.attackRange * player.attackRange;
-    rebuildTargetGrid();
-    targetGrid.queryBounds(
-      player.x - player.attackRange,
-      player.y - player.attackRange,
-      player.x + player.attackRange,
-      player.y + player.attackRange,
-      targetCandidates,
-    );
+    // A direct scan avoids rebuilding the projectile grid just to choose one target.
     let defending = false;
-    for (const enemy of targetCandidates) {
-      if (enemyType && enemy.generatedBoss) continue;
+    let retainedDistance = Infinity;
+    let retainedThreat = false;
+    for (const enemy of enemies) {
+      if (enemy.dead || (enemyType && enemy.generatedBoss)) continue;
       const threat = Boolean(enemyType && isEnemyAttackingPlayer(enemy, options.localIdentity?.()));
       if (enemyType && ((!threat && (enemy.type !== enemyType || Boolean(campName && enemy.campName !== campName))) || enemy.remoteCombatGhost)) continue;
       const distance = distanceSquared(player, enemy);
       if (distance >= player.attackRange * player.attackRange) continue;
+      if (enemy === retainedTarget) { retainedDistance = distance; retainedThreat = threat; }
       if ((threat && !defending) || (threat === defending && distance < best)) {
         best = distance; target = enemy; defending = threat;
       }
     }
-    const mapBoss = activeMapBoss();
     if (!enemyType && mapBoss && !mapBoss.dead) {
       const edgeDistance = Math.max(0, Math.hypot(player.x - mapBoss.x, player.y - mapBoss.y) - mapBoss.r);
+      if (mapBoss === retainedTarget && edgeDistance < player.attackRange) retainedDistance = edgeDistance * edgeDistance;
       if (edgeDistance * edgeDistance < best) { best = edgeDistance * edgeDistance; target = mapBoss; }
     }
+    if (target && retainedTarget && retainedThreat === defending &&
+        Math.sqrt(retainedDistance) <= Math.sqrt(best) + TARGET_SWITCH_DISTANCE) target = retainedTarget;
+    return target;
+  }
+
+  function attackNearest(enemyType: EnemyKind | null = null, campName: string | null = null) {
+    const nowSeconds = options.nowSeconds();
+    syncAttackTimeline(nowSeconds);
+    const mapBoss = activeMapBoss();
+    const bossAlive = Boolean(mapBoss && !mapBoss.dead);
+    // The current target and aim update every frame; only acquisition is throttled.
+    if (nowSeconds >= nextTargetSearchAt || enemies.length !== searchedEnemyCount ||
+        enemyType !== searchedEnemyType || campName !== searchedCampName || player.attackRange !== searchedRange ||
+        mapBoss !== searchedBoss || bossAlive !== searchedBossAlive ||
+        (retainedTarget && !targetIsEligible(retainedTarget, enemyType, campName, mapBoss))) {
+      retainedTarget = findAttackTarget(enemyType, campName, mapBoss);
+      nextTargetSearchAt = nowSeconds + TARGET_SEARCH_INTERVAL_SECONDS;
+      searchedEnemyCount = enemies.length;
+      searchedEnemyType = enemyType;
+      searchedCampName = campName;
+      searchedRange = player.attackRange;
+      searchedBoss = mapBoss;
+      searchedBossAlive = bossAlive;
+    }
+    const target = retainedTarget;
     player.combatFacing = target ? Math.atan2(target.y - player.y, target.x - player.x) : null;
-    if (player.combatFacing !== null) player.facing = player.combatFacing;
+    if (target) faceTarget(target);
     if (!target) {
       nextAttackAtSeconds = attackReadyAtWithoutTarget(nextAttackAtSeconds, nowSeconds);
       player.attackClock = Math.max(0, nextAttackAtSeconds - nowSeconds);
@@ -692,6 +740,9 @@ export function createPlayerCombatController(options: {
       aegisPrimeHitBatchTimer = 0;
     },
     clearPendingThrow: () => {
+      retainedTarget = null;
+      nextTargetSearchAt = 0;
+      searchedEnemyCount = -1;
       pendingPlayerAttack = null;
       nextAttackAtSeconds = 0;
       lastBossAttackCycleKey = "";
