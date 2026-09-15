@@ -13,6 +13,10 @@ export function formatChatTime(date: Date) {
   return `${hour}:${String(date.getMinutes()).padStart(2, "0")}`;
 }
 
+export function formatChatDateTime(date: Date) {
+  return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()} · ${formatChatTime(date)} ${date.getHours() < 12 ? "AM" : "PM"}`;
+}
+
 export function formatChatReplyPreview(senderName: string, message: string) {
   return `Reply ${senderName.trim() || "Player"}: ${message.replace(/\s+/g, " ").trim()}`;
 }

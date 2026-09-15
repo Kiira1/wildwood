@@ -1,4 +1,5 @@
 import { CHAT_REACTIONS, type ChatReaction, type ChatReactionState } from "../../shared/chat-reactions";
+import { formatChatDateTime } from "./chat-presentation";
 import {
   CHAT_REPORT_REASONS,
   type ChatReportReason,
@@ -14,6 +15,7 @@ export type ChatMessageActionTarget = {
   sender: string;
   senderName: string;
   message: string;
+  sentAtMs?: number;
   replayId: bigint;
   guildReplayKey?: string;
   replyToMessageId?: bigint;
@@ -150,8 +152,18 @@ export function createChatMessageActionsController({
     const availability = messageActionAvailability(selectedMessage, getLocalIdentity());
     reportPending = false;
     selectReason(null);
-    elements.title.textContent = "Message actions";
-    elements.title.parentElement!.hidden = true;
+    const sender = document.createElement("span");
+    sender.textContent = selectedMessage.senderName || "Player";
+    const time = document.createElement("time");
+    if (selectedMessage.sentAtMs !== undefined && Number.isFinite(selectedMessage.sentAtMs)) {
+      const date = new Date(selectedMessage.sentAtMs);
+      time.dateTime = date.toISOString();
+      time.textContent = formatChatDateTime(date);
+    }
+    elements.title.replaceChildren(sender, time);
+    elements.preview.textContent = selectedMessage.message;
+    elements.preview.scrollTop = 0;
+    elements.title.parentElement!.hidden = false;
     elements.reactions.hidden = !canReactToMessage(selectedMessage, getLocalIdentity());
     elements.menu.hidden = false;
     elements.reportForm.hidden = true;

@@ -1282,9 +1282,9 @@
     bottom: 0;
     left: 0;
     display: grid;
-    grid-template-rows: 28px auto minmax(0, 1fr);
+    grid-template-rows: 28px auto auto minmax(0, 1fr);
     width: min(100%, 520px);
-    height: clamp(286px, 40dvh, 430px);
+    height: clamp(360px, 55dvh, 520px);
     max-height: calc(100dvh - max(12px, env(safe-area-inset-top)));
     margin: 0 auto;
     padding: 0 max(14px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
@@ -1306,9 +1306,11 @@
   .chat-message-action-drag { display: grid; place-items: center; margin: 0 -14px; cursor: grab; touch-action: none; }
   .chat-message-actions.is-dragging .chat-message-action-drag { cursor: grabbing; }
   .chat-message-action-handle { display: block; width: 42px; height: 5px; border-radius: 999px; background: rgba(255,255,255,.34); box-shadow: none; }
-  .chat-message-action-header { min-width: 0; padding: 0 4px 8px; border-bottom: 1px solid rgba(255,255,255,.09); }
-  .chat-message-action-header h2 { margin: 0; color: #fff; font-size: 16px; line-height: 1.2; text-transform: none; }
-  .chat-message-action-header p { margin: 3px 0 0; overflow: hidden; color: #c8c4bc; font-size: 11px; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; -webkit-text-stroke: 0; text-shadow: none; }
+  .chat-message-action-header { grid-row: 2; min-width: 0; padding: 8px 4px 14px; }
+  .chat-message-action-header h2 { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 10px; margin: 0; color: #fff; font-size: 13px; line-height: 1.2; text-transform: none; }
+  .chat-message-action-header time { margin-left: auto; color: rgba(255,255,255,.55); font-size: 11px; font-weight: 800; white-space: nowrap; }
+  .chat-message-action-header p { max-height: min(140px, 20dvh); margin: 6px 0 0; padding: 6px 12px; border-radius: 5px; background: rgba(255,255,255,.09); overflow: auto; color: #f7f4ed; font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; white-space: pre-wrap; touch-action: pan-y; -webkit-text-stroke: 0; text-shadow: none; }
+  .chat-message-action-menu, .chat-message-report-form { grid-row: 4; min-height: 0; }
   .chat-message-action-menu { display: grid; align-content: start; padding: 8px 0; overflow: auto; touch-action: pan-y; }
   .chat-message-action-menu[hidden],
   .chat-message-action-button[hidden] { display: none; }
@@ -1439,7 +1441,7 @@
   #chatPanel.is-large .chat-line { flex: 0 0 auto; grid-template-columns: 66px minmax(0, 1fr); grid-template-rows: auto; width: 100%; min-height: 93px; padding: 27px 0 0; column-gap: 9px; align-self: start; }
   #chatPanel.is-large .chat-profile-icon { grid-column: 1; grid-row: 1; width: 66px; height: 66px; border-radius: 6px; }
   #chatPanel.is-large .chat-message-content { grid-column: 2; grid-row: 1; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 2px 10px; width: min(640px, calc(100% - 50px)); max-width: 100%; min-width: 0; }
-  #chatPanel.is-large .chat-name { grid-column: 1; grid-row: 1; font-size: 15px; }
+  #chatPanel.is-large .chat-name { grid-column: 1 / -1; grid-row: 1; font-size: 15px; }
   #chatPanel.is-large .chat-power-icon { width: 18px; height: 18px; }
   #chatPanel.is-large .chat-time { grid-column: 2; grid-row: 1; justify-self: end; color: rgba(255,255,255,.45); font-size: 11px; font-weight: 800; text-align: right; }
   #chatPanel.is-large .chat-text { grid-column: 1 / -1; grid-row: 2; display: block; align-self: start; justify-self: stretch; width: auto; max-width: 100%; min-width: 0; min-height: 29px; height: auto; margin: 0 0 10px; padding: 6px 12px; overflow-wrap: anywhere; font-size: 15px; line-height: 1.4; }
@@ -3531,7 +3533,7 @@
 .leaderboard-page-loader button { border: 0; background: none; box-shadow: none; color: white; padding: 10px 16px; cursor: pointer; }
 
 /* Compact reaction chips sit beneath the bubble without changing message layout. */
-.chat-message-reaction-picker { display: flex; align-items: center; justify-content: space-around; gap: 8px; padding: 2px 4px 10px; }
+.chat-message-reaction-picker { grid-row: 3; display: flex; align-items: center; justify-content: space-around; gap: 8px; padding: 2px 4px 10px; }
 .chat-message-reaction-picker button { width: 48px; height: 44px; padding: 0; border: 0; border-radius: 10px; background: transparent; box-shadow: none; font-size: 26px; line-height: 1; }
 .chat-message-reaction-picker button[aria-pressed="true"] { background: rgba(255,255,255,.16); }
 .chat-message-reaction-picker button:disabled { opacity: .45; }

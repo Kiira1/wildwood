@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.702": [
+    "Tap a chat message to see its date and time above the selected message and controls. Timestamps stay hidden while browsing chat.",
+  ],
   "0.701": [
     "Restored the original chat message spacing and aligned timestamps to a consistent right edge.",
   ],
@@ -1851,6 +1854,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.702": "2026-09-15",
   "0.701": "2026-09-15",
   "0.700": "2026-09-15",
   "0.699": "2026-09-15",

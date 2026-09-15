@@ -3,7 +3,6 @@ import type { ChatReaction, ChatReactionState } from "../../shared/chat-reaction
 import { appendPlayerNameTags, playerNamePrefix } from "../app/player-name-tags";
 import {
   duelReplayIsInteractive,
-  formatChatTime,
   formatChatReplyPreview,
   shouldShowGlobalChatMessage,
 } from "./chat-presentation";
@@ -444,9 +443,6 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
       const line = document.createElement("div");
       line.className = "chat-line";
       line.dataset.messageId = String(message.id);
-      const time = document.createElement("span");
-      time.className = "chat-time";
-      time.textContent = formatChatTime(new Date(message.sentAtMs));
       const guildReplayKey = channel === "public" ? message.guildReplayKey : undefined;
       const shownMessage = message.moderated ? MODERATED_CHAT_MESSAGE : message.message;
       const text = document.createElement("span");
@@ -515,6 +511,7 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
           sender: message.sender,
           senderName: displayName,
           message: shownMessage,
+          sentAtMs: message.sentAtMs,
           replayId: message.replayId,
           guildReplayKey,
           replyToMessageId: message.replyToMessageId,
@@ -534,7 +531,7 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
       icon.style.backgroundPosition = `${PROFILE_PORTRAIT_POSITION_START + (iconIndex % 8) * PROFILE_PORTRAIT_POSITION_STEP}% ${PROFILE_PORTRAIT_POSITION_START + Math.floor(iconIndex / 8) * PROFILE_PORTRAIT_POSITION_STEP}%`;
       const content = document.createElement("div");
       content.className = "chat-message-content";
-      content.append(name, time, text);
+      content.append(name, text);
       line.append(icon, content);
       if (large) {
         if (!message.moderated) appendChatReactions(text, reactionCountsJson);

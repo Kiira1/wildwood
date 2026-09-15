@@ -81,8 +81,9 @@ describe("chat channels", () => {
     expect(moderated.textContent).toContain("Message moderated.");
     if (fullscreen) {
       moderated.querySelector<HTMLElement>(".chat-text")!.click();
-      expect(h.document.getElementById("chatMessageActionTitle")!.parentElement!.hidden).toBe(true);
+      expect(h.document.getElementById("chatMessageActionTitle")!.parentElement!.hidden).toBe(false);
       expect(h.document.getElementById("chatMessageReactions")!.hidden).toBe(true);
+      expect(h.document.getElementById("chatMessageActionPreview")!.textContent).toBe("Message moderated.");
     }
   });
 
@@ -100,8 +101,11 @@ describe("chat channels", () => {
     expect(h.document.querySelector(".chat-replay")).toBeNull();
     h.document.getElementById("chatSizeToggle")!.click();
     h.document.querySelector<HTMLElement>(".chat-replay")!.click();
-    expect(h.document.getElementById("chatMessageActionTitle")!.parentElement!.hidden).toBe(true);
+    expect(h.document.getElementById("chatMessageActionTitle")!.parentElement!.hidden).toBe(false);
     expect(h.document.getElementById("chatMessageReactions")!.textContent).toBe("👍😂❤️👎");
+    expect(h.document.querySelector(".chat-line .chat-time")).toBeNull();
+    expect(h.document.getElementById("chatMessageActionPreview")!.textContent).toBe(announcement.message);
+    expect(h.document.querySelector("#chatMessageActionTitle time")!.getAttribute("datetime")).toBe(new Date(announcement.sentAtMs).toISOString());
     expect(h.document.getElementById("chatMessageReplyBtn")!.hidden).toBe(false);
     const openReplay = vi.fn();
     h.window.addEventListener("wildwood:open-guild-replay", openReplay);
