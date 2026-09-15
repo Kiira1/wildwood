@@ -228,7 +228,7 @@ export function createRenderController(options: {
     // player, whose off-arena position used to darken replays.
   }
 
-  function render() {
+  function renderFrame() {
     const { width, height, dpr } = viewport();
     ctx.clearRect(0, 0, width, height);
     drawProfileCharacterPreview();
@@ -299,5 +299,17 @@ export function createRenderController(options: {
     }
   }
 
+  function render() {
+    try { renderFrame(); }
+    catch (error) {
+      // Clear leaked clipping, transforms, filters and save-stack entries before retrying.
+      // Assigning the backing width resets the existing context without changing layout.
+      ctx.canvas.width = ctx.canvas.width;
+      const { dpr } = viewport();
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.imageSmoothingEnabled = false;
+      throw error;
+    }
+  }
   return { render, drawBootPickup };
 }

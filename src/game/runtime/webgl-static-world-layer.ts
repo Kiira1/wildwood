@@ -387,6 +387,18 @@ function initializeWebGLStaticWorldLayer(overlayCanvas: HTMLCanvasElement): Stat
   let lastWidth = 0;
   let lastHeight = 0;
   let lastDpr = 0;
+  let uploadedTexture = false;
+  const attributeSlots = [...new Set([position, spritePosition, spriteTexturePosition, colorPosition, colorValue])];
+  const enabledAttributes = new Set([position]);
+
+  function useAttributes(first: number, second = -1) {
+    for (const slot of attributeSlots) {
+      const needed = slot === first || slot === second;
+      if (needed === enabledAttributes.has(slot)) continue;
+      if (needed) { gl.enableVertexAttribArray(slot); enabledAttributes.add(slot); }
+      else { gl.disableVertexAttribArray(slot); enabledAttributes.delete(slot); }
+    }
+  }
 
   function destroyTexture(tile: TileTexture) {
     gl.deleteTexture(tile.texture);
@@ -420,6 +432,7 @@ function initializeWebGLStaticWorldLayer(overlayCanvas: HTMLCanvasElement): Stat
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     try {
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
+      uploadedTexture = true;
       return texture;
     } catch {
       gl.deleteTexture(texture);
@@ -439,6 +452,7 @@ function initializeWebGLStaticWorldLayer(overlayCanvas: HTMLCanvasElement): Stat
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     try {
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
+      uploadedTexture = true;
       spriteTextures.set(source, texture);
       return texture;
     } catch {
@@ -465,8 +479,7 @@ function initializeWebGLStaticWorldLayer(overlayCanvas: HTMLCanvasElement): Stat
     }
     gl.useProgram(spriteProgram);
     gl.bindBuffer(gl.ARRAY_BUFFER, spriteBuffer);
-    gl.enableVertexAttribArray(spritePosition);
-    gl.enableVertexAttribArray(spriteTexturePosition);
+    useAttributes(spritePosition, spriteTexturePosition);
     gl.vertexAttribPointer(spritePosition, 2, gl.FLOAT, false, 16, 0);
     gl.vertexAttribPointer(spriteTexturePosition, 2, gl.FLOAT, false, 16, 8);
     gl.uniform2f(spriteResolution, frame.width, frame.height);
@@ -507,8 +520,7 @@ function initializeWebGLStaticWorldLayer(overlayCanvas: HTMLCanvasElement): Stat
     );
     gl.useProgram(colorProgram);
     gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
-    gl.enableVertexAttribArray(colorPosition);
-    gl.enableVertexAttribArray(colorValue);
+    useAttributes(colorPosition, colorValue);
     gl.vertexAttribPointer(colorPosition, 2, gl.FLOAT, false, 24, 0);
     gl.vertexAttribPointer(colorValue, 4, gl.FLOAT, false, 24, 8);
     gl.uniform2f(colorResolution, frame.width, frame.height);
@@ -522,6 +534,7 @@ function initializeWebGLStaticWorldLayer(overlayCanvas: HTMLCanvasElement): Stat
   function render(frame: StaticWorldLayerFrame) {
     if (!enabled) return false;
     try {
+      uploadedTexture = false;
       const backingWidth = Math.max(1, Math.round(frame.width * frame.dpr));
       const backingHeight = Math.max(1, Math.round(frame.height * frame.dpr));
       if (frame.width !== lastWidth || frame.height !== lastHeight || frame.dpr !== lastDpr) {
@@ -543,7 +556,7 @@ function initializeWebGLStaticWorldLayer(overlayCanvas: HTMLCanvasElement): Stat
       gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
       // Sprite batches may reuse this attribute slot with a different buffer;
       // restore the static quad binding at the start of every frame.
-      gl.enableVertexAttribArray(position);
+      useAttributes(position);
       gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
       gl.uniform2f(resolution, frame.width, frame.height);
       gl.activeTexture(gl.TEXTURE0);
@@ -552,13 +565,26 @@ function initializeWebGLStaticWorldLayer(overlayCanvas: HTMLCanvasElement): Stat
       for (const tile of frame.tiles) {
         const left = tile.left * frame.zoom + frame.offsetX;
         const top = tile.top * frame.zoom + frame.offsetY;
+        if (left + tile.width * frame.zoom <= 0 || top + tile.height * frame.zoom <= 0
+          || left >= frame.width || top >= frame.height) continue;
+        retainedKeys.add(tile.key);
+      }
+      // Release tiles left behind before uploading the next camera view, so
+      // walking does not temporarily keep two views' GPU allocations alive.
+      for (const [key, tile] of textures) {
+        if (retainedKeys.has(key)) continue;
+        destroyTexture(tile);
+        textures.delete(key);
+      }
+      for (const tile of frame.tiles) {
+        const left = tile.left * frame.zoom + frame.offsetX;
+        const top = tile.top * frame.zoom + frame.offsetY;
         const width = tile.width * frame.zoom;
         const height = tile.height * frame.zoom;
         // Callers may include a preload ring for smooth movement. Keep those
         // sources warm, but do not allocate GPU textures until a tile actually
         // intersects the viewport.
-        if (left + width <= 0 || top + height <= 0 || left >= frame.width || top >= frame.height) continue;
-        retainedKeys.add(tile.key);
+        if (!retainedKeys.has(tile.key)) continue;
         let rendered = textures.get(tile.key);
         if (!rendered || rendered.source !== tile.source) {
           if (rendered) destroyTexture(rendered);
@@ -571,13 +597,15 @@ function initializeWebGLStaticWorldLayer(overlayCanvas: HTMLCanvasElement): Stat
         gl.uniform4f(rect, left, top, width, height);
         gl.drawArrays(gl.TRIANGLES, 0, 6);
       }
-      for (const [key, tile] of textures) {
-        if (retainedKeys.has(key)) continue;
-        destroyTexture(tile);
-        textures.delete(key);
-      }
       drawSpriteBatches(frame);
       drawColorQuads(frame);
+      // WebGL allocation errors set an error flag instead of throwing. Check
+      // once after an upload frame (never every ordinary animation frame),
+      // then use the existing same-frame Canvas fallback on failure.
+      if (uploadedTexture) {
+        const error = gl.getError();
+        if (error !== gl.NO_ERROR) throw new Error(`World texture upload failed (WebGL 0x${error.toString(16)})`);
+      }
       return true;
     } catch (error) {
       console.warn("WildStat WebGL world failed; returning to Canvas2D.", error);

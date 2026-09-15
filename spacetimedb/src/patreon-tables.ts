@@ -1,0 +1,19 @@
+import { table, t } from "spacetimedb/server";
+
+// OAuth credentials and membership identifiers never enter public subscriptions.
+export const patreonTables = {
+  patreonConfig: table({ name: "patreon_config", public: false }, {
+    id: t.u8().primaryKey(), clientId: t.string(), clientSecret: t.string(),
+    campaignId: t.string(), silverTierId: t.string(), goldTierId: t.string(), redirectUri: t.string(),
+  }),
+  patreonLink: table({ name: "patreon_link", public: false }, {
+    identity: t.identity().primaryKey(), userId: t.string(), accessToken: t.string(), refreshToken: t.string(),
+    tier: t.string(), frame: t.string(), validUntilMs: t.f64(), checkedAtMs: t.f64(), attemptedAtMs: t.f64(),
+  }),
+  patreonOwner: table({ name: "patreon_owner", public: false }, {
+    userId: t.string().primaryKey(), identity: t.identity(),
+  }),
+  patreonPending: table({ name: "patreon_pending", public: false }, {
+    state: t.string().primaryKey(), identity: t.identity().unique(), expiresAtMs: t.f64(),
+  }),
+};

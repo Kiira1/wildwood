@@ -1,5 +1,6 @@
 import { createReleaseNotesIndicator } from "./release-notes-unread";
 import { renderUpdateNotice } from "./overlays";
+import { createAvatarFramePicker, type SupporterActions } from "./avatar-frame-picker";
 
 export function createOverlaysController(elements: {
   update: { overlay: HTMLElement; items: HTMLElement; toggle: HTMLElement };
@@ -12,7 +13,10 @@ export function createOverlaysController(elements: {
   paintIcon: (element: HTMLElement, index: number) => void;
   afterIconSet: () => void;
   showMessage: (message: string, color: string) => void;
+  supporter?: SupporterActions;
 }) {
+  const frames = hooks.supporter ? createAvatarFramePicker(hooks.supporter, hooks.showMessage) : undefined;
+  if (frames) elements.iconPicker.choices.before(frames.element);
   let hasUpdateNotes = false;
   const notesIndicator = createReleaseNotesIndicator(elements.update.toggle, hooks.releases);
 
@@ -40,6 +44,7 @@ export function createOverlaysController(elements: {
   }
   function openIconPicker() {
     if (!hooks.connected()) return;
+    frames?.open();
     const selected = hooks.selectedIcon();
     elements.iconPicker.choices.replaceChildren();
     for (let index = 0; index < 64; index += 1) {
@@ -52,13 +57,13 @@ export function createOverlaysController(elements: {
       choice.addEventListener("click", async () => {
         const result = await hooks.setIcon(index);
         if (!result?.ok) return hooks.showMessage(result?.error || "PROFILE ICON UPDATE FAILED", "#ff9b91");
-        hooks.afterIconSet(); elements.iconPicker.overlay.hidden = true; hooks.showMessage("PROFILE ICON UPDATED", "#72ef58");
+        hooks.afterIconSet(); closeIconPicker(); hooks.showMessage("PROFILE ICON UPDATED", "#72ef58");
       });
       elements.iconPicker.choices.append(choice);
     }
     elements.iconPicker.overlay.hidden = false;
   }
-  function closeIconPicker() { elements.iconPicker.overlay.hidden = true; }
+  function closeIconPicker() { frames?.close(); elements.iconPicker.overlay.hidden = true; }
   setUpdateNoticeOpen(false);
   elements.update.toggle.addEventListener("click", toggleUpdateNotice);
   elements.iconPicker.close.addEventListener("click", closeIconPicker);

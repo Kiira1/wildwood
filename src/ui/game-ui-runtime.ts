@@ -18,6 +18,7 @@ import { createTechTreeController } from "./tech-tree-controller";
 export function createGameOverlays(d: Record<string, any>) {
   const { e, coop } = d;
   const overlays = createOverlaysController({ update: { overlay: e.updateNoticeEl, items: e.updateNoticeItemsEl, toggle: e.signinVersionButton }, iconPicker: { overlay: e.profileIconPickerEl, choices: e.profileIconChoices, close: e.closeProfileIconPickerBtn } }, {
+    supporter: coop,
     releases: () => recentReleaseNotes(2), connected: () => Boolean(coop?.isConnected?.()), selectedIcon: () => coop?.profileIcon?.() ?? 0, setIcon: async (index: number) => coop?.setProfileIcon?.(index), paintIcon: d.applyProfileIcon, afterIconSet: d.afterIconSet, showMessage: d.showMessage,
   });
   e.signinVersionButton.textContent = `v${d.version}`;

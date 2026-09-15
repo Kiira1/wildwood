@@ -20,6 +20,18 @@ it("holds live arena rendering until its art has settled", () => {
   expect(f.ctx.fillText).toHaveBeenCalledWith("LOADING ARENA…", 450, 350);
   expect(f.options.setRenderedDuelScene).toHaveBeenCalledWith(null);
 });
+it("resets the canvas state after a drawing error and renders the next frame", () => {
+  const f = arena(true, true), reset = vi.fn();
+  f.ctx.canvas = { get width() { return 1800; }, set width(_value) { reset(); } };
+  f.options.viewport = () => ({ width: 900, height: 700, dpr: 2 });
+  f.render = createRenderController(f.options).render;
+  f.options.drawDuelScene.mockImplementationOnce(() => { throw new Error("draw failed"); });
+  expect(() => f.render()).toThrow("draw failed");
+  expect(reset).toHaveBeenCalledOnce();
+  expect(f.ctx.setTransform).toHaveBeenCalledWith(2, 0, 0, 2, 0, 0);
+  expect(() => f.render()).not.toThrow();
+  expect(f.options.drawDuelScene).toHaveBeenCalledTimes(2);
+});
 it.each([true, false])("keeps arena lighting independent of exploration coordinates (replay=%s)", replay => {
   const f = arena(true, replay); f.render();
   expect(f.options.drawDuelScene).toHaveBeenCalledWith(f.scene);

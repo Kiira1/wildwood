@@ -26,6 +26,7 @@ import ClaimDeveloperItemGiftReducer from "../claim_developer_item_gift_reducer"
 import ClaimGuestAccountReducer from "../claim_guest_account_reducer";
 import CompleteOnboardingStepReducer from "../complete_onboarding_step_reducer";
 import ConfigureGemCommerceReducer from "../configure_gem_commerce_reducer";
+import ConfigurePatreonReducer from "../configure_patreon_reducer";
 import ConfigureShardCoordinatorReducer from "../configure_shard_coordinator_reducer";
 import ConfigureShardingReducer from "../configure_sharding_reducer";
 import CreateGuildReducer from "../create_guild_reducer";
@@ -65,6 +66,7 @@ import DevSetAccessAuditLabelReducer from "../dev_set_access_audit_label_reducer
 import DevSetEndlessTravelAccessReducer from "../dev_set_endless_travel_access_reducer";
 import DevTeleportEndlessReducer from "../dev_teleport_endless_reducer";
 import DevUpdatePlayerSaveReducer from "../dev_update_player_save_reducer";
+import DisconnectPatreonReducer from "../disconnect_patreon_reducer";
 import EnterRegionalWorldReducer from "../enter_regional_world_reducer";
 import EnterWorldReducer from "../enter_world_reducer";
 import EnterWorldWithTutorialReducer from "../enter_world_with_tutorial_reducer";
@@ -108,6 +110,7 @@ import SeedTemporaryGuildReducer from "../seed_temporary_guild_reducer";
 import SendChatMessageReducer from "../send_chat_message_reducer";
 import SendChatReplyReducer from "../send_chat_reply_reducer";
 import SendSocialMessageReducer from "../send_social_message_reducer";
+import SetAvatarFrameReducer from "../set_avatar_frame_reducer";
 import SetChatMessageReactionReducer from "../set_chat_message_reaction_reducer";
 import SetDeveloperNameTagReducer from "../set_developer_name_tag_reducer";
 import SetDeveloperPresenceReducer from "../set_developer_presence_reducer";
@@ -155,6 +158,7 @@ export type ClaimDeveloperItemGiftParams = __Infer<typeof ClaimDeveloperItemGift
 export type ClaimGuestAccountParams = __Infer<typeof ClaimGuestAccountReducer>;
 export type CompleteOnboardingStepParams = __Infer<typeof CompleteOnboardingStepReducer>;
 export type ConfigureGemCommerceParams = __Infer<typeof ConfigureGemCommerceReducer>;
+export type ConfigurePatreonParams = __Infer<typeof ConfigurePatreonReducer>;
 export type ConfigureShardCoordinatorParams = __Infer<typeof ConfigureShardCoordinatorReducer>;
 export type ConfigureShardingParams = __Infer<typeof ConfigureShardingReducer>;
 export type CreateGuildParams = __Infer<typeof CreateGuildReducer>;
@@ -194,6 +198,7 @@ export type DevSetAccessAuditLabelParams = __Infer<typeof DevSetAccessAuditLabel
 export type DevSetEndlessTravelAccessParams = __Infer<typeof DevSetEndlessTravelAccessReducer>;
 export type DevTeleportEndlessParams = __Infer<typeof DevTeleportEndlessReducer>;
 export type DevUpdatePlayerSaveParams = __Infer<typeof DevUpdatePlayerSaveReducer>;
+export type DisconnectPatreonParams = __Infer<typeof DisconnectPatreonReducer>;
 export type EnterRegionalWorldParams = __Infer<typeof EnterRegionalWorldReducer>;
 export type EnterWorldParams = __Infer<typeof EnterWorldReducer>;
 export type EnterWorldWithTutorialParams = __Infer<typeof EnterWorldWithTutorialReducer>;
@@ -237,6 +242,7 @@ export type SeedTemporaryGuildParams = __Infer<typeof SeedTemporaryGuildReducer>
 export type SendChatMessageParams = __Infer<typeof SendChatMessageReducer>;
 export type SendChatReplyParams = __Infer<typeof SendChatReplyReducer>;
 export type SendSocialMessageParams = __Infer<typeof SendSocialMessageReducer>;
+export type SetAvatarFrameParams = __Infer<typeof SetAvatarFrameReducer>;
 export type SetChatMessageReactionParams = __Infer<typeof SetChatMessageReactionReducer>;
 export type SetDeveloperNameTagParams = __Infer<typeof SetDeveloperNameTagReducer>;
 export type SetDeveloperPresenceParams = __Infer<typeof SetDeveloperPresenceReducer>;

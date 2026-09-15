@@ -1,3 +1,4 @@
+import { applyAvatarFrame } from "../app/avatar-frames";
 import { MIN_ATTACK_INTERVAL } from "../../shared/rules";
 import type { PlayerState, RuntimeDuelReplay, RuntimeDuelState } from "../game/runtime/types";
 import { createDuelResultStatRow } from "./duel-result";
@@ -275,6 +276,7 @@ export function createRuntimeHudController(dependencies: RuntimeHudDependencies)
     }
     const developer = dependencies.isDeveloper();
     dependencies.applyProfileIcon(elements.playerIcon, dependencies.profileIcon());
+    applyAvatarFrame(elements.playerIcon, dependencies.localIdentity());
     dependencies.setDeveloperAccess(developer);
     const identity = dependencies.localIdentity();
     const displayName = dependencies.localDisplayName() || "WANDERER";

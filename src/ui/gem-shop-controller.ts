@@ -1,5 +1,7 @@
 import { nativeTestPurchases } from '../app/native-purchases';
 import { GEM_PACKS } from '../../shared/gem-packs';
+import { isNativePreview } from '../app/native-preview';
+import { PATREON_PAGE } from '../../shared/avatar-frames';
 
 /** Fullscreen catalog. Checkout stays disabled until verified fulfillment exists. */
 export function createGemShopController(options: {
@@ -10,79 +12,89 @@ export function createGemShopController(options: {
   dialog.id = 'gemShop';
   dialog.className = 'gem-shop';
   dialog.setAttribute('aria-labelledby', 'gemShopTitle');
-  dialog.setAttribute('aria-describedby', 'gemShopLimit');
+  const nativeShop = isNativePreview();
+  if (nativeShop) dialog.setAttribute('aria-describedby', 'gemShopLimit');
   dialog.innerHTML = `
     <div class="gem-shop-content">
       <header class="gem-shop-header">
         <h1 id="gemShopTitle" class="window-banner window-banner--purple"><span>Shop</span></h1>
-        <p id="gemShopLimit">One of each pack per day · resets at 00:00 UTC</p>
+        ${nativeShop ? '<p id="gemShopLimit">One of each pack per day · resets at 00:00 UTC</p>' : ''}
       </header>
       <div class="gem-shop-scroll">
-        <div class="gem-shop-packs"></div>
-        <p class="gem-shop-notice">Purchases coming soon</p>
+        ${nativeShop ? '<div class="gem-shop-packs"></div><p class="gem-shop-notice">Purchases coming soon</p>' : ''}
       </div>
       <footer class="window-back-footer">
         <button class="gem-shop-back window-back-button" type="button">Back</button>
       </footer>
     </div>`;
-  const testStore = nativeTestPurchases();
-  const notice = dialog.querySelector<HTMLElement>('.gem-shop-notice')!;
-  notice.setAttribute('role', 'status');
-  const buttons = new Map<string, HTMLButtonElement>();
-  let purchasePending = false;
-  let loaded = false;
-  const available = new Set<string>();
-  const refreshButtons = () => {
-    for (const [id, button] of buttons) button.disabled = purchasePending || !available.has(id);
-  };
-  async function loadTestProducts() {
-    if (!testStore || loaded) return;
-    notice.textContent = 'Loading test purchases…';
-    try {
-      const products = await testStore.load();
-      for (const product of products) {
-        const button = buttons.get(product.id);
-        if (!button) continue;
-        button.textContent = product.price;
-        button.setAttribute('aria-label', `Test purchase: ${product.title}, ${product.price}. No charge or Gems.`);
-        available.add(product.id);
-      }
-      loaded = true;
-      notice.textContent = 'Test purchases · no charge or Gems';
-      refreshButtons();
-    } catch {
-      notice.textContent = 'Test Store unavailable. Reopen Shop to retry.';
-    }
+  if (!nativeShop) {
+    const support = document.createElement('a');
+    support.className = 'shop-patreon-button';
+    support.href = PATREON_PAGE; support.target = '_blank'; support.rel = 'noopener noreferrer';
+    support.innerHTML = '<span class="shop-patreon-heart" aria-hidden="true">♥</span><span><strong>Support WildStat on Patreon</strong><small>Support this game’s development and server costs</small></span><span class="shop-patreon-arrow" aria-hidden="true">↗</span>';
+    dialog.querySelector('.gem-shop-scroll')!.prepend(support);
   }
-  const packs = dialog.querySelector<HTMLElement>('.gem-shop-packs')!;
-  for (const pack of GEM_PACKS) {
-    const row = document.createElement('div');
-    row.className = 'gem-shop-pack';
-    const amount = pack.gems === 3300 ? '3.3k' : String(pack.gems);
-    row.innerHTML = `
-      <img src="assets/wildstat/gems/gem-icon-v2.png" alt="" draggable="false">
-      <div class="gem-shop-amount"><strong>${amount}</strong><span>Gems</span></div>
-      <button type="button" disabled aria-label="${pack.gems} Gems for $${(pack.priceCents / 100).toFixed(2)} USD. Purchases coming soon.">$${(pack.priceCents / 100).toFixed(2)}</button>`;
-    const button = row.querySelector<HTMLButtonElement>('button')!;
-    buttons.set(pack.id, button);
-    button.addEventListener('click', async () => {
-      if (!testStore || purchasePending || !available.has(pack.id)) return;
-      purchasePending = true;
-      refreshButtons();
-      notice.textContent = 'Test purchase in progress…';
+  let loadTestProducts = async () => {};
+  if (nativeShop) {
+    const testStore = nativeTestPurchases();
+    const notice = dialog.querySelector<HTMLElement>('.gem-shop-notice')!;
+    notice.setAttribute('role', 'status');
+    const buttons = new Map<string, HTMLButtonElement>();
+    let purchasePending = false;
+    let loaded = false;
+    const available = new Set<string>();
+    const refreshButtons = () => {
+      for (const [id, button] of buttons) button.disabled = purchasePending || !available.has(id);
+    };
+    loadTestProducts = async () => {
+      if (!testStore || loaded) return;
+      notice.textContent = 'Loading test purchases…';
       try {
-        await testStore.buy(pack.id);
-        notice.textContent = 'Test successful · no charge or Gems added';
-      } catch (error) {
-        notice.textContent = error && typeof error === 'object' && 'userCancelled' in error && error.userCancelled
-          ? 'Test canceled · no charge or Gems added'
-          : 'Test purchase failed. Try again.';
-      } finally {
-        purchasePending = false;
+        const products = await testStore.load();
+        for (const product of products) {
+          const button = buttons.get(product.id);
+          if (!button) continue;
+          button.textContent = product.price;
+          button.setAttribute('aria-label', `Test purchase: ${product.title}, ${product.price}. No charge or Gems.`);
+          available.add(product.id);
+        }
+        loaded = true;
+        notice.textContent = 'Test purchases · no charge or Gems';
         refreshButtons();
+      } catch {
+        notice.textContent = 'Test Store unavailable. Reopen Shop to retry.';
       }
-    });
-    packs.append(row);
+    };
+    const packs = dialog.querySelector<HTMLElement>('.gem-shop-packs')!;
+    for (const pack of GEM_PACKS) {
+      const row = document.createElement('div');
+      row.className = 'gem-shop-pack';
+      const amount = pack.gems === 3300 ? '3.3k' : String(pack.gems);
+      row.innerHTML = `
+        <img src="assets/wildstat/gems/gem-icon-v2.png" alt="" draggable="false">
+        <div class="gem-shop-amount"><strong>${amount}</strong><span>Gems</span></div>
+        <button type="button" disabled aria-label="${pack.gems} Gems for $${(pack.priceCents / 100).toFixed(2)} USD. Purchases coming soon.">$${(pack.priceCents / 100).toFixed(2)}</button>`;
+      const button = row.querySelector<HTMLButtonElement>('button')!;
+      buttons.set(pack.id, button);
+      button.addEventListener('click', async () => {
+        if (!testStore || purchasePending || !available.has(pack.id)) return;
+        purchasePending = true;
+        refreshButtons();
+        notice.textContent = 'Test purchase in progress…';
+        try {
+          await testStore.buy(pack.id);
+          notice.textContent = 'Test successful · no charge or Gems added';
+        } catch (error) {
+          notice.textContent = error && typeof error === 'object' && 'userCancelled' in error && error.userCancelled
+            ? 'Test canceled · no charge or Gems added'
+            : 'Test purchase failed. Try again.';
+        } finally {
+          purchasePending = false;
+          refreshButtons();
+        }
+      });
+      packs.append(row);
+    }
   }
   const back = dialog.querySelector<HTMLButtonElement>('.gem-shop-back')!;
   options.button.setAttribute('aria-controls', dialog.id);

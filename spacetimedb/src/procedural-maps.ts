@@ -171,7 +171,7 @@ export function damageProceduralBoss(
     attackInterval: number;
     projectiles: number;
     damage: (hits: number, hp: number) => number;
-    reward: (identity: typeof ctx.sender, amount: number) => void;
+    reward: (identity: typeof ctx.sender, rewards: ReturnType<typeof generatedBossStats>["rewards"]) => void;
   },
 ) {
   const { mapId } = options;
@@ -221,7 +221,7 @@ export function damageProceduralBoss(
       hp === 0 ? ctx.timestamp.microsSinceUnixEpoch + 60_000_000n : 0n,
   });
   if (hp > 0) return;
-  const rewardAmount = generatedBossStats(map).reward.amount * 10;
+  const rewards = generatedBossStats(map).rewards;
   for (const row of ctx.db.proceduralInstanceContribution.byBoss.filter(
     options.bossKey,
   )) {
@@ -233,7 +233,7 @@ export function damageProceduralBoss(
       if (progress) ctx.db.proceduralProgress.identity.update(next);
       else ctx.db.proceduralProgress.insert(next);
     }
-    options.reward(row.identity, rewardAmount);
+    options.reward(row.identity, rewards);
   }
 }
 

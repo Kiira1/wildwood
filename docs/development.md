@@ -64,7 +64,7 @@ On macOS, double-click `Run Wildstat Local.command` in the `launchers/` folder. 
 - Server and shared-rule changes publish to `http://127.0.0.1:3000`, regenerate bindings, rebuild the client, and refresh. Local saves are preserved; incompatible schema changes stop with an error instead of deleting data.
 - Failed builds leave the last successful browser bundles available. Fix the error and save again to retry.
 
-The watcher always uses `wildwood-balance-local`, preserving the existing local guest storage keys and the local-only movement/respawn boosts. Its bundles live in memory, so production and mobile builds in `dist/` cannot overwrite the running local game. It does not publish to Maincloud.
+The watcher always uses `wildwood-balance-local`, preserving the existing local guest storage keys and the local-only movement/respawn boosts. Its bundles live in memory, so production and mobile builds in `dist/` cannot overwrite the running local game. Server compilation and generated bindings use an isolated workspace under ignored `local-data/`, removed on shutdown. Older local chat prototype columns are retained only in that workspace when present in the database; production source and bindings stay unchanged. Other incompatible schema changes still stop without deleting saves. It does not publish to Maincloud.
 
 Alternatively, start `spacetime start` in one terminal, then run `npm run dev:local -- --open` in another. `WILDSTAT_LOCAL_PORT` can select a different browser port for an isolated test. Stop with Control-C when finished. Opening the launcher again reuses the existing live server.
 

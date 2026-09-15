@@ -5,6 +5,7 @@ import { renderPlayerHud } from "./hud";
 vi.mock("./hud", () => ({ renderPlayerHud: vi.fn() }));
 
 class TestElement {
+  dataset: Record<string, string> = {};
   className = "";
   textContent = "";
   parentElement: TestElement | null = null;

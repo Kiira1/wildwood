@@ -133,7 +133,7 @@ describe("generated shared boss and durable unlocks", () => {
       bossKey: b.key,
       damage: () => b.maxHp,
     });
-    expect(reward).toHaveBeenCalledExactlyOnceWith(second, expect.any(Number));
+    expect(reward).toHaveBeenCalledExactlyOnceWith(second, expect.arrayContaining([expect.objectContaining({ type: "damage" }), expect.objectContaining({ type: "health" }), expect.objectContaining({ type: "armor" }), expect.objectContaining({ type: "regen" })]));
     expect(h.progress.identity.find(h.identity)).toBeNull();
     expect(h.boss.key.find(a.key).hp).toBe(a.maxHp / 2);
   });
@@ -161,5 +161,5 @@ it("records participation once in meaning, validates batch damage, and pays each
   Object.assign(h.ctx, { timestamp: { microsSinceUnixEpoch: 1_250_000n } });
   damageProceduralBoss(h.ctx, action);
   damageProceduralBoss(h.ctx, action);
-  expect(reward).toHaveBeenCalledExactlyOnceWith(h.identity, expect.any(Number));
+  expect(reward).toHaveBeenCalledExactlyOnceWith(h.identity, expect.arrayContaining([expect.objectContaining({ type: "damage" }), expect.objectContaining({ type: "health" }), expect.objectContaining({ type: "armor" }), expect.objectContaining({ type: "regen" })]));
 });

@@ -6,6 +6,8 @@
 import { type Infer as __Infer } from "spacetimedb";
 
 // Import all procedure arg schemas
+import * as BeginPatreonLinkProcedure from "../begin_patreon_link_procedure";
+import * as GetAvatarFramesProcedure from "../get_avatar_frames_procedure";
 import * as GetChatHistoryProcedure from "../get_chat_history_procedure";
 import * as GetChatHistoryWithReactionsProcedure from "../get_chat_history_with_reactions_procedure";
 import * as GetChatMessageReactionsProcedure from "../get_chat_message_reactions_procedure";
@@ -14,11 +16,17 @@ import * as GetGuildReplayProcedure from "../get_guild_replay_procedure";
 import * as GetLeaderboardPageProcedure from "../get_leaderboard_page_procedure";
 import * as GetLeaderboardWindowProcedure from "../get_leaderboard_window_procedure";
 import * as GetModerationHistoryProcedure from "../get_moderation_history_procedure";
+import * as GetPatreonStatusProcedure from "../get_patreon_status_procedure";
 import * as GetSocialChatHistoryProcedure from "../get_social_chat_history_procedure";
 import * as GetSocialChatHistoryWithReactionsProcedure from "../get_social_chat_history_with_reactions_procedure";
 import * as GetSocialHubProcedure from "../get_social_hub_procedure";
+import * as RefreshPatreonMembershipProcedure from "../refresh_patreon_membership_procedure";
 import * as SynchronizeMapShardProcedure from "../synchronize_map_shard_procedure";
 
+export type BeginPatreonLinkArgs = __Infer<typeof BeginPatreonLinkProcedure.params>;
+export type BeginPatreonLinkResult = __Infer<typeof BeginPatreonLinkProcedure.returnType>;
+export type GetAvatarFramesArgs = __Infer<typeof GetAvatarFramesProcedure.params>;
+export type GetAvatarFramesResult = __Infer<typeof GetAvatarFramesProcedure.returnType>;
 export type GetChatHistoryArgs = __Infer<typeof GetChatHistoryProcedure.params>;
 export type GetChatHistoryResult = __Infer<typeof GetChatHistoryProcedure.returnType>;
 export type GetChatHistoryWithReactionsArgs = __Infer<typeof GetChatHistoryWithReactionsProcedure.params>;
@@ -35,12 +43,16 @@ export type GetLeaderboardWindowArgs = __Infer<typeof GetLeaderboardWindowProced
 export type GetLeaderboardWindowResult = __Infer<typeof GetLeaderboardWindowProcedure.returnType>;
 export type GetModerationHistoryArgs = __Infer<typeof GetModerationHistoryProcedure.params>;
 export type GetModerationHistoryResult = __Infer<typeof GetModerationHistoryProcedure.returnType>;
+export type GetPatreonStatusArgs = __Infer<typeof GetPatreonStatusProcedure.params>;
+export type GetPatreonStatusResult = __Infer<typeof GetPatreonStatusProcedure.returnType>;
 export type GetSocialChatHistoryArgs = __Infer<typeof GetSocialChatHistoryProcedure.params>;
 export type GetSocialChatHistoryResult = __Infer<typeof GetSocialChatHistoryProcedure.returnType>;
 export type GetSocialChatHistoryWithReactionsArgs = __Infer<typeof GetSocialChatHistoryWithReactionsProcedure.params>;
 export type GetSocialChatHistoryWithReactionsResult = __Infer<typeof GetSocialChatHistoryWithReactionsProcedure.returnType>;
 export type GetSocialHubArgs = __Infer<typeof GetSocialHubProcedure.params>;
 export type GetSocialHubResult = __Infer<typeof GetSocialHubProcedure.returnType>;
+export type RefreshPatreonMembershipArgs = __Infer<typeof RefreshPatreonMembershipProcedure.params>;
+export type RefreshPatreonMembershipResult = __Infer<typeof RefreshPatreonMembershipProcedure.returnType>;
 export type SynchronizeMapShardArgs = __Infer<typeof SynchronizeMapShardProcedure.params>;
 export type SynchronizeMapShardResult = __Infer<typeof SynchronizeMapShardProcedure.returnType>;
 

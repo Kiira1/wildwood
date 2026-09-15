@@ -1,0 +1,88 @@
+import { AVATAR_FRAME_ASSET, allowedAvatarFrame, type AvatarFrame, type PatreonStatus } from "../../shared/avatar-frames";
+
+export type SupporterActions = {
+  patreonStatus: () => Promise<PatreonStatus>;
+  refreshPatreon: () => Promise<PatreonStatus>;
+  beginPatreonLink: () => Promise<string>;
+  setAvatarFrame: (frame: AvatarFrame) => Promise<PatreonStatus>;
+  disconnectPatreon: () => Promise<PatreonStatus>;
+};
+
+export function createAvatarFramePicker(actions: SupporterActions, showMessage: (message: string, color: string) => void) {
+  const root = document.createElement("section"); root.className = "avatar-frame-picker";
+  const heading = document.createElement("h3"); heading.textContent = "Frame";
+  const choices = document.createElement("div"); choices.className = "avatar-frame-choices";
+  const status = document.createElement("p"); status.setAttribute("role", "status");
+  const controls = document.createElement("div"); controls.className = "avatar-frame-controls";
+  const connect = document.createElement("button"); connect.type = "button"; connect.textContent = "Connect Patreon";
+  const refresh = document.createElement("button"); refresh.type = "button"; refresh.textContent = "Refresh";
+  const unlink = document.createElement("button"); unlink.type = "button"; unlink.textContent = "Disconnect";
+  const continueLink = document.createElement("a"); continueLink.textContent = "Continue to Patreon"; continueLink.target = "_blank"; continueLink.rel = "noopener noreferrer"; continueLink.hidden = true;
+  controls.append(connect, refresh, unlink, continueLink); root.append(heading, choices, status, controls);
+  let revision = 0, poll: ReturnType<typeof setInterval> | undefined, busy = false;
+  const buttons = new Map<AvatarFrame, HTMLButtonElement>();
+  let current: PatreonStatus | undefined;
+  const fail = (error: unknown) => { status.textContent = error instanceof Error ? error.message : "Couldn't check Patreon. Try again."; };
+  function render(value: PatreonStatus) {
+    current = value;
+    status.textContent = !value.configured ? "Supporter frames are coming soon." : !value.linked ? "Cosmetic frames for active Patreon supporters." : value.tier === "none" ? "Connected · no active paid membership" : `${value.tier === "gold" ? "Gold" : "Silver"} supporter · thank you!`;
+    connect.hidden = value.linked; connect.disabled = !value.configured || busy;
+    refresh.hidden = !value.linked; unlink.hidden = !value.linked;
+    refresh.disabled = busy; unlink.disabled = busy;
+    for (const [frame, button] of buttons) {
+      button.disabled = busy || !allowedAvatarFrame(value.tier, frame);
+      button.setAttribute("aria-pressed", String(value.frame === frame));
+      button.title = allowedAvatarFrame(value.tier, frame) ? "" : `Requires ${frame} membership`;
+    }
+  }
+  async function run(action: () => Promise<PatreonStatus>) {
+    if (busy) return;
+    const version = revision; busy = true;
+    if (current) render(current);
+    try { const value = await action(); if (version === revision) { busy = false; render(value); } }
+    catch (error) { if (version === revision) { busy = false; if (current) render(current); fail(error); } }
+  }
+  for (const frame of ["none", "silver", "gold"] as const) {
+    const button = document.createElement("button"); button.type = "button"; button.dataset.frame = frame;
+    const preview = document.createElement("span"); preview.className = "avatar-frame-choice-art";
+    if (frame !== "none") { const image = document.createElement("img"); image.src = AVATAR_FRAME_ASSET; image.alt = ""; preview.append(image); }
+    const name = document.createElement("span"); name.textContent = frame[0].toUpperCase() + frame.slice(1);
+    button.append(preview, name); button.setAttribute("aria-label", `Use ${frame} frame`); button.disabled = true;
+    button.addEventListener("click", () => void run(async () => { const value = await actions.setAvatarFrame(frame); showMessage("FRAME UPDATED", "#72ef58"); return value; }));
+    choices.append(button); buttons.set(frame, button);
+  }
+  connect.addEventListener("click", async () => {
+    if (busy) return;
+    const version = revision; busy = true; connect.disabled = true;
+    const native = (window as unknown as { wildstatOpenPatreon?: (url: string) => Promise<void> }).wildstatOpenPatreon;
+    const popup = native ? null : window.open("about:blank", "_blank");
+    if (popup) popup.opener = null;
+    try {
+      const url = await actions.beginPatreonLink();
+      const parsed = new URL(url);
+      if (parsed.protocol !== "https:" || parsed.hostname !== "www.patreon.com" || parsed.pathname !== "/oauth2/authorize") throw new Error("Invalid Patreon link.");
+      if (version !== revision) { popup?.close(); return; }
+      if (native) await native(url); else if (popup) popup.location.replace(url);
+      else { continueLink.href = url; continueLink.hidden = false; }
+      status.textContent = "Finish connecting on Patreon, then return here.";
+      clearInterval(poll);
+      const deadline = Date.now() + 10 * 60_000;
+      poll = setInterval(() => {
+        if (Date.now() > deadline) { clearInterval(poll); return; }
+        void actions.patreonStatus().then(value => { if (version === revision && value.linked) { render(value); continueLink.hidden = true; clearInterval(poll); } }).catch(() => {});
+      }, 5_000);
+    } catch (error) { popup?.close(); if (version === revision) fail(error); }
+    finally { if (version === revision) { busy = false; connect.disabled = false; } }
+  });
+  refresh.addEventListener("click", () => void run(actions.refreshPatreon));
+  unlink.addEventListener("click", () => void run(actions.disconnectPatreon));
+  return { element: root,
+    open() {
+      revision++; busy = false; current = undefined; clearInterval(poll); poll = undefined; continueLink.hidden = true;
+      connect.disabled = true; refresh.disabled = true; unlink.disabled = true;
+      for (const button of buttons.values()) button.disabled = true;
+      status.textContent = "Checking frames…"; void run(actions.refreshPatreon);
+    },
+    close() { revision++; busy = false; clearInterval(poll); poll = undefined; continueLink.hidden = true; },
+  };
+}

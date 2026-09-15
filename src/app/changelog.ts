@@ -1,4 +1,10 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.703": [
+    "Endless bosses now award all four stats.",
+    "Improved graphics recovery during movement and boss fights.",
+    "Added supporter avatar frames and a web-only Patreon link in the Shop.",
+    "Updated Discord, simplified the web Shop, and made the active chat tab clearer.",
+  ],
   "0.702": [
     "Tap a chat message to see its date and time above the selected message and controls. Timestamps stay hidden while browsing chat.",
   ],
@@ -1854,6 +1860,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.703": "2026-09-15",
   "0.702": "2026-09-15",
   "0.701": "2026-09-15",
   "0.700": "2026-09-15",

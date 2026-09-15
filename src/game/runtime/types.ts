@@ -58,6 +58,7 @@ export type EnemyState = Circle & {
   hideStatus?: boolean;
   definition?: EnemyDefinition;
   generatedBoss?: boolean;
+  bossRewards?: EnemyDefinition["reward"][];
   isBoss?: false;
   type: EnemyKind;
   siteId: number;

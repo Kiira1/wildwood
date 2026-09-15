@@ -261,7 +261,10 @@ export function createGameSessionController(dependencies: SessionDependencies) {
   document.addEventListener("visibilitychange", refreshFrameClock);
 
   function loop(now: number) {
-    if (document.hidden) { requestAnimationFrame(loop); return; }
+    // A failed draw must not cancel the only scheduled frame and strand the player.
+    // Errors still reach the browser console with their original stack.
+    requestAnimationFrame(loop);
+    if (document.hidden) return;
     const lowPerformanceMode = dependencies.lowPerformanceMode();
     const replayActive = dependencies.isReplayActive();
     const combatActive = running && !paused && !dependencies.accountInConflict()
@@ -272,7 +275,6 @@ export function createGameSessionController(dependencies: SessionDependencies) {
       && idlePresentationThrottleActive(activityActive, now, lastPresentationActivityAt);
     const reducedFrameRate = lowPerformanceMode || (!replayActive && (idleThrottled || paused || !running));
     if (!presentationFrameDue(reducedFrameRate, now, nextFrameAt)) {
-      requestAnimationFrame(loop);
       return;
     }
     nextFrameAt = nextPresentationDeadline(now, nextFrameAt, reducedFrameRate ? 30 : 60);
@@ -299,7 +301,6 @@ export function createGameSessionController(dependencies: SessionDependencies) {
       if (dependencies.performancePanelVisible()) dependencies.renderPerformancePanel();
       if (dependencies.fpsDisplayVisible()) dependencies.renderFpsDisplay();
     }
-    requestAnimationFrame(loop);
   }
 
   function start(markIntro = true, restoreServerPosition = true) {

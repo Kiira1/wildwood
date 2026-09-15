@@ -3,6 +3,7 @@ import { relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build, createServer } from 'vite';
 import { createLocalDevWork, localChangeKind } from './local-dev-work.mjs';
+import { createLocalWorkspace, localLegacyColumns } from './local-dev-workspace.mjs';
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const database = 'wildwood-balance-local';
@@ -12,16 +13,23 @@ const port = Number(process.env.WILDSTAT_LOCAL_PORT || 8000);
 process.env.NODE_ENV = 'development';
 process.env.VITE_LOCAL_TESTING = '1';
 let assets = new Map();
-let generating = false, closing = false, serverNeedsPublish = false;
+let closing = false, serverNeedsPublish = false, workspace;
 const children = new Set();
-function command(args) {
+function command(args, capture = false) {
   return new Promise((done, fail) => {
-    const child = spawn(process.env.SPACETIME_BIN || 'spacetime', args, { cwd: root, stdio: 'inherit' });
+    const child = spawn(process.env.SPACETIME_BIN || 'spacetime', args, {
+      cwd: workspace?.directory || root, stdio: capture ? ['ignore', 'pipe', 'pipe'] : 'inherit',
+    });
+    let output = '', errors = '';
+    if (capture) {
+      child.stdout.on('data', chunk => { output += chunk; });
+      child.stderr.on('data', chunk => { errors += chunk; });
+    }
     children.add(child);
     child.once('error', error => { children.delete(child); fail(error); });
     child.once('exit', code => {
       children.delete(child);
-      if (code === 0) done(); else fail(new Error(`spacetime ${args[0]} failed (${code}). Fix the error and save again.`));
+      if (code === 0) done(output); else fail(new Error(`spacetime ${args[0]} failed (${code}). ${errors || 'Fix the error and save again.'}`));
     });
   });
 }
@@ -29,15 +37,13 @@ async function publish() {
   console.log(`Publishing only to ${databaseHost}/${database} (preserving saves)…`);
   await command(['publish', database, '--module-path', 'spacetimedb', '--server', databaseHost,
     '--delete-data=never', '--yes=remote,migrate,break-clients']);
-  generating = true;
-  try { await command(['generate', '--lang', 'typescript', '--out-dir', 'src/module_bindings', '--module-path', 'spacetimedb']); }
-  finally { generating = false; }
+  await command(['generate', '--lang', 'typescript', '--out-dir', 'src/module_bindings', '--module-path', 'spacetimedb']);
 }
 async function buildClient() {
   console.log('Rebuilding local game…');
   const next = new Map();
   for (const target of ['coop', 'game']) {
-    const result = await build({ configFile: resolve(root, `config/vite.${target}.config.ts`), root,
+    const result = await build({ configFile: resolve(workspace.directory, `config/vite.${target}.config.ts`), root: workspace.directory,
       mode: 'development', publicDir: false, logLevel: 'warn',
       build: { write: false, copyPublicDir: false, emptyOutDir: false, outDir: resolve(root, 'local-data/dev-client') },
     });
@@ -82,6 +88,7 @@ const server = await createServer({
 });
 const work = createLocalDevWork({
   async run(changes) {
+    await workspace.sync();
     if (changes.has('server')) serverNeedsPublish = true;
     const republish = serverNeedsPublish;
     if (republish) { await publish(); serverNeedsPublish = false; }
@@ -98,21 +105,34 @@ const work = createLocalDevWork({
   },
 });
 async function stop() {
+  if (closing) return;
   closing = true;
-  work.close();
+  const pending = work.close();
   for (const child of children) child.kill('SIGTERM');
   await server.close();
+  await pending;
+  await workspace?.close();
 }
 process.once('SIGINT', () => { void stop(); });
 process.once('SIGTERM', () => { void stop(); });
 try {
+  let columns = {};
+  try {
+    const schema = await command(['describe', database, '--server', databaseHost, '--json'], true);
+    columns = localLegacyColumns(JSON.parse(schema));
+  } catch (error) {
+    if (!/404|database .*not found|no such database/i.test(error.message)) throw error;
+  }
+  workspace = await createLocalWorkspace(root, columns);
+  await workspace.sync();
+  if (Object.keys(columns).length) console.log('Keeping legacy local chat columns in an isolated development build.');
   await publish();
   await buildClient();
   server.watcher.add(['src', 'shared', 'spacetimedb/src', 'config'].map(path => resolve(root, path)));
   server.watcher.on('all', (event, file) => {
     if (!['add', 'change', 'unlink'].includes(event)) return;
     const path = relative(root, file);
-    if (generating && path.startsWith('src/module_bindings/')) return;
+    if (path.startsWith('src/module_bindings/')) return;
     const kind = localChangeKind(path);
     if (kind === 'style') {
       const url = '/' + path.slice('public/'.length);

@@ -1,13 +1,13 @@
 /** Coalesce saves and serialize publish/build work, including edits during a build. */
 export function createLocalDevWork({ run, reportError, delay = 250 }) {
   const pending = new Set();
-  let running = false, closed = false, timer;
+  let running = false, closed = false, timer, settled = Promise.resolve();
   async function flush() {
     if (running || closed || !pending.size) return;
     running = true;
     const changes = new Set(pending);
     pending.clear();
-    try { await run(changes); }
+    try { settled = Promise.resolve().then(() => run(changes)); await settled; }
     catch (error) { reportError(error); }
     finally {
       running = false;
@@ -21,7 +21,10 @@ export function createLocalDevWork({ run, reportError, delay = 250 }) {
       clearTimeout(timer);
       timer = setTimeout(flush, delay);
     },
-    close() { closed = true; clearTimeout(timer); pending.clear(); },
+    close() {
+      closed = true; clearTimeout(timer); pending.clear();
+      return settled.catch(() => {});
+    },
   };
 }
 

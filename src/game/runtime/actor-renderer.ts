@@ -772,7 +772,10 @@ export function createActorRenderer(options: {
       options.outlinedText(hpLabel, barCenterX, healthBarTextY(barY, barH), "#ffffff", 2);
 
       if (!enemy.remoteCombatGhost) {
-        ctx.drawImage(labels.reward.canvas, -labels.reward.width / 2, rewardY - labels.reward.anchorY, labels.reward.width, labels.reward.height);
+        const rewards = enemy.bossRewards?.map(reward => enemyLabels(enemy.displayName ?? enemy.campName, { ...reward, amount: reward.amount * options.rewardMultiplier() }).reward) ?? [labels.reward];
+        for (const [index, label] of rewards.entries()) {
+          ctx.drawImage(label.canvas, -label.width / 2, rewardY + index * 19 - label.anchorY, label.width, label.height);
+        }
       }
     });
   }

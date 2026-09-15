@@ -19,11 +19,25 @@ export function schema(tables: Parameters<typeof sdkSchema>[0]) {
     ...sdkSchema(tables),
     reducer: register,
     procedure: register,
+    httpHandler: register,
+    httpRouter: (router: unknown) => router,
     clientConnected: register,
     clientDisconnected: register,
     view: register,
     anonymousView: register,
   };
+}
+
+export class Router {
+  get(_path: string, _handler: unknown) { return this; }
+}
+export class SyncResponse {
+  status: number;
+  headers: Headers;
+  constructor(private body: string, init: { status?: number; headers?: Record<string, string> } = {}) {
+    this.status = init.status ?? 200; this.headers = new Headers(init.headers);
+  }
+  text() { return this.body; }
 }
 
 // Host-only server runtime is replaced above. Match the SDK Range public shape

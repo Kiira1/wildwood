@@ -1,3 +1,4 @@
+import { applyAvatarFrame } from "../app/avatar-frames";
 import { formatChatUnreadCount, type ChatUnreadCounts } from "./chat-unread";
 
 export type ChatChannel = "public" | "guild" | "private";
@@ -89,7 +90,7 @@ export function createChatChannelPicker(onChange: (channel: ChatChannel, usernam
   navigation.className = "chat-channel-navigation";
   const discord = document.createElement("a");
   discord.className = "chat-discord-link";
-  discord.href = "https://discord.gg/J3zjRnhPP";
+  discord.href = "https://discord.gg/mcS226NbG4";
   discord.target = "_blank";
   discord.rel = "noopener noreferrer";
   discord.setAttribute("aria-label", "Join the WildStat Discord (opens in a new tab)");
@@ -153,6 +154,7 @@ export function createChatChannelPicker(onChange: (channel: ChatChannel, usernam
         label.className = "chat-conversation-name";
         const portrait = document.createElement("span");
         portrait.className = "chat-profile-icon chat-conversation-portrait";
+        applyAvatarFrame(portrait, person.identity);
         portrait.setAttribute("aria-hidden", "true");
         const index = Math.max(0, Math.min(63, Math.floor(person.profileIcon ?? 0)));
         const zoom = 1.03, step = zoom / (8 * zoom - 1) * 100, start = (zoom - 1) / 2 / (8 * zoom - 1) * 100;
@@ -177,8 +179,8 @@ export function createChatChannelPicker(onChange: (channel: ChatChannel, usernam
       }
     }
     status.textContent = selected === "guild" ? (guildName ? `Guild: ${guildName}` : "Join or create a guild to chat with members.")
-      : selected === "private" ? "" : "Public chat";
-    status.hidden = selected === "private";
+      : "";
+    status.hidden = selected !== "guild";
     conversationHeader.textContent = peer;
   }
   update();

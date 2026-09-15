@@ -1,3 +1,4 @@
+import { applyAvatarFrame } from "../app/avatar-frames";
 import { appendChatReactions } from "./chat-reactions";
 import type { ChatReaction, ChatReactionState } from "../../shared/chat-reactions";
 import { appendPlayerNameTags, playerNamePrefix } from "../app/player-name-tags";
@@ -519,6 +520,7 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
       };
       const icon = document.createElement("span");
       icon.className = "chat-profile-icon";
+      if (large) applyAvatarFrame(icon, displayIdentity);
       icon.setAttribute("role", "button");
       icon.setAttribute("tabindex", large ? "0" : "-1");
       icon.setAttribute("aria-label", `View ${displayName}'s profile`);

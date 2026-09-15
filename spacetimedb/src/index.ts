@@ -20,6 +20,9 @@ import { generateMap, generatedBossStats, proceduralMapCore, isProceduralMap, pr
 import { proceduralMapTables, proceduralBossKey, clearProceduralProgress, mergeProceduralProgress, generatedMapUnlocked, ensureProceduralBoss, damageProceduralBoss } from "./procedural-maps";
 import { ingestStoreEvent } from "./gem-store-events";
 import { gemPurchaseTables } from "./gem-purchase-tables";
+import { patreonTables } from "./patreon-tables";
+import { beginPatreonLink as beginSupporterLink, refreshPatreon, patreonStatus, unlinkPatreon, patreonCallback } from "./patreon";
+import { allowedAvatarFrame } from "../../shared/avatar-frames";
 import { createGemPurchaseService } from "./gem-purchase-service";
 import { rescaleEndgameProgress, rescaleRankingConflict, rescaleRankingStats } from "../../shared/endgame-power-rescale";
 import { HOME_EXTERIOR_MAP_ID, HOME_EXTERIOR_SPAWN, HOME_BENCH_POSITION, HOME_WORLD_WIDTH, HOME_WORLD_HEIGHT } from "../../shared/home";
@@ -30,7 +33,7 @@ import { mapShardingTables, mapShardRouteType, rootShardingEnabled, isMapShard, 
 import { compressLegacyMapPower } from "../../shared/map-power-rescale";
 import { advanceDuelCombat, duelOutcome, DUEL_COMBAT_VERSION } from "../../shared/duel-combat";
 import { createPlayerMotionFrameSampler, playerMotionSampleAt } from "../../shared/player-motion-sample";
-import { schema, SenderError, table, t, type InferSchema, type ReducerCtx, type ViewCtx } from "spacetimedb/server";
+import { schema, SenderError, Router, table, t, type InferSchema, type ReducerCtx, type ViewCtx } from "spacetimedb/server";
 import { Identity, ScheduleAt, Timestamp } from "spacetimedb";
 import { attackForestPrototype, beginForestPrototype } from "./forest-reward-prototype";
 import { portalCutsceneBit, unlockedPortalCutsceneMask } from "../../shared/portal-cutscenes";
@@ -1707,6 +1710,7 @@ const spacetimedb = schema({
   ...proceduralMapTables,
   ...leaderboardPageTables,
   ...gemPurchaseTables,
+  ...patreonTables,
   homeReturnLocation,
   ...guildTables,
   ...socialTables,
@@ -4364,6 +4368,7 @@ function removeVirtualPlayerData(ctx: any, identity: any, adjustPresence = true,
   if (ctx.db.playerGemWallet.identity.find(identity)) ctx.db.playerGemWallet.identity.delete(identity);
   if (ctx.db.balanceApologyNotice.identity.find(identity)) ctx.db.balanceApologyNotice.identity.delete(identity);
   removeItemGifts(ctx, identity);
+  unlinkPatreon(ctx, identity);
   for (const budget of ctx.db.enemyDefeatBudget.identity.filter(identity)) ctx.db.enemyDefeatBudget.key.delete(budget.key);
   for (const cursor of ctx.db.regularEnemyLootCursor.identity.filter(identity)) ctx.db.regularEnemyLootCursor.key.delete(cursor.key);
   if (ctx.db.playerOnboarding.identity.find(identity)) ctx.db.playerOnboarding.identity.delete(identity);
@@ -4457,6 +4462,7 @@ function removePlayerIdentityData(ctx: any, identity: any) {
   if (ctx.db.dailyGemBonus.identity.find(identity)) ctx.db.dailyGemBonus.identity.delete(identity);
   if (ctx.db.balanceApologyNotice.identity.find(identity)) ctx.db.balanceApologyNotice.identity.delete(identity);
   removeItemGifts(ctx, identity);
+  unlinkPatreon(ctx, identity);
   for (const budget of ctx.db.enemyDefeatBudget.identity.filter(identity)) ctx.db.enemyDefeatBudget.key.delete(budget.key);
   for (const cursor of ctx.db.regularEnemyLootCursor.identity.filter(identity)) ctx.db.regularEnemyLootCursor.key.delete(cursor.key);
   if (ctx.db.playerOnboarding.identity.find(identity)) ctx.db.playerOnboarding.identity.delete(identity);
@@ -9660,7 +9666,7 @@ export const recordEnemyDefeats = spacetimedb.reducer(
           const row = { identity: ctx.sender, completed: Math.max(previous?.completed ?? 0, map.number) };
           if (previous) ctx.db.proceduralProgress.identity.update(row); else ctx.db.proceduralProgress.insert(row);
           const progress = ctx.db.playerProgress.identity.find(ctx.sender)!;
-          writeProgressAndPresentation(ctx, { ...progress, regen: Math.min(MAX_PLAYER_STAT, progress.regen + generatedBossStats(map).reward.amount * 10 * researchStatRewardMultiplier(ctx.db.playerResearch.identity.find(ctx.sender))) });
+          writeProgressAndPresentation(ctx, applyEnemyRewards(progress, generatedBossStats(map).rewards.map(reward => ({ ...reward, count: 1 })), researchStatRewardMultiplier(ctx.db.playerResearch.identity.find(ctx.sender))));
         }
       }
     }
@@ -10953,9 +10959,9 @@ function applyProceduralBossHit(ctx: GameReducerContext, action: { mapId: string
   damageProceduralBoss(ctx, { ...action, mapId:player.mapId, attackRange:progress.attackRange,
     attackInterval:attackIntervalForProgress(progress), projectiles:progress.projectileCount,
     damage:(hits,hp) => bossDamageWithCriticals(ctx, progress, hits, hp, player.mapId, proceduralMapCore(player.mapId).boss),
-    reward:(identity,amount) => {
+    reward:(identity,rewards) => {
       const earned = ctx.db.playerProgress.identity.find(identity);
-      if (earned) writeProgressAndPresentation(ctx, { ...earned, regen:Math.min(MAX_PLAYER_STAT, earned.regen + amount * researchStatRewardMultiplier(ctx.db.playerResearch.identity.find(identity))) });
+      if (earned) writeProgressAndPresentation(ctx, applyEnemyRewards(earned, rewards.map(reward => ({ ...reward, count: 1 })), researchStatRewardMultiplier(ctx.db.playerResearch.identity.find(identity))));
     },
   });
 }
@@ -11021,3 +11027,30 @@ export const getSocialChatHistoryWithReactions = spacetimedb.procedure(
     return { ...page, messages: page.messages.map(row => ({ ...row, reactionCountsJson: row.moderated ? "{}" : reactionCountsFor(tx, "social", row.id) })) };
   }),
 );
+
+export const configurePatreon = spacetimedb.reducer({ clientId: t.string(), clientSecret: t.string(), campaignId: t.string(), silverTierId: t.string(), goldTierId: t.string(), redirectUri: t.string() }, (ctx, config) => {
+  if (!isDatabaseOwnerIdentity(ctx.sender) || isMapShard(ctx)) throw new SenderError("Database owner required.");
+  if (!config.clientId || !config.clientSecret || !/^\d+$/.test(config.campaignId) || !/^\d+$/.test(config.silverTierId) || !/^\d+$/.test(config.goldTierId) || config.silverTierId === config.goldTierId) throw new SenderError("Invalid Patreon configuration.");
+  const redirect = new URL(config.redirectUri);
+  if (redirect.protocol !== "https:" || redirect.hostname !== "maincloud.spacetimedb.com" || redirect.search || redirect.hash || !/^\/v1\/database\/[a-zA-Z0-9_-]+\/route\/patreon\/callback$/.test(redirect.pathname)) throw new SenderError("Use the database's Patreon callback URL.");
+  const row = { id: 0, ...config };
+  if (ctx.db.patreonConfig.id.find(0)) ctx.db.patreonConfig.id.update(row); else ctx.db.patreonConfig.insert(row);
+});
+export const beginPatreonLink = spacetimedb.procedure({ state: t.string() }, t.string(), (ctx, { state }) => ctx.withTx(tx => {
+  if (isMapShard(tx) || !hasSpacetimeAuthAccount(tx)) throw new SenderError("Sign in to link Patreon.");
+  return beginSupporterLink(tx, state);
+}));
+export const refreshPatreonMembership = spacetimedb.procedure({}, t.string(), ctx => refreshPatreon(ctx));
+export const getPatreonStatus = spacetimedb.procedure({}, t.string(), ctx => ctx.withTx(tx => JSON.stringify(patreonStatus(tx, ctx.sender))));
+export const getAvatarFrames = spacetimedb.procedure({ identities: t.array(t.identity()) }, t.string(), (ctx, { identities }) => ctx.withTx(tx => {
+  if (identities.length > 50) throw new SenderError("Request at most 50 portraits.");
+  return JSON.stringify(identities.map(identity => { const { tier, frame, validUntilMs } = patreonStatus(tx, identity); return { identity: identity.toHexString(), tier, frame, validUntilMs }; }));
+}));
+export const setAvatarFrame = spacetimedb.reducer({ frame: t.string() }, (ctx, { frame }) => {
+  const row = ctx.db.patreonLink.identity.find(ctx.sender), status = patreonStatus(ctx, ctx.sender);
+  if (!allowedAvatarFrame(status.tier, frame)) throw new SenderError("This frame requires an active supporter membership.");
+  if (row && row.frame !== frame) ctx.db.patreonLink.identity.update({ ...row, frame });
+});
+export const disconnectPatreon = spacetimedb.reducer(ctx => unlinkPatreon(ctx));
+export const patreonOauthCallback = spacetimedb.httpHandler((ctx, request) => patreonCallback(ctx, request.uri));
+export const patreonRoutes = spacetimedb.httpRouter(new Router().get("/patreon/callback", patreonOauthCallback));

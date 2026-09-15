@@ -1,3 +1,4 @@
+import { applyAvatarFrame } from "../app/avatar-frames";
 import type { PlayerProfileData } from "../wildstat-coop";
 import { PLAYER_GENDER_UNSET, isSelectedPlayerGender, playerGenderLabel, type PlayerGender } from "../../shared/player-gender";
 import { appendPlayerGenderIcon } from "./player-gender";
@@ -148,6 +149,7 @@ export function createProfileWindowController(elements: {
     elements.guest.hidden = !api.isGuest(profile.identity);
     elements.presence.textContent = presence; elements.presence.classList.toggle("is-online", online);
     api.paintIcon(elements.icon, api.profileIcon(profile.identity));
+    applyAvatarFrame(elements.icon, profile.identity);
     elements.icon.classList.toggle("is-editable", own); elements.icon.disabled = !own; elements.icon.setAttribute("aria-label", own ? "Choose profile icon" : `${profile.name}'s profile icon`);
     elements.editName.hidden = !own;
     if (elements.settings) elements.settings.hidden = !own;
@@ -178,7 +180,7 @@ export function createProfileWindowController(elements: {
     identity = nextIdentity; profileData = null; elements.duel.hidden = nextIdentity === api.localIdentity(); elements.duel.dataset.identity = nextIdentity; updateDuelButton();
     elements.window.hidden = false; api.renderName(elements.name, nextIdentity, fallbackName, api.playerGender(nextIdentity)); elements.guest.hidden = !api.isGuest(nextIdentity);
     const online = api.isOnline(nextIdentity); elements.presence.textContent = online ? "Online" : "CHECKING LAST SEEN"; elements.presence.classList.toggle("is-online", online);
-    api.paintIcon(elements.icon, api.profileIcon(nextIdentity)); const own = nextIdentity === api.localIdentity(); elements.icon.classList.toggle("is-editable", own); elements.icon.disabled = !own; elements.editName.hidden = !own; elements.genderSetting.hidden = !own; closeGenderChoices(); if (own) updateGenderChoices(api.playerGender(nextIdentity));
+    api.paintIcon(elements.icon, api.profileIcon(nextIdentity)); applyAvatarFrame(elements.icon, nextIdentity); const own = nextIdentity === api.localIdentity(); elements.icon.classList.toggle("is-editable", own); elements.icon.disabled = !own; elements.editName.hidden = !own; elements.genderSetting.hidden = !own; closeGenderChoices(); if (own) updateGenderChoices(api.playerGender(nextIdentity));
     if (elements.settings) elements.settings.hidden = !own;
     renderEquipment(null); updatePreview(nextIdentity, own); renderPower("—"); elements.loading.hidden = false; elements.overviewPanel.hidden = true; elements.statsPanel.hidden = true; selectTab("stats"); elements.statsPanel.hidden = true;
     const cached = api.profile(nextIdentity); if (cached) { render(cached); return; }

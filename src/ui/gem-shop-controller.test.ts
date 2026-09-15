@@ -3,7 +3,21 @@ import { parseHTML } from 'linkedom';
 import { createGemShopController } from './gem-shop-controller';
 
 afterEach(() => vi.unstubAllGlobals());
-it('keeps web checkout disabled and explains availability even if a test bridge exists', () => {
+it.each([false, true])('shows the Patreon support link only on web (native=%s)', native => {
+  const { document, window } = parseHTML('<html><body><button id="shop">Shop</button></body></html>');
+  vi.stubGlobal('WILDSTAT_NATIVE_PREVIEW', native);
+  vi.stubGlobal('window', window); vi.stubGlobal('document', document);
+  createGemShopController({ button: document.querySelector('button')!, setOpen: vi.fn() });
+  const link = document.querySelector<HTMLAnchorElement>('.shop-patreon-button');
+  expect(Boolean(link)).toBe(!native);
+  expect(document.querySelectorAll('.gem-shop-pack').length).toBe(native ? 4 : 0);
+  if (link) {
+    expect(link.href).toBe('https://www.patreon.com/c/wildstat/membership');
+    expect(link.textContent).toContain('development and server costs');
+    expect(link.rel).toBe('noopener noreferrer');
+  }
+});
+it('hides gem packs and purchase messaging on web, even if a test bridge exists', () => {
   const { document, window } = parseHTML('<html><body><button id="shop">Shop</button></body></html>');
   const load = vi.fn(), buy = vi.fn();
   Object.assign(window, { wildstatTestPurchases: { mode: 'test', load, buy } });
@@ -13,11 +27,12 @@ it('keeps web checkout disabled and explains availability even if a test bridge 
   Object.assign(dialog, { show() { dialog.open = true; } });
   controller.open();
   const buttons = [...document.querySelectorAll<HTMLButtonElement>('.gem-shop-pack button')];
-  expect(buttons.map(button => button.textContent)).toEqual(['$1.99', '$6.99', '$24.99', '$99.99']);
-  expect(buttons.every(button => button.disabled)).toBe(true);
+  expect(buttons).toHaveLength(0);
+  expect(document.getElementById('gemShopLimit')).toBeNull();
+  expect(dialog.hasAttribute('aria-describedby')).toBe(false);
   buttons.forEach(button => button.dispatchEvent(new window.Event('click')));
   expect(load).not.toHaveBeenCalled(); expect(buy).not.toHaveBeenCalled();
-  expect(document.querySelector('.gem-shop-notice')?.textContent).toBe('Purchases coming soon');
+  expect(document.querySelector('.gem-shop-notice')).toBeNull();
 });
 
 it('opens without blocking the toolbar and closes when another toolbar window is chosen', () => {

@@ -54,6 +54,7 @@ import ClaimDeveloperItemGiftReducer from "./claim_developer_item_gift_reducer";
 import ClaimGuestAccountReducer from "./claim_guest_account_reducer";
 import CompleteOnboardingStepReducer from "./complete_onboarding_step_reducer";
 import ConfigureGemCommerceReducer from "./configure_gem_commerce_reducer";
+import ConfigurePatreonReducer from "./configure_patreon_reducer";
 import ConfigureShardCoordinatorReducer from "./configure_shard_coordinator_reducer";
 import ConfigureShardingReducer from "./configure_sharding_reducer";
 import CreateGuildReducer from "./create_guild_reducer";
@@ -93,6 +94,7 @@ import DevSetAccessAuditLabelReducer from "./dev_set_access_audit_label_reducer"
 import DevSetEndlessTravelAccessReducer from "./dev_set_endless_travel_access_reducer";
 import DevTeleportEndlessReducer from "./dev_teleport_endless_reducer";
 import DevUpdatePlayerSaveReducer from "./dev_update_player_save_reducer";
+import DisconnectPatreonReducer from "./disconnect_patreon_reducer";
 import EnterRegionalWorldReducer from "./enter_regional_world_reducer";
 import EnterWorldReducer from "./enter_world_reducer";
 import EnterWorldWithTutorialReducer from "./enter_world_with_tutorial_reducer";
@@ -136,6 +138,7 @@ import SeedTemporaryGuildReducer from "./seed_temporary_guild_reducer";
 import SendChatMessageReducer from "./send_chat_message_reducer";
 import SendChatReplyReducer from "./send_chat_reply_reducer";
 import SendSocialMessageReducer from "./send_social_message_reducer";
+import SetAvatarFrameReducer from "./set_avatar_frame_reducer";
 import SetChatMessageReactionReducer from "./set_chat_message_reaction_reducer";
 import SetDeveloperNameTagReducer from "./set_developer_name_tag_reducer";
 import SetDeveloperPresenceReducer from "./set_developer_presence_reducer";
@@ -164,6 +167,8 @@ import UnlockSecondUpgradeSlotReducer from "./unlock_second_upgrade_slot_reducer
 import UpdateMovementStateReducer from "./update_movement_state_reducer";
 
 // Import all procedure arg schemas
+import * as BeginPatreonLinkProcedure from "./begin_patreon_link_procedure";
+import * as GetAvatarFramesProcedure from "./get_avatar_frames_procedure";
 import * as GetChatHistoryProcedure from "./get_chat_history_procedure";
 import * as GetChatHistoryWithReactionsProcedure from "./get_chat_history_with_reactions_procedure";
 import * as GetChatMessageReactionsProcedure from "./get_chat_message_reactions_procedure";
@@ -172,9 +177,11 @@ import * as GetGuildReplayProcedure from "./get_guild_replay_procedure";
 import * as GetLeaderboardPageProcedure from "./get_leaderboard_page_procedure";
 import * as GetLeaderboardWindowProcedure from "./get_leaderboard_window_procedure";
 import * as GetModerationHistoryProcedure from "./get_moderation_history_procedure";
+import * as GetPatreonStatusProcedure from "./get_patreon_status_procedure";
 import * as GetSocialChatHistoryProcedure from "./get_social_chat_history_procedure";
 import * as GetSocialChatHistoryWithReactionsProcedure from "./get_social_chat_history_with_reactions_procedure";
 import * as GetSocialHubProcedure from "./get_social_hub_procedure";
+import * as RefreshPatreonMembershipProcedure from "./refresh_patreon_membership_procedure";
 import * as SynchronizeMapShardProcedure from "./synchronize_map_shard_procedure";
 
 // Import all table schema definitions
@@ -1152,6 +1159,7 @@ const reducersSchema = __reducers(
   __reducerSchema("claim_guest_account", ClaimGuestAccountReducer),
   __reducerSchema("complete_onboarding_step", CompleteOnboardingStepReducer),
   __reducerSchema("configure_gem_commerce", ConfigureGemCommerceReducer),
+  __reducerSchema("configure_patreon", ConfigurePatreonReducer),
   __reducerSchema("configure_shard_coordinator", ConfigureShardCoordinatorReducer),
   __reducerSchema("configure_sharding", ConfigureShardingReducer),
   __reducerSchema("create_guild", CreateGuildReducer),
@@ -1191,6 +1199,7 @@ const reducersSchema = __reducers(
   __reducerSchema("dev_set_endless_travel_access", DevSetEndlessTravelAccessReducer),
   __reducerSchema("dev_teleport_endless", DevTeleportEndlessReducer),
   __reducerSchema("dev_update_player_save", DevUpdatePlayerSaveReducer),
+  __reducerSchema("disconnect_patreon", DisconnectPatreonReducer),
   __reducerSchema("enter_regional_world", EnterRegionalWorldReducer),
   __reducerSchema("enter_world", EnterWorldReducer),
   __reducerSchema("enter_world_with_tutorial", EnterWorldWithTutorialReducer),
@@ -1234,6 +1243,7 @@ const reducersSchema = __reducers(
   __reducerSchema("send_chat_message", SendChatMessageReducer),
   __reducerSchema("send_chat_reply", SendChatReplyReducer),
   __reducerSchema("send_social_message", SendSocialMessageReducer),
+  __reducerSchema("set_avatar_frame", SetAvatarFrameReducer),
   __reducerSchema("set_chat_message_reaction", SetChatMessageReactionReducer),
   __reducerSchema("set_developer_name_tag", SetDeveloperNameTagReducer),
   __reducerSchema("set_developer_presence", SetDeveloperPresenceReducer),
@@ -1264,6 +1274,8 @@ const reducersSchema = __reducers(
 
 /** The schema information for all procedures in this module. This is defined the same way as the procedures would have been defined in the server. */
 const proceduresSchema = __procedures(
+  __procedureSchema("begin_patreon_link", BeginPatreonLinkProcedure.params, BeginPatreonLinkProcedure.returnType),
+  __procedureSchema("get_avatar_frames", GetAvatarFramesProcedure.params, GetAvatarFramesProcedure.returnType),
   __procedureSchema("get_chat_history", GetChatHistoryProcedure.params, GetChatHistoryProcedure.returnType),
   __procedureSchema("get_chat_history_with_reactions", GetChatHistoryWithReactionsProcedure.params, GetChatHistoryWithReactionsProcedure.returnType),
   __procedureSchema("get_chat_message_reactions", GetChatMessageReactionsProcedure.params, GetChatMessageReactionsProcedure.returnType),
@@ -1272,9 +1284,11 @@ const proceduresSchema = __procedures(
   __procedureSchema("get_leaderboard_page", GetLeaderboardPageProcedure.params, GetLeaderboardPageProcedure.returnType),
   __procedureSchema("get_leaderboard_window", GetLeaderboardWindowProcedure.params, GetLeaderboardWindowProcedure.returnType),
   __procedureSchema("get_moderation_history", GetModerationHistoryProcedure.params, GetModerationHistoryProcedure.returnType),
+  __procedureSchema("get_patreon_status", GetPatreonStatusProcedure.params, GetPatreonStatusProcedure.returnType),
   __procedureSchema("get_social_chat_history", GetSocialChatHistoryProcedure.params, GetSocialChatHistoryProcedure.returnType),
   __procedureSchema("get_social_chat_history_with_reactions", GetSocialChatHistoryWithReactionsProcedure.params, GetSocialChatHistoryWithReactionsProcedure.returnType),
   __procedureSchema("get_social_hub", GetSocialHubProcedure.params, GetSocialHubProcedure.returnType),
+  __procedureSchema("refresh_patreon_membership", RefreshPatreonMembershipProcedure.params, RefreshPatreonMembershipProcedure.returnType),
   __procedureSchema("synchronize_map_shard", SynchronizeMapShardProcedure.params, SynchronizeMapShardProcedure.returnType),
 );
 

@@ -11,6 +11,8 @@ import {
 } from "../../../shared/player-gender";
 import type { ReducerPort } from "../ports";
 import { createChatPortraits } from "./chat-portraits";
+import { createPatreonService } from "./patreon-service";
+import { clearAvatarFrames } from "../../app/avatar-frames";
 
 export type ProfilePresentation = {
   identity: string;
@@ -66,6 +68,7 @@ export function isGeneratedDisplayName(displayName: string) {
 }
 
 export function createProfileDirectory(dependencies: ProfileDirectoryDependencies) {
+  const patreon = createPatreonService(dependencies.reducers, dependencies.localIdentity);
   const names = new Map<string, string>();
   const icons = new Map<string, number>();
   const sprites = new Map<string, number>();
@@ -121,6 +124,7 @@ export function createProfileDirectory(dependencies: ProfileDirectoryDependencie
       gender,
     });
     if (identity === dependencies.localIdentity()) {
+      patreon.sync();
       localDisplayName = row.displayName;
       localReady = true;
       dependencies.rememberCharacter(row.displayName);
@@ -174,6 +178,7 @@ export function createProfileDirectory(dependencies: ProfileDirectoryDependencie
       },
     },
     api: {
+      ...patreon.api,
       playerNamePrefix, playerNameTagsRevision,
       developerNameTagVisible: () => developerNameTagVisible(dependencies.localIdentity()),
       async setDeveloperNameTag(visible: boolean) {
@@ -311,6 +316,7 @@ export function createProfileDirectory(dependencies: ProfileDirectoryDependencie
       localDisplayName = displayName;
     },
     clearSession() {
+      patreon.clear(); clearAvatarFrames();
       chatPortraits.clear();
       clearPlayerNameTags();
       names.clear();

@@ -1150,6 +1150,43 @@ export type MySocialMessagesWithReactions = __Infer<typeof MySocialMessagesWithR
 export const MyUpgradeBench = __t.object("MyUpgradeBench", {});
 export type MyUpgradeBench = __Infer<typeof MyUpgradeBench>;
 
+export const PatreonConfig = __t.object("PatreonConfig", {
+  id: __t.u8(),
+  clientId: __t.string(),
+  clientSecret: __t.string(),
+  campaignId: __t.string(),
+  silverTierId: __t.string(),
+  goldTierId: __t.string(),
+  redirectUri: __t.string(),
+});
+export type PatreonConfig = __Infer<typeof PatreonConfig>;
+
+export const PatreonLink = __t.object("PatreonLink", {
+  identity: __t.identity(),
+  userId: __t.string(),
+  accessToken: __t.string(),
+  refreshToken: __t.string(),
+  tier: __t.string(),
+  frame: __t.string(),
+  validUntilMs: __t.f64(),
+  checkedAtMs: __t.f64(),
+  attemptedAtMs: __t.f64(),
+});
+export type PatreonLink = __Infer<typeof PatreonLink>;
+
+export const PatreonOwner = __t.object("PatreonOwner", {
+  userId: __t.string(),
+  identity: __t.identity(),
+});
+export type PatreonOwner = __Infer<typeof PatreonOwner>;
+
+export const PatreonPending = __t.object("PatreonPending", {
+  state: __t.string(),
+  identity: __t.identity(),
+  expiresAtMs: __t.f64(),
+});
+export type PatreonPending = __Infer<typeof PatreonPending>;
+
 export const Player = __t.object("Player", {
   identity: __t.identity(),
   x: __t.f64(),

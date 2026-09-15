@@ -198,6 +198,9 @@ export function generatedBossStats(map: Pick<GeneratedMap, "tier">) {
   return {
     hp: desertBossHealthAt(map.tier),
     damage: bossHeavyHitAt(map.tier),
-    reward: generatedEnemyStats(map, "Brood").reward,
+    rewards: (["Cindermaw", "Bramble", "Mossback", "Brood"] as const).map(lane => {
+      const reward = generatedEnemyStats(map, lane).reward;
+      return { ...reward, amount: reward.amount * 10 };
+    }),
   };
 }

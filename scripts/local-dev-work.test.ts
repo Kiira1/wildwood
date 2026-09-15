@@ -57,3 +57,19 @@ it('cancels queued changes when the terminal is stopped', async () => {
   await vi.advanceTimersByTimeAsync(500);
   expect(run).not.toHaveBeenCalled();
 });
+
+it('waits for an active build before allowing workspace cleanup', async () => {
+  vi.useFakeTimers();
+  let finish!: () => void;
+  const run = vi.fn(() => new Promise<void>(resolve => { finish = resolve; }));
+  const work = createLocalDevWork({ run, reportError: vi.fn() });
+  work.add('client');
+  await vi.advanceTimersByTimeAsync(250);
+  const cleaned = vi.fn();
+  const stopping = work.close().then(cleaned);
+  await Promise.resolve();
+  expect(cleaned).not.toHaveBeenCalled();
+  finish();
+  await stopping;
+  expect(cleaned).toHaveBeenCalledOnce();
+});

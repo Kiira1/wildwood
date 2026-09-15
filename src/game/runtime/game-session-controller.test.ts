@@ -73,6 +73,22 @@ function interpolatedMotionDeltas(refreshRate: number, frameCount: number) {
 }
 
 describe("game session frame scheduling", () => {
+  it("keeps another frame scheduled when drawing throws", () => {
+    vi.stubGlobal("document", { hidden: false, addEventListener: vi.fn() });
+    const schedule = vi.fn(); vi.stubGlobal("requestAnimationFrame", schedule);
+    const render = vi.fn().mockImplementationOnce(() => { throw new Error("draw failed"); });
+    try {
+      const session = createGameSessionController({ render, lowPerformanceMode: () => false,
+        isReplayActive: () => true, presentationInputActive: () => false,
+        recordPerformance: vi.fn(), performancePanelVisible: () => false, fpsDisplayVisible: () => false,
+      } as any);
+      const start = performance.now() + 10_000;
+      expect(() => session.loop(start)).toThrow("draw failed");
+      expect(schedule).toHaveBeenCalledExactlyOnceWith(session.loop);
+      expect(() => schedule.mock.calls[0][0](start + 20)).not.toThrow();
+      expect(render).toHaveBeenCalledTimes(2);
+    } finally { vi.unstubAllGlobals(); }
+  });
   it("holds the slower fade at black until the username step finishes", async () => {
     vi.useFakeTimers();
     const { document } = parseHTML('<html><body><div id="fade" hidden></div></body></html>');

@@ -1,0 +1,107 @@
+import { expect, it, vi } from "vitest";
+import { crystalFixture, identity, server } from "../../tests/helpers/crystal-hollows-fixture";
+import { beginPatreonLink, patreonCallback, patreonStatus, refreshPatreon } from "./patreon";
+vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
+
+function fixture() {
+  const f = crystalFixture();
+  const now = Number(f.ctx.timestamp.microsSinceUnixEpoch / 1000n);
+  f.seed("patreonConfig", { id: 0, clientId: "client", clientSecret: "secret", campaignId: "10", silverTierId: "20", goldTierId: "30", redirectUri: "https://maincloud.spacetimedb.com/v1/database/test/route/patreon/callback" });
+  f.seed("patreonLink", { identity: f.ctx.sender, userId: "1", accessToken: "access", refreshToken: "refresh", tier: "silver", frame: "silver", validUntilMs: now + 60_000, checkedAtMs: now, attemptedAtMs: now });
+  f.seed("patreonOwner", { userId: "1", identity: f.ctx.sender });
+  const http = { fetch: vi.fn() };
+  const ctx = { ...f.ctx, http, withTx: (fn: (tx: any) => unknown) => f.transaction(() => fn(f.ctx)) } as any;
+  return { ...f, now, ctx, http };
+}
+it("prevents a Silver supporter selecting Gold and hides expired frames", () => {
+  const f = fixture();
+  expect(() => f.run(server.setAvatarFrame, { frame: "gold" })).toThrow("active supporter");
+  f.run(server.setAvatarFrame, { frame: "none" });
+  expect(patreonStatus(f.ctx, f.ctx.sender).frame).toBe("none");
+  const row = f.db.patreonLink.identity.find(f.ctx.sender);
+  f.db.patreonLink.identity.update({ ...row, frame: "silver", validUntilMs: f.now - 1 });
+  expect(patreonStatus(f.ctx, f.ctx.sender).frame).toBe("none");
+});
+
+function membership(tier = "30", status = "active_patron") {
+  return { data: { type: "user", id: "1", relationships: { memberships: { data: [{ type: "member", id: "member" }] } } },
+    included: [{ type: "member", id: "member", attributes: { patron_status: status, last_charge_status: "Paid" },
+      relationships: { campaign: { data: { id: "10" } }, currently_entitled_tiers: { data: [{ id: tier }] } } }] };
+}
+const reply = (data: unknown) => ({ status: 200, text: () => JSON.stringify(data) });
+const callbackUri = `https://example.com?state=${"a".repeat(64)}&code=code`;
+function prepareCallback(f: ReturnType<typeof fixture>, target = f.ctx.sender) {
+  f.seed("patreonPending", { state: "a".repeat(64), identity: target, expiresAtMs: f.now + 60_000 });
+  f.http.fetch.mockReturnValueOnce(reply({ access_token: "new-access", refresh_token: "new-refresh" })).mockReturnValueOnce(reply(membership()));
+}
+it("links the verified tier once and never trusts callback parameters for entitlement", () => {
+  const f = fixture();
+  f.run(server.disconnectPatreon);
+  prepareCallback(f);
+  expect(patreonCallback(f.ctx, callbackUri).status).toBe(200);
+  expect(patreonStatus(f.ctx, f.ctx.sender)).toMatchObject({ tier: "gold", frame: "gold", linked: true });
+  expect(patreonCallback(f.ctx, callbackUri).status).toBe(400);
+  expect(f.http.fetch).toHaveBeenCalledTimes(2);
+});
+it("does not let a second character claim an already-linked Patreon", () => {
+  const f = fixture(), other = identity("2");
+  prepareCallback(f, other);
+  expect(patreonCallback(f.ctx, callbackUri).status).toBe(400);
+  expect(f.db.patreonLink.identity.find(other)).toBeNull();
+  expect(f.db.patreonOwner.userId.find("1").identity.equals(f.ctx.sender)).toBe(true);
+});
+it("does not resurrect the connection if disconnected during verification", () => {
+  const f = fixture();
+  prepareCallback(f);
+  f.http.fetch.mockReset().mockReturnValueOnce(reply({ access_token: "new-access", refresh_token: "new-refresh" })).mockImplementationOnce(() => {
+    f.run(server.disconnectPatreon);
+    return reply(membership());
+  });
+  expect(patreonCallback(f.ctx, callbackUri).status).toBe(400);
+  expect(f.db.patreonLink.identity.find(f.ctx.sender)).toBeNull();
+  expect(f.db.patreonOwner.userId.find("1")).toBeNull();
+});
+it("removes a frame when Patreon reports a former member and preserves rotated credentials on an outage", () => {
+  const f = fixture();
+  f.db.patreonLink.identity.update({ ...f.db.patreonLink.identity.find(f.ctx.sender), attemptedAtMs: f.now - 60_001 });
+  f.http.fetch.mockReturnValueOnce(reply(membership("20", "former_patron")));
+  expect(JSON.parse(refreshPatreon(f.ctx))).toMatchObject({ linked: true, tier: "none", frame: "none" });
+  const before = f.db.patreonLink.identity.find(f.ctx.sender);
+  f.db.patreonLink.identity.update({ ...before, attemptedAtMs: f.now - 60_001 });
+  f.http.fetch.mockReturnValueOnce({ status: 401 }).mockReturnValueOnce(reply({ access_token: "rotated-access", refresh_token: "rotated-refresh" })).mockReturnValueOnce({ status: 503 });
+  refreshPatreon(f.ctx);
+  expect(f.db.patreonLink.identity.find(f.ctx.sender)).toMatchObject({ accessToken: "rotated-access", refreshToken: "rotated-refresh", validUntilMs: before.validUntilMs });
+});
+it("validates and throttles secure browser-generated link states", () => {
+  const f = fixture();
+  expect(() => beginPatreonLink(f.ctx, "weak")).toThrow("Invalid Patreon request");
+  const url = new URL(beginPatreonLink(f.ctx, "a".repeat(64)));
+  expect(url.searchParams.get("scope")).toBe("identity identity.memberships");
+  expect(url.searchParams.get("state")).toBe("a".repeat(64));
+  expect(() => beginPatreonLink(f.ctx, "b".repeat(64))).toThrow("Wait a minute");
+});
+it("does not extend access on network errors and throttles repeated refresh calls", () => {
+  const f = fixture();
+  f.db.patreonLink.identity.update({ ...f.db.patreonLink.identity.find(f.ctx.sender), attemptedAtMs: f.now - 900_001 });
+  f.http.fetch.mockImplementation(() => { throw new Error("offline"); });
+  refreshPatreon(f.ctx);
+  expect(f.db.patreonLink.identity.find(f.ctx.sender).validUntilMs).toBe(f.now + 60_000);
+  const calls = f.http.fetch.mock.calls.length;
+  refreshPatreon(f.ctx);
+  expect(f.http.fetch).toHaveBeenCalledTimes(calls);
+});
+it("disconnect removes credentials, claim, and pending link only for the caller", () => {
+  const f = fixture();
+  f.seed("patreonPending", { state: "a".repeat(64), identity: f.ctx.sender, expiresAtMs: f.now + 60_000 });
+  f.run(server.disconnectPatreon);
+  expect(f.db.patreonLink.identity.find(f.ctx.sender)).toBeNull();
+  expect(f.db.patreonOwner.userId.find("1")).toBeNull();
+  expect(f.db.patreonPending.state.find("a".repeat(64))).toBeNull();
+});
+it("rejects forged/expired OAuth callbacks without contacting Patreon", () => {
+  const f = fixture();
+  expect(patreonCallback(f.ctx, "https://example.com?state=forged&code=x").status).toBe(400);
+  f.seed("patreonPending", { state: "a".repeat(64), identity: identity("2"), expiresAtMs: f.now - 1 });
+  expect(patreonCallback(f.ctx, `https://example.com?state=${"a".repeat(64)}&code=x`).status).toBe(400);
+  expect(f.http.fetch).not.toHaveBeenCalled();
+});

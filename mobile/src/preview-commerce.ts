@@ -1,4 +1,5 @@
 import { installNativeKeepScreenOn } from "./keep-screen-on";
+import { Browser } from "@capacitor/browser";
 import { installAndroidUpdates } from './android-updates';
 import { Haptics, ImpactStyle } from "@capacitor/haptics";
 import { installResearchNotifications } from './research-notifications';
@@ -12,6 +13,11 @@ import type { WildstatNativeBridge } from '../../src/app/native-ads';
 declare const __TEST_PURCHASE_CONFIG__: unknown;
 const platform = Capacitor.getPlatform();
 if (platform === 'ios' || platform === 'android') {
+  (window as unknown as { wildstatOpenPatreon: (url: string) => Promise<void> }).wildstatOpenPatreon = async raw => {
+    const url = new URL(raw);
+    if (url.protocol !== "https:" || url.hostname !== "www.patreon.com" || url.pathname !== "/oauth2/authorize") throw new Error("Invalid Patreon link");
+    await Browser.open({ url: raw });
+  };
   window.addEventListener("wildstat:toolbar-haptic", () => {
     void Haptics.impact({ style: ImpactStyle.Light }).catch(() => {});
   });

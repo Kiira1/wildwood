@@ -1,3 +1,4 @@
+import { applyAvatarFrame } from "../app/avatar-frames";
 import { appendPlayerNameTags } from "../app/player-name-tags";
 import { formatCompactNumber } from "./number-format";
 import type { LeaderboardEntry } from "../wildstat-coop";
@@ -205,7 +206,9 @@ export function renderLeaderboard(
     const value = document.createElement("span");
     value.className = "leaderboard-value";
     value.textContent = leaderboardValueText(stat, entry);
-    row.append(rank, icon, name, value);
+    const portrait = document.createElement("span"); portrait.className = "leaderboard-framed-portrait"; portrait.append(icon);
+    applyAvatarFrame(portrait, entry.identity);
+    row.append(rank, portrait, name, value);
     elements.rows.appendChild(row);
   });
   elements.empty.hidden = sorted.length > 0;
