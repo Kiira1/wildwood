@@ -64,6 +64,73 @@ async function hydrateLatest() {
 }
 afterEach(() => { mock.connections.length = 0; vi.restoreAllMocks(); vi.useRealTimers(); });
 
+it("connects during admission, then enters and hydrates through the same socket", async () => {
+  vi.useFakeTimers();
+  const s = setup(); s.apply();
+  s.route({ ...forest, ready: false }); await Promise.resolve();
+  const early = mock.connections[0];
+  const connecting = early.connect();
+  await Promise.resolve();
+  expect(early.reducers.registerProtocol).toHaveBeenCalledOnce();
+  expect(early.reducers.enterWorld).not.toHaveBeenCalled();
+  expect(s.client.port.connection()).toBeNull();
+  // Admission latency does not reset an already authenticated socket.
+  await vi.advanceTimersByTimeAsync(15_000);
+  expect(early.disconnect).not.toHaveBeenCalled();
+  s.resetWorld.mockClear();
+  s.route(forest); await Promise.resolve(); await connecting;
+  expect(mock.connections).toHaveLength(1);
+  expect(early.reducers.enterWorld).toHaveBeenCalledExactlyOnceWith({ tabId: "tab" });
+  expect(s.resetWorld).not.toHaveBeenCalled();
+  expect(s.client.ready()).toBe(false);
+  early.queries[0].apply();
+  expect(s.client.ready()).toBe(true);
+  s.client.clear();
+});
+
+it("cancels an early admission wait when the route or account changes", async () => {
+  const s = setup(); s.apply();
+  s.route({ ...forest, ready: false }); await Promise.resolve();
+  const first = mock.connections[0], connecting = first.connect();
+  await Promise.resolve();
+  s.route({ ...desert, ready: false }); await Promise.resolve(); await connecting;
+  expect(first.disconnect).toHaveBeenCalledOnce();
+  expect(first.reducers.enterWorld).not.toHaveBeenCalled();
+  const second = mock.connections[1], next = second.connect();
+  await Promise.resolve(); s.client.clear(); await next;
+  expect(second.reducers.enterWorld).not.toHaveBeenCalled();
+  expect(s.recoverSession).not.toHaveBeenCalled();
+});
+
+it("does not exhaust map recovery while a destination is still provisioning", async () => {
+  vi.useFakeTimers();
+  const s = setup(); s.apply();
+  s.route({ ...forest, ready: false }); await Promise.resolve();
+  for (let index = 1; index <= 6; index++) {
+    mock.connections.at(-1).failed({}, new Error("Database not ready"));
+    await vi.advanceTimersByTimeAsync(Math.min(5_000, index * 1_000));
+  }
+  expect(s.recoverSession).not.toHaveBeenCalled();
+  s.route(forest); await Promise.resolve();
+  await hydrateLatest();
+  expect(s.client.ready()).toBe(true);
+  s.client.clear();
+});
+
+it("bounds a stalled admission wait and cancels the old socket before retrying", async () => {
+  vi.useFakeTimers();
+  const s = setup(); s.apply();
+  s.route({ ...forest, ready: false }); await Promise.resolve();
+  const first = mock.connections[0], connecting = first.connect();
+  await Promise.resolve();
+  await vi.advanceTimersByTimeAsync(30_000); await connecting;
+  expect(first.disconnect).toHaveBeenCalledOnce();
+  expect(first.reducers.enterWorld).not.toHaveBeenCalled();
+  await vi.advanceTimersByTimeAsync(1_000);
+  expect(mock.connections).toHaveLength(2);
+  s.client.clear();
+});
+
 it("holds movement and old root rows until routing is known, replaying unsharded hydration", async () => {
   const s = setup();
   s.root.db.player.iter = () => [{ mapId: "tutorial_forest" }];

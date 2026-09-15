@@ -3,6 +3,7 @@ import { diagnosticWebSocket } from "./diagnostic-websocket";
 import { isProceduralMap } from "../../../shared/procedural-maps";
 import { DbConnection, tables } from "../../module_bindings";
 import { guardConnectionActivity } from "./connection-activity";
+import { createMapAdmissionGate } from "./map-admission-gate";
 import type { Identity } from "spacetimedb";
 import { MAP_IDS, PROTOCOL_VERSION, TUTORIAL_FOREST_MAP_ID } from "../../../shared/rules";
 import type { BaseSubscriptionHandlers } from "./base-subscription";
@@ -29,6 +30,7 @@ export function createMapShardClient(options: {
   let rootRoutingRejected = false;
   let timer: ReturnType<typeof setTimeout> | undefined;
   let attachedRoot: DbConnection | null = null;
+  let admission: ReturnType<typeof createMapAdmissionGate> | null = null;
   const mapWaiters = new Set<(error?: Error) => void>();
   function notifyMapWaiters(error?: Error) {
     for (const waiter of [...mapWaiters]) waiter(error);
@@ -51,6 +53,8 @@ export function createMapShardClient(options: {
   function closeRegion(reason = "map-session-reset") {
     if (region) recordConnectionDiagnostic("connection-reset", { transport: "map", database: route?.databaseName ?? "unknown", mapId: route?.mapId, intentional: true, detail: reason });
     generation++;
+    admission?.cancel();
+    admission = null;
     hydrated = false;
     if (timer) clearTimeout(timer);
     timer = undefined;
@@ -61,7 +65,10 @@ export function createMapShardClient(options: {
   function connectRegion() {
     const wanted = route;
     const root = attachedRoot;
-    if (!wanted?.ready || !root?.isActive || region || routeError) return;
+    if (!wanted?.databaseName || !root?.isActive || region || routeError) return;
+    // The assigned database is known before the coordinator completes admission.
+    // Overlap authentication/socket/protocol setup with that authoritative work.
+    const gate = admission = createMapAdmissionGate(wanted.ready);
     const attempt = ++generation;
     const current = () => attempt === generation && attachedRoot === root;
     const retry = (error?: unknown) => {
@@ -71,7 +78,9 @@ export function createMapShardClient(options: {
       closeRegion("map-retry");
       options.resetWorld();
       failures++;
-      if (failures >= 5 || /updated\. refresh|account identity|active in another tab/i.test(message)) {
+      // A newly allocated database may still be provisioning. Early socket
+      // failures must not exhaust the playable-map retry budget before admission.
+      if (failures >= 5 && route?.ready || /updated\. refresh|account identity|active in another tab/i.test(message)) {
         routeError = new Error(`${message}. Reconnect to restore the map session.`);
         notifyMapWaiters(routeError);
         options.port.handleFailure("map connection", routeError);
@@ -80,6 +89,10 @@ export function createMapShardClient(options: {
         if (!/updated\. refresh|active in another tab/i.test(message)) options.recoverSession();
       } else timer = setTimeout(connectRegion, Math.min(5_000, 1_000 * failures));
       options.changed();
+    };
+    const deadline = (ms: number, message: string) => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => retry(new Error(message)), ms);
     };
     const conn = guardConnectionActivity(DbConnection.builder().withUri(options.host).withDatabaseName(wanted.databaseName).withToken(root.token)
       .withWSFn(diagnosticWebSocket(recordConnectionDiagnostic, { transport: "map", database: wanted.databaseName, mapId: wanted.mapId, isCurrent: current }, options.resolveToken))
@@ -92,6 +105,11 @@ export function createMapShardClient(options: {
           if (!connection.identity?.equals(root.identity!)) throw new Error("Map account identity differs from the active account");
           await connection.reducers.registerProtocol({ protocolVersion: PROTOCOL_VERSION });
           if (!current() || !connection.isActive) return;
+          // Admission can take longer than a socket handshake. Do not restart a
+          // healthy connection every 12 seconds while the server transfers it.
+          deadline(30_000, "Map admission timed out");
+          if (!await gate.wait() || !current() || !connection.isActive) return;
+          deadline(12_000, "Map connection timed out");
           await connection.reducers.enterWorld({ tabId: options.tabId() });
           if (!current() || !connection.isActive) return;
           // Account operations invoked by the presence service (portals/speed)
@@ -150,10 +168,19 @@ export function createMapShardClient(options: {
         } catch (error) { retry(error); }
       }).onDisconnect((_ctx, error) => retry(error)).onConnectError((_ctx, error) => retry(error)).build());
     region = conn;
-    timer = setTimeout(() => retry(new Error("Map connection timed out")), 12_000);
+    deadline(12_000, "Map connection timed out");
   }
   function update(next: Route | null) {
     if (route?.databaseName === next?.databaseName && route?.mapId === next?.mapId && route?.generation === next?.generation && route?.ready === next?.ready) return;
+    if (route && next && route.databaseName === next.databaseName && route.mapId === next.mapId && route.generation === next.generation && !route.ready && next.ready) {
+      route = next;
+      failures = 0;
+      admission?.admit();
+      // Reuse the early socket; retain retry backoff if that attempt failed.
+      if (!timer) connectRegion();
+      options.changed();
+      return;
+    }
     closeRegion("route-change");
     route = next;
     failures = 0;

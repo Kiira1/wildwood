@@ -1150,6 +1150,16 @@ export type MySocialMessagesWithReactions = __Infer<typeof MySocialMessagesWithR
 export const MyUpgradeBench = __t.object("MyUpgradeBench", {});
 export type MyUpgradeBench = __Infer<typeof MyUpgradeBench>;
 
+export const PatreonAnnouncement = __t.object("PatreonAnnouncement", {
+  userId: __t.string(),
+  identity: __t.identity(),
+  silverAnnounced: __t.bool(),
+  goldAnnounced: __t.bool(),
+  messageId: __t.u64(),
+  announcedAtMs: __t.f64(),
+});
+export type PatreonAnnouncement = __Infer<typeof PatreonAnnouncement>;
+
 export const PatreonConfig = __t.object("PatreonConfig", {
   id: __t.u8(),
   clientId: __t.string(),
@@ -1186,6 +1196,12 @@ export const PatreonPending = __t.object("PatreonPending", {
   expiresAtMs: __t.f64(),
 });
 export type PatreonPending = __Infer<typeof PatreonPending>;
+
+export const PatreonPreview = __t.object("PatreonPreview", {
+  identity: __t.identity(),
+  frame: __t.string(),
+});
+export type PatreonPreview = __Infer<typeof PatreonPreview>;
 
 export const Player = __t.object("Player", {
   identity: __t.identity(),

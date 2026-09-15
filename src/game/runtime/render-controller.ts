@@ -230,6 +230,11 @@ export function createRenderController(options: {
 
   function renderFrame() {
     const { width, height, dpr } = viewport();
+    // A mobile browser can restore a covered/background canvas with default
+    // state and unchanged dimensions. Re-establish logical pixels before
+    // clearing or drawing, including the first frame after closing a menu.
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.imageSmoothingEnabled = false;
     ctx.clearRect(0, 0, width, height);
     drawProfileCharacterPreview();
     // Opaque menus already cover the world. Keep their previews alive without

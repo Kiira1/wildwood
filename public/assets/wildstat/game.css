@@ -3568,10 +3568,30 @@
 
 /* Supporter artwork overlays portraits without changing their size or hit area. */
 .avatar-frame-portrait { position: relative; }
-.avatar-frame-art { position: absolute; inset: -2%; width: 104%; height: 104%; max-width: none; margin: 0; padding: 0; border: 0; object-fit: fill; pointer-events: none; z-index: 1; }
+.avatar-frame-portrait.profile-icon { --avatar-portrait-border: 2px; }
+.avatar-frame-portrait.chat-profile-icon { --avatar-portrait-border: 1px; }
+.avatar-frame-portrait[data-avatar-frame="gold"],
+.avatar-frame-portrait[data-avatar-frame="silver"],
+#chatPanel.is-large .avatar-frame-portrait[data-avatar-frame="gold"],
+#chatPanel.is-large .avatar-frame-portrait[data-avatar-frame="silver"] {
+  overflow: visible; border-color: transparent; border-radius: 10%;
+}
+/* The artwork's rim is about 10% thick. A 111% overlay centers that rim
+   across the portrait edge; compensate for the existing border without
+   changing its box, grid track, spacing, or click target. */
+.avatar-frame-art {
+  position: absolute;
+  inset: calc(-5.5% - var(--avatar-portrait-border, 0px));
+  width: calc(111% + 2 * var(--avatar-portrait-border, 0px));
+  height: calc(111% + 2 * var(--avatar-portrait-border, 0px));
+  max-width: none; margin: 0; padding: 0; border: 0; object-fit: fill;
+  pointer-events: none; z-index: 1;
+}
 [data-avatar-frame="silver"] > .avatar-frame-art,
 .avatar-frame-choices [data-frame="silver"] img { filter: grayscale(1) brightness(1.25); }
 .leaderboard-framed-portrait { display: block; width: 25px; height: 25px; }
+.leaderboard-framed-portrait[data-avatar-frame="gold"] > canvas,
+.leaderboard-framed-portrait[data-avatar-frame="silver"] > canvas { border-color: transparent; border-radius: 10%; }
 .profile-icon-picker-modal { grid-template-rows: auto minmax(0, 1fr) auto; }
 .avatar-frame-picker { min-width: 0; }
 .avatar-frame-picker h3 { margin: 0 0 6px; color: #fff; font-size: 14px; }
@@ -3584,6 +3604,15 @@
 .avatar-frame-choice-art img { width: 100%; height: 100%; }
 .avatar-frame-controls { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
 .avatar-frame-controls button, .avatar-frame-controls a { min-height: 44px; margin: 0; padding: 6px 10px; border: 1px solid rgba(255,255,255,.25); border-radius: 5px; background: transparent; box-shadow: none; color: #fff; font-size: 11px; }
+.patreon-support-help { margin-top: 12px; color: #ddd; font-size: 12px; }
+.patreon-support-help summary { cursor: pointer; min-height: 32px; }
+.patreon-support-form { display: grid; gap: 8px; }
+.patreon-support-form label { display: grid; gap: 4px; }
+.patreon-support-form input { width: 100%; min-width: 0; box-sizing: border-box; padding: 8px; font-size: 16px; border: 1px solid #666; border-radius: 5px; background: #171717; color: #fff; }
+.patreon-support-form input[readonly] { color: #bbb; }
+.patreon-support-form button, .shop-patreon-connect { min-height: 44px; padding: 8px 12px; border: 1px solid #777; border-radius: 5px; background: #222; color: #fff; box-shadow: none; font-size: 12px; }
+.shop-patreon-connect { display: block; margin: 12px auto; }
+.shop-patreon-status { text-align: center; color: #ddd; font-size: 12px; }
 .shop-patreon-button { display: flex; align-items: center; gap: 13px; min-height: 74px; padding: 14px 18px; margin: 0 0 18px; border: 1px solid #c589af; border-radius: 12px; background: linear-gradient(135deg, #502b47, #241d2c); box-shadow: inset 0 1px 0 #ffffff19, 0 3px 0 #09070c; color: #fff; text-decoration: none; text-align: left; }
 .shop-patreon-button:hover { border-color: #f4c8e6; background: linear-gradient(135deg, #623655, #302436); }
 .shop-patreon-button:focus-visible { outline: 2px solid white; outline-offset: 3px; }

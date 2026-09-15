@@ -97,6 +97,16 @@ export function createCanvasRuntime({
 
   window.addEventListener("resize", scheduleResize);
   window.visualViewport?.addEventListener("resize", scheduleResize);
+  window.addEventListener("pageshow", scheduleResize);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") scheduleResize();
+  });
+  canvas.addEventListener("contextrestored", () => {
+    // Restoration clears the drawing state even when the backing size did
+    // not change, so the ordinary duplicate-resize fast path is insufficient.
+    initialized = false;
+    resize();
+  });
   resize();
 
   return {

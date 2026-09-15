@@ -8,6 +8,9 @@ let fetchFrames: ((identities: string[]) => Promise<AvatarFrameState[]>) | undef
 let timer: ReturnType<typeof setTimeout> | undefined;
 let maintenance: ReturnType<typeof setInterval> | undefined;
 let running = false, generation = 0;
+let portraitProvider: typeof applyAvatarFrame | undefined;
+/** The game bundle delegates to the network bundle, which owns membership state. */
+export function bindAvatarFrames(provider: typeof applyAvatarFrame) { portraitProvider = provider; }
 const trimCache = () => { while (cache.size > 2048) cache.delete(cache.keys().next().value!); };
 
 function paint(element: HTMLElement) {
@@ -66,6 +69,7 @@ export function updateAvatarFrame(state: AvatarFrameState) {
 }
 /** Overlay artwork never occupies layout space or intercepts portrait clicks. */
 export function applyAvatarFrame(element: HTMLElement, identity: string | undefined) {
+  if (portraitProvider) { portraitProvider(element, identity); return; }
   if (element.dataset.avatarOwner !== (identity ?? "")) element.dataset.avatarOwner = identity ?? "";
   element.classList.add("avatar-frame-portrait"); paint(element); request(identity ?? "");
   if (!maintenance && typeof window !== "undefined") maintenance = setInterval(() => {

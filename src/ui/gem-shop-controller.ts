@@ -2,11 +2,14 @@ import { nativeTestPurchases } from '../app/native-purchases';
 import { GEM_PACKS } from '../../shared/gem-packs';
 import { isNativePreview } from '../app/native-preview';
 import { PATREON_PAGE } from '../../shared/avatar-frames';
+import type { SupporterActions } from './avatar-frame-picker';
 
 /** Fullscreen catalog. Checkout stays disabled until verified fulfillment exists. */
 export function createGemShopController(options: {
   button: HTMLButtonElement;
   setOpen: (open: boolean) => void;
+  openSupporter?: () => void;
+  supporter?: Pick<SupporterActions, 'patreonStatus' | 'beginPatreonLink'>;
 }) {
   const dialog = document.createElement('dialog');
   dialog.id = 'gemShop';
@@ -33,6 +36,39 @@ export function createGemShopController(options: {
     support.href = PATREON_PAGE; support.target = '_blank'; support.rel = 'noopener noreferrer';
     support.innerHTML = '<span class="shop-patreon-heart" aria-hidden="true">♥</span><span><strong>Support WildStat on Patreon</strong><small>Support this game’s development and server costs</small></span><span class="shop-patreon-arrow" aria-hidden="true">↗</span>';
     dialog.querySelector('.gem-shop-scroll')!.prepend(support);
+    if (options.supporter) {
+      const actions = options.supporter;
+      const status = document.createElement('p'); status.className = 'shop-patreon-status'; status.setAttribute('role', 'status');
+      support.after(status);
+      let busy = false, continueUrl = '';
+      support.addEventListener('click', async event => {
+        if (continueUrl) return; // A blocked popup gets an ordinary second-tap link.
+        event.preventDefault();
+        if (busy) return;
+        busy = true; support.setAttribute('aria-disabled', 'true');
+        const popup = window.open('about:blank', '_blank');
+        if (popup) popup.opener = null;
+        status.textContent = 'Connecting your character…';
+        try {
+          const membership = await actions.patreonStatus();
+          const url = membership.linked ? PATREON_PAGE : await actions.beginPatreonLink();
+          const parsed = new URL(url);
+          if (parsed.protocol !== 'https:' || parsed.hostname !== 'www.patreon.com' || !['/oauth2/authorize', '/c/wildstat/membership'].includes(parsed.pathname)) throw new Error('Could not open Patreon. Try again.');
+          if (popup) { popup.location.replace(url); status.textContent = 'Finish on Patreon, then return here. Your frame applies automatically.'; }
+          else { continueUrl = url; support.href = url; status.textContent = 'Tap Support again to continue to Patreon.'; }
+        } catch (error) {
+          popup?.close();
+          status.textContent = error instanceof Error ? error.message : 'Could not connect Patreon. Try again.';
+        } finally { busy = false; support.removeAttribute('aria-disabled'); }
+      });
+    }
+    if (options.openSupporter) {
+      const connect = document.createElement('button');
+      connect.type = 'button'; connect.className = 'shop-patreon-connect';
+      connect.textContent = 'Already supporting? Connect your frame';
+      connect.addEventListener('click', () => { close(); options.openSupporter!(); });
+      support.after(connect);
+    }
   }
   let loadTestProducts = async () => {};
   if (nativeShop) {

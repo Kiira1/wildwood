@@ -1,4 +1,5 @@
 import { AVATAR_FRAME_ASSET, allowedAvatarFrame, type AvatarFrame, type PatreonStatus } from "../../shared/avatar-frames";
+import { createPatreonSupportForm } from "./patreon-support-form";
 
 export type SupporterActions = {
   patreonStatus: () => Promise<PatreonStatus>;
@@ -6,6 +7,8 @@ export type SupporterActions = {
   beginPatreonLink: () => Promise<string>;
   setAvatarFrame: (frame: AvatarFrame) => Promise<PatreonStatus>;
   disconnectPatreon: () => Promise<PatreonStatus>;
+  localDisplayName?: () => string;
+  requestPatreonHelp: (email: string) => Promise<unknown>;
 };
 
 export function createAvatarFramePicker(actions: SupporterActions, showMessage: (message: string, color: string) => void) {
@@ -19,13 +22,14 @@ export function createAvatarFramePicker(actions: SupporterActions, showMessage: 
   const unlink = document.createElement("button"); unlink.type = "button"; unlink.textContent = "Disconnect";
   const continueLink = document.createElement("a"); continueLink.textContent = "Continue to Patreon"; continueLink.target = "_blank"; continueLink.rel = "noopener noreferrer"; continueLink.hidden = true;
   controls.append(connect, refresh, unlink, continueLink); root.append(heading, choices, status, controls);
+  const help = createPatreonSupportForm(actions); root.append(help.element);
   let revision = 0, poll: ReturnType<typeof setInterval> | undefined, busy = false;
   const buttons = new Map<AvatarFrame, HTMLButtonElement>();
   let current: PatreonStatus | undefined;
   const fail = (error: unknown) => { status.textContent = error instanceof Error ? error.message : "Couldn't check Patreon. Try again."; };
   function render(value: PatreonStatus) {
     current = value;
-    status.textContent = !value.configured ? "Supporter frames are coming soon." : !value.linked ? "Cosmetic frames for active Patreon supporters." : value.tier === "none" ? "Connected · no active paid membership" : `${value.tier === "gold" ? "Gold" : "Silver"} supporter · thank you!`;
+    status.textContent = value.preview ? "Developer frame preview" : !value.configured ? "Supporter frames are coming soon." : !value.linked ? "Connect once. Your supporter frame applies automatically." : value.tier === "none" ? "Connected · no active paid membership" : `${value.tier === "gold" ? "Gold" : "Silver"} supporter · thank you!`;
     connect.hidden = value.linked; connect.disabled = !value.configured || busy;
     refresh.hidden = !value.linked; unlink.hidden = !value.linked;
     refresh.disabled = busy; unlink.disabled = busy;
@@ -78,11 +82,12 @@ export function createAvatarFramePicker(actions: SupporterActions, showMessage: 
   unlink.addEventListener("click", () => void run(actions.disconnectPatreon));
   return { element: root,
     open() {
+      help.reset();
       revision++; busy = false; current = undefined; clearInterval(poll); poll = undefined; continueLink.hidden = true;
       connect.disabled = true; refresh.disabled = true; unlink.disabled = true;
       for (const button of buttons.values()) button.disabled = true;
       status.textContent = "Checking frames…"; void run(actions.refreshPatreon);
     },
-    close() { revision++; busy = false; clearInterval(poll); poll = undefined; continueLink.hidden = true; },
+    close() { help.reset(); revision++; busy = false; clearInterval(poll); poll = undefined; continueLink.hidden = true; },
   };
 }

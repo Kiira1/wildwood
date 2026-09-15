@@ -12,6 +12,29 @@ const player = "a".repeat(64);
 const gold = (): AvatarFrameState => ({ identity: player, tier: "gold", frame: "gold", validUntilMs: Date.now() + 60_000 });
 function portrait() { const el = document.createElement("span"); document.body.append(el); return el; }
 
+it("shares membership, lookups, and sign-out across separately built game and network modules", async () => {
+  const network = await import("./avatar-frames");
+  vi.resetModules();
+  const game = await import("./avatar-frames");
+  const fetcher = vi.fn(async () => [gold()]);
+  network.configureAvatarFrames(fetcher);
+  game.bindAvatarFrames(network.applyAvatarFrame);
+  const chat = portrait(), profile = portrait();
+  game.applyAvatarFrame(chat, player);
+  game.applyAvatarFrame(profile, player);
+  await vi.advanceTimersByTimeAsync(40);
+  expect(fetcher).toHaveBeenCalledTimes(1);
+  for (const el of [chat, profile]) {
+    expect(el.dataset.avatarFrame).toBe("gold");
+    expect(el.querySelectorAll(".avatar-frame-art")).toHaveLength(1);
+  }
+  network.updateAvatarFrame({ ...gold(), frame: "silver" });
+  expect(profile.dataset.avatarFrame).toBe("silver");
+  network.clearAvatarFrames();
+  expect(chat.dataset.avatarFrame).toBe("none");
+  expect(profile.querySelector("img")).toBeNull();
+});
+
 it("shares a cached lookup across repeated renders and portraits while a request is pending", async () => {
   const frames = await import("./avatar-frames");
   let finish!: (rows: AvatarFrameState[]) => void;

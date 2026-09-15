@@ -1,9 +1,11 @@
 import { SenderError, SyncResponse, type InferSchema, type ReducerCtx, type ProcedureCtx, type HandlerContext } from "spacetimedb/server";
 import { TimeDuration, type Identity } from "spacetimedb";
 import type database from "./index";
-import { allowedAvatarFrame, type AvatarFrame, type PatreonStatus } from "../../shared/avatar-frames";
+import { allowedAvatarFrame, PATREON_PAGE, type AvatarFrame, type PatreonStatus } from "../../shared/avatar-frames";
+import { isDeveloperIdentity } from "../../shared/developer-identity";
 import { encodePatreonForm, patreonCallbackParams } from "./patreon-url";
 import { verifyPatreonIdentity } from "./patreon-verification";
+import { announcePatreonSupport } from "./patreon-announcement";
 
 type Schema = InferSchema<typeof database>;
 type Tx = ReducerCtx<Schema>;
@@ -16,6 +18,11 @@ const frameTier = (value: string): AvatarFrame => value === "gold" || value === 
 
 export function patreonStatus(ctx: Tx, identity: Identity): PatreonStatus {
   const row = ctx.db.patreonLink.identity.find(identity);
+  if (isDeveloperIdentity(identity.toHexString())) {
+    const chosen = ctx.db.patreonPreview.identity.find(identity)?.frame ?? "gold";
+    return { configured: Boolean(ctx.db.patreonConfig.id.find(0)), linked: Boolean(row?.userId),
+      tier: "gold", frame: allowedAvatarFrame("gold", chosen) ? chosen : "gold", validUntilMs: nowMs(ctx) + LEASE_MS, preview: true };
+  }
   const tier = row && row.validUntilMs > nowMs(ctx) ? frameTier(row.tier) : "none";
   return { configured: Boolean(ctx.db.patreonConfig.id.find(0)), linked: Boolean(row?.userId), tier,
     frame: row && allowedAvatarFrame(tier, row.frame) ? row.frame : "none", validUntilMs: row?.validUntilMs ?? 0 };
@@ -65,11 +72,13 @@ function saveMembership(ctx: Tx, identity: Identity, tokens: { accessToken: stri
   if (previous?.userId && previous.userId !== membership.userId) ctx.db.patreonOwner.userId.delete(previous.userId);
   if (!owner) ctx.db.patreonOwner.insert({ userId: membership.userId, identity });
   const now = nowMs(ctx);
-  // Preserve an explicit None choice; use the earned frame on the first unlock.
-  const frame = previous?.tier !== "none" && previous && allowedAvatarFrame(membership.tier, previous.frame)
+  // A new purchase or tier change equips its matching frame automatically.
+  // Routine renewals keep an intentional selection (including None).
+  const frame = previous?.userId === membership.userId && previous.tier === membership.tier && allowedAvatarFrame(membership.tier, previous.frame)
     ? previous.frame : membership.tier;
   const row = { identity, ...tokens, ...membership, frame, validUntilMs: now + LEASE_MS, checkedAtMs: now, attemptedAtMs: now };
   if (previous) ctx.db.patreonLink.identity.update(row); else ctx.db.patreonLink.insert(row);
+  announcePatreonSupport(ctx, identity, membership.userId, membership.tier);
 }
 
 export function refreshPatreon(ctx: ProcedureCtx<Schema>) {
@@ -117,6 +126,7 @@ export function patreonCallback(ctx: HandlerContext<Schema>, uri: string) {
   const state = params.get("state") ?? "", code = params.get("code") ?? "";
   let message = "This link expired. Return to WildStat and try Connect Patreon again.";
   let ok = false;
+  let needsMembership = false;
   if (/^[a-f0-9]{64}$/.test(state) && code.length > 0 && code.length < 4096) {
     const input = ctx.withTx(tx => {
       const pending = tx.db.patreonPending.state.find(state), config = tx.db.patreonConfig.id.find(0);
@@ -133,10 +143,11 @@ export function patreonCallback(ctx: HandlerContext<Schema>, uri: string) {
         tx.db.patreonPending.state.delete(state);
       });
       ok = true;
-      message = membership.tier === "none" ? "Patreon connected. An active paid Silver or Gold membership unlocks its frame. Return to WildStat." : "Your supporter frame is ready. Return to WildStat to use it. Thank you!";
+      needsMembership = membership.tier === "none";
+      message = membership.tier === "none" ? "Patreon connected. An active paid Silver or Gold membership automatically applies its frame. Return to WildStat." : "Your supporter frame is applied. Return to WildStat. Thank you!";
     } catch { message = "Couldn't link Patreon. It may already belong to another character. Return to WildStat and try again."; }
   }
-  return new SyncResponse(`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>WildStat Patreon</title><body><h1>${ok ? "Connected" : "Link not completed"}</h1><p>${message}</p><p>You can close this tab and return to the game.</p></body></html>`, {
-    status: ok ? 200 : 400, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "referrer-policy": "no-referrer", "content-security-policy": "default-src 'none'; frame-ancestors 'none'; base-uri 'none'" },
+  return new SyncResponse(`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>WildStat Patreon</title><style>body{margin:0;background:#111;color:#fff;font:18px/1.5 system-ui;text-align:center;min-height:100vh;display:grid;place-items:center}main{max-width:440px;padding:28px}h1{font-size:28px}a{display:block;padding:14px 20px;border-radius:8px;background:#f0c75e;color:#171717;font-weight:700;text-decoration:none}p{color:#ddd}</style><body><main><h1>${ok ? "Patreon connected" : "Link not completed"}</h1><p>${message}</p>${needsMembership ? `<a href="${PATREON_PAGE}" rel="noreferrer">Continue to memberships</a><p>Choose Silver or Gold, then return to the game. Your frame applies automatically.</p>` : '<p>You can close this tab and return to the game.</p>'}</main></body></html>`, {
+    status: ok ? 200 : 400, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "referrer-policy": "no-referrer", "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'" },
   });
 }

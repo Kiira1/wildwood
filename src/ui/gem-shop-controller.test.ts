@@ -3,6 +3,21 @@ import { parseHTML } from 'linkedom';
 import { createGemShopController } from './gem-shop-controller';
 
 afterEach(() => vi.unstubAllGlobals());
+it.each([false, true])('connects the character before checkout unless already linked (%s)', async linked => {
+  const { document, window } = parseHTML('<html><body><button>Shop</button></body></html>');
+  const replace = vi.fn(), close = vi.fn();
+  Object.assign(window, { open: vi.fn(() => ({ location: { replace }, close, opener: {} })) });
+  vi.stubGlobal('document', document); vi.stubGlobal('window', window);
+  const beginPatreonLink = vi.fn(async () => 'https://www.patreon.com/oauth2/authorize?state=test');
+  createGemShopController({ button: document.querySelector('button')!, setOpen: vi.fn(), supporter: {
+    patreonStatus: vi.fn(async () => ({ configured: true, linked, tier: 'none' as const, frame: 'none' as const, validUntilMs: 0 })), beginPatreonLink,
+  } });
+  document.querySelector('.shop-patreon-button')!.dispatchEvent(new window.Event('click', { cancelable: true }));
+  await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+  expect(beginPatreonLink).toHaveBeenCalledTimes(linked ? 0 : 1);
+  expect(replace).toHaveBeenCalledWith(linked ? 'https://www.patreon.com/c/wildstat/membership' : 'https://www.patreon.com/oauth2/authorize?state=test');
+  expect(close).not.toHaveBeenCalled();
+});
 it.each([false, true])('shows the Patreon support link only on web (native=%s)', native => {
   const { document, window } = parseHTML('<html><body><button id="shop">Shop</button></body></html>');
   vi.stubGlobal('WILDSTAT_NATIVE_PREVIEW', native);

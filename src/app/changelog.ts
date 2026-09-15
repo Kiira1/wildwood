@@ -1,4 +1,10 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.705": [
+    "Faster portal connection setup and improved recovery when returning to the game.",
+    "Fixed supporter frames in chat and profiles, with improved frame fit.",
+    "Connect Patreon from the web Shop; verified memberships automatically apply their frame.",
+    "Added supporter thank-you messages and private help for missing frames.",
+  ],
   "0.703": [
     "Endless bosses now award all four stats.",
     "Improved graphics recovery during movement and boss fights.",
@@ -1860,6 +1866,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.705": "2026-09-15",
   "0.703": "2026-09-15",
   "0.702": "2026-09-15",
   "0.701": "2026-09-15",

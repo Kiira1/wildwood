@@ -129,6 +129,7 @@ import ReportChatMessageReducer from "./report_chat_message_reducer";
 import ReportPlayerReducer from "./report_player_reducer";
 import ReportSocialMessageReducer from "./report_social_message_reducer";
 import RequestDuelReducer from "./request_duel_reducer";
+import RequestPatreonHelpReducer from "./request_patreon_help_reducer";
 import ReserveGemPurchaseReducer from "./reserve_gem_purchase_reducer";
 import ResetPlayerProgressReducer from "./reset_player_progress_reducer";
 import ResumeSessionReducer from "./resume_session_reducer";
@@ -1234,6 +1235,7 @@ const reducersSchema = __reducers(
   __reducerSchema("report_player", ReportPlayerReducer),
   __reducerSchema("report_social_message", ReportSocialMessageReducer),
   __reducerSchema("request_duel", RequestDuelReducer),
+  __reducerSchema("request_patreon_help", RequestPatreonHelpReducer),
   __reducerSchema("reserve_gem_purchase", ReserveGemPurchaseReducer),
   __reducerSchema("reset_player_progress", ResetPlayerProgressReducer),
   __reducerSchema("resume_session", ResumeSessionReducer),

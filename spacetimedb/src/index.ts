@@ -23,6 +23,8 @@ import { ingestStoreEvent } from "./gem-store-events";
 import { gemPurchaseTables } from "./gem-purchase-tables";
 import { patreonTables } from "./patreon-tables";
 import { beginPatreonLink as beginSupporterLink, refreshPatreon, patreonStatus, unlinkPatreon, patreonCallback } from "./patreon";
+import { requestPatreonSupport } from "./patreon-support";
+import { DEVELOPER_IDENTITY as DEVELOPER_IDENTITY_HEX } from "../../shared/developer-identity";
 import { allowedAvatarFrame } from "../../shared/avatar-frames";
 import { createGemPurchaseService } from "./gem-purchase-service";
 import { rescaleEndgameProgress, rescaleRankingConflict, rescaleRankingStats } from "../../shared/endgame-power-rescale";
@@ -261,7 +263,6 @@ const LEGACY_FROSTWIND_EXPANSE_MAP_ID = "frostwind_expanse";
 function canonicalMapId(mapId: string) {
   return mapId === LEGACY_FROSTWIND_EXPANSE_MAP_ID ? INTERMEDIATE_SNOWLANDS_MAP_ID : mapId;
 }
-const DEVELOPER_IDENTITY_HEX = "c200a2bd4fd89d5cc59811729734b7f92d6bf328eda8fc64963fa5f7760dcb13";
 const DEVELOPER_IDENTITY = new Identity(DEVELOPER_IDENTITY_HEX);
 // Maincloud database owner. CLI maintenance calls run as this identity, while
 // in-game developer actions run as DEVELOPER_IDENTITY above.
@@ -11049,8 +11050,18 @@ export const getAvatarFrames = spacetimedb.procedure({ identities: t.array(t.ide
 export const setAvatarFrame = spacetimedb.reducer({ frame: t.string() }, (ctx, { frame }) => {
   const row = ctx.db.patreonLink.identity.find(ctx.sender), status = patreonStatus(ctx, ctx.sender);
   if (!allowedAvatarFrame(status.tier, frame)) throw new SenderError("This frame requires an active supporter membership.");
+  if (status.preview) {
+    const preview = { identity: ctx.sender, frame };
+    if (ctx.db.patreonPreview.identity.find(ctx.sender)) ctx.db.patreonPreview.identity.update(preview);
+    else ctx.db.patreonPreview.insert(preview);
+    return;
+  }
   if (row && row.frame !== frame) ctx.db.patreonLink.identity.update({ ...row, frame });
 });
 export const disconnectPatreon = spacetimedb.reducer(ctx => unlinkPatreon(ctx));
+export const requestPatreonHelp = spacetimedb.reducer({ email: t.string() }, (ctx, { email }) => {
+  requireControllingPlayer(ctx);
+  requestPatreonSupport(ctx, email);
+});
 export const patreonOauthCallback = spacetimedb.httpHandler((ctx, request) => patreonCallback(ctx, request.uri));
 export const patreonRoutes = spacetimedb.httpRouter(new Router().get("/patreon/callback", patreonOauthCallback));

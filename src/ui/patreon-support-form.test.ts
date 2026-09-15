@@ -1,0 +1,23 @@
+import { afterEach, expect, it, vi } from "vitest";
+import { parseHTML } from "linkedom";
+import { createPatreonSupportForm } from "./patreon-support-form";
+afterEach(() => vi.unstubAllGlobals());
+it("prefills the current character, sends only email privately, and clears it on close", async () => {
+  const { document, window } = parseHTML("<html><body></body></html>");
+  vi.stubGlobal("document", document);
+  const requestPatreonHelp = vi.fn(async () => {});
+  const help = createPatreonSupportForm({ localDisplayName: () => "Gehn", requestPatreonHelp });
+  help.reset();
+  const name = help.element.querySelector<HTMLInputElement>('[name="character"]')!;
+  const email = help.element.querySelector<HTMLInputElement>('[name="email"]')!;
+  expect(name.value).toBe("Gehn");
+  expect(name.hasAttribute("readonly")).toBe(true);
+  email.value = "patron@example.com";
+  help.element.querySelector("form")!.dispatchEvent(new window.Event("submit", { cancelable: true }));
+  await Promise.resolve();
+  expect(requestPatreonHelp).toHaveBeenCalledExactlyOnceWith("patron@example.com");
+  expect(help.element.textContent).toContain("Request sent");
+  expect(email.value).toBe("");
+  email.value = "another@example.com"; help.reset();
+  expect(email.value).toBe("");
+});

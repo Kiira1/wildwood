@@ -11,6 +11,7 @@ import { createReconnectRecovery } from "./ui/reconnect-recovery";
 import { isProceduralMap, proceduralMapId } from "../shared/procedural-maps";
 import { createProceduralBossController } from "./game/runtime/procedural-boss-controller";
 import { bindPlayerNameTags } from "./app/player-name-tags";
+import { bindAvatarFrames } from "./app/avatar-frames";
 import { HOME_RESEARCH_POSITION, HOME_WORLD_WIDTH, HOME_WORLD_HEIGHT } from "../shared/home";
 import { WORLD_WIDTH, WORLD_HEIGHT } from "../shared/rules";
 import { createGuildPanel } from "./ui/guild-panel";
@@ -145,6 +146,7 @@ import {
   const { ctx, outlinedWorldText, fillWorldText, pixelCircle, roundRect, drawActorShadow } = canvasRuntime;
   const coop = window.wildstatCoop ?? window.wildwoodCoop ?? null;
   if (coop) bindPlayerNameTags({ prefix: (identity) => coop.playerNamePrefix(identity), revision: () => coop.playerNameTagsRevision() });
+  if (coop) bindAvatarFrames(coop.applyAvatarFrame);
   const gameplayReadyTelemetry = coop?.beginStartupTelemetryStage?.("gameplay-ready");
   let gameplayReadyRecorded = false;
   function recordGameplayReady() {
@@ -1982,6 +1984,8 @@ import {
   });
 
   inputEscapeHandler = createGameActionsRuntime({
+    coop,
+    openSupporter: openProfileIconPicker,
     setShopOpen: (open: boolean) => { playerInput.clear(); setGameplayPause("shop", open); },
     e: gameElements, inventory, renderInventory, logPickup, showMessage, leaveDuelResult,
     itemInspectionController,

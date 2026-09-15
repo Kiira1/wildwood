@@ -50,6 +50,28 @@ it("does not redraw a covered world while keeping menu previews alive", () => {
   expect(f.options.drawDuelScene).toHaveBeenCalledOnce();
 });
 
+it("restores full-size drawing after the canvas loses its scale behind chat", () => {
+  const f = arena(true, true);
+  let scale = 2;
+  const clears: number[][] = [];
+  f.ctx.setTransform.mockImplementation((a: number) => { scale = a; });
+  f.ctx.clearRect.mockImplementation((_x: number, _y: number, w: number, h: number) => {
+    clears.push([w * scale, h * scale]);
+  });
+  f.options.viewport = () => ({ width: 390, height: 780, dpr: 2 });
+  f.options.worldOccluded = () => true;
+  f.render = createRenderController(f.options).render;
+  f.render();
+  // Browser restores a default context without resizing or throwing an error.
+  scale = 1;
+  f.ctx.imageSmoothingEnabled = true;
+  f.options.worldOccluded = () => false;
+  f.render();
+  expect(clears).toEqual([[780, 1560], [780, 1560]]);
+  expect(f.ctx.imageSmoothingEnabled).toBe(false);
+  expect(f.options.drawDuelScene).toHaveBeenCalledOnce();
+});
+
 describe("snapToDevicePixel", () => {
   it("keeps shake transforms on physical pixel boundaries", () => {
     expect(snapToDevicePixel(1.26, 2)).toBe(1.5);

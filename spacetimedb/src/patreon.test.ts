@@ -30,6 +30,20 @@ function membership(tier = "30", status = "active_patron") {
 }
 const reply = (data: unknown) => ({ status: 200, text: () => JSON.stringify(data) });
 const callbackUri = `https://example.com?state=${"a".repeat(64)}&code=code`;
+it.each([
+  ["none", "none", "20", "silver"],
+  ["none", "none", "30", "gold"],
+  ["silver", "silver", "30", "gold"],
+  ["silver", "none", "30", "gold"],
+  ["gold", "gold", "20", "silver"],
+  ["gold", "none", "30", "none"],
+  ["gold", "silver", "30", "silver"],
+])("automatically equips changed membership %s/%s → %s while respecting unchanged preferences", (tier, frame, purchasedTier, expected) => {
+  const f = fixture();
+  f.db.patreonLink.identity.update({ ...f.db.patreonLink.identity.find(f.ctx.sender), tier, frame, attemptedAtMs: f.now - 60_001 });
+  f.http.fetch.mockReturnValueOnce(reply(membership(purchasedTier)));
+  expect(JSON.parse(refreshPatreon(f.ctx)).frame).toBe(expected);
+});
 function prepareCallback(f: ReturnType<typeof fixture>, target = f.ctx.sender) {
   f.seed("patreonPending", { state: "a".repeat(64), identity: target, expiresAtMs: f.now + 60_000 });
   f.http.fetch.mockReturnValueOnce(reply({ access_token: "new-access", refresh_token: "new-refresh" })).mockReturnValueOnce(reply(membership()));
@@ -42,6 +56,28 @@ it("links the verified tier once and never trusts callback parameters for entitl
   expect(patreonStatus(f.ctx, f.ctx.sender)).toMatchObject({ tier: "gold", frame: "gold", linked: true });
   expect(patreonCallback(f.ctx, callbackUri).status).toBe(400);
   expect(f.http.fetch).toHaveBeenCalledTimes(2);
+  const messages = [...f.db.chatMessage.iter()];
+  expect(messages).toHaveLength(1);
+  expect(messages[0]).toMatchObject({ senderName: "Test Player", message: "Became a Gold supporter on Patreon. Thank you for supporting WildStat! ♥" });
+  expect(f.db.publicChatCursor.id.find(0).lastId).toBe(messages[0].id);
+});
+it("thanks existing supporters on verification once, including after unlinking and relinking", () => {
+  const f = fixture();
+  function check(tier: string, status = "active_patron") {
+    f.db.patreonLink.identity.update({ ...f.db.patreonLink.identity.find(f.ctx.sender), attemptedAtMs: f.now - 60_001 });
+    f.http.fetch.mockReturnValueOnce(reply(membership(tier, status)));
+    refreshPatreon(f.ctx);
+  }
+  check("20"); check("20");
+  expect([...f.db.chatMessage.iter()]).toHaveLength(1);
+  check("30"); check("30"); check("20"); check("30");
+  expect([...f.db.chatMessage.iter()]).toHaveLength(2);
+  check("30", "former_patron");
+  expect([...f.db.chatMessage.iter()]).toHaveLength(2);
+  f.run(server.disconnectPatreon);
+  prepareCallback(f);
+  expect(patreonCallback(f.ctx, callbackUri).status).toBe(200);
+  expect([...f.db.chatMessage.iter()]).toHaveLength(2);
 });
 it("does not let a second character claim an already-linked Patreon", () => {
   const f = fixture(), other = identity("2");
