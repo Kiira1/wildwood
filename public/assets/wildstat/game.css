@@ -1436,13 +1436,13 @@
   #chatPanel.is-large .chat-header { display: none; }
   #chatPanel.is-large .chat-size-toggle { width: 44px; height: 44px; flex-basis: 44px; }
   #chatPanel.is-large .chat-size-icon { inset: 12px; }
-  #chatPanel.is-large .chat-line { flex: 0 0 auto; grid-template-columns: 66px minmax(0, 1fr); grid-template-rows: auto auto; width: 100%; min-height: 93px; padding: 7px 0 0; row-gap: 6px; column-gap: 9px; align-self: start; }
-  #chatPanel.is-large .chat-profile-icon { grid-column: 1; grid-row: 2; width: 66px; height: 66px; border-radius: 6px; }
-  #chatPanel.is-large .chat-message-content { grid-column: 2; grid-row: 2; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-  #chatPanel.is-large .chat-name { font-size: 15px; }
+  #chatPanel.is-large .chat-line { flex: 0 0 auto; grid-template-columns: 66px minmax(0, 1fr); grid-template-rows: auto; width: 100%; min-height: 73px; padding: 7px 0 0; column-gap: 9px; align-self: start; }
+  #chatPanel.is-large .chat-profile-icon { grid-column: 1; grid-row: 1; width: 66px; height: 66px; border-radius: 6px; }
+  #chatPanel.is-large .chat-message-content { grid-column: 2; grid-row: 1; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 2px 10px; width: fit-content; max-width: calc(100% - 50px); min-width: 0; }
+  #chatPanel.is-large .chat-name { grid-column: 1; grid-row: 1; font-size: 15px; }
   #chatPanel.is-large .chat-power-icon { width: 18px; height: 18px; }
-  #chatPanel.is-large .chat-time { grid-column: 1 / -1; grid-row: 1; justify-self: center; font-size: 11px; text-align: center; }
-  #chatPanel.is-large .chat-text { display: block; align-self: start; width: fit-content; max-width: calc(100% - 50px); min-width: 0; min-height: 29px; height: auto; margin: 0 0 10px; padding: 6px 12px; overflow-wrap: anywhere; font-size: 15px; line-height: 1.4; }
+  #chatPanel.is-large .chat-time { grid-column: 2; grid-row: 1; justify-self: end; color: rgba(255,255,255,.45); font-size: 11px; font-weight: 800; text-align: right; }
+  #chatPanel.is-large .chat-text { grid-column: 1 / -1; grid-row: 2; display: block; align-self: start; justify-self: stretch; width: auto; max-width: 100%; min-width: 0; min-height: 29px; height: auto; margin: 0 0 10px; padding: 6px 12px; overflow-wrap: anywhere; font-size: 15px; line-height: 1.4; }
   #chatPanel.is-large .chat-text.is-actionable { cursor: pointer; }
   #chatPanel.is-large .chat-text.is-actionable:focus-visible { outline: 2px solid rgba(217,184,255,.9); outline-offset: 2px; }
   #chatPanel.is-large #chatForm { grid-row: 2; display: grid; grid-template-columns: minmax(0, 1fr) 53px; grid-template-rows: max-content max-content max-content; grid-template-areas: "reply reply" "input send" "back back"; align-content: start; align-items: start; gap: 5px; padding: 0 0 var(--window-back-bottom-gap); }

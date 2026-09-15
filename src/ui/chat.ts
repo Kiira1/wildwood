@@ -534,8 +534,8 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
       icon.style.backgroundPosition = `${PROFILE_PORTRAIT_POSITION_START + (iconIndex % 8) * PROFILE_PORTRAIT_POSITION_STEP}% ${PROFILE_PORTRAIT_POSITION_START + Math.floor(iconIndex / 8) * PROFILE_PORTRAIT_POSITION_STEP}%`;
       const content = document.createElement("div");
       content.className = "chat-message-content";
-      content.append(name, text);
-      line.append(time, icon, content);
+      content.append(name, time, text);
+      line.append(icon, content);
       if (large) {
         if (!message.moderated) appendChatReactions(text, reactionCountsJson);
         text.classList.add("is-actionable");

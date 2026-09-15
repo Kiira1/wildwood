@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.700": [
+    "Chat timestamps now sit beside usernames, aligned to the message bubble edge, with bolder and dimmer text.",
+  ],
   "0.699": [
     "Fixed signing out so you can choose your email or Google login again.",
   ],
@@ -1845,6 +1848,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.700": "2026-09-15",
   "0.699": "2026-09-15",
   "0.698": "2026-09-15",
   "0.697": "2026-09-15",
