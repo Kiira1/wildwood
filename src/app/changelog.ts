@@ -1,4 +1,8 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.716": [
+    "Autofarm pauses during disconnects and resumes the same enemy or camp after reconnecting on the same character and map.",
+    "Raised Fire Metal Helmet and Dark Metal Helmet drops to 0.8%, Magma Armor to 0.7%, and Fire Metal Bow to 0.5% per enemy.",
+  ],
   "0.715": [
     "Chat keeps your reading position and scrolling momentum, with an inline spinner when older messages load.",
     "Chat portraits and supporter frame artwork reuse cached images; older pages prepare portraits before appearing.",
@@ -1928,6 +1932,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.716": "2026-09-16",
   "0.715": "2026-09-16",
   "0.714": "2026-09-16",
   "0.713": "2026-09-16",

@@ -3,9 +3,18 @@ import { expect, it, vi } from "vitest";
 import { crystalFixture, server } from "../../tests/helpers/crystal-hollows-fixture";
 import { enemyDefeatDefinition, defeatBudget } from "../../shared/enemy-defeats";
 import { ENEMY_TYPES } from "../../shared/enemy-definitions";
+import { rollRegularEnemyLoot } from "./regular-enemy-loot";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 const enemy = Object.keys(ENEMY_TYPES).find(kind => enemyDefeatDefinition("water_reach", kind)?.reward.type === "damage")!;
 const batch = { streamId: "test-stream-123456", sequence: 1n, mapId: "water_reach", enemies: [{ enemy, count: 20 }] };
+it("awards Magma Armor for all seven winning outcomes, but not the next outcome", () => {
+  const f = crystalFixture();
+  for (let roll = 1; roll <= 8; roll++) {
+    f.ctx.random.integerInRange = () => roll;
+    const drops = rollRegularEnemyLoot(f.ctx as unknown as Parameters<typeof rollRegularEnemyLoot>[0], "advanced_lava_wastes", 1);
+    expect(drops.get("magma_armor") ?? 0).toBe(roll <= 7 ? 1 : 0);
+  }
+});
 function fixture() { const f = crystalFixture(); f.patch("player", { mapId: batch.mapId }); return f; }
 it("calculates stats and independent loot rolls once in one transaction", () => {
   const f = fixture(), base = f.db.playerProgress.identity.find(f.ctx.sender);

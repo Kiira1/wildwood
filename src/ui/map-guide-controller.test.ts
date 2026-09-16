@@ -62,8 +62,11 @@ describe("map guide", () => {
     ]);
     expect(mapGuideDropChance(25)).toBe("4%");
     expect(mapGuideDropChance(30)).toBe("3.3%");
-    expect(mapGuideDropChance(LAVA_ITEM_DROP_DENOMINATOR)).toBe("0.08%");
-    expect(mapGuideDropChance(LAVA_HELMET_ITEM_DROP_DENOMINATOR)).toBe("0.05%");
+    const magma = mapGuideDrops(ADVANCED_LAVA_WASTES_MAP_ID).find(drop => drop.itemId === MAGMA_ARMOR)!;
+    expect(mapGuideDropChance(magma.denominator, magma.numerator)).toBe("0.70%");
+    expect(mapGuideDropChance(LAVA_HELMET_ITEM_DROP_DENOMINATOR)).toBe("0.80%");
+    expect(mapGuideDrops(INFERNAL_DEPTHS_MAP_ID).map(drop => mapGuideDropChance(drop.denominator, drop.numerator)))
+      .toEqual(["1%", "0.50%", "0.80%", "2%"]);
   });
 
   it.each([

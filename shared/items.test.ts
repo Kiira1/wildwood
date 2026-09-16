@@ -72,12 +72,12 @@ describe("equipment catalog", () => {
     expect(SNOW_ITEM_DROP_DENOMINATOR).toBe(50);
     expect(SNOW_BOSS_ITEM_DROP_DENOMINATOR).toBe(25);
     expect(SNOW_BOSS_ARMOR_DROP_DENOMINATOR).toBe(5);
-    expect(LAVA_ITEM_DROP_DENOMINATOR).toBe(1_200);
-    expect(LAVA_HELMET_ITEM_DROP_DENOMINATOR).toBe(2_000);
+    expect(LAVA_ITEM_DROP_DENOMINATOR).toBe(1_000);
+    expect(LAVA_HELMET_ITEM_DROP_DENOMINATOR).toBe(125);
     expect(LAVA_BOSS_ITEM_DROP_DENOMINATOR).toBe(25);
-    expect(INFERNAL_ITEM_DROP_DENOMINATOR).toBe(1_000);
+    expect(INFERNAL_ITEM_DROP_DENOMINATOR).toBe(200);
     expect(NIGHT_FOREST_BOW_ITEM_DROP_DENOMINATOR).toBe(100);
-    expect(NIGHT_FOREST_HELMET_ITEM_DROP_DENOMINATOR).toBe(1_300);
+    expect(NIGHT_FOREST_HELMET_ITEM_DROP_DENOMINATOR).toBe(125);
   });
 
   it("declares both bows as two-hand-slot-compatible ranged weapons", () => {

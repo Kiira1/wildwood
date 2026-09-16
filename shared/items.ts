@@ -40,15 +40,14 @@ export const WOODEN_ARMOR = "wooden_armor";
 export const FOREST_ITEM_DROP_DENOMINATOR = 25;
 export const DESERT_ITEM_DROP_DENOMINATOR = 50;
 export const SNOW_ITEM_DROP_DENOMINATOR = 50;
-// Late-map enemies now arrive in shorter reward slices. Preserve each old
-// macro-clear drop chance by matching per-kill odds to the map's cadence:
-// roughly forty slices in Lava and twenty in Night Forest.
-export const LAVA_ITEM_DROP_DENOMINATOR = 1_200;
-export const LAVA_HELMET_ITEM_DROP_DENOMINATOR = 2_000;
+// Per-enemy odds match the later-map equipment range, independent of kill batching.
+export const LAVA_ITEM_DROP_NUMERATOR = 7;
+export const LAVA_ITEM_DROP_DENOMINATOR = 1_000; // Magma Armor: 0.7%.
+export const LAVA_HELMET_ITEM_DROP_DENOMINATOR = 125; // Fire Metal Helmet: 0.8%.
 export const LAVA_BOSS_ITEM_DROP_DENOMINATOR = 25;
-export const INFERNAL_ITEM_DROP_DENOMINATOR = 1_000;
+export const INFERNAL_ITEM_DROP_DENOMINATOR = 200; // Fire Metal Bow: 0.5%.
 export const NIGHT_FOREST_BOW_ITEM_DROP_DENOMINATOR = 100;
-export const NIGHT_FOREST_HELMET_ITEM_DROP_DENOMINATOR = 1_300;
+export const NIGHT_FOREST_HELMET_ITEM_DROP_DENOMINATOR = 125; // Dark Metal Helmet: 0.8%.
 export const SAMURAI_HAT_ITEM_DROP_DENOMINATOR = 125; // 0.8% per regular Samurai Gardens enemy.
 export const SNOW_BOSS_ITEM_DROP_DENOMINATOR = 25;
 export const SNOW_BOSS_ARMOR_DROP_DENOMINATOR = 5;

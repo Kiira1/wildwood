@@ -39,6 +39,7 @@ import {
   LAVA_BOW,
   LAVA_HELMET_ITEM_DROP_DENOMINATOR,
   LAVA_ITEM_DROP_DENOMINATOR,
+  LAVA_ITEM_DROP_NUMERATOR,
   MAGMA_ARMOR,
   NIGHT_FOREST_HELMET_ITEM_DROP_DENOMINATOR,
   NIGHT_FOREST_BOW_ITEM_DROP_DENOMINATOR,
@@ -197,6 +198,7 @@ export type SimulationStateSnapshot = {
 type DropDefinition = {
   itemId: ItemId;
   denominator: number;
+  numerator?: number;
   eligible?: (enemy: EnemyKind) => boolean;
 };
 
@@ -739,7 +741,7 @@ function createMapDefinitions(): BalanceMapDefinition[] {
       name: MAP_DISPLAY_NAMES[ADVANCED_LAVA_WASTES_MAP_ID],
       arrival: bootstrap.mapConfig[ADVANCED_LAVA_WASTES_MAP_ID].arrival,
       regularDrops: [
-        { itemId: MAGMA_ARMOR, denominator: LAVA_ITEM_DROP_DENOMINATOR, eligible: always },
+        { itemId: MAGMA_ARMOR, numerator: LAVA_ITEM_DROP_NUMERATOR, denominator: LAVA_ITEM_DROP_DENOMINATOR, eligible: always },
         { itemId: FIRE_METAL_HELMET, denominator: LAVA_HELMET_ITEM_DROP_DENOMINATOR, eligible: always },
       ],
       boss: {
@@ -1297,7 +1299,7 @@ function rollDrops(
 ) {
   for (const drop of drops) {
     if (enemy && drop.eligible && !drop.eligible(enemy)) continue;
-    if (random() >= 1 / drop.denominator) continue;
+    if (random() >= (drop.numerator ?? 1) / drop.denominator) continue;
     acquireAndAutoEquip(state, drop.itemId, recordHistory);
   }
 }

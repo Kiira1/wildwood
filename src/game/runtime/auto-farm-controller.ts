@@ -18,6 +18,8 @@ export function createAutoFarmController(options: {
   mapId: () => string;
   equippedWeapon?: () => string;
   localIdentity?: () => string | undefined;
+  connection?: () => 'ready' | 'recovering' | 'ended';
+  now?: () => number;
   unavailable: () => string | null;
   paused: () => boolean;
   speed: () => number;
@@ -29,6 +31,10 @@ export function createAutoFarmController(options: {
   let selectedLabel = "";
   let active = false;
   let startedMap = '';
+  let startedIdentity: string | undefined;
+  let recovering = false;
+  let readySince: number | null = null;
+  const now = options.now ?? (() => performance.now());
   let status = 'Choose an enemy to begin';
   let target: EnemyState | null = null;
   let route: Position[] = [];
@@ -63,6 +69,8 @@ export function createAutoFarmController(options: {
 
   function stop(reason = 'Autofarm stopped') {
     active = false;
+    recovering = false;
+    readySince = null;
     target = null;
     route = [];
     lastGoal = null;
@@ -71,12 +79,36 @@ export function createAutoFarmController(options: {
 
   function refresh() {
     if (!active) return;
+    const identity = options.localIdentity?.();
+    if (startedMap !== options.mapId()) { stop('Map changed · choose an enemy'); return; }
+    if (startedIdentity && identity && identity !== startedIdentity) { stop('Character changed'); return; }
+    const connection = options.connection?.() ?? 'ready';
+    if (connection === 'ended') { stop('Autofarm stopped for sign-in'); return; }
+    if (connection === 'recovering') {
+      // Keep only the player's intent; old targets and paths may belong to a
+      // discarded world snapshot. No retries or server work belong here.
+      if (!recovering) { target = null; route = []; lastGoal = null; routeClock = 0; }
+      recovering = true;
+      readySince = null;
+      status = 'Reconnecting · farming will resume';
+      return;
+    }
     const reason = options.unavailable();
-    if (startedMap !== options.mapId()) stop('Map changed · choose an enemy');
-    else if (reason) stop(reason);
+    if (reason) { stop(reason); return; }
+    if (recovering) {
+      // Let a restored connection settle without retry timers or catch-up work.
+      readySince ??= now();
+      if (now() - readySince < 1_000) return;
+      recovering = false;
+      readySince = null;
+      status = 'Finding enemy';
+    }
   }
 
   function start(key: string) {
+    if (options.connection && options.connection() !== 'ready') {
+      stop('Connect to the server to farm'); return false;
+    }
     const reason = options.unavailable();
     if (reason) { stop(reason); return false; }
     const choice = choices().find(choice => choice.key === key);
@@ -87,6 +119,9 @@ export function createAutoFarmController(options: {
     selectedLabel = choice.label;
     active = true;
     startedMap = options.mapId();
+    startedIdentity = options.localIdentity?.();
+    recovering = false;
+    readySince = null;
     target = null;
     route = [];
     routeClock = 0;
@@ -97,6 +132,7 @@ export function createAutoFarmController(options: {
 
   function movement(manual: Movement, dt: number): Movement {
     refresh();
+    if (recovering) return idle();
     if (manual.x || manual.y) {
       if (active) {
         status = 'Manual control';
@@ -155,7 +191,7 @@ export function createAutoFarmController(options: {
   }
 
   return { start, stop, refresh, choices, movement,
-    state: () => ({ active, selected, selectedLabel, status: active && options.paused() ? 'Paused' : status }),
+    state: () => ({ active, selected, selectedLabel, status: active && !recovering && options.paused() ? 'Paused' : status }),
     targetType: () => active ? selectedType : null,
     targetCamp: () => active ? selectedCamp : null,
   };
