@@ -74,7 +74,7 @@ it("draws white damage popups on impact and handles expiry and rewind", () => {
   renderer.dispose();
 });
 
-it("does not render offscreen entrants, then restores all names and poses before combat", async () => {
+it("does not render offscreen entrants, and keeps fighting while reinforcements enter", async () => {
   const { buildGuildReplayEntrance } = await import("./guild-replay-entrance");
   const paintText = vi.fn();
   const context = new Proxy({}, { get: (_target, key) => key === "fillText" ? paintText : vi.fn(), set: () => true }) as CanvasRenderingContext2D;
@@ -89,17 +89,24 @@ it("does not render offscreen entrants, then restores all names and poses before
   vi.mocked(drawStartingPlayer).mockClear();
   renderer.draw(0, true, 0);
   expect(drawStartingPlayer).not.toHaveBeenCalled(); expect(paintText).not.toHaveBeenCalled();
-  const early = renderer.draw(0, true, .5);
+  const early = renderer.draw(.5, true, .5);
   const visible = early.filter(actor => actor.visible);
   expect(visible.length).toBeGreaterThan(0); expect(visible.length).toBeLessThan(10);
   expect(drawStartingPlayer).toHaveBeenCalledTimes(visible.length);
   const pose = vi.mocked(drawStartingPlayer).mock.calls[0][2];
   expect(pose.scale).toBeCloseTo(.6 * .86); expect(pose.moving).toBe(true);
   vi.mocked(drawStartingPlayer).mockClear(); paintText.mockClear();
-  const arrived = renderer.draw(0, true, entrance.duration);
+  const firstHit = timeline.shots[0].impact;
+  expect(firstHit).toBeLessThan(entrance.duration);
+  const fighting = renderer.draw(firstHit, true, firstHit);
+  expect(fighting.some(actor => actor.entering || !actor.visible)).toBe(true);
+  expect(vi.mocked(drawStartingPlayer).mock.calls.some(([, , pose]) => (pose.throwClock ?? 0) > 0)).toBe(true);
+  expect(paintText.mock.calls.some(([label]) => label === "10")).toBe(true);
+  vi.mocked(drawStartingPlayer).mockClear(); paintText.mockClear();
+  const arrived = renderer.draw(entrance.duration, true, entrance.duration);
   expect(arrived.every(actor => actor.visible)).toBe(true);
   expect(drawStartingPlayer).toHaveBeenCalledTimes(40);
-  expect(paintText.mock.calls.filter(([text]) => text === "100 / 100")).toHaveLength(40);
+  expect(arrived.some(actor => actor.attacks > 0)).toBe(true);
   vi.mocked(drawStartingPlayer).mockClear(); renderer.draw(0, true, 0);
   expect(drawStartingPlayer).not.toHaveBeenCalled();
   renderer.dispose();

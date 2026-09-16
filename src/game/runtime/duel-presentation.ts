@@ -1,3 +1,4 @@
+import { duelAttackDelays, duelPositionsAt, duelWeapon } from "../../../shared/duel-approach";
 import { duelHitMultiplier } from "../../../shared/duel-combat";
 import {
   DUEL_ARENA,
@@ -80,14 +81,17 @@ export function createDuelPresentation(hooks: DuelPresentationHooks) {
       ? livePresentation
       : { id: duel.id, elapsed: 0, challengerHp: duel.challengerMaxHp, opponentHp: duel.opponentMaxHp };
     if (presentation.elapsed >= previous.elapsed) {
-      const challengerDamage = previous.challengerHp - presentation.state.challengerHp;
-      const opponentDamage = previous.opponentHp - presentation.state.opponentHp;
-      if (challengerDamage > .01) hooks.spawnDamageNumber(DUEL_ARENA.x - 120, DUEL_COMBAT_Y, challengerDamage);
-      if (opponentDamage > .01) hooks.spawnDamageNumber(DUEL_ARENA.x + 120, DUEL_COMBAT_Y, opponentDamage);
+      const challengerDamage = presentation.state.opponentDamageDealt - (previous.opponentDamageDealt ?? 0);
+      const opponentDamage = presentation.state.challengerDamageDealt - (previous.challengerDamageDealt ?? 0);
+      const positions = duelPositionsAt(duel, presentation.state.resolvedSeconds);
+      if (challengerDamage > .01) hooks.spawnDamageNumber(DUEL_ARENA.x + positions.challengerX, DUEL_COMBAT_Y, challengerDamage);
+      if (opponentDamage > .01) hooks.spawnDamageNumber(DUEL_ARENA.x + positions.opponentX, DUEL_COMBAT_Y, opponentDamage);
     }
     livePresentation = {
       id: duel.id,
       elapsed: presentation.elapsed,
+      challengerDamageDealt: presentation.state.challengerDamageDealt,
+      opponentDamageDealt: presentation.state.opponentDamageDealt,
       challengerHp: presentation.state.challengerHp,
       opponentHp: presentation.state.opponentHp,
     };
@@ -99,6 +103,7 @@ export function createDuelPresentation(hooks: DuelPresentationHooks) {
     elapsed: number,
     limits: Pick<RuntimeDuelState, "challengerAttacks" | "opponentAttacks">,
   ) {
+    const positions = duelPositionsAt(duel, elapsed);
     return duelShotsAt({
       challengerAttackRate: duel.challengerAttackRate,
       opponentAttackRate: duel.opponentAttackRate,
@@ -107,11 +112,11 @@ export function createDuelPresentation(hooks: DuelPresentationHooks) {
     }, elapsed, {
       shotLifetime: DUEL_SHOT_LIFETIME,
       shotSpeed: DUEL_SHOT_SPEED,
-      challengerFromX: DUEL_ARENA.x - 120,
-      opponentFromX: DUEL_ARENA.x + 120,
+      challengerFromX: DUEL_ARENA.x + positions.challengerX,
+      opponentFromX: DUEL_ARENA.x + positions.opponentX,
       y: DUEL_COMBAT_Y,
-      challengerWeaponItem: duel.challengerRightHandItem || duel.challengerLeftHandItem,
-      opponentWeaponItem: duel.opponentRightHandItem || duel.opponentLeftHandItem,
+      challengerWeaponItem: duelWeapon(duel, true),
+      opponentWeaponItem: duelWeapon(duel, false),
     });
   }
 
@@ -130,6 +135,9 @@ export function createDuelPresentation(hooks: DuelPresentationHooks) {
         liveDeaths.opponentStartedAtMs = now;
       }
     }
+    const positions = duelPositionsAt(duel, presentation.state.resolvedSeconds);
+    const delays = duelAttackDelays(duel);
+    const combatOver = finished || presentation.state.challengerHp <= 0 || presentation.state.opponentHp <= 0;
     const localId = hooks.localIdentity();
     const remoteName = (identity: string) => {
       const visible = hooks.remotePlayers().find((other) => other.id === identity)?.name;
@@ -142,7 +150,8 @@ export function createDuelPresentation(hooks: DuelPresentationHooks) {
         : isChallenger ? presentation.state.challengerHp : presentation.state.opponentHp;
       return {
         identity,
-        x: DUEL_ARENA.x + (isChallenger ? -120 : 120),
+        x: DUEL_ARENA.x + (isChallenger ? positions.challengerX : positions.opponentX),
+        moving: !combatOver && (isChallenger ? positions.challengerMoving : positions.opponentMoving),
         y: DUEL_COMBAT_Y,
         name: (isChallenger ? duel.challengerName : duel.opponentName)
           || (identity === localId ? (hooks.localDisplayName() || "PLAYER") : remoteName(identity)),
@@ -154,11 +163,12 @@ export function createDuelPresentation(hooks: DuelPresentationHooks) {
           : undefined,
         facing,
         combatFacing: facing,
-        throwClock: hp <= 0 ? 0 : duelAttackAnimationClock(
+        throwClock: combatOver || (isChallenger ? positions.challengerMoving : positions.opponentMoving) ? 0 : duelAttackAnimationClock(
           isChallenger ? duel.challengerAttackRate : duel.opponentAttackRate,
           isChallenger ? presentation.state.challengerAttacks : presentation.state.opponentAttacks,
           presentation.elapsed,
-          isChallenger ? duel.challengerRightHandItem || duel.challengerLeftHandItem : duel.opponentRightHandItem || duel.opponentLeftHandItem,
+          isChallenger ? duelWeapon(duel, true) : duelWeapon(duel, false),
+          isChallenger ? delays.challenger : delays.opponent,
         ),
         isLocal: identity === localId,
         headItem: isChallenger ? duel.challengerHeadItem : duel.opponentHeadItem,
@@ -172,7 +182,7 @@ export function createDuelPresentation(hooks: DuelPresentationHooks) {
       hitMultiplier: duelHitMultiplier(presentation.elapsed, duel.combatVersion),
       challenger: actor(duel.challenger, true),
       opponent: actor(duel.opponent, false),
-      shots: finished ? [] : timelineDuelShots(duel, presentation.elapsed, presentation.state),
+      shots: combatOver ? [] : timelineDuelShots(duel, presentation.elapsed, presentation.state),
       countdown: hooks.nowMs() < duel.startsAtMs
         ? Math.max(1, Math.ceil((duel.startsAtMs - hooks.nowMs()) / 1000))
         : 0,
@@ -207,6 +217,9 @@ export function createDuelPresentation(hooks: DuelPresentationHooks) {
     const elapsed = Math.min(replay.durationSeconds, Math.max(0, totalElapsed - DUEL_REPLAY_COUNTDOWN_SECONDS));
     const state = replayState(replay, elapsed);
     const finished = countdown === 0 && elapsed >= replay.durationSeconds;
+    const positions = duelPositionsAt(replay, state.resolvedSeconds);
+    const delays = duelAttackDelays(replay);
+    const combatOver = finished || state.challengerHp <= 0 || state.opponentHp <= 0;
     if (finished) {
       const now = hooks.now();
       if (state.challengerHp <= 0 && replayMode.challengerDeathStartedAtMs === undefined) {
@@ -217,18 +230,19 @@ export function createDuelPresentation(hooks: DuelPresentationHooks) {
       }
     }
     if (elapsed >= replayMode.lastElapsed) {
-      const challengerDamage = replayMode.lastState.challengerHp - state.challengerHp;
-      const opponentDamage = replayMode.lastState.opponentHp - state.opponentHp;
-      if (challengerDamage > .01) hooks.spawnDamageNumber(DUEL_ARENA.x - 120, DUEL_COMBAT_Y, challengerDamage);
-      if (opponentDamage > .01) hooks.spawnDamageNumber(DUEL_ARENA.x + 120, DUEL_COMBAT_Y, opponentDamage);
+      const challengerDamage = state.opponentDamageDealt - (replayMode.lastState.opponentDamageDealt ?? 0);
+      const opponentDamage = state.challengerDamageDealt - (replayMode.lastState.challengerDamageDealt ?? 0);
+      if (challengerDamage > .01) hooks.spawnDamageNumber(DUEL_ARENA.x + positions.challengerX, DUEL_COMBAT_Y, challengerDamage);
+      if (opponentDamage > .01) hooks.spawnDamageNumber(DUEL_ARENA.x + positions.opponentX, DUEL_COMBAT_Y, opponentDamage);
     }
     replayMode.lastElapsed = elapsed;
-    replayMode.lastState = { challengerHp: state.challengerHp, opponentHp: state.opponentHp };
+    replayMode.lastState = state;
     const actor = (isChallenger: boolean): DuelScene["challenger"] => {
       const facing = isChallenger ? 0 : Math.PI;
       return {
         identity: isChallenger ? replay.challengerIdentity : replay.opponentIdentity,
-        x: DUEL_ARENA.x + (isChallenger ? -120 : 120),
+        x: DUEL_ARENA.x + (isChallenger ? positions.challengerX : positions.opponentX),
+        moving: !combatOver && (isChallenger ? positions.challengerMoving : positions.opponentMoving),
         y: DUEL_COMBAT_Y,
         name: isChallenger ? replay.challengerName : replay.opponentName,
         gender: isChallenger ? replay.challengerGender : replay.opponentGender,
@@ -239,11 +253,12 @@ export function createDuelPresentation(hooks: DuelPresentationHooks) {
           : replayMode?.opponentDeathStartedAtMs,
         facing,
         combatFacing: facing,
-        throwClock: (isChallenger ? state.challengerHp : state.opponentHp) <= 0 ? 0 : duelAttackAnimationClock(
+        throwClock: combatOver || (isChallenger ? positions.challengerMoving : positions.opponentMoving) ? 0 : duelAttackAnimationClock(
           isChallenger ? replay.challengerAttackRate : replay.opponentAttackRate,
           isChallenger ? state.challengerAttacks : state.opponentAttacks,
           elapsed,
-          isChallenger ? replay.challengerRightHandItem || replay.challengerLeftHandItem : replay.opponentRightHandItem || replay.opponentLeftHandItem,
+          isChallenger ? duelWeapon(replay, true) : duelWeapon(replay, false),
+          isChallenger ? delays.challenger : delays.opponent,
         ),
         isLocal: false,
         headItem: isChallenger ? replay.challengerHeadItem : replay.opponentHeadItem,
@@ -266,7 +281,7 @@ export function createDuelPresentation(hooks: DuelPresentationHooks) {
       hitMultiplier: duelHitMultiplier(elapsed, replay.combatVersion),
       challenger: actor(true),
       opponent: actor(false),
-      shots: countdown > 0 || finished ? [] : timelineDuelShots(replay, elapsed, replay),
+      shots: countdown > 0 || combatOver ? [] : timelineDuelShots(replay, elapsed, replay),
       countdown,
     } satisfies DuelScene;
   }

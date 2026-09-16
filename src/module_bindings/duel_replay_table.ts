@@ -52,4 +52,6 @@ export default __t.row({
   challengerGender: __t.u8().name("challenger_gender"),
   opponentGender: __t.u8().name("opponent_gender"),
   combatVersion: __t.u8().name("combat_version"),
+  challengerWeaponItem: __t.string().name("challenger_weapon_item"),
+  opponentWeaponItem: __t.string().name("opponent_weapon_item"),
 });

@@ -19,6 +19,9 @@ const duel = {
 describe("duel replay rules", () => {
   it("uses the same timeline for both duel combatants", () => {
     expect(duelTimelineState(duel, 1)).toEqual({
+      resolvedSeconds: 1,
+      challengerDamageDealt: 20,
+      opponentDamageDealt: 30,
       challengerHp: 70,
       opponentHp: 80,
       challengerAttacks: 1,

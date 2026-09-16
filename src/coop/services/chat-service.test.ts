@@ -92,3 +92,15 @@ describe("server-synced player blocks and reports", () => {
     expect(f.service.api.blockedPlayers()).toEqual([]);
   });
 });
+
+it("reuses public presentation between updates without retaining blocked or removed messages", () => {
+  const f = fixture(); f.addMessage(1n); f.addMessage(2n, alice, 1n);
+  const rows = f.service.api.chatMessages();
+  for (let i = 0; i < 100; i++) expect(f.service.api.chatMessages()).toBe(rows);
+  f.service.tables.upsertBlock({ owner: alice, target: bob, targetName: "Bob" });
+  expect(f.service.api.chatMessages()).toMatchObject([{ id: 2n, replyToMessage: "" }]);
+  f.service.tables.remove({ id: 2n });
+  expect(f.service.api.chatMessages()).toEqual([]);
+  f.switchAccount();
+  expect(f.service.api.chatMessages()).toEqual([]);
+});

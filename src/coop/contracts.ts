@@ -256,6 +256,8 @@ export type DuelState = {
   challengerHeadItem: string;
   challengerChestItem: string;
   challengerFeetItem: string;
+  challengerWeaponItem?: string;
+  opponentWeaponItem?: string;
   challengerRightHandItem: string;
   challengerLeftHandItem: string;
   opponentHeadItem: string;
@@ -299,6 +301,8 @@ export type DuelReplay = {
   challengerHeadItem: string;
   challengerChestItem: string;
   challengerFeetItem: string;
+  challengerWeaponItem?: string;
+  opponentWeaponItem?: string;
   challengerRightHandItem: string;
   challengerLeftHandItem: string;
   opponentHeadItem: string;

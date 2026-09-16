@@ -79,7 +79,7 @@ describe("guild root reducer integration", () => {
     }
     f.run(server.challengeGuild, { opponentGuildId: theirs, fighter: { damage: 1e30 } });
     const result = f.snapshot().battles[0].result;
-    if (result.version !== 2) throw Error("Expected whole-guild replay");
+    if ((result.version !== 2 && result.version !== 3)) throw Error("Expected whole-guild replay");
     const saved = result.attackers.find(member => member.identity === identity("1").toHexString())!;
     expect(saved.fighter.armor).toBeCloseTo(33);
     expect(saved.fighter.damage).toBeGreaterThan(0); expect(saved.fighter.damage).toBeLessThan(1000);

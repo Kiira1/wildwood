@@ -50,6 +50,8 @@ type DuelRow = {
   challengerHeadItem: string;
   challengerChestItem: string;
   challengerFeetItem: string;
+  challengerWeaponItem?: string;
+  opponentWeaponItem?: string;
   challengerRightHandItem: string;
   challengerLeftHandItem: string;
   opponentHeadItem: string;
@@ -109,6 +111,8 @@ export function createDuelService(dependencies: DuelServiceDependencies) {
       challengerHeadItem: row.challengerHeadItem,
       challengerChestItem: row.challengerChestItem,
       challengerFeetItem: row.challengerFeetItem,
+      challengerWeaponItem: row.challengerWeaponItem,
+      opponentWeaponItem: row.opponentWeaponItem,
       challengerRightHandItem: row.challengerRightHandItem,
       challengerLeftHandItem: row.challengerLeftHandItem,
       opponentHeadItem: row.opponentHeadItem,
@@ -160,6 +164,8 @@ export function createDuelService(dependencies: DuelServiceDependencies) {
       challengerHeadItem: row.challengerHeadItem,
       challengerChestItem: row.challengerChestItem,
       challengerFeetItem: row.challengerFeetItem,
+      challengerWeaponItem: row.challengerWeaponItem,
+      opponentWeaponItem: row.opponentWeaponItem,
       challengerRightHandItem: row.challengerRightHandItem,
       challengerLeftHandItem: row.challengerLeftHandItem,
       opponentHeadItem: row.opponentHeadItem,

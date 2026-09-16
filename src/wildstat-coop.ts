@@ -20,6 +20,7 @@ import {
   type ConnectionIssueCode,
   type ConnectionPhase,
 } from "./coop/services/connection-lifecycle";
+import { createWakeRecovery, TAB_AWAY_GRACE_MS } from "./coop/services/wake-recovery";
 import { createPageWakeTracker } from "./coop/services/page-wake-tracker";
 import { connectionGateState } from "./coop/services/connection-gate-state";
 import { retryAfterMissingWorldPresence } from "./coop/services/world-presence-recovery";
@@ -97,8 +98,6 @@ let startupChangeListener: (() => void) | null = null;
 let changeBatchDepth = 0;
 let batchedChangePending = false;
 let protocolBlocked = false;
-let resumeProbePromise: Promise<void> | null = null;
-let resumeProbeGeneration = 0;
 let wakeReconnectVisible = false;
 let networkReconnectVisible = false;
 let worldEntryPromise: Promise<boolean> | null = null;
@@ -161,7 +160,7 @@ const connectionLifecycle = createConnectionLifecycle({
 });
 
 const pageWakeTracker = createPageWakeTracker({
-  longWakeMs: 10_000,
+  longWakeMs: TAB_AWAY_GRACE_MS,
   nowMs: () => Date.now(),
   onLongWake: () => setWakeReconnectVisible(true),
   onResume: (force, hiddenForMs) => reconnectAfterWake(force, hiddenForMs),
@@ -552,8 +551,7 @@ function abandonConnection(disconnectTransport: boolean) {
   connectedSignedIn = false;
   protocolReadyGeneration = 0;
   localDbIdentity = null;
-  resumeProbePromise = null;
-  resumeProbeGeneration += 1;
+  wakeRecovery.cancel();
   worldEntryPromise = null;
   worldEntryGeneration = 0;
   latencyMs = null;
@@ -651,57 +649,21 @@ function setNetworkReconnectVisible(visible: boolean) {
   onChange?.();
 }
 
+const wakeRecovery = createWakeRecovery({
+  now: () => Date.now(), hidden: () => document.hidden,
+  blocked: () => protocolBlocked || worldEntryBlocked, connecting: () => connecting,
+  connection: () => connection, needsRouteRecovery: () => mapShardClient.needsRouteRecovery(),
+  activityAge: () => performance.now() - lastServerActivityAt,
+  refreshWatchdog: () => reconnectWatchdog.refresh(), clearOverlay: () => setWakeReconnectVisible(false),
+  clearNetworkOverlay: () => setNetworkReconnectVisible(false), changed: onChange,
+  touchActivity: touchServerActivity, restart: restartStalledWakeConnection,
+  failure: error => handleReducerFailure("session resume", error),
+  diagnostic: (kind, detail, hiddenForMs) => recordConnectionDiagnostic(kind, { detail, hiddenForMs }),
+  schedule: (callback, delay) => window.setTimeout(callback, delay), cancelTimer: timer => window.clearTimeout(timer),
+});
 function reconnectAfterWake(force = false, hiddenForMs = 0) {
-  if (protocolBlocked || worldEntryBlocked) {
-    setWakeReconnectVisible(false);
-    setNetworkReconnectVisible(false);
-    return;
-  }
-  if (document.hidden) return;
-  reconnectWatchdog.refresh();
-  if (force && (connecting || resumeProbePromise)) {
-    restartStalledWakeConnection();
-    return;
-  }
-  if (connecting || resumeProbePromise) return;
-  const conn = connection;
-  if (force || mapShardClient.needsRouteRecovery() || !conn?.isActive) {
-    restartStalledWakeConnection();
-    return;
-  }
-
-  const activityAge = performance.now() - lastServerActivityAt;
-  if (hiddenForMs < 10_000 && activityAge < 30_000) {
-    onChange?.();
-    return;
-  }
-
-  const generation = connectionGeneration;
-  const probeGeneration = ++resumeProbeGeneration;
-  resumeProbePromise = Promise.race([
-    conn.reducers.resumeSession({}),
-    new Promise<never>((_resolve, reject) => window.setTimeout(() => reject(new Error("Resume check timed out")), 2_500)),
-  ])
-    .then(() => {
-      if (connection === conn && generation === connectionGeneration) {
-        touchServerActivity();
-        setWakeReconnectVisible(false);
-        onChange?.();
-      }
-    })
-    .catch((error) => {
-      if (connection === conn && generation === connectionGeneration) {
-        if (/active in another tab/i.test(reducerErrorMessage(error))) {
-          handleReducerFailure("session resume", error);
-          setWakeReconnectVisible(false);
-          return;
-        }
-        restartStalledWakeConnection();
-      }
-    })
-    .finally(() => {
-      if (probeGeneration === resumeProbeGeneration) resumeProbePromise = null;
-    });
+  if (!force && pageWakeTracker.isHidden() && !document.hidden) { pageWakeTracker.show(); return; }
+  wakeRecovery.resume(force, hiddenForMs);
 }
 
 function connect() {

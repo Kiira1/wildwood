@@ -197,8 +197,9 @@ export const MAP_IDS: readonly string[] = [
   CRYSTAL_HOLLOWS_MAP_ID, CLOCKWORK_RUINS_MAP_ID, DUSKFALL_ORCHARD_MAP_ID, NEON_BASTION_MAP_ID, VERDANT_CATACOMBS_MAP_ID, ION_CITADEL_MAP_ID,
 ];
 
-export const PROTOCOL_VERSION = 104;
+export const PROTOCOL_VERSION = 105;
 // Add a previous version only after reviewing wire/schema and security compatibility.
+// Protocol 104 has the previous duel/replay wire layout.
 // Protocol 103 must remain blocked: it predates authoritative kill rewards.
 export const COMPATIBLE_PROTOCOL_VERSIONS: readonly number[] = [PROTOCOL_VERSION];
 export const SPACETIME_AUTH_ISSUER = "https://auth.spacetimedb.com/oidc";

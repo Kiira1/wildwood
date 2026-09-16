@@ -79,3 +79,18 @@ it("discards an original lookup after switching conversations", async () => {
   expect(history.messages([])).toEqual([]);
   expect(history.state()).toMatchObject({ loading: false, detached: false });
 });
+
+it("bounds the history cache without claiming a continuous path to latest after eviction", async () => {
+  const history = createChatHistory<{ id: bigint }>(); history.select("me:public");
+  const live = rows(951, 50);
+  const fetch = async (before: bigint) => ({ messages: rows(Number(before) - 50, 50), beforeId: before - 50n, hasMore: true });
+  for (let i = 0; i < 15; i++) {
+    await history.load(fetch, live);
+    expect(history.messages(live).length).toBeLessThanOrEqual(500);
+  }
+  expect(history.state().detached).toBe(true);
+  expect(history.messages(live)[0].id).toBe(201n);
+  await history.load(async () => ({ messages: live, beforeId: 951n, hasMore: true }), live, true);
+  expect(history.state().detached).toBe(false);
+  expect(history.messages(live)).toEqual(live);
+});

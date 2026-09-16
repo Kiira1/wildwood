@@ -28,3 +28,14 @@ it("assigns every fighter exactly once on uneven teams", () => {
   expect(plan.arrivals).toHaveLength(21);
   expect(plan.arrivals.every(arrival => arrival.travel >= .65 && arrival.start > 0)).toBe(true);
 });
+
+it("keeps paired arrivals fair and unchanged when a saved player is renamed or deleted", () => {
+  const battle = simulateGuildBattle(team("A"), team("B"));
+  const plan = buildGuildReplayEntrance(battle);
+  for (let i = 0; i < 20; i++) {
+    expect(plan.arrivals[i].start).toBe(plan.arrivals[i + 20].start);
+    expect(plan.arrivals[i].travel).toBe(plan.arrivals[i + 20].travel);
+  }
+  battle.attackers[0].identity = ""; battle.attackers[0].name = "Deleted player";
+  expect(buildGuildReplayEntrance(battle)).toEqual(plan);
+});

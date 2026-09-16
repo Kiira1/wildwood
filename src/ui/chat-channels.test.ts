@@ -278,6 +278,8 @@ describe("chat channels", () => {
     expect(h.button("Private").querySelector(".chat-channel-name")!.textContent).toBe("Private");
     expect(h.button("Private").querySelector(".chat-channel-unread")!.textContent).toBe("1");
     expect((h.button("Private").querySelector(".chat-channel-unread") as HTMLElement).hidden).toBe(false);
+    expect(h.document.querySelector(".chat-conversation-row")).toBeNull();
+    h.button("Private").click();
     expect(h.document.querySelector(".chat-conversation-row")!.getAttribute("aria-label")).toBe("Moss, 1 unread messages");
     h.window.dispatchEvent(new h.window.CustomEvent("wildwood:open-private-chat", { detail: { username: "Moss", identity: "friend" } }));
     expect(h.button("Private").textContent).toBe("Private");
@@ -387,5 +389,78 @@ describe("mini chat unread badge", () => {
     Object.defineProperty(h.document, "visibilityState", { value: "visible", configurable: true });
     h.document.dispatchEvent(new h.window.Event("visibilitychange"));
     expect(h.document.getElementById("chatUnreadBadge")!.textContent).toBe("");
+  });
+});
+
+describe("chat work scheduling", () => {
+  it("does not measure layout or scan messages for unchanged gameplay notifications", () => {
+    const h = setup(); h.document.getElementById("chatSizeToggle")!.click(); h.chat.refresh(); h.chat.refresh();
+    const panel = h.document.getElementById("chatMessages")!;
+    const measure = vi.fn(() => 0);
+    for (const name of ["scrollHeight", "clientHeight", "scrollTop", "clientWidth"]) Object.defineProperty(panel, name, { configurable: true, get: measure });
+    const messages = vi.spyOn(h.coop, "chatMessages");
+    for (let i = 0; i < 1000; i++) h.chat.refresh();
+    expect(measure).not.toHaveBeenCalled(); expect(messages).not.toHaveBeenCalled();
+  });
+  it("coalesces notification bursts and keeps the typed draft and existing rows", () => {
+    const h = setup(); h.document.getElementById("chatSizeToggle")!.click(); h.chat.refresh();
+    const callbacks: (() => void)[] = [];
+    vi.stubGlobal("requestAnimationFrame", (callback: () => void) => { callbacks.push(callback); return 1; });
+    const original = h.document.querySelector(".chat-line")!;
+    const rows = h.coop.chatMessages();
+    h.input.value = "still typing";
+    h.coop.chatMessages = () => [...rows, { ...rows[0], id: 2n, message: "incoming" }];
+    h.coop.chatRevision = () => 2;
+    for (let i = 0; i < 100; i++) h.chat.requestRefresh();
+    expect(callbacks).toHaveLength(1); callbacks.shift()!();
+    expect(h.history()).toContain("incoming"); expect(h.input.value).toBe("still typing");
+    expect(h.document.querySelector(".chat-line")).toBe(original);
+  });
+  it("does not submit while a mobile IME is composing", () => {
+    const h = setup(); const submit = vi.fn();
+    (h.document.getElementById("chatForm")! as HTMLFormElement).requestSubmit = submit;
+    h.input.dispatchEvent(new h.window.Event("compositionstart"));
+    const enter = new h.window.Event("keydown", { cancelable: true });
+    Object.assign(enter, { key: "Enter", isComposing: false });
+    h.input.dispatchEvent(enter); expect(submit).not.toHaveBeenCalled();
+    h.input.dispatchEvent(new h.window.Event("compositionend"));
+    h.input.dispatchEvent(enter); expect(submit).toHaveBeenCalledOnce();
+  });
+  it("mounts a bounded window and preserves the visible message through a history prepend", async () => {
+    const h = setup(), panel = h.document.getElementById("chatMessages")!;
+    const seed = h.coop.chatMessages()[0];
+    let live = Array.from({ length: 50 }, (_, i) => ({ ...seed, id: BigInt(1001 + i) })), revision = 2;
+    h.coop.chatMessages = () => live; h.coop.chatRevision = () => revision;
+    // A deterministic variable-height layout, independent of browser visual QA.
+    const height = (element: Element) => element.classList.contains("chat-line") ? 100 + Number(BigInt((element as HTMLElement).dataset.messageId!) % 3n) * 20 : parseFloat((element as HTMLElement).style.height) || 0;
+    let top = 0;
+    Object.defineProperties(panel, {
+      clientWidth: { get: () => 360 }, clientHeight: { get: () => 500 },
+      scrollHeight: { get: () => [...panel.children].reduce((sum, child) => sum + height(child), 0) },
+      scrollTop: { get: () => top, set: value => { top = Math.max(0, Math.min(value, panel.scrollHeight - 500)); } },
+    });
+    Object.defineProperty(h.window.HTMLElement.prototype, "offsetHeight", { configurable: true, get() { return height(this); } });
+    const page = vi.fn(async (before: bigint) => ({ messages: Array.from({ length: 50 }, (_, i) => ({ ...seed, id: before - 50n + BigInt(i) })), beforeId: before - 50n, hasMore: true }));
+    Object.assign(h.coop, { loadChatHistory: page });
+    h.document.getElementById("chatSizeToggle")!.click();
+    expect(panel.querySelectorAll(".chat-line").length).toBeLessThan(25);
+    const visible = () => {
+      let offset = 0;
+      for (const element of panel.children) {
+        const size = height(element);
+        if (offset + size > top && element.classList.contains("chat-line")) return [(element as HTMLElement).dataset.messageId, top - offset];
+        offset += size;
+      }
+    };
+    // First render the upper window, then scroll into the prefetch threshold.
+    panel.scrollTop = 300; panel.dispatchEvent(new h.window.Event("scroll"));
+    panel.scrollTop = 120; const anchor = visible();
+    panel.dispatchEvent(new h.window.Event("scroll")); await settle();
+    expect(page).toHaveBeenCalledExactlyOnceWith(1001n);
+    expect(visible()).toEqual(anchor);
+    expect(panel.querySelectorAll(".chat-line").length).toBeLessThan(25);
+    live = [...live.slice(1), { ...seed, id: 1051n, message: "live while reading" }]; revision++; h.chat.refresh();
+    expect(visible()).toEqual(anchor);
+    expect(panel.textContent).not.toContain("live while reading");
   });
 });

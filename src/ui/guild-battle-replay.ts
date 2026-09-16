@@ -9,8 +9,8 @@ export type { GuildReplayAssets } from "./guild-battlefield-renderer";
  * the render loop. No world simulation, network polling, or per-actor DOM. */
 export function createGuildBattleReplay(parent: HTMLElement, battle: GuildBattleResult, names: [string, string], assets?: GuildReplayAssets, onBack?: () => void, lowPerformanceMode: () => boolean = () => false) {
   const doc = parent.ownerDocument, win = doc.defaultView;
-  const entrance = buildGuildReplayEntrance(battle);
-  const endTime = Math.round((entrance.duration + battle.duration + 1.1) * 10) / 10;
+  const entrance = battle.version >= 3 ? buildGuildReplayEntrance(battle) : undefined;
+  const endTime = Math.round((battle.duration + 1.1) * 10) / 10;
   const root = doc.createElement("section"); root.className = "guild-replay";
   const title = doc.createElement("h3"); title.textContent = `[${names[0]}] vs [${names[1]}]`;
   const status = doc.createElement("p"); status.setAttribute("role", "status"); status.textContent = "Loading battlefield…";
@@ -34,7 +34,7 @@ export function createGuildBattleReplay(parent: HTMLElement, battle: GuildBattle
   function schedule() { if (!disposed && ready && playing && !doc.hidden && !request && win?.requestAnimationFrame) request = win.requestAnimationFrame(tick); }
   function draw() {
     if (!ready || !ctx) return;
-    const combatTime = Math.max(0, elapsed - entrance.duration);
+    const combatTime = elapsed;
     const actors = renderer?.draw(combatTime, true, elapsed) ?? timeline!.sample(combatTime);
     const alive = (from: number, to: number) => actors.slice(from, to).filter(actor => actor.hp > 0).length;
     const done = elapsed >= endTime;

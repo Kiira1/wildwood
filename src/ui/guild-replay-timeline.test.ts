@@ -1,3 +1,4 @@
+import { buildGuildEntrance } from "../../shared/guild-entrance";
 import { expect, it } from "vitest";
 import { simulateGuildBattle } from "../../shared/guild-combat";
 import { buildGuildReplayTimeline } from "./guild-replay-timeline";
@@ -53,4 +54,24 @@ it("matches HP accounting with armor, regeneration and multiple simultaneous att
       expect(frame.actors[i].hp).toBeCloseTo(Math.max(0, hp), 8);
     }
   }
+});
+
+it("shows early attacks during arrivals without projectiles hitting hidden reserves", () => {
+  const team = (prefix: string) => Array.from({ length: 20 }, (_, i) => ({ ...member(`${prefix}${i}`), fighter: { ...member("").fighter, maxHp: 10000, damage: 10 } }));
+  const battle = simulateGuildBattle(team("a"), team("b")), entrance = buildGuildEntrance(battle);
+  const timeline = buildGuildReplayTimeline(battle);
+  expect(timeline.shots[0].impact).toBeLessThan(entrance.duration);
+  for (const shot of timeline.shots) for (const index of [shot.actor, shot.target]) {
+    const entry = entrance.arrivals[index];
+    expect(shot.launch).toBeGreaterThanOrEqual(entry.start + entry.travel);
+  }
+  const last = timeline.sample(battle.duration);
+  expect(last.slice(0, 20).filter(actor => actor.hp > 0)).toHaveLength(battle.attackerSurvivors);
+  expect(last.slice(20).filter(actor => actor.hp > 0)).toHaveLength(battle.defenderSurvivors);
+});
+it("replays saved version 2 reports with their original result", () => {
+  const battle = simulateGuildBattle([member("a")], [member("b")], undefined, 2);
+  const timeline = buildGuildReplayTimeline(battle);
+  expect(timeline.frames.at(-1)?.time).toBe(battle.duration);
+  expect(timeline.sample(battle.duration).every(actor => actor.hp === 0)).toBe(true);
 });

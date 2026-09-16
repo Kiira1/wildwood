@@ -1,3 +1,4 @@
+import { createChatViewport } from "./chat-viewport";
 import { applyAvatarFrame } from "../app/avatar-frames";
 import { applyProfileIcon } from "../app/profile-icons";
 import { normalizeProfileIcon } from "../../shared/profile-icons";
@@ -114,7 +115,7 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
   let large = false;
   let reactionRevision = 0;
   const reactionOverrides = new Map<string, { source: string | undefined; value: string }>();
-  let renderedRevision = "";
+  let renderedRevision = "", metadataRevision = "";
   let renderedRows = new Map<string, { signature: string; element: HTMLDivElement }>();
   let channel: ChatChannel = "public";
   let privatePeer = "";
@@ -136,7 +137,15 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
   latestButton.textContent = "↓";
   latestButton.setAttribute("aria-label", "Jump to latest messages");
   latestButton.hidden = true;
-  let lastScrollTop = 0;
+  let lastScrollTop = 0, atLatest = true, viewportRevision = 0, scrollFrame = false;
+  const viewport = createChatViewport();
+  const topSpacer = document.createElement("div"), bottomSpacer = document.createElement("div");
+  for (const spacer of [topSpacer, bottomSpacer]) { spacer.className = "chat-viewport-spacer"; spacer.setAttribute("aria-hidden", "true"); }
+  let viewportContext = "";
+  let originalTarget: bigint | null = null;
+  function setSpacers(space: { top: number; bottom: number }) {
+    topSpacer.style.height = `${space.top}px`; bottomSpacer.style.height = `${space.bottom}px`;
+  }
   function refreshLatestButton() {
     const distance = elements.messages.scrollHeight - elements.messages.clientHeight - elements.messages.scrollTop;
     latestButton.hidden = !large || !enabled || (channel === "private" && !privatePeer) || (distance <= 80 && !history.state().detached);
@@ -188,7 +197,7 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
     const current = () => large && key === conversationKey() && identity === getCoop()?.localIdentity?.();
     const findLine = () => elements.messages.querySelector<HTMLElement>(`[data-message-id="${id}"]`);
     try {
-      if (!findLine()) {
+      if (!history.messages(currentMessages()).some(row => row.id === id)) {
         const selectedChannel = channel, peer = privatePeerIdentity || privatePeer;
         const fetch = selectedChannel === "public" ? coop?.loadChatHistory : coop?.social?.loadChatHistory
           ? (before: bigint) => coop.social!.loadChatHistory!(selectedChannel === "guild" ? "guild" : "dm", peer, before) : undefined;
@@ -201,6 +210,9 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
         if (!found) throw new Error("Original message is no longer available.");
       }
       if (!current()) return;
+      history.freeze(currentMessages());
+      originalTarget = id;
+      viewportRevision++; refresh();
       const line = findLine();
       if (!line) throw new Error("Original message is no longer available.");
       history.freeze(currentMessages());
@@ -209,7 +221,7 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
       line.classList.add("is-original-message");
       window.setTimeout(() => line.classList.remove("is-original-message"), 2_000);
       line.querySelector<HTMLElement>(".chat-text")?.focus({ preventScroll: true });
-      lastScrollTop = elements.messages.scrollTop;
+      lastScrollTop = elements.messages.scrollTop || 0;
       refreshLatestButton();
     } catch (error) {
       if (current()) showMessage(error instanceof Error ? error.message : "Could not load the original message.", "#ff9b91");
@@ -380,35 +392,39 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
     const now = Date.now();
     history.select(`${identity}:${conversationKey()}:${coop?.social?.historyRevision?.() ?? 0}:${coop?.chatHistoryRevision?.() ?? 0}:${large}`);
     const historyState = history.state();
-    refreshLatestButton();
-    const distanceToLatest = elements.messages.scrollHeight - elements.messages.clientHeight - elements.messages.scrollTop;
+
     const readingLatest = enabled && large && document.visibilityState !== "hidden"
-      && (renderedRevision === "" || (!historyState.frozen && !(distanceToLatest > 16)));
-    const revision = `${Math.floor(now / 60_000)}:${reactionRevision}:${readingLatest}:${conversationKey()}:${coop?.chatRevision?.() ?? -1}:${coop?.social?.revision() ?? -1}:${coop?.localIdentity?.() ?? ""}:${enabled}:${large}:${historyState.revision}`;
+      && (renderedRevision === "" || (!historyState.frozen && atLatest));
+    const revision = `${viewportRevision}:${Math.floor(now / 60_000)}:${reactionRevision}:${readingLatest}:${conversationKey()}:${coop?.chatRevision?.() ?? -1}:${coop?.social?.revision() ?? -1}:${coop?.localIdentity?.() ?? ""}:${enabled}:${large}:${historyState.revision}`;
     if (revision === renderedRevision && now < nextExpiryAt) return;
-    const conversations = coop?.social?.privateConversations() ?? [];
-    if (privatePeer && !privatePeerIdentity) {
-      privatePeerIdentity = [...(coop?.social?.friends() ?? []), ...conversations]
-        .find(person => person.name.toLowerCase() === privatePeer.toLowerCase())?.identity ?? "";
+    // Scrolling changes only the message window, not conversation metadata.
+    const metadata = `${readingLatest}:${conversationKey()}:${coop?.chatRevision?.() ?? -1}:${coop?.social?.revision() ?? -1}:${identity}:${enabled}:${large}`;
+    if (metadata !== metadataRevision || renderedRevision === "") {
+      metadataRevision = metadata;
+      const conversations = coop?.social?.privateConversations() ?? [];
+      if (privatePeer && !privatePeerIdentity) {
+        privatePeerIdentity = [...(coop?.social?.friends() ?? []), ...conversations]
+          .find(person => person.name.toLowerCase() === privatePeer.toLowerCase())?.identity ?? "";
+      }
+      const eligibleUnread = (rows: ChatMessage[]) => rows.filter(message => !coop?.isPlayerBlocked?.(message.sender));
+      const unreadCounts = unread.refresh(identity, eligibleUnread(coop?.social?.guildMessages() ?? []),
+        new Map(conversations.map(person => [person.identity, eligibleUnread(coop?.social?.privateMessages(person.identity) ?? [])])),
+        readingLatest ? channel === "public" ? "world" : channel === "guild" ? "guild"
+          : privatePeer ? `private:${privatePeerIdentity || privatePeer}` : null : null,
+        eligibleUnread(coop?.chatMessages?.() ?? []).filter(message => shouldShowGlobalChatMessage(message.senderName)));
+      const unreadTotal = unreadCounts.world + unreadCounts.guild + unreadCounts.private;
+      unreadBadge.textContent = formatChatUnreadCount(unreadTotal);
+      unreadBadge.hidden = large || unreadTotal === 0;
+      unreadBadge.setAttribute("aria-label", `${unreadTotal} unread messages`);
+      channelPicker.refresh(coop?.social?.friends() ?? [], conversations, coop?.social?.currentGuild()?.name ?? "", unreadCounts);
     }
-    const eligibleUnread = (rows: ChatMessage[]) => rows.filter(message => !coop?.isPlayerBlocked?.(message.sender));
-    const unreadCounts = unread.refresh(identity, eligibleUnread(coop?.social?.guildMessages() ?? []),
-      new Map(conversations.map(person => [person.identity, eligibleUnread(coop?.social?.privateMessages(person.identity) ?? [])])),
-      readingLatest ? channel === "public" ? "world" : channel === "guild" ? "guild"
-        : privatePeer ? `private:${privatePeerIdentity || privatePeer}` : null : null,
-      eligibleUnread(coop?.chatMessages?.() ?? []).filter(message => shouldShowGlobalChatMessage(message.senderName)));
-    const unreadTotal = unreadCounts.world + unreadCounts.guild + unreadCounts.private;
-    unreadBadge.textContent = formatChatUnreadCount(unreadTotal);
-    unreadBadge.hidden = large || unreadTotal === 0;
-    unreadBadge.setAttribute("aria-label", `${unreadTotal} unread messages`);
-    channelPicker.refresh(coop?.social?.friends() ?? [], conversations, coop?.social?.currentGuild()?.name ?? "", unreadCounts);
-    const previousScrollTop = elements.messages.scrollTop;
-    const previousScrollHeight = elements.messages.scrollHeight;
-    const anchor = [...elements.messages.children].find(child => (child as HTMLElement).offsetTop + (child as HTMLElement).offsetHeight > previousScrollTop) as HTMLElement | undefined;
-    const anchorId = anchor?.dataset.messageId;
-    const anchorOffset = anchor ? anchor.offsetTop - previousScrollTop : 0;
-    const distanceFromBottom = previousScrollHeight - elements.messages.clientHeight - previousScrollTop;
-    const followNewestMessage = !large || renderedRevision === "" || (!historyState.frozen && distanceFromBottom <= 16);
+    const context = `${identity}:${conversationKey()}:${large}`;
+    if (context !== viewportContext) { viewportContext = context; viewport.reset(); }
+    const previousScrollTop = elements.messages.scrollTop || 0;
+    const virtualAnchor = viewport.anchor(previousScrollTop);
+    const previousScrollHeight = elements.messages.scrollHeight || 0;
+    const distanceFromBottom = previousScrollHeight - (elements.messages.clientHeight || 0) - previousScrollTop;
+    const followNewestMessage = originalTarget === null && (!large || renderedRevision === "" || (!historyState.frozen && distanceFromBottom <= 16));
     const channelMessages = history.messages(currentMessages());
     const allMessages = (channelMessages ?? []).filter((message) =>
       (channel === "private" || now - message.sentAtMs < CHAT_DISPLAY_TTL_MS) && !coop?.isPlayerBlocked?.(message.sender)
@@ -417,7 +433,13 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
     // Do not rely on scrolling hidden rows in compact mode. Its DOM contains
     // exactly the newest two rows in the same oldest-to-newest order as the
     // expanded view.
-    const messages = large ? allMessages : allMessages.slice(-2);
+    viewport.select(allMessages, elements.messages.clientWidth || 0);
+    const targetAnchor = originalTarget === null ? virtualAnchor : { id: originalTarget, offset: 0 };
+    originalTarget = null;
+    const windowTop = viewport.restore(targetAnchor, previousScrollTop);
+    const windowRange = viewport.window(windowTop, elements.messages.clientHeight || 600, followNewestMessage);
+    const messages = large ? allMessages.slice(windowRange.start, windowRange.end) : allMessages.slice(-2);
+    if (large) setSpacers(windowRange);
     renderedRevision = revision;
     nextExpiryAt = channel !== "private" && allMessages.length > 0 ? allMessages[0].sentAtMs + CHAT_DISPLAY_TTL_MS : Number.POSITIVE_INFINITY;
     // Social refreshes and incoming messages must not detach unchanged image
@@ -573,27 +595,30 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
       }
       nextRows.set(rowKey, { signature, element: line });
     }
-    const retained = new Set([...nextRows.values()].map(row => row.element));
+    const ordered = large ? [topSpacer, ...[...nextRows.values()].map(row => row.element), bottomSpacer] : [...nextRows.values()].map(row => row.element);
+    const retained = new Set(ordered);
     for (const child of [...elements.messages.children]) {
       if (!retained.has(child as HTMLDivElement)) child.remove();
     }
     let cursor = elements.messages.firstElementChild;
-    for (const { element } of nextRows.values()) {
+    for (const element of ordered) {
       if (element !== cursor) elements.messages.insertBefore(element, cursor);
       cursor = element.nextElementSibling;
     }
     // Keep only displayed rows, including when switching channels or accounts.
     renderedRows = nextRows;
+    if (large) setSpacers(viewport.measure(messages.map(message => ({ id: message.id,
+      height: nextRows.get(`${identity}:${conversationKey()}:${large}:${message.id}`)?.element.offsetHeight ?? 0 }))));
     if (followNewestMessage) {
       elements.messages.scrollTop = elements.messages.scrollHeight;
     } else {
-      const restored = anchorId ? [...elements.messages.children].find(child => (child as HTMLElement).dataset.messageId === anchorId) as HTMLElement | undefined : undefined;
-      // Appended messages do not move history being read. If old messages
-      // expire from the top, compensate only for the removed height.
+      // Restore the same message and pixel offset after prepending or measuring
+      // variable-height rows. Select that window before mounting its DOM.
       const heightChange = elements.messages.scrollHeight - previousScrollHeight;
-      elements.messages.scrollTop = Math.max(0, restored ? restored.offsetTop - anchorOffset : previousScrollTop + Math.min(0, heightChange));
+      elements.messages.scrollTop = Math.max(0, large ? viewport.restore(targetAnchor, previousScrollTop + Math.min(0, heightChange)) : previousScrollTop + Math.min(0, heightChange));
     }
-    lastScrollTop = elements.messages.scrollTop;
+    lastScrollTop = elements.messages.scrollTop || 0;
+    atLatest = followNewestMessage || (elements.messages.scrollHeight || 0) - (elements.messages.clientHeight || 0) - lastScrollTop <= 16;
     refreshLatestButton();
   }
 
@@ -606,17 +631,25 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
     document.addEventListener("visibilitychange", refresh);
     latestButton.addEventListener("click", () => { void loadHistory(true); });
     elements.messages.addEventListener("scroll", () => {
-      if (!large || !enabled || (channel === "private" && !privatePeer)) return;
-      const top = elements.messages.scrollTop;
-      const scrollingUp = top < lastScrollTop;
-      lastScrollTop = top;
-      const distance = elements.messages.scrollHeight - elements.messages.clientHeight - top;
-      if (distance > 16) history.freeze(currentMessages());
-      refreshLatestButton();
-      if (scrollingUp && top <= 80) void loadHistory();
-      else if (distance <= 16 && history.state().frozen && !history.state().detached && !history.state().loading) void loadHistory(true);
-      else if (distance <= 16) refresh();
-    });
+      if (scrollFrame || !large || !enabled || (channel === "private" && !privatePeer)) return;
+      scrollFrame = true;
+      requestAnimationFrame(() => {
+        scrollFrame = false;
+        if (!large || !enabled || (channel === "private" && !privatePeer)) return;
+        const top = elements.messages.scrollTop;
+        const scrollingUp = top < lastScrollTop;
+        lastScrollTop = top;
+        const distance = elements.messages.scrollHeight - elements.messages.clientHeight - top;
+        atLatest = distance <= 16;
+        if (!atLatest) history.freeze(currentMessages());
+        refreshLatestButton();
+        if (viewport.needsRender(top, elements.messages.clientHeight || 600)) { viewportRevision++; refresh(); }
+        if (scrollingUp && top <= 240) void loadHistory();
+        else if (atLatest && history.state().frozen && !history.state().detached && !history.state().loading) void loadHistory(true);
+        else if (atLatest) refresh();
+      });
+    }, { passive: true });
+    window.addEventListener("resize", () => { if (large) { viewportRevision++; refresh(); } });
     elements.toggle.addEventListener("click", () => {
       enabled = !enabled;
       updateVisibility();
@@ -693,24 +726,34 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
       startChatCooldown();
       if (bugCommand) showMessage("BUG REPORT SENT", "#c9f5c2");
     });
+    let composing = false;
+    elements.input.addEventListener("compositionstart", () => { composing = true; });
+    elements.input.addEventListener("compositionend", () => { composing = false; });
     elements.input.addEventListener("keydown", (event) => {
-      if (event.key !== "Enter" || event.shiftKey) return;
+      if (event.key !== "Enter" || event.shiftKey || event.isComposing || composing || event.keyCode === 229) return;
       event.preventDefault();
       elements.form.requestSubmit();
     });
     elements.replyCancelButton.addEventListener("click", () => setPendingReply(null, true));
     elements.input.addEventListener("beforeinput", (event) => {
+      if (event.isComposing || composing) return;
       if (event.inputType !== "insertLineBreak" && event.inputType !== "insertParagraph") return;
       event.preventDefault();
       elements.form.requestSubmit();
     });
+    let sizingInput = false;
     elements.input.addEventListener("input", (event) => {
-      if (event instanceof InputEvent && (event.inputType === "insertLineBreak" || event.inputType === "insertParagraph")) {
+      if (event instanceof InputEvent && !event.isComposing && !composing && (event.inputType === "insertLineBreak" || event.inputType === "insertParagraph")) {
         elements.input.value = elements.input.value.replace(/\n$/, "");
         elements.form.requestSubmit();
       }
-      elements.input.style.height = "auto";
-      elements.input.style.height = `${Math.min(elements.input.scrollHeight, 54)}px`;
+      if (sizingInput) return;
+      sizingInput = true;
+      requestAnimationFrame(() => {
+        sizingInput = false;
+        elements.input.style.height = "auto";
+        elements.input.style.height = `${Math.min(elements.input.scrollHeight, 54)}px`;
+      });
     });
     updateVisibility();
     updateHeight();

@@ -1,4 +1,11 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.709": [
+    "Chat stays smoother during long sessions, with lighter scrolling and faster access to older messages.",
+    "Guild fighters now start fighting as they arrive, while later fighters continue entering.",
+    "Sword users approach their opponents in duels, with updated wooden sword alignment.",
+    "Fixed missing arrows and damage numbers when duel weapons are hidden by cosmetics.",
+    "Briefly switching away from the game no longer forces an unnecessary reconnect. Added clearer connection diagnostics.",
+  ],
   "0.708": [
     "Updated window and toolbar colors, the Home icon, and character profile tap targets.",
     "Improved object avatar cropping and portrait refreshes.",

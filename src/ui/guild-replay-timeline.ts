@@ -1,11 +1,13 @@
+import { buildGuildEntrance } from "../../shared/guild-entrance";
 import { isMeleeWeapon } from "../game/weapon-combat";
 import { guildAttackDamage, simulateGuildBattle, type GuildBattleResult, type GuildCombatFrame } from "../../shared/guild-combat";
 
 export type GuildReplayShot = { actor: number; target: number; launch: number; impact: number; from: { x: number; y: number }; to: { x: number; y: number } };
 export function buildGuildReplayTimeline(battle: GuildBattleResult) {
   const frames: GuildCombatFrame[] = [];
-  simulateGuildBattle(battle.attackers, battle.defenders, frame => frames.push(frame));
+  simulateGuildBattle(battle.attackers, battle.defenders, frame => frames.push(frame), battle.version);
   const fighters = [...battle.attackers, ...battle.defenders];
+  const arrivals = battle.version >= 3 ? buildGuildEntrance(battle).arrivals.map(entry => entry.start + entry.travel) : fighters.map(() => 0);
   const deaths = fighters.map(() => Infinity);
   const attacks = fighters.map(() => [] as GuildReplayShot[]);
   const damage: { target: number; time: number; amount: number; x: number; y: number }[] = [];
@@ -32,7 +34,7 @@ export function buildGuildReplayTimeline(battle: GuildBattleResult) {
       const appearance = fighters[i].appearance;
       const flight = isMeleeWeapon(appearance?.rightHandItem || appearance?.leftHandItem) ? 0
         : Math.min(.28, Math.max(.12, Math.hypot(target.x - actor.x, target.y - actor.y) / 800));
-      const launch = Math.max(0, frame.time - flight), from = sample(launch)[i];
+      const launch = Math.max(arrivals[i], arrivals[actor.target], frame.time - flight), from = sample(launch)[i];
       attacks[i].push({ actor: i, target: actor.target, launch, impact: frame.time,
         from: { x: from.x, y: from.y + 1 }, to: { x: target.x, y: target.y - 3 } });
     });

@@ -12,10 +12,13 @@ export function createChatHistory<T extends Message>() {
     context = key; generation++; revision++; loading = false; frozen = false; detached = false; hasMore = true; rows = []; cursor = 0n;
   }
   function messages(live: T[]) {
-    rows = frozen ? rows.map(row => live.find(current => current.id === row.id) ?? row) : merge(rows, live).slice(-50);
+    if (frozen) {
+      const updates = new Map(live.map(row => [row.id, row]));
+      rows = rows.map(row => updates.get(row.id) ?? row);
+    } else rows = merge(rows, live).slice(-50);
     return rows;
   }
-  function freeze(live: T[]) { messages(live); frozen = true; }
+  function freeze(live: T[]) { if (frozen) return; messages(live); frozen = true; }
   async function load(fetch: (before: bigint) => Promise<ChatHistoryPage<T>>, live: T[], latest = false) {
     if (loading || (!latest && !hasMore)) return false;
     const attempt = generation;
@@ -25,7 +28,9 @@ export function createChatHistory<T extends Message>() {
     try {
       const page = await fetch(latest ? 0n : cursor);
       if (attempt !== generation) return false;
-      rows = latest ? page.messages : merge(page.messages, rows).slice(0, 500);
+      const merged = latest ? page.messages : merge(page.messages, rows);
+      if (!latest && merged.length > 500) detached = true;
+      rows = latest ? merged : merged.slice(0, 500);
       cursor = page.beforeId;
       hasMore = page.hasMore;
       revision++;

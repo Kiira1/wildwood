@@ -1,7 +1,8 @@
+import { buildGuildEntrance } from "./guild-entrance";
 import { damageAfterArmor } from "./combat";
 import { duelHitMultiplier, type DuelFighter } from "./duel-combat";
 
-export const GUILD_COMBAT_VERSION = 2;
+export const GUILD_COMBAT_VERSION = 3;
 export const GUILD_COMBAT_STEP = .1;
 export const GUILD_COMBAT_LIMIT = 60;
 export type GuildAppearance = { skinTone?: number; headItem?: string; chestItem?: string; feetItem?: string; rightHandItem?: string; leftHandItem?: string };
@@ -9,7 +10,7 @@ export type GuildFighter = { identity: string; name: string; fighter: DuelFighte
 export type GuildActorState = { x: number; y: number; hp: number; target: number; cooldown: number; attacks: number; hitAt: number };
 export type GuildCombatFrame = { time: number; actors: GuildActorState[] };
 export type GuildBattleResult = {
-  version: 2; attackers: GuildFighter[]; defenders: GuildFighter[];
+  version: 2 | 3; attackers: GuildFighter[]; defenders: GuildFighter[];
   outcome: "VICTORY" | "DEFEAT" | "DRAW"; duration: number;
   attackerSurvivors: number; defenderSurvivors: number;
 };
@@ -37,22 +38,23 @@ export function guildCombatFinished(frame: GuildCombatFrame, split: number) {
 }
 /** Fixed, simultaneous ticks shared by server resolution and replay. At most 40
  * actors and 600 ticks. Target searches happen only when a target falls. */
-export function advanceGuildCombat(fighters: GuildFighter[], split: number, previous: GuildCombatFrame): GuildCombatFrame {
+export function advanceGuildCombat(fighters: GuildFighter[], split: number, previous: GuildCombatFrame, arrivals?: readonly number[]): GuildCombatFrame {
   const time = Math.round((previous.time + GUILD_COMBAT_STEP) * 10) / 10;
   const actors = previous.actors.map(actor => ({ ...actor }));
   const hits = new Float64Array(actors.length);
+  const active = (index: number) => !arrivals || previous.time >= arrivals[index];
   for (let i = 0; i < actors.length; i++) {
     const actor = actors[i], before = previous.actors[i], member = fighters[i], stats = member.fighter;
-    if (before.hp <= 0) continue;
+    if (before.hp <= 0 || !active(i)) continue;
     actor.hp = Math.min(stats.maxHp, actor.hp + stats.regen * GUILD_COMBAT_STEP);
     const from = i < split ? split : 0, to = i < split ? actors.length : split;
-    if (actor.target < from || actor.target >= to || previous.actors[actor.target].hp <= 0) {
+    if (actor.target < from || actor.target >= to || previous.actors[actor.target].hp <= 0 || !active(actor.target)) {
       let distance = Infinity; actor.target = -1;
       for (let j = from; j < to; j++) {
         const candidate = previous.actors[j];
-        if (candidate.hp <= 0) continue;
+        if (candidate.hp <= 0 || !active(j)) continue;
         const d = (candidate.x - before.x) ** 2 + (candidate.y - before.y) ** 2;
-        if (d < distance) { distance = d; actor.target = j; }
+        if (d < distance - (arrivals ? 1e-8 : 0)) { distance = d; actor.target = j; }
       }
     }
     if (actor.target < 0) continue;
@@ -70,25 +72,33 @@ export function advanceGuildCombat(fighters: GuildFighter[], split: number, prev
       actor.attacks += count; actor.hitAt = time; actor.cooldown += count * stats.attackRate;
     } else if (distance > reach + .01) actor.cooldown = Math.max(0, actor.cooldown);
   }
-  // Soft spacing keeps the melee readable when many members share a target.
+  // Apply spacing simultaneously for arriving teams to avoid a first-side bias.
+  // Version 2 retains its original sequential spacing for saved reports.
+  const spacing = arrivals ? actors.map(() => ({ x: 0, y: 0 })) : undefined;
   for (let i = 0; i < actors.length; i++) for (let j = i + 1; j < actors.length; j++) {
     const a = actors[i], b = actors[j];
-    if (a.hp <= 0 || b.hp <= 0) continue;
+    if (a.hp <= 0 || b.hp <= 0 || !active(i) || !active(j)) continue;
     const dx = b.x - a.x, dy = b.y - a.y, length = Math.hypot(dx, dy);
     if (length >= 28) continue;
     const push = (28 - length) * .25, nx = length ? dx / length : 0, ny = length ? dy / length : 1;
-    a.x -= nx * push; a.y -= ny * push; b.x += nx * push; b.y += ny * push;
+    const left = spacing?.[i] ?? a, right = spacing?.[j] ?? b;
+    left.x -= nx * push; left.y -= ny * push; right.x += nx * push; right.y += ny * push;
   }
-  actors.forEach((actor, i) => { actor.hp = Math.max(0, actor.hp - hits[i]); });
+  actors.forEach((actor, i) => {
+    if (spacing) { actor.x += spacing[i].x; actor.y += spacing[i].y; }
+    actor.hp = Math.max(0, actor.hp - hits[i]);
+  });
   return { time, actors };
 }
-export function simulateGuildBattle(attackers: GuildFighter[], defenders: GuildFighter[], onFrame?: (frame: GuildCombatFrame) => void): GuildBattleResult {
+export function simulateGuildBattle(attackers: GuildFighter[], defenders: GuildFighter[], onFrame?: (frame: GuildCombatFrame) => void, version: GuildBattleResult["version"] = GUILD_COMBAT_VERSION): GuildBattleResult {
   const fighters = [...attackers, ...defenders], split = attackers.length;
-  let frame = initialGuildCombat(attackers, defenders); onFrame?.(frame);
-  while (!guildCombatFinished(frame, split)) { frame = advanceGuildCombat(fighters, split, frame); onFrame?.(frame); }
+  let frame = initialGuildCombat(attackers, defenders);
+  const arrivals = version >= 3 ? buildGuildEntrance({ attackers, defenders }).arrivals.map(entry => entry.start + entry.travel) : undefined;
+  onFrame?.(frame);
+  while (!guildCombatFinished(frame, split)) { frame = advanceGuildCombat(fighters, split, frame, arrivals); onFrame?.(frame); }
   const attackerSurvivors = living(frame.actors, 0, split), defenderSurvivors = living(frame.actors, split, fighters.length);
   const fraction = (from: number, to: number) => frame.actors.slice(from, to).reduce((sum, actor) => sum + actor.hp, 0) / fighters.slice(from, to).reduce((sum, member) => sum + member.fighter.maxHp, 0);
   const difference = fraction(0, split) - fraction(split, fighters.length);
   const outcome = !attackerSurvivors && !defenderSurvivors ? "DRAW" : !defenderSurvivors ? "VICTORY" : !attackerSurvivors ? "DEFEAT" : Math.abs(difference) < 1e-9 ? "DRAW" : difference > 0 ? "VICTORY" : "DEFEAT";
-  return { version: GUILD_COMBAT_VERSION, attackers, defenders, outcome, duration: frame.time, attackerSurvivors, defenderSurvivors };
+  return { version, attackers, defenders, outcome, duration: frame.time, attackerSurvivors, defenderSurvivors };
 }

@@ -91,3 +91,23 @@ describe("private social client state", () => {
     expect(h.connection.reducers.sendSocialMessage).toHaveBeenCalledWith({ channel: "dm", target: "Bob", message: "Hi", replyToMessageId: 9n });
   });
 });
+
+it("reuses indexed conversations until data changes and invalidates removed or renamed peers", async () => {
+  const h = harness(); await h.service.api.loadSocial();
+  h.service.tables.upsertMessage(h.row(1n, "dm"));
+  h.service.tables.upsertMessage(h.row(2n, "guild"));
+  const conversations = h.service.api.privateConversations(), dm = h.service.api.privateMessages("Bob"), guild = h.service.api.guildMessages();
+  for (let i = 0; i < 100; i++) {
+    expect(h.service.api.privateConversations()).toBe(conversations);
+    expect(h.service.api.privateMessages(bob.toHexString())).toBe(dm);
+    expect(h.service.api.guildMessages()).toBe(guild);
+  }
+  h.service.tables.upsertHub({ identity: alice, snapshot: JSON.stringify({ ...snapshot, friends: [{ ...snapshot.friends[0], name: "NewBob" }] }) });
+  expect(h.service.api.privateConversations()[0].name).toBe("NewBob");
+  expect(h.service.api.privateMessages("NewBob")).toHaveLength(1);
+  h.service.tables.removeMessage({ id: 1n });
+  expect(h.service.api.privateMessages("NewBob")).toEqual([]);
+  h.service.resetSession();
+  expect(h.service.api.privateConversations()).toEqual([]);
+  expect(h.service.api.guildMessages()).toEqual([]);
+});

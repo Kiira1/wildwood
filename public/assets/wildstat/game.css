@@ -1422,6 +1422,8 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+  .chat-viewport-spacer { flex: 0 0 auto; width: 1px; pointer-events: none; }
+  #chatPanel.is-large #chatMessages { overflow-anchor: none; }
   #chatPanel.is-large #chatMessages::before { flex: 0 0 auto; margin-top: auto; content: ""; }
   #chatPanel.is-large #chatMessages::-webkit-scrollbar { display: none; width: 0; height: 0; }
   #chatPanel.is-large {

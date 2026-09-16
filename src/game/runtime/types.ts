@@ -307,11 +307,14 @@ export type BossTarget = DragonBossState | SpiderBossState | FrostclawBossState 
 export type DuelPresentation = {
   id: bigint;
   elapsed: number;
+  challengerDamageDealt?: number;
+  opponentDamageDealt?: number;
   challengerHp: number;
   opponentHp: number;
 };
 
 export type DuelCombatant = Position & {
+  moving?: boolean;
   identity?: string;
   name: string;
   gender: PlayerGender;
@@ -350,6 +353,8 @@ export type ReplayMode = {
   challengerDeathStartedAtMs?: number;
   opponentDeathStartedAtMs?: number;
   lastState: {
+    challengerDamageDealt?: number;
+    opponentDamageDealt?: number;
     challengerHp: number;
     opponentHp: number;
   };
@@ -390,6 +395,8 @@ export type RuntimeDuelState = {
   challengerHeadItem: string;
   challengerChestItem: string;
   challengerFeetItem: string;
+  challengerWeaponItem?: string;
+  opponentWeaponItem?: string;
   challengerRightHandItem: string;
   challengerLeftHandItem: string;
   opponentHeadItem: string;
@@ -433,6 +440,8 @@ export type RuntimeDuelReplay = {
   challengerHeadItem: string;
   challengerChestItem: string;
   challengerFeetItem: string;
+  challengerWeaponItem?: string;
+  opponentWeaponItem?: string;
   challengerRightHandItem: string;
   challengerLeftHandItem: string;
   opponentHeadItem: string;

@@ -107,6 +107,7 @@ export function createChatChannelPicker(onChange: (channel: ChatChannel, usernam
     }
     picker.hidden = selected !== "private" || Boolean(peer);
     contacts.hidden = selected !== "private" || Boolean(peer);
+    if (contacts.hidden) { contacts.replaceChildren(); contactSignature = ""; }
     conversationHeader.hidden = selected !== "private" || !peer;
     conversationHeader.textContent = peer;
     username.value = peer;
@@ -136,7 +137,7 @@ export function createChatChannelPicker(onChange: (channel: ChatChannel, usernam
       button.setAttribute("aria-label", count ? `${label}, ${count} unread messages` : label);
     }
     const signature = JSON.stringify([people, [...unread.conversations]]);
-    if (signature !== contactSignature) {
+    if (!contacts.hidden && signature !== contactSignature) {
       contactSignature = signature;
       contacts.replaceChildren();
       if (!people.length) {

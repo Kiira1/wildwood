@@ -50,18 +50,28 @@ export function createChatRuntimeController(options: Pick<ChatOptions, "getCoop"
     onLayoutChange: options.onLayoutChange,
   });
 
+  // Subscription bursts share one paint; gameplay updates never synchronously
+  // rebuild chat while the browser is handling a key or scroll event.
+  let refreshQueued = false;
+  function requestRefresh() {
+    if (refreshQueued) return;
+    refreshQueued = true;
+    requestAnimationFrame(() => { refreshQueued = false; chat.refresh(); });
+  }
+
   function init() {
     chat.init();
     window.addEventListener("wildwood:open-private-chat", (event) => {
       const detail = (event as CustomEvent<{ username?: unknown; identity?: unknown }>).detail;
       if (typeof detail?.username === "string") chat.openPrivate(detail.username, typeof detail.identity === "string" ? detail.identity : undefined);
     });
-    window.setInterval(chat.refresh, 1_000);
+    window.setInterval(requestRefresh, 1_000);
   }
 
   return {
     init,
     refresh: chat.refresh,
+    requestRefresh,
     minimize: chat.minimize,
     isMaximized: chat.isMaximized,
   };

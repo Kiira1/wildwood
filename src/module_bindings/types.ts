@@ -401,6 +401,8 @@ export const Duel = __t.object("Duel", {
   challengerGender: __t.u8(),
   opponentGender: __t.u8(),
   combatVersion: __t.u8(),
+  challengerWeaponItem: __t.string(),
+  opponentWeaponItem: __t.string(),
 });
 export type Duel = __Infer<typeof Duel>;
 
@@ -446,6 +448,8 @@ export const DuelReplay = __t.object("DuelReplay", {
   challengerGender: __t.u8(),
   opponentGender: __t.u8(),
   combatVersion: __t.u8(),
+  challengerWeaponItem: __t.string(),
+  opponentWeaponItem: __t.string(),
 });
 export type DuelReplay = __Infer<typeof DuelReplay>;
 

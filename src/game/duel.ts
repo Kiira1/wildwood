@@ -1,3 +1,4 @@
+import type { DuelWeapons } from "../../shared/duel-approach";
 import { isMeleeWeapon } from "./weapon-combat";
 import { PLAYER_PROJECTILE_SPEED } from "../../shared/rules";
 import {
@@ -14,7 +15,7 @@ export const DUEL_SHOT_SPEED = PLAYER_PROJECTILE_SPEED;
 export const DUEL_SPACE_BACKGROUND_SOURCE = "assets/wildstat/duel-space-background-v1.png";
 export const DUEL_PLATFORM_ART_SOURCE = "assets/wildstat/duel-floating-platform-v1.png";
 
-type ReplayCombatantFields = {
+type ReplayCombatantFields = DuelWeapons & {
   combatVersion?: number;
   durationSeconds: number;
   challengerMaxHp: number;
@@ -92,7 +93,8 @@ export function duelShotsAt(
 }
 
 /** Scales the complete weapon motion into the current attack interval. */
-export function duelAttackAnimationClock(attackRate: number, attackCount: number, elapsed: number, weaponItem?: string) {
+export function duelAttackAnimationClock(attackRate: number, attackCount: number, elapsed: number, weaponItem?: string, attackDelay = 0) {
+  elapsed -= attackDelay;
   const interval = Math.max(.001, Math.round(attackRate * 1_000_000) / 1_000_000);
   if (isMeleeWeapon(weaponItem)) {
     // Melee contacts on the authoritative hit, with its windup before it.
@@ -118,7 +120,8 @@ export function duelTimelineState(
 ) {
   const state = advanceDuelCombat(duel, initialDuelCombatState(duel), 0,
     Math.max(0, seconds) * 1_000_000, limits);
-  return { challengerHp: state.challengerHp, opponentHp: state.opponentHp,
+  return { resolvedSeconds: state.resolvedMicros / 1_000_000,
+    challengerDamageDealt: state.challengerDamageDealt, opponentDamageDealt: state.opponentDamageDealt, challengerHp: state.challengerHp, opponentHp: state.opponentHp,
     challengerAttacks: state.challengerAttacks, opponentAttacks: state.opponentAttacks };
 }
 

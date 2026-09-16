@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createDuelPresentation } from "./duel-presentation";
 import { createDuelSessionController } from "./duel-session-controller";
 import type { RuntimeDuelReplay, RuntimeDuelState } from "./types";
@@ -192,4 +192,58 @@ describe("live duel identity presentation", () => {
     expect(heldScene?.opponent.deathStartedAtMs).toBe(4_000);
     expect(heldScene?.shots).toEqual([]);
   });
+});
+
+it("uses identical moving sword positions in live duels and replays, after countdown", () => {
+  const sword = { ...duel, combatVersion: 2, challengerRightHandItem: "wooden_sword", opponentRightHandItem: "starter_bow" };
+  const clocks = { frame: 0, wall: 0 };
+  const view = presentationWithClocks(() => sword, clocks);
+  view.startReplay({ ...replay, ...sword, durationSeconds: 30, challengerFinalHp: 50, opponentFinalHp: 50, challengerAttacks: 30, opponentAttacks: 30 });
+  clocks.frame = 2000;
+  expect(view.replayScene()?.challenger).toMatchObject({ x: 5880, moving: false, throwClock: 0 });
+  clocks.frame = 4000; clocks.wall = 1000;
+  const live = view.liveScene()!, recorded = view.replayScene()!;
+  expect(live.challenger).toMatchObject({ x: 5970, moving: true, throwClock: 0 });
+  expect(recorded.challenger.x).toBe(live.challenger.x);
+  expect(recorded.opponent.x).toBe(live.opponent.x);
+  expect(live.opponent).toMatchObject({ x: 6120, moving: false });
+  clocks.wall = 2000; clocks.frame = 5000;
+  expect(view.liveScene()?.challenger).toMatchObject({ x: 6045, moving: false });
+  expect(view.replayScene()?.challenger).toMatchObject({ x: 6045, moving: false });
+});
+
+it("freezes a sword at the point of an approach knockout", () => {
+  const sword = { ...duel, combatVersion: 2, challengerRightHandItem: "wooden_sword", opponentDamage: 10000 };
+  const clocks = { frame: 0, wall: 3000 };
+  const view = presentationWithClocks(() => sword, clocks);
+  expect(view.liveScene()?.challenger).toMatchObject({ hp: 0, x: 5970, moving: false, throwClock: 0 });
+  clocks.wall = 8000;
+  expect(view.liveScene()?.challenger.x).toBe(5970);
+});
+
+
+it.each([false, true])("shows hidden-weapon arrows and actual hit damage despite regeneration (replay=%s)", (watchReplay) => {
+  const hit = vi.fn();
+  let now = 0;
+  const hidden = { ...duel, combatVersion: 2, challengerWeaponItem: "starter_bow", opponentWeaponItem: "starter_bow",
+    challengerRegen: 100, opponentRegen: 100 };
+  const runtime = createDuelPresentation({ activeDuel: () => hidden,
+    localIdentity: () => hidden.challenger, localDisplayName: () => "Me", remotePlayers: () => [], playerDisplayName: () => undefined,
+    pulseDuel: () => {}, spawnDamageNumber: hit, setReplayTitle: () => {}, now: () => now, nowMs: () => now });
+  const saved = { ...replay, ...hidden, durationSeconds: 10, challengerAttacks: 10, opponentAttacks: 10,
+    challengerFinalHp: 90, opponentFinalHp: 90 };
+  if (watchReplay) runtime.startReplay(saved);
+  const scene = () => { if (watchReplay) return runtime.replayScene()!; runtime.syncLiveDamageNumbers(hidden); return runtime.liveScene()!; };
+  now = (watchReplay ? 3000 : 0) + 1050;
+  const first = scene();
+  expect(first.challenger.rightHandItem).toBe(""); expect(first.opponent.rightHandItem).toBe("");
+  expect(first.shots).toHaveLength(2); expect(first.shots.every(shot => shot.weaponItem === "starter_bow")).toBe(true);
+  expect(hit.mock.calls.map(call => call[2])).toEqual([10, 10]);
+  hit.mockClear();
+  now += 1000;
+  const second = scene();
+  // HP has recovered to the same value between hits, but each hit still gets a popup.
+  expect(second.challenger.hp).toBe(first.challenger.hp);
+  expect(hit.mock.calls.map(call => call[2])).toEqual([10, 10]);
+  hit.mockClear(); scene(); expect(hit).not.toHaveBeenCalled();
 });

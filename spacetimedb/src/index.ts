@@ -1430,6 +1430,8 @@ const duel = table(
     challengerGender: t.u8().default(PLAYER_GENDER_UNSET),
     opponentGender: t.u8().default(PLAYER_GENDER_UNSET),
     combatVersion: t.u8().default(0),
+    challengerWeaponItem: t.string().default(""),
+    opponentWeaponItem: t.string().default(""),
   },
 );
 
@@ -1477,6 +1479,8 @@ const duelReplay = table(
     challengerGender: t.u8().default(PLAYER_GENDER_UNSET),
     opponentGender: t.u8().default(PLAYER_GENDER_UNSET),
     combatVersion: t.u8().default(0),
+    challengerWeaponItem: t.string().default(""),
+    opponentWeaponItem: t.string().default(""),
   },
 );
 
@@ -6104,6 +6108,8 @@ function finishDuel(ctx: any, current: any) {
     challengerHeadItem: current.challengerHeadItem,
     challengerChestItem: current.challengerChestItem,
     challengerFeetItem: current.challengerFeetItem,
+    challengerWeaponItem: current.challengerWeaponItem,
+    opponentWeaponItem: current.opponentWeaponItem,
     challengerRightHandItem: current.challengerRightHandItem,
     challengerLeftHandItem: current.challengerLeftHandItem,
     opponentHeadItem: current.opponentHeadItem,
@@ -10000,6 +10006,8 @@ export const requestDuel = spacetimedb.reducer(
       challengerHeadItem: challengerAppearance.headItem,
       challengerChestItem: challengerAppearance.chestItem,
       challengerFeetItem: challengerAppearance.feetItem,
+      challengerWeaponItem: challengerRightHandItem || challengerLeftHandItem,
+      opponentWeaponItem: opponentRightHandItem || opponentLeftHandItem,
       challengerRightHandItem: challengerAppearance.rightHandItem,
       challengerLeftHandItem: challengerAppearance.leftHandItem,
       opponentHeadItem: opponentAppearance.headItem,

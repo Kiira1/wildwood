@@ -46,6 +46,7 @@ export function createChatService(dependencies: ChatServiceDependencies) {
   let session = 0;
   let presentationRevision = 0;
   let privacyRevision = 0;
+  let cachedRevision = -1, cachedMessages: ChatMessage[] = [];
 
   function changed() { privacyRevision++; presentationRevision += 1; dependencies.notify(); }
   function upsertBlock(row: { owner: Identity; target: Identity; targetName: string }) {
@@ -127,9 +128,11 @@ export function createChatService(dependencies: ChatServiceDependencies) {
           beforeId: page.messages[0]?.id ?? beforeId };
       },
       chatMessages: () => {
+        if (cachedRevision === presentationRevision) return cachedMessages;
+        cachedRevision = presentationRevision;
         const blockedMessageIds = new Set(messages.filter((message) => blocks.has(message.sender)).map((message) => message.id));
         const blockedNames = new Set([...blocks.values()].map((block) => block.name));
-        return messages.filter((message) => !blocks.has(message.sender)).map((message) =>
+        return cachedMessages = messages.filter((message) => !blocks.has(message.sender)).map((message) =>
           blockedMessageIds.has(message.replyToMessageId) || blockedNames.has(message.replyToSenderName)
             ? { ...message, replyToSenderName: "", replyToMessage: "" }
             : message);

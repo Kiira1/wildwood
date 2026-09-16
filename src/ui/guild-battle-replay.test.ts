@@ -1,4 +1,3 @@
-import { buildGuildReplayEntrance } from "./guild-replay-entrance";
 import { expect, it, vi } from "vitest";
 import { parseHTML } from "linkedom";
 import { simulateGuildBattle } from "../../shared/guild-combat";
@@ -59,7 +58,7 @@ it("supports pause, seek, restart and releases the animation callback on close",
   button("Pause").click(); h.frame(300); expect(h.scheduled.size).toBe(0);
   const seek = h.document.querySelector("input")! as unknown as HTMLInputElement;
   seek.value = "42"; seek.oninput!(new Event("input"));
-  expect(h.document.querySelector('[role="status"]')!.textContent).toContain(`${(42 - buildGuildReplayEntrance(h.battle).duration).toFixed(1)}s`);
+  expect(h.document.querySelector('[role="status"]')!.textContent).toContain("42.0s");
   button("Restart").click(); expect(h.scheduled.size).toBe(1);
   expect(seek.value).toBe("0");
   replay.dispose(); expect(h.scheduled.size).toBe(0); expect(h.host.childElementCount).toBe(0);
@@ -81,4 +80,17 @@ it("keeps Back available after seeking to the finished replay", async () => {
   const control = [...h.document.querySelectorAll("button")].find(button => button.textContent === "Back")!;
   expect(control.disabled).toBe(false); control.click(); expect(back).toHaveBeenCalledOnce();
   replay.dispose();
+});
+
+it("advances combat while later fighters are still arriving", async () => {
+  const h = setup(), draw = vi.fn(() => [{ hp: 100 }, { hp: 100 }] as any);
+  const renderer = vi.spyOn(battlefield, "createGuildBattlefieldRenderer").mockReturnValue({ draw, dispose: vi.fn() });
+  const replay = createGuildBattleReplay(h.host, h.battle, ["Fire", "Moon"], { prepare: async () => {} } as GuildReplayAssets);
+  try {
+    await settle();
+    const seek = h.document.querySelector("input")! as unknown as HTMLInputElement;
+    seek.value = "0.5"; seek.oninput!(new Event("input"));
+    expect(draw).toHaveBeenLastCalledWith(.5, true, .5);
+    expect(Number(seek.max)).toBeCloseTo(h.battle.duration + 1.1);
+  } finally { replay.dispose(); renderer.mockRestore(); }
 });

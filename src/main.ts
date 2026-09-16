@@ -2063,7 +2063,7 @@ import {
     },
     finishStartup,
     updateProtocolGate,
-    refreshChat: chatRuntime.refresh,
+    refreshChat: chatRuntime.requestRefresh,
     updateDuelControls,
     refreshAppStatus: appShell.refreshStatus,
     refreshReconnectOverlay,

@@ -98,11 +98,11 @@ export function createGuildBattlefieldRenderer(canvas: HTMLCanvasElement, ctx: C
     ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
     ctx.drawImage(ground, 0, 0, viewWidth, viewHeight);
     const entering = entrance !== undefined && entranceTime !== undefined && entranceTime < entrance.duration;
-    const actors = timeline.sample(entering ? 0 : time).map((actor, i) => {
+    const actors = timeline.sample(time).map((actor, i) => {
       const position = project(stagger(actor, i));
       const entry = entering ? guildEntrancePosition(entrance.arrivals[i], entranceTime, position, i < split ? 0 : 1, viewWidth)
         : { ...position, visible: true, entering: false };
-      return { ...actor, ...entry, moving: entering ? entry.entering : actor.moving };
+      return { ...actor, ...entry, moving: entry.entering || actor.moving };
     });
     const order = actors.map((_, i) => i).sort((a, b) => actors[a].y - actors[b].y);
     for (const i of order) {
@@ -111,7 +111,7 @@ export function createGuildBattlefieldRenderer(canvas: HTMLCanvasElement, ctx: C
       if (!actor.visible || deathAge > 1.1) continue;
       const side = i < split ? 0 : 1;
       const eventIndex = replayEventIndex(timeline.attacks[i], time - .35, event => event.launch);
-      const attack = entering ? undefined : timeline.attacks[i].slice(eventIndex, eventIndex + 3).find(event => time >= event.launch - .12 && time <= event.launch + .30);
+      const attack = actor.entering ? undefined : timeline.attacks[i].slice(eventIndex, eventIndex + 3).find(event => time >= event.launch - .12 && time <= event.launch + .30);
       const target = attack ? project(stagger(attack.to, attack.target)) : actors[actor.target];
       const aim = target ? Math.atan2(target.y - actor.y, target.x - actor.x) : side ? Math.PI : 0;
       const throwClock = attack ? Math.max(0, .42 - (time - (attack.launch - .12))) : 0;
@@ -152,7 +152,6 @@ export function createGuildBattlefieldRenderer(canvas: HTMLCanvasElement, ctx: C
         ctx.fillText(fighter.name, actor.x, barY - 10, barW + 12);
       }
     }
-    if (entering) return actors;
     // Launch before the authoritative hit: the projectile arrives as HP changes,
     // including simultaneous knockouts and when scrubbing backward.
     const start = replayEventIndex(timeline.shots, time - .5, event => event.launch);

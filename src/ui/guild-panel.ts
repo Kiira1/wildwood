@@ -121,7 +121,7 @@ export function createGuildPanel(options: Options) {
       if (action?.kind === "challenge") {
         section = "battles"; battleView = "history"; notice = "Battle complete.";
         const battle = next.battles.find(report => report.attackerId === next.guild?.id &&
-          report.defenderId === action.opponentGuildId && !previousReports.has(report.id) && report.result.version === 2);
+          report.defenderId === action.opponentGuildId && !previousReports.has(report.id) && (report.result.version === 2 || report.result.version === 3));
         if (battle) { activeReplay = battle; replayFromChat = false; }
       }
     } catch (failure) {
@@ -261,9 +261,9 @@ export function createGuildPanel(options: Options) {
       const info = element("span", undefined, "guild-row-copy");
       info.append(element("strong", `vs ${attacking ? battle.defender : battle.attacker}`), element("span", `${attacking ? "Attack" : "Defense"} · ${date(battle.at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`));
       summary.append(element("span", result, `guild-result guild-result--${result.toLowerCase()}`), info); report.append(summary);
-      if (battle.result.version === 2) {
+      if ((battle.result.version === 2 || battle.result.version === 3)) {
         summary.append(button("Replay", () => { activeReplay = battle; replayFromChat = false; render(); }, "secondary", false, `replay-${battle.id}`));
-      } else {
+      } else if ("rounds" in battle.result) {
         const legacy = element("details", undefined, "guild-disclosure"); legacy.append(element("summary", "Previous battle report"));
         battle.result.rounds.forEach(round => row(legacy, `${round.attacker} vs ${round.defender}`, `${(round.durationMicros / 1_000_000).toFixed(1)}s`));
         report.append(legacy);
@@ -343,7 +343,7 @@ export function createGuildPanel(options: Options) {
     const inviteExpanded = dialog.querySelector<HTMLDetailsElement>(".social-invite")?.open;
     const scroll = dialog.querySelector(".guild-content")?.scrollTop ?? 0;
     dialog.replaceChildren();
-    if (activeReplay?.result.version === 2) {
+    if ((activeReplay?.result.version === 2 || activeReplay?.result.version === 3)) {
       const battle = activeReplay;
       replay = createGuildBattleReplay(dialog, activeReplay.result, [battle.attacker, battle.defender], options.replayAssets, backFromReplay, options.lowPerformanceMode);
       dialog.querySelector("h3")!.id = "guildTitle";
@@ -440,7 +440,7 @@ export function createGuildPanel(options: Options) {
     try {
       const report = await options.api()?.loadReplay(reportKey);
       if (!current(id)) return;
-      if (!report || report.result.version !== 2) throw new Error("This replay is no longer available.");
+      if (!report || (report.result.version !== 2 && report.result.version !== 3)) throw new Error("This replay is no longer available.");
       activeReplay = report;
     } catch (cause) { if (current(id)) error = cause instanceof Error ? cause.message : "Replay unavailable."; }
     finally { if (current(id)) { busy = false; render(); dialog.focus(); } }

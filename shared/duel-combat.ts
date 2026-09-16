@@ -1,12 +1,13 @@
 import { damageAfterArmor } from "./combat";
+import { duelAttackDelays, type DuelWeapons } from "./duel-approach";
 
 export type DuelFighter = { maxHp: number; damage: number; armor: number; regen: number; attackRate: number };
-export const DUEL_COMBAT_VERSION = 1;
+export const DUEL_COMBAT_VERSION = 2;
 export function duelHitMultiplier(seconds: number, version = 0) {
   return version >= 1 ? 1 + Math.min(4, Math.max(0, seconds - 10) / 5) : 1;
 }
 
-export type DuelCombat = {
+export type DuelCombat = DuelWeapons & {
   combatVersion?: number;
   challengerMaxHp: number; challengerDamage: number; challengerArmor: number; challengerRegen: number; challengerAttackRate: number;
   opponentMaxHp: number; opponentDamage: number; opponentArmor: number; opponentRegen: number; opponentAttackRate: number;
@@ -33,12 +34,15 @@ export function advanceDuelCombat(
   const end = Math.max(resolvedMicros, Math.round(toMicros));
   const challengerInterval = Math.max(1, Math.round(duel.challengerAttackRate * 1_000_000));
   const opponentInterval = Math.max(1, Math.round(duel.opponentAttackRate * 1_000_000));
+  const delays = duelAttackDelays(duel);
+  const challengerDelay = Math.round(delays.challenger * 1_000_000);
+  const opponentDelay = Math.round(delays.opponent * 1_000_000);
 
   while (resolvedMicros < end && state.challengerHp > 0 && state.opponentHp > 0) {
     const challengerNext = state.challengerAttacks < (limits.challengerAttacks ?? Infinity)
-      ? (state.challengerAttacks + 1) * challengerInterval : Infinity;
+      ? challengerDelay + (state.challengerAttacks + 1) * challengerInterval : Infinity;
     const opponentNext = state.opponentAttacks < (limits.opponentAttacks ?? Infinity)
-      ? (state.opponentAttacks + 1) * opponentInterval : Infinity;
+      ? opponentDelay + (state.opponentAttacks + 1) * opponentInterval : Infinity;
     const next = Math.min(end, challengerNext, opponentNext);
     const delta = Math.max(0, next - resolvedMicros) / 1_000_000;
     const challengerRegen = Math.min(duel.challengerMaxHp - state.challengerHp, Math.max(0, duel.challengerRegen) * delta);

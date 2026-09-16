@@ -49,13 +49,44 @@ export function createSocialService(deps: Dependencies) {
     catch (error) { throw new Error(deps.reducers.errorMessage(error)); }
   }
   function sorted() { return orderedMessages ??= [...messages.values()].sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0); }
-  function peerMatches(row: SocialMessage, target: string) {
-    const mine = row.sender === deps.localIdentity();
-    const peer = mine ? row.recipient : row.sender, name = mine ? row.recipientName : row.senderName;
-    const friend = snapshot.friends.find(friend => friend.identity === target || friend.name.toLowerCase() === target.toLowerCase());
-    if (friend) return peer === friend.identity;
-    if (/^(?:0x)?[a-f0-9]{64}$/i.test(target)) return peer === target.replace(/^0x/, "");
-    return name.toLowerCase() === target.toLowerCase();
+  let indexRevision = -1, indexIdentity = "";
+  let guildRows: SocialMessage[] = [], conversations: SocialConversation[] = [];
+  const byIdentity = new Map<string, SocialMessage[]>(), byName = new Map<string, SocialMessage[]>();
+  const friendIds = new Map<string, string>();
+  const noMessages: SocialMessage[] = [];
+  function indexed() {
+    const local = deps.localIdentity();
+    if (indexRevision === revision && indexIdentity === local) return;
+    indexRevision = revision; indexIdentity = local;
+    byIdentity.clear(); byName.clear(); friendIds.clear(); guildRows = [];
+    const friends = new Map(snapshot.friends.map(friend => [friend.identity, friend]));
+    for (const friend of snapshot.friends) {
+      friendIds.set(friend.identity, friend.identity);
+      friendIds.set(friend.name.toLowerCase(), friend.identity);
+    }
+    const ordered = sorted(), peers = new Map<string, SocialConversation>();
+    for (const row of ordered) {
+      if (row.channel === "guild" && row.guildId === snapshot.currentGuild?.id) guildRows.push(row);
+      if (row.channel !== "dm") continue;
+      const mine = row.sender === local, identity = mine ? row.recipient : row.sender;
+      const name = (mine ? row.recipientName : row.senderName).toLowerCase();
+      if (!byIdentity.has(identity)) byIdentity.set(identity, []);
+      if (!byName.has(name)) byName.set(name, []);
+      byIdentity.get(identity)!.push(row); byName.get(name)!.push(row);
+    }
+    for (let i = ordered.length - 1; i >= 0; i--) {
+      const row = ordered[i];
+      if (row.channel !== "dm") continue;
+      const mine = row.sender === local, identity = mine ? row.recipient : row.sender;
+      if (!peers.has(identity)) peers.set(identity, { identity,
+        name: friends.get(identity)?.name ?? (mine ? row.recipientName : row.senderName),
+        lastMessage: row.message, lastSentAtMs: row.sentAtMs, lastMessageMine: mine });
+    }
+    for (const person of snapshot.conversations ?? []) {
+      const live = peers.get(person.identity);
+      peers.set(person.identity, !live || (person.lastSentAtMs ?? 0) >= (live.lastSentAtMs ?? 0) ? person : { ...person, ...live });
+    }
+    conversations = [...peers.values()];
   }
   async function send(channel: string, target: string, message: string, replyToMessageId = 0n) {
     try { await mutate(connection => connection.reducers.sendSocialMessage({ channel, target, message, replyToMessageId })); return { ok: true }; }
@@ -81,23 +112,15 @@ export function createSocialService(deps: Dependencies) {
     friends: () => snapshot.friends,
     currentGuild: () => snapshot.currentGuild,
     snapshot: () => snapshot,
-    guildMessages: () => sorted().filter(row => row.channel === "guild" && row.guildId === snapshot.currentGuild?.id),
-    privateMessages: (target: string) => sorted().filter(row => row.channel === "dm" && peerMatches(row, target)),
-    privateConversations: () => {
-      const peers = new Map<string, SocialConversation>();
-      for (const row of [...sorted()].reverse()) if (row.channel === "dm") {
-        const mine = row.sender === deps.localIdentity();
-        const identity = mine ? row.recipient : row.sender;
-        if (!peers.has(identity)) peers.set(identity, { identity,
-          name: snapshot.friends.find(friend => friend.identity === identity)?.name ?? (mine ? row.recipientName : row.senderName),
-          lastMessage: row.message, lastSentAtMs: row.sentAtMs, lastMessageMine: mine });
-      }
-      for (const person of snapshot.conversations ?? []) {
-        const live = peers.get(person.identity);
-        peers.set(person.identity, !live || (person.lastSentAtMs ?? 0) >= (live.lastSentAtMs ?? 0) ? person : { ...person, ...live });
-      }
-      return [...peers.values()];
+    guildMessages: () => { indexed(); return guildRows; },
+    privateMessages: (target: string) => {
+      indexed();
+      const friend = friendIds.get(target) ?? friendIds.get(target.toLowerCase());
+      if (friend) return byIdentity.get(friend) ?? noMessages;
+      if (/^(?:0x)?[a-f0-9]{64}$/i.test(target)) return byIdentity.get(target.replace(/^0x/, "")) ?? noMessages;
+      return byName.get(target.toLowerCase()) ?? noMessages;
     },
+    privateConversations: () => { indexed(); return conversations; },
     async loadSocial(): Promise<SocialSnapshot> {
       const current = request(), started = snapshotRevision;
       const result = await current.connection.procedures.getSocialHub({});
