@@ -1,11 +1,11 @@
-import { bagInventoryStacks, itemFitsEquipmentSlot, ITEM_DEFINITIONS, type EquipmentSlot } from "../game/inventory";
+import { cosmeticInventoryStacks, bagInventoryStacks, itemFitsEquipmentSlot, ITEM_DEFINITIONS, type EquipmentSlot } from "../game/inventory";
 import { itemArtMarkup } from "../game/item-presentation";
 import { formatCompactNumber } from "./number-format";
 import { appendPlayerGenderIcon } from "./player-gender";
 import { bindLongPress } from "./long-press";
 import { PLAYER_GENDER_UNSET, type PlayerGender } from "../../shared/player-gender";
 import { isHiddenCosmeticItem } from "../../shared/equipment-appearance";
-import { itemDisplayName, normalizeItemUpgradeLevel } from "../../shared/items";
+import { isCosmeticOnlyItem, itemStats, itemDisplayName, normalizeItemUpgradeLevel } from "../../shared/items";
 
 import { appendPlayerNameTags, playerNamePrefix } from "../app/player-name-tags";
 
@@ -160,6 +160,7 @@ export function inventoryMoveActions(
   if (location !== "BAG") {
     return [{ label: mode === "COSMETICS" ? "REMOVE COSMETIC" : "UNEQUIP", destination: "BAG" }];
   }
+  if (isCosmeticOnlyItem(itemId) !== (mode === "COSMETICS")) return [];
   if (item.slot === "HAND") {
     const destination = inventoryWeaponSlot(inventory, mode);
     const alreadyEquipped = equipmentItemId(inventory, destination, mode) === itemId;
@@ -294,14 +295,16 @@ export function renderInventoryView(
   },
 ) {
   elements.items.replaceChildren();
-  const bagStacks = bagInventoryStacks(inventory);
-  elements.count.textContent = `${bagStacks.length} / ${actions.slotCapacity} ITEMS`;
+  const cosmetics = mode === "COSMETICS";
+  const bagStacks = cosmetics ? cosmeticInventoryStacks(inventory) : bagInventoryStacks(inventory);
+  const slotCapacity = cosmetics ? Math.max(50, bagStacks.length) : actions.slotCapacity;
+  elements.count.textContent = `${bagStacks.length} / ${slotCapacity} ${cosmetics ? "Cosmetics" : "Items"}`;
   renderEquipmentSlot(elements.equippedHead, inventory, "HEAD", "HEAD", mode, actions.upgradeLevel);
   renderEquipmentSlot(elements.equippedChest, inventory, "CHEST", "ARMOR", mode, actions.upgradeLevel);
   renderEquipmentSlot(elements.equippedRightHand, inventory, inventoryWeaponSlot(inventory, mode), "WEAPON", mode, actions.upgradeLevel);
   renderEquipmentSlot(elements.equippedFeet, inventory, "FEET", "BOOTS", mode, actions.upgradeLevel);
 
-  for (let index = 0; index < actions.slotCapacity; index += 1) {
+  for (let index = 0; index < slotCapacity; index += 1) {
     const stack = bagStacks[index];
     const itemId = stack?.itemId;
     const selected = inventory.selectedItemLocation === "BAG" && inventory.selectedItemId === itemId;
@@ -321,6 +324,22 @@ export function renderInventoryView(
       art.className = "inventory-item-art-wrap";
       art.innerHTML = itemArt(itemId);
       button.append(art);
+      if (!cosmetics) {
+        const bonuses = document.createElement("span");
+        bonuses.className = "inventory-item-bonuses";
+        const stats = itemStats(itemId, level);
+        for (const stat of stats) {
+          const match = /^(DAMAGE|MAX HEALTH|REGEN) (\+\d+%)$/.exec(stat);
+          if (!match) continue;
+          const value = document.createElement("span");
+          value.dataset.statKind = match[1] === "DAMAGE" ? "damage" : match[1] === "MAX HEALTH" ? "health" : "regen";
+          value.textContent = match[2];
+          value.title = stat;
+          value.setAttribute("aria-label", stat);
+          bonuses.append(value);
+        }
+        button.append(bonuses);
+      }
       if (level > 0) {
         const badge = document.createElement("span");
         badge.className = "inventory-upgrade-level";
@@ -356,7 +375,7 @@ export function renderInventoryView(
     }
     elements.items.appendChild(button);
   }
-  if (actions.nextSlotCost !== undefined) {
+  if (!cosmetics && actions.nextSlotCost !== undefined) {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "inventory-item is-locked";

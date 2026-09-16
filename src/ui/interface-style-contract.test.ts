@@ -127,10 +127,13 @@ describe("functional stylesheet contracts (not visual QA)", () => {
     expect(declarations("#message")["pointer-events"]).toBe("none");
   });
 
-  it("lets profile content grow without a fixed-height nested scroller", () => {
+  it("keeps the profile frame stable and scrolls its content behind a fixed Back button", () => {
     expect(declarations("#profileStatsPanel")).toMatchObject({ height: "auto", "max-height": "none", overflow: "visible" });
     expect(declarations(".profile-stat-grid")["align-items"]).toBe("start");
-    expect(declarations(".modal.player-profile-modal")["overflow-y"]).toBe("auto");
+    expect(declarations(".modal.player-profile-modal").overflow).toBe("hidden");
+    expect(declarations(".modal.player-profile-modal").height).toContain("560px");
+    expect(declarations(".player-profile-scroll")["overflow-y"]).toBe("auto");
+    expect(declarations(".player-profile-scroll")["scrollbar-width"]).toBe("none");
   });
 
   it("allows settings and bag content to scroll independently", () => {

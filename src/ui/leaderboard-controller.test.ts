@@ -29,9 +29,10 @@ function fixture() {
     }, resolvePage: resolve, reject,
   })));
   let identity = "me";
+  const openProfile = vi.fn();
   const controller = createLeaderboardController(elements, { loadPage,
-    localIdentity: () => identity, isDeveloper: () => false, paintProfileIcon: vi.fn(), drawPodiumCharacter: vi.fn(), openProfile: vi.fn(), beforeOpen: vi.fn() });
-  return { elements, pending, loadPage, controller, identity: (value: string) => { identity = value; } };
+    localIdentity: () => identity, isDeveloper: () => false, paintProfileIcon: vi.fn(), drawPodiumCharacter: vi.fn(), openProfile, beforeOpen: vi.fn() });
+  return { elements, pending, loadPage, openProfile, controller, identity: (value: string) => { identity = value; } };
 }
 const entry = (rank: number, name: string) => ({ rank, identity: name, name, gender: 0, power: 1, damage: 1, maxHp: 1, armor: 1, regen: 1, playedSeconds: 1 } as LeaderboardEntry);
 it("discards old tab responses and displays true ranks instead of renumbering the subset", async () => {
@@ -158,4 +159,17 @@ it("reuses ranking data for a minute across closes and then refreshes", async ()
     expect(f.loadPage).toHaveBeenCalledTimes(3);
     f.pending[2].resolvePage(page(1, 50)); await other;
   } finally { now.mockRestore(); }
+});
+
+it("keeps the leaderboard and scroll position when inspecting a player", async () => {
+  const f = fixture();
+  const opening = f.controller.open();
+  f.pending[0].resolve([entry(1, "Winner"), entry(50, "Nearby")]);
+  await opening;
+  f.elements.rows.scrollTop = 120;
+  f.elements.rows.querySelector<HTMLElement>(".leaderboard-name")!.click();
+  expect(f.openProfile).toHaveBeenCalled();
+  expect(f.elements.overlay.hidden).toBe(false);
+  expect(f.elements.rows.scrollTop).toBe(120);
+  expect(f.loadPage).toHaveBeenCalledTimes(1);
 });

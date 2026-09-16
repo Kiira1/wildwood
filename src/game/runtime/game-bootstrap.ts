@@ -21,6 +21,7 @@ import {
   KOI_SHOGUN_MAX_HP,
   MAGMALISK_MAX_HP,
   MAP_DISPLAY_NAMES,
+  numberedMapName,
   PLAYER_BASE_HP,
   PLAYER_BASE_DAMAGE,
   PLAYER_BASE_REGEN,
@@ -42,7 +43,7 @@ type BootstrapMapEntry = { name: string; portal: BootstrapMapPortal | null; arri
 
 function editedMapEntry<T extends BootstrapMapEntry>(mapId: MapId, fallback: T): T {
   const edit = MAP_EDITOR_GAMEPLAY_OVERRIDES[mapId];
-  const name = savedMapName(mapId) ?? edit?.name ?? fallback.name;
+  const name = numberedMapName(mapId, savedMapName(mapId) ?? edit?.name ?? fallback.name);
   if (!edit || edit.portals.length === 0) return { ...fallback, name };
   const portals = edit.portals.map((portal) => ({ ...portal, destination: portal.destination as MapId }));
   return {
@@ -489,14 +490,14 @@ export function createGameBootstrap() {
   const bootsPickup = { x: editedBootsPickup?.x ?? 940, y: editedBootsPickup?.y ?? 3660, r: 18, collected: true };
   const inventory: BootstrapInventory = {
     itemIds: [BASIC_PAPER_HAT, STARTER_STONE, TRAILBLAZER_BOOTS],
-    equippedHead: BASIC_PAPER_HAT,
+    equippedHead: "",
     equippedChest: "",
-    equippedFeet: TRAILBLAZER_BOOTS,
+    equippedFeet: "",
     equippedRightHand: STARTER_STONE,
     equippedLeftHand: "",
-    cosmeticHead: "",
+    cosmeticHead: BASIC_PAPER_HAT,
     cosmeticChest: "",
-    cosmeticFeet: "",
+    cosmeticFeet: TRAILBLAZER_BOOTS,
     cosmeticRightHand: "",
     cosmeticLeftHand: "",
     selectedItemId: "",

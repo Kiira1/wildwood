@@ -1,5 +1,7 @@
+import { MAP_IDS as CAMPAIGN_MAP_IDS } from "../shared/rules";
 import { weaponAttackRange } from "./game/weapon-combat";
 import { createPlayerVisibilityToggle } from "./ui/player-visibility-toggle";
+import { createFullscreenMovementGate } from "./ui/fullscreen-movement";
 import { installGameTicker } from "./ui/game-ticker";
 import { createScheduledUpdateController, createScheduledUpdateView } from "./ui/scheduled-update-controller";
 import { enforceLatestVersion } from "./app/version";
@@ -466,7 +468,7 @@ import {
     movementSpeedForBoots: (bootsEquipped) => progress.movementSpeedForEquipment(bootsEquipped),
     collectBoots: () => {
       inventory.itemIds = [...new Set([...inventory.itemIds, TRAILBLAZER_BOOTS])];
-      inventory.equippedFeet = TRAILBLAZER_BOOTS;
+      inventory.cosmeticFeet = TRAILBLAZER_BOOTS;
       inventory.selectedItemId = TRAILBLAZER_BOOTS;
       inventory.selectedItemLocation = "FEET";
     },
@@ -510,9 +512,10 @@ import {
   // Dragon credit permanently unlocks the Desert; reuse that saved milestone
   // so autofarm never depends on the current boss's health or respawn state.
   const farmUnlocked = () => Boolean(coop?.savedProgress?.()?.desertUnlocked);
+  const fullscreenMovement = createFullscreenMovementGate(visible => coop?.setRemotePlayersVisible(visible));
   createPlayerVisibilityToggle({
     button: gameElements.playerVisibilityToggle,
-    setVisible: (visible) => coop?.setRemotePlayersVisible(visible), storage: localStorage,
+    setVisible: fullscreenMovement.setWanted, storage: localStorage,
   });
   const farmUnavailable = () => {
     if (!farmUnlocked()) return "Defeat the Dragon to unlock autofarm";
@@ -543,12 +546,16 @@ import {
   const personalBosses = createPersonalBosses({
     mapId: () => currentMapId, identity: () => coop?.localIdentity?.() ?? "local-player",
     alive: () => player.hp > 0, now: () => Date.now(),
-    defeated: mapId => coop?.recordRegularEnemyDefeat?.(mapId, "boss"),
+    defeated: mapId => {
+      // Early bosses retain their saved cinematic/result flow. Later campaign and Endless
+      // reveals wait for the server unlock, independent of subscription snapshot timing.
+      if (CAMPAIGN_MAP_IDS.indexOf(mapId) >= 6 || mapId.startsWith("endless_")) mapController.queuePortalReveal(mapId as MapId);
+      coop?.recordRegularEnemyDefeat?.(mapId, "boss");
+    },
   });
   const proceduralBoss = createProceduralBossController({
     mapId: () => currentMapId, state: mapId => ({ ...coop?.proceduralMapState(mapId), boss: personalBosses.proceduralState(mapId) }),
     serverNow: () => coop?.serverNowMs?.() ?? Date.now(), enemies, player, spawn: spawnFromSite,
-    revealPortal: () => mapController.startProceduralPortalCutscene(),
     hit: () => {},
     damagePlayer: damage => playerCombat.damagePlayer(damage), burst: spawnBurst, shot: projectileStore.spawnEnemyShot,
   });
@@ -2110,6 +2117,7 @@ import {
   appShell.refreshStatus();
   updateProtocolGate();
 
+  fullscreenMovement.watchWindows(document);
   startGameRuntime({
     loadProgress,
     rebuildWorld: playerController.rebuildWorld,

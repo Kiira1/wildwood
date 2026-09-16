@@ -48,6 +48,7 @@ export type MapController = {
   updatePortal: (dt: number) => void;
   loadMap: (mapId: MapId, x: number, y: number, facing?: number) => void;
   reconcileMapFromServer: () => void;
+  queuePortalReveal: (mapId: MapId) => void;
   startProceduralPortalCutscene: () => boolean;
   startDragonPortalCutscene: (preview?: boolean) => void;
   startSnowlandsPortalCutscene: (preview?: boolean) => void;
@@ -153,6 +154,7 @@ export function createMapController(options: {
   let portalCutsceneBlackoutOpacity = 0;
   let portalCutsceneDestinationOpacity = 0;
   let portalCutscenePreview = false;
+  let pendingPortalReveal: { mapId: MapId; portal: MapPortal } | null = null;
   let portalCutsceneSeenKey = dragonCutsceneSeenKey;
   const initialPortal = mapConfig[tutorialMapId].portal;
   if (!initialPortal) throw new Error("Tutorial map requires an introductory portal.");
@@ -243,6 +245,7 @@ export function createMapController(options: {
   }
 
   function loadMap(mapId: MapId, x: number, y: number, facing = 0) {
+    if (pendingPortalReveal?.mapId !== mapId) pendingPortalReveal = null;
     mapLoadGeneration++;
     endHomeTeleport();
     mapTransitioning = false;
@@ -294,8 +297,15 @@ export function createMapController(options: {
   }
 
   function updatePortal(dt: number) {
+    if (pendingPortalReveal && pendingPortalReveal.mapId !== getCurrentMapId()) pendingPortalReveal = null;
+    if (pendingPortalReveal && !mapTransitioning && !portalCutscene.active && !isDueling() && player.hp > 0
+      && mapUnlocked(pendingPortalReveal.portal.destination)) {
+      const reveal = pendingPortalReveal;
+      pendingPortalReveal = null;
+      startMapPortalCutscene(reveal.mapId, false, reveal.portal, "");
+    }
     portalCooldown = Math.max(0, portalCooldown - dt);
-    if (mapTransitioning || portalCooldown > 0 || isDueling()) return;
+    if (mapTransitioning || portalCutscene.active || portalCooldown > 0 || isDueling()) return;
     if (portalExitGuard) {
       if (playerIsInsidePortal(portalExitGuard)) return;
       portalExitGuard = null;
@@ -361,7 +371,8 @@ export function createMapController(options: {
 
   function startMapPortalCutscene(mapId: MapId, preview = false, portal = mapConfig[mapId].portal, seenKey = dragonCutsceneSeenKey) {
     if (!portal) return;
-    void options.prepareMapAssets(portal.destination);
+    // Warming destination art must not turn a failed request into an unhandled rejection.
+    void options.prepareMapAssets(portal.destination).catch(() => {});
     document.body.classList.add("is-cutscene");
     resizeViewport();
     portalCutscene.begin(camera, { x: portal.x, y: portal.y - portal.height * .48 }, viewport());
@@ -430,6 +441,12 @@ export function createMapController(options: {
     updatePortal,
     loadMap,
     reconcileMapFromServer,
+    queuePortalReveal: (mapId) => {
+      if (mapId !== getCurrentMapId()) return;
+      const portal = mapConfig[mapId].secondaryPortal;
+      // Capture the locked -> earned transition before queuing the authoritative reward.
+      if (portal && !mapUnlocked(portal.destination)) pendingPortalReveal = { mapId, portal };
+    },
     startProceduralPortalCutscene: () => {
       if (mapTransitioning || portalCutscene.active || isDueling()) return false;
       const mapId = getCurrentMapId();

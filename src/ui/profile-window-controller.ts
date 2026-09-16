@@ -178,6 +178,8 @@ export function createProfileWindowController(elements: {
 
   async function open(nextIdentity: string, fallbackName = "PLAYER") {
     if (!nextIdentity) return;
+    const scroll = elements.window.querySelector<HTMLElement>(".player-profile-scroll");
+    if (scroll) scroll.scrollTop = 0;
     const hearts = elements.window.querySelector<HTMLElement>("#playerProfileHearts");
     if (hearts) hearts.textContent = "0";
     identity = nextIdentity; profileData = null; elements.duel.hidden = nextIdentity === api.localIdentity(); elements.duel.dataset.identity = nextIdentity; updateDuelButton();

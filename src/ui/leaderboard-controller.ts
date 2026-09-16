@@ -36,7 +36,7 @@ export function createLeaderboardController(elements: LeaderboardControllerEleme
   let podiumPlayers: RenderedLeaderboardPodiumPlayer[] = [], nameTagRevision = -1;
   const actions = {
     isDeveloper: hooks.isDeveloper, paintProfileIcon: hooks.paintProfileIcon,
-    openProfile(identity: string, name: string) { close(); hooks.openProfile(identity, name); },
+    openProfile(identity: string, name: string) { hooks.openProfile(identity, name); },
   };
   function anchor() {
     const top = elements.rows.getBoundingClientRect().top;

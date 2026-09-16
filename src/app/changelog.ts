@@ -1,4 +1,14 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.714": [
+    "Square inventory slots use five columns when space allows, with upgraded stat percentages beneath equipment artwork.",
+    "Cosmetic-only items now have their own inventory, separate from equipment.",
+    "Item inspection has a compact layout, with the name and artwork together above the details.",
+    "Profiles have a smaller, stable window with scrolling expanded stats. Opening a leaderboard profile keeps your place in the rankings.",
+    "Campaign maps are numbered 1–15; Endless maps still start at 1.",
+    "Fixed missing portal reveals on later campaign maps and made Endless reveals wait for the confirmed unlock.",
+    "Fullscreen windows pause remote movement updates after a short delay and restore them when closed.",
+    "The Discord button now uses Discord blue and gives two small hops when full chat opens.",
+  ],
   "0.713": [
     "Game tips now appear once every ten minutes, with a lighter outline matching mini chat.",
   ],
@@ -1911,6 +1921,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.714": "2026-09-16",
   "0.713": "2026-09-16",
   "0.712": "2026-09-16",
   "0.711": "2026-09-15",

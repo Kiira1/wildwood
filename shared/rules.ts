@@ -173,16 +173,16 @@ export const ION_CITADEL_MAP_ID = "ion_citadel";
 export const MAP_DISPLAY_NAMES = {
   first_steps: "First Steps",
   home_exterior: "Home",
-  [TUTORIAL_FOREST_MAP_ID]: "Tutorial Forest",
-  [BEGINNER_DESERT_MAP_ID]: "Beginner Desert",
-  [INTERMEDIATE_SNOWLANDS_MAP_ID]: "Intermediate Snowlands",
-  [ADVANCED_LAVA_WASTES_MAP_ID]: "Advanced Lava Lake",
-  [INFERNAL_DEPTHS_MAP_ID]: "Night Forest",
-  [WATER_REACH_MAP_ID]: "Water Reach",
-  [SAMURAI_GARDEN_MAP_ID]: "Samurai Garden",
-  [CLOUDSPIRE_MAP_ID]: "Cloudspire",
-  [MOONFEN_MAP_ID]: "Moonfen",
-  [CRYSTAL_HOLLOWS_MAP_ID]: "Crystal Hollows", [CLOCKWORK_RUINS_MAP_ID]: "Clockwork Ruins", [DUSKFALL_ORCHARD_MAP_ID]: "Duskfall Orchard", [NEON_BASTION_MAP_ID]: "Neon Bastion", [VERDANT_CATACOMBS_MAP_ID]: "Verdant Catacombs", [ION_CITADEL_MAP_ID]: "Ion Citadel",
+  [TUTORIAL_FOREST_MAP_ID]: "Tutorial Forest - 1",
+  [BEGINNER_DESERT_MAP_ID]: "Beginner Desert - 2",
+  [INTERMEDIATE_SNOWLANDS_MAP_ID]: "Intermediate Snowlands - 3",
+  [ADVANCED_LAVA_WASTES_MAP_ID]: "Advanced Lava Lake - 4",
+  [INFERNAL_DEPTHS_MAP_ID]: "Night Forest - 5",
+  [WATER_REACH_MAP_ID]: "Water Reach - 6",
+  [SAMURAI_GARDEN_MAP_ID]: "Samurai Garden - 7",
+  [CLOUDSPIRE_MAP_ID]: "Cloudspire - 8",
+  [MOONFEN_MAP_ID]: "Moonfen - 9",
+  [CRYSTAL_HOLLOWS_MAP_ID]: "Crystal Hollows - 10", [CLOCKWORK_RUINS_MAP_ID]: "Clockwork Ruins - 11", [DUSKFALL_ORCHARD_MAP_ID]: "Duskfall Orchard - 12", [NEON_BASTION_MAP_ID]: "Neon Bastion - 13", [VERDANT_CATACOMBS_MAP_ID]: "Verdant Catacombs - 14", [ION_CITADEL_MAP_ID]: "Ion Citadel - 15",
 } as const;
 export const MAP_IDS: readonly string[] = [
   TUTORIAL_FOREST_MAP_ID,
@@ -196,6 +196,12 @@ export const MAP_IDS: readonly string[] = [
   MOONFEN_MAP_ID,
   CRYSTAL_HOLLOWS_MAP_ID, CLOCKWORK_RUINS_MAP_ID, DUSKFALL_ORCHARD_MAP_ID, NEON_BASTION_MAP_ID, VERDANT_CATACOMBS_MAP_ID, ION_CITADEL_MAP_ID,
 ];
+
+/** Keep authored/custom map names and their progression suffix consistent. */
+export function numberedMapName(mapId: string, name: string) {
+  const index = MAP_IDS.indexOf(mapId);
+  return index < 0 ? name : `${name.replace(/ - \d+$/, "")} - ${index + 1}`;
+}
 
 export const PROTOCOL_VERSION = 105;
 // Add a previous version only after reviewing wire/schema and security compatibility.

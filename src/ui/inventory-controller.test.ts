@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FROST_ARMOR, STARTER_BOW, STARTER_STONE } from "../game/inventory";
+import { SUPERIOR_GOLDEN_HELMET, FROST_ARMOR, STARTER_BOW, STARTER_STONE } from "../game/inventory";
 import { inventoryMoveActions, inventoryWeaponSlot } from "./hud";
 import { clearInventorySelection } from "./inventory-controller";
 import { itemInspectionButtonLabel } from "./item-inspection-controller";
@@ -74,8 +74,8 @@ describe("inventory direct actions", () => {
   });
 
   it("offers visual-only cosmetic actions without treating regular equipment as active cosmetics", () => {
-    expect(inventoryMoveActions(inventory(), FROST_ARMOR, "BAG", "COSMETICS")).toEqual([
-      { label: "USE COSMETIC", destination: "CHEST", disabled: false },
+    expect(inventoryMoveActions(inventory(), SUPERIOR_GOLDEN_HELMET, "BAG", "COSMETICS")).toEqual([
+      { label: "USE COSMETIC", destination: "HEAD", disabled: false },
     ]);
     const state = inventory();
     state.cosmeticRightHand = STARTER_BOW;

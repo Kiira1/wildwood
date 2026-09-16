@@ -5,6 +5,7 @@ import {
   DEVELOPER_ITEM_IDS,
   FOREST_DROP_ITEM_IDS,
   itemDefinition,
+  isCosmeticOnlyItem,
   itemFitsEquipmentSlot,
   INFERNAL_DROP_ITEM_IDS,
   SAMURAI_DROP_ITEM_IDS,
@@ -116,7 +117,7 @@ export function ownedInventoryStacks(inventory: Pick<InventoryState, "itemIds">)
 
 /** Converts unassigned unique items into bag entries; cosmetic references do not consume items. */
 export function bagInventoryStacks(inventory: InventoryState): InventoryStack[] {
-  const counts = new Map(ownedInventoryStacks(inventory).map(({ itemId, quantity }) => [itemId, quantity]));
+  const counts = new Map(ownedInventoryStacks(inventory).filter(({ itemId }) => !isCosmeticOnlyItem(itemId)).map(({ itemId, quantity }) => [itemId, quantity]));
   for (const field of EQUIPPED_ITEM_FIELDS) {
     const itemId = inventory[field];
     if (!itemDefinition(itemId)) continue;
@@ -125,6 +126,23 @@ export function bagInventoryStacks(inventory: InventoryState): InventoryStack[] 
   return [...counts]
     .filter(([, quantity]) => quantity > 0)
     .map(([itemId, quantity]) => ({ itemId, quantity }));
+}
+
+/** Cosmetic ownership is a separate, uncapped collection; active looks stay selectable. */
+export function cosmeticInventoryStacks(inventory: InventoryState): InventoryStack[] {
+  return ownedInventoryStacks(inventory).filter(({ itemId }) => isCosmeticOnlyItem(itemId));
+}
+
+/** Move old cosmetic-only equipment into appearance slots without losing ownership or hiding choices. */
+export function separateCosmeticLoadout<T extends InventoryState>(inventory: T): T {
+  const next = { ...inventory };
+  for (let index = 0; index < EQUIPPED_ITEM_FIELDS.length; index++) {
+    const equipped = EQUIPPED_ITEM_FIELDS[index], cosmetic = COSMETIC_ITEM_FIELDS[index];
+    if (!isCosmeticOnlyItem(next[equipped])) continue;
+    if (!next[cosmetic]) next[cosmetic] = next[equipped];
+    next[equipped] = "";
+  }
+  return next;
 }
 
 function hasFreeOrMovableCopy(
@@ -143,7 +161,7 @@ function hasFreeOrMovableCopy(
 /** Moves an owned item between bag and compatible equipment slots. */
 export function moveInventoryItem(inventory: InventoryState, itemId: string, destination: EquipmentSlot | "BAG") {
   const item = itemDefinition(itemId);
-  if (!item || !inventory.itemIds.includes(itemId)) return false;
+  if (!item || isCosmeticOnlyItem(itemId) || !inventory.itemIds.includes(itemId)) return false;
   const clearItem = () => {
     let changed = false;
     for (const slot of EQUIPPED_ITEM_FIELDS) {
@@ -185,6 +203,7 @@ export function moveCosmeticInventoryItem(inventory: InventoryState, itemId: str
     return changed;
   };
   if (destination === "BAG") return clearItem();
+  if (!isCosmeticOnlyItem(itemId)) return false;
   if (!itemFitsEquipmentSlot(item.id, destination)) return false;
   const target = destination === "HEAD" ? "cosmeticHead"
     : destination === "CHEST" ? "cosmeticChest"
@@ -288,7 +307,7 @@ export function normaliseInventory(itemIds: unknown, equippedFeet: unknown, equi
   const savedCosmeticFeet = cosmeticItem(cosmeticFeet, "FEET");
   const savedCosmeticRightHand = cosmeticItem(cosmeticRightHand, "RIGHT_HAND");
   const savedCosmeticLeftHand = savedCosmeticRightHand ? "" : cosmeticItem(cosmeticLeftHand, "LEFT_HAND");
-  return {
+  return separateCosmeticLoadout({
     itemIds: items,
     equippedHead: savedHead,
     equippedChest: savedChest,
@@ -300,7 +319,7 @@ export function normaliseInventory(itemIds: unknown, equippedFeet: unknown, equi
     cosmeticFeet: savedCosmeticFeet,
     cosmeticRightHand: savedCosmeticRightHand,
     cosmeticLeftHand: savedCosmeticLeftHand,
-  };
+  });
 }
 
 export function inventoryFromSave(inventoryJson: unknown, equippedFeet: unknown, equippedHead: unknown, equippedChest: unknown, ownsBoots: boolean, ownsDeveloperCosmetics = false, equippedRightHand: unknown = "", equippedLeftHand: unknown = "", cosmeticHead: unknown = "", cosmeticChest: unknown = "", cosmeticFeet: unknown = "", cosmeticRightHand: unknown = "", cosmeticLeftHand: unknown = ""): InventoryState {

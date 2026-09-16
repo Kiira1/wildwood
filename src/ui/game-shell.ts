@@ -96,6 +96,7 @@ const afterUpdateGateShell = String.raw`
 
 <div id="playerProfile" hidden>
   <div class="modal player-profile-modal" role="dialog" aria-modal="true" aria-labelledby="playerProfileName">
+    <div class="player-profile-scroll">
     <header class="player-profile-header">
       <div class="profile-avatar-column">
         <button id="playerProfileIcon" class="profile-icon profile-window-icon" type="button" aria-label="Player profile icon"></button>
@@ -163,6 +164,7 @@ const afterUpdateGateShell = String.raw`
       <button id="profileReportBtn" type="button">Report Player</button>
       <button id="profileBlockBtn" type="button">Block Player</button>
     </div>
+    </div>
     <footer class="window-back-footer">
       <button id="closePlayerProfileBtn" class="window-back-button" type="button" aria-label="Back from player profile">Back</button>
     </footer>
@@ -171,12 +173,9 @@ const afterUpdateGateShell = String.raw`
 
 <div id="itemInspectionPanel" class="item-inspection-panel" role="dialog" aria-modal="true" aria-labelledby="itemInspectionTitle" hidden>
   <section class="item-inspection-window">
-  <div class="item-inspection-header">
-    <div class="item-inspection-kicker">ITEM DETAILS</div>
-    <div class="item-inspection-tools"></div>
-  </div>
+  <div class="item-inspection-tools"></div>
   <div id="itemInspectionContent" class="item-inspection-content">
-    <h2 id="itemInspectionTitle">Item</h2>
+    <span id="itemInspectionTitle" class="item-inspection-name">Item</span>
   </div>
   <footer class="window-back-footer">
     <button id="itemInspectionBack" class="item-inspection-back window-back-button" type="button">Back</button>

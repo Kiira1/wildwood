@@ -74,6 +74,7 @@ export type ItemDefinition = {
   acquisition: ItemAcquisition;
   description: string;
   stats: readonly string[];
+  cosmeticOnly?: boolean;
   modifiers?: {
     damageMultiplierBonus?: number;
     maxHealthMultiplierBonus?: number;
@@ -96,6 +97,7 @@ export const ITEM_DEFINITIONS = {
   },
   [BASIC_PAPER_HAT]: {
     id: BASIC_PAPER_HAT,
+    cosmeticOnly: true,
     name: "BASIC PAPER HAT",
     slot: "HEAD",
     acquisition: "STARTER",
@@ -104,6 +106,7 @@ export const ITEM_DEFINITIONS = {
   },
   [SUPERIOR_GOLDEN_HELMET]: {
     id: SUPERIOR_GOLDEN_HELMET,
+    cosmeticOnly: true,
     name: "ALPHA TESTER HELMET",
     slot: "HEAD",
     acquisition: "DEVELOPER",
@@ -154,6 +157,7 @@ export const ITEM_DEFINITIONS = {
   },
   [LEGENDARY_WHITE_GOLD_ARMOR]: {
     id: LEGENDARY_WHITE_GOLD_ARMOR,
+    cosmeticOnly: true,
     name: "LEGENDARY WHITE GOLD ARMOR",
     slot: "CHEST",
     acquisition: "DEVELOPER",
@@ -162,6 +166,7 @@ export const ITEM_DEFINITIONS = {
   },
   [TRAILBLAZER_BOOTS]: {
     id: TRAILBLAZER_BOOTS,
+    cosmeticOnly: true,
     name: "TRAILBLAZER BOOTS",
     slot: "FEET",
     acquisition: "PROGRESSION",
@@ -609,4 +614,9 @@ export function equipmentRegenerationMultiplier(
 export function canDestroyEquipment(itemId: unknown) {
   const item = itemDefinition(canonicalItemId(itemId));
   return !!item && item.acquisition.endsWith("_DROP");
+}
+
+/** Explicit category: weapons without stat bonuses are still equipment. */
+export function isCosmeticOnlyItem(itemId: unknown): boolean {
+  return itemDefinition(itemId)?.cosmeticOnly === true;
 }

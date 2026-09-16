@@ -18,7 +18,7 @@ describe("generated campaign runtime adapters", () => {
     expect(mapConfig.endless_235.secondaryPortal?.destination).toBe(
       "endless_236",
     );
-    expect(mapConfig.tutorial_forest.name).toBe("Tutorial Forest");
+    expect(mapConfig.tutorial_forest.name).toBe("Tutorial Forest - 1");
   });
   it("uses only rocks and grass, keeping decorations clear of paths and encounters", () => {
     for (let n = 1; n <= 40; n++) {

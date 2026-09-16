@@ -204,6 +204,7 @@ export function createGameSessionController(dependencies: SessionDependencies) {
     dependencies.updateUpgradeBench();
     if (!dependencies.isDueling()) {
       dependencies.updatePortal(dt);
+      if (dependencies.cutsceneActive()) return;
       dependencies.updateEnemies(dt);
       if (dependencies.getMapId() === dependencies.tutorialMapId) dependencies.updateDragon(dt);
       if (dependencies.getMapId() === dependencies.desertMapId) dependencies.updateSpider(dt);

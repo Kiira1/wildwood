@@ -1,4 +1,4 @@
-import { itemArtMarkup } from "../game/item-presentation";
+import { itemArtMarkup, itemPresentation } from "../game/item-presentation";
 import {
   itemDefinition,
   itemDisplayName,
@@ -63,7 +63,17 @@ export function createItemInspectionController(elements: ItemInspectionElements)
     elements.title.textContent = itemInspectionButtonLabel(itemDisplayName(item.id, level));
     const icon = document.createElement("div");
     icon.className = "item-inspection-icon";
-    icon.innerHTML = itemArtMarkup(item.id, false);
+    const source = itemPresentation(item.id)?.inventory.source;
+    if (source) {
+      const image = document.createElement("img");
+      image.src = source;
+      image.alt = "";
+      image.draggable = false;
+      icon.append(image);
+    } else {
+      icon.classList.add("has-fallback-art");
+      icon.innerHTML = itemArtMarkup(item.id, false);
+    }
     const preview = document.createElement("div");
     preview.className = "item-inspection-preview";
     preview.append(elements.title, icon);
@@ -115,7 +125,10 @@ export function createItemInspectionController(elements: ItemInspectionElements)
       else actionRow.append(button);
     }
 
-    elements.content.replaceChildren(preview, copy, actionRow);
+    const summary = document.createElement("div");
+    summary.className = "item-inspection-summary";
+    summary.append(preview, copy);
+    elements.content.replaceChildren(summary, actionRow);
     elements.panel.hidden = false;
     elements.back.focus({ preventScroll: true });
     return true;

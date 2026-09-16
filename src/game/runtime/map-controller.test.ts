@@ -445,3 +445,38 @@ it("reveals the next Endless portal without submitting an unsupported campaign c
   expect(h.controller.isCutsceneActive()).toBe(false);
   expect(h.markPortalCutsceneSeen).not.toHaveBeenCalled();
 });
+
+
+it.each(["samurai_garden", "ion_citadel", "endless_40"] as const)("queues %s's first portal reveal until the server confirms the unlock and the player is alive", mapId => {
+  vi.stubGlobal("document", { body: { classList: { add: vi.fn(), remove: vi.fn() } } });
+  const h = portalArrivalHarness({ x: 300, y: 400 });
+  h.setMap(mapId);
+  h.setUnlocked(false);
+  h.controller.queuePortalReveal(mapId);
+  h.controller.updatePortal(.1);
+  expect(h.controller.isCutsceneActive()).toBe(false);
+  h.setUnlocked(true);
+  h.player.hp = 0;
+  h.controller.updatePortal(.1);
+  expect(h.controller.isCutsceneActive()).toBe(false);
+  h.player.hp = 100;
+  h.controller.updatePortal(.1);
+  expect(h.controller.isCutsceneActive()).toBe(true);
+  expect(h.controller.cutscenePortal().destination).toBe(h.bootstrap.mapConfig[mapId].secondaryPortal!.destination);
+  expect(h.changeMap).not.toHaveBeenCalled();
+  h.controller.updatePortalCutscene(20);
+  h.controller.queuePortalReveal(mapId);
+  h.controller.updatePortal(.1);
+  expect(h.controller.isCutsceneActive()).toBe(false);
+  expect(h.markPortalCutsceneSeen).not.toHaveBeenCalled();
+});
+
+it("discards a queued reveal when the player leaves its map", () => {
+  const h = portalArrivalHarness({ x: 300, y: 400 });
+  h.setMap("endless_40"); h.setUnlocked(false);
+  h.controller.queuePortalReveal("endless_40");
+  h.setMap("home_exterior"); h.setUnlocked(true);
+  h.controller.updatePortal(.1);
+  h.setMap("endless_40"); h.controller.updatePortal(.1);
+  expect(h.controller.isCutsceneActive()).toBe(false);
+});

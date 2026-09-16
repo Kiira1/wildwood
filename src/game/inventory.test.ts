@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bagInventoryStacks, BASIC_PAPER_HAT, DARK_METAL_HELMET, equipmentAppearance, FIRE_METAL_BOW, FROST_ARMOR, FROST_BOW, HIDDEN_COSMETIC_ITEM_ID, inventoryFromSave, inventoryItemQuantity, IRON_BOW, LEGENDARY_WHITE_GOLD_ARMOR, moveCosmeticInventoryItem, moveInventoryItem, NIGHT_BOW, normaliseInventory, ownedInventoryStacks, serialiseInventory, setInventoryItemQuantity, SNOW_BOW, STARTER_BOW, STARTER_STONE, SUPERIOR_GOLDEN_HELMET, toggleCosmeticEquipmentVisibility, TRAILBLAZER_BOOTS, WOOD_FULL_HELM, WOODEN_ARMOR } from "./inventory";
+import { cosmeticInventoryStacks, bagInventoryStacks, BASIC_PAPER_HAT, DARK_METAL_HELMET, equipmentAppearance, FIRE_METAL_BOW, FROST_ARMOR, FROST_BOW, HIDDEN_COSMETIC_ITEM_ID, inventoryFromSave, inventoryItemQuantity, IRON_BOW, LEGENDARY_WHITE_GOLD_ARMOR, moveCosmeticInventoryItem, moveInventoryItem, NIGHT_BOW, normaliseInventory, serialiseInventory, setInventoryItemQuantity, SNOW_BOW, STARTER_BOW, STARTER_STONE, SUPERIOR_GOLDEN_HELMET, toggleCosmeticEquipmentVisibility, TRAILBLAZER_BOOTS, WOOD_FULL_HELM, WOODEN_ARMOR } from "./inventory";
 
 const emptyCosmetics = {
   cosmeticHead: "",
@@ -11,25 +11,27 @@ const emptyCosmetics = {
 
 describe("inventory rules", () => {
   it("rejects malformed inventory and restores a valid saved item", () => {
-    expect(inventoryFromSave("not json", TRAILBLAZER_BOOTS, undefined, undefined, false)).toEqual({ itemIds: [BASIC_PAPER_HAT, STARTER_STONE], equippedHead: BASIC_PAPER_HAT, equippedChest: "", equippedFeet: "", equippedRightHand: STARTER_STONE, equippedLeftHand: "", ...emptyCosmetics });
-    expect(normaliseInventory([TRAILBLAZER_BOOTS], TRAILBLAZER_BOOTS, BASIC_PAPER_HAT, undefined, false)).toEqual({ itemIds: [BASIC_PAPER_HAT, STARTER_STONE, TRAILBLAZER_BOOTS], equippedHead: BASIC_PAPER_HAT, equippedChest: "", equippedFeet: TRAILBLAZER_BOOTS, equippedRightHand: STARTER_STONE, equippedLeftHand: "", ...emptyCosmetics });
+    expect(inventoryFromSave("not json", TRAILBLAZER_BOOTS, undefined, undefined, false)).toEqual({ itemIds: [BASIC_PAPER_HAT, STARTER_STONE], equippedHead: "", equippedChest: "", equippedFeet: "", equippedRightHand: STARTER_STONE, equippedLeftHand: "", ...emptyCosmetics, cosmeticHead: BASIC_PAPER_HAT });
+    expect(normaliseInventory([TRAILBLAZER_BOOTS], TRAILBLAZER_BOOTS, BASIC_PAPER_HAT, undefined, false)).toEqual({ itemIds: [BASIC_PAPER_HAT, STARTER_STONE, TRAILBLAZER_BOOTS], equippedHead: "", equippedChest: "", equippedFeet: "", equippedRightHand: STARTER_STONE, equippedLeftHand: "", ...emptyCosmetics, cosmeticHead: BASIC_PAPER_HAT, cosmeticFeet: TRAILBLAZER_BOOTS });
   });
 
   it("restores and serialises an earned boots item", () => {
     const inventory = inventoryFromSave("[]", TRAILBLAZER_BOOTS, BASIC_PAPER_HAT, "", true);
-    expect(inventory).toEqual({ itemIds: [BASIC_PAPER_HAT, STARTER_STONE, TRAILBLAZER_BOOTS], equippedHead: BASIC_PAPER_HAT, equippedChest: "", equippedFeet: TRAILBLAZER_BOOTS, equippedRightHand: STARTER_STONE, equippedLeftHand: "", ...emptyCosmetics });
+    expect(inventory).toEqual({ itemIds: [BASIC_PAPER_HAT, STARTER_STONE, TRAILBLAZER_BOOTS], equippedHead: "", equippedChest: "", equippedFeet: "", equippedRightHand: STARTER_STONE, equippedLeftHand: "", ...emptyCosmetics, cosmeticHead: BASIC_PAPER_HAT, cosmeticFeet: TRAILBLAZER_BOOTS });
     expect(serialiseInventory(inventory)).toBe(JSON.stringify([BASIC_PAPER_HAT, STARTER_STONE, TRAILBLAZER_BOOTS]));
   });
 
   it("keeps the developer-only golden helmet cosmetic available and equipable", () => {
     expect(inventoryFromSave("[]", "", SUPERIOR_GOLDEN_HELMET, LEGENDARY_WHITE_GOLD_ARMOR, false, true)).toEqual({
       itemIds: [BASIC_PAPER_HAT, STARTER_STONE, "wooden_sword", SUPERIOR_GOLDEN_HELMET, LEGENDARY_WHITE_GOLD_ARMOR],
-      equippedHead: SUPERIOR_GOLDEN_HELMET,
-      equippedChest: LEGENDARY_WHITE_GOLD_ARMOR,
+      equippedHead: "",
+      equippedChest: "",
       equippedFeet: "",
       equippedRightHand: STARTER_STONE,
       equippedLeftHand: "",
       ...emptyCosmetics,
+      cosmeticHead: SUPERIOR_GOLDEN_HELMET,
+      cosmeticChest: LEGENDARY_WHITE_GOLD_ARMOR,
     });
   });
 
@@ -66,7 +68,7 @@ describe("inventory rules", () => {
       "",
     );
 
-    expect(moveInventoryItem(inventory, BASIC_PAPER_HAT, "BAG")).toBe(true);
+    expect(moveCosmeticInventoryItem(inventory, BASIC_PAPER_HAT, "BAG")).toBe(true);
     expect(moveInventoryItem(inventory, STARTER_STONE, "LEFT_HAND")).toBe(true);
     expect(inventory.equippedHead).toBe("");
     expect(inventory.equippedRightHand).toBe("");
@@ -217,32 +219,18 @@ describe("inventory rules", () => {
     expect(inventoryItemQuantity(inventory, SNOW_BOW)).toBe(1);
   });
 
-  it("keeps cosmetic overrides in the bag without changing stat equipment", () => {
-    const inventory = inventoryFromSave(
-      JSON.stringify([STARTER_BOW, WOODEN_ARMOR, FROST_ARMOR]),
-      "",
-      BASIC_PAPER_HAT,
-      WOODEN_ARMOR,
-      false,
-      false,
-      STARTER_STONE,
-      "",
-    );
-
-    expect(moveCosmeticInventoryItem(inventory, STARTER_BOW, "LEFT_HAND")).toBe(true);
-    expect(moveCosmeticInventoryItem(inventory, FROST_ARMOR, "CHEST")).toBe(true);
-    expect(inventory.equippedRightHand).toBe(STARTER_STONE);
+  it("separates cosmetic-only ownership and rejects stat gear as a new cosmetic", () => {
+    const inventory = inventoryFromSave(JSON.stringify([STARTER_BOW, WOODEN_ARMOR, SUPERIOR_GOLDEN_HELMET]),
+      "", BASIC_PAPER_HAT, WOODEN_ARMOR, false, false, STARTER_STONE);
+    expect(cosmeticInventoryStacks(inventory).map(item => item.itemId)).toEqual([BASIC_PAPER_HAT, SUPERIOR_GOLDEN_HELMET]);
+    expect(bagInventoryStacks(inventory).map(item => item.itemId)).toEqual([STARTER_BOW]);
+    expect(moveCosmeticInventoryItem(inventory, STARTER_BOW, "RIGHT_HAND")).toBe(false);
+    expect(moveInventoryItem(inventory, SUPERIOR_GOLDEN_HELMET, "HEAD")).toBe(false);
+    expect(moveCosmeticInventoryItem(inventory, SUPERIOR_GOLDEN_HELMET, "HEAD")).toBe(true);
     expect(inventory.equippedChest).toBe(WOODEN_ARMOR);
-    expect(ownedInventoryStacks(inventory)).toContainEqual({ itemId: STARTER_BOW, quantity: 1 });
-    expect(bagInventoryStacks(inventory)).toContainEqual({ itemId: STARTER_BOW, quantity: 1 });
-    expect(bagInventoryStacks(inventory)).toContainEqual({ itemId: FROST_ARMOR, quantity: 1 });
-    expect(equipmentAppearance(inventory)).toEqual({
-      headItem: BASIC_PAPER_HAT,
-      chestItem: FROST_ARMOR,
-      feetItem: "",
-      rightHandItem: "",
-      leftHandItem: STARTER_BOW,
-    });
+    expect(inventory.equippedRightHand).toBe(STARTER_STONE);
+    expect(equipmentAppearance(inventory).headItem).toBe(SUPERIOR_GOLDEN_HELMET);
+    expect(cosmeticInventoryStacks(inventory)).toHaveLength(2);
   });
 
   it("toggles inherited equipment art to nothing without changing stat equipment", () => {
@@ -287,7 +275,7 @@ describe("inventory rules", () => {
     );
 
     expect(inventory).toMatchObject({
-      equippedHead: BASIC_PAPER_HAT,
+      equippedHead: "",
       equippedChest: WOODEN_ARMOR,
       equippedRightHand: STARTER_STONE,
       cosmeticHead: HIDDEN_COSMETIC_ITEM_ID,
@@ -298,7 +286,7 @@ describe("inventory rules", () => {
     expect(bagInventoryStacks(inventory)).toEqual([]);
   });
 
-  it("allows one owned item to be equipped and referenced cosmetically", () => {
+  it("preserves legacy gear appearances and lets the player remove them", () => {
     const inventory = inventoryFromSave(
       JSON.stringify([FROST_ARMOR]),
       "",
@@ -345,7 +333,7 @@ describe("inventory rules", () => {
       STARTER_BOW,
     );
 
-    expect(inventory.cosmeticHead).toBe("");
+    expect(inventory.cosmeticHead).toBe(BASIC_PAPER_HAT);
     expect(inventory.cosmeticChest).toBe(FROST_ARMOR);
     expect(inventory.cosmeticFeet).toBe("");
     expect(inventory.cosmeticLeftHand).toBe(STARTER_BOW);

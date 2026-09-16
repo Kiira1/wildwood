@@ -111,12 +111,12 @@ export function createGameActionsController(dependencies: GameActionsDependencie
         STARTER_STONE,
         ...inventory.itemIds.filter((itemId) => itemId === SUPERIOR_GOLDEN_HELMET || itemId === LEGENDARY_WHITE_GOLD_ARMOR),
       ];
-      inventory.equippedHead = BASIC_PAPER_HAT;
+      inventory.equippedHead = "";
       inventory.equippedChest = "";
       inventory.equippedFeet = "";
       inventory.equippedRightHand = STARTER_STONE;
       inventory.equippedLeftHand = "";
-      inventory.cosmeticHead = "";
+      inventory.cosmeticHead = BASIC_PAPER_HAT;
       inventory.cosmeticChest = "";
       inventory.cosmeticFeet = "";
       inventory.cosmeticRightHand = "";
@@ -157,10 +157,10 @@ export function createGameActionsController(dependencies: GameActionsDependencie
     if (windows.isItemInspectionOpen()) { windows.closeItemInspection(); return true; }
     if (windows.isUpgradeBenchOpen()) { windows.closeUpgradeBench(); return true; }
     if (windows.isProfileIconPickerOpen()) { windows.closeProfileIconPicker(); return true; }
-    if (windows.isLeaderboardOpen()) { windows.closeLeaderboard(); return true; }
-    if (windows.isDevPanelOpen()) { windows.closeDevPanel(); return true; }
     if (windows.isProfileNameEditorOpen()) { windows.closeProfileNameEditor(); return true; }
     if (windows.isPlayerProfileOpen()) { windows.closePlayerProfile(); return true; }
+    if (windows.isLeaderboardOpen()) { windows.closeLeaderboard(); return true; }
+    if (windows.isDevPanelOpen()) { windows.closeDevPanel(); return true; }
     return false;
   }
 

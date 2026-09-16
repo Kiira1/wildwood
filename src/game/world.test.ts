@@ -54,7 +54,7 @@ describe("Advanced Lava Lake", () => {
 
     expect(config[ADVANCED_LAVA_WASTES_MAP_ID].secondaryPortal.destination).toBe(INFERNAL_DEPTHS_MAP_ID);
     expect(config[INFERNAL_DEPTHS_MAP_ID].portal.destination).toBe(ADVANCED_LAVA_WASTES_MAP_ID);
-    expect(config[INFERNAL_DEPTHS_MAP_ID].name).toBe("Night Forest");
+    expect(config[INFERNAL_DEPTHS_MAP_ID].name).toBe("Night Forest - 5");
     expect(sites).toHaveLength(30);
     expect(sites.every((site) => infernalKinds.has(site.type))).toBe(true);
     expect(sites.every((site) => Math.hypot(site.x - 4050, site.y - 4050) >= 900)).toBe(true);
@@ -74,10 +74,10 @@ describe("Advanced Lava Lake", () => {
   it("uses Title Case map names and connects Snowlands with Lava Lake", () => {
     const config = createGameBootstrap().mapConfig;
 
-    expect(config[TUTORIAL_FOREST_MAP_ID].name).toBe("Tutorial Forest");
-    expect(config[BEGINNER_DESERT_MAP_ID].name).toBe("Beginner Desert");
-    expect(config[INTERMEDIATE_SNOWLANDS_MAP_ID].name).toBe("Intermediate Snowlands");
-    expect(config[ADVANCED_LAVA_WASTES_MAP_ID].name).toBe("Advanced Lava Lake");
+    expect(config[TUTORIAL_FOREST_MAP_ID].name).toBe("Tutorial Forest - 1");
+    expect(config[BEGINNER_DESERT_MAP_ID].name).toBe("Beginner Desert - 2");
+    expect(config[INTERMEDIATE_SNOWLANDS_MAP_ID].name).toBe("Intermediate Snowlands - 3");
+    expect(config[ADVANCED_LAVA_WASTES_MAP_ID].name).toBe("Advanced Lava Lake - 4");
     expect(config[INTERMEDIATE_SNOWLANDS_MAP_ID].secondaryPortal.destination).toBe(ADVANCED_LAVA_WASTES_MAP_ID);
     expect(config[ADVANCED_LAVA_WASTES_MAP_ID].portal.destination).toBe(INTERMEDIATE_SNOWLANDS_MAP_ID);
     expect(createGameBootstrap().magmaliskBoss).toMatchObject({ x: 4050, y: 4050, r: 165, maxHp: MAGMALISK_MAX_HP });
@@ -92,7 +92,7 @@ describe("Advanced Lava Lake", () => {
 
     expect(bootstrap.mapConfig[INFERNAL_DEPTHS_MAP_ID].secondaryPortal.destination).toBe(WATER_REACH_MAP_ID);
     expect(bootstrap.mapConfig[WATER_REACH_MAP_ID].portal.destination).toBe(INFERNAL_DEPTHS_MAP_ID);
-    expect(bootstrap.mapConfig[WATER_REACH_MAP_ID].name).toBe("Water Reach");
+    expect(bootstrap.mapConfig[WATER_REACH_MAP_ID].name).toBe("Water Reach - 6");
     expect(bootstrap.gloomrootBoss).toMatchObject({ x: 4050, y: 4050, r: 175, maxHp: GLOOMROOT_MAX_HP });
     expect(bootstrap.tidewyrmBoss).toMatchObject({ x: 4050, y: 4050, r: 175, maxHp: TIDEWYRM_MAX_HP });
     expect(sites).toHaveLength(30);
@@ -116,7 +116,7 @@ describe("Advanced Lava Lake", () => {
 
     expect(bootstrap.mapConfig[WATER_REACH_MAP_ID].secondaryPortal.destination).toBe(SAMURAI_GARDEN_MAP_ID);
     expect(bootstrap.mapConfig[SAMURAI_GARDEN_MAP_ID].portal.destination).toBe(WATER_REACH_MAP_ID);
-    expect(bootstrap.mapConfig[SAMURAI_GARDEN_MAP_ID].name).toBe("Samurai Garden");
+    expect(bootstrap.mapConfig[SAMURAI_GARDEN_MAP_ID].name).toBe("Samurai Garden - 7");
     expect(bootstrap.koiShogunBoss).toMatchObject({ x: 4050, y: 4050, r: 175, maxHp: KOI_SHOGUN_MAX_HP });
     expect(sites).toHaveLength(30);
     expect(sites.every((site) => samuraiKinds.has(site.type))).toBe(true);
@@ -136,7 +136,7 @@ describe("Advanced Lava Lake", () => {
 
     expect(bootstrap.mapConfig[SAMURAI_GARDEN_MAP_ID].secondaryPortal.destination).toBe(CLOUDSPIRE_MAP_ID);
     expect(bootstrap.mapConfig[CLOUDSPIRE_MAP_ID].portal.destination).toBe(SAMURAI_GARDEN_MAP_ID);
-    expect(bootstrap.mapConfig[CLOUDSPIRE_MAP_ID].name).toBe("Cloudspire");
+    expect(bootstrap.mapConfig[CLOUDSPIRE_MAP_ID].name).toBe("Cloudspire - 8");
     expect(bootstrap.tempestKirinBoss).toMatchObject({ x: 4050, y: 4050, r: 180, maxHp: TEMPEST_KIRIN_MAX_HP });
     expect(sites).toHaveLength(30);
     expect(sites.every((site) => cloudspireKinds.has(site.type))).toBe(true);
@@ -156,7 +156,7 @@ describe("Advanced Lava Lake", () => {
 
     expect(bootstrap.mapConfig[CLOUDSPIRE_MAP_ID].secondaryPortal.destination).toBe(MOONFEN_MAP_ID);
     expect(bootstrap.mapConfig[MOONFEN_MAP_ID].portal.destination).toBe(CLOUDSPIRE_MAP_ID);
-    expect(bootstrap.mapConfig[MOONFEN_MAP_ID].name).toBe("Moonfen");
+    expect(bootstrap.mapConfig[MOONFEN_MAP_ID].name).toBe("Moonfen - 9");
     expect(bootstrap.miremawBoss).toMatchObject({ x: 4050, y: 4050, r: 170, maxHp: MIREMAW_MAX_HP });
     expect(sites).toHaveLength(30);
     expect(sites.every((site) => moonfenKinds.has(site.type))).toBe(true);
@@ -175,7 +175,7 @@ describe("Advanced Lava Lake", () => {
     const kinds = new Set(["Shard Hopper", "Crystal Spitter", "Crystal Regent", "Geode Guardian", "Prism Reaver", "Hollow Oracle"]);
     expect(bootstrap.mapConfig[MOONFEN_MAP_ID].secondaryPortal.destination).toBe(CRYSTAL_HOLLOWS_MAP_ID);
     expect(map.portal.destination).toBe(MOONFEN_MAP_ID);
-    expect(map.name).toBe("Crystal Hollows");
+    expect(map.name).toBe("Crystal Hollows - 10");
     expect(bootstrap.prismshellBoss).toMatchObject({ x: 4050, y: 4050, r: 170, maxHp: PRISMSHELL_MAX_HP });
     expect(layout).toEqual(createWorldLayout(map.arrival, CRYSTAL_HOLLOWS_MAP_ID));
     expect(layout.paths).not.toEqual(createWorldLayout(map.arrival, MOONFEN_MAP_ID).paths);
