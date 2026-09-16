@@ -1,5 +1,6 @@
 import { weaponAttackRange } from "./game/weapon-combat";
 import { createPlayerVisibilityToggle } from "./ui/player-visibility-toggle";
+import { installGameTicker } from "./ui/game-ticker";
 import { createScheduledUpdateController, createScheduledUpdateView } from "./ui/scheduled-update-controller";
 import { enforceLatestVersion } from "./app/version";
 import { createPersonalBosses } from "./game/runtime/personal-bosses";
@@ -1978,6 +1979,7 @@ import {
     onLayoutChange: canvasRuntime.resize,
   });
   chatRuntime.init();
+  installGameTicker(gameElements.chatPanel, localStorage);
   minimizeMaximizedChat = chatRuntime.minimize;
 
   createAutoFarmPanel({

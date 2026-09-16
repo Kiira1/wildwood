@@ -4,7 +4,7 @@ import { createPlayerVisibilityToggle } from "./player-visibility-toggle";
 
 afterEach(() => vi.useRealTimers());
 function setup(saved: string | null = null) {
-  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "performance"] });
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "performance", "Date"] });
   const { document } = parseHTML('<button></button>');
   const button = document.querySelector("button") as unknown as HTMLButtonElement;
   const setVisible = vi.fn();
@@ -45,4 +45,17 @@ it("restores the saved preference without a map restriction or startup cooldown"
   expect(state.setVisible).toHaveBeenLastCalledWith(false);
   state.toggle.dispose();
   expect(vi.getTimerCount()).toBe(0);
+});
+
+it("turns the actual multiplayer preference off after five minutes without input", () => {
+  const state = setup("true");
+  vi.advanceTimersByTime(300_000);
+  expect(state.setVisible).toHaveBeenLastCalledWith(false);
+  expect(state.storage.setItem).toHaveBeenLastCalledWith("wildstat-show-other-players", "false");
+  expect(state.button.getAttribute("aria-pressed")).toBe("false");
+  expect(state.button.disabled).toBe(false);
+  state.button.click();
+  expect(state.setVisible).toHaveBeenLastCalledWith(true);
+  expect(state.button.disabled).toBe(true);
+  state.toggle.dispose();
 });

@@ -55,6 +55,7 @@
     --player-hud-scale: .8;
     --player-hud-visual-height: clamp(60px, calc(6.8vw + 12.8px), 63.2px);
     --mini-chat-height: 58px;
+    --mini-chat-font-size: var(--font-readable-min);
     --toolbar-button-height: 58px;
     --toolbar-height: calc(var(--toolbar-button-height) + env(safe-area-inset-bottom, 0px));
     --gameplay-bottom-inset: var(--toolbar-height);
@@ -1469,10 +1470,10 @@
   #chatPanel:not(.is-large) .chat-message-content { display: flex; flex: 1 1 0; align-items: center; gap: 5px; min-width: 0; }
   #chatPanel:not(.is-large) .chat-time,
   #chatPanel:not(.is-large) .chat-profile-icon { display: none; }
-  #chatPanel:not(.is-large) .chat-name { flex: 0 0 auto; max-width: none; overflow: visible; font-size: 10px; text-overflow: clip; }
+  #chatPanel:not(.is-large) .chat-name { flex: 0 0 auto; max-width: none; overflow: visible; font-size: var(--mini-chat-font-size); text-overflow: clip; }
   #chatPanel:not(.is-large) .chat-name::after { content: ":"; }
   #chatPanel:not(.is-large) .chat-text,
-  #chatPanel:not(.is-large) .chat-line.has-replay .chat-text { flex: 1 1 0; grid-column: auto; grid-row: auto; min-width: 0; min-height: 0; padding: 0; overflow: hidden; border-radius: 0; background: transparent; font-size: 10px; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
+  #chatPanel:not(.is-large) .chat-line.has-replay .chat-text { flex: 1 1 0; grid-column: auto; grid-row: auto; min-width: 0; min-height: 0; padding: 0; overflow: hidden; border-radius: 0; background: transparent; font-size: var(--mini-chat-font-size); line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
   #chatPanel:not(.is-large) .chat-reply-preview { display: none; }
   #chatPanel:not(.is-large) .chat-message-body { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #chatPanel:not(.is-large) .chat-replay { display: none; }
@@ -3674,3 +3675,9 @@
 .shop-patreon-button small { display: block; margin-top: 4px; font-size: 12px; line-height: 1.4; color: #ead9e4; }
 .shop-patreon-heart { font-size: 28px; color: #edc1dc; text-shadow: 0 0 12px #edc1dc40; }
 .shop-patreon-arrow { margin-left: auto; font-size: 22px; color: #ead9e4; }
+
+/* A clipped overlay above mini chat: no reserved space or hit target. */
+.game-ticker { position: fixed; left: 0; right: 0; bottom: calc(var(--toolbar-height) + var(--mini-chat-height) + 2px); height: 20px; overflow: hidden; pointer-events: none; background: none; border: 0; }
+.game-ticker[hidden], #chatPanel.is-large .game-ticker { display: none; }
+.game-ticker-text { position: absolute; left: 100%; top: 2px; width: max-content; white-space: nowrap; color: #fff; font: 900 var(--mini-chat-font-size)/1.4 var(--player-name-font); -webkit-text-stroke: 2px #000; paint-order: stroke fill; text-shadow: 0 1px 1px #000; will-change: transform; animation: game-tip-scroll var(--ticker-duration, 30s) linear; }
+@keyframes game-tip-scroll { from { transform: translateX(0); } to { transform: translateX(calc(-100% - 100vw)); } }

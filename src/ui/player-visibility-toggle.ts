@@ -1,3 +1,5 @@
+import { installMultiplayerIdle } from "./multiplayer-idle";
+
 const STORAGE_KEY = "wildstat-show-other-players";
 const COOLDOWN_MS = 20_000;
 
@@ -13,6 +15,12 @@ export function createPlayerVisibilityToggle(options: {
   try { visible = options.storage?.getItem(STORAGE_KEY) === "true"; } catch { /* Storage may be unavailable. */ }
   options.button.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/><path class="player-visibility-slash" d="m4 3 16 18"/></svg><span class="player-visibility-countdown" aria-hidden="true"></span>`;
   const countdown = options.button.querySelector<HTMLElement>(".player-visibility-countdown")!;
+  const idle = installMultiplayerIdle(options.button.ownerDocument, () => {
+    visible = false;
+    try { options.storage?.setItem(STORAGE_KEY, "false"); } catch {}
+    refresh();
+    options.setVisible(false);
+  });
   function refresh() {
     clearTimeout(timer);
     const seconds = Math.max(0, Math.ceil((cooldownUntil - performance.now()) / 1000));
@@ -28,6 +36,7 @@ export function createPlayerVisibilityToggle(options: {
   const click = () => {
     if (performance.now() < cooldownUntil) return;
     visible = !visible;
+    idle.setEnabled(visible);
     cooldownUntil = performance.now() + COOLDOWN_MS;
     try { options.storage?.setItem(STORAGE_KEY, String(visible)); } catch { /* Keep the session preference. */ }
     refresh();
@@ -36,5 +45,6 @@ export function createPlayerVisibilityToggle(options: {
   options.button.addEventListener("click", click);
   refresh();
   options.setVisible(visible);
-  return { dispose() { clearTimeout(timer); options.button.removeEventListener("click", click); } };
+  idle.setEnabled(visible);
+  return { dispose() { idle.dispose(); clearTimeout(timer); options.button.removeEventListener("click", click); } };
 }

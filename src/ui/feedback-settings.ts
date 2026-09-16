@@ -40,6 +40,7 @@ export function installFeedbackControls(doc: Document) {
     ["damageFlashToggle", "DAMAGE FLASH", false],
     ["toolbarHapticsToggle", "TOOLBAR HAPTICS", true],
     ["keepScreenOnToggle", "KEEP SCREEN ON", false],
+    ["gameTickerToggle", "GAME TIPS", true],
   ] as const) {
     if (doc.getElementById(id)) continue;
     const row = doc.createElement("div");
