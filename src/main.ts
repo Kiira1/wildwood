@@ -1643,6 +1643,7 @@ import {
     accountInConflict: () => Boolean(coop?.accountState?.().sessionConflict),
     lowPerformanceMode: appShell.lowPerformanceMode,
     presentationInputActive: () => playerInput.movement().source !== "none",
+    presentationUiActive: () => chatRuntime.isInteracting(),
     isReplayActive: () => duelRuntime.isReplayActive(),
     ensureMusicPlaying: appShell.ensureMusicPlaying,
     hideStart: startup.hideStart,

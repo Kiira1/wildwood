@@ -209,6 +209,21 @@ describe("guest registration from both entry points", () => {
     });
 });
 
+it("approves a cryptographically verified callback even when the UI return marker is missing", async () => {
+  const token = accountToken();
+  stubTokenRequest(new FakeTokenRequest(200, { id_token: token }));
+  // Simulate a callback reaching a service initialized before the native bridge
+  // restored tab state: it did not start with session approval.
+  const fresh = setup();
+  fresh.session.setItem(keys.authStateKey, "expected-state");
+  fresh.session.setItem(keys.authVerifierKey, "expected-verifier");
+  fresh.session.setItem(keys.authNonceKey, "expected-nonce");
+  window.location.href = "https://wildstat.example/game?code=one&state=expected-state";
+  await fresh.service.restoreKnownAccount();
+  expect(fresh.service.isSessionApproved()).toBe(true);
+  expect(fresh.connect).toHaveBeenCalledOnce();
+});
+
 describe("explicit session takeover", () => {
   afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
   function freshConnection() {

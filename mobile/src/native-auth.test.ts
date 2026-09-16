@@ -30,7 +30,40 @@ async function begin(win: ReturnType<typeof setup>['win']) {
   url.search = new URLSearchParams({ client_id: SPACETIME_AUTH_CLIENT_ID, redirect_uri: NATIVE_AUTH_REDIRECT, state: 'expected', code_challenge_method: 'S256' }).toString();
   await win.wildstatNativeAuth!.open(url.href, ['verifier', 'state']);
 }
-afterEach(() => { mocks.platform = 'android'; mocks.launch = undefined; vi.unstubAllGlobals(); vi.clearAllMocks(); });
+afterEach(() => { mocks.platform = 'android'; mocks.launch = undefined; vi.useRealTimers(); vi.unstubAllGlobals(); vi.clearAllMocks(); });
+it('accepts a verified Android callback after the browser closes before delivering the deep link', async () => {
+  vi.useFakeTimers();
+  const { session, replace, win } = setup(); session.setItem('verifier', 'original-secret');
+  await begin(win);
+  mocks.listeners.browserFinished();
+  await vi.advanceTimersByTimeAsync(1500);
+  // The game has returned to its sign-in controls and cleared its tab state.
+  session.clear();
+  mocks.listeners.appUrlOpen({ url: `${NATIVE_AUTH_CALLBACK}?state=expected&code=one` });
+  expect(replace).toHaveBeenCalledWith('capacitor://localhost/?state=expected&code=one');
+  expect(session.getItem('verifier')).toBe('original-secret');
+});
+it('does not let an old browser-close timer cancel a newer Android login', async () => {
+  vi.useFakeTimers();
+  const { win, local } = setup(); await begin(win);
+  mocks.listeners.browserFinished();
+  win.wildstatNativeAuth!.cancel();
+  const next = new URL((mocks.open.mock.calls[0] as unknown as [{ url: string }])[0].url);
+  next.searchParams.set('state', 'new-state');
+  await win.wildstatNativeAuth!.open(next.href, []);
+  await vi.advanceTimersByTimeAsync(1500);
+  expect(win.dispatchEvent).not.toHaveBeenCalled();
+  expect(JSON.parse(local.getItem('wildstat.native-auth.pending')!).state).toBe('new-state');
+});
+it('still rejects an expired Android callback after a browser handoff', async () => {
+  vi.useFakeTimers();
+  const { win, replace, local } = setup(); await begin(win);
+  mocks.listeners.browserFinished();
+  await vi.advanceTimersByTimeAsync(10 * 60_000 + 1);
+  mocks.listeners.appUrlOpen({ url: `${NATIVE_AUTH_CALLBACK}?state=expected&code=one` });
+  expect(replace).not.toHaveBeenCalled();
+  expect(local.getItem('wildstat.native-auth.pending')).toBeNull();
+});
 it('uses the direct iOS session callback and restores the verified transaction', async () => {
   mocks.platform = 'ios';
   mocks.authenticate.mockResolvedValueOnce({url: `${NATIVE_AUTH_CALLBACK}?state=expected&code=one`});

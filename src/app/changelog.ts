@@ -1,4 +1,9 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.711": [
+    "Active chat scrolling and typing keep smooth frame pacing even while your character is idle.",
+    "Fixed Android sign-in returning to the login screen after confirmation.",
+    "Improved sign-in recovery when the browser returns late or the app restarts during authentication.",
+  ],
   "0.710": [
     "Guild fighters walk in at normal speed, with more gradual reinforcements and more varied targets.",
     "Reduced rendering work in large guild battles while keeping combat active as fighters arrive.",
@@ -1899,6 +1904,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.711": "2026-09-15",
   "0.710": "2026-09-15",
   "0.708": "2026-09-15",
   "0.705": "2026-09-15",

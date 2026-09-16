@@ -119,14 +119,15 @@ describe("game session frame scheduling", () => {
       await vi.runAllTimersAsync();
     } finally { vi.useRealTimers(); vi.unstubAllGlobals(); }
   });
-  it.each([false, true])("keeps an idle duel replay smooth with Low Performance Mode=%s", (lowPerformanceMode) => {
+  it.each([[false, "replay"], [true, "replay"], [false, "chat"], [true, "chat"]] as const)("keeps active presentation smooth with Low Performance Mode=%s during %s", (lowPerformanceMode, activity) => {
     vi.stubGlobal("document", { hidden: false, addEventListener: vi.fn() });
     vi.stubGlobal("requestAnimationFrame", vi.fn());
     const render = vi.fn();
     let replayActive = true;
     try {
       const session = createGameSessionController({
-        render, lowPerformanceMode: () => lowPerformanceMode, isReplayActive: () => replayActive,
+        render, lowPerformanceMode: () => lowPerformanceMode, isReplayActive: () => activity === "replay" && replayActive,
+        presentationUiActive: () => activity === "chat" && replayActive,
         presentationInputActive: () => false, recordPerformance: vi.fn(),
         performancePanelVisible: () => false, fpsDisplayVisible: () => false,
       } as any);

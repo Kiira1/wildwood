@@ -41,10 +41,15 @@ export function installNativeAuth() {
   const ready = (async () => {
     await App.addListener('appUrlOpen', ({ url }) => receive(url));
     if (!ios) await Browser.addListener('browserFinished', () => {
-      // Allow the deep-link event to win when closing the browser accompanies a callback.
+      const pending = localStorage.getItem(STORAGE_KEY);
+      if (!active || !pending) return;
       setTimeout(() => {
-        if (!active || navigating) return;
-        cancel();
+        if (!active || navigating || localStorage.getItem(STORAGE_KEY) !== pending) return;
+        // Android may report the custom tab closed before delivering appUrlOpen
+        // (or while handing off to email/Google). Release the UI, but retain the
+        // state-bound transaction for its existing ten-minute lifetime. A new
+        // login replaces it; explicit Guest/Sign Out cancels it immediately.
+        active = false;
         window.dispatchEvent(new Event(NATIVE_AUTH_CANCEL));
       }, 750);
     });

@@ -96,6 +96,7 @@ type SessionDependencies = {
   lowPerformanceMode: () => boolean;
   isReplayActive: () => boolean;
   presentationInputActive: () => boolean;
+  presentationUiActive?: () => boolean;
   ensureMusicPlaying: () => void;
   hideStart: () => void;
   hideGameOver: () => void;
@@ -267,13 +268,14 @@ export function createGameSessionController(dependencies: SessionDependencies) {
     if (document.hidden) return;
     const lowPerformanceMode = dependencies.lowPerformanceMode();
     const replayActive = dependencies.isReplayActive();
+    const uiActive = dependencies.presentationUiActive?.() ?? false;
     const combatActive = running && !paused && !dependencies.accountInConflict()
       && presentationCombatActive(dependencies.player, dependencies.isDueling());
-    const activityActive = replayActive || dependencies.presentationInputActive() || combatActive;
+    const activityActive = replayActive || uiActive || dependencies.presentationInputActive() || combatActive;
     if (activityActive) lastPresentationActivityAt = now;
     const idleThrottled = !lowPerformanceMode
       && idlePresentationThrottleActive(activityActive, now, lastPresentationActivityAt);
-    const reducedFrameRate = lowPerformanceMode || (!replayActive && (idleThrottled || paused || !running));
+    const reducedFrameRate = lowPerformanceMode || (!replayActive && !uiActive && (idleThrottled || paused || !running));
     if (!presentationFrameDue(reducedFrameRate, now, nextFrameAt)) {
       return;
     }

@@ -113,6 +113,7 @@ type ChatOptions = {
 export function createChatController({ elements, getCoop, showMessage, onOpenReplay, onOpenPlayer, onLayoutChange }: ChatOptions) {
   let enabled = true;
   let large = false;
+  let interactionUntil = 0;
   let reactionRevision = 0;
   const reactionOverrides = new Map<string, { source: string | undefined; value: string }>();
   let renderedRevision = "", metadataRevision = "";
@@ -628,6 +629,14 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
 
   function init() {
     messageActions.init();
+    // Capture scrolling from messages and the conversation list, including
+    // momentum after the finger lifts. No layout reads or per-event timers.
+    const noteInteraction = () => {
+      if (large && enabled) interactionUntil = performance.now() + 2_000;
+    };
+    for (const event of ["scroll", "wheel", "touchmove", "pointerdown", "keydown", "input"]) {
+      elements.panel.addEventListener(event, noteInteraction, { capture: true, passive: true });
+    }
     elements.panel.insertBefore(channelPicker.root, elements.messages);
     elements.panel.insertBefore(channelPicker.conversations, elements.messages);
     elements.form.append(latestButton);
@@ -779,5 +788,6 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
     openPrivate,
     minimize: () => { if (large) setLarge(false); },
     isMaximized: () => large,
+    isInteracting: () => large && enabled && performance.now() < interactionUntil,
   };
 }

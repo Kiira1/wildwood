@@ -454,6 +454,12 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
       if (signingOut) return "failed";
       renewal.save(result.id_token, result.refresh_token);
       rememberAccount();
+      // Successful state/PKCE/nonce/token verification approves this session.
+      // A missing UI-return marker after native activity recreation must not
+      // send an authenticated player straight back to the sign-in screen.
+      sessionApproved = true;
+      returnPending = true;
+      outboundAuthNavigationPending = false;
       notice = "SIGNED IN";
       outcome = "success";
     } catch (error) {

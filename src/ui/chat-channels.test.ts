@@ -482,3 +482,26 @@ describe("chat work scheduling", () => {
     expect(scrollWrites).not.toHaveBeenCalled();
   });
 });
+
+it("keeps chat interaction active through momentum and typing, then releases idle pacing", () => {
+  const h = setup();
+  let now = 10_000;
+  vi.spyOn(performance, "now").mockImplementation(() => now);
+  try {
+    expect(h.chat.isInteracting()).toBe(false);
+    h.document.getElementById("chatSizeToggle")!.click();
+    const panel = h.document.getElementById("chatPanel")!;
+    panel.dispatchEvent(new h.window.Event("scroll"));
+    expect(h.chat.isInteracting()).toBe(true);
+    now += 1500;
+    panel.dispatchEvent(new h.window.Event("scroll"));
+    now += 1500;
+    expect(h.chat.isInteracting()).toBe(true);
+    now += 501;
+    expect(h.chat.isInteracting()).toBe(false);
+    panel.dispatchEvent(new h.window.Event("input"));
+    expect(h.chat.isInteracting()).toBe(true);
+    h.chat.minimize();
+    expect(h.chat.isInteracting()).toBe(false);
+  } finally { vi.restoreAllMocks(); }
+});
