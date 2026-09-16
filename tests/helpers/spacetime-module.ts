@@ -17,6 +17,7 @@ export function schema(tables: Parameters<typeof sdkSchema>[0]) {
   }
   return {
     ...sdkSchema(tables),
+    clientVisibilityFilter: { sql: (query: string) => query },
     reducer: register,
     procedure: register,
     httpHandler: register,

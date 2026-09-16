@@ -9,8 +9,8 @@ Existing replays retain the visible-weapon/legacy-bow fallback.
 Maincloud preflight confirmed automatic data-preserving migration on the root
 and every ready map. These four columns are the only schema changes. They do
 change the binary row layout and disconnect old clients, so this is a coordinated
-protocol migration, not the normal compatible rollout. Protocol 104 must not be
-added to the supported list for these new bindings.
+protocol migration, not the normal compatible rollout. Protocol 104 must not receive these new row layouts. The compatibility hotfix
+below restores its gameplay access while filtering expanded duel rows.
 
 Release order:
 
@@ -37,3 +37,19 @@ server migration therefore used the immediate path, preserving database data and
 existing client reward queues. The cancelled release notice was left cancelled;
 no acknowledgements were fabricated and the standard compatible rollout guard
 was not weakened. Review suspended-session acknowledgement handling separately.
+
+
+## Immediate older-app compatibility hotfix
+
+The initial protocol requirement blocked older installed clients. Normal gameplay
+now accepts protocols 104 and 105; protocol 103 remains blocked. A private
+`duel_wire_access` table and server-enforced visibility filters prevent protocol
+104 clients from receiving the expanded `duel` or `duel_replay` rows. Protocol 105
+registration grants access to all historical combat versions; registering 104
+revokes it. Duels require both players to use 0.709 or newer. Existing sessions
+are backfilled through an owner-only reducer. No client rebuild is required for
+this compatibility recovery. Previously blocked apps may need one restart.
+
+The bridge changes only row visibility and adds a private table. All saved duel
+and player data remain intact. The separate bindings stay unchanged; do not
+remove the visibility filters while protocol 104 is accepted.

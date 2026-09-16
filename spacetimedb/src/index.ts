@@ -1,3 +1,4 @@
+import { duelWireAccess, syncDuelWireAccess, DUEL_WIRE_FILTER, DUEL_REPLAY_WIRE_FILTER } from "./duel-wire-access";
 import { nameChangeStatus } from "../../shared/name-change";
 import { validPatreonRedirect } from "./patreon-url";
 import { isValidProfileIcon } from "../../shared/profile-icons";
@@ -1789,6 +1790,7 @@ const spacetimedb = schema({
   startupTelemetryRateLimit,
   duel,
   duelReplay,
+  duelWireAccess,
   ...dragonBossTables,
   maintenanceSchedule,
   maintenanceSweepSchedule,
@@ -1820,6 +1822,8 @@ const spacetimedb = schema({
   prismshellRespawnSchedule, ironhornRespawnSchedule, dreadreaperRespawnSchedule, voltwardenRespawnSchedule, gravebloomRespawnSchedule, aegisPrimeRespawnSchedule,
 });
 export default spacetimedb;
+export const duelWireFilter = spacetimedb.clientVisibilityFilter.sql(DUEL_WIRE_FILTER);
+export const duelReplayWireFilter = spacetimedb.clientVisibilityFilter.sql(DUEL_REPLAY_WIRE_FILTER);
 
 export type ModuleViewCtx = import("spacetimedb/server").ViewCtx<InferSchema<typeof spacetimedb>>;
 export type ModuleReducerCtx = ReducerCtx<InferSchema<typeof spacetimedb>>;
@@ -8130,6 +8134,14 @@ export const acknowledgeRelease = spacetimedb.reducer({ id: t.string() }, (ctx, 
   acknowledgeReleaseWindow(ctx, id);
 });
 
+// One-time backfill for clients already online when the compatibility bridge ships.
+export const refreshDuelWireAccess = spacetimedb.reducer({}, (ctx) => {
+  if (!isDatabaseOwnerIdentity(ctx.sender)) throw new SenderError("Database owner required.");
+  for (const player of ctx.db.player.iter()) {
+    syncDuelWireAccess({ db: ctx.db, sender: player.identity }, player.protocolVersion);
+  }
+});
+
 export const registerProtocol = spacetimedb.reducer(
   { protocolVersion: t.u32() },
   (ctx, { protocolVersion }) => {
@@ -8137,6 +8149,7 @@ export const registerProtocol = spacetimedb.reducer(
       throw new SenderError(LEGACY_CLIENT_ERRORS.protocolUpdate);
     }
     const session = requireSession(ctx);
+    syncDuelWireAccess(ctx, protocolVersion);
     ctx.db.playerSession.connectionId.update({ ...session, protocolVersion });
     const current = ctx.db.player.identity.find(ctx.sender);
     const controller = ctx.db.playerController.identity.find(ctx.sender);
@@ -9933,6 +9946,9 @@ export const requestDuel = spacetimedb.reducer(
   { opponent: t.identity() },
   (ctx, { opponent }) => {
     const challenger = requireControllingPlayer(ctx);
+    if (challenger.protocolVersion !== 105 || ctx.db.player.identity.find(opponent)?.protocolVersion !== 105) {
+      throw new SenderError("Both players need game version 0.709 or newer for duels. Update the app to continue.");
+    }
     if (sameIdentity(opponent, ctx.sender)) throw new SenderError("You cannot duel yourself.");
     if (playersBlocked(ctx, ctx.sender, opponent)) throw new SenderError("Duel unavailable for this player.");
     if (isVirtualPlayer(ctx, opponent) || isVirtualPlayer(ctx, ctx.sender)) {
