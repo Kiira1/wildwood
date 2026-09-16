@@ -17,7 +17,7 @@ Release order:
 1. Build and verify web, signed Android 709 and iOS 709 artifacts; install iOS and
    publish Android internal testing. Push the matching web release.
 2. Recheck root and map migration plans, accepting only these four defaulted
-   columns. Pause through the existing release notice without a countdown, wait
+   columns. Use the existing release notice with its minimum 30-second countdown, wait
    for progress acknowledgements, and cancel if saves do not acknowledge.
 3. Publish root using the CLI's explicit `--break-clients --delete-data=never`.
    Keep the ordinary compatible-only release helper unchanged.
@@ -28,3 +28,12 @@ Release order:
 
 No tables or player data are cleared. Do not revert the schema by removing the
 new columns after publication. Any emergency code rollback must preserve them.
+
+Execution note: the scheduled attempt cancelled after eight missing save
+acknowledgements. Follow-up inspection found most remaining sessions were hidden
+browser tabs; this was not treated as proof of a successful save. The user
+explicitly requested the immediate hotfix and deferred diagnosis. The matching
+server migration therefore used the immediate path, preserving database data and
+existing client reward queues. The cancelled release notice was left cancelled;
+no acknowledgements were fabricated and the standard compatible rollout guard
+was not weakened. Review suspended-session acknowledgement handling separately.
