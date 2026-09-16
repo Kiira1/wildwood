@@ -58,3 +58,17 @@ it("handles empty conversations and jumps to arbitrary cached messages", () => {
   expect(range.start).toBeLessThanOrEqual(249);
   expect(range.end).toBeGreaterThan(249);
 });
+
+it("uses the existing overscan through small scrolls and refills before visible rows run out", () => {
+  const view = createChatViewport();
+  view.select(rows(1, 500), 360);
+  view.window(10_000, 600);
+  for (const delta of [-300, -100, 0, 100, 300]) expect(view.needsRender(10_000 + delta, 600)).toBe(false);
+  expect(view.needsRender(9_500, 600)).toBe(true);
+  expect(view.needsRender(10_500, 600)).toBe(true);
+  expect(view.needsRender(40_000, 600)).toBe(true);
+  view.window(0, 600);
+  expect(view.needsRender(0, 600)).toBe(false);
+  view.window(0, 600, true);
+  expect(view.needsRender(49_400, 600)).toBe(false);
+});

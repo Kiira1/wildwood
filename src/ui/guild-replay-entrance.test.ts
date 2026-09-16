@@ -12,7 +12,7 @@ it("introduces at most two per wave, with varied gaps and a bounded full-team en
   expect(waves.size).toBeGreaterThanOrEqual(20);
   const starts = [...waves.keys()].sort((a, b) => a - b);
   expect(new Set(starts.slice(1).map((time, i) => (time - starts[i]).toFixed(3))).size).toBeGreaterThan(5);
-  expect(plan.duration).toBeLessThanOrEqual(6.1);
+  expect(plan.duration).toBeLessThanOrEqual(30);
   expect(buildGuildReplayEntrance(battle)).toEqual(plan);
 });
 it("starts outside opposite screen edges, skips hidden actors, and settles without snapping", () => {
@@ -38,4 +38,21 @@ it("keeps paired arrivals fair and unchanged when a saved player is renamed or d
   }
   battle.attackers[0].identity = ""; battle.attackers[0].name = "Deleted player";
   expect(buildGuildReplayEntrance(battle)).toEqual(plan);
+});
+
+it.each([.4, 1.2])("walks into position at combat speed without easing (projection=%s)", scale => {
+  const arrival = { start: 1, travel: 5, lane: 20 }, destination = { x: 250, y: 300 }, speed = 90 * scale;
+  for (const side of [0, 1]) {
+    const sample = (time: number) => guildEntrancePosition(arrival, time, destination, side, 900, speed);
+    const start = sample(2), middle = sample(3), end = sample(4);
+    expect(Math.abs(middle.x - start.x)).toBeCloseTo(speed);
+    expect(Math.abs(end.x - middle.x)).toBeCloseTo(speed);
+    expect(start.y).toBe(destination.y);
+    expect(sample(6)).toEqual({ ...destination, visible: true, entering: false });
+    expect(Math.abs(sample(6).x - sample(5.99).x)).toBeCloseTo(speed * .01);
+  }
+});
+it("preserves the short schedule for existing version 3 replays", () => {
+  const battle = simulateGuildBattle(team("A"), team("B"), undefined, 3);
+  expect(buildGuildReplayEntrance(battle).duration).toBeLessThanOrEqual(6.1);
 });

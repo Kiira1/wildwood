@@ -50,6 +50,15 @@ function setup() {
 }
 
 describe("chat channels", () => {
+  it("does not request guild history without guild membership", async () => {
+    const h = setup(), loadChatHistory = vi.fn(async () => { throw new Error("Join a guild first."); });
+    Object.assign(h.coop.social, { currentGuild: () => null, loadChatHistory });
+    h.document.getElementById("chatSizeToggle")!.click();
+    h.button("Guild").click();
+    await settle();
+    expect(loadChatHistory).not.toHaveBeenCalled();
+    expect(h.showMessage).not.toHaveBeenCalled();
+  });
   it("changes only the matching sender's portraits and retains other players' pictures", () => {
     const h = setup();
     const first = h.coop.chatMessages()[0];
@@ -434,10 +443,11 @@ describe("chat work scheduling", () => {
     // A deterministic variable-height layout, independent of browser visual QA.
     const height = (element: Element) => element.classList.contains("chat-line") ? 100 + Number(BigInt((element as HTMLElement).dataset.messageId!) % 3n) * 20 : parseFloat((element as HTMLElement).style.height) || 0;
     let top = 0;
+    const scrollWrites = vi.fn();
     Object.defineProperties(panel, {
       clientWidth: { get: () => 360 }, clientHeight: { get: () => 500 },
       scrollHeight: { get: () => [...panel.children].reduce((sum, child) => sum + height(child), 0) },
-      scrollTop: { get: () => top, set: value => { top = Math.max(0, Math.min(value, panel.scrollHeight - 500)); } },
+      scrollTop: { get: () => top, set: value => { scrollWrites(value); top = Math.max(0, Math.min(value, panel.scrollHeight - 500)); } },
     });
     Object.defineProperty(h.window.HTMLElement.prototype, "offsetHeight", { configurable: true, get() { return height(this); } });
     const page = vi.fn(async (before: bigint) => ({ messages: Array.from({ length: 50 }, (_, i) => ({ ...seed, id: before - 50n + BigInt(i) })), beforeId: before - 50n, hasMore: true }));
@@ -459,8 +469,16 @@ describe("chat work scheduling", () => {
     expect(page).toHaveBeenCalledExactlyOnceWith(1001n);
     expect(visible()).toEqual(anchor);
     expect(panel.querySelectorAll(".chat-line").length).toBeLessThan(25);
+    scrollWrites.mockClear();
     live = [...live.slice(1), { ...seed, id: 1051n, message: "live while reading" }]; revision++; h.chat.refresh();
     expect(visible()).toEqual(anchor);
     expect(panel.textContent).not.toContain("live while reading");
+    expect(scrollWrites).not.toHaveBeenCalled();
+    // Native scrolling inside the mounted buffer must not be repositioned.
+    top += 30;
+    const beforeScroll = visible();
+    panel.dispatchEvent(new h.window.Event("scroll"));
+    expect(visible()).toEqual(beforeScroll);
+    expect(scrollWrites).not.toHaveBeenCalled();
   });
 });

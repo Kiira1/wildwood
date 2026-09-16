@@ -1,6 +1,6 @@
 import { expect, it, vi } from "vitest";
 vi.mock("spacetimedb/server", () => ({ SenderError: class SenderError extends Error {} }));
-import { deliverDisconnectCompensation, deliverCombatUpdateGift } from "./disconnect-compensation";
+import { deliverDisconnectCompensation, deliverCombatUpdateGift, deliverOutageCompensation, announceOutageCompensation } from "./disconnect-compensation";
 const player = { toHexString: () => "player" };
 function setup() {
   const receipts = new Map(); const notices = new Map();
@@ -37,4 +37,22 @@ it("credits the combat update separately from the disconnect gift, exactly once"
   expect(s.notices.get(player).amount).toBe(40n);
   s.notices.clear(); deliverCombatUpdateGift(s.ctx, [player] as any, s.credit);
   expect(s.credit).toHaveBeenCalledTimes(2); expect(s.notices.size).toBe(0);
+});
+
+it("credits the outage gift as exactly 10 gems once, independently of older campaigns", () => {
+  const s = setup(); s.deliver();
+  deliverOutageCompensation(s.ctx, [player, player] as any, s.credit);
+  expect(s.credit.mock.calls.at(-1)?.[0]).toMatchObject({ delta: 10n, kind: "outage_compensation" });
+  expect(s.notices.get(player).amount).toBe(30n);
+  s.notices.clear(); deliverOutageCompensation(s.ctx, [player] as any, s.credit);
+  expect(s.credit).toHaveBeenCalledTimes(2); expect(s.notices.size).toBe(0);
+});
+it("announces once without changing any balance", () => {
+  const s = setup(), announce = vi.fn();
+  s.ctx.sender = player;
+  s.ctx.db.playerGemWallet = { identity: { find: () => ({ balance: 55n }) } };
+  s.ctx.db.gemTransaction.insert = (row: any) => { s.receipts.set(row.externalReference, row); };
+  announceOutageCompensation(s.ctx, announce); announceOutageCompensation(s.ctx, announce);
+  expect(announce).toHaveBeenCalledOnce(); expect(s.credit).not.toHaveBeenCalled();
+  expect([...s.receipts.values()][0]).toMatchObject({ delta: 0n, balanceAfter: 55n });
 });

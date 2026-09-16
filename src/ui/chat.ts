@@ -144,7 +144,9 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
   let viewportContext = "";
   let originalTarget: bigint | null = null;
   function setSpacers(space: { top: number; bottom: number }) {
-    topSpacer.style.height = `${space.top}px`; bottomSpacer.style.height = `${space.bottom}px`;
+    const top = `${space.top}px`, bottom = `${space.bottom}px`;
+    if (topSpacer.style.height !== top) topSpacer.style.height = top;
+    if (bottomSpacer.style.height !== bottom) bottomSpacer.style.height = bottom;
   }
   function refreshLatestButton() {
     const distance = elements.messages.scrollHeight - elements.messages.clientHeight - elements.messages.scrollTop;
@@ -164,7 +166,8 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
     renderedRevision = "";
     refresh();
     if (large && channel !== "public") void loadHistory(true);
-    if (channel !== "public") void getCoop()?.social?.loadSocial().then(refresh).catch(() => showMessage("COULD NOT REFRESH SOCIAL CONTACTS", "#ff9b91"));
+    if (channel !== "public") void getCoop()?.social?.loadSocial().then(refresh)
+      .catch(error => showMessage(error instanceof Error ? error.message : "COULD NOT REFRESH SOCIAL CONTACTS", "#ff9b91"));
   });
 
   function conversationKey() { return `${channel}:${channel === "private" ? privatePeerIdentity || privatePeer.toLowerCase() : channel === "guild" ? guildContext : ""}`; }
@@ -176,6 +179,7 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
   async function loadHistory(latest = false) {
     if (!large || !enabled || (channel === "private" && !privatePeer)) return;
     const coop = getCoop(), key = conversationKey(), identity = coop?.localIdentity?.();
+    if (channel === "guild" && !coop?.social?.currentGuild()) return;
     const fetch = channel === "public" ? coop?.loadChatHistory : coop?.social?.loadChatHistory
       ? (beforeId: bigint) => coop.social!.loadChatHistory!(channel === "guild" ? "guild" : "dm", privatePeerIdentity || privatePeer, beforeId) : undefined;
     if (!fetch) return;
@@ -609,14 +613,14 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
     renderedRows = nextRows;
     if (large) setSpacers(viewport.measure(messages.map(message => ({ id: message.id,
       height: nextRows.get(`${identity}:${conversationKey()}:${large}:${message.id}`)?.element.offsetHeight ?? 0 }))));
-    if (followNewestMessage) {
-      elements.messages.scrollTop = elements.messages.scrollHeight;
-    } else {
-      // Restore the same message and pixel offset after prepending or measuring
-      // variable-height rows. Select that window before mounting its DOM.
-      const heightChange = elements.messages.scrollHeight - previousScrollHeight;
-      elements.messages.scrollTop = Math.max(0, large ? viewport.restore(targetAnchor, previousScrollTop + Math.min(0, heightChange)) : previousScrollTop + Math.min(0, heightChange));
-    }
+    // Restore only when the anchor actually moved. Even assigning the current
+    // scrollTop can interfere with native momentum scrolling on mobile.
+    const scrollHeight = elements.messages.scrollHeight || 0;
+    const heightChange = scrollHeight - previousScrollHeight;
+    const desiredTop = followNewestMessage
+      ? Math.max(0, scrollHeight - (elements.messages.clientHeight || 0))
+      : Math.max(0, large ? viewport.restore(targetAnchor, previousScrollTop + Math.min(0, heightChange)) : previousScrollTop + Math.min(0, heightChange));
+    if (Math.abs((elements.messages.scrollTop || 0) - desiredTop) > .5) elements.messages.scrollTop = desiredTop;
     lastScrollTop = elements.messages.scrollTop || 0;
     atLatest = followNewestMessage || (elements.messages.scrollHeight || 0) - (elements.messages.clientHeight || 0) - lastScrollTop <= 16;
     refreshLatestButton();

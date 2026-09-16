@@ -40,7 +40,8 @@ export function createGuildBattleReplay(parent: HTMLElement, battle: GuildBattle
     const done = elapsed >= endTime;
     const nextStatus = done ? `${battle.outcome === "DRAW" ? "Draw" : `[${battle.outcome === "VICTORY" ? names[0] : names[1]}] wins`} · ${battle.attackerSurvivors}–${battle.defenderSurvivors} survivors` : `[${names[0]}] ${alive(0, split)}/${split}  ·  ${Math.min(battle.duration, combatTime).toFixed(1)}s  ·  [${names[1]}] ${alive(split, fighters.length)}/${fighters.length - split}`;
     if (status.textContent !== nextStatus) status.textContent = nextStatus;
-    seek.value = String(elapsed);
+    const seekValue = String(elapsed);
+    if (seek.value !== seekValue) seek.value = seekValue;
     const playLabel = playing ? "Pause" : done ? "Replay" : "Play";
     if (play.textContent !== playLabel) play.textContent = playLabel;
   }

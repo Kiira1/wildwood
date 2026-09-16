@@ -10,11 +10,12 @@ const snapshot = { identity: alice.toHexString(), signedIn: true, friends: [{ id
 function harness() {
   const connection = { isActive: true, reducers: { friendAction: vi.fn(async () => {}), guildInviteAction: vi.fn(async () => {}),
     sendSocialMessage: vi.fn(async () => {}), reportSocialMessage: vi.fn(async () => {}) },
-    procedures: { getSocialHub: vi.fn(async () => JSON.stringify(snapshot)) } };
+    procedures: { getSocialHub: vi.fn(async () => JSON.stringify(snapshot)),
+      getSocialChatHistoryWithReactions: vi.fn(async () => ({ messages: [], hasMore: false })) } };
   let active = connection;
   const drain = vi.fn(async () => true);
   const service = createSocialService({ reducers: { connection: () => active, protocolBlocked: () => false,
-    runWorldReducer: async (fn: () => unknown) => fn(), errorMessage: (error: Error) => error.message } as unknown as ReducerPort,
+    runWorldReducer: async (fn: () => unknown) => fn(), errorMessage: (error: unknown) => error instanceof Error ? error.message : String(error) } as unknown as ReducerPort,
     localIdentity: () => alice.toHexString(), notify: vi.fn(), drainPendingProgress: drain });
   const row = (id: bigint, channel: string, sender = bob, recipient = alice) => ({ id, channel, guildId: channel === "guild" ? 4n : 0n,
     sender, recipient, senderName: sender.equals(bob) ? "Bob" : "Alice", recipientName: recipient.equals(cara) ? "Cara" : "Alice",
@@ -23,6 +24,18 @@ function harness() {
   return { service, connection, drain, row, replace() { active = { ...connection }; } };
 }
 describe("private social client state", () => {
+  it("preserves cached conversations and the server's explanation when a procedure rejects with text", async () => {
+    const h = harness();
+    await h.service.api.loadSocial();
+    h.service.tables.upsertMessage(h.row(1n, "dm"));
+    const before = h.service.api.privateConversations();
+    h.connection.procedures.getSocialHub.mockRejectedValue("Session unavailable");
+    await expect(h.service.api.loadSocial()).rejects.toThrow("Session unavailable");
+    expect(h.service.api.privateConversations()).toEqual(before);
+    h.connection.procedures.getSocialChatHistoryWithReactions.mockRejectedValue("WildStat is active in another tab.");
+    await expect(h.service.api.loadChatHistory("guild", "", 0n)).rejects.toThrow("WildStat is active in another tab.");
+    expect(h.service.api.privateMessages("Bob")).toHaveLength(1);
+  });
   it("keeps archived conversation names when their messages are outside the live page", async () => {
     const h = harness();
     h.connection.procedures.getSocialHub.mockResolvedValue(JSON.stringify({ ...snapshot, conversations: [{ identity: cara.toHexString(), name: "Cara" }] }));

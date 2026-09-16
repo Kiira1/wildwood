@@ -1,4 +1,10 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.710": [
+    "Guild fighters walk in at normal speed, with more gradual reinforcements and more varied targets.",
+    "Reduced rendering work in large guild battles while keeping combat active as fighters arrive.",
+    "Improved chat scrolling and guild/private chat error messages.",
+    "Fixed unnecessary guild-history errors for players who have not joined a guild.",
+  ],
   "0.709": [
     "Chat stays smoother during long sessions, with lighter scrolling and faster access to older messages.",
     "Guild fighters now start fighting as they arrive, while later fighters continue entering.",
@@ -1893,6 +1899,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.710": "2026-09-15",
   "0.708": "2026-09-15",
   "0.705": "2026-09-15",
   "0.703": "2026-09-15",

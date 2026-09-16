@@ -102,7 +102,10 @@ export function createSocialService(deps: Dependencies) {
     async loadChatHistory(channel: "guild" | "dm", peer: string, beforeId: bigint) {
       const current = request();
       const hub = hubRevision;
-      const page = await withRequestDeadline(current.connection.procedures.getSocialChatHistoryWithReactions({ channel, peer, beforeId }));
+      // Procedure rejections can be strings, unlike reducer failures. Keep the
+      // server's explanation so chat does not replace it with a generic error.
+      const page = await withRequestDeadline(current.connection.procedures.getSocialChatHistoryWithReactions({ channel, peer, beforeId }))
+        .catch(error => { throw new Error(deps.reducers.errorMessage(error)); });
       current.check();
       if (hub !== hubRevision) throw new Error("Conversation changed. Reopen chat.");
       return { messages: page.messages.map(presentation), hasMore: page.hasMore, beforeId: page.messages[0]?.id ?? beforeId };
@@ -123,7 +126,8 @@ export function createSocialService(deps: Dependencies) {
     privateConversations: () => { indexed(); return conversations; },
     async loadSocial(): Promise<SocialSnapshot> {
       const current = request(), started = snapshotRevision;
-      const result = await current.connection.procedures.getSocialHub({});
+      const result = await withRequestDeadline(current.connection.procedures.getSocialHub({}))
+        .catch(error => { throw new Error(deps.reducers.errorMessage(error)); });
       current.check();
       if (snapshotRevision === started) { snapshot = JSON.parse(result) as SocialSnapshot; changed(); }
       return snapshot;

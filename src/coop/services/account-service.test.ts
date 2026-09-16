@@ -118,6 +118,8 @@ function setup(options: {
   let worldEntryBlocked = false;
   const setWorldEntryBlocked = vi.fn((blocked: boolean) => { worldEntryBlocked = blocked; });
   const handleFailure = vi.fn();
+  const drainPendingProgress = vi.fn(async () => true);
+  const clearPendingProgress = vi.fn();
   const service = createAccountService({
     keys,
     updateResumeMode: null,
@@ -143,16 +145,69 @@ function setup(options: {
     localDisplayName: () => "",
     localGender: () => 0,
     localProgress: () => null,
-    drainPendingProgress: async () => true,
-    clearPendingProgress: () => {},
+    drainPendingProgress,
+    clearPendingProgress,
     disconnectVirtualPlayers: vi.fn(),
     validateAccountIdToken: options.validateAccountIdToken ?? (async (token, expectedNonce) => (
       inspectSpacetimeIdToken(token, { expectedNonce })
     )),
   });
   return { assign, connect, disconnect, local, session, notify, replaceState, requestWorldEntry, restartConnectionForIdentityChange, service,
-    connection, setConnection: (value: typeof connection) => { connection = value; }, setWorldEntryBlocked, handleFailure };
+    connection, setConnection: (value: typeof connection) => { connection = value; }, setWorldEntryBlocked, handleFailure,
+    drainPendingProgress, clearPendingProgress };
 }
+
+describe("guest registration from both entry points", () => {
+  afterEach(() => { vi.unstubAllGlobals(); });
+  it.each(["settings", "sign-in page"])("prepares and claims the same guest save from %s", async entry => {
+    const f = setup({ guestToken: "existing-guest" });
+    if (entry === "settings") f.service.api.continueAsGuest();
+    else { await f.service.restoreKnownAccount(); expect(f.connect).toHaveBeenCalledOnce(); }
+    const beginAccountLink = vi.fn(async () => {}), claimGuestAccount = vi.fn(async () => {});
+    const connection = { isActive: true, disconnect: vi.fn(), reducers: { beginAccountLink, claimGuestAccount } };
+    f.setConnection(connection as never);
+    expect(await f.service.api.signIn()).toMatchObject({ ok: true, redirecting: true });
+    expect(f.requestWorldEntry).toHaveBeenCalledOnce();
+    expect(f.drainPendingProgress).toHaveBeenCalledOnce();
+    expect(f.drainPendingProgress.mock.invocationCallOrder[0]).toBeLessThan(beginAccountLink.mock.invocationCallOrder[0]);
+    expect(beginAccountLink.mock.invocationCallOrder[0]).toBeLessThan(f.assign.mock.invocationCallOrder[0]);
+    const link = JSON.parse(f.session.getItem(keys.accountLinkKey)!);
+    expect(link.guestIdentity).toBe("guest-identity");
+    expect(beginAccountLink).toHaveBeenCalledWith({ code: link.code });
+    expect(f.local.getItem(keys.guestTokenKey)).toBe("existing-guest");
+    const state = f.session.getItem(keys.authStateKey), nonce = f.session.getItem(keys.authNonceKey);
+    window.location.href = `https://wildstat.example/game?code=verified-code&state=${state}`;
+    const token = accountToken({ nonce });
+    stubTokenRequest(new FakeTokenRequest(200, { id_token: token }));
+    await f.service.restoreKnownAccount();
+    expect(f.local.getItem(keys.accountTokenKey)).toBe(token);
+    expect(f.local.getItem(keys.guestTokenKey)).toBe("existing-guest");
+    expect(await f.service.claimAccountLink(connection as never, true, () => true)).toBe(true);
+    expect(claimGuestAccount).toHaveBeenCalledWith({ code: link.code });
+    expect(f.clearPendingProgress).toHaveBeenCalledWith("guest-identity");
+    expect(f.local.getItem(keys.guestTokenKey)).toBeNull();
+    expect(f.session.getItem(keys.accountLinkKey)).toBeNull();
+    await f.service.claimAccountLink(connection as never, true, () => true);
+    expect(claimGuestAccount).toHaveBeenCalledOnce();
+  });
+  it("does not navigate away when saving the guest fails", async () => {
+    const f = setup({ guestToken: "existing-guest" }), beginAccountLink = vi.fn();
+    f.setConnection({ isActive: true, reducers: { beginAccountLink } } as never);
+    f.drainPendingProgress.mockResolvedValue(false);
+    expect(await f.service.api.signIn()).toMatchObject({ ok: false, error: "GUEST SAVE FAILED" });
+    expect(f.assign).not.toHaveBeenCalled(); expect(beginAccountLink).not.toHaveBeenCalled();
+    expect(f.local.getItem(keys.guestTokenKey)).toBe("existing-guest");
+  });
+  it.each(["Account link expired. Sign in again.", "This account already has Wildwood progress."])(
+    "retains the guest save after a rejected claim: %s", async error => {
+      const f = setup({ guestToken: "existing-guest", accountToken: accountToken() });
+      f.session.setItem(keys.accountLinkKey, JSON.stringify({ code: "pending-link", guestIdentity: "guest-identity" }));
+      const connection = { disconnect: vi.fn(), reducers: { claimGuestAccount: vi.fn().mockRejectedValue(error) } };
+      await f.service.claimAccountLink(connection as never, true, () => true);
+      expect(f.local.getItem(keys.guestTokenKey)).toBe("existing-guest");
+      expect(f.clearPendingProgress).not.toHaveBeenCalled();
+    });
+});
 
 describe("explicit session takeover", () => {
   afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });

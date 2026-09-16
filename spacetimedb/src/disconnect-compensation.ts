@@ -20,15 +20,34 @@ export function deliverCombatUpdateGift(ctx: ModuleReducerCtx, recipients: Ident
     "20 gems from the developer for the combat changes. Thanks for testing WildStat!");
 }
 
-function deliverGemGift(ctx: ModuleReducerCtx, recipients: Identity[], credit: Credit, campaign: string, kind: string, note: string) {
+function deliverGemGift(ctx: ModuleReducerCtx, recipients: Identity[], credit: Credit, campaign: string, kind: string, note: string, amount = DISCONNECT_GIFT_AMOUNT) {
   if (recipients.length > 100) throw new SenderError("Send at most 100 gifts at a time.");
   for (const identity of recipients) {
     if (!ctx.db.playerProgress.identity.find(identity) || ctx.db.virtualPlayer.identity.find(identity)) continue;
     const externalReference = `${campaign}:${identity.toHexString()}`;
     if (ctx.db.gemTransaction.externalReference.find(externalReference)) continue;
-    credit({ identity, delta: DISCONNECT_GIFT_AMOUNT, kind, note, externalReference });
+    credit({ identity, delta: amount, kind, note, externalReference });
     const previous = ctx.db.balanceApologyNotice.identity.find(identity);
-    if (previous) ctx.db.balanceApologyNotice.identity.update({ ...previous, amount: previous.amount + DISCONNECT_GIFT_AMOUNT });
-    else ctx.db.balanceApologyNotice.insert({ identity, amount: DISCONNECT_GIFT_AMOUNT, createdAt: ctx.timestamp });
+    if (previous) ctx.db.balanceApologyNotice.identity.update({ ...previous, amount: previous.amount + amount });
+    else ctx.db.balanceApologyNotice.insert({ identity, amount, createdAt: ctx.timestamp });
   }
+}
+
+
+export const OUTAGE_GIFT_CAMPAIGN = "outage-compensation:0.709:2026-09-15";
+export const OUTAGE_GIFT_MESSAGE = "Sorry I temporarily crashed the game during the update. I've added 10 gems to everyone's existing character, guests included. Thanks for sticking with me!";
+export function deliverOutageCompensation(ctx: ModuleReducerCtx, recipients: Identity[], credit: Credit) {
+  deliverGemGift(ctx, recipients, credit, OUTAGE_GIFT_CAMPAIGN, "outage_compensation",
+    "10 gems from the developer. Sorry for temporarily crashing the game during the update!", 10n);
+}
+
+/** A zero-value ledger event records the campaign announcement without charging
+ * or crediting the operator. Retry-safe even after public chat retention ends. */
+export function announceOutageCompensation(ctx: ModuleReducerCtx, announce: (message: string) => void) {
+  const externalReference = `${OUTAGE_GIFT_CAMPAIGN}:announcement`;
+  if (ctx.db.gemTransaction.externalReference.find(externalReference)) return;
+  announce(OUTAGE_GIFT_MESSAGE);
+  ctx.db.gemTransaction.insert({ id: 0n, identity: ctx.sender, delta: 0n,
+    balanceAfter: ctx.db.playerGemWallet.identity.find(ctx.sender)?.balance ?? 0n,
+    kind: "outage_announcement", note: OUTAGE_GIFT_MESSAGE, externalReference, createdAt: ctx.timestamp });
 }

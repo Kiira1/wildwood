@@ -147,7 +147,7 @@ describe("guild membership and authoritative rosters", () => {
     f.stats.set(identity(2).toHexString(), { ...fighter, damage: 100 });
     f.run(1, ctx => f.service.challenge(ctx, b));
     const result = f.run(1, ctx => f.service.snapshot(ctx)).battles[0].result;
-    if ((result.version !== 2 && result.version !== 3)) throw Error("Expected whole-guild replay");
+    if ((result.version !== 2 && result.version !== 3 && result.version !== 4)) throw Error("Expected whole-guild replay");
     expect(result.attackers).toHaveLength(4); expect(result.defenders).toHaveLength(3);
     expect(result.attackers[1].fighter.damage).toBe(100);
     f.stats.set(identity(2).toHexString(), { ...fighter, damage: 900 });
@@ -263,7 +263,7 @@ describe("asynchronous battles and bounded standings", () => {
     const a = f.makeGuild(1), b = f.makeGuild(10);
     f.run(1, ctx => f.service.challenge(ctx, b));
     const before = f.run(10, ctx => f.service.snapshot(ctx)).battles[0];
-    if ((before.result.version !== 2 && before.result.version !== 3)) throw Error("Expected whole-guild replay");
+    if ((before.result.version !== 2 && before.result.version !== 3 && before.result.version !== 4)) throw Error("Expected whole-guild replay");
     const originalName = before.result.attackers[0].name;
     f.run(1, ctx => f.service.leave(ctx));
     f.run(10, ctx => f.service.removeAccount(ctx, identity(1)));

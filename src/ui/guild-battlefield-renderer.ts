@@ -1,4 +1,6 @@
 import { guildEntrancePosition, type GuildReplayEntrance } from "./guild-replay-entrance";
+import { GUILD_MOVE_SPEED } from "../../shared/guild-entrance";
+import { createGuildReplayLabels } from "./guild-replay-labels";
 import { formatCompactNumber } from "./number-format";
 import { WORLD_HEALTH_BAR_HEIGHT } from "../game/runtime/game-settings";
 import { healthBarTextY } from "../game/runtime/health-bar-layout";
@@ -24,6 +26,7 @@ export function createGuildBattlefieldRenderer(canvas: HTMLCanvasElement, ctx: C
   const doc = canvas.ownerDocument;
   const ground = doc.createElement("canvas");
   const groundContext = ground.getContext("2d");
+  const labels = createGuildReplayLabels(doc);
   const decor: WorldDecor[] = [];
   // Stable visual offsets open up the ranks without changing recorded combat.
   // The same offset follows each actor, their aim point, and incoming shots.
@@ -49,6 +52,7 @@ export function createGuildBattlefieldRenderer(canvas: HTMLCanvasElement, ctx: C
     bounds.minY = Math.min(bounds.minY, actor.y); bounds.maxY = Math.max(bounds.maxY, actor.y);
   }
   let viewWidth = 900, viewHeight = 576, ratio = 1;
+  let walkSpeed = GUILD_MOVE_SPEED;
   let project = (point: { x: number; y: number }) => point;
 
   let seed = 73421;
@@ -76,6 +80,7 @@ export function createGuildBattlefieldRenderer(canvas: HTMLCanvasElement, ctx: C
     const centerY = (bounds.minY + bounds.maxY) / 2;
     project = point => ({ x: width / 2 + (point.x - centerX) / spanX * fieldW * ARENA_ZOOM,
       y: top + fieldH / 2 + (point.y - centerY) / spanY * fieldH * ARENA_ZOOM });
+    walkSpeed = GUILD_MOVE_SPEED / spanX * fieldW * ARENA_ZOOM;
     canvas.width = pixelWidth; canvas.height = pixelHeight; ground.width = pixelWidth; ground.height = pixelHeight;
     if (!groundContext) return;
     const groundScale = Math.max(pixelWidth / WIDTH, pixelHeight / HEIGHT);
@@ -100,7 +105,7 @@ export function createGuildBattlefieldRenderer(canvas: HTMLCanvasElement, ctx: C
     const entering = entrance !== undefined && entranceTime !== undefined && entranceTime < entrance.duration;
     const actors = timeline.sample(time).map((actor, i) => {
       const position = project(stagger(actor, i));
-      const entry = entering ? guildEntrancePosition(entrance.arrivals[i], entranceTime, position, i < split ? 0 : 1, viewWidth)
+      const entry = entering ? guildEntrancePosition(entrance.arrivals[i], entranceTime, position, i < split ? 0 : 1, viewWidth, entrance.walking ? walkSpeed : undefined)
         : { ...position, visible: true, entering: false };
       return { ...actor, ...entry, moving: entry.entering || actor.moving };
     });
@@ -139,17 +144,10 @@ export function createGuildBattlefieldRenderer(canvas: HTMLCanvasElement, ctx: C
       ctx.fillStyle = "#402326"; ctx.fillRect(barX, barY, barW, barH);
       ctx.fillStyle = "#19d64b"; ctx.fillRect(barX, barY, fill, barH);
       ctx.fillStyle = "rgba(255,255,255,.25)"; ctx.fillRect(barX, barY, fill, 1);
-      ctx.font = '900 10px "Arial Rounded MT Bold", "Arial Rounded MT", Arial, sans-serif';
-      ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.lineJoin = "round";
-      ctx.strokeStyle = "#000"; ctx.lineWidth = 2; ctx.fillStyle = "#fff";
       const health = `${formatCompactNumber(Math.ceil(actor.hp))} / ${formatCompactNumber(Math.ceil(fighter.fighter.maxHp))}`;
-      ctx.strokeText(health, actor.x, healthBarTextY(barY, barH), barW - 2);
-      ctx.fillText(health, actor.x, healthBarTextY(barY, barH), barW - 2);
+      labels.draw(ctx, `hp:${i}`, health, actor.x, healthBarTextY(barY, barH), barW - 2, 10, 2, ratio);
       if (showNames) {
-        ctx.font = '900 11px "Arial Rounded MT Bold", "Arial Rounded MT", Arial, sans-serif';
-        ctx.lineWidth = 3;
-        ctx.strokeText(fighter.name, actor.x, barY - 10, barW + 12);
-        ctx.fillText(fighter.name, actor.x, barY - 10, barW + 12);
+        labels.draw(ctx, `name:${i}`, fighter.name, actor.x, barY - 10, barW + 12, 11, 3, ratio);
       }
     }
     // Launch before the authoritative hit: the projectile arrives as HP changes,
@@ -192,5 +190,5 @@ export function createGuildBattlefieldRenderer(canvas: HTMLCanvasElement, ctx: C
     ctx.restore();
     return actors;
   }
-  return { draw, dispose() { ground.width = 0; ground.height = 0; } };
+  return { draw, dispose() { labels.dispose(); ground.width = 0; ground.height = 0; } };
 }

@@ -31,7 +31,15 @@ export function createChatViewport() {
   }
   return {
     select, window,
-    needsRender(top: number, height: number) { const next = range(top, height); return next.start !== renderedStart || next.end !== renderedEnd; },
+    needsRender(top: number, height: number) {
+      if (!ids.length) return false;
+      if (renderedEnd <= renderedStart) return true;
+      // Consume the overscan before shifting the window. Recentring it at
+      // every row boundary churns DOM/layout throughout a touch scroll.
+      const first = indexAt(top), last = indexAt(top + Math.max(1, height));
+      return (renderedStart > 0 && first < renderedStart + 2)
+        || (renderedEnd < ids.length && last >= renderedEnd - 2);
+    },
     anchor(top: number) { const index = indexAt(top); return { id: ids[index], offset: top - offsets[index] }; },
     restore(anchor: { id: bigint | undefined; offset: number }, fallback: number) { const index = ids.indexOf(anchor.id!); return index < 0 ? fallback : offsets[index] + anchor.offset; },
     measure(rows: readonly { id: bigint; height: number }[]) {

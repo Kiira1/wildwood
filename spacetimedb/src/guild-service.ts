@@ -81,7 +81,7 @@ function anonymizeAccountReports(ctx: Ctx, identity: Identity) {
     if (row) {
       const report: GuildSnapshot["battles"][number] = JSON.parse(row.payload);
       if (ref.side === "attacker" || ref.side === "defender") {
-        if ((report.result.version === 2 || report.result.version === 3)) {
+        if ((report.result.version === 2 || report.result.version === 3 || report.result.version === 4)) {
           const actor = (ref.side === "attacker" ? report.result.attackers : report.result.defenders)[ref.round];
           if (actor) { actor.name = "Deleted player"; actor.identity = ""; }
         } else if ("rounds" in report.result) {
@@ -294,7 +294,7 @@ export function createGuildService(deps: { fighterFor(ctx: Ctx, identity: Identi
         const row = ctx.db.guildBattleReport.key.find(ref.reportKey);
         if (row) {
           const report: GuildSnapshot["battles"][number] = JSON.parse(row.payload);
-          if ((report.result.version === 2 || report.result.version === 3)) {
+          if ((report.result.version === 2 || report.result.version === 3 || report.result.version === 4)) {
             const member = (ref.side === "attacker" ? report.result.attackers : report.result.defenders)[ref.round];
             if (member) member.identity = key(accountIdentity);
             ctx.db.guildBattleReport.key.update({ ...row, payload: JSON.stringify(report) });

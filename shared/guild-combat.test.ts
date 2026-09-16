@@ -24,7 +24,7 @@ describe("whole-guild combat", () => {
     expect(first.outcome).toBe("DRAW");
     expect(frames.length).toBeLessThanOrEqual(601);
     expect(frames.every(frame => frame.actors.length === 40)).toBe(true);
-    expect(frames[20].actors.some((actor, i) => actor.x !== frames[0].actors[i].x)).toBe(true);
+    expect(frames[80].actors.some((actor, i) => actor.x !== frames[0].actors[i].x)).toBe(true);
     expect(JSON.stringify(first).length).toBeLessThan(15000);
   });
   it("uses the identical tick function for an independently played replay", () => {
@@ -75,4 +75,25 @@ it("retains the original simultaneous simulation for saved version 2 battles", (
   const result = simulateGuildBattle(team(20), team(20, "b"), frame => frames.push(frame), 2);
   expect(result.version).toBe(2); expect(result.outcome).toBe("DRAW");
   expect(frames[1].actors.every((actor, i) => actor.x !== frames[0].actors[i].x)).toBe(true);
+});
+
+// These values were captured before the arrival/targeting change.
+it.each([[2, 8], [3, 10.3]] as const)("retains saved v%s outcomes and timing", (version, duration) => {
+  const side = (prefix: string, count: number) => Array.from({ length: count }, (_, i) => ({ identity: prefix + i, name: prefix + i,
+    fighter: { maxHp: 100 + i * 19, damage: 10 + i * 3, armor: 7 * i, regen: 0, attackRate: .7 }, range: 160 }));
+  expect(simulateGuildBattle(side("a", 7), side("b", 5), undefined, version))
+    .toMatchObject({ version, duration, outcome: "VICTORY", attackerSurvivors: 6, defenderSurvivors: 0 });
+});
+it("distributes random targets and keeps them stable between reinforcement waves", () => {
+  const attackers = team(20), defenders = team(20, "b"), fighters = [...attackers, ...defenders];
+  const initial = initialGuildCombat(attackers, defenders);
+  // All opponents are eligible, including an artificially closest target.
+  initial.actors[20].x = initial.actors[0].x + 1;
+  const ready = fighters.map(() => 0);
+  const first = advanceGuildCombat(fighters, 20, initial, ready);
+  expect(new Set(first.actors.slice(0, 20).map(actor => actor.target)).size).toBe(20);
+  expect(first.actors.slice(0, 20).some((actor, i) => actor.target !== i + 20)).toBe(true);
+  const next = advanceGuildCombat(fighters, 20, first, ready);
+  expect(next.actors.map(actor => actor.target)).toEqual(first.actors.map(actor => actor.target));
+  expect(advanceGuildCombat(fighters, 20, initial, ready)).toEqual(first);
 });

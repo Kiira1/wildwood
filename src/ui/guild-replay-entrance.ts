@@ -3,10 +3,15 @@ export const buildGuildReplayEntrance = buildGuildEntrance;
 export type GuildReplayEntrance = ReturnType<typeof buildGuildEntrance>;
 
 export function guildEntrancePosition(arrival: GuildReplayEntrance["arrivals"][number], time: number,
-  destination: { x: number; y: number }, side: number, width: number) {
+  destination: { x: number; y: number }, side: number, width: number, walkSpeed?: number) {
   if (time < arrival.start) return { ...destination, visible: false, entering: false };
   const progress = Math.max(0, Math.min(1, (time - arrival.start) / arrival.travel));
   if (progress === 1) return { ...destination, visible: true, entering: false };
+  if (walkSpeed !== undefined) {
+    const remaining = arrival.start + arrival.travel - time;
+    const x = destination.x + (side ? 1 : -1) * walkSpeed * remaining;
+    return { x, y: destination.y, visible: x > -60 && x < width + 60, entering: true };
+  }
   const startX = side ? width + 90 : -90;
   // Mostly constant walk speed with a soft settle into formation.
   const blend = 1 - (1 - progress) ** 1.3;

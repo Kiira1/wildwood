@@ -1,8 +1,11 @@
 import type { GuildBattleResult } from "./guild-combat";
 
+export const GUILD_MOVE_SPEED = 90;
+
 /** Shared arrival schedule: deterministic for server resolution and replay.
  * Excludes names/identities so moderation or deletion cannot change saved fights. */
-export function buildGuildEntrance(battle: Pick<GuildBattleResult, "attackers" | "defenders">) {
+export function buildGuildEntrance(battle: Pick<GuildBattleResult, "attackers" | "defenders"> & { version?: GuildBattleResult["version"] }) {
+  const walking = (battle.version ?? 4) >= 4;
   const fighters = [...battle.attackers, ...battle.defenders];
   let seed = 2166136261;
   for (const char of JSON.stringify(fighters.map(member => [member.fighter, member.range]))) {
@@ -27,13 +30,19 @@ export function buildGuildEntrance(battle: Pick<GuildBattleResult, "attackers" |
     const travel = .65 + random() * .4;
     for (const team of teams) {
       const index = team.pop();
-      if (index !== undefined) arrivals[index] = { start: time, travel, lane: (random() - .5) * 48 };
+      if (index !== undefined) {
+        const local = index < battle.attackers.length ? index : index - battle.attackers.length;
+        const rows = Math.min(5, index < battle.attackers.length ? battle.attackers.length : battle.defenders.length);
+        // Formation begins at x=270/730; enter from x=-200/1200.
+        const distance = 470 - Math.floor(local / rows) * 52;
+        arrivals[index] = { start: time, travel: walking ? distance / GUILD_MOVE_SPEED : travel, lane: (random() - .5) * 48 };
+      }
     }
-    time += .14 + random() * .22;
+    time += walking ? .55 + random() * .65 : .14 + random() * .22;
   }
-  // Full 20-v-20 teams have a short entrance, rather than a long loading parade.
+  // Retain the original compressed schedule for recorded version 3 fights.
   const last = Math.max(...arrivals.map(arrival => arrival.start));
-  if (last > 5) for (const arrival of arrivals) arrival.start *= 5 / last;
+  if (!walking && last > 5) for (const arrival of arrivals) arrival.start *= 5 / last;
   const duration = Math.ceil(Math.max(...arrivals.map(arrival => arrival.start + arrival.travel)) * 10) / 10;
-  return { arrivals, duration };
+  return { arrivals, duration, walking };
 }

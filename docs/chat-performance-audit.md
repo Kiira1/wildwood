@@ -16,6 +16,12 @@ Regression tests exercise 1,000 unchanged notifications with zero message reads/
 
 These establish bounded work and correctness, not a measured phone frame rate. Visual/device testing belongs to the user. No claim of a measured FPS improvement is made.
 
+## Follow-up after 0.709
+
+The initial window moved at every visible row boundary, despite retaining six extra rows on each side. It now consumes that buffer before refilling, with two rows remaining at the approaching edge. Ordinary scrolling therefore keeps the same mounted rows for longer.
+
+Refresh previously assigned `scrollTop` even when the target was unchanged. It now writes only for an actual position correction, while retaining anchor restoration for history prepends and variable-height measurements. Unchanged spacer heights also avoid style writes. Regression coverage verifies overscan reuse, no scroll-position writes for incoming traffic while reading history, and continued anchor preservation. Phone momentum scrolling still needs user verification.
+
 ## Remaining server scaling work
 
 Public history normally reads a bounded page through the public-chat cursor. Social history returns only 50 messages but currently scans/sorts the selected conversation on the server. Live social views and conversation summaries also scan a user's authorized history. With persistent DMs this cost can grow even though the browser stays bounded.

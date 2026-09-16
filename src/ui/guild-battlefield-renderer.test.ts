@@ -105,7 +105,8 @@ it("does not render offscreen entrants, and keeps fighting while reinforcements 
   vi.mocked(drawStartingPlayer).mockClear(); paintText.mockClear();
   const arrived = renderer.draw(entrance.duration, true, entrance.duration);
   expect(arrived.every(actor => actor.visible)).toBe(true);
-  expect(drawStartingPlayer).toHaveBeenCalledTimes(40);
+  expect(drawStartingPlayer).toHaveBeenCalledTimes(arrived.filter((_, i) => entrance.duration - timeline.deaths[i] <= 1.1).length);
+  expect(vi.mocked(drawStartingPlayer).mock.calls.length).toBeLessThan(40);
   expect(arrived.some(actor => actor.attacks > 0)).toBe(true);
   vi.mocked(drawStartingPlayer).mockClear(); renderer.draw(0, true, 0);
   expect(drawStartingPlayer).not.toHaveBeenCalled();

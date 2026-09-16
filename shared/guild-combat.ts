@@ -1,8 +1,8 @@
-import { buildGuildEntrance } from "./guild-entrance";
+import { buildGuildEntrance, GUILD_MOVE_SPEED } from "./guild-entrance";
 import { damageAfterArmor } from "./combat";
 import { duelHitMultiplier, type DuelFighter } from "./duel-combat";
 
-export const GUILD_COMBAT_VERSION = 3;
+export const GUILD_COMBAT_VERSION = 4;
 export const GUILD_COMBAT_STEP = .1;
 export const GUILD_COMBAT_LIMIT = 60;
 export type GuildAppearance = { skinTone?: number; headItem?: string; chestItem?: string; feetItem?: string; rightHandItem?: string; leftHandItem?: string };
@@ -10,7 +10,7 @@ export type GuildFighter = { identity: string; name: string; fighter: DuelFighte
 export type GuildActorState = { x: number; y: number; hp: number; target: number; cooldown: number; attacks: number; hitAt: number };
 export type GuildCombatFrame = { time: number; actors: GuildActorState[] };
 export type GuildBattleResult = {
-  version: 2 | 3; attackers: GuildFighter[]; defenders: GuildFighter[];
+  version: 2 | 3 | 4; attackers: GuildFighter[]; defenders: GuildFighter[];
   outcome: "VICTORY" | "DEFEAT" | "DRAW"; duration: number;
   attackerSurvivors: number; defenderSurvivors: number;
 };
@@ -37,32 +37,45 @@ export function guildCombatFinished(frame: GuildCombatFrame, split: number) {
   return frame.time >= GUILD_COMBAT_LIMIT || !living(frame.actors, 0, split) || !living(frame.actors, split, frame.actors.length);
 }
 /** Fixed, simultaneous ticks shared by server resolution and replay. At most 40
- * actors and 600 ticks. Target searches happen only when a target falls. */
-export function advanceGuildCombat(fighters: GuildFighter[], split: number, previous: GuildCombatFrame, arrivals?: readonly number[]): GuildCombatFrame {
+ * actors and 600 ticks. Targets stay fixed until a knockout or reinforcement wave. */
+export function advanceGuildCombat(fighters: GuildFighter[], split: number, previous: GuildCombatFrame, arrivals?: readonly number[], version: GuildBattleResult["version"] = GUILD_COMBAT_VERSION): GuildCombatFrame {
   const time = Math.round((previous.time + GUILD_COMBAT_STEP) * 10) / 10;
   const actors = previous.actors.map(actor => ({ ...actor }));
   const hits = new Float64Array(actors.length);
   const active = (index: number) => !arrivals || previous.time >= arrivals[index];
+  // Rebalance only when reinforcements become active, not every render/tick.
+  const newWave = version >= 4 && arrivals?.some(at => previous.time >= at && previous.time - GUILD_COMBAT_STEP < at);
+  const assigned = new Uint8Array(actors.length);
+  if (!newWave) for (const [i, actor] of previous.actors.entries()) {
+    if (actor.hp > 0 && active(i) && actor.target >= 0 && previous.actors[actor.target].hp > 0 && active(actor.target)) assigned[actor.target]++;
+  }
   for (let i = 0; i < actors.length; i++) {
     const actor = actors[i], before = previous.actors[i], member = fighters[i], stats = member.fighter;
     if (before.hp <= 0 || !active(i)) continue;
     actor.hp = Math.min(stats.maxHp, actor.hp + stats.regen * GUILD_COMBAT_STEP);
     const from = i < split ? split : 0, to = i < split ? actors.length : split;
-    if (actor.target < from || actor.target >= to || previous.actors[actor.target].hp <= 0 || !active(actor.target)) {
+    if (newWave || actor.target < from || actor.target >= to || previous.actors[actor.target].hp <= 0 || !active(actor.target)) {
       let distance = Infinity; actor.target = -1;
       for (let j = from; j < to; j++) {
         const candidate = previous.actors[j];
         if (candidate.hp <= 0 || !active(j)) continue;
-        const d = (candidate.x - before.x) ** 2 + (candidate.y - before.y) ** 2;
+        // Mirrored teams share the same random tie-breaks. No names/IDs enter
+        // the seed, so renaming a player cannot change a recorded outcome.
+        let seed = Math.imul((i < split ? i : i - split) + 1, 73856093)
+          ^ Math.imul(j - from + 1, 19349663) ^ Math.imul(Math.round(time * 10), 83492791);
+        seed = Math.imul(seed ^ seed >>> 16, 2246822507);
+        const d = version >= 4 ? assigned[j] + ((seed ^ seed >>> 13) >>> 0) / 4294967296
+          : (candidate.x - before.x) ** 2 + (candidate.y - before.y) ** 2;
         if (d < distance - (arrivals ? 1e-8 : 0)) { distance = d; actor.target = j; }
       }
     }
     if (actor.target < 0) continue;
+    if (version >= 4 && (newWave || actor.target !== before.target)) assigned[actor.target]++;
     const target = previous.actors[actor.target];
     const dx = target.x - before.x, dy = target.y - before.y, distance = Math.hypot(dx, dy);
     const reach = member.range ?? 72;
     if (distance > reach) {
-      const step = Math.min(distance - reach, 90 * GUILD_COMBAT_STEP);
+      const step = Math.min(distance - reach, GUILD_MOVE_SPEED * GUILD_COMBAT_STEP);
       actor.x += dx / distance * step; actor.y += dy / distance * step;
     }
     actor.cooldown -= GUILD_COMBAT_STEP;
@@ -93,9 +106,9 @@ export function advanceGuildCombat(fighters: GuildFighter[], split: number, prev
 export function simulateGuildBattle(attackers: GuildFighter[], defenders: GuildFighter[], onFrame?: (frame: GuildCombatFrame) => void, version: GuildBattleResult["version"] = GUILD_COMBAT_VERSION): GuildBattleResult {
   const fighters = [...attackers, ...defenders], split = attackers.length;
   let frame = initialGuildCombat(attackers, defenders);
-  const arrivals = version >= 3 ? buildGuildEntrance({ attackers, defenders }).arrivals.map(entry => entry.start + entry.travel) : undefined;
+  const arrivals = version >= 3 ? buildGuildEntrance({ attackers, defenders, version }).arrivals.map(entry => entry.start + entry.travel) : undefined;
   onFrame?.(frame);
-  while (!guildCombatFinished(frame, split)) { frame = advanceGuildCombat(fighters, split, frame, arrivals); onFrame?.(frame); }
+  while (!guildCombatFinished(frame, split)) { frame = advanceGuildCombat(fighters, split, frame, arrivals, version); onFrame?.(frame); }
   const attackerSurvivors = living(frame.actors, 0, split), defenderSurvivors = living(frame.actors, split, fighters.length);
   const fraction = (from: number, to: number) => frame.actors.slice(from, to).reduce((sum, actor) => sum + actor.hp, 0) / fighters.slice(from, to).reduce((sum, member) => sum + member.fighter.maxHp, 0);
   const difference = fraction(0, split) - fraction(split, fighters.length);
