@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.713": [
+    "Game tips now appear once every ten minutes, with a lighter outline matching mini chat.",
+  ],
   "0.712": [
     "Multiplayer automatically turns off after five minutes without user input, including while autofarming. Tap the eye to turn it back on.",
     "Added scrolling game tips and Patreon supporter thanks above mini chat. Toggle Game Tips in Settings.",
@@ -1908,6 +1911,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.713": "2026-09-16",
   "0.712": "2026-09-16",
   "0.711": "2026-09-15",
   "0.710": "2026-09-15",
