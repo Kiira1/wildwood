@@ -72,3 +72,36 @@ it("uses the existing overscan through small scrolls and refills before visible 
   view.window(0, 600, true);
   expect(view.needsRender(49_400, 600)).toBe(false);
 });
+
+it("absorbs fractional row measurements without changing the active scroll coordinate", () => {
+  const view = createChatViewport();
+  view.select(rows(1, 100), 360);
+  view.window(300, 500);
+  const anchor = view.anchor(300);
+  view.measure([{ id: 1n, height: 140.25 }, { id: 2n, height: 125.5 }]);
+  const space = view.preserve(anchor, 300);
+  expect(space.top).toBe(-65.75);
+  expect(view.restore(anchor, 0)).toBe(300);
+  expect(view.anchor(300)).toEqual(anchor);
+  // More measurements during the same swipe must not accumulate drift.
+  view.measure([{ id: 3n, height: 117.25 }]);
+  view.preserve(anchor, 300);
+  expect(view.restore(anchor, 0)).toBe(300);
+  expect(view.shifted()).toBe(true);
+  view.settle();
+  expect(view.restore(anchor, 0)).toBe(383);
+  expect(view.shifted()).toBe(false);
+});
+
+it("clears temporary scroll compensation when changing conversations", () => {
+  const view = createChatViewport();
+  view.select(rows(1, 50), 360);
+  view.window(200, 500);
+  const anchor = view.anchor(200);
+  view.measure([{ id: 1n, height: 150 }]);
+  view.preserve(anchor, 200);
+  view.reset();
+  view.select(rows(101, 50), 360);
+  expect(view.window(0, 500).top).toBe(0);
+  expect(view.shifted()).toBe(false);
+});

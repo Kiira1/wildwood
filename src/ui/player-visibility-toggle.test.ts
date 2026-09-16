@@ -1,6 +1,7 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { parseHTML } from "linkedom";
 import { createPlayerVisibilityToggle } from "./player-visibility-toggle";
+import { createFullscreenMovementGate } from "./fullscreen-movement";
 
 afterEach(() => vi.useRealTimers());
 function setup(saved: string | null = null) {
@@ -58,4 +59,24 @@ it("turns the actual multiplayer preference off after five minutes without input
   expect(state.setVisible).toHaveBeenLastCalledWith(true);
   expect(state.button.disabled).toBe(true);
   state.toggle.dispose();
+});
+
+it("expires while chatting and stays off when fullscreen chat closes", () => {
+  vi.useFakeTimers();
+  const { document, window } = parseHTML('<button></button>');
+  const button = document.querySelector("button") as unknown as HTMLButtonElement;
+  const apply = vi.fn(), gate = createFullscreenMovementGate(apply);
+  const toggle = createPlayerVisibilityToggle({ button, setVisible: gate.setWanted, storage: { getItem: () => "true", setItem: vi.fn() } });
+  gate.setFullscreen(true);
+  for (let i = 0; i < 5; i++) {
+    vi.advanceTimersByTime(60_000);
+    document.dispatchEvent(new window.Event("input"));
+    document.dispatchEvent(new window.Event("wheel"));
+  }
+  expect(button.getAttribute("aria-pressed")).toBe("false");
+  gate.setFullscreen(false);
+  expect(apply.mock.calls).toEqual([[true], [false]]);
+  toggle.noteManualMovement();
+  expect(button.getAttribute("aria-pressed")).toBe("false");
+  toggle.dispose(); gate.dispose();
 });

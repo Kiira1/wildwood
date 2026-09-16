@@ -50,6 +50,22 @@ function setup() {
 }
 
 describe("chat channels", () => {
+  it("keeps a fetched page loading until its portraits are prepared", async () => {
+    const h = setup();
+    let ready!: () => void;
+    const prepareChatPortraits = vi.fn(() => new Promise<void>(resolve => { ready = resolve; }));
+    Object.assign(h.coop, { prepareChatPortraits });
+    Object.assign(h.coop.social, { loadChatHistory: vi.fn(async () => ({
+      messages: [{ ...h.coop.social.guildMessages()[0], id: 15n, message: "new page with portrait" }],
+      beforeId: 15n, hasMore: false,
+    })) });
+    h.document.getElementById("chatSizeToggle")!.click(); h.button("Guild").click();
+    await settle();
+    expect(prepareChatPortraits).toHaveBeenCalledWith(["friend"]);
+    expect(h.history()).not.toContain("new page with portrait");
+    ready(); await settle();
+    expect(h.history()).toContain("new page with portrait");
+  });
   it("does not request guild history without guild membership", async () => {
     const h = setup(), loadChatHistory = vi.fn(async () => { throw new Error("Join a guild first."); });
     Object.assign(h.coop.social, { currentGuild: () => null, loadChatHistory });
@@ -441,7 +457,8 @@ describe("chat work scheduling", () => {
     let live = Array.from({ length: 50 }, (_, i) => ({ ...seed, id: BigInt(1001 + i) })), revision = 2;
     h.coop.chatMessages = () => live; h.coop.chatRevision = () => revision;
     // A deterministic variable-height layout, independent of browser visual QA.
-    const height = (element: Element) => element.classList.contains("chat-line") ? 100 + Number(BigInt((element as HTMLElement).dataset.messageId!) % 3n) * 20 : parseFloat((element as HTMLElement).style.height) || 0;
+    const height = (element: Element) => element.classList.contains("chat-line") ? 100.25 + Number(BigInt((element as HTMLElement).dataset.messageId!) % 3n) * 20
+      : (parseFloat((element as HTMLElement).style.height) || 0) + (parseFloat((element as HTMLElement).style.marginTop) || 0);
     let top = 0;
     const scrollWrites = vi.fn();
     Object.defineProperties(panel, {
@@ -450,6 +467,12 @@ describe("chat work scheduling", () => {
       scrollTop: { get: () => top, set: value => { scrollWrites(value); top = Math.max(0, Math.min(value, panel.scrollHeight - 500)); } },
     });
     Object.defineProperty(h.window.HTMLElement.prototype, "offsetHeight", { configurable: true, get() { return height(this); } });
+    h.window.HTMLElement.prototype.getBoundingClientRect = function () {
+      if (this === panel) return { top: 0, bottom: 500, height: 500 } as DOMRect;
+      let offset = 0;
+      for (const child of panel.children) { if (child === this) break; offset += height(child); }
+      return { top: offset - top, bottom: offset - top + height(this), height: height(this) } as DOMRect;
+    };
     const page = vi.fn(async (before: bigint) => ({ messages: Array.from({ length: 50 }, (_, i) => ({ ...seed, id: before - 50n + BigInt(i) })), beforeId: before - 50n, hasMore: true }));
     Object.assign(h.coop, { loadChatHistory: page });
     h.document.getElementById("chatSizeToggle")!.click();
@@ -463,15 +486,46 @@ describe("chat work scheduling", () => {
       }
     };
     // First render the upper window, then scroll into the prefetch threshold.
-    panel.scrollTop = 300; panel.dispatchEvent(new h.window.Event("scroll"));
-    panel.scrollTop = 120; const anchor = visible();
+    panel.scrollTop = 300; scrollWrites.mockClear(); panel.dispatchEvent(new h.window.Event("scroll"));
+    expect(scrollWrites).not.toHaveBeenCalled();
+    panel.scrollTop = 120;
+    panel.dispatchEvent(new h.window.Event("scroll")); await settle();
+    expect(page).not.toHaveBeenCalled();
+    panel.scrollTop = 47;
+    panel.dispatchEvent(new h.window.Event("scroll")); await settle();
+    expect(page).not.toHaveBeenCalled();
+    panel.scrollTop = 0;
+    panel.dispatchEvent(new h.window.Event("scroll")); await settle();
+    // A negative virtual origin must be rebased before the row is reachable.
+    if (!page.mock.calls.length) panel.scrollTop = 0;
+    const anchor = visible();
     panel.dispatchEvent(new h.window.Event("scroll")); await settle();
     expect(page).toHaveBeenCalledExactlyOnceWith(1001n);
+    const spinner = panel.querySelector<HTMLElement>(".chat-history-spinner")!;
+    const loadingRow = spinner.parentElement!;
+    expect(spinner.hidden).toBe(false);
+    expect(loadingRow.className).toBe("chat-history-row");
+    expect(loadingRow.parentElement).toBe(panel);
+    expect(height(loadingRow)).toBe(48);
+    expect(loadingRow.getBoundingClientRect().top).toBeGreaterThanOrEqual(0);
+    expect(loadingRow.getBoundingClientRect().bottom).toBeLessThanOrEqual(500);
+    expect(loadingRow.nextElementSibling?.classList.contains("chat-line")).toBe(true);
+    expect(h.document.querySelector(".chat-channels .chat-history-spinner")).toBeNull();
     expect(visible()).toEqual(anchor);
+    scrollWrites.mockClear();
+    await vi.advanceTimersByTimeAsync(159);
+    expect(scrollWrites).not.toHaveBeenCalled();
+    expect(panel.querySelector('[data-message-id="1000"]')).toBeNull();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(spinner.hidden).toBe(true);
+    // New history fills the spinner's space; the previously read message
+    // stays at the same pixel even if a preceding message is now also visible.
+    expect(panel.querySelector(`[data-message-id="${anchor![0]}"]`)!.getBoundingClientRect().top).toBe(-Number(anchor![1]));
+    const loadedAnchor = visible();
     expect(panel.querySelectorAll(".chat-line").length).toBeLessThan(25);
     scrollWrites.mockClear();
     live = [...live.slice(1), { ...seed, id: 1051n, message: "live while reading" }]; revision++; h.chat.refresh();
-    expect(visible()).toEqual(anchor);
+    expect(visible()).toEqual(loadedAnchor);
     expect(panel.textContent).not.toContain("live while reading");
     expect(scrollWrites).not.toHaveBeenCalled();
     // Native scrolling inside the mounted buffer must not be repositioned.
@@ -480,6 +534,28 @@ describe("chat work scheduling", () => {
     panel.dispatchEvent(new h.window.Event("scroll"));
     expect(visible()).toEqual(beforeScroll);
     expect(scrollWrites).not.toHaveBeenCalled();
+    // Every later history boundary needs the same in-flow loading row.
+    for (let batch = 2; batch <= 4; batch++) {
+      panel.scrollTop = 0;
+      panel.dispatchEvent(new h.window.Event("scroll"));
+      await settle();
+      if (page.mock.calls.length < batch) {
+        panel.scrollTop = 0;
+        panel.dispatchEvent(new h.window.Event("scroll"));
+        await settle();
+      }
+      expect(page).toHaveBeenCalledTimes(batch);
+      expect(panel.querySelector(".chat-history-spinner")).toBe(spinner);
+      expect(spinner.hidden).toBe(false);
+      expect(loadingRow.getBoundingClientRect().top).toBeGreaterThanOrEqual(0);
+      expect(loadingRow.getBoundingClientRect().bottom).toBeLessThanOrEqual(500);
+      const boundaryMessage = panel.querySelector<HTMLElement>(".chat-line")!;
+      const boundaryId = boundaryMessage.dataset.messageId;
+      const boundaryTop = boundaryMessage.getBoundingClientRect().top;
+      await vi.advanceTimersByTimeAsync(160);
+      expect(spinner.hidden).toBe(true);
+      expect(panel.querySelector(`[data-message-id="${boundaryId}"]`)!.getBoundingClientRect().top).toBe(boundaryTop);
+    }
   });
 });
 

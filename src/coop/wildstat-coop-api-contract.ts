@@ -113,6 +113,7 @@ type ExpectedApiKey =
   | "acknowledgeRelease"
   | "releaseWindow"
   | "profileIcon"
+  | "prepareChatPortraits"
   | "pulseDuel"
   | "recordPlayerDeath"
   | "regularEnemyLocalPosition"

@@ -180,3 +180,28 @@ it("keeps each player's portrait isolated when one changes and the batch returns
   expect([a, b, c].map(id => directory.api.profileIcon(id.toHexString()))).toEqual([17, 190, 174]);
   directory.clearSession();
 });
+
+it("holds a history page for missing portraits, then reuses cached pictures immediately", async () => {
+  const f = fixture(), sender = identity(1), ready = vi.fn();
+  f.portraits.request(sender);
+  const waiting = f.portraits.ready([sender.toHexString()]).then(ready);
+  await vi.advanceTimersByTimeAsync(0);
+  expect(ready).not.toHaveBeenCalled();
+  f.rows([{ identity: sender, profileIcon: 64 }]); f.requests[0].apply();
+  await waiting;
+  expect(ready).toHaveBeenCalledOnce();
+  await f.portraits.ready([sender.toHexString()]);
+  expect(f.requests).toHaveLength(1);
+  f.portraits.clear();
+});
+it("releases picture waits on failure, timeout, and account changes", async () => {
+  const f = fixture(), sender = identity(1);
+  f.portraits.request(sender);
+  const waiting = f.portraits.ready([sender.toHexString()]);
+  await vi.advanceTimersByTimeAsync(0); f.requests[0].fail(); await waiting;
+  const retry = f.portraits.ready([sender.toHexString()]);
+  await vi.advanceTimersByTimeAsync(1500); await retry;
+  const cancelled = f.portraits.ready([sender.toHexString()]);
+  f.portraits.clear(); await cancelled;
+  expect(vi.getTimerCount()).toBe(0);
+});

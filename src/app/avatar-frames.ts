@@ -1,5 +1,6 @@
 import { AVATAR_FRAME_ASSET, type AvatarFrameState } from "../../shared/avatar-frames";
 import { createAvatarFrameGlow } from "./avatar-frame-glow";
+import { preloadImages } from "./image-preload";
 
 type Entry = AvatarFrameState & { fetchedAt: number };
 const cache = new Map<string, Entry>();
@@ -23,6 +24,7 @@ function paint(element: HTMLElement) {
   let overlay = element.querySelector<HTMLImageElement>(":scope > .avatar-frame-art");
   let glow = element.querySelector<HTMLElement>(":scope > .avatar-frame-glow");
   if (frame === "none") { overlay?.remove(); glow?.remove(); return; }
+  void preloadImages([AVATAR_FRAME_ASSET]);
   if (!overlay) {
     overlay = document.createElement("img"); overlay.className = "avatar-frame-art";
     overlay.src = AVATAR_FRAME_ASSET; overlay.alt = ""; overlay.setAttribute("aria-hidden", "true");

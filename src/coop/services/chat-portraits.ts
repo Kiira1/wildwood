@@ -11,6 +11,7 @@ export function createChatPortraits(options: {
   const cache = new Map<string, { icon: number | undefined; retryAt: number }>();
   const queued = new Map<string, { identity: Identity; attempt: number; readyAt: number }>();
   const pending = new Set<string>();
+  const waiting = new Set<(finished?: ReadonlySet<string>) => void>();
   let timer: ReturnType<typeof setTimeout> | undefined;
   let cancel: (() => void) | null = null;
 
@@ -60,6 +61,7 @@ export function createChatPortraits(options: {
         while (queued.size > 2048) queued.delete(queued.keys().next().value!);
       }
       for (const [key] of batch) pending.delete(key);
+      for (const check of waiting) check(new Set(batch.map(([key]) => key)));
       cancel = null;
       unsubscribeIfActive(handle);
       if (applied && current) options.changed();
@@ -77,10 +79,26 @@ export function createChatPortraits(options: {
   }
   return {
     icon: (identity: string) => cache.get(identity)?.icon,
+    // Requests have already been queued by message presentation. Wait only
+    // for missing portraits; a usable cached picture never delays a page.
+    ready(identities: readonly string[]) {
+      const missing = new Set(identities.filter(key => cache.get(key)?.icon === undefined && (queued.has(key) || pending.has(key))));
+      if (!missing.size) return Promise.resolve();
+      return new Promise<void>(resolve => {
+        const finish = () => { clearTimeout(deadline); waiting.delete(check); resolve(); };
+        const check = (finished?: ReadonlySet<string>) => {
+          for (const key of missing) if (cache.get(key)?.icon !== undefined || finished?.has(key)) missing.delete(key);
+          if (!missing.size) finish();
+        };
+        const deadline = setTimeout(finish, 1500);
+        waiting.add(check);
+      });
+    },
     remember(identity: string, icon: number) {
       cache.delete(identity);
       cache.set(identity, { icon, retryAt: Date.now() + 60_000 });
       while (cache.size > 2048) cache.delete(cache.keys().next().value!);
+      for (const check of waiting) check();
     },
     request(identity: Identity) {
       const key = identity.toHexString();
@@ -90,10 +108,12 @@ export function createChatPortraits(options: {
       schedule();
     },
     clear() {
+      const cancelled = new Set([...queued.keys(), ...pending]);
       queued.clear();
       cancel?.();
       clearTimeout(timer); timer = undefined;
       pending.clear(); cache.clear();
+      for (const check of waiting) check(cancelled);
     },
   };
 }

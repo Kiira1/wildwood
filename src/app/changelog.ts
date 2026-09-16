@@ -1,4 +1,11 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.715": [
+    "Chat keeps your reading position and scrolling momentum, with an inline spinner when older messages load.",
+    "Chat portraits and supporter frame artwork reuse cached images; older pages prepare portraits before appearing.",
+    "Profile stats show a loading spinner while reserving their space.",
+    "Only manual character movement resets the five-minute multiplayer idle timer.",
+    "Added account sign-in guidance and Discord links in Account settings, with Patreon available on web.",
+  ],
   "0.714": [
     "Square inventory slots use five columns when space allows, with upgraded stat percentages beneath equipment artwork.",
     "Cosmetic-only items now have their own inventory, separate from equipment.",
@@ -1921,6 +1928,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.715": "2026-09-16",
   "0.714": "2026-09-16",
   "0.713": "2026-09-16",
   "0.712": "2026-09-16",

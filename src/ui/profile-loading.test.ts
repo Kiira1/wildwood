@@ -1,0 +1,23 @@
+import { expect, it } from "vitest";
+import { parseHTML } from "linkedom";
+import { createProfileLoading } from "./profile-loading";
+it("reserves collapsed stats beneath the spinner and restores content or an error", () => {
+  const { document } = parseHTML('<div class="profile-tab-panels"><div id="loading" role="status"></div><section><div id="stats"><div>Previous expanded stats</div></div></section></div>');
+  const loading = document.getElementById("loading")!, grid = document.getElementById("stats")!, panels = loading.parentElement!;
+  const state = createProfileLoading(loading, grid);
+  state.show();
+  expect(grid.querySelectorAll(".profile-stat-column")).toHaveLength(2);
+  expect(grid.querySelectorAll(".profile-stat-column > div")).toHaveLength(10);
+  expect(grid.textContent).toBe("");
+  expect(loading.querySelector(".profile-loading-spinner")).not.toBeNull();
+  expect(panels.getAttribute("aria-busy")).toBe("true");
+  state.hide();
+  expect(loading.hidden).toBe(true);
+  expect(panels.classList.contains("is-loading")).toBe(false);
+  state.show(); state.fail();
+  expect(loading.textContent).toBe("PLAYER DATA UNAVAILABLE");
+  expect(loading.querySelector(".profile-loading-spinner")).toBeNull();
+  expect(panels.hasAttribute("aria-busy")).toBe(false);
+  state.show();
+  expect(loading.querySelector(".profile-loading-spinner")).not.toBeNull();
+});

@@ -51,6 +51,16 @@ type StartupAuthElements = {
 };
 
 function startupElements(documentValue: Document): StartupAuthElements {
+  const signInButton = documentValue.getElementById("signInFromStartBtn");
+  if (signInButton && !documentValue.getElementById("accountSignInHint")) {
+    const hint = documentValue.createElement("p");
+    hint.id = "accountSignInHint"; hint.className = "account-sign-in-hint";
+    const detail = documentValue.createElement("span");
+    detail.textContent = "Google and email links can open different characters.";
+    hint.replaceChildren("Already have an account? Use your original sign-in method.", detail);
+    signInButton.before(hint);
+    signInButton.setAttribute("aria-describedby", hint.id);
+  }
   function requireElement<T extends HTMLElement>(id: string) {
     const element = documentValue.getElementById(id);
     if (!element) throw new Error(`Missing startup element #${id}`);

@@ -46,5 +46,5 @@ export function createPlayerVisibilityToggle(options: {
   refresh();
   options.setVisible(visible);
   idle.setEnabled(visible);
-  return { dispose() { idle.dispose(); clearTimeout(timer); options.button.removeEventListener("click", click); } };
+  return { noteManualMovement: idle.noteManualMovement, dispose() { idle.dispose(); clearTimeout(timer); options.button.removeEventListener("click", click); } };
 }

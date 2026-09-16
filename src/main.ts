@@ -513,7 +513,7 @@ import {
   // so autofarm never depends on the current boss's health or respawn state.
   const farmUnlocked = () => Boolean(coop?.savedProgress?.()?.desertUnlocked);
   const fullscreenMovement = createFullscreenMovementGate(visible => coop?.setRemotePlayersVisible(visible));
-  createPlayerVisibilityToggle({
+  const playerVisibility = createPlayerVisibilityToggle({
     button: gameElements.playerVisibilityToggle,
     setVisible: fullscreenMovement.setWanted, storage: localStorage,
   });
@@ -1153,7 +1153,12 @@ import {
       runtimeHud.clearTransientUi();
       updateHud(true);
     },
-    movement: (dt) => onboarding?.blocksInput() ? { x: 0, y: 0, source: "none" } : autoFarm.movement(playerInput.movement(dt), dt),
+    movement: (dt) => {
+      if (onboarding?.blocksInput()) return { x: 0, y: 0, source: "none" };
+      const manual = playerInput.movement(dt);
+      if (manual.x || manual.y) playerVisibility.noteManualMovement();
+      return autoFarm.movement(manual, dt);
+    },
     isMapTransitioning: () => mapController.isMapTransitioning(),
     resolvePortalCollision: () => mapController.resolvePortalCollision(),
     resolveDragonCollision: () => bossController.resolveDragonCollision(),

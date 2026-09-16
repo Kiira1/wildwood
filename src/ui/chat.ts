@@ -1,4 +1,5 @@
 import { createChatViewport } from "./chat-viewport";
+import { createChatScrollIdle } from "./chat-scroll-idle";
 import { applyAvatarFrame } from "../app/avatar-frames";
 import { applyProfileIcon } from "../app/profile-icons";
 import { normalizeProfileIcon } from "../../shared/profile-icons";
@@ -74,6 +75,7 @@ type CoopClient = {
   localIdentity?: () => string;
   isGuest?: (identity: string) => boolean;
   profileIcon?: (identity: string) => number;
+  prepareChatPortraits?: (identities: readonly string[]) => Promise<void>;
   playerGender?: (identity: string) => PlayerGender;
   chatRevision?: () => number;
   chatHistoryRevision?: () => number;
@@ -132,6 +134,18 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
   unreadBadge.setAttribute("role", "status");
   const drafts = new Map<string, string>();
   const history = createChatHistory<ChatMessage>();
+  const scrollIdle = createChatScrollIdle();
+  const historySpinner = document.createElement("span");
+  historySpinner.className = "chat-history-spinner";
+  historySpinner.hidden = true;
+  historySpinner.setAttribute("role", "status");
+  historySpinner.setAttribute("aria-label", "Loading older messages");
+  const historyRow = document.createElement("div");
+  historyRow.className = "chat-history-row";
+  const historyRowHeight = 48;
+  historyRow.style.height = `${historyRowHeight}px`;
+  historyRow.append(historySpinner);
+  const historyRowId = -1n; // Real message IDs are positive.
   const latestButton = document.createElement("button");
   latestButton.id = "chatLatestBtn";
   latestButton.type = "button";
@@ -143,10 +157,15 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
   const topSpacer = document.createElement("div"), bottomSpacer = document.createElement("div");
   for (const spacer of [topSpacer, bottomSpacer]) { spacer.className = "chat-viewport-spacer"; spacer.setAttribute("aria-hidden", "true"); }
   let viewportContext = "";
+  let settlingViewport = false;
   let originalTarget: bigint | null = null;
   function setSpacers(space: { top: number; bottom: number }) {
-    const top = `${space.top}px`, bottom = `${space.bottom}px`;
+    const top = `${Math.max(0, space.top)}px`, bottom = `${space.bottom}px`;
+    // At the history boundary an estimate correction can extend above zero.
+    // A temporary negative margin keeps the visible row still until idle.
+    const margin = `${Math.min(0, space.top)}px`;
     if (topSpacer.style.height !== top) topSpacer.style.height = top;
+    if (topSpacer.style.marginTop !== margin) topSpacer.style.marginTop = margin;
     if (bottomSpacer.style.height !== bottom) bottomSpacer.style.height = bottom;
   }
   function refreshLatestButton() {
@@ -155,6 +174,7 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
     latestButton.disabled = history.state().loading;
   }
   const channelPicker = createChatChannelPicker((nextChannel, username, identity) => {
+    scrollIdle.reset();
     drafts.set(conversationKey(), elements.input.value);
     channel = nextChannel;
     privatePeer = username;
@@ -185,7 +205,12 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
       ? (beforeId: bigint) => coop.social!.loadChatHistory!(channel === "guild" ? "guild" : "dm", privatePeerIdentity || privatePeer, beforeId) : undefined;
     if (!fetch) return;
     try {
-      const pending = history.load(fetch, currentMessages(), latest);
+      const pending = history.load(async before => {
+        const page = await fetch(before);
+        await coop?.prepareChatPortraits?.([...new Set(page.messages.map(message => message.sender))]);
+        if (!latest) await scrollIdle.wait();
+        return page;
+      }, currentMessages(), latest);
       refresh();
       const changed = await pending;
       if (changed && key === conversationKey() && identity === getCoop()?.localIdentity?.()) {
@@ -322,6 +347,7 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
     if (closingComposer) elements.input.blur();
     large = nextLarge;
     if (!large) {
+      scrollIdle.reset();
       messageActions.close(false);
       setPendingReply(null);
     }
@@ -397,6 +423,7 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
     const now = Date.now();
     history.select(`${identity}:${conversationKey()}:${coop?.social?.historyRevision?.() ?? 0}:${coop?.chatHistoryRevision?.() ?? 0}:${large}`);
     const historyState = history.state();
+    historySpinner.hidden = !large || !enabled || !historyState.loading;
 
     const readingLatest = enabled && large && document.visibilityState !== "hidden"
       && (renderedRevision === "" || (!historyState.frozen && atLatest));
@@ -426,10 +453,21 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
     const context = `${identity}:${conversationKey()}:${large}`;
     if (context !== viewportContext) { viewportContext = context; viewport.reset(); }
     const previousScrollTop = elements.messages.scrollTop || 0;
+    // Measurement compensation may put older rows above scrollTop=0. Once
+    // native scrolling reaches that edge, restore their reachable coordinates.
+    const revealHistoryBoundary = large && previousScrollTop <= 0 && viewport.shifted();
     const virtualAnchor = viewport.anchor(previousScrollTop);
     const previousScrollHeight = elements.messages.scrollHeight || 0;
     const distanceFromBottom = previousScrollHeight - (elements.messages.clientHeight || 0) - previousScrollTop;
     const followNewestMessage = originalTarget === null && (!large || renderedRevision === "" || (!historyState.frozen && distanceFromBottom <= 16));
+    // Preserve the actual on-screen row, not just accumulated estimated heights.
+    // Fractional text layout and late portrait/reaction changes can otherwise
+    // make the virtual anchor disagree with what the player is reading.
+    const viewportBounds = large && !followNewestMessage && originalTarget === null
+      ? elements.messages.getBoundingClientRect() : null;
+    const visibleAnchor = viewportBounds && [...renderedRows.values()].map(row => ({
+      element: row.element, bounds: row.element.getBoundingClientRect(),
+    })).find(row => row.bounds.height > 0 && row.bounds.bottom > viewportBounds.top && row.bounds.top < viewportBounds.bottom);
     const channelMessages = history.messages(currentMessages());
     const allMessages = (channelMessages ?? []).filter((message) =>
       (channel === "private" || now - message.sentAtMs < CHAT_DISPLAY_TTL_MS) && !coop?.isPlayerBlocked?.(message.sender)
@@ -438,12 +476,20 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
     // Do not rely on scrolling hidden rows in compact mode. Its DOM contains
     // exactly the newest two rows in the same oldest-to-newest order as the
     // expanded view.
-    viewport.select(allMessages, elements.messages.clientWidth || 0);
-    const targetAnchor = originalTarget === null ? virtualAnchor : { id: originalTarget, offset: 0 };
+    if (revealHistoryBoundary || !scrollIdle.active() || followNewestMessage || originalTarget !== null) viewport.settle();
+    // Reserve a real row at the history boundary before a request starts.
+    // Showing the spinner therefore changes neither layout nor momentum.
+    const hasHistoryRow = large && (historyState.hasMore || historyState.loading);
+    const historyRowCount = hasHistoryRow ? 1 : 0;
+    viewport.select(hasHistoryRow ? [{ id: historyRowId }, ...allMessages] : allMessages, elements.messages.clientWidth || 0);
+    const targetAnchor = originalTarget !== null ? { id: originalTarget, offset: 0 }
+      : visibleAnchor ? { id: BigInt(visibleAnchor.element.dataset.messageId!), offset: viewportBounds!.top - visibleAnchor.bounds.top }
+        : virtualAnchor;
     originalTarget = null;
     const windowTop = viewport.restore(targetAnchor, previousScrollTop);
     const windowRange = viewport.window(windowTop, elements.messages.clientHeight || 600, followNewestMessage);
-    const messages = large ? allMessages.slice(windowRange.start, windowRange.end) : allMessages.slice(-2);
+    const messages = large ? allMessages.slice(Math.max(0, windowRange.start - historyRowCount), Math.max(0, windowRange.end - historyRowCount)) : allMessages.slice(-2);
+    const showHistoryRow = hasHistoryRow && windowRange.start === 0;
     if (large) setSpacers(windowRange);
     renderedRevision = revision;
     nextExpiryAt = channel !== "private" && allMessages.length > 0 ? allMessages[0].sentAtMs + CHAT_DISPLAY_TTL_MS : Number.POSITIVE_INFINITY;
@@ -600,7 +646,7 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
       }
       nextRows.set(rowKey, { signature, element: line });
     }
-    const ordered = large ? [topSpacer, ...[...nextRows.values()].map(row => row.element), bottomSpacer] : [...nextRows.values()].map(row => row.element);
+    const ordered = large ? [topSpacer, ...(showHistoryRow ? [historyRow] : []), ...[...nextRows.values()].map(row => row.element), bottomSpacer] : [...nextRows.values()].map(row => row.element);
     const retained = new Set(ordered);
     for (const child of [...elements.messages.children]) {
       if (!retained.has(child as HTMLDivElement)) child.remove();
@@ -612,14 +658,28 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
     }
     // Keep only displayed rows, including when switching channels or accounts.
     renderedRows = nextRows;
-    if (large) setSpacers(viewport.measure(messages.map(message => ({ id: message.id,
-      height: nextRows.get(`${identity}:${conversationKey()}:${large}:${message.id}`)?.element.offsetHeight ?? 0 }))));
+    if (large) setSpacers(viewport.measure([...(hasHistoryRow ? [{ id: historyRowId, height: historyRowHeight }] : []), ...messages.map(message => {
+      const element = nextRows.get(`${identity}:${conversationKey()}:${large}:${message.id}`)?.element;
+      return { id: message.id, height: element?.getBoundingClientRect().height || element?.offsetHeight || 0 };
+    })]));
+    if (large && !followNewestMessage && scrollIdle.active() && !revealHistoryBoundary) {
+      setSpacers(viewport.preserve(targetAnchor, windowTop));
+      if (viewport.shifted() && !settlingViewport) {
+        settlingViewport = true;
+        void scrollIdle.wait().then(() => {
+          settlingViewport = false;
+          if (large && enabled && viewport.shifted()) { viewportRevision++; refresh(); }
+        });
+      }
+    }
     // Restore only when the anchor actually moved. Even assigning the current
     // scrollTop can interfere with native momentum scrolling on mobile.
     const scrollHeight = elements.messages.scrollHeight || 0;
     const heightChange = scrollHeight - previousScrollHeight;
+    const retainedAnchor = visibleAnchor && nextRows.get(`${identity}:${conversationKey()}:${large}:${visibleAnchor.element.dataset.messageId}`)?.element;
     const desiredTop = followNewestMessage
       ? Math.max(0, scrollHeight - (elements.messages.clientHeight || 0))
+      : retainedAnchor ? Math.max(0, elements.messages.scrollTop + retainedAnchor.getBoundingClientRect().top - visibleAnchor!.bounds.top)
       : Math.max(0, large ? viewport.restore(targetAnchor, previousScrollTop + Math.min(0, heightChange)) : previousScrollTop + Math.min(0, heightChange));
     if (Math.abs((elements.messages.scrollTop || 0) - desiredTop) > .5) elements.messages.scrollTop = desiredTop;
     lastScrollTop = elements.messages.scrollTop || 0;
@@ -644,6 +704,7 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
     document.addEventListener("visibilitychange", refresh);
     latestButton.addEventListener("click", () => { void loadHistory(true); });
     elements.messages.addEventListener("scroll", () => {
+      scrollIdle.activity();
       if (scrollFrame || !large || !enabled || (channel === "private" && !privatePeer)) return;
       scrollFrame = true;
       requestAnimationFrame(() => {
@@ -656,12 +717,22 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
         atLatest = distance <= 16;
         if (!atLatest) history.freeze(currentMessages());
         refreshLatestButton();
-        if (viewport.needsRender(top, elements.messages.clientHeight || 600)) { viewportRevision++; refresh(); }
-        if (scrollingUp && top <= 240) void loadHistory();
+        if (viewport.needsRender(top, elements.messages.clientHeight || 600) || (top <= 0 && viewport.shifted())) { viewportRevision++; refresh(); }
+        // ScrollTop alone is unreliable while virtual row heights are being
+        // corrected. Wait until the actual loading row is fully on screen.
+        const boundary = scrollingUp && historyRow.parentElement === elements.messages
+          ? historyRow.getBoundingClientRect() : null;
+        const bounds = boundary ? elements.messages.getBoundingClientRect() : null;
+        if (boundary && bounds && boundary.top >= bounds.top - .5 && boundary.bottom <= bounds.bottom) void loadHistory();
         else if (atLatest && history.state().frozen && !history.state().detached && !history.state().loading) void loadHistory(true);
         else if (atLatest) refresh();
       });
     }, { passive: true });
+    elements.messages.addEventListener("touchstart", () => scrollIdle.touchStart(), { passive: true });
+    for (const event of ["touchend", "touchcancel"]) {
+      elements.messages.addEventListener(event, () => scrollIdle.touchEnd(), { passive: true });
+    }
+    elements.messages.addEventListener("wheel", () => scrollIdle.activity(), { passive: true });
     window.addEventListener("resize", () => { if (large) { viewportRevision++; refresh(); } });
     elements.toggle.addEventListener("click", () => {
       enabled = !enabled;

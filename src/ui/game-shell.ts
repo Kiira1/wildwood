@@ -146,8 +146,8 @@ const afterUpdateGateShell = String.raw`
       <button id="profileStatsTab" class="profile-tab is-active" type="button" role="tab" aria-selected="true" aria-controls="profileStatsPanel">STATS</button>
       <button id="profileOverviewTab" class="profile-tab" type="button" role="tab" aria-selected="false" aria-controls="profileOverviewPanel">INFO</button>
     </div>
-    <div id="playerProfileLoading" class="profile-loading">LOADING PLAYER…</div>
     <div class="profile-tab-panels">
+      <div id="playerProfileLoading" class="profile-loading" role="status" hidden></div>
       <section id="profileOverviewPanel" class="profile-panel" role="tabpanel" aria-labelledby="profileOverviewTab" hidden>
         <dl class="profile-grid">
           <div><dt>DATE JOINED</dt><dd id="profileJoined">—</dd></div>

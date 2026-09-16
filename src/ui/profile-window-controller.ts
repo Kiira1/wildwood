@@ -1,4 +1,5 @@
 import { createProfileNameEditor } from "./profile-name-editor";
+import { createProfileLoading } from "./profile-loading";
 import type { NameChangeStatus } from "../../shared/name-change";
 import { applyAvatarFrame } from "../app/avatar-frames";
 import type { PlayerProfileData } from "../wildstat-coop";
@@ -41,6 +42,7 @@ export function createProfileWindowController(elements: {
 }) {
   let identity = "";
   let profileData: Profile | null = null;
+  const loading = createProfileLoading(elements.loading, elements.statGrid);
   const equipmentElements: Record<ProfileEquipmentSlot, HTMLButtonElement> = {
     HEAD: elements.equipmentHead,
     CHEST: elements.equipmentChest,
@@ -171,7 +173,7 @@ export function createProfileWindowController(elements: {
     elements.timePlayed.textContent = api.formatPlayedTime(lifetime.playedSeconds + activeSeconds); elements.kills.textContent = Math.round(lifetime.enemyKills).toLocaleString();
     elements.online.textContent = presence; elements.online.style.color = online ? "#72ef58" : "#b7c5b7";
     api.renderStats(profile, elements.statGrid);
-    elements.loading.hidden = true;
+    loading.hide();
     elements.overviewPanel.hidden = !elements.overviewTab.classList.contains("is-active");
     elements.statsPanel.hidden = !elements.statsTab.classList.contains("is-active");
   }
@@ -187,13 +189,16 @@ export function createProfileWindowController(elements: {
     const online = api.isOnline(nextIdentity); elements.presence.textContent = online ? "Online" : "CHECKING LAST SEEN"; elements.presence.classList.toggle("is-online", online);
     api.paintIcon(elements.icon, api.profileIcon(nextIdentity)); applyAvatarFrame(elements.icon, nextIdentity); const own = nextIdentity === api.localIdentity(); elements.icon.classList.toggle("is-editable", own); elements.icon.disabled = !own; elements.editName.hidden = !own; elements.genderSetting.hidden = !own; closeGenderChoices(); if (own) updateGenderChoices(api.playerGender(nextIdentity));
     if (elements.settings) elements.settings.hidden = !own;
-    renderEquipment(null); updatePreview(nextIdentity, own); renderPower("—"); elements.loading.hidden = false; elements.overviewPanel.hidden = true; elements.statsPanel.hidden = true; selectTab("stats"); elements.statsPanel.hidden = true;
+    renderEquipment(null); updatePreview(nextIdentity, own); renderPower("—"); selectTab("stats"); loading.show();
     const cached = api.profile(nextIdentity); if (cached) { render(cached); return; }
-    const loaded = await api.loadProfile(nextIdentity); if (nextIdentity !== identity) return; if (loaded) render(loaded); else elements.loading.textContent = "PLAYER DATA UNAVAILABLE";
+    try {
+      const loaded = await api.loadProfile(nextIdentity); if (nextIdentity !== identity) return;
+      if (loaded) render(loaded); else loading.fail();
+    } catch { if (nextIdentity === identity) loading.fail(); }
   }
 
   function close() {
-    closeNameEditor(); closeGenderChoices(); elements.skinChoices.hidden = true; elements.window.hidden = true; elements.guest.hidden = true; identity = ""; profileData = null; renderEquipment(null); elements.loading.textContent = "LOADING PLAYER…"; api.releaseProfile();
+    closeNameEditor(); closeGenderChoices(); elements.skinChoices.hidden = true; elements.window.hidden = true; elements.guest.hidden = true; identity = ""; profileData = null; renderEquipment(null); loading.hide(); api.releaseProfile();
   }
 
   const nameEditor = createProfileNameEditor({ overlay: elements.nameEditor, form: elements.nameForm, input: elements.nameInput, save: elements.saveName }, api);
