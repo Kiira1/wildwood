@@ -42,14 +42,23 @@ was not weakened. Review suspended-session acknowledgement handling separately.
 ## Immediate older-app compatibility hotfix
 
 The initial protocol requirement blocked older installed clients. Normal gameplay
-now accepts protocols 104 and 105; protocol 103 remains blocked. A private
-`duel_wire_access` table and server-enforced visibility filters prevent protocol
+now accepts protocols 104 and 105; protocol 103 remains blocked. An indexed
+`duel_wire_access` lookup table and server-enforced visibility filters prevent protocol
 104 clients from receiving the expanded `duel` or `duel_replay` rows. Protocol 105
 registration grants access to all historical combat versions; registering 104
 revokes it. Duels require both players to use 0.709 or newer. Existing sessions
 are backfilled through an owner-only reducer. No client rebuild is required for
 this compatibility recovery. Previously blocked apps may need one restart.
 
-The bridge changes only row visibility and adds a private table. All saved duel
+The bridge changes only row visibility and adds a protocol lookup table. All saved duel
 and player data remain intact. The separate bindings stay unchanged; do not
 remove the visibility filters while protocol 104 is accepted.
+
+
+Live subscription verification caught two additional SpacetimeDB requirements:
+RLS join lookup tables must be public, and join columns must be indexed. The
+lookup contains only opaque public player identities and combat format numbers.
+After correcting both, real WebSocket subscriptions passed with protocols 104
+and 105. Server schema preflight and mocked reducer tests alone did not exercise
+these query execution requirements. Preserve this live subscription check in
+future migrations involving visibility filters.

@@ -2,9 +2,11 @@ import { table, t } from "spacetimedb/server";
 
 // Old native clients can continue playing, but must never receive the expanded
 // duel row layout. Visibility filters apply to both subscriptions and SQL.
-export const duelWireAccess = table({ public: false,
+// RLS join lookups must be public and indexed in SpacetimeDB. This table holds
+// only already-public identity IDs and decoder format numbers, never secrets.
+export const duelWireAccess = table({ public: true,
   indexes: [{ accessor: "byIdentity", algorithm: "btree", columns: ["identity"] as const }],
-}, { key: t.string().primaryKey(), identity: t.identity(), combatVersion: t.u8() });
+}, { key: t.string().primaryKey(), identity: t.identity(), combatVersion: t.u8().index("btree") });
 
 export function syncDuelWireAccess(ctx: any, protocol: number) {
   const existing = [...ctx.db.duelWireAccess.byIdentity.filter(ctx.sender)] as any[];
