@@ -1,3 +1,4 @@
+import { swordSwingPose, drawSwordTrail } from "./sword-swing";
 import { defaultWeaponAlignment } from "./equipment-alignment";
 import { EXPANSION_HEAD_FRAME, DEFAULT_HEAD_ALIGNMENT } from "./player-head-template";
 import { drawPlayerHead, drawPlayerEyes } from "./player-face";
@@ -232,6 +233,7 @@ export function drawStartingPlayer(
   const heldSpritePresentation = heldPresentation?.kind === "SPRITE" && heldPresentation.layer === "HAND"
     ? heldPresentation
     : undefined;
+  const swordHeld = heldSpritePresentation?.handAction === "SWING";
   const bowHeld = heldSpritePresentation?.handAction === "BOW";
   // Keep the grip attached to the same hand in local character space.
   // The actor transform mirrors it when turning; a second facing-dependent
@@ -251,21 +253,21 @@ export function drawStartingPlayer(
       const windup = attackElapsed / .12;
       heldX -= 11 * (1 - (1 - windup) * (1 - windup));
       heldY += 2 * windup;
-    } else if (attackElapsed >= .12 && attackElapsed < .20) {
+    } else if (!swordHeld && attackElapsed >= .12 && attackElapsed < .20) {
       heldVisible = false;
-    } else if (attackElapsed >= .20 && attackElapsed < .42) {
+    } else if (!swordHeld && attackElapsed >= .20 && attackElapsed < .42) {
       const reload = (attackElapsed - .20) / .22;
       heldX += 14 * (1 - reload);
       heldY -= Math.sin(reload * Math.PI) * 5;
     }
-  } else if (attackElapsed > 0 && attackElapsed < .12) {
+  } else if (!swordHeld && attackElapsed > 0 && attackElapsed < .12) {
     const windup = attackElapsed / .12;
     heldX -= 6 * (1 - (1 - windup) * (1 - windup));
     heldY += 2 * windup;
-  } else if (attackElapsed >= .12 && attackElapsed < .20) {
+  } else if (!swordHeld && attackElapsed >= .12 && attackElapsed < .20) {
     const release = (attackElapsed - .12) / .08;
     heldX += 4 * (1 - release);
-  } else if (attackElapsed >= .20 && attackElapsed < .42) {
+  } else if (!swordHeld && attackElapsed >= .20 && attackElapsed < .42) {
     const settle = (attackElapsed - .20) / .22;
     heldX += 3 * (1 - settle);
     heldY -= Math.sin(settle * Math.PI) * 2;
@@ -350,7 +352,20 @@ export function drawStartingPlayer(
       : 0;
     ctx.rotate(baseRotation + runMotion.rotation);
     ctx.scale(bowAlignment.scaleX, 1);
-    drawLayer(ctx, asset, -width / 2, -height / 2, width, height, "weapon", true);
+    if (swordHeld && readyImage(asset)) {
+      const alignment = options.alignment?.weapon ?? defaultWeaponAlignment(heldSpritePresentation) ?? { x: 0, y: 0, scale: 1 };
+      const pose = swordSwingPose(options.throwClock ?? 0);
+      const aim = options.combatFacing == null ? 0 : (facingLeft ? Math.PI - options.combatFacing : options.combatFacing);
+      const angle = (alignment.angle ?? -28) + aim / DEGREES_TO_RADIANS + pose.angle + 28;
+      const pivotX = -width / 2 + width * (alignment.pivotX ?? .5);
+      const pivotY = -height / 2 + height * (alignment.pivotY ?? .5);
+      drawSwordTrail(ctx, pivotX + alignment.x, pivotY + alignment.y,
+        width * (1 - (alignment.pivotX ?? .5)) * alignment.scale, angle * DEGREES_TO_RADIANS, pose.trail);
+      drawAlignedPlayerLayer(ctx, "weapon", { x: -width / 2, y: -height / 2, width, height },
+        { ...alignment, angle }, () => ctx.drawImage(asset, -width / 2, -height / 2, width, height), options.onLayerBounds);
+    } else {
+      drawLayer(ctx, asset, -width / 2, -height / 2, width, height, "weapon", true);
+    }
     ctx.restore();
   };
   const bodyResolution = options.smooth ? 2 : 1;

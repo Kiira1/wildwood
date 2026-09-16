@@ -1,3 +1,4 @@
+import { isMeleeWeapon, weaponAttackRange } from "../weapon-combat";
 import { isProceduralMap } from '../../../shared/procedural-maps';
 import { WORLD } from '../constants';
 import type { EnemyDefinition, EnemyKind } from '../enemies';
@@ -15,6 +16,7 @@ export function createAutoFarmController(options: {
   enemies: EnemyState[];
   spawnSites: SpawnSite[];
   mapId: () => string;
+  equippedWeapon?: () => string;
   localIdentity?: () => string | undefined;
   unavailable: () => string | null;
   paused: () => boolean;
@@ -119,7 +121,9 @@ export function createAutoFarmController(options: {
       for (const site of spawnSites) if (choiceKey(site) === selected && (!destination || distance(site) < distance(destination))) destination = site;
     }
     if (!destination) { stop('No matching enemies in this map'); return idle(); }
-    const range = Math.max(8, player.attackRange * .78);
+    const weapon = options.equippedWeapon?.();
+    const range = Math.max(8, weaponAttackRange(weapon, player.attackRange) * .78) +
+      (isMeleeWeapon(weapon) ? (threat ?? target)?.r ?? 0 : 0);
     const remaining = distance(destination);
     if (remaining <= range) {
       status = threat ? 'Defending' : target ? 'Farming' : 'Waiting for respawn';

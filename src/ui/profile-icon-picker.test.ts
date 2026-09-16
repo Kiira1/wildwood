@@ -3,6 +3,7 @@ import { parseHTML } from "linkedom";
 import { createProfileIconPicker } from "./profile-icon-picker";
 import { applyProfileIcon, createProfileIconCanvasPainter } from "../app/profile-icons";
 import { isValidProfileIcon, profileIconLocation } from "../../shared/profile-icons";
+import { OBJECT_ATLAS_SIZE, OBJECT_ICON_CROPS, containedIconRect } from "../app/profile-icon-crops";
 
 beforeEach(() => {
   const { document, window } = parseHTML('<html><body><div><div id="choices"></div></div></body></html>');
@@ -24,7 +25,7 @@ it("preserves old portraits and maps every new sheet boundary consistently", () 
     const location = profileIconLocation(index);
     expect(location.sheetIndex).toBe(sheet); expect(location.cell).toBe(cell);
     const element = document.createElement("span"); applyProfileIcon(element, index);
-    expect(element.style.backgroundImage).toContain(location.path);
+    expect((element.querySelector<HTMLElement>(".profile-icon-art") ?? element).style.backgroundImage).toContain(location.path);
     expect(element.dataset.profileIcon).toBe(String(index));
     expect(isValidProfileIcon(index)).toBe(true);
   }
@@ -39,6 +40,35 @@ it("offers all people and objects separately and opens the selected category", (
   expect(f.choices.children).toHaveLength(128);
   expect(f.choices.firstElementChild?.getAttribute("data-profile-icon")).toBe("64");
   expect(f.choices.querySelector('[data-profile-icon="63"]')).not.toBeNull();
+});
+
+it("contains the full tent and book without exposing them in neighboring avatars", () => {
+  const tent = OBJECT_ICON_CROPS[46], book = OBJECT_ICON_CROPS[62];
+  expect(tent.x).toBeLessThan(923); expect(tent.x + tent.width).toBeGreaterThan(1103);
+  expect(book.x).toBeLessThan(932); expect(book.x + book.width).toBeGreaterThan(1093);
+  expect(OBJECT_ICON_CROPS).toHaveLength(64);
+  for (const crop of OBJECT_ICON_CROPS) {
+    expect(crop.x).toBeGreaterThanOrEqual(0); expect(crop.y).toBeGreaterThanOrEqual(0);
+    expect(crop.x + crop.width).toBeLessThanOrEqual(OBJECT_ATLAS_SIZE);
+    expect(crop.y + crop.height).toBeLessThanOrEqual(OBJECT_ATLAS_SIZE);
+    const fitted = containedIconRect(crop);
+    expect(fitted.x).toBeGreaterThan(0); expect(fitted.y).toBeGreaterThan(0);
+    expect(fitted.x + fitted.width).toBeLessThan(1); expect(fitted.y + fitted.height).toBeLessThan(1);
+    expect(fitted.width / fitted.height).toBeCloseTo(crop.width / crop.height);
+  }
+  // Adjacent selections must sample their own artwork, not the tent/book overhang.
+  expect(OBJECT_ICON_CROPS[45].x + OBJECT_ICON_CROPS[45].width).toBeLessThan(tent.x);
+  expect(OBJECT_ICON_CROPS[47].x).toBeGreaterThan(tent.x + tent.width);
+  expect(OBJECT_ICON_CROPS[61].x + OBJECT_ICON_CROPS[61].width).toBeLessThan(book.x);
+  const element = document.createElement("span");
+  applyProfileIcon(element, 174);
+  expect(element.style.backgroundImage).toBe("none");
+  expect(element.querySelectorAll(".profile-icon-art")).toHaveLength(1);
+  applyProfileIcon(element, 190);
+  expect(element.querySelectorAll(".profile-icon-art")).toHaveLength(1);
+  applyProfileIcon(element, 2);
+  expect(element.querySelector(".profile-icon-art")).toBeNull();
+  expect(element.classList.contains("profile-icon-cropped")).toBe(false);
 });
 
 it("keeps the picker available after a failed save and prevents duplicate requests", async () => {
@@ -81,6 +111,11 @@ it("loads canvas sheets once on demand and paints the correct cell after loading
   images[0].complete = true; images[0].loaded(); paint(canvas, 191);
   expect(loaded).toHaveBeenCalledOnce();
   expect(context.drawImage.mock.calls[0][1]).toBeGreaterThan(7 * 1254 / 8);
+  paint(canvas, 174);
+  const tentDraw = context.drawImage.mock.calls.at(-1)!;
+  expect(tentDraw.slice(1, 5)).toEqual([921, 801, 184, 129]);
+  expect(tentDraw[7]).toBeCloseTo(37.6);
+  expect(tentDraw[8]).toBeLessThan(37.6);
   paint(canvas, 64); paint(canvas, 0);
   expect(images).toHaveLength(3);
 });

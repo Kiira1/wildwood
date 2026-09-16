@@ -1,4 +1,13 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.708": [
+    "Updated window and toolbar colors, the Home icon, and character profile tap targets.",
+    "Improved object avatar cropping and portrait refreshes.",
+    "Guild battles now zoom out farther and bring fighters in with staggered entrances.",
+    "Adjusted early block scaling: 10 block gives 12% reduction and 100 gives 25%.",
+    "Your first name change is free; later changes cost 50 gems with a 24-hour cooldown.",
+    "Public and guild chat hearts now limit hearts given to 30 per hour. Private reactions do not add profile hearts.",
+    "Added a developer-only wooden sword for melee testing, with weapon-sized attack range and swing effects.",
+  ],
   "0.707": [
     "Added 64 new people and 64 object profile pictures, with People and Objects tabs in a scrollable selector.",
     "The frame selector now shows your selected frame beside its heading.",
@@ -1877,6 +1886,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.708": "2026-09-15",
   "0.705": "2026-09-15",
   "0.703": "2026-09-15",
   "0.702": "2026-09-15",

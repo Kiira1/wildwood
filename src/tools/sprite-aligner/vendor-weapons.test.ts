@@ -15,7 +15,7 @@ describe("vendor weapon baselines", () => {
     const weapon = { id: "vendor:sword", label: "Sword", category: "Sword", source: "/art-source/vendor/sword.png" };
     expect(weaponPresentation(weapon).weaponCategory).toBe("SWORD");
     expect(weaponPresentation(weapon, true).weaponCategory).toBeUndefined();
-    expect(weaponPresentation(weapon).handAction).toBeUndefined();
+    expect(weaponPresentation(weapon).handAction).toBe("SWING");
   });
   it("resets tuned armor to natural artwork at the shared chest anchor", () => {
     expect(sourceDefaultPresentation({ kind: "SPRITE", layer: "CHEST", source: "armor.png", width: 76, height: 68, top: 100 }))

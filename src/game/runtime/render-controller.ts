@@ -93,6 +93,7 @@ export function createRenderController(options: {
   screenShake: () => number;
   screenShakeEnabled: () => boolean;
   attackRangeVisible: () => boolean;
+  weaponAttackRange?: () => number;
   flash: () => number;
   projectiles: Projectile[];
   enemyShots: EnemyShot[];
@@ -143,7 +144,7 @@ export function createRenderController(options: {
       ctx.lineWidth = 2;
       ctx.setLineDash([8, 11]);
       ctx.beginPath();
-      ctx.arc(x, y, player.attackRange, 0, Math.PI * 2);
+      ctx.arc(x, y, options.weaponAttackRange?.() ?? player.attackRange, 0, Math.PI * 2);
       ctx.stroke();
       ctx.restore();
     }

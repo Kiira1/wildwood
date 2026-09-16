@@ -23,7 +23,7 @@ describe("inventory rules", () => {
 
   it("keeps the developer-only golden helmet cosmetic available and equipable", () => {
     expect(inventoryFromSave("[]", "", SUPERIOR_GOLDEN_HELMET, LEGENDARY_WHITE_GOLD_ARMOR, false, true)).toEqual({
-      itemIds: [BASIC_PAPER_HAT, STARTER_STONE, SUPERIOR_GOLDEN_HELMET, LEGENDARY_WHITE_GOLD_ARMOR],
+      itemIds: [BASIC_PAPER_HAT, STARTER_STONE, "wooden_sword", SUPERIOR_GOLDEN_HELMET, LEGENDARY_WHITE_GOLD_ARMOR],
       equippedHead: SUPERIOR_GOLDEN_HELMET,
       equippedChest: LEGENDARY_WHITE_GOLD_ARMOR,
       equippedFeet: "",

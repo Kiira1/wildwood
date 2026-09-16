@@ -189,6 +189,7 @@ export type FrameRendererOptions = {
   screenShake: () => number;
   screenShakeEnabled: () => boolean;
   attackRangeVisible: () => boolean;
+  weaponAttackRange?: () => number;
   flash: () => number;
   projectiles: Projectile[];
   enemyShots: EnemyShot[];
@@ -502,6 +503,7 @@ export function createWorldRenderRuntime(options: WorldRenderRuntimeOptions) {
       screenShake: frame.screenShake,
       screenShakeEnabled: frame.screenShakeEnabled,
       attackRangeVisible: frame.attackRangeVisible,
+      weaponAttackRange: frame.weaponAttackRange,
       flash: frame.flash,
       projectiles: frame.projectiles,
       enemyShots: frame.enemyShots,

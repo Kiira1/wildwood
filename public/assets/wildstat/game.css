@@ -9,14 +9,15 @@
   :root {
     color-scheme: dark;
     --panel: rgba(13, 20, 17, .90);
-    /* Shop-depth, opaque window surfaces with restrained theme tints. */
-    --window-surface-neutral: #080808;
-    --window-surface-green: #070907;
-    --window-surface-brown: #0b0806;
-    --window-surface-gold: #0b0905;
-    --window-surface-red: #0d0706;
-    --window-surface-blue: #07090d;
-    --window-surface-purple: #0b070d;
+    /* One opaque off-black surface for every game window and toolbar. */
+    --window-surface: #131413;
+    --window-surface-neutral: var(--window-surface);
+    --window-surface-green: var(--window-surface);
+    --window-surface-brown: var(--window-surface);
+    --window-surface-gold: var(--window-surface);
+    --window-surface-red: var(--window-surface);
+    --window-surface-blue: var(--window-surface);
+    --window-surface-purple: var(--window-surface);
     --panel2: var(--window-surface-neutral);
     --border: rgba(255,255,255,.14);
     --text: #f5f5e9;
@@ -170,6 +171,8 @@
   .profile-icon-choices { grid-row: 3; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); align-content: start; gap: 8px; min-height: 0; margin: 0; padding: 4px; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; }
   .profile-icon-choice { aspect-ratio: 1; width: 100%; margin: 0; padding: 0; border: 2px solid #000; border-radius: 6px; background-color: #fff; background-repeat: no-repeat; background-size: var(--profile-portrait-sheet-size) var(--profile-portrait-sheet-size); background-clip: padding-box; }
   .profile-icon-choice.is-selected { border-color: var(--green); box-shadow: 0 0 0 1px rgba(105,229,111,.5); }
+  .profile-icon-cropped { position: relative; }
+  .profile-icon-art { position: absolute; display: block; background-repeat: no-repeat; pointer-events: none; }
 
   #playerPower {
     flex: 0 0 auto;
@@ -197,7 +200,7 @@
     gap: 0;
     border: 0;
     background: rgba(8,13,10,.96);
-    box-shadow: 0 -4px 14px rgba(0,0,0,.34);
+    box-shadow: 0 -2px 0 #000, 0 -4px 14px rgba(0,0,0,.34);
     pointer-events: auto;
   }
 
@@ -215,7 +218,7 @@
     padding: 0 0 env(safe-area-inset-bottom, 0px);
     border: 0;
     border-radius: 0;
-    background: rgba(13,20,17,.70);
+    background: var(--window-surface);
     color: var(--text);
     font: 900 24px/1 var(--font-rounded);
     text-shadow: var(--text-shadow);
@@ -243,21 +246,21 @@
   .toolbar-label { max-width: 100%; overflow: hidden; color: #fff; font: 900 10px/1 var(--font-rounded); letter-spacing: .01em; text-align: center; text-overflow: clip; white-space: nowrap; -webkit-text-stroke: 0; text-shadow: 1px 1px 0 #000; }
 
   .settings-button.is-off {
-    background: linear-gradient(#7c4545, #784142);
+    background: var(--window-surface);
     color: #f5c7c4;
   }
   .settings-button[aria-expanded="true"] {
-    background: linear-gradient(#2f5e3a, #2b5836);
+    background: #1b1c1b;
     box-shadow: inset 0 3px 0 var(--green), inset 0 0 0 2px rgba(105,229,111,.18);
   }
-  #leaderboardBtn { background: linear-gradient(#79632a, #735d27); }
-  #techTreeBtn { background: linear-gradient(#1a2e3e, #182b3a); }
-  #inventoryBtn { background: linear-gradient(#34271d, #31241b); }
-  #shopBtn { background: linear-gradient(#462038, #421e35); }
+  #leaderboardBtn { background: var(--window-surface); }
+  #techTreeBtn { background: var(--window-surface); }
+  #inventoryBtn { background: var(--window-surface); }
+  #shopBtn { background: var(--window-surface); }
   #settingsBtn { background: transparent; box-shadow: none; }
-  #leaderboardBtn[aria-expanded="true"] { background: linear-gradient(#9c8031, #967a2c); box-shadow: inset 0 3px 0 #d5bd73, inset 0 0 0 2px rgba(213,189,115,.21); }
-  #techTreeBtn[aria-expanded="true"] { background: linear-gradient(#27516c, #254d67); box-shadow: inset 0 3px 0 #74c7ef, inset 0 0 0 2px rgba(116,199,239,.18); }
-  #inventoryBtn[aria-expanded="true"] { background: linear-gradient(rgba(255,255,255,.025), rgba(0,0,0,.025)), var(--inventory-toolbar-color); box-shadow: inset 0 3px 0 #bf875c, inset 0 0 0 2px rgba(191,135,92,.18); }
+  #leaderboardBtn[aria-expanded="true"] { background: #1b1c1b; box-shadow: inset 0 3px 0 #d5bd73, inset 0 0 0 2px rgba(213,189,115,.21); }
+  #techTreeBtn[aria-expanded="true"] { background: #1b1c1b; box-shadow: inset 0 3px 0 #74c7ef, inset 0 0 0 2px rgba(116,199,239,.18); }
+  #inventoryBtn[aria-expanded="true"] { background: #1b1c1b; box-shadow: inset 0 3px 0 #bf875c, inset 0 0 0 2px rgba(191,135,92,.18); }
   #settingsBtn[aria-expanded="true"] { background: transparent; box-shadow: none; }
   .settings-button:active { filter: brightness(1.16); transform: none; }
 
@@ -2524,8 +2527,8 @@
     100% { opacity: 0; transform: translate(-50%, -8px); }
   }
   #playerProfile { padding: 5px; }
-  .modal.player-profile-modal { background: var(--window-surface-neutral); width: var(--game-window-width); max-height: calc(100vh - 10px); max-height: calc(100dvh - 10px); padding: 8px; overflow-y: auto; overscroll-behavior: contain; text-align: left; transform: none; }
-  .profile-settings-button { flex: 0 0 44px; align-self: flex-start; display: grid; place-items: center; width: 44px; height: 44px; margin: 0; padding: 7px; border: 1px solid #68746c; border-radius: 7px; background: transparent; }
+  .modal.player-profile-modal { background: var(--window-surface); border-color: #080808; width: var(--game-window-width); max-height: calc(100vh - 10px); max-height: calc(100dvh - 10px); padding: 8px; overflow-y: auto; overscroll-behavior: contain; text-align: left; transform: none; }
+  .profile-settings-button { flex: 0 0 44px; align-self: flex-start; display: grid; place-items: center; width: 44px; height: 44px; margin: 0; padding: 7px; border: 1px solid transparent; border-radius: 7px; background: transparent; box-shadow: none; }
   .profile-settings-button[hidden] { display: none; }
   .profile-settings-button img { width: 28px; height: 28px; object-fit: contain; }
   .player-profile-header { display: flex; align-items: center; gap: 10px; }
@@ -2636,8 +2639,9 @@
   .profile-stat-stat-gain dt, .profile-stat-critical dt { color: #f3d36b; }
   #profileNameEditor { position: fixed; inset: 0; z-index: 14; display: grid; place-items: center; padding: 13px; background: transparent; }
   #profileNameEditor[hidden] { display: none; }
-  .profile-name-editor-modal { width: min(290px, calc(100vw - 26px)); padding: 10px; text-align: left; }
+  .profile-name-editor-modal { width: min(340px, calc(100vw - 26px)); padding: 10px; text-align: left; }
   .profile-name-editor-modal label { display: block; margin-bottom: 6px; color: var(--muted); font-size: 9px; letter-spacing: .08em; }
+  .profile-name-editor-note { margin: 8px 0 0; color: var(--muted); font-size: 11px; line-height: 1.4; }
   .profile-name-editor-controls { display: flex; gap: 5px; }
   #profileNameInput { flex: 1; width: 0; }
   #savePlayerNameBtn { min-width: 0; margin: 0; padding: 4px 8px; border-width: 1px; border-radius: 5px; font-size: 11px; line-height: 1; text-transform: none; }
@@ -2663,7 +2667,7 @@
     z-index: 12;
     display: block;
     overflow: hidden;
-    background: #09100c;
+    background: var(--window-surface);
     color: var(--text);
     pointer-events: auto;
   }

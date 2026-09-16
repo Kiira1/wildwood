@@ -1,3 +1,4 @@
+import { isMeleeWeapon } from "../weapon-combat";
 import { paintArrowProjectile, paintRockProjectile, rockProjectileSize } from "./weapon-projectile-renderer";
 export { rockProjectileSize } from "./weapon-projectile-renderer";
 import { ENEMY_TYPES, REWARD_DATA, rewardAmountLabel, rewardStatLabel, type EnemyDefinition, type LoadedEnemySprite, type LoadedSpriteLayer } from "../enemies";
@@ -444,6 +445,7 @@ export function createActorRenderer(options: {
 
   function drawDuelScene(scene: DuelScene) {
     for (const shot of scene.shots) {
+      if (isMeleeWeapon(shot.weaponItem)) continue;
       const x = screenX(shot.x);
       const y = screenY(shot.y);
       const projectileKind = projectileKindForWeapon(shot.weaponItem);
@@ -535,7 +537,7 @@ export function createActorRenderer(options: {
     const regularEnemyCombat = other.regularEnemyCombat;
     const attack = other.bossAttack ?? regularEnemyCombat;
     const attackCritical = !other.bossAttack && regularEnemyCombat?.critical;
-    if (attack && attack.projectileProgress > 0 && attack.projectileProgress < 1) {
+    if (attack && !isMeleeWeapon(equipment.rightHandItem || equipment.leftHandItem) && attack.projectileProgress > 0 && attack.projectileProgress < 1) {
       const dx = attack.targetX - other.x;
       const dy = attack.targetY - other.y;
       const distance = Math.hypot(dx, dy) || 1;

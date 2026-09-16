@@ -1,3 +1,4 @@
+import { nameChangeStatus } from "../../shared/name-change";
 import { validPatreonRedirect } from "./patreon-url";
 import { isValidProfileIcon } from "../../shared/profile-icons";
 import { releaseNotice, releaseAcknowledgement, writeReleaseWindow, acknowledgeReleaseWindow } from "./release-control";
@@ -5,7 +6,7 @@ import { PERSONAL_BOSS_COMBAT, personalBossDefinition } from "../../shared/perso
 import { enemyDefeatBudget, acceptEnemyDefeats } from "./enemy-defeats";
 import { applyEnemyRewards } from "../../shared/enemy-defeats";
 import { LOADOUT_FIELDS } from "../../shared/combat-progress";
-import { chatReactionSummary, playerChatHearts, reactionCountsFor, chatReaction, readChatReactions, setChatReaction, removeMessageReactions, removeAccountReactions, mergeAccountReactions } from "./chat-reactions";
+import { chatHeartAllowance, chatReactionSummary, playerChatHearts, reactionCountsFor, chatReaction, readChatReactions, setChatReaction, removeMessageReactions, removeAccountReactions, mergeAccountReactions } from "./chat-reactions";
 import { regularEnemyLootCursor, rollRegularEnemyLoot } from "./regular-enemy-loot";
 import { BLACK_BOOTS, BLACK_BOOTS_SPEED_BONUS } from "../../shared/items";
 import { playerOnboarding, advanceOnboarding, mergeOnboarding, needsOnboarding } from "./onboarding";
@@ -348,10 +349,6 @@ const VIRTUAL_PLAYER_RUN_LIFETIME_MICROS = 3_600_000_000n;
 const MODULE_MIGRATION_VERSION = 31;
 const LEADERBOARD_REFRESH_VERSION = 10;
 const DUEL_REQUEST_COOLDOWN_MICROS = 120_000_000n;
-const DISPLAY_NAME_COOLDOWN_MICROS = 2_592_000_000_000n;
-// Beta support: let players correct names freely. Re-enable after account-link
-// migration issues have settled without deleting any existing cooldown data.
-const DISPLAY_NAME_COOLDOWN_ENABLED = false;
 const DUEL_REQUEST_TIMEOUT_MICROS = 30_000_000n;
 const DUEL_COUNTDOWN_MICROS = 3_000_000n;
 const DUEL_DURATION_MICROS = 30_000_000n;
@@ -1740,7 +1737,7 @@ const spacetimedb = schema({
   playerItemGift,
   playerOnboarding,
   regularEnemyLootCursor, enemyDefeatBudget,
-  chatReaction, chatReactionSummary, playerChatHearts,
+  chatReaction, chatHeartAllowance, chatReactionSummary, playerChatHearts,
   playerUpgradeBench,
   playerInventoryCapacity,
   playerCutsceneHistory,
@@ -2120,8 +2117,7 @@ function repairModeratedDisplayName(ctx: any, profile: any, actorType: "automati
   const displayName = generatedDisplayName(profile.identity);
   const repaired = { ...profile, displayName };
   updateSnapshotRow(ctx, "playerProfile", repaired);
-  // A forced safety rename must not make the player wait 30 days to choose a
-  // new valid name.
+  // A forced safety rename must allow a free, immediate choice of a new valid name.
   if (ctx.db.playerNameCooldown.identity.find(profile.identity)) {
     ctx.db.playerNameCooldown.identity.delete(profile.identity);
   }
@@ -3769,7 +3765,7 @@ function inventoryForProgress(progress: any) {
     Math.max(Number.isInteger(progress[field]) ? progress[field] : 0, saved.filter(id => id === itemId).length)));
   return [
     ...STARTER_ITEM_IDS,
-    ...(developer ? DEVELOPER_ITEM_IDS : saved.includes(SUPERIOR_GOLDEN_HELMET) ? [SUPERIOR_GOLDEN_HELMET] : []),
+    ...(developer ? DEVELOPER_ITEM_IDS : DEVELOPER_ITEM_IDS.filter(id => owned.has(id))),
     ...(progress.bootsCollected ? [TRAILBLAZER_BOOTS] : []),
     ...Array(forestCount(STARTER_BOW, "bowCount")).fill(STARTER_BOW),
     ...Array(forestCount(WOODEN_ARMOR, "woodenArmorCount")).fill(WOODEN_ARMOR),
@@ -8425,9 +8421,9 @@ export const claimGuestAccount = spacetimedb.reducer(
     if (transferGuestName) {
       const guestNameCooldown = ctx.db.playerNameCooldown.identity.find(link.guest);
       const accountNameCooldown = ctx.db.playerNameCooldown.identity.find(ctx.sender);
-      if (guestNameCooldown && accountNameCooldown) {
+      if (guestNameCooldown && accountNameCooldown && guestNameCooldown.changedAt.microsSinceUnixEpoch > accountNameCooldown.changedAt.microsSinceUnixEpoch) {
         ctx.db.playerNameCooldown.identity.update({ ...accountNameCooldown, changedAt: guestNameCooldown.changedAt });
-      } else if (guestNameCooldown) {
+      } else if (guestNameCooldown && !accountNameCooldown) {
         ctx.db.playerNameCooldown.insert({ identity: ctx.sender, changedAt: guestNameCooldown.changedAt });
       }
     }
@@ -8730,44 +8726,54 @@ for (const [contributionTable, attackWindowTable] of [
   },
 );
 
-export const setDisplayName = spacetimedb.reducer(
-  { displayName: t.string() },
-  (ctx, { displayName }) => {
-    const activePlayer = requireControllingPlayer(ctx);
-    const normalized = displayName.trim().replace(/\s+/g, " ");
-    if (!/^[A-Za-z0-9 _-]{2,20}$/.test(normalized)) {
-      throw new SenderError("Name must be 2-20 letters, numbers, spaces, hyphens, or underscores");
-    }
-    requireAllowedDisplayName(normalized);
+function changePlayerDisplayName(ctx: ModuleReducerCtx, displayName: string, expectedCost: number) {
+  const activePlayer = requireControllingPlayer(ctx);
+  const normalized = displayName.trim().replace(/\s+/g, " ");
+  if (!/^[A-Za-z0-9 _-]{2,20}$/.test(normalized)) {
+    throw new SenderError("Name must be 2-20 letters, numbers, spaces, hyphens, or underscores");
+  }
+  requireAllowedDisplayName(normalized);
 
-    const existing = ctx.db.playerProfile.identity.find(ctx.sender);
-    if (existing?.displayName === normalized) return;
-    const normalizedComparison = normalized.toLowerCase();
-    for (const profile of ctx.db.playerProfile.iter() as Iterable<any>) {
-      if (!sameIdentity(profile.identity, ctx.sender) && profile.displayName.toLowerCase() === normalizedComparison) {
-        throw new SenderError("Player name is already taken.");
-      }
+  const existing = ctx.db.playerProfile.identity.find(ctx.sender);
+  if (existing?.displayName === normalized) return;
+  const normalizedComparison = normalized.toLowerCase();
+  for (const profile of ctx.db.playerProfile.iter() as Iterable<any>) {
+    if (!sameIdentity(profile.identity, ctx.sender) && profile.displayName.toLowerCase() === normalizedComparison) {
+      throw new SenderError("Player name is already taken.");
     }
-    const cooldown = ctx.db.playerNameCooldown.identity.find(ctx.sender);
-    // Repair names accidentally replaced by a generated guest name during a
-    // prior account-link operation. The next real name starts the 30-day lock.
-    if (DISPLAY_NAME_COOLDOWN_ENABLED && cooldown && !isGeneratedDisplayName(existing?.displayName ?? "") &&
-      ctx.timestamp.microsSinceUnixEpoch - cooldown.changedAt.microsSinceUnixEpoch < DISPLAY_NAME_COOLDOWN_MICROS) {
-      throw new SenderError("Display name can be changed once every 30 days.");
-    }
+  }
+  const cooldown = ctx.db.playerNameCooldown.identity.find(ctx.sender);
+  const terms = nameChangeStatus(cooldown ? Number(cooldown.changedAt.microsSinceUnixEpoch / 1000n) : null,
+    Number(ctx.timestamp.microsSinceUnixEpoch / 1000n), Number(ctx.db.playerGemWallet.identity.find(ctx.sender)?.balance ?? 0n));
+  if (terms.availableAtMs > terms.serverNowMs) throw new SenderError("You can change your name once every 24 hours.");
+  if (expectedCost !== terms.cost) throw new SenderError("Name changes cost 50 Gems after the first free change. Reopen the name editor to continue.");
+  if (terms.cost > 0) applyGemBalanceChange(ctx, { identity: ctx.sender, delta: -BigInt(terms.cost), kind: "name_change",
+    note: "Player name change", externalReference: `name-change:${ctx.sender.toHexString()}:${ctx.timestamp.microsSinceUnixEpoch}` });
 
-    if (existing) {
-      updateSnapshotRow(ctx, "playerProfile", { ...existing, displayName: normalized });
-    } else {
-      insertSnapshotRow(ctx, "playerProfile", { identity: ctx.sender, displayName: normalized, profileIcon: 0, playerSprite: 0, skinTone: ctx.random.integerInRange(0, PLAYER_SKIN_TONES.length - 1), gender: PLAYER_GENDER_UNSET });
-    }
-    if (cooldown) ctx.db.playerNameCooldown.identity.update({ ...cooldown, changedAt: ctx.timestamp });
-    else ctx.db.playerNameCooldown.insert({ identity: ctx.sender, changedAt: ctx.timestamp });
-    syncDisplayNamePresentation(ctx, ctx.sender, normalized);
-    syncPlayerMotionIdentity(ctx, activePlayer);
-    touchPlayerAccessAudit(ctx, activePlayer.protocolVersion);
-  },
-);
+  if (existing) {
+    updateSnapshotRow(ctx, "playerProfile", { ...existing, displayName: normalized });
+  } else {
+    insertSnapshotRow(ctx, "playerProfile", { identity: ctx.sender, displayName: normalized, profileIcon: 0, playerSprite: 0, skinTone: ctx.random.integerInRange(0, PLAYER_SKIN_TONES.length - 1), gender: PLAYER_GENDER_UNSET });
+  }
+  if (cooldown) ctx.db.playerNameCooldown.identity.update({ ...cooldown, changedAt: ctx.timestamp });
+  else ctx.db.playerNameCooldown.insert({ identity: ctx.sender, changedAt: ctx.timestamp });
+  syncDisplayNamePresentation(ctx, ctx.sender, normalized);
+  syncPlayerMotionIdentity(ctx, activePlayer);
+  touchPlayerAccessAudit(ctx, activePlayer.protocolVersion);
+}
+// Older clients and the tutorial may only perform a free initial name choice.
+export const setDisplayName = spacetimedb.reducer({ displayName: t.string() },
+  (ctx, { displayName }) => changePlayerDisplayName(ctx, displayName, 0));
+export const changeDisplayName = spacetimedb.reducer({ displayName: t.string(), expectedCost: t.u32() },
+  (ctx, { displayName, expectedCost }) => changePlayerDisplayName(ctx, displayName, expectedCost));
+const nameChangeStatusResult = t.object("NameChangeStatus", {
+  cost: t.u32(), availableAtMs: t.f64(), serverNowMs: t.f64(), balance: t.f64(),
+});
+export const getNameChangeStatus = spacetimedb.procedure({}, nameChangeStatusResult, ctx => ctx.withTx(tx => {
+  const cooldown = tx.db.playerNameCooldown.identity.find(tx.sender);
+  return nameChangeStatus(cooldown ? Number(cooldown.changedAt.microsSinceUnixEpoch / 1000n) : null,
+    Number(tx.timestamp.microsSinceUnixEpoch / 1000n), Number(tx.db.playerGemWallet.identity.find(tx.sender)?.balance ?? 0n));
+}));
 
 export const setDeveloperNameTag = spacetimedb.reducer(
   { visible: t.bool() },
@@ -9397,6 +9403,22 @@ export const claimDailyGemBonus = spacetimedb.reducer((ctx) => {
 export const myItemGifts = spacetimedb.view(
   { name: "my_item_gifts", public: true }, t.array(playerItemGift.rowType),
   ctx => [...ctx.db.playerItemGift.identity.filter(ctx.sender)].filter(gift => !gift.claimed),
+);
+
+/** Explicit admin grants support local equipment playtests without changing normal loot. */
+export const devGrantEquipment = spacetimedb.reducer(
+  { identity: t.identity(), itemId: t.string(), equip: t.bool() }, (ctx, { identity, itemId, equip }) => {
+    if (!isDatabaseOwnerIdentity(ctx.sender)) requireDeveloper(ctx);
+    if (isMapShard(ctx)) throw new SenderError("Use the world connection.");
+    const item = itemDefinition(itemId);
+    const progress = ctx.db.playerProgress.identity.find(identity);
+    if (!item || !progress) throw new SenderError("Player or equipment unavailable.");
+    const alreadyOwned = playerOwnsItem(ctx, identity, itemId);
+    let next = restoreItemToProgress(progress, itemId);
+    if (equip && item.slot === "HAND") next = { ...next, equippedRightHand: itemId, equippedLeftHand: "", cosmeticRightHand: "", cosmeticLeftHand: "" };
+    writeProgressAndPresentation(ctx, next);
+    publishItemDrop(ctx, identity, itemId, alreadyOwned);
+  },
 );
 
 export const devDeliverAlphaTesterGifts = spacetimedb.reducer(
@@ -10665,7 +10687,8 @@ const guildService = createGuildService({
     const progress = ctx.db.playerProgress.identity.find(identity);
     if (!progress) throw new SenderError("Player progress is unavailable.");
     return { name: profile.displayName, fighter: guildFighterFor(ctx, identity),
-      appearance: leaderboardAppearanceForProgress(progress, profile), range: 160 };
+      appearance: leaderboardAppearanceForProgress(progress, profile),
+      range: itemDefinition(progress.equippedRightHand || progress.equippedLeftHand)?.weapon?.range ?? 160 };
 
   },
 });

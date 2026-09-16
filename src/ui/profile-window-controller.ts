@@ -1,3 +1,5 @@
+import { createProfileNameEditor } from "./profile-name-editor";
+import type { NameChangeStatus } from "../../shared/name-change";
 import { applyAvatarFrame } from "../app/avatar-frames";
 import type { PlayerProfileData } from "../wildstat-coop";
 import { PLAYER_GENDER_UNSET, isSelectedPlayerGender, playerGenderLabel, type PlayerGender } from "../../shared/player-gender";
@@ -29,7 +31,8 @@ export function createProfileWindowController(elements: {
   renderStats: (profile: Profile, element: HTMLElement) => void; formatPower: (profile: Profile) => string; formatPlayedTime: (seconds: number) => string;
   profile: (identity: string) => Profile | null | undefined; loadProfile: (identity: string) => Promise<Profile | null | undefined>; releaseProfile: () => void;
   isDueling: () => boolean; duelCooldownMs: () => number; requestDuel: (identity: string) => Promise<{ ok?: boolean; error?: string } | undefined>;
-  isNameTaken: (name: string) => boolean; setDisplayName: (name: string) => Promise<{ ok?: boolean; error?: string } | undefined>;
+  getNameChangeStatus: () => Promise<NameChangeStatus | undefined>;
+  isNameTaken: (name: string) => boolean; setDisplayName: (name: string, expectedCost: number) => Promise<{ ok?: boolean; error?: string } | undefined>;
   itemInspection: ItemInspectionController;
   destructionActions?: (itemId: string) => ItemInspectionAction[];
   showMessage: (text: string, color: string) => void;
@@ -191,26 +194,18 @@ export function createProfileWindowController(elements: {
     closeNameEditor(); closeGenderChoices(); elements.skinChoices.hidden = true; elements.window.hidden = true; elements.guest.hidden = true; identity = ""; profileData = null; renderEquipment(null); elements.loading.textContent = "LOADING PLAYER…"; api.releaseProfile();
   }
 
+  const nameEditor = createProfileNameEditor({ overlay: elements.nameEditor, form: elements.nameForm, input: elements.nameInput, save: elements.saveName }, api);
   function openNameEditor() {
     if (!identity || identity !== api.localIdentity()) return;
-    elements.nameInput.value = api.localDisplayName() || ""; elements.nameEditor.hidden = false; requestAnimationFrame(() => { elements.nameInput.focus(); elements.nameInput.select(); });
+    void nameEditor.open();
   }
-  function closeNameEditor() { elements.nameEditor.hidden = true; }
-  async function saveName(event: SubmitEvent) {
-    event.preventDefault(); const name = elements.nameInput.value.trim().replace(/\s+/g, " ");
-    if (!/^[A-Za-z0-9 _-]{2,20}$/.test(name)) { api.showMessage("NAME: 2–20 SAFE CHARACTERS", "#ff9b91"); return; }
-    if (name === (api.localDisplayName() || "")) { api.showMessage("NAME ALREADY SET", "#bce7ff"); return; }
-    if (api.isNameTaken(name)) { api.showMessage("NAME TAKEN · TRY ANOTHER", "#ff9b91"); return; }
-    elements.saveName.disabled = true; const result = await api.setDisplayName(name); elements.saveName.disabled = false;
-    if (result?.ok) { closeNameEditor(); api.showMessage("NAME UPDATED", "#c9f5c2"); return; }
-    api.showMessage(/already taken/i.test(result?.error ?? "") ? "NAME TAKEN · TRY ANOTHER" : /once every 30 days/i.test(result?.error ?? "") ? "NAME LOCKED · CHANGES EVERY 30 DAYS" : "NAME UPDATE FAILED", "#ff9b91");
-  }
+  function closeNameEditor() { nameEditor.close(); }
 
   elements.overviewTab.addEventListener("click", () => selectTab("overview")); elements.statsTab.addEventListener("click", () => selectTab("stats"));
   elements.report.addEventListener("click", () => api.openSafety(identity, profileData?.name || elements.name.textContent || "PLAYER", "report"));
   elements.block.addEventListener("click", () => api.openSafety(identity, profileData?.name || elements.name.textContent || "PLAYER", "block"));
   for (const slot of PROFILE_EQUIPMENT_SLOTS) equipmentElements[slot].addEventListener("click", () => inspectEquipment(slot));
-  elements.close.addEventListener("click", close); elements.editName.addEventListener("click", openNameEditor); elements.nameEditor.addEventListener("click", (event) => { if (event.target === elements.nameEditor) closeNameEditor(); }); elements.nameForm.addEventListener("submit", (event) => void saveName(event));
+  elements.close.addEventListener("click", close); elements.editName.addEventListener("click", openNameEditor);
   elements.skinEdit.addEventListener("click", () => { if (identity !== api.localIdentity()) return; closeGenderChoices(); elements.skinChoices.hidden = !elements.skinChoices.hidden; });
   elements.skinChoices.addEventListener("click", async (event) => { const choice = (event.target as Element).closest<HTMLButtonElement>(".profile-skin-tone-choice"); if (!choice || identity !== api.localIdentity()) return; const value = Number(choice.dataset.skinTone); if (!Number.isInteger(value)) return; const result = await api.setSkinTone(value); if (!result?.ok) { api.showMessage(result?.error || "SKIN TONE UPDATE FAILED", "#ff9b91"); updateSkinChoices(api.skinTone()); return; } updateSkinChoices(value); elements.skinChoices.hidden = true; drawPreview(); api.showMessage("SKIN TONE UPDATED", "#72ef58"); });
   elements.genderEdit.addEventListener("click", () => {

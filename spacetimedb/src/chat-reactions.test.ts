@@ -132,3 +132,38 @@ it("rejects reactions to your own private and guild messages", () => {
     { channel: "social", messageId, reaction: "like", active: true })).toThrow("own message");
   expect([...f.db.chatReaction.iter()]).toHaveLength(0);
 });
+
+it("limits new public/guild hearts per giver, without limiting the recipient", () => {
+  const f = fixture();
+  f.seed("guildMember", { identity: f.ctx.sender, guildId: 7n });
+  for (let i = 1; i <= 31; i++) {
+    f.seed("socialMessage", { id: BigInt(i), channel: "guild", sender: f.author, guildId: 7n, message: "Guild" });
+  }
+  f.react();
+  for (let i = 1; i < 30; i++) setChatReaction(f.ctx as any, "social", BigInt(i), "heart", true);
+  expect(() => setChatReaction(f.ctx as any, "social", 30n, "heart", true)).toThrow("30 new hearts");
+  expect(f.db.playerChatHearts.identity.find(f.author).chatHeartsReceived).toBe(30n);
+  f.react("like"); f.react();
+  expect(f.db.chatHeartAllowance.identity.find(f.ctx.sender).used).toBe(30);
+  setChatReaction({ ...f.ctx, sender: identity("3") } as any, "public", 1n, "heart", true);
+  expect(f.db.playerChatHearts.identity.find(f.author).chatHeartsReceived).toBe(31n);
+  f.ctx.timestamp = new (f.ctx.timestamp.constructor as any)(f.ctx.timestamp.microsSinceUnixEpoch + 3_600_000_000n);
+  setChatReaction(f.ctx as any, "social", 30n, "heart", true);
+  expect(f.db.chatHeartAllowance.identity.find(f.ctx.sender).used).toBe(1);
+});
+it("keeps private hearts as reactions without spending allowance or earning profile hearts", () => {
+  const f = fixture();
+  f.seed("socialMessage", { id: 1n, channel: "dm", sender: f.author, recipient: f.ctx.sender, message: "Hi" });
+  setChatReaction(f.ctx as any, "social", 1n, "heart", true);
+  expect(readChatReactions(f.ctx as any, "social", 1n).counts).toEqual({ heart: 1 });
+  expect(f.db.playerChatHearts.identity.find(f.author)).toBeNull();
+  expect(f.db.chatHeartAllowance.identity.find(f.ctx.sender)).toBeNull();
+});
+it("preserves spent allowance through guest registration", () => {
+  const f = fixture(), account = identity("4");
+  f.react();
+  setChatReaction({ ...f.ctx, sender: account } as any, "public", 1n, "heart", true);
+  mergeAccountReactions(f.ctx as any, f.ctx.sender, account);
+  expect(f.db.chatHeartAllowance.identity.find(account).used).toBe(2);
+  expect(f.db.chatHeartAllowance.identity.find(f.ctx.sender)).toBeNull();
+});

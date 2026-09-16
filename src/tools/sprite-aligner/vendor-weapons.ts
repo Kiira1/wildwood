@@ -10,7 +10,7 @@ export function weaponPresentation(weapon: VendorWeapon, sourceDefaults = false)
   const game = weapon.gameItemId ? itemPresentation(weapon.gameItemId)?.world : undefined;
   if (!sourceDefaults && game?.kind === "SPRITE") return { ...game, source: weapon.source };
   return { kind: "SPRITE", source: weapon.source, layer: "HAND", top: 116,
-    handAction: weapon.category === "Bow" ? "BOW" : undefined,
+    handAction: weapon.category === "Bow" ? "BOW" : weapon.category === "Sword" ? "SWING" : undefined,
     weaponCategory: !sourceDefaults && weapon.category === "Sword" ? "SWORD" : undefined };
 }
 

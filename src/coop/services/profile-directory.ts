@@ -98,7 +98,9 @@ export function createProfileDirectory(dependencies: ProfileDirectoryDependencie
     identities.set(presentation.identity, presentation.identityValue);
     names.set(presentation.identity, presentation.displayName);
     if (presentation.profileIcon !== undefined) {
-      icons.set(presentation.identity, normalizeProfileIcon(Number(presentation.profileIcon)));
+      const icon = normalizeProfileIcon(Number(presentation.profileIcon));
+      icons.set(presentation.identity, icon);
+      chatPortraits.remember(presentation.identity, icon);
     }
     if (presentation.playerSprite !== undefined) {
       sprites.set(presentation.identity, Math.max(0, Math.min(3, Number(presentation.playerSprite) || 0)));
@@ -200,8 +202,8 @@ export function createProfileDirectory(dependencies: ProfileDirectoryDependencie
       },
       profileIcon(identity = dependencies.localIdentity()) {
         const sender = identities.get(identity);
-        if (!icons.has(identity) && sender) chatPortraits.request(sender);
-        return icons.get(identity) ?? chatPortraits.icon(identity) ?? 0;
+        if (sender && identity !== dependencies.localIdentity()) chatPortraits.request(sender);
+        return chatPortraits.icon(identity) ?? icons.get(identity) ?? 0;
       },
       playerSprite(identity = dependencies.localIdentity()) {
         return sprites.get(identity) ?? 0;
@@ -216,13 +218,24 @@ export function createProfileDirectory(dependencies: ProfileDirectoryDependencie
       isGuest(identity = dependencies.localIdentity()) {
         return guests.get(identity) ?? (identity === dependencies.localIdentity() ? dependencies.localIsGuestFallback() : false);
       },
-      async setDisplayName(displayName: string) {
+      async getNameChangeStatus() {
+        if (dependencies.reducers.protocolBlocked()) throw new Error("UPDATE REQUIRED");
+        const connection = dependencies.reducers.connection();
+        if (!connection) throw new Error("NOT CONNECTED");
+        const identity = dependencies.localIdentity();
+        const status = await connection.procedures.getNameChangeStatus({});
+        if (identity !== dependencies.localIdentity() || connection !== dependencies.reducers.connection()) throw new Error("Connection changed. Reopen the name editor.");
+        return status;
+      },
+      async setDisplayName(displayName: string, expectedCost = 0) {
         if (dependencies.reducers.protocolBlocked()) return { ok: false, error: "UPDATE REQUIRED" };
         const connection = dependencies.reducers.connection();
         if (!connection) return { ok: false, error: "NOT CONNECTED" };
         try {
           const identity = dependencies.localIdentity();
-          await dependencies.reducers.runWorldReducer(() => connection.reducers.setDisplayName({ displayName }));
+          await dependencies.reducers.runWorldReducer(() => expectedCost === 0
+            ? connection.reducers.setDisplayName({ displayName })
+            : connection.reducers.changeDisplayName({ displayName, expectedCost }));
           if (identity === dependencies.localIdentity()) {
             localDisplayName = displayName.trim().replace(/\s+/g, " ");
             names.set(identity, localDisplayName);
@@ -242,8 +255,13 @@ export function createProfileDirectory(dependencies: ProfileDirectoryDependencie
         const connection = dependencies.reducers.connection();
         if (!connection) return { ok: false, error: "NOT CONNECTED" };
         const normalized = normalizeProfileIcon(profileIcon);
+        const identity = dependencies.localIdentity();
         try {
           await dependencies.reducers.runWorldReducer(() => connection.reducers.setProfileIcon({ profileIcon: normalized }));
+          if (identity === dependencies.localIdentity() && connection === dependencies.reducers.connection()) {
+            icons.set(identity, normalized); chatPortraits.remember(identity, normalized);
+            dependencies.markChatPresentationChanged(); dependencies.notify();
+          }
           return { ok: true };
         } catch (error) {
           const message = dependencies.reducers.errorMessage(error);
@@ -309,7 +327,7 @@ export function createProfileDirectory(dependencies: ProfileDirectoryDependencie
       identities.set(sender.identity, sender.identityValue);
       if (!names.has(sender.identity)) names.set(sender.identity, sender.name);
       if (!guests.has(sender.identity)) guests.set(sender.identity, sender.isGuest);
-      if (!icons.has(sender.identity)) chatPortraits.request(sender.identityValue);
+      if (sender.identity !== dependencies.localIdentity()) chatPortraits.request(sender.identityValue);
       trimPresentations();
     },
     prepareSession(displayName: string) {

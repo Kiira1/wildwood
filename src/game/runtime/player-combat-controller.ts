@@ -1,9 +1,10 @@
+import { isMeleeWeapon, weaponAttackRange, segmentCircleHit } from "../weapon-combat";
 import { isProceduralMap } from "../../../shared/procedural-maps";
 import { isEnemyAttackingPlayer } from "./enemy-threat";
 import { PLAYER_KNOCKBACK_FORCE, WORLD } from "../constants";
 import { damageAfterArmor } from "../combat";
 import { ENEMY_TYPES, REWARD_DATA, rewardLabel, type EnemyKind } from "../enemies";
-import { circlesOverlap, distanceSquared } from "../math";
+import { circlesOverlap } from "../math";
 import type { ProjectileStore } from "./projectile-store";
 import { createSpatialGrid } from "./spatial-grid";
 import type { BossTarget, DragonBossState, EnemyState, FrostclawBossState, GloomrootBossState, KoiShogunBossState, MagmaliskBossState, MiremawBossState, PrismshellBossState, IronhornBossState, DreadreaperBossState, VoltwardenBossState, GravebloomBossState, AegisPrimeBossState, PlayerState, RuntimeReward, SpiderBossState, TempestKirinBossState, TidewyrmBossState } from "./types";
@@ -52,6 +53,7 @@ type PendingPlayerAttack = {
   target: AttackTarget;
   timestamps: AbsoluteAttackTimestamps;
   projectileReleased: boolean;
+  weaponItem: string;
 };
 
 export function projectileSimulationSeconds(
@@ -258,7 +260,7 @@ export function createPlayerCombatController(options: {
     const timestamps = absoluteAttackTimestamps(scheduledAt, attackInterval);
     faceTarget(target);
     player.throwClock = attackAnimationClockAt(timestamps, nowSeconds);
-    pendingPlayerAttack = { target, timestamps, projectileReleased: false };
+    pendingPlayerAttack = { target, timestamps, projectileReleased: false, weaponItem: options.equippedWeapon() };
     nextAttackAtSeconds = timestamps.nextAttackAtSeconds;
     player.attackClock = Math.max(0, nextAttackAtSeconds - nowSeconds);
     return true;
@@ -304,6 +306,25 @@ export function createPlayerCombatController(options: {
     return true;
   }
 
+  const attackRange = () => weaponAttackRange(options.equippedWeapon(), player.attackRange);
+  const targetDistance = (target: EnemyState | BossTarget) => Math.max(0,
+    Math.hypot(player.x - target.x, player.y - target.y) - (target.isBoss || isMeleeWeapon(options.equippedWeapon()) ? target.r : 0));
+  function weaponDamage(critical: boolean) {
+    return player.damage * equipmentDamageMultiplier(options.equippedWeapon(), options.equippedHead(), options.equippedChest(),
+      researchDamageMultiplier(), options.equippedWeaponUpgradeLevel?.() ?? 0,
+      options.equippedHeadUpgradeLevel?.() ?? 0, options.equippedChestUpgradeLevel?.() ?? 0) *
+      (critical ? researchCriticalDamageMultiplier() : 1);
+  }
+  function strikeMelee(target: AttackTarget) {
+    rebuildTargetGrid();
+    const angle = Math.atan2(target.y - player.y, target.x - player.x);
+    const hit = raycastProjectile(player.x, player.y, player.x + Math.cos(angle) * attackRange(), player.y + Math.sin(angle) * attackRange(), 0);
+    if (!hit) return;
+    const critical = !hit.enemy.isBoss && Math.random() < researchCriticalChance();
+    applyPlayerHit(hit.enemy, weaponDamage(critical), critical, angle);
+    spawnBurst(player.x + Math.cos(angle) * attackRange() * hit.t, player.y + Math.sin(angle) * attackRange() * hit.t, "#f3f7ff", 6, 55);
+  }
+
   function launchPlayerStone(target: AttackTarget, releasedAtSeconds: number) {
     const dx = target.x - player.x;
     const dy = target.y - player.y;
@@ -321,15 +342,7 @@ export function createPlayerCombatController(options: {
       projectile.vx = Math.cos(angle) * player.projectileSpeed;
       projectile.vy = Math.sin(angle) * player.projectileSpeed;
       projectile.r = 6;
-      projectile.damage = player.damage * equipmentDamageMultiplier(
-        weaponItem,
-        options.equippedHead(),
-        options.equippedChest(),
-        researchDamageMultiplier(),
-        options.equippedWeaponUpgradeLevel?.() ?? 0,
-        options.equippedHeadUpgradeLevel?.() ?? 0,
-        options.equippedChestUpgradeLevel?.() ?? 0,
-      ) * (critical ? researchCriticalDamageMultiplier() : 1);
+      projectile.damage = weaponDamage(critical);
       projectile.critical = critical;
       projectile.hitLife = player.attackRange / player.projectileSpeed * projectileLifeBonus;
       projectile.life = (player.attackRange + PLAYER_PROJECTILE_VISUAL_TAIL) / player.projectileSpeed * projectileLifeBonus;
@@ -348,10 +361,12 @@ export function createPlayerCombatController(options: {
       return;
     }
     const attack = pendingPlayerAttack;
+    if (attack.weaponItem !== options.equippedWeapon()) { pendingPlayerAttack = null; player.throwClock = 0; return; }
     player.throwClock = attackAnimationClockAt(attack.timestamps, nowSeconds);
     if (!attack.projectileReleased && attackReleaseReached(attack.timestamps, nowSeconds)) {
       attack.projectileReleased = true;
-      launchPlayerStone(attack.target, attack.timestamps.releaseAtSeconds);
+      if (isMeleeWeapon(attack.weaponItem)) strikeMelee(attack.target);
+      else launchPlayerStone(attack.target, attack.timestamps.releaseAtSeconds);
     }
     if (!attackAnimationFinished(attack.timestamps, nowSeconds)) return;
     if (pendingPlayerAttack === attack) pendingPlayerAttack = null;
@@ -361,8 +376,8 @@ export function createPlayerCombatController(options: {
   function targetIsEligible(target: EnemyState | BossTarget, enemyType: EnemyKind | null, campName: string | null, mapBoss: BossTarget | null) {
     if (target.dead) return false;
     if (target.isBoss) return !enemyType && target === mapBoss &&
-      Math.max(0, Math.hypot(player.x - target.x, player.y - target.y) - target.r) < player.attackRange;
-    if (distanceSquared(player, target) >= player.attackRange * player.attackRange) return false;
+      targetDistance(target) < attackRange();
+    if (targetDistance(target) >= attackRange()) return false;
     if (!enemyType) return true;
     return !target.generatedBoss && !target.remoteCombatGhost &&
       (isEnemyAttackingPlayer(target, options.localIdentity?.()) ||
@@ -371,7 +386,7 @@ export function createPlayerCombatController(options: {
 
   function findAttackTarget(enemyType: EnemyKind | null, campName: string | null, mapBoss: BossTarget | null) {
     let target: EnemyState | BossTarget | null = null;
-    let best = player.attackRange * player.attackRange;
+    let best = attackRange() * attackRange();
     // A direct scan avoids rebuilding the projectile grid just to choose one target.
     let defending = false;
     let retainedDistance = Infinity;
@@ -380,8 +395,8 @@ export function createPlayerCombatController(options: {
       if (enemy.dead || (enemyType && enemy.generatedBoss)) continue;
       const threat = Boolean(enemyType && isEnemyAttackingPlayer(enemy, options.localIdentity?.()));
       if (enemyType && ((!threat && (enemy.type !== enemyType || Boolean(campName && enemy.campName !== campName))) || enemy.remoteCombatGhost)) continue;
-      const distance = distanceSquared(player, enemy);
-      if (distance >= player.attackRange * player.attackRange) continue;
+      const distance = targetDistance(enemy) ** 2;
+      if (distance >= attackRange() * attackRange()) continue;
       if (enemy === retainedTarget) { retainedDistance = distance; retainedThreat = threat; }
       if ((threat && !defending) || (threat === defending && distance < best)) {
         best = distance; target = enemy; defending = threat;
@@ -389,7 +404,7 @@ export function createPlayerCombatController(options: {
     }
     if (!enemyType && mapBoss && !mapBoss.dead) {
       const edgeDistance = Math.max(0, Math.hypot(player.x - mapBoss.x, player.y - mapBoss.y) - mapBoss.r);
-      if (mapBoss === retainedTarget && edgeDistance < player.attackRange) retainedDistance = edgeDistance * edgeDistance;
+      if (mapBoss === retainedTarget && edgeDistance < attackRange()) retainedDistance = edgeDistance * edgeDistance;
       if (edgeDistance * edgeDistance < best) { best = edgeDistance * edgeDistance; target = mapBoss; }
     }
     if (target && retainedTarget && retainedThreat === defending &&
@@ -404,7 +419,7 @@ export function createPlayerCombatController(options: {
     const bossAlive = Boolean(mapBoss && !mapBoss.dead);
     // The current target and aim update every frame; only acquisition is throttled.
     if (nowSeconds >= nextTargetSearchAt || enemies.length !== searchedEnemyCount ||
-        enemyType !== searchedEnemyType || campName !== searchedCampName || player.attackRange !== searchedRange ||
+        enemyType !== searchedEnemyType || campName !== searchedCampName || attackRange() !== searchedRange ||
         mapBoss !== searchedBoss || bossAlive !== searchedBossAlive ||
         (retainedTarget && !targetIsEligible(retainedTarget, enemyType, campName, mapBoss))) {
       retainedTarget = findAttackTarget(enemyType, campName, mapBoss);
@@ -412,7 +427,7 @@ export function createPlayerCombatController(options: {
       searchedEnemyCount = enemies.length;
       searchedEnemyType = enemyType;
       searchedCampName = campName;
-      searchedRange = player.attackRange;
+      searchedRange = attackRange();
       searchedBoss = mapBoss;
       searchedBossAlive = bossAlive;
     }
@@ -497,7 +512,6 @@ export function createPlayerCombatController(options: {
     const dy = endY - startY;
     const lengthSq = dx * dx + dy * dy;
     if (lengthSq === 0) return null;
-    const invLength = 1 / Math.sqrt(lengthSq);
     let closest: EnemyState | BossTarget | null = null;
     let closestT = Infinity;
     const mapBoss = activeMapBoss();
@@ -514,22 +528,8 @@ export function createPlayerCombatController(options: {
       if (target.dead) continue;
       const ex = target.x - startX;
       const ey = target.y - startY;
-      const hitRadius = radius + target.r;
-      const hitRadiusSq = hitRadius * hitRadius;
-      const startDistanceSq = ex * ex + ey * ey;
-      let t = 0;
-      if (startDistanceSq > hitRadiusSq) {
-        const projectedT = (ex * dx + ey * dy) / lengthSq;
-        if (projectedT < 0 || projectedT > 1) continue;
-        const nearestX = startX + dx * projectedT;
-        const nearestY = startY + dy * projectedT;
-        const nearestDistanceX = target.x - nearestX;
-        const nearestDistanceY = target.y - nearestY;
-        const nearestDistanceSq = nearestDistanceX * nearestDistanceX + nearestDistanceY * nearestDistanceY;
-        if (nearestDistanceSq > hitRadiusSq) continue;
-        t = projectedT - Math.sqrt(hitRadiusSq - nearestDistanceSq) * invLength;
-        if (t < 0 || t > 1) continue;
-      }
+      const t = segmentCircleHit(ex, ey, dx, dy, radius + target.r);
+      if (t === null) continue;
       if (t < closestT) { closestT = t; closest = target; }
     }
     return closest ? { enemy: closest, t: closestT } : null;
@@ -542,6 +542,72 @@ export function createPlayerCombatController(options: {
       if (enemy.dead) continue;
       targetGrid.insert(enemy);
       maxEnemyRadius = Math.max(maxEnemyRadius, enemy.r);
+    }
+  }
+
+  function applyPlayerHit(target: EnemyState | BossTarget, damage: number, critical: boolean, angle: number) {
+    if (!target.isBoss && !target.generatedBoss) spawnDamageNumber(target.x, target.y, damage, critical);
+    target.hurt = .12;
+    if (target.isBoss && options.hitPersonalBoss) {
+      options.hitPersonalBoss(damage, target.x, target.y, critical === true);
+    } else if (target.isBoss) {
+      if ("bossKind" in target && target.bossKind === "spider") {
+        pendingSpiderHits += 1;
+        spiderHitBatchTimer = SPIDER_HIT_BATCH_DELAY;
+      } else if ("bossKind" in target && target.bossKind === "frostclaw") {
+        pendingFrostclawHits += 1;
+        frostclawHitBatchTimer = FROSTCLAW_HIT_BATCH_DELAY;
+      } else if ("bossKind" in target && target.bossKind === "magmalisk") {
+        pendingMagmaliskHits += 1;
+        magmaliskHitBatchTimer = MAGMALISK_HIT_BATCH_DELAY;
+      } else if ("bossKind" in target && target.bossKind === "gloomroot") {
+        pendingGloomrootHits += 1;
+        gloomrootHitBatchTimer = GLOOMROOT_HIT_BATCH_DELAY;
+      } else if ("bossKind" in target && target.bossKind === "tidewyrm") {
+        pendingTidewyrmHits += 1;
+        tidewyrmHitBatchTimer = TIDEWYRM_HIT_BATCH_DELAY;
+      } else if ("bossKind" in target && target.bossKind === "koiShogun") {
+        pendingKoiShogunHits += 1;
+        koiShogunHitBatchTimer = KOI_SHOGUN_HIT_BATCH_DELAY;
+      } else if ("bossKind" in target && target.bossKind === "tempestKirin") {
+        pendingTempestKirinHits += 1;
+        tempestKirinHitBatchTimer = TEMPEST_KIRIN_HIT_BATCH_DELAY;
+      } else if ("bossKind" in target && target.bossKind === "miremaw") {
+        pendingMiremawHits += 1;
+        miremawHitBatchTimer = MIREMAW_HIT_BATCH_DELAY;
+      } else if ("bossKind" in target && target.bossKind === "ironhorn") {
+        pendingIronhornHits += 1;
+        ironhornHitBatchTimer = IRONHORN_HIT_BATCH_DELAY;
+      } else if ("bossKind" in target && target.bossKind === "voltwarden") {
+        pendingVoltwardenHits += 1;
+        voltwardenHitBatchTimer = VOLTWARDEN_HIT_BATCH_DELAY;
+      } else if ("bossKind" in target && target.bossKind === "aegisPrime") {
+        pendingAegisPrimeHits += 1;
+        aegisPrimeHitBatchTimer = AEGIS_PRIME_HIT_BATCH_DELAY;
+      } else if ("bossKind" in target && target.bossKind === "gravebloom") {
+        pendingGravebloomHits += 1;
+        gravebloomHitBatchTimer = GRAVEBLOOM_HIT_BATCH_DELAY;
+      } else if ("bossKind" in target && target.bossKind === "dreadreaper") {
+        pendingDreadreaperHits += 1;
+        dreadreaperHitBatchTimer = DREADREAPER_HIT_BATCH_DELAY;
+      } else if ("bossKind" in target && target.bossKind === "prismshell") {
+        pendingPrismshellHits += 1;
+        prismshellHitBatchTimer = PRISMSHELL_HIT_BATCH_DELAY;
+      } else {
+        pendingDragonHits += 1;
+        dragonHitBatchTimer = DRAGON_HIT_BATCH_DELAY;
+      }
+    } else if (options.hitGeneratedBoss?.(target, damage)) {
+      // Generated bosses use authoritative health and shared first-clear unlocks.
+    } else {
+      engageEnemy(target);
+      target.hp -= damage;
+      if (player.knockback > 0) {
+        const force = PLAYER_KNOCKBACK_FORCE * player.knockback;
+        target.vx += Math.cos(angle) * force;
+        target.vy += Math.sin(angle) * force;
+      }
+      if (target.hp <= 0) killEnemy(target);
     }
   }
 
@@ -569,71 +635,8 @@ export function createPlayerCombatController(options: {
         projectile.x = startX + (endX - startX) * hit.t;
         projectile.y = startY + (endY - startY) * hit.t;
         const target = hit.enemy;
-        if (!target.isBoss && !target.generatedBoss) spawnDamageNumber(target.x, target.y, projectile.damage, projectile.critical);
-        target.hurt = .12;
         projectile.life = 0;
-        if (target.isBoss && options.hitPersonalBoss) {
-          options.hitPersonalBoss(projectile.damage, target.x, target.y, projectile.critical === true);
-        } else if (target.isBoss) {
-          if ("bossKind" in target && target.bossKind === "spider") {
-            pendingSpiderHits += 1;
-            spiderHitBatchTimer = SPIDER_HIT_BATCH_DELAY;
-          } else if ("bossKind" in target && target.bossKind === "frostclaw") {
-            pendingFrostclawHits += 1;
-            frostclawHitBatchTimer = FROSTCLAW_HIT_BATCH_DELAY;
-          } else if ("bossKind" in target && target.bossKind === "magmalisk") {
-            pendingMagmaliskHits += 1;
-            magmaliskHitBatchTimer = MAGMALISK_HIT_BATCH_DELAY;
-          } else if ("bossKind" in target && target.bossKind === "gloomroot") {
-            pendingGloomrootHits += 1;
-            gloomrootHitBatchTimer = GLOOMROOT_HIT_BATCH_DELAY;
-          } else if ("bossKind" in target && target.bossKind === "tidewyrm") {
-            pendingTidewyrmHits += 1;
-            tidewyrmHitBatchTimer = TIDEWYRM_HIT_BATCH_DELAY;
-          } else if ("bossKind" in target && target.bossKind === "koiShogun") {
-            pendingKoiShogunHits += 1;
-            koiShogunHitBatchTimer = KOI_SHOGUN_HIT_BATCH_DELAY;
-          } else if ("bossKind" in target && target.bossKind === "tempestKirin") {
-            pendingTempestKirinHits += 1;
-            tempestKirinHitBatchTimer = TEMPEST_KIRIN_HIT_BATCH_DELAY;
-          } else if ("bossKind" in target && target.bossKind === "miremaw") {
-            pendingMiremawHits += 1;
-            miremawHitBatchTimer = MIREMAW_HIT_BATCH_DELAY;
-          } else if ("bossKind" in target && target.bossKind === "ironhorn") {
-            pendingIronhornHits += 1;
-            ironhornHitBatchTimer = IRONHORN_HIT_BATCH_DELAY;
-          } else if ("bossKind" in target && target.bossKind === "voltwarden") {
-            pendingVoltwardenHits += 1;
-            voltwardenHitBatchTimer = VOLTWARDEN_HIT_BATCH_DELAY;
-          } else if ("bossKind" in target && target.bossKind === "aegisPrime") {
-            pendingAegisPrimeHits += 1;
-            aegisPrimeHitBatchTimer = AEGIS_PRIME_HIT_BATCH_DELAY;
-          } else if ("bossKind" in target && target.bossKind === "gravebloom") {
-            pendingGravebloomHits += 1;
-            gravebloomHitBatchTimer = GRAVEBLOOM_HIT_BATCH_DELAY;
-          } else if ("bossKind" in target && target.bossKind === "dreadreaper") {
-            pendingDreadreaperHits += 1;
-            dreadreaperHitBatchTimer = DREADREAPER_HIT_BATCH_DELAY;
-          } else if ("bossKind" in target && target.bossKind === "prismshell") {
-            pendingPrismshellHits += 1;
-            prismshellHitBatchTimer = PRISMSHELL_HIT_BATCH_DELAY;
-          } else {
-            pendingDragonHits += 1;
-            dragonHitBatchTimer = DRAGON_HIT_BATCH_DELAY;
-          }
-        } else if (options.hitGeneratedBoss?.(target, projectile.damage)) {
-          // Generated bosses use authoritative health and shared first-clear unlocks.
-        } else {
-          engageEnemy(target);
-          target.hp -= projectile.damage;
-          if (player.knockback > 0) {
-            const force = PLAYER_KNOCKBACK_FORCE * player.knockback;
-            const angle = Math.atan2(projectile.vy, projectile.vx);
-            target.vx += Math.cos(angle) * force;
-            target.vy += Math.sin(angle) * force;
-          }
-          if (target.hp <= 0) killEnemy(target);
-        }
+        applyPlayerHit(target, projectile.damage, projectile.critical === true, Math.atan2(projectile.vy, projectile.vx));
         spawnBurst(projectile.x, projectile.y, "#fff0a1", 5, 52);
       } else { projectile.x = endX; projectile.y = endY; }
       if (projectile.trail <= 0) {

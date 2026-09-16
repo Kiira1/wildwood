@@ -19,6 +19,7 @@ import BeginForestRewardPrototypeReducer from "../begin_forest_reward_prototype_
 import CancelGemPurchaseReducer from "../cancel_gem_purchase_reducer";
 import CancelItemUpgradeReducer from "../cancel_item_upgrade_reducer";
 import ChallengeGuildReducer from "../challenge_guild_reducer";
+import ChangeDisplayNameReducer from "../change_display_name_reducer";
 import ChangeMapReducer from "../change_map_reducer";
 import CheckpointShardLocationReducer from "../checkpoint_shard_location_reducer";
 import ClaimDailyGemBonusReducer from "../claim_daily_gem_bonus_reducer";
@@ -59,6 +60,7 @@ import DevDeleteLegacyPlayerReducer from "../dev_delete_legacy_player_reducer";
 import DevDeliverAlphaTesterGiftsReducer from "../dev_deliver_alpha_tester_gifts_reducer";
 import DevDeliverCombatUpdateGiftReducer from "../dev_deliver_combat_update_gift_reducer";
 import DevDeliverDisconnectCompensationReducer from "../dev_deliver_disconnect_compensation_reducer";
+import DevGrantEquipmentReducer from "../dev_grant_equipment_reducer";
 import DevRepairDisplayNameReducer from "../dev_repair_display_name_reducer";
 import DevRepairPlayerJoinedAtReducer from "../dev_repair_player_joined_at_reducer";
 import DevResetDailyGemBonusReducer from "../dev_reset_daily_gem_bonus_reducer";
@@ -152,6 +154,7 @@ export type BeginForestRewardPrototypeParams = __Infer<typeof BeginForestRewardP
 export type CancelGemPurchaseParams = __Infer<typeof CancelGemPurchaseReducer>;
 export type CancelItemUpgradeParams = __Infer<typeof CancelItemUpgradeReducer>;
 export type ChallengeGuildParams = __Infer<typeof ChallengeGuildReducer>;
+export type ChangeDisplayNameParams = __Infer<typeof ChangeDisplayNameReducer>;
 export type ChangeMapParams = __Infer<typeof ChangeMapReducer>;
 export type CheckpointShardLocationParams = __Infer<typeof CheckpointShardLocationReducer>;
 export type ClaimDailyGemBonusParams = __Infer<typeof ClaimDailyGemBonusReducer>;
@@ -192,6 +195,7 @@ export type DevDeleteLegacyPlayerParams = __Infer<typeof DevDeleteLegacyPlayerRe
 export type DevDeliverAlphaTesterGiftsParams = __Infer<typeof DevDeliverAlphaTesterGiftsReducer>;
 export type DevDeliverCombatUpdateGiftParams = __Infer<typeof DevDeliverCombatUpdateGiftReducer>;
 export type DevDeliverDisconnectCompensationParams = __Infer<typeof DevDeliverDisconnectCompensationReducer>;
+export type DevGrantEquipmentParams = __Infer<typeof DevGrantEquipmentReducer>;
 export type DevRepairDisplayNameParams = __Infer<typeof DevRepairDisplayNameReducer>;
 export type DevRepairPlayerJoinedAtParams = __Infer<typeof DevRepairPlayerJoinedAtReducer>;
 export type DevResetDailyGemBonusParams = __Infer<typeof DevResetDailyGemBonusReducer>;

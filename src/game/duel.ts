@@ -1,3 +1,4 @@
+import { isMeleeWeapon } from "./weapon-combat";
 import { PLAYER_PROJECTILE_SPEED } from "../../shared/rules";
 import {
   absoluteAttackTimestamps,
@@ -65,6 +66,7 @@ export function duelShotsAt(
 ) {
   const shots: Array<{ x: number; y: number; color: string; weaponItem: string; angle: number }> = [];
   const addShots = (attackRate: number, attackCount: number, fromX: number, toX: number, color: string, weaponItem = "") => {
+    if (isMeleeWeapon(weaponItem)) return;
     const interval = Math.max(.001, Math.round(attackRate * 1_000_000) / 1_000_000);
     const limit = Math.max(0, Math.floor(attackCount));
     const distance = Math.abs(toX - fromX);
@@ -90,9 +92,17 @@ export function duelShotsAt(
 }
 
 /** Scales the complete weapon motion into the current attack interval. */
-export function duelAttackAnimationClock(attackRate: number, attackCount: number, elapsed: number) {
-  if (attackCount <= 0) return 0;
+export function duelAttackAnimationClock(attackRate: number, attackCount: number, elapsed: number, weaponItem?: string) {
   const interval = Math.max(.001, Math.round(attackRate * 1_000_000) / 1_000_000);
+  if (isMeleeWeapon(weaponItem)) {
+    // Melee contacts on the authoritative hit, with its windup before it.
+    const windup = Math.min(.42, interval) * .12 / .42;
+    const nextImpact = (Math.floor(Math.max(0, elapsed) / interval) + 1) * interval;
+    const impact = nextImpact - elapsed <= windup ? nextImpact : Math.floor(attackCount) * interval;
+    if (impact <= 0) return 0;
+    return attackAnimationClockAt(absoluteAttackTimestamps(impact - windup, interval), elapsed);
+  }
+  if (attackCount <= 0) return 0;
   const lastAttackAt = Math.max(1, Math.floor(attackCount)) * interval;
   return attackAnimationClockAt(absoluteAttackTimestamps(lastAttackAt, interval), elapsed);
 }

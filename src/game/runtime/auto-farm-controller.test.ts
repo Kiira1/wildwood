@@ -8,7 +8,7 @@ import type { Circle } from './types';
 import type { Movement } from './player-input-controller';
 const idle: Movement = { x: 0, y: 0, source: 'none' };
 
-function setup(obstacles: Circle[] = []) {
+function setup(obstacles: Circle[] = [], weapon = "starter_bow") {
   const state = createGameBootstrap();
   state.enemies.length = 0;
   state.spawnSites.length = 0;
@@ -23,7 +23,7 @@ function setup(obstacles: Circle[] = []) {
   };
   const farm = createAutoFarmController({
     ...state, mapId: () => map, unavailable: () => unavailable, paused: () => paused,
-    speed: () => state.player.speed, obstacles: () => obstacles,
+    speed: () => state.player.speed, obstacles: () => obstacles, equippedWeapon: () => weapon,
   });
   const tick = () => {
     const movement = farm.movement(idle, 1 / 60);
@@ -177,4 +177,12 @@ describe('autofarm', () => {
     expect(s.farm.state()).toMatchObject({ active: false, status: 'Disconnected' });
     expect(s.farm.start('Bramble')).toBe(false);
   });
+});
+
+it("closes to sword reach without changing the player camera range", () => {
+  const s = setup([], "wooden_sword"), enemy = s.add("Spitter", 800, 500);
+  s.farm.start("Spitter");
+  for (let i = 0; i < 300; i++) s.tick();
+  expect(Math.hypot(enemy.x - s.player.x, enemy.y - s.player.y) - enemy.r).toBeLessThan(75);
+  expect(s.player.attackRange).toBe(200);
 });

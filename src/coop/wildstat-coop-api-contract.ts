@@ -147,6 +147,7 @@ type ExpectedApiKey =
   | "setDeveloperNameTag"
   | "playerNamePrefix"
   | "playerNameTagsRevision"
+  | "getNameChangeStatus"
   | "setDisplayName"
   | "patreonStatus"
   | "applyAvatarFrame"

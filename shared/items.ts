@@ -1,6 +1,7 @@
 // Browser- and server-safe equipment catalog. Add gameplay-facing item data
 // here; client-only sprites and draw anchors live in item-presentation.ts.
 
+export const WOODEN_SWORD = "wooden_sword";
 export const BASIC_PAPER_HAT = "basic_paper_hat";
 export const SUPERIOR_GOLDEN_HELMET = "superior_golden_helmet";
 export const WOOD_FULL_HELM = "wood_full_helm";
@@ -79,13 +80,20 @@ export type ItemDefinition = {
     regenerationMultiplierBonus?: number;
   };
   weapon?: {
-    mode: "RANGED";
-    projectile: ProjectileKind;
+    mode: "RANGED" | "MELEE";
+    projectile?: ProjectileKind;
+    range?: number;
     damageMultiplierBonus?: number;
   };
 };
 
 export const ITEM_DEFINITIONS = {
+  [WOODEN_SWORD]: {
+    id: WOODEN_SWORD, name: "WOODEN SWORD", slot: "HAND", acquisition: "DEVELOPER",
+    description: "A simple wooden practice sword for close-range combat.",
+    stats: ["MELEE · 75 RANGE"],
+    weapon: { mode: "MELEE", range: 75 },
+  },
   [BASIC_PAPER_HAT]: {
     id: BASIC_PAPER_HAT,
     name: "BASIC PAPER HAT",

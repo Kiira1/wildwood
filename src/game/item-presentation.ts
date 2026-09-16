@@ -1,7 +1,7 @@
 import type { WeaponCategory } from "./equipment-alignment";
 import type { LayerAdjustment } from "./player-layer-alignment";
 import {
-  BASIC_PAPER_HAT,
+  BASIC_PAPER_HAT, WOODEN_SWORD,
   BLACK_BOOTS,
   DARK_METAL_HELMET,
   SAMURAI_HAT,
@@ -49,7 +49,7 @@ export type WorldSpritePresentation = {
   height?: number;
   bottom?: number;
   top?: number;
-  handAction?: "THROW" | "BOW";
+  handAction?: "THROW" | "BOW" | "SWING";
   weaponCategory?: WeaponCategory;
   alignment?: LayerAdjustment;
 };
@@ -70,6 +70,10 @@ const PLAYER_PARTS = "assets/wildstat/player-parts";
 
 /** Client-only art registry. New equipment gets one catalog entry and assets. */
 export const ITEM_PRESENTATIONS: Partial<Record<ItemId, ItemPresentation>> = {
+  [WOODEN_SWORD]: {
+    inventory: { source: `${PLAYER_PARTS}/wooden-sword.png`, equippedWidth: 32, equippedHeight: 28 },
+    world: { kind: "SPRITE", source: `${PLAYER_PARTS}/wooden-sword.png`, layer: "HAND", top: 116, handAction: "SWING", weaponCategory: "SWORD" },
+  },
   [BASIC_PAPER_HAT]: {
     inventory: { source: `${PLAYER_PARTS}/basic-paper-hat.png`, equippedWidth: 30, equippedHeight: 27 },
     world: { kind: "SPRITE", source: `${PLAYER_PARTS}/basic-paper-hat.png`, layer: "HEAD", bottom: 144 },

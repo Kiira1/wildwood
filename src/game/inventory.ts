@@ -18,7 +18,6 @@ import {
   STARTER_STONE,
   STARTER_ITEM_IDS,
   SNOW_BOSS_DROP_ITEM_IDS,
-  SUPERIOR_GOLDEN_HELMET,
   TRAILBLAZER_BOOTS,
   type EquipmentSlot,
 } from "../../shared/items";
@@ -245,11 +244,10 @@ export function equipmentAppearance(inventory: Pick<InventoryState,
 export function normaliseInventory(itemIds: unknown, equippedFeet: unknown, equippedHead: unknown, equippedChest: unknown, ownsBoots: boolean, ownsDeveloperCosmetics = false, equippedRightHand: unknown = "", equippedLeftHand: unknown = "", cosmeticHead: unknown = "", cosmeticChest: unknown = "", cosmeticFeet: unknown = "", cosmeticRightHand: unknown = "", cosmeticLeftHand: unknown = ""): InventoryState {
   const requested = Array.isArray(itemIds) ? itemIds : [];
   const hasBoots = ownsBoots || requested.includes(TRAILBLAZER_BOOTS);
-  const hasBetaTesterGoldenHelmet = ownsDeveloperCosmetics || requested.includes(SUPERIOR_GOLDEN_HELMET);
   const handStateWasSaved = requested.some((itemId) => itemDefinition(itemId)?.slot === "HAND");
   const developerItems = ownsDeveloperCosmetics
     ? DEVELOPER_ITEM_IDS
-    : hasBetaTesterGoldenHelmet ? [SUPERIOR_GOLDEN_HELMET] : [];
+    : DEVELOPER_ITEM_IDS.filter(id => requested.includes(id));
   const forestDropItems = FOREST_DROP_ITEM_IDS.flatMap((itemId) =>
     Array(Math.min(MAX_FOREST_ITEM_COUNT, requested.filter((requestedId) => canonicalItemId(requestedId) === itemId).length)).fill(itemId));
   const desertDropItems = DESERT_DROP_ITEM_IDS.flatMap((itemId) =>

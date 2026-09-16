@@ -19,6 +19,7 @@ export type RemoteRegularEnemyCombatVisual = {
 
 /** Existing saved stats needed to reproduce a remote regular-enemy fight locally. */
 export type RemoteCombatStats = {
+  melee?: boolean;
   damage: number;
   maxHp: number;
   armor: number;

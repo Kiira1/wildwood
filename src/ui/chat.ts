@@ -384,7 +384,7 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
     const distanceToLatest = elements.messages.scrollHeight - elements.messages.clientHeight - elements.messages.scrollTop;
     const readingLatest = enabled && large && document.visibilityState !== "hidden"
       && (renderedRevision === "" || (!historyState.frozen && !(distanceToLatest > 16)));
-    const revision = `${reactionRevision}:${readingLatest}:${conversationKey()}:${coop?.chatRevision?.() ?? -1}:${coop?.social?.revision() ?? -1}:${coop?.localIdentity?.() ?? ""}:${enabled}:${large}:${historyState.revision}`;
+    const revision = `${Math.floor(now / 60_000)}:${reactionRevision}:${readingLatest}:${conversationKey()}:${coop?.chatRevision?.() ?? -1}:${coop?.social?.revision() ?? -1}:${coop?.localIdentity?.() ?? ""}:${enabled}:${large}:${historyState.revision}`;
     if (revision === renderedRevision && now < nextExpiryAt) return;
     const conversations = coop?.social?.privateConversations() ?? [];
     if (privatePeer && !privatePeerIdentity) {

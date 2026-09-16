@@ -84,3 +84,17 @@ describe("snapToDevicePixel", () => {
     expect(snapToDevicePixel(1.6, 0)).toBe(2);
   });
 });
+
+it("updates the range ring from the equipped weapon without changing camera range", () => {
+  const f = arena(true, false);
+  let reach = 75;
+  Object.assign(f.options, { isDueling: () => false, isReplayActive: () => false, duelResultHeld: () => false,
+    attackRangeVisible: () => true, weaponAttackRange: () => reach, projectiles: [], enemyShots: [],
+    webGLProjectileBatch: () => ({ frames: [], complete: false }), webGLParticleBatch: () => ({ frames: [], complete: false }) });
+  f.ctx.createRadialGradient.mockReturnValue({ addColorStop: vi.fn() });
+  const render = createRenderController(f.options).render;
+  render(); expect(f.ctx.arc).toHaveBeenCalledWith(5000, 5000, 75, 0, Math.PI * 2);
+  reach = 200; f.ctx.arc.mockClear(); render();
+  expect(f.ctx.arc).toHaveBeenCalledWith(5000, 5000, 200, 0, Math.PI * 2);
+  expect(f.options.player.attackRange).toBe(200);
+});

@@ -141,6 +141,13 @@ export const ChatCooldown = __t.object("ChatCooldown", {
 });
 export type ChatCooldown = __Infer<typeof ChatCooldown>;
 
+export const ChatHeartAllowance = __t.object("ChatHeartAllowance", {
+  identity: __t.identity(),
+  windowStart: __t.timestamp(),
+  used: __t.u32(),
+});
+export type ChatHeartAllowance = __Infer<typeof ChatHeartAllowance>;
+
 export const ChatMessage = __t.object("ChatMessage", {
   id: __t.u64(),
   sender: __t.identity(),
@@ -1149,6 +1156,14 @@ export type MySocialMessagesWithReactions = __Infer<typeof MySocialMessagesWithR
 
 export const MyUpgradeBench = __t.object("MyUpgradeBench", {});
 export type MyUpgradeBench = __Infer<typeof MyUpgradeBench>;
+
+export const NameChangeStatus = __t.object("NameChangeStatus", {
+  cost: __t.u32(),
+  availableAtMs: __t.f64(),
+  serverNowMs: __t.f64(),
+  balance: __t.f64(),
+});
+export type NameChangeStatus = __Infer<typeof NameChangeStatus>;
 
 export const PatreonAnnouncement = __t.object("PatreonAnnouncement", {
   userId: __t.string(),

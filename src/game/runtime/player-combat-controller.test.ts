@@ -524,3 +524,64 @@ describe("stable player combat aim", () => {
     expect(Math.cos(f.player.facing)).toBeLessThan(0);
   });
 });
+
+describe("local sword combat", () => {
+  function swordHarness(overrides: Partial<Parameters<typeof createPlayerCombatController>[0]> = {}) {
+    let now = 0, weapon = "wooden_sword";
+    const state = createCombatHarness({ nowSeconds: () => now, equippedWeapon: () => weapon, ...overrides });
+    state.enemies.length = 0; state.boss.dead = true;
+    Object.assign(state.player, { x: 500, y: 500, damage: 10, projectileCount: 3, attackRate: 1, attackRange: 200 });
+    const add = (x: number, radius = 15) => {
+      createEnemyLifecycle(state.enemies, state.spawnSites, () => {}).spawnFromSite({ id: state.enemies.length, type: "Spitter", x, y: 500,
+        campName: "Test", leashRange: 500, alive: false, respawnAt: 0 });
+      const enemy = state.enemies[state.enemies.length - 1]; enemy.hp = enemy.maxHp = 100; enemy.r = radius;
+      return enemy;
+    };
+    return { ...state, add, setWeapon: (id: string) => { weapon = id; }, step: (time: number) => {
+      const dt = time - now; now = time; state.controller.attackNearest(); state.controller.updateProjectiles(dt);
+    } };
+  }
+  it("strikes once at release, even with multishot, and spawns no projectile", () => {
+    const s = swordHarness(), enemy = s.add(565);
+    s.step(0); expect(enemy.hp).toBe(100);
+    s.step(.119); expect(enemy.hp).toBe(100);
+    s.step(.121); expect(enemy.hp).toBeCloseTo(90);
+    s.step(.4); expect(enemy.hp).toBeCloseTo(90);
+    expect(s.projectileStore.projectiles).toHaveLength(0);
+    expect(s.player.attackRange).toBe(200);
+  });
+  it("does not acquire targets at bow range and misses when an enemy moves away during windup", () => {
+    const s = swordHarness(), enemy = s.add(650);
+    s.step(0); s.step(.2); expect(enemy.hp).toBe(100);
+    enemy.x = 565; s.step(.3); enemy.x = 650; s.step(.5);
+    expect(enemy.hp).toBe(100);
+  });
+  it("hits a large target's near edge and only the nearest target on the ray", () => {
+    const s = swordHarness(), first = s.add(585, 20), second = s.add(595, 30);
+    s.step(0); s.step(.13);
+    expect(first.hp).toBeCloseTo(90); expect(second.hp).toBe(100);
+  });
+  it("cancels a queued strike when switching weapons without resetting attack cooldown", () => {
+    const s = swordHarness(), enemy = s.add(565);
+    s.step(0); s.setWeapon("starter_bow"); s.step(.13);
+    expect(enemy.hp).toBe(100); expect(s.projectileStore.projectiles).toHaveLength(0);
+    expect(s.player.attackClock).toBeGreaterThan(.8);
+  });
+  it("damages bosses through the normal boss handler without an arrow", () => {
+    const damageDragon = vi.fn();
+    const s = swordHarness({ damageDragon });
+    Object.assign(s.boss, { x: 600, y: 500, r: 50, dead: false });
+    s.step(0); s.step(.13);
+    expect(damageDragon).toHaveBeenCalledOnce();
+    expect(s.projectileStore.projectiles).toHaveLength(0);
+  });
+  it("awards one regular enemy defeat and works at capped attack speed", () => {
+    const recordRegularEnemyDefeat = vi.fn();
+    const s = swordHarness({ recordRegularEnemyDefeat });
+    const enemy = s.add(565); enemy.hp = 20; s.player.attackRate = .05;
+    for (let frame = 0; frame < 50; frame++) s.step(frame / 120);
+    expect(enemy.dead).toBe(true);
+    expect(recordRegularEnemyDefeat).toHaveBeenCalledOnce();
+    expect(s.projectileStore.projectiles).toHaveLength(0);
+  });
+});

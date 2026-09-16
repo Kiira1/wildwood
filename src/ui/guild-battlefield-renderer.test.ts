@@ -73,3 +73,34 @@ it("draws white damage popups on impact and handles expiry and rewind", () => {
   expect(popups(time)).toHaveLength(2);
   renderer.dispose();
 });
+
+it("does not render offscreen entrants, then restores all names and poses before combat", async () => {
+  const { buildGuildReplayEntrance } = await import("./guild-replay-entrance");
+  const paintText = vi.fn();
+  const context = new Proxy({}, { get: (_target, key) => key === "fillText" ? paintText : vi.fn(), set: () => true }) as CanvasRenderingContext2D;
+  const doc = { defaultView: { devicePixelRatio: 1 }, createElement: () => ({ width: 0, height: 0, getContext: () => context }) };
+  const canvas = { ownerDocument: doc, clientWidth: 390, clientHeight: 844, width: 0, height: 0 } as unknown as HTMLCanvasElement;
+  const team = (prefix: string) => Array.from({ length: 20 }, (_, i) => ({ identity: `${prefix}${i}`, name: `${prefix}${i}`,
+    fighter: { maxHp: 100, damage: 10, armor: 0, regen: 0, attackRate: 1 } }));
+  const battle = simulateGuildBattle(team("A"), team("B")), entrance = buildGuildReplayEntrance(battle);
+  const timeline = buildGuildReplayTimeline(battle), image = { naturalWidth: 0 } as HTMLImageElement;
+  const renderer = createGuildBattlefieldRenderer(canvas, context, timeline, 20,
+    { player: { basicFrontLeg: image, basicBackLeg: image, equipment: {} }, prepare: async () => {}, trees: image, treeBounds: () => [] }, entrance);
+  vi.mocked(drawStartingPlayer).mockClear();
+  renderer.draw(0, true, 0);
+  expect(drawStartingPlayer).not.toHaveBeenCalled(); expect(paintText).not.toHaveBeenCalled();
+  const early = renderer.draw(0, true, .5);
+  const visible = early.filter(actor => actor.visible);
+  expect(visible.length).toBeGreaterThan(0); expect(visible.length).toBeLessThan(10);
+  expect(drawStartingPlayer).toHaveBeenCalledTimes(visible.length);
+  const pose = vi.mocked(drawStartingPlayer).mock.calls[0][2];
+  expect(pose.scale).toBeCloseTo(.6 * .86); expect(pose.moving).toBe(true);
+  vi.mocked(drawStartingPlayer).mockClear(); paintText.mockClear();
+  const arrived = renderer.draw(0, true, entrance.duration);
+  expect(arrived.every(actor => actor.visible)).toBe(true);
+  expect(drawStartingPlayer).toHaveBeenCalledTimes(40);
+  expect(paintText.mock.calls.filter(([text]) => text === "100 / 100")).toHaveLength(40);
+  vi.mocked(drawStartingPlayer).mockClear(); renderer.draw(0, true, 0);
+  expect(drawStartingPlayer).not.toHaveBeenCalled();
+  renderer.dispose();
+});

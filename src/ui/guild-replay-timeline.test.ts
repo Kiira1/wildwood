@@ -2,6 +2,14 @@ import { expect, it } from "vitest";
 import { simulateGuildBattle } from "../../shared/guild-combat";
 import { buildGuildReplayTimeline } from "./guild-replay-timeline";
 const member = (identity: string) => ({ identity, name: identity, fighter: { maxHp: 100, damage: 1000, armor: 0, regen: 0, attackRate: 1 }, range: 160 });
+it("places a melee swing's release at its hit instead of giving it projectile travel time", () => {
+  const durable = (id: string) => ({ ...member(id), fighter: { ...member(id).fighter, maxHp: 10000, damage: 10 } });
+  const sword = { ...durable("a"), range: 75, appearance: { rightHandItem: "wooden_sword" } };
+  const timeline = buildGuildReplayTimeline(simulateGuildBattle([sword], [durable("b")]));
+  expect(timeline.attacks[0].length).toBeGreaterThan(0);
+  for (const attack of timeline.attacks[0]) expect(attack.launch).toBe(attack.impact);
+  for (const attack of timeline.attacks[1]) expect(attack.launch).toBeLessThan(attack.impact);
+});
 it("keeps both lethal projectiles in flight before simultaneous knockouts", () => {
   const battle = simulateGuildBattle([member("a")], [member("b")]);
   const timeline = buildGuildReplayTimeline(battle);

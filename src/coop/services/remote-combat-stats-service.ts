@@ -1,7 +1,7 @@
 import type { Identity } from "spacetimedb";
 import { tables, type DbConnection } from "../../module_bindings";
 import { effectivePlayerPowerStats } from "../../../shared/player-power";
-import { normalizeItemUpgradeLevel } from "../../../shared/items";
+import { itemDefinition, normalizeItemUpgradeLevel } from "../../../shared/items";
 import type { RemoteCombatStats } from "../contracts";
 
 const LOAD_TIMEOUT_MS = 5_000;
@@ -72,19 +72,22 @@ export function remoteCombatStatsFromRows(
     research,
     (itemId) => upgradeLevels.get(itemId) ?? 0,
   );
+  const weapon = itemDefinition(progress.equippedRightHand || progress.equippedLeftHand)?.weapon;
+  const melee = weapon?.mode === "MELEE";
   const criticalChanceRank = normalizedRank(research?.criticalChance ?? 0);
   const criticalDamageRank = normalizedRank(research?.criticalDamage ?? 0);
   return {
+    melee,
     damage: finitePositive(effective.damage, 1),
     maxHp: finitePositive(effective.maxHp, 100),
     armor: Math.max(0, Number.isFinite(effective.armor) ? effective.armor : 0),
     regen: Math.max(0, Number.isFinite(effective.regen) ? effective.regen : 0),
     attackInterval: finitePositive(effective.attackRate, 1),
     projectileSpeed: finitePositive(progress.projectileSpeed, 390),
-    projectileCount: Number.isInteger(progress.projectileCount)
+    projectileCount: melee ? 1 : Number.isInteger(progress.projectileCount)
       ? Math.max(1, Math.min(20, progress.projectileCount))
       : 1,
-    attackRange: finitePositive(progress.attackRange, 155),
+    attackRange: melee ? weapon?.range ?? 75 : finitePositive(progress.attackRange, 155),
     criticalChance: Math.max(0, Math.min(1, criticalChanceRank * .01)),
     criticalDamageMultiplier: 1.05 + criticalDamageRank * .05,
   };

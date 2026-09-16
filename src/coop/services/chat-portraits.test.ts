@@ -138,3 +138,45 @@ it("bounds automatic retries when a player's profile is unavailable", async () =
   await vi.advanceTimersByTimeAsync(60_000);
   expect(f.requests).toHaveLength(3);
 });
+
+it("refreshes an expired portrait on demand and keeps the old image while loading", async () => {
+  const f = fixture(), sender = identity(1), key = sender.toHexString();
+  f.portraits.request(sender); await vi.advanceTimersByTimeAsync(0);
+  f.rows([{ identity: sender, profileIcon: 64 }]); f.requests[0].apply();
+  await vi.advanceTimersByTimeAsync(60_000);
+  expect(f.requests).toHaveLength(1); // No polling for players nobody is viewing.
+  f.portraits.request(sender); await vi.advanceTimersByTimeAsync(0);
+  expect(f.portraits.icon(key)).toBe(64);
+  f.rows([{ identity: sender, profileIcon: 190 }]); f.requests[1].apply();
+  expect(f.portraits.icon(key)).toBe(190);
+});
+it("refreshes even when the directory retained an older leaderboard portrait", async () => {
+  const f = fixture(), sender = identity(1), key = sender.toHexString();
+  const directory = createProfileDirectory({ reducers: { connection: () => f.connection }, localIdentity: () => "me",
+    shouldRetain: () => true, notify: vi.fn(), markChatPresentationChanged: vi.fn() } as never);
+  directory.rememberPresentation({ identity: key, identityValue: sender, displayName: "Friend", profileIcon: 64 });
+  expect(directory.api.profileIcon(key)).toBe(64);
+  await vi.advanceTimersByTimeAsync(60_000);
+  directory.api.profileIcon(key); await vi.advanceTimersByTimeAsync(0);
+  f.rows([{ identity: sender, profileIcon: 174 }]); f.requests[0].apply();
+  expect(directory.api.profileIcon(key)).toBe(174);
+  directory.clearSession();
+});
+
+it("keeps each player's portrait isolated when one changes and the batch returns out of order", async () => {
+  const f = fixture(), a = identity(1), b = identity(2), c = identity(3);
+  const directory = createProfileDirectory({ reducers: { connection: () => f.connection }, localIdentity: () => "me",
+    shouldRetain: () => true, notify: vi.fn(), markChatPresentationChanged: vi.fn(), renameRemotePlayer: vi.fn() } as never);
+  for (const [sender, profileIcon] of [[a, 17], [b, 42], [c, 174]] as const) {
+    directory.tables.upsertProfile({ identity: sender, displayName: sender.toHexString(), profileIcon });
+  }
+  directory.tables.upsertProfile({ identity: b, displayName: "B", profileIcon: 190 });
+  expect([a, b, c].map(id => directory.api.profileIcon(id.toHexString()))).toEqual([17, 190, 174]);
+  await vi.advanceTimersByTimeAsync(60_000);
+  for (const sender of [a, b, c]) directory.api.profileIcon(sender.toHexString());
+  await vi.advanceTimersByTimeAsync(0);
+  f.rows([{ identity: c, profileIcon: 174 }, { identity: a, profileIcon: 17 }, { identity: b, profileIcon: 190 }]);
+  f.requests[0].apply();
+  expect([a, b, c].map(id => directory.api.profileIcon(id.toHexString()))).toEqual([17, 190, 174]);
+  directory.clearSession();
+});

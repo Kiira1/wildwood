@@ -7,6 +7,23 @@ export const chatReaction = table({ name: "chat_reaction" }, {
   actor: t.identity().index("btree"), reaction: t.string(),
   active: t.bool().default(true), heartCredited: t.bool().default(false),
 });
+// Private, constant-time allowance per giver, shared across public/guild chat.
+export const chatHeartAllowance = table({ name: "chat_heart_allowance" }, {
+  identity: t.identity().primaryKey(), windowStart: t.timestamp(), used: t.u32(),
+});
+const HEARTS_PER_HOUR = 30;
+const HOUR_MICROS = 3_600_000_000n;
+function currentAllowance(ctx: ModuleReducerCtx, actor: Identity) {
+  const row = ctx.db.chatHeartAllowance.identity.find(actor);
+  return row && ctx.timestamp.microsSinceUnixEpoch - row.windowStart.microsSinceUnixEpoch < HOUR_MICROS ? row : null;
+}
+function spendHeart(ctx: ModuleReducerCtx) {
+  const previous = ctx.db.chatHeartAllowance.identity.find(ctx.sender);
+  const current = currentAllowance(ctx, ctx.sender);
+  if (current && current.used >= HEARTS_PER_HOUR) throw new SenderError("You can give 30 new hearts per hour in public and guild chat. Try again later.");
+  const next = { identity: ctx.sender, windowStart: current?.windowStart ?? ctx.timestamp, used: (current?.used ?? 0) + 1 };
+  if (previous) ctx.db.chatHeartAllowance.identity.update(next); else ctx.db.chatHeartAllowance.insert(next);
+}
 // Separate records preserve the wire schemas used by installed mobile builds.
 export const chatReactionSummary = table({ name: "chat_reaction_summary" }, {
   key: t.string().primaryKey(), countsJson: t.string(),
@@ -64,13 +81,15 @@ export function setChatReaction(ctx: ModuleReducerCtx, channel: string, id: bigi
   if (active && row.sender.equals(ctx.sender)) throw new SenderError("You cannot react to your own message.");
   const target = messageKey(channel, id), key = `${target}:${ctx.sender.toHexString()}:${reaction}`;
   const previous = ctx.db.chatReaction.key.find(key);
+  const creditHeart = reaction === "heart" && active && !previous?.active && !previous?.heartCredited &&
+    (channel === "public" || ("channel" in row && row.channel === "guild"));
+  if (creditHeart) spendHeart(ctx);
   const counts = chatReactionCounts(reactionCountsFor(ctx, channel, id));
   const switched = active && clearOtherReactions(ctx, target, ctx.sender, reaction, counts);
   if (Boolean(previous?.active) === active) {
     if (switched) writeCounts(ctx, target, counts);
     return;
   }
-  const creditHeart = reaction === "heart" && active && !previous?.heartCredited && !row.sender.equals(ctx.sender);
   const next = { key, messageKey: target, actor: ctx.sender, reaction, active, heartCredited: Boolean(previous?.heartCredited || creditHeart) };
   if (previous) ctx.db.chatReaction.key.update(next);
   else ctx.db.chatReaction.insert(next);
@@ -89,6 +108,7 @@ export function removeMessageReactions(ctx: ModuleReducerCtx, channel: string, i
 }
 export function removeAccountReactions(ctx: ModuleReducerCtx, actor: Identity) {
   ctx.db.playerChatHearts.identity.delete(actor);
+  ctx.db.chatHeartAllowance.identity.delete(actor);
   for (const reaction of ctx.db.chatReaction.actor.filter(actor)) {
     const [channel, id] = reaction.messageKey.split(":");
     const row = channel === "public" ? ctx.db.chatMessage.id.find(BigInt(id)) : ctx.db.socialMessage.id.find(BigInt(id));
@@ -102,6 +122,15 @@ export function removeAccountReactions(ctx: ModuleReducerCtx, actor: Identity) {
 
 /** Preserve a guest's selections/credit history through registration. */
 export function mergeAccountReactions(ctx: ModuleReducerCtx, guest: Identity, account: Identity) {
+  const guestAllowance = currentAllowance(ctx, guest), accountAllowance = currentAllowance(ctx, account);
+  if (guestAllowance) {
+    const next = { identity: account,
+      windowStart: accountAllowance && accountAllowance.windowStart.microsSinceUnixEpoch > guestAllowance.windowStart.microsSinceUnixEpoch ? accountAllowance.windowStart : guestAllowance.windowStart,
+      used: Math.min(HEARTS_PER_HOUR, guestAllowance.used + (accountAllowance?.used ?? 0)) };
+    if (ctx.db.chatHeartAllowance.identity.find(account)) ctx.db.chatHeartAllowance.identity.update(next);
+    else ctx.db.chatHeartAllowance.insert(next);
+  }
+  ctx.db.chatHeartAllowance.identity.delete(guest);
   const guestHearts = ctx.db.playerChatHearts.identity.find(guest);
   if (guestHearts) {
     const accountHearts = ctx.db.playerChatHearts.identity.find(account);

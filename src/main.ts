@@ -1,3 +1,4 @@
+import { weaponAttackRange } from "./game/weapon-combat";
 import { createPlayerVisibilityToggle } from "./ui/player-visibility-toggle";
 import { createScheduledUpdateController, createScheduledUpdateView } from "./ui/scheduled-update-controller";
 import { enforceLatestVersion } from "./app/version";
@@ -523,6 +524,7 @@ import {
   };
   const autoFarm = createAutoFarmController({
     player, enemies, spawnSites, mapId: () => currentMapId,
+    equippedWeapon: () => inventory.equippedRightHand || inventory.equippedLeftHand,
     localIdentity: () => coop?.localIdentity?.(),
     unavailable: farmUnavailable,
     paused: () => Boolean(session?.isPaused()) || document.hidden,
@@ -1230,6 +1232,7 @@ import {
     screenShake: () => screenShake,
     screenShakeEnabled: () => appShell.screenShakeEnabled(),
     attackRangeVisible: () => appShell.attackRangeVisible(),
+    weaponAttackRange: () => weaponAttackRange(inventory.equippedRightHand || inventory.equippedLeftHand, player.attackRange),
     flash: () => appShell.damageFlashEnabled() ? flash : 0,
     projectiles,
     enemyShots,
@@ -1284,8 +1287,8 @@ import {
   });
 
   let pendingProfileNameSave: Promise<{ ok?: boolean; error?: string } | undefined> | undefined;
-  function saveProfileName(name: string) {
-    const request = Promise.resolve(coop?.setDisplayName?.(name));
+  function saveProfileName(name: string, expectedCost = 0) {
+    const request = Promise.resolve(coop?.setDisplayName?.(name, expectedCost));
     pendingProfileNameSave = request;
     return request.finally(() => { if (pendingProfileNameSave === request) pendingProfileNameSave = undefined; });
   }
@@ -1321,7 +1324,7 @@ import {
       minimizeMaximizedChat();
       return coop?.requestDuel?.(identity);
     },
-    isNameTaken: (name) => coop?.isDisplayNameTaken?.(name) ?? false, setDisplayName: saveProfileName, itemInspection: itemInspectionController, destructionActions: inventoryController.destructionActions, showMessage,
+    isNameTaken: (name) => coop?.isDisplayNameTaken?.(name) ?? false, getNameChangeStatus: async () => coop?.getNameChangeStatus?.(), setDisplayName: saveProfileName, itemInspection: itemInspectionController, destructionActions: inventoryController.destructionActions, showMessage,
   });
   new ResizeObserver(() => { if (profileCharacterPreview.resize()) profileWindow.drawPreview(); }).observe(profileCharacterCanvas);
   new ResizeObserver(() => {

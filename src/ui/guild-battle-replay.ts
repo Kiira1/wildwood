@@ -1,3 +1,4 @@
+import { buildGuildReplayEntrance } from "./guild-replay-entrance";
 import type { GuildBattleResult } from "../../shared/guild-combat";
 import { frameDeadlineReached, nextPresentationDeadline } from "../game/runtime/render-budget";
 import { createGuildBattlefieldRenderer, type GuildReplayAssets } from "./guild-battlefield-renderer";
@@ -8,6 +9,8 @@ export type { GuildReplayAssets } from "./guild-battlefield-renderer";
  * the render loop. No world simulation, network polling, or per-actor DOM. */
 export function createGuildBattleReplay(parent: HTMLElement, battle: GuildBattleResult, names: [string, string], assets?: GuildReplayAssets, onBack?: () => void, lowPerformanceMode: () => boolean = () => false) {
   const doc = parent.ownerDocument, win = doc.defaultView;
+  const entrance = buildGuildReplayEntrance(battle);
+  const endTime = Math.round((entrance.duration + battle.duration + 1.1) * 10) / 10;
   const root = doc.createElement("section"); root.className = "guild-replay";
   const title = doc.createElement("h3"); title.textContent = `[${names[0]}] vs [${names[1]}]`;
   const status = doc.createElement("p"); status.setAttribute("role", "status"); status.textContent = "Loading battlefield…";
@@ -18,7 +21,7 @@ export function createGuildBattleReplay(parent: HTMLElement, battle: GuildBattle
   const play = doc.createElement("button"); play.type = "button"; play.className = "guild-button"; play.textContent = "Pause";
   const restart = doc.createElement("button"); restart.type = "button"; restart.className = "guild-button"; restart.textContent = "Restart";
   const speed = doc.createElement("button"); speed.type = "button"; speed.className = "guild-button"; speed.textContent = "1×"; speed.setAttribute("aria-label", "Replay speed");
-  const seek = doc.createElement("input"); seek.type = "range"; seek.min = "0"; seek.max = String(Math.round((battle.duration + 1.1) * 10) / 10); seek.step = ".1"; seek.value = "0"; seek.setAttribute("aria-label", "Replay time");
+  const seek = doc.createElement("input"); seek.type = "range"; seek.min = "0"; seek.max = String(endTime); seek.step = ".1"; seek.value = "0"; seek.setAttribute("aria-label", "Replay time");
   controls.append(seek, play, restart, speed);
   const footer = doc.createElement("footer"); footer.className = "window-back-footer"; footer.append(back);
   root.append(title, status, controls, canvas, footer); parent.append(root);
@@ -26,16 +29,16 @@ export function createGuildBattleReplay(parent: HTMLElement, battle: GuildBattle
   let timeline: GuildReplayTimeline | undefined;
   let renderer: ReturnType<typeof createGuildBattlefieldRenderer> | undefined;
   let disposed = false, ready = false, playing = true, elapsed = 0, rate = 1, request = 0, last = 0, nextFrameAt = 0;
-  const endTime = Math.round((battle.duration + 1.1) * 10) / 10;
   let ctx: CanvasRenderingContext2D | null = null;
   try { ctx = canvas.getContext("2d"); } catch { /* Non-canvas hosts still show report text. */ }
   function schedule() { if (!disposed && ready && playing && !doc.hidden && !request && win?.requestAnimationFrame) request = win.requestAnimationFrame(tick); }
   function draw() {
     if (!ready || !ctx) return;
-    const actors = renderer?.draw(elapsed, true) ?? timeline!.sample(elapsed);
+    const combatTime = Math.max(0, elapsed - entrance.duration);
+    const actors = renderer?.draw(combatTime, true, elapsed) ?? timeline!.sample(combatTime);
     const alive = (from: number, to: number) => actors.slice(from, to).filter(actor => actor.hp > 0).length;
     const done = elapsed >= endTime;
-    const nextStatus = done ? `${battle.outcome === "DRAW" ? "Draw" : `[${battle.outcome === "VICTORY" ? names[0] : names[1]}] wins`} · ${battle.attackerSurvivors}–${battle.defenderSurvivors} survivors` : `[${names[0]}] ${alive(0, split)}/${split}  ·  ${Math.min(battle.duration, elapsed).toFixed(1)}s  ·  [${names[1]}] ${alive(split, fighters.length)}/${fighters.length - split}`;
+    const nextStatus = done ? `${battle.outcome === "DRAW" ? "Draw" : `[${battle.outcome === "VICTORY" ? names[0] : names[1]}] wins`} · ${battle.attackerSurvivors}–${battle.defenderSurvivors} survivors` : `[${names[0]}] ${alive(0, split)}/${split}  ·  ${Math.min(battle.duration, combatTime).toFixed(1)}s  ·  [${names[1]}] ${alive(split, fighters.length)}/${fighters.length - split}`;
     if (status.textContent !== nextStatus) status.textContent = nextStatus;
     seek.value = String(elapsed);
     const playLabel = playing ? "Pause" : done ? "Replay" : "Play";
@@ -63,7 +66,7 @@ export function createGuildBattleReplay(parent: HTMLElement, battle: GuildBattle
   void (assets?.prepare() ?? Promise.resolve()).then(() => {
     if (disposed) return;
     timeline = buildGuildReplayTimeline(battle);
-    if (ctx && assets) renderer = createGuildBattlefieldRenderer(canvas, ctx, timeline, split, assets);
+    if (ctx && assets) renderer = createGuildBattlefieldRenderer(canvas, ctx, timeline, split, assets, entrance);
     ready = true;
     if (!ctx) { status.textContent = `${battle.attackers.length} vs ${battle.defenders.length} · ${battle.duration.toFixed(1)}s`; controls.hidden = true; return; }
     draw(); schedule();

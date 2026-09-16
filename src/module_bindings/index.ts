@@ -47,6 +47,7 @@ import BeginForestRewardPrototypeReducer from "./begin_forest_reward_prototype_r
 import CancelGemPurchaseReducer from "./cancel_gem_purchase_reducer";
 import CancelItemUpgradeReducer from "./cancel_item_upgrade_reducer";
 import ChallengeGuildReducer from "./challenge_guild_reducer";
+import ChangeDisplayNameReducer from "./change_display_name_reducer";
 import ChangeMapReducer from "./change_map_reducer";
 import CheckpointShardLocationReducer from "./checkpoint_shard_location_reducer";
 import ClaimDailyGemBonusReducer from "./claim_daily_gem_bonus_reducer";
@@ -87,6 +88,7 @@ import DevDeleteLegacyPlayerReducer from "./dev_delete_legacy_player_reducer";
 import DevDeliverAlphaTesterGiftsReducer from "./dev_deliver_alpha_tester_gifts_reducer";
 import DevDeliverCombatUpdateGiftReducer from "./dev_deliver_combat_update_gift_reducer";
 import DevDeliverDisconnectCompensationReducer from "./dev_deliver_disconnect_compensation_reducer";
+import DevGrantEquipmentReducer from "./dev_grant_equipment_reducer";
 import DevRepairDisplayNameReducer from "./dev_repair_display_name_reducer";
 import DevRepairPlayerJoinedAtReducer from "./dev_repair_player_joined_at_reducer";
 import DevResetDailyGemBonusReducer from "./dev_reset_daily_gem_bonus_reducer";
@@ -178,6 +180,7 @@ import * as GetGuildReplayProcedure from "./get_guild_replay_procedure";
 import * as GetLeaderboardPageProcedure from "./get_leaderboard_page_procedure";
 import * as GetLeaderboardWindowProcedure from "./get_leaderboard_window_procedure";
 import * as GetModerationHistoryProcedure from "./get_moderation_history_procedure";
+import * as GetNameChangeStatusProcedure from "./get_name_change_status_procedure";
 import * as GetPatreonStatusProcedure from "./get_patreon_status_procedure";
 import * as GetSocialChatHistoryProcedure from "./get_social_chat_history_procedure";
 import * as GetSocialChatHistoryWithReactionsProcedure from "./get_social_chat_history_with_reactions_procedure";
@@ -1153,6 +1156,7 @@ const reducersSchema = __reducers(
   __reducerSchema("cancel_gem_purchase", CancelGemPurchaseReducer),
   __reducerSchema("cancel_item_upgrade", CancelItemUpgradeReducer),
   __reducerSchema("challenge_guild", ChallengeGuildReducer),
+  __reducerSchema("change_display_name", ChangeDisplayNameReducer),
   __reducerSchema("change_map", ChangeMapReducer),
   __reducerSchema("checkpoint_shard_location", CheckpointShardLocationReducer),
   __reducerSchema("claim_daily_gem_bonus", ClaimDailyGemBonusReducer),
@@ -1193,6 +1197,7 @@ const reducersSchema = __reducers(
   __reducerSchema("dev_deliver_alpha_tester_gifts", DevDeliverAlphaTesterGiftsReducer),
   __reducerSchema("dev_deliver_combat_update_gift", DevDeliverCombatUpdateGiftReducer),
   __reducerSchema("dev_deliver_disconnect_compensation", DevDeliverDisconnectCompensationReducer),
+  __reducerSchema("dev_grant_equipment", DevGrantEquipmentReducer),
   __reducerSchema("dev_repair_display_name", DevRepairDisplayNameReducer),
   __reducerSchema("dev_repair_player_joined_at", DevRepairPlayerJoinedAtReducer),
   __reducerSchema("dev_reset_daily_gem_bonus", DevResetDailyGemBonusReducer),
@@ -1286,6 +1291,7 @@ const proceduresSchema = __procedures(
   __procedureSchema("get_leaderboard_page", GetLeaderboardPageProcedure.params, GetLeaderboardPageProcedure.returnType),
   __procedureSchema("get_leaderboard_window", GetLeaderboardWindowProcedure.params, GetLeaderboardWindowProcedure.returnType),
   __procedureSchema("get_moderation_history", GetModerationHistoryProcedure.params, GetModerationHistoryProcedure.returnType),
+  __procedureSchema("get_name_change_status", GetNameChangeStatusProcedure.params, GetNameChangeStatusProcedure.returnType),
   __procedureSchema("get_patreon_status", GetPatreonStatusProcedure.params, GetPatreonStatusProcedure.returnType),
   __procedureSchema("get_social_chat_history", GetSocialChatHistoryProcedure.params, GetSocialChatHistoryProcedure.returnType),
   __procedureSchema("get_social_chat_history_with_reactions", GetSocialChatHistoryWithReactionsProcedure.params, GetSocialChatHistoryWithReactionsProcedure.returnType),

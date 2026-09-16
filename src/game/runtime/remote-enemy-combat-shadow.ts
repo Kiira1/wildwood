@@ -272,7 +272,7 @@ export function createRemoteEnemyCombatShadows(options: {
     const attackIndex = Math.floor(elapsed / interval);
     const attackStartedAt = engagementSeconds + attackIndex * interval;
     const timestamps = absoluteAttackTimestamps(attackStartedAt, interval);
-    const projectileTravel = Math.max(0, distance - 20 - shadow.ghost.r * .72) / shadow.stats.projectileSpeed;
+    const projectileTravel = shadow.stats.melee ? 0 : Math.max(0, distance - 20 - shadow.ghost.r * .72) / shadow.stats.projectileSpeed;
     const projectileProgress = (nowSeconds - timestamps.releaseAtSeconds) / Math.max(.001, projectileTravel);
     const hitSlots = remoteProjectileHitSlots(shadow.stats.projectileCount, distance, shadow.ghost.r);
     return {
@@ -296,14 +296,14 @@ export function createRemoteEnemyCombatShadows(options: {
     const engagementSeconds = shadow.engagementTick * REGULAR_ENEMY_TICK_MS / 1_000;
     const elapsedSeconds = Math.max(0, serverNowMs / 1_000 - engagementSeconds);
     const timestamps = absoluteAttackTimestamps(engagementSeconds, shadow.stats.attackInterval);
-    const flightSeconds = Math.max(0, distance - 20 - shadow.ghost.r * .72) / shadow.stats.projectileSpeed;
+    const flightSeconds = shadow.stats.melee ? 0 : Math.max(0, distance - 20 - shadow.ghost.r * .72) / shadow.stats.projectileSpeed;
     const firstHitSeconds = timestamps.releaseAtSeconds - engagementSeconds + flightSeconds;
     const latest = latestCompletedAttackIndex(elapsedSeconds, firstHitSeconds, shadow.stats.attackInterval);
     if (latest <= shadow.lastPlayerHitIndex) return;
 
     const first = Math.max(shadow.lastPlayerHitIndex + 1, latest - 7);
     shadow.lastPlayerHitIndex = latest;
-    if (!selected || distance > shadow.stats.attackRange) return;
+    if (!selected || distance > shadow.stats.attackRange + (shadow.stats.melee ? shadow.ghost.r : 0)) return;
     const hitSlots = remoteProjectileHitSlots(shadow.stats.projectileCount, distance, shadow.ghost.r);
     for (let attackIndex = first; attackIndex <= latest && shadow.enemyHp > 0; attackIndex += 1) {
       let normalDamage = 0;
@@ -349,7 +349,8 @@ export function createRemoteEnemyCombatShadows(options: {
       const dx = shadow.ghost.x - targetX;
       const dy = shadow.ghost.y - targetY;
       const distanceSquared = dx * dx + dy * dy;
-      if (distanceSquared > shadow.stats.attackRange * shadow.stats.attackRange) continue;
+      const reach = shadow.stats.attackRange + (shadow.stats.melee ? shadow.ghost.r : 0);
+      if (distanceSquared > reach * reach) continue;
       const selected = playerAttackTargets.get(shadow.targetId);
       if (
         !selected ||

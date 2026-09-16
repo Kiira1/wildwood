@@ -50,6 +50,30 @@ function setup() {
 }
 
 describe("chat channels", () => {
+  it("changes only the matching sender's portraits and retains other players' pictures", () => {
+    const h = setup();
+    const first = h.coop.chatMessages()[0];
+    let revision = 2;
+    const icons = new Map([["friend", 17], ["second", 42], ["third", 174]]);
+    Object.assign(h.coop, { profileIcon: (id: string) => icons.get(id) ?? 0 });
+    h.coop.chatMessages = () => [first, { ...first, id: 2n, sender: "second", senderName: "Second" },
+      { ...first, id: 3n, sender: "third", senderName: "Third" }, { ...first, id: 4n }];
+    h.coop.chatRevision = () => revision;
+    h.document.getElementById("chatSizeToggle")!.click();
+    h.chat.refresh();
+    const portrait = (id: number) => h.document.querySelector<HTMLElement>(`.chat-line[data-message-id="${id}"] .chat-profile-icon`)!;
+    const second = portrait(2), third = portrait(3);
+    const originalSecondStyle = second.getAttribute("style"), originalThirdStyle = third.getAttribute("style");
+    icons.set("friend", 190);
+    revision++; h.chat.refresh();
+    expect(portrait(1).dataset.profileIcon).toBe("190");
+    expect(portrait(4).dataset.profileIcon).toBe("190");
+    expect(portrait(2)).toBe(second); expect(portrait(3)).toBe(third);
+    expect(second.getAttribute("style")).toBe(originalSecondStyle);
+    expect(third.getAttribute("style")).toBe(originalThirdStyle);
+    expect([second.dataset.profileIcon, third.dataset.profileIcon]).toEqual(["42", "174"]);
+  });
+
   it.each([false, true])("retains gender and power image nodes through unrelated refreshes (fullscreen=%s)", (fullscreen) => {
     const h = setup();
     let revision = 2;

@@ -46,9 +46,10 @@ export function createChatPortraits(options: {
         }
         for (const [key, request] of batch) {
           const icon = icons.get(key);
-          const retryAt = icon === undefined ? Date.now() + 5_000 * 2 ** request.attempt : Infinity;
+          const retryAt = Date.now() + (icon === undefined ? 5_000 * 2 ** request.attempt : 60_000);
+          const previousIcon = cache.get(key)?.icon;
           cache.delete(key);
-          cache.set(key, { icon, retryAt });
+          cache.set(key, { icon: icon ?? previousIcon, retryAt });
           // Retry without needing a message, UI render, or a full profile visit.
           // Bound automatic retries for deleted/unavailable players.
           if (icon === undefined && retry && request.attempt < 2) {
@@ -76,6 +77,11 @@ export function createChatPortraits(options: {
   }
   return {
     icon: (identity: string) => cache.get(identity)?.icon,
+    remember(identity: string, icon: number) {
+      cache.delete(identity);
+      cache.set(identity, { icon, retryAt: Date.now() + 60_000 });
+      while (cache.size > 2048) cache.delete(cache.keys().next().value!);
+    },
     request(identity: Identity) {
       const key = identity.toHexString();
       if ((cache.get(key)?.retryAt ?? 0) > Date.now() || pending.has(key) || queued.has(key)) return;

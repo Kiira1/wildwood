@@ -49,6 +49,17 @@ describe("duel replay rules", () => {
     expect(duelAttackAnimationClock(interval, 1, interval * 2)).toBe(0);
   });
 
+  it("swings swords into contact on the hit and never creates sword projectiles", () => {
+    for (const interval of [1, .1]) {
+      expect(duelAttackAnimationClock(interval, 1, interval, "wooden_sword")).toBeCloseTo(.30);
+      expect(duelAttackAnimationClock(interval, 0, interval - Math.min(.42, interval) * .1, "wooden_sword")).toBeGreaterThan(.30);
+    }
+    const shots = duelShotsAt(duel, 1.2, { shotLifetime: .38, shotSpeed: 100, challengerFromX: 0,
+      opponentFromX: 100, y: 20, challengerWeaponItem: "wooden_sword", opponentWeaponItem: "starter_bow" });
+    expect(shots).toHaveLength(1);
+    expect(shots[0].weaponItem).toBe("starter_bow");
+  });
+
   it("uses recorded final health at replay completion", () => {
     expect(replayState({ ...duel, durationSeconds: 3, challengerFinalHp: 4, opponentFinalHp: 0 }, 3)).toMatchObject({
       challengerHp: 4,

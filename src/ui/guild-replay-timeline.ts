@@ -1,3 +1,4 @@
+import { isMeleeWeapon } from "../game/weapon-combat";
 import { guildAttackDamage, simulateGuildBattle, type GuildBattleResult, type GuildCombatFrame } from "../../shared/guild-combat";
 
 export type GuildReplayShot = { actor: number; target: number; launch: number; impact: number; from: { x: number; y: number }; to: { x: number; y: number } };
@@ -28,7 +29,9 @@ export function buildGuildReplayTimeline(battle: GuildBattleResult) {
       const amount = guildAttackDamage(fighters[i].fighter, fighters[actor.target].fighter, frame.time, actor.attacks - before.actors[i].attacks);
       hits.set(actor.target, (hits.get(actor.target) ?? 0) + amount);
       const target = frame.actors[actor.target];
-      const flight = Math.min(.28, Math.max(.12, Math.hypot(target.x - actor.x, target.y - actor.y) / 800));
+      const appearance = fighters[i].appearance;
+      const flight = isMeleeWeapon(appearance?.rightHandItem || appearance?.leftHandItem) ? 0
+        : Math.min(.28, Math.max(.12, Math.hypot(target.x - actor.x, target.y - actor.y) / 800));
       const launch = Math.max(0, frame.time - flight), from = sample(launch)[i];
       attacks[i].push({ actor: i, target: actor.target, launch, impact: frame.time,
         from: { x: from.x, y: from.y + 1 }, to: { x: target.x, y: target.y - 3 } });

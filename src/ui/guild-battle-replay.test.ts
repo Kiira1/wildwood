@@ -1,3 +1,4 @@
+import { buildGuildReplayEntrance } from "./guild-replay-entrance";
 import { expect, it, vi } from "vitest";
 import { parseHTML } from "linkedom";
 import { simulateGuildBattle } from "../../shared/guild-combat";
@@ -58,7 +59,7 @@ it("supports pause, seek, restart and releases the animation callback on close",
   button("Pause").click(); h.frame(300); expect(h.scheduled.size).toBe(0);
   const seek = h.document.querySelector("input")! as unknown as HTMLInputElement;
   seek.value = "42"; seek.oninput!(new Event("input"));
-  expect(h.document.querySelector('[role="status"]')!.textContent).toContain("42.0s");
+  expect(h.document.querySelector('[role="status"]')!.textContent).toContain(`${(42 - buildGuildReplayEntrance(h.battle).duration).toFixed(1)}s`);
   button("Restart").click(); expect(h.scheduled.size).toBe(1);
   expect(seek.value).toBe("0");
   replay.dispose(); expect(h.scheduled.size).toBe(0); expect(h.host.childElementCount).toBe(0);

@@ -28,9 +28,9 @@ export function createDuelSessionController(hooks: {
     const camera = hooks.camera();
     const worldX = camera.x + clientX / camera.zoom;
     const worldY = camera.y + clientY / camera.zoom;
+    // Follow the visible head/body, leaving surrounding ground free for movement.
     const isPlayerProfileHit = (dx: number, dy: number) =>
-      (Math.abs(dx) <= 48 && dy >= -60 && dy <= 60)
-      || (Math.abs(dx) <= 125 && dy >= -105 && dy < -45);
+      Math.abs(dx) <= 24 && dy >= -52 && dy <= 32;
     if (hooks.isDueling() || hooks.isReplayActive()) {
       const duelScene = hooks.renderedDuelScene();
       const duelTarget = [duelScene?.challenger, duelScene?.opponent]

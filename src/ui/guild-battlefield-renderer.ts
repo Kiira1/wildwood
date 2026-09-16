@@ -1,3 +1,4 @@
+import { guildEntrancePosition, type GuildReplayEntrance } from "./guild-replay-entrance";
 import { formatCompactNumber } from "./number-format";
 import { WORLD_HEALTH_BAR_HEIGHT } from "../game/runtime/game-settings";
 import { healthBarTextY } from "../game/runtime/health-bar-layout";
@@ -15,10 +16,11 @@ import { replayEventIndex, type GuildReplayTimeline } from "./guild-replay-timel
 export type GuildReplayAssets = { player: PlayerAppearanceAssets; prepare: () => Promise<void>; trees: HTMLImageElement; treeBounds: () => StaticTileTreeBounds[] };
 const WIDTH = 1000, HEIGHT = 640;
 const DAMAGE_POPUP_SECONDS = .8;
+const ARENA_ZOOM = .86;
 
 /** Ground is cached at the display's resolution. Characters and equipped weapons
  * use the live renderer directly, with continuous aiming and attack clocks. */
-export function createGuildBattlefieldRenderer(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, timeline: GuildReplayTimeline, split: number, assets: GuildReplayAssets) {
+export function createGuildBattlefieldRenderer(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, timeline: GuildReplayTimeline, split: number, assets: GuildReplayAssets, entrance?: GuildReplayEntrance) {
   const doc = canvas.ownerDocument;
   const ground = doc.createElement("canvas");
   const groundContext = ground.getContext("2d");
@@ -72,8 +74,8 @@ export function createGuildBattlefieldRenderer(canvas: HTMLCanvasElement, ctx: C
     const spanY = Math.max(344, bounds.maxY - bounds.minY);
     const centerX = (bounds.minX + bounds.maxX) / 2;
     const centerY = (bounds.minY + bounds.maxY) / 2;
-    project = point => ({ x: width / 2 + (point.x - centerX) / spanX * fieldW,
-      y: top + fieldH / 2 + (point.y - centerY) / spanY * fieldH });
+    project = point => ({ x: width / 2 + (point.x - centerX) / spanX * fieldW * ARENA_ZOOM,
+      y: top + fieldH / 2 + (point.y - centerY) / spanY * fieldH * ARENA_ZOOM });
     canvas.width = pixelWidth; canvas.height = pixelHeight; ground.width = pixelWidth; ground.height = pixelHeight;
     if (!groundContext) return;
     const groundScale = Math.max(pixelWidth / WIDTH, pixelHeight / HEIGHT);
@@ -90,24 +92,30 @@ export function createGuildBattlefieldRenderer(canvas: HTMLCanvasElement, ctx: C
       groundContext.drawImage(assets.trees, source.x, source.y, source.w, source.h, x - width / 2, y - height, width, height);
     });
   }
-  function draw(time: number, showNames: boolean) {
+  function draw(time: number, showNames: boolean, entranceTime?: number) {
     resize();
     ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
     ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
     ctx.drawImage(ground, 0, 0, viewWidth, viewHeight);
-    const actors = timeline.sample(time).map((actor, i) => ({ ...actor, ...project(stagger(actor, i)) }));
+    const entering = entrance !== undefined && entranceTime !== undefined && entranceTime < entrance.duration;
+    const actors = timeline.sample(entering ? 0 : time).map((actor, i) => {
+      const position = project(stagger(actor, i));
+      const entry = entering ? guildEntrancePosition(entrance.arrivals[i], entranceTime, position, i < split ? 0 : 1, viewWidth)
+        : { ...position, visible: true, entering: false };
+      return { ...actor, ...entry, moving: entering ? entry.entering : actor.moving };
+    });
     const order = actors.map((_, i) => i).sort((a, b) => actors[a].y - actors[b].y);
     for (const i of order) {
       const actor = actors[i], fighter = timeline.fighters[i], diedAt = timeline.deaths[i];
       const deathAge = time - diedAt;
-      if (deathAge > 1.1) continue;
+      if (!actor.visible || deathAge > 1.1) continue;
       const side = i < split ? 0 : 1;
       const eventIndex = replayEventIndex(timeline.attacks[i], time - .35, event => event.launch);
-      const attack = timeline.attacks[i].slice(eventIndex, eventIndex + 3).find(event => time >= event.launch - .12 && time <= event.launch + .30);
+      const attack = entering ? undefined : timeline.attacks[i].slice(eventIndex, eventIndex + 3).find(event => time >= event.launch - .12 && time <= event.launch + .30);
       const target = attack ? project(stagger(attack.to, attack.target)) : actors[actor.target];
       const aim = target ? Math.atan2(target.y - actor.y, target.x - actor.x) : side ? Math.PI : 0;
       const throwClock = attack ? Math.max(0, .42 - (time - (attack.launch - .12))) : 0;
-      ctx.fillStyle = "#0b2e2438"; ctx.beginPath(); ctx.ellipse(actor.x, actor.y + 24, 17 * PLAYER_WORLD_SCALE, 5 * PLAYER_WORLD_SCALE, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#0b2e2438"; ctx.beginPath(); ctx.ellipse(actor.x, actor.y + 24, 17 * PLAYER_WORLD_SCALE * ARENA_ZOOM, 5 * PLAYER_WORLD_SCALE * ARENA_ZOOM, 0, 0, Math.PI * 2); ctx.fill();
       ctx.save();
       let alpha = 1;
       if (deathAge >= 0) {
@@ -116,16 +124,16 @@ export function createGuildBattlefieldRenderer(canvas: HTMLCanvasElement, ctx: C
         alpha = Math.max(0, 1 - Math.max(0, deathAge - .6) / .5);
       }
       drawStartingPlayer(ctx, assets.player, { ...fighter.appearance, x: actor.x, y: actor.y - 5,
-        facing: aim, combatFacing: aim, moving: actor.moving && deathAge < 0, gameTime: time + i * .137,
-        throwClock, alpha, scale: PLAYER_WORLD_SCALE, smooth: true });
+        facing: aim, combatFacing: aim, moving: actor.moving && deathAge < 0, gameTime: (entranceTime ?? time) + i * .137,
+        throwClock, alpha, scale: PLAYER_WORLD_SCALE * ARENA_ZOOM, smooth: true });
       ctx.restore();
     }
     // Paint labels after every character so neighboring sprites cannot cover them.
     for (const [i, actor] of actors.entries()) {
-      if (actor.hp <= 0) continue;
+      if (!actor.visible || actor.hp <= 0) continue;
       const fighter = timeline.fighters[i];
       const barW = Math.min(80, Math.max(48, viewWidth / 5 - 14)), barH = WORLD_HEALTH_BAR_HEIGHT;
-      const barY = actor.y - 58, barX = actor.x - barW / 2;
+      const barY = actor.y - 50, barX = actor.x - barW / 2;
       const fill = Math.round(barW * Math.max(0, Math.min(1, actor.hp / fighter.fighter.maxHp)));
       ctx.fillStyle = "rgba(0,0,0,.88)"; ctx.fillRect(barX - 2, barY - 2, barW + 4, barH + 4);
       ctx.fillStyle = "#402326"; ctx.fillRect(barX, barY, barW, barH);
@@ -144,6 +152,7 @@ export function createGuildBattlefieldRenderer(canvas: HTMLCanvasElement, ctx: C
         ctx.fillText(fighter.name, actor.x, barY - 10, barW + 12);
       }
     }
+    if (entering) return actors;
     // Launch before the authoritative hit: the projectile arrives as HP changes,
     // including simultaneous knockouts and when scrubbing backward.
     const start = replayEventIndex(timeline.shots, time - .5, event => event.launch);
