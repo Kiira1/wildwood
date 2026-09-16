@@ -28,6 +28,7 @@ it("shares membership, lookups, and sign-out across separately built game and ne
     expect(el.dataset.avatarFrame).toBe("gold");
     expect(el.querySelectorAll(".avatar-frame-art")).toHaveLength(1);
     expect(el.querySelectorAll(".avatar-frame-glow")).toHaveLength(1);
+    expect(el.querySelectorAll(".avatar-frame-glow > .avatar-frame-glow-mask")).toHaveLength(1);
   }
   network.updateAvatarFrame({ ...gold(), frame: "silver" });
   expect(profile.dataset.avatarFrame).toBe("silver");

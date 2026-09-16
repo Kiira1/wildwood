@@ -1,4 +1,5 @@
 import { applyAvatarFrame } from "../app/avatar-frames";
+import { applyProfileIcon } from "../app/profile-icons";
 import { formatChatUnreadCount, type ChatUnreadCounts } from "./chat-unread";
 
 export type ChatChannel = "public" | "guild" | "private";
@@ -156,9 +157,7 @@ export function createChatChannelPicker(onChange: (channel: ChatChannel, usernam
         portrait.className = "chat-profile-icon chat-conversation-portrait";
         applyAvatarFrame(portrait, person.identity);
         portrait.setAttribute("aria-hidden", "true");
-        const index = Math.max(0, Math.min(63, Math.floor(person.profileIcon ?? 0)));
-        const zoom = 1.03, step = zoom / (8 * zoom - 1) * 100, start = (zoom - 1) / 2 / (8 * zoom - 1) * 100;
-        portrait.style.backgroundPosition = `${start + (index % 8) * step}% ${start + Math.floor(index / 8) * step}%`;
+        applyProfileIcon(portrait, person.profileIcon ?? 0);
         const content = document.createElement("span");
         content.className = "chat-conversation-content";
         const preview = document.createElement("span");

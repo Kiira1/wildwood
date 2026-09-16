@@ -1,4 +1,5 @@
 import { AVATAR_FRAME_ASSET, type AvatarFrameState } from "../../shared/avatar-frames";
+import { createAvatarFrameGlow } from "./avatar-frame-glow";
 
 type Entry = AvatarFrameState & { fetchedAt: number };
 const cache = new Map<string, Entry>();
@@ -28,8 +29,7 @@ function paint(element: HTMLElement) {
     element.append(overlay);
   }
   if (!glow) {
-    glow = document.createElement("span"); glow.className = "avatar-frame-glow";
-    glow.setAttribute("aria-hidden", "true"); element.append(glow);
+    glow = createAvatarFrameGlow(); element.append(glow);
   }
 }
 

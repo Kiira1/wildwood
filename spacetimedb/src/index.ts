@@ -1,4 +1,5 @@
 import { validPatreonRedirect } from "./patreon-url";
+import { isValidProfileIcon } from "../../shared/profile-icons";
 import { releaseNotice, releaseAcknowledgement, writeReleaseWindow, acknowledgeReleaseWindow } from "./release-control";
 import { PERSONAL_BOSS_COMBAT, personalBossDefinition } from "../../shared/personal-bosses";
 import { enemyDefeatBudget, acceptEnemyDefeats } from "./enemy-defeats";
@@ -9066,7 +9067,7 @@ export const setProfileIcon = spacetimedb.reducer(
   { profileIcon: t.u32() },
   (ctx, { profileIcon }) => {
     requireControllingPlayer(ctx);
-    if (!Number.isInteger(profileIcon) || profileIcon > 63) throw new SenderError("Profile icon must be between 0 and 63.");
+    if (!isValidProfileIcon(profileIcon)) throw new SenderError("Choose an available profile picture.");
     const profile = ctx.db.playerProfile.identity.find(ctx.sender);
     if (!profile) throw new SenderError("Player profile not found.");
     if (profile.profileIcon === profileIcon) return;

@@ -287,6 +287,7 @@ function requestWorldEntry(): Promise<boolean> {
       return true;
     })
     .catch((error) => {
+      if (connection !== conn || generation !== connectionGeneration) return false;
       if (/active in another tab/i.test(reducerErrorMessage(error))) {
         startupTelemetryRuntime.failConnection("session-error", generation);
         worldEntryBlocked = true;
@@ -299,7 +300,7 @@ function requestWorldEntry(): Promise<boolean> {
       return false;
     })
     .finally(() => {
-      worldEntryPromise = null;
+      if (connection === conn && generation === connectionGeneration) worldEntryPromise = null;
     });
   return worldEntryPromise;
 }
@@ -476,7 +477,6 @@ accountService = createAccountService({
   updating: () => connectionGateState(protocolBlocked, wakeReconnectVisible, networkReconnectVisible).updating,
   worldEntryBlocked: () => worldEntryBlocked,
   setWorldEntryBlocked: (blocked) => { worldEntryBlocked = blocked; },
-  resetWorldEntryGeneration: () => { worldEntryGeneration = 0; },
   requestWorldEntry,
   connect,
   restartConnectionForIdentityChange,
@@ -568,7 +568,7 @@ function abandonConnection(disconnectTransport: boolean) {
   }
 }
 
-function restartConnectionForIdentityChange() {
+function restartConnectionForIdentityChange(bypassOnlineHint = false) {
   startupTelemetryRuntime.failConnection("connection-closed");
   reconnectScheduler.reset();
   connectionLifecycle.reset();
@@ -577,7 +577,7 @@ function restartConnectionForIdentityChange() {
   setWakeReconnectVisible(false);
   setNetworkReconnectVisible(false);
   onChange();
-  scheduleReconnect(100);
+  scheduleReconnect(100, bypassOnlineHint);
 }
 
 function scheduleReconnect(delay?: number, bypassOnlineHint = false) {

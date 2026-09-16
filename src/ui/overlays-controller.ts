@@ -1,6 +1,7 @@
 import { createReleaseNotesIndicator } from "./release-notes-unread";
 import { renderUpdateNotice } from "./overlays";
 import { createAvatarFramePicker, type SupporterActions } from "./avatar-frame-picker";
+import { createProfileIconPicker } from "./profile-icon-picker";
 
 export function createOverlaysController(elements: {
   update: { overlay: HTMLElement; items: HTMLElement; toggle: HTMLElement };
@@ -16,7 +17,16 @@ export function createOverlaysController(elements: {
   supporter?: SupporterActions;
 }) {
   const frames = hooks.supporter ? createAvatarFramePicker(hooks.supporter, hooks.showMessage) : undefined;
-  if (frames) elements.iconPicker.choices.before(frames.element);
+  if (frames) {
+    const options = document.createElement("details"); options.className = "profile-frame-options";
+    const summary = document.createElement("summary"); summary.append("Frame: ", frames.selection);
+    options.append(summary, frames.element); elements.iconPicker.choices.before(options);
+  }
+  const icons = createProfileIconPicker(elements.iconPicker.choices, {
+    selectedIcon: hooks.selectedIcon, setIcon: hooks.setIcon, paintIcon: hooks.paintIcon,
+    onSaved: () => { hooks.afterIconSet(); closeIconPicker(); hooks.showMessage("PROFILE ICON UPDATED", "#72ef58"); },
+    onError: message => hooks.showMessage(message, "#ff9b91"),
+  });
   let hasUpdateNotes = false;
   const notesIndicator = createReleaseNotesIndicator(elements.update.toggle, hooks.releases);
 
@@ -45,25 +55,10 @@ export function createOverlaysController(elements: {
   function openIconPicker() {
     if (!hooks.connected()) return;
     frames?.open();
-    const selected = hooks.selectedIcon();
-    elements.iconPicker.choices.replaceChildren();
-    for (let index = 0; index < 64; index += 1) {
-      const choice = document.createElement("button");
-      choice.type = "button"; choice.className = "profile-icon-choice";
-      choice.classList.toggle("is-selected", index === selected);
-      choice.setAttribute("aria-label", `Use profile icon ${index + 1}`);
-      choice.setAttribute("aria-pressed", String(index === selected));
-      hooks.paintIcon(choice, index);
-      choice.addEventListener("click", async () => {
-        const result = await hooks.setIcon(index);
-        if (!result?.ok) return hooks.showMessage(result?.error || "PROFILE ICON UPDATE FAILED", "#ff9b91");
-        hooks.afterIconSet(); closeIconPicker(); hooks.showMessage("PROFILE ICON UPDATED", "#72ef58");
-      });
-      elements.iconPicker.choices.append(choice);
-    }
+    icons.open();
     elements.iconPicker.overlay.hidden = false;
   }
-  function closeIconPicker() { frames?.close(); elements.iconPicker.overlay.hidden = true; }
+  function closeIconPicker() { frames?.close(); icons.close(); elements.iconPicker.overlay.hidden = true; }
   setUpdateNoticeOpen(false);
   elements.update.toggle.addEventListener("click", toggleUpdateNotice);
   elements.iconPicker.close.addEventListener("click", closeIconPicker);

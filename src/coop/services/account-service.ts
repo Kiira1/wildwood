@@ -60,10 +60,9 @@ type AccountServiceDependencies = {
   updating: () => boolean;
   worldEntryBlocked: () => boolean;
   setWorldEntryBlocked: (blocked: boolean) => void;
-  resetWorldEntryGeneration: () => void;
   requestWorldEntry: () => Promise<boolean>;
   connect: () => void;
-  restartConnectionForIdentityChange: () => void;
+  restartConnectionForIdentityChange: (bypassOnlineHint?: boolean) => void;
   scheduleReconnect: (delay?: number) => void;
   runWorldReducer: <T>(reducer: () => T | PromiseLike<T>) => Promise<T>;
   handleFailure: (action: string, error: unknown) => void;
@@ -166,6 +165,7 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
   let updateResumePending = dependencies.updateResumeMode !== null;
   let lastPlayableSessionMode: UpdateResumeMode | null = null;
   let takeoverRequested = false;
+  let takeoverRevision = 0;
   const renewal = createAccountTokenRenewal(localStorage, keys.accountTokenKey);
 
   function accountToken() {
@@ -690,42 +690,26 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
       }
     },
     async takeOverSession() {
+      if (signingOut) return { ok: false, error: "SIGNING OUT" };
       if (dependencies.protocolBlocked()) return { ok: false, error: "UPDATE REQUIRED" };
+      if (takeoverRequested) return { ok: true };
+      // Start a new, timed connection attempt instead of sending through a
+      // blocked socket whose reducer response may never arrive. The normal
+      // handshake renews credentials and registers the protocol before takeover.
       takeoverRequested = true;
-      const connection = dependencies.connection();
-      if (!connection?.isActive) {
-        dependencies.setWorldEntryBlocked(false);
-        notice = "RECONNECTING TO SIGN OUT OTHER TAB…";
-        dependencies.connect();
-        dependencies.notify();
-        return { ok: true };
-      }
-      notice = "SIGNING OUT OTHER TAB…";
+      takeoverRevision++;
+      if (renewal.stored()) sessionApproved = true;
+      else guestSessionExplicit = true;
+      dependencies.setWorldEntryBlocked(false);
+      notice = "RECONNECTING TO SIGN OUT OTHER TAB…";
+      dependencies.restartConnectionForIdentityChange(true);
       dependencies.notify();
-      try {
-        await connection.reducers.enterWorldWithTutorial({ tabId: authTabId(), forceTakeover: true });
-        if (dependencies.connection() !== connection) return { ok: false, error: "CONNECTION CHANGED" };
-        takeoverRequested = false;
-        dependencies.setWorldEntryBlocked(false);
-        dependencies.resetWorldEntryGeneration();
-        notice = "OPENING CHARACTER";
-        connection.disconnect();
-        dependencies.scheduleReconnect(100);
-        dependencies.notify();
-        return { ok: true };
-      } catch (error) {
-        takeoverRequested = false;
-        const message = dependencies.errorMessage(error);
-        dependencies.setWorldEntryBlocked(true);
-        notice = "TAKEOVER FAILED · TRY AGAIN";
-        dependencies.handleFailure("session takeover", error);
-        dependencies.notify();
-        return { ok: false, error: message };
-      }
+      return { ok: true };
     },
     async signOut() {
       if (signingOut) return;
       signingOut = true;
+      takeoverRequested = false; takeoverRevision++;
       const idToken = renewal.stored();
       recordConnectionDiagnostic("user-sign-out", { intentional: true });
       // Notification plugins must never hold account sign-out open.
@@ -761,6 +745,7 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
     },
     continueAsGuest() {
       if (signingOut) return { ok: false, error: "SIGNING OUT" };
+      takeoverRequested = false; takeoverRevision++;
       void syncResearchNotification(null);
       nativeAuth()?.cancel();
       const mustChangeIdentity = Boolean(
@@ -858,16 +843,26 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
     },
     async handlePendingTakeover(connection: DbConnection, isCurrent: () => boolean) {
       if (!takeoverRequested) return true;
+      const revision = takeoverRevision;
+      const isCurrentTakeover = () => isCurrent() && revision === takeoverRevision && takeoverRequested && !signingOut;
+      if (!isCurrentTakeover()) return false;
       notice = "SIGNING OUT OTHER TAB…";
       dependencies.notify();
       try {
         await connection.reducers.enterWorldWithTutorial({ tabId: authTabId(), forceTakeover: true });
-        if (!isCurrent()) return false;
+        if (!isCurrentTakeover()) return false;
         takeoverRequested = false;
         dependencies.setWorldEntryBlocked(false);
+        notice = "OPENING CHARACTER";
         return true;
       } catch (error) {
-        if (!isCurrent()) return false;
+        if (!isCurrentTakeover()) return false;
+        // A closed transport is retried by connection recovery. Keep the
+        // explicit intent until an active connection acknowledges or rejects it.
+        if (!connection.isActive) {
+          dependencies.restartConnectionForIdentityChange(true);
+          return false;
+        }
         takeoverRequested = false;
         dependencies.setWorldEntryBlocked(true);
         notice = "TAKEOVER FAILED · TRY AGAIN";

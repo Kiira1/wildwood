@@ -682,11 +682,6 @@ import {
     endGame,
   });
 
-  const profileIconSheet = new Image();
-  profileIconSheet.addEventListener("load", () => {
-    if (leaderboard.isOpen()) leaderboard.render();
-  });
-  profileIconSheet.src = "assets/wildstat/profile-portraits-grid-v2.png";
   const powerIcon = new Image();
   powerIcon.src = "assets/wildstat/icons/Icon_Battle_Candy_v2.png";
   const maleGenderIcon = new Image();
@@ -697,7 +692,7 @@ import {
     ctx,
     camera,
     viewport: canvasRuntime.viewport,
-    profileIconSheet,
+    onProfileIconsLoaded: () => { if (leaderboard.isOpen()) leaderboard.render(); },
     powerIcon,
     genderIcons: {
       [PLAYER_GENDER_MALE]: maleGenderIcon,

@@ -1,4 +1,10 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.707": [
+    "Added 64 new people and 64 object profile pictures, with People and Objects tabs in a scrollable selector.",
+    "The frame selector now shows your selected frame beside its heading.",
+    "Improved supporter-frame glow on mobile and gave chat frames more room to display.",
+    "Fixed Sign In Anyway getting stuck on an old connection and improved takeover recovery.",
+  ],
   "0.706": [
     "Desktop players can click to move or hold the mouse button to steer. Keyboard controls remain available.",
     "Silver supporter frames are brighter and easier to see.",

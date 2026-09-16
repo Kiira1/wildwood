@@ -78,6 +78,7 @@ function setup(options: {
   guestToken?: string;
   knownAccount?: boolean;
   signedIn?: boolean;
+  protocolBlocked?: boolean;
   authCallback?: boolean;
   validateAccountIdToken?: (token: string, expectedNonce: string) => Promise<ReturnType<typeof inspectSpacetimeIdToken>>;
 } = {}) {
@@ -113,7 +114,10 @@ function setup(options: {
   const restartConnectionForIdentityChange = vi.fn();
   const requestWorldEntry = vi.fn(async () => true);
   const disconnect = vi.fn();
-  const connection = options.signedIn ? { isActive: true, reducers: {}, disconnect } : null;
+  let connection = options.signedIn ? { isActive: true, reducers: { enterWorldWithTutorial: vi.fn(async () => {}) }, disconnect } : null;
+  let worldEntryBlocked = false;
+  const setWorldEntryBlocked = vi.fn((blocked: boolean) => { worldEntryBlocked = blocked; });
+  const handleFailure = vi.fn();
   const service = createAccountService({
     keys,
     updateResumeMode: null,
@@ -122,18 +126,17 @@ function setup(options: {
     connection: () => connection as never,
     connectedSignedIn: () => Boolean(options.signedIn),
     hydrationReady: () => false,
-    protocolBlocked: () => false,
+    protocolBlocked: () => options.protocolBlocked ?? false,
     protocolReady: () => true,
     updating: () => false,
-    worldEntryBlocked: () => false,
-    setWorldEntryBlocked: () => {},
-    resetWorldEntryGeneration: () => {},
+    worldEntryBlocked: () => worldEntryBlocked,
+    setWorldEntryBlocked,
     requestWorldEntry,
     connect,
     restartConnectionForIdentityChange,
     scheduleReconnect: () => {},
     runWorldReducer: async (reducer) => reducer(),
-    handleFailure: () => {},
+    handleFailure,
     errorMessage: (error) => String(error),
     localIdentity: () => "guest-identity",
     localProfileReady: () => false,
@@ -147,8 +150,87 @@ function setup(options: {
       inspectSpacetimeIdToken(token, { expectedNonce })
     )),
   });
-  return { assign, connect, disconnect, local, session, notify, replaceState, requestWorldEntry, restartConnectionForIdentityChange, service };
+  return { assign, connect, disconnect, local, session, notify, replaceState, requestWorldEntry, restartConnectionForIdentityChange, service,
+    connection, setConnection: (value: typeof connection) => { connection = value; }, setWorldEntryBlocked, handleFailure };
 }
+
+describe("explicit session takeover", () => {
+  afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
+  function freshConnection() {
+    return { isActive: true, disconnect: vi.fn(), reducers: { enterWorldWithTutorial: vi.fn(async () => {}) } };
+  }
+  it("restarts even a nominally active socket and takes over once on the fresh connection", async () => {
+    const f = setup({ signedIn: true, accountToken: accountToken(), knownAccount: true });
+    f.setWorldEntryBlocked(true);
+    await f.service.api.takeOverSession(); await f.service.api.takeOverSession();
+    expect(f.connection!.reducers.enterWorldWithTutorial).not.toHaveBeenCalled();
+    expect(f.restartConnectionForIdentityChange).toHaveBeenCalledExactlyOnceWith(true);
+    expect(f.service.canConnect()).toBe(true);
+    const fresh = freshConnection(); f.setConnection(fresh);
+    expect(await f.service.handlePendingTakeover(fresh as never, () => true)).toBe(true);
+    expect(fresh.reducers.enterWorldWithTutorial).toHaveBeenCalledExactlyOnceWith({ tabId: f.service.tabId(), forceTakeover: true });
+    expect(fresh.disconnect).not.toHaveBeenCalled();
+    expect(f.service.api.accountState().sessionConflict).toBe(false);
+    await f.service.handlePendingTakeover(fresh as never, () => true);
+    expect(fresh.reducers.enterWorldWithTutorial).toHaveBeenCalledTimes(1);
+  });
+  it("also reconnects disconnected accounts and guests without falling back to account choice", async () => {
+    for (const options of [{ accountToken: accountToken(), knownAccount: true }, { guestToken: "guest" }]) {
+      const f = setup(options);
+      await f.service.api.takeOverSession();
+      expect(f.restartConnectionForIdentityChange).toHaveBeenCalledWith(true);
+      expect(f.service.canConnect()).toBe(true);
+      expect(f.service.api.accountState().gameSessionApproved).toBe(true);
+    }
+  });
+  it("ignores a late failure from an abandoned connection and retains the request for its replacement", async () => {
+    const f = setup({ guestToken: "guest" }); await f.service.api.takeOverSession();
+    const stale = freshConnection(); let reject!: (error: Error) => void;
+    stale.reducers.enterWorldWithTutorial.mockImplementation(() => new Promise((_resolve, fail) => { reject = fail; }));
+    let current = true;
+    const pending = f.service.handlePendingTakeover(stale as never, () => current);
+    current = false; reject(new Error("Connection closed"));
+    expect(await pending).toBe(false);
+    expect(f.handleFailure).not.toHaveBeenCalled();
+    const fresh = freshConnection();
+    expect(await f.service.handlePendingTakeover(fresh as never, () => true)).toBe(true);
+    expect(fresh.reducers.enterWorldWithTutorial).toHaveBeenCalledTimes(1);
+  });
+  it("retries a closed transport without turning it into another session conflict", async () => {
+    const f = setup({ guestToken: "guest" }); await f.service.api.takeOverSession();
+    const closed = freshConnection(); closed.isActive = false;
+    closed.reducers.enterWorldWithTutorial.mockRejectedValue(new Error("Connection closed"));
+    expect(await f.service.handlePendingTakeover(closed as never, () => true)).toBe(false);
+    expect(f.restartConnectionForIdentityChange).toHaveBeenCalledTimes(2);
+    expect(f.service.api.accountState().sessionConflict).toBe(false);
+    expect(await f.service.handlePendingTakeover(freshConnection() as never, () => true)).toBe(true);
+  });
+  it("makes a rejected takeover retryable", async () => {
+    const f = setup({ guestToken: "guest" }); await f.service.api.takeOverSession();
+    const conn = freshConnection(); conn.reducers.enterWorldWithTutorial.mockRejectedValueOnce(new Error("Rejected"));
+    expect(await f.service.handlePendingTakeover(conn as never, () => true)).toBe(false);
+    expect(f.service.api.accountState().sessionConflict).toBe(true);
+    await f.service.api.takeOverSession();
+    expect(await f.service.handlePendingTakeover(conn as never, () => true)).toBe(true);
+  });
+  it("cancels a pending takeover on sign-out and ignores its eventual response", async () => {
+    const f = setup({ guestToken: "guest" }); await f.service.api.takeOverSession();
+    const conn = freshConnection(); let finish!: () => void;
+    conn.reducers.enterWorldWithTutorial.mockImplementation(() => new Promise(resolve => { finish = resolve; }));
+    const pending = f.service.handlePendingTakeover(conn as never, () => true);
+    await f.service.api.signOut(); finish();
+    expect(await pending).toBe(false);
+    expect(f.service.notice()).toBe("SIGNED OUT");
+    const next = freshConnection(); await f.service.handlePendingTakeover(next as never, () => true);
+    expect(next.reducers.enterWorldWithTutorial).not.toHaveBeenCalled();
+    expect(await f.service.api.takeOverSession()).toEqual({ ok: false, error: "SIGNING OUT" });
+  });
+  it("does not restart when the game requires an update", async () => {
+    const f = setup({ guestToken: "guest", protocolBlocked: true });
+    expect(await f.service.api.takeOverSession()).toEqual({ ok: false, error: "UPDATE REQUIRED" });
+    expect(f.restartConnectionForIdentityChange).not.toHaveBeenCalled();
+  });
+});
 
 describe("account service startup identity selection", () => {
   it("keeps native preview sign-in from navigating or starting a guest link", async () => {

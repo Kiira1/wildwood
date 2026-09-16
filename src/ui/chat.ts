@@ -1,4 +1,6 @@
 import { applyAvatarFrame } from "../app/avatar-frames";
+import { applyProfileIcon } from "../app/profile-icons";
+import { normalizeProfileIcon } from "../../shared/profile-icons";
 import { appendChatReactions } from "./chat-reactions";
 import type { ChatReaction, ChatReactionState } from "../../shared/chat-reactions";
 import { appendPlayerNameTags, playerNamePrefix } from "../app/player-name-tags";
@@ -25,9 +27,6 @@ import { createChatChannelPicker, type ChatChannel, type ChatConversation } from
 const CHAT_ENABLED_KEY = "wildwood-chat-enabled-v1";
 const CHAT_DISPLAY_TTL_MS = 86_400_000;
 const CHAT_COOLDOWN_MS = 3_000;
-const PROFILE_PORTRAIT_ZOOM = 1.03;
-const PROFILE_PORTRAIT_POSITION_STEP = PROFILE_PORTRAIT_ZOOM / (8 * PROFILE_PORTRAIT_ZOOM - 1) * 100;
-const PROFILE_PORTRAIT_POSITION_START = (PROFILE_PORTRAIT_ZOOM - 1) / 2 / (8 * PROFILE_PORTRAIT_ZOOM - 1) * 100;
 const NAME_COLORS = ["#ffc3dd", "#bce7ff", "#c9f5c2", "#ffe7a8", "#e1c7ff", "#bff3e7", "#ffd1aa", "#d0d9ff"];
 
 export function focusChatReplyInput(input: Pick<HTMLTextAreaElement, "focus" | "setSelectionRange" | "value">) {
@@ -428,7 +427,7 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
       const cachedGender = normalizePlayerGender(coop?.playerGender?.(message.sender));
       const displayedGender = cachedGender !== PLAYER_GENDER_UNSET ? cachedGender : message.senderGender;
       const guest = !!coop?.isGuest?.(message.sender);
-      const iconIndex = Math.max(0, Math.min(63, Math.floor(coop?.profileIcon?.(message.sender) ?? 0)));
+      const iconIndex = normalizeProfileIcon(coop?.profileIcon?.(message.sender) ?? 0);
       const reactionChannel = channel === "public" ? "public" : "social";
       const reactionOverride = reactionOverrides.get(`${reactionChannel}:${message.id}`);
       const reactionCountsJson = reactionOverride?.source === message.reactionCountsJson ? reactionOverride?.value : message.reactionCountsJson;
@@ -530,7 +529,7 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
         event.preventDefault();
         openPlayer(event);
       });
-      icon.style.backgroundPosition = `${PROFILE_PORTRAIT_POSITION_START + (iconIndex % 8) * PROFILE_PORTRAIT_POSITION_STEP}% ${PROFILE_PORTRAIT_POSITION_START + Math.floor(iconIndex / 8) * PROFILE_PORTRAIT_POSITION_STEP}%`;
+      applyProfileIcon(icon, iconIndex);
       const content = document.createElement("div");
       content.className = "chat-message-content";
       content.append(name, text);

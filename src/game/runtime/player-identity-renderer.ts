@@ -1,3 +1,4 @@
+import { applyProfileIcon, createProfileIconCanvasPainter } from "../../app/profile-icons";
 import { playerNamePrefix, appendPlayerNameTags } from "../../app/player-name-tags";
 import {
   playerPowerForStats,
@@ -27,9 +28,6 @@ type SpeechBubbleMessage = Pick<ChatMessage, "id" | "sender" | "senderName" | "m
 type SpeechBubble = { sentAtMs: number; lines: string[]; width: number; height: number };
 
 const DEVELOPER_BADGE = "[dev]";
-const PROFILE_PORTRAIT_ZOOM = 1.03;
-const PROFILE_PORTRAIT_GRID = 8;
-const PROFILE_PORTRAIT_POSITION_START = (PROFILE_PORTRAIT_ZOOM - 1) / 2 / (PROFILE_PORTRAIT_GRID * PROFILE_PORTRAIT_ZOOM - 1) * 100;
 const SPEECH_BUBBLE_DURATION_MS = 8_000;
 const SPEECH_BUBBLE_FADE_MS = 1_250;
 const SPEECH_BUBBLE_STACK_GAP = 5;
@@ -72,7 +70,7 @@ export function createPlayerIdentityRenderer(options: {
   ctx: CanvasRenderingContext2D;
   camera: Camera;
   viewport: () => { width: number; height: number };
-  profileIconSheet: HTMLImageElement;
+  onProfileIconsLoaded: () => void;
   powerIcon: HTMLImageElement;
   genderIcons: Record<typeof PLAYER_GENDER_MALE | typeof PLAYER_GENDER_FEMALE, HTMLImageElement>;
   isDeveloper: (identity: string | undefined) => boolean;
@@ -113,32 +111,7 @@ export function createPlayerIdentityRenderer(options: {
     }
   }
 
-  function applyProfileIcon(element: HTMLElement, iconIndex: number) {
-    const index = Math.max(0, Math.min(63, Math.floor(Number(iconIndex) || 0)));
-    const column = index % PROFILE_PORTRAIT_GRID;
-    const row = Math.floor(index / PROFILE_PORTRAIT_GRID);
-    const positionStep = PROFILE_PORTRAIT_ZOOM / (PROFILE_PORTRAIT_GRID * PROFILE_PORTRAIT_ZOOM - 1) * 100;
-    element.style.backgroundImage = 'url("assets/wildstat/profile-portraits-grid-v2.png")';
-    element.style.backgroundRepeat = "no-repeat";
-    element.style.backgroundSize = "824% 824%";
-    element.style.backgroundPosition = `${PROFILE_PORTRAIT_POSITION_START + column * positionStep}% ${PROFILE_PORTRAIT_POSITION_START + row * positionStep}%`;
-    element.dataset.profileIcon = String(index);
-  }
-
-  function paintProfileIconCanvas(canvas: HTMLCanvasElement, iconIndex: number) {
-    const iconContext = canvas.getContext("2d");
-    if (!iconContext) return;
-    iconContext.clearRect(0, 0, canvas.width, canvas.height);
-    const sheet = options.profileIconSheet;
-    if (!sheet.complete || sheet.naturalWidth <= 0) return;
-    const index = Math.max(0, Math.min(63, Math.floor(Number(iconIndex) || 0)));
-    const cellWidth = sheet.naturalWidth / PROFILE_PORTRAIT_GRID;
-    const cellHeight = sheet.naturalHeight / PROFILE_PORTRAIT_GRID;
-    const insetX = cellWidth * (1 - 1 / PROFILE_PORTRAIT_ZOOM) / 2;
-    const insetY = cellHeight * (1 - 1 / PROFILE_PORTRAIT_ZOOM) / 2;
-    iconContext.imageSmoothingEnabled = true;
-    iconContext.drawImage(sheet, (index % PROFILE_PORTRAIT_GRID) * cellWidth + insetX, Math.floor(index / PROFILE_PORTRAIT_GRID) * cellHeight + insetY, cellWidth / PROFILE_PORTRAIT_ZOOM, cellHeight / PROFILE_PORTRAIT_ZOOM, 0, 0, canvas.width, canvas.height);
-  }
+  const paintProfileIconCanvas = createProfileIconCanvasPainter(options.onProfileIconsLoaded);
 
   function updateSpeechBubbles() {
     const now = Date.now();

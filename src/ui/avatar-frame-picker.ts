@@ -1,4 +1,5 @@
 import { AVATAR_FRAME_ASSET, allowedAvatarFrame, type AvatarFrame, type PatreonStatus } from "../../shared/avatar-frames";
+import { createAvatarFrameGlow } from "../app/avatar-frame-glow";
 import { createPatreonSupportForm } from "./patreon-support-form";
 
 export type SupporterActions = {
@@ -14,6 +15,10 @@ export type SupporterActions = {
 export function createAvatarFramePicker(actions: SupporterActions, showMessage: (message: string, color: string) => void) {
   const root = document.createElement("section"); root.className = "avatar-frame-picker";
   const heading = document.createElement("h3"); heading.textContent = "Frame";
+  const selection = document.createElement("span"); selection.className = "avatar-frame-summary";
+  const selectedArt = document.createElement("img"); selectedArt.src = AVATAR_FRAME_ASSET; selectedArt.alt = ""; selectedArt.hidden = true;
+  const selectedName = document.createElement("span"); selectedName.textContent = "…";
+  selection.append(selectedArt, selectedName);
   const choices = document.createElement("div"); choices.className = "avatar-frame-choices";
   const status = document.createElement("p"); status.setAttribute("role", "status");
   const controls = document.createElement("div"); controls.className = "avatar-frame-controls";
@@ -29,6 +34,9 @@ export function createAvatarFramePicker(actions: SupporterActions, showMessage: 
   const fail = (error: unknown) => { status.textContent = error instanceof Error ? error.message : "Couldn't check Patreon. Try again."; };
   function render(value: PatreonStatus) {
     current = value;
+    selection.dataset.frame = value.frame;
+    selectedArt.hidden = value.frame === "none";
+    selectedName.textContent = value.frame[0].toUpperCase() + value.frame.slice(1);
     status.textContent = value.preview ? "Developer frame preview" : !value.configured ? "Supporter frames are coming soon." : !value.linked ? "Connect once. Your supporter frame applies automatically." : value.tier === "none" ? "Connected · no active paid membership" : `${value.tier === "gold" ? "Gold" : "Silver"} supporter · thank you!`;
     connect.hidden = value.linked; connect.disabled = !value.configured || busy;
     refresh.hidden = !value.linked; unlink.hidden = !value.linked;
@@ -51,8 +59,7 @@ export function createAvatarFramePicker(actions: SupporterActions, showMessage: 
     const preview = document.createElement("span"); preview.className = "avatar-frame-choice-art";
     if (frame !== "none") {
       const image = document.createElement("img"); image.src = AVATAR_FRAME_ASSET; image.alt = "";
-      const glow = document.createElement("span"); glow.className = "avatar-frame-glow"; glow.setAttribute("aria-hidden", "true");
-      preview.append(image, glow);
+      preview.append(image, createAvatarFrameGlow());
     }
     const name = document.createElement("span"); name.textContent = frame[0].toUpperCase() + frame.slice(1);
     button.append(preview, name); button.setAttribute("aria-label", `Use ${frame} frame`); button.disabled = true;
@@ -84,9 +91,10 @@ export function createAvatarFramePicker(actions: SupporterActions, showMessage: 
   });
   refresh.addEventListener("click", () => void run(actions.refreshPatreon));
   unlink.addEventListener("click", () => void run(actions.disconnectPatreon));
-  return { element: root,
+  return { element: root, selection,
     open() {
       help.reset();
+      selectedArt.hidden = true; selectedName.textContent = "…";
       revision++; busy = false; current = undefined; clearInterval(poll); poll = undefined; continueLink.hidden = true;
       connect.disabled = true; refresh.disabled = true; unlink.disabled = true;
       for (const button of buttons.values()) button.disabled = true;

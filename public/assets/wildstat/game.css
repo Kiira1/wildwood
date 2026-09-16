@@ -167,7 +167,7 @@
   #profileIconPicker { position: fixed; inset: 0; z-index: 13; display: grid; place-items: center; padding: 10px; background: transparent; }
   #profileIconPicker[hidden] { display: none; }
   .profile-icon-picker-modal { display: grid; grid-template-rows: minmax(0, 1fr) auto; width: var(--game-window-width); max-height: calc(100vh - 18px); padding: 12px; overflow: hidden; text-align: left; }
-  .profile-icon-choices { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 4px; max-height: min(74vh, 480px); margin-top: 10px; overflow-y: auto; }
+  .profile-icon-choices { grid-row: 3; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); align-content: start; gap: 8px; min-height: 0; margin: 0; padding: 4px; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; }
   .profile-icon-choice { aspect-ratio: 1; width: 100%; margin: 0; padding: 0; border: 2px solid #000; border-radius: 6px; background-color: #fff; background-repeat: no-repeat; background-size: var(--profile-portrait-sheet-size) var(--profile-portrait-sheet-size); background-clip: padding-box; }
   .profile-icon-choice.is-selected { border-color: var(--green); box-shadow: 0 0 0 1px rgba(105,229,111,.5); }
 
@@ -1410,8 +1410,10 @@
     min-height: 0;
     height: auto;
     max-height: none;
-    margin: 8px 0;
-    padding: 4px;
+    /* Expand only the scroll viewport's paint gutter; keep message positions
+       and usable width unchanged while allowing frames and halos to extend. */
+    margin: 8px -8px 0;
+    padding: 4px 12px 12px;
     overflow: hidden auto;
     align-self: stretch;
     -ms-overflow-style: none;
@@ -3588,14 +3590,11 @@
   pointer-events: none; z-index: 1;
 }
 [data-avatar-frame="gold"] > .avatar-frame-art,
+.avatar-frame-summary[data-frame="gold"] img,
 .avatar-frame-choices [data-frame="gold"] img { filter: drop-shadow(0 0 2px rgba(255, 201, 93, .32)); }
 [data-avatar-frame="silver"] > .avatar-frame-art,
+.avatar-frame-summary[data-frame="silver"] img,
 .avatar-frame-choices [data-frame="silver"] img { filter: grayscale(1) brightness(1.65) contrast(1.08) drop-shadow(0 0 2px rgba(245, 248, 255, .48)); }
-@property --avatar-glow-angle {
-  syntax: "<angle>";
-  initial-value: 0deg;
-  inherits: false;
-}
 /* Mask the moving light on a child, then cast its halo from the outer layer.
    A filter on the masked child itself gets clipped to the artwork. */
 [data-avatar-frame="gold"], .avatar-frame-choices [data-frame="gold"] { --avatar-glow-color: #ffe1a0; --avatar-glow-halo: rgba(255, 211, 117, .7); }
@@ -3605,28 +3604,43 @@
   inset: calc(-5.5% - var(--avatar-portrait-border, 0px));
   width: calc(111% + 2 * var(--avatar-portrait-border, 0px));
   height: calc(111% + 2 * var(--avatar-portrait-border, 0px));
-  filter: drop-shadow(0 0 2px var(--avatar-glow-halo)) drop-shadow(0 0 3px var(--avatar-glow-halo));
+  display: block; overflow: visible;
+  filter: drop-shadow(0 0 2px var(--avatar-glow-halo));
   pointer-events: none; z-index: 2;
 }
-.avatar-frame-glow::after {
-  content: ""; position: absolute; inset: 0;
-  background: conic-gradient(from var(--avatar-glow-angle), transparent 0deg 255deg, var(--avatar-glow-color) 300deg, white 312deg 325deg, transparent 350deg 360deg);
+.avatar-frame-glow-mask {
+  display: block; position: absolute; inset: 0; overflow: hidden;
   -webkit-mask: url("avatar-frames/supporter.png") center / 100% 100% no-repeat;
   mask: url("avatar-frames/supporter.png") center / 100% 100% no-repeat;
+}
+.avatar-frame-glow-mask::before {
+  content: ""; display: block; position: absolute; inset: -25%;
+  background: conic-gradient(transparent 0deg 255deg, var(--avatar-glow-color) 300deg, white 312deg 325deg, transparent 350deg 360deg);
   opacity: .9;
+  transform: rotate(0deg);
   animation: avatar-frame-glow-orbit 10s linear infinite;
 }
 .avatar-frame-choice-art > .avatar-frame-glow {
   inset: 0; width: 100%; height: 100%;
 }
-@keyframes avatar-frame-glow-orbit { to { --avatar-glow-angle: 360deg; } }
+@keyframes avatar-frame-glow-orbit { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) {
-  .avatar-frame-glow::after { animation: none; }
+  .avatar-frame-glow-mask::before { animation: none; }
 }
 .leaderboard-framed-portrait { display: block; width: 25px; height: 25px; }
 .leaderboard-framed-portrait[data-avatar-frame="gold"] > canvas,
 .leaderboard-framed-portrait[data-avatar-frame="silver"] > canvas { border-color: transparent; border-radius: 10%; }
-.profile-icon-picker-modal { grid-template-rows: auto minmax(0, 1fr) auto; }
+.profile-icon-picker-modal { grid-template-rows: auto auto minmax(0, 1fr) auto; gap: 8px; height: min(680px, calc(100vh - 18px)); height: min(680px, calc(100dvh - 18px)); }
+.profile-icon-picker-modal > .window-back-footer { grid-row: 4; }
+.profile-frame-options { grid-row: 1; min-height: 0; max-height: 35dvh; overflow-y: auto; }
+.profile-frame-options > summary { min-height: 32px; display: list-item; cursor: pointer; color: #ddd; font-size: 13px; }
+.avatar-frame-summary { display: inline-flex; align-items: center; gap: 5px; height: 22px; vertical-align: middle; font-size: 12px; color: #fff; }
+.avatar-frame-summary img { width: 20px; height: 20px; object-fit: contain; }
+.profile-frame-options .avatar-frame-picker > h3 { display: none; }
+.profile-icon-tabs { grid-row: 2; display: flex; gap: 8px; }
+.profile-icon-tabs button { flex: 1; margin: 0; min-height: 42px; padding: 8px; border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: transparent; box-shadow: none; color: #aeb5b1; font-size: 15px; text-transform: none; }
+.profile-icon-tabs button[aria-selected="true"] { color: #fff; border-bottom-color: #fff; background: rgba(255,255,255,.04); }
+.profile-icon-tabs button:focus-visible { outline: 2px solid #fff; outline-offset: -2px; }
 .avatar-frame-picker { min-width: 0; }
 .avatar-frame-picker h3 { margin: 0 0 6px; color: #fff; font-size: 14px; }
 .avatar-frame-picker p { margin: 8px 0; color: #ccc; font-size: 11px; line-height: 1.3; }

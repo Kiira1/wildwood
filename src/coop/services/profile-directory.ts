@@ -13,6 +13,7 @@ import type { ReducerPort } from "../ports";
 import { createChatPortraits } from "./chat-portraits";
 import { createPatreonService } from "./patreon-service";
 import { clearAvatarFrames } from "../../app/avatar-frames";
+import { normalizeProfileIcon } from "../../../shared/profile-icons";
 
 export type ProfilePresentation = {
   identity: string;
@@ -97,7 +98,7 @@ export function createProfileDirectory(dependencies: ProfileDirectoryDependencie
     identities.set(presentation.identity, presentation.identityValue);
     names.set(presentation.identity, presentation.displayName);
     if (presentation.profileIcon !== undefined) {
-      icons.set(presentation.identity, Math.max(0, Math.min(63, Number(presentation.profileIcon) || 0)));
+      icons.set(presentation.identity, normalizeProfileIcon(Number(presentation.profileIcon)));
     }
     if (presentation.playerSprite !== undefined) {
       sprites.set(presentation.identity, Math.max(0, Math.min(3, Number(presentation.playerSprite) || 0)));
@@ -240,7 +241,7 @@ export function createProfileDirectory(dependencies: ProfileDirectoryDependencie
         if (dependencies.reducers.protocolBlocked()) return { ok: false, error: "UPDATE REQUIRED" };
         const connection = dependencies.reducers.connection();
         if (!connection) return { ok: false, error: "NOT CONNECTED" };
-        const normalized = Math.max(0, Math.min(63, Math.floor(profileIcon)));
+        const normalized = normalizeProfileIcon(profileIcon);
         try {
           await dependencies.reducers.runWorldReducer(() => connection.reducers.setProfileIcon({ profileIcon: normalized }));
           return { ok: true };
