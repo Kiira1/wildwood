@@ -1,3 +1,5 @@
+import { CAMPAIGN_ITEM_DEFINITIONS } from "./campaign-equipment";
+
 // Browser- and server-safe equipment catalog. Add gameplay-facing item data
 // here; client-only sprites and draw anchors live in item-presentation.ts.
 
@@ -63,7 +65,7 @@ export const ITEM_UPGRADE_DURATION_GROWTH = 1.4;
 
 export type ItemSlot = "HEAD" | "CHEST" | "FEET" | "HAND";
 export type EquipmentSlot = "HEAD" | "CHEST" | "FEET" | "RIGHT_HAND" | "LEFT_HAND";
-export type ItemAcquisition = "STARTER" | "PROGRESSION" | "DEVELOPER" | "FOREST_DROP" | "DESERT_DROP" | "SNOW_DROP" | "SNOW_BOSS_DROP" | "LAVA_DROP" | "LAVA_BOSS_DROP" | "INFERNAL_DROP" | "SAMURAI_DROP" | "WATER_DROP" | "CLOUDSPIRE_DROP" | "MOONFEN_DROP";
+export type ItemAcquisition = "STARTER" | "PROGRESSION" | "DEVELOPER" | "FOREST_DROP" | "DESERT_DROP" | "SNOW_DROP" | "SNOW_BOSS_DROP" | "LAVA_DROP" | "LAVA_BOSS_DROP" | "INFERNAL_DROP" | "SAMURAI_DROP" | "WATER_DROP" | "CLOUDSPIRE_DROP" | "MOONFEN_DROP" | "CAMPAIGN_DROP";
 export type ProjectileKind = "ROCK" | "ARROW";
 
 export type ItemDefinition = {
@@ -88,6 +90,7 @@ export type ItemDefinition = {
 };
 
 export const ITEM_DEFINITIONS = {
+  ...CAMPAIGN_ITEM_DEFINITIONS,
   [WOODEN_SWORD]: {
     id: WOODEN_SWORD, name: "WOODEN SWORD", slot: "HAND", acquisition: "DEVELOPER",
     description: "A simple wooden practice sword for close-range combat.",
@@ -379,6 +382,11 @@ export const ITEM_DEFINITIONS = {
 } as const satisfies Record<string, ItemDefinition>;
 
 export type ItemId = keyof typeof ITEM_DEFINITIONS;
+
+/** All durable enemy/boss drops, including future map sets. */
+export const EQUIPMENT_DROP_ITEM_IDS = Object.values(ITEM_DEFINITIONS)
+  .filter(item => item.acquisition.endsWith("_DROP"))
+  .map(item => item.id) as ItemId[];
 
 export const STARTER_ITEM_IDS = Object.values(ITEM_DEFINITIONS)
   .filter((item) => item.acquisition === "STARTER")

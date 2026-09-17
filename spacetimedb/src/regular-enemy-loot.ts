@@ -45,6 +45,9 @@ const LOOT_MAP_UNLOCKS: Record<string, string> = {
   advanced_lava_wastes: "lavaUnlocked", infernal_depths: "infernalUnlocked",
   water_reach: "waterUnlocked", samurai_garden: "samuraiUnlocked",
   cloudspire: "cloudspireUnlocked", moonfen: "moonfenUnlocked",
+  crystal_hollows: "crystalHollowsUnlocked", clockwork_ruins: "clockworkRuinsUnlocked",
+  duskfall_orchard: "duskfallOrchardUnlocked", neon_bastion: "neonBastionUnlocked",
+  verdant_catacombs: "verdantCatacombsUnlocked", ion_citadel: "ionCitadelUnlocked",
 };
 export function canReplayRegularEnemyLoot(mapId: string, progress: any) {
   return Boolean(progress && (mapId === "tutorial_forest" || progress[LOOT_MAP_UNLOCKS[mapId]] === true));

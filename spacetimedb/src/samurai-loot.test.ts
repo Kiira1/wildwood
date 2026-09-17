@@ -50,7 +50,7 @@ describe("Samurai Gardens helmet drop", () => {
     const f = samuraiFixture();
     f.patch("player", { mapId: "crystal_hollows" });
     reportEnemy(f);
-    expect(f.ctx.random.integerInRange).not.toHaveBeenCalled();
-    expect([...f.db.playerItemDrop.iter()]).toHaveLength(0);
+    expect([...f.db.playerItemDrop.iter()].some(drop => drop.itemId === SAMURAI_HAT)).toBe(false);
+    expect([...f.db.playerItemDrop.iter()]).toMatchObject([{ itemId: "crystal_helmet" }]);
   });
 });

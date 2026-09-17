@@ -1,24 +1,14 @@
 import {
   BASIC_PAPER_HAT,
   canonicalItemId,
-  DESERT_DROP_ITEM_IDS,
   DEVELOPER_ITEM_IDS,
-  FOREST_DROP_ITEM_IDS,
+  EQUIPMENT_DROP_ITEM_IDS,
   itemDefinition,
   isCosmeticOnlyItem,
   itemFitsEquipmentSlot,
-  INFERNAL_DROP_ITEM_IDS,
-  SAMURAI_DROP_ITEM_IDS,
-  WATER_DROP_ITEM_IDS,
-  CLOUDSPIRE_DROP_ITEM_IDS,
-  MOONFEN_DROP_ITEM_IDS,
-  LAVA_BOSS_DROP_ITEM_IDS,
-  LAVA_DROP_ITEM_IDS,
   MAX_FOREST_ITEM_COUNT,
-  SNOW_DROP_ITEM_IDS,
   STARTER_STONE,
   STARTER_ITEM_IDS,
-  SNOW_BOSS_DROP_ITEM_IDS,
   TRAILBLAZER_BOOTS,
   type EquipmentSlot,
 } from "../../shared/items";
@@ -267,21 +257,9 @@ export function normaliseInventory(itemIds: unknown, equippedFeet: unknown, equi
   const developerItems = ownsDeveloperCosmetics
     ? DEVELOPER_ITEM_IDS
     : DEVELOPER_ITEM_IDS.filter(id => requested.includes(id));
-  const forestDropItems = FOREST_DROP_ITEM_IDS.flatMap((itemId) =>
-    Array(Math.min(MAX_FOREST_ITEM_COUNT, requested.filter((requestedId) => canonicalItemId(requestedId) === itemId).length)).fill(itemId));
-  const desertDropItems = DESERT_DROP_ITEM_IDS.flatMap((itemId) =>
-    Array(Math.min(MAX_FOREST_ITEM_COUNT, requested.filter((requestedId) => canonicalItemId(requestedId) === itemId).length)).fill(itemId));
-  const snowDropItems = SNOW_DROP_ITEM_IDS.flatMap((itemId) =>
-    Array(Math.min(MAX_FOREST_ITEM_COUNT, requested.filter((requestedId) => canonicalItemId(requestedId) === itemId).length)).fill(itemId));
-  const snowBossDropItems = SNOW_BOSS_DROP_ITEM_IDS.flatMap((itemId) =>
-    Array(Math.min(MAX_FOREST_ITEM_COUNT, requested.filter((requestedId) => canonicalItemId(requestedId) === itemId).length)).fill(itemId));
-  const lavaDropItems = [...LAVA_DROP_ITEM_IDS, ...LAVA_BOSS_DROP_ITEM_IDS].flatMap((itemId) =>
-    Array(Math.min(MAX_FOREST_ITEM_COUNT, requested.filter((requestedId) => canonicalItemId(requestedId) === itemId).length)).fill(itemId));
-  const infernalDropItems = INFERNAL_DROP_ITEM_IDS.flatMap((itemId) =>
-    Array(Math.min(MAX_FOREST_ITEM_COUNT, requested.filter((requestedId) => canonicalItemId(requestedId) === itemId).length)).fill(itemId));
-  const laterMapDropItems = [...WATER_DROP_ITEM_IDS, ...SAMURAI_DROP_ITEM_IDS, ...CLOUDSPIRE_DROP_ITEM_IDS, ...MOONFEN_DROP_ITEM_IDS].flatMap((itemId) =>
-    Array(Math.min(MAX_FOREST_ITEM_COUNT, requested.filter((requestedId) => canonicalItemId(requestedId) === itemId).length)).fill(itemId));
-  const items = [...STARTER_ITEM_IDS, ...developerItems, ...(hasBoots ? [TRAILBLAZER_BOOTS] : []), ...forestDropItems, ...desertDropItems, ...snowDropItems, ...snowBossDropItems, ...lavaDropItems, ...infernalDropItems, ...laterMapDropItems];
+  const requestedDrops = new Set(requested.map(canonicalItemId));
+  const dropItems = EQUIPMENT_DROP_ITEM_IDS.filter(itemId => requestedDrops.has(itemId));
+  const items = [...STARTER_ITEM_IDS, ...developerItems, ...(hasBoots ? [TRAILBLAZER_BOOTS] : []), ...dropItems];
   const headItems = items.filter((itemId) => itemDefinition(itemId)?.slot === "HEAD");
   const chestItems = items.filter((itemId) => itemDefinition(itemId)?.slot === "CHEST");
   const handItems = items.filter((itemId) => itemDefinition(itemId)?.slot === "HAND");

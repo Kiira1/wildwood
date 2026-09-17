@@ -7,7 +7,7 @@ import { crystalFixture, server } from "../../tests/helpers/crystal-hollows-fixt
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 it("rolls black boots independently at 2% in Night Forest and keeps equipped feet on reload", () => {
   const f = crystalFixture(); f.patch("player", { mapId: INFERNAL_DEPTHS_MAP_ID });
-  f.ctx.random.integerInRange = vi.fn((_min, max) => max === BLACK_BOOTS_DROP_DENOMINATOR ? 1 : 2);
+  f.ctx.random.integerInRange = vi.fn((_min, max) => max === BLACK_BOOTS_DROP_DENOMINATOR ? 1 : max);
   reportEnemy(f);
   const progress = f.db.playerProgress.identity.find(f.ctx.sender);
   expect(JSON.parse(progress.inventoryJson)).toContain(BLACK_BOOTS);

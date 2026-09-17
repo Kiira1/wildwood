@@ -1,3 +1,4 @@
+import { CAMPAIGN_ITEM_PRESENTATIONS } from "./campaign-item-presentation";
 import type { WeaponCategory } from "./equipment-alignment";
 import type { LayerAdjustment } from "./player-layer-alignment";
 import {
@@ -70,6 +71,7 @@ const PLAYER_PARTS = "assets/wildstat/player-parts";
 
 /** Client-only art registry. New equipment gets one catalog entry and assets. */
 export const ITEM_PRESENTATIONS: Partial<Record<ItemId, ItemPresentation>> = {
+  ...CAMPAIGN_ITEM_PRESENTATIONS,
   [WOODEN_SWORD]: {
     inventory: { source: `${PLAYER_PARTS}/wooden-sword.png`, equippedWidth: 32, equippedHeight: 28 },
     world: { kind: "SPRITE", source: `${PLAYER_PARTS}/wooden-sword.png`, layer: "HAND", top: 116, handAction: "SWING", weaponCategory: "SWORD" },

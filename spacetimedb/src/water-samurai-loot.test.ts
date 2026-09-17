@@ -55,7 +55,9 @@ it.each(["home_exterior", "crystal_hollows", "endless_1"])("does not roll these 
   const f = crystalFixture(); f.patch("player", { mapId });
   f.ctx.random.integerInRange = vi.fn(() => 1);
   if (mapId === "home_exterior") expect(() => reportEnemy(f)).toThrow(); else reportEnemy(f);
-  expect(f.ctx.random.integerInRange).not.toHaveBeenCalled();
+  if (mapId === "crystal_hollows") {
+    expect([...f.db.playerItemDrop.iter()].map(drop => drop.itemId)).toEqual(["crystal_bow", "crystal_armor", "crystal_helmet"]);
+  } else expect(f.ctx.random.integerInRange).not.toHaveBeenCalled();
 });
 
 it.each([

@@ -24,11 +24,11 @@ it("calculates stats and independent loot rolls once in one transaction", () => 
   expect(update).toHaveBeenCalledTimes(1);
   expect(f.db.playerProgress.identity.find(f.ctx.sender).damage).toBeCloseTo(base.damage + enemyDefeatDefinition(batch.mapId, enemy)!.reward.amount * 20);
   expect(f.db.playerLifetime.identity.find(f.ctx.sender).enemyKills).toBe(20n);
-  expect(f.ctx.random.integerInRange).toHaveBeenCalledTimes(40);
+  expect(f.ctx.random.integerInRange).toHaveBeenCalledTimes(60);
   f.patch("player", { mapId: "home_exterior" });
   f.run(server.recordEnemyDefeats, batch);
   expect(update).toHaveBeenCalledTimes(1);
-  expect(f.ctx.random.integerInRange).toHaveBeenCalledTimes(40);
+  expect(f.ctx.random.integerInRange).toHaveBeenCalledTimes(60);
 });
 it.each([
   { enemies: [{ enemy, count: 0 }] }, { enemies: [{ enemy, count: 101 }] }, { sequence: 2n },
@@ -53,7 +53,7 @@ it("rolls back reward, budget, receipt and loot if a write fails", () => {
   expect([...f.db.enemyDefeatBudget.iter()]).toHaveLength(0);
   expect(f.db.playerProgress.identity.find(f.ctx.sender)).toEqual(base);
   insert.mockRestore(); f.run(server.recordEnemyDefeats, batch);
-  expect([...f.db.playerItemDrop.iter()]).toHaveLength(2);
+  expect([...f.db.playerItemDrop.iter()]).toHaveLength(3);
 });
 it("allows grouped kills and delayed batches; excessive claims only wait, even across new streams", () => {
   const f = fixture(); f.ctx.random.integerInRange = (_min: number, max: number) => max;

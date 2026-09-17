@@ -1,4 +1,8 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.721": [
+    "Added 26 bows, chest armor pieces, and helmets from Forest through Ion Citadel, with complete equipment sets across the campaign.",
+    "Later maps offer stronger themed gear: bows drop at 0.5%, chest armor at 0.7%, and helmets at 0.8% per enemy. Existing drops keep their odds.",
+  ],
   "0.720": [
     "Fixed enemies ignoring nearby players when network movement updates were reduced. Aggro uses your actual character position with autofarm on or off.",
     "Fixed legitimate boss rewards being rejected around save-window boundaries or delayed reports.",
@@ -1948,6 +1952,7 @@ export const RELEASE_NOTES: Record<string, string[]> = {
 };
 
 const RELEASE_DATES: Record<string, string> = {
+  "0.721": "2026-09-16",
   "0.720": "2026-09-16",
   "0.719": "2026-09-16",
   "0.652": "2026-09-10",

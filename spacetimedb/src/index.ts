@@ -117,12 +117,8 @@ import type { DuelFighter } from "../../shared/duel-combat";
 import {
   BASIC_PAPER_HAT,
   canonicalItemId,
-  SAMURAI_DROP_ITEM_IDS,
-  WATER_DROP_ITEM_IDS,
-  CLOUDSPIRE_DROP_ITEM_IDS,
-  MOONFEN_DROP_ITEM_IDS,
-  DESERT_DROP_ITEM_IDS,
   DEVELOPER_ITEM_IDS,
+  EQUIPMENT_DROP_ITEM_IDS,
   equipmentDamageMultiplier,
   equipmentMaxHealthMultiplier,
   equipmentRegenerationMultiplier,
@@ -132,11 +128,8 @@ import {
   isUpgradeableItem,
   itemFitsEquipmentSlot,
   itemUpgradeDurationMs,
-  INFERNAL_DROP_ITEM_IDS,
-  LAVA_BOSS_DROP_ITEM_IDS,
   LAVA_BOSS_ITEM_DROP_DENOMINATOR,
   LAVA_BOW,
-  LAVA_DROP_ITEM_IDS,
   MAX_FOREST_ITEM_COUNT,
   MAX_ITEM_UPGRADE_LEVEL,
   normalizeItemUpgradeLevel,
@@ -144,9 +137,7 @@ import {
   STARTER_STONE,
   STARTER_ITEM_IDS,
   SNOW_BOSS_ARMOR_DROP_DENOMINATOR,
-  SNOW_BOSS_DROP_ITEM_IDS,
   SNOW_BOSS_ITEM_DROP_DENOMINATOR,
-  SNOW_DROP_ITEM_IDS,
   SUPERIOR_GOLDEN_HELMET,
   TRAILBLAZER_BOOTS,
   WOODEN_ARMOR,
@@ -3804,11 +3795,8 @@ function inventoryForProgress(progress: any) {
   ];
 }
 
-const OWNED_EQUIPMENT_DROP_IDS = [
-  ...DESERT_DROP_ITEM_IDS, ...SNOW_DROP_ITEM_IDS, ...SNOW_BOSS_DROP_ITEM_IDS,
-  ...LAVA_DROP_ITEM_IDS, ...LAVA_BOSS_DROP_ITEM_IDS, ...SAMURAI_DROP_ITEM_IDS,
-  ...WATER_DROP_ITEM_IDS, ...CLOUDSPIRE_DROP_ITEM_IDS, ...MOONFEN_DROP_ITEM_IDS, ...INFERNAL_DROP_ITEM_IDS,
-];
+// The two original forest drops retain their legacy count-field migration above.
+const OWNED_EQUIPMENT_DROP_IDS = EQUIPMENT_DROP_ITEM_IDS.filter(id => id !== STARTER_BOW && id !== WOODEN_ARMOR);
 
 function inventoryWithBetaHelmet(progress: any, grant: boolean) {
   const inventory = inventoryForProgress(progress);

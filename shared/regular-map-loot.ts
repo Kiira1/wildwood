@@ -1,3 +1,4 @@
+import { CAMPAIGN_EQUIPMENT, type CampaignItemId } from "./campaign-equipment";
 import { STARTER_BOW, WOODEN_ARMOR, FOREST_ITEM_DROP_DENOMINATOR, WOOD_FULL_HELM, IRON_BOW, DESERT_ITEM_DROP_DENOMINATOR, SNOW_BOW, SNOW_ITEM_DROP_DENOMINATOR, MAGMA_ARMOR, FIRE_METAL_HELMET, LAVA_ITEM_DROP_DENOMINATOR, LAVA_HELMET_ITEM_DROP_DENOMINATOR, NIGHT_BOW, FIRE_METAL_BOW, DARK_METAL_HELMET, BLACK_BOOTS, BLACK_BOOTS_DROP_DENOMINATOR, NIGHT_FOREST_BOW_ITEM_DROP_DENOMINATOR, INFERNAL_ITEM_DROP_DENOMINATOR, NIGHT_FOREST_HELMET_ITEM_DROP_DENOMINATOR } from "./items";
 import { TUTORIAL_FOREST_MAP_ID, BEGINNER_DESERT_MAP_ID, INTERMEDIATE_SNOWLANDS_MAP_ID, ADVANCED_LAVA_WASTES_MAP_ID, INFERNAL_DEPTHS_MAP_ID } from "./rules";
 import { LAVA_ITEM_DROP_NUMERATOR } from "./items";
@@ -47,4 +48,9 @@ const LOOT: Readonly<Record<string, readonly Drop[]>> = {
   ],
   [MOONFEN_MAP_ID]: [{ itemId: MOONFEN_ARMOR, wins: 7, outcomes: 1000 }], // 0.7%
 };
-export function regularMapLoot(mapId: string): readonly Drop[] { return LOOT[mapId] ?? []; }
+// Resolve the map lists once, not once per kill or map-guide render.
+const ALL_LOOT: Record<string, readonly Drop[]> = { ...LOOT };
+for (const [itemId, { mapId, wins, outcomes }] of Object.entries(CAMPAIGN_EQUIPMENT)) {
+  ALL_LOOT[mapId] = [...(ALL_LOOT[mapId] ?? []), { itemId: itemId as CampaignItemId, wins, outcomes }];
+}
+export function regularMapLoot(mapId: string): readonly Drop[] { return ALL_LOOT[mapId] ?? []; }
