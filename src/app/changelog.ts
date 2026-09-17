@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.730": [
+    "Improved iOS audio recovery after interruptions, locking, or switching apps.",
+  ],
   "0.729": [
     "Added a setting to disable tapping your character to open its profile; the HUD portrait still works.",
     "Centered fullscreen chat messages on desktop while keeping their existing maximum width.",
@@ -2004,6 +2007,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.730": "2026-09-17",
   "0.729": "2026-09-17",
   "0.728": "2026-09-17",
   "0.727": "2026-09-17",

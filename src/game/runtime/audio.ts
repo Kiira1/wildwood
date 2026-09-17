@@ -231,7 +231,7 @@ export function createMapMusicController(
   function ensurePlaying(allowed: boolean) {
     const context = ensureAudioGraph();
     if (context) {
-      if (context.state === "suspended") void context.resume().catch(() => {});
+      resumeAudioContext(context);
       void preloadBowAttackSound(context);
     }
     playbackRequested = allowed && volume > 0;
@@ -243,10 +243,18 @@ export function createMapMusicController(
     if (audio.paused) void audio.play().catch(() => {});
   }
 
+  function resumeAudioContext(context: AudioContext | null) {
+    // WebKit also reports "interrupted" after calls, locking, or app switches.
+    // Reuse the existing graph so media elements are never connected twice.
+    if (context && context.state !== "running" && context.state !== "closed") {
+      void context.resume().catch(() => {});
+    }
+  }
+
   function playDeathSound() {
     if (sfxVolume <= 0) return;
     const context = ensureAudioGraph();
-    if (context?.state === "suspended") void context.resume().catch(() => {});
+    resumeAudioContext(context);
     deathAudio.currentTime = 0;
     void deathAudio.play().catch(() => {});
   }
@@ -255,7 +263,7 @@ export function createMapMusicController(
     if (sfxVolume <= 0) return;
     const context = ensureAudioGraph();
     if (!context || !sfxGainNode) return;
-    if (context.state === "suspended") void context.resume().catch(() => {});
+    resumeAudioContext(context);
     if (!bowAttackBuffer) {
       void preloadBowAttackSound(context);
       return;

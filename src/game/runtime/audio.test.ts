@@ -147,6 +147,23 @@ describe("map music", () => {
     expect(instances[1]?.play).toHaveBeenCalledTimes(2);
   });
 
+  it.each(["suspended", "interrupted", "running", "closed"])("recovers audio from %s only when resumable", (state) => {
+    const context = new FakeAudioContext();
+    context.state = "running";
+    vi.stubGlobal("Audio", FakeAudio);
+    vi.stubGlobal("window", { AudioContext: class { constructor() { return context; } } });
+    vi.stubGlobal("localStorage", { getItem: () => null });
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false })));
+    const controller = createMapMusicController("test-volume", BEGINNER_DESERT_MAP_ID, INTERMEDIATE_SNOWLANDS_MAP_ID, ADVANCED_LAVA_WASTES_MAP_ID);
+    controller.ensurePlaying(false);
+    context.state = state;
+    controller.ensurePlaying(false);
+    controller.playDeathSound();
+    controller.playBowAttackSound();
+    expect(context.resume).toHaveBeenCalledTimes(state === "suspended" || state === "interrupted" ? 3 : 0);
+    expect(context.gains).toHaveLength(2);
+  });
+
   it.each([1.872, .08])("plays a quietly mixed release voice with a %s-second source", async (duration) => {
     const context = new FakeAudioContext();
     context.decodeAudioData.mockResolvedValue({ duration });
