@@ -1,6 +1,6 @@
 import { expect, it, vi } from "vitest";
 vi.mock("spacetimedb/server", () => ({ SenderError: class SenderError extends Error {} }));
-import { deliverDisconnectCompensation, deliverCombatUpdateGift, deliverOutageCompensation, announceOutageCompensation } from "./disconnect-compensation";
+import { deliverDisconnectCompensation, deliverCombatUpdateGift, deliverOutageCompensation, announceOutageCompensation, deliverAutofarmTestGift } from "./disconnect-compensation";
 const player = { toHexString: () => "player" };
 function setup() {
   const receipts = new Map(); const notices = new Map();
@@ -27,6 +27,15 @@ it("skips deleted characters and virtual players", () => {
 });
 it("bounds delivery batches before awarding any gems", () => {
   const s = setup(); expect(() => s.deliver(Array(101).fill(player))).toThrow("at most 100"); expect(s.credit).not.toHaveBeenCalled();
+});
+
+it("credits the autofarm test gift as 15 gems exactly once and preserves older notices", () => {
+  const s = setup(); s.deliver();
+  deliverAutofarmTestGift(s.ctx, [player, player] as any, s.credit);
+  expect(s.credit.mock.calls.at(-1)?.[0]).toMatchObject({ delta: 15n, kind: "autofarm_test_gift" });
+  expect(s.notices.get(player).amount).toBe(35n);
+  s.notices.clear(); deliverAutofarmTestGift(s.ctx, [player] as any, s.credit);
+  expect(s.credit).toHaveBeenCalledTimes(2); expect(s.notices.size).toBe(0);
 });
 
 it("credits the combat update separately from the disconnect gift, exactly once", () => {

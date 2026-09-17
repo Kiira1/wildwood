@@ -5,6 +5,12 @@ import type { ModuleReducerCtx } from "./index";
 export const DISCONNECT_GIFT_CAMPAIGN = "disconnect-compensation:2026-09-14";
 export const DISCONNECT_GIFT_AMOUNT = 20n;
 
+export const AUTOFARM_TEST_GIFT_CAMPAIGN = "autofarm-popup-test:2026-09-17";
+export function deliverAutofarmTestGift(ctx: ModuleReducerCtx, recipients: Identity[], credit: Credit) {
+  deliverGemGift(ctx, recipients, credit, AUTOFARM_TEST_GIFT_CAMPAIGN, "autofarm_test_gift",
+    "15 gems from the developer. Thanks for helping test WildStat!", 15n);
+}
+
 type Credit = (input: { identity: Identity; delta: bigint; kind: string; note: string; externalReference: string }) => void;
 
 /** Credit immediately; the existing apology popup only acknowledges receipt.

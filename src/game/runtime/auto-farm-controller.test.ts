@@ -1,4 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { parseHTML } from 'linkedom';
+import { createBalanceApologyGiftController } from '../../ui/balance-apology-gift-controller';
 import { createGameBootstrap } from './game-bootstrap';
 import { createEnemyLifecycle } from './enemy-lifecycle';
 import { createAutoFarmController } from './auto-farm-controller';
@@ -47,6 +49,34 @@ function setup(obstacles: Circle[] = [], weapon = "starter_bow", resumeStore?: R
 }
 
 describe('autofarm', () => {
+  it('keeps moving while a 15-gem gift is visible, acknowledging, and dismissed', async () => {
+    const s = setup();
+    s.add('Bramble', 1500, 500);
+    s.farm.start('Bramble');
+    const { document } = parseHTML('<div id="gift"><h1></h1><button>Continue</button></div>');
+    const overlay = document.querySelector('div')!;
+    const button = document.querySelector('button')!;
+    let finish!: (value: { ok: boolean }) => void;
+    vi.stubGlobal('requestAnimationFrame', (callback: () => void) => callback());
+    try {
+      const gift = createBalanceApologyGiftController({ overlay, title: document.querySelector('h1')!, continueButton: button }, {
+        canShow: () => true, amount: () => 15n,
+        acknowledge: () => new Promise(resolve => { finish = resolve; }),
+        showMessage: () => {}, afterDismiss: () => {},
+      });
+      expect(gift.isOpen()).toBe(true);
+      expect(s.tick().x).toBeGreaterThan(0);
+      button.click();
+      expect(button.disabled).toBe(true);
+      expect(s.tick().x).toBeGreaterThan(0);
+      finish({ ok: true });
+      await Promise.resolve(); await Promise.resolve();
+      expect(gift.isOpen()).toBe(false);
+      expect(s.tick().x).toBeGreaterThan(0);
+      expect(s.farm.targetType()).toBe('Bramble');
+    } finally { vi.unstubAllGlobals(); }
+  });
+
   it('keeps same-species generated camps separate when routing', () => {
     const s = setup(); s.setMap('endless_1');
     const armor = s.add('Bramble', 550, 500), health = s.add('Bramble', 1500, 500);

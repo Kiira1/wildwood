@@ -13,7 +13,7 @@ import { regularEnemyLootCursor, rollRegularEnemyLoot } from "./regular-enemy-lo
 import { BLACK_BOOTS, BLACK_BOOTS_SPEED_BONUS } from "../../shared/items";
 import { playerOnboarding, advanceOnboarding, mergeOnboarding, needsOnboarding } from "./onboarding";
 import { canDestroyEquipment } from "../../shared/items";
-import { deliverDisconnectCompensation, deliverCombatUpdateGift, deliverOutageCompensation, announceOutageCompensation } from "./disconnect-compensation";
+import { deliverDisconnectCompensation, deliverCombatUpdateGift, deliverOutageCompensation, announceOutageCompensation, deliverAutofarmTestGift } from "./disconnect-compensation";
 import { connectionDiagnosticTables, recordConnectionDiagnostics, cleanupConnectionDiagnostics } from "./connection-diagnostics";
 import { moderationTables, recordModerationAction, readModerationHistory } from "./moderation-history";
 import { playerItemGift, deliverAlphaTesterGifts, claimItemGift, removeItemGifts, mergeItemGifts } from "./item-gifts";
@@ -9520,6 +9520,13 @@ export const devDeliverOutageCompensation = spacetimedb.reducer(
     if (!isDatabaseOwnerIdentity(ctx.sender)) requireDeveloper(ctx);
     if (isMapShard(ctx)) throw new SenderError("Use the world connection.");
     deliverOutageCompensation(ctx, recipients, input => { applyGemBalanceChange(ctx, input); });
+  },
+);
+export const devDeliverAutofarmTestGift = spacetimedb.reducer(
+  { recipients: t.array(t.identity()) }, (ctx, { recipients }) => {
+    if (!isDatabaseOwnerIdentity(ctx.sender)) requireDeveloper(ctx);
+    if (isMapShard(ctx)) throw new SenderError("Use the world connection.");
+    deliverAutofarmTestGift(ctx, recipients, input => { applyGemBalanceChange(ctx, input); });
   },
 );
 export const devAnnounceOutageCompensation = spacetimedb.reducer({}, ctx => {
