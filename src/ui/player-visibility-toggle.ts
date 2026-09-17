@@ -3,7 +3,7 @@ import { installMultiplayerIdle } from "./multiplayer-idle";
 const STORAGE_KEY = "wildstat-show-other-players";
 const COOLDOWN_MS = 20_000;
 
-/** A viewing preference, not a sign-out or a change to the player's presence. */
+/** Mutual multiplayer participation, with manual movement waking it after idle. */
 export function createPlayerVisibilityToggle(options: {
   button: HTMLButtonElement;
   setVisible: (visible: boolean) => void;
@@ -27,7 +27,7 @@ export function createPlayerVisibilityToggle(options: {
     options.button.disabled = seconds > 0;
     countdown.textContent = seconds ? String(seconds) : "";
     options.button.setAttribute("aria-pressed", String(visible));
-    const action = visible ? "Hide other players" : "Show other players";
+    const action = visible ? "Turn multiplayer off" : "Turn multiplayer on";
     const label = seconds ? `${action} — available in ${seconds} seconds` : action;
     options.button.setAttribute("aria-label", label);
     options.button.title = label;
@@ -46,5 +46,17 @@ export function createPlayerVisibilityToggle(options: {
   refresh();
   options.setVisible(visible);
   idle.setEnabled(visible);
-  return { noteManualMovement: idle.noteManualMovement, dispose() { idle.dispose(); clearTimeout(timer); options.button.removeEventListener("click", click); } };
+  return { noteManualMovement() {
+    if (options.button.ownerDocument.hidden) return;
+    if (!visible) {
+      // Honor a deliberate toggle's cooldown; an idle expiration has no new
+      // cooldown, so actual movement can immediately restore multiplayer.
+      if (performance.now() < cooldownUntil) return;
+      visible = true;
+      idle.setEnabled(true);
+      cooldownUntil = performance.now() + COOLDOWN_MS;
+      try { options.storage?.setItem(STORAGE_KEY, "true"); } catch {}
+      refresh(); options.setVisible(true);
+    } else idle.noteManualMovement();
+  }, dispose() { idle.dispose(); clearTimeout(timer); options.button.removeEventListener("click", click); } };
 }

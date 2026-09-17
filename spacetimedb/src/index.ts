@@ -4,7 +4,8 @@ import { validPatreonRedirect } from "./patreon-url";
 import { isValidProfileIcon } from "../../shared/profile-icons";
 import { releaseNotice, releaseAcknowledgement, writeReleaseWindow, acknowledgeReleaseWindow } from "./release-control";
 import { PERSONAL_BOSS_COMBAT, personalBossDefinition } from "../../shared/personal-bosses";
-import { enemyDefeatBudget, bossDefeatWindow, acceptEnemyDefeats } from "./enemy-defeats";
+import { playerMultiplayerPreference, writeMultiplayerPreference } from "./multiplayer-preference";
+import { enemyDefeatBudget, bossDefeatWindow, bossMapDefeatWindow, acceptEnemyDefeats, beginBossTimeBudget } from "./enemy-defeats";
 import { applyEnemyRewards } from "../../shared/enemy-defeats";
 import { LOADOUT_FIELDS } from "../../shared/combat-progress";
 import { chatHeartAllowance, chatReactionSummary, playerChatHearts, reactionCountsFor, chatReaction, readChatReactions, setChatReaction, removeMessageReactions, removeAccountReactions, mergeAccountReactions } from "./chat-reactions";
@@ -1741,7 +1742,8 @@ const spacetimedb = schema({
   balanceApologyNotice,
   playerItemGift,
   playerOnboarding,
-  regularEnemyLootCursor, enemyDefeatBudget, bossDefeatWindow,
+  regularEnemyLootCursor, enemyDefeatBudget, bossDefeatWindow, bossMapDefeatWindow,
+  playerMultiplayerPreference,
   chatReaction, chatHeartAllowance, chatReactionSummary, playerChatHearts,
   playerUpgradeBench,
   playerInventoryCapacity,
@@ -2082,6 +2084,10 @@ function requireAllowedDisplayName(displayName: string) {
 }
 
 function syncDisplayNamePresentation(ctx: any, identity: any, displayName: string) {
+  const guildMember = ctx.db.guildMember.identity.find(identity);
+  if (guildMember && guildMember.name !== displayName) {
+    ctx.db.guildMember.identity.update({ ...guildMember, name: displayName });
+  }
   const leaderboard = ctx.db.leaderboardEntry.identity.find(identity);
   if (leaderboard && leaderboard.displayName !== displayName) {
     ctx.db.leaderboardEntry.identity.update({ ...leaderboard, displayName });
@@ -2931,6 +2937,22 @@ function researchedDamage(ctx: any, identity: any, damage: number, knownProgress
   );
 }
 
+function maximumBossCombatForProgress(ctx: GameReducerContext, mapId: string, earned: { type: string; amount: number; count: number }[]) {
+  const saved = ctx.db.playerProgress.identity.find(ctx.sender);
+  if (!saved) return { dps: 0, attackInterval: 1 };
+  const research = ctx.db.playerResearch.identity.find(ctx.sender);
+  const progress = earned.length ? applyEnemyRewards(saved, earned, researchStatRewardMultiplier(research)) : saved;
+  const weapon = equippedRightHandForProgress(progress) || equippedLeftHandForProgress(progress);
+  const attackInterval = attackIntervalForProgress(progress);
+  if (!weapon) return { dps: 0, attackInterval };
+  // Campaign bosses currently do not receive client criticals. Endless bosses
+  // do; use the possible maximum so lucky critical streaks remain legitimate.
+  const critical = isProceduralMap(mapId) && (research?.criticalChance ?? 0) > 0
+    ? Math.max(1, 1.05 + (research?.criticalDamage ?? 0) * .05) : 1;
+  const projectiles = itemDefinition(weapon)?.weapon?.mode === "MELEE" ? 1 : Math.max(1, progress.projectileCount);
+  return { attackInterval, dps: researchedDamage(ctx, ctx.sender, progress.damage, progress, research) * critical * projectiles / attackInterval };
+}
+
 function researchedArmor(ctx: any, identity: any, armor: number) {
   const rank = ctx.db.playerResearch.identity.find(identity)?.precision ?? 0;
   return armor * (1 + rank * .02);
@@ -3202,7 +3224,7 @@ function removePlayerRealtimeState(ctx: any, identity: any) {
 
 function hasSharedMap(ctx: any) {
   for (const state of ctx.db.playerMotionMapState.iter() as Iterable<any>) {
-    if (state.mapId !== HOME_EXTERIOR_MAP_ID && state.playerCount > 1 && state.visibleCount > 0) return true;
+    if (state.mapId !== HOME_EXTERIOR_MAP_ID && state.visibleCount > 1) return true;
   }
   return false;
 }
@@ -4378,6 +4400,8 @@ function removeVirtualPlayerData(ctx: any, identity: any, adjustPresence = true,
   unlinkPatreon(ctx, identity);
   for (const budget of ctx.db.enemyDefeatBudget.identity.filter(identity)) ctx.db.enemyDefeatBudget.key.delete(budget.key);
   if (ctx.db.bossDefeatWindow.identity.find(identity)) ctx.db.bossDefeatWindow.identity.delete(identity);
+  if (ctx.db.bossMapDefeatWindow.identity.find(identity)) ctx.db.bossMapDefeatWindow.identity.delete(identity);
+  if (ctx.db.playerMultiplayerPreference.identity.find(identity)) ctx.db.playerMultiplayerPreference.identity.delete(identity);
   for (const cursor of ctx.db.regularEnemyLootCursor.identity.filter(identity)) ctx.db.regularEnemyLootCursor.key.delete(cursor.key);
   if (ctx.db.playerOnboarding.identity.find(identity)) ctx.db.playerOnboarding.identity.delete(identity);
   if (ctx.db.playerUpgradeBench.identity.find(identity)) ctx.db.playerUpgradeBench.identity.delete(identity);
@@ -4473,6 +4497,8 @@ function removePlayerIdentityData(ctx: any, identity: any) {
   unlinkPatreon(ctx, identity);
   for (const budget of ctx.db.enemyDefeatBudget.identity.filter(identity)) ctx.db.enemyDefeatBudget.key.delete(budget.key);
   if (ctx.db.bossDefeatWindow.identity.find(identity)) ctx.db.bossDefeatWindow.identity.delete(identity);
+  if (ctx.db.bossMapDefeatWindow.identity.find(identity)) ctx.db.bossMapDefeatWindow.identity.delete(identity);
+  if (ctx.db.playerMultiplayerPreference.identity.find(identity)) ctx.db.playerMultiplayerPreference.identity.delete(identity);
   for (const cursor of ctx.db.regularEnemyLootCursor.identity.filter(identity)) ctx.db.regularEnemyLootCursor.key.delete(cursor.key);
   if (ctx.db.playerOnboarding.identity.find(identity)) ctx.db.playerOnboarding.identity.delete(identity);
   if (ctx.db.playerUpgradeBench.identity.find(identity)) ctx.db.playerUpgradeBench.identity.delete(identity);
@@ -6377,7 +6403,8 @@ const isInIonCitadel = existingPlayer?.mapId === ION_CITADEL_MAP_ID || Boolean(e
     existingProgress = { ...existingProgress, introComplete: true };
     updateSnapshotRow(ctx, "playerProgress", existingProgress);
   }
-  const visibleOnEntry = !needsOnboarding(ctx, ctx.sender) && (isDeveloperIdentity(ctx.sender)
+  const visibleOnEntry = (ctx.db.playerMultiplayerPreference.identity.find(ctx.sender)?.enabled ?? false)
+    && !needsOnboarding(ctx, ctx.sender) && (isDeveloperIdentity(ctx.sender)
     ? presencePreference?.visible ?? existing?.isVisible ?? false
     : true);
   if (isDeveloperIdentity(ctx.sender) && !presencePreference) {
@@ -6628,7 +6655,7 @@ export const publishMotionDetailFrames = spacetimedb.reducer(
     const sampleMotion = createPlayerMotionFrameSampler(ctx.timestamp.microsSinceUnixEpoch);
     for (const interest of ctx.db.playerMotionInterest.iter() as Iterable<any>) {
       const observer = ctx.db.playerMotion.identity.find(interest.identity);
-      if (!observer) {
+      if (!observer || !observer.isVisible) {
         staleIdentities.push(interest.identity);
         continue;
       }
@@ -6674,7 +6701,7 @@ export const publishMapFrames = spacetimedb.reducer(
     for (const state of ctx.db.playerMotionMapState.iter() as Iterable<any>) {
       // Home is private: it has no remote minimap dots or observers to serve.
       if (state.mapId === HOME_EXTERIOR_MAP_ID || state.playerCount === 0) continue;
-      if (state.playerCount > 1 && state.visibleCount > 0) continuePublishing = true;
+      if (state.visibleCount > 1) continuePublishing = true;
       sampleVisiblePlayers ||= state.visibleCount > 0;
       // Keep a final single/empty frame to clear dots after a departure or hide.
       maps.set(state.mapId, []);
@@ -8237,7 +8264,10 @@ export const acceptTerms = spacetimedb.reducer(
 export const enterWorld = spacetimedb.reducer({ tabId: t.string() }, (ctx, { tabId }) => {
   requireSupportedSessionProtocol(ctx);
   if (isMapShard(ctx)) enterShardPresence(ctx, tabId);
-  else enterWorldPresence(ctx, tabId);
+  else {
+    enterWorldPresence(ctx, tabId);
+    beginBossTimeBudget(ctx, ctx.db.player.identity.find(ctx.sender)?.mapId ?? "");
+  }
 });
 
 /** Only tutorial-capable clients use this additive entry point. */
@@ -8245,6 +8275,7 @@ export const enterWorldWithTutorial = spacetimedb.reducer({ tabId: t.string(), f
   requireSupportedSessionProtocol(ctx);
   if (isMapShard(ctx)) throw new SenderError("Connect to the account database.");
   enterWorldPresence(ctx, tabId, forceTakeover, true);
+  beginBossTimeBudget(ctx, ctx.db.player.identity.find(ctx.sender)?.mapId ?? "");
 });
 
 export const takeOverSession = spacetimedb.reducer({ tabId: t.string() }, (ctx, { tabId }) => {
@@ -8814,8 +8845,10 @@ export const setDeveloperPresence = spacetimedb.reducer(
     const preference = ctx.db.developerPresencePreference.identity.find(ctx.sender);
     if (preference) ctx.db.developerPresencePreference.identity.update({ ...preference, visible });
     else ctx.db.developerPresencePreference.insert({ identity: ctx.sender, visible });
-    if (activePlayer.isVisible === visible) return;
-    const nextPlayer = { ...activePlayer, isVisible: visible, lastInputAt: ctx.timestamp };
+    const effectiveVisible = visible && (ctx.db.playerMultiplayerPreference.identity.find(ctx.sender)?.enabled ?? false)
+      && !needsOnboarding(ctx, ctx.sender);
+    if (activePlayer.isVisible === effectiveVisible) return;
+    const nextPlayer = { ...playerWithMotion(ctx, activePlayer), isVisible: effectiveVisible, lastInputAt: ctx.timestamp };
     updateSnapshotRow(ctx, "player", nextPlayer);
     syncPlayerMotion(ctx, nextPlayer);
     syncPlayerMotionIdentity(ctx, nextPlayer);
@@ -8823,6 +8856,22 @@ export const setDeveloperPresence = spacetimedb.reducer(
     ensureRealtimeFrameSchedules(ctx);
   },
 );
+
+export const setMultiplayerEnabled = spacetimedb.reducer({ enabled: t.bool() }, (ctx, { enabled }) => {
+  const player = requireControllingPlayer(ctx);
+  if (isMapShard(ctx)) throw new SenderError("Use your account connection for multiplayer settings.");
+  writeMultiplayerPreference(ctx, enabled);
+  const visible = enabled && !needsOnboarding(ctx, ctx.sender) && (!isDeveloperIdentity(ctx.sender)
+    || (ctx.db.developerPresencePreference.identity.find(ctx.sender)?.visible ?? false));
+  if (!visible && ctx.db.playerMotionInterest.identity.find(ctx.sender)) ctx.db.playerMotionInterest.identity.delete(ctx.sender);
+  if (player.isVisible === visible) return;
+  const next = { ...playerWithMotion(ctx, player), isVisible: visible };
+  updateSnapshotRow(ctx, "player", next);
+  syncPlayerMotion(ctx, next);
+  syncPlayerMotionIdentity(ctx, next);
+  syncPlayerMapMarker(ctx, next, true);
+  ensureRealtimeFrameSchedules(ctx);
+});
 
 // Development-only economy seeding. Production purchase credits will use
 // verified store/webhook references through a separate trusted server path.
@@ -9700,7 +9749,7 @@ export const recordEnemyDefeats = spacetimedb.reducer(
   (ctx, batch) => {
     const player = requireControllingPlayer(ctx);
     if (isMapShard(ctx) || activeDuelFor(ctx, ctx.sender)) throw new SenderError("Enemy rewards require your account world connection.");
-    const accepted = acceptEnemyDefeats(ctx, batch, player.mapId);
+    const accepted = acceptEnemyDefeats(ctx, batch, player.mapId, earned => maximumBossCombatForProgress(ctx, batch.mapId, earned));
     if (!accepted || !accepted.count) return;
     const base = ctx.db.playerProgress.identity.find(ctx.sender) ?? defaultPlayerProgress(ctx.sender);
     if (accepted.rewards.some(reward => reward.type !== "boss")) {
@@ -9775,7 +9824,8 @@ export const completeOnboardingStep = spacetimedb.reducer({ step: t.u8() }, (ctx
   advanceOnboarding(ctx, step, progress => writeProgressAndPresentation(ctx, progress));
   if (step === 6) {
     const player = ctx.db.player.identity.find(ctx.sender)!;
-    const visible = !isDeveloperIdentity(ctx.sender) || (ctx.db.developerPresencePreference.identity.find(ctx.sender)?.visible ?? false);
+    const visible = (ctx.db.playerMultiplayerPreference.identity.find(ctx.sender)?.enabled ?? false)
+      && (!isDeveloperIdentity(ctx.sender) || (ctx.db.developerPresencePreference.identity.find(ctx.sender)?.visible ?? false));
     const next = { ...player, isVisible: visible };
     updateSnapshotRow(ctx, "player", next);
     syncPlayerMotionIdentity(ctx, playerWithMotion(ctx, next));
@@ -10163,6 +10213,10 @@ export const setPlayerMotionInterest = spacetimedb.reducer(
     const activePlayer = requireControllingPlayer(ctx);
     const ownMotion = ctx.db.playerMotion.identity.find(ctx.sender);
     if (!ownMotion) throw new SenderError("Player motion is unavailable.");
+    if (!ownMotion.isVisible) {
+      if (ctx.db.playerMotionInterest.identity.find(ctx.sender)) ctx.db.playerMotionInterest.identity.delete(ctx.sender);
+      return;
+    }
     const selected: number[] = [];
     const seen = new Set<number>();
     for (const networkId of networkIds) {
@@ -10244,6 +10298,7 @@ function transitionPlayerMap(
   syncPlayerMotionIdentity(ctx, nextPlayer);
   syncPlayerMapMarker(ctx, nextPlayer, true);
   ensureRealtimeFrameSchedules(ctx);
+  if (!isMapShard(ctx)) beginBossTimeBudget(ctx, mapId);
   return nextPlayer;
 }
 
@@ -10489,7 +10544,15 @@ function installShardPlayerImpl(ctx: any, args: any) {
       : { ...data.player, lastInputAt: ctx.timestamp, moving: false, vx: 0, vy: 0 };
     if (active) updateSnapshotRow(ctx, "player", nextPlayer);
     else insertSnapshotRow(ctx, "player", nextPlayer);
-    syncPlayerMotionIdentity(ctx, playerWithMotion(ctx, nextPlayer));
+    const regionalPlayer = playerWithMotion(ctx, nextPlayer);
+    // Replicated eye changes must update both presentation and frame eligibility
+    // immediately, even while the invisible client sends only coarse checkpoints.
+    syncPlayerMotion(ctx, regionalPlayer);
+    syncPlayerMotionIdentity(ctx, regionalPlayer);
+    if (!nextPlayer.isVisible && ctx.db.playerMotionInterest.identity.find(args.identity)) {
+      ctx.db.playerMotionInterest.identity.delete(args.identity);
+    }
+    ensureRealtimeFrameSchedules(ctx);
 }
 function enterShardPresence(ctx: any, tabId: string) {
   requireMapWorkload(ctx);
@@ -10713,6 +10776,7 @@ function guildFighterFor(ctx: ModuleReducerCtx, identity: Identity): DuelFighter
 }
 
 const guildService = createGuildService({
+  nameFor: (ctx, identity) => ctx.db.playerProfile.identity.find(identity)?.displayName,
   announceBattle: (ctx, report) => {
     const result = report.result;
     const message = result.outcome === "DRAW" ? `[${report.attacker}] × [${report.defender}] · Draw`

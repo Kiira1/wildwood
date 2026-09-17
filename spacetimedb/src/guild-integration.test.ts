@@ -35,6 +35,23 @@ function fixture() {
 }
 
 describe("guild root reducer integration", () => {
+  it("updates guild member names on rename and resolves older stale roster names", () => {
+    const f = fixture();
+    f.guild(["1", "2"], "Rose");
+    const original = f.db.guildMember.identity.find(identity("1"));
+    f.run(server.setDisplayName, { displayName: "New Name" });
+    expect(f.db.guildMember.identity.find(identity("1"))).toEqual({ ...original, name: "New Name" });
+    f.actor("2");
+    expect(f.snapshot().guild?.members.find(row => row.identity === identity("1").toHexString())?.name).toBe("New Name");
+    // A name changed before the fix must also display correctly, even while
+    // that player is offline and without rewriting unrelated guild members.
+    f.db.guildMember.identity.update({ ...original, name: "Stale Name" });
+    f.db.player.identity.delete(identity("1"));
+    expect(f.snapshot().guild?.members.find(row => row.identity === identity("1").toHexString())?.name).toBe("New Name");
+    expect(f.snapshot().guild?.leader).toBe(identity("1").toHexString());
+    expect(f.db.guildMember.identity.find(identity("2")).name).toBe("Player 2");
+  });
+
   it("allows guests to join and create while requiring the controlling root connection", () => {
     const f = fixture();
     f.actor("1", false);

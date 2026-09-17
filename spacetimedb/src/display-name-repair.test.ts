@@ -11,6 +11,7 @@ it("repairs an offline name and public presentation without changing the save", 
   f.patch("playerProfile", { displayName: name });
   f.db.player.identity.delete(target);
   f.seed("leaderboardEntry", { identity: target, displayName: name });
+  f.seed("guildMember", { identity: target, guildId: 1n, name });
   f.seed("chatMessage", { id: 1n, sender: target, senderName: name, message: "Hello", sentAt: f.ctx.timestamp });
   f.seed("playerNameCooldown", { identity: target });
   const before = f.db.playerProgress.identity.find(target);
@@ -23,6 +24,7 @@ it("repairs an offline name and public presentation without changing the save", 
   expect(repaired).not.toBe(name);
   expect(isPublicDisplayNameAllowed(repaired)).toBe(true);
   expect(f.db.leaderboardEntry.identity.find(target).displayName).toBe(repaired);
+  expect(f.db.guildMember.identity.find(target).name).toBe(repaired);
   expect(f.db.chatMessage.id.find(1n)).toMatchObject({ senderName: repaired, message: "Hello" });
   expect(f.db.playerNameCooldown.identity.find(target)).toBeNull();
   expect(f.db.playerProgress.identity.find(target)).toEqual(before);

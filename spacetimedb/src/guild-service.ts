@@ -126,7 +126,9 @@ function validateFighter(fighter: DuelFighter) {
 }
 /** Root wrappers authenticate the controlling session. Every battle snapshots all
  * current members from persisted stats; clients cannot submit fighters/results. */
-export function createGuildService(deps: { fighterFor(ctx: Ctx, identity: Identity): Omit<GuildFighter, "identity">; announceBattle?: (ctx: Ctx, report: GuildSnapshot["battles"][number]) => void }) {
+export function createGuildService(deps: { fighterFor(ctx: Ctx, identity: Identity): Omit<GuildFighter, "identity">;
+  nameFor?: (ctx: Ctx, identity: Identity) => string | undefined;
+  announceBattle?: (ctx: Ctx, report: GuildSnapshot["battles"][number]) => void }) {
   function team(ctx: Ctx, guildId: bigint): GuildFighter[] {
     const roster = members(ctx, guildId).sort((a, b) => key(a.identity).localeCompare(key(b.identity)));
     if (!roster.length) fail("Both guilds need members to battle.");
@@ -243,6 +245,7 @@ export function createGuildService(deps: { fighterFor(ctx: Ctx, identity: Identi
       const member = ctx.db.guildMember.identity.find(ctx.sender);
       const stored = member ? ctx.db.guild.id.find(member.guildId) : null;
       const guild = stored ? currentGuild(ctx, stored) : null;
+      const roster = guild ? members(ctx, guild.id) : [];
       const week = guildWeek(now(ctx));
       const cache = ctx.db.guildStanding.id.find(0);
       const directory: GuildSnapshot["directory"] = [];
@@ -257,9 +260,11 @@ export function createGuildService(deps: { fighterFor(ctx: Ctx, identity: Identi
         nextWeekAt: String(BigInt((week + 1) * 7 - 3) * GUILD_DAY_MICROS),
         joinAfter: "0", signedIn,
         guild: guild ? { id: String(guild.id), name: guild.name, leader: key(guild.leader),
-          vicePresident: members(ctx, guild.id).find(row => row.vicePresident)?.identity.toHexString() ?? null,
+          vicePresident: roster.find(row => row.vicePresident)?.identity.toHexString() ?? null,
           attacksRemaining: GUILD_DAILY_ATTACKS - guild.attacks, score: guild.score,
-          members: members(ctx, guild.id).map(row => ({ identity: key(row.identity), name: row.name,
+          // Repair old join-time names on read with one indexed profile lookup;
+          // don't calculate combat stats or add background roster polling.
+          members: roster.map(row => ({ identity: key(row.identity), name: deps.nameFor?.(ctx, row.identity) ?? row.name,
             eligibleAt: String(row.eligibleAt) })) } : null,
         directory, nextPage, standings: cache?.week === week ? JSON.parse(cache.entries) : [],
         battles: guild ? [...ctx.db.guildBattleReport.guildId.filter(guild.id)]

@@ -61,7 +61,7 @@ it("turns the actual multiplayer preference off after five minutes without input
   state.toggle.dispose();
 });
 
-it("expires while chatting and stays off when fullscreen chat closes", () => {
+it("expires while chatting, stays off when chat closes, and wakes on manual movement", () => {
   vi.useFakeTimers();
   const { document, window } = parseHTML('<button></button>');
   const button = document.querySelector("button") as unknown as HTMLButtonElement;
@@ -77,6 +77,27 @@ it("expires while chatting and stays off when fullscreen chat closes", () => {
   gate.setFullscreen(false);
   expect(apply.mock.calls).toEqual([[true], [false]]);
   toggle.noteManualMovement();
-  expect(button.getAttribute("aria-pressed")).toBe("false");
+  expect(button.getAttribute("aria-pressed")).toBe("true");
+  expect(apply.mock.calls).toEqual([[true], [false], [true]]);
   toggle.dispose(); gate.dispose();
+});
+
+it("automatically enables once for manual movement, respects manual-off cooldown, and expires again", () => {
+  const state = setup();
+  state.toggle.noteManualMovement();
+  expect(state.setVisible.mock.calls).toEqual([[false], [true]]);
+  for (let i = 0; i < 1000; i++) state.toggle.noteManualMovement();
+  expect(state.setVisible).toHaveBeenCalledTimes(2);
+  vi.advanceTimersByTime(20_000);
+  state.button.click();
+  state.toggle.noteManualMovement();
+  expect(state.setVisible).toHaveBeenLastCalledWith(false);
+  vi.advanceTimersByTime(20_000);
+  state.toggle.noteManualMovement();
+  expect(state.setVisible).toHaveBeenLastCalledWith(true);
+  vi.advanceTimersByTime(300_000);
+  expect(state.setVisible).toHaveBeenLastCalledWith(false);
+  state.toggle.noteManualMovement();
+  expect(state.setVisible).toHaveBeenLastCalledWith(true);
+  state.toggle.dispose();
 });

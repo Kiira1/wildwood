@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   MOVEMENT_HEARTBEAT_MS,
+  SOLO_MOVEMENT_CHECKPOINT_MS,
   TOUCH_MOVEMENT_DIRECTION_SECTORS,
   TOUCH_MOVEMENT_MIN_INTERVAL_MS,
   movementUpdateReason,
@@ -11,6 +12,16 @@ import {
 const movingRight: SentMovementState = { vx: 180, vy: 0, moving: true, sentAt: 1_000 };
 
 describe("sparse movement sender", () => {
+  it("coalesces invisible autofarm into thirty-second checkpoints and preserves forced actions", () => {
+    const input = { now: 1_001, velocity: sanitizeMovementVelocity(0, 180), inputKind: "keyboard" as const,
+      lastSent: movingRight, multiplayerEnabled: false };
+    for (const elapsed of [1, 100, 500, 5_000, 29_999]) {
+      expect(movementUpdateReason({ ...input, now: movingRight.sentAt + elapsed })).toBeNull();
+    }
+    expect(movementUpdateReason({ ...input, now: movingRight.sentAt + SOLO_MOVEMENT_CHECKPOINT_MS })).toBe("direction");
+    expect(movementUpdateReason({ ...input, force: true })).toBe("forced");
+    expect(movementUpdateReason({ ...input, multiplayerEnabled: true })).toBe("direction");
+  });
   it("sends every keyboard state transition immediately", () => {
     expect(movementUpdateReason({ now: 1_001, velocity: sanitizeMovementVelocity(127, -127), inputKind: "keyboard", lastSent: movingRight })).toBe("direction");
     expect(movementUpdateReason({ now: 1_001, velocity: sanitizeMovementVelocity(0, 0), inputKind: "keyboard", lastSent: movingRight })).toBe("stop");

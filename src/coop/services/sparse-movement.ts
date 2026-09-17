@@ -1,4 +1,5 @@
 export const MOVEMENT_HEARTBEAT_MS = 500;
+export const SOLO_MOVEMENT_CHECKPOINT_MS = 30_000;
 export const TOUCH_MOVEMENT_MIN_INTERVAL_MS = 100;
 export const TOUCH_MOVEMENT_VECTOR_THRESHOLD = .12;
 export const TOUCH_MOVEMENT_DIRECTION_SECTORS = 24;
@@ -25,10 +26,14 @@ export function movementUpdateReason(options: {
   inputKind: MovementInputKind;
   lastSent: SentMovementState | null;
   force?: boolean;
+  multiplayerEnabled?: boolean;
 }): MovementUpdateReason | null {
   const { now, velocity, inputKind, lastSent, force = false } = options;
   if (force) return "forced";
   if (!lastSent) return velocity.moving ? "start" : null;
+  // Invisible autofarm needs location checkpoints, not live steering updates.
+  // Forced travel, reconnect, profile/bench and duel positions remain immediate.
+  if (options.multiplayerEnabled === false && now - lastSent.sentAt < SOLO_MOVEMENT_CHECKPOINT_MS) return null;
   if (velocity.moving !== lastSent.moving) return velocity.moving ? "start" : "stop";
   if (!velocity.moving) return null;
 

@@ -144,6 +144,7 @@ type ExpectedApiKey =
   | "sessionGeneration"
   | "setAccessAuditLabel"
   | "setDeveloperPresence"
+  | "setMultiplayerEnabled"
   | "developerNameTagVisible"
   | "setDeveloperNameTag"
   | "playerNamePrefix"

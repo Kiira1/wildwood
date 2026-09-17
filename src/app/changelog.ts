@@ -1,4 +1,10 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.718": [
+    "Multiplayer now shows players only when both have the eye enabled. Manual movement turns it back on, and five minutes without manual movement turns it off.",
+    "Reduced movement traffic and map updates while players are hidden or autofarming unattended.",
+    "Boss rewards now check your server-owned damage and attack speed against the time available to defeat the boss.",
+    "Fixed guild rosters keeping outdated player names.",
+  ],
   "0.717": [
     "Refreshing no longer bypasses defeated enemy or boss respawn timers on the same device.",
     "Fixed excess boss reports blocking reward syncing and teleporting after repeated refreshes.",
@@ -1938,6 +1944,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.718": "2026-09-16",
   "0.717": "2026-09-16",
   "0.716": "2026-09-16",
   "0.715": "2026-09-16",

@@ -524,7 +524,7 @@ import {
   const fullscreenMovement = createFullscreenMovementGate(visible => coop?.setRemotePlayersVisible(visible));
   const playerVisibility = createPlayerVisibilityToggle({
     button: gameElements.playerVisibilityToggle,
-    setVisible: fullscreenMovement.setWanted, storage: localStorage,
+    setVisible: visible => { coop?.setMultiplayerEnabled(visible); fullscreenMovement.setWanted(visible); }, storage: localStorage,
   });
   const farmUnavailable = () => {
     if (!farmUnlocked()) return "Defeat the Dragon to unlock autofarm";

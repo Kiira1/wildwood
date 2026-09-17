@@ -43,6 +43,7 @@ import {
   type PlayerProfileService,
 } from "./coop/services/player-profile-service";
 import { createPresenceService, type PresenceService } from "./coop/services/presence-service";
+import { createMultiplayerSync } from "./coop/services/multiplayer-sync";
 import { createRemoteCombatStatsService } from "./coop/services/remote-combat-stats-service";
 import { defaultRealtimeHost } from "./coop/services/realtime-host";
 import { createBaseSubscriptionHandlers, startBaseSubscription } from "./coop/services/base-subscription";
@@ -280,6 +281,7 @@ function requestWorldEntry(): Promise<boolean> {
       if (connection !== conn || generation !== connectionGeneration) return false;
       worldEntryBlocked = false;
       worldEntryGeneration = generation;
+      multiplayerSync.sync();
       accountService.markPlayable(connectedSignedIn);
       progressionService.flushPendingProgress(true);
       onChange?.();
@@ -375,6 +377,15 @@ const profileDirectory = createProfileDirectory({
   markChatPresentationChanged: () => chatService.markPresentationChanged(),
 });
 
+const multiplayerSync = createMultiplayerSync({
+  session: () => connection?.isActive && hydrationReady && !protocolBlocked && !worldEntryBlocked
+    && worldEntryGeneration === connectionGeneration ? connection : null,
+  send: enabled => {
+    const current = connection!;
+    return reducerPort.runWorldReducer(() => current.reducers.setMultiplayerEnabled({ enabled }));
+  },
+});
+
 const developerService = createDeveloperService({
   reducers: reducerPort,
   notify: onChange,
@@ -426,6 +437,7 @@ const remoteCombatStatsService = createRemoteCombatStatsService({
 });
 
 presenceService = createPresenceService({
+  multiplayerEnabled: multiplayerSync.enabled,
   drainEnemyLoot: progressionService.drainEnemyLoot,
   reducers: mapReducerPort,
   changes: { notify: onChange, batch: batchChanges },
@@ -527,6 +539,7 @@ mapShardClient = createMapShardClient({
 });
 
 function clearRealtimeCaches() {
+  multiplayerSync.reset();
   mapShardClient?.clear();
   sessionSubscriptions = null;
   remoteCombatStatsService.clearSession();
@@ -760,6 +773,7 @@ function connect() {
           onHydrated: () => {
             recordConnectionDiagnostic("reconnected");
             hydrationReady = true;
+            multiplayerSync.sync();
             startupTelemetryRuntime.completeConnection(generation);
             connectionLifecycle.ready();
             reconnectScheduler.reset();
@@ -834,6 +848,7 @@ function connect() {
 }
 
 export const wildstatCoop = {
+  setMultiplayerEnabled: multiplayerSync.setEnabled,
   host,
   databaseName,
   connect,
@@ -926,6 +941,7 @@ window.addEventListener("pagehide", () => {
 window.addEventListener("online", () => reconnectAfterWake());
 window.addEventListener("focus", () => reconnectAfterWake());
 window.setInterval(() => {
+  multiplayerSync.sync();
   if (!document.hidden && navigator.onLine && !connection?.isActive && !connecting) scheduleReconnect(100);
 }, 5_000);
 window.addEventListener("storage", (event) => {

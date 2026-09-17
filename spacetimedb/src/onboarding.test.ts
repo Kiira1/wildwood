@@ -13,6 +13,8 @@ describe("new character tutorial", () => {
     f.run(server.enterWorldWithTutorial, { forceTakeover: false, tabId: "tutorial-test" });
     expect(f.db.playerOnboarding.identity.find(f.ctx.sender)?.step).toBe(1);
     expect(f.db.player.identity.find(f.ctx.sender).isVisible).toBe(false);
+    f.run(server.setMultiplayerEnabled, { enabled: true });
+    expect(f.db.player.identity.find(f.ctx.sender).isVisible).toBe(false);
     const initial = f.db.playerProgress.identity.find(f.ctx.sender);
     expect(initial.damage).toBe(3);
     expect(() => f.run(server.completeOnboardingStep, { step: 4 })).toThrow("current tutorial step");
@@ -36,7 +38,7 @@ describe("new character tutorial", () => {
     f.run(server.completeOnboardingStep, { step: 6 });
     f.run(server.completeOnboardingStep, { step: 6 });
     expect(f.db.playerProgress.identity.find(f.ctx.sender)).toMatchObject({ damage: earned.damage, regen: earned.regen, introComplete: true });
-    expect(f.db.player.identity.find(f.ctx.sender).isVisible).toBe(true);
+    expect(f.db.player.identity.find(f.ctx.sender).isVisible).toBe(false);
     expect(f.db.playerOnboarding.identity.find(f.ctx.sender).step).toBe(6);
   });
   it("does not enroll existing players, including players missing legacy progress", () => {
@@ -59,17 +61,17 @@ describe("new character tutorial", () => {
   });
 });
 
-it("keeps cached mobile clients visible and skips unfinished lessons without unearned rewards", () => {
+it("keeps multiplayer off by default and skips old-client lessons without unearned rewards", () => {
   const f = crystalFixture();
   f.db.playerProgress.identity.delete(f.ctx.sender); f.db.playerProfile.identity.delete(f.ctx.sender);
   f.run(server.acceptTerms, { termsVersion: TERMS_VERSION, ageBand: AGE_BAND_ADULT });
   f.run(server.enterWorld, { tabId: "old-mobile-test" });
   expect(f.db.playerOnboarding.identity.find(f.ctx.sender)).toBeNull();
-  expect(f.db.player.identity.find(f.ctx.sender).isVisible).toBe(true);
+  expect(f.db.player.identity.find(f.ctx.sender).isVisible).toBe(false);
   f.seed("playerOnboarding", { identity: f.ctx.sender, step: 3 });
   const before = f.db.playerProgress.identity.find(f.ctx.sender);
   f.run(server.enterWorld, { tabId: "old-mobile-test" });
   expect(f.db.playerOnboarding.identity.find(f.ctx.sender).step).toBe(6);
   expect(f.db.playerProgress.identity.find(f.ctx.sender)).toMatchObject({ damage: before.damage, regen: before.regen, introComplete: true });
-  expect(f.db.player.identity.find(f.ctx.sender).isVisible).toBe(true);
+  expect(f.db.player.identity.find(f.ctx.sender).isVisible).toBe(false);
 });

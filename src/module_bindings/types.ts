@@ -131,6 +131,13 @@ export const BossHitResult = __t.object("BossHitResult", {
 });
 export type BossHitResult = __Infer<typeof BossHitResult>;
 
+export const BossMapDefeatWindow = __t.object("BossMapDefeatWindow", {
+  identity: __t.identity(),
+  acceptedAtMicros: __t.array(__t.u64()),
+  acceptedMapIds: __t.array(__t.string()),
+});
+export type BossMapDefeatWindow = __Infer<typeof BossMapDefeatWindow>;
+
 export const BugReport = __t.object("BugReport", {
   id: __t.u64(),
   reporter: __t.identity(),
@@ -1513,6 +1520,13 @@ export const PlayerMovementDemand = __t.object("PlayerMovementDemand", {
   identity: __t.identity(),
 });
 export type PlayerMovementDemand = __Infer<typeof PlayerMovementDemand>;
+
+export const PlayerMultiplayerPreference = __t.object("PlayerMultiplayerPreference", {
+  identity: __t.identity(),
+  enabled: __t.bool(),
+  lastEnabledAtMicros: __t.u64(),
+});
+export type PlayerMultiplayerPreference = __Infer<typeof PlayerMultiplayerPreference>;
 
 export const PlayerNameCooldown = __t.object("PlayerNameCooldown", {
   identity: __t.identity(),

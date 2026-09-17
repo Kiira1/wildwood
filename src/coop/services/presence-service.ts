@@ -105,6 +105,7 @@ export function bossTargetsFromMapSamples(
 }
 
 type PresenceServiceDependencies = {
+  multiplayerEnabled?: () => boolean;
   drainEnemyLoot?: () => Promise<boolean>;
   reducers: ReducerPort;
   changes: ChangePort;
@@ -878,7 +879,8 @@ export function createPresenceService(dependencies: PresenceServiceDependencies)
     void interestArea;
     const now = performance.now();
     const velocity = sanitizeMovementVelocity(vx, vy);
-    if (!movementUpdateReason({ now, velocity, inputKind, lastSent: lastSentMovement, force })) return;
+    if (!movementUpdateReason({ now, velocity, inputKind, lastSent: lastSentMovement, force,
+      multiplayerEnabled: dependencies.multiplayerEnabled?.() ?? true })) return;
 
     lastSentMovement = { ...velocity, sentAt: now };
     const sequence = ++nextPositionSequence;

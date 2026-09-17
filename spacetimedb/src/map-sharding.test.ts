@@ -28,6 +28,22 @@ function snapshot(f: ReturnType<typeof rootFixture>, who = identity("1")) {
     playerResearch: null, playerAccountStatus: null, playerItemUpgrade: [], inDuel: false });
 }
 describe("separate map database control plane", () => {
+  it("propagates eye changes into regional frames without waiting for movement", () => {
+    const root = rootFixture(), region = regionFixture(), who = identity("1");
+    region.run(server.installShardPlayer, { identity: who, generation: 10n, snapshot: snapshot(root) });
+    expect(region.db.playerMotion.identity.find(who).isVisible).toBe(true);
+    const player = root.db.player.identity.find(who);
+    root.db.player.identity.update({ ...player, isVisible: false });
+    region.seed("playerMotionInterest", { identity: who, networkIds: [999] });
+    region.run(server.installShardPlayer, { identity: who, generation: 10n, snapshot: snapshot(root) });
+    expect(region.db.playerMotion.identity.find(who).isVisible).toBe(false);
+    expect(region.db.playerMotionIdentity.identity.find(who).isVisible).toBe(false);
+    expect(region.db.playerMotionInterest.identity.find(who)).toBeNull();
+    expect(region.db.playerMotionMapState.mapId.find("crystal_hollows").visibleCount).toBe(0);
+    root.db.player.identity.update({ ...player, isVisible: true });
+    region.run(server.installShardPlayer, { identity: who, generation: 10n, snapshot: snapshot(root) });
+    expect(region.db.playerMotion.identity.find(who).isVisible).toBe(true);
+  });
   it("preserves a stopped admission across socket loss and accepts immediate movement after reconnect", () => {
     const root = rootFixture(), region = regionFixture();
     region.run(server.installShardPlayer, { identity: identity("1"), generation: 10n, snapshot: snapshot(root) });
