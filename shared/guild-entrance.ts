@@ -1,5 +1,6 @@
 import type { GuildBattleResult } from "./guild-combat";
 
+// Historical reports omit moveSpeed and retain their original timing.
 export const GUILD_MOVE_SPEED = 90;
 
 /** Shared arrival schedule: deterministic for server resolution and replay.
@@ -35,7 +36,7 @@ export function buildGuildEntrance(battle: Pick<GuildBattleResult, "attackers" |
         const rows = Math.min(5, index < battle.attackers.length ? battle.attackers.length : battle.defenders.length);
         // Formation begins at x=270/730; enter from x=-200/1200.
         const distance = 470 - Math.floor(local / rows) * 52;
-        arrivals[index] = { start: time, travel: walking ? distance / GUILD_MOVE_SPEED : travel, lane: (random() - .5) * 48 };
+        arrivals[index] = { start: time, travel: walking ? distance / (fighters[index].moveSpeed ?? GUILD_MOVE_SPEED) : travel, lane: (random() - .5) * 48 };
       }
     }
     time += walking ? .55 + random() * .65 : .14 + random() * .22;

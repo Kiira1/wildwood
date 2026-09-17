@@ -44,6 +44,7 @@ import {
 } from "./coop/services/player-profile-service";
 import { createPresenceService, type PresenceService } from "./coop/services/presence-service";
 import { createMultiplayerSync } from "./coop/services/multiplayer-sync";
+import { validSupporterNames } from "../shared/patreon-ticker";
 import { createRemoteCombatStatsService } from "./coop/services/remote-combat-stats-service";
 import { defaultRealtimeHost } from "./coop/services/realtime-host";
 import { createBaseSubscriptionHandlers, startBaseSubscription } from "./coop/services/base-subscription";
@@ -848,6 +849,7 @@ function connect() {
 }
 
 export const wildstatCoop = {
+  patreonSupporterNames: () => validSupporterNames(connection?.db.patreonTickerSupporters.iter() ?? []),
   setMultiplayerEnabled: multiplayerSync.setEnabled,
   host,
   databaseName,

@@ -1,4 +1,4 @@
-import { CURRENT_ROLE_LANES, laneCombatValue, laneRewardValue,
+import { CURRENT_ROLE_LANES, SNOWLANDS_TUNING, laneCombatValue, laneRewardValue,
   desertLaneCombatValue, desertLaneRewardValue, type ForestProgressionLane,
 } from "./progression";
 
@@ -36,7 +36,8 @@ function postForestLaneBalance(role: PostForestRole, mapIndex: number): Pick<Ene
   const combat = desertLaneCombatValue(lane, mapIndex - 1);
   return {
     ...combat,
-    hp: combat.hp * (mapIndex === 1 ? .05 : 1),
+    hp: combat.hp * (mapIndex === 1 ? .05 : mapIndex === 2 ? SNOWLANDS_TUNING.enemyHealth : 1),
+    damage: combat.damage * (mapIndex === 2 ? SNOWLANDS_TUNING.enemyDamage : 1),
     reward: desertLaneRewardValue(lane, mapIndex - 1),
   };
 }
@@ -45,7 +46,8 @@ function healthEliteBalance(mapIndex: number): Pick<EnemyDefinition, "hp" | "dam
   const combat = desertLaneCombatValue("King Slime", mapIndex - 1);
   return {
     ...combat,
-    hp: combat.hp * (mapIndex === 1 ? .05 : 1),
+    hp: combat.hp * (mapIndex === 1 ? .05 : mapIndex === 2 ? SNOWLANDS_TUNING.enemyHealth : 1),
+    damage: combat.damage * (mapIndex === 2 ? SNOWLANDS_TUNING.enemyDamage : 1),
     reward: desertLaneRewardValue("King Slime", mapIndex - 1),
   };
 }
@@ -567,4 +569,3 @@ const enemyTypes = {
 
 export type EnemyKind = keyof typeof enemyTypes;
 export const ENEMY_TYPES: Record<EnemyKind, EnemyDefinition> = enemyTypes;
-

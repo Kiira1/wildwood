@@ -1,3 +1,5 @@
+import { MULTIPLAYER_TOGGLE_COOLDOWN_MS } from "../../../shared/multiplayer";
+
 /** Coalesce eye changes; retry only dirty state, never poll the server. */
 export function createMultiplayerSync(options: {
   session: () => object | null;
@@ -19,7 +21,7 @@ export function createMultiplayerSync(options: {
       sync();
     }, () => {
       if (pending !== ticket) return;
-      pending = null; retryAt = Date.now() + 20_000;
+      pending = null; retryAt = Date.now() + MULTIPLAYER_TOGGLE_COOLDOWN_MS;
     });
   }
   return { sync, reset, enabled: () => wanted,

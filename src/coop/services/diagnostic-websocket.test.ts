@@ -38,6 +38,47 @@ describe("diagnostic WebSocket", () => {
     await FakeSocket.latest.onmessage?.({ data: new Uint8Array([2, 0, 0]).buffer });
     expect(message).not.toHaveBeenCalled(); expect(record).toHaveBeenCalledWith("decompression-error", expect.any(Object)); expect(FakeSocket.latest.close).toHaveBeenCalledOnce();
   });
+  it('delivers a compressed snapshot before the following raw update', async () => {
+    const { factory } = setup(); const adapter = await factory(args);
+    const received: number[] = []; adapter.onmessage = message => { received.push(message.data[0]); };
+    const snapshot = gzipSync(new Uint8Array([1, ...new Uint8Array(100_000)]));
+    const first = FakeSocket.latest.onmessage!({ data: new Uint8Array([2, ...snapshot]).buffer });
+    const second = FakeSocket.latest.onmessage!({ data: new Uint8Array([0, 2]).buffer });
+    const third = FakeSocket.latest.onmessage!({ data: new Uint8Array([0, 3]).buffer });
+    await Promise.all([first, second, third]);
+    expect(received).toEqual([1, 2, 3]);
+  });
+  it('discards queued frames after a decoding failure instead of applying later updates', async () => {
+    const { factory, record } = setup(); const adapter = await factory(args);
+    const message = vi.fn(); adapter.onmessage = message;
+    await Promise.all([
+      FakeSocket.latest.onmessage!({ data: new Uint8Array([2, 0, 0]).buffer }),
+      FakeSocket.latest.onmessage!({ data: new Uint8Array([0, 2]).buffer }),
+    ]);
+    expect(message).not.toHaveBeenCalled();
+    expect(FakeSocket.latest.close).toHaveBeenCalledOnce();
+    expect(record).toHaveBeenCalledWith('decompression-error', expect.any(Object));
+  });
+  it('does not deliver an old snapshot after its connection is closed', async () => {
+    const { factory } = setup(); const adapter = await factory(args);
+    const message = vi.fn(); adapter.onmessage = message;
+    const zipped = gzipSync(new Uint8Array(100_000));
+    const pending = FakeSocket.latest.onmessage!({ data: new Uint8Array([2, ...zipped]).buffer });
+    await Promise.resolve(); // Decoding is now in flight.
+    adapter.close(); await pending;
+    expect(message).not.toHaveBeenCalled();
+  });
+  it('closes once if the SDK rejects a frame, allowing the normal reconnect path', async () => {
+    const { factory, record } = setup(); const adapter = await factory(args);
+    const message = vi.fn(() => { throw new Error('Invalid SDK frame'); }); adapter.onmessage = message;
+    await Promise.all([
+      FakeSocket.latest.onmessage!({ data: new Uint8Array([0, 1]).buffer }),
+      FakeSocket.latest.onmessage!({ data: new Uint8Array([0, 2]).buffer }),
+    ]);
+    expect(message).toHaveBeenCalledOnce();
+    expect(FakeSocket.latest.close).toHaveBeenCalledOnce();
+    expect(record).toHaveBeenCalledWith('lifecycle-failure', expect.objectContaining({ detail: 'frame-handler-failed' }));
+  });
   it("uses only the temporary WebSocket token and keeps status on exchange failures", async () => {
     const { factory, record } = setup();
     vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce({ ok: true, json: async () => ({ token: "temporary" }) }).mockResolvedValueOnce({ ok: false, status: 503, statusText: "Service Unavailable" }));

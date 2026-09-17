@@ -46,7 +46,11 @@ export function diagnosticWebSocket(
     if (context.isCurrent?.() === false) throw new Error("Connection superseded");
     const socket = new WebSocket(url.toString(), args.wsProtocol);
     socket.binaryType = "arraybuffer";
-    socket.addEventListener("close", event => report("socket-close", { code: event.code, clean: event.wasClean, detail: event.reason }));
+    let closed = false;
+    socket.addEventListener("close", event => {
+      closed = true;
+      report("socket-close", { code: event.code, clean: event.wasClean, detail: event.reason });
+    });
     socket.addEventListener("error", () => report("socket-error", { detail: "browser-websocket-error" }));
     return {
       get protocol() { return socket.protocol; },
@@ -57,7 +61,13 @@ export function diagnosticWebSocket(
       set onopen(handler: () => void) { socket.onopen = handler; },
       set onerror(handler: (event: ErrorEvent) => void) { socket.onerror = handler as (event: Event) => void; },
       set onmessage(handler: (message: { data: Uint8Array }) => void) {
-        socket.onmessage = async (event: MessageEvent<ArrayBuffer>) => {
+        // WebSocket arrival order is guaranteed; asynchronous decompression is
+        // not. Serialize decoding AND delivery so a small update cannot overtake
+        // its initial snapshot (or an unsubscribe acknowledgement).
+        let incoming = Promise.resolve();
+        const obsolete = () => closed || intentional || context.isCurrent?.() === false;
+        socket.onmessage = (event: MessageEvent<ArrayBuffer>) => incoming = incoming.then(async () => {
+          if (obsolete()) return;
           let data: Uint8Array;
           try {
             const bytes = new Uint8Array(event.data); const tag = bytes[0]; const body = bytes.subarray(1);
@@ -68,12 +78,19 @@ export function diagnosticWebSocket(
               data = new Uint8Array(await new Response(stream).arrayBuffer());
             }
           } catch (error) {
+            closed = true;
             report("decompression-error", { detail: error instanceof Error ? error.message : "frame-decode-failed" });
             socket.close();
             return;
           }
-          handler({ data });
-        };
+          if (!obsolete()) handler({ data });
+        }).catch(() => {
+          // A decoder/SDK exception must not leave an apparently live socket
+          // silently discarding all future frames. Reuse ordinary recovery.
+          closed = true;
+          report('lifecycle-failure', { detail: 'frame-handler-failed' });
+          socket.close();
+        });
       },
     };
   };

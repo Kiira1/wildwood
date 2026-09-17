@@ -38,6 +38,8 @@ it("backs off failed or cooldown-limited changes instead of spamming reducers", 
   sync.setEnabled(true); await settle();
   for (let i = 0; i < 20; i++) sync.sync();
   expect(send).toHaveBeenCalledTimes(1);
-  vi.advanceTimersByTime(20_000); sync.sync(); await settle();
+  vi.advanceTimersByTime(4_999); sync.sync();
+  expect(send).toHaveBeenCalledTimes(1);
+  vi.advanceTimersByTime(1); sync.sync(); await settle();
   expect(send).toHaveBeenCalledTimes(2);
 });

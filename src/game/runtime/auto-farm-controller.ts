@@ -7,6 +7,7 @@ import type { Circle, EnemyState, PlayerState, Position } from './types';
 import type { Movement } from './player-input-controller';
 import { isEnemyAttackingPlayer } from './enemy-threat';
 import { farmRoute } from './auto-farm-navigation';
+import type { createAutoFarmResumeStore } from '../../app/auto-farm-resume';
 
 export type AutoFarmController = ReturnType<typeof createAutoFarmController>;
 const idle = (): Movement => ({ x: 0, y: 0, source: 'none' });
@@ -20,6 +21,7 @@ export function createAutoFarmController(options: {
   localIdentity?: () => string | undefined;
   connection?: () => 'ready' | 'recovering' | 'ended';
   now?: () => number;
+  resumeStore?: ReturnType<typeof createAutoFarmResumeStore>;
   unavailable: () => string | null;
   paused: () => boolean;
   speed: () => number;
@@ -30,6 +32,7 @@ export function createAutoFarmController(options: {
   let selectedCamp: string | null = null;
   let selectedLabel = "";
   let active = false;
+  let pendingResume = options.resumeStore?.read() ?? null;
   let startedMap = '';
   let startedIdentity: string | undefined;
   let recovering = false;
@@ -68,6 +71,8 @@ export function createAutoFarmController(options: {
   }
 
   function stop(reason = 'Autofarm stopped') {
+    pendingResume = null;
+    options.resumeStore?.clear();
     active = false;
     recovering = false;
     readySince = null;
@@ -78,10 +83,8 @@ export function createAutoFarmController(options: {
   }
 
   function refresh() {
-    if (!active) return;
+    if (!active && !pendingResume) return;
     const identity = options.localIdentity?.();
-    if (startedMap !== options.mapId()) { stop('Map changed · choose an enemy'); return; }
-    if (startedIdentity && identity && identity !== startedIdentity) { stop('Character changed'); return; }
     const connection = options.connection?.() ?? 'ready';
     if (connection === 'ended') { stop('Autofarm stopped for sign-in'); return; }
     if (connection === 'recovering') {
@@ -93,15 +96,25 @@ export function createAutoFarmController(options: {
       status = 'Reconnecting · farming will resume';
       return;
     }
-    const reason = options.unavailable();
-    if (reason) { stop(reason); return; }
-    if (recovering) {
+    if (recovering || pendingResume) {
       // Let a restored connection settle without retry timers or catch-up work.
       readySince ??= now();
       if (now() - readySince < 1_000) return;
       recovering = false;
       readySince = null;
       status = 'Finding enemy';
+    }
+    // Restored identity, map, unlocks and equipment are meaningful only after
+    // hydration settles. A temporary spawn map must not erase the intent.
+    if ((pendingResume?.map ?? startedMap) !== options.mapId()) { stop('Map changed · choose an enemy'); return; }
+    const expectedIdentity = pendingResume?.identity ?? startedIdentity;
+    if (expectedIdentity && identity !== expectedIdentity) { stop('Character changed'); return; }
+    const reason = options.unavailable();
+    if (reason) { stop(reason); return; }
+    if (pendingResume) {
+      const key = pendingResume.choice;
+      pendingResume = null;
+      start(key);
     }
   }
 
@@ -120,6 +133,8 @@ export function createAutoFarmController(options: {
     active = true;
     startedMap = options.mapId();
     startedIdentity = options.localIdentity?.();
+    pendingResume = null;
+    if (startedIdentity) options.resumeStore?.write({ identity: startedIdentity, map: startedMap, choice: key });
     recovering = false;
     readySince = null;
     target = null;
@@ -132,7 +147,7 @@ export function createAutoFarmController(options: {
 
   function movement(manual: Movement, dt: number): Movement {
     refresh();
-    if (recovering) return idle();
+    if (recovering || pendingResume) return idle();
     if (manual.x || manual.y) {
       if (active) {
         status = 'Manual control';

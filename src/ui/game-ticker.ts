@@ -1,4 +1,5 @@
-import { GAME_TIPS, pickGameTip } from "./game-tips";
+import { GAME_TIPS, pickGameTip, supporterTip } from "./game-tips";
+import { PATREON_TICKER_CHANGED } from "../../shared/patreon-ticker";
 import { renderBooleanSetting } from "./settings";
 
 const STORAGE_KEY = "wildstat-game-ticker-enabled-v1";
@@ -6,7 +7,7 @@ const PIXELS_PER_SECOND = 45;
 export const GAME_TICKER_INTERVAL_MS = 10 * 60_000;
 
 /** One compositor animation per message; no game-frame work or layout changes. */
-export function installGameTicker(panel: HTMLElement, storage?: Pick<Storage, "getItem" | "setItem">) {
+export function installGameTicker(panel: HTMLElement, storage?: Pick<Storage, "getItem" | "setItem">, supporters: () => readonly string[] = () => []) {
   const doc = panel.ownerDocument, win = doc.defaultView!;
   const button = doc.getElementById("gameTickerToggle");
   const ticker = doc.createElement("div"), text = doc.createElement("span");
@@ -26,8 +27,12 @@ export function installGameTicker(panel: HTMLElement, storage?: Pick<Storage, "g
     active = true;
     nextMessageAt = Date.now() + GAME_TICKER_INTERVAL_MS;
     ticker.hidden = false;
-    previous = pickGameTip(previous);
-    text.textContent = GAME_TIPS[previous];
+    const names = supporters();
+    previous = pickGameTip(previous, Math.random, GAME_TIPS.length + (names.length ? 1 : 0));
+    text.textContent = previous === GAME_TIPS.length ? supporterTip(names) : GAME_TIPS[previous];
+    animate();
+  }
+  function animate() {
     text.style.animation = "none";
     // Layout is measured once per tip, never during scrolling.
     const distance = win.innerWidth + text.offsetWidth;
@@ -58,6 +63,16 @@ export function installGameTicker(panel: HTMLElement, storage?: Pick<Storage, "g
   doc.addEventListener("visibilitychange", refresh);
   const resize = () => { active = false; refresh(); };
   win.addEventListener("resize", resize);
+  const updateSupporters = () => {
+    if (!active || previous !== GAME_TIPS.length) return;
+    const names = supporters();
+    if (!names.length) { active = false; refresh(); return; }
+    const next = supporterTip(names);
+    if (text.textContent === next) return;
+    text.textContent = next;
+    animate();
+  };
+  win.addEventListener(PATREON_TICKER_CHANGED, updateSupporters);
   refresh();
-  return { dispose() { disposed = true; clearTimeout(timer); observer.disconnect(); button?.removeEventListener("click", toggle); doc.removeEventListener("visibilitychange", refresh); win.removeEventListener("resize", resize); ticker.remove(); } };
+  return { dispose() { disposed = true; clearTimeout(timer); observer.disconnect(); button?.removeEventListener("click", toggle); doc.removeEventListener("visibilitychange", refresh); win.removeEventListener("resize", resize); win.removeEventListener(PATREON_TICKER_CHANGED, updateSupporters); ticker.remove(); } };
 }

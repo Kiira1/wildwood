@@ -2975,6 +2975,23 @@
   .setting-support a, .player-safety-dialog a { color: #bce7ff; overflow-wrap: anywhere; }
   .setting-support small { font-size: 11px; line-height: 1.5; color: var(--muted); }
   .setting-support summary { cursor: pointer; min-height: 44px; align-content: center; }
+  .community-links { gap: 10px; }
+  .community-links .community-link {
+    display: flex; align-items: center; gap: 12px; min-height: 64px;
+    padding: 10px 14px; box-sizing: border-box; border: 1px solid #ffffff24;
+    border-radius: 9px; background: #1d201f; color: #fff; text-decoration: none;
+    transition: background .15s ease, border-color .15s ease;
+  }
+  .community-link-icon { display: grid; place-items: center; flex: 0 0 32px; }
+  .community-link-icon svg { width: 28px; height: 28px; }
+  .community-link--discord .community-link-icon { color: #8991ff; }
+  .community-link--patreon .community-link-icon { color: #ff8b73; }
+  .community-link-copy { display: grid; gap: 3px; min-width: 0; }
+  .community-link-copy strong { font-size: 14px; line-height: 1.3; }
+  .community-links .community-link-copy small { color: #babeba; font-size: 11px; }
+  .community-link-arrow { margin-left: auto; color: #b9bdb9; font-size: 19px; }
+  .community-links .community-link:hover, .community-links .community-link:focus-visible { background: #292d2b; border-color: #ffffff60; }
+  .community-links .community-link:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
   #blockedPlayersList > div { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
   #blockedPlayersList span { overflow-wrap: anywhere; min-width: 0; }
   .player-safety-dialog { width: min(420px, calc(100vw - 24px)); max-height: calc(100dvh - 32px); box-sizing: border-box; padding: 18px; border: 1px solid #627466; border-radius: 10px; color: #fff; background: var(--window-surface-neutral); font-size: 14px; }
@@ -3628,6 +3645,7 @@
 
 .player-visibility-toggle { position: relative; }
 .player-visibility-countdown { position: absolute; right: 0; bottom: 0; font-size: 11px; line-height: 1; color: white; text-shadow: 0 1px 2px #000, 1px 0 2px #000; pointer-events: none; }
+.player-visibility-idle { position: absolute; inset: 0; display: grid; place-items: center; color: #66ef7d; font-size: 11px; font-weight: 900; line-height: 1; text-shadow: 0 1px 1px #000, 1px 0 1px #000; pointer-events: none; }
 
 /* Supporter artwork overlays portraits without changing their size or hit area. */
 .avatar-frame-portrait { position: relative; }

@@ -56,6 +56,7 @@ import { createMapController } from "./game/runtime/map-controller";
 import { createPlayerCombatController, type PlayerCombatController } from "./game/runtime/player-combat-controller";
 import { createPlayerInputController } from "./game/runtime/player-input-controller";
 import { createAutoFarmController } from "./game/runtime/auto-farm-controller";
+import { createAutoFarmResumeStore } from "./app/auto-farm-resume";
 import { createAutoFarmPanel } from "./ui/auto-farm-panel";
 import { createPlayerController, type PlayerController } from "./game/runtime/player-controller";
 import { applyPlayerMaxHealthMultiplier } from "./game/runtime/player-health";
@@ -537,10 +538,12 @@ import {
   };
   let farmConnection: 'ready' | 'recovering' | 'ended' = 'recovering';
   const autoFarm = createAutoFarmController({
+    resumeStore: createAutoFarmResumeStore(),
     player, enemies, spawnSites, mapId: () => currentMapId,
     equippedWeapon: () => inventory.equippedRightHand || inventory.equippedLeftHand,
     localIdentity: () => coop?.localIdentity?.(),
-    connection: () => farmConnection === 'ready' && !coop?.isConnected?.() ? 'recovering' : farmConnection,
+    connection: () => farmConnection === 'ready' && (!coop?.isConnected?.() || !session?.isRunning()
+      || mapController.isMapTransitioning() || mapController.isCutsceneActive()) ? 'recovering' : farmConnection,
     unavailable: farmUnavailable,
     paused: () => Boolean(session?.isPaused()) || document.hidden,
     speed: () => player.speed * movementMultiplier(),
@@ -1387,6 +1390,7 @@ import {
   });
 
   guildPanel = createGuildPanel({
+    onOpenPlayer: (identity, name) => { guildPanel?.close(); void profileWindow.open(identity, name); },
     lowPerformanceMode: appShell.lowPerformanceMode,
     replayAssets: { player: playerAppearanceAssets, prepare: () => assets.ensureMapAssets("home_exterior"), trees: assets.treeSpritesheet, treeBounds: assets.treeSpriteBounds },
     api: () => coop?.guild,
@@ -1784,8 +1788,10 @@ import {
     const accountRecoveryRequired = session.hasStarted() && !hasApprovedGameSession(account);
     // Reuse connection notifications instead of reading account/token storage
     // from autofarm's per-frame movement loop.
-    farmConnection = account?.sessionConflict || !hasApprovedGameSession(account) ? 'ended'
-      : reconnecting || waitingForServer || !coop?.isConnected?.() || !account?.hydrated ? 'recovering' : 'ready';
+    farmConnection = account?.sessionConflict ? 'ended'
+      : reconnecting || waitingForServer || account?.authInProgress || account?.returningFromSignIn || !session.hasStarted() ? 'recovering'
+      : !hasApprovedGameSession(account) ? 'ended'
+      : !coop?.isConnected?.() || !account?.hydrated ? 'recovering' : 'ready';
     autoFarm.refresh();
     const diagnostics = coop?.connectionDiagnostics?.();
     const showReconnectOverlay = reconnecting && !waitingForServer && !accountRecoveryRequired;
@@ -2011,7 +2017,7 @@ import {
     onLayoutChange: canvasRuntime.resize,
   });
   chatRuntime.init();
-  installGameTicker(gameElements.chatPanel, localStorage);
+  installGameTicker(gameElements.chatPanel, localStorage, () => coop?.patreonSupporterNames?.() ?? []);
   minimizeMaximizedChat = chatRuntime.minimize;
 
   createAutoFarmPanel({

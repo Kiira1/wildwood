@@ -39,9 +39,11 @@ it("rate limits re-enabling but allows immediate hiding and waking after five-mi
   f.run(server.setMultiplayerEnabled, { enabled: true }); // No-op retry.
   f.run(server.setMultiplayerEnabled, { enabled: false });
   expect(() => f.run(server.setMultiplayerEnabled, { enabled: true })).toThrow("cooling down");
-  f.ctx.timestamp = new Timestamp(start + 20_000_000n);
+  f.ctx.timestamp = new Timestamp(start + 4_999_999n);
+  expect(() => f.run(server.setMultiplayerEnabled, { enabled: true })).toThrow("cooling down");
+  f.ctx.timestamp = new Timestamp(start + 5_000_000n);
   f.run(server.setMultiplayerEnabled, { enabled: true });
-  f.ctx.timestamp = new Timestamp(start + 320_000_000n);
+  f.ctx.timestamp = new Timestamp(start + 305_000_000n);
   f.run(server.setMultiplayerEnabled, { enabled: false });
   f.run(server.setMultiplayerEnabled, { enabled: true });
   expect(f.db.player.identity.find(f.ctx.sender).isVisible).toBe(true);

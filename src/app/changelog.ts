@@ -1,4 +1,13 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.719": [
+    "Fixed connection messages arriving out of order during world loading and reconnects.",
+    "Autofarm remembers its selected enemy through game updates and resumes after the same character and map finish loading.",
+    "Snowlands enemies have 35% less health, deal 15% less damage, and give 25% more stats. Frostclaw has 25% less health and deals 15% less damage.",
+    "The crossed-out eye keeps multiplayer off. Enabled multiplayer shows Idle after five minutes without manual movement and wakes when you move. Eye cooldown is now five seconds.",
+    "Your guild stays fullscreen with an overview and leadership roster. Tapping another guild opens a compact preview with clickable member portraits.",
+    "New guild battles use normal base movement speed and actual weapon reach. Mobile replays keep movement, characters, and attack distances at one consistent scale.",
+    "Patreon is available on mobile, with refreshed Discord and Patreon buttons in Account settings. Supporter thanks update when linked memberships change.",
+  ],
   "0.718": [
     "Multiplayer now shows players only when both have the eye enabled. Manual movement turns it back on, and five minutes without manual movement turns it off.",
     "Reduced movement traffic and map updates while players are hidden or autofarming unattended.",
@@ -1934,6 +1943,7 @@ export const RELEASE_NOTES: Record<string, string[]> = {
 };
 
 const RELEASE_DATES: Record<string, string> = {
+  "0.719": "2026-09-16",
   "0.652": "2026-09-10",
   "0.651": "2026-09-10",
   "0.364": "AUG 13, 2026",

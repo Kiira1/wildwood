@@ -1,5 +1,6 @@
 import { AccountRenewalRequired, createAccountTokenRenewal } from "./account-token-renewal";
 import { accountLogoutUrl } from "./account-logout";
+import { createAutoFarmResumeStore } from '../../app/auto-farm-resume';
 import { recordConnectionDiagnostic } from "./connection-diagnostic-runtime";
 import { syncResearchNotification } from "../../app/native-research-notifications";
 import type { DbConnection } from "../../module_bindings";
@@ -714,6 +715,7 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
     },
     async signOut() {
       if (signingOut) return;
+      createAutoFarmResumeStore().clear();
       signingOut = true;
       takeoverRequested = false; takeoverRevision++;
       const idToken = renewal.stored();

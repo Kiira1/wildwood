@@ -15,7 +15,7 @@ export function applyProfileIcon(element: HTMLElement, iconIndex: number) {
     // Isolate the source rectangle before fitting it. Merely zooming out a
     // sheet background exposes the adjacent icons around wide objects.
     if (!art) {
-      art = document.createElement("span"); art.className = "profile-icon-art";
+      art = element.ownerDocument.createElement("span"); art.className = "profile-icon-art";
       art.setAttribute("aria-hidden", "true"); element.prepend(art);
     }
     const target = containedIconRect(crop);

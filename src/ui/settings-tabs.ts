@@ -1,5 +1,4 @@
-import { PATREON_PAGE } from "../../shared/avatar-frames";
-import { isNativePreview } from "../app/native-preview";
+import { createCommunityLinks } from './community-links';
 
 const SETTINGS_GROUPS = [
   { id: "game", label: "Game", selectors: ["#screenShakeToggle", "#damageFlashToggle", "#toolbarHapticsToggle", "#attackRangeToggle", "#chatToggle", "#gameTickerToggle", "#fullscreenToggle", "#keepScreenOnToggle", "#lowPerformanceToggle", "#fpsToggle", "#latencyToggle"] },
@@ -37,21 +36,7 @@ export function bindSettingsTabs(tabs: HTMLButtonElement[], panels: HTMLElement[
 export function installSettingsTabs(doc: Document) {
   const settings = doc.getElementById("settingsPanel");
   if (!settings || doc.getElementById("settingsTabs")) return;
-  const community = doc.createElement("div");
-  community.id = "settingsCommunityLinks"; community.className = "setting-support";
-  const discord = doc.createElement("a");
-  discord.textContent = "Join Discord"; discord.href = "https://discord.gg/mcS226NbG4";
-  discord.target = "_blank"; discord.rel = "noopener noreferrer";
-  discord.setAttribute("aria-label", "Join the WildStat Discord (opens in a new tab)");
-  community.append(discord); settings.append(community);
-  if (!isNativePreview(doc.defaultView ?? {})) {
-    const patreon = doc.createElement("a");
-    patreon.textContent = "Support on Patreon";
-    patreon.href = PATREON_PAGE;
-    patreon.target = "_blank";
-    patreon.rel = "noopener noreferrer";
-    community.append(patreon);
-  }
+  settings.append(createCommunityLinks(doc));
   const privacy = doc.createElement("div");
   privacy.className = "setting-support";
   privacy.id = "privacySettings";

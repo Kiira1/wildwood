@@ -112,6 +112,7 @@ import { socialTables } from "./social-tables";
 import { createSocialService, socialSnapshot, visibleSocialMessages, latestSocialMessages, socialHistoryPage, removeSocialAccount, mergeSocialAccount } from "./social-service";
 import { guildTables } from "./guild-tables";
 import { createGuildService } from "./guild-service";
+import { guildWeaponRange } from "../../shared/guild-combat";
 import type { DuelFighter } from "../../shared/duel-combat";
 import {
   BASIC_PAPER_HAT,
@@ -10776,7 +10777,7 @@ function guildFighterFor(ctx: ModuleReducerCtx, identity: Identity): DuelFighter
 }
 
 const guildService = createGuildService({
-  nameFor: (ctx, identity) => ctx.db.playerProfile.identity.find(identity)?.displayName,
+  profileFor: (ctx, identity) => ctx.db.playerProfile.identity.find(identity) ?? undefined,
   announceBattle: (ctx, report) => {
     const result = report.result;
     const message = result.outcome === "DRAW" ? `[${report.attacker}] × [${report.defender}] · Draw`
@@ -10791,7 +10792,9 @@ const guildService = createGuildService({
     if (!progress) throw new SenderError("Player progress is unavailable.");
     return { name: profile.displayName, fighter: guildFighterFor(ctx, identity),
       appearance: leaderboardAppearanceForProgress(progress, profile),
-      range: itemDefinition(progress.equippedRightHand || progress.equippedLeftHand)?.weapon?.range ?? 160 };
+      moveSpeed: PLAYER_SPEED,
+      weaponItem: progress.equippedRightHand || progress.equippedLeftHand,
+      range: guildWeaponRange(progress.equippedRightHand || progress.equippedLeftHand, progress.attackRange) };
 
   },
 });
@@ -10810,6 +10813,10 @@ export const challengeGuild = spacetimedb.reducer({ opponentGuildId: t.u64() }, 
 export const getGuildHub = spacetimedb.procedure({ afterId: t.u64() }, t.string(), (ctx, { afterId }) => ctx.withTx(tx => {
   requireGuildConnection(tx);
   return JSON.stringify(guildService.snapshot(tx, afterId, hasSpacetimeAuthAccount(tx)));
+}));
+export const getGuildPreview = spacetimedb.procedure({ guildId: t.u64() }, t.string(), (ctx, { guildId }) => ctx.withTx(tx => {
+  requireGuildConnection(tx);
+  return JSON.stringify(guildService.preview(tx, guildId));
 }));
 export const getGuildReplay = spacetimedb.procedure({ reportKey: t.string() }, t.string(), (ctx, { reportKey }) => ctx.withTx(tx => {
   requireGuildConnection(tx);
@@ -11170,6 +11177,17 @@ export const beginPatreonLink = spacetimedb.procedure({ state: t.string() }, t.s
 }));
 export const refreshPatreonMembership = spacetimedb.procedure({}, t.string(), ctx => refreshPatreon(ctx));
 export const getPatreonStatus = spacetimedb.procedure({}, t.string(), ctx => ctx.withTx(tx => JSON.stringify(patreonStatus(tx, ctx.sender))));
+// One shared materialization, refreshed by membership/profile changes rather
+// than one procedure call per sign-in. Never expose Patreon IDs or credentials.
+export const patreonTickerSupporters = spacetimedb.anonymousView(
+  { name: "patreon_ticker_supporters", public: true },
+  t.array(t.row("PatreonTickerSupporter", { identity: t.identity().primaryKey(), name: t.string(), validUntilMs: t.f64() })),
+  ctx => [...ctx.db.patreonLink.iter()].flatMap(link => {
+    if (!link.userId || (link.tier !== "silver" && link.tier !== "gold")) return [];
+    const profile = ctx.db.playerProfile.identity.find(link.identity);
+    return profile ? [{ identity: link.identity, name: profile.displayName, validUntilMs: link.validUntilMs }] : [];
+  }),
+);
 export const getAvatarFrames = spacetimedb.procedure({ identities: t.array(t.identity()) }, t.string(), (ctx, { identities }) => ctx.withTx(tx => {
   if (identities.length > 50) throw new SenderError("Request at most 50 portraits.");
   return JSON.stringify(identities.map(identity => { const { tier, frame, validUntilMs } = patreonStatus(tx, identity); return { identity: identity.toHexString(), tier, frame, validUntilMs }; }));

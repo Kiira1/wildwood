@@ -8,6 +8,7 @@ const legacyColumns = {
   chatMessage: { sql: 'reaction_counts_json', field: 'reactionCountsJson', type: 'String', builder: 't.string().default("{}")', value: '"{}"' },
   socialMessage: { sql: 'reaction_counts_json', field: 'reactionCountsJson', type: 'String', builder: 't.string().default("{}")', value: '"{}"' },
   playerLifetime: { sql: 'chat_hearts_received', field: 'chatHeartsReceived', type: 'U64', builder: 't.u64().default(0n)', value: '0n' },
+  bossDefeatWindow: { sql: 'accepted_map_ids', field: 'acceptedMapIds', type: 'Array', elementType: 'String', builder: 't.array(t.string()).default([])', value: '[]' },
 };
 
 export function localLegacyColumns(schema) {
@@ -20,7 +21,7 @@ export function localLegacyColumns(schema) {
     const elements = table && types[table.product_type_ref]?.Product?.elements;
     const existing = elements?.find(element => element.name?.some === column.sql);
     if (!existing) continue;
-    if (!(column.type in existing.algebraic_type) || elements.at(-1) !== existing) {
+    if (!(column.type in existing.algebraic_type) || (column.elementType && !(column.elementType in existing.algebraic_type[column.type])) || elements.at(-1) !== existing) {
       throw new Error(`Unexpected legacy column in ${name}; no data was changed.`);
     }
     result[name] = column;

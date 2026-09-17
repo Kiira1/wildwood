@@ -1,4 +1,4 @@
-import { BOSS_BASE_HEAVY_HIT, bossHeavyHitAt } from "../../shared/progression";
+import { BOSS_BASE_HEAVY_HIT, bossHeavyHitAt, SNOWLANDS_TUNING } from "../../shared/progression";
 
 type DamageMultipliers = Record<string, number>;
 
@@ -17,7 +17,7 @@ function scaledProfile<const Multipliers extends DamageMultipliers>(
 export const BOSS_DAMAGE_REFERENCE = {
   dragon: BOSS_BASE_HEAVY_HIT,
   spider: bossHeavyHitAt(0),
-  frostclaw: bossHeavyHitAt(1),
+  frostclaw: bossHeavyHitAt(1) * SNOWLANDS_TUNING.bossDamage,
   magmalisk: bossHeavyHitAt(2),
   gloomroot: bossHeavyHitAt(3),
   tidewyrm: bossHeavyHitAt(4),

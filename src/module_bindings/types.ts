@@ -1242,6 +1242,16 @@ export const PatreonPreview = __t.object("PatreonPreview", {
 });
 export type PatreonPreview = __Infer<typeof PatreonPreview>;
 
+export const PatreonTickerSupporter = __t.object("PatreonTickerSupporter", {
+  identity: __t.identity(),
+  name: __t.string(),
+  validUntilMs: __t.f64(),
+});
+export type PatreonTickerSupporter = __Infer<typeof PatreonTickerSupporter>;
+
+export const PatreonTickerSupporters = __t.object("PatreonTickerSupporters", {});
+export type PatreonTickerSupporters = __Infer<typeof PatreonTickerSupporters>;
+
 export const Player = __t.object("Player", {
   identity: __t.identity(),
   x: __t.f64(),

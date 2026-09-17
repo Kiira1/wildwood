@@ -1,4 +1,5 @@
 import { createSessionSubscriptions } from "./session-subscriptions";
+import { PATREON_TICKER_CHANGED } from "../../../shared/patreon-ticker";
 import { MAP_IDS } from "../../../shared/rules";
 import type { Identity } from "spacetimedb";
 import { tables, type DbConnection } from "../../module_bindings";
@@ -301,6 +302,12 @@ export function startBaseSubscription(dependencies: BaseSubscriptionDependencies
   // Hydrate once from the cache, then suppress that duplicate callback batch.
   let hydrating = true;
   const shouldHandle = () => dependencies.isCurrent() && !hydrating;
+  const supporterChanged = () => {
+    if (shouldHandle() && typeof window !== "undefined") window.dispatchEvent(new Event(PATREON_TICKER_CHANGED));
+  };
+  connection.db.patreonTickerSupporters.onInsert(supporterChanged);
+  connection.db.patreonTickerSupporters.onUpdate(supporterChanged);
+  connection.db.patreonTickerSupporters.onDelete(supporterChanged);
   connection.db.player.onInsert((_ctx, row) => { if (shouldHandle()) handlers.player(row); });
   connection.db.player.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.player(row); });
   connection.db.player.onDelete((_ctx, row) => {
@@ -490,6 +497,7 @@ export function startBaseSubscription(dependencies: BaseSubscriptionDependencies
       tables.playerAccountStatus.where((status) => status.identity.eq(dependencies.identity)),
     ] : [
       tables.playerNameTag,
+      tables.patreonTickerSupporters,
       tables.player.where((player) => player.identity.eq(dependencies.identity)),
       tables.playerMotionIdentity.where((presence) => presence.identity.eq(dependencies.identity)),
       tables.playerProfile.where((profile) => profile.identity.eq(dependencies.identity)),

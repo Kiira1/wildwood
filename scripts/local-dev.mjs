@@ -125,7 +125,7 @@ try {
   }
   workspace = await createLocalWorkspace(root, columns);
   await workspace.sync();
-  if (Object.keys(columns).length) console.log('Keeping legacy local chat columns in an isolated development build.');
+  if (Object.keys(columns).length) console.log('Keeping legacy local columns in an isolated development build.');
   await publish();
   await buildClient();
   server.watcher.add(['src', 'shared', 'spacetimedb/src', 'config'].map(path => resolve(root, path)));

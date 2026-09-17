@@ -12,6 +12,7 @@ import * as GetChatHistoryProcedure from "../get_chat_history_procedure";
 import * as GetChatHistoryWithReactionsProcedure from "../get_chat_history_with_reactions_procedure";
 import * as GetChatMessageReactionsProcedure from "../get_chat_message_reactions_procedure";
 import * as GetGuildHubProcedure from "../get_guild_hub_procedure";
+import * as GetGuildPreviewProcedure from "../get_guild_preview_procedure";
 import * as GetGuildReplayProcedure from "../get_guild_replay_procedure";
 import * as GetLeaderboardPageProcedure from "../get_leaderboard_page_procedure";
 import * as GetLeaderboardWindowProcedure from "../get_leaderboard_window_procedure";
@@ -36,6 +37,8 @@ export type GetChatMessageReactionsArgs = __Infer<typeof GetChatMessageReactions
 export type GetChatMessageReactionsResult = __Infer<typeof GetChatMessageReactionsProcedure.returnType>;
 export type GetGuildHubArgs = __Infer<typeof GetGuildHubProcedure.params>;
 export type GetGuildHubResult = __Infer<typeof GetGuildHubProcedure.returnType>;
+export type GetGuildPreviewArgs = __Infer<typeof GetGuildPreviewProcedure.params>;
+export type GetGuildPreviewResult = __Infer<typeof GetGuildPreviewProcedure.returnType>;
 export type GetGuildReplayArgs = __Infer<typeof GetGuildReplayProcedure.params>;
 export type GetGuildReplayResult = __Infer<typeof GetGuildReplayProcedure.returnType>;
 export type GetLeaderboardPageArgs = __Infer<typeof GetLeaderboardPageProcedure.params>;

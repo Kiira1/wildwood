@@ -1,4 +1,5 @@
 import { expect, it, vi } from "vitest";
+import { validSupporterNames } from "../../shared/patreon-ticker";
 import { crystalFixture, identity, server } from "../../tests/helpers/crystal-hollows-fixture";
 import { beginPatreonLink, patreonCallback, patreonStatus, refreshPatreon } from "./patreon";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
@@ -153,4 +154,21 @@ it("builds login and callback responses in the server runtime without URL global
     expect(patreonCallback(f.ctx, `/patreon/callback?state=${"f".repeat(64)}&code=valid%2Bcode`).status).toBe(200);
     expect(f.http.fetch.mock.calls[0][1].body).toContain("code=valid%2Bcode");
   } finally { vi.unstubAllGlobals(); }
+});
+
+it("streams only real memberships, uses current names, expires leases and removes unlinked supporters", () => {
+  const f = fixture();
+  const rows = () => server.patreonTickerSupporters(f.ctx);
+  const profile = f.db.playerProfile.identity.find(f.ctx.sender);
+  f.db.playerProfile.identity.update({ ...profile, displayName: "Current Name" });
+  expect(validSupporterNames(rows(), f.now)).toEqual(["Current Name"]);
+  expect(Object.keys(rows()[0]).sort()).toEqual(["identity", "name", "validUntilMs"]);
+  expect(validSupporterNames(rows(), f.now + 60_000)).toEqual([]);
+  const link = f.db.patreonLink.identity.find(f.ctx.sender);
+  f.db.patreonLink.identity.update({ ...link, tier: "none" });
+  expect(rows()).toEqual([]);
+  f.db.patreonLink.identity.update(link);
+  f.run(server.disconnectPatreon);
+  f.seed("patreonPreview", { identity: f.ctx.sender, frame: "gold" });
+  expect(rows()).toEqual([]);
 });

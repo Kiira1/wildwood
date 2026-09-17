@@ -5,6 +5,8 @@ import type { SocialApi } from "../coop/services/social-service";
 import { playerNamePrefix } from "../app/player-name-tags";
 import { GUILD_MEMBER_LIMIT, type GuildSnapshot, type GuildReport } from "../../shared/guilds";
 import type { GuildAction, GuildApi } from "../coop/services/guild-service";
+import { applyProfileIcon } from "../app/profile-icons";
+import { createGuildPreview } from './guild-preview';
 
 type Section = "guild" | "battles" | "rankings" | "friends";
 type Member = NonNullable<GuildSnapshot["guild"]>["members"][number];
@@ -14,6 +16,7 @@ type Options = {
   sessionKey: () => string;
   beforeOpen: () => void;
   onClose: () => void;
+  onOpenPlayer?: (identity: string, name: string) => void;
   document?: Document;
   replayAssets?: GuildReplayAssets;
   lowPerformanceMode?: () => boolean;
@@ -35,10 +38,15 @@ export function createGuildPanel(options: Options) {
   dialog.setAttribute("role", "dialog"); dialog.setAttribute("aria-modal", "true");
   dialog.setAttribute("aria-labelledby", "guildTitle"); dialog.tabIndex = -1;
   root.append(dialog); doc.body.append(root);
+  const otherGuild = createGuildPreview({ document: doc,
+    load: id => { const api = options.api(); if (!api) return Promise.reject(new Error('Connect to view this guild.')); return api.loadGuildPreview(id); },
+    openPlayer: (identity, name) => options.onOpenPlayer?.(identity, name),
+  });
   let replay: ReturnType<typeof createGuildBattleReplay> | undefined;
   let activeReplay: GuildReport | null = null;
   let replayFromChat = false;
   let section: Section = "guild";
+  let guildView: "overview" | "members" = "overview";
   let friendsReturn: Exclude<Section, "friends"> | null = null;
   let snapshot: GuildSnapshot | null = null;
   let social: SocialSnapshot | null = null;
@@ -116,7 +124,7 @@ export function createGuildPanel(options: Options) {
       }
       clockOffset = date(next.serverNow).getTime() - Date.now();
       if (action?.kind === "create" || action?.kind === "join" || action?.kind === "leave") {
-        section = "guild"; creating = false; managedMember = null; draftName = "";
+        section = "guild"; guildView = "overview"; creating = false; managedMember = null; draftName = "";
       }
       if (action?.kind === "challenge") {
         section = "battles"; battleView = "history"; notice = "Battle complete.";
@@ -147,6 +155,11 @@ export function createGuildPanel(options: Options) {
     section = next; activeReplay = null; confirmation = null; managedMember = null; notice = ""; render();
     dialog.querySelector<HTMLElement>(`[data-focus-key="tab-${next}"]`)?.focus();
   }
+  function showGuildView(next: typeof guildView) {
+    guildView = next; managedMember = null;
+    const body = dialog.querySelector(".guild-content"); if (body) body.scrollTop = 0;
+    render(); dialog.focus();
+  }
   function openFriends() {
     friendsReturn = section === "friends" ? friendsReturn : section;
     switchSection("friends");
@@ -155,7 +168,8 @@ export function createGuildPanel(options: Options) {
     if (confirmation) { confirmation = null; render(); }
     else if (section === "friends" && friendsReturn) {
       const previous = friendsReturn; friendsReturn = null; switchSection(previous);
-    } else close();
+    } else if (section === "guild" && guildView === "members" && snapshot?.guild) showGuildView("overview");
+    else close();
   }
   function renderCreate(parent: HTMLElement) {
     if (!creating) {
@@ -185,7 +199,10 @@ export function createGuildPanel(options: Options) {
     const list = element("div", undefined, "guild-list"); parent.append(list);
     for (const entry of entries) {
       const item = row(list, entry.name, `${entry.members}/${GUILD_MEMBER_LIMIT} members`);
-      item.prepend(mark(entry.name, "guild-avatar"));
+      const preview = element('button', undefined, 'guild-member-profile'); preview.type = 'button';
+      preview.setAttribute('aria-label', `View ${entry.name} guild`);
+      preview.append(mark(entry.name, "guild-avatar"), item.firstElementChild!);
+      preview.addEventListener('click', () => void otherGuild.open(entry.id)); item.prepend(preview);
       if (!challenge) item.append(button(entry.members >= GUILD_MEMBER_LIMIT ? "Full" : "Join", () => act({ kind: "join", guildId: entry.id }), "secondary", !canJoin() || entry.members >= GUILD_MEMBER_LIMIT, `join-${entry.id}`));
       else if (canStartBattles()) {
         const ready = g.guild!.members.length > 0 && g.guild!.members.every(member => date(member.eligibleAt).getTime() <= now());
@@ -200,11 +217,22 @@ export function createGuildPanel(options: Options) {
         button("Next page", () => { page = g.nextPage!; void load(); }, "quiet", !g.nextPage)); parent.append(pagination);
     }
   }
-  function renderMember(parent: HTMLElement, member: Member) {
+  function renderMember(parent: HTMLElement, member: Member, office?: "president" | "vice") {
     const g = snapshot!, own = g.guild!;
     const self = member.identity === g.identity;
     const detail = [member.identity === own.leader ? "President" : member.identity === own.vicePresident ? "Vice President" : "Member", self ? "You" : ""].filter(Boolean).join(" · ");
-    const item = row(parent, `${playerNamePrefix(member.identity)}${member.name}`, detail); item.prepend(mark(member.name, "guild-avatar"));
+    const item = row(parent, `${playerNamePrefix(member.identity)}${member.name}`, detail);
+    if (office) item.classList.add("guild-officer", `guild-officer--${office}`);
+    const portrait = element("span", undefined, "guild-avatar");
+    portrait.setAttribute("aria-hidden", "true");
+    applyProfileIcon(portrait, member.profileIcon ?? 0);
+    const profile = element("button", undefined, "guild-member-profile");
+    profile.type = "button";
+    profile.setAttribute("aria-label", `View ${member.name}'s profile`);
+    profile.dataset.focusKey = `profile-${member.identity}`;
+    profile.append(portrait, item.firstElementChild!);
+    profile.addEventListener("click", () => options.onOpenPlayer?.(member.identity, member.name));
+    item.append(profile);
     if (isLeader() && !self) {
       const control = button("···", () => { managedMember = managedMember === member.identity ? null : member.identity; render(); }, "icon", false, `manage-${member.identity}`);
       control.setAttribute("aria-label", `Manage ${member.name}`); control.setAttribute("aria-expanded", String(managedMember === member.identity)); item.append(control);
@@ -221,6 +249,32 @@ export function createGuildPanel(options: Options) {
       }
     }
   }
+  function renderMembers(body: HTMLElement) {
+    const own = snapshot!.guild!;
+    const leadership = element("section", undefined, "guild-leadership");
+    leadership.setAttribute("aria-label", "Guild leadership");
+    const president = own.members.find(member => member.identity === own.leader);
+    if (president) renderMember(leadership, president, "president");
+    const offices = element("div", undefined, "guild-offices");
+    const vice = own.members.find(member => member.identity === own.vicePresident);
+    if (vice) renderMember(offices, vice, "vice");
+    else {
+      const vacancy = element("div", undefined, "guild-office-vacancy");
+      vacancy.append(element("span", "—", "guild-office-placeholder"), element("strong", "Vice President"), element("span", "Vacant"));
+      offices.append(vacancy);
+    }
+    for (let i = 0; i < 3; i++) {
+      const reserved = element("div", undefined, "guild-office-vacancy guild-office-vacancy--future");
+      reserved.append(element("span", "", "guild-office-placeholder"), element("span", "Future role"));
+      offices.append(reserved);
+    }
+    leadership.append(offices); body.append(leadership);
+    const members = own.members.filter(member => member !== president && member !== vice).sort((a, b) => a.name.localeCompare(b.name));
+    heading(body, "Members", `${own.members.length}/${GUILD_MEMBER_LIMIT}`);
+    const roster = element("div", undefined, "guild-list"); body.append(roster);
+    members.forEach(member => renderMember(roster, member));
+    if (isLeader() && social) renderGuildInvites(body, socialContext(), own.members.map(member => member.identity));
+  }
   function renderGuild(body: HTMLElement) {
     const g = snapshot!;
     if (!g.guild) {
@@ -233,7 +287,8 @@ export function createGuildPanel(options: Options) {
       return;
     }
     const own = g.guild;
-    const identity = element("div", undefined, "guild-identity");
+    if (guildView === "members") { renderMembers(body); return; }
+    const identity = element("div", undefined, "guild-identity guild-preview-identity");
     const copy = element("div");
     copy.append(element("h3", own.name), element("p", isLeader() ? "You’re the President" : own.vicePresident === g.identity ? "You’re the Vice President" : "Your guild"));
     identity.append(mark(own.name), copy); body.append(identity);
@@ -241,11 +296,23 @@ export function createGuildPanel(options: Options) {
     for (const [value, label] of [[`${own.members.length}/${GUILD_MEMBER_LIMIT}`, "Members"], [number(own.score), "Weekly points"], [String(own.attacksRemaining), "Attacks left"]]) {
       const stat = element("div"); stat.append(element("strong", value), element("span", label)); stats.append(stat);
     } body.append(stats);
-    if (isLeader() && social) renderGuildInvites(body, socialContext(), own.members.map(member => member.identity));
-    heading(body, "Members", `${own.members.length} of ${GUILD_MEMBER_LIMIT}`);
-    const roster = element("div", undefined, "guild-list"); body.append(roster);
-    const roleOrder = (member: Member) => member.identity === own.leader ? 2 : member.identity === own.vicePresident ? 1 : 0;
-    [...own.members].sort((a, b) => roleOrder(b) - roleOrder(a) || a.name.localeCompare(b.name)).forEach(member => renderMember(roster, member));
+    const president = own.members.find(member => member.identity === own.leader);
+    if (president) {
+      const leader = element("button", undefined, "guild-preview-president guild-member-profile");
+      leader.type = "button"; leader.setAttribute("aria-label", `View ${president.name}'s profile`);
+      const portrait = element("span", undefined, "guild-avatar"); applyProfileIcon(portrait, president.profileIcon ?? 0);
+      const copy = element("span", undefined, "guild-row-copy");
+      copy.append(element("span", "President"), element("strong", `${playerNamePrefix(president.identity)}${president.name}`));
+      leader.append(portrait, copy); leader.addEventListener("click", () => options.onOpenPlayer?.(president.identity, president.name)); body.append(leader);
+    }
+    const actions = element("div", undefined, "guild-preview-actions");
+    actions.append(button("Members", () => showGuildView("members"), "primary"), button("View battles", () => switchSection("battles")));
+    body.append(actions);
+    if (president && president.identity !== g.identity) {
+      body.append(button("Message President", () => {
+        close(); doc.defaultView?.dispatchEvent(new CustomEvent("wildwood:open-private-chat", { detail: { username: president.name, identity: president.identity } }));
+      }, "quiet"));
+    }
     const settings = element("details", undefined, "guild-disclosure"); settings.append(element("summary", "Guild options"));
     settings.append(button("Leave guild", () => ask("Leave this guild?", isLeader() ? own.members.length > 1 ? own.vicePresident ? "The Vice President becomes President." : "The longest-serving member becomes President." : "Leaving will disband the guild." : "You can join another guild immediately.", "Leave guild", { kind: "leave" }), "danger")); body.append(settings);
   }
@@ -312,7 +379,11 @@ export function createGuildPanel(options: Options) {
       const copy = element("div", undefined, "guild-row-copy");
       copy.append(element("strong", entry.name), element("span", `${entry.wins} wins · ${entry.members} members${own ? " · Your guild" : ""}`));
       const score = element("div", undefined, "guild-score"); score.append(element("strong", number(entry.score)), element("span", "pts"));
-      item.append(copy, score); list.append(item);
+      const preview = element('button', undefined, 'guild-member-profile'); preview.type = 'button';
+      preview.setAttribute('aria-label', `View ${entry.name} guild`);
+      preview.append(item.lastElementChild!, copy);
+      preview.addEventListener('click', () => { if (own) { guildView = 'overview'; switchSection('guild'); } else void otherGuild.open(entry.id); });
+      item.append(preview, score); list.append(item);
     }); body.append(list);
   }
   function tick() {
@@ -352,7 +423,7 @@ export function createGuildPanel(options: Options) {
     const header = element("header", undefined, "guild-header");
     const title = element("div", undefined, "guild-heading");
     const h2 = element("h2", undefined, "window-banner"); h2.id = "guildTitle";
-    h2.append(element("span", section === "friends" ? "Friends" : "Guilds")); dialog.append(h2);
+    h2.append(element("span", section === "friends" ? "Friends" : section === "guild" && guildView === "members" && snapshot?.guild ? "Members" : "Guilds")); dialog.append(h2);
     title.append(element("span", section === "friends" ? "Your people" : snapshot?.guild ? snapshot.guild.name : "Play together"));
     header.append(title);
     if (section !== "friends") {
@@ -364,7 +435,7 @@ export function createGuildPanel(options: Options) {
     header.append(refresh); dialog.append(header);
     const nav = element("nav", undefined, "guild-tabs"); nav.setAttribute("aria-label", "Guild sections");
     for (const [key, label] of [["guild", snapshot?.guild ? "My guild" : "Find guild"], ["battles", "Battles"], ["rankings", "Rankings"]] as const) {
-      const tab = button(label, () => switchSection(key), "tab", false, `tab-${key}`); tab.setAttribute("aria-current", key === section ? "page" : "false"); nav.append(tab);
+      const tab = button(label, () => { if (key === "guild") guildView = "overview"; switchSection(key); }, "tab", false, `tab-${key}`); tab.setAttribute("aria-current", key === section ? "page" : "false"); nav.append(tab);
     }
     if (section !== "friends") dialog.append(nav);
     const body = element("div", undefined, "guild-content"); body.setAttribute("aria-busy", String(busy));
@@ -396,6 +467,7 @@ export function createGuildPanel(options: Options) {
     }
   }
   function close() {
+    otherGuild.close();
     if (root.hidden) return;
     replay?.dispose(); replay = undefined; activeReplay = null;
     serial++; root.hidden = true; busy = false; options.api()?.cancel(); clearInterval(timer); timer = undefined;
@@ -405,7 +477,7 @@ export function createGuildPanel(options: Options) {
   function open(next: Section = "guild") {
     if (!root.hidden) close();
     previousFocus = doc.activeElement as HTMLElement | null; options.beforeOpen();
-    section = next; friendsReturn = null; battleView = null; session = options.sessionKey(); page = "0"; busy = false; snapshot = null; social = null; drafts.friend = ""; drafts.invite = "";
+    section = next; guildView = "overview"; friendsReturn = null; battleView = null; session = options.sessionKey(); page = "0"; busy = false; snapshot = null; social = null; drafts.friend = ""; drafts.invite = "";
     error = ""; notice = ""; creating = false; draftName = ""; managedMember = null;
     root.hidden = false; doc.getElementById("guildBtn")?.setAttribute("aria-expanded", "true");
     render(); dialog.focus(); void load();
@@ -453,6 +525,7 @@ export function createGuildPanel(options: Options) {
   root.addEventListener("click", event => { if (event.target === root) close(); });
   doc.getElementById("guildBtn")?.addEventListener("click", guildClick);
   return { open, close, tick, isOpen: () => !root.hidden, dispose() {
+    otherGuild.dispose();
     doc.defaultView?.removeEventListener("wildwood:open-guild-replay", openChatReplay);
     doc.defaultView?.removeEventListener("wildwood:open-friends", friendsClick);
     close(); root.remove(); doc.removeEventListener("keydown", onKey, true);

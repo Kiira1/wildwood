@@ -3,6 +3,21 @@ import { parseHTML } from 'linkedom';
 import { createGemShopController } from './gem-shop-controller';
 
 afterEach(() => vi.unstubAllGlobals());
+it.each([false, true])('uses the native browser for Patreon linking and membership (linked=%s)', async linked => {
+  const { document, window } = parseHTML('<html><body><button>Shop</button></body></html>');
+  const native = vi.fn(async () => {}), popup = vi.fn();
+  Object.assign(window, { wildstatOpenPatreon: native, open: popup });
+  vi.stubGlobal('document', document); vi.stubGlobal('window', window);
+  createGemShopController({ button: document.querySelector('button')!, setOpen: vi.fn(), supporter: {
+    patreonStatus: vi.fn(async () => ({ configured: true, linked, tier: 'none' as const, frame: 'none' as const, validUntilMs: 0 })),
+    beginPatreonLink: vi.fn(async () => 'https://www.patreon.com/oauth2/authorize?state=test'),
+  } });
+  document.querySelector('.shop-patreon-button')!.dispatchEvent(new window.Event('click', { cancelable: true }));
+  await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+  expect(native).toHaveBeenCalledWith(linked ? 'https://www.patreon.com/c/wildstat/membership' : 'https://www.patreon.com/oauth2/authorize?state=test');
+  expect(popup).not.toHaveBeenCalled();
+  delete (window as any).wildstatOpenPatreon;
+});
 it.each([false, true])('connects the character before checkout unless already linked (%s)', async linked => {
   const { document, window } = parseHTML('<html><body><button>Shop</button></body></html>');
   const replace = vi.fn(), close = vi.fn();
@@ -18,13 +33,13 @@ it.each([false, true])('connects the character before checkout unless already li
   expect(replace).toHaveBeenCalledWith(linked ? 'https://www.patreon.com/c/wildstat/membership' : 'https://www.patreon.com/oauth2/authorize?state=test');
   expect(close).not.toHaveBeenCalled();
 });
-it.each([false, true])('shows the Patreon support link only on web (native=%s)', native => {
+it.each([false, true])('shows the Patreon support link on web and mobile (native=%s)', native => {
   const { document, window } = parseHTML('<html><body><button id="shop">Shop</button></body></html>');
   vi.stubGlobal('WILDSTAT_NATIVE_PREVIEW', native);
   vi.stubGlobal('window', window); vi.stubGlobal('document', document);
   createGemShopController({ button: document.querySelector('button')!, setOpen: vi.fn() });
   const link = document.querySelector<HTMLAnchorElement>('.shop-patreon-button');
-  expect(Boolean(link)).toBe(!native);
+  expect(Boolean(link)).toBe(true);
   expect(document.querySelectorAll('.gem-shop-pack').length).toBe(native ? 4 : 0);
   if (link) {
     expect(link.href).toBe('https://www.patreon.com/c/wildstat/membership');

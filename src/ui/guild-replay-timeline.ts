@@ -32,7 +32,7 @@ export function buildGuildReplayTimeline(battle: GuildBattleResult) {
       hits.set(actor.target, (hits.get(actor.target) ?? 0) + amount);
       const target = frame.actors[actor.target];
       const appearance = fighters[i].appearance;
-      const flight = isMeleeWeapon(appearance?.rightHandItem || appearance?.leftHandItem) ? 0
+      const flight = isMeleeWeapon(fighters[i].weaponItem || appearance?.rightHandItem || appearance?.leftHandItem) ? 0
         : Math.min(.28, Math.max(.12, Math.hypot(target.x - actor.x, target.y - actor.y) / 800));
       const launch = Math.max(arrivals[i], arrivals[actor.target], frame.time - flight), from = sample(launch)[i];
       attacks[i].push({ actor: i, target: actor.target, launch, impact: frame.time,

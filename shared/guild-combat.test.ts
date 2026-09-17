@@ -97,3 +97,27 @@ it("distributes random targets and keeps them stable between reinforcement waves
   expect(next.actors.map(actor => actor.target)).toEqual(first.actors.map(actor => actor.target));
   expect(advanceGuildCombat(fighters, 20, initial, ready)).toEqual(first);
 });
+
+
+it("freezes normal walking speed for new fights while preserving historical speed", () => {
+  for (const speed of [undefined, 180]) {
+    const fighters = [...team(1), ...team(1, "b")].map(f => ({ ...f, moveSpeed: speed }));
+    const frame = initialGuildCombat(fighters.slice(0, 1), fighters.slice(1));
+    const next = advanceGuildCombat(fighters, 1, frame);
+    expect(next.actors[0].x - frame.actors[0].x).toBeCloseTo((speed ?? 90) * .1);
+    const arrival = buildGuildEntrance({ attackers: fighters.slice(0, 1), defenders: fighters.slice(1) });
+    expect(arrival.arrivals[0].travel).toBeCloseTo(470 / (speed ?? 90));
+  }
+});
+it("uses melee reach only for melee weapons and saved range for bows", async () => {
+  const { guildWeaponRange } = await import("./guild-combat");
+  expect(guildWeaponRange("wooden_sword", 200)).toBe(75);
+  expect(guildWeaponRange("starter_bow", 200)).toBe(200);
+  const fighters = [...team(1), ...team(1, "b")].map((f, i) => ({ ...f, range: i ? 75 : 200, moveSpeed: 180 }));
+  const initial = initialGuildCombat(fighters.slice(0, 1), fighters.slice(1));
+  initial.actors[0].x = 0; initial.actors[1].x = 150;
+  initial.actors.forEach(actor => { actor.cooldown = 0; });
+  const next = advanceGuildCombat(fighters, 1, initial);
+  expect(next.actors[0].attacks).toBe(1);
+  expect(next.actors[1].attacks).toBe(0);
+});

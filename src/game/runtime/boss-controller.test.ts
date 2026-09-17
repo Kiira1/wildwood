@@ -1,4 +1,4 @@
-import {desertBossHealthAt, bossRewardValue, BOSS_BASE_MAX_HP} from "../../../shared/progression";
+import {desertBossHealthAt, bossRewardValue, BOSS_BASE_MAX_HP, SNOWLANDS_TUNING} from "../../../shared/progression";
 import {afterEach, describe, expect, it, vi} from "vitest";
 import {createGameBootstrap} from "./game-bootstrap";
 import {BOSS_AREA_KNOCKBACK_DURATION, SPIDER_WEB_RANGE, bossAreaKnockbackDistance, createBossController} from "./boss-controller";
@@ -218,7 +218,7 @@ describe("Boss defeat presentation", () => {
 
 describe("Frostclaw boss", () => {
   it("follows the shared Snowlands boss health and reward budget", () => {
-    expect(FROSTCLAW_MAX_HP).toBe(desertBossHealthAt(1));
+    expect(FROSTCLAW_MAX_HP).toBe(desertBossHealthAt(1) * SNOWLANDS_TUNING.bossHealth);
     expect(FROSTCLAW_REWARD_DAMAGE).toBe(bossRewardValue("damage", 1));
     expect(FROSTCLAW_REWARD_HEALTH).toBe(bossRewardValue("health", 1));
     expect(FROSTCLAW_REWARD_ARMOR).toBe(bossRewardValue("armor", 1));

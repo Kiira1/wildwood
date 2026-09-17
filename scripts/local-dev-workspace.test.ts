@@ -46,3 +46,17 @@ it('leaves normal schemas and unrelated table writes unchanged', () => {
   expect(preserveLocalColumns(source, localLegacyColumns(schema()))).toBe(source);
   expect(preserveLocalColumns('const chatMessage = table({}, {});', {})).toBe('const chatMessage = table({}, {});');
 });
+
+it('preserves the local boss map-history array without changing the release schema', () => {
+  const bossSchema = (elementType: string) => ({ sections: [
+    { Typespace: { types: [{ Product: { elements: [
+      { name: { some: 'accepted_map_ids' }, algebraic_type: { Array: { [elementType]: [] } } },
+    ] } }] } },
+    { Tables: [{ source_name: 'bossDefeatWindow', product_type_ref: 0 }] },
+  ] });
+  const columns = localLegacyColumns(bossSchema('String'));
+  const source = 'const bossDefeatWindow = table({}, { identity: t.identity() }); ctx.db.bossDefeatWindow.identity.update(row);';
+  expect(preserveLocalColumns(source, columns)).toContain('acceptedMapIds: t.array(t.string()).default([])');
+  expect(preserveLocalColumns(source, columns)).toContain('find(row.identity)?.acceptedMapIds');
+  expect(() => localLegacyColumns(bossSchema('U64'))).toThrow('Unexpected legacy column');
+});

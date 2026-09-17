@@ -1,12 +1,18 @@
 import { buildGuildEntrance, GUILD_MOVE_SPEED } from "./guild-entrance";
 import { damageAfterArmor } from "./combat";
 import { duelHitMultiplier, type DuelFighter } from "./duel-combat";
+import { itemDefinition } from "./items";
 
 export const GUILD_COMBAT_VERSION = 4;
 export const GUILD_COMBAT_STEP = .1;
 export const GUILD_COMBAT_LIMIT = 60;
 export type GuildAppearance = { skinTone?: number; headItem?: string; chestItem?: string; feetItem?: string; rightHandItem?: string; leftHandItem?: string };
-export type GuildFighter = { identity: string; name: string; fighter: DuelFighter; appearance?: GuildAppearance; range?: number };
+export type GuildFighter = { identity: string; name: string; fighter: DuelFighter; appearance?: GuildAppearance; range?: number; moveSpeed?: number; weaponItem?: string };
+/** Freeze real equipment reach separately from its cosmetic appearance. */
+export function guildWeaponRange(item: string | undefined, rangedRange: number) {
+  const weapon = itemDefinition(item)?.weapon;
+  return weapon?.mode === "MELEE" ? weapon.range ?? 75 : rangedRange;
+}
 export type GuildActorState = { x: number; y: number; hp: number; target: number; cooldown: number; attacks: number; hitAt: number };
 export type GuildCombatFrame = { time: number; actors: GuildActorState[] };
 export type GuildBattleResult = {
@@ -17,7 +23,8 @@ export type GuildBattleResult = {
 
 function validateTeam(team: GuildFighter[]) {
   if (!team.length || team.length > 20) throw new Error("Each guild needs 1–20 members.");
-  for (const { fighter: f, range } of team) {
+  for (const { fighter: f, range, moveSpeed } of team) {
+    if (moveSpeed !== undefined && (!Number.isFinite(moveSpeed) || moveSpeed <= 0 || moveSpeed > 1000)) throw new Error("A member's movement speed is unavailable.");
     if (Object.values(f).some(value => !Number.isFinite(value) || value < 0) || f.maxHp <= 0 || f.attackRate < .05 || (range !== undefined && (!Number.isFinite(range) || range < 40 || range > 240))) throw new Error("A member's combat stats are unavailable.");
   }
 }
@@ -25,7 +32,8 @@ export function initialGuildCombat(attackers: GuildFighter[], defenders: GuildFi
   validateTeam(attackers); validateTeam(defenders);
   return { time: 0, actors: [attackers, defenders].flatMap((team, side) => team.map((member, i) => {
     const rows = Math.min(5, team.length), row = i % rows, column = Math.floor(i / rows);
-    return { x: side ? 730 + column * 52 : 270 - column * 52, y: 320 + (row - (rows - 1) / 2) * 86,
+    const staggerY = member.moveSpeed === undefined ? 0 : (column - (Math.ceil(team.length / rows) - 1) / 2) * 104 / Math.ceil(team.length / rows);
+    return { x: side ? 730 + column * 52 : 270 - column * 52, y: 320 + (row - (rows - 1) / 2) * 86 + staggerY,
       hp: member.fighter.maxHp, target: -1, cooldown: member.fighter.attackRate, attacks: 0, hitAt: -10 };
   })) };
 }
@@ -75,7 +83,7 @@ export function advanceGuildCombat(fighters: GuildFighter[], split: number, prev
     const dx = target.x - before.x, dy = target.y - before.y, distance = Math.hypot(dx, dy);
     const reach = member.range ?? 72;
     if (distance > reach) {
-      const step = Math.min(distance - reach, GUILD_MOVE_SPEED * GUILD_COMBAT_STEP);
+      const step = Math.min(distance - reach, (member.moveSpeed ?? GUILD_MOVE_SPEED) * GUILD_COMBAT_STEP);
       actor.x += dx / distance * step; actor.y += dy / distance * step;
     }
     actor.cooldown -= GUILD_COMBAT_STEP;

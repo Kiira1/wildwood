@@ -15,7 +15,11 @@ const platform = Capacitor.getPlatform();
 if (platform === 'ios' || platform === 'android') {
   (window as unknown as { wildstatOpenPatreon: (url: string) => Promise<void> }).wildstatOpenPatreon = async raw => {
     const url = new URL(raw);
-    if (url.protocol !== "https:" || url.hostname !== "www.patreon.com" || url.pathname !== "/oauth2/authorize") throw new Error("Invalid Patreon link");
+    if (url.protocol !== "https:" || url.hostname !== "www.patreon.com" || !["/oauth2/authorize", "/c/wildstat/membership"].includes(url.pathname)) throw new Error("Invalid Patreon link");
+    await Browser.open({ url: raw });
+  };
+  (window as unknown as { wildstatOpenCommunity: (url: string) => Promise<void> }).wildstatOpenCommunity = async raw => {
+    if (!["https://discord.gg/mcS226NbG4", "https://www.patreon.com/c/wildstat/membership"].includes(raw)) throw new Error("Invalid community link");
     await Browser.open({ url: raw });
   };
   window.addEventListener("wildstat:toolbar-haptic", () => {

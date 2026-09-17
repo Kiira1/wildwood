@@ -14,17 +14,17 @@ function setup(saved: string | null = null) {
   return { button, setVisible, storage, toggle };
 }
 
-it("starts off, is available immediately, and blocks rapid toggles for twenty seconds", () => {
-  const state = setup();
+it("restores always-off and blocks rapid toggles for five seconds", () => {
+  const state = setup("false");
   expect(state.button.disabled).toBe(false);
   expect(state.setVisible.mock.calls).toEqual([[false]]);
   state.button.click();
   expect(state.setVisible).toHaveBeenLastCalledWith(true);
   expect(state.storage.setItem).toHaveBeenLastCalledWith("wildstat-show-other-players", "true");
   expect(state.button.disabled).toBe(true);
-  expect(state.button.textContent).toBe("20");
+  expect(state.button.textContent).toBe("5");
   state.button.click();
-  vi.advanceTimersByTime(19_999);
+  vi.advanceTimersByTime(4_999);
   state.button.click();
   expect(state.setVisible).toHaveBeenCalledTimes(2);
   expect(state.button.disabled).toBe(true);
@@ -48,16 +48,36 @@ it("restores the saved preference without a map restriction or startup cooldown"
   expect(vi.getTimerCount()).toBe(0);
 });
 
-it("turns the actual multiplayer preference off after five minutes without input", () => {
-  const state = setup("true");
+it("starts new players on and idle-hides without changing their chosen mode", () => {
+  const state = setup();
+  expect(state.setVisible.mock.calls).toEqual([[true]]);
   vi.advanceTimersByTime(300_000);
   expect(state.setVisible).toHaveBeenLastCalledWith(false);
-  expect(state.storage.setItem).toHaveBeenLastCalledWith("wildstat-show-other-players", "false");
-  expect(state.button.getAttribute("aria-pressed")).toBe("false");
-  expect(state.button.disabled).toBe(false);
-  state.button.click();
+  expect(state.storage.setItem).not.toHaveBeenCalled();
+  expect(state.button.getAttribute("aria-pressed")).toBe("true");
+  expect(state.button.dataset.state).toBe("idle");
+  expect(state.button.querySelector(".player-visibility-idle")?.textContent).toBe("idle");
+  state.toggle.noteManualMovement();
   expect(state.setVisible).toHaveBeenLastCalledWith(true);
-  expect(state.button.disabled).toBe(true);
+  expect(state.button.dataset.state).toBe("on");
+  expect(state.button.querySelector(".player-visibility-idle")?.textContent).toBe("");
+  for (let i = 0; i < 1000; i++) state.toggle.noteManualMovement();
+  expect(state.setVisible).toHaveBeenCalledTimes(3);
+  vi.advanceTimersByTime(300_000);
+  expect(state.button.dataset.state).toBe("idle");
+  state.toggle.dispose();
+});
+
+it("clicking an idle eye chooses always-off rather than waking it", () => {
+  const state = setup("true");
+  vi.advanceTimersByTime(300_000);
+  state.button.click();
+  expect(state.button.dataset.state).toBe("off");
+  expect(state.button.getAttribute("aria-pressed")).toBe("false");
+  expect(state.storage.setItem).toHaveBeenLastCalledWith("wildstat-show-other-players", "false");
+  vi.advanceTimersByTime(300_000);
+  state.toggle.noteManualMovement();
+  expect(state.setVisible).toHaveBeenLastCalledWith(false);
   state.toggle.dispose();
 });
 
@@ -73,7 +93,7 @@ it("expires while chatting, stays off when chat closes, and wakes on manual move
     document.dispatchEvent(new window.Event("input"));
     document.dispatchEvent(new window.Event("wheel"));
   }
-  expect(button.getAttribute("aria-pressed")).toBe("false");
+  expect(button.dataset.state).toBe("idle");
   gate.setFullscreen(false);
   expect(apply.mock.calls).toEqual([[true], [false]]);
   toggle.noteManualMovement();
@@ -82,22 +102,20 @@ it("expires while chatting, stays off when chat closes, and wakes on manual move
   toggle.dispose(); gate.dispose();
 });
 
-it("automatically enables once for manual movement, respects manual-off cooldown, and expires again", () => {
-  const state = setup();
+it("manual movement never overrides always-off, even after cooldown or reload", () => {
+  const state = setup("false");
   state.toggle.noteManualMovement();
-  expect(state.setVisible.mock.calls).toEqual([[false], [true]]);
-  for (let i = 0; i < 1000; i++) state.toggle.noteManualMovement();
-  expect(state.setVisible).toHaveBeenCalledTimes(2);
-  vi.advanceTimersByTime(20_000);
+  vi.advanceTimersByTime(600_000);
+  state.toggle.noteManualMovement();
+  expect(state.setVisible.mock.calls).toEqual([[false]]);
+  expect(state.button.dataset.state).toBe("off");
   state.button.click();
-  state.toggle.noteManualMovement();
-  expect(state.setVisible).toHaveBeenLastCalledWith(false);
-  vi.advanceTimersByTime(20_000);
-  state.toggle.noteManualMovement();
   expect(state.setVisible).toHaveBeenLastCalledWith(true);
-  vi.advanceTimersByTime(300_000);
-  expect(state.setVisible).toHaveBeenLastCalledWith(false);
+  vi.advanceTimersByTime(5_000);
+  state.button.click();
+  vi.advanceTimersByTime(600_000);
   state.toggle.noteManualMovement();
-  expect(state.setVisible).toHaveBeenLastCalledWith(true);
+  expect(state.setVisible.mock.calls).toEqual([[false], [true], [false]]);
+  expect(state.storage.setItem).toHaveBeenLastCalledWith("wildstat-show-other-players", "false");
   state.toggle.dispose();
 });

@@ -94,7 +94,7 @@ it("does not render offscreen entrants, and keeps fighting while reinforcements 
   expect(visible.length).toBeGreaterThan(0); expect(visible.length).toBeLessThan(10);
   expect(drawStartingPlayer).toHaveBeenCalledTimes(visible.length);
   const pose = vi.mocked(drawStartingPlayer).mock.calls[0][2];
-  expect(pose.scale).toBeCloseTo(.6 * .86); expect(pose.moving).toBe(true);
+  expect(pose.scale).toBeGreaterThan(0); expect(pose.scale).toBeLessThan(.6); expect(pose.moving).toBe(true);
   vi.mocked(drawStartingPlayer).mockClear(); paintText.mockClear();
   const firstHit = timeline.shots[0].impact;
   expect(firstHit).toBeLessThan(entrance.duration);
@@ -110,5 +110,26 @@ it("does not render offscreen entrants, and keeps fighting while reinforcements 
   expect(arrived.some(actor => actor.attacks > 0)).toBe(true);
   vi.mocked(drawStartingPlayer).mockClear(); renderer.draw(0, true, 0);
   expect(drawStartingPlayer).not.toHaveBeenCalled();
+  renderer.dispose();
+});
+
+
+it.each([[390, 844], [844, 390]])("keeps mobile movement and reach proportional to the character in %sx%s", (width, height) => {
+  const context = new Proxy({}, { get: () => vi.fn(), set: () => true }) as CanvasRenderingContext2D;
+  const doc = { defaultView: { devicePixelRatio: 1 }, createElement: () => ({ width: 0, height: 0, getContext: () => context }) };
+  const canvas = { ownerDocument: doc, clientWidth: width, clientHeight: height, width: 0, height: 0 } as unknown as HTMLCanvasElement;
+  const member = (identity: string) => ({ identity, name: identity, fighter: { maxHp: 100, damage: 0, armor: 0, regen: 0, attackRate: 1 }, range: 200, moveSpeed: 180 });
+  const timeline = buildGuildReplayTimeline(simulateGuildBattle([member("a")], [member("b")]));
+  const original = timeline.sample(0);
+  timeline.sample = time => original.map((actor, i) => ({ ...actor, x: i ? 200 : time * 180, y: i ? 200 : 0 }));
+  const image = { naturalWidth: 0 } as HTMLImageElement;
+  const renderer = createGuildBattlefieldRenderer(canvas, context, timeline, 1,
+    { player: { basicFrontLeg: image, basicBackLeg: image, equipment: {} }, prepare: async () => {}, trees: image, treeBounds: () => [] });
+  vi.mocked(drawStartingPlayer).mockClear();
+  const start = renderer.draw(0, false), later = renderer.draw(.5, false);
+  const worldScale = vi.mocked(drawStartingPlayer).mock.calls[0][2].scale! / .6;
+  expect(later[0].x - start[0].x).toBeCloseTo(90 * worldScale);
+  expect(start[1].x - start[0].x).toBeCloseTo(200 * worldScale);
+  expect(start[1].y - start[0].y).toBeCloseTo(200 * worldScale);
   renderer.dispose();
 });

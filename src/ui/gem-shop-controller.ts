@@ -30,7 +30,7 @@ export function createGemShopController(options: {
         <button class="gem-shop-back window-back-button" type="button">Back</button>
       </footer>
     </div>`;
-  if (!nativeShop) {
+  {
     const support = document.createElement('a');
     support.className = 'shop-patreon-button';
     support.href = PATREON_PAGE; support.target = '_blank'; support.rel = 'noopener noreferrer';
@@ -46,7 +46,8 @@ export function createGemShopController(options: {
         event.preventDefault();
         if (busy) return;
         busy = true; support.setAttribute('aria-disabled', 'true');
-        const popup = window.open('about:blank', '_blank');
+        const native = (window as unknown as { wildstatOpenPatreon?: (url: string) => Promise<void> }).wildstatOpenPatreon;
+        const popup = native ? null : window.open('about:blank', '_blank');
         if (popup) popup.opener = null;
         status.textContent = 'Connecting your character…';
         try {
@@ -54,7 +55,10 @@ export function createGemShopController(options: {
           const url = membership.linked ? PATREON_PAGE : await actions.beginPatreonLink();
           const parsed = new URL(url);
           if (parsed.protocol !== 'https:' || parsed.hostname !== 'www.patreon.com' || !['/oauth2/authorize', '/c/wildstat/membership'].includes(parsed.pathname)) throw new Error('Could not open Patreon. Try again.');
-          if (popup) { popup.location.replace(url); status.textContent = 'Finish on Patreon, then return here. Your frame applies automatically.'; }
+          if (native || popup) {
+            if (native) await native(url); else popup!.location.replace(url);
+            status.textContent = 'Finish on Patreon, then return here. Your frame applies automatically.';
+          }
           else { continueUrl = url; support.href = url; status.textContent = 'Tap Support again to continue to Patreon.'; }
         } catch (error) {
           popup?.close();

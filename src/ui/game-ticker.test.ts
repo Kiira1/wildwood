@@ -3,7 +3,7 @@ import { parseHTML } from "linkedom";
 import { GAME_TICKER_INTERVAL_MS, installGameTicker } from "./game-ticker";
 import { GAME_TIPS, pickGameTip } from "./game-tips";
 
-afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
+afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 it("chooses a different random tip after each full pass", () => {
   for (let previous = 0; previous < GAME_TIPS.length; previous++) {
     for (const random of [0, .5, .999999]) {
@@ -53,4 +53,24 @@ it("persists the toggle, pauses when hidden, and doesn't rearrange chat", async 
   controller.dispose();
   expect(panel.children.length).toBe(1);
   expect(vi.getTimerCount()).toBe(0);
+});
+
+it("updates a running supporter tip on membership changes without adding another ticker", () => {
+  vi.useFakeTimers();
+  vi.spyOn(Math, "random").mockReturnValue(.99999);
+  vi.stubGlobal("requestAnimationFrame", (callback: () => void) => { callback(); return 0; });
+  const { document, window } = parseHTML('<html><body><div id="chatPanel"></div></body></html>');
+  let names = ["First"];
+  const panel = document.getElementById("chatPanel")!;
+  const controller = installGameTicker(panel, undefined, () => names);
+  const text = panel.querySelector(".game-ticker-text")!;
+  expect(text.textContent).toContain("First");
+  names = Array.from({ length: 30 }, (_, i) => `Supporter ${i}`);
+  window.dispatchEvent(new window.Event("wildstat:patreon-ticker-changed"));
+  expect(text.textContent).toContain(names.join(", "));
+  names = [];
+  window.dispatchEvent(new window.Event("wildstat:patreon-ticker-changed"));
+  expect(panel.querySelector<HTMLElement>(".game-ticker")!.hidden).toBe(true);
+  expect(panel.querySelectorAll(".game-ticker")).toHaveLength(1);
+  controller.dispose();
 });

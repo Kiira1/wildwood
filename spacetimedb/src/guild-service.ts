@@ -127,7 +127,7 @@ function validateFighter(fighter: DuelFighter) {
 /** Root wrappers authenticate the controlling session. Every battle snapshots all
  * current members from persisted stats; clients cannot submit fighters/results. */
 export function createGuildService(deps: { fighterFor(ctx: Ctx, identity: Identity): Omit<GuildFighter, "identity">;
-  nameFor?: (ctx: Ctx, identity: Identity) => string | undefined;
+  profileFor?: (ctx: Ctx, identity: Identity) => { displayName: string; profileIcon: number } | undefined;
   announceBattle?: (ctx: Ctx, report: GuildSnapshot["battles"][number]) => void }) {
   function team(ctx: Ctx, guildId: bigint): GuildFighter[] {
     const roster = members(ctx, guildId).sort((a, b) => key(a.identity).localeCompare(key(b.identity)));
@@ -241,6 +241,17 @@ export function createGuildService(deps: { fighterFor(ctx: Ctx, identity: Identi
       }
       deps.announceBattle?.(ctx, report);
     },
+    preview(ctx: Ctx, guildId: bigint) {
+      const stored = ctx.db.guild.id.find(guildId) ?? fail("Guild no longer exists.");
+      const guild = currentGuild(ctx, stored), roster = members(ctx, guildId);
+      return { id: String(guild.id), name: guild.name, leader: key(guild.leader), score: guild.score,
+        vicePresident: roster.find(row => row.vicePresident)?.identity.toHexString() ?? null,
+        members: roster.map(row => {
+          const profile = deps.profileFor?.(ctx, row.identity);
+          return { identity: key(row.identity), name: profile?.displayName ?? row.name,
+            profileIcon: profile?.profileIcon ?? 0, eligibleAt: String(row.eligibleAt) };
+        }) };
+    },
     snapshot(ctx: Ctx, afterId = 0n, signedIn = true): GuildSnapshot {
       const member = ctx.db.guildMember.identity.find(ctx.sender);
       const stored = member ? ctx.db.guild.id.find(member.guildId) : null;
@@ -264,8 +275,11 @@ export function createGuildService(deps: { fighterFor(ctx: Ctx, identity: Identi
           attacksRemaining: GUILD_DAILY_ATTACKS - guild.attacks, score: guild.score,
           // Repair old join-time names on read with one indexed profile lookup;
           // don't calculate combat stats or add background roster polling.
-          members: roster.map(row => ({ identity: key(row.identity), name: deps.nameFor?.(ctx, row.identity) ?? row.name,
-            eligibleAt: String(row.eligibleAt) })) } : null,
+          members: roster.map(row => {
+            const profile = deps.profileFor?.(ctx, row.identity);
+            return { identity: key(row.identity), name: profile?.displayName ?? row.name,
+              profileIcon: profile?.profileIcon ?? 0, eligibleAt: String(row.eligibleAt) };
+          }) } : null,
         directory, nextPage, standings: cache?.week === week ? JSON.parse(cache.entries) : [],
         battles: guild ? [...ctx.db.guildBattleReport.guildId.filter(guild.id)]
           .sort((a, b) => a.sequence > b.sequence ? -1 : 1).map(row => JSON.parse(row.payload)) : [] };

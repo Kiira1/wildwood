@@ -2,13 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { createGameBootstrap } from './game-bootstrap';
 import { createEnemyLifecycle } from './enemy-lifecycle';
 import { createAutoFarmController } from './auto-farm-controller';
+import { createAutoFarmResumeStore } from '../../app/auto-farm-resume';
 import type { SpawnSite } from '../world';
 import type { EnemyKind } from '../enemies';
 import type { Circle } from './types';
 import type { Movement } from './player-input-controller';
 const idle: Movement = { x: 0, y: 0, source: 'none' };
 
-function setup(obstacles: Circle[] = [], weapon = "starter_bow") {
+function setup(obstacles: Circle[] = [], weapon = "starter_bow", resumeStore?: ReturnType<typeof createAutoFarmResumeStore>) {
   const state = createGameBootstrap();
   state.enemies.length = 0;
   state.spawnSites.length = 0;
@@ -27,6 +28,7 @@ function setup(obstacles: Circle[] = [], weapon = "starter_bow") {
     ...state, mapId: () => map, unavailable: () => unavailable, paused: () => paused,
     speed: () => state.player.speed, obstacles: () => obstacles, equippedWeapon: () => weapon,
     connection: () => connection, localIdentity: () => identity, now: () => now,
+    resumeStore,
   });
   const tick = () => {
     const movement = farm.movement(idle, 1 / 60);
@@ -232,6 +234,7 @@ describe('autofarm', () => {
       if (interrupt === 'sign-in') s.setConnection('ended');
       if (interrupt === 'unavailable') { s.setConnection('ready'); s.setUnavailable('Autofarm stopped after defeat'); }
       s.farm.refresh();
+      s.setConnection('ready'); s.farm.refresh(); s.advance(1_000); s.farm.refresh();
       s.setConnection('ready'); s.setUnavailable(null); s.advance(60_000);
       expect(s.tick()).toEqual(idle);
       expect(s.farm.state().active).toBe(false);
@@ -247,6 +250,51 @@ describe('autofarm', () => {
     s.setConnection('ready'); s.farm.refresh(); s.advance(1_000);
     expect(s.tick()).toEqual(idle);
     expect(s.farm.state()).toMatchObject({ active: false, status: 'No matching enemies in this map' });
+  });
+});
+
+describe('autofarm update handoff', () => {
+  function store() {
+    const values = new Map<string, string>();
+    return createAutoFarmResumeStore(() => ({ getItem: key => values.get(key) ?? null,
+      setItem: (key, value) => { values.set(key, value); }, removeItem: key => { values.delete(key); } }));
+  }
+  it('restores the same character and camp after a reload, ignoring incomplete hydration', () => {
+    const memory = store(), before = setup([], 'starter_bow', memory);
+    before.setMap('endless_40'); before.add('Bramble', 1000, 500);
+    before.spawnSites[0].campName = 'Armor Camp';
+    before.farm.start('Bramble:Armor Camp');
+    const after = setup([], 'starter_bow', memory);
+    after.setConnection('recovering'); after.setIdentity(undefined);
+    after.setUnavailable('Equip a weapon to farm');
+    expect(after.tick()).toEqual(idle);
+    after.setMap('endless_40'); after.setIdentity('local-player');
+    const enemy = after.add('Bramble', 1000, 500);
+    enemy.campName = after.spawnSites[0].campName = 'Armor Camp';
+    after.setConnection('ready'); after.farm.refresh(); after.advance(999);
+    expect(after.tick()).toEqual(idle);
+    after.setUnavailable(null); after.advance(1);
+    expect(after.tick().x).toBeGreaterThan(0);
+    expect(after.farm.targetCamp()).toBe('Armor Camp');
+  });
+  it('ignores a temporary default map during an ordinary reconnect', () => {
+    const s = setup(); s.add('Bramble', 1000, 500); s.farm.start('Bramble');
+    s.setConnection('recovering'); s.setMap('home'); s.farm.refresh();
+    s.setConnection('ready'); s.setUnavailable('Equip a weapon to farm'); s.farm.refresh();
+    s.setMap('forest'); s.setUnavailable(null); s.advance(1000);
+    expect(s.tick().x).toBeGreaterThan(0);
+  });
+  it.each(['stop', 'character', 'map', 'sign-in'] as const)('does not resurrect farming after %s', change => {
+    const memory = store(), before = setup([], 'starter_bow', memory);
+    before.add('Bramble', 1000, 500); before.farm.start('Bramble');
+    if (change === 'stop') before.farm.stop();
+    const after = setup([], 'starter_bow', memory); after.add('Bramble', 1000, 500);
+    if (change === 'character') after.setIdentity('another-player');
+    if (change === 'map') after.setMap('desert');
+    if (change === 'sign-in') after.setConnection('ended');
+    after.farm.refresh(); after.advance(1000); after.farm.refresh();
+    expect(after.farm.state().active).toBe(false);
+    expect(memory.read()).toBeNull();
   });
 });
 

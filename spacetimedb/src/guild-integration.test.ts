@@ -40,6 +40,7 @@ describe("guild root reducer integration", () => {
     f.guild(["1", "2"], "Rose");
     const original = f.db.guildMember.identity.find(identity("1"));
     f.run(server.setDisplayName, { displayName: "New Name" });
+    f.run(server.setProfileIcon, { profileIcon: 82 });
     expect(f.db.guildMember.identity.find(identity("1"))).toEqual({ ...original, name: "New Name" });
     f.actor("2");
     expect(f.snapshot().guild?.members.find(row => row.identity === identity("1").toHexString())?.name).toBe("New Name");
@@ -48,6 +49,7 @@ describe("guild root reducer integration", () => {
     f.db.guildMember.identity.update({ ...original, name: "Stale Name" });
     f.db.player.identity.delete(identity("1"));
     expect(f.snapshot().guild?.members.find(row => row.identity === identity("1").toHexString())?.name).toBe("New Name");
+    expect(f.snapshot().guild?.members.find(row => row.identity === identity("1").toHexString())?.profileIcon).toBe(82);
     expect(f.snapshot().guild?.leader).toBe(identity("1").toHexString());
     expect(f.db.guildMember.identity.find(identity("2")).name).toBe("Player 2");
   });
@@ -159,4 +161,17 @@ it("preserves a guest's guild through the real account-link reducer", () => {
   expect(f.snapshot().guild?.leader).toBe(identity("3").toHexString());
   expect(f.db.guildMember.identity.find(identity("2"))).toBeNull();
   expect(f.db.playerNameTag.identity.find(identity("3")).guildTag).toBe("Gues");
+});
+
+
+it("returns current public roster details for another guild without management data", () => {
+  const f = fixture();
+  const guildId = f.guild(["1", "2"], "Rose");
+  f.run(server.setProfileIcon, { profileIcon: 82 });
+  f.actor("3");
+  const preview = JSON.parse((server.getGuildPreview as any)({ withTx: (action: any) => f.transaction(() => action(f.ctx)) }, { guildId }));
+  expect(preview.name).toBe("Rose");
+  expect(preview.members).toHaveLength(2);
+  expect(preview.members.find((row: any) => row.identity === identity("1").toHexString()).profileIcon).toBe(82);
+  expect(Object.keys(preview).sort()).toEqual(["id", "leader", "members", "name", "score", "vicePresident"]);
 });
