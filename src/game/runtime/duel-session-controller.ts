@@ -18,6 +18,7 @@ export function createDuelSessionController(hooks: {
   renderedDuelScene: () => DuelScene | null;
   localIdentity: () => string | undefined;
   localDisplayName: () => string | undefined;
+  selfProfileTapEnabled?: () => boolean;
   remotePlayers: () => PlayerTarget[];
   playerDisplayName: (identity: string) => string | undefined;
   publicPlayerName: (identity: string | undefined, name: string | undefined) => string;
@@ -28,6 +29,8 @@ export function createDuelSessionController(hooks: {
     const camera = hooks.camera();
     const worldX = camera.x + clientX / camera.zoom;
     const worldY = camera.y + clientY / camera.zoom;
+    const localIdentity = hooks.localIdentity();
+    const allowSelf = hooks.selfProfileTapEnabled?.() ?? true;
     // Follow the visible head/body, leaving surrounding ground free for movement.
     const isPlayerProfileHit = (dx: number, dy: number) =>
       Math.abs(dx) <= 24 && dy >= -52 && dy <= 32;
@@ -35,6 +38,7 @@ export function createDuelSessionController(hooks: {
       const duelScene = hooks.renderedDuelScene();
       const duelTarget = [duelScene?.challenger, duelScene?.opponent]
         .filter((actor): actor is DuelScene["challenger"] => Boolean(actor?.identity))
+        .filter(actor => allowSelf || actor.identity !== localIdentity)
         .find((actor) => isPlayerProfileHit(worldX - actor.x, worldY - actor.y));
       if (!duelTarget?.identity) return false;
       hooks.openProfile(duelTarget.identity, duelTarget.name);
@@ -42,8 +46,7 @@ export function createDuelSessionController(hooks: {
     }
     let target: PlayerTarget | null = null;
     let bestDistance = Number.POSITIVE_INFINITY;
-    const localIdentity = hooks.localIdentity();
-    if (localIdentity) {
+    if (localIdentity && allowSelf) {
       const player = hooks.player();
       const dx = worldX - player.x;
       const dy = worldY - player.y;

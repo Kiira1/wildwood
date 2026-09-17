@@ -5,7 +5,7 @@ import { installFeedbackSettings } from "./feedback-settings";
 function setup(values = new Map<string, string>(), brokenStorage = false) {
   const { document, Event } = parseHTML(`<html><body><div id="toolbar">
     <button id="home"><span id="icon">Home</span></button><button id="disabled" disabled>Shop</button>
-    <section><button id="damageFlashToggle"></button><button id="toolbarHapticsToggle"></button></section>
+    <section><button id="damageFlashToggle"></button><button id="toolbarHapticsToggle"></button><button id="selfProfileTapToggle"></button></section>
     </div><button id="outside">Other</button></body></html>`);
   const haptic = vi.fn();
   const settings = installFeedbackSettings(document, {

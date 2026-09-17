@@ -1500,6 +1500,11 @@
   #chatPanel.is-large .chat-line { flex: 0 0 auto; grid-template-columns: 66px minmax(0, 1fr); grid-template-rows: auto; width: 100%; min-height: 93px; padding: 27px 0 0; column-gap: 9px; align-self: start; }
   #chatPanel.is-large .chat-profile-icon { grid-column: 1; grid-row: 1; width: 66px; height: 66px; border-radius: 6px; }
   #chatPanel.is-large .chat-message-content { grid-column: 2; grid-row: 1; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 2px 10px; width: min(640px, calc(100% - 50px)); max-width: 100%; min-width: 0; }
+  @media (min-width: 800px) {
+    /* Center the portrait + bubble together, preserving the 640px bubble cap. */
+    #chatPanel.is-large .chat-line { max-width: 715px; margin-inline: auto; }
+    #chatPanel.is-large .chat-message-content { width: 100%; }
+  }
   #chatPanel.is-large .chat-name { grid-column: 1 / -1; grid-row: 1; font-size: 15px; }
   #chatPanel.is-large .chat-power-icon { width: 18px; height: 18px; }
   #chatPanel.is-large .chat-time { grid-column: 2; grid-row: 1; justify-self: end; color: rgba(255,255,255,.45); font-size: 11px; font-weight: 800; text-align: right; }

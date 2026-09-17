@@ -2,6 +2,7 @@ import { renderBooleanSetting } from "./settings";
 
 const DAMAGE_FLASH_KEY = "wildwood-damage-flash-enabled-v1";
 const TOOLBAR_HAPTICS_KEY = "wildwood-toolbar-haptics-enabled-v1";
+const SELF_PROFILE_TAP_KEY = "wildstat-self-profile-tap-enabled-v1";
 
 /** Device preferences apply immediately, even when storage is unavailable. */
 export function installFeedbackSettings(doc: Document, storage: Pick<Storage, "getItem" | "setItem"> | undefined, haptic: () => void) {
@@ -22,6 +23,7 @@ export function installFeedbackSettings(doc: Document, storage: Pick<Storage, "g
   }
   const damageFlashEnabled = toggle("damageFlashToggle", DAMAGE_FLASH_KEY, false);
   const toolbarHapticsEnabled = toggle("toolbarHapticsToggle", TOOLBAR_HAPTICS_KEY, true);
+  const selfProfileTapEnabled = toggle("selfProfileTapToggle", SELF_PROFILE_TAP_KEY, true);
   // Capture before navigation; only direct toolbar buttons, not settings inside it.
   doc.addEventListener("click", event => {
     const target = event.target as Element | null;
@@ -29,7 +31,7 @@ export function installFeedbackSettings(doc: Document, storage: Pick<Storage, "g
     if (!button || button.disabled || button.getAttribute("aria-disabled") === "true" || !toolbarHapticsEnabled()) return;
     try { haptic(); } catch { /* Feedback must never interrupt navigation. */ }
   }, true);
-  return { damageFlashEnabled };
+  return { damageFlashEnabled, selfProfileTapEnabled };
 }
 
 /** The settings shell loads after startup, keeping the entry page small. */
@@ -39,6 +41,7 @@ export function installFeedbackControls(doc: Document) {
   for (const [id, label, enabled] of [
     ["damageFlashToggle", "DAMAGE FLASH", false],
     ["toolbarHapticsToggle", "TOOLBAR HAPTICS", true],
+    ["selfProfileTapToggle", "TAP SELF TO OPEN PROFILE", true],
     ["keepScreenOnToggle", "KEEP SCREEN ON", false],
     ["gameTickerToggle", "GAME TIPS", true],
   ] as const) {

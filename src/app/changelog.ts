@@ -1,4 +1,8 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.729": [
+    "Added a setting to disable tapping your character to open its profile; the HUD portrait still works.",
+    "Centered fullscreen chat messages on desktop while keeping their existing maximum width.",
+  ],
   "0.728": [
     "Inventory filters retain their layout even with no matching items. Removed extra space above the tabs and placed the Cosmetics note below the character preview.",
   ],
@@ -2000,6 +2004,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.729": "2026-09-17",
   "0.728": "2026-09-17",
   "0.727": "2026-09-17",
   "0.726": "2026-09-17",

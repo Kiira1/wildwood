@@ -213,6 +213,7 @@ export function createAppShellController(dependencies: AppShellDependencies) {
     lowPerformanceMode: () => lowPerformanceMode,
     screenShakeEnabled: () => screenShakeEnabled,
     damageFlashEnabled: feedback.damageFlashEnabled,
+    selfProfileTapEnabled: feedback.selfProfileTapEnabled,
     refreshFullscreen,
     refreshSettings,
     refreshStatus,

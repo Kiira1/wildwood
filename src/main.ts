@@ -342,6 +342,7 @@ import {
     renderedDuelScene: () => renderedDuelScene,
     localIdentity: () => coop?.localIdentity?.(),
     localDisplayName: () => coop?.localDisplayName?.(),
+    selfProfileTapEnabled: () => appShell.selfProfileTapEnabled(),
     remotePlayers: () => coop?.remotePlayers?.() ?? [],
     playerDisplayName: (identity) => coop?.playerDisplayName?.(identity),
     publicPlayerName: (identity, name) => publicPlayerName(identity, name),
