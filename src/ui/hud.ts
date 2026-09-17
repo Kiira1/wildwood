@@ -275,7 +275,9 @@ export function renderInventoryView(
   renderEquipmentSlot(elements.equippedFeet, inventory, "FEET", "BOOTS", mode, actions.upgradeLevel);
 
   const visibleStacks = actions.filter ? bagStacks.filter(stack => itemDefinition(stack.itemId)?.slot === actions.filter) : bagStacks;
-  const visibleSlots = actions.filter ? visibleStacks.length : slotCapacity;
+  // Keep the full grid footprint while filtering so scroll clamping cannot
+  // pull the character preview/tabs around, even when there are no matches.
+  const visibleSlots = slotCapacity + (actions.filter && !cosmetics && actions.nextSlotCost !== undefined ? 1 : 0);
   for (let index = 0; index < visibleSlots; index += 1) {
     const stack = visibleStacks[index];
     const itemId = stack?.itemId;
@@ -318,12 +320,19 @@ export function renderInventoryView(
     } else {
       button.setAttribute("aria-label", `Empty bag slot ${index + 1}`);
       button.disabled = true;
+      if (actions.filter) { button.classList.add("is-filter-placeholder"); button.setAttribute("aria-hidden", "true"); }
       const empty = document.createElement("span");
       empty.className = "inventory-item-empty-mark";
       empty.textContent = "";
       button.append(empty);
     }
     elements.items.appendChild(button);
+  }
+  if (actions.filter && visibleStacks.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "inventory-filter-empty";
+    empty.textContent = `No ${{ HAND: "weapons", CHEST: "armor", HEAD: "helmets", FEET: "boots" }[actions.filter] ?? "items"}`;
+    elements.items.append(empty);
   }
   if (!actions.filter && !cosmetics && actions.nextSlotCost !== undefined) {
     const button = document.createElement("button");

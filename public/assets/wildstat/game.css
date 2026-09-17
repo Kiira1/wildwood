@@ -344,7 +344,7 @@
   .inventory-capacity { margin: 0 auto; color: var(--inventory-muted); font-size: var(--font-readable-min); font-weight: 900; letter-spacing: .04em; text-align: center; white-space: nowrap; }
 
   .inventory-scroll { min-width: 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; -webkit-overflow-scrolling: touch; touch-action: pan-y; }
-  .inventory-tabs { margin-inline: auto; width: min(100%, 448px); justify-self: center; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; min-height: 56px; padding: max(6px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) 6px max(14px, env(safe-area-inset-left)); border-bottom: 1px solid transparent; background: transparent; }
+  .inventory-tabs { margin-inline: auto; width: min(100%, 448px); justify-self: center; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; min-height: 50px; padding: 0 max(14px, env(safe-area-inset-right)) 6px max(14px, env(safe-area-inset-left)); border-bottom: 1px solid transparent; background: transparent; }
   .inventory-tab { position: relative; min-width: 0; height: 44px; min-height: 44px; margin: 0; padding: 0 10px 5px; border: 0; border-radius: 0; background: transparent; box-shadow: none; color: #aeb9b2; font: 900 var(--font-readable-label)/1 var(--font-rounded); letter-spacing: .04em; }
   .inventory-tab::after { position: absolute; bottom: 0; left: 15%; right: 15%; height: 3px; border-radius: 2px; background: transparent; content: ""; }
   .inventory-tab.is-active { background: transparent; color: #fff4d6; box-shadow: none; }
@@ -439,7 +439,7 @@
   .inventory-filter:focus-visible, .inventory-equip-best:focus-visible { outline: 1px solid #fff; outline-offset: 2px; }
   .inventory-cosmetics-note { flex: 0 0 auto; margin: 2px 8px 8px; color: #b9bdb9; font: 700 12px/1.4 var(--font-rounded); letter-spacing: 0; text-align: center; -webkit-text-stroke: 0; text-shadow: none; }
   .inventory-cosmetics-note[hidden] { display: none; }
-  .inventory-items { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); grid-auto-flow: row; grid-auto-rows: max-content; align-content: start; align-items: start; justify-content: center; gap: var(--inventory-grid-gap); min-height: 0; padding-bottom: 0; overflow: visible; overscroll-behavior: contain; scrollbar-width: none; -webkit-overflow-scrolling: touch; touch-action: pan-y; }
+  .inventory-items { position: relative; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); grid-auto-flow: row; grid-auto-rows: max-content; align-content: start; align-items: start; justify-content: center; gap: var(--inventory-grid-gap); min-height: 0; padding-bottom: 0; overflow: visible; overscroll-behavior: contain; scrollbar-width: none; -webkit-overflow-scrolling: touch; touch-action: pan-y; }
   /* Overlay the values inside the square slot; artwork keeps its original dimensions. */
   .inventory-item-bonuses { position: absolute; bottom: 5px; left: 0; right: 0; display: flex; align-items: center; justify-content: center; gap: 3px; width: 100%; min-width: 0; height: 12px; pointer-events: none; }
   .inventory-item-bonuses span { font: 900 10px/12px var(--font-rounded); white-space: nowrap; -webkit-text-stroke: 0; text-shadow: 0 1px 1px #000; }
@@ -457,6 +457,8 @@
   .inventory-slot-unlock-cost { display: flex; align-items: center; justify-content: center; gap: 2px; color: #fff; font: 900 var(--font-readable-min)/1 var(--font-rounded); }
   .inventory-slot-unlock-cost img { display: block; width: 15px; height: 15px; object-fit: contain; }
   .inventory-item { position: relative; display: grid; grid-template-rows: minmax(0, 1fr); place-items: center; width: 100%; min-width: 0; min-height: 0; aspect-ratio: 1 / 1; margin: 0; padding: 5px; overflow: hidden; border: 2px solid rgba(255,255,255,.15); border-radius: 7px; background: rgba(0,0,0,.18); box-shadow: none; color: var(--inventory-ink); }
+  .inventory-item.is-filter-placeholder { visibility: hidden; pointer-events: none; }
+  .inventory-filter-empty { position: absolute; top: 20px; left: 0; right: 0; margin: 0; text-align: center; color: var(--inventory-muted); font-size: 12px; }
   .inventory-item.is-empty { border-color: rgba(255,255,255,.09); cursor: default; }
   .inventory-item.is-filled, .equipment-slot.is-equipped { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
   .inventory-item.is-filled, .equipment-slot.is-equipped { cursor: pointer; }

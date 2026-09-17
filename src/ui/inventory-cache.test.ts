@@ -99,6 +99,12 @@ it("filters the bag without changing capacity and applies best equipment once", 
   tabs.find(tab => tab.textContent === "Armor")!.click();
   expect([...document.querySelectorAll("#inventoryItems [data-item-id]")].map(item => item.getAttribute("data-item-id"))).toEqual([FROST_ARMOR]);
   expect(document.getElementById("inventoryCount")!.textContent).toBe(count);
+  const totalSlots = document.querySelectorAll("#inventoryItems .inventory-item").length;
+  tabs.find(tab => tab.textContent === "Boots")!.click();
+  expect(document.querySelectorAll("#inventoryItems [data-item-id]")).toHaveLength(0);
+  expect(document.querySelectorAll("#inventoryItems .inventory-item")).toHaveLength(totalSlots);
+  expect(document.querySelector(".inventory-filter-empty")?.textContent).toBe("No boots");
+  expect(document.getElementById("inventoryCount")!.textContent).toBe(count);
   tabs.find(tab => tab.textContent === "All")!.click();
   expect(document.querySelectorAll("#inventoryItems [data-item-id]")).toHaveLength(2);
   document.querySelector<HTMLButtonElement>(".inventory-equip-best")!.click();

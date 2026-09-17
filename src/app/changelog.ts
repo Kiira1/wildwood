@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.728": [
+    "Inventory filters retain their layout even with no matching items. Removed extra space above the tabs and placed the Cosmetics note below the character preview.",
+  ],
   "0.727": [
     "Profile previews animate smoothly when opened over Guilds, and no longer inherit extra fullscreen padding below Back.",
     "Moved the Cosmetics progress note back below the inventory tabs.",
@@ -1997,6 +2000,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.728": "2026-09-17",
   "0.727": "2026-09-17",
   "0.726": "2026-09-17",
   "0.725": "2026-09-17",
