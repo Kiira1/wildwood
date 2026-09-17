@@ -46,16 +46,18 @@ describe("boss time validation", () => {
     expect(() => f.run(server.changeMap, { mapId: "home_exterior", x: 600, y: 700 })).not.toThrow();
   });
 
-  it("shares a rolling cap between batches, fresh streams, and reconnects", () => {
+  it("does not reset earned combat time between batches, fresh streams, and reconnects", () => {
     const f = fixture();
+    f.begin(); f.at(300);
     f.claim(20, true);
     expect(f.kills()).toBe(2n);
     // Restore this test's DPS after legitimate rewards to isolate time limits.
     f.patch("playerProgress", f.stats);
-    f.at(299); f.begin(); f.claim(20, true);
+    f.begin(); f.claim(20, true);
     expect(f.kills()).toBe(2n);
-    f.at(300); f.claim(20, true);
-    expect(f.kills()).toBe(4n);
+    f.at(379); f.claim(20, true); expect(f.kills()).toBe(2n);
+    f.at(390); f.claim(20, true);
+    expect(f.kills()).toBe(3n);
   });
 
   it("requires elapsed combat time on a newly entered map", () => {
@@ -118,4 +120,31 @@ describe("boss time validation", () => {
     expect(f.kills()).toBe(100n);
     expect(f.db.playerProgress.identity.find(f.ctx.sender).desertUnlocked).toBe(true);
   });
+});
+
+
+it("rewards consecutive legitimate 100-second boss fights across save windows", () => {
+  const f = fixture(); f.begin();
+  for (const [index, seconds] of [100, 245, 390, 535, 680].entries()) {
+    f.at(seconds); f.claim();
+    expect(f.kills(), `kill at ${seconds}s`).toBe(BigInt(index + 1));
+    f.patch("playerProgress", f.stats);
+  }
+});
+it("does not treat delayed batch receipt times as the times bosses actually died", () => {
+  const f = fixture(); f.begin();
+  f.at(300); f.claim(2); expect(f.kills()).toBe(2n); f.patch("playerProgress", f.stats);
+  f.at(390); f.claim(); expect(f.kills()).toBe(3n); f.patch("playerProgress", f.stats);
+  f.at(535); f.claim(); expect(f.kills()).toBe(4n);
+});
+
+
+it("ignores the retired 20-boss cap while enforcing earned DPS time", () => {
+  const f = fixture(); f.begin();
+  const at = f.ctx.timestamp.microsSinceUnixEpoch;
+  f.seed("bossDefeatWindow", { identity: f.ctx.sender, acceptedAtMicros: Array(20).fill(at) });
+  f.seed("bossMapDefeatWindow", { identity: f.ctx.sender, acceptedAtMicros: Array(20).fill(at), acceptedMapIds: Array(20).fill("tutorial_forest") });
+  f.claim(); expect(f.kills()).toBe(0n);
+  f.at(100); f.claim(); expect(f.kills()).toBe(1n);
+  expect(f.db.bossDefeatWindow.identity.find(f.ctx.sender).acceptedAtMicros).toHaveLength(20);
 });

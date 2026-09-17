@@ -9,13 +9,12 @@ type BossRewardContext = Pick<GameReducerContext, "db" | "sender" | "timestamp">
 export const enemyDefeatBudget = table({ name: "enemy_defeat_budget" }, {
   key: t.string().primaryKey(), identity: t.identity().index("btree"), tokens: t.f64(), updatedAtMicros: t.u64(),
 });
-// One private, bounded row per character. Reconnects, new streams and map changes
-// cannot reset this rolling five-minute allowance.
+// Retained for non-destructive schema compatibility with previous releases.
+// Reward validation now uses earned combat time, not a fixed defeat count.
 export const bossDefeatWindow = table({ name: "boss_defeat_window" }, {
   identity: t.identity().primaryKey(), acceptedAtMicros: t.array(t.u64()),
 });
-// Keep the existing window schema intact so this addition does not disconnect
-// installed clients. This companion holds at most the same 20 accepted defeats.
+// Historical per-map receipt timestamps; no longer read or written for limits.
 export const bossMapDefeatWindow = table({ name: "boss_map_defeat_window" }, {
   identity: t.identity().primaryKey(), acceptedAtMicros: t.array(t.u64()), acceptedMapIds: t.array(t.string()),
 });
@@ -72,26 +71,17 @@ export function acceptEnemyDefeats(ctx: BossRewardContext, batch: { streamId: st
       const initialCredit = BOSS_REWARD_WINDOW_SECONDS + boss.respawnSeconds;
       const credit = limits ? Math.min(limits.capacitySeconds, clock
         ? clock.tokens + Math.max(0, Number(now - clock.updatedAtMicros) / 1e6) : initialCredit) : 0;
-      const window = ctx.db.bossDefeatWindow.identity.find(ctx.sender);
-      const recentGlobal = (window?.acceptedAtMicros ?? []).filter(at => at > now - 300_000_000n);
-      const mapWindow = ctx.db.bossMapDefeatWindow.identity.find(ctx.sender);
-      const recent: { at: bigint; mapId: string }[] = (mapWindow?.acceptedAtMicros ?? [])
-        .map((at: bigint, i: number) => ({ at, mapId: mapWindow?.acceptedMapIds[i] ?? "" }))
-        .filter((entry: { at: bigint }) => entry.at > now - 300_000_000n);
-      const mapKills = recent.filter(entry => entry.mapId === batch.mapId).length;
+      // The earned-time budget already enforces HP / server DPS + respawn.
+      // Receipt timestamps are not kill timestamps: counting them again in a
+      // rolling per-map window rejects valid boundary kills and delayed saves.
       acceptedCount = limits ? Math.max(0, Math.min(entry.count, Math.floor(tokens + 1e-6),
-        Math.floor(credit / limits.cycleSeconds + 1e-9), limits.windowKills - mapKills, 20 - recentGlobal.length)) : 0;
+        Math.floor(credit / limits.cycleSeconds + 1e-9))) : 0;
       const nextClock = { key: timeKey, identity: ctx.sender,
         tokens: Math.max(0, credit - acceptedCount * (limits?.cycleSeconds ?? 0)), updatedAtMicros: now };
       if (clock) ctx.db.enemyDefeatBudget.key.update(nextClock); else ctx.db.enemyDefeatBudget.insert(nextClock);
       // Excess claims are consumed without rewards. Never leave an impossible
       // sealed report blocking saves, portals, or the valid kills behind it.
       if (!acceptedCount) continue;
-      const row = { identity: ctx.sender, acceptedAtMicros: [...recent.map(entry => entry.at), ...Array<bigint>(acceptedCount).fill(now)],
-        acceptedMapIds: [...recent.map(entry => entry.mapId), ...Array<string>(acceptedCount).fill(batch.mapId)] };
-      if (mapWindow) ctx.db.bossMapDefeatWindow.identity.update(row); else ctx.db.bossMapDefeatWindow.insert(row);
-      const globalRow = { identity: ctx.sender, acceptedAtMicros: [...recentGlobal, ...Array<bigint>(acceptedCount).fill(now)] };
-      if (window) ctx.db.bossDefeatWindow.identity.update(globalRow); else ctx.db.bossDefeatWindow.insert(globalRow);
     } else if (tokens + 1e-6 < entry.count) throw new SenderError("Enemy rewards are catching up. Retry shortly.");
     const next = { key: budgetKey, identity: ctx.sender, tokens: tokens - acceptedCount, updatedAtMicros: now };
     if (previous) ctx.db.enemyDefeatBudget.key.update(next); else ctx.db.enemyDefeatBudget.insert(next);

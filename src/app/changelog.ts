@@ -1,4 +1,9 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.720": [
+    "Fixed enemies ignoring nearby players when network movement updates were reduced. Aggro uses your actual character position with autofarm on or off.",
+    "Fixed legitimate boss rewards being rejected around save-window boundaries or delayed reports.",
+    "Removed the fixed 20-boss limit. Boss rewards remain validated using server-owned damage, attack speed, elapsed combat time, and respawn timing.",
+  ],
   "0.719": [
     "Fixed connection messages arriving out of order during world loading and reconnects.",
     "Autofarm remembers its selected enemy through game updates and resumes after the same character and map finish loading.",
@@ -1943,6 +1948,7 @@ export const RELEASE_NOTES: Record<string, string[]> = {
 };
 
 const RELEASE_DATES: Record<string, string> = {
+  "0.720": "2026-09-16",
   "0.719": "2026-09-16",
   "0.652": "2026-09-10",
   "0.651": "2026-09-10",

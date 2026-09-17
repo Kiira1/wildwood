@@ -21,7 +21,7 @@ import { separateEnemyCrowd } from "./enemy-crowd-separation";
 import { createRemoteEnemyCombatShadows } from "./remote-enemy-combat-shadow";
 import { rangedEnemyAttackRange, rangedEnemyPreferredDistance } from "./ranged-enemy-range";
 import type { RemoteBossSimulationTarget } from "../../coop/services/remote-boss-attack";
-import type { EnemyState, PlayerState, Position } from "./types";
+import type { EnemyState, PlayerState } from "./types";
 
 const FULL_SIMULATION_MARGIN = 220;
 const RANGED_APPROACH_DEAD_BAND = 5;
@@ -36,7 +36,6 @@ export type EnemySimulationSharedOptions = {
   currentMapId?: () => string;
   serverNowMs?: () => number;
   localIdentity?: () => string | undefined;
-  localAggroPosition?: () => Position | null | undefined;
   remotePlayers?: () => readonly RemotePlayer[];
   remoteCombatStats?: (identity: string) => RemoteCombatStats | null | undefined;
   remoteBoss?: () => RemoteBossSimulationTarget | null | undefined;
@@ -178,11 +177,12 @@ export function createEnemySimulation(
     );
     const fullSimulationRadiusSq = fullSimulationRadius * fullSimulationRadius;
     const id = localTargetId();
-    const localPose = shared.localAggroPosition?.() ?? player;
+    // Local fights use the live character, never the last network movement
+    // sample. Multiplayer-off/idle modes intentionally leave that sample stale.
     const localCandidate: RegularEnemyAggroCandidate = {
       id,
-      x: Number.isFinite(localPose.x) ? localPose.x : player.x,
-      y: Number.isFinite(localPose.y) ? localPose.y : player.y,
+      x: player.x,
+      y: player.y,
       radius: player.r,
       local: true,
     };

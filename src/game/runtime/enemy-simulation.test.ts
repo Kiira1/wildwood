@@ -76,7 +76,7 @@ describe("deterministic enemy simulation", () => {
       const simulation = createEnemySimulation(
         [enemy], () => {}, local, () => ({ width: 800, height: 800, zoom: 1 }),
         engage, () => accepted,
-        { localIdentity: () => "local-player", localAggroPosition: () => local },
+        { localIdentity: () => "local-player" },
       );
       simulation.update(.001);
       expect(enemy.attackAnimationElapsed).toBe(accepted ? 0 : undefined);
@@ -105,7 +105,7 @@ describe("deterministic enemy simulation", () => {
         () => ({ width: 800, height: 800, zoom: 1 }),
         engage,
         () => false,
-        { localIdentity: () => "local-player", localAggroPosition: () => local },
+        { localIdentity: () => "local-player" },
       );
 
       simulation.update(.001);
@@ -163,7 +163,6 @@ describe("deterministic enemy simulation", () => {
       () => false,
       {
         localIdentity: () => "local-player",
-        localAggroPosition: () => ({ x: 500, y: 300 }),
       },
     );
 
@@ -188,7 +187,7 @@ describe("deterministic enemy simulation", () => {
       () => ({ width: 800, height: 800, zoom: 1 }),
       engage,
       () => false,
-      { localIdentity: () => "local-player", localAggroPosition: () => local },
+      { localIdentity: () => "local-player" },
     );
 
     simulation.update(1 / 60);
@@ -215,7 +214,7 @@ describe("deterministic enemy simulation", () => {
       () => ({ width: 800, height: 800, zoom: 1 }),
       engage,
       () => false,
-      { localIdentity: () => "local-player", localAggroPosition: () => local },
+      { localIdentity: () => "local-player" },
     );
 
     simulation.update(1 / 60);
@@ -313,7 +312,6 @@ describe("deterministic enemy simulation", () => {
         currentMapId: () => "tutorial_forest",
         serverNowMs: () => now,
         localIdentity: () => "local-player",
-        localAggroPosition: () => local,
         remotePlayers: () => [remote],
         remoteCombatStats: () => remoteCombatStats,
       },
@@ -363,7 +361,6 @@ describe("deterministic enemy simulation", () => {
         currentMapId: () => "tutorial_forest",
         serverNowMs: () => 1_800_000_000_000,
         localIdentity: () => "local-player",
-        localAggroPosition: () => local,
         remotePlayers: () => [remote],
         remoteCombatStats: () => remoteCombatStats,
       },
@@ -397,7 +394,6 @@ describe("deterministic enemy simulation", () => {
         currentMapId: () => "tutorial_forest",
         serverNowMs: () => 1_800_000_000_000,
         localIdentity: () => "local-player",
-        localAggroPosition: () => local,
         remotePlayers: () => [remote],
         remoteCombatStats: () => stats,
       },
@@ -434,7 +430,6 @@ describe("deterministic enemy simulation", () => {
         currentMapId: () => "tutorial_forest",
         serverNowMs: () => now,
         localIdentity: () => "local-player",
-        localAggroPosition: () => local,
         remotePlayers: () => [remote],
         remoteCombatStats: () => stats,
       },
@@ -484,7 +479,6 @@ describe("deterministic enemy simulation", () => {
         currentMapId: () => "tutorial_forest",
         serverNowMs: () => now,
         localIdentity: () => "local-player",
-        localAggroPosition: () => local,
         remotePlayers: () => [remote],
         remoteCombatStats: () => ({ ...remoteCombatStats, damage: 1_000, attackInterval: .5 }),
       },
@@ -528,7 +522,6 @@ describe("deterministic enemy simulation", () => {
         currentMapId: () => "tutorial_forest",
         serverNowMs: () => now,
         localIdentity: () => "local-player",
-        localAggroPosition: () => local,
         remotePlayers: () => remoteVisible ? [remote] : [],
         remoteCombatStats: () => ({ ...remoteCombatStats, damage: 100, attackInterval: .5 }),
       },
@@ -569,4 +562,17 @@ describe("deterministic enemy simulation", () => {
     simulation.update(1 / 60);
     expect(simulation.remoteCombatGhosts()).toHaveLength(0);
   });
+});
+
+
+it("acquires nearby mobs while manually moving even when the network pose stays behind", () => {
+  const local = playerAt(100, 100);
+  const enemies = [idleEnemyAt(100, 100), idleEnemyAt(110, 100), idleEnemyAt(120, 100)];
+  enemies.forEach((enemy, i) => { enemy.siteId = i + 1; });
+  const staleNetwork = { localIdentity: () => "local-player", localAggroPosition: () => ({ x: 3000, y: 3000 }), remotePlayers: () => [], serverNowMs: () => 1800000000000 };
+  const simulation = createEnemySimulation(enemies, () => {}, local,
+    () => ({ width: 390, height: 844, zoom: 1 }), engage, () => false,
+    staleNetwork);
+  simulation.update(1 / 60);
+  expect(enemies.every(enemy => enemy.engaged && enemy.aggroTargetId === "local-player")).toBe(true);
 });

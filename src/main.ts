@@ -585,7 +585,6 @@ import {
       currentMapId: () => currentMapId,
       serverNowMs: () => coop?.serverNowMs?.() ?? Date.now(),
       localIdentity: () => coop?.localIdentity?.(),
-      localAggroPosition: () => inTutorial() ? player : coop?.regularEnemyLocalPosition?.() ?? coop?.localState?.() ?? player,
       remotePlayers: () => (inTutorial() ? [] : coop?.remotePlayers?.() ?? [])
         .filter((remote) => !coop?.remotePlayerDeath?.(remote.id)),
       remoteCombatStats: (identity) => coop?.remoteCombatStats?.(identity),
