@@ -62,6 +62,7 @@ import { createPlayerController, type PlayerController } from "./game/runtime/pl
 import { applyPlayerMaxHealthMultiplier } from "./game/runtime/player-health";
 import { createRegularEnemyRespawnBoost } from "./game/runtime/regular-enemy-respawn";
 import { createRespawnMemory } from "./game/runtime/respawn-memory";
+import { createBossFightMemory } from "./game/runtime/boss-fight-memory";
 import { createResearchController } from "./game/runtime/research-controller";
 import { createWorldRenderRuntime } from "./game/runtime/world-render-runtime";
 import { createWebGLStaticWorldLayer } from "./game/runtime/webgl-static-world-layer";
@@ -237,6 +238,9 @@ import {
   );
   const LEGACY_SAVE_KEY = "wildwood-player-progress-v1";
   const respawnMemory = createRespawnMemory(localStorage, () => coop?.localIdentity?.() ?? '');
+  const bossFightMemory = createBossFightMemory(localStorage, () => coop?.localIdentity?.() ?? '');
+  window.addEventListener("pagehide", bossFightMemory.flush);
+  document.addEventListener("visibilitychange", () => { if (document.hidden) bossFightMemory.flush(); });
   const enemyRespawnKey = (site: typeof spawnSites[number]) => `enemy:${currentMapId}:${site.id}:${site.type}:${site.campName}`;
   const enemyLifecycle = createEnemyLifecycle(enemies, spawnSites, spawnBurst, {
     remaining: site => respawnMemory.remaining(enemyRespawnKey(site)),
@@ -571,6 +575,8 @@ import {
   let playerCombat: PlayerCombatController;
   const personalBosses = createPersonalBosses({
     respawns: respawnMemory,
+    fights: bossFightMemory,
+    ready: () => Boolean(session?.isRunning() && coop?.isConnected?.()) && !mapController.isMapTransitioning(),
     mapId: () => currentMapId, identity: () => coop?.localIdentity?.() ?? "local-player",
     alive: () => player.hp > 0, now: () => Date.now(),
     defeated: mapId => {
@@ -1699,6 +1705,7 @@ import {
     hideStart: startup.hideStart,
     hideGameOver: () => { localPlayerDeath = null; deathScreen.hide(); },
     showGameOver: () => {
+      personalBosses.resetFight();
       autoFarm.stop("Autofarm stopped after defeat");
       localPlayerDeath = {
         id: coop?.localIdentity?.() ?? "local-player",
@@ -1725,6 +1732,7 @@ import {
     isDueling, activeDuel,
     syncDragon: bossController.syncDragonState, syncSpider: bossController.syncSpiderState, syncFrostclaw: bossController.syncFrostclawState, syncMagmalisk: bossController.syncMagmaliskState, syncGloomroot: bossController.syncGloomrootState, syncTidewyrm: bossController.syncTidewyrmState, syncKoiShogun: bossController.syncKoiShogunState, syncTempestKirin: bossController.syncTempestKirinState, syncMiremaw: bossController.syncMiremawState, syncPrismshell: bossController.syncPrismshellState, syncIronhorn: bossController.syncIronhornState, syncDreadreaper: bossController.syncDreadreaperState, syncVoltwarden: bossController.syncVoltwardenState, syncGravebloom: bossController.syncGravebloomState, syncAegisPrime: bossController.syncAegisPrimeState,
     cutsceneActive: mapController.isCutsceneActive, updateCutscene: mapController.updatePortalCutscene,
+    worldCombatReady: () => !mapController.isMapTransitioning() && (inTutorial() || Boolean(coop?.isConnected?.()) && coop?.localState?.()?.mapId === currentMapId),
     updatePlayer: (dt) => { if (!mapController.isMapTransitioning() && !(inTutorial() && player.hp <= 0)) playerController.update(dt); }, updateUpgradeBench: updateHomeStations, updatePortal: mapController.updatePortal,
     updateEnemies: (dt) => { proceduralBoss.update(dt); enemySimulation.update(dt); }, updateDragon: bossController.updateBoss, updateSpider: bossController.updateSpiderBoss, updateFrostclaw: bossController.updateFrostclawBoss, updateMagmalisk: bossController.updateMagmaliskBoss, updateGloomroot: bossController.updateGloomrootBoss, updateTidewyrm: bossController.updateTidewyrmBoss, updateKoiShogun: bossController.updateKoiShogunBoss, updateTempestKirin: bossController.updateTempestKirinBoss, updateMiremaw: bossController.updateMiremawBoss, updatePrismshell: bossController.updatePrismshellBoss, updateIronhorn: bossController.updateIronhornBoss, updateDreadreaper: bossController.updateDreadreaperBoss, updateVoltwarden: bossController.updateVoltwardenBoss, updateGravebloom: bossController.updateGravebloomBoss, updateAegisPrime: bossController.updateAegisPrimeBoss,
     updateProjectiles: playerCombat.updateProjectiles, updateRespawns: time => { if (!inTutorial()) updateRespawns(time); },
@@ -2062,6 +2070,7 @@ import {
     clearPlayerInput: playerInput.clear,
     resetGame: async () => {
       respawnMemory.clear();
+      bossFightMemory.clear();
       gameplayPauseReasons.clear();
       mapController.loadMap(TUTORIAL_FOREST_MAP_ID, PLAYER_SPAWN.x, PLAYER_SPAWN.y);
       playerController.reset(false, false);

@@ -73,6 +73,23 @@ function interpolatedMotionDeltas(refreshRate: number, frameCount: number) {
 }
 
 describe("game session frame scheduling", () => {
+  it.each([false, true])("freezes combat during a map handoff (starts this step: %s)", beginsDuringStep => {
+    vi.stubGlobal("document", { addEventListener: vi.fn() });
+    let ready = beginsDuringStep;
+    const updatePlayer = vi.fn(), updateEnemies = vi.fn(), updateProjectiles = vi.fn(), updatePortal = vi.fn(() => { ready = false; });
+    try {
+      const session = createGameSessionController({
+        getMapId: () => "test", cutsceneActive: () => false, worldCombatReady: () => ready,
+        capturePresentationState: vi.fn(), updateVisuals: vi.fn(), updateMessage: vi.fn(), updateHud: vi.fn(),
+        updatePlayer, updateEnemies, updateProjectiles, updatePortal, updateUpgradeBench: vi.fn(), isDueling: () => false,
+      } as any);
+      session.update(1 / 60);
+      expect(updatePlayer).toHaveBeenCalledTimes(beginsDuringStep ? 1 : 0);
+      expect(updatePortal).toHaveBeenCalledTimes(beginsDuringStep ? 1 : 0);
+      expect(updateEnemies).not.toHaveBeenCalled();
+      expect(updateProjectiles).not.toHaveBeenCalled();
+    } finally { vi.unstubAllGlobals(); }
+  });
   it("keeps another frame scheduled when drawing throws", () => {
     vi.stubGlobal("document", { hidden: false, addEventListener: vi.fn() });
     const schedule = vi.fn(); vi.stubGlobal("requestAnimationFrame", schedule);

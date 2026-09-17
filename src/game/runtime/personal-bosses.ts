@@ -1,11 +1,14 @@
 import { personalBossDefinition } from "../../../shared/personal-bosses";
 import type { RespawnMemory } from './respawn-memory';
+import type { BossFightMemory } from './boss-fight-memory';
 
 /** Local combat owns HP. Only the completed defeat is sent to the reward queue. */
 export function createPersonalBosses(options: {
   mapId: () => string; identity: () => string; alive: () => boolean; now: () => number;
   defeated: (mapId: string) => void;
   respawns?: RespawnMemory;
+  fights?: BossFightMemory;
+  ready?: () => boolean;
 }) {
   type State = { key: string; mapId: string; encounter: bigint; hp: number; maxHp: number; alive: boolean; respawnAtMs: number; respawnAtMicros: bigint };
   type Result = { encounter: bigint; totalDamage: number; createdAtMs: number; contributors: { identity: string; name: string; gender: 0; damage: number; percentage: number }[] };
@@ -15,6 +18,7 @@ export function createPersonalBosses(options: {
     if (owner !== options.identity()) { owner = options.identity(); states.clear(); results.clear(); activeMap = ""; }
     const mapId = options.mapId(), alive = options.alive();
     if (activeMap !== mapId || (wasAlive && !alive)) {
+      if (activeMap || (wasAlive && !alive)) options.fights?.clear();
       const old = states.get(activeMap);
       if (old?.alive) { old.hp = old.maxHp; old.encounter = ++encounter; }
       activeMap = mapId;
@@ -22,6 +26,7 @@ export function createPersonalBosses(options: {
     wasAlive = alive;
   }
   function state(mapId: string): State | null {
+    if (options.ready?.() === false) return null;
     refresh();
     if (mapId !== activeMap) return null;
     const definition = personalBossDefinition(mapId);
@@ -34,6 +39,8 @@ export function createPersonalBosses(options: {
         row.alive = false; row.hp = 0;
         row.respawnAtMs = options.now() + remaining;
         row.respawnAtMicros = BigInt(Math.round(row.respawnAtMs * 1000));
+      } else {
+        row.hp = options.fights?.restore(mapId, definition.hp) ?? row.hp;
       }
       // Only a handful of recently visited maps need local respawn clocks.
       if (states.size >= 8 && !states.has(mapId)) { const key = states.keys().next().value!; states.delete(key); results.delete(key); }
@@ -43,14 +50,21 @@ export function createPersonalBosses(options: {
   }
   return {
     state,
+    resetFight() {
+      const row = states.get(activeMap);
+      if (row?.alive) { row.hp = row.maxHp; row.encounter = ++encounter; }
+      options.fights?.clear();
+      wasAlive = options.alive();
+    },
     proceduralState: state,
-    result(mapId: string) { refresh(); return results.get(mapId) ?? null; },
+    result(mapId: string) { if (options.ready?.() === false) return null; refresh(); return results.get(mapId) ?? null; },
     hit(mapId: string, damage: number) {
       const current = state(mapId);
       if (!current?.alive || !options.alive() || !Number.isFinite(damage) || damage <= 0) return;
       const row = states.get(mapId)!;
       row.hp = Math.max(0, row.hp - damage);
-      if (row.hp > 0) return;
+      if (row.hp > 0) { options.fights?.remember(mapId, row.hp, row.maxHp); return; }
+      options.fights?.clear();
       row.alive = false;
       row.respawnAtMs = options.now() + personalBossDefinition(mapId)!.respawnSeconds * 1000;
       row.respawnAtMicros = BigInt(Math.round(row.respawnAtMs * 1000));

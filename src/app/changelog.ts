@@ -1,4 +1,8 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.731": [
+    "Unfinished boss fights now retain their remaining health through updates and reconnects on the same device.",
+    "Fixed combat continuing during map transfers, which could reject late kills and delay portal unlocks.",
+  ],
   "0.730": [
     "Improved iOS audio recovery after interruptions, locking, or switching apps.",
   ],
@@ -2007,6 +2011,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.731": "2026-09-17",
   "0.730": "2026-09-17",
   "0.729": "2026-09-17",
   "0.728": "2026-09-17",

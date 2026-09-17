@@ -124,6 +124,7 @@ type SessionDependencies = {
   syncGravebloom: () => void;
   syncAegisPrime: () => void;
   cutsceneActive: () => boolean;
+  worldCombatReady?: () => boolean;
   updateCutscene: (dt: number) => void;
   updatePlayer: (dt: number) => void;
   updateUpgradeBench: () => void;
@@ -200,11 +201,14 @@ export function createGameSessionController(dependencies: SessionDependencies) {
       return;
     }
 
+    if (dependencies.worldCombatReady?.() === false) return;
+
     dependencies.updatePlayer(dt);
     dependencies.updateUpgradeBench();
     if (!dependencies.isDueling()) {
       dependencies.updatePortal(dt);
-      if (dependencies.cutsceneActive()) return;
+      // A portal can start its asynchronous handoff during this very step.
+      if (dependencies.cutsceneActive() || dependencies.worldCombatReady?.() === false) return;
       dependencies.updateEnemies(dt);
       if (dependencies.getMapId() === dependencies.tutorialMapId) dependencies.updateDragon(dt);
       if (dependencies.getMapId() === dependencies.desertMapId) dependencies.updateSpider(dt);

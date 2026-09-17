@@ -222,7 +222,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
   }
 
   async function sendCombatBatch(request: EnemyLootRequest): Promise<boolean | "discard" | "throttled"> {
-    if (!dependencies.worldEntryReady() || dependencies.reducers.worldEntryBlocked() || resetPending) return false;
+    if (!dependencies.worldEntryReady() || !dependencies.hydrationReady() || dependencies.reducers.worldEntryBlocked() || resetPending) return false;
     // Validate a boss against the loadout actually used, not a stale empty slot.
     // Saving equipment never trusts client stat totals or clears pending kills.
     if (request.enemies.some(entry => entry.enemy === "boss") && pendingProgress

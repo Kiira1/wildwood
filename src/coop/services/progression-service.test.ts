@@ -89,7 +89,7 @@ function setup(prepareResetRoute?: () => () => Promise<void>) {
   const savePlayerProgress = vi.fn(async (): Promise<void> => {});
   const resetPlayerProgress = vi.fn(async (): Promise<void> => {});
   const claimDeveloperItemGift = vi.fn(async (): Promise<void> => {});
-  const entry = { ready: true, blocked: false };
+  const entry = { ready: true, blocked: false, hydrated: true };
   const destroyEquipment = vi.fn(async () => {});
   const connection = { reducers: { recordEnemyDefeats, savePlayerProgress, resetPlayerProgress, claimDeveloperItemGift, destroyEquipment } };
   const reducers = {
@@ -107,7 +107,7 @@ function setup(prepareResetRoute?: () => () => Promise<void>) {
     notify,
     localIdentity: () => identity,
     worldEntryReady: () => entry.ready,
-    hydrationReady: () => true,
+    hydrationReady: () => entry.hydrated,
     activeProfileIdentity: () => identity,
     completeAccountReturn: vi.fn(),
     reserveStoppedMotion: () => ({ sequence: 1, simulationTick: 1, motionEpoch: 1 }),
@@ -245,6 +245,16 @@ describe("local progression profile snapshots", () => {
 });
 
 describe("server-calculated defeat batches", () => {
+  it("retains boss rewards until the reconnect snapshot has hydrated", async () => {
+    const h = setup(); h.entry.hydrated = false;
+    h.service.api.recordRegularEnemyDefeat("tutorial_forest", "boss");
+    expect(await h.service.drainEnemyLoot()).toBe(false);
+    expect(h.recordEnemyDefeats).not.toHaveBeenCalled();
+    h.entry.hydrated = true;
+    expect(await h.service.drainEnemyLoot()).toBe(true);
+    expect(h.recordEnemyDefeats).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ mapId: "tutorial_forest", enemies: [{ enemy: "boss", count: 1 }] }));
+    h.service.dispose();
+  });
   it("acknowledges an equipped weapon before boss validation without clearing predicted rewards", async () => {
     const h = setup(); const base = { ...progress(), equippedRightHand: "" };
     const order: string[] = [];
