@@ -1,3 +1,4 @@
+import { createTestGuild } from "../../tests/helpers/guild-creation";
 import { describe, expect, it, vi } from "vitest";
 import { crystalFixture, identity, server } from "../../tests/helpers/crystal-hollows-fixture";
 import { Timestamp } from "../../tests/helpers/spacetime-memory-db";
@@ -24,7 +25,7 @@ function fixture() {
 describe("private social interactions", () => {
   it.each(["dm", "guild"])("records automatic %s filtering as private evidence", channel => {
     const f = fixture(); f.actor("1");
-    if (channel === "guild") f.run(server.createGuild, { name: "TEST" });
+    if (channel === "guild") createTestGuild(f, "TEST");
     f.send(channel, channel === "dm" ? "Player 2" : "", "send nudes");
     const message = [...f.db.socialMessage.iter()][0];
     expect([...f.db.moderationAction.iter()][0]).toMatchObject({ channel, messageId: message.id.toString(),
@@ -55,7 +56,7 @@ describe("private social interactions", () => {
     f.actor("1"); expect(f.visible()).toHaveLength(0); expect(() => f.send("dm", "Player 2")).toThrow("unavailable");
   });
   it("scopes guild invitations to leaders and invitees, then revokes chat on leaving", () => {
-    const f = fixture(); f.run(server.createGuild, { name: "Rose" });
+    const f = fixture(); createTestGuild(f, "Rose");
     f.run(server.guildInviteAction, { action: "invite", target: "Player 2", invitationId: 0n });
     f.actor("3"); expect(() => f.run(server.guildInviteAction, { action: "accept", target: "", invitationId: 1n })).toThrow("not yours");
     f.actor("2"); expect(f.snapshot().guildInvitations).toHaveLength(1);
@@ -71,7 +72,7 @@ describe("private social interactions", () => {
     for (let n = 0; n < 105; n++) f.send("dm", "Player 2", `Message ${n}`);
     expect(f.db.socialMessage.count()).toBe(105n);
     expect(f.visible()).toHaveLength(50); expect(f.visible()[0].message).toBe("Message 55");
-    f.run(server.createGuild, { name: "Rose" }); expect(() => f.send("guild", "", "Reply", 105n)).toThrow("conversation");
+    createTestGuild(f, "Rose"); expect(() => f.send("guild", "", "Reply", 105n)).toThrow("conversation");
   });
   it("erases quoted content on deletion and carries relationships/messages through linking", () => {
     const f = fixture(); f.friend(); f.actor("1"); f.send("dm", "Player 2", "Original");
@@ -83,7 +84,7 @@ describe("private social interactions", () => {
     f.actor("2"); expect(f.visible()).toHaveLength(0); expect(f.snapshot().friends).toHaveLength(0);
   });
   it("does not expose blocked authors through quoted guild replies", () => {
-    const f = fixture(); f.run(server.createGuild, { name: "Rose" });
+    const f = fixture(); createTestGuild(f, "Rose");
     f.actor("2"); f.run(server.joinGuild, { guildId: 1n });
     f.actor("3"); f.run(server.joinGuild, { guildId: 1n });
     f.actor("1"); f.send("guild", "", "Hidden original");

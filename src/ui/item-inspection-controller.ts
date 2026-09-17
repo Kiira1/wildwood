@@ -1,5 +1,5 @@
 import { appendItemTierLabel } from "./item-tier-label";
-import { itemArtMarkup, itemPresentation } from "../game/item-presentation";
+import { itemArtMarkup, itemInventoryRotation, itemPresentation } from "../game/item-presentation";
 import {
   itemDefinition,
   itemDisplayName,
@@ -61,13 +61,14 @@ export function createItemInspectionController(elements: ItemInspectionElements)
       returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     }
 
-    elements.title.textContent = itemInspectionButtonLabel(itemDisplayName(item.id, level));
+    elements.title.textContent = itemInspectionButtonLabel(itemDisplayName(item.id));
     const icon = document.createElement("div");
     icon.className = "item-inspection-icon";
     const source = itemPresentation(item.id)?.inventory.source;
     if (source) {
       const image = document.createElement("img");
       image.src = source;
+      image.style.setProperty("--item-art-rotation", `${itemInventoryRotation(item.id)}deg`);
       image.alt = "";
       image.draggable = false;
       icon.append(image);
@@ -78,7 +79,16 @@ export function createItemInspectionController(elements: ItemInspectionElements)
     const preview = document.createElement("div");
     preview.className = "item-inspection-preview";
     preview.append(elements.title);
-    appendItemTierLabel(preview, item.id);
+    const metadata = document.createElement("div");
+    metadata.className = "item-inspection-metadata";
+    appendItemTierLabel(metadata, item.id);
+    if (level > 0) {
+      const upgrade = document.createElement("span");
+      upgrade.className = "inventory-upgrade-level";
+      upgrade.textContent = `+${level}`;
+      metadata.append(upgrade);
+    }
+    if (metadata.childElementCount) preview.append(metadata);
     preview.append(icon);
 
     const copy = document.createElement("div");
@@ -89,15 +99,19 @@ export function createItemInspectionController(elements: ItemInspectionElements)
       context.textContent = request.context;
       copy.append(context);
     }
-    const description = document.createElement("p");
-    description.textContent = request.description ?? item.description;
-    copy.append(description);
+    if (request.description) {
+      const description = document.createElement("p");
+      description.textContent = request.description;
+      copy.append(description);
+    }
 
     const stats = document.createElement("div");
     stats.className = "item-inspection-stats";
     for (const stat of itemStats(item.id, level)) {
       const value = document.createElement("span");
-      value.textContent = stat;
+      value.textContent = itemInspectionButtonLabel(stat);
+      if (/^DAMAGE\b/.test(stat)) value.dataset.statKind = "damage";
+      if (/^MAX HEALTH\b/.test(stat)) value.dataset.statKind = "health";
       if (/^REGEN\b/.test(stat)) value.dataset.statKind = "regen";
       if (/^ARMOR\b/.test(stat)) value.dataset.statKind = "armor";
       stats.append(value);

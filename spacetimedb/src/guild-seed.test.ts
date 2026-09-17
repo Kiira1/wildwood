@@ -1,3 +1,4 @@
+import { createTestGuild } from "../../tests/helpers/guild-creation";
 import { expect, it, vi } from "vitest";
 import { Identity } from "../../tests/helpers/spacetime-memory-db";
 import { crystalFixture, server } from "../../tests/helpers/crystal-hollows-fixture";
@@ -17,7 +18,7 @@ function fixture(count = 24) {
 it("only lets the operator populate temp, selects twenty lowest unassigned players, and is idempotent", () => {
   const f = fixture();
   expect(() => f.run(server.seedTemporaryGuild)).toThrow("operator");
-  f.run(server.createGuild, { name: "Keep" });
+  createTestGuild(f, "Keep");
   const first = new Identity("1".padStart(64, "0"));
   // The lowest-power entry belongs elsewhere and must not be moved.
   f.seed("guildMember", { identity: first, guildId: 1n, name: "Low 1", joinedAt: 0n, eligibleAt: 0n });

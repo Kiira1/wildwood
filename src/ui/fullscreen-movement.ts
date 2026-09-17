@@ -6,6 +6,7 @@ export function createFullscreenMovementGate(setVisible: (visible: boolean) => v
   let wanted = false, suspended = false, open = false, applied: boolean | undefined;
   let timer: ReturnType<typeof setTimeout> | undefined;
   let observer: MutationObserver | undefined;
+  let watchedDocument: Document | undefined;
   function apply() {
     const visible = wanted && !suspended;
     if (visible === applied) return;
@@ -32,15 +33,21 @@ export function createFullscreenMovementGate(setVisible: (visible: boolean) => v
     // window attributes, never chat rows or the game's animation loop.
     watchWindows(doc: Document) {
       observer?.disconnect();
+      watchedDocument?.documentElement.classList.remove("has-fullscreen-window");
+      watchedDocument = doc;
       const panels = FULLSCREEN_IDS.map(id => doc.getElementById(id)).filter((node): node is HTMLElement => Boolean(node));
       const chat = doc.getElementById("chatPanel");
-      const refresh = () => setFullscreen(panels.some(panel => panel.tagName === "DIALOG"
-        ? panel.hasAttribute("open") : !panel.hidden) || Boolean(chat && !chat.hidden && chat.classList.contains("is-large")));
+      const refresh = () => {
+        const fullscreen = panels.some(panel => panel.tagName === "DIALOG"
+          ? panel.hasAttribute("open") : !panel.hidden) || Boolean(chat && !chat.hidden && chat.classList.contains("is-large"));
+        doc.documentElement.classList.toggle("has-fullscreen-window", fullscreen);
+        setFullscreen(fullscreen);
+      };
       observer = new doc.defaultView!.MutationObserver(refresh);
       for (const panel of panels) observer.observe(panel, { attributes: true, attributeFilter: ["hidden", "open"] });
       if (chat) observer.observe(chat, { attributes: true, attributeFilter: ["hidden", "class"] });
       refresh();
     },
-    dispose() { clearTimeout(timer); observer?.disconnect(); },
+    dispose() { clearTimeout(timer); observer?.disconnect(); watchedDocument?.documentElement.classList.remove("has-fullscreen-window"); },
   };
 }

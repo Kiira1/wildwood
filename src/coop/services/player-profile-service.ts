@@ -1,3 +1,4 @@
+import { isDeveloperIdentity } from "../../../shared/developer-identity";
 import { withRequestDeadline } from "./request-deadline";
 import { unsubscribeIfActive, type ActiveSubscription } from "./subscription-handoff";
 import type { LeaderboardStat, LeaderboardPage } from "../../../shared/leaderboard-window";
@@ -77,6 +78,7 @@ export function createPlayerProfileService(dependencies: PlayerProfileServiceDep
   let activeSubscription: ActiveSubscription | null = null;
   let profileGeneration = 0;
   let cancelActiveLoad: (() => void) | null = null;
+  let detachPresence: (() => void) | null = null;
 
   function activePlayerMap(identity: string) {
     const nearbyMaps = { get: (key: string) => dependencies.nearbyMapFor(key) } as ReadonlyMap<string, string>;
@@ -107,6 +109,8 @@ export function createPlayerProfileService(dependencies: PlayerProfileServiceDep
 
   function releasePlayerProfile() {
     profileGeneration++;
+    detachPresence?.();
+    detachPresence = null;
     unsubscribeIfActive(activeSubscription);
     cancelActiveLoad?.();
     cancelActiveLoad = null;
@@ -132,6 +136,31 @@ export function createPlayerProfileService(dependencies: PlayerProfileServiceDep
     releasePlayerProfile();
     activeIdentity = identity;
     const generation = profileGeneration;
+    // Eye/idle state suppresses movement, not account presence. Watch only the
+    // profile already being inspected, on the root connection, without polling.
+    const current = () => generation === profileGeneration && dependencies.connection() === connection && activeIdentity === identity;
+    const rememberMap = (mapId: string) => {
+      if (!current() || profilePlayerMaps.get(identity) === mapId) return;
+      profilePlayerMaps.set(identity, mapId);
+      dependencies.notify();
+    };
+    const observe: Parameters<typeof connection.db.player.onInsert>[0] = (_ctx, row) => {
+      if (row.identity.toHexString() === identity) rememberMap(
+        isDeveloperIdentity(identity) && !row.isVisible ? "" : row.mapId,
+      );
+    };
+    const update: Parameters<typeof connection.db.player.onUpdate>[0] = (ctx, _old, row) => observe(ctx, row);
+    const remove: Parameters<typeof connection.db.player.onDelete>[0] = (_ctx, row) => {
+      if (row.identity.toHexString() === identity) rememberMap("");
+    };
+    connection.db.player.onInsert(observe);
+    connection.db.player.onUpdate(update);
+    connection.db.player.onDelete(remove);
+    detachPresence = () => {
+      connection.db.player.removeOnInsert(observe);
+      connection.db.player.removeOnUpdate(update);
+      connection.db.player.removeOnDelete(remove);
+    };
 
     let settled = false;
     const request = new Promise<PlayerProfileData | null>((resolve) => {
@@ -176,10 +205,10 @@ export function createPlayerProfileService(dependencies: PlayerProfileServiceDep
           for (const row of connection.db.playerAccountStatus.iter()) {
             if (row.identity.toHexString() === identity) dependencies.directory.tables.upsertAccountStatus(row);
           }
+          profilePlayerMaps.set(identity, "");
           for (const row of connection.db.player.iter()) {
             if (row.identity.toHexString() !== identity) continue;
-            if (row.isVisible) profilePlayerMaps.set(identity, row.mapId);
-            else profilePlayerMaps.delete(identity);
+            profilePlayerMaps.set(identity, isDeveloperIdentity(identity) && !row.isVisible ? "" : row.mapId);
           }
           finish(cachedPlayerProfile(identity));
         })

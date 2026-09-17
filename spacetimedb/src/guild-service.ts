@@ -128,6 +128,7 @@ function validateFighter(fighter: DuelFighter) {
  * current members from persisted stats; clients cannot submit fighters/results. */
 export function createGuildService(deps: { fighterFor(ctx: Ctx, identity: Identity): Omit<GuildFighter, "identity">;
   profileFor?: (ctx: Ctx, identity: Identity) => { displayName: string; profileIcon: number } | undefined;
+  presenceFor?: (ctx: Ctx, identity: Identity) => { online: boolean; lastSeenAtMs: number };
   announceBattle?: (ctx: Ctx, report: GuildSnapshot["battles"][number]) => void }) {
   function team(ctx: Ctx, guildId: bigint): GuildFighter[] {
     const roster = members(ctx, guildId).sort((a, b) => key(a.identity).localeCompare(key(b.identity)));
@@ -249,7 +250,8 @@ export function createGuildService(deps: { fighterFor(ctx: Ctx, identity: Identi
         members: roster.map(row => {
           const profile = deps.profileFor?.(ctx, row.identity);
           return { identity: key(row.identity), name: profile?.displayName ?? row.name,
-            profileIcon: profile?.profileIcon ?? 0, eligibleAt: String(row.eligibleAt) };
+            profileIcon: profile?.profileIcon ?? 0, eligibleAt: String(row.eligibleAt),
+            ...deps.presenceFor?.(ctx, row.identity) };
         }) };
     },
     snapshot(ctx: Ctx, afterId = 0n, signedIn = true): GuildSnapshot {
@@ -278,7 +280,8 @@ export function createGuildService(deps: { fighterFor(ctx: Ctx, identity: Identi
           members: roster.map(row => {
             const profile = deps.profileFor?.(ctx, row.identity);
             return { identity: key(row.identity), name: profile?.displayName ?? row.name,
-              profileIcon: profile?.profileIcon ?? 0, eligibleAt: String(row.eligibleAt) };
+              profileIcon: profile?.profileIcon ?? 0, eligibleAt: String(row.eligibleAt),
+              ...deps.presenceFor?.(ctx, row.identity) };
           }) } : null,
         directory, nextPage, standings: cache?.week === week ? JSON.parse(cache.entries) : [],
         battles: guild ? [...ctx.db.guildBattleReport.guildId.filter(guild.id)]

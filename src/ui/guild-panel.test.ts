@@ -29,19 +29,42 @@ function setup(snapshot = fixture(), socialApi?: SocialApi) {
 async function settled() { for (let i = 0; i < 10; i++) await Promise.resolve(); }
 
 describe("guild panel", () => {
+  it("shows presence in member rows while preserving officer titles", async () => {
+    const g = fixture();
+    g.serverNow = String(10 * 86_400_000_000);
+    g.guild!.members[1].online = true;
+    g.guild!.members[2].lastSeenAtMs = 10 * 86_400_000 - 6 * 3_600_000;
+    g.guild!.members[3].lastSeenAtMs = 7 * 86_400_000;
+    const h = setup(g); h.panel.open(); await settled();
+    const rows = h.document.querySelectorAll('.guild-member-profile');
+    expect(h.document.querySelector(".guild-officer--president")!.textContent).toContain('President');
+    expect(rows[1].textContent).toContain('Online');
+    expect(rows[1].querySelector('.guild-presence--online')).not.toBeNull();
+    expect(rows[2].textContent).toContain('Last seen 6 hours ago');
+    expect(rows[3].textContent).toContain('Last seen 3 days ago');
+    h.click("View B's profile");
+    expect(h.onOpenPlayer).toHaveBeenCalledWith('b', 'B');
+    expect(h.document.getElementById('guildOverlay')!.hidden).toBe(false);
+    const profile = h.document.createElement('div'); profile.id = 'playerProfile';
+    h.document.body.append(profile);
+    const event = new h.document.defaultView!.Event('keydown');
+    Object.defineProperty(event, 'key', { value: 'Escape' });
+    h.document.dispatchEvent(event);
+    expect(h.document.getElementById('guildOverlay')!.hidden).toBe(false);
+  });
   it("lets the President appoint and remove a Vice President", async () => {
     const g = fixture(), h = setup(g); h.panel.open(); await settled();
     expect(h.document.body.textContent).toContain("President");
-    h.click("Members"); h.click("Manage B"); h.click("Make Vice President"); h.click("Appoint"); await settled();
+    h.click("Manage B"); h.click("Make Vice President"); h.click("Appoint"); await settled();
     expect(h.api.guildAction).toHaveBeenCalledWith({ kind: "vicePresident", identity: "b", enabled: true });
     g.guild!.vicePresident = "b"; h.panel.open(); await settled();
-    h.click("Members"); h.click("Manage B"); h.click("Remove Vice President"); h.click("Remove role"); await settled();
+    h.click("Manage B"); h.click("Remove Vice President"); h.click("Remove role"); await settled();
     expect(h.api.guildAction).toHaveBeenCalledWith({ kind: "vicePresident", identity: "b", enabled: false });
   });
   it("gives the Vice President battle controls without membership management", async () => {
     const g = fixture(); g.identity = "b"; g.guild!.vicePresident = "b";
     const h = setup(g); h.panel.open(); await settled();
-    expect(h.document.body.textContent).toContain("You’re the Vice President");
+    expect(h.document.querySelector(".guild-officer--vice")!.textContent).toContain("Vice President · You");
     expect(h.find("Manage C")).toBeUndefined();
     h.click("Battles"); h.click("Challenge"); h.click("Start battle"); await settled();
     expect(h.api.guildAction).toHaveBeenCalledWith({ kind: "challenge", opponentGuildId: "2" });
@@ -62,7 +85,7 @@ describe("guild panel", () => {
   it("uses Back to cancel a pending destructive action", async () => {
     const h = setup(); h.panel.open(); await settled();
     expect(h.find("Manage A")).toBeUndefined();
-    h.click("Members"); h.click("Manage B"); h.click("Remove member"); h.click("Back");
+    h.click("Manage B"); h.click("Remove member"); h.click("Back");
     expect(h.panel.isOpen()).toBe(true);
     expect(h.document.querySelector(".guild-confirm")).toBeNull();
     expect(h.api.guildAction).not.toHaveBeenCalled();
@@ -101,7 +124,7 @@ describe("guild panel", () => {
   });
   it("keeps navigation focused and reuses the loaded snapshot across sections", async () => {
     const h = setup(); h.panel.open(); await settled();
-    expect([...h.document.querySelectorAll(".guild-tabs button")].map(node => node.textContent)).toEqual(["My guild", "Battles", "Rankings"]);
+    expect([...h.document.querySelectorAll(".guild-tabs button")].map(node => node.textContent)).toEqual(["My Guild", "Battles", "Rankings"]);
     expect(h.document.querySelectorAll(".guild-champion")).toHaveLength(0);
     expect(h.find("Make President")).toBeUndefined();
     expect(h.find("Remove member")).toBeUndefined();
@@ -109,7 +132,7 @@ describe("guild panel", () => {
     expect(h.api.loadGuild).toHaveBeenCalledTimes(1);
   });
   it("reveals management only for the selected member and confirms leadership changes", async () => {
-    const h = setup(); h.panel.open(); await settled(); h.click("Members"); h.click("Manage B");
+    const h = setup(); h.panel.open(); await settled(); h.click("Manage B");
     h.click("Make President");
     expect(h.api.guildAction).not.toHaveBeenCalled();
     expect(h.document.body.textContent).toContain("Make B President?");
@@ -118,7 +141,7 @@ describe("guild panel", () => {
     expect(h.api.guildAction).toHaveBeenCalledExactlyOnceWith({ kind: "transfer", identity: "b" });
   });
   it("has no champion selection and includes every member in the challenge", async () => {
-    const h = setup(); h.panel.open(); await settled(); h.click("Members"); h.click("Manage D");
+    const h = setup(); h.panel.open(); await settled(); h.click("Manage D");
     expect(h.find("Set as champion")).toBeUndefined(); expect(h.find("Update my build")).toBeUndefined();
     h.click("Battles"); h.click("Challenge");
     expect(h.document.body.textContent).toContain("All 4 of your members will fight their 5 members");
@@ -241,7 +264,7 @@ describe("guild panel", () => {
   it("recovers after a rejected action without discarding the existing roster", async () => {
     const h = setup(); h.panel.open(); await settled();
     h.api.guildAction.mockRejectedValueOnce(new Error("Connection interrupted"));
-    h.click("Members"); h.click("Manage B"); h.click("Remove member"); h.click("Remove member"); await settled();
+    h.click("Manage B"); h.click("Remove member"); h.click("Remove member"); await settled();
     expect(h.document.querySelector('[role="alert"]')?.textContent).toContain("Connection interrupted");
     expect(h.document.querySelectorAll(".guild-champion")).toHaveLength(0);
     expect(h.find("Refresh")?.disabled).toBe(false);
@@ -249,7 +272,7 @@ describe("guild panel", () => {
   it("does not offer stale actions when a saved change cannot be refreshed", async () => {
     const h = setup(); h.panel.open(); await settled();
     h.api.loadGuild.mockRejectedValueOnce(new Error("Timeout"));
-    h.click("Members"); h.click("Manage B"); h.click("Remove member"); h.click("Remove member"); await settled();
+    h.click("Manage B"); h.click("Remove member"); h.click("Remove member"); await settled();
     expect(h.document.querySelector('[role="alert"]')?.textContent).toContain("Your change was saved");
     expect(h.find("Manage B")).toBeUndefined();
     h.click("Refresh"); await settled();
@@ -286,7 +309,6 @@ it("paints distinct roster portraits and opens the selected profile without trig
   g.guild!.members[0].profileIcon = 5;
   g.guild!.members[1].profileIcon = 82;
   const h = setup(g); h.panel.open(); await settled();
-  h.click("Members");
   expect(h.find("View A's profile")?.querySelector(".guild-avatar")?.getAttribute("data-profile-icon")).toBe("5");
   expect(h.find("View B's profile")?.querySelector(".guild-avatar")?.getAttribute("data-profile-icon")).toBe("82");
   h.click("View B's profile");
@@ -296,29 +318,27 @@ it("paints distinct roster portraits and opens the selected profile without trig
   expect(h.api.guildAction).not.toHaveBeenCalled();
 });
 
-it("keeps your own guild fullscreen before leadership and members, with Back reusing the snapshot", async () => {
+it("shows the guild overview and roster together, with Back closing the window", async () => {
   const g = fixture(); g.guild!.vicePresident = "b";
   const h = setup(g); h.panel.open(); await settled();
   expect(h.document.querySelector("#guildOverlay .guild-window--overview")).toBeNull();
-  expect(h.document.querySelector(".guild-leadership")).toBeNull();
-  h.click("Members");
-  expect(h.document.querySelector("#guildTitle")?.textContent).toBe("Members");
+  expect(h.document.querySelector(".guild-stats")?.textContent).toContain("Weekly points");
+  expect(h.find("Members")).toBeUndefined();
+  expect(h.document.querySelectorAll(".guild-officer--president")).toHaveLength(1);
+  expect(h.document.querySelector("#guildTitle")?.textContent).toBe("Guilds");
   expect(h.document.querySelector(".guild-officer--president")?.textContent).toContain("A");
   expect(h.document.querySelector(".guild-officer--vice")?.textContent).toContain("B");
-  expect(h.document.querySelectorAll(".guild-office-vacancy--future")).toHaveLength(3);
+  expect(h.document.querySelectorAll(".guild-office-vacancy--future")).toHaveLength(2);
   expect(h.document.querySelectorAll(".guild-list .guild-member-profile")).toHaveLength(2);
   h.click("View B's profile");
   expect(h.onOpenPlayer).toHaveBeenCalledWith("b", "B");
-  h.click("Back");
-  expect(h.panel.isOpen()).toBe(true);
-  expect(h.document.querySelector("#guildOverlay .guild-window--overview")).toBeNull();
   expect(h.api.loadGuild).toHaveBeenCalledTimes(1);
   h.click("Back");
   expect(h.panel.isOpen()).toBe(false);
 });
 
 it("shows a vacant Vice President slot and no imaginary role actions", async () => {
-  const h = setup(); h.panel.open(); await settled(); h.click("Members");
+  const h = setup(); h.panel.open(); await settled();
   expect(h.document.querySelector(".guild-office-vacancy")?.textContent).toContain("Vice PresidentVacant");
   expect(h.document.querySelectorAll(".guild-office-vacancy button")).toHaveLength(0);
 });

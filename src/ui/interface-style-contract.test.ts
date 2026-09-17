@@ -136,9 +136,9 @@ describe("functional stylesheet contracts (not visual QA)", () => {
     expect(declarations(".player-profile-scroll")["scrollbar-width"]).toBe("none");
   });
 
-  it("allows settings and bag content to scroll independently", () => {
+  it("keeps settings and the whole inventory body scrollable", () => {
     expect(declarations(".settings-panel > .settings-content")["overflow-y"]).toBe("auto");
-    expect(declarations(".inventory-items")["overflow-y"]).toBe("auto");
-    expect(declarations(".inventory-items")["touch-action"]).toBe("pan-y");
+    expect(declarations(".inventory-scroll")["overflow-y"]).toBe("auto");
+    expect(declarations(".inventory-scroll")["touch-action"]).toBe("pan-y");
   });
 });

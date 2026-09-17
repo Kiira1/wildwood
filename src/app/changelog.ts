@@ -1,4 +1,12 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.725": [
+    "Refreshed inventory with filters, Equip best, tier sorting, clearer equipment previews, and 20 base bag slots.",
+    "Updated guild layouts, emblems, leadership, member portraits, and online status. Creating a guild now requires 1 billion power.",
+    "Guild replay characters retain their normal size on mobile, with the battlefield spread across the available screen height.",
+    "Polished leaderboard text, tabs, and spacing. Fullscreen windows now hide the bottom toolbar.",
+    "Portal cutscenes wait for the server-confirmed unlock, and boss reward syncing saves equipment changes before validating a defeat.",
+    "Gem gift messages no longer pause autofarm. Fixed manual autofarm targeting, the self minimap marker, and duels against players on older versions.",
+  ],
   "0.724": [
     "Tap inventory items to inspect, equip, or unequip. Drag and tap-to-slot controls have been removed.",
     "Equipment shows its source-map tier above the sprite and a green outlined upgrade number without a background.",
@@ -1982,6 +1990,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.725": "2026-09-17",
   "0.718": "2026-09-16",
   "0.717": "2026-09-16",
   "0.716": "2026-09-16",

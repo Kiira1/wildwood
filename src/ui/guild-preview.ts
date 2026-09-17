@@ -1,3 +1,5 @@
+import { createGuildEmblem } from './guild-emblems';
+import { guildMemberPresence } from './guild-presence';
 import { GUILD_MEMBER_LIMIT, type GuildPreview } from '../../shared/guilds';
 import { applyProfileIcon } from '../app/profile-icons';
 
@@ -28,8 +30,8 @@ export function createGuildPreview(options: {
     const button = node('button', '', 'guild-preview-president guild-member-profile');
     button.setAttribute('aria-label', `View ${member.name}'s profile`);
     const icon = node('span', '', 'guild-avatar'); applyProfileIcon(icon, member.profileIcon ?? 0);
-    const text = node('span', '', 'guild-row-copy'); text.append(node('strong', member.name), node('span', role));
-    button.append(icon, text); button.addEventListener('click', () => { close(); options.openPlayer(member.identity, member.name); });
+    const text = node('span', '', 'guild-row-copy'); text.append(node('strong', member.name), node('span', role || guildMemberPresence(member, Date.now()), role ? '' : member.online ? 'guild-presence--online' : 'guild-presence--offline'));
+    button.append(icon, text); button.addEventListener('click', () => { options.openPlayer(member.identity, member.name); });
     return button;
   }
   async function open(id: string) {
@@ -41,21 +43,21 @@ export function createGuildPreview(options: {
       if (request !== revision || root.hidden) return;
       body.textContent = ''; body.removeAttribute('role');
       const identity = node('div', '', 'guild-identity guild-preview-identity');
-      identity.append(node('span', guild.name.slice(0, 2).toUpperCase(), 'guild-mark'), node('h3', guild.name)); body.append(identity);
+      identity.append(createGuildEmblem(doc, guild.name), node('h3', guild.name)); body.append(identity);
       body.append(node('p', `${guild.members.length}/${GUILD_MEMBER_LIMIT} members · ${guild.score} weekly points`));
       for (const [role, identity] of [['President', guild.leader], ['Vice President', guild.vicePresident]]) {
         const member = guild.members.find(row => row.identity === identity);
         if (member) body.append(profile(member, role!));
       }
       const members = node('details', '', 'guild-disclosure'); members.append(node('summary', 'Members'));
-      for (const member of guild.members.filter(row => row.identity !== guild.leader && row.identity !== guild.vicePresident)) members.append(profile(member, 'Member'));
+      for (const member of guild.members.filter(row => row.identity !== guild.leader && row.identity !== guild.vicePresident)) members.append(profile(member, ''));
       body.append(members);
     } catch (error) {
       if (request === revision && !root.hidden) body.textContent = error instanceof Error ? error.message : 'Could not load guild.';
     }
   }
   const onKey = (event: KeyboardEvent) => {
-    if (root.hidden) return;
+    if (root.hidden || doc.querySelector("#playerProfile:not([hidden])")) return;
     event.stopImmediatePropagation();
     if (event.key === 'Escape') { event.preventDefault(); close(); }
     if (event.key === 'Tab') {

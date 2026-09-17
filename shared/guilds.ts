@@ -3,6 +3,7 @@ import { simulateGuildBattle, type GuildBattleResult } from "./guild-combat";
 export type { GuildFighter } from "./guild-combat";
 
 export const GUILD_MEMBER_LIMIT = 20;
+export const GUILD_CREATION_MIN_POWER = 1_000_000_000;
 export const GUILD_DAILY_ATTACKS = 3;
 export const GUILD_DAY_MICROS = 86_400_000_000n;
 export const GUILD_RANKING_LIMIT = 50;
@@ -23,7 +24,7 @@ export type GuildPreview = Pick<NonNullable<GuildSnapshot['guild']>, 'id' | 'nam
 export type GuildSnapshot = {
   identity: string; serverNow: string; week: number; nextWeekAt: string; joinAfter: string; signedIn: boolean;
   guild: null | { id: string; name: string; leader: string; vicePresident?: string | null; attacksRemaining: number; score: number;
-    members: { identity: string; name: string; profileIcon?: number; eligibleAt: string }[] };
+    members: { identity: string; name: string; profileIcon?: number; online?: boolean; lastSeenAtMs?: number; eligibleAt: string }[] };
   directory: { id: string; name: string; members: number; challengedToday: boolean }[]; nextPage: string | null;
   standings: GuildStanding[];
   battles: GuildReport[];

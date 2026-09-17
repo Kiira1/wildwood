@@ -42,13 +42,16 @@ it("observes overlapping windows, full chat, and native dialog open state", asyn
   inventory.hidden = false;
   await Promise.resolve(); vi.advanceTimersByTime(700);
   expect(apply).toHaveBeenLastCalledWith(false);
+  expect(document.documentElement.classList.contains("has-fullscreen-window")).toBe(true);
   shop.setAttribute("open", ""); inventory.hidden = true;
   await Promise.resolve();
   expect(apply).toHaveBeenCalledTimes(2);
+  expect(document.documentElement.classList.contains("has-fullscreen-window")).toBe(true);
   shop.removeAttribute("open"); chat.classList.add("is-large");
   await Promise.resolve();
   expect(apply).toHaveBeenCalledTimes(2);
   chat.classList.remove("is-large"); await Promise.resolve();
   expect(apply).toHaveBeenLastCalledWith(true);
+  expect(document.documentElement.classList.contains("has-fullscreen-window")).toBe(false);
   gate.dispose();
 });

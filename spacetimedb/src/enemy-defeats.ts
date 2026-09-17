@@ -76,6 +76,11 @@ export function acceptEnemyDefeats(ctx: BossRewardContext, batch: { streamId: st
       // rolling per-map window rejects valid boundary kills and delayed saves.
       acceptedCount = limits ? Math.max(0, Math.min(entry.count, Math.floor(tokens + 1e-6),
         Math.floor(credit / limits.cycleSeconds + 1e-9))) : 0;
+      if (acceptedCount < entry.count) console.warn("Boss defeat validation", JSON.stringify({
+        identity: ctx.sender.toHexString(), mapId: batch.mapId, requested: entry.count, accepted: acceptedCount,
+        hp: boss.hp, dps: combat.dps, attackInterval: combat.attackInterval, creditSeconds: credit,
+        cycleSeconds: limits?.cycleSeconds ?? null,
+      }));
       const nextClock = { key: timeKey, identity: ctx.sender,
         tokens: Math.max(0, credit - acceptedCount * (limits?.cycleSeconds ?? 0)), updatedAtMicros: now };
       if (clock) ctx.db.enemyDefeatBudget.key.update(nextClock); else ctx.db.enemyDefeatBudget.insert(nextClock);

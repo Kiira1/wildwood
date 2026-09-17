@@ -148,3 +148,14 @@ it("ignores the retired 20-boss cap while enforcing earned DPS time", () => {
   f.at(100); f.claim(); expect(f.kills()).toBe(1n);
   expect(f.db.bossDefeatWindow.identity.find(f.ctx.sender).acceptedAtMicros).toHaveLength(20);
 });
+
+it("accepts Mal's starter-stone dragon defeat using saved guest equipment", () => {
+  const f = fixture();
+  f.patch("playerProgress", { damage: 299.91003, maxHp: 514.75, armor: 16.800001,
+    regen: 46.600002, attackRate: 0.3809524, projectileCount: 1,
+    inventoryJson: '["basic_paper_hat","starter_stone","trailblazer_boots","wooden_armor","forest_cap"]',
+    equippedRightHand: "starter_stone", equippedLeftHand: "", equippedHead: "forest_cap", equippedChest: "" });
+  f.seed("playerResearch", { identity: f.ctx.sender, warcraft: 5 });
+  f.begin(); f.at(300); f.claim();
+  expect(f.db.playerProgress.identity.find(f.ctx.sender).desertUnlocked).toBe(true);
+});

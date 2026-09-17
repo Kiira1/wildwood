@@ -24,22 +24,25 @@ export type LeaderboardControllerHooks = {
   localIdentity: () => string;
   isDeveloper: (identity: string) => boolean;
   paintProfileIcon: (canvas: HTMLCanvasElement, identity: string) => void;
+  podiumAssetsReady?: () => boolean;
   drawPodiumCharacter: (canvas: HTMLCanvasElement, entry: LeaderboardEntry, rank: 1 | 2 | 3) => void;
   openProfile: (identity: string, name: string) => void;
   beforeOpen: () => void;
 };
 
 export function createLeaderboardController(elements: LeaderboardControllerElements, hooks: LeaderboardControllerHooks) {
+  const scroller = elements.rows.closest<HTMLElement>(".leaderboard-scroll") ?? elements.rows;
   let stat: LeaderboardStat = "power", requestGeneration = 0, snapshotIdentity = "", error = "";
   let loading = false, snapshot: Window | undefined, lastScrollTop = 0;
   const snapshots = new Map<LeaderboardStat, Window>();
   let podiumPlayers: RenderedLeaderboardPodiumPlayer[] = [], nameTagRevision = -1;
+  let podiumDirty = true;
   const actions = {
     isDeveloper: hooks.isDeveloper, paintProfileIcon: hooks.paintProfileIcon,
     openProfile(identity: string, name: string) { hooks.openProfile(identity, name); },
   };
   function anchor() {
-    const top = elements.rows.getBoundingClientRect().top;
+    const top = scroller.getBoundingClientRect().top;
     const row = [...elements.rows.querySelectorAll<HTMLElement>(".leaderboard-row")].find(row => row.getBoundingClientRect().bottom > top);
     return row ? { identity: row.dataset.identity, rank: row.dataset.rank, top: row.getBoundingClientRect().top } : undefined;
   }
@@ -47,17 +50,17 @@ export function createLeaderboardController(elements: LeaderboardControllerEleme
     if (saved) {
       const rows = [...elements.rows.querySelectorAll<HTMLElement>(".leaderboard-row")];
       const row = rows.find(row => row.dataset.identity === saved.identity) ?? rows.find(row => row.dataset.rank === saved.rank);
-      if (row) elements.rows.scrollTop += row.getBoundingClientRect().top - saved.top;
+      if (row) scroller.scrollTop += row.getBoundingClientRect().top - saved.top;
     }
-    lastScrollTop = elements.rows.scrollTop;
+    lastScrollTop = scroller.scrollTop;
   }
   function centerPlayer() {
     const row = elements.rows.querySelector<HTMLElement>(".is-local");
     if (row) {
-      const list = elements.rows.getBoundingClientRect(), bounds = row.getBoundingClientRect();
-      elements.rows.scrollTop += bounds.top - list.top - (elements.rows.clientHeight - bounds.height) / 2;
-    } else elements.rows.scrollTop = 0;
-    lastScrollTop = elements.rows.scrollTop;
+      const list = scroller.getBoundingClientRect(), bounds = row.getBoundingClientRect();
+      scroller.scrollTop += bounds.top - list.top - (scroller.clientHeight - bounds.height) / 2;
+    } else scroller.scrollTop = 0;
+    lastScrollTop = scroller.scrollTop;
   }
   function edge(direction: Direction) {
     const item = document.createElement("li");
@@ -98,13 +101,16 @@ export function createLeaderboardController(elements: LeaderboardControllerEleme
     elements.loading.hidden = true;
     elements.empty.textContent = error || "NO PLAYERS YET";
     podiumPlayers = renderLeaderboardPodium(elements.podium, stat, snapshot?.podium ?? [], actions);
-    for (const player of podiumPlayers) hooks.drawPodiumCharacter(player.canvas, player.entry, player.rank);
+    podiumDirty = true;
+    drawPodium();
     renderRows(center);
   }
   function drawPodium() {
     if (elements.overlay.hidden) return;
     if (snapshotIdentity !== hooks.localIdentity()) { close(); return; }
-    if (nameTagRevision !== playerNameTagsRevision()) render();
+    if (nameTagRevision !== playerNameTagsRevision()) { render(); return; }
+    if (!podiumDirty || hooks.podiumAssetsReady?.() === false) return;
+    podiumDirty = false;
     for (const player of podiumPlayers) hooks.drawPodiumCharacter(player.canvas, player.entry, player.rank);
   }
   async function select(requested: string) {
@@ -163,10 +169,10 @@ export function createLeaderboardController(elements: LeaderboardControllerEleme
     }
   }
   function onScroll() {
-    const top = elements.rows.scrollTop, delta = top - lastScrollTop;
+    const top = scroller.scrollTop, delta = top - lastScrollTop;
     lastScrollTop = top;
     if (delta < 0 && top < EDGE_DISTANCE) void loadMore("above");
-    else if (delta > 0 && elements.rows.scrollHeight - elements.rows.clientHeight - top < EDGE_DISTANCE) void loadMore("below");
+    else if (delta > 0 && scroller.scrollHeight - scroller.clientHeight - top < EDGE_DISTANCE) void loadMore("below");
   }
   async function open() {
     hooks.beforeOpen(); elements.overlay.hidden = false; elements.button.setAttribute("aria-expanded", "true");
@@ -178,7 +184,14 @@ export function createLeaderboardController(elements: LeaderboardControllerEleme
     await select(stat);
   }
   function close() { requestGeneration++; elements.overlay.hidden = true; elements.button.setAttribute("aria-expanded", "false"); }
-  elements.rows.addEventListener("scroll", onScroll, { passive: true });
+  // Keep the three canvases until their content or responsive dimensions change.
+  if (typeof ResizeObserver !== "undefined") {
+    new ResizeObserver(() => { podiumDirty = true; }).observe(elements.podium);
+  }
+  if (typeof window !== "undefined") {
+    window.addEventListener("resize", () => { podiumDirty = true; }, { passive: true });
+  }
+  scroller.addEventListener("scroll", onScroll, { passive: true });
   elements.button.addEventListener("click", () => { if (elements.overlay.hidden) void open(); else close(); });
   elements.closeButton.addEventListener("click", close);
   for (const [name, tab] of Object.entries(elements.tabs)) tab.addEventListener("click", () => { void select(name); });

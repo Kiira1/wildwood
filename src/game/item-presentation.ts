@@ -280,12 +280,19 @@ export function itemPresentation(itemId: string | undefined) {
   return ITEM_PRESENTATIONS[itemId as ItemId];
 }
 
+/** UI-only rotation shared by bag, loadout, and inspection; world grips stay unchanged. */
+export function itemInventoryRotation(itemId: string) {
+  const world = itemPresentation(itemId)?.world;
+  return world?.kind === "SPRITE" && world.handAction === "BOW" ? -45 : 0;
+}
+
 export function itemArtMarkup(itemId: string, hidden = true) {
   const presentation = itemPresentation(itemId)?.inventory;
   const aria = hidden ? ' aria-hidden="true"' : "";
   if (presentation?.source) {
     const style = [
       `background-image: url(${presentation.source})`,
+      `--item-art-rotation: ${itemInventoryRotation(itemId)}deg`,
       presentation.equippedWidth ? `--equipped-art-width: ${presentation.equippedWidth}px` : "",
       presentation.equippedHeight ? `--equipped-art-height: ${presentation.equippedHeight}px` : "",
     ].filter(Boolean).join("; ");

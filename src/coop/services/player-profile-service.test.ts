@@ -5,6 +5,7 @@ afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers(); });
 function fixture() {
   vi.stubGlobal("window", globalThis);
   const subscriptions: Array<{ apply: () => void; unsubscribe: ReturnType<typeof vi.fn> }> = [];
+  const presenceEvents = { insert: new Set<Function>(), update: new Set<Function>(), remove: new Set<Function>() };
   const connection = {
     isActive: true,
     procedures: { getLeaderboardPage: vi.fn() },
@@ -23,12 +24,17 @@ function fixture() {
       return builder;
     },
   };
+  Object.assign(connection.db.player, {
+    onInsert: (fn: Function) => presenceEvents.insert.add(fn), removeOnInsert: (fn: Function) => presenceEvents.insert.delete(fn),
+    onUpdate: (fn: Function) => presenceEvents.update.add(fn), removeOnUpdate: (fn: Function) => presenceEvents.update.delete(fn),
+    onDelete: (fn: Function) => presenceEvents.remove.add(fn), removeOnDelete: (fn: Function) => presenceEvents.remove.delete(fn),
+  });
   const service = createPlayerProfileService({ connection: () => connection, localIdentity: () => "me", notify: vi.fn(),
     localMapId: () => "tutorial_forest", nearbyMapFor: () => undefined, developerIdentityFor: () => undefined,
     directory: { identityFor: () => new Identity("1".repeat(64)), tables: {}, rememberPresentation: vi.fn() },
     progression: { progressFor: () => null, lifetimeFor: () => null, clearProfile: vi.fn(), tables: {} },
   } as never);
-  return { service, subscriptions, connection };
+  return { service, subscriptions, connection, presenceEvents };
 }
 it("closes a pending profile without throwing and disposes it when it finally applies", async () => {
   const f = fixture();
@@ -72,4 +78,20 @@ it("deduplicates leaderboard pages and rejects a late page after the session is 
   const rejected = expect(first).rejects.toThrow("Session changed");
   finish({ entries: [], startRank: 250, endRank: 349, localRank: 300, total: 1000 });
   await rejected;
+});
+
+it("tracks an autofarming hidden player's presence and departure without polling", async () => {
+  const f = fixture();
+  const row = { identity: new Identity("1".repeat(64)), mapId: "beginner_desert", isVisible: false };
+  const id = row.identity.toHexString();
+  f.connection.db.player.iter = () => [row] as never;
+  const pending = f.service.api.loadPlayerProfile(id);
+  f.subscriptions[0].apply(); await pending;
+  expect(f.service.api.activePlayerMap(id)).toBe("beginner_desert");
+  for (const fn of f.presenceEvents.update) fn({}, row, { ...row, mapId: "home_exterior" });
+  expect(f.service.api.activePlayerMap(id)).toBe("home_exterior");
+  for (const fn of f.presenceEvents.remove) fn({}, row);
+  expect(f.service.api.activePlayerMap(id)).toBe("");
+  f.service.api.releasePlayerProfile();
+  expect([...f.presenceEvents.insert, ...f.presenceEvents.update, ...f.presenceEvents.remove]).toHaveLength(0);
 });

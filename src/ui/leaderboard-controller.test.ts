@@ -30,9 +30,10 @@ function fixture() {
   })));
   let identity = "me";
   const openProfile = vi.fn();
+  const drawPodiumCharacter = vi.fn();
   const controller = createLeaderboardController(elements, { loadPage,
-    localIdentity: () => identity, isDeveloper: () => false, paintProfileIcon: vi.fn(), drawPodiumCharacter: vi.fn(), openProfile, beforeOpen: vi.fn() });
-  return { elements, pending, loadPage, openProfile, controller, identity: (value: string) => { identity = value; } };
+    localIdentity: () => identity, isDeveloper: () => false, paintProfileIcon: vi.fn(), drawPodiumCharacter, openProfile, beforeOpen: vi.fn() });
+  return { elements, pending, loadPage, openProfile, drawPodiumCharacter, controller, identity: (value: string) => { identity = value; } };
 }
 const entry = (rank: number, name: string) => ({ rank, identity: name, name, gender: 0, power: 1, damage: 1, maxHp: 1, armor: 1, regen: 1, playedSeconds: 1 } as LeaderboardEntry);
 it("discards old tab responses and displays true ranks instead of renumbering the subset", async () => {
@@ -172,4 +173,26 @@ it("keeps the leaderboard and scroll position when inspecting a player", async (
   expect(f.elements.overlay.hidden).toBe(false);
   expect(f.elements.rows.scrollTop).toBe(120);
   expect(f.loadPage).toHaveBeenCalledTimes(1);
+});
+
+it("keeps static podium canvases between frames and redraws on resize", async () => {
+  let resize: () => void = () => {};
+  vi.stubGlobal("ResizeObserver", class {
+    constructor(callback: () => void) { resize = callback; }
+    observe() {}
+  });
+  const f = fixture();
+  const opening = f.controller.open();
+  f.pending[0].resolve([entry(1, "First"), entry(2, "Second"), entry(3, "Third")]);
+  await opening;
+  expect(f.drawPodiumCharacter).toHaveBeenCalledTimes(3);
+  for (let frame = 0; frame < 120; frame++) f.controller.drawPodium();
+  expect(f.drawPodiumCharacter).toHaveBeenCalledTimes(3);
+  resize();
+  f.controller.drawPodium();
+  expect(f.drawPodiumCharacter).toHaveBeenCalledTimes(6);
+  f.controller.close();
+  resize();
+  f.controller.drawPodium();
+  expect(f.drawPodiumCharacter).toHaveBeenCalledTimes(6);
 });

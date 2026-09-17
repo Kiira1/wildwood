@@ -5,6 +5,7 @@ export function createCutsceneHistory(options: {
   identity: () => string;
   storage: Storage;
   send: (cutscene: string, generation: number) => Promise<boolean>;
+  canSave?: (cutscene: string) => boolean;
 }) {
   let owner = "";
   let seenMask: number | null = null;
@@ -41,6 +42,9 @@ export function createCutsceneHistory(options: {
       for (const scene of PORTAL_CUTSCENES) {
         const bit = portalCutsceneBit(scene.id);
         if (!(pendingMask & bit)) continue;
+        // Retain early/legacy completions locally until the server unlock arrives.
+        // These cosmetic receipts must not block travel or equipment saves.
+        if (options.canSave && !options.canSave(scene.id)) continue;
         let saved = false;
         try { saved = await options.send(scene.id, generation); } catch {}
         if (epoch !== runEpoch || options.identity() !== runOwner) return false;
@@ -49,7 +53,7 @@ export function createCutsceneHistory(options: {
         pendingMask &= ~bit;
         persist();
       }
-      return pendingMask === 0;
+      return true;
     };
     inFlight = operation().finally(() => { if (epoch === runEpoch) inFlight = null; });
     return inFlight;

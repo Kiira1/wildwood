@@ -1,3 +1,4 @@
+import { portalCutsceneBit, unlockedPortalCutsceneMask } from "../../../shared/portal-cutscenes";
 import { LOADOUT_FIELDS } from "../../../shared/combat-progress";
 import { withRequestDeadline } from "./request-deadline";
 import type { EnemyLootRequest } from "./regular-enemy-loot-queue";
@@ -104,6 +105,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
   const cutscenes = createCutsceneHistory({
     identity: dependencies.localIdentity,
     storage: dependencies.storage,
+    canSave: cutscene => Boolean(unlockedPortalCutsceneMask(localProgress) & portalCutsceneBit(cutscene)),
     send: async (cutscene, generation) => (await reducerResult("cutscene history", (connection) => connection.reducers.markPortalCutsceneSeen({ cutscene, generation }))()).ok,
   });
   const enemyLoot = createRegularEnemyLootQueue({
@@ -160,11 +162,11 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
     dependencies.notify();
   }
 
-  function flushAsync(force = false): Promise<boolean> {
+  function flushAsync(force = false, loadoutOnly = false): Promise<boolean> {
     if (resetPending) return Promise.resolve(false);
     if (savePromise) {
       return force
-        ? savePromise.then(() => pendingProgress ? flushAsync(true) : true)
+        ? savePromise.then(() => pendingProgress ? flushAsync(true, loadoutOnly) : true)
         : savePromise;
     }
     const connection = dependencies.reducers.connection();
@@ -178,7 +180,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
     if (!force && Date.now() < Math.max(saveInFlightUntil, nextPeriodicSaveAt)) return Promise.resolve(false);
     // Equipment acknowledgements must not clear the prediction for a kill batch
     // that is still on its way to the server.
-    if (enemyLoot.hasPending()) return enemyLoot.flush(force).then(ok => ok ? flushAsync(force) : false);
+    if (!loadoutOnly && enemyLoot.hasPending()) return enemyLoot.flush(force).then(ok => ok ? flushAsync(force) : false);
     if (localProgress && LOADOUT_FIELDS.every(field => pendingProgress![field] === localProgress![field])) {
       if (!enemyLoot.hasPending()) clearPending();
       return Promise.resolve(true);
@@ -192,7 +194,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
         if (
           identity === dependencies.localIdentity() &&
           pendingProgress &&
-          sameProgressSave(pendingProgress, snapshot)
+          sameProgressSave(pendingProgress, snapshot) && !enemyLoot.hasPending()
         ) {
           clearPending(identity);
           dependencies.notify();
@@ -221,6 +223,12 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
 
   async function sendCombatBatch(request: EnemyLootRequest): Promise<boolean | "discard" | "throttled"> {
     if (!dependencies.worldEntryReady() || dependencies.reducers.worldEntryBlocked() || resetPending) return false;
+    // Validate a boss against the loadout actually used, not a stale empty slot.
+    // Saving equipment never trusts client stat totals or clears pending kills.
+    if (request.enemies.some(entry => entry.enemy === "boss") && pendingProgress
+      && (!localProgress || LOADOUT_FIELDS.some(field => pendingProgress![field] !== localProgress![field]))) {
+      if (!await flushAsync(true, true)) return false;
+    }
     const result = await reducerResult("enemy defeats", connection => withRequestDeadline(connection.reducers.recordEnemyDefeats({
       streamId: request.streamId, sequence: request.sequence, mapId: request.mapId, enemies: request.enemies,
     }), 3_500))();
@@ -288,6 +296,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
       return;
     }
     localProgress = progress;
+    void cutscenes.flush();
     if (restoredSave && pendingProgress) {
       pendingProgress = { ...pendingProgress, maxHp: progress.maxHp, damage: progress.damage,
         attackRate: progress.attackRate, armor: progress.armor, regen: progress.regen,

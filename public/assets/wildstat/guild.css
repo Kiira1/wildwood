@@ -1,5 +1,5 @@
 /* Guilds use the same full-window shell, rounded font and Back control as the game. */
-.guild-overlay { position: fixed; inset: 0 0 var(--toolbar-height); z-index: 12; display: grid; overflow: hidden; background: var(--window-surface-green); touch-action: manipulation; }
+.guild-overlay { position: fixed; inset: 0 0 var(--window-bottom-inset); z-index: 12; display: grid; overflow: hidden; background: var(--window-surface-green); touch-action: manipulation; }
 .guild-overlay[hidden] { display: none; }
 .guild-window { --guild-muted: var(--muted, #a7b8b0); --guild-line: #ffffff20; --guild-accent: var(--green, #65d66d); display: flex; flex-direction: column; width: 100%; height: 100%; min-height: 0; overflow: hidden; background: var(--window-surface-green); color: var(--text, #fff); font: 700 12px/1.4 var(--font-rounded); text-align: left; }
 .guild-window *, .guild-window *::before, .guild-window *::after { box-sizing: border-box; }
@@ -7,7 +7,7 @@
 .guild-window h2 { font-size: 20px; overflow-wrap: anywhere; }
 .guild-window h3 { font-size: 14px; }
 .guild-window p { color: var(--guild-muted); }
-.guild-header, .guild-tabs, .guild-content { width: min(100%, 680px); margin-inline: auto; }
+.guild-header, .guild-tabs, .guild-content { width: min(100%, var(--window-content-max-width)); min-width: 0; margin-inline: auto; }
 .guild-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 16px; min-height: 36px; flex-shrink: 0; }
 .guild-heading { min-width: 0; color: var(--guild-muted); font-size: 12px; }
 .guild-window .guild-button { min-height: 44px; margin: 0; padding: 8px 12px; border: 2px solid #ffffff2b; border-radius: 8px; background: linear-gradient(#27312b, #171e1a); box-shadow: inset 0 -3px 0 #0004; color: #fff; font: 900 11px/1.25 var(--font-rounded); cursor: pointer; }
@@ -19,15 +19,16 @@
 .guild-window .guild-button--icon { width: 44px; flex: 0 0 44px; padding: 0; font-size: 22px; }
 .guild-window .guild-button:disabled { opacity: .42; cursor: default; }
 .guild-window :focus-visible { outline: 2px solid var(--guild-accent); outline-offset: -2px; }
-.guild-tabs { display: flex; padding: 0 14px; border-bottom: 2px solid var(--guild-line); gap: 7px; }
-.guild-window .guild-button--tab { flex: 1; min-width: 0; margin-bottom: -2px; padding: 8px 4px; border: 0; border-bottom: 3px solid transparent; border-radius: 5px 5px 0 0; background: transparent; box-shadow: none; color: var(--guild-muted); }
-.guild-window .guild-button--tab[aria-current="page"] { border-bottom-color: var(--guild-accent); color: #fff; }
-.guild-content { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; scrollbar-width: thin; padding: 18px 18px 24px; }
+.guild-tabs { display: flex; padding: 0 18px; border-bottom: 2px solid var(--guild-line); gap: 0; }
+.guild-window .guild-button--tab { flex: 1; min-width: 0; margin-bottom: -2px; padding: 8px 4px; border: 0; border-bottom: 3px solid transparent; border-radius: 0; background: transparent; box-shadow: none; color: var(--guild-muted); font-size: 13px; }
+.guild-window .guild-button--tab[aria-current="page"] { border-bottom-color: var(--guild-accent); color: var(--guild-accent); }
+.guild-content { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; scrollbar-width: none; padding: 14px 18px 24px; }
+.guild-content::-webkit-scrollbar { display: none; width: 0; height: 0; }
 .guild-section-heading { margin: 26px 0 13px; display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 3px 12px; }
 .guild-section-heading:first-child { margin-top: 0; }
 .guild-section-heading p { font-size: 12px; }
-.guild-stats { display: grid; grid-template-columns: repeat(3, 1fr); padding: 18px 0; border-bottom: 1px solid var(--guild-line); }
-.guild-stats > div + div { border-left: 1px solid var(--guild-line); padding-left: 12px; }
+.guild-stats { display: grid; grid-template-columns: repeat(3, 1fr); padding: 8px 0 14px; text-align: center; border-bottom: 1px solid var(--guild-line); }
+.guild-stats > div + div { border-left: 1px solid var(--guild-line); }
 .guild-stats strong { display: block; font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .guild-stats span { display: block; margin-top: 2px; font-size: 11px; color: var(--guild-muted); }
 .guild-avatar { display: grid; place-items: center; width: 36px; height: 36px; flex: 0 0 36px; border-radius: 6px; background: #ffffff08; color: #b9cabc; font-size: 12px; font-weight: 900; letter-spacing: .5px; }
@@ -39,26 +40,26 @@
 .guild-member-profile .guild-avatar { aspect-ratio: 1; overflow: hidden; }
 .guild-overlay--overview { place-items: center; padding: 12px; background: #0008; }
 .guild-window--overview { width: min(100%, 480px); height: auto; max-height: 100%; border: 2px solid #424743; border-radius: 12px; }
-.guild-identity.guild-preview-identity { flex-direction: column; text-align: center; padding: 14px 0 20px; }
-.guild-identity.guild-preview-identity h3 { font-size: 26px; }
-.guild-identity.guild-preview-identity .guild-mark { width: 64px; height: 64px; flex-basis: 64px; font-size: 23px; }
+.guild-identity.guild-preview-identity { flex-direction: row; justify-content: center; gap: 12px; text-align: left; padding: 0 0 10px; }
+.guild-preview-identity > div { min-width: 0; }
+.guild-preview-identity p { font-size: 12px; margin-top: 3px; }
+.guild-identity.guild-preview-identity h3 { font-size: clamp(32px, 10.5vw, 44px); line-height: 1.1; }
+.guild-identity.guild-preview-identity .guild-mark { width: 100px; height: 100px; flex: 0 0 100px; margin: 0; }
 .guild-preview-president { width: 100%; margin: 18px 0; }
 .guild-preview-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 18px 0 8px; }
-.guild-leadership { padding: 12px 0 24px; border-bottom: 1px solid var(--guild-line); }
-.guild-officer { position: relative; border: 0; padding: 12px 0; min-width: 0; }
-.guild-officer .guild-member-profile { flex-direction: column; gap: 9px; text-align: center; width: 100%; }
+.guild-leadership { padding: 22px 0 20px; border-bottom: 1px solid var(--guild-line); }
+.guild-officer { position: relative; border: 0; padding: 0; min-width: 0; }
+.guild-officer .guild-member-profile { flex-direction: column; gap: 7px; text-align: center; width: 100%; }
 .guild-officer .guild-row-copy { width: 100%; }
 .guild-officer .guild-row-copy strong { font-size: 12px; }
 .guild-officer .guild-row-copy > span { color: #d3d9d5; font-size: 10px; }
-.guild-officer--president { width: min(100%, 220px); margin: 0 auto 16px; }
-.guild-officer--president .guild-avatar { width: 76px; height: 76px; flex-basis: 76px; }
-.guild-officer--president .guild-row-copy strong { font-size: 16px; }
-.guild-officer--president .guild-row-copy > span { color: #e6d29b; font-size: 12px; }
+.guild-officer--president { margin: 0; }
+.guild-officer--president .guild-row-copy > span { color: #e6d29b; }
 .guild-officer > .guild-button--icon { position: absolute; right: 0; top: 0; }
-.guild-offices { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: start; gap: 10px; }
-.guild-offices .guild-avatar, .guild-office-placeholder { width: 48px; height: 48px; flex-basis: 48px; }
-.guild-office-vacancy { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 12px 0; text-align: center; font-size: 10px; color: var(--guild-muted); }
-.guild-office-placeholder { display: grid; place-items: center; border: 1px dashed #ffffff35; border-radius: 6px; margin-bottom: 4px; font-size: 18px; }
+.guild-offices { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: start; gap: 8px; }
+.guild-officer .guild-avatar, .guild-office-placeholder { width: 56px; height: 56px; flex-basis: 56px; }
+.guild-office-vacancy { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 0; text-align: center; font-size: 10px; color: var(--guild-muted); }
+.guild-office-placeholder { display: grid; place-items: center; border: 1px dashed #ffffff35; border-radius: 6px; margin-bottom: 2px; font-size: 34px; color: var(--guild-accent); }
 .guild-office-vacancy--future { opacity: .5; }
 .guild-offices > .guild-member-actions { grid-column: 1 / -1; }
 .guild-row-copy strong { display: block; font-size: 13px; font-weight: 700; overflow-wrap: anywhere; }
@@ -157,3 +158,22 @@
 .social-invite { margin: 16px 0 0; border-top: 0; }
 .social-invite > summary { color: #fff; font-weight: 900; }
 .social-invite[open] { padding-bottom: 12px; border-bottom: 1px solid var(--guild-line); }
+
+.guild-row-copy > .guild-presence--online { color: #65d66d; }
+.guild-row-copy > .guild-presence--offline { color: #a7aba8; }
+/* Keep the roster and its scroll position behind an inspected player. */
+body:has(.guild-overlay:not([hidden])) #playerProfile { z-index: 13; pointer-events: auto; }
+body:has(.guild-overlay:not([hidden])) #profileIconPicker { z-index: 14; }
+
+.guild-emblem.guild-emblem { display: block; aspect-ratio: 1; background: url("guild-emblems-v3.png") no-repeat; background-size: 418% 418%; clip-path: none; border-radius: 0; }
+.guild-office-vacancy--future .guild-office-placeholder { color: var(--guild-muted); }
+.guild-roster .guild-member-profile .guild-avatar { width: 44px; height: 44px; flex-basis: 44px; }
+.guild-roster .guild-row { min-height: 56px; padding: 5px 0; }
+.guild-roster .guild-row-copy strong { font-size: 14px; }
+.guild-leadership + .guild-section-heading { margin: 14px 0 10px; }
+.guild-leadership + .guild-section-heading h3 { font-size: 20px; }
+.guild-row-copy > .guild-presence--online::before,
+.guild-row-copy > .guild-presence--offline::before { content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 5px; border-radius: 50%; background: currentColor; vertical-align: 1px; }
+.guild-profile-chevron { width: 8px; height: 8px; border-top: 2px solid #a7aba8; border-right: 2px solid #a7aba8; transform: rotate(45deg); margin: 0 5px 0 auto; flex-shrink: 0; }
+.guild-content > .guild-header { margin-top: 18px; padding: 0; }
+.guild-create-requirement { font-size: 11px; margin: 8px 0 !important; }

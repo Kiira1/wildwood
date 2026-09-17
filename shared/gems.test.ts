@@ -31,10 +31,10 @@ describe("Gem balance rules", () => {
     expect(UPGRADE_BENCH_SECOND_SLOT_GEM_COST).toBe(150n);
   });
 
-  it("prices consecutive inventory slots at one, two, three Gems and expands the free 16 slots", () => {
-    expect(BASE_INVENTORY_SLOT_CAPACITY).toBe(16);
-    expect(inventorySlotCapacity(0)).toBe(16);
-    expect(inventorySlotCapacity(2)).toBe(18);
+  it("prices consecutive inventory slots at one, two, three Gems and expands the free 20 slots", () => {
+    expect(BASE_INVENTORY_SLOT_CAPACITY).toBe(20);
+    expect(inventorySlotCapacity(0)).toBe(20);
+    expect(inventorySlotCapacity(2)).toBe(22);
     expect(inventorySlotUnlockCost(0)).toBe(1n);
     expect(inventorySlotUnlockCost(1)).toBe(2n);
     expect(inventorySlotUnlockCost(2)).toBe(3n);

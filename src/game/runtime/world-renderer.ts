@@ -971,7 +971,8 @@ if (options.getMapId() === ION_CITADEL_MAP_ID) { drawIonRoads(ctx, options.paths
     }
 
     draw.fillStyle = "#58e878"; for (const player of remotePlayers) draw.fillRect(innerX + player.x * sx - 2, innerY + player.y * sy - 2, 5, 5);
-    draw.fillStyle = "#fff"; draw.fillRect(innerX + options.player.x * sx - 2, innerY + options.player.y * sy - 2, 5, 5);
+    // Self is always drawn from local simulation, even with the eye off or no connection.
+    draw.fillStyle = "#58e878"; draw.fillRect(innerX + options.player.x * sx - 2, innerY + options.player.y * sy - 2, 5, 5);
     draw.strokeStyle = "rgba(255,255,255,.52)"; draw.lineWidth = 1; draw.strokeRect(innerX + camera.x * sx, innerY + camera.y * sy, (view.width / camera.zoom) * sx, (view.height / camera.zoom) * sy); draw.restore();
     minimapCacheKey = cacheKey;
   }

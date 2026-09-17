@@ -5,7 +5,7 @@ export const DAILY_LOGIN_GEM_BONUS = 7n;
 export const BALANCE_APOLOGY_GEM_GIFT = 10n;
 export const RESEARCH_SPEED_UP_MS_PER_GEM = 10 * 60 * 1_000;
 export const UPGRADE_BENCH_SECOND_SLOT_GEM_COST = 150n;
-export const BASE_INVENTORY_SLOT_CAPACITY = 16;
+export const BASE_INVENTORY_SLOT_CAPACITY = 20;
 export const MAX_INVENTORY_SLOT_CAPACITY = 64;
 
 // Keep balances comfortably inside signed i64 transaction deltas while still

@@ -1,3 +1,4 @@
+import { itemTier } from "../../shared/item-tier";
 import { appendItemTierLabel } from "./item-tier-label";
 import { cosmeticInventoryStacks, bagInventoryStacks, ITEM_DEFINITIONS, type EquipmentSlot } from "../game/inventory";
 import { itemArtMarkup } from "../game/item-presentation";
@@ -5,7 +6,7 @@ import { formatCompactNumber } from "./number-format";
 import { appendPlayerGenderIcon } from "./player-gender";
 import { PLAYER_GENDER_UNSET, type PlayerGender } from "../../shared/player-gender";
 import { isHiddenCosmeticItem } from "../../shared/equipment-appearance";
-import { isCosmeticOnlyItem, itemStats, itemDisplayName, normalizeItemUpgradeLevel } from "../../shared/items";
+import { type ItemSlot, itemDefinition, isCosmeticOnlyItem, itemStats, itemDisplayName, normalizeItemUpgradeLevel } from "../../shared/items";
 
 import { appendPlayerNameTags, playerNamePrefix } from "../app/player-name-tags";
 
@@ -256,13 +257,16 @@ export function renderInventoryView(
     onInspect: (itemId: string, location: EquipmentSlot | "BAG") => void;
     upgradeLevel: (itemId: string) => number;
     slotCapacity: number;
+    filter?: ItemSlot;
     nextSlotCost?: bigint;
     onUnlockSlot?: () => void;
   },
 ) {
   elements.items.replaceChildren();
   const cosmetics = mode === "COSMETICS";
-  const bagStacks = cosmetics ? cosmeticInventoryStacks(inventory) : bagInventoryStacks(inventory);
+  const bagStacks = cosmetics ? cosmeticInventoryStacks(inventory) : bagInventoryStacks(inventory)
+    .sort((a, b) => (itemTier(b.itemId) ?? 0) - (itemTier(a.itemId) ?? 0)
+      || itemDisplayName(a.itemId).localeCompare(itemDisplayName(b.itemId)));
   const slotCapacity = cosmetics ? Math.max(50, bagStacks.length) : actions.slotCapacity;
   elements.count.textContent = `${bagStacks.length} / ${slotCapacity} ${cosmetics ? "Cosmetics" : "Items"}`;
   renderEquipmentSlot(elements.equippedHead, inventory, "HEAD", "HEAD", mode, actions.upgradeLevel);
@@ -270,8 +274,10 @@ export function renderInventoryView(
   renderEquipmentSlot(elements.equippedRightHand, inventory, inventoryWeaponSlot(inventory, mode), "WEAPON", mode, actions.upgradeLevel);
   renderEquipmentSlot(elements.equippedFeet, inventory, "FEET", "BOOTS", mode, actions.upgradeLevel);
 
-  for (let index = 0; index < slotCapacity; index += 1) {
-    const stack = bagStacks[index];
+  const visibleStacks = actions.filter ? bagStacks.filter(stack => itemDefinition(stack.itemId)?.slot === actions.filter) : bagStacks;
+  const visibleSlots = actions.filter ? visibleStacks.length : slotCapacity;
+  for (let index = 0; index < visibleSlots; index += 1) {
+    const stack = visibleStacks[index];
     const itemId = stack?.itemId;
     const button = document.createElement("button");
     button.type = "button";
@@ -319,7 +325,7 @@ export function renderInventoryView(
     }
     elements.items.appendChild(button);
   }
-  if (!cosmetics && actions.nextSlotCost !== undefined) {
+  if (!actions.filter && !cosmetics && actions.nextSlotCost !== undefined) {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "inventory-item is-locked";

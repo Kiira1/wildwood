@@ -91,3 +91,20 @@ describe("character cutscene history", () => {
     expect(send).toHaveBeenCalledTimes(1);
   });
 });
+
+it("defers a premature completion without blocking saves and retries after unlock", async () => {
+  const saved = new Map<string, string>(); let unlocked = false;
+  const send = vi.fn(async () => true);
+  const history = createCutsceneHistory({ identity: () => "guest", canSave: () => unlocked, send,
+    storage: { get length() { return saved.size; }, clear: () => saved.clear(),
+      key: index => [...saved.keys()][index] ?? null, getItem: key => saved.get(key) ?? null,
+      setItem: (key, value) => { saved.set(key, value); }, removeItem: key => { saved.delete(key); } } });
+  history.begin(); history.upsert("guest", 0); history.mark(first);
+  expect(await history.flush()).toBe(true);
+  expect(send).not.toHaveBeenCalled();
+  expect(saved.size).toBe(1);
+  unlocked = true;
+  expect(await history.flush()).toBe(true);
+  expect(send).toHaveBeenCalledOnce();
+  expect(saved.size).toBe(0);
+});

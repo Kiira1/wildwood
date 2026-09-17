@@ -370,7 +370,8 @@ export function createMapController(options: {
   }
 
   function startMapPortalCutscene(mapId: MapId, preview = false, portal = mapConfig[mapId].portal, seenKey = dragonCutsceneSeenKey) {
-    if (!portal) return;
+    if (!portal || (!preview && !mapUnlocked(portal.destination))) return;
+    // A local boss death is provisional until its reward unlock is acknowledged.
     // Warming destination art must not turn a failed request into an unhandled rejection.
     void options.prepareMapAssets(portal.destination).catch(() => {});
     document.body.classList.add("is-cutscene");

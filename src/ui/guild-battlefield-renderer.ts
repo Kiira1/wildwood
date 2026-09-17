@@ -52,7 +52,8 @@ export function createGuildBattlefieldRenderer(canvas: HTMLCanvasElement, ctx: C
     bounds.minY = Math.min(bounds.minY, actor.y); bounds.maxY = Math.max(bounds.maxY, actor.y);
   }
   let viewWidth = 900, viewHeight = 576, ratio = 1;
-  let worldScale = 1;
+  let horizontalScale = 1;
+  const actorScale = 1;
   let project = (point: { x: number; y: number }) => point;
 
   let seed = 73421;
@@ -78,11 +79,14 @@ export function createGuildBattlefieldRenderer(canvas: HTMLCanvasElement, ctx: C
     const spanY = Math.max(344, bounds.maxY - bounds.minY);
     const centerX = (bounds.minX + bounds.maxX) / 2;
     const centerY = (bounds.minY + bounds.maxY) / 2;
-    // One camera scale for both axes and actors. Portrait screens must not
-    // compress horizontal walking/range while stretching vertical distances.
-    worldScale = Math.min(fieldW / spanX, fieldH / spanY) * ARENA_ZOOM;
-    project = point => ({ x: width / 2 + (point.x - centerX) * worldScale,
-      y: top + fieldH / 2 + (point.y - centerY) * worldScale });
+    // Fit the battlefield to the available screen, not the character art.
+    // Portrait replays use their height rather than squeezing the whole fight
+    // into a short strip. This projection is fixed for the entire replay and
+    // shared by movement, aiming, projectiles, and hit effects.
+    horizontalScale = fieldW / spanX * ARENA_ZOOM;
+    const verticalScale = fieldH / spanY * ARENA_ZOOM;
+    project = point => ({ x: width / 2 + (point.x - centerX) * horizontalScale,
+      y: top + fieldH / 2 + (point.y - centerY) * verticalScale });
     canvas.width = pixelWidth; canvas.height = pixelHeight; ground.width = pixelWidth; ground.height = pixelHeight;
     if (!groundContext) return;
     const groundScale = Math.max(pixelWidth / WIDTH, pixelHeight / HEIGHT);
@@ -107,7 +111,7 @@ export function createGuildBattlefieldRenderer(canvas: HTMLCanvasElement, ctx: C
     const entering = entrance !== undefined && entranceTime !== undefined && entranceTime < entrance.duration;
     const actors = timeline.sample(time).map((actor, i) => {
       const position = project(stagger(actor, i));
-      const walkSpeed = (timeline.fighters[i].moveSpeed ?? GUILD_MOVE_SPEED) * worldScale;
+      const walkSpeed = (timeline.fighters[i].moveSpeed ?? GUILD_MOVE_SPEED) * horizontalScale;
       const entry = entering ? guildEntrancePosition(entrance.arrivals[i], entranceTime, position, i < split ? 0 : 1, viewWidth, entrance.walking ? walkSpeed : undefined)
         : { ...position, visible: true, entering: false };
       return { ...actor, ...entry, moving: entry.entering || actor.moving };
@@ -123,17 +127,17 @@ export function createGuildBattlefieldRenderer(canvas: HTMLCanvasElement, ctx: C
       const target = attack ? project(stagger(attack.to, attack.target)) : actors[actor.target];
       const aim = target ? Math.atan2(target.y - actor.y, target.x - actor.x) : side ? Math.PI : 0;
       const throwClock = attack ? Math.max(0, .42 - (time - (attack.launch - .12))) : 0;
-      ctx.fillStyle = "#0b2e2438"; ctx.beginPath(); ctx.ellipse(actor.x, actor.y + 24 * worldScale, 17 * PLAYER_WORLD_SCALE * worldScale, 5 * PLAYER_WORLD_SCALE * worldScale, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#0b2e2438"; ctx.beginPath(); ctx.ellipse(actor.x, actor.y + 24 * actorScale, 17 * PLAYER_WORLD_SCALE * actorScale, 5 * PLAYER_WORLD_SCALE * actorScale, 0, 0, Math.PI * 2); ctx.fill();
       ctx.save();
       let alpha = 1;
       if (deathAge >= 0) {
         const pose = playerDeathPose(diedAt * 1000, time * 1000, fighter.identity);
-        ctx.translate(actor.x, actor.y + 24 * worldScale); ctx.rotate(pose.bodyRotation); ctx.scale(1, pose.bodyScaleY); ctx.translate(-actor.x, -actor.y - 24 * worldScale);
+        ctx.translate(actor.x, actor.y + 24 * actorScale); ctx.rotate(pose.bodyRotation); ctx.scale(1, pose.bodyScaleY); ctx.translate(-actor.x, -actor.y - 24 * actorScale);
         alpha = Math.max(0, 1 - Math.max(0, deathAge - .6) / .5);
       }
-      drawStartingPlayer(ctx, assets.player, { ...fighter.appearance, x: actor.x, y: actor.y - 5 * worldScale,
+      drawStartingPlayer(ctx, assets.player, { ...fighter.appearance, x: actor.x, y: actor.y - 5 * actorScale,
         facing: aim, combatFacing: aim, moving: actor.moving && deathAge < 0, gameTime: (entranceTime ?? time) + i * .137,
-        throwClock, alpha, scale: PLAYER_WORLD_SCALE * worldScale, smooth: true });
+        throwClock, alpha, scale: PLAYER_WORLD_SCALE * actorScale, smooth: true });
       ctx.restore();
     }
     // Paint labels after every character so neighboring sprites cannot cover them.
@@ -141,7 +145,7 @@ export function createGuildBattlefieldRenderer(canvas: HTMLCanvasElement, ctx: C
       if (!actor.visible || actor.hp <= 0) continue;
       const fighter = timeline.fighters[i];
       const barW = Math.min(80, Math.max(48, viewWidth / 5 - 14)), barH = WORLD_HEALTH_BAR_HEIGHT;
-      const barY = actor.y - Math.max(24, 50 * worldScale), barX = actor.x - barW / 2;
+      const barY = actor.y - Math.max(24, 50 * actorScale), barX = actor.x - barW / 2;
       const fill = Math.round(barW * Math.max(0, Math.min(1, actor.hp / fighter.fighter.maxHp)));
       ctx.fillStyle = "rgba(0,0,0,.88)"; ctx.fillRect(barX - 2, barY - 2, barW + 4, barH + 4);
       ctx.fillStyle = "#402326"; ctx.fillRect(barX, barY, barW, barH);

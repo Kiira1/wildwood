@@ -32,6 +32,7 @@ export function createAutoFarmController(options: {
   let selectedCamp: string | null = null;
   let selectedLabel = "";
   let active = false;
+  let manualControl = false;
   let pendingResume = options.resumeStore?.read() ?? null;
   let startedMap = '';
   let startedIdentity: string | undefined;
@@ -74,6 +75,7 @@ export function createAutoFarmController(options: {
     pendingResume = null;
     options.resumeStore?.clear();
     active = false;
+    manualControl = false;
     recovering = false;
     readySince = null;
     target = null;
@@ -131,6 +133,7 @@ export function createAutoFarmController(options: {
     selectedCamp = choice.camp;
     selectedLabel = choice.label;
     active = true;
+    manualControl = false;
     startedMap = options.mapId();
     startedIdentity = options.localIdentity?.();
     pendingResume = null;
@@ -147,6 +150,7 @@ export function createAutoFarmController(options: {
 
   function movement(manual: Movement, dt: number): Movement {
     refresh();
+    manualControl = Boolean(manual.x || manual.y);
     if (recovering || pendingResume) return idle();
     if (manual.x || manual.y) {
       if (active) {
@@ -207,7 +211,7 @@ export function createAutoFarmController(options: {
 
   return { start, stop, refresh, choices, movement,
     state: () => ({ active, selected, selectedLabel, status: active && !recovering && options.paused() ? 'Paused' : status }),
-    targetType: () => active ? selectedType : null,
-    targetCamp: () => active ? selectedCamp : null,
+    targetType: () => active && !manualControl ? selectedType : null,
+    targetCamp: () => active && !manualControl ? selectedCamp : null,
   };
 }

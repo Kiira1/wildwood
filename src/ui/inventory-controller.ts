@@ -1,3 +1,4 @@
+import { createInventoryFilters, type InventoryFilter } from "./inventory-filters";
 import {
   type EquipmentSlot,
   type InventoryState,
@@ -22,6 +23,7 @@ type InventoryDependencies = {
   moveCosmetic: (itemId: string, destination: EquipmentSlot | "BAG") => boolean;
   toggleCosmeticVisibility: (destination: EquipmentSlot) => boolean;
   upgradeLevel: (itemId: string) => number;
+  equipBest?: () => boolean;
   itemInspection: ItemInspectionController;
   inventorySlotsUnlocked: () => number;
   gemBalance: () => bigint;
@@ -49,11 +51,41 @@ export function createInventoryController(dependencies: InventoryDependencies) {
   const cosmeticsTab = requiredElement<HTMLButtonElement>("inventoryCosmeticsTab");
   const content = requiredElement("inventoryContent");
   const loadout = panel.querySelector<HTMLElement>(".inventory-loadout");
+  const tabs = equipmentTab.closest(".inventory-tabs");
+  if (tabs) {
+    const scroll = document.createElement("div");
+    scroll.className = "inventory-scroll";
+    tabs.before(scroll);
+    scroll.append(tabs, content);
+  }
+  const countRow = count.closest(".inventory-section-title");
+  if (countRow) items.after(countRow);
   const cosmeticsNote = document.createElement("p");
   cosmeticsNote.className = "inventory-cosmetics-note";
   cosmeticsNote.textContent = "In progress — coming soon: use Gems to turn equipment into cosmetics.";
   cosmeticsNote.hidden = true;
   count.after(cosmeticsNote);
+  function syncSlotSizes() {
+    if (!loadout || !items.clientWidth) return;
+    const trackWidth = parseFloat(getComputedStyle(items).gridTemplateColumns);
+    if (!Number.isFinite(trackWidth) || trackWidth <= 0) return;
+    const size = `${trackWidth}px`;
+    if (loadout.style.getPropertyValue("--inventory-slot-size") !== size) loadout.style.setProperty("--inventory-slot-size", size);
+  }
+  if (loadout && typeof ResizeObserver !== "undefined") new ResizeObserver(syncSlotSizes).observe(items);
+
+  let filter: InventoryFilter = "ALL";
+  const filters = createInventoryFilters(next => {
+    filter = next;
+    render();
+  }, () => {
+    if (mode !== "EQUIPMENT" || !dependencies.equipBest) return;
+    const changed = dependencies.equipBest();
+    if (!changed) dependencies.showMessage("BEST EQUIPMENT ALREADY EQUIPPED", "#72ef58");
+    clearInventorySelection(dependencies.inventory);
+    render();
+  });
+  items.before(filters.bar);
   let renderedState = "";
   let mode: InventoryMode = "EQUIPMENT";
   let unlockingSlot = false;
@@ -92,18 +124,10 @@ export function createInventoryController(dependencies: InventoryDependencies) {
     clearInventorySelection(dependencies.inventory);
     const item = itemDefinition(itemId);
     if (!item) return;
-    const visuallyEquipped = location !== "BAG";
-    const context = mode === "COSMETICS"
-      ? `${item.slot} · VISUAL ONLY · ${visuallyEquipped ? "COSMETIC ACTIVE" : "OWNED"}`
-      : `${item.slot} · ${visuallyEquipped ? "EQUIPPED" : "IN BAG"}`;
-    const description = mode === "COSMETICS"
-      ? `${item.description} Cosmetic slots change appearance only; Equipment supplies your stats.`
-      : item.description;
     dependencies.itemInspection.open({
       itemId,
       upgradeLevel: dependencies.upgradeLevel(itemId),
-      context,
-      description,
+      ...(mode === "COSMETICS" ? { context: "Cosmetic · Appearance only" } : {}),
       actions: [...inventoryMoveActions(dependencies.inventory, itemId, location, mode).map((action) => ({
         label: action.label,
         kind: action.destination === "BAG" ? "SECONDARY" as const : "PRIMARY" as const,
@@ -135,12 +159,13 @@ export function createInventoryController(dependencies: InventoryDependencies) {
 
   function render() {
     const inventory = dependencies.inventory;
-    const nextState = JSON.stringify([mode, inventory, dependencies.inventorySlotsUnlocked(), unlockingSlot,
+    const nextState = JSON.stringify([mode, filter, inventory, dependencies.inventorySlotsUnlocked(), unlockingSlot,
       inventory.itemIds.map(itemId => dependencies.upgradeLevel(itemId))]);
     if (nextState === renderedState) return;
     renderedState = nextState;
     const cosmeticsActive = mode === "COSMETICS";
     cosmeticsNote.hidden = !cosmeticsActive;
+    filters.setCosmetics(cosmeticsActive);
     equipmentTab.classList.toggle("is-active", !cosmeticsActive);
     equipmentTab.setAttribute("aria-selected", String(!cosmeticsActive));
     equipmentTab.tabIndex = cosmeticsActive ? -1 : 0;
@@ -157,6 +182,7 @@ export function createInventoryController(dependencies: InventoryDependencies) {
       mode,
       {
         onInspect: inspect,
+        filter: filter === "ALL" ? undefined : filter,
         upgradeLevel: dependencies.upgradeLevel,
         slotCapacity,
         nextSlotCost: slotCapacity < MAX_INVENTORY_SLOT_CAPACITY
@@ -167,6 +193,7 @@ export function createInventoryController(dependencies: InventoryDependencies) {
           : () => { void unlockNextSlot(); },
       },
     );
+    syncSlotSizes();
   }
 
   async function unlockNextSlot() {

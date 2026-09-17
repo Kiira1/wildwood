@@ -40,6 +40,7 @@ it("fits full teams in portrait and landscape while retaining names and numeric 
   expect(new Set(portrait.slice(0, 20).map(actor => actor.y)).size).toBe(20);
   expect(new Set(portrait.slice(20).map(actor => actor.y)).size).toBe(20);
   expect(portrait.every(actor => actor.x >= 50 && actor.x <= 340 && actor.y >= 150 && actor.y <= 665)).toBe(true);
+  expect(Math.max(...portrait.map(actor => actor.y)) - Math.min(...portrait.map(actor => actor.y))).toBeGreaterThan(400);
   expect(paintText.mock.calls.filter(([text]) => text === "100 / 100")).toHaveLength(40);
   for (const fighter of timeline.fighters) expect(paintText.mock.calls.some(([text]) => text === fighter.name)).toBe(true);
   renderer.draw(10, true);
@@ -94,7 +95,7 @@ it("does not render offscreen entrants, and keeps fighting while reinforcements 
   expect(visible.length).toBeGreaterThan(0); expect(visible.length).toBeLessThan(10);
   expect(drawStartingPlayer).toHaveBeenCalledTimes(visible.length);
   const pose = vi.mocked(drawStartingPlayer).mock.calls[0][2];
-  expect(pose.scale).toBeGreaterThan(0); expect(pose.scale).toBeLessThan(.6); expect(pose.moving).toBe(true);
+  expect(pose.scale).toBeGreaterThan(0); expect(pose.scale).toBe(.6); expect(pose.moving).toBe(true);
   vi.mocked(drawStartingPlayer).mockClear(); paintText.mockClear();
   const firstHit = timeline.shots[0].impact;
   expect(firstHit).toBeLessThan(entrance.duration);
@@ -114,7 +115,7 @@ it("does not render offscreen entrants, and keeps fighting while reinforcements 
 });
 
 
-it.each([[390, 844], [844, 390]])("keeps mobile movement and reach proportional to the character in %sx%s", (width, height) => {
+it.each([[390, 844], [844, 390]])("keeps normal character size and continuous projected movement in %sx%s", (width, height) => {
   const context = new Proxy({}, { get: () => vi.fn(), set: () => true }) as CanvasRenderingContext2D;
   const doc = { defaultView: { devicePixelRatio: 1 }, createElement: () => ({ width: 0, height: 0, getContext: () => context }) };
   const canvas = { ownerDocument: doc, clientWidth: width, clientHeight: height, width: 0, height: 0 } as unknown as HTMLCanvasElement;
@@ -127,9 +128,9 @@ it.each([[390, 844], [844, 390]])("keeps mobile movement and reach proportional 
     { player: { basicFrontLeg: image, basicBackLeg: image, equipment: {} }, prepare: async () => {}, trees: image, treeBounds: () => [] });
   vi.mocked(drawStartingPlayer).mockClear();
   const start = renderer.draw(0, false), later = renderer.draw(.5, false);
-  const worldScale = vi.mocked(drawStartingPlayer).mock.calls[0][2].scale! / .6;
-  expect(later[0].x - start[0].x).toBeCloseTo(90 * worldScale);
-  expect(start[1].x - start[0].x).toBeCloseTo(200 * worldScale);
-  expect(start[1].y - start[0].y).toBeCloseTo(200 * worldScale);
+  expect(vi.mocked(drawStartingPlayer).mock.calls.every(([, , pose]) => pose.scale === .6)).toBe(true);
+  const horizontalScale = (start[1].x - start[0].x) / 200;
+  expect(later[0].x - start[0].x).toBeCloseTo(90 * horizontalScale);
+  if (height > width) expect(start[1].y - start[0].y).toBeGreaterThan(start[1].x - start[0].x);
   renderer.dispose();
 });

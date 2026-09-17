@@ -2,9 +2,18 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { CLOUDSPIRE_ARMOR, CLOUDSPIRE_BOW, CLOUDSPIRE_HELMET, MOONFEN_ARMOR, WATER_ARMOR, SKY_BOW, SAMURAI_BOW, DARK_METAL_HELMET, FIRE_METAL_BOW, FIRE_METAL_HELMET, FROST_ARMOR, FROST_BOW, IRON_BOW, LAVA_BOW, MAGMA_ARMOR, NIGHT_BOW, SNOW_BOW, STARTER_BOW, STARTER_STONE, WOOD_FULL_HELM, WOODEN_ARMOR } from "../../shared/items";
-import { itemArtMarkup, itemPresentation, projectileKindForWeapon } from "./item-presentation";
+import { ITEM_PRESENTATIONS, itemArtMarkup, itemInventoryRotation, itemPresentation, projectileKindForWeapon } from "./item-presentation";
 
 describe("item presentation", () => {
+  it("uses the same display angle for every bow, including later campaign gear", () => {
+    for (const [id, presentation] of Object.entries(ITEM_PRESENTATIONS)) {
+      if (presentation.projectile !== "ARROW") continue;
+      expect(itemInventoryRotation(id), id).toBe(-45);
+      expect(itemArtMarkup(id), id).toContain("--item-art-rotation: -45deg");
+    }
+    expect(itemInventoryRotation(STARTER_STONE)).toBe(0);
+    expect(itemInventoryRotation(FROST_ARMOR)).toBe(0);
+  });
   it("renders weapon-specific inventory and inspection art", () => {
     expect(itemArtMarkup(STARTER_STONE)).toContain("stone.png");
     expect(itemArtMarkup(STARTER_BOW)).toContain("data:image/png;base64,");

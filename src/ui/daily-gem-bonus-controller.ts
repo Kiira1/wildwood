@@ -9,7 +9,6 @@ type DailyGemBonusHooks = {
   canShow: () => boolean;
   claimable: () => boolean;
   claim: () => Promise<ClaimResult>;
-  setPaused: (paused: boolean) => void;
   showMessage: (message: string, color: string) => void;
 };
 
@@ -17,7 +16,7 @@ export function dailyGemBonusShouldShow(canShow: boolean, claimable: boolean, pe
   return canShow && (claimable || pending || celebrating);
 }
 
-/** Blocking daily-reward presentation; eligibility and credit remain server-owned. */
+/** Reward presentation leaves gameplay running; eligibility and credit remain server-owned. */
 export function createDailyGemBonusController(elements: DailyGemBonusElements, hooks: DailyGemBonusHooks) {
   let pending = false;
   let celebrating = false;
@@ -30,7 +29,6 @@ export function createDailyGemBonusController(elements: DailyGemBonusElements, h
     elements.overlay.setAttribute("aria-busy", String(pending));
     elements.claimButton.disabled = pending || celebrating;
     elements.claimButton.textContent = celebrating ? "CLAIMED!" : pending ? "CLAIMING…" : "CLAIM";
-    hooks.setPaused(nextVisible);
     if (nextVisible && !visible) requestAnimationFrame(() => elements.claimButton.focus());
     visible = nextVisible;
   }

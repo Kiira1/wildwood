@@ -37,7 +37,6 @@ export function createLeaderboardPodiumPreview(playerAppearanceAssets: PlayerApp
     ctx.clearRect(0, 0, width, height);
     ctx.imageSmoothingEnabled = false;
 
-    const now = performance.now() / 1_000;
     // Match the responsive stage instead of capping characters at the old fixed preview size.
     const widthScale = Math.max(.1, (width - 8) / 180);
     const heightScale = height / (rank === 1 ? 88 : 84) * (rank === 1 ? .62 : .57);
@@ -49,7 +48,7 @@ export function createLeaderboardPodiumPreview(playerAppearanceAssets: PlayerApp
       y: groundY - 29,
       facing: rank === 2 ? Math.PI : 0,
       moving: false,
-      gameTime: now + rank * .37,
+      gameTime: 0, // Static podium pose; no idle head bob.
       skinTone: appearance.skinTone,
       headItem: appearance.headItem,
       chestItem: appearance.chestItem,

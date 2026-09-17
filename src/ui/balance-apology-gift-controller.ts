@@ -10,7 +10,6 @@ type BalanceApologyGiftHooks = {
   canShow: () => boolean;
   amount: () => bigint;
   acknowledge: () => Promise<AcknowledgeResult>;
-  setPaused: (paused: boolean) => void;
   showMessage: (message: string, color: string) => void;
   afterDismiss: () => void;
 };
@@ -34,7 +33,6 @@ export function createBalanceApologyGiftController(elements: BalanceApologyGiftE
     elements.title.textContent = `+${amount.toString()} GEMS`;
     elements.continueButton.disabled = pending;
     elements.continueButton.textContent = pending ? "CLOSING…" : "CONTINUE";
-    hooks.setPaused(nextVisible);
     if (nextVisible && !visible) requestAnimationFrame(() => elements.continueButton.focus());
     visible = nextVisible;
   }

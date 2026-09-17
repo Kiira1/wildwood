@@ -1,3 +1,4 @@
+import { drawPlayerPowerLabel } from "./player-power-label";
 import { applyProfileIcon, createProfileIconCanvasPainter } from "../../app/profile-icons";
 import { playerNamePrefix, appendPlayerNameTags } from "../../app/player-name-tags";
 import {
@@ -32,7 +33,6 @@ const SPEECH_BUBBLE_DURATION_MS = 8_000;
 const SPEECH_BUBBLE_FADE_MS = 1_250;
 const SPEECH_BUBBLE_STACK_GAP = 5;
 const OVERHEAD_GENDER_ICON_OFFSET_Y = -1;
-const OVERHEAD_POWER_ICON_OFFSET_Y = 1;
 export const MAX_ACTIVE_SPEECH_BUBBLES_PER_PLAYER = 3;
 
 type DisplayedPlayerPowerEquipment = {
@@ -318,24 +318,7 @@ export function createPlayerIdentityRenderer(options: {
       options.outlinedText("(guest)", centerX, nameBottom - 16, "#a9b1ad", 3);
     }
     if (powerValue) {
-      ctx.font = '900 12px "Arial Rounded MT Bold", "Arial Rounded MT", Arial, sans-serif';
-      const hasPowerIcon = options.powerIcon.complete && options.powerIcon.naturalWidth > 0;
-      const iconSize = hasPowerIcon ? 16 : 0;
-      const iconGap = hasPowerIcon ? 3 : 0;
-      const powerValueWidth = ctx.measureText(powerValue).width;
-      const left = centerX - (iconSize + iconGap + powerValueWidth) / 2;
-      ctx.textAlign = "left";
-      options.outlinedText(powerValue, left, bottom, "#ffffff", 4);
-      if (hasPowerIcon) {
-        ctx.imageSmoothingEnabled = true;
-        ctx.drawImage(
-          options.powerIcon,
-          left + powerValueWidth + iconGap,
-          bottom - iconSize + OVERHEAD_POWER_ICON_OFFSET_Y,
-          iconSize,
-          iconSize,
-        );
-      }
+      drawPlayerPowerLabel(ctx, options.outlinedText, options.powerIcon, powerValue, centerX, bottom);
     }
     ctx.restore();
   }

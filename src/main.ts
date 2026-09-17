@@ -29,7 +29,7 @@ import {
 } from "./game/constants";
 import { distanceSquared } from "./game/math";
 import { formatArmorReduction } from "./game/combat";
-import { DARK_METAL_HELMET, equipmentAppearance, FIRE_METAL_BOW, FIRE_METAL_HELMET, FROST_ARMOR, FROST_BOW, IRON_BOW, moveCosmeticInventoryItem, moveInventoryItem, NIGHT_BOW, setInventoryItemQuantity, SNOW_BOW, STARTER_BOW, toggleCosmeticEquipmentVisibility, TRAILBLAZER_BOOTS } from "./game/inventory";
+import { type InventoryState, DARK_METAL_HELMET, equipmentAppearance, FIRE_METAL_BOW, FIRE_METAL_HELMET, FROST_ARMOR, FROST_BOW, IRON_BOW, moveCosmeticInventoryItem, moveInventoryItem, NIGHT_BOW, setInventoryItemQuantity, SNOW_BOW, STARTER_BOW, toggleCosmeticEquipmentVisibility, TRAILBLAZER_BOOTS } from "./game/inventory";
 import { itemPresentation } from "./game/item-presentation";
 import { createMapMusicController } from "./game/runtime/audio";
 import { createCamera } from "./game/runtime/camera";
@@ -83,6 +83,7 @@ import {
 } from "./game/world";
 import { createChatRuntimeController } from "./ui/chat-runtime-controller";
 import { createPlayerSafetyController } from "./ui/player-safety-controller";
+import { bestEquipmentMoves } from "./game/equip-best";
 import { createInventoryController } from "./ui/inventory-controller";
 import { createItemInspectionController } from "./ui/item-inspection-controller";
 import { createUpgradeBenchController } from "./ui/upgrade-bench-controller";
@@ -428,6 +429,16 @@ import {
   const inventoryController = createInventoryController({
     inventory,
     itemInspection: itemInspectionController,
+    equipBest: () => {
+      const moves = bestEquipmentMoves(inventory, powerForEquipment);
+      if (!moves.length) return false;
+      for (const { itemId, destination } of moves) moveInventoryItem(inventory, itemId, destination);
+      player.speed = progress.movementSpeedForEquipment(inventory.equippedFeet === TRAILBLAZER_BOOTS) * localTestMultiplier;
+      applyPlayerMaxHealthMultiplier(player, healthMultiplier());
+      saveProgress(true);
+      showMessage("BEST EQUIPMENT EQUIPPED", "#72ef58");
+      return true;
+    },
     upgradeLevel: (itemId) => coop?.itemUpgradeLevel?.(itemId) ?? 0,
     inventorySlotsUnlocked: () => coop?.inventorySlotsUnlocked?.() ?? 0,
     gemBalance: () => coop?.gemBalance?.() ?? 0n,
@@ -747,22 +758,25 @@ import {
     drawActorStatus,
     drawPlayerIdentity,
   } = playerIdentityRenderer;
-  const playerPower: typeof playerIdentityRenderer.playerPower = () => effectivePlayerPower(
-    displayedPlayerPowerProgress({
-      maxHp: player.baseMaxHp,
-      damage: player.damage,
-      attackRate: player.attackRate,
-      armor: player.armor,
-      regen: player.regen,
-    }, {
-      equippedHead: inventory.equippedHead,
-      equippedChest: inventory.equippedChest,
-      equippedRightHand: inventory.equippedRightHand,
-      equippedLeftHand: inventory.equippedLeftHand,
-    }),
-    researchRanks(),
-    (itemId) => coop?.itemUpgradeLevel?.(itemId) ?? 0,
-  );
+  const playerPower: typeof playerIdentityRenderer.playerPower = () => powerForEquipment(inventory);
+  function powerForEquipment(equipment: InventoryState) {
+    return effectivePlayerPower(
+      displayedPlayerPowerProgress({
+        maxHp: player.baseMaxHp,
+        damage: player.damage,
+        attackRate: player.attackRate,
+        armor: player.armor,
+        regen: player.regen,
+      }, {
+        equippedHead: equipment.equippedHead,
+        equippedChest: equipment.equippedChest,
+        equippedRightHand: equipment.equippedRightHand,
+        equippedLeftHand: equipment.equippedLeftHand,
+      }),
+      researchRanks(),
+      (itemId) => coop?.itemUpgradeLevel?.(itemId) ?? 0,
+    );
+  }
 
   let playerController: PlayerController;
   const mapController = createMapController({
@@ -1246,9 +1260,10 @@ import {
       if (!settingsPanel.hidden) return;
       profileWindow.drawPreview();
       leaderboard.drawPodium();
-      inventoryCharacterPreview.draw({
-        visible: !inventoryPanel.hidden,
+      if (!inventoryPanel.hidden) inventoryCharacterPreview.draw({
+        visible: true,
         inventory,
+        power: powerForEquipment(inventory),
         skinTone: coop?.skinTone?.() ?? DEFAULT_SKIN_TONE,
       });
     },
@@ -1352,14 +1367,16 @@ import {
     isDueling, duelCooldownMs: () => coop?.duelCooldownRemainingMs?.() ?? 0,
     requestDuel: async (identity) => {
       minimizeMaximizedChat();
-      return coop?.requestDuel?.(identity);
+      const result = await coop?.requestDuel?.(identity);
+      if (result?.ok) guildPanel?.close();
+      return result;
     },
     isNameTaken: (name) => coop?.isDisplayNameTaken?.(name) ?? false, getNameChangeStatus: async () => coop?.getNameChangeStatus?.(), setDisplayName: saveProfileName, itemInspection: itemInspectionController, destructionActions: inventoryController.destructionActions, showMessage,
   });
   new ResizeObserver(() => { if (profileCharacterPreview.resize()) profileWindow.drawPreview(); }).observe(profileCharacterCanvas);
   new ResizeObserver(() => {
     if (!inventoryPanel.hidden && inventoryCharacterPreview.resize()) {
-      inventoryCharacterPreview.draw({ visible: true, inventory, skinTone: coop?.skinTone?.() ?? DEFAULT_SKIN_TONE });
+      inventoryCharacterPreview.draw({ visible: true, inventory, power: powerForEquipment(inventory), skinTone: coop?.skinTone?.() ?? DEFAULT_SKIN_TONE });
     }
   }).observe(inventoryCharacterCanvas);
 
@@ -1389,7 +1406,7 @@ import {
   });
 
   guildPanel = createGuildPanel({
-    onOpenPlayer: (identity, name) => { guildPanel?.close(); void profileWindow.open(identity, name); },
+    onOpenPlayer: (identity, name) => { void profileWindow.open(identity, name); },
     lowPerformanceMode: appShell.lowPerformanceMode,
     replayAssets: { player: playerAppearanceAssets, prepare: () => assets.ensureMapAssets("home_exterior"), trees: assets.treeSpritesheet, treeBounds: assets.treeSpriteBounds },
     api: () => coop?.guild,
@@ -1424,6 +1441,7 @@ import {
     localIdentity: () => coop?.localIdentity?.() || "",
     isDeveloper: isDeveloperIdentity,
     paintProfileIcon: (canvas: HTMLCanvasElement, identity: string) => paintProfileIconCanvas(canvas, coop?.profileIcon?.(identity) ?? 0),
+    podiumAssetsReady: () => playerSpriteReady,
     drawPodiumCharacter: (canvas: HTMLCanvasElement, entry: LeaderboardEntry, rank: 1 | 2 | 3) => leaderboardPodiumPreview.draw(canvas, entry, rank),
     openProfile: (identity: string, name: string) => { void profileWindow.open(identity, name); },
     beforeOpen: () => {
@@ -1740,7 +1758,6 @@ import {
     canShow: () => session.hasStarted() && !inTutorial(),
     amount: () => coop?.balanceApologyGiftAmount?.() ?? 0n,
     acknowledge: async () => coop?.acknowledgeBalanceApologyGift?.(),
-    setPaused: (paused) => { if (paused) guildPanel?.close(); setGameplayPause("balance-apology-gift", paused); },
     showMessage,
     afterDismiss: () => refreshDailyGemBonus(),
   });
@@ -1762,7 +1779,6 @@ import {
     canShow: () => session.hasStarted() && !inTutorial() && !balanceApologyGift.isOpen() && !developerItemGift.isOpen() && coop?.accountState?.().signedIn === true,
     claimable: () => coop?.dailyGemBonusClaimable?.() === true,
     claim: async () => coop?.claimDailyGemBonus?.(),
-    setPaused: (paused) => { if (paused) guildPanel?.close(); setGameplayPause("daily-gem-bonus", paused); },
     showMessage,
   });
   refreshDailyGemBonus = () => { developerItemGift.refresh(); dailyGemBonus.refresh(); };

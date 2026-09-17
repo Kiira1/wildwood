@@ -1,3 +1,4 @@
+import { createTestGuild } from "../../tests/helpers/guild-creation";
 import { describe, expect, it, vi } from "vitest";
 import { crystalFixture, identity, server } from "../../tests/helpers/crystal-hollows-fixture";
 import { STARTER_BOW } from "../../shared/items";
@@ -25,7 +26,7 @@ function fixture() {
     { withTx: (action: (ctx: typeof f.ctx) => unknown) => f.transaction(() => action(f.ctx)) }, { afterId: 0n },
   ));
   const guild = (digits: string[], name: string) => {
-    actor(digits[0]); f.run(server.createGuild, { name });
+    actor(digits[0]); createTestGuild(f, name);
     const guildId = f.db.guildMember.identity.find(f.ctx.sender).guildId;
     for (const digit of digits.slice(1)) { actor(digit); f.run(server.joinGuild, { guildId }); }
     actor(digits[0]);
@@ -35,6 +36,37 @@ function fixture() {
 }
 
 describe("guild root reducer integration", () => {
+  it("requires one billion saved power only for creation, including at the boundary", () => {
+    const f = fixture(); f.actor("1");
+    const saved = f.db.playerProgress.identity.find(f.ctx.sender);
+    const setPower = (maxHp: number) => f.db.playerProgress.identity.update({ ...saved,
+      maxHp, damage: 0, armor: 0, regen: 0, equippedHead: "", equippedChest: "",
+      equippedRightHand: "", equippedLeftHand: "" });
+    setPower(999_999_999);
+    const player = f.db.player.identity.find(f.ctx.sender);
+    f.db.player.identity.update({ ...player, powerLevel: 2_000_000_000 });
+    expect(() => f.run(server.createGuild, { name: "Rose" })).toThrow("1 billion power");
+    expect(f.db.guild.count()).toBe(0n);
+    expect(f.db.guildMember.count()).toBe(0n);
+    setPower(1_000_000_000);
+    f.run(server.createGuild, { name: "Rose" });
+    const guildId = f.snapshot().guild!.id;
+    f.actor("2"); f.run(server.joinGuild, { guildId: BigInt(guildId) });
+    expect(f.snapshot().guild!.members).toHaveLength(2);
+  });
+  it("includes root presence even with the eye off and retains offline last seen", () => {
+    const f = fixture(); f.guild(["1", "2"], "Rose");
+    const who = identity("2");
+    const player = f.db.player.identity.find(who);
+    f.db.player.identity.update({ ...player, isVisible: false });
+    f.seed("playerLifetime", { identity: who, joinedAt: f.ctx.timestamp,
+      sessionStartedAt: f.ctx.timestamp, playedMicros: 0n, enemyKills: 0n, deathCount: 0n });
+    const member = () => f.snapshot().guild!.members.find(row => row.identity === who.toHexString())!;
+    expect(member().online).toBe(true);
+    f.db.player.identity.delete(who);
+    expect(member()).toMatchObject({ online: false,
+      lastSeenAtMs: Number(f.ctx.timestamp.microsSinceUnixEpoch) / 1000 });
+  });
   it("updates guild member names on rename and resolves older stale roster names", () => {
     const f = fixture();
     f.guild(["1", "2"], "Rose");
@@ -58,17 +90,17 @@ describe("guild root reducer integration", () => {
     const f = fixture();
     f.actor("1", false);
     expect(f.snapshot()).toMatchObject({ signedIn: false, guild: null, directory: [] });
-    f.run(server.createGuild, { name: "Rose" });
+    createTestGuild(f, "Rose");
     expect(f.snapshot().guild?.name).toBe("Rose");
     f.run(server.leaveGuild);
     expect(f.db.guild.count()).toBe(0n);
     f.actor("1");
     f.ctx.connectionId = null;
-    expect(() => f.run(server.createGuild, { name: "Rose" })).toThrow();
+    expect(() => createTestGuild(f, "Rose")).toThrow();
     f.actor("1");
     f.seed("shardRuntime", { id: 0, role: "map", enabled: true });
     f.seed("shardAdmission", { identity: f.ctx.sender, generation: 1n, tabId: "test", inDuel: false });
-    expect(() => f.run(server.createGuild, { name: "Rose" })).toThrow("main character");
+    expect(() => createTestGuild(f, "Rose")).toThrow("main character");
     expect(f.db.guild.count()).toBe(0n);
     expect(f.db.guildAccount.count()).toBe(1n);
   });
@@ -153,7 +185,7 @@ describe("guild root reducer integration", () => {
 
 it("preserves a guest's guild through the real account-link reducer", () => {
   const f = fixture();
-  f.actor("2", false); f.run(server.createGuild, { name: "Guest".slice(0, 4) });
+  f.actor("2", false); createTestGuild(f, "Guest".slice(0, 4));
   const guestGuild = f.snapshot().guild!.id;
   f.seed("accountLink", { code: "guild-link", guest: identity("2"), createdAt: f.ctx.timestamp });
   f.actor("3"); f.db.playerProgress.identity.delete(identity("3")); f.run(server.claimGuestAccount, { code: "guild-link" });

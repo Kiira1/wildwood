@@ -112,6 +112,7 @@ import { socialTables } from "./social-tables";
 import { createSocialService, socialSnapshot, visibleSocialMessages, latestSocialMessages, socialHistoryPage, removeSocialAccount, mergeSocialAccount } from "./social-service";
 import { guildTables } from "./guild-tables";
 import { createGuildService } from "./guild-service";
+import { GUILD_CREATION_MIN_POWER } from "../../shared/guilds";
 import { guildWeaponRange } from "../../shared/guild-combat";
 import type { DuelFighter } from "../../shared/duel-combat";
 import {
@@ -10000,8 +10001,10 @@ export const requestDuel = spacetimedb.reducer(
   { opponent: t.identity() },
   (ctx, { opponent }) => {
     const challenger = requireControllingPlayer(ctx);
-    if (challenger.protocolVersion !== 105 || ctx.db.player.identity.find(opponent)?.protocolVersion !== 105) {
-      throw new SenderError("Both players need game version 0.709 or newer for duels. Update the app to continue.");
+    // Only the challenger plays this snapshot duel. The opponent may be
+    // offline or on an older app; wire-access filters protect older decoders.
+    if (challenger.protocolVersion !== 105) {
+      throw new SenderError("Update your app to start a duel.");
     }
     if (sameIdentity(opponent, ctx.sender)) throw new SenderError("You cannot duel yourself.");
     if (playersBlocked(ctx, ctx.sender, opponent)) throw new SenderError("Duel unavailable for this player.");
@@ -10765,6 +10768,12 @@ function guildFighterFor(ctx: ModuleReducerCtx, identity: Identity): DuelFighter
 }
 
 const guildService = createGuildService({
+  presenceFor: (ctx, identity) => ({
+    // Root presence survives eye-off and autofarming; no movement subscription needed.
+    online: Boolean(ctx.db.player.identity.find(identity))
+      && (!isDeveloperIdentity(identity) || (ctx.db.developerPresencePreference.identity.find(identity)?.visible ?? false)),
+    lastSeenAtMs: Number(ctx.db.playerLifetime.identity.find(identity)?.sessionStartedAt.microsSinceUnixEpoch ?? 0n) / 1000,
+  }),
   profileFor: (ctx, identity) => ctx.db.playerProfile.identity.find(identity) ?? undefined,
   announceBattle: (ctx, report) => {
     const result = report.result;
@@ -10789,6 +10798,10 @@ const guildService = createGuildService({
 
 export const createGuild = spacetimedb.reducer({ name: t.string() }, (ctx, { name }) => {
   requireGuildPlayer(ctx);
+  const progress = ctx.db.playerProgress.identity.find(ctx.sender);
+  if (!progress || effectivePowerForProgress(ctx, progress) < GUILD_CREATION_MIN_POWER) {
+    throw new SenderError("Reach 1 billion power to create a guild.");
+  }
   if (!isPublicDisplayNameAllowed(name)) throw new SenderError("Choose a different guild name.");
   guildService.create(ctx, name);
 });

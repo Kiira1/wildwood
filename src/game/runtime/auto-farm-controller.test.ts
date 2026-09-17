@@ -160,9 +160,11 @@ describe('autofarm', () => {
     const s = setup(); s.add('Bramble', 1500, 500); s.farm.start('Bramble');
     const manual: Movement = { x: -.4, y: .2, source: 'touch' };
     expect(s.farm.movement(manual, 1 / 60)).toBe(manual);
-    expect(s.farm.targetType()).toBe('Bramble');
+    expect(s.farm.targetType()).toBeNull();
+    expect(s.farm.targetCamp()).toBeNull();
     expect(s.farm.state()).toMatchObject({ active: true, status: 'Manual control' });
     expect(s.tick().x).toBeGreaterThan(0);
+    expect(s.farm.targetType()).toBe('Bramble');
     expect(s.farm.state().active).toBe(true);
   });
 

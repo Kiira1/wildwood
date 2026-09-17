@@ -82,3 +82,27 @@ it("opens inspection on the first tap and only equips from its action", () => {
   document.querySelector<HTMLButtonElement>(`#inventoryItems [data-item-id="${SUPERIOR_GOLDEN_HELMET}"]`)!.click();
   expect(open.mock.lastCall![0]).toMatchObject({ itemId: SUPERIOR_GOLDEN_HELMET, actions: [expect.objectContaining({ label: "USE COSMETIC" })] });
 });
+
+it("filters the bag without changing capacity and applies best equipment once", () => {
+  const ids = ["inventoryPanel", "inventoryItems", "inventoryCount", "equippedHeadSlot", "equippedChestSlot", "equippedFeetSlot", "equippedRightHandSlot", "inventoryEquipmentTab", "inventoryCosmeticsTab", "inventoryContent"];
+  const { document, window } = parseHTML(`<html><body>${ids.map(id => `<div id="${id}"></div>`).join("")}</body></html>`);
+  vi.stubGlobal("document", document); vi.stubGlobal("window", window);
+  const inventory = { itemIds: [STARTER_STONE, STARTER_BOW, FROST_ARMOR], equippedHead: "", equippedChest: "", equippedFeet: "", equippedRightHand: STARTER_STONE, equippedLeftHand: "", cosmeticHead: "", cosmeticChest: "", cosmeticFeet: "", cosmeticRightHand: "", cosmeticLeftHand: "", selectedItemId: "", selectedItemLocation: "" as const };
+  const equipBest = vi.fn(() => true);
+  const controller = createInventoryController({ inventory, move: () => false, moveCosmetic: () => false, toggleCosmeticVisibility: () => false,
+    upgradeLevel: () => 0, equipBest, itemInspection: { close() {}, open() {} } as any, inventorySlotsUnlocked: () => 0, gemBalance: () => 0n,
+    destroyEquipment: async () => undefined, unlockInventorySlot: async () => undefined, showMessage() {} });
+  controller.render();
+  const count = document.getElementById("inventoryCount")!.textContent;
+  expect([...document.querySelectorAll("#inventoryItems [data-item-id]")].map(item => item.getAttribute("data-item-id"))).toEqual([FROST_ARMOR, STARTER_BOW]);
+  const tabs = [...document.querySelectorAll<HTMLButtonElement>(".inventory-filter")];
+  tabs.find(tab => tab.textContent === "Armor")!.click();
+  expect([...document.querySelectorAll("#inventoryItems [data-item-id]")].map(item => item.getAttribute("data-item-id"))).toEqual([FROST_ARMOR]);
+  expect(document.getElementById("inventoryCount")!.textContent).toBe(count);
+  tabs.find(tab => tab.textContent === "All")!.click();
+  expect(document.querySelectorAll("#inventoryItems [data-item-id]")).toHaveLength(2);
+  document.querySelector<HTMLButtonElement>(".inventory-equip-best")!.click();
+  expect(equipBest).toHaveBeenCalledTimes(1);
+  document.getElementById("inventoryCosmeticsTab")!.click();
+  expect(document.querySelector<HTMLButtonElement>(".inventory-equip-best")!.hidden).toBe(true);
+});

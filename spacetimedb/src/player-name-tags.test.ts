@@ -1,3 +1,4 @@
+import { createTestGuild } from "../../tests/helpers/guild-creation";
 import { expect, it, vi } from "vitest";
 import { Identity } from "../../tests/helpers/spacetime-memory-db";
 import { crystalFixture, identity, server } from "../../tests/helpers/crystal-hollows-fixture";
@@ -14,13 +15,13 @@ function registered() {
 it("updates public tags on create and leave while keeping a saved hidden developer badge", () => {
   const f = registered();
   f.seed("playerNameTag", { identity: f.ctx.sender, guildTag: "", showDevTag: false });
-  f.run(server.createGuild, { name: "Fire" });
+  createTestGuild(f, "Fire");
   expect(f.db.playerNameTag.identity.find(f.ctx.sender)).toMatchObject({ guildTag: "Fire", showDevTag: false });
   f.run(server.leaveGuild);
   expect(f.db.playerNameTag.identity.find(f.ctx.sender)).toMatchObject({ guildTag: "", showDevTag: false });
 });
 it("renames the existing guild without replacing its membership and refreshes cached rankings", () => {
-  const f = registered(); f.run(server.createGuild, { name: "TheG" });
+  const f = registered(); createTestGuild(f, "TheG");
   const guild = f.db.guild.id.find(1n);
   f.db.guild.id.update({ ...guild, name: "The Guilds", nameKey: "the guilds" });
   f.seed("guildRank", { guildId: guild.id, rankKey: "rank", payload: JSON.stringify({ id: String(guild.id), name: "The Guilds" }) });
