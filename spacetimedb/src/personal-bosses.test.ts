@@ -5,7 +5,36 @@ import { MAP_IDS, BOSS_REWARD_CLAIM_BITS } from "../../shared/rules";
 import { personalBossDefinition } from "../../shared/personal-bosses";
 import { generatedBossStats, generateMap } from "../../shared/procedural-maps";
 import { researchStatRewardMultiplier } from "../../shared/research";
+import { Timestamp } from 'spacetimedb';
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
+it('consumes a refreshed-boss backlog once without letting it block the next report or map change', () => {
+  const f = crystalFixture(); f.patch('player', { mapId: 'endless_40' });
+  reportEnemy(f, 'boss', 100);
+  expect(f.db.playerLifetime.identity.find(f.ctx.sender).enemyKills).toBe(6n);
+  reportEnemy(f, 'boss', 100);
+  expect(f.db.playerLifetime.identity.find(f.ctx.sender).enemyKills).toBe(6n);
+  reportEnemy(f, 'site:0', 1);
+  expect(f.db.playerLifetime.identity.find(f.ctx.sender).enemyKills).toBe(7n);
+  expect(f.db.regularEnemyLootCursor.key.find(`${f.ctx.sender.toHexString()}:test-defeats-stream-0001`).sequence).toBe(3n);
+  expect(() => f.run(server.changeMap, { mapId: 'home_exterior', x: 600, y: 700 })).not.toThrow();
+});
+it('accepts at most twenty boss rewards in any rolling five minutes across maps and streams', () => {
+  const f = crystalFixture(), start = f.ctx.timestamp.microsSinceUnixEpoch;
+  let calls = 0;
+  const claim = (mapId: string, count: number, seconds: number) => {
+    f.patch('player', { mapId }); f.ctx.timestamp = new Timestamp(start + BigInt(seconds) * 1_000_000n);
+    f.run(server.recordEnemyDefeats, { mapId, streamId: `different-browser-${++calls}`, sequence: 1n, enemies: [{ enemy: 'boss', count }] });
+  };
+  claim('tutorial_forest', 8, 0); claim('beginner_desert', 8, 100); claim('intermediate_snowlands', 8, 200);
+  expect(f.db.playerLifetime.identity.find(f.ctx.sender).enemyKills).toBe(20n);
+  claim('advanced_lava_wastes', 8, 299);
+  expect(f.db.playerLifetime.identity.find(f.ctx.sender).enemyKills).toBe(20n);
+  claim('advanced_lava_wastes', 8, 300);
+  expect(f.db.playerLifetime.identity.find(f.ctx.sender).enemyKills).toBe(28n);
+  expect(f.db.bossDefeatWindow.identity.find(f.ctx.sender).acceptedAtMicros).toHaveLength(20);
+  claim('infernal_depths', 8, 301);
+  expect(f.db.playerLifetime.identity.find(f.ctx.sender).enemyKills).toBe(28n);
+});
 it.each(["endless_1", "endless_40"] as const)("awards all four scaled stats once for %s", mapId => {
   const f = crystalFixture(); f.patch("player", { mapId });
   const before = { ...f.db.playerProgress.identity.find(f.ctx.sender) };

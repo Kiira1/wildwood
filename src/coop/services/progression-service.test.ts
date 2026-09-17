@@ -304,9 +304,9 @@ describe("server-calculated defeat batches", () => {
     } finally { vi.useRealTimers(); }
   });
 
-  it("schedules ordinary loot batches every fifteen seconds", () => {
+  it("schedules ordinary progress and loot batches every five minutes", () => {
     const h = setup();
-    expect(window.setInterval).toHaveBeenCalledWith(expect.any(Function), 15_000);
+    expect(window.setInterval).toHaveBeenCalledWith(expect.any(Function), 300_000);
     h.service.dispose();
   });
 });

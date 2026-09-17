@@ -1,9 +1,11 @@
 import { personalBossDefinition } from "../../../shared/personal-bosses";
+import type { RespawnMemory } from './respawn-memory';
 
 /** Local combat owns HP. Only the completed defeat is sent to the reward queue. */
 export function createPersonalBosses(options: {
   mapId: () => string; identity: () => string; alive: () => boolean; now: () => number;
   defeated: (mapId: string) => void;
+  respawns?: RespawnMemory;
 }) {
   type State = { key: string; mapId: string; encounter: bigint; hp: number; maxHp: number; alive: boolean; respawnAtMs: number; respawnAtMicros: bigint };
   type Result = { encounter: bigint; totalDamage: number; createdAtMs: number; contributors: { identity: string; name: string; gender: 0; damage: number; percentage: number }[] };
@@ -27,6 +29,12 @@ export function createPersonalBosses(options: {
     let row = states.get(mapId);
     if (!row || (!row.alive && options.now() >= row.respawnAtMs)) {
       row = { key: `${owner}:${mapId}`, mapId, encounter: ++encounter, hp: definition.hp, maxHp: definition.hp, alive: true, respawnAtMs: 0, respawnAtMicros: 0n };
+      const remaining = options.respawns?.remaining(`boss:${mapId}`) ?? 0;
+      if (remaining > 0) {
+        row.alive = false; row.hp = 0;
+        row.respawnAtMs = options.now() + remaining;
+        row.respawnAtMicros = BigInt(Math.round(row.respawnAtMs * 1000));
+      }
       // Only a handful of recently visited maps need local respawn clocks.
       if (states.size >= 8 && !states.has(mapId)) { const key = states.keys().next().value!; states.delete(key); results.delete(key); }
       states.set(mapId, row);
@@ -46,6 +54,7 @@ export function createPersonalBosses(options: {
       row.alive = false;
       row.respawnAtMs = options.now() + personalBossDefinition(mapId)!.respawnSeconds * 1000;
       row.respawnAtMicros = BigInt(Math.round(row.respawnAtMs * 1000));
+      options.respawns?.remember(`boss:${mapId}`, row.respawnAtMs - options.now());
       results.set(mapId, { encounter: row.encounter, totalDamage: row.maxHp, createdAtMs: options.now(),
         contributors: [{ identity: owner, name: "You", gender: 0, damage: row.maxHp, percentage: 100 }] });
       options.defeated(mapId);

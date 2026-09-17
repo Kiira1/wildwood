@@ -99,3 +99,30 @@ it("does not let a rejected old-map report block current-map kills", async () =>
   expect(requests[1].streamId).not.toBe(requests[0].streamId);
   expect(queue.hasPending()).toBe(false);
 });
+
+it('persists a throttle across refreshes and ignores repeated forced drains until retry is due', async () => {
+  vi.useFakeTimers();
+  try {
+    const f = fixture();
+    const send = vi.fn(async (_r: EnemyLootRequest): Promise<boolean | 'throttled'> => 'throttled');
+    let queue = createRegularEnemyLootQueue({ ...f.options, send });
+    queue.record('water_reach', 'Spitter'); await queue.flush(true);
+    const original = send.mock.calls[0][0];
+    for (let i = 0; i < 10; i++) {
+      queue = createRegularEnemyLootQueue({ ...f.options, send }); queue.begin();
+      expect(await queue.flush(true)).toBe(false);
+    }
+    expect(send).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(30_000); send.mockResolvedValue(true);
+    expect(await queue.flush(true)).toBe(true);
+    expect(send.mock.calls[1][0]).toEqual(original);
+  } finally { vi.useRealTimers(); }
+});
+
+it('holds full batches for the periodic save instead of sending during combat', async () => {
+  const f = fixture();
+  for (let i = 0; i < 250; i++) f.queue.record('water_reach', 'Spitter');
+  expect(f.send).not.toHaveBeenCalled();
+  await f.queue.flush();
+  expect(f.send.mock.calls.map(([r]) => r.count)).toEqual([100, 100, 50]);
+});

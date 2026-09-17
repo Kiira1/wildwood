@@ -51,13 +51,13 @@ export function enemyDefeatDefinition(mapId: string, enemy: string) {
 }
 export function combatMap(mapId: string) { return Object.prototype.hasOwnProperty.call(CAMPS, mapId) || isProceduralMap(mapId); }
 
-// Each species can clear its entire population immediately. Two minutes of
-// capacity tolerate delayed 15-second batches. Refill allows the fastest rewarded
+// Each species can clear its entire population immediately. Five minutes of
+// capacity tolerate periodic save batches. Refill allows the fastest rewarded
 // respawn plus the local test multiplier (10 / 3 seconds), never a ban.
 export const DEFEAT_MIN_RESPAWN_SECONDS = 10 / 3;
 export function defeatBudget(population: number) {
   const perSecond = population / DEFEAT_MIN_RESPAWN_SECONDS;
-  return { capacity: population + perSecond * 120, perSecond };
+  return { capacity: population + perSecond * 300, perSecond };
 }
 export function applyEnemyRewards<T extends { damage: number; maxHp: number; attackRate: number; armor: number; regen: number }>(
   base: T, rewards: { type: string; amount: number; count: number }[], multiplier: number,

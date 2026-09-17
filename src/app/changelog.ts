@@ -1,4 +1,10 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.717": [
+    "Refreshing no longer bypasses defeated enemy or boss respawn timers on the same device.",
+    "Fixed excess boss reports blocking reward syncing and teleporting after repeated refreshes.",
+    "Periodic progress syncing now runs every five minutes; important actions still save immediately.",
+    "Boss rewards are limited to 20 defeats across all maps in any five minutes, with reduced retries when rewards are catching up.",
+  ],
   "0.716": [
     "Autofarm pauses during disconnects and resumes the same enemy or camp after reconnecting on the same character and map.",
     "Raised Fire Metal Helmet and Dark Metal Helmet drops to 0.8%, Magma Armor to 0.7%, and Fire Metal Bow to 0.5% per enemy.",
@@ -1932,6 +1938,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.717": "2026-09-16",
   "0.716": "2026-09-16",
   "0.715": "2026-09-16",
   "0.714": "2026-09-16",

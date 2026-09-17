@@ -80,6 +80,7 @@ import DamageVoltwardenFromPositionReducer from "./damage_voltwarden_from_positi
 import DeliverShardRewardReducer from "./deliver_shard_reward_reducer";
 import DestroyEquipmentReducer from "./destroy_equipment_reducer";
 import DevAdjustGemsReducer from "./dev_adjust_gems_reducer";
+import DevAnnounceOutageCompensationReducer from "./dev_announce_outage_compensation_reducer";
 import DevBeginVirtualPlayerLoadTestReducer from "./dev_begin_virtual_player_load_test_reducer";
 import DevClearVirtualPlayersReducer from "./dev_clear_virtual_players_reducer";
 import DevCopyPlayerCombatStatsReducer from "./dev_copy_player_combat_stats_reducer";
@@ -88,6 +89,7 @@ import DevDeleteLegacyPlayerReducer from "./dev_delete_legacy_player_reducer";
 import DevDeliverAlphaTesterGiftsReducer from "./dev_deliver_alpha_tester_gifts_reducer";
 import DevDeliverCombatUpdateGiftReducer from "./dev_deliver_combat_update_gift_reducer";
 import DevDeliverDisconnectCompensationReducer from "./dev_deliver_disconnect_compensation_reducer";
+import DevDeliverOutageCompensationReducer from "./dev_deliver_outage_compensation_reducer";
 import DevGrantEquipmentReducer from "./dev_grant_equipment_reducer";
 import DevRepairDisplayNameReducer from "./dev_repair_display_name_reducer";
 import DevRepairPlayerJoinedAtReducer from "./dev_repair_player_joined_at_reducer";
@@ -125,6 +127,7 @@ import RecordPlayerDeathReducer from "./record_player_death_reducer";
 import RecordRegularEnemyDefeatsReducer from "./record_regular_enemy_defeats_reducer";
 import RecordSnowEnemyDefeatReducer from "./record_snow_enemy_defeat_reducer";
 import RecordStartupTelemetryReducer from "./record_startup_telemetry_reducer";
+import RefreshDuelWireAccessReducer from "./refresh_duel_wire_access_reducer";
 import RegisterProtocolReducer from "./register_protocol_reducer";
 import RenewShardLeaseReducer from "./renew_shard_lease_reducer";
 import ReportChatMessageReducer from "./report_chat_message_reducer";
@@ -207,6 +210,7 @@ import DreadreaperBossRow from "./dreadreaper_boss_table";
 import DreadreaperResultRow from "./dreadreaper_result_table";
 import DuelRow from "./duel_table";
 import DuelReplayRow from "./duel_replay_table";
+import DuelWireAccessRow from "./duel_wire_access_table";
 import FrostclawBossRow from "./frostclaw_boss_table";
 import FrostclawResultRow from "./frostclaw_result_table";
 import GloomrootBossRow from "./gloomroot_boss_table";
@@ -417,6 +421,9 @@ const tablesSchema = __schema({
       { accessor: 'byChallenger', name: 'duel_challenger_idx_btree', algorithm: 'btree', columns: [
         'challenger',
       ] },
+      { accessor: 'combatVersion', name: 'duel_combat_version_idx_btree', algorithm: 'btree', columns: [
+        'combatVersion',
+      ] },
       { accessor: 'id', name: 'duel_id_idx_btree', algorithm: 'btree', columns: [
         'id',
       ] },
@@ -431,6 +438,9 @@ const tablesSchema = __schema({
   duelReplay: __table({
     name: 'duel_replay',
     indexes: [
+      { accessor: 'combatVersion', name: 'duel_replay_combat_version_idx_btree', algorithm: 'btree', columns: [
+        'combatVersion',
+      ] },
       { accessor: 'id', name: 'duel_replay_id_idx_btree', algorithm: 'btree', columns: [
         'id',
       ] },
@@ -439,6 +449,23 @@ const tablesSchema = __schema({
       { name: 'duel_replay_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, DuelReplayRow),
+  duelWireAccess: __table({
+    name: 'duel_wire_access',
+    indexes: [
+      { accessor: 'combatVersion', name: 'duel_wire_access_combat_version_idx_btree', algorithm: 'btree', columns: [
+        'combatVersion',
+      ] },
+      { accessor: 'byIdentity', name: 'duel_wire_access_identity_idx_btree', algorithm: 'btree', columns: [
+        'identity',
+      ] },
+      { accessor: 'key', name: 'duel_wire_access_key_idx_btree', algorithm: 'btree', columns: [
+        'key',
+      ] },
+    ],
+    constraints: [
+      { name: 'duel_wire_access_key_key', constraint: 'unique', columns: ['key'] },
+    ],
+  }, DuelWireAccessRow),
   frostclawBoss: __table({
     name: 'frostclaw_boss',
     indexes: [
@@ -1189,6 +1216,7 @@ const reducersSchema = __reducers(
   __reducerSchema("deliver_shard_reward", DeliverShardRewardReducer),
   __reducerSchema("destroy_equipment", DestroyEquipmentReducer),
   __reducerSchema("dev_adjust_gems", DevAdjustGemsReducer),
+  __reducerSchema("dev_announce_outage_compensation", DevAnnounceOutageCompensationReducer),
   __reducerSchema("dev_begin_virtual_player_load_test", DevBeginVirtualPlayerLoadTestReducer),
   __reducerSchema("dev_clear_virtual_players", DevClearVirtualPlayersReducer),
   __reducerSchema("dev_copy_player_combat_stats", DevCopyPlayerCombatStatsReducer),
@@ -1197,6 +1225,7 @@ const reducersSchema = __reducers(
   __reducerSchema("dev_deliver_alpha_tester_gifts", DevDeliverAlphaTesterGiftsReducer),
   __reducerSchema("dev_deliver_combat_update_gift", DevDeliverCombatUpdateGiftReducer),
   __reducerSchema("dev_deliver_disconnect_compensation", DevDeliverDisconnectCompensationReducer),
+  __reducerSchema("dev_deliver_outage_compensation", DevDeliverOutageCompensationReducer),
   __reducerSchema("dev_grant_equipment", DevGrantEquipmentReducer),
   __reducerSchema("dev_repair_display_name", DevRepairDisplayNameReducer),
   __reducerSchema("dev_repair_player_joined_at", DevRepairPlayerJoinedAtReducer),
@@ -1234,6 +1263,7 @@ const reducersSchema = __reducers(
   __reducerSchema("record_regular_enemy_defeats", RecordRegularEnemyDefeatsReducer),
   __reducerSchema("record_snow_enemy_defeat", RecordSnowEnemyDefeatReducer),
   __reducerSchema("record_startup_telemetry", RecordStartupTelemetryReducer),
+  __reducerSchema("refresh_duel_wire_access", RefreshDuelWireAccessReducer),
   __reducerSchema("register_protocol", RegisterProtocolReducer),
   __reducerSchema("renew_shard_lease", RenewShardLeaseReducer),
   __reducerSchema("report_chat_message", ReportChatMessageReducer),

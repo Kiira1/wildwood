@@ -10,8 +10,15 @@ export function createEnemyLifecycle(
   enemies: EnemyState[],
   spawnSites: SpawnSite[],
   spawnBurst: SpawnBurst,
+  respawns?: { remaining: (site: SpawnSite) => number; gameTime: () => number },
 ) {
   function spawnFromSite(site: SpawnSite) {
+    const remaining = respawns?.remaining(site) ?? 0;
+    if (remaining > 0) {
+      site.alive = false;
+      site.respawnAt = respawns!.gameTime() + remaining / 1000;
+      return;
+    }
     const base = site.definition ?? ENEMY_TYPES[site.type];
     const maxHp = base.hp;
     enemies.push({

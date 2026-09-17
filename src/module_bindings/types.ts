@@ -115,6 +115,12 @@ export const BossAttackFrame = __t.object("BossAttackFrame", {
 });
 export type BossAttackFrame = __Infer<typeof BossAttackFrame>;
 
+export const BossDefeatWindow = __t.object("BossDefeatWindow", {
+  identity: __t.identity(),
+  acceptedAtMicros: __t.array(__t.u64()),
+});
+export type BossDefeatWindow = __Infer<typeof BossDefeatWindow>;
+
 export const BossHitResult = __t.object("BossHitResult", {
   identity: __t.identity(),
   mapId: __t.string(),
@@ -465,6 +471,13 @@ export const DuelResolutionSchedule = __t.object("DuelResolutionSchedule", {
   duelId: __t.u64(),
 });
 export type DuelResolutionSchedule = __Infer<typeof DuelResolutionSchedule>;
+
+export const DuelWireAccess = __t.object("DuelWireAccess", {
+  key: __t.string(),
+  identity: __t.identity(),
+  combatVersion: __t.u8(),
+});
+export type DuelWireAccess = __Infer<typeof DuelWireAccess>;
 
 export const EndlessTravelAccess = __t.object("EndlessTravelAccess", {
   identity: __t.identity(),

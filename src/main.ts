@@ -60,6 +60,7 @@ import { createAutoFarmPanel } from "./ui/auto-farm-panel";
 import { createPlayerController, type PlayerController } from "./game/runtime/player-controller";
 import { applyPlayerMaxHealthMultiplier } from "./game/runtime/player-health";
 import { createRegularEnemyRespawnBoost } from "./game/runtime/regular-enemy-respawn";
+import { createRespawnMemory } from "./game/runtime/respawn-memory";
 import { createResearchController } from "./game/runtime/research-controller";
 import { createWorldRenderRuntime } from "./game/runtime/world-render-runtime";
 import { createWebGLStaticWorldLayer } from "./game/runtime/webgl-static-world-layer";
@@ -233,7 +234,12 @@ import {
     coop?.itemUpgradeLevel?.(inventory.equippedChest) ?? 0,
   );
   const LEGACY_SAVE_KEY = "wildwood-player-progress-v1";
-  const enemyLifecycle = createEnemyLifecycle(enemies, spawnSites, spawnBurst);
+  const respawnMemory = createRespawnMemory(localStorage, () => coop?.localIdentity?.() ?? '');
+  const enemyRespawnKey = (site: typeof spawnSites[number]) => `enemy:${currentMapId}:${site.id}:${site.type}:${site.campName}`;
+  const enemyLifecycle = createEnemyLifecycle(enemies, spawnSites, spawnBurst, {
+    remaining: site => respawnMemory.remaining(enemyRespawnKey(site)),
+    gameTime: () => session?.gameTime() ?? 0,
+  });
   const { spawnFromSite, engageEnemy, updateRespawns } = enemyLifecycle;
   let currentMapId: MapId = TUTORIAL_FOREST_MAP_ID;
   let onboarding: ReturnType<typeof createOnboardingTutorial> | undefined;
@@ -306,6 +312,9 @@ import {
 
   function activateRewardedRespawnBoost() {
     const activated = regularEnemyRespawnBoost.activate();
+    if (activated) for (const site of spawnSites) {
+      if (!site.alive && site.respawnAt > session.gameTime()) respawnMemory.remember(enemyRespawnKey(site), (site.respawnAt - session.gameTime()) * 1000);
+    }
     if (!activated) return false;
     try { localStorage.setItem(REWARDED_RESPAWN_BOOST_EXPIRES_KEY, String(regularEnemyRespawnBoost.activeUntilMs())); } catch {}
     return true;
@@ -546,6 +555,7 @@ import {
   });
   let playerCombat: PlayerCombatController;
   const personalBosses = createPersonalBosses({
+    respawns: respawnMemory,
     mapId: () => currentMapId, identity: () => coop?.localIdentity?.() ?? "local-player",
     alive: () => player.hp > 0, now: () => Date.now(),
     defeated: mapId => {
@@ -667,7 +677,10 @@ import {
     isDueling,
     hitGeneratedBoss: (enemy, damage) => { if (!enemy.generatedBoss) return false; personalBosses.hit(currentMapId, damage); spawnDamageNumber(enemy.x, enemy.y, damage, false); return true; },
     hitPersonalBoss: (damage, x, y, critical) => { personalBosses.hit(currentMapId, damage); spawnDamageNumber(x, y, damage, critical); },
-    scheduleEnemyRespawn: regularEnemyRespawnBoost.schedule,
+    scheduleEnemyRespawn: site => {
+      regularEnemyRespawnBoost.schedule(site);
+      respawnMemory.remember(enemyRespawnKey(site), (site.respawnAt - session.gameTime()) * 1000);
+    },
     recordRegularEnemyDefeat: (mapId, enemy) => coop?.recordRegularEnemyDefeat?.(mapId, enemy),
     incrementKills: () => { totalKills += 1; },
     drainBossHitResults: () => coop?.drainBossHitResults?.() ?? [],
@@ -2025,6 +2038,7 @@ import {
     setBootsCollected: (collected: boolean) => { bootsPickup.collected = collected; },
     clearPlayerInput: playerInput.clear,
     resetGame: async () => {
+      respawnMemory.clear();
       gameplayPauseReasons.clear();
       mapController.loadMap(TUTORIAL_FOREST_MAP_ID, PLAYER_SPAWN.x, PLAYER_SPAWN.y);
       playerController.reset(false, false);

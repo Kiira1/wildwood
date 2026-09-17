@@ -4,7 +4,7 @@ import { validPatreonRedirect } from "./patreon-url";
 import { isValidProfileIcon } from "../../shared/profile-icons";
 import { releaseNotice, releaseAcknowledgement, writeReleaseWindow, acknowledgeReleaseWindow } from "./release-control";
 import { PERSONAL_BOSS_COMBAT, personalBossDefinition } from "../../shared/personal-bosses";
-import { enemyDefeatBudget, acceptEnemyDefeats } from "./enemy-defeats";
+import { enemyDefeatBudget, bossDefeatWindow, acceptEnemyDefeats } from "./enemy-defeats";
 import { applyEnemyRewards } from "../../shared/enemy-defeats";
 import { LOADOUT_FIELDS } from "../../shared/combat-progress";
 import { chatHeartAllowance, chatReactionSummary, playerChatHearts, reactionCountsFor, chatReaction, readChatReactions, setChatReaction, removeMessageReactions, removeAccountReactions, mergeAccountReactions } from "./chat-reactions";
@@ -1741,7 +1741,7 @@ const spacetimedb = schema({
   balanceApologyNotice,
   playerItemGift,
   playerOnboarding,
-  regularEnemyLootCursor, enemyDefeatBudget,
+  regularEnemyLootCursor, enemyDefeatBudget, bossDefeatWindow,
   chatReaction, chatHeartAllowance, chatReactionSummary, playerChatHearts,
   playerUpgradeBench,
   playerInventoryCapacity,
@@ -4377,6 +4377,7 @@ function removeVirtualPlayerData(ctx: any, identity: any, adjustPresence = true,
   removeItemGifts(ctx, identity);
   unlinkPatreon(ctx, identity);
   for (const budget of ctx.db.enemyDefeatBudget.identity.filter(identity)) ctx.db.enemyDefeatBudget.key.delete(budget.key);
+  if (ctx.db.bossDefeatWindow.identity.find(identity)) ctx.db.bossDefeatWindow.identity.delete(identity);
   for (const cursor of ctx.db.regularEnemyLootCursor.identity.filter(identity)) ctx.db.regularEnemyLootCursor.key.delete(cursor.key);
   if (ctx.db.playerOnboarding.identity.find(identity)) ctx.db.playerOnboarding.identity.delete(identity);
   if (ctx.db.playerUpgradeBench.identity.find(identity)) ctx.db.playerUpgradeBench.identity.delete(identity);
@@ -4471,6 +4472,7 @@ function removePlayerIdentityData(ctx: any, identity: any) {
   removeItemGifts(ctx, identity);
   unlinkPatreon(ctx, identity);
   for (const budget of ctx.db.enemyDefeatBudget.identity.filter(identity)) ctx.db.enemyDefeatBudget.key.delete(budget.key);
+  if (ctx.db.bossDefeatWindow.identity.find(identity)) ctx.db.bossDefeatWindow.identity.delete(identity);
   for (const cursor of ctx.db.regularEnemyLootCursor.identity.filter(identity)) ctx.db.regularEnemyLootCursor.key.delete(cursor.key);
   if (ctx.db.playerOnboarding.identity.find(identity)) ctx.db.playerOnboarding.identity.delete(identity);
   if (ctx.db.playerUpgradeBench.identity.find(identity)) ctx.db.playerUpgradeBench.identity.delete(identity);
@@ -9699,7 +9701,7 @@ export const recordEnemyDefeats = spacetimedb.reducer(
     const player = requireControllingPlayer(ctx);
     if (isMapShard(ctx) || activeDuelFor(ctx, ctx.sender)) throw new SenderError("Enemy rewards require your account world connection.");
     const accepted = acceptEnemyDefeats(ctx, batch, player.mapId);
-    if (!accepted) return;
+    if (!accepted || !accepted.count) return;
     const base = ctx.db.playerProgress.identity.find(ctx.sender) ?? defaultPlayerProgress(ctx.sender);
     if (accepted.rewards.some(reward => reward.type !== "boss")) {
       const next = applyEnemyRewards(base, accepted.rewards, researchStatRewardMultiplier(ctx.db.playerResearch.identity.find(ctx.sender)));

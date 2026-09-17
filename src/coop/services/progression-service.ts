@@ -97,6 +97,7 @@ type LifetimeRow = {
   enemyKills: bigint;
   deathCount: bigint;
 };
+export const PROGRESS_SAVE_INTERVAL_MS = REGULAR_ENEMY_LOOT_DELAY_MS;
 
 export function createProgressionService(dependencies: ProgressionServiceDependencies) {
   const store = createProgressStore(dependencies.storage, dependencies.pendingProgressKey);
@@ -129,6 +130,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
   let onboardingStep = 0;
   let pendingProgress: ProgressSave | null = null;
   let saveInFlightUntil = 0;
+  let nextPeriodicSaveAt = Date.now() + PROGRESS_SAVE_INTERVAL_MS;
   let savePromise: Promise<boolean> | null = null;
   let resetPending = false;
   let restoredSave = false;
@@ -173,7 +175,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
       !pendingProgress
     ) return Promise.resolve(!pendingProgress);
     if (!dependencies.worldEntryReady()) return Promise.resolve(false);
-    if (!force && Date.now() < saveInFlightUntil) return Promise.resolve(false);
+    if (!force && Date.now() < Math.max(saveInFlightUntil, nextPeriodicSaveAt)) return Promise.resolve(false);
     // Equipment acknowledgements must not clear the prediction for a kill batch
     // that is still on its way to the server.
     if (enemyLoot.hasPending()) return enemyLoot.flush(force).then(ok => ok ? flushAsync(force) : false);
@@ -184,6 +186,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
     const identity = dependencies.localIdentity();
     const snapshot = copyProgress(pendingProgress);
     saveInFlightUntil = Date.now() + 30_000;
+    nextPeriodicSaveAt = Date.now() + PROGRESS_SAVE_INTERVAL_MS;
     savePromise = dependencies.reducers.runWorldReducer(() => connection.reducers.savePlayerProgress(snapshot))
       .then(() => {
         if (
@@ -216,12 +219,13 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
     return savePromise;
   }
 
-  async function sendCombatBatch(request: EnemyLootRequest): Promise<boolean | "discard"> {
+  async function sendCombatBatch(request: EnemyLootRequest): Promise<boolean | "discard" | "throttled"> {
     if (!dependencies.worldEntryReady() || dependencies.reducers.worldEntryBlocked() || resetPending) return false;
     const result = await reducerResult("enemy defeats", connection => withRequestDeadline(connection.reducers.recordEnemyDefeats({
       streamId: request.streamId, sequence: request.sequence, mapId: request.mapId, enemies: request.enemies,
     }), 3_500))();
     if (!result.ok && /Enemy defeats belong to another map|Invalid enemy for this map/.test(result.error ?? "")) return "discard";
+    if (!result.ok && /Enemy rewards are catching up/.test(result.error ?? "")) return "throttled";
     return result.ok;
   }
 
@@ -292,7 +296,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
     restoredSave = false;
     dependencies.completeAccountReturn();
     if (pendingProgress && progressCovers(localProgress, pendingProgress)) clearPending();
-    else flush();
+    else void flushAsync();
     dependencies.notify();
   }
 
@@ -433,9 +437,8 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
     };
   }
 
-  const lootTimer = window.setInterval(() => { void enemyLoot.flush(); }, REGULAR_ENEMY_LOOT_DELAY_MS);
   const pageHide = () => flush(true);
-  const flushTimer = window.setInterval(() => flush(), 30_000);
+  const flushTimer = window.setInterval(() => flush(), PROGRESS_SAVE_INTERVAL_MS);
   window.addEventListener("pagehide", pageHide);
 
   return {
@@ -702,7 +705,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
       recordRegularEnemyDefeat(mapId: string, enemy: string) {
         if (resetPending || dependencies.reducers.protocolBlocked() || dependencies.reducers.worldEntryBlocked()) return;
         enemyLoot.record(mapId, enemy);
-        if (enemy === "boss") void enemyLoot.flush();
+        if (enemy === "boss") void enemyLoot.flush(true);
       },
       saveProgress(progress: ProgressSave, immediate = false) {
         persistPending(progress);
@@ -843,7 +846,6 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
     dispose() {
 
       enemyLoot.clear();
-      window.clearInterval(lootTimer);
       window.clearInterval(flushTimer);
       window.removeEventListener("pagehide", pageHide);
     },

@@ -144,8 +144,8 @@ export function createPlayerController(options: {
     clearPlayerCombat();
     resetBosses();
     rebuildWorld();
-    for (const site of spawnSites) spawnFromSite(site);
     onResetUI();
+    for (const site of spawnSites) spawnFromSite(site);
   }
 
   function applyDuelState() {
