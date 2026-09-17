@@ -51,3 +51,34 @@ it("switches to a cosmetic-only collection without equipment capacity purchases"
   expect(items.classList.contains("has-stat-bonuses")).toBe(false);
   expect(document.getElementById("inventoryCount")!.textContent).toBe("1 / 50 Cosmetics");
 });
+
+it("opens inspection on the first tap and only equips from its action", () => {
+  const ids = ["inventoryPanel", "inventoryItems", "inventoryCount", "equippedHeadSlot", "equippedChestSlot", "equippedFeetSlot", "equippedRightHandSlot", "inventoryEquipmentTab", "inventoryCosmeticsTab", "inventoryContent"];
+  const { document, window } = parseHTML(`<html><body>${ids.map(id => `<div id="${id}"></div>`).join("")}</body></html>`);
+  vi.stubGlobal("document", document); vi.stubGlobal("window", window);
+  const inventory = { itemIds: [STARTER_STONE, STARTER_BOW, SUPERIOR_GOLDEN_HELMET], equippedHead: "", equippedChest: "", equippedFeet: "", equippedRightHand: STARTER_STONE, equippedLeftHand: "", cosmeticHead: "", cosmeticChest: "", cosmeticFeet: "", cosmeticRightHand: "", cosmeticLeftHand: "", selectedItemId: "", selectedItemLocation: "" as const };
+  const move = vi.fn(() => false), open = vi.fn();
+  const controller = createInventoryController({ inventory, move, moveCosmetic: move, toggleCosmeticVisibility: () => false,
+    upgradeLevel: () => 0, itemInspection: { close() {}, open } as any, inventorySlotsUnlocked: () => 0, gemBalance: () => 0n,
+    destroyEquipment: async () => undefined, unlockInventorySlot: async () => undefined, showMessage() {} });
+  controller.render();
+  const bow = document.querySelector<HTMLButtonElement>(`#inventoryItems [data-item-id="${STARTER_BOW}"]`)!;
+  bow.click();
+  expect(open).toHaveBeenCalledTimes(1);
+  expect(open.mock.calls[0][0].itemId).toBe(STARTER_BOW);
+  expect(inventory.selectedItemId).toBe("");
+  expect(move).not.toHaveBeenCalled();
+  expect(document.querySelector("[data-inventory-drag-source]")).toBeNull();
+  open.mock.calls[0][0].actions.find((action: any) => action.label === "EQUIP").onActivate();
+  expect(move).toHaveBeenCalledWith(STARTER_BOW, "RIGHT_HAND");
+  move.mockClear();
+  document.getElementById("equippedRightHandSlot")!.click();
+  expect(open.mock.lastCall![0]).toMatchObject({ itemId: STARTER_STONE, actions: [expect.objectContaining({ label: "UNEQUIP" })] });
+  document.getElementById("equippedHeadSlot")!.click();
+  expect(move).not.toHaveBeenCalled();
+  expect(document.querySelector<HTMLParagraphElement>(".inventory-cosmetics-note")!.hidden).toBe(true);
+  document.getElementById("inventoryCosmeticsTab")!.click();
+  expect(document.querySelector<HTMLParagraphElement>(".inventory-cosmetics-note")!.hidden).toBe(false);
+  document.querySelector<HTMLButtonElement>(`#inventoryItems [data-item-id="${SUPERIOR_GOLDEN_HELMET}"]`)!.click();
+  expect(open.mock.lastCall![0]).toMatchObject({ itemId: SUPERIOR_GOLDEN_HELMET, actions: [expect.objectContaining({ label: "USE COSMETIC" })] });
+});

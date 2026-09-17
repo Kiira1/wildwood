@@ -1,4 +1,8 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.722": [
+    "Tap an inventory item to inspect it, then equip or unequip inside the inspection window. Removed drag and tap-to-slot equipment controls.",
+    "Added a Cosmetics note about upcoming Gem-based equipment appearance conversion.",
+  ],
   "0.721": [
     "Added 26 bows, chest armor pieces, and helmets from Forest through Ion Citadel, with complete equipment sets across the campaign.",
     "Later maps offer stronger themed gear: bows drop at 0.5%, chest armor at 0.7%, and helmets at 0.8% per enemy. Existing drops keep their odds.",
@@ -1952,6 +1956,7 @@ export const RELEASE_NOTES: Record<string, string[]> = {
 };
 
 const RELEASE_DATES: Record<string, string> = {
+  "0.722": "2026-09-16",
   "0.721": "2026-09-16",
   "0.720": "2026-09-16",
   "0.719": "2026-09-16",

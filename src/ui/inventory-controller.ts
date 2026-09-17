@@ -1,5 +1,4 @@
 import {
-  itemFitsEquipmentSlot,
   type EquipmentSlot,
   type InventoryState,
 } from "../game/inventory";
@@ -7,8 +6,6 @@ import { requiredElement } from "../game/runtime/dom";
 import { canDestroyEquipment, itemDefinition, itemDisplayName } from "../../shared/items";
 import { inventoryMoveActions, inventoryWeaponSlot, renderInventoryView, type InventoryMode } from "./hud";
 import type { ItemInspectionController } from "./item-inspection-controller";
-import { bindLongPress } from "./long-press";
-import { bindInventoryDrag } from "./inventory-drag";
 import {
   MAX_INVENTORY_SLOT_CAPACITY,
   inventorySlotCapacity,
@@ -39,7 +36,7 @@ export function clearInventorySelection(inventory: Pick<SelectableInventory, "se
   inventory.selectedItemLocation = "";
 }
 
-/** Paper-doll loadout, inventory selection, and direct equipment actions. */
+/** Inspect items with one tap; loadout changes are explicit inspection actions. */
 export function createInventoryController(dependencies: InventoryDependencies) {
   const panel = requiredElement("inventoryPanel");
   const items = requiredElement("inventoryItems");
@@ -52,10 +49,13 @@ export function createInventoryController(dependencies: InventoryDependencies) {
   const cosmeticsTab = requiredElement<HTMLButtonElement>("inventoryCosmeticsTab");
   const content = requiredElement("inventoryContent");
   const loadout = panel.querySelector<HTMLElement>(".inventory-loadout");
-  const bagSection = items.closest<HTMLElement>(".bag-section");
+  const cosmeticsNote = document.createElement("p");
+  cosmeticsNote.className = "inventory-cosmetics-note";
+  cosmeticsNote.textContent = "In progress — coming soon: use Gems to turn equipment into cosmetics.";
+  cosmeticsNote.hidden = true;
+  count.after(cosmeticsNote);
   let renderedState = "";
   let mode: InventoryMode = "EQUIPMENT";
-  let cancelDrag = () => {};
   let unlockingSlot = false;
   const confirmGemSpend = dependencies.confirmGemSpend ?? ((message: string) => confirm(message));
 
@@ -66,13 +66,6 @@ export function createInventoryController(dependencies: InventoryDependencies) {
     RIGHT_HAND: equippedRightHand,
     LEFT_HAND: equippedRightHand,
   };
-  if (bagSection) bagSection.dataset.inventoryDrop = "BAG";
-
-  function setSelection(itemId: string, location: InventoryLocation) {
-    dependencies.inventory.selectedItemId = itemId;
-    dependencies.inventory.selectedItemLocation = itemId ? location : "";
-  }
-
   function playMoveFeedback(destination: EquipmentSlot | "BAG") {
     if (destination !== "BAG") {
       const target = equipmentElements[destination];
@@ -96,7 +89,7 @@ export function createInventoryController(dependencies: InventoryDependencies) {
   }
 
   function inspect(itemId: string, location: Exclude<InventoryLocation, "">) {
-    cancelDrag();
+    clearInventorySelection(dependencies.inventory);
     const item = itemDefinition(itemId);
     if (!item) return;
     const visuallyEquipped = location !== "BAG";
@@ -147,6 +140,7 @@ export function createInventoryController(dependencies: InventoryDependencies) {
     if (nextState === renderedState) return;
     renderedState = nextState;
     const cosmeticsActive = mode === "COSMETICS";
+    cosmeticsNote.hidden = !cosmeticsActive;
     equipmentTab.classList.toggle("is-active", !cosmeticsActive);
     equipmentTab.setAttribute("aria-selected", String(!cosmeticsActive));
     equipmentTab.tabIndex = cosmeticsActive ? -1 : 0;
@@ -162,17 +156,6 @@ export function createInventoryController(dependencies: InventoryDependencies) {
       dependencies.inventory,
       mode,
       {
-        onSelect(itemId, location) {
-          const tappedAgain = dependencies.inventory.selectedItemId === itemId && dependencies.inventory.selectedItemLocation === location;
-          setSelection(tappedAgain ? "" : itemId, tappedAgain ? "" : location);
-          render();
-        },
-        onPressSelect(itemId, location) {
-          setSelection(itemId, location);
-        },
-        onMove(itemId, destination) {
-          move(itemId, destination);
-        },
         onInspect: inspect,
         upgradeLevel: dependencies.upgradeLevel,
         slotCapacity,
@@ -222,26 +205,16 @@ export function createInventoryController(dependencies: InventoryDependencies) {
   }
 
   function clickEquipment(destination: EquipmentSlot, itemId: string) {
-    const selectedItemId = dependencies.inventory.selectedItemId;
-    if (selectedItemId) {
-      const tappedAgain = dependencies.inventory.selectedItemLocation === destination && selectedItemId === itemId;
-      if (tappedAgain) setSelection("", "");
-      else if (itemFitsEquipmentSlot(selectedItemId, destination) && move(selectedItemId, destination)) return;
-      else if (itemDefinition(itemId)) setSelection(itemId, destination);
-      render();
-      return;
-    }
     if (mode === "COSMETICS" && !itemDefinition(itemId)) {
       if (dependencies.toggleCosmeticVisibility(destination)) {
-        setSelection("", "");
+        clearInventorySelection(dependencies.inventory);
         render();
         playMoveFeedback(destination);
       }
       return;
     }
     if (!itemDefinition(itemId)) return;
-    setSelection(itemId, destination);
-    render();
+    inspect(itemId, destination);
   }
 
   equippedHead.addEventListener("click", () => clickEquipment("HEAD", itemInSlot("HEAD")));
@@ -251,21 +224,10 @@ export function createInventoryController(dependencies: InventoryDependencies) {
     clickEquipment(destination, itemInSlot(destination));
   });
   equippedFeet.addEventListener("click", () => clickEquipment("FEET", itemInSlot("FEET")));
-  for (const [destination, element] of Object.entries(equipmentElements) as Array<[EquipmentSlot, HTMLElement]>) {
-    if (destination === "LEFT_HAND") continue;
-    bindLongPress(element, {
-      onLongPress: () => {
-        const location = destination === "RIGHT_HAND" ? inventoryWeaponSlot(dependencies.inventory, mode) : destination;
-        const itemId = itemInSlot(location);
-        if (itemDefinition(itemId)) inspect(itemId, location);
-      },
-    });
-  }
   const setMode = (nextMode: InventoryMode) => {
     if (mode === nextMode) return;
-    cancelDrag();
     mode = nextMode;
-    setSelection("", "");
+    clearInventorySelection(dependencies.inventory);
     render();
   };
   equipmentTab.addEventListener("click", () => setMode("EQUIPMENT"));
@@ -279,28 +241,11 @@ export function createInventoryController(dependencies: InventoryDependencies) {
       nextTab.focus();
     });
   }
-  panel.addEventListener("click", (event) => {
-    const target = event.target;
-    // Equipment rendering replaces its inner art during the button's click
-    // handler. Use the original event path so the detached art node is still
-    // recognized as a button click when the event reaches this panel.
-    const clickedButton = event.composedPath().some((entry) => entry instanceof HTMLButtonElement);
-    if (!(target instanceof Element) || clickedButton || !dependencies.inventory.selectedItemId) return;
-    setSelection("", "");
-    render();
-  });
-  const inventoryDrag = bindInventoryDrag({
-    panel,
-    bagItems: items,
-    onDrop: (itemId, destination) => { move(itemId, destination); },
-  });
-  cancelDrag = inventoryDrag.cancel;
 
   return {
     destructionActions,
     render,
     prepareOpen: () => {
-      cancelDrag();
       dependencies.itemInspection.close();
       clearInventorySelection(dependencies.inventory);
     },
