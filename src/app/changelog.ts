@@ -1,4 +1,8 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.727": [
+    "Profile previews animate smoothly when opened over Guilds, and no longer inherit extra fullscreen padding below Back.",
+    "Moved the Cosmetics progress note back below the inventory tabs.",
+  ],
   "0.726": [
     "Mobile autofarm settings now survive app restarts and installations. Farming resumes for the same character and map after reconnecting.",
   ],
@@ -1993,6 +1997,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.727": "2026-09-17",
   "0.726": "2026-09-17",
   "0.725": "2026-09-17",
   "0.718": "2026-09-16",

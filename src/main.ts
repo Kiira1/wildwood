@@ -1692,7 +1692,7 @@ import {
     accountInConflict: () => Boolean(coop?.accountState?.().sessionConflict),
     lowPerformanceMode: appShell.lowPerformanceMode,
     presentationInputActive: () => playerInput.movement().source !== "none",
-    presentationUiActive: () => chatRuntime.isInteracting(),
+    presentationUiActive: () => chatRuntime.isInteracting() || profileWindow.isOpen(),
     isReplayActive: () => duelRuntime.isReplayActive(),
     ensureMusicPlaying: appShell.ensureMusicPlaying,
     hideStart: startup.hideStart,
@@ -1738,6 +1738,7 @@ import {
       guildPanel?.tick();
       if (activeDuel() || isArenaScene()) void assets.ensureDuelAssets();
       if (!guildPanel?.isOpen()) renderController.render();
+      else profileWindow.drawPreview();
     }), recordPerformance: performanceMonitor.record,
     renderPerformancePanel: devPanel.renderPerformance, performancePanelVisible: devPanel.isPerformanceVisible,
     renderFpsDisplay: () => {

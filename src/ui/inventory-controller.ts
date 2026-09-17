@@ -64,7 +64,7 @@ export function createInventoryController(dependencies: InventoryDependencies) {
   cosmeticsNote.className = "inventory-cosmetics-note";
   cosmeticsNote.textContent = "In progress — coming soon: use Gems to turn equipment into cosmetics.";
   cosmeticsNote.hidden = true;
-  count.after(cosmeticsNote);
+  content.before(cosmeticsNote);
   function syncSlotSizes() {
     if (!loadout || !items.clientWidth) return;
     const trackWidth = parseFloat(getComputedStyle(items).gridTemplateColumns);

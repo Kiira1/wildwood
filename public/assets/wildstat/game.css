@@ -437,7 +437,7 @@
   .inventory-equip-best:active { transform: translateY(1px); box-shadow: 0 1px 0 #152e1a; }
   .inventory-equip-best[hidden] { display: none; }
   .inventory-filter:focus-visible, .inventory-equip-best:focus-visible { outline: 1px solid #fff; outline-offset: 2px; }
-  .inventory-cosmetics-note { flex-basis: 100%; margin: 2px 0 0; color: #b9bdb9; font: 700 12px/1.4 var(--font-rounded); letter-spacing: 0; text-align: center; -webkit-text-stroke: 0; text-shadow: none; }
+  .inventory-cosmetics-note { flex: 0 0 auto; margin: 2px 8px 8px; color: #b9bdb9; font: 700 12px/1.4 var(--font-rounded); letter-spacing: 0; text-align: center; -webkit-text-stroke: 0; text-shadow: none; }
   .inventory-cosmetics-note[hidden] { display: none; }
   .inventory-items { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); grid-auto-flow: row; grid-auto-rows: max-content; align-content: start; align-items: start; justify-content: center; gap: var(--inventory-grid-gap); min-height: 0; padding-bottom: 0; overflow: visible; overscroll-behavior: contain; scrollbar-width: none; -webkit-overflow-scrolling: touch; touch-action: pan-y; }
   /* Overlay the values inside the square slot; artwork keeps its original dimensions. */
@@ -2597,7 +2597,7 @@
     100% { opacity: 0; transform: translate(-50%, -8px); }
   }
   #playerProfile { z-index: 9; padding: max(5px, env(safe-area-inset-top)) max(5px, env(safe-area-inset-right)) max(5px, env(safe-area-inset-bottom)) max(5px, env(safe-area-inset-left)); }
-  .modal.player-profile-modal { display: flex; flex-direction: column; background: var(--window-surface); border-color: #080808; width: var(--game-window-width); height: min(560px, calc(100dvh - max(5px, env(safe-area-inset-top)) - max(5px, env(safe-area-inset-bottom)))); max-height: 100%; padding: 8px; overflow: hidden; text-align: left; transform: none; }
+  .modal.player-profile-modal { --window-back-bottom-gap: 9px; display: flex; flex-direction: column; background: var(--window-surface); border-color: #080808; width: var(--game-window-width); height: min(560px, calc(100dvh - max(5px, env(safe-area-inset-top)) - max(5px, env(safe-area-inset-bottom)))); max-height: 100%; padding: 8px; overflow: hidden; text-align: left; transform: none; }
   .player-profile-scroll { flex: 1 1 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
   .player-profile-scroll::-webkit-scrollbar { display: none; }
   .profile-settings-button { flex: 0 0 44px; align-self: flex-start; display: grid; place-items: center; width: 44px; height: 44px; margin: 0; padding: 7px; border: 1px solid transparent; border-radius: 7px; background: transparent; box-shadow: none; }
