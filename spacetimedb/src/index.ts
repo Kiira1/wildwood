@@ -9267,7 +9267,17 @@ export const savePlayerProgress = spacetimedb.reducer(
     const base = current ?? defaultPlayerProgress(ctx.sender);
     for (const field of ["equippedHead", "equippedChest", "equippedFeet", "equippedRightHand", "equippedLeftHand"] as const) {
       const requiredMap = equipmentMapRequirement(progress[field], base);
-      if (requiredMap) throw new SenderError(`Reach ${requiredMap} to equip this item.`);
+      if (!requiredMap) continue;
+      // A sleeping client can retry its saved pre-conversion loadout. Acknowledge
+      // that exact old item without restoring it, so its save queue can drain.
+      // Other locked equipment requests still fail normal validation.
+      const backup = ctx.db.playerEndlessRebaseBackup.identity.find(ctx.sender);
+      const previous = backup?.progressJson ? JSON.parse(backup.progressJson) : null;
+      if (previous?.[field] === progress[field]) {
+        progress = { ...progress, [field]: base[field] };
+        continue;
+      }
+      throw new SenderError(`Reach ${requiredMap} to equip this item.`);
     }
     if (current && LOADOUT_FIELDS.every(field => progress[field] === base[field])) {
       return;

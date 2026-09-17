@@ -4,6 +4,17 @@ import { rebaseProgressByEffort } from "../../shared/progression-rebase";
 import { CAMPAIGN_UNLOCK_FIELDS } from "../../shared/equipment-access";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
+it("acknowledges a cached pre-conversion loadout without re-equipping locked gear", () => {
+  const f = crystalFixture();
+  f.patch("playerProgress", { ionCitadelUnlocked: false, inventoryJson: '["ion_bow","starter_bow"]', equippedRightHand: "starter_bow" });
+  const current = f.db.playerProgress.identity.find(f.ctx.sender);
+  f.seed("playerEndlessRebaseBackup", { identity: f.ctx.sender,
+    progressJson: JSON.stringify({ equippedRightHand: "ion_bow" }) });
+  expect(() => f.run(server.savePlayerProgress, { ...current, equippedRightHand: "ion_bow", damage: 1e25 })).not.toThrow();
+  expect(f.db.playerProgress.identity.find(f.ctx.sender)).toMatchObject({ equippedRightHand: "starter_bow", damage: current.damage });
+  expect(() => f.run(server.savePlayerProgress, { ...current, equippedHead: "ion_helmet" })).toThrow("Ion Citadel");
+});
+
 it("converts online and offline accounts once, backs up stats, gates gear and retains loot receipts", () => {
   const f = crystalFixture();
   f.seed("moduleMigrationState", { id: 0, version: 31 });
