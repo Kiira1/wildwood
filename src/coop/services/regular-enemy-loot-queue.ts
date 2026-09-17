@@ -2,6 +2,11 @@ import { combatMap, type EnemyDefeat } from "../../../shared/enemy-defeats";
 import { withRequestDeadline } from "./request-deadline";
 import { REGULAR_ENEMY_LOOT_BATCH_MAX } from "../../../shared/regular-map-loot";
 
+// A healthy socket can still have a slow reducer acknowledgement. Keep this
+// below the map transition's 30-second deadline, with room for loadout sync.
+export const ENEMY_DEFEAT_ACK_TIMEOUT_MS = 15_000;
+export const ENEMY_DEFEAT_BATCH_TIMEOUT_MS = 25_000;
+
 type Batch = { sequence: number; mapId: string; count: number; sealed: boolean; enemies: EnemyDefeat[] };
 type State = { streamId: string; nextSequence: number; batches: Batch[]; retryAtMs?: number };
 export type EnemyLootRequest = { streamId: string; sequence: bigint; mapId: string; count: number; enemies: EnemyDefeat[] };
@@ -58,7 +63,7 @@ export function createRegularEnemyLootQueue(options: {
         }
         persist();
         let accepted: boolean | "discard" | "throttled" = false;
-        try { accepted = await withRequestDeadline(options.send({ streamId: current.streamId, sequence: BigInt(batch.sequence), mapId: batch.mapId, count: batch.count, enemies: batch.enemies }), 4_000); } catch {}
+        try { accepted = await withRequestDeadline(options.send({ streamId: current.streamId, sequence: BigInt(batch.sequence), mapId: batch.mapId, count: batch.count, enemies: batch.enemies }), ENEMY_DEFEAT_BATCH_TIMEOUT_MS); } catch {}
         if (epoch !== runEpoch || options.identity() !== runOwner) return false;
         if (accepted === "throttled") { current.retryAtMs = Date.now() + 30_000; persist(); return false; }
         if (!accepted) return false;

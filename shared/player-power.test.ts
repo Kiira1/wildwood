@@ -18,7 +18,7 @@ describe("player power", () => {
     const research = { warcraft: 2, precision: 3, regeneration: 4 };
     const effective = effectivePlayerPowerStats(progress, research);
 
-    expect(effective.maxHp).toBeCloseTo(105);
+    expect(effective.maxHp).toBeCloseTo(125);
     expect(effective.damage).toBeCloseTo(109);
     expect(effective.attackRate).toBeCloseTo(1.56);
     expect(effective.armor).toBeCloseTo(10.6);
@@ -59,7 +59,7 @@ describe("player power", () => {
       equippedHead: WOOD_FULL_HELM,
       equippedChest: FROST_ARMOR,
     });
-    expect(effective.maxHp).toBeCloseTo(152);
+    expect(effective.maxHp).toBeCloseTo(1940);
   });
 
   it("bounds malformed totals", () => {

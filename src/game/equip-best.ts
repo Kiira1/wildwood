@@ -2,7 +2,7 @@ import { BLACK_BOOTS, BLACK_BOOTS_SPEED_BONUS, isCosmeticOnlyItem, itemDefinitio
 import { moveInventoryItem, type InventoryState } from "./inventory";
 
 /** Equipment bonuses are additive, so each slot can be scored independently. */
-export function bestEquipmentMoves(inventory: InventoryState, power: (candidate: InventoryState) => number) {
+export function bestEquipmentMoves(inventory: InventoryState, power: (candidate: InventoryState) => number, canEquip: (itemId: string) => boolean = () => true) {
   const planned = { ...inventory };
   const moves: { itemId: string; destination: EquipmentSlot }[] = [];
   for (const [slot, field, destination] of [
@@ -18,7 +18,7 @@ export function bestEquipmentMoves(inventory: InventoryState, power: (candidate:
       : power(candidate);
     let bestScore = score(planned);
     for (const itemId of inventory.itemIds) {
-      if (isCosmeticOnlyItem(itemId) || itemDefinition(itemId)?.slot !== slot) continue;
+      if (!canEquip(itemId) || isCosmeticOnlyItem(itemId) || itemDefinition(itemId)?.slot !== slot) continue;
       const candidate = { ...planned };
       moveInventoryItem(candidate, itemId, destination);
       const candidateScore = score(candidate);

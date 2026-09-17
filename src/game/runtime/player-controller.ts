@@ -82,8 +82,8 @@ export function createPlayerController(options: {
   isConnected: () => boolean;
   syncSpeed: (speed: number) => void;
   movementSpeedMultiplier: () => number;
-  regenerationMultiplier: () => number;
-  healthMultiplier?: () => number;
+  regenerationPerSecond: () => number;
+  healthBonus?: () => number;
   syncMovementState: (x: number, y: number, vx: number, vy: number, inputSource: Exclude<MovementInputSource, "none">, force: boolean, interestArea?: PlayerInterestArea) => void;
   autoAttack: () => void;
   isAutoAttackEnabled: () => boolean;
@@ -105,7 +105,7 @@ export function createPlayerController(options: {
     getCurrentMapId, mapSpawn, initialStats, invalidateStaticWorld, spawnFromSite,
     clearPlayerCombat, resetBosses, onResetUI, movement, isMapTransitioning, resolvePortalCollision,
     resolveDragonCollision, resolveSpiderCollision, resolveFrostclawCollision, resolveMagmaliskCollision, resolveGloomrootCollision, resolveTidewyrmCollision, resolveKoiShogunCollision, resolveTempestKirinCollision, resolveMiremawCollision, resolvePrismshellCollision, resolveIronhornCollision, resolveDreadreaperCollision, resolveVoltwardenCollision, resolveGravebloomCollision, resolveAegisPrimeCollision, applyBossKnockback, isTutorialMap, isDesertMap, isSnowMap, isLavaMap, isInfernalMap, isWaterMap, isSamuraiMap, isCloudspireMap, isMoonfenMap, isCrystalHollowsMap, isClockworkRuinsMap, isDuskfallOrchardMap, isNeonBastionMap, isVerdantCatacombsMap, isIonCitadelMap,
-    viewport, cameraPosition, isConnected, syncSpeed, movementSpeedMultiplier, regenerationMultiplier, syncMovementState, autoAttack, isAutoAttackEnabled,
+    viewport, cameraPosition, isConnected, syncSpeed, movementSpeedMultiplier, regenerationPerSecond, syncMovementState, autoAttack, isAutoAttackEnabled,
     activeDuel, isDueling, localIdentity, localState, syncLiveDuelDamage, liveDuelScene, setHeldDuelScene,
     pulseDuel, resetLiveDuelPresentation, loadDuelReplay, showDuelResult, showDuelResultUnavailable,
   } = options;
@@ -132,7 +132,7 @@ export function createPlayerController(options: {
       Object.assign(player, initialStats);
       player.baseMaxHp = initialStats.maxHp;
     }
-    setPlayerBaseMaxHealth(player, player.baseMaxHp, options.healthMultiplier?.() ?? 1, true);
+    setPlayerBaseMaxHealth(player, player.baseMaxHp, options.healthBonus?.() ?? 0, true);
     player.attackClock = 0;
     player.throwClock = 0;
     player.hurtClock = 0;
@@ -236,7 +236,7 @@ export function createPlayerController(options: {
       );
     }
     player.hurtClock = Math.max(0, player.hurtClock - dt);
-    if (player.regen > 0 && player.hp > 0) player.hp = Math.min(player.maxHp, player.hp + player.regen * regenerationMultiplier() * dt);
+    if (player.hp > 0) player.hp = Math.min(player.maxHp, player.hp + regenerationPerSecond() * dt);
     if (isAutoAttackEnabled()) autoAttack();
     else player.combatFacing = null;
   }

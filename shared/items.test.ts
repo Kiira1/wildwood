@@ -7,9 +7,9 @@ import {
   DESERT_DROP_ITEM_IDS,
   DESERT_ITEM_DROP_DENOMINATOR,
   DEVELOPER_ITEM_IDS,
-  equipmentDamageMultiplier,
-  equipmentMaxHealthMultiplier,
-  equipmentRegenerationMultiplier,
+  equipmentDamage,
+  equipmentMaxHealth,
+  equipmentRegeneration,
   FIRE_METAL_BOW,
   FIRE_METAL_HELMET,
   FOREST_ITEM_DROP_DENOMINATOR,
@@ -20,9 +20,9 @@ import {
   isUpgradeableItem,
   isWeaponItem,
   itemDisplayName,
-  itemDamageMultiplier,
-  itemMaxHealthMultiplier,
-  itemRegenerationMultiplier,
+  itemDamageBonus,
+  itemMaxHealthBonus,
+  itemRegenerationBonus,
   itemStats,
   itemUpgradeDurationMs,
   itemUpgradeStatChanges,
@@ -50,7 +50,6 @@ import {
   SNOW_BOW,
   SNOW_DROP_ITEM_IDS,
   SNOW_ITEM_DROP_DENOMINATOR,
-  weaponDamageMultiplier,
   WOOD_FULL_HELM,
   WOODEN_ARMOR,
 } from "./items";
@@ -99,84 +98,41 @@ describe("equipment catalog", () => {
     expect(isWeaponItem(STARTER_STONE)).toBe(true);
   });
 
-  it("adds forest equipment bonuses to existing research bonuses", () => {
-    expect(weaponDamageMultiplier(STARTER_BOW, 1.2)).toBeCloseTo(1.25);
-    expect(itemMaxHealthMultiplier(WOODEN_ARMOR, 1.2)).toBeCloseTo(1.25);
-    expect(itemMaxHealthMultiplier("", 1.2)).toBeCloseTo(1.2);
+  it("adds fixed forest bonuses after research", () => {
+    expect(equipmentDamage(100, STARTER_BOW, "", "", 1.2)).toBe(125);
+    expect(equipmentMaxHealth(100, "", WOODEN_ARMOR, 1.2)).toBe(145);
+    expect(equipmentMaxHealth(100, "", "", 1.2)).toBe(120);
   });
 
-  it("adds Frost Bow's damage bonus to research without changing attack speed", () => {
-    expect(weaponDamageMultiplier(FROST_BOW)).toBeCloseTo(1.4);
-    expect(weaponDamageMultiplier(FROST_BOW, 1.2)).toBeCloseTo(1.6);
+  it("keeps equipment value fixed as earned stats and research grow", () => {
+    for (const base of [0, 10, 1000, 1_000_000]) {
+      for (const research of [1, 1.2, 3]) {
+        expect(equipmentDamage(base, STARTER_BOW, "", "", research) - base * research).toBeCloseTo(5);
+        expect(equipmentMaxHealth(base, WOOD_FULL_HELM, WOODEN_ARMOR, research) - base * research).toBeCloseTo(425);
+        expect(equipmentRegeneration(base, FIRE_METAL_HELMET, MAGMA_ARMOR, research) - base * research).toBeCloseTo(216);
+      }
+    }
   });
 
-  it("gives Frost Armor additive 40% health and regeneration bonuses", () => {
+  it("gives each map a larger fixed jump while preserving the stronger rare bows", () => {
+    expect(itemDamageBonus(STARTER_BOW)).toBe(5);
+    expect(itemDamageBonus(IRON_BOW)).toBe(480);
+    expect(itemDamageBonus(SNOW_BOW)).toBe(1440);
+    expect(itemDamageBonus(FROST_BOW)).toBe(1728);
+    expect(itemDamageBonus(LAVA_BOW)).toBe(5184);
+    expect(itemDamageBonus(NIGHT_BOW)).toBe(12960);
+    expect(itemDamageBonus(FIRE_METAL_BOW)).toBe(15552);
+    expect(itemDamageBonus(FIRE_METAL_HELMET)).toBe(0);
+    expect(itemStats(MAGMA_ARMOR)).toEqual(["MAX HEALTH +3600", "REGEN +108"]);
+    expect(itemStats(DARK_METAL_HELMET)).toEqual(["MAX HEALTH +10800", "REGEN +324"]);
+  });
+
+  it("grants regeneration even with zero earned regeneration", () => {
+    expect(equipmentRegeneration(0, "", FROST_ARMOR)).toBe(43.2);
+    expect(itemMaxHealthBonus(FROST_ARMOR)).toBe(1440);
+    expect(itemRegenerationBonus(FROST_ARMOR)).toBe(43.2);
     expect(itemFitsEquipmentSlot(FROST_ARMOR, "CHEST")).toBe(true);
     expect(itemFitsEquipmentSlot(FROST_ARMOR, "HEAD")).toBe(false);
-    expect(itemMaxHealthMultiplier(FROST_ARMOR)).toBeCloseTo(1.4);
-    expect(itemRegenerationMultiplier(FROST_ARMOR)).toBeCloseTo(1.4);
-    expect(itemRegenerationMultiplier(FROST_ARMOR, 1.2)).toBeCloseTo(1.6);
-  });
-
-  it("keeps Magma Armor defensive with 1.5x health and regeneration", () => {
-    expect(itemFitsEquipmentSlot(MAGMA_ARMOR, "CHEST")).toBe(true);
-    expect(itemDamageMultiplier(MAGMA_ARMOR)).toBeCloseTo(1);
-    expect(itemMaxHealthMultiplier(MAGMA_ARMOR)).toBeCloseTo(1.5);
-    expect(itemRegenerationMultiplier(MAGMA_ARMOR)).toBeCloseTo(1.5);
-    expect(equipmentDamageMultiplier(FROST_BOW, "", MAGMA_ARMOR, 1.5)).toBeCloseTo(1.9);
-    expect(itemStats(MAGMA_ARMOR)).toEqual([
-      "MAX HEALTH +50%",
-      "REGEN +50%",
-    ]);
-  });
-
-  it("gives Lava Bow +50% damage without attack speed", () => {
-    expect(isWeaponItem(LAVA_BOW)).toBe(true);
-    expect(weaponDamageMultiplier(LAVA_BOW)).toBeCloseTo(1.5);
-    expect(weaponDamageMultiplier(LAVA_BOW, 1.5)).toBeCloseTo(2);
-  });
-
-  it("steps Fire Metal Bow 10 percentage points above Lava Bow without attack speed", () => {
-    expect(isWeaponItem(FIRE_METAL_BOW)).toBe(true);
-    expect(weaponDamageMultiplier(FIRE_METAL_BOW)).toBeCloseTo(1.6);
-    expect(weaponDamageMultiplier(FIRE_METAL_BOW)).toBeCloseTo(weaponDamageMultiplier(LAVA_BOW) + .1);
-  });
-
-  it("places regular Snowlands and Night Forest bows between their surrounding weapon tiers", () => {
-    expect(weaponDamageMultiplier(SNOW_BOW)).toBeCloseTo(1.35);
-    expect(weaponDamageMultiplier(SNOW_BOW)).toBeGreaterThan(weaponDamageMultiplier(IRON_BOW));
-    expect(weaponDamageMultiplier(SNOW_BOW)).toBeLessThan(weaponDamageMultiplier(FROST_BOW));
-    expect(weaponDamageMultiplier(NIGHT_BOW)).toBeCloseTo(1.5);
-    expect(weaponDamageMultiplier(NIGHT_BOW)).toBeCloseTo(weaponDamageMultiplier(LAVA_BOW));
-    expect(weaponDamageMultiplier(NIGHT_BOW)).toBeLessThan(weaponDamageMultiplier(FIRE_METAL_BOW));
-  });
-
-  it("keeps Fire Metal Helmet defensive in the head slot", () => {
-    expect(itemFitsEquipmentSlot(FIRE_METAL_HELMET, "HEAD")).toBe(true);
-    expect(itemDamageMultiplier(FIRE_METAL_HELMET)).toBeCloseTo(1);
-    expect(itemMaxHealthMultiplier(FIRE_METAL_HELMET)).toBeCloseTo(1.12);
-    expect(itemRegenerationMultiplier(FIRE_METAL_HELMET)).toBeCloseTo(1.2);
-    expect(equipmentDamageMultiplier(FROST_BOW, FIRE_METAL_HELMET, MAGMA_ARMOR)).toBeCloseTo(1.4);
-    expect(equipmentRegenerationMultiplier(FIRE_METAL_HELMET, MAGMA_ARMOR)).toBeCloseTo(1.7);
-  });
-
-  it("keeps Dark Metal Helmet defensive at the Night Forest tier", () => {
-    expect(itemFitsEquipmentSlot(DARK_METAL_HELMET, "HEAD")).toBe(true);
-    expect(itemDamageMultiplier(DARK_METAL_HELMET)).toBeCloseTo(1);
-    expect(itemMaxHealthMultiplier(DARK_METAL_HELMET)).toBeCloseTo(1.6);
-    expect(itemRegenerationMultiplier(DARK_METAL_HELMET)).toBeCloseTo(1.8);
-    expect(itemStats(DARK_METAL_HELMET)).toEqual([
-      "MAX HEALTH +60%",
-      "REGEN +80%",
-    ]);
-  });
-
-  it("gives the independent desert drops their requested additive bonuses", () => {
-    expect(itemFitsEquipmentSlot(WOOD_FULL_HELM, "HEAD")).toBe(true);
-    expect(itemMaxHealthMultiplier(WOOD_FULL_HELM)).toBeCloseTo(1.12);
-    expect(isWeaponItem(IRON_BOW)).toBe(true);
-    expect(weaponDamageMultiplier(IRON_BOW)).toBeCloseTo(1.25);
-    expect(equipmentMaxHealthMultiplier(WOOD_FULL_HELM, FROST_ARMOR, 1.2)).toBeCloseTo(1.72);
   });
 
   it("clamps legacy duplicate items to unique ownership", () => {
@@ -208,21 +164,18 @@ describe("equipment catalog", () => {
     expect(isUpgradeableItem(BASIC_PAPER_HAT)).toBe(false);
   });
 
-  it("scales every stat from only its additive equipment bonus", () => {
-    expect(weaponDamageMultiplier(FROST_BOW, 1, 10)).toBeCloseTo(1.72);
-    expect(itemMaxHealthMultiplier(FROST_ARMOR, 1, 10)).toBeCloseTo(1.72);
-    expect(itemRegenerationMultiplier(FROST_ARMOR, 1, 10)).toBeCloseTo(1.72);
-    expect(weaponDamageMultiplier(STARTER_BOW, 1, 10)).toBeCloseTo(1.09);
-    expect(itemMaxHealthMultiplier(WOODEN_ARMOR, 1, 10)).toBeCloseTo(1.09);
-    expect(itemRegenerationMultiplier(WOODEN_ARMOR, 1, 10)).toBeCloseTo(1);
-    expect(weaponDamageMultiplier(FROST_BOW, 1.2, 10)).toBeCloseTo(1.92);
+  it("upgrades only the item's fixed amount and keeps existing upgrade levels", () => {
+    expect(itemDamageBonus(FROST_BOW, 10)).toBe(3110.4);
+    expect(itemMaxHealthBonus(FROST_ARMOR, 10)).toBe(2592);
+    expect(itemRegenerationBonus(FROST_ARMOR, 10)).toBe(77.76);
+    expect(itemDamageBonus(STARTER_BOW, 10)).toBe(9);
+    expect(itemMaxHealthBonus(WOODEN_ARMOR, 10)).toBe(45);
+    expect(itemRegenerationBonus(WOODEN_ARMOR, 10)).toBe(0);
     expect(itemDisplayName(FROST_BOW, 1)).toBe("FROST BOW +1");
-    expect(itemStats(FROST_BOW, 1)).toEqual([
-      "DAMAGE +43%",
+    expect(itemStats(STARTER_BOW, 1)).toEqual(["DAMAGE +5.4"]);
+    expect(itemUpgradeStatChanges(STARTER_BOW, 0)).toEqual([
+      { label: "DAMAGE", current: "+5", next: "+5.4" },
     ]);
-    expect(itemUpgradeStatChanges(FROST_BOW, 0)).toEqual([
-      { label: "DAMAGE", current: "+40%", next: "+43%" },
-    ]);
-    expect(equipmentDamageMultiplier(FIRE_METAL_BOW, DARK_METAL_HELMET, MAGMA_ARMOR, 1.4, 10, 10, 10)).toBeCloseTo(2.48);
+    expect(equipmentDamage(100, STARTER_BOW, "", "", 1.4, 10)).toBe(149);
   });
 });

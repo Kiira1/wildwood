@@ -118,19 +118,19 @@ function printHelp() {
 
 Usage: npm run balance:simulate -- [options]
 
-  --duration 29.25h            Simulation window (s, m, h, or d)
+  --duration 48h               Simulation window (s, m, h, or d)
   --trials 100                 Seeded loot campaigns
   --strategy mixed             mixed, boss-rush, efficient, dps-first, natural, or boss-farm
   --research off               off, balanced, or damage-first
-  --boss-target 5m             Solo TTK floor; late maps scale to 5%, max 15m
-  --target-desert 2h           Explicit Beginner Desert duration target
-  --target-step 1.35           Desired duration multiplier between maps
-  --target-power 8.5           Desired relative power growth inside each map
+  --boss-target 90s            Estimated fight length before attempting a boss (strategy)
+  --target-desert 52m           Explicit Beginner Desert duration target
+  --target-step 1              Desired duration multiplier between maps
+  --target-power 3             Desired relative power growth inside each map
   --target-arc .35             Target opening momentum (0 straight, 1 full arc)
   --future-speedup 1.25        Uniform future progression-rate reserve
-  --clears 1                   Full spawn-site clears required per map
-  --respawn 30s                Regular enemy respawn time
-  --target-add 20m             Additional target time per map after Desert
+  --clears 1                   Initial full clears as a strategy choice; not a gameplay gate
+  --respawn 20s                Regular enemy respawn time
+  --target-add 76m             Additional target time per map after Desert
   --upgrades steady           Single-slot upgrades: steady or off
   --gear-level 0               Starting equipped-item upgrade level (0–10)
   --equipment-strength 1       Sandbox equipment-bonus strength multiplier

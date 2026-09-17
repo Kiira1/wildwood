@@ -1,3 +1,4 @@
+import { formatEquipmentStat } from "./equipment-stat-format";
 import { appendItemTierLabel } from "./item-tier-label";
 import {
   UPGRADE_BENCH_SECOND_SLOT_GEM_COST,
@@ -235,7 +236,7 @@ export function createUpgradeBenchController(elements: UpgradeBenchElements, dep
       const label = document.createElement("strong");
       label.textContent = change.label;
       const values = document.createElement("span");
-      values.textContent = `${change.current} → ${change.next}`;
+      values.textContent = `${formatEquipmentStat(change.current)} → ${formatEquipmentStat(change.next)}`;
       row.append(label, values);
       return row;
     }) : [];
@@ -359,7 +360,7 @@ export function createUpgradeBenchController(elements: UpgradeBenchElements, dep
         const label = document.createElement("span");
         label.textContent = change.label.replace(" MULTIPLIER", "");
         const values = document.createElement("span");
-        values.textContent = `${change.current} → ${change.next}`;
+        values.textContent = `${formatEquipmentStat(change.current)} → ${formatEquipmentStat(change.next)}`;
         row.append(label, values);
         stats.append(row);
       }

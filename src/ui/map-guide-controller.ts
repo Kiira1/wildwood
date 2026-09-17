@@ -1,3 +1,4 @@
+import { formatEquipmentAmount } from "./equipment-stat-format";
 import { regularMapLoot } from "../../shared/regular-map-loot";
 import { generateMap, isProceduralMap } from "../../shared/procedural-maps";
 import { canvasRenderPixelRatio } from "../game/runtime/render-budget";
@@ -161,16 +162,16 @@ export function mapGuideDropChance(denominator: number, numerator = 1) {
 }
 
 function bonusLabel(value: number) {
-  return `+${Number((value * 100).toFixed(2))}%`;
+  return `+${formatEquipmentAmount(value)}`;
 }
 
 export function mapGuideItemStats(itemId: ItemId) {
   const item: ItemDefinition = ITEM_DEFINITIONS[itemId];
   const stats: string[] = [];
-  const damageBonus = item.weapon?.damageMultiplierBonus ?? item.modifiers?.damageMultiplierBonus;
+  const damageBonus = item.weapon?.damageBonus ?? item.modifiers?.damageBonus;
   if (damageBonus !== undefined) stats.push(`Damage ${bonusLabel(damageBonus)}`);
-  if (item.modifiers?.maxHealthMultiplierBonus !== undefined) stats.push(`Max Health ${bonusLabel(item.modifiers.maxHealthMultiplierBonus)}`);
-  if (item.modifiers?.regenerationMultiplierBonus !== undefined) stats.push(`Regen ${bonusLabel(item.modifiers.regenerationMultiplierBonus)}`);
+  if (item.modifiers?.maxHealthBonus !== undefined) stats.push(`Max Health ${bonusLabel(item.modifiers.maxHealthBonus)}`);
+  if (item.modifiers?.regenerationBonus !== undefined) stats.push(`Regen ${bonusLabel(item.modifiers.regenerationBonus)}`);
   return stats;
 }
 

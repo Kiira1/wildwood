@@ -4,7 +4,7 @@ import { snapCameraToPlayer, type Camera } from "./camera";
 import type { BossRainStrike, DragonBossState, EnemyState, FrostclawBossState, FrostclawIcefall, GloomrootBloom, GloomrootBossState, KoiShogunBossState, KoiShogunWhirlpool, MagmaliskBossState, MagmaliskEruption, MiremawBogBurst, PrismshellCrystalBurst, IronhornCrystalBurst, DreadreaperCrystalBurst, VoltwardenCrystalBurst, GravebloomCrystalBurst, AegisPrimeCrystalBurst, MiremawBossState, PrismshellBossState, IronhornBossState, DreadreaperBossState, VoltwardenBossState, GravebloomBossState, AegisPrimeBossState, PlayerState, SpiderBossState, SpiderVenomPool, TempestKirinBossState, TempestKirinThunderbolt, TidewyrmBossState, TidewyrmWhirlpool } from "./types";
 import type { MapId, SpawnSite } from "../world";
 
-export type MapPortal = { x: number; y: number; width: number; height: number; depth: number; destination: MapId };
+export type MapPortal = { x: number; y: number; width: number; height: number; depth: number; destination: MapId; label?: string };
 
 type MapConfig = Record<MapId, { portal: MapPortal | null; arrival: { x: number; y: number }; secondaryPortal?: MapPortal }>;
 
@@ -67,6 +67,7 @@ export type MapController = {
 
 /** Owns map travel, portal collisions, and cinematic portal state. */
 export function createMapController(options: {
+  openHomeTravel?: () => void;
   mapConfig: MapConfig;
   tutorialMapId: MapId;
   desertMapId: MapId;
@@ -314,6 +315,12 @@ export function createMapController(options: {
       playerIsInsidePortal(candidate),
     );
     if (!portal || !portalIsUnlocked(portal)) return;
+    if (getCurrentMapId() === "home_exterior" && options.openHomeTravel) {
+      portalExitGuard = portal;
+      keys.clear(); stopTouchMove(); player.moving = false;
+      options.openHomeTravel();
+      return;
+    }
     mapTransitioning = true;
     keys.clear();
     stopTouchMove();

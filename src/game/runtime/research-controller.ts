@@ -1,7 +1,7 @@
 import { clamp } from "../math";
 import type { PlayerState } from "./types";
 import { createEmptyResearchRanks, researchStatRewardMultiplier, type ResearchRanks } from "../../../shared/research";
-import { applyPlayerMaxHealthMultiplier } from "./player-health";
+import { applyPlayerMaxHealthBonus } from "./player-health";
 import { movementSpeedMultiplier } from "../../../shared/rules";
 
 export type { ResearchRanks } from "../../../shared/research";
@@ -12,7 +12,7 @@ type ResearchControllerOptions = {
   isDueling: () => boolean;
   maxPlayerStat: number;
   saveProgress: () => void;
-  healthMultiplier?: () => number;
+  healthBonus?: () => number;
 };
 
 const EMPTY_RANKS = createEmptyResearchRanks();
@@ -39,7 +39,7 @@ export function createResearchController(options: ResearchControllerOptions) {
       const previousMultiplier = 1 + appliedVitalityRank * .02;
       const nextMultiplier = 1 + nextRank * .02;
       options.player.baseMaxHp = clamp(options.player.baseMaxHp / previousMultiplier * nextMultiplier, 1, options.maxPlayerStat);
-      applyPlayerMaxHealthMultiplier(options.player, options.healthMultiplier?.() ?? 1);
+      applyPlayerMaxHealthBonus(options.player, options.healthBonus?.() ?? 0);
       appliedVitalityRank = nextRank;
       options.saveProgress();
     },

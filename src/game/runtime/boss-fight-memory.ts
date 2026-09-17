@@ -1,3 +1,4 @@
+import { ATTACK_BALANCE_VERSION } from "../../../shared/rules";
 type Checkpoint = { mapId: string; hp: number; maxHp: number };
 type StoragePort = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 
@@ -5,7 +6,7 @@ type StoragePort = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 export function createBossFightMemory(storage: StoragePort, identity: () => string, now = Date.now) {
   let owner = "", loaded = false, checkpoint: Checkpoint | null = null;
   let dirty = false, lastWrite = -Infinity;
-  const key = () => `wildstat-boss-fight-v1:${owner}`;
+  const key = () => `wildstat-boss-fight-v1-balance${ATTACK_BALANCE_VERSION}:${owner}`;
   function load() {
     const next = identity();
     if (loaded && next === owner) return;

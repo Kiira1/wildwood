@@ -1,0 +1,5 @@
+// Frozen migration references. Old: 0.731 gameplay with corrected simulator, 5 seeds.
+// New: flat gear / 128-hour target, 20 seeds. Seconds and effective power at each map exit.
+// These are equivalent-effort estimates, not measured active time per account.
+export const LEGACY_PROGRESS_CURVE: readonly (readonly [number, number])[] = [[0, 108], [2853.542, 2286], [5821.84, 21676], [16750.291, 125833], [22574.621, 441900], [28012.766, 1268384], [34662.529, 4194077], [41452.188, 13602029], [46911.24, 37461941], [55740.774, 125010833], [63836.369, 345263326], [70712.462, 1044602958], [78525.87, 3039118077], [85789.065, 9344102824], [95060.753, 31102340816], [102161.852, 83994374703]];
+export const REBALANCED_PROGRESS_CURVE: readonly (readonly [number, number])[] = [[0, 108], [2839.146, 2290], [5997.695, 30284], [14337.043, 116624], [26296.708, 434696], [42791.834, 1258462], [63899.408, 3781716], [89797.062, 11610064], [119116.408, 34344514], [154212.134, 104880056], [194659.599, 308021066], [238459.045, 940627768], [286943.856, 2814222732], [340825.639, 8488699592], [399569.249, 25368054577], [463010.443, 76647331991]];

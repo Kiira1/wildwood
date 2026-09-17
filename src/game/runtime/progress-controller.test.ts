@@ -64,7 +64,7 @@ describe("loaded progress reconciliation", () => {
       getTotalKills: () => 0,
       setTotalKills: vi.fn(),
       researchVitalityRank: () => 0,
-      healthMultiplier: () => 1,
+      healthBonus: () => 0,
       setAppliedVitalityRank: vi.fn(),
       renderInventory,
       onLoaded: vi.fn(),
@@ -105,7 +105,7 @@ describe("loaded progress reconciliation", () => {
       legacyStorageKey: "unused", getSavedProgress: () => saved,
       saveRemoteProgress: vi.fn(), localIdentity: () => "player", lifetimeEnemyKills: () => 0,
       isDeveloper: () => false, getTotalKills: () => 0, setTotalKills: vi.fn(),
-      researchVitalityRank: () => 0, healthMultiplier: () => 1,
+      researchVitalityRank: () => 0, healthBonus: () => 0,
       setAppliedVitalityRank: vi.fn(), renderInventory, onLoaded: vi.fn(),
     });
     controller.load();

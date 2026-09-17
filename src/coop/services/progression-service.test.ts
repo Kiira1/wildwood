@@ -323,6 +323,27 @@ describe("server-calculated defeat batches", () => {
     h.service.dispose();
   });
 
+  it("lets a Home reward drain finish through a 12-second acknowledgement delay without resending", async () => {
+    vi.useFakeTimers();
+    try {
+      const h = setup();
+      let finish!: () => void;
+      h.recordEnemyDefeats.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+      h.service.api.recordRegularEnemyDefeat("advanced_lava_wastes", "Lava Raider");
+      let settled = false;
+      const drain = h.service.drainEnemyLoot().then(ok => { settled = true; return ok; });
+      await vi.advanceTimersByTimeAsync(12_000);
+      expect(settled).toBe(false);
+      const secondTap = h.service.drainEnemyLoot();
+      expect(h.recordEnemyDefeats).toHaveBeenCalledOnce();
+      finish();
+      expect(await drain).toBe(true);
+      expect(await secondTap).toBe(true);
+      expect(h.recordEnemyDefeats).toHaveBeenCalledOnce();
+      h.service.dispose();
+    } finally { vi.useRealTimers(); }
+  });
+
   it("times out a stuck checkpoint and retries instead of blocking all subsequent saves", async () => {
     vi.useFakeTimers();
     try {
@@ -332,7 +353,7 @@ describe("server-calculated defeat batches", () => {
       h.service.api.saveProgress(saveFrom(base, { damage: 20 }));
       h.service.api.recordRegularEnemyDefeat("water_reach", "Tide Raider");
       const first = h.service.drainEnemyLoot();
-      await vi.advanceTimersByTimeAsync(4_001);
+      await vi.advanceTimersByTimeAsync(15_001);
       expect(await first).toBe(false);
       expect(await h.service.drainPendingProgress()).toBe(true);
       expect(h.recordEnemyDefeats.mock.calls[1][0]).toEqual(h.recordEnemyDefeats.mock.calls[0][0]);

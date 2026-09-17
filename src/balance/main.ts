@@ -24,8 +24,8 @@ type SimulationResponse =
   | { id: number; ok: true; type: "complete"; elapsedMs: number; result: BalanceSimulationResult }
   | { id: number; ok: false; message: string };
 
-const STORAGE_KEY = "wildwood.balanceLab.config.v7";
-const STORAGE_SCHEMA_VERSION = 7;
+const STORAGE_KEY = "wildwood.balanceLab.config.v8";
+const STORAGE_SCHEMA_VERSION = 8;
 const SVG_NS = "http://www.w3.org/2000/svg";
 
 function requiredElement<T extends Element>(id: string) {

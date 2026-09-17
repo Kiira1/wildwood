@@ -1,8 +1,8 @@
 import { DEFAULT_ATTACK_INTERVAL, MIN_ATTACK_INTERVAL } from "./rules";
 import {
-  equipmentDamageMultiplier,
-  equipmentMaxHealthMultiplier,
-  equipmentRegenerationMultiplier,
+  equipmentDamage,
+  equipmentMaxHealth,
+  equipmentRegeneration,
 } from "./items";
 
 export type PlayerPowerStats = {
@@ -45,8 +45,8 @@ export function effectivePlayerPowerStats(
   const headLevel = itemUpgradeLevel(headItem);
   const chestLevel = itemUpgradeLevel(chestItem);
   return {
-    maxHp: progress.maxHp * equipmentMaxHealthMultiplier(headItem, chestItem, 1, headLevel, chestLevel),
-    damage: progress.damage * equipmentDamageMultiplier(
+    maxHp: equipmentMaxHealth(progress.maxHp, headItem, chestItem, 1, headLevel, chestLevel),
+    damage: equipmentDamage(progress.damage,
       weaponItem,
       headItem,
       chestItem,
@@ -57,7 +57,7 @@ export function effectivePlayerPowerStats(
     ),
     attackRate: Math.max(MIN_ATTACK_INTERVAL, progress.attackRate),
     armor: progress.armor * (1 + researchRank(research?.precision) * .02),
-    regen: progress.regen * equipmentRegenerationMultiplier(
+    regen: equipmentRegeneration(progress.regen,
       headItem,
       chestItem,
       1 + researchRank(research?.regeneration) * .02,

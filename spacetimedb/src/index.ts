@@ -1,5 +1,5 @@
 import { duelWireAccess, syncDuelWireAccess, DUEL_WIRE_FILTER, DUEL_REPLAY_WIRE_FILTER } from "./duel-wire-access";
-import { nameChangeStatus } from "../../shared/name-change";
+import { NAME_CHANGE_COOLDOWN_MS, nameChangeStatus } from "../../shared/name-change";
 import { validPatreonRedirect } from "./patreon-url";
 import { isValidProfileIcon } from "../../shared/profile-icons";
 import { releaseNotice, releaseAcknowledgement, writeReleaseWindow, acknowledgeReleaseWindow } from "./release-control";
@@ -21,7 +21,7 @@ import { moderateReportedMessage } from "./chat-report-moderation";
 import { PLAYER_SKIN_TONES } from "../../shared/player-skin-tones";
 import { leaderboardPageTables, writeLeaderboardPages, readLeaderboardWindow, readLeaderboardPage } from "./leaderboard-pages";
 import { publicChatCursor, updatePublicChatCursor, readPublicChatPage } from "./public-chat-history";
-import { generateMap, generatedBossStats, proceduralMapCore, isProceduralMap, proceduralMapId, PROCEDURAL_ENTRY_MAP, PROCEDURAL_ENTRY_BOSS } from "../../shared/procedural-maps";
+import { generateMap, generatedBossStats, proceduralMapCore, isProceduralMap, proceduralMapId, proceduralMapNumber, PROCEDURAL_ENTRY_MAP, PROCEDURAL_ENTRY_BOSS } from "../../shared/procedural-maps";
 import { proceduralMapTables, proceduralBossKey, clearProceduralProgress, mergeProceduralProgress, generatedMapUnlocked, ensureProceduralBoss, damageProceduralBoss } from "./procedural-maps";
 import { ingestStoreEvent } from "./gem-store-events";
 import { gemPurchaseTables } from "./gem-purchase-tables";
@@ -32,7 +32,9 @@ import { DEVELOPER_IDENTITY as DEVELOPER_IDENTITY_HEX } from "../../shared/devel
 import { allowedAvatarFrame } from "../../shared/avatar-frames";
 import { createGemPurchaseService } from "./gem-purchase-service";
 import { rescaleEndgameProgress, rescaleRankingConflict, rescaleRankingStats } from "../../shared/endgame-power-rescale";
-import { HOME_EXTERIOR_MAP_ID, HOME_EXTERIOR_SPAWN, HOME_BENCH_POSITION, HOME_WORLD_WIDTH, HOME_WORLD_HEIGHT } from "../../shared/home";
+import { rebaseProgressByEffort } from "../../shared/progression-rebase";
+import { CAMPAIGN_UNLOCK_FIELDS, equipmentMapRequirement } from "../../shared/equipment-access";
+import { HOME_EXTERIOR_MAP_ID, HOME_EXTERIOR_SPAWN, HOME_TRAVEL_PORTAL, HOME_BENCH_POSITION, HOME_WORLD_WIDTH, HOME_WORLD_HEIGHT } from "../../shared/home";
 import { insertSnapshotRow, updateSnapshotRow, deleteSnapshotRow } from "./shard-snapshot-writes";
 import { decodeShardSnapshot, encodeShardSnapshot } from "../../shared/shard-wire";
 import { coordinateShard, validateCoordinatorConfig } from "./shard-coordinator";
@@ -120,9 +122,9 @@ import {
   canonicalItemId,
   DEVELOPER_ITEM_IDS,
   EQUIPMENT_DROP_ITEM_IDS,
-  equipmentDamageMultiplier,
-  equipmentMaxHealthMultiplier,
-  equipmentRegenerationMultiplier,
+  equipmentDamage,
+  equipmentMaxHealth,
+  equipmentRegeneration,
   FROST_ARMOR,
   FROST_BOW,
   itemDefinition,
@@ -341,7 +343,7 @@ const LEADERBOARD_REFRESH_INTERVAL_MICROS = 900_000_000n;
 const MOTION_DETAIL_FRAME_INTERVAL_MICROS = 1_000_000n / BigInt(PLAYER_MOTION_DETAIL_FRAME_HZ);
 const MAP_FRAME_INTERVAL_MICROS = 1_000_000n / BigInt(PLAYER_MAP_FRAME_HZ);
 const VIRTUAL_PLAYER_RUN_LIFETIME_MICROS = 3_600_000_000n;
-const MODULE_MIGRATION_VERSION = 31;
+const MODULE_MIGRATION_VERSION = 32;
 const LEADERBOARD_REFRESH_VERSION = 10;
 const DUEL_REQUEST_COOLDOWN_MICROS = 120_000_000n;
 const DUEL_REQUEST_TIMEOUT_MICROS = 30_000_000n;
@@ -1093,6 +1095,14 @@ const playerEndgameRebaseBackup = table(
   },
 );
 
+// Separate v9 archive: retain the original values even after future migrations.
+const playerEndlessRebaseBackup = table({ public: false }, {
+  identity: t.identity().primaryKey(),
+  maxHp: t.f32(), damage: t.f32(), armor: t.f32(), regen: t.f32(), attackRate: t.f32(),
+  beforePower: t.f64(), afterPower: t.f64(), recordedAt: t.timestamp(),
+  progressJson: t.string().default(""), contextJson: t.string().default(""), earnedSeconds: t.f64().default(0),
+});
+
 // Developers keep their presence choice across disconnects and devices. The
 // active player row is deliberately ephemeral, so it cannot hold this setting.
 const developerPresencePreference = table(
@@ -1762,6 +1772,7 @@ const spacetimedb = schema({
   playerBalanceVersion,
   playerPowerRebaseBackup,
   playerEndgameRebaseBackup,
+  playerEndlessRebaseBackup,
   developerPresencePreference,
   playerMovementDemand,
   playerAccessAudit,
@@ -2626,6 +2637,24 @@ function runPendingModuleMigrations(ctx: any) {
     ctx.db.startupTelemetryCleanupSchedule.insert({ scheduledId: 0n,
       scheduledAt: ScheduleAt.interval(15n * MAINTENANCE_INTERVAL_MICROS) });
   }
+  if (currentVersion < 32 && !isMapShard(ctx)) {
+    // Reset only the wait, retaining whether the free name change was used.
+    const resetAt = new Timestamp(ctx.timestamp.microsSinceUnixEpoch - BigInt(NAME_CHANGE_COOLDOWN_MS) * 1000n);
+    for (const row of ctx.db.playerNameCooldown.iter()) {
+      ctx.db.playerNameCooldown.identity.update({ ...row, changedAt: resetAt });
+    }
+    for (const progress of ctx.db.playerProgress.iter() as Iterable<any>) {
+      const next = rebaseEndlessPlayer(ctx, progress);
+      markPlayerBalanceCurrent(ctx, progress.identity);
+      const active = ctx.db.player.identity.find(progress.identity);
+      if (active) {
+        const updated = { ...active, ...powerFieldsForProgress(ctx, next), ...equipmentPresentationForProgress(next), speed: effectiveMovementSpeedForProgress(ctx, next) };
+        updateSnapshotRow(ctx, "player", updated);
+        syncPlayerMotionIdentity(ctx, playerWithMotion(ctx, updated));
+      }
+    }
+    refreshLeaderboard(ctx);
+  }
   const next = { id: 0, version: MODULE_MIGRATION_VERSION };
   if (state) ctx.db.moduleMigrationState.id.update(next);
   else ctx.db.moduleMigrationState.insert(next);
@@ -2863,10 +2892,54 @@ function rebasePlayersToEndgame(ctx: any) {
   refreshLeaderboard(ctx);
 }
 
+function rebaseEndlessPlayer(ctx: any, progress: any) {
+  if (ctx.db.playerEndlessRebaseBackup.identity.find(progress.identity)) return progress;
+  const procedural = ctx.db.proceduralProgress.identity.find(progress.identity);
+  const result = rebaseProgressByEffort(progress.desertUnlocked ? { ...progress, inventoryJson: JSON.stringify(inventoryForProgress(progress)) } : progress,
+    ctx.db.playerResearch.identity.find(progress.identity), id => itemUpgradeLevelFor(ctx, progress.identity, id), procedural?.completed ?? 0);
+  const next = result.progress;
+  const json = (value: unknown) => JSON.stringify(value, (_key, value) => typeof value === "bigint" ? value.toString() : value);
+  ctx.db.playerEndlessRebaseBackup.insert({ identity: progress.identity,
+    maxHp: progress.maxHp, damage: progress.damage, armor: progress.armor, regen: progress.regen, attackRate: progress.attackRate,
+    beforePower: result.beforePower, afterPower: result.afterPower, recordedAt: ctx.timestamp,
+    progressJson: json(progress), earnedSeconds: result.earnedSeconds,
+    contextJson: json({ procedural, location: ctx.db.playerLastLocation.identity.find(progress.identity),
+      homeReturn: ctx.db.homeReturnLocation.identity.find(progress.identity), cutscenes: ctx.db.playerCutsceneHistory.identity.find(progress.identity),
+      research: ctx.db.playerResearch.identity.find(progress.identity), upgrades: [...ctx.db.playerItemUpgrade.byIdentity.filter(progress.identity)] }) });
+  if (!samePlayerProgressValues(progress, next)) updateSnapshotRow(ctx, "playerProgress", next);
+  if (procedural && procedural.completed !== result.completedEndless) ctx.db.proceduralProgress.identity.update({ ...procedural, completed: result.completedEndless });
+  const history = ctx.db.playerCutsceneHistory.identity.find(progress.identity);
+  if (history) ctx.db.playerCutsceneHistory.identity.update({ ...history, seenMask: history.seenMask & unlockedPortalCutsceneMask(next), generation: history.generation + 1 });
+  const allowed = (mapId: string) => mapId === HOME_EXTERIOR_MAP_ID || mapId === "first_steps"
+    || (isProceduralMap(mapId) ? result.mapIndex === 15 && proceduralMapNumber(mapId)! <= result.completedEndless + 1
+      : MAP_IDS.indexOf(mapId) >= 0 && MAP_IDS.indexOf(mapId) <= result.mapIndex);
+  const fallbackMap = result.mapIndex === 15 ? proceduralMapId(result.completedEndless + 1) : MAP_IDS[result.mapIndex];
+  const fallback = isProceduralMap(fallbackMap) ? generateMap(fallbackMap).arrival : fallbackMap === TUTORIAL_FOREST_MAP_ID ? PLAYER_SPAWN : MAP_ARRIVALS[fallbackMap as keyof typeof MAP_ARRIVALS];
+  for (const table of [ctx.db.playerLastLocation, ctx.db.homeReturnLocation]) {
+    const saved = table.identity.find(progress.identity);
+    if (progress.desertUnlocked && saved && !allowed(saved.mapId)) table.identity.update({ ...saved, mapId: fallbackMap, ...fallback, facing: 0 });
+  }
+  const active = ctx.db.player.identity.find(progress.identity);
+  if (progress.desertUnlocked && active && !allowed(active.mapId)) {
+    // Moving home prevents a weakened character reconnecting into a hostile camp.
+    const moved = transitionPlayerMap({ ...ctx, sender: progress.identity }, active, HOME_EXTERIOR_MAP_ID, HOME_EXTERIOR_SPAWN);
+    const homeReturn = { identity: progress.identity, mapId: fallbackMap, ...fallback, facing: 0 };
+    if (ctx.db.homeReturnLocation.identity.find(progress.identity)) ctx.db.homeReturnLocation.identity.update(homeReturn);
+    else ctx.db.homeReturnLocation.insert(homeReturn);
+    persistWorldLocation(ctx, moved); assignMapShard(ctx, moved);
+  }
+  // Old DPS/time credit must never validate kills after a stat reduction.
+  for (const row of ctx.db.enemyDefeatBudget.identity.filter(progress.identity)) ctx.db.enemyDefeatBudget.key.delete(row.key);
+  if (ctx.db.bossDefeatWindow.identity.find(progress.identity)) ctx.db.bossDefeatWindow.identity.delete(progress.identity);
+  if (ctx.db.bossMapDefeatWindow.identity.find(progress.identity)) ctx.db.bossMapDefeatWindow.identity.delete(progress.identity);
+  // Keep accepted-loot sequence cursors: deleting them would permit double rewards.
+  return next;
+}
+
 function migratePlayerBalance(ctx: any, progress: any) {
   const current = ctx.db.playerBalanceVersion.identity.find(ctx.sender);
   if ((current?.version ?? 0) >= ATTACK_BALANCE_VERSION) return progress;
-  const migrated = playerBalanceProgress(progress, current?.version ?? 0);
+  const migrated = rebaseEndlessPlayer(ctx, playerBalanceProgress(progress, current?.version ?? 0));
   updateSnapshotRow(ctx, "playerProgress", migrated);
   markPlayerBalanceCurrent(ctx);
   return migrated;
@@ -2919,7 +2992,7 @@ function researchedDamage(ctx: any, identity: any, damage: number, knownProgress
   const weaponItem = progress ? equippedRightHandForProgress(progress) || equippedLeftHandForProgress(progress) : "";
   const headItem = progress ? equippedHeadForProgress(progress) : "";
   const chestItem = progress ? equippedChestForProgress(progress) : "";
-  return damage * equipmentDamageMultiplier(
+  return equipmentDamage(damage,
     weaponItem,
     headItem,
     chestItem,
@@ -2956,7 +3029,7 @@ function researchedRegen(ctx: any, identity: any, regen: number) {
   const progress = ctx.db.playerProgress.identity.find(identity);
   const headItem = progress ? equippedHeadForProgress(progress) : "";
   const chestItem = progress ? equippedChestForProgress(progress) : "";
-  return regen * equipmentRegenerationMultiplier(
+  return equipmentRegeneration(regen,
     headItem,
     chestItem,
     1 + rank * .02,
@@ -3717,43 +3790,8 @@ function resultIncludesContributor(latest: any, identity: any) {
   }
 }
 
-function contributedToLatestDragon(ctx: any, identity: any) {
-  return resultIncludesContributor(ctx.db.dragonResult.id.find(DRAGON_ID), identity);
-}
-
-function contributedToLatestFrostclaw(ctx: any, identity: any) {
-  return resultIncludesContributor(ctx.db.frostclawResult.id.find(FROSTCLAW_ID), identity);
-}
-
-function contributedToLatestMagmalisk(ctx: any, identity: any) {
-  return resultIncludesContributor(ctx.db.magmaliskResult.id.find(MAGMALISK_ID), identity);
-}
-
-function contributedToLatestGloomroot(ctx: any, identity: any) {
-  return resultIncludesContributor(ctx.db.gloomrootResult.id.find(GLOOMROOT_ID), identity);
-}
-
-function contributedToLatestTidewyrm(ctx: any, identity: any) {
-  return resultIncludesContributor(ctx.db.tidewyrmResult.id.find(TIDEWYRM_ID), identity);
-}
-
-function contributedToLatestKoiShogun(ctx: any, identity: any) {
-  return resultIncludesContributor(ctx.db.koiShogunResult.id.find(KOI_SHOGUN_ID), identity);
-}
-
-function contributedToLatestTempestKirin(ctx: any, identity: any) {
-  return resultIncludesContributor(ctx.db.tempestKirinResult.id.find(TEMPEST_KIRIN_ID), identity);
-}
-
-function contributedToLatestMiremaw(ctx: any, identity: any) {
-  return resultIncludesContributor(ctx.db.miremawResult.id.find(MIREMAW_ID), identity);
-}
-
 function contributedToLatestPrismshell(ctx: any, identity: any) {
   return resultIncludesContributor(ctx.db.prismshellResult.id.find(PRISMSHELL_ID), identity);
-}
-function contributedToLatestIronhorn(ctx: any, identity: any) {
-  return resultIncludesContributor(ctx.db.ironhornResult.id.find(IRONHORN_ID), identity);
 }
 function contributedToLatestDreadreaper(ctx: any, identity: any) {
   return resultIncludesContributor(ctx.db.dreadreaperResult.id.find(DREADREAPER_ID), identity);
@@ -3764,10 +3802,6 @@ function contributedToLatestVoltwarden(ctx: any, identity: any) {
 function contributedToLatestGravebloom(ctx: any, identity: any) {
   return resultIncludesContributor(ctx.db.gravebloomResult.id.find(GRAVEBLOOM_ID), identity);
 }
-function contributedToLatestAegisPrime(ctx: any, identity: any) {
-  return resultIncludesContributor(ctx.db.aegisPrimeResult.id.find(AEGIS_PRIME_ID), identity);
-}
-
 function forestItemCountForProgress(progress: any, itemId: string, field: "bowCount" | "woodenArmorCount") {
   const storedCount = Number.isInteger(progress?.[field]) ? progress[field] : 0;
   let legacyCount = 0;
@@ -3975,7 +4009,7 @@ function attackIntervalForProgress(progress: any) {
 function maxHealthForProgress(ctx: any, identity: any, progress: any) {
   const headItem = equippedHeadForProgress(progress);
   const chestItem = equippedChestForProgress(progress);
-  return progress.maxHp * equipmentMaxHealthMultiplier(
+  return equipmentMaxHealth(progress.maxHp,
     headItem,
     chestItem,
     1,
@@ -6296,59 +6330,8 @@ function enterWorldPresence(ctx: any, tabId: string, forceTakeover = false, supp
     markPlayerBalanceCurrent(ctx);
   } else {
     existingProgress = migratePlayerBalance(ctx, existingProgress);
-    const existingPlayer = ctx.db.player.identity.find(ctx.sender);
-    const latestDragonContributor = contributedToLatestDragon(ctx, ctx.sender);
-    const latestFrostclawContributor = contributedToLatestFrostclaw(ctx, ctx.sender);
-    const latestMagmaliskContributor = contributedToLatestMagmalisk(ctx, ctx.sender);
-    const latestGloomrootContributor = contributedToLatestGloomroot(ctx, ctx.sender);
-    const latestTidewyrmContributor = contributedToLatestTidewyrm(ctx, ctx.sender);
-    const latestKoiShogunContributor = contributedToLatestKoiShogun(ctx, ctx.sender);
-    const latestTempestKirinContributor = contributedToLatestTempestKirin(ctx, ctx.sender);
-    const latestMiremawContributor = contributedToLatestMiremaw(ctx, ctx.sender);
-    const isInDesert = existingPlayer?.mapId === BEGINNER_DESERT_MAP_ID;
-    const isInSnowlands = existingPlayer?.mapId === INTERMEDIATE_SNOWLANDS_MAP_ID;
-    const isInLavaWastes = existingPlayer?.mapId === ADVANCED_LAVA_WASTES_MAP_ID;
-    const isInInfernalDepths = existingPlayer?.mapId === INFERNAL_DEPTHS_MAP_ID;
-    const isInWaterReach = existingPlayer?.mapId === WATER_REACH_MAP_ID;
-    const isInSamuraiGarden = existingPlayer?.mapId === SAMURAI_GARDEN_MAP_ID;
-    const isInCloudspire = existingPlayer?.mapId === CLOUDSPIRE_MAP_ID;
-    const isInDuskfallOrchard = existingPlayer?.mapId === DUSKFALL_ORCHARD_MAP_ID || contributedToLatestIronhorn(ctx, ctx.sender) || contributedToLatestDreadreaper(ctx, ctx.sender);
-const isInNeonBastion = existingPlayer?.mapId === NEON_BASTION_MAP_ID || Boolean(existingProgress.bossRewardClaims & BOSS_REWARD_CLAIM_BITS.dreadreaper) || contributedToLatestDreadreaper(ctx, ctx.sender) || contributedToLatestVoltwarden(ctx, ctx.sender);
-const isInVerdantCatacombs = existingPlayer?.mapId === VERDANT_CATACOMBS_MAP_ID || Boolean(existingProgress.bossRewardClaims & BOSS_REWARD_CLAIM_BITS.voltwarden) || contributedToLatestVoltwarden(ctx, ctx.sender) || contributedToLatestGravebloom(ctx, ctx.sender);
-const isInIonCitadel = existingPlayer?.mapId === ION_CITADEL_MAP_ID || Boolean(existingProgress.bossRewardClaims & BOSS_REWARD_CLAIM_BITS.gravebloom) || contributedToLatestGravebloom(ctx, ctx.sender) || contributedToLatestAegisPrime(ctx, ctx.sender);
-    const isInClockworkRuins = existingPlayer?.mapId === CLOCKWORK_RUINS_MAP_ID || isInDuskfallOrchard || contributedToLatestPrismshell(ctx, ctx.sender) || Boolean(existingProgress.bossRewardClaims & BOSS_REWARD_CLAIM_BITS.prismshell);
-    const isInCrystalHollows = existingPlayer?.mapId === CRYSTAL_HOLLOWS_MAP_ID || isInClockworkRuins;
-    // A later server-owned location/clear also proves all earlier map gates.
-    const isInMoonfen = existingPlayer?.mapId === MOONFEN_MAP_ID || isInCrystalHollows || latestMiremawContributor;
-    if ((!existingProgress.desertUnlocked && (isInDesert || isInSnowlands || isInLavaWastes || isInInfernalDepths || isInWaterReach || isInSamuraiGarden || isInCloudspire || isInMoonfen || latestDragonContributor || latestFrostclawContributor || latestMagmaliskContributor || latestGloomrootContributor || latestTidewyrmContributor || latestKoiShogunContributor || latestTempestKirinContributor)) ||
-      (!existingProgress.snowlandsUnlocked && (isInSnowlands || isInLavaWastes || isInInfernalDepths || isInWaterReach || isInSamuraiGarden || isInCloudspire || isInMoonfen || latestFrostclawContributor || latestMagmaliskContributor || latestGloomrootContributor || latestTidewyrmContributor || latestKoiShogunContributor || latestTempestKirinContributor)) ||
-      (!existingProgress.lavaUnlocked && (isInLavaWastes || isInInfernalDepths || isInWaterReach || isInSamuraiGarden || isInCloudspire || isInMoonfen || latestFrostclawContributor || latestMagmaliskContributor || latestGloomrootContributor || latestTidewyrmContributor || latestKoiShogunContributor || latestTempestKirinContributor)) ||
-      (!existingProgress.infernalUnlocked && (isInInfernalDepths || isInWaterReach || isInSamuraiGarden || isInCloudspire || isInMoonfen || latestMagmaliskContributor || latestGloomrootContributor || latestTidewyrmContributor || latestKoiShogunContributor || latestTempestKirinContributor)) ||
-      (!existingProgress.waterUnlocked && (isInWaterReach || isInSamuraiGarden || isInCloudspire || isInMoonfen || latestGloomrootContributor || latestTidewyrmContributor || latestKoiShogunContributor || latestTempestKirinContributor)) ||
-      (!existingProgress.samuraiUnlocked && (isInSamuraiGarden || isInCloudspire || isInMoonfen || latestTidewyrmContributor || latestKoiShogunContributor || latestTempestKirinContributor)) ||
-      (!existingProgress.cloudspireUnlocked && (isInCloudspire || isInMoonfen || latestKoiShogunContributor || latestTempestKirinContributor)) ||
-      (!existingProgress.moonfenUnlocked && (isInMoonfen || latestTempestKirinContributor)) ||
-      (!existingProgress.crystalHollowsUnlocked && (isInCrystalHollows || latestMiremawContributor)) ||
-      (!existingProgress.clockworkRuinsUnlocked && isInClockworkRuins) ||
-      (!existingProgress.duskfallOrchardUnlocked && isInDuskfallOrchard) ||
-      (!existingProgress.neonBastionUnlocked && isInNeonBastion) ||
-      (!existingProgress.verdantCatacombsUnlocked && isInVerdantCatacombs) ||
-      (!existingProgress.ionCitadelUnlocked && isInIonCitadel)) {
-      existingProgress = {
-        ...existingProgress,
-        desertUnlocked: existingProgress.desertUnlocked || isInDesert || isInSnowlands || isInLavaWastes || isInInfernalDepths || isInWaterReach || isInSamuraiGarden || isInCloudspire || isInMoonfen || latestDragonContributor || latestFrostclawContributor || latestMagmaliskContributor || latestGloomrootContributor || latestTidewyrmContributor || latestKoiShogunContributor || latestTempestKirinContributor,
-        snowlandsUnlocked: existingProgress.snowlandsUnlocked || isInSnowlands || isInLavaWastes || isInInfernalDepths || isInWaterReach || isInSamuraiGarden || isInCloudspire || isInMoonfen || latestFrostclawContributor || latestMagmaliskContributor || latestGloomrootContributor || latestTidewyrmContributor || latestKoiShogunContributor || latestTempestKirinContributor,
-        lavaUnlocked: existingProgress.lavaUnlocked || isInLavaWastes || isInInfernalDepths || isInWaterReach || isInSamuraiGarden || isInCloudspire || isInMoonfen || latestFrostclawContributor || latestMagmaliskContributor || latestGloomrootContributor || latestTidewyrmContributor || latestKoiShogunContributor || latestTempestKirinContributor,
-        infernalUnlocked: existingProgress.infernalUnlocked || isInInfernalDepths || isInWaterReach || isInSamuraiGarden || isInCloudspire || isInMoonfen || latestMagmaliskContributor || latestGloomrootContributor || latestTidewyrmContributor || latestKoiShogunContributor || latestTempestKirinContributor,
-        waterUnlocked: existingProgress.waterUnlocked || isInWaterReach || isInSamuraiGarden || isInCloudspire || isInMoonfen || latestGloomrootContributor || latestTidewyrmContributor || latestKoiShogunContributor || latestTempestKirinContributor,
-        samuraiUnlocked: existingProgress.samuraiUnlocked || isInSamuraiGarden || isInCloudspire || isInMoonfen || latestTidewyrmContributor || latestKoiShogunContributor || latestTempestKirinContributor,
-        cloudspireUnlocked: existingProgress.cloudspireUnlocked || isInCloudspire || isInMoonfen || latestKoiShogunContributor || latestTempestKirinContributor,
-        moonfenUnlocked: existingProgress.moonfenUnlocked || isInMoonfen || latestTempestKirinContributor,
-        crystalHollowsUnlocked: existingProgress.crystalHollowsUnlocked || isInCrystalHollows || latestMiremawContributor, clockworkRuinsUnlocked: existingProgress.clockworkRuinsUnlocked || isInClockworkRuins, duskfallOrchardUnlocked: existingProgress.duskfallOrchardUnlocked || isInDuskfallOrchard, neonBastionUnlocked: existingProgress.neonBastionUnlocked || isInNeonBastion,
-        verdantCatacombsUnlocked: existingProgress.verdantCatacombsUnlocked || isInVerdantCatacombs, ionCitadelUnlocked: existingProgress.ionCitadelUnlocked || isInIonCitadel,
-      };
-      updateSnapshotRow(ctx, "playerProgress", existingProgress);
-    }
+    // Balance v9 unlocks are authoritative. Historical shared-boss results and
+    // a stale presence row must not re-open maps deliberately locked by rebalancing.
     const equippedFeet = equippedFeetForProgress(existingProgress);
     const equippedHead = equippedHeadForProgress(existingProgress);
     const equippedChest = equippedChestForProgress(existingProgress);
@@ -9282,6 +9265,10 @@ export const savePlayerProgress = spacetimedb.reducer(
     const activePlayer = requireControllingPlayer(ctx);
     const current = ctx.db.playerProgress.identity.find(ctx.sender);
     const base = current ?? defaultPlayerProgress(ctx.sender);
+    for (const field of ["equippedHead", "equippedChest", "equippedFeet", "equippedRightHand", "equippedLeftHand"] as const) {
+      const requiredMap = equipmentMapRequirement(progress[field], base);
+      if (requiredMap) throw new SenderError(`Reach ${requiredMap} to equip this item.`);
+    }
     if (current && LOADOUT_FIELDS.every(field => progress[field] === base[field])) {
       return;
     }
@@ -10010,7 +9997,7 @@ export const requestDuel = spacetimedb.reducer(
     const challenger = requireControllingPlayer(ctx);
     // Only the challenger plays this snapshot duel. The opponent may be
     // offline or on an older app; wire-access filters protect older decoders.
-    if (challenger.protocolVersion !== 105) {
+    if (challenger.protocolVersion < 105 || !isSupportedProtocol(challenger.protocolVersion)) {
       throw new SenderError("Update your app to start a duel.");
     }
     if (sameIdentity(opponent, ctx.sender)) throw new SenderError("You cannot duel yourself.");
@@ -10312,7 +10299,14 @@ export const changeMap = spacetimedb.reducer(
         const saved = ctx.db.homeReturnLocation.identity.find(ctx.sender);
         // Recover already-linked accounts whose older client/server omitted
         // their Home return record. Keep their stats and unlocks intact.
-        const destination = saved && saved.mapId !== HOME_EXTERIOR_MAP_ID && VALID_MAP_IDS.has(saved.mapId)
+        const progress = ctx.db.playerProgress.identity.find(ctx.sender);
+        const converted = ctx.db.playerEndlessRebaseBackup.identity.find(ctx.sender);
+        const savedMapIndex = saved ? MAP_IDS.indexOf(saved.mapId) : -1;
+        const permitted = !converted || (saved && (isProceduralMap(saved.mapId)
+          ? generatedMapUnlocked(saved.mapId, ctx.db.proceduralProgress.identity.find(ctx.sender)?.completed ?? 0,
+            Boolean((progress?.bossRewardClaims ?? 0) & BOSS_REWARD_CLAIM_BITS[PROCEDURAL_ENTRY_BOSS]))
+          : savedMapIndex === 0 || (savedMapIndex > 0 && Boolean(progress?.[CAMPAIGN_UNLOCK_FIELDS[savedMapIndex - 1]]))));
+        const destination = permitted && saved && saved.mapId !== HOME_EXTERIOR_MAP_ID && VALID_MAP_IDS.has(saved.mapId)
           && [saved.x, saved.y, saved.facing].every(Number.isFinite)
           ? saved : { mapId: TUTORIAL_FOREST_MAP_ID, ...PLAYER_SPAWN, facing: 0 };
         transitionPlayerMap(ctx, current, destination.mapId, destination, destination.facing);
@@ -10377,7 +10371,9 @@ export const changeMap = spacetimedb.reducer(
       Boolean(currentProgress && (currentProgress.bossRewardClaims & BOSS_REWARD_CLAIM_BITS[PROCEDURAL_ENTRY_BOSS])))) {
       throw new SenderError("Defeat the previous map's boss first.");
     }
-    const sourcePortals = isProceduralMap(current.mapId)
+    const sourcePortals = current.mapId === HOME_EXTERIOR_MAP_ID
+      ? [{ ...HOME_TRAVEL_PORTAL, y: HOME_TRAVEL_PORTAL.y - HOME_TRAVEL_PORTAL.height * .32, destination: mapId }]
+      : isProceduralMap(current.mapId)
       ? generateMap(current.mapId).portals.map(portal => ({ ...portal, y:portal.y-portal.height*.32 }))
       : [...(MAP_PORTALS[current.mapId as keyof typeof MAP_PORTALS] ?? []),
         ...(current.mapId === PROCEDURAL_ENTRY_MAP ? [{x:580,y:617,destination:proceduralMapId(1)}] : [])];

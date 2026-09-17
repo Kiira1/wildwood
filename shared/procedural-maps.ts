@@ -7,6 +7,9 @@ import {
   type ForestProgressionLane,
   type RewardStat,
 } from "./progression";
+import { armorDamageReduction } from "./combat";
+import { referenceBuildForMap } from "./progression";
+import { endlessScaling } from "./endless-balance";
 
 export type ProceduralMapId = `endless_${number}`;
 export const PROCEDURAL_PREFIX = "endless_";
@@ -185,19 +188,25 @@ export function generateMap(id: ProceduralMapId): GeneratedMap {
   };
 }
 export function generatedEnemyStats(
-  map: Pick<GeneratedMap, "tier">,
+  map: Pick<GeneratedMap, "number">,
   lane: ForestProgressionLane,
 ) {
-  const reward = desertLaneRewardValue(lane, map.tier);
+  const scale = endlessScaling(map.number);
+  const reward = desertLaneRewardValue(lane, PROCEDURAL_FIRST_TIER);
   reward.amount *=
     campaignEnemyRewardMultiplier(PROCEDURAL_FIRST_TIER - 1) /
-    campaignEnemyRewardMultiplier(map.tier);
-  return { ...desertLaneCombatValue(lane, map.tier), reward };
+    campaignEnemyRewardMultiplier(PROCEDURAL_FIRST_TIER) * scale.rewards;
+  const combat = desertLaneCombatValue(lane, PROCEDURAL_FIRST_TIER);
+  const armor = referenceBuildForMap(PROCEDURAL_FIRST_TIER).armor;
+  return { hp: combat.hp * scale.stats * scale.endurance,
+    damage: combat.damage * scale.stats * (1 - armorDamageReduction(armor)) / (1 - armorDamageReduction(armor * scale.stats)), reward };
 }
-export function generatedBossStats(map: Pick<GeneratedMap, "tier">) {
+export function generatedBossStats(map: Pick<GeneratedMap, "number">) {
+  const scale = endlessScaling(map.number);
+  const armor = referenceBuildForMap(PROCEDURAL_FIRST_TIER).armor * 3;
   return {
-    hp: desertBossHealthAt(map.tier),
-    damage: bossHeavyHitAt(map.tier),
+    hp: desertBossHealthAt(PROCEDURAL_FIRST_TIER) * scale.stats * scale.endurance,
+    damage: bossHeavyHitAt(PROCEDURAL_FIRST_TIER) * scale.stats * (1 - armorDamageReduction(armor)) / (1 - armorDamageReduction(armor * scale.stats)),
     rewards: (["Cindermaw", "Bramble", "Mossback", "Brood"] as const).map(lane => {
       const reward = generatedEnemyStats(map, lane).reward;
       return { ...reward, amount: reward.amount * 10 };

@@ -2,7 +2,7 @@ import { portalCutsceneBit, unlockedPortalCutsceneMask } from "../../../shared/p
 import { LOADOUT_FIELDS } from "../../../shared/combat-progress";
 import { withRequestDeadline } from "./request-deadline";
 import type { EnemyLootRequest } from "./regular-enemy-loot-queue";
-import { createRegularEnemyLootQueue } from "./regular-enemy-loot-queue";
+import { createRegularEnemyLootQueue, ENEMY_DEFEAT_ACK_TIMEOUT_MS } from "./regular-enemy-loot-queue";
 import { REGULAR_ENEMY_LOOT_DELAY_MS } from "../../../shared/regular-map-loot";
 import { ONBOARDING_DAMAGE_REWARD, ONBOARDING_REGEN_REWARD, ONBOARDING_STEP } from "../../../shared/onboarding";
 import { withoutDestroyedEquipment } from "./destroyed-equipment";
@@ -231,7 +231,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
     }
     const result = await reducerResult("enemy defeats", connection => withRequestDeadline(connection.reducers.recordEnemyDefeats({
       streamId: request.streamId, sequence: request.sequence, mapId: request.mapId, enemies: request.enemies,
-    }), 3_500))();
+    }), ENEMY_DEFEAT_ACK_TIMEOUT_MS))();
     if (!result.ok && /Enemy defeats belong to another map|Invalid enemy for this map/.test(result.error ?? "")) return "discard";
     if (!result.ok && /Enemy rewards are catching up/.test(result.error ?? "")) return "throttled";
     return result.ok;

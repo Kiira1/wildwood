@@ -9,13 +9,20 @@ export const BOSS_TARGET_SECONDS = 90;
 export const REGULAR_REWARD_CYCLE_SCALE = .6 * (52 * 60 / MAP_TARGET_SECONDS) * ((MAP_STAT_GROWTH - 1) / 2);
 // Desert, Snowlands, Lava, Infernal, Water, Samurai, Cloudspire, Moonfen,
 // Crystal Hollows, Clockwork Ruins, Duskfall Orchard, Neon Bastion, Verdant Catacombs, Ion Citadel. Match Desert's farming
-// time plus 20 minutes per later map, accounting for each map's camps, travel, equipment, and research.
+// time with authored camp density; CAMPAIGN_REWARD_PACING below applies the current duration target.
 // Snowlands gets a modest catch-up bonus, still below Lava's per-role payouts.
 export const CAMPAIGN_ENEMY_REWARD_MULTIPLIERS: readonly number[] = [1.0, 1.25, 1.5, 0.975, 0.799, 0.648, 0.554, 0.417, 0.362, 0.332, 0.301, 0.275, 0.253, 0.232];
+// Calibrated with flat equipment and balanced research for about 128 active
+// solo hours through Ion. Forest/Desert remain unchanged; later maps carry the
+// extra time. These affect regular AND boss payouts, preventing a boss-farm bypass.
+export const CAMPAIGN_REWARD_PACING: readonly number[] = [1, 0.77, 0.72512, 0.49685, 0.52062, 0.48213, 0.46865, 0.50464, 0.48081, 0.46749, 0.45866, 0.43642, 0.4238, 0.43495];
+export function campaignRewardPacing(mapIndex: number) {
+  return CAMPAIGN_REWARD_PACING[mapIndex] ?? 1;
+}
 // Ease the first full campaign tier after the specially shortened Desert fights.
 export const SNOWLANDS_TUNING = { enemyHealth: .65, enemyDamage: .85, bossHealth: .75, bossDamage: .85 } as const;
 export function campaignEnemyRewardMultiplier(mapIndex: number) {
-  return CAMPAIGN_ENEMY_REWARD_MULTIPLIERS[mapIndex] ?? 1.16;
+  return (CAMPAIGN_ENEMY_REWARD_MULTIPLIERS[mapIndex] ?? 1.16) * campaignRewardPacing(mapIndex);
 }
 export type DamageCampRoster = { raider: number; reaper: number };
 export function damageCampRosterForMap(mapIndex: number): DamageCampRoster {
@@ -125,5 +132,5 @@ export const BOSS_REWARD_TRACK_BASES: Record<RewardStat, { amount: number; unloc
 };
 export function bossRewardValue(stat: RewardStat, mapIndex: number) {
   const base = BOSS_REWARD_TRACK_BASES[stat];
-  return mapIndex < base.unlockMapIndex ? 0 : base.amount * rewardMultiplierForMaps(mapIndex);
+  return mapIndex < base.unlockMapIndex ? 0 : base.amount * rewardMultiplierForMaps(mapIndex) * campaignRewardPacing(mapIndex);
 }

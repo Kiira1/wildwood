@@ -1,4 +1,11 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.732": [
+    "Rebalanced campaign progression and slowed Endless growth, with smaller stat jumps between Endless maps.",
+    "Existing progress is converted using estimated earned hours on the new curve. Equipment and upgrades are kept; later-tier gear becomes usable again when its map is unlocked.",
+    "Equipment now adds flat stats instead of multiplying your earned stats.",
+    "Added a Home travel portal for unlocked maps. Reset existing name-change waits; future changes have a 24-hour cooldown.",
+    "Improved boss reward syncing during slow connections and prevented old boss records from restoring locked maps.",
+  ],
   "0.731": [
     "Unfinished boss fights now retain their remaining health through updates and reconnects on the same device.",
     "Fixed combat continuing during map transfers, which could reject late kills and delay portal unlocks.",
@@ -2011,6 +2018,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.732": "2026-09-17",
   "0.731": "2026-09-17",
   "0.730": "2026-09-17",
   "0.729": "2026-09-17",

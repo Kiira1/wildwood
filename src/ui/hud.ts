@@ -1,3 +1,4 @@
+import { formatEquipmentAmount } from "./equipment-stat-format";
 import { itemTier } from "../../shared/item-tier";
 import { appendItemTierLabel } from "./item-tier-label";
 import { cosmeticInventoryStacks, bagInventoryStacks, ITEM_DEFINITIONS, type EquipmentSlot } from "../game/inventory";
@@ -299,11 +300,11 @@ export function renderInventoryView(
         bonuses.className = "inventory-item-bonuses";
         const stats = itemStats(itemId, level);
         for (const stat of stats) {
-          const match = /^(DAMAGE|MAX HEALTH|REGEN) (\+\d+%)$/.exec(stat);
+          const match = /^(DAMAGE|MAX HEALTH|REGEN) (\+[\d.]+)$/.exec(stat);
           if (!match) continue;
           const value = document.createElement("span");
           value.dataset.statKind = match[1] === "DAMAGE" ? "damage" : match[1] === "MAX HEALTH" ? "health" : "regen";
-          value.textContent = match[2];
+          value.textContent = `+${formatEquipmentAmount(Number(match[2]))}`;
           value.title = stat;
           value.setAttribute("aria-label", stat);
           bonuses.append(value);

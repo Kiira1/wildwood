@@ -9,9 +9,9 @@ vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module
 function fixture(mapId = "tutorial_forest", fightSeconds = 100) {
   const f = crystalFixture();
   f.patch("player", { mapId });
-  // Starter bow adds 5% damage; one shot/s, one projectile. The first
+  // Starter bow adds 5 flat damage; one shot/s, one projectile. The first
   // shot allowance makes this exactly fightSeconds of required combat time.
-  const stats = { damage: personalBossDefinition(mapId)!.hp / (fightSeconds + 1) / 1.05,
+  const stats = { damage: personalBossDefinition(mapId)!.hp / (fightSeconds + 1) - 5,
     attackRate: 1, projectileCount: 1, inventoryJson: '["starter_bow"]', equippedRightHand: "starter_bow" };
   f.patch("playerProgress", stats);
   const start = f.ctx.timestamp.microsSinceUnixEpoch;

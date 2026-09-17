@@ -264,10 +264,10 @@ describe("reset map presentation", () => {
 });
 
 describe("Home teleport", () => {
-  it("has no portal, portal collision, or automatic map travel at home", () => {
+  it("has a Home travel portal without triggering it from the spawn point", () => {
     const h = portalArrivalHarness({ x: 300, y: 400 });
     h.controller.loadMap("home_exterior", 500, 700);
-    expect(h.controller.activePortal()).toBeNull();
+    expect(h.controller.activePortal()).toMatchObject({ label: "Travel" });
     h.controller.resolvePortalCollision();
     h.controller.updatePortal(1);
     expect(h.player).toMatchObject({ x: 500, y: 700 });

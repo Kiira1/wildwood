@@ -1,6 +1,6 @@
 import { reportEnemy } from "../../tests/helpers/enemy-defeat";
 import { expect, it, vi } from "vitest";
-import { CLOUDSPIRE_ARMOR, CLOUDSPIRE_BOW, CLOUDSPIRE_HELMET, MOONFEN_ARMOR, WATER_ARMOR, SKY_BOW, SAMURAI_BOW, SAMURAI_HAT, weaponDamageMultiplier, itemMaxHealthMultiplier, itemRegenerationMultiplier } from "../../shared/items";
+import { CLOUDSPIRE_ARMOR, CLOUDSPIRE_BOW, CLOUDSPIRE_HELMET, MOONFEN_ARMOR, WATER_ARMOR, SKY_BOW, SAMURAI_BOW, SAMURAI_HAT, itemDamageBonus, itemMaxHealthBonus, itemRegenerationBonus } from "../../shared/items";
 import { inventoryFromSave, inventoryItemQuantity, serialiseInventory } from "../../src/game/inventory";
 import { crystalFixture } from "../../tests/helpers/crystal-hollows-fixture";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
@@ -45,10 +45,10 @@ it("keeps Water Reach equipment through reloads and repeat drops without duplica
   expect(inventoryItemQuantity(reloaded, WATER_ARMOR)).toBe(1);
   expect(inventoryItemQuantity(reloaded, SKY_BOW)).toBe(1);
   expect([...f.db.playerItemDrop.iter()].every((row: any) => row.alreadyOwned)).toBe(true);
-  expect(itemMaxHealthMultiplier(WATER_ARMOR)).toBe(1.8);
-  expect(itemRegenerationMultiplier(WATER_ARMOR)).toBe(1.8);
-  expect(weaponDamageMultiplier(SKY_BOW)).toBe(1.8);
-  expect(weaponDamageMultiplier(SAMURAI_BOW)).toBe(2);
+  expect(itemMaxHealthBonus(WATER_ARMOR)).toBe(32400);
+  expect(itemRegenerationBonus(WATER_ARMOR)).toBe(972);
+  expect(itemDamageBonus(SKY_BOW)).toBe(38880);
+  expect(itemDamageBonus(SAMURAI_BOW)).toBe(116640);
 });
 
 it.each(["home_exterior", "crystal_hollows", "endless_1"])("does not roll these drops in %s", mapId => {
@@ -90,11 +90,11 @@ it("can grant all three Cloudspire items from independent successful rolls", () 
   reportEnemy(f);
   const saved = inventoryFromSave(f.db.playerProgress.identity.find(f.ctx.sender).inventoryJson, "", "", "", false);
   for (const id of [CLOUDSPIRE_HELMET, CLOUDSPIRE_BOW, CLOUDSPIRE_ARMOR]) expect(inventoryItemQuantity(saved, id)).toBe(1);
-  expect(weaponDamageMultiplier(CLOUDSPIRE_BOW)).toBe(2.2);
-  expect(itemMaxHealthMultiplier(CLOUDSPIRE_HELMET)).toBe(2.2);
-  expect(itemRegenerationMultiplier(CLOUDSPIRE_HELMET)).toBe(2.4);
-  expect(itemMaxHealthMultiplier(CLOUDSPIRE_ARMOR)).toBe(2.2);
-  expect(itemRegenerationMultiplier(CLOUDSPIRE_ARMOR)).toBe(2.2);
-  expect(itemMaxHealthMultiplier(MOONFEN_ARMOR)).toBe(2.4);
-  expect(itemRegenerationMultiplier(MOONFEN_ARMOR)).toBe(2.4);
+  expect(itemDamageBonus(CLOUDSPIRE_BOW)).toBe(349920);
+  expect(itemMaxHealthBonus(CLOUDSPIRE_HELMET)).toBe(291600);
+  expect(itemRegenerationBonus(CLOUDSPIRE_HELMET)).toBe(8748);
+  expect(itemMaxHealthBonus(CLOUDSPIRE_ARMOR)).toBe(291600);
+  expect(itemRegenerationBonus(CLOUDSPIRE_ARMOR)).toBe(8748);
+  expect(itemMaxHealthBonus(MOONFEN_ARMOR)).toBe(874800);
+  expect(itemRegenerationBonus(MOONFEN_ARMOR)).toBe(26244);
 });

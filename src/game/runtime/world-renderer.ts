@@ -25,7 +25,7 @@ export { snapWorldRenderCoordinate } from "./render-space";
 
 type Viewport = { width: number; height: number };
 export type MinimapBounds = { left: number; top: number; width: number; height: number };
-type Portal = { x: number; y: number; width: number; height: number; depth: number; destination: MapId };
+type Portal = { x: number; y: number; width: number; height: number; depth: number; destination: MapId; label?: string };
 type TreeSpriteBounds = StaticTileTreeBounds;
 type OutlinedText = (text: string, x: number, y: number, color: string, strokeWidth?: number) => void;
 type DrawShadow = (x: number, y: number, width: number, alpha?: number) => void;
@@ -717,7 +717,7 @@ if (options.getMapId() === ION_CITADEL_MAP_ID) { drawIonRoads(ctx, options.paths
       ctx.textAlign = "center";
       ctx.textBaseline = "bottom";
       ctx.font = '900 14px "Arial Rounded MT Bold", "Arial Rounded MT", Arial, sans-serif';
-      options.outlinedText(options.mapName(portal.destination), 0, -8 + Math.sin(options.getGameTime() * 2.4) * 3, portalDestinationTextColor(portal.destination), 4);
+      options.outlinedText(portal.label ?? options.mapName(portal.destination), 0, -8 + Math.sin(options.getGameTime() * 2.4) * 3, portalDestinationTextColor(portal.destination), 4);
     });
   }
 

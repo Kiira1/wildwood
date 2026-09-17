@@ -78,3 +78,23 @@ it("uses existing history and provides the server time with the cost and wallet 
   rename(f);
   expect(balance(f)).toBe(50n);
 });
+
+it("resets existing waits once during the update without granting another free rename", () => {
+  const f = fixture();
+  f.seed("moduleMigrationState", { id: 0, version: 31 });
+  f.seed("playerNameCooldown", { identity: f.ctx.sender, changedAt: f.ctx.timestamp });
+  const connection = f.ctx.connectionId;
+  f.ctx.connectionId = null;
+  f.run(server.onConnect);
+  f.ctx.connectionId = connection;
+  rename(f);
+  expect(balance(f)).toBe(50n);
+  expect(() => rename(f, "Another Name")).toThrow("24 hours");
+  f.ctx.connectionId = null;
+  f.run(server.onConnect);
+  f.ctx.connectionId = connection;
+  expect(() => rename(f, "Another Name")).toThrow("24 hours");
+  advance(f);
+  rename(f, "Another Name");
+  expect(balance(f)).toBe(0n);
+});

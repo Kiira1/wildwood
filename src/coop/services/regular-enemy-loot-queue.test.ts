@@ -1,5 +1,5 @@
 import { expect, it, vi } from "vitest";
-import { createRegularEnemyLootQueue, type EnemyLootRequest } from "./regular-enemy-loot-queue";
+import { createRegularEnemyLootQueue, ENEMY_DEFEAT_BATCH_TIMEOUT_MS, type EnemyLootRequest } from "./regular-enemy-loot-queue";
 function fixture() {
   const data = new Map<string, string>();
   const storage = { getItem: (key: string) => data.get(key) ?? null, setItem: (key: string, value: string) => data.set(key, value) } as unknown as Storage;
@@ -48,7 +48,7 @@ it("bounds a stalled acknowledgement and retries its unchanged sequence", async 
     const f = fixture();
     f.send.mockImplementationOnce(() => new Promise(() => {}));
     f.queue.record("cloudspire", "Spitter"); const pending = f.queue.flush();
-    await vi.advanceTimersByTimeAsync(4_001);
+    await vi.advanceTimersByTimeAsync(ENEMY_DEFEAT_BATCH_TIMEOUT_MS + 1);
     expect(await pending).toBe(false);
     await f.queue.flush();
     expect(f.send.mock.calls[1][0]).toEqual(f.send.mock.calls[0][0]);

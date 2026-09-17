@@ -34,7 +34,7 @@ export const BOSS_RESPAWN_SECONDS = 45;
 // attack speed retain their separate gameplay caps.
 export const MAX_PLAYER_STAT = 1e36;
 export const MAX_ARMOR = MAX_PLAYER_STAT;
-export const ATTACK_BALANCE_VERSION = 8;
+export const ATTACK_BALANCE_VERSION = 9;
 export {
   BASIC_PAPER_HAT,
   DARK_METAL_HELMET,
@@ -56,7 +56,7 @@ export {
 // Targets are playtest hypotheses. The encounter generator owns combat stats.
 export const BALANCE_TARGET_DESERT_DURATION_SECONDS = MAP_TARGET_SECONDS;
 export const BALANCE_TARGET_MAP_DURATION_MULTIPLIER = 1;
-export const BALANCE_TARGET_MAP_DURATION_STEP_SECONDS = 20 * 60;
+export const BALANCE_TARGET_MAP_DURATION_STEP_SECONDS = 76 * 60;
 export const BALANCE_TARGET_MAP_POWER_MULTIPLIER = MAP_STAT_GROWTH;
 export const BALANCE_FIRST_SLOWDOWN_POWER = 400_000; // historical chart marker only
 export const BALANCE_TARGET_POWER_ARC_BLEND = .35;
@@ -204,12 +204,11 @@ export function numberedMapName(mapId: string, name: string) {
   return index < 0 ? name : `${name.replace(/ - \d+$/, "")} - ${index + 1}`;
 }
 
-export const PROTOCOL_VERSION = 105;
+export const PROTOCOL_VERSION = 106;
 // Add a previous version only after reviewing wire/schema and security compatibility.
-// Protocol 104 remains supported for gameplay; server visibility filters hide
-// the expanded duel/replay rows from those clients until they update.
-// Protocol 103 must remain blocked: it predates authoritative kill rewards.
-export const COMPATIBLE_PROTOCOL_VERSIONS: readonly number[] = [PROTOCOL_VERSION, 104];
+// Flat equipment changes combat DPS and boss-claim validation. Percentage-based
+// clients must update together with the servers, even though the wire is unchanged.
+export const COMPATIBLE_PROTOCOL_VERSIONS: readonly number[] = [PROTOCOL_VERSION];
 export const SPACETIME_AUTH_ISSUER = "https://auth.spacetimedb.com/oidc";
 export const SPACETIME_AUTH_CLIENT_ID = "client_03426HMgkAEmdC23XTZRKZ";
 

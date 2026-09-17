@@ -5,23 +5,24 @@ import { syncDuelWireAccess } from "./duel-wire-access";
 import { COMPATIBLE_PROTOCOL_VERSIONS } from "../../shared/rules";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
-it("allows 104 gameplay while keeping unsafe earlier protocols blocked", () => {
-  expect(COMPATIBLE_PROTOCOL_VERSIONS).toContain(104);
-  expect(COMPATIBLE_PROTOCOL_VERSIONS).toContain(105);
+it("requires flat-stat combat clients so boss validation uses matching DPS", () => {
+  expect(COMPATIBLE_PROTOCOL_VERSIONS).toContain(106);
+  expect(COMPATIBLE_PROTOCOL_VERSIONS).not.toContain(104);
+  expect(COMPATIBLE_PROTOCOL_VERSIONS).not.toContain(105);
   expect(COMPATIBLE_PROTOCOL_VERSIONS).not.toContain(103);
 });
 it("grants all recorded duel formats only to current clients and revokes on old-client registration", () => {
   const f = crystalFixture();
   syncDuelWireAccess(f.ctx, 104);
   expect([...f.db.duelWireAccess.iter()]).toHaveLength(0);
-  syncDuelWireAccess(f.ctx, 105);
+  syncDuelWireAccess(f.ctx, 106);
   expect([...f.db.duelWireAccess.iter()].map((r: any) => r.combatVersion)).toEqual([0, 1, 2]);
-  syncDuelWireAccess(f.ctx, 105);
+  syncDuelWireAccess(f.ctx, 106);
   expect([...f.db.duelWireAccess.iter()]).toHaveLength(3);
   syncDuelWireAccess(f.ctx, 104);
   expect([...f.db.duelWireAccess.iter()]).toHaveLength(0);
 });
-it.each([undefined, 104, 105])("allows a saved opponent with live protocol %s", protocol => {
+it.each([undefined, 104, 105, 106])("allows a saved opponent with live protocol %s", protocol => {
   const f = crystalFixture(), opponent = identity("b");
   f.progress(opponent);
   f.seed("playerProfile", { identity: opponent, displayName: "Opponent" });

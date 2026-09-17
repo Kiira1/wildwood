@@ -16,7 +16,7 @@ it("bounds inventory decoding during a normal combat progress save", () => {
 it("keeps server-owned inventory, unlocks, and ignores client combat stats when saving", () => {
   const f = crystalFixture();
   const inventoryJson = '["sky_bow","water_armor","sky_bow","not-an-item"]';
-  f.patch("playerProgress", { inventoryJson, desertUnlocked: true });
+  f.patch("playerProgress", { inventoryJson, desertUnlocked: true, waterUnlocked: true });
   const base = f.db.playerProgress.identity.find(f.ctx.sender);
   f.run(server.savePlayerProgress, { ...base, damage: 1, maxHp: 1, enemyKills: 5,
     inventoryJson: '["samurai_bow"]', equippedRightHand: "sky_bow", equippedChest: "water_armor", desertUnlocked: false });
@@ -45,7 +45,7 @@ it("makes unchanged speed requests no-ops without inventory decoding or presenta
 
 it("ignores combat stat uploads without decoding inventory or resetting resting speed", () => {
   const f = crystalFixture();
-  f.patch("playerProgress", { equippedFeet: "black_boots", inventoryJson: '["black_boots"]' });
+  f.patch("playerProgress", { infernalUnlocked: true, waterUnlocked: true, equippedFeet: "black_boots", inventoryJson: '["black_boots"]' });
   f.patch("player", { feetItem: "black_boots", speed: 205 });
   const base = f.db.playerProgress.identity.find(f.ctx.sender);
   const parse = vi.spyOn(JSON, "parse");
@@ -71,7 +71,7 @@ it("does not rewrite progress or presentation for an unchanged checkpoint", () =
 
 it("removes the temporary boots bonus when those boots are unequipped", () => {
   const f = crystalFixture();
-  f.patch("playerProgress", { equippedFeet: "black_boots", inventoryJson: '["black_boots"]' });
+  f.patch("playerProgress", { infernalUnlocked: true, waterUnlocked: true, equippedFeet: "black_boots", inventoryJson: '["black_boots"]' });
   f.patch("player", { feetItem: "black_boots", speed: 205 });
   const base = f.db.playerProgress.identity.find(f.ctx.sender);
   f.run(server.savePlayerProgress, { ...base, equippedFeet: "", enemyKills: 3 });
@@ -80,7 +80,7 @@ it("removes the temporary boots bonus when those boots are unequipped", () => {
 
 it("preserves the active black-boots bonus during an unrelated equipment edit", () => {
   const f = crystalFixture();
-  f.patch("playerProgress", { equippedFeet: "black_boots", inventoryJson: '["black_boots","water_armor"]' });
+  f.patch("playerProgress", { infernalUnlocked: true, waterUnlocked: true, equippedFeet: "black_boots", inventoryJson: '["black_boots","water_armor"]' });
   f.patch("player", { feetItem: "black_boots", speed: 205 });
   const base = f.db.playerProgress.identity.find(f.ctx.sender);
   f.run(server.savePlayerProgress, { ...base, equippedChest: "water_armor", enemyKills: 3 });

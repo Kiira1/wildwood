@@ -82,7 +82,7 @@ describe("procedural campaign definitions", () => {
     expect(
       generatedEnemyStats(second, "Cindermaw").hp /
         generatedEnemyStats(first, "Cindermaw").hp,
-    ).toBeCloseTo(3);
+    ).toBeCloseTo(1.2 * 1.04 ** 2);
     for (const n of [1, 10, 1000, Number.MAX_SAFE_INTEGER]) {
       const map = generateMap(proceduralMapId(n));
       const stats = generatedBossStats(map);

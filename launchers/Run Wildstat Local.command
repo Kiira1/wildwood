@@ -40,13 +40,6 @@ if [[ "${1:-}" == "--check" ]]; then
   exit 0
 fi
 
-if /usr/bin/curl --silent --fail --max-time 2 "${LOCAL_URL}__wildstat_dev" 2>/dev/null \
-  | /usr/bin/grep -q 'wildstat-local-dev'; then
-  print "Live development: already running"
-  /usr/bin/open "$LOCAL_URL"
-  exit 0
-fi
-
 if "$SPACETIME_BIN" server ping http://127.0.0.1:3000 >/dev/null 2>&1; then
   print "Database: already running"
 else
@@ -64,6 +57,13 @@ else
   done
   [[ "$database_ready" == true ]] || fail "Local database did not start within 60 seconds. Check its Terminal window."
   print "Database: ready"
+fi
+
+if /usr/bin/curl --silent --fail --max-time 2 "${LOCAL_URL}__wildstat_dev" 2>/dev/null \
+  | /usr/bin/grep -q 'wildstat-local-dev'; then
+  print "Live development: already running"
+  /usr/bin/open "$LOCAL_URL"
+  exit 0
 fi
 
 if [[ ! -d node_modules ]]; then

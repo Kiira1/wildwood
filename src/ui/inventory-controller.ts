@@ -24,6 +24,7 @@ type InventoryDependencies = {
   toggleCosmeticVisibility: (destination: EquipmentSlot) => boolean;
   upgradeLevel: (itemId: string) => number;
   equipBest?: () => boolean;
+  equipmentRequirement?: (itemId: string) => string | null;
   itemInspection: ItemInspectionController;
   inventorySlotsUnlocked: () => number;
   gemBalance: () => bigint;
@@ -124,14 +125,16 @@ export function createInventoryController(dependencies: InventoryDependencies) {
     clearInventorySelection(dependencies.inventory);
     const item = itemDefinition(itemId);
     if (!item) return;
+    const requiredMap = mode === "EQUIPMENT" ? dependencies.equipmentRequirement?.(itemId) : null;
     dependencies.itemInspection.open({
       itemId,
       upgradeLevel: dependencies.upgradeLevel(itemId),
       ...(mode === "COSMETICS" ? { context: "Cosmetic · Appearance only" } : {}),
+      ...(requiredMap ? { context: `Reach ${requiredMap} to equip` } : {}),
       actions: [...inventoryMoveActions(dependencies.inventory, itemId, location, mode).map((action) => ({
         label: action.label,
         kind: action.destination === "BAG" ? "SECONDARY" as const : "PRIMARY" as const,
-        disabled: action.disabled,
+        disabled: action.disabled || Boolean(requiredMap && action.destination !== "BAG"),
         onActivate: () => {
           if (move(itemId, action.destination)) dependencies.itemInspection.close();
         },

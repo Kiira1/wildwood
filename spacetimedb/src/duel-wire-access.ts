@@ -1,7 +1,8 @@
 import { table, t } from "spacetimedb/server";
+import { COMPATIBLE_PROTOCOL_VERSIONS } from "../../shared/rules";
 
-// Old native clients can continue playing, but must never receive the expanded
-// duel row layout. Visibility filters apply to both subscriptions and SQL.
+// Only supported clients with the expanded duel decoder may receive these rows.
+// Visibility filters apply to both subscriptions and SQL.
 // RLS join lookups must be public and indexed in SpacetimeDB. This table holds
 // only already-public identity IDs and decoder format numbers, never secrets.
 export const duelWireAccess = table({ public: true,
@@ -11,7 +12,7 @@ export const duelWireAccess = table({ public: true,
 export function syncDuelWireAccess(ctx: any, protocol: number) {
   const existing = [...ctx.db.duelWireAccess.byIdentity.filter(ctx.sender)] as any[];
   for (const row of existing) ctx.db.duelWireAccess.key.delete(row.key);
-  if (protocol !== 105) return;
+  if (protocol < 105 || !COMPATIBLE_PROTOCOL_VERSIONS.includes(protocol)) return;
   for (const combatVersion of [0, 1, 2]) ctx.db.duelWireAccess.insert({
     key: `${ctx.sender.toHexString()}:${combatVersion}`, identity: ctx.sender, combatVersion,
   });

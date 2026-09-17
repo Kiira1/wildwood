@@ -9,7 +9,7 @@ import type { ProjectileStore } from "./projectile-store";
 import { createSpatialGrid } from "./spatial-grid";
 import type { BossTarget, DragonBossState, EnemyState, FrostclawBossState, GloomrootBossState, KoiShogunBossState, MagmaliskBossState, MiremawBossState, PrismshellBossState, IronhornBossState, DreadreaperBossState, VoltwardenBossState, GravebloomBossState, AegisPrimeBossState, PlayerState, RuntimeReward, SpiderBossState, TempestKirinBossState, TidewyrmBossState } from "./types";
 import type { SpawnSite } from "../world";
-import { equipmentDamageMultiplier, itemDefinition } from "../../../shared/items";
+import { equipmentDamage, itemDefinition } from "../../../shared/items";
 import { addPlayerBaseMaxHealth } from "./player-health";
 import {
   absoluteAttackTimestamps,
@@ -132,7 +132,7 @@ export function createPlayerCombatController(options: {
   equippedHeadUpgradeLevel?: () => number;
   equippedChest: () => string;
   equippedChestUpgradeLevel?: () => number;
-  healthMultiplier: () => number;
+  healthBonus: () => number;
   minAttackInterval: number;
   effectiveArmor: () => number;
   isDueling: () => boolean;
@@ -310,7 +310,7 @@ export function createPlayerCombatController(options: {
   const targetDistance = (target: EnemyState | BossTarget) => Math.max(0,
     Math.hypot(player.x - target.x, player.y - target.y) - (target.isBoss || isMeleeWeapon(options.equippedWeapon()) ? target.r : 0));
   function weaponDamage(critical: boolean) {
-    return player.damage * equipmentDamageMultiplier(options.equippedWeapon(), options.equippedHead(), options.equippedChest(),
+    return equipmentDamage(player.damage, options.equippedWeapon(), options.equippedHead(), options.equippedChest(),
       researchDamageMultiplier(), options.equippedWeaponUpgradeLevel?.() ?? 0,
       options.equippedHeadUpgradeLevel?.() ?? 0, options.equippedChestUpgradeLevel?.() ?? 0) *
       (critical ? researchCriticalDamageMultiplier() : 1);
@@ -449,7 +449,7 @@ export function createPlayerCombatController(options: {
     const enhanced = { ...reward, amount: reward.amount * researchRewardMultiplier() };
     switch (enhanced.type) {
       case "damage": player.damage += enhanced.amount; break;
-      case "health": addPlayerBaseMaxHealth(player, enhanced.amount, options.healthMultiplier()); break;
+      case "health": addPlayerBaseMaxHealth(player, enhanced.amount, options.healthBonus()); break;
       case "speed": player.attackRate = 1 / Math.min(1 / minAttackInterval, 1 / player.attackRate + enhanced.amount); break;
       case "armor": player.armor += enhanced.amount; break;
       case "regen": player.regen += enhanced.amount; break;

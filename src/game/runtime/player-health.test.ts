@@ -1,18 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { addPlayerBaseMaxHealth, applyPlayerMaxHealthMultiplier } from "./player-health";
+import { addPlayerBaseMaxHealth, applyPlayerMaxHealthBonus } from "./player-health";
 
 describe("equipment max health", () => {
   it("applies and removes Wooden Armor without compounding the base save stat", () => {
     const player = { hp: 50, baseMaxHp: 100, maxHp: 100 };
-    applyPlayerMaxHealthMultiplier(player, 1.05);
-    expect(player).toEqual({ hp: 52.5, baseMaxHp: 100, maxHp: 105 });
-    applyPlayerMaxHealthMultiplier(player, 1);
+    applyPlayerMaxHealthBonus(player, 25);
+    expect(player).toEqual({ hp: 62.5, baseMaxHp: 100, maxHp: 125 });
+    applyPlayerMaxHealthBonus(player, 0);
     expect(player).toEqual({ hp: 50, baseMaxHp: 100, maxHp: 100 });
   });
 
-  it("scales newly earned max health through the active equipment multiplier", () => {
-    const player = { hp: 105, baseMaxHp: 100, maxHp: 105 };
-    addPlayerBaseMaxHealth(player, 20, 1.05);
-    expect(player).toEqual({ hp: 126, baseMaxHp: 120, maxHp: 126 });
+  it("adds earned health without multiplying it or saving the equipment bonus", () => {
+    const player = { hp: 125, baseMaxHp: 100, maxHp: 125 };
+    addPlayerBaseMaxHealth(player, 20, 25);
+    expect(player).toEqual({ hp: 145, baseMaxHp: 120, maxHp: 145 });
   });
 });

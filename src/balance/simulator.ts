@@ -1,4 +1,7 @@
-import { BLACK_BOOTS, BLACK_BOOTS_DROP_DENOMINATOR } from "../../shared/items";
+import { simulationRegularDrops, simulationTravelSeconds } from "./gameplay-model";
+import { REGULAR_ENEMY_RESPAWN_SECONDS } from "../game/runtime/regular-enemy-respawn";
+import { ONBOARDING_DAMAGE_REWARD, ONBOARDING_REGEN_REWARD } from "../../shared/onboarding";
+import { BLACK_BOOTS } from "../../shared/items";
 import { BALANCE_TARGET_MAP_DURATION_STEP_SECONDS } from "../../shared/rules";
 import { isUpgradeableItem, itemUpgradeDurationMs, MAX_ITEM_UPGRADE_LEVEL } from "../../shared/items";
 import { BOSS_TARGET_SECONDS } from "../../shared/progression";
@@ -23,35 +26,14 @@ import {
 } from "../game/world";
 import {
   BASIC_PAPER_HAT,
-  DARK_METAL_HELMET,
-  SAMURAI_HAT,
-  SAMURAI_HAT_ITEM_DROP_DENOMINATOR,
-  DESERT_ITEM_DROP_DENOMINATOR,
-  FIRE_METAL_BOW,
-  FIRE_METAL_HELMET,
-  FOREST_ITEM_DROP_DENOMINATOR,
   FROST_ARMOR,
   FROST_BOW,
-  INFERNAL_ITEM_DROP_DENOMINATOR,
-  IRON_BOW,
   ITEM_DEFINITIONS,
   LAVA_BOSS_ITEM_DROP_DENOMINATOR,
   LAVA_BOW,
-  LAVA_HELMET_ITEM_DROP_DENOMINATOR,
-  LAVA_ITEM_DROP_DENOMINATOR,
-  LAVA_ITEM_DROP_NUMERATOR,
-  MAGMA_ARMOR,
-  NIGHT_FOREST_HELMET_ITEM_DROP_DENOMINATOR,
-  NIGHT_FOREST_BOW_ITEM_DROP_DENOMINATOR,
-  NIGHT_BOW,
   SNOW_BOSS_ARMOR_DROP_DENOMINATOR,
   SNOW_BOSS_ITEM_DROP_DENOMINATOR,
-  SNOW_BOW,
-  SNOW_ITEM_DROP_DENOMINATOR,
-  STARTER_BOW,
   STARTER_STONE,
-  WOODEN_ARMOR,
-  WOOD_FULL_HELM,
   type ItemId,
 } from "../../shared/items";
 import { effectivePlayerPowerStats, playerPowerForStats, type PlayerPowerStats } from "../../shared/player-power";
@@ -75,7 +57,6 @@ import {
   BALANCE_TARGET_POWER_ARC_BLEND,
   BOSS_RESPAWN_SECONDS,
   BOSS_REWARD_CLAIM_BITS,
-  BOOTS_SPEED_BONUS,
   DEFAULT_ATTACK_INTERVAL,
   DEFAULT_ATTACK_RANGE,
   DRAGON_REWARD_DAMAGE,
@@ -109,7 +90,6 @@ import {
   PLAYER_BASE_DAMAGE,
   PLAYER_BASE_REGEN,
   PLAYER_PROJECTILE_SPEED,
-  PLAYER_SPEED,
   SPIDER_REWARD_DAMAGE,
   SPIDER_REWARD_HEALTH,
   TIDEWYRM_REWARD_ARMOR,
@@ -234,6 +214,7 @@ type MutableSimulationState = {
   research: ResearchRanks;
   equipped: EquippedItems;
   ownedItems: Set<string>;
+  lastCombatAt?: number;
   bootsEquipped: boolean;
   itemUpgradeLevel: number;
   itemUpgradeLevels?: Record<string, number>;
@@ -467,7 +448,7 @@ export type BalanceSimulationResult = {
 const SAMPLE_COUNT = 180;
 const MAP_TRANSITION_SECONDS = 6;
 const LOOT_AND_RETARGET_SECONDS = .3;
-const DEFAULT_FOREST_ONBOARDING_SECONDS = 22.5 * 60;
+const DEFAULT_FOREST_ONBOARDING_SECONDS = 48 * 60;
 const DEFAULT_CAMPAIGN_DURATION_SECONDS = 1.5 * (DEFAULT_FOREST_ONBOARDING_SECONDS + BALANCE_MAP_IDS
   .slice(1)
   .reduce((total, _mapId, index) => total + BALANCE_TARGET_DESERT_DURATION_SECONDS * BALANCE_TARGET_MAP_DURATION_MULTIPLIER ** index + BALANCE_TARGET_MAP_DURATION_STEP_SECONDS * index, 0));
@@ -567,7 +548,7 @@ export function defaultBalanceSimulationConfig(): BalanceSimulationConfig {
     targetPowerArcBlend: BALANCE_TARGET_POWER_ARC_BLEND,
     futureSpeedupReserveMultiplier: 1.25,
     requiredClears: 1,
-    respawnSeconds: 20,
+    respawnSeconds: REGULAR_ENEMY_RESPAWN_SECONDS,
     itemUpgradeLevel: 0,
     equipmentStrengthMultiplier: 1,
     pathingMultiplier: 1.15,
@@ -668,19 +649,14 @@ function finiteRange(value: unknown, fallback: number, minimum: number, maximum:
   return Number.isFinite(number) ? Math.max(minimum, Math.min(maximum, number)) : fallback;
 }
 
-function createMapDefinitions(): BalanceMapDefinition[] {
+export function createMapDefinitions(): BalanceMapDefinition[] {
   const bootstrap = createGameBootstrap();
-  const always = () => true;
-  const nonElite = (enemy: EnemyKind) => !ENEMY_TYPES[enemy].elite;
   return [
     {
       id: TUTORIAL_FOREST_MAP_ID,
       name: MAP_DISPLAY_NAMES[TUTORIAL_FOREST_MAP_ID],
       arrival: bootstrap.startSpawn,
-      regularDrops: [
-        { itemId: STARTER_BOW, denominator: FOREST_ITEM_DROP_DENOMINATOR, eligible: always },
-        { itemId: WOODEN_ARMOR, denominator: FOREST_ITEM_DROP_DENOMINATOR, eligible: always },
-      ],
+      regularDrops: simulationRegularDrops(TUTORIAL_FOREST_MAP_ID),
       boss: {
         kind: "dragon",
         name: "Dragon",
@@ -695,10 +671,7 @@ function createMapDefinitions(): BalanceMapDefinition[] {
       id: BEGINNER_DESERT_MAP_ID,
       name: MAP_DISPLAY_NAMES[BEGINNER_DESERT_MAP_ID],
       arrival: bootstrap.mapConfig[BEGINNER_DESERT_MAP_ID].arrival,
-      regularDrops: [
-        { itemId: WOOD_FULL_HELM, denominator: DESERT_ITEM_DROP_DENOMINATOR, eligible: nonElite },
-        { itemId: IRON_BOW, denominator: DESERT_ITEM_DROP_DENOMINATOR, eligible: nonElite },
-      ],
+      regularDrops: simulationRegularDrops(BEGINNER_DESERT_MAP_ID),
       boss: {
         kind: "spider",
         name: "Desert Scorpion",
@@ -716,9 +689,7 @@ function createMapDefinitions(): BalanceMapDefinition[] {
       id: INTERMEDIATE_SNOWLANDS_MAP_ID,
       name: MAP_DISPLAY_NAMES[INTERMEDIATE_SNOWLANDS_MAP_ID],
       arrival: bootstrap.mapConfig[INTERMEDIATE_SNOWLANDS_MAP_ID].arrival,
-      regularDrops: [
-        { itemId: SNOW_BOW, denominator: SNOW_ITEM_DROP_DENOMINATOR, eligible: always },
-      ],
+      regularDrops: simulationRegularDrops(INTERMEDIATE_SNOWLANDS_MAP_ID),
       boss: {
         kind: "frostclaw",
         name: "Frostclaw",
@@ -740,10 +711,7 @@ function createMapDefinitions(): BalanceMapDefinition[] {
       id: ADVANCED_LAVA_WASTES_MAP_ID,
       name: MAP_DISPLAY_NAMES[ADVANCED_LAVA_WASTES_MAP_ID],
       arrival: bootstrap.mapConfig[ADVANCED_LAVA_WASTES_MAP_ID].arrival,
-      regularDrops: [
-        { itemId: MAGMA_ARMOR, numerator: LAVA_ITEM_DROP_NUMERATOR, denominator: LAVA_ITEM_DROP_DENOMINATOR, eligible: always },
-        { itemId: FIRE_METAL_HELMET, denominator: LAVA_HELMET_ITEM_DROP_DENOMINATOR, eligible: always },
-      ],
+      regularDrops: simulationRegularDrops(ADVANCED_LAVA_WASTES_MAP_ID),
       boss: {
         kind: "magmalisk",
         name: "Magmalisk",
@@ -763,12 +731,7 @@ function createMapDefinitions(): BalanceMapDefinition[] {
       id: INFERNAL_DEPTHS_MAP_ID,
       name: MAP_DISPLAY_NAMES[INFERNAL_DEPTHS_MAP_ID],
       arrival: bootstrap.mapConfig[INFERNAL_DEPTHS_MAP_ID].arrival,
-      regularDrops: [
-        { itemId: NIGHT_BOW, denominator: NIGHT_FOREST_BOW_ITEM_DROP_DENOMINATOR, eligible: always },
-        { itemId: FIRE_METAL_BOW, denominator: INFERNAL_ITEM_DROP_DENOMINATOR, eligible: always },
-        { itemId: DARK_METAL_HELMET, denominator: NIGHT_FOREST_HELMET_ITEM_DROP_DENOMINATOR, eligible: always },
-        { itemId: BLACK_BOOTS, denominator: BLACK_BOOTS_DROP_DENOMINATOR, eligible: always },
-      ],
+      regularDrops: simulationRegularDrops(INFERNAL_DEPTHS_MAP_ID),
       boss: {
         kind: "gloomroot",
         name: "Gloomroot",
@@ -788,7 +751,7 @@ function createMapDefinitions(): BalanceMapDefinition[] {
       id: WATER_REACH_MAP_ID,
       name: MAP_DISPLAY_NAMES[WATER_REACH_MAP_ID],
       arrival: bootstrap.mapConfig[WATER_REACH_MAP_ID].arrival,
-      regularDrops: [],
+      regularDrops: simulationRegularDrops(WATER_REACH_MAP_ID),
       boss: {
         kind: "tidewyrm",
         name: "Tidewyrm",
@@ -808,9 +771,7 @@ function createMapDefinitions(): BalanceMapDefinition[] {
       id: SAMURAI_GARDEN_MAP_ID,
       name: MAP_DISPLAY_NAMES[SAMURAI_GARDEN_MAP_ID],
       arrival: bootstrap.mapConfig[SAMURAI_GARDEN_MAP_ID].arrival,
-      regularDrops: [
-        { itemId: SAMURAI_HAT, denominator: SAMURAI_HAT_ITEM_DROP_DENOMINATOR, eligible: always },
-      ],
+      regularDrops: simulationRegularDrops(SAMURAI_GARDEN_MAP_ID),
       boss: {
         kind: "koiShogun",
         name: "Koi Shogun",
@@ -830,7 +791,7 @@ function createMapDefinitions(): BalanceMapDefinition[] {
       id: CLOUDSPIRE_MAP_ID,
       name: MAP_DISPLAY_NAMES[CLOUDSPIRE_MAP_ID],
       arrival: bootstrap.mapConfig[CLOUDSPIRE_MAP_ID].arrival,
-      regularDrops: [],
+      regularDrops: simulationRegularDrops(CLOUDSPIRE_MAP_ID),
       boss: {
         kind: "tempestKirin",
         name: "Tempest Kirin",
@@ -850,7 +811,7 @@ function createMapDefinitions(): BalanceMapDefinition[] {
       id: MOONFEN_MAP_ID,
       name: MAP_DISPLAY_NAMES[MOONFEN_MAP_ID],
       arrival: bootstrap.mapConfig[MOONFEN_MAP_ID].arrival,
-      regularDrops: [],
+      regularDrops: simulationRegularDrops(MOONFEN_MAP_ID),
       boss: {
         kind: "miremaw",
         name: "Miremaw",
@@ -870,7 +831,7 @@ function createMapDefinitions(): BalanceMapDefinition[] {
       id: CRYSTAL_HOLLOWS_MAP_ID,
       name: MAP_DISPLAY_NAMES[CRYSTAL_HOLLOWS_MAP_ID],
       arrival: bootstrap.mapConfig[CRYSTAL_HOLLOWS_MAP_ID].arrival,
-      regularDrops: [],
+      regularDrops: simulationRegularDrops(CRYSTAL_HOLLOWS_MAP_ID),
       boss: {
         kind: "prismshell",
         name: "Prismshell",
@@ -889,7 +850,7 @@ function createMapDefinitions(): BalanceMapDefinition[] {
       id: CLOCKWORK_RUINS_MAP_ID,
       name: MAP_DISPLAY_NAMES[CLOCKWORK_RUINS_MAP_ID],
       arrival: bootstrap.mapConfig[CLOCKWORK_RUINS_MAP_ID].arrival,
-      regularDrops: [],
+      regularDrops: simulationRegularDrops(CLOCKWORK_RUINS_MAP_ID),
       boss: {
         kind: "ironhorn",
         name: "Ironhorn",
@@ -908,7 +869,7 @@ function createMapDefinitions(): BalanceMapDefinition[] {
       id: DUSKFALL_ORCHARD_MAP_ID,
       name: MAP_DISPLAY_NAMES[DUSKFALL_ORCHARD_MAP_ID],
       arrival: bootstrap.mapConfig[DUSKFALL_ORCHARD_MAP_ID].arrival,
-      regularDrops: [],
+      regularDrops: simulationRegularDrops(DUSKFALL_ORCHARD_MAP_ID),
       boss: {
         kind: "dreadreaper",
         name: "Dreadreaper",
@@ -927,7 +888,7 @@ function createMapDefinitions(): BalanceMapDefinition[] {
       id: NEON_BASTION_MAP_ID,
       name: MAP_DISPLAY_NAMES[NEON_BASTION_MAP_ID],
       arrival: bootstrap.mapConfig[NEON_BASTION_MAP_ID].arrival,
-      regularDrops: [],
+      regularDrops: simulationRegularDrops(NEON_BASTION_MAP_ID),
       boss: {
         kind: "voltwarden",
         name: "Voltwarden",
@@ -946,7 +907,7 @@ function createMapDefinitions(): BalanceMapDefinition[] {
       id: VERDANT_CATACOMBS_MAP_ID,
       name: MAP_DISPLAY_NAMES[VERDANT_CATACOMBS_MAP_ID],
       arrival: bootstrap.mapConfig[VERDANT_CATACOMBS_MAP_ID].arrival,
-      regularDrops: [],
+      regularDrops: simulationRegularDrops(VERDANT_CATACOMBS_MAP_ID),
       boss: {
         kind: "gravebloom",
         name: "Gravebloom",
@@ -965,7 +926,7 @@ function createMapDefinitions(): BalanceMapDefinition[] {
       id: ION_CITADEL_MAP_ID,
       name: MAP_DISPLAY_NAMES[ION_CITADEL_MAP_ID],
       arrival: bootstrap.mapConfig[ION_CITADEL_MAP_ID].arrival,
-      regularDrops: [],
+      regularDrops: simulationRegularDrops(ION_CITADEL_MAP_ID),
       boss: {
         kind: "aegisPrime",
         name: "Aegis Prime",
@@ -1142,11 +1103,6 @@ function timeToKill(hitPoints: number, hitDamage: number, attackInterval: number
   return FIRST_HIT_SECONDS + (hits - 1) * Math.max(MIN_ATTACK_INTERVAL, attackInterval);
 }
 
-function movementSpeed(state: MutableSimulationState) {
-  const base = PLAYER_SPEED + (state.bootsEquipped ? BOOTS_SPEED_BONUS : 0);
-  return base * (1 + state.research.moveSpeed * .02);
-}
-
 function applyRewardToStats(stats: PersistentStats, type: RewardType, amount: number) {
   switch (type) {
     case "damage": stats.damage += amount; break;
@@ -1278,6 +1234,7 @@ export function startNextEquipmentUpgrade(state: MutableSimulationState) {
 function acquireAndAutoEquip(state: MutableSimulationState, itemId: ItemId, recordHistory: () => void) {
   if (state.ownedItems.has(itemId)) return;
   state.ownedItems.add(itemId);
+  if (itemId === BLACK_BOOTS) state.bootsEquipped = true;
   const slot = equipmentSlot(itemId);
   if (!slot) return;
   const previous = state.equipped[slot];
@@ -1311,7 +1268,8 @@ function travelSeconds(
   pathingMultiplier: number,
 ) {
   const approachDistance = Math.max(0, Math.hypot(to.x - from.x, to.y - from.y) - DEFAULT_ATTACK_RANGE * .72);
-  return approachDistance / Math.max(1, movementSpeed(state)) * pathingMultiplier;
+  return simulationTravelSeconds(approachDistance * pathingMultiplier, state.research.moveSpeed, state.bootsEquipped,
+    state.time - (state.lastCombatAt ?? -Infinity));
 }
 
 function projectedRewardPowerGain(
@@ -1569,9 +1527,10 @@ function selectSite(
       };
     })()
     : null;
-  // Readiness uses a real defensive outcome, not damage/health parity or a
-  // leaderboard-power target. Explicit DPS-only runs remain DPS-only.
-  if (needsHealth && config.strategy !== "dps-first") {
+  // DPS-first prepares damage first, then meets the same survival estimate as
+  // every other route. Ignoring defense forever would strand this strategy
+  // farming damage while its boss gate can never open.
+  if (needsHealth && (config.strategy !== "dps-first" || !bossGateActive)) {
     const healthCandidates = candidateData.filter(candidate => candidate.stat === "health");
     if (healthCandidates.length) return healthCandidates.reduce((best, candidate) => {
       const gain = (entry: typeof candidate) => ENEMY_TYPES[entry.site.type].reward.amount / entry.duration;
@@ -1729,7 +1688,8 @@ function simulateTrial(
   const state: MutableSimulationState = {
     time: 0,
     mapIndex: 0,
-    stats: { damage: PLAYER_BASE_DAMAGE, maxHp: PLAYER_BASE_HP, attackRate: DEFAULT_ATTACK_INTERVAL, armor: 0, regen: PLAYER_BASE_REGEN },
+    // Start the clock at Forest arrival after completing the private tutorial.
+    stats: { damage: PLAYER_BASE_DAMAGE + ONBOARDING_DAMAGE_REWARD, maxHp: PLAYER_BASE_HP, attackRate: DEFAULT_ATTACK_INTERVAL, armor: 0, regen: PLAYER_BASE_REGEN + ONBOARDING_REGEN_REWARD },
     research: createEmptyResearchRanks(),
     equipped: { head: BASIC_PAPER_HAT, chest: "", weapon: STARTER_STONE },
     ownedItems: new Set([BASIC_PAPER_HAT, STARTER_STONE]),
@@ -1871,6 +1831,7 @@ function simulateTrial(
       const repeatStatWeights = projectedBossStatWeights(map.boss, config.mapAdjustments[map.id]);
       if (!spendBossTime(record, "bossCombatSeconds", repeatStatWeights, repeatFight, record.repeatTimeBudget, false)) break;
       const powerBeforeRepeat = powerForState(state);
+      state.lastCombatAt = state.time;
       applyBossReward(record, map, config.mapAdjustments[map.id], false);
       rollDrops(state, map.boss.drops, null, random, recordHistory);
       if (!spendTime(record, "lootRetargetSeconds", LOOT_AND_RETARGET_SECONDS, record.repeatTimeBudget)) break;
@@ -1936,6 +1897,7 @@ function simulateTrial(
       if (!spendBossTime(mapRecord, "travelSeconds", statWeights, travel)) break;
       position = { x: map.boss.x, y: map.boss.y };
       if (!spendBossTime(mapRecord, "bossCombatSeconds", statWeights, currentBossFight)) break;
+      state.lastCombatAt = state.time;
       const bossRewardPowerGain = applyBossReward(mapRecord, map, adjustment);
       rollDrops(state, map.boss.drops, null, random, recordHistory);
       recordHistory();
@@ -1999,6 +1961,7 @@ function simulateTrial(
     if (!spendTimeForStat(mapRecord, "travelSeconds", stat, selected.travel)) break;
     position = { x: selected.site.x, y: selected.site.y };
     if (!spendTimeForStat(mapRecord, "regularCombatSeconds", stat, selected.fight)) break;
+    state.lastCombatAt = state.time;
     if (!spendTimeForStat(mapRecord, "lootRetargetSeconds", stat, LOOT_AND_RETARGET_SECONDS)) break;
     selected.site.kills += 1;
     selected.site.availableAt = state.time + config.respawnSeconds;
@@ -2008,7 +1971,6 @@ function simulateTrial(
     mapRecord.statInvestments[stat].rewardEvents += 1;
     mapRecord.regularKills += 1;
     mapRecord.fullClears = Math.min(...sites.map((site) => site.kills));
-    if (!state.bootsEquipped && map.id === TUTORIAL_FOREST_MAP_ID && mapRecord.fullClears >= 1) state.bootsEquipped = true;
     rollDrops(state, map.regularDrops, selected.site.type, random, recordHistory);
     recordHistory();
   }
@@ -2376,7 +2338,7 @@ function buildDiagnostics(
   finalPower: BalanceSimulationResult["finalPower"],
   enemyMetrics: Record<BalanceMapId, EnemyBalanceMetric[]>,
 ) {
-  const diagnostics: string[] = [];
+  const diagnostics: string[] = ["Model scope: clock starts after the completed tutorial; loot uses the live catalog. Boss readiness and initial full clears are strategy assumptions, not unlock requirements. One enemy at a time, immediate loot delivery, one upgrade bench, no paid skips or deaths are modeled."];
   let measuredPacingTargets = 0;
   let pacingTargetsOnTrack = 0;
   let measuredPowerTargets = 0;

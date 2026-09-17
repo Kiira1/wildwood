@@ -1,3 +1,4 @@
+import { formatEquipmentStat } from "./equipment-stat-format";
 import { appendItemTierLabel } from "./item-tier-label";
 import { itemArtMarkup, itemInventoryRotation, itemPresentation } from "../game/item-presentation";
 import {
@@ -109,7 +110,7 @@ export function createItemInspectionController(elements: ItemInspectionElements)
     stats.className = "item-inspection-stats";
     for (const stat of itemStats(item.id, level)) {
       const value = document.createElement("span");
-      value.textContent = itemInspectionButtonLabel(stat);
+      value.textContent = formatEquipmentStat(itemInspectionButtonLabel(stat));
       if (/^DAMAGE\b/.test(stat)) value.dataset.statKind = "damage";
       if (/^MAX HEALTH\b/.test(stat)) value.dataset.statKind = "health";
       if (/^REGEN\b/.test(stat)) value.dataset.statKind = "regen";

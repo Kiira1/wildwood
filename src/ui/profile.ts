@@ -1,7 +1,8 @@
+import { formatEquipmentAmount } from "./equipment-stat-format";
 import type { PlayerProfileData, PlayerResearch } from "../wildstat-coop";
 import { createEmptyResearchRanks } from "../../shared/research";
 import { effectivePlayerPower, effectivePlayerPowerStats } from "../../shared/player-power";
-import { equipmentDamageMultiplier, equipmentMaxHealthMultiplier, equipmentRegenerationMultiplier } from "../../shared/items";
+import { equipmentDamageBonus, equipmentMaxHealthBonus, equipmentRegenerationBonus } from "../../shared/items";
 import { formatCompactNumber } from "./number-format";
 
 export function formatPlayedTime(seconds: number) {
@@ -35,48 +36,12 @@ export function effectiveProfileStats(
   const headUpgradeLevel = itemUpgradeLevels[progress.equippedHead] ?? 0;
   const chestUpgradeLevel = itemUpgradeLevels[progress.equippedChest] ?? 0;
   const weaponUpgradeLevel = itemUpgradeLevels[weaponItem] ?? 0;
-  const healthEquipmentMultiplier = equipmentMaxHealthMultiplier(
-    progress.equippedHead,
-    progress.equippedChest,
-    1,
-    headUpgradeLevel,
-    chestUpgradeLevel,
-  );
+  const healthEquipmentBonus = equipmentMaxHealthBonus(progress.equippedHead, progress.equippedChest, headUpgradeLevel, chestUpgradeLevel);
   const damageResearchMultiplier = multiplier(research.warcraft, 2);
-  const damageEquipmentMultiplier = equipmentDamageMultiplier(
-    weaponItem,
-    progress.equippedHead,
-    progress.equippedChest,
-    1,
-    weaponUpgradeLevel,
-    headUpgradeLevel,
-    chestUpgradeLevel,
-  );
-  const damageTotalMultiplier = equipmentDamageMultiplier(
-    weaponItem,
-    progress.equippedHead,
-    progress.equippedChest,
-    damageResearchMultiplier,
-    weaponUpgradeLevel,
-    headUpgradeLevel,
-    chestUpgradeLevel,
-  );
+  const damageEquipmentBonus = equipmentDamageBonus(weaponItem, progress.equippedHead, progress.equippedChest, weaponUpgradeLevel, headUpgradeLevel, chestUpgradeLevel);
   const armorMultiplier = multiplier(research.precision, 2);
   const regenResearchMultiplier = multiplier(research.regeneration, 2);
-  const regenEquipmentMultiplier = equipmentRegenerationMultiplier(
-    progress.equippedHead,
-    progress.equippedChest,
-    1,
-    headUpgradeLevel,
-    chestUpgradeLevel,
-  );
-  const regenTotalMultiplier = equipmentRegenerationMultiplier(
-    progress.equippedHead,
-    progress.equippedChest,
-    regenResearchMultiplier,
-    headUpgradeLevel,
-    chestUpgradeLevel,
-  );
+  const regenEquipmentBonus = equipmentRegenerationBonus(progress.equippedHead, progress.equippedChest, headUpgradeLevel, chestUpgradeLevel);
   const speedMultiplier = multiplier(research.moveSpeed, 2);
   const baseSpeed = progress.speedOverride > 0 ? progress.speedOverride : progress.speed;
   const powerStats = effectivePlayerPowerStats(
@@ -87,18 +52,13 @@ export function effectiveProfileStats(
   return {
     ...powerStats,
     speed: baseSpeed * speedMultiplier,
+    equipment: { health: healthEquipmentBonus, damage: damageEquipmentBonus, regen: regenEquipmentBonus },
     multipliers: {
       healthResearch: healthResearchMultiplier,
-      healthEquipment: healthEquipmentMultiplier,
       damageResearch: damageResearchMultiplier,
-      damageEquipment: damageEquipmentMultiplier,
-      damageTotal: damageTotalMultiplier,
       attackSpeed: 1,
       armor: armorMultiplier,
-      regen: regenTotalMultiplier,
       regenResearch: regenResearchMultiplier,
-      regenEquipment: regenEquipmentMultiplier,
-      regenTotal: regenTotalMultiplier,
       speed: speedMultiplier,
     },
   };
@@ -140,12 +100,13 @@ export function profileStatDisplayRows(
   const effective = effectiveProfileStats(progress, ranks, profile.itemUpgradeLevels);
   const researchBonus = (rank = 0, percentPerRank = 0) => rank * percentPerRank;
   const multiplierValue = (value: number) => value.toFixed(2);
-  const equipmentBonusValue = (value: number) => `+${((value - 1) * 100).toFixed(0)}%`;
-  const multiplierSources = (researchPercent?: number, equipmentMultiplier?: number): ProfileStatDisplaySource[] => {
+  const equipmentBonusValue = (value: number) => `+${formatEquipmentAmount(value)}`;
+  const equipmentEquation = (tech: number, bonus: number) => `${multiplierValue(tech)}${bonus ? ` + ${formatEquipmentAmount(bonus)}` : ""}`;
+  const multiplierSources = (researchPercent?: number, equipmentBonus?: number): ProfileStatDisplaySource[] => {
     const sources: ProfileStatDisplaySource[] = [];
     if (researchPercent) sources.push({ label: "Tech", value: `+${researchPercent}%` });
-    if (equipmentMultiplier !== undefined && Math.abs(equipmentMultiplier - 1) > .0001) {
-      sources.push({ label: "Equipment", value: equipmentBonusValue(equipmentMultiplier) });
+    if (equipmentBonus !== undefined && equipmentBonus > 0) {
+      sources.push({ label: "Equipment", value: equipmentBonusValue(equipmentBonus) });
     }
     return sources;
   };
@@ -164,15 +125,15 @@ export function profileStatDisplayRows(
       kind: "health", label: "Max Hp:",
       base: statValue(progress.maxHp / effective.multipliers.healthResearch),
       equationOperator: "×",
-      multiplier: multiplierValue(effective.multipliers.healthResearch * effective.multipliers.healthEquipment),
+      multiplier: equipmentEquation(effective.multipliers.healthResearch, effective.equipment.health),
       total: statValue(effective.maxHp),
-      sources: multiplierSources(healthResearchBonus, effective.multipliers.healthEquipment),
+      sources: multiplierSources(healthResearchBonus, effective.equipment.health),
     },
     {
       kind: "damage", label: "Damage:", base: statValue(progress.damage),
       equationOperator: "×",
-      multiplier: multiplierValue(effective.multipliers.damageTotal), total: statValue(effective.damage),
-      sources: multiplierSources(damageResearchBonus, effective.multipliers.damageEquipment),
+      multiplier: equipmentEquation(effective.multipliers.damageResearch, effective.equipment.damage), total: statValue(effective.damage),
+      sources: multiplierSources(damageResearchBonus, effective.equipment.damage),
     },
     {
       kind: "armor", label: "Armor:", base: statValue(progress.armor),
@@ -186,7 +147,7 @@ export function profileStatDisplayRows(
       kind: "attack", label: "Attack Speed:", base: baseAttackSpeed,
       equationOperator: "×",
       multiplier: multiplierValue(effective.multipliers.attackSpeed), total: attackSpeed,
-      sources: multiplierSources(undefined, effective.multipliers.attackSpeed),
+      sources: [],
     },
     {
       kind: "range", label: "Attack Range:", base: Math.round(progress.attackRange).toLocaleString(),
@@ -197,8 +158,8 @@ export function profileStatDisplayRows(
       kind: "regen", label: "Regen:",
       base: progress.regen >= 1_000_000 ? `${formatCompactNumber(progress.regen)}/s` : `${progress.regen.toFixed(1)}/s`,
       equationOperator: "×",
-      multiplier: multiplierValue(effective.multipliers.regenTotal), total: regen,
-      sources: multiplierSources(regenResearchBonus, effective.multipliers.regenEquipment),
+      multiplier: equipmentEquation(effective.multipliers.regenResearch, effective.equipment.regen), total: regen,
+      sources: multiplierSources(regenResearchBonus, effective.equipment.regen),
     },
     {
       kind: "speed", label: "Move Speed:", base: statValue(progress.speedOverride > 0 ? progress.speedOverride : progress.speed),
@@ -288,7 +249,7 @@ export function renderProfileStats(
     if (stat.sources.length === 0 && !stat.expandedDetail) {
       const empty = document.createElement("span");
       empty.className = "profile-stat-source-empty";
-      empty.textContent = "No bonus multipliers";
+      empty.textContent = "No bonuses";
       sources.append(empty);
     } else {
       stat.sources.forEach((source, index) => {
@@ -296,7 +257,7 @@ export function renderProfileStats(
           const operator = document.createElement("span");
           operator.className = "profile-stat-source-operator";
           operator.setAttribute("aria-hidden", "true");
-          operator.textContent = "×";
+          operator.textContent = "·";
           sources.append(operator);
         }
         const sourceElement = document.createElement("span");
@@ -321,13 +282,12 @@ export function renderProfileStats(
       sources.append(detail);
     }
     const sourceText = stat.sources.length > 0
-      ? stat.sources.map((source) => `${source.label}: ${source.value}`).join(" multiplied by ")
-      : "No bonus multipliers";
+      ? stat.sources.map((source) => `${source.label}: ${source.value}`).join("; ")
+      : "No bonuses";
     const breakdownText = [stat.sources.length > 0 ? sourceText : "", stat.expandedDetail ?? ""]
       .filter(Boolean)
       .join(". ") || sourceText;
-    const multiplierText = stat.equationOperator === "×" ? `${stat.multiplier} times` : stat.multiplier;
-    const summaryText = `${stat.label} Base ${stat.base}. Combined multiplier ${multiplierText}. Total ${stat.total}.`;
+    const summaryText = `${stat.label} Base ${stat.base}. Calculation ${stat.base} ${stat.equationOperator ?? ""} ${stat.multiplier}. Total ${stat.total}.`;
     const setExpanded = (expanded: boolean) => {
       item.classList.toggle("is-expanded", expanded);
       item.setAttribute("aria-expanded", String(expanded));
