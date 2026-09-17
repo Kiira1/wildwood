@@ -1,3 +1,4 @@
+import { appendItemTierLabel } from "./item-tier-label";
 import {
   UPGRADE_BENCH_SECOND_SLOT_GEM_COST,
   itemUpgradeSpeedUpGemCost,
@@ -216,6 +217,7 @@ export function createUpgradeBenchController(elements: UpgradeBenchElements, dep
     art.className = "inventory-item-art-wrap";
     art.innerHTML = itemArtMarkup(itemId);
     button.replaceChildren(art);
+    appendItemTierLabel(button, itemId);
     if (level > 0) {
       const badge = document.createElement("span");
       badge.className = "inventory-upgrade-level";

@@ -1,3 +1,4 @@
+import { appendItemTierLabel } from "./item-tier-label";
 import { itemArtMarkup, itemPresentation } from "../game/item-presentation";
 import {
   itemDefinition,
@@ -76,7 +77,9 @@ export function createItemInspectionController(elements: ItemInspectionElements)
     }
     const preview = document.createElement("div");
     preview.className = "item-inspection-preview";
-    preview.append(elements.title, icon);
+    preview.append(elements.title);
+    appendItemTierLabel(preview, item.id);
+    preview.append(icon);
 
     const copy = document.createElement("div");
     copy.className = "item-inspection-copy";

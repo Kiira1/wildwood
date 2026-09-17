@@ -447,7 +447,13 @@
   .equipment-slot .inventory-item-art { width: var(--equipped-art-width, 34px); height: var(--equipped-art-height, 34px); }
   .inventory-item:is([data-item-id="starter_bow"], [data-item-id="iron_bow"], [data-item-id="frost_bow"], [data-item-id="lava_bow"], [data-item-id="fire_metal_bow"]) .inventory-item-art,
   .equipment-slot:is([data-item-id="starter_bow"], [data-item-id="iron_bow"], [data-item-id="frost_bow"], [data-item-id="lava_bow"], [data-item-id="fire_metal_bow"]) .inventory-item-art { transform: rotate(-45deg); }
-  .inventory-upgrade-level { position: absolute; top: 4px; right: 4px; z-index: 2; min-width: 22px; padding: 3px 4px; border: 1px solid #071009; border-radius: 999px; background: #65d66d; box-shadow: 0 1px 0 rgba(0,0,0,.55); color: #08150a; font: 900 var(--font-readable-min)/1 var(--font-rounded); text-align: center; pointer-events: none; }
+  .inventory-upgrade-level { position: absolute; top: 4px; right: 4px; z-index: 2; min-width: 0; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; color: #65d66d; font: 900 12px/1 var(--font-rounded); text-align: center; -webkit-text-stroke: 2px #080b08; paint-order: stroke fill; text-shadow: 0 1px 1px #080b08; pointer-events: none; }
+  .inventory-item > .inventory-upgrade-level, .upgrade-bench-slot > .inventory-upgrade-level { top: max(10px, calc(50% - 27px)); right: max(3px, calc(50% - 32px)); }
+  .item-tier-label { position: absolute; top: 1px; left: 0; right: 0; z-index: 1; color: #d9ddd9; font: 800 9px/11px var(--font-rounded); text-align: center; -webkit-text-stroke: 2px #080b08; paint-order: stroke fill; text-shadow: none; pointer-events: none; }
+  .inventory-item > .item-tier-label { top: max(1px, calc(50% - 41px)); }
+  .item-inspection-preview > .item-tier-label { position: static; font-size: 11px; line-height: 13px; }
+  .profile-equipment-slot > .item-tier-label { font-size: 7px; line-height: 9px; }
+
   .inventory-item-empty-mark { color: #a17932; font: 900 20px/1 Arial, sans-serif; }
 
   body.inventory-dragging, body.inventory-dragging * { cursor: grabbing !important; }
@@ -576,7 +582,7 @@
     .inventory-item { padding: 4px; border-radius: 6px; }
     .inventory-item-art-wrap .inventory-item-art { width: min(54px, 88%); height: min(51px, 88%); }
     .inventory-item[data-item-id="starter_stone"] .inventory-item-art { width: min(35px, 56%); height: min(35px, 56%); }
-    .inventory-upgrade-level { top: 2px; right: 2px; min-width: 20px; padding: 2px 3px; font-size: var(--font-readable-min); }
+    .inventory-upgrade-level { font-size: 11px; }
     .item-inspection-content { grid-template-columns: 1fr; justify-items: center; align-content: safe center; gap: 12px; padding-top: 12px; padding-bottom: 6px; text-align: center; }
     .item-inspection-stats { justify-content: center; }
     .item-inspection-actions { width: 100%; }
@@ -2593,7 +2599,7 @@
   .profile-equipment-slot .equipment-slot-art { place-self: stretch; }
   .profile-equipment-slot .inventory-item-art { width: 100%; height: 100%; max-width: none; max-height: none; }
   .profile-equipment-slot .boot-pixel-icon { transform: scale(1.25); }
-  .profile-equipment-slot .inventory-upgrade-level { top: auto; right: 1px; bottom: 1px; min-width: 16px; padding: 1px 2px; font-size: 7px; }
+  .profile-equipment-slot .inventory-upgrade-level { top: 10px; right: 1px; bottom: auto; font-size: 8px; }
   .profile-equipment-slot.is-cosmetic-hidden .equipment-slot-art > .inventory-item-art { opacity: .4; filter: grayscale(.45); }
   .profile-equipment-hidden-mark { position: absolute; top: 58%; left: 50%; width: 31px; height: 2px; border-radius: 999px; background: #e49a9f; box-shadow: 0 1px 0 #111; transform: translate(-50%, -50%) rotate(-36deg); }
   .player-sprite-selector { display: grid; place-items: center; width: 23px; min-width: 23px; height: 31px; margin: 0 auto; padding: 0; border: 2px solid #000; border-radius: 4px; background: #fff; }

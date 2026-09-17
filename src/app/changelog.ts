@@ -1,4 +1,9 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.723": [
+    "Inventory items open inspection with one tap. Equip and unequip there, without dragging or tapping a second slot.",
+    "Equipment shows its source-map tier above the sprite. Upgrade levels are green outlined numbers without a background.",
+    "Cosmetics are in progress, with Gem-based equipment appearance conversion planned.",
+  ],
   "0.722": [
     "Tap an inventory item to inspect it, then equip or unequip inside the inspection window. Removed drag and tap-to-slot equipment controls.",
     "Added a Cosmetics note about upcoming Gem-based equipment appearance conversion.",
@@ -1956,6 +1961,7 @@ export const RELEASE_NOTES: Record<string, string[]> = {
 };
 
 const RELEASE_DATES: Record<string, string> = {
+  "0.723": "2026-09-16",
   "0.722": "2026-09-16",
   "0.721": "2026-09-16",
   "0.720": "2026-09-16",
