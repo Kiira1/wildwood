@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.726": [
+    "Mobile autofarm settings now survive app restarts and installations. Farming resumes for the same character and map after reconnecting.",
+  ],
   "0.725": [
     "Refreshed inventory with filters, Equip best, tier sorting, clearer equipment previews, and 20 base bag slots.",
     "Updated guild layouts, emblems, leadership, member portraits, and online status. Creating a guild now requires 1 billion power.",
@@ -1990,6 +1993,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.726": "2026-09-17",
   "0.725": "2026-09-17",
   "0.718": "2026-09-16",
   "0.717": "2026-09-16",

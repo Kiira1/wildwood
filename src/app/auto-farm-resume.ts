@@ -1,8 +1,12 @@
+import { isNativePreview } from './native-preview';
+
 export const AUTO_FARM_RESUME_KEY = 'wildstat:autofarm-resume:v1';
 export type AutoFarmIntent = { identity: string; map: string; choice: string };
 
-/** Tab-local intent survives an update reload without creating server traffic. */
-export function createAutoFarmResumeStore(storage: () => Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> = () => sessionStorage) {
+/** Web intent stays tab-local. Native intent must survive the WebView being
+ * destroyed during an app upgrade; identity/map validation happens on restore.
+ * Written only when starting/stopping, with no server or per-frame storage work. */
+export function createAutoFarmResumeStore(storage: () => Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> = () => isNativePreview() ? localStorage : sessionStorage) {
   return {
     read(): AutoFarmIntent | null {
       try {
