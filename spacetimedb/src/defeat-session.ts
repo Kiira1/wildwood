@@ -50,7 +50,10 @@ export function requireAllowedDefeatSession(ctx: GameReducerContext) {
 }
 
 /** Commit this with the receipt, never throw afterward (that would undo it). */
-export function restrictDefeatSession(ctx: GameReducerContext, evidence: unknown) {
+export function restrictDefeatSession(ctx: GameReducerContext, evidence: {
+  mapId: string; streamId: string; sequence: string;
+  violations: { enemy: string; requested: number; accepted: number }[];
+}) {
   const jwt = ctx.senderAuth?.jwt;
   const requireSignIn = Boolean(jwt?.issuer === SPACETIME_AUTH_ISSUER && jwt.audience.includes(SPACETIME_AUTH_CLIENT_ID));
   const now = ctx.timestamp.microsSinceUnixEpoch;
@@ -58,9 +61,12 @@ export function restrictDefeatSession(ctx: GameReducerContext, evidence: unknown
     blockedUntilMicros: requireSignIn ? 0n : now + BigInt(DEFEAT_GUEST_BLOCK_SECONDS) * 1_000_000n };
   if (ctx.db.defeatSessionRestriction.identity.find(ctx.sender)) ctx.db.defeatSessionRestriction.identity.update(row);
   else ctx.db.defeatSessionRestriction.insert(row);
-  recordModerationAction(ctx, {
-    targetIdentity: ctx.sender.toHexString(), targetName: ctx.db.playerProfile.identity.find(ctx.sender)?.displayName ?? "",
-    channel: "game", action: requireSignIn ? "session_revoked" : "guest_connection_blocked",
+  const identity = ctx.sender.toHexString();
+  const displayName = ctx.db.playerProfile.identity.find(ctx.sender)?.displayName ?? "";
+  const action = requireSignIn ? "session_revoked" : "guest_connection_blocked";
+  const moderationId = recordModerationAction(ctx, {
+    targetIdentity: identity, targetName: displayName,
+    channel: "game", action,
     reason: "Enemy defeat claim exceeded server allowance", actorType: "automatic", rule: "enemy_defeat_allowance",
     before: JSON.stringify(evidence), after: JSON.stringify({ requireSignIn, blockedUntilMs: Number(row.blockedUntilMicros / 1000n) }),
   });
@@ -68,4 +74,9 @@ export function restrictDefeatSession(ctx: GameReducerContext, evidence: unknown
   for (const session of ctx.db.playerSession.byIdentity.filter(ctx.sender))
     ctx.db.playerSession.connectionId.update({ ...session, enteredWorld: false, protocolVersion: 0 });
   if (ctx.db.playerController.identity.find(ctx.sender)) ctx.db.playerController.identity.delete(ctx.sender);
+  // The caller logs only after all reward/session cleanup has succeeded.
+  // Link the readable diagnostic to the durable, transaction-backed evidence.
+  return { event: "enemy_defeat_session_restricted", action, identity, displayName,
+    connectionId: ctx.connectionId?.toHexString() ?? null, moderationId: moderationId.toString(),
+    atMicros: now.toString(), requireSignIn, blockedUntilMs: Number(row.blockedUntilMicros / 1000n), ...evidence };
 }

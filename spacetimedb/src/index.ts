@@ -9930,10 +9930,11 @@ export const recordEnemyDefeats = spacetimedb.reducer(
     if (!accepted) return;
     const enforce = () => {
       if (!accepted.violations.length) return;
-      restrictDefeatSession(ctx, { mapId: batch.mapId, streamId: batch.streamId,
+      const restriction = restrictDefeatSession(ctx, { mapId: batch.mapId, streamId: batch.streamId,
         sequence: batch.sequence.toString(), violations: accepted.violations });
       finishLifetimeSession(ctx, ctx.sender);
       removeIdentityPresence(ctx, ctx.sender);
+      console.warn("Enemy defeat session restricted", JSON.stringify(restriction));
     };
     if (!accepted.count) { enforce(); return; }
     const base = ctx.db.playerProgress.identity.find(ctx.sender) ?? defaultPlayerProgress(ctx.sender);

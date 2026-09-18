@@ -94,3 +94,32 @@ it("only lets the owner suspend the named account and enforces the entire week e
   f.ctx.timestamp = new Timestamp(args.untilMicros);
   expect(() => requireAllowedDefeatSession(f.ctx as any)).not.toThrow();
 });
+
+it.each([false, true])("logs actual kill-limit enforcement with its durable audit ID (registered=%s)", registered => {
+  const f = fixture(registered);
+  const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+  try {
+    f.run(server.recordEnemyDefeats, report);
+    const events = warn.mock.calls.filter(call => call[0] === "Enemy defeat session restricted");
+    expect(events).toHaveLength(1);
+    const event = JSON.parse(String(events[0][1]));
+    const audit = [...f.db.moderationAction.iter()][0];
+    expect(event).toMatchObject({ event: "enemy_defeat_session_restricted", identity: f.ctx.sender.toHexString(),
+      displayName: "Test Player", action: registered ? "session_revoked" : "guest_connection_blocked",
+      moderationId: audit.id.toString(), mapId: report.mapId, streamId: report.streamId, sequence: "1",
+      requireSignIn: registered, blockedUntilMs: registered ? 0 : 40_000,
+      violations: [{ enemy: "site:0", requested: 100, accepted: 91 }] });
+    expect(event.violations).toEqual(JSON.parse(audit.before).violations);
+    expect(f.db.player.identity.find(f.ctx.sender)).toBeNull();
+    expect(event).not.toHaveProperty("jwt");
+  } finally { warn.mockRestore(); }
+});
+
+it("does not log a session revocation for valid kills or duplicate delivery", () => {
+  const f = fixture(), warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+  try {
+    const valid = { ...report, enemies: [{ enemy: "site:0", count: 1 }] };
+    f.run(server.recordEnemyDefeats, valid); f.run(server.recordEnemyDefeats, valid);
+    expect(warn.mock.calls.filter(call => call[0] === "Enemy defeat session restricted")).toHaveLength(0);
+  } finally { warn.mockRestore(); }
+});

@@ -32,6 +32,7 @@ export function recordModerationAction(ctx: ModuleReducerCtx, action: Action) {
   });
   if (head) ctx.db.moderationHead.id.update({ id: 0, lastId: id });
   else ctx.db.moderationHead.insert({ id: 0, lastId: id });
+  return id;
 }
 
 /** Fixed 50 indexed reads; history size never changes the work for a page. */
