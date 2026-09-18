@@ -1,3 +1,4 @@
+import { bossHitsToDefeat } from "../../shared/boss-regeneration";
 import { simulationRegularDrops, simulationTravelSeconds } from "./gameplay-model";
 import { itemTier } from "../../shared/item-tier";
 import { REGULAR_ENEMY_RESPAWN_SECONDS } from "../game/runtime/regular-enemy-respawn";
@@ -1615,7 +1616,8 @@ function bossHitShare(state: EffectiveStatsState, map: BalanceMapDefinition, adj
 function bossFightSeconds(state: EffectiveStatsState, map: BalanceMapDefinition, adjustment: MapAdjustment) {
   if (!map.boss) return null;
   const combat = combatStats(state, false);
-  return timeToKill(map.boss.hp * adjustment.bossHp, combat.averageHit, combat.attackRate);
+  const interval = Math.max(MIN_ATTACK_INTERVAL, combat.attackRate);
+  return FIRST_HIT_SECONDS + (bossHitsToDefeat(map.boss.hp * adjustment.bossHp, combat.averageHit, interval) - 1) * interval;
 }
 
 function historyPowerAt(history: HistoryPoint[], timeSeconds: number) {

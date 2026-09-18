@@ -46,15 +46,16 @@ it("keeps the checkpoint while reconnecting, even before the correct map is hydr
   expect(next.bosses.state("ion_citadel")!.hp).toBe(hp / 2);
 });
 
-it("resets on death and deliberate travel, and never shares progress across characters", () => {
+it("keeps damage through death, resets on deliberate travel, and isolates characters", () => {
   const f = fixture(), current = f.create(), map = "tutorial_forest";
   const hp = current.bosses.state(map)!.hp;
   current.bosses.hit(map, hp / 2); f.owner("bob");
   expect(current.bosses.state(map)!.hp).toBe(hp);
   f.owner("alice"); expect(current.bosses.state(map)!.hp).toBe(hp / 2);
-  f.alive(false); current.bosses.resetFight(); f.alive(true);
-  expect(current.bosses.state(map)!.hp).toBe(hp);
-  current.bosses.hit(map, hp / 2);
+  f.alive(false); current.memory.flush();
+  expect(current.bosses.state(map)!.hp).toBe(hp / 2);
+  f.alive(true);
+  expect(current.bosses.state(map)!.hp).toBe(hp / 2);
   f.map("home_exterior"); current.bosses.state("home_exterior");
   f.map(map); expect(f.create().bosses.state(map)!.hp).toBe(hp);
 });
@@ -66,4 +67,28 @@ it("rejects stale boss balance and tolerates unavailable storage", () => {
   const broken = createBossFightMemory({ getItem: () => { throw Error(); }, setItem: () => { throw Error(); }, removeItem: () => { throw Error(); } }, () => "alice");
   expect(broken.restore("tutorial_forest", 100)).toBeNull();
   expect(() => { broken.remember("tutorial_forest", 50, 100); broken.clear(); }).not.toThrow();
+});
+
+it.each(["tutorial_forest", "ion_citadel", "endless_40"])("keeps %s boss damage when death is followed by a game update", map => {
+  const f = fixture(map), first = f.create();
+  const start = first.bosses.state(map)!;
+  first.bosses.hit(map, start.hp * .25);
+  first.bosses.hit(map, start.hp * .25);
+  f.alive(false); first.memory.flush();
+  expect(first.bosses.state(map)!.hp).toBeCloseTo(start.hp / 2);
+  const updated = f.create();
+  expect(updated.bosses.state(map)!.hp).toBeCloseTo(start.hp / 2);
+  f.alive(true);
+  expect(updated.bosses.state(map)!.hp).toBeCloseTo(start.hp / 2);
+  updated.bosses.hit(map, start.hp);
+  expect(f.defeated).toHaveBeenCalledExactlyOnceWith(map);
+});
+
+it("persists gradual regeneration and clears stale damage after a full heal", () => {
+  const f = fixture(), first = f.create(), map = "tutorial_forest";
+  const hp = first.bosses.state(map)!.hp;
+  first.bosses.hit(map, hp / 2); first.bosses.update(10); first.memory.flush();
+  expect(f.create().bosses.state(map)!.hp / hp).toBeCloseTo(.51);
+  first.bosses.update(1_000);
+  expect(f.create().bosses.state(map)!.hp).toBe(hp);
 });

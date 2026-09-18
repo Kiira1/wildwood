@@ -68,6 +68,7 @@ export type MapController = {
 /** Owns map travel, portal collisions, and cinematic portal state. */
 export function createMapController(options: {
   openHomeTravel?: () => void;
+  onTravelStarted?: () => void;
   mapConfig: MapConfig;
   tutorialMapId: MapId;
   desertMapId: MapId;
@@ -164,6 +165,7 @@ export function createMapController(options: {
   async function teleport(destination?: MapId, request?: () => Promise<boolean>) {
     if (!running() || player.hp <= 0 || isDueling() || mapTransitioning || portalCutscene.active) return false;
     if (destination === getCurrentMapId()) return true;
+    options.onTravelStarted?.();
     mapTransitioning = true;
     const attempt = ++mapLoadGeneration;
     const returning = getCurrentMapId() === "home_exterior";
@@ -321,6 +323,7 @@ export function createMapController(options: {
       options.openHomeTravel();
       return;
     }
+    options.onTravelStarted?.();
     mapTransitioning = true;
     keys.clear();
     stopTouchMove();

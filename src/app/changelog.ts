@@ -1,4 +1,9 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.736": [
+    "All bosses slowly regenerate 0.1% of their maximum health per second during play.",
+    "Changing maps stops autofarm and clears its saved resume state. Reconnecting to the same map still restores it.",
+    "Bosses keep their remaining health when you die. Unfinished fights also survive game updates and reloads on the same device.",
+  ],
   "0.735": [
     "A one-time +9 helmet, chest and bow gift is in Mail for existing players, matched to their highest unlocked campaign map. The strongest item per slot is selected, existing +10 upgrades are kept, and full bags can make room before claiming.",
     "Tech now multiplies base stats plus equipment bonuses, including Vitality's bonus to gear health.",
@@ -2033,6 +2038,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.736": "2026-09-17",
   "0.735": "2026-09-17",
   "0.734": "2026-09-17",
   "0.733": "2026-09-17",

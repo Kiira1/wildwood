@@ -21,7 +21,9 @@ function portalArrivalHarness(destinationArrival: { x: number; y: number }) {
   };
   const changeMap = vi.fn(async () => true);
   const markPortalCutsceneSeen = vi.fn();
+  const onTravelStarted = vi.fn();
   const controller = createMapController({
+    onTravelStarted,
     mapConfig: {
       ...bootstrap.mapConfig,
       endless_40: bootstrap.mapConfig.endless_40,
@@ -95,7 +97,7 @@ function portalArrivalHarness(destinationArrival: { x: number; y: number }) {
     onCutsceneFinished: vi.fn(),
   } as unknown as Parameters<typeof createMapController>[0]);
   return {
-    changeMap, controller, currentMapId: () => currentMapId, desertMapId, player, markPortalCutsceneSeen,
+    onTravelStarted, changeMap, controller, currentMapId: () => currentMapId, desertMapId, player, markPortalCutsceneSeen,
     bootstrap, prepareMapAssets,
     setMap: (value: MapId) => { currentMapId = value; },
     setUnlocked: (value: boolean) => { unlocked = value; },
@@ -283,6 +285,7 @@ describe("Home teleport", () => {
       return true;
     });
     const travel = h.controller.teleportHome();
+    expect(h.onTravelStarted).toHaveBeenCalledOnce();
     expect(h.controller.isMapTransitioning()).toBe(true);
     expect(await h.controller.teleportHome()).toBe(false);
     expect(h.changeMap).not.toHaveBeenCalled();
@@ -492,4 +495,16 @@ it("waits for the authoritative unlock before showing a dragon portal cinematic"
   h.setUnlocked(true);
   h.controller.startDragonPortalCutscene();
   expect(h.controller.isCutsceneActive()).toBe(true);
+});
+
+it("notifies intentional portal travel, but not a reconnect's map hydration", async () => {
+  const h = portalArrivalHarness({ x: 300, y: 400 });
+  h.controller.updatePortal(1 / 60);
+  expect(h.onTravelStarted).toHaveBeenCalledOnce();
+  await Promise.resolve(); await Promise.resolve();
+  const reconnect = portalArrivalHarness({ x: 300, y: 400 });
+  reconnect.setServerMap({ mapId: "beginner_desert", x: 300, y: 400, facing: 0 });
+  reconnect.controller.reconcileMapFromServer();
+  await Promise.resolve(); await Promise.resolve();
+  expect(reconnect.onTravelStarted).not.toHaveBeenCalled();
 });

@@ -797,6 +797,7 @@ import {
   let playerController: PlayerController;
   const mapController = createMapController({
     openHomeTravel: () => homeTravel.open(),
+    onTravelStarted: () => autoFarm.stop("Map changed · choose an enemy"),
     markPortalCutsceneSeen: (cutscene) => coop?.markPortalCutsceneSeen?.(cutscene),
     mapConfig: MAP_CONFIG,
     tutorialMapId: TUTORIAL_FOREST_MAP_ID,
@@ -1722,7 +1723,7 @@ import {
     hideStart: startup.hideStart,
     hideGameOver: () => { localPlayerDeath = null; deathScreen.hide(); },
     showGameOver: () => {
-      personalBosses.resetFight();
+      bossFightMemory.flush();
       autoFarm.stop("Autofarm stopped after defeat");
       localPlayerDeath = {
         id: coop?.localIdentity?.() ?? "local-player",
@@ -1751,7 +1752,7 @@ import {
     cutsceneActive: mapController.isCutsceneActive, updateCutscene: mapController.updatePortalCutscene,
     worldCombatReady: () => !mapController.isMapTransitioning() && (inTutorial() || Boolean(coop?.isConnected?.()) && coop?.localState?.()?.mapId === currentMapId),
     updatePlayer: (dt) => { if (!mapController.isMapTransitioning() && !(inTutorial() && player.hp <= 0)) playerController.update(dt); }, updateUpgradeBench: updateHomeStations, updatePortal: mapController.updatePortal,
-    updateEnemies: (dt) => { proceduralBoss.update(dt); enemySimulation.update(dt); }, updateDragon: bossController.updateBoss, updateSpider: bossController.updateSpiderBoss, updateFrostclaw: bossController.updateFrostclawBoss, updateMagmalisk: bossController.updateMagmaliskBoss, updateGloomroot: bossController.updateGloomrootBoss, updateTidewyrm: bossController.updateTidewyrmBoss, updateKoiShogun: bossController.updateKoiShogunBoss, updateTempestKirin: bossController.updateTempestKirinBoss, updateMiremaw: bossController.updateMiremawBoss, updatePrismshell: bossController.updatePrismshellBoss, updateIronhorn: bossController.updateIronhornBoss, updateDreadreaper: bossController.updateDreadreaperBoss, updateVoltwarden: bossController.updateVoltwardenBoss, updateGravebloom: bossController.updateGravebloomBoss, updateAegisPrime: bossController.updateAegisPrimeBoss,
+    updateEnemies: (dt) => { personalBosses.update(dt); proceduralBoss.update(dt); enemySimulation.update(dt); }, updateDragon: bossController.updateBoss, updateSpider: bossController.updateSpiderBoss, updateFrostclaw: bossController.updateFrostclawBoss, updateMagmalisk: bossController.updateMagmaliskBoss, updateGloomroot: bossController.updateGloomrootBoss, updateTidewyrm: bossController.updateTidewyrmBoss, updateKoiShogun: bossController.updateKoiShogunBoss, updateTempestKirin: bossController.updateTempestKirinBoss, updateMiremaw: bossController.updateMiremawBoss, updatePrismshell: bossController.updatePrismshellBoss, updateIronhorn: bossController.updateIronhornBoss, updateDreadreaper: bossController.updateDreadreaperBoss, updateVoltwarden: bossController.updateVoltwardenBoss, updateGravebloom: bossController.updateGravebloomBoss, updateAegisPrime: bossController.updateAegisPrimeBoss,
     updateProjectiles: playerCombat.updateProjectiles, updateRespawns: time => { if (!inTutorial()) updateRespawns(time); },
     clearDuelCombat: () => { autoFarm.stop("Autofarm stopped for duel"); projectileStore.clear(); playerCombat.clearPendingBossHits(); },
     updateEffects: effects.update, updateHud: () => updateHud(),

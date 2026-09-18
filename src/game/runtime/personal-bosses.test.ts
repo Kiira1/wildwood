@@ -15,11 +15,13 @@ it("keeps boss damage personal and reports one clear despite extra projectiles",
   expect(b.bosses.state("tutorial_forest")!.hp).toBe(hp);
   expect(a.bosses.result("tutorial_forest")!.contributors.map(row => row.identity)).toEqual(["alice"]);
 });
-it("resets an unfinished fight on death or travel, and isolates account changes", () => {
+it("preserves damage on death, resets on travel, and isolates account changes", () => {
   const f = fixture(), hp = f.bosses.state("tutorial_forest")!.hp;
   f.bosses.hit("tutorial_forest", hp / 2);
-  f.alive(false); expect(f.bosses.state("tutorial_forest")!.hp).toBe(hp);
-  f.alive(true); f.bosses.hit("tutorial_forest", hp / 2);
+  f.alive(false); expect(f.bosses.state("tutorial_forest")!.hp).toBe(hp / 2);
+  f.bosses.hit("tutorial_forest", hp);
+  expect(f.bosses.state("tutorial_forest")!.hp).toBe(hp / 2);
+  f.alive(true);
   f.map("home_exterior"); expect(f.bosses.state("home_exterior")).toBeNull();
   f.map("tutorial_forest"); expect(f.bosses.state("tutorial_forest")!.hp).toBe(hp);
   f.bosses.hit("tutorial_forest", hp); f.identity("bob");
@@ -35,4 +37,17 @@ it.each(["tutorial_forest", "beginner_desert", "ion_citadel", "endless_40"])("re
   f.time(dead.respawnAtMs - 1); expect(f.bosses.state(mapId)!.alive).toBe(false);
   f.time(dead.respawnAtMs); expect(f.bosses.state(mapId)).toMatchObject({ alive: true, hp: before.hp });
   expect(f.bosses.state(mapId)!.encounter).not.toBe(before.encounter);
+});
+
+it.each(["tutorial_forest", "beginner_desert", "ion_citadel", "endless_40"])("regenerates %s at 0.1 percent of max HP per second without reviving defeated bosses", map => {
+  const f = fixture(); f.map(map);
+  const maxHp = f.bosses.state(map)!.hp;
+  f.bosses.hit(map, maxHp / 2);
+  for (let i = 0; i < 10; i++) f.bosses.update(.1);
+  expect(f.bosses.state(map)!.hp / maxHp).toBeCloseTo(.501, 8);
+  f.bosses.update(1_000);
+  expect(f.bosses.state(map)!.hp).toBe(maxHp);
+  f.bosses.hit(map, maxHp); f.bosses.update(1);
+  expect(f.bosses.state(map)).toMatchObject({ alive: false, hp: 0 });
+  expect(f.defeated).toHaveBeenCalledOnce();
 });

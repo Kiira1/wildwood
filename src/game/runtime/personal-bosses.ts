@@ -1,3 +1,4 @@
+import { BOSS_REGEN_FRACTION_PER_SECOND } from "../../../shared/boss-regeneration";
 import { personalBossDefinition } from "../../../shared/personal-bosses";
 import type { RespawnMemory } from './respawn-memory';
 import type { BossFightMemory } from './boss-fight-memory';
@@ -13,17 +14,17 @@ export function createPersonalBosses(options: {
   type State = { key: string; mapId: string; encounter: bigint; hp: number; maxHp: number; alive: boolean; respawnAtMs: number; respawnAtMicros: bigint };
   type Result = { encounter: bigint; totalDamage: number; createdAtMs: number; contributors: { identity: string; name: string; gender: 0; damage: number; percentage: number }[] };
   const states = new Map<string, State>(), results = new Map<string, Result>();
-  let owner = "", activeMap = "", wasAlive = true, encounter = BigInt(Date.now()) * 1000n;
+  let owner = "", activeMap = "", encounter = BigInt(Date.now()) * 1000n;
   function refresh() {
     if (owner !== options.identity()) { owner = options.identity(); states.clear(); results.clear(); activeMap = ""; }
-    const mapId = options.mapId(), alive = options.alive();
-    if (activeMap !== mapId || (wasAlive && !alive)) {
-      if (activeMap || (wasAlive && !alive)) options.fights?.clear();
+    const mapId = options.mapId();
+    // Death leaves the encounter and its HP intact; only deliberate travel resets it.
+    if (activeMap !== mapId) {
+      if (activeMap) options.fights?.clear();
       const old = states.get(activeMap);
       if (old?.alive) { old.hp = old.maxHp; old.encounter = ++encounter; }
       activeMap = mapId;
     }
-    wasAlive = alive;
   }
   function state(mapId: string): State | null {
     if (options.ready?.() === false) return null;
@@ -50,11 +51,14 @@ export function createPersonalBosses(options: {
   }
   return {
     state,
-    resetFight() {
-      const row = states.get(activeMap);
-      if (row?.alive) { row.hp = row.maxHp; row.encounter = ++encounter; }
-      options.fights?.clear();
-      wasAlive = options.alive();
+    update(dt: number) {
+      if (!Number.isFinite(dt) || dt <= 0) return;
+      const current = state(options.mapId());
+      if (!current?.alive || current.hp >= current.maxHp) return;
+      const row = states.get(current.mapId)!;
+      row.hp = Math.min(row.maxHp, row.hp + row.maxHp * BOSS_REGEN_FRACTION_PER_SECOND * dt);
+      if (row.hp >= row.maxHp) options.fights?.clear();
+      else options.fights?.remember(row.mapId, row.hp, row.maxHp);
     },
     proceduralState: state,
     result(mapId: string) { if (options.ready?.() === false) return null; refresh(); return results.get(mapId) ?? null; },
