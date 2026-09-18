@@ -15,16 +15,14 @@ function strongBossFixture(mapId: string) {
     inventoryJson: '["starter_bow"]', equippedRightHand: 'starter_bow' });
   return f;
 }
-it('consumes a refreshed-boss backlog once without letting it block the next report or map change', () => {
+it('consumes an excessive boss backlog once and ends the session', () => {
   const f = strongBossFixture('endless_40');
   reportEnemy(f, 'boss', 100);
   expect(f.db.playerLifetime.identity.find(f.ctx.sender).enemyKills).toBe(6n);
-  reportEnemy(f, 'boss', 100);
+  expect(() => f.run(server.recordEnemyDefeats, { mapId: 'endless_40', streamId: 'test-defeats-stream-0001', sequence: 1n, enemies: [{ enemy: 'boss', count: 100 }] })).toThrow('DEFEAT_SESSION_COOLDOWN');
   expect(f.db.playerLifetime.identity.find(f.ctx.sender).enemyKills).toBe(6n);
-  reportEnemy(f, 'site:0', 1);
-  expect(f.db.playerLifetime.identity.find(f.ctx.sender).enemyKills).toBe(7n);
-  expect(f.db.regularEnemyLootCursor.key.find(`${f.ctx.sender.toHexString()}:test-defeats-stream-0001`).sequence).toBe(3n);
-  expect(() => f.run(server.changeMap, { mapId: 'home_exterior', x: 600, y: 700 })).not.toThrow();
+  expect(f.db.regularEnemyLootCursor.key.find(`${f.ctx.sender.toHexString()}:test-defeats-stream-0001`).sequence).toBe(1n);
+  expect(() => f.run(server.changeMap, { mapId: 'home_exterior', x: 600, y: 700 })).toThrow('DEFEAT_SESSION_COOLDOWN');
 });
 it('uses each map combat-time budget instead of a global twenty-boss cutoff', () => {
   const f = strongBossFixture('endless_40'), start = f.ctx.timestamp.microsSinceUnixEpoch;
@@ -33,14 +31,12 @@ it('uses each map combat-time budget instead of a global twenty-boss cutoff', ()
     f.patch('player', { mapId }); f.ctx.timestamp = new Timestamp(start + BigInt(seconds) * 1_000_000n);
     f.run(server.recordEnemyDefeats, { mapId, streamId: `different-browser-${++calls}`, sequence: 1n, enemies: [{ enemy: 'boss', count }] });
   };
-  claim('tutorial_forest', 8, 0); claim('beginner_desert', 8, 100); claim('intermediate_snowlands', 8, 200);
+  claim('tutorial_forest', 7, 0); claim('beginner_desert', 7, 100); claim('intermediate_snowlands', 7, 200);
   expect(f.db.playerLifetime.identity.find(f.ctx.sender).enemyKills).toBe(21n);
-  claim('advanced_lava_wastes', 8, 299);
-  expect(f.db.playerLifetime.identity.find(f.ctx.sender).enemyKills).toBe(28n);
-  claim('advanced_lava_wastes', 8, 300);
+  claim('advanced_lava_wastes', 7, 299);
   expect(f.db.playerLifetime.identity.find(f.ctx.sender).enemyKills).toBe(28n);
   expect(f.db.bossDefeatWindow.identity.find(f.ctx.sender)).toBeNull();
-  claim('infernal_depths', 8, 301);
+  claim('infernal_depths', 7, 301);
   expect(f.db.playerLifetime.identity.find(f.ctx.sender).enemyKills).toBe(35n);
 });
 it.each(["endless_1", "endless_40"] as const)("awards all four scaled stats once for %s", mapId => {

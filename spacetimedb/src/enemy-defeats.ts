@@ -34,17 +34,25 @@ export function beginBossTimeBudget(ctx: BossRewardContext, mapId: string) {
 /** O(distinct species), independent of account count; one receipt per batch. */
 export function acceptEnemyDefeats(ctx: BossRewardContext, batch: { streamId: string; sequence: bigint; mapId: string; enemies: EnemyDefeat[] }, activeMapId: string,
   bossCombat: (earned: { type: string; amount: number; count: number }[]) => { dps: number; attackInterval: number }) {
-  if (!/^[a-zA-Z0-9-]{16,80}$/.test(batch.streamId) || batch.sequence < 1n || !batch.enemies.length || batch.enemies.length > ENEMY_DEFEAT_BATCH_MAX)
+  if (!/^[a-zA-Z0-9-]{16,80}$/.test(batch.streamId) || batch.sequence < 1n || !batch.enemies.length)
     throw new SenderError("Invalid enemy defeat batch.");
   const key = `${ctx.sender.toHexString()}:${batch.streamId}`;
   const prior = ctx.db.regularEnemyLootCursor.key.find(key);
   if (batch.sequence <= (prior?.sequence ?? 0n)) return null;
   if (batch.mapId !== activeMapId) throw new SenderError("Enemy defeats belong to another map.");
   if (batch.sequence !== (prior?.sequence ?? 0n) + 1n) throw new SenderError("Enemy defeat batches must arrive in order.");
+  const total = batch.enemies.reduce((sum, entry) => sum + entry.count, 0);
+  if (batch.enemies.every(entry => Number.isInteger(entry.count) && entry.count > 0)
+    && total > ENEMY_DEFEAT_BATCH_MAX) {
+    const receipt = { key, identity: ctx.sender, sequence: batch.sequence };
+    if (prior) ctx.db.regularEnemyLootCursor.key.update(receipt); else ctx.db.regularEnemyLootCursor.insert(receipt);
+    return { rewards: [], count: 0, lootCount: 0, violations: [{ enemy: "batch", requested: total, accepted: 0 }] };
+  }
   const balance = pinnedMapBalance(ctx, ctx.sender, batch.mapId);
   const seen = new Set<string>();
   let count = 0, lootCount = 0, submittedCount = 0;
   const rewards = [];
+  const violations: { enemy: string; requested: number; accepted: number }[] = [];
   // A save can contain regular kills that already raised the client's DPS.
   // Validate those first, then include only their server-calculated rewards.
   const entries = batch.enemies.some(entry => entry.enemy === "boss")
@@ -88,6 +96,7 @@ export function acceptEnemyDefeats(ctx: BossRewardContext, batch: { streamId: st
       if (clock) ctx.db.enemyDefeatBudget.key.update(nextClock); else ctx.db.enemyDefeatBudget.insert(nextClock);
       // Excess claims are consumed without rewards. Never leave an impossible
       // sealed report blocking saves, portals, or the valid kills behind it.
+      if (acceptedCount < entry.count) violations.push({ enemy: entry.enemy, requested: entry.count, accepted: acceptedCount });
       if (!acceptedCount) continue;
     } else {
       // A sealed batch must be consumable even when it exceeds the maximum
@@ -100,6 +109,7 @@ export function acceptEnemyDefeats(ctx: BossRewardContext, batch: { streamId: st
         identity: ctx.sender.toHexString(), mapId: batch.mapId, enemy: entry.enemy,
         requested: entry.count, accepted: acceptedCount, capacity: budget.capacity,
       }));
+      if (acceptedCount < entry.count) violations.push({ enemy: entry.enemy, requested: entry.count, accepted: acceptedCount });
       if (!acceptedCount) continue;
     }
     const next = { key: budgetKey, identity: ctx.sender, tokens: Math.max(0, tokens - acceptedCount), updatedAtMicros: now };
@@ -110,5 +120,5 @@ export function acceptEnemyDefeats(ctx: BossRewardContext, batch: { streamId: st
   }
   const receipt = { key, identity: ctx.sender, sequence: batch.sequence };
   if (prior) ctx.db.regularEnemyLootCursor.key.update(receipt); else ctx.db.regularEnemyLootCursor.insert(receipt);
-  return { rewards, count, lootCount };
+  return { rewards, count, lootCount, violations };
 }

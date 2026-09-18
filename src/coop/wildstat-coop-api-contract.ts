@@ -4,6 +4,7 @@ import type { wildstatCoop } from "../wildstat-coop";
 // removes, renames, or accidentally exposes a method without an intentional
 // contract update.
 type ExpectedApiKey =
+  | "findTeleportPlayer" | "devTeleportToPlayer"
   | "getMapBalance" | "balanceEditor" | "previewBalance" | "saveBalance" | "restoreBalance"
   | "proceduralMapState"
   | "proceduralMapUnlocked"

@@ -1,6 +1,6 @@
 import type { BalanceEditorState, BalanceSettings, MapBalanceSnapshot } from "../../../shared/map-balance-types";
 import type { ModerationHistoryPage } from "../../../shared/moderation-history";
-import type { Identity } from "spacetimedb";
+import { Identity } from "spacetimedb";
 import { isDeveloperIdentity } from "../../app/developer";
 import type { AccessAuditEntry, BugReportEntry } from "../contracts";
 import type { ReducerPort } from "../ports";
@@ -9,6 +9,7 @@ import type { ForestPrototypeAttack, ForestPrototypeState } from "../../../share
 type DeveloperServiceDependencies = {
   reducers: ReducerPort;
   notify: () => void;
+  drainPendingProgress: () => Promise<boolean>;
   localIdentity: () => string;
   localDbIdentity: () => Identity | null;
   profileIdentityFor: (identity: string) => Identity | undefined;
@@ -91,6 +92,23 @@ export function createDeveloperService(dependencies: DeveloperServiceDependencie
       presenceVisible = visible;
     },
     api: {
+      async findTeleportPlayer(query: string): Promise<{ identity: string; displayName: string; mapId: string }> {
+        const connection = dependencies.reducers.connection();
+        if (!connection || !hasAccess()) throw new Error("Developer access required.");
+        const result = await connection.procedures.getDeveloperTravelTarget({ query });
+        if (connection !== dependencies.reducers.connection() || !hasAccess()) throw new Error("Connection changed. Try again.");
+        return JSON.parse(result);
+      },
+      async devTeleportToPlayer(identity: string, mapId: string): Promise<{ mapId: string; x: number; y: number; facing: number }> {
+        const connection = dependencies.reducers.connection();
+        const owner = dependencies.localIdentity();
+        if (!connection || !hasAccess() || dependencies.reducers.protocolBlocked()) throw new Error("Developer connection required.");
+        if (!await dependencies.drainPendingProgress()) throw new Error("Rewards are still syncing. Try again.");
+        if (connection !== dependencies.reducers.connection() || owner !== dependencies.localIdentity()) throw new Error("Connection changed. Try again.");
+        const result = await connection.procedures.devTeleportToPlayer({ identity: Identity.fromString(identity), mapId });
+        if (connection !== dependencies.reducers.connection() || owner !== dependencies.localIdentity()) throw new Error("Connection changed. Try again.");
+        return JSON.parse(result);
+      },
       async getMapBalance(mapId: string): Promise<MapBalanceSnapshot> {
         const conn = dependencies.reducers.connection();
         if (!conn) throw new Error("Connect to load map balance.");

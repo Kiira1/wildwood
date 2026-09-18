@@ -184,11 +184,13 @@ import UpdateMovementStateReducer from "./update_movement_state_reducer";
 
 // Import all procedure arg schemas
 import * as BeginPatreonLinkProcedure from "./begin_patreon_link_procedure";
+import * as DevTeleportToPlayerProcedure from "./dev_teleport_to_player_procedure";
 import * as GetAvatarFramesProcedure from "./get_avatar_frames_procedure";
 import * as GetBalanceEditorProcedure from "./get_balance_editor_procedure";
 import * as GetChatHistoryProcedure from "./get_chat_history_procedure";
 import * as GetChatHistoryWithReactionsProcedure from "./get_chat_history_with_reactions_procedure";
 import * as GetChatMessageReactionsProcedure from "./get_chat_message_reactions_procedure";
+import * as GetDeveloperTravelTargetProcedure from "./get_developer_travel_target_procedure";
 import * as GetGuildHubProcedure from "./get_guild_hub_procedure";
 import * as GetGuildPreviewProcedure from "./get_guild_preview_procedure";
 import * as GetGuildReplayProcedure from "./get_guild_replay_procedure";
@@ -248,6 +250,7 @@ import MiremawResultRow from "./miremaw_result_table";
 import MyBalanceApologyNoticeRow from "./my_balance_apology_notice_table";
 import MyCutsceneHistoryRow from "./my_cutscene_history_table";
 import MyDailyGemBonusRow from "./my_daily_gem_bonus_table";
+import MyDefeatSessionRestrictionRow from "./my_defeat_session_restriction_table";
 import MyEndlessTravelAccessRow from "./my_endless_travel_access_table";
 import MyGemPurchasesRow from "./my_gem_purchases_table";
 import MyGemWalletRow from "./my_gem_wallet_table";
@@ -1093,6 +1096,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, MyDailyGemBonusRow),
+  myDefeatSessionRestriction: __table({
+    name: 'my_defeat_session_restriction',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MyDefeatSessionRestrictionRow),
   myEndlessTravelAccess: __table({
     name: 'my_endless_travel_access',
     indexes: [
@@ -1361,11 +1371,13 @@ const reducersSchema = __reducers(
 /** The schema information for all procedures in this module. This is defined the same way as the procedures would have been defined in the server. */
 const proceduresSchema = __procedures(
   __procedureSchema("begin_patreon_link", BeginPatreonLinkProcedure.params, BeginPatreonLinkProcedure.returnType),
+  __procedureSchema("dev_teleport_to_player", DevTeleportToPlayerProcedure.params, DevTeleportToPlayerProcedure.returnType),
   __procedureSchema("get_avatar_frames", GetAvatarFramesProcedure.params, GetAvatarFramesProcedure.returnType),
   __procedureSchema("get_balance_editor", GetBalanceEditorProcedure.params, GetBalanceEditorProcedure.returnType),
   __procedureSchema("get_chat_history", GetChatHistoryProcedure.params, GetChatHistoryProcedure.returnType),
   __procedureSchema("get_chat_history_with_reactions", GetChatHistoryWithReactionsProcedure.params, GetChatHistoryWithReactionsProcedure.returnType),
   __procedureSchema("get_chat_message_reactions", GetChatMessageReactionsProcedure.params, GetChatMessageReactionsProcedure.returnType),
+  __procedureSchema("get_developer_travel_target", GetDeveloperTravelTargetProcedure.params, GetDeveloperTravelTargetProcedure.returnType),
   __procedureSchema("get_guild_hub", GetGuildHubProcedure.params, GetGuildHubProcedure.returnType),
   __procedureSchema("get_guild_preview", GetGuildPreviewProcedure.params, GetGuildPreviewProcedure.returnType),
   __procedureSchema("get_guild_replay", GetGuildReplayProcedure.params, GetGuildReplayProcedure.returnType),

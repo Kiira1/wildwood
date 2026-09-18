@@ -708,3 +708,43 @@ it("stores a refresh grant after a verified callback and removes it on switching
   service.api.continueAsGuest();
   expect(local.getItem(`${keys.accountTokenKey}:refresh`)).toBeNull();
 });
+
+describe("kill-report session enforcement", () => {
+  afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
+  it("clears account credentials and requires interactive authentication without erasing the guest save", async () => {
+    const f = setup({ accountToken: accountToken(), knownAccount: true, signedIn: true, guestToken: "saved-guest" });
+    expect(f.service.handleDefeatRestriction("DEFEAT_SESSION_REAUTH")).toBe(true);
+    expect(f.local.getItem(keys.accountTokenKey)).toBeNull();
+    expect(f.local.getItem(keys.guestTokenKey)).toBe("saved-guest");
+    expect(f.service.canConnect()).toBe(false);
+    expect(f.disconnect).toHaveBeenCalledOnce();
+    f.setConnection(null as never);
+    await f.service.api.signIn();
+    const url = new URL(f.assign.mock.calls[0][0]);
+    expect(url.searchParams.get("prompt")).toBe("login");
+    expect(url.searchParams.get("max_age")).toBe("0");
+  });
+  it("holds a guest for 30 seconds, preserving their token and pending progress", () => {
+    vi.useFakeTimers();
+    const f = setup({ guestToken: "same-guest" });
+    const until = Date.now() + 30_000;
+    expect(f.service.handleDefeatRestriction(`DEFEAT_SESSION_COOLDOWN:${until}`)).toBe(true);
+    expect(f.service.canConnect()).toBe(false);
+    expect(f.local.getItem(keys.guestTokenKey)).toBe("same-guest");
+    expect(f.clearPendingProgress).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(29_999); expect(f.service.canConnect()).toBe(false);
+    vi.advanceTimersByTime(1); expect(f.service.canConnect()).toBe(true);
+    expect(f.setWorldEntryBlocked).toHaveBeenLastCalledWith(false);
+    expect(f.local.getItem(keys.guestTokenKey)).toBe("same-guest");
+  });
+  it("keeps a persisted cooldown on reload and does not classify it as an invalid guest token", () => {
+    vi.useFakeTimers();
+    const f = setup({ guestToken: "same-guest" });
+    f.local.setItem(`${keys.guestTokenKey}:defeat-block-until`, String(Date.now() + 12_000));
+    expect(f.service.canConnect()).toBe(false);
+    expect(f.service.onConnectError(false, new Error(`DEFEAT_SESSION_COOLDOWN:${Date.now() + 12_000}`))).toBe(true);
+    vi.advanceTimersByTime(12_000);
+    expect(f.service.canConnect()).toBe(true);
+    expect(f.local.getItem(keys.guestTokenKey)).toBe("same-guest");
+  });
+});

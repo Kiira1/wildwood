@@ -38,9 +38,11 @@ export async function prepareMapTransition(
   })());
 }
 
+type TeleportArrival = { mapId: string; x: number; y: number; facing: number };
+
 export type MapController = {
   teleportHome: () => Promise<boolean>;
-  teleportToMap: (destination: MapId, request: () => Promise<boolean>) => Promise<boolean>;
+  teleportToMap: (destination: MapId, request: () => Promise<boolean | TeleportArrival>) => Promise<boolean>;
   activePortal: () => MapPortal | null;
   secondaryPortal: () => MapPortal | null;
   portalIsUnlocked: (portal: MapPortal) => boolean;
@@ -162,9 +164,9 @@ export function createMapController(options: {
   if (!initialPortal) throw new Error("Tutorial map requires an introductory portal.");
   let portalCutscenePortal: MapPortal = initialPortal;
 
-  async function teleport(destination?: MapId, request?: () => Promise<boolean>) {
+  async function teleport(destination?: MapId, request?: () => Promise<boolean | TeleportArrival>) {
     if (!running() || player.hp <= 0 || isDueling() || mapTransitioning || portalCutscene.active) return false;
-    if (destination === getCurrentMapId()) return true;
+    if (destination === getCurrentMapId() && !request) return true;
     options.onTravelStarted?.();
     mapTransitioning = true;
     const attempt = ++mapLoadGeneration;
@@ -183,7 +185,8 @@ export function createMapController(options: {
         if (!current()) return false;
         const changed = request ? await request() : await changeMap("home_exterior", player.x, player.y);
         if (!current() || !changed) return false;
-        let state = localMapState();
+        const arrival = typeof changed === "object" ? changed : null;
+        let state = arrival ?? localMapState();
         while (current() && (!state || (destination ? state.mapId !== destination : (state.mapId === "home_exterior") === returning))) {
           await new Promise(resolve => setTimeout(resolve, 25));
           state = localMapState();
@@ -192,9 +195,13 @@ export function createMapController(options: {
         await options.prepareMapAssets(state.mapId as MapId);
         if (!current()) return false;
         // Re-read after loading: reconnect/reset may have replaced the arrival.
-        const latest = localMapState();
+        const latest = arrival ?? localMapState();
         if (!latest || latest.mapId !== state.mapId) return false;
-        loadMap(latest.mapId as MapId, latest.x, latest.y, latest.facing);
+        if (latest.mapId === getCurrentMapId()) {
+          player.x = latest.x; player.y = latest.y; player.facing = latest.facing;
+          player.moving = false;
+          guardPortalContainingPlayer();
+        } else loadMap(latest.mapId as MapId, latest.x, latest.y, latest.facing);
         snapCameraToPlayer(camera, player, viewport()); resetPresentationState();
         beginHomeTeleport(true);
         return true;

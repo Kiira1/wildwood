@@ -1,3 +1,4 @@
+import { watchDefeatSession } from "./coop/services/defeat-session-watch";
 import { consumeUpdateResumeMode } from "./coop/services/update-resume-browser";
 import { configureConnectionDiagnostics, recordConnectionDiagnostic, flushConnectionDiagnostics } from "./coop/services/connection-diagnostic-runtime";
 import { diagnosticWebSocket } from "./coop/services/diagnostic-websocket";
@@ -219,6 +220,7 @@ function recordLatency(startedAt: number) {
 
 function handleReducerFailure(action: string, error: unknown) {
   const message = reducerErrorMessage(error);
+  if (accountService.handleDefeatRestriction(message)) return;
   if (/active in another tab/i.test(message)) {
     recordConnectionDiagnostic("session-blocked", { detail: `${action}: ${message}` });
     startupTelemetryRuntime.failConnection("session-error");
@@ -388,6 +390,7 @@ const multiplayerSync = createMultiplayerSync({
 });
 
 const developerService = createDeveloperService({
+  drainPendingProgress: () => progressionService.drainPendingProgress(),
   reducers: reducerPort,
   notify: onChange,
   localIdentity: () => localIdentity,
@@ -726,6 +729,7 @@ function connect() {
       lastLatencyProbeStartedAt = 0;
       clearRealtimeCaches();
       if (!signedIn) accountService.storeGuestToken(token);
+      watchDefeatSession(conn, accountService.connectionCredential(), () => generation === connectionGeneration && connection === conn, message => accountService.handleDefeatRestriction(message));
       const protocolStartedAt = performance.now();
       void conn.reducers.registerProtocol({ protocolVersion: PROTOCOL_VERSION }).then(async () => {
         if (generation !== connectionGeneration || connection !== conn) return;

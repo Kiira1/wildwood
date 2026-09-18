@@ -17,6 +17,7 @@ export type ValidatedIdTokenClaims = {
   aud: string | string[];
   exp: number;
   iat: number;
+  auth_time?: number;
   nonce?: string;
 };
 
@@ -156,6 +157,7 @@ export function inspectSpacetimeIdToken(
     aud: audience as string | string[],
     exp: expiresAt,
     iat: issuedAt,
+    ...(numericDate(claims.auth_time) !== null ? { auth_time: claims.auth_time as number } : {}),
     ...(typeof claims.nonce === "string" ? { nonce: claims.nonce } : {}),
   };
 }

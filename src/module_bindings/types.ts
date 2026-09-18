@@ -268,6 +268,14 @@ export const DailyGemBonus = __t.object("DailyGemBonus", {
 });
 export type DailyGemBonus = __Infer<typeof DailyGemBonus>;
 
+export const DefeatSessionRestriction = __t.object("DefeatSessionRestriction", {
+  identity: __t.identity(),
+  revokedAtMicros: __t.u64(),
+  blockedUntilMicros: __t.u64(),
+  requireSignIn: __t.bool(),
+});
+export type DefeatSessionRestriction = __Infer<typeof DefeatSessionRestriction>;
+
 export const DevAccessAudit = __t.object("DevAccessAudit", {});
 export type DevAccessAudit = __Infer<typeof DevAccessAudit>;
 
@@ -1217,6 +1225,9 @@ export type MyCutsceneHistory = __Infer<typeof MyCutsceneHistory>;
 
 export const MyDailyGemBonus = __t.object("MyDailyGemBonus", {});
 export type MyDailyGemBonus = __Infer<typeof MyDailyGemBonus>;
+
+export const MyDefeatSessionRestriction = __t.object("MyDefeatSessionRestriction", {});
+export type MyDefeatSessionRestriction = __Infer<typeof MyDefeatSessionRestriction>;
 
 export const MyEndlessTravelAccess = __t.object("MyEndlessTravelAccess", {});
 export type MyEndlessTravelAccess = __Infer<typeof MyEndlessTravelAccess>;

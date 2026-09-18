@@ -7,11 +7,13 @@ import { type Infer as __Infer } from "spacetimedb";
 
 // Import all procedure arg schemas
 import * as BeginPatreonLinkProcedure from "../begin_patreon_link_procedure";
+import * as DevTeleportToPlayerProcedure from "../dev_teleport_to_player_procedure";
 import * as GetAvatarFramesProcedure from "../get_avatar_frames_procedure";
 import * as GetBalanceEditorProcedure from "../get_balance_editor_procedure";
 import * as GetChatHistoryProcedure from "../get_chat_history_procedure";
 import * as GetChatHistoryWithReactionsProcedure from "../get_chat_history_with_reactions_procedure";
 import * as GetChatMessageReactionsProcedure from "../get_chat_message_reactions_procedure";
+import * as GetDeveloperTravelTargetProcedure from "../get_developer_travel_target_procedure";
 import * as GetGuildHubProcedure from "../get_guild_hub_procedure";
 import * as GetGuildPreviewProcedure from "../get_guild_preview_procedure";
 import * as GetGuildReplayProcedure from "../get_guild_replay_procedure";
@@ -31,6 +33,8 @@ import * as SynchronizeMapShardProcedure from "../synchronize_map_shard_procedur
 
 export type BeginPatreonLinkArgs = __Infer<typeof BeginPatreonLinkProcedure.params>;
 export type BeginPatreonLinkResult = __Infer<typeof BeginPatreonLinkProcedure.returnType>;
+export type DevTeleportToPlayerArgs = __Infer<typeof DevTeleportToPlayerProcedure.params>;
+export type DevTeleportToPlayerResult = __Infer<typeof DevTeleportToPlayerProcedure.returnType>;
 export type GetAvatarFramesArgs = __Infer<typeof GetAvatarFramesProcedure.params>;
 export type GetAvatarFramesResult = __Infer<typeof GetAvatarFramesProcedure.returnType>;
 export type GetBalanceEditorArgs = __Infer<typeof GetBalanceEditorProcedure.params>;
@@ -41,6 +45,8 @@ export type GetChatHistoryWithReactionsArgs = __Infer<typeof GetChatHistoryWithR
 export type GetChatHistoryWithReactionsResult = __Infer<typeof GetChatHistoryWithReactionsProcedure.returnType>;
 export type GetChatMessageReactionsArgs = __Infer<typeof GetChatMessageReactionsProcedure.params>;
 export type GetChatMessageReactionsResult = __Infer<typeof GetChatMessageReactionsProcedure.returnType>;
+export type GetDeveloperTravelTargetArgs = __Infer<typeof GetDeveloperTravelTargetProcedure.params>;
+export type GetDeveloperTravelTargetResult = __Infer<typeof GetDeveloperTravelTargetProcedure.returnType>;
 export type GetGuildHubArgs = __Infer<typeof GetGuildHubProcedure.params>;
 export type GetGuildHubResult = __Infer<typeof GetGuildHubProcedure.returnType>;
 export type GetGuildPreviewArgs = __Infer<typeof GetGuildPreviewProcedure.params>;

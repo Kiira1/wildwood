@@ -91,16 +91,21 @@ export function releaseMapShard(ctx: any, identity: any) {
   ctx.db.shardSnapshotState.identity.delete(identity);
   ctx.db.mapShardMember.identity.delete(identity);
 }
-export function assignMapShard(ctx: any, player: any) {
+export function assignMapShard(ctx: any, player: any, preferredShardId?: bigint) {
   if (!rootShardingEnabled(ctx) || !player) return;
   if (player.mapId === HOME_EXTERIOR_MAP_ID) { releaseMapShard(ctx, player.identity); return; }
   const current = ctx.db.mapShardMember.identity.find(player.identity);
-  if (current?.mapId === player.mapId && current.shardId !== 0n) return;
-  if (current && current.mapId !== player.mapId) releaseMapShard(ctx, player.identity);
-  const chosen = selectMapShard(candidates(ctx, player.mapId), player.mapId);
+  if (current?.mapId === player.mapId && current.shardId !== 0n
+    && (preferredShardId === undefined || current.shardId === preferredShardId)) return;
+  const preferred = preferredShardId === undefined ? null : ctx.db.mapShard.id.find(preferredShardId);
+  if (preferredShardId !== undefined && (!preferred || preferred.mapId !== player.mapId || preferred.state !== "ready"))
+    throw new SenderError("Player's map is changing. Try again.");
+  if (preferred && preferred.occupants >= MAP_SHARD_CAPACITY) throw new SenderError("Player's map instance is full.");
+  if (current && (current.mapId !== player.mapId || preferredShardId !== undefined)) releaseMapShard(ctx, player.identity);
+  const chosen = preferred ?? selectMapShard(candidates(ctx, player.mapId), player.mapId);
   const member = {
     identity: player.identity, mapId: player.mapId, shardId: chosen ? BigInt(chosen.id) : 0n,
-    generation: current?.mapId === player.mapId ? current.generation : ctx.timestamp.microsSinceUnixEpoch,
+    generation: current?.mapId === player.mapId && preferredShardId === undefined ? current.generation : ctx.timestamp.microsSinceUnixEpoch,
     ready: false,
   };
   if (chosen) {

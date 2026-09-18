@@ -1,3 +1,4 @@
+import { DEFEAT_REAUTH } from "../../../shared/defeat-session";
 import { AccountRenewalRequired, createAccountTokenRenewal } from "./account-token-renewal";
 import { accountLogoutUrl } from "./account-logout";
 import { createAutoFarmResumeStore } from '../../app/auto-farm-resume';
@@ -454,6 +455,7 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
       // A late OAuth response must not restore credentials after Sign Out.
       if (signingOut) return "failed";
       renewal.save(result.id_token, result.refresh_token);
+      defeatSignInBlocked = false;
       rememberAccount();
       // Successful state/PKCE/nonce/token verification approves this session.
       // A missing UI-return marker after native activity recreation must not
@@ -514,7 +516,7 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
       }).toString();
       // Explicit sign-in must let the player choose email or Google again.
       // Automatic token renewal keeps the existing provider session seamless.
-      if (forceLogin) url.searchParams.set("prompt", "login");
+      if (forceLogin) { url.searchParams.set("prompt", "login"); url.searchParams.set("max_age", "0"); }
       dependencies.notify();
       if (isNativePreview()) {
         try {
@@ -585,6 +587,53 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
       }
       throw error;
     }
+  }
+
+  const defeatCooldownKey = `${keys.guestTokenKey}:defeat-block-until`;
+  let defeatCooldownTimer: ReturnType<typeof setTimeout> | null = null;
+  let defeatSignInBlocked = false;
+  function waitForDefeatCooldown(until: number) {
+    if (defeatCooldownTimer !== null) clearTimeout(defeatCooldownTimer);
+    dependencies.setWorldEntryBlocked(true);
+    notice = "KILL REPORT EXCEEDED LIMIT · RECONNECTING IN 30 SECONDS";
+    defeatCooldownTimer = setTimeout(() => {
+      defeatCooldownTimer = null;
+      try { localStorage.removeItem(defeatCooldownKey); } catch {}
+      if (defeatSignInBlocked || signingOut) return;
+      dependencies.setWorldEntryBlocked(false);
+      notice = "RECONNECTING";
+      dependencies.notify();
+      dependencies.scheduleReconnect(0);
+    }, Math.max(1, until - Date.now()));
+  }
+  function handleDefeatRestriction(error: unknown) {
+    const message = dependencies.errorMessage(error);
+    const reauth = message.includes(DEFEAT_REAUTH);
+    const cooldown = message.match(/DEFEAT_SESSION_COOLDOWN:(\d+)/);
+    if (!reauth && !cooldown) return false;
+    if (reauth && defeatSignInBlocked) return true;
+    if (reauth) {
+      defeatSignInBlocked = true;
+      clearStoredToken(keys.accountTokenKey); // In-flight renewals verify this token is unchanged.
+      renewal.clear();
+      sessionApproved = false; guestSessionExplicit = false; updateResumePending = false;
+      lastPlayableSessionMode = null; takeoverRequested = false;
+      clearAccountReturnPending(); clearAuthTransaction();
+      clearTabValue(keys.accountLinkKey); clearAccountMigrationPending();
+      dependencies.updateResumeStore.clear();
+      dependencies.setWorldEntryBlocked(true);
+      notice = "KILL REPORT EXCEEDED LIMIT · SIGN IN AGAIN";
+    } else {
+      const until = Date.now() + Math.min(30_000, Math.max(1, Number(cooldown![1]) - Date.now()));
+      try { localStorage.setItem(defeatCooldownKey, String(until)); } catch {}
+      waitForDefeatCooldown(until);
+    }
+    createAutoFarmResumeStore(() => localStorage).clear();
+    dependencies.disconnectVirtualPlayers();
+    // Keep the guest token and all saved progress. A retry must use this account.
+    dependencies.connection()?.disconnect();
+    dependencies.notify();
+    return true;
   }
 
   const api = {
@@ -781,6 +830,7 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
 
   return {
     api,
+    handleDefeatRestriction,
     accountToken,
     connectionToken,
     connectionCredential: renewal.stored,
@@ -880,6 +930,11 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
       }
     },
     canConnect() {
+      if (!renewal.stored()) {
+        let until = 0;
+        try { until = Number(localStorage.getItem(defeatCooldownKey)) || 0; } catch {}
+        if (until > Date.now()) { if (defeatCooldownTimer === null) waitForDefeatCooldown(until); return false; }
+      }
       if (signingOut) return false;
       if (outboundAuthNavigationPending || callbackPending) return false;
       if (!renewal.stored() && !guestToken() && !guestSessionExplicit) return false;
@@ -896,6 +951,7 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
       return true;
     },
     onConnectError(signedIn: boolean, error: Error) {
+      if (handleDefeatRestriction(error)) return true;
       const rejectedToken = /\b401\b|\b403\b|unauthorized|forbidden|invalid token/i.test(String(error?.message || error));
       if (!rejectedToken) return false;
       recordConnectionDiagnostic("session-blocked", { detail: `authentication-rejected: ${error.message}` });

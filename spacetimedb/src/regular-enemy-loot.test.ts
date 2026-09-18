@@ -31,7 +31,7 @@ it("calculates stats and independent loot rolls once in one transaction", () => 
   expect(f.ctx.random.integerInRange).toHaveBeenCalledTimes(60);
 });
 it.each([
-  { enemies: [{ enemy, count: 0 }] }, { enemies: [{ enemy, count: 101 }] }, { sequence: 2n },
+  { enemies: [{ enemy, count: 0 }] }, { sequence: 2n },
   { enemies: [{ enemy: "Spitter", count: 1 }] }, { enemies: [{ enemy, count: 1 }, { enemy, count: 1 }] },
   { mapId: "cloudspire" },
 ])("rejects invalid identities/counts without consuming a receipt %s", change => {
@@ -68,17 +68,16 @@ it("allows grouped kills and acknowledges excess without granting rewards across
   // A retry of the consumed report cannot later turn excess claims into rewards.
 
   f.ctx.timestamp = new Timestamp(f.ctx.timestamp.microsSinceUnixEpoch + 4_000_000n);
-  f.run(server.recordEnemyDefeats, next);
+  expect(() => f.run(server.recordEnemyDefeats, next)).toThrow("DEFEAT_SESSION_COOLDOWN");
   expect(f.db.playerProgress.identity.find(f.ctx.sender).damage).toBe(before);
-  f.run(server.recordEnemyDefeats, { ...next, sequence: 2n });
-  expect(f.db.playerProgress.identity.find(f.ctx.sender).damage).toBeGreaterThan(before);
+  expect(f.db.playerController.identity.find(f.ctx.sender)).toBeNull();
 });
 it.each(["recordCombatCheckpoint", "recordRegularEnemyDefeats", "recordForestEnemyDefeat", "recordDesertEnemyDefeat", "recordSnowEnemyDefeat", "recordLavaEnemyDefeat"])("closes obsolete reward endpoint %s", reducer => {
   const f = fixture();
   expect(() => f.run((server as any)[reducer], { ...batch, count: 1, progress: { damage: 1e25 } })).toThrow("updated");
 });
 
-it("consumes a 100-kill Endless report exceeding the 91-kill capacity without trapping later travel", () => {
+it("consumes a 100-kill Endless report exceeding the 91-kill capacity and blocks the session with its receipt committed", () => {
   const f = fixture();
   f.patch("player", { mapId: "endless_1" });
   const definition = enemyDefeatDefinition("endless_1", "site:0")!;
@@ -87,12 +86,9 @@ it("consumes a 100-kill Endless report exceeding the 91-kill capacity without tr
   const report = { ...batch, mapId: "endless_1", enemies: [{ enemy: "site:0", count: 100 }] };
   f.run(server.recordEnemyDefeats, report);
   expect(f.db.playerLifetime.identity.find(f.ctx.sender).enemyKills).toBe(BigInt(capacity));
-  f.run(server.recordEnemyDefeats, report);
+  expect(() => f.run(server.recordEnemyDefeats, report)).toThrow("DEFEAT_SESSION_COOLDOWN");
   expect(f.db.playerLifetime.identity.find(f.ctx.sender).enemyKills).toBe(BigInt(capacity));
-  f.run(server.recordEnemyDefeats, { ...report, sequence: 2n, enemies: [{ enemy: "site:1", count: 1 }] });
-  expect(f.db.playerLifetime.identity.find(f.ctx.sender).enemyKills).toBe(BigInt(capacity + 1));
-  f.patch("player", { mapId: "home_exterior" });
-  expect(() => f.run(server.recordEnemyDefeats, report)).not.toThrow();
+  expect(f.db.regularEnemyLootCursor.key.find(`${f.ctx.sender.toHexString()}:${report.streamId}`).sequence).toBe(1n);
 });
 
 it('rolls pinned server drop chances instead of the current compiled table', () => {

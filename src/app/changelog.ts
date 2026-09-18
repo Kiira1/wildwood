@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.744": [
+    "Improved server validation and account security.",
+  ],
   "0.743": [
     "Guild opponents now show their total guild power beside their names.",
     "Expanded live map balancing to cover item drop chances, respawn timing, and boss regeneration. These controls do not change the current balance by themselves.",
@@ -2074,6 +2077,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.744": "2026-09-18",
   "0.743": "2026-09-18",
   "0.742": "2026-09-18",
   "0.741": "2026-09-18",

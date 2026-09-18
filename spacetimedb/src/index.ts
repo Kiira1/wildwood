@@ -1,3 +1,5 @@
+import { defeatSessionRestriction, defeatRestrictionError, requireAllowedDefeatSession, restrictDefeatSession } from "./defeat-session";
+import { findDeveloperTravelTarget, readDeveloperTravelTarget, readShardTravelPosition } from "./developer-travel";
 import { mapBalanceVersion, mapBalanceHead, playerMapBalance, balanceEditorState, saveMapBalance, pinMapBalance, pinnedMapBalance, pinnedBossReward } from "./map-balance";
 import { resolveMapBalance, validateBalanceSettings } from "../../shared/map-balance";
 import { accountDeletionRequest, queueAccountDeletion } from "./account-deletion";
@@ -1721,6 +1723,7 @@ const shardCoordinatorSchedule = table(
   { scheduledId: t.u64().primaryKey(), scheduledAt: t.scheduleAt() },
 );
 const spacetimedb = schema({
+  defeatSessionRestriction,
   mapBalanceVersion, mapBalanceHead, playerMapBalance,
   ...moderationTables,
   publicChatCursor,
@@ -3620,6 +3623,7 @@ function sessionForContext(ctx: any) {
 }
 
 function requireSession(ctx: any) {
+  requireAllowedDefeatSession(ctx);
   const session = sessionForContext(ctx);
   if (!session || !sameIdentity(session.identity, ctx.sender)) {
     throw new SenderError(LEGACY_CLIENT_ERRORS.protocolUpdate);
@@ -4435,6 +4439,7 @@ function removeVirtualPlayerData(ctx: any, identity: any, adjustPresence = true,
   removeResearchCompletionSchedules(ctx, identity);
   removePlayerItemUpgradeData(ctx, identity, true);
   if (ctx.db.playerAccountStatus.identity.find(identity)) deleteSnapshotRow(ctx, "playerAccountStatus", identity);
+  if (ctx.db.defeatSessionRestriction.identity.find(identity)) ctx.db.defeatSessionRestriction.identity.delete(identity);
   if (ctx.db.playerLegalConsent.identity.find(identity)) ctx.db.playerLegalConsent.identity.delete(identity);
   if (ctx.db.playerLifetime.identity.find(identity)) ctx.db.playerLifetime.identity.delete(identity);
   if (ctx.db.playerNameCooldown.identity.find(identity)) ctx.db.playerNameCooldown.identity.delete(identity);
@@ -4533,6 +4538,7 @@ function removePlayerIdentityData(ctx: any, identity: any) {
   removePlayerItemUpgradeData(ctx, identity, true);
 
   if (ctx.db.playerAccountStatus.identity.find(identity)) deleteSnapshotRow(ctx, "playerAccountStatus", identity);
+  if (ctx.db.defeatSessionRestriction.identity.find(identity)) ctx.db.defeatSessionRestriction.identity.delete(identity);
   if (ctx.db.playerLegalConsent.identity.find(identity)) ctx.db.playerLegalConsent.identity.delete(identity);
   if (ctx.db.playerLifetime.identity.find(identity)) ctx.db.playerLifetime.identity.delete(identity);
   if (ctx.db.playerNameCooldown.identity.find(identity)) ctx.db.playerNameCooldown.identity.delete(identity);
@@ -6506,6 +6512,10 @@ function enterWorldPresence(ctx: any, tabId: string, forceTakeover = false, supp
 }
 
 export const onConnect = spacetimedb.clientConnected((ctx) => {
+  // Deny game-session admission before initialization work. Leave the notice
+  // readable so clients can disconnect without mistaking this for an expired
+  // guest token and creating a new guest account.
+  if (defeatRestrictionError(ctx)) return;
   ensureMaintenanceSchedule(ctx);
   // Initialization and balance reconciliation run once per module version.
   runPendingModuleMigrations(ctx);
@@ -9896,7 +9906,15 @@ export const recordEnemyDefeats = spacetimedb.reducer(
     const player = requireControllingPlayer(ctx);
     if (isMapShard(ctx) || activeDuelFor(ctx, ctx.sender)) throw new SenderError("Enemy rewards require your account world connection.");
     const accepted = acceptEnemyDefeats(ctx, batch, player.mapId, earned => maximumBossCombatForProgress(ctx, earned));
-    if (!accepted || !accepted.count) return;
+    if (!accepted) return;
+    const enforce = () => {
+      if (!accepted.violations.length) return;
+      restrictDefeatSession(ctx, { mapId: batch.mapId, streamId: batch.streamId,
+        sequence: batch.sequence.toString(), violations: accepted.violations });
+      finishLifetimeSession(ctx, ctx.sender);
+      removeIdentityPresence(ctx, ctx.sender);
+    };
+    if (!accepted.count) { enforce(); return; }
     const base = ctx.db.playerProgress.identity.find(ctx.sender) ?? defaultPlayerProgress(ctx.sender);
     if (accepted.rewards.some(reward => reward.type !== "boss")) {
       const next = applyEnemyRewards(base, accepted.rewards, researchStatRewardMultiplier(ctx.db.playerResearch.identity.find(ctx.sender)));
@@ -9926,6 +9944,7 @@ export const recordEnemyDefeats = spacetimedb.reducer(
     }
     const lifetime = ensurePlayerLifetime(ctx);
     ctx.db.playerLifetime.identity.update({ ...lifetime, enemyKills: lifetime.enemyKills + BigInt(accepted.count) });
+    enforce();
   },
 );
 
@@ -9958,6 +9977,11 @@ export const recordSnowEnemyDefeat = spacetimedb.reducer({}, ctx => { requireCon
 });
 export const recordLavaEnemyDefeat = spacetimedb.reducer({}, ctx => { requireControllingPlayer(ctx); throw new SenderError("WildStat updated. Refresh to continue.");
 });
+
+export const myDefeatSessionRestriction = spacetimedb.view(
+  { name: "my_defeat_session_restriction", public: true }, t.array(defeatSessionRestriction.rowType),
+  ctx => { const row = ctx.db.defeatSessionRestriction.identity.find(ctx.sender); return row ? [row] : []; },
+);
 
 export const myOnboarding = spacetimedb.view(
   { name: "my_onboarding", public: true }, t.array(playerOnboarding.rowType),
@@ -11223,6 +11247,36 @@ export const devSetEndlessTravelAccess = spacetimedb.reducer(
     else if (!enabled && existing) ctx.db.endlessTravelAccess.identity.delete(identity);
   },
 );
+
+export const getDeveloperTravelTarget = spacetimedb.procedure({ query: t.string() }, t.string(), (ctx, { query }) => ctx.withTx(tx => {
+  requireDeveloper(tx);
+  const target = findDeveloperTravelTarget(tx, query);
+  return JSON.stringify({ identity: target.identity.toHexString(), displayName: target.displayName, mapId: target.mapId });
+}));
+
+export const devTeleportToPlayer = spacetimedb.procedure({ identity: t.identity(), mapId: t.string() }, t.string(), (ctx, args) => {
+  const target = ctx.withTx(tx => {
+    requireDeveloper(tx);
+    if (activeDuelFor(tx, tx.sender)) throw new SenderError("Finish the duel before teleporting.");
+    if (activeDuelFor(tx, args.identity)) throw new SenderError("Player is in a duel. Try again afterward.");
+    return readDeveloperTravelTarget(tx, args.identity, args.mapId);
+  });
+  const position = readShardTravelPosition(ctx, target);
+  return ctx.withTx(tx => {
+    requireDeveloper(tx);
+    const current = requireControllingPlayer(tx);
+    if (current.hp <= 0 || activeDuelFor(tx, tx.sender)) throw new SenderError("Teleport unavailable while dead or dueling.");
+    if (activeDuelFor(tx, args.identity)) throw new SenderError("Player is in a duel. Try again afterward.");
+    const latest = readDeveloperTravelTarget(tx, args.identity, args.mapId);
+    if (latest.shardId !== target.shardId || latest.generation !== target.generation)
+      throw new SenderError("Player moved to another instance. Try again.");
+    // Choose their instance before the normal transition assigns one for us.
+    if (latest.shardId !== undefined) assignMapShard(tx, { ...current, mapId: latest.mapId }, latest.shardId);
+    const moved = transitionPlayerMap(tx, current, latest.mapId, position ?? latest, latest.facing);
+    persistWorldLocation(tx, moved);
+    return JSON.stringify({ mapId: moved.mapId, x: moved.x, y: moved.y, facing: moved.facing });
+  });
+});
 
 export const devTeleportEndless = spacetimedb.reducer(
   { number: t.f64() }, (ctx, { number }) => {

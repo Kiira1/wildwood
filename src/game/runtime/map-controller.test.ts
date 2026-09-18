@@ -108,6 +108,18 @@ function portalArrivalHarness(destinationArrival: { x: number; y: number }) {
 afterEach(() => { vi.unstubAllGlobals(); endHomeTeleport(); vi.useRealTimers(); });
 
 describe("developer direct travel", () => {
+  it("teleports within the same map using the confirmed position even while the local table is stale", async () => {
+    vi.useFakeTimers();
+    const f = portalArrivalHarness({ x: 300, y: 400 });
+    f.setServerMap({ mapId: "tutorial_forest", x: 100, y: 100, facing: 0 });
+    const request = vi.fn(async () => ({ mapId: "tutorial_forest", x: 1800, y: 1900, facing: 1 }));
+    const pending = f.controller.teleportToMap("tutorial_forest", request);
+    await vi.advanceTimersByTimeAsync(650);
+    expect(await pending).toBe(true);
+    expect(request).toHaveBeenCalledOnce();
+    expect(f.player).toMatchObject({ x: 1800, y: 1900, facing: 1 });
+  });
+
   it("waits for server arrival and lazy art before switching to Endless 40", async () => {
     vi.useFakeTimers();
     const f = portalArrivalHarness({ x: 300, y: 400 });

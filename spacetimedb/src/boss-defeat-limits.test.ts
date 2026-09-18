@@ -6,6 +6,15 @@ import { crystalFixture, server } from "../../tests/helpers/crystal-hollows-fixt
 import { itemDamageMultiplierBonus } from "../../shared/items";
 import { personalBossDefinition } from "../../shared/personal-bosses";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
+// This suite probes the arithmetic repeatedly on one clock, including rejected
+// claims. Session enforcement is covered separately in defeat-session.test.ts.
+vi.mock("./enemy-defeats", async importOriginal => {
+  const original = await importOriginal<typeof import("./enemy-defeats")>();
+  return { ...original, acceptEnemyDefeats: (...args: Parameters<typeof original.acceptEnemyDefeats>) => {
+    const result = original.acceptEnemyDefeats(...args);
+    return result ? { ...result, violations: [] } : result;
+  } };
+});
 
 function fixture(mapId = "tutorial_forest", fightSeconds = 100) {
   const f = crystalFixture();

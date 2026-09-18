@@ -1,3 +1,4 @@
+import { createPlayerTravelControl } from "./player-travel-control";
 import { createOtaPanel } from './ota-panel';
 import { createBalanceEditorPanel, type BalanceEditorDependencies } from "./balance-editor-panel";
 import { createModerationHistoryPanel, type ModerationHistoryLoader } from "./moderation-history-panel";
@@ -42,6 +43,7 @@ type VirtualPlayerLoadTestState = {
 };
 
 type DevPanelDependencies = {
+  teleportPlayer: (query: string) => Promise<void>;
   balance: BalanceEditorDependencies;
   forestPrototype: ForestPrototypePanelDependencies;
   isDeveloper: () => boolean;
@@ -82,6 +84,7 @@ export function createDevPanelController(dependencies: DevPanelDependencies) {
     cutscenes: requiredElement("devCutscenesPanel"),
     performance: requiredElement("devPerformancePanel"),
   };
+  const playerTravel = createPlayerTravelControl(tabPanels.controls, { allowed: dependencies.isDeveloper, travel: dependencies.teleportPlayer, showMessage: dependencies.showMessage });
   const ota = createOtaPanel(tabPanels.controls);
   const balance = createBalanceEditorPanel(tabPanels.balance, dependencies.balance);
   const moderation = createModerationHistoryPanel(tabPanels.moderation, dependencies.loadModerationHistory);
@@ -230,6 +233,7 @@ export function createDevPanelController(dependencies: DevPanelDependencies) {
 
   function setDeveloperAccess(developer: boolean) {
     ota.setDeveloperAccess(developer);
+    playerTravel.render();
     settingsRow.hidden = !developer;
     button.hidden = !developer;
     if (!developer) { close(); forestPrototype.clear(); }

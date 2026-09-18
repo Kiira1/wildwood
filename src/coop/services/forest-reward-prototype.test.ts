@@ -15,7 +15,7 @@ function fixture() {
   } as unknown as ReducerPort;
   const notify = vi.fn();
   const service = createDeveloperService({
-    reducers: port, notify, localIdentity: () => local, localDbIdentity: () => null, profileIdentityFor: () => undefined,
+    drainPendingProgress: async () => true, reducers: port, notify, localIdentity: () => local, localDbIdentity: () => null, profileIdentityFor: () => undefined,
   });
   return { service, reducers, notify, switchAccount: () => { local = "guest"; service.clearSession(); }, block: () => { blocked = true; } };
 }

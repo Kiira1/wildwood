@@ -1512,6 +1512,20 @@ import {
 
   const devPanel = createDevPanel({
     coop,
+    teleportPlayer: async (query: string) => {
+      if (!coop?.isDeveloper?.()) throw new Error("Developer access required.");
+      const target = await coop.findTeleportPlayer(query);
+      autoFarm.stop("Autofarm stopped for teleport");
+      let failure = "Teleport unavailable. Try again.";
+      const changed = await mapController.teleportToMap(target.mapId as MapId, async () => {
+        try { return await coop.devTeleportToPlayer(target.identity, target.mapId); }
+        catch (error) { failure = error instanceof Error ? error.message : failure; return false; }
+      });
+      if (!changed) throw new Error(failure);
+      settingsPanel.hidden = true;
+      settingsBtn.setAttribute("aria-expanded", "false");
+      devPanel.close();
+    },
     teleportEndless: async (number: number) => {
       if (!coop?.canTeleportEndless?.()) return false;
       autoFarm.stop("Autofarm stopped for teleport");
