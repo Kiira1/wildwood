@@ -737,6 +737,17 @@ describe("kill-report session enforcement", () => {
     expect(f.setWorldEntryBlocked).toHaveBeenLastCalledWith(false);
     expect(f.local.getItem(keys.guestTokenKey)).toBe("same-guest");
   });
+  it("respects a seven-day administrative suspension without retrying every 30 seconds", () => {
+    vi.useFakeTimers();
+    const f = setup({ guestToken: "same-guest" });
+    const week = 7 * 86_400_000;
+    f.service.handleDefeatRestriction(`DEFEAT_SESSION_COOLDOWN:${Date.now() + week}`);
+    expect(f.service.api.accountState().notice).toContain("ACCOUNT SUSPENDED UNTIL");
+    vi.advanceTimersByTime(30_000);
+    expect(f.service.canConnect()).toBe(false);
+    vi.advanceTimersByTime(week - 30_000);
+    expect(f.service.canConnect()).toBe(true);
+  });
   it("keeps a persisted cooldown on reload and does not classify it as an invalid guest token", () => {
     vi.useFakeTimers();
     const f = setup({ guestToken: "same-guest" });

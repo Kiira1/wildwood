@@ -119,6 +119,10 @@ describe("public chat moderation", () => {
     expect(isPublicDisplayNameAllowed("WantSex")).toBe(false);
     expect(isPublicDisplayNameAllowed("Sex Education")).toBe(true);
     expect(isPublicDisplayNameAllowed("Niger Explorer")).toBe(true);
+    expect(isPublicDisplayNameAllowed("NiggerSlayer")).toBe(false);
+    expect(isPublicDisplayNameAllowed("N1gg3r_Slayer")).toBe(false);
+    expect(isPublicDisplayNameAllowed("N word Slayer")).toBe(false);
+    expect(isPublicDisplayNameAllowed("Potato slayer")).toBe(true);
   });
 
   it("replaces moderated content without retaining the original text", () => {

@@ -73,6 +73,7 @@ import DevResetDailyGemBonusReducer from "../dev_reset_daily_gem_bonus_reducer";
 import DevRollbackPlayerProgressionReducer from "../dev_rollback_player_progression_reducer";
 import DevSetAccessAuditLabelReducer from "../dev_set_access_audit_label_reducer";
 import DevSetEndlessTravelAccessReducer from "../dev_set_endless_travel_access_reducer";
+import DevSuspendPlayerAccountReducer from "../dev_suspend_player_account_reducer";
 import DevTeleportEndlessReducer from "../dev_teleport_endless_reducer";
 import DevUpdatePlayerSaveReducer from "../dev_update_player_save_reducer";
 import DisconnectPatreonReducer from "../disconnect_patreon_reducer";
@@ -221,6 +222,7 @@ export type DevResetDailyGemBonusParams = __Infer<typeof DevResetDailyGemBonusRe
 export type DevRollbackPlayerProgressionParams = __Infer<typeof DevRollbackPlayerProgressionReducer>;
 export type DevSetAccessAuditLabelParams = __Infer<typeof DevSetAccessAuditLabelReducer>;
 export type DevSetEndlessTravelAccessParams = __Infer<typeof DevSetEndlessTravelAccessReducer>;
+export type DevSuspendPlayerAccountParams = __Infer<typeof DevSuspendPlayerAccountReducer>;
 export type DevTeleportEndlessParams = __Infer<typeof DevTeleportEndlessReducer>;
 export type DevUpdatePlayerSaveParams = __Infer<typeof DevUpdatePlayerSaveReducer>;
 export type DisconnectPatreonParams = __Infer<typeof DisconnectPatreonReducer>;

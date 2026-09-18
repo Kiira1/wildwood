@@ -18,8 +18,30 @@ export function defeatRestrictionError(ctx: Pick<GameReducerContext, "db" | "sen
       return `${DEFEAT_REAUTH}: Kill report exceeded the server allowance. Sign in again.`;
   }
   if (ctx.timestamp.microsSinceUnixEpoch < row.blockedUntilMicros)
-    return `${DEFEAT_COOLDOWN}:${row.blockedUntilMicros / 1000n}: Kill report exceeded the server allowance. Reconnect after 30 seconds.`;
+    return `${DEFEAT_COOLDOWN}:${row.blockedUntilMicros / 1000n}: Account access temporarily restricted.`;
   return null;
+}
+
+/** Owner-authorized fixed deadline: retrying the same action cannot extend it. */
+export function suspendPlayerAccount(ctx: GameReducerContext, args: {
+  identity: GameReducerContext['sender']; expectedDisplayName: string; untilMicros: bigint; reason: string;
+}) {
+  const profile = ctx.db.playerProfile.identity.find(args.identity);
+  const now = ctx.timestamp.microsSinceUnixEpoch;
+  if (!profile || profile.displayName !== args.expectedDisplayName) throw new SenderError("Suspension target changed or was not found.");
+  if (args.untilMicros <= now || args.untilMicros > now + 7n * 86_400_000_000n || !args.reason.trim() || args.reason.length > 500)
+    throw new SenderError("Choose a suspension of at most seven days and a reason.");
+  const prior = ctx.db.defeatSessionRestriction.identity.find(args.identity);
+  if (prior && prior.blockedUntilMicros >= args.untilMicros) return;
+  const next = { identity: args.identity, revokedAtMicros: now, requireSignIn: false, blockedUntilMicros: args.untilMicros };
+  if (prior) ctx.db.defeatSessionRestriction.identity.update(next); else ctx.db.defeatSessionRestriction.insert(next);
+  for (const session of ctx.db.playerSession.byIdentity.filter(args.identity))
+    ctx.db.playerSession.connectionId.update({ ...session, enteredWorld: false, protocolVersion: 0 });
+  if (ctx.db.playerController.identity.find(args.identity)) ctx.db.playerController.identity.delete(args.identity);
+  const json = (value: unknown) => JSON.stringify(value, (_key, value) => typeof value === "bigint" ? value.toString() : value);
+  recordModerationAction(ctx, { targetIdentity: args.identity.toHexString(), targetName: profile.displayName,
+    channel: "account", action: "Account suspended", reason: args.reason, actorType: "owner", rule: "owner-account-suspension",
+    before: json(prior), after: json(next) });
 }
 
 export function requireAllowedDefeatSession(ctx: GameReducerContext) {

@@ -126,7 +126,7 @@ export function normalizeModerationText(message: string) {
     .replace(/(^| )f+\s*(?:u+\s*)?c+\s*k+(?= |$)/g, "$1fuck");
 }
 
-export const MODERATION_RULE_VERSION = "content-filter-v3";
+export const MODERATION_RULE_VERSION = "content-filter-v4";
 
 export function chatModerationReason(message: string): string | null {
   const folded = foldForModeration(message);
@@ -150,6 +150,9 @@ export function displayNameModerationReason(displayName: string): string | null 
   const reason = chatModerationReason(displayName);
   if (reason) return reason;
   const compact = normalizeModerationText(displayName).replace(/\s/g, "");
+  // Compound usernames have no word boundaries: appending a title must not
+  // make this racial slur acceptable. Keep this separate from chat discussion.
+  if (/(?:n+i+g+g+(?:e+r+|a+)|nword(?:slayer|killer))/.test(compact)) return "Hateful username";
   return CHILD_NUDITY_NAME_PATTERN.test(compact) ? "Sexualized reference to a child" : null;
 }
 

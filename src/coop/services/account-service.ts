@@ -595,7 +595,9 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
   function waitForDefeatCooldown(until: number) {
     if (defeatCooldownTimer !== null) clearTimeout(defeatCooldownTimer);
     dependencies.setWorldEntryBlocked(true);
-    notice = "KILL REPORT EXCEEDED LIMIT · RECONNECTING IN 30 SECONDS";
+    notice = until - Date.now() > 30_000
+      ? `ACCOUNT SUSPENDED UNTIL ${new Date(until).toLocaleString()}`
+      : "KILL REPORT EXCEEDED LIMIT · RECONNECTING IN 30 SECONDS";
     defeatCooldownTimer = setTimeout(() => {
       defeatCooldownTimer = null;
       try { localStorage.removeItem(defeatCooldownKey); } catch {}
@@ -624,7 +626,7 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
       dependencies.setWorldEntryBlocked(true);
       notice = "KILL REPORT EXCEEDED LIMIT · SIGN IN AGAIN";
     } else {
-      const until = Date.now() + Math.min(30_000, Math.max(1, Number(cooldown![1]) - Date.now()));
+      const until = Date.now() + Math.min(7 * 86_400_000, Math.max(1, Number(cooldown![1]) - Date.now()));
       try { localStorage.setItem(defeatCooldownKey, String(until)); } catch {}
       waitForDefeatCooldown(until);
     }

@@ -1,4 +1,4 @@
-import { defeatSessionRestriction, defeatRestrictionError, requireAllowedDefeatSession, restrictDefeatSession } from "./defeat-session";
+import { defeatSessionRestriction, defeatRestrictionError, requireAllowedDefeatSession, restrictDefeatSession, suspendPlayerAccount } from "./defeat-session";
 import { findDeveloperTravelTarget, readDeveloperTravelTarget, readShardTravelPosition } from "./developer-travel";
 import { mapBalanceVersion, mapBalanceHead, playerMapBalance, balanceEditorState, saveMapBalance, pinMapBalance, pinnedMapBalance, pinnedBossReward } from "./map-balance";
 import { resolveMapBalance, validateBalanceSettings } from "../../shared/map-balance";
@@ -9246,6 +9246,16 @@ export const setSkinTone = spacetimedb.reducer(
   },
 );
 
+export const devSuspendPlayerAccount = spacetimedb.reducer(
+  { identity: t.identity(), expectedDisplayName: t.string(), untilMicros: t.u64(), reason: t.string() },
+  (ctx, args) => {
+    if (!isDatabaseOwnerIdentity(ctx.sender) || isMapShard(ctx)) throw new SenderError("Account database owner required.");
+    suspendPlayerAccount(ctx, args);
+    finishLifetimeSession(ctx, args.identity);
+    removeIdentityPresence(ctx, args.identity);
+  },
+);
+
 export const devRollbackPlayerProgression = spacetimedb.reducer(
   { identity: t.identity(), expectedDisplayName: t.string(), operationId: t.string(), baselineJson: t.string(), reason: t.string() },
   (ctx, args) => rollbackPlayerProgression(ctx, args, {
@@ -9255,6 +9265,12 @@ export const devRollbackPlayerProgression = spacetimedb.reducer(
     },
     apply: (progress, mapIndex) => {
       writeProgressAndPresentation(ctx, progress);
+      // Old shared-boss evidence must not restore revoked map access on login.
+      for (const [boss, bit] of Object.entries(BOSS_REWARD_CLAIM_BITS)) {
+        if (progress.bossRewardClaims & bit) continue;
+        (ctx.db as any)[`${boss}Contribution`].identity.delete(args.identity);
+        (ctx.db as any)[`${boss}AttackWindow`].identity.delete(args.identity);
+      }
       const procedural = ctx.db.proceduralProgress.identity.find(args.identity);
       if (procedural) ctx.db.proceduralProgress.identity.update({ ...procedural, completed: 0 });
       const history = ctx.db.playerCutsceneHistory.identity.find(args.identity);

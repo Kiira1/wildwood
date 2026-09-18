@@ -25,6 +25,7 @@ it("restores only progression, locks retained gear, moves home and records an at
   f.seed("regularEnemyLootCursor", { key: "accepted", identity: f.target, sequence: 20n });
   f.seed("enemyDefeatBudget", { key: "old-credit", identity: f.target, tokens: 300, updatedAtMicros: 1n });
   f.seed("playerCutsceneHistory", { identity: f.target, seenMask: 32767, generation: 1 });
+  f.seed("prismshellContribution", { identity: f.target, encounter: 7n, displayName: "Test Player", damage: 999 });
   f.run(server.devRollbackPlayerProgression, f.args);
   const next = f.db.playerProgress.identity.find(f.target);
   expect(next).toMatchObject({ damage: 1000, maxHp: 2000, regen: 10, armor: 10, moonfenUnlocked: true,
@@ -36,6 +37,7 @@ it("restores only progression, locks retained gear, moves home and records an at
   expect(f.db.playerGemWallet.identity.find(f.target).balance).toBe(999n);
   expect(f.db.regularEnemyLootCursor.key.find("accepted").sequence).toBe(20n);
   expect(f.db.enemyDefeatBudget.key.find("old-credit")).toBeNull();
+  expect(f.db.prismshellContribution.identity.find(f.target)).toBeNull();
   expect(f.db.playerCutsceneHistory.identity.find(f.target).generation).toBe(2);
   const audit = [...f.db.moderationAction.iter()][0];
   expect(JSON.parse(audit.before).progress.damage).toBe(10000);

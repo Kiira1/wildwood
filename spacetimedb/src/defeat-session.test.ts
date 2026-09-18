@@ -75,3 +75,22 @@ it("enforces impossible boss claims and releases regional admission", () => {
   expect(f.db.mapShardMember.identity.find(f.ctx.sender)).toBeNull();
   expect(f.db.proceduralProgress.identity.find(f.ctx.sender)).toBeNull();
 });
+
+it("only lets the owner suspend the named account and enforces the entire week even with fresh authentication", async () => {
+  const { Identity } = await import("spacetimedb");
+  const f = fixture(true), target = f.ctx.sender;
+  const args = { identity: target, expectedDisplayName: "Test Player", untilMicros: 604_810_000_000n, reason: "Owner-requested exploit suspension" };
+  expect(() => f.run(server.devSuspendPlayerAccount, args)).toThrow("owner");
+  f.ctx.sender = new Identity("c200383520521c925f3cf6deafb20cd6a7d6168d1c31cb3c0ddb731c197a2d79");
+  expect(() => f.run(server.devSuspendPlayerAccount, { ...args, expectedDisplayName: "wrong" })).toThrow("target");
+  f.run(server.devSuspendPlayerAccount, args);
+  f.run(server.devSuspendPlayerAccount, args);
+  expect(f.db.moderationAction.count()).toBe(1n);
+  expect(f.db.player.identity.find(target)).toBeNull();
+  f.ctx.sender = target;
+  (f.ctx.senderAuth.jwt as any).fullPayload.auth_time = 500_000;
+  f.ctx.timestamp = new Timestamp(args.untilMicros - 1n);
+  expect(() => requireAllowedDefeatSession(f.ctx as any)).toThrow("DEFEAT_SESSION_COOLDOWN");
+  f.ctx.timestamp = new Timestamp(args.untilMicros);
+  expect(() => requireAllowedDefeatSession(f.ctx as any)).not.toThrow();
+});

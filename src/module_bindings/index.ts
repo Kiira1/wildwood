@@ -101,6 +101,7 @@ import DevResetDailyGemBonusReducer from "./dev_reset_daily_gem_bonus_reducer";
 import DevRollbackPlayerProgressionReducer from "./dev_rollback_player_progression_reducer";
 import DevSetAccessAuditLabelReducer from "./dev_set_access_audit_label_reducer";
 import DevSetEndlessTravelAccessReducer from "./dev_set_endless_travel_access_reducer";
+import DevSuspendPlayerAccountReducer from "./dev_suspend_player_account_reducer";
 import DevTeleportEndlessReducer from "./dev_teleport_endless_reducer";
 import DevUpdatePlayerSaveReducer from "./dev_update_player_save_reducer";
 import DisconnectPatreonReducer from "./disconnect_patreon_reducer";
@@ -1286,6 +1287,7 @@ const reducersSchema = __reducers(
   __reducerSchema("dev_rollback_player_progression", DevRollbackPlayerProgressionReducer),
   __reducerSchema("dev_set_access_audit_label", DevSetAccessAuditLabelReducer),
   __reducerSchema("dev_set_endless_travel_access", DevSetEndlessTravelAccessReducer),
+  __reducerSchema("dev_suspend_player_account", DevSuspendPlayerAccountReducer),
   __reducerSchema("dev_teleport_endless", DevTeleportEndlessReducer),
   __reducerSchema("dev_update_player_save", DevUpdatePlayerSaveReducer),
   __reducerSchema("disconnect_patreon", DisconnectPatreonReducer),
