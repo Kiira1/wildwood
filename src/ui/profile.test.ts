@@ -77,50 +77,50 @@ describe("effective profile equipment stats", () => {
   it("adds equipped Bow damage to tech without changing attack speed", () => {
     const research = { ...createEmptyResearchRanks(), warcraft: 10 };
     const stats = effectiveProfileStats(progress(STARTER_BOW), research);
-    expect(stats.damage).toBeCloseTo(30);
+    expect(stats.damage).toBeCloseTo(54);
     expect(stats.attackRate).toBeCloseTo(1);
   });
 
   it("includes equipped Wooden Armor max-health bonus", () => {
-    expect(effectiveProfileStats(progress("", WOODEN_ARMOR)).maxHp).toBeCloseTo(125);
+    expect(effectiveProfileStats(progress("", WOODEN_ARMOR)).maxHp).toBeCloseTo(225);
   });
 
-  it("adds the Wood Full Helm health bonus to chest armor", () => {
+  it("adds helmet regeneration alongside chest health", () => {
     const stats = effectiveProfileStats({ ...progress("", FROST_ARMOR), equippedHead: WOOD_FULL_HELM });
-    expect(stats.maxHp).toBeCloseTo(1940);
-    expect(stats.equipment.health).toBeCloseTo(1840);
+    expect(stats.maxHp).toBeCloseTo(7300);
+    expect(stats.equipment.health).toBeCloseTo(7200);
   });
 
   it("shows Frost Bow's additive equipment and tech bonuses", () => {
     const research = { ...createEmptyResearchRanks(), warcraft: 10 };
     const stats = effectiveProfileStats(progress(FROST_BOW), research);
-    expect(stats.damage).toBeCloseTo(2097.6);
+    expect(stats.damage).toBeCloseTo(10392);
     expect(stats.attackRate).toBeCloseTo(1);
   });
 
-  it("shows Frost Armor's additive health and regeneration bonuses", () => {
+  it("shows Frost Armor health without adding regeneration", () => {
     const research = { ...createEmptyResearchRanks(), regeneration: 10 };
     const stats = effectiveProfileStats(progress("", FROST_ARMOR), research);
-    expect(stats.maxHp).toBeCloseTo(1540);
-    expect(stats.regen).toBeCloseTo(54.24);
-    expect(stats.equipment.regen).toBeCloseTo(43.2);
+    expect(stats.maxHp).toBeCloseTo(7300);
+    expect(stats.regen).toBeCloseTo(2.4);
+    expect(stats.equipment.regen).toBeCloseTo(0);
     expect(stats.multipliers.regenResearch).toBeCloseTo(1.2);
   });
 
-  it("includes Fire Metal Helmet health and regeneration without adding damage", () => {
+  it("includes Fire Metal Helmet regeneration without adding health or damage", () => {
     const stats = effectiveProfileStats({ ...progress(FROST_BOW, FROST_ARMOR), equippedHead: FIRE_METAL_HELMET });
-    expect(stats.damage).toBeCloseTo(1748);
-    expect(stats.maxHp).toBeCloseTo(5140);
-    expect(stats.regen).toBeCloseTo(153.2);
+    expect(stats.damage).toBeCloseTo(8660);
+    expect(stats.maxHp).toBeCloseTo(7300);
+    expect(stats.regen).toBeCloseTo(542);
   });
 
   it("includes completed item upgrade levels in profile stats", () => {
     const bow = effectiveProfileStats(progress(FROST_BOW), createEmptyResearchRanks(), { [FROST_BOW]: 1 });
-    expect(bow.damage).toBeCloseTo(1886.24);
+    expect(bow.damage).toBeCloseTo(9351.2);
     expect(bow.attackRate).toBeCloseTo(1);
     const armor = effectiveProfileStats(progress("", FROST_ARMOR), createEmptyResearchRanks(), { [FROST_ARMOR]: 1 });
-    expect(armor.maxHp).toBeCloseTo(1655.2);
-    expect(armor.regen).toBeCloseTo(48.66);
+    expect(armor.maxHp).toBeCloseTo(7876);
+    expect(armor.regen).toBeCloseTo(2);
   });
 });
 
@@ -154,25 +154,25 @@ describe("profile stat display", () => {
     expect(rows[0]).toEqual({
       kind: "health",
       label: "Max Hp:",
-      base: "(91 + 1.44k)",
+      base: "(91 + 7.20k)",
       equationOperator: "×",
       multiplier: "1.10",
-      total: "1,684",
+      total: "8,020",
       sources: [
         { label: "Tech", value: "+10%" },
-        { label: "Equipment", value: "+1.44k" },
+        { label: "Equipment", value: "+7.20k" },
       ],
     });
     expect(rows[1]).toEqual({
       kind: "damage",
       label: "Damage:",
-      base: "(20 + 1.73k)",
+      base: "(20 + 8.64k)",
       equationOperator: "×",
       multiplier: "1.08",
-      total: "1,888",
+      total: "9,353",
       sources: [
         { label: "Tech", value: "+8%" },
-        { label: "Equipment", value: "+1.73k" },
+        { label: "Equipment", value: "+8.64k" },
       ],
     });
     expect(rows[2]).toEqual({

@@ -43,7 +43,14 @@ describe("enemy lifecycle runtime", () => {
     lifecycle.engageEnemy(enemies[0], "player", 42);
 
     expect(enemies.slice(0, 2).every((enemy) => enemy.engaged && !enemy.leashing && !enemy.wandering)).toBe(true);
-    expect(enemies[1]).toMatchObject({ aggroTargetId: "player", aggroStartedAtTick: 42 });
+    expect(enemies[1]).toMatchObject({ aggroTargetId: "player", aggroStartedAtTick: 42, moveSpeedRecovery: 0 });
+    expect(enemies[0].moveSpeedRecovery).toBe(0);
+    enemies[0].moveSpeedRecovery = 1.5;
+    lifecycle.engageEnemy(enemies[1], "player", 43);
+    expect(enemies[0].moveSpeedRecovery).toBe(1.5);
+    enemies[0].engaged = false;
+    lifecycle.engageEnemy(enemies[0], "player", 44);
+    expect(enemies[0].moveSpeedRecovery).toBe(0);
     expect(enemies[2].engaged).toBe(false);
     expect(enemies[3].engaged).toBe(false);
   });

@@ -31,21 +31,29 @@ function forestLaneBalance(lane: ForestProgressionLane): Pick<EnemyDefinition, "
   };
 }
 
-function postForestLaneBalance(role: PostForestRole, mapIndex: number): Pick<EnemyDefinition, "hp" | "damage" | "reward"> {
+/** Fixed progression, never rubber-banded to the current player's speed. */
+export function campaignMeleeChaseSpeed(mapIndex: number): number {
+  return mapIndex < 3 ? 205 : Math.min(275, 220 + (mapIndex - 3) * 5);
+}
+
+function postForestLaneBalance(role: PostForestRole, mapIndex: number): Pick<EnemyDefinition, "hp" | "damage" | "reward"> & { speed?: number } {
   const lane = CURRENT_ROLE_LANES[role];
   const combat = desertLaneCombatValue(lane, mapIndex - 1);
   return {
     ...combat,
+    ...(mapIndex >= 3 && ["raider", "guardian", "oracle"].includes(role)
+      ? { speed: Math.max(role === "raider" ? 230 : role === "oracle" ? 220 : 205, campaignMeleeChaseSpeed(mapIndex)) } : {}),
     hp: combat.hp * (mapIndex === 1 ? .05 : mapIndex === 2 ? SNOWLANDS_TUNING.enemyHealth : 1),
     damage: combat.damage * (mapIndex === 2 ? SNOWLANDS_TUNING.enemyDamage : 1),
     reward: desertLaneRewardValue(lane, mapIndex - 1),
   };
 }
 
-function healthEliteBalance(mapIndex: number): Pick<EnemyDefinition, "hp" | "damage" | "reward"> {
+function healthEliteBalance(mapIndex: number): Pick<EnemyDefinition, "hp" | "damage" | "reward"> & { speed?: number } {
   const combat = desertLaneCombatValue("King Slime", mapIndex - 1);
   return {
     ...combat,
+    ...(mapIndex >= 3 ? { speed: campaignMeleeChaseSpeed(mapIndex) } : {}),
     hp: combat.hp * (mapIndex === 1 ? .05 : mapIndex === 2 ? SNOWLANDS_TUNING.enemyHealth : 1),
     damage: combat.damage * (mapIndex === 2 ? SNOWLANDS_TUNING.enemyDamage : 1),
     reward: desertLaneRewardValue("King Slime", mapIndex - 1),

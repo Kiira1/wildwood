@@ -14,9 +14,9 @@ it("keeps slots mounted until inventory, upgrades, or selection changes", () => 
     destroyEquipment: async () => undefined, unlockInventorySlot: async () => undefined, showMessage() {} });
   const items = document.getElementById("inventoryItems")!;
   controller.render();
-  expect(items.querySelector(".inventory-item-bonuses")!.textContent).toBe("+5");
+  expect(items.querySelector(".inventory-item-bonuses")!.textContent).toBe("+25");
   level = 10; controller.render();
-  expect(items.querySelector(".inventory-item-bonuses")!.textContent).toBe("+9");
+  expect(items.querySelector(".inventory-item-bonuses")!.textContent).toBe("+45");
   level = 0; controller.render();
   let first = items.firstElementChild;
   controller.prepareOpen(); controller.render();

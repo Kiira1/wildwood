@@ -28,6 +28,11 @@ const RANGED_APPROACH_DEAD_BAND = 5;
 const RANGED_RETREAT_DEAD_BAND = 20;
 export const LOCAL_REGULAR_ENEMY_TARGET_ID = "local-player";
 
+function recoverySpeed(enemy: EnemyState) {
+  const minimum = Math.min(enemy.speed, ENEMY_HIT_MIN_MOVE_SPEED);
+  return minimum + (enemy.speed - minimum) * enemy.moveSpeedRecovery / ENEMY_HIT_SPEED_RECOVERY_SECONDS;
+}
+
 type Viewport = { width: number; height: number; zoom: number };
 type DamagePlayer = (amount: number) => boolean;
 type EngageEnemy = (enemy: EnemyState, targetId?: string | null, startedAtTick?: number) => void;
@@ -111,6 +116,7 @@ export function createEnemySimulation(
     const dx = target.x - enemy.x;
     const dy = target.y - enemy.y;
     const distance = Math.hypot(dx, dy) || 1;
+    let direction = 1;
     if (ranged) {
       const preferredDistance = rangedEnemyPreferredDistance(
         player.attackRange,
@@ -122,15 +128,14 @@ export function createEnemySimulation(
       } else if (distance < preferredDistance - RANGED_RETREAT_DEAD_BAND) {
         rangedMove = -1;
       }
-      enemy.vx += dx / distance * currentMoveSpeed * rangedMove * dt * 6;
-      enemy.vy += dy / distance * currentMoveSpeed * rangedMove * dt * 6;
-    } else {
-      enemy.vx += dx / distance * currentMoveSpeed * dt * 7;
-      enemy.vy += dy / distance * currentMoveSpeed * dt * 7;
+      direction = rangedMove;
     }
+    // Exponential easing makes authored speed the actual cruising speed at
+    // both low and high frame rates, instead of acceleration/damping overshoot.
+    const blend = 1 - Math.exp(-6 * dt);
+    enemy.vx += (dx / distance * currentMoveSpeed * direction - enemy.vx) * blend;
+    enemy.vy += (dy / distance * currentMoveSpeed * direction - enemy.vy) * blend;
     if (Math.abs(dx) > .5) enemy.facingX = dx < 0 ? -1 : 1;
-    enemy.vx *= Math.pow(.002, dt);
-    enemy.vy *= Math.pow(.002, dt);
     enemy.x += enemy.vx * dt;
     enemy.y += enemy.vy * dt;
     return distance;
@@ -209,8 +214,6 @@ export function createEnemySimulation(
       enemy.attackClock -= dt;
       if (enemy.attackAnimationElapsed !== undefined) enemy.attackAnimationElapsed += dt;
       enemy.moveSpeedRecovery = Math.min(ENEMY_HIT_SPEED_RECOVERY_SECONDS, enemy.moveSpeedRecovery + dt);
-      const moveSpeedProgress = enemy.moveSpeedRecovery / ENEMY_HIT_SPEED_RECOVERY_SECONDS;
-      const currentMoveSpeed = ENEMY_HIT_MIN_MOVE_SPEED + (enemy.speed - ENEMY_HIT_MIN_MOVE_SPEED) * moveSpeedProgress;
       const localDx = player.x - enemy.x;
       const localDy = player.y - enemy.y;
       const fullRate = enemy.engaged || localDx * localDx + localDy * localDy <= fullSimulationRadiusSq;
@@ -236,7 +239,7 @@ export function createEnemySimulation(
       }
 
       if (enemy.leashing) {
-        const homeDistance = moveToward(enemy, enemy.homeX, enemy.homeY, currentMoveSpeed, dt);
+        const homeDistance = moveToward(enemy, enemy.homeX, enemy.homeY, recoverySpeed(enemy), dt);
         if (homeDistance < 10) {
           enemy.leashing = false;
           enemy.x = ambient.x;
@@ -288,7 +291,7 @@ export function createEnemySimulation(
           } else {
             enemy.combatTargetX = target.x;
             enemy.combatTargetY = target.y;
-            moveEngagedEnemy(enemy, target, currentMoveSpeed, dt, Boolean(base.ranged));
+            moveEngagedEnemy(enemy, target, recoverySpeed(enemy), dt, Boolean(base.ranged));
 
             const actualDx = player.x - enemy.x;
             const actualDy = player.y - enemy.y;

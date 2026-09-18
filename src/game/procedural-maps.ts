@@ -5,6 +5,7 @@ import {
   mapRandom,
   type ProceduralMapId,
 } from "../../shared/procedural-maps";
+import { campaignMeleeChaseSpeed } from "../../shared/enemy-definitions";
 import { ENEMY_TYPES, type EnemyKind } from "./enemies";
 import type { SpawnSite, SpawnCamp, WorldDecor } from "./world";
 
@@ -54,6 +55,7 @@ export function generatedMapContent(id: ProceduralMapId) {
         definition: {
           ...ENEMY_TYPES[kind],
           ...generatedEnemyStats(map, elite ? "Dread Warden" : camp.lane),
+          speed: campaignMeleeChaseSpeed(14),
           elite: false,
         },
       });

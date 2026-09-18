@@ -55,19 +55,42 @@ it("rolls back reward, budget, receipt and loot if a write fails", () => {
   insert.mockRestore(); f.run(server.recordEnemyDefeats, batch);
   expect([...f.db.playerItemDrop.iter()]).toHaveLength(3);
 });
-it("allows grouped kills and delayed batches; excessive claims only wait, even across new streams", () => {
+it("allows grouped kills and acknowledges excess without granting rewards across new streams", () => {
   const f = fixture(); f.ctx.random.integerInRange = (_min: number, max: number) => max;
   const definition = enemyDefeatDefinition(batch.mapId, enemy)!;
   const capacity = Math.floor(defeatBudget(definition.population).capacity);
   let remaining = capacity, sequence = 1n;
   while (remaining) { const count = Math.min(100, remaining); f.run(server.recordEnemyDefeats, { ...batch, sequence: sequence++, enemies: [{ enemy, count }] }); remaining -= count; }
   const next = { ...batch, streamId: "another-stream-12345", enemies: [{ enemy, count: definition.population }] };
-  expect(() => f.run(server.recordEnemyDefeats, next)).toThrow("catching up");
-  // No temporary ban/session invalidation; waiting for one boosted respawn refills the budget.
-  f.ctx.timestamp = new Timestamp(f.ctx.timestamp.microsSinceUnixEpoch + 4_000_000n);
+  const before = f.db.playerProgress.identity.find(f.ctx.sender).damage;
   expect(() => f.run(server.recordEnemyDefeats, next)).not.toThrow();
+  expect(f.db.playerProgress.identity.find(f.ctx.sender).damage).toBe(before);
+  // A retry of the consumed report cannot later turn excess claims into rewards.
+
+  f.ctx.timestamp = new Timestamp(f.ctx.timestamp.microsSinceUnixEpoch + 4_000_000n);
+  f.run(server.recordEnemyDefeats, next);
+  expect(f.db.playerProgress.identity.find(f.ctx.sender).damage).toBe(before);
+  f.run(server.recordEnemyDefeats, { ...next, sequence: 2n });
+  expect(f.db.playerProgress.identity.find(f.ctx.sender).damage).toBeGreaterThan(before);
 });
 it.each(["recordCombatCheckpoint", "recordRegularEnemyDefeats", "recordForestEnemyDefeat", "recordDesertEnemyDefeat", "recordSnowEnemyDefeat", "recordLavaEnemyDefeat"])("closes obsolete reward endpoint %s", reducer => {
   const f = fixture();
   expect(() => f.run((server as any)[reducer], { ...batch, count: 1, progress: { damage: 1e25 } })).toThrow("updated");
+});
+
+it("consumes a 100-kill Endless report exceeding the 91-kill capacity without trapping later travel", () => {
+  const f = fixture();
+  f.patch("player", { mapId: "endless_1" });
+  const definition = enemyDefeatDefinition("endless_1", "site:0")!;
+  const capacity = Math.floor(defeatBudget(definition.population).capacity);
+  expect(capacity).toBe(91);
+  const report = { ...batch, mapId: "endless_1", enemies: [{ enemy: "site:0", count: 100 }] };
+  f.run(server.recordEnemyDefeats, report);
+  expect(f.db.playerLifetime.identity.find(f.ctx.sender).enemyKills).toBe(BigInt(capacity));
+  f.run(server.recordEnemyDefeats, report);
+  expect(f.db.playerLifetime.identity.find(f.ctx.sender).enemyKills).toBe(BigInt(capacity));
+  f.run(server.recordEnemyDefeats, { ...report, sequence: 2n, enemies: [{ enemy: "site:1", count: 1 }] });
+  expect(f.db.playerLifetime.identity.find(f.ctx.sender).enemyKills).toBe(BigInt(capacity + 1));
+  f.patch("player", { mapId: "home_exterior" });
+  expect(() => f.run(server.recordEnemyDefeats, report)).not.toThrow();
 });

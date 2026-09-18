@@ -2,6 +2,8 @@ import { BLACK_BOOTS } from "./items";
 import { describe, expect, it } from "vitest";
 import {
   BASIC_PAPER_HAT,
+  ITEM_DEFINITIONS,
+  type ItemDefinition,
   canonicalItemId,
   DARK_METAL_HELMET,
   DESERT_DROP_ITEM_IDS,
@@ -55,6 +57,22 @@ import {
 } from "./items";
 
 describe("equipment catalog", () => {
+  it("keeps every combat helmet regen-only and chest health-only, including upgrades", () => {
+    for (const item of Object.values(ITEM_DEFINITIONS) as ItemDefinition[]) {
+      if (item.cosmeticOnly || !["HEAD", "CHEST"].includes(item.slot)) continue;
+      for (const level of [0, 10]) {
+        if (item.slot === "HEAD") {
+          expect(itemMaxHealthBonus(item.id, level), item.id).toBe(0);
+          expect(itemRegenerationBonus(item.id, level), item.id).toBeGreaterThan(0);
+        } else {
+          expect(itemRegenerationBonus(item.id, level), item.id).toBe(0);
+          expect(itemMaxHealthBonus(item.id, level), item.id).toBeGreaterThan(0);
+        }
+        expect(itemDamageBonus(item.id, level), item.id).toBe(0);
+      }
+    }
+  });
+
   it("keeps regular and boss equipment in their own acquisition groups", () => {
     expect(STARTER_ITEM_IDS).toEqual([BASIC_PAPER_HAT, STARTER_STONE]);
     expect(DEVELOPER_ITEM_IDS).not.toContain(STARTER_BOW);
@@ -99,38 +117,38 @@ describe("equipment catalog", () => {
   });
 
   it("applies research to base stats plus fixed forest bonuses", () => {
-    expect(equipmentDamage(100, STARTER_BOW, "", "", 1.2)).toBe(126);
-    expect(equipmentMaxHealth(100, "", WOODEN_ARMOR, 1.2)).toBe(150);
+    expect(equipmentDamage(100, STARTER_BOW, "", "", 1.2)).toBe(150);
+    expect(equipmentMaxHealth(100, "", WOODEN_ARMOR, 1.2)).toBe(270);
     expect(equipmentMaxHealth(100, "", "", 1.2)).toBe(120);
   });
 
   it("keeps gear independent of earned stats while allowing tech to multiply its bonus", () => {
     for (const base of [0, 10, 1000, 1_000_000]) {
       for (const research of [1, 1.2, 3]) {
-        expect(equipmentDamage(base, STARTER_BOW, "", "", research) - base * research).toBeCloseTo(5 * research);
-        expect(equipmentMaxHealth(base, WOOD_FULL_HELM, WOODEN_ARMOR, research) - base * research).toBeCloseTo(425 * research);
-        expect(equipmentRegeneration(base, FIRE_METAL_HELMET, MAGMA_ARMOR, research) - base * research).toBeCloseTo(216 * research);
+        expect(equipmentDamage(base, STARTER_BOW, "", "", research) - base * research).toBeCloseTo(25 * research);
+        expect(equipmentMaxHealth(base, WOOD_FULL_HELM, WOODEN_ARMOR, research) - base * research).toBeCloseTo(125 * research);
+        expect(equipmentRegeneration(base, FIRE_METAL_HELMET, MAGMA_ARMOR, research) - base * research).toBeCloseTo(540 * research);
       }
     }
   });
 
   it("gives each map a larger fixed jump while preserving the stronger rare bows", () => {
-    expect(itemDamageBonus(STARTER_BOW)).toBe(5);
-    expect(itemDamageBonus(IRON_BOW)).toBe(480);
-    expect(itemDamageBonus(SNOW_BOW)).toBe(1440);
-    expect(itemDamageBonus(FROST_BOW)).toBe(1728);
-    expect(itemDamageBonus(LAVA_BOW)).toBe(5184);
-    expect(itemDamageBonus(NIGHT_BOW)).toBe(12960);
-    expect(itemDamageBonus(FIRE_METAL_BOW)).toBe(15552);
+    expect(itemDamageBonus(STARTER_BOW)).toBe(25);
+    expect(itemDamageBonus(IRON_BOW)).toBe(2400);
+    expect(itemDamageBonus(SNOW_BOW)).toBe(7200);
+    expect(itemDamageBonus(FROST_BOW)).toBe(8640);
+    expect(itemDamageBonus(LAVA_BOW)).toBe(25920);
+    expect(itemDamageBonus(NIGHT_BOW)).toBe(64800);
+    expect(itemDamageBonus(FIRE_METAL_BOW)).toBe(77760);
     expect(itemDamageBonus(FIRE_METAL_HELMET)).toBe(0);
-    expect(itemStats(MAGMA_ARMOR)).toEqual(["MAX HEALTH +3600", "REGEN +108"]);
-    expect(itemStats(DARK_METAL_HELMET)).toEqual(["MAX HEALTH +10800", "REGEN +324"]);
+    expect(itemStats(MAGMA_ARMOR)).toEqual(["MAX HEALTH +18000"]);
+    expect(itemStats(DARK_METAL_HELMET)).toEqual(["REGEN +1620"]);
   });
 
   it("grants regeneration even with zero earned regeneration", () => {
-    expect(equipmentRegeneration(0, "", FROST_ARMOR)).toBe(43.2);
-    expect(itemMaxHealthBonus(FROST_ARMOR)).toBe(1440);
-    expect(itemRegenerationBonus(FROST_ARMOR)).toBe(43.2);
+    expect(equipmentRegeneration(0, WOOD_FULL_HELM, FROST_ARMOR)).toBe(60);
+    expect(itemMaxHealthBonus(FROST_ARMOR)).toBe(7200);
+    expect(itemRegenerationBonus(FROST_ARMOR)).toBe(0);
     expect(itemFitsEquipmentSlot(FROST_ARMOR, "CHEST")).toBe(true);
     expect(itemFitsEquipmentSlot(FROST_ARMOR, "HEAD")).toBe(false);
   });
@@ -165,17 +183,17 @@ describe("equipment catalog", () => {
   });
 
   it("upgrades only the item's fixed amount and keeps existing upgrade levels", () => {
-    expect(itemDamageBonus(FROST_BOW, 10)).toBe(3110.4);
-    expect(itemMaxHealthBonus(FROST_ARMOR, 10)).toBe(2592);
-    expect(itemRegenerationBonus(FROST_ARMOR, 10)).toBe(77.76);
-    expect(itemDamageBonus(STARTER_BOW, 10)).toBe(9);
-    expect(itemMaxHealthBonus(WOODEN_ARMOR, 10)).toBe(45);
+    expect(itemDamageBonus(FROST_BOW, 10)).toBe(15552);
+    expect(itemMaxHealthBonus(FROST_ARMOR, 10)).toBe(12960);
+    expect(itemRegenerationBonus(WOOD_FULL_HELM, 10)).toBe(108);
+    expect(itemDamageBonus(STARTER_BOW, 10)).toBe(45);
+    expect(itemMaxHealthBonus(WOODEN_ARMOR, 10)).toBe(225);
     expect(itemRegenerationBonus(WOODEN_ARMOR, 10)).toBe(0);
     expect(itemDisplayName(FROST_BOW, 1)).toBe("FROST BOW +1");
-    expect(itemStats(STARTER_BOW, 1)).toEqual(["DAMAGE +5.4"]);
+    expect(itemStats(STARTER_BOW, 1)).toEqual(["DAMAGE +27"]);
     expect(itemUpgradeStatChanges(STARTER_BOW, 0)).toEqual([
-      { label: "DAMAGE", current: "+5", next: "+5.4" },
+      { label: "DAMAGE", current: "+25", next: "+27" },
     ]);
-    expect(equipmentDamage(100, STARTER_BOW, "", "", 1.4, 10)).toBeCloseTo(152.6);
+    expect(equipmentDamage(100, STARTER_BOW, "", "", 1.4, 10)).toBeCloseTo(203);
   });
 });

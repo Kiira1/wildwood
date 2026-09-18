@@ -66,6 +66,11 @@ export function createEnemyLifecycle(
       ? enemies.filter((candidate) => !candidate.dead && candidate.groupAggro && candidate.campName === enemy.campName)
       : [enemy];
     for (const candidate of group) {
+      if (!candidate.engaged) {
+        candidate.moveSpeedRecovery = 0;
+        candidate.vx = 0;
+        candidate.vy = 0;
+      }
       candidate.engaged = true;
       candidate.leashing = false;
       candidate.wandering = false;

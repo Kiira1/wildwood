@@ -206,7 +206,6 @@ const afterUpdateGateShell = String.raw`
   <div class="modal leaderboard-modal" role="dialog" aria-modal="true" aria-labelledby="leaderboardTitle">
     <h2 id="leaderboardTitle" class="window-banner window-banner--gold"><span>Leaderboard</span></h2>
     <section id="leaderboardPodium" class="leaderboard-podium" aria-label="Top three players" hidden></section>
-    <div class="leaderboard-scroll">
     <div class="profile-tabs leaderboard-tabs" role="tablist" aria-label="Leaderboard stat">
       <button id="leaderboardPowerTab" class="profile-tab is-active" type="button" role="tab" aria-selected="true" aria-label="Power"></button>
       <button id="leaderboardDamageTab" class="profile-tab" type="button" role="tab" aria-selected="false" aria-label="Damage"></button>
@@ -216,6 +215,7 @@ const afterUpdateGateShell = String.raw`
       <button id="leaderboardTimeTab" class="profile-tab" type="button" role="tab" aria-selected="false" aria-label="Time"></button>
     </div>
     <div class="leaderboard-column-headings" aria-hidden="true"><span>RANK</span><span class="leaderboard-player-heading">PLAYER</span><span id="leaderboardValueHeading">POWER</span></div>
+    <div class="leaderboard-scroll">
     <ol id="leaderboardRows" class="leaderboard-rows"></ol>
     <div id="leaderboardLoading" class="leaderboard-loading" role="status" aria-label="Loading leaderboard" hidden><span class="leaderboard-spinner" aria-hidden="true"></span></div>
     <div id="leaderboardEmpty" class="profile-loading" hidden>NO RANKINGS YET</div>

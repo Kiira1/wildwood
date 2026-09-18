@@ -1,4 +1,10 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.737": [
+    "Equipment bonuses increased 5×. Helmets now give regen, chest armor gives health, and boots are unchanged.",
+    "Enemies ease into their chase when they spot you. More melee enemies in later maps can keep up with faster players.",
+    "Fixed oversized enemy reward batches getting stuck and blocking portals or travel home.",
+    "Leaderboard tabs stay in place while you scroll the player list.",
+  ],
   "0.736": [
     "All bosses slowly regenerate 0.1% of their maximum health per second during play.",
     "Changing maps stops autofarm and clears its saved resume state. Reconnecting to the same map still restores it.",
@@ -2038,6 +2044,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.737": "2026-09-17",
   "0.736": "2026-09-17",
   "0.735": "2026-09-17",
   "0.734": "2026-09-17",

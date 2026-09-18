@@ -87,8 +87,20 @@ export function acceptEnemyDefeats(ctx: BossRewardContext, batch: { streamId: st
       // Excess claims are consumed without rewards. Never leave an impossible
       // sealed report blocking saves, portals, or the valid kills behind it.
       if (!acceptedCount) continue;
-    } else if (tokens + 1e-6 < entry.count) throw new SenderError("Enemy rewards are catching up. Retry shortly.");
-    const next = { key: budgetKey, identity: ctx.sender, tokens: tokens - acceptedCount, updatedAtMicros: now };
+    } else {
+      // A sealed batch must be consumable even when it exceeds the maximum
+      // bucket (one Endless spawn holds 91 kills; a report can contain 100).
+      // Award only the server-earned allowance, then acknowledge the report so
+      // it cannot permanently block saving or travel. Retrying a new stream
+      // cannot restore the spent allowance.
+      acceptedCount = Math.max(0, Math.min(entry.count, Math.floor(tokens + 1e-6)));
+      if (acceptedCount < entry.count) console.warn("Enemy defeat validation", JSON.stringify({
+        identity: ctx.sender.toHexString(), mapId: batch.mapId, enemy: entry.enemy,
+        requested: entry.count, accepted: acceptedCount, capacity: budget.capacity,
+      }));
+      if (!acceptedCount) continue;
+    }
+    const next = { key: budgetKey, identity: ctx.sender, tokens: Math.max(0, tokens - acceptedCount), updatedAtMicros: now };
     if (previous) ctx.db.enemyDefeatBudget.key.update(next); else ctx.db.enemyDefeatBudget.insert(next);
     count += acceptedCount;
     rewards.push({ ...definition.reward, count: acceptedCount });

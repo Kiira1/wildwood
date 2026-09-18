@@ -45,10 +45,10 @@ it("keeps Water Reach equipment through reloads and repeat drops without duplica
   expect(inventoryItemQuantity(reloaded, WATER_ARMOR)).toBe(1);
   expect(inventoryItemQuantity(reloaded, SKY_BOW)).toBe(1);
   expect([...f.db.playerItemDrop.iter()].every((row: any) => row.alreadyOwned)).toBe(true);
-  expect(itemMaxHealthBonus(WATER_ARMOR)).toBe(32400);
-  expect(itemRegenerationBonus(WATER_ARMOR)).toBe(972);
-  expect(itemDamageBonus(SKY_BOW)).toBe(38880);
-  expect(itemDamageBonus(SAMURAI_BOW)).toBe(116640);
+  expect(itemMaxHealthBonus(WATER_ARMOR)).toBe(162000);
+  expect(itemRegenerationBonus(WATER_ARMOR)).toBe(0);
+  expect(itemDamageBonus(SKY_BOW)).toBe(194400);
+  expect(itemDamageBonus(SAMURAI_BOW)).toBe(583200);
 });
 
 it.each(["home_exterior", "crystal_hollows", "endless_1"])("does not roll these drops in %s", mapId => {
@@ -90,11 +90,11 @@ it("can grant all three Cloudspire items from independent successful rolls", () 
   reportEnemy(f);
   const saved = inventoryFromSave(f.db.playerProgress.identity.find(f.ctx.sender).inventoryJson, "", "", "", false);
   for (const id of [CLOUDSPIRE_HELMET, CLOUDSPIRE_BOW, CLOUDSPIRE_ARMOR]) expect(inventoryItemQuantity(saved, id)).toBe(1);
-  expect(itemDamageBonus(CLOUDSPIRE_BOW)).toBe(349920);
-  expect(itemMaxHealthBonus(CLOUDSPIRE_HELMET)).toBe(291600);
-  expect(itemRegenerationBonus(CLOUDSPIRE_HELMET)).toBe(8748);
-  expect(itemMaxHealthBonus(CLOUDSPIRE_ARMOR)).toBe(291600);
-  expect(itemRegenerationBonus(CLOUDSPIRE_ARMOR)).toBe(8748);
-  expect(itemMaxHealthBonus(MOONFEN_ARMOR)).toBe(874800);
-  expect(itemRegenerationBonus(MOONFEN_ARMOR)).toBe(26244);
+  expect(itemDamageBonus(CLOUDSPIRE_BOW)).toBe(1749600);
+  expect(itemMaxHealthBonus(CLOUDSPIRE_HELMET)).toBe(0);
+  expect(itemRegenerationBonus(CLOUDSPIRE_HELMET)).toBe(43740);
+  expect(itemMaxHealthBonus(CLOUDSPIRE_ARMOR)).toBe(1458000);
+  expect(itemRegenerationBonus(CLOUDSPIRE_ARMOR)).toBe(0);
+  expect(itemMaxHealthBonus(MOONFEN_ARMOR)).toBe(4374000);
+  expect(itemRegenerationBonus(MOONFEN_ARMOR)).toBe(0);
 });

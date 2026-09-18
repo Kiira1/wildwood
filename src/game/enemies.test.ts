@@ -50,7 +50,7 @@ describe("enemy movement balance", () => {
     expect(ENEMY_TYPES["Frost Raider"].speed).toBe(230);
   });
 
-  it("keeps post-Snowlands movement and aggro at the Snowlands archetype values", () => {
+  it("keeps ranged speeds and aggro stable while later melee speeds progress", () => {
     const tracks = [
       ["Frost Raider", "Ember Raider", "Depth Raider", "Tide Raider", "Sakura Ronin"],
       ["Glacier Archer", "Cinder Archer", "Abyss Archer", "Reef Archer", "Petal Archer"],
@@ -62,7 +62,8 @@ describe("enemy movement balance", () => {
     for (const [snowlandsKind, ...laterKinds] of tracks) {
       const snowlands = ENEMY_TYPES[snowlandsKind];
       for (const laterKind of laterKinds) {
-        expect(ENEMY_TYPES[laterKind].speed).toBe(snowlands.speed);
+        if (snowlands.ranged) expect(ENEMY_TYPES[laterKind].speed).toBe(snowlands.speed);
+        else expect(ENEMY_TYPES[laterKind].speed).toBeGreaterThanOrEqual(snowlands.speed);
         if (snowlands.elite) expect(ENEMY_TYPES[laterKind].aggro).toBe(snowlands.aggro);
       }
     }

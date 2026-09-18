@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { RemotePlayer } from "../../wildstat-coop";
 import { remoteBossAttackStartedAtMs } from "../../coop/services/remote-boss-attack";
 import { ENEMY_CROWD_SPACING_RATIO, separateEnemyCrowd } from "./enemy-crowd-separation";
+import { createEnemyLifecycle } from "./enemy-lifecycle";
 import { createEnemySimulation } from "./enemy-simulation";
 import { ENEMY_TYPES } from "../enemies";
 import type { EnemyState, PlayerState } from "./types";
@@ -575,4 +576,47 @@ it("acquires nearby mobs while manually moving even when the network pose stays 
     staleNetwork);
   simulation.update(1 / 60);
   expect(enemies.every(enemy => enemy.engaged && enemy.aggroTargetId === "local-player")).toBe(true);
+});
+
+it("uses the ramp on the very first aggro frame without restarting it on repeated hits", () => {
+  const enemy = idleEnemyAt(1000, 1000);
+  const player = playerAt(1100, 1000);
+  const lifecycle = createEnemyLifecycle([enemy], [], () => {});
+  const sim = createEnemySimulation([enemy], () => {}, player,
+    () => ({ width: 800, height: 800, zoom: 1 }), lifecycle.engageEnemy, () => false);
+  sim.update(1 / 60);
+  expect(enemy.engaged).toBe(true);
+  expect(enemy.moveSpeedRecovery).toBe(0);
+  expect(Math.hypot(enemy.vx, enemy.vy)).toBeLessThan(1);
+  sim.update(.5);
+  const ramp = enemy.moveSpeedRecovery;
+  lifecycle.engageEnemy(enemy, "local-player");
+  expect(enemy.moveSpeedRecovery).toBe(ramp);
+  expect(ramp).toBe(.5);
+});
+
+it.each([30, 60, 120])("Duskfall melee narrowly catches a 252-speed player at %i fps", fps => {
+  const definition = ENEMY_TYPES["Gourd Prowler"];
+  const enemy = { ...idleEnemyAt(500, 1000), type: "Gourd Prowler" as const,
+    speed: definition.speed, r: definition.r, leashRange: 420 };
+  const player = playerAt(650, 1000);
+  const lifecycle = createEnemyLifecycle([enemy], [], () => {});
+  // Already pursuing: first aggro is covered above; verify final speed and
+  // the normal leash, without artificially extending the chase range.
+  engage(enemy, "local-player");
+  let hits = 0, travel = 0;
+  const sim = createEnemySimulation([enemy], () => {}, player,
+    () => ({ width: 800, height: 800, zoom: 1 }), lifecycle.engageEnemy,
+    () => { hits++; return true; });
+  // Translate both actors back together to avoid testing the world boundary.
+  for (let i = 0; i < fps * 80 && !hits; i++) {
+    player.x += 252 / fps;
+    sim.update(1 / fps);
+    travel += 252 / fps;
+    if (player.x > 3000) { player.x -= 2000; enemy.x -= 2000; }
+    expect(Math.hypot(enemy.vx, enemy.vy)).toBeLessThanOrEqual(260.0001);
+  }
+  expect(travel).toBeGreaterThan(252 * 3);
+  expect(hits).toBe(1);
+  expect(enemy.moveSpeedRecovery).toBe(0);
 });
