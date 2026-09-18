@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>WildStat · Reward per health</title></head>
+<body>
+<main>
+  <p class="eyebrow">WildStat / balance tool</p>
+  <h1>Reward per enemy health</h1>
+  <p class="intro"><a href="./balance-lab.html">Open Balance Lab: median progression over time, Endless, and kill-budget scenarios →</a></p>
+  <p class="intro">Each point shows <strong>stat reward ÷ enemy max HP</strong> for one enemy. Higher points give more of that stat for the health you have to remove. Compare enemies of the same color; different stats have different units.</p>
+  <section class="controls" aria-label="Graph controls">
+    <label>Maps<select id="scope"><option value="both">Campaign + Endless</option><option value="campaign">All 15 campaign maps</option><option value="endless">Endless range</option></select></label>
+    <label class="endless-control" hidden>Start at Endless<input id="endless-start" type="number" min="1" max="10000" value="1"></label>
+    <label class="endless-control" hidden>Number of maps<input id="endless-count" type="number" min="1" max="100" value="15"></label>
+    <label>Map<select id="map"><option value="all">All maps</option></select></label>
+    <label>Enemies<select id="kind"><option value="all">Regular + bosses</option><option value="regular">Regular (including elites)</option><option value="boss">Bosses only</option></select></label>
+    <label>Y-axis<select id="scale"><option value="log">Logarithmic — compare orders of magnitude</option><option value="linear">Linear — actual proportions</option></select></label>
+    <label>Display units<select id="units"><option value="1">Reward per 1 HP</option><option value="1000">Reward per 1,000 HP</option></select></label>
+    <fieldset id="stats"><legend>Reward stats</legend></fieldset>
+  </section>
+  <section class="chart-section">
+    <div class="section-head"><h2>Reward efficiency</h2><p id="summary" aria-live="polite"></p></div>
+    <p class="section-copy">● Regular enemies &nbsp; ■ Bosses · Hover, tap, or focus a point for exact values. Scroll horizontally to compare maps.</p>
+    <div class="chart-scroll"><svg id="efficiency-chart" class="efficiency-chart" role="img" aria-label="Reward per enemy health, grouped by map"></svg></div>
+    <p id="point-detail" class="point-detail" aria-live="polite">Select a point to inspect its reward and health.</p>
+  </section>
+  <section class="table-section">
+    <div class="section-head"><h2>Every payout</h2><div class="table-actions"><label>Sort<select id="sort"><option value="map">Map order</option><option value="high">Highest reward / HP</option><option value="low">Lowest reward / HP</option></select></label><button id="export" type="button">Export CSV</button></div></div>
+    <div class="table-scroll"><table id="reward-table"><thead><tr><th>Map</th><th>Enemy</th><th>Kind</th><th>Stat</th><th>Max HP</th><th>Reward / kill</th><th id="ratio-heading">Reward / HP</th></tr></thead><tbody></tbody></table></div>
+    <p class="footnote">Base repeatable rewards from the current game rules. No player research, stat caps, equipment drops, respawn time, armor, or boss regeneration is included. Attack speed is attacks/second gained. Boss rewards are separate points per stat and use the boss’s full health. Identical spawns are represented once.</p>
+  </section>
+</main>
+<script type="module" src="./reward-health-graph.ts"></script>
+</body></html>

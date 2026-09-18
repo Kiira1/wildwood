@@ -87,13 +87,13 @@ describe("map guide", () => {
   });
 
   it("summarizes the stats players need when evaluating a drop", () => {
-    expect(mapGuideItemStats(IRON_BOW)).toEqual(["Damage +480"]);
+    expect(mapGuideItemStats(IRON_BOW)).toEqual(["Damage +7.5%"]);
     expect(mapGuideItemStats(MAGMA_ARMOR)).toEqual(["Max Health +7.20k"]);
     expect(mapGuideItemStats(FIRE_METAL_HELMET)).toEqual(["Regen +108"]);
-    expect(mapGuideItemStats(FIRE_METAL_BOW)).toEqual(["Damage +13.0k"]);
-    expect(mapGuideItemStats(SNOW_BOW)).toEqual(["Damage +1.22k"]);
-    expect(mapGuideItemStats(NIGHT_BOW)).toEqual(["Damage +11.0k"]);
-    expect(mapGuideItemStats(DARK_METAL_HELMET)).toEqual(["Regen +324"]);
+    expect(mapGuideItemStats(FIRE_METAL_BOW)).toEqual(["Damage +15%"]);
+    expect(mapGuideItemStats(SNOW_BOW)).toEqual(["Damage +8.5%"]);
+    expect(mapGuideItemStats(NIGHT_BOW)).toEqual(["Damage +12.75%"]);
+    expect(mapGuideItemStats(DARK_METAL_HELMET)).toEqual(["Regen +2.17k"]);
   });
 
   it("groups live forest spawns into compact reward zones", () => {

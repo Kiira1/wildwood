@@ -48,7 +48,9 @@
     "release:rollout": "node scripts/releases/cli.mjs rollout",
     "release:cancel": "node scripts/releases/cli.mjs cancel",
     "mail:text": "node scripts/mail-editor-server.mjs",
-    "mail:publish": "tsx scripts/publish-mail-copy.ts"
+    "mail:publish": "tsx scripts/publish-mail-copy.ts",
+    "balance:reward-health": "vite --config config/vite.stat-graph.config.ts --host 127.0.0.1 --open /reward-health-graph.html",
+    "build:reward-health": "vite build --config config/vite.stat-graph.config.ts"
   },
   "dependencies": {
     "spacetimedb": "2.9.0"

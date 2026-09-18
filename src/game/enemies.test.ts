@@ -24,8 +24,8 @@ afterEach(() => {
 
 describe("generated encounter economy", () => {
   it("keeps tutorial breakthroughs and reward labels readable", () => {
-    expect(ENEMY_TYPES.Bramble.reward).toEqual({ type: "health", amount: 7 });
-    expect(ENEMY_TYPES["King Slime"].reward).toEqual({ type: "health", amount: 15 });
+    expect(ENEMY_TYPES.Bramble.reward.amount).toBeCloseTo(5.3130034902, 8);
+    expect(ENEMY_TYPES["King Slime"].reward.amount).toBeCloseTo(11.385007479, 8);
     expect(rewardLabel({ type: "speed", amount: .25 })).toBe("+0.25 ATK/SEC");
     expect(rewardLabel({ type: "damage", amount: 1.05 })).toBe("+1.05 DAMAGE");
   });
@@ -38,8 +38,8 @@ describe("generated encounter economy", () => {
     }
     const raider = ENEMY_TYPES["Dune Raider"], elite = ENEMY_TYPES["Wastes Reaper"];
     expect(elite.hp).toBeGreaterThan(raider.hp);
-    expect(raider.reward.amount).toBe(6);
-    expect(elite.reward.amount).toBeCloseTo(22);
+    expect(raider.reward.amount).toBeCloseTo(4.3758978972, 8);
+    expect(elite.reward.amount).toBeCloseTo(16.0449589564, 8);
   });
 });
 

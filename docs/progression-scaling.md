@@ -5,19 +5,23 @@ The September 4 overhaul replaces the chained map multipliers. `shared/progressi
 ## What is held constant
 
 - Forest is an independent onboarding map with fragile attackers and larger elite rewards. Editing Forest never changes Desert or later tiers.
-- Desert is campaign tier zero. Reference damage, health, armor, and regeneration grow 3× per tier. This is a controlled numerical scale, not a promise that every player's leaderboard power triples.
+- Desert is campaign tier zero. Reference damage, health, armor, and regeneration follow the authored `CAMPAIGN_STAT_SCALES` curve, expanding quickly through the middle campaign and tapering toward Ion. This is a controlled numerical scale, not a promise that every player's leaderboard power triples.
 - Each role specifies a reference fight duration, incoming hit as a fraction of reference health after armor, and reward as a fraction of a reference stat. Ordinary fights target 6–10 seconds at that reference; elite fights target 13–14 seconds.
 - Enemy HP comes from reference DPS × encounter seconds. Incoming damage accounts for reference health AND armor. More earned stats still improve performance against fixed enemies.
-- Health has its own meaningful budget: the Desert reference has 400 damage and 4,000 health. Equal damage and health are not a balance target; that produces near-one-shot raw-stat duels.
+- Health has its own meaningful budget: the Desert reference has 2,400 damage and 4,000 health. Equal damage and health are not a balance target; that produces near-one-shot raw-stat duels.
 - Six raiders plus one reaper in Desert/Snow and six plus seven later have the same damage-reward budget per clear. Adding damage enemies must not accidentally double progression speed. Other roles retain their authored rewards and camp layouts.
 - Boss HP uses the intended end-of-map reference DPS and a 90-second fight. Heavy hits target 25% of that reference's health after armor. Smaller overlapping abilities remain below the heavy strike.
 - Repeat bosses pay the same small guaranteed capstone as first clears. They must compete with regular farming including the 45-second respawn. The bulk of map growth comes from ordinary encounters.
-- Equipment bonuses remain additive, upgrades remain linear, and equipment never grants attack speed. Attack speed retains its existing cap.
+- Weapons add a percentage of earned damage (5%–40% before upgrades); health and regeneration equipment remain flat bonuses. Upgrades remain linear, and equipment never grants attack speed. Attack speed retains its existing cap.
 - Regular movement stays at or below Snowlands' matching role. Existing enemy art and map geometry retain their identity. Health elites must exist in both authored and saved map rosters and in asset-loading groups.
 
 ## Pacing hypothesis and validation
 
-About 52 active minutes of efficient farming tracks the current Desert baseline, with 20 additional minutes for each later map; 90 seconds per boss is the simulator’s readiness target. Map-specific regular reward multipliers account for camps, travel, gear, and research. The forecast continuously advances balanced research and one equipment upgrade slot using actual upgrade durations, with the queued item unavailable and fallback gear equipped. Item levels persist separately; newly found gear starts at the configured initial level. This assumes prompt bench visits without paid skips; travel to Home is not simulated. Maps need not take equal time for every strategy. The default simulation window includes 50% extra time to avoid censoring the last map solely because the window equals the sum of the targets.
+The fresh-account median is tuned for roughly seven days of active simulated play before Endless 1. Forest targets about one hour and Desert about 90 minutes, then map durations follow a rounded reference (`shared/campaign-pacing.ts`). Real payouts use the calibrated `CAMPAIGN_REWARD_PACING` factors; reference time controls do not independently multiply rewards. This is a forecast, not a time lock. Different routes, loot, and existing saves can progress faster or slower.
+
+Endless pays 10% of its former reward rate from Endless 1, for both regular enemies and bosses. It uses linear combat-stat growth and sixth-power endurance, while rewards grow only with the square root of a logarithmic depth factor. Health therefore outgrows payouts sharply, making later progress increasingly expensive. The simulation uses the actual generated layouts, per-site definitions, boss regeneration, and boss damage. Generated species can share art while granting different stat rewards.
+
+The forecast advances balanced research and one equipment upgrade slot using actual upgrade durations. Queued equipment is unavailable and fallback gear is equipped; temporary power dips are expected. This assumes prompt bench visits without paid skips; travel to Home is not simulated.
 
 The lab's four primary readouts are ordinary fight length, regular hits survived, longest wait for a cumulative +10% power improvement, and boss fight/payout. Power is only a momentum proxy. Use the detailed stat, reward, and threat tables to diagnose the cause.
 
@@ -50,4 +54,4 @@ No account-stat migration or reset is part of this change. Existing unusually st
 
 ## Adding content
 
-Choose a campaign index and existing role/reward lane; add its presentation, placement, and map roster. The shared functions generate HP, danger, and reward. A new role needs an explicit encounter profile instead of copying another map's raw numbers. If its damage roster differs from the standard campaign mix, pass its raider/reaper counts to `desertLaneRewardValue` and test the per-clear budget. The pacing target also adjusts real regular payouts through `REGULAR_REWARD_CYCLE_SCALE`; rerun the audit because travel and research make duration approximate. Run the experience audit across the handoff and the new tier, including no-gear/no-research and boss-rush routes.
+Choose a campaign index and existing role/reward lane; add its presentation, placement, and map roster. The shared functions generate HP, danger, and reward. A new role needs an explicit encounter profile instead of copying another map's raw numbers. If its damage roster differs from the standard campaign mix, pass its raider/reaper counts to `desertLaneRewardValue` and test the per-clear budget. The calibrated `CAMPAIGN_REWARD_PACING` factors adjust real regular and boss payouts; rerun the audit because travel and research make duration approximate. Run the experience audit across the handoff and the new tier, including no-gear/no-research and boss-rush routes.

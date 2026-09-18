@@ -22,7 +22,7 @@ import {
   isUpgradeableItem,
   isWeaponItem,
   itemDisplayName,
-  itemDamageBonus,
+  itemDamageMultiplierBonus,
   itemMaxHealthBonus,
   itemRegenerationBonus,
   itemStats,
@@ -68,7 +68,7 @@ describe("equipment catalog", () => {
           expect(itemRegenerationBonus(item.id, level), item.id).toBe(0);
           expect(itemMaxHealthBonus(item.id, level), item.id).toBeGreaterThan(0);
         }
-        expect(itemDamageBonus(item.id, level), item.id).toBe(0);
+        expect(itemDamageMultiplierBonus(item.id, level), item.id).toBe(0);
       }
     }
   });
@@ -122,27 +122,27 @@ describe("equipment catalog", () => {
     expect(equipmentMaxHealth(100, "", "", 1.2)).toBe(120);
   });
 
-  it("keeps gear independent of earned stats while allowing tech to multiply its bonus", () => {
+  it("scales weapon damage with earned stats and tech while keeping armor bonuses flat", () => {
     for (const base of [0, 10, 1000, 1_000_000]) {
       for (const research of [1, 1.2, 3]) {
-        expect(equipmentDamage(base, STARTER_BOW, "", "", research) - base * research).toBeCloseTo(5 * research);
+        expect(equipmentDamage(base, STARTER_BOW, "", "", research) - base * research).toBeCloseTo(base * .05 * research);
         expect(equipmentMaxHealth(base, WOOD_FULL_HELM, WOODEN_ARMOR, research) - base * research).toBeCloseTo(25 * research);
         expect(equipmentRegeneration(base, FIRE_METAL_HELMET, MAGMA_ARMOR, research) - base * research).toBeCloseTo(108 * research);
       }
     }
   });
 
-  it("gives each map a larger fixed jump while preserving the stronger rare bows", () => {
-    expect(itemDamageBonus(STARTER_BOW)).toBe(5);
-    expect(itemDamageBonus(IRON_BOW)).toBe(480);
-    expect(itemDamageBonus(SNOW_BOW)).toBe(1224);
-    expect(itemDamageBonus(FROST_BOW)).toBe(1440);
-    expect(itemDamageBonus(LAVA_BOW)).toBe(4320);
-    expect(itemDamageBonus(NIGHT_BOW)).toBe(11016);
-    expect(itemDamageBonus(FIRE_METAL_BOW)).toBe(12960);
-    expect(itemDamageBonus(FIRE_METAL_HELMET)).toBe(0);
+  it("gives each map a larger percentage while preserving the stronger rare bows", () => {
+    expect(itemDamageMultiplierBonus(STARTER_BOW)).toBe(.05);
+    expect(itemDamageMultiplierBonus(IRON_BOW)).toBe(.075);
+    expect(itemDamageMultiplierBonus(SNOW_BOW)).toBe(.085);
+    expect(itemDamageMultiplierBonus(FROST_BOW)).toBe(.1);
+    expect(itemDamageMultiplierBonus(LAVA_BOW)).toBe(.125);
+    expect(itemDamageMultiplierBonus(NIGHT_BOW)).toBe(.1275);
+    expect(itemDamageMultiplierBonus(FIRE_METAL_BOW)).toBe(.15);
+    expect(itemDamageMultiplierBonus(FIRE_METAL_HELMET)).toBe(0);
     expect(itemStats(MAGMA_ARMOR)).toEqual(["MAX HEALTH +7200"]);
-    expect(itemStats(DARK_METAL_HELMET)).toEqual(["REGEN +324"]);
+    expect(itemStats(DARK_METAL_HELMET)).toEqual(["REGEN +2168.68"]);
   });
 
   it("grants regeneration even with zero earned regeneration", () => {
@@ -182,17 +182,17 @@ describe("equipment catalog", () => {
     expect(isUpgradeableItem(BASIC_PAPER_HAT)).toBe(false);
   });
 
-  it("upgrades only the item's fixed amount and keeps existing upgrade levels", () => {
-    expect(itemDamageBonus(FROST_BOW, 10)).toBe(2592);
+  it("upgrades the base item bonus and keeps existing upgrade levels", () => {
+    expect(itemDamageMultiplierBonus(FROST_BOW, 10)).toBe(.18);
     expect(itemMaxHealthBonus(FROST_ARMOR, 10)).toBe(4320);
     expect(itemRegenerationBonus(WOOD_FULL_HELM, 10)).toBe(21.6);
-    expect(itemDamageBonus(STARTER_BOW, 10)).toBe(9);
+    expect(itemDamageMultiplierBonus(STARTER_BOW, 10)).toBe(.09);
     expect(itemMaxHealthBonus(WOODEN_ARMOR, 10)).toBe(45);
     expect(itemRegenerationBonus(WOODEN_ARMOR, 10)).toBe(0);
     expect(itemDisplayName(FROST_BOW, 1)).toBe("FROST BOW +1");
-    expect(itemStats(STARTER_BOW, 1)).toEqual(["DAMAGE +5.4"]);
+    expect(itemStats(STARTER_BOW, 1)).toEqual(["DAMAGE +5.4%"]);
     expect(itemUpgradeStatChanges(STARTER_BOW, 0)).toEqual([
-      { label: "DAMAGE", current: "+5", next: "+5.4" },
+      { label: "DAMAGE", current: "+5%", next: "+5.4%" },
     ]);
     expect(equipmentDamage(100, STARTER_BOW, "", "", 1.4, 10)).toBeCloseTo(152.6);
   });

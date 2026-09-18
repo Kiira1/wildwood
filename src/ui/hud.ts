@@ -300,11 +300,11 @@ export function renderInventoryView(
         bonuses.className = "inventory-item-bonuses";
         const stats = itemStats(itemId, level);
         for (const stat of stats) {
-          const match = /^(DAMAGE|MAX HEALTH|REGEN) (\+[\d.]+)$/.exec(stat);
+          const match = /^(DAMAGE|MAX HEALTH|REGEN) (\+[\d.]+)(%?)$/.exec(stat);
           if (!match) continue;
           const value = document.createElement("span");
           value.dataset.statKind = match[1] === "DAMAGE" ? "damage" : match[1] === "MAX HEALTH" ? "health" : "regen";
-          value.textContent = `+${formatEquipmentAmount(Number(match[2]))}`;
+          value.textContent = `+${formatEquipmentAmount(Number(match[2]))}${match[3]}`;
           value.title = stat;
           value.setAttribute("aria-label", stat);
           bonuses.append(value);

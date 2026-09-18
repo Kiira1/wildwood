@@ -49,9 +49,14 @@
             </label>
             <div class="range-row">
               <input id="trials" name="trials" type="range" min="1" max="100" step="1" />
-              <output id="trialsValue" for="trials">20</output>
+              <output id="trialsValue" for="trials">5</output>
             </div>
 
+            <label class="field-label" for="endlessMaps">Endless maps after Ion (0 = campaign only)</label>
+            <input id="endlessMaps" type="number" min="0" max="50" step="1" />
+            <label class="field-label"><span><input id="stopAfterCampaign" type="checkbox" checked /> Stop after last selected map’s boss</span></label>
+            <label class="field-label"><span><input id="compareStrategies" type="checkbox" /> Compare all four strategies (slower)</span></label>
+            <p class="field-hint">Start with 5 trials. Increase trials to check the spread across loot rolls.</p>
             <label class="field-label" for="strategy">Farming behavior</label>
             <select id="strategy" name="strategy">
               <option value="mixed">Mixed players · varied priorities</option>
@@ -92,12 +97,12 @@
             <label class="field-label" for="targetMapDurationStepMinutes">Minutes added per map</label>
             <input id="targetMapDurationStepMinutes" type="number" min="0" max="1440" step="5" />
             <label class="field-label" for="targetMapDurationMultiplier">
-              <span>Desired map step</span>
-              <span class="field-hint">each map vs previous</span>
+              <span>Late-map curve adjustment</span>
+              <span class="field-hint">1.45 = rounded seven-day reference</span>
             </label>
             <div class="input-with-unit compact">
               <input id="targetMapDurationMultiplier" name="targetMapDurationMultiplier" type="number" min="1" max="10" step="0.05" inputmode="decimal" />
-              <span>× LONGER</span>
+              <span>CURVE FACTOR</span>
             </div>
 
             <div class="two-fields target-fields">
@@ -210,10 +215,25 @@
             <p class="tuning-note">Multipliers are sandbox-only. They do not edit the game.</p>
           </section>
 
+          <section class="control-section">
+            <h2>Kill-budget scenario</h2>
+            <label class="field-label"><span><input id="killBudgetEnabled" type="checkbox" checked /> Scale bosses to kill targets</span></label>
+            <label class="field-label" for="budgetCurve">Kill target curve</label>
+            <select id="budgetCurve"><option value="calibrated">Calibrated campaign + steep Endless</option><option value="custom">Custom geometric targets</option></select>
+            <label class="field-label" for="budgetDamageKills">Custom Forest damage kills</label>
+            <input id="budgetDamageKills" type="number" min="1" max="1000000" step="1" />
+            <label class="field-label" for="budgetHealthKills">Custom Forest health kills</label>
+            <input id="budgetHealthKills" type="number" min="1" max="1000000" step="1" />
+            <label class="field-label" for="budgetCampaignGrowth">Kill target × per campaign map</label>
+            <input id="budgetCampaignGrowth" type="number" min="1" max="3" step="0.05" />
+            <label class="field-label" for="budgetEndlessGrowth">Kill target × per Endless map</label>
+            <input id="budgetEndlessGrowth" type="number" min="1" max="3" step="0.05" />
+            <p class="tuning-note">Sandbox only. Scales boss HP and strongest hit from each trial’s entry build. Regular enemies and rewards keep their current values. Actual kills vary as gear, research and other stats improve. Run current balance first, then enable this to compare the previous curve.</p>
+          </section>
           <div class="run-actions">
             <button id="runButton" class="run-button" type="submit">
               <span>RUN SIMULATION</span>
-              <small id="runEstimate">20 campaigns</small>
+              <small id="runEstimate">5 campaigns</small>
             </button>
             <button id="copyConfigButton" class="secondary-button" type="button">COPY CONFIG</button>
           </div>
@@ -225,6 +245,7 @@
           <span class="status-dot" aria-hidden="true"></span>
           <span id="runStatusText">Ready to simulate</span>
           <span id="runMeta" class="status-meta"></span>
+          <button id="cancelRunButton" class="text-button" type="button" hidden>Cancel run</button>
         </div>
 
         <section id="summaryCards" class="summary-cards" aria-label="Simulation summary"></section>
@@ -257,6 +278,14 @@
           </div>
         </section>
 
+        <section class="panel">
+          <div class="panel-heading"><h2>Kills to kill and survive the boss</h2></div>
+          <p id="killBudgetNote" class="panel-help">Run a simulation to compare current requirements with the kill-budget proposal.</p>
+          <div class="table-scroll"><table class="data-table">
+            <thead><tr><th>Map</th><th>Damage kills: current → proposed</th><th>Health kills: current → proposed</th><th>Total kills</th><th>Boss HP change</th><th>Boss hit change</th><th>Fight target</th><th>Farm enemies</th></tr></thead>
+            <tbody id="killBudgetRows"></tbody>
+          </table></div>
+        </section>
         <section class="panel time-budget-panel">
           <div class="panel-heading">
             <div>
@@ -402,7 +431,7 @@
         </div>
 
         <section class="model-note">
-          <strong>What the clock models:</strong> current enemy HP/rewards/spawns and the server’s complete loot catalog, additive equipment, 8%-per-level gear upgrades, attack cap, research, loot odds, travel, respawns, solo boss damage, and a repeat-boss farming comparison. Mixed runs give each campaign a slightly different blend of nearby, efficient, DPS-first, and boss-readiness priorities; the boss-farm strategy is an explicit exploit check. Opening momentum, equipment strength, and future-system reserve are reference/what-if controls only. Headroom ceilings are event-clock sensitivity estimates. The clock starts on Forest arrival with completed tutorial rewards. Boss readiness and camp-clear settings are player-strategy assumptions, not gameplay requirements. Black Boots activate after five combat-free seconds. Loot is delivered immediately in this model; server batching is not simulated. The clock deliberately does not invent player dodging, deaths, idle time, boss mechanics, or multiplayer contribution.
+          <strong>What the clock models:</strong> current enemy HP/rewards/spawns and the server’s complete loot catalog, percentage weapon damage and flat defensive equipment, 8%-per-level gear upgrades, attack cap, research, loot odds, travel, respawns, solo boss damage, and a repeat-boss farming comparison. Mixed runs give each campaign a slightly different blend of nearby, efficient, DPS-first, and boss-readiness priorities; the boss-farm strategy is an explicit exploit check. Opening momentum, equipment strength, and future-system reserve are reference/what-if controls only. Headroom ceilings are event-clock sensitivity estimates. The clock starts on Forest arrival with completed tutorial rewards. Boss readiness and camp-clear settings are player-strategy assumptions, not gameplay requirements. Black Boots activate after five combat-free seconds. Loot is delivered immediately in this model; server batching is not simulated. The clock deliberately does not invent player dodging, deaths, idle time, boss mechanics, or multiplayer contribution.
         </section>
       </main>
     </div>

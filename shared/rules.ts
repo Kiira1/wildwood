@@ -55,8 +55,8 @@ export {
 } from "./items";
 // Targets are playtest hypotheses. The encounter generator owns combat stats.
 export const BALANCE_TARGET_DESERT_DURATION_SECONDS = MAP_TARGET_SECONDS;
-export const BALANCE_TARGET_MAP_DURATION_MULTIPLIER = 1;
-export const BALANCE_TARGET_MAP_DURATION_STEP_SECONDS = 76 * 60;
+export const BALANCE_TARGET_MAP_DURATION_MULTIPLIER = 1.45;
+export const BALANCE_TARGET_MAP_DURATION_STEP_SECONDS = 0;
 export const BALANCE_TARGET_MAP_POWER_MULTIPLIER = MAP_STAT_GROWTH;
 export const BALANCE_FIRST_SLOWDOWN_POWER = 400_000; // historical chart marker only
 export const BALANCE_TARGET_POWER_ARC_BLEND = .35;

@@ -1,3 +1,7 @@
+import { campaignMapTargetSeconds, CAMPAIGN_ENTRY_TARGET_SECONDS } from "../../shared/campaign-pacing";
+import { compareKillBudget, killTargets, normalizeKillBudget, DEFAULT_KILL_BUDGET, type KillBudgetConfig, type BossReadinessComparison } from "./kill-budget";
+import { generateMap, generatedBossStats, proceduralMapId, proceduralMapNumber, type ProceduralMapId } from "../../shared/procedural-maps";
+import { regularMapLoot } from "../../shared/regular-map-loot";
 import { bossHitsToDefeat } from "../../shared/boss-regeneration";
 import { simulationRegularDrops, simulationTravelSeconds } from "./gameplay-model";
 import { itemTier } from "../../shared/item-tier";
@@ -10,7 +14,7 @@ import { BOSS_TARGET_SECONDS } from "../../shared/progression";
 import { ATTACK_WINDUP_SECONDS } from "../game/attack-timeline";
 import { BOSS_DAMAGE_PROFILES } from "../game/boss-damage";
 import { damageAfterArmor } from "../game/combat";
-import { ENEMY_TYPES, type EnemyKind, type RewardType } from "../game/enemies";
+import { ENEMY_TYPES, type EnemyKind, type EnemyDefinition, type RewardType } from "../game/enemies";
 import { createGameBootstrap } from "../game/runtime/game-bootstrap";
 import { formatCompactNumber } from "../ui/number-format";
 import {
@@ -117,7 +121,14 @@ export const BALANCE_MAP_IDS = [
   CRYSTAL_HOLLOWS_MAP_ID, CLOCKWORK_RUINS_MAP_ID, DUSKFALL_ORCHARD_MAP_ID, NEON_BASTION_MAP_ID, VERDANT_CATACOMBS_MAP_ID, ION_CITADEL_MAP_ID,
 ] as const;
 
-export type BalanceMapId = typeof BALANCE_MAP_IDS[number];
+export type BalanceMapId = typeof BALANCE_MAP_IDS[number] | ProceduralMapId;
+export function balanceMapIds(endlessMaps = 0): BalanceMapId[] {
+  return [...BALANCE_MAP_IDS, ...Array.from({ length: Math.max(0, Math.min(50, Math.floor(endlessMaps))) }, (_, i) => proceduralMapId(i + 1))];
+}
+export function balanceMapName(id: BalanceMapId) {
+  const number = proceduralMapNumber(id);
+  return number === null ? MAP_DISPLAY_NAMES[id as typeof BALANCE_MAP_IDS[number]] : `Endless ${number}`;
+}
 export type GuidedFarmingStrategy = "natural" | "efficient" | "dps-first" | "boss-rush";
 export type FarmingStrategy = GuidedFarmingStrategy | "mixed" | "boss-farm";
 export type ResearchPlan = "off" | "balanced" | "damage-first";
@@ -136,6 +147,9 @@ export type BalanceSimulationConfig = {
   strategy: FarmingStrategy;
   researchPlan: ResearchPlan;
   steadyEquipmentUpgrades: boolean;
+  stopAfterCampaign: boolean;
+  endlessMaps: number;
+  killBudget: KillBudgetConfig;
   bossTargetSeconds: number;
   targetDesertDurationSeconds: number;
   targetMapDurationMultiplier: number;
@@ -197,8 +211,9 @@ type DropDefinition = {
 
 type BossReward = { type: Exclude<RewardType, "speed">; amount: number };
 
-type BossDefinition = {
+export type BossDefinition = {
   kind: keyof typeof BOSS_DAMAGE_PROFILES;
+  strongestHit?: number;
   name: string;
   hp: number;
   x: number;
@@ -207,7 +222,7 @@ type BossDefinition = {
   drops: DropDefinition[];
 };
 
-type BalanceMapDefinition = {
+export type BalanceMapDefinition = {
   id: BalanceMapId;
   name: string;
   arrival: { x: number; y: number };
@@ -241,6 +256,7 @@ type MutableSimulationState = {
 type SiteState = ReturnType<typeof createSpawnSites>[number] & {
   availableAt: number;
   kills: number;
+  balanceKey: string;
 };
 
 type HistoryPoint = {
@@ -251,6 +267,8 @@ type HistoryPoint = {
 };
 
 export type TrialMapRecord = {
+  readiness: BossReadinessComparison | null;
+  modeledBossHp: number | null;
   mapId: BalanceMapId;
   enteredAtSeconds: number;
   exitedAtSeconds: number | null;
@@ -274,6 +292,7 @@ export type TrialMapRecord = {
 };
 
 type TrialResult = {
+  millionPowerAtSeconds: number | null;
   finalState: SimulationStateSnapshot;
   samples: Array<{ timeSeconds: number; power: number; dps: number; mapIndex: number }>;
   maps: TrialMapRecord[];
@@ -417,6 +436,7 @@ export type MapSummary = {
 };
 
 export type EnemyBalanceMetric = {
+  label?: string;
   enemy: EnemyKind;
   elite: boolean;
   spawnCount: number;
@@ -446,6 +466,8 @@ export type TargetCurvePoint = {
 };
 
 export type BalanceSimulationResult = {
+  millionPower: { medianSeconds: number | null; reachedPercent: number };
+  bossReadiness: Partial<Record<BalanceMapId, BossReadinessComparison>>;
   config: BalanceSimulationConfig;
   timeline: TimelinePoint[];
   maps: MapSummary[];
@@ -462,10 +484,7 @@ export type BalanceSimulationResult = {
 const SAMPLE_COUNT = 180;
 const MAP_TRANSITION_SECONDS = 6;
 const LOOT_AND_RETARGET_SECONDS = .3;
-const DEFAULT_FOREST_ONBOARDING_SECONDS = 48 * 60;
-const DEFAULT_CAMPAIGN_DURATION_SECONDS = 1.5 * (DEFAULT_FOREST_ONBOARDING_SECONDS + BALANCE_MAP_IDS
-  .slice(1)
-  .reduce((total, _mapId, index) => total + BALANCE_TARGET_DESERT_DURATION_SECONDS * BALANCE_TARGET_MAP_DURATION_MULTIPLIER ** index + BALANCE_TARGET_MAP_DURATION_STEP_SECONDS * index, 0));
+const DEFAULT_CAMPAIGN_DURATION_SECONDS = 1.5 * CAMPAIGN_ENTRY_TARGET_SECONDS;
 const PROJECTILE_TRAVEL_SECONDS = DEFAULT_ATTACK_RANGE / PLAYER_PROJECTILE_SPEED * .5;
 const FIRST_HIT_SECONDS = ATTACK_WINDUP_SECONDS + PROJECTILE_TRAVEL_SECONDS;
 
@@ -537,8 +556,8 @@ const damageResearchOrder: ResearchId[] = [
   "moveSpeed", "vitality", "precision", "regeneration",
 ];
 
-function defaultMapAdjustments(): Record<BalanceMapId, MapAdjustment> {
-  return Object.fromEntries(BALANCE_MAP_IDS.map((id) => [id, {
+function defaultMapAdjustments(endlessMaps = 0): Record<BalanceMapId, MapAdjustment> {
+  return Object.fromEntries(balanceMapIds(endlessMaps).map((id) => [id, {
     hp: 1,
     bossHp: 1,
     damage: 1,
@@ -550,10 +569,13 @@ function defaultMapAdjustments(): Record<BalanceMapId, MapAdjustment> {
 export function defaultBalanceSimulationConfig(): BalanceSimulationConfig {
   return {
     durationSeconds: DEFAULT_CAMPAIGN_DURATION_SECONDS,
-    trials: 100,
+    trials: 5,
     strategy: "mixed",
     researchPlan: "balanced",
     steadyEquipmentUpgrades: true,
+    stopAfterCampaign: false,
+    endlessMaps: 0,
+    killBudget: { ...DEFAULT_KILL_BUDGET },
     bossTargetSeconds: BOSS_TARGET_SECONDS,
     targetDesertDurationSeconds: BALANCE_TARGET_DESERT_DURATION_SECONDS,
     targetMapDurationMultiplier: BALANCE_TARGET_MAP_DURATION_MULTIPLIER,
@@ -578,11 +600,11 @@ export function bossReadinessTargetSeconds(
     "bossTargetSeconds" | "targetDesertDurationSeconds" | "targetMapDurationMultiplier" | "targetMapDurationStepSeconds"
   >,
 ) {
-  const progressionIndex = BALANCE_MAP_IDS.indexOf(mapId) - 1;
+  if (proceduralMapNumber(mapId) !== null) return config.bossTargetSeconds;
+  const progressionIndex = BALANCE_MAP_IDS.indexOf(mapId as typeof BALANCE_MAP_IDS[number]) - 1;
   const lavaProgressionIndex = BALANCE_MAP_IDS.indexOf(ADVANCED_LAVA_WASTES_MAP_ID) - 1;
   if (progressionIndex < lavaProgressionIndex) return config.bossTargetSeconds;
-  const targetMapDuration = config.targetDesertDurationSeconds *
-    config.targetMapDurationMultiplier ** progressionIndex + config.targetMapDurationStepSeconds * progressionIndex;
+  const targetMapDuration = campaignMapTargetSeconds(progressionIndex + 1, config.targetDesertDurationSeconds, config.targetMapDurationMultiplier, config.targetMapDurationStepSeconds);
   return Math.max(
     config.bossTargetSeconds,
     Math.min(
@@ -596,8 +618,9 @@ function normalizeConfig(config: Partial<BalanceSimulationConfig>): BalanceSimul
   const defaults = defaultBalanceSimulationConfig();
   const strategy = config.strategy ?? defaults.strategy;
   const researchPlan = config.researchPlan ?? defaults.researchPlan;
-  const adjustments = defaultMapAdjustments();
-  for (const id of BALANCE_MAP_IDS) {
+  const endlessMaps = Math.round(finiteRange(config.endlessMaps, 0, 0, 50));
+  const adjustments = defaultMapAdjustments(endlessMaps);
+  for (const id of balanceMapIds(endlessMaps)) {
     const next = config.mapAdjustments?.[id];
     if (!next) continue;
     adjustments[id] = {
@@ -615,6 +638,9 @@ function normalizeConfig(config: Partial<BalanceSimulationConfig>): BalanceSimul
       ? strategy
       : "efficient",
     steadyEquipmentUpgrades: config.steadyEquipmentUpgrades ?? defaults.steadyEquipmentUpgrades,
+    stopAfterCampaign: config.stopAfterCampaign ?? defaults.stopAfterCampaign,
+    endlessMaps,
+    killBudget: normalizeKillBudget(config.killBudget),
     targetMapDurationStepSeconds: finiteRange(config.targetMapDurationStepSeconds, defaults.targetMapDurationStepSeconds, 0, 86400),
     researchPlan: researchPlan === "balanced" || researchPlan === "damage-first" ? researchPlan : "off",
     bossTargetSeconds: finiteRange(config.bossTargetSeconds, defaults.bossTargetSeconds, 1, 24 * 60 * 60),
@@ -663,9 +689,9 @@ function finiteRange(value: unknown, fallback: number, minimum: number, maximum:
   return Number.isFinite(number) ? Math.max(minimum, Math.min(maximum, number)) : fallback;
 }
 
-export function createMapDefinitions(): BalanceMapDefinition[] {
+export function createMapDefinitions(endlessMaps = 0): BalanceMapDefinition[] {
   const bootstrap = createGameBootstrap();
-  return [
+  const maps: BalanceMapDefinition[] = [
     {
       id: TUTORIAL_FOREST_MAP_ID,
       name: MAP_DISPLAY_NAMES[TUTORIAL_FOREST_MAP_ID],
@@ -957,9 +983,21 @@ export function createMapDefinitions(): BalanceMapDefinition[] {
       },
     },
   ];
+  for (const map of maps) {
+    if (map.boss) map.boss.drops.push(...regularMapLoot(map.id).map(drop => ({
+      itemId: drop.itemId as ItemId, numerator: drop.wins, denominator: drop.outcomes,
+    })));
+  }
+  for (const id of balanceMapIds(endlessMaps).slice(BALANCE_MAP_IDS.length)) {
+    const generated = generateMap(id as ProceduralMapId);
+    const boss = generatedBossStats(generated);
+    maps.push({ id, name: balanceMapName(id), arrival: generated.arrival, regularDrops: [],
+      boss: { kind: "aegisPrime", name: `Endless ${generated.number} Warden`, hp: boss.hp,
+        strongestHit: boss.damage, ...generated.boss, rewards: boss.rewards.filter((reward): reward is BossReward => reward.type !== "speed"), drops: [] } });
+  }
+  return maps;
 }
 
-const MAP_DEFINITIONS = createMapDefinitions();
 const LATE_COMPLEMENTARY_MAP_IDS = new Set<BalanceMapId>(
   BALANCE_MAP_IDS.slice(BALANCE_MAP_IDS.indexOf(ADVANCED_LAVA_WASTES_MAP_ID)),
 );
@@ -1288,24 +1326,24 @@ function travelSeconds(
 
 function projectedRewardPowerGain(
   state: MutableSimulationState,
-  enemy: EnemyKind,
+  enemy: EnemyDefinition,
   adjustment: MapAdjustment,
 ) {
   const before = continuousPowerForState(state);
   const projected = { ...state, stats: { ...state.stats } };
-  const reward = ENEMY_TYPES[enemy].reward;
+  const reward = enemy.reward;
   applyRewardToStats(projected.stats, reward.type, reward.amount * researchStatRewardMultiplier(state.research) * adjustment.reward);
   return Math.max(0, continuousPowerForState(projected) - before);
 }
 
 function projectedDpsGain(
   state: MutableSimulationState,
-  enemy: EnemyKind,
+  enemy: EnemyDefinition,
   adjustment: MapAdjustment,
 ) {
   const before = combatStats(state, true).dps;
   const projected = { ...state, stats: { ...state.stats } };
-  const reward = ENEMY_TYPES[enemy].reward;
+  const reward = enemy.reward;
   applyRewardToStats(projected.stats, reward.type, rewardAmount(state, reward.amount, adjustment.reward));
   return Math.max(0, combatStats(projected, true).dps - before);
 }
@@ -1313,12 +1351,12 @@ function projectedDpsGain(
 function projectedBossTtk(
   state: MutableSimulationState,
   map: BalanceMapDefinition,
-  enemy: EnemyKind,
+  enemy: EnemyDefinition,
   adjustment: MapAdjustment,
 ) {
   if (!map.boss) return null;
   const projected = { ...state, stats: { ...state.stats } };
-  const reward = ENEMY_TYPES[enemy].reward;
+  const reward = enemy.reward;
   applyRewardToStats(projected.stats, reward.type, rewardAmount(state, reward.amount, adjustment.reward));
   return bossFightSeconds(projected, map, adjustment);
 }
@@ -1361,7 +1399,7 @@ function bestRegularPowerPerMinute(
   const combat = combatStats(snapshot, true);
   let best = 0;
   for (const site of sites) {
-    const enemy = ENEMY_TYPES[site.type];
+    const enemy = siteEnemy(site);
     const projected: SimulationStateSnapshot = {
       ...snapshot,
       stats: { ...snapshot.stats },
@@ -1433,16 +1471,31 @@ function selectSite(
   const candidates = openMapCycle.length ? openMapCycle : pendingClear.length ? pendingClear : available;
   const defensiveCandidates = defensiveTurn
     ? candidates.filter((site) => {
-      const rewardType = ENEMY_TYPES[site.type].reward.type;
+      const rewardType = siteEnemy(site).reward.type;
       return rewardType !== "damage" && rewardType !== "speed";
     })
     : [];
   const selectedCandidates = defensiveCandidates.length ? defensiveCandidates : candidates;
   const combat = combatStats(state, true);
+  // Every spawn of the same species shares these projections for this decision.
+  // Keep the cache local: rewards, research, and upgrades can change next event.
+  const projections = new Map<string, { fight: number; power: number; dps: number; bossTtk: number | null }>();
   const candidateData = selectedCandidates.map((site) => {
-    const enemy = ENEMY_TYPES[site.type];
+    const enemy = siteEnemy(site);
     const travel = travelSeconds(position, site, state, config.pathingMultiplier);
-    const fight = timeToKill(enemy.hp * adjustment.hp, combat.averageHit, combat.attackRate);
+    const key = site.balanceKey;
+    let projection = projections.get(key);
+    if (!projection) {
+      projection = {
+        fight: timeToKill(enemy.hp * adjustment.hp, combat.averageHit, combat.attackRate),
+        power: bossGateActive ? 0 : projectedRewardPowerGain(state, enemy, adjustment),
+        dps: bossGateActive ? 0 : projectedDpsGain(state, enemy, adjustment),
+        bossTtk: bossGateActive && (enemy.reward.type === "damage" || enemy.reward.type === "speed")
+          ? projectedBossTtk(state, map, enemy, adjustment) : currentBossTtk,
+      };
+      projections.set(key, projection);
+    }
+    const fight = projection.fight;
     const duration = Math.max(.01, travel + fight + LOOT_AND_RETARGET_SECONDS);
     // While a boss gate is closed, readiness is the only useful distinction:
     // projecting canonical power and DPS for every candidate would do the
@@ -1450,16 +1503,14 @@ function selectSite(
     // projections until the map is actually ready for its capstone.
     const powerEfficiency = bossGateActive
       ? 0
-      : projectedRewardPowerGain(state, site.type, adjustment) / duration;
+      : projection.power / duration;
     const dpsEfficiency = bossGateActive
       ? 0
-      : projectedDpsGain(state, site.type, adjustment) / duration;
+      : projection.dps / duration;
     const reward = enemy.reward;
     const focus = reward.type === "damage" || reward.type === "speed" ? 1 : .04;
     const bossRushEfficiency = (bossGateActive ? 0 : powerEfficiency) * focus;
-    const nextBossTtk = bossGateActive && (enemy.reward.type === "damage" || enemy.reward.type === "speed")
-      ? projectedBossTtk(state, map, site.type, adjustment)
-      : currentBossTtk;
+    const nextBossTtk = projection.bossTtk;
     const readinessEfficiency = reward.type === "damage" || reward.type === "speed"
       ? rewardAmount(state, reward.amount, adjustment.reward) / duration
       : 0;
@@ -1502,7 +1553,7 @@ function selectSite(
         0,
       );
       const authoredTimeByStat = sites.reduce((totals, site) => {
-        const enemy = ENEMY_TYPES[site.type];
+        const enemy = siteEnemy(site);
         const fight = timeToKill(enemy.hp * adjustment.hp, combat.averageHit, combat.attackRate);
         const stat = progressionStatForReward(enemy.reward.type);
         totals.set(stat, (totals.get(stat) ?? 0) + fight + LOOT_AND_RETARGET_SECONDS);
@@ -1547,7 +1598,7 @@ function selectSite(
   if (needsHealth && (config.strategy !== "dps-first" || !bossGateActive)) {
     const healthCandidates = candidateData.filter(candidate => candidate.stat === "health");
     if (healthCandidates.length) return healthCandidates.reduce((best, candidate) => {
-      const gain = (entry: typeof candidate) => ENEMY_TYPES[entry.site.type].reward.amount / entry.duration;
+      const gain = (entry: typeof candidate) => siteEnemy(entry.site).reward.amount / entry.duration;
       return gain(candidate) > gain(best) ? candidate : best;
     });
   }
@@ -1568,7 +1619,7 @@ function selectSite(
         behavior.blend["boss-rush"] * bossRushScores[index];
     }
     if (defensiveTurn) {
-      const rewardType = ENEMY_TYPES[candidate.site.type].reward.type;
+      const rewardType = siteEnemy(candidate.site).reward.type;
       const defensivePriority = rewardType === "health" ? 3 : rewardType === "armor" ? 2 : 1;
       score = defensivePriority + naturalScores[index] * .001;
     }
@@ -1599,9 +1650,15 @@ function selectSite(
   }, null as { site: SiteState; score: number; travel: number; fight: number } | null);
 }
 
-function createSites(map: BalanceMapDefinition) {
+function siteEnemy(site: SiteState) { return site.definition ?? ENEMY_TYPES[site.type]; }
+
+export function createSites(map: BalanceMapDefinition) {
   const bossPoint = map.boss ?? { x: 4_050, y: 4_050 };
-  return createSpawnSites(bossPoint, map.id).map((site) => ({ ...site, availableAt: 0, kills: 0 }));
+  return createSpawnSites(bossPoint, map.id).map((site) => {
+    const enemy = site.definition ?? ENEMY_TYPES[site.type];
+    return { ...site, availableAt: 0, kills: 0,
+      balanceKey: `${site.type}:${enemy.reward.type}:${enemy.hp}:${enemy.reward.amount}` };
+  });
 }
 
 /** A readiness estimate: survive the strongest telegraphed hit with room to recover.
@@ -1610,7 +1667,7 @@ function bossHitShare(state: EffectiveStatsState, map: BalanceMapDefinition, adj
   if (!map.boss) return 0;
   const stats = combatStats(state, false);
   const profile = BOSS_DAMAGE_PROFILES[map.boss.kind];
-  return damageAfterArmor(Math.max(...Object.values(profile)) * adjustment.damage, stats.armor) / Math.max(1, stats.maxHp);
+  return damageAfterArmor((map.boss.strongestHit ?? Math.max(...Object.values(profile))) * adjustment.damage, stats.armor) / Math.max(1, stats.maxHp);
 }
 
 function bossFightSeconds(state: EffectiveStatsState, map: BalanceMapDefinition, adjustment: MapAdjustment) {
@@ -1694,11 +1751,37 @@ function momentumForRecord(
   };
 }
 
+function readinessForMap(map: BalanceMapDefinition, snapshot: SimulationStateSnapshot, config: BalanceSimulationConfig, index: number) {
+  const adjustment = config.mapAdjustments[map.id];
+  const combat = combatStats(snapshot, false);
+  const best = (type: "damage" | "health") => createSites(map)
+    .filter(site => siteEnemy(site).reward.type === type)
+    .sort((a, b) => siteEnemy(b).reward.amount - siteEnemy(a).reward.amount)[0];
+  const gain = (type: "damage" | "health", site: SiteState | undefined) => {
+    if (!site) return 0;
+    const projected = { ...snapshot, stats: { ...snapshot.stats } };
+    applyRewardToStats(projected.stats, type, siteEnemy(site).reward.amount * researchStatRewardMultiplier(snapshot.research) * adjustment.reward);
+    const after = combatStats(projected, false);
+    return type === "damage" ? after.averageHit - combat.averageHit : after.maxHp - combat.maxHp;
+  };
+  const damage = best("damage"), health = best("health");
+  return { ...compareKillBudget({
+    bossHp: map.boss!.hp * adjustment.bossHp,
+    bossHitAfterArmor: damageAfterArmor((map.boss!.strongestHit ?? Math.max(...Object.values(BOSS_DAMAGE_PROFILES[map.boss!.kind]))) * adjustment.damage, combat.armor),
+    hitDamage: combat.averageHit, health: combat.maxHp,
+    damagePerKill: gain("damage", damage), healthPerKill: gain("health", health),
+    attackInterval: Math.max(MIN_ATTACK_INTERVAL, combat.attackRate), firstHitSeconds: FIRST_HIT_SECONDS,
+    targetSeconds: bossReadinessTargetSeconds(map.id, config), maxHitShare: .3,
+  }, killTargets(config.killBudget, index, BALANCE_MAP_IDS.length)),
+  damageEnemy: damage ? `${damage.type} (${damage.campName ?? "damage"})` : "No damage drops", healthEnemy: health ? `${health.type} (${health.campName ?? "health"})` : "No health drops" };
+}
+
 function simulateTrial(
   config: BalanceSimulationConfig,
   trialIndex: number,
   existing?: ExistingPlayerSimulation,
 ): TrialResult {
+  const MAP_DEFINITIONS = createMapDefinitions(config.endlessMaps);
   const random = seededRandom(config.seed + trialIndex * 104_729);
   const behavior = trialBehavior(config.strategy, random);
   const state: MutableSimulationState = {
@@ -1831,7 +1914,7 @@ function simulateTrial(
     trackProgression = true,
   ) => {
     if (!map.boss) return 0;
-    const claimBit = BOSS_REWARD_CLAIM_BITS[map.boss.kind];
+    const claimBit = proceduralMapNumber(map.id) === null ? BOSS_REWARD_CLAIM_BITS[map.boss.kind] : 0;
     state.bossRewardClaims = (state.bossRewardClaims | claimBit) >>> 0;
     const powerBeforeReward = powerForState(state);
     for (const reward of map.boss.rewards) {
@@ -1871,7 +1954,15 @@ function simulateTrial(
     }
   };
 
-  const beginMapRecord = (map: BalanceMapDefinition): TrialMapRecord => ({
+  const beginMapRecord = (map: BalanceMapDefinition): TrialMapRecord => {
+    const readiness = map.boss ? readinessForMap(map, stateSnapshot(state), config, state.mapIndex) : null;
+    if (config.killBudget.enabled && readiness && map.boss) {
+      map.boss.hp *= readiness.bossHpMultiplier;
+      map.boss.strongestHit = (map.boss.strongestHit ?? Math.max(...Object.values(BOSS_DAMAGE_PROFILES[map.boss.kind]))) * readiness.bossDamageMultiplier;
+    }
+    return ({
+    readiness,
+    modeledBossHp: map.boss?.hp ?? null,
     mapId: map.id,
     enteredAtSeconds: state.time,
     exitedAtSeconds: null,
@@ -1906,10 +1997,13 @@ function simulateTrial(
     exitState: stateSnapshot(state),
   });
 
+  };
+
   records.push(beginMapRecord(MAP_DEFINITIONS[state.mapIndex]));
   recordHistory();
   startNextResearch(state, config.researchPlan);
 
+  let stoppedAtCampaignClear = false;
   let safety = 0;
   while (state.time < config.durationSeconds && safety < 5_000_000) {
     safety += 1;
@@ -1937,6 +2031,10 @@ function simulateTrial(
       mapRecord.bossRewardPowerGain = bossRewardPowerGain;
       mapRecord.fullClears = clears;
       mapRecord.exitBossTtkSeconds = bossFightSeconds(state, map, adjustment);
+      if (config.stopAfterCampaign && state.mapIndex === MAP_DEFINITIONS.length - 1 && behavior.primaryStrategy !== "boss-farm") {
+        stoppedAtCampaignClear = true;
+        break;
+      }
       if (behavior.primaryStrategy === "boss-farm" || state.mapIndex === existing?.farmBossMapIndex) {
         repeatDefeatedBoss(mapRecord, map, Number.POSITIVE_INFINITY);
         break;
@@ -1986,7 +2084,7 @@ function simulateTrial(
       if (!spendTime(mapRecord, "respawnWaitSeconds", Math.max(0, nextAvailable - state.time))) break;
       continue;
     }
-    const reward = ENEMY_TYPES[selected.site.type].reward;
+    const reward = siteEnemy(selected.site).reward;
     const stat = progressionStatForReward(reward.type);
     if (!spendTimeForStat(mapRecord, "travelSeconds", stat, selected.travel)) break;
     position = { x: selected.site.x, y: selected.site.y };
@@ -2005,7 +2103,7 @@ function simulateTrial(
     recordHistory();
   }
 
-  if (state.time < config.durationSeconds) advanceTime(state, config.durationSeconds, config.researchPlan, recordHistory);
+  if (!stoppedAtCampaignClear && state.time < config.durationSeconds) advanceTime(state, config.durationSeconds, config.researchPlan, recordHistory);
   recordHistory();
   const activeRecord = records[records.length - 1];
   if (activeRecord && activeRecord.exitedAtSeconds === null) {
@@ -2029,6 +2127,7 @@ function simulateTrial(
   }
   const final = samples[samples.length - 1];
   return {
+    millionPowerAtSeconds: history.find(point => point.power >= 1e6)?.timeSeconds ?? null,
     finalState: stateSnapshot(state),
     samples,
     maps: records,
@@ -2192,13 +2291,13 @@ function mapSummary(
   const bossRewardScenarios = records.flatMap((record) => {
     // Compare a boss cycle at map entry, before repeated clears or rewards can
     // inflate the build and hide a farming exploit behind diminishing returns.
-    const scenario = bossRewardScenario(map, record.entryState, adjustment);
+    const scenario = bossRewardScenario({ ...map, boss: map.boss && record.modeledBossHp !== null ? { ...map.boss, hp: record.modeledBossHp } : map.boss }, record.entryState, adjustment);
     return scenario ? [scenario] : [];
   });
   const observedRepeatScenarios = records.flatMap((record) => {
     const repeatSeconds = Object.values(record.repeatTimeBudget).reduce((sum, seconds) => sum + seconds, 0);
     if (record.repeatBossKills <= 0 || repeatSeconds <= 0) return [];
-    const scenario = bossRewardScenario(map, record.entryState, adjustment);
+    const scenario = bossRewardScenario({ ...map, boss: map.boss && record.modeledBossHp !== null ? { ...map.boss, hp: record.modeledBossHp } : map.boss }, record.entryState, adjustment);
     if (!scenario) return [];
     const powerPerMinute = record.repeatBossPowerGain / repeatSeconds * 60;
     return [{ powerPerMinute, efficiencyRatio: powerPerMinute / Math.max(.01, scenario.bestRegularPowerPerMinute) }];
@@ -2267,16 +2366,22 @@ function enemyMetricsForMap(
   adjustment: MapAdjustment,
 ) {
   const sites = createSites(map);
-  const counts = new Map<EnemyKind, number>();
-  for (const site of sites) counts.set(site.type, (counts.get(site.type) ?? 0) + 1);
+  const groups = new Map<string, { site: SiteState; count: number }>();
+  for (const site of sites) {
+    const enemy = siteEnemy(site);
+    const key = `${site.type}:${enemy.reward.type}:${enemy.reward.amount}:${enemy.hp}:${enemy.damage}`;
+    const group = groups.get(key);
+    if (group) group.count++; else groups.set(key, { site, count: 1 });
+  }
   const combat = combatStats(snapshot, true);
   const beforePower = continuousPowerForState(snapshot);
   const lateTier = Object.prototype.hasOwnProperty.call(LATE_MAP_DAMAGE_TIER, map.id)
     ? LATE_MAP_DAMAGE_TIER[map.id as LateDamageMap]
     : null;
   const referenceBuild = lateTier === null ? null : lateMapReferenceBuild(lateTier);
-  const raw = [...counts.entries()].map(([enemyKind, spawnCount]) => {
-    const enemy = ENEMY_TYPES[enemyKind];
+  const raw = [...groups.values()].map(({ site, count: spawnCount }) => {
+    const enemyKind = site.type;
+    const enemy = siteEnemy(site);
     const projected: SimulationStateSnapshot = {
       ...snapshot,
       stats: { ...snapshot.stats },
@@ -2293,6 +2398,7 @@ function enemyMetricsForMap(
     const powerGainPercentOfEntry = powerGain / Math.max(1, beforePower) * 100;
     return {
       enemy: enemyKind,
+      label: site.definition ? `${enemyKind} · ${site.campName}` : enemyKind,
       elite: Boolean(enemy.elite),
       spawnCount,
       hp: enemy.hp * adjustment.hp,
@@ -2678,6 +2784,7 @@ function runBalanceSimulationInternal(
   onProgress?: BalanceSimulationProgressListener,
 ): BalanceSimulationResult {
   const config = normalizeConfig(input);
+  const MAP_DEFINITIONS = createMapDefinitions(config.endlessMaps);
   const trials: TrialResult[] = [];
   for (let index = 0; index < config.trials; index += 1) {
     trials.push(simulateTrial(config, index));
@@ -2691,15 +2798,15 @@ function runBalanceSimulationInternal(
   const timeline = timelineForTrials(trials);
   const maps = MAP_DEFINITIONS.map((map, index) => {
     const progressionIndex = index - 1;
-    const targetDurationSeconds = progressionIndex < 0
+    const targetDurationSeconds = progressionIndex < 0 || proceduralMapNumber(map.id) !== null
       ? null
-      : config.targetDesertDurationSeconds * config.targetMapDurationMultiplier ** progressionIndex + config.targetMapDurationStepSeconds * progressionIndex;
+      : campaignMapTargetSeconds(index, config.targetDesertDurationSeconds, config.targetMapDurationMultiplier, config.targetMapDurationStepSeconds);
     return mapSummary(
       trials,
       map,
       config.durationSeconds,
       targetDurationSeconds,
-      progressionIndex < 0 ? null : config.targetMapPowerMultiplier,
+      progressionIndex < 0 || proceduralMapNumber(map.id) !== null ? null : config.targetMapPowerMultiplier,
       config.targetPowerArcBlend,
       config.mapAdjustments[map.id],
     );
@@ -2741,7 +2848,9 @@ function runBalanceSimulationInternal(
     config,
     timeline,
     maps,
+    millionPower: { medianSeconds: quantile(trials.flatMap(trial => trial.millionPowerAtSeconds === null ? [] : [trial.millionPowerAtSeconds]), .5), reachedPercent: trials.filter(trial => trial.millionPowerAtSeconds !== null).length / trials.length * 100 },
     enemyMetrics,
+    bossReadiness: Object.fromEntries(representative.maps.filter(record => record.readiness).map(record => [record.mapId, record.readiness!])),
     diagnostics: buildDiagnostics(config, maps, finalPower, enemyMetrics),
     finalPower,
     finalDps,

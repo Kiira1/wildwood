@@ -126,7 +126,7 @@ export function mapGuideDrops(mapId: MapId): readonly MapGuideDrop[] {
     itemId,
     numerator: wins,
     denominator: outcomes,
-    source: "Any regular enemy",
+    source: "Regular enemies + boss",
   }));
   return [...regularDrops, ...MAP_GUIDE_DROPS[mapId]];
 }
@@ -168,8 +168,8 @@ function bonusLabel(value: number) {
 export function mapGuideItemStats(itemId: ItemId) {
   const item: ItemDefinition = ITEM_DEFINITIONS[itemId];
   const stats: string[] = [];
-  const damageBonus = item.weapon?.damageBonus ?? item.modifiers?.damageBonus;
-  if (damageBonus !== undefined) stats.push(`Damage ${bonusLabel(damageBonus)}`);
+  const damageBonus = item.weapon?.damageMultiplierBonus ?? item.modifiers?.damageMultiplierBonus;
+  if (damageBonus !== undefined) stats.push(`Damage +${Math.round(damageBonus * 10000) / 100}%`);
   if (item.modifiers?.maxHealthBonus !== undefined) stats.push(`Max Health ${bonusLabel(item.modifiers.maxHealthBonus)}`);
   if (item.modifiers?.regenerationBonus !== undefined) stats.push(`Regen ${bonusLabel(item.modifiers.regenerationBonus)}`);
   return stats;

@@ -1,11 +1,11 @@
+import { targetPlayerPowerCurve } from "../../shared/power-curve";
+import { createKillBudgetPanel } from "./kill-budget-panel";
 import { campaignExperience } from "./experience";
 import "./styles.css";
 
-import { MAP_DISPLAY_NAMES } from "../../shared/rules";
 import { formatCompactNumber } from "../ui/number-format";
 import {
-  BALANCE_MAP_IDS,
-  buildStackedLogTargetCurve,
+  BALANCE_MAP_IDS, balanceMapIds, balanceMapName,
   defaultBalanceSimulationConfig,
   type BalanceMapId,
   type BalanceSimulationConfig,
@@ -24,8 +24,8 @@ type SimulationResponse =
   | { id: number; ok: true; type: "complete"; elapsedMs: number; result: BalanceSimulationResult }
   | { id: number; ok: false; message: string };
 
-const STORAGE_KEY = "wildwood.balanceLab.config.v8";
-const STORAGE_SCHEMA_VERSION = 8;
+const STORAGE_KEY = "wildwood.balanceLab.config.v12";
+const STORAGE_SCHEMA_VERSION = 12;
 const SVG_NS = "http://www.w3.org/2000/svg";
 
 function requiredElement<T extends Element>(id: string) {
@@ -34,7 +34,16 @@ function requiredElement<T extends Element>(id: string) {
   return element as unknown as T;
 }
 
+function defaultLabConfig(): BalanceSimulationConfig {
+  const defaults = defaultBalanceSimulationConfig();
+  return { ...defaults, stopAfterCampaign: true, endlessMaps: 15, durationSeconds: 30 * 86400 };
+}
+const killBudgetPanel = createKillBudgetPanel();
+const endlessMaps = requiredElement<HTMLInputElement>("endlessMaps");
 const form = requiredElement<HTMLFormElement>("simulationForm");
+const compareStrategies = requiredElement<HTMLInputElement>("compareStrategies");
+const stopAfterCampaign = requiredElement<HTMLInputElement>("stopAfterCampaign");
+const cancelRunButton = requiredElement<HTMLButtonElement>("cancelRunButton");
 const durationDays = requiredElement<HTMLInputElement>("durationDays");
 const trials = requiredElement<HTMLInputElement>("trials");
 const trialsValue = requiredElement<HTMLOutputElement>("trialsValue");
@@ -108,7 +117,7 @@ type ChartRenderState = {
 };
 
 function mergeStoredConfig(stored: unknown): BalanceSimulationConfig {
-  const defaults = defaultBalanceSimulationConfig();
+  const defaults = defaultLabConfig();
   if (!stored || typeof stored !== "object") return defaults;
   const candidate = stored as Partial<BalanceSimulationConfig>;
   if (
@@ -117,7 +126,7 @@ function mergeStoredConfig(stored: unknown): BalanceSimulationConfig {
     !Number.isFinite(candidate.targetMapPowerMultiplier)
   ) return defaults;
   const adjustments = { ...defaults.mapAdjustments };
-  for (const mapId of BALANCE_MAP_IDS) {
+  for (const mapId of balanceMapIds(candidate.endlessMaps ?? defaults.endlessMaps)) {
     const adjustment = candidate.mapAdjustments?.[mapId];
     if (adjustment) adjustments[mapId] = { ...adjustments[mapId], ...adjustment };
   }
@@ -131,14 +140,14 @@ function loadConfig() {
       curveBaseline?: string;
       config?: unknown;
     } | null;
-    if (stored?.schemaVersion !== STORAGE_SCHEMA_VERSION) return defaultBalanceSimulationConfig();
+    if (stored?.schemaVersion !== STORAGE_SCHEMA_VERSION) return defaultLabConfig();
     const loaded = mergeStoredConfig(stored.config);
     if (stored.curveBaseline !== "balanced-tech-tree" && loaded.researchPlan === "off") {
       loaded.researchPlan = "balanced";
     }
     return loaded;
   } catch {
-    return defaultBalanceSimulationConfig();
+    return defaultLabConfig();
   }
 }
 
@@ -150,13 +159,21 @@ let previousResult: BalanceSimulationResult | null = null;
 let requestId = 0;
 let requestStartedAt = 0;
 
-for (const mapId of BALANCE_MAP_IDS) {
+function syncMapOptions() {
+  const ids = balanceMapIds(config.endlessMaps);
+  if (!ids.includes(selectedTuningMap)) selectedTuningMap = ids[0];
+  if (!ids.includes(selectedEnemyMap)) selectedEnemyMap = ids[0];
+  tuningMap.replaceChildren(); enemyMap.replaceChildren();
+  for (const mapId of ids) {
+  config.mapAdjustments[mapId] ??= { hp: 1, bossHp: 1, damage: 1, reward: 1, bossReward: 1 };
   const tuningOption = document.createElement("option");
   tuningOption.value = mapId;
-  tuningOption.textContent = MAP_DISPLAY_NAMES[mapId];
+  tuningOption.textContent = balanceMapName(mapId);
   tuningMap.append(tuningOption);
   const enemyOption = tuningOption.cloneNode(true) as HTMLOptionElement;
   enemyMap.append(enemyOption);
+  }
+  tuningMap.value = selectedTuningMap; enemyMap.value = selectedEnemyMap;
 }
 
 function numberValue(input: HTMLInputElement, fallback: number) {
@@ -165,7 +182,11 @@ function numberValue(input: HTMLInputElement, fallback: number) {
 }
 
 function syncControlsFromConfig() {
+  endlessMaps.value = String(config.endlessMaps);
+  killBudgetPanel.write(config.killBudget);
+  syncMapOptions();
   durationDays.value = String(Number((config.durationSeconds / 86_400).toFixed(4)));
+  stopAfterCampaign.checked = config.stopAfterCampaign;
   trials.value = String(config.trials);
   trialsValue.value = String(config.trials);
   strategy.value = config.strategy;
@@ -189,8 +210,14 @@ function syncControlsFromConfig() {
 }
 
 function syncConfigFromControls() {
+  config.killBudget = killBudgetPanel.read();
+  config.endlessMaps = Math.round(Math.max(0, Math.min(50, numberValue(endlessMaps, 15))));
+  const previousTuningMap = selectedTuningMap;
+  syncMapOptions();
+  if (selectedTuningMap !== previousTuningMap) syncTuningControls();
   config.durationSeconds = numberValue(durationDays, config.durationSeconds / 86_400) * 86_400;
   config.trials = Math.round(numberValue(trials, config.trials));
+  config.stopAfterCampaign = stopAfterCampaign.checked;
   config.strategy = strategy.value as FarmingStrategy;
   config.researchPlan = researchPlan.value as ResearchPlan;
   config.bossTargetSeconds = numberValue(bossTargetMinutes, config.bossTargetSeconds / 60) * 60;
@@ -312,7 +339,10 @@ function renderSummary(next: BalanceSimulationResult) {
     const finite = values.filter((value): value is number => value !== null && Number.isFinite(value));
     return finite.length ? `${format(Math.min(...finite))}–${format(Math.max(...finite))}` : "NOT REACHED";
   };
+  const endlessEntry = next.maps.find(map => map.mapId === "endless_1");
   const cards = [
+    { label: "MEDIAN TIME TO 1M POWER", value: formatDuration(next.millionPower.medianSeconds), detail: `${next.millionPower.reachedPercent.toFixed(0)}% reached 1m · target about 1 active day` },
+    ...(endlessEntry ? [{ label: "MEDIAN ENDLESS ENTRY", value: formatDuration(endlessEntry.enteredAtMedianSeconds), detail: `${endlessEntry.reachedPercent.toFixed(0)}% of trials reached Endless · target about 7 active days` }] : []),
     { label: "ORDINARY FIGHT", value: range(experience.map(map => map.ordinaryFightSeconds), formatDuration),
       detail: "Median regular enemy at each map's entry build. Earlier camps get easier as you grow." },
     { label: "HITS YOU CAN SURVIVE", value: range(experience.map(map => map.regularHitsSurvived), value => String(Math.round(value))),
@@ -587,7 +617,7 @@ function renderEnemyTable(next: BalanceSimulationResult) {
   for (const metric of metrics) {
     const row = document.createElement("tr");
     row.innerHTML = `
-      <td><span class="enemy-name">${metric.enemy}</span>${metric.elite ? `<span class="enemy-elite">ELITE</span>` : ""}</td>
+      <td><span class="enemy-name">${metric.label ?? metric.enemy}</span>${metric.elite ? `<span class="enemy-elite">ELITE</span>` : ""}</td>
       <td>${metric.spawnCount}</td>
       <td>${formatCompactNumber(metric.hp)}</td>
       <td>+${formatCompactNumber(metric.rewardAmount)}<span class="reward-type">${metric.rewardType}</span></td>
@@ -627,11 +657,7 @@ function renderChart(next: ChartRenderState) {
   const visibleTimeline = next.visibleTimeline ?? next.timeline;
   const previousPoints = previousResult?.timeline.filter((point) => point.timeSeconds <= next.config.durationSeconds) ?? [];
   const strategyTimelines = (next.strategyTimelines ?? []).filter((entry) => entry.timeline.length > 1);
-  const targetCurve = buildStackedLogTargetCurve(
-    next.maps.slice(1),
-    18,
-    next.config.targetPowerArcBlend,
-  ).filter((point) => point.timeSeconds <= next.config.durationSeconds);
+  const targetCurve = targetPlayerPowerCurve(next.config.durationSeconds);
   const values = next.timeline.flatMap((point) => [point.powerP10, point.powerP90]);
   values.push(...previousPoints.map((point) => point.powerMedian));
   values.push(...targetCurve.map((point) => point.power));
@@ -766,6 +792,7 @@ function renderProgress(progress: BalanceSimulationProgress) {
 }
 
 function render(next: BalanceSimulationResult) {
+  killBudgetPanel.render(next);
   renderSummary(next);
   renderChart(next);
   renderTimeBudgets(next);
@@ -779,7 +806,7 @@ function render(next: BalanceSimulationResult) {
   renderEnemyTable(next);
 }
 
-let simulationWorker = new Worker(new URL("./balance-worker.ts", import.meta.url), { type: "module" });
+let simulationWorker: Worker;
 
 function runSimulation() {
   syncConfigFromControls();
@@ -787,15 +814,17 @@ function runSimulation() {
   saveConfig();
   requestId += 1;
   requestStartedAt = performance.now();
+  cancelRunButton.hidden = false;
   runButton.disabled = true;
   form.inert = true;
   setStatus("running", `Simulating ${config.trials} seeded campaigns…`, `${Number((config.durationSeconds / 86_400).toFixed(2))} game days each`);
-  simulationWorker.postMessage({ id: requestId, config });
+  simulationWorker.postMessage({ id: requestId, config, compareStrategies: compareStrategies.checked });
 }
 
-simulationWorker.addEventListener("message", (event: MessageEvent<SimulationResponse>) => {
+function handleWorkerMessage(event: MessageEvent<SimulationResponse>) {
   if (event.data.id !== requestId) return;
   if (!event.data.ok) {
+    cancelRunButton.hidden = true;
     runButton.disabled = false;
     form.inert = false;
     setStatus("error", "Simulation failed", event.data.message);
@@ -811,6 +840,7 @@ simulationWorker.addEventListener("message", (event: MessageEvent<SimulationResp
     );
     return;
   }
+  cancelRunButton.hidden = true;
   runButton.disabled = false;
   form.inert = false;
   previousResult = result;
@@ -820,12 +850,29 @@ simulationWorker.addEventListener("message", (event: MessageEvent<SimulationResp
   render(result);
   const wallMs = performance.now() - requestStartedAt;
   setStatus("done", "Simulation complete", `${result.simulatedCampaigns} runs · ${(event.data.elapsedMs / 1_000).toFixed(2)}s model / ${(wallMs / 1_000).toFixed(2)}s wall`);
-});
+}
 
-simulationWorker.addEventListener("error", (event) => {
+function handleWorkerError(event: ErrorEvent) {
+  cancelRunButton.hidden = true;
   runButton.disabled = false;
   form.inert = false;
   setStatus("error", "Simulation worker failed", event.message);
+}
+function createSimulationWorker() {
+  const worker = new Worker(new URL("./balance-worker.ts", import.meta.url), { type: "module" });
+  worker.addEventListener("message", handleWorkerMessage);
+  worker.addEventListener("error", handleWorkerError);
+  return worker;
+}
+simulationWorker = createSimulationWorker();
+cancelRunButton.addEventListener("click", () => {
+  requestId++;
+  simulationWorker.terminate();
+  simulationWorker = createSimulationWorker();
+  cancelRunButton.hidden = true;
+  runButton.disabled = false;
+  form.inert = false;
+  setStatus("idle", "Run cancelled", "Adjust the settings and run again.");
 });
 
 form.addEventListener("submit", (event) => {
@@ -865,7 +912,7 @@ resetMapButton.addEventListener("click", () => {
 });
 
 resetConfigButton.addEventListener("click", () => {
-  config = defaultBalanceSimulationConfig();
+  config = defaultLabConfig();
   selectedTuningMap = BALANCE_MAP_IDS[0];
   syncControlsFromConfig();
   markDirty();
@@ -891,6 +938,6 @@ copyConfigButton.addEventListener("click", async () => {
 });
 
 syncControlsFromConfig();
-runSimulation();
+setStatus("idle", "Ready — choose campaign and Endless coverage, then run", "5 trials recommended");
 
 window.addEventListener("beforeunload", () => simulationWorker.terminate());

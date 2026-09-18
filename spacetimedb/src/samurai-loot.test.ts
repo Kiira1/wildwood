@@ -26,7 +26,7 @@ describe("Samurai Gardens helmet drop", () => {
     expect(inventoryItemQuantity(reloaded, SAMURAI_HAT)).toBe(1);
     expect([...f.db.playerItemDrop.iter()]).toMatchObject([{ itemId: SAMURAI_HAT, alreadyOwned: false, sequence: 1n }]);
     expect(itemMaxHealthBonus(SAMURAI_HAT)).toBe(0);
-    expect(itemRegenerationBonus(SAMURAI_HAT)).toBe(2916);
+    expect(itemRegenerationBonus(SAMURAI_HAT)).toBe(770641.91);
   });
 
   it("reports a repeat drop without duplicating the item", () => {

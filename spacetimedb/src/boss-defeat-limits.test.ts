@@ -3,16 +3,16 @@ import { Timestamp } from "spacetimedb";
 import { bossDefeatLimits } from "./boss-defeat-limits";
 import { beginBossTimeBudget } from "./enemy-defeats";
 import { crystalFixture, server } from "../../tests/helpers/crystal-hollows-fixture";
-import { itemDamageBonus } from "../../shared/items";
+import { itemDamageMultiplierBonus } from "../../shared/items";
 import { personalBossDefinition } from "../../shared/personal-bosses";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
 function fixture(mapId = "tutorial_forest", fightSeconds = 100) {
   const f = crystalFixture();
   f.patch("player", { mapId });
-  // Subtract the equipped bow bonus; one shot/s, one projectile. The first
+  // Account for the equipped bow multiplier; one shot/s, one projectile. The first
   // shot allowance makes this exactly fightSeconds of required combat time.
-  const stats = { damage: personalBossDefinition(mapId)!.hp / (fightSeconds + 1) - itemDamageBonus("starter_bow"),
+  const stats = { damage: personalBossDefinition(mapId)!.hp / (fightSeconds + 1) / (1 + itemDamageMultiplierBonus("starter_bow")),
     attackRate: 1, projectileCount: 1, inventoryJson: '["starter_bow"]', equippedRightHand: "starter_bow" };
   f.patch("playerProgress", stats);
   const start = f.ctx.timestamp.microsSinceUnixEpoch;
@@ -129,7 +129,7 @@ describe("boss time validation", () => {
 
   it("includes validated regular-kill gains in the same save, regardless of entry order", () => {
     const f = fixture();
-    f.patch("playerProgress", { damage: 105 - itemDamageBonus("starter_bow") });
+    f.patch("playerProgress", { damage: 105 / (1 + itemDamageMultiplierBonus("starter_bow")) });
     f.claim(); expect(f.kills()).toBe(0n);
     f.run(server.recordEnemyDefeats, { mapId: "tutorial_forest", streamId: "mixed-boss-save-window-01", sequence: 1n,
       enemies: [{ enemy: "boss", count: 1 }, { enemy: "Cindermaw", count: 99 }] });

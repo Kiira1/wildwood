@@ -1,3 +1,4 @@
+import { referenceBuildForMap } from "../../shared/progression";
 import { describe, expect, it } from "vitest";
 import { damageAfterArmor } from "./combat";
 import { ENEMY_TYPES } from "./enemies";
@@ -11,9 +12,11 @@ const tiers = [
 ] as const;
 
 describe("authored late-map incoming damage", () => {
-  it("keeps every regular enemy threatening after armor at its reference tier", () => {
+  it("keeps every regular enemy threatening after armor at its entry build", () => {
     for (const [tier, kinds] of tiers.entries()) {
-      const build = lateMapReferenceBuild(tier);
+      const reference = lateMapReferenceBuild(tier);
+      const previous = referenceBuildForMap(tier + 4);
+      const build = { maxHp: Math.min(reference.maxHp, previous.maxHp * 3), armor: Math.min(reference.armor, previous.armor * 3) };
       const fractions = kinds.map((kind) => damageAfterArmor(ENEMY_TYPES[kind].damage, build.armor) / build.maxHp);
       expect(Math.min(...fractions)).toBeCloseTo(.06, 6);
       expect(Math.max(...fractions)).toBeLessThan(.14);

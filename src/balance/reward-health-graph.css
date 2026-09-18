@@ -1,0 +1,23 @@
+.controls { margin-top: 24px; display: flex; flex-wrap: wrap; gap: 16px; align-items: end; background: var(--surface); border: 1px solid var(--line); padding: 20px; border-radius: 14px; }
+.controls > label, .table-actions > label { display: grid; gap: 6px; font-size: .8rem; color: var(--muted); font-weight: 600; }
+.controls [hidden] { display: none; }
+select, input[type=number], button { font: inherit; border: 1px solid var(--line-strong); padding: 9px 10px; border-radius: 6px; background: white; color: var(--ink); }
+input[type=number] { width: 120px; }
+button { cursor: pointer; }
+button:hover { background: var(--surface-alt); }
+fieldset { margin: 0; padding: 8px 0 0; border: 0; display: flex; flex-wrap: wrap; gap: 16px; width: 100%; }
+fieldset legend { font-size: .8rem; font-weight: 600; color: var(--muted); }
+fieldset label { display: flex; gap: 6px; align-items: center; font-size: .85rem; cursor: pointer; }
+.stat-swatch { width: 10px; height: 10px; border-radius: 50%; }
+.section-head { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+#summary { color: var(--muted); font-size: .85rem; }
+.efficiency-chart { display: block; max-width: none; height: 520px; }
+.reward-point { stroke: white; stroke-width: 1.2px; cursor: pointer; }
+.reward-point:hover, .reward-point:focus { stroke: var(--ink); stroke-width: 3px; outline: none; }
+.point-detail { margin-top: 14px; min-height: 3em; padding: 14px; border-radius: 8px; background: var(--surface-alt); font-size: .9rem; line-height: 1.5; }
+.table-actions { display: flex; gap: 12px; align-items: end; }
+#reward-table { min-width: 800px; width: 100%; }
+#reward-table th, #reward-table td { text-align: left; white-space: nowrap; }
+#reward-table th:nth-child(n+5), #reward-table td:nth-child(n+5) { text-align: right; font-variant-numeric: tabular-nums; }
+#reward-table th:first-child, #reward-table td:first-child { min-width: 0; }
+#reward-table tbody tr:hover { background: var(--surface-alt); }

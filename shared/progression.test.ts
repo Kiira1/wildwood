@@ -1,46 +1,53 @@
+import { bossBudgetScale } from "./boss-kill-budget";
 import { describe, expect, it } from "vitest";
 import { damageAfterArmor } from "./combat";
 import { desertLaneCombatValue, desertLaneRewardValue, referenceBuildForMap, ENCOUNTER_PROFILES,
-  DESERT_REFERENCE, FOREST_LANE_BASES, desertBossHealthAt, bossHeavyHitAt, MAP_STAT_GROWTH, CAMPAIGN_ENEMY_REWARD_MULTIPLIERS, CURRENT_ROLE_LANES, campaignEnemyRewardMultiplier } from "./progression";
+  DESERT_REFERENCE, FOREST_LANE_BASES, desertBossHealthAt, bossHeavyHitAt, MAP_STAT_GROWTH, CAMPAIGN_ENEMY_REWARD_MULTIPLIERS, CURRENT_ROLE_LANES, campaignEnemyRewardMultiplier, combatMultiplierForMap, damageCampRosterForMap } from "./progression";
 
 describe("encounter experience contract", () => {
-  it("awards 36 health for a Desert regent", () => {
-    expect(desertLaneRewardValue("King Slime", 0)).toEqual({ type: "health", amount: 36 });
+  it("awards 26.2553873832 health for a Desert regent", () => {
+    expect(desertLaneRewardValue("King Slime", 0).amount).toBeCloseTo(26.2553873832, 8);
   });
-  it("awards 18 health for Desert archers and 2 armor for guards", () => {
-    expect(desertLaneRewardValue("Bramble", 0)).toEqual({ type: "health", amount: 18 });
-    expect(desertLaneRewardValue("Mossback", 0)).toEqual({ type: "armor", amount: 2 });
+  it("awards accelerated Desert health and armor for guards", () => {
+    expect(desertLaneRewardValue("Bramble", 0).amount).toBeCloseTo(13.1276936916, 8);
+    expect(desertLaneRewardValue("Mossback", 0).amount).toBeCloseTo(1.4586326324, 8);
   });
-  it("awards 6 damage for a Desert raider", () => {
-    expect(desertLaneRewardValue("Cindermaw", 0)).toEqual({ type: "damage", amount: 6 });
+  it("awards 4.3758978972 damage for a Desert raider", () => {
+    expect(desertLaneRewardValue("Cindermaw", 0).amount).toBeCloseTo(4.3758978972, 8);
   });
-  it("awards 22 damage for a Desert reaper", () => {
+  it("awards 16.0449589564 damage for a Desert reaper", () => {
     const reward = desertLaneRewardValue("Dread Warden", 0);
     expect(reward.type).toBe("damage");
-    expect(reward.amount).toBeCloseTo(22, 10);
+    expect(reward.amount).toBeCloseTo(16.0449589564, 10);
   });
-  it("preserves fight length, reward value, and threat across present and future tiers", () => {
+  it("preserves reference fight length and affordable incoming hits at map entry", () => {
     for (let tier = 0; tier <= 15; tier++) {
       const build = referenceBuildForMap(tier);
+      const previous = referenceBuildForMap(Math.max(0, tier - 1));
+      const entry = { maxHp: Math.min(build.maxHp, previous.maxHp * 3), armor: Math.min(build.armor, previous.armor * 3) };
       for (const lane of Object.keys(ENCOUNTER_PROFILES) as Array<keyof typeof ENCOUNTER_PROFILES>) {
         const enemy = desertLaneCombatValue(lane, tier), reward = desertLaneRewardValue(lane, tier);
         const profile = ENCOUNTER_PROFILES[lane];
         expect(enemy.hp / (build.damage / build.attackInterval)).toBeCloseTo(profile.seconds);
-        expect(damageAfterArmor(enemy.damage, build.armor) / build.maxHp).toBeCloseTo(profile.hitShare, 3);
+        expect(damageAfterArmor(enemy.damage, entry.armor) / entry.maxHp).toBeCloseTo(profile.hitShare, 3);
         if (reward.type !== "speed") {
           const next = desertLaneRewardValue(lane, tier + 1);
-          if (tier !== 1) expect(next.amount / reward.amount).toBeCloseTo(MAP_STAT_GROWTH * campaignEnemyRewardMultiplier(tier + 1) / campaignEnemyRewardMultiplier(tier), 8);
+          if (tier !== 1) expect(next.amount / reward.amount).toBeCloseTo((combatMultiplierForMap(tier + 1) / combatMultiplierForMap(tier)) * campaignEnemyRewardMultiplier(tier + 1) / campaignEnemyRewardMultiplier(tier), 8);
         }
       }
-      expect(desertBossHealthAt(tier) / (build.damage / build.attackInterval * MAP_STAT_GROWTH)).toBeCloseTo(90);
-      expect(damageAfterArmor(bossHeavyHitAt(tier), build.armor * MAP_STAT_GROWTH) / (build.maxHp * MAP_STAT_GROWTH)).toBeCloseTo(.25, 3);
+      expect(desertBossHealthAt(tier) / (build.damage / build.attackInterval * MAP_STAT_GROWTH)).toBeCloseTo(90 * bossBudgetScale(tier + 1).hpScale);
+      expect(damageAfterArmor(bossHeavyHitAt(tier), build.armor * MAP_STAT_GROWTH) / (build.maxHp * MAP_STAT_GROWTH)).toBeCloseTo(.25 * bossBudgetScale(tier + 1).hitScale, 3);
     }
   });
-  it("increases every campaign enemy role's payout on each subsequent map", () => {
+  it("increases each campaign reward track per clear, including expanded damage camps", () => {
     for (const lane of Object.values(CURRENT_ROLE_LANES)) {
       for (let tier = 1; tier < CAMPAIGN_ENEMY_REWARD_MULTIPLIERS.length; tier++) {
-        expect(desertLaneRewardValue(lane, tier).amount, `${lane} entering tier ${tier}`)
-          .toBeGreaterThan(desertLaneRewardValue(lane, tier - 1).amount);
+        const amount = (index: number) => {
+          if (desertLaneRewardValue(lane, index).type !== "damage") return desertLaneRewardValue(lane, index).amount;
+          const roster = damageCampRosterForMap(index);
+          return roster.raider * desertLaneRewardValue("Cindermaw", index).amount + roster.reaper * desertLaneRewardValue("Dread Warden", index).amount;
+        };
+        expect(amount(tier), `${lane} entering tier ${tier}`).toBeGreaterThan(amount(tier - 1));
       }
     }
   });

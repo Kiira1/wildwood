@@ -1,3 +1,4 @@
+import { campaignMapTargetSeconds } from "../../shared/campaign-pacing";
 import {BOSS_TARGET_SECONDS, desertBossHealthAt} from "../../shared/progression";
 import {describe, expect, it} from "vitest";
 import {BALANCE_LATE_BOSS_TARGET_MAX_SECONDS, BALANCE_TARGET_DESERT_DURATION_SECONDS, BALANCE_TARGET_MAP_DURATION_MULTIPLIER, BALANCE_TARGET_MAP_POWER_MULTIPLIER, BALANCE_TARGET_POWER_ARC_BLEND, GLOOMROOT_MAX_HP, MAP_IDS} from "../../shared/rules";
@@ -15,9 +16,9 @@ describe("balance simulator", () => {
   it("uses the intended campaign defaults when no overrides are supplied", () => {
     const defaults = defaultBalanceSimulationConfig();
     const targetedMapSeconds = MAP_IDS.slice(1).reduce((total, _map, index) =>
-      total + BALANCE_TARGET_DESERT_DURATION_SECONDS * BALANCE_TARGET_MAP_DURATION_MULTIPLIER ** index + defaults.targetMapDurationStepSeconds * index, 0);
-    expect(defaults.durationSeconds).toBeCloseTo(1.5 * (48 * 60 + targetedMapSeconds));
-    expect(defaults.trials).toBe(100);
+      total + campaignMapTargetSeconds(index + 1), 0);
+    expect(defaults.durationSeconds).toBeCloseTo(1.5 * (60 * 60 + targetedMapSeconds));
+    expect(defaults.trials).toBe(5);
     expect(defaults.strategy).toBe("mixed");
     expect(defaults.targetDesertDurationSeconds).toBe(BALANCE_TARGET_DESERT_DURATION_SECONDS);
     expect(defaults.targetMapDurationMultiplier).toBe(BALANCE_TARGET_MAP_DURATION_MULTIPLIER);
@@ -87,6 +88,7 @@ describe("balance simulator", () => {
   it("keeps post-clear Boss-rush repeat power positive on every clear", () => {
     const result = runBalanceSimulationWithStrategyComparisons({
       durationSeconds: 8 * 60 * 60,
+      steadyEquipmentUpgrades: false,
       trials: 1,
       strategy: "mixed",
       seed: 7_331,
@@ -149,9 +151,9 @@ describe("balance simulator", () => {
   });
 
   it("reports actual pacing separately from authoring targets with current gear", () => {
-    // Flat equipment no longer multiplies later farming gains. Allow the
-    // campaign to finish; this verifies reporting, not a forced completion time.
-    const result = runBalanceSimulation({ strategy: "efficient", trials: 5, durationSeconds: 192 * 3600 });
+    // Give the event model enough time to finish; verify reporting rather than
+    // imposing a completion timer.
+    const result = runBalanceSimulation({ strategy: "efficient", trials: 3, durationSeconds: 30 * 86400, stopAfterCampaign: true });
     const progressionMaps = result.maps.slice(1);
 
     expect(progressionMaps.every((map) => map.reachedPercent >= 50)).toBe(true);
@@ -179,7 +181,7 @@ describe("balance simulator", () => {
     }
     expect(result.diagnostics.some((diagnostic) => diagnostic.includes("Pacing curve:"))).toBe(true);
     for (const [index, map] of progressionMaps.entries()) {
-      expect(map.targetDurationSeconds).toBe(result.config.targetDesertDurationSeconds + index * result.config.targetMapDurationStepSeconds);
+      expect(map.targetDurationSeconds).toBe(campaignMapTargetSeconds(index + 1, result.config.targetDesertDurationSeconds, result.config.targetMapDurationMultiplier, result.config.targetMapDurationStepSeconds));
     }
     expect(result.diagnostics.some((diagnostic) => diagnostic.includes("Stat farming:"))).toBe(true);
 
@@ -305,3 +307,24 @@ describe("balance simulator", () => {
     expect(reaper?.rewardAmount).toBeGreaterThan(raider?.rewardAmount ?? Number.POSITIVE_INFINITY);
   });
 });
+
+
+it("holds campaign milestones and sharply slows the first two Endless clears", () => {
+  const result = runBalanceSimulation({ durationSeconds: 30 * 86400, trials: 3,
+    seed: 7331, strategy: "mixed", endlessMaps: 2, stopAfterCampaign: true });
+  const ion = result.maps.find(map => map.mapId === "ion_citadel")!;
+  const first = result.maps.find(map => map.mapId === "endless_1")!;
+  const second = result.maps.find(map => map.mapId === "endless_2")!;
+  expect(result.millionPower.reachedPercent).toBe(100);
+  expect(result.millionPower.medianSeconds).toBeGreaterThan(20 * 3600);
+  expect(result.millionPower.medianSeconds).toBeLessThan(28 * 3600);
+  expect(ion.entryPowerMedian).toBeGreaterThan(8e14);
+  expect(ion.entryPowerMedian).toBeLessThan(1.5e15);
+  expect(first.enteredAtMedianSeconds).toBeGreaterThan(6 * 86400);
+  expect(first.enteredAtMedianSeconds).toBeLessThan(8 * 86400);
+  expect(first.completedPercent).toBe(100);
+  expect(second.completedPercent).toBe(100);
+  expect(first.durationMedianSeconds).toBeGreaterThan(4 * 86400);
+  expect(first.durationMedianSeconds).toBeGreaterThan(ion.durationMedianSeconds! * 6);
+  expect(second.durationMedianSeconds).toBeGreaterThan(first.durationMedianSeconds! * 1.5);
+}, 60000);

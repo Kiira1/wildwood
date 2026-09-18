@@ -1,6 +1,7 @@
 /// <reference lib="webworker" />
 
 import {
+  runBalanceSimulation,
   runBalanceSimulationWithStrategyComparisons,
   type BalanceSimulationConfig,
   type BalanceSimulationProgress,
@@ -9,6 +10,7 @@ import {
 type SimulationRequest = {
   id: number;
   config: Partial<BalanceSimulationConfig>;
+  compareStrategies?: boolean;
 };
 
 type SimulationResponse =
@@ -21,7 +23,8 @@ const worker = self as DedicatedWorkerGlobalScope;
 worker.addEventListener("message", (event: MessageEvent<SimulationRequest>) => {
   const startedAt = performance.now();
   try {
-    const result = runBalanceSimulationWithStrategyComparisons(event.data.config, (progress) => {
+    const run = event.data.compareStrategies ? runBalanceSimulationWithStrategyComparisons : runBalanceSimulation;
+    const result = run(event.data.config, (progress) => {
       const response: SimulationResponse = {
         id: event.data.id,
         ok: true,

@@ -77,7 +77,7 @@ describe("effective profile equipment stats", () => {
   it("adds equipped Bow damage to tech without changing attack speed", () => {
     const research = { ...createEmptyResearchRanks(), warcraft: 10 };
     const stats = effectiveProfileStats(progress(STARTER_BOW), research);
-    expect(stats.damage).toBeCloseTo(30);
+    expect(stats.damage).toBeCloseTo(25.2);
     expect(stats.attackRate).toBeCloseTo(1);
   });
 
@@ -91,10 +91,10 @@ describe("effective profile equipment stats", () => {
     expect(stats.equipment.health).toBeCloseTo(2400);
   });
 
-  it("shows Frost Bow's additive equipment and tech bonuses", () => {
+  it("shows Frost Bow's percentage scaling with tech", () => {
     const research = { ...createEmptyResearchRanks(), warcraft: 10 };
     const stats = effectiveProfileStats(progress(FROST_BOW), research);
-    expect(stats.damage).toBeCloseTo(1752);
+    expect(stats.damage).toBeCloseTo(26.4);
     expect(stats.attackRate).toBeCloseTo(1);
   });
 
@@ -109,14 +109,14 @@ describe("effective profile equipment stats", () => {
 
   it("includes Fire Metal Helmet regeneration without adding health or damage", () => {
     const stats = effectiveProfileStats({ ...progress(FROST_BOW, FROST_ARMOR), equippedHead: FIRE_METAL_HELMET });
-    expect(stats.damage).toBeCloseTo(1460);
+    expect(stats.damage).toBeCloseTo(22);
     expect(stats.maxHp).toBeCloseTo(2500);
     expect(stats.regen).toBeCloseTo(110);
   });
 
   it("includes completed item upgrade levels in profile stats", () => {
     const bow = effectiveProfileStats(progress(FROST_BOW), createEmptyResearchRanks(), { [FROST_BOW]: 1 });
-    expect(bow.damage).toBeCloseTo(1575.2);
+    expect(bow.damage).toBeCloseTo(22.16);
     expect(bow.attackRate).toBeCloseTo(1);
     const armor = effectiveProfileStats(progress("", FROST_ARMOR), createEmptyResearchRanks(), { [FROST_ARMOR]: 1 });
     expect(armor.maxHp).toBeCloseTo(2692);
@@ -166,13 +166,13 @@ describe("profile stat display", () => {
     expect(rows[1]).toEqual({
       kind: "damage",
       label: "Damage:",
-      base: "(20 + 1.44k)",
+      base: "20",
       equationOperator: "×",
-      multiplier: "1.08",
-      total: "1,577",
+      multiplier: "1.19",
+      total: "24",
       sources: [
         { label: "Tech", value: "+8%" },
-        { label: "Equipment", value: "+1.44k" },
+        { label: "Equipment", value: "+10%" },
       ],
     });
     expect(rows[2]).toEqual({

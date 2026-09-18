@@ -5099,7 +5099,8 @@ function rewardSpiderContributor(ctx: any, identity: any) {
     damage: SPIDER_REWARD_DAMAGE,
     maxHp: SPIDER_REWARD_HEALTH,
   });
-  const next = { ...reward, snowlandsUnlocked: true };
+  let next = { ...reward, snowlandsUnlocked: true };
+  next = awardRegularEnemyLoot(ctx, BEGINNER_DESERT_MAP_ID, 1, { progress: next }, identity);
   updateSnapshotRow(ctx, "playerProgress", next);
   const active = ctx.db.player.identity.find(identity);
   if (active) {
@@ -5179,6 +5180,7 @@ function rewardFrostclawContributor(ctx: any, identity: any) {
     if (!alreadyOwned) next = restoreItemToProgress(next, FROST_ARMOR);
   }
   next.inventoryJson = JSON.stringify([...new Set(inventoryForProgress(next))]);
+  next = awardRegularEnemyLoot(ctx, INTERMEDIATE_SNOWLANDS_MAP_ID, 1, { progress: next }, identity);
   updateSnapshotRow(ctx, "playerProgress", next);
   const active = ctx.db.player.identity.find(identity);
   if (active) {
@@ -5251,6 +5253,7 @@ function rewardMagmaliskContributor(ctx: any, identity: any) {
     if (!alreadyOwned) next = restoreItemToProgress(next, LAVA_BOW);
   }
   next.inventoryJson = JSON.stringify([...new Set(inventoryForProgress(next))]);
+  next = awardRegularEnemyLoot(ctx, ADVANCED_LAVA_WASTES_MAP_ID, 1, { progress: next }, identity);
   updateSnapshotRow(ctx, "playerProgress", next);
   const active = ctx.db.player.identity.find(identity);
   if (active) {
@@ -5315,7 +5318,8 @@ function rewardGloomrootContributor(ctx: any, identity: any) {
     armor: GLOOMROOT_REWARD_ARMOR,
     regen: GLOOMROOT_REWARD_REGEN,
   });
-  const next = { ...reward, waterUnlocked: true };
+  let next = { ...reward, waterUnlocked: true };
+  next = awardRegularEnemyLoot(ctx, INFERNAL_DEPTHS_MAP_ID, 1, { progress: next }, identity);
   updateSnapshotRow(ctx, "playerProgress", next);
   const active = ctx.db.player.identity.find(identity);
   if (active) {
@@ -5458,7 +5462,8 @@ function rewardTidewyrmContributor(ctx: any, identity: any) {
     armor: TIDEWYRM_REWARD_ARMOR,
     regen: TIDEWYRM_REWARD_REGEN,
   });
-  const next = { ...reward, samuraiUnlocked: true };
+  let next = { ...reward, samuraiUnlocked: true };
+  next = awardRegularEnemyLoot(ctx, WATER_REACH_MAP_ID, 1, { progress: next }, identity);
   updateSnapshotRow(ctx, "playerProgress", next);
   const active = ctx.db.player.identity.find(identity);
   if (active) {
@@ -5482,7 +5487,8 @@ function rewardKoiShogunContributor(ctx: any, identity: any) {
     armor: KOI_SHOGUN_REWARD_ARMOR,
     regen: KOI_SHOGUN_REWARD_REGEN,
   });
-  const next = { ...reward, samuraiUnlocked: true, cloudspireUnlocked: true };
+  let next = { ...reward, samuraiUnlocked: true, cloudspireUnlocked: true };
+  next = awardRegularEnemyLoot(ctx, SAMURAI_GARDEN_MAP_ID, 1, { progress: next }, identity);
   updateSnapshotRow(ctx, "playerProgress", next);
   const active = ctx.db.player.identity.find(identity);
   if (active) {
@@ -5506,7 +5512,8 @@ function rewardTempestKirinContributor(ctx: any, identity: any) {
     armor: TEMPEST_KIRIN_REWARD_ARMOR,
     regen: TEMPEST_KIRIN_REWARD_REGEN,
   });
-  const next = { ...reward, cloudspireUnlocked: true, moonfenUnlocked: true };
+  let next = { ...reward, cloudspireUnlocked: true, moonfenUnlocked: true };
+  next = awardRegularEnemyLoot(ctx, CLOUDSPIRE_MAP_ID, 1, { progress: next }, identity);
   updateSnapshotRow(ctx, "playerProgress", next);
   const active = ctx.db.player.identity.find(identity);
   if (active) {
@@ -5530,7 +5537,8 @@ function rewardMiremawContributor(ctx: any, identity: any) {
     armor: MIREMAW_REWARD_ARMOR,
     regen: MIREMAW_REWARD_REGEN,
   });
-  const next = { ...reward, moonfenUnlocked: true, crystalHollowsUnlocked: true };
+  let next = { ...reward, moonfenUnlocked: true, crystalHollowsUnlocked: true };
+  next = awardRegularEnemyLoot(ctx, MOONFEN_MAP_ID, 1, { progress: next }, identity);
   updateSnapshotRow(ctx, "playerProgress", next);
   const active = ctx.db.player.identity.find(identity);
   if (active) {
@@ -5553,7 +5561,8 @@ function rewardPrismshellContributor(ctx: any, identity: any) {
     armor: PRISMSHELL_REWARD_ARMOR,
     regen: PRISMSHELL_REWARD_REGEN,
   });
-  const next = { ...reward, crystalHollowsUnlocked: true, clockworkRuinsUnlocked: true };
+  let next = { ...reward, crystalHollowsUnlocked: true, clockworkRuinsUnlocked: true };
+  next = awardRegularEnemyLoot(ctx, CRYSTAL_HOLLOWS_MAP_ID, 1, { progress: next }, identity);
   updateSnapshotRow(ctx, "playerProgress", next);
   const active = ctx.db.player.identity.find(identity);
   if (active) {
@@ -5576,7 +5585,8 @@ function rewardIronhornContributor(ctx: any, identity: any) {
     armor: IRONHORN_REWARD_ARMOR,
     regen: IRONHORN_REWARD_REGEN,
   });
-  const next = { ...reward, clockworkRuinsUnlocked: true, duskfallOrchardUnlocked: true };
+  let next = { ...reward, clockworkRuinsUnlocked: true, duskfallOrchardUnlocked: true };
+  next = awardRegularEnemyLoot(ctx, CLOCKWORK_RUINS_MAP_ID, 1, { progress: next }, identity);
   updateSnapshotRow(ctx, "playerProgress", next);
   const active = ctx.db.player.identity.find(identity);
   if (active) {
@@ -5599,7 +5609,8 @@ function rewardDreadreaperContributor(ctx: any, identity: any) {
     armor: DREADREAPER_REWARD_ARMOR,
     regen: DREADREAPER_REWARD_REGEN,
   });
-  const next = { ...reward, duskfallOrchardUnlocked: true, neonBastionUnlocked: true };
+  let next = { ...reward, duskfallOrchardUnlocked: true, neonBastionUnlocked: true };
+  next = awardRegularEnemyLoot(ctx, DUSKFALL_ORCHARD_MAP_ID, 1, { progress: next }, identity);
   updateSnapshotRow(ctx, "playerProgress", next);
   const active = ctx.db.player.identity.find(identity);
   if (active) {
@@ -5622,7 +5633,8 @@ function rewardVoltwardenContributor(ctx: any, identity: any) {
     armor: VOLTWARDEN_REWARD_ARMOR,
     regen: VOLTWARDEN_REWARD_REGEN,
   });
-  const next = { ...reward, neonBastionUnlocked: true, verdantCatacombsUnlocked: true };
+  let next = { ...reward, neonBastionUnlocked: true, verdantCatacombsUnlocked: true };
+  next = awardRegularEnemyLoot(ctx, NEON_BASTION_MAP_ID, 1, { progress: next }, identity);
   updateSnapshotRow(ctx, "playerProgress", next);
   const active = ctx.db.player.identity.find(identity);
   if (active) {
@@ -5645,7 +5657,8 @@ function rewardGravebloomContributor(ctx: any, identity: any) {
     armor: GRAVEBLOOM_REWARD_ARMOR,
     regen: GRAVEBLOOM_REWARD_REGEN,
   });
-  const next = { ...reward, verdantCatacombsUnlocked: true, ionCitadelUnlocked: true };
+  let next = { ...reward, verdantCatacombsUnlocked: true, ionCitadelUnlocked: true };
+  next = awardRegularEnemyLoot(ctx, VERDANT_CATACOMBS_MAP_ID, 1, { progress: next }, identity);
   updateSnapshotRow(ctx, "playerProgress", next);
   const active = ctx.db.player.identity.find(identity);
   if (active) {
@@ -5668,7 +5681,8 @@ function rewardAegisPrimeContributor(ctx: any, identity: any) {
     armor: AEGIS_PRIME_REWARD_ARMOR,
     regen: AEGIS_PRIME_REWARD_REGEN,
   });
-  const next = { ...reward, ionCitadelUnlocked: true };
+  let next = { ...reward, ionCitadelUnlocked: true };
+  next = awardRegularEnemyLoot(ctx, ION_CITADEL_MAP_ID, 1, { progress: next }, identity);
   updateSnapshotRow(ctx, "playerProgress", next);
   const active = ctx.db.player.identity.find(identity);
   if (active) {
@@ -6032,7 +6046,8 @@ function rewardDragonContributor(ctx: any, identity: any) {
   const reward = applyBossRepeatableReward(current, BOSS_REWARD_CLAIM_BITS.dragon, rewardMultiplier, {
     damage: DRAGON_REWARD_DAMAGE,
   });
-  const next = { ...reward, desertUnlocked: true };
+  let next = { ...reward, desertUnlocked: true };
+  next = awardRegularEnemyLoot(ctx, TUTORIAL_FOREST_MAP_ID, 1, { progress: next }, identity);
   updateSnapshotRow(ctx, "playerProgress", next);
   const active = ctx.db.player.identity.find(identity);
   if (active) {
@@ -9823,17 +9838,17 @@ export const recordPlayerDeath = spacetimedb.reducer(
   },
 );
 
-function awardRegularEnemyLoot(ctx: ReducerCtx<InferSchema<typeof spacetimedb>>, mapId: string, count: number, checkpoint?: { progress: any }) {
+function awardRegularEnemyLoot(ctx: ReducerCtx<InferSchema<typeof spacetimedb>>, mapId: string, count: number, checkpoint?: { progress: any }, identity = ctx.sender) {
   const drops = rollRegularEnemyLoot(ctx, mapId, count);
   if (!drops.size) return checkpoint?.progress;
-  const current = checkpoint?.progress ?? ctx.db.playerProgress.identity.find(ctx.sender);
-  let next = current ?? defaultPlayerProgress(ctx.sender);
+  const current = checkpoint?.progress ?? ctx.db.playerProgress.identity.find(identity);
+  let next = current ?? defaultPlayerProgress(identity);
   const owned = new Set(inventoryForProgress(next));
-  for (const { active } of activeItemUpgradeEntriesFor(ctx, ctx.sender)) owned.add(active.itemId);
+  for (const { active } of activeItemUpgradeEntriesFor(ctx, identity)) owned.add(active.itemId);
   let inventoryChanged = false;
   for (const [itemId, quantity] of drops) {
     const alreadyOwned = owned.has(itemId);
-    publishItemDrop(ctx, ctx.sender, itemId, alreadyOwned, quantity);
+    publishItemDrop(ctx, identity, itemId, alreadyOwned, quantity);
     if (!alreadyOwned) {
       next = restoreItemToProgress(next, itemId);
       owned.add(itemId);

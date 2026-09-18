@@ -21,7 +21,7 @@ describe("campaign equipment progression", () => {
       for (const map of maps) {
         const items = mapGuideDrops(map).map(drop => itemDefinition(drop.itemId)!).filter(item => item.slot === slot);
         const next = {
-          damage: Math.max(...items.map(item => item.weapon?.damageBonus ?? 0)),
+          damage: Math.max(...items.map(item => item.weapon?.damageMultiplierBonus ?? 0)),
           health: Math.max(...items.map(item => item.modifiers?.maxHealthBonus ?? 0)),
           regen: Math.max(...items.map(item => item.modifiers?.regenerationBonus ?? 0)),
         };

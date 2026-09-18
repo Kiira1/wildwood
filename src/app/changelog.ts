@@ -1,4 +1,11 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.740": [
+    "Weapons now give percentage damage bonuses: 5% on the first bow through 40% at Ion, reaching 72% at +10. Helmets and chest armor still give flat stats.",
+    "Campaign progression follows a rounded curve aimed at 1m power around the first day, 1qd at Ion Citadel, and Endless around day seven of active play.",
+    "Endless slows sharply from its first map. Regular enemies and bosses pay one tenth of the normal payout rate, while health requirements climb increasingly steeply at later depths.",
+    "Campaign bosses can drop every item available from regular enemies in their map, alongside their exclusive drops.",
+    "Balance Lab now models Endless, offers boss kill-target comparisons, and runs faster. A new graph compares each enemy and boss reward against its health.",
+  ],
   "0.739": [
     "Gear was carrying too much of progression. Bonuses now use 20% of each map's reference stat, up to 36% at +10. Your earned stats, items, and upgrades are kept. Boots are unchanged.",
     "Endless stat jumps get smaller each map, while enemy endurance continues to rise and rewards grow more slowly.",
@@ -2052,6 +2059,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.740": "2026-09-18",
   "0.739": "2026-09-17",
   "0.738": "2026-09-17",
   "0.737": "2026-09-17",

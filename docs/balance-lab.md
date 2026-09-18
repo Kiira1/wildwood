@@ -1,25 +1,34 @@
 # Balance Lab
 
-Run `npm run balance:lab`. The primary cards describe ordinary fight length, hits survived, longest wait for +10% power, and boss duration/payout. Start there, then inspect the enemy table for the offending role. The power chart and advanced controls are supporting diagnostics.
+Double-click `tools/run-balance-lab.command`, run `npm run balance:lab`, or follow **Open Balance Lab** from the reward/health graph. The lab simulates progression over active play time; the reward/health graph shows static payout efficiency, not elapsed time.
 
-`shared/progression.ts` generates real game stats. Lab sliders are temporary what-if adjustments; they do not write source values. The stat graph (`npm run balance:stat-graph`) reads the same runtime definitions and actual spawn composition.
+Start with five seeded trials, balanced research, and mixed farming. The browser defaults to a 30-day window with Endless 1–15 available after Ion. It waits for **Run simulation**, so reopening the page does not launch expensive work. Strategy comparisons are optional; **Cancel run** stops the worker immediately. **Stop after last selected map’s boss** avoids post-completion farming. If selected maps finish early, the remaining timeline holds the final power; that flat tail is a stopped run, not measured farming. Increase the Endless count to inspect a continuing late-game curve. Unreached maps remain marked as such.
+
+The median campaign is calibrated toward roughly seven days of active play before Endless. Forest targets about one hour and Desert about 90 minutes, then a rounded duration reference increases the farming time. A 90% payout reduction starts at Endless 1 for regular enemies and bosses. Sixth-power Endless endurance makes later health requirements outgrow slowly increasing rewards. The game does not enforce completion timers. Incoming damage, survival, boss reward share, and time spent on each stat explain the causes behind the curve.
+
+## Kill-budget comparison
+
+The table compares current boss readiness against configurable damage- and health-kill targets. Counts use the representative trial's actual map-entry build and the highest reward per kill in each local lane, including elites. It accounts for current gear, research reward bonuses, attack interval, and boss regeneration. It holds those factors and armor fixed while calculating how many damage kills meet the fight-time target and how many health kills reduce the strongest hit to 30% of HP. This is not a globally optimal route across armor, attack-speed, or future gear choices, and it does not guarantee surviving all boss attacks without dodging.
+
+The default run uses the released, fixed boss stats. Enable **Scale bosses to kill targets** to run the sandbox scenario. It scales boss HP and strongest hit from each trial's entry build; regular enemies, item odds, and rewards retain their values. Target kill counts grow by configurable campaign and Endless multipliers. Run current balance first, then the scenario: the chart retains the previous run for comparison. The full event simulation lets research, gear, upgrades, and mixed farming change the actual kills and elapsed time. These controls never write game rules or live saves.
+
+## CLI and source data
 
 ```sh
-npm run balance:simulate -- --trials 20 --duration 8h --strategy mixed
-npm run balance:simulate -- --trials 3 --duration 8h --research off --equipment-strength 0
-npm run balance:audit
+npm run balance:simulate -- --trials 5 --duration 30d --endless 15 --stop-after-campaign
+npm run balance:simulate -- --trials 3 --duration 30d --endless 5 --kill-budget --damage-kills 25 --health-kills 25 --kill-growth 1.45 --endless-kill-growth 1.25 --stop-after-campaign
+npm run balance:reward-health
 ```
 
-The audit compares mixed, no-gear/no-research, nearby, and boss-rush campaigns and tests mirror duels using each exit build. It emits JSON with fight time, survival, boss share, and stalled stationary encounters. Runs use fixed seed 7331. Mirror duels intentionally draw; their purpose is to reveal duration and regeneration problems, not matchmaking quality.
+`shared/progression.ts` and `shared/endless-balance.ts` generate real game stats. Lab tuning is temporary. Weapons grant 5%–40% damage at base level, up to 72% at +10; defensive equipment remains flat. Upgrades add 8% of the item's original bonus per level. Both regular enemies and bosses roll the local regular equipment pool; Frost/Lava bosses retain their exclusive drops. Loot is delivered immediately in this model rather than waiting for server batching.
 
-Defaults: 52-minute Desert hypothesis, adding 76 minutes per later map, 3× reference stat step, 90-second boss readiness, balanced research, and one initial spawn-site clear. Readiness additionally requires surviving a strongest boss hit with at least 70% health left. The runtime does not enforce those simulator policies. Config storage version 8 resets stale saved scenarios for the current catalog.
+The clock begins at Forest arrival with private tutorial rewards. It includes travel, combat, respawn waits, research, and equipment upgrades. Upgrading temporarily removes an item and can reduce effective power. It excludes deaths, dodging, recovery routes, multiplayer contributions, and idle time. Readiness and initial camp clears are player-strategy assumptions. Existing earned stats, inventory, and upgrade levels are retained in the game.
 
-Deaths, dodging, crowd combat, recovery routes, multiplayer boss contributions, and active idle time remain unmodeled. Incoming damage is diagnostic. A stationary danger flag is not proof that a player cannot kite an enemy. A completed forecast is not proof that every player survives.
+See [progression-scaling.md](progression-scaling.md) for the authoring contract and [reward-health-graph.md](reward-health-graph.md) for payout inspection.
 
-The clock starts at Forest arrival after completing the private tutorial (+1 damage, +0.2 regen); tutorial reading time is excluded. Equipment drops and eligibility come directly from `shared/regular-map-loot.ts` and `shared/enemy-defeats.ts`, including Desert elite exclusions and all campaign equipment. Black Boots use their five-second combat delay and flat +25 movement speed. Loot delivery is immediate in the model rather than waiting for the server batch. Equipment rolls are seeded, upgrades and flat equipment bonuses use shared rules, research advances on its timers, and regular/boss respawns consume time. Boss repeats are separated from first-clear map duration. Core progress must remain possible without a lucky equipment roll.
 
-See [progression-scaling.md](progression-scaling.md) for the current authoring contract and [balance-diagnosis.md](balance-diagnosis.md) for the historical investigation.
-
-Equipment now adds fixed stats after research (`base × tech + item bonus`). The Forest bow adds 5 damage and its armor/helmet add 25 health each. Desert items start at 480 damage, 400 health per defensive piece, and 12 regen where present; later source-map tiers triple those fixed amounts. Rare Frost/Lava boss drops and Fire Metal Bow receive 20% extra. Each upgrade adds 8% of the item's original amount, up to +80% at level 10. Owning older gear never multiplies future farming rewards. Item IDs, ownership, upgrade levels, earned stats, drop odds, and research are retained.
-
-Flat-stat combat is protocol 106. Publish it with matching web/native clients and root/map servers; percentage-based clients are intentionally incompatible with the new boss-DPS checks. No database schema migration is required.
+Release 0.740 calibration: seven mixed-route trials (seed 7331), steady upgrades,
+balanced research, and authored bosses reached 1m power at a median 22.4 hours,
+Ion at 1.18qd power, and Endless 1 at day 6.96. Median map durations were
+14.2 hours for Ion, 6.13 days for Endless 1, and 11.45 days for Endless 2.
+These are active-play forecasts with the model limits above, not calendar-day promises.

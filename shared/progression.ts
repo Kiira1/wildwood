@@ -1,21 +1,28 @@
+import { bossBudgetScale } from "./boss-kill-budget";
 import { armorDamageReduction } from "./combat";
 
 /** Fixed authoring references, never adjusted to the player in the encounter. */
 export const MAP_STAT_GROWTH = 3;
-export const MAP_TARGET_SECONDS = 52 * 60;
+// Later tiers expand the number scale toward one quadrillion power at Ion.
+// Payout pacing remains separate from this numerical scale.
+export const LATE_MAP_STAT_GROWTH = 2;
+export const CAMPAIGN_STAT_SCALES: readonly number[] = [1, 3, 9, 180.72366493458193, 4185.192254823167, 64220.158817153104, 728950.1023902429, 6489957.471630347, 47286912.91772662, 275925880.64638144, 1292422628.1628737, 5089743781.070806, 16722210416.412058, 31856692042.17702, 76676496836.6315];
+export const LATE_MAP_GROWTH_START = 3;
+export const MAP_TARGET_SECONDS = 90 * 60;
+export const FOREST_REWARD_MULTIPLIER = 0.7590004986;
 export const BOSS_TARGET_SECONDS = 90;
-// Calibrated to the playtested Desert's efficient farming time and 3x growth. Changing the pacing target
-// changes real payouts, not only a diagnostic line in the lab.
-export const REGULAR_REWARD_CYCLE_SCALE = .6 * (52 * 60 / MAP_TARGET_SECONDS) * ((MAP_STAT_GROWTH - 1) / 2);
+// Base encounter reward budget. Map-specific pacing below controls real payouts;
+// the lab duration target is a comparison, not a second reward multiplier.
+export const REGULAR_REWARD_CYCLE_SCALE = .6 * ((MAP_STAT_GROWTH - 1) / 2);
 // Desert, Snowlands, Lava, Infernal, Water, Samurai, Cloudspire, Moonfen,
 // Crystal Hollows, Clockwork Ruins, Duskfall Orchard, Neon Bastion, Verdant Catacombs, Ion Citadel. Match Desert's farming
 // time with authored camp density; CAMPAIGN_REWARD_PACING below applies the current duration target.
 // Snowlands gets a modest catch-up bonus, still below Lava's per-role payouts.
 export const CAMPAIGN_ENEMY_REWARD_MULTIPLIERS: readonly number[] = [1.0, 1.25, 1.5, 0.975, 0.799, 0.648, 0.554, 0.417, 0.362, 0.332, 0.301, 0.275, 0.253, 0.232];
-// Calibrated with flat equipment and balanced research for about 128 active
-// solo hours through Ion. Forest/Desert remain unchanged; later maps carry the
-// extra time. These affect regular AND boss payouts, preventing a boss-farm bypass.
-export const CAMPAIGN_REWARD_PACING: readonly number[] = [1, 0.77, 0.72512, 0.49685, 0.52062, 0.48213, 0.46865, 0.50464, 0.48081, 0.46749, 0.45866, 0.43642, 0.4238, 0.43495];
+// One-hour Forest, 90-minute Desert, then a rounded seven-day campaign. Calibrated with
+// percentage weapons and seeded mixed routes. Both regular and boss payouts
+// use these factors, so repeating a boss does not escape the pacing curve.
+export const CAMPAIGN_REWARD_PACING: readonly number[] = [0.7293163162, 1.3215456365, 0.4241162899, 0.7210633326, 0.8970561571, 0.8746168365, 0.905087727, 1.1349843316, 0.9733707331, 1.0909458532, 1.0546142428, 1.0461931103, 1.0208046314, 0.7569092292];
 export function campaignRewardPacing(mapIndex: number) {
   return CAMPAIGN_REWARD_PACING[mapIndex] ?? 1;
 }
@@ -68,12 +75,15 @@ function tier(index: number) {
   return index;
 }
 export function referenceBuildForMap(mapIndex: number) {
-  const scale = MAP_STAT_GROWTH ** tier(mapIndex);
+  const scale = combatMultiplierForMap(mapIndex);
   return { damage: DESERT_REFERENCE.damage * scale, maxHp: DESERT_REFERENCE.maxHp * scale,
     armor: DESERT_REFERENCE.armor * scale, regen: DESERT_REFERENCE.regen * scale,
     attackInterval: DESERT_REFERENCE.attackInterval };
 }
-export function combatMultiplierForMap(mapIndex: number) { return MAP_STAT_GROWTH ** tier(mapIndex); }
+export function combatMultiplierForMap(mapIndex: number) {
+  const index = tier(mapIndex);
+  return CAMPAIGN_STAT_SCALES[index] ?? Math.min(1e28, CAMPAIGN_STAT_SCALES[14] * LATE_MAP_STAT_GROWTH ** (index - 14));
+}
 export function rewardMultiplierForMaps(mapCount: number) { return combatMultiplierForMap(mapCount); }
 export function laneCombatValue(lane: ForestProgressionLane, mapIndex: number) {
   const base = FOREST_LANE_BASES[lane];
@@ -82,13 +92,16 @@ export function laneCombatValue(lane: ForestProgressionLane, mapIndex: number) {
 }
 export function laneRewardValue(lane: ForestProgressionLane, mapIndex: number) {
   const base = FOREST_LANE_BASES[lane].reward;
-  return { ...base, amount: base.amount * (base.type === "speed" ? 1 : rewardMultiplierForMaps(mapIndex)) };
+  return { ...base, amount: base.amount * (base.type === "speed" ? 1 : rewardMultiplierForMaps(mapIndex)) * FOREST_REWARD_MULTIPLIER };
 }
 export function desertLaneCombatValue(lane: ForestProgressionLane, mapIndex: number) {
   const build = referenceBuildForMap(mapIndex);
   const profile = ENCOUNTER_PROFILES[lane];
+  const previous = referenceBuildForMap(Math.max(0, mapIndex - 1));
+  const entryHealth = Math.min(build.maxHp, previous.maxHp * MAP_STAT_GROWTH);
+  const entryArmor = Math.min(build.armor, previous.armor * MAP_STAT_GROWTH);
   return { hp: build.damage / build.attackInterval * profile.seconds,
-    damage: build.maxHp * profile.hitShare / (1 - armorDamageReduction(build.armor)) };
+    damage: entryHealth * profile.hitShare / (1 - armorDamageReduction(entryArmor)) };
 }
 export function desertLaneRewardValue(lane: ForestProgressionLane, mapIndex: number, roster = damageCampRosterForMap(mapIndex)) {
   const build = referenceBuildForMap(mapIndex);
@@ -109,19 +122,19 @@ export const DESERT_LANE_BASES = Object.fromEntries(Object.keys(ENCOUNTER_PROFIL
   return [lane, { ...desertLaneCombatValue(lane, 0), reward: desertLaneRewardValue(lane, 0) }];
 })) as Record<ForestProgressionLane, ForestLaneBase>;
 
-export const BOSS_BASE_MAX_HP = 35_000;
-export const BOSS_BASE_HEAVY_HIT = 480;
-export const DRAGON_REWARD_DAMAGE = 20;
+export const BOSS_BASE_MAX_HP = 35_000 * bossBudgetScale(0).hpScale;
+export const BOSS_BASE_HEAVY_HIT = 480 * bossBudgetScale(0).hitScale;
+export const DRAGON_REWARD_DAMAGE = 20 * FOREST_REWARD_MULTIPLIER;
 export function desertBossHealthAt(mapIndex: number) {
   const build = referenceBuildForMap(mapIndex);
   // A boss tests the build earned during the map; its reward is a smaller
   // capstone, not the stat injection needed to make regular enemies obsolete.
-  return build.damage / build.attackInterval * MAP_STAT_GROWTH * BOSS_TARGET_SECONDS;
+  return build.damage / build.attackInterval * MAP_STAT_GROWTH * BOSS_TARGET_SECONDS * bossBudgetScale(mapIndex + 1).hpScale;
 }
 export function bossHeavyHitAt(mapIndex: number) {
   const build = referenceBuildForMap(mapIndex);
   return build.maxHp * MAP_STAT_GROWTH * .25 /
-    (1 - armorDamageReduction(build.armor * MAP_STAT_GROWTH));
+    (1 - armorDamageReduction(build.armor * MAP_STAT_GROWTH)) * bossBudgetScale(mapIndex + 1).hitScale;
 }
 export const DESERT_BOSS_BASE_MAX_HP = desertBossHealthAt(0);
 export const DESERT_BOSS_BASE_HEAVY_HIT = bossHeavyHitAt(0);

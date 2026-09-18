@@ -11,7 +11,11 @@ export default defineConfig({
     minify: "esbuild",
     sourcemap: true,
     rollupOptions: {
-      input: resolve(import.meta.dirname, "../tools/balance-stat-graph.html"),
+      input: {
+        lab: resolve(import.meta.dirname, "../tools/balance-lab.html"),
+        stats: resolve(import.meta.dirname, "../tools/balance-stat-graph.html"),
+        rewards: resolve(import.meta.dirname, "../tools/reward-health-graph.html"),
+      },
       output: {
         entryFileNames: "assets/balance-stat-graph-[hash].js",
         chunkFileNames: "assets/balance-stat-graph-[hash].js",

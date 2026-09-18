@@ -2,7 +2,7 @@ import { formatEquipmentAmount } from "./equipment-stat-format";
 import type { PlayerProfileData, PlayerResearch } from "../wildstat-coop";
 import { createEmptyResearchRanks } from "../../shared/research";
 import { effectivePlayerPower, effectivePlayerPowerStats } from "../../shared/player-power";
-import { equipmentDamageBonus, equipmentMaxHealthBonus, equipmentRegenerationBonus } from "../../shared/items";
+import { equipmentDamageMultiplierBonus, equipmentMaxHealthBonus, equipmentRegenerationBonus } from "../../shared/items";
 import { formatCompactNumber } from "./number-format";
 
 export function formatPlayedTime(seconds: number) {
@@ -38,7 +38,7 @@ export function effectiveProfileStats(
   const weaponUpgradeLevel = itemUpgradeLevels[weaponItem] ?? 0;
   const healthEquipmentBonus = equipmentMaxHealthBonus(progress.equippedHead, progress.equippedChest, headUpgradeLevel, chestUpgradeLevel);
   const damageResearchMultiplier = multiplier(research.warcraft, 2);
-  const damageEquipmentBonus = equipmentDamageBonus(weaponItem, progress.equippedHead, progress.equippedChest, weaponUpgradeLevel, headUpgradeLevel, chestUpgradeLevel);
+  const damageEquipmentBonus = equipmentDamageMultiplierBonus(weaponItem, progress.equippedHead, progress.equippedChest, weaponUpgradeLevel, headUpgradeLevel, chestUpgradeLevel);
   const armorMultiplier = multiplier(research.precision, 2);
   const regenResearchMultiplier = multiplier(research.regeneration, 2);
   const regenEquipmentBonus = equipmentRegenerationBonus(progress.equippedHead, progress.equippedChest, headUpgradeLevel, chestUpgradeLevel);
@@ -130,10 +130,10 @@ export function profileStatDisplayRows(
       sources: multiplierSources(healthResearchBonus, effective.equipment.health),
     },
     {
-      kind: "damage", label: "Damage:", base: equipmentBase(statValue(progress.damage), effective.equipment.damage),
+      kind: "damage", label: "Damage:", base: statValue(progress.damage),
       equationOperator: "×",
-      multiplier: multiplierValue(effective.multipliers.damageResearch), total: statValue(effective.damage),
-      sources: multiplierSources(damageResearchBonus, effective.equipment.damage),
+      multiplier: multiplierValue(effective.multipliers.damageResearch * (1 + effective.equipment.damage)), total: statValue(effective.damage),
+      sources: [...multiplierSources(damageResearchBonus), ...(effective.equipment.damage > 0 ? [{ label: "Equipment" as const, value: `+${Math.round(effective.equipment.damage * 10000) / 100}%` }] : [])],
     },
     {
       kind: "armor", label: "Armor:", base: statValue(progress.armor),

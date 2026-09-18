@@ -1,3 +1,4 @@
+import { combatMultiplierForMap, desertBossHealthAt } from "../../shared/progression";
 import { describe, expect, it } from "vitest";
 import { createGameBootstrap } from "./runtime/game-bootstrap";
 import { createWorldLayout, createSpawnSites, mapSpawnCamps } from "./world";
@@ -12,9 +13,10 @@ describe("Ion Citadel", () => {
     const { mapConfig } = createGameBootstrap();
     expect(mapConfig.verdant_catacombs.secondaryPortal.destination).toBe("ion_citadel");
     expect(mapConfig.ion_citadel.portal.destination).toBe("verdant_catacombs");
-    expect(AEGIS_PRIME_MAX_HP / GRAVEBLOOM_MAX_HP).toBeCloseTo(3);
+    expect(AEGIS_PRIME_MAX_HP / GRAVEBLOOM_MAX_HP).toBeCloseTo(desertBossHealthAt(13) / desertBossHealthAt(12));
+    expect(AEGIS_PRIME_MAX_HP).toBeGreaterThan(GRAVEBLOOM_MAX_HP);
     expect(BOSS_DAMAGE_REFERENCE.aegisPrime).toBeGreaterThan(BOSS_DAMAGE_REFERENCE.gravebloom);
-    expect(ENEMY_TYPES["Ion Patrol"].hp / ENEMY_TYPES["Mossbound Stalker"].hp).toBeCloseTo(3);
+    expect(ENEMY_TYPES["Ion Patrol"].hp / ENEMY_TYPES["Mossbound Stalker"].hp).toBeCloseTo(combatMultiplierForMap(13) / combatMultiplierForMap(12));
   });
   it("has connected roads, five complete camps and a clear boss arena", () => {
     const map = "ion_citadel";

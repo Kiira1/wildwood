@@ -1,3 +1,4 @@
+import { isProceduralMap } from "../shared/procedural-maps";
 import { formatCompactNumber } from "../src/ui/number-format";
 import {
   BALANCE_MAP_IDS,
@@ -26,11 +27,11 @@ function valueAfter(args: string[], index: number, flag: string) {
 
 function parseMapAdjustment(config: BalanceSimulationConfig, specification: string) {
   const [rawMapId, rawValues] = specification.split(":", 2);
-  if (!BALANCE_MAP_IDS.includes(rawMapId as BalanceMapId) || !rawValues) {
+  if (!((BALANCE_MAP_IDS as readonly string[]).includes(rawMapId) || isProceduralMap(rawMapId)) || !rawValues) {
     throw new Error(`Invalid --map value "${specification}". Use map_id:hp=1.2,damage=1,reward=.9.`);
   }
   const mapId = rawMapId as BalanceMapId;
-  const adjustment = { ...config.mapAdjustments[mapId] };
+  const adjustment = { ...(config.mapAdjustments[mapId] ?? { hp: 1, bossHp: 1, damage: 1, reward: 1, bossReward: 1 }) };
   for (const pair of rawValues.split(",")) {
     const [key, rawValue] = pair.split("=", 2);
     if (key !== "hp" && key !== "bossHp" && key !== "damage" && key !== "reward" && key !== "bossReward") {
@@ -48,11 +49,18 @@ function parseArguments(args: string[]) {
   let json = false;
   for (let index = 0; index < args.length; index += 1) {
     const flag = args[index];
+    if (flag === "--stop-after-campaign") { config.stopAfterCampaign = true; continue; }
+    if (flag === "--kill-budget") { config.killBudget.enabled = true; continue; }
     if (flag === "--json") { json = true; continue; }
     if (flag === "--help" || flag === "-h") return { config, json, help: true };
     const value = valueAfter(args, index, flag);
     index += 1;
     if (flag === "--duration") config.durationSeconds = parseDuration(value);
+    else if (flag === "--endless") config.endlessMaps = Number(value);
+    else if (flag === "--damage-kills") { config.killBudget.damageKills = Number(value); config.killBudget.curve = "custom"; }
+    else if (flag === "--health-kills") { config.killBudget.healthKills = Number(value); config.killBudget.curve = "custom"; }
+    else if (flag === "--kill-growth") { config.killBudget.campaignGrowth = Number(value); config.killBudget.curve = "custom"; }
+    else if (flag === "--endless-kill-growth") { config.killBudget.endlessGrowth = Number(value); config.killBudget.curve = "custom"; }
     else if (flag === "--trials") config.trials = Number(value);
     else if (flag === "--strategy") {
       if (value !== "boss-rush" && value !== "efficient" && value !== "dps-first" && value !== "natural" && value !== "mixed" && value !== "boss-farm") throw new Error(`Invalid strategy "${value}".`);
@@ -119,24 +127,31 @@ function printHelp() {
 Usage: npm run balance:simulate -- [options]
 
   --duration 48h               Simulation window (s, m, h, or d)
-  --trials 100                 Seeded loot campaigns
+  --endless 5                  Include Endless 1–5 after Ion (0–50; default 0)
+  --kill-budget                Scale bosses to fixed-build kill targets (sandbox)
+  --damage-kills 25            Forest damage-kill target
+  --health-kills 25            Forest health-kill target
+  --kill-growth 1.45           Kill-target multiplier per campaign map
+  --endless-kill-growth 1.25    Kill-target multiplier per Endless map
+  --trials 5                 Seeded loot campaigns
   --strategy mixed             mixed, boss-rush, efficient, dps-first, natural, or boss-farm
   --research off               off, balanced, or damage-first
   --boss-target 90s            Estimated fight length before attempting a boss (strategy)
-  --target-desert 52m           Explicit Beginner Desert duration target
-  --target-step 1              Desired duration multiplier between maps
+  --target-desert 90m           Explicit Beginner Desert duration target
+  --target-step 1.45              Rounded curve adjustment (1.45 = seven-day reference)
   --target-power 3             Desired relative power growth inside each map
   --target-arc .35             Target opening momentum (0 straight, 1 full arc)
   --future-speedup 1.25        Uniform future progression-rate reserve
   --clears 1                   Initial full clears as a strategy choice; not a gameplay gate
   --respawn 20s                Regular enemy respawn time
-  --target-add 76m             Additional target time per map after Desert
+  --target-add 0m             Additional target time per map after Desert
   --upgrades steady           Single-slot upgrades: steady or off
   --gear-level 0               Starting equipped-item upgrade level (0–10)
   --equipment-strength 1       Sandbox equipment-bonus strength multiplier
   --pathing 1.15               Travel distance overhead
   --seed 1337                  Deterministic base seed
   --map water_reach:hp=1,bossHp=2,damage=.9,reward=1,bossReward=.5
+  --stop-after-campaign        Stop after the last selected campaign/Endless boss
   --json                       Print the complete machine-readable result`);
 }
 
