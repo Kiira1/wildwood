@@ -1,4 +1,8 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.738": [
+    "Pending boss rewards retry automatically after connection or syncing delays, without needing another kill.",
+    "Critical hits now work on every campaign boss. Endless boss crits also show the correct damage popup.",
+  ],
   "0.737": [
     "Equipment bonuses increased 5×. Helmets now give regen, chest armor gives health, and boots are unchanged.",
     "Enemies ease into their chase when they spot you. More melee enemies in later maps can keep up with faster players.",
@@ -2044,6 +2048,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.738": "2026-09-17",
   "0.737": "2026-09-17",
   "0.736": "2026-09-17",
   "0.735": "2026-09-17",

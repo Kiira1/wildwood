@@ -175,3 +175,16 @@ it("accepts Mal's starter-stone dragon defeat using saved guest equipment", () =
   f.begin(); f.at(300); f.claim();
   expect(f.db.playerProgress.identity.find(f.ctx.sender).desertUnlocked).toBe(true);
 });
+
+it.each(['tutorial_forest', 'beginner_desert', 'intermediate_snowlands', 'advanced_lava_wastes',
+  'infernal_depths', 'water_reach', 'samurai_garden', 'cloudspire', 'moonfen', 'crystal_hollows',
+  'clockwork_ruins', 'duskfall_orchard', 'neon_bastion', 'verdant_catacombs', 'ion_citadel', 'endless_1'])
+('accepts a legitimate first critical victory on %s and does not grant duplicate rewards', mapId => {
+  const f = fixture(mapId, 600);
+  f.seed('playerResearch', { identity: f.ctx.sender, criticalChance: 1, criticalDamage: 20 });
+  f.begin();
+  // Possible lucky crits are bounded by server-owned research, not average DPS.
+  f.at(294); f.claim();
+  expect(f.kills()).toBe(1n);
+  f.claim(); expect(f.kills()).toBe(1n);
+});

@@ -704,7 +704,7 @@ import {
     minAttackInterval: MIN_ATTACK_INTERVAL,
     effectiveArmor,
     isDueling,
-    hitGeneratedBoss: (enemy, damage) => { if (!enemy.generatedBoss) return false; personalBosses.hit(currentMapId, damage); spawnDamageNumber(enemy.x, enemy.y, damage, false); return true; },
+    hitGeneratedBoss: (enemy, damage, critical) => { if (!enemy.generatedBoss) return false; personalBosses.hit(currentMapId, damage); spawnDamageNumber(enemy.x, enemy.y, damage, critical); return true; },
     hitPersonalBoss: (damage, x, y, critical) => { personalBosses.hit(currentMapId, damage); spawnDamageNumber(x, y, damage, critical); },
     scheduleEnemyRespawn: site => {
       regularEnemyRespawnBoost.schedule(site);

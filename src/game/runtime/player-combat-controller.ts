@@ -140,7 +140,7 @@ export function createPlayerCombatController(options: {
   recordRegularEnemyDefeat: (mapId: string, enemy: string) => void;
   incrementKills: () => void;
   hitPersonalBoss?: (damage: number, x: number, y: number, critical: boolean) => void;
-  hitGeneratedBoss?: (enemy: EnemyState, damage: number) => boolean;
+  hitGeneratedBoss?: (enemy: EnemyState, damage: number, critical: boolean) => boolean;
   damageDragon: (hits: number) => void;
   damageSpider: (hits: number) => void;
   damageFrostclaw: (hits: number) => void;
@@ -320,7 +320,7 @@ export function createPlayerCombatController(options: {
     const angle = Math.atan2(target.y - player.y, target.x - player.x);
     const hit = raycastProjectile(player.x, player.y, player.x + Math.cos(angle) * attackRange(), player.y + Math.sin(angle) * attackRange(), 0);
     if (!hit) return;
-    const critical = !hit.enemy.isBoss && Math.random() < researchCriticalChance();
+    const critical = (!hit.enemy.isBoss || Boolean(options.hitPersonalBoss)) && Math.random() < researchCriticalChance();
     applyPlayerHit(hit.enemy, weaponDamage(critical), critical, angle);
     spawnBurst(player.x + Math.cos(angle) * attackRange() * hit.t, player.y + Math.sin(angle) * attackRange() * hit.t, "#f3f7ff", 6, 55);
   }
@@ -334,8 +334,9 @@ export function createPlayerCombatController(options: {
     for (let index = 0; index < player.projectileCount; index++) {
       const angle = baseAngle + (index - (player.projectileCount - 1) / 2) * .13;
       const projectileLifeBonus = 1.25;
-      // Boss criticals and hit numbers come from confirmed server damage.
-      const critical = !target.isBoss && Math.random() < researchCriticalChance();
+      // Personal bosses use the same crit roll as ordinary enemies. Only the
+      // legacy shared-boss path waits for server-confirmed critical damage.
+      const critical = (!target.isBoss || Boolean(options.hitPersonalBoss)) && Math.random() < researchCriticalChance();
       const projectile = projectileStore.acquirePlayerProjectile();
       projectile.x = player.x + Math.cos(angle) * 20;
       projectile.y = player.y + Math.sin(angle) * 20;
@@ -597,8 +598,8 @@ export function createPlayerCombatController(options: {
         pendingDragonHits += 1;
         dragonHitBatchTimer = DRAGON_HIT_BATCH_DELAY;
       }
-    } else if (options.hitGeneratedBoss?.(target, damage)) {
-      // Generated bosses use authoritative health and shared first-clear unlocks.
+    } else if (options.hitGeneratedBoss?.(target, damage, critical)) {
+      // The generated-boss controller owns its health and defeat handling.
     } else {
       engageEnemy(target);
       target.hp -= damage;

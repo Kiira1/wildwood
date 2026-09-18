@@ -3017,7 +3017,7 @@ function researchedDamage(ctx: any, identity: any, damage: number, knownProgress
   );
 }
 
-function maximumBossCombatForProgress(ctx: GameReducerContext, mapId: string, earned: { type: string; amount: number; count: number }[]) {
+function maximumBossCombatForProgress(ctx: GameReducerContext, earned: { type: string; amount: number; count: number }[]) {
   const saved = ctx.db.playerProgress.identity.find(ctx.sender);
   if (!saved) return { dps: 0, attackInterval: 1 };
   const research = ctx.db.playerResearch.identity.find(ctx.sender);
@@ -3025,9 +3025,9 @@ function maximumBossCombatForProgress(ctx: GameReducerContext, mapId: string, ea
   const weapon = equippedRightHandForProgress(progress) || equippedLeftHandForProgress(progress);
   const attackInterval = attackIntervalForProgress(progress);
   if (!weapon) return { dps: 0, attackInterval };
-  // Campaign bosses currently do not receive client criticals. Endless bosses
-  // do; use the possible maximum so lucky critical streaks remain legitimate.
-  const critical = isProceduralMap(mapId) && (research?.criticalChance ?? 0) > 0
+  // Every personal boss can receive criticals. Use the possible maximum so
+  // legitimate lucky streaks do not cause first-clear rewards to be rejected.
+  const critical = (research?.criticalChance ?? 0) > 0
     ? Math.max(1, 1.05 + (research?.criticalDamage ?? 0) * .05) : 1;
   const projectiles = itemDefinition(weapon)?.weapon?.mode === "MELEE" ? 1 : Math.max(1, progress.projectileCount);
   return { attackInterval, dps: researchedDamage(ctx, ctx.sender, progress.damage, progress, research) * critical * projectiles / attackInterval };
@@ -9852,7 +9852,7 @@ export const recordEnemyDefeats = spacetimedb.reducer(
   (ctx, batch) => {
     const player = requireControllingPlayer(ctx);
     if (isMapShard(ctx) || activeDuelFor(ctx, ctx.sender)) throw new SenderError("Enemy rewards require your account world connection.");
-    const accepted = acceptEnemyDefeats(ctx, batch, player.mapId, earned => maximumBossCombatForProgress(ctx, batch.mapId, earned));
+    const accepted = acceptEnemyDefeats(ctx, batch, player.mapId, earned => maximumBossCombatForProgress(ctx, earned));
     if (!accepted || !accepted.count) return;
     const base = ctx.db.playerProgress.identity.find(ctx.sender) ?? defaultPlayerProgress(ctx.sender);
     if (accepted.rewards.some(reward => reward.type !== "boss")) {

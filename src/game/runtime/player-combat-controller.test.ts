@@ -585,3 +585,45 @@ describe("local sword combat", () => {
     expect(s.projectileStore.projectiles).toHaveLength(0);
   });
 });
+
+const personalBossCases = [
+  ['isTutorialMap', 'boss'], ['isDesertMap', 'spiderBoss'], ['isSnowMap', 'frostclawBoss'],
+  ['isLavaMap', 'magmaliskBoss'], ['isInfernalMap', 'gloomrootBoss'], ['isWaterMap', 'tidewyrmBoss'],
+  ['isSamuraiMap', 'koiShogunBoss'], ['isCloudspireMap', 'tempestKirinBoss'], ['isMoonfenMap', 'miremawBoss'],
+  ['isCrystalHollowsMap', 'prismshellBoss'], ['isClockworkRuinsMap', 'ironhornBoss'],
+  ['isDuskfallOrchardMap', 'dreadreaperBoss'], ['isNeonBastionMap', 'voltwardenBoss'],
+  ['isVerdantCatacombsMap', 'gravebloomBoss'], ['isIonCitadelMap', 'aegisPrimeBoss'],
+] as const;
+
+it.each(personalBossCases)('applies ranged and sword criticals to %s', (flag, key) => {
+  for (const weapon of ['starter_stone', 'wooden_sword']) {
+    let now = 1;
+    const hit = vi.fn();
+    const state = createCombatHarness({ isTutorialMap: () => false, [flag]: () => true,
+      nowSeconds: () => now, equippedWeapon: () => weapon, hitPersonalBoss: hit,
+      researchCriticalChance: () => 1, researchCriticalDamageMultiplier: () => 2 });
+    state.enemies.length = 0;
+    const boss = state[key];
+    Object.assign(boss, { dead: false, x: 550, y: 500 });
+    Object.assign(state.player, { x: 500 - boss.r, y: 500, damage: 10, projectileCount: 1, attackRange: 200, hp: 100 });
+    for (let i = 0; i < 90; i++) {
+      now += 1 / 60;
+      state.controller.attackNearest(); state.controller.updateProjectiles(1 / 60);
+    }
+    expect(hit, weapon).toHaveBeenCalled();
+    expect(hit.mock.calls.every(call => call[0] === 20 && call[3] === true), weapon).toBe(true);
+  }
+});
+
+it('passes Endless critical damage and the critical flag to its hit display', () => {
+  let now = 1; const hit = vi.fn(() => true);
+  const state = createCombatHarness({ isTutorialMap: () => false, nowSeconds: () => now,
+    researchCriticalChance: () => 1, researchCriticalDamageMultiplier: () => 2, hitGeneratedBoss: hit });
+  state.enemies.length = 0;
+  Object.assign(state.player, { x: 500, y: 500, damage: 10, attackRange: 200, hp: 100 });
+  createEnemyLifecycle(state.enemies, state.spawnSites, () => {}).spawnFromSite({ id: 0, type: 'Spitter',
+    x: 550, y: 500, campName: 'Boss', leashRange: 500, alive: false, respawnAt: 0 });
+  state.enemies[0].generatedBoss = true;
+  for (let i = 0; i < 90; i++) { now += 1 / 60; state.controller.attackNearest(); state.controller.updateProjectiles(1 / 60); }
+  expect(hit).toHaveBeenCalledWith(state.enemies[0], 20, true);
+});

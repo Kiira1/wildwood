@@ -21,11 +21,33 @@ export function createRegularEnemyLootQueue(options: {
   let owner = "", key = "", epoch = 0;
   let state: State | null = null;
   let inFlight: Promise<boolean> | null = null;
+  let bossRetryTimer: ReturnType<typeof setTimeout> | null = null;
+  let bossRetryDelay = 2_000;
+  function cancelBossRetry() {
+    if (bossRetryTimer !== null) clearTimeout(bossRetryTimer);
+    bossRetryTimer = null;
+  }
+  function scheduleBossRetry() {
+    cancelBossRetry();
+    if (!owner || !state?.batches.some(batch => batch.enemies.some(entry => entry.enemy === "boss"))) {
+      bossRetryDelay = 2_000;
+      return;
+    }
+    const retryEpoch = epoch;
+    const throttleDelay = Math.min(30_000, Math.max(0, (state.retryAtMs ?? 0) - Date.now()));
+    bossRetryTimer = setTimeout(() => {
+      bossRetryTimer = null;
+      if (retryEpoch !== epoch) return;
+      bossRetryDelay = Math.min(60_000, bossRetryDelay * 2);
+      void flush(true);
+    }, Math.max(bossRetryDelay, throttleDelay));
+  }
   const empty = (): State => ({ streamId: crypto.randomUUID(), nextSequence: 1, batches: [] });
   function persist() {
     if (key && state) { try { options.storage.setItem(key, JSON.stringify(state)); } catch {} }
   }
   function begin() {
+    cancelBossRetry(); bossRetryDelay = 2_000;
     epoch++;
     inFlight = null;
     owner = options.identity();
@@ -41,6 +63,7 @@ export function createRegularEnemyLootQueue(options: {
             (Array.isArray(batch.enemies) && batch.enemies.every(entry => typeof entry.enemy === "string" && Number.isInteger(entry.count) && entry.count > 0) && batch.enemies.reduce((sum, entry) => sum + entry.count, 0) === batch.count))) state = saved;
     } catch {}
     state ??= empty();
+    scheduleBossRetry();
   }
   function flush(drain = false): Promise<boolean> {
     if (owner !== options.identity()) begin();
@@ -48,10 +71,10 @@ export function createRegularEnemyLootQueue(options: {
       const runEpoch = epoch;
       return drain ? inFlight.then(ok => ok && epoch === runEpoch ? flush(true) : false) : inFlight;
     }
-    if (!owner || !state?.batches.length) return Promise.resolve(true);
+    if (!owner || !state?.batches.length) { cancelBossRetry(); return Promise.resolve(true); }
     // Even forced portal/save drains respect a known server throttle. Persist it
     // so rapid refreshes cannot turn the same rejected report into a request loop.
-    if (Number.isFinite(state.retryAtMs) && state.retryAtMs! > Date.now() && state.retryAtMs! <= Date.now() + 30_000) return Promise.resolve(false);
+    if (Number.isFinite(state.retryAtMs) && state.retryAtMs! > Date.now() && state.retryAtMs! <= Date.now() + 30_000) { scheduleBossRetry(); return Promise.resolve(false); }
     const current = state, runEpoch = epoch, runOwner = owner;
     const batchLimit = current.batches.length;
     const run = async () => {
@@ -81,7 +104,15 @@ export function createRegularEnemyLootQueue(options: {
       }
       return true;
     };
-    inFlight = run().finally(() => { if (epoch === runEpoch) inFlight = null; });
+    cancelBossRetry();
+    inFlight = run().finally(() => {
+      if (epoch !== runEpoch) return;
+      inFlight = null;
+      // A lost acknowledgement/hydration gap must not leave a boss reward
+      // waiting for the five-minute save timer or the player's next boss kill.
+      // Retry the same persisted receipt, with backoff, only while a boss waits.
+      scheduleBossRetry();
+    });
     return inFlight;
   }
   return {
@@ -99,7 +130,7 @@ export function createRegularEnemyLootQueue(options: {
       else state.batches.push({ sequence: state.nextSequence++, mapId, count: 1, enemies: [{ enemy, count: 1 }], sealed: false });
       persist();
     },
-    reset() { epoch++; inFlight = null; if (owner) { state = empty(); persist(); } },
-    clear() { epoch++; owner = ""; state = null; key = ""; inFlight = null; },
+    reset() { cancelBossRetry(); bossRetryDelay = 2_000; epoch++; inFlight = null; if (owner) { state = empty(); persist(); } },
+    clear() { cancelBossRetry(); bossRetryDelay = 2_000; epoch++; owner = ""; state = null; key = ""; inFlight = null; },
   };
 }

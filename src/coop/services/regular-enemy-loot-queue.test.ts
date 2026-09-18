@@ -126,3 +126,51 @@ it('holds full batches for the periodic save instead of sending during combat', 
   await f.queue.flush();
   expect(f.send.mock.calls.map(([r]) => r.count)).toEqual([100, 100, 50]);
 });
+
+it('retries a boss reward after a failed send without another kill or periodic save', async () => {
+  vi.useFakeTimers();
+  const f = fixture();
+  try {
+    f.send.mockResolvedValueOnce(false);
+    f.queue.record('tutorial_forest', 'boss');
+    expect(await f.queue.flush(true)).toBe(false);
+    const first = f.send.mock.calls[0][0];
+    await vi.advanceTimersByTimeAsync(2_000);
+    expect(f.send).toHaveBeenCalledTimes(2);
+    expect(f.send.mock.calls[1][0]).toEqual(first);
+    expect(f.queue.hasPending()).toBe(false);
+    await vi.advanceTimersByTimeAsync(300_000);
+    expect(f.send).toHaveBeenCalledTimes(2);
+  } finally { f.queue.clear(); vi.useRealTimers(); }
+});
+
+it('retries a boss queued behind a failed ordinary batch in sequence', async () => {
+  vi.useFakeTimers();
+  const f = fixture();
+  try {
+    let finish!: (ok: boolean) => void;
+    f.send.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+    f.queue.record('tutorial_forest', 'Cindermaw'); const regular = f.queue.flush();
+    f.queue.record('tutorial_forest', 'boss'); const boss = f.queue.flush(true);
+    finish(false); await regular; expect(await boss).toBe(false);
+    await vi.advanceTimersByTimeAsync(2_000);
+    expect(f.send.mock.calls.map(([r]) => r.sequence)).toEqual([1n, 1n, 2n]);
+    expect(f.send.mock.calls[2][0].enemies).toEqual([{ enemy: 'boss', count: 1 }]);
+    expect(f.queue.hasPending()).toBe(false);
+  } finally { f.queue.clear(); vi.useRealTimers(); }
+});
+
+it('restores pending boss retries, backs off while offline, and cancels on sign-out', async () => {
+  vi.useFakeTimers();
+  const f = fixture(); let reload = f.queue;
+  try {
+    f.send.mockResolvedValue(false);
+    f.queue.record('tutorial_forest', 'boss'); await f.queue.flush(true);
+    f.queue.clear(); reload = createRegularEnemyLootQueue(f.options); reload.begin();
+    await vi.advanceTimersByTimeAsync(2_000); expect(f.send).toHaveBeenCalledTimes(2);
+    await vi.advanceTimersByTimeAsync(3_999); expect(f.send).toHaveBeenCalledTimes(2);
+    await vi.advanceTimersByTimeAsync(1); expect(f.send).toHaveBeenCalledTimes(3);
+    reload.clear(); await vi.advanceTimersByTimeAsync(300_000);
+    expect(f.send).toHaveBeenCalledTimes(3);
+  } finally { reload.clear(); vi.useRealTimers(); }
+});
