@@ -1,4 +1,3 @@
-import { formatEquipmentAmount } from "./equipment-stat-format";
 import { regularMapLoot } from "../../shared/regular-map-loot";
 import { generateMap, isProceduralMap } from "../../shared/procedural-maps";
 import { canvasRenderPixelRatio } from "../game/runtime/render-budget";
@@ -162,7 +161,7 @@ export function mapGuideDropChance(denominator: number, numerator = 1) {
 }
 
 function bonusLabel(value: number) {
-  return `+${formatEquipmentAmount(value)}`;
+  return `+${Math.round(value * 10000) / 100}%`;
 }
 
 export function mapGuideItemStats(itemId: ItemId) {
@@ -170,8 +169,8 @@ export function mapGuideItemStats(itemId: ItemId) {
   const stats: string[] = [];
   const damageBonus = item.weapon?.damageMultiplierBonus ?? item.modifiers?.damageMultiplierBonus;
   if (damageBonus !== undefined) stats.push(`Damage +${Math.round(damageBonus * 10000) / 100}%`);
-  if (item.modifiers?.maxHealthBonus !== undefined) stats.push(`Max Health ${bonusLabel(item.modifiers.maxHealthBonus)}`);
-  if (item.modifiers?.regenerationBonus !== undefined) stats.push(`Regen ${bonusLabel(item.modifiers.regenerationBonus)}`);
+  if (item.modifiers?.maxHealthMultiplierBonus !== undefined) stats.push(`Max Health ${bonusLabel(item.modifiers.maxHealthMultiplierBonus)}`);
+  if (item.modifiers?.regenerationMultiplierBonus !== undefined) stats.push(`Regen ${bonusLabel(item.modifiers.regenerationMultiplierBonus)}`);
   return stats;
 }
 

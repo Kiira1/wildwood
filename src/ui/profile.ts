@@ -1,8 +1,7 @@
-import { formatEquipmentAmount } from "./equipment-stat-format";
 import type { PlayerProfileData, PlayerResearch } from "../wildstat-coop";
 import { createEmptyResearchRanks } from "../../shared/research";
 import { effectivePlayerPower, effectivePlayerPowerStats } from "../../shared/player-power";
-import { equipmentDamageMultiplierBonus, equipmentMaxHealthBonus, equipmentRegenerationBonus } from "../../shared/items";
+import { equipmentDamageMultiplierBonus, equipmentMaxHealthMultiplierBonus, equipmentRegenerationMultiplierBonus } from "../../shared/items";
 import { formatCompactNumber } from "./number-format";
 
 export function formatPlayedTime(seconds: number) {
@@ -36,12 +35,12 @@ export function effectiveProfileStats(
   const headUpgradeLevel = itemUpgradeLevels[progress.equippedHead] ?? 0;
   const chestUpgradeLevel = itemUpgradeLevels[progress.equippedChest] ?? 0;
   const weaponUpgradeLevel = itemUpgradeLevels[weaponItem] ?? 0;
-  const healthEquipmentBonus = equipmentMaxHealthBonus(progress.equippedHead, progress.equippedChest, headUpgradeLevel, chestUpgradeLevel);
+  const healthEquipmentBonus = equipmentMaxHealthMultiplierBonus(progress.equippedHead, progress.equippedChest, headUpgradeLevel, chestUpgradeLevel);
   const damageResearchMultiplier = multiplier(research.warcraft, 2);
   const damageEquipmentBonus = equipmentDamageMultiplierBonus(weaponItem, progress.equippedHead, progress.equippedChest, weaponUpgradeLevel, headUpgradeLevel, chestUpgradeLevel);
   const armorMultiplier = multiplier(research.precision, 2);
   const regenResearchMultiplier = multiplier(research.regeneration, 2);
-  const regenEquipmentBonus = equipmentRegenerationBonus(progress.equippedHead, progress.equippedChest, headUpgradeLevel, chestUpgradeLevel);
+  const regenEquipmentBonus = equipmentRegenerationMultiplierBonus(progress.equippedHead, progress.equippedChest, headUpgradeLevel, chestUpgradeLevel);
   const speedMultiplier = multiplier(research.moveSpeed, 2);
   const baseSpeed = progress.speedOverride > 0 ? progress.speedOverride : progress.speed;
   const powerStats = effectivePlayerPowerStats(
@@ -100,8 +99,7 @@ export function profileStatDisplayRows(
   const effective = effectiveProfileStats(progress, ranks, profile.itemUpgradeLevels);
   const researchBonus = (rank = 0, percentPerRank = 0) => rank * percentPerRank;
   const multiplierValue = (value: number) => value.toFixed(2);
-  const equipmentBonusValue = (value: number) => `+${formatEquipmentAmount(value)}`;
-  const equipmentBase = (base: string, bonus: number) => bonus ? `(${base} + ${formatEquipmentAmount(bonus)})` : base;
+  const equipmentBonusValue = (value: number) => `+${Math.round(value * 10000) / 100}%`;
   const multiplierSources = (researchPercent?: number, equipmentBonus?: number): ProfileStatDisplaySource[] => {
     const sources: ProfileStatDisplaySource[] = [];
     if (researchPercent) sources.push({ label: "Tech", value: `+${researchPercent}%` });
@@ -123,9 +121,9 @@ export function profileStatDisplayRows(
   const stats: ProfileStatDisplayRow[] = [
     {
       kind: "health", label: "Max Hp:",
-      base: equipmentBase(statValue(progress.maxHp / effective.multipliers.healthResearch), effective.equipment.health),
+      base: statValue(progress.maxHp / effective.multipliers.healthResearch),
       equationOperator: "×",
-      multiplier: multiplierValue(effective.multipliers.healthResearch),
+      multiplier: multiplierValue(effective.multipliers.healthResearch * (1 + effective.equipment.health)),
       total: statValue(effective.maxHp),
       sources: multiplierSources(healthResearchBonus, effective.equipment.health),
     },
@@ -133,7 +131,7 @@ export function profileStatDisplayRows(
       kind: "damage", label: "Damage:", base: statValue(progress.damage),
       equationOperator: "×",
       multiplier: multiplierValue(effective.multipliers.damageResearch * (1 + effective.equipment.damage)), total: statValue(effective.damage),
-      sources: [...multiplierSources(damageResearchBonus), ...(effective.equipment.damage > 0 ? [{ label: "Equipment" as const, value: `+${Math.round(effective.equipment.damage * 10000) / 100}%` }] : [])],
+      sources: multiplierSources(damageResearchBonus, effective.equipment.damage),
     },
     {
       kind: "armor", label: "Armor:", base: statValue(progress.armor),
@@ -156,9 +154,9 @@ export function profileStatDisplayRows(
     },
     {
       kind: "regen", label: "Regen:",
-      base: equipmentBase(progress.regen >= 1_000_000 ? `${formatCompactNumber(progress.regen)}/s` : `${progress.regen.toFixed(1)}/s`, effective.equipment.regen),
+      base: progress.regen >= 1_000_000 ? `${formatCompactNumber(progress.regen)}/s` : `${progress.regen.toFixed(1)}/s`,
       equationOperator: "×",
-      multiplier: multiplierValue(effective.multipliers.regenResearch), total: regen,
+      multiplier: multiplierValue(effective.multipliers.regenResearch * (1 + effective.equipment.regen)), total: regen,
       sources: multiplierSources(regenResearchBonus, effective.equipment.regen),
     },
     {

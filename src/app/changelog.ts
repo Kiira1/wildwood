@@ -1,4 +1,8 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.741": [
+    "Chest armor now boosts earned max health by a percentage, and helmets boost earned regeneration by a percentage. Bonuses range from 5% to 40% at base level, up to 72% at +10, matching the weapon tiers.",
+    "Inventory, upgrade previews, map guides, and profile details show the percentage bonuses. Health gains, equipping, and respawning keep equipment bonuses separate from saved stats.",
+  ],
   "0.740": [
     "Weapons now give percentage damage bonuses: 5% on the first bow through 40% at Ion, reaching 72% at +10. Helmets and chest armor still give flat stats.",
     "Campaign progression follows a rounded curve aimed at 1m power around the first day, 1qd at Ion Citadel, and Endless around day seven of active play.",
@@ -2059,6 +2063,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.741": "2026-09-18",
   "0.740": "2026-09-18",
   "0.739": "2026-09-17",
   "0.738": "2026-09-17",

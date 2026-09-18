@@ -61,7 +61,7 @@ import { createAutoFarmController } from "./game/runtime/auto-farm-controller";
 import { createAutoFarmResumeStore } from "./app/auto-farm-resume";
 import { createAutoFarmPanel } from "./ui/auto-farm-panel";
 import { createPlayerController, type PlayerController } from "./game/runtime/player-controller";
-import { applyPlayerMaxHealthBonus } from "./game/runtime/player-health";
+import { applyPlayerMaxHealthMultiplierBonus } from "./game/runtime/player-health";
 import { createRegularEnemyRespawnBoost } from "./game/runtime/regular-enemy-respawn";
 import { createRespawnMemory } from "./game/runtime/respawn-memory";
 import { createBossFightMemory } from "./game/runtime/boss-fight-memory";
@@ -111,7 +111,7 @@ import type { ResearchId } from "../shared/research";
 import { PLAYER_GENDER_FEMALE, PLAYER_GENDER_MALE } from "../shared/player-gender";
 import { regularEnemySimulationTick } from "../shared/regular-enemy-simulation";
 import { effectivePlayerPower } from "../shared/player-power";
-import { equipmentMaxHealthBonus, equipmentRegeneration, isWeaponItem, itemDisplayName, itemStats } from "../shared/items";
+import { equipmentMaxHealthMultiplierBonus, equipmentRegeneration, isWeaponItem, itemDisplayName, itemStats } from "../shared/items";
 import {
   DEFAULT_ATTACK_INTERVAL as STARTING_ATTACK_INTERVAL,
   MAX_PLAYER_STAT,
@@ -231,12 +231,12 @@ import {
     singletons: [camera, player, boss, spiderBoss, frostclawBoss, magmaliskBoss, gloomrootBoss, tidewyrmBoss, koiShogunBoss, tempestKirinBoss, miremawBoss, prismshellBoss, ironhornBoss, dreadreaperBoss, voltwardenBoss, gravebloomBoss, aegisPrimeBoss],
     collections: [enemies, projectiles, enemyShots, bossRain, spiderVenom, frostclawIcefalls, magmaliskEruptions, gloomrootBlooms, tidewyrmWhirlpools, koiShogunWhirlpools, tempestKirinThunderbolts, miremawBogBursts, prismshellCrystalBursts, ironhornCrystalBursts, dreadreaperCrystalBursts, voltwardenCrystalBursts, gravebloomCrystalBursts, aegisPrimeCrystalBursts, particles, damageNumbers],
   });
-  const healthBonus = () => equipmentMaxHealthBonus(
+  const healthMultiplierBonus = () => equipmentMaxHealthMultiplierBonus(
     inventory.equippedHead,
     inventory.equippedChest,
     coop?.itemUpgradeLevel?.(inventory.equippedHead) ?? 0,
     coop?.itemUpgradeLevel?.(inventory.equippedChest) ?? 0,
-  ) * (1 + (coop?.research?.()?.vitality ?? 0) * .02);
+  );
   const LEGACY_SAVE_KEY = "wildwood-player-progress-v1";
   const respawnMemory = createRespawnMemory(localStorage, () => coop?.localIdentity?.() ?? '');
   const bossFightMemory = createBossFightMemory(localStorage, () => coop?.localIdentity?.() ?? '');
@@ -446,7 +446,7 @@ import {
       if (!moves.length) return false;
       for (const { itemId, destination } of moves) moveInventoryItem(inventory, itemId, destination);
       player.speed = progress.movementSpeedForEquipment(inventory.equippedFeet === TRAILBLAZER_BOOTS) * localTestMultiplier;
-      applyPlayerMaxHealthBonus(player, healthBonus());
+      applyPlayerMaxHealthMultiplierBonus(player, healthMultiplierBonus());
       saveProgress(true);
       showMessage("BEST EQUIPMENT EQUIPPED", "#72ef58");
       return true;
@@ -459,7 +459,7 @@ import {
       const result = await coop?.destroyEquipment?.(itemId);
       if (result?.ok) {
         setInventoryItemQuantity(inventory, itemId, 0);
-        applyPlayerMaxHealthBonus(player, healthBonus());
+        applyPlayerMaxHealthMultiplierBonus(player, healthMultiplierBonus());
       }
       return result;
     },
@@ -469,7 +469,7 @@ import {
       if (destination !== "BAG" && requiredMap) { showMessage(`REACH ${requiredMap.toUpperCase()} TO EQUIP`, "#ff9b91"); return false; }
       if (!moveInventoryItem(inventory, itemId, destination)) return false;
       player.speed = progress.movementSpeedForEquipment(inventory.equippedFeet === TRAILBLAZER_BOOTS) * localTestMultiplier;
-      applyPlayerMaxHealthBonus(player, healthBonus());
+      applyPlayerMaxHealthMultiplierBonus(player, healthMultiplierBonus());
       const hasWeapon = isWeaponItem(inventory.equippedRightHand || inventory.equippedLeftHand);
       saveProgress(true);
       showMessage(hasWeapon ? "EQUIPMENT UPDATED · WEAPON READY" : "EQUIPMENT UPDATED", "#72ef58");
@@ -626,7 +626,7 @@ import {
     isDueling,
     maxPlayerStat: MAX_PLAYER_STAT,
     saveProgress,
-    healthBonus,
+    healthMultiplierBonus,
   });
   const {
     ranks: researchRanks,
@@ -662,7 +662,7 @@ import {
     getTotalKills: () => totalKills,
     setTotalKills: (kills) => { totalKills = kills; },
     researchVitalityRank: () => researchRanks().vitality,
-    healthBonus,
+    healthMultiplierBonus,
     setAppliedVitalityRank: research.setAppliedVitalityRank,
     renderInventory,
     onLoaded: finishStartup,
@@ -700,7 +700,7 @@ import {
     equippedHeadUpgradeLevel: () => coop?.itemUpgradeLevel?.(inventory.equippedHead) ?? 0,
     equippedChest: () => inventory.equippedChest,
     equippedChestUpgradeLevel: () => coop?.itemUpgradeLevel?.(inventory.equippedChest) ?? 0,
-    healthBonus,
+    healthMultiplierBonus,
     minAttackInterval: MIN_ATTACK_INTERVAL,
     effectiveArmor,
     isDueling,
@@ -964,7 +964,7 @@ import {
     damagePlayer: (amount) => playerCombat.damagePlayer(amount),
     logPickup,
     saveProgress,
-    healthBonus,
+    healthMultiplierBonus,
     rewardMultiplier: researchRewardMultiplier,
   });
 
@@ -1244,7 +1244,7 @@ import {
     syncSpeed: (speed) => { if (coop && !inTutorial()) coop.syncSpeed(speed); },
     movementSpeedMultiplier: movementMultiplier,
     regenerationPerSecond,
-    healthBonus,
+    healthMultiplierBonus,
     syncMovementState: (x, y, vx, vy, inputSource, force, interestArea) => { if (!inTutorial()) coop?.syncMovementState?.(x, y, vx, vy, inputSource, force, interestArea); },
     autoAttack: () => playerCombat.attackNearest(autoFarm.targetType(), autoFarm.targetCamp()),
     isAutoAttackEnabled: () => !onboarding?.blocksInput() && isWeaponItem(inventory.equippedRightHand || inventory.equippedLeftHand),
@@ -1593,7 +1593,7 @@ import {
         inventory.selectedItemLocation = "";
       }
       player.speed = progress.movementSpeedForEquipment(inventory.equippedFeet === TRAILBLAZER_BOOTS) * localTestMultiplier;
-      applyPlayerMaxHealthBonus(player, healthBonus());
+      applyPlayerMaxHealthMultiplierBonus(player, healthMultiplierBonus());
       renderInventory();
       saveProgress(true);
     },
@@ -2163,7 +2163,7 @@ import {
   });
   coop?.setOnItemUpgrade?.(({ itemId, level }) => {
     setInventoryItemQuantity(inventory, itemId, 1);
-    applyPlayerMaxHealthBonus(player, healthBonus());
+    applyPlayerMaxHealthMultiplierBonus(player, healthMultiplierBonus());
     renderInventory();
     saveProgress(true);
     showMessage(`${itemDisplayName(itemId, level)} COMPLETE`, "#72ef58");

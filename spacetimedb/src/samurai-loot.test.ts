@@ -1,6 +1,6 @@
 import { reportEnemy } from "../../tests/helpers/enemy-defeat";
 import { describe, expect, it, vi } from "vitest";
-import { SAMURAI_HAT, SAMURAI_HAT_ITEM_DROP_DENOMINATOR, itemMaxHealthBonus, itemRegenerationBonus } from "../../shared/items";
+import { SAMURAI_HAT, SAMURAI_HAT_ITEM_DROP_DENOMINATOR, itemMaxHealthMultiplierBonus, itemRegenerationMultiplierBonus } from "../../shared/items";
 import { SAMURAI_GARDEN_MAP_ID } from "../../shared/rules";
 import { inventoryFromSave, inventoryItemQuantity, serialiseInventory } from "../../src/game/inventory";
 import { crystalFixture } from "../../tests/helpers/crystal-hollows-fixture";
@@ -25,8 +25,8 @@ describe("Samurai Gardens helmet drop", () => {
     const reloaded = inventoryFromSave(serialiseInventory(inventory), "", SAMURAI_HAT, "", false);
     expect(inventoryItemQuantity(reloaded, SAMURAI_HAT)).toBe(1);
     expect([...f.db.playerItemDrop.iter()]).toMatchObject([{ itemId: SAMURAI_HAT, alreadyOwned: false, sequence: 1n }]);
-    expect(itemMaxHealthBonus(SAMURAI_HAT)).toBe(0);
-    expect(itemRegenerationBonus(SAMURAI_HAT)).toBe(770641.91);
+    expect(itemMaxHealthMultiplierBonus(SAMURAI_HAT)).toBe(0);
+    expect(itemRegenerationMultiplierBonus(SAMURAI_HAT)).toBe(.2);
   });
 
   it("reports a repeat drop without duplicating the item", () => {

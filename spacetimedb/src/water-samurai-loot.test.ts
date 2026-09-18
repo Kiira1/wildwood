@@ -1,6 +1,6 @@
 import { reportEnemy } from "../../tests/helpers/enemy-defeat";
 import { expect, it, vi } from "vitest";
-import { CLOUDSPIRE_ARMOR, CLOUDSPIRE_BOW, CLOUDSPIRE_HELMET, MOONFEN_ARMOR, WATER_ARMOR, SKY_BOW, SAMURAI_BOW, SAMURAI_HAT, itemDamageMultiplierBonus, itemMaxHealthBonus, itemRegenerationBonus } from "../../shared/items";
+import { CLOUDSPIRE_ARMOR, CLOUDSPIRE_BOW, CLOUDSPIRE_HELMET, MOONFEN_ARMOR, WATER_ARMOR, SKY_BOW, SAMURAI_BOW, SAMURAI_HAT, itemDamageMultiplierBonus, itemMaxHealthMultiplierBonus, itemRegenerationMultiplierBonus } from "../../shared/items";
 import { inventoryFromSave, inventoryItemQuantity, serialiseInventory } from "../../src/game/inventory";
 import { crystalFixture } from "../../tests/helpers/crystal-hollows-fixture";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
@@ -45,8 +45,8 @@ it("keeps Water Reach equipment through reloads and repeat drops without duplica
   expect(inventoryItemQuantity(reloaded, WATER_ARMOR)).toBe(1);
   expect(inventoryItemQuantity(reloaded, SKY_BOW)).toBe(1);
   expect([...f.db.playerItemDrop.iter()].every((row: any) => row.alreadyOwned)).toBe(true);
-  expect(itemMaxHealthBonus(WATER_ARMOR)).toBe(3348153.8);
-  expect(itemRegenerationBonus(WATER_ARMOR)).toBe(0);
+  expect(itemMaxHealthMultiplierBonus(WATER_ARMOR)).toBe(.175);
+  expect(itemRegenerationMultiplierBonus(WATER_ARMOR)).toBe(0);
   expect(itemDamageMultiplierBonus(SKY_BOW)).toBe(.175);
   expect(itemDamageMultiplierBonus(SAMURAI_BOW)).toBe(.2);
 });
@@ -91,10 +91,10 @@ it("can grant all three Cloudspire items from independent successful rolls", () 
   const saved = inventoryFromSave(f.db.playerProgress.identity.find(f.ctx.sender).inventoryJson, "", "", "", false);
   for (const id of [CLOUDSPIRE_HELMET, CLOUDSPIRE_BOW, CLOUDSPIRE_ARMOR]) expect(inventoryItemQuantity(saved, id)).toBe(1);
   expect(itemDamageMultiplierBonus(CLOUDSPIRE_BOW)).toBe(.225);
-  expect(itemMaxHealthBonus(CLOUDSPIRE_HELMET)).toBe(0);
-  expect(itemRegenerationBonus(CLOUDSPIRE_HELMET)).toBe(8747401.23);
-  expect(itemMaxHealthBonus(CLOUDSPIRE_ARMOR)).toBe(583160081.91);
-  expect(itemRegenerationBonus(CLOUDSPIRE_ARMOR)).toBe(0);
-  expect(itemMaxHealthBonus(MOONFEN_ARMOR)).toBe(5191965977.3);
-  expect(itemRegenerationBonus(MOONFEN_ARMOR)).toBe(0);
+  expect(itemMaxHealthMultiplierBonus(CLOUDSPIRE_HELMET)).toBe(0);
+  expect(itemRegenerationMultiplierBonus(CLOUDSPIRE_HELMET)).toBe(.225);
+  expect(itemMaxHealthMultiplierBonus(CLOUDSPIRE_ARMOR)).toBe(.225);
+  expect(itemRegenerationMultiplierBonus(CLOUDSPIRE_ARMOR)).toBe(0);
+  expect(itemMaxHealthMultiplierBonus(MOONFEN_ARMOR)).toBe(.25);
+  expect(itemRegenerationMultiplierBonus(MOONFEN_ARMOR)).toBe(0);
 });

@@ -132,7 +132,7 @@ export function createPlayerCombatController(options: {
   equippedHeadUpgradeLevel?: () => number;
   equippedChest: () => string;
   equippedChestUpgradeLevel?: () => number;
-  healthBonus: () => number;
+  healthMultiplierBonus: () => number;
   minAttackInterval: number;
   effectiveArmor: () => number;
   isDueling: () => boolean;
@@ -450,7 +450,7 @@ export function createPlayerCombatController(options: {
     const enhanced = { ...reward, amount: reward.amount * researchRewardMultiplier() };
     switch (enhanced.type) {
       case "damage": player.damage += enhanced.amount; break;
-      case "health": addPlayerBaseMaxHealth(player, enhanced.amount, options.healthBonus()); break;
+      case "health": addPlayerBaseMaxHealth(player, enhanced.amount, options.healthMultiplierBonus()); break;
       case "speed": player.attackRate = 1 / Math.min(1 / minAttackInterval, 1 / player.attackRate + enhanced.amount); break;
       case "armor": player.armor += enhanced.amount; break;
       case "regen": player.regen += enhanced.amount; break;

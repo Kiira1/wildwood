@@ -20,7 +20,7 @@ npm run balance:simulate -- --trials 3 --duration 30d --endless 5 --kill-budget 
 npm run balance:reward-health
 ```
 
-`shared/progression.ts` and `shared/endless-balance.ts` generate real game stats. Lab tuning is temporary. Weapons grant 5%–40% damage at base level, up to 72% at +10; defensive equipment remains flat. Upgrades add 8% of the item's original bonus per level. Both regular enemies and bosses roll the local regular equipment pool; Frost/Lava bosses retain their exclusive drops. Loot is delivered immediately in this model rather than waiting for server batching.
+`shared/progression.ts` and `shared/endless-balance.ts` generate real game stats. Lab tuning is temporary. Weapons, chests, and helmets grant 5%–40% damage, health, and regeneration at base level, up to 72% at +10. Upgrades add 8% of the item's original bonus per level. Both regular enemies and bosses roll the local regular equipment pool; Frost/Lava bosses retain their exclusive drops. Loot is delivered immediately in this model rather than waiting for server batching.
 
 The clock begins at Forest arrival with private tutorial rewards. It includes travel, combat, respawn waits, research, and equipment upgrades. Upgrading temporarily removes an item and can reduce effective power. It excludes deaths, dodging, recovery routes, multiplayer contributions, and idle time. Readiness and initial camp clears are player-strategy assumptions. Existing earned stats, inventory, and upgrade levels are retained in the game.
 

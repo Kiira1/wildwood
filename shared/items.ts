@@ -79,8 +79,8 @@ export type ItemDefinition = {
   cosmeticOnly?: boolean;
   modifiers?: {
     damageMultiplierBonus?: number;
-    maxHealthBonus?: number;
-    regenerationBonus?: number;
+    maxHealthMultiplierBonus?: number;
+    regenerationMultiplierBonus?: number;
   };
   weapon?: {
     mode: "RANGED" | "MELEE";
@@ -422,8 +422,8 @@ export function isUpgradeableItem(itemId: unknown) {
   if (!item || (item.slot !== "HAND" && item.slot !== "HEAD" && item.slot !== "CHEST")) return false;
   return item.weapon?.damageMultiplierBonus !== undefined ||
     item.modifiers?.damageMultiplierBonus !== undefined ||
-    item.modifiers?.maxHealthBonus !== undefined ||
-    item.modifiers?.regenerationBonus !== undefined;
+    item.modifiers?.maxHealthMultiplierBonus !== undefined ||
+    item.modifiers?.regenerationMultiplierBonus !== undefined;
 }
 
 function upgradedStatBonus(baseBonus: number, level: unknown) {
@@ -448,11 +448,11 @@ export function itemStats(itemId: unknown, upgradeLevel: unknown = 0): readonly 
   if (item.modifiers?.damageMultiplierBonus !== undefined) {
     stats.push(`DAMAGE +${upgradedStatBonus(item.modifiers.damageMultiplierBonus * 100, level)}%`);
   }
-  if (item.modifiers?.maxHealthBonus !== undefined) {
-    stats.push(`MAX HEALTH +${upgradedStatBonus(item.modifiers.maxHealthBonus, level)}`);
+  if (item.modifiers?.maxHealthMultiplierBonus !== undefined) {
+    stats.push(`MAX HEALTH +${upgradedStatBonus(item.modifiers.maxHealthMultiplierBonus * 100, level)}%`);
   }
-  if (item.modifiers?.regenerationBonus !== undefined) {
-    stats.push(`REGEN +${upgradedStatBonus(item.modifiers.regenerationBonus, level)}`);
+  if (item.modifiers?.regenerationMultiplierBonus !== undefined) {
+    stats.push(`REGEN +${upgradedStatBonus(item.modifiers.regenerationMultiplierBonus * 100, level)}%`);
   }
   return stats;
 }
@@ -472,34 +472,34 @@ export function itemUpgradeStatChanges(itemId: unknown, currentLevel: unknown) {
   });
 }
 
-/** Weapon percentages scale earned damage; armor retains fixed stat bonuses. */
+/** Equipment percentages scale earned stats without changing saved base values. */
 export function itemDamageMultiplierBonus(itemId: unknown, upgradeLevel = 0) {
   const item = itemDefinition(canonicalItemId(itemId));
   return upgradedStatBonus(((item?.weapon?.damageMultiplierBonus ?? 0) + (item?.modifiers?.damageMultiplierBonus ?? 0)) * 100, upgradeLevel) / 100;
 }
-export function itemMaxHealthBonus(itemId: unknown, upgradeLevel = 0) {
-  return upgradedStatBonus(itemDefinition(canonicalItemId(itemId))?.modifiers?.maxHealthBonus ?? 0, upgradeLevel);
+export function itemMaxHealthMultiplierBonus(itemId: unknown, upgradeLevel = 0) {
+  return upgradedStatBonus((itemDefinition(canonicalItemId(itemId))?.modifiers?.maxHealthMultiplierBonus ?? 0) * 100, upgradeLevel) / 100;
 }
-export function itemRegenerationBonus(itemId: unknown, upgradeLevel = 0) {
-  return upgradedStatBonus(itemDefinition(canonicalItemId(itemId))?.modifiers?.regenerationBonus ?? 0, upgradeLevel);
+export function itemRegenerationMultiplierBonus(itemId: unknown, upgradeLevel = 0) {
+  return upgradedStatBonus((itemDefinition(canonicalItemId(itemId))?.modifiers?.regenerationMultiplierBonus ?? 0) * 100, upgradeLevel) / 100;
 }
 export function equipmentDamageMultiplierBonus(weapon: unknown, head: unknown, chest: unknown, weaponLevel = 0, headLevel = 0, chestLevel = 0) {
   return itemDamageMultiplierBonus(weapon, weaponLevel) + itemDamageMultiplierBonus(head, headLevel) + itemDamageMultiplierBonus(chest, chestLevel);
 }
-export function equipmentMaxHealthBonus(head: unknown, chest: unknown, headLevel = 0, chestLevel = 0) {
-  return itemMaxHealthBonus(head, headLevel) + itemMaxHealthBonus(chest, chestLevel);
+export function equipmentMaxHealthMultiplierBonus(head: unknown, chest: unknown, headLevel = 0, chestLevel = 0) {
+  return itemMaxHealthMultiplierBonus(head, headLevel) + itemMaxHealthMultiplierBonus(chest, chestLevel);
 }
-export function equipmentRegenerationBonus(head: unknown, chest: unknown, headLevel = 0, chestLevel = 0) {
-  return itemRegenerationBonus(head, headLevel) + itemRegenerationBonus(chest, chestLevel);
+export function equipmentRegenerationMultiplierBonus(head: unknown, chest: unknown, headLevel = 0, chestLevel = 0) {
+  return itemRegenerationMultiplierBonus(head, headLevel) + itemRegenerationMultiplierBonus(chest, chestLevel);
 }
 export function equipmentDamage(base: number, weapon: unknown, head: unknown, chest: unknown, researchMultiplier = 1, weaponLevel = 0, headLevel = 0, chestLevel = 0) {
   return base * (1 + equipmentDamageMultiplierBonus(weapon, head, chest, weaponLevel, headLevel, chestLevel)) * researchMultiplier;
 }
 export function equipmentMaxHealth(base: number, head: unknown, chest: unknown, researchMultiplier = 1, headLevel = 0, chestLevel = 0) {
-  return (base + equipmentMaxHealthBonus(head, chest, headLevel, chestLevel)) * researchMultiplier;
+  return base * (1 + equipmentMaxHealthMultiplierBonus(head, chest, headLevel, chestLevel)) * researchMultiplier;
 }
 export function equipmentRegeneration(base: number, head: unknown, chest: unknown, researchMultiplier = 1, headLevel = 0, chestLevel = 0) {
-  return (base + equipmentRegenerationBonus(head, chest, headLevel, chestLevel)) * researchMultiplier;
+  return base * (1 + equipmentRegenerationMultiplierBonus(head, chest, headLevel, chestLevel)) * researchMultiplier;
 }
 
 /** Permanent unlocks and starter items are restored by inventory normalization. */

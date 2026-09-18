@@ -23,14 +23,14 @@ it("respawns with current equipment and its health bonus intact", async () => {
   Object.assign(inventory, { equippedHead: "cloudspire_helmet", equippedChest: "moonfen_armor",
     equippedRightHand: "cloudspire_bow", equippedFeet: "black_boots" });
   const equipped = { ...inventory };
-  Object.assign(player, { baseMaxHp: 100, hp: 0, maxHp: 600, damage: 30, regen: 4 });
+  Object.assign(player, { baseMaxHp: 100, hp: 0, maxHp: 125, damage: 30, regen: 4 });
   const controller = createPlayerController({ player, boss: {}, enemies: [], spawnSites: [], decor: [], paths: [],
     getCurrentMapId: () => "home", mapSpawn: () => ({ x: 100, y: 100 }),
-    initialStats: { maxHp: 10, damage: 3 }, healthBonus: () => inventory.equippedChest === "moonfen_armor" ? 500 : 0,
+    initialStats: { maxHp: 10, damage: 3 }, healthMultiplierBonus: () => inventory.equippedChest === "moonfen_armor" ? .25 : 0,
     clearTransientCombat: vi.fn(), clearPlayerCombat: vi.fn(), resetBosses: vi.fn(),
     invalidateStaticWorld: vi.fn(), onResetUI: vi.fn(), spawnFromSite: vi.fn(),
   } as any);
   controller.reset(true, true);
   expect(inventory).toEqual(equipped);
-  expect(player).toMatchObject({ hp: 600, maxHp: 600, damage: 30, regen: 4 });
+  expect(player).toMatchObject({ hp: 125, maxHp: 125, damage: 30, regen: 4 });
 });

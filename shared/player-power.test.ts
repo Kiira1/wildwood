@@ -18,7 +18,7 @@ describe("player power", () => {
     const research = { warcraft: 2, precision: 3, regeneration: 4 };
     const effective = effectivePlayerPowerStats(progress, research);
 
-    expect(effective.maxHp).toBeCloseTo(125);
+    expect(effective.maxHp).toBeCloseTo(105);
     expect(effective.damage).toBeCloseTo(109.2);
     expect(effective.attackRate).toBeCloseTo(1.56);
     expect(effective.armor).toBeCloseTo(10.6);
@@ -28,7 +28,7 @@ describe("player power", () => {
 
   it("boosts gear health with Vitality without multiplying already-researched saved health twice", () => {
     const stats = { maxHp: 120, damage: 100, attackRate: 1, armor: 0, regen: 0, equippedChest: WOODEN_ARMOR };
-    expect(effectivePlayerPowerStats(stats, { vitality: 10 }).maxHp).toBeCloseTo(150);
+    expect(effectivePlayerPowerStats(stats, { vitality: 10 }).maxHp).toBeCloseTo(126);
     expect(effectivePlayerPowerStats({ ...stats, equippedChest: "" }, { vitality: 10 }).maxHp).toBeCloseTo(120);
   });
 
@@ -65,7 +65,7 @@ describe("player power", () => {
       equippedHead: WOOD_FULL_HELM,
       equippedChest: FROST_ARMOR,
     });
-    expect(effective.maxHp).toBeCloseTo(2500);
+    expect(effective.maxHp).toBeCloseTo(110);
   });
 
   it("bounds malformed totals", () => {

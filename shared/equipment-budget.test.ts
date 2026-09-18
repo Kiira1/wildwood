@@ -1,21 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { flatEquipmentBudget } from "./equipment-budget";
 import { referenceBuildForMap, BOSS_TARGET_SECONDS } from "./progression";
-import { ITEM_DEFINITIONS, itemDamageMultiplierBonus, itemMaxHealthBonus, itemRegenerationBonus, itemStats, equipmentDamage } from "./items";
+import { ITEM_DEFINITIONS, itemDamageMultiplierBonus, itemMaxHealthMultiplierBonus, itemRegenerationMultiplierBonus, itemStats, equipmentDamage } from "./items";
 import { itemTier } from "./item-tier";
 import { personalBossDefinition } from "./personal-bosses";
 import { MAP_IDS } from "./rules";
 
 describe("gear cannot supply campaign progression by itself", () => {
-  it("bounds weapons at 40% base / 72% upgraded, and armor at 20% / 36% entry stats", () => {
+  it("bounds every stat bonus at 40% base and 72% fully upgraded", () => {
     for (const item of Object.values(ITEM_DEFINITIONS)) {
       const tier = itemTier(item.id); if (!tier || item.cosmeticOnly || item.slot === "FEET") continue;
-      const budget = flatEquipmentBudget(tier);
       for (const level of [0, 10]) {
         const multiplier = 1 + .08 * level;
         expect(itemDamageMultiplierBonus(item.id, level), item.id).toBeLessThanOrEqual(.4 * multiplier + .0001);
-        expect(itemMaxHealthBonus(item.id, level), item.id).toBeLessThanOrEqual(budget.health * multiplier * (1 + 1e-12) + .02);
-        expect(itemRegenerationBonus(item.id, level), item.id).toBeLessThanOrEqual(budget.regen * multiplier * (1 + 1e-12) + .02);
+        expect(itemMaxHealthMultiplierBonus(item.id, level), item.id).toBeLessThanOrEqual(.4 * multiplier + .0001);
+        expect(itemRegenerationMultiplierBonus(item.id, level), item.id).toBeLessThanOrEqual(.4 * multiplier + .0001);
       }
       // Labels must follow the same catalog, never old hard-coded bonuses.
       if (item.id !== "starter_stone") expect(itemStats(item.id)).toEqual(item.stats);

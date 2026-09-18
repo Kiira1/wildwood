@@ -12,7 +12,7 @@ The September 4 overhaul replaces the chained map multipliers. `shared/progressi
 - Six raiders plus one reaper in Desert/Snow and six plus seven later have the same damage-reward budget per clear. Adding damage enemies must not accidentally double progression speed. Other roles retain their authored rewards and camp layouts.
 - Boss HP uses the intended end-of-map reference DPS and a 90-second fight. Heavy hits target 25% of that reference's health after armor. Smaller overlapping abilities remain below the heavy strike.
 - Repeat bosses pay the same small guaranteed capstone as first clears. They must compete with regular farming including the 45-second respawn. The bulk of map growth comes from ordinary encounters.
-- Weapons add a percentage of earned damage (5%–40% before upgrades); health and regeneration equipment remain flat bonuses. Upgrades remain linear, and equipment never grants attack speed. Attack speed retains its existing cap.
+- Weapons, chests, and helmets add percentages to earned damage, health, and regeneration (5%–40% before upgrades). Upgrades remain linear, and equipment never grants attack speed. Attack speed retains its existing cap.
 - Regular movement stays at or below Snowlands' matching role. Existing enemy art and map geometry retain their identity. Health elites must exist in both authored and saved map rosters and in asset-loading groups.
 
 ## Pacing hypothesis and validation

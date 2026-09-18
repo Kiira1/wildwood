@@ -4,7 +4,7 @@ import { BASE_ATTACK_RANGE, BASE_PROJECTILE_SPEED } from "../constants";
 import { clamp } from "../math";
 import { inventoryFromSave, serialiseInventory, TRAILBLAZER_BOOTS, type EquipmentSlot, type InventoryState } from "../inventory";
 import type { PlayerState } from "./types";
-import { applyPlayerMaxHealthBonus, setPlayerBaseMaxHealth } from "./player-health";
+import { applyPlayerMaxHealthMultiplierBonus, setPlayerBaseMaxHealth } from "./player-health";
 import type { PlayerProgress, ProgressSave } from "../../coop/services/progress";
 import {
   DEFAULT_ATTACK_INTERVAL,
@@ -34,7 +34,7 @@ type ProgressDependencies = {
   getTotalKills: () => number;
   setTotalKills: (kills: number) => void;
   researchVitalityRank: () => number;
-  healthBonus: () => number;
+  healthMultiplierBonus: () => number;
   setAppliedVitalityRank: (rank: number) => void;
   renderInventory: () => void;
   onLoaded: () => void;
@@ -80,7 +80,7 @@ export function createProgressController(dependencies: ProgressDependencies) {
       "cosmeticHead", "cosmeticChest", "cosmeticFeet", "cosmeticRightHand", "cosmeticLeftHand"] as const) {
       if (itemDefinition(inventory[field]) && !ownedItems.includes(inventory[field])) inventory[field] = "";
     }
-    applyPlayerMaxHealthBonus(dependencies.player, dependencies.healthBonus());
+    applyPlayerMaxHealthMultiplierBonus(dependencies.player, dependencies.healthMultiplierBonus());
     dependencies.renderInventory();
   }
 
@@ -135,7 +135,7 @@ export function createProgressController(dependencies: ProgressDependencies) {
         player.attackRate = boundedProgressValue(saved.attackRate, player.attackRate, MIN_ATTACK_INTERVAL, 10);
         player.regen = boundedProgressValue(saved.regen, player.regen, 0, MAX_PLAYER_STAT);
         player.projectileCount = saved.projectileCount;
-        if (player.baseMaxHp !== saved.maxHp) setPlayerBaseMaxHealth(player, saved.maxHp, dependencies.healthBonus());
+        if (player.baseMaxHp !== saved.maxHp) setPlayerBaseMaxHealth(player, saved.maxHp, dependencies.healthMultiplierBonus());
         reconcileInventory(saved);
         applyMovementSpeed(saved, dependencies.inventory.equippedFeet === TRAILBLAZER_BOOTS);
       }
@@ -195,7 +195,7 @@ export function createProgressController(dependencies: ProgressDependencies) {
     inventory.cosmeticFeet = savedInventory.cosmeticFeet;
     inventory.cosmeticRightHand = savedInventory.cosmeticRightHand;
     inventory.cosmeticLeftHand = savedInventory.cosmeticLeftHand;
-    setPlayerBaseMaxHealth(player, player.baseMaxHp, dependencies.healthBonus(), true);
+    setPlayerBaseMaxHealth(player, player.baseMaxHp, dependencies.healthMultiplierBonus(), true);
     applyMovementSpeed(source, inventory.equippedFeet === TRAILBLAZER_BOOTS);
     inventory.selectedItemId = "";
     inventory.selectedItemLocation = "";

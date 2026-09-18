@@ -83,7 +83,7 @@ export function createPlayerController(options: {
   syncSpeed: (speed: number) => void;
   movementSpeedMultiplier: () => number;
   regenerationPerSecond: () => number;
-  healthBonus?: () => number;
+  healthMultiplierBonus?: () => number;
   syncMovementState: (x: number, y: number, vx: number, vy: number, inputSource: Exclude<MovementInputSource, "none">, force: boolean, interestArea?: PlayerInterestArea) => void;
   autoAttack: () => void;
   isAutoAttackEnabled: () => boolean;
@@ -132,7 +132,7 @@ export function createPlayerController(options: {
       Object.assign(player, initialStats);
       player.baseMaxHp = initialStats.maxHp;
     }
-    setPlayerBaseMaxHealth(player, player.baseMaxHp, options.healthBonus?.() ?? 0, true);
+    setPlayerBaseMaxHealth(player, player.baseMaxHp, options.healthMultiplierBonus?.() ?? 0, true);
     player.attackClock = 0;
     player.throwClock = 0;
     player.hurtClock = 0;

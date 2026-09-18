@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { gearForHighestMap, gearClaimSpace } from "./mailbox-equipment";
 import { CAMPAIGN_UNLOCK_FIELDS } from "./equipment-access";
-import { ITEM_DEFINITIONS, itemDefinition, itemDamageMultiplierBonus, itemMaxHealthBonus, itemRegenerationBonus, isCosmeticOnlyItem } from "./items";
+import { ITEM_DEFINITIONS, itemDefinition, itemDamageMultiplierBonus, itemMaxHealthMultiplierBonus, itemRegenerationMultiplierBonus, isCosmeticOnlyItem } from "./items";
 import { itemTier } from "./item-tier";
 import { MAP_IDS } from "./rules";
 
 describe("map gear gifts", () => {
   it("selects the best helmet, chest and weapon for every campaign tier", () => {
-    const score = (id: string) => itemDamageMultiplierBonus(id) + itemMaxHealthBonus(id) + itemRegenerationBonus(id) * 10;
+    const score = (id: string) => itemDamageMultiplierBonus(id) + itemMaxHealthMultiplierBonus(id) + itemRegenerationMultiplierBonus(id) * 10;
     for (let tier = 1; tier <= 15; tier++) {
       const access = Object.fromEntries(CAMPAIGN_UNLOCK_FIELDS.map((field, i) => [field, i < tier - 1]));
       const gift = gearForHighestMap(access);

@@ -381,7 +381,7 @@ export function createBossController(options: {
   damagePlayer: (amount: number) => boolean;
   logPickup: (text: string, color: string) => void;
   saveProgress: () => void;
-  healthBonus?: () => number;
+  healthMultiplierBonus?: () => number;
   rewardMultiplier?: () => number;
 }): BossController {
   const {
@@ -927,7 +927,7 @@ function resetMiremawBoss() {
       // in the same frame as the reward notice, not after a later save sync.
       locallyRewardedSpiderEncounters.add(encounterKey);
       player.damage += damageReward.amount;
-      addPlayerBaseMaxHealth(player, healthReward.amount, options.healthBonus?.() ?? 0);
+      addPlayerBaseMaxHealth(player, healthReward.amount, options.healthMultiplierBonus?.() ?? 0);
     }
     logPickup(rewardLabel(damageReward), "#ff655a");
     logPickup(rewardLabel(healthReward), "#6fe48e");
@@ -952,7 +952,7 @@ function resetMiremawBoss() {
     if (!options.serverOwnsRewards && !locallyRewardedFrostclawEncounters.has(encounterKey)) {
       locallyRewardedFrostclawEncounters.add(encounterKey);
       player.damage += damageReward.amount;
-      addPlayerBaseMaxHealth(player, healthReward.amount, options.healthBonus?.() ?? 0);
+      addPlayerBaseMaxHealth(player, healthReward.amount, options.healthMultiplierBonus?.() ?? 0);
       player.armor += armorReward.amount;
     }
     logPickup(rewardLabel(damageReward), "#ff655a");
@@ -980,7 +980,7 @@ function resetMiremawBoss() {
     if (!options.serverOwnsRewards && !locallyRewardedMagmaliskEncounters.has(encounterKey)) {
       locallyRewardedMagmaliskEncounters.add(encounterKey);
       player.damage += damageReward.amount;
-      addPlayerBaseMaxHealth(player, healthReward.amount, options.healthBonus?.() ?? 0);
+      addPlayerBaseMaxHealth(player, healthReward.amount, options.healthMultiplierBonus?.() ?? 0);
       player.armor += armorReward.amount;
       player.regen += regenReward.amount;
     }
@@ -1010,7 +1010,7 @@ function resetMiremawBoss() {
     if (!options.serverOwnsRewards && !locallyRewardedGloomrootEncounters.has(encounterKey)) {
       locallyRewardedGloomrootEncounters.add(encounterKey);
       player.damage += damageReward.amount;
-      addPlayerBaseMaxHealth(player, healthReward.amount, options.healthBonus?.() ?? 0);
+      addPlayerBaseMaxHealth(player, healthReward.amount, options.healthMultiplierBonus?.() ?? 0);
       player.armor += armorReward.amount;
       player.regen += regenReward.amount;
     }
@@ -1040,7 +1040,7 @@ function resetMiremawBoss() {
     if (!options.serverOwnsRewards && !locallyRewardedTidewyrmEncounters.has(encounterKey)) {
       locallyRewardedTidewyrmEncounters.add(encounterKey);
       player.damage += damageReward.amount;
-      addPlayerBaseMaxHealth(player, healthReward.amount, options.healthBonus?.() ?? 0);
+      addPlayerBaseMaxHealth(player, healthReward.amount, options.healthMultiplierBonus?.() ?? 0);
       player.armor += armorReward.amount;
       player.regen += regenReward.amount;
     }
@@ -1065,7 +1065,7 @@ function resetMiremawBoss() {
     if (!options.serverOwnsRewards && !locallyRewardedKoiShogunEncounters.has(encounterKey)) {
       locallyRewardedKoiShogunEncounters.add(encounterKey);
       player.damage += damageReward.amount;
-      addPlayerBaseMaxHealth(player, healthReward.amount, options.healthBonus?.() ?? 0);
+      addPlayerBaseMaxHealth(player, healthReward.amount, options.healthMultiplierBonus?.() ?? 0);
       player.armor += armorReward.amount;
       player.regen += regenReward.amount;
     }
@@ -1090,7 +1090,7 @@ function resetMiremawBoss() {
     if (!options.serverOwnsRewards && !locallyRewardedTempestKirinEncounters.has(encounterKey)) {
       locallyRewardedTempestKirinEncounters.add(encounterKey);
       player.damage += damageReward.amount;
-      addPlayerBaseMaxHealth(player, healthReward.amount, options.healthBonus?.() ?? 0);
+      addPlayerBaseMaxHealth(player, healthReward.amount, options.healthMultiplierBonus?.() ?? 0);
       player.armor += armorReward.amount;
       player.regen += regenReward.amount;
     }
@@ -1115,7 +1115,7 @@ function showMiremawResult(result: BossResult | null | undefined) {
     if (!options.serverOwnsRewards && !locallyRewardedMiremawEncounters.has(encounterKey)) {
       locallyRewardedMiremawEncounters.add(encounterKey);
       player.damage += damageReward.amount;
-      addPlayerBaseMaxHealth(player, healthReward.amount, options.healthBonus?.() ?? 0);
+      addPlayerBaseMaxHealth(player, healthReward.amount, options.healthMultiplierBonus?.() ?? 0);
       player.armor += armorReward.amount;
       player.regen += regenReward.amount;
     }
@@ -1140,7 +1140,7 @@ function showMiremawResult(result: BossResult | null | undefined) {
     if (!options.serverOwnsRewards && !locallyRewardedPrismshellEncounters.has(encounterKey)) {
       locallyRewardedPrismshellEncounters.add(encounterKey);
       player.damage += damageReward.amount;
-      addPlayerBaseMaxHealth(player, healthReward.amount, options.healthBonus?.() ?? 0);
+      addPlayerBaseMaxHealth(player, healthReward.amount, options.healthMultiplierBonus?.() ?? 0);
       player.armor += armorReward.amount;
       player.regen += regenReward.amount;
     }
@@ -1164,7 +1164,7 @@ function showMiremawResult(result: BossResult | null | undefined) {
     if (!options.serverOwnsRewards && !locallyRewardedIronhornEncounters.has(encounterKey)) {
       locallyRewardedIronhornEncounters.add(encounterKey);
       player.damage += damageReward.amount;
-      addPlayerBaseMaxHealth(player, healthReward.amount, options.healthBonus?.() ?? 0);
+      addPlayerBaseMaxHealth(player, healthReward.amount, options.healthMultiplierBonus?.() ?? 0);
       player.armor += armorReward.amount;
       player.regen += regenReward.amount;
     }
@@ -1188,7 +1188,7 @@ function showMiremawResult(result: BossResult | null | undefined) {
     if (!options.serverOwnsRewards && !locallyRewardedDreadreaperEncounters.has(encounterKey)) {
       locallyRewardedDreadreaperEncounters.add(encounterKey);
       player.damage += damageReward.amount;
-      addPlayerBaseMaxHealth(player, healthReward.amount, options.healthBonus?.() ?? 0);
+      addPlayerBaseMaxHealth(player, healthReward.amount, options.healthMultiplierBonus?.() ?? 0);
       player.armor += armorReward.amount;
       player.regen += regenReward.amount;
     }
@@ -1212,7 +1212,7 @@ function showMiremawResult(result: BossResult | null | undefined) {
     if (!options.serverOwnsRewards && !locallyRewardedVoltwardenEncounters.has(encounterKey)) {
       locallyRewardedVoltwardenEncounters.add(encounterKey);
       player.damage += damageReward.amount;
-      addPlayerBaseMaxHealth(player, healthReward.amount, options.healthBonus?.() ?? 0);
+      addPlayerBaseMaxHealth(player, healthReward.amount, options.healthMultiplierBonus?.() ?? 0);
       player.armor += armorReward.amount;
       player.regen += regenReward.amount;
     }
@@ -1236,7 +1236,7 @@ function showMiremawResult(result: BossResult | null | undefined) {
     if (!options.serverOwnsRewards && !locallyRewardedGravebloomEncounters.has(encounterKey)) {
       locallyRewardedGravebloomEncounters.add(encounterKey);
       player.damage += damageReward.amount;
-      addPlayerBaseMaxHealth(player, healthReward.amount, options.healthBonus?.() ?? 0);
+      addPlayerBaseMaxHealth(player, healthReward.amount, options.healthMultiplierBonus?.() ?? 0);
       player.armor += armorReward.amount;
       player.regen += regenReward.amount;
     }
@@ -1260,7 +1260,7 @@ function showMiremawResult(result: BossResult | null | undefined) {
     if (!options.serverOwnsRewards && !locallyRewardedAegisPrimeEncounters.has(encounterKey)) {
       locallyRewardedAegisPrimeEncounters.add(encounterKey);
       player.damage += damageReward.amount;
-      addPlayerBaseMaxHealth(player, healthReward.amount, options.healthBonus?.() ?? 0);
+      addPlayerBaseMaxHealth(player, healthReward.amount, options.healthMultiplierBonus?.() ?? 0);
       player.armor += armorReward.amount;
       player.regen += regenReward.amount;
     }

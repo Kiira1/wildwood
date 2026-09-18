@@ -1,5 +1,5 @@
 import { highestCampaignMap, type CampaignAccess } from "./equipment-access";
-import { ITEM_DEFINITIONS, itemDamageMultiplierBonus, itemMaxHealthBonus, itemRegenerationBonus, itemDefinition, isCosmeticOnlyItem } from "./items";
+import { ITEM_DEFINITIONS, itemDamageMultiplierBonus, itemMaxHealthMultiplierBonus, itemRegenerationMultiplierBonus, itemDefinition, isCosmeticOnlyItem } from "./items";
 import { itemTier } from "./item-tier";
 import { MAP_IDS } from "./rules";
 
@@ -13,7 +13,7 @@ export function gearForHighestMap(progress: CampaignAccess) {
   const items = Object.values(ITEM_DEFINITIONS).filter(item => itemTier(item.id) === tier && !isCosmeticOnlyItem(item.id));
   const itemIds = (["HEAD", "CHEST", "HAND"] as const).map(slot => {
     const candidates = items.filter(item => item.slot === slot).sort((a, b) => {
-      const score = (id: string) => itemDamageMultiplierBonus(id) + itemMaxHealthBonus(id) + itemRegenerationBonus(id) * 10;
+      const score = (id: string) => itemDamageMultiplierBonus(id) + itemMaxHealthMultiplierBonus(id) + itemRegenerationMultiplierBonus(id) * 10;
       return score(b.id) - score(a.id) || a.id.localeCompare(b.id);
     });
     if (!candidates[0]) throw new Error(`Missing tier ${tier} ${slot} gift`);

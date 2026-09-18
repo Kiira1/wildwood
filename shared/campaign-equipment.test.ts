@@ -22,8 +22,8 @@ describe("campaign equipment progression", () => {
         const items = mapGuideDrops(map).map(drop => itemDefinition(drop.itemId)!).filter(item => item.slot === slot);
         const next = {
           damage: Math.max(...items.map(item => item.weapon?.damageMultiplierBonus ?? 0)),
-          health: Math.max(...items.map(item => item.modifiers?.maxHealthBonus ?? 0)),
-          regen: Math.max(...items.map(item => item.modifiers?.regenerationBonus ?? 0)),
+          health: Math.max(...items.map(item => item.modifiers?.maxHealthMultiplierBonus ?? 0)),
+          regen: Math.max(...items.map(item => item.modifiers?.regenerationMultiplierBonus ?? 0)),
         };
         for (const stat of ["damage", "health", "regen"] as const) {
           expect(next[stat], `${map} ${slot} ${stat}`).toBeGreaterThanOrEqual(previous[stat]);
