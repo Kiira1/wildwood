@@ -198,15 +198,15 @@ export function generatedEnemyStats(
     campaignEnemyRewardMultiplier(PROCEDURAL_FIRST_TIER) * scale.rewards;
   const combat = desertLaneCombatValue(lane, PROCEDURAL_FIRST_TIER);
   const armor = referenceBuildForMap(PROCEDURAL_FIRST_TIER).armor;
-  return { hp: combat.hp * scale.stats * scale.endurance,
-    damage: combat.damage * scale.stats * (1 - armorDamageReduction(armor)) / (1 - armorDamageReduction(armor * scale.stats)), reward };
+  return { hp: combat.hp * scale.combatStats * scale.endurance,
+    damage: combat.damage * scale.combatStats * (1 - armorDamageReduction(armor)) / (1 - armorDamageReduction(armor * scale.combatStats)), reward };
 }
 export function generatedBossStats(map: Pick<GeneratedMap, "number">) {
   const scale = endlessScaling(map.number);
   const armor = referenceBuildForMap(PROCEDURAL_FIRST_TIER).armor * 3;
   return {
-    hp: desertBossHealthAt(PROCEDURAL_FIRST_TIER) * scale.stats * scale.endurance,
-    damage: bossHeavyHitAt(PROCEDURAL_FIRST_TIER) * scale.stats * (1 - armorDamageReduction(armor)) / (1 - armorDamageReduction(armor * scale.stats)),
+    hp: desertBossHealthAt(PROCEDURAL_FIRST_TIER) * scale.combatStats * scale.endurance,
+    damage: bossHeavyHitAt(PROCEDURAL_FIRST_TIER) * scale.combatStats * (1 - armorDamageReduction(armor)) / (1 - armorDamageReduction(armor * scale.combatStats)),
     rewards: (["Cindermaw", "Bramble", "Mossback", "Brood"] as const).map(lane => {
       const reward = generatedEnemyStats(map, lane).reward;
       return { ...reward, amount: reward.amount * 10 };

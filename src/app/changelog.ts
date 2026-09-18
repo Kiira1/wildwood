@@ -1,4 +1,8 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.739": [
+    "Gear was carrying too much of progression. Bonuses now use 20% of each map's reference stat, up to 36% at +10. Your earned stats, items, and upgrades are kept. Boots are unchanged.",
+    "Endless stat jumps get smaller each map, while enemy endurance continues to rise and rewards grow more slowly.",
+  ],
   "0.738": [
     "Pending boss rewards retry automatically after connection or syncing delays, without needing another kill.",
     "Critical hits now work on every campaign boss. Endless boss crits also show the correct damage popup.",
@@ -2048,6 +2052,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.739": "2026-09-17",
   "0.738": "2026-09-17",
   "0.737": "2026-09-17",
   "0.736": "2026-09-17",

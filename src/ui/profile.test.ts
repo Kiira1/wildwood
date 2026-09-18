@@ -77,31 +77,31 @@ describe("effective profile equipment stats", () => {
   it("adds equipped Bow damage to tech without changing attack speed", () => {
     const research = { ...createEmptyResearchRanks(), warcraft: 10 };
     const stats = effectiveProfileStats(progress(STARTER_BOW), research);
-    expect(stats.damage).toBeCloseTo(54);
+    expect(stats.damage).toBeCloseTo(30);
     expect(stats.attackRate).toBeCloseTo(1);
   });
 
   it("includes equipped Wooden Armor max-health bonus", () => {
-    expect(effectiveProfileStats(progress("", WOODEN_ARMOR)).maxHp).toBeCloseTo(225);
+    expect(effectiveProfileStats(progress("", WOODEN_ARMOR)).maxHp).toBeCloseTo(125);
   });
 
   it("adds helmet regeneration alongside chest health", () => {
     const stats = effectiveProfileStats({ ...progress("", FROST_ARMOR), equippedHead: WOOD_FULL_HELM });
-    expect(stats.maxHp).toBeCloseTo(7300);
-    expect(stats.equipment.health).toBeCloseTo(7200);
+    expect(stats.maxHp).toBeCloseTo(2500);
+    expect(stats.equipment.health).toBeCloseTo(2400);
   });
 
   it("shows Frost Bow's additive equipment and tech bonuses", () => {
     const research = { ...createEmptyResearchRanks(), warcraft: 10 };
     const stats = effectiveProfileStats(progress(FROST_BOW), research);
-    expect(stats.damage).toBeCloseTo(10392);
+    expect(stats.damage).toBeCloseTo(1752);
     expect(stats.attackRate).toBeCloseTo(1);
   });
 
   it("shows Frost Armor health without adding regeneration", () => {
     const research = { ...createEmptyResearchRanks(), regeneration: 10 };
     const stats = effectiveProfileStats(progress("", FROST_ARMOR), research);
-    expect(stats.maxHp).toBeCloseTo(7300);
+    expect(stats.maxHp).toBeCloseTo(2500);
     expect(stats.regen).toBeCloseTo(2.4);
     expect(stats.equipment.regen).toBeCloseTo(0);
     expect(stats.multipliers.regenResearch).toBeCloseTo(1.2);
@@ -109,17 +109,17 @@ describe("effective profile equipment stats", () => {
 
   it("includes Fire Metal Helmet regeneration without adding health or damage", () => {
     const stats = effectiveProfileStats({ ...progress(FROST_BOW, FROST_ARMOR), equippedHead: FIRE_METAL_HELMET });
-    expect(stats.damage).toBeCloseTo(8660);
-    expect(stats.maxHp).toBeCloseTo(7300);
-    expect(stats.regen).toBeCloseTo(542);
+    expect(stats.damage).toBeCloseTo(1460);
+    expect(stats.maxHp).toBeCloseTo(2500);
+    expect(stats.regen).toBeCloseTo(110);
   });
 
   it("includes completed item upgrade levels in profile stats", () => {
     const bow = effectiveProfileStats(progress(FROST_BOW), createEmptyResearchRanks(), { [FROST_BOW]: 1 });
-    expect(bow.damage).toBeCloseTo(9351.2);
+    expect(bow.damage).toBeCloseTo(1575.2);
     expect(bow.attackRate).toBeCloseTo(1);
     const armor = effectiveProfileStats(progress("", FROST_ARMOR), createEmptyResearchRanks(), { [FROST_ARMOR]: 1 });
-    expect(armor.maxHp).toBeCloseTo(7876);
+    expect(armor.maxHp).toBeCloseTo(2692);
     expect(armor.regen).toBeCloseTo(2);
   });
 });
@@ -154,25 +154,25 @@ describe("profile stat display", () => {
     expect(rows[0]).toEqual({
       kind: "health",
       label: "Max Hp:",
-      base: "(91 + 7.20k)",
+      base: "(91 + 2.40k)",
       equationOperator: "×",
       multiplier: "1.10",
-      total: "8,020",
+      total: "2,740",
       sources: [
         { label: "Tech", value: "+10%" },
-        { label: "Equipment", value: "+7.20k" },
+        { label: "Equipment", value: "+2.40k" },
       ],
     });
     expect(rows[1]).toEqual({
       kind: "damage",
       label: "Damage:",
-      base: "(20 + 8.64k)",
+      base: "(20 + 1.44k)",
       equationOperator: "×",
       multiplier: "1.08",
-      total: "9,353",
+      total: "1,577",
       sources: [
         { label: "Tech", value: "+8%" },
-        { label: "Equipment", value: "+8.64k" },
+        { label: "Equipment", value: "+1.44k" },
       ],
     });
     expect(rows[2]).toEqual({

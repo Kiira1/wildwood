@@ -1,3 +1,4 @@
+import { equipmentStatDefinition } from "./equipment-budget";
 import { CAMPAIGN_ITEM_DEFINITIONS } from "./campaign-equipment";
 
 // Browser- and server-safe equipment catalog. Add gameplay-facing item data
@@ -121,8 +122,7 @@ export const ITEM_DEFINITIONS = {
     slot: "HEAD",
     acquisition: "DESERT_DROP",
     description: "A sturdy wooden full helm carried by Beginner Desert monsters that increases regeneration.",
-    stats: ["REGEN +60"],
-    modifiers: { regenerationBonus: 60 },
+    ...equipmentStatDefinition(2, "HEAD"),
   },
   [FIRE_METAL_HELMET]: {
     id: FIRE_METAL_HELMET,
@@ -130,10 +130,7 @@ export const ITEM_DEFINITIONS = {
     slot: "HEAD",
     acquisition: "LAVA_DROP",
     description: "A red-hot metal helm carried by Advanced Lava Lake monsters that fortifies regeneration.",
-    stats: ["REGEN +540"],
-    modifiers: {
-      regenerationBonus: 540,
-    },
+    ...equipmentStatDefinition(4, "HEAD"),
   },
   [DARK_METAL_HELMET]: {
     id: DARK_METAL_HELMET,
@@ -141,10 +138,7 @@ export const ITEM_DEFINITIONS = {
     slot: "HEAD",
     acquisition: "INFERNAL_DROP",
     description: "A horned dark-metal helm carried by Night Forest monsters that greatly amplifies regeneration.",
-    stats: ["REGEN +1620"],
-    modifiers: {
-      regenerationBonus: 1620,
-    },
+    ...equipmentStatDefinition(5, "HEAD"),
   },
   [SAMURAI_HAT]: {
     id: SAMURAI_HAT,
@@ -152,8 +146,7 @@ export const ITEM_DEFINITIONS = {
     slot: "HEAD",
     acquisition: "SAMURAI_DROP",
     description: "A crimson samurai helmet carried by Samurai Gardens monsters that strengthens regeneration.",
-    stats: ["REGEN +14580"],
-    modifiers: { regenerationBonus: 14580 },
+    ...equipmentStatDefinition(7, "HEAD"),
   },
   [LEGENDARY_WHITE_GOLD_ARMOR]: {
     id: LEGENDARY_WHITE_GOLD_ARMOR,
@@ -196,12 +189,7 @@ export const ITEM_DEFINITIONS = {
     slot: "HAND",
     acquisition: "FOREST_DROP",
     description: "A dependable wooden bow for hunting Wildstat monsters.",
-    stats: ["DAMAGE +25"],
-    weapon: {
-      mode: "RANGED",
-      projectile: "ARROW",
-      damageBonus: 25,
-    },
+    ...equipmentStatDefinition(1, "HAND"),
   },
   [IRON_BOW]: {
     id: IRON_BOW,
@@ -209,12 +197,7 @@ export const ITEM_DEFINITIONS = {
     slot: "HAND",
     acquisition: "DESERT_DROP",
     description: "A reinforced iron bow carried by Beginner Desert monsters that strengthens every shot.",
-    stats: ["DAMAGE +2400"],
-    weapon: {
-      mode: "RANGED",
-      projectile: "ARROW",
-      damageBonus: 2400,
-    },
+    ...equipmentStatDefinition(2, "HAND"),
   },
   [SNOW_BOW]: {
     id: SNOW_BOW,
@@ -222,12 +205,7 @@ export const ITEM_DEFINITIONS = {
     slot: "HAND",
     acquisition: "SNOW_DROP",
     description: "A white bow carried by Snowlands monsters, balanced as a stepping stone toward Frostclaw's weapon.",
-    stats: ["DAMAGE +7200"],
-    weapon: {
-      mode: "RANGED",
-      projectile: "ARROW",
-      damageBonus: 7200,
-    },
+    ...equipmentStatDefinition(3, "HAND", 0.85),
   },
   [FROST_BOW]: {
     id: FROST_BOW,
@@ -235,12 +213,7 @@ export const ITEM_DEFINITIONS = {
     slot: "HAND",
     acquisition: "SNOW_BOSS_DROP",
     description: "A frozen bow claimed from Frostclaw, built for devastating shots.",
-    stats: ["DAMAGE +8640"],
-    weapon: {
-      mode: "RANGED",
-      projectile: "ARROW",
-      damageBonus: 8640,
-    },
+    ...equipmentStatDefinition(3, "HAND"),
   },
   [LAVA_BOW]: {
     id: LAVA_BOW,
@@ -248,12 +221,7 @@ export const ITEM_DEFINITIONS = {
     slot: "HAND",
     acquisition: "LAVA_BOSS_DROP",
     description: "A blazing red bow claimed from the Magmalisk, built for overwhelming damage.",
-    stats: ["DAMAGE +25920"],
-    weapon: {
-      mode: "RANGED",
-      projectile: "ARROW",
-      damageBonus: 25920,
-    },
+    ...equipmentStatDefinition(4, "HAND"),
   },
   [NIGHT_BOW]: {
     id: NIGHT_BOW,
@@ -261,12 +229,7 @@ export const ITEM_DEFINITIONS = {
     slot: "HAND",
     acquisition: "INFERNAL_DROP",
     description: "A purple bow carried by Night Forest monsters that provides a dependable bridge to rarer Night Forest equipment.",
-    stats: ["DAMAGE +64800"],
-    weapon: {
-      mode: "RANGED",
-      projectile: "ARROW",
-      damageBonus: 64800,
-    },
+    ...equipmentStatDefinition(5, "HAND", 0.85),
   },
   [FIRE_METAL_BOW]: {
     id: FIRE_METAL_BOW,
@@ -274,12 +237,7 @@ export const ITEM_DEFINITIONS = {
     slot: "HAND",
     acquisition: "INFERNAL_DROP",
     description: "A forged bow carried by Night Forest monsters, built for extreme damage.",
-    stats: ["DAMAGE +77760"],
-    weapon: {
-      mode: "RANGED",
-      projectile: "ARROW",
-      damageBonus: 77760,
-    },
+    ...equipmentStatDefinition(5, "HAND"),
   },
   [FROST_ARMOR]: {
     id: FROST_ARMOR,
@@ -287,10 +245,7 @@ export const ITEM_DEFINITIONS = {
     slot: "CHEST",
     acquisition: "SNOW_BOSS_DROP",
     description: "Frozen blue armor claimed from Frostclaw that fortifies health.",
-    stats: ["MAX HEALTH +7200"],
-    modifiers: {
-      maxHealthBonus: 7200,
-    },
+    ...equipmentStatDefinition(3, "CHEST"),
   },
   [CLOUDSPIRE_ARMOR]: {
     id: CLOUDSPIRE_ARMOR,
@@ -298,8 +253,7 @@ export const ITEM_DEFINITIONS = {
     slot: "CHEST",
     acquisition: "CLOUDSPIRE_DROP",
     description: "Golden armor carried by Cloudspire monsters that strengthens health.",
-    stats: ["MAX HEALTH +1458000"],
-    modifiers: { maxHealthBonus: 1458000 },
+    ...equipmentStatDefinition(8, "CHEST"),
   },
   [MOONFEN_ARMOR]: {
     id: MOONFEN_ARMOR,
@@ -307,8 +261,7 @@ export const ITEM_DEFINITIONS = {
     slot: "CHEST",
     acquisition: "MOONFEN_DROP",
     description: "Green armor carried by Moonfen monsters that strengthens health.",
-    stats: ["MAX HEALTH +4374000"],
-    modifiers: { maxHealthBonus: 4374000 },
+    ...equipmentStatDefinition(9, "CHEST"),
   },
   [CLOUDSPIRE_BOW]: {
     id: CLOUDSPIRE_BOW,
@@ -316,8 +269,7 @@ export const ITEM_DEFINITIONS = {
     slot: "HAND",
     acquisition: "CLOUDSPIRE_DROP",
     description: "A golden bow carried by Cloudspire monsters that strengthens every shot.",
-    stats: ["DAMAGE +1749600"],
-    weapon: { mode: "RANGED", projectile: "ARROW", damageBonus: 1749600 },
+    ...equipmentStatDefinition(8, "HAND"),
   },
   [CLOUDSPIRE_HELMET]: {
     id: CLOUDSPIRE_HELMET,
@@ -325,17 +277,15 @@ export const ITEM_DEFINITIONS = {
     slot: "HEAD",
     acquisition: "CLOUDSPIRE_DROP",
     description: "A golden helmet carried by Cloudspire monsters that strengthens regeneration.",
-    stats: ["REGEN +43740"],
-    modifiers: { regenerationBonus: 43740 },
+    ...equipmentStatDefinition(8, "HEAD"),
   },
   [SAMURAI_BOW]: {
     id: SAMURAI_BOW,
     name: "SAMURAI BOW",
     slot: "HAND",
     acquisition: "SAMURAI_DROP",
-    description: "A magenta bow carried by Samurai Gardens monsters that doubles weapon damage.",
-    stats: ["DAMAGE +583200"],
-    weapon: { mode: "RANGED", projectile: "ARROW", damageBonus: 583200 },
+    description: "A magenta bow carried by Samurai Gardens monsters that strengthens every shot.",
+    ...equipmentStatDefinition(7, "HAND"),
   },
   [SKY_BOW]: {
     id: SKY_BOW,
@@ -343,8 +293,7 @@ export const ITEM_DEFINITIONS = {
     slot: "HAND",
     acquisition: "WATER_DROP",
     description: "A sky-blue bow carried by Water Reach monsters that amplifies every shot.",
-    stats: ["DAMAGE +194400"],
-    weapon: { mode: "RANGED", projectile: "ARROW", damageBonus: 194400 },
+    ...equipmentStatDefinition(6, "HAND"),
   },
   [WATER_ARMOR]: {
     id: WATER_ARMOR,
@@ -352,8 +301,7 @@ export const ITEM_DEFINITIONS = {
     slot: "CHEST",
     acquisition: "WATER_DROP",
     description: "Blue-gray armor carried by Water Reach monsters that strengthens health.",
-    stats: ["MAX HEALTH +162000"],
-    modifiers: { maxHealthBonus: 162000 },
+    ...equipmentStatDefinition(6, "CHEST"),
   },
   [MAGMA_ARMOR]: {
     id: MAGMA_ARMOR,
@@ -361,10 +309,7 @@ export const ITEM_DEFINITIONS = {
     slot: "CHEST",
     acquisition: "LAVA_DROP",
     description: "Molten orange armor carried by Lava Wastes monsters that amplifies health.",
-    stats: ["MAX HEALTH +18000"],
-    modifiers: {
-      maxHealthBonus: 18000,
-    },
+    ...equipmentStatDefinition(4, "CHEST"),
   },
   [WOODEN_ARMOR]: {
     id: WOODEN_ARMOR,
@@ -372,8 +317,7 @@ export const ITEM_DEFINITIONS = {
     slot: "CHEST",
     acquisition: "FOREST_DROP",
     description: "Wooden forest plate that reinforces its wearer with extra health.",
-    stats: ["MAX HEALTH +125"],
-    modifiers: { maxHealthBonus: 125 },
+    ...equipmentStatDefinition(1, "CHEST"),
   },
 } as const satisfies Record<string, ItemDefinition>;
 

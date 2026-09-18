@@ -3,7 +3,11 @@ import { LEGACY_EQUIPMENT_BONUSES } from "./legacy-equipment-bonuses";
 import { LEGACY_PROGRESS_CURVE, REBALANCED_PROGRESS_CURVE } from "./progression-rebase-curves";
 import { effectivePlayerPower, playerPowerForStats, type PlayerPowerProgress, type PlayerPowerResearch } from "./player-power";
 import { canonicalItemId, itemDefinition, isCosmeticOnlyItem, STARTER_BOW } from "./items";
-import { endlessScaling } from "./endless-balance";
+// Frozen migration curve: future Endless tuning must not alter an old save's conversion.
+function migrationEndlessScaling(number: number) {
+  const depth = Math.min(number - 1, 1_000_000), stats = 1 + .2 * depth;
+  return { stats, rewards: Math.sqrt(stats), endurance: (1 + .04 * depth) ** 2 };
+}
 
 type Progress = PlayerPowerProgress & CampaignAccess & { inventoryJson: string; equippedFeet: string; bossRewardClaims: number };
 type Levels = (item: string) => number;
@@ -46,7 +50,7 @@ export function rebalancedProgressAt(seconds: number) {
   const duration = time - curve[curve.length - 2][0];
   let remaining = seconds - time, number = 1;
   while (number < 10_000) {
-    const scale = endlessScaling(number);
+    const scale = migrationEndlessScaling(number);
     const mapDuration = duration * scale.endurance / scale.rewards;
     if (remaining < mapDuration) return { mapIndex: 15, completedEndless: number - 1,
       power: power * (1 + .2 * (number - 1 + remaining / mapDuration)) };

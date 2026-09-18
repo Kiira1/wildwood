@@ -75,11 +75,11 @@ it.each(["tutorial_forest", "ion_citadel", "endless_40"])("keeps %s boss damage 
   first.bosses.hit(map, start.hp * .25);
   first.bosses.hit(map, start.hp * .25);
   f.alive(false); first.memory.flush();
-  expect(first.bosses.state(map)!.hp).toBeCloseTo(start.hp / 2);
+  expect(first.bosses.state(map)!.hp / start.hp).toBeCloseTo(.5);
   const updated = f.create();
-  expect(updated.bosses.state(map)!.hp).toBeCloseTo(start.hp / 2);
+  expect(updated.bosses.state(map)!.hp / start.hp).toBeCloseTo(.5);
   f.alive(true);
-  expect(updated.bosses.state(map)!.hp).toBeCloseTo(start.hp / 2);
+  expect(updated.bosses.state(map)!.hp / start.hp).toBeCloseTo(.5);
   updated.bosses.hit(map, start.hp);
   expect(f.defeated).toHaveBeenCalledExactlyOnceWith(map);
 });

@@ -1,18 +1,13 @@
-import { flatEquipmentBudget } from "./equipment-budget";
+import { equipmentStatDefinition } from "./equipment-budget";
 import type { ItemDefinition } from "./items";
 
 // Catalog additions and their per-enemy loot odds share one declaration, so new
 // campaign maps cannot accidentally advertise equipment without awarding it.
 function equipment(id: string, name: string, slot: "HEAD" | "CHEST" | "HAND", tier: number): ItemDefinition {
-  const { damage, health, regen } = flatEquipmentBudget(tier);
-  const stats = [slot === "HAND" ? `DAMAGE +${damage}` : slot === "HEAD" ? `REGEN +${regen}` : `MAX HEALTH +${health}`];
   return {
     id, name: name.toUpperCase(), slot, acquisition: "CAMPAIGN_DROP",
     description: slot === "HAND" ? "A bow that increases damage." : slot === "HEAD" ? "A helmet that increases regeneration." : "Armor that increases maximum health.",
-    stats,
-    ...(slot === "HAND"
-      ? { weapon: { mode: "RANGED" as const, projectile: "ARROW" as const, damageBonus: damage } }
-      : { modifiers: slot === "HEAD" ? { regenerationBonus: regen } : { maxHealthBonus: health } }),
+    ...equipmentStatDefinition(tier, slot),
   };
 }
 function drop(mapId: string, definition: ItemDefinition, wins: number, outcomes: number) {
