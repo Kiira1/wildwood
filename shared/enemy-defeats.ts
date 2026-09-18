@@ -1,3 +1,4 @@
+import type { MapBalanceSnapshot } from "./map-balance-types";
 import { personalBossDefinition } from "./personal-bosses";
 import { ENEMY_TYPES, type EnemyKind } from "./enemy-definitions";
 import * as camps from "./enemy-camps";
@@ -26,7 +27,7 @@ function generatedDefinition(mapId: `endless_${number}`) {
   }
   return map;
 }
-export function enemyDefeatDefinition(mapId: string, enemy: string) {
+export function enemyDefeatDefinition(mapId: string, enemy: string, balance?: MapBalanceSnapshot) {
   if (enemy === "boss") return personalBossDefinition(mapId) ? { reward: { type: "boss", amount: 0 }, population: 1, loot: false } : null;
   if (isProceduralMap(mapId)) {
     // Generated art is cosmetic. A stable spawn index identifies its actual reward lane.
@@ -34,7 +35,7 @@ export function enemyDefeatDefinition(mapId: string, enemy: string) {
     let site = Number(enemy.slice(5));
     const map = generatedDefinition(mapId);
     for (const camp of map.camps) {
-      if (site < camp.count) return { reward: generatedEnemyStats(map, camp.stat === "damage" && site >= 6 ? "Dread Warden" : camp.lane).reward, population: 1, loot: true };
+      if (site < camp.count) return { reward: (balance?.lanes[camp.stat === "damage" && site >= 6 ? "Dread Warden" : camp.lane] ?? generatedEnemyStats(map, camp.stat === "damage" && site >= 6 ? "Dread Warden" : camp.lane)).reward, population: 1, loot: true };
       site -= camp.count;
     }
     return null;
@@ -46,7 +47,7 @@ export function enemyDefeatDefinition(mapId: string, enemy: string) {
   // Shuffling changes positions, never the number of each species.
   const population = rows.reduce((sum, camp) => sum + Array.from({ length: camp.count }, (_, i) => camp.types[i % camp.types.length]).filter(type => type === enemy).length, 0);
   if (!population) return null;
-  const definition = ENEMY_TYPES[enemy as EnemyKind];
+  const definition = balance?.enemies[enemy] ?? ENEMY_TYPES[enemy as EnemyKind];
   return { reward: definition.reward, population, loot: !(mapId === "beginner_desert" && definition.elite) };
 }
 export function combatMap(mapId: string) { return Object.prototype.hasOwnProperty.call(CAMPS, mapId) || isProceduralMap(mapId); }

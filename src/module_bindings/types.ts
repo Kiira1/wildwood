@@ -1074,6 +1074,20 @@ export const MaintenanceSweepSchedule = __t.object("MaintenanceSweepSchedule", {
 });
 export type MaintenanceSweepSchedule = __Infer<typeof MaintenanceSweepSchedule>;
 
+export const MapBalanceHead = __t.object("MapBalanceHead", {
+  id: __t.u8(),
+  revision: __t.u32(),
+});
+export type MapBalanceHead = __Infer<typeof MapBalanceHead>;
+
+export const MapBalanceVersion = __t.object("MapBalanceVersion", {
+  revision: __t.u32(),
+  settingsJson: __t.string(),
+  editor: __t.identity(),
+  createdAt: __t.timestamp(),
+});
+export type MapBalanceVersion = __Infer<typeof MapBalanceVersion>;
+
 export const MapFrameSchedule = __t.object("MapFrameSchedule", {
   scheduledId: __t.u64(),
   scheduledAt: __t.scheduleAt(),
@@ -1514,6 +1528,13 @@ export const PlayerLifetime = __t.object("PlayerLifetime", {
   deathCount: __t.u64(),
 });
 export type PlayerLifetime = __Infer<typeof PlayerLifetime>;
+
+export const PlayerMapBalance = __t.object("PlayerMapBalance", {
+  identity: __t.identity(),
+  mapId: __t.string(),
+  snapshotJson: __t.string(),
+});
+export type PlayerMapBalance = __Infer<typeof PlayerMapBalance>;
 
 export const PlayerMapFrame = __t.object("PlayerMapFrame", {
   mapId: __t.string(),

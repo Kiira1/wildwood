@@ -479,12 +479,12 @@ const enemyTypes = {
     speed: 205, attackSpeed: .65, r: 47,
     color: "#e2cdfd", outline: "#1d5143",
     elite: true, aggro: 340,
-    ...healthEliteBalance(13),
+    ...healthEliteBalance(12),
   }, "Citadel Marshal": {
     speed: 205, attackSpeed: .65, r: 47,
     color: "#69ffb1", outline: "#172d3a",
     elite: true, aggro: 340,
-    ...healthEliteBalance(14),
+    ...healthEliteBalance(12),
   },
   "Geode Guardian": {
     attackSpeed: .65, speed: 205, r: 40,

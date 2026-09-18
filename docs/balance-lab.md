@@ -4,7 +4,7 @@ Double-click `tools/run-balance-lab.command`, run `npm run balance:lab`, or foll
 
 Start with five seeded trials, balanced research, and mixed farming. The browser defaults to a 30-day window with Endless 1–15 available after Ion. It waits for **Run simulation**, so reopening the page does not launch expensive work. Strategy comparisons are optional; **Cancel run** stops the worker immediately. **Stop after last selected map’s boss** avoids post-completion farming. If selected maps finish early, the remaining timeline holds the final power; that flat tail is a stopped run, not measured farming. Increase the Endless count to inspect a continuing late-game curve. Unreached maps remain marked as such.
 
-The median campaign is calibrated toward roughly seven days of active play before Endless. Forest targets about one hour and Desert about 90 minutes, then a rounded duration reference increases the farming time. A 90% payout reduction starts at Endless 1 for regular enemies and bosses. Sixth-power Endless endurance makes later health requirements outgrow slowly increasing rewards. The game does not enforce completion timers. Incoming damage, survival, boss reward share, and time spent on each stat explain the causes behind the curve.
+Campaign rules are restored to 0.739. The seven-day/1qd proposal is not applied. The default simulation uses the restored stats and percentage equipment. A 90% payout reduction starts at Endless 1 for regular enemies and bosses, and sixth-power endurance increases later health requirements. Duration and kill-budget controls are sandbox comparisons only.
 
 ## Kill-budget comparison
 
@@ -20,15 +20,8 @@ npm run balance:simulate -- --trials 3 --duration 30d --endless 5 --kill-budget 
 npm run balance:reward-health
 ```
 
-`shared/progression.ts` and `shared/endless-balance.ts` generate real game stats. Lab tuning is temporary. Weapons, chests, and helmets grant 5%–40% damage, health, and regeneration at base level, up to 72% at +10. Upgrades add 8% of the item's original bonus per level. Both regular enemies and bosses roll the local regular equipment pool; Frost/Lava bosses retain their exclusive drops. Loot is delivered immediately in this model rather than waiting for server batching.
+`shared/progression.ts` and `shared/endless-balance.ts` generate real game stats. Lab tuning is temporary. Weapons, chests, and helmets grant 5%–40% damage, health, and regeneration at base level, up to 72% at +10. Upgrades add 8% of the item's original bonus per level. Regular and boss drops use their restored 0.739 pools. Loot is delivered immediately in this model rather than waiting for server batching.
 
 The clock begins at Forest arrival with private tutorial rewards. It includes travel, combat, respawn waits, research, and equipment upgrades. Upgrading temporarily removes an item and can reduce effective power. It excludes deaths, dodging, recovery routes, multiplayer contributions, and idle time. Readiness and initial camp clears are player-strategy assumptions. Existing earned stats, inventory, and upgrade levels are retained in the game.
 
 See [progression-scaling.md](progression-scaling.md) for the authoring contract and [reward-health-graph.md](reward-health-graph.md) for payout inspection.
-
-
-Release 0.740 calibration: seven mixed-route trials (seed 7331), steady upgrades,
-balanced research, and authored bosses reached 1m power at a median 22.4 hours,
-Ion at 1.18qd power, and Endless 1 at day 6.96. Median map durations were
-14.2 hours for Ion, 6.13 days for Endless 1, and 11.45 days for Endless 2.
-These are active-play forecasts with the model limits above, not calendar-day promises.

@@ -1,7 +1,6 @@
 import { campaignMapTargetSeconds, CAMPAIGN_ENTRY_TARGET_SECONDS } from "../../shared/campaign-pacing";
 import { compareKillBudget, killTargets, normalizeKillBudget, DEFAULT_KILL_BUDGET, type KillBudgetConfig, type BossReadinessComparison } from "./kill-budget";
 import { generateMap, generatedBossStats, proceduralMapId, proceduralMapNumber, type ProceduralMapId } from "../../shared/procedural-maps";
-import { regularMapLoot } from "../../shared/regular-map-loot";
 import { bossHitsToDefeat } from "../../shared/boss-regeneration";
 import { simulationRegularDrops, simulationTravelSeconds } from "./gameplay-model";
 import { itemTier } from "../../shared/item-tier";
@@ -983,11 +982,6 @@ export function createMapDefinitions(endlessMaps = 0): BalanceMapDefinition[] {
       },
     },
   ];
-  for (const map of maps) {
-    if (map.boss) map.boss.drops.push(...regularMapLoot(map.id).map(drop => ({
-      itemId: drop.itemId as ItemId, numerator: drop.wins, denominator: drop.outcomes,
-    })));
-  }
   for (const id of balanceMapIds(endlessMaps).slice(BALANCE_MAP_IDS.length)) {
     const generated = generateMap(id as ProceduralMapId);
     const boss = generatedBossStats(generated);

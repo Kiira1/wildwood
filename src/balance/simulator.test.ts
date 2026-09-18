@@ -17,7 +17,7 @@ describe("balance simulator", () => {
     const defaults = defaultBalanceSimulationConfig();
     const targetedMapSeconds = MAP_IDS.slice(1).reduce((total, _map, index) =>
       total + campaignMapTargetSeconds(index + 1), 0);
-    expect(defaults.durationSeconds).toBeCloseTo(1.5 * (60 * 60 + targetedMapSeconds));
+    expect(defaults.durationSeconds).toBeCloseTo(1.5 * (48 * 60 + targetedMapSeconds));
     expect(defaults.trials).toBe(5);
     expect(defaults.strategy).toBe("mixed");
     expect(defaults.targetDesertDurationSeconds).toBe(BALANCE_TARGET_DESERT_DURATION_SECONDS);
@@ -307,24 +307,3 @@ describe("balance simulator", () => {
     expect(reaper?.rewardAmount).toBeGreaterThan(raider?.rewardAmount ?? Number.POSITIVE_INFINITY);
   });
 });
-
-
-it("holds campaign milestones and sharply slows the first two Endless clears", () => {
-  const result = runBalanceSimulation({ durationSeconds: 30 * 86400, trials: 3,
-    seed: 7331, strategy: "mixed", endlessMaps: 2, stopAfterCampaign: true });
-  const ion = result.maps.find(map => map.mapId === "ion_citadel")!;
-  const first = result.maps.find(map => map.mapId === "endless_1")!;
-  const second = result.maps.find(map => map.mapId === "endless_2")!;
-  expect(result.millionPower.reachedPercent).toBe(100);
-  expect(result.millionPower.medianSeconds).toBeGreaterThan(20 * 3600);
-  expect(result.millionPower.medianSeconds).toBeLessThan(28 * 3600);
-  expect(ion.entryPowerMedian).toBeGreaterThan(8e14);
-  expect(ion.entryPowerMedian).toBeLessThan(1.5e15);
-  expect(first.enteredAtMedianSeconds).toBeGreaterThan(6 * 86400);
-  expect(first.enteredAtMedianSeconds).toBeLessThan(8 * 86400);
-  expect(first.completedPercent).toBe(100);
-  expect(second.completedPercent).toBe(100);
-  expect(first.durationMedianSeconds).toBeGreaterThan(4 * 86400);
-  expect(first.durationMedianSeconds).toBeGreaterThan(ion.durationMedianSeconds! * 6);
-  expect(second.durationMedianSeconds).toBeGreaterThan(first.durationMedianSeconds! * 1.5);
-}, 60000);

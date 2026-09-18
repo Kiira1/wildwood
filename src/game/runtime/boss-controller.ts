@@ -118,47 +118,22 @@ export function bossAreaKnockbackDistance(attackRange: number, bossRadius: numbe
 
 const DRAGON_CONE_WINDUP = .75;
 const DRAGON_CONE_DURATION = 1.2;
-const DRAGON_RAIN_DAMAGE = BOSS_DAMAGE_PROFILES.dragon.rain;
-const DRAGON_CONE_DAMAGE = BOSS_DAMAGE_PROFILES.dragon.cone;
 const SPIDER_AGGRO_RANGE = 575;
-const SPIDER_WEB_DAMAGE = BOSS_DAMAGE_PROFILES.spider.web;
-const SPIDER_VENOM_DAMAGE = BOSS_DAMAGE_PROFILES.spider.venom;
-const SPIDER_CONTACT_DAMAGE = BOSS_DAMAGE_PROFILES.spider.contact;
-const DRAGON_CONTACT_DAMAGE = BOSS_DAMAGE_PROFILES.dragon.contact;
 const DRAGON_CONTACT_DAMAGE_COOLDOWN = .75;
 const FROSTCLAW_ROAR_WINDUP = .85;
 const FROSTCLAW_ROAR_DURATION = .95;
 const FROSTCLAW_RIFT_WINDUP = .7;
 const FROSTCLAW_RIFT_DURATION = 1.05;
-const FROSTCLAW_ROAR_DAMAGE = BOSS_DAMAGE_PROFILES.frostclaw.roar;
-const FROSTCLAW_ICEFALL_DAMAGE = BOSS_DAMAGE_PROFILES.frostclaw.icefall;
-const FROSTCLAW_RIFT_DAMAGE = BOSS_DAMAGE_PROFILES.frostclaw.rift;
-const FROSTCLAW_CONTACT_DAMAGE = BOSS_DAMAGE_PROFILES.frostclaw.contact;
 const MAGMALISK_BITE_WINDUP = .72;
 const MAGMALISK_BITE_DURATION = .9;
-const MAGMALISK_BITE_DAMAGE = BOSS_DAMAGE_PROFILES.magmalisk.bite;
-const MAGMALISK_ERUPTION_DAMAGE = BOSS_DAMAGE_PROFILES.magmalisk.eruption;
-const MAGMALISK_CONTACT_DAMAGE = BOSS_DAMAGE_PROFILES.magmalisk.contact;
 const GLOOMROOT_SWEEP_WINDUP = .85;
 const GLOOMROOT_SWEEP_DURATION = 1;
-const GLOOMROOT_SWEEP_DAMAGE = BOSS_DAMAGE_PROFILES.gloomroot.sweep;
-const GLOOMROOT_BLOOM_DAMAGE = BOSS_DAMAGE_PROFILES.gloomroot.bloom;
-const GLOOMROOT_CONTACT_DAMAGE = BOSS_DAMAGE_PROFILES.gloomroot.contact;
 const TIDEWYRM_SURGE_WINDUP = .82;
 const TIDEWYRM_SURGE_DURATION = 1.05;
-const TIDEWYRM_SURGE_DAMAGE = BOSS_DAMAGE_PROFILES.tidewyrm.surge;
-const TIDEWYRM_WHIRLPOOL_DAMAGE = BOSS_DAMAGE_PROFILES.tidewyrm.whirlpool;
-const TIDEWYRM_CONTACT_DAMAGE = BOSS_DAMAGE_PROFILES.tidewyrm.contact;
 const KOI_SHOGUN_SLASH_WINDUP = .78;
 const KOI_SHOGUN_SLASH_DURATION = 1.04;
-const KOI_SHOGUN_SLASH_DAMAGE = BOSS_DAMAGE_PROFILES.koiShogun.slash;
-const KOI_SHOGUN_WHIRLPOOL_DAMAGE = BOSS_DAMAGE_PROFILES.koiShogun.whirlpool;
-const KOI_SHOGUN_CONTACT_DAMAGE = BOSS_DAMAGE_PROFILES.koiShogun.contact;
 const TEMPEST_KIRIN_CHARGE_WINDUP = .74;
 const TEMPEST_KIRIN_CHARGE_DURATION = 1.02;
-const TEMPEST_KIRIN_CHARGE_DAMAGE = BOSS_DAMAGE_PROFILES.tempestKirin.charge;
-const TEMPEST_KIRIN_THUNDER_DAMAGE = BOSS_DAMAGE_PROFILES.tempestKirin.thunder;
-const TEMPEST_KIRIN_CONTACT_DAMAGE = BOSS_DAMAGE_PROFILES.tempestKirin.contact;
 const MIREMAW_TONGUE_WINDUP = .68;
 const PRISMSHELL_SHATTER_WINDUP = .85;
 const IRONHORN_SHATTER_WINDUP = 1.05;
@@ -167,27 +142,6 @@ const MIREMAW_TONGUE_DURATION = .58;
 const PRISMSHELL_SHATTER_DURATION = .8;
 const IRONHORN_SHATTER_DURATION = .8;
 const DREADREAPER_SHATTER_DURATION = .8;
-const MIREMAW_TONGUE_DAMAGE = BOSS_DAMAGE_PROFILES.miremaw.tongue;
-const PRISMSHELL_SHATTER_DAMAGE = BOSS_DAMAGE_PROFILES.prismshell.shatter;
-const IRONHORN_SHATTER_DAMAGE = BOSS_DAMAGE_PROFILES.ironhorn.shatter;
-const DREADREAPER_SHATTER_DAMAGE = BOSS_DAMAGE_PROFILES.dreadreaper.shatter;
-const VOLTWARDEN_SHATTER_DAMAGE = BOSS_DAMAGE_PROFILES.voltwarden.shatter;
-const GRAVEBLOOM_SHATTER_DAMAGE = BOSS_DAMAGE_PROFILES.gravebloom.shatter;
-const AEGIS_PRIME_SHATTER_DAMAGE = BOSS_DAMAGE_PROFILES.aegisPrime.shatter;
-const MIREMAW_BOG_BURST_DAMAGE = BOSS_DAMAGE_PROFILES.miremaw.bogBurst;
-const PRISMSHELL_CRYSTAL_BURST_DAMAGE = BOSS_DAMAGE_PROFILES.prismshell.crystalBurst;
-const IRONHORN_CRYSTAL_BURST_DAMAGE = BOSS_DAMAGE_PROFILES.ironhorn.crystalBurst;
-const DREADREAPER_CRYSTAL_BURST_DAMAGE = BOSS_DAMAGE_PROFILES.dreadreaper.crystalBurst;
-const VOLTWARDEN_CRYSTAL_BURST_DAMAGE = BOSS_DAMAGE_PROFILES.voltwarden.crystalBurst;
-const GRAVEBLOOM_CRYSTAL_BURST_DAMAGE = BOSS_DAMAGE_PROFILES.gravebloom.crystalBurst;
-const AEGIS_PRIME_CRYSTAL_BURST_DAMAGE = BOSS_DAMAGE_PROFILES.aegisPrime.crystalBurst;
-const MIREMAW_CONTACT_DAMAGE = BOSS_DAMAGE_PROFILES.miremaw.contact;
-const PRISMSHELL_CONTACT_DAMAGE = BOSS_DAMAGE_PROFILES.prismshell.contact;
-const IRONHORN_CONTACT_DAMAGE = BOSS_DAMAGE_PROFILES.ironhorn.contact;
-const DREADREAPER_CONTACT_DAMAGE = BOSS_DAMAGE_PROFILES.dreadreaper.contact;
-const VOLTWARDEN_CONTACT_DAMAGE = BOSS_DAMAGE_PROFILES.voltwarden.contact;
-const GRAVEBLOOM_CONTACT_DAMAGE = BOSS_DAMAGE_PROFILES.gravebloom.contact;
-const AEGIS_PRIME_CONTACT_DAMAGE = BOSS_DAMAGE_PROFILES.aegisPrime.contact;
 const DEATH_PARTICLE_COLOR = "#e53935";
 
 type SharedBossState = {
@@ -2214,7 +2168,7 @@ function syncMiremawState() {
       if (strike.timer <= 0) {
         const dx = player.x - strike.x;
         const dy = player.y - strike.y;
-        if (dx * dx + dy * dy <= strike.r * strike.r) damagePlayer(DRAGON_RAIN_DAMAGE);
+        if (dx * dx + dy * dy <= strike.r * strike.r) damagePlayer(BOSS_DAMAGE_PROFILES.dragon.rain);
         spawnBurst(strike.x, strike.y, "#ff5d32", 22, 170);
         bossRain.splice(i, 1);
       }
@@ -2234,7 +2188,7 @@ function syncMiremawState() {
         const angleDelta = Math.atan2(Math.sin(Math.atan2(dy, dx) - cone.angle), Math.cos(Math.atan2(dy, dx) - cone.angle));
         if (distance >= minRadius - 34 && distance <= maxRadius + 34 && Math.abs(angleDelta) <= BOSS_CONE_HALF_ANGLE) {
           cone.hitPlayer = true;
-          damagePlayer(DRAGON_CONE_DAMAGE);
+          damagePlayer(BOSS_DAMAGE_PROFILES.dragon.cone);
           queueBossAreaKnockback(boss.x, boss.y, BOSS_CONE_RANGE, boss.r);
           spawnBurst(player.x, player.y, "#ffb14a", 18, 165);
         }
@@ -2314,7 +2268,7 @@ function syncMiremawState() {
       if (pool.timer <= 0) {
         const dx = player.x - pool.x;
         const dy = player.y - pool.y;
-        if (dx * dx + dy * dy <= pool.r * pool.r) damagePlayer(SPIDER_VENOM_DAMAGE);
+        if (dx * dx + dy * dy <= pool.r * pool.r) damagePlayer(BOSS_DAMAGE_PROFILES.spider.venom);
         spawnBurst(pool.x, pool.y, "#89e255", 22, 150);
         spiderVenom.splice(i, 1);
       }
@@ -2329,7 +2283,7 @@ function syncMiremawState() {
       const distance = Math.hypot(player.x - spiderBoss.x, player.y - spiderBoss.y);
       if (!web.hitPlayer && distance >= minRadius - 30 && distance <= maxRadius + 30) {
         web.hitPlayer = true;
-        damagePlayer(SPIDER_WEB_DAMAGE);
+        damagePlayer(BOSS_DAMAGE_PROFILES.spider.web);
         queueBossAreaKnockback(spiderBoss.x, spiderBoss.y, SPIDER_WEB_RANGE, spiderBoss.r);
       }
       if (web.timer <= 0) { spiderBoss.web = null; spiderBoss.attackClock = 2.5; }
@@ -2427,7 +2381,7 @@ function syncMiremawState() {
       if (strike.timer > 0) continue;
       const dx = player.x - strike.x;
       const dy = player.y - strike.y;
-      if (dx * dx + dy * dy <= strike.r * strike.r) damagePlayer(FROSTCLAW_ICEFALL_DAMAGE);
+      if (dx * dx + dy * dy <= strike.r * strike.r) damagePlayer(BOSS_DAMAGE_PROFILES.frostclaw.icefall);
       spawnBurst(strike.x, strike.y, "#a9f5ff", 28, 190);
       frostclawIcefalls.splice(index, 1);
     }
@@ -2449,7 +2403,7 @@ function syncMiremawState() {
         const distance = Math.hypot(dx, dy) || 1;
         if (distance >= minRadius - 38 && distance <= maxRadius + 38) {
           roar.hitPlayer = true;
-          damagePlayer(FROSTCLAW_ROAR_DAMAGE);
+          damagePlayer(BOSS_DAMAGE_PROFILES.frostclaw.roar);
           queueBossAreaKnockback(frostclawBoss.x, frostclawBoss.y, FROSTCLAW_ROAR_RANGE, frostclawBoss.r);
           spawnBurst(player.x, player.y, "#d8fbff", 24, 210);
         }
@@ -2486,7 +2440,7 @@ function syncMiremawState() {
         });
         if (inRift && distance >= minRadius - 32 && distance <= maxRadius + 32) {
           rift.hitPlayer = true;
-          damagePlayer(FROSTCLAW_RIFT_DAMAGE);
+          damagePlayer(BOSS_DAMAGE_PROFILES.frostclaw.rift);
           spawnBurst(player.x, player.y, "#71dfff", 26, 220);
         }
       }
@@ -2574,7 +2528,7 @@ function syncMiremawState() {
       if (eruption.timer > 0) continue;
       const dx = player.x - eruption.x;
       const dy = player.y - eruption.y;
-      if (dx * dx + dy * dy <= eruption.r * eruption.r) damagePlayer(MAGMALISK_ERUPTION_DAMAGE);
+      if (dx * dx + dy * dy <= eruption.r * eruption.r) damagePlayer(BOSS_DAMAGE_PROFILES.magmalisk.eruption);
       spawnBurst(eruption.x, eruption.y, "#ff7a24", 32, 220);
       magmaliskEruptions.splice(index, 1);
     }
@@ -2601,7 +2555,7 @@ function syncMiremawState() {
         );
         if (distance >= minRadius - 38 && distance <= maxRadius + 38 && Math.abs(angleDelta) <= MAGMALISK_BITE_HALF_ANGLE) {
           bite.hitPlayer = true;
-          damagePlayer(MAGMALISK_BITE_DAMAGE);
+          damagePlayer(BOSS_DAMAGE_PROFILES.magmalisk.bite);
           queueBossAreaKnockback(magmaliskBoss.x, magmaliskBoss.y, MAGMALISK_BITE_RANGE, magmaliskBoss.r);
           spawnBurst(player.x, player.y, "#ffb13b", 28, 230);
         }
@@ -2689,7 +2643,7 @@ function syncMiremawState() {
       if (bloom.timer > 0) continue;
       const dx = player.x - bloom.x;
       const dy = player.y - bloom.y;
-      if (dx * dx + dy * dy <= bloom.r * bloom.r) damagePlayer(GLOOMROOT_BLOOM_DAMAGE);
+      if (dx * dx + dy * dy <= bloom.r * bloom.r) damagePlayer(BOSS_DAMAGE_PROFILES.gloomroot.bloom);
       spawnBurst(bloom.x, bloom.y, "#58e2ee", 34, 225);
       gloomrootBlooms.splice(index, 1);
     }
@@ -2716,7 +2670,7 @@ function syncMiremawState() {
         );
         if (distance >= minRadius - 40 && distance <= maxRadius + 40 && Math.abs(angleDelta) <= GLOOMROOT_SWEEP_HALF_ANGLE) {
           sweep.hitPlayer = true;
-          damagePlayer(GLOOMROOT_SWEEP_DAMAGE);
+          damagePlayer(BOSS_DAMAGE_PROFILES.gloomroot.sweep);
           queueBossAreaKnockback(gloomrootBoss.x, gloomrootBoss.y, GLOOMROOT_SWEEP_RANGE, gloomrootBoss.r);
           spawnBurst(player.x, player.y, "#8af4f3", 30, 235);
         }
@@ -2804,7 +2758,7 @@ function syncMiremawState() {
       if (pool.timer > 0) continue;
       const dx = player.x - pool.x;
       const dy = player.y - pool.y;
-      if (dx * dx + dy * dy <= pool.r * pool.r) damagePlayer(TIDEWYRM_WHIRLPOOL_DAMAGE);
+      if (dx * dx + dy * dy <= pool.r * pool.r) damagePlayer(BOSS_DAMAGE_PROFILES.tidewyrm.whirlpool);
       spawnBurst(pool.x, pool.y, "#5eeaff", 38, 245);
       tidewyrmWhirlpools.splice(index, 1);
     }
@@ -2831,7 +2785,7 @@ function syncMiremawState() {
         );
         if (distance >= minRadius - 42 && distance <= maxRadius + 42 && Math.abs(angleDelta) <= TIDEWYRM_SURGE_HALF_ANGLE) {
           surge.hitPlayer = true;
-          damagePlayer(TIDEWYRM_SURGE_DAMAGE);
+          damagePlayer(BOSS_DAMAGE_PROFILES.tidewyrm.surge);
           queueBossAreaKnockback(tidewyrmBoss.x, tidewyrmBoss.y, TIDEWYRM_SURGE_RANGE, tidewyrmBoss.r);
           spawnBurst(player.x, player.y, "#b7f7ff", 32, 250);
         }
@@ -2919,7 +2873,7 @@ function syncMiremawState() {
       if (pool.timer > 0) continue;
       const dx = player.x - pool.x;
       const dy = player.y - pool.y;
-      if (dx * dx + dy * dy <= pool.r * pool.r) damagePlayer(KOI_SHOGUN_WHIRLPOOL_DAMAGE);
+      if (dx * dx + dy * dy <= pool.r * pool.r) damagePlayer(BOSS_DAMAGE_PROFILES.koiShogun.whirlpool);
       spawnBurst(pool.x, pool.y, "#71e9ff", 40, 250);
       koiShogunWhirlpools.splice(index, 1);
     }
@@ -2946,7 +2900,7 @@ function syncMiremawState() {
         );
         if (distance >= minRadius - 42 && distance <= maxRadius + 42 && Math.abs(angleDelta) <= KOI_SHOGUN_SLASH_HALF_ANGLE) {
           slash.hitPlayer = true;
-          damagePlayer(KOI_SHOGUN_SLASH_DAMAGE);
+          damagePlayer(BOSS_DAMAGE_PROFILES.koiShogun.slash);
           queueBossAreaKnockback(koiShogunBoss.x, koiShogunBoss.y, KOI_SHOGUN_SLASH_RANGE, koiShogunBoss.r);
           spawnBurst(player.x, player.y, "#d7fbff", 34, 255);
         }
@@ -3259,7 +3213,7 @@ function startAegisPrimeCrystalBurst(elapsedSeconds = 0, deterministicPatternInd
       if (bolt.timer > 0) continue;
       const dx = player.x - bolt.x;
       const dy = player.y - bolt.y;
-      if (dx * dx + dy * dy <= bolt.r * bolt.r) damagePlayer(TEMPEST_KIRIN_THUNDER_DAMAGE);
+      if (dx * dx + dy * dy <= bolt.r * bolt.r) damagePlayer(BOSS_DAMAGE_PROFILES.tempestKirin.thunder);
       spawnBurst(bolt.x, bolt.y, "#d6f7ff", 44, 270);
       tempestKirinThunderbolts.splice(index, 1);
     }
@@ -3286,7 +3240,7 @@ function startAegisPrimeCrystalBurst(elapsedSeconds = 0, deterministicPatternInd
         );
         if (distance >= minRadius - 42 && distance <= maxRadius + 42 && Math.abs(angleDelta) <= TEMPEST_KIRIN_CHARGE_HALF_ANGLE) {
           charge.hitPlayer = true;
-          damagePlayer(TEMPEST_KIRIN_CHARGE_DAMAGE);
+          damagePlayer(BOSS_DAMAGE_PROFILES.tempestKirin.charge);
           queueBossAreaKnockback(tempestKirinBoss.x, tempestKirinBoss.y, TEMPEST_KIRIN_CHARGE_RANGE, tempestKirinBoss.r);
           spawnBurst(player.x, player.y, "#f3fdff", 38, 280);
         }
@@ -3331,7 +3285,7 @@ function updateMiremawBoss(dt: number) {
       if (bolt.timer > 0) continue;
       const dx = player.x - bolt.x;
       const dy = player.y - bolt.y;
-      if (dx * dx + dy * dy <= bolt.r * bolt.r) damagePlayer(MIREMAW_BOG_BURST_DAMAGE);
+      if (dx * dx + dy * dy <= bolt.r * bolt.r) damagePlayer(BOSS_DAMAGE_PROFILES.miremaw.bogBurst);
       spawnBurst(bolt.x, bolt.y, "#a9ffe0", 44, 270);
       miremawBogBursts.splice(index, 1);
     }
@@ -3358,7 +3312,7 @@ function updateMiremawBoss(dt: number) {
         );
         if (distance >= minRadius - 42 && distance <= maxRadius + 42 && Math.abs(angleDelta) <= MIREMAW_TONGUE_HALF_ANGLE) {
           tongue.hitPlayer = true;
-          damagePlayer(MIREMAW_TONGUE_DAMAGE);
+          damagePlayer(BOSS_DAMAGE_PROFILES.miremaw.tongue);
           queueBossAreaKnockback(miremawBoss.x, miremawBoss.y, MIREMAW_TONGUE_RANGE, miremawBoss.r);
           spawnBurst(player.x, player.y, "#e1fff2", 38, 280);
         }
@@ -3403,7 +3357,7 @@ function updateMiremawBoss(dt: number) {
       if (burst.timer > 0) continue;
       const dx = player.x - burst.x;
       const dy = player.y - burst.y;
-      if (dx * dx + dy * dy <= burst.r * burst.r) damagePlayer(PRISMSHELL_CRYSTAL_BURST_DAMAGE);
+      if (dx * dx + dy * dy <= burst.r * burst.r) damagePlayer(BOSS_DAMAGE_PROFILES.prismshell.crystalBurst);
       spawnBurst(burst.x, burst.y, "#c3a6ff", 44, 270);
       prismshellCrystalBursts.splice(index, 1);
     }
@@ -3430,7 +3384,7 @@ function updateMiremawBoss(dt: number) {
         );
         if (distance >= minRadius - 42 && distance <= maxRadius + 42 && Math.abs(angleDelta) <= PRISMSHELL_SHATTER_HALF_ANGLE) {
           shatter.hitPlayer = true;
-          damagePlayer(PRISMSHELL_SHATTER_DAMAGE);
+          damagePlayer(BOSS_DAMAGE_PROFILES.prismshell.shatter);
           queueBossAreaKnockback(prismshellBoss.x, prismshellBoss.y, PRISMSHELL_SHATTER_RANGE, prismshellBoss.r);
           spawnBurst(player.x, player.y, "#d5fcff", 38, 280);
         }
@@ -3474,7 +3428,7 @@ function updateMiremawBoss(dt: number) {
       if (burst.timer > 0) continue;
       const dx = player.x - burst.x;
       const dy = player.y - burst.y;
-      if (dx * dx + dy * dy <= burst.r * burst.r) damagePlayer(IRONHORN_CRYSTAL_BURST_DAMAGE);
+      if (dx * dx + dy * dy <= burst.r * burst.r) damagePlayer(BOSS_DAMAGE_PROFILES.ironhorn.crystalBurst);
       spawnBurst(burst.x, burst.y, "#c3a6ff", 44, 270);
       ironhornCrystalBursts.splice(index, 1);
     }
@@ -3501,7 +3455,7 @@ function updateMiremawBoss(dt: number) {
         );
         if (distance >= minRadius - 42 && distance <= maxRadius + 42 && Math.abs(angleDelta) <= IRONHORN_SHATTER_HALF_ANGLE) {
           shatter.hitPlayer = true;
-          damagePlayer(IRONHORN_SHATTER_DAMAGE);
+          damagePlayer(BOSS_DAMAGE_PROFILES.ironhorn.shatter);
           queueBossAreaKnockback(ironhornBoss.x, ironhornBoss.y, IRONHORN_SHATTER_RANGE, ironhornBoss.r);
           spawnBurst(player.x, player.y, "#d5fcff", 38, 280);
         }
@@ -3545,7 +3499,7 @@ function updateMiremawBoss(dt: number) {
       if (burst.timer > 0) continue;
       const dx = player.x - burst.x;
       const dy = player.y - burst.y;
-      if (dx * dx + dy * dy <= burst.r * burst.r) damagePlayer(DREADREAPER_CRYSTAL_BURST_DAMAGE);
+      if (dx * dx + dy * dy <= burst.r * burst.r) damagePlayer(BOSS_DAMAGE_PROFILES.dreadreaper.crystalBurst);
       spawnBurst(burst.x, burst.y, "#c3a6ff", 44, 270);
       dreadreaperCrystalBursts.splice(index, 1);
     }
@@ -3572,7 +3526,7 @@ function updateMiremawBoss(dt: number) {
         );
         if (distance >= minRadius - 42 && distance <= maxRadius + 42 && Math.abs(angleDelta) <= DREADREAPER_SHATTER_HALF_ANGLE) {
           shatter.hitPlayer = true;
-          damagePlayer(DREADREAPER_SHATTER_DAMAGE);
+          damagePlayer(BOSS_DAMAGE_PROFILES.dreadreaper.shatter);
           queueBossAreaKnockback(dreadreaperBoss.x, dreadreaperBoss.y, DREADREAPER_SHATTER_RANGE, dreadreaperBoss.r);
           spawnBurst(player.x, player.y, "#d5fcff", 38, 280);
         }
@@ -3612,7 +3566,7 @@ function updateMiremawBoss(dt: number) {
       const pulse = voltwardenCrystalBursts[index], previous = pulse.maxTimer - pulse.timer;
       pulse.timer -= dt;
       if (!pulse.hitPlayer && neonEmpHits(Math.hypot(player.x - pulse.x, player.y - pulse.y), previous, pulse.maxTimer - pulse.timer, player.r)) {
-        pulse.hitPlayer = true; damagePlayer(VOLTWARDEN_CRYSTAL_BURST_DAMAGE);
+        pulse.hitPlayer = true; damagePlayer(BOSS_DAMAGE_PROFILES.voltwarden.crystalBurst);
         spawnBurst(player.x, player.y, "#ff48dc", 24, 210);
       }
       if (pulse.timer <= 0) voltwardenCrystalBursts.splice(index, 1);
@@ -3624,7 +3578,7 @@ function updateMiremawBoss(dt: number) {
       if (activeDt > 0) {
         laser.timer -= activeDt;
         if (!laser.hitPlayer && neonLaserHits(player.x - voltwardenBoss.x, player.y - voltwardenBoss.y, laser.angle, player.r)) {
-          laser.hitPlayer = true; damagePlayer(VOLTWARDEN_SHATTER_DAMAGE);
+          laser.hitPlayer = true; damagePlayer(BOSS_DAMAGE_PROFILES.voltwarden.shatter);
           spawnBurst(player.x, player.y, "#56f7ff", 24, 240);
         }
         if (laser.timer <= 0) { voltwardenBoss.shatter = null; voltwardenBoss.attackClock = 2.8; }
@@ -3654,7 +3608,7 @@ function updateMiremawBoss(dt: number) {
       const pulse = gravebloomCrystalBursts[index], previous = pulse.maxTimer - pulse.timer;
       pulse.timer -= dt;
       if (!pulse.hitPlayer && verdantSporeHits(Math.hypot(player.x - pulse.x, player.y - pulse.y), previous, pulse.maxTimer - pulse.timer, player.r)) {
-        pulse.hitPlayer = true; damagePlayer(GRAVEBLOOM_CRYSTAL_BURST_DAMAGE);
+        pulse.hitPlayer = true; damagePlayer(BOSS_DAMAGE_PROFILES.gravebloom.crystalBurst);
         spawnBurst(player.x, player.y, "#8bf2c3", 24, 210);
       }
       if (pulse.timer <= 0) gravebloomCrystalBursts.splice(index, 1);
@@ -3666,7 +3620,7 @@ function updateMiremawBoss(dt: number) {
       if (activeDt > 0) {
         laser.timer -= activeDt;
         if (!laser.hitPlayer && verdantRootHits(player.x - gravebloomBoss.x, player.y - gravebloomBoss.y, laser.angle, player.r)) {
-          laser.hitPlayer = true; damagePlayer(GRAVEBLOOM_SHATTER_DAMAGE);
+          laser.hitPlayer = true; damagePlayer(BOSS_DAMAGE_PROFILES.gravebloom.shatter);
           spawnBurst(player.x, player.y, "#56f7ff", 24, 240);
         }
         if (laser.timer <= 0) { gravebloomBoss.shatter = null; gravebloomBoss.attackClock = 2.8; }
@@ -3696,7 +3650,7 @@ function updateMiremawBoss(dt: number) {
       const pulse = aegisPrimeCrystalBursts[index], previous = pulse.maxTimer - pulse.timer;
       pulse.timer -= dt;
       if (!pulse.hitPlayer && ionBurstHits(Math.hypot(player.x - pulse.x, player.y - pulse.y), previous, pulse.maxTimer - pulse.timer, player.r)) {
-        pulse.hitPlayer = true; damagePlayer(AEGIS_PRIME_CRYSTAL_BURST_DAMAGE);
+        pulse.hitPlayer = true; damagePlayer(BOSS_DAMAGE_PROFILES.aegisPrime.crystalBurst);
         spawnBurst(player.x, player.y, "#8bf2c3", 24, 210);
       }
       if (pulse.timer <= 0) aegisPrimeCrystalBursts.splice(index, 1);
@@ -3708,7 +3662,7 @@ function updateMiremawBoss(dt: number) {
       if (activeDt > 0) {
         laser.timer -= activeDt;
         if (!laser.hitPlayer && ionSweepHits(player.x - aegisPrimeBoss.x, player.y - aegisPrimeBoss.y, laser.angle, player.r)) {
-          laser.hitPlayer = true; damagePlayer(AEGIS_PRIME_SHATTER_DAMAGE);
+          laser.hitPlayer = true; damagePlayer(BOSS_DAMAGE_PROFILES.aegisPrime.shatter);
           spawnBurst(player.x, player.y, "#56f7ff", 24, 240);
         }
         if (laser.timer <= 0) { aegisPrimeBoss.shatter = null; aegisPrimeBoss.attackClock = 2.8; }
@@ -3777,16 +3731,16 @@ function updateMiremawBoss(dt: number) {
     updateTempestKirinBoss,
     updateMiremawBoss,
     updatePrismshellBoss, updateIronhornBoss, updateDreadreaperBoss, updateVoltwardenBoss, updateGravebloomBoss, updateAegisPrimeBoss,
-    resolveDragonCollision: () => resolveCollision(boss, DRAGON_CONTACT_DAMAGE, DRAGON_CONTACT_DAMAGE_COOLDOWN),
-    resolveSpiderCollision: () => resolveCollision(spiderBoss, SPIDER_CONTACT_DAMAGE, .75),
-    resolveFrostclawCollision: () => resolveCollision(frostclawBoss, FROSTCLAW_CONTACT_DAMAGE, .75),
-    resolveMagmaliskCollision: () => resolveCollision(magmaliskBoss, MAGMALISK_CONTACT_DAMAGE, .75),
-    resolveGloomrootCollision: () => resolveCollision(gloomrootBoss, GLOOMROOT_CONTACT_DAMAGE, .75),
-    resolveTidewyrmCollision: () => resolveCollision(tidewyrmBoss, TIDEWYRM_CONTACT_DAMAGE, .75),
-    resolveKoiShogunCollision: () => resolveCollision(koiShogunBoss, KOI_SHOGUN_CONTACT_DAMAGE, .75),
-    resolveTempestKirinCollision: () => resolveCollision(tempestKirinBoss, TEMPEST_KIRIN_CONTACT_DAMAGE, .75),
-    resolveMiremawCollision: () => resolveCollision(miremawBoss, MIREMAW_CONTACT_DAMAGE, .75),
-    resolvePrismshellCollision: () => resolveCollision(prismshellBoss, PRISMSHELL_CONTACT_DAMAGE, .75), resolveIronhornCollision: () => resolveCollision(ironhornBoss, IRONHORN_CONTACT_DAMAGE, .75), resolveDreadreaperCollision: () => resolveCollision(dreadreaperBoss, DREADREAPER_CONTACT_DAMAGE, .75), resolveVoltwardenCollision: () => resolveCollision(voltwardenBoss, VOLTWARDEN_CONTACT_DAMAGE, .75), resolveGravebloomCollision: () => resolveCollision(gravebloomBoss, GRAVEBLOOM_CONTACT_DAMAGE, .75), resolveAegisPrimeCollision: () => resolveCollision(aegisPrimeBoss, AEGIS_PRIME_CONTACT_DAMAGE, .75),
+    resolveDragonCollision: () => resolveCollision(boss, BOSS_DAMAGE_PROFILES.dragon.contact, DRAGON_CONTACT_DAMAGE_COOLDOWN),
+    resolveSpiderCollision: () => resolveCollision(spiderBoss, BOSS_DAMAGE_PROFILES.spider.contact, .75),
+    resolveFrostclawCollision: () => resolveCollision(frostclawBoss, BOSS_DAMAGE_PROFILES.frostclaw.contact, .75),
+    resolveMagmaliskCollision: () => resolveCollision(magmaliskBoss, BOSS_DAMAGE_PROFILES.magmalisk.contact, .75),
+    resolveGloomrootCollision: () => resolveCollision(gloomrootBoss, BOSS_DAMAGE_PROFILES.gloomroot.contact, .75),
+    resolveTidewyrmCollision: () => resolveCollision(tidewyrmBoss, BOSS_DAMAGE_PROFILES.tidewyrm.contact, .75),
+    resolveKoiShogunCollision: () => resolveCollision(koiShogunBoss, BOSS_DAMAGE_PROFILES.koiShogun.contact, .75),
+    resolveTempestKirinCollision: () => resolveCollision(tempestKirinBoss, BOSS_DAMAGE_PROFILES.tempestKirin.contact, .75),
+    resolveMiremawCollision: () => resolveCollision(miremawBoss, BOSS_DAMAGE_PROFILES.miremaw.contact, .75),
+    resolvePrismshellCollision: () => resolveCollision(prismshellBoss, BOSS_DAMAGE_PROFILES.prismshell.contact, .75), resolveIronhornCollision: () => resolveCollision(ironhornBoss, BOSS_DAMAGE_PROFILES.ironhorn.contact, .75), resolveDreadreaperCollision: () => resolveCollision(dreadreaperBoss, BOSS_DAMAGE_PROFILES.dreadreaper.contact, .75), resolveVoltwardenCollision: () => resolveCollision(voltwardenBoss, BOSS_DAMAGE_PROFILES.voltwarden.contact, .75), resolveGravebloomCollision: () => resolveCollision(gravebloomBoss, BOSS_DAMAGE_PROFILES.gravebloom.contact, .75), resolveAegisPrimeCollision: () => resolveCollision(aegisPrimeBoss, BOSS_DAMAGE_PROFILES.aegisPrime.contact, .75),
     applyBossKnockback,
     onPortalCutsceneFinished(wasPreview) {
       const dragon = queuedDragonResult;

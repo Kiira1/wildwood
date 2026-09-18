@@ -1,4 +1,4 @@
-import { targetPlayerPowerCurve } from "../../shared/power-curve";
+import { buildStackedLogTargetCurve } from "./simulator";
 import { createKillBudgetPanel } from "./kill-budget-panel";
 import { campaignExperience } from "./experience";
 import "./styles.css";
@@ -24,8 +24,8 @@ type SimulationResponse =
   | { id: number; ok: true; type: "complete"; elapsedMs: number; result: BalanceSimulationResult }
   | { id: number; ok: false; message: string };
 
-const STORAGE_KEY = "wildwood.balanceLab.config.v12";
-const STORAGE_SCHEMA_VERSION = 12;
+const STORAGE_KEY = "wildwood.balanceLab.config.v13";
+const STORAGE_SCHEMA_VERSION = 13;
 const SVG_NS = "http://www.w3.org/2000/svg";
 
 function requiredElement<T extends Element>(id: string) {
@@ -341,8 +341,8 @@ function renderSummary(next: BalanceSimulationResult) {
   };
   const endlessEntry = next.maps.find(map => map.mapId === "endless_1");
   const cards = [
-    { label: "MEDIAN TIME TO 1M POWER", value: formatDuration(next.millionPower.medianSeconds), detail: `${next.millionPower.reachedPercent.toFixed(0)}% reached 1m · target about 1 active day` },
-    ...(endlessEntry ? [{ label: "MEDIAN ENDLESS ENTRY", value: formatDuration(endlessEntry.enteredAtMedianSeconds), detail: `${endlessEntry.reachedPercent.toFixed(0)}% of trials reached Endless · target about 7 active days` }] : []),
+    { label: "MEDIAN TIME TO 1M POWER", value: formatDuration(next.millionPower.medianSeconds), detail: `${next.millionPower.reachedPercent.toFixed(0)}% reached 1m · current authored rules` },
+    ...(endlessEntry ? [{ label: "MEDIAN ENDLESS ENTRY", value: formatDuration(endlessEntry.enteredAtMedianSeconds), detail: `${endlessEntry.reachedPercent.toFixed(0)}% of trials reached Endless · current authored rules` }] : []),
     { label: "ORDINARY FIGHT", value: range(experience.map(map => map.ordinaryFightSeconds), formatDuration),
       detail: "Median regular enemy at each map's entry build. Earlier camps get easier as you grow." },
     { label: "HITS YOU CAN SURVIVE", value: range(experience.map(map => map.regularHitsSurvived), value => String(Math.round(value))),
@@ -657,7 +657,8 @@ function renderChart(next: ChartRenderState) {
   const visibleTimeline = next.visibleTimeline ?? next.timeline;
   const previousPoints = previousResult?.timeline.filter((point) => point.timeSeconds <= next.config.durationSeconds) ?? [];
   const strategyTimelines = (next.strategyTimelines ?? []).filter((entry) => entry.timeline.length > 1);
-  const targetCurve = targetPlayerPowerCurve(next.config.durationSeconds);
+  const targetCurve = buildStackedLogTargetCurve(next.maps.slice(1, 15), 18, next.config.targetPowerArcBlend)
+    .filter(point => point.timeSeconds <= next.config.durationSeconds);
   const values = next.timeline.flatMap((point) => [point.powerP10, point.powerP90]);
   values.push(...previousPoints.map((point) => point.powerMedian));
   values.push(...targetCurve.map((point) => point.power));

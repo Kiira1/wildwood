@@ -144,6 +144,7 @@ import RequestDuelReducer from "./request_duel_reducer";
 import RequestPatreonHelpReducer from "./request_patreon_help_reducer";
 import ReserveGemPurchaseReducer from "./reserve_gem_purchase_reducer";
 import ResetPlayerProgressReducer from "./reset_player_progress_reducer";
+import RestoreMapBalanceReducer from "./restore_map_balance_reducer";
 import ResumeSessionReducer from "./resume_session_reducer";
 import RevokeShardPlayerReducer from "./revoke_shard_player_reducer";
 import SavePlayerProgressReducer from "./save_player_progress_reducer";
@@ -158,6 +159,7 @@ import SetDeveloperPresenceReducer from "./set_developer_presence_reducer";
 import SetDisplayNameReducer from "./set_display_name_reducer";
 import SetGenderReducer from "./set_gender_reducer";
 import SetGuildVicePresidentReducer from "./set_guild_vice_president_reducer";
+import SetMapBalanceReducer from "./set_map_balance_reducer";
 import SetMultiplayerEnabledReducer from "./set_multiplayer_enabled_reducer";
 import SetPlayerBlockedReducer from "./set_player_blocked_reducer";
 import SetPlayerMotionInterestReducer from "./set_player_motion_interest_reducer";
@@ -183,6 +185,7 @@ import UpdateMovementStateReducer from "./update_movement_state_reducer";
 // Import all procedure arg schemas
 import * as BeginPatreonLinkProcedure from "./begin_patreon_link_procedure";
 import * as GetAvatarFramesProcedure from "./get_avatar_frames_procedure";
+import * as GetBalanceEditorProcedure from "./get_balance_editor_procedure";
 import * as GetChatHistoryProcedure from "./get_chat_history_procedure";
 import * as GetChatHistoryWithReactionsProcedure from "./get_chat_history_with_reactions_procedure";
 import * as GetChatMessageReactionsProcedure from "./get_chat_message_reactions_procedure";
@@ -191,12 +194,14 @@ import * as GetGuildPreviewProcedure from "./get_guild_preview_procedure";
 import * as GetGuildReplayProcedure from "./get_guild_replay_procedure";
 import * as GetLeaderboardPageProcedure from "./get_leaderboard_page_procedure";
 import * as GetLeaderboardWindowProcedure from "./get_leaderboard_window_procedure";
+import * as GetMapBalanceProcedure from "./get_map_balance_procedure";
 import * as GetModerationHistoryProcedure from "./get_moderation_history_procedure";
 import * as GetNameChangeStatusProcedure from "./get_name_change_status_procedure";
 import * as GetPatreonStatusProcedure from "./get_patreon_status_procedure";
 import * as GetSocialChatHistoryProcedure from "./get_social_chat_history_procedure";
 import * as GetSocialChatHistoryWithReactionsProcedure from "./get_social_chat_history_with_reactions_procedure";
 import * as GetSocialHubProcedure from "./get_social_hub_procedure";
+import * as PreviewMapBalanceProcedure from "./preview_map_balance_procedure";
 import * as RefreshPatreonMembershipProcedure from "./refresh_patreon_membership_procedure";
 import * as SynchronizeMapShardProcedure from "./synchronize_map_shard_procedure";
 
@@ -1313,6 +1318,7 @@ const reducersSchema = __reducers(
   __reducerSchema("request_patreon_help", RequestPatreonHelpReducer),
   __reducerSchema("reserve_gem_purchase", ReserveGemPurchaseReducer),
   __reducerSchema("reset_player_progress", ResetPlayerProgressReducer),
+  __reducerSchema("restore_map_balance", RestoreMapBalanceReducer),
   __reducerSchema("resume_session", ResumeSessionReducer),
   __reducerSchema("revoke_shard_player", RevokeShardPlayerReducer),
   __reducerSchema("save_player_progress", SavePlayerProgressReducer),
@@ -1327,6 +1333,7 @@ const reducersSchema = __reducers(
   __reducerSchema("set_display_name", SetDisplayNameReducer),
   __reducerSchema("set_gender", SetGenderReducer),
   __reducerSchema("set_guild_vice_president", SetGuildVicePresidentReducer),
+  __reducerSchema("set_map_balance", SetMapBalanceReducer),
   __reducerSchema("set_multiplayer_enabled", SetMultiplayerEnabledReducer),
   __reducerSchema("set_player_blocked", SetPlayerBlockedReducer),
   __reducerSchema("set_player_motion_interest", SetPlayerMotionInterestReducer),
@@ -1354,6 +1361,7 @@ const reducersSchema = __reducers(
 const proceduresSchema = __procedures(
   __procedureSchema("begin_patreon_link", BeginPatreonLinkProcedure.params, BeginPatreonLinkProcedure.returnType),
   __procedureSchema("get_avatar_frames", GetAvatarFramesProcedure.params, GetAvatarFramesProcedure.returnType),
+  __procedureSchema("get_balance_editor", GetBalanceEditorProcedure.params, GetBalanceEditorProcedure.returnType),
   __procedureSchema("get_chat_history", GetChatHistoryProcedure.params, GetChatHistoryProcedure.returnType),
   __procedureSchema("get_chat_history_with_reactions", GetChatHistoryWithReactionsProcedure.params, GetChatHistoryWithReactionsProcedure.returnType),
   __procedureSchema("get_chat_message_reactions", GetChatMessageReactionsProcedure.params, GetChatMessageReactionsProcedure.returnType),
@@ -1362,12 +1370,14 @@ const proceduresSchema = __procedures(
   __procedureSchema("get_guild_replay", GetGuildReplayProcedure.params, GetGuildReplayProcedure.returnType),
   __procedureSchema("get_leaderboard_page", GetLeaderboardPageProcedure.params, GetLeaderboardPageProcedure.returnType),
   __procedureSchema("get_leaderboard_window", GetLeaderboardWindowProcedure.params, GetLeaderboardWindowProcedure.returnType),
+  __procedureSchema("get_map_balance", GetMapBalanceProcedure.params, GetMapBalanceProcedure.returnType),
   __procedureSchema("get_moderation_history", GetModerationHistoryProcedure.params, GetModerationHistoryProcedure.returnType),
   __procedureSchema("get_name_change_status", GetNameChangeStatusProcedure.params, GetNameChangeStatusProcedure.returnType),
   __procedureSchema("get_patreon_status", GetPatreonStatusProcedure.params, GetPatreonStatusProcedure.returnType),
   __procedureSchema("get_social_chat_history", GetSocialChatHistoryProcedure.params, GetSocialChatHistoryProcedure.returnType),
   __procedureSchema("get_social_chat_history_with_reactions", GetSocialChatHistoryWithReactionsProcedure.params, GetSocialChatHistoryWithReactionsProcedure.returnType),
   __procedureSchema("get_social_hub", GetSocialHubProcedure.params, GetSocialHubProcedure.returnType),
+  __procedureSchema("preview_map_balance", PreviewMapBalanceProcedure.params, PreviewMapBalanceProcedure.returnType),
   __procedureSchema("refresh_patreon_membership", RefreshPatreonMembershipProcedure.params, RefreshPatreonMembershipProcedure.returnType),
   __procedureSchema("synchronize_map_shard", SynchronizeMapShardProcedure.params, SynchronizeMapShardProcedure.returnType),
 );

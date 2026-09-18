@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { FOREST_LANE_BASES } from "../../shared/progression";
+import { ENEMY_TYPES } from "../../src/game/enemies";
 import { FOREST_REWARD_PROTOTYPE as rules } from "../../shared/forest-reward-prototype";
 import { attackForestPrototype, beginForestPrototype } from "./forest-reward-prototype";
 
@@ -11,9 +11,9 @@ const hit = (state = fresh(), overrides = {}, now = state.nextAttackAt) => attac
 );
 
 describe("isolated forest reward authority", () => {
-  it("keeps the isolated prototype on its fixed one-damage Spitter reward", () => {
-    expect(rules.enemyHp).toBe(FOREST_LANE_BASES.Spitter.hp);
-    expect(FOREST_LANE_BASES.Spitter.reward).toEqual({ type: "damage", amount: rules.damageReward });
+  it("uses the actual Spitter health and damage reward with a fixed server-owned loadout", () => {
+    expect(rules.enemyHp).toBe(ENEMY_TYPES.Spitter.hp);
+    expect(ENEMY_TYPES.Spitter.reward).toEqual({ type: "damage", amount: rules.damageReward });
     expect(fresh()).toMatchObject({ damage: 10, enemyHp: 24, encounter: 1n, kills: 0n, lastAttack: 0n });
   });
 

@@ -1,3 +1,4 @@
+import type { BalanceEditorState, BalanceSettings, MapBalanceSnapshot } from "../../../shared/map-balance-types";
 import type { ModerationHistoryPage } from "../../../shared/moderation-history";
 import type { Identity } from "spacetimedb";
 import { isDeveloperIdentity } from "../../app/developer";
@@ -90,6 +91,33 @@ export function createDeveloperService(dependencies: DeveloperServiceDependencie
       presenceVisible = visible;
     },
     api: {
+      async getMapBalance(mapId: string): Promise<MapBalanceSnapshot> {
+        const conn = dependencies.reducers.connection();
+        if (!conn) throw new Error("Connect to load map balance.");
+        const value = await conn.procedures.getMapBalance({ mapId });
+        if (conn !== dependencies.reducers.connection()) throw new Error("Connection changed while loading balance.");
+        return JSON.parse(value);
+      },
+      async balanceEditor(): Promise<BalanceEditorState> {
+        const conn = dependencies.reducers.connection();
+        if (!conn || !hasAccess()) throw new Error("Developer access required.");
+        return JSON.parse(await conn.procedures.getBalanceEditor({}));
+      },
+      async previewBalance(mapId: string, settings: BalanceSettings): Promise<MapBalanceSnapshot> {
+        const conn = dependencies.reducers.connection();
+        if (!conn || !hasAccess()) throw new Error("Developer access required.");
+        return JSON.parse(await conn.procedures.previewMapBalance({ mapId, settingsJson: JSON.stringify(settings) }));
+      },
+      async saveBalance(expectedRevision: number, settings: BalanceSettings) {
+        const conn = dependencies.reducers.connection();
+        if (!conn || !hasAccess()) throw new Error("Developer access required.");
+        await conn.reducers.setMapBalance({ expectedRevision, settingsJson: JSON.stringify(settings) });
+      },
+      async restoreBalance(expectedRevision: number, revision: number) {
+        const conn = dependencies.reducers.connection();
+        if (!conn || !hasAccess()) throw new Error("Developer access required.");
+        await conn.reducers.restoreMapBalance({ expectedRevision, revision });
+      },
       async moderationHistory(beforeId = "0"): Promise<ModerationHistoryPage> {
         const connection = dependencies.reducers.connection();
         const identity = dependencies.localIdentity();

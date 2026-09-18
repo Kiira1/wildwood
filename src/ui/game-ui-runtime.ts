@@ -51,6 +51,10 @@ export function createDevPanel(d: Record<string, any>) {
   });
   document.getElementById("developerSettingsRow")!.after(travel.element);
   const panel = createDevPanelController({
+    balance: {
+      load: () => coop.balanceEditor(), preview: (map, settings) => coop.previewBalance(map, settings),
+      save: (revision, settings) => coop.saveBalance(revision, settings), restore: (expected, revision) => coop.restoreBalance(expected, revision),
+    },
     forestPrototype: {
       state: () => coop?.forestRewardPrototypeState?.() ?? null,
       send: (action) => coop?.devForestRewardPrototype?.(action),

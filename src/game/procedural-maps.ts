@@ -1,3 +1,4 @@
+import { runtimeMapBalance } from "../../shared/map-balance-runtime";
 import {
   generateMap,
   generatedEnemyStats,
@@ -9,25 +10,8 @@ import { campaignMeleeChaseSpeed } from "../../shared/enemy-definitions";
 import { ENEMY_TYPES, type EnemyKind } from "./enemies";
 import type { SpawnSite, SpawnCamp, WorldDecor } from "./world";
 
-// A bounded pool of existing art. Only this map's selected sprites are loaded.
-export const GENERATED_ENEMY_ART: readonly EnemyKind[] = [
-  "Bramble",
-  "Needle",
-  "Mossback",
-  "Spitter",
-  "Brood",
-  "Cindermaw",
-  "Dune Raider",
-  "Frost Raider",
-  "Ember Raider",
-  "Sakura Ronin",
-  "Gale Prowler",
-  "Fen Prowler",
-  "Shard Hopper",
-  "Gear Prowler",
-  "Gourd Prowler",
-  "Ion Patrol",
-];
+export { GENERATED_ENEMY_ART, generatedEnemyArt } from "../../shared/procedural-enemy-art";
+import { generatedEnemyArt } from "../../shared/procedural-enemy-art";
 export function generatedMapContent(id: ProceduralMapId) {
   const map = generateMap(id);
   const random = mapRandom(map.seed ^ 0x34ac913);
@@ -55,7 +39,7 @@ export function generatedMapContent(id: ProceduralMapId) {
         definition: {
           ...ENEMY_TYPES[kind],
           ...generatedEnemyStats(map, elite ? "Dread Warden" : camp.lane),
-          speed: campaignMeleeChaseSpeed(14),
+          speed: runtimeMapBalance(id)?.enemies[kind]?.speed ?? campaignMeleeChaseSpeed(14),
           elite: false,
         },
       });
@@ -102,11 +86,12 @@ export function withGeneratedMaps<T>(
     get(target, key, receiver) {
       if (typeof key !== "string" || !isProceduralMap(key))
         return Reflect.get(target, key, receiver);
-      if (!cache.has(key)) {
+      const cacheKey = `${key}:${runtimeMapBalance(key)?.revision ?? "authored"}`;
+      if (!cache.has(cacheKey)) {
         if (cache.size >= 8) cache.delete(cache.keys().next().value!);
-        cache.set(key, generate(key));
+        cache.set(cacheKey, generate(key));
       }
-      return cache.get(key);
+      return cache.get(cacheKey);
     },
     has(target, key) {
       return (
@@ -118,11 +103,6 @@ export function withGeneratedMaps<T>(
 }
 
 /** One species per map; camps supply stats independently of that species' original role. */
-export function generatedEnemyArt(id: ProceduralMapId): EnemyKind {
-  const map = generateMap(id);
-  const random = mapRandom(map.seed ^ 0x34ac913);
-  return GENERATED_ENEMY_ART[Math.floor(random() * GENERATED_ENEMY_ART.length)];
-}
 export function generatedBossArt(id: ProceduralMapId): EnemyKind {
   return generatedEnemyArt(id);
 }

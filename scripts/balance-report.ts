@@ -138,7 +138,7 @@ Usage: npm run balance:simulate -- [options]
   --research off               off, balanced, or damage-first
   --boss-target 90s            Estimated fight length before attempting a boss (strategy)
   --target-desert 90m           Explicit Beginner Desert duration target
-  --target-step 1.45              Rounded curve adjustment (1.45 = seven-day reference)
+  --target-step 1.45              Campaign duration multiplier (1 = original reference)
   --target-power 3             Desired relative power growth inside each map
   --target-arc .35             Target opening momentum (0 straight, 1 full arc)
   --future-speedup 1.25        Uniform future progression-rate reserve

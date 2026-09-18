@@ -1,3 +1,4 @@
+import { runtimeMapBalance } from "./map-balance-runtime";
 import {
   campaignEnemyRewardMultiplier,
   bossHeavyHitAt,
@@ -190,7 +191,10 @@ export function generateMap(id: ProceduralMapId): GeneratedMap {
 export function generatedEnemyStats(
   map: Pick<GeneratedMap, "number">,
   lane: ForestProgressionLane,
+  authored = false,
 ) {
+  const remote = !authored && runtimeMapBalance(`endless_${map.number}`)?.lanes[lane];
+  if (remote) return { ...remote, reward: { ...remote.reward } };
   const scale = endlessScaling(map.number);
   const reward = desertLaneRewardValue(lane, PROCEDURAL_FIRST_TIER);
   reward.amount *=
@@ -201,14 +205,16 @@ export function generatedEnemyStats(
   return { hp: combat.hp * scale.combatStats * scale.endurance,
     damage: combat.damage * scale.combatStats * (1 - armorDamageReduction(armor)) / (1 - armorDamageReduction(armor * scale.combatStats)), reward };
 }
-export function generatedBossStats(map: Pick<GeneratedMap, "number">) {
+export function generatedBossStats(map: Pick<GeneratedMap, "number">, authored = false) {
+  const remote = !authored && runtimeMapBalance(`endless_${map.number}`)?.boss;
+  if (remote) return { hp: remote.hp, damage: remote.damage, rewards: Object.entries(remote.rewards).map(([type, amount]) => ({ type: type as RewardStat, amount })) };
   const scale = endlessScaling(map.number);
   const armor = referenceBuildForMap(PROCEDURAL_FIRST_TIER).armor * 3;
   return {
     hp: desertBossHealthAt(PROCEDURAL_FIRST_TIER) * scale.combatStats * scale.endurance,
     damage: bossHeavyHitAt(PROCEDURAL_FIRST_TIER) * scale.combatStats * (1 - armorDamageReduction(armor)) / (1 - armorDamageReduction(armor * scale.combatStats)),
     rewards: (["Cindermaw", "Bramble", "Mossback", "Brood"] as const).map(lane => {
-      const reward = generatedEnemyStats(map, lane).reward;
+      const reward = generatedEnemyStats(map, lane, authored).reward;
       return { ...reward, amount: reward.amount * 10 };
     }),
   };

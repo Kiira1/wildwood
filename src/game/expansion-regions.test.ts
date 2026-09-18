@@ -1,4 +1,3 @@
-import { desertBossHealthAt } from "../../shared/progression";
 import { describe, expect, it } from "vitest";
 import { createGameBootstrap } from "./runtime/game-bootstrap";
 import { createWorldLayout, createSpawnSites, mapSpawnCamps, type MapId } from "./world";
@@ -15,10 +14,8 @@ describe("Clockwork Ruins and Duskfall Orchard", () => {
     expect(mapConfig.clockwork_ruins.portal.destination).toBe("crystal_hollows");
     expect(mapConfig.clockwork_ruins.secondaryPortal.destination).toBe("duskfall_orchard");
     expect(mapConfig.duskfall_orchard.portal.destination).toBe("clockwork_ruins");
-    expect(IRONHORN_MAX_HP / PRISMSHELL_MAX_HP).toBeCloseTo(desertBossHealthAt(9) / desertBossHealthAt(8));
-    expect(IRONHORN_MAX_HP).toBeGreaterThan(PRISMSHELL_MAX_HP);
-    expect(DREADREAPER_MAX_HP / IRONHORN_MAX_HP).toBeCloseTo(desertBossHealthAt(10) / desertBossHealthAt(9));
-    expect(DREADREAPER_MAX_HP).toBeGreaterThan(IRONHORN_MAX_HP);
+    expect(IRONHORN_MAX_HP / PRISMSHELL_MAX_HP).toBeCloseTo(3);
+    expect(DREADREAPER_MAX_HP / IRONHORN_MAX_HP).toBeCloseTo(3);
   });
   it.each([
     ["clockwork_ruins", "raptor-mechanic", "gear"],

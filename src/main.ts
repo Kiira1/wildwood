@@ -1,3 +1,5 @@
+import { refreshMapBalanceEnemies } from "./game/runtime/map-balance-enemies";
+import { createMapBalanceLoader } from "./game/runtime/map-balance-loader";
 import { installAccountDeletion } from "./ui/account-deletion-controller";
 import { createHomeTravelController } from "./ui/home-travel-controller";
 import { MAP_IDS as CAMPAIGN_MAP_IDS } from "../shared/rules";
@@ -249,6 +251,20 @@ import {
   });
   const { spawnFromSite, engageEnemy, updateRespawns } = enemyLifecycle;
   let currentMapId: MapId = TUTORIAL_FOREST_MAP_ID;
+  const mapBalance = createMapBalanceLoader({
+    identity: () => coop?.localIdentity?.() ?? "",
+    mapId: () => coop?.localState?.()?.mapId ?? "",
+    fetch: mapId => coop!.getMapBalance(mapId),
+    changed: snapshot => {
+      if (snapshot.mapId === currentMapId) refreshMapBalanceEnemies(snapshot, spawnSites, enemies);
+      startup.refreshLoading(); finishStartup();
+    },
+  });
+  function mapBalanceReady() {
+    if (mapBalance.ready(currentMapId)) return true;
+    void mapBalance.ensure(currentMapId).catch(() => {});
+    return false;
+  }
   let onboarding: ReturnType<typeof createOnboardingTutorial> | undefined;
   const inTutorial = () => currentMapId === ONBOARDING_MAP_ID;
   let prepareMapAssets: (mapId: MapId) => Promise<void> = () => Promise.resolve();
@@ -259,7 +275,7 @@ import {
     currentMapId = mapId;
     WORLD.w = mapId === ONBOARDING_MAP_ID ? ONBOARDING_WORLD.width : mapId === "home_exterior" ? HOME_WORLD_WIDTH : WORLD_WIDTH;
     WORLD.h = mapId === ONBOARDING_MAP_ID ? ONBOARDING_WORLD.height : mapId === "home_exterior" ? HOME_WORLD_HEIGHT : WORLD_HEIGHT;
-    void prepareMapAssets(mapId);
+    void prepareMapAssets(mapId).catch(() => {});
     preloadAdjacentMapAssets(mapId);
     gameElements.techTreeBtn.setAttribute("aria-label", mapId === "home_exterior" ? "Return to enemy map" : "Teleport home");
   }
@@ -272,8 +288,8 @@ import {
     const serverMapId = coop?.localState?.()?.mapId;
     if (!serverMapId) return false;
     const mapId = serverMapId in MAP_CONFIG ? serverMapId as MapId : currentMapId;
-    void prepareMapAssets(mapId);
-    return assets.mapAssetsReady(mapId);
+    void prepareMapAssets(mapId).catch(() => {});
+    return assets.mapAssetsReady(mapId) && mapBalance.ready(mapId);
   }
 
   let totalKills = 0;
@@ -585,7 +601,7 @@ import {
   const personalBosses = createPersonalBosses({
     respawns: respawnMemory,
     fights: bossFightMemory,
-    ready: () => Boolean(session?.isRunning() && coop?.isConnected?.()) && !mapController.isMapTransitioning(),
+    ready: () => mapBalance.ready(currentMapId) && Boolean(session?.isRunning() && coop?.isConnected?.()) && !mapController.isMapTransitioning(),
     mapId: () => currentMapId, identity: () => coop?.localIdentity?.() ?? "local-player",
     alive: () => player.hp > 0, now: () => Date.now(),
     defeated: mapId => {
@@ -825,7 +841,11 @@ import {
     isDueling,
     running: () => session.isRunning(),
     localMapState: () => inTutorial() ? null : coop?.localState?.(),
-    changeMap: (mapId, x, y) => coop?.changeMap?.(mapId, x, y),
+    changeMap: async (mapId, x, y) => {
+      const changed = await coop?.changeMap?.(mapId, x, y);
+      if (changed) { mapBalance.reset(); await mapBalance.ensure(mapId); }
+      return changed;
+    },
     syncStoppedPosition: () => { if (!inTutorial()) coop?.correctMovementPosition?.(player.x, player.y, true); },
     resetPresentationState: presentation.reset,
     fadeToWorld,
@@ -990,7 +1010,7 @@ import {
       ? null
       : coop?.beginStartupTelemetryStage?.("current-map-assets") ?? null;
     startupMapAssetsStarted = true;
-    return assets.ensureMapAssets(mapId).then(() => {
+    return Promise.all([assets.ensureMapAssets(mapId), mapBalance.ensure(mapId)]).then(() => {
       if (assets.mapAssetLoadFailed(mapId)) telemetry?.finish("failure", "asset-load-error");
       else telemetry?.finish();
     }, (error) => {
@@ -1750,7 +1770,7 @@ import {
     isDueling, activeDuel,
     syncDragon: bossController.syncDragonState, syncSpider: bossController.syncSpiderState, syncFrostclaw: bossController.syncFrostclawState, syncMagmalisk: bossController.syncMagmaliskState, syncGloomroot: bossController.syncGloomrootState, syncTidewyrm: bossController.syncTidewyrmState, syncKoiShogun: bossController.syncKoiShogunState, syncTempestKirin: bossController.syncTempestKirinState, syncMiremaw: bossController.syncMiremawState, syncPrismshell: bossController.syncPrismshellState, syncIronhorn: bossController.syncIronhornState, syncDreadreaper: bossController.syncDreadreaperState, syncVoltwarden: bossController.syncVoltwardenState, syncGravebloom: bossController.syncGravebloomState, syncAegisPrime: bossController.syncAegisPrimeState,
     cutsceneActive: mapController.isCutsceneActive, updateCutscene: mapController.updatePortalCutscene,
-    worldCombatReady: () => !mapController.isMapTransitioning() && (inTutorial() || Boolean(coop?.isConnected?.()) && coop?.localState?.()?.mapId === currentMapId),
+    worldCombatReady: () => !mapController.isMapTransitioning() && (inTutorial() || mapBalanceReady() && Boolean(coop?.isConnected?.()) && coop?.localState?.()?.mapId === currentMapId),
     updatePlayer: (dt) => { if (!mapController.isMapTransitioning() && !(inTutorial() && player.hp <= 0)) playerController.update(dt); }, updateUpgradeBench: updateHomeStations, updatePortal: mapController.updatePortal,
     updateEnemies: (dt) => { personalBosses.update(dt); proceduralBoss.update(dt); enemySimulation.update(dt); }, updateDragon: bossController.updateBoss, updateSpider: bossController.updateSpiderBoss, updateFrostclaw: bossController.updateFrostclawBoss, updateMagmalisk: bossController.updateMagmaliskBoss, updateGloomroot: bossController.updateGloomrootBoss, updateTidewyrm: bossController.updateTidewyrmBoss, updateKoiShogun: bossController.updateKoiShogunBoss, updateTempestKirin: bossController.updateTempestKirinBoss, updateMiremaw: bossController.updateMiremawBoss, updatePrismshell: bossController.updatePrismshellBoss, updateIronhorn: bossController.updateIronhornBoss, updateDreadreaper: bossController.updateDreadreaperBoss, updateVoltwarden: bossController.updateVoltwardenBoss, updateGravebloom: bossController.updateGravebloomBoss, updateAegisPrime: bossController.updateAegisPrimeBoss,
     updateProjectiles: playerCombat.updateProjectiles, updateRespawns: time => { if (!inTutorial()) updateRespawns(time); },

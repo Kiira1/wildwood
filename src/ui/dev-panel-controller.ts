@@ -1,3 +1,4 @@
+import { createBalanceEditorPanel, type BalanceEditorDependencies } from "./balance-editor-panel";
 import { createModerationHistoryPanel, type ModerationHistoryLoader } from "./moderation-history-panel";
 import { requiredElement } from "../game/runtime/dom";
 import { createForestRewardPrototypePanel, type ForestPrototypePanelDependencies } from "./forest-reward-prototype-panel";
@@ -8,7 +9,7 @@ import {
   normalizeVirtualPlayerCount,
 } from "../../shared/virtual-player-load-test";
 
-type DevPanelTab = "moderation" | "controls" | "bugs" | "cutscenes" | "performance";
+type DevPanelTab = "balance" | "moderation" | "controls" | "bugs" | "cutscenes" | "performance";
 
 type BugReportEntry = {
   id: bigint;
@@ -40,6 +41,7 @@ type VirtualPlayerLoadTestState = {
 };
 
 type DevPanelDependencies = {
+  balance: BalanceEditorDependencies;
   forestPrototype: ForestPrototypePanelDependencies;
   isDeveloper: () => boolean;
   getNameTagVisible: () => boolean;
@@ -64,6 +66,7 @@ export function createDevPanelController(dependencies: DevPanelDependencies) {
   const panel = requiredElement("devAudit");
   const closeButton = requiredElement("closeDevAuditBtn");
   const tabs: Record<DevPanelTab, HTMLElement> = {
+    balance: requiredElement("devBalanceTab"),
     controls: requiredElement("devControlsTab"),
     bugs: requiredElement("devBugReportsTab"),
     moderation: requiredElement("devModerationTab"),
@@ -71,12 +74,14 @@ export function createDevPanelController(dependencies: DevPanelDependencies) {
     performance: requiredElement("devPerformanceTab"),
   };
   const tabPanels: Record<DevPanelTab, HTMLElement> = {
+    balance: requiredElement("devBalancePanel"),
     controls: requiredElement("devControlsPanel"),
     bugs: requiredElement("devBugReportsPanel"),
     moderation: requiredElement("devModerationPanel"),
     cutscenes: requiredElement("devCutscenesPanel"),
     performance: requiredElement("devPerformancePanel"),
   };
+  const balance = createBalanceEditorPanel(tabPanels.balance, dependencies.balance);
   const moderation = createModerationHistoryPanel(tabPanels.moderation, dependencies.loadModerationHistory);
   const nameTagToggle = requiredElement<HTMLButtonElement>("devNameTagToggle");
   const presenceStatus = requiredElement("devPresenceStatus");
@@ -110,6 +115,7 @@ export function createDevPanelController(dependencies: DevPanelDependencies) {
   };
 
   function setTab(tab: DevPanelTab) {
+    if (tab === "balance") void balance.open(); else balance.close();
     if (tab === "moderation") moderation.open();
     else moderation.clear();
     for (const [name, element] of Object.entries(tabs) as [DevPanelTab, HTMLElement][]) {
@@ -214,6 +220,7 @@ export function createDevPanelController(dependencies: DevPanelDependencies) {
   }
 
   function close() {
+    balance.close();
     moderation.clear();
     panel.hidden = true;
     button.setAttribute("aria-expanded", "false");

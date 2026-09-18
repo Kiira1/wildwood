@@ -1,4 +1,9 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.742": [
+    "Map balance now loads from the server. Future balance changes take effect when you enter a map, without another app update. Current fights and pending rewards keep the same balance until you leave.",
+    "Restored campaign enemy stats, boss stats, rewards, and loot rules to 0.739, undoing the unintended campaign rebalance.",
+    "Kept percentage bonuses for weapons, chest health, and helmet regeneration, along with the sharp slowdown beginning at Endless 1. Earned stats, items, and upgrades are preserved.",
+  ],
   "0.741": [
     "Chest armor now boosts earned max health by a percentage, and helmets boost earned regeneration by a percentage. Bonuses range from 5% to 40% at base level, up to 72% at +10, matching the weapon tiers.",
     "Inventory, upgrade previews, map guides, and profile details show the percentage bonuses. Health gains, equipping, and respawning keep equipment bonuses separate from saved stats.",
@@ -2063,6 +2068,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.742": "2026-09-18",
   "0.741": "2026-09-18",
   "0.740": "2026-09-18",
   "0.739": "2026-09-17",

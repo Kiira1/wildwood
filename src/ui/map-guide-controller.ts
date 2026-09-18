@@ -125,7 +125,7 @@ export function mapGuideDrops(mapId: MapId): readonly MapGuideDrop[] {
     itemId,
     numerator: wins,
     denominator: outcomes,
-    source: "Regular enemies + boss",
+    source: "Any regular enemy",
   }));
   return [...regularDrops, ...MAP_GUIDE_DROPS[mapId]];
 }

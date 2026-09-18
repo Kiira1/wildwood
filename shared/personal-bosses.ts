@@ -1,3 +1,4 @@
+import { runtimeMapBalance } from "./map-balance-runtime";
 /** Kept explicit while old reducer schemas remain installed for safe migrations. */
 export const PERSONAL_BOSS_COMBAT = true;
 import * as rules from "./rules";
@@ -20,7 +21,9 @@ const BOSSES: Record<string, { kind: string; hp: number }> = {
   verdant_catacombs: { kind: "gravebloom", hp: rules.GRAVEBLOOM_MAX_HP },
   ion_citadel: { kind: "aegisPrime", hp: rules.AEGIS_PRIME_MAX_HP },
 };
-export function personalBossDefinition(mapId: string) {
+export function personalBossDefinition(mapId: string, authored = false) {
+  const remote = !authored && runtimeMapBalance(mapId)?.boss;
+  if (remote) return { kind: remote.kind, hp: remote.hp, respawnSeconds: remote.respawnSeconds };
   if (isProceduralMap(mapId)) return { kind: "procedural", hp: generatedBossStats(generateMap(mapId)).hp, respawnSeconds: 60 };
   const boss = BOSSES[mapId];
   return boss ? { ...boss, respawnSeconds: rules.BOSS_RESPAWN_SECONDS } : null;

@@ -1,4 +1,3 @@
-import { combatMultiplierForMap, desertBossHealthAt } from "../../shared/progression";
 import { describe, expect, it } from "vitest";
 import { createGameBootstrap } from "./runtime/game-bootstrap";
 import { createWorldLayout, createSpawnSites, mapSpawnCamps } from "./world";
@@ -13,10 +12,9 @@ describe("Neon Bastion", () => {
     const { mapConfig } = createGameBootstrap();
     expect(mapConfig.duskfall_orchard.secondaryPortal.destination).toBe("neon_bastion");
     expect(mapConfig.neon_bastion.portal.destination).toBe("duskfall_orchard");
-    expect(VOLTWARDEN_MAX_HP / DREADREAPER_MAX_HP).toBeCloseTo(desertBossHealthAt(11) / desertBossHealthAt(10));
-    expect(VOLTWARDEN_MAX_HP).toBeGreaterThan(DREADREAPER_MAX_HP);
+    expect(VOLTWARDEN_MAX_HP / DREADREAPER_MAX_HP).toBeCloseTo(3);
     expect(BOSS_DAMAGE_REFERENCE.voltwarden).toBeGreaterThan(BOSS_DAMAGE_REFERENCE.dreadreaper);
-    expect(ENEMY_TYPES["Circuit Prowler"].hp / ENEMY_TYPES["Gourd Prowler"].hp).toBeCloseTo(combatMultiplierForMap(11) / combatMultiplierForMap(10));
+    expect(ENEMY_TYPES["Circuit Prowler"].hp / ENEMY_TYPES["Gourd Prowler"].hp).toBeCloseTo(3);
   });
   it("has connected roads, five complete camps and a clear boss arena", () => {
     const map = "neon_bastion";

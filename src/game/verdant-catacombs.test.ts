@@ -1,4 +1,3 @@
-import { combatMultiplierForMap, desertBossHealthAt } from "../../shared/progression";
 import { describe, expect, it } from "vitest";
 import { createGameBootstrap } from "./runtime/game-bootstrap";
 import { createWorldLayout, createSpawnSites, mapSpawnCamps } from "./world";
@@ -13,10 +12,9 @@ describe("Verdant Catacombs", () => {
     const { mapConfig } = createGameBootstrap();
     expect(mapConfig.neon_bastion.secondaryPortal.destination).toBe("verdant_catacombs");
     expect(mapConfig.verdant_catacombs.portal.destination).toBe("neon_bastion");
-    expect(GRAVEBLOOM_MAX_HP / VOLTWARDEN_MAX_HP).toBeCloseTo(desertBossHealthAt(12) / desertBossHealthAt(11));
-    expect(GRAVEBLOOM_MAX_HP).toBeGreaterThan(VOLTWARDEN_MAX_HP);
+    expect(GRAVEBLOOM_MAX_HP / VOLTWARDEN_MAX_HP).toBeCloseTo(3);
     expect(BOSS_DAMAGE_REFERENCE.gravebloom).toBeGreaterThan(BOSS_DAMAGE_REFERENCE.voltwarden);
-    expect(ENEMY_TYPES["Mossbound Stalker"].hp / ENEMY_TYPES["Circuit Prowler"].hp).toBeCloseTo(combatMultiplierForMap(12) / combatMultiplierForMap(11));
+    expect(ENEMY_TYPES["Mossbound Stalker"].hp / ENEMY_TYPES["Circuit Prowler"].hp).toBeCloseTo(3);
   });
   it("has connected roads, five complete camps and a clear boss arena", () => {
     const map = "verdant_catacombs";

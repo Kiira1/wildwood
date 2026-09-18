@@ -1,3 +1,5 @@
+import { mapBalanceVersion, mapBalanceHead, playerMapBalance, balanceEditorState, saveMapBalance, pinMapBalance, pinnedMapBalance, pinnedBossReward } from "./map-balance";
+import { resolveMapBalance, validateBalanceSettings } from "../../shared/map-balance";
 import { accountDeletionRequest, queueAccountDeletion } from "./account-deletion";
 import { mailboxEquipment, deliverEquipmentMail } from "./mailbox-equipment";
 import { gearClaimSpace } from "../../shared/mailbox-equipment";
@@ -1719,6 +1721,7 @@ const shardCoordinatorSchedule = table(
   { scheduledId: t.u64().primaryKey(), scheduledAt: t.scheduleAt() },
 );
 const spacetimedb = schema({
+  mapBalanceVersion, mapBalanceHead, playerMapBalance,
   ...moderationTables,
   publicChatCursor,
   ...proceduralMapTables,
@@ -4447,6 +4450,7 @@ function removeVirtualPlayerData(ctx: any, identity: any, adjustPresence = true,
   if (ctx.db.playerMultiplayerPreference.identity.find(identity)) ctx.db.playerMultiplayerPreference.identity.delete(identity);
   for (const cursor of ctx.db.regularEnemyLootCursor.identity.filter(identity)) ctx.db.regularEnemyLootCursor.key.delete(cursor.key);
   if (ctx.db.playerOnboarding.identity.find(identity)) ctx.db.playerOnboarding.identity.delete(identity);
+  if (ctx.db.playerMapBalance.identity.find(identity)) ctx.db.playerMapBalance.identity.delete(identity);
   if (ctx.db.playerUpgradeBench.identity.find(identity)) ctx.db.playerUpgradeBench.identity.delete(identity);
   if (ctx.db.playerInventoryCapacity.identity.find(identity)) ctx.db.playerInventoryCapacity.identity.delete(identity);
   if (ctx.db.playerCutsceneHistory.identity.find(identity)) ctx.db.playerCutsceneHistory.identity.delete(identity);
@@ -4545,6 +4549,7 @@ function removePlayerIdentityData(ctx: any, identity: any) {
   if (ctx.db.playerMultiplayerPreference.identity.find(identity)) ctx.db.playerMultiplayerPreference.identity.delete(identity);
   for (const cursor of ctx.db.regularEnemyLootCursor.identity.filter(identity)) ctx.db.regularEnemyLootCursor.key.delete(cursor.key);
   if (ctx.db.playerOnboarding.identity.find(identity)) ctx.db.playerOnboarding.identity.delete(identity);
+  if (ctx.db.playerMapBalance.identity.find(identity)) ctx.db.playerMapBalance.identity.delete(identity);
   if (ctx.db.playerUpgradeBench.identity.find(identity)) ctx.db.playerUpgradeBench.identity.delete(identity);
   if (ctx.db.playerInventoryCapacity.identity.find(identity)) ctx.db.playerInventoryCapacity.identity.delete(identity);
   if (ctx.db.playerCutsceneHistory.identity.find(identity)) ctx.db.playerCutsceneHistory.identity.delete(identity);
@@ -5096,11 +5101,10 @@ function rewardSpiderContributor(ctx: any, identity: any) {
   if (!current) return;
   const rewardMultiplier = researchStatRewardMultiplier(ctx.db.playerResearch.identity.find(identity));
   const reward = applyBossRepeatableReward(current, BOSS_REWARD_CLAIM_BITS.spider, rewardMultiplier, {
-    damage: SPIDER_REWARD_DAMAGE,
-    maxHp: SPIDER_REWARD_HEALTH,
+    damage: pinnedBossReward(ctx, identity, "beginner_desert", "damage", SPIDER_REWARD_DAMAGE),
+    maxHp: pinnedBossReward(ctx, identity, "beginner_desert", "health", SPIDER_REWARD_HEALTH),
   });
-  let next = { ...reward, snowlandsUnlocked: true };
-  next = awardRegularEnemyLoot(ctx, BEGINNER_DESERT_MAP_ID, 1, { progress: next }, identity);
+  const next = { ...reward, snowlandsUnlocked: true };
   updateSnapshotRow(ctx, "playerProgress", next);
   const active = ctx.db.player.identity.find(identity);
   if (active) {
@@ -5164,9 +5168,9 @@ function rewardFrostclawContributor(ctx: any, identity: any) {
   const frostBowDropped = ctx.random.integerInRange(1, SNOW_BOSS_ITEM_DROP_DENOMINATOR) === 1;
   const frostArmorDropped = ctx.random.integerInRange(1, SNOW_BOSS_ARMOR_DROP_DENOMINATOR) === 1;
   const reward = applyBossRepeatableReward(current, BOSS_REWARD_CLAIM_BITS.frostclaw, rewardMultiplier, {
-    damage: FROSTCLAW_REWARD_DAMAGE,
-    maxHp: FROSTCLAW_REWARD_HEALTH,
-    armor: FROSTCLAW_REWARD_ARMOR,
+    damage: pinnedBossReward(ctx, identity, "intermediate_snowlands", "damage", FROSTCLAW_REWARD_DAMAGE),
+    maxHp: pinnedBossReward(ctx, identity, "intermediate_snowlands", "health", FROSTCLAW_REWARD_HEALTH),
+    armor: pinnedBossReward(ctx, identity, "intermediate_snowlands", "armor", FROSTCLAW_REWARD_ARMOR),
   });
   let next = { ...reward, lavaUnlocked: true };
   if (frostBowDropped) {
@@ -5180,7 +5184,6 @@ function rewardFrostclawContributor(ctx: any, identity: any) {
     if (!alreadyOwned) next = restoreItemToProgress(next, FROST_ARMOR);
   }
   next.inventoryJson = JSON.stringify([...new Set(inventoryForProgress(next))]);
-  next = awardRegularEnemyLoot(ctx, INTERMEDIATE_SNOWLANDS_MAP_ID, 1, { progress: next }, identity);
   updateSnapshotRow(ctx, "playerProgress", next);
   const active = ctx.db.player.identity.find(identity);
   if (active) {
@@ -5241,10 +5244,10 @@ function rewardMagmaliskContributor(ctx: any, identity: any) {
   const rewardMultiplier = researchStatRewardMultiplier(ctx.db.playerResearch.identity.find(identity));
   const lavaBowDropped = ctx.random.integerInRange(1, LAVA_BOSS_ITEM_DROP_DENOMINATOR) === 1;
   const reward = applyBossRepeatableReward(current, BOSS_REWARD_CLAIM_BITS.magmalisk, rewardMultiplier, {
-    damage: MAGMALISK_REWARD_DAMAGE,
-    maxHp: MAGMALISK_REWARD_HEALTH,
-    armor: MAGMALISK_REWARD_ARMOR,
-    regen: MAGMALISK_REWARD_REGEN,
+    damage: pinnedBossReward(ctx, identity, "advanced_lava_wastes", "damage", MAGMALISK_REWARD_DAMAGE),
+    maxHp: pinnedBossReward(ctx, identity, "advanced_lava_wastes", "health", MAGMALISK_REWARD_HEALTH),
+    armor: pinnedBossReward(ctx, identity, "advanced_lava_wastes", "armor", MAGMALISK_REWARD_ARMOR),
+    regen: pinnedBossReward(ctx, identity, "advanced_lava_wastes", "regen", MAGMALISK_REWARD_REGEN),
   });
   let next = { ...reward, infernalUnlocked: true };
   if (lavaBowDropped) {
@@ -5253,7 +5256,6 @@ function rewardMagmaliskContributor(ctx: any, identity: any) {
     if (!alreadyOwned) next = restoreItemToProgress(next, LAVA_BOW);
   }
   next.inventoryJson = JSON.stringify([...new Set(inventoryForProgress(next))]);
-  next = awardRegularEnemyLoot(ctx, ADVANCED_LAVA_WASTES_MAP_ID, 1, { progress: next }, identity);
   updateSnapshotRow(ctx, "playerProgress", next);
   const active = ctx.db.player.identity.find(identity);
   if (active) {
@@ -5313,13 +5315,12 @@ function rewardGloomrootContributor(ctx: any, identity: any) {
   if (!current) return;
   const rewardMultiplier = researchStatRewardMultiplier(ctx.db.playerResearch.identity.find(identity));
   const reward = applyBossRepeatableReward(current, BOSS_REWARD_CLAIM_BITS.gloomroot, rewardMultiplier, {
-    damage: GLOOMROOT_REWARD_DAMAGE,
-    maxHp: GLOOMROOT_REWARD_HEALTH,
-    armor: GLOOMROOT_REWARD_ARMOR,
-    regen: GLOOMROOT_REWARD_REGEN,
+    damage: pinnedBossReward(ctx, identity, "infernal_depths", "damage", GLOOMROOT_REWARD_DAMAGE),
+    maxHp: pinnedBossReward(ctx, identity, "infernal_depths", "health", GLOOMROOT_REWARD_HEALTH),
+    armor: pinnedBossReward(ctx, identity, "infernal_depths", "armor", GLOOMROOT_REWARD_ARMOR),
+    regen: pinnedBossReward(ctx, identity, "infernal_depths", "regen", GLOOMROOT_REWARD_REGEN),
   });
-  let next = { ...reward, waterUnlocked: true };
-  next = awardRegularEnemyLoot(ctx, INFERNAL_DEPTHS_MAP_ID, 1, { progress: next }, identity);
+  const next = { ...reward, waterUnlocked: true };
   updateSnapshotRow(ctx, "playerProgress", next);
   const active = ctx.db.player.identity.find(identity);
   if (active) {
@@ -5457,13 +5458,12 @@ function rewardTidewyrmContributor(ctx: any, identity: any) {
   if (!current) return;
   const rewardMultiplier = researchStatRewardMultiplier(ctx.db.playerResearch.identity.find(identity));
   const reward = applyBossRepeatableReward(current, BOSS_REWARD_CLAIM_BITS.tidewyrm, rewardMultiplier, {
-    damage: TIDEWYRM_REWARD_DAMAGE,
-    maxHp: TIDEWYRM_REWARD_HEALTH,
-    armor: TIDEWYRM_REWARD_ARMOR,
-    regen: TIDEWYRM_REWARD_REGEN,
+    damage: pinnedBossReward(ctx, identity, "water_reach", "damage", TIDEWYRM_REWARD_DAMAGE),
+    maxHp: pinnedBossReward(ctx, identity, "water_reach", "health", TIDEWYRM_REWARD_HEALTH),
+    armor: pinnedBossReward(ctx, identity, "water_reach", "armor", TIDEWYRM_REWARD_ARMOR),
+    regen: pinnedBossReward(ctx, identity, "water_reach", "regen", TIDEWYRM_REWARD_REGEN),
   });
-  let next = { ...reward, samuraiUnlocked: true };
-  next = awardRegularEnemyLoot(ctx, WATER_REACH_MAP_ID, 1, { progress: next }, identity);
+  const next = { ...reward, samuraiUnlocked: true };
   updateSnapshotRow(ctx, "playerProgress", next);
   const active = ctx.db.player.identity.find(identity);
   if (active) {
@@ -5482,13 +5482,12 @@ function rewardKoiShogunContributor(ctx: any, identity: any) {
   if (!current) return;
   const rewardMultiplier = researchStatRewardMultiplier(ctx.db.playerResearch.identity.find(identity));
   const reward = applyBossRepeatableReward(current, BOSS_REWARD_CLAIM_BITS.koiShogun, rewardMultiplier, {
-    damage: KOI_SHOGUN_REWARD_DAMAGE,
-    maxHp: KOI_SHOGUN_REWARD_HEALTH,
-    armor: KOI_SHOGUN_REWARD_ARMOR,
-    regen: KOI_SHOGUN_REWARD_REGEN,
+    damage: pinnedBossReward(ctx, identity, "samurai_garden", "damage", KOI_SHOGUN_REWARD_DAMAGE),
+    maxHp: pinnedBossReward(ctx, identity, "samurai_garden", "health", KOI_SHOGUN_REWARD_HEALTH),
+    armor: pinnedBossReward(ctx, identity, "samurai_garden", "armor", KOI_SHOGUN_REWARD_ARMOR),
+    regen: pinnedBossReward(ctx, identity, "samurai_garden", "regen", KOI_SHOGUN_REWARD_REGEN),
   });
-  let next = { ...reward, samuraiUnlocked: true, cloudspireUnlocked: true };
-  next = awardRegularEnemyLoot(ctx, SAMURAI_GARDEN_MAP_ID, 1, { progress: next }, identity);
+  const next = { ...reward, samuraiUnlocked: true, cloudspireUnlocked: true };
   updateSnapshotRow(ctx, "playerProgress", next);
   const active = ctx.db.player.identity.find(identity);
   if (active) {
@@ -5507,13 +5506,12 @@ function rewardTempestKirinContributor(ctx: any, identity: any) {
   if (!current) return;
   const rewardMultiplier = researchStatRewardMultiplier(ctx.db.playerResearch.identity.find(identity));
   const reward = applyBossRepeatableReward(current, BOSS_REWARD_CLAIM_BITS.tempestKirin, rewardMultiplier, {
-    damage: TEMPEST_KIRIN_REWARD_DAMAGE,
-    maxHp: TEMPEST_KIRIN_REWARD_HEALTH,
-    armor: TEMPEST_KIRIN_REWARD_ARMOR,
-    regen: TEMPEST_KIRIN_REWARD_REGEN,
+    damage: pinnedBossReward(ctx, identity, "cloudspire", "damage", TEMPEST_KIRIN_REWARD_DAMAGE),
+    maxHp: pinnedBossReward(ctx, identity, "cloudspire", "health", TEMPEST_KIRIN_REWARD_HEALTH),
+    armor: pinnedBossReward(ctx, identity, "cloudspire", "armor", TEMPEST_KIRIN_REWARD_ARMOR),
+    regen: pinnedBossReward(ctx, identity, "cloudspire", "regen", TEMPEST_KIRIN_REWARD_REGEN),
   });
-  let next = { ...reward, cloudspireUnlocked: true, moonfenUnlocked: true };
-  next = awardRegularEnemyLoot(ctx, CLOUDSPIRE_MAP_ID, 1, { progress: next }, identity);
+  const next = { ...reward, cloudspireUnlocked: true, moonfenUnlocked: true };
   updateSnapshotRow(ctx, "playerProgress", next);
   const active = ctx.db.player.identity.find(identity);
   if (active) {
@@ -5532,13 +5530,12 @@ function rewardMiremawContributor(ctx: any, identity: any) {
   if (!current) return;
   const rewardMultiplier = researchStatRewardMultiplier(ctx.db.playerResearch.identity.find(identity));
   const reward = applyBossRepeatableReward(current, BOSS_REWARD_CLAIM_BITS.miremaw, rewardMultiplier, {
-    damage: MIREMAW_REWARD_DAMAGE,
-    maxHp: MIREMAW_REWARD_HEALTH,
-    armor: MIREMAW_REWARD_ARMOR,
-    regen: MIREMAW_REWARD_REGEN,
+    damage: pinnedBossReward(ctx, identity, "moonfen", "damage", MIREMAW_REWARD_DAMAGE),
+    maxHp: pinnedBossReward(ctx, identity, "moonfen", "health", MIREMAW_REWARD_HEALTH),
+    armor: pinnedBossReward(ctx, identity, "moonfen", "armor", MIREMAW_REWARD_ARMOR),
+    regen: pinnedBossReward(ctx, identity, "moonfen", "regen", MIREMAW_REWARD_REGEN),
   });
-  let next = { ...reward, moonfenUnlocked: true, crystalHollowsUnlocked: true };
-  next = awardRegularEnemyLoot(ctx, MOONFEN_MAP_ID, 1, { progress: next }, identity);
+  const next = { ...reward, moonfenUnlocked: true, crystalHollowsUnlocked: true };
   updateSnapshotRow(ctx, "playerProgress", next);
   const active = ctx.db.player.identity.find(identity);
   if (active) {
@@ -5556,13 +5553,12 @@ function rewardPrismshellContributor(ctx: any, identity: any) {
   if (!current) return;
   const rewardMultiplier = researchStatRewardMultiplier(ctx.db.playerResearch.identity.find(identity));
   const reward = applyBossRepeatableReward(current, BOSS_REWARD_CLAIM_BITS.prismshell, rewardMultiplier, {
-    damage: PRISMSHELL_REWARD_DAMAGE,
-    maxHp: PRISMSHELL_REWARD_HEALTH,
-    armor: PRISMSHELL_REWARD_ARMOR,
-    regen: PRISMSHELL_REWARD_REGEN,
+    damage: pinnedBossReward(ctx, identity, "crystal_hollows", "damage", PRISMSHELL_REWARD_DAMAGE),
+    maxHp: pinnedBossReward(ctx, identity, "crystal_hollows", "health", PRISMSHELL_REWARD_HEALTH),
+    armor: pinnedBossReward(ctx, identity, "crystal_hollows", "armor", PRISMSHELL_REWARD_ARMOR),
+    regen: pinnedBossReward(ctx, identity, "crystal_hollows", "regen", PRISMSHELL_REWARD_REGEN),
   });
-  let next = { ...reward, crystalHollowsUnlocked: true, clockworkRuinsUnlocked: true };
-  next = awardRegularEnemyLoot(ctx, CRYSTAL_HOLLOWS_MAP_ID, 1, { progress: next }, identity);
+  const next = { ...reward, crystalHollowsUnlocked: true, clockworkRuinsUnlocked: true };
   updateSnapshotRow(ctx, "playerProgress", next);
   const active = ctx.db.player.identity.find(identity);
   if (active) {
@@ -5580,13 +5576,12 @@ function rewardIronhornContributor(ctx: any, identity: any) {
   if (!current) return;
   const rewardMultiplier = researchStatRewardMultiplier(ctx.db.playerResearch.identity.find(identity));
   const reward = applyBossRepeatableReward(current, BOSS_REWARD_CLAIM_BITS.ironhorn, rewardMultiplier, {
-    damage: IRONHORN_REWARD_DAMAGE,
-    maxHp: IRONHORN_REWARD_HEALTH,
-    armor: IRONHORN_REWARD_ARMOR,
-    regen: IRONHORN_REWARD_REGEN,
+    damage: pinnedBossReward(ctx, identity, "clockwork_ruins", "damage", IRONHORN_REWARD_DAMAGE),
+    maxHp: pinnedBossReward(ctx, identity, "clockwork_ruins", "health", IRONHORN_REWARD_HEALTH),
+    armor: pinnedBossReward(ctx, identity, "clockwork_ruins", "armor", IRONHORN_REWARD_ARMOR),
+    regen: pinnedBossReward(ctx, identity, "clockwork_ruins", "regen", IRONHORN_REWARD_REGEN),
   });
-  let next = { ...reward, clockworkRuinsUnlocked: true, duskfallOrchardUnlocked: true };
-  next = awardRegularEnemyLoot(ctx, CLOCKWORK_RUINS_MAP_ID, 1, { progress: next }, identity);
+  const next = { ...reward, clockworkRuinsUnlocked: true, duskfallOrchardUnlocked: true };
   updateSnapshotRow(ctx, "playerProgress", next);
   const active = ctx.db.player.identity.find(identity);
   if (active) {
@@ -5604,13 +5599,12 @@ function rewardDreadreaperContributor(ctx: any, identity: any) {
   if (!current) return;
   const rewardMultiplier = researchStatRewardMultiplier(ctx.db.playerResearch.identity.find(identity));
   const reward = applyBossRepeatableReward(current, BOSS_REWARD_CLAIM_BITS.dreadreaper, rewardMultiplier, {
-    damage: DREADREAPER_REWARD_DAMAGE,
-    maxHp: DREADREAPER_REWARD_HEALTH,
-    armor: DREADREAPER_REWARD_ARMOR,
-    regen: DREADREAPER_REWARD_REGEN,
+    damage: pinnedBossReward(ctx, identity, "duskfall_orchard", "damage", DREADREAPER_REWARD_DAMAGE),
+    maxHp: pinnedBossReward(ctx, identity, "duskfall_orchard", "health", DREADREAPER_REWARD_HEALTH),
+    armor: pinnedBossReward(ctx, identity, "duskfall_orchard", "armor", DREADREAPER_REWARD_ARMOR),
+    regen: pinnedBossReward(ctx, identity, "duskfall_orchard", "regen", DREADREAPER_REWARD_REGEN),
   });
-  let next = { ...reward, duskfallOrchardUnlocked: true, neonBastionUnlocked: true };
-  next = awardRegularEnemyLoot(ctx, DUSKFALL_ORCHARD_MAP_ID, 1, { progress: next }, identity);
+  const next = { ...reward, duskfallOrchardUnlocked: true, neonBastionUnlocked: true };
   updateSnapshotRow(ctx, "playerProgress", next);
   const active = ctx.db.player.identity.find(identity);
   if (active) {
@@ -5628,13 +5622,12 @@ function rewardVoltwardenContributor(ctx: any, identity: any) {
   if (!current) return;
   const rewardMultiplier = researchStatRewardMultiplier(ctx.db.playerResearch.identity.find(identity));
   const reward = applyBossRepeatableReward(current, BOSS_REWARD_CLAIM_BITS.voltwarden, rewardMultiplier, {
-    damage: VOLTWARDEN_REWARD_DAMAGE,
-    maxHp: VOLTWARDEN_REWARD_HEALTH,
-    armor: VOLTWARDEN_REWARD_ARMOR,
-    regen: VOLTWARDEN_REWARD_REGEN,
+    damage: pinnedBossReward(ctx, identity, "neon_bastion", "damage", VOLTWARDEN_REWARD_DAMAGE),
+    maxHp: pinnedBossReward(ctx, identity, "neon_bastion", "health", VOLTWARDEN_REWARD_HEALTH),
+    armor: pinnedBossReward(ctx, identity, "neon_bastion", "armor", VOLTWARDEN_REWARD_ARMOR),
+    regen: pinnedBossReward(ctx, identity, "neon_bastion", "regen", VOLTWARDEN_REWARD_REGEN),
   });
-  let next = { ...reward, neonBastionUnlocked: true, verdantCatacombsUnlocked: true };
-  next = awardRegularEnemyLoot(ctx, NEON_BASTION_MAP_ID, 1, { progress: next }, identity);
+  const next = { ...reward, neonBastionUnlocked: true, verdantCatacombsUnlocked: true };
   updateSnapshotRow(ctx, "playerProgress", next);
   const active = ctx.db.player.identity.find(identity);
   if (active) {
@@ -5652,13 +5645,12 @@ function rewardGravebloomContributor(ctx: any, identity: any) {
   if (!current) return;
   const rewardMultiplier = researchStatRewardMultiplier(ctx.db.playerResearch.identity.find(identity));
   const reward = applyBossRepeatableReward(current, BOSS_REWARD_CLAIM_BITS.gravebloom, rewardMultiplier, {
-    damage: GRAVEBLOOM_REWARD_DAMAGE,
-    maxHp: GRAVEBLOOM_REWARD_HEALTH,
-    armor: GRAVEBLOOM_REWARD_ARMOR,
-    regen: GRAVEBLOOM_REWARD_REGEN,
+    damage: pinnedBossReward(ctx, identity, "verdant_catacombs", "damage", GRAVEBLOOM_REWARD_DAMAGE),
+    maxHp: pinnedBossReward(ctx, identity, "verdant_catacombs", "health", GRAVEBLOOM_REWARD_HEALTH),
+    armor: pinnedBossReward(ctx, identity, "verdant_catacombs", "armor", GRAVEBLOOM_REWARD_ARMOR),
+    regen: pinnedBossReward(ctx, identity, "verdant_catacombs", "regen", GRAVEBLOOM_REWARD_REGEN),
   });
-  let next = { ...reward, verdantCatacombsUnlocked: true, ionCitadelUnlocked: true };
-  next = awardRegularEnemyLoot(ctx, VERDANT_CATACOMBS_MAP_ID, 1, { progress: next }, identity);
+  const next = { ...reward, verdantCatacombsUnlocked: true, ionCitadelUnlocked: true };
   updateSnapshotRow(ctx, "playerProgress", next);
   const active = ctx.db.player.identity.find(identity);
   if (active) {
@@ -5676,13 +5668,12 @@ function rewardAegisPrimeContributor(ctx: any, identity: any) {
   if (!current) return;
   const rewardMultiplier = researchStatRewardMultiplier(ctx.db.playerResearch.identity.find(identity));
   const reward = applyBossRepeatableReward(current, BOSS_REWARD_CLAIM_BITS.aegisPrime, rewardMultiplier, {
-    damage: AEGIS_PRIME_REWARD_DAMAGE,
-    maxHp: AEGIS_PRIME_REWARD_HEALTH,
-    armor: AEGIS_PRIME_REWARD_ARMOR,
-    regen: AEGIS_PRIME_REWARD_REGEN,
+    damage: pinnedBossReward(ctx, identity, "ion_citadel", "damage", AEGIS_PRIME_REWARD_DAMAGE),
+    maxHp: pinnedBossReward(ctx, identity, "ion_citadel", "health", AEGIS_PRIME_REWARD_HEALTH),
+    armor: pinnedBossReward(ctx, identity, "ion_citadel", "armor", AEGIS_PRIME_REWARD_ARMOR),
+    regen: pinnedBossReward(ctx, identity, "ion_citadel", "regen", AEGIS_PRIME_REWARD_REGEN),
   });
-  let next = { ...reward, ionCitadelUnlocked: true };
-  next = awardRegularEnemyLoot(ctx, ION_CITADEL_MAP_ID, 1, { progress: next }, identity);
+  const next = { ...reward, ionCitadelUnlocked: true };
   updateSnapshotRow(ctx, "playerProgress", next);
   const active = ctx.db.player.identity.find(identity);
   if (active) {
@@ -6044,10 +6035,9 @@ function rewardDragonContributor(ctx: any, identity: any) {
   if (!current) return;
   const rewardMultiplier = researchStatRewardMultiplier(ctx.db.playerResearch.identity.find(identity));
   const reward = applyBossRepeatableReward(current, BOSS_REWARD_CLAIM_BITS.dragon, rewardMultiplier, {
-    damage: DRAGON_REWARD_DAMAGE,
+    damage: pinnedBossReward(ctx, identity, "tutorial_forest", "damage", DRAGON_REWARD_DAMAGE),
   });
-  let next = { ...reward, desertUnlocked: true };
-  next = awardRegularEnemyLoot(ctx, TUTORIAL_FOREST_MAP_ID, 1, { progress: next }, identity);
+  const next = { ...reward, desertUnlocked: true };
   updateSnapshotRow(ctx, "playerProgress", next);
   const active = ctx.db.player.identity.find(identity);
   if (active) {
@@ -8274,6 +8264,7 @@ export const enterWorld = spacetimedb.reducer({ tabId: t.string() }, (ctx, { tab
   if (isMapShard(ctx)) enterShardPresence(ctx, tabId);
   else {
     enterWorldPresence(ctx, tabId);
+    pinMapBalance(ctx, ctx.db.player.identity.find(ctx.sender)?.mapId ?? "");
     beginBossTimeBudget(ctx, ctx.db.player.identity.find(ctx.sender)?.mapId ?? "");
   }
 });
@@ -8283,7 +8274,8 @@ export const enterWorldWithTutorial = spacetimedb.reducer({ tabId: t.string(), f
   requireSupportedSessionProtocol(ctx);
   if (isMapShard(ctx)) throw new SenderError("Connect to the account database.");
   enterWorldPresence(ctx, tabId, forceTakeover, true);
-  beginBossTimeBudget(ctx, ctx.db.player.identity.find(ctx.sender)?.mapId ?? "");
+  pinMapBalance(ctx, ctx.db.player.identity.find(ctx.sender)?.mapId ?? "");
+    beginBossTimeBudget(ctx, ctx.db.player.identity.find(ctx.sender)?.mapId ?? "");
 });
 
 export const takeOverSession = spacetimedb.reducer({ tabId: t.string() }, (ctx, { tabId }) => {
@@ -8830,6 +8822,34 @@ export const changeDisplayName = spacetimedb.reducer({ displayName: t.string(), 
 const nameChangeStatusResult = t.object("NameChangeStatus", {
   cost: t.u32(), availableAtMs: t.f64(), serverNowMs: t.f64(), balance: t.f64(),
 });
+export const getMapBalance = spacetimedb.procedure({ mapId: t.string() }, t.string(), (ctx, { mapId }) => ctx.withTx(tx => {
+  const active = tx.db.player.identity.find(tx.sender);
+  if (!active || active.mapId !== mapId) throw new SenderError("Enter the map before loading its balance.");
+  pinMapBalance(tx, mapId, true);
+  const row = tx.db.playerMapBalance.identity.find(tx.sender);
+  if (!row || row.mapId !== mapId) throw new SenderError("Map balance is not ready. Retry after entering the map.");
+  return row.snapshotJson;
+}));
+export const getBalanceEditor = spacetimedb.procedure({}, t.string(), ctx => ctx.withTx(tx => {
+  requireDeveloperSession(tx);
+  return JSON.stringify(balanceEditorState(tx));
+}));
+export const previewMapBalance = spacetimedb.procedure({ mapId: t.string(), settingsJson: t.string() }, t.string(), (ctx, args) => ctx.withTx(tx => {
+  requireDeveloperSession(tx);
+  if (args.settingsJson.length > 20_000) throw new SenderError("Balance configuration too large.");
+  return JSON.stringify(resolveMapBalance(args.mapId, validateBalanceSettings(JSON.parse(args.settingsJson)), 0));
+}));
+export const setMapBalance = spacetimedb.reducer({ expectedRevision: t.u32(), settingsJson: t.string() }, (ctx, args) => {
+  requireDeveloper(ctx);
+  saveMapBalance(ctx, args.expectedRevision, args.settingsJson);
+});
+export const restoreMapBalance = spacetimedb.reducer({ expectedRevision: t.u32(), revision: t.u32() }, (ctx, args) => {
+  requireDeveloper(ctx);
+  const row = ctx.db.mapBalanceVersion.revision.find(args.revision);
+  if (!row) throw new SenderError("Balance version not found.");
+  saveMapBalance(ctx, args.expectedRevision, row.settingsJson);
+});
+
 export const getNameChangeStatus = spacetimedb.procedure({}, nameChangeStatusResult, ctx => ctx.withTx(tx => {
   const cooldown = tx.db.playerNameCooldown.identity.find(tx.sender);
   return nameChangeStatus(cooldown ? Number(cooldown.changedAt.microsSinceUnixEpoch / 1000n) : null,
@@ -9838,17 +9858,17 @@ export const recordPlayerDeath = spacetimedb.reducer(
   },
 );
 
-function awardRegularEnemyLoot(ctx: ReducerCtx<InferSchema<typeof spacetimedb>>, mapId: string, count: number, checkpoint?: { progress: any }, identity = ctx.sender) {
+function awardRegularEnemyLoot(ctx: ReducerCtx<InferSchema<typeof spacetimedb>>, mapId: string, count: number, checkpoint?: { progress: any }) {
   const drops = rollRegularEnemyLoot(ctx, mapId, count);
   if (!drops.size) return checkpoint?.progress;
-  const current = checkpoint?.progress ?? ctx.db.playerProgress.identity.find(identity);
-  let next = current ?? defaultPlayerProgress(identity);
+  const current = checkpoint?.progress ?? ctx.db.playerProgress.identity.find(ctx.sender);
+  let next = current ?? defaultPlayerProgress(ctx.sender);
   const owned = new Set(inventoryForProgress(next));
-  for (const { active } of activeItemUpgradeEntriesFor(ctx, identity)) owned.add(active.itemId);
+  for (const { active } of activeItemUpgradeEntriesFor(ctx, ctx.sender)) owned.add(active.itemId);
   let inventoryChanged = false;
   for (const [itemId, quantity] of drops) {
     const alreadyOwned = owned.has(itemId);
-    publishItemDrop(ctx, identity, itemId, alreadyOwned, quantity);
+    publishItemDrop(ctx, ctx.sender, itemId, alreadyOwned, quantity);
     if (!alreadyOwned) {
       next = restoreItemToProgress(next, itemId);
       owned.add(itemId);
@@ -9892,7 +9912,7 @@ export const recordEnemyDefeats = spacetimedb.reducer(
           const row = { identity: ctx.sender, completed: Math.max(previous?.completed ?? 0, map.number) };
           if (previous) ctx.db.proceduralProgress.identity.update(row); else ctx.db.proceduralProgress.insert(row);
           const progress = ctx.db.playerProgress.identity.find(ctx.sender)!;
-          writeProgressAndPresentation(ctx, applyEnemyRewards(progress, generatedBossStats(map).rewards.map(reward => ({ ...reward, count: 1 })), researchStatRewardMultiplier(ctx.db.playerResearch.identity.find(ctx.sender))));
+          writeProgressAndPresentation(ctx, applyEnemyRewards(progress, (pinnedMapBalance(ctx, ctx.sender, batch.mapId)?.boss ? Object.entries(pinnedMapBalance(ctx, ctx.sender, batch.mapId)!.boss!.rewards).map(([type, amount]) => ({ type, amount })) : generatedBossStats(map).rewards).map(reward => ({ ...reward, count: 1 })), researchStatRewardMultiplier(ctx.db.playerResearch.identity.find(ctx.sender))));
         }
       }
     }
@@ -10418,7 +10438,7 @@ function transitionPlayerMap(
   syncPlayerMotionIdentity(ctx, nextPlayer);
   syncPlayerMapMarker(ctx, nextPlayer, true);
   ensureRealtimeFrameSchedules(ctx);
-  if (!isMapShard(ctx)) beginBossTimeBudget(ctx, mapId);
+  if (!isMapShard(ctx)) { pinMapBalance(ctx, mapId); beginBossTimeBudget(ctx, mapId); }
   return nextPlayer;
 }
 

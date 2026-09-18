@@ -1,0 +1,14 @@
+<!doctype html><meta name="viewport" content="width=device-width, initial-scale=1"><title>WildStat Balance Editor Preview</title>
+<link rel="stylesheet" href="/assets/wildstat/game.css">
+<link rel="stylesheet" href="/assets/wildstat/balance-editor.css">
+<div id="devAudit"><div class="modal dev-audit-modal"><div class="dev-audit-tabs"><button class="profile-tab">Controls</button><button class="profile-tab is-active">Balance</button><button class="profile-tab">Moderation</button><button class="profile-tab">Bug reports</button><button class="profile-tab">Cutscenes</button><button class="profile-tab">Performance</button></div><section id="devBalancePanel"></section><footer class="window-back-footer"><button class="window-back-button" type="button">Back</button></footer></div></div>
+<script type="module">
+import { createBalanceEditorPanel } from '/src/ui/balance-editor-panel.ts';
+import { defaultBalanceSettings, resolveMapBalance } from '/shared/map-balance.ts';
+let state={revision:0,settings:defaultBalanceSettings(),previousRevision:null},history=[];
+const panel=createBalanceEditorPanel(document.getElementById('devBalancePanel'),{
+load:async()=>structuredClone(state),preview:async(map,settings)=>resolveMapBalance(map,settings,state.revision),
+save:async(revision,settings)=>{history.push(structuredClone(state.settings));state={revision:revision+1,settings:structuredClone(settings),previousRevision:revision}},
+restore:async(expected,revision)=>{state={revision:expected+1,settings:structuredClone(history[revision]),previousRevision:expected}}
+});panel.open();
+</script>

@@ -1,3 +1,4 @@
+import { pinnedMapBalance } from "./map-balance";
 import { personalBossDefinition } from "../../shared/personal-bosses";
 import { SenderError, table, t } from "spacetimedb/server";
 import { defeatBudget, enemyDefeatDefinition, ENEMY_DEFEAT_BATCH_MAX, type EnemyDefeat } from "../../shared/enemy-defeats";
@@ -40,6 +41,7 @@ export function acceptEnemyDefeats(ctx: BossRewardContext, batch: { streamId: st
   if (batch.sequence <= (prior?.sequence ?? 0n)) return null;
   if (batch.mapId !== activeMapId) throw new SenderError("Enemy defeats belong to another map.");
   if (batch.sequence !== (prior?.sequence ?? 0n) + 1n) throw new SenderError("Enemy defeat batches must arrive in order.");
+  const balance = pinnedMapBalance(ctx, ctx.sender, batch.mapId);
   const seen = new Set<string>();
   let count = 0, lootCount = 0, submittedCount = 0;
   const rewards = [];
@@ -49,11 +51,11 @@ export function acceptEnemyDefeats(ctx: BossRewardContext, batch: { streamId: st
     ? [...batch.enemies.filter(entry => entry.enemy !== "boss"), ...batch.enemies.filter(entry => entry.enemy === "boss")]
     : batch.enemies;
   for (const entry of entries) {
-    const definition = enemyDefeatDefinition(batch.mapId, entry.enemy);
+    const definition = enemyDefeatDefinition(batch.mapId, entry.enemy, balance ?? undefined);
     if (!definition || seen.has(entry.enemy) || !Number.isInteger(entry.count) || entry.count < 1 || (submittedCount += entry.count) > ENEMY_DEFEAT_BATCH_MAX)
       throw new SenderError("Invalid enemy for this map.");
     seen.add(entry.enemy);
-    const boss = entry.enemy === "boss" ? personalBossDefinition(batch.mapId) : null;
+    const boss = entry.enemy === "boss" ? balance?.boss ?? personalBossDefinition(batch.mapId) : null;
     const budget = boss ? { capacity: 1 + Math.ceil(300 / boss.respawnSeconds), perSecond: 1 / boss.respawnSeconds } : defeatBudget(definition.population);
     const budgetKey = `${ctx.sender.toHexString()}:${batch.mapId}:${entry.enemy}`;
     const previous = ctx.db.enemyDefeatBudget.key.find(budgetKey);

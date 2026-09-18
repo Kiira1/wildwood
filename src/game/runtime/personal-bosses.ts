@@ -33,6 +33,7 @@ export function createPersonalBosses(options: {
     const definition = personalBossDefinition(mapId);
     if (!definition) return null;
     let row = states.get(mapId);
+    if (row && row.maxHp !== definition.hp) { row.hp = row.hp / row.maxHp * definition.hp; row.maxHp = definition.hp; }
     if (!row || (!row.alive && options.now() >= row.respawnAtMs)) {
       row = { key: `${owner}:${mapId}`, mapId, encounter: ++encounter, hp: definition.hp, maxHp: definition.hp, alive: true, respawnAtMs: 0, respawnAtMicros: 0n };
       const remaining = options.respawns?.remaining(`boss:${mapId}`) ?? 0;
