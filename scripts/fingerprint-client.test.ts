@@ -83,6 +83,7 @@ describe("content-addressed client build", () => {
     const headers = await readFile(join(root, "_headers"), "utf8");
     expect(headers).toContain("/index.html\n  Cache-Control: no-cache");
     expect(headers).toContain("/version.json\n  Cache-Control: no-store");
+    expect(headers).toContain("/ota/*\n  Cache-Control: no-store\n  Access-Control-Allow-Origin: *");
     expect(headers).not.toContain("/assets/*");
     expect(headers).not.toContain("/assets/wildstat/game.js\n");
     for (const path of Object.values(assets)) expect(headers).toContain(`/${path}\n  Cache-Control: public, max-age=31536000, immutable`);

@@ -12,3 +12,5 @@
 
 .balance-hint{color:#a3afa3;font-size:12px;margin:0 0 12px!important}
 #devAudit .dev-audit-modal:has(#devBalancePanel:not([hidden])){width:min(760px,calc(100vw - 26px))}
+
+.ota-panel{margin-top:16px;text-align:left}.ota-panel[hidden]{display:none!important}.ota-panel p{font-size:12px;line-height:1.5;letter-spacing:normal;text-shadow:none;color:#bac3ba;overflow-wrap:anywhere}.ota-panel .balance-actions{flex-wrap:wrap;gap:8px}.ota-panel button{background:#252c25;border:1px solid #505b50;color:#fff;font-size:12px;padding:9px 12px;min-height:40px}.ota-panel button:disabled{opacity:.45}.ota-panel .ota-state{color:#b1e6b6}

@@ -36,3 +36,26 @@ describe('server map balance snapshots', () => {
     expect(() => validateBalanceSettings({})).toThrow();
   });
 });
+
+it('version 2 carries resolved respawn, regeneration and loot while legacy clients retain their timers', () => {
+  const settings = defaultBalanceSettings();
+  Object.assign(settings.maps.tutorial_forest, { enemyRespawn: 2, bossRespawn: 3, bossRegen: .5, enemyDrops: 2 });
+  const legacy = resolveMapBalance('tutorial_forest', settings, 4, 1);
+  const current = resolveMapBalance('tutorial_forest', settings, 4, 2);
+  expect(legacy.regularRespawnSeconds).toBeUndefined(); expect(legacy.loot).toBeUndefined();
+  expect(current.regularRespawnSeconds).toBe(40);
+  expect(current.boss!.respawnSeconds).toBe(legacy.boss!.respawnSeconds * 3);
+  expect(current.boss!.regenFraction).toBe(.0005);
+  const base = resolveMapBalance('tutorial_forest', defaultBalanceSettings(), 0);
+  expect(current.loot!.map(d => d.wins / d.outcomes)).toEqual(base.loot!.map(d => d.wins / d.outcomes * 2));
+  installMapBalance(current);
+  expect(personalBossDefinition('tutorial_forest')!.respawnSeconds).toBe(current.boss!.respawnSeconds);
+});
+it('upgrades stored old settings without changing their existing values and allows disabling drops/regen', () => {
+  const old = defaultBalanceSettings();
+  for (const map of Object.values(old.maps)) for (const key of ['enemyRespawn', 'bossRespawn', 'bossRegen', 'enemyDrops']) delete (map as any)[key];
+  const next = validateBalanceSettings(old); expect(next.maps.tutorial_forest.enemyRespawn).toBe(1);
+  next.maps.tutorial_forest.enemyDrops = 0; next.maps.tutorial_forest.bossRegen = 0;
+  const snapshot = resolveMapBalance('tutorial_forest', validateBalanceSettings(next), 1);
+  expect(snapshot.loot!.every(d => d.wins === 0)).toBe(true); expect(snapshot.boss!.regenFraction).toBe(0);
+});

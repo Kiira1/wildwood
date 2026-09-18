@@ -113,7 +113,7 @@ describe("balance simulator", () => {
     expect(forest.bossRepeatPermanentPowerPerMinuteMedian).toBeGreaterThan(0);
     expect(forest.bossRepeatEfficiencyRatioMedian).toBeGreaterThan(0);
     expect(forest.repeatTimeBudgetMedian?.respawnWaitSeconds).toBeGreaterThan(0);
-    expect(result.diagnostics.some((diagnostic) => diagnostic.includes("full authored reward"))).toBe(true);
+    expect(result.diagnostics.some((diagnostic) => diagnostic.includes("full configured reward"))).toBe(true);
   });
 
   it("produces a monotonic power timeline when no gear is at the bench", () => {

@@ -1,4 +1,10 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.743": [
+    "Guild opponents now show their total guild power beside their names.",
+    "Expanded live map balancing to cover item drop chances, respawn timing, and boss regeneration. These controls do not change the current balance by themselves.",
+    "Added support for tested mobile hotfixes, with signed updates and rollback protection. Updates apply when you reopen the app, without interrupting a fight.",
+    "Updated the developer Balance Lab to use captured live settings and the same map calculations as the game.",
+  ],
   "0.742": [
     "Map balance now loads from the server. Future balance changes take effect when you enter a map, without another app update. Current fights and pending rewards keep the same balance until you leave.",
     "Restored campaign enemy stats, boss stats, rewards, and loot rules to 0.739, undoing the unintended campaign rebalance.",
@@ -2068,6 +2074,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.743": "2026-09-18",
   "0.742": "2026-09-18",
   "0.741": "2026-09-18",
   "0.740": "2026-09-18",

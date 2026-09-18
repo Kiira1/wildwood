@@ -1,3 +1,4 @@
+import { signalNativeBootReady } from '../app/native-updates';
 import { recentReleaseNotes } from "../app/changelog";
 import { MUSIC_VOLUME_KEY } from "../game/runtime/game-settings";
 import {
@@ -37,6 +38,7 @@ export function startStartupBootstrap(dependencies: StartupBootstrapDependencies
     ...dependencies,
     loadGame: async () => {
       gameBundleRequested = true;
+      window.dispatchEvent(new Event("wildstat:game-boot-start"));
       const telemetry = dependencies.beginTelemetryStage?.("game-bundle");
       try {
         await loadDeferredGameBundle();
@@ -45,12 +47,15 @@ export function startStartupBootstrap(dependencies: StartupBootstrapDependencies
         installControl.dispose();
         musicToggle.dispose();
       } catch (error) {
+        window.dispatchEvent(new Event("wildstat:game-boot-failed"));
         telemetry?.finish("failure", "bundle-load-error");
         throw error;
       }
     },
     releaseNotes,
   }).start();
+  // A usable sign-in shell is healthy even when offline; never gate OTA health on server login.
+  requestAnimationFrame(() => signalNativeBootReady());
 
   void Promise.resolve()
     .then(() => dependencies.restoreKnownAccount())

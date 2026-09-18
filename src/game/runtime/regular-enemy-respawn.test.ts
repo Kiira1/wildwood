@@ -96,3 +96,10 @@ describe("regular enemy respawn boost", () => {
     expect(boost.respawnSeconds()).toBe(REWARDED_REGULAR_ENEMY_RESPAWN_SECONDS);
   });
 });
+it('uses the current map configuration and halves it for rewarded respawns', () => {
+  let seconds = 40;
+  const target = site(); const boost = createRegularEnemyRespawnBoost([target], () => 10, Date.now, 0, 1, () => seconds);
+  boost.schedule(target); expect(target.respawnAt).toBe(50);
+  boost.activate(); expect(target.respawnAt).toBe(30);
+  seconds = 60; expect(boost.respawnSeconds()).toBe(30);
+});

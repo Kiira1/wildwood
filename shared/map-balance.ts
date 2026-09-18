@@ -1,3 +1,5 @@
+import { regularMapLoot } from './regular-map-loot';
+import { BOSS_REGEN_FRACTION_PER_SECOND } from './boss-regeneration';
 import { generatedEnemyArt } from "./procedural-enemy-art";
 import * as rules from './rules';
 import { ENEMY_TYPES, type EnemyKind } from './enemy-definitions';
@@ -28,8 +30,11 @@ export function validateBalanceSettings(value: unknown): BalanceSettings {
   const input = value as BalanceSettings;
   const result = defaultBalanceSettings();
   for (const [map] of BALANCE_MAPS) for (const field of Object.keys(DEFAULT_BALANCE_FACTORS) as (keyof typeof DEFAULT_BALANCE_FACTORS)[]) {
-    const n = input?.maps?.[map]?.[field];
-    if (!Number.isFinite(n) || n < .01 || n > 100 || (field === 'enemySpeed' && n > 3)) throw new Error(`Invalid ${map} ${field} (0.01–${field === 'enemySpeed' ? 3 : 100}).`);
+    const optional = ['enemyRespawn', 'bossRespawn', 'bossRegen', 'enemyDrops'].includes(field);
+    const raw = input?.maps?.[map]?.[field];
+    const n = raw === undefined && optional ? 1 : raw;
+    const min = field === 'bossRegen' || field === 'enemyDrops' ? 0 : .01;
+    if (!Number.isFinite(n) || n < min || n > 100 || (field === 'enemySpeed' && n > 3)) throw new Error(`Invalid ${map} ${field} (${min}–${field === 'enemySpeed' ? 3 : 100}).`);
     result.maps[map][field] = n;
   }
   for (const field of Object.keys(result.endless) as (keyof BalanceSettings['endless'])[]) {
@@ -41,8 +46,9 @@ export function validateBalanceSettings(value: unknown): BalanceSettings {
   return result;
 }
 /** Resolved numbers cross the wire; apps do not need the current scaling formula. */
-export function resolveMapBalance(mapId: string, settings: BalanceSettings, revision: number): MapBalanceSnapshot {
+export function resolveMapBalance(mapId: string, settings: BalanceSettings, revision: number, configurationVersion: 1 | 2 = 2): MapBalanceSnapshot {
   const result: MapBalanceSnapshot = { schema: 1, revision, mapId, enemies: {}, lanes: {}, boss: null, rules: {} };
+  if (configurationVersion === 2) result.configurationVersion = 2;
   if (!combatMap(mapId)) return result;
   const generated = isProceduralMap(mapId);
   const factors = settings.maps[generated ? 'endless' : mapId];
@@ -86,6 +92,18 @@ export function resolveMapBalance(mapId: string, settings: BalanceSettings, revi
     const attacks = BOSS_DAMAGE_PROFILES[definition.kind as keyof typeof BOSS_DAMAGE_PROFILES];
     result.boss = { ...definition, hp: definition.hp * factors.bossHealth, damage: 0,
       attacks: Object.fromEntries(Object.entries(attacks).map(([key, value]) => [key, value * factors.bossDamage])), rewards: rewardValues };
+  }
+  if (configurationVersion === 2) {
+    result.configurationVersion = 2;
+    result.regularRespawnSeconds = 20 * (factors.enemyRespawn ?? 1);
+    result.loot = regularMapLoot(mapId, true).map(drop => (factors.enemyDrops ?? 1) === 1 ? { ...drop } : ({
+      itemId: drop.itemId, outcomes: 1_000_000,
+      wins: Math.min(1_000_000, Math.round(drop.wins / drop.outcomes * (factors.enemyDrops ?? 1) * 1_000_000)),
+    }));
+    if (result.boss) {
+      result.boss.respawnSeconds *= factors.bossRespawn ?? 1;
+      result.boss.regenFraction = BOSS_REGEN_FRACTION_PER_SECOND * (factors.bossRegen ?? 1);
+    }
   }
   for (const n of [result.boss?.hp, result.boss?.damage, ...Object.values(result.boss?.rewards ?? {}), ...Object.values(result.lanes).flatMap(row => [row.hp, row.damage, row.reward.amount])]) {
     if (n !== undefined && (!Number.isFinite(n) || n < 0 || n > 1e36)) throw new Error('Balance exceeds supported stat range.');

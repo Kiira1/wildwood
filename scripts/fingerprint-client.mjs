@@ -81,9 +81,10 @@ export async function fingerprintClient(directory) {
   const headers = [
     "/", "  Cache-Control: no-cache", "/index.html", "  Cache-Control: no-cache",
     "/version.json", "  Cache-Control: no-store", "/asset-manifest.json", "  Cache-Control: no-cache",
+    "/ota/*", "  Cache-Control: no-store", "  Access-Control-Allow-Origin: *",
     ...[...assets.values()].sort().flatMap((path) => [`/${path}`, "  Cache-Control: public, max-age=31536000, immutable"]),
   ];
-  if (assets.size + 4 > 100) throw new Error("Cloudflare header rule limit exceeded");
+  if (assets.size + 5 > 100) throw new Error("Cloudflare header rule limit exceeded");
   await writeFile(resolve(directory, "_headers"), headers.join("\n") + "\n");
   return Object.fromEntries(assets);
 }

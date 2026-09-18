@@ -29,6 +29,16 @@ function setup(snapshot = fixture(), socialApi?: SocialApi) {
 async function settled() { for (let i = 0; i < 10; i++) await Promise.resolve(); }
 
 describe("guild panel", () => {
+  it("shows total guild power beside battle opponent names", async () => {
+    const g = fixture(); g.directory[0].totalPower = 2_500_000_000;
+    const h = setup(g); h.panel.open(); await settled(); h.click("Battles");
+    const title = h.document.querySelector(".guild-opponent-heading")!;
+    expect(title.textContent).toContain("Moonlight");
+    expect(title.querySelector(".guild-opponent-power")?.textContent).toBe("2.50b");
+    expect(title.querySelector("img")?.getAttribute("src")).toContain("Icon_Battle_Candy_v2.png");
+    expect(h.find("View Moonlight guild")).toBeTruthy();
+    expect(h.find("Challenge")?.disabled).toBe(false);
+  });
   it("shows presence in member rows while preserving officer titles", async () => {
     const g = fixture();
     g.serverNow = String(10 * 86_400_000_000);

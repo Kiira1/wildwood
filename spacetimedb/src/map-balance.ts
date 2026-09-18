@@ -13,7 +13,7 @@ type Context = Pick<GameReducerContext, 'db' | 'sender' | 'timestamp'>;
 export function balanceEditorState(ctx: Pick<Context, 'db'>): BalanceEditorState {
   const revision = ctx.db.mapBalanceHead.id.find(0)?.revision ?? 0;
   const row = ctx.db.mapBalanceVersion.revision.find(revision);
-  return { revision, settings: row ? JSON.parse(row.settingsJson) : defaultBalanceSettings(), previousRevision: revision > 0 ? revision - 1 : null };
+  return { revision, settings: row ? validateBalanceSettings(JSON.parse(row.settingsJson)) : defaultBalanceSettings(), previousRevision: revision > 0 ? revision - 1 : null };
 }
 export function saveMapBalance(ctx: Context, expectedRevision: number, json: string) {
   const current = balanceEditorState(ctx);
@@ -32,11 +32,18 @@ export function saveMapBalance(ctx: Context, expectedRevision: number, json: str
   else ctx.db.mapBalanceHead.insert({ id: 0, revision });
 }
 /** One small snapshot per player. Reconnects retain the same combat and rewards. */
-export function pinMapBalance(ctx: Context, mapId: string, enable = false) {
+export function pinMapBalance(ctx: Context, mapId: string, enable = false, requestedVersion?: 1 | 2) {
   const previous = ctx.db.playerMapBalance.identity.find(ctx.sender);
-  if (previous?.mapId === mapId || (!previous && !enable)) return;
-  const head = balanceEditorState(ctx);
-  const row = { identity: ctx.sender, mapId, snapshotJson: JSON.stringify(resolveMapBalance(mapId, head.settings, head.revision)) };
+  const oldSnapshot: MapBalanceSnapshot | null = previous ? JSON.parse(previous.snapshotJson) : null;
+  const version = requestedVersion ?? oldSnapshot?.configurationVersion ?? 1;
+  if ((previous?.mapId === mapId && (oldSnapshot?.configurationVersion ?? 1) === version) || (!previous && !enable)) return;
+  let head = balanceEditorState(ctx);
+  // Changing client capability on reconnect keeps the visit's balance revision.
+  if (previous?.mapId === mapId && oldSnapshot) {
+    const stored = ctx.db.mapBalanceVersion.revision.find(oldSnapshot.revision);
+    head = { ...head, revision: oldSnapshot.revision, settings: stored ? validateBalanceSettings(JSON.parse(stored.settingsJson)) : defaultBalanceSettings() };
+  }
+  const row = { identity: ctx.sender, mapId, snapshotJson: JSON.stringify(resolveMapBalance(mapId, head.settings, head.revision, version)) };
   if (previous) ctx.db.playerMapBalance.identity.update(row); else ctx.db.playerMapBalance.insert(row);
 }
 export function pinnedMapBalance(ctx: Pick<Context, 'db'>, identity: Context['sender'], mapId: string): MapBalanceSnapshot | null {

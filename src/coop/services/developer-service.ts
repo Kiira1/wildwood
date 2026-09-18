@@ -94,7 +94,7 @@ export function createDeveloperService(dependencies: DeveloperServiceDependencie
       async getMapBalance(mapId: string): Promise<MapBalanceSnapshot> {
         const conn = dependencies.reducers.connection();
         if (!conn) throw new Error("Connect to load map balance.");
-        const value = await conn.procedures.getMapBalance({ mapId });
+        const value = await conn.procedures.getMapConfiguration({ mapId });
         if (conn !== dependencies.reducers.connection()) throw new Error("Connection changed while loading balance.");
         return JSON.parse(value);
       },

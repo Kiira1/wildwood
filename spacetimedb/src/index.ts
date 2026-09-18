@@ -8825,7 +8825,15 @@ const nameChangeStatusResult = t.object("NameChangeStatus", {
 export const getMapBalance = spacetimedb.procedure({ mapId: t.string() }, t.string(), (ctx, { mapId }) => ctx.withTx(tx => {
   const active = tx.db.player.identity.find(tx.sender);
   if (!active || active.mapId !== mapId) throw new SenderError("Enter the map before loading its balance.");
-  pinMapBalance(tx, mapId, true);
+  pinMapBalance(tx, mapId, true, 1);
+  const row = tx.db.playerMapBalance.identity.find(tx.sender);
+  if (!row || row.mapId !== mapId) throw new SenderError("Map balance is not ready. Retry after entering the map.");
+  return row.snapshotJson;
+}));
+export const getMapConfiguration = spacetimedb.procedure({ mapId: t.string() }, t.string(), (ctx, { mapId }) => ctx.withTx(tx => {
+  const active = tx.db.player.identity.find(tx.sender);
+  if (!active || active.mapId !== mapId) throw new SenderError("Enter the map before loading its balance.");
+  pinMapBalance(tx, mapId, true, 2);
   const row = tx.db.playerMapBalance.identity.find(tx.sender);
   if (!row || row.mapId !== mapId) throw new SenderError("Map balance is not ready. Retry after entering the map.");
   return row.snapshotJson;
@@ -9859,7 +9867,7 @@ export const recordPlayerDeath = spacetimedb.reducer(
 );
 
 function awardRegularEnemyLoot(ctx: ReducerCtx<InferSchema<typeof spacetimedb>>, mapId: string, count: number, checkpoint?: { progress: any }) {
-  const drops = rollRegularEnemyLoot(ctx, mapId, count);
+  const drops = rollRegularEnemyLoot(ctx, mapId, count, pinnedMapBalance(ctx, ctx.sender, mapId)?.loot);
   if (!drops.size) return checkpoint?.progress;
   const current = checkpoint?.progress ?? ctx.db.playerProgress.identity.find(ctx.sender);
   let next = current ?? defaultPlayerProgress(ctx.sender);

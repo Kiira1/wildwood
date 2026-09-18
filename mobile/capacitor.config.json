@@ -19,6 +19,13 @@
       "smallIcon": "ic_stat_research",
       "iconColor": "#ff9ed5",
       "presentationOptions": []
+    },
+    "LiveUpdate": {
+      "autoUpdateStrategy": "none",
+      "autoDeleteBundles": true,
+      "autoBlockRolledBackBundles": true,
+      "readyTimeout": 30000,
+      "publicKey": "-----BEGIN PUBLIC KEY-----\nMIIBojANBgkqhkiG9w0BAQEFAAOCAY8AMIIBigKCAYEAqnJ5ortAw+Bg5EEmX1cf\nlH371xN4iRnJRu1Wn8cPInDPEbp3afZbRzDW720WCs4r+fcnQprdD+RMLx2rTo38\nWdL5PJAc/cQxS4CelxKBw+vOmTH3j3V+6J1t5AwKkJ3lIQhToSFcDtq36zHY1Ly9\ndJOAmCfhUoL7OhOUqcii7MkXBIf7EacX3aXidZ5wW0x+1c5Uhpy+sUwou0Lsd9MH\nCwmSLeNiHHsg3NQ8u+8ggn8HZLiEOe1ITcCR1WgqK6tyYBAhcwmebPyaJZMXJxqL\nnOteyNpToZI561g/+8uYhN9MzOMYJwAfhkR+7R3BSvcrTNLXRAFNm7Wbq2a7IV6R\n3fzAGL7dE/tYtq6HZ3d3rPDzbrbLz9gEXxflqofNytozzpk3JHw49a7PjlwweIQQ\nrbH7WrH7cFpqlXKEAMBwGt0bPJDT2+MwH37WeVN83LQ1bRGeNZvpa5cjqUczx48f\n+vPcG5spY3krjAlc6Dn9uI1xwa51XPpJRp42rHtJ2L1PAgMBAAE=\n-----END PUBLIC KEY-----\n"
     }
   }
 }

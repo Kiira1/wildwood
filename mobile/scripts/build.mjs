@@ -1,3 +1,4 @@
+import { compatibility, writeJson } from './ota/common.mjs';
 import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -55,4 +56,5 @@ await build({
   target: 'es2022',
   define: { __TEST_PURCHASE_CONFIG__: JSON.stringify(commerceConfig) },
 });
+await writeJson(resolve(webDir, 'ota-build.json'), { ...await compatibility(), testPurchasesEnabled });
 console.log("Native preview staged in mobile/www; connects to the live game with a separate guest identity.");

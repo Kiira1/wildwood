@@ -609,5 +609,6 @@ export function startGameRuntime(options: {
   options.rebuildWorld();
   updateCamera(options.camera, options.player, options.viewport(), null, 1);
   options.render();
+  window.dispatchEvent(new Event("wildstat:game-boot-ready"));
   requestAnimationFrame(options.loop);
 }

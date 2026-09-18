@@ -61,6 +61,9 @@
 .guild-office-vacancy--future { opacity: .5; }
 .guild-offices > .guild-member-actions { grid-column: 1 / -1; }
 .guild-row-copy strong { display: block; font-size: 13px; font-weight: 700; overflow-wrap: anywhere; }
+.guild-row-copy .guild-opponent-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; }
+.guild-opponent-power { display: inline-flex; align-items: center; gap: 3px; flex-shrink: 0; white-space: nowrap; color: #fff; -webkit-text-stroke: var(--text-outline-width) #000; paint-order: stroke fill; text-shadow: var(--text-shadow); }
+.guild-opponent-power .power-icon { width: 1em; height: 1em; object-fit: contain; }
 .guild-row-copy > span { display: block; margin-top: 3px; font-size: 11px; color: var(--guild-muted); }
 .guild-row > .guild-button { flex-shrink: 0; font-size: 12px; max-width: 105px; }
 .guild-window .guild-row > .guild-button--icon { font-size: 24px; }

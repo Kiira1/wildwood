@@ -62,7 +62,8 @@ describe("guild membership and authoritative rosters", () => {
     const service = createGuildService({ fighterFor: () => ({ name: "Test", fighter }), powerFor });
     const snapshot = f.run(1, ctx => service.snapshot(ctx));
     expect(snapshot.guild?.totalPower).toBe(6000);
-    expect(powerFor).toHaveBeenCalledTimes(3);
+    expect(snapshot.directory.map(row => row.totalPower)).toEqual([6000, 33000]);
+    expect(powerFor).toHaveBeenCalledTimes(6);
     f.run(2, ctx => f.service.leave(ctx));
     expect(f.run(1, ctx => service.snapshot(ctx)).guild?.totalPower).toBe(4000);
   });

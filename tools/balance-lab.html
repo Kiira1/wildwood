@@ -26,6 +26,14 @@
       <aside class="control-rail">
         <form id="simulationForm">
           <section class="control-section">
+            <label class="field-label" for="balanceSource">Game balance source</label>
+            <select id="balanceSource">
+              <option value="live">Captured live balance</option>
+              <option value="authored">Authored defaults (no live overrides)</option>
+            </select>
+            <p class="header-copy" id="balanceSourceNote"></p>
+          </section>
+          <section class="control-section">
             <div class="section-heading">
               <div>
                 <p class="section-kicker">RUN MODEL</p>
@@ -134,7 +142,7 @@
             <details class="advanced-controls">
               <summary>Travel & progression assumptions</summary>
               <div class="details-body">
-                <label class="field-label" for="respawnSeconds">Enemy respawn</label>
+                <label class="field-label" for="respawnSeconds">Base enemy respawn (before map tuning)</label>
                 <div class="input-with-unit compact">
                   <input id="respawnSeconds" name="respawnSeconds" type="number" min="1" max="300" step="1" inputmode="decimal" />
                   <span>SEC</span>
@@ -431,7 +439,7 @@
         </div>
 
         <section class="model-note">
-          <strong>What the clock models:</strong> current enemy HP/rewards/spawns and the server’s complete loot catalog, percentage damage, health, and regeneration equipment, 8%-per-level gear upgrades, attack cap, research, loot odds, travel, respawns, solo boss damage, and a repeat-boss farming comparison. Mixed runs give each campaign a slightly different blend of nearby, efficient, DPS-first, and boss-readiness priorities; the boss-farm strategy is an explicit exploit check. Opening momentum, equipment strength, and future-system reserve are reference/what-if controls only. Headroom ceilings are event-clock sensitivity estimates. The clock starts on Forest arrival with completed tutorial rewards. Boss readiness and camp-clear settings are player-strategy assumptions, not gameplay requirements. Black Boots activate after five combat-free seconds. Loot is delivered immediately in this model; server batching is not simulated. The clock deliberately does not invent player dodging, deaths, idle time, boss mechanics, or multiplayer contribution.
+          <strong>What the clock models:</strong> current enemy HP/rewards/spawns and the server’s complete loot catalog, percentage damage, health, and regeneration equipment, 8%-per-level gear upgrades, attack cap, research, loot odds, travel, respawns, critical-hit expected damage for regular enemies and personal bosses, map-specific boss regeneration and respawns, and a repeat-boss farming comparison. Mixed runs give each campaign a slightly different blend of nearby, efficient, DPS-first, and boss-readiness priorities; the boss-farm strategy is an explicit exploit check. Opening momentum, equipment strength, and future-system reserve are reference/what-if controls only. Headroom ceilings are event-clock sensitivity estimates. The clock starts on Forest arrival with completed tutorial rewards. Boss readiness and camp-clear settings are player-strategy assumptions, not gameplay requirements. Black Boots activate after five combat-free seconds. Loot is delivered immediately in this model; server batching is not simulated. The clock deliberately does not invent player dodging, deaths, idle time, boss mechanics, or multiplayer contribution.
         </section>
       </main>
     </div>

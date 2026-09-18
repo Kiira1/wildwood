@@ -1,3 +1,4 @@
+import { runtimeMapBalance } from '../shared/map-balance-runtime';
 import { refreshMapBalanceEnemies } from "./game/runtime/map-balance-enemies";
 import { createMapBalanceLoader } from "./game/runtime/map-balance-loader";
 import { installAccountDeletion } from "./ui/account-deletion-controller";
@@ -331,6 +332,7 @@ import {
     Date.now,
     readRespawnBoostExpiry(),
     localTestMultiplier,
+    () => runtimeMapBalance(currentMapId)?.regularRespawnSeconds ?? 20,
   );
 
   function activateRewardedRespawnBoost() {

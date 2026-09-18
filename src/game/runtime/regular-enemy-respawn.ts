@@ -23,13 +23,14 @@ export function createRegularEnemyRespawnBoost(
   getNowMs: () => number = Date.now,
   initialActiveUntilMs = 0,
   respawnSpeedMultiplier = 1,
+  baseRespawnSeconds = () => REGULAR_ENEMY_RESPAWN_SECONDS,
 ): RegularEnemyRespawnBoost {
   let activeUntilMs = Number.isFinite(initialActiveUntilMs) ? Math.max(0, initialActiveUntilMs) : 0;
   const speedMultiplier = Number.isFinite(respawnSpeedMultiplier)
     ? Math.max(1, respawnSpeedMultiplier)
     : 1;
-  const regularRespawnSeconds = REGULAR_ENEMY_RESPAWN_SECONDS / speedMultiplier;
-  const rewardedRespawnSeconds = REWARDED_REGULAR_ENEMY_RESPAWN_SECONDS / speedMultiplier;
+  const regularRespawnSeconds = () => baseRespawnSeconds() / speedMultiplier;
+  const rewardedRespawnSeconds = () => regularRespawnSeconds() / 2;
 
   function remainingMs() {
     return Math.max(0, activeUntilMs - getNowMs());
@@ -40,7 +41,7 @@ export function createRegularEnemyRespawnBoost(
   }
 
   function respawnSeconds() {
-    return isActive() ? rewardedRespawnSeconds : regularRespawnSeconds;
+    return isActive() ? rewardedRespawnSeconds() : regularRespawnSeconds();
   }
 
   function schedule(site: SpawnSite) {
@@ -53,14 +54,14 @@ export function createRegularEnemyRespawnBoost(
     activeUntilMs = getNowMs() + REWARDED_RESPAWN_BOOST_DURATION_MS;
     const gameTime = getGameTime();
 
-    // Existing 30-second timers become 15-second timers measured from the
+    // Existing timers are halved measured from the
     // original defeat. Never lengthen an already-shorter timer.
     for (const site of spawnSites) {
       if (site.alive || site.respawnAt <= 0) continue;
-      const defeatedAt = site.respawnAt - regularRespawnSeconds;
+      const defeatedAt = site.respawnAt - regularRespawnSeconds();
       const boostedRespawnAt = Math.max(
         gameTime,
-        defeatedAt + rewardedRespawnSeconds,
+        defeatedAt + rewardedRespawnSeconds(),
       );
       site.respawnAt = Math.min(site.respawnAt, boostedRespawnAt);
     }

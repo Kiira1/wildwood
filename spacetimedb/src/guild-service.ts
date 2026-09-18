@@ -260,6 +260,14 @@ export function createGuildService(deps: { fighterFor(ctx: Ctx, identity: Identi
       const stored = member ? ctx.db.guild.id.find(member.guildId) : null;
       const guild = stored ? currentGuild(ctx, stored) : null;
       const roster = guild ? members(ctx, guild.id) : [];
+      const powers = new Map<bigint, number>();
+      const totalPower = (guildId: bigint) => {
+        if (!powers.has(guildId)) {
+          const lineup = guildId === guild?.id ? roster : members(ctx, guildId);
+          powers.set(guildId, lineup.reduce((sum, row) => sum + (deps.powerFor?.(ctx, row.identity) ?? 0), 0));
+        }
+        return powers.get(guildId)!;
+      };
       const week = guildWeek(now(ctx));
       const cache = ctx.db.guildStanding.id.find(0);
       const directory: GuildSnapshot["directory"] = [];
@@ -267,7 +275,7 @@ export function createGuildService(deps: { fighterFor(ctx: Ctx, identity: Identi
       let nextPage: string | null = null;
       for (const row of ctx.db.guild.directoryId.filter(new Range({ tag: "excluded", value: afterId }))) {
         if (directory.length === 20) { nextPage = directory[19].id; break; }
-        directory.push({ id: String(row.id), name: row.name, members: row.members,
+        directory.push({ id: String(row.id), name: row.name, members: row.members, totalPower: totalPower(row.id),
           challengedToday: challengedToday.has(String(row.id)) });
       }
       return { identity: key(ctx.sender), serverNow: String(now(ctx)), week,
@@ -276,9 +284,9 @@ export function createGuildService(deps: { fighterFor(ctx: Ctx, identity: Identi
         guild: guild ? { id: String(guild.id), name: guild.name, leader: key(guild.leader),
           vicePresident: roster.find(row => row.vicePresident)?.identity.toHexString() ?? null,
           attacksRemaining: GUILD_DAILY_ATTACKS - guild.attacks, score: guild.score,
-          totalPower: roster.reduce((sum, row) => sum + (deps.powerFor?.(ctx, row.identity) ?? 0), 0),
+          totalPower: totalPower(guild.id),
           // Repair old join-time names on read with one indexed profile lookup;
-          // power is also read only for this roster, with no background polling.
+          // power reads are bounded to this roster and the 20-guild directory page.
           members: roster.map(row => {
             const profile = deps.profileFor?.(ctx, row.identity);
             return { identity: key(row.identity), name: profile?.displayName ?? row.name,

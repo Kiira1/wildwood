@@ -1,3 +1,4 @@
+import { createOtaPanel } from './ota-panel';
 import { createBalanceEditorPanel, type BalanceEditorDependencies } from "./balance-editor-panel";
 import { createModerationHistoryPanel, type ModerationHistoryLoader } from "./moderation-history-panel";
 import { requiredElement } from "../game/runtime/dom";
@@ -81,6 +82,7 @@ export function createDevPanelController(dependencies: DevPanelDependencies) {
     cutscenes: requiredElement("devCutscenesPanel"),
     performance: requiredElement("devPerformancePanel"),
   };
+  const ota = createOtaPanel(tabPanels.controls);
   const balance = createBalanceEditorPanel(tabPanels.balance, dependencies.balance);
   const moderation = createModerationHistoryPanel(tabPanels.moderation, dependencies.loadModerationHistory);
   const nameTagToggle = requiredElement<HTMLButtonElement>("devNameTagToggle");
@@ -227,6 +229,7 @@ export function createDevPanelController(dependencies: DevPanelDependencies) {
   }
 
   function setDeveloperAccess(developer: boolean) {
+    ota.setDeveloperAccess(developer);
     settingsRow.hidden = !developer;
     button.hidden = !developer;
     if (!developer) { close(); forestPrototype.clear(); }

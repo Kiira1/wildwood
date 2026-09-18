@@ -1,3 +1,4 @@
+import { installNativeUpdates } from './ota-updates';
 import { installNativeKeepScreenOn } from "./keep-screen-on";
 import { Browser } from "@capacitor/browser";
 import { installAndroidUpdates } from './android-updates';
@@ -25,6 +26,7 @@ if (platform === 'ios' || platform === 'android') {
   window.addEventListener("wildstat:toolbar-haptic", () => {
     void Haptics.impact({ style: ImpactStyle.Light }).catch(() => {});
   });
+  installNativeUpdates(platform);
   installNativeKeepScreenOn();
   installNativeAuth();
   if (platform === 'android') installAndroidUpdates();

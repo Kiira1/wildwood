@@ -56,7 +56,7 @@ export function acceptEnemyDefeats(ctx: BossRewardContext, batch: { streamId: st
       throw new SenderError("Invalid enemy for this map.");
     seen.add(entry.enemy);
     const boss = entry.enemy === "boss" ? balance?.boss ?? personalBossDefinition(batch.mapId) : null;
-    const budget = boss ? { capacity: 1 + Math.ceil(300 / boss.respawnSeconds), perSecond: 1 / boss.respawnSeconds } : defeatBudget(definition.population);
+    const budget = boss ? { capacity: 1 + Math.ceil(300 / boss.respawnSeconds), perSecond: 1 / boss.respawnSeconds } : defeatBudget(definition.population, balance?.regularRespawnSeconds === undefined ? undefined : balance.regularRespawnSeconds / 6);
     const budgetKey = `${ctx.sender.toHexString()}:${batch.mapId}:${entry.enemy}`;
     const previous = ctx.db.enemyDefeatBudget.key.find(budgetKey);
     const now = ctx.timestamp.microsSinceUnixEpoch;

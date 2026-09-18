@@ -195,6 +195,7 @@ import * as GetGuildReplayProcedure from "./get_guild_replay_procedure";
 import * as GetLeaderboardPageProcedure from "./get_leaderboard_page_procedure";
 import * as GetLeaderboardWindowProcedure from "./get_leaderboard_window_procedure";
 import * as GetMapBalanceProcedure from "./get_map_balance_procedure";
+import * as GetMapConfigurationProcedure from "./get_map_configuration_procedure";
 import * as GetModerationHistoryProcedure from "./get_moderation_history_procedure";
 import * as GetNameChangeStatusProcedure from "./get_name_change_status_procedure";
 import * as GetPatreonStatusProcedure from "./get_patreon_status_procedure";
@@ -1371,6 +1372,7 @@ const proceduresSchema = __procedures(
   __procedureSchema("get_leaderboard_page", GetLeaderboardPageProcedure.params, GetLeaderboardPageProcedure.returnType),
   __procedureSchema("get_leaderboard_window", GetLeaderboardWindowProcedure.params, GetLeaderboardWindowProcedure.returnType),
   __procedureSchema("get_map_balance", GetMapBalanceProcedure.params, GetMapBalanceProcedure.returnType),
+  __procedureSchema("get_map_configuration", GetMapConfigurationProcedure.params, GetMapConfigurationProcedure.returnType),
   __procedureSchema("get_moderation_history", GetModerationHistoryProcedure.params, GetModerationHistoryProcedure.returnType),
   __procedureSchema("get_name_change_status", GetNameChangeStatusProcedure.params, GetNameChangeStatusProcedure.returnType),
   __procedureSchema("get_patreon_status", GetPatreonStatusProcedure.params, GetPatreonStatusProcedure.returnType),

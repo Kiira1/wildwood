@@ -56,8 +56,8 @@ export function combatMap(mapId: string) { return Object.prototype.hasOwnPropert
 // capacity tolerate periodic save batches. Refill allows the fastest rewarded
 // respawn plus the local test multiplier (10 / 3 seconds), never a ban.
 export const DEFEAT_MIN_RESPAWN_SECONDS = 10 / 3;
-export function defeatBudget(population: number) {
-  const perSecond = population / DEFEAT_MIN_RESPAWN_SECONDS;
+export function defeatBudget(population: number, minRespawnSeconds = DEFEAT_MIN_RESPAWN_SECONDS) {
+  const perSecond = population / minRespawnSeconds;
   return { capacity: population + perSecond * 300, perSecond };
 }
 export function applyEnemyRewards<T extends { damage: number; maxHp: number; attackRate: number; armor: number; regen: number }>(

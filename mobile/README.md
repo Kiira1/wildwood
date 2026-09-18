@@ -66,10 +66,7 @@ npm --prefix mobile run ios  # build, sync both shells, open Xcode
 npm --prefix mobile run android
 ```
 
-Run the launcher again whenever game files change; already installed apps keep
-their bundled build until reinstalled. If the server reports UPDATE REQUIRED,
-build and install the latest checkout. The wrapper does not download newer
-game code from the website.
+Native releases bundle a complete fallback game. Compatible signed OTA hotfixes can be staged for the next cold launch after developer-channel testing. Native dependency, protocol, and save-format changes still need a regular app release. See [server configuration and OTA](../docs/server-config-and-ota.md) for baselines, signing, promotion, and rollback.
 
 ## Scope and verification
 

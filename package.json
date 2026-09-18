@@ -16,6 +16,7 @@
     "dev:local": "node scripts/local-dev.mjs",
     "balance:lab": "vite --config config/vite.balance.config.ts --host 127.0.0.1 --open /balance-lab.html",
     "balance:stat-graph": "vite --config config/vite.stat-graph.config.ts --host 127.0.0.1 --open /balance-stat-graph.html",
+    "balance:sync": "tsx scripts/sync-balance-lab.ts",
     "balance:simulate": "tsx scripts/balance-report.ts",
     "tutorial:text": "node scripts/tutorial-editor-server.mjs",
     "map:editor": "node scripts/map-editor-server.mjs",

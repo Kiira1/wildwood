@@ -94,3 +94,10 @@ it("consumes a 100-kill Endless report exceeding the 91-kill capacity without tr
   f.patch("player", { mapId: "home_exterior" });
   expect(() => f.run(server.recordEnemyDefeats, report)).not.toThrow();
 });
+
+it('rolls pinned server drop chances instead of the current compiled table', () => {
+  const random = { integerInRange: vi.fn(() => 500_000) };
+  const drop = { itemId: 'starter_bow' as const, outcomes: 1_000_000, wins: 500_000 };
+  expect(rollRegularEnemyLoot({ random } as any, 'tutorial_forest', 2, [drop]).get('starter_bow')).toBe(2);
+  expect(rollRegularEnemyLoot({ random } as any, 'tutorial_forest', 2, [{ ...drop, wins: 0 }]).size).toBe(0);
+});

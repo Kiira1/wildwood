@@ -18,6 +18,7 @@ import * as GetGuildReplayProcedure from "../get_guild_replay_procedure";
 import * as GetLeaderboardPageProcedure from "../get_leaderboard_page_procedure";
 import * as GetLeaderboardWindowProcedure from "../get_leaderboard_window_procedure";
 import * as GetMapBalanceProcedure from "../get_map_balance_procedure";
+import * as GetMapConfigurationProcedure from "../get_map_configuration_procedure";
 import * as GetModerationHistoryProcedure from "../get_moderation_history_procedure";
 import * as GetNameChangeStatusProcedure from "../get_name_change_status_procedure";
 import * as GetPatreonStatusProcedure from "../get_patreon_status_procedure";
@@ -52,6 +53,8 @@ export type GetLeaderboardWindowArgs = __Infer<typeof GetLeaderboardWindowProced
 export type GetLeaderboardWindowResult = __Infer<typeof GetLeaderboardWindowProcedure.returnType>;
 export type GetMapBalanceArgs = __Infer<typeof GetMapBalanceProcedure.params>;
 export type GetMapBalanceResult = __Infer<typeof GetMapBalanceProcedure.returnType>;
+export type GetMapConfigurationArgs = __Infer<typeof GetMapConfigurationProcedure.params>;
+export type GetMapConfigurationResult = __Infer<typeof GetMapConfigurationProcedure.returnType>;
 export type GetModerationHistoryArgs = __Infer<typeof GetModerationHistoryProcedure.params>;
 export type GetModerationHistoryResult = __Infer<typeof GetModerationHistoryProcedure.returnType>;
 export type GetNameChangeStatusArgs = __Infer<typeof GetNameChangeStatusProcedure.params>;

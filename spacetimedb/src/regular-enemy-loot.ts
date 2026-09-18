@@ -1,6 +1,6 @@
 import { SenderError, table, t, type InferSchema, type ReducerCtx } from "spacetimedb/server";
 import type schema from "./index";
-import { regularMapLoot, REGULAR_ENEMY_LOOT_BATCH_MAX } from "../../shared/regular-map-loot";
+import { regularMapLoot, REGULAR_ENEMY_LOOT_BATCH_MAX, type MapLootDrop } from "../../shared/regular-map-loot";
 
 // One cursor per account/browser stream, rather than one receipt row per kill.
 export const regularEnemyLootCursor = table({ name: "regular_enemy_loot_cursor" }, {
@@ -27,9 +27,9 @@ export function acceptRegularEnemyLootBatch(ctx: Context, batch: {
 }
 
 /** Keep each item's independent per-kill roll; combine only the resulting writes. */
-export function rollRegularEnemyLoot(ctx: Pick<Context, "random">, mapId: string, count: number) {
+export function rollRegularEnemyLoot(ctx: Pick<Context, "random">, mapId: string, count: number, configuredLoot?: readonly MapLootDrop[]) {
   const rewards = new Map<string, number>();
-  const loot = regularMapLoot(mapId);
+  const loot = configuredLoot ?? regularMapLoot(mapId);
   for (let kill = 0; kill < count; kill++) {
     for (const drop of loot) {
       if (ctx.random.integerInRange(1, drop.outcomes) <= drop.wins) {

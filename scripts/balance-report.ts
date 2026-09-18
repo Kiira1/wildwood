@@ -1,3 +1,4 @@
+import { LIVE_BALANCE } from "../src/balance/live-balance";
 import { isProceduralMap } from "../shared/procedural-maps";
 import { formatCompactNumber } from "../src/ui/number-format";
 import {
@@ -45,7 +46,7 @@ function parseMapAdjustment(config: BalanceSimulationConfig, specification: stri
 }
 
 function parseArguments(args: string[]) {
-  const config = defaultBalanceSimulationConfig();
+  const config = { ...defaultBalanceSimulationConfig(), balanceSettings: structuredClone(LIVE_BALANCE.settings) };
   let json = false;
   for (let index = 0; index < args.length; index += 1) {
     const flag = args[index];
@@ -168,6 +169,7 @@ if (parsed.json) {
   process.exit(0);
 }
 
+console.log(`Balance source: captured maincloud revision ${LIVE_BALANCE.revision} (${LIVE_BALANCE.capturedAt}); current checkout rules.`);
 console.log(`WildStat Balance Lab · ${result.simulatedCampaigns} campaigns · ${formatDuration(result.config.durationSeconds)} · ${result.config.strategy} · research ${result.config.researchPlan}`);
 console.log(`Final power ${formatCompactNumber(result.finalPower.median)} (${formatCompactNumber(result.finalPower.p10)}–${formatCompactNumber(result.finalPower.p90)}) · DPS ${formatCompactNumber(result.finalDps.median)}`);
 const strategyLabels: Record<keyof BalanceSimulationResult["strategyMix"], string> = {
@@ -205,7 +207,7 @@ for (const map of result.maps) {
   );
 }
 console.log("");
-console.log("Boss reward audit · first-clear and repeat power/min vs regular; every clear pays the full authored reward");
+console.log("Boss reward audit · first-clear and repeat power/min vs regular; every clear pays the full configured reward");
 for (const map of result.maps.filter((entry) => entry.hasBoss && entry.bossFirstClearEfficiencyRatioMedian !== null)) {
   console.log(`- ${map.name}: first clear ${formatCompactNumber(map.bossFirstClearPowerPerMinuteMedian ?? 0)} / min vs ${formatCompactNumber(map.bestRegularPowerPerMinuteMedian ?? 0)} regular · ${map.bossFirstClearEfficiencyRatioMedian!.toFixed(2)}× · repeat full payout ${formatCompactNumber(map.bossRepeatPermanentPowerPerMinuteMedian ?? 0)} / min · ${(map.bossRepeatEfficiencyRatioMedian ?? 0).toFixed(2)}× regular · ${formatCompactNumber(map.repeatBossKillsMedian ?? 0)} repeat kills`);
 }

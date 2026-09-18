@@ -194,6 +194,17 @@ export function createGuildPanel(options: Options) {
     const list = element("div", undefined, "guild-list"); parent.append(list);
     for (const entry of entries) {
       const item = row(list, entry.name, `${entry.members}/${GUILD_MEMBER_LIMIT} members`);
+      if (challenge) {
+        const title = item.querySelector("strong")!;
+        title.classList.add("guild-opponent-heading");
+        const amount = entry.totalPower === undefined ? "—" : formatCompactNumber(entry.totalPower);
+        const power = element("span", amount, "guild-opponent-power");
+        power.setAttribute("aria-label", `Guild power: ${amount}`);
+        const icon = element("img", undefined, "power-icon");
+        icon.src = "assets/wildstat/icons/Icon_Battle_Candy_v2.png"; icon.alt = "";
+        icon.setAttribute("aria-hidden", "true"); power.append(icon);
+        title.replaceChildren(element("span", entry.name), power);
+      }
       const preview = element('button', undefined, 'guild-member-profile'); preview.type = 'button';
       preview.setAttribute('aria-label', `View ${entry.name} guild`);
       preview.append(mark(entry.name, "guild-avatar"), item.firstElementChild!);

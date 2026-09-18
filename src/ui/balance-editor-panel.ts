@@ -6,7 +6,7 @@ export type BalanceEditorDependencies = {
   save: (revision: number, settings: BalanceSettings) => Promise<void>;
   restore: (expected: number, revision: number) => Promise<void>;
 };
-const fields: [keyof BalanceFactors, string][] = [['enemyHealth', 'Health'], ['enemyDamage', 'Damage'], ['enemyRewards', 'Stat rewards'], ['enemySpeed', 'Move speed'], ['bossHealth', 'Health'], ['bossDamage', 'Damage'], ['bossRewards', 'Stat rewards']];
+const fields: [keyof BalanceFactors, string][] = [['enemyHealth', 'Health'], ['enemyDamage', 'Damage'], ['enemyRewards', 'Stat rewards'], ['enemySpeed', 'Move speed'], ['enemyRespawn', 'Respawn time'], ['enemyDrops', 'Item drops'], ['bossHealth', 'Health'], ['bossDamage', 'Damage'], ['bossRewards', 'Stat rewards'], ['bossRespawn', 'Respawn time'], ['bossRegen', 'Regeneration']];
 const format = (n: number) => Intl.NumberFormat('en', { notation: n >= 10000 ? 'compact' : 'standard', maximumSignificantDigits: 4 }).format(n);
 export function createBalanceEditorPanel(root: HTMLElement, api: BalanceEditorDependencies) {
   root.classList.add('balance-editor');
@@ -28,7 +28,7 @@ export function createBalanceEditorPanel(root: HTMLElement, api: BalanceEditorDe
     for (const [key, labelText] of fields.filter(([key]) => key.startsWith(category === 'Boss' ? 'boss' : 'enemy'))) {
       const label = document.createElement('label'); label.append(labelText);
       const control = document.createElement('span'); control.className = 'balance-number';
-      const input = document.createElement('input'); input.type = 'number'; input.min = '.01'; input.max = key === 'enemySpeed' ? '3' : '100'; input.step = 'any'; input.setAttribute('aria-label', `${category} ${labelText} multiplier`);
+      const input = document.createElement('input'); input.type = 'number'; input.min = key === 'enemyDrops' || key === 'bossRegen' ? '0' : '.01'; input.max = key === 'enemySpeed' ? '3' : '100'; input.step = 'any'; input.setAttribute('aria-label', `${category} ${labelText} multiplier`);
       control.append(input, '×'); label.append(control); section.append(label); inputs.set(key, input);
       input.addEventListener('input', () => { if (draft) { draft.maps[select.value][key] = input.valueAsNumber; schedulePreview(); } });
     }
@@ -75,7 +75,12 @@ export function createBalanceEditorPanel(root: HTMLElement, api: BalanceEditorDe
         for (const text of [name, format(hp), format(damage), reward]) { const td = document.createElement('td'); td.textContent = text; tr.append(td); }
         body.append(tr);
       }
-      table.append(body); preview.append(table); el('.balance-preview-state').textContent = 'Server preview';
+      table.append(body); preview.append(table);
+      const details = document.createElement('p');
+      details.textContent = `Enemy respawn: ${format(value.regularRespawnSeconds ?? 20)}s · With ad: ${format((value.regularRespawnSeconds ?? 20) / 2)}s` + (value.boss ? ` · Boss respawn: ${format(value.boss.respawnSeconds)}s · Boss regen: ${format((value.boss.regenFraction ?? .001) * 100)}% HP/s` : '');
+      preview.append(details);
+      if (value.loot?.length) { const loot = document.createElement('p'); loot.textContent = value.loot.map(drop => `${drop.itemId.replace(/_/g, ' ')}: ${format(drop.wins / drop.outcomes * 100)}%`).join(' · '); preview.append(loot); }
+       el('.balance-preview-state').textContent = 'Server preview';
       apply.disabled = busy || !changed();
     } catch (error) { if (attempt === generation) { el('.balance-preview-state').textContent = 'Preview unavailable'; status.textContent = message(error); } }
   }

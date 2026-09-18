@@ -13,6 +13,7 @@ export const DEFAULT_KILL_BUDGET: KillBudgetConfig = {
   enabled: false, curve: "calibrated", damageKills: 125, healthKills: 135, campaignGrowth: 1.45, endlessGrowth: 1.25,
 };
 export type BossReadinessInput = {
+  regenFraction?: number;
   bossHp: number;
   bossHitAfterArmor: number;
   hitDamage: number;
@@ -59,7 +60,7 @@ export function killTargets(config: KillBudgetConfig, mapIndex: number, campaign
 }
 function bossDamagePerHp(input: BossReadinessInput) {
   const hits = Math.max(1, Math.floor((input.targetSeconds - input.firstHitSeconds) / input.attackInterval) + 1);
-  return (1 + (hits - 1) * BOSS_REGEN_FRACTION_PER_SECOND * input.attackInterval) / hits;
+  return (1 + (hits - 1) * (input.regenFraction ?? BOSS_REGEN_FRACTION_PER_SECOND) * input.attackInterval) / hits;
 }
 export function minimumReadinessKills(input: BossReadinessInput): BossReadiness {
   const damageGap = Math.max(0, input.bossHp * bossDamagePerHp(input) - input.hitDamage);
