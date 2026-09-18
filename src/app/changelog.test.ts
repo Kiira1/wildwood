@@ -18,6 +18,9 @@ describe("release-note dates", () => {
   });
 
   it("formats recorded ISO release days for display", () => {
+    expect(releaseDate("0.732")).toBe("SEP 17, 2026");
+    expect(releaseDate("0.733")).toBe("SEP 17, 2026");
+    expect(releaseDate("9.999")).toBe("");
     expect(releaseDate("0.474")).toBe("AUG 22, 2026");
     expect(releaseDate("0.431")).toBe("AUG 17, 2026");
     expect(releaseDate("0.430")).toBe("AUG 16, 2026");

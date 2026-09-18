@@ -2022,6 +2022,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.733": "2026-09-17",
   "0.732": "2026-09-17",
   "0.731": "2026-09-17",
   "0.730": "2026-09-17",
@@ -2268,6 +2269,9 @@ export const RELEASE_DAYS: Record<string, string> = {
 function releaseDay(version: string) {
   if (RELEASE_DAYS[version]) return RELEASE_DAYS[version];
   const numericVersion = Number(version);
+  // Only legacy releases use the historical ranges. Never date a new patch
+  // as August 22 simply because its explicit release-day entry is missing.
+  if (numericVersion > .473) return null;
   if (numericVersion >= .472) return "2026-08-22";
   if (numericVersion >= .459) return "2026-08-21";
   if (numericVersion >= .456) return "2026-08-19";
