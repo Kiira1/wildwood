@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>WildStat mail editor</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#131413;color:#fff;font:16px/1.5 system-ui}main{max-width:760px;margin:auto;padding:28px 20px 100px}h1{font-size:26px;margin:0}p,small{color:#b6bcb6}label{display:block;margin:20px 0 6px;font-weight:700}input,textarea{width:100%;padding:12px;border:1px solid #ffffff40;border-radius:8px;background:#202120;color:#fff;font:inherit}textarea{min-height:400px;resize:vertical}input:focus,textarea:focus{outline:2px solid #bbb;outline-offset:2px}footer{position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:center;align-items:center;gap:16px;padding:16px;background:#202120;border-top:1px solid #ffffff30}button{background:#a23c40;color:white;font:700 16px system-ui;border:2px solid #5c2225;border-radius:8px;padding:12px 24px;cursor:pointer}button:disabled{opacity:.5}#status{font-size:14px} .reward{display:flex;align-items:center;justify-content:center;gap:8px;margin:20px 0;font-weight:700;color:#efb8e6}
+</style>
+<main><h1>Edit mailbox message</h1><p>Save your wording here for the next release.</p><div class="reward">75 gems · One claim per player</div>
+<form id="editor"><label for="title">Title</label><input id="title" name="title" maxlength="100" required><label for="body">Message</label><textarea id="body" name="body" maxlength="6000" required></textarea></form>
+<small>The gem reward appears above this message. Editing the wording keeps existing claims intact.</small></main>
+<footer><button type="submit" form="editor" id="save" disabled>Save changes</button><span id="status" role="status">Loading…</span></footer>
+<script type="module">
+if(location.protocol==='file:')location.replace('http://127.0.0.1:4176/');
+else {
+const form=document.querySelector('#editor'), save=document.querySelector('#save'), status=document.querySelector('#status');let dirty=false;
+try{const response=await fetch('/copy');if(!response.ok)throw Error('Could not load mail.');const copy=await response.json();form.elements.title.value=copy.title;form.elements.body.value=copy.body;status.textContent='Ready to edit';}catch(error){status.textContent=error.message;}
+form.addEventListener('input',()=>{dirty=true;save.disabled=false;status.textContent='Unsaved changes';});
+form.addEventListener('submit',async event=>{event.preventDefault();save.disabled=true;status.textContent='Saving…';try{const response=await fetch('/copy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.fromEntries(new FormData(form)))});const result=await response.json();if(!response.ok)throw Error(result.error);dirty=false;status.textContent='Saved -- ready for the next release.';}catch(error){save.disabled=false;status.textContent=error.message;}});
+window.addEventListener('beforeunload',event=>{if(dirty){event.preventDefault();event.returnValue='';}});
+}
+</script></html>

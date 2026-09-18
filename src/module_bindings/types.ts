@@ -1000,6 +1000,37 @@ export const MagmaliskResult = __t.object("MagmaliskResult", {
 });
 export type MagmaliskResult = __Infer<typeof MagmaliskResult>;
 
+export const MailboxEntry = __t.object("MailboxEntry", {
+  id: __t.string(),
+  title: __t.string(),
+  body: __t.string(),
+  gems: __t.u64(),
+  createdAt: __t.timestamp(),
+  read: __t.bool(),
+  claimed: __t.bool(),
+});
+export type MailboxEntry = __Infer<typeof MailboxEntry>;
+
+export const MailboxLetter = __t.object("MailboxLetter", {
+  id: __t.string(),
+  title: __t.string(),
+  body: __t.string(),
+  gems: __t.u64(),
+  createdAt: __t.timestamp(),
+  eligibleBefore: __t.timestamp(),
+});
+export type MailboxLetter = __Infer<typeof MailboxLetter>;
+
+export const MailboxReceipt = __t.object("MailboxReceipt", {
+  key: __t.string(),
+  identity: __t.identity(),
+  letterId: __t.string(),
+  read: __t.bool(),
+  claimed: __t.bool(),
+  updatedAt: __t.timestamp(),
+});
+export type MailboxReceipt = __Infer<typeof MailboxReceipt>;
+
 export const MaintenanceSchedule = __t.object("MaintenanceSchedule", {
   scheduledId: __t.u64(),
   scheduledAt: __t.scheduleAt(),
@@ -1156,6 +1187,9 @@ export type MyInventoryCapacity = __Infer<typeof MyInventoryCapacity>;
 
 export const MyItemGifts = __t.object("MyItemGifts", {});
 export type MyItemGifts = __Infer<typeof MyItemGifts>;
+
+export const MyMailbox = __t.object("MyMailbox", {});
+export type MyMailbox = __Infer<typeof MyMailbox>;
 
 export const MyMapShardRoute = __t.object("MyMapShardRoute", {});
 export type MyMapShardRoute = __Infer<typeof MyMapShardRoute>;
@@ -1360,6 +1394,22 @@ export const PlayerEndgameRebaseBackup = __t.object("PlayerEndgameRebaseBackup",
   recordedAt: __t.timestamp(),
 });
 export type PlayerEndgameRebaseBackup = __Infer<typeof PlayerEndgameRebaseBackup>;
+
+export const PlayerEndlessRebaseBackup = __t.object("PlayerEndlessRebaseBackup", {
+  identity: __t.identity(),
+  maxHp: __t.f32(),
+  damage: __t.f32(),
+  armor: __t.f32(),
+  regen: __t.f32(),
+  attackRate: __t.f32(),
+  beforePower: __t.f64(),
+  afterPower: __t.f64(),
+  recordedAt: __t.timestamp(),
+  progressJson: __t.string(),
+  contextJson: __t.string(),
+  earnedSeconds: __t.f64(),
+});
+export type PlayerEndlessRebaseBackup = __Infer<typeof PlayerEndlessRebaseBackup>;
 
 export const PlayerGemWallet = __t.object("PlayerGemWallet", {
   identity: __t.identity(),

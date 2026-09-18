@@ -127,6 +127,7 @@ function validateFighter(fighter: DuelFighter) {
 /** Root wrappers authenticate the controlling session. Every battle snapshots all
  * current members from persisted stats; clients cannot submit fighters/results. */
 export function createGuildService(deps: { fighterFor(ctx: Ctx, identity: Identity): Omit<GuildFighter, "identity">;
+  powerFor?: (ctx: Ctx, identity: Identity) => number;
   profileFor?: (ctx: Ctx, identity: Identity) => { displayName: string; profileIcon: number } | undefined;
   presenceFor?: (ctx: Ctx, identity: Identity) => { online: boolean; lastSeenAtMs: number };
   announceBattle?: (ctx: Ctx, report: GuildSnapshot["battles"][number]) => void }) {
@@ -275,8 +276,9 @@ export function createGuildService(deps: { fighterFor(ctx: Ctx, identity: Identi
         guild: guild ? { id: String(guild.id), name: guild.name, leader: key(guild.leader),
           vicePresident: roster.find(row => row.vicePresident)?.identity.toHexString() ?? null,
           attacksRemaining: GUILD_DAILY_ATTACKS - guild.attacks, score: guild.score,
+          totalPower: roster.reduce((sum, row) => sum + (deps.powerFor?.(ctx, row.identity) ?? 0), 0),
           // Repair old join-time names on read with one indexed profile lookup;
-          // don't calculate combat stats or add background roster polling.
+          // power is also read only for this roster, with no background polling.
           members: roster.map(row => {
             const profile = deps.profileFor?.(ctx, row.identity);
             return { identity: key(row.identity), name: profile?.displayName ?? row.name,

@@ -46,7 +46,9 @@
     "commerce:test": "vitest run services/gem-verifier/handler.test.ts spacetimedb/src/gem-store-events.test.ts spacetimedb/src/gem-purchase-service.test.ts",
     "release:prepare": "node scripts/releases/cli.mjs prepare",
     "release:rollout": "node scripts/releases/cli.mjs rollout",
-    "release:cancel": "node scripts/releases/cli.mjs cancel"
+    "release:cancel": "node scripts/releases/cli.mjs cancel",
+    "mail:text": "node scripts/mail-editor-server.mjs",
+    "mail:publish": "tsx scripts/publish-mail-copy.ts"
   },
   "dependencies": {
     "spacetimedb": "2.9.0"

@@ -25,6 +25,7 @@ import CheckpointShardLocationReducer from "../checkpoint_shard_location_reducer
 import ClaimDailyGemBonusReducer from "../claim_daily_gem_bonus_reducer";
 import ClaimDeveloperItemGiftReducer from "../claim_developer_item_gift_reducer";
 import ClaimGuestAccountReducer from "../claim_guest_account_reducer";
+import ClaimMailboxGiftReducer from "../claim_mailbox_gift_reducer";
 import CompleteOnboardingStepReducer from "../complete_onboarding_step_reducer";
 import ConfigureGemCommerceReducer from "../configure_gem_commerce_reducer";
 import ConfigurePatreonReducer from "../configure_patreon_reducer";
@@ -59,13 +60,16 @@ import DevCopyPlayerCombatStatsReducer from "../dev_copy_player_combat_stats_red
 import DevDeleteBugReportReducer from "../dev_delete_bug_report_reducer";
 import DevDeleteLegacyPlayerReducer from "../dev_delete_legacy_player_reducer";
 import DevDeliverAlphaTesterGiftsReducer from "../dev_deliver_alpha_tester_gifts_reducer";
+import DevDeliverAutofarmTestGiftReducer from "../dev_deliver_autofarm_test_gift_reducer";
 import DevDeliverCombatUpdateGiftReducer from "../dev_deliver_combat_update_gift_reducer";
 import DevDeliverDisconnectCompensationReducer from "../dev_deliver_disconnect_compensation_reducer";
 import DevDeliverOutageCompensationReducer from "../dev_deliver_outage_compensation_reducer";
 import DevGrantEquipmentReducer from "../dev_grant_equipment_reducer";
+import DevPublishMailboxLetterReducer from "../dev_publish_mailbox_letter_reducer";
 import DevRepairDisplayNameReducer from "../dev_repair_display_name_reducer";
 import DevRepairPlayerJoinedAtReducer from "../dev_repair_player_joined_at_reducer";
 import DevResetDailyGemBonusReducer from "../dev_reset_daily_gem_bonus_reducer";
+import DevRollbackPlayerProgressionReducer from "../dev_rollback_player_progression_reducer";
 import DevSetAccessAuditLabelReducer from "../dev_set_access_audit_label_reducer";
 import DevSetEndlessTravelAccessReducer from "../dev_set_endless_travel_access_reducer";
 import DevTeleportEndlessReducer from "../dev_teleport_endless_reducer";
@@ -89,6 +93,7 @@ import MarkPortalCutsceneSeenReducer from "../mark_portal_cutscene_seen_reducer"
 import PrepareProceduralBossReducer from "../prepare_procedural_boss_reducer";
 import PrepareWorldActionPositionReducer from "../prepare_world_action_position_reducer";
 import PulseDuelReducer from "../pulse_duel_reducer";
+import ReadMailboxLetterReducer from "../read_mailbox_letter_reducer";
 import RecordCombatCheckpointReducer from "../record_combat_checkpoint_reducer";
 import RecordConnectionDiagnosticReducer from "../record_connection_diagnostic_reducer";
 import RecordDesertEnemyDefeatReducer from "../record_desert_enemy_defeat_reducer";
@@ -164,6 +169,7 @@ export type CheckpointShardLocationParams = __Infer<typeof CheckpointShardLocati
 export type ClaimDailyGemBonusParams = __Infer<typeof ClaimDailyGemBonusReducer>;
 export type ClaimDeveloperItemGiftParams = __Infer<typeof ClaimDeveloperItemGiftReducer>;
 export type ClaimGuestAccountParams = __Infer<typeof ClaimGuestAccountReducer>;
+export type ClaimMailboxGiftParams = __Infer<typeof ClaimMailboxGiftReducer>;
 export type CompleteOnboardingStepParams = __Infer<typeof CompleteOnboardingStepReducer>;
 export type ConfigureGemCommerceParams = __Infer<typeof ConfigureGemCommerceReducer>;
 export type ConfigurePatreonParams = __Infer<typeof ConfigurePatreonReducer>;
@@ -198,13 +204,16 @@ export type DevCopyPlayerCombatStatsParams = __Infer<typeof DevCopyPlayerCombatS
 export type DevDeleteBugReportParams = __Infer<typeof DevDeleteBugReportReducer>;
 export type DevDeleteLegacyPlayerParams = __Infer<typeof DevDeleteLegacyPlayerReducer>;
 export type DevDeliverAlphaTesterGiftsParams = __Infer<typeof DevDeliverAlphaTesterGiftsReducer>;
+export type DevDeliverAutofarmTestGiftParams = __Infer<typeof DevDeliverAutofarmTestGiftReducer>;
 export type DevDeliverCombatUpdateGiftParams = __Infer<typeof DevDeliverCombatUpdateGiftReducer>;
 export type DevDeliverDisconnectCompensationParams = __Infer<typeof DevDeliverDisconnectCompensationReducer>;
 export type DevDeliverOutageCompensationParams = __Infer<typeof DevDeliverOutageCompensationReducer>;
 export type DevGrantEquipmentParams = __Infer<typeof DevGrantEquipmentReducer>;
+export type DevPublishMailboxLetterParams = __Infer<typeof DevPublishMailboxLetterReducer>;
 export type DevRepairDisplayNameParams = __Infer<typeof DevRepairDisplayNameReducer>;
 export type DevRepairPlayerJoinedAtParams = __Infer<typeof DevRepairPlayerJoinedAtReducer>;
 export type DevResetDailyGemBonusParams = __Infer<typeof DevResetDailyGemBonusReducer>;
+export type DevRollbackPlayerProgressionParams = __Infer<typeof DevRollbackPlayerProgressionReducer>;
 export type DevSetAccessAuditLabelParams = __Infer<typeof DevSetAccessAuditLabelReducer>;
 export type DevSetEndlessTravelAccessParams = __Infer<typeof DevSetEndlessTravelAccessReducer>;
 export type DevTeleportEndlessParams = __Infer<typeof DevTeleportEndlessReducer>;
@@ -228,6 +237,7 @@ export type MarkPortalCutsceneSeenParams = __Infer<typeof MarkPortalCutsceneSeen
 export type PrepareProceduralBossParams = __Infer<typeof PrepareProceduralBossReducer>;
 export type PrepareWorldActionPositionParams = __Infer<typeof PrepareWorldActionPositionReducer>;
 export type PulseDuelParams = __Infer<typeof PulseDuelReducer>;
+export type ReadMailboxLetterParams = __Infer<typeof ReadMailboxLetterReducer>;
 export type RecordCombatCheckpointParams = __Infer<typeof RecordCombatCheckpointReducer>;
 export type RecordConnectionDiagnosticParams = __Infer<typeof RecordConnectionDiagnosticReducer>;
 export type RecordDesertEnemyDefeatParams = __Infer<typeof RecordDesertEnemyDefeatReducer>;

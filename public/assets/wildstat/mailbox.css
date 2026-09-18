@@ -1,0 +1,139 @@
+/* The HUD envelope inherits the eye's exact hit area, icon scale and stroke. */
+.player-visibility-toggle.mailbox-toggle { flex: 0 0 40px; }
+.mailbox-toggle[hidden] { display: none; }
+.mailbox-unread-dot,
+.mailbox-tab-dot,
+.mailbox-row-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--red);
+  box-shadow: 0 0 0 1.5px #131413;
+}
+.mailbox-unread-dot { position: absolute; right: 7px; top: 5px; }
+.mailbox-unread-dot[hidden], .mailbox-tab-dot[hidden] { display: none; }
+
+.game-mailbox {
+  box-sizing: border-box;
+  width: var(--game-window-width);
+  height: min(560px, calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 32px));
+  max-width: calc(100vw - 24px);
+  max-height: none;
+  margin: auto;
+  padding: 0;
+  overflow: hidden;
+  border: 3px solid rgba(255,255,255,.20);
+  border-radius: 14px;
+  background: var(--window-surface);
+  color: var(--text);
+  box-shadow: 0 16px 48px #0008;
+  font: 900 var(--font-readable-body)/1.35 var(--font-rounded);
+  -webkit-text-stroke: var(--text-outline-width) #000;
+  paint-order: stroke fill;
+  text-shadow: var(--text-shadow);
+}
+.game-mailbox[open] { display: flex; flex-direction: column; }
+.game-mailbox:focus, .mailbox-scroll:focus { outline: none; }
+.game-mailbox button:focus-visible { outline: 2px solid #fff; outline-offset: -2px; }
+.game-mailbox::backdrop { background: #0008; }
+.mailbox-header { padding: 18px 12px 6px; flex-shrink: 0; }
+.mailbox-tabs {
+  display: flex;
+  flex-shrink: 0;
+  margin: 0 14px 10px;
+  border-bottom: 1px solid #ffffff1c;
+}
+.mailbox-tabs button {
+  flex: 1;
+  min-width: 0;
+  height: 34px;
+  margin: 0;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.mailbox-tabs button + button { border-left: 1px solid #ffffff1c; }
+.mailbox-tabs button[aria-current="true"] {
+  color: #fff;
+  background: #ffffff09;
+  box-shadow: inset 0 -2px #ffffff60;
+}
+.mailbox-tab-dot { margin: 0 0 5px 5px; }
+.mailbox-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0 14px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+.mailbox-scroll::-webkit-scrollbar { display: none; }
+.mailbox-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 76px;
+  margin: 0;
+  padding: 14px 4px;
+  border: 0;
+  border-bottom: 1px solid #ffffff16;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.mailbox-row:hover { background: #ffffff05; }
+.mailbox-row > svg {
+  flex: 0 0 25px;
+  width: 25px;
+  height: 25px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 1px 1px #000);
+}
+.mailbox-row[data-read="true"] > svg { color: var(--muted); opacity: .65; }
+.mailbox-row-copy { display: grid; gap: 5px; flex: 1; min-width: 0; }
+.mailbox-row-copy strong { font-size: 14px; font-weight: 900; overflow-wrap: anywhere; }
+.mailbox-row-detail { color: var(--muted); font-size: 11px; }
+.mailbox-row-reward { display: flex; align-items: center; gap: 3px; color: #fff; font-size: 14px; }
+.mailbox-row-reward img { width: 23px; height: 23px; object-fit: contain; }
+.mailbox-letter { padding: 7px 5px 12px; }
+.mailbox-letter h3 { margin: 6px 0; font-size: 18px; line-height: 1.25; }
+.mailbox-sender, .mailbox-date { color: var(--muted); font-size: 11px; }
+.mailbox-letter p { margin: 16px 0; color: var(--text); font-size: 13px; line-height: 1.55; white-space: pre-line; }
+.mailbox-reward {
+  display: grid;
+  justify-items: center;
+  gap: 7px;
+  padding: 8px 0 15px;
+  text-align: center;
+}
+.mailbox-gem-amount { margin: -3px 0 8px; color: #fff; font-size: 29px; line-height: 1; letter-spacing: .04em; }
+.game-mailbox .mailbox-claim-button { font-family: var(--font-rounded); font-weight: 900; }
+.mailbox-claim-button:disabled { opacity: .55; cursor: default; }
+.mailbox-status {
+  flex-shrink: 0;
+  margin: 10px 18px 0;
+  color: var(--green);
+  text-align: center;
+  font-size: 12px;
+}
+.mailbox-status:empty { display: none; }
+.game-mailbox > .window-back-footer { padding-bottom: 12px; }
+.mailbox-empty { padding: 28px 0; color: var(--muted); text-align: center; }
+.mailbox-scroll .signin-update-history { margin: 0; padding: 4px 0; }

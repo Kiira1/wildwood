@@ -23,7 +23,7 @@ export type GuildStanding = { id: string; name: string; members: number; score: 
 export type GuildPreview = Pick<NonNullable<GuildSnapshot['guild']>, 'id' | 'name' | 'leader' | 'vicePresident' | 'score' | 'members'>;
 export type GuildSnapshot = {
   identity: string; serverNow: string; week: number; nextWeekAt: string; joinAfter: string; signedIn: boolean;
-  guild: null | { id: string; name: string; leader: string; vicePresident?: string | null; attacksRemaining: number; score: number;
+  guild: null | { id: string; name: string; leader: string; vicePresident?: string | null; attacksRemaining: number; score: number; totalPower?: number;
     members: { identity: string; name: string; profileIcon?: number; online?: boolean; lastSeenAtMs?: number; eligibleAt: string }[] };
   directory: { id: string; name: string; members: number; challengedToday: boolean }[]; nextPage: string | null;
   standings: GuildStanding[];

@@ -95,8 +95,7 @@ import { equipmentMapRequirement } from "../shared/equipment-access";
 import { createAppShellController } from "./ui/app-shell-controller";
 import { createStartupController } from "./ui/startup-controller";
 import { createDeathScreenController } from "./ui/death-screen-controller";
-import { createDailyGemBonusController } from "./ui/daily-gem-bonus-controller";
-import { createBalanceApologyGiftController } from "./ui/balance-apology-gift-controller";
+import { createGameMailbox } from "./ui/game-mailbox";
 import { createMapGuideController } from "./ui/map-guide-controller";
 import { createStartupCoordinator } from "./ui/startup-coordinator";
 import { hasApprovedGameSession } from "./coop/startup-state-machine";
@@ -134,7 +133,7 @@ import {
 
   const gameElements = createGameElements({ names: PLAYER_SKIN_TONE_NAMES, colors: PLAYER_SKIN_TONES });
   const {
-    canvas, gameOverEl, deathCountdownEl, hpText, playerHudProfileIcon, hudGemWallet, hudGemBalance, dailyGemBonusEl, dailyGemClaimBtn, balanceApologyGiftEl, balanceApologyGiftTitle, balanceApologyContinueBtn,
+    canvas, gameOverEl, deathCountdownEl, hpText, playerHudProfileIcon, hudGemWallet, hudGemBalance,
     minimapButton, enemyRespawnAdBtn, enemyRespawnAdStatus, enemyRespawnBoostStatus, enemyRespawnBoostTimer, enemyRespawnAdPrompt, enemyRespawnAdConfirm, enemyRespawnAdCancel, browserRewardedAd, browserRewardedAdTimer,
     toolbar, settingsBtn, inventoryBtn, settingsPanel, inventoryPanel, inventoryCharacterCanvas, itemInspectionPanel, itemInspectionTitle, itemInspectionContent, itemInspectionBack, bootUpgradeEl, bootUpgradeClose, joystickEl, stickEl,
     duelCountdownEl, duelResultEl, watchDuelReplayBtn, duelReplayEl, duelReplayTitle, sceneFadeEl, cutsceneOverlayEl,
@@ -1772,20 +1771,11 @@ import {
   });
 
   let refreshDailyGemBonus = () => {};
-  const balanceApologyGift = createBalanceApologyGiftController({
-    overlay: balanceApologyGiftEl,
-    title: balanceApologyGiftTitle,
-    continueButton: balanceApologyContinueBtn,
-  }, {
-    canShow: () => session.hasStarted() && !inTutorial(),
-    amount: () => coop?.balanceApologyGiftAmount?.() ?? 0n,
-    acknowledge: async () => coop?.acknowledgeBalanceApologyGift?.(),
-    showMessage,
-    afterDismiss: () => refreshDailyGemBonus(),
-  });
+  const mailbox = createGameMailbox(gameElements.mailboxToggle, gameElements.minimapVersionEl, coop,
+    () => session.hasStarted() && !inTutorial());
 
   const developerItemGift = createItemGiftController({
-    canShow: () => session.hasStarted() && !inTutorial() && Boolean(coop?.isConnected?.()) && !coop?.accountState?.().sessionConflict && !balanceApologyGift.isOpen(),
+    canShow: () => session.hasStarted() && !inTutorial() && Boolean(coop?.isConnected?.()) && !coop?.accountState?.().sessionConflict,
     identity: () => coop?.localIdentity?.() ?? "",
     gift: () => coop?.pendingItemGift?.() ?? null,
     claim: async key => coop?.claimItemGift?.(key),
@@ -1794,16 +1784,7 @@ import {
     afterDismiss: () => refreshDailyGemBonus(),
   });
 
-  const dailyGemBonus = createDailyGemBonusController({
-    overlay: dailyGemBonusEl,
-    claimButton: dailyGemClaimBtn,
-  }, {
-    canShow: () => session.hasStarted() && !inTutorial() && !balanceApologyGift.isOpen() && !developerItemGift.isOpen() && coop?.accountState?.().signedIn === true,
-    claimable: () => coop?.dailyGemBonusClaimable?.() === true,
-    claim: async () => coop?.claimDailyGemBonus?.(),
-    showMessage,
-  });
-  refreshDailyGemBonus = () => { developerItemGift.refresh(); dailyGemBonus.refresh(); };
+  refreshDailyGemBonus = () => { developerItemGift.refresh(); mailbox.refresh(); };
 
   const reconnectRecovery = createReconnectRecovery({
     now: () => performance.now(),
@@ -1966,7 +1947,7 @@ import {
       session.start(markIntro, restoreServerPosition);
       recordGameplayReady();
       finishStartup();
-      balanceApologyGift.refresh();
+      mailbox.refresh();
       refreshDailyGemBonus();
       applyGameplayPauseState();
     };
@@ -1992,7 +1973,7 @@ import {
     screenShake = 0;
     flash = 0;
     session.end();
-    balanceApologyGift.refresh();
+    mailbox.refresh();
     refreshDailyGemBonus();
   }
 
@@ -2098,7 +2079,7 @@ import {
     coop,
     syncLifetimeKills: progress.syncLifetimeKills,
     refreshGemCounter,
-    refreshBalanceApologyGift: balanceApologyGift.refresh,
+    refreshBalanceApologyGift: mailbox.refresh,
     refreshDailyGemBonus,
     refreshOpenProfile: () => {
       playerSafety.refresh();

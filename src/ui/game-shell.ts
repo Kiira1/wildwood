@@ -367,6 +367,9 @@ export function installGameShell(doc: Document = document) {
   if (!doc.getElementById("playerVisibilityToggle")) {
     doc.getElementById("hudGemWallet")?.insertAdjacentHTML("afterend", `<button id="playerVisibilityToggle" class="player-visibility-toggle" type="button" aria-label="Show other players" aria-pressed="false"></button>`);
   }
+  if (!doc.getElementById("mailboxToggle")) {
+    doc.getElementById("playerVisibilityToggle")?.insertAdjacentHTML("afterend", `<button id="mailboxToggle" class="mailbox-toggle" type="button" aria-label="Mailbox" hidden></button>`);
+  }
   const toolbar = doc.getElementById("toolbar");
   for (const [id, label, icon] of [
     ["guildBtn", "Guilds", "Icon_Guild.svg"],

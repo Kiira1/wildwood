@@ -16,6 +16,8 @@ import { canDestroyEquipment } from "../../shared/items";
 import { deliverDisconnectCompensation, deliverCombatUpdateGift, deliverOutageCompensation, announceOutageCompensation, deliverAutofarmTestGift } from "./disconnect-compensation";
 import { connectionDiagnosticTables, recordConnectionDiagnostics, cleanupConnectionDiagnostics } from "./connection-diagnostics";
 import { moderationTables, recordModerationAction, readModerationHistory } from "./moderation-history";
+import { mailboxLetter, mailboxReceipt, mailboxEntry, mailboxForPlayer, publishMailboxLetter, publishRebalanceMail, updateMailboxReceipt, mergeMailboxReceipts, removeMailboxReceipts } from "./mailbox";
+import { rollbackPlayerProgression } from "./player-progression-rollback";
 import { playerItemGift, deliverAlphaTesterGifts, claimItemGift, removeItemGifts, mergeItemGifts } from "./item-gifts";
 import { moderateReportedMessage } from "./chat-report-moderation";
 import { PLAYER_SKIN_TONES } from "../../shared/player-skin-tones";
@@ -343,7 +345,7 @@ const LEADERBOARD_REFRESH_INTERVAL_MICROS = 900_000_000n;
 const MOTION_DETAIL_FRAME_INTERVAL_MICROS = 1_000_000n / BigInt(PLAYER_MOTION_DETAIL_FRAME_HZ);
 const MAP_FRAME_INTERVAL_MICROS = 1_000_000n / BigInt(PLAYER_MAP_FRAME_HZ);
 const VIRTUAL_PLAYER_RUN_LIFETIME_MICROS = 3_600_000_000n;
-const MODULE_MIGRATION_VERSION = 32;
+const MODULE_MIGRATION_VERSION = 33;
 const LEADERBOARD_REFRESH_VERSION = 10;
 const DUEL_REQUEST_COOLDOWN_MICROS = 120_000_000n;
 const DUEL_REQUEST_TIMEOUT_MICROS = 30_000_000n;
@@ -1744,6 +1746,7 @@ const spacetimedb = schema({
   dailyGemBonus,
   balanceApologyNotice,
   playerItemGift,
+  mailboxLetter, mailboxReceipt,
   playerOnboarding,
   regularEnemyLootCursor, enemyDefeatBudget, bossDefeatWindow, bossMapDefeatWindow,
   playerMultiplayerPreference,
@@ -2001,6 +2004,10 @@ export const myDailyGemBonus = spacetimedb.view(
     const bonus = ctx.db.dailyGemBonus.identity.find(ctx.sender);
     return bonus ? [bonus] : [];
   },
+);
+
+export const myMailbox = spacetimedb.view(
+  { name: "my_mailbox", public: true }, t.array(mailboxEntry), mailboxForPlayer,
 );
 
 export const myBalanceApologyNotice = spacetimedb.view(
@@ -2655,6 +2662,7 @@ function runPendingModuleMigrations(ctx: any) {
     }
     refreshLeaderboard(ctx);
   }
+  if (currentVersion < 33 && !isMapShard(ctx)) publishRebalanceMail(ctx);
   const next = { id: 0, version: MODULE_MIGRATION_VERSION };
   if (state) ctx.db.moduleMigrationState.id.update(next);
   else ctx.db.moduleMigrationState.insert(next);
@@ -4424,6 +4432,7 @@ function removeVirtualPlayerData(ctx: any, identity: any, adjustPresence = true,
   if (ctx.db.playerGemWallet.identity.find(identity)) ctx.db.playerGemWallet.identity.delete(identity);
   if (ctx.db.balanceApologyNotice.identity.find(identity)) ctx.db.balanceApologyNotice.identity.delete(identity);
   removeItemGifts(ctx, identity);
+  removeMailboxReceipts(ctx, identity);
   unlinkPatreon(ctx, identity);
   for (const budget of ctx.db.enemyDefeatBudget.identity.filter(identity)) ctx.db.enemyDefeatBudget.key.delete(budget.key);
   if (ctx.db.bossDefeatWindow.identity.find(identity)) ctx.db.bossDefeatWindow.identity.delete(identity);
@@ -4521,6 +4530,7 @@ function removePlayerIdentityData(ctx: any, identity: any) {
   if (ctx.db.dailyGemBonus.identity.find(identity)) ctx.db.dailyGemBonus.identity.delete(identity);
   if (ctx.db.balanceApologyNotice.identity.find(identity)) ctx.db.balanceApologyNotice.identity.delete(identity);
   removeItemGifts(ctx, identity);
+  removeMailboxReceipts(ctx, identity);
   unlinkPatreon(ctx, identity);
   for (const budget of ctx.db.enemyDefeatBudget.identity.filter(identity)) ctx.db.enemyDefeatBudget.key.delete(budget.key);
   if (ctx.db.bossDefeatWindow.identity.find(identity)) ctx.db.bossDefeatWindow.identity.delete(identity);
@@ -8308,6 +8318,7 @@ export const claimGuestAccount = spacetimedb.reducer(
     mergeGuestGemWallet(ctx, link.guest, ctx.sender, link.code);
     mergeBalanceApologyNotice(ctx, link.guest, ctx.sender);
     mergeItemGifts(ctx, link.guest, ctx.sender);
+    mergeMailboxReceipts(ctx, link.guest, ctx.sender);
     mergeOnboarding(ctx, link.guest, ctx.sender);
     const guestBalance = ctx.db.playerBalanceVersion.identity.find(link.guest);
     const guestBalanceVersion = guestBalance?.version ?? 0;
@@ -9175,6 +9186,45 @@ export const setSkinTone = spacetimedb.reducer(
   },
 );
 
+export const devRollbackPlayerProgression = spacetimedb.reducer(
+  { identity: t.identity(), expectedDisplayName: t.string(), operationId: t.string(), baselineJson: t.string(), reason: t.string() },
+  (ctx, args) => rollbackPlayerProgression(ctx, args, {
+    requireOwner: () => {
+      if (!isDatabaseOwnerIdentity(ctx.sender) || isMapShard(ctx)) throw new SenderError("Account database owner required.");
+      if (activeDuelFor(ctx, args.identity)) throw new SenderError("Wait for this player's duel to finish.");
+    },
+    apply: (progress, mapIndex) => {
+      writeProgressAndPresentation(ctx, progress);
+      const procedural = ctx.db.proceduralProgress.identity.find(args.identity);
+      if (procedural) ctx.db.proceduralProgress.identity.update({ ...procedural, completed: 0 });
+      const history = ctx.db.playerCutsceneHistory.identity.find(args.identity);
+      if (history) ctx.db.playerCutsceneHistory.identity.update({ ...history,
+        seenMask: history.seenMask & unlockedPortalCutsceneMask(progress), generation: history.generation + 1 });
+      const mapId = MAP_IDS[mapIndex];
+      const arrival = mapIndex === 0 ? PLAYER_SPAWN : MAP_ARRIVALS[mapId as keyof typeof MAP_ARRIVALS];
+      const returnLocation = { identity: args.identity, mapId, ...arrival, facing: 0 };
+      if (ctx.db.homeReturnLocation.identity.find(args.identity)) ctx.db.homeReturnLocation.identity.update(returnLocation);
+      else ctx.db.homeReturnLocation.insert(returnLocation);
+      const active = ctx.db.player.identity.find(args.identity);
+      if (active) {
+        const maxHp = maxHealthForProgress(ctx, args.identity, progress);
+        const moved = transitionPlayerMap({ ...ctx, sender: args.identity }, { ...active, maxHp, hp: maxHp }, HOME_EXTERIOR_MAP_ID, HOME_EXTERIOR_SPAWN);
+        persistWorldLocation(ctx, moved);
+      } else {
+        releaseMapShard(ctx, args.identity);
+        const location = { identity: args.identity, mapId: HOME_EXTERIOR_MAP_ID, ...HOME_EXTERIOR_SPAWN, facing: 0 };
+        if (ctx.db.playerLastLocation.identity.find(args.identity)) ctx.db.playerLastLocation.identity.update(location);
+        else ctx.db.playerLastLocation.insert(location);
+      }
+      for (const row of ctx.db.enemyDefeatBudget.identity.filter(args.identity)) ctx.db.enemyDefeatBudget.key.delete(row.key);
+      if (ctx.db.bossDefeatWindow.identity.find(args.identity)) ctx.db.bossDefeatWindow.identity.delete(args.identity);
+      if (ctx.db.bossMapDefeatWindow.identity.find(args.identity)) ctx.db.bossMapDefeatWindow.identity.delete(args.identity);
+      // Keep accepted report cursors so old batches cannot award the same loot twice.
+      refreshLeaderboard(ctx);
+    },
+  }),
+);
+
 export const devUpdatePlayerSave = spacetimedb.reducer(
   {
     identity: t.identity(),
@@ -9534,6 +9584,24 @@ export const devAnnounceOutageCompensation = spacetimedb.reducer({}, ctx => {
   if (isMapShard(ctx)) throw new SenderError("Use the world connection.");
   announceOutageCompensation(ctx, message => { insertChatMessage(ctx, ctx.sender, "DEVELOPER", message); });
 });
+
+export const readMailboxLetter = spacetimedb.reducer({ id: t.string() }, (ctx, { id }) => {
+  requireControllingPlayer(ctx);
+  updateMailboxReceipt(ctx, id, false, () => {});
+});
+export const claimMailboxGift = spacetimedb.reducer({ id: t.string() }, (ctx, { id }) => {
+  requireControllingPlayer(ctx);
+  updateMailboxReceipt(ctx, id, true, (amount, reference, title) => {
+    applyGemBalanceChange(ctx, { identity: ctx.sender, delta: amount, kind: "mailbox_gift", note: title, externalReference: reference });
+  });
+});
+export const devPublishMailboxLetter = spacetimedb.reducer(
+  { id: t.string(), title: t.string(), body: t.string(), gems: t.u64() }, (ctx, letter) => {
+    if (!isDatabaseOwnerIdentity(ctx.sender)) requireDeveloper(ctx);
+    if (isMapShard(ctx)) throw new SenderError("Use the world connection.");
+    publishMailboxLetter(ctx, letter);
+  },
+);
 
 export const acknowledgeBalanceApologyGift = spacetimedb.reducer((ctx) => {
   requireControllingPlayer(ctx);
@@ -10784,6 +10852,10 @@ function guildFighterFor(ctx: ModuleReducerCtx, identity: Identity): DuelFighter
 }
 
 const guildService = createGuildService({
+  powerFor: (ctx, identity) => {
+    const progress = ctx.db.playerProgress.identity.find(identity);
+    return progress ? effectivePowerForProgress(ctx, progress) : 0;
+  },
   presenceFor: (ctx, identity) => ({
     // Root presence survives eye-off and autofarming; no movement subscription needed.
     online: Boolean(ctx.db.player.identity.find(identity))

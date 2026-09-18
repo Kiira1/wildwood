@@ -1,4 +1,5 @@
 import { simulationRegularDrops, simulationTravelSeconds } from "./gameplay-model";
+import { itemTier } from "../../shared/item-tier";
 import { REGULAR_ENEMY_RESPAWN_SECONDS } from "../game/runtime/regular-enemy-respawn";
 import { ONBOARDING_DAMAGE_REWARD, ONBOARDING_REGEN_REWARD } from "../../shared/onboarding";
 import { BLACK_BOOTS } from "../../shared/items";
@@ -175,6 +176,17 @@ export type SimulationStateSnapshot = {
   equipmentStrengthMultiplier: number;
 };
 
+/** Offline audit input; never accepts or changes a live player save. */
+export type ExistingPlayerSimulation = SimulationStateSnapshot & {
+  mapIndex: number;
+  ownedItems: string[];
+  bossRewardClaims: number;
+  // Favorable sensitivity scenario, not a proven maximum or evidence of cheating.
+  ignoreBossSurvival?: boolean;
+  highestUnlockedMapIndex?: number;
+  farmBossMapIndex?: number;
+};
+
 type DropDefinition = {
   itemId: ItemId;
   denominator: number;
@@ -261,6 +273,7 @@ export type TrialMapRecord = {
 };
 
 type TrialResult = {
+  finalState: SimulationStateSnapshot;
   samples: Array<{ timeSeconds: number; power: number; dps: number; mapIndex: number }>;
   maps: TrialMapRecord[];
   finalPower: number;
@@ -1209,7 +1222,7 @@ function equipBestAvailableItems(state: MutableSimulationState) {
   for (const slot of ["weapon", "head", "chest"] as const) {
     state.equipped[slot] = "";
     for (const itemId of state.ownedItems) {
-      if (itemId === state.activeUpgrade?.itemId || equipmentSlot(itemId as ItemId) !== slot) continue;
+      if ((itemTier(itemId) ?? 1) > state.mapIndex + 1 || itemId === state.activeUpgrade?.itemId || equipmentSlot(itemId as ItemId) !== slot) continue;
       const previous = state.equipped[slot];
       const before = powerForState(state);
       state.equipped[slot] = itemId;
@@ -1682,6 +1695,7 @@ function momentumForRecord(
 function simulateTrial(
   config: BalanceSimulationConfig,
   trialIndex: number,
+  existing?: ExistingPlayerSimulation,
 ): TrialResult {
   const random = seededRandom(config.seed + trialIndex * 104_729);
   const behavior = trialBehavior(config.strategy, random);
@@ -1704,8 +1718,21 @@ function simulateTrial(
   };
   const history: HistoryPoint[] = [];
   const records: TrialMapRecord[] = [];
-  let position = { ...MAP_DEFINITIONS[0].arrival };
-  let sites = createSites(MAP_DEFINITIONS[0]);
+  if (existing) {
+    state.mapIndex = Math.max(0, Math.min(MAP_DEFINITIONS.length - 1, Math.floor(existing.mapIndex)));
+    state.stats = { ...existing.stats };
+    state.research = { ...existing.research };
+    state.equipped = { ...existing.equipped };
+    state.ownedItems = new Set(existing.ownedItems.filter(id => Boolean(ITEM_DEFINITIONS[id as ItemId])));
+    state.bootsEquipped = existing.bootsEquipped;
+    state.itemUpgradeLevel = existing.itemUpgradeLevel;
+    state.itemUpgradeLevels = { ...existing.itemUpgradeLevels };
+    state.equipmentStrengthMultiplier = existing.equipmentStrengthMultiplier;
+    state.bossRewardClaims = existing.bossRewardClaims;
+    equipBestAvailableItems(state);
+  }
+  let position = { ...MAP_DEFINITIONS[state.mapIndex].arrival };
+  let sites = createSites(MAP_DEFINITIONS[state.mapIndex]);
 
   const recordHistory = () => {
     const combat = combatStats(state, true);
@@ -1877,7 +1904,7 @@ function simulateTrial(
     exitState: stateSnapshot(state),
   });
 
-  records.push(beginMapRecord(MAP_DEFINITIONS[0]));
+  records.push(beginMapRecord(MAP_DEFINITIONS[state.mapIndex]));
   recordHistory();
   startNextResearch(state, config.researchPlan);
 
@@ -1891,7 +1918,7 @@ function simulateTrial(
     const currentBossFight = bossFightSeconds(state, map, adjustment);
     const bossReadinessTarget = bossReadinessTargetSeconds(map.id, config);
 
-    if (map.boss && mapRecord.bossFightSeconds === null && clears >= config.requiredClears && currentBossFight !== null && currentBossFight <= bossReadinessTarget && bossHitShare(state, map, adjustment) <= .3) {
+    if (map.boss && state.mapIndex < (existing?.highestUnlockedMapIndex ?? Infinity) && mapRecord.bossFightSeconds === null && clears >= config.requiredClears && currentBossFight !== null && currentBossFight <= bossReadinessTarget && (existing?.ignoreBossSurvival || bossHitShare(state, map, adjustment) <= .3)) {
       const statWeights = projectedBossStatWeights(map.boss, adjustment);
       const travel = travelSeconds(position, map.boss, state, config.pathingMultiplier);
       if (!spendBossTime(mapRecord, "travelSeconds", statWeights, travel)) break;
@@ -1908,7 +1935,7 @@ function simulateTrial(
       mapRecord.bossRewardPowerGain = bossRewardPowerGain;
       mapRecord.fullClears = clears;
       mapRecord.exitBossTtkSeconds = bossFightSeconds(state, map, adjustment);
-      if (behavior.primaryStrategy === "boss-farm") {
+      if (behavior.primaryStrategy === "boss-farm" || state.mapIndex === existing?.farmBossMapIndex) {
         repeatDefeatedBoss(mapRecord, map, Number.POSITIVE_INFINITY);
         break;
       }
@@ -1933,6 +1960,7 @@ function simulateTrial(
       advanceTime(state, Math.min(config.durationSeconds, state.time + MAP_TRANSITION_SECONDS), config.researchPlan, recordHistory);
       if (state.time >= config.durationSeconds) break;
       state.mapIndex += 1;
+      if (existing) equipBestAvailableItems(state);
       const nextMap = MAP_DEFINITIONS[state.mapIndex];
       position = { ...nextMap.arrival };
       sites = createSites(nextMap);
@@ -1999,6 +2027,7 @@ function simulateTrial(
   }
   const final = samples[samples.length - 1];
   return {
+    finalState: stateSnapshot(state),
     samples,
     maps: records,
     finalPower: final.power,
@@ -2724,6 +2753,10 @@ export function runBalanceSimulation(
   onProgress?: BalanceSimulationProgressListener,
 ): BalanceSimulationResult {
   return runBalanceSimulationInternal(input, onProgress);
+}
+
+export function simulateExistingPlayer(input: Partial<BalanceSimulationConfig>, snapshot: ExistingPlayerSimulation, trialIndex = 0) {
+  return simulateTrial(normalizeConfig(input), trialIndex, snapshot);
 }
 
 const STRATEGY_COMPARISON_TRIAL_CAP = 8;

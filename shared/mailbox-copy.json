@@ -1,0 +1,4 @@
+{
+  "title": "What happened to my stats?",
+  "body": "Hey WildGang, Power was growing way too fast, especially in endless, so I slowed things down.\n\nThe power scale down formula was old power -> estimated progress -> new power. It uses a log curve, so bigger numbers got compressed more. It wasn't the same percentage taken from everyone, and the hours were an estimate from your earned base stats.\n\nSome of you got moved back a few maps. You still have your gear and upgrades. You can equip them again when you unlock their map.\n\nSorry for the rough update and for not explaining it better. Here's 75 gems, thank you for sticking with me while I get this right! \nEspecially the few Patreon subscribers who really want to help this game succeed and become something great!"
+}

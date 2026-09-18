@@ -1,3 +1,4 @@
+import { formatCompactNumber } from "./number-format";
 import { guildMemberPresence } from './guild-presence';
 import { createGuildBattleReplay, type GuildReplayAssets } from "./guild-battle-replay";
 import { renderFriends, renderGuildInvites, renderReceivedGuildInvites } from "./social-panel-content";
@@ -291,10 +292,14 @@ export function createGuildPanel(options: Options) {
     copy.append(element("h3", own.name));
     copy.append(element("p", `${own.members.length} / ${GUILD_MEMBER_LIMIT} members`));
     identity.append(mark(own.name), copy); body.append(identity);
-    const stats = element("div", undefined, "guild-stats");
-    for (const [value, label] of [[`${own.members.length}/${GUILD_MEMBER_LIMIT}`, "Members"], [number(own.score), "Weekly points"], [String(own.attacksRemaining), "Attacks left"]]) {
-      const stat = element("div"); stat.append(element("strong", value), element("span", label)); stats.append(stat);
-    } body.append(stats);
+    const power = element("div", undefined, "guild-total-power");
+    const amount = own.totalPower === undefined ? "—" : formatCompactNumber(own.totalPower);
+    power.setAttribute("aria-label", `Guild power: ${amount}`);
+    const icon = element("img", undefined, "power-icon");
+    icon.src = "assets/wildstat/icons/Icon_Battle_Candy_v2.png";
+    icon.alt = ""; icon.setAttribute("aria-hidden", "true");
+    power.append(element("span", "Power:"), element("span", amount, "power-value"), icon);
+    body.append(power);
     renderMembers(body);
     const settings = element("details", undefined, "guild-disclosure"); settings.append(element("summary", "Guild options"));
     settings.append(button("Leave guild", () => ask("Leave this guild?", isLeader() ? own.members.length > 1 ? own.vicePresident ? "The Vice President becomes President." : "The longest-serving member becomes President." : "Leaving will disband the guild." : "You can join another guild immediately.", "Leave guild", { kind: "leave" }), "danger")); body.append(settings);

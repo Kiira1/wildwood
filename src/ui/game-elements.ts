@@ -17,6 +17,7 @@ export function createGameElements(skinTones: SkinToneOptions) {
   });
 
   return {
+    mailboxToggle: requiredElement<HTMLButtonElement>("mailboxToggle"),
     playerVisibilityToggle: requiredElement<HTMLButtonElement>("playerVisibilityToggle"),
     profileSafetyActions: requiredElement("profileSafetyActions"), profileReportBtn: requiredElement<HTMLButtonElement>("profileReportBtn"), profileBlockBtn: requiredElement<HTMLButtonElement>("profileBlockBtn"),
     blockedPlayersSetting: requiredElement("blockedPlayersSetting"), blockedPlayersList: requiredElement("blockedPlayersList"),

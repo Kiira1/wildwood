@@ -56,6 +56,17 @@ function fixture() {
 }
 
 describe("guild membership and authoritative rosters", () => {
+  it("totals power for current members only, including offline members", () => {
+    const f = fixture(); f.makeGuild(1); f.makeGuild(10);
+    const powerFor = vi.fn((_ctx, who: Identity) => Number(BigInt(`0x${who.toHexString()}`)) * 1000);
+    const service = createGuildService({ fighterFor: () => ({ name: "Test", fighter }), powerFor });
+    const snapshot = f.run(1, ctx => service.snapshot(ctx));
+    expect(snapshot.guild?.totalPower).toBe(6000);
+    expect(powerFor).toHaveBeenCalledTimes(3);
+    f.run(2, ctx => f.service.leave(ctx));
+    expect(f.run(1, ctx => service.snapshot(ctx)).guild?.totalPower).toBe(4000);
+  });
+
   it("lets the President appoint one Vice President with shared battle access only", () => {
     const f = fixture(), a = f.makeGuild(1), b = f.makeGuild(10), c = f.makeGuild(20);
     expect(f.db.guildMember.identity.find(identity(2)).vicePresident).toBe(false);

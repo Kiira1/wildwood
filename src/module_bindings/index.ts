@@ -53,6 +53,7 @@ import CheckpointShardLocationReducer from "./checkpoint_shard_location_reducer"
 import ClaimDailyGemBonusReducer from "./claim_daily_gem_bonus_reducer";
 import ClaimDeveloperItemGiftReducer from "./claim_developer_item_gift_reducer";
 import ClaimGuestAccountReducer from "./claim_guest_account_reducer";
+import ClaimMailboxGiftReducer from "./claim_mailbox_gift_reducer";
 import CompleteOnboardingStepReducer from "./complete_onboarding_step_reducer";
 import ConfigureGemCommerceReducer from "./configure_gem_commerce_reducer";
 import ConfigurePatreonReducer from "./configure_patreon_reducer";
@@ -87,13 +88,16 @@ import DevCopyPlayerCombatStatsReducer from "./dev_copy_player_combat_stats_redu
 import DevDeleteBugReportReducer from "./dev_delete_bug_report_reducer";
 import DevDeleteLegacyPlayerReducer from "./dev_delete_legacy_player_reducer";
 import DevDeliverAlphaTesterGiftsReducer from "./dev_deliver_alpha_tester_gifts_reducer";
+import DevDeliverAutofarmTestGiftReducer from "./dev_deliver_autofarm_test_gift_reducer";
 import DevDeliverCombatUpdateGiftReducer from "./dev_deliver_combat_update_gift_reducer";
 import DevDeliverDisconnectCompensationReducer from "./dev_deliver_disconnect_compensation_reducer";
 import DevDeliverOutageCompensationReducer from "./dev_deliver_outage_compensation_reducer";
 import DevGrantEquipmentReducer from "./dev_grant_equipment_reducer";
+import DevPublishMailboxLetterReducer from "./dev_publish_mailbox_letter_reducer";
 import DevRepairDisplayNameReducer from "./dev_repair_display_name_reducer";
 import DevRepairPlayerJoinedAtReducer from "./dev_repair_player_joined_at_reducer";
 import DevResetDailyGemBonusReducer from "./dev_reset_daily_gem_bonus_reducer";
+import DevRollbackPlayerProgressionReducer from "./dev_rollback_player_progression_reducer";
 import DevSetAccessAuditLabelReducer from "./dev_set_access_audit_label_reducer";
 import DevSetEndlessTravelAccessReducer from "./dev_set_endless_travel_access_reducer";
 import DevTeleportEndlessReducer from "./dev_teleport_endless_reducer";
@@ -117,6 +121,7 @@ import MarkPortalCutsceneSeenReducer from "./mark_portal_cutscene_seen_reducer";
 import PrepareProceduralBossReducer from "./prepare_procedural_boss_reducer";
 import PrepareWorldActionPositionReducer from "./prepare_world_action_position_reducer";
 import PulseDuelReducer from "./pulse_duel_reducer";
+import ReadMailboxLetterReducer from "./read_mailbox_letter_reducer";
 import RecordCombatCheckpointReducer from "./record_combat_checkpoint_reducer";
 import RecordConnectionDiagnosticReducer from "./record_connection_diagnostic_reducer";
 import RecordDesertEnemyDefeatReducer from "./record_desert_enemy_defeat_reducer";
@@ -240,6 +245,7 @@ import MyGemPurchasesRow from "./my_gem_purchases_table";
 import MyGemWalletRow from "./my_gem_wallet_table";
 import MyInventoryCapacityRow from "./my_inventory_capacity_table";
 import MyItemGiftsRow from "./my_item_gifts_table";
+import MyMailboxRow from "./my_mailbox_table";
 import MyMapShardRouteRow from "./my_map_shard_route_table";
 import MyOnboardingRow from "./my_onboarding_table";
 import MyPlayerBlocksRow from "./my_player_blocks_table";
@@ -1113,6 +1119,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, MyItemGiftsRow),
+  myMailbox: __table({
+    name: 'my_mailbox',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MyMailboxRow),
   myMapShardRoute: __table({
     name: 'my_map_shard_route',
     indexes: [
@@ -1199,6 +1212,7 @@ const reducersSchema = __reducers(
   __reducerSchema("claim_daily_gem_bonus", ClaimDailyGemBonusReducer),
   __reducerSchema("claim_developer_item_gift", ClaimDeveloperItemGiftReducer),
   __reducerSchema("claim_guest_account", ClaimGuestAccountReducer),
+  __reducerSchema("claim_mailbox_gift", ClaimMailboxGiftReducer),
   __reducerSchema("complete_onboarding_step", CompleteOnboardingStepReducer),
   __reducerSchema("configure_gem_commerce", ConfigureGemCommerceReducer),
   __reducerSchema("configure_patreon", ConfigurePatreonReducer),
@@ -1233,13 +1247,16 @@ const reducersSchema = __reducers(
   __reducerSchema("dev_delete_bug_report", DevDeleteBugReportReducer),
   __reducerSchema("dev_delete_legacy_player", DevDeleteLegacyPlayerReducer),
   __reducerSchema("dev_deliver_alpha_tester_gifts", DevDeliverAlphaTesterGiftsReducer),
+  __reducerSchema("dev_deliver_autofarm_test_gift", DevDeliverAutofarmTestGiftReducer),
   __reducerSchema("dev_deliver_combat_update_gift", DevDeliverCombatUpdateGiftReducer),
   __reducerSchema("dev_deliver_disconnect_compensation", DevDeliverDisconnectCompensationReducer),
   __reducerSchema("dev_deliver_outage_compensation", DevDeliverOutageCompensationReducer),
   __reducerSchema("dev_grant_equipment", DevGrantEquipmentReducer),
+  __reducerSchema("dev_publish_mailbox_letter", DevPublishMailboxLetterReducer),
   __reducerSchema("dev_repair_display_name", DevRepairDisplayNameReducer),
   __reducerSchema("dev_repair_player_joined_at", DevRepairPlayerJoinedAtReducer),
   __reducerSchema("dev_reset_daily_gem_bonus", DevResetDailyGemBonusReducer),
+  __reducerSchema("dev_rollback_player_progression", DevRollbackPlayerProgressionReducer),
   __reducerSchema("dev_set_access_audit_label", DevSetAccessAuditLabelReducer),
   __reducerSchema("dev_set_endless_travel_access", DevSetEndlessTravelAccessReducer),
   __reducerSchema("dev_teleport_endless", DevTeleportEndlessReducer),
@@ -1263,6 +1280,7 @@ const reducersSchema = __reducers(
   __reducerSchema("prepare_procedural_boss", PrepareProceduralBossReducer),
   __reducerSchema("prepare_world_action_position", PrepareWorldActionPositionReducer),
   __reducerSchema("pulse_duel", PulseDuelReducer),
+  __reducerSchema("read_mailbox_letter", ReadMailboxLetterReducer),
   __reducerSchema("record_combat_checkpoint", RecordCombatCheckpointReducer),
   __reducerSchema("record_connection_diagnostic", RecordConnectionDiagnosticReducer),
   __reducerSchema("record_desert_enemy_defeat", RecordDesertEnemyDefeatReducer),

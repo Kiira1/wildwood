@@ -13,7 +13,7 @@ export function deliverAutofarmTestGift(ctx: ModuleReducerCtx, recipients: Ident
 
 type Credit = (input: { identity: Identity; delta: bigint; kind: string; note: string; externalReference: string }) => void;
 
-/** Credit immediately; the existing apology popup only acknowledges receipt.
+/** Credit immediately; the legacy notice is displayed in the mailbox as already received.
  * The ledger reference survives dismissal and makes retries safe. */
 export function deliverDisconnectCompensation(ctx: ModuleReducerCtx, recipients: Identity[], credit: Credit) {
   deliverGemGift(ctx, recipients, credit, DISCONNECT_GIFT_CAMPAIGN, "disconnect_compensation",

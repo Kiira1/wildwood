@@ -319,10 +319,12 @@ it("paints distinct roster portraits and opens the selected profile without trig
 });
 
 it("shows the guild overview and roster together, with Back closing the window", async () => {
-  const g = fixture(); g.guild!.vicePresident = "b";
+  const g = fixture(); g.guild!.vicePresident = "b"; g.guild!.totalPower = 2_500_000_000;
   const h = setup(g); h.panel.open(); await settled();
   expect(h.document.querySelector("#guildOverlay .guild-window--overview")).toBeNull();
-  expect(h.document.querySelector(".guild-stats")?.textContent).toContain("Weekly points");
+  expect(h.document.querySelector(".guild-total-power")?.textContent).toBe("Power:2.50b");
+  expect(h.document.querySelector(".guild-total-power img")?.getAttribute("src")).toContain("Icon_Battle_Candy_v2.png");
+  expect(h.document.querySelector(".guild-stats")).toBeNull();
   expect(h.find("Members")).toBeUndefined();
   expect(h.document.querySelectorAll(".guild-officer--president")).toHaveLength(1);
   expect(h.document.querySelector("#guildTitle")?.textContent).toBe("Guilds");

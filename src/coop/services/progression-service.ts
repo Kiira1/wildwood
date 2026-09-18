@@ -1,3 +1,4 @@
+import type { MailboxMessage } from "../../../shared/mailbox";
 import { portalCutsceneBit, unlockedPortalCutsceneMask } from "../../../shared/portal-cutscenes";
 import { withoutLockedEquipment } from "../../../shared/equipment-access";
 import { LOADOUT_FIELDS } from "../../../shared/combat-progress";
@@ -126,6 +127,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
   let activeResearch: ActiveResearch | null = null;
   let gemBalance = 0n;
   let dailyGemBonusClaimable = false;
+  const mailboxMessages = new Map<string, MailboxMessage>();
   let balanceApologyGiftAmount = 0n;
   const itemGifts = new Map<string, PendingItemGift>();
   let secondUpgradeSlotUnlocked = false;
@@ -518,6 +520,14 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
         itemGifts.delete(row.key);
         dependencies.notify();
       },
+      upsertMailbox(row: Omit<MailboxMessage, "createdAtMs"> & { createdAt: { microsSinceUnixEpoch: bigint } }) {
+        mailboxMessages.set(row.id, { ...row, createdAtMs: Number(row.createdAt.microsSinceUnixEpoch / 1000n) });
+        dependencies.notify();
+      },
+      removeMailbox(row: { id: string }) {
+        mailboxMessages.delete(row.id);
+        dependencies.notify();
+      },
       upsertBalanceApologyNotice(row: { identity: Identity; amount: bigint }) {
         if (row.identity.toHexString() !== dependencies.localIdentity()) return;
         balanceApologyGiftAmount = row.amount;
@@ -563,6 +573,9 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
       setOnItemUpgrade(callback: ((upgrade: { itemId: string; level: number }) => void) | null) {
         itemUpgradeListener = callback;
       },
+      mailboxMessages: () => [...mailboxMessages.values()].sort((a, b) => b.createdAtMs - a.createdAtMs),
+      readMailboxLetter: (id: string) => reducerResult("mail read", connection => connection.reducers.readMailboxLetter({ id }))(),
+      claimMailboxGift: (id: string) => reducerResult("mail gift", connection => connection.reducers.claimMailboxGift({ id }))(),
       gemBalance: () => gemBalance,
       dailyGemBonusClaimable: () => dailyGemBonusClaimable,
       claimDailyGemBonus: reducerResult("daily Gem claim", (connection) => connection.reducers.claimDailyGemBonus({})),
@@ -817,6 +830,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
       activeItemUpgrades.clear();
       balanceApologyGiftAmount = 0n;
       itemGifts.clear();
+      mailboxMessages.clear();
       onboardingStep = 0;
       secondUpgradeSlotUnlocked = false;
       inventorySlotsUnlocked = 0;
@@ -835,6 +849,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
       dailyGemBonusClaimable = false;
       balanceApologyGiftAmount = 0n;
       itemGifts.clear();
+      mailboxMessages.clear();
       onboardingStep = 0;
       secondUpgradeSlotUnlocked = false;
       inventorySlotsUnlocked = 0;
@@ -850,6 +865,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
       activeItemUpgrades.clear();
       balanceApologyGiftAmount = 0n;
       itemGifts.clear();
+      mailboxMessages.clear();
       onboardingStep = 0;
       secondUpgradeSlotUnlocked = false;
       inventorySlotsUnlocked = 0;

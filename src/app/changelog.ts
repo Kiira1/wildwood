@@ -1,4 +1,10 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.734": [
+    "The guild overview now shows total guild power using the standard power display.",
+    "Open the mailbox beside the multiplayer eye for updates and developer gifts.",
+    "Read What happened to my stats? and claim a one-time 75-gem gift.",
+    "Daily gems and developer gem notices now stay in your mailbox without interrupting combat or autofarm.",
+  ],
   "0.733": [
     "Fixed old equipment remaining active locally after the progression rebalance. Locked gear and its upgrades stay in your bag until its map is unlocked.",
     "Kept boss combat and reward validation consistent with your usable equipment, preventing stale gear from causing rejected kills and missing portal unlocks.",
@@ -2022,6 +2028,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.734": "2026-09-17",
   "0.733": "2026-09-17",
   "0.732": "2026-09-17",
   "0.731": "2026-09-17",

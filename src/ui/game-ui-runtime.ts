@@ -1,5 +1,4 @@
 import { createGemShopController } from "./gem-shop-controller";
-import { createGameReleaseNotes } from "./game-release-notes";
 import { recentReleaseNotes } from "../app/changelog";
 import { isDeveloperIdentity } from "../app/developer";
 import {
@@ -25,7 +24,6 @@ export function createGameOverlays(d: Record<string, any>) {
   e.signinVersionButton.setAttribute("aria-label", `WildStat version ${d.version}. Toggle release notes`);
   e.minimapVersionEl.textContent = `v${d.version}`;
   e.minimapVersionEl.setAttribute("aria-label", `Game version ${d.version}. Open release notes`);
-  createGameReleaseNotes(e.minimapVersionEl, () => recentReleaseNotes(2));
   return overlays;
 }
 

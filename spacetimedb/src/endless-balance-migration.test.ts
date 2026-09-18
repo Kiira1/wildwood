@@ -32,7 +32,7 @@ it("converts online and offline accounts once, backs up stats, gates gear and re
   expect(f.db.playerEndlessRebaseBackup.identity.find(identity("2"))).toMatchObject({ damage: original.damage, maxHp: original.maxHp });
   expect(f.db.regularEnemyLootCursor.key.find("receipt")).toBeTruthy();
   expect(f.db.playerBalanceVersion.identity.find(identity("2")).version).toBe(9);
-  expect(f.db.moduleMigrationState.id.find(0).version).toBe(32);
+  expect(f.db.moduleMigrationState.id.find(0).version).toBe(33);
   f.patch("playerProgress", { damage: next.damage + 1000 }, identity("2"));
   f.run(server.onConnect);
   expect(f.db.playerProgress.identity.find(identity("2")).damage).toBe(next.damage + 1000);

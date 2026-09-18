@@ -25,6 +25,8 @@ export type BaseSubscriptionHandlers = {
   removeDailyGemBonus: RowHandler;
   onboarding: RowHandler;
   removeOnboarding: RowHandler;
+  mailbox: RowHandler;
+  removeMailbox: RowHandler;
   itemGift: RowHandler;
   removeItemGift: RowHandler;
   balanceApologyNotice: RowHandler;
@@ -137,6 +139,8 @@ type BaseSubscriptionHandlerSources = {
     removeDailyGemBonus: BaseSubscriptionHandlers["removeDailyGemBonus"];
     upsertOnboarding: BaseSubscriptionHandlers["onboarding"];
     removeOnboarding: BaseSubscriptionHandlers["removeOnboarding"];
+    upsertMailbox: RowHandler;
+    removeMailbox: RowHandler;
     upsertItemGift: BaseSubscriptionHandlers["itemGift"];
     removeItemGift: BaseSubscriptionHandlers["removeItemGift"];
     upsertBalanceApologyNotice: BaseSubscriptionHandlers["balanceApologyNotice"];
@@ -217,6 +221,8 @@ export function createBaseSubscriptionHandlers(sources: BaseSubscriptionHandlerS
     removeDailyGemBonus: progression.removeDailyGemBonus,
     onboarding: progression.upsertOnboarding,
     removeOnboarding: progression.removeOnboarding,
+    mailbox: progression.upsertMailbox,
+    removeMailbox: progression.removeMailbox,
     itemGift: progression.upsertItemGift,
     removeItemGift: progression.removeItemGift,
     balanceApologyNotice: progression.upsertBalanceApologyNotice,
@@ -339,6 +345,9 @@ export function startBaseSubscription(dependencies: BaseSubscriptionDependencies
   connection.db.myOnboarding.onInsert((_ctx, row) => { if (shouldHandle()) handlers.onboarding(row); });
   connection.db.myOnboarding.onUpdate((_ctx, _old, row) => { if (shouldHandle()) handlers.onboarding(row); });
   connection.db.myOnboarding.onDelete((_ctx, row) => { if (shouldHandle()) handlers.removeOnboarding(row); });
+  connection.db.myMailbox.onInsert((_ctx, row) => { if (shouldHandle()) handlers.mailbox(row); });
+  connection.db.myMailbox.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.mailbox(row); });
+  connection.db.myMailbox.onDelete((_ctx, row) => { if (shouldHandle()) handlers.removeMailbox(row); });
   connection.db.myItemGifts.onInsert((_ctx, row) => { if (shouldHandle()) handlers.itemGift(row); });
   connection.db.myItemGifts.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.itemGift(row); });
   connection.db.myItemGifts.onDelete((_ctx, row) => { if (shouldHandle()) handlers.removeItemGift(row); });
@@ -505,6 +514,7 @@ export function startBaseSubscription(dependencies: BaseSubscriptionDependencies
       tables.myDailyGemBonus,
       tables.myBalanceApologyNotice,
       tables.myItemGifts,
+      tables.myMailbox,
       tables.myOnboarding,
       tables.myUpgradeBench,
       tables.myInventoryCapacity,
@@ -536,6 +546,7 @@ export function startBaseSubscription(dependencies: BaseSubscriptionDependencies
           for (const row of connection.db.myGemWallet.iter()) handlers.gemWallet(row);
           for (const row of connection.db.myDailyGemBonus.iter()) handlers.dailyGemBonus(row);
           for (const row of connection.db.myBalanceApologyNotice.iter()) handlers.balanceApologyNotice(row);
+          for (const row of connection.db.myMailbox.iter()) handlers.mailbox(row);
           for (const row of connection.db.myItemGifts.iter()) handlers.itemGift(row);
           for (const row of connection.db.myOnboarding.iter()) handlers.onboarding(row);
           for (const row of connection.db.myUpgradeBench.iter()) handlers.upgradeBench(row);
