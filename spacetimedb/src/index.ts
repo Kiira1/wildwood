@@ -1,3 +1,4 @@
+import { auditPrivilegedAccess, denyPrivilegedAccess } from "./privileged-access-audit";
 import { defeatSessionRestriction, defeatRestrictionError, requireAllowedDefeatSession, restrictDefeatSession, suspendPlayerAccount } from "./defeat-session";
 import { findDeveloperTravelTarget, readDeveloperTravelTarget, readShardTravelPosition } from "./developer-travel";
 import { mapBalanceVersion, mapBalanceHead, playerMapBalance, balanceEditorState, saveMapBalance, pinMapBalance, pinnedMapBalance, pinnedBossReward } from "./map-balance";
@@ -1852,8 +1853,8 @@ export const devForestRewardPrototype = spacetimedb.view(
   (ctx) => isDeveloperIdentity(ctx.sender) ? ctx.db.forestRewardPrototype.identity.find(ctx.sender) ?? undefined : undefined,
 );
 
-function requireForestPrototypeAccess(ctx: ModuleReducerCtx) {
-  requireDeveloper(ctx);
+function requireForestPrototypeAccess(ctx: ModuleReducerCtx, action: string) {
+  requireDeveloper(ctx, action);
   const player = ctx.db.player.identity.find(ctx.sender);
   if (player?.mapId !== TUTORIAL_FOREST_MAP_ID || activeDuelFor(ctx, ctx.sender)) {
     throw new SenderError("Run the reward prototype in the forest, outside a duel.");
@@ -1861,7 +1862,7 @@ function requireForestPrototypeAccess(ctx: ModuleReducerCtx) {
 }
 
 export const beginForestRewardPrototype = spacetimedb.reducer({}, (ctx) => {
-  requireForestPrototypeAccess(ctx);
+  requireForestPrototypeAccess(ctx, "begin_forest_reward_prototype");
   const previous = ctx.db.forestRewardPrototype.identity.find(ctx.sender);
   try {
     const next = beginForestPrototype(previous, ctx.timestamp.microsSinceUnixEpoch);
@@ -1875,7 +1876,7 @@ export const beginForestRewardPrototype = spacetimedb.reducer({}, (ctx) => {
 export const attackForestRewardPrototype = spacetimedb.reducer(
   { encounter: t.u64(), firstAttack: t.u64(), count: t.u8() },
   (ctx, action) => {
-    requireForestPrototypeAccess(ctx);
+    requireForestPrototypeAccess(ctx, "attack_forest_reward_prototype");
     const previous = ctx.db.forestRewardPrototype.identity.find(ctx.sender);
     if (!previous) throw new SenderError("Start the reward prototype first.");
     try {
@@ -2170,7 +2171,7 @@ function repairModeratedDisplayName(ctx: any, profile: any, actorType: "automati
 export const devRepairDisplayName = spacetimedb.reducer(
   { identity: t.identity(), expectedDisplayName: t.string() },
   (ctx, { identity, expectedDisplayName }) => {
-    if (!isDatabaseOwnerIdentity(ctx.sender)) throw new SenderError("Database owner required.");
+    if (!isDatabaseOwnerIdentity(ctx.sender)) denyPrivilegedAccess(ctx, "dev_repair_display_name", "Database owner required.");
     const profile = ctx.db.playerProfile.identity.find(identity);
     if (!profile) throw new SenderError("Player profile not found.");
     if (profile.displayName !== expectedDisplayName) throw new SenderError("Player name changed; repair refused.");
@@ -3692,18 +3693,22 @@ function isVirtualPlayer(ctx: any, identity: any) {
   return Boolean(ctx.db.virtualPlayer.identity.find(identity));
 }
 
-function requireDeveloperSession(ctx: any) {
-  requireSupportedSessionProtocol(ctx);
-  if (!isDeveloperIdentity(ctx.sender) || !hasSpacetimeAuthAccount(ctx)) {
-    throw new SenderError("Developer access required.");
-  }
+function requireDeveloperSession(ctx: ModuleReducerCtx, action: string) {
+  auditPrivilegedAccess(ctx, action, () => {
+    requireSupportedSessionProtocol(ctx);
+    if (!isDeveloperIdentity(ctx.sender) || !hasSpacetimeAuthAccount(ctx)) {
+      throw new SenderError("Developer access required.");
+    }
+  });
 }
 
-function requireDeveloper(ctx: any) {
-  requireControllingPlayer(ctx);
-  if (!isDeveloperIdentity(ctx.sender) || !hasSpacetimeAuthAccount(ctx)) {
-    throw new SenderError("Developer access required.");
-  }
+function requireDeveloper(ctx: ModuleReducerCtx, action: string) {
+  auditPrivilegedAccess(ctx, action, () => {
+    requireControllingPlayer(ctx);
+    if (!isDeveloperIdentity(ctx.sender) || !hasSpacetimeAuthAccount(ctx)) {
+      throw new SenderError("Developer access required.");
+    }
+  });
 }
 
 function touchPlayerAccessAudit(ctx: any, protocolVersion: number) {
@@ -8162,7 +8167,7 @@ export const damageAegisPrimeFromPosition = spacetimedb.reducer(
 export const setReleaseWindow = spacetimedb.reducer(
   { id: t.string(), version: t.string(), phase: t.string(), startsAt: t.f64(), reload: t.bool() },
   (ctx, args) => {
-    if (!isDatabaseOwnerIdentity(ctx.sender)) throw new SenderError("Database owner required.");
+    if (!isDatabaseOwnerIdentity(ctx.sender)) denyPrivilegedAccess(ctx, "set_release_window", "Database owner required.");
     writeReleaseWindow(ctx, args);
   },
 );
@@ -8173,7 +8178,7 @@ export const acknowledgeRelease = spacetimedb.reducer({ id: t.string() }, (ctx, 
 
 // One-time backfill for clients already online when the compatibility bridge ships.
 export const refreshDuelWireAccess = spacetimedb.reducer({}, (ctx) => {
-  if (!isDatabaseOwnerIdentity(ctx.sender)) throw new SenderError("Database owner required.");
+  if (!isDatabaseOwnerIdentity(ctx.sender)) denyPrivilegedAccess(ctx, "refresh_duel_wire_access", "Database owner required.");
   for (const player of ctx.db.player.iter()) {
     syncDuelWireAccess({ db: ctx.db, sender: player.identity }, player.protocolVersion);
   }
@@ -8849,20 +8854,20 @@ export const getMapConfiguration = spacetimedb.procedure({ mapId: t.string() }, 
   return row.snapshotJson;
 }));
 export const getBalanceEditor = spacetimedb.procedure({}, t.string(), ctx => ctx.withTx(tx => {
-  requireDeveloperSession(tx);
+  requireDeveloperSession(tx, "get_balance_editor");
   return JSON.stringify(balanceEditorState(tx));
 }));
 export const previewMapBalance = spacetimedb.procedure({ mapId: t.string(), settingsJson: t.string() }, t.string(), (ctx, args) => ctx.withTx(tx => {
-  requireDeveloperSession(tx);
+  requireDeveloperSession(tx, "preview_map_balance");
   if (args.settingsJson.length > 20_000) throw new SenderError("Balance configuration too large.");
   return JSON.stringify(resolveMapBalance(args.mapId, validateBalanceSettings(JSON.parse(args.settingsJson)), 0));
 }));
 export const setMapBalance = spacetimedb.reducer({ expectedRevision: t.u32(), settingsJson: t.string() }, (ctx, args) => {
-  requireDeveloper(ctx);
+  requireDeveloper(ctx, "set_map_balance");
   saveMapBalance(ctx, args.expectedRevision, args.settingsJson);
 });
 export const restoreMapBalance = spacetimedb.reducer({ expectedRevision: t.u32(), revision: t.u32() }, (ctx, args) => {
-  requireDeveloper(ctx);
+  requireDeveloper(ctx, "restore_map_balance");
   const row = ctx.db.mapBalanceVersion.revision.find(args.revision);
   if (!row) throw new SenderError("Balance version not found.");
   saveMapBalance(ctx, args.expectedRevision, row.settingsJson);
@@ -8877,7 +8882,7 @@ export const getNameChangeStatus = spacetimedb.procedure({}, nameChangeStatusRes
 export const setDeveloperNameTag = spacetimedb.reducer(
   { visible: t.bool() },
   (ctx, { visible }) => {
-    requireDeveloper(ctx);
+    requireDeveloper(ctx, "set_developer_name_tag");
     const previous = ctx.db.playerNameTag.identity.find(ctx.sender);
     if (previous) ctx.db.playerNameTag.identity.update({ ...previous, showDevTag: visible });
     else ctx.db.playerNameTag.insert({ identity: ctx.sender, guildTag: "", showDevTag: visible });
@@ -8887,7 +8892,7 @@ export const setDeveloperNameTag = spacetimedb.reducer(
 export const setDeveloperPresence = spacetimedb.reducer(
   { visible: t.bool() },
   (ctx, { visible }) => {
-    requireDeveloper(ctx);
+    requireDeveloper(ctx, "set_developer_presence");
     const activePlayer = requireControllingPlayer(ctx);
     const preference = ctx.db.developerPresencePreference.identity.find(ctx.sender);
     if (preference) ctx.db.developerPresencePreference.identity.update({ ...preference, visible });
@@ -8925,7 +8930,7 @@ export const setMultiplayerEnabled = spacetimedb.reducer({ enabled: t.bool() }, 
 export const devAdjustGems = spacetimedb.reducer(
   { identity: t.identity(), delta: t.i64(), reason: t.string() },
   (ctx, { identity, delta, reason }) => {
-    requireDeveloper(ctx);
+    requireDeveloper(ctx, "dev_adjust_gems");
     const note = reason.trim().replace(/\s+/g, " ");
     if (note.length < 3 || note.length > 120) {
       throw new SenderError("Gem adjustment reason must be 3-120 characters.");
@@ -8948,7 +8953,7 @@ export const devResetDailyGemBonus = spacetimedb.reducer(
   { identity: t.identity() },
   (ctx, { identity }) => {
     if (!isDatabaseOwnerIdentity(ctx.sender)) {
-      requireDeveloper(ctx);
+      requireDeveloper(ctx, "dev_reset_daily_gem_bonus");
       if (!sameIdentity(identity, ctx.sender)) throw new SenderError("Developers may reset only their own daily bonus.");
     }
     const dayKey = currentUtcDayKey(ctx);
@@ -8983,7 +8988,7 @@ export const devBeginVirtualPlayerLoadTest = spacetimedb.reducer(
   (ctx, { ticket, maxCount }) => {
     // The external Node load generator authenticates as the developer without
     // taking player control away from the open game tab.
-    requireDeveloperSession(ctx);
+    requireDeveloperSession(ctx, "dev_begin_virtual_player_load_test");
     if (!ctx.db.player.identity.find(ctx.sender) || !ctx.db.playerController.identity.find(ctx.sender)) {
       throw new SenderError("Keep the developer game session open during a virtual-player test.");
     }
@@ -9057,7 +9062,7 @@ export const joinVirtualPlayerLoadTest = spacetimedb.reducer(
 export const devClearVirtualPlayers = spacetimedb.reducer(
   {},
   (ctx) => {
-    requireDeveloperSession(ctx);
+    requireDeveloperSession(ctx, "dev_clear_virtual_players");
     clearVirtualPlayersForOwner(ctx, ctx.sender);
   },
 );
@@ -9065,7 +9070,7 @@ export const devClearVirtualPlayers = spacetimedb.reducer(
 export const devSetAccessAuditLabel = spacetimedb.reducer(
   { identity: t.identity(), label: t.string() },
   (ctx, { identity, label }) => {
-    requireDeveloper(ctx);
+    requireDeveloper(ctx, "dev_set_access_audit_label");
     const normalized = label.trim().replace(/\s+/g, " ");
     if (normalized.length > 60) throw new SenderError("Audit label must be 60 characters or fewer.");
     const current = ctx.db.playerAccessAudit.identity.find(identity);
@@ -9077,7 +9082,7 @@ export const devSetAccessAuditLabel = spacetimedb.reducer(
 export const devDeleteBugReport = spacetimedb.reducer(
   { id: t.u64() },
   (ctx, { id }) => {
-    requireDeveloper(ctx);
+    requireDeveloper(ctx, "dev_delete_bug_report");
     if (!ctx.db.bugReport.id.find(id)) throw new SenderError("Bug report not found.");
     ctx.db.bugReport.id.delete(id);
   },
@@ -9090,7 +9095,7 @@ export const devDeleteLegacyPlayer = spacetimedb.reducer(
   { identity: t.identity(), expectedDisplayName: t.string() },
   (ctx, { identity, expectedDisplayName }) => {
     if (!isDeveloperIdentity(ctx.sender) && !isDatabaseOwnerIdentity(ctx.sender)) {
-      throw new SenderError("Developer access required.");
+      denyPrivilegedAccess(ctx, "dev_delete_legacy_player", "Developer access required.");
     }
     if (isDeveloperIdentity(identity) || isDatabaseOwnerIdentity(identity)) {
       throw new SenderError("Protected identity cannot be deleted.");
@@ -9131,7 +9136,7 @@ export const devRepairPlayerJoinedAt = spacetimedb.reducer(
   { identity: t.identity(), sourceIdentity: t.identity() },
   (ctx, { identity, sourceIdentity }) => {
     if (!isDeveloperIdentity(ctx.sender) && !isDatabaseOwnerIdentity(ctx.sender)) {
-      throw new SenderError("Developer access required.");
+      denyPrivilegedAccess(ctx, "dev_repair_player_joined_at", "Developer access required.");
     }
     if (sameIdentity(identity, sourceIdentity)) throw new SenderError("Source and target must differ.");
     const targetLifetime = ctx.db.playerLifetime.identity.find(identity);
@@ -9151,7 +9156,7 @@ export const devCopyPlayerCombatStats = spacetimedb.reducer(
   { sourceIdentity: t.identity(), targetIdentity: t.identity() },
   (ctx, { sourceIdentity, targetIdentity }) => {
     if (!isDeveloperIdentity(ctx.sender) && !isDatabaseOwnerIdentity(ctx.sender)) {
-      throw new SenderError("Developer access required.");
+      denyPrivilegedAccess(ctx, "dev_copy_player_combat_stats", "Developer access required.");
     }
     if (sameIdentity(sourceIdentity, targetIdentity)) throw new SenderError("Source and target must differ.");
     const source = ctx.db.playerProgress.identity.find(sourceIdentity);
@@ -9249,7 +9254,7 @@ export const setSkinTone = spacetimedb.reducer(
 export const devSuspendPlayerAccount = spacetimedb.reducer(
   { identity: t.identity(), expectedDisplayName: t.string(), untilMicros: t.u64(), reason: t.string() },
   (ctx, args) => {
-    if (!isDatabaseOwnerIdentity(ctx.sender) || isMapShard(ctx)) throw new SenderError("Account database owner required.");
+    if (!isDatabaseOwnerIdentity(ctx.sender) || isMapShard(ctx)) denyPrivilegedAccess(ctx, "dev_suspend_player_account", "Account database owner required.");
     suspendPlayerAccount(ctx, args);
     finishLifetimeSession(ctx, args.identity);
     removeIdentityPresence(ctx, args.identity);
@@ -9260,7 +9265,7 @@ export const devRollbackPlayerProgression = spacetimedb.reducer(
   { identity: t.identity(), expectedDisplayName: t.string(), operationId: t.string(), baselineJson: t.string(), reason: t.string() },
   (ctx, args) => rollbackPlayerProgression(ctx, args, {
     requireOwner: () => {
-      if (!isDatabaseOwnerIdentity(ctx.sender) || isMapShard(ctx)) throw new SenderError("Account database owner required.");
+      if (!isDatabaseOwnerIdentity(ctx.sender) || isMapShard(ctx)) denyPrivilegedAccess(ctx, "dev_rollback_player_progression", "Account database owner required.");
       if (activeDuelFor(ctx, args.identity)) throw new SenderError("Wait for this player's duel to finish.");
     },
     apply: (progress, mapIndex) => {
@@ -9316,7 +9321,7 @@ export const devUpdatePlayerSave = spacetimedb.reducer(
     speed: t.f32(),
   },
   (ctx, update) => {
-    requireDeveloper(ctx);
+    requireDeveloper(ctx, "dev_update_player_save");
     const profile = ctx.db.playerProfile.identity.find(update.identity);
     const progress = ctx.db.playerProgress.identity.find(update.identity);
     if (!profile || !progress) throw new SenderError("Player save row not found.");
@@ -9594,7 +9599,7 @@ export const myItemGifts = spacetimedb.view(
 /** Explicit admin grants support local equipment playtests without changing normal loot. */
 export const devGrantEquipment = spacetimedb.reducer(
   { identity: t.identity(), itemId: t.string(), equip: t.bool() }, (ctx, { identity, itemId, equip }) => {
-    if (!isDatabaseOwnerIdentity(ctx.sender)) requireDeveloper(ctx);
+    if (!isDatabaseOwnerIdentity(ctx.sender)) requireDeveloper(ctx, "dev_grant_equipment");
     if (isMapShard(ctx)) throw new SenderError("Use the world connection.");
     const item = itemDefinition(itemId);
     const progress = ctx.db.playerProgress.identity.find(identity);
@@ -9609,7 +9614,7 @@ export const devGrantEquipment = spacetimedb.reducer(
 
 export const devDeliverAlphaTesterGifts = spacetimedb.reducer(
   { recipients: t.array(t.identity()) }, (ctx, { recipients }) => {
-    if (!isDatabaseOwnerIdentity(ctx.sender)) requireDeveloper(ctx);
+    if (!isDatabaseOwnerIdentity(ctx.sender)) requireDeveloper(ctx, "dev_deliver_alpha_tester_gifts");
     if (isMapShard(ctx)) throw new SenderError("Use the world connection.");
     deliverAlphaTesterGifts(ctx, recipients);
   },
@@ -9627,7 +9632,7 @@ export const claimDeveloperItemGift = spacetimedb.reducer({ key: t.string() }, (
 
 export const devDeliverDisconnectCompensation = spacetimedb.reducer(
   { recipients: t.array(t.identity()) }, (ctx, { recipients }) => {
-    if (!isDatabaseOwnerIdentity(ctx.sender)) requireDeveloper(ctx);
+    if (!isDatabaseOwnerIdentity(ctx.sender)) requireDeveloper(ctx, "dev_deliver_disconnect_compensation");
     if (isMapShard(ctx)) throw new SenderError("Use the world connection.");
     deliverDisconnectCompensation(ctx, recipients, input => { applyGemBalanceChange(ctx, input); });
   },
@@ -9635,7 +9640,7 @@ export const devDeliverDisconnectCompensation = spacetimedb.reducer(
 
 export const devDeliverCombatUpdateGift = spacetimedb.reducer(
   { recipients: t.array(t.identity()) }, (ctx, { recipients }) => {
-    if (!isDatabaseOwnerIdentity(ctx.sender)) requireDeveloper(ctx);
+    if (!isDatabaseOwnerIdentity(ctx.sender)) requireDeveloper(ctx, "dev_deliver_combat_update_gift");
     if (isMapShard(ctx)) throw new SenderError("Use the world connection.");
     deliverCombatUpdateGift(ctx, recipients, input => { applyGemBalanceChange(ctx, input); });
   },
@@ -9643,20 +9648,20 @@ export const devDeliverCombatUpdateGift = spacetimedb.reducer(
 
 export const devDeliverOutageCompensation = spacetimedb.reducer(
   { recipients: t.array(t.identity()) }, (ctx, { recipients }) => {
-    if (!isDatabaseOwnerIdentity(ctx.sender)) requireDeveloper(ctx);
+    if (!isDatabaseOwnerIdentity(ctx.sender)) requireDeveloper(ctx, "dev_deliver_outage_compensation");
     if (isMapShard(ctx)) throw new SenderError("Use the world connection.");
     deliverOutageCompensation(ctx, recipients, input => { applyGemBalanceChange(ctx, input); });
   },
 );
 export const devDeliverAutofarmTestGift = spacetimedb.reducer(
   { recipients: t.array(t.identity()) }, (ctx, { recipients }) => {
-    if (!isDatabaseOwnerIdentity(ctx.sender)) requireDeveloper(ctx);
+    if (!isDatabaseOwnerIdentity(ctx.sender)) requireDeveloper(ctx, "dev_deliver_autofarm_test_gift");
     if (isMapShard(ctx)) throw new SenderError("Use the world connection.");
     deliverAutofarmTestGift(ctx, recipients, input => { applyGemBalanceChange(ctx, input); });
   },
 );
 export const devAnnounceOutageCompensation = spacetimedb.reducer({}, ctx => {
-  if (!isDatabaseOwnerIdentity(ctx.sender)) requireDeveloper(ctx);
+  if (!isDatabaseOwnerIdentity(ctx.sender)) requireDeveloper(ctx, "dev_announce_outage_compensation");
   if (isMapShard(ctx)) throw new SenderError("Use the world connection.");
   announceOutageCompensation(ctx, message => { insertChatMessage(ctx, ctx.sender, "DEVELOPER", message); });
 });
@@ -9697,14 +9702,14 @@ export const requestAccountDeletion = spacetimedb.reducer({ confirmation: t.stri
 });
 export const devDeliverEquipmentMail = spacetimedb.reducer(
   { recipients: t.array(t.identity()) }, (ctx, { recipients }) => {
-    if (!isDatabaseOwnerIdentity(ctx.sender)) requireDeveloper(ctx);
+    if (!isDatabaseOwnerIdentity(ctx.sender)) requireDeveloper(ctx, "dev_deliver_equipment_mail");
     if (isMapShard(ctx)) throw new SenderError("Use the world connection.");
     deliverEquipmentMail(ctx, recipients);
   },
 );
 export const devPublishMailboxLetter = spacetimedb.reducer(
   { id: t.string(), title: t.string(), body: t.string(), gems: t.u64() }, (ctx, letter) => {
-    if (!isDatabaseOwnerIdentity(ctx.sender)) requireDeveloper(ctx);
+    if (!isDatabaseOwnerIdentity(ctx.sender)) requireDeveloper(ctx, "dev_publish_mailbox_letter");
     if (isMapShard(ctx)) throw new SenderError("Use the world connection.");
     publishMailboxLetter(ctx, letter);
   },
@@ -11133,7 +11138,7 @@ export const reportSocialMessage = spacetimedb.reducer({ messageId: t.u64(), rea
 export const configureGemCommerce = spacetimedb.reducer(
   { verifier: t.identity(), enabled: t.bool() },
   (ctx, { verifier, enabled }) => {
-    if (!isDatabaseOwnerIdentity(ctx.sender)) throw new SenderError("Database owner required.");
+    if (!isDatabaseOwnerIdentity(ctx.sender)) denyPrivilegedAccess(ctx, "configure_gem_commerce", "Database owner required.");
     if (isMapShard(ctx)) throw new SenderError("Commerce belongs to the root database.");
     const value = { id: 0, verifier, enabled };
     if (ctx.db.gemCommerceConfig.id.find(0)) ctx.db.gemCommerceConfig.id.update(value);
@@ -11256,7 +11261,7 @@ export const myEndlessTravelAccess = spacetimedb.view(
 
 export const devSetEndlessTravelAccess = spacetimedb.reducer(
   { identity: t.identity(), enabled: t.bool() }, (ctx, { identity, enabled }) => {
-    if (!isDatabaseOwnerIdentity(ctx.sender)) requireDeveloper(ctx);
+    if (!isDatabaseOwnerIdentity(ctx.sender)) requireDeveloper(ctx, "dev_set_endless_travel_access");
     if (isMapShard(ctx)) throw new SenderError("Use the world connection.");
     const existing = ctx.db.endlessTravelAccess.identity.find(identity);
     if (enabled && !existing) ctx.db.endlessTravelAccess.insert({ identity });
@@ -11265,21 +11270,21 @@ export const devSetEndlessTravelAccess = spacetimedb.reducer(
 );
 
 export const getDeveloperTravelTarget = spacetimedb.procedure({ query: t.string() }, t.string(), (ctx, { query }) => ctx.withTx(tx => {
-  requireDeveloper(tx);
+  requireDeveloper(tx, "get_developer_travel_target");
   const target = findDeveloperTravelTarget(tx, query);
   return JSON.stringify({ identity: target.identity.toHexString(), displayName: target.displayName, mapId: target.mapId });
 }));
 
 export const devTeleportToPlayer = spacetimedb.procedure({ identity: t.identity(), mapId: t.string() }, t.string(), (ctx, args) => {
   const target = ctx.withTx(tx => {
-    requireDeveloper(tx);
+    requireDeveloper(tx, "dev_teleport_to_player");
     if (activeDuelFor(tx, tx.sender)) throw new SenderError("Finish the duel before teleporting.");
     if (activeDuelFor(tx, args.identity)) throw new SenderError("Player is in a duel. Try again afterward.");
     return readDeveloperTravelTarget(tx, args.identity, args.mapId);
   });
   const position = readShardTravelPosition(ctx, target);
   return ctx.withTx(tx => {
-    requireDeveloper(tx);
+    requireDeveloper(tx, "dev_teleport_to_player");
     const current = requireControllingPlayer(tx);
     if (current.hp <= 0 || activeDuelFor(tx, tx.sender)) throw new SenderError("Teleport unavailable while dead or dueling.");
     if (activeDuelFor(tx, args.identity)) throw new SenderError("Player is in a duel. Try again afterward.");
@@ -11297,8 +11302,8 @@ export const devTeleportToPlayer = spacetimedb.procedure({ identity: t.identity(
 export const devTeleportEndless = spacetimedb.reducer(
   { number: t.f64() }, (ctx, { number }) => {
     const player = requireControllingPlayer(ctx);
-    if (!hasEndlessTravelAccess(ctx, ctx.sender)) throw new SenderError("Developer travel access required.");
-    if (isDeveloperIdentity(ctx.sender)) requireDeveloper(ctx);
+    if (!hasEndlessTravelAccess(ctx, ctx.sender)) denyPrivilegedAccess(ctx, "dev_teleport_endless", "Developer travel access required.");
+    if (isDeveloperIdentity(ctx.sender)) requireDeveloper(ctx, "dev_teleport_endless");
     if (isMapShard(ctx)) throw new SenderError("Use the world connection.");
     if (!Number.isSafeInteger(number) || number < 1) throw new SenderError("Enter a positive whole map number.");
     if (player.hp <= 0) throw new SenderError("Respawn before teleporting.");
@@ -11370,7 +11375,7 @@ export const getChatHistory = spacetimedb.procedure(
 // Private evidence is fetched only on demand, never through a public view.
 export const getModerationHistory = spacetimedb.procedure({ beforeId: t.u64() }, t.string(),
   (ctx, { beforeId }) => ctx.withTx(tx => {
-    if (!isDatabaseOwnerIdentity(tx.sender)) requireDeveloperSession(tx);
+    if (!isDatabaseOwnerIdentity(tx.sender)) requireDeveloperSession(tx, "get_moderation_history");
     return JSON.stringify(readModerationHistory(tx, beforeId));
   }),
 );
@@ -11405,7 +11410,7 @@ export const getSocialChatHistoryWithReactions = spacetimedb.procedure(
 );
 
 export const configurePatreon = spacetimedb.reducer({ clientId: t.string(), clientSecret: t.string(), campaignId: t.string(), silverTierId: t.string(), goldTierId: t.string(), redirectUri: t.string() }, (ctx, config) => {
-  if (!isDatabaseOwnerIdentity(ctx.sender) || isMapShard(ctx)) throw new SenderError("Database owner required.");
+  if (!isDatabaseOwnerIdentity(ctx.sender) || isMapShard(ctx)) denyPrivilegedAccess(ctx, "configure_patreon", "Database owner required.");
   if (!config.clientId || !config.clientSecret || !/^\d+$/.test(config.campaignId) || !/^\d+$/.test(config.silverTierId) || !/^\d+$/.test(config.goldTierId) || config.silverTierId === config.goldTierId) throw new SenderError("Invalid Patreon configuration.");
   if (!validPatreonRedirect(config.redirectUri)) throw new SenderError("Use the database's Patreon callback URL.");
   const row = { id: 0, ...config };

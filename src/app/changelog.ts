@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.745": [
+    "Improved server security monitoring.",
+  ],
   "0.744": [
     "Improved server validation and account security.",
   ],
@@ -2077,6 +2080,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.745": "2026-09-18",
   "0.744": "2026-09-18",
   "0.743": "2026-09-18",
   "0.742": "2026-09-18",

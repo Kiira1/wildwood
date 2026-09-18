@@ -86,8 +86,8 @@ describe("prototype integration security contracts", () => {
   it("keeps one private sender-keyed ledger and authorizes every mutation", () => {
     expect(source).toContain('{ name: "forest_reward_prototype", public: false }');
     expect(prototype).toContain("isDeveloperIdentity(ctx.sender)");
-    expect(prototype).toContain("requireDeveloper(ctx)");
-    expect(prototype.match(/requireForestPrototypeAccess\(ctx\)/g)).toHaveLength(2);
+    expect(prototype).toContain("requireDeveloper(ctx, action)");
+    expect(prototype.match(/requireForestPrototypeAccess\(ctx, "(?:begin|attack)_forest_reward_prototype"\)/g)).toHaveLength(2);
     expect(prototype).toContain("TUTORIAL_FOREST_MAP_ID");
     expect(prototype).toContain("activeDuelFor(ctx, ctx.sender)");
     expect(prototype).toContain("ctx.timestamp.microsSinceUnixEpoch");
