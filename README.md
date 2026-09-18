@@ -8,9 +8,9 @@
 
 Fight monsters, find better gear, and build your stats as you explore forests, deserts, snowlands, and beyond. Take on shared bosses, challenge other players to duels, and see how far you can climb the leaderboard.
 
-Built for phones. Playable on desktop. No download required.
+Built for phones. Playable on desktop.
 
-WildStat is in beta.
+WildStat is in in alpha / early-beta.
 
 Found a bug? Use `/bug` in game or [open an issue](https://github.com/Tydoskus/wildwood/issues).
 
