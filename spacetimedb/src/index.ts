@@ -3926,15 +3926,18 @@ function publishItemDrop(ctx: any, identity: any, itemId: string, alreadyOwned: 
 
 
 function equippedHeadForProgress(progress: any, inventory = inventoryForProgress(progress)) {
+  if (equipmentMapRequirement(progress.equippedHead, progress)) return "";
   if (progress.equippedHead === "") return "";
   return inventory.includes(progress.equippedHead) ? progress.equippedHead : BASIC_PAPER_HAT;
 }
 
 function equippedChestForProgress(progress: any, inventory = inventoryForProgress(progress)) {
+  if (equipmentMapRequirement(progress.equippedChest, progress)) return "";
   return inventory.includes(progress.equippedChest) ? progress.equippedChest : "";
 }
 
 function equippedFeetForProgress(progress: any, inventory = inventoryForProgress(progress)) {
+  if (equipmentMapRequirement(progress.equippedFeet, progress)) return "";
   return inventory.includes(progress.equippedFeet) ? progress.equippedFeet : "";
 }
 
@@ -3956,13 +3959,13 @@ function canonicalSavedHand(progress: any, field: "equippedRightHand" | "equippe
 
 function equippedRightHandForProgress(progress: any, inventory = inventoryForProgress(progress)) {
   const saved = canonicalSavedHand(progress, "equippedRightHand");
-  if (saved && inventory.includes(saved)) return saved;
+  if (saved && inventory.includes(saved) && !equipmentMapRequirement(saved, progress)) return saved;
   return savedInventoryHasHandItem(progress) ? "" : STARTER_STONE;
 }
 
 function equippedLeftHandForProgress(progress: any, inventory = inventoryForProgress(progress)) {
   const saved = canonicalSavedHand(progress, "equippedLeftHand");
-  return saved && inventory.includes(saved) ? saved : "";
+  return saved && inventory.includes(saved) && !equipmentMapRequirement(saved, progress) ? saved : "";
 }
 
 function cosmeticEquipmentForProgress(progress: any, inventory = inventoryForProgress(progress)) {

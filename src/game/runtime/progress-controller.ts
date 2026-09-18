@@ -1,4 +1,5 @@
 import { canonicalItemId, itemDefinition } from "../../../shared/items";
+import { equipmentMapRequirement, EQUIPMENT_ACCESS_FIELDS, withoutLockedEquipment } from "../../../shared/equipment-access";
 import { BASE_ATTACK_RANGE, BASE_PROJECTILE_SPEED } from "../constants";
 import { clamp } from "../math";
 import { inventoryFromSave, serialiseInventory, TRAILBLAZER_BOOTS, type EquipmentSlot, type InventoryState } from "../inventory";
@@ -62,8 +63,16 @@ export function createProgressController(dependencies: ProgressDependencies) {
       ownershipJson = saved.inventoryJson;
     }
     const inventory = dependencies.inventory;
-    if (inventory.itemIds.length === ownedItems.length &&
-      inventory.itemIds.every((item, index) => item === ownedItems[index])) return;
+    const sameOwnership = inventory.itemIds.length === ownedItems.length &&
+      inventory.itemIds.every((item, index) => item === ownedItems[index]);
+    let removedLocked = false;
+    for (const field of EQUIPMENT_ACCESS_FIELDS) {
+      if (inventory[field] && equipmentMapRequirement(inventory[field], saved)) {
+        inventory[field] = equipmentMapRequirement(saved[field], saved) ? "" : saved[field];
+        removedLocked = true;
+      }
+    }
+    if (sameOwnership && !removedLocked) return;
     inventory.itemIds = [...ownedItems];
     // Keep local loadout choices. Server ownership still determines what can
     // be equipped; upgrading/destroying an item must not leave ghost equipment.
@@ -148,6 +157,7 @@ export function createProgressController(dependencies: ProgressDependencies) {
   }
 
   function applyProgress(source: Partial<PlayerProgress>) {
+    source = withoutLockedEquipment(source, source);
     const { player, inventory, bootsPickup } = dependencies;
     player.baseMaxHp = boundedProgressValue(source.maxHp, player.baseMaxHp, 1, MAX_PLAYER_STAT);
     player.damage = boundedProgressValue(source.damage, player.damage, 1, MAX_PLAYER_STAT);

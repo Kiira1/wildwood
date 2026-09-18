@@ -98,7 +98,7 @@ describe("loaded progress reconciliation", () => {
 
   it("repairs a bag after missed completion hydration and removes items held by upgrades", () => {
     const state = createGameBootstrap();
-    let saved = { ...savedProgress(), inventoryJson: JSON.stringify(["basic_paper_hat", "starter_stone", CLOUDSPIRE_BOW]) };
+    let saved = { ...savedProgress(), cloudspireUnlocked: true, inventoryJson: JSON.stringify(["basic_paper_hat", "starter_stone", CLOUDSPIRE_BOW]) };
     const renderInventory = vi.fn();
     const controller = createProgressController({
       player: state.player, inventory: state.inventory, bootsPickup: state.bootsPickup,
@@ -130,6 +130,15 @@ describe("loaded progress reconciliation", () => {
     expect(state.inventory.itemIds).not.toContain(MOONFEN_ARMOR);
     expect(state.inventory.equippedChest).toBe("");
     expect(state.inventory.equippedRightHand).toBe(CLOUDSPIRE_BOW);
+
+    // A rebalance can revoke map access without changing bag ownership.
+    saved = { ...saved, cloudspireUnlocked: false };
+    controller.load();
+    expect(state.inventory.equippedRightHand).toBe(saved.equippedRightHand);
+    expect(state.inventory.itemIds).toContain(CLOUDSPIRE_BOW);
+    state.inventory.equippedRightHand = CLOUDSPIRE_BOW;
+    controller.load();
+    expect(state.inventory.equippedRightHand).toBe(saved.equippedRightHand);
   });
 
 });

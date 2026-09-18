@@ -1,4 +1,8 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.733": [
+    "Fixed old equipment remaining active locally after the progression rebalance. Locked gear and its upgrades stay in your bag until its map is unlocked.",
+    "Kept boss combat and reward validation consistent with your usable equipment, preventing stale gear from causing rejected kills and missing portal unlocks.",
+  ],
   "0.732": [
     "Rebalanced campaign progression and slowed Endless growth, with smaller stat jumps between Endless maps.",
     "Existing progress is converted using estimated earned hours on the new curve. Equipment and upgrades are kept; later-tier gear becomes usable again when its map is unlocked.",

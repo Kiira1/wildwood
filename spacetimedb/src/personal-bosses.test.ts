@@ -1,6 +1,7 @@
 import { expect, it, vi } from "vitest";
 import { crystalFixture, server } from "../../tests/helpers/crystal-hollows-fixture";
 import { reportEnemy } from "../../tests/helpers/enemy-defeat";
+import { CAMPAIGN_UNLOCK_FIELDS } from "../../shared/equipment-access";
 import { MAP_IDS, BOSS_REWARD_CLAIM_BITS } from "../../shared/rules";
 import { personalBossDefinition } from "../../shared/personal-bosses";
 import { generatedBossStats, generateMap } from "../../shared/procedural-maps";
@@ -63,7 +64,12 @@ it.each([...MAP_IDS, "endless_40"].filter(mapId => personalBossDefinition(mapId)
   reportEnemy(f, "boss");
   const definition = personalBossDefinition(mapId)!;
   if (definition.kind === "procedural") expect(f.db.proceduralProgress.identity.find(f.ctx.sender).completed).toBe(40);
-  else expect(f.db.playerProgress.identity.find(f.ctx.sender).bossRewardClaims & (BOSS_REWARD_CLAIM_BITS as any)[definition.kind]).not.toBe(0);
+  else {
+    const progress = f.db.playerProgress.identity.find(f.ctx.sender);
+    expect(progress.bossRewardClaims & (BOSS_REWARD_CLAIM_BITS as any)[definition.kind]).not.toBe(0);
+    const index = MAP_IDS.indexOf(mapId as typeof MAP_IDS[number]);
+    if (index < CAMPAIGN_UNLOCK_FIELDS.length) expect(progress[CAMPAIGN_UNLOCK_FIELDS[index]]).toBe(true);
+  }
   // Client simulation never writes shared HP, contribution tables or reward schedules.
   expect([...f.db.dragonContribution.iter()]).toHaveLength(0);
   expect([...f.db.proceduralInstanceContribution.iter()]).toHaveLength(0);

@@ -23,6 +23,8 @@ it("rejects unowned or cosmetic-only speed boosts and accepts the exact equipped
   f.patch("playerProgress", { inventoryJson: JSON.stringify([BLACK_BOOTS]), cosmeticFeet: BLACK_BOOTS });
   expect(() => f.run(server.setSpeed, { speed: 205 })).toThrow("Unsupported player speed");
   f.patch("playerProgress", { equippedFeet: BLACK_BOOTS });
+  expect(() => f.run(server.setSpeed, { speed: 205 })).toThrow("Unsupported player speed");
+  f.patch("playerProgress", { infernalUnlocked: true });
   f.run(server.setSpeed, { speed: 205 });
   expect(f.db.player.identity.find(f.ctx.sender).speed).toBe(205);
   expect(f.db.playerProgress.identity.find(f.ctx.sender).speed).toBe(180);

@@ -1,4 +1,5 @@
 import { portalCutsceneBit, unlockedPortalCutsceneMask } from "../../../shared/portal-cutscenes";
+import { withoutLockedEquipment } from "../../../shared/equipment-access";
 import { LOADOUT_FIELDS } from "../../../shared/combat-progress";
 import { withRequestDeadline } from "./request-deadline";
 import type { EnemyLootRequest } from "./regular-enemy-loot-queue";
@@ -296,6 +297,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
       return;
     }
     localProgress = progress;
+    if (pendingProgress) pendingProgress = withoutLockedEquipment(pendingProgress, progress, progress);
     void cutscenes.flush();
     if (restoredSave && pendingProgress) {
       pendingProgress = { ...pendingProgress, maxHp: progress.maxHp, damage: progress.damage,

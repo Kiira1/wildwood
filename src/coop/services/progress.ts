@@ -1,4 +1,5 @@
 import { rescaleEndgameProgress } from "../../../shared/endgame-power-rescale";
+import { withoutLockedEquipment } from "../../../shared/equipment-access";
 import { compressLegacyMapPower } from "../../../shared/map-power-rescale";
 import {
   ATTACK_BALANCE_VERSION,
@@ -162,6 +163,7 @@ export function progressCovers(saved: PlayerProgress, pending: ProgressSave) {
 }
 
 export function mergeProgress(saved: PlayerProgress, pending: ProgressSave): PlayerProgress {
+  pending = withoutLockedEquipment(pending, saved, saved);
   return {
     ...saved,
     maxHp: Math.max(saved.maxHp, pending.maxHp),

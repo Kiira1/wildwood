@@ -91,6 +91,21 @@ describe("boss time validation", () => {
     sword.claim(); expect(sword.kills()).toBe(0n);
   });
 
+  it("ignores locked gear even if a stale server row still contains it", () => {
+    const f = fixture("tutorial_forest", 600);
+    f.patch("playerProgress", { inventoryJson: '["starter_bow","ion_bow","ion_helmet","ion_armor"]',
+      equippedHead: "ion_helmet", equippedChest: "ion_armor", ionCitadelUnlocked: false });
+    f.begin(); f.at(300); f.claim();
+    expect(f.kills()).toBe(0n);
+    expect(f.db.playerProgress.identity.find(f.ctx.sender).desertUnlocked).not.toBe(true);
+    f.at(600); f.claim();
+    expect(f.kills()).toBe(1n);
+    expect(f.db.playerProgress.identity.find(f.ctx.sender).desertUnlocked).toBe(true);
+    f.patch("playerProgress", { equippedRightHand: "ion_bow", damage: 1e30 });
+    f.at(1200); f.claim();
+    expect(f.kills()).toBe(1n);
+  });
+
   it("honors server research, ranged volleys, and possible Endless criticals", () => {
     const ranged = fixture("endless_11", 400);
     ranged.claim(); expect(ranged.kills()).toBe(0n);
