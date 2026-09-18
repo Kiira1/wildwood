@@ -575,7 +575,12 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
       },
       mailboxMessages: () => [...mailboxMessages.values()].sort((a, b) => b.createdAtMs - a.createdAtMs),
       readMailboxLetter: (id: string) => reducerResult("mail read", connection => connection.reducers.readMailboxLetter({ id }))(),
-      claimMailboxGift: (id: string) => reducerResult("mail gift", connection => connection.reducers.claimMailboxGift({ id }))(),
+      requestAccountDeletion: () => reducerResult("account deletion", connection => connection.reducers.requestAccountDeletion({ confirmation: "DELETE" }))(),
+      claimMailboxGift: (id: string) => reducerResult("mail gift", async connection => {
+        if (!await drain()) throw new Error("Progress is still syncing. Try again shortly.");
+        if (connection !== dependencies.reducers.connection() || !dependencies.worldEntryReady()) throw new Error("Reconnect to claim your gift.");
+        await connection.reducers.claimMailboxGift({ id });
+      })(),
       gemBalance: () => gemBalance,
       dailyGemBonusClaimable: () => dailyGemBonusClaimable,
       claimDailyGemBonus: reducerResult("daily Gem claim", (connection) => connection.reducers.claimDailyGemBonus({})),

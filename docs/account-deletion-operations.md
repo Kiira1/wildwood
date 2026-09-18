@@ -2,7 +2,17 @@
 
 The owner confirmed on September 12, 2026 that support@wildstatmmo.com is a working
 inbox they monitor and can use for privacy/account-deletion requests. The public
-request path is email-based; it is not an automatic deletion button.
+request path supports email and authenticated in-game requests. Settings → Account → Delete Account gives a 10-second cancellation period before recording a private `account_deletion_request` row. This starts the full deletion workflow; it does not falsely mark a reset as complete deletion.
+
+## In-game request queue (0.735)
+
+Check pending requests at least daily with the owner CLI:
+
+```sh
+spacetime sql --server maincloud wildwood-coop "SELECT * FROM account_deletion_request WHERE status = 'pending'"
+```
+
+The sender is verified by the controlling game session, including guests. Do not ask them to prove ownership again. Fulfil the workflow below within 30 days of `requested_at`. A repeated click preserves the first request date. Remove the queue row only after confirming full erasure; any necessary retained support record must not restore the account. Server-side submission does not yet automate provider/shard deletion. Do not claim instant deletion or mark this queue complete without completing that work.
 
 ## Receive and verify
 

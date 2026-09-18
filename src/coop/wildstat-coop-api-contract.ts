@@ -66,6 +66,7 @@ type ExpectedApiKey =
   | "mailboxMessages"
   | "readMailboxLetter"
   | "claimMailboxGift"
+  | "requestAccountDeletion"
   | "gemBalance"
   | "hasRemotePlayerInArea"
   | "host"

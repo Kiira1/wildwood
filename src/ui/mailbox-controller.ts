@@ -1,3 +1,5 @@
+import { itemDisplayName } from "../../shared/items";
+import { itemInventoryRotation, itemPresentation } from "../game/item-presentation";
 import type { MailboxMessage } from "../../shared/mailbox";
 import { createReleaseNotesIndicator } from "./release-notes-unread";
 import { renderUpdateNotice } from "./overlays";
@@ -61,7 +63,7 @@ export function createMailboxController(button: HTMLButtonElement, versionButton
     button.hidden = !hooks.canOpen();
     const entries = cards();
     notesIndicator.refresh();
-    const unread = entries.some(row => !row.read || row.gems > 0n && !row.claimed);
+    const unread = entries.some(row => !row.read || (row.gems > 0n || Boolean(row.itemIds?.length)) && !row.claimed);
     badge.hidden = !(unread || hasNewNotes());
     button.setAttribute("aria-label", badge.hidden ? "Mailbox" : "Mailbox — new mail or unclaimed rewards");
     for (const item of tabs) {
@@ -83,12 +85,26 @@ export function createMailboxController(button: HTMLButtonElement, versionButton
       const article = make("article", "", "mailbox-letter");
       article.append(make("div", "WildStat", "mailbox-sender"), make("h3", entry.title));
       if (entry.createdAtMs) article.append(make("time", new Date(entry.createdAtMs).toLocaleDateString(), "mailbox-date"));
-      if (entry.gems > 0n || entry.rewardLabel) {
+      if (entry.gems > 0n || entry.rewardLabel || entry.itemIds?.length) {
         const reward = make("div", "", "mailbox-reward");
+        if (entry.itemIds?.length) {
+          const gear = make("div", "", "mailbox-equipment");
+          for (const id of entry.itemIds) {
+            const item = make("figure", "", "mailbox-equipment-item");
+            const name = itemDisplayName(id).toLowerCase().replace(/\b[a-z]/g, letter => letter.toUpperCase());
+            const icon = make("div", "", "mailbox-equipment-icon");
+            const image = document.createElement("img"); image.src = itemPresentation(id)?.inventory.source ?? "";
+            image.alt = name; image.draggable = false; image.style.transform = `rotate(${itemInventoryRotation(id)}deg)`;
+            icon.append(image, make("span", `+${entry.upgradeLevel ?? 9}`, "mailbox-equipment-level"));
+            item.append(icon, make("figcaption", name)); gear.append(item);
+          }
+          reward.append(gear);
+        } else {
         const art = make("div", "", "daily-gem-bonus-art");
         const gems = document.createElement("img"); gems.src = "assets/wildstat/gems/gem-icon-v2.png"; gems.alt = "";
         art.append(gems);
         reward.append(art, make("strong", entry.rewardLabel ?? `${entry.gems} Gems`, "mailbox-gem-amount"));
+        }
         const action = make("button", entry.claimed ? "Claimed" : pending ? "Claiming…" : entry.actionLabel ?? "Claim", "daily-gem-claim-button mailbox-claim-button");
         action.type = "button"; action.disabled = entry.claimed || pending || !hooks.connected();
         action.addEventListener("click", () => { void claim(entry); }); reward.append(action);
@@ -109,6 +125,7 @@ export function createMailboxController(button: HTMLButtonElement, versionButton
           const gem = document.createElement("img"); gem.src = "assets/wildstat/gems/gem-icon-v2.png"; gem.alt = "gems";
           reward.append(gem, make("span", entry.gems.toString())); row.append(reward);
         }
+        if (entry.itemIds?.length && !entry.claimed) row.append(make("span", `+${entry.upgradeLevel ?? 9} Gear`, "mailbox-row-reward"));
         if (!entry.read) row.append(make("span", "", "mailbox-row-dot"));
         row.addEventListener("click", () => { selected = entry.id; status.textContent = ""; scroll.scrollTop = 0; rendered = ""; refresh(); void markRead(entry); });
         scroll.append(row);
@@ -139,7 +156,7 @@ export function createMailboxController(button: HTMLButtonElement, versionButton
       if (started !== generation || owner !== hooks.identity()) return;
       if (result?.ok) {
         read.add(entry.id); claimed.add(entry.id); completed.set(entry.id, { ...entry, read: true, claimed: true });
-        status.textContent = entry.actionLabel === "Got it" ? "Already added to your balance." : `${entry.gems} gems claimed!`;
+        status.textContent = entry.itemIds?.length ? "Gear added to your inventory." : entry.actionLabel === "Got it" ? "Already added to your balance." : `${entry.gems} gems claimed!`;
       } else status.textContent = result?.error ?? "Couldn't claim. Please try again.";
     } catch { if (started === generation) status.textContent = "Couldn't claim. Please try again."; }
     finally { if (started === generation) { pending = false; refresh(); } }

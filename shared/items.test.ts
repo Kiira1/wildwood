@@ -98,18 +98,18 @@ describe("equipment catalog", () => {
     expect(isWeaponItem(STARTER_STONE)).toBe(true);
   });
 
-  it("adds fixed forest bonuses after research", () => {
-    expect(equipmentDamage(100, STARTER_BOW, "", "", 1.2)).toBe(125);
-    expect(equipmentMaxHealth(100, "", WOODEN_ARMOR, 1.2)).toBe(145);
+  it("applies research to base stats plus fixed forest bonuses", () => {
+    expect(equipmentDamage(100, STARTER_BOW, "", "", 1.2)).toBe(126);
+    expect(equipmentMaxHealth(100, "", WOODEN_ARMOR, 1.2)).toBe(150);
     expect(equipmentMaxHealth(100, "", "", 1.2)).toBe(120);
   });
 
-  it("keeps equipment value fixed as earned stats and research grow", () => {
+  it("keeps gear independent of earned stats while allowing tech to multiply its bonus", () => {
     for (const base of [0, 10, 1000, 1_000_000]) {
       for (const research of [1, 1.2, 3]) {
-        expect(equipmentDamage(base, STARTER_BOW, "", "", research) - base * research).toBeCloseTo(5);
-        expect(equipmentMaxHealth(base, WOOD_FULL_HELM, WOODEN_ARMOR, research) - base * research).toBeCloseTo(425);
-        expect(equipmentRegeneration(base, FIRE_METAL_HELMET, MAGMA_ARMOR, research) - base * research).toBeCloseTo(216);
+        expect(equipmentDamage(base, STARTER_BOW, "", "", research) - base * research).toBeCloseTo(5 * research);
+        expect(equipmentMaxHealth(base, WOOD_FULL_HELM, WOODEN_ARMOR, research) - base * research).toBeCloseTo(425 * research);
+        expect(equipmentRegeneration(base, FIRE_METAL_HELMET, MAGMA_ARMOR, research) - base * research).toBeCloseTo(216 * research);
       }
     }
   });
@@ -176,6 +176,6 @@ describe("equipment catalog", () => {
     expect(itemUpgradeStatChanges(STARTER_BOW, 0)).toEqual([
       { label: "DAMAGE", current: "+5", next: "+5.4" },
     ]);
-    expect(equipmentDamage(100, STARTER_BOW, "", "", 1.4, 10)).toBe(149);
+    expect(equipmentDamage(100, STARTER_BOW, "", "", 1.4, 10)).toBeCloseTo(152.6);
   });
 });

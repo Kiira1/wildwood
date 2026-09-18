@@ -77,7 +77,7 @@ describe("effective profile equipment stats", () => {
   it("adds equipped Bow damage to tech without changing attack speed", () => {
     const research = { ...createEmptyResearchRanks(), warcraft: 10 };
     const stats = effectiveProfileStats(progress(STARTER_BOW), research);
-    expect(stats.damage).toBeCloseTo(29);
+    expect(stats.damage).toBeCloseTo(30);
     expect(stats.attackRate).toBeCloseTo(1);
   });
 
@@ -94,7 +94,7 @@ describe("effective profile equipment stats", () => {
   it("shows Frost Bow's additive equipment and tech bonuses", () => {
     const research = { ...createEmptyResearchRanks(), warcraft: 10 };
     const stats = effectiveProfileStats(progress(FROST_BOW), research);
-    expect(stats.damage).toBeCloseTo(1752);
+    expect(stats.damage).toBeCloseTo(2097.6);
     expect(stats.attackRate).toBeCloseTo(1);
   });
 
@@ -102,7 +102,7 @@ describe("effective profile equipment stats", () => {
     const research = { ...createEmptyResearchRanks(), regeneration: 10 };
     const stats = effectiveProfileStats(progress("", FROST_ARMOR), research);
     expect(stats.maxHp).toBeCloseTo(1540);
-    expect(stats.regen).toBeCloseTo(45.6);
+    expect(stats.regen).toBeCloseTo(54.24);
     expect(stats.equipment.regen).toBeCloseTo(43.2);
     expect(stats.multipliers.regenResearch).toBeCloseTo(1.2);
   });
@@ -154,10 +154,10 @@ describe("profile stat display", () => {
     expect(rows[0]).toEqual({
       kind: "health",
       label: "Max Hp:",
-      base: "91",
+      base: "(91 + 1.44k)",
       equationOperator: "×",
-      multiplier: "1.10 + 1.44k",
-      total: "1,540",
+      multiplier: "1.10",
+      total: "1,684",
       sources: [
         { label: "Tech", value: "+10%" },
         { label: "Equipment", value: "+1.44k" },
@@ -166,10 +166,10 @@ describe("profile stat display", () => {
     expect(rows[1]).toEqual({
       kind: "damage",
       label: "Damage:",
-      base: "20",
+      base: "(20 + 1.73k)",
       equationOperator: "×",
-      multiplier: "1.08 + 1.73k",
-      total: "1,750",
+      multiplier: "1.08",
+      total: "1,888",
       sources: [
         { label: "Tech", value: "+8%" },
         { label: "Equipment", value: "+1.73k" },

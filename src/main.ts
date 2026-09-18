@@ -1,3 +1,4 @@
+import { installAccountDeletion } from "./ui/account-deletion-controller";
 import { createHomeTravelController } from "./ui/home-travel-controller";
 import { MAP_IDS as CAMPAIGN_MAP_IDS } from "../shared/rules";
 import { weaponAttackRange } from "./game/weapon-combat";
@@ -235,7 +236,7 @@ import {
     inventory.equippedChest,
     coop?.itemUpgradeLevel?.(inventory.equippedHead) ?? 0,
     coop?.itemUpgradeLevel?.(inventory.equippedChest) ?? 0,
-  );
+  ) * (1 + (coop?.research?.()?.vitality ?? 0) * .02);
   const LEGACY_SAVE_KEY = "wildwood-player-progress-v1";
   const respawnMemory = createRespawnMemory(localStorage, () => coop?.localIdentity?.() ?? '');
   const bossFightMemory = createBossFightMemory(localStorage, () => coop?.localIdentity?.() ?? '');
@@ -377,6 +378,11 @@ import {
     onScreenShakeDisabled: () => { screenShake = 0; },
     onLowPerformanceChanged: () => { session.resetFrameSchedule(); },
     showMessage,
+  });
+
+  installAccountDeletion(document, {
+    identity: () => coop?.localIdentity?.() ?? "",
+    request: async () => await coop?.requestAccountDeletion?.() ?? { ok: false, error: "Connect to your character first." },
   });
 
   const startup = createStartupController({

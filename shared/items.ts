@@ -553,13 +553,13 @@ export function equipmentRegenerationBonus(head: unknown, chest: unknown, headLe
   return itemRegenerationBonus(head, headLevel) + itemRegenerationBonus(chest, chestLevel);
 }
 export function equipmentDamage(base: number, weapon: unknown, head: unknown, chest: unknown, researchMultiplier = 1, weaponLevel = 0, headLevel = 0, chestLevel = 0) {
-  return base * researchMultiplier + equipmentDamageBonus(weapon, head, chest, weaponLevel, headLevel, chestLevel);
+  return (base + equipmentDamageBonus(weapon, head, chest, weaponLevel, headLevel, chestLevel)) * researchMultiplier;
 }
 export function equipmentMaxHealth(base: number, head: unknown, chest: unknown, researchMultiplier = 1, headLevel = 0, chestLevel = 0) {
-  return base * researchMultiplier + equipmentMaxHealthBonus(head, chest, headLevel, chestLevel);
+  return (base + equipmentMaxHealthBonus(head, chest, headLevel, chestLevel)) * researchMultiplier;
 }
 export function equipmentRegeneration(base: number, head: unknown, chest: unknown, researchMultiplier = 1, headLevel = 0, chestLevel = 0) {
-  return base * researchMultiplier + equipmentRegenerationBonus(head, chest, headLevel, chestLevel);
+  return (base + equipmentRegenerationBonus(head, chest, headLevel, chestLevel)) * researchMultiplier;
 }
 
 /** Permanent unlocks and starter items are restored by inventory normalization. */

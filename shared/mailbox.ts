@@ -9,6 +9,8 @@ export type MailboxMessage = {
   title: string;
   body: string;
   gems: bigint;
+  itemIds?: string[];
+  upgradeLevel?: number;
   createdAtMs: number;
   read: boolean;
   claimed: boolean;

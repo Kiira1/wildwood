@@ -91,6 +91,7 @@ import DevDeliverAlphaTesterGiftsReducer from "./dev_deliver_alpha_tester_gifts_
 import DevDeliverAutofarmTestGiftReducer from "./dev_deliver_autofarm_test_gift_reducer";
 import DevDeliverCombatUpdateGiftReducer from "./dev_deliver_combat_update_gift_reducer";
 import DevDeliverDisconnectCompensationReducer from "./dev_deliver_disconnect_compensation_reducer";
+import DevDeliverEquipmentMailReducer from "./dev_deliver_equipment_mail_reducer";
 import DevDeliverOutageCompensationReducer from "./dev_deliver_outage_compensation_reducer";
 import DevGrantEquipmentReducer from "./dev_grant_equipment_reducer";
 import DevPublishMailboxLetterReducer from "./dev_publish_mailbox_letter_reducer";
@@ -138,6 +139,7 @@ import RenewShardLeaseReducer from "./renew_shard_lease_reducer";
 import ReportChatMessageReducer from "./report_chat_message_reducer";
 import ReportPlayerReducer from "./report_player_reducer";
 import ReportSocialMessageReducer from "./report_social_message_reducer";
+import RequestAccountDeletionReducer from "./request_account_deletion_reducer";
 import RequestDuelReducer from "./request_duel_reducer";
 import RequestPatreonHelpReducer from "./request_patreon_help_reducer";
 import ReserveGemPurchaseReducer from "./reserve_gem_purchase_reducer";
@@ -246,6 +248,7 @@ import MyGemWalletRow from "./my_gem_wallet_table";
 import MyInventoryCapacityRow from "./my_inventory_capacity_table";
 import MyItemGiftsRow from "./my_item_gifts_table";
 import MyMailboxRow from "./my_mailbox_table";
+import MyMailboxV2Row from "./my_mailbox_v_2_table";
 import MyMapShardRouteRow from "./my_map_shard_route_table";
 import MyOnboardingRow from "./my_onboarding_table";
 import MyPlayerBlocksRow from "./my_player_blocks_table";
@@ -1126,6 +1129,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, MyMailboxRow),
+  myMailboxV2: __table({
+    name: 'my_mailbox_v2',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MyMailboxV2Row),
   myMapShardRoute: __table({
     name: 'my_map_shard_route',
     indexes: [
@@ -1250,6 +1260,7 @@ const reducersSchema = __reducers(
   __reducerSchema("dev_deliver_autofarm_test_gift", DevDeliverAutofarmTestGiftReducer),
   __reducerSchema("dev_deliver_combat_update_gift", DevDeliverCombatUpdateGiftReducer),
   __reducerSchema("dev_deliver_disconnect_compensation", DevDeliverDisconnectCompensationReducer),
+  __reducerSchema("dev_deliver_equipment_mail", DevDeliverEquipmentMailReducer),
   __reducerSchema("dev_deliver_outage_compensation", DevDeliverOutageCompensationReducer),
   __reducerSchema("dev_grant_equipment", DevGrantEquipmentReducer),
   __reducerSchema("dev_publish_mailbox_letter", DevPublishMailboxLetterReducer),
@@ -1297,6 +1308,7 @@ const reducersSchema = __reducers(
   __reducerSchema("report_chat_message", ReportChatMessageReducer),
   __reducerSchema("report_player", ReportPlayerReducer),
   __reducerSchema("report_social_message", ReportSocialMessageReducer),
+  __reducerSchema("request_account_deletion", RequestAccountDeletionReducer),
   __reducerSchema("request_duel", RequestDuelReducer),
   __reducerSchema("request_patreon_help", RequestPatreonHelpReducer),
   __reducerSchema("reserve_gem_purchase", ReserveGemPurchaseReducer),

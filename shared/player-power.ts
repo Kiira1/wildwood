@@ -22,6 +22,7 @@ export type PlayerPowerProgress = PlayerPowerStats & {
 
 export type PlayerPowerResearch = {
   warcraft?: number;
+  vitality?: number;
   precision?: number;
   regeneration?: number;
 };
@@ -44,8 +45,11 @@ export function effectivePlayerPowerStats(
   const weaponLevel = itemUpgradeLevel(weaponItem);
   const headLevel = itemUpgradeLevel(headItem);
   const chestLevel = itemUpgradeLevel(chestItem);
+  // Saved maxHp already includes Vitality. Undo that part before multiplying
+  // the combined base + gear, so existing earned health is not boosted twice.
+  const vitalityMultiplier = 1 + researchRank(research?.vitality) * .02;
   return {
-    maxHp: equipmentMaxHealth(progress.maxHp, headItem, chestItem, 1, headLevel, chestLevel),
+    maxHp: equipmentMaxHealth(progress.maxHp / vitalityMultiplier, headItem, chestItem, vitalityMultiplier, headLevel, chestLevel),
     damage: equipmentDamage(progress.damage,
       weaponItem,
       headItem,

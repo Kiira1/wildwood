@@ -1,4 +1,9 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.735": [
+    "A one-time +9 helmet, chest and bow gift is in Mail for existing players, matched to their highest unlocked campaign map. The strongest item per slot is selected, existing +10 upgrades are kept, and full bags can make room before claiming.",
+    "Tech now multiplies base stats plus equipment bonuses, including Vitality's bonus to gear health.",
+    "Settings → Account now lets you submit an account and data deletion request, with a 10-second cancel window. Full deletion is processed within 30 days.",
+  ],
   "0.734": [
     "The guild overview now shows total guild power using the standard power display.",
     "Open the mailbox beside the multiplayer eye for updates and developer gifts.",
@@ -2028,6 +2033,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.735": "2026-09-17",
   "0.734": "2026-09-17",
   "0.733": "2026-09-17",
   "0.732": "2026-09-17",

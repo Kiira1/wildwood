@@ -43,3 +43,19 @@ it("version opens mailbox updates and account changes close and clear the old in
   f.owner("other"); f.messages([]); f.ui.refresh(); expect(f.dialog.open).toBe(false);
   f.ui.open(); expect(f.dialog.textContent).not.toContain("What happened to my stats?");
 });
+
+it("shows equipment above the message and retains the claim after a full-bag rejection", async () => {
+  const f = fixture();
+  f.messages([{ id: "gear", title: "Gear for your map", body: "Make room if needed.", gems: 0n, createdAtMs: 1000, read: true, claimed: false, itemIds: ["forest_cap", "wooden_armor", "starter_bow"], upgradeLevel: 9 }]);
+  f.claim.mockResolvedValueOnce({ ok: false, error: "Free 2 inventory slots, then claim your gear." } as never);
+  f.ui.open(); f.document.querySelector<HTMLButtonElement>(".mailbox-row")!.click();
+  expect(f.document.querySelectorAll(".mailbox-equipment-item")).toHaveLength(3);
+  expect(f.document.querySelectorAll(".mailbox-equipment-level")[0].textContent).toBe("+9");
+  f.document.querySelector<HTMLButtonElement>(".mailbox-claim-button")!.click();
+  await Promise.resolve(); await Promise.resolve();
+  expect(f.document.querySelector(".mailbox-status")!.textContent).toContain("Free 2");
+  expect(f.document.querySelector<HTMLButtonElement>(".mailbox-claim-button")!.disabled).toBe(false);
+  f.document.querySelector<HTMLButtonElement>(".mailbox-claim-button")!.click();
+  await Promise.resolve(); await Promise.resolve();
+  expect(f.document.querySelector(".mailbox-status")!.textContent).toBe("Gear added to your inventory.");
+});

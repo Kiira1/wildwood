@@ -10,6 +10,13 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 
+export const AccountDeletionRequest = __t.object("AccountDeletionRequest", {
+  identity: __t.identity(),
+  requestedAt: __t.timestamp(),
+  status: __t.string(),
+});
+export type AccountDeletionRequest = __Infer<typeof AccountDeletionRequest>;
+
 export const AccountLink = __t.object("AccountLink", {
   code: __t.string(),
   guest: __t.identity(),
@@ -1011,6 +1018,30 @@ export const MailboxEntry = __t.object("MailboxEntry", {
 });
 export type MailboxEntry = __Infer<typeof MailboxEntry>;
 
+export const MailboxEntryV2 = __t.object("MailboxEntryV2", {
+  id: __t.string(),
+  title: __t.string(),
+  body: __t.string(),
+  gems: __t.u64(),
+  createdAt: __t.timestamp(),
+  read: __t.bool(),
+  claimed: __t.bool(),
+  itemIds: __t.array(__t.string()),
+  upgradeLevel: __t.u8(),
+});
+export type MailboxEntryV2 = __Infer<typeof MailboxEntryV2>;
+
+export const MailboxEquipment = __t.object("MailboxEquipment", {
+  key: __t.string(),
+  identity: __t.identity(),
+  letterId: __t.string(),
+  itemIdsJson: __t.string(),
+  mapId: __t.string(),
+  upgradeLevel: __t.u8(),
+  createdAt: __t.timestamp(),
+});
+export type MailboxEquipment = __Infer<typeof MailboxEquipment>;
+
 export const MailboxLetter = __t.object("MailboxLetter", {
   id: __t.string(),
   title: __t.string(),
@@ -1190,6 +1221,9 @@ export type MyItemGifts = __Infer<typeof MyItemGifts>;
 
 export const MyMailbox = __t.object("MyMailbox", {});
 export type MyMailbox = __Infer<typeof MyMailbox>;
+
+export const MyMailboxV2 = __t.object("MyMailboxV2", {});
+export type MyMailboxV2 = __Infer<typeof MyMailboxV2>;
 
 export const MyMapShardRoute = __t.object("MyMapShardRoute", {});
 export type MyMapShardRoute = __Infer<typeof MyMapShardRoute>;

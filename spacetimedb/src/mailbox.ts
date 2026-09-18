@@ -1,3 +1,5 @@
+import { equipmentForMail, mergeEquipmentMail, removeEquipmentMail } from "./mailbox-equipment";
+import { GEAR_MAIL_ID } from "../../shared/mailbox-equipment";
 import { table, t, SenderError } from "spacetimedb/server";
 import type { Identity } from "spacetimedb";
 import type { ModuleReducerCtx, ModuleViewCtx } from "./index";
@@ -16,6 +18,17 @@ export const mailboxEntry = t.row("MailboxEntry", {
   id: t.string().primaryKey(), title: t.string(), body: t.string(), gems: t.u64(),
   createdAt: t.timestamp(), read: t.bool(), claimed: t.bool(),
 });
+// Keep v1 intact so installed 0.734 clients remain compatible during rollout.
+export const mailboxEntryV2 = t.row("MailboxEntryV2", {
+  id: t.string().primaryKey(), title: t.string(), body: t.string(), gems: t.u64(),
+  createdAt: t.timestamp(), read: t.bool(), claimed: t.bool(), itemIds: t.array(t.string()), upgradeLevel: t.u8(),
+});
+export function mailboxForPlayerV2(ctx: ModuleViewCtx) {
+  return mailboxForPlayer(ctx).map(row => {
+    const reward = equipmentForMail(ctx, row.id);
+    return { ...row, itemIds: reward ? JSON.parse(reward.itemIdsJson) as string[] : [], upgradeLevel: reward?.upgradeLevel ?? 0 };
+  });
+}
 const receiptKey = (id: string, identity: Identity) => `${id}:${identity.toHexString()}`;
 
 function eligible(ctx: ModuleViewCtx | ModuleReducerCtx, before: bigint) {
@@ -26,7 +39,7 @@ function eligible(ctx: ModuleViewCtx | ModuleReducerCtx, before: bigint) {
 
 export function mailboxForPlayer(ctx: ModuleViewCtx) {
   const receipts = new Map([...ctx.db.mailboxReceipt.identity.filter(ctx.sender)].map(row => [row.letterId, row]));
-  return [...ctx.db.mailboxLetter.iter()].filter(row => eligible(ctx, row.eligibleBefore.microsSinceUnixEpoch))
+  return [...ctx.db.mailboxLetter.iter()].filter(row => row.id === GEAR_MAIL_ID ? Boolean(equipmentForMail(ctx, row.id)) : eligible(ctx, row.eligibleBefore.microsSinceUnixEpoch))
     .map(row => ({ id: row.id, title: row.title, body: row.body, gems: row.gems, createdAt: row.createdAt,
       read: receipts.get(row.id)?.read ?? false, claimed: receipts.get(row.id)?.claimed ?? false }));
 }
@@ -55,13 +68,18 @@ export function publishRebalanceMail(ctx: ModuleReducerCtx) {
   publishMailboxLetter(ctx, { id: REBALANCE_MAIL_ID, title: REBALANCE_MAIL_TITLE, body: REBALANCE_MAIL_BODY, gems: REBALANCE_MAIL_GEMS });
 }
 
-export function updateMailboxReceipt(ctx: ModuleReducerCtx, id: string, claim: boolean, credit: (amount: bigint, reference: string, title: string) => void) {
+export function updateMailboxReceipt(ctx: ModuleReducerCtx, id: string, claim: boolean, credit: (amount: bigint, reference: string, title: string) => void, grantEquipment?: (items: string[], level: number) => void) {
   const letter = ctx.db.mailboxLetter.id.find(id);
-  if (!letter || !eligible(ctx, letter.eligibleBefore.microsSinceUnixEpoch)) throw new SenderError("Mail unavailable.");
+  const gear = equipmentForMail(ctx, id);
+  if (!letter || (id === GEAR_MAIL_ID ? !gear : !eligible(ctx, letter.eligibleBefore.microsSinceUnixEpoch))) throw new SenderError("Mail unavailable.");
   const key = receiptKey(id, ctx.sender);
   const previous = ctx.db.mailboxReceipt.key.find(key);
   if (claim && letter.gems > 0n && !previous?.claimed) credit(letter.gems, `mailbox:${key}`, letter.title);
-  const claimed = Boolean(previous?.claimed || claim && letter.gems > 0n);
+  if (claim && gear && !previous?.claimed) {
+    if (!grantEquipment) throw new SenderError("Gear claim unavailable.");
+    grantEquipment(JSON.parse(gear.itemIdsJson), gear.upgradeLevel);
+  }
+  const claimed = Boolean(previous?.claimed || claim && (letter.gems > 0n || gear));
   if (previous?.read && previous.claimed === claimed) return;
   const next = { key, identity: ctx.sender, letterId: id, read: true, claimed, updatedAt: ctx.timestamp };
   if (previous) ctx.db.mailboxReceipt.key.update(next);
@@ -69,6 +87,7 @@ export function updateMailboxReceipt(ctx: ModuleReducerCtx, id: string, claim: b
 }
 
 export function mergeMailboxReceipts(ctx: ModuleReducerCtx, guest: Identity, account: Identity) {
+  mergeEquipmentMail(ctx, guest, account);
   for (const row of ctx.db.mailboxReceipt.identity.filter(guest)) {
     const key = receiptKey(row.letterId, account);
     const previous = ctx.db.mailboxReceipt.key.find(key);
@@ -80,5 +99,6 @@ export function mergeMailboxReceipts(ctx: ModuleReducerCtx, guest: Identity, acc
 }
 
 export function removeMailboxReceipts(ctx: ModuleReducerCtx, identity: Identity) {
+  removeEquipmentMail(ctx, identity);
   for (const row of ctx.db.mailboxReceipt.identity.filter(identity)) ctx.db.mailboxReceipt.key.delete(row.key);
 }

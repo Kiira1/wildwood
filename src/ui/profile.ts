@@ -101,7 +101,7 @@ export function profileStatDisplayRows(
   const researchBonus = (rank = 0, percentPerRank = 0) => rank * percentPerRank;
   const multiplierValue = (value: number) => value.toFixed(2);
   const equipmentBonusValue = (value: number) => `+${formatEquipmentAmount(value)}`;
-  const equipmentEquation = (tech: number, bonus: number) => `${multiplierValue(tech)}${bonus ? ` + ${formatEquipmentAmount(bonus)}` : ""}`;
+  const equipmentBase = (base: string, bonus: number) => bonus ? `(${base} + ${formatEquipmentAmount(bonus)})` : base;
   const multiplierSources = (researchPercent?: number, equipmentBonus?: number): ProfileStatDisplaySource[] => {
     const sources: ProfileStatDisplaySource[] = [];
     if (researchPercent) sources.push({ label: "Tech", value: `+${researchPercent}%` });
@@ -123,16 +123,16 @@ export function profileStatDisplayRows(
   const stats: ProfileStatDisplayRow[] = [
     {
       kind: "health", label: "Max Hp:",
-      base: statValue(progress.maxHp / effective.multipliers.healthResearch),
+      base: equipmentBase(statValue(progress.maxHp / effective.multipliers.healthResearch), effective.equipment.health),
       equationOperator: "×",
-      multiplier: equipmentEquation(effective.multipliers.healthResearch, effective.equipment.health),
+      multiplier: multiplierValue(effective.multipliers.healthResearch),
       total: statValue(effective.maxHp),
       sources: multiplierSources(healthResearchBonus, effective.equipment.health),
     },
     {
-      kind: "damage", label: "Damage:", base: statValue(progress.damage),
+      kind: "damage", label: "Damage:", base: equipmentBase(statValue(progress.damage), effective.equipment.damage),
       equationOperator: "×",
-      multiplier: equipmentEquation(effective.multipliers.damageResearch, effective.equipment.damage), total: statValue(effective.damage),
+      multiplier: multiplierValue(effective.multipliers.damageResearch), total: statValue(effective.damage),
       sources: multiplierSources(damageResearchBonus, effective.equipment.damage),
     },
     {
@@ -156,9 +156,9 @@ export function profileStatDisplayRows(
     },
     {
       kind: "regen", label: "Regen:",
-      base: progress.regen >= 1_000_000 ? `${formatCompactNumber(progress.regen)}/s` : `${progress.regen.toFixed(1)}/s`,
+      base: equipmentBase(progress.regen >= 1_000_000 ? `${formatCompactNumber(progress.regen)}/s` : `${progress.regen.toFixed(1)}/s`, effective.equipment.regen),
       equationOperator: "×",
-      multiplier: equipmentEquation(effective.multipliers.regenResearch, effective.equipment.regen), total: regen,
+      multiplier: multiplierValue(effective.multipliers.regenResearch), total: regen,
       sources: multiplierSources(regenResearchBonus, effective.equipment.regen),
     },
     {

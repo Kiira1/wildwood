@@ -1,3 +1,6 @@
+import { accountDeletionRequest, queueAccountDeletion } from "./account-deletion";
+import { mailboxEquipment, deliverEquipmentMail } from "./mailbox-equipment";
+import { gearClaimSpace } from "../../shared/mailbox-equipment";
 import { duelWireAccess, syncDuelWireAccess, DUEL_WIRE_FILTER, DUEL_REPLAY_WIRE_FILTER } from "./duel-wire-access";
 import { NAME_CHANGE_COOLDOWN_MS, nameChangeStatus } from "../../shared/name-change";
 import { validPatreonRedirect } from "./patreon-url";
@@ -16,7 +19,7 @@ import { canDestroyEquipment } from "../../shared/items";
 import { deliverDisconnectCompensation, deliverCombatUpdateGift, deliverOutageCompensation, announceOutageCompensation, deliverAutofarmTestGift } from "./disconnect-compensation";
 import { connectionDiagnosticTables, recordConnectionDiagnostics, cleanupConnectionDiagnostics } from "./connection-diagnostics";
 import { moderationTables, recordModerationAction, readModerationHistory } from "./moderation-history";
-import { mailboxLetter, mailboxReceipt, mailboxEntry, mailboxForPlayer, publishMailboxLetter, publishRebalanceMail, updateMailboxReceipt, mergeMailboxReceipts, removeMailboxReceipts } from "./mailbox";
+import { mailboxLetter, mailboxReceipt, mailboxEntry, mailboxForPlayer, mailboxEntryV2, mailboxForPlayerV2, publishMailboxLetter, publishRebalanceMail, updateMailboxReceipt, mergeMailboxReceipts, removeMailboxReceipts } from "./mailbox";
 import { rollbackPlayerProgression } from "./player-progression-rollback";
 import { playerItemGift, deliverAlphaTesterGifts, claimItemGift, removeItemGifts, mergeItemGifts } from "./item-gifts";
 import { moderateReportedMessage } from "./chat-report-moderation";
@@ -1746,7 +1749,7 @@ const spacetimedb = schema({
   dailyGemBonus,
   balanceApologyNotice,
   playerItemGift,
-  mailboxLetter, mailboxReceipt,
+  mailboxLetter, mailboxReceipt, mailboxEquipment, accountDeletionRequest,
   playerOnboarding,
   regularEnemyLootCursor, enemyDefeatBudget, bossDefeatWindow, bossMapDefeatWindow,
   playerMultiplayerPreference,
@@ -2006,6 +2009,9 @@ export const myDailyGemBonus = spacetimedb.view(
   },
 );
 
+export const myMailboxV2 = spacetimedb.view(
+  { name: "my_mailbox_v2", public: true }, t.array(mailboxEntryV2), mailboxForPlayerV2,
+);
 export const myMailbox = spacetimedb.view(
   { name: "my_mailbox", public: true }, t.array(mailboxEntry), mailboxForPlayer,
 );
@@ -4020,10 +4026,11 @@ function attackIntervalForProgress(progress: any) {
 function maxHealthForProgress(ctx: any, identity: any, progress: any) {
   const headItem = equippedHeadForProgress(progress);
   const chestItem = equippedChestForProgress(progress);
-  return equipmentMaxHealth(progress.maxHp,
+  const vitalityMultiplier = 1 + (ctx.db.playerResearch.identity.find(identity)?.vitality ?? 0) * .02;
+  return equipmentMaxHealth(progress.maxHp / vitalityMultiplier,
     headItem,
     chestItem,
-    1,
+    vitalityMultiplier,
     itemUpgradeLevelFor(ctx, identity, headItem),
     itemUpgradeLevelFor(ctx, identity, chestItem),
   );
@@ -9593,8 +9600,39 @@ export const claimMailboxGift = spacetimedb.reducer({ id: t.string() }, (ctx, { 
   requireControllingPlayer(ctx);
   updateMailboxReceipt(ctx, id, true, (amount, reference, title) => {
     applyGemBalanceChange(ctx, { identity: ctx.sender, delta: amount, kind: "mailbox_gift", note: title, externalReference: reference });
+  }, (items, level) => {
+    const progress = ctx.db.playerProgress.identity.find(ctx.sender);
+    if (!progress) throw new SenderError("Player unavailable.");
+    const upgrading = activeItemUpgradeEntriesFor(ctx, ctx.sender).map(({ active }) => active.itemId);
+    if (items.some(id => upgrading.includes(id))) throw new SenderError("Finish or cancel the upgrade on your gifted gear, then claim it here.");
+    const equipped = [progress.equippedHead, progress.equippedChest, progress.equippedFeet, progress.equippedRightHand, progress.equippedLeftHand];
+    const capacity = inventorySlotCapacity(ctx.db.playerInventoryCapacity.identity.find(ctx.sender)?.slotsUnlocked ?? 0);
+    const { missing, slotsToFree } = gearClaimSpace(inventoryForProgress(progress), equipped, upgrading, items, capacity);
+    if (slotsToFree) throw new SenderError(`Free ${slotsToFree} inventory slot${slotsToFree === 1 ? "" : "s"}, then claim your gear. Your gift will stay in Mail.`);
+    let next = progress;
+    for (const id of missing) next = restoreItemToProgress(next, id);
+    for (const itemId of items) {
+      const key = itemUpgradeKey(ctx.sender, itemId), current = ctx.db.playerItemUpgrade.key.find(key);
+      if ((current?.level ?? 0) >= level) continue;
+      const upgraded = { key, identity: ctx.sender, itemId, level };
+      if (current) updateSnapshotRow(ctx, "playerItemUpgrade", upgraded);
+      else insertSnapshotRow(ctx, "playerItemUpgrade", upgraded);
+    }
+    writeProgressAndPresentation(ctx, next);
   });
 });
+export const requestAccountDeletion = spacetimedb.reducer({ confirmation: t.string() }, (ctx, { confirmation }) => {
+  if (isMapShard(ctx)) throw new SenderError("Use the world connection.");
+  requireControllingPlayer(ctx);
+  queueAccountDeletion(ctx, confirmation);
+});
+export const devDeliverEquipmentMail = spacetimedb.reducer(
+  { recipients: t.array(t.identity()) }, (ctx, { recipients }) => {
+    if (!isDatabaseOwnerIdentity(ctx.sender)) requireDeveloper(ctx);
+    if (isMapShard(ctx)) throw new SenderError("Use the world connection.");
+    deliverEquipmentMail(ctx, recipients);
+  },
+);
 export const devPublishMailboxLetter = spacetimedb.reducer(
   { id: t.string(), title: t.string(), body: t.string(), gems: t.u64() }, (ctx, letter) => {
     if (!isDatabaseOwnerIdentity(ctx.sender)) requireDeveloper(ctx);
