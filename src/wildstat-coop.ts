@@ -348,11 +348,7 @@ const mapReducerPort: ReducerPort = {
   sendReducer: (...args) => mapShardClient ? mapShardClient.port.sendReducer(...args) : reducerPort.sendReducer(...args),
 };
 
-const bossService = createBossService({
-  reducers: mapReducerPort,
-  notify: onChange,
-  localPosition: () => presenceService?.localState() ?? null,
-});
+const bossService = createBossService();
 
 let chatService!: ChatService;
 let playerProfileService!: PlayerProfileService;

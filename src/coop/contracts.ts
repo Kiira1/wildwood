@@ -173,58 +173,6 @@ export type BugReportEntry = {
   reportedAtMs: number;
 };
 
-export type DragonBossState = {
-  encounter: bigint;
-  hp: number;
-  maxHp: number;
-  alive: boolean;
-  respawnAtMs: number;
-};
-
-export type SpiderBossState = DragonBossState;
-export type SpiderResult = DragonResult;
-export type FrostclawBossState = DragonBossState;
-export type FrostclawResult = DragonResult;
-export type MagmaliskBossState = DragonBossState;
-export type MagmaliskResult = DragonResult;
-export type GloomrootBossState = DragonBossState;
-export type GloomrootResult = DragonResult;
-export type TidewyrmBossState = DragonBossState;
-export type TidewyrmResult = DragonResult;
-export type KoiShogunBossState = DragonBossState;
-export type KoiShogunResult = DragonResult;
-export type TempestKirinBossState = DragonBossState;
-export type TempestKirinResult = DragonResult;
-export type MiremawBossState = DragonBossState;
-export type PrismshellBossState = DragonBossState;
-export type IronhornBossState = DragonBossState;
-export type DreadreaperBossState = DragonBossState;
-export type VoltwardenBossState = DragonBossState;
-export type GravebloomBossState = DragonBossState;
-export type AegisPrimeBossState = DragonBossState;
-export type MiremawResult = DragonResult;
-export type PrismshellResult = DragonResult;
-export type IronhornResult = DragonResult;
-export type DreadreaperResult = DragonResult;
-export type VoltwardenResult = DragonResult;
-export type GravebloomResult = DragonResult;
-export type AegisPrimeResult = DragonResult;
-
-export type DragonContributor = {
-  identity: string;
-  name: string;
-  gender: PlayerGender;
-  damage: number;
-  percentage: number;
-};
-
-export type DragonResult = {
-  encounter: bigint;
-  totalDamage: number;
-  contributors: DragonContributor[];
-  createdAtMs: number;
-};
-
 export type DuelState = {
   combatVersion?: number;
   id: bigint;

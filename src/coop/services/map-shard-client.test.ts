@@ -38,7 +38,7 @@ function setup() {
   };
   const root: any = { isActive: true, token: "authenticated-root-token", identity: {}, reducers: { changeMap: vi.fn(async () => {}), setSpeed: vi.fn() }, db: rootTables,
     subscriptionBuilder() { const q: any = { onApplied(fn: any) { apply = fn; return q; }, onError: () => q, subscribe() {} }; return q; } };
-  const handlers: any = new Proxy({}, { get(target: any, key) { return target[key] ??= vi.fn(); }, ownKeys: () => ["player", "dragonBoss", "progress"], getOwnPropertyDescriptor: () => ({ enumerable: true, configurable: true }) });
+  const handlers: any = new Proxy({}, { get(target: any, key) { return target[key] ??= vi.fn(); }, ownKeys: () => ["player", "progress"], getOwnPropertyDescriptor: () => ({ enumerable: true, configurable: true }) });
   const recoverSession = vi.fn();
   const ready = vi.fn();
   const resetWorld = vi.fn();
@@ -156,9 +156,8 @@ it("routes movement regionally, keeps account actions on the root, and ignores s
   s.client.port.connection()!.reducers.setSpeed({ speed: 180 });
   expect(first.reducers.updateMovementState).toHaveBeenCalled();
   expect(s.root.reducers.setSpeed).toHaveBeenCalled();
-  s.client.rootHandlers.player({}); s.client.rootHandlers.dragonBoss({}); s.client.rootHandlers.progress({});
+  s.client.rootHandlers.player({}); s.client.rootHandlers.progress({});
   expect(s.handlers.player).not.toHaveBeenCalled();
-  expect(s.handlers.dragonBoss).not.toHaveBeenCalled();
   expect(s.handlers.progress).toHaveBeenCalled();
   s.route(desert); await Promise.resolve();
   expect(first.disconnect).toHaveBeenCalledOnce();

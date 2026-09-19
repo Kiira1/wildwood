@@ -2,7 +2,6 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const server = readFileSync(new URL("../spacetimedb/src/index.ts", import.meta.url), "utf8");
-const subscriptions = readFileSync(new URL("../src/coop/services/base-subscription.ts", import.meta.url), "utf8");
 function section(start: string, end: string) {
   const from = server.indexOf(start);
   const to = server.indexOf(end, from + start.length);
@@ -41,14 +40,5 @@ describe("server-owned cutscene history wiring", () => {
     expect(reset).toContain("seenMask: 0");
     expect(reset).toContain("generation: history.generation + 1");
     expect(server.match(/playerCutsceneHistory.identity.delete\(identity\)/g)).toHaveLength(2);
-  });
-
-  it("hydrates cutscene history before replaying existing boss results", () => {
-    expect(subscriptions).toContain("tables.myCutsceneHistory");
-    expect(subscriptions).toContain("myCutsceneHistory.onUpdate");
-    const seed = subscriptions.indexOf("for (const row of connection.db.myCutsceneHistory.iter())");
-    const boss = subscriptions.indexOf("for (const row of connection.db.dragonResult.iter())");
-    expect(seed).toBeGreaterThanOrEqual(0);
-    expect(boss).toBeGreaterThan(seed);
   });
 });

@@ -5,11 +5,10 @@ import { DbConnection, tables } from "../../module_bindings";
 import { guardConnectionActivity } from "./connection-activity";
 import { createMapAdmissionGate } from "./map-admission-gate";
 import type { Identity } from "spacetimedb";
-import { MAP_IDS, PROTOCOL_VERSION, TUTORIAL_FOREST_MAP_ID } from "../../../shared/rules";
+import { PROTOCOL_VERSION, TUTORIAL_FOREST_MAP_ID } from "../../../shared/rules";
 import type { BaseSubscriptionHandlers } from "./base-subscription";
 import type { ReducerPort } from "../ports";
 
-const BOSSES = ["dragon", "spider", "frostclaw", "magmalisk", "gloomroot", "tidewyrm", "koiShogun", "tempestKirin", "miremaw", "prismshell", "ironhorn", "dreadreaper", "voltwarden", "gravebloom", "aegisPrime"];
 const REGIONAL_HANDLERS = new Set(["player", "removePlayer", "motionIdentity", "removeMotionIdentity", "motionFrame", "mapFrame", "deathFrame", "bossHitResult"]);
 type Route = { databaseName: string; mapId: string; generation: bigint; ready: boolean };
 export function createMapShardClient(options: {
@@ -141,18 +140,11 @@ export function createMapShardClient(options: {
           bind(connection.db.playerMapFrame, h.mapFrame);
           bind(connection.db.playerDeathFrame, h.deathFrame);
           bind(connection.db.bossHitResult, h.bossHitResult);
-          const boss = BOSSES[MAP_IDS.indexOf(wanted.mapId)];
-          const bossTable = (connection.db as any)[`${boss}Boss`];
-          const resultTable = (connection.db as any)[`${boss}Result`];
-          if (bossTable) bind(bossTable, (h as any)[`${boss}Boss`]);
-          if (resultTable) bind(resultTable, (h as any)[`${boss}Result`]);
           const own = connection.identity!;
           connection.subscriptionBuilder().onApplied(() => {
             if (!current()) return;
             for (const row of connection.db.player.iter()) h.player(row);
             for (const row of connection.db.playerMotionIdentity.iter()) h.motionIdentity(row);
-            for (const row of bossTable?.iter() ?? []) (h as any)[`${boss}Boss`](row);
-            for (const row of resultTable?.iter() ?? []) (h as any)[`${boss}Result`](row);
             if (timer) clearTimeout(timer);
             timer = undefined;
             recordConnectionDiagnostic("reconnected", { transport: "map", database: wanted.databaseName, mapId: wanted.mapId, attempt: failures });
@@ -247,7 +239,7 @@ export function createMapShardClient(options: {
     needsRouteRecovery: () => rootRoutingRejected,
     ready: () => routeKnown && (route === null || hydrated),
     rootHandlers: Object.fromEntries(Object.entries(options.handlers).map(([key, handler]) => [key,
-      REGIONAL_HANDLERS.has(key) || /(?:Boss|Result)$/.test(key) ? (row: any) => { if (routeKnown && (!route || key === "bossHitResult" && isProceduralMap(row.mapId) && route.mapId === row.mapId)) (handler as (row: any) => void)(row); } : handler,
+      REGIONAL_HANDLERS.has(key) ? (row: any) => { if (routeKnown && (!route || key === "bossHitResult" && isProceduralMap(row.mapId) && route.mapId === row.mapId)) (handler as (row: any) => void)(row); } : handler,
     ])) as BaseSubscriptionHandlers,
     attach(root: DbConnection, identity: Identity) {
       this.clear();
@@ -264,10 +256,6 @@ export function createMapShardClient(options: {
           // after the root is confirmed as the world authority.
           for (const row of root.db.player.iter()) options.handlers.player(row);
           for (const row of root.db.playerMotionIdentity.iter()) options.handlers.motionIdentity(row);
-          for (const boss of BOSSES) {
-            for (const row of (root.db as any)[`${boss}Boss`].iter()) (options.handlers as any)[`${boss}Boss`](row);
-            for (const row of (root.db as any)[`${boss}Result`].iter()) (options.handlers as any)[`${boss}Result`](row);
-          }
         }
         options.changed();
       };
