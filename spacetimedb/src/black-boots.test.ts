@@ -48,3 +48,14 @@ it("accepts the Black Boots bonus while a shard still has the base speed snapsho
     x: 4050, y: 4050, vx: 205, vy: 0, simulationTick: 1, motionEpoch: 1, sequence: 1,
   })).not.toThrow();
 });
+
+it("blocks a guest after an impossible movement speed packet", () => {
+  const f = crystalFixture();
+  expect(() => f.run(server.updateMovementState, {
+    x: 4050, y: 4050, vx: 540, vy: 0, simulationTick: 1, motionEpoch: 1, sequence: 1,
+  })).not.toThrow();
+  const restriction = f.db.defeatSessionRestriction.identity.find(f.ctx.sender);
+  expect(restriction?.requireSignIn).toBe(false);
+  expect(restriction?.blockedUntilMicros).toBeGreaterThan(f.ctx.timestamp.microsSinceUnixEpoch);
+  expect(f.db.playerController.identity.find(f.ctx.sender)).toBeNull();
+});

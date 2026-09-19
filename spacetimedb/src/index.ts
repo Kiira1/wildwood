@@ -1,5 +1,5 @@
 import { auditPrivilegedAccess, denyPrivilegedAccess } from "./privileged-access-audit";
-import { defeatSessionRestriction, defeatRestrictionError, requireAllowedDefeatSession, restrictDefeatSession, suspendPlayerAccount } from "./defeat-session";
+import { defeatSessionRestriction, defeatRestrictionError, requireAllowedDefeatSession, restrictDefeatSession, restrictMovementSession, suspendPlayerAccount } from "./defeat-session";
 import { findDeveloperTravelTarget, readDeveloperTravelTarget, readShardTravelPosition } from "./developer-travel";
 import { mapBalanceVersion, mapBalanceHead, playerMapBalance, balanceEditorState, saveMapBalance, pinMapBalance, pinnedMapBalance, pinnedBossReward } from "./map-balance";
 import { resolveMapBalance, validateBalanceSettings } from "../../shared/map-balance";
@@ -10376,18 +10376,17 @@ function applyMovementState(
     ? expectedSpeed + BLACK_BOOTS_SPEED_BONUS : expectedSpeed;
   const allowedSpeed = Math.max(compatibilitySpeed, expectedSpeed, blackBootsSpeed);
   if (moving && requestedSpeed > allowedSpeed + MOVEMENT_SPEED_PACKET_TOLERANCE) {
+    const evidence = { mapId: current.mapId, requestedSpeed, serverSpeed: compatibilitySpeed, allowedSpeed };
     console.warn("Movement speed validation", JSON.stringify({
       identity: ctx.sender.toHexString(),
       displayName: ctx.db.playerProfile.identity.find(ctx.sender)?.displayName ?? "",
-      mapId: current.mapId,
-      requestedSpeed,
-      serverSpeed: compatibilitySpeed,
-      allowedSpeed,
+      ...evidence,
     }));
-    // Automatic bans are paused while we verify this signal against legitimate
-    // boss knockback and other movement impulses. Keep rejecting the packet,
-    // but do not revoke the account or invalidate the session.
-    throw new SenderError("Unsupported movement speed");
+    // Commit a short guest block (or registered-session revocation) before
+    // returning. Throwing here would roll the restriction back with the
+    // rejected packet, so the invalidated session receives the disconnect.
+    restrictMovementSession(ctx, evidence);
+    return;
   }
   const motion = ctx.db.playerMotion.identity.find(ctx.sender);
   if (motion && motion.mapId === current.mapId && current.lastInputSequence > 0) {
