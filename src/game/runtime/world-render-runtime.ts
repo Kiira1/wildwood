@@ -142,6 +142,7 @@ export type WorldRenderRuntimeOptions = {
   };
   actorShadowSprite: HTMLImageElement;
   upgradeBenchStatus: () => { itemId: string; timer: string } | null;
+  researchStatus?: () => { timer: string } | null;
   drawShadow: DrawShadow;
   pixelCircle: (x: number, y: number, radius: number) => void;
   outlinedText: OutlinedText;
@@ -254,6 +255,7 @@ export function createWorldRenderRuntime(options: WorldRenderRuntimeOptions) {
       const status = options.upgradeBenchStatus();
       return status ? { itemSprite: options.playerAppearanceAssets.equipment[status.itemId]?.sprite, timer: status.timer } : null;
     },
+    researchStatus: options.researchStatus,
     ...options.assets,
   });
   const boss = createBossRenderer({

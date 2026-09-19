@@ -7,6 +7,7 @@ import { MAP_IDS as CAMPAIGN_MAP_IDS } from "../shared/rules";
 import { weaponAttackRange } from "./game/weapon-combat";
 import { createPlayerVisibilityToggle } from "./ui/player-visibility-toggle";
 import { createPanelCoordinator } from "./ui/panel-coordinator";
+import { createInventoryNotice } from "./ui/inventory-notice";
 import { createFullscreenMovementGate } from "./ui/fullscreen-movement";
 import { installGameTicker } from "./ui/game-ticker";
 import { createScheduledUpdateController, createScheduledUpdateView } from "./ui/scheduled-update-controller";
@@ -279,7 +280,11 @@ import {
     WORLD.h = mapId === ONBOARDING_MAP_ID ? ONBOARDING_WORLD.height : mapId === "home_exterior" ? HOME_WORLD_HEIGHT : WORLD_HEIGHT;
     void prepareMapAssets(mapId).catch(() => {});
     preloadAdjacentMapAssets(mapId);
-    gameElements.techTreeBtn.setAttribute("aria-label", mapId === "home_exterior" ? "Return to enemy map" : "Teleport home");
+    const atBase = mapId === "home_exterior";
+    gameElements.techTreeBtn.setAttribute("aria-label", atBase ? "Return to enemy map" : "Teleport home");
+    // The button always leaves the current map, so it names the destination.
+    const toolbarLabel = gameElements.techTreeBtn.querySelector(".toolbar-label");
+    if (toolbarLabel) toolbarLabel.textContent = atBase ? "Fight" : "Base";
   }
 
   function mapNameForPresence(mapId: string | undefined) {
@@ -1132,6 +1137,7 @@ import {
     assets,
     actorShadowSprite,
     upgradeBenchStatus: () => upgradeBenchController?.worldStatus() ?? null,
+    researchStatus: () => techTree?.worldStatus() ?? null,
     drawShadow: drawActorShadow,
     pixelCircle,
     outlinedText: outlinedWorldText,
@@ -1531,12 +1537,14 @@ import {
     showFailure: failed => showMessage(failed ? "TELEPORT FAILED · TRY AGAIN" : "TELEPORT UNAVAILABLE", "#ffbc91"),
   });
   let touchingResearch = false;
+  const inventoryNotice = createInventoryNotice(gameElements.inventoryBtn);
   function updateHomeStations() {
     const home = currentMapId === "home_exterior";
     const touching = home && !mapController.isMapTransitioning() && Math.hypot(player.x - HOME_RESEARCH_POSITION.x, player.y - (HOME_RESEARCH_POSITION.y - 36)) < 42.5;
     if (touching && !touchingResearch) { playerInput.clear(); techTree.open(); }
     touchingResearch = touching;
     upgradeBenchController.updateTouch();
+    inventoryNotice.set(upgradeBenchController.hasCompletedUpgrade());
   }
   upgradeBenchController = createUpgradeBenchController({
     panel: gameElements.upgradeBenchPanel,

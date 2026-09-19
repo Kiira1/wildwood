@@ -132,6 +132,7 @@ export type WorldRendererOptions = {
   snowPine: HTMLImageElement;
   upgradeBench: HTMLImageElement;
   upgradeBenchStatus: () => { itemSprite?: HTMLImageElement; timer: string } | null;
+  researchStatus?: () => { timer: string } | null;
   lavaPools: HTMLImageElement[];
   lavaRocks: HTMLImageElement[];
   charredTrees: HTMLImageElement[];
@@ -774,7 +775,7 @@ if (options.getMapId() === ION_CITADEL_MAP_ID) { drawIonRoads(ctx, options.paths
     if (x < -120 || y < -210 || x > visible.width + 120 || y > visible.height + 210) return;
     if (bench.label === "Tech Research") {
       drawHomeResearchDesk(ctx, x, y - 8, options.getGameTime());
-      drawHomeStationSign(ctx, x, y, true);
+      drawHomeStationSign(ctx, x, y, true, options.researchStatus?.()?.timer);
       return;
     }
     if (!options.upgradeBench.complete || options.upgradeBench.naturalWidth <= 0) return;
