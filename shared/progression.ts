@@ -59,7 +59,9 @@ export const ENCOUNTER_PROFILES: Record<ForestProgressionLane, { seconds: number
   Mossback: { seconds: 10, hitShare: .07, rewardShare: 2 / 165, stat: "armor" },
   Spitter: { seconds: 4, hitShare: .12, rewardShare: .025, stat: "damage" },
   Brood: { seconds: 9, hitShare: .08, rewardShare: .09, stat: "regen" },
-  Cindermaw: { seconds: 8, hitShare: .08, rewardShare: .05 / 12, stat: "damage" },
+  // Eight seconds put regular damage sites at 2.25x worse reward per point of
+  // health than the elite beside them, so they were never worth clearing.
+  Cindermaw: { seconds: 5, hitShare: .08, rewardShare: .05 / 12, stat: "damage" },
   "King Slime": { seconds: 14, hitShare: .11, rewardShare: .015, stat: "health" },
   "Dread Warden": { seconds: 13, hitShare: .12, rewardShare: 11 / 720, stat: "damage" },
 };
