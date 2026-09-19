@@ -53,16 +53,6 @@ function createCombatHarness(overrides: Partial<Parameters<typeof createPlayerCo
     scheduleEnemyRespawn: noop,
     recordRegularEnemyDefeat: noop,
     incrementKills: noop,
-    damageDragon: noop,
-    damageSpider: noop,
-    damageFrostclaw: noop,
-    damageMagmalisk: noop,
-    damageGloomroot: noop,
-    damageTidewyrm: noop,
-    damageKoiShogun: noop,
-    damageTempestKirin: noop,
-    damageMiremaw: noop,
-    damagePrismshell: noop, damageIronhorn: noop, damageDreadreaper: noop, damageVoltwarden: noop, damageGravebloom: noop, damageAegisPrime: noop,
     spawnBurst: noop,
     spawnParticle: noop,
     spawnDamageNumber: noop,
@@ -261,87 +251,6 @@ describe("player attack timing", () => {
     expect(second.player.throwClock).toBeCloseTo(first.player.throwClock, 5);
   });
 
-  it("collides projectiles with the Magmalisk and submits the hit batch", () => {
-    const state = createGameBootstrap();
-    state.magmaliskBoss.x = 200;
-    state.magmaliskBoss.y = 100;
-    state.magmaliskBoss.dead = false;
-    const projectile = state.projectileStore.acquirePlayerProjectile();
-    Object.assign(projectile, {
-      x: 0, y: 100, vx: 1_000, vy: 0, r: 6, damage: 25,
-      critical: false, hitLife: 1, life: 1, trail: 1,
-    });
-    const damageMagmalisk = vi.fn();
-    const spawnDamageNumber = vi.fn();
-    const noop = () => {};
-    const controller = createPlayerCombatController({
-      player: state.player,
-      enemies: state.enemies,
-      spawnSites: state.spawnSites,
-      projectileStore: state.projectileStore,
-      boss: state.boss,
-      spiderBoss: state.spiderBoss,
-      frostclawBoss: state.frostclawBoss,
-      magmaliskBoss: state.magmaliskBoss,
-      gloomrootBoss: state.gloomrootBoss,
-      tidewyrmBoss: state.tidewyrmBoss,
-      koiShogunBoss: state.koiShogunBoss,
-      tempestKirinBoss: state.tempestKirinBoss,
-      miremawBoss: state.miremawBoss,
-      prismshellBoss: state.prismshellBoss, ironhornBoss: state.ironhornBoss, dreadreaperBoss: state.dreadreaperBoss, voltwardenBoss: state.voltwardenBoss, gravebloomBoss: state.gravebloomBoss, aegisPrimeBoss: state.aegisPrimeBoss,
-      nowSeconds: () => 1,
-      isTutorialMap: () => false,
-      isDesertMap: () => false,
-      isSnowMap: () => false,
-      isLavaMap: () => true,
-      isInfernalMap: () => false,
-      isWaterMap: () => false,
-      isSamuraiMap: () => false,
-      isCloudspireMap: () => false,
-      isMoonfenMap: () => false,
-      isCrystalHollowsMap: () => false, isClockworkRuinsMap: () => false, isDuskfallOrchardMap: () => false, isNeonBastionMap: () => false, isVerdantCatacombsMap: () => false, isIonCitadelMap: () => false,
-      engageEnemy: noop,
-      researchDamageMultiplier: () => 1,
-      researchCriticalChance: () => 0,
-      researchCriticalDamageMultiplier: () => 1,
-      researchRewardMultiplier: () => 1,
-      equippedWeapon: () => "starter_stone",
-      equippedHead: () => "",
-      equippedChest: () => "",
-      healthMultiplierBonus: () => 0,
-      minAttackInterval: .05,
-      effectiveArmor: () => 0,
-      isDueling: () => false,
-      scheduleEnemyRespawn: noop,
-    recordRegularEnemyDefeat: noop,
-    incrementKills: noop,
-      damageDragon: noop,
-      damageSpider: noop,
-      damageFrostclaw: noop,
-      damageMagmalisk,
-      damageGloomroot: noop,
-      damageTidewyrm: noop,
-      damageKoiShogun: noop,
-      damageTempestKirin: noop,
-      damageMiremaw: noop,
-      damagePrismshell: noop, damageIronhorn: noop, damageDreadreaper: noop, damageVoltwarden: noop, damageGravebloom: noop, damageAegisPrime: noop,
-      spawnBurst: noop,
-      spawnParticle: noop,
-      spawnDamageNumber,
-      logPickup: noop,
-      saveProgress: noop,
-      setHitFlash: noop,
-      addScreenShake: noop,
-      recordDeath: noop,
-      endGame: noop,
-    });
-
-    controller.updateProjectiles(.2);
-
-    expect(spawnDamageNumber).not.toHaveBeenCalled();
-    expect(damageMagmalisk).toHaveBeenCalledWith(1);
-  });
-
   it("records a Snowlands loot roll when a regular enemy dies", () => {
     const recordRegularEnemyDefeat = vi.fn();
     const state = createCombatHarness({
@@ -418,36 +327,6 @@ it("shows confirmed boss critical damage once and discards events from another m
   controller.updateProjectiles(.01);
   controller.updateProjectiles(.01);
   expect(spawnDamageNumber).toHaveBeenCalledExactlyOnceWith(4000, 4200, 1550, true);
-});
-
-it("routes catacombs projectile hits exclusively to Gravebloom", () => {
-  let now = 10;
-  const damageGravebloom = vi.fn(), damageVoltwarden = vi.fn();
-  const state = createCombatHarness({ nowSeconds: () => now, isTutorialMap: () => false,
-    isVerdantCatacombsMap: () => true, damageGravebloom, damageVoltwarden });
-  state.enemies.length = 0;
-  Object.assign(state.player, { x: state.gravebloomBoss.x + state.gravebloomBoss.r + 25, y: state.gravebloomBoss.y });
-  state.controller.attackNearest();
-  now += .13;
-  state.controller.attackNearest();
-  for (let i = 0; i < 30; i++) { now += .02; state.controller.updateProjectiles(.02); }
-  expect(damageGravebloom).toHaveBeenCalled();
-  expect(damageVoltwarden).not.toHaveBeenCalled();
-});
-
-it("routes Ion Citadel projectile hits exclusively to Aegis Prime", () => {
-  let now = 10;
-  const damageAegisPrime = vi.fn(), damageGravebloom = vi.fn();
-  const state = createCombatHarness({ nowSeconds: () => now, isTutorialMap: () => false,
-    isIonCitadelMap: () => true, damageAegisPrime, damageGravebloom });
-  state.enemies.length = 0;
-  Object.assign(state.player, { x: state.aegisPrimeBoss.x + state.aegisPrimeBoss.r + 25, y: state.aegisPrimeBoss.y });
-  state.controller.attackNearest();
-  now += .13;
-  state.controller.attackNearest();
-  for (let i = 0; i < 30; i++) { now += .02; state.controller.updateProjectiles(.02); }
-  expect(damageAegisPrime).toHaveBeenCalled();
-  expect(damageGravebloom).not.toHaveBeenCalled();
 });
 
 describe("stable player combat aim", () => {
@@ -566,14 +445,6 @@ describe("local sword combat", () => {
     s.step(0); s.setWeapon("starter_bow"); s.step(.13);
     expect(enemy.hp).toBe(100); expect(s.projectileStore.projectiles).toHaveLength(0);
     expect(s.player.attackClock).toBeGreaterThan(.8);
-  });
-  it("damages bosses through the normal boss handler without an arrow", () => {
-    const damageDragon = vi.fn();
-    const s = swordHarness({ damageDragon });
-    Object.assign(s.boss, { x: 600, y: 500, r: 50, dead: false });
-    s.step(0); s.step(.13);
-    expect(damageDragon).toHaveBeenCalledOnce();
-    expect(s.projectileStore.projectiles).toHaveLength(0);
   });
   it("awards one regular enemy defeat and works at capped attack speed", () => {
     const recordRegularEnemyDefeat = vi.fn();

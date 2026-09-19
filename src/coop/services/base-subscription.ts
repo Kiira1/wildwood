@@ -1,6 +1,5 @@
 import { createSessionSubscriptions } from "./session-subscriptions";
 import { PATREON_TICKER_CHANGED } from "../../../shared/patreon-ticker";
-import { MAP_IDS } from "../../../shared/rules";
 import type { Identity } from "spacetimedb";
 import { tables, type DbConnection } from "../../module_bindings";
 
@@ -59,36 +58,6 @@ export type BaseSubscriptionHandlers = {
   itemDrop: RowHandler;
   lifetime: RowHandler;
   chatHearts: RowHandler;
-  dragonBoss: RowHandler;
-  dragonResult: RowHandler;
-  spiderBoss: RowHandler;
-  spiderResult: RowHandler;
-  frostclawBoss: RowHandler;
-  frostclawResult: RowHandler;
-  magmaliskBoss: RowHandler;
-  magmaliskResult: RowHandler;
-  gloomrootBoss: RowHandler;
-  gloomrootResult: RowHandler;
-  tidewyrmBoss: RowHandler;
-  tidewyrmResult: RowHandler;
-  koiShogunBoss: RowHandler;
-  koiShogunResult: RowHandler;
-  tempestKirinBoss: RowHandler;
-  tempestKirinResult: RowHandler;
-  miremawBoss: RowHandler;
-  prismshellBoss: RowHandler;
-  ironhornBoss: RowHandler;
-  dreadreaperBoss: RowHandler;
-  voltwardenBoss: RowHandler;
-  gravebloomBoss: RowHandler;
-  aegisPrimeBoss: RowHandler;
-  miremawResult: RowHandler;
-  prismshellResult: RowHandler;
-  ironhornResult: RowHandler;
-  dreadreaperResult: RowHandler;
-  voltwardenResult: RowHandler;
-  gravebloomResult: RowHandler;
-  aegisPrimeResult: RowHandler;
   socialHub: RowHandler;
   removeSocialHub: RowHandler;
   socialMessage: RowHandler;
@@ -163,36 +132,6 @@ type BaseSubscriptionHandlerSources = {
   };
   boss: {
     upsertHitResult: BaseSubscriptionHandlers["bossHitResult"];
-    upsertDragon: BaseSubscriptionHandlers["dragonBoss"];
-    upsertDragonResult: BaseSubscriptionHandlers["dragonResult"];
-    upsertSpider: BaseSubscriptionHandlers["spiderBoss"];
-    upsertSpiderResult: BaseSubscriptionHandlers["spiderResult"];
-    upsertFrostclaw: BaseSubscriptionHandlers["frostclawBoss"];
-    upsertFrostclawResult: BaseSubscriptionHandlers["frostclawResult"];
-    upsertMagmalisk: BaseSubscriptionHandlers["magmaliskBoss"];
-    upsertMagmaliskResult: BaseSubscriptionHandlers["magmaliskResult"];
-    upsertGloomroot: BaseSubscriptionHandlers["gloomrootBoss"];
-    upsertGloomrootResult: BaseSubscriptionHandlers["gloomrootResult"];
-    upsertTidewyrm: BaseSubscriptionHandlers["tidewyrmBoss"];
-    upsertTidewyrmResult: BaseSubscriptionHandlers["tidewyrmResult"];
-    upsertKoiShogun: BaseSubscriptionHandlers["koiShogunBoss"];
-    upsertKoiShogunResult: BaseSubscriptionHandlers["koiShogunResult"];
-    upsertTempestKirin: BaseSubscriptionHandlers["tempestKirinBoss"];
-    upsertTempestKirinResult: BaseSubscriptionHandlers["tempestKirinResult"];
-    upsertMiremaw: BaseSubscriptionHandlers["miremawBoss"];
-    upsertPrismshell: BaseSubscriptionHandlers["prismshellBoss"];
-    upsertIronhorn: BaseSubscriptionHandlers["ironhornBoss"];
-    upsertDreadreaper: BaseSubscriptionHandlers["dreadreaperBoss"];
-    upsertVoltwarden: BaseSubscriptionHandlers["voltwardenBoss"];
-    upsertGravebloom: BaseSubscriptionHandlers["gravebloomBoss"];
-    upsertAegisPrime: BaseSubscriptionHandlers["aegisPrimeBoss"];
-    upsertMiremawResult: BaseSubscriptionHandlers["miremawResult"];
-    upsertPrismshellResult: BaseSubscriptionHandlers["prismshellResult"];
-    upsertIronhornResult: BaseSubscriptionHandlers["ironhornResult"];
-    upsertDreadreaperResult: BaseSubscriptionHandlers["dreadreaperResult"];
-    upsertVoltwardenResult: BaseSubscriptionHandlers["voltwardenResult"];
-    upsertGravebloomResult: BaseSubscriptionHandlers["gravebloomResult"];
-    upsertAegisPrimeResult: BaseSubscriptionHandlers["aegisPrimeResult"];
   };
   social?: { upsertHub: RowHandler; removeHub: RowHandler; upsertMessage: RowHandler; removeMessage: RowHandler };
   chat: { upsert: BaseSubscriptionHandlers["chatMessage"]; upsertBlock: RowHandler; removeBlock: RowHandler; remove: RowHandler };
@@ -255,26 +194,6 @@ export function createBaseSubscriptionHandlers(sources: BaseSubscriptionHandlerS
     itemDrop: progression.upsertItemDrop,
     lifetime: progression.upsertLifetime,
     chatHearts: progression.upsertChatHearts,
-    dragonBoss: boss.upsertDragon,
-    dragonResult: boss.upsertDragonResult,
-    spiderBoss: boss.upsertSpider,
-    spiderResult: boss.upsertSpiderResult,
-    frostclawBoss: boss.upsertFrostclaw,
-    frostclawResult: boss.upsertFrostclawResult,
-    magmaliskBoss: boss.upsertMagmalisk,
-    magmaliskResult: boss.upsertMagmaliskResult,
-    gloomrootBoss: boss.upsertGloomroot,
-    gloomrootResult: boss.upsertGloomrootResult,
-    tidewyrmBoss: boss.upsertTidewyrm,
-    tidewyrmResult: boss.upsertTidewyrmResult,
-    koiShogunBoss: boss.upsertKoiShogun,
-    koiShogunResult: boss.upsertKoiShogunResult,
-    tempestKirinBoss: boss.upsertTempestKirin,
-    tempestKirinResult: boss.upsertTempestKirinResult,
-    miremawBoss: boss.upsertMiremaw,
-    prismshellBoss: boss.upsertPrismshell, ironhornBoss: boss.upsertIronhorn, dreadreaperBoss: boss.upsertDreadreaper, voltwardenBoss: boss.upsertVoltwarden, gravebloomBoss: boss.upsertGravebloom, aegisPrimeBoss: boss.upsertAegisPrime,
-    miremawResult: boss.upsertMiremawResult,
-    prismshellResult: boss.upsertPrismshellResult, ironhornResult: boss.upsertIronhornResult, dreadreaperResult: boss.upsertDreadreaperResult, voltwardenResult: boss.upsertVoltwardenResult, gravebloomResult: boss.upsertGravebloomResult, aegisPrimeResult: boss.upsertAegisPrimeResult,
     socialHub: sources.social?.upsertHub ?? (() => {}),
     removeSocialHub: sources.social?.removeHub ?? (() => {}),
     socialMessage: sources.social?.upsertMessage ?? (() => {}),
@@ -403,66 +322,6 @@ export function startBaseSubscription(dependencies: BaseSubscriptionDependencies
   connection.db.playerChatHearts.onDelete((_ctx, row) => { if (shouldHandle()) handlers.chatHearts({ ...row, chatHeartsReceived: 0n }); });
   connection.db.playerLifetime.onInsert((_ctx, row) => { if (shouldHandle()) handlers.lifetime(row); });
   connection.db.playerLifetime.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.lifetime(row); });
-  connection.db.dragonBoss.onInsert((_ctx, row) => { if (shouldHandle()) handlers.dragonBoss(row); });
-  connection.db.dragonBoss.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.dragonBoss(row); });
-  connection.db.dragonResult.onInsert((_ctx, row) => { if (shouldHandle()) handlers.dragonResult(row); });
-  connection.db.dragonResult.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.dragonResult(row); });
-  connection.db.spiderBoss.onInsert((_ctx, row) => { if (shouldHandle()) handlers.spiderBoss(row); });
-  connection.db.spiderBoss.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.spiderBoss(row); });
-  connection.db.spiderResult.onInsert((_ctx, row) => { if (shouldHandle()) handlers.spiderResult(row); });
-  connection.db.spiderResult.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.spiderResult(row); });
-  connection.db.frostclawBoss.onInsert((_ctx, row) => { if (shouldHandle()) handlers.frostclawBoss(row); });
-  connection.db.frostclawBoss.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.frostclawBoss(row); });
-  connection.db.frostclawResult.onInsert((_ctx, row) => { if (shouldHandle()) handlers.frostclawResult(row); });
-  connection.db.frostclawResult.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.frostclawResult(row); });
-  connection.db.magmaliskBoss.onInsert((_ctx, row) => { if (shouldHandle()) handlers.magmaliskBoss(row); });
-  connection.db.magmaliskBoss.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.magmaliskBoss(row); });
-  connection.db.magmaliskResult.onInsert((_ctx, row) => { if (shouldHandle()) handlers.magmaliskResult(row); });
-  connection.db.magmaliskResult.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.magmaliskResult(row); });
-  connection.db.gloomrootBoss.onInsert((_ctx, row) => { if (shouldHandle()) handlers.gloomrootBoss(row); });
-  connection.db.gloomrootBoss.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.gloomrootBoss(row); });
-  connection.db.gloomrootResult.onInsert((_ctx, row) => { if (shouldHandle()) handlers.gloomrootResult(row); });
-  connection.db.gloomrootResult.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.gloomrootResult(row); });
-  connection.db.tidewyrmBoss.onInsert((_ctx, row) => { if (shouldHandle()) handlers.tidewyrmBoss(row); });
-  connection.db.tidewyrmBoss.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.tidewyrmBoss(row); });
-  connection.db.tidewyrmResult.onInsert((_ctx, row) => { if (shouldHandle()) handlers.tidewyrmResult(row); });
-  connection.db.tidewyrmResult.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.tidewyrmResult(row); });
-  connection.db.koiShogunBoss.onInsert((_ctx, row) => { if (shouldHandle()) handlers.koiShogunBoss(row); });
-  connection.db.koiShogunBoss.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.koiShogunBoss(row); });
-  connection.db.koiShogunResult.onInsert((_ctx, row) => { if (shouldHandle()) handlers.koiShogunResult(row); });
-  connection.db.koiShogunResult.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.koiShogunResult(row); });
-  connection.db.tempestKirinBoss.onInsert((_ctx, row) => { if (shouldHandle()) handlers.tempestKirinBoss(row); });
-  connection.db.tempestKirinBoss.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.tempestKirinBoss(row); });
-  connection.db.tempestKirinResult.onInsert((_ctx, row) => { if (shouldHandle()) handlers.tempestKirinResult(row); });
-  connection.db.tempestKirinResult.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.tempestKirinResult(row); });
-  connection.db.miremawBoss.onInsert((_ctx, row) => { if (shouldHandle()) handlers.miremawBoss(row); });
-  connection.db.prismshellBoss.onInsert((_ctx, row) => { if (shouldHandle()) handlers.prismshellBoss(row); });
-  connection.db.ironhornBoss.onInsert((_ctx, row) => { if (shouldHandle()) handlers.ironhornBoss(row); });
-  connection.db.dreadreaperBoss.onInsert((_ctx, row) => { if (shouldHandle()) handlers.dreadreaperBoss(row); });
-  connection.db.voltwardenBoss.onInsert((_ctx, row) => { if (shouldHandle()) handlers.voltwardenBoss(row); });
-  connection.db.gravebloomBoss.onInsert((_ctx, row) => { if (shouldHandle()) handlers.gravebloomBoss(row); });
-  connection.db.aegisPrimeBoss.onInsert((_ctx, row) => { if (shouldHandle()) handlers.aegisPrimeBoss(row); });
-  connection.db.miremawBoss.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.miremawBoss(row); });
-  connection.db.prismshellBoss.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.prismshellBoss(row); });
-  connection.db.ironhornBoss.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.ironhornBoss(row); });
-  connection.db.dreadreaperBoss.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.dreadreaperBoss(row); });
-  connection.db.voltwardenBoss.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.voltwardenBoss(row); });
-  connection.db.gravebloomBoss.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.gravebloomBoss(row); });
-  connection.db.aegisPrimeBoss.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.aegisPrimeBoss(row); });
-  connection.db.miremawResult.onInsert((_ctx, row) => { if (shouldHandle()) handlers.miremawResult(row); });
-  connection.db.prismshellResult.onInsert((_ctx, row) => { if (shouldHandle()) handlers.prismshellResult(row); });
-  connection.db.ironhornResult.onInsert((_ctx, row) => { if (shouldHandle()) handlers.ironhornResult(row); });
-  connection.db.dreadreaperResult.onInsert((_ctx, row) => { if (shouldHandle()) handlers.dreadreaperResult(row); });
-  connection.db.voltwardenResult.onInsert((_ctx, row) => { if (shouldHandle()) handlers.voltwardenResult(row); });
-  connection.db.gravebloomResult.onInsert((_ctx, row) => { if (shouldHandle()) handlers.gravebloomResult(row); });
-  connection.db.aegisPrimeResult.onInsert((_ctx, row) => { if (shouldHandle()) handlers.aegisPrimeResult(row); });
-  connection.db.miremawResult.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.miremawResult(row); });
-  connection.db.prismshellResult.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.prismshellResult(row); });
-  connection.db.ironhornResult.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.ironhornResult(row); });
-  connection.db.dreadreaperResult.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.dreadreaperResult(row); });
-  connection.db.voltwardenResult.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.voltwardenResult(row); });
-  connection.db.gravebloomResult.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.gravebloomResult(row); });
-  connection.db.aegisPrimeResult.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.aegisPrimeResult(row); });
   connection.db.mySocialHub.onInsert((_ctx, row) => { if (shouldHandle()) handlers.socialHub(row); });
   connection.db.mySocialHub.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.socialHub(row); });
   connection.db.mySocialHub.onDelete((_ctx, row) => { if (shouldHandle()) handlers.removeSocialHub(row); });
@@ -479,18 +338,6 @@ export function startBaseSubscription(dependencies: BaseSubscriptionDependencies
   connection.db.duel.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.duel(row); });
   connection.db.duel.onDelete((_ctx, row) => { if (shouldHandle()) handlers.removeDuel(row); });
 
-  const bossQueries = [
-    [tables.dragonBoss],
-    [tables.spiderBoss],
-    [tables.frostclawBoss],
-    [tables.magmaliskBoss],
-    [tables.gloomrootBoss],
-    [tables.tidewyrmBoss],
-    [tables.koiShogunBoss],
-    [tables.tempestKirinBoss],
-    [tables.miremawBoss],
-    [tables.prismshellBoss], [tables.ironhornBoss], [tables.dreadreaperBoss], [tables.voltwardenBoss], [tables.gravebloomBoss], [tables.aegisPrimeBoss]
-  ];
   return createSessionSubscriptions({
     isCurrent: dependencies.isCurrent,
     loading: () => { hydrating = true; dependencies.onLoading(); },
@@ -499,7 +346,7 @@ export function startBaseSubscription(dependencies: BaseSubscriptionDependencies
       .onApplied(applied)
       .onError((ctx) => { if (dependencies.isCurrent()) dependencies.onError(ctx.event); })
       .subscribe(scope.startsWith("boss:")
-        ? bossQueries[Math.max(0, MAP_IDS.indexOf(scope.slice(5)))]
+        ? []
         : scope === "account" ? [
       tables.playerProfile.where((profile) => profile.identity.eq(dependencies.identity)),
       tables.playerProgress.where((progress) => progress.identity.eq(dependencies.identity)),
@@ -570,36 +417,6 @@ export function startBaseSubscription(dependencies: BaseSubscriptionDependencies
           for (const row of connection.db.playerLifetime.iter()) handlers.lifetime(row);
           for (const row of connection.db.playerMotionIdentity.iter()) handlers.motionIdentity(row);
           for (const row of connection.db.player.iter()) handlers.player(row);
-          for (const row of connection.db.dragonBoss.iter()) handlers.dragonBoss(row);
-          for (const row of connection.db.dragonResult.iter()) handlers.dragonResult(row);
-          for (const row of connection.db.spiderBoss.iter()) handlers.spiderBoss(row);
-          for (const row of connection.db.spiderResult.iter()) handlers.spiderResult(row);
-          for (const row of connection.db.frostclawBoss.iter()) handlers.frostclawBoss(row);
-          for (const row of connection.db.frostclawResult.iter()) handlers.frostclawResult(row);
-          for (const row of connection.db.magmaliskBoss.iter()) handlers.magmaliskBoss(row);
-          for (const row of connection.db.magmaliskResult.iter()) handlers.magmaliskResult(row);
-          for (const row of connection.db.gloomrootBoss.iter()) handlers.gloomrootBoss(row);
-          for (const row of connection.db.gloomrootResult.iter()) handlers.gloomrootResult(row);
-          for (const row of connection.db.tidewyrmBoss.iter()) handlers.tidewyrmBoss(row);
-          for (const row of connection.db.tidewyrmResult.iter()) handlers.tidewyrmResult(row);
-          for (const row of connection.db.koiShogunBoss.iter()) handlers.koiShogunBoss(row);
-          for (const row of connection.db.koiShogunResult.iter()) handlers.koiShogunResult(row);
-          for (const row of connection.db.tempestKirinBoss.iter()) handlers.tempestKirinBoss(row);
-          for (const row of connection.db.tempestKirinResult.iter()) handlers.tempestKirinResult(row);
-          for (const row of connection.db.miremawBoss.iter()) handlers.miremawBoss(row);
-          for (const row of connection.db.prismshellBoss.iter()) handlers.prismshellBoss(row);
-          for (const row of connection.db.ironhornBoss.iter()) handlers.ironhornBoss(row);
-          for (const row of connection.db.dreadreaperBoss.iter()) handlers.dreadreaperBoss(row);
-          for (const row of connection.db.voltwardenBoss.iter()) handlers.voltwardenBoss(row);
-          for (const row of connection.db.gravebloomBoss.iter()) handlers.gravebloomBoss(row);
-          for (const row of connection.db.aegisPrimeBoss.iter()) handlers.aegisPrimeBoss(row);
-          for (const row of connection.db.miremawResult.iter()) handlers.miremawResult(row);
-          for (const row of connection.db.prismshellResult.iter()) handlers.prismshellResult(row);
-          for (const row of connection.db.ironhornResult.iter()) handlers.ironhornResult(row);
-          for (const row of connection.db.dreadreaperResult.iter()) handlers.dreadreaperResult(row);
-          for (const row of connection.db.voltwardenResult.iter()) handlers.voltwardenResult(row);
-          for (const row of connection.db.gravebloomResult.iter()) handlers.gravebloomResult(row);
-          for (const row of connection.db.aegisPrimeResult.iter()) handlers.aegisPrimeResult(row);
           for (const row of connection.db.myPlayerBlocks.iter()) handlers.playerBlock(row);
           for (const row of connection.db.mySocialHub.iter()) handlers.socialHub(row);
           for (const row of connection.db.mySocialMessagesWithReactions.iter()) handlers.socialMessage(row);
@@ -608,26 +425,9 @@ export function startBaseSubscription(dependencies: BaseSubscriptionDependencies
         });
         return;
       }
-      if (scope.startsWith("boss:")) {
-        dependencies.batch(() => {
-          for (const row of connection.db.dragonBoss.iter()) handlers.dragonBoss(row);
-          for (const row of connection.db.spiderBoss.iter()) handlers.spiderBoss(row);
-          for (const row of connection.db.frostclawBoss.iter()) handlers.frostclawBoss(row);
-          for (const row of connection.db.magmaliskBoss.iter()) handlers.magmaliskBoss(row);
-          for (const row of connection.db.gloomrootBoss.iter()) handlers.gloomrootBoss(row);
-          for (const row of connection.db.tidewyrmBoss.iter()) handlers.tidewyrmBoss(row);
-          for (const row of connection.db.koiShogunBoss.iter()) handlers.koiShogunBoss(row);
-          for (const row of connection.db.tempestKirinBoss.iter()) handlers.tempestKirinBoss(row);
-          for (const row of connection.db.miremawBoss.iter()) handlers.miremawBoss(row);
-          for (const row of connection.db.prismshellBoss.iter()) handlers.prismshellBoss(row);
-          for (const row of connection.db.ironhornBoss.iter()) handlers.ironhornBoss(row);
-          for (const row of connection.db.dreadreaperBoss.iter()) handlers.dreadreaperBoss(row);
-          for (const row of connection.db.voltwardenBoss.iter()) handlers.voltwardenBoss(row);
-          for (const row of connection.db.gravebloomBoss.iter()) handlers.gravebloomBoss(row);
-          for (const row of connection.db.aegisPrimeBoss.iter()) handlers.aegisPrimeBoss(row);
-        });
-        return;
-      }
+      // The "boss:" scope no longer has any tables to subscribe to or hydrate
+      // (the shared/server-authoritative boss system was removed; bosses are
+      // now client-side and per-player). Nothing to do here.
     },
     ready: () => {
       dependencies.batch(dependencies.onHydrated);

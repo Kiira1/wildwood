@@ -24,21 +24,6 @@ import {
 } from "../../../shared/boss-simulation";
 
 const PLAYER_PROJECTILE_VISUAL_TAIL = 36;
-const DRAGON_HIT_BATCH_DELAY = .1;
-const SPIDER_HIT_BATCH_DELAY = .1;
-const FROSTCLAW_HIT_BATCH_DELAY = .1;
-const MAGMALISK_HIT_BATCH_DELAY = .1;
-const GLOOMROOT_HIT_BATCH_DELAY = .1;
-const TIDEWYRM_HIT_BATCH_DELAY = .1;
-const KOI_SHOGUN_HIT_BATCH_DELAY = .1;
-const TEMPEST_KIRIN_HIT_BATCH_DELAY = .1;
-const MIREMAW_HIT_BATCH_DELAY = .1;
-const PRISMSHELL_HIT_BATCH_DELAY = .1;
-const IRONHORN_HIT_BATCH_DELAY = .1;
-const DREADREAPER_HIT_BATCH_DELAY = .1;
-const VOLTWARDEN_HIT_BATCH_DELAY = .1;
-const GRAVEBLOOM_HIT_BATCH_DELAY = .1;
-const AEGIS_PRIME_HIT_BATCH_DELAY = .1;
 const DEATH_PARTICLE_COLOR = "#e53935";
 const TARGET_GRID_CELL_SIZE = 160;
 // Collision settling must not flip aim between equally close enemies every frame.
@@ -141,21 +126,6 @@ export function createPlayerCombatController(options: {
   incrementKills: () => void;
   hitPersonalBoss?: (damage: number, x: number, y: number, critical: boolean) => void;
   hitGeneratedBoss?: (enemy: EnemyState, damage: number, critical: boolean) => boolean;
-  damageDragon: (hits: number) => void;
-  damageSpider: (hits: number) => void;
-  damageFrostclaw: (hits: number) => void;
-  damageMagmalisk: (hits: number) => void;
-  damageGloomroot: (hits: number) => void;
-  damageTidewyrm: (hits: number) => void;
-  damageKoiShogun: (hits: number) => void;
-  damageTempestKirin: (hits: number) => void;
-  damageMiremaw: (hits: number) => void;
-  damagePrismshell: (hits: number) => void;
-  damageIronhorn: (hits: number) => void;
-  damageDreadreaper: (hits: number) => void;
-  damageVoltwarden: (hits: number) => void;
-  damageGravebloom: (hits: number) => void;
-  damageAegisPrime: (hits: number) => void;
   spawnBurst: (x: number, y: number, color: string, count?: number, speed?: number) => void;
   spawnParticle: (x: number, y: number, vx: number, vy: number, life: number, maxLife: number, size: number, color: string) => void;
   spawnDamageNumber: (x: number, y: number, amount: number, critical?: boolean, damageTaken?: boolean) => void;
@@ -175,7 +145,7 @@ export function createPlayerCombatController(options: {
     player, enemies, spawnSites, projectileStore, boss, spiderBoss, frostclawBoss, magmaliskBoss, gloomrootBoss, tidewyrmBoss, koiShogunBoss, tempestKirinBoss, miremawBoss, prismshellBoss, ironhornBoss, dreadreaperBoss, voltwardenBoss, gravebloomBoss, aegisPrimeBoss,
     isTutorialMap, isDesertMap, isSnowMap, isLavaMap, isInfernalMap, isWaterMap, isSamuraiMap, isCloudspireMap, isMoonfenMap, isCrystalHollowsMap, isClockworkRuinsMap, isDuskfallOrchardMap, isNeonBastionMap, isVerdantCatacombsMap, isIonCitadelMap, engageEnemy, researchDamageMultiplier, researchCriticalChance, researchCriticalDamageMultiplier,
     researchRewardMultiplier, minAttackInterval, effectiveArmor, isDueling, scheduleEnemyRespawn,
-    incrementKills, recordRegularEnemyDefeat, damageDragon, damageSpider, damageFrostclaw, damageMagmalisk, damageGloomroot, damageTidewyrm, damageKoiShogun, damageTempestKirin, damageMiremaw, damagePrismshell, damageIronhorn, damageDreadreaper, damageVoltwarden, damageGravebloom, damageAegisPrime, spawnBurst, spawnParticle,
+    incrementKills, recordRegularEnemyDefeat, spawnBurst, spawnParticle,
     spawnDamageNumber, logPickup, saveProgress, setHitFlash, addScreenShake, recordDeath, endGame,
   } = options;
   const { projectiles, enemyShots } = projectileStore;
@@ -193,36 +163,6 @@ export function createPlayerCombatController(options: {
   let pendingPlayerAttack: PendingPlayerAttack | null = null;
   let nextAttackAtSeconds = 0;
   let lastBossAttackCycleKey = "";
-  let pendingDragonHits = 0;
-  let dragonHitBatchTimer = 0;
-  let pendingSpiderHits = 0;
-  let spiderHitBatchTimer = 0;
-  let pendingFrostclawHits = 0;
-  let frostclawHitBatchTimer = 0;
-  let pendingMagmaliskHits = 0;
-  let magmaliskHitBatchTimer = 0;
-  let pendingGloomrootHits = 0;
-  let gloomrootHitBatchTimer = 0;
-  let pendingTidewyrmHits = 0;
-  let tidewyrmHitBatchTimer = 0;
-  let pendingKoiShogunHits = 0;
-  let koiShogunHitBatchTimer = 0;
-  let pendingTempestKirinHits = 0;
-  let tempestKirinHitBatchTimer = 0;
-  let pendingMiremawHits = 0;
-  let pendingPrismshellHits = 0;
-  let pendingIronhornHits = 0;
-  let pendingDreadreaperHits = 0;
-  let pendingVoltwardenHits = 0;
-  let pendingGravebloomHits = 0;
-  let pendingAegisPrimeHits = 0;
-  let miremawHitBatchTimer = 0;
-  let prismshellHitBatchTimer = 0;
-  let ironhornHitBatchTimer = 0;
-  let dreadreaperHitBatchTimer = 0;
-  let voltwardenHitBatchTimer = 0;
-  let gravebloomHitBatchTimer = 0;
-  let aegisPrimeHitBatchTimer = 0;
 
   function activeMapBoss(): BossTarget | null {
     if (isTutorialMap()) return boss;
@@ -552,52 +492,8 @@ export function createPlayerCombatController(options: {
     if (target.isBoss && options.hitPersonalBoss) {
       options.hitPersonalBoss(damage, target.x, target.y, critical === true);
     } else if (target.isBoss) {
-      if ("bossKind" in target && target.bossKind === "spider") {
-        pendingSpiderHits += 1;
-        spiderHitBatchTimer = SPIDER_HIT_BATCH_DELAY;
-      } else if ("bossKind" in target && target.bossKind === "frostclaw") {
-        pendingFrostclawHits += 1;
-        frostclawHitBatchTimer = FROSTCLAW_HIT_BATCH_DELAY;
-      } else if ("bossKind" in target && target.bossKind === "magmalisk") {
-        pendingMagmaliskHits += 1;
-        magmaliskHitBatchTimer = MAGMALISK_HIT_BATCH_DELAY;
-      } else if ("bossKind" in target && target.bossKind === "gloomroot") {
-        pendingGloomrootHits += 1;
-        gloomrootHitBatchTimer = GLOOMROOT_HIT_BATCH_DELAY;
-      } else if ("bossKind" in target && target.bossKind === "tidewyrm") {
-        pendingTidewyrmHits += 1;
-        tidewyrmHitBatchTimer = TIDEWYRM_HIT_BATCH_DELAY;
-      } else if ("bossKind" in target && target.bossKind === "koiShogun") {
-        pendingKoiShogunHits += 1;
-        koiShogunHitBatchTimer = KOI_SHOGUN_HIT_BATCH_DELAY;
-      } else if ("bossKind" in target && target.bossKind === "tempestKirin") {
-        pendingTempestKirinHits += 1;
-        tempestKirinHitBatchTimer = TEMPEST_KIRIN_HIT_BATCH_DELAY;
-      } else if ("bossKind" in target && target.bossKind === "miremaw") {
-        pendingMiremawHits += 1;
-        miremawHitBatchTimer = MIREMAW_HIT_BATCH_DELAY;
-      } else if ("bossKind" in target && target.bossKind === "ironhorn") {
-        pendingIronhornHits += 1;
-        ironhornHitBatchTimer = IRONHORN_HIT_BATCH_DELAY;
-      } else if ("bossKind" in target && target.bossKind === "voltwarden") {
-        pendingVoltwardenHits += 1;
-        voltwardenHitBatchTimer = VOLTWARDEN_HIT_BATCH_DELAY;
-      } else if ("bossKind" in target && target.bossKind === "aegisPrime") {
-        pendingAegisPrimeHits += 1;
-        aegisPrimeHitBatchTimer = AEGIS_PRIME_HIT_BATCH_DELAY;
-      } else if ("bossKind" in target && target.bossKind === "gravebloom") {
-        pendingGravebloomHits += 1;
-        gravebloomHitBatchTimer = GRAVEBLOOM_HIT_BATCH_DELAY;
-      } else if ("bossKind" in target && target.bossKind === "dreadreaper") {
-        pendingDreadreaperHits += 1;
-        dreadreaperHitBatchTimer = DREADREAPER_HIT_BATCH_DELAY;
-      } else if ("bossKind" in target && target.bossKind === "prismshell") {
-        pendingPrismshellHits += 1;
-        prismshellHitBatchTimer = PRISMSHELL_HIT_BATCH_DELAY;
-      } else {
-        pendingDragonHits += 1;
-        dragonHitBatchTimer = DRAGON_HIT_BATCH_DELAY;
-      }
+      // No personal-boss handler is wired up (never happens in production,
+      // where main.ts always supplies hitPersonalBoss for boss targets).
     } else if (options.hitGeneratedBoss?.(target, damage, critical)) {
       // The generated-boss controller owns its health and defeat handling.
     } else {
@@ -646,61 +542,6 @@ export function createPlayerCombatController(options: {
       }
     }
     projectileStore.compactPlayerProjectiles();
-    if (isTutorialMap() && pendingDragonHits > 0) {
-      dragonHitBatchTimer -= dt;
-      if (dragonHitBatchTimer <= 0) { damageDragon(pendingDragonHits); pendingDragonHits = 0; dragonHitBatchTimer = 0; }
-    }
-    if (isDesertMap() && pendingSpiderHits > 0) {
-      spiderHitBatchTimer -= dt;
-      if (spiderHitBatchTimer <= 0) { damageSpider(pendingSpiderHits); pendingSpiderHits = 0; spiderHitBatchTimer = 0; }
-    }
-    if (isSnowMap() && pendingFrostclawHits > 0) {
-      frostclawHitBatchTimer -= dt;
-      if (frostclawHitBatchTimer <= 0) { damageFrostclaw(pendingFrostclawHits); pendingFrostclawHits = 0; frostclawHitBatchTimer = 0; }
-    }
-    if (isLavaMap() && pendingMagmaliskHits > 0) {
-      magmaliskHitBatchTimer -= dt;
-      if (magmaliskHitBatchTimer <= 0) { damageMagmalisk(pendingMagmaliskHits); pendingMagmaliskHits = 0; magmaliskHitBatchTimer = 0; }
-    }
-    if (isInfernalMap() && pendingGloomrootHits > 0) {
-      gloomrootHitBatchTimer -= dt;
-      if (gloomrootHitBatchTimer <= 0) { damageGloomroot(pendingGloomrootHits); pendingGloomrootHits = 0; gloomrootHitBatchTimer = 0; }
-    }
-    if (isWaterMap() && pendingTidewyrmHits > 0) {
-      tidewyrmHitBatchTimer -= dt;
-      if (tidewyrmHitBatchTimer <= 0) { damageTidewyrm(pendingTidewyrmHits); pendingTidewyrmHits = 0; tidewyrmHitBatchTimer = 0; }
-    }
-    if (isSamuraiMap() && pendingKoiShogunHits > 0) {
-      koiShogunHitBatchTimer -= dt;
-      if (koiShogunHitBatchTimer <= 0) { damageKoiShogun(pendingKoiShogunHits); pendingKoiShogunHits = 0; koiShogunHitBatchTimer = 0; }
-    }
-    if (isCloudspireMap() && pendingTempestKirinHits > 0) {
-      tempestKirinHitBatchTimer -= dt;
-      if (tempestKirinHitBatchTimer <= 0) { damageTempestKirin(pendingTempestKirinHits); pendingTempestKirinHits = 0; tempestKirinHitBatchTimer = 0; }
-    }
-    if (isMoonfenMap() && pendingMiremawHits > 0) {
-      miremawHitBatchTimer -= dt;
-      if (miremawHitBatchTimer <= 0) { damageMiremaw(pendingMiremawHits); pendingMiremawHits = 0; miremawHitBatchTimer = 0; }
-    }
-    if (isClockworkRuinsMap() && pendingIronhornHits > 0) {
-      ironhornHitBatchTimer -= dt;
-      if (ironhornHitBatchTimer <= 0) { damageIronhorn(pendingIronhornHits); pendingIronhornHits = 0; ironhornHitBatchTimer = 0; }
-    } else if (isIonCitadelMap() && pendingAegisPrimeHits > 0) {
-      aegisPrimeHitBatchTimer -= dt;
-      if (aegisPrimeHitBatchTimer <= 0) { damageAegisPrime(pendingAegisPrimeHits); pendingAegisPrimeHits = 0; aegisPrimeHitBatchTimer = 0; }
-    } else if (isVerdantCatacombsMap() && pendingGravebloomHits > 0) {
-      gravebloomHitBatchTimer -= dt;
-      if (gravebloomHitBatchTimer <= 0) { damageGravebloom(pendingGravebloomHits); pendingGravebloomHits = 0; gravebloomHitBatchTimer = 0; }
-    } else if (isNeonBastionMap() && pendingVoltwardenHits > 0) {
-      voltwardenHitBatchTimer -= dt;
-      if (voltwardenHitBatchTimer <= 0) { damageVoltwarden(pendingVoltwardenHits); pendingVoltwardenHits = 0; voltwardenHitBatchTimer = 0; }
-    } else if (isDuskfallOrchardMap() && pendingDreadreaperHits > 0) {
-      dreadreaperHitBatchTimer -= dt;
-      if (dreadreaperHitBatchTimer <= 0) { damageDreadreaper(pendingDreadreaperHits); pendingDreadreaperHits = 0; dreadreaperHitBatchTimer = 0; }
-    } else if (isCrystalHollowsMap() && pendingPrismshellHits > 0) {
-      prismshellHitBatchTimer -= dt;
-      if (prismshellHitBatchTimer <= 0) { damagePrismshell(pendingPrismshellHits); pendingPrismshellHits = 0; prismshellHitBatchTimer = 0; }
-    }
     for (const shot of enemyShots) {
       shot.life -= dt;
       shot.x += shot.vx * dt;
@@ -714,38 +555,10 @@ export function createPlayerCombatController(options: {
     attackNearest,
     updateProjectiles,
     damagePlayer,
-    clearPendingBossHits: () => {
-      pendingDragonHits = 0;
-      dragonHitBatchTimer = 0;
-      pendingSpiderHits = 0;
-      spiderHitBatchTimer = 0;
-      pendingFrostclawHits = 0;
-      frostclawHitBatchTimer = 0;
-      pendingMagmaliskHits = 0;
-      magmaliskHitBatchTimer = 0;
-      pendingGloomrootHits = 0;
-      gloomrootHitBatchTimer = 0;
-      pendingTidewyrmHits = 0;
-      tidewyrmHitBatchTimer = 0;
-      pendingKoiShogunHits = 0;
-      koiShogunHitBatchTimer = 0;
-      pendingTempestKirinHits = 0;
-      tempestKirinHitBatchTimer = 0;
-      pendingMiremawHits = 0;
-      pendingPrismshellHits = 0;
-      pendingIronhornHits = 0;
-      pendingDreadreaperHits = 0;
-      pendingVoltwardenHits = 0;
-      pendingGravebloomHits = 0;
-      pendingAegisPrimeHits = 0;
-      miremawHitBatchTimer = 0;
-      prismshellHitBatchTimer = 0;
-      ironhornHitBatchTimer = 0;
-      dreadreaperHitBatchTimer = 0;
-      voltwardenHitBatchTimer = 0;
-      gravebloomHitBatchTimer = 0;
-      aegisPrimeHitBatchTimer = 0;
-    },
+    // No shared-boss hit batching remains to clear; personal bosses apply
+    // damage immediately via options.hitPersonalBoss. Kept as a no-op so
+    // callers (e.g. map transitions) don't need to know that.
+    clearPendingBossHits: () => {},
     clearPendingThrow: () => {
       retainedTarget = null;
       nextTargetSearchAt = 0;
