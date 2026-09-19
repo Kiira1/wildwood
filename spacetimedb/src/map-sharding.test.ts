@@ -65,7 +65,7 @@ describe("separate map database control plane", () => {
     region.run(server.revokeShardPlayer, { identity: identity("1"), generation: 10n });
     expect(region.db.player.identity.find(identity("1"))).toBeNull();
   });
-  it("rejects movement packets faster than the server-owned speed without banning", () => {
+  it("restricts movement packets faster than the server-owned speed and quietly drops retries", () => {
     const root = rootFixture(), region = regionFixture();
     region.run(server.installShardPlayer, { identity: identity("1"), generation: 10n, snapshot: snapshot(root) });
     region.ctx.sender = identity("1");
@@ -73,9 +73,15 @@ describe("separate map database control plane", () => {
 
     expect(() => region.run(server.updateMovementState, {
       x: 1200, y: 900, vx: 360, vy: 0, simulationTick: 100, motionEpoch: 2, sequence: 500,
-    })).toThrow("Unsupported movement speed");
-    expect(region.db.defeatSessionRestriction.identity.find(identity("1"))).toBeNull();
-    expect(region.db.playerController.identity.find(identity("1"))).not.toBeNull();
+    })).not.toThrow();
+    expect(region.db.defeatSessionRestriction.identity.find(identity("1"))).toMatchObject({ requireSignIn: false });
+    expect(region.db.playerController.identity.find(identity("1"))).toBeNull();
+
+    // The invalidated connection may still have queued packets. They are
+    // dropped without creating another reducer error or log entry.
+    expect(() => region.run(server.updateMovementState, {
+      x: 1200, y: 900, vx: 360, vy: 0, simulationTick: 101, motionEpoch: 2, sequence: 501,
+    })).not.toThrow();
   });
 
   it("rejects a position jump that outruns server time without banning", () => {

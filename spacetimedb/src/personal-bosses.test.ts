@@ -22,7 +22,10 @@ it('consumes an excessive boss backlog once and ends the session', () => {
   expect(() => f.run(server.recordEnemyDefeats, { mapId: 'endless_40', streamId: 'test-defeats-stream-0001', sequence: 1n, enemies: [{ enemy: 'boss', count: 100 }] })).toThrow('DEFEAT_SESSION_COOLDOWN');
   expect(f.db.playerLifetime.identity.find(f.ctx.sender).enemyKills).toBe(6n);
   expect(f.db.regularEnemyLootCursor.key.find(`${f.ctx.sender.toHexString()}:test-defeats-stream-0001`).sequence).toBe(1n);
-  expect(() => f.run(server.changeMap, { mapId: 'home_exterior', x: 600, y: 700 })).toThrow('DEFEAT_SESSION_COOLDOWN');
+  // Hot map reducers quietly drop retries from the invalidated connection so
+  // queued packets do not flood the server with repeated cooldown errors.
+  expect(() => f.run(server.changeMap, { mapId: 'home_exterior', x: 600, y: 700 })).not.toThrow();
+  expect(f.db.player.identity.find(f.ctx.sender)).toBeNull();
 });
 it('uses each map combat-time budget instead of a global twenty-boss cutoff', () => {
   const f = strongBossFixture('endless_40'), start = f.ctx.timestamp.microsSinceUnixEpoch;
