@@ -2,6 +2,7 @@ import { SenderError, table, t } from "spacetimedb/server";
 import { SPACETIME_AUTH_CLIENT_ID, SPACETIME_AUTH_ISSUER } from "../../shared/rules";
 import { DEFEAT_COOLDOWN, DEFEAT_GUEST_BLOCK_SECONDS, DEFEAT_REAUTH, freshAuthentication } from "../../shared/defeat-session";
 import { recordModerationAction } from "./moderation-history";
+import { updatePublicChatCursor } from "./public-chat-history";
 import type { GameReducerContext } from "./index";
 
 export const defeatSessionRestriction = table({ name: "defeat_session_restriction", public: false }, {
@@ -124,6 +125,27 @@ export function restrictSimulationSession(ctx: GameReducerContext, evidence: {
     reason: "Client simulation exceeded the server movement allowance", actorType: "automatic",
     rule: "simulation_speed_guard", before: json(evidence), after: json({ blockedUntilMs: Number(next.blockedUntilMicros / 1000n) }),
   });
+  // Make the automatic action visible to players.  The message is inserted in
+  // the same transaction as the restriction, so it can never announce a ban
+  // that failed to commit.  Use a system sender label rather than pretending
+  // the blocked client authored the announcement.
+  const announcement = ctx.db.chatMessage.insert({
+    id: 0n,
+    sender: ctx.sender,
+    senderName: "SERVER",
+    senderIsGuest: false,
+    message: `${profile?.displayName || "A player"} was blocked for a gamespeed exploit (1 hour).`,
+    sentAt: ctx.timestamp,
+    replayId: 0n,
+    powerLevel: 0,
+    senderGender: 0,
+    moderated: false,
+    replyToMessageId: 0n,
+    replyToSenderName: "",
+    replyToMessage: "",
+    guildReplayKey: "",
+  });
+  updatePublicChatCursor(ctx, announcement.id);
   console.warn("Simulation session blocked", JSON.stringify({
     identity: ctx.sender.toHexString(), displayName: profile?.displayName ?? "", moderationId: moderationId.toString(),
     blockedUntilMs: Number(next.blockedUntilMicros / 1000n), ...evidence,

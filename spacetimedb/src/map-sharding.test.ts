@@ -76,6 +76,10 @@ describe("separate map database control plane", () => {
     })).not.toThrow();
     expect(region.db.defeatSessionRestriction.identity.find(identity("1"))).toMatchObject({ blockedUntilMicros: 3_610_000_000n });
     expect(region.db.playerController.identity.find(identity("1"))).toBeNull();
+    expect([...region.db.chatMessage.iter()].at(-1)).toMatchObject({
+      senderName: "SERVER",
+      message: expect.stringContaining("gamespeed exploit"),
+    });
   });
 
   it("rejects a position jump that outruns server time", () => {
