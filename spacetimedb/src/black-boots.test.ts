@@ -37,3 +37,14 @@ it("rejects unowned or cosmetic-only speed boosts and accepts the exact equipped
   })).not.toThrow();
   expect(() => f.run(server.setSpeed, { speed: 206 })).toThrow("Unsupported player speed");
 });
+
+it("accepts the Black Boots bonus while a shard still has the base speed snapshot", () => {
+  const f = crystalFixture();
+  f.patch("playerProgress", { inventoryJson: JSON.stringify([BLACK_BOOTS]), equippedFeet: BLACK_BOOTS, infernalUnlocked: true });
+  // This is the brief root-to-shard lag that previously produced false
+  // movement-speed warnings for legitimate Black Boots runners.
+  f.patch("player", { speed: 180 });
+  expect(() => f.run(server.updateMovementState, {
+    x: 4050, y: 4050, vx: 205, vy: 0, simulationTick: 1, motionEpoch: 1, sequence: 1,
+  })).not.toThrow();
+});

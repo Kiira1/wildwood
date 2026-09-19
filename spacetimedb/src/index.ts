@@ -10366,13 +10366,23 @@ function applyMovementState(
   const moving = Math.abs(boundedVx) > 1e-6 || Math.abs(boundedVy) > 1e-6;
   const compatibilitySpeed = Math.max(1e-6, Number.isFinite(current.speed) ? current.speed : PLAYER_SPEED);
   const requestedSpeed = Math.hypot(boundedVx, boundedVy);
-  if (moving && requestedSpeed > compatibilitySpeed + MOVEMENT_SPEED_PACKET_TOLERANCE) {
+  // Map shards can briefly lag the root presentation row when equipment or
+  // research changes. Resolve the server-owned movement speeds from the
+  // progress snapshot as well, especially the temporary +25 Black Boots
+  // state, so legitimate clients are not recorded as speed violations.
+  const progress = ctx.db.playerProgress.identity.find(ctx.sender);
+  const expectedSpeed = progress ? effectiveMovementSpeedForProgress(ctx, progress) : compatibilitySpeed;
+  const blackBootsSpeed = progress && equippedFeetForProgress(progress) === BLACK_BOOTS
+    ? expectedSpeed + BLACK_BOOTS_SPEED_BONUS : expectedSpeed;
+  const allowedSpeed = Math.max(compatibilitySpeed, expectedSpeed, blackBootsSpeed);
+  if (moving && requestedSpeed > allowedSpeed + MOVEMENT_SPEED_PACKET_TOLERANCE) {
     console.warn("Movement speed validation", JSON.stringify({
       identity: ctx.sender.toHexString(),
       displayName: ctx.db.playerProfile.identity.find(ctx.sender)?.displayName ?? "",
       mapId: current.mapId,
       requestedSpeed,
       serverSpeed: compatibilitySpeed,
+      allowedSpeed,
     }));
     // Automatic bans are paused while we verify this signal against legitimate
     // boss knockback and other movement impulses. Keep rejecting the packet,
