@@ -6,6 +6,7 @@ import { createHomeTravelController } from "./ui/home-travel-controller";
 import { MAP_IDS as CAMPAIGN_MAP_IDS } from "../shared/rules";
 import { weaponAttackRange } from "./game/weapon-combat";
 import { createPlayerVisibilityToggle } from "./ui/player-visibility-toggle";
+import { createPanelCoordinator } from "./ui/panel-coordinator";
 import { createFullscreenMovementGate } from "./ui/fullscreen-movement";
 import { installGameTicker } from "./ui/game-ticker";
 import { createScheduledUpdateController, createScheduledUpdateView } from "./ui/scheduled-update-controller";
@@ -1429,6 +1430,18 @@ import {
 
   let mapGuide!: ReturnType<typeof createMapGuideController>;
 
+  const panels = createPanelCoordinator({
+    guild: () => guildPanel,
+    mapGuide: () => mapGuide,
+    upgradeBench: () => upgradeBenchController,
+    techTree: () => techTree,
+    devPanel: () => devPanel,
+    closeLeaderboard,
+    itemInspection: itemInspectionController,
+    minimizeMaximizedChat: () => minimizeMaximizedChat(),
+    settingsPanel, inventoryPanel, settingsBtn, inventoryBtn,
+  });
+
   const techTree = createTechTreePanel({
     e: gameElements,
     researchRanks,
@@ -1437,19 +1450,7 @@ import {
     gemBalance: () => coop?.gemBalance?.() ?? 0n,
     speedUpResearch: async () => coop?.speedUpResearchWithGems?.(),
     showMessage,
-    beforeOpen: () => {
-      guildPanel?.close();
-      mapGuide?.close();
-      minimizeMaximizedChat();
-      itemInspectionController.close();
-      upgradeBenchController?.close();
-      settingsPanel.hidden = true;
-      inventoryPanel.hidden = true;
-      settingsBtn.setAttribute("aria-expanded", "false");
-      inventoryBtn.setAttribute("aria-expanded", "false");
-      closeLeaderboard();
-      devPanel.close();
-    },
+    beforeOpen: () => panels.closeAllExcept("techTree"),
   });
 
   guildPanel = createGuildPanel({
@@ -1464,17 +1465,7 @@ import {
       setGameplayPause("guild", true);
       profileWindow.close();
       closeProfileIconPicker();
-      mapGuide?.close();
-      minimizeMaximizedChat();
-      itemInspectionController.close();
-      upgradeBenchController?.close();
-      closeLeaderboard();
-      devPanel.close();
-      techTree.close();
-      settingsPanel.hidden = true;
-      inventoryPanel.hidden = true;
-      settingsBtn.setAttribute("aria-expanded", "false");
-      inventoryBtn.setAttribute("aria-expanded", "false");
+      panels.closeAllExcept("guild");
     },
     onClose: () => { playerInput.clear(); setGameplayPause("guild", false); },
   });
@@ -1491,19 +1482,7 @@ import {
     podiumAssetsReady: () => playerSpriteReady,
     drawPodiumCharacter: (canvas: HTMLCanvasElement, entry: LeaderboardEntry, rank: 1 | 2 | 3) => leaderboardPodiumPreview.draw(canvas, entry, rank),
     openProfile: (identity: string, name: string) => { void profileWindow.open(identity, name); },
-    beforeOpen: () => {
-      guildPanel?.close();
-      mapGuide?.close();
-      minimizeMaximizedChat();
-      itemInspectionController.close();
-      upgradeBenchController?.close();
-      devPanel.close();
-      techTree.close();
-      settingsPanel.hidden = true;
-      inventoryPanel.hidden = true;
-      settingsBtn.setAttribute("aria-expanded", "false");
-      inventoryBtn.setAttribute("aria-expanded", "false");
-    },
+    beforeOpen: () => panels.closeAllExcept("leaderboard"),
   } });
 
   function closeLeaderboard() {
@@ -1552,19 +1531,7 @@ import {
       canvasHeight: canvas.height,
       subscriptions: coop?.subscriptionCount?.() ?? 0,
     }),
-    closeCompetingWindows: () => {
-      guildPanel?.close();
-      mapGuide?.close();
-      minimizeMaximizedChat();
-      itemInspectionController.close();
-      upgradeBenchController?.close();
-      settingsPanel.hidden = true;
-      inventoryPanel.hidden = true;
-      settingsBtn.setAttribute("aria-expanded", "false");
-      inventoryBtn.setAttribute("aria-expanded", "false");
-      closeLeaderboard();
-      techTree.close();
-    },
+    closeCompetingWindows: () => panels.closeAllExcept("devPanel"),
     showMessage,
   });
 
@@ -1608,19 +1575,7 @@ import {
     cancelUpgrade: async (slot) => coop?.cancelItemUpgrade?.(slot),
     speedUpUpgrade: async (slot) => coop?.speedUpItemUpgradeWithGems?.(slot),
     unlockSecondSlot: async () => coop?.unlockSecondUpgradeSlot?.(),
-    beforeOpen: () => {
-      guildPanel?.close();
-      mapGuide?.close();
-      minimizeMaximizedChat();
-      itemInspectionController.close();
-      settingsPanel.hidden = true;
-      inventoryPanel.hidden = true;
-      settingsBtn.setAttribute("aria-expanded", "false");
-      inventoryBtn.setAttribute("aria-expanded", "false");
-      closeLeaderboard();
-      techTree.close();
-      devPanel.close();
-    },
+    beforeOpen: () => panels.closeAllExcept("upgradeBench"),
     setPaused: (paused) => setGameplayPause("upgrade-bench", paused),
     clearPlayerInput: playerInput.clear,
     onInventoryChanged: () => {
@@ -1678,18 +1633,8 @@ import {
       return portals.filter((portal): portal is NonNullable<typeof portal> => portal !== null).map((portal) => ({ x: portal.x, y: portal.y, destination: portal.destination, unlocked: portalIsUnlocked(portal) }));
     },
     beforeOpen: () => {
-      guildPanel?.close();
-      minimizeMaximizedChat();
-      itemInspectionController.close();
-      upgradeBenchController.close();
-      settingsPanel.hidden = true;
-      inventoryPanel.hidden = true;
-      settingsBtn.setAttribute("aria-expanded", "false");
-      inventoryBtn.setAttribute("aria-expanded", "false");
       profileWindow.close();
-      closeLeaderboard();
-      techTree.close();
-      devPanel.close();
+      panels.closeAllExcept("mapGuide");
     },
     clearPlayerInput: playerInput.clear,
   });
