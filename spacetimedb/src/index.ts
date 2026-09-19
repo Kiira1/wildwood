@@ -1,5 +1,5 @@
 import { auditPrivilegedAccess, denyPrivilegedAccess } from "./privileged-access-audit";
-import { defeatSessionRestriction, defeatRestrictionError, requireAllowedDefeatSession, restrictDefeatSession, suspendPlayerAccount } from "./defeat-session";
+import { defeatSessionRestriction, defeatRestrictionError, requireAllowedDefeatSession, restrictDefeatSession, restrictSimulationSession, suspendPlayerAccount } from "./defeat-session";
 import { findDeveloperTravelTarget, readDeveloperTravelTarget, readShardTravelPosition } from "./developer-travel";
 import { mapBalanceVersion, mapBalanceHead, playerMapBalance, balanceEditorState, saveMapBalance, pinMapBalance, pinnedMapBalance, pinnedBossReward } from "./map-balance";
 import { resolveMapBalance, validateBalanceSettings } from "../../shared/map-balance";
@@ -265,6 +265,15 @@ const LEGACY_CLIENT_ERRORS = {
 
 const WORLD = { width: WORLD_WIDTH, height: WORLD_HEIGHT };
 const MAX_PACKED_PLAYER_VELOCITY = 0x7fff / PLAYER_VELOCITY_SCALE;
+// Movement packets are floats, so allow a tiny wire-format margin while
+// still rejecting a client-provided velocity that exceeds its server-owned
+// movement speed.  Position is still client-authored for smooth play, but a
+// packet may not jump farther than server time and the owned speed allow.
+const MOVEMENT_SPEED_PACKET_TOLERANCE = 1;
+// A short network/rendering margin covers a delayed mobile packet without
+// making a speed-hacked position useful.  The allowance grows with the real
+// server elapsed time between accepted movement packets.
+const MOVEMENT_POSITION_PACKET_TOLERANCE = 96;
 const PLAYER_ZONE_SIZE = 1_000;
 const VALID_MAP_IDS = { has: (id: string) => MAP_IDS.includes(id) || id === HOME_EXTERIOR_MAP_ID || isProceduralMap(id) };
 const LEGACY_FROSTWIND_EXPANSE_MAP_ID = "frostwind_expanse";
@@ -10356,6 +10365,43 @@ function applyMovementState(
   const boundedVy = Math.max(-MAX_PACKED_PLAYER_VELOCITY, Math.min(MAX_PACKED_PLAYER_VELOCITY, vy));
   const moving = Math.abs(boundedVx) > 1e-6 || Math.abs(boundedVy) > 1e-6;
   const compatibilitySpeed = Math.max(1e-6, Number.isFinite(current.speed) ? current.speed : PLAYER_SPEED);
+  const requestedSpeed = Math.hypot(boundedVx, boundedVy);
+  if (moving && requestedSpeed > compatibilitySpeed + MOVEMENT_SPEED_PACKET_TOLERANCE) {
+    console.warn("Movement speed validation", JSON.stringify({
+      identity: ctx.sender.toHexString(),
+      displayName: ctx.db.playerProfile.identity.find(ctx.sender)?.displayName ?? "",
+      mapId: current.mapId,
+      requestedSpeed,
+      serverSpeed: compatibilitySpeed,
+    }));
+    // A large overage is not a boots transition or float-rounding issue. End
+    // the session and apply the fixed one-hour server cooldown atomically.
+    if (requestedSpeed > compatibilitySpeed * 1.5 + MOVEMENT_SPEED_PACKET_TOLERANCE) {
+      restrictSimulationSession(ctx, { kind: "movement_speed", mapId: current.mapId, requestedSpeed, serverSpeed: compatibilitySpeed });
+      return;
+    }
+    throw new SenderError("Unsupported movement speed");
+  }
+  const motion = ctx.db.playerMotion.identity.find(ctx.sender);
+  if (motion && motion.mapId === current.mapId && current.lastInputSequence > 0) {
+    const elapsedSeconds = Math.max(0,
+      Number(ctx.timestamp.microsSinceUnixEpoch - motion.lastInputAt.microsSinceUnixEpoch) / 1_000_000);
+    const expected = analyticalMotionAt(motion, ctx.timestamp.microsSinceUnixEpoch);
+    const distance = Math.hypot(clampedX - expected.x, clampedY - expected.y);
+    const maxDistance = compatibilitySpeed * elapsedSeconds + MOVEMENT_POSITION_PACKET_TOLERANCE;
+    if (distance > maxDistance) {
+      console.warn("Movement position validation", JSON.stringify({
+        identity: ctx.sender.toHexString(),
+        displayName: ctx.db.playerProfile.identity.find(ctx.sender)?.displayName ?? "",
+        mapId: current.mapId,
+        distance,
+        maxDistance,
+        elapsedSeconds,
+      }));
+      restrictSimulationSession(ctx, { kind: "movement_position", mapId: current.mapId, distance, maxDistance, elapsedSeconds });
+      return;
+    }
+  }
   const boundedTick = Math.max(0, Math.min(0xffffffff, Math.floor(simulationTick)));
   const boundedEpoch = Math.max(0, Math.min(0xffffffff, Math.floor(motionEpoch)));
   const facing = boundedVx < 0 ? Math.PI : boundedVx > 0 ? 0 : current.facing;

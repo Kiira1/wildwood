@@ -2989,9 +2989,15 @@
   .dev-badge { color: var(--gold); }
   .developer-settings-row[hidden] { display: none; }
   .dev-audit-button { min-width: 112px; background: linear-gradient(#5b4a20, #332810); color: var(--gold); font-size: 12px; }
-  .modal.dev-audit-modal { width: var(--game-window-width); max-height: calc(100vh - var(--toolbar-height) - 20px); max-height: calc(100dvh - var(--toolbar-height) - 20px); padding: 13px; overflow: hidden; text-align: left; }
-  .dev-audit-tabs { display: flex; gap: 5px; margin: 3px 0 7px; }
-  .dev-audit-tabs .profile-tab { flex: 1; }
+  .modal.dev-audit-modal { display: flex; flex-direction: column; width: var(--game-window-width); max-height: calc(100vh - var(--toolbar-height) - 20px); max-height: calc(100dvh - var(--toolbar-height) - 20px); min-height: 0; box-sizing: border-box; padding: 13px; overflow: hidden; text-align: left; }
+  .dev-audit-tabs { display: flex; flex: 0 0 auto; min-width: 0; gap: 5px; margin: 3px 0 7px; overflow-x: auto; scrollbar-width: none; }
+  .dev-audit-tabs::-webkit-scrollbar { display: none; }
+  .dev-audit-tabs .profile-tab { flex: 1 1 0; min-width: max-content; }
+  .dev-audit-modal > section[role="tabpanel"]:not([hidden]) { flex: 1 1 auto; min-width: 0; min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .dev-audit-modal > section[role="tabpanel"]:not([hidden])::-webkit-scrollbar { display: none; }
+  #devControlsPanel > *, #devCutscenesPanel > *, #devPerformancePanel > * { min-width: 0; max-width: 100%; }
+  .dev-presence-control > div { min-width: 0; }
+  .dev-presence-control small { overflow-wrap: anywhere; }
   #devControlsPanel[hidden], #devCutscenesPanel[hidden] { display: none; }
   #devPerformancePanel[hidden] { display: none; }
   .dev-performance-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; margin: 0; }
@@ -3158,6 +3164,7 @@
     .leaderboard-rank { font-size: 8px; }
     .leaderboard-name, .leaderboard-value { font-size: 9px; }
     .modal.dev-audit-modal { padding: 9px; }
+    .dev-audit-tabs .profile-tab { flex: 0 0 auto; }
   }
 
   @media (max-width: 420px) {

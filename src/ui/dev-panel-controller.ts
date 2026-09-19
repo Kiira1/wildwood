@@ -120,6 +120,13 @@ export function createDevPanelController(dependencies: DevPanelDependencies) {
   };
 
   function setTab(tab: DevPanelTab) {
+    // The server is authoritative, but keep a stale or manually-unhidden
+    // client panel from even attempting developer actions after access is
+    // revoked or the identity changes.
+    if (!dependencies.isDeveloper()) {
+      close();
+      return;
+    }
     if (tab === "balance") void balance.open(); else balance.close();
     if (tab === "moderation") moderation.open();
     else moderation.clear();
@@ -248,6 +255,7 @@ export function createDevPanelController(dependencies: DevPanelDependencies) {
     element.addEventListener("click", () => setTab(tab));
   }
   nameTagToggle.addEventListener("click", async () => {
+    if (!dependencies.isDeveloper()) { close(); return; }
     nameTagToggle.disabled = true;
     try {
       const result = await dependencies.setNameTagVisible(!dependencies.getNameTagVisible());
@@ -255,6 +263,7 @@ export function createDevPanelController(dependencies: DevPanelDependencies) {
     } finally { nameTagToggle.disabled = false; renderControls(); }
   });
   presenceToggle.addEventListener("click", async () => {
+    if (!dependencies.isDeveloper()) { close(); return; }
     const visible = dependencies.getPresenceVisible();
     presenceToggle.disabled = true;
     const result = await dependencies.setPresenceVisible(!visible);
@@ -266,6 +275,7 @@ export function createDevPanelController(dependencies: DevPanelDependencies) {
     );
   });
   virtualPlayerToggle.addEventListener("click", async () => {
+    if (!dependencies.isDeveloper()) { close(); return; }
     const current = dependencies.getVirtualPlayerLoadTest();
     if (current.phase === "stopping") return;
     if (current.phase !== "idle") {

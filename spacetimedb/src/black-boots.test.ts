@@ -28,6 +28,12 @@ it("rejects unowned or cosmetic-only speed boosts and accepts the exact equipped
   f.run(server.setSpeed, { speed: 205 });
   expect(f.db.player.identity.find(f.ctx.sender).speed).toBe(205);
   expect(f.db.playerProgress.identity.find(f.ctx.sender).speed).toBe(180);
+  expect(() => f.run(server.updateMovementState, {
+    x: 4050, y: 4050, vx: 205, vy: 0, simulationTick: 1, motionEpoch: 1, sequence: 1,
+  })).not.toThrow();
   f.run(server.setSpeed, { speed: 180 });
+  expect(() => f.run(server.updateMovementState, {
+    x: 4050, y: 4050, vx: 180, vy: 0, simulationTick: 2, motionEpoch: 1, sequence: 2,
+  })).not.toThrow();
   expect(() => f.run(server.setSpeed, { speed: 206 })).toThrow("Unsupported player speed");
 });

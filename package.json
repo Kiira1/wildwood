@@ -8,6 +8,7 @@
     "spacetime:build": "spacetime build --module-path spacetimedb",
     "spacetime:publish:local": "spacetime publish wildwood-coop --module-path spacetimedb --server local",
     "spacetime:publish:cloud": "spacetime publish wildwood-coop --module-path spacetimedb --server maincloud",
+    "spacetime:publish:live": "node scripts/publish-server-live.mjs",
     "build:coop": "vite build --config config/vite.coop.config.ts",
     "build:game": "vite build --config config/vite.game.config.ts",
     "build:balance": "vite build --config config/vite.balance.config.ts",
