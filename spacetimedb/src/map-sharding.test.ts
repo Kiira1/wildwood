@@ -65,7 +65,7 @@ describe("separate map database control plane", () => {
     region.run(server.revokeShardPlayer, { identity: identity("1"), generation: 10n });
     expect(region.db.player.identity.find(identity("1"))).toBeNull();
   });
-  it("rejects movement packets faster than the server-owned speed", () => {
+  it("rejects movement packets faster than the server-owned speed without banning", () => {
     const root = rootFixture(), region = regionFixture();
     region.run(server.installShardPlayer, { identity: identity("1"), generation: 10n, snapshot: snapshot(root) });
     region.ctx.sender = identity("1");
@@ -73,16 +73,12 @@ describe("separate map database control plane", () => {
 
     expect(() => region.run(server.updateMovementState, {
       x: 1200, y: 900, vx: 360, vy: 0, simulationTick: 100, motionEpoch: 2, sequence: 500,
-    })).not.toThrow();
-    expect(region.db.defeatSessionRestriction.identity.find(identity("1"))).toMatchObject({ blockedUntilMicros: 3_610_000_000n });
-    expect(region.db.playerController.identity.find(identity("1"))).toBeNull();
-    expect([...region.db.chatMessage.iter()].at(-1)).toMatchObject({
-      senderName: "SERVER",
-      message: expect.stringContaining("gamespeed exploit"),
-    });
+    })).toThrow("Unsupported movement speed");
+    expect(region.db.defeatSessionRestriction.identity.find(identity("1"))).toBeNull();
+    expect(region.db.playerController.identity.find(identity("1"))).not.toBeNull();
   });
 
-  it("rejects a position jump that outruns server time", () => {
+  it("rejects a position jump that outruns server time without banning", () => {
     const root = rootFixture(), region = regionFixture();
     region.run(server.installShardPlayer, { identity: identity("1"), generation: 10n, snapshot: snapshot(root) });
     region.ctx.sender = identity("1");
@@ -99,8 +95,8 @@ describe("separate map database control plane", () => {
     // whole local simulation faster than server time allows.
     expect(() => region.run(server.updateMovementState, {
       x: 2_000, y: 900, vx: 180, vy: 0, simulationTick: 102, motionEpoch: 2, sequence: 502,
-    })).not.toThrow();
-    expect(region.db.defeatSessionRestriction.identity.find(identity("1"))).toMatchObject({ blockedUntilMicros: 3_610_000_000n });
+    })).toThrow("Unsupported movement position");
+    expect(region.db.defeatSessionRestriction.identity.find(identity("1"))).toBeNull();
     expect(region.db.playerMotion.identity.find(identity("1"))).toMatchObject({ x: 1200, y: 900 });
   });
   it("reserves ten seats atomically, warms at nine, and gives the eleventh player the next ready database", () => {

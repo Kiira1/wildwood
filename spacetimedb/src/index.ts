@@ -1,5 +1,5 @@
 import { auditPrivilegedAccess, denyPrivilegedAccess } from "./privileged-access-audit";
-import { defeatSessionRestriction, defeatRestrictionError, requireAllowedDefeatSession, restrictDefeatSession, restrictSimulationSession, suspendPlayerAccount } from "./defeat-session";
+import { defeatSessionRestriction, defeatRestrictionError, requireAllowedDefeatSession, restrictDefeatSession, suspendPlayerAccount } from "./defeat-session";
 import { findDeveloperTravelTarget, readDeveloperTravelTarget, readShardTravelPosition } from "./developer-travel";
 import { mapBalanceVersion, mapBalanceHead, playerMapBalance, balanceEditorState, saveMapBalance, pinMapBalance, pinnedMapBalance, pinnedBossReward } from "./map-balance";
 import { resolveMapBalance, validateBalanceSettings } from "../../shared/map-balance";
@@ -10374,12 +10374,9 @@ function applyMovementState(
       requestedSpeed,
       serverSpeed: compatibilitySpeed,
     }));
-    // A large overage is not a boots transition or float-rounding issue. End
-    // the session and apply the fixed one-hour server cooldown atomically.
-    if (requestedSpeed > compatibilitySpeed * 1.5 + MOVEMENT_SPEED_PACKET_TOLERANCE) {
-      restrictSimulationSession(ctx, { kind: "movement_speed", mapId: current.mapId, requestedSpeed, serverSpeed: compatibilitySpeed });
-      return;
-    }
+    // Automatic bans are paused while we verify this signal against legitimate
+    // boss knockback and other movement impulses. Keep rejecting the packet,
+    // but do not revoke the account or invalidate the session.
     throw new SenderError("Unsupported movement speed");
   }
   const motion = ctx.db.playerMotion.identity.find(ctx.sender);
@@ -10398,8 +10395,9 @@ function applyMovementState(
         maxDistance,
         elapsedSeconds,
       }));
-      restrictSimulationSession(ctx, { kind: "movement_position", mapId: current.mapId, distance, maxDistance, elapsedSeconds });
-      return;
+      // Automatic bans are paused while this signal is validated against
+      // legitimate boss knockback. Reject only this packet for now.
+      throw new SenderError("Unsupported movement position");
     }
   }
   const boundedTick = Math.max(0, Math.min(0xffffffff, Math.floor(simulationTick)));
