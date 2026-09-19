@@ -12,7 +12,7 @@ import { describe, expect, it } from "vitest";
 //
 // Lower MAX_LINES as extractions land. Never raise it.
 // Do not satisfy it by minifying or removing useful comments/whitespace.
-const MAX_LINES = 2_169;
+const MAX_LINES = 2_167;
 const TARGET_LINES = 1_000;
 
 describe("game composition boundary", () => {

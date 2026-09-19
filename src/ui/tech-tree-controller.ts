@@ -1,3 +1,4 @@
+import { formatRemaining } from "./format-remaining";
 import {
   RESEARCH_DEFINITIONS,
   researchDurationMs,
@@ -378,5 +379,10 @@ export function createTechTreeController(elements: TechTreeControllerElements, h
       render();
     },
     updateNotice,
+    /** Timer for the research desk sign, formatted like the upgrade bench. */
+    worldStatus: () => {
+      const current = hooks.activeResearch();
+      return current ? { timer: formatRemaining(current.completesAtMs - Date.now()) } : null;
+    },
   };
 }

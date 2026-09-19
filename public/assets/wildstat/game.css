@@ -254,6 +254,8 @@
   #techTreeBtn.is-home-cooldown .toolbar-icon { visibility: hidden; }
   .tech-tree-notice { position: absolute; top: 12%; left: calc(50% + 8px); width: 8px; height: 8px; border: 1px solid #fff; border-radius: 50%; background: #e63d3d; box-shadow: 0 1px 0 #000; pointer-events: none; }
   .tech-tree-notice[hidden] { display: none; }
+  .inventory-notice { position: absolute; top: 12%; left: calc(50% + 8px); width: 8px; height: 8px; border: 1px solid #fff; border-radius: 50%; background: #e63d3d; box-shadow: 0 1px 0 #000; pointer-events: none; }
+  .inventory-notice[hidden] { display: none; }
 
   .toolbar-label { max-width: 100%; overflow: hidden; color: #fff; font: 900 10px/1 var(--font-rounded); letter-spacing: .01em; text-align: center; text-overflow: clip; white-space: nowrap; -webkit-text-stroke: 0; text-shadow: 1px 1px 0 #000; }
 

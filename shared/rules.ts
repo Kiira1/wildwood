@@ -173,7 +173,7 @@ export const VERDANT_CATACOMBS_MAP_ID = "verdant_catacombs";
 export const ION_CITADEL_MAP_ID = "ion_citadel";
 export const MAP_DISPLAY_NAMES = {
   first_steps: "First Steps",
-  home_exterior: "Home",
+  home_exterior: "Base",
   [TUTORIAL_FOREST_MAP_ID]: "Tutorial Forest - 1",
   [BEGINNER_DESERT_MAP_ID]: "Beginner Desert - 2",
   [INTERMEDIATE_SNOWLANDS_MAP_ID]: "Intermediate Snowlands - 3",

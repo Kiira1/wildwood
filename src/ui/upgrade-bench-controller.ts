@@ -1,3 +1,4 @@
+import { formatRemaining } from "./format-remaining";
 import { formatEquipmentStat } from "./equipment-stat-format";
 import { appendItemTierLabel } from "./item-tier-label";
 import {
@@ -72,16 +73,6 @@ export const UPGRADE_BENCH_TOUCH_OFFSET_Y = -36;
 const UPGRADE_BENCH_TOUCH_RADIUS_X = 54;
 const UPGRADE_BENCH_TOUCH_RADIUS_Y = 39;
 const UPGRADE_SLOTS = [1, 2] as const;
-
-function formatRemaining(milliseconds: number) {
-  const totalSeconds = Math.max(0, Math.ceil(milliseconds / 1_000));
-  const hours = Math.floor(totalSeconds / 3_600);
-  const minutes = Math.floor(totalSeconds % 3_600 / 60);
-  const seconds = totalSeconds % 60;
-  return hours > 0
-    ? `${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`
-    : `${minutes}:${String(seconds).padStart(2, "0")}`;
-}
 
 export function upgradeBenchTouchTransition(wasTouching: boolean, touching: boolean) {
   return { touching, shouldOpen: touching && !wasTouching };
@@ -544,5 +535,7 @@ export function createUpgradeBenchController(elements: UpgradeBenchElements, dep
       if (!job) return null;
       return { itemId: job.itemId, level: job.currentLevel, timer: formatRemaining(remainingFor(job)) };
     },
+    /** A finished upgrade stays on the bench until it is collected into the bag. */
+    hasCompletedUpgrade: () => activeUpgrades().some((active) => !active.paused && remainingFor(active) <= 0),
   };
 }
