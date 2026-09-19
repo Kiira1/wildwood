@@ -6,7 +6,7 @@
 
 <p align="center"><a href="https://tydoskus.github.io/wildwood/"><strong>Play WildStat</strong></a></p>
 
-Fight monsters, find better gear, and build your stats as you explore forests, deserts, snowlands, and beyond. Take on shared bosses, challenge other players to duels, and see how far you can climb the leaderboard.
+Fight monsters, find better gear, and build your stats as you explore forests, deserts, snowlands, and beyond. Take on map bosses, challenge other players to duels, and see how far you can climb the leaderboard.
 
 Built for phones. Playable on desktop.
 

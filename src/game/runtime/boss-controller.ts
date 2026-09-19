@@ -164,7 +164,7 @@ type NoticeElements = {
 
 type BossAbilityTarget = { id: string; x: number; y: number };
 
-export type BossController = {
+type BossController = {
   resetBoss: () => void;
   resetSpiderBoss: () => void;
   resetFrostclawBoss: () => void;
@@ -846,7 +846,8 @@ function resetMiremawBoss() {
       const row = document.createElement("div");
       row.className = "dragon-world-notice-row";
       const name = document.createElement("span");
-      renderPlayerName(name, contributor.identity, contributor.name, contributor.gender);
+      // An unset gender means the row carries none of its own; fall back to the profile lookup.
+      renderPlayerName(name, contributor.identity, contributor.name, contributor.gender || undefined);
       const percentage = document.createElement("span");
       percentage.textContent = `${Math.round(contributor.percentage)}%`;
       row.append(name, percentage);
