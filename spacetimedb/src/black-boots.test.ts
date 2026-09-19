@@ -58,4 +58,8 @@ it("blocks a guest after an impossible movement speed packet", () => {
   expect(restriction?.requireSignIn).toBe(false);
   expect(restriction?.blockedUntilMicros).toBeGreaterThan(f.ctx.timestamp.microsSinceUnixEpoch);
   expect(f.db.playerController.identity.find(f.ctx.sender)).toBeNull();
+  // Queued packets from the invalidated connection are silently discarded.
+  expect(() => f.run(server.updateMovementState, {
+    x: 4050, y: 4050, vx: 540, vy: 0, simulationTick: 2, motionEpoch: 1, sequence: 2,
+  })).not.toThrow();
 });

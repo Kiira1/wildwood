@@ -3641,6 +3641,13 @@ function requireSession(ctx: any) {
   return session;
 }
 
+// A blocked connection may continue sending queued packets for a short time
+// after its session is invalidated. Hot reducers should quietly drop those
+// packets instead of throwing a new error for every retry and flooding logs.
+function blockedSession(ctx: any) {
+  return Boolean(defeatRestrictionError(ctx));
+}
+
 function isSupportedProtocol(protocolVersion: number) {
   return COMPATIBLE_PROTOCOL_VERSIONS.includes(protocolVersion);
 }
@@ -8218,6 +8225,7 @@ export const registerProtocol = spacetimedb.reducer(
 export const recordConnectionDiagnostic = spacetimedb.reducer(
   { payload: t.string() },
   (ctx, { payload }) => {
+    if (blockedSession(ctx)) return;
     requireSession(ctx);
     recordConnectionDiagnostics(ctx, payload);
   },
@@ -10450,13 +10458,16 @@ export const updateMovementState = spacetimedb.reducer(
     motionEpoch: t.u32(),
     sequence: t.u32(),
   },
-  (ctx, { x, y, vx, vy, simulationTick, motionEpoch, sequence }) =>
-    applyMovementState(ctx, x, y, vx, vy, simulationTick, motionEpoch, sequence),
+  (ctx, { x, y, vx, vy, simulationTick, motionEpoch, sequence }) => {
+    if (blockedSession(ctx)) return;
+    applyMovementState(ctx, x, y, vx, vy, simulationTick, motionEpoch, sequence);
+  },
 );
 
 export const setPlayerMotionInterest = spacetimedb.reducer(
   { networkIds: t.array(t.u32()) },
   (ctx, { networkIds }) => {
+    if (blockedSession(ctx)) return;
     const activePlayer = requireControllingPlayer(ctx);
     const ownMotion = ctx.db.playerMotion.identity.find(ctx.sender);
     if (!ownMotion) throw new SenderError("Player motion is unavailable.");
@@ -10552,6 +10563,7 @@ function transitionPlayerMap(
 export const changeMap = spacetimedb.reducer(
   { mapId: t.string(), x: t.f64(), y: t.f64() },
   (ctx, { mapId, x, y }) => {
+    if (blockedSession(ctx)) return;
     const current = requireControllingPlayer(ctx);
     if (activeDuelFor(ctx, ctx.sender)) throw new SenderError("Finish the duel before using a portal.");
     if (mapId === HOME_EXTERIOR_MAP_ID) {
@@ -10654,6 +10666,7 @@ export const changeMap = spacetimedb.reducer(
 export const setSpeed = spacetimedb.reducer(
   { speed: t.f32() },
   (ctx, { speed }) => {
+    if (blockedSession(ctx)) return;
     const current = requireControllingPlayer(ctx);
     if (movementSpeedsMatch(speed, current.speed)) return;
 
