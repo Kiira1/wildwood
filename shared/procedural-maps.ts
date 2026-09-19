@@ -85,14 +85,18 @@ function hslHex(hue: number, saturation: number, lightness: number) {
   return `#${channel(0)}${channel(8)}${channel(4)}`;
 }
 export function proceduralPalette(index: number) {
-  const hue = ((index - 1) * 7) % 360;
-  const saturation = Math.min(48, (index - 1) * 2.5);
+  // Endless starts at forest green and then walks the whole spectrum, but at a
+  // forest's muted saturation and lightness rather than the pale wash it used
+  // to have. Saturation starts well above zero; at zero the first map was white.
+  const hue = (104 + (index - 1) * 7) % 360;
+  const saturation = Math.min(46, 26 + (index - 1) * 2.5);
   // Hex colors work in both the canvas tile painter and the WebGL backdrop.
+  // Keep path lighter than ground, and both lighter than detail and accent.
   return {
-    ground: hslHex(hue, saturation, 92),
-    path: hslHex(hue, saturation * 0.6, 98),
-    pathDetail: hslHex(hue, saturation, 80),
-    accent: hslHex(hue, saturation, 65),
+    ground: hslHex(hue, saturation, 58),
+    path: hslHex(hue, saturation * 0.6, 72),
+    pathDetail: hslHex(hue, saturation, 44),
+    accent: hslHex(hue, saturation, 34),
   };
 }
 export function proceduralMapCore(id: string) {
