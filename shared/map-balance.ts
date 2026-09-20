@@ -24,7 +24,7 @@ export const BALANCE_MAPS = [
 ] as const;
 export function defaultBalanceSettings(): BalanceSettings {
   return { maps: Object.fromEntries(BALANCE_MAPS.map(([id]) => [id, { ...DEFAULT_BALANCE_FACTORS }])),
-    endless: { rewardMultiplier: ENDLESS_REWARD_MULTIPLIER, statStep: ENDLESS_STAT_STEP, enduranceStep: ENDLESS_ENDURANCE_STEP, enduranceExponent: ENDLESS_ENDURANCE_EXPONENT } };
+    endless: { rewardMultiplier: ENDLESS_REWARD_MULTIPLIER, statStep: ENDLESS_STAT_STEP, enduranceStep: ENDLESS_ENDURANCE_STEP, enduranceExponent: ENDLESS_ENDURANCE_EXPONENT, rewardPerHealth: 1 } };
 }
 export function validateBalanceSettings(value: unknown): BalanceSettings {
   const input = value as BalanceSettings;
@@ -38,9 +38,12 @@ export function validateBalanceSettings(value: unknown): BalanceSettings {
     result.maps[map][field] = n;
   }
   for (const field of Object.keys(result.endless) as (keyof BalanceSettings['endless'])[]) {
-    const n = input?.endless?.[field];
-    const max = field === 'enduranceExponent' ? 6 : field === 'rewardMultiplier' ? 10 : 1;
-    if (!Number.isFinite(n) || n < .001 || n > max) throw new Error(`Invalid Endless ${field} (0.001–${max}).`);
+    const stored = input?.endless?.[field];
+    // Versions saved before a field existed keep its authored value rather than
+    // failing to load; anything actually present is still validated.
+    const n = stored === undefined && field === 'rewardPerHealth' ? result.endless[field] : stored;
+    const max = field === 'enduranceExponent' ? 6 : field === 'rewardMultiplier' || field === 'rewardPerHealth' ? 10 : 1;
+    if (n === undefined || !Number.isFinite(n) || n < .001 || n > max) throw new Error(`Invalid Endless ${field} (0.001–${max}).`);
     result.endless[field] = n;
   }
   return result;
@@ -57,7 +60,9 @@ export function resolveMapBalance(mapId: string, settings: BalanceSettings, revi
     const map = generateMap(mapId), base = endlessScaling(map.number), depth = Math.min(map.number - 1, 1000), tuning = settings.endless;
     const stats = 1 + tuning.statStep * Math.log2(1 + depth);
     const hpRatio = (1 + tuning.statStep * depth) * (1 + tuning.enduranceStep * depth) ** tuning.enduranceExponent / (base.combatStats * base.endurance);
-    const rewardRatio = tuning.rewardMultiplier * Math.sqrt(stats) / base.rewards;
+    // Reward per health is pure pacing: the boss is unchanged, so the power
+    // needed to beat it is unchanged; only the kills to earn that power move.
+    const rewardRatio = tuning.rewardMultiplier * (tuning.rewardPerHealth ?? 1) * Math.sqrt(stats) / base.rewards;
     // Keep the compiled armor compensation; the authored damage multiplier is explicit.
     const damageRatio = (1 + tuning.statStep * depth) / base.combatStats;
     const lanes = new Set([...map.camps.map(c => c.lane), 'Dread Warden' as const]);

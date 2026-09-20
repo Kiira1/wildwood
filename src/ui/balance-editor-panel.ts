@@ -35,7 +35,7 @@ export function createBalanceEditorPanel(root: HTMLElement, api: BalanceEditorDe
     el('.balance-groups').append(section);
   }
   const curveInputs = new Map<keyof BalanceSettings['endless'], HTMLInputElement>();
-  for (const [key, labelText, max] of [['rewardMultiplier', 'Reward multiplier', 10], ['statStep', 'Stat growth', 1], ['enduranceStep', 'Health growth', 1], ['enduranceExponent', 'Slowdown strength', 6]] as const) {
+  for (const [key, labelText, max] of [['rewardPerHealth', 'Reward per health', 10], ['rewardMultiplier', 'Reward multiplier', 10], ['statStep', 'Stat growth', 1], ['enduranceStep', 'Health growth', 1], ['enduranceExponent', 'Slowdown strength', 6]] as const) {
     const label = document.createElement('label'); label.append(labelText);
     const input = document.createElement('input'); input.type = 'number'; input.min = '.001'; input.max = String(max); input.step = 'any'; input.setAttribute('aria-label', labelText); label.append(input);
     el('.balance-curve-inputs').append(label); curveInputs.set(key, input);
