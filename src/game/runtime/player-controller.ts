@@ -110,6 +110,7 @@ export function createPlayerController(options: {
     pulseDuel, resetLiveDuelPresentation, loadDuelReplay, showDuelResult, showDuelResultUnavailable,
   } = options;
   let movementSyncActive = false;
+  let lastSyncedSpeed = Number.NaN;
   let duelWasActive = false;
   let lastLocalDuelId: bigint | null = null;
   let duelResultHeld = false;
@@ -191,7 +192,8 @@ export function createPlayerController(options: {
     const started = connected && !movementSyncActive;
     movementSyncActive = connected;
     const movementSpeed = player.speed * movementSpeedMultiplier();
-    if (connected) syncSpeed(movementSpeed);
+    // Speed changes on equipment, research and leaving combat, not per frame.
+    if (connected && movementSpeed !== lastSyncedSpeed) { lastSyncedSpeed = movementSpeed; syncSpeed(movementSpeed); }
     const input = movement(dt);
     let { x: mx, y: my } = clampMovementVector(input.x, input.y);
     const source = input.source;
