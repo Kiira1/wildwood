@@ -3,9 +3,9 @@ export const PROFILE_ICON_GRID = 8;
 export const PROFILE_ICONS_PER_SHEET = PROFILE_ICON_GRID ** 2;
 // Append sheets so every previously saved icon keeps its original appearance.
 export const PROFILE_ICON_SHEETS = [
-  { path: "assets/wildstat/profile-portraits-grid-v2.png", category: "people" },
-  { path: "assets/wildstat/profile-portraits-varied-v1.png", category: "people" },
-  { path: "assets/wildstat/profile-objects-grid-v1.png", category: "objects" },
+  { path: "assets/wildstat/profile-portraits-grid-v2.webp", category: "people" },
+  { path: "assets/wildstat/profile-portraits-varied-v1.webp", category: "people" },
+  { path: "assets/wildstat/profile-objects-grid-v1.webp", category: "objects" },
 ] as const;
 export const PROFILE_ICON_COUNT = PROFILE_ICON_SHEETS.length * PROFILE_ICONS_PER_SHEET;
 export const isValidProfileIcon = (value: number) => Number.isInteger(value) && value >= 0 && value < PROFILE_ICON_COUNT;

@@ -16,7 +16,7 @@ export const ENEMY_BOW_AIM_OFFSET_RADIANS = 0;
 export const REGULAR_ENEMY_SPRITE_SIZE = 54;
 export const ELITE_ENEMY_SPRITE_SIZE = 78;
 const PARTS = "assets/wildstat/2D Character - Casual Monsters/_PNG";
-const SHARED_BOW = `${PARTS}/goblin/goblin/goblin_archer/bow.png`;
+const SHARED_BOW = `${PARTS}/goblin/goblin/goblin_archer/bow.webp`;
 
 export const MAP_ENEMY_FAMILIES = {
   tutorial_forest: "slime-green",
@@ -46,7 +46,7 @@ function slimeSprite(color, { elite = false, ranged = false, armored = false } =
   return {
     family: `slime-${color}`, size, height,
     layers: [
-      { src: `assets/wildstat/enemies/slime-${color}${variant}.png`, x: -size / 2, y: -height / 2, w: size, h: height },
+      { src: `assets/wildstat/enemies/slime-${color}${variant}.webp`, x: -size / 2, y: -height / 2, w: size, h: height },
       ...(ranged ? [bowLayer(elite)] : []),
     ],
   };
@@ -64,7 +64,7 @@ function layeredSprite(family, folder, parts, elite) {
   return {
     family, size, height,
     layers: parts.map(({ file, ...part }) => ({
-      ...part, src: `${PARTS}/${folder}/${file}.png`,
+      ...part, src: `${PARTS}/${folder}/${file}.webp`,
       x: part.x * scale, y: (part.y - centerY) * scale, w: part.w * scale, h: part.h * scale,
       ...(part.aimPivot ? { aimPivot: { x: part.aimPivot.x * scale, y: (part.aimPivot.y - centerY) * scale } } : {}),
     })),

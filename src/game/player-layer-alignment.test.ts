@@ -31,7 +31,7 @@ describe("optional alignment instrumentation", () => {
     const sprite = { complete: true, naturalWidth: 118, naturalHeight: 64 } as HTMLImageElement;
     const assets: PlayerAppearanceAssets = { basicFrontLeg: sprite, basicBackLeg: sprite, equipment: { sword: { sprite } } };
     for (const facing of [0, Math.PI]) {
-      const world = { kind: "SPRITE" as const, source: "sword.png", layer: "HAND" as const, top: 116, weaponCategory: "SWORD" as const };
+      const world = { kind: "SPRITE" as const, source: "sword.webp", layer: "HAND" as const, top: 116, weaponCategory: "SWORD" as const };
       const options = { x: 0, y: 0, gameTime: 0, facing, headItem: "", rightHandItem: "sword", presentationOverrides: { sword: world } };
       const inherited = recordingContext(), explicit = recordingContext();
       drawStartingPlayer(inherited.ctx, assets, options);

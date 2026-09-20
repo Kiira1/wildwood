@@ -61,7 +61,7 @@ export function createProfileWindowController(elements: {
   function renderPower(value: string) {
     const number = document.createElement("span"); number.className = "power-value"; number.textContent = value;
     const icon = document.createElement("img"); icon.className = "power-icon";
-    icon.src = "assets/wildstat/icons/Icon_Battle_Candy_v2.png"; icon.alt = ""; icon.setAttribute("aria-hidden", "true");
+    icon.src = "assets/wildstat/icons/Icon_Battle_Candy_v2.webp"; icon.alt = ""; icon.setAttribute("aria-hidden", "true");
     elements.power.setAttribute("aria-label", `Power ${value}`);
     elements.power.replaceChildren(number, icon);
   }

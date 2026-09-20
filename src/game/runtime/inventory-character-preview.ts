@@ -24,7 +24,7 @@ export function createInventoryCharacterPreview(
   const ctx = requiredCanvasContext(canvas);
   const { outlinedWorldText } = createCanvasPrimitives(ctx);
   const powerIcon = new Image();
-  powerIcon.src = "assets/wildstat/icons/Icon_Battle_Candy_v2.png";
+  powerIcon.src = "assets/wildstat/icons/Icon_Battle_Candy_v2.webp";
   let renderedPower = "";
 
   function resize() {

@@ -16,10 +16,10 @@ import { PORTAL_SWIRL_SOURCE, portalDestinationColor, portalDestinationTextColor
 
 describe("portal destination presentation", () => {
   it("uses one shared portal sheet for every destination tint", () => {
-    expect(PORTAL_SWIRL_SOURCE).toBe("assets/wildstat/portal-swirl-spritesheet.png");
-    expect(existsSync(new URL("../../public/assets/wildstat/portal-swirl-spritesheet.png", import.meta.url))).toBe(true);
+    expect(PORTAL_SWIRL_SOURCE).toBe("assets/wildstat/portal-swirl-spritesheet.webp");
+    expect(existsSync(new URL("../../public/assets/wildstat/portal-swirl-spritesheet.webp", import.meta.url))).toBe(true);
     for (const color of ["green", "gold", "red", "black"]) {
-      expect(existsSync(new URL(`../../public/assets/wildstat/portal-swirl-spritesheet-${color}.png`, import.meta.url))).toBe(false);
+      expect(existsSync(new URL(`../../public/assets/wildstat/portal-swirl-spritesheet-${color}.webp`, import.meta.url))).toBe(false);
     }
   });
 

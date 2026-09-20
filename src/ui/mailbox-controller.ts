@@ -101,7 +101,7 @@ export function createMailboxController(button: HTMLButtonElement, versionButton
           reward.append(gear);
         } else {
         const art = make("div", "", "daily-gem-bonus-art");
-        const gems = document.createElement("img"); gems.src = "assets/wildstat/gems/gem-icon-v2.png"; gems.alt = "";
+        const gems = document.createElement("img"); gems.src = "assets/wildstat/gems/gem-icon-v2.webp"; gems.alt = "";
         art.append(gems);
         reward.append(art, make("strong", entry.rewardLabel ?? `${entry.gems} Gems`, "mailbox-gem-amount"));
         }
@@ -122,7 +122,7 @@ export function createMailboxController(button: HTMLButtonElement, versionButton
         copy.append(make("span", detail, "mailbox-row-detail")); row.append(copy);
         if (entry.gems > 0n && !entry.claimed) {
           const reward = make("span", "", "mailbox-row-reward");
-          const gem = document.createElement("img"); gem.src = "assets/wildstat/gems/gem-icon-v2.png"; gem.alt = "gems";
+          const gem = document.createElement("img"); gem.src = "assets/wildstat/gems/gem-icon-v2.webp"; gem.alt = "gems";
           reward.append(gem, make("span", entry.gems.toString())); row.append(reward);
         }
         if (entry.itemIds?.length && !entry.claimed) row.append(make("span", `+${entry.upgradeLevel ?? 9} Gear`, "mailbox-row-reward"));

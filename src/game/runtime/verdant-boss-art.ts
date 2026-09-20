@@ -1,4 +1,4 @@
-export const GRAVEBLOOM_ART_SOURCE = 'assets/wildstat/gravebloom-boss-v1.png';
+export const GRAVEBLOOM_ART_SOURCE = 'assets/wildstat/gravebloom-boss-v1.webp';
 export const GRAVEBLOOM_ART_TOP = -240;
 
 /** Authored transparent boss art with subtle breathing and ability charge motion. */

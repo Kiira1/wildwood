@@ -38,9 +38,9 @@ async function flushPromises() {
 describe("startup artwork reveal", () => {
   it("keeps the black cover until the full image has decoded", async () => {
     const scene = fixture();
-    createStartupArtworkReveal({ root: scene.root, source: "/wallpaper.png", image: scene.image });
+    createStartupArtworkReveal({ root: scene.root, source: "/wallpaper.webp", image: scene.image });
 
-    expect(scene.image.src).toBe("/wallpaper.png");
+    expect(scene.image.src).toBe("/wallpaper.webp");
     scene.emitLoad();
     expect(scene.decode).toHaveBeenCalledOnce();
     expect(scene.add).not.toHaveBeenCalled();
@@ -52,7 +52,7 @@ describe("startup artwork reveal", () => {
 
   it("handles an image already completed by the preload", async () => {
     const scene = fixture(true);
-    createStartupArtworkReveal({ root: scene.root, source: "/wallpaper.png", image: scene.image });
+    createStartupArtworkReveal({ root: scene.root, source: "/wallpaper.webp", image: scene.image });
 
     expect(scene.decode).toHaveBeenCalledOnce();
     scene.finishDecode();
@@ -62,7 +62,7 @@ describe("startup artwork reveal", () => {
 
   it("does not reveal after disposal", async () => {
     const scene = fixture();
-    const reveal = createStartupArtworkReveal({ root: scene.root, source: "/wallpaper.png", image: scene.image });
+    const reveal = createStartupArtworkReveal({ root: scene.root, source: "/wallpaper.webp", image: scene.image });
     scene.emitLoad();
     reveal.dispose();
     scene.finishDecode();
@@ -75,7 +75,7 @@ describe("startup artwork reveal", () => {
     const scene = fixture();
     const reveal = createStartupArtworkReveal({
       root: scene.root,
-      source: "/wallpaper.png",
+      source: "/wallpaper.webp",
       image: scene.image,
       deferred: true,
     });
@@ -85,7 +85,7 @@ describe("startup artwork reveal", () => {
 
     reveal.start();
 
-    expect(scene.image.src).toBe("/wallpaper.png");
+    expect(scene.image.src).toBe("/wallpaper.webp");
     expect(scene.remove).not.toHaveBeenCalled();
     scene.emitLoad();
     scene.finishDecode();

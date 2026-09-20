@@ -12,8 +12,8 @@ export const DUEL_COMBAT_Y = DUEL_ARENA.y - 60;
 export const DUEL_REPLAY_COUNTDOWN_SECONDS = 3;
 export const DUEL_SHOT_LIFETIME = 0.38;
 export const DUEL_SHOT_SPEED = PLAYER_PROJECTILE_SPEED;
-export const DUEL_SPACE_BACKGROUND_SOURCE = "assets/wildstat/duel-space-background-v1.png";
-export const DUEL_PLATFORM_ART_SOURCE = "assets/wildstat/duel-floating-platform-v1.png";
+export const DUEL_SPACE_BACKGROUND_SOURCE = "assets/wildstat/duel-space-background-v1.webp";
+export const DUEL_PLATFORM_ART_SOURCE = "assets/wildstat/duel-floating-platform-v1.webp";
 
 type ReplayCombatantFields = DuelWeapons & {
   combatVersion?: number;

@@ -4,7 +4,7 @@ import type { ItemPresentation } from "./item-presentation";
 /** Vendor parts use the same anchors and shared alignment controls as existing gear. */
 export const CAMPAIGN_ITEM_PRESENTATIONS = Object.fromEntries(
   Object.entries(CAMPAIGN_ITEM_DEFINITIONS).map(([id, item]): [string, ItemPresentation] => {
-    const source = `assets/wildstat/player-parts/${id.replace(/_/g, "-")}.png`;
+    const source = `assets/wildstat/player-parts/${id.replace(/_/g, "-")}.webp`;
     if (item.slot === "HAND") return [id, {
       inventory: { source, equippedWidth: 44, equippedHeight: 34 },
       world: { kind: "SPRITE", source, layer: "HAND", width: 115, height: 63, top: 106, handAction: "BOW" },

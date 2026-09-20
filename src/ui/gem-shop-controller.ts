@@ -111,7 +111,7 @@ export function createGemShopController(options: {
       row.className = 'gem-shop-pack';
       const amount = pack.gems === 3300 ? '3.3k' : String(pack.gems);
       row.innerHTML = `
-        <img src="assets/wildstat/gems/gem-icon-v2.png" alt="" draggable="false">
+        <img src="assets/wildstat/gems/gem-icon-v2.webp" alt="" draggable="false">
         <div class="gem-shop-amount"><strong>${amount}</strong><span>Gems</span></div>
         <button type="button" disabled aria-label="${pack.gems} Gems for $${(pack.priceCents / 100).toFixed(2)} USD. Purchases coming soon.">$${(pack.priceCents / 100).toFixed(2)}</button>`;
       const button = row.querySelector<HTMLButtonElement>('button')!;

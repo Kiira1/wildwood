@@ -281,7 +281,7 @@ export function createTechTreeController(elements: TechTreeControllerElements, h
       const label = document.createElement("span");
       label.textContent = "Finish Now";
       const icon = document.createElement("img");
-      icon.src = "assets/wildstat/gems/gem-icon-v2.png";
+      icon.src = "assets/wildstat/gems/gem-icon-v2.webp";
       icon.alt = "";
       icon.setAttribute("aria-hidden", "true");
       icon.draggable = false;

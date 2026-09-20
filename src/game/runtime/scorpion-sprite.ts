@@ -1,6 +1,6 @@
 /** Art-only replacement: the desert encounter keeps its existing server identity. */
 export const SCORPION_SPRITE = {
-  source: "assets/wildstat/desert-scorpion-boss-spritesheet-v1.png",
+  source: "assets/wildstat/desert-scorpion-boss-spritesheet-v1.webp",
   frames: 4,
   framesPerSecond: 4,
   drawWidth: 330,

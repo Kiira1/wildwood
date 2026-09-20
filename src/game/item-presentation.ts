@@ -73,95 +73,95 @@ const PLAYER_PARTS = "assets/wildstat/player-parts";
 export const ITEM_PRESENTATIONS: Partial<Record<ItemId, ItemPresentation>> = {
   ...CAMPAIGN_ITEM_PRESENTATIONS,
   [WOODEN_SWORD]: {
-    inventory: { source: `${PLAYER_PARTS}/wooden-sword.png`, equippedWidth: 32, equippedHeight: 28 },
-    world: { kind: "SPRITE", source: `${PLAYER_PARTS}/wooden-sword.png`, layer: "HAND", top: 116, handAction: "SWING", weaponCategory: "SWORD" },
+    inventory: { source: `${PLAYER_PARTS}/wooden-sword.webp`, equippedWidth: 32, equippedHeight: 28 },
+    world: { kind: "SPRITE", source: `${PLAYER_PARTS}/wooden-sword.webp`, layer: "HAND", top: 116, handAction: "SWING", weaponCategory: "SWORD" },
   },
   [BASIC_PAPER_HAT]: {
-    inventory: { source: `${PLAYER_PARTS}/basic-paper-hat.png`, equippedWidth: 30, equippedHeight: 27 },
-    world: { kind: "SPRITE", source: `${PLAYER_PARTS}/basic-paper-hat.png`, layer: "HEAD", bottom: 144 },
+    inventory: { source: `${PLAYER_PARTS}/basic-paper-hat.webp`, equippedWidth: 30, equippedHeight: 27 },
+    world: { kind: "SPRITE", source: `${PLAYER_PARTS}/basic-paper-hat.webp`, layer: "HEAD", bottom: 144 },
   },
   [SUPERIOR_GOLDEN_HELMET]: {
-    inventory: { source: `${PLAYER_PARTS}/superior-golden-helmet.png`, equippedWidth: 30, equippedHeight: 27 },
-    world: { kind: "SPRITE", source: `${PLAYER_PARTS}/superior-golden-helmet.png`, layer: "HEAD", bottom: 144 },
+    inventory: { source: `${PLAYER_PARTS}/superior-golden-helmet.webp`, equippedWidth: 30, equippedHeight: 27 },
+    world: { kind: "SPRITE", source: `${PLAYER_PARTS}/superior-golden-helmet.webp`, layer: "HEAD", bottom: 144 },
   },
   [WOOD_FULL_HELM]: {
-    inventory: { source: `${PLAYER_PARTS}/wood-full-helm.png`, equippedWidth: 30, equippedHeight: 27 },
-    world: { kind: "SPRITE", source: `${PLAYER_PARTS}/wood-full-helm.png`, layer: "HEAD", bottom: 144 },
+    inventory: { source: `${PLAYER_PARTS}/wood-full-helm.webp`, equippedWidth: 30, equippedHeight: 27 },
+    world: { kind: "SPRITE", source: `${PLAYER_PARTS}/wood-full-helm.webp`, layer: "HEAD", bottom: 144 },
   },
   [FIRE_METAL_HELMET]: {
-    inventory: { source: `${PLAYER_PARTS}/fire-metal-helmet.png`, equippedWidth: 30, equippedHeight: 27 },
-    world: { kind: "SPRITE", source: `${PLAYER_PARTS}/fire-metal-helmet.png`, layer: "HEAD", bottom: 144 },
+    inventory: { source: `${PLAYER_PARTS}/fire-metal-helmet.webp`, equippedWidth: 30, equippedHeight: 27 },
+    world: { kind: "SPRITE", source: `${PLAYER_PARTS}/fire-metal-helmet.webp`, layer: "HEAD", bottom: 144 },
   },
   [DARK_METAL_HELMET]: {
-    inventory: { source: `${PLAYER_PARTS}/dark-metal-helmet.png`, equippedWidth: 30, equippedHeight: 27 },
-    world: { kind: "SPRITE", source: `${PLAYER_PARTS}/dark-metal-helmet.png`, layer: "HEAD", bottom: 144 },
+    inventory: { source: `${PLAYER_PARTS}/dark-metal-helmet.webp`, equippedWidth: 30, equippedHeight: 27 },
+    world: { kind: "SPRITE", source: `${PLAYER_PARTS}/dark-metal-helmet.webp`, layer: "HEAD", bottom: 144 },
   },
   [SAMURAI_HAT]: {
-    inventory: { source: `${PLAYER_PARTS}/samurai-hat.png`, equippedWidth: 30, equippedHeight: 27 },
-    world: { kind: "SPRITE", source: `${PLAYER_PARTS}/samurai-hat.png`, layer: "HEAD", bottom: 144 },
+    inventory: { source: `${PLAYER_PARTS}/samurai-hat.webp`, equippedWidth: 30, equippedHeight: 27 },
+    world: { kind: "SPRITE", source: `${PLAYER_PARTS}/samurai-hat.webp`, layer: "HEAD", bottom: 144 },
   },
   [LEGENDARY_WHITE_GOLD_ARMOR]: {
-    inventory: { source: `${PLAYER_PARTS}/legendary-white-gold-armor.png`, equippedWidth: 30, equippedHeight: 27 },
-    world: { kind: "SPRITE", source: `${PLAYER_PARTS}/legendary-white-gold-armor.png`, layer: "CHEST", bottom: 168 },
+    inventory: { source: `${PLAYER_PARTS}/legendary-white-gold-armor.webp`, equippedWidth: 30, equippedHeight: 27 },
+    world: { kind: "SPRITE", source: `${PLAYER_PARTS}/legendary-white-gold-armor.webp`, layer: "CHEST", bottom: 168 },
   },
   [WOODEN_ARMOR]: {
     inventory: { source: WOODEN_ARMOR_ASSET_SOURCE, equippedWidth: 34, equippedHeight: 31 },
     world: { kind: "SPRITE", source: WOODEN_ARMOR_ASSET_SOURCE, layer: "CHEST", width: 76, height: 68, top: 100 },
   },
   [FROST_ARMOR]: {
-    inventory: { source: `${PLAYER_PARTS}/frost-armor.png`, equippedWidth: 34, equippedHeight: 31 },
-    world: { kind: "SPRITE", source: `${PLAYER_PARTS}/frost-armor.png`, layer: "CHEST", width: 76, height: 68, top: 100 },
+    inventory: { source: `${PLAYER_PARTS}/frost-armor.webp`, equippedWidth: 34, equippedHeight: 31 },
+    world: { kind: "SPRITE", source: `${PLAYER_PARTS}/frost-armor.webp`, layer: "CHEST", width: 76, height: 68, top: 100 },
   },
   [CLOUDSPIRE_ARMOR]: {
-    inventory: { source: `${PLAYER_PARTS}/cloudspire-armor.png`, equippedWidth: 34, equippedHeight: 31 },
-    world: { kind: "SPRITE", source: `${PLAYER_PARTS}/cloudspire-armor.png`, layer: "CHEST", width: 76, height: 68, top: 100 },
+    inventory: { source: `${PLAYER_PARTS}/cloudspire-armor.webp`, equippedWidth: 34, equippedHeight: 31 },
+    world: { kind: "SPRITE", source: `${PLAYER_PARTS}/cloudspire-armor.webp`, layer: "CHEST", width: 76, height: 68, top: 100 },
   },
   [MOONFEN_ARMOR]: {
-    inventory: { source: `${PLAYER_PARTS}/moonfen-armor.png`, equippedWidth: 34, equippedHeight: 31 },
-    world: { kind: "SPRITE", source: `${PLAYER_PARTS}/moonfen-armor.png`, layer: "CHEST", width: 76, height: 68, top: 100 },
+    inventory: { source: `${PLAYER_PARTS}/moonfen-armor.webp`, equippedWidth: 34, equippedHeight: 31 },
+    world: { kind: "SPRITE", source: `${PLAYER_PARTS}/moonfen-armor.webp`, layer: "CHEST", width: 76, height: 68, top: 100 },
   },
   [CLOUDSPIRE_HELMET]: {
-    inventory: { source: `${PLAYER_PARTS}/cloudspire-helmet.png`, equippedWidth: 30, equippedHeight: 27 },
-    world: { kind: "SPRITE", source: `${PLAYER_PARTS}/cloudspire-helmet.png`, layer: "HEAD", bottom: 144 },
+    inventory: { source: `${PLAYER_PARTS}/cloudspire-helmet.webp`, equippedWidth: 30, equippedHeight: 27 },
+    world: { kind: "SPRITE", source: `${PLAYER_PARTS}/cloudspire-helmet.webp`, layer: "HEAD", bottom: 144 },
   },
   [CLOUDSPIRE_BOW]: {
-    inventory: { source: `${PLAYER_PARTS}/cloudspire-bow.png`, equippedWidth: 44, equippedHeight: 34 },
+    inventory: { source: `${PLAYER_PARTS}/cloudspire-bow.webp`, equippedWidth: 44, equippedHeight: 34 },
     world: {
-      kind: "SPRITE", source: `${PLAYER_PARTS}/cloudspire-bow.png`, layer: "HAND",
+      kind: "SPRITE", source: `${PLAYER_PARTS}/cloudspire-bow.webp`, layer: "HAND",
       width: 115, height: 63, top: 106, handAction: "BOW",
     },
     projectile: "ARROW",
   },
   [SAMURAI_BOW]: {
-    inventory: { source: `${PLAYER_PARTS}/samurai-bow.png`, equippedWidth: 44, equippedHeight: 34 },
+    inventory: { source: `${PLAYER_PARTS}/samurai-bow.webp`, equippedWidth: 44, equippedHeight: 34 },
     world: {
-      kind: "SPRITE", source: `${PLAYER_PARTS}/samurai-bow.png`, layer: "HAND",
+      kind: "SPRITE", source: `${PLAYER_PARTS}/samurai-bow.webp`, layer: "HAND",
       width: 115, height: 63, top: 106, handAction: "BOW",
     },
     projectile: "ARROW",
   },
   [SKY_BOW]: {
-    inventory: { source: `${PLAYER_PARTS}/sky-bow.png`, equippedWidth: 44, equippedHeight: 34 },
+    inventory: { source: `${PLAYER_PARTS}/sky-bow.webp`, equippedWidth: 44, equippedHeight: 34 },
     world: {
-      kind: "SPRITE", source: `${PLAYER_PARTS}/sky-bow.png`, layer: "HAND",
+      kind: "SPRITE", source: `${PLAYER_PARTS}/sky-bow.webp`, layer: "HAND",
       width: 115, height: 63, top: 106, handAction: "BOW",
     },
     projectile: "ARROW",
   },
   [WATER_ARMOR]: {
-    inventory: { source: `${PLAYER_PARTS}/water-armor.png`, equippedWidth: 34, equippedHeight: 31 },
-    world: { kind: "SPRITE", source: `${PLAYER_PARTS}/water-armor.png`, layer: "CHEST", width: 76, height: 68, top: 100 },
+    inventory: { source: `${PLAYER_PARTS}/water-armor.webp`, equippedWidth: 34, equippedHeight: 31 },
+    world: { kind: "SPRITE", source: `${PLAYER_PARTS}/water-armor.webp`, layer: "CHEST", width: 76, height: 68, top: 100 },
   },
   [MAGMA_ARMOR]: {
-    inventory: { source: `${PLAYER_PARTS}/magma-armor.png`, equippedWidth: 34, equippedHeight: 31 },
-    world: { kind: "SPRITE", source: `${PLAYER_PARTS}/magma-armor.png`, layer: "CHEST", width: 76, height: 68, top: 100 },
+    inventory: { source: `${PLAYER_PARTS}/magma-armor.webp`, equippedWidth: 34, equippedHeight: 31 },
+    world: { kind: "SPRITE", source: `${PLAYER_PARTS}/magma-armor.webp`, layer: "CHEST", width: 76, height: 68, top: 100 },
   },
   [TRAILBLAZER_BOOTS]: {
     inventory: { fallback: "BOOTS" },
     world: {
       kind: "LEGS",
-      frontSource: `${PLAYER_PARTS}/boots-leg-front.png`,
-      backSource: `${PLAYER_PARTS}/boots-leg-back.png`,
+      frontSource: `${PLAYER_PARTS}/boots-leg-front.webp`,
+      backSource: `${PLAYER_PARTS}/boots-leg-back.webp`,
     },
   },
   [BLACK_BOOTS]: {
@@ -173,10 +173,10 @@ export const ITEM_PRESENTATIONS: Partial<Record<ItemId, ItemPresentation>> = {
     },
   },
   [STARTER_STONE]: {
-    inventory: { source: `${PLAYER_PARTS}/stone.png`, equippedWidth: 26, equippedHeight: 26 },
+    inventory: { source: `${PLAYER_PARTS}/stone.webp`, equippedWidth: 26, equippedHeight: 26 },
     world: {
       kind: "SPRITE",
-      source: `${PLAYER_PARTS}/stone.png`,
+      source: `${PLAYER_PARTS}/stone.webp`,
       layer: "HAND",
       top: 116,
       handAction: "THROW",
@@ -197,10 +197,10 @@ export const ITEM_PRESENTATIONS: Partial<Record<ItemId, ItemPresentation>> = {
     projectile: "ARROW",
   },
   [IRON_BOW]: {
-    inventory: { source: `${PLAYER_PARTS}/iron-bow.png`, equippedWidth: 44, equippedHeight: 34 },
+    inventory: { source: `${PLAYER_PARTS}/iron-bow.webp`, equippedWidth: 44, equippedHeight: 34 },
     world: {
       kind: "SPRITE",
-      source: `${PLAYER_PARTS}/iron-bow.png`,
+      source: `${PLAYER_PARTS}/iron-bow.webp`,
       layer: "HAND",
       width: 115,
       height: 63,
@@ -210,10 +210,10 @@ export const ITEM_PRESENTATIONS: Partial<Record<ItemId, ItemPresentation>> = {
     projectile: "ARROW",
   },
   [SNOW_BOW]: {
-    inventory: { source: `${PLAYER_PARTS}/snow-bow.png`, equippedWidth: 44, equippedHeight: 34 },
+    inventory: { source: `${PLAYER_PARTS}/snow-bow.webp`, equippedWidth: 44, equippedHeight: 34 },
     world: {
       kind: "SPRITE",
-      source: `${PLAYER_PARTS}/snow-bow.png`,
+      source: `${PLAYER_PARTS}/snow-bow.webp`,
       layer: "HAND",
       width: 115,
       height: 63,
@@ -223,10 +223,10 @@ export const ITEM_PRESENTATIONS: Partial<Record<ItemId, ItemPresentation>> = {
     projectile: "ARROW",
   },
   [FROST_BOW]: {
-    inventory: { source: `${PLAYER_PARTS}/frost-bow.png`, equippedWidth: 44, equippedHeight: 34 },
+    inventory: { source: `${PLAYER_PARTS}/frost-bow.webp`, equippedWidth: 44, equippedHeight: 34 },
     world: {
       kind: "SPRITE",
-      source: `${PLAYER_PARTS}/frost-bow.png`,
+      source: `${PLAYER_PARTS}/frost-bow.webp`,
       layer: "HAND",
       width: 115,
       height: 63,
@@ -236,10 +236,10 @@ export const ITEM_PRESENTATIONS: Partial<Record<ItemId, ItemPresentation>> = {
     projectile: "ARROW",
   },
   [LAVA_BOW]: {
-    inventory: { source: `${PLAYER_PARTS}/lava-bow.png`, equippedWidth: 44, equippedHeight: 34 },
+    inventory: { source: `${PLAYER_PARTS}/lava-bow.webp`, equippedWidth: 44, equippedHeight: 34 },
     world: {
       kind: "SPRITE",
-      source: `${PLAYER_PARTS}/lava-bow.png`,
+      source: `${PLAYER_PARTS}/lava-bow.webp`,
       layer: "HAND",
       width: 115,
       height: 63,
@@ -249,10 +249,10 @@ export const ITEM_PRESENTATIONS: Partial<Record<ItemId, ItemPresentation>> = {
     projectile: "ARROW",
   },
   [NIGHT_BOW]: {
-    inventory: { source: `${PLAYER_PARTS}/night-bow.png`, equippedWidth: 44, equippedHeight: 34 },
+    inventory: { source: `${PLAYER_PARTS}/night-bow.webp`, equippedWidth: 44, equippedHeight: 34 },
     world: {
       kind: "SPRITE",
-      source: `${PLAYER_PARTS}/night-bow.png`,
+      source: `${PLAYER_PARTS}/night-bow.webp`,
       layer: "HAND",
       width: 115,
       height: 63,
@@ -262,10 +262,10 @@ export const ITEM_PRESENTATIONS: Partial<Record<ItemId, ItemPresentation>> = {
     projectile: "ARROW",
   },
   [FIRE_METAL_BOW]: {
-    inventory: { source: `${PLAYER_PARTS}/fire-metal-bow.png`, equippedWidth: 44, equippedHeight: 34 },
+    inventory: { source: `${PLAYER_PARTS}/fire-metal-bow.webp`, equippedWidth: 44, equippedHeight: 34 },
     world: {
       kind: "SPRITE",
-      source: `${PLAYER_PARTS}/fire-metal-bow.png`,
+      source: `${PLAYER_PARTS}/fire-metal-bow.webp`,
       layer: "HAND",
       width: 115,
       height: 63,

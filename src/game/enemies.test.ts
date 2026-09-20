@@ -85,14 +85,14 @@ describe("enemy sprite loading", () => {
         covered.add(kind);
         const definition = ENEMY_TYPES[kind];
         const sprite = ENEMY_SPRITE_LAYOUTS[kind];
-        const bows = sprite.layers.filter((layer) => layer.src.endsWith("/bow.png"));
+        const bows = sprite.layers.filter((layer) => layer.src.endsWith("/bow.webp"));
         expect(sprite.family).toBe(family);
         expect(sprite.size).toBe(definition.elite ? ELITE_ENEMY_SPRITE_SIZE : REGULAR_ENEMY_SPRITE_SIZE);
         expect(bows).toHaveLength(definition.ranged && !sprite.animation ? 1 : 0);
-        if (family.startsWith("goblin")) expect(sprite.layers.find((layer) => layer.src.endsWith("/body.png"))?.src).toContain(
+        if (family.startsWith("goblin")) expect(sprite.layers.find((layer) => layer.src.endsWith("/body.webp"))?.src).toContain(
           `/goblin/${family === "goblin-green" ? "goblin_green" : "goblin"}/`,
         );
-        if (family.startsWith("skeleton")) expect(sprite.layers.find((layer) => layer.src.endsWith("/head.png"))?.src).toContain(
+        if (family.startsWith("skeleton")) expect(sprite.layers.find((layer) => layer.src.endsWith("/head.webp"))?.src).toContain(
           `/skull/${family === "skeleton-poison" ? "skull_poison" : "skull"}/`,
         );
         if (family.startsWith("slime")) expect(sprite.layers[0].src).toContain(`/enemies/${family}`);
@@ -106,7 +106,7 @@ describe("enemy sprite loading", () => {
     const paths = new Set(Object.values(ENEMY_SPRITE_LAYOUTS).flatMap(enemySpriteAssetSources));
     for (const path of paths) expect(existsSync(new URL(`../../public/${path}`, import.meta.url)), path).toBe(true);
     for (const color of ["green", "orange"]) for (const suffix of ["", "-stone", "-king"]) {
-      expect(paths.has(`assets/wildstat/enemies/slime-${color}${suffix}.png`)).toBe(true);
+      expect(paths.has(`assets/wildstat/enemies/slime-${color}${suffix}.webp`)).toBe(true);
     }
     for (const sprite of Object.values(ENEMY_SPRITE_LAYOUTS)) for (const layer of sprite.layers) {
       expect([layer.x, layer.y, layer.w, layer.h].every(Number.isFinite)).toBe(true);
@@ -160,8 +160,8 @@ describe("enemy sprite loading", () => {
 
   it("omits separate hand and arm layers from every layered bow enemy", () => {
     for (const sprite of Object.values(ENEMY_SPRITE_LAYOUTS)) {
-      if (!("layers" in sprite) || !sprite.layers.some((layer) => layer.src.endsWith("/bow.png"))) continue;
-      expect(sprite.layers.some((layer) => /\/(?:arm\d*|hand\d*)\.png$/.test(layer.src))).toBe(false);
+      if (!("layers" in sprite) || !sprite.layers.some((layer) => layer.src.endsWith("/bow.webp"))) continue;
+      expect(sprite.layers.some((layer) => /\/(?:arm\d*|hand\d*)\.webp$/.test(layer.src))).toBe(false);
     }
   });
 
@@ -178,8 +178,8 @@ describe("enemy sprite loading", () => {
     }
     vi.stubGlobal("Image", FakeImage);
     const sources = {
-      forestEnemy: { src: "forest-enemy.png", size: 40 },
-      desertEnemy: { src: "desert-enemy.png", size: 40 },
+      forestEnemy: { src: "forest-enemy.webp", size: 40 },
+      desertEnemy: { src: "desert-enemy.webp", size: 40 },
     } satisfies Record<"forestEnemy" | "desertEnemy", EnemySpriteSource>;
     const assets = createMapScopedEnemySpriteAssets(sources, {
       forest: ["forestEnemy"],
@@ -188,7 +188,7 @@ describe("enemy sprite loading", () => {
 
     expect(images.map((image) => image.src)).toEqual(["", ""]);
     const forestReady = assets.ensureMapSprites("forest");
-    expect(images.map((image) => image.src)).toEqual(["forest-enemy.png", ""]);
+    expect(images.map((image) => image.src)).toEqual(["forest-enemy.webp", ""]);
     images[0].dispatchEvent(new Event("load"));
     await forestReady;
     expect(assets.mapSpritesReady("forest")).toBe(true);
@@ -196,7 +196,7 @@ describe("enemy sprite loading", () => {
     expect(assets.mapSpritesReady("desert")).toBe(false);
 
     const desertReady = assets.ensureMapSprites("desert");
-    expect(images.map((image) => image.src)).toEqual(["forest-enemy.png", "desert-enemy.png"]);
+    expect(images.map((image) => image.src)).toEqual(["forest-enemy.webp", "desert-enemy.webp"]);
     images[1].dispatchEvent(new Event("load"));
     await desertReady;
     expect(assets.mapSpritesReady("desert")).toBe(true);

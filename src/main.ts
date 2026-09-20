@@ -751,7 +751,7 @@ import {
   });
 
   const powerIcon = new Image();
-  powerIcon.src = "assets/wildstat/icons/Icon_Battle_Candy_v2.png";
+  powerIcon.src = "assets/wildstat/icons/Icon_Battle_Candy_v2.webp";
   const maleGenderIcon = new Image();
   maleGenderIcon.src = playerGenderIconPath(PLAYER_GENDER_MALE);
   const femaleGenderIcon = new Image();

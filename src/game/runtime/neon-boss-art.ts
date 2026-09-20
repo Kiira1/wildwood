@@ -1,4 +1,4 @@
-export const VOLTWARDEN_ART_SOURCE = "assets/wildstat/voltwarden-boss-spritesheet-v1.png";
+export const VOLTWARDEN_ART_SOURCE = "assets/wildstat/voltwarden-boss-spritesheet-v1.webp";
 export const VOLTWARDEN_ART_TOP = -200;
 export type VoltwardenPose = "idle" | "laser" | "emp";
 

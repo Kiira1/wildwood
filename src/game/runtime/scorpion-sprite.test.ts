@@ -1,14 +1,16 @@
 import { readFileSync } from "node:fs";
+import sharp from "sharp";
 import { describe, expect, it } from "vitest";
 import { SCORPION_SPRITE, scorpionSpriteFrame } from "./scorpion-sprite";
 
 const sheet = readFileSync(new URL(`../../../public/${SCORPION_SPRITE.source}`, import.meta.url));
-const width = sheet.readUInt32BE(16);
-const height = sheet.readUInt32BE(20);
+// Read the dimensions from the decoder rather than a header offset, so the
+// sheet's container can change without the layout guard needing to know.
+const { width = 0, height = 0 } = await sharp(sheet).metadata();
 
 describe("desert scorpion sprite", () => {
   it("uses a four-frame strip matching the Dragon and Frostclaw layout", () => {
-    expect(sheet.subarray(0, 8)).toEqual(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+    expect(sheet.subarray(0, 4).toString("ascii")).toBe("RIFF");
     expect(width).toBeGreaterThan(0);
     expect(height).toBeGreaterThan(0);
     expect(width % SCORPION_SPRITE.frames).toBe(0);

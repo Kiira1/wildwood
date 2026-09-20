@@ -35,7 +35,7 @@ describe("guild panel", () => {
     const title = h.document.querySelector(".guild-opponent-heading")!;
     expect(title.textContent).toContain("Moonlight");
     expect(title.querySelector(".guild-opponent-power")?.textContent).toBe("2.50b");
-    expect(title.querySelector("img")?.getAttribute("src")).toContain("Icon_Battle_Candy_v2.png");
+    expect(title.querySelector("img")?.getAttribute("src")).toContain("Icon_Battle_Candy_v2.webp");
     expect(h.find("View Moonlight guild")).toBeTruthy();
     expect(h.find("Challenge")?.disabled).toBe(false);
   });
@@ -333,7 +333,7 @@ it("shows the guild overview and roster together, with Back closing the window",
   const h = setup(g); h.panel.open(); await settled();
   expect(h.document.querySelector("#guildOverlay .guild-window--overview")).toBeNull();
   expect(h.document.querySelector(".guild-total-power")?.textContent).toBe("Power:2.50b");
-  expect(h.document.querySelector(".guild-total-power img")?.getAttribute("src")).toContain("Icon_Battle_Candy_v2.png");
+  expect(h.document.querySelector(".guild-total-power img")?.getAttribute("src")).toContain("Icon_Battle_Candy_v2.webp");
   expect(h.document.querySelector(".guild-stats")).toBeNull();
   expect(h.find("Members")).toBeUndefined();
   expect(h.document.querySelectorAll(".guild-officer--president")).toHaveLength(1);

@@ -108,8 +108,8 @@ export function loadPlayerAppearanceAssets(settled: () => void): PlayerAppearanc
       : { sprite: image(presentation.world.source, markAssetSettled) };
   }
   return {
-    basicFrontLeg: image("assets/wildstat/player-parts/basic-leg-front.png", markAssetSettled),
-    basicBackLeg: image("assets/wildstat/player-parts/basic-leg-back.png", markAssetSettled),
+    basicFrontLeg: image("assets/wildstat/player-parts/basic-leg-front.webp", markAssetSettled),
+    basicBackLeg: image("assets/wildstat/player-parts/basic-leg-back.webp", markAssetSettled),
     equipment,
   };
 }

@@ -166,7 +166,7 @@
 body:has(.guild-overlay:not([hidden])) #playerProfile { z-index: 13; pointer-events: auto; }
 body:has(.guild-overlay:not([hidden])) #profileIconPicker { z-index: 14; }
 
-.guild-emblem.guild-emblem { display: block; aspect-ratio: 1; background: url("guild-emblems-v3.png") no-repeat; background-size: 418% 418%; clip-path: none; border-radius: 0; }
+.guild-emblem.guild-emblem { display: block; aspect-ratio: 1; background: url("guild-emblems-v3.webp") no-repeat; background-size: 418% 418%; clip-path: none; border-radius: 0; }
 .guild-office-vacancy--future .guild-office-placeholder { color: var(--guild-muted); }
 .guild-roster .guild-member-profile .guild-avatar { width: 44px; height: 44px; flex-basis: 44px; }
 .guild-roster .guild-row { min-height: 56px; padding: 5px 0; }

@@ -184,7 +184,7 @@ export function loadEnemySprites<MapKey extends string>(
 }
 
 export function loadActorShadowSprite(onAssetSettled: () => void = () => {}) {
-  return loadEnemyImage("assets/wildstat/2D Character - Casual Monsters/_PNG/slime/shadow.png", onAssetSettled);
+  return loadEnemyImage("assets/wildstat/2D Character - Casual Monsters/_PNG/slime/shadow.webp", onAssetSettled);
 }
 
 export function rewardLabel(reward: EnemyDefinition["reward"]) {

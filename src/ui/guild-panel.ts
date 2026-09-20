@@ -201,7 +201,7 @@ export function createGuildPanel(options: Options) {
         const power = element("span", amount, "guild-opponent-power");
         power.setAttribute("aria-label", `Guild power: ${amount}`);
         const icon = element("img", undefined, "power-icon");
-        icon.src = "assets/wildstat/icons/Icon_Battle_Candy_v2.png"; icon.alt = "";
+        icon.src = "assets/wildstat/icons/Icon_Battle_Candy_v2.webp"; icon.alt = "";
         icon.setAttribute("aria-hidden", "true"); power.append(icon);
         title.replaceChildren(element("span", entry.name), power);
       }
@@ -307,7 +307,7 @@ export function createGuildPanel(options: Options) {
     const amount = own.totalPower === undefined ? "—" : formatCompactNumber(own.totalPower);
     power.setAttribute("aria-label", `Guild power: ${amount}`);
     const icon = element("img", undefined, "power-icon");
-    icon.src = "assets/wildstat/icons/Icon_Battle_Candy_v2.png";
+    icon.src = "assets/wildstat/icons/Icon_Battle_Candy_v2.webp";
     icon.alt = ""; icon.setAttribute("aria-hidden", "true");
     power.append(element("span", "Power:"), element("span", amount, "power-value"), icon);
     body.append(power);

@@ -6,7 +6,7 @@ const beforeStartShell = String.raw`
   <section class="daily-gem-bonus-card" role="dialog" aria-modal="true" aria-labelledby="dailyGemBonusTitle" aria-describedby="dailyGemBonusCopy">
     <div class="daily-gem-bonus-kicker">DAILY BONUS</div>
     <div class="daily-gem-bonus-art" aria-hidden="true">
-      <img src="assets/wildstat/gems/gem-icon-v2.png" alt="" draggable="false" />
+      <img src="assets/wildstat/gems/gem-icon-v2.webp" alt="" draggable="false" />
     </div>
     <h2 id="dailyGemBonusTitle">+7 GEMS</h2>
     <p id="dailyGemBonusCopy">WELCOME BACK</p>
@@ -18,7 +18,7 @@ const beforeStartShell = String.raw`
   <section class="daily-gem-bonus-card" role="dialog" aria-modal="true" aria-labelledby="balanceApologyGiftTitle" aria-describedby="balanceApologyGiftCopy">
     <div class="daily-gem-bonus-kicker">A NOTE FROM WILDSTAT</div>
     <div class="daily-gem-bonus-art" aria-hidden="true">
-      <img src="assets/wildstat/gems/gem-icon-v2.png" alt="" draggable="false" />
+      <img src="assets/wildstat/gems/gem-icon-v2.webp" alt="" draggable="false" />
     </div>
     <h2 id="balanceApologyGiftTitle">+10 GEMS</h2>
     <p id="balanceApologyGiftCopy" class="balance-apology-gift-copy">A GIFT FROM THE DEVELOPER.<br />THANK YOU FOR TESTING WILDSTAT.</p>
@@ -112,7 +112,7 @@ const afterUpdateGateShell = String.raw`
           <div id="playerProfilePresence" class="player-profile-presence">CHECKING STATUS</div>
         </div>
       </div>
-      <button id="settingsBtn" class="profile-settings-button" type="button" aria-label="Open settings" aria-expanded="false" aria-controls="settingsPanel" title="Settings" hidden><img src="assets/wildstat/icons/Icon_Settings.png" alt="" aria-hidden="true"></button>
+      <button id="settingsBtn" class="profile-settings-button" type="button" aria-label="Open settings" aria-expanded="false" aria-controls="settingsPanel" title="Settings" hidden><img src="assets/wildstat/icons/Icon_Settings.webp" alt="" aria-hidden="true"></button>
     </header>
     <div id="profileGenderSetting" class="profile-gender-setting" hidden>
       <span class="profile-gender-label">GENDER</span>
@@ -120,16 +120,16 @@ const afterUpdateGateShell = String.raw`
       <button id="profileGenderEdit" class="profile-gender-edit" type="button" aria-label="Change gender" aria-expanded="false" aria-controls="profileGenderChoices">✎</button>
       <div id="profileGenderChoices" class="profile-gender-choices" role="group" aria-label="Gender" hidden>
         <button class="profile-gender-choice" type="button" data-gender="1" aria-label="Male" aria-pressed="false" title="Male">
-          <img data-game-src="assets/wildstat/gender/male-v2.png" alt="" aria-hidden="true" draggable="false" />
+          <img data-game-src="assets/wildstat/gender/male-v2.webp" alt="" aria-hidden="true" draggable="false" />
         </button>
         <button class="profile-gender-choice" type="button" data-gender="2" aria-label="Female" aria-pressed="false" title="Female">
-          <img data-game-src="assets/wildstat/gender/female-v2.png" alt="" aria-hidden="true" draggable="false" />
+          <img data-game-src="assets/wildstat/gender/female-v2.webp" alt="" aria-hidden="true" draggable="false" />
         </button>
       </div>
     </div>
     <div id="profileCharacterPreview" class="profile-character-preview character-loadout-preview" aria-label="Player character and equipped items">
       <canvas id="profileCharacterCanvas" class="profile-character-canvas character-preview-canvas" width="240" height="136" aria-hidden="true"></canvas>
-      <div id="playerProfilePower" aria-label="Power 0"><span class="power-value">0</span><img class="power-icon" src="assets/wildstat/icons/Icon_Battle_Candy_v2.png" alt="" aria-hidden="true"></div>
+      <div id="playerProfilePower" aria-label="Power 0"><span class="power-value">0</span><img class="power-icon" src="assets/wildstat/icons/Icon_Battle_Candy_v2.webp" alt="" aria-hidden="true"></div>
       <button id="profileEquippedHeadSlot" class="equipment-slot profile-equipment-slot slot-head" type="button" data-slot="head"><span>HEAD</span></button>
       <button id="profileEquippedChestSlot" class="equipment-slot profile-equipment-slot slot-chest" type="button" data-slot="chest"><span>ARMOR</span></button>
       <div class="profile-character-stage">

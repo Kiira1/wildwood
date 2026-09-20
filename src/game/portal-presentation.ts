@@ -14,7 +14,7 @@ import {
 } from "./world";
 
 /** One shaded sheet is recolored at runtime for every destination. */
-export const PORTAL_SWIRL_SOURCE = "assets/wildstat/portal-swirl-spritesheet.png";
+export const PORTAL_SWIRL_SOURCE = "assets/wildstat/portal-swirl-spritesheet.webp";
 
 const PORTAL_DESTINATION_COLORS: Record<MapId, string> = {
   first_steps: "#61e87c",

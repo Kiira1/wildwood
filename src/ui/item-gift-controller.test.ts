@@ -22,7 +22,7 @@ it("shows the helmet reward and celebrates one claim even when the server remove
   expect(h.overlay.classList.contains("daily-gem-bonus")).toBe(true);
   expect(h.overlay.textContent).toContain("GIFT FROM DEVELOPER");
   expect(h.overlay.textContent).toContain("ALPHA TESTER HELMET");
-  expect(h.document.querySelector("img")!.getAttribute("src")).toContain("superior-golden-helmet.png");
+  expect(h.document.querySelector("img")!.getAttribute("src")).toContain("superior-golden-helmet.webp");
   let done!: (value: { ok: boolean }) => void;
   h.claim.mockImplementation(() => new Promise(resolve => { done = resolve; }));
   h.button.click(); h.button.click(); h.clearGift();

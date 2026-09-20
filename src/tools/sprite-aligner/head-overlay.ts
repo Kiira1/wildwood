@@ -17,7 +17,7 @@ export function drawHeadOverlay(ctx: CanvasRenderingContext2D, head: LayerBounds
     image.addEventListener("error", () => {
       document.getElementById("overlayStatus")!.textContent = "Reference image unavailable in the local vendor folder.";
     }, { once: true });
-    image.src = "../public/assets/wildstat/player-parts/expansion-head-template.png?v=" + EXPANSION_HEAD_REVISION;
+    image.src = "../public/assets/wildstat/player-parts/expansion-head-template.webp?v=" + EXPANSION_HEAD_REVISION;
   }
   if (!image.complete || !image.naturalWidth) return;
   const m = head.transform;

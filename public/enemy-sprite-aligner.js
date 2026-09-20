@@ -37,7 +37,7 @@ function currentLayer() {
 }
 
 function filename(source) {
-  return source.split("/").at(-1)?.replace(/\.png$/i, "") || source;
+  return source.split("/").at(-1)?.replace(/\.webp$/i, "") || source;
 }
 
 function slug(value) {
@@ -207,7 +207,7 @@ function populateEnemies() {
 }
 
 function preferredLayerIndex(layout) {
-  const bowIndex = layout.layers.findIndex((layer) => /bow\.png$/i.test(layer.src));
+  const bowIndex = layout.layers.findIndex((layer) => /bow\.webp$/i.test(layer.src));
   return bowIndex >= 0 ? bowIndex : Math.max(0, layout.layers.length - 1);
 }
 

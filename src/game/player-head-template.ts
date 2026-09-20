@@ -1,4 +1,4 @@
-// User-edited expansion-head-template.png, originally cha/head/Group 8436 in the Parts PSD.
+// User-edited expansion-head-template.webp, originally cha/head/Group 8436 in the Parts PSD.
 // Run-length tuples: pixel count, grayscale, alpha. White is recolored; black stays black.
 // Embedded to avoid an asynchronous head-image load during character rendering.
 export const EXPANSION_HEAD_FRAME = { x: 53, y: 72, width: 65, height: 50 } as const;

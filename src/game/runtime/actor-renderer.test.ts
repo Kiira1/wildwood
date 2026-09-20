@@ -49,7 +49,7 @@ describe("enemy weapon aiming", () => {
 describe("layered enemy rendering", () => {
   const image = (ready: boolean) => ({ complete: ready, naturalWidth: ready ? 32 : 0 }) as HTMLImageElement;
   const layer = (ready: boolean, y: number, h: number) => ({
-    src: "test.png", x: 0, y, w: 10, h, image: image(ready),
+    src: "test.webp", x: 0, y, w: 10, h, image: image(ready),
   }) as LoadedSpriteLayer;
 
   it("uses configured feet for the shadow instead of the enemy hit-circle center", () => {

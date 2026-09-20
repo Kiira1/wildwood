@@ -32,19 +32,19 @@ describe("map-scoped image preprocessing", () => {
 
     const assets = createAssetPreprocessor(() => {});
     expect(requests).toEqual([
-      "assets/wildstat/stone-portal-arch.png",
+      "assets/wildstat/stone-portal-arch.webp",
       PORTAL_SWIRL_SOURCE,
     ]);
     expect(requests).not.toContain(DUEL_SPACE_BACKGROUND_SOURCE);
     expect(requests).not.toContain(DUEL_PLATFORM_ART_SOURCE);
 
     void assets.ensureMapAssets(TUTORIAL_FOREST_MAP_ID);
-    expect(requests).toContain("assets/wildstat/dragon_boss_spritesheet.png");
-    expect(requests).toContain("assets/wildstat/tree-spritesheet-v1.png");
+    expect(requests).toContain("assets/wildstat/dragon_boss_spritesheet.webp");
+    expect(requests).toContain("assets/wildstat/tree-spritesheet-v1.webp");
     expect(requests).not.toContain(SCORPION_SPRITE.source);
-    expect(requests).not.toContain("assets/wildstat/frostclaw-boss-spritesheet.png");
-    expect(requests).not.toContain("assets/wildstat/lava/lava-pool-1.png");
-    expect(requests).not.toContain("assets/wildstat/night-tree-spritesheet-v1.png");
+    expect(requests).not.toContain("assets/wildstat/frostclaw-boss-spritesheet.webp");
+    expect(requests).not.toContain("assets/wildstat/lava/lava-pool-1.webp");
+    expect(requests).not.toContain("assets/wildstat/night-tree-spritesheet-v1.webp");
     expect(requests).not.toContain(DUEL_SPACE_BACKGROUND_SOURCE);
     expect(requests).not.toContain(DUEL_PLATFORM_ART_SOURCE);
   });
@@ -98,7 +98,7 @@ describe("map-scoped image preprocessing", () => {
 
     const assets = createAssetPreprocessor(() => {});
     void assets.ensureMapAssets(TUTORIAL_FOREST_MAP_ID);
-    const dragon = images.find((image) => image.src === "assets/wildstat/dragon_boss_spritesheet.png");
+    const dragon = images.find((image) => image.src === "assets/wildstat/dragon_boss_spritesheet.webp");
     expect(dragon).toBeDefined();
     expect(assets.mapAssetLoadFailed(TUTORIAL_FOREST_MAP_ID)).toBe(false);
 
