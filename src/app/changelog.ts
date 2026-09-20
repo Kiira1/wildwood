@@ -1,4 +1,8 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.747": [
+    "Artwork now loads as WebP, cutting the download to a quarter of its size.",
+    "Map instances hold twice as many players, and a seat is given up when its account leaves.",
+  ],
   "0.746": [
     "Home is now the Base, and the toolbar button names where it takes you: Fight while you are standing in it.",
     "The research desk now shows a countdown like the upgrade bench beside it.",
@@ -2088,6 +2092,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.747": "2026-09-19",
   "0.746": "2026-09-19",
   "0.745": "2026-09-18",
   "0.744": "2026-09-18",
