@@ -49,6 +49,7 @@ import { insertSnapshotRow, updateSnapshotRow, deleteSnapshotRow } from "./shard
 import { decodeShardSnapshot, encodeShardSnapshot } from "../../shared/shard-wire";
 import { coordinateShard, validateCoordinatorConfig } from "./shard-coordinator";
 import { mapShardingTables, mapShardRouteType, rootShardingEnabled, isMapShard, assignMapShard, releaseMapShard, validateShardMap, queueShardReward } from "./map-sharding";
+import { MAP_SHARD_CAPACITY } from "../../shared/map-sharding";
 import { compressLegacyMapPower } from "../../shared/map-power-rescale";
 import { advanceDuelCombat, duelOutcome, DUEL_COMBAT_VERSION } from "../../shared/duel-combat";
 import { createPlayerMotionFrameSampler, playerMotionSampleAt } from "../../shared/player-motion-sample";
@@ -4544,6 +4545,8 @@ function removePlayerIdentityData(ctx: any, identity: any) {
   guildService.removeAccount(ctx, identity);
   ctx.db.playerNameTag.identity.delete(identity);
   removePlayerSafetyData(ctx, identity);
+  // A no-op without a membership, so this is safe on an already offline account.
+  releaseMapShard(ctx, identity);
   const activePlayer = ctx.db.player.identity.find(identity);
   if (activePlayer) deleteSnapshotRow(ctx, "player", identity);
   removePlayerRealtimeState(ctx, identity);
@@ -4715,6 +4718,25 @@ function clearOrphanVirtualPlayers(ctx: any) {
   if (!orphaned.length) return;
   for (const identity of orphaned) removeVirtualPlayerData(ctx, identity, false);
   reconcileOnlinePlayers(ctx);
+}
+
+/**
+ * Occupancy drives both admission and whether an instance may go dormant, so a
+ * seat held by an account that is no longer present keeps an empty instance
+ * counted as busy and warms further instances nobody stands in. Release seats
+ * whose account has gone, skipping a handoff that is still in flight.
+ */
+function clearOrphanShardMembers(ctx: any) {
+  if (isMapShard(ctx) || !rootShardingEnabled(ctx)) return;
+  const now = ctx.timestamp.microsSinceUnixEpoch;
+  const stranded: any[] = [];
+  for (const member of ctx.db.mapShardMember.iter() as Iterable<any>) {
+    if (ctx.db.player.identity.find(member.identity)) continue;
+    const barrier = ctx.db.shardTransferBarrier.identity.find(member.identity);
+    if (barrier && barrier.expiresAt > now) continue;
+    stranded.push(member.identity);
+  }
+  for (const identity of stranded) releaseMapShard(ctx, identity);
 }
 
 function clearOrphanPresence(ctx: any) {
@@ -6648,6 +6670,7 @@ export const runMaintenanceSweep = spacetimedb.reducer(
     clearExpiredAccountLinks(ctx);
     clearOrphanPresence(ctx);
     clearOrphanRealtimeState(ctx);
+    clearOrphanShardMembers(ctx);
     clearOrphanVirtualPlayers(ctx);
     clearExpiredVirtualPlayerRuns(ctx);
     reconcileOnlinePlayers(ctx);
@@ -8750,6 +8773,10 @@ for (const [contributionTable, attackWindowTable] of [
     // reconnect with the pre-migration name and stats.
     const guestActivePlayer = ctx.db.player.identity.find(link.guest);
     if (guestActivePlayer) {
+      // The guest's seat goes with its player row. Every other teardown path
+      // releases it; holding it leaves the instance counted as occupied for
+      // good, which warms new instances nobody is standing in.
+      releaseMapShard(ctx, link.guest);
       deleteSnapshotRow(ctx, "player", link.guest);
       reconcileOnlinePlayers(ctx);
     }
@@ -10785,7 +10812,7 @@ function installShardPlayerImpl(ctx: any, args: any) {
     const admission = ctx.db.shardAdmission.identity.find(args.identity);
     const fence = ctx.db.shardAdmissionFence.identity.find(args.identity);
     if ((fence && fence.generation >= args.generation) || (admission && admission.generation > args.generation)) return;
-    if (!admission && ctx.db.shardAdmission.count() >= 10n) throw new SenderError("Map shard is full");
+    if (!admission && ctx.db.shardAdmission.count() >= BigInt(MAP_SHARD_CAPACITY)) throw new SenderError("Map shard is full");
     const nextAdmission = { identity: args.identity, generation: args.generation, tabId: data.player.controllerTabId, inDuel: Boolean(data.inDuel) };
     if (admission) ctx.db.shardAdmission.identity.update(nextAdmission);
     else ctx.db.shardAdmission.insert(nextAdmission);

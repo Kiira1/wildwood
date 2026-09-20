@@ -1,7 +1,7 @@
 /** Shared admission policy. Call inside the directory's transaction; in-flight
  * reservations count as occupants so simultaneous joins cannot overbook. */
-export const MAP_SHARD_CAPACITY = 10;
-export const MAP_SHARD_WARM_AT = 9;
+export const MAP_SHARD_CAPACITY = 20;
+export const MAP_SHARD_WARM_AT = 18;
 export type MapShardCandidate = {
   id: string;
   mapId: string;
@@ -18,7 +18,7 @@ export function selectMapShard(shards: readonly MapShardCandidate[], mapId: stri
     .sort((a, b) => b.occupants - a.occupants || a.id.localeCompare(b.id))[0] ?? null;
 }
 
-/** Keep a single standby when the last available instance reaches nine.
+/** Keep a single standby when the last available instance nears capacity.
  * Starting instances count as standby, never as an admission destination. */
 export function shouldWarmMapShard(shards: readonly MapShardCandidate[], mapId: string) {
   const candidates = shards.filter(shard => shard.mapId === mapId);

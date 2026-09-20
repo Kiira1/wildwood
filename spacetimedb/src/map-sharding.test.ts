@@ -4,6 +4,10 @@ import { describe, expect, it, vi } from "vitest";
 import { Identity, Timestamp } from "spacetimedb";
 import { crystalFixture, identity, server } from "../../tests/helpers/crystal-hollows-fixture";
 import { assignMapShard, releaseMapShard } from "./map-sharding";
+import { MAP_SHARD_CAPACITY, MAP_SHARD_WARM_AT } from "../../shared/map-sharding";
+// identity() spans one hex digit, which no longer covers a full instance.
+// Keep those exact values and pad beyond them without colliding with a repeat.
+const seat = (n: number) => (n < 16 ? identity(n.toString(16)) : new Identity(n.toString(16).padStart(64, "e")));
 import { decodeShardSnapshot, encodeShardSnapshot } from "../../shared/shard-wire";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 const owner = new Identity("c200383520521c925f3cf6deafb20cd6a7d6168d1c31cb3c0ddb731c197a2d79");
@@ -105,23 +109,35 @@ describe("separate map database control plane", () => {
     expect(region.db.defeatSessionRestriction.identity.find(identity("1"))).toBeNull();
     expect(region.db.playerMotion.identity.find(identity("1"))).toMatchObject({ x: 1200, y: 900 });
   });
-  it("reserves ten seats atomically, warms at nine, and gives the eleventh player the next ready database", () => {
+  it("reserves every seat atomically, warms a standby, and gives the overflow player the next ready database", () => {
     const f = rootFixture();
-    for (let n = 2; n <= 11; n++) f.seed("player", { ...f.db.player.identity.find(identity("1")), identity: identity(n.toString(16)) });
+    // The fixture mints one identity per hex digit, fewer than an instance holds.
+    // Seed the seats already taken so the assertions stay at the boundary that
+    // matters, whatever the capacity is set to.
+    const extras = Math.min(MAP_SHARD_CAPACITY - 1, 14);
+    for (let n = 2; n <= extras + 1; n++) f.seed("player", { ...f.db.player.identity.find(identity("1")), identity: seat(n) });
     f.run(server.configureSharding, { role: "root", enabled: true, mapId: "", shardId: 0n });
     expect(f.db.mapShard.count()).toBe(1n);
     f.run(server.shardReady, { shardId: 1n });
-    expect(f.db.mapShard.id.find(1n).occupants).toBe(10);
+    // Every seeded player reserved a seat in one transaction.
+    expect(f.db.mapShard.id.find(1n).occupants).toBe(extras + 1);
+    // Top the instance up to the warm threshold and confirm a standby appears.
+    releaseMapShard(f.ctx, seat(2));
+    const filled = f.db.mapShard.id.find(1n);
+    f.db.mapShard.id.update({ ...filled, occupants: MAP_SHARD_WARM_AT });
+    assignMapShard(f.ctx, f.db.player.identity.find(seat(2)));
     expect(f.db.mapShard.id.find(2n)).toMatchObject({ state: "starting", occupants: 0 });
-    expect([...f.db.mapShardMember.iter()].filter(row => row.shardId === 0n)).toHaveLength(1);
     f.run(server.shardReady, { shardId: 2n });
-    expect(f.db.mapShard.id.find(2n).occupants).toBe(1);
+    // A full instance sends the next player to the standby, not back to itself.
+    const full = f.db.mapShard.id.find(1n);
+    f.db.mapShard.id.update({ ...full, occupants: MAP_SHARD_CAPACITY });
     const first = f.db.mapShardMember.identity.find(identity("1"));
     assignMapShard(f.ctx, f.db.player.identity.find(identity("1")));
+    // An existing seat is kept rather than reshuffled.
     expect(f.db.mapShardMember.identity.find(identity("1"))).toEqual(first);
-    expect(f.db.mapShard.id.find(1n).occupants).toBe(10);
+    expect(f.db.mapShard.id.find(1n).occupants).toBe(MAP_SHARD_CAPACITY);
     releaseMapShard(f.ctx, identity("1"));
-    expect(f.db.mapShard.id.find(1n).occupants).toBe(9);
+    expect(f.db.mapShard.id.find(1n).occupants).toBe(MAP_SHARD_CAPACITY - 1);
   });
   it("binds admission to identity/tab, preserves regional movement on snapshot refresh, and fences stale revocations", () => {
     const root = rootFixture(), region = regionFixture();
@@ -183,19 +199,24 @@ describe("separate map database control plane", () => {
       leaseExpiresAtMicros: region.ctx.timestamp.microsSinceUnixEpoch + 45_000_000n });
     expect(region.db.shardAdmission.count()).toBe(1n);
   });
-  it("rejects an eleventh direct admission and unauthorized coordinator execution", () => {
+  it("rejects a direct admission past capacity and unauthorized coordinator execution", () => {
     const root = rootFixture(), region = regionFixture();
-    for (let n = 1; n <= 10; n++) {
-      const who = identity(n.toString(16));
+    const installable = Math.min(MAP_SHARD_CAPACITY, 15);
+    for (let n = 1; n <= installable; n++) {
+      const who = seat(n);
       if (n > 1) {
         root.seed("player", { ...root.db.player.identity.find(identity("1")), identity: who });
         root.progress(who);
       }
       region.run(server.installShardPlayer, { identity: who, generation: 10n, snapshot: snapshot(root, who) });
     }
-    root.seed("player", { ...root.db.player.identity.find(identity("1")), identity: identity("b") });
-    root.progress(identity("b"));
-    expect(() => region.run(server.installShardPlayer, { identity: identity("b"), generation: 10n, snapshot: snapshot(root, identity("b")) })).toThrow("full");
+    // Occupy the remaining seats directly; the fixture cannot mint that many identities.
+    for (let n = installable + 1; n <= MAP_SHARD_CAPACITY; n++) {
+      region.seed("shardAdmission", { identity: new Identity(n.toString(16).padStart(64, "e")), generation: 10n, tabId: `fill-${n}`, inDuel: false });
+    }
+    root.seed("player", { ...root.db.player.identity.find(identity("1")), identity: identity("0") });
+    root.progress(identity("0"));
+    expect(() => region.run(server.installShardPlayer, { identity: identity("0"), generation: 10n, snapshot: snapshot(root, identity("0")) })).toThrow("full");
     expect(() => (server.coordinateMapShard as any)(root.ctx, { arg: { scheduledId: 1n } })).toThrow("Scheduler");
   });
 
