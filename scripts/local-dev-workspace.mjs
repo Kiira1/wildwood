@@ -86,10 +86,10 @@ export async function createLocalWorkspace(root, columns) {
   await mkdir(join(root, 'local-data'), { recursive: true });
   const directory = await mkdtemp(join(root, 'local-data/dev-workspace-'));
   await cp(join(root, 'package.json'), join(directory, 'package.json'));
-  await symlink(join(root, 'node_modules'), join(directory, 'node_modules'));
-  await symlink(join(root, 'public'), join(directory, 'public'));
+  await symlink(join(root, 'node_modules'), join(directory, 'node_modules'), 'junction');
+  await symlink(join(root, 'public'), join(directory, 'public'), 'junction');
   await mkdir(join(directory, 'spacetimedb'));
-  await symlink(join(root, 'node_modules'), join(directory, 'spacetimedb/node_modules'));
+  await symlink(join(root, 'node_modules'), join(directory, 'spacetimedb/node_modules'), 'junction');
   for (const name of ['package.json', 'tsconfig.json']) {
     await cp(join(root, 'spacetimedb', name), join(directory, 'spacetimedb', name));
   }

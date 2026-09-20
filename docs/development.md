@@ -70,6 +70,18 @@ Alternatively, start `spacetime start` in one terminal, then run `npm run dev:lo
 
 When switching from the old launcher for the first time, stop its Python web-server terminal once to free port 8000. The database can remain running.
 
+### Native stat tracker
+
+Enable **Settings → Game → Stat Tracker** to show current Power, Max HP, Damage,
+Armor, Regen and Kills with session gains and hourly rates. Values come from the
+loaded local character and canonical equipment/research calculations; opening a
+profile is unnecessary. The tracker is off by default to preserve mobile HUD space.
+Drag its header to move it, double-click the header (or press Home while focused)
+to restore its position, or use arrow keys to move it. Reset session changes only
+the tracker baselines. Sessions persist per character on this browser; elapsed
+time includes time away, and equipment changes count toward gains. A decrease in
+lifetime kills starts a new session after a character progress reset.
+
 ### Balance Lab
 
 Run the high-speed, non-graphical progression simulator with:

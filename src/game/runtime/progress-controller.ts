@@ -212,6 +212,7 @@ export function createProgressController(dependencies: ProgressDependencies) {
   return {
     hasSavedProgress: () => hasSavedProgress,
     isLoaded: () => progressLoaded,
+    isLoadedFor: (identity: string) => progressLoaded && progressLoadedIdentity === identity,
     load,
     resetState: () => {
       hasSavedProgress = false;

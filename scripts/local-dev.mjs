@@ -81,7 +81,7 @@ const server = await createServer({
       });
     },
     handleHotUpdate(context) {
-      const kind = localChangeKind(relative(root, context.file));
+      const kind = localChangeKind(relative(root, context.file).replaceAll('\\', '/'));
       if (kind) return []; // Reload only after our serialized build/publish finishes.
     },
   }],
@@ -121,7 +121,7 @@ try {
     const schema = await command(['describe', database, '--server', databaseHost, '--json'], true);
     columns = localLegacyColumns(JSON.parse(schema));
   } catch (error) {
-    if (!/404|database .*not found|no such database/i.test(error.message)) throw error;
+    if (!/404|database .*not found|no such database|failed to find database/i.test(error.message)) throw error;
   }
   workspace = await createLocalWorkspace(root, columns);
   await workspace.sync();
@@ -131,7 +131,7 @@ try {
   server.watcher.add(['src', 'shared', 'spacetimedb/src', 'config'].map(path => resolve(root, path)));
   server.watcher.on('all', (event, file) => {
     if (!['add', 'change', 'unlink'].includes(event)) return;
-    const path = relative(root, file);
+    const path = relative(root, file).replaceAll('\\', '/');
     if (path.startsWith('src/module_bindings/')) return;
     const kind = localChangeKind(path);
     if (kind === 'style') {
