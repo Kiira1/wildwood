@@ -1,5 +1,6 @@
-import { readFile, writeFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { createHash } from "node:crypto";
+import { readFile, readdir, stat, writeFile } from "node:fs/promises";
+import { join, relative, resolve } from "node:path";
 
 const nextVersion = process.argv[2];
 const checkOnly = process.argv.includes("--check");
@@ -14,6 +15,27 @@ const settingsPath = resolve(root, "src/game/runtime/game-settings.ts");
 const htmlPath = resolve(root, "public/index.html");
 const versionPath = resolve(root, "public/version.json");
 const changelogPath = resolve(root, "src/app/changelog.ts");
+const assetsPath = resolve(root, "public/assets");
+const assetStampPath = resolve(root, "config/shipped-assets.json");
+
+/**
+ * A cached client keeps asking for the artwork it was built against, so
+ * removing or renaming any of it without a new version leaves those players
+ * with broken images and no prompt to refresh. Stamp what shipped, and refuse a
+ * release whose artwork moved while the version stood still.
+ */
+async function shippedAssetDigest(directory) {
+  const digest = createHash("sha256");
+  const walk = async (dir) => {
+    for (const entry of (await readdir(dir, { withFileTypes: true })).sort((a, b) => a.name.localeCompare(b.name))) {
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) await walk(path);
+      else digest.update(`${relative(root, path)}:${(await stat(path)).size}\n`);
+    }
+  };
+  await walk(directory);
+  return digest.digest("hex");
+}
 
 const [settings, html, versionJson, changelog] = await Promise.all([
   readFile(settingsPath, "utf8"),
@@ -35,6 +57,11 @@ if (checkOnly) {
   if (!changelog.split("export const RELEASE_DAYS")[1]?.includes(`"${currentVersion}": "`)) {
     throw new Error(`Missing release day for ${currentVersion}`);
   }
+  const stamp = JSON.parse(await readFile(assetStampPath, "utf8").catch(() => "{}"));
+  const digest = await shippedAssetDigest(assetsPath);
+  if (stamp.assets && stamp.assets !== digest && stamp.version === currentVersion) {
+    throw new Error(`Shipped artwork changed without a new version. Cached clients still request the old files. Run: npm run release -- <version>`);
+  }
   process.exit(0);
 }
 
@@ -52,6 +79,7 @@ const nextChangelog = changelog.split(daysHeading)[1].includes(`"${nextVersion}"
   ? changelog : changelog.replace(daysHeading, `${daysHeading}\n  "${nextVersion}": "${releaseDay}",`);
 
 await Promise.all([
+  writeFile(assetStampPath, `${JSON.stringify({ version: nextVersion, assets: await shippedAssetDigest(assetsPath) }, null, 2)}\n`),
   writeFile(settingsPath, nextSettings),
   writeFile(htmlPath, nextHtml),
   writeFile(versionPath, `${JSON.stringify({ version: nextVersion })}\n`),
