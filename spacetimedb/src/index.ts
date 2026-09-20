@@ -11002,7 +11002,7 @@ export const synchronizeMapShard = spacetimedb.procedure(
     const reply = ctx.withTx(tx => {
       if (!isMapShard(tx)) throw new SenderError("Map database required");
       const current = tx.db.shardReplicaState.id.find(0);
-      if (!Array.isArray(batch.members) || batch.members.length > 10) throw new SenderError("Invalid admission batch");
+      if (!Array.isArray(batch.members) || batch.members.length > MAP_SHARD_CAPACITY) throw new SenderError("Invalid admission batch");
       if (batch.expiresAt > tx.timestamp.microsSinceUnixEpoch && (!current || batch.sequence > current.sequence)) {
         const desired = new Map(batch.members.map((row: any) => [row.identity.toHexString(), row]));
         for (const admission of tx.db.shardAdmission.iter()) {

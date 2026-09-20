@@ -62,6 +62,7 @@ type UpgradeBenchDependencies = {
   onInventoryChanged: () => void;
   showMessage: (message: string, color?: string) => void;
   nowMs?: () => number;
+  storage?: Pick<Storage, "getItem" | "setItem">;
 };
 
 export const UPGRADE_CANCEL_CONFIRMATION = "Are you sure you want to cancel? You will lose current progress to the next upgrade.";
@@ -101,8 +102,37 @@ export function upgradePickerPreview(itemId: string, upgradeLevel: unknown) {
 }
 
 /** Fullscreen two-slot upgrade interaction plus enter/leave collision latch. */
+/**
+ * The server grants a finished upgrade and removes it on its own, so there is
+ * no waiting-to-collect state to read. A job that disappears once its time has
+ * passed was granted; one that disappears before then was cancelled.
+ */
+export function upgradeFinishedSinceLastPoll(
+  tracked: ReadonlyMap<UpgradeBenchSlot, number>,
+  active: ReadonlyMap<UpgradeBenchSlot, number>,
+  nowMs: number,
+) {
+  for (const [slot, completesAtMs] of tracked) {
+    if (!active.has(slot) && nowMs >= completesAtMs) return true;
+  }
+  return false;
+}
+
 export function createUpgradeBenchController(elements: UpgradeBenchElements, dependencies: UpgradeBenchDependencies) {
   const nowMs = dependencies.nowMs ?? Date.now;
+
+  // The server grants a finished upgrade and removes it on its own, so there is
+  // no waiting-to-collect state to read. Notice the moment a job that had reached
+  // its completion time disappears, and hold that until the bag is opened.
+  const FINISHED_KEY = "wildstat-upgrade-finished";
+  const tracked = new Map<UpgradeBenchSlot, number>();
+  let finishedWaiting = false;
+  try { finishedWaiting = dependencies.storage?.getItem(FINISHED_KEY) === "true"; } catch { /* Storage may be unavailable. */ }
+  function rememberFinished(waiting: boolean) {
+    if (waiting === finishedWaiting) return;
+    finishedWaiting = waiting;
+    try { dependencies.storage?.setItem(FINISHED_KEY, String(waiting)); } catch { /* Keep the session value. */ }
+  }
   const confirmCancel = dependencies.confirmCancel ?? ((message: string) => confirm(message));
   const confirmGemSpend = dependencies.confirmGemSpend ?? ((message: string) => confirm(message));
   const confirmUnlock = dependencies.confirmUnlock ?? confirmGemSpend;
@@ -536,6 +566,18 @@ export function createUpgradeBenchController(elements: UpgradeBenchElements, dep
       return { itemId: job.itemId, level: job.currentLevel, timer: formatRemaining(remainingFor(job)) };
     },
     /** A finished upgrade stays on the bench until it is collected into the bag. */
-    hasCompletedUpgrade: () => activeUpgrades().some((active) => !active.paused && remainingFor(active) <= 0),
+    /**
+     * Poll each frame: a job that vanishes after its time was granted. Opening
+     * the bag is the acknowledgement, whichever control opened it.
+     */
+    finishedUpgradeWaiting(acknowledged = false) {
+      if (acknowledged) rememberFinished(false);
+      const current = new Map(activeUpgrades().map((job) => [job.slot, job.completesAtMs] as const));
+      if (upgradeFinishedSinceLastPoll(tracked, current, nowMs())) rememberFinished(true);
+      tracked.clear();
+      for (const [slot, completesAtMs] of current) tracked.set(slot, completesAtMs);
+      return finishedWaiting;
+    },
+    acknowledgeFinishedUpgrade: () => rememberFinished(false),
   };
 }

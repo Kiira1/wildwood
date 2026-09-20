@@ -1544,7 +1544,7 @@ import {
     if (touching && !touchingResearch) { playerInput.clear(); techTree.open(); }
     touchingResearch = touching;
     upgradeBenchController.updateTouch();
-    inventoryNotice.set(upgradeBenchController.hasCompletedUpgrade());
+    inventoryNotice.set(upgradeBenchController.finishedUpgradeWaiting(!gameElements.inventoryPanel.hidden));
   }
   upgradeBenchController = createUpgradeBenchController({
     panel: gameElements.upgradeBenchPanel,
@@ -1569,7 +1569,7 @@ import {
     secondSlotUnlocked: () => coop?.secondUpgradeSlotUnlocked?.() ?? false,
     gemBalance: () => coop?.gemBalance?.() ?? 0n,
     upgradeLevel: (itemId) => coop?.itemUpgradeLevel?.(itemId) ?? 0,
-    startUpgrade: async (slot, itemId, position) => coop?.startItemUpgrade?.(slot, itemId, position),
+    storage: localStorage, startUpgrade: async (slot, itemId, position) => coop?.startItemUpgrade?.(slot, itemId, position),
     cancelUpgrade: async (slot) => coop?.cancelItemUpgrade?.(slot),
     speedUpUpgrade: async (slot) => coop?.speedUpItemUpgradeWithGems?.(slot),
     unlockSecondSlot: async () => coop?.unlockSecondUpgradeSlot?.(),
