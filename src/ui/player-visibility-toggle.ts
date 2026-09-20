@@ -12,6 +12,7 @@ export function createPlayerVisibilityToggle(options: {
   let enabled = true;
   let visible = true;
   let cooldownUntil = 0;
+  let suspended = false;
   let timer: ReturnType<typeof setTimeout> | undefined;
   try { enabled = options.storage?.getItem(STORAGE_KEY) !== "false"; } catch { /* Storage may be unavailable. */ }
   visible = enabled;
@@ -52,15 +53,34 @@ export function createPlayerVisibilityToggle(options: {
   refresh();
   options.setVisible(visible);
   idle.setEnabled(visible);
-  return { noteManualMovement() {
-    if (!enabled || options.button.ownerDocument.hidden) return;
-    if (!visible) {
-      // Only idle hiding wakes automatically; explicit off stays off.
-      if (performance.now() < cooldownUntil) return;
-      visible = true;
-      idle.setEnabled(true);
-      cooldownUntil = performance.now() + COOLDOWN_MS;
-      refresh(); options.setVisible(true);
-    } else idle.noteManualMovement();
-  }, dispose() { idle.dispose(); clearTimeout(timer); options.button.removeEventListener("click", click); } };
+  return {
+    /**
+     * Hide for an update without recording a choice. An update disconnects
+     * everyone at once, and presence for a player who is about to reload is
+     * traffic nobody sees; the stored preference is left alone so the next
+     * start comes back exactly as the player left it.
+     */
+    suspend() {
+      // Holds until the reload; movement must not bring presence back for a
+      // client that is on its way out.
+      suspended = true;
+      if (!visible) return;
+      visible = false;
+      idle.setEnabled(false);
+      refresh();
+      options.setVisible(false);
+    },
+    noteManualMovement() {
+      if (suspended || !enabled || options.button.ownerDocument.hidden) return;
+      if (!visible) {
+        // Only idle hiding wakes automatically; explicit off stays off.
+        if (performance.now() < cooldownUntil) return;
+        visible = true;
+        idle.setEnabled(true);
+        cooldownUntil = performance.now() + COOLDOWN_MS;
+        refresh(); options.setVisible(true);
+      } else idle.noteManualMovement();
+    },
+    dispose() { idle.dispose(); clearTimeout(timer); options.button.removeEventListener("click", click); },
+  };
 }

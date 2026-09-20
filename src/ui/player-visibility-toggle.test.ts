@@ -119,3 +119,31 @@ it("manual movement never overrides always-off, even after cooldown or reload", 
   expect(state.storage.setItem).toHaveBeenLastCalledWith("wildstat-show-other-players", "false");
   state.toggle.dispose();
 });
+
+it("hides for an update without recording a choice, and stays hidden until the reload", () => {
+  const state = setup(null);
+  expect(state.setVisible.mock.calls).toEqual([[true]]);
+  state.storage.setItem.mockClear();
+
+  state.toggle.suspend();
+  expect(state.setVisible).toHaveBeenLastCalledWith(false);
+  // The player never chose this, so nothing is written.
+  expect(state.storage.setItem).not.toHaveBeenCalled();
+
+  // Moving must not bring presence back for a client on its way out.
+  state.setVisible.mockClear();
+  state.toggle.noteManualMovement();
+  expect(state.setVisible).not.toHaveBeenCalled();
+});
+
+it("comes back to the saved preference on the next start after an update", () => {
+  const first = setup(null);
+  first.toggle.suspend();
+  expect(first.setVisible).toHaveBeenLastCalledWith(false);
+  // A fresh start reads the stored preference, which the update never touched.
+  const next = setup(null);
+  expect(next.setVisible.mock.calls).toEqual([[true]]);
+  // A player who had chosen off still comes back off.
+  const chosenOff = setup("false");
+  expect(chosenOff.setVisible.mock.calls).toEqual([[false]]);
+});

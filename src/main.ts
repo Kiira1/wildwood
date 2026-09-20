@@ -1860,7 +1860,7 @@ import {
     acknowledge: async id => { await coop?.acknowledgeRelease?.(id); },
     rememberSession: version => coop?.prepareUpdateReload?.(version) ?? false,
     render: createScheduledUpdateView(),
-    checkVersion: () => enforceLatestVersion(GAME_VERSION, version => startupCoordinator.showGameUpdating(version), updateHandoff),
+    checkVersion: () => enforceLatestVersion(GAME_VERSION, version => { playerVisibility.suspend(); startupCoordinator.showGameUpdating(version); }, updateHandoff),
   });
   const updateHandoff = { canReload: scheduledUpdate.canReload, beforeReload: scheduledUpdate.prepareReload };
   window.setInterval(scheduledUpdate.tick, 250);
