@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.749": [
+    "The finished-upgrade marker now sits on the bag, not the button beside it.",
+  ],
   "0.748": [
     "A finished item upgrade now marks your bag until you open it.",
     "Map instances hold more players again after an instance-capacity fix.",
@@ -2097,6 +2100,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.749": "2026-09-19",
   "0.748": "2026-09-19",
   "0.747": "2026-09-19",
   "0.746": "2026-09-19",
