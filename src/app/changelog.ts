@@ -1,4 +1,12 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.746": [
+    "Home is now the Base, and the toolbar button names where it takes you: Fight while you are standing in it.",
+    "The research desk now shows a countdown like the upgrade bench beside it.",
+    "A finished item upgrade waiting to be collected now shows a marker on your bag.",
+    "Regular damage enemies have less health, so clearing them is worth it next to the elite that guards them.",
+    "Endless maps are coloured like a forest instead of washing out to white.",
+    "Your gender icon shows again on the boss defeat notice.",
+  ],
   "0.745": [
     "Improved server security monitoring.",
   ],
@@ -2080,6 +2088,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.746": "2026-09-19",
   "0.745": "2026-09-18",
   "0.744": "2026-09-18",
   "0.743": "2026-09-18",
