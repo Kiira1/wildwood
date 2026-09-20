@@ -5,6 +5,7 @@ import { createStatTrackerModel, TRACKED_STATS, type TrackerValues } from './sta
 const LABELS = { power: 'Power', hp: 'Max HP', damage: 'Damage', armor: 'Armor', regen: 'Regen', kills: 'Kills' };
 const ENABLED_KEY = 'wildstat-native-stat-tracker-enabled';
 const POSITION_KEY = 'wildstat-native-stat-tracker-position';
+const COLLAPSED_KEY = 'wildstat-native-stat-tracker-collapsed';
 
 export function installStatTracker(options: {
   read: () => { identity: string; values: TrackerValues } | null;
@@ -23,14 +24,23 @@ export function installStatTracker(options: {
 
   const clock = panel.querySelector<HTMLElement>('.stat-tracker-time')!;
   const cells = new Map(TRACKED_STATS.map(stat => [stat, panel.querySelectorAll<HTMLTableCellElement>(`[data-stat="${stat}"] td`)]));
-  let enabled = false, lastSave = 0;
+  let enabled = false, lastSave = 0, collapsed = false, suppressClick = false;
   let position: { x: number; y: number } | null = null;
-  let drag: { id: number; x: number; y: number } | null = null;
+  let drag: { id: number; x: number; y: number; startX: number; startY: number; moved: boolean } | null = null;
   try {
     enabled = options.storage.getItem(ENABLED_KEY) === 'true';
+    collapsed = options.storage.getItem(COLLAPSED_KEY) === 'true';
     const saved = JSON.parse(options.storage.getItem(POSITION_KEY) || 'null');
     if (saved && Number.isFinite(saved.x) && Number.isFinite(saved.y)) position = saved;
   } catch {}
+  function renderCollapsed() {
+    panel.classList.toggle('is-collapsed', collapsed);
+    handle.setAttribute('aria-expanded', String(!collapsed));
+    handle.setAttribute('aria-label', `${collapsed ? 'Expand' : 'Collapse'} stat tracker. Drag to move; Home to reset position.`);
+    handle.textContent = `Stat tracker ${collapsed ? '▸' : '▾'}`;
+    for (const element of panel.querySelectorAll<HTMLElement>('table, footer, p')) element.hidden = collapsed;
+    place();
+  }
   function savePosition() {
     try { options.storage.setItem(POSITION_KEY, JSON.stringify(position)); } catch {}
   }
@@ -75,27 +85,54 @@ export function installStatTracker(options: {
   toggle.addEventListener('click', () => setEnabled(!enabled));
 
   reset.addEventListener('click', () => { if (options.read()) { refresh(); model.reset(); refresh(); } });
+  // A world gesture keeps ownership when its pointer crosses this overlay.
+  window.addEventListener('pointerdown', event => {
+    if (event.button === 0 && (event.target as HTMLElement | null)?.tagName === 'CANVAS') {
+      panel.classList.add('is-world-gesture');
+    }
+  }, true);
+  const endWorldGesture = () => panel.classList.remove('is-world-gesture');
+  window.addEventListener('pointerup', endWorldGesture, true);
+  window.addEventListener('pointercancel', endWorldGesture, true);
+  window.addEventListener('blur', endWorldGesture);
+  // Pointer activation should not move keyboard focus onto the reset button.
+  reset.addEventListener('pointerdown', event => event.preventDefault());
   // UI gestures must never become world movement or combat input.
-  for (const event of ['pointerdown', 'pointermove', 'pointerup', 'click', 'dblclick', 'keydown', 'keyup']) {
+  for (const event of ['pointerdown', 'pointermove', 'pointerup', 'click', 'dblclick']) {
     panel.addEventListener(event, e => e.stopPropagation());
+  }
+  for (const type of ['keydown', 'keyup']) {
+    panel.addEventListener(type, event => {
+      if (!['KeyW', 'KeyA', 'KeyS', 'KeyD'].includes(event.code)) event.stopPropagation();
+    });
   }
   handle.addEventListener('pointerdown', event => {
     if (event.button !== 0) return;
     const bounds = panel.getBoundingClientRect();
-    drag = { id: event.pointerId, x: event.clientX - bounds.left, y: event.clientY - bounds.top };
+    suppressClick = false;
+    drag = { id: event.pointerId, x: event.clientX - bounds.left, y: event.clientY - bounds.top,
+      startX: event.clientX, startY: event.clientY, moved: false };
     handle.setPointerCapture(event.pointerId);
     event.preventDefault();
   });
   handle.addEventListener('pointermove', event => {
     if (!drag || drag.id !== event.pointerId) return;
+    if (Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) > 6) drag.moved = true;
+    if (!drag.moved) return;
     position = { x: event.clientX - drag.x, y: event.clientY - drag.y };
     place();
   });
-  const finishDrag = () => { drag = null; savePosition(); };
+  const finishDrag = () => { if (drag?.moved) { suppressClick = true; savePosition(); } drag = null; };
   handle.addEventListener('pointerup', finishDrag);
-  handle.addEventListener('pointercancel', finishDrag);
+  handle.addEventListener('pointercancel', () => { finishDrag(); suppressClick = true; });
   handle.addEventListener('lostpointercapture', finishDrag);
   handle.addEventListener('dblclick', home);
+  handle.addEventListener('click', event => {
+    if (suppressClick && event.detail !== 0) { suppressClick = false; return; }
+    collapsed = !collapsed;
+    try { options.storage.setItem(COLLAPSED_KEY, String(collapsed)); } catch {}
+    renderCollapsed();
+  });
   handle.addEventListener('keydown', event => {
     if (event.key === 'Home') { event.preventDefault(); home(); return; }
     const delta = ({ ArrowLeft: [-10, 0], ArrowRight: [10, 0], ArrowUp: [0, -10], ArrowDown: [0, 10] } as Record<string, number[]>)[event.key];
@@ -110,5 +147,6 @@ export function installStatTracker(options: {
   document.addEventListener('visibilitychange', () => { model.save(); if (!document.hidden) refresh(); });
   window.setInterval(() => { if (!document.hidden) refresh(); }, 1000);
   renderBooleanSetting(toggle, enabled);
+  renderCollapsed();
   refresh();
 }

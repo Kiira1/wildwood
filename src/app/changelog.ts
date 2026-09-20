@@ -1,4 +1,8 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.750": [
+    "Tap the stat tracker header to collapse or expand it; drag to move it.",
+    "The stat tracker now appears above gems, multiplayer, mailbox and FPS controls.",
+  ],
   "0.749": [
     "The finished-upgrade marker now sits on the bag, not the button beside it.",
   ],
@@ -2100,6 +2104,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.750": "2026-09-19",
   "0.749": "2026-09-19",
   "0.748": "2026-09-19",
   "0.747": "2026-09-19",

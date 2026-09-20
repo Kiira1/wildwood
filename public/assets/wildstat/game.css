@@ -1,8 +1,15 @@
   .stat-tracker { position: fixed; right: max(12px, env(safe-area-inset-right)); bottom: max(100px, calc(env(safe-area-inset-bottom) + 90px)); width: min(300px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); overflow: auto; z-index: 4; pointer-events: auto; background: var(--window-surface, #131413); color: var(--text, #f5f5e9); border: 1px solid var(--border); border-radius: 9px; box-shadow: 0 4px 16px #0006; font: 12px/1.3 "Wildstat Chat", sans-serif; font-variant-numeric: tabular-nums; }
-  .stat-tracker[hidden] { display: none; }
+  /* Above HUD controls (5–8), below full-screen windows (10+). */
+  #hud > .stat-tracker { z-index: 9; }
+  .stat-tracker.is-world-gesture, .stat-tracker.is-world-gesture * { pointer-events: none; }
+  .stat-tracker.is-collapsed { width: max-content; max-width: calc(100vw - 24px); overflow: hidden; }
+  .stat-tracker.is-collapsed header { padding: 0 4px; }
+  .stat-tracker.is-collapsed .stat-tracker-handle { min-height: 32px; padding: 16px 12px; }
+  .stat-tracker[hidden], .stat-tracker [hidden] { display: none; }
   .stat-tracker header, .stat-tracker footer { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 0 8px; }
-  .stat-tracker button { color: inherit; background: transparent; border: 0; min-height: 32px; font: inherit; cursor: pointer; }
-  .stat-tracker .stat-tracker-handle { flex: 1; text-align: left; font-weight: 800; cursor: grab; touch-action: none; }
+  .stat-tracker button { color: inherit; background: transparent; border: 0; margin: 0; padding: 4px 6px; min-height: 32px; font: inherit; cursor: pointer; }
+  .stat-tracker button:active { transform: none; }
+  .stat-tracker .stat-tracker-handle { flex: 1; text-align: left; white-space: nowrap; font-weight: 800; cursor: grab; touch-action: none; }
   .stat-tracker-handle:active { cursor: grabbing; }
 
   .stat-tracker button:focus-visible { outline: 2px solid var(--gold); outline-offset: -2px; border-radius: 6px; }
@@ -15,7 +22,7 @@
   .stat-tracker .negative { color: var(--red); }
   .stat-tracker p { margin: 0 8px 6px; font-size: 10px; color: var(--muted); }
   .stat-tracker-reset { text-decoration: underline; }
-  @media (any-pointer: coarse) { .stat-tracker button { min-height: 44px; } }
+  @media (any-pointer: coarse) { .stat-tracker button, .stat-tracker.is-collapsed .stat-tracker-handle { min-height: 44px; } }
   @media (max-width: 380px) { .stat-tracker { font-size: 11px; } .stat-tracker th, .stat-tracker td { padding: 3px 5px; } }
 
   @font-face {
