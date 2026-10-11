@@ -142,8 +142,8 @@ const afterUpdateGateShell = String.raw`
     <button id="profileDuelBtn" class="profile-duel-button" type="button" hidden>DUEL</button>
     <div class="profile-tabs profile-tabs-with-action">
       <div class="profile-tab-list" role="tablist" aria-label="Player profile sections">
-        <button id="profileStatsTab" class="profile-tab is-active" type="button" role="tab" aria-selected="true" aria-controls="profileStatsPanel">STATS</button>
-        <button id="profileOverviewTab" class="profile-tab" type="button" role="tab" aria-selected="false" aria-controls="profileOverviewPanel">INFO</button>
+        <button id="profileStatsTab" class="profile-tab is-active" type="button" role="tab" aria-selected="true" aria-controls="profileStatsPanel">Stats</button>
+        <button id="profileOverviewTab" class="profile-tab" type="button" role="tab" aria-selected="false" aria-controls="profileOverviewPanel">Info</button>
         <button id="profileBonusesTab" class="profile-tab" type="button" role="tab" aria-selected="false" aria-controls="profileBonusesPanel" hidden>Bonuses</button>
       </div>
       <div id="profileOwnActions" class="profile-own-actions" hidden>
