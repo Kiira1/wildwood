@@ -1,6 +1,8 @@
 import { MIN_ATTACK_INTERVAL } from "../../shared/rules";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createRuntimeHudController } from "./runtime-hud-controller";
+import { setStatPopupsEnabled } from "./stat-popup-setting";
+import { addAttackSpeedRating, attackCapInterval, attackIntervalForRating, attackSpeedLabel, type AttackCapArg } from "../../shared/stat-rating";
 import { renderPlayerHud } from "./hud";
 vi.mock("./hud", () => ({ renderPlayerHud: vi.fn() }));
 
@@ -57,12 +59,13 @@ class TestElement {
   }
 }
 
-function setupHud() {
+function setupHud(attackCap?: AttackCapArg) {
   const pickupLog = new TestElement();
   const player = { attackRate: 1.56 };
   const controller = createRuntimeHudController({
     elements: { pickupLog, message: new TestElement(), itemDropReveal: new TestElement() },
     player,
+    ...(attackCap === undefined ? {} : { attackCap: () => attackCap }),
   } as unknown as Parameters<typeof createRuntimeHudController>[0]);
   return { controller, pickupLog, player };
 }
@@ -154,6 +157,50 @@ describe("runtime reward notifications", () => {
     expect(entry.classList.contains("is-capped")).toBe(true);
     controller.logPickup("+1 DAMAGE", "#fff");
     expect(pickupLog.children[1].querySelector(".stat-reward-value")?.textContent).toBe("+1");
+  });
+
+  it("shows an Attack Speed kill as Capped once the rate reads as the cap, Quick Draw's raise in, as the profile's Max does", () => {
+    // Quick Draw +0.5: the curve closes in on 3.5/s and never reaches it, so the interval is never the cap's.
+    const cap = { minInterval: MIN_ATTACK_INTERVAL, raise: .5 };
+    const { controller, pickupLog, player } = setupHud(cap);
+    player.attackRate = attackIntervalForRating(1e60, cap);
+    expect(player.attackRate).toBeGreaterThan(attackCapInterval(cap));
+    expect(attackSpeedLabel(1 / player.attackRate, 1 / attackCapInterval(cap))).toBe("3.50/s (Max)");
+    // What a kill logs since 0.901.47 (rewardLabel): "Attack Speed", not "ATK/SEC".
+    controller.logPickup("+2.50 Attack Speed", "#fff", "total", 2.5);
+    expect(pickupLog.children[0].querySelector(".stat-reward-value")?.textContent).toBe("Capped");
+    controller.logPickup("+1 Soul Attack Speed", "#fff");
+    expect(pickupLog.children[1].querySelector(".stat-reward-value")?.textContent).toBe("Capped");
+  });
+
+  it("does not show Capped at the base 3/s when Quick Draw has raised the cap", () => {
+    const cap = { minInterval: MIN_ATTACK_INTERVAL, raise: .5 };
+    const { controller, pickupLog, player } = setupHud(cap);
+    player.attackRate = addAttackSpeedRating(MIN_ATTACK_INTERVAL, 0, cap);
+    controller.logPickup("+2.50 Attack Speed", "#fff", "total", 2.5);
+    expect(pickupLog.children[0].querySelector(".stat-reward-value")?.textContent).toBe("+2.50");
+  });
+
+  it("shows no stat gain popup, soul crit damage's multiplier included, with Stat Gain Popups off", () => {
+    const { controller, pickupLog, player } = setupHud();
+    try {
+      setStatPopupsEnabled(false);
+      controller.logPickup("+2.50 Attack Speed", "#fff");
+      controller.logPickup("+0.002× Soul Crit Damage", "#fff");
+      controller.logPickup("+1 Soul Attack Speed", "#fff");
+      player.attackRate = MIN_ATTACK_INTERVAL;
+      controller.logPickup("+2.50 Attack Speed", "#fff");
+      expect(pickupLog.children).toHaveLength(0);
+      // Other pick-up messages still show.
+      controller.logPickup("Splash! You fell into the well", "#7fd4ff");
+      expect(pickupLog.children).toHaveLength(1);
+      setStatPopupsEnabled(true);
+      controller.logPickup("+0.002× Soul Crit Damage", "#fff");
+      controller.logPickup("+0.002× Soul Crit Damage", "#fff");
+      expect(pickupLog.children[1].querySelector(".stat-reward-value")?.textContent).toBe("+0.004×");
+    } finally {
+      setStatPopupsEnabled(true);
+    }
   });
 
   it("sums the unrounded rewards, so a stat gain the text rounds away still adds up", () => {

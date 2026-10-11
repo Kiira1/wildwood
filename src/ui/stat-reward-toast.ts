@@ -1,3 +1,4 @@
+import { attackCapInterval, attackSpeedLabel, type AttackCapArg } from "../../shared/stat-rating";
 import { formatCompactNumber } from "./number-format";
 
 type StatRewardPresentation = {
@@ -30,6 +31,22 @@ const STAT_REWARD_PRESENTATION: Readonly<Record<string, StatRewardPresentation>>
 };
 /** Stats whose gains read as a percentage (+0.2%): none since crit damage became a rating (0.901.47). */
 const PERCENT_STATS = new Set<string>();
+/** Stats whose gains read as a multiplier (+0.002×): a soul crit damage kill (soulRewardText). */
+const MULTIPLIER_STATS = new Set<string>(["SOUL CRIT DAMAGE"]);
+/** Every name an attack speed gain goes by: each shows Capped at the cap. "Attack Speed" since 0.901.47. */
+const ATTACK_SPEED_STATS = new Set<string>(["ATK/SEC", "ATTACK SPEED", "SOUL ATTACK SPEED"]);
+
+/**
+ * Whether attack speed reads as capped: the same rule the profile's "(Max)"
+ * uses (attackSpeedLabel), under the player's whole cap, Quick Draw and
+ * Reflect Only both in. The rating curve only closes in on the cap, so the
+ * interval itself never reaches it.
+ */
+export function attackSpeedReadsCapped(interval: number, cap: AttackCapArg) {
+  const fastest = attackCapInterval(cap);
+  if (!(interval > 0) || !Number.isFinite(interval)) return false;
+  return attackSpeedLabel(1 / Math.max(interval, fastest), 1 / fastest).endsWith("(Max)");
+}
 
 const COMPACT_MULTIPLIERS: Readonly<Record<string, number>> = {
   "": 1,
@@ -57,6 +74,7 @@ const COMPACT_MULTIPLIERS: Readonly<Record<string, number>> = {
 };
 
 function statRewardValue(amount: string) {
+  if (amount.endsWith("×")) amount = amount.slice(0, -1);
   if (amount.endsWith("%")) { const value = Number(amount.slice(1, -1)); return amount.startsWith("+") && Number.isFinite(value) ? value : null; }
   // Scientific notation (a setting) reads as mantissa and exponent: +5.00e6.
   const scientific = /^\+([0-9]+(?:\.[0-9]+)?)e([0-9]+)$/i.exec(amount);
@@ -71,6 +89,7 @@ function statRewardValue(amount: string) {
 
 export function formatStatRewardToastAmount(stat: string, value: number) {
   if (PERCENT_STATS.has(stat)) return `+${+value.toFixed(2)}%`;
+  if (MULTIPLIER_STATS.has(stat)) return `+${+value.toFixed(3)}×`;
   if (stat === "ATK/SEC" || (Math.abs(value) < 1_000 && !Number.isInteger(value))) {
     return `+${value.toFixed(2)}`;
   }
@@ -84,7 +103,7 @@ export function statRewardToastModel(text: string, attackSpeedCapped = false): S
   const presentation = STAT_REWARD_PRESENTATION[stat];
   const value = statRewardValue(match[1]);
   if (!presentation || value === null) return null;
-  const capped = stat === "ATK/SEC" && attackSpeedCapped;
+  const capped = ATTACK_SPEED_STATS.has(stat) && attackSpeedCapped;
   return { stat, amount: capped ? "Capped" : match[1], value: capped ? 0 : value, capped, ...presentation };
 }
 

@@ -1,5 +1,6 @@
 import { applyAvatarFrame } from "../app/avatar-frames";
 import { MIN_ATTACK_INTERVAL } from "../../shared/rules";
+import type { AttackCapArg } from "../../shared/stat-rating";
 import type { PlayerState, RuntimeDuelReplay, RuntimeDuelState } from "../game/runtime/types";
 import { createDuelResultStatRow } from "./duel-result";
 import { renderPlayerHud } from "./hud";
@@ -16,6 +17,7 @@ import {
   createStatRewardToast,
   formatStatRewardToastAmount,
   statRewardToastModel,
+  attackSpeedReadsCapped,
 } from "./stat-reward-toast";
 import type { PlayerGender } from "../../shared/player-gender";
 import { statPopupsEnabled } from "./stat-popup-setting";
@@ -49,7 +51,8 @@ type RuntimeHudElements = {
 type RuntimeHudDependencies = {
   elements: RuntimeHudElements;
   player: PlayerState;
-  minimumAttackInterval?: () => number;
+  /** The player's attack speed cap (playerAttackCap): Reflect Only's wins and Quick Draw both raise it. */
+  attackCap?: () => AttackCapArg;
   activeDuel: () => RuntimeDuelState | null;
   duelOpponentName: (duel: RuntimeDuelState) => string;
   localDisplayName: () => string;
@@ -133,12 +136,13 @@ export function createRuntimeHudController(dependencies: RuntimeHudDependencies)
       }
       rewardDisplayMode = mode;
     }
-    const attackSpeedCapped = dependencies.player.attackRate <= (dependencies.minimumAttackInterval?.() ?? MIN_ATTACK_INTERVAL) + 1e-7;
+    const attackSpeedCapped = attackSpeedReadsCapped(dependencies.player.attackRate, dependencies.attackCap?.() ?? MIN_ATTACK_INTERVAL);
     const model = statRewardToastModel(text, attackSpeedCapped);
     if (model && !model.capped && value !== undefined && Number.isFinite(value)) model.value = value;
     // A stat reward of nothing is not news, whoever paid it; and none show with stat gain popups off.
     if (model && !model.capped && !(model.value > 0)) return;
-    if (model && !statPopupsEnabled()) return;
+    // A "+..." text the model cannot read is still a stat gain: it must not slip past the setting as a plain message.
+    if ((model || text.trim().startsWith("+")) && !statPopupsEnabled()) return;
     const active = model ? activeStatRewards.get(model.stat) : undefined;
     if (model && active && active.entry.parentElement === elements.pickupLog) {
       active.total = model.capped ? 0 : active.total + model.value;

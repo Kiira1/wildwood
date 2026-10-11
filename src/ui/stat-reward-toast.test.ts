@@ -32,14 +32,24 @@ it("names a curve map's speed reward Attack Speed", () => {
 
 it("shows soul stat gains as stat gains, apart from the run's own, attack speed and crit damage as rating points", async () => {
   const { SOUL_STAT_DETAILS } = await import("../../shared/soul-dimension");
-  for (const detail of Object.values(SOUL_STAT_DETAILS)) {
-    const amount = `+${detail.reward}`;
+  const { soulRewardText } = await import("../game/soul-world");
+  for (const [stat, detail] of Object.entries(SOUL_STAT_DETAILS)) {
+    // The text a soul kill logs (soul-dimension-runtime.ts): crit damage reads "+0.002×".
+    const amount = soulRewardText(stat as keyof typeof SOUL_STAT_DETAILS);
     const model = statRewardToastModel(`${amount} Soul ${detail.label}`);
     expect(model, detail.label).toMatchObject({ label: `Soul ${detail.label}`, amount });
     expect(model!.stat).not.toBe(statRewardToastModel("+1 Damage")!.stat);
   }
-  expect(formatStatRewardToastAmount("SOUL CRIT DAMAGE", 6)).toBe("+6");
+  expect(formatStatRewardToastAmount("SOUL CRIT DAMAGE", .002 * 3)).toBe("+0.006×");
   expect(formatStatRewardToastAmount("SOUL ATTACK SPEED", 3)).toBe("+3");
   expect(statRewardToastModel("+2.50 Crit Damage")).toMatchObject({ stat: "CRIT DAMAGE", value: 2.5, label: "Crit Damage" });
   expect(formatStatRewardToastAmount("SOUL DAMAGE", 12)).toBe("+12");
+});
+
+it("shows every name attack speed goes by as Capped at the cap", () => {
+  for (const text of ["+0.25 ATK/SEC", "+2.50 Attack Speed", "+1 Soul Attack Speed"]) {
+    expect(statRewardToastModel(text, true), text).toMatchObject({ amount: "Capped", value: 0, capped: true });
+    expect(statRewardToastModel(text, false), text).toMatchObject({ capped: false });
+  }
+  expect(statRewardToastModel("+2.50 Crit Damage", true)).toMatchObject({ capped: false, amount: "+2.50" });
 });
