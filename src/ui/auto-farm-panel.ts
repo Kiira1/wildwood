@@ -22,7 +22,7 @@ const HELP_LINES: readonly [term: string, line: string][] = [
   ['Move On', "Goes to the next map once your power reaches Move At times the map's (1x is even)."],
   ['Fight Bosses', "Fights the boss once your power reaches Fight At times the boss's (1x is even), until it or you go down."],
   ['Deaths', 'It respawns and carries on with the same settings.'],
-  ['Pull Whole Group', 'On pulls the whole camp at once.'],
+  ['Aggro', 'The switch beside a stat pulls its whole camp to you. One camp at once, one more for each Aggro win.'],
   ['Target', 'Which enemy it hits first.'],
 ]
 /** The slider under a switch: how much of the map's or boss's power to have before it goes, 0.1x to 10x. */
@@ -80,7 +80,7 @@ export function createAutoFarmPanel(options: {
     + `<div id="autoFarmContent" class="farm-card-content" hidden>`
     + `<div id="autoFarmHelp" class="farm-help" hidden><dl class="farm-help-list"></dl></div>`
     + `<div class="farm-body">`
-    + `<div class="farm-setting farm-stats-heading"><span id="autoFarmStatsLabel" class="farm-setting-label">Stats</span></div>`
+    + `<div class="farm-setting farm-stats-heading"><span id="autoFarmStatsLabel" class="farm-setting-label">Stats</span><span class="farm-aggro-count" hidden></span></div>`
     + `<div class="farm-weights" role="group" aria-labelledby="autoFarmStatsLabel"></div>`
     + `<p class="farm-empty" hidden>No Enemies Here</p>`
     + `<button type="button" class="farm-switch farm-move" role="switch" data-switch="advance" aria-checked="false" aria-describedby="autoFarmBossStatus">`
@@ -91,7 +91,6 @@ export function createAutoFarmPanel(options: {
     + powerSlider('farm-boss-power', 'Fight At', 'Of Boss Power', 'Fight Bosses At This Much Of Their Power')
     + `<div class="farm-more">`
     + `<div class="farm-setting farm-aggro-row" hidden><span class="farm-setting-label">Chasing Groups</span><div class="farm-segment"><button type="button" class="farm-aggro-pick">Choose</button></div></div>`
-    + segment('Pull Whole Group', 'autoFarmPullLabel', 'farm-pull', `<button type="button" role="radio" data-pull="off">Off</button><button type="button" role="radio" data-pull="on">On</button>`)
     + segment('Target', 'autoFarmTargetLabel', 'farm-target', AUTO_FARM_PRIORITIES.map(entry => `<button type="button" role="radio" data-priority="${entry.id}">${entry.label}</button>`).join(''))
     + `</div></div>`
     + `<footer class="farm-footer"><p class="farm-selection" aria-live="polite"></p>`
@@ -137,8 +136,7 @@ export function createAutoFarmPanel(options: {
   let choiceKey = '';
 
   const priorityButtons = [...sheet.querySelectorAll<HTMLButtonElement>('[data-priority]')];
-  const pullRow = element('.farm-pull');
-  const pullButtons = [...pullRow.querySelectorAll<HTMLButtonElement>('[data-pull]')];
+  const aggroCount = element('.farm-aggro-count');
   const advanceSwitch = element<HTMLButtonElement>('[data-switch="advance"]');
   const bossSwitch = element<HTMLButtonElement>('[data-switch="bosses"]');
   /** The two power sliders, each resting with its switch off. */
@@ -181,15 +179,17 @@ export function createAutoFarmPanel(options: {
       // Dimmed while its switch is off, but never locked: it can be set first and switched on after.
       power.row.classList.toggle('is-off', !power.on());
     }
-    // Off during an Aggro run: the run's own chasing groups are its pull.
-    const pullOff = options.farm.pullAvailable?.() === false;
-    const pulling = options.farm.pullAll() && !pullOff;
-    pullRow.classList.toggle('is-off', pullOff);
-    pullRow.setAttribute('aria-disabled', String(pullOff));
-    pullRow.title = pullOff ? 'Off During An Aggro Run' : '';
-    for (const button of pullButtons) {
-      button.setAttribute('aria-checked', String((button.dataset.pull === 'on') === pulling));
-      button.disabled = pullOff;
+    // Aggro beside each slider: up to the limit (one, one more per Aggro win); hidden during an Aggro run, whose chasing groups are its pull.
+    const limit = options.farm.pullLimit(), pulled = options.farm.pulledGroupKeys();
+    const countText = `Aggro ${pulled.length}/${limit}`;
+    aggroCount.hidden = limit === 0;
+    if (aggroCount.textContent !== countText) aggroCount.textContent = countText;
+    for (const row of list.querySelectorAll<HTMLElement>('[data-group]')) {
+      const aggro = row.querySelector<HTMLButtonElement>('.farm-aggro-switch')!, on = pulled.includes(row.dataset.group!);
+      aggro.hidden = limit === 0;
+      aggro.setAttribute('aria-checked', String(on));
+      aggro.disabled = !on && pulled.length >= limit;
+      aggro.title = aggro.disabled ? `Aggro Pulls ${limit} At Once: Switch One Off First` : '';
     }
     // While farming the window is a look and a change: Stop ends the farm, Go keeps it going with what is set.
     const live = farming();
@@ -240,7 +240,8 @@ export function createAutoFarmPanel(options: {
         const soul = choice.soul ? SOUL_STAT_DETAILS[choice.soul] : null;
         row.style.setProperty('--farm-stat-color', soul?.color ?? REWARD_DATA[reward.type].color);
         row.innerHTML = '<span class="farm-weight-name"><span class="farm-weight-label"></span><span class="farm-weight-sub"></span></span>'
-          + `<input type="range" min="0" max="100" step="1"><output aria-hidden="true"></output>`;
+          + `<input type="range" min="0" max="100" step="1"><output aria-hidden="true"></output>`
+          + '<button type="button" class="pill-switch farm-aggro-switch" role="switch" aria-checked="false"><span class="pill-switch-knob" aria-hidden="true"></span></button>';
         // The stat is the choice; what one kill pays is the detail.
         const label = soul?.label ?? rewardStatLabel(reward);
         row.querySelector('.farm-weight-label')!.textContent = label;
@@ -248,6 +249,14 @@ export function createAutoFarmPanel(options: {
         row.title = choice.kinds.join(', ');
         const slider = row.querySelector('input')!;
         slider.setAttribute('aria-label', `${label} Share Of Farming Time`);
+        const aggro = row.querySelector<HTMLButtonElement>('.farm-aggro-switch')!;
+        aggro.setAttribute('aria-label', `Aggro ${label}`);
+        // Inside the row's label: the tap is the switch's alone, not the slider's.
+        aggro.addEventListener('click', event => {
+          event.preventDefault();
+          options.farm.setGroupPulled(choice.key, aggro.getAttribute('aria-checked') !== 'true');
+          updateSelection();
+        });
         // Each slider moves on its own (Jasmean: "move them independently, while all still being percentage of 100").
         slider.addEventListener('input', () => {
           const value = Math.min(100, Math.max(0, Math.round(Number(slider.value))));
@@ -370,10 +379,6 @@ export function createAutoFarmPanel(options: {
       updateSelection();
     });
   }
-  for (const button of pullButtons) button.addEventListener('click', () => {
-    if (options.farm.pullAvailable?.() !== false) options.farm.setPullAll(button.dataset.pull === 'on');
-    updateSelection();
-  });
   sheet.addEventListener('keydown', event => {
     if (event.key === 'Escape' && !content.hidden) { event.preventDefault(); back(); }
   });

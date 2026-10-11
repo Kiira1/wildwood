@@ -533,7 +533,7 @@ import {
   const autoFarm = createAutoFarmController({
     resumeStore: createAutoFarmResumeStore(),
     player, enemies, spawnSites,
-    mapId: () => currentMapId, pullCamps: () => coop?.aggroChallenge?.()?.active || coop?.bonusOff?.().includes("challenge.aggro") ? 0 : aggroPullCamps(coop?.aggroChallenge?.()), forcedGroups: () => forcedAggroGroups(coop?.aggroChallenge?.(), coop?.localIdentity?.()),
+    mapId: () => currentMapId, pullCamps: () => coop?.aggroChallenge?.()?.active ? 0 : aggroPullCamps(coop?.bonusOff?.().includes("challenge.aggro") ? null : coop?.aggroChallenge?.()), forcedGroups: () => forcedAggroGroups(coop?.aggroChallenge?.(), coop?.localIdentity?.()),
     equippedWeapon: () => inventory.equippedRightHand || inventory.equippedLeftHand,
     localIdentity: () => coop?.localIdentity?.(),
     connection: () => farmConnection === 'ready' && (!coop?.isConnected?.() || !session?.isRunning()

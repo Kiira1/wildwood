@@ -17,7 +17,7 @@ import { AGGRO_GROUPS, writeAggroPicks } from '../game/runtime/aggro-picks';
 let destroy: (() => void) | undefined;
 afterEach(() => { destroy?.(); destroy = undefined; vi.unstubAllGlobals(); });
 /** The panel's view of a controller; tests swap in the members they steer. */
-type FarmOverrides = Partial<{ moveStatus: () => string; moveReady: () => boolean; bossStatus: () => string; bossReady: () => boolean; pullAvailable: () => boolean }>;
+type FarmOverrides = Partial<{ moveStatus: () => string; moveReady: () => boolean; bossStatus: () => string; bossReady: () => boolean; pullLimit: () => number }>;
 function memoryStorage(values = new Map<string, string>()) {
   return { values, getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => { values.set(key, value); } };
 }
@@ -32,7 +32,7 @@ function setup(empty = false, map = "forest", overrides: FarmOverrides = {}, sto
   let showBase = false;
   let rewardMultiplier = 1;
   let damageBonus = 1;
-  const farm = Object.assign(createAutoFarmController({ ...state, mapId: () => map, unavailable: () => unavailable, paused: () => false, speed: () => 300, obstacles: () => [] }), overrides);
+  const farm = Object.assign(createAutoFarmController({ ...state, mapId: () => map, unavailable: () => unavailable, paused: () => false, speed: () => 300, obstacles: () => [], pullCamps: overrides.pullLimit }), overrides);
   const pause = vi.fn(), clearInput = vi.fn();
   const panel = createAutoFarmPanel({ farm, mapName: () => 'Tutorial Forest', visible: () => visible,
     unavailable: () => unavailable, setPaused: pause, clearInput,
@@ -251,8 +251,8 @@ it('leaves the map name and the long hint out, and names Move On', () => {
   expect(s.sheet.textContent).not.toContain('Tap in order');
   expect(s.document.querySelector('[data-switch="advance"]')!.textContent).toContain('Move On');
   expect(s.sheet.textContent).not.toContain('Boss & Next Map');
-  expect(s.document.querySelector('.farm-pull')!.getAttribute('aria-labelledby')).toBe('autoFarmPullLabel');
-  expect(s.document.getElementById('autoFarmPullLabel')!.textContent).toBe('Pull Whole Group');
+  expect(s.document.querySelector('.farm-pull')).toBeNull();
+  expect(s.document.querySelector('.farm-aggro-count')!.textContent).toBe('Aggro 0/1');
 });
 it('shows each switch with its own status, lit only when the controller says it is going and the switch is on', () => {
   let move = 'Next Map At 1.20K', moveReady = false, boss = 'Boss At 1.20K', bossReady = false;
@@ -281,38 +281,47 @@ it('shows each switch with its own status, lit only when the controller says it 
   expect(line('advance').classList.contains('is-ready')).toBe(false);
   expect(line('advance').classList.contains('is-idle')).toBe(true);
 });
-it('shows Pull Whole Group and Target in the window with no More to open, even when storage throws', () => {
+it('shows the Aggro switches and Target in the window with no More to open, even when storage throws', () => {
   const broken = { getItem: () => { throw new Error('blocked'); }, setItem: () => { throw new Error('blocked'); } };
   const s = setup(false, 'forest', {}, broken as unknown as ReturnType<typeof memoryStorage>);
   s.click('.farm-toggle');
   expect(s.document.querySelector('.farm-more-toggle')).toBeNull();
   expect(s.document.querySelector<HTMLElement>('.farm-more')!.hidden).toBe(false);
-  expect(s.document.querySelector('[data-pull="on"]')).not.toBeNull();
+  expect(s.document.querySelector('.farm-aggro-switch')).not.toBeNull();
   expect(s.document.querySelector('[data-priority]')).not.toBeNull();
+  s.click('.farm-aggro-switch');
+  expect(s.farm.pulledGroupKeys()).toHaveLength(1);
 });
-it('sets Pull Whole Group from its Off and On, and rests it during an Aggro run', () => {
-  let available = true;
-  const s = setup(false, 'forest', { pullAvailable: () => available });
+it('switches Aggro beside each slider up to its limit, counts them on top, and hides them during an Aggro run', () => {
+  let limit = 2;
+  const s = setup(true, 'endless_1', { pullLimit: () => limit });
+  s.spawnSites.push(...fourStatSites('endless_1'));
   s.click('.farm-toggle');
-  const button = (id: 'on' | 'off') => s.document.querySelector<HTMLButtonElement>(`[data-pull="${id}"]`)!;
-  s.click('[data-pull="on"]');
-  expect(s.farm.pullAll()).toBe(true);
-  expect(button('on').getAttribute('aria-checked')).toBe('true');
-  expect(button('off').getAttribute('aria-checked')).toBe('false');
-  s.click('[data-pull="off"]');
-  expect(s.farm.pullAll()).toBe(false);
-  available = false; s.panel.refresh();
-  expect(button('on').disabled).toBe(true);
-  s.click('[data-pull="on"]');
-  expect(s.farm.pullAll()).toBe(false);
+  const keys = Object.keys(values(s));
+  const aggro = (key: string) => s.document.querySelector<HTMLButtonElement>(`[data-group="${key}"] .farm-aggro-switch`)!;
+  const count = () => s.document.querySelector<HTMLElement>('.farm-aggro-count')!;
+  expect(count().textContent).toBe('Aggro 0/2');
+  s.click(`[data-group="${keys[2]}"] .farm-aggro-switch`);
+  s.click(`[data-group="${keys[0]}"] .farm-aggro-switch`);
+  expect(new Set(s.farm.pulledGroupKeys())).toEqual(new Set([keys[2], keys[0]]));
+  expect(count().textContent).toBe('Aggro 2/2');
+  expect(aggro(keys[0]).getAttribute('aria-checked')).toBe('true');
+  // Full: the rest wait for one to be switched off, rather than swapping one out.
+  expect(aggro(keys[1]).disabled).toBe(true);
+  expect(s.farm.setGroupPulled(keys[1], true)).toBe(false);
+  s.click(`[data-group="${keys[2]}"] .farm-aggro-switch`);
+  expect(s.farm.pulledGroupKeys()).toEqual([keys[0]]);
+  expect(aggro(keys[1]).disabled).toBe(false);
+  limit = 0; s.panel.refresh();
+  expect(count().hidden).toBe(true);
+  expect(aggro(keys[0]).hidden).toBe(true);
 });
-it('has no Push setting, and keeps Pull Whole Group and Target under More', () => {
+it('has no Push setting, and keeps Target under More', () => {
   const s = setup();
   s.click('.farm-toggle');
   expect(s.document.querySelector('.farm-push')).toBeNull();
   expect(s.document.querySelector('[data-push]')).toBeNull();
   const more = s.document.querySelector('.farm-more')!;
-  expect(more.querySelector('.farm-pull')).not.toBeNull();
   expect(more.querySelector('.farm-target')).not.toBeNull();
   expect([...s.document.querySelectorAll('.farm-body > [data-switch]')].map(entry => entry.getAttribute('data-switch'))).toEqual(['advance', 'bosses']);
 });
@@ -387,7 +396,7 @@ it('the ? opens a page saying what each control does in place of the settings; B
   expect(toggle.getAttribute('aria-expanded')).toBe('true');
   // Every control in the window is explained.
   const terms = [...help.querySelectorAll('dt')].map(term => term.textContent);
-  expect(terms).toEqual(['Sliders', 'Move On', 'Fight Bosses', 'Deaths', 'Pull Whole Group', 'Target']);
+  expect(terms).toEqual(['Sliders', 'Move On', 'Fight Bosses', 'Deaths', 'Aggro', 'Target']);
   expect([...help.querySelectorAll('dd')].every(line => (line.textContent ?? '').length > 10)).toBe(true);
   s.click('.farm-close');
   expect(!s.content.hidden).toBe(true);

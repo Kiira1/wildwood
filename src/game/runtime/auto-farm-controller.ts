@@ -9,7 +9,7 @@ import type { Movement } from './player-input-controller';
 import { isEnemyAttackingPlayer } from './enemy-threat';
 import { farmRoute } from './auto-farm-navigation';
 import { bossSurfaceDistance, bossVerticalRadius } from '../../../shared/boss-hitbox';
-import { carryFarmGroup, compareAutoFarmTargets, farmGroupMatches, farmGroupOf, farmStatGroup, readAutoFarmPriority, soulFarmReward, readAutoFarmPull, writeAutoFarmPriority, writeAutoFarmPull, type AutoFarmGroup, type AutoFarmPriority } from './auto-farm-priority';
+import { carryFarmGroup, compareAutoFarmTargets, farmGroupMatches, farmGroupOf, farmStatGroup, readAutoFarmPriority, soulFarmReward, readAutoFarmPull, readAutoFarmPullGroups, writeAutoFarmPriority, writeAutoFarmPull, writeAutoFarmPullGroups, type AutoFarmGroup, type AutoFarmPriority } from './auto-farm-priority';
 import type { createAutoFarmResumeStore } from '../../app/auto-farm-resume';
 import {
   SHARE_REPLAN_SECONDS, decodeFarmPlan, encodeFarmPlan, legacyShares, readBossPower, writeBossPower, readMovePower, writeMovePower, powerStep, readFarmAdvance, readFightBosses, readSavedShares, sharesForGroups, shareFarmKey,
@@ -114,6 +114,8 @@ export function createAutoFarmController(options: {
   const now = options.now ?? monotonicNowMs;
   let priority: AutoFarmPriority = readAutoFarmPriority(options.priorityStorage);
   let pullAll = readAutoFarmPull(options.priorityStorage);
+  /** The groups switched to Aggro beside their sliders; null until one is touched, when Pull Whole Group's own picks apply. */
+  let pullPicks = readAutoFarmPullGroups(options.priorityStorage);
   let advance = readFarmAdvance(options.priorityStorage);
   let fightBosses = readFightBosses(options.priorityStorage);
   /** The sliders under the switches: the share of the next map's power, and of the boss's, to have before going (1 is even). */
@@ -225,24 +227,32 @@ export function createAutoFarmController(options: {
     return forcedSet;
   }
 
-  // Pull's groups: the one being farmed, then the next largest sliders, one more per Aggro win.
+  // Pull's groups: those switched to Aggro that this map has, up to one more per Aggro win. Before any
+  // switch is touched, Pull Whole Group's own picks: the one being farmed, then the next largest sliders.
   let pulled = new Set<string>(), pulledKey = '';
+  const pullLimit = () => Math.max(0, options.pullCamps?.() ?? 1);
   function pulledGroups() {
     // Zero during an Aggro run: its own chasing groups are the run's pull.
-    const count = Math.max(0, options.pullCamps?.() ?? 1), key = `${selected}|${count}|${order.join()}`;
+    const count = pullLimit(), key = `${options.mapId()}|${spawnSites.length}|${selected}|${count}|${order.join()}|${pullPicks?.join() ?? '-'}`;
     if (key === pulledKey) return pulled;
-    pulled = new Set([...new Set([selected, ...order].filter((group): group is string => Boolean(group)))].slice(0, count)); pulledKey = key;
+    if (pullPicks) {
+      const here = new Set(spawnSites.map(site => choiceKey(site)));
+      pulled = new Set([...new Set(pullPicks.map(normalizeKey))].filter(group => here.has(group as AutoFarmGroup)).slice(0, count));
+    } else pulled = new Set([...new Set([selected, ...order].filter((group): group is string => Boolean(group)))].slice(0, count));
+    pulledKey = key;
     return pulled;
   }
+  /** Whether Pull is bringing anything: a group switched to Aggro, or Pull Whole Group on before any was. */
+  const pulling = () => pullPicks ? pulledGroups().size > 0 : pullAll;
   /** Pull brings every group it farms: all of it comes to the player, so walking to camps would only waste time. It stands and fights. */
   function pullCoversFarm() {
-    if (!pullAll || !active || manualControl || phase !== 'farm' || !order.length) return false;
+    if (!pulling() || !active || manualControl || phase !== 'farm' || !order.length) return false;
     const pulledNow = pulledGroups();
     return order.every(group => pulledNow.has(group));
   }
   const pulledEnemy = (enemy: EnemyState) => !enemy.dead && !enemy.remoteCombatGhost && !enemy.generatedBoss && enemy.hp > 0 && pulledGroups().has(choiceKey(enemy));
   /** Pull Whole Group on: every enemy of the pulled groups comes, while it farms. */
-  const pullsEnemy = (enemy: EnemyState) => pullAll && active && phase === 'farm' && !recovering && !pendingResume && !options.paused() && pulledEnemy(enemy);
+  const pullsEnemy = (enemy: EnemyState) => pulling() && active && phase === 'farm' && !recovering && !pendingResume && !options.paused() && pulledEnemy(enemy);
 
   // ---- Move On ----
   /** The power Move On waits for: Move At times the map's recommended power. */
@@ -460,7 +470,7 @@ export function createAutoFarmController(options: {
     }
     let threat: EnemyState | null = null;
     // On the way to the boss or the next map it shoots what it passes but chases nobody. A pulled group is coming anyway.
-    if (phase === 'farm' && !pullAll) for (const enemy of enemies) {
+    if (phase === 'farm' && !pulling()) for (const enemy of enemies) {
       if (!enemy.generatedBoss && isEnemyAttackingPlayer(enemy, options.localIdentity?.()) && (!threat || distance(enemy) < distance(threat))) threat = enemy;
     }
     // Everything it farms comes to it: it stands its ground.
@@ -476,7 +486,7 @@ export function createAutoFarmController(options: {
       const coming = enemies.some(enemy => validEnemy(enemy) && (enemy.engaged || pullsEnemy(enemy)));
       const inReach = enemies.some(enemy => validEnemy(enemy) && distance(enemy) <= reach + enemy.r);
       pullWait = coming && !inReach ? pullWait + dt : 0;
-      if (coming && (inReach || pullWait < PULL_WAIT_SECONDS)) { holding = true; route = []; status = inReach ? 'Farming' : pullAll ? 'Pulling' : 'Holding ground'; return idle(); }
+      if (coming && (inReach || pullWait < PULL_WAIT_SECONDS)) { holding = true; route = []; status = inReach ? 'Farming' : pulling() ? 'Pulling' : 'Holding ground'; return idle(); }
     }
     // A boss is aimed at its hitbox, not its sprite's foot.
     const bossPoint = boss ? { x: boss.x, y: boss.y + (boss.hitboxOffsetY ?? 0) } : null;
@@ -612,6 +622,25 @@ export function createAutoFarmController(options: {
     /** False during an Aggro run, when Pull is off. */
     pullAvailable: () => (options.pullCamps?.() ?? 1) > 0,
     setPullAll(next: boolean) { pullAll = next; writeAutoFarmPull(next, options.priorityStorage); },
+    /** How many groups Aggro may pull at once: one, one more per Aggro win, none during a run. */
+    pullLimit,
+    /** This map's groups Aggro is pulling now, as the sliders name them. */
+    pulledGroupKeys: (): string[] => pulling() ? [...pulledGroups()] : [],
+    /**
+     * Switches Aggro on or off for one of this map's groups. The first switch keeps what Pull was
+     * already bringing; a group past the limit is turned away (false), never swapped for another.
+     */
+    setGroupPulled(group: string, on: boolean) {
+      const current = pulling() ? [...pulledGroups()] : [];
+      if (on && !current.includes(group) && current.length >= pullLimit()) return false;
+      // Picks saved for groups this map lacks are kept for the maps that have them.
+      const elsewhere = (pullPicks ?? []).filter(pick => !groups().includes(normalizeKey(pick) as AutoFarmGroup));
+      const here = on ? [...new Set([...current, group])] : current.filter(key => key !== group);
+      pullPicks = [...elsewhere, ...here];
+      writeAutoFarmPullGroups(pullPicks, options.priorityStorage);
+      pulledKey = '';
+      return true;
+    },
     // Steering by hand keeps the pull: the group follows the player while they move.
     pulls: (enemy: EnemyState) => pullsEnemy(enemy),
     /** An Aggro run's groups on this map: they chase the player from arrival, whatever autofarm is doing. */

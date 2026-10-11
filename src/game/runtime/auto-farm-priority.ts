@@ -99,6 +99,26 @@ export function writeAutoFarmPull(pull: boolean, storage: () => Storage | undefi
   try { storage()?.setItem(AUTO_FARM_PULL_KEY, pull ? '1' : '0'); } catch { /* The choice still applies this session. */ }
 }
 
+export const AUTO_FARM_PULL_GROUPS_KEY = 'wildstat:autofarm-pull-groups:v1';
+
+/**
+ * The groups the player switched Aggro on for, beside their sliders (Ryan), as group keys; null
+ * before they ever touched one, when Pull Whole Group's own picks (the farmed group, then the
+ * largest sliders) still apply.
+ */
+export function readAutoFarmPullGroups(storage: () => Storage | undefined = () => localStorage): string[] | null {
+  try {
+    const saved = storage()?.getItem(AUTO_FARM_PULL_GROUPS_KEY);
+    if (saved == null) return null;
+    const groups = JSON.parse(saved);
+    return Array.isArray(groups) ? groups.filter((group): group is string => typeof group === 'string') : null;
+  } catch { return null; }
+}
+
+export function writeAutoFarmPullGroups(groups: readonly string[], storage: () => Storage | undefined = () => localStorage) {
+  try { storage()?.setItem(AUTO_FARM_PULL_GROUPS_KEY, JSON.stringify(groups)); } catch { /* The choice still applies this session. */ }
+}
+
 type Candidate = { hp: number; maxHp: number };
 
 /**
