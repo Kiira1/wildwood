@@ -8,9 +8,11 @@ import { soulStatsFor, soulAttackCapFor } from "./soul-dimension";
 import { reflectRewardsInPlay } from "./prestige-challenge";
 import { PRESTIGE_PERK_IDS, playerAttackCap } from "../../shared/prestige-perks";
 import { attackSpeedRatingForInterval, attackIntervalForRating } from "../../shared/stat-rating";
+import { BONUS_ITEM_IDS } from "../../shared/bonus-toggles";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
-const ALL_ON = { prestige: true, challenge: true, research: true, soul: true };
+const ALL_ON = { off: "" };
+const EVERYTHING_OFF = { off: BONUS_ITEM_IDS.join(",") };
 
 function fixture() {
   const f = crystalFixture();
@@ -27,7 +29,7 @@ function fixture() {
 }
 const zero = Object.fromEntries(PRESTIGE_PERK_IDS.map(perk => [perk, 0]));
 
-it("plays without each group switched off, and brings it all back when switched on", () => {
+it("plays without everything switched off, and brings it all back when switched on", () => {
   const f = fixture();
   const ranks = prestigePerkRanks(f.ctx, f.ctx.sender), multiplier = statRewardMultiplier(f.ctx, f.ctx.sender);
   const range = savedAttackRange(f.ctx, f.ctx.sender);
@@ -35,13 +37,13 @@ it("plays without each group switched off, and brings it all back when switched 
   expect(soulStatsFor(f.ctx, f.ctx.sender)).toMatchObject({ damage: 50 });
   expect(reflectRewardsInPlay(f.ctx, f.ctx.sender)).toMatchObject({ completed: 2 });
 
-  f.run(server.setBonusToggleState, { prestige: false, challenge: false, research: false, soul: false });
+  f.run(server.setBonusToggleState, EVERYTHING_OFF);
   expect(prestigePerkRanks(f.ctx, f.ctx.sender)).toEqual(zero);
   expect(storedPrestigePerkRanks(f.ctx, f.ctx.sender)).toEqual(ranks);
   expect(prestigeRangeBonus(f.ctx, f.ctx.sender)).toBe(0);
   expect(statRewardMultiplier(f.ctx, f.ctx.sender)).toBeLessThan(multiplier);
-  expect(researchInPlay(f.ctx, f.ctx.sender)).toBeFalsy();
-  expect(soulStatsFor(f.ctx, f.ctx.sender)).toBeNull();
+  expect(researchInPlay(f.ctx, f.ctx.sender)).toMatchObject({ warcraft: 0, utilityAttackRange: 0 });
+  expect(soulStatsFor(f.ctx, f.ctx.sender)).toMatchObject({ damage: 0, maxHp: 0, armor: 0 });
   expect(reflectRewardsInPlay(f.ctx, f.ctx.sender)).toBeNull();
   expect(soulAttackCapFor(f.ctx, f.ctx.sender)).toEqual(playerAttackCap(null, zero));
   // The saved range leaves out range research and Long Shot.
@@ -60,8 +62,8 @@ it("keeps the run's attack speed rating when the cap moves under it, and gives t
   const capOn = playerAttackCap(reflectRewardsInPlay(f.ctx, f.ctx.sender), prestigePerkRanks(f.ctx, f.ctx.sender));
   const interval = attackIntervalForRating(5_000, capOn);
   f.patch("playerProgress", { attackRate: interval });
-  f.run(server.setBonusToggleState, { ...ALL_ON, prestige: false, challenge: false });
-  const capOff = playerAttackCap(null, zero);
+  f.run(server.setBonusToggleState, { off: "prestige.quickDraw,challenge.reflect" });
+  const capOff = playerAttackCap(null, { ...prestigePerkRanks(f.ctx, f.ctx.sender), quickDraw: 0 });
   const off = f.db.playerProgress.identity.find(f.ctx.sender).attackRate;
   expect(attackSpeedRatingForInterval(off, capOff)).toBeCloseTo(attackSpeedRatingForInterval(interval, capOn), 3);
   f.run(server.setBonusToggleState, ALL_ON);
@@ -71,5 +73,17 @@ it("keeps the run's attack speed rating when the cap moves under it, and gives t
 it("can't switch during a challenge", () => {
   const f = fixture();
   f.patch("playerPrestigeChallenge", { active: true });
-  expect(() => f.run(server.setBonusToggleState, { ...ALL_ON, soul: false })).toThrow("challenge");
+  expect(() => f.run(server.setBonusToggleState, { off: "soul.damage" })).toThrow("challenge");
+});
+
+it("switches single bonuses: only Keen Edge, only Warcraft, only soul Damage", () => {
+  const f = fixture();
+  const ranks = prestigePerkRanks(f.ctx, f.ctx.sender);
+  f.run(server.setBonusToggleState, { off: "prestige.keenEdge,research.warcraft,soul.damage,bogus.id" });
+  expect(f.db.playerBonusToggle.identity.find(f.ctx.sender)).toMatchObject({ off: "prestige.keenEdge,research.warcraft,soul.damage" });
+  expect(prestigePerkRanks(f.ctx, f.ctx.sender)).toEqual({ ...ranks, keenEdge: 0 });
+  expect(researchInPlay(f.ctx, f.ctx.sender)).toMatchObject({ warcraft: 0, utilityAttackRange: 3 });
+  expect(soulStatsFor(f.ctx, f.ctx.sender)).toMatchObject({ damage: 0, maxHp: 80 });
+  // Stat gain and Reflect Only's cap stay on.
+  expect(reflectRewardsInPlay(f.ctx, f.ctx.sender)).toMatchObject({ completed: 2 });
 });

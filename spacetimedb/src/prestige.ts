@@ -12,7 +12,8 @@ import { PRESTIGE_EXPANSION_PERK_IDS } from "../../shared/prestige-expansion";
 import { prestigeExpanded } from "./prestige-expansion";
 import { readPlayerProgress } from "./wide-stats";
 import { aggroChallengeActive } from "./aggro-challenge";
-import { bonusTogglesFor, researchInPlay } from "./bonus-toggles";
+import { bonusOffFor, researchInPlay } from "./bonus-toggles";
+import { perksInPlayFor, prestigeStatGainOn } from "../../shared/bonus-toggles";
 import { aggroGoal, aggroGoalMet } from "../../shared/aggro-challenge";
 
 // Prestige bodies. The player_prestige table and the reducer declaration stay
@@ -27,19 +28,19 @@ import { aggroGoal, aggroGoalMet } from "../../shared/aggro-challenge";
  */
 export function statRewardMultiplier(ctx: any, identity: any) {
   return researchStatRewardMultiplier(researchInPlay(ctx, identity))
-    // An Aggro run plays with no prestige bonuses at all, and neither does a player who switched them off.
-    * prestigeStatMultiplier(prestigeBonusesInPlay(ctx, identity) ? ctx.db.playerPrestige.identity.find(identity)?.level ?? 0 : 0)
+    // An Aggro run plays with no prestige bonuses at all, and Stat Gain can be switched off (bonus-toggles.ts).
+    * prestigeStatMultiplier(prestigeStatGainInPlay(ctx, identity) ? ctx.db.playerPrestige.identity.find(identity)?.level ?? 0 : 0)
     // The guild's daily quest points last week (daily-quests.ts).
     * guildQuestBonusFor(ctx, identity);
 }
 
-/** Whether prestige perks and stat gain count: not during an Aggro run, nor with Prestige switched off (bonus-toggles.ts). */
-export const prestigeBonusesInPlay = (ctx: any, identity: any) => !aggroChallengeActive(ctx, identity) && bonusTogglesFor(ctx, identity).prestige;
+/** Whether prestige stat gain counts: not during an Aggro run, nor with Stat Gain switched off (bonus-toggles.ts). */
+export const prestigeStatGainInPlay = (ctx: any, identity: any) => !aggroChallengeActive(ctx, identity) && prestigeStatGainOn(bonusOffFor(ctx, identity));
 
-/** The perk ranks in play: zero for anyone who has never prestiged, during an Aggro run, and with Prestige switched off. */
+/** The perk ranks in play: zero for anyone who has never prestiged and during an Aggro run, and each switched-off perk zero. */
 export function prestigePerkRanks(ctx: any, identity: any): PrestigePerkRanks {
-  const ranks = storedPrestigePerkRanks(ctx, identity);
-  return prestigeBonusesInPlay(ctx, identity) ? ranks : Object.fromEntries(PRESTIGE_PERK_IDS.map(perk => [perk, 0])) as PrestigePerkRanks;
+  if (aggroChallengeActive(ctx, identity)) return Object.fromEntries(PRESTIGE_PERK_IDS.map(perk => [perk, 0])) as PrestigePerkRanks;
+  return perksInPlayFor(storedPrestigePerkRanks(ctx, identity), bonusOffFor(ctx, identity));
 }
 
 /** The ranks the player owns, whether or not they are in play: what spending and respeccing work from. */

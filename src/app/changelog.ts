@@ -1,6 +1,6 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
   "0.901.51": [
-    "New Bonuses tab in your profile: switch Prestige, Challenge Rewards, Research or Soul Stats off to play without them; nothing is lost",
+    "New Bonuses tab in your profile: switch any prestige perk, research, soul stat or challenge reward off, one at a time, a group at once, or all of them; nothing is lost",
     "Attack speed kill popups say Capped at the cap again",
     "Soul Crit Damage popups stay hidden when Stat Gain Popups is off",
   ],

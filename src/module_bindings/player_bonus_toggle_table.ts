@@ -12,8 +12,5 @@ import {
 
 export default __t.row({
   identity: __t.identity().primaryKey(),
-  prestigeOff: __t.bool().name("prestige_off"),
-  challengeOff: __t.bool().name("challenge_off"),
-  researchOff: __t.bool().name("research_off"),
-  soulOff: __t.bool().name("soul_off"),
+  off: __t.string(),
 });

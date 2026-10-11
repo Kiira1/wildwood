@@ -1754,10 +1754,7 @@ export type PlayerBlock = __Infer<typeof PlayerBlock>;
 
 export const PlayerBonusToggle = __t.object("PlayerBonusToggle", {
   identity: __t.identity(),
-  prestigeOff: __t.bool(),
-  challengeOff: __t.bool(),
-  researchOff: __t.bool(),
-  soulOff: __t.bool(),
+  off: __t.string(),
 });
 export type PlayerBonusToggle = __Infer<typeof PlayerBonusToggle>;
 

@@ -754,10 +754,7 @@
     ],
     "player_bonus_toggle": [
       "identity:identity",
-      "prestigeOff:bool",
-      "challengeOff:bool",
-      "researchOff:bool",
-      "soulOff:bool"
+      "off:string"
     ],
     "player_chat_hearts": [
       "identity:identity",

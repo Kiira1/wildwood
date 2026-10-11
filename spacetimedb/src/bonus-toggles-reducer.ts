@@ -1,9 +1,9 @@
 import { t, SenderError } from "spacetimedb/server";
 import type spacetimedbType from "./index";
-import { bonusToggleRow, allBonusesOn, type BonusToggles } from "../../shared/bonus-toggles";
+import { parseBonusOff, serializeBonusOff } from "../../shared/bonus-toggles";
 import { playerAttackCap } from "../../shared/prestige-perks";
 import { attackIntervalUnderNewCap } from "../../shared/stat-rating";
-import { bonusTogglesFor } from "./bonus-toggles";
+import { bonusOffFor } from "./bonus-toggles";
 import { prestigePerkRanks } from "./prestige";
 import { challengeActive, reflectRewardsInPlay } from "./prestige-challenge";
 import { updateSnapshotRow } from "./snapshot-row-writes";
@@ -19,17 +19,18 @@ export type BonusToggleDeps = {
 /** The attack speed cap the player's bonuses in play give (Reflect Only wins and Quick Draw). */
 const attackCapNow = (ctx: any) => playerAttackCap(reflectRewardsInPlay(ctx, ctx.sender), prestigePerkRanks(ctx, ctx.sender));
 
-export function setBonusToggles(ctx: any, toggles: BonusToggles, deps: BonusToggleDeps) {
+/** `offText`: the item ids to have off, comma separated (shared/bonus-toggles.ts); unknown ids are ignored. */
+export function setBonusToggles(ctx: any, offText: string, deps: BonusToggleDeps) {
   const player = deps.requireControllingPlayer(ctx);
   if (challengeActive(ctx, ctx.sender)) throw new SenderError("Bonuses can't be switched during a challenge.");
   if (deps.activeDuelFor(ctx, ctx.sender)) throw new SenderError("Finish your duel before switching bonuses.");
-  const before = bonusTogglesFor(ctx, ctx.sender);
-  if ((Object.keys(toggles) as (keyof BonusToggles)[]).every(id => toggles[id] === before[id])) return;
+  const off = serializeBonusOff(parseBonusOff(offText));
+  if (off === serializeBonusOff(bonusOffFor(ctx, ctx.sender))) return;
   const capBefore = attackCapNow(ctx);
   const existing = ctx.db.playerBonusToggle.identity.find(ctx.sender);
-  if (allBonusesOn(toggles)) { if (existing) ctx.db.playerBonusToggle.identity.delete(ctx.sender); }
-  else if (existing) ctx.db.playerBonusToggle.identity.update({ identity: ctx.sender, ...bonusToggleRow(toggles) });
-  else ctx.db.playerBonusToggle.insert({ identity: ctx.sender, ...bonusToggleRow(toggles) });
+  if (!off) { if (existing) ctx.db.playerBonusToggle.identity.delete(ctx.sender); }
+  else if (existing) ctx.db.playerBonusToggle.identity.update({ identity: ctx.sender, off });
+  else ctx.db.playerBonusToggle.insert({ identity: ctx.sender, off });
   // The attack speed cap may have moved (Quick Draw, Reflect Only wins): the run keeps its rating, as a respec does.
   const capAfter = attackCapNow(ctx);
   const progress = readPlayerProgress(ctx, ctx.sender);
@@ -41,7 +42,6 @@ export function setBonusToggles(ctx: any, toggles: BonusToggles, deps: BonusTogg
 }
 
 export function registerBonusToggleReducers(spacetimedb: typeof spacetimedbType, deps: BonusToggleDeps) {
-  const setBonusToggleState = spacetimedb.reducer({ prestige: t.bool(), challenge: t.bool(), research: t.bool(), soul: t.bool() },
-    (ctx, toggles) => { setBonusToggles(ctx, toggles, deps); });
+  const setBonusToggleState = spacetimedb.reducer({ off: t.string() }, (ctx, { off }) => { setBonusToggles(ctx, off, deps); });
   return { setBonusToggleState };
 }

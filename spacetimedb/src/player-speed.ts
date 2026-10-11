@@ -5,7 +5,8 @@ import { attackRangeWithResearch } from "../../shared/utility-research";
 import { updateSnapshotRow } from "./snapshot-row-writes";
 import { readPlayerProgress } from "./wide-stats";
 import { aggroChallengeActive } from "./aggro-challenge";
-import { bonusTogglesFor, researchInPlay } from "./bonus-toggles";
+import { bonusOffFor, researchInPlay } from "./bonus-toggles";
+import { perksInPlayFor } from "../../shared/bonus-toggles";
 
 /** The server's saved movement speed, including both research trees. */
 export function effectiveMovementSpeedForProgress(ctx: any, progress: any, research?: any) {
@@ -28,9 +29,10 @@ export function savedAttackRange(ctx: any, identity: any) {
   return attackRangeWithResearch(researchInPlay(ctx, identity)?.utilityAttackRange ?? 0) + prestigeRangeBonus(ctx, identity);
 }
 
-/** Fleet Foot and Long Shot's row, or none during an Aggro run, which plays without prestige bonuses, or with Prestige switched off. */
+/** Fleet Foot and Long Shot's row, or none during an Aggro run, which plays without prestige bonuses; a switched-off perk reads zero. */
 function perksInPlay(ctx: any, identity: any) {
-  return aggroChallengeActive(ctx, identity) || !bonusTogglesFor(ctx, identity).prestige ? null : ctx.db.playerPrestigeExpansionPerk.identity.find(identity);
+  const row = aggroChallengeActive(ctx, identity) ? null : ctx.db.playerPrestigeExpansionPerk.identity.find(identity);
+  return row ? perksInPlayFor(row, bonusOffFor(ctx, identity)) : null;
 }
 
 /** Refresh saved range and live movement immediately when a perk point is spent. */

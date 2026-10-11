@@ -533,7 +533,7 @@ import {
   const autoFarm = createAutoFarmController({
     resumeStore: createAutoFarmResumeStore(),
     player, enemies, spawnSites,
-    mapId: () => currentMapId, pullCamps: () => coop?.aggroChallenge?.()?.active || coop?.bonusToggles?.().challenge === false ? 0 : aggroPullCamps(coop?.aggroChallenge?.()), forcedGroups: () => forcedAggroGroups(coop?.aggroChallenge?.(), coop?.localIdentity?.()),
+    mapId: () => currentMapId, pullCamps: () => coop?.aggroChallenge?.()?.active || coop?.bonusOff?.().includes("challenge.aggro") ? 0 : aggroPullCamps(coop?.aggroChallenge?.()), forcedGroups: () => forcedAggroGroups(coop?.aggroChallenge?.(), coop?.localIdentity?.()),
     equippedWeapon: () => inventory.equippedRightHand || inventory.equippedLeftHand,
     localIdentity: () => coop?.localIdentity?.(),
     connection: () => farmConnection === 'ready' && (!coop?.isConnected?.() || !session?.isRunning()
@@ -591,7 +591,7 @@ import {
     },
   );
   const research = createResearchController({
-    prestigeLevel: () => coop?.prestigeBonusesInPlay?.() === false ? 0 : coop?.prestige?.()?.level ?? 0,
+    prestigeLevel: () => coop?.prestigeStatGainInPlay?.() === false ? 0 : coop?.prestige?.()?.level ?? 0,
     guildQuestBonus: () => coop?.dailyQuests?.()?.bonus ?? 1,
     prestigePerks: () => coop?.prestigePerks?.(),
     player,
@@ -1218,7 +1218,7 @@ import {
     skinTone: (identity) => coop?.skinTone?.(identity) ?? DEFAULT_SKIN_TONE, setSkinTone: async (value) => coop?.setSkinTone?.(value),
     playerGender: (identity) => coop?.playerGender?.(identity) ?? 0, setGender: async (value) => coop?.setGender?.(value),
     renderStats: (profile, element) => renderProfileStats(profile, element, formatArmorReduction, playerAttackCap(profile.identity === coop?.localIdentity?.() ? coop?.reflectRewardsInPlay?.() : profile.prestigeChallenge, profile.identity === coop?.localIdentity?.() ? coop?.prestigePerks?.() : profile.prestigePerks), profile.identity === coop?.localIdentity?.() ? coop?.researchInPlay?.() ?? profile.research : profile.research,
-      profile.identity === coop?.localIdentity?.() ? (coop?.prestigeBonusesInPlay?.() === false ? 0 : coop?.prestige?.()?.level ?? 0) : profile.prestigeLevel ?? 0,
+      profile.identity === coop?.localIdentity?.() ? (coop?.prestigeStatGainInPlay?.() === false ? 0 : coop?.prestige?.()?.level ?? 0) : profile.prestigeLevel ?? 0,
       profile.identity === coop?.localIdentity?.() ? coop?.prestigePerks?.() : profile.prestigePerks,
       profile.identity === coop?.localIdentity?.() ? coop?.dailyQuests?.()?.bonus ?? 1 : 1,
       profile.identity === coop?.localIdentity?.() ? soulDimension.inPlay() : profileSoulInPlay(profile)),

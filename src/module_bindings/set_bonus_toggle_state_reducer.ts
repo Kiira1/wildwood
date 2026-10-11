@@ -11,8 +11,5 @@ import {
 } from "spacetimedb";
 
 export default {
-  prestige: __t.bool(),
-  challenge: __t.bool(),
-  research: __t.bool(),
-  soul: __t.bool(),
+  off: __t.string(),
 };
