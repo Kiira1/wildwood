@@ -1,4 +1,4 @@
-import { AGGRO_GROUPS, AGGRO_GROUP_LABELS, togglePick } from "../game/runtime/aggro-picks";
+import { AGGRO_GROUPS, AGGRO_GROUP_LABELS, pickRefused, togglePick } from "../game/runtime/aggro-picks";
 import { REWARD_DATA, type RewardType } from "../game/enemies";
 import { AUTO_FARM_PRIORITIES, type AutoFarmPriority } from "../game/runtime/auto-farm-priority";
 
@@ -26,7 +26,7 @@ export function createAggroPickPrompt(doc: Document, deps: {
 }) {
   let overlay: HTMLElement | null = null, needed = 1, available: readonly RewardType[] = AGGRO_GROUPS;
   // Taps change a draft; the saved picks (what chases the player) change only on Done, with the full count.
-  let draft: RewardType[] = [];
+  let draft: RewardType[] = [], refused = false;
   let label: HTMLElement, done: HTMLButtonElement;
   const chips = new Map<RewardType, HTMLButtonElement>();
   let targets: HTMLButtonElement[] = [];
@@ -37,7 +37,7 @@ export function createAggroPickPrompt(doc: Document, deps: {
   const here = () => draft.filter(pick => available.includes(pick)).slice(0, needed);
   function render() {
     const picks = here();
-    label.textContent = `Pick ${needed} ${needed === 1 ? "group" : "groups"} to chase you (${picks.length}/${needed})`;
+    label.textContent = `Pick ${needed} ${needed === 1 ? "group" : "groups"} to chase you (${picks.length}/${needed})${refused ? " · Unpick one first" : ""}`;
     for (const [group, chip] of chips) {
       chip.hidden = !available.includes(group);
       chip.setAttribute("aria-pressed", String(picks.includes(group)));
@@ -76,7 +76,7 @@ export function createAggroPickPrompt(doc: Document, deps: {
       chip.className = "aggro-pick";
       chip.textContent = AGGRO_GROUP_LABELS[group];
       chip.style.setProperty("--pick-color", REWARD_DATA[group].color);
-      chip.addEventListener("click", () => { draft = togglePick(here(), group, needed, false); render(); });
+      chip.addEventListener("click", () => { refused = pickRefused(here(), group, needed); draft = togglePick(here(), group, needed); render(); });
       chips.set(group, chip);
       box.append(chip);
     }
@@ -107,7 +107,7 @@ export function createAggroPickPrompt(doc: Document, deps: {
       if (!overlay) build();
       available = AGGRO_GROUPS.filter(group => groups.includes(group));
       needed = Math.max(1, Math.min(count, available.length));
-      draft = deps.picks();
+      draft = deps.picks(); refused = false;
       render();
       overlay!.hidden = false;
       chips.get(available[0])?.focus();

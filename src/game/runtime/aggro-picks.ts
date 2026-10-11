@@ -36,14 +36,22 @@ export function aggroPicksNeeded(challenge: AggroChallenge | null | undefined) {
 }
 
 /**
- * A tap on a group: an unpicked one joins, replacing the oldest pick when the
- * tier's count is full; a picked one leaves, except during a run, which always
- * keeps its full count (the player switches, never drops below it).
+ * A tap on a group: a picked one leaves, an unpicked one joins while there is
+ * room. With the count full a new group waits for the player to unpick one;
+ * with a count of one it simply switches. It used to replace the oldest pick,
+ * and since saved picks come back in AGGRO_GROUPS order, the "oldest" was
+ * always the same slot: players found the rest stuck (0.901.49 chat).
+ * Whether a run may hold fewer than its count is the caller's to decide.
  */
-export function togglePick(picks: readonly RewardType[], group: RewardType, needed: number, inRun: boolean): RewardType[] {
-  if (picks.includes(group)) return inRun && picks.length <= needed ? [...picks] : picks.filter(pick => pick !== group);
-  return [...picks, group].slice(-needed);
+export function togglePick(picks: readonly RewardType[], group: RewardType, needed: number): RewardType[] {
+  if (picks.includes(group)) return picks.filter(pick => pick !== group);
+  if (picks.length < needed) return [...picks, group];
+  return needed === 1 ? [group] : [...picks];
 }
+
+/** Whether a tap on `group` was turned away because the count is already full. */
+export const pickRefused = (picks: readonly RewardType[], group: RewardType, needed: number) =>
+  needed > 1 && !picks.includes(group) && picks.length >= needed;
 
 /**
  * What chases the player now: during a run, the saved picks as autofarm

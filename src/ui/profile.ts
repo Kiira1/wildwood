@@ -6,7 +6,8 @@ import { CRITICAL_DAMAGE_BASE, criticalDamage } from "../../shared/critical-dama
 import { effectivePlayerPower, effectivePlayerPowerStats } from "../../shared/player-power";
 import { equipmentDamageMultiplierBonus, equipmentMaxHealthMultiplierBonus, equipmentRegenerationMultiplierBonus } from "../../shared/items";
 import { formatCompactNumber, formatRate } from "./number-format";
-import { attackCapInterval, attackSpeedLabel, attackSpeedRatingForInterval, critDamageLabel, RATING_MAX, type AttackCapArg } from "../../shared/stat-rating";
+import { attackCapInterval, attackSpeedLabel, attackSpeedRatingForInterval, critDamageLabel, type AttackCapArg } from "../../shared/stat-rating";
+import { formatRating } from "./rating-text";
 import { upgradeSlotForItem } from "../../shared/slot-upgrades";
 import { cleanSoulStats, withSoulStats, type SoulStats } from "../../shared/soul-dimension";
 import { challengeMinimumInterval } from "../../shared/prestige-challenge";
@@ -166,7 +167,7 @@ export function profileStatDisplayRows(
   // the rate reads the same as the cap.
   const speedRating = attackSpeedRatingForInterval(baseAttackInterval, attackCap);
   // Attack speed and crit damage read like armor (Ryan): their number, and what it gives in brackets. No "rating".
-  const ratingText = (rating: number) => rating >= RATING_MAX ? "Max" : rating >= 1_000 ? formatCompactNumber(rating) : Number(rating.toPrecision(3)).toString();
+  const ratingText = formatRating;
   const bracket = (label: string) => `(${label.replace(" (Max)", " Max")})`;
   const baseAttackSpeed = attackSpeedLabel(1 / baseAttackInterval, 1 / minAttackInterval);
   const attackSpeed = `${(1 / effective.attackRate).toFixed(2)}/s`;

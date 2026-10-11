@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 import { parseHTML } from "linkedom";
 import { createAggroPickPrompt } from "./aggro-pick-prompt";
-import { togglePick } from "../game/runtime/aggro-picks";
+import { pickRefused, togglePick } from "../game/runtime/aggro-picks";
 import type { RewardType } from "../game/enemies";
 import type { AutoFarmPriority } from "../game/runtime/auto-farm-priority";
 
@@ -22,11 +22,33 @@ it("stays open until the run has its count of groups", () => {
   expect(picks).toEqual(["damage", "regen"]);
 });
 
-it("switches rather than drops during a run", () => {
-  expect(togglePick(["damage"], "armor", 1, true)).toEqual(["armor"]);
-  expect(togglePick(["damage"], "damage", 1, true)).toEqual(["damage"]);
-  expect(togglePick(["damage"], "damage", 1, false)).toEqual([]);
-  expect(togglePick(["damage", "armor"], "regen", 2, false)).toEqual(["armor", "regen"]);
+it("unpicks a picked group, adds while there is room, and with a full set only a count of one switches", () => {
+  expect(togglePick(["damage"], "armor", 1)).toEqual(["armor"]);
+  expect(togglePick(["damage"], "damage", 1)).toEqual([]);
+  expect(togglePick(["damage"], "regen", 2)).toEqual(["damage", "regen"]);
+  expect(togglePick(["damage", "armor"], "regen", 2)).toEqual(["damage", "armor"]);
+  expect(togglePick(["damage", "armor"], "armor", 2)).toEqual(["damage"]);
+  expect(pickRefused(["damage", "armor"], "regen", 2)).toBe(true);
+  expect(pickRefused(["damage"], "regen", 1)).toBe(false);
+});
+
+it("swaps any pick in a full set: unpick one, pick another, Done", () => {
+  const { document } = parseHTML("<html><body></body></html>");
+  let picks: RewardType[] = ["damage", "armor", "regen", "crit"];
+  const prompt = createAggroPickPrompt(document as unknown as Document, { picks: () => picks, setPicks: next => { picks = next; } });
+  prompt.open(4);
+  const chip = (label: string) => [...document.querySelectorAll(".aggro-pick")].find(element => element.textContent === label) as unknown as HTMLButtonElement;
+  const done = document.querySelector(".aggro-pick-done") as unknown as HTMLButtonElement;
+  const label = () => document.querySelector(".aggro-picks-label")!.textContent;
+  chip("Max Health").click();
+  expect(label()).toBe("Pick 4 groups to chase you (4/4) · Unpick one first");
+  expect(chip("Max Health").getAttribute("aria-pressed")).toBe("false");
+  chip("Crit Damage").click();
+  expect(done.disabled).toBe(true);
+  chip("Max Health").click();
+  expect(label()).toBe("Pick 4 groups to chase you (4/4)");
+  done.click();
+  expect(picks).toEqual(["damage", "armor", "regen", "health"]);
 });
 
 it("offers only this map's groups, and asks again when a pick is missing here", () => {

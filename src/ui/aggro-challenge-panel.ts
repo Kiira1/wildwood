@@ -1,6 +1,6 @@
 import { gameConfirm, type ConfirmPrompt } from "./confirm-dialog";
 import { AGGRO_CHALLENGE_LIMIT, aggroForcedCamps, aggroPullCamps, type AggroChallenge } from "../../shared/aggro-challenge";
-import { AGGRO_GROUPS, AGGRO_GROUP_LABELS as GROUP_LABELS, togglePick } from "../game/runtime/aggro-picks";
+import { AGGRO_GROUPS, AGGRO_GROUP_LABELS as GROUP_LABELS, pickRefused, togglePick } from "../game/runtime/aggro-picks";
 import { REWARD_DATA, type RewardType } from "../game/enemies";
 import { challengeAnswer } from "./challenge-answer";
 
@@ -59,19 +59,29 @@ export function createAggroChallengePanel(d: {
     chip.addEventListener("click", () => {
       const current = d.state();
       if (chip.disabled) return;
-      d.setPicks(togglePick(d.picks(), group, aggroForcedCamps({ active: true, completed: current.completed }), current.active));
+      const chasing = aggroForcedCamps({ active: true, completed: current.completed });
+      const saved = d.picks().slice(0, chasing), picks = liveDraft() ?? saved;
+      refused = pickRefused(picks, group, chasing);
+      const next = togglePick(picks, group, chasing);
+      // A run never chases fewer groups than it has saved: an unpick waits here until another fills its place.
+      if (!current.active || next.length >= saved.length) { d.setPicks(next); draft = null; }
+      else draft = { picks: next, for: draftKey() };
       shown = ""; render();
     });
     chipFor.set(group, chip);
     chips.append(chip);
   }
-  let pending = false, shown = "";
+  let pending = false, shown = "", refused = false;
+  /** A run's half-made switch: the picks shown while one is unpicked, for the saved picks and run it began from. */
+  let draft: { picks: RewardType[]; for: string } | null = null;
+  const draftKey = () => JSON.stringify([d.state().active, d.state().completed, d.picks()]);
+  const liveDraft = () => (draft && draft.for === draftKey() ? draft.picks : null);
 
   function render() {
     const current = d.state(), locked = d.locked(), done = current.completed >= AGGRO_CHALLENGE_LIMIT, target = d.goal();
     // Called every frame: only a change rebuilds it.
-    const picks = d.picks();
-    const key = JSON.stringify([current.active, current.completed, current.parked === true, locked, pending, target, picks]);
+    const saved = d.picks(), switching = liveDraft(), picks = switching ?? saved;
+    const key = JSON.stringify([current.active, current.completed, current.parked === true, locked, pending, target, saved, switching, refused]);
     if (key === shown) return;
     shown = key;
     card.classList.toggle("is-active", current.active);
@@ -83,10 +93,13 @@ export function createAggroChallengePanel(d: {
     rule.textContent = done ? "" : `On every map, ${chasing === 1 ? "the group you pick chases" : `the ${chasing} groups you pick chase`} you from the moment you arrive. Dying after Tutorial Forest starts the run over.`;
     picksBox.hidden = done;
     const chosen = picks.slice(0, chasing);
-    // Always the tier's count: pick that many, and switch any time (tap another to swap it in).
+    // Always the tier's count: pick that many. To switch, unpick one and pick another (with one, tap another).
     const filling = chosen.length < chasing;
-    pickLabel.textContent = current.active && !filling ? `Chasing you: ${chosen.map(pick => GROUP_LABELS[pick]).join(", ")} (tap another to switch)`
-      : `Pick ${chasing} ${chasing === 1 ? "group" : "groups"} to chase you (${Math.min(picks.length, chasing)}/${chasing})`;
+    const howToSwitch = chasing === 1 ? "tap another to switch" : "tap one to unpick it, then pick another";
+    pickLabel.textContent = (switching ? `Pick ${chasing - chosen.length} more to switch (${chosen.length}/${chasing})`
+      : current.active && !filling ? `Chasing you: ${chosen.map(pick => GROUP_LABELS[pick]).join(", ")} (${howToSwitch})`
+      : `Pick ${chasing} ${chasing === 1 ? "group" : "groups"} to chase you (${Math.min(picks.length, chasing)}/${chasing})`)
+      + (refused ? " · Unpick one first" : "");
     pickLabel.classList.toggle("is-needed", current.active && filling);
     for (const [group, chip] of chipFor) {
       chip.setAttribute("aria-pressed", String(chosen.includes(group)));
