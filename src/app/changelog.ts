@@ -1,4 +1,9 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.901.50": [
+    "Soul Crit Damage adds its +0.002× a kill to your total again, however much crit you have from regular maps",
+    "Aggro: tap a picked group to unpick it, then pick another; any pick can be switched",
+    "The Soul Dimension window shows Attack Speed like your profile and Crit Damage as the × it adds",
+  ],
   "0.901.49": [
     "Aggro: dying in Tutorial Forest no longer restarts the run, only dying on a later map does",
     "The profile shows Attack Speed and Crit Damage like Armor: their number, and what it gives in brackets",
@@ -3173,6 +3178,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.901.50": "2026-10-11",
   "0.901.49": "2026-10-10",
   "0.901.48": "2026-10-10",
   "0.901.47": "2026-10-10",
