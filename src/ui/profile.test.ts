@@ -348,9 +348,9 @@ it("adds the soul stats in play to each row's base, before the multipliers, and 
   expect(row(soul, "damage")).toMatchObject({ base: "150", multiplier: "1.10", total: "165" });
   expect(row(soul, "damage").sources).toEqual([{ label: "Soul", value: "+50" }, { label: "Tech", value: "+10%" }]);
   expect(row(soul, "health")).toMatchObject({ base: "700", total: "700" });
-  // 100 soul rating is one level: 3% of the way from 1.05× to 100×.
+  // 100 soul rating gives what one level gives from nothing (3% of the way from 1.05× to 100×), flat.
   expect(row(soul, "critical-damage")).toMatchObject({ equationTotal: "4.02×" });
-  expect(row(soul, "critical-damage").sources).toContainEqual({ label: "Soul", value: "+100" });
+  expect(row(soul, "critical-damage").sources).toContainEqual({ label: "Soul", value: "+2.97×" });
   // None to add: the rows are as they were.
   expect(profileStatDisplayRows(profile, () => "0%", MIN_ATTACK_INTERVAL, undefined, 0, null, 1, null)).toEqual(plain);
 });
@@ -404,7 +404,8 @@ describe("another player's soul stats", () => {
     expect(row(list, "damage")).toMatchObject({ base: "150", total: "165" });
     expect(row(list, "damage").sources).toContainEqual({ label: "Soul", value: "+50" });
     expect(row(list, "health")).toMatchObject({ base: "700" });
-    expect(row(list, "critical-damage").sources).toContainEqual({ label: "Soul", value: "+0.1" });
+    // 0.1 soul rating is a sliver of a multiplier, but the line is there.
+    expect(row(list, "critical-damage").sources).toContainEqual({ label: "Soul", value: "+0.00×" });
     expect(profilePower(profile, profileSoulInPlay(profile))).toBeGreaterThan(profilePower(withoutSoul(profile), profileSoulInPlay(withoutSoul(profile))));
   });
 

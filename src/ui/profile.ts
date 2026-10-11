@@ -281,7 +281,8 @@ export function profileStatDisplayRows(
     sources: [
       ...(crit.research ? [{ label: "Tech" as const, value: shown(bonusShare(crit.research)) }] : []),
       ...(crit.perk ? [{ label: "Prestige" as const, value: shown(bonusShare(crit.perk)) }] : []),
-      ...soulSource(crit.soul, ratingText),
+      // The soul adds a flat multiplier (critical-damage.ts), so its line is that, not a rating.
+      ...(crit.fromSoul > 0 ? [{ label: "Soul" as const, value: shown(crit.fromSoul) }] : []),
     ],
   });
   // The remaining perks have no research behind them, so a row only appears

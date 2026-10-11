@@ -5,6 +5,7 @@ import {
 import { formatCompactNumber as compactNumber } from "../../shared/compact-number";
 import { RATING_MAX } from "../../shared/stat-rating";
 import { formatRating } from "./rating-text";
+import { soulCritDamageBonus } from "../../shared/critical-damage";
 
 const KILL_LABELS: Readonly<Record<SoulTierKillType, string>> = {
   damage: "Damage Enemies", health: "Health Enemies", armor: "Armor Enemies", regen: "Regen Enemies",
@@ -19,10 +20,11 @@ export type SoulWindowState = {
   soul: SoulStats;
 };
 
-// Attack speed and crit damage are ratings since 0.901.47: shown as the profile shows them, not as a rate or a percent.
+// Attack speed is a rating since 0.901.47, shown as the profile shows it; crit damage is the multiplier it adds.
 function soulValue(soul: SoulStats, stat: (typeof SOUL_STAT_ORDER)[number]) {
   const value = soulStatValue(soul, stat);
-  if (stat === "critDamage" || stat === "attackSpeed") return value >= RATING_MAX ? "Max" : `+${formatRating(value)}`;
+  if (stat === "critDamage") return `+${soulCritDamageBonus(value).toFixed(2)}×`;
+  if (stat === "attackSpeed") return value >= RATING_MAX ? "Max" : `+${formatRating(value)}`;
   return `+${compactNumber(value)}`;
 }
 

@@ -52,19 +52,30 @@ export function criticalDamageBonuses(parts: Pick<CriticalDamageParts, "research
   };
 }
 
-/** The multiplier and its parts: `multiplier` is what combat uses, `uncapped` what the curve gives. */
+/**
+ * What the soul adds: a flat multiplier, as before 0.901.47, so each soul crit kill adds its 0.002x to the
+ * total (soulCritRatingAfterKills stores it as the rating that gives that from nothing). Added to the run's
+ * rating on the curve instead, a kill did nothing visible once the run's own crit was high (Ryan, 0.901.49 chat).
+ */
+export function soulCritDamageBonus(soul: unknown) {
+  const rating = amount(soul);
+  return rating > 0 ? critDamageForLevels(ratingLevels(rating)) - CRITICAL_DAMAGE_BASE : 0;
+}
+
+/** The multiplier and its parts: `multiplier` is what combat uses, `uncapped` what the curve and the soul give. */
 export function criticalDamage(parts: CriticalDamageParts) {
   const { research, perk } = criticalDamageBonuses(parts);
   const soul = amount(parts.soul), rating = amount(parts.rating);
   const bonusLevels = critBonusLevels(research + perk);
   const cap = critCapForRank(parts.capRank);
-  const uncapped = critDamageForLevels(ratingLevels(rating + soul) + bonusLevels);
+  const fromSoul = soulCritDamageBonus(soul);
+  const curve = critDamageForLevels(ratingLevels(rating) + bonusLevels);
+  const uncapped = curve + fromSoul;
   const multiplier = Math.min(cap, uncapped);
-  // Each part's share, as the profile lists it: what it adds on top of the parts before it.
+  // Each part's share, as the profile lists it.
   const fromRating = critDamageForLevels(ratingLevels(rating)) - CRITICAL_DAMAGE_BASE;
-  const fromSoul = critDamageForLevels(ratingLevels(rating + soul)) - CRITICAL_DAMAGE_BASE - fromRating;
   return { multiplier, uncapped, cap, capped: uncapped > cap, research, perk, soul, rating, bonusLevels, fromRating, fromSoul,
-    fromBonuses: uncapped - CRITICAL_DAMAGE_BASE - fromRating - fromSoul };
+    fromBonuses: curve - CRITICAL_DAMAGE_BASE - fromRating };
 }
 
 /** The capped critical damage multiplier. */
