@@ -632,7 +632,8 @@ function handleConnectionTimeout(phase: ConnectionPhase) {
   }
 }
 
-function retryConnection() {
+function retryConnection(refusedSession = false) {
+  if (refusedSession && protocolBlocked && !worldEntryBlocked && !document.hidden) { protocolBlocked = false; accountService.setNotice(""); }
   if (protocolBlocked || worldEntryBlocked || document.hidden) return false;
   const hadPlayableSession = hydrationReady || sessionGeneration > 0;
   reconnectScheduler.reset();

@@ -46,6 +46,7 @@ export type StartupEvent =
   | { type: "retry-connection" }
   | { type: "restart" }
   | { type: "update-detected"; version?: string }
+  | { type: "update-cleared" }
   | { type: "dispose" };
 
 export type StartupTransition = {
@@ -164,6 +165,10 @@ export function createStartupStateMachine(mode: StartupMachineMode) {
         return commit({ value: mode === "auth-shell" ? "loading-shell" : "loading-runtime" });
       case "update-detected":
         return commit({ value: "updating", version: event.version ?? "" });
+      case "update-cleared":
+        // Only a refusal with no newer build behind it; a real update reloads.
+        if (state.value !== "updating" || state.version) return commit(state);
+        return lastSnapshot ? commit(deriveStartupState(mode, lastSnapshot)) : commit({ value: "loading-shell" });
       case "dispose":
         return commit({ value: "disposed" });
     }

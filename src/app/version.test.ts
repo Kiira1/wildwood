@@ -80,4 +80,19 @@ describe("a session the server refuses on a build that is already current", () =
     expect(reload).toHaveBeenCalledOnce();
     expect(reloadStaleSession(STALE_SESSION_RELOAD_AFTER_MS, storage, reload, 2_000_001)).toBe(false);
   });
+
+  it("re-arms the version check when the save handoff refuses the reload, but still waits out the cooldown", async () => {
+    vi.resetModules();
+    const { reloadStaleSession, updateReloadPending, STALE_SESSION_RELOAD_AFTER_MS, STALE_SESSION_RELOAD_COOLDOWN_MS } = await import("./version");
+    const data = new Map<string, string>();
+    const storage = { getItem: (key: string) => data.get(key) ?? null, setItem: (key: string, value: string) => { data.set(key, value); } };
+    expect(reloadStaleSession(STALE_SESSION_RELOAD_AFTER_MS, storage, async () => false, 1_000_000)).toBe(true);
+    expect(updateReloadPending()).toBe(true);
+    await Promise.resolve(); await Promise.resolve();
+    expect(updateReloadPending()).toBe(false);
+    const reload = vi.fn();
+    expect(reloadStaleSession(STALE_SESSION_RELOAD_AFTER_MS, storage, reload, 1_000_000 + STALE_SESSION_RELOAD_COOLDOWN_MS - 1)).toBe(false);
+    expect(reloadStaleSession(STALE_SESSION_RELOAD_AFTER_MS, storage, reload, 1_000_000 + STALE_SESSION_RELOAD_COOLDOWN_MS)).toBe(true);
+    expect(reload).toHaveBeenCalledOnce();
+  });
 });

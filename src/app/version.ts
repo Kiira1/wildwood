@@ -63,8 +63,8 @@ export function enforceLatestVersion(version: string, onUpdateDetected?: UpdateD
  * it concludes it is the one that is stale.
  */
 export const STALE_SESSION_RELOAD_AFTER_MS = 30_000;
-/** A second automatic reload inside this window would be a loop, not a recovery. */
-export const STALE_SESSION_RELOAD_COOLDOWN_MS = 120_000;
+/** A second automatic reload inside this window would be a loop, not a recovery; fresh connections fill the gap. */
+export const STALE_SESSION_RELOAD_COOLDOWN_MS = 5 * 60_000;
 const STALE_SESSION_RELOAD_KEY = "wildstat-stale-session-reload-at";
 
 /**
@@ -82,13 +82,24 @@ export function shouldReloadStaleSession(blockedForMs: number, lastReloadAtMs: n
 }
 
 export function reloadStaleSession(blockedForMs: number, storage: Pick<Storage, "getItem" | "setItem"> = sessionStorage,
-  reload: () => boolean | void = () => afterAccountRenewal(() => window.location.reload()), nowMs = Date.now()) {
+  reload: () => boolean | void | Promise<boolean | void> = () => afterAccountRenewal(() => window.location.reload()), nowMs = Date.now()) {
   if (reloadScheduled) return false;
   let last = Number.NaN;
   try { last = Number(storage.getItem(STALE_SESSION_RELOAD_KEY) ?? Number.NaN); } catch {}
   if (!shouldReloadStaleSession(blockedForMs, last, nowMs)) return false;
-  if (reload() === false) return false;
+  // Stamped before the reload is tried: one that the save handoff refuses still
+  // waits out the cooldown, and the stamp survives the reload in this tab.
   try { storage.setItem(STALE_SESSION_RELOAD_KEY, String(nowMs)); } catch {}
   reloadScheduled = true;
-  return true;
+  // A refused reload must not leave the version check switched off for good.
+  const settle = (result: boolean | void) => { if (result === false) reloadScheduled = false; };
+  try {
+    const result = reload();
+    if (result instanceof Promise) void result.then(settle, () => settle(false));
+    else settle(result);
+  } catch { settle(false); }
+  return reloadScheduled;
 }
+
+/** True once an update or stale-session reload has been started on this page. */
+export const updateReloadPending = () => reloadScheduled;
