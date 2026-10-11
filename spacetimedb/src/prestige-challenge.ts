@@ -1,6 +1,7 @@
 import { table, t, SenderError } from "spacetimedb/server";
 import { CHALLENGE_ABSOLUTE_MIN_INTERVAL, PRESTIGE_CHALLENGE_LIMIT, challengeGoalMet } from "../../shared/prestige-challenge";
 import { prestigeExpanded } from "./prestige-expansion";
+import { bonusTogglesFor } from "./bonus-toggles";
 import { updateSnapshotRow } from "./snapshot-row-writes";
 import { readPlayerProgress } from "./wide-stats";
 
@@ -21,9 +22,9 @@ export const playerPrestigeChallengeParked = table({ name: "player_prestige_chal
   identity: t.identity().primaryKey(), parkedAt: t.timestamp(),
 });
 /** Either challenge under way: perks can be neither spent nor respecced during one. */
-/** The Reflect Only row whose wins count now: none during an Aggro run, which plays without prestige rewards. */
+/** The Reflect Only row whose wins count now: none during an Aggro run, which plays without prestige rewards, nor with Challenge Rewards switched off. */
 export const reflectRewardsInPlay = (ctx: any, identity: any) =>
-  ctx.db.playerAggroChallenge?.identity.find(identity)?.active ? null : ctx.db.playerPrestigeChallenge.identity.find(identity);
+  ctx.db.playerAggroChallenge?.identity.find(identity)?.active || !bonusTogglesFor(ctx, identity).challenge ? null : ctx.db.playerPrestigeChallenge.identity.find(identity);
 export const challengeActive = (ctx: any, identity: any) => Boolean(ctx.db.playerPrestigeChallenge.identity.find(identity)?.active
   || ctx.db.playerAggroChallenge?.identity.find(identity)?.active);
 

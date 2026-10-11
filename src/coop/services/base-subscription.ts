@@ -67,6 +67,7 @@ export type BaseSubscriptionHandlers = {
   removePrestigeExpansion: RowHandler;
   prestigeExpansionPerk: RowHandler;
   removePrestigeExpansionPerk: RowHandler;
+  bonusToggle: RowHandler; removeBonusToggle: RowHandler;
   removePrestigePerk: RowHandler;
   itemUpgrade: RowHandler;
   removeItemUpgrade: RowHandler;
@@ -129,6 +130,7 @@ type BaseSubscriptionHandlerSources = {
     upsertDailyQuest: RowHandler; removeDailyQuest: RowHandler; upsertGuildQuestWeek: RowHandler; removeGuildQuestWeek: RowHandler;
     upsertPrestigeExpansion: RowHandler; removePrestigeExpansion: RowHandler;
     upsertPrestigeExpansionPerk: RowHandler; removePrestigeExpansionPerk: RowHandler;
+    upsertBonusToggle: RowHandler; removeBonusToggle: RowHandler;
     removePrestigePerk: BaseSubscriptionHandlers["removePrestigePerk"];
     upsertItemUpgrade: BaseSubscriptionHandlers["itemUpgrade"];
     removeItemUpgrade: BaseSubscriptionHandlers["removeItemUpgrade"];
@@ -232,6 +234,7 @@ export function createBaseSubscriptionHandlers(sources: BaseSubscriptionHandlerS
     guildQuestWeek: progression.upsertGuildQuestWeek, removeGuildQuestWeek: progression.removeGuildQuestWeek,
     prestigeExpansion: progression.upsertPrestigeExpansion, removePrestigeExpansion: progression.removePrestigeExpansion,
     prestigeExpansionPerk: progression.upsertPrestigeExpansionPerk, removePrestigeExpansionPerk: progression.removePrestigeExpansionPerk,
+    bonusToggle: progression.upsertBonusToggle, removeBonusToggle: progression.removeBonusToggle,
     removePrestigePerk: progression.removePrestigePerk,
     itemUpgrade: progression.upsertItemUpgrade,
     removeItemUpgrade: progression.removeItemUpgrade,
@@ -396,6 +399,9 @@ export function startBaseSubscription(dependencies: BaseSubscriptionDependencies
   connection.db.playerPrestigeExpansionPerk.onInsert((_ctx, row) => { if (shouldHandle()) handlers.prestigeExpansionPerk(row); });
   connection.db.playerPrestigeExpansionPerk.onUpdate((_ctx, _old, row) => { if (shouldHandle()) handlers.prestigeExpansionPerk(row); });
   connection.db.playerPrestigeExpansionPerk.onDelete((_ctx, row) => { if (shouldHandle()) handlers.removePrestigeExpansionPerk(row); });
+  connection.db.playerBonusToggle.onInsert((_ctx, row) => { if (shouldHandle()) handlers.bonusToggle(row); });
+  connection.db.playerBonusToggle.onUpdate((_ctx, _old, row) => { if (shouldHandle()) handlers.bonusToggle(row); });
+  connection.db.playerBonusToggle.onDelete((_ctx, row) => { if (shouldHandle()) handlers.removeBonusToggle(row); });
   connection.db.playerPrestigePerk.onInsert((_ctx, row) => { if (shouldHandle()) handlers.prestigePerk(row); });
   connection.db.playerPrestigePerk.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.prestigePerk(row); });
   connection.db.playerPrestigePerk.onDelete((_ctx, row) => { if (shouldHandle()) handlers.removePrestigePerk(row); });
@@ -499,6 +505,7 @@ export function startBaseSubscription(dependencies: BaseSubscriptionDependencies
       tables.guildQuestWeek.where(row => row.week.gte(questWeek(questDay(BigInt(Date.now()) * 1000n)))),
       tables.prestigeExpansion,
       tables.playerPrestigeExpansionPerk.where(row => row.identity.eq(dependencies.identity)),
+      tables.playerBonusToggle.where(row => row.identity.eq(dependencies.identity)),
       tables.playerPrestigePerk.where((prestigePerk) => prestigePerk.identity.eq(dependencies.identity)),
       // Prestige asks for a number of cleared Endless stages, and the window
       // that says so opens anywhere. Subscribing this only while standing on
@@ -558,6 +565,8 @@ export function startBaseSubscription(dependencies: BaseSubscriptionDependencies
         for (const row of connection.db.prestigeExpansion.iter()) handlers.prestigeExpansion(row);
         for (const row of connection.db.playerPrestigeExpansionPerk.iter()) handlers.prestigeExpansionPerk(row);
         if (![...connection.db.playerPrestigeExpansionPerk.iter()].some(row => row.identity.toHexString() === dependencies.identity.toHexString())) handlers.removePrestigeExpansionPerk({ identity: dependencies.identity });
+        for (const row of connection.db.playerBonusToggle.iter()) handlers.bonusToggle(row);
+        if (![...connection.db.playerBonusToggle.iter()].some(row => row.identity.toHexString() === dependencies.identity.toHexString())) handlers.removeBonusToggle({ identity: dependencies.identity });
         for (const row of connection.db.playerItemUpgrade.iter()) handlers.itemUpgrade(row);
         for (const row of connection.db.activeItemUpgrade.iter()) handlers.activeItemUpgrade(row, 1);
         for (const row of connection.db.activeItemUpgradeSlotTwo.iter()) handlers.activeItemUpgrade(row, 2);

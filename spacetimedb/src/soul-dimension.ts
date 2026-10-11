@@ -3,7 +3,8 @@ import type { default as spacetimedbType } from "./index";
 import { isDeveloperIdentity } from "../../shared/developer-identity";
 import { isProceduralMap } from "../../shared/procedural-maps";
 import { CAMPAIGN_MAPS } from "../../shared/campaign-registry";
-import { challengeActive } from "./prestige-challenge";
+import { challengeActive, reflectRewardsInPlay } from "./prestige-challenge";
+import { bonusTogglesFor } from "./bonus-toggles";
 import { playerAttackCap } from "../../shared/prestige-perks";
 import { prestigePerkRanks } from "./prestige";
 import { cleanRating } from "../../shared/stat-rating";
@@ -77,14 +78,15 @@ export function soulReturnOpenFor(ctx: any, identity: any) {
  * challenge (Reflect Only or Aggro), which plays from its own start. Nothing for a player with none.
  */
 export function soulStatsFor(ctx: any, identity: any): SoulStats | null {
-  if (!identity || challengeActive(ctx, identity)) return null;
+  // Nor with Soul Stats switched off (bonus-toggles.ts).
+  if (!identity || challengeActive(ctx, identity) || !bonusTogglesFor(ctx, identity).soul) return null;
   const row = ctx.db.playerSoulStats.identity.find(identity);
   return row ? cleanSoulStats(row) : null;
 }
 
 /** The attack speed cap the soul's rating adds under: Reflect Only wins and Quick Draw raise it. Soul is in play only outside a challenge. */
 export function soulAttackCapFor(ctx: any, identity: any) {
-  return playerAttackCap(ctx.db.playerPrestigeChallenge.identity.find(identity), prestigePerkRanks(ctx, identity));
+  return playerAttackCap(reflectRewardsInPlay(ctx, identity), prestigePerkRanks(ctx, identity));
 }
 
 export function rewardKillsFor(ctx: any, identity: any): RewardKillCounts {

@@ -91,7 +91,10 @@ import { describe, expect, it } from "vitest";
 // rules (the planner is kept, switched off, in auto-farm-smart-controller.ts).
 // 1_941 (2026-10-09): Ox's Galaxy shop in Town, its import and one line of
 // wiring; the window and its purchase live in ox-shop-controller.ts.
-const MAX_LINES = 1_941;
+// 1_943 (2026-10-11): the profile's Bonuses tab, its import and one line
+// handing the window its deps; the switches, their deps from the coop session
+// and the in-play profile live in profile-bonus-toggles.ts.
+const MAX_LINES = 1_943;
 const TARGET_LINES = 1_000;
 
 describe("game composition boundary", () => {

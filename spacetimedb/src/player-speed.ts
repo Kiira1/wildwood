@@ -5,10 +5,11 @@ import { attackRangeWithResearch } from "../../shared/utility-research";
 import { updateSnapshotRow } from "./snapshot-row-writes";
 import { readPlayerProgress } from "./wide-stats";
 import { aggroChallengeActive } from "./aggro-challenge";
+import { bonusTogglesFor, researchInPlay } from "./bonus-toggles";
 
 /** The server's saved movement speed, including both research trees. */
 export function effectiveMovementSpeedForProgress(ctx: any, progress: any, research?: any) {
-  const ranks = research ?? ctx.db.playerResearch.identity.find(progress.identity);
+  const ranks = research ?? researchInPlay(ctx, progress.identity);
   return effectivePlayerMovementSpeed(
     false,
     ranks?.moveSpeed ?? 0,
@@ -22,16 +23,21 @@ export function prestigeRangeBonus(ctx: any, identity: any) {
   return prestigePerkValue(perksInPlay(ctx, identity), "longShot");
 }
 
-/** Fleet Foot and Long Shot's row, or none during an Aggro run, which plays without prestige bonuses. */
+/** The range saved on player_progress: range research and Long Shot, each only while in play (bonus-toggles.ts). */
+export function savedAttackRange(ctx: any, identity: any) {
+  return attackRangeWithResearch(researchInPlay(ctx, identity)?.utilityAttackRange ?? 0) + prestigeRangeBonus(ctx, identity);
+}
+
+/** Fleet Foot and Long Shot's row, or none during an Aggro run, which plays without prestige bonuses, or with Prestige switched off. */
 function perksInPlay(ctx: any, identity: any) {
-  return aggroChallengeActive(ctx, identity) ? null : ctx.db.playerPrestigeExpansionPerk.identity.find(identity);
+  return aggroChallengeActive(ctx, identity) || !bonusTogglesFor(ctx, identity).prestige ? null : ctx.db.playerPrestigeExpansionPerk.identity.find(identity);
 }
 
 /** Refresh saved range and live movement immediately when a perk point is spent. */
 export function refreshPrestigeMovement(ctx: any, activePlayer: any, syncMotion: (player: any) => void) {
   const progress = readPlayerProgress(ctx, ctx.sender);
   if (!progress) return;
-  const next = { ...progress, attackRange: attackRangeWithResearch(ctx.db.playerResearch.identity.find(ctx.sender)?.utilityAttackRange ?? 0) + prestigeRangeBonus(ctx, ctx.sender) };
+  const next = { ...progress, attackRange: savedAttackRange(ctx, ctx.sender) };
   updateSnapshotRow(ctx, "playerProgress", next);
   const player = { ...activePlayer, speed: effectiveMovementSpeedForProgress(ctx, next) };
   updateSnapshotRow(ctx, "player", player);

@@ -9,6 +9,7 @@ import { WORLD_REFLECT_SHARE, playerAttackCap, preArmorFactor, prestigePerkValue
 import { armorDamageReduction } from "../../shared/combat";
 import { criticalDamageMultiplier } from "../../shared/critical-damage";
 import { soulStatsFor, withSoulStats } from "./soul-dimension";
+import { reflectRewardsInPlay } from "./prestige-challenge";
 import { bowSkillRollFor } from "./bow-skills";
 import { bowSkillReachMultiplier } from "../../shared/bow-skills";
 import type { ModuleReducerCtx as GameReducerContext } from "./index";
@@ -94,9 +95,10 @@ export function createCombatReport(deps: CombatReportDeps) {
       const soul = soulStatsFor(ctx, ctx.sender);
       const loadout = saved ? damageLoadout(ctx, saved, research) : null;
       const challenge = ctx.db.playerPrestigeChallenge.identity.find(ctx.sender);
-      // Reflect Only wins and Quick Draw set the attack speed cap (none of either in play during an Aggro run).
+      // Reflect Only wins and Quick Draw set the attack speed cap (none of either in play during an Aggro run,
+      // or switched off: bonus-toggles.ts). The bounds above keep stored research, the looser side.
       const ranks = prestigePerkRanks(ctx, ctx.sender);
-      const minInterval = playerAttackCap(ctx.db.playerAggroChallenge.identity.find(ctx.sender)?.active ? null : challenge, ranks);
+      const minInterval = playerAttackCap(reflectRewardsInPlay(ctx, ctx.sender), ranks);
       const earned = saved ? createEnemyRewardAccumulator(saved, statMultiplier, minInterval) : null;
       const statsFor = saved ? preparePlayerPowerStats(saved, research, loadout?.levelFor) : null;
       // Armor rewards can change the nonlinear reduction inside a report.

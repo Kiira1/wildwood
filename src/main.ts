@@ -1,4 +1,5 @@
 import { installOfflineProgressSetting } from "./ui/offline-progress-setting";
+import { ownProfileInPlay, profileBonusDeps } from "./ui/profile-bonus-toggles";
 import { runtimeMapBalance } from '../shared/map-balance-runtime';
 import { installStatTracker } from './ui/stat-tracker';
 import { createQuestTrackerSetting, installQuestTracker } from './ui/quest-tracker';
@@ -161,7 +162,7 @@ import {
     toolbar, settingsBtn, inventoryBtn, settingsPanel, inventoryPanel, inventoryCharacterCanvas, itemInspectionPanel, itemInspectionTitle, itemInspectionContent, itemInspectionBack, bootUpgradeEl, bootUpgradeClose, joystickEl, stickEl,
     duelCountdownEl, duelResultEl, watchDuelReplayBtn, duelReplayEl, duelReplayTitle, sceneFadeEl, cutsceneOverlayEl,
     playerProfileEl, playerProfileNameEl, playerProfileGuestLabel, playerProfilePresenceEl, playerProfilePowerEl, playerProfileIcon, editPlayerNameBtn, profileCharacterPreviewEl, profileCharacterCanvas, profileEquippedHeadSlot, profileEquippedChestSlot, profileEquippedFeetSlot, profileEquippedRightHandSlot, previousPlayerSpriteBtn, nextPlayerSpriteBtn, profileSkinToneEdit, profileSkinToneControl,
-    playerProfileLoadingEl, profileOverviewTab, profileStatsTab, profileOverviewPanel, profileStatsPanel, profileJoinedEl, profileTimePlayedEl, profileKillsEl, profileOnlineEl, profileStatGrid, closePlayerProfileBtn, profileDuelBtn, profileNameEditorEl, profileNameEditorForm, profileNameInput, savePlayerNameBtn,
+    playerProfileLoadingEl, profileOverviewTab, profileStatsTab, profileOverviewPanel, profileStatsPanel, profileBonusesTab, profileBonusesPanel, profileJoinedEl, profileTimePlayedEl, profileKillsEl, profileOnlineEl, profileStatGrid, closePlayerProfileBtn, profileDuelBtn, profileNameEditorEl, profileNameEditorForm, profileNameInput, savePlayerNameBtn,
     mapGuideEl, mapGuideTitle, mapGuideCanvas, mapGuideZoneLabels, mapGuideDropItems, mapGuideBack,
     closeProfileIconPickerBtn, gameUpdateGateEl, reconnectOverlayEl, reconnectDetailEl, reconnectRetryBtn,
   } = gameElements;
@@ -237,7 +238,7 @@ import {
   // Gear and Vitality together, as one bonus on saved health (Vitality is live since 0.883, like other research).
   const healthMultiplierBonus = () => (1 + equipmentMaxHealthMultiplierBonus(inventory.equippedHead, inventory.equippedChest,
     coop?.itemUpgradeLevel?.(inventory.equippedHead) ?? 0, coop?.itemUpgradeLevel?.(inventory.equippedChest) ?? 0))
-    * (1 + Math.max(0, coop?.research?.()?.vitality ?? 0) * .02) - 1;
+    * (1 + Math.max(0, coop?.researchInPlay?.()?.vitality ?? 0) * .02) - 1;
   const LEGACY_SAVE_KEY = "wildwood-player-progress-v1";
   const respawnMemory = createRespawnMemory(localStorage, () => coop?.localIdentity?.() ?? '');
   const bossFightMemory = createBossFightMemory(localStorage, () => coop?.localIdentity?.() ?? '');
@@ -319,7 +320,7 @@ import {
     () => session.gameTime(),
     localTestMultiplier,
     () => runtimeMapBalance(currentMapId)?.regularRespawnSeconds ?? REGULAR_ENEMY_RESPAWN_SECONDS,
-    () => coop?.research?.()?.enemyRespawn ?? 0,
+    () => coop?.researchInPlay?.()?.enemyRespawn ?? 0,
   );
 
   const duelSession = createDuelSessionController({
@@ -527,12 +528,12 @@ import {
   let farmConnection: 'ready' | 'recovering' | 'ended' = 'recovering';
   const farmProgress = createAutoFarmProgress({ mapId: () => currentMapId, base: () => ({ maxHp: player.baseMaxHp, damage: player.damage, attackRate: player.attackRate, armor: player.armor, regen: player.regen }),
     equipment: () => ({ equippedHead: inventory.equippedHead, equippedChest: inventory.equippedChest, equippedRightHand: inventory.equippedRightHand, equippedLeftHand: inventory.equippedLeftHand }),
-    research: () => researchRanks(), upgradeLevel: itemId => coop?.itemUpgradeLevel?.(itemId) ?? 0, rewardMultiplier: () => researchRewardMultiplier(), minAttackInterval: () => playerAttackCap(coop?.aggroChallenge?.()?.active ? null : coop?.prestigeChallenge?.(), coop?.prestigePerks?.()), criticalChance: () => researchCriticalChance(), criticalMultiplier: (extra = 0) => researchCriticalDamageMultiplier(0, (player.critRating ?? 0) + extra),
+    research: () => researchRanks(), upgradeLevel: itemId => coop?.itemUpgradeLevel?.(itemId) ?? 0, rewardMultiplier: () => researchRewardMultiplier(), minAttackInterval: () => playerAttackCap(coop?.reflectRewardsInPlay?.(), coop?.prestigePerks?.()), criticalChance: () => researchCriticalChance(), criticalMultiplier: (extra = 0) => researchCriticalDamageMultiplier(0, (player.critRating ?? 0) + extra),
     reflectOnly: () => Boolean(coop?.prestigeChallenge?.()?.active), mapBoss: () => proceduralBoss.boss() ?? bossStateForMap(bosses, currentMapId), portalUnlocked: portal => mapController.portalIsUnlocked(portal as never), portals: () => { const config = MAP_CONFIG[currentMapId]; return [config.portal, "secondaryPortal" in config ? config.secondaryPortal : null]; } });
   const autoFarm = createAutoFarmController({
     resumeStore: createAutoFarmResumeStore(),
     player, enemies, spawnSites,
-    mapId: () => currentMapId, pullCamps: () => coop?.aggroChallenge?.()?.active ? 0 : aggroPullCamps(coop?.aggroChallenge?.()), forcedGroups: () => forcedAggroGroups(coop?.aggroChallenge?.(), coop?.localIdentity?.()),
+    mapId: () => currentMapId, pullCamps: () => coop?.aggroChallenge?.()?.active || coop?.bonusToggles?.().challenge === false ? 0 : aggroPullCamps(coop?.aggroChallenge?.()), forcedGroups: () => forcedAggroGroups(coop?.aggroChallenge?.(), coop?.localIdentity?.()),
     equippedWeapon: () => inventory.equippedRightHand || inventory.equippedLeftHand,
     localIdentity: () => coop?.localIdentity?.(),
     connection: () => farmConnection === 'ready' && (!coop?.isConnected?.() || !session?.isRunning()
@@ -555,7 +556,7 @@ import {
     respawns: respawnMemory,
     fights: bossFightMemory,
     ready: () => mapBalance.ready(currentMapId) && Boolean(session?.isRunning() && coop?.isConnected?.()) && !mapController.isMapTransitioning(),
-    mapId: () => currentMapId, identity: () => coop?.localIdentity?.() ?? "local-player", bossRespawnRank: () => coop?.research?.()?.bossRespawn ?? 0,
+    mapId: () => currentMapId, identity: () => coop?.localIdentity?.() ?? "local-player", bossRespawnRank: () => coop?.researchInPlay?.()?.bossRespawn ?? 0,
     alive: () => player.hp > 0,
     defeated: mapId => {
       // Early bosses retain their saved cinematic/result flow. Later campaign and Endless
@@ -590,11 +591,11 @@ import {
     },
   );
   const research = createResearchController({
-    prestigeLevel: () => coop?.aggroChallenge?.()?.active ? 0 : coop?.prestige?.()?.level ?? 0,
+    prestigeLevel: () => coop?.prestigeBonusesInPlay?.() === false ? 0 : coop?.prestige?.()?.level ?? 0,
     guildQuestBonus: () => coop?.dailyQuests?.()?.bonus ?? 1,
     prestigePerks: () => coop?.prestigePerks?.(),
     player,
-    getRanks: () => coop?.research?.(),
+    getRanks: () => coop?.researchInPlay?.(),
     isDueling,
     maxPlayerStat: MAX_PLAYER_STAT,
     saveProgress,
@@ -665,7 +666,7 @@ import {
     equippedChest: () => inventory.equippedChest,
     equippedChestUpgradeLevel: () => coop?.itemUpgradeLevel?.(inventory.equippedChest) ?? 0,
     healthMultiplierBonus,
-    minAttackInterval: () => attackCapInterval(playerAttackCap(coop?.aggroChallenge?.()?.active ? null : coop?.prestigeChallenge?.(), coop?.prestigePerks?.())),
+    minAttackInterval: () => attackCapInterval(playerAttackCap(coop?.reflectRewardsInPlay?.(), coop?.prestigePerks?.())),
     reflectOnly: () => Boolean(coop?.prestigeChallenge?.()?.active),
     effectiveArmor,
     isDueling,
@@ -810,7 +811,7 @@ import {
   const homeTravel = createHomeTravelController({ source: () => coop, travel: mapController.travelFromHome, departure: mapController.homeDeparture, atHome: () => currentMapId === "town", pause: () => {}, clearInput: playerInput.clear, mapName: id => MAP_CONFIG[id].name, guildHall: () => guildHall.hallMap() });
   const soulDimension = createSoulDimension({ source: () => coop, player, enemies, spawnSites, decor, currentMapId: () => currentMapId, spawnFromSite, invalidateDepthOrder: () => worldRenderRuntime.invalidateDepthOrder(), townMap: MAP_CONFIG.town,
     strength: () => ({ dps: playerCombat.expectedDps(), maxHp: player.maxHp, armor: effectiveArmor(), regen: regenerationPerSecond() }), fullDps: () => playerCombat.expectedFullDps(), logPickup, damagePlayer: (damage, source) => playerCombat.damagePlayer(damage, source), message: showMessage, burst: spawnBurst, sendToTown: () => mapController.teleportHome(), researchCritMultiplier: researchCriticalDamageMultiplier,
-    attackCap: () => playerAttackCap(coop?.aggroChallenge?.()?.active ? null : coop?.prestigeChallenge?.(), coop?.prestigePerks?.()), travel: mapController.travelFromHome, clearInput: playerInput.clear, fadeToWorld: (action, ms) => session.fadeToWorld(action, ms) });
+    attackCap: () => playerAttackCap(coop?.reflectRewardsInPlay?.(), coop?.prestigePerks?.()), travel: mapController.travelFromHome, clearInput: playerInput.clear, fadeToWorld: (action, ms) => session.fadeToWorld(action, ms) });
   const guildHall = createGuildHall({ source: () => coop, player, decor, currentMapId: () => currentMapId, invalidateDepthOrder: () => worldRenderRuntime.invalidateDepthOrder(), clearInput: playerInput.clear, fadeToWorld: (action, ms) => session.fadeToWorld(action, ms),
     travel: mapId => { autoFarm.stop("Autofarm stopped for the Guild Hall"); return mapController.teleportToMap(mapId, async () => Boolean(await coop?.changeMap?.(mapId, player.x, player.y))); } });
   const { activePortal, secondaryPortal, portalIsUnlocked, startDragonPortalCutscene, startSnowlandsPortalCutscene, startLavaPortalCutscene, startInfernalPortalCutscene, startWaterPortalCutscene, startSamuraiPortalCutscene } = mapController;
@@ -1191,6 +1192,7 @@ import {
   const profileWindow = createProfileWindowController({
     window: playerProfileEl, name: playerProfileNameEl, guest: playerProfileGuestLabel, presence: playerProfilePresenceEl, power: playerProfilePowerEl, icon: playerProfileIcon, loading: playerProfileLoadingEl,
     overviewTab: profileOverviewTab, statsTab: profileStatsTab, overviewPanel: profileOverviewPanel, statsPanel: profileStatsPanel,
+    bonusesTab: profileBonusesTab, bonusesPanel: profileBonusesPanel, bonuses: profileBonusDeps(() => coop, isDueling),
     joined: profileJoinedEl, timePlayed: profileTimePlayedEl, kills: profileKillsEl, online: profileOnlineEl, statGrid: profileStatGrid,
     close: closePlayerProfileBtn, editName: editPlayerNameBtn, nameEditor: profileNameEditorEl, nameForm: profileNameEditorForm, nameInput: profileNameInput, saveName: savePlayerNameBtn,
     skinEdit: profileSkinToneEdit, skinChoices: profileSkinToneControl, preview: profileCharacterPreviewEl, equipmentHead: profileEquippedHeadSlot, equipmentChest: profileEquippedChestSlot, equipmentFeet: profileEquippedFeetSlot, equipmentRightHand: profileEquippedRightHandSlot, previousSprite: previousPlayerSpriteBtn, nextSprite: nextPlayerSpriteBtn, genderSetting: gameElements.profileGenderSetting, genderValue: gameElements.profileGenderValue, genderEdit: gameElements.profileGenderEdit, genderChoices: gameElements.profileGenderChoices,
@@ -1215,12 +1217,12 @@ import {
     renderCharacter: (identity, progress, visible) => profileCharacterPreview.draw({ visible, progress, skinTone: coop?.skinTone?.(identity) ?? DEFAULT_SKIN_TONE }),
     skinTone: (identity) => coop?.skinTone?.(identity) ?? DEFAULT_SKIN_TONE, setSkinTone: async (value) => coop?.setSkinTone?.(value),
     playerGender: (identity) => coop?.playerGender?.(identity) ?? 0, setGender: async (value) => coop?.setGender?.(value),
-    renderStats: (profile, element) => renderProfileStats(profile, element, formatArmorReduction, playerAttackCap(profile.identity === coop?.localIdentity?.() && coop?.aggroChallenge?.()?.active ? null : profile.prestigeChallenge, profile.identity === coop?.localIdentity?.() ? coop?.prestigePerks?.() : profile.prestigePerks), profile.research,
-      profile.identity === coop?.localIdentity?.() ? (coop?.aggroChallenge?.()?.active ? 0 : coop?.prestige?.()?.level ?? 0) : profile.prestigeLevel ?? 0,
+    renderStats: (profile, element) => renderProfileStats(profile, element, formatArmorReduction, playerAttackCap(profile.identity === coop?.localIdentity?.() ? coop?.reflectRewardsInPlay?.() : profile.prestigeChallenge, profile.identity === coop?.localIdentity?.() ? coop?.prestigePerks?.() : profile.prestigePerks), profile.identity === coop?.localIdentity?.() ? coop?.researchInPlay?.() ?? profile.research : profile.research,
+      profile.identity === coop?.localIdentity?.() ? (coop?.prestigeBonusesInPlay?.() === false ? 0 : coop?.prestige?.()?.level ?? 0) : profile.prestigeLevel ?? 0,
       profile.identity === coop?.localIdentity?.() ? coop?.prestigePerks?.() : profile.prestigePerks,
       profile.identity === coop?.localIdentity?.() ? coop?.dailyQuests?.()?.bonus ?? 1 : 1,
       profile.identity === coop?.localIdentity?.() ? soulDimension.inPlay() : profileSoulInPlay(profile)),
-    formatPower: (profile) => formatCompactNumber(profilePower(profile, profile.identity === coop?.localIdentity?.() ? soulDimension.inPlay() : profileSoulInPlay(profile))), formatPlayedTime,
+    formatPower: (profile) => formatCompactNumber(profilePower(ownProfileInPlay(profile, coop), profile.identity === coop?.localIdentity?.() ? soulDimension.inPlay() : profileSoulInPlay(profile))), formatPlayedTime,
     profile: (identity) => coop?.playerProfile?.(identity), loadProfile: async (identity) => coop?.loadPlayerProfile?.(identity), releaseProfile: () => { coop?.releasePlayerProfile?.(); },
     isDueling, duelCooldownMs: () => coop?.duelCooldownRemainingMs?.() ?? 0,
     requestDuel: async (identity) => {
@@ -1568,7 +1570,7 @@ import {
   let refreshDailyGemBonus = () => {};
   installStatTracker({ storage: localStorage, read: createStatTrackerSource({ coop: () => coop, player, inventory,
     hasStarted: session.hasStarted, isLoadedFor: progress.isLoadedFor, inTutorial, researchRanks, kills: () => totalKills,
-    displayedProgress: displayedPlayerPowerProgress, attackCap: () => playerAttackCap(coop?.aggroChallenge?.()?.active ? null : coop?.prestigeChallenge?.(), coop?.prestigePerks?.()), critParts: () => ({ ...research.criticalDamageParts(), soul: soulDimension.critDamage(), rating: player.critRating }) }) });
+    displayedProgress: displayedPlayerPowerProgress, attackCap: () => playerAttackCap(coop?.reflectRewardsInPlay?.(), coop?.prestigePerks?.()), critParts: () => ({ ...research.criticalDamageParts(), soul: soulDimension.critDamage(), rating: player.critRating }) }) });
   installQuestTracker({ storage: localStorage, enabled: questTracker.enabled, ensure: () => quests.refresh(), view: () => quests.trackerView(currentMapId), hiddenHere: () => !session.hasStarted() || inTutorial() || document.body.matches(".is-cutscene, .is-replaying, .is-dueling") });
   const mailbox = createGameMailbox(gameElements.mailboxToggle, gameElements.minimapVersionEl, coop,
     () => session.hasStarted() && !inTutorial());

@@ -197,7 +197,11 @@ import { describe, expect, it } from "vitest";
 // rules, tables and reducer bodies live in soul-dimension.ts.
 // 6_587: player_research's critCap column, the Crit Cap research rank. The
 // cap itself lives in shared/critical-damage.ts.
-const MAX_LINES = 6_587;
+// 6_592 (2026-10-11): bonus toggles. The player_bonus_toggle table in the
+// schema, the set_bonus_toggle_state reducer's export (two lines) and two
+// import lines. The table, the in-play reads and the reducer body live in
+// bonus-toggles.ts and bonus-toggles-reducer.ts.
+const MAX_LINES = 6_592;
 const TARGET_LINES = 3_500;
 
 describe("server module boundary", () => {

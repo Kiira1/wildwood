@@ -179,6 +179,7 @@ import SendSocialMessageReducer from "./send_social_message_reducer";
 import SetAudioSettingsReducer from "./set_audio_settings_reducer";
 import SetAutoFarmPuppetReducer from "./set_auto_farm_puppet_reducer";
 import SetAvatarFrameReducer from "./set_avatar_frame_reducer";
+import SetBonusToggleStateReducer from "./set_bonus_toggle_state_reducer";
 import SetChatMessageReactionReducer from "./set_chat_message_reaction_reducer";
 import SetDeveloperNameTagReducer from "./set_developer_name_tag_reducer";
 import SetDeveloperPresenceReducer from "./set_developer_presence_reducer";
@@ -349,6 +350,7 @@ import PlayerAccountStatusRow from "./player_account_status_table";
 import PlayerAggroChallengeRow from "./player_aggro_challenge_table";
 import PlayerAggroChallengeParkedRow from "./player_aggro_challenge_parked_table";
 import PlayerAutoFarmPuppetRow from "./player_auto_farm_puppet_table";
+import PlayerBonusToggleRow from "./player_bonus_toggle_table";
 import PlayerChatHeartsRow from "./player_chat_hearts_table";
 import PlayerCombatRatingRow from "./player_combat_rating_table";
 import PlayerDailyQuestRow from "./player_daily_quest_table";
@@ -888,6 +890,17 @@ const tablesSchema = __schema({
       { name: 'player_auto_farm_puppet_identity_key', constraint: 'unique', columns: ['identity'] },
     ],
   }, PlayerAutoFarmPuppetRow),
+  playerBonusToggle: __table({
+    name: 'player_bonus_toggle',
+    indexes: [
+      { accessor: 'identity', name: 'player_bonus_toggle_identity_idx_btree', algorithm: 'btree', columns: [
+        'identity',
+      ] },
+    ],
+    constraints: [
+      { name: 'player_bonus_toggle_identity_key', constraint: 'unique', columns: ['identity'] },
+    ],
+  }, PlayerBonusToggleRow),
   playerChatHearts: __table({
     name: 'player_chat_hearts',
     indexes: [
@@ -1812,6 +1825,7 @@ const reducersSchema = __reducers(
   __reducerSchema("set_audio_settings", SetAudioSettingsReducer),
   __reducerSchema("set_auto_farm_puppet", SetAutoFarmPuppetReducer),
   __reducerSchema("set_avatar_frame", SetAvatarFrameReducer),
+  __reducerSchema("set_bonus_toggle_state", SetBonusToggleStateReducer),
   __reducerSchema("set_chat_message_reaction", SetChatMessageReactionReducer),
   __reducerSchema("set_developer_name_tag", SetDeveloperNameTagReducer),
   __reducerSchema("set_developer_presence", SetDeveloperPresenceReducer),

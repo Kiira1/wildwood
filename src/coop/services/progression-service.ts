@@ -1,6 +1,7 @@
 import type { PrestigeChallenge } from "../../../shared/prestige-challenge";
 import { TUTORIAL_FOREST_MAP_ID } from "../../../shared/rules";
 import { prestigeBonusesOff, type AggroChallenge } from "../../../shared/aggro-challenge";
+import { ALL_BONUSES_ON, bonusTogglesFromRow, type BonusToggles } from "../../../shared/bonus-toggles";
 import { parseDailyQuests, type DailyQuest } from "../../../shared/daily-quests";
 
 export type DailyQuestState = { day: number; quests: DailyQuest[]; bonus: number; guildPoints: number; guildName: string };
@@ -173,6 +174,8 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
   let localPrestige: PlayerPrestige | null = null;
   let localPrestigePerks: PlayerPrestigePerks | null = null;
   let expansionPerks = { bossSlayer: 0, secondWind: 0, longShot: 0, fleetFoot: 0, quickDraw: 0 };
+  /** The bonus groups in play (shared/bonus-toggles.ts). Kept through a disconnect: only this player's own reducer changes them. */
+  let bonusToggles: BonusToggles = { ...ALL_BONUSES_ON };
   let prestigeExpansionUnlocksAt: number | null = null;
   let prestigeChallenge: PrestigeChallenge = { active: false, completed: 0 };
   let challengeParked = false;
@@ -662,6 +665,16 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
     dependencies.notify();
   }
 
+  function upsertBonusToggle(row: { identity: Identity; prestigeOff: boolean; challengeOff: boolean; researchOff: boolean; soulOff: boolean }) {
+    if (row.identity.toHexString() === dependencies.localIdentity()) bonusToggles = bonusTogglesFromRow(row);
+    dependencies.notify();
+  }
+
+  function removeBonusToggle(row: { identity: Identity }) {
+    if (row.identity.toHexString() === dependencies.localIdentity()) bonusToggles = { ...ALL_BONUSES_ON };
+    dependencies.notify();
+  }
+
   function removePrestigeExpansionPerk(row: { identity: Identity }) {
     if (row.identity.toHexString() === dependencies.localIdentity()) expansionPerks = { bossSlayer: 0, secondWind: 0, longShot: 0, fleetFoot: 0, quickDraw: 0 };
     dependencies.notify();
@@ -817,6 +830,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
       upsertDailyQuest, removeDailyQuest, upsertGuildQuestWeek, removeGuildQuestWeek,
       upsertPrestigeExpansion, removePrestigeExpansion,
       upsertPrestigeExpansionPerk, removePrestigeExpansionPerk,
+      upsertBonusToggle, removeBonusToggle,
       removePrestigePerk,
       upsertItemUpgrade,
       removeItemUpgrade,
@@ -977,6 +991,13 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
         return { ...progress };
       },
       research: () => ({ ...localResearch }),
+      /** The research combat and farming read: none while Research is switched off (bonus-toggles.ts). */
+      researchInPlay: () => bonusToggles.research ? { ...localResearch } : createEmptyResearchRanks(),
+      bonusToggles: (): BonusToggles => ({ ...bonusToggles }),
+      /** The Reflect Only row whose wins count now: none during an Aggro run, or with Challenge Rewards switched off. */
+      reflectRewardsInPlay: () => aggroChallenge.active || !bonusToggles.challenge ? null : { ...prestigeChallenge },
+      /** Prestige stat gain and perks count: not during an Aggro run, nor with Prestige switched off. */
+      prestigeBonusesInPlay: () => !prestigeBonusesOff(aggroChallenge) && bonusToggles.prestige,
       activeResearch: () => activeResearch ? { ...activeResearch } : null,
       pausedResearch: () => [...pausedResearch.values()].map(row => ({ ...row })),
       prestige: () => localPrestige ? { ...localPrestige } : null,
@@ -993,8 +1014,8 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
         return reducerResult("daily quests", (active) => active.reducers.refreshDailyQuests({}))();
       },
       prestigeExpansionUnlocksAt: () => prestigeExpansionUnlocksAt,
-      /** The ranks in play: none during an Aggro run, which plays without prestige bonuses. */
-      prestigePerks: (): PlayerPrestigePerks => prestigeBonusesOff(aggroChallenge)
+      /** The ranks in play: none during an Aggro run, which plays without prestige bonuses, or with Prestige switched off. */
+      prestigePerks: (): PlayerPrestigePerks => prestigeBonusesOff(aggroChallenge) || !bonusToggles.prestige
         ? { keenEdge: 0, doubleStrike: 0, splitShot: 0, riposte: 0, bossSlayer: 0, secondWind: 0, longShot: 0, fleetFoot: 0, quickDraw: 0 }
         : { keenEdge: 0, doubleStrike: 0, splitShot: 0, riposte: 0, ...localPrestigePerks, ...expansionPerks },
       /** The ranks the player owns, for the Prestige window. */
@@ -1144,6 +1165,11 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
           dependencies.notify();
         }
         return result;
+      },
+      /** Switches bonus groups on or off. Queued kills were earned with the old bonuses, so they are paid first. */
+      async setBonusToggles(next: BonusToggles) {
+        if (!await enemyLoot.flush(true)) return { ok: false, error: "Rewards are still syncing. Try again in a moment." };
+        return reducerResult("bonus toggles", (active) => active.reducers.setBonusToggleState({ ...next }))();
       },
       /** The free respec keeps the run's stats, so queued kills and the unsaved prediction stay valid. */
       useFreePrestigeRespec() {
@@ -1342,6 +1368,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
       prestigeLevelByIdentity.clear();
       localPrestigePerks = null;
       expansionPerks = { bossSlayer: 0, secondWind: 0, longShot: 0, fleetFoot: 0, quickDraw: 0 };
+      bonusToggles = { ...ALL_BONUSES_ON };
       activeItemUpgrades.clear();
       balanceApologyGiftAmount = 0n;
       itemGifts.clear();

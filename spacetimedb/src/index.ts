@@ -55,10 +55,12 @@ import { moderateReportedMessage } from "./chat-report-moderation";
 import { PLAYER_SKIN_TONES } from "../../shared/player-skin-tones";
 import { leaderboardPageTables, writeLeaderboardPages, readLeaderboardWindow, readLeaderboardPage, readPrestigeLeaderboardPage, findLeaderboardSpot } from "./leaderboard-pages";
 import { leaderboardEligible } from "../../shared/leaderboard-window";
-import { effectiveMovementSpeedForProgress, prestigeRangeBonus, refreshPrestigeMovement, attackIntervalForProgress } from "./player-speed";
+import { effectiveMovementSpeedForProgress, refreshPrestigeMovement, attackIntervalForProgress, savedAttackRange } from "./player-speed";
+import { playerBonusToggle, researchInPlay } from "./bonus-toggles";
+import { registerBonusToggleReducers } from "./bonus-toggles-reducer";
 import { playerPrestige, playerPrestigePerk, prestigeExpansion, playerPrestigeExpansionPerk, playerFreeRespec, ensurePrestigeExpansion } from "./prestige-expansion";
 import { earlierTimestamp } from "./timestamp-utils";
-import { attackRangeWithResearch, slotUpgradeDurationWithResearch } from "../../shared/utility-research";
+import { slotUpgradeDurationWithResearch } from "../../shared/utility-research";
 import { createResearchState } from "./research-state";
 import { createCosmeticConversion } from "./cosmetic-conversion";
 import { cosmeticUnlocks } from "../../shared/cosmetic-conversion";
@@ -1748,6 +1750,7 @@ const spacetimedb = schema({
   playerPrestigePerk,
   playerPrestigeChallenge, prestigeChallengeBackup, prestigeChallengeRun, playerPrestigeChallengeParked, playerAggroChallenge, aggroChallengeRun, playerAggroChallengeParked, playerAutoFarmPuppet, playerFreeRespec, playerDailyQuest, guildQuestWeek, guildMemberQuestWeek, soloQuestWeek, playerQuestWeekTotal, playerWideStats, playerCombatRating, duelWideStats, duelReplayWideStats, prestigeExpansion,
   playerPrestigeExpansionPerk,
+  playerBonusToggle,
   duelRiposte, duelCombatSnapshot,
   playerSessionAnalytics,
   developerPresencePreference,
@@ -2282,7 +2285,7 @@ function completeActiveResearch(ctx: any, active: any) {
   if (active.researchId === "slotUpgradeSpeed") refreshActiveSlotUpgrades(ctx, active.identity, reconcileActiveItemUpgrade);
   let progress = readPlayerProgress(ctx, active.identity);
   if (progress && active.researchId === "utilityAttackRange") {
-    progress = { ...progress, attackRange: attackRangeWithResearch(nextResearch.utilityAttackRange) + prestigeRangeBonus(ctx, active.identity) };
+    progress = { ...progress, attackRange: savedAttackRange(ctx, active.identity) };
     updateSnapshotRow(ctx, "playerProgress", progress);
   }
   const player = ctx.db.player.identity.find(active.identity);
@@ -2405,7 +2408,7 @@ function powerForProgress(progress: { maxHp: number; damage: number; attackRate:
 function effectivePowerStatsForProgress(ctx: any, progress: any) {
   return effectivePlayerPowerStats(
     withSoulStats(progress, soulStatsFor(ctx, progress.identity), soulAttackCapFor(ctx, progress.identity)),
-    ctx.db.playerResearch.identity.find(progress.identity),
+    researchInPlay(ctx, progress.identity),
     (itemId) => itemUpgradeLevelFor(ctx, progress.identity, itemId),
   );
 }
@@ -2413,7 +2416,7 @@ function effectivePowerStatsForProgress(ctx: any, progress: any) {
 function effectivePowerForProgress(ctx: any, progress: any) {
   return effectivePlayerPower(
     withSoulStats(progress, soulStatsFor(ctx, progress.identity), soulAttackCapFor(ctx, progress.identity)),
-    ctx.db.playerResearch.identity.find(progress.identity),
+    researchInPlay(ctx, progress.identity),
     (itemId) => itemUpgradeLevelFor(ctx, progress.identity, itemId),
   );
 }
@@ -2424,7 +2427,7 @@ function powerFieldsForProgress(ctx: any, progress: any) {
 }
 
 function researchedDamage(ctx: any, identity: any, damage: number, knownProgress?: any, knownResearch?: any) {
-  const rank = (knownResearch === undefined ? ctx.db.playerResearch.identity.find(identity) : knownResearch)?.warcraft ?? 0;
+  const rank = (knownResearch === undefined ? researchInPlay(ctx, identity) : knownResearch)?.warcraft ?? 0;
   const progress = knownProgress ?? readPlayerProgress(ctx, identity);
   const weaponItem = progress ? equippedRightHandForProgress(progress) || equippedLeftHandForProgress(progress) : "";
   const headItem = progress ? equippedHeadForProgress(progress) : "";
@@ -2441,12 +2444,12 @@ function researchedDamage(ctx: any, identity: any, damage: number, knownProgress
 }
 
 function researchedArmor(ctx: any, identity: any, armor: number) {
-  const rank = ctx.db.playerResearch.identity.find(identity)?.precision ?? 0;
+  const rank = researchInPlay(ctx, identity)?.precision ?? 0;
   return (armor + (soulStatsFor(ctx, identity)?.armor ?? 0)) * (1 + rank * .02);
 }
 
 function researchedRegen(ctx: any, identity: any, regen: number) {
-  const rank = ctx.db.playerResearch.identity.find(identity)?.regeneration ?? 0;
+  const rank = researchInPlay(ctx, identity)?.regeneration ?? 0;
   const progress = readPlayerProgress(ctx, identity);
   const headItem = progress ? equippedHeadForProgress(progress) : "";
   const chestItem = progress ? equippedChestForProgress(progress) : "";
@@ -2969,7 +2972,7 @@ function leaderboardAppearanceForProgress(ctx: any, progress: any, profile: any)
 function maxHealthForProgress(ctx: any, identity: any, progress: any) {
   const headItem = equippedHeadForProgress(progress);
   const chestItem = equippedChestForProgress(progress);
-  const vitalityMultiplier = 1 + (ctx.db.playerResearch.identity.find(identity)?.vitality ?? 0) * .02;
+  const vitalityMultiplier = 1 + (researchInPlay(ctx, identity)?.vitality ?? 0) * .02;
   return equipmentMaxHealth(progress.maxHp + (soulStatsFor(ctx, identity)?.maxHp ?? 0),
     headItem,
     chestItem,
@@ -3432,7 +3435,7 @@ function enterWorldPresence(ctx: any, tabId: string, forceTakeover = false, supp
     const cosmeticEquipment = cosmeticEquipmentForProgress({ ...existingProgress, inventoryJson }, lentLooksFor(ctx, ctx.sender));
     const speed = playerBaseMovementSpeed(false);
     const maxHp = Math.max(PLAYER_BASE_HP, existingProgress.maxHp);
-    const attackRange = attackRangeWithResearch(ctx.db.playerResearch.identity.find(ctx.sender)?.utilityAttackRange ?? 0) + prestigeRangeBonus(ctx, ctx.sender);
+    const attackRange = savedAttackRange(ctx, ctx.sender);
     if (existingProgress.maxHp !== maxHp || existingProgress.attackRange !== attackRange || existingProgress.speed !== speed || existingProgress.inventoryJson !== inventoryJson || existingProgress.equippedHead !== equippedHead || existingProgress.equippedChest !== equippedChest || existingProgress.equippedFeet !== equippedFeet || existingProgress.equippedRightHand !== equippedRightHand || existingProgress.equippedLeftHand !== equippedLeftHand || existingProgress.cosmeticHead !== cosmeticEquipment.cosmeticHead || existingProgress.cosmeticChest !== cosmeticEquipment.cosmeticChest || existingProgress.cosmeticFeet !== cosmeticEquipment.cosmeticFeet || existingProgress.cosmeticRightHand !== cosmeticEquipment.cosmeticRightHand || existingProgress.cosmeticLeftHand !== cosmeticEquipment.cosmeticLeftHand) {
       const migratedProgress = {
         ...existingProgress,
@@ -4711,7 +4714,7 @@ export const savePlayerProgress = spacetimedb.reducer(
       attackRate: base.attackRate,
       projectileSpeed: PLAYER_PROJECTILE_SPEED,
       projectileCount: base.projectileCount,
-      attackRange: attackRangeWithResearch(ctx.db.playerResearch.identity.find(ctx.sender)?.utilityAttackRange ?? 0) + prestigeRangeBonus(ctx, ctx.sender),
+      attackRange: savedAttackRange(ctx, ctx.sender),
       armor: base.armor,
       regen: base.regen,
       speed: playerBaseMovementSpeed(false),
@@ -5506,7 +5509,7 @@ function resetProgressToDefaults(ctx: any, activePlayer: any, keep: { research?:
     const next = defaultPlayerProgress(ctx.sender);
     next.attackRate = challengeAttackInterval(next.attackRate, reflectRewardsInPlay(ctx, ctx.sender));
     if (current) next.cosmeticItemsJson = current.cosmeticItemsJson;
-    if (keep.research) next.attackRange = attackRangeWithResearch(ctx.db.playerResearch.identity.find(ctx.sender)?.utilityAttackRange ?? 0) + prestigeRangeBonus(ctx, ctx.sender);
+    if (keep.research) next.attackRange = savedAttackRange(ctx, ctx.sender);
     const history = ctx.db.playerCutsceneHistory.identity.find(ctx.sender);
     if (history) ctx.db.playerCutsceneHistory.identity.update({ ...history, seenMask: 0, generation: history.generation + 1 });
     else ctx.db.playerCutsceneHistory.insert({ identity: ctx.sender, seenMask: 0, generation: 0 });
@@ -5574,6 +5577,8 @@ export const resetPlayerProgress = spacetimedb.reducer({}, (ctx) => {
 export const startPrestigeChallenge = spacetimedb.reducer({}, ctx => prestige.changeChallenge(ctx, true));
 export const abandonPrestigeChallenge = spacetimedb.reducer({}, ctx => prestige.changeChallenge(ctx, false));
 export const { startAggroRun, abandonAggroRun } = registerAggroReducers(spacetimedb, { requireControllingPlayer, activeDuelFor, startFreshRun, respawnWithProgress });
+export const { setBonusToggleState } = registerBonusToggleReducers(spacetimedb, { requireControllingPlayer, activeDuelFor,
+  refreshPerkEffects: (ctx, player) => refreshPrestigeMovement(ctx, player, updated => syncPlayerMotionIdentity(ctx, playerWithMotion(ctx, updated))) });
 export const { setAutoFarmPuppet } = registerAutoFarmPuppetReducers(spacetimedb, { blockedSession, requireControllingPlayer, playerWithMotion });
 export const { mySoulStats, myRewardKills, profileSoulStats, setSoulDimensionOpen } = registerSoulDimension(spacetimedb, { requireDeveloper });
 export const { fallIntoWell, useTownDoor } = registerTown(spacetimedb, { requireControllingPlayer, playerWithMotion, transitionPlayerMap });

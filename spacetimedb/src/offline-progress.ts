@@ -14,6 +14,7 @@ import { REGULAR_ENEMY_RESPAWN_SECONDS } from "../../shared/rules";
 import type { PlayerPowerStats } from "../../shared/player-power";
 import type { MapBalanceSnapshot } from "../../shared/map-balance-types";
 import { readCritRating, readPlayerProgress } from "./wide-stats";
+import { researchInPlay } from "./bonus-toggles";
 
 export const offlineProgressTables = {
   /**
@@ -211,7 +212,8 @@ export function grantOfflineProgress(ctx: any, progress: any, ports: OfflineGran
   }
   const grant = resolveOfflineGrant(ctx.timestamp.microsSinceUnixEpoch, row.awaySinceMicros, {
     offlineWindowRank: ctx.db.playerResearch.identity.find(ctx.sender)?.offlineWindow ?? 0,
-    enemyRespawnRank: ctx.db.playerResearch.identity.find(ctx.sender)?.enemyRespawn ?? 0,
+    // Respawn research farms faster only while Research is in play (bonus-toggles.ts); the window is a timer and stays.
+    enemyRespawnRank: researchInPlay(ctx, ctx.sender)?.enemyRespawn ?? 0,
     stats: ports.effectiveStats(ctx, progress),
     progress,
     endless: {

@@ -12,6 +12,7 @@ import { PRESTIGE_EXPANSION_PERK_IDS } from "../../shared/prestige-expansion";
 import { prestigeExpanded } from "./prestige-expansion";
 import { readPlayerProgress } from "./wide-stats";
 import { aggroChallengeActive } from "./aggro-challenge";
+import { bonusTogglesFor, researchInPlay } from "./bonus-toggles";
 import { aggroGoal, aggroGoalMet } from "../../shared/aggro-challenge";
 
 // Prestige bodies. The player_prestige table and the reducer declaration stay
@@ -25,17 +26,20 @@ import { aggroGoal, aggroGoalMet } from "../../shared/aggro-challenge";
  * projection of a claim's rewards stays in step with what the client earned.
  */
 export function statRewardMultiplier(ctx: any, identity: any) {
-  return researchStatRewardMultiplier(ctx.db.playerResearch.identity.find(identity))
-    // An Aggro run plays with no prestige bonuses at all.
-    * prestigeStatMultiplier(aggroChallengeActive(ctx, identity) ? 0 : ctx.db.playerPrestige.identity.find(identity)?.level ?? 0)
+  return researchStatRewardMultiplier(researchInPlay(ctx, identity))
+    // An Aggro run plays with no prestige bonuses at all, and neither does a player who switched them off.
+    * prestigeStatMultiplier(prestigeBonusesInPlay(ctx, identity) ? ctx.db.playerPrestige.identity.find(identity)?.level ?? 0 : 0)
     // The guild's daily quest points last week (daily-quests.ts).
     * guildQuestBonusFor(ctx, identity);
 }
 
-/** The perk ranks in play: zero for anyone who has never prestiged, and during an Aggro run. */
+/** Whether prestige perks and stat gain count: not during an Aggro run, nor with Prestige switched off (bonus-toggles.ts). */
+export const prestigeBonusesInPlay = (ctx: any, identity: any) => !aggroChallengeActive(ctx, identity) && bonusTogglesFor(ctx, identity).prestige;
+
+/** The perk ranks in play: zero for anyone who has never prestiged, during an Aggro run, and with Prestige switched off. */
 export function prestigePerkRanks(ctx: any, identity: any): PrestigePerkRanks {
   const ranks = storedPrestigePerkRanks(ctx, identity);
-  return aggroChallengeActive(ctx, identity) ? Object.fromEntries(PRESTIGE_PERK_IDS.map(perk => [perk, 0])) as PrestigePerkRanks : ranks;
+  return prestigeBonusesInPlay(ctx, identity) ? ranks : Object.fromEntries(PRESTIGE_PERK_IDS.map(perk => [perk, 0])) as PrestigePerkRanks;
 }
 
 /** The ranks the player owns, whether or not they are in play: what spending and respeccing work from. */

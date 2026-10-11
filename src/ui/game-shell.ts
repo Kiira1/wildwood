@@ -144,6 +144,7 @@ const afterUpdateGateShell = String.raw`
       <div class="profile-tab-list" role="tablist" aria-label="Player profile sections">
         <button id="profileStatsTab" class="profile-tab is-active" type="button" role="tab" aria-selected="true" aria-controls="profileStatsPanel">STATS</button>
         <button id="profileOverviewTab" class="profile-tab" type="button" role="tab" aria-selected="false" aria-controls="profileOverviewPanel">INFO</button>
+        <button id="profileBonusesTab" class="profile-tab" type="button" role="tab" aria-selected="false" aria-controls="profileBonusesPanel" hidden>Bonuses</button>
       </div>
       <div id="profileOwnActions" class="profile-own-actions" hidden>
         <button id="prestigeBtn" class="window-back-button profile-prestige-button" type="button" disabled aria-disabled="true">Prestige</button>
@@ -167,6 +168,7 @@ const afterUpdateGateShell = String.raw`
       <section id="profileStatsPanel" class="profile-panel" role="tabpanel" aria-labelledby="profileStatsTab">
         <div id="profileStatGrid" class="profile-stat-grid"></div>
       </section>
+      <section id="profileBonusesPanel" class="profile-panel profile-bonuses-panel" role="tabpanel" aria-labelledby="profileBonusesTab" hidden></section>
     </div>
     </div>
     <footer class="window-back-footer">

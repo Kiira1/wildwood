@@ -24,6 +24,8 @@ export type SoulDimensionSource = {
   setSoulDimensionOpen?: (open: boolean) => Promise<boolean>;
   prestigeChallenge?: () => { active?: boolean } | null;
   aggroChallenge?: () => { active?: boolean } | null;
+  /** The bonus groups in play (shared/bonus-toggles.ts): Soul Stats off leaves the soul out of combat. */
+  bonusToggles?: () => { soul: boolean };
 };
 
 /** The Town's portal in, standing for players who may use it. */
@@ -87,10 +89,11 @@ export function createSoulDimensionRuntime(deps: {
       critDamage: soulCritRatingAfterKills(base.critDamage, pendingCritKills),
     };
   }
-  /** The soul stats in play: all of them in a normal run, none during a challenge (Reflect Only or Aggro). */
+  /** The soul stats in play: all of them in a normal run, none during a challenge (Reflect Only or Aggro) or with Soul Stats switched off. */
   function inPlay(): SoulStats {
     const coop = source();
-    return coop?.prestigeChallenge?.()?.active || coop?.aggroChallenge?.()?.active ? { ...EMPTY_SOUL_STATS } : soulStats();
+    return coop?.prestigeChallenge?.()?.active || coop?.aggroChallenge?.()?.active || coop?.bonusToggles?.().soul === false
+      ? { ...EMPTY_SOUL_STATS } : soulStats();
   }
   const rewardKills = () => source()?.rewardKills?.() ?? EMPTY_REWARD_KILLS;
   const tier = () => soulTier(rewardKills());

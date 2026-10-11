@@ -20,6 +20,7 @@ import {
 import { advanceDuelCombat, duelOutcome, DUEL_COMBAT_VERSION } from "../../shared/duel-combat";
 import { duelAnnouncementText } from "../../shared/duel-announcement";
 import { prestigePerkRanks } from "./prestige";
+import { researchInPlay } from "./bonus-toggles";
 import { prestigePerkValue, prestigeRiposteChance, prestigeSwingMultiplier } from "../../shared/prestige-perks";
 import { criticalDamageMultiplier } from "../../shared/critical-damage";
 import { duelBowSkillFields } from "./bow-skills";
@@ -107,7 +108,7 @@ export function createDuelRuntime(deps: DuelRuntimeDeps) {
   } = deps;
 
   function duelDamage(ctx: any, identity: any, damage: number) {
-    const research = ctx.db.playerResearch.identity.find(identity);
+    const research = researchInPlay(ctx, identity);
     const ranks = prestigePerkRanks(ctx, identity);
     const baseDamage = researchedDamage(ctx, identity, damage);
     const criticalChance = (research?.criticalChance ?? 0) * .01 + prestigePerkValue(ranks, "keenEdge");

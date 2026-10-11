@@ -752,6 +752,13 @@
       "y:f32",
       "startedAt:timestamp"
     ],
+    "player_bonus_toggle": [
+      "identity:identity",
+      "prestigeOff:bool",
+      "challengeOff:bool",
+      "researchOff:bool",
+      "soulOff:bool"
+    ],
     "player_chat_hearts": [
       "identity:identity",
       "chatHeartsReceived:u64"

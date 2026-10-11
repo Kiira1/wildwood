@@ -10,6 +10,7 @@ import { PRESTIGE_STAT_GAIN_PER_LEVEL } from "../../shared/prestige";
 import type { ItemInspectionController, ItemInspectionAction } from "./item-inspection-controller";
 import { slotUpgradeLevelFor } from "./profile";
 import { setText } from "./settings";
+import { createProfileBonusToggles, type ProfileBonusDeps } from "./profile-bonus-toggles";
 import {
   PROFILE_EQUIPMENT_SLOTS,
   profileEquipmentPresentation,
@@ -17,13 +18,15 @@ import {
   type ProfileEquipmentSlot,
 } from "./profile-equipment";
 
-export type ProfileTab = "overview" | "stats";
+export type ProfileTab = "overview" | "stats" | "bonuses";
 const DUEL_BUTTON_TITLE = "Automatic duel using earned stats and equipped gear. Hits grow stronger after 10 seconds. Knockout wins; at 30 seconds, the higher percentage of health remaining wins.";
 type Profile = PlayerProfileData;
 
 export function createProfileWindowController(elements: {
   window: HTMLElement; name: HTMLElement; guest: HTMLElement; presence: HTMLElement; power: HTMLElement; icon: HTMLButtonElement; loading: HTMLElement;
   overviewTab: HTMLElement; statsTab: HTMLElement; overviewPanel: HTMLElement; statsPanel: HTMLElement;
+  /** Your own profile's bonus switches (profile-bonus-toggles.ts); hidden on anyone else's. */
+  bonusesTab?: HTMLElement; bonusesPanel?: HTMLElement; bonuses?: ProfileBonusDeps;
   joined: HTMLElement; timePlayed: HTMLElement; kills: HTMLElement; online: HTMLElement; statGrid: HTMLElement;
   close: HTMLElement; editName: HTMLButtonElement; nameEditor: HTMLElement; nameForm: HTMLFormElement; nameInput: HTMLInputElement; saveName: HTMLButtonElement;
   skinEdit: HTMLButtonElement; skinChoices: HTMLDivElement; preview: HTMLElement; equipmentHead: HTMLButtonElement; equipmentChest: HTMLButtonElement; equipmentFeet: HTMLButtonElement; equipmentRightHand: HTMLButtonElement; previousSprite: HTMLElement; nextSprite: HTMLElement; genderSetting: HTMLElement; genderValue: HTMLElement; genderEdit: HTMLButtonElement; genderChoices: HTMLElement;
@@ -52,6 +55,7 @@ export function createProfileWindowController(elements: {
   let identity = "";
   let profileData: Profile | null = null;
   const loading = createProfileLoading(elements.loading, elements.statGrid);
+  const bonuses = elements.bonusesPanel && elements.bonuses ? createProfileBonusToggles(elements.bonusesPanel, elements.bonuses) : null;
   const equipmentElements: Record<ProfileEquipmentSlot, HTMLButtonElement> = {
     HEAD: elements.equipmentHead,
     CHEST: elements.equipmentChest,
@@ -59,12 +63,20 @@ export function createProfileWindowController(elements: {
     WEAPON: elements.equipmentRightHand,
   };
 
+  const tabs = () => ([["overview", elements.overviewTab, elements.overviewPanel], ["stats", elements.statsTab, elements.statsPanel],
+    ["bonuses", elements.bonusesTab, elements.bonusesPanel]] as const).filter((entry): entry is readonly [ProfileTab, HTMLElement, HTMLElement] => Boolean(entry[1] && entry[2]));
   function selectTab(tab: ProfileTab) {
-    const overview = tab === "overview";
-    const stats = tab === "stats";
-    elements.overviewTab.classList.toggle("is-active", overview); elements.statsTab.classList.toggle("is-active", stats);
-    elements.overviewTab.setAttribute("aria-selected", String(overview)); elements.statsTab.setAttribute("aria-selected", String(stats));
-    elements.overviewPanel.hidden = !overview; elements.statsPanel.hidden = !stats;
+    for (const [name, button, panel] of tabs()) {
+      const active = name === tab;
+      button.classList.toggle("is-active", active); button.setAttribute("aria-selected", String(active));
+      panel.hidden = !active;
+    }
+  }
+  /** The Bonuses tab is your own profile's: on anyone else's it is hidden, and Stats takes its place if it was open. */
+  function showBonusesTab(own: boolean) {
+    if (!elements.bonusesTab) return;
+    elements.bonusesTab.hidden = !own;
+    if (!own && elements.bonusesTab.classList.contains("is-active")) selectTab("stats");
   }
 
   function renderPower(value: string) {
@@ -148,6 +160,7 @@ export function createProfileWindowController(elements: {
     if (elements.safetyActions.hidden !== own) elements.safetyActions.hidden = own;
     api.onOwnProfile?.(own);
     setText(elements.block, api.isBlocked(identity) ? "Unblock Player" : "Block Player");
+    if (!elements.window.hidden && own) bonuses?.render();
     if (elements.duel.hidden || elements.window.hidden) return;
     if (elements.duel.title !== DUEL_BUTTON_TITLE) elements.duel.title = DUEL_BUTTON_TITLE;
     const remainingSeconds = Math.ceil(api.duelCooldownMs() / 1_000);
@@ -196,8 +209,8 @@ export function createProfileWindowController(elements: {
     elements.prestige.textContent = `${prestigeLevel} (+${Math.round(prestigeLevel * PRESTIGE_STAT_GAIN_PER_LEVEL * 100)}% stat gain)`;
     api.renderStats(profile, elements.statGrid);
     loading.hide();
-    elements.overviewPanel.hidden = !elements.overviewTab.classList.contains("is-active");
-    elements.statsPanel.hidden = !elements.statsTab.classList.contains("is-active");
+    showBonusesTab(own);
+    for (const [, button, panel] of tabs()) panel.hidden = !button.classList.contains("is-active");
   }
 
   async function open(nextIdentity: string, fallbackName = "PLAYER") {
@@ -212,7 +225,7 @@ export function createProfileWindowController(elements: {
     const challengeLine = elements.window.querySelector<HTMLElement>("#playerProfileChallenge"); if (challengeLine) challengeLine.hidden = true;
     api.paintIcon(elements.icon, api.profileIcon(nextIdentity), nextIdentity); applyAvatarFrame(elements.icon, nextIdentity); const own = nextIdentity === api.localIdentity(); elements.icon.classList.toggle("is-editable", own); elements.icon.disabled = !own; elements.editName.hidden = !own; elements.genderSetting.hidden = !own; closeGenderChoices(); if (own) updateGenderChoices(api.playerGender(nextIdentity));
     if (elements.settings) elements.settings.hidden = !own;
-    renderEquipment(null); updatePreview(nextIdentity, own); renderPower("—"); selectTab("stats"); loading.show();
+    renderEquipment(null); updatePreview(nextIdentity, own); renderPower("—"); selectTab("stats"); showBonusesTab(own); loading.show();
     const cached = api.profile(nextIdentity); if (cached) { render(cached); if (own) return; }
     try {
       const loaded = await api.loadProfile(nextIdentity); if (nextIdentity !== identity) return;
@@ -232,6 +245,7 @@ export function createProfileWindowController(elements: {
   function closeNameEditor() { nameEditor.close(); }
 
   elements.overviewTab.addEventListener("click", () => selectTab("overview")); elements.statsTab.addEventListener("click", () => selectTab("stats"));
+  elements.bonusesTab?.addEventListener("click", () => selectTab("bonuses"));
   elements.report.addEventListener("click", () => api.openSafety(identity, profileData?.name || elements.name.textContent || "PLAYER", "report"));
   elements.block.addEventListener("click", () => api.openSafety(identity, profileData?.name || elements.name.textContent || "PLAYER", "block"));
   for (const slot of PROFILE_EQUIPMENT_SLOTS) equipmentElements[slot].addEventListener("click", () => inspectEquipment(slot));

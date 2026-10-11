@@ -1,4 +1,9 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.901.51": [
+    "New Bonuses tab in your profile: switch Prestige, Challenge Rewards, Research or Soul Stats off to play without them; nothing is lost",
+    "Attack speed kill popups say Capped at the cap again",
+    "Soul Crit Damage popups stay hidden when Stat Gain Popups is off",
+  ],
   "0.901.50": [
     "Soul Crit Damage adds its +0.002× a kill to your total again, however much crit you have from regular maps",
     "Aggro: tap a picked group to unpick it, then pick another; any pick can be switched",
@@ -3178,6 +3183,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.901.51": "2026-10-11",
   "0.901.50": "2026-10-11",
   "0.901.49": "2026-10-10",
   "0.901.48": "2026-10-10",
