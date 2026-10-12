@@ -649,6 +649,8 @@ export function createAutoFarmController(options: {
     },
     // Steering by hand keeps the pull: the group follows the player while they move.
     pulls: (enemy: EnemyState) => pullsEnemy(enemy),
+    /** An Aggro run's chasing groups on this map, as the sliders name them; none outside a run. */
+    chasingGroupKeys: (): string[] => [...forcedGroups()],
     /** An Aggro run's groups on this map: they chase the player from arrival, whatever autofarm is doing. */
     forced: (enemy: EnemyState) => !enemy.dead && !enemy.generatedBoss && !enemy.remoteCombatGhost && forcedGroups().has(choiceKey(enemy)),
     setPriority(next: AutoFarmPriority) {

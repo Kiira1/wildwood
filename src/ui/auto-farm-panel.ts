@@ -155,6 +155,11 @@ export function createAutoFarmPanel(options: {
 
   /** Every slider at 0: nothing to farm. */
   const nothingSet = () => !groupKeys().some(key => (draft[key] ?? 0) > 0);
+  /**
+   * In an Aggro run, every slider at 0 farms only the groups chasing the player: they come to it, so it
+   * stands and fights rather than walking off to another camp (Ryan).
+   */
+  const chaseOnly = () => aggroRun() && nothingSet() && options.farm.chasingGroupKeys().length > 0;
   function updateSelection() {
     // Each slider moves on its own; the number beside it is its share of all of them, so they always read 100% together.
     const shares = nothingSet() ? {} : sharesForGroups(draft, groupKeys());
@@ -201,8 +206,8 @@ export function createAutoFarmPanel(options: {
     if (startButton.textContent !== (live ? 'Go' : 'Start')) startButton.textContent = live ? 'Go' : 'Start';
     const reason = options.unavailable();
     const empty = !options.farm.choices().length;
-    startButton.disabled = empty || nothingSet() || Boolean(reason);
-    const note = reason ?? (!empty && nothingSet() ? 'Set A Stat Above 0%' : '');
+    startButton.disabled = empty || (nothingSet() && !chaseOnly()) || Boolean(reason);
+    const note = reason ?? (chaseOnly() ? 'All At 0%: Fights Only What Chases You' : !empty && nothingSet() ? 'Set A Stat Above 0%' : '');
     if (selection.textContent !== note) selection.textContent = note;
     selection.hidden = !note;
   }
@@ -387,7 +392,8 @@ export function createAutoFarmPanel(options: {
   startButton.addEventListener('click', () => {
     // Go while farming: farming goes on, restarted only if the sliders changed.
     if (farming() && sameShares(draft, options.farm.savedShares())) { close(); return; }
-    if (options.farm.start(draft)) close();
+    // All at 0% in an Aggro run: the chasing groups, without saving them as the sliders.
+    if (chaseOnly() ? options.farm.start(options.farm.chasingGroupKeys(), false) : options.farm.start(draft)) close();
     else updateSelection();
   });
   /**

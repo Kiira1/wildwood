@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.901.53": [
+    "Aggro challenge: set every Auto Farm slider to 0% to fight only what chases you, without walking to other camps",
+  ],
   "0.901.52": [
     "Auto Farm's Target Strongest takes on the boss when it is in range, not only once nothing else is",
     "The quest tracker shows where each quest is in larger, brighter text",
@@ -3192,6 +3195,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.901.53": "2026-10-11",
   "0.901.52": "2026-10-11",
   "0.901.51": "2026-10-11",
   "0.901.50": "2026-10-11",

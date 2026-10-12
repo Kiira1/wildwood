@@ -17,7 +17,7 @@ import { AGGRO_GROUPS, writeAggroPicks } from '../game/runtime/aggro-picks';
 let destroy: (() => void) | undefined;
 afterEach(() => { destroy?.(); destroy = undefined; vi.unstubAllGlobals(); });
 /** The panel's view of a controller; tests swap in the members they steer. */
-type FarmOverrides = Partial<{ moveStatus: () => string; moveReady: () => boolean; bossStatus: () => string; bossReady: () => boolean; pullLimit: () => number }>;
+type FarmOverrides = Partial<{ moveStatus: () => string; moveReady: () => boolean; bossStatus: () => string; bossReady: () => boolean; pullLimit: () => number; chasingGroupKeys: () => string[] }>;
 function memoryStorage(values = new Map<string, string>()) {
   return { values, getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => { values.set(key, value); } };
 }
@@ -330,6 +330,26 @@ it('has no Push setting, and keeps Target under More', () => {
   expect(more.querySelector('.farm-target')).not.toBeNull();
   expect([...s.document.querySelectorAll('.farm-body > [data-switch]')].map(entry => entry.getAttribute('data-switch'))).toEqual(['advance', 'bosses']);
 });
+it('in an Aggro run, every slider at 0 starts on the chasing groups alone', () => {
+  const storage = memoryStorage();
+  vi.stubGlobal('localStorage', storage);
+  writeAggroPicks('me', AGGRO_GROUPS);
+  let chasing: string[] = [];
+  const s = setup(false, 'forest', { chasingGroupKeys: () => chasing }, storage, { aggro: () => ({ active: true, completed: 0 }), identity: () => 'me' });
+  s.click('.farm-toggle');
+  const key = Object.keys(values(s))[0];
+  chasing = [key];
+  slide(s, key, 0);
+  const start = s.document.querySelector<HTMLButtonElement>('.farm-start')!;
+  expect(start.disabled).toBe(false);
+  expect(s.document.querySelector('.farm-selection')!.textContent).toBe('All At 0%: Fights Only What Chases You');
+  s.click('.farm-start');
+  expect(s.farm.state().active).toBe(true);
+  // With nothing chasing here, all at 0 still asks for a stat.
+  s.farm.stop(); chasing = []; s.click('.farm-toggle'); slide(s, key, 0);
+  expect(start.disabled).toBe(true);
+});
+
 it('during an Aggro run the button opens the farm window, with Stop, and Chasing Groups opens the picker', () => {
   let active = true;
   // Picks already made, so the picker does not open by itself.
