@@ -1,12 +1,12 @@
 import { expect, it, vi } from "vitest";
 import { drawStartingPlayer } from "../game/player-appearance";
-import { paintArrowProjectile, paintRockProjectile } from "../game/runtime/weapon-projectile-renderer";
+import { paintArrowProjectile, paintRockProjectile } from "../game/runtime/render/weapon-projectile-renderer";
 import { simulateGuildBattle } from "../../shared/guild-combat";
 import { STARTER_BOW, STARTER_STONE } from "../../shared/items";
 import { buildGuildReplayTimeline } from "./guild-replay-timeline";
 import { createGuildBattlefieldRenderer } from "./guild-battlefield-renderer";
 vi.mock("../game/player-appearance", () => ({ drawStartingPlayer: vi.fn() }));
-vi.mock("../game/runtime/weapon-projectile-renderer", () => ({ paintArrowProjectile: vi.fn(), paintRockProjectile: vi.fn() }));
+vi.mock("../game/runtime/render/weapon-projectile-renderer", () => ({ paintArrowProjectile: vi.fn(), paintRockProjectile: vi.fn() }));
 it("uses bounded high-DPI continuous equipment poses and the actual weapon projectile painters", () => {
   const context = new Proxy({}, { get: () => vi.fn(), set: () => true }) as CanvasRenderingContext2D;
   const doc = { defaultView: { devicePixelRatio: 3 }, createElement: () => ({ width: 0, height: 0, getContext: () => context }) };

@@ -8,7 +8,7 @@ import { generateMap, generatedBossStats, proceduralMapId, proceduralMapNumber, 
 import { BOSS_REGEN_FRACTION_PER_SECOND, bossHitsToDefeat } from "../../shared/boss-regeneration";
 import { simulationRegularDrops, simulationTravelSeconds } from "./gameplay-model";
 import { itemTier } from "../../shared/item-tier";
-import { REGULAR_ENEMY_RESPAWN_SECONDS } from "../game/runtime/regular-enemy-respawn";
+import { REGULAR_ENEMY_RESPAWN_SECONDS } from "../game/runtime/enemies/regular-enemy-respawn";
 import { ONBOARDING_DAMAGE_REWARD, ONBOARDING_REGEN_REWARD } from "../../shared/onboarding";
 import { BLACK_BOOTS } from "../../shared/items";
 import { criticalDamageMultiplier } from "../../shared/critical-damage";
@@ -49,8 +49,8 @@ import {
   type ItemId,
 } from "../../shared/items";
 import { effectivePlayerPowerStats, playerPowerForStats, type PlayerPowerStats } from "../../shared/player-power";
-import { AUTO_FARM_DEFEAT_LIMIT, AUTO_FARM_DEFEAT_WINDOW_MS } from "../game/runtime/auto-farm-smart-controller";
-import { FARM_PUSHES } from "../game/runtime/auto-farm-brain";
+import { AUTO_FARM_DEFEAT_LIMIT, AUTO_FARM_DEFEAT_WINDOW_MS } from "../game/runtime/auto-farm/auto-farm-smart-controller";
+import { FARM_PUSHES } from "../game/runtime/auto-farm/auto-farm-brain";
 import {
   DEATH_SCREEN_SECONDS,
   DIED_TO_CAMP_SECONDS,

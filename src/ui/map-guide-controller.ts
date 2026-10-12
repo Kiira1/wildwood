@@ -2,12 +2,12 @@ import { regularMapLoot } from "../../shared/regular-map-loot";
 import { generateMap, isProceduralMap, proceduralMapId, proceduralMapNumber } from "../../shared/procedural-maps";
 import { CAMPAIGN_GATEWAYS } from "../../shared/map-gateways";
 import { MAP_IDS as CAMPAIGN_MAP_IDS } from "../../shared/rules";
-import { bossForMap } from "../game/runtime/boss-registry";
-import { enemyIndexRows } from "../game/runtime/enemy-index-rows";
+import { bossForMap } from "../game/runtime/boss/boss-registry";
+import { enemyIndexRows } from "../game/runtime/enemies/enemy-index-rows";
 import type { EnemyState } from "../game/runtime/types";
 import type { MapBalanceSnapshot } from "../../shared/map-balance-types";
 import { renderEnemyIndexRows } from "./map-enemy-index";
-import { canvasRenderPixelRatio } from "../game/runtime/render-budget";
+import { canvasRenderPixelRatio } from "../game/runtime/render/render-budget";
 import {
   FROST_ARMOR,
   FROST_BOW,

@@ -1,10 +1,10 @@
 import { ENEMY_TYPES, REWARD_DATA, rewardAmountLabel, rewardStatLabel, type EnemyDefinition } from '../game/enemies';
-import type { AutoFarmController } from '../game/runtime/auto-farm-controller';
-import { AUTO_FARM_PRIORITIES, farmGroupRewardType } from '../game/runtime/auto-farm-priority';
+import type { AutoFarmController } from '../game/runtime/auto-farm/auto-farm-controller';
+import { AUTO_FARM_PRIORITIES, farmGroupRewardType } from '../game/runtime/auto-farm/auto-farm-priority';
 import { SOUL_STAT_DETAILS } from '../../shared/soul-dimension';
 import { soulRewardText } from '../game/soul-world';
-import { POWER_STEPS, powerLabel, sharesForGroups, shareLabel, type FarmShares } from '../game/runtime/auto-farm-plan';
-import { aggroPicksNeeded, readAggroPicks, writeAggroPicks } from '../game/runtime/aggro-picks';
+import { POWER_STEPS, powerLabel, sharesForGroups, shareLabel, type FarmShares } from '../game/runtime/auto-farm/auto-farm-plan';
+import { aggroPicksNeeded, readAggroPicks, writeAggroPicks } from '../game/runtime/auto-farm/aggro-picks';
 import { createAggroPickPrompt } from './aggro-pick-prompt';
 import { topBackButton } from './desktop-hotkeys';
 import { installMovableHudCard } from './movable-hud-card';

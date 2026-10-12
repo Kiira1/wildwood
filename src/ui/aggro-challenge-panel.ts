@@ -1,6 +1,6 @@
 import { gameConfirm, type ConfirmPrompt } from "./confirm-dialog";
 import { AGGRO_CHALLENGE_LIMIT, aggroForcedCamps, aggroPullCamps, type AggroChallenge } from "../../shared/aggro-challenge";
-import { AGGRO_GROUPS, AGGRO_GROUP_LABELS as GROUP_LABELS, pickRefused, togglePick } from "../game/runtime/aggro-picks";
+import { AGGRO_GROUPS, AGGRO_GROUP_LABELS as GROUP_LABELS, pickRefused, togglePick } from "../game/runtime/auto-farm/aggro-picks";
 import { REWARD_DATA, type RewardType } from "../game/enemies";
 import { challengeAnswer } from "./challenge-answer";
 

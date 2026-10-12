@@ -1,6 +1,6 @@
 import { buildGuildReplayEntrance } from "./guild-replay-entrance";
 import type { GuildBattleResult } from "../../shared/guild-combat";
-import { frameDeadlineReached, nextPresentationDeadline } from "../game/runtime/render-budget";
+import { frameDeadlineReached, nextPresentationDeadline } from "../game/runtime/render/render-budget";
 import { createGuildBattlefieldRenderer, type GuildReplayAssets } from "./guild-battlefield-renderer";
 import { buildGuildReplayTimeline, type GuildReplayTimeline } from "./guild-replay-timeline";
 import { appearanceHasGalaxyFinish } from "../game/item-presentation";

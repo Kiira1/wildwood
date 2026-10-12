@@ -1,4 +1,4 @@
-import { CAMERA_ZOOM_LEVELS, canZoomCamera, cameraZoomPreference, stepCameraZoom } from "../game/runtime/camera-zoom-preference";
+import { CAMERA_ZOOM_LEVELS, canZoomCamera, cameraZoomPreference, stepCameraZoom } from "../game/runtime/render/camera-zoom-preference";
 
 /**
  * A + / 100% / − column beside the minimap. The mouse wheel over the game

@@ -3,7 +3,7 @@ import { CHALLENGE_ANSWER_MS, CHALLENGE_NO_ANSWER } from "./challenge-answer";
 import { parseHTML } from "linkedom";
 import { createAggroChallengePanel } from "./aggro-challenge-panel";
 import type { RewardType } from "../game/enemies";
-import { readAggroPicks, writeAggroPicks } from "../game/runtime/aggro-picks";
+import { readAggroPicks, writeAggroPicks } from "../game/runtime/auto-farm/aggro-picks";
 
 function setup(state: { active: boolean; completed: number; parked?: boolean }, initial: RewardType[] = []) {
   const { document } = parseHTML("<html><body><div id='c'></div></body></html>");

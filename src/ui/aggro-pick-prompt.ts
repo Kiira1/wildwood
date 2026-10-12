@@ -1,6 +1,6 @@
-import { AGGRO_GROUPS, AGGRO_GROUP_LABELS, pickRefused, togglePick } from "../game/runtime/aggro-picks";
+import { AGGRO_GROUPS, AGGRO_GROUP_LABELS, pickRefused, togglePick } from "../game/runtime/auto-farm/aggro-picks";
 import { REWARD_DATA, type RewardType } from "../game/enemies";
-import { AUTO_FARM_PRIORITIES, type AutoFarmPriority } from "../game/runtime/auto-farm-priority";
+import { AUTO_FARM_PRIORITIES, type AutoFarmPriority } from "../game/runtime/auto-farm/auto-farm-priority";
 
 /**
  * The Aggro picker: Chasing Groups in the Auto Farm window opens it, and it opens on

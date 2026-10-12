@@ -13,9 +13,9 @@
 import { damageAfterArmor } from "../game/combat";
 import { ENEMY_HIT_SPEED_RECOVERY_SECONDS, RANGED_PROJECTILE_SPEED, REGULAR_ENEMY_AGGRO_PADDING } from "../game/constants";
 import type { EnemyDefinition } from "../game/enemies";
-import { rangedEnemyHoldBand } from "../game/runtime/ranged-enemy-range";
+import { rangedEnemyHoldBand } from "../game/runtime/enemies/ranged-enemy-range";
 import { PLAYER_DEATH_FALL_DURATION_MS } from "../game/runtime/player-death-animation";
-import { DIED_TO_GROUP_MS } from "../game/runtime/auto-farm-brain";
+import { DIED_TO_GROUP_MS } from "../game/runtime/auto-farm/auto-farm-brain";
 import { DEATH_RESPAWN_DELAY_MS } from "../ui/death-screen-controller";
 import { bossAbilityTimelineAt, type BossSimulationKind } from "../../shared/boss-simulation";
 import { BOSS_DAMAGE_PROFILES } from "../../shared/boss-damage";

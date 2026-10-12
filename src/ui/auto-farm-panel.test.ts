@@ -1,18 +1,18 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import { parseHTML } from 'linkedom';
 import { createAutoFarmPanel } from './auto-farm-panel';
-import { createAutoFarmController } from '../game/runtime/auto-farm-controller';
+import { createAutoFarmController } from '../game/runtime/auto-farm/auto-farm-controller';
 import { createSpawnSites } from '../game/world';
 // Four of an Endless map's six reward camps (0.901.47 added attack speed and crit), which these slider tests were written for.
 const fourStatSites = (mapId: string) => createSpawnSites({ x: 580, y: 770 }, mapId as never).filter(site => !['speed', 'crit'].includes(site.definition?.reward.type ?? ''));
 import { createGameBootstrap } from '../game/runtime/game-bootstrap';
 import { ENEMY_TYPES, rewardAmountLabel } from '../game/enemies';
-import { AUTO_FARM_CHOICE_KEY, AUTO_FARM_SHARES_KEY, AUTO_FARM_WEIGHTS_KEY } from '../game/runtime/auto-farm-plan';
+import { AUTO_FARM_CHOICE_KEY, AUTO_FARM_SHARES_KEY, AUTO_FARM_WEIGHTS_KEY } from '../game/runtime/auto-farm/auto-farm-plan';
 import { soulCampName, SOUL_ENEMY_SPECIES } from '../game/soul-world';
 import { SOUL_MAP_ID, SOUL_STAT_DETAILS, type SoulStatId } from '../../shared/soul-dimension';
 import { researchStatRewardMultiplier } from '../../shared/research';
 import { prestigeStatMultiplier } from '../../shared/prestige';
-import { AGGRO_GROUPS, writeAggroPicks } from '../game/runtime/aggro-picks';
+import { AGGRO_GROUPS, writeAggroPicks } from '../game/runtime/auto-farm/aggro-picks';
 
 let destroy: (() => void) | undefined;
 afterEach(() => { destroy?.(); destroy = undefined; vi.unstubAllGlobals(); });

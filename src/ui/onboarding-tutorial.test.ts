@@ -3,7 +3,7 @@ import { parseHTML } from "linkedom";
 import { createOnboardingTutorial } from "./onboarding-tutorial";
 import { createGameBootstrap } from "../game/runtime/game-bootstrap";
 import { ENEMY_TYPES, REWARD_DATA, rewardLabel } from "../game/enemies";
-import { createEnemyLifecycle } from "../game/runtime/enemy-lifecycle";
+import { createEnemyLifecycle } from "../game/runtime/enemies/enemy-lifecycle";
 import { ONBOARDING_MAP_ID, ONBOARDING_WORLD, ONBOARDING_STEP as S, ONBOARDING_ENEMY_POSITION } from "../../shared/onboarding";
 afterEach(() => vi.unstubAllGlobals());
 const settle = async () => { for (let i = 0; i < 8; i++) await Promise.resolve(); };

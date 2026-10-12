@@ -1,6 +1,6 @@
 import { REWARD_DATA, rewardAmountLabel, type RewardType } from "../game/enemies";
 import { formatCompactNumber } from "./number-format";
-import type { EnemyIndexRow } from "../game/runtime/enemy-index-rows";
+import type { EnemyIndexRow } from "../game/runtime/enemies/enemy-index-rows";
 
 /** Short stat names: the reward's colour already says which stat. */
 export const SHORT_STAT: Record<RewardType, string> = { damage: "Atk", health: "HP", armor: "Armor", regen: "Regen", speed: "Spd", crit: "Crit" };

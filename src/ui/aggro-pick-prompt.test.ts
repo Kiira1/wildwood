@@ -1,9 +1,9 @@
 import { expect, it } from "vitest";
 import { parseHTML } from "linkedom";
 import { createAggroPickPrompt } from "./aggro-pick-prompt";
-import { pickRefused, togglePick } from "../game/runtime/aggro-picks";
+import { pickRefused, togglePick } from "../game/runtime/auto-farm/aggro-picks";
 import type { RewardType } from "../game/enemies";
-import type { AutoFarmPriority } from "../game/runtime/auto-farm-priority";
+import type { AutoFarmPriority } from "../game/runtime/auto-farm/auto-farm-priority";
 
 it("stays open until the run has its count of groups", () => {
   const { document } = parseHTML("<html><body></body></html>");

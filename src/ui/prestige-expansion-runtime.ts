@@ -6,7 +6,7 @@ import { createPrestigeChallengePanel, installPrestigeTabs } from "./prestige-ch
 import { gameConfirm } from "./confirm-dialog";
 import { challengeWinReached, reflectOnlyWinNotice } from "./prestige-challenge-win";
 import { createAggroChallengePanel } from "./aggro-challenge-panel";
-import { readAggroPicks, writeAggroPicks } from "../game/runtime/aggro-picks";
+import { readAggroPicks, writeAggroPicks } from "../game/runtime/auto-farm/aggro-picks";
 import { AGGRO_CHALLENGE_LIMIT, aggroGoal, aggroPullCamps } from "../../shared/aggro-challenge";
 
 /** Compose the shared launch notice, map label and account prestige controls. */

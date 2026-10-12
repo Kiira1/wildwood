@@ -4,7 +4,7 @@ import type { MapMusicController } from "../game/runtime/audio";
 import type { AccountAudioRemote } from "../coop/services/account-audio-settings";
 import { createAccountAudioSync } from "./account-audio-sync";
 import { requiredElement } from "../game/runtime/dom";
-import { setHighResolutionCanvas } from "../game/runtime/render-budget";
+import { setHighResolutionCanvas } from "../game/runtime/render/render-budget";
 import {
   renderAccountStatus,
   renderBooleanSetting,
