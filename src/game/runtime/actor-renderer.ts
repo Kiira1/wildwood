@@ -13,7 +13,7 @@ import { ENEMY_HEALTH_BAR_HEIGHT, ENEMY_HEALTH_FILL, createEnemyStatusPlates, fi
 import { createCanvasAtlas, drawAtlasImage, type AtlasImage } from "./canvas-atlas";
 import { liveRewardText, soulRewardCapped, type RewardLabelContext } from "./reward-labels";
 import { enemyHpNumbersEnabled } from "../../ui/enemy-hp-setting";
-import { formatCompactNumber } from "../../ui/number-format";
+import { formatCompactNumber } from "../../../shared/compact-number";
 import { healthBarTextY } from "./health-bar-layout";
 
 /** The health numbers on a bar, when Settings asks for them. */

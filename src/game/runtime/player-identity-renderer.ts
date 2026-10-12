@@ -17,7 +17,7 @@ import {
   PLAYER_GENDER_MALE,
   type PlayerGender,
 } from "../../../shared/player-gender";
-import { formatCompactNumber } from "../../ui/number-format";
+import { formatCompactNumber } from "../../../shared/compact-number";
 import { appendPlayerGenderIcon } from "../../ui/player-gender";
 import type { ChatMessage } from "../../wildstat-coop";
 import { clamp } from "../math";

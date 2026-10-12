@@ -55,7 +55,7 @@ import {
   TAU,
 } from "../constants";
 import { clamp } from "../math";
-import { formatCompactNumber } from "../../ui/number-format";
+import { formatCompactNumber } from "../../../shared/compact-number";
 import type { Camera } from "./camera";
 import {
   BOSS_NAME_FONT_SIZE,

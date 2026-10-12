@@ -1,4 +1,4 @@
-import { formatCompactNumber } from "../ui/number-format";
+import { formatCompactNumber } from "../../shared/compact-number";
 import { ENEMY_BOW_AIM_OFFSET_RADIANS, ENEMY_SPRITE_LAYOUTS, type EnemySpriteAnimationLayout } from "./enemy-sprite-layouts.mjs";
 
 export { ENEMY_BOW_AIM_OFFSET_RADIANS };

@@ -3,7 +3,7 @@ import { itemPresentation } from "../item-presentation";
 import { EXPANSION_HEAD_FRAME } from "../player-head-template";
 import { drawPlayerPowerLabel } from "./player-power-label";
 import { residentImage } from "./resident-image";
-import { formatCompactNumber } from "../../ui/number-format";
+import { formatCompactNumber } from "../../../shared/compact-number";
 import { canvasRenderPixelRatio } from "./render-budget";
 import { equipmentAppearance, type InventoryState } from "../inventory";
 import type { PlayerAppearanceAssets } from "../player-appearance";
