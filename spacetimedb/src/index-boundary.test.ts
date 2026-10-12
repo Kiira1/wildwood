@@ -6,7 +6,8 @@ import { describe, expect, it } from "vitest";
 // schema and the test fixtures address them by name. Nothing else has to. On
 // 2026-09-20 the file was 11,576 lines; five extractions moved the shared-boss
 // combat, guest claiming and identity removal, one-time migrations, presence
-// and motion sync, and duels into their own modules, leaving 6,846.
+// and motion sync, and duels into their own modules, leaving 6,846. The
+// 2026-10-12 cleanup took it to 4,658.
 //
 // What must remain is the schema surface: 173 reducers, 25 procedures, 27
 // views and 89 tables, the schema registration and the imports. Written as
@@ -17,193 +18,13 @@ import { describe, expect, it } from "vitest";
 // had to be added to the schema surface, and the raise is that declaration
 // alone. Growth without an extraction first is the drift this guard stops.
 // Do not satisfy it by minifying or removing useful comments/whitespace.
-// 6_877: kill gems added two tables, one reducer declaration, the factory
-// instance and a three-line call inside recordEnemyDefeats; the kill-claim
-// review table added its registration line. Bodies live in kill-gems.ts and
-// enemy-defeats.ts; the raise is the schema surface alone.
-// 6_879: duel replay sharing added one reducer declaration and its separator.
-// 7_005: keeping supporter memberships current needs a schedule the server owns,
-// so the patreon_sweep_schedule table and the sweep_patreon_memberships
-// procedure had to join the schema surface. Both bodies live in patreon.ts,
-// including the row that seeds the schedule; the raise is the declarations alone.
-// 6_623: map sharding was deleted outright (2026-09-21). Its 13 reducers, two
-// procedures, one view, 17 tables and every shard-only branch left with it, so
-// the schema-surface counts above are that much smaller too.
-// 6_650: offline progress added one table registration, the my_offline_progress
-// view, the acknowledge_offline_summary and simulate_time_away reducers, and
-// the port object naming the four entry-module helpers the payout reads. Every
-// body — the window stamp, the grant, the developer backdate — lives in
-// offline-progress.ts, and the model itself in shared/offline-progress.ts.
-// 6_666: the offline-progress opt-out added its table registration, the
-// caller-scoped view that lets a client read its own setting, and the reducer
-// that writes it. The row, its default and the write live in
-// offline-preference.ts; the raise is the schema surface alone.
-// 6_679: the account's own legal-consent view. Acceptance already lived on the
-// server, but the client decided whether to ask from a token-scoped cache, so
-// the same account was asked its age again on every new device. Reading it
-// needs a caller-scoped view; the raise is that declaration alone.
-// 6_725: the privacy erasure reducer. It is one declaration plus the argument
-// validation and audit that must happen in the same transaction as the sweep;
-// the table list, the row budget and the sweep itself live in
-// account-erasure.ts.
-// 6_729: the leaderboard's Dragon gate and the prestige it now ranks by. Both
-// are reads inside refreshLeaderboard, which is the schema-facing snapshot
-// builder; the ordering itself lives in leaderboard-pages.ts.
-// 6_748: slot upgrade tiers. The table's comment, the key/tier helpers and the
-// start reducer's slot handling are the schema surface; the tier track, the
-// sweep and the migration live in their own modules.
-// 6_756: splitting the item-drop sweep out of the upgrade wipe so a prestige
-// can keep slot tiers while still taking the gear, and the comment that says
-// why the old line destroyed something it was never written to destroy.
-// 6_764: reconciling a running upgrade against its slot rather than against an
-// item id it no longer holds, which is what was cancelling every upgrade, and
-// the note recording it. Both are guards on the same rekeyed table.
-// 6_769: record_enemy_defeats writes the public player row only when the
-// compact power a player sees would change, and the note saying why. It was
-// broadcasting to everyone on the map on nearly every kill report.
-// 6_780: the third paid upgrade slot adds a private unlock table, an
-// identity-scoped view and a reducer declaration. The separate table keeps
-// the live bench row unchanged so older clients remain connected.
-// 6_786: account-wide music and sound-effect volumes add one table
-// registration, the caller-scoped my_audio_settings view and the
-// set_audio_settings reducer declaration. Validation, the write-on-change
-// rule, the guest merge and removal live in audio-settings.ts; the raise is
-// the schema surface alone.
-// 6_796: random bow skills add the player_bow_skill import, the caller-scoped
-// my_bow_skills view, and one roll call on each path that hands out an item
-// without passing publishItemDrop (a claimed gift, claimed mail gear) plus the
-// world-entry safety net and its note. The table, the roll, the backfill, the
-// guest merge, removal and the duel fields live in bow-skills.ts.
-// 6_784: duplicate equipment adds two table registrations, the
-// my_equipment_copies and my_equipment_offers views, three reducer
-// declarations and the factory instance; publish_item_drop and the
-// destroy_equipment body moved out to equipment-copies.ts with the tables, the
-// offer lifecycle, the guest merge and removal, which more than paid for them.
-// 6_794: the loot filter adds one import, the caller-scoped my_ignored_drops
-// view and the set_ignored_drops reducer declaration with its note; the table
-// registers on the duplicate-equipment line beside the tables it acts on.
-// Validation, the offer clearing, the guest merge and removal live in
-// ignored-drops.ts; filtering the rolled loot wraps the existing roll call, so
-// it costs no line. The raise is the schema surface alone.
-// 6_787: Auto keep best and auto equip add the player_loot_setting
-// registration, the my_loot_settings view, the set_loot_settings reducer, the
-// auto equip factory and its three call sites (loot, boss rewards, prestige).
-// save_player_progress's loadout rules and the saved-hand helpers moved out to
-// loadout.ts, where auto equip checks the same rules, which paid for all of it.
-// 6_788: dev_grant_equipment's note that it only equips a weapon the player's
-// maps unlock. A locked weapon in hand read as no weapon, which the grant
-// left behind; the blank-hand rule itself lives in loadout.ts.
-// 6_796: per-prestige leaderboards add the get_prestige_leaderboard_page
-// procedure declaration, its return type and its note. The three tables
-// register through the existing leaderboardPageTables spread, and the ranking,
-// the guest merge and the read live in leaderboard-pages.ts; the raise is the
-// declaration alone.
-// 6_797: the maintenance sweep's call that prunes idle enemy_defeat_budget
-// rows; the pruning lives in enemy-defeats.ts.
-// 6_808: the rewarded ad pays Gems. One import, the player_ad_reward
-// registration, the caller-scoped my_ad_gem_reward view and the claim_ad_gems
-// reducer declaration with its note. The table, the thirty-minute and
-// four-a-day rules, the payout, the guest merge and removal live in
-// ad-gem-reward.ts and shared/ad-gem-reward.ts; the raise is the schema
-// surface alone.
-// 6_489: the shared-boss combat code went. The boss tables, the respawn
-// schedules and every reducer name stay in the schema, but the respawn and
-// damage reducers are one-line stubs now, maintenance drops its already inert
-// boss regeneration call, and the factory hands out only the live kill bound
-// and clear rewards.
-// 6_501: automatic chat mutes add one import, the player_chat_mute
-// registration (on the ad reward's line), the caller-scoped my_chat_mute view,
-// the owner-gated dev_set_chat_mute reducer declaration with its note, and two
-// one-line calls in the world send path: the mute check before the cooldown and
-// the strike after a filtered message. The table, the strike and escalation
-// rules, the owner tool, the guest merge and removal live in chat-mute.ts and
-// shared/chat-mute.ts; the raise is the schema surface and those calls alone.
-// 6_498: developer triage adds the get_dev_review_queue, get_player_moderation_history
-// and dev_find_players procedures and the dev_review_report, dev_review_bug and
-// dev_lift_player_suspension reducers, registering dev_report_review on the
-// moderation line. Retiring the Tutorial Forest reward prototype to two stubs and
-// folding three two-branch guards into the owner-or-developer line paid for them;
-// the queue, the decisions and the lookup live in dev-review.ts.
-// 6_527: the moderation console adds the get_dev_console, get_dev_player_card and
-// get_moderation_log procedures and the dev_warn_player and dev_reset_display_name
-// reducers, their import, the forced-reason branch of the existing name repair,
-// and the note above them. The reads, the warning and the log search live in
-// dev-console.ts and moderation-history.ts; the raise is the declarations alone.
-// 6_540: kill reports add the report_enemy_defeats and
-// report_auto_farm_enemy_defeats declarations (their simulatedMillis args and
-// the shared throttled wrapper with the legacy pair's retirement note), and
-// the reward path takes the balance, stat multiplier and power inputs the
-// per-report combat bound already read. The throttle, the simulation clock and
-// the bound live in enemy-defeats.ts and boss-combat.ts.
-// 6_539: the legacy pair retired to a refresh.
-// 6_550: swapping characters between logins, for a player whose magic link
-// began opening a second SpacetimeAuth user, added the dev_swap_characters
-// declaration and its import. The body, checks and audit live in
-// account-transfer.ts; the raise is the declaration alone.
-// 6_552: warning a new login that its email already has a played character
-// added the get_other_character_for_login declaration and its comment. The
-// lookup lives in account-email.ts; the raise is the declaration alone.
-// 6_563: a player moving their character to a Google sign-in from Settings
-// added the start_login_move and finish_login_move declarations, their comment
-// and the login_move registration. The table, the checks, the swap and the
-// audit live in account-transfer.ts; the raise is the declarations alone.
-// 6_564: the one free prestige respec added the use_free_prestige_respec
-// declaration. Its body lives in prestige.ts; the raise is the declaration alone.
-// 6_567: daily quests added their tables' import, the refresh_daily_quests
-// declaration and the kill report's hook. The rules and tables live in
-// daily-quests.ts; the raise is the wiring alone.
-// 6_572: player search added the get_player_directory declaration and its
-// import. The list and its cache live in player-directory.ts.
-// 6_574: the leaderboard search's find_leaderboard_player declaration. The
-// lookup lives in leaderboard-pages.ts.
-// 6_575: a boss clear finishes a Reflect Only run whose goal it met. The
-// check lives in prestige.ts.
-// 6_577: guild quest collecting added the collect_guild_member_quests
-// declaration and the guild snapshot's quest hooks. The rules live in
-// daily-quests.ts.
-// 6_578: opt-in battle sharing added the guild service's battleShared hook.
-// The share lives in guild-service.ts and its reducer in guild-reducers.ts.
-// 6_582: wide stats added the player_wide_stats table import and the f32
-// clamp on leaderboard and chat writes. The storage lives in wide-stats.ts.
-// 6_572: 0.856 retired the duel wire filters and their backfill reducer, and
-// the legacy f32 leaderboard table lives in leaderboard-legacy.ts.
-// 6_579: research pause added the paused_research table and its import, the
-// pause_research declaration, the resume line in start_research and the
-// prestige cleanup call. The rules live in research-pause.ts.
-// 6_591: chat moderators added the chat_moderator table, the get_chat_role
-// procedure and the restore_chat_message and dev_set_chat_moderator reducers.
-// The rules live in chat-reactions.ts and dev-review.ts.
-// 6_546: map portals and arrivals moved to shared/map-gateways.ts (0.877),
-// shared with the client instead of copied by hand.
-// 6_561: row-level visibility filters (clientVisibilityFilter) must be exports
-// of the entry module; the raise is those declarations and their comment.
-// 6_567: get_player_presence, the profile's online line now that eye-off
-// players' rows are withheld; the presence rule moved out of the guild wiring.
-// 6_572: the Aggro challenge added its table's import and registration, the
-// start_aggro_run / abandon_aggro_run declaration line, the death reducer's
-// restart hook and startFreshRun (and its comment), the prestige reset both challenges
-// start from. Its rules and bodies live in aggro-challenge.ts.
-// 6_573: the get_map_index_balance procedure, so the map window's Enemy Index reads
-// other maps' live balance. The read lives in map-balance.ts.
-// 6_576: the autofarm puppet table's import and registration, the
-// set_auto_farm_puppet declaration line, and its clear on leaving. Its rules
-// live in autofarm-puppet.ts.
-// 6_580: the set_presence declaration (the eye plus "seen while idle or
-// autofarming"), its comment, and the shared applyPresence wrapper lines.
-// 6_586 (2026-10-05): the Soul Dimension. Its three tables in the schema
-// (with their note), the my_soul_stats / my_reward_kills views and the
-// set_soul_dimension_open reducer's export line, one import line, its portal
-// on home's list of portals, and the open-to-you check on change_map. The
-// rules, tables and reducer bodies live in soul-dimension.ts.
-// 6_587: player_research's critCap column, the Crit Cap research rank. The
-// cap itself lives in shared/critical-damage.ts.
-// 6_592 (2026-10-11): bonus toggles. The player_bonus_toggle table in the
-// schema, the set_bonus_toggle_state reducer's export (two lines) and two
-// import lines. The table, the in-play reads and the reducer body live in
-// bonus-toggles.ts and bonus-toggles-reducer.ts.
-// 6_593 (2026-10-12): crit counts in power. One import line; the crit chance and
-// multiplier come from crit-power.ts.
-const MAX_LINES = 6_593;
+// Each raise is recorded in its commit message, not here; `git log -p` on this
+// file has the history of every past raise and why it was allowed.
+// 4_658 (2026-10-12): session guards, progress and equipment helpers, research,
+// power, item upgrades, the gem wallet, the leaderboard refresh, display names,
+// chat, maintenance, character reset, map travel and twelve reducer bodies
+// moved to their own modules.
+const MAX_LINES = 4_658;
 const TARGET_LINES = 3_500;
 
 describe("server module boundary", () => {
