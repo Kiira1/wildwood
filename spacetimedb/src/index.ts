@@ -2,9 +2,6 @@ import { playerPrestigeChallenge, playerPrestigeChallengeParked, prestigeChallen
 import { playerDailyQuest, guildQuestWeek, guildMemberQuestWeek, soloQuestWeek, playerQuestWeekTotal, ensureDailyQuests, pruneOldGuildQuestWeeks, recordDailyQuestKills, memberQuestStanding, questCollectStanding, collectMemberQuests, moveSoloQuestsToGuild, refreshQuestBonus } from "./daily-quests";
 import { duelCombatSnapshot } from "./duel-combat-snapshot";
 import { playerEquipmentLock, setEquipmentLock } from "./equipment-locks";
-import { CAMPAIGN_MAPS } from "../../shared/campaign-registry";
-import { CAMPAIGN_GATEWAYS, campaignLanding, endlessEntryPortal, LEGACY_CORNER_GATEWAYS, legacyPortalUsePoints, portalUsePoint } from "../../shared/map-gateways";
-import { campaignMapUnlocked } from "../../shared/equipment-access";
 import { compactNumberChanged } from "../../shared/compact-number";
 import { denyPrivilegedAccess } from "./privileged-access-audit";
 import { defeatSessionRestriction, defeatRestrictionError, restrictDefeatSession, suspendPlayerAccount } from "./defeat-session";
@@ -35,9 +32,8 @@ import { playerChatMute, setChatMute } from "./chat-mute";
 import { ERASURE_ROW_BUDGET, eraseIdentityRows, linkedIdentities, requireErasureConfirmation } from "./account-erasure";
 import { chatHeartAllowance, chatReactionCooldown, chatReactionSummary, chatReactionUnlock, playerChatHearts, reactionCountsFor, chatReaction, readChatReactions, setChatReaction, grantGemHeartUnlock, isChatModerator, chatModerator, moderatorHeartFor, setChatModerator, removeAccountReactions } from "./chat-reactions";
 import { pruneIdleStreams, regularEnemyLootCursor, regularEnemyStream, rollRegularEnemyLoot } from "./regular-enemy-loot";
-import { BLACK_BOOTS, BLACK_BOOTS_SPEED_BONUS } from "../../shared/items";
 import { playerOnboarding, advanceOnboarding, needsOnboarding } from "./onboarding";
-import { isUpgradeSlot, upgradeSlotForItem, UPGRADE_SLOT_LABELS } from "../../shared/slot-upgrades";
+import { upgradeSlotForItem } from "../../shared/slot-upgrades";
 import { deliverDisconnectCompensation, deliverCombatUpdateGift, deliverOutageCompensation, announceOutageCompensation, deliverAutofarmTestGift } from "./disconnect-compensation";
 import { connectionDiagnosticTables, recordConnectionDiagnostics, cleanupConnectionDiagnostics } from "./connection-diagnostics";
 import { moderationTables, recordModerationAction, readModerationHistory, readPlayerModerationHistory, searchModerationHistory } from "./moderation-history";
@@ -55,13 +51,12 @@ import { playerBonusToggle } from "./bonus-toggles";
 import { registerBonusToggleReducers } from "./bonus-toggles-reducer";
 import { playerPrestige, playerPrestigePerk, prestigeExpansion, playerPrestigeExpansionPerk, playerFreeRespec, ensurePrestigeExpansion } from "./prestige-expansion";
 import { earlierTimestamp } from "./timestamp-utils";
-import { slotUpgradeDurationWithResearch } from "../../shared/utility-research";
 import { createCosmeticConversion } from "./cosmetic-conversion";
 import { publicChatCursor, readPublicChatPage } from "./public-chat-history";
 import { createKillGems } from "./kill-gems";
 import { createPrestige, statRewardMultiplier } from "./prestige";
-import { generateMap, isProceduralMap, proceduralMapId, PROCEDURAL_ENTRY_MAP, PROCEDURAL_ENTRY_BOSS } from "../../shared/procedural-maps";
-import { proceduralMapTables, proceduralBossKey, generatedMapUnlocked } from "./procedural-maps";
+import { generateMap, proceduralMapId, PROCEDURAL_ENTRY_BOSS } from "../../shared/procedural-maps";
+import { proceduralMapTables, proceduralBossKey } from "./procedural-maps";
 import { ingestStoreEvent } from "./gem-store-events";
 import { gemPurchaseTables } from "./gem-purchase-tables";
 import { patreonTables } from "./patreon-tables";
@@ -69,12 +64,11 @@ import { beginPatreonLink as beginSupporterLink, refreshPatreon, sweepPatreonLin
 import { requestPatreonSupport } from "./patreon-support";
 import { allowedAvatarFrame, isAvatarFrame } from "../../shared/avatar-frames";
 import { createGemPurchaseService } from "./gem-purchase-service";
-import { CAMPAIGN_UNLOCK_FIELDS, equipmentMapRequirement } from "../../shared/equipment-access";
-import { HOME_EXTERIOR_MAP_ID, HOME_TRAVEL_PORTAL } from "../../shared/home";
-import { withinStationReach } from "./door-reach";
-import { isTownMap, registerTown, TOWN_ARRIVAL, TOWN_BENCH_POSITION, TOWN_MAP_ID, townPortalUsePoints } from "./town";
-import { enterGuildHall, guildHallMember, memberEnteredWorld, guildHallMemberLeft, guildHallTables, isGuildHallMap, registerGuildHall } from "./guild-hall";
-import { isSoulMap, noteEnemyDefeats, registerSoulDimension, requireSoulDimensionOpen, soulDimensionOpenFor, soulDimensionTables, soulReturnOpenFor, soulAttackCapFor, soulStatsFor, SOUL_ARRIVAL, SOUL_TOWN_PORTAL, wideMotionMap, withSoulStats, worldBoundsFor } from "./soul-dimension";
+import { equipmentMapRequirement } from "../../shared/equipment-access";
+import { HOME_EXTERIOR_MAP_ID } from "../../shared/home";
+import { registerTown, TOWN_ARRIVAL, TOWN_MAP_ID } from "./town";
+import { guildHallMember, memberEnteredWorld, guildHallMemberLeft, guildHallTables, isGuildHallMap, registerGuildHall } from "./guild-hall";
+import { isSoulMap, noteEnemyDefeats, registerSoulDimension, soulDimensionOpenFor, soulDimensionTables, soulAttackCapFor, soulStatsFor, wideMotionMap, withSoulStats, worldBoundsFor } from "./soul-dimension";
 import { insertSnapshotRow, updateSnapshotRow } from "./snapshot-row-writes";
 import { createPlayerMotionFrameSampler } from "../../shared/player-motion-sample";
 import { schema, SenderError, Router, table, t, type InferSchema, type ReducerCtx, type ViewCtx } from "spacetimedb/server";
@@ -118,7 +112,7 @@ import {
 } from "./boss-tables";
 import { createCombatReport } from "./boss-combat";
 import { createModuleMigrations } from "./module-migrations";
-import { UPGRADE_BENCH_SLOT_ONE, UPGRADE_BENCH_SLOT_TWO, UPGRADE_BENCH_SLOT_THREE, normalizeUpgradeBenchSlot, requireUpgradeBenchSlot, activeItemUpgradeForSlot, activeItemUpgradeEntriesFor, insertActiveItemUpgrade, secondUpgradeSlotUnlockedFor, thirdUpgradeSlotUnlockedFor } from "./upgrade-bench-slots";
+import { UPGRADE_BENCH_SLOT_ONE, UPGRADE_BENCH_SLOT_TWO, UPGRADE_BENCH_SLOT_THREE, normalizeUpgradeBenchSlot, requireUpgradeBenchSlot, activeItemUpgradeForSlot, activeItemUpgradeEntriesFor, insertActiveItemUpgrade } from "./upgrade-bench-slots";
 import {
   createPresenceRuntime, MOTION_DETAIL_FRAME_INTERVAL_MICROS, MAP_FRAME_INTERVAL_MICROS, playerZone,
   playerWithMotion, stoppedMotionFields, syncPlayerMotion, syncPlayerMotionIdentity,
@@ -151,8 +145,6 @@ import { GUILD_MAX_RANGE, guildWeaponRange } from "../../shared/guild-combat";
 import type { DuelFighter } from "../../shared/duel-combat";
 import {
   itemDefinition,
-  itemUpgradeDurationMs,
-  MAX_SLOT_UPGRADE_TIER,
   STARTER_STONE,
 } from "../../shared/items";
 import {
@@ -165,56 +157,34 @@ import {
 import { PLAYER_MOTION_INTEREST_LIMIT } from "../../shared/player-motion-interest";
 import {
   BOSS_REWARD_CLAIM_BITS,
-  effectivePlayerMovementSpeed,
-  INTERMEDIATE_SNOWLANDS_MAP_ID,
-  MAP_DISPLAY_NAMES,
   MAP_IDS,
-  MAX_ARMOR,
-  MAX_MOVEMENT_SPEED_OVERRIDE,
-  MAX_PLAYER_STAT,
-  MIN_ATTACK_INTERVAL,
-  movementSpeedsMatch,
-  MOVEMENT_SPEED_EPSILON,
   PLAYER_BASE_HP,
-  PLAYER_PROJECTILE_SPEED,
   PLAYER_RADIUS,
   PLAYER_SPAWN,
   PLAYER_SPEED,
   playerBaseMovementSpeed,
   TUTORIAL_FOREST_MAP_ID,
-  WORLD_HEIGHT,
-  WORLD_WIDTH,
 } from "../../shared/rules";
 import { readPlayerProgress, withDuelWide } from "./wide-stats";
 import { playerWideStats, duelWideStats, duelReplayWideStats, playerCombatRating } from "./wide-stats-table";
 import { LEGACY_CLIENT_ERRORS, sameConnection, sessionForContext, requireSession, blockedSession, isSupportedProtocol, requireCurrentLegalConsent, requireSupportedSessionProtocol, requireControllingPlayer, isDeveloperIdentity, isDatabaseOwnerIdentity, isVirtualPlayer, requireDeveloperSession, requireDeveloper, touchPlayerAccessAudit, backfillKnownAccessAudit, sameIdentity } from "./session-guards";
-import { defaultPlayerProgress, samePlayerProgressValues, hasFreshProgress, resultIncludesContributor, contributedToLatestPrismshell, forestItemCountForProgress, inventoryForProgress, slotUpgradeKey, slotUpgradeTierFor, itemUpgradeLevelFor, playerOwnsItem, restoreItemToProgress, equippedHeadForProgress, equippedChestForProgress, equippedFeetForProgress, equippedRightHandForProgress, equippedLeftHandForProgress, cosmeticEquipmentForProgress, equipmentPresentationForProgress, leaderboardAppearanceForProgress, maxHealthForProgress } from "./progress-helpers";
+import { defaultPlayerProgress, samePlayerProgressValues, hasFreshProgress, resultIncludesContributor, contributedToLatestPrismshell, forestItemCountForProgress, inventoryForProgress, slotUpgradeKey, itemUpgradeLevelFor, playerOwnsItem, restoreItemToProgress, equippedHeadForProgress, equippedChestForProgress, equippedFeetForProgress, equippedRightHandForProgress, equippedLeftHandForProgress, cosmeticEquipmentForProgress, equipmentPresentationForProgress, leaderboardAppearanceForProgress, maxHealthForProgress } from "./progress-helpers";
 import { researchForPlayer, assertResearchAvailable, activeResearchIsAvailable, removeResearchCompletionSchedules, completeActiveResearch, ensureResearchCompletionSchedule, reconcileActiveResearch } from "./research-runtime";
 import { ensurePlayerLifetime, finishLifetimeSession, markPlayerBalanceCurrent, playerBalanceProgress, effectivePowerStatsForProgress, effectivePowerForProgress, powerFieldsForProgress, researchedDamage, researchedArmor, researchedRegen } from "./player-power";
 import { removeItemUpgradeCompletionSchedules, removePlayerItemUpgradeData, ensureItemUpgradeCompletionSchedule, completeActiveItemUpgrade, cancelActiveItemUpgrade, reconcileActiveItemUpgrade } from "./item-upgrade-runtime";
 import { ensureGemWallet, applyGemBalanceChange, currentUtcDayKey, ensureDailyGemBonusState } from "./gem-wallet";
 import { writeProgressAndPresentation } from "./player-power";
 import { refreshLeaderboard, requestLeaderboardRefresh, refreshLeaderboardIfDue } from "./leaderboard-refresh";
-import { generatedDisplayName, isGeneratedDisplayName, requireAllowedDisplayName, syncDisplayNamePresentation, repairModeratedDisplayName, changePlayerDisplayName } from "./display-names";
+import { generatedDisplayName, isGeneratedDisplayName, syncDisplayNamePresentation, repairModeratedDisplayName, changePlayerDisplayName } from "./display-names";
 import { insertChatMessage, clearExpiredHistory, trimStartupTelemetry, clearExpiredStartupTelemetryRateLimits, sendPlayerChatMessage } from "./chat-runtime";
 import { MAINTENANCE_INTERVAL_MICROS, VIRTUAL_PLAYER_RUN_LIFETIME_MICROS, adjustVirtualPlayerCount, virtualPlayerCountForOwner, clearExpiredVirtualPlayerRuns, clearOrphanRealtimeState, ensureMaintenanceSchedule, ensureMaintenanceSweepSchedule, removePlayerRealtimeState } from "./maintenance-runtime";
 import { autoEquip } from "./player-power";
 import { publishPlayerDeathFrame, resetProgressToDefaults, startFreshRun, respawnWithProgress, transitionPlayerMap } from "./character-reset";
 import { saveSubmittedProgress } from "./progress-save";
-
-const WORLD = { width: WORLD_WIDTH, height: WORLD_HEIGHT };
-const VALID_MAP_IDS = { has: (id: string) => MAP_IDS.includes(id) || id === HOME_EXTERIOR_MAP_ID || isProceduralMap(id) || isSoulMap(id) || isGuildHallMap(id) || isTownMap(id) };
-const LEGACY_FROSTWIND_EXPANSE_MAP_ID = "frostwind_expanse";
-
-function canonicalMapId(mapId: string) {
-  return mapId === LEGACY_FROSTWIND_EXPANSE_MAP_ID ? INTERMEDIATE_SNOWLANDS_MAP_ID : mapId;
-}
-// Shared with the client (shared/map-gateways.ts): portals are checked at their use point.
-const MAP_PORTALS: Record<string, { x: number; y: number; destination: string }[]> =
-  Object.fromEntries(Object.entries(CAMPAIGN_GATEWAYS).map(([mapId, gateways]) => [mapId, gateways.portals.map(portalUsePoint)]));
-const MAP_ARRIVALS: Record<string, { x: number; y: number }> =
-  Object.fromEntries(Object.keys(CAMPAIGN_GATEWAYS).map(mapId => [mapId, campaignLanding(mapId)]));
-const MAP_PORTAL_USE_RANGE = 125;
+import { WORLD, VALID_MAP_IDS, canonicalMapId, MAP_ARRIVALS, changePlayerMap, hasEndlessTravelAccess } from "./map-travel";
+import { startItemUpgradeFor } from "./item-upgrade-runtime";
+import { devResetDailyBonus, devCopyCombatStats, devUpdateSave } from "./dev-save-tools";
+import { setMotionInterest, setPlayerSpeed } from "./movement-requests";
 // Only regular enemies use server reward/combat bounds. Boss clears persist gates.
 const { combatBoundForReport } = createCombatReport({
   attackIntervalForProgress, itemUpgradeLevelFor, inventoryForProgress,
@@ -229,7 +199,6 @@ const { duelDamage, finishDuel, resolveDuel, startDuel, publishDuelReplay } = cr
   attackIntervalForProgress, equippedRightHandForProgress, equippedLeftHandForProgress,
   equipmentPresentationForProgress,
 });
-const UPGRADE_BENCH_USE_RANGE = 75;
 
 // One-time data migrations live in module-migrations.ts; connect and
 // runMaintenance keep calling runPendingModuleMigrations by name. Placed after
@@ -2878,37 +2847,6 @@ export const devResetDailyGemBonus = spacetimedb.reducer(
   (ctx, args) => devResetDailyBonus(ctx, args),
 );
 
-function devResetDailyBonus(ctx: ModuleReducerCtx, { identity }: { identity: Identity }) {
-  if (!isDatabaseOwnerIdentity(ctx.sender)) {
-    requireDeveloper(ctx, "dev_reset_daily_gem_bonus");
-    if (!sameIdentity(identity, ctx.sender)) throw new SenderError("Developers may reset only their own daily bonus.");
-  }
-  const dayKey = currentUtcDayKey(ctx);
-  const state = ensureDailyGemBonusState(ctx, identity);
-  if (state.claimableDayKey === dayKey) return;
-
-  const wallet = ensureGemWallet(ctx, identity);
-  if (wallet.balance < DAILY_LOGIN_GEM_BONUS) {
-    throw new SenderError("At least 7 Gems are needed to reverse today's bonus for preview.");
-  }
-  const nextCycle = state.claimCycle + 1n;
-  applyGemBalanceChange(ctx, {
-    identity,
-    delta: -DAILY_LOGIN_GEM_BONUS,
-    kind: "developer_daily_bonus_reset",
-    note: "Reversed today's daily bonus for Claim-window preview.",
-    externalReference: `daily-reset:${identity.toHexString()}:${dayKey}:${nextCycle}`,
-  });
-  ctx.db.dailyGemBonus.identity.update({
-    ...state,
-    claimableDayKey: dayKey,
-    lastClaimedDayKey: "",
-    claimCycle: nextCycle,
-    revision: state.revision + 1n,
-    updatedAt: ctx.timestamp,
-  });
-}
-
 export const devBeginVirtualPlayerLoadTest = spacetimedb.reducer(
   { ticket: t.string(), maxCount: t.u32() },
   (ctx, args) => beginVirtualPlayerLoadTest(ctx, args),
@@ -3094,40 +3032,6 @@ export const devCopyPlayerCombatStats = spacetimedb.reducer(
   (ctx, args) => devCopyCombatStats(ctx, args),
 );
 
-function devCopyCombatStats(ctx: ModuleReducerCtx, { sourceIdentity, targetIdentity }: { sourceIdentity: Identity; targetIdentity: Identity }) {
-  if (!isDatabaseOwnerIdentity(ctx.sender)) requireDeveloper(ctx, "dev_copy_player_combat_stats");
-  if (sameIdentity(sourceIdentity, targetIdentity)) throw new SenderError("Source and target must differ.");
-  const source = readPlayerProgress(ctx, sourceIdentity);
-  const target = readPlayerProgress(ctx, targetIdentity);
-  if (!source || !target) throw new SenderError("Player progress row not found.");
-
-  const nextProgress = {
-    ...target,
-    maxHp: source.maxHp,
-    damage: source.damage,
-    attackRate: source.attackRate,
-    projectileSpeed: source.projectileSpeed,
-    projectileCount: source.projectileCount,
-    attackRange: source.attackRange,
-    armor: source.armor,
-    regen: source.regen,
-    speed: source.speed,
-    speedOverride: source.speedOverride,
-  };
-  updateSnapshotRow(ctx, "playerProgress", nextProgress);
-  const active = ctx.db.player.identity.find(targetIdentity);
-  if (active) {
-    const nextPlayer = {
-      ...active,
-      speed: effectiveMovementSpeedForProgress(ctx, nextProgress),
-      ...powerFieldsForProgress(ctx, nextProgress),
-    };
-    updateSnapshotRow(ctx, "player", nextPlayer);
-    syncPlayerMotionIdentity(ctx, playerWithMotion(ctx, nextPlayer));
-  }
-  refreshLeaderboard(ctx);
-}
-
 export const setProfileIcon = spacetimedb.reducer(
   { profileIcon: t.u32() },
   (ctx, { profileIcon }) => {
@@ -3270,67 +3174,6 @@ export const devUpdatePlayerSave = spacetimedb.reducer(
   },
   (ctx, update) => devUpdateSave(ctx, update),
 );
-
-function devUpdateSave(ctx: ModuleReducerCtx, update: {
-  identity: Identity;
-  displayName: string;
-  maxHp: number;
-  damage: number;
-  attackRate: number;
-  projectileSpeed: number;
-  projectileCount: number;
-  attackRange: number;
-  armor: number;
-  regen: number;
-  speed: number;
-}) {
-  requireDeveloper(ctx, "dev_update_player_save");
-  const profile = ctx.db.playerProfile.identity.find(update.identity);
-  const progress = readPlayerProgress(ctx, update.identity);
-  if (!profile || !progress) throw new SenderError("Player save row not found.");
-  const displayName = update.displayName.trim().replace(/\s+/g, " ");
-  if (!/^[A-Za-z0-9 _-]{2,20}$/.test(displayName)) {
-    throw new SenderError("Name must be 2-20 letters, numbers, spaces, hyphens, or underscores.");
-  }
-  requireAllowedDisplayName(displayName);
-  const bounded = (value: number, min: number, max: number, field: string) => {
-    if (!Number.isFinite(value) || value < min || value > max) {
-      throw new SenderError(`${field} must be between ${min} and ${max}.`);
-    }
-    return value;
-  };
-  const requestedSpeed = bounded(update.speed, 0, MAX_MOVEMENT_SPEED_OVERRIDE, "Move speed");
-  const equipmentSpeed = playerBaseMovementSpeed(false);
-  const nextProgress = {
-    ...progress,
-    maxHp: bounded(update.maxHp, 1, MAX_PLAYER_STAT, "Max HP"),
-    damage: bounded(update.damage, 1, MAX_PLAYER_STAT, "Damage"),
-    attackRate: bounded(update.attackRate, MIN_ATTACK_INTERVAL, 10, "Attack rate"),
-    projectileSpeed: PLAYER_PROJECTILE_SPEED,
-    projectileCount: Math.max(1, Math.min(20, Math.floor(update.projectileCount))),
-    attackRange: bounded(update.attackRange, 1, 5_000, "Attack range"),
-    armor: bounded(update.armor, 0, MAX_ARMOR, "Armor"),
-    regen: bounded(update.regen, 0, MAX_PLAYER_STAT, "Regen"),
-    speed: equipmentSpeed,
-    speedOverride: requestedSpeed === 0 || movementSpeedsMatch(requestedSpeed, equipmentSpeed) ? 0 : requestedSpeed,
-  };
-  updateSnapshotRow(ctx, "playerProfile", { ...profile, displayName });
-  syncDisplayNamePresentation(ctx, update.identity, displayName);
-  updateSnapshotRow(ctx, "playerProgress", nextProgress);
-  const active = ctx.db.player.identity.find(update.identity);
-  if (active) {
-    const nextPlayer = {
-      ...active,
-      speed: effectiveMovementSpeedForProgress(ctx, nextProgress),
-      ...powerFieldsForProgress(ctx, nextProgress),
-    };
-    updateSnapshotRow(ctx, "player", nextPlayer);
-    syncPlayerMotionIdentity(ctx, playerWithMotion(ctx, nextPlayer));
-  }
-  const audit = ctx.db.playerAccessAudit.identity.find(update.identity);
-  if (audit) ctx.db.playerAccessAudit.identity.update({ ...audit, displayName });
-  refreshLeaderboard(ctx);
-}
 
 export const savePlayerProgress = spacetimedb.reducer(
   {
@@ -3623,58 +3466,6 @@ export const startItemUpgrade = spacetimedb.reducer(
   { slot: t.u8(), itemId: t.string() },
   (ctx, args) => startItemUpgradeFor(ctx, args),
 );
-
-function startItemUpgradeFor(ctx: ModuleReducerCtx, { slot: requestedSlot, itemId }: { slot: number; itemId: string }) {
-  const slot = requireUpgradeBenchSlot(requestedSlot);
-  const playerAtBench = requireControllingPlayer(ctx);
-  if (!isTownMap(playerAtBench.mapId) ||
-    !withinStationReach(ctx, playerAtBench, TOWN_BENCH_POSITION, UPGRADE_BENCH_USE_RANGE)) {
-    throw new SenderError("Touch the Upgrade Bench first.");
-  }
-  if (activeDuelFor(ctx, ctx.sender)) throw new SenderError("Finish your duel first.");
-  if (slot === UPGRADE_BENCH_SLOT_TWO && !secondUpgradeSlotUnlockedFor(ctx, ctx.sender)) {
-    throw new SenderError("Unlock the second upgrade slot first.");
-  }
-  if (slot === UPGRADE_BENCH_SLOT_THREE && !thirdUpgradeSlotUnlockedFor(ctx, ctx.sender)) {
-    throw new SenderError("Unlock the third upgrade slot first.");
-  }
-  // `itemId` carries the upgrade slot now: "HAND", "HEAD" or "CHEST". The
-  // parameter keeps its name so the reducer signature is unchanged and no
-  // client is broken by the move from per-item levels to per-slot tiers.
-  const upgradeSlot = itemId;
-  if (!isUpgradeSlot(upgradeSlot)) throw new SenderError("Choose a weapon, helmet or armor slot.");
-
-  const existing = activeItemUpgradeForSlot(ctx, ctx.sender, slot);
-  if (existing) reconcileActiveItemUpgrade(ctx, existing, slot);
-  const active = activeItemUpgradeForSlot(ctx, ctx.sender, slot);
-  if (active) throw new SenderError("That upgrade slot is already in use.");
-  if (activeItemUpgradeEntriesFor(ctx, ctx.sender).some(({ active: other }) => other.itemId === upgradeSlot)) {
-    throw new SenderError(`Your ${UPGRADE_SLOT_LABELS[upgradeSlot]} slot is already upgrading.`);
-  }
-
-  // The bag is untouched: a slot tier is not the item, so nothing is taken
-  // away while it runs and nothing has to be handed back when it finishes.
-  const currentLevel = slotUpgradeTierFor(ctx, ctx.sender, upgradeSlot);
-  if (currentLevel >= MAX_SLOT_UPGRADE_TIER) {
-    throw new SenderError(`Your ${UPGRADE_SLOT_LABELS[upgradeSlot]} slot is already at tier ${MAX_SLOT_UPGRADE_TIER}.`);
-  }
-
-  const durationMicros = BigInt(slotUpgradeDurationWithResearch(itemUpgradeDurationMs(currentLevel), ctx.db.playerResearch.identity.find(ctx.sender)?.slotUpgradeSpeed ?? 0)) * 1_000n;
-  const safeDurationMicros = durationMicros > 0n ? durationMicros : 1n;
-  const completesAt = new Timestamp(ctx.timestamp.microsSinceUnixEpoch + safeDurationMicros);
-  const nextActive = {
-    identity: ctx.sender,
-    itemId: upgradeSlot,
-    currentLevel,
-    targetLevel: currentLevel + 1,
-    startedAt: ctx.timestamp,
-    completesAt,
-    paused: false,
-    remainingMicros: safeDurationMicros,
-  };
-  insertActiveItemUpgrade(ctx, slot, nextActive);
-  ensureItemUpgradeCompletionSchedule(ctx, nextActive, slot);
-}
 
 /** Inventory ownership is authoritative; a stale client save cannot restore deleted gear. Bodies: equipment-copies.ts. */
 export const destroyEquipment = spacetimedb.reducer(
@@ -4206,42 +3997,6 @@ export const setPlayerMotionInterest = spacetimedb.reducer(
   (ctx, args) => setMotionInterest(ctx, args),
 );
 
-function setMotionInterest(ctx: ModuleReducerCtx, { networkIds }: { networkIds: number[] }) {
-  if (blockedSession(ctx)) return;
-  const activePlayer = requireControllingPlayer(ctx);
-  const ownMotion = ctx.db.playerMotion.identity.find(ctx.sender);
-  if (!ownMotion) throw new SenderError("Player motion is unavailable.");
-  if (!ownMotion.isVisible) {
-    if (ctx.db.playerMotionInterest.identity.find(ctx.sender)) ctx.db.playerMotionInterest.identity.delete(ctx.sender);
-    return;
-  }
-  const selected: number[] = [];
-  const seen = new Set<number>();
-  for (const networkId of networkIds.slice(0, PLAYER_MOTION_INTEREST_LIMIT * 4)) { // A longer list is cut, not walked: each id costs a lookup.
-    if (selected.length >= PLAYER_MOTION_INTEREST_LIMIT) break;
-    if (seen.has(networkId) || networkId === ownMotion.networkId) continue;
-    seen.add(networkId);
-    const motion = ctx.db.playerMotion.networkId.find(networkId);
-    if (!motion || !motion.isVisible || motion.mapId !== activePlayer.mapId) continue;
-    selected.push(networkId);
-  }
-
-  const current = ctx.db.playerMotionInterest.identity.find(ctx.sender);
-  if (selected.length === 0) {
-    if (current) ctx.db.playerMotionInterest.identity.delete(ctx.sender);
-    return;
-  }
-  if (
-    current &&
-    current.networkIds.length === selected.length &&
-    current.networkIds.every((networkId: number, index: number) => networkId === selected[index])
-  ) return;
-  const next = { identity: ctx.sender, networkIds: selected };
-  if (current) ctx.db.playerMotionInterest.identity.update(next);
-  else ctx.db.playerMotionInterest.insert(next);
-  ensureMotionDetailFrameSchedule(ctx);
-}
-
 // Rollout bridge for pre-0.424 clients. Current clients never call this path.
 export const syncPosition = spacetimedb.reducer(
   { x: t.f64(), y: t.f64(), facing: t.f64(), moving: t.bool(), sequence: t.u32() },
@@ -4268,125 +4023,10 @@ export const changeMap = spacetimedb.reducer(
   (ctx, args) => changePlayerMap(ctx, args),
 );
 
-function changePlayerMap(ctx: ModuleReducerCtx, { mapId, x, y }: { mapId: string; x: number; y: number }) {
-  if (blockedSession(ctx)) return;
-  const current = requireControllingPlayer(ctx);
-  if (activeDuelFor(ctx, ctx.sender)) throw new SenderError("Finish the duel before using a portal.");
-  // "Base" and "Fight" both ask for the Town (Home, retired, means the same): Base from anywhere, Fight from the Town.
-  if (mapId === HOME_EXTERIOR_MAP_ID || isTownMap(mapId)) {
-    if (current.hp <= 0) throw new SenderError("Respawn before teleporting to the Town.");
-    if (isTownMap(current.mapId)) {
-      const saved = ctx.db.homeReturnLocation.identity.find(ctx.sender);
-      // Recover already-linked accounts whose older client/server omitted
-      // their Home return record. Keep their stats and unlocks intact.
-      const progress = readPlayerProgress(ctx, ctx.sender);
-      const savedMapIndex = saved ? MAP_IDS.indexOf(saved.mapId) : -1;
-      // Fight only goes back to a map this run has open: a challenge run (or a reset) must not land on the main run's map 15, or its Soul Dimension.
-      const permitted = (!isSoulMap(saved?.mapId) || soulReturnOpenFor(ctx, ctx.sender)) && (!isGuildHallMap(saved?.mapId) || guildHallMember(ctx, ctx.sender, saved!.mapId)) && Boolean(saved && (isProceduralMap(saved.mapId)
-        ? hasEndlessTravelAccess(ctx, ctx.sender) || generatedMapUnlocked(saved.mapId, ctx.db.proceduralProgress.identity.find(ctx.sender)?.completed ?? 0,
-          Boolean((progress?.bossRewardClaims ?? 0) & BOSS_REWARD_CLAIM_BITS[PROCEDURAL_ENTRY_BOSS]))
-        : savedMapIndex <= 0 || Boolean(progress?.[CAMPAIGN_UNLOCK_FIELDS[savedMapIndex - 1]])));
-      const destination = permitted && saved && saved.mapId !== HOME_EXTERIOR_MAP_ID && !isTownMap(saved.mapId) && VALID_MAP_IDS.has(saved.mapId)
-        && [saved.x, saved.y, saved.facing].every(Number.isFinite)
-        ? saved : { mapId: TUTORIAL_FOREST_MAP_ID, ...PLAYER_SPAWN, facing: 0 };
-      transitionPlayerMap(ctx, current, destination.mapId, destination, destination.facing);
-    } else {
-      if (![x, y].every(Number.isFinite) || x < PLAYER_RADIUS || y < PLAYER_RADIUS || x > worldBoundsFor(current.mapId).width - PLAYER_RADIUS || y > worldBoundsFor(current.mapId).height - PLAYER_RADIUS) throw new SenderError("Invalid teleport position.");
-      const saved = { identity: ctx.sender, mapId: current.mapId, x, y, facing: current.facing };
-      if (isGuildHallMap(current.mapId) || current.mapId === HOME_EXTERIOR_MAP_ID) { /* "Fight" from the Town still goes back to where the fighting was */ } else if (ctx.db.homeReturnLocation.identity.find(ctx.sender)) ctx.db.homeReturnLocation.identity.update(saved);
-      else ctx.db.homeReturnLocation.insert(saved);
-      transitionPlayerMap(ctx, current, TOWN_MAP_ID, TOWN_ARRIVAL);
-    }
-    persistWorldLocation(ctx, ctx.db.player.identity.find(ctx.sender));
-    return;
-  }
-  if (!VALID_MAP_IDS.has(mapId) || mapId === current.mapId) throw new SenderError("Unsupported map destination.");
-  if (!Number.isFinite(x) || !Number.isFinite(y)) throw new SenderError("Portal position must be finite.");
-  if (x < PLAYER_RADIUS || x > worldBoundsFor(current.mapId).width - PLAYER_RADIUS || y < PLAYER_RADIUS || y > worldBoundsFor(current.mapId).height - PLAYER_RADIUS) {
-    throw new SenderError("Portal position is outside the world.");
-  }
-  if (isSoulMap(mapId)) requireSoulDimensionOpen(ctx);
-  if (isGuildHallMap(mapId)) return enterGuildHall(ctx, current, mapId, x, y, { transitionPlayerMap, persistWorldLocation });
-  const currentProgress = readPlayerProgress(ctx, ctx.sender);
-  const campaignIndex = CAMPAIGN_MAPS.findIndex(map => map.id === mapId);
-  if (campaignIndex > 0 && !campaignMapUnlocked(campaignIndex, currentProgress ?? {})) {
-    throw new SenderError(`Defeat ${CAMPAIGN_MAPS[campaignIndex - 1].bossName} before entering ${MAP_DISPLAY_NAMES[mapId]}.`);
-  }
-
-  if (isProceduralMap(mapId) && !generatedMapUnlocked(mapId,
-    ctx.db.proceduralProgress.identity.find(ctx.sender)?.completed ?? 0,
-    Boolean(currentProgress && (currentProgress.bossRewardClaims & BOSS_REWARD_CLAIM_BITS[PROCEDURAL_ENTRY_BOSS])))) {
-    throw new SenderError("Defeat the previous map's boss first.");
-  }
-  // The Town's travel portal (and, for tabs from before the Town, Home's pad) reaches every map the checks above allow.
-  const usePoint = (portal: { x: number; y: number; height: number }, destination: string) => ({ x: portal.x, y: portal.y - portal.height * .32, destination });
-  const sourcePortals = current.mapId === HOME_EXTERIOR_MAP_ID ? [usePoint(HOME_TRAVEL_PORTAL, isSoulMap(mapId) ? "" : mapId)]
-    : isTownMap(current.mapId) ? townPortalUsePoints(mapId)
-    // LEGACY: the forest's old portal spot, where tabs older than 0.901.15 draw the Soul Dimension's (shared/map-gateways.ts).
-    : isSoulMap(current.mapId) ? [usePoint(SOUL_TOWN_PORTAL, SOUL_TOWN_PORTAL.destination), usePoint(LEGACY_CORNER_GATEWAYS[TUTORIAL_FOREST_MAP_ID].portals[0], SOUL_TOWN_PORTAL.destination)]
-    : isProceduralMap(current.mapId)
-    ? generateMap(current.mapId).portals.map(portal => ({ ...portal, y:portal.y-portal.height*.32 }))
-    : [...(MAP_PORTALS[current.mapId as keyof typeof MAP_PORTALS] ?? []),
-      ...(current.mapId === PROCEDURAL_ENTRY_MAP ? [portalUsePoint(endlessEntryPortal(proceduralMapId(1)))] : []),
-      ...legacyPortalUsePoints(current.mapId, proceduralMapId(1))];
-  const sourcePortal = sourcePortals.filter((portal) => portal.destination === mapId).sort((a, b) => Math.hypot(x - a.x, y - a.y) - Math.hypot(x - b.x, y - b.y))[0];
-  if (!sourcePortal) throw new SenderError("Maps are not connected.");
-  // Movement is client-authoritative. Validate the coordinate from this
-  // discrete portal action instead of a potentially one-heartbeat-old
-  // player_motion sample, then move to the destination atomically.
-  const portalDistance = Math.hypot(x - sourcePortal.x, y - sourcePortal.y);
-  if (portalDistance > MAP_PORTAL_USE_RANGE) throw new SenderError("Move closer to the portal.");
-
-  // An old tab that took an old portal puts itself at the old arrival; land it there so the two agree.
-  const arrival = (sourcePortal as { legacyArrival?: { x: number; y: number } | null }).legacyArrival ?? (isProceduralMap(mapId) ? generateMap(mapId).arrival : isSoulMap(mapId) ? SOUL_ARRIVAL : isTownMap(mapId) ? TOWN_ARRIVAL : MAP_ARRIVALS[mapId as keyof typeof MAP_ARRIVALS]);
-  transitionPlayerMap(ctx, current, mapId, arrival);
-}
-
 export const setSpeed = spacetimedb.reducer(
   { speed: t.f32() },
   (ctx, args) => setPlayerSpeed(ctx, args),
 );
-
-function setPlayerSpeed(ctx: ModuleReducerCtx, { speed }: { speed: number }) {
-  if (blockedSession(ctx)) return;
-  const current = requireControllingPlayer(ctx);
-  if (movementSpeedsMatch(speed, current.speed)) return;
-
-  // Speed remains server-authoritative. Move Speed research is a legitimate
-  // client-side movement multiplier, so validate its exact server record
-  // instead of treating every researched speed as a malformed packet.
-  const progress = readPlayerProgress(ctx, ctx.sender);
-  const research = ctx.db.playerResearch.identity.find(ctx.sender);
-  const feet = progress ? equippedFeetForProgress(progress) : current.feetItem;
-  const bootsEquipped = false;
-  const moveSpeedRank = research?.moveSpeed ?? 0;
-  const expectedSpeed = progress ? effectiveMovementSpeedForProgress(ctx, progress, research)
-    : effectivePlayerMovementSpeed(bootsEquipped, moveSpeedRank, 0, research?.utilityMoveSpeed ?? 0);
-  // Regular-enemy combat runs locally. Permit its two exact movement states,
-  // while checking ownership/equipment here and never saving a temporary bonus.
-  const blackBootsEquipped = progress && feet === BLACK_BOOTS;
-  const restingSpeed = expectedSpeed + (blackBootsEquipped ? BLACK_BOOTS_SPEED_BONUS : 0);
-  // Bound the maximum rather than demanding one of two exact values. A Move
-  // Speed rank that has just finished leaves the client a beat behind: its
-  // next packet still carries the previous rank's speed, which is lower than
-  // the server now expects, and every rejection on live was exactly that.
-  // Asking to move slower than you are entitled to is not an exploit.
-  const maximumSpeed = Math.max(expectedSpeed, restingSpeed);
-  if (!Number.isFinite(speed) || speed < 0 || speed > maximumSpeed + MOVEMENT_SPEED_EPSILON) {
-    // Name the account in the log; the message alone says nothing about who
-    // sent it. The player-facing text stays put so the error still groups.
-    console.warn("Unsupported player speed", JSON.stringify({ identity: ctx.sender.toHexString(), speed, expectedSpeed, restingSpeed, maximumSpeed, feet, moveSpeedRank }));
-    throw new SenderError("Unsupported player speed");
-  }
-
-  const nextPlayer = {
-    ...current,
-    speed,
-    lastInputAt: ctx.timestamp,
-  };
-  updateSnapshotRow(ctx, "player", nextPlayer);
-  syncPlayerMotionIdentity(ctx, playerWithMotion(ctx, nextPlayer));
-}
 
 /** The database owner, or the module calling itself from a schedule. */
 function requireOperator(ctx: any) {
@@ -4760,10 +4400,6 @@ export const devGemPurchaseReview = spacetimedb.view(
 
 export type GameViewContext = ViewCtx<InferSchema<typeof spacetimedb>>;
 export type GameReducerContext = ReducerCtx<InferSchema<typeof spacetimedb>>;
-
-function hasEndlessTravelAccess(ctx: GameViewContext | GameReducerContext, identity: Identity) {
-  return isDeveloperIdentity(identity) || Boolean(ctx.db.endlessTravelAccess.identity.find(identity));
-}
 
 export const myEndlessTravelAccess = spacetimedb.view(
   { public: true }, t.option(proceduralMapTables.endlessTravelAccess.rowType),

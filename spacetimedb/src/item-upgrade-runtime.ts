@@ -10,6 +10,17 @@ import { MAX_SLOT_UPGRADE_TIER } from "../../shared/items";
 import { readPlayerProgress } from "./wide-stats";
 import { isUpgradeSlot, upgradeSlotForItem } from "../../shared/slot-upgrades";
 import { writeProgressAndPresentation } from "./player-power";
+import type { ModuleReducerCtx } from "./index";
+import { requireUpgradeBenchSlot, UPGRADE_BENCH_SLOT_TWO, secondUpgradeSlotUnlockedFor, UPGRADE_BENCH_SLOT_THREE, thirdUpgradeSlotUnlockedFor, activeItemUpgradeForSlot, activeItemUpgradeEntriesFor, insertActiveItemUpgrade } from "./upgrade-bench-slots";
+import { requireControllingPlayer } from "./session-guards";
+import { isTownMap, TOWN_BENCH_POSITION } from "./town";
+import { withinStationReach } from "./door-reach";
+import { SenderError } from "spacetimedb/server";
+import { activeDuelFor } from "./duel-runtime";
+import { UPGRADE_SLOT_LABELS } from "../../shared/slot-upgrades";
+import { slotUpgradeDurationWithResearch } from "../../shared/utility-research";
+import { itemUpgradeDurationMs } from "../../shared/items";
+import { Timestamp } from "spacetimedb";
 
 export function removeItemUpgradeCompletionSchedules(ctx: any, identity: any, slot?: number) {
   const scheduledIds = [...ctx.db.itemUpgradeCompletionSchedule.identity.filter(identity) as Iterable<any>]
@@ -107,5 +118,59 @@ export function reconcileActiveItemUpgrade(ctx: any, active: any, slot: number) 
     completeActiveItemUpgrade(ctx, nextActive, slot);
     return;
   }
+  ensureItemUpgradeCompletionSchedule(ctx, nextActive, slot);
+}
+
+export const UPGRADE_BENCH_USE_RANGE = 75;
+
+export function startItemUpgradeFor(ctx: ModuleReducerCtx, { slot: requestedSlot, itemId }: { slot: number; itemId: string }) {
+  const slot = requireUpgradeBenchSlot(requestedSlot);
+  const playerAtBench = requireControllingPlayer(ctx);
+  if (!isTownMap(playerAtBench.mapId) ||
+    !withinStationReach(ctx, playerAtBench, TOWN_BENCH_POSITION, UPGRADE_BENCH_USE_RANGE)) {
+    throw new SenderError("Touch the Upgrade Bench first.");
+  }
+  if (activeDuelFor(ctx, ctx.sender)) throw new SenderError("Finish your duel first.");
+  if (slot === UPGRADE_BENCH_SLOT_TWO && !secondUpgradeSlotUnlockedFor(ctx, ctx.sender)) {
+    throw new SenderError("Unlock the second upgrade slot first.");
+  }
+  if (slot === UPGRADE_BENCH_SLOT_THREE && !thirdUpgradeSlotUnlockedFor(ctx, ctx.sender)) {
+    throw new SenderError("Unlock the third upgrade slot first.");
+  }
+  // `itemId` carries the upgrade slot now: "HAND", "HEAD" or "CHEST". The
+  // parameter keeps its name so the reducer signature is unchanged and no
+  // client is broken by the move from per-item levels to per-slot tiers.
+  const upgradeSlot = itemId;
+  if (!isUpgradeSlot(upgradeSlot)) throw new SenderError("Choose a weapon, helmet or armor slot.");
+
+  const existing = activeItemUpgradeForSlot(ctx, ctx.sender, slot);
+  if (existing) reconcileActiveItemUpgrade(ctx, existing, slot);
+  const active = activeItemUpgradeForSlot(ctx, ctx.sender, slot);
+  if (active) throw new SenderError("That upgrade slot is already in use.");
+  if (activeItemUpgradeEntriesFor(ctx, ctx.sender).some(({ active: other }) => other.itemId === upgradeSlot)) {
+    throw new SenderError(`Your ${UPGRADE_SLOT_LABELS[upgradeSlot]} slot is already upgrading.`);
+  }
+
+  // The bag is untouched: a slot tier is not the item, so nothing is taken
+  // away while it runs and nothing has to be handed back when it finishes.
+  const currentLevel = slotUpgradeTierFor(ctx, ctx.sender, upgradeSlot);
+  if (currentLevel >= MAX_SLOT_UPGRADE_TIER) {
+    throw new SenderError(`Your ${UPGRADE_SLOT_LABELS[upgradeSlot]} slot is already at tier ${MAX_SLOT_UPGRADE_TIER}.`);
+  }
+
+  const durationMicros = BigInt(slotUpgradeDurationWithResearch(itemUpgradeDurationMs(currentLevel), ctx.db.playerResearch.identity.find(ctx.sender)?.slotUpgradeSpeed ?? 0)) * 1_000n;
+  const safeDurationMicros = durationMicros > 0n ? durationMicros : 1n;
+  const completesAt = new Timestamp(ctx.timestamp.microsSinceUnixEpoch + safeDurationMicros);
+  const nextActive = {
+    identity: ctx.sender,
+    itemId: upgradeSlot,
+    currentLevel,
+    targetLevel: currentLevel + 1,
+    startedAt: ctx.timestamp,
+    completesAt,
+    paused: false,
+    remainingMicros: safeDurationMicros,
+  };
+  insertActiveItemUpgrade(ctx, slot, nextActive);
   ensureItemUpgradeCompletionSchedule(ctx, nextActive, slot);
 }
