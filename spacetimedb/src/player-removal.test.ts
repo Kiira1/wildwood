@@ -49,33 +49,21 @@ function legacyDelete(f: Fixture, target: Identity) {
   f.ctx.sender = sender;
 }
 
-// What each removal leaves behind today. Most of it is features added after
-// the removal lists were written (prestige, quests, aggro, offline progress,
-// Gem commerce); the rest is logs and analytics. Taking a table off a list
-// means the removal now clears it; adding one means a new table that neither
-// removal touches, which should be a decision rather than an accident.
-const LEFT_BY_LEGACY_DELETE = [
-  "accountDeletionRequest", "accountEmail", "aggroChallengeRun", "analyticsConversion", "analyticsDailyMapPlayer",
-  "analyticsDailyPlayer", "analyticsPlayer", "bossHitResult", "chatModerator", "connectionDiagnostic",
-  "connectionDiagnosticRate", "dreadreaperAttackWindow", "dreadreaperContribution", "duelWideStats", "duelWireAccess",
-  "endlessTravelAccess", "enemyDefeatReview", "forestRewardPrototype", "gemCommerceConfig", "gemCommerceHold",
-  "gemKillProgress", "gemPurchase", "guild", "guildMemberQuestWeek", "guildRejoin", "homeReturnLocation",
-  "leaderboardEntryLegacy", "loginMove", "mapBalanceVersion", "offlineProgress", "patreonAnnouncement",
-  "patreonPreview", "playerAggroChallenge", "playerAggroChallengeParked", "playerBonusToggle", "playerDailyQuest",
-  "playerEndgameRebaseBackup", "playerEndlessRebaseBackup", "playerFreeRespec", "playerGemDrop",
-  "playerMotionDetailFrame", "playerOfflinePreference", "playerPowerRebaseBackup", "playerPrestige",
-  "playerPrestigeChallenge", "playerPrestigeChallengeParked", "playerPrestigeExpansionPerk", "playerPrestigePerk",
-  "playerQuestWeekTotal", "prestigeChallengeBackup", "prestigeChallengeRun", "prismshellAttackWindow",
-  "prismshellContribution", "releaseAcknowledgement", "soloQuestWeek", "virtualPlayerLoad", "virtualPlayerRun",
+// Event tables are delivered and dropped by the real server, so they never
+// hold a row to remove; the in-memory test database keeps what is seeded.
+const EVENT_TABLES = ["bossHitResult", "playerGemDrop", "playerMotionDetailFrame"];
+// What both removals keep on purpose (see PLAYER_STATE_TABLES in
+// account-lifecycle.ts): rows the game owns rather than the player, Gem
+// purchase records, analytics history, and a duel's own stats row.
+const KEPT = [
+  "analyticsConversion", "analyticsDailyMapPlayer", "analyticsDailyPlayer", "analyticsPlayer", "duelWideStats",
+  "gemCommerceConfig", "gemCommerceHold", "gemPurchase", "guild", "mapBalanceVersion", "patreonAnnouncement",
 ];
-// A simulated client also keeps its chat, duel and leaderboard rows (the owner
-// clears those with the run), and its own load row goes with it.
-const LEFT_BY_VIRTUAL_DISCONNECT = [
-  ...LEFT_BY_LEGACY_DELETE.filter(table => table !== "virtualPlayerLoad"),
-  "chatMessage", "chatMessageReport", "chatMessageReportRateLimit", "dailyGemBonus", "developerPresencePreference",
-  "duel", "gemTransaction", "leaderboardPosition", "leaderboardPrestigePosition", "presenceChatCooldown",
-  "proceduralContribution", "proceduralInstanceContribution", "proceduralProgress", "startupTelemetryRateLimit",
-].sort();
+const LEFT_BY_LEGACY_DELETE = [...EVENT_TABLES, ...KEPT].sort();
+// A simulated client also keeps its chat, chat reports and duel rows: bots
+// cannot duel, chat expires within a day, and each is a full table scan the
+// last disconnect of every bot in a load test would otherwise pay.
+const LEFT_BY_VIRTUAL_DISCONNECT = [...LEFT_BY_LEGACY_DELETE, "chatMessage", "chatMessageReport", "duel"].sort();
 
 it("a legacy delete clears every table except the known list", () => {
   const f = crystalFixture();

@@ -45,6 +45,7 @@ import { clearProceduralProgress, mergeProceduralProgress } from "./procedural-m
 import { deleteSnapshotRow, insertSnapshotRow, updateSnapshotRow } from "./snapshot-row-writes";
 import { mergeSocialAccount, removeSocialAccount } from "./social-service";
 import { readPlayerProgress, deleteReplayWide } from "./wide-stats";
+import { eraseIdentityRows } from "./account-erasure";
 
 export const ACCOUNT_LINK_LIFETIME_MICROS = 600_000_000n;
 
@@ -117,6 +118,31 @@ export type AccountLifecycleDeps = {
   transferPlayerBlocks: (ctx: any, guest: any, account: any) => void;
   recordAnalyticsConversion: (ctx: any, guest: any, account: any) => void;
 };
+
+/**
+ * A removed player's own state in tables added after the removal functions
+ * below were written: prestige, quests, aggro, offline progress, rebase
+ * backups, Gem kill credit, boss contributions and the rest. Both removals
+ * clear them through the erasure lookups. Deliberately absent: rows the game
+ * owns rather than the player (a guild, the store config, balance edits,
+ * Patreon receipts), Gem purchase records, and analytics history.
+ * player-removal.test.ts lists exactly what each removal leaves.
+ */
+const PLAYER_STATE_TABLES: ReadonlySet<string> = new Set([
+  "accountDeletionRequest", "accountEmail", "aggroChallengeRun", "chatMessageReportRateLimit", "chatModerator",
+  "connectionDiagnostic", "connectionDiagnosticRate", "dailyGemBonus", "developerPresencePreference",
+  "dreadreaperAttackWindow", "dreadreaperContribution", "duelWireAccess", "endlessTravelAccess", "enemyDefeatReview",
+  "forestRewardPrototype", "gemKillProgress", "gemTransaction", "guildMemberQuestWeek", "guildRejoin",
+  "homeReturnLocation", "leaderboardEntryLegacy", "leaderboardPosition", "leaderboardPrestigePosition", "loginMove",
+  "offlineProgress", "patreonPreview", "playerAggroChallenge", "playerAggroChallengeParked", "playerBonusToggle",
+  "playerDailyQuest", "playerEndgameRebaseBackup", "playerEndlessRebaseBackup", "playerFreeRespec",
+  "playerOfflinePreference", "playerPowerRebaseBackup", "playerPrestige", "playerPrestigeChallenge",
+  "playerPrestigeChallengeParked", "playerPrestigeExpansionPerk", "playerPrestigePerk", "playerQuestWeekTotal",
+  "presenceChatCooldown", "prestigeChallengeBackup", "prestigeChallengeRun", "prismshellAttackWindow",
+  "prismshellContribution", "proceduralContribution", "proceduralInstanceContribution", "proceduralProgress",
+  "releaseAcknowledgement", "soloQuestWeek", "startupTelemetryRateLimit", "virtualPlayerLoad", "virtualPlayerRun",
+]);
+const removePlayerStateRows = (ctx: any, identity: any) => eraseIdentityRows(ctx, [identity], Infinity, PLAYER_STATE_TABLES);
 
 export function createAccountLifecycle(deps: AccountLifecycleDeps) {
   const {
@@ -802,12 +828,12 @@ for (const [contributionTable, attackWindowTable] of [
     if (ctx.db.voltwardenContribution.identity.find(identity)) ctx.db.voltwardenContribution.identity.delete(identity);
     if (ctx.db.gravebloomContribution.identity.find(identity)) ctx.db.gravebloomContribution.identity.delete(identity);
     if (ctx.db.aegisPrimeContribution.identity.find(identity)) ctx.db.aegisPrimeContribution.identity.delete(identity);
-    if (ctx.db.ironhornContribution.identity.find(identity)) ctx.db.ironhornContribution.identity.delete(identity); else if (ctx.db.dreadreaperContribution.identity.find(identity)) ctx.db.dreadreaperContribution.identity.delete(identity); else if (ctx.db.prismshellContribution.identity.find(identity)) ctx.db.prismshellContribution.identity.delete(identity);
+    if (ctx.db.ironhornContribution.identity.find(identity)) ctx.db.ironhornContribution.identity.delete(identity);
     if (ctx.db.miremawAttackWindow.identity.find(identity)) ctx.db.miremawAttackWindow.identity.delete(identity);
     if (ctx.db.voltwardenAttackWindow.identity.find(identity)) ctx.db.voltwardenAttackWindow.identity.delete(identity);
     if (ctx.db.gravebloomAttackWindow.identity.find(identity)) ctx.db.gravebloomAttackWindow.identity.delete(identity);
     if (ctx.db.aegisPrimeAttackWindow.identity.find(identity)) ctx.db.aegisPrimeAttackWindow.identity.delete(identity);
-    if (ctx.db.ironhornAttackWindow.identity.find(identity)) ctx.db.ironhornAttackWindow.identity.delete(identity); else if (ctx.db.dreadreaperAttackWindow.identity.find(identity)) ctx.db.dreadreaperAttackWindow.identity.delete(identity); else if (ctx.db.prismshellAttackWindow.identity.find(identity)) ctx.db.prismshellAttackWindow.identity.delete(identity);
+    if (ctx.db.ironhornAttackWindow.identity.find(identity)) ctx.db.ironhornAttackWindow.identity.delete(identity);
     if (ctx.db.leaderboardEntry.identity.find(identity)) ctx.db.leaderboardEntry.identity.delete(identity);
 
     for (const session of [...ctx.db.playerSession.byIdentity.filter(identity) as Iterable<any>]) {
@@ -826,6 +852,7 @@ for (const [contributionTable, attackWindowTable] of [
     for (const report of ctx.db.bugReport.byReporter.filter(identity) as Iterable<any>) reportIds.push(report.id);
     for (const id of reportIds) ctx.db.bugReport.id.delete(id);
 
+    removePlayerStateRows(ctx, identity);
     ctx.db.virtualPlayer.identity.delete(identity);
     if (adjustOwnerCount) adjustVirtualPlayerCount(ctx, registration.owner, -1);
     return Boolean(activePlayer?.isVisible);
@@ -924,12 +951,12 @@ for (const [contributionTable, attackWindowTable] of [
     if (ctx.db.voltwardenContribution.identity.find(identity)) ctx.db.voltwardenContribution.identity.delete(identity);
     if (ctx.db.gravebloomContribution.identity.find(identity)) ctx.db.gravebloomContribution.identity.delete(identity);
     if (ctx.db.aegisPrimeContribution.identity.find(identity)) ctx.db.aegisPrimeContribution.identity.delete(identity);
-    if (ctx.db.ironhornContribution.identity.find(identity)) ctx.db.ironhornContribution.identity.delete(identity); else if (ctx.db.dreadreaperContribution.identity.find(identity)) ctx.db.dreadreaperContribution.identity.delete(identity); else if (ctx.db.prismshellContribution.identity.find(identity)) ctx.db.prismshellContribution.identity.delete(identity);
+    if (ctx.db.ironhornContribution.identity.find(identity)) ctx.db.ironhornContribution.identity.delete(identity);
     if (ctx.db.miremawAttackWindow.identity.find(identity)) ctx.db.miremawAttackWindow.identity.delete(identity);
     if (ctx.db.voltwardenAttackWindow.identity.find(identity)) ctx.db.voltwardenAttackWindow.identity.delete(identity);
     if (ctx.db.gravebloomAttackWindow.identity.find(identity)) ctx.db.gravebloomAttackWindow.identity.delete(identity);
     if (ctx.db.aegisPrimeAttackWindow.identity.find(identity)) ctx.db.aegisPrimeAttackWindow.identity.delete(identity);
-    if (ctx.db.ironhornAttackWindow.identity.find(identity)) ctx.db.ironhornAttackWindow.identity.delete(identity); else if (ctx.db.dreadreaperAttackWindow.identity.find(identity)) ctx.db.dreadreaperAttackWindow.identity.delete(identity); else if (ctx.db.prismshellAttackWindow.identity.find(identity)) ctx.db.prismshellAttackWindow.identity.delete(identity);
+    if (ctx.db.ironhornAttackWindow.identity.find(identity)) ctx.db.ironhornAttackWindow.identity.delete(identity);
     if (ctx.db.leaderboardEntry.identity.find(identity)) ctx.db.leaderboardEntry.identity.delete(identity);
 
     for (const session of [...ctx.db.playerSession.byIdentity.filter(identity) as Iterable<any>]) {
@@ -980,6 +1007,7 @@ for (const [contributionTable, attackWindowTable] of [
       if (challengerHex === identityHex || opponentHex === identityHex) { ctx.db.duelReplay.id.delete(replay.id); deleteReplayWide(ctx, replay.id); }
     }
 
+    removePlayerStateRows(ctx, identity);
     refreshLeaderboard(ctx);
   }
 

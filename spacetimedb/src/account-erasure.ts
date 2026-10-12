@@ -241,14 +241,16 @@ function matchesIdentity(row: any, columns: readonly string[], identities: reado
 /**
  * Delete up to `budget` rows belonging to `identities`, and report what is
  * left to do. Safe to call repeatedly: it is the same work each time, minus
- * what has already gone.
+ * what has already gone. `only` limits the sweep to those tables, which is how
+ * the player-removal paths reuse these lookups for the rows they clear.
  */
-export function eraseIdentityRows(ctx: any, identities: readonly any[], budget = ERASURE_ROW_BUDGET) {
+export function eraseIdentityRows(ctx: any, identities: readonly any[], budget = ERASURE_ROW_BUDGET, only?: ReadonlySet<string>) {
   let deleted = 0;
   let exhausted = false;
   const remaining: string[] = [];
 
   for (const target of ERASURE_TARGETS) {
+    if (only && !only.has(target.table)) continue;
     const handle = ctx.db[target.table];
     if (!handle) continue;
     if (exhausted) { remaining.push(target.table); continue; }
