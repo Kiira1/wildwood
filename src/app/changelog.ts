@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.901.55": [
+    "Game server updated to SpacetimeDB 2.11",
+  ],
   "0.901.54": [
     "Enemy names and stat labels are drawn from a few shared images instead of hundreds, which should help missing names on some Firefox setups",
     "The Prestige button stays greyed out until you meet every requirement, Endless stage included",
@@ -3199,6 +3202,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.901.55": "2026-10-11",
   "0.901.54": "2026-10-11",
   "0.901.53": "2026-10-11",
   "0.901.52": "2026-10-11",
