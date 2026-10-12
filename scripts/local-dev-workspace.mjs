@@ -116,7 +116,7 @@ export async function createLocalWorkspace(root, columns) {
       for (const name of ['src', 'shared', 'config', 'spacetimedb/src']) {
         await syncTree(join(root, name), join(directory, name), name === 'src' ? ['module_bindings'] : []);
       }
-      for (const [relative, server] of [['shared/developer-identity.ts', false], ['spacetimedb/src/index.ts', true]]) {
+      for (const [relative, server] of [['shared/developer-identity.ts', false], ['spacetimedb/src/session-guards.ts', true]]) {
         const path = join(directory, relative);
         await writeFile(path, localDeveloperAccess(await readFile(path, 'utf8'), server, localIdentity));
       }

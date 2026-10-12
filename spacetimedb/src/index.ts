@@ -7,8 +7,8 @@ import { CAMPAIGN_MAPS } from "../../shared/campaign-registry";
 import { CAMPAIGN_GATEWAYS, campaignLanding, endlessEntryPortal, LEGACY_CORNER_GATEWAYS, legacyPortalUsePoints, portalUsePoint } from "../../shared/map-gateways";
 import { campaignMapUnlocked } from "../../shared/equipment-access";
 import { compactNumberChanged } from "../../shared/compact-number";
-import { auditPrivilegedAccess, denyPrivilegedAccess } from "./privileged-access-audit";
-import { defeatSessionRestriction, defeatRestrictionError, requireAllowedDefeatSession, restrictDefeatSession, suspendPlayerAccount } from "./defeat-session";
+import { denyPrivilegedAccess } from "./privileged-access-audit";
+import { defeatSessionRestriction, defeatRestrictionError, restrictDefeatSession, suspendPlayerAccount } from "./defeat-session";
 import { findDeveloperTravelTarget, readDeveloperTravelTarget } from "./developer-travel";
 import { mapBalanceVersion, mapBalanceHead, playerMapBalance, balanceEditorState, saveMapBalance, pinMapBalance, pinnedMapBalance, liveMapBalance, mapBalanceForIndex } from "./map-balance";
 import { resolveMapBalance, validateBalanceSettings } from "../../shared/map-balance";
@@ -76,7 +76,6 @@ import { gemPurchaseTables } from "./gem-purchase-tables";
 import { patreonTables } from "./patreon-tables";
 import { beginPatreonLink as beginSupporterLink, refreshPatreon, sweepPatreonLinks, ensurePatreonSweep, PATREON_SWEEP_INTERVAL_MICROS, patreonStatus, lentLooksFor, unlinkPatreon, patreonCallback } from "./patreon";
 import { requestPatreonSupport } from "./patreon-support";
-import { DEVELOPER_IDENTITY as DEVELOPER_IDENTITY_HEX } from "../../shared/developer-identity";
 import { allowedAvatarFrame, isAvatarFrame } from "../../shared/avatar-frames";
 import { createGemPurchaseService } from "./gem-purchase-service";
 import { rescaleEndgameProgress } from "../../shared/endgame-power-rescale";
@@ -228,7 +227,6 @@ import {
   PLAYER_SPEED,
   playerBaseMovementSpeed,
   PROTOCOL_VERSION,
-  COMPATIBLE_PROTOCOL_VERSIONS,
   TUTORIAL_FOREST_MAP_ID,
   WORLD_HEIGHT,
   WORLD_WIDTH, isBaseStoredSpeed,
@@ -236,14 +234,7 @@ import {
 import { readPlayerProgress, iterPlayerProgress, withDuelWide, deleteReplayWide } from "./wide-stats";
 import { playerWideStats, duelWideStats, duelReplayWideStats, playerCombatRating } from "./wide-stats-table";
 import { narrowStat } from "../../shared/wide-stats";
-
-// Cached clients parse these exact wire messages. Current clients rebrand them
-// for display; changing them would break reconnects and account linking in old tabs.
-const LEGACY_CLIENT_ERRORS = {
-  protocolUpdate: "Wildwood updated. Refresh to continue.",
-  missingPresence: "Enter Wildwood first.",
-  existingAccountProgress: "This account already has Wildwood progress.",
-} as const;
+import { LEGACY_CLIENT_ERRORS, sameConnection, sessionForContext, requireSession, blockedSession, isSupportedProtocol, requireCurrentLegalConsent, requireSupportedSessionProtocol, requireControllingPlayer, isDeveloperIdentity, isDatabaseOwnerIdentity, isVirtualPlayer, requireDeveloperSession, requireDeveloper, touchPlayerAccessAudit, backfillKnownAccessAudit, sameIdentity } from "./session-guards";
 
 const WORLD = { width: WORLD_WIDTH, height: WORLD_HEIGHT };
 const VALID_MAP_IDS = { has: (id: string) => MAP_IDS.includes(id) || id === HOME_EXTERIOR_MAP_ID || isProceduralMap(id) || isSoulMap(id) || isGuildHallMap(id) || isTownMap(id) };
@@ -252,10 +243,6 @@ const LEGACY_FROSTWIND_EXPANSE_MAP_ID = "frostwind_expanse";
 function canonicalMapId(mapId: string) {
   return mapId === LEGACY_FROSTWIND_EXPANSE_MAP_ID ? INTERMEDIATE_SNOWLANDS_MAP_ID : mapId;
 }
-const DEVELOPER_IDENTITY = new Identity(DEVELOPER_IDENTITY_HEX);
-// Maincloud database owner. CLI maintenance calls run as this identity, while
-// in-game developer actions run as DEVELOPER_IDENTITY above.
-const DATABASE_OWNER_IDENTITY_HEX = "c200383520521c925f3cf6deafb20cd6a7d6168d1c31cb3c0ddb731c197a2d79";
 // Shared with the client (shared/map-gateways.ts): portals are checked at their use point.
 const MAP_PORTALS: Record<string, { x: number; y: number; destination: string }[]> =
   Object.fromEntries(Object.entries(CAMPAIGN_GATEWAYS).map(([mapId, gateways]) => [mapId, gateways.portals.map(portalUsePoint)]));
@@ -2613,137 +2600,6 @@ function refreshLeaderboardIfDue(ctx: any) {
   refreshLeaderboard(ctx);
 }
 
-function sameConnection(a: any, b: any) {
-  return a?.toHexString?.() === b?.toHexString?.();
-}
-
-function sessionForContext(ctx: any) {
-  return ctx.connectionId ? ctx.db.playerSession.connectionId.find(ctx.connectionId) : null;
-}
-
-function requireSession(ctx: any) {
-  requireAllowedDefeatSession(ctx);
-  const session = sessionForContext(ctx);
-  if (!session || !sameIdentity(session.identity, ctx.sender)) {
-    throw new SenderError(LEGACY_CLIENT_ERRORS.protocolUpdate);
-  }
-  return session;
-}
-
-// A blocked connection may continue sending queued packets for a short time
-// after its session is invalidated. Hot reducers should quietly drop those
-// packets instead of throwing a new error for every retry and flooding logs.
-function blockedSession(ctx: any) {
-  return Boolean(defeatRestrictionError(ctx));
-}
-
-function isSupportedProtocol(protocolVersion: number) {
-  return COMPATIBLE_PROTOCOL_VERSIONS.includes(protocolVersion);
-}
-
-function requireCurrentLegalConsent(ctx: any) {
-  const consent = ctx.db.playerLegalConsent.identity.find(ctx.sender);
-  if (consent?.termsVersion !== TERMS_VERSION || !isEligiblePlayerAgeBand(consent?.ageBand ?? -1)) {
-    throw new SenderError("Review and accept the Wildstat Terms to continue.");
-  }
-  return consent;
-}
-
-function requireSupportedSessionProtocol(ctx: any) {
-  const session = requireSession(ctx);
-  if (!isSupportedProtocol(session.protocolVersion)) {
-    throw new SenderError(LEGACY_CLIENT_ERRORS.protocolUpdate);
-  }
-  return session;
-}
-
-function requireCurrentProtocol(ctx: any) {
-  requireSupportedSessionProtocol(ctx);
-  const current = ctx.db.player.identity.find(ctx.sender);
-  if (!current) throw new SenderError(LEGACY_CLIENT_ERRORS.missingPresence);
-  return playerWithMotion(ctx, current);
-}
-
-function requireControllingPlayer(ctx: any) {
-  const current = requireCurrentProtocol(ctx);
-  const controller = ctx.db.playerController.identity.find(ctx.sender);
-  if (!ctx.connectionId || !controller || !sameConnection(controller.connectionId, ctx.connectionId)) {
-    throw new SenderError("Wildstat is active in another tab.");
-  }
-  return current;
-}
-
-function isDeveloperIdentity(identity: any) {
-  return identity?.toHexString?.().replace(/^0x/i, "").toLowerCase() === DEVELOPER_IDENTITY_HEX;
-}
-
-function isDatabaseOwnerIdentity(identity: any) {
-  return identity?.toHexString?.().replace(/^0x/i, "").toLowerCase() === DATABASE_OWNER_IDENTITY_HEX;
-}
-
-function isVirtualPlayer(ctx: any, identity: any) {
-  return Boolean(ctx.db.virtualPlayer.identity.find(identity));
-}
-
-function requireDeveloperSession(ctx: ModuleReducerCtx, action: string) {
-  auditPrivilegedAccess(ctx, action, () => {
-    requireSupportedSessionProtocol(ctx);
-    if (!isDeveloperIdentity(ctx.sender) || !hasSpacetimeAuthAccount(ctx)) {
-      throw new SenderError("Developer access required.");
-    }
-  });
-}
-
-function requireDeveloper(ctx: ModuleReducerCtx, action: string) {
-  auditPrivilegedAccess(ctx, action, () => {
-    requireControllingPlayer(ctx);
-    if (!isDeveloperIdentity(ctx.sender) || !hasSpacetimeAuthAccount(ctx)) {
-      throw new SenderError("Developer access required.");
-    }
-  });
-}
-
-function touchPlayerAccessAudit(ctx: any, protocolVersion: number) {
-  if (isVirtualPlayer(ctx, ctx.sender)) return;
-  const profile = ctx.db.playerProfile.identity.find(ctx.sender);
-  if (!profile) return;
-  const current = ctx.db.playerAccessAudit.identity.find(ctx.sender);
-  const next = {
-    identity: ctx.sender,
-    viewer: DEVELOPER_IDENTITY,
-    displayName: profile.displayName,
-    firstSeenAt: current?.firstSeenAt ?? ctx.timestamp,
-    lastSeenAt: ctx.timestamp,
-    accountType: hasSpacetimeAuthAccount(ctx) ? "account" : "guest",
-    lastProtocolVersion: protocolVersion,
-    label: current?.label ?? "",
-  };
-  if (current) ctx.db.playerAccessAudit.identity.update(next);
-  else ctx.db.playerAccessAudit.insert(next);
-}
-
-function backfillKnownAccessAudit(ctx: any) {
-  if (!isDeveloperIdentity(ctx.sender)) return;
-  for (const lifetime of ctx.db.playerLifetime.iter() as Iterable<any>) {
-    if (isVirtualPlayer(ctx, lifetime.identity)) continue;
-    if (ctx.db.playerAccessAudit.identity.find(lifetime.identity)) continue;
-    const profile = ctx.db.playerProfile.identity.find(lifetime.identity);
-    if (!profile) continue;
-    const status = ctx.db.playerAccountStatus.identity.find(lifetime.identity);
-    const activePlayer = ctx.db.player.identity.find(lifetime.identity);
-    ctx.db.playerAccessAudit.insert({
-      identity: lifetime.identity,
-      viewer: DEVELOPER_IDENTITY,
-      displayName: profile.displayName,
-      firstSeenAt: lifetime.joinedAt,
-      lastSeenAt: lifetime.sessionStartedAt,
-      accountType: status ? (status.isGuest ? "guest" : "account") : "unknown",
-      lastProtocolVersion: activePlayer?.protocolVersion ?? 0,
-      label: "",
-    });
-  }
-}
-
 function hasFreshProgress(progress: any) {
   const defaultProgress = defaultPlayerProgress(progress.identity);
   return !progress.introComplete &&
@@ -3080,10 +2936,6 @@ function reconcileActiveItemUpgrade(ctx: any, active: any, slot: number) {
     return;
   }
   ensureItemUpgradeCompletionSchedule(ctx, nextActive, slot);
-}
-
-function sameIdentity(a: any, b: any) {
-  return a?.toHexString?.() === b?.toHexString?.();
 }
 
 function ensureGemWallet(ctx: any, identity: any) {

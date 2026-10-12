@@ -4,7 +4,8 @@ import ts from 'typescript';
 import { localDeveloperAccess } from './local-developer-access.mjs';
 const shared = readFileSync(new URL('../shared/developer-identity.ts', import.meta.url), 'utf8');
 const localIdentity = 'a'.repeat(64);
-const server = readFileSync(new URL('../spacetimedb/src/index.ts', import.meta.url), 'utf8');
+const server = readFileSync(new URL('../spacetimedb/src/session-guards.ts', import.meta.url), 'utf8');
+const serverIndex = readFileSync(new URL('../spacetimedb/src/index.ts', import.meta.url), 'utf8');
 it('grants only the configured local guest developer access', () => {
   const js = ts.transpile(localDeveloperAccess(shared, false, localIdentity), { module: ts.ModuleKind.CommonJS });
   const exports: any = {};
@@ -21,7 +22,7 @@ it('changes only the isolated developer gates and keeps session checks', () => {
   expect(local).not.toContain('!isDeveloperIdentity(ctx.sender) || !hasSpacetimeAuthAccount(ctx)');
   expect(local).toContain('requireSupportedSessionProtocol(ctx);');
   expect(local).toContain('requireControllingPlayer(ctx);');
-  expect(local).toContain('!hasSpacetimeAuthAccount(ctx)');
+  expect(serverIndex).toContain('!hasSpacetimeAuthAccount(ctx)'); // other account gates are not patched
   expect(local).not.toContain('localReferenceBuild');   // no old-table save seed on the curve
   expect(server).toContain('!isDeveloperIdentity(ctx.sender) || !hasSpacetimeAuthAccount(ctx)');
 });
