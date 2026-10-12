@@ -1,6 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
   "0.901.58": [
     "Aggro runs keep Quick Draw and Reflect Only's higher attack speed cap",
+    "Auto Farm counts your soul crit in power, so Move On and Fight Bosses go at the power you see",
   ],
   "0.901.57": [
     "Power counts crit: your damage at its average hit, crits included, so crit builds show their real strength",
