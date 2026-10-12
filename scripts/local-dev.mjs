@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { build, createServer } from 'vite';
 import { createLocalDevWork, localChangeKind } from './local-dev-work.mjs';
 import { createLocalWorkspace, localLegacyColumns } from './local-dev-workspace.mjs';
+import { openBrowser } from './open-browser.mjs';
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const database = 'wildwood-balance-local';
@@ -15,14 +16,6 @@ process.env.VITE_LOCAL_TESTING = '1';
 let assets = new Map();
 let closing = false, serverNeedsPublish = false, workspace;
 const children = new Set();
-// The default browser on macOS, Windows ("start" is a cmd built-in) and Linux.
-function openBrowser(url) {
-  const [program, args] = process.platform === 'darwin' ? ['open', [url]]
-    : process.platform === 'win32' ? ['cmd', ['/c', 'start', '""', url]]
-    : ['xdg-open', [url]];
-  spawn(program, args, { stdio: 'ignore', windowsVerbatimArguments: true })
-    .once('error', () => console.log(`Open ${url} in your browser.`));
-}
 function command(args, capture = false) {
   return new Promise((done, fail) => {
     const child = spawn(process.env.SPACETIME_BIN || 'spacetime', args, {

@@ -19,6 +19,7 @@
     "build:stat-graph": "vite build --config config/vite.stat-graph.config.ts",
     "build:client": "npm run build:coop && npm run build:game && node scripts/prune-client-build.mjs && node scripts/fingerprint-client.mjs && node scripts/check-client-build.mjs",
     "dev:local": "node scripts/local-dev.mjs",
+    "dev:live": "node scripts/live-dev.mjs",
     "balance:lab": "vite --config config/vite.balance.config.ts --host 127.0.0.1 --open /balance-lab.html",
     "balance:stat-graph": "vite --config config/vite.stat-graph.config.ts --host 127.0.0.1 --open /balance-stat-graph.html",
     "balance:sync": "tsx scripts/sync-balance-lab.ts",

@@ -70,6 +70,12 @@ Without a launcher, install the [SpacetimeDB CLI](https://spacetimedb.com/instal
 
 When switching from the old launcher for the first time, stop its Python web-server terminal once to free port 8000. The database can remain running.
 
+### Your client on the live server
+
+`npm run dev:live -- --open` serves this checkout's client at `http://127.0.0.1:8001` and connects it to the live game server (`wildwood-coop` on Maincloud), the one wildstatmmo.com uses, with its real players. A guest made on wildstatmmo.com stays in that site's browser storage, so play as a new guest here; account sign-in works only if SpacetimeAuth allows this address as a redirect. It needs only Node.js and `npm ci`, no SpacetimeDB. Client and CSS edits rebuild and refresh the tab as in local development. Server code is not published from here; edits under `spacetimedb/` change nothing on the live server.
+
+The live server may refuse a client from a different version. The script warns when this checkout's version differs from the live one; `git pull` to match it. `WILDSTAT_LIVE_PORT` selects a different port.
+
 ### Stat tracker
 
 Contributed by Kiira and shipped in 0.750. Enable **Settings → Game → Stat
