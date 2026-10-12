@@ -1,4 +1,4 @@
-import { residentDrawable } from "./runtime/resident-image";
+import { residentDrawable } from "./runtime/render/resident-image";
 
 /**
  * The sky finishes for cosmetic equipment: an existing piece of gear whose

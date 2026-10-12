@@ -1,4 +1,4 @@
-import { canvasRenderPixelRatio } from "./render-budget";
+import { canvasRenderPixelRatio } from "./render/render-budget";
 import type { PlayerAppearanceAssets } from "../player-appearance";
 import { BASIC_PAPER_HAT, equipmentAppearance } from "../inventory";
 import { drawCharacterPreviewScene } from "./character-preview-scene";

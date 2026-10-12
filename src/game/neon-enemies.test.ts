@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { expect, it } from "vitest";
 import { ENEMY_SPRITE_LAYOUTS } from "./enemy-sprite-layouts.mjs";
-import { MAP_ASSET_GROUPS } from "./runtime/map-asset-groups";
+import { MAP_ASSET_GROUPS } from "./runtime/render/map-asset-groups";
 it("uses the same animated sword sentry across Neon Bastion", () => {
   const sheets = new Set<string>();
   for (const kind of MAP_ASSET_GROUPS.neon_bastion.enemies) {
@@ -20,7 +20,7 @@ it("uses the same animated sword sentry across Neon Bastion", () => {
 
 it("draws no enemy or boss from an SVG, which Firefox re-rasterizes on every draw", async () => {
   const sharp = (await import("sharp")).default;
-  const { AEGIS_PRIME_ART_SOURCE } = await import("./runtime/ion-boss-art");
+  const { AEGIS_PRIME_ART_SOURCE } = await import("./runtime/boss/ion-boss-art");
   const pages = Object.values(ENEMY_SPRITE_LAYOUTS).flatMap(sprite => sprite.animation?.pages ?? []);
   for (const page of [...pages, { src: AEGIS_PRIME_ART_SOURCE, width: 1024, height: 1024 }]) {
     expect(page.src).not.toMatch(/\.svg$/);

@@ -7,7 +7,7 @@ import {
   type MapId,
 } from "../src/game/world";
 import { createGameBootstrap } from "../src/game/runtime/game-bootstrap";
-import { bossStateForMap } from "../src/game/runtime/boss-registry";
+import { bossStateForMap } from "../src/game/runtime/boss/boss-registry";
 
 const bootstrap = createGameBootstrap();
 /** Where each campaign map's world boss stands, as the game places it. */

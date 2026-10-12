@@ -1,5 +1,5 @@
 import { clamp } from "../math";
-import type { Camera } from "./camera";
+import type { Camera } from "./render/camera";
 
 export type PortalCutsceneFrame = {
   active: boolean;

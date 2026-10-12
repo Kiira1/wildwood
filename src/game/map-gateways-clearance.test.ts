@@ -8,8 +8,8 @@ import { SOUL_ARRIVAL, SOUL_TOWN_PORTAL } from "../../shared/soul-dimension";
 import { MAP_EDITOR_GAMEPLAY_OVERRIDES } from "../../shared/map-editor-overrides";
 import { PLAYER_SPAWN, TUTORIAL_FOREST_MAP_ID, WORLD_HEIGHT, WORLD_WIDTH } from "../../shared/rules";
 import { ENEMY_TYPES } from "./enemies";
-import { BOSSES } from "./runtime/boss-registry";
-import { regularEnemyAggroRadius } from "./runtime/enemy-simulation";
+import { BOSSES } from "./runtime/boss/boss-registry";
+import { regularEnemyAggroRadius } from "./runtime/enemies/enemy-simulation";
 import { createSpawnSites, createWorldLayout, gatewayDecorReach, type MapId } from "./world";
 
 /**

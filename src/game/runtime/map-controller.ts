@@ -1,8 +1,8 @@
-import { beginHomeTeleport, endHomeTeleport } from "./home-teleport";
+import { beginHomeTeleport, endHomeTeleport } from "./town/home-teleport";
 import { createPortalCutscene } from "./cutscene";
-import { snapCameraToPlayer, type Camera } from "./camera";
+import { snapCameraToPlayer, type Camera } from "./render/camera";
 import type { EnemyState, PlayerState } from "./types";
-import { BOSS_KINDS, clearBossAttack, type BossHazards, type BossStates } from "./boss-registry";
+import { BOSS_KINDS, clearBossAttack, type BossHazards, type BossStates } from "./boss/boss-registry";
 import type { MapId, SpawnSite } from "../world";
 
 export type MapPortal = { x: number; y: number; width: number; height: number; depth: number; destination: MapId; label?: string };

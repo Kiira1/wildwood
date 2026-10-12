@@ -5,7 +5,7 @@ equipment workshop on the left and a blue research station on the right. The
 southern approach leads through paired lanterns and planters to a circular plaza.
 Phone chrome, screenshot controls, and HUD elements are not map artwork.
 
-`src/game/runtime/home-courtyard.ts` owns the illustration. Terrain, low curbs,
+`src/game/runtime/town/home-courtyard.ts` owns the illustration. Terrain, low curbs,
 plants, crates, rugs, and lanterns are painted into the existing static tile cache,
 using the same code in the worker and main-thread fallback. This avoids an extra
 full-screen image download and keeps decorations stable across zoom and resizing.

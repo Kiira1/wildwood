@@ -4,7 +4,7 @@ import { createWorldLayout, createSpawnSites, mapSpawnCamps, type MapId } from "
 import { ENEMY_TYPES } from "./enemies";
 import { mapVisualTheme } from "./map-design";
 import { MAP_ENEMY_FAMILIES } from "./enemy-sprite-layouts.mjs";
-import { MAP_ASSET_GROUPS } from "./runtime/map-asset-groups";
+import { MAP_ASSET_GROUPS } from "./runtime/render/map-asset-groups";
 import { IRONHORN_MAX_HP, DREADREAPER_MAX_HP, PRISMSHELL_MAX_HP } from "../../shared/rules";
 
 describe("Clockwork Ruins and Duskfall Orchard", () => {

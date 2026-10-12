@@ -1,11 +1,11 @@
 import { isProceduralMap } from "../../../shared/procedural-maps";
 import { isGuildHallMap } from "../../../shared/guild-hall";
 import { DUEL_ARENA } from "../duel";
-import { snapCameraToPlayer, updateCamera } from "./camera";
+import { snapCameraToPlayer, updateCamera } from "./render/camera";
 import type { PlayerState } from "./types";
-import { frameDeadlineReached, nextPresentationDeadline } from "./render-budget";
+import { frameDeadlineReached, nextPresentationDeadline } from "./render/render-budget";
 import { createGameClock, documentHidden, monotonicNowMs, nativeTimers, requestFrame, type GameClock } from "../../app/trusted-clock";
-export { FRAME_DEADLINE_TOLERANCE_MS, frameDeadlineReached } from "./render-budget";
+export { FRAME_DEADLINE_TOLERANCE_MS, frameDeadlineReached } from "./render/render-budget";
 
 type MapId = string;
 type RuntimeDuel = { status: string; startsAtMs: number; endsAtMs: number } | null;

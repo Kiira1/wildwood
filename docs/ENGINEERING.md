@@ -61,7 +61,7 @@ Recorded here because the backlog above previously described the opposite, and t
 
 ### Boss combat ownership (client-sided)
 
-Boss combat runs locally in `src/game/runtime/personal-bosses.ts`, which owns HP, alive/dead state, respawn timing, and the defeat result. The client reports only the completed defeat through `recordRegularEnemyDefeat`.
+Boss combat runs locally in `src/game/runtime/boss/personal-bosses.ts`, which owns HP, alive/dead state, respawn timing, and the defeat result. The client reports only the completed defeat through `recordRegularEnemyDefeat`.
 
 Consequences to keep in mind before changing boss code:
 

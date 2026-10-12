@@ -1,4 +1,4 @@
-import { canvasRenderPixelRatio } from "./runtime/render-budget";
+import { canvasRenderPixelRatio } from "./runtime/render/render-budget";
 type TextSprite = {
   canvas: HTMLCanvasElement;
   logicalWidth: number;

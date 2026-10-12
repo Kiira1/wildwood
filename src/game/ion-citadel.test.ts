@@ -3,7 +3,7 @@ import { createGameBootstrap } from "./runtime/game-bootstrap";
 import { createWorldLayout, createSpawnSites, mapSpawnCamps } from "./world";
 import { ENEMY_TYPES } from "./enemies";
 import { mapVisualTheme } from "./map-design";
-import { MAP_ASSET_GROUPS } from "./runtime/map-asset-groups";
+import { MAP_ASSET_GROUPS } from "./runtime/render/map-asset-groups";
 import { GRAVEBLOOM_MAX_HP, AEGIS_PRIME_MAX_HP } from "../../shared/rules";
 import { BOSS_DAMAGE_REFERENCE } from "./boss-damage";
 

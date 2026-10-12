@@ -1,0 +1,247 @@
+import {
+  generateMap,
+  generatedBossStats,
+  isProceduralMap,
+} from "../../../../shared/procedural-maps";
+import { ENEMY_TYPES } from "../../enemies";
+import { generatedBossArt } from "../../procedural-maps";
+import type { EnemyState, PlayerState } from "../types";
+import type { SpawnSite } from "../../world";
+
+type BossRow = {
+  key: string;
+  mapId: string;
+  encounter: bigint;
+  hp: number;
+  maxHp: number;
+  respawnAtMicros: bigint;
+};
+/** How often an Endless boss's body hits an enemy touching it, as a campaign boss's contact does. */
+const ENEMY_CONTACT_SECONDS = .75;
+/** Its pulse lands this long into each six-second round, on everything this close to its centre; the ring is drawn from the round's start. */
+const PULSE_WINDUP = 1.4;
+const PULSE_RADIUS = 330;
+
+export function createProceduralBossController(options: {
+  mapId: () => string;
+  state: (mapId: string) => { boss: BossRow | null; ready?: boolean; completed?: number };
+  revealPortal?: () => boolean;
+  enemies: EnemyState[];
+  player: PlayerState;
+  spawn: (site: SpawnSite) => void;
+  /** `source` is the boss, which Reflect answers. */
+  damagePlayer: (damage: number, source?: EnemyState) => boolean;
+  /** Lands the pulse on the regular enemies inside it; kills pay nothing. */
+  damageEnemies?: (attack: object, amount: number, inside: (x: number, y: number, r: number) => boolean) => void;
+  /** Pushes map enemies out of the boss's body. */
+  collideEnemies?: (boss: { x: number; y: number; r: number }) => void;
+  burst: (
+    x: number,
+    y: number,
+    color: string,
+    count?: number,
+    speed?: number,
+  ) => void;
+  shot: (
+    x: number,
+    y: number,
+    vx: number,
+    vy: number,
+    r: number,
+    damage: number,
+    life: number,
+    source?: EnemyState | null,
+  ) => void;
+}) {
+  let mapId = "",
+    boss: EnemyState | null = null,
+    encounter = 0n,
+    bossKey = "";
+  let attackElapsed = 0,
+    pulseFired = false,
+    shotElapsed = 0,
+    contactElapsed = 0,
+    contactRound: object | null = null;
+  let observedCompleted: number | null = null, pendingReveal = false;
+  let definition: ReturnType<typeof generateMap> | null = null;
+  function resetAttacks() {
+    attackElapsed = shotElapsed = 0;
+    pulseFired = false;
+    if (boss) boss.attackAnimationElapsed = undefined;
+  }
+  function discardBoss() {
+    if (boss) boss.dead = true;
+    boss = null;
+    resetAttacks();
+  }
+  function update(dt: number) {
+    const next = options.mapId();
+    const snapshot = options.state(next);
+    if (next !== mapId) {
+      mapId = next;
+      observedCompleted = null;
+      pendingReveal = false;
+      definition = isProceduralMap(mapId) ? generateMap(mapId) : null;
+      discardBoss();
+      encounter = 0n;
+      bossKey = "";
+    }
+    if (!isProceduralMap(mapId)) return;
+    if (snapshot.ready !== false && snapshot.completed !== undefined) {
+      if (observedCompleted !== null && observedCompleted < definition!.number && snapshot.completed >= definition!.number)
+        pendingReveal = true;
+      observedCompleted = snapshot.completed;
+    }
+    if (pendingReveal && options.player.hp > 0 && options.revealPortal?.()) pendingReveal = false;
+    const map = definition!,
+      row = snapshot.boss;
+    if (!row || row.mapId !== mapId) {
+      discardBoss();
+      return;
+    }
+    if (
+      !boss ||
+      !options.enemies.includes(boss) ||
+      encounter !== row.encounter ||
+      bossKey !== row.key
+    ) {
+      if (boss) boss.dead = true;
+      if (row.hp <= 0) return;
+      const kind = generatedBossArt(mapId),
+        stats = generatedBossStats(map);
+      options.spawn({
+        id: -1,
+        ...map.boss,
+        type: kind,
+        campName: `Warden - ${map.number}`,
+        leashRange: 900,
+        alive: false,
+        respawnAt: 0,
+        definition: {
+          ...ENEMY_TYPES[kind],
+          ...stats,
+          r: 95,
+          speed: 0,
+          elite: true,
+          reward: { type: "damage", amount: 0 },
+        },
+      });
+      boss = options.enemies[options.enemies.length - 1];
+      boss.generatedBoss = true;
+      encounter = row.encounter;
+      bossKey = row.key;
+      resetAttacks();
+    }
+    boss.hp = row.hp;
+    boss.maxHp = row.maxHp;
+    boss.hurt = Math.max(0, boss.hurt - dt);
+    if (row.hp <= 0) {
+      if (!boss.dead) options.burst(boss.x, boss.y, "#f7edce", 35, 150);
+      boss.dead = true;
+      return;
+    }
+    // Map enemies collide with its body and take its touch, as with a campaign boss.
+    options.collideEnemies?.(boss);
+    contactElapsed += Math.max(0, Math.min(dt, .1));
+    if (contactElapsed >= ENEMY_CONTACT_SECONDS || !contactRound) { contactElapsed = 0; contactRound = {}; }
+    const { x: bodyX, y: bodyY, r: bodyR } = boss;
+    options.damageEnemies?.(contactRound, boss.damage, (x, y, r) => Math.hypot(x - bodyX, y - bodyY) <= (bodyR + r) * 1.01);
+    const distance = Math.hypot(
+      options.player.x - boss.x,
+      options.player.y - boss.y,
+    );
+    if (distance > 850 || options.player.hp <= 0) {
+      boss.engaged = false;
+      resetAttacks();
+      return;
+    }
+    boss.engaged = true;
+    boss.facingX = options.player.x < boss.x ? -1 : 1;
+    // The fight is local. A network clock adjustment must not restart its windup.
+    const step = Math.max(0, Math.min(dt, 0.1));
+    if (boss.attackAnimationElapsed !== undefined)
+      boss.attackAnimationElapsed += step;
+    attackElapsed += step;
+    shotElapsed += step;
+    if (attackElapsed >= 6) {
+      attackElapsed %= 6;
+      pulseFired = false;
+    }
+    if (attackElapsed >= PULSE_WINDUP && !pulseFired) {
+      pulseFired = true;
+      boss.attackAnimationElapsed = 0;
+      if (distance < PULSE_RADIUS + options.player.r) options.damagePlayer(boss.damage, boss);
+      const { x, y } = boss;
+      options.damageEnemies?.({}, boss.damage, (ex, ey, r) => Math.hypot(ex - x, ey - y) < PULSE_RADIUS + r);
+    }
+    if (shotElapsed >= 1.6) {
+      shotElapsed %= 1.6;
+      boss.attackAnimationElapsed = 0;
+      const angle = Math.atan2(
+        options.player.y - boss.y,
+        options.player.x - boss.x,
+      );
+      options.shot(
+        boss.x,
+        boss.y - 25,
+        Math.cos(angle) * 230,
+        Math.sin(angle) * 230,
+        10,
+        boss.damage * 0.3,
+        4,
+        boss,
+      );
+    }
+    if (distance < boss.r + options.player.r) {
+      const angle = Math.atan2(
+        options.player.y - boss.y,
+        options.player.x - boss.x,
+      );
+      options.player.x = boss.x + Math.cos(angle) * (boss.r + options.player.r);
+      options.player.y = boss.y + Math.sin(angle) * (boss.r + options.player.r);
+    }
+  }
+  return {
+    update,
+    boss: () => (boss && !boss.dead && options.mapId() === mapId ? boss : null),
+    /**
+     * Seconds until its pulse would hit a player standing at (x, y), `pad`
+     * wider, while the ring is drawn; Infinity otherwise. Its shots fly as
+     * enemy shots.
+     */
+    danger(x: number, y: number, pad = 0) {
+      if (!boss || boss.dead || !boss.engaged || pulseFired || attackElapsed >= PULSE_WINDUP || options.mapId() !== mapId) return Infinity;
+      return Math.hypot(x - boss.x, y - boss.y) < PULSE_RADIUS + options.player.r + pad ? PULSE_WINDUP - attackElapsed : Infinity;
+    },
+    draw(ctx: CanvasRenderingContext2D, camera: { x: number; y: number }) {
+      if (
+        !boss ||
+        boss.dead ||
+        options.mapId() !== mapId ||
+        options.player.hp <= 0
+      )
+        return;
+      const phase = attackElapsed;
+      if (
+        phase > 1.65 ||
+        Math.hypot(options.player.x - boss.x, options.player.y - boss.y) > 850
+      )
+        return;
+      ctx.save();
+      ctx.translate(boss.x - camera.x, boss.y - camera.y);
+      ctx.fillStyle =
+        phase < PULSE_WINDUP ? "rgba(224,88,87,.14)" : "rgba(255,190,117,.5)";
+      ctx.strokeStyle = "#ae5356";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(0, 0, PULSE_RADIUS, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.globalAlpha = 0.65;
+      ctx.beginPath();
+      ctx.arc(0, 0, PULSE_RADIUS * Math.min(1, phase / PULSE_WINDUP), 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    },
+  };
+}

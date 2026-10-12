@@ -4,7 +4,7 @@ import { createWorldLayout, createSpawnSites, mapSpawnCamps } from "./world";
 import { campaignEnemyHealthScale } from "../../shared/progression";
 import { ENEMY_TYPES } from "./enemies";
 import { mapVisualTheme } from "./map-design";
-import { MAP_ASSET_GROUPS } from "./runtime/map-asset-groups";
+import { MAP_ASSET_GROUPS } from "./runtime/render/map-asset-groups";
 import { VOLTWARDEN_MAX_HP, GRAVEBLOOM_MAX_HP } from "../../shared/rules";
 import { BOSS_DAMAGE_REFERENCE } from "./boss-damage";
 

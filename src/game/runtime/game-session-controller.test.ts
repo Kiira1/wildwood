@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { parseHTML } from "linkedom";
-import { nextPresentationDeadline } from "./render-budget";
+import { nextPresentationDeadline } from "./render/render-budget";
 import { MIN_ATTACK_INTERVAL } from "../../../shared/rules";
 import {
   advanceFixedSimulationClock,

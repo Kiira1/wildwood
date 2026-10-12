@@ -12,7 +12,7 @@ import {
 } from "../world";
 import { bossPlayerAttackCycle } from "../../../shared/boss-simulation";
 import { absoluteAttackTimestamps, attackAnimationClockAt } from "../attack-timeline";
-import { createEnemyLifecycle } from "./enemy-lifecycle";
+import { createEnemyLifecycle } from "./enemies/enemy-lifecycle";
 import { rewardLabel } from "../enemies";
 import { researchStatRewardMultiplier } from "../../../shared/research";
 import { prestigeStatMultiplier } from "../../../shared/prestige";

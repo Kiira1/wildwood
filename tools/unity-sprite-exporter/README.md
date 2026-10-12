@@ -115,7 +115,7 @@ idle/walk, and clamp one-shot motion playback to its last frame. Each frame's
 
 WildStat's family assignments live in `src/game/enemy-sprite-layouts.mjs`. Original
 families use static layers; selected new families use the exported idle/walk/attack
-sheets through `src/game/runtime/enemy-animation.ts`. The exporter itself still
+sheets through `src/game/runtime/enemies/enemy-animation.ts`. The exporter itself still
 does not automatically replace game art or choose gameplay identities, hitboxes,
 attack-impact timing, or rewards. Deliberate promotion uses
 `scripts/import-enemy-sprite.mjs`; see `docs/enemy-art-families.md` for current

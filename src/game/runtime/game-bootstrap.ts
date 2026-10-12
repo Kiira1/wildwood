@@ -10,16 +10,16 @@ import { STARTER_STONE, type EquipmentSlot, type InventoryState } from "../inven
 import { loadActorShadowSprite, loadEnemySprites, type EnemyKind } from "../enemies";
 import { loadPlayerAppearanceAssets } from "../player-appearance";
 import { TUTORIAL_FOREST_MAP_ID, type MapId, type SpawnSite, type WorldDecor, type WorldPath } from "../world";
-import { createAssetPreprocessor } from "./asset-preprocessor";
-import { MAP_ENEMY_SPRITE_GROUPS } from "./map-asset-groups";
+import { createAssetPreprocessor } from "./render/asset-preprocessor";
+import { MAP_ENEMY_SPRITE_GROUPS } from "./render/map-asset-groups";
 import { createProfileCharacterPreview } from "./profile-character-preview";
 import { createLeaderboardPodiumPreview } from "./leaderboard-podium-preview";
 import { createInventoryCharacterPreview } from "./inventory-character-preview";
 import { createProfileSnapshotRenderer } from "./profile-snapshot-render";
 import { setProfileSnapshotRenderer } from "../../app/profile-snapshot-portraits";
-import { updateCamera } from "./camera";
+import { updateCamera } from "./render/camera";
 import type { EnemyState, PlayerState } from "./types";
-import { BOSSES, perBoss, type BossHazards, type BossKind, type BossStates } from "./boss-registry";
+import { BOSSES, perBoss, type BossHazards, type BossKind, type BossStates } from "./boss/boss-registry";
 import {
   DEFAULT_ATTACK_INTERVAL,
   MAP_DISPLAY_NAMES,

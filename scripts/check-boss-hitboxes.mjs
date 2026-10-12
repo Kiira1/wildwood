@@ -20,7 +20,7 @@ import ts from "typescript";
 // Load the same pure pixel transforms the client applies before drawing the
 // boss sheets. Measuring their raw green backgrounds reports entire cells as
 // bodies and gives misleading hitbox and status-bar recommendations.
-const pixelSource = await readFile("src/game/runtime/sprite-pixels.ts", "utf8");
+const pixelSource = await readFile("src/game/runtime/render/sprite-pixels.ts", "utf8");
 const pixelModule = ts.transpileModule(pixelSource, {
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022 },
 }).outputText;

@@ -83,6 +83,6 @@ deterministic presentation—not authoritative shared combat.
 - Reconnect and change maps; old combat visuals must disappear.
 
 The pure contract tests live in \`shared/regular-enemy-simulation.test.ts\`.
-Runtime gating is covered in \`src/game/runtime/enemy-simulation.test.ts\`, and
+Runtime gating is covered in \`src/game/runtime/enemies/enemy-simulation.test.ts\`, and
 server-time motion sampling is covered in
 \`src/coop/services/remote-interpolation.test.ts\`.

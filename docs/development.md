@@ -469,7 +469,7 @@ that function, not the version list, is what keeps an old decoder out.
 
 ## Boss combat invariants
 
-Boss combat is client-sided. `src/game/runtime/personal-bosses.ts` owns boss HP, alive/dead state, respawn timing, and the defeat result. Only the completed defeat is reported to the server, through `recordRegularEnemyDefeat`. See [engineering notes](ENGINEERING.md) for the retained server surface and what must not be deleted with it.
+Boss combat is client-sided. `src/game/runtime/boss/personal-bosses.ts` owns boss HP, alive/dead state, respawn timing, and the defeat result. Only the completed defeat is reported to the server, through `recordRegularEnemyDefeat`. See [engineering notes](ENGINEERING.md) for the retained server surface and what must not be deleted with it.
 
 - Boss abilities, target selection, and hazard layouts use the versioned encounter simulation in `shared/boss-simulation.ts`, which remains live and is now driven entirely client-side. A hidden global server-time metronome controls ability phase; the seed varies targets and geometry without shifting the rhythm. Targets come from consensus-time player positions already available to the client, and both the real local throw and nearby observers use the same per-player boss attack slot. Keep `boss_attack_frame` inert: do not restore per-attack event inserts or subscriptions.
 - Rewards stay server-owned even though damage is local. A defeat sends identities and counts only; `acceptEnemyDefeats` and `maximumBossCombatForProgress` bound what the server will grant. Never widen that wire format to carry client-computed reward values.

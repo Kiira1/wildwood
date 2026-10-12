@@ -5,10 +5,10 @@ import { TOWN_ARRIVAL, TOWN_BENCH_POSITION, TOWN_CENTER, TOWN_DOORS, TOWN_FEET_O
 import { SOUL_INTERIOR_DECOR, SOUL_INTERIOR_SOLIDS, SOUL_VILLAGE_SOLIDS } from "./soul-village";
 import { TOWN_SIGNPOST, townWindowDecor } from "./town-world";
 import { UPGRADE_BENCH_POSITION } from "./world";
-import { pushOutOf } from "./runtime/town-runtime";
+import { pushOutOf } from "./runtime/town/town-runtime";
 import { createHomeStationTouchHandler } from "../ui/game-ui-runtime";
 import { playerTouchesUpgradeBench } from "../ui/upgrade-bench-controller";
-import { MAP_ASSET_GROUPS } from "./runtime/map-asset-groups";
+import { MAP_ASSET_GROUPS } from "./runtime/render/map-asset-groups";
 
 const STATIONS = [
   { label: "Upgrade Bench", at: TOWN_BENCH_POSITION, door: 6 },

@@ -1,0 +1,123 @@
+import { residentDrawable } from "./resident-image";
+import { actorShadowDimensions } from "./actor-shadow-geometry";
+import { createCanvasPrimitives } from "../../canvas";
+import { requiredCanvasContext } from "../dom";
+import { canvasRenderPixelRatio } from "./render-budget";
+
+export function gameplayBottomInset(toolbarHeight: number, fullScreenScene = false) {
+  if (fullScreenScene) return 0;
+  return Number.isFinite(toolbarHeight) ? Math.max(0, toolbarHeight) : 0;
+}
+
+export function canvasViewportMetrics(
+  viewportWidth: number,
+  viewportHeight: number,
+  reservedBottom: number,
+  pixelRatio: number,
+) {
+  const width = Math.max(1, Math.round(Number.isFinite(viewportWidth) ? viewportWidth : 1));
+  const bottom = Math.max(0, Math.round(Number.isFinite(reservedBottom) ? reservedBottom : 0));
+  const height = Math.max(1, Math.round(Number.isFinite(viewportHeight) ? viewportHeight : 1) - bottom);
+  const dpr = canvasRenderPixelRatio(pixelRatio);
+  return {
+    width,
+    height,
+    reservedBottom: bottom,
+    dpr,
+    backingWidth: Math.round(width * dpr),
+    backingHeight: Math.round(height * dpr),
+  };
+}
+
+export function createCanvasRuntime({
+  canvas,
+  bottomInset,
+  transparent = false,
+  getActorShadowSprite,
+}: {
+  canvas: HTMLCanvasElement;
+  bottomInset?: () => number;
+  transparent?: boolean;
+  getActorShadowSprite: () => HTMLImageElement | null;
+}) {
+  const ctx = requiredCanvasContext(canvas, { alpha: transparent });
+  const primitives = createCanvasPrimitives(ctx);
+  let dpr = 1;
+  let width = innerWidth;
+  let height = innerHeight;
+  let initialized = false;
+  let resizeFrame = 0;
+
+  function resize() {
+    const metrics = canvasViewportMetrics(innerWidth, innerHeight, bottomInset?.() ?? 0, devicePixelRatio || 1);
+    const backingChanged = canvas.width !== metrics.backingWidth || canvas.height !== metrics.backingHeight;
+    const transformChanged = !initialized || dpr !== metrics.dpr;
+    width = metrics.width;
+    height = metrics.height;
+    dpr = metrics.dpr;
+    if (canvas.width !== metrics.backingWidth) canvas.width = metrics.backingWidth;
+    if (canvas.height !== metrics.backingHeight) canvas.height = metrics.backingHeight;
+    const cssWidth = `${width}px`;
+    const cssHeight = `${height}px`;
+    const cssBottom = `${metrics.reservedBottom}px`;
+    if (canvas.style.width !== cssWidth) canvas.style.width = cssWidth;
+    if (canvas.style.height !== cssHeight) canvas.style.height = cssHeight;
+    if (canvas.style.bottom !== cssBottom) canvas.style.bottom = cssBottom;
+    if (document.documentElement.style.getPropertyValue("--gameplay-bottom-inset") !== cssBottom) {
+      document.documentElement.style.setProperty("--gameplay-bottom-inset", cssBottom);
+    }
+    if (backingChanged || transformChanged) {
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.imageSmoothingEnabled = false;
+    }
+    initialized = true;
+  }
+
+  function scheduleResize() {
+    if (resizeFrame) return;
+    resizeFrame = requestAnimationFrame(() => {
+      resizeFrame = 0;
+      resize();
+    });
+  }
+
+  function drawActorShadow(x: number, y: number, shadowWidth: number, alpha = .38) {
+    const shadowHeight = actorShadowDimensions(shadowWidth).height;
+    const sprite = getActorShadowSprite();
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    if (sprite?.complete && sprite.naturalWidth > 0) {
+      ctx.drawImage(residentDrawable(sprite), x - shadowWidth / 2, y - shadowHeight / 2, Math.round(shadowWidth), shadowHeight);
+    } else {
+      ctx.fillStyle = "#102719";
+      ctx.beginPath();
+      ctx.ellipse(x, y, shadowWidth / 2, shadowHeight / 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  window.addEventListener("resize", scheduleResize);
+  window.visualViewport?.addEventListener("resize", scheduleResize);
+  window.addEventListener("pageshow", scheduleResize);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") scheduleResize();
+  });
+  canvas.addEventListener("contextrestored", () => {
+    // Restoration clears the drawing state even when the backing size did
+    // not change, so the ordinary duplicate-resize fast path is insufficient.
+    initialized = false;
+    resize();
+  });
+  resize();
+
+  return {
+    ctx,
+    ...primitives,
+    resize,
+    dpr: () => dpr,
+    viewport: () => ({ width, height }),
+    renderViewport: () => ({ width, height, dpr }),
+    drawActorShadow,
+  };
+}

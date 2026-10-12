@@ -6,7 +6,7 @@ import { ENEMY_SPRITE_LAYOUTS } from "../enemy-sprite-layouts.mjs";
 
 // Keep the production bootstrap and sprite loader connected; unrelated canvas
 // renderers have no role in map sprite preparation.
-vi.mock("./asset-preprocessor", () => ({ createAssetPreprocessor: () => ({
+vi.mock("./render/asset-preprocessor", () => ({ createAssetPreprocessor: () => ({
   ensureMapAssets: async () => {}, mapAssetsReady: () => true,
   mapAssetLoadFailed: () => false, worldArtReady: () => true,
 }) }));

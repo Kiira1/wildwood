@@ -1,7 +1,7 @@
 import { TAU } from "../constants";
 import { clamp, rand, randi } from "../math";
 import { formatCompactNumber } from "../../../shared/compact-number";
-import { drawScreenSpaceAt, snapWorldRenderCoordinate } from "./render-space";
+import { drawScreenSpaceAt, snapWorldRenderCoordinate } from "./render/render-space";
 
 export type Particle = {
   x: number;

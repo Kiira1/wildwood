@@ -1,0 +1,136 @@
+import { ONBOARDING_MAP_ID } from "../../../../shared/onboarding";
+import { generatedMapContent, withGeneratedMaps } from "../../procedural-maps";
+import {
+  ADVANCED_LAVA_WASTES_MAP_ID,
+  BEGINNER_DESERT_MAP_ID,
+  CLOUDSPIRE_MAP_ID,
+  INFERNAL_DEPTHS_MAP_ID,
+  INTERMEDIATE_SNOWLANDS_MAP_ID,
+  SAMURAI_GARDEN_MAP_ID,
+  TUTORIAL_FOREST_MAP_ID,
+  WATER_REACH_MAP_ID,
+  MOONFEN_MAP_ID,
+  CRYSTAL_HOLLOWS_MAP_ID, CLOCKWORK_RUINS_MAP_ID, DUSKFALL_ORCHARD_MAP_ID, NEON_BASTION_MAP_ID, VERDANT_CATACOMBS_MAP_ID, ION_CITADEL_MAP_ID,
+  type MapId,
+} from "../../world";
+import type { EnemyKind } from "../../enemies";
+import { SOUL_DEFENSE_FORCE_KIND, SOUL_ENEMY_KINDS } from "../../soul-world";
+
+export type MapArtAssetGroup =
+  | "forestBoss"
+  | "forestDecor"
+  | "desertBoss"
+  | "snowBoss"
+  | "snowDecor"
+  | "lavaBoss"
+  | "lavaDecor"
+  | "nightBoss"
+  | "nightDecor"
+  | "cherryDecor"
+  | "waterBoss"
+  | "samuraiBoss"
+  | "cloudspireBoss"
+  | "moonfenBoss"
+  | "orchardDecor"
+  | "soulVillage"
+  /** A guild hall: its baked courtyard, rooms and props, and the guild badges its crests are cut from. */
+  | "guildHall"
+  /** The Soul Dimension's nature atlas alone: the pack mushrooms the glowing campaign maps draw. */
+  | "packNature"
+  /** The Town's road tiles, for the tutorial forest's paths (forest-road.ts). */
+  | "forestRoad"
+  | "crystalHollowsBoss" | "clockworkRuinsBoss" | "duskfallOrchardBoss" | "neonBastionBoss" | "verdantCatacombsBoss" | "ionCitadelBoss";
+
+export type MapAssetGroup = {
+  /** Boss and scenery images used only by this map. */
+  art: readonly MapArtAssetGroup[];
+  /** Regular-enemy render definitions that must be ready before this map appears. */
+  enemies: readonly EnemyKind[];
+};
+
+/** Source-of-truth for every image-backed asset that is gated by the active map. */
+const AUTHORED_MAP_ASSET_GROUPS = {
+  [ONBOARDING_MAP_ID]: { art: ["forestDecor"], enemies: ["Spitter", "Brood"] },
+  home_exterior: { art: ["forestDecor", "snowDecor"], enemies: [] },
+  // The Town's Loadout Upgrades bench is the snow set's workbench sprite, as Home's was.
+  town: { art: ["soulVillage", "snowDecor"], enemies: [] },
+  // The soul camps, and the Soul Defense Force that comes every thousand of them.
+  soul_dimension: { art: ["nightDecor"], enemies: [...SOUL_ENEMY_KINDS, SOUL_DEFENSE_FORCE_KIND] },
+  [TUTORIAL_FOREST_MAP_ID]: {
+    // Its trees and grass are the pack's (pack-forest.ts).
+    art: ["forestBoss", "packNature", "forestRoad"],
+    enemies: ["Bramble", "Needle", "Mossback", "Spitter", "Brood", "Cindermaw", "King Slime", "Dread Warden", "Striker"],
+  },
+  [BEGINNER_DESERT_MAP_ID]: {
+    art: ["desertBoss"],
+    enemies: ["Dune Raider", "Dune Needle", "Dune Striker", "Dune Archer", "Dune Regent", "Venom Guard", "Wastes Reaper", "Blight Oracle"],
+  },
+  [INTERMEDIATE_SNOWLANDS_MAP_ID]: {
+    art: ["snowBoss", "snowDecor"],
+    enemies: ["Frost Raider", "Frost Needle", "Frost Striker", "Glacier Archer", "Glacier Regent", "Rime Guard", "Whiteout Reaper", "Aurora Oracle"],
+  },
+  [ADVANCED_LAVA_WASTES_MAP_ID]: {
+    art: ["lavaBoss", "lavaDecor"],
+    enemies: ["Ember Raider", "Cinder Needle", "Cinder Striker", "Cinder Archer", "Cinder Regent", "Magma Guard", "Ash Reaper", "Inferno Oracle"],
+  },
+  [INFERNAL_DEPTHS_MAP_ID]: {
+    art: ["nightBoss", "nightDecor"],
+    enemies: ["Depth Raider", "Abyss Needle", "Abyss Striker", "Abyss Archer", "Abyss Regent", "Obsidian Colossus", "Doom Reaper", "Nether Oracle"],
+  },
+  [WATER_REACH_MAP_ID]: {
+    art: ["waterBoss"],
+    enemies: ["Tide Raider", "Reef Needle", "Reef Striker", "Reef Archer", "Reef Regent", "Coral Colossus", "Drowned Reaper", "Tidal Oracle"],
+  },
+  [SAMURAI_GARDEN_MAP_ID]: {
+    art: ["samuraiBoss", "cherryDecor"],
+    enemies: ["Sakura Ronin", "Petal Needle", "Petal Striker", "Petal Archer", "Petal Regent", "Bamboo Guardian", "Moonblade Reaper", "Shrine Oracle"],
+  },
+  [CLOUDSPIRE_MAP_ID]: {
+    art: ["cloudspireBoss"],
+    enemies: ["Gale Prowler", "Gale Needle", "Gale Striker", "Nimbus Archer", "Nimbus Regent", "Skyguard Colossus", "Thunder Reaper", "Tempest Oracle"],
+  },
+  [MOONFEN_MAP_ID]: {
+    art: ["moonfenBoss"],
+    enemies: ["Fen Prowler", "Fen Needle", "Fen Striker", "Glowcap Archer", "Glowcap Regent", "Bog Colossus", "Moonmire Reaper", "Wisp Oracle"],
+  },
+  [CRYSTAL_HOLLOWS_MAP_ID]: {
+    art: ["crystalHollowsBoss"],
+    enemies: ["Shard Hopper", "Shard Needle", "Shard Striker", "Crystal Spitter", "Crystal Regent", "Geode Guardian", "Prism Reaver", "Hollow Oracle"],
+  }, [CLOCKWORK_RUINS_MAP_ID]: {
+    art: ["clockworkRuinsBoss"],
+    enemies: ["Gear Prowler", "Gear Needle", "Gear Striker", "Rivet Spitter", "Gear Regent", "Iron Guardian", "Scrap Reaver", "Spark Oracle"],
+  }, [DUSKFALL_ORCHARD_MAP_ID]: {
+    art: ["duskfallOrchardBoss", "orchardDecor"],
+    enemies: ["Gourd Prowler", "Gourd Needle", "Gourd Striker", "Seed Spitter", "Harvest Regent", "Husk Guardian", "Thorn Reaver", "Harvest Oracle"],
+  }, [NEON_BASTION_MAP_ID]: {
+    art: ["neonBastionBoss"],
+    enemies: ["Circuit Prowler", "Circuit Needle", "Circuit Striker", "Pulse Spitter", "Voltage Regent", "Relay Guardian", "Arc Reaver", "Signal Oracle"],
+  }, [VERDANT_CATACOMBS_MAP_ID]: {
+    art: ["verdantCatacombsBoss", "forestDecor"],
+    enemies: ["Mossbound Stalker", "Moss Needle", "Moss Striker", "Spore Slinger", "Mycelial Regent", "Ossuary Guardian", "Briar Reaver", "Crypt Oracle"],
+  }, [ION_CITADEL_MAP_ID]: {
+    art: ["ionCitadelBoss"],
+    enemies: ["Ion Patrol", "Ion Needle", "Ion Striker", "Capacitor Gunner", "Citadel Marshal", "Bastion Defender", "Flux Enforcer", "Reactor Warden"],
+  },
+} as const satisfies Record<MapId, MapAssetGroup>;
+
+export const MAP_ASSET_GROUPS = withGeneratedMaps<MapAssetGroup>(AUTHORED_MAP_ASSET_GROUPS, id => ({ art: [], enemies: generatedMapContent(id).kinds }),
+  { art: ["guildHall"], enemies: [] });
+
+/** Map-keyed view consumed by the regular-enemy image loader. */
+export const MAP_ENEMY_SPRITE_GROUPS = withGeneratedMaps<readonly EnemyKind[]>({
+  [ONBOARDING_MAP_ID]: ["Spitter", "Brood"],
+  home_exterior: [],
+  soul_dimension: AUTHORED_MAP_ASSET_GROUPS.soul_dimension.enemies,
+  town: [],
+  [TUTORIAL_FOREST_MAP_ID]: MAP_ASSET_GROUPS[TUTORIAL_FOREST_MAP_ID].enemies,
+  [BEGINNER_DESERT_MAP_ID]: MAP_ASSET_GROUPS[BEGINNER_DESERT_MAP_ID].enemies,
+  [INTERMEDIATE_SNOWLANDS_MAP_ID]: MAP_ASSET_GROUPS[INTERMEDIATE_SNOWLANDS_MAP_ID].enemies,
+  [ADVANCED_LAVA_WASTES_MAP_ID]: MAP_ASSET_GROUPS[ADVANCED_LAVA_WASTES_MAP_ID].enemies,
+  [INFERNAL_DEPTHS_MAP_ID]: MAP_ASSET_GROUPS[INFERNAL_DEPTHS_MAP_ID].enemies,
+  [WATER_REACH_MAP_ID]: MAP_ASSET_GROUPS[WATER_REACH_MAP_ID].enemies,
+  [SAMURAI_GARDEN_MAP_ID]: MAP_ASSET_GROUPS[SAMURAI_GARDEN_MAP_ID].enemies,
+  [CLOUDSPIRE_MAP_ID]: MAP_ASSET_GROUPS[CLOUDSPIRE_MAP_ID].enemies,
+  [MOONFEN_MAP_ID]: MAP_ASSET_GROUPS[MOONFEN_MAP_ID].enemies,
+  [CRYSTAL_HOLLOWS_MAP_ID]: MAP_ASSET_GROUPS[CRYSTAL_HOLLOWS_MAP_ID].enemies, [CLOCKWORK_RUINS_MAP_ID]: MAP_ASSET_GROUPS[CLOCKWORK_RUINS_MAP_ID].enemies, [DUSKFALL_ORCHARD_MAP_ID]: MAP_ASSET_GROUPS[DUSKFALL_ORCHARD_MAP_ID].enemies, [NEON_BASTION_MAP_ID]: MAP_ASSET_GROUPS[NEON_BASTION_MAP_ID].enemies, [VERDANT_CATACOMBS_MAP_ID]: MAP_ASSET_GROUPS[VERDANT_CATACOMBS_MAP_ID].enemies, [ION_CITADEL_MAP_ID]: MAP_ASSET_GROUPS[ION_CITADEL_MAP_ID].enemies,
+}, id => MAP_ASSET_GROUPS[id].enemies, []);

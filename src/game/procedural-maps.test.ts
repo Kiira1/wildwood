@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { generatedMapContent, generatedBossArt } from "./procedural-maps";
 import { createGameBootstrap } from "./runtime/game-bootstrap";
-import { MAP_ASSET_GROUPS } from "./runtime/map-asset-groups";
-import { createEnemyLifecycle } from "./runtime/enemy-lifecycle";
+import { MAP_ASSET_GROUPS } from "./runtime/render/map-asset-groups";
+import { createEnemyLifecycle } from "./runtime/enemies/enemy-lifecycle";
 import { createSpawnSites, createWorldLayout } from "./world";
 import type { EnemyState } from "./runtime/types";
 import { mapGuideZones } from "../ui/map-guide-controller";
@@ -67,7 +67,7 @@ describe("generated campaign runtime adapters", () => {
 
 it("keeps generated palettes compatible with the WebGL backdrop", async () => {
   const { parseHexColorOrNull } =
-    await import("./runtime/webgl-static-world-layer");
+    await import("./runtime/render/webgl-static-world-layer");
   const { mapVisualTheme } = await import("./map-design");
   for (const n of [1, 2, 10, 50, 1000]) {
     const theme = mapVisualTheme(`endless_${n}`);

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { performance } from "node:perf_hooks";
-import { separateEnemyCrowd, ENEMY_CROWD_SPACING_RATIO } from "../../src/game/runtime/enemy-crowd-separation";
+import { separateEnemyCrowd, ENEMY_CROWD_SPACING_RATIO } from "../../src/game/runtime/enemies/enemy-crowd-separation";
 import type { EnemyState } from "../../src/game/runtime/types";
 import { analyticalPlayerMotionAt } from "../../shared/analytical-player-motion";
 import { createPlayerMotionFrameSampler, type MotionSampleRow } from "../../shared/player-motion-sample";

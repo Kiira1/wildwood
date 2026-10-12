@@ -24,7 +24,7 @@ import { loadBossCatalog } from "./boss-tuner-catalog.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 let port = Number(process.env.BOSS_TUNER_PORT ?? 8765);
-const editorFiles = ["scripts/boss-tuner-server.mjs", "tools/boss-tuner/index.html", "tools/boss-tuner/boss-tuner.js", "tools/boss-tuner/boss-tuner.css", "src/game/runtime/sprite-pixels.ts", "src/game/runtime/boss-frame-geometry.ts", "scripts/boss-tuner-catalog.mjs", "src/game/boss-art.json", "src/game/runtime/actor-shadow-geometry.ts"];
+const editorFiles = ["scripts/boss-tuner-server.mjs", "tools/boss-tuner/index.html", "tools/boss-tuner/boss-tuner.js", "tools/boss-tuner/boss-tuner.css", "src/game/runtime/render/sprite-pixels.ts", "src/game/runtime/boss/boss-frame-geometry.ts", "scripts/boss-tuner-catalog.mjs", "src/game/boss-art.json", "src/game/runtime/render/actor-shadow-geometry.ts"];
 const editorVersion = createHash("sha256").update((await Promise.all(editorFiles.map((file) => readFile(join(root, file))))).map((bytes) => bytes.toString("utf8")).join("\n")).digest("hex");
 
 const HITBOX_FILE = "shared/boss-hitbox.ts";

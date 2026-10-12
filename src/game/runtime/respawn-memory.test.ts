@@ -1,7 +1,7 @@
 import { expect, it, vi } from 'vitest';
 import { createRespawnMemory } from './respawn-memory';
-import { createPersonalBosses } from './personal-bosses';
-import { createEnemyLifecycle } from './enemy-lifecycle';
+import { createPersonalBosses } from './boss/personal-bosses';
+import { createEnemyLifecycle } from './enemies/enemy-lifecycle';
 import type { EnemyState } from './types';
 import type { SpawnSite } from '../world';
 

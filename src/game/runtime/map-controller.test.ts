@@ -1,6 +1,6 @@
 import { TOWN_ARRIVAL } from "../../../shared/town";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { drawHomeTeleport, endHomeTeleport } from "./home-teleport";
+import { drawHomeTeleport, endHomeTeleport } from "./town/home-teleport";
 import { createMapController, prepareMapTransition } from "./map-controller";
 import type { PlayerState } from "./types";
 import { createGameBootstrap } from "./game-bootstrap";

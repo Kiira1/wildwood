@@ -7,7 +7,7 @@ import { STARTER_STONE } from "./inventory";
 import { ITEM_PRESENTATIONS, itemFinish, itemHasGalaxyFinish, itemPresentation, type WorldSpritePresentation } from "./item-presentation";
 import { galaxyFinishFrame } from "./galaxy-finish";
 import { PLAYER_WORLD_SCALE } from "./player-render-scale";
-import { residentDrawable } from "./runtime/resident-image";
+import { residentDrawable } from "./runtime/render/resident-image";
 
 import { PLAYER_SKIN_TONES, DEFAULT_SKIN_TONE } from "../../shared/player-skin-tones";
 export { PLAYER_SKIN_TONES, PLAYER_SKIN_TONE_NAMES, DEFAULT_SKIN_TONE } from "../../shared/player-skin-tones";

@@ -1,4 +1,4 @@
-import { canvasRenderPixelRatio } from "./render-budget";
+import { canvasRenderPixelRatio } from "./render/render-budget";
 import { drawStartingPlayer, type PlayerAppearanceAssets } from "../player-appearance";
 import { requiredCanvasContext } from "./dom";
 import { appearanceHasGalaxyFinish } from "../item-presentation";

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createActorRenderer } from "./actor-renderer";
+import { createActorRenderer } from "./render/actor-renderer";
 import { drawStartingPlayer, type PlayerAppearanceAssets } from "../player-appearance";
 import type { LayerBounds, PlayerLayer } from "../player-layer-alignment";
 import { GALAXY_ARMOR, GALAXY_BOOTS, GALAXY_HELMET } from "../../../shared/items";
