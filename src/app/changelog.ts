@@ -1,6 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
   "0.901.54": [
     "Enemy names and stat labels are drawn from a few shared images instead of hundreds, which should help missing names on some Firefox setups",
+    "The Prestige button stays greyed out until you meet every requirement, Endless stage included",
   ],
   "0.901.53": [
     "Aggro challenge: set every Auto Farm slider to 0% to fight only what chases you, without walking to other camps",

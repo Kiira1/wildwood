@@ -82,17 +82,17 @@ describe("prestige panel", () => {
     expect(s.pick("status").textContent).toBeTruthy();
   });
 
-  it("sends a prestige the server may yet allow when its own Endless count lags", () => {
-    // Toephu had cleared Endless 1 and the server agreed, but this window read
-    // zero and greyed the button out. An unknown count must not refuse.
+  it("can't be pressed through to a prestige whose Endless stage isn't cleared (Hallowed)", () => {
+    // The Endless count is subscribed everywhere now, so a zero is a real zero.
     const run = vi.fn(async () => ({ ok: true }));
     const s = setup({ unlocked: true, completed: 0, run, row: { level: 1, perkPoints: 0, peakPower: 5 } });
     s.controller.refresh(true);
     click(s.pick("open"));
-    expect(s.pick("confirm").disabled).toBe(false);
+    expect(s.pick("confirm").disabled).toBe(true);
     click(s.pick("confirm"));
     click(s.pick("confirm"));
-    expect(run).toHaveBeenCalled();
+    expect(run).not.toHaveBeenCalled();
+    expect(s.pick("status").textContent).toContain("Endless 1");
   });
 
   it("shows the standing bonus and what the next prestige pays", () => {
@@ -225,11 +225,9 @@ describe("each prestige asks for one Endless stage more", () => {
     const short = setup({ unlocked: true, completed: 0, row: { level: 1, perkPoints: 1, peakPower: 5 } });
     short.controller.refresh(true);
     click(short.pick("open"));
-    // Explained, and still pressable. A client that reads zero stages may
-    // simply not have the row yet, and refusing on that reading is what told
-    // Toephu to clear a boss he had already beaten. The server decides.
+    // Shown and explained, but not pressable until the stage is cleared.
     expect(short.pick("confirm").hidden).toBe(false);
-    expect(short.pick("confirm").disabled).toBe(false);
+    expect(short.pick("confirm").disabled).toBe(true);
     expect(short.pick("status").textContent).toContain("Endless 1 boss");
     const ready = setup({ unlocked: true, completed: 1, row: { level: 1, perkPoints: 1, peakPower: 5 } });
     ready.controller.refresh(true);
@@ -349,7 +347,7 @@ describe("prestige respec", () => {
   });
 
   it("arming Prestige disarms a respec, and the reverse, so one press never fires the other", () => {
-    const s = setup({ unlocked: true, row: { level: 3, perkPoints: 0, peakPower: 0 }, perks: { splitShot: 3 } });
+    const s = setup({ unlocked: true, completed: 10, row: { level: 3, perkPoints: 0, peakPower: 0 }, perks: { splitShot: 3 } });
     s.controller.open();
     const respecButton = respecRow(s).querySelector("button");
     respecButton.click();

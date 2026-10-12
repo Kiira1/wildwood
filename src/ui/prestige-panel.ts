@@ -269,14 +269,12 @@ export function createPrestigeController(options: {
     const challengeGoal = goal();
     if (challengeGoal) options.cost.textContent = `${challengeGoal.name ?? 'Reflect Only'} goal: ${challengeGoal.label}. Then press Prestige to win ${challengeGoal.reward ?? '+0.5 attacks/sec'} and restore your saved run.`;
     renderPerks(row?.perkPoints ?? 0);
-    // Enabled whenever the campaign is done, even if this client reads fewer
-    // Endless stages than the server has. A missing procedural_progress row
-    // and a genuine zero look identical here, so refusing on that reading
-    // blocks players who have cleared the stage: it did it to Teus, and to
-    // Toephu on 2026-09-22, whose window said to clear a boss he had already
-    // beaten. The requirement is still spelled out beside the button; the
-    // server owns the decision and names exactly what is missing.
-    confirmButton.disabled = pending || (challengeGoal ? !challengeGoal.met : !options.unlocked() || prestigeCapped(nextLevel(), expanded()));
+    // Enabled only once this prestige's whole requirement is met: the campaign and
+    // the Endless stage. It used to ignore the Endless stage, because a missing
+    // procedural_progress row read as zero and blocked Teus and Toephu
+    // (2026-09-22); that row is subscribed everywhere now (base-subscription.ts),
+    // and players could press through to a prestige that did nothing (Hallowed).
+    confirmButton.disabled = pending || (challengeGoal ? !challengeGoal.met : !unlocked());
     confirmButton.hidden = false;
     if (challengeGoal) { if (!challengeGoal.met && !status.textContent) status.textContent = `${challengeGoal.name ?? 'Reflect Only'}: ${challengeGoal.label} to win.`; }
     else if (!unlocked() && (!status.textContent || status.textContent.startsWith("Prestige 20 uncapped in "))) status.textContent = hint();
@@ -311,11 +309,9 @@ export function createPrestigeController(options: {
   openButton.addEventListener('click', open);
   options.closeButton.addEventListener('click', close);
   confirmButton.addEventListener('click', async () => {
-    // Only the campaign gate is enforced here, because it is the one this
-    // client can be certain of. An Endless count that has not arrived yet must
-    // not swallow the press; the server refuses and says why.
+    // The whole requirement, as the button's own state; the server still decides and says why if it refuses.
     const challengeGoal = goal();
-    if (pending || (challengeGoal ? !challengeGoal.met : !options.unlocked())) {
+    if (pending || (challengeGoal ? !challengeGoal.met : !unlocked())) {
       if (!pending) status.textContent = challengeGoal ? `${challengeGoal.name ?? 'Reflect Only'}: ${challengeGoal.label} to win.` : hint() || LOCKED_HINT;
       return;
     }
