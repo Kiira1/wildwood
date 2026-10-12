@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 import { Timestamp } from "spacetimedb";
 import { expect, it, vi } from "vitest";
 import { crystalFixture, identity, server } from "../../tests/helpers/crystal-hollows-fixture";
@@ -8,7 +7,7 @@ import { ignoredDropKey, isDropIgnored, keepWantedDrops } from "./ignored-drops"
 import { EQUIPMENT_OFFER_LIFETIME_MS } from "../../shared/equipment-copies";
 import { MAX_LOOT_FILTER_BATCH, isDropFiltered, lootFilterId } from "../../shared/loot-filter";
 import { BASIC_PAPER_HAT, FROST_BOW, IRON_BOW, SAMURAI_BOW, SAMURAI_HAT, STARTER_STONE, WOODEN_SWORD } from "../../shared/items";
-import { ATTACK_BALANCE_VERSION, SPACETIME_AUTH_CLIENT_ID, SPACETIME_AUTH_ISSUER } from "../../shared/rules";
+import { ATTACK_BALANCE_VERSION, BOSS_REWARD_CLAIM_BITS, SPACETIME_AUTH_CLIENT_ID, SPACETIME_AUTH_ISSUER } from "../../shared/rules";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
 type Fixture = ReturnType<typeof crystalFixture>;
@@ -158,18 +157,16 @@ it("still hands over a gift of a filtered item: a gift is deliberate", () => {
 });
 
 it("survives prestige and reset, like the account's other settings", () => {
-  const lifecycle = readFileSync(new URL("./account-lifecycle.ts", import.meta.url), "utf8");
-  const index = readFileSync(new URL("./index.ts", import.meta.url), "utf8");
-  // Only the two deletion paths remove the rows; nothing on the progress-wipe paths does.
-  expect(lifecycle.match(/removeIgnoredDrops\(ctx, identity\)/g)).toHaveLength(2);
-  expect(index).not.toContain("removeIgnoredDrops");
-});
-
-it("is removed wherever a player's or simulated client's rows are removed", () => {
-  const lifecycle = readFileSync(new URL("./account-lifecycle.ts", import.meta.url), "utf8");
-  const section = (start: string, end: string) => lifecycle.slice(lifecycle.indexOf(start), lifecycle.indexOf(end, lifecycle.indexOf(start)));
-  expect(section("function removeVirtualPlayerData", "function removePlayerIdentityData")).toContain("removeIgnoredDrops(ctx, identity)");
-  expect(section("function removePlayerIdentityData", "return {")).toContain("removeIgnoredDrops(ctx, identity)");
+  const f = crystalFixture();
+  filter(f, [IRON_BOW, SAMURAI_HAT]);
+  const before = listed(f);
+  f.patch("playerProgress", { bossRewardClaims: BOSS_REWARD_CLAIM_BITS.aegisPrime });
+  f.seed("proceduralProgress", { identity: f.ctx.sender, completed: 1 });
+  f.run(server.prestigeAccount, {});
+  expect(f.db.playerPrestige.identity.find(f.ctx.sender)).toMatchObject({ level: 1 });
+  expect(listed(f)).toEqual(before);
+  f.run(server.resetPlayerProgress, {});
+  expect(listed(f)).toEqual(before);
 });
 
 it("is erased with the account and leaves other accounts alone", () => {

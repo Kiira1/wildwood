@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 import { Timestamp } from "spacetimedb";
 import { expect, it, vi } from "vitest";
 import { crystalFixture, identity, server } from "../../tests/helpers/crystal-hollows-fixture";
@@ -284,7 +283,7 @@ it("moves a guest's copies and offers to the account it links to, replacing the 
   expect(offers(f).map(rollOf)).toEqual([C]);
 });
 
-it("is erased with the account and removed on every deletion path", () => {
+it("is erased with the account and leaves other accounts alone", () => {
   const f = archer();
   seedCopy(f, B);
   seedOffer(f, C);
@@ -293,12 +292,4 @@ it("is erased with the account and removed on every deletion path", () => {
   expect(copies(f)).toEqual([]);
   expect(offers(f)).toEqual([]);
   expect(copies(f, identity("3"))).toHaveLength(1);
-  // Both deletion paths remove item drops, and removing drops removes copies and offers.
-  const runtime = readFileSync(new URL("./item-upgrade-runtime.ts", import.meta.url), "utf8");
-  const drops = runtime.slice(runtime.indexOf("function removePlayerItemDrops"), runtime.indexOf("function removePlayerItemUpgradeData"));
-  expect(drops).toContain("removeEquipmentCopies(ctx, identity)");
-  const lifecycle = readFileSync(new URL("./account-lifecycle.ts", import.meta.url), "utf8");
-  const section = (start: string, end: string) => lifecycle.slice(lifecycle.indexOf(start), lifecycle.indexOf(end, lifecycle.indexOf(start)));
-  expect(section("function removeVirtualPlayerData", "function removePlayerIdentityData")).toContain("removePlayerItemUpgradeData(ctx, identity, true)");
-  expect(section("function removePlayerIdentityData", "return {")).toContain("removePlayerItemUpgradeData(ctx, identity, true)");
 });

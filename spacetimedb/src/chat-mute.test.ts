@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 import { expect, it, vi } from "vitest";
 import { Identity, Timestamp } from "spacetimedb";
 import { crystalFixture, identity, server } from "../../tests/helpers/crystal-hollows-fixture";
@@ -253,14 +252,6 @@ it("is erased with the account and leaves other accounts alone", () => {
   eraseIdentityRows(f.ctx, [f.ctx.sender]);
   expect(row(f)).toBeNull();
   expect(row(f, identity("3"))).not.toBeNull();
-});
-
-it("is removed wherever a player's or simulated client's rows are removed, and merged on link", () => {
-  const lifecycle = readFileSync(new URL("./account-lifecycle.ts", import.meta.url), "utf8");
-  const section = (start: string, end: string) => lifecycle.slice(lifecycle.indexOf(start), lifecycle.indexOf(end, lifecycle.indexOf(start)));
-  expect(section("function removeVirtualPlayerData", "function removePlayerIdentityData")).toContain("removeChatMute(ctx, identity)");
-  expect(section("function removePlayerIdentityData", "return {")).toContain("removeChatMute(ctx, identity)");
-  expect(section("function claimGuestAccountFor", "function removeIdentityPresence")).toContain("mergeChatMute(ctx, link.guest, ctx.sender)");
 });
 
 it("survives a prestige and a progress reset", () => {

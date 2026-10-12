@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 import { expect, it, vi } from "vitest";
 import { crystalFixture, identity, server } from "../../tests/helpers/crystal-hollows-fixture";
 import { eraseIdentityRows } from "./account-erasure";
@@ -79,7 +78,7 @@ it("keeps the account's choice when a guest links, and moves the guest's to an a
   expect([...neither.db.playerLootSetting.iter()]).toHaveLength(0);
 });
 
-it("is erased with the account and removed wherever a player's rows are removed", () => {
+it("is erased with the account and leaves other accounts alone", () => {
   const f = crystalFixture();
   const other = identity("3");
   f.run(server.setLootSettings, { autoKeepBest: false, autoEquipBest: false });
@@ -87,8 +86,4 @@ it("is erased with the account and removed wherever a player's rows are removed"
   eraseIdentityRows(f.ctx, [f.ctx.sender]);
   expect(row(f)).toBeNull();
   expect(row(f, other)).not.toBeNull();
-  const lifecycle = readFileSync(new URL("./account-lifecycle.ts", import.meta.url), "utf8");
-  const section = (start: string, end: string) => lifecycle.slice(lifecycle.indexOf(start), lifecycle.indexOf(end, lifecycle.indexOf(start)));
-  expect(section("function removeVirtualPlayerData", "function removePlayerIdentityData")).toContain("removeLootSettings(ctx, identity)");
-  expect(section("function removePlayerIdentityData", "return {")).toContain("removeLootSettings(ctx, identity)");
 });

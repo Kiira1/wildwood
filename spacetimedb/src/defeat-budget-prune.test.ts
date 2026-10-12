@@ -1,7 +1,6 @@
-import { readFileSync } from "node:fs";
 import { Timestamp } from "spacetimedb";
 import { expect, it, vi } from "vitest";
-import { crystalFixture, identity } from "../../tests/helpers/crystal-hollows-fixture";
+import { crystalFixture, identity, server } from "../../tests/helpers/crystal-hollows-fixture";
 import { DEFEAT_BUDGET_IDLE_MICROS, DEFEAT_BUDGET_PRUNE_BATCH, pruneIdleDefeatBudgets } from "./enemy-defeats";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
@@ -41,7 +40,9 @@ it("drops at most one batch per sweep, oldest first", () => {
 });
 
 it("runs in the five-minute maintenance sweep", () => {
-  const source = readFileSync(new URL("./index.ts", import.meta.url), "utf8");
-  const sweep = source.slice(source.indexOf("export const runMaintenanceSweep"), source.indexOf("export const cleanupStartupTelemetry"));
-  expect(sweep).toContain("pruneIdleDefeatBudgets(ctx);");
+  const f = fixture();
+  seedBudget(f, "a:tutorial_forest:Bramble", DEFEAT_BUDGET_IDLE_MICROS + HOUR);
+  seedBudget(f, "b:tutorial_forest:Bramble", 0n);
+  f.run(server.runMaintenanceSweep, { maintenance: {} });
+  expect(keys(f)).toEqual(["b:tutorial_forest:Bramble"]);
 });

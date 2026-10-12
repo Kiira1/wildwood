@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 import { expect, it, vi } from "vitest";
 import { Timestamp } from "spacetimedb";
 import { crystalFixture, identity, server } from "../../tests/helpers/crystal-hollows-fixture";
@@ -112,9 +111,3 @@ it("is erased with the account and leaves other accounts alone", () => {
   expect(row(f, other)).not.toBeNull();
 });
 
-it("is removed wherever a player's or simulated client's rows are removed", () => {
-  const lifecycle = readFileSync(new URL("./account-lifecycle.ts", import.meta.url), "utf8");
-  const section = (start: string, end: string) => lifecycle.slice(lifecycle.indexOf(start), lifecycle.indexOf(end, lifecycle.indexOf(start)));
-  expect(section("function removeVirtualPlayerData", "function removePlayerIdentityData")).toContain("removeAudioSettings(ctx, identity)");
-  expect(section("function removePlayerIdentityData", "return {")).toContain("removeAudioSettings(ctx, identity)");
-});

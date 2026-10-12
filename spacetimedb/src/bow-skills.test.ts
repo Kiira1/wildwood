@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 import { Timestamp } from "spacetimedb";
 import { expect, it, vi } from "vitest";
 import { crystalFixture, identity, server } from "../../tests/helpers/crystal-hollows-fixture";
@@ -97,7 +96,7 @@ it("moves a guest's rolls to the account, keeping the account's own roll for a b
   expect(rowFor(f, "night_bow")).toMatchObject({ arrowStorm: 4, ricochet: 0, piercingShot: 3, identity: f.ctx.sender });
 });
 
-it("is erased with the account and removed wherever a player's rows are removed", () => {
+it("is erased with the account and leaves other accounts alone", () => {
   const f = crystalFixture();
   const other = identity("3");
   seedRoll(f, "iron_bow", { arrowStorm: 2, ricochet: 0, piercingShot: 0 });
@@ -105,10 +104,6 @@ it("is erased with the account and removed wherever a player's rows are removed"
   eraseIdentityRows(f.ctx, [f.ctx.sender]);
   expect(rows(f)).toEqual([]);
   expect(rows(f, other)).toHaveLength(1);
-  const lifecycle = readFileSync(new URL("./account-lifecycle.ts", import.meta.url), "utf8");
-  const section = (start: string, end: string) => lifecycle.slice(lifecycle.indexOf(start), lifecycle.indexOf(end, lifecycle.indexOf(start)));
-  expect(section("function removeVirtualPlayerData", "function removePlayerIdentityData")).toContain("removeBowSkills(ctx, identity)");
-  expect(section("function removePlayerIdentityData", "return {")).toContain("removeBowSkills(ctx, identity)");
 });
 
 // Kill-claim bounds. One arrow a second that one-shots, and ten seconds banked

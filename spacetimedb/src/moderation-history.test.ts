@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { expect, it, vi } from "vitest";
 import { crystalFixture, identity, server } from "../../tests/helpers/crystal-hollows-fixture";
 import { recordModerationAction, readModerationHistory } from "./moderation-history";
@@ -64,5 +64,6 @@ it("keeps evidence private and pages in stable batches of 50 without scanning hi
   expect(JSON.parse(proc()).entries).toHaveLength(50);
   f.ctx.senderAuth = {};
   expect(proc).toThrow();
-  expect(readFileSync(new URL("./moderation-history.ts", import.meta.url), "utf8")).toContain('name: "moderation_action", public: false');
+  // A private table gets no client binding, so no client can subscribe to it.
+  expect(existsSync(new URL("../../src/module_bindings/moderation_action_table.ts", import.meta.url))).toBe(false);
 });

@@ -10,7 +10,9 @@ type Definition = {
   resolvedIndexes: readonly { name: string; unique?: boolean; columns: readonly string[] }[];
 };
 type Row = Record<string, any>;
-type State = { rows: Row[]; sequence: bigint };
+// caches: unique index name -> key -> stored row. Built on first use, kept up
+// to date by insert, dropped by update/delete and by a rollback.
+type State = { rows: Row[]; sequence: bigint; caches?: Map<string, Map<string, Row>> };
 
 function copy<T>(value: T): T {
   if (value instanceof Identity || value instanceof ConnectionId || value instanceof Timestamp) return value;
@@ -40,6 +42,29 @@ function equal(a: any, b: any): boolean {
   if (Array.isArray(a) && Array.isArray(b)) return a.length === b.length && a.every((value, i) => equal(value, b[i]));
   return a === b;
 }
+
+/**
+ * A string that two values share exactly when equal() says they are equal, or
+ * null when no such string exists (plain objects compare by reference, NaN
+ * equals nothing); callers then fall back to scanning.
+ */
+function keyOf(value: any): string | null {
+  if (value?.toHexString) return `h:${value.toHexString()}`;
+  if (value instanceof Timestamp) return `t:${value.microsSinceUnixEpoch}`;
+  if (Array.isArray(value)) {
+    const parts = value.map(keyOf);
+    return parts.includes(null) ? null : `[${parts.join(",")}]`;
+  }
+  switch (typeof value) {
+    case "string": return `s:${JSON.stringify(value)}`;
+    case "bigint": return `g:${value}`;
+    case "number": return Number.isNaN(value) ? null : `n:${value}`;
+    case "boolean": return `b:${value}`;
+    case "undefined": return "u";
+    default: return value === null ? "z" : null;
+  }
+}
+const rowKey = (row: Row, columns: readonly string[]) => keyOf(columns.map(column => row[column]));
 
 function zero(type: any): any {
   if (type.tag === "Bool") return false;
@@ -92,11 +117,32 @@ export function createMemoryDatabase(moduleSchema: { schemaType: { tables: Recor
         return equal(row[columns[i]], value);
       });
     };
-    const validate = (row: Row, except = -1) => {
-      for (const index of definition.resolvedIndexes.filter((index) => index.unique)) {
-        if (states[name].rows.some((existing, i) => i !== except && index.columns.every((column) => equal(existing[column], row[column])))) {
-          throw new Error(`Duplicate unique index ${name}.${index.name}`);
+    const uniqueIndexes = definition.resolvedIndexes.filter((index) => index.unique);
+    /** The key -> row map for a unique index, or null if some stored key has no exact string form. */
+    const cacheFor = (index: { name: string; columns: readonly string[] }) => {
+      const state = states[name];
+      state.caches ??= new Map();
+      let cache = state.caches.get(index.name);
+      if (!cache) {
+        cache = new Map();
+        for (const row of state.rows) {
+          const key = rowKey(row, index.columns);
+          if (key === null) return null;
+          cache.set(key, row);
         }
+        state.caches.set(index.name, cache);
+      }
+      return cache;
+    };
+    const dropCaches = () => { states[name].caches = undefined; };
+    const validate = (row: Row, except = -1) => {
+      for (const index of uniqueIndexes) {
+        const cache = cacheFor(index);
+        const key = rowKey(row, index.columns);
+        const clash = cache && key !== null
+          ? (cache.get(key) ?? null) !== null && cache.get(key) !== states[name].rows[except]
+          : states[name].rows.some((existing, i) => i !== except && index.columns.every((column) => equal(existing[column], row[column])));
+        if (clash) throw new Error(`Duplicate unique index ${name}.${index.name}`);
       }
       for (const [column, builder] of Object.entries(definition.columns)) {
         if (!(column in row) && !Object.hasOwn(builder.columnMetadata, "defaultValue")) {
@@ -120,18 +166,37 @@ export function createMemoryDatabase(moduleSchema: { schemaType: { tables: Recor
         }
         validate(row);
         states[name].rows.push(row);
+        for (const [indexName, cache] of states[name].caches ?? []) {
+          const key = rowKey(row, uniqueIndexes.find(index => index.name === indexName)!.columns);
+          if (key === null) states[name].caches!.delete(indexName); else cache.set(key, row);
+        }
         return copy(row);
       },
       delete: (row: Row) => {
         const i = states[name].rows.findIndex((current) => Object.keys(current).every((key) => equal(current[key], row[key])));
         if (i < 0) return false;
         states[name].rows.splice(i, 1);
+        dropCaches();
         return true;
       },
-      clear: () => { const count = BigInt(states[name].rows.length); states[name].rows = []; return count; },
+      clear: () => { const count = BigInt(states[name].rows.length); states[name].rows = []; dropCaches(); return count; },
     };
     for (const index of definition.resolvedIndexes) {
-      const findIndex = (key: any) => states[name].rows.findIndex((row) => matches(row, index.columns, key));
+      const scanIndex = (key: any) => states[name].rows.findIndex((row) => matches(row, index.columns, key));
+      const exactKey = (key: any) => {
+        const values = Array.isArray(key) ? key : [key];
+        return Boolean(index.unique) && values.length === index.columns.length &&
+          !values.some(value => value && typeof value === "object" && "from" in value && "to" in value);
+      };
+      /** Exact full-key lookups on a unique index use its cache; ranges and partial keys scan. */
+      const findIndex = (key: any) => {
+        const values = Array.isArray(key) ? key : [key];
+        const cache = exactKey(key) ? cacheFor(index) : null;
+        const lookup = cache ? keyOf(values) : null;
+        if (cache === null || lookup === null) return scanIndex(key);
+        const row = cache.get(lookup);
+        return row ? states[name].rows.indexOf(row) : -1;
+      };
       db[name][index.name] = {
         filter: (key: any) => {
           const rows = states[name].rows.filter((row) => matches(row, index.columns, key));
@@ -156,12 +221,25 @@ export function createMemoryDatabase(moduleSchema: { schemaType: { tables: Recor
             if (i < 0) throw new Error(`Missing row for update: ${name}.${index.name}`);
             validate(value, i);
             states[name].rows[i] = copy(value);
+            dropCaches();
             return copy(value);
           },
         } : {}),
         delete: (key: any) => {
+          if (exactKey(key)) {
+            // One row at most: remove it and its keys rather than rebuilding.
+            const i = findIndex(key);
+            if (i < 0) return false;
+            const [row] = states[name].rows.splice(i, 1);
+            for (const [indexName, cache] of states[name].caches ?? []) {
+              const k = rowKey(row, uniqueIndexes.find(unique => unique.name === indexName)!.columns);
+              if (k !== null) cache.delete(k);
+            }
+            return true;
+          }
           const before = states[name].rows.length;
           states[name].rows = states[name].rows.filter((row) => !matches(row, index.columns, key));
+          if (states[name].rows.length !== before) dropCaches();
           return states[name].rows.length !== before;
         },
       };
@@ -178,7 +256,9 @@ export function createMemoryDatabase(moduleSchema: { schemaType: { tables: Recor
       ])), ...overrides };
     },
     transaction<T>(action: () => T): T {
-      const snapshot = copy(states);
+      // Stored rows are never changed in place (every write stores a fresh copy
+      // and every read returns one), so the row lists alone are the snapshot.
+      const snapshot: Record<string, State> = Object.fromEntries(Object.entries(states).map(([name, state]) => [name, { rows: state.rows.slice(), sequence: state.sequence }]));
       try { return action(); } catch (error) {
         for (const name of Object.keys(states)) states[name] = snapshot[name];
         throw error;
