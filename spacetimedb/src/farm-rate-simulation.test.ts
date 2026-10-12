@@ -10,6 +10,11 @@ import { STARTER_BOW } from "../../shared/items";
 import { defaultBalanceSettings, resolveMapBalance } from "../../shared/map-balance";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
+// The two "reports what each profile earns" cases print a table for a person to
+// read and assert nothing else, so they run only on request:
+// `npm run report:farm-rate`.
+const report = it.runIf(process.env.FARM_RATE_REPORT === "1");
+
 const MAP = "crystal_hollows";
 /** The roster a lap of the map actually presents, species by species. */
 const ROSTER = Object.keys(ENEMY_TYPES)
@@ -135,7 +140,7 @@ describe("farming rate under the respawn ceiling", () => {
     expect(pinned.paidPerSecond).toBeLessThanOrEqual(CEILING * 1.05);
   });
 
-  it("reports what each profile actually earns", () => {
+  report("reports what each profile actually earns", () => {
     const profiles = [
       ["honest lap (28s)", { lapSeconds: 28, minutes: 10 }],
       ["plain respawn (10s)", { lapSeconds: 10, minutes: 10 }],
@@ -347,7 +352,7 @@ describe("the current client, held to the server's clock", () => {
   const HONEST_LAP = 28;
   // An hour of play a second at a time is quick alone, slow beside the rest of the suite.
   const SIMULATION_TIMEOUT_MS = 60_000;
-  it("reports what each profile earns through report_enemy_defeats", () => {
+  report("reports what each profile earns through report_enemy_defeats", () => {
     const profiles = [
       ["honest lap", { lapSeconds: HONEST_LAP, minutes: 60 }],
       ["3x speed hack", { lapSeconds: HONEST_LAP, minutes: 60, speed: 3 }],
