@@ -1,6 +1,7 @@
 import { reloadWithUpdateResume } from "../coop/services/update-resume-browser";
 import { recordConnectionDiagnostic } from "../coop/services/connection-diagnostic-runtime";
-import { enforceLatestVersion, reloadStaleSession } from "../app/version";
+import { enforceLatestVersion, reloadStaleSession, updateReloadPending } from "../app/version";
+import { createRefusedSessionRecovery } from "./refused-session-recovery";
 import {
   createStartupStateMachine,
   type StartupAccountSnapshot,
@@ -40,7 +41,12 @@ type StartupCoordinatorDependencies = {
   startupKind: () => "new" | "returning" | null;
   beginAdventure: () => void;
   startGame: () => void;
-  retryConnection: () => boolean | void;
+  /**
+   * `refusedSession`: the server refused this session as outdated while no newer
+   * build is live (see refused-session-recovery.ts). Clear that block and open a
+   * fresh connection, which the server gives a fresh session. False when it cannot now.
+   */
+  retryConnection: (refusedSession?: boolean) => boolean | void;
   prepareUpdateReload: (latestVersion: string) => boolean | void;
   updateHandoff?: { canReload: () => boolean; beforeReload: (version: string) => Promise<boolean> };
 };
@@ -169,6 +175,12 @@ export function createStartupCoordinator(dependencies: StartupCoordinatorDepende
     if (account?.updating && machine.state().value !== "updating") {
       machine.dispatch({ type: "update-detected" });
     }
+    // A refused session that a fresh connection has restored (no newer build was ever found).
+    const state = machine.state();
+    if (!account?.updating && state.value === "updating" && !state.version && dependencies.connected()) {
+      machine.dispatch({ type: "update-cleared" });
+      finishStartup();
+    }
     dependencies.gameUpdateGate.hidden = machine.state().value !== "updating";
     if (account?.updating) enforceLatestVersion(dependencies.version, showGameUpdating, dependencies.updateHandoff);
   }
@@ -184,14 +196,21 @@ export function createStartupCoordinator(dependencies: StartupCoordinatorDepende
     // once on coming back to a tab that has been away a while.
     window.setInterval(() => { if (versionCheckDue(Date.now(), lastCheckAt, document.hidden, "poll")) check(); }, 60_000);
     document.addEventListener("visibilitychange", () => { if (versionCheckDue(Date.now(), lastCheckAt, document.hidden, "visible")) check(); });
-    let updatingSince = 0;
+    // No newer build has appeared: this build is current and only its session
+    // is stale or lost. Start a fresh one, and reload only if that keeps failing.
+    const refusedSession = createRefusedSessionRecovery({
+      now: () => Date.now(),
+      reconnect: () => dependencies.retryConnection(true) === true,
+      reload: blockedForMs => reloadStaleSession(blockedForMs, sessionStorage, async () => {
+        const handoff = dependencies.updateHandoff;
+        if (handoff && (!handoff.canReload() || !await handoff.beforeReload(dependencies.version))) return false;
+        return reloadWithUpdateResume(dependencies.version, dependencies.prepareUpdateReload);
+      }),
+    });
     window.setInterval(() => {
-      if (!dependencies.accountState()?.updating) { updatingSince = 0; return; }
-      updatingSince ||= Date.now();
-      enforceLatestVersion(dependencies.version, showGameUpdating, dependencies.updateHandoff);
-      // No newer build has appeared: this build is current and only its session
-      // is stale (it began before the server's last publish). Start a fresh one.
-      reloadStaleSession(Date.now() - updatingSince, sessionStorage, () => reloadWithUpdateResume(dependencies.version, dependencies.prepareUpdateReload));
+      const updating = dependencies.accountState()?.updating === true;
+      if (updating) enforceLatestVersion(dependencies.version, showGameUpdating, dependencies.updateHandoff);
+      if (!updateReloadPending()) refusedSession.tick(updating, dependencies.connected());
     }, 5_000);
   }
 

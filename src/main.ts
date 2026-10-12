@@ -1715,7 +1715,7 @@ import {
     startupKind: progress.startupKind,
     beginAdventure: () => { coop?.beginAdventure?.(); },
     startGame: () => startGame(false),
-    retryConnection: () => coop?.retryConnection?.(),
+    retryConnection: refusedSession => coop?.retryConnection?.(refusedSession),
     prepareUpdateReload: (latestVersion) => coop?.prepareUpdateReload?.(latestVersion) ?? false,
   });
   finishStartup();
