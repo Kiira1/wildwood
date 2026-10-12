@@ -18,7 +18,7 @@ describe("server-owned cutscene history wiring", () => {
     const view = section("export const myCutsceneHistory =", "function ensureCutsceneHistory");
     expect(view).toContain("identity.find(ctx.sender)");
     expect(view).not.toContain(".iter()");
-    const reducer = section("export const markPortalCutsceneSeen =", "function generatedDisplayName");
+    const reducer = section("export const markPortalCutsceneSeen =", "export const devRepairDisplayName =");
     expect(reducer).toContain("requireControllingPlayer(ctx)");
     expect(reducer).toContain("if (!bit) throw new SenderError");
     expect(reducer).toContain("unlockedPortalCutsceneMask(progress) & bit");
@@ -44,7 +44,7 @@ describe("server-owned cutscene history wiring", () => {
     const reset = section("function resetProgressToDefaults", "export const resetPlayerProgress =");
     expect(reset).toContain("seenMask: 0");
     expect(reset).toContain("generation: history.generation + 1");
-    expect(section("export const prestigeAccount =", "function sendPlayerChatMessage")).toContain("prestige.prestigeAccount(ctx)");
+    expect(section("export const prestigeAccount =", "export const spendPrestigePerkPoint =")).toContain("prestige.prestigeAccount(ctx)");
     expect(server.match(/playerCutsceneHistory.identity.delete\(identity\)/g)).toBeNull();
     expect(lifecycle.match(/playerCutsceneHistory.identity.delete\(identity\)/g)).toHaveLength(2);
   });

@@ -32,12 +32,12 @@ import { keepWantedDrops, playerIgnoredDrop, writeIgnoredDrops } from "./ignored
 import { playerLootSetting, writeLootSettings } from "./loot-settings";
 import { playerProfileSnapshot, requireSnapshotForIcon, takeProfileSnapshot } from "./profile-snapshot";
 import { claimAdGemReward, playerAdReward } from "./ad-gem-reward";
-import { assertChatNotMuted, playerChatMute, recordChatStrike, setChatMute } from "./chat-mute";
+import { playerChatMute, setChatMute } from "./chat-mute";
 import { createAutoEquip } from "./auto-equip";
 import { allowedLoadout } from "./loadout";
 import { ERASURE_ROW_BUDGET, eraseIdentityRows, linkedIdentities, requireErasureConfirmation } from "./account-erasure";
 import { LOADOUT_FIELDS } from "../../shared/combat-progress";
-import { chatHeartAllowance, chatReactionCooldown, chatReactionSummary, chatReactionUnlock, playerChatHearts, reactionCountsFor, chatReaction, readChatReactions, setChatReaction, grantGemHeartUnlock, isChatModerator, chatModerator, moderatorHeartFor, setChatModerator, removeMessageReactions, removeAccountReactions } from "./chat-reactions";
+import { chatHeartAllowance, chatReactionCooldown, chatReactionSummary, chatReactionUnlock, playerChatHearts, reactionCountsFor, chatReaction, readChatReactions, setChatReaction, grantGemHeartUnlock, isChatModerator, chatModerator, moderatorHeartFor, setChatModerator, removeAccountReactions } from "./chat-reactions";
 import { pruneIdleStreams, regularEnemyLootCursor, regularEnemyStream, rollRegularEnemyLoot } from "./regular-enemy-loot";
 import { BLACK_BOOTS, BLACK_BOOTS_SPEED_BONUS } from "../../shared/items";
 import { playerOnboarding, advanceOnboarding, needsOnboarding } from "./onboarding";
@@ -53,8 +53,7 @@ import { playerBowSkill, ensureBowSkillRoll, ensureBowSkillRolls } from "./bow-s
 import { playerEquipmentCopy, pendingEquipmentOffer, createEquipmentCopies, publishItemDrop, offerDuplicateEquipment, expireEquipmentOffers } from "./equipment-copies";
 import { moderateReportedMessage } from "./chat-report-moderation";
 import { PLAYER_SKIN_TONES } from "../../shared/player-skin-tones";
-import { leaderboardPageTables, writeLeaderboardPages, readLeaderboardWindow, readLeaderboardPage, readPrestigeLeaderboardPage, findLeaderboardSpot } from "./leaderboard-pages";
-import { leaderboardEligible } from "../../shared/leaderboard-window";
+import { leaderboardPageTables, readLeaderboardWindow, readLeaderboardPage, readPrestigeLeaderboardPage, findLeaderboardSpot } from "./leaderboard-pages";
 import { effectiveMovementSpeedForProgress, refreshPrestigeMovement, attackIntervalForProgress, savedAttackRange } from "./player-speed";
 import { playerBonusToggle } from "./bonus-toggles";
 import { registerBonusToggleReducers } from "./bonus-toggles-reducer";
@@ -63,7 +62,7 @@ import { earlierTimestamp } from "./timestamp-utils";
 import { slotUpgradeDurationWithResearch } from "../../shared/utility-research";
 import { createCosmeticConversion } from "./cosmetic-conversion";
 import { wearsUnlentLook } from "../../shared/patreon-cosmetics";
-import { publicChatCursor, updatePublicChatCursor, readPublicChatPage } from "./public-chat-history";
+import { publicChatCursor, readPublicChatPage } from "./public-chat-history";
 import { createKillGems } from "./kill-gems";
 import { createPrestige, statRewardMultiplier } from "./prestige";
 import { generateMap, isProceduralMap, proceduralMapId, PROCEDURAL_ENTRY_MAP, PROCEDURAL_ENTRY_BOSS } from "../../shared/procedural-maps";
@@ -95,13 +94,11 @@ import {
   researchDurationMs,
 } from "../../shared/research";
 import { VIRTUAL_PLAYER_LIMIT, isVirtualPlayerTicket } from "../../shared/virtual-player-load-test";
-import { legacyU32Power } from "../../shared/player-power";
 import {
   PLAYER_GENDER_UNSET,
   isSelectedPlayerGender,
 } from "../../shared/player-gender";
-import { syncDisplayNameHistory } from "./display-name-history";
-import { isPublicDisplayNameAllowed, moderatePublicChatMessage, chatModerationReason, displayNameModerationReason, MODERATION_RULE_VERSION } from "./chat-moderation";
+import { isPublicDisplayNameAllowed } from "./chat-moderation";
 import { isChatReportReason } from "../../shared/chat-report";
 import { TERMS_VERSION, isEligiblePlayerAgeBand } from "../../shared/legal";
 import { nextChatReportRateState } from "./chat-report-rate-limit";
@@ -110,10 +107,7 @@ import {
   normalizeStartupTelemetrySample,
 } from "../../shared/startup-telemetry";
 import {
-  STARTUP_TELEMETRY_MAX_ROWS,
-  STARTUP_TELEMETRY_RATE_WINDOW_MICROS,
   nextStartupTelemetryRateState,
-  startupTelemetryIdsToDelete,
 } from "./startup-telemetry-policy";
 import {
   dragonBossTables,
@@ -132,7 +126,7 @@ import { createModuleMigrations } from "./module-migrations";
 import { UPGRADE_BENCH_SLOT_ONE, UPGRADE_BENCH_SLOT_TWO, UPGRADE_BENCH_SLOT_THREE, normalizeUpgradeBenchSlot, requireUpgradeBenchSlot, activeItemUpgradeForSlot, activeItemUpgradeEntriesFor, insertActiveItemUpgrade, secondUpgradeSlotUnlockedFor, thirdUpgradeSlotUnlockedFor } from "./upgrade-bench-slots";
 import {
   createPresenceRuntime, MOTION_DETAIL_FRAME_INTERVAL_MICROS, MAP_FRAME_INTERVAL_MICROS, playerZone,
-  playerWithMotion, stoppedMotionFields, adjustPlayerMotionMapState, syncPlayerMotion, syncPlayerMotionIdentity,
+  playerWithMotion, stoppedMotionFields, syncPlayerMotion, syncPlayerMotionIdentity,
   ensureMotionDetailFrameSchedule, ensureRealtimeFrameSchedules, motionSample, persistWorldLocation,
   syncPlayerMapMarker, ensureWorldStatus, reconcileOnlinePlayers, requireScheduler, ensureRepeatingSchedule,
 } from "./presence-runtime";
@@ -151,13 +145,13 @@ import {
 } from "../../shared/gems";
 import { socialTables } from "./social-tables";
 import { pausedResearch, pauseActiveResearch, removePausedResearch, takePausedResearch } from "./research-pause";
-import { createSocialService, socialSnapshot, visibleSocialMessages, latestSocialMessages, socialHistoryPage, pruneExpiredSocialMessages } from "./social-service";
+import { createSocialService, socialSnapshot, visibleSocialMessages, latestSocialMessages, socialHistoryPage } from "./social-service";
 import { playerDirectoryJson } from "./player-directory";
 import { guildTables } from "./guild-tables";
 import { createGuildService } from "./guild-service";
 import { registerGuildReducers } from "./guild-reducers";
 import { aggroChallengeRun, endAggroChallenge, playerAggroChallenge, playerAggroChallengeParked, registerAggroReducers, restartAggroRunOnDeath } from "./aggro-challenge";
-import { clearAutoFarmPuppet, playerAutoFarmPuppet, registerAutoFarmPuppetReducers } from "./autofarm-puppet";
+import { playerAutoFarmPuppet, registerAutoFarmPuppetReducers } from "./autofarm-puppet";
 import { GUILD_MAX_RANGE, guildWeaponRange } from "../../shared/guild-combat";
 import type { DuelFighter } from "../../shared/duel-combat";
 import {
@@ -189,29 +183,29 @@ import {
   MIN_ATTACK_INTERVAL,
   movementSpeedsMatch,
   MOVEMENT_SPEED_EPSILON,
-  NAME_ADJECTIVES,
-  NAME_CREATURES,
   PLAYER_BASE_HP,
   PLAYER_PROJECTILE_SPEED,
   PLAYER_RADIUS,
   PLAYER_SPAWN,
   PLAYER_SPEED,
   playerBaseMovementSpeed,
-  PROTOCOL_VERSION,
   TUTORIAL_FOREST_MAP_ID,
   WORLD_HEIGHT,
   WORLD_WIDTH,
 } from "../../shared/rules";
-import { readPlayerProgress, iterPlayerProgress, withDuelWide, deleteReplayWide } from "./wide-stats";
+import { readPlayerProgress, withDuelWide } from "./wide-stats";
 import { playerWideStats, duelWideStats, duelReplayWideStats, playerCombatRating } from "./wide-stats-table";
-import { narrowStat } from "../../shared/wide-stats";
 import { LEGACY_CLIENT_ERRORS, sameConnection, sessionForContext, requireSession, blockedSession, isSupportedProtocol, requireCurrentLegalConsent, requireSupportedSessionProtocol, requireControllingPlayer, isDeveloperIdentity, isDatabaseOwnerIdentity, isVirtualPlayer, requireDeveloperSession, requireDeveloper, touchPlayerAccessAudit, backfillKnownAccessAudit, sameIdentity } from "./session-guards";
 import { defaultPlayerProgress, samePlayerProgressValues, hasFreshProgress, resultIncludesContributor, contributedToLatestPrismshell, forestItemCountForProgress, inventoryForProgress, inventoryWithBetaHelmet, slotUpgradeKey, slotUpgradeTierFor, itemUpgradeLevelFor, playerOwnsItem, restoreItemToProgress, equippedHeadForProgress, equippedChestForProgress, equippedFeetForProgress, equippedRightHandForProgress, equippedLeftHandForProgress, cosmeticEquipmentForProgress, equipmentPresentationForProgress, leaderboardAppearanceForProgress, maxHealthForProgress } from "./progress-helpers";
 import { researchForPlayer, assertResearchAvailable, activeResearchIsAvailable, removeResearchCompletionSchedules, completeActiveResearch, ensureResearchCompletionSchedule, reconcileActiveResearch } from "./research-runtime";
-import { ensurePlayerLifetime, finishLifetimeSession, markPlayerBalanceCurrent, playerBalanceProgress, powerForProgress, effectivePowerStatsForProgress, effectivePowerForProgress, powerFieldsForProgress, researchedDamage, researchedArmor, researchedRegen } from "./player-power";
+import { ensurePlayerLifetime, finishLifetimeSession, markPlayerBalanceCurrent, playerBalanceProgress, effectivePowerStatsForProgress, effectivePowerForProgress, powerFieldsForProgress, researchedDamage, researchedArmor, researchedRegen } from "./player-power";
 import { removeItemUpgradeCompletionSchedules, removePlayerItemDrops, removePlayerItemUpgradeData, ensureItemUpgradeCompletionSchedule, completeActiveItemUpgrade, cancelActiveItemUpgrade, reconcileActiveItemUpgrade } from "./item-upgrade-runtime";
 import { ensureGemWallet, applyGemBalanceChange, currentUtcDayKey, ensureDailyGemBonusState } from "./gem-wallet";
 import { writeProgressAndPresentation } from "./player-power";
+import { boundedMapPopulation, refreshLeaderboard, requestLeaderboardRefresh, refreshLeaderboardIfDue } from "./leaderboard-refresh";
+import { generatedDisplayName, isGeneratedDisplayName, requireAllowedDisplayName, syncDisplayNamePresentation, repairModeratedDisplayName, changePlayerDisplayName } from "./display-names";
+import { insertChatMessage, clearExpiredHistory, trimStartupTelemetry, clearExpiredStartupTelemetryRateLimits, sendPlayerChatMessage } from "./chat-runtime";
+import { MAINTENANCE_INTERVAL_MICROS, VIRTUAL_PLAYER_RUN_LIFETIME_MICROS, adjustVirtualPlayerCount, virtualPlayerCountForOwner, clearExpiredVirtualPlayerRuns, clearOrphanRealtimeState, ensureMaintenanceSchedule, ensureMaintenanceSweepSchedule, removePlayerRealtimeState } from "./maintenance-runtime";
 
 const WORLD = { width: WORLD_WIDTH, height: WORLD_HEIGHT };
 const VALID_MAP_IDS = { has: (id: string) => MAP_IDS.includes(id) || id === HOME_EXTERIOR_MAP_ID || isProceduralMap(id) || isSoulMap(id) || isGuildHallMap(id) || isTownMap(id) };
@@ -226,17 +220,6 @@ const MAP_PORTALS: Record<string, { x: number; y: number; destination: string }[
 const MAP_ARRIVALS: Record<string, { x: number; y: number }> =
   Object.fromEntries(Object.keys(CAMPAIGN_GATEWAYS).map(mapId => [mapId, campaignLanding(mapId)]));
 const MAP_PORTAL_USE_RANGE = 125;
-const CHAT_MESSAGE_MAX_LENGTH = 250;
-const CHAT_COOLDOWN_MICROS = 3_000_000n;
-const CHAT_HISTORY_RETENTION_MICROS = 86_400_000_000n;
-const DUEL_REPLAY_RETENTION_MICROS = CHAT_HISTORY_RETENTION_MICROS;
-const MAINTENANCE_INTERVAL_MICROS = 60_000_000n;
-const LEADERBOARD_REFRESH_INTERVAL_MICROS = 900_000_000n;
-const VIRTUAL_PLAYER_RUN_LIFETIME_MICROS = 3_600_000_000n;
-const LEADERBOARD_REFRESH_VERSION = 13;
-/** A version no build uses, so refreshLeaderboardIfDue rebuilds on its next pass. */
-const LEADERBOARD_REFRESH_QUEUED = 0;
-const LEADERBOARD_PLAYER_REFRESH_MIN_MICROS = 60_000_000n;
 const autoEquip = createAutoEquip({ inventoryForProgress, itemUpgradeLevelFor, writeProgressAndPresentation });
 // Only regular enemies use server reward/combat bounds. Boss clears persist gates.
 const { combatBoundForReport } = createCombatReport({
@@ -2004,92 +1987,6 @@ export const markPortalCutsceneSeen = spacetimedb.reducer({ cutscene: t.string()
   ctx.db.playerCutsceneHistory.identity.update({ ...history, seenMask: history.seenMask | bit });
 });
 
-function generatedDisplayName(identity: { toHexString: () => string }) {
-  let hash = 2166136261;
-  for (const character of identity.toHexString()) {
-    hash ^= character.charCodeAt(0);
-    hash = Math.imul(hash, 16777619);
-  }
-  const adjective = NAME_ADJECTIVES[(hash >>> 0) % NAME_ADJECTIVES.length];
-  const creature = NAME_CREATURES[((hash >>> 8) >>> 0) % NAME_CREATURES.length];
-  const number = String((hash >>> 16) % 1000).padStart(3, "0");
-  return `${adjective} ${creature} ${number}`;
-}
-
-function isGeneratedDisplayName(displayName: string) {
-  const [adjective, creature, suffix, ...extra] = displayName.split(" ");
-  return extra.length === 0 &&
-    NAME_ADJECTIVES.includes(adjective) &&
-    NAME_CREATURES.includes(creature) &&
-    /^\d{3}$/.test(suffix ?? "");
-}
-
-function requireAllowedDisplayName(displayName: string) {
-  if (!isPublicDisplayNameAllowed(displayName)) {
-    throw new SenderError("Display name is not allowed.");
-  }
-}
-
-function syncDisplayNamePresentation(ctx: any, identity: any, displayName: string) {
-  const guildMember = ctx.db.guildMember.identity.find(identity);
-  if (guildMember && guildMember.name !== displayName) {
-    ctx.db.guildMember.identity.update({ ...guildMember, name: displayName });
-  }
-  const leaderboard = ctx.db.leaderboardEntry.identity.find(identity);
-  if (leaderboard && leaderboard.displayName !== displayName) {
-    ctx.db.leaderboardEntry.identity.update({ ...leaderboard, displayName });
-  }
-  const motionIdentity = ctx.db.playerMotionIdentity.identity.find(identity);
-  if (motionIdentity && motionIdentity.displayName !== displayName) {
-    ctx.db.playerMotionIdentity.networkId.update({ ...motionIdentity, displayName });
-  }
-  const audit = ctx.db.playerAccessAudit.identity.find(identity);
-  if (audit && audit.displayName !== displayName) {
-    ctx.db.playerAccessAudit.identity.update({ ...audit, displayName });
-  }
-  for (const table of [
-    ctx.db.dragonContribution,
-    ctx.db.spiderContribution,
-    ctx.db.frostclawContribution,
-    ctx.db.magmaliskContribution,
-    ctx.db.gloomrootContribution,
-    ctx.db.tidewyrmContribution,
-    ctx.db.koiShogunContribution,
-    ctx.db.tempestKirinContribution,
-    ctx.db.miremawContribution,
-    ctx.db.prismshellContribution,
-  ]) {
-    const contribution = table.identity.find(identity);
-    if (contribution && contribution.displayName !== displayName) {
-      table.identity.update({ ...contribution, displayName });
-    }
-  }
-  syncDisplayNameHistory(ctx, identity, displayName);
-  for (const duel of [...ctx.db.duel.byChallenger.filter(identity)].map(row => withDuelWide(ctx, row)) as any[]) {
-    if (duel.challengerName !== displayName) updateSnapshotRow(ctx, "duel", { ...duel, challengerName: displayName });
-  }
-  for (const duel of [...ctx.db.duel.byOpponent.filter(identity)].map(row => withDuelWide(ctx, row)) as any[]) {
-    if (duel.opponentName !== displayName) updateSnapshotRow(ctx, "duel", { ...duel, opponentName: displayName });
-  }
-}
-
-/** `forcedReason` renames even an allowed name: the developer's reset, with its reason. */
-function repairModeratedDisplayName(ctx: any, profile: any, actorType: "automatic" | "owner" | "developer" = "automatic", forcedReason = "") {
-  if (!forcedReason && isPublicDisplayNameAllowed(profile.displayName)) return profile;
-  const displayName = generatedDisplayName(profile.identity);
-  const repaired = { ...profile, displayName };
-  updateSnapshotRow(ctx, "playerProfile", repaired);
-  // A forced safety rename must allow a free, immediate choice of a new valid name.
-  if (ctx.db.playerNameCooldown.identity.find(profile.identity)) {
-    ctx.db.playerNameCooldown.identity.delete(profile.identity);
-  }
-  syncDisplayNamePresentation(ctx, profile.identity, displayName);
-  recordModerationAction(ctx, { targetIdentity: profile.identity.toHexString(), targetName: displayName,
-    channel: "profile", action: "Name changed", reason: forcedReason || (displayNameModerationReason(profile.displayName) ?? "Disallowed username"),
-    actorType, rule: MODERATION_RULE_VERSION, before: profile.displayName, after: displayName });
-  return repaired;
-}
-
 // Targeted moderation for existing/offline accounts. Never edit combat stats
 // just to repair a name, and refuse a stale request if the owner renamed first.
 export const devRepairDisplayName = spacetimedb.reducer(
@@ -2143,141 +2040,6 @@ function publishPlayerDeathFrame(ctx: any, activePlayer: any) {
   });
 }
 
-function removePlayerRealtimeState(ctx: any, identity: any) {
-  if (ctx.db.playerMotionInterest.identity.find(identity)) ctx.db.playerMotionInterest.identity.delete(identity);
-  const motion = ctx.db.playerMotion.identity.find(identity);
-  if (motion) {
-    ctx.db.playerMotion.networkId.delete(motion.networkId);
-    adjustPlayerMotionMapState(ctx, motion.mapId, -1, motion.isVisible ? -1 : 0);
-  }
-  const mapping = ctx.db.playerMotionIdentity.identity.find(identity);
-  if (mapping) ctx.db.playerMotionIdentity.networkId.delete(mapping.networkId);
-  clearAutoFarmPuppet(ctx, identity);
-}
-
-function boundedMapPopulation(ctx: any, mapId: string) {
-  return ctx.db.playerMotionMapState.mapId.find(mapId)?.playerCount ?? 0;
-}
-
-function refreshLeaderboard(ctx: any) {
-  const candidates: any[] = [];
-  for (const progress of iterPlayerProgress(ctx) as Iterable<any>) {
-    if (ctx.db.virtualPlayer.identity.find(progress.identity)) continue;
-    // First runs join after the Dragon; a prestige level retains that credit
-    // when the reset clears the current run's Desert access.
-    const prestigeLevel = ctx.db.playerPrestige.identity.find(progress.identity)?.level ?? 0;
-    if (!leaderboardEligible(progress.desertUnlocked, prestigeLevel)) continue;
-    const profile = ctx.db.playerProfile.identity.find(progress.identity);
-    if (!profile) continue;
-    const current = ctx.db.leaderboardEntry.identity.find(progress.identity);
-    const lifetime = ctx.db.playerLifetime.identity.find(progress.identity);
-    const active = ctx.db.player.identity.find(progress.identity);
-    const activeMicros = lifetime && active
-      ? ctx.timestamp.microsSinceUnixEpoch - lifetime.sessionStartedAt.microsSinceUnixEpoch
-      : 0n;
-    const effectiveStats = effectivePowerStatsForProgress(ctx, progress);
-    candidates.push({
-      identity: progress.identity,
-      identityKey: progress.identity.toHexString(),
-      displayName: profile.displayName,
-      prestige: prestigeLevel,
-      power: powerForProgress(effectiveStats),
-      profileIcon: profile.profileIcon,
-      gender: profile.gender,
-      ...leaderboardAppearanceForProgress(ctx, progress, profile),
-      damage: effectiveStats.damage,
-      maxHp: effectiveStats.maxHp,
-      armor: effectiveStats.armor,
-      regen: effectiveStats.regen,
-      playedMicros: (lifetime?.playedMicros ?? 0n) + (activeMicros > 0n ? activeMicros : 0n),
-      isGuest: ctx.db.playerAccountStatus.identity.find(progress.identity)?.isGuest ?? current?.isGuest ?? false,
-    });
-  }
-
-  writeLeaderboardPages(ctx, candidates);
-  const selected = new Map(candidates.map(candidate => [candidate.identityKey, candidate]));
-  for (const current of [...ctx.db.leaderboardEntry.iter()] as any[]) {
-    if (!selected.has(current.identity.toHexString())) ctx.db.leaderboardEntry.identity.delete(current.identity);
-  }
-  for (const candidate of selected.values()) {
-    const next = {
-      identity: candidate.identity,
-      displayName: candidate.displayName,
-      power: legacyU32Power(candidate.power),
-      powerLevel: candidate.power,
-      profileIcon: candidate.profileIcon,
-      gender: candidate.gender,
-      skinTone: candidate.skinTone,
-      headItem: candidate.headItem,
-      chestItem: candidate.chestItem,
-      feetItem: candidate.feetItem,
-      rightHandItem: candidate.rightHandItem,
-      leftHandItem: candidate.leftHandItem,
-      damage: candidate.damage,
-      maxHp: candidate.maxHp,
-      armor: candidate.armor,
-      regen: candidate.regen,
-      playedMicros: candidate.playedMicros,
-      isGuest: candidate.isGuest,
-    };
-    const current = ctx.db.leaderboardEntry.identity.find(candidate.identity);
-    if (!current) ctx.db.leaderboardEntry.insert(next);
-    else if (
-      current.displayName !== next.displayName ||
-      current.power !== next.power ||
-      current.powerLevel !== next.powerLevel ||
-      current.profileIcon !== next.profileIcon ||
-      current.gender !== next.gender ||
-      current.skinTone !== next.skinTone ||
-      current.headItem !== next.headItem ||
-      current.chestItem !== next.chestItem ||
-      current.feetItem !== next.feetItem ||
-      current.rightHandItem !== next.rightHandItem ||
-      current.leftHandItem !== next.leftHandItem ||
-      current.damage !== next.damage ||
-      current.maxHp !== next.maxHp ||
-      current.armor !== next.armor ||
-      current.regen !== next.regen ||
-      current.playedMicros !== next.playedMicros ||
-      current.isGuest !== next.isGuest
-    ) ctx.db.leaderboardEntry.identity.update(next);
-  }
-
-  const refreshState = ctx.db.leaderboardRefreshState.id.find(1);
-  const nextState = { id: 1, refreshedAtMicros: ctx.timestamp.microsSinceUnixEpoch, version: LEADERBOARD_REFRESH_VERSION };
-  if (refreshState) ctx.db.leaderboardRefreshState.id.update(nextState);
-  else ctx.db.leaderboardRefreshState.insert(nextState);
-}
-
-/**
- * Rebuild for a player's own action (reset, respec, prestige, login move).
- * A rebuild walks every player, so at most one runs per minute: a second
- * request inside that minute only marks the board stale, and the per-minute
- * maintenance pass rebuilds it. Otherwise a script looping a free reset
- * could make the server rank everyone on every call.
- */
-function requestLeaderboardRefresh(ctx: any) {
-  const state = ctx.db.leaderboardRefreshState.id.find(1);
-  if (state?.version === LEADERBOARD_REFRESH_QUEUED) return;
-  if (
-    state?.version === LEADERBOARD_REFRESH_VERSION &&
-    ctx.timestamp.microsSinceUnixEpoch - state.refreshedAtMicros < LEADERBOARD_PLAYER_REFRESH_MIN_MICROS
-  ) {
-    ctx.db.leaderboardRefreshState.id.update({ ...state, version: LEADERBOARD_REFRESH_QUEUED });
-    return;
-  }
-  refreshLeaderboard(ctx);
-}
-
-function refreshLeaderboardIfDue(ctx: any) {
-  const state = ctx.db.leaderboardRefreshState.id.find(1);
-  if (
-    state?.version === LEADERBOARD_REFRESH_VERSION &&
-    ctx.timestamp.microsSinceUnixEpoch - state.refreshedAtMicros < LEADERBOARD_REFRESH_INTERVAL_MICROS
-  ) return;
-  refreshLeaderboard(ctx);
-}
-
 /** What offline-progress.ts needs from this module, wired once. */
 const OFFLINE_GRANT_PORTS = { effectiveStats: effectivePowerStatsForProgress, mapBalance: liveMapBalance,
   statMultiplier: statRewardMultiplier, endlessClaimBit: BOSS_REWARD_CLAIM_BITS[PROCEDURAL_ENTRY_BOSS],
@@ -2291,30 +2053,6 @@ const equipmentCopies = createEquipmentCopies({ requireControllingPlayer, active
 
 const killGems = createKillGems({ applyGemBalanceChange, isVirtualPlayer });
 
-function adjustVirtualPlayerCount(ctx: any, owner: any, change: number) {
-  const current = ctx.db.virtualPlayerLoad.owner.find(owner);
-  const activeCount = Math.max(0, (current?.activeCount ?? 0) + change);
-  if (activeCount === 0) {
-    if (current) ctx.db.virtualPlayerLoad.owner.delete(owner);
-    return;
-  }
-  const next = { owner, activeCount };
-  if (current) ctx.db.virtualPlayerLoad.owner.update(next);
-  else ctx.db.virtualPlayerLoad.insert(next);
-}
-
-function virtualPlayerCountForOwner(ctx: any, owner: any) {
-  const current = ctx.db.virtualPlayerLoad.owner.find(owner);
-  if (current) return current.activeCount;
-
-  // One indexed recount repairs deployments created before the counter table.
-  // Every later authorization is a primary-key lookup plus one increment.
-  let activeCount = 0;
-  for (const _registration of ctx.db.virtualPlayer.byOwner.filter(owner) as Iterable<any>) activeCount += 1;
-  if (activeCount > 0) ctx.db.virtualPlayerLoad.insert({ owner, activeCount });
-  return activeCount;
-}
-
 function clearVirtualPlayersForOwner(ctx: any, owner: any) {
   if (ctx.db.virtualPlayerRun.owner.find(owner)) ctx.db.virtualPlayerRun.owner.delete(owner);
   const identities = [...ctx.db.virtualPlayer.byOwner.filter(owner) as Iterable<any>]
@@ -2327,18 +2065,6 @@ function clearVirtualPlayersForOwner(ctx: any, owner: any) {
   if (ctx.db.virtualPlayerLoad.owner.find(owner)) ctx.db.virtualPlayerLoad.owner.delete(owner);
   refreshLeaderboard(ctx);
   return true;
-}
-
-function clearExpiredVirtualPlayerRuns(ctx: any) {
-  for (const run of [...ctx.db.virtualPlayerRun.iter()] as Iterable<any>) {
-    const ownerActive = Boolean(
-      ctx.db.player.identity.find(run.owner) &&
-      ctx.db.playerController.identity.find(run.owner)
-    );
-    if (!ownerActive || ctx.timestamp.microsSinceUnixEpoch >= run.expiresAtMicros) {
-      ctx.db.virtualPlayerRun.owner.delete(run.owner);
-    }
-  }
 }
 
 function clearOrphanVirtualPlayers(ctx: any) {
@@ -2357,126 +2083,6 @@ function clearOrphanVirtualPlayers(ctx: any) {
   }
   if (!orphaned.length) return;
   for (const identity of orphaned) removeVirtualPlayerData(ctx, identity);
-}
-
-function clearOrphanRealtimeState(ctx: any) {
-  const orphanIdentities: any[] = [];
-  for (const motion of ctx.db.playerMotion.iter() as Iterable<any>) {
-    if (!ctx.db.player.identity.find(motion.identity)) orphanIdentities.push(motion.identity);
-  }
-  for (const identity of orphanIdentities) removePlayerRealtimeState(ctx, identity);
-
-  const orphanNetworkIds: number[] = [];
-  for (const mapping of ctx.db.playerMotionIdentity.iter() as Iterable<any>) {
-    if (!ctx.db.playerMotion.identity.find(mapping.identity)) orphanNetworkIds.push(mapping.networkId);
-  }
-  for (const networkId of orphanNetworkIds) ctx.db.playerMotionIdentity.networkId.delete(networkId);
-}
-
-function ensureMaintenanceSchedule(ctx: any) {
-  for (const _task of ctx.db.maintenanceSchedule.iter()) return;
-  ctx.db.maintenanceSchedule.insert({
-    scheduledId: 0n,
-    scheduledAt: ScheduleAt.interval(MAINTENANCE_INTERVAL_MICROS),
-  });
-}
-
-function ensureMaintenanceSweepSchedule(ctx: any) {
-  for (const _task of ctx.db.maintenanceSweepSchedule.iter()) return;
-  ctx.db.maintenanceSweepSchedule.insert({
-    scheduledId: 0n,
-    scheduledAt: ScheduleAt.interval(5n * MAINTENANCE_INTERVAL_MICROS),
-  });
-}
-
-function insertChatMessage(
-  ctx: any,
-  sender: any,
-  senderName: string,
-  message: string,
-  replayId = 0n,
-  moderated = false,
-  reply?: { messageId: bigint; senderName: string; message: string },
-  guildReplayKey = "",
-) {
-  const progress = readPlayerProgress(ctx, sender);
-  const profile = ctx.db.playerProfile.identity.find(sender);
-  const inserted = ctx.db.chatMessage.insert({
-    id: 0n,
-    sender,
-    senderName,
-    senderIsGuest: ctx.db.playerAccountStatus.identity.find(sender)?.isGuest ?? false,
-    message,
-    replayId,
-    sentAt: ctx.timestamp,
-    powerLevel: progress ? narrowStat(effectivePowerForProgress(ctx, progress)) : 0,
-    senderGender: profile?.gender ?? PLAYER_GENDER_UNSET,
-    moderated,
-    replyToMessageId: reply?.messageId ?? 0n,
-    replyToSenderName: reply?.senderName ?? "",
-    replyToMessage: reply?.message ?? "",
-    guildReplayKey,
-  });
-  updatePublicChatCursor(ctx, inserted.id);
-  return inserted;
-}
-
-function clearExpiredHistory(ctx: any) {
-  const chatCutoff = ctx.timestamp.microsSinceUnixEpoch - CHAT_HISTORY_RETENTION_MICROS;
-  const replayCutoff = ctx.timestamp.microsSinceUnixEpoch - DUEL_REPLAY_RETENTION_MICROS;
-  const staleMessageIds: bigint[] = [];
-  const staleReplayIds: bigint[] = [];
-
-  // Identifiers rise with time, so the expired messages are the oldest ones.
-  // Walking up from the cursor stops at the first survivor instead of reading
-  // the whole day, and it leaves the cursor correct without a second pass.
-  const cursor = ctx.db.publicChatCursor.id.find(0);
-  let firstLiveId = 0n;
-  if (cursor?.firstId) {
-    for (let id = cursor.firstId; id <= cursor.lastId; id++) {
-      const message = ctx.db.chatMessage.id.find(id) as any;
-      if (!message) continue;
-      if (message.sentAt.microsSinceUnixEpoch >= chatCutoff) { firstLiveId = id; break; }
-      staleMessageIds.push(id);
-    }
-  } else {
-    for (const message of ctx.db.chatMessage.iter() as Iterable<any>) {
-      if (message.sentAt.microsSinceUnixEpoch < chatCutoff) staleMessageIds.push(message.id);
-    }
-  }
-  for (const replay of ctx.db.duelReplay.iter() as Iterable<any>) {
-    if (replay.createdAt.microsSinceUnixEpoch < replayCutoff) staleReplayIds.push(replay.id);
-  }
-
-  for (const id of staleMessageIds) { removeMessageReactions(ctx, "public", id); ctx.db.chatMessage.id.delete(id); }
-  for (const id of staleReplayIds) { ctx.db.duelReplay.id.delete(id); ctx.db.duelCombatSnapshot.duelId.delete(id); deleteReplayWide(ctx, id); }
-  pruneExpiredSocialMessages(ctx, ctx.timestamp.microsSinceUnixEpoch);
-  if (cursor?.firstId) ctx.db.publicChatCursor.id.update({ ...cursor, firstId: firstLiveId });
-  else updatePublicChatCursor(ctx);
-}
-
-function trimStartupTelemetry(ctx: ModuleReducerCtx) {
-  const rows = [...ctx.db.startupTelemetryEvent.iter()]
-    .map((row) => ({ id: row.id, recordedAtMicros: row.recordedAt.microsSinceUnixEpoch }));
-  for (const id of startupTelemetryIdsToDelete(
-    rows,
-    ctx.timestamp.microsSinceUnixEpoch,
-    STARTUP_TELEMETRY_MAX_ROWS,
-  )) {
-    ctx.db.startupTelemetryEvent.id.delete(id);
-  }
-}
-
-function clearExpiredStartupTelemetryRateLimits(ctx: ModuleReducerCtx) {
-  const now = ctx.timestamp.microsSinceUnixEpoch;
-  const expiredSenders: Identity[] = [];
-  for (const rate of ctx.db.startupTelemetryRateLimit.iter()) {
-    const startedAt = rate.windowStartedAt.microsSinceUnixEpoch;
-    if (now < startedAt || now - startedAt >= STARTUP_TELEMETRY_RATE_WINDOW_MICROS) {
-      expiredSenders.push(rate.sender);
-    }
-  }
-  for (const sender of expiredSenders) ctx.db.startupTelemetryRateLimit.sender.delete(sender);
 }
 
 function enterWorldPresence(ctx: any, tabId: string, forceTakeover = false, supportsTutorial = false) {
@@ -3159,43 +2765,6 @@ export const claimGuestAccount = spacetimedb.reducer(
   { code: t.string() },
   (ctx, { code }) => claimGuestAccountFor(ctx, code),
 );
-
-function changePlayerDisplayName(ctx: ModuleReducerCtx, displayName: string, expectedCost: number) {
-  const activePlayer = requireControllingPlayer(ctx);
-  const normalized = displayName.trim().replace(/\s+/g, " ");
-  if (!/^[A-Za-z0-9 _-]{2,20}$/.test(normalized)) {
-    throw new SenderError("Name must be 2-20 letters, numbers, spaces, hyphens, or underscores");
-  }
-  requireAllowedDisplayName(normalized);
-
-  const existing = ctx.db.playerProfile.identity.find(ctx.sender);
-  if (existing?.displayName === normalized) return;
-  const cooldown = ctx.db.playerNameCooldown.identity.find(ctx.sender);
-  const terms = nameChangeStatus(cooldown ? Number(cooldown.changedAt.microsSinceUnixEpoch / 1000n) : null,
-    Number(ctx.timestamp.microsSinceUnixEpoch / 1000n), Number(ctx.db.playerGemWallet.identity.find(ctx.sender)?.balance ?? 0n));
-  if (terms.availableAtMs > terms.serverNowMs) throw new SenderError("You can change your name once every 24 hours.");
-  if (expectedCost !== terms.cost) throw new SenderError("Name changes cost 50 Gems after the first free change. Reopen the name editor to continue.");
-  // Every profile is read here, so only after the cheap refusals: a call on cooldown never pays for it.
-  const normalizedComparison = normalized.toLowerCase();
-  for (const profile of ctx.db.playerProfile.iter() as Iterable<any>) {
-    if (!sameIdentity(profile.identity, ctx.sender) && profile.displayName.toLowerCase() === normalizedComparison) {
-      throw new SenderError("Player name is already taken.");
-    }
-  }
-  if (terms.cost > 0) applyGemBalanceChange(ctx, { identity: ctx.sender, delta: -BigInt(terms.cost), kind: "name_change",
-    note: "Player name change", externalReference: `name-change:${ctx.sender.toHexString()}:${ctx.timestamp.microsSinceUnixEpoch}` });
-
-  if (existing) {
-    updateSnapshotRow(ctx, "playerProfile", { ...existing, displayName: normalized });
-  } else {
-    insertSnapshotRow(ctx, "playerProfile", { identity: ctx.sender, displayName: normalized, profileIcon: 0, playerSprite: 0, skinTone: ctx.random.integerInRange(0, PLAYER_SKIN_TONES.length - 1), gender: PLAYER_GENDER_UNSET });
-  }
-  if (cooldown) ctx.db.playerNameCooldown.identity.update({ ...cooldown, changedAt: ctx.timestamp });
-  else ctx.db.playerNameCooldown.insert({ identity: ctx.sender, changedAt: ctx.timestamp });
-  syncDisplayNamePresentation(ctx, ctx.sender, normalized);
-  syncPlayerMotionIdentity(ctx, activePlayer);
-  touchPlayerAccessAudit(ctx, activePlayer.protocolVersion);
-}
 // Older clients and the tutorial may only perform a free initial name choice.
 export const setDisplayName = spacetimedb.reducer({ displayName: t.string() },
   (ctx, { displayName }) => changePlayerDisplayName(ctx, displayName, 0));
@@ -4702,72 +4271,6 @@ export const respecPrestigePerks = spacetimedb.reducer({}, (ctx) => { prestige.r
 export const useFreePrestigeRespec = spacetimedb.reducer({}, (ctx) => { prestige.freeRespecPerks(ctx); });
 export const refreshDailyQuests = spacetimedb.reducer({}, (ctx) => { requireControllingPlayer(ctx); ensureDailyQuests(ctx, ctx.sender); });
 export const collectGuildMemberQuests = spacetimedb.reducer({ member: t.identity() }, (ctx, { member }) => { requireControllingPlayer(ctx); collectMemberQuests(ctx, ctx.sender, member); });
-
-function sendPlayerChatMessage(ctx: ModuleReducerCtx, message: string, replyToMessageId = 0n) {
-  requireControllingPlayer(ctx);
-  const profile = ctx.db.playerProfile.identity.find(ctx.sender);
-  if (!profile) return;
-
-  const normalized = message.trim();
-  if (!normalized) return;
-  if (normalized.length > CHAT_MESSAGE_MAX_LENGTH) {
-    throw new SenderError("Chat message is too long");
-  }
-
-  const bugCommand = /^\/bug(?:\s|$)/i.exec(normalized);
-  const bugReportText = bugCommand ? normalized.slice(bugCommand[0].length).trim() : "";
-  if (bugCommand && !bugReportText) throw new SenderError("Use /bug followed by a description.");
-  if (!bugCommand) assertChatNotMuted(ctx);
-
-  let reply: { messageId: bigint; senderName: string; message: string } | undefined;
-  if (!bugCommand && replyToMessageId > 0n) {
-    const target = ctx.db.chatMessage.id.find(replyToMessageId);
-    if (!target) throw new SenderError("The message you replied to is no longer available.");
-    if (!target.senderName) throw new SenderError("This message cannot be replied to.");
-    reply = {
-      messageId: target.id,
-      senderName: target.senderName,
-      message: target.message,
-    };
-  }
-
-  const cooldown = ctx.db.chatCooldown.identity.find(ctx.sender);
-  if (cooldown && ctx.timestamp.microsSinceUnixEpoch - cooldown.lastSentAt.microsSinceUnixEpoch < CHAT_COOLDOWN_MICROS) {
-    const elapsed = ctx.timestamp.microsSinceUnixEpoch - cooldown.lastSentAt.microsSinceUnixEpoch;
-    const remainingSeconds = Math.max(1, Math.ceil(Number(CHAT_COOLDOWN_MICROS - elapsed) / 1_000_000));
-    throw new SenderError(`Wait ${remainingSeconds} seconds before sending another chat message.`);
-  }
-  if (cooldown) ctx.db.chatCooldown.identity.update({ ...cooldown, lastSentAt: ctx.timestamp });
-  else ctx.db.chatCooldown.insert({ identity: ctx.sender, lastSentAt: ctx.timestamp });
-  if (bugCommand) {
-    ctx.db.bugReport.insert({
-      id: 0n,
-      reporter: ctx.sender,
-      reporterName: profile.displayName,
-      message: bugReportText,
-      protocolVersion: PROTOCOL_VERSION,
-      reportedAt: ctx.timestamp,
-    });
-    return;
-  }
-
-  const moderatedMessage = moderatePublicChatMessage(normalized);
-  const inserted = insertChatMessage(
-    ctx,
-    ctx.sender,
-    profile.displayName,
-    moderatedMessage.message,
-    0n,
-    moderatedMessage.moderated,
-    reply,
-  );
-  if (moderatedMessage.moderated) recordModerationAction(ctx, {
-    targetIdentity: ctx.sender.toHexString(), targetName: profile.displayName, channel: "world", messageId: inserted.id,
-    action: "Message filtered", reason: chatModerationReason(normalized) ?? "Disallowed content",
-    actorType: "automatic", rule: MODERATION_RULE_VERSION, before: normalized, after: moderatedMessage.message,
-  });
-  if (moderatedMessage.moderated) recordChatStrike(ctx, "world", profile.displayName);
-}
 
 export const sendChatMessage = spacetimedb.reducer(
   { message: t.string() },
