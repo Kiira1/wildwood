@@ -15,6 +15,14 @@ process.env.VITE_LOCAL_TESTING = '1';
 let assets = new Map();
 let closing = false, serverNeedsPublish = false, workspace;
 const children = new Set();
+// The default browser on macOS, Windows ("start" is a cmd built-in) and Linux.
+function openBrowser(url) {
+  const [program, args] = process.platform === 'darwin' ? ['open', [url]]
+    : process.platform === 'win32' ? ['cmd', ['/c', 'start', '""', url]]
+    : ['xdg-open', [url]];
+  spawn(program, args, { stdio: 'ignore', windowsVerbatimArguments: true })
+    .once('error', () => console.log(`Open ${url} in your browser.`));
+}
 function command(args, capture = false) {
   return new Promise((done, fail) => {
     const child = spawn(process.env.SPACETIME_BIN || 'spacetime', args, {
@@ -147,7 +155,7 @@ try {
   });
   await server.listen();
   console.log(`\nWildStat local: http://127.0.0.1:${port}/\nCSS updates live. Code rebuilds and refreshes. Server edits republish locally.\nLeave this terminal open; Control-C stops the watcher.\n`);
-  if (process.argv.includes('--open')) spawn('open', [`http://127.0.0.1:${port}/`], { stdio: 'ignore' });
+  if (process.argv.includes('--open')) openBrowser(`http://127.0.0.1:${port}/`);
 } catch (error) {
   console.error(error.message);
   await stop();

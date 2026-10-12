@@ -22,8 +22,7 @@ fail() {
 SPACETIME_BIN="$(command -v spacetime 2>/dev/null || true)"
 NPM_BIN="$(command -v npm 2>/dev/null || true)"
 
-[[ -n "$SPACETIME_BIN" ]] || fail "SpacetimeDB CLI not found. Install it, then reopen this file."
-[[ -n "$NPM_BIN" ]] || fail "npm not found. Install Node.js, then reopen this file."
+[[ -n "$NPM_BIN" ]] || fail "npm not found. Install Node.js (LTS) from https://nodejs.org, then reopen this file."
 [[ -f "$PROJECT_DIR/package.json" ]] || fail "Could not find WildStat package.json above the launchers folder."
 
 cd "$PROJECT_DIR" || fail "Could not open the WildStat folder."
@@ -31,6 +30,24 @@ clear
 print "WILDSTAT LOCAL TEST"
 print "Folder: $PROJECT_DIR"
 print ""
+
+# SpacetimeDB CLI: installed if missing (official installer, into ~/.local/bin), then switched to
+# the version this repository builds with.
+if [[ -z "$SPACETIME_BIN" && "${1:-}" != "--check" ]]; then
+  print "SpacetimeDB: not found, installing it (official installer from spacetimedb.com)"
+  /usr/bin/curl -sSf https://install.spacetimedb.com | sh -s -- -y \
+    || fail "Could not install SpacetimeDB. Install it from https://spacetimedb.com/install, then reopen this file."
+  SPACETIME_BIN="$(command -v spacetime 2>/dev/null || true)"
+fi
+[[ -n "$SPACETIME_BIN" ]] || fail "SpacetimeDB CLI not found. Install it from https://spacetimedb.com/install, then reopen this file."
+
+WANTED_SPACETIME="$("$NPM_BIN" pkg get dependencies.spacetimedb --prefix spacetimedb 2>/dev/null | tr -d '"')"
+if [[ -n "$WANTED_SPACETIME" && "${1:-}" != "--check" ]] \
+  && ! "$SPACETIME_BIN" --version 2>/dev/null | /usr/bin/grep -q "tool version ${WANTED_SPACETIME};"; then
+  print "SpacetimeDB: switching to $WANTED_SPACETIME (the version WildStat builds with)"
+  "$SPACETIME_BIN" version install "$WANTED_SPACETIME" --use -y \
+    || fail "Could not switch SpacetimeDB to $WANTED_SPACETIME."
+fi
 
 if [[ "${1:-}" == "--check" ]]; then
   print "Launcher check passed."
