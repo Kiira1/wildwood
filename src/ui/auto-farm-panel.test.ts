@@ -153,10 +153,9 @@ it('remembers the sliders for the next window, migrating the old 0-200% ones and
   expect(values(s)).toEqual(Object.fromEntries(keys.map(key => [key, key === 'stat:damage' ? 50 : key === zero ? 0 : 25])));
   slide(s, zero, 40);
   s.click('.farm-start');
+  // Saved as the sliders were set, not as the shares they make: 40 beside 50, 25 and 25.
   const saved = JSON.parse(s.storage.values.get(AUTO_FARM_SHARES_KEY)!);
-  expect(sum(saved)).toBe(100);
-  // 40 beside 50, 25 and 25: its share of the four.
-  expect(Math.abs(saved[zero] - 40 / 140 * 100)).toBeLessThanOrEqual(1);
+  expect(saved).toEqual(Object.fromEntries(keys.map(key => [key, key === 'stat:damage' ? 50 : key === zero ? 40 : 25])));
   s.click('.farm-toggle');
   expect(values(s)).toEqual(saved);
   // An old Auto, with nothing saved since, opens as an even split.
@@ -333,6 +332,7 @@ it('has no Push setting, and keeps Target under More', () => {
 it('outside a run, every slider at 0 with Aggro on pulls those groups and stands still (Vis)', () => {
   const s = setup(true, 'endless_1', { pullLimit: () => 1 });
   s.spawnSites.push(...fourStatSites('endless_1'));
+  vi.stubGlobal('localStorage', s.storage);
   s.click('.farm-toggle');
   const keys = Object.keys(values(s));
   for (const key of keys) slide(s, key, 0);
@@ -344,6 +344,26 @@ it('outside a run, every slider at 0 with Aggro on pulls those groups and stands
   s.click('.farm-start');
   expect(s.farm.state().active).toBe(true);
   expect(s.farm.pulledGroupKeys()).toEqual([keys[1]]);
+  // The sliders stay at 0% for the next window (BillyBigBalls: "it always goes back up").
+  s.farm.stop();
+  s.click('.farm-toggle');
+  expect(Object.values(values(s))).toEqual(keys.map(() => 0));
+});
+
+it('keeps the sliders as left when the window closes without starting', () => {
+  const s = setup(true, 'endless_1');
+  s.spawnSites.push(...fourStatSites('endless_1'));
+  vi.stubGlobal('localStorage', s.storage);
+  s.click('.farm-toggle');
+  const keys = Object.keys(values(s));
+  for (const key of keys) slide(s, key, 0);
+  s.click('.farm-close');
+  s.click('.farm-toggle');
+  expect(Object.values(values(s))).toEqual(keys.map(() => 0));
+  slide(s, keys[0], 70);
+  s.click('.farm-close');
+  s.click('.farm-toggle');
+  expect(values(s)[keys[0]]).toBe(70);
 });
 
 it('in an Aggro run, every slider at 0 starts on the chasing groups alone', () => {

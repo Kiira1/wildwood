@@ -166,6 +166,12 @@ export function createAutoFarmPanel(options: {
    * pulled now (the limit at once), so nothing waiting its turn sends it walking.
    */
   const pullOnly = () => !aggroRun() && nothingSet() && options.farm.pulledGroupKeys().length > 0;
+  /** Sliders all at 0%: the chasing groups in an Aggro run, or the pulled ones outside it. Null when a slider is set. */
+  function zeroPlan(shares: FarmShares) {
+    if (groupKeys().some(key => (shares[key] ?? 0) > 0)) return null;
+    const keys = aggroRun() ? options.farm.chasingGroupKeys() : options.farm.pulledGroupKeys();
+    return keys.length ? keys : null;
+  }
   function updateSelection() {
     // Each slider moves on its own; the number beside it is its share of all of them, so they always read 100% together.
     const shares = nothingSet() ? {} : sharesForGroups(draft, groupKeys());
@@ -283,8 +289,8 @@ export function createAutoFarmPanel(options: {
       }
       list.hidden = !choices.length;
       statsRow.hidden = !choices.length;
-      // A map whose groups changed while open: its own groups, in the proportions set (all at 0 stays at 0).
-      if (!nothingSet()) draft = sharesForGroups(draft, choices.map(choice => choice.key));
+      // This map's groups, each slider where it was left (not turned into shares, so 100% and 100% stay put).
+      draft = Object.fromEntries(choices.map(choice => [choice.key, Math.min(100, Math.max(0, draft[choice.key] ?? 0))]));
       emptyNote.hidden = Boolean(choices.length);
     }
     updateSelection();
@@ -310,6 +316,8 @@ export function createAutoFarmPanel(options: {
 
   function close() {
     if (content.hidden) return false;
+    // Not farming, the sliders stay as they were left; farming, the window keeps showing what is running.
+    if (!farming() && groupKeys().length) options.farm.rememberShares(draft);
     const restoreFocus = content.contains(document.activeElement) || document.activeElement === helpToggle;
     setHelpOpen(false);
     setExpanded(false);
@@ -400,9 +408,9 @@ export function createAutoFarmPanel(options: {
   startButton.addEventListener('click', () => {
     // Go while farming: farming goes on, restarted only if the sliders changed.
     if (farming() && sameShares(draft, options.farm.savedShares())) { close(); return; }
-    // All at 0% in an Aggro run: the chasing groups, without saving them as the sliders.
-    // All at 0%: the chasing groups in a run, or the pulled ones outside it, without saving them as the sliders.
-    const plan = chaseOnly() ? options.farm.chasingGroupKeys() : pullOnly() ? options.farm.pulledGroupKeys() : null;
+    // All at 0%: the chasing groups in a run, or the pulled ones outside it, with the sliders saved at 0%.
+    const plan = zeroPlan(draft);
+    if (plan) options.farm.rememberShares(draft);
     if (plan ? options.farm.start(plan, false) : options.farm.start(draft)) close();
     else updateSelection();
   });
@@ -420,7 +428,10 @@ export function createAutoFarmPanel(options: {
     if (top && top !== backButton) return;
     event.preventDefault();
     if (farming()) options.farm.stop();
-    else if (!options.farm.start(options.farm.savedShares())) open();
+    else {
+      const saved = options.farm.savedShares(), plan = zeroPlan(saved);
+      if (!(plan ? options.farm.start(plan, false) : options.farm.start(saved))) open();
+    }
     refresh();
   };
   // Capture: a click leaves focus on the card, and the card keeps keys pressed on it from the world.

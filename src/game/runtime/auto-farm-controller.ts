@@ -204,11 +204,22 @@ export function createAutoFarmController(options: {
     for (const [key, value] of Object.entries(next)) { const group = normalizeKey(key); out[group] = Math.max(out[group] ?? 0, value); }
     return out;
   }
-  /** The sliders saved for this map's groups (an even split when none is), the 0-200% ones of before migrated. */
+  /**
+   * The sliders saved for this map's groups as the player left them, each 0-100% and all at 0% kept (Pull Only
+   * and Chase Only start from that). An even split when none of them is saved; the 0-200% ones of before migrated.
+   */
   function savedShares(): FarmShares {
     const here = groups(), mapId = options.mapId();
-    const saved = normalizeShares(readSavedShares(mapId, options.priorityStorage)) ?? legacyShares(here, mapId, options.priorityStorage, normalizeKey);
-    return sharesForGroups(saved, here);
+    const saved = normalizeShares(readSavedShares(mapId, options.priorityStorage));
+    if (saved && here.some(key => key in saved)) {
+      return Object.fromEntries(here.map(key => [key, Math.min(100, Math.max(0, Math.round(saved[key] ?? 0)))]));
+    }
+    return sharesForGroups(saved ?? legacyShares(here, mapId, options.priorityStorage, normalizeKey), here);
+  }
+  /** Saves the sliders as set, for the window and F to start from: this map's groups, 0% ones included. */
+  function rememberShares(next: FarmShares) {
+    const picked = normalizeShares(next) ?? {};
+    writeSavedShares(Object.fromEntries(groups().map(key => [key, picked[key] ?? 0])), options.mapId(), options.priorityStorage);
   }
 
   // An Aggro run's groups (aggro-picks.ts), read at most twice a second. A run always has its count:
@@ -423,7 +434,8 @@ export function createAutoFarmController(options: {
     startedMap = options.mapId();
     startedIdentity = options.localIdentity?.();
     pendingResume = null;
-    if (remember) writeSavedShares(shares, options.mapId(), options.priorityStorage);
+    // Sliders are saved as set, not as the shares they make: 100% and 100% stay 100% and 100%.
+    if (remember) { if (listed) writeSavedShares(shares, options.mapId(), options.priorityStorage); else rememberShares(picked ?? {}); }
     if (startedIdentity) options.resumeStore?.write({ identity: startedIdentity, map: startedMap, choice: encodeFarmPlan(shares) });
     recovering = false;
     readySince = null;
@@ -618,8 +630,9 @@ export function createAutoFarmController(options: {
     moveReady: () => moveStatus() === 'Moving On',
     bossStatus: bossLine,
     bossReady: () => ['Boss Next', 'Fighting Boss'].includes(bossLine()),
-    /** The sliders saved for this map, for the panel to show. */
+    /** The sliders saved for this map, for the panel to show, and saving them without starting. */
     savedShares,
+    rememberShares,
     priority: () => priority,
     /**
      * The Target rule combat aims by: while farming (a pulled crowd too) and all
