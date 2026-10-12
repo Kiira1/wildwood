@@ -292,7 +292,7 @@ it('shows the Aggro switches and Target in the window with no More to open, even
   s.click('.farm-aggro-switch');
   expect(s.farm.pulledGroupKeys()).toHaveLength(1);
 });
-it('switches Aggro beside each slider up to its limit, counts them on top, and hides them during an Aggro run', () => {
+it('switches Aggro on for any number of groups, pulls up to its limit, counts them on top, and hides them during an Aggro run', () => {
   let limit = 2;
   const s = setup(true, 'endless_1', { pullLimit: () => limit });
   s.spawnSites.push(...fourStatSites('endless_1'));
@@ -306,12 +306,15 @@ it('switches Aggro beside each slider up to its limit, counts them on top, and h
   expect(new Set(s.farm.pulledGroupKeys())).toEqual(new Set([keys[2], keys[0]]));
   expect(count().textContent).toBe('Aggro 2/2');
   expect(aggro(keys[0]).getAttribute('aria-checked')).toBe('true');
-  // Full: the rest wait for one to be switched off, rather than swapping one out.
-  expect(aggro(keys[1]).disabled).toBe(true);
-  expect(s.farm.setGroupPulled(keys[1], true)).toBe(false);
+  // Any number can be on; it still pulls two at once.
+  s.click(`[data-group="${keys[1]}"] .farm-aggro-switch`);
+  expect(new Set(s.farm.aggroGroupKeys())).toEqual(new Set([keys[0], keys[1], keys[2]]));
+  expect(aggro(keys[1]).getAttribute('aria-checked')).toBe('true');
+  expect(s.farm.pulledGroupKeys()).toHaveLength(2);
+  expect(count().textContent).toBe('Aggro 2/2');
   s.click(`[data-group="${keys[2]}"] .farm-aggro-switch`);
+  s.click(`[data-group="${keys[1]}"] .farm-aggro-switch`);
   expect(s.farm.pulledGroupKeys()).toEqual([keys[0]]);
-  expect(aggro(keys[1]).disabled).toBe(false);
   limit = 0; s.panel.refresh();
   expect(count().hidden).toBe(true);
   expect(aggro(keys[0]).hidden).toBe(true);

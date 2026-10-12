@@ -22,7 +22,7 @@ const HELP_LINES: readonly [term: string, line: string][] = [
   ['Move On', "Goes to the next map once your power reaches Move At times the map's (1x is even)."],
   ['Fight Bosses', "Fights the boss once your power reaches Fight At times the boss's (1x is even), until it or you go down."],
   ['Deaths', 'It respawns and carries on with the same settings.'],
-  ['Aggro', 'The switch beside a stat pulls its whole camp to you. One camp at once, one more for each Aggro win.'],
+  ['Aggro', 'Switch on any stats to pull their camps to you. It pulls one camp at once (one more for each Aggro win), the one it is farming first.'],
   ['Target', 'Which enemy it hits first.'],
 ]
 /** The slider under a switch: how much of the map's or boss's power to have before it goes, 0.1x to 10x. */
@@ -179,17 +179,17 @@ export function createAutoFarmPanel(options: {
       // Dimmed while its switch is off, but never locked: it can be set first and switched on after.
       power.row.classList.toggle('is-off', !power.on());
     }
-    // Aggro beside each slider: up to the limit (one, one more per Aggro win); hidden during an Aggro run, whose chasing groups are its pull.
-    const limit = options.farm.pullLimit(), pulled = options.farm.pulledGroupKeys();
+    // Aggro beside each slider: any number on, pulled as many at once as the limit (one, one more per Aggro win);
+    // hidden during an Aggro run, whose chasing groups are its pull.
+    const limit = options.farm.pullLimit(), pulled = options.farm.pulledGroupKeys(), switched = options.farm.aggroGroupKeys();
     const countText = `Aggro ${pulled.length}/${limit}`;
     aggroCount.hidden = limit === 0;
     if (aggroCount.textContent !== countText) aggroCount.textContent = countText;
     for (const row of list.querySelectorAll<HTMLElement>('[data-group]')) {
-      const aggro = row.querySelector<HTMLButtonElement>('.farm-aggro-switch')!, on = pulled.includes(row.dataset.group!);
+      const aggro = row.querySelector<HTMLButtonElement>('.farm-aggro-switch')!, on = switched.includes(row.dataset.group!);
       aggro.hidden = limit === 0;
       aggro.setAttribute('aria-checked', String(on));
-      aggro.disabled = !on && pulled.length >= limit;
-      aggro.title = aggro.disabled ? `Aggro Pulls ${limit} At Once: Switch One Off First` : '';
+      aggro.title = on && !pulled.includes(row.dataset.group!) ? `Waiting: Aggro Pulls ${limit} At Once` : '';
     }
     // While farming the window is a look and a change: Stop ends the farm, Go keeps it going with what is set.
     const live = farming();

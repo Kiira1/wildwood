@@ -2,6 +2,7 @@ export const RELEASE_NOTES: Record<string, string[]> = {
   "0.901.52": [
     "Auto Farm's Target Strongest takes on the boss when it is in range, not only once nothing else is",
     "The quest tracker shows where each quest is in larger, brighter text",
+    "Auto Farm: switch Aggro on for as many stats as you like; it still pulls one camp at once (one more for each Aggro win), the one it is farming first",
   ],
   "0.901.51": [
     "New Bonuses tab in your profile: switch any prestige perk, research, soul stat or challenge reward off, one at a time, a group at once, or all of them; nothing is lost",
