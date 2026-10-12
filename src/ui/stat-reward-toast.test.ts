@@ -30,7 +30,7 @@ it("names a curve map's speed reward Attack Speed", () => {
   expect(statRewardToastModel("+0.36 Attack Speed")).toMatchObject({ stat: "ATTACK SPEED", value: .36, label: "Attack Speed" });
 });
 
-it("shows soul stat gains as stat gains, apart from the run's own, attack speed and crit damage as rating points", async () => {
+it("shows soul stat gains as stat gains, apart from the run's own: crit damage as ×, attack speed as /s", async () => {
   const { SOUL_STAT_DETAILS } = await import("../../shared/soul-dimension");
   const { soulRewardText } = await import("../game/soul-world");
   for (const [stat, detail] of Object.entries(SOUL_STAT_DETAILS)) {
@@ -41,7 +41,7 @@ it("shows soul stat gains as stat gains, apart from the run's own, attack speed 
     expect(model!.stat).not.toBe(statRewardToastModel("+1 Damage")!.stat);
   }
   expect(formatStatRewardToastAmount("SOUL CRIT DAMAGE", .002 * 3)).toBe("+0.006×");
-  expect(formatStatRewardToastAmount("SOUL ATTACK SPEED", 3)).toBe("+3");
+  expect(formatStatRewardToastAmount("SOUL ATTACK SPEED", .001 * 3)).toBe("+0.003/s");
   expect(statRewardToastModel("+2.50 Crit Damage")).toMatchObject({ stat: "CRIT DAMAGE", value: 2.5, label: "Crit Damage" });
   expect(formatStatRewardToastAmount("SOUL DAMAGE", 12)).toBe("+12");
 });

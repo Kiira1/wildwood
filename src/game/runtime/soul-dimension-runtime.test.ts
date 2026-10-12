@@ -1,4 +1,3 @@
-import { attackIntervalForRating, attackSpeedRatingForInterval } from "../../../shared/stat-rating";
 import { expect, it, vi } from "vitest";
 vi.mock("../../app/developer", () => ({ isDeveloperIdentity: () => false }));
 import { SOUL_CAMPS, SOUL_MAP_ID, SOUL_POPULATION, soulTierKillsNeeded } from "../../../shared/soul-dimension";
@@ -8,6 +7,7 @@ import type { MapId, SpawnSite } from "../world";
 import { createSoulDimensionRuntime } from "./soul-dimension-runtime";
 import type { EnemyState, PlayerState } from "./types";
 import { critDamageForLevels, ratingLevels } from "../../../shared/stat-rating";
+import { soulAttackSpeedBonus } from "../../../shared/soul-dimension";
 
 function dimension(options: { kills?: number; prestige?: number; map?: MapId } = {}) {
   const player = { x: 0, y: 0, r: 16, hp: 100, maxHp: 100, moving: false, facing: 0 } as unknown as PlayerState;
@@ -78,8 +78,8 @@ it("adds the soul stats once, however many saves and loads go round, and none du
   expect(playing.armor).toBe(60);
   expect(playing.regen).toBe(6);
   expect(playing.maxHp).toBe(1_505);
-  // Soul attack speed is rating on top of the run's (stat-rating.ts).
-  expect(playing.attackRate).toBeCloseTo(attackIntervalForRating(attackSpeedRatingForInterval(1) + .5), 9);
+  // Soul attack speed adds its attacks a second flat on top of the run's (soulAttackSpeedBonus), once.
+  expect(1 / playing.attackRate).toBeCloseTo(1 + soulAttackSpeedBonus(.5), 9);
   // A challenge plays from its own start: no soul stats at all.
   aggro = true;
   expect(runtime.withSoul(saved)).toMatchObject({ damage: 50, maxHp: 500, armor: 10, regen: 1, attackRate: 1 });

@@ -99,9 +99,9 @@ it("migration 54 turns soul attack speed and crit damage into ratings, nobody we
   expect(criticalDamage({ soul: f.db.playerSoulStats.identity.find(other).critDamage }).uncapped).toBeCloseTo(61.05, 6);
   // A fresh run with this soul starts at 0.64 + 1 attacks a second, as it did.
   expect(1 / withSoulStats({ damage: 1, maxHp: 1, armor: 0, regen: 0, attackRate: DEFAULT_ATTACK_INTERVAL }, mine).attackRate).toBeCloseTo(1 / DEFAULT_ATTACK_INTERVAL + 1, 5);
-  // This run at 1.5 a second plus the soul's 1 was 2.5: its interval is raised so the two still give 2.5.
+  // This run at 1.5 a second plus the soul's 1 was 2.5: nobody plays slower than that (since 0.901.55 the soul adds flat on top).
   const progress = f.db.playerProgress.identity.find(f.ctx.sender);
-  expect(1 / withSoulStats(progress, mine).attackRate).toBeCloseTo(2.5, 4);
+  expect(1 / withSoulStats(progress, mine).attackRate).toBeGreaterThanOrEqual(2.5 - 1e-6);
   // Running it again changes nothing.
   f.run(server.onConnect);
   expect(f.db.playerSoulStats.identity.find(f.ctx.sender).attackSpeed).toBe(mine.attackSpeed);

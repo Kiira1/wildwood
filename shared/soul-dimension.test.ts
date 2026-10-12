@@ -2,7 +2,7 @@ import { challengeMinimumInterval } from "./prestige-challenge";
 import { RATING_MAX, attackIntervalForRating, attackSpeedRatingForInterval } from "./stat-rating";
 import { describe, expect, it } from "vitest";
 import {
-  addSoulKills, cleanSoulStats, EMPTY_SOUL_STATS, soulCritRatingAfterKills, soulDimensionAccess, soulEnemyStats, soulStatsUnlocked, soulTier, soulTierKillsNeeded, withSoulStats, withoutSoulStats, SOUL_CAMPS, SOUL_POPULATION, SOUL_TIER_KILL_TYPES,
+  addSoulKills, cleanSoulStats, EMPTY_SOUL_STATS, soulAttackSpeedBonus, soulAttackSpeedRatingAfterKills, soulCritRatingAfterKills, soulDimensionAccess, soulEnemyStats, soulStatsUnlocked, soulTier, soulTierKillsNeeded, withSoulStats, withoutSoulStats, SOUL_CAMPS, SOUL_POPULATION, SOUL_TIER_KILL_TYPES,
 } from "./soul-dimension";
 import { MIN_ATTACK_INTERVAL } from "./rules";
 import { decodePlayerMapFrame, decodePlayerMotionFrame, encodePlayerMapFrame, encodePlayerMotionFrame } from "./player-motion-frame";
@@ -48,11 +48,13 @@ describe("soul stats", () => {
     expect(critDamageForLevels(ratingLevels(soul.critDamage))).toBeCloseTo(1.06, 9);
   });
 
-  it("add to a run's base stats, attack speed as rating on the run's, never past the cap nor slowing a faster run", () => {
+  it("add to a run's base stats, attack speed flat on top of the run's, never past the cap nor slowing a faster run", () => {
     const run = { damage: 10, maxHp: 100, armor: 5, regen: 1, attackRate: attackIntervalForRating(200) };
-    const boosted = withSoulStats(run, { damage: 2, maxHp: 50, armor: 1, regen: .5, attackSpeed: 100 });
+    const soulSpeed = soulAttackSpeedRatingAfterKills(0, 100);
+    const boosted = withSoulStats(run, { damage: 2, maxHp: 50, armor: 1, regen: .5, attackSpeed: soulSpeed });
     expect(boosted).toMatchObject({ damage: 12, maxHp: 150, armor: 6, regen: 1.5 });
-    expect(boosted.attackRate).toBeCloseTo(attackIntervalForRating(300), 9);
+    // A hundred soul kills: 0.1 attacks a second more, whatever the run's own rating.
+    expect(1 / boosted.attackRate - 1 / run.attackRate).toBeCloseTo(.1, 9);
     expect(withSoulStats(run, { attackSpeed: RATING_MAX }).attackRate).toBeCloseTo(MIN_ATTACK_INTERVAL);
     const challenge = { ...run, attackRate: MIN_ATTACK_INTERVAL * .8 };
     expect(withSoulStats(challenge, { attackSpeed: 1 }).attackRate).toBe(challenge.attackRate);
@@ -63,13 +65,14 @@ describe("soul stats", () => {
     // Two wins: the base cap plus a whole attack a second, and a run already at the base cap.
     const cap = challengeMinimumInterval({ active: false, completed: 2 });
     const run = { damage: 10, maxHp: 100, armor: 5, regen: 1, attackRate: attackIntervalForRating(400, cap) };
-    const boosted = withSoulStats(run, { attackSpeed: 100 }, cap);
-    expect(attackSpeedRatingForInterval(boosted.attackRate, cap)).toBeCloseTo(500, 6);
-    expect(1 / boosted.attackRate).toBeGreaterThan(1 / attackIntervalForRating(500));
+    const soulSpeed = soulAttackSpeedRatingAfterKills(0, 100);
+    const boosted = withSoulStats(run, { attackSpeed: soulSpeed }, cap);
+    expect(1 / boosted.attackRate - 1 / run.attackRate).toBeCloseTo(.1, 9);
+    expect(attackSpeedRatingForInterval(boosted.attackRate, cap)).toBeGreaterThan(400);
     expect(withSoulStats(run, { attackSpeed: RATING_MAX }, cap).attackRate).toBeCloseTo(cap);
-    expect(withoutSoulStats(boosted, { attackSpeed: 100 }, 9, cap).attackRate).toBeCloseTo(run.attackRate, 9);
+    expect(withoutSoulStats(boosted, { attackSpeed: soulSpeed }, 9, cap).attackRate).toBeCloseTo(run.attackRate, 9);
     // At the cap it cannot be undone exactly, so the saved interval stands.
-    expect(withoutSoulStats({ ...run, attackRate: cap }, { attackSpeed: 100 }, .7, cap).attackRate).toBe(.7);
+    expect(withoutSoulStats({ ...run, attackRate: cap }, { attackSpeed: soulSpeed }, .7, cap).attackRate).toBe(.7);
   });
 });
 
@@ -124,7 +127,7 @@ describe("wide motion frames", () => {
 });
 
 it("keeps soul attack speed and crit damage as rating points, never past the rating's top", () => {
-  expect(addSoulKills(EMPTY_SOUL_STATS, "attackSpeed", 3).attackSpeed).toBe(3);
+  expect(soulAttackSpeedBonus(addSoulKills(EMPTY_SOUL_STATS, "attackSpeed", 3).attackSpeed)).toBeCloseTo(.003, 9);
   expect(addSoulKills({ ...EMPTY_SOUL_STATS, critDamage: RATING_MAX }, "critDamage", 10).critDamage).toBe(RATING_MAX);
   expect(cleanSoulStats({ attackSpeed: 1e305 }).attackSpeed).toBe(RATING_MAX);
 });
@@ -137,5 +140,26 @@ describe("soul crit damage at the old pace (0.901.47.1)", () => {
     // 50x to 100x is 25,000 kills, as it was.
     expect(soulCritRatingAfterKills(at50, 25_000)).toBe(RATING_MAX);
     expect(critDamageForLevels(ratingLevels(soulCritRatingAfterKills(at50, 24_990)))).toBeLessThan(100);
+  });
+});
+
+describe("soul attack speed at the old pace (0.901.55)", () => {
+  it("adds 0.001 attacks a second a kill, flat, however much the soul or the run already has", () => {
+    expect(soulAttackSpeedBonus(soulAttackSpeedRatingAfterKills(0, 1))).toBeCloseTo(.001, 9);
+    const at2 = soulAttackSpeedRatingAfterKills(0, 2_000);
+    expect(soulAttackSpeedBonus(at2)).toBeCloseTo(2, 6);
+    expect(soulAttackSpeedBonus(soulAttackSpeedRatingAfterKills(at2, 1)) - soulAttackSpeedBonus(at2)).toBeCloseTo(.001, 6);
+    // A fresh character's whole gap to the base cap of 3 a second is 2,360 kills, as before 0.901.47.
+    const fresh = { damage: 1, maxHp: 1, armor: 0, regen: 0, attackRate: 1 / .641 };
+    expect(1 / withSoulStats(fresh, { attackSpeed: soulAttackSpeedRatingAfterKills(0, 2_360) }).attackRate).toBeCloseTo(3, 2);
+  });
+
+  it("leaves a soul that was farmed to the top at the top: anyone's own cap", () => {
+    expect(soulAttackSpeedBonus(RATING_MAX)).toBe(Number.POSITIVE_INFINITY);
+    // Past the base cap's 2.36 a second, a soul is Max.
+    expect(soulAttackSpeedRatingAfterKills(0, 2_400)).toBe(RATING_MAX);
+    expect(soulAttackSpeedRatingAfterKills(RATING_MAX, 5)).toBe(RATING_MAX);
+    const fresh = { damage: 1, maxHp: 1, armor: 0, regen: 0, attackRate: 1 / .641 };
+    expect(withSoulStats(fresh, { attackSpeed: RATING_MAX }).attackRate).toBeCloseTo(MIN_ATTACK_INTERVAL, 9);
   });
 });

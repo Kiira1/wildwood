@@ -18,7 +18,7 @@ import { armorDamageReduction } from "./combat";
 import { MIN_ATTACK_INTERVAL, TUTORIAL_FOREST_MAP_ID } from "./rules";
 import { CAMPAIGN_GATEWAYS } from "./map-gateways";
 import { TOWN_MAP_ID } from "./town";
-import { attackIntervalForRating, attackSpeedRatingForInterval, cleanRating, critDamageForLevels, critDamageLevelsFor, CRIT_DAMAGE_TARGET, RATING_MAX, ratingForLevels, ratingLevels, type AttackCapArg } from "./stat-rating";
+import { attackCapInterval, attackSpeedRatingFor, attacksPerSecondForRating, ATTACK_SPEED_START, cleanRating, critDamageForLevels, critDamageLevelsFor, CRIT_DAMAGE_TARGET, RATING_MAX, ratingForLevels, ratingLevels, type AttackCapArg } from "./stat-rating";
 
 export const SOUL_MAP_ID = "soul_dimension";
 export type SoulMapId = typeof SOUL_MAP_ID;
@@ -40,8 +40,8 @@ export const SOUL_STAT_DETAILS: Readonly<Record<SoulStatId, { label: string; sho
   health: { label: "Health", short: "HP", reward: 1, color: "#7ee08a" },
   armor: { label: "Armor", short: "Armor", reward: 1, color: "#9cc3ff" },
   regen: { label: "Regen", short: "Regen", reward: .1, color: "#7fe8d8" },
-  // Rating points (stat-rating.ts) added to the run's. A map 1 attack speed kill pays 2.5, so these are small.
-  attackSpeed: { label: "Attack Speed", short: "Atk Spd", reward: 1, color: "#ffd36e" },
+  // Attacks a second a kill, flat, as before 0.901.47, turned into rating (soulAttackSpeedRatingAfterKills).
+  attackSpeed: { label: "Attack Speed", short: "Atk Spd", reward: .001, color: "#ffd36e" },
   // Crit multiplier a kill, as before 0.901.47, turned into rating (soulCritRatingAfterKills).
   critDamage: { label: "Crit Damage", short: "Crit Dmg", reward: .002, color: "#e7a6ff" },
 };
@@ -90,6 +90,7 @@ export function addSoulKills(soul: Partial<SoulStats> | null | undefined, stat: 
   const next = { ...EMPTY_SOUL_STATS, ...cleanSoulStats(soul) };
   const field = SOUL_STAT_FIELD[stat], kills = Math.max(0, Math.floor(count));
   next[field] = stat === "critDamage" ? soulCritRatingAfterKills(next[field], kills)
+    : stat === "attackSpeed" ? soulAttackSpeedRatingAfterKills(next[field], kills)
     : Math.min(RATING_MAX, next[field] + SOUL_STAT_DETAILS[stat].reward * kills);
   return next;
 }
@@ -106,6 +107,28 @@ export function soulCritRatingAfterKills(rating: number, kills: number) {
   const target = critDamageForLevels(ratingLevels(current)) + step;
   return Math.max(current, target >= CRIT_DAMAGE_TARGET ? RATING_MAX : ratingForLevels(critDamageLevelsFor(target)));
 }
+/**
+ * Attacks a second the soul adds, flat, on top of the run's own. Added to the run's rating instead
+ * (0.901.47), a soul kill paid 1 rating, next to nothing, so whoever had farmed it before stayed at the cap
+ * and nobody after could catch up (Ryan, 0.901.55). Each kill now adds its 0.001 a second again.
+ *
+ * The stored rating is read on the base curve (to 3 a second), the one migration 54 turned the old
+ * attacks-a-second values into ratings on, so every soul keeps exactly what it had. A soul at the rating's
+ * top (Max: what the old values past that curve became) fills anyone to their own cap, as Max did before.
+ */
+export function soulAttackSpeedBonus(rating: unknown) {
+  const clean = cleanRating(rating);
+  if (clean >= RATING_MAX) return Number.POSITIVE_INFINITY;
+  return clean > 0 ? Math.max(0, attacksPerSecondForRating(clean) - ATTACK_SPEED_START) : 0;
+}
+
+/** A soul's attack speed rating after `kills` more, each adding SOUL_STAT_DETAILS' 0.001 a second to soulAttackSpeedBonus; Max past the base cap. */
+export function soulAttackSpeedRatingAfterKills(rating: number, kills: number) {
+  const current = cleanRating(rating), step = SOUL_STAT_DETAILS.attackSpeed.reward * Math.max(0, kills);
+  if (!(step > 0) || current >= RATING_MAX) return current;
+  return Math.max(current, attackSpeedRatingFor(ATTACK_SPEED_START + soulAttackSpeedBonus(current) + step));
+}
+
 export function cleanSoulStats(soul: Partial<SoulStats> | null | undefined): SoulStats {
   const clean = { ...EMPTY_SOUL_STATS };
   for (const key of Object.keys(clean) as (keyof SoulStats)[]) {
@@ -119,11 +142,10 @@ export function cleanSoulStats(soul: Partial<SoulStats> | null | undefined): Sou
 
 /**
  * A run's base stats with the soul's added: what every combat read starts
- * from. Attack speed and crit damage are ratings (stat-rating.ts). The soul's
- * attack speed adds to the run's, read back from its interval under the
- * player's cap, `minInterval` (an AttackCap with Quick Draw in): the usual one, or the higher one Reflect Only
- * wins earn (challengeMinimumInterval). Crit damage adds where the multiplier
- * is worked out (critical-damage.ts).
+ * from. The soul's attack speed adds its attacks a second flat (soulAttackSpeedBonus) on top of the run's,
+ * stopped at the player's cap, `minInterval` (an AttackCap with Quick Draw in): the usual one, or the higher
+ * one Reflect Only wins earn (challengeMinimumInterval). Crit damage adds where the multiplier is worked out
+ * (critical-damage.ts).
  */
 export function withSoulStats<T extends { damage: number; maxHp: number; armor: number; regen: number; attackRate: number }>(
   progress: T, soul: Partial<SoulStats> | null | undefined, minInterval: AttackCapArg = MIN_ATTACK_INTERVAL,
@@ -132,8 +154,8 @@ export function withSoulStats<T extends { damage: number; maxHp: number; armor: 
   const clean = cleanSoulStats(soul);
   if (!clean.damage && !clean.maxHp && !clean.armor && !clean.regen && !clean.attackSpeed) return progress;
   const interval = progress.attackRate > 0 ? progress.attackRate : 1;
-  const faster = clean.attackSpeed > 0
-    ? attackIntervalForRating(attackSpeedRatingForInterval(interval, minInterval) + clean.attackSpeed, minInterval) : interval;
+  const bonus = soulAttackSpeedBonus(clean.attackSpeed);
+  const faster = bonus > 0 ? Math.max(attackCapInterval(minInterval), 1 / (1 / interval + bonus)) : interval;
   return {
     ...progress,
     damage: progress.damage + clean.damage,
@@ -156,9 +178,12 @@ export function withoutSoulStats<T extends { damage: number; maxHp: number; armo
   const clean = cleanSoulStats(soul);
   if (!clean.damage && !clean.maxHp && !clean.armor && !clean.regen && !clean.attackSpeed) return progress;
   let attackRate = progress.attackRate;
-  if (clean.attackSpeed > 0) {
-    const total = attackSpeedRatingForInterval(progress.attackRate, minInterval);
-    attackRate = total < RATING_MAX && total > clean.attackSpeed ? attackIntervalForRating(total - clean.attackSpeed, minInterval) : savedAttackRate;
+  const bonus = soulAttackSpeedBonus(clean.attackSpeed);
+  if (bonus > 0) {
+    // At the cap the soul's share can't be told from the run's: the run's saved interval stands.
+    const atCap = !(progress.attackRate > attackCapInterval(minInterval) * (1 + 1e-9));
+    const run = 1 / progress.attackRate - bonus;
+    attackRate = !atCap && run > 0 ? 1 / run : savedAttackRate;
   }
   return {
     ...progress,

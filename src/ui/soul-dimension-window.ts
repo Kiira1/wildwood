@@ -1,10 +1,9 @@
 import {
-  SOUL_STAT_DETAILS, SOUL_STAT_ORDER, SOUL_TIER_COUNT, SOUL_TIER_KILL_TYPES, soulStatsUnlocked, soulStatValue, soulTierKillsNeeded,
+  soulAttackSpeedBonus, SOUL_STAT_DETAILS, SOUL_STAT_ORDER, SOUL_TIER_COUNT, SOUL_TIER_KILL_TYPES, soulStatsUnlocked, soulStatValue, soulTierKillsNeeded,
   type RewardKillCounts, type SoulStats, type SoulTierKillType,
 } from "../../shared/soul-dimension";
 import { formatCompactNumber as compactNumber } from "../../shared/compact-number";
 import { RATING_MAX } from "../../shared/stat-rating";
-import { formatRating } from "./rating-text";
 import { soulCritDamageBonus } from "../../shared/critical-damage";
 
 const KILL_LABELS: Readonly<Record<SoulTierKillType, string>> = {
@@ -24,7 +23,8 @@ export type SoulWindowState = {
 function soulValue(soul: SoulStats, stat: (typeof SOUL_STAT_ORDER)[number]) {
   const value = soulStatValue(soul, stat);
   if (stat === "critDamage") return `+${soulCritDamageBonus(value).toFixed(2)}×`;
-  if (stat === "attackSpeed") return value >= RATING_MAX ? "Max" : `+${formatRating(value)}`;
+  // Attacks a second the soul adds, flat (soulAttackSpeedBonus); Max once it fills anyone's cap.
+  if (stat === "attackSpeed") return value >= RATING_MAX ? "Max" : `+${soulAttackSpeedBonus(value).toFixed(3)}/s`;
   return `+${compactNumber(value)}`;
 }
 

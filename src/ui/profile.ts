@@ -9,7 +9,7 @@ import { formatCompactNumber, formatRate } from "./number-format";
 import { attackCapInterval, attackSpeedLabel, attackSpeedRatingForInterval, critDamageLabel, type AttackCapArg } from "../../shared/stat-rating";
 import { formatRating } from "./rating-text";
 import { upgradeSlotForItem } from "../../shared/slot-upgrades";
-import { cleanSoulStats, withSoulStats, type SoulStats } from "../../shared/soul-dimension";
+import { cleanSoulStats, soulAttackSpeedBonus, withSoulStats, type SoulStats } from "../../shared/soul-dimension";
 import { challengeMinimumInterval } from "../../shared/prestige-challenge";
 
 export function formatPlayedTime(seconds: number) {
@@ -212,7 +212,8 @@ export function profileStatDisplayRows(
       multiplier: multiplierValue(effective.multipliers.attackSpeed), total: ratingText(speedRating), equationTotal: attackSpeed,
       expandedDetail: bracket(attackSpeedLabel(1 / effective.attackRate, 1 / minAttackInterval)),
       // The soul's own share, which adds to the run's and is kept through prestige.
-      sources: soulSource(soul.attackSpeed, ratingText),
+      // The soul adds attacks a second flat (soulAttackSpeedBonus), so its line is that, not a rating.
+      sources: soulSource(soulAttackSpeedBonus(soul.attackSpeed), value => Number.isFinite(value) ? `${value.toFixed(3)}/s` : "Max"),
     },
     {
       kind: "range", label: "Attack Range:", base: statValue(baseRange),

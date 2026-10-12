@@ -33,6 +33,8 @@ const STAT_REWARD_PRESENTATION: Readonly<Record<string, StatRewardPresentation>>
 const PERCENT_STATS = new Set<string>();
 /** Stats whose gains read as a multiplier (+0.002×): a soul crit damage kill (soulRewardText). */
 const MULTIPLIER_STATS = new Set<string>(["SOUL CRIT DAMAGE"]);
+/** Stats whose gains read as attacks a second (+0.001/s): a soul attack speed kill (soulRewardText, 0.901.55). */
+const RATE_STATS = new Set<string>(["SOUL ATTACK SPEED"]);
 /** Every name an attack speed gain goes by: each shows Capped at the cap. "Attack Speed" since 0.901.47. */
 const ATTACK_SPEED_STATS = new Set<string>(["ATK/SEC", "ATTACK SPEED", "SOUL ATTACK SPEED"]);
 
@@ -75,6 +77,7 @@ const COMPACT_MULTIPLIERS: Readonly<Record<string, number>> = {
 
 function statRewardValue(amount: string) {
   if (amount.endsWith("×")) amount = amount.slice(0, -1);
+  if (amount.endsWith("/s")) amount = amount.slice(0, -2);
   if (amount.endsWith("%")) { const value = Number(amount.slice(1, -1)); return amount.startsWith("+") && Number.isFinite(value) ? value : null; }
   // Scientific notation (a setting) reads as mantissa and exponent: +5.00e6.
   const scientific = /^\+([0-9]+(?:\.[0-9]+)?)e([0-9]+)$/i.exec(amount);
@@ -90,6 +93,7 @@ function statRewardValue(amount: string) {
 export function formatStatRewardToastAmount(stat: string, value: number) {
   if (PERCENT_STATS.has(stat)) return `+${+value.toFixed(2)}%`;
   if (MULTIPLIER_STATS.has(stat)) return `+${+value.toFixed(3)}×`;
+  if (RATE_STATS.has(stat)) return `+${+value.toFixed(3)}/s`;
   if (stat === "ATK/SEC" || (Math.abs(value) < 1_000 && !Number.isInteger(value))) {
     return `+${value.toFixed(2)}`;
   }

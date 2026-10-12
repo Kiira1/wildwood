@@ -1,5 +1,6 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
   "0.901.55": [
+    "Soul Attack Speed adds +0.001 attacks a second a kill again, on top of your attack speed, so new players can farm it up to the cap",
     "Game server updated to SpacetimeDB 2.11",
   ],
   "0.901.54": [

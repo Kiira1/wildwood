@@ -368,7 +368,7 @@ it("holds critical damage at the cap and says so, research a share closer on top
   expect(open.sources[0]).toMatchObject({ label: "Tech" });
 });
 
-it("adds soul attack speed rating to the run's, under a Reflect winner's raised cap, and lists the soul's rating", () => {
+it("adds soul attack speed flat on the run's, under a Reflect winner's raised cap, and lists what the soul adds", () => {
   const profile = {
     progress: { ...progress(), attackRate: attackIntervalForRating(0) },
     research: createEmptyResearchRanks(), itemUpgradeLevels: {},
@@ -376,7 +376,7 @@ it("adds soul attack speed rating to the run's, under a Reflect winner's raised 
   const attack = (cap: number, attackSpeed: number) => profileStatDisplayRows(profile, () => "0%", cap, undefined, 0, null, 1, { attackSpeed })
     .find(row => row.kind === "attack")!;
   expect(attack(MIN_ATTACK_INTERVAL, 100)).toMatchObject({ equationTotal: `${attacksPerSecondForRating(100).toFixed(2)}/s` });
-  expect(attack(MIN_ATTACK_INTERVAL, 100).sources).toEqual([{ label: "Soul", value: "+100" }]);
+  expect(attack(MIN_ATTACK_INTERVAL, 100).sources).toEqual([{ label: "Soul", value: `+${(attacksPerSecondForRating(100) - attacksPerSecondForRating(0)).toFixed(3)}/s` }]);
   // Two Reflect wins: a whole attack a second more, on the same rating.
   const twoWins = challengeMinimumInterval({ active: false, completed: 2 });
   const reflectProfile = { ...profile, progress: { ...progress(), attackRate: attackIntervalForRating(0, twoWins) } };

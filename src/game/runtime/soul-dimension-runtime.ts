@@ -1,7 +1,7 @@
 import { soulInPlayFor } from "../../../shared/bonus-toggles";
 import {
   addSoulKills, cleanSoulStats, EMPTY_REWARD_KILLS, isSoulMap, soulDimensionAccess, soulEnemyStats, soulTier,
-  withSoulStats, withoutSoulStats, EMPTY_SOUL_STATS, SOUL_CAMPS, SOUL_STAT_DETAILS, soulCritRatingAfterKills,
+  withSoulStats, withoutSoulStats, EMPTY_SOUL_STATS, SOUL_CAMPS, SOUL_STAT_DETAILS, soulCritRatingAfterKills, soulAttackSpeedRatingAfterKills,
   type RewardKillCounts, type SoulStatId, type SoulStats, type SoulStrength,
 } from "../../../shared/soul-dimension";
 import { TOWN_SOUL_PORTAL } from "../../../shared/town";
@@ -13,7 +13,7 @@ import type { MapId, SpawnSite } from "../world";
 import type { MapPortal } from "./map-controller";
 import type { EnemyState, PlayerState } from "./types";
 import { createSoulDefenseForce } from "./soul-defense-force";
-import { cleanRating, type AttackCapArg } from "../../../shared/stat-rating";
+import { type AttackCapArg } from "../../../shared/stat-rating";
 import { gameConfirm } from "../../ui/confirm-dialog";
 
 export type SoulDimensionSource = {
@@ -77,16 +77,18 @@ export function createSoulDimensionRuntime(deps: {
   let lastServerSoul: SoulStats | null = null;
   /** Soul crit kills since the server's row: each pays from where the soul's crit stands, so they are counted, not summed. */
   let pendingCritKills = 0;
+  /** Soul attack speed kills likewise: each adds its 0.001 a second from where the soul stands (soulAttackSpeedRatingAfterKills). */
+  let pendingSpeedKills = 0;
 
   const source = () => deps.source();
   const serverSoul = () => source()?.soulStats?.() ?? null;
   function soulStats(): SoulStats {
     const server = serverSoul();
-    if (server !== lastServerSoul) { lastServerSoul = server; pending = cleanSoulStats(null); pendingCritKills = 0; }
+    if (server !== lastServerSoul) { lastServerSoul = server; pending = cleanSoulStats(null); pendingCritKills = 0; pendingSpeedKills = 0; }
     const base = cleanSoulStats(server);
     return {
       damage: base.damage + pending.damage, maxHp: base.maxHp + pending.maxHp, armor: base.armor + pending.armor,
-      regen: base.regen + pending.regen, attackSpeed: cleanRating(base.attackSpeed + pending.attackSpeed),
+      regen: base.regen + pending.regen, attackSpeed: soulAttackSpeedRatingAfterKills(base.attackSpeed, pendingSpeedKills),
       critDamage: soulCritRatingAfterKills(base.critDamage, pendingCritKills),
     };
   }
@@ -161,7 +163,7 @@ export function createSoulDimensionRuntime(deps: {
     soulKill(stat: SoulStatId) {
       soulStats();
       defenseForce.countKill();
-      if (stat === "critDamage") pendingCritKills += 1; else pending = addSoulKills(pending, stat, 1);
+      if (stat === "critDamage") pendingCritKills += 1; else if (stat === "attackSpeed") pendingSpeedKills += 1; else pending = addSoulKills(pending, stat, 1);
       const detail = SOUL_STAT_DETAILS[stat];
       deps.logPickup?.(`${soulRewardText(stat)} Soul ${detail.label}`, detail.color);
     },

@@ -69,10 +69,11 @@ describe("stat ratings", () => {
     expect(next.critRating).toBe(100);
   });
 
-  it("adds the soul's attack speed rating to the run's, and takes it back out", () => {
+  it("adds the soul's attack speed flat on the run's, and takes it back out", () => {
     const run = { damage: 1, maxHp: 1, armor: 0, regen: 0, attackRate: attackIntervalForRating(300) };
     const played = withSoulStats(run, { attackSpeed: 100 });
-    expect(attackSpeedRatingForInterval(played.attackRate)).toBeCloseTo(400, 6);
+    // 100 soul rating is what it gives from a fresh start (0.118 a second), added to the run's own.
+    expect(1 / played.attackRate - 1 / run.attackRate).toBeCloseTo(attacksPerSecondForRating(100) - attacksPerSecondForRating(0), 9);
     expect(withoutSoulStats(played, { attackSpeed: 100 }, run.attackRate).attackRate).toBeCloseTo(run.attackRate, 9);
   });
 
