@@ -156,21 +156,9 @@ jobs:
           name: ota-feed
           path: dist/ota
 
-      - name: Configure Pages
-        uses: actions/configure-pages@v6
-
-      - name: Upload site
-        uses: actions/upload-pages-artifact@v5
-        with:
-          path: dist
-
-      - name: Deploy
-        id: deployment
-        uses: actions/deploy-pages@v5
-
-      # wildstatmmo.com. Off for now: the Cloudflare dashboard's own Git build
-      # deploys it, and both running deployed every push twice. Turn this on
-      # (and that build off) with: gh variable set CLOUDFLARE_DEPLOY --body on
+      # wildstatmmo.com, the main site, so it goes first: GitHub Pages waits for it.
+      # On while the repo variable CLOUDFLARE_DEPLOY is "on" (the dashboard's own
+      # Git build stays off, or every push deploys twice).
       # The phones read their update feed from wildstatmmo.com, and only this
       # step ships the feed there: the dashboard build has no signing key.
       # A step's own env is not visible to its `if`, so check the secret here.
@@ -196,3 +184,15 @@ jobs:
           version="$(node -p "require('./dist/version.json').version" 2>/dev/null || true)"
           npx --yes wrangler@4 deploy --name wildstat --compatibility-date 2026-09-02 --assets ./dist \
             --message "$subject" ${version:+--tag "$version"}
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v6
+
+      - name: Upload site
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: dist
+
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v5
