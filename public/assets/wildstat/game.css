@@ -19,8 +19,9 @@
   .quest-tracker.is-collapsed .quest-tracker-chevron { transform: rotate(-90deg); }
   .quest-tracker.is-collapsed .quest-tracker-list { display: none; }
   .quest-tracker-list { display: grid; gap: 5px; margin: 0; padding: 0 8px; list-style: none; }
-  .quest-tracker-item { display: grid; gap: 2px; opacity: .6; }
-  .quest-tracker-item.is-here { opacity: 1; }
+  .quest-tracker-item { display: grid; gap: 2px; }
+  /* A quest on another map is dimmed, but not its location line: that is what says where to go (Thresh couldn't find it). */
+  .quest-tracker-item:not(.is-here) > :not(.quest-tracker-where) { opacity: .6; }
   .quest-tracker-line { display: flex; justify-content: space-between; gap: 6px; }
   .quest-tracker-enemy { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .quest-tracker-label { display: flex; align-items: baseline; gap: 5px; min-width: 0; }
@@ -30,7 +31,7 @@
   .quest-tracker-bar { height: 3px; overflow: hidden; border-radius: 2px; background: rgba(255,255,255,.18); }
   .quest-tracker-bar > span { display: block; height: 100%; background: #ffd66b; transition: width .2s; }
   .quest-tracker-where[hidden] { display: none; }
-  .quest-tracker-where { overflow: hidden; color: #c9d3cc; font-size: 10px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+  .quest-tracker-where { overflow: hidden; color: #e8ece9; font-size: 13px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
   .quest-tracker-item.is-here .quest-tracker-where { color: var(--green); }
   .stat-tracker.is-world-gesture, .stat-tracker.is-world-gesture * { pointer-events: none; }
   .stat-tracker.is-collapsed { width: max-content; max-width: calc(100vw - 24px); overflow: hidden; }
