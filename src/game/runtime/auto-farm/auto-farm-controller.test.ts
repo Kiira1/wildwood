@@ -794,6 +794,25 @@ describe('autofarm plans: sliders, the boss and the next map', () => {
     expect(s.farm.state().shares).toMatchObject({ [health]: 100 });
   });
 
+  it("Farm skips a stat whose label says Capped, and an Aggro stat waiting its turn, unless nothing else is left", () => {
+    let capped = true;
+    const s = planned({ pullCamps: () => 1, rewardCapped: reward => capped && reward.type === ENEMY_TYPES.Bramble.reward.type });
+    s.add('Bramble', 900, 500); s.add('Needle', 600, 500);
+    // Health would be first (with capped off it is); its stat is capped, so speed is farmed.
+    s.farm.start({ [health]: 1, [speed]: 1 }, false);
+    expect(s.farm.state().selected).toBe(speed);
+    // Only the capped stat on Farm: farmed anyway rather than standing idle.
+    s.farm.start({ [health]: 1 }, false);
+    expect(s.farm.state().selected).toBe(health);
+    // Two on Aggro, one pulled at a time: the one waiting is not walked to.
+    capped = false;
+    s.farm.setAggroGroups([health, speed]);
+    s.farm.start({ [health]: 1, [speed]: 1 }, false);
+    const pulled = s.farm.pulledGroupKeys();
+    expect(pulled).toHaveLength(1);
+    expect(s.farm.state().selected).toBe(pulled[0]);
+  });
+
   it("keeps the stats the player picked on the next map, and splits evenly where none of them is paid", () => {
     for (const [arrivals, expected] of [[['Needle', 'Bramble'], [health]], [['Needle'], [speed]]] as const) {
       const s = planned({ nextPortal: () => ({ x: 200, y: 500, destination: 'beginner_desert' }) });
