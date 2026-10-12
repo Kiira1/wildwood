@@ -3,7 +3,7 @@ import { parseHTML } from 'linkedom';
 import { createBalanceApologyGiftController } from '../../ui/balance-apology-gift-controller';
 import { createGameBootstrap } from './game-bootstrap';
 import { createEnemyLifecycle } from './enemy-lifecycle';
-import { createAutoFarmController, autoFarmStandoff, AUTO_FARM_REACH_MARGIN, PULL_WAIT_SECONDS } from './auto-farm-controller';
+import { createAutoFarmController, autoFarmStandoff, AUTO_FARM_REACH_MARGIN, MOVE_ON_FIGHT_MS, PULL_WAIT_SECONDS } from './auto-farm-controller';
 import { formatCompactNumber } from '../../../shared/compact-number';
 import { createEnemySimulation } from './enemy-simulation';
 import { attackRangeWithResearch } from '../../../shared/utility-research';
@@ -550,6 +550,31 @@ describe('autofarm plans: sliders, the boss and the next map', () => {
       expect(s.farm.moveReady()).toBe(true);
       s.tick();
       expect(s.farm.state()).toMatchObject({ phase: 'portal', status: 'Heading to the next map' });
+    });
+
+    it('Move On finishes the enemies attacking it before it goes, but not for longer than MOVE_ON_FIGHT_MS', () => {
+      const s = planned({ power: () => 2_000, mapPower: () => 1_000, nextPortal: () => ({ x: 200, y: 500, destination: 'beginner_desert' }) });
+      const attacker = s.add('Bramble', 520, 500);
+      attacker.engaged = true;
+      s.farm.setAdvance(true);
+      s.farm.start([health]);
+      s.tick();
+      expect(s.farm.state().phase).toBe('farm');
+      expect(s.farm.moveStatus()).toBe('Moving On After This Fight');
+      // The fight over, it goes.
+      attacker.engaged = false;
+      s.tick();
+      expect(s.farm.state().phase).toBe('portal');
+      // Chasers that never stop (an Aggro run): it waits MOVE_ON_FIGHT_MS, then goes anyway.
+      const t = planned({ power: () => 2_000, mapPower: () => 1_000, nextPortal: () => ({ x: 200, y: 500, destination: 'beginner_desert' }) });
+      t.add('Bramble', 520, 500).engaged = true;
+      t.farm.setAdvance(true);
+      t.farm.start([health]);
+      t.tick();
+      expect(t.farm.state().phase).toBe('farm');
+      t.advance(MOVE_ON_FIGHT_MS);
+      t.tick();
+      expect(t.farm.state().phase).toBe('portal');
     });
 
     it('never steps back a map or remembers deaths: Move On goes as soon as power reaches Move At times the next map', () => {

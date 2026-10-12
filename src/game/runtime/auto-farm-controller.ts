@@ -30,6 +30,12 @@ export const PULL_WAIT_SECONDS = 4;
 /** How long after a boss win the way forward is looked at: the unlock reaches the map's portals in a moment. */
 const BOSS_WIN_SETTLE_MS = 5_000;
 /**
+ * How long Move On waits for the enemies attacking the player to die before it goes anyway. It used to
+ * leave the moment power was reached, dragging a half-killed group to the next map ("I killed one mob from
+ * the agro group, time to move on"); an Aggro run's chasers never stop coming, so the wait has an end.
+ */
+export const MOVE_ON_FIGHT_MS = 20_000;
+/**
  * A campaign boss is fought from this close to its hitbox, whatever the
  * weapon's reach: its cones widen from its body, so near it one is a short
  * sidestep, and at the edge of a bow's reach a run that cannot be made in time.
@@ -276,6 +282,15 @@ export function createAutoFarmController(options: {
   // ---- Move On ----
   /** The power Move On waits for: Move At times the map's recommended power. */
   const mapNeeds = (mapId: string) => (options.mapPower?.(mapId) ?? 0) * movePower;
+  /** Enemies attacking the player now (a boss aside): Move On finishes them before it goes. */
+  const underAttack = () => enemies.some(enemy => !enemy.generatedBoss && isEnemyAttackingPlayer(enemy, options.localIdentity?.()));
+  let fightHeldSince: number | null = null;
+  /** Whether Move On, ready to go, is finishing the fight first (MOVE_ON_FIGHT_MS at most). A trip under way goes on. */
+  function finishingFight(ready: boolean) {
+    if (!ready || phase === 'portal' || !underAttack()) { fightHeldSince = null; return false; }
+    fightHeldSince ??= now();
+    return now() - fightHeldSince < MOVE_ON_FIGHT_MS;
+  }
   /** The next map's portal, once power reaches what Move At asks of it. */
   function exitPortal() {
     if (!advance || options.reflectOnly?.()) return null;
@@ -397,7 +412,8 @@ export function createAutoFarmController(options: {
   /** Back a map, the next map, the boss, or a camp. */
   function choosePhase(dt: number) {
     const portal = exitPortal();
-    if (portal) { phase = 'portal'; travellingTo = portal.destination; return; }
+    if (portal && !finishingFight(true)) { phase = 'portal'; travellingTo = portal.destination; return; }
+    if (!portal) finishingFight(false);
     if (bossWanted()) { phase = 'boss'; travellingTo = null; return; }
     if (phase !== 'farm') { target = null; route = []; lastGoal = null; routeClock = 0; holding = false; }
     phase = 'farm';
@@ -588,7 +604,11 @@ export function createAutoFarmController(options: {
     if (options.reflectOnly?.()) return 'Off In Reflect Only';
     if (phase === 'portal') return 'Moving On';
     const portal = options.nextPortal?.();
-    if (portal) { const needs = mapNeeds(portal.destination); return currentPower() >= needs ? 'Moving On' : `Next Map At ${atPower(needs)}`; }
+    if (portal) {
+      const needs = mapNeeds(portal.destination);
+      if (currentPower() < needs) return `Next Map At ${atPower(needs)}`;
+      return fightHeldSince !== null && active ? 'Moving On After This Fight' : 'Moving On';
+    }
     // The way forward is shut until this map's boss is beaten.
     if (options.bossUnlocksNext?.() === true && !opensNothing.has(options.mapId())) return 'Boss Needed';
     return '';
