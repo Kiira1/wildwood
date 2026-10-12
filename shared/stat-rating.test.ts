@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  RATING_MAX, addAttackSpeedRating, attackCapInterval, attackIntervalForRating, attackIntervalUnderNewCap, attackSpeedLabel, attackSpeedRatingForInterval, attacksPerSecondForRating,
+  RATING_MAX, addAttackSpeedRating, attackCapInterval, attackSpeedGainLabel, attackIntervalForRating, attackIntervalUnderNewCap, attackSpeedLabel, attackSpeedRatingForInterval, attacksPerSecondForRating,
   critBonusLevels, critDamageForLevels, ratingForLevels, ratingLevels, ratingMapWorthKills, ratingRewardPerKill,
 } from "./stat-rating";
 import { criticalDamage } from "./critical-damage";
@@ -91,5 +91,18 @@ describe("stat ratings", () => {
   it("says Max once the rate reads the same as the cap", () => {
     expect(attackSpeedLabel(attacksPerSecondForRating(ratingForLevels(130)), CAP)).toBe("3.00/s (Max)");
     expect(attackSpeedLabel(2.5, CAP)).toBe("2.50/s");
+  });
+});
+
+describe("what an attack speed kill gives, as its label shows it", () => {
+  it("reads the rating as attacks a second now, smaller near the cap, Capped at it", () => {
+    // From a fresh start, 100 rating (one map's worth) is 5% of the way to 3 a second.
+    expect(attackSpeedGainLabel(attackIntervalForRating(0), 100)).toBe(`+${(attacksPerSecondForRating(100) - attacksPerSecondForRating(0)).toFixed(3)}/s`);
+    const early = Number(attackSpeedGainLabel(attackIntervalForRating(0), 2.5)!.slice(1, -2));
+    const late = Number(attackSpeedGainLabel(attackIntervalForRating(10_000), 2.5)!.slice(1, -2));
+    expect(late).toBeLessThan(early);
+    expect(late).toBeGreaterThan(0);
+    expect(attackSpeedGainLabel(attackCapInterval(MIN_ATTACK_INTERVAL), 2.5)).toBe("Capped");
+    expect(attackSpeedGainLabel(0, 2.5)).toBeNull();
   });
 });

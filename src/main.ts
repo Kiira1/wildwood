@@ -985,7 +985,7 @@ import {
     },
     enemySprites: ENEMY_SPRITES,
     rewardMultiplier: rewardDisplay.displayedMultiplier,
-    rewardAmount: rewardDisplay.displayedAmount,
+    rewardAmount: rewardDisplay.displayedAmount, attackCap: () => playerAttackCap(coop?.reflectRewardsInPlay?.(), coop?.prestigePerks?.()),
     showBossHitboxes: () => devPanel.bossHitboxesVisible(),
     enemyTextVisible: (enemy) => {
       const { width, height } = canvasRuntime.viewport();

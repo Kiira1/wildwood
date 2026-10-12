@@ -11,6 +11,7 @@ import type { PlayerGender } from "../../../shared/player-gender";
 import type { Camera } from "./camera";
 import { ENEMY_HEALTH_BAR_HEIGHT, ENEMY_HEALTH_FILL, createEnemyStatusPlates, fillPill } from "./enemy-status-plate";
 import { createCanvasAtlas, drawAtlasImage, type AtlasImage } from "./canvas-atlas";
+import { attackSpeedGainLabel, type AttackCapArg } from "../../../shared/stat-rating";
 import { enemyHpNumbersEnabled } from "../../ui/enemy-hp-setting";
 import { formatCompactNumber } from "../../ui/number-format";
 import { healthBarTextY } from "./health-bar-layout";
@@ -211,6 +212,8 @@ export function createActorRenderer(options: {
   player: PlayerState;
   rewardMultiplier: () => number;
   rewardAmount?: (type: EnemyDefinition["reward"]["type"], amount: number) => number;
+  /** The player's attack speed cap, so an attack speed enemy's label shows what a kill gives now (attacks a second). */
+  attackCap?: () => AttackCapArg;
   enemyTextVisible: (enemy: EnemyState) => boolean;
   pixelCircle: PixelCircle;
   outlinedText: OutlinedText;
@@ -378,16 +381,24 @@ export function createActorRenderer(options: {
     return labels;
   }
 
+  /**
+   * What one attack speed kill gives this player now, in attacks a second, as the label under the enemy
+   * shows it (Ryan): the rating is a number players can't read, its worth shrinks as attack speed nears
+   * the cap. Rounded, so the label is redrawn only when the shown value changes.
+   */
+  const attackSpeedGainText = (rating: number) => attackSpeedGainLabel(options.player.attackRate, rating, options.attackCap?.());
+
   function enemyLabels(type: string, reward: EnemyDefinition["reward"]) {
-    const cacheKey = `${type}:${reward.type}:${reward.amount}`;
+    const amountText = (reward.type === "speed" && options.attackCap ? attackSpeedGainText(reward.amount) : null) ?? rewardAmountLabel(reward);
+    const cacheKey = `${type}:${reward.type}:${amountText}`;
     const cached = enemyLabelCache.get(cacheKey);
     if (cached) return cached;
     const labels = {
       name: createLabelBitmap([{ text: type, color: "#f5e9c4" }], "bottom"),
       reward: createLabelBitmap([
-        { text: rewardAmountLabel(reward), color: "#ffffff" },
+        { text: amountText, color: "#ffffff" },
         { text: " ", color: "#ffffff" },
-        { text: rewardStatLabel(reward), color: REWARD_DATA[reward.type].color },
+        { text: reward.type === "speed" ? "Atk Speed" : rewardStatLabel(reward), color: REWARD_DATA[reward.type].color },
       ], "top"),
     };
     enemyLabelCache.set(cacheKey, labels);

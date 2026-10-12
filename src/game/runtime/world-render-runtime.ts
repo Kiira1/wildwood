@@ -114,6 +114,8 @@ export type WorldRenderRuntimeOptions = {
   enemySprites: Record<string, LoadedEnemySprite>;
   rewardMultiplier: () => number;
   rewardAmount?: (type: RewardType, amount: number) => number;
+  /** The player's attack speed cap: attack speed enemies' labels show what a kill gives now (actor-renderer.ts). */
+  attackCap?: () => import("../../../shared/stat-rating").AttackCapArg;
   /** Developer overlay: draw each boss's collision shape over its artwork. */
   showBossHitboxes?: () => boolean;
   enemyTextVisible: (enemy: EnemyState) => boolean;
@@ -270,7 +272,7 @@ export function createWorldRenderRuntime(options: WorldRenderRuntimeOptions) {
     duelPlatformArt: options.assets.duelPlatformArt,
     player: options.player,
     rewardMultiplier: options.rewardMultiplier,
-    rewardAmount: options.rewardAmount,
+    rewardAmount: options.rewardAmount, attackCap: options.attackCap,
     enemyTextVisible: options.enemyTextVisible,
     pixelCircle: options.pixelCircle,
     outlinedText: options.outlinedText,
