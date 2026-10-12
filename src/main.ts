@@ -1,5 +1,5 @@
 import { installOfflineProgressSetting } from "./ui/offline-progress-setting";
-import { rewardLabelContextFrom } from "./game/runtime/reward-labels";
+import { liveRewardText, rewardLabelContextFrom, soulRewardCapped } from "./game/runtime/reward-labels";
 import { ownProfileInPlay, profileBonusDeps } from "./ui/profile-bonus-toggles";
 import { runtimeMapBalance } from '../shared/map-balance-runtime';
 import { installStatTracker } from './ui/stat-tracker';
@@ -535,7 +535,7 @@ import {
     resumeStore: createAutoFarmResumeStore(),
     player, enemies, spawnSites,
     mapId: () => currentMapId, pullCamps: () => coop?.aggroChallenge?.()?.active ? 0 : aggroPullCamps(coop?.bonusOff?.().includes("challenge.aggro") ? null : coop?.aggroChallenge?.()), forcedGroups: () => forcedAggroGroups(coop?.aggroChallenge?.(), coop?.localIdentity?.()),
-    equippedWeapon: () => inventory.equippedRightHand || inventory.equippedLeftHand,
+    equippedWeapon: () => inventory.equippedRightHand || inventory.equippedLeftHand, rewardCapped: (reward, soul) => soul ? soulRewardCapped(soul, rewardLabelContext()) : liveRewardText(reward, rewardLabelContext()) === "Capped",
     localIdentity: () => coop?.localIdentity?.(),
     connection: () => farmConnection === 'ready' && (!coop?.isConnected?.() || !session?.isRunning()
       || mapController.isMapTransitioning() || mapController.isCutsceneActive()) ? 'recovering' : farmConnection,

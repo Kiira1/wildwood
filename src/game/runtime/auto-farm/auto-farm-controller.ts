@@ -115,6 +115,8 @@ export function createAutoFarmController(options: {
   pullCamps?: () => number;
   /** During an Aggro run: the stat groups the player picked and how many must chase them on every map, farming or not. */
   forcedGroups?: () => { groups: readonly string[]; needed: number } | null;
+  /** Whether a kill of this reward gives nothing now, the stat at its cap: the "Capped" its label shows (reward-labels.ts). */
+  rewardCapped?: (reward: FarmReward, soul: SoulStatId | null) => boolean;
 }) {
   const { player, enemies, spawnSites } = options;
   const now = options.now ?? monotonicNowMs;
@@ -390,7 +392,10 @@ export function createAutoFarmController(options: {
         startZero();
         return;
       }
-      start(sharesForGroups(carried, groups()), false);
+      // Aggro groups are fought as they arrive, so they join the farm (Farm's pick never walks to one waiting).
+      const plan = { ...carried };
+      for (const key of aggroGroups()) plan[key] = Math.max(plan[key] ?? 0, 1);
+      start(sharesForGroups(plan, groups()), false);
     }
   }
 
@@ -416,8 +421,24 @@ export function createAutoFarmController(options: {
     const anyAlive = all.some(entry => entry.alive > 0 && (shares[entry.key] ?? 0) > 0);
     if (current && (current.alive > 0 ? planClock > 0 : !anyAlive)) return;
     planClock = SHARE_REPLAN_SECONDS;
-    const key = shareFarmKey(all.map(entry => ({ key: entry.key, weight: shares[entry.key] ?? 0, alive: entry.alive })), group => spent.get(group) ?? 0);
+    const key = shareFarmKey(farmWeights(all), group => spent.get(group) ?? 0);
     if (key) select(key);
+  }
+
+  /**
+   * Farm's pick (Ryan, 0.901.64): the Farm groups share the time evenly, leaving out a stat whose kill gives
+   * nothing now (rewardCapped: attack speed or crit at its cap) and an Aggro group waiting its turn, which is
+   * never walked to. Picking by power, or by growth a second, was tried in the autofarm sim first: by power
+   * it farmed health alone, by growth tough camps (34 kills in ten minutes against the even split's 47).
+   */
+  function farmWeights(all: ReturnType<typeof choices>) {
+    const switched = new Set(aggroGroups()), pulledNow = pulledGroups();
+    const weights = all.map(entry => ({ key: entry.key, alive: entry.alive,
+      weight: switched.has(entry.key) && !pulledNow.has(entry.key) ? 0 : shares[entry.key] ?? 0 }));
+    const open = weights.map((entry, index) => ({ ...entry,
+      weight: entry.weight > 0 && !options.rewardCapped?.(all[index].reward, all[index].soul) ? entry.weight : 0 }));
+    // Every one capped: farm them anyway rather than stand idle.
+    return open.some(entry => entry.weight > 0) ? open : weights;
   }
 
   /** Back a map, the next map, the boss, or a camp. */
@@ -698,6 +719,14 @@ export function createAutoFarmController(options: {
     /** This map's groups switched to Aggro, however many; before any switch is touched, what Pull Whole Group brings. */
     aggroGroupKeys: (): string[] => pullPicks ? aggroGroups() : pulling() ? [...pulledGroups()] : [],
     /** Switches Aggro on or off for one of this map's groups. The first switch keeps what Pull was already bringing. */
+    /** This map's groups on Aggro, all at once (the window's Go); picks for groups this map lacks are kept. */
+    setAggroGroups(keys: readonly string[]) {
+      const here = groups();
+      const elsewhere = (pullPicks ?? []).filter(pick => !here.includes(normalizeKey(pick) as AutoFarmGroup));
+      pullPicks = [...elsewhere, ...keys.filter(key => here.includes(key as AutoFarmGroup))];
+      writeAutoFarmPullGroups(pullPicks, options.priorityStorage);
+      pulledKey = '';
+    },
     setGroupPulled(group: string, on: boolean) {
       const current = pullPicks ? aggroGroups() : pulling() ? [...pulledGroups()] : [];
       // Picks saved for groups this map lacks are kept for the maps that have them.

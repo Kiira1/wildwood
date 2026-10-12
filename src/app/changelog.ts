@@ -1,4 +1,8 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.901.64": [
+    "Auto Farm: tap Off, Farm or Aggro for each stat, in place of the sliders",
+    "Auto Farm skips stats that are Capped",
+  ],
   "0.901.63": [
     "Offline progress counts your crits, so crit builds earn while away",
     "Auto Farm at 0% follows your Aggro switches instead of walking back to the old group",
@@ -3234,6 +3238,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.901.64": "2026-10-12",
   "0.901.63": "2026-10-12",
   "0.901.62": "2026-10-12",
   "0.901.61": "2026-10-12",

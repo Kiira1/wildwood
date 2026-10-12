@@ -173,6 +173,11 @@
 .farm-aggro-count { color: #c9ced6; font-size: 13px; font-weight: 800; }
 .farm-aggro-count[hidden] { display: none; }
 .farm-weight-name { display: grid; gap: 1px; min-width: 0; }
+/* Off · Farm · Aggro beside each stat (0.901.64, in place of its slider). */
+.farm-weight.farm-mode-row, #autoFarmSheet.farm-card .farm-weight.farm-mode-row { grid-template-columns: minmax(0, 1fr) auto; cursor: default; }
+.farm-mode-row.is-off .farm-weight-label { color: var(--muted); }
+.farm-mode-row .farm-mode button[hidden] { display: none; }
+:is(.farm-sheet) .farm-mode-row .farm-mode button.is-waiting[aria-checked="true"] { color: #e0a53a; box-shadow: inset 0 -2px #e0a53a; }
 .farm-weight-label { overflow: hidden; color: var(--farm-stat-color, #fff); font-size: 14px; line-height: 1.15; white-space: nowrap; text-overflow: ellipsis; }
 .farm-weight-sub { overflow: hidden; color: #e8e8e8; font-size: 13px; line-height: 1.15; white-space: nowrap; text-overflow: ellipsis; -webkit-text-stroke: 0; text-shadow: none; }
 .farm-weight output { color: #fff; font-size: 14px; text-align: right; -webkit-text-stroke: 0; text-shadow: none; }

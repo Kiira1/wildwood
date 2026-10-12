@@ -3,7 +3,7 @@ import type { AutoFarmController } from '../game/runtime/auto-farm/auto-farm-con
 import { AUTO_FARM_PRIORITIES, farmGroupRewardType } from '../game/runtime/auto-farm/auto-farm-priority';
 import { SOUL_STAT_DETAILS } from '../../shared/soul-dimension';
 import { soulRewardText } from '../game/soul-world';
-import { POWER_STEPS, powerLabel, sharesForGroups, shareLabel, type FarmShares } from '../game/runtime/auto-farm/auto-farm-plan';
+import { POWER_STEPS, powerLabel } from '../game/runtime/auto-farm/auto-farm-plan';
 import { aggroPicksNeeded, readAggroPicks, writeAggroPicks } from '../game/runtime/auto-farm/aggro-picks';
 import { createAggroPickPrompt } from './aggro-pick-prompt';
 import { topBackButton } from './desktop-hotkeys';
@@ -18,30 +18,32 @@ const defaultStorage = (): PanelStorage | undefined => { try { return window.loc
 /** The controller's lines are sentence case ("Moving to enemy"); the window shows every word capitalised. */
 /** The "?" page: what each control does, a line each, in the words a player would use. */
 const HELP_LINES: readonly [term: string, line: string][] = [
-  ['Sliders', 'Set each stat on its own; the % beside it is its share of farming time, all adding up to 100%.'],
+  ['Stats', 'Tap Off, Farm or Aggro for each stat. Farm walks to its camps and picks whichever raises your power fastest right now.'],
   ['Move On', "Goes to the next map once your power reaches Move At times the map's (1x is even)."],
   ['Fight Bosses', "Fights the boss once your power reaches Fight At times the boss's (1x is even), until it or you go down."],
   ['Deaths', 'It respawns and carries on with the same settings.'],
-  ['Aggro', 'Switch on any stats to pull their camps to you. It pulls one camp at once (one more for each Aggro win), the one it is farming first. With every slider at 0%, it stands still and fights only what it pulls.'],
+  ['Aggro', 'Pulls its camps to you: one at a time, one more for each Aggro win. With nothing on Farm it stands still and fights only what it pulls.'],
   ['Target', 'Which enemy it hits first.'],
 ]
 /** The slider under a switch: how much of the map's or boss's power to have before it goes, 0.1x to 10x. */
 const powerSlider = (className: string, label: string, sub: string, aria: string) =>
   `<label class="farm-weight farm-power ${className}"><span class="farm-weight-name"><span class="farm-weight-label">${label}</span><span class="farm-weight-sub">${sub}</span></span>`
   + `<input type="range" min="0" max="${POWER_STEPS.length - 1}" step="1" aria-label="${aria}"><output aria-hidden="true"></output></label>`;
-const sameShares = (a: FarmShares, b: FarmShares) => {
-  const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
-  return [...keys].every(key => (a[key] ?? 0) === (b[key] ?? 0));
-};
+/** What each stat is set to (0.901.64, replacing its slider): left alone, farmed at its camps, or pulled to the player. */
+type FarmMode = 'off' | 'farm' | 'aggro';
+type FarmModes = Record<string, FarmMode>;
+const FARM_MODES: readonly [FarmMode, string][] = [['off', 'Off'], ['farm', 'Farm'], ['aggro', 'Aggro']];
+const sameModes = (a: FarmModes, b: FarmModes) => [...new Set([...Object.keys(a), ...Object.keys(b)])].every(key => (a[key] ?? 'off') === (b[key] ?? 'off'));
+const keysOn = (modes: FarmModes, mode: FarmMode) => Object.keys(modes).filter(key => modes[key] === mode);
 const titleCase = (text: string) => text.replace(/(^|[\s(/-])(\p{Ll})/gu, (_match, lead: string, letter: string) => lead + letter.toUpperCase());
 const segment = (label: string, labelId: string, className: string, buttons: string) =>
   `<div class="farm-setting"><span id="${labelId}" class="farm-setting-label">${label}</span>`
   + `<div class="farm-segment ${className}" role="radiogroup" aria-labelledby="${labelId}">${buttons}</div></div>`;
 
 /**
- * The autofarm window, kept short. Each stat is farmed for its slider's
- * share of the time; the sliders always add up to 100% (moving one moves the
- * others in proportion), and 0% is never farmed. Move On goes to the next
+ * The autofarm window, kept short. Each stat is Off, Farm or Aggro: Farm walks
+ * to its camps (Auto Farm picks the one raising power fastest), Aggro pulls its
+ * camps to the player, and with nothing on Farm it stands still. Move On goes to the next
  * map at its recommended power; Fight Bosses fights the boss at its; Pull and
  * Target sit below them. The movable card header shows what the farm is doing even when collapsed.
  */
@@ -130,8 +132,8 @@ export function createAutoFarmPanel(options: {
     body.hidden = open;
     helpToggle.setAttribute('aria-expanded', String(open));
   }
-  /** The sliders in this window: each group's share, adding up to 100%. */
-  let draft: FarmShares = {};
+  /** Each stat's mode in this window, applied by Start or Go and kept when it closes. */
+  let draft: FarmModes = {};
   const groupKeys = () => options.farm.choices().map(choice => choice.key);
   let choiceKey = '';
 
@@ -153,35 +155,51 @@ export function createAutoFarmPanel(options: {
     status.classList.toggle('is-idle', !on);
   }
 
-  /** Every slider at 0: nothing to farm. */
-  const nothingSet = () => !groupKeys().some(key => (draft[key] ?? 0) > 0);
-  /**
-   * In an Aggro run, every slider at 0 farms only the groups chasing the player: they come to it, so it
-   * stands and fights rather than walking off to another camp (Ryan).
-   */
-  const chaseOnly = () => aggroRun() && nothingSet() && options.farm.chasingGroupKeys().length > 0;
-  /**
-   * Outside a run, every slider at 0 with Aggro switched on for some groups pulls those and stands still:
-   * no percentages to set, no walking to camps (Vis: "i dont want char to move"). It farms only the groups
-   * pulled now (the limit at once), so nothing waiting its turn sends it walking.
-   */
-  const pullOnly = () => !aggroRun() && nothingSet() && options.farm.pulledGroupKeys().length > 0;
-  /** Sliders all at 0%: the chasing groups in an Aggro run, or the pulled ones outside it. Null when a slider is set. */
-  function zeroPlan(shares: FarmShares) {
-    if (groupKeys().some(key => (shares[key] ?? 0) > 0)) return null;
-    const keys = aggroRun() ? options.farm.chasingGroupKeys() : options.farm.pulledGroupKeys();
-    return keys.length ? keys : null;
+  /** The modes saved: Farm from the saved stats, Aggro from the pull picks (none during a run, whose chasers are its pull). */
+  function savedModes(): FarmModes {
+    const shares = options.farm.savedShares(), aggro = new Set(aggroRun() ? [] : options.farm.aggroGroupKeys());
+    return Object.fromEntries(groupKeys().map(key => [key, aggro.has(key) ? 'aggro' : (shares[key] ?? 0) > 0 ? 'farm' : 'off']));
   }
+  /** Saves the modes: Farm as the saved stats, Aggro as the pull picks. */
+  function saveModes(modes: FarmModes) {
+    if (!aggroRun()) options.farm.setAggroGroups(keysOn(modes, 'aggro'));
+    options.farm.rememberShares(Object.fromEntries(groupKeys().map(key => [key, modes[key] === 'farm' ? 1 : 0])));
+  }
+  /**
+   * Starts with these modes. Nothing on Farm: it stands still and fights what it pulls (Vis: "i dont want
+   * char to move"), or in an Aggro run what chases it. Otherwise it farms the Farm groups, and the Aggro
+   * groups pulled now as they arrive (one waiting its turn is never walked to).
+   */
+  function startModes(modes: FarmModes) {
+    saveModes(modes);
+    const farmed = keysOn(modes, 'farm');
+    if (!farmed.length) {
+      const plan = aggroRun() ? options.farm.chasingGroupKeys() : options.farm.pulledGroupKeys();
+      return plan.length > 0 && options.farm.startZero(plan);
+    }
+    const fought = aggroRun() ? [] : keysOn(modes, 'aggro');
+    return options.farm.start(Object.fromEntries([...farmed, ...fought].map(key => [key, 1])), false);
+  }
+  const farmedNone = () => !keysOn(draft, 'farm').length;
+  /** Nothing on Farm in an Aggro run: it fights only what chases it, standing still (Ryan). */
+  const chaseOnly = () => aggroRun() && farmedNone() && options.farm.chasingGroupKeys().length > 0;
+  /** Nothing on Farm, some on Aggro, outside a run: it pulls those and stands still. */
+  const pullOnly = () => !aggroRun() && farmedNone() && keysOn(draft, 'aggro').length > 0;
+  const nothingSet = () => farmedNone() && !chaseOnly() && !pullOnly();
   function updateSelection() {
-    // Each slider moves on its own; the number beside it is its share of all of them, so they always read 100% together.
-    const shares = nothingSet() ? {} : sharesForGroups(draft, groupKeys());
+    const limit = options.farm.pullLimit(), aggroOn = keysOn(draft, 'aggro');
     for (const row of list.querySelectorAll<HTMLElement>('[data-group]')) {
-      const key = row.dataset.group!, weight = draft[key] ?? 0, share = shares[key] ?? 0, slider = row.querySelector('input')!;
-      if (slider.value !== String(weight)) slider.value = String(weight);
-      slider.setAttribute('aria-valuetext', shareLabel(share));
-      row.style.setProperty('--farm-weight-at', `${weight}%`);
-      row.querySelector('output')!.textContent = shareLabel(share);
-      row.classList.toggle('is-zero', share === 0);
+      const key = row.dataset.group!, mode = draft[key] ?? 'off';
+      for (const button of row.querySelectorAll<HTMLButtonElement>('[data-mode]')) {
+        button.setAttribute('aria-checked', String(button.dataset.mode === mode));
+        // No Aggro where nothing can be pulled: before an Aggro win's limit is set, and through an Aggro run.
+        if (button.dataset.mode === 'aggro') {
+          button.hidden = limit === 0;
+          // Past the limit it waits its turn, said on screen (mobile first): amber.
+          button.classList.toggle('is-waiting', mode === 'aggro' && aggroOn.indexOf(key) >= limit);
+        }
+      }
+      row.classList.toggle('is-off', mode === 'off');
     }
     const priority = options.farm.priority();
     for (const button of priorityButtons) button.setAttribute('aria-checked', String(button.dataset.priority === priority));
@@ -196,20 +214,11 @@ export function createAutoFarmPanel(options: {
       // Dimmed while its switch is off, but never locked: it can be set first and switched on after.
       power.row.classList.toggle('is-off', !power.on());
     }
-    // Aggro beside each slider: any number on, pulled as many at once as the limit (one, one more per Aggro win);
-    // hidden during an Aggro run, whose chasing groups are its pull.
-    const limit = options.farm.pullLimit(), pulled = options.farm.pulledGroupKeys(), switched = options.farm.aggroGroupKeys();
-    // Mobile first: what is waiting is said on screen, not in a hover title.
-    const waiting = switched.filter(key => !pulled.includes(key)).length;
-    const countText = `Aggro ${pulled.length}/${limit}${waiting ? ` · ${waiting} Waiting` : ''}`;
+    // Any number on Aggro, pulled as many at once as the limit (one, one more per Aggro win); hidden in an Aggro run.
+    const pulledCount = Math.min(aggroOn.length, limit), waiting = aggroOn.length - pulledCount;
+    const countText = `Aggro ${pulledCount}/${limit}${waiting ? ` · ${waiting} Waiting` : ''}`;
     aggroCount.hidden = limit === 0;
     if (aggroCount.textContent !== countText) aggroCount.textContent = countText;
-    for (const row of list.querySelectorAll<HTMLElement>('[data-group]')) {
-      const aggro = row.querySelector<HTMLButtonElement>('.farm-aggro-switch')!, on = switched.includes(row.dataset.group!);
-      aggro.hidden = limit === 0;
-      aggro.setAttribute('aria-checked', String(on));
-      aggro.classList.toggle('is-waiting', on && !pulled.includes(row.dataset.group!));
-    }
     // While farming the window is a look and a change: Stop ends the farm, Go keeps it going with what is set.
     const live = farming();
     // Opened it is a window like any other: Back closes it, so Escape does too (desktop-hotkeys).
@@ -218,10 +227,10 @@ export function createAutoFarmPanel(options: {
     if (startButton.textContent !== (live ? 'Go' : 'Start')) startButton.textContent = live ? 'Go' : 'Start';
     const reason = options.unavailable();
     const empty = !options.farm.choices().length;
-    startButton.disabled = empty || (nothingSet() && !chaseOnly() && !pullOnly()) || Boolean(reason);
-    const note = reason ?? (chaseOnly() ? 'All At 0%: Fights Only What Chases You'
-      : pullOnly() ? 'All At 0%: Pulls Your Aggro Groups And Stands Still'
-      : !empty && nothingSet() ? 'Set A Stat Above 0% Or Switch On Aggro' : '');
+    startButton.disabled = empty || nothingSet() || Boolean(reason);
+    const note = reason ?? (chaseOnly() ? 'Nothing On Farm: Fights Only What Chases You'
+      : pullOnly() ? 'Nothing On Farm: Pulls Your Aggro Stats And Stands Still'
+      : !empty && nothingSet() ? 'Set A Stat To Farm Or Aggro' : '');
     if (selection.textContent !== note) selection.textContent = note;
     selection.hidden = !note;
   }
@@ -240,7 +249,7 @@ export function createAutoFarmPanel(options: {
         : rewardAmountLabel(displayedReward);
     };
     // Rebuilt only when the stats on offer change. The game runs behind the window, so
-    // rewards grow while it is open; rebuilding for that dropped a slider mid-drag.
+    // rewards grow while it is open; rebuilding for that would drop a tap's focus.
     const key = `${options.mapName()}:${choices.map(c => c.key).join('|')}`;
     if (key === choiceKey) {
       for (const choice of choices) {
@@ -254,43 +263,33 @@ export function createAutoFarmPanel(options: {
       list.replaceChildren();
       for (const choice of choices) {
         const reward = choice.reward ?? ENEMY_TYPES[choice.type].reward;
-        const row = document.createElement('label');
-        row.className = 'farm-weight';
+        const row = document.createElement('div');
+        row.className = 'farm-weight farm-mode-row';
         row.dataset.group = choice.key;
         // A soul stat looks as its kill popup does: its own colour, a flat amount (never grown by research or prestige).
         const soul = choice.soul ? SOUL_STAT_DETAILS[choice.soul] : null;
         row.style.setProperty('--farm-stat-color', soul?.color ?? REWARD_DATA[reward.type].color);
         row.innerHTML = '<span class="farm-weight-name"><span class="farm-weight-label"></span><span class="farm-weight-sub"></span></span>'
-          + `<input type="range" min="0" max="100" step="1"><output aria-hidden="true"></output>`
-          + '<button type="button" class="pill-switch farm-aggro-switch" role="switch" aria-checked="false"><span class="pill-switch-knob" aria-hidden="true"></span></button>';
+          + `<div class="farm-segment farm-mode" role="radiogroup">${FARM_MODES.map(([mode, text]) => `<button type="button" role="radio" data-mode="${mode}" aria-checked="false">${text}</button>`).join('')}</div>`;
         // The stat is the choice; what one kill pays is the detail.
         const label = soul?.label ?? rewardStatLabel(reward);
         row.querySelector('.farm-weight-label')!.textContent = label;
         row.querySelector('.farm-weight-sub')!.textContent = rewardText(choice);
         row.title = choice.kinds.join(', ');
-        const slider = row.querySelector('input')!;
-        slider.setAttribute('aria-label', `${label} Share Of Farming Time`);
-        const aggro = row.querySelector<HTMLButtonElement>('.farm-aggro-switch')!;
-        aggro.setAttribute('aria-label', `Aggro ${label}`);
-        // Inside the row's label: the tap is the switch's alone, not the slider's.
-        aggro.addEventListener('click', event => {
-          event.preventDefault();
-          options.farm.setGroupPulled(choice.key, aggro.getAttribute('aria-checked') !== 'true');
-          updateSelection();
-        });
-        // Each slider moves on its own (Jasmean: "move them independently, while all still being percentage of 100").
-        slider.addEventListener('input', () => {
-          const value = Math.min(100, Math.max(0, Math.round(Number(slider.value))));
-          draft = { ...draft, [choice.key]: Number.isFinite(value) ? value : 0 };
-          updateSelection();
-        });
+        row.querySelector('.farm-mode')!.setAttribute('aria-label', label);
+        for (const button of row.querySelectorAll<HTMLButtonElement>('[data-mode]')) {
+          button.addEventListener('click', () => {
+            draft = { ...draft, [choice.key]: button.dataset.mode as FarmMode };
+            updateSelection();
+          });
+        }
         list.append(row);
-        if (previousGroup === choice.key) slider.focus();
+        if (previousGroup === choice.key) row.querySelector<HTMLButtonElement>(`[data-mode="${draft[choice.key] ?? 'off'}"]`)?.focus();
       }
       list.hidden = !choices.length;
       statsRow.hidden = !choices.length;
-      // This map's groups, each slider where it was left (not turned into shares, so 100% and 100% stay put).
-      draft = Object.fromEntries(choices.map(choice => [choice.key, Math.min(100, Math.max(0, draft[choice.key] ?? 0))]));
+      // This map's groups, each as it was left; a group new to this map starts Off.
+      draft = Object.fromEntries(choices.map(choice => [choice.key, draft[choice.key] ?? 'off']));
       emptyNote.hidden = Boolean(choices.length);
     }
     updateSelection();
@@ -316,8 +315,8 @@ export function createAutoFarmPanel(options: {
 
   function close() {
     if (content.hidden) return false;
-    // Not farming, the sliders stay as they were left; farming, the window keeps showing what is running.
-    if (!farming() && groupKeys().length) options.farm.rememberShares(draft);
+    // Not farming, the modes stay as they were left; farming, the window keeps showing what is running.
+    if (!farming() && groupKeys().length) saveModes(draft);
     const restoreFocus = content.contains(document.activeElement) || document.activeElement === helpToggle;
     setHelpOpen(false);
     setExpanded(false);
@@ -337,8 +336,8 @@ export function createAutoFarmPanel(options: {
 
   function open() {
     if (!options.visible() || !content.hidden) return;
-    // Reopening shows the sliders last farmed with, as this map names its stats.
-    draft = options.farm.savedShares();
+    // Reopening shows the modes last farmed with, as this map names its stats.
+    draft = savedModes();
     choiceKey = '';
     setHelpOpen(false);
     options.clearInput();
@@ -406,16 +405,13 @@ export function createAutoFarmPanel(options: {
     if (event.key === 'Escape' && !content.hidden) { event.preventDefault(); back(); }
   });
   startButton.addEventListener('click', () => {
-    // Go while farming: farming goes on, restarted only if the sliders changed.
-    if (farming() && sameShares(draft, options.farm.savedShares())) { close(); return; }
-    // All at 0%: the chasing groups in a run, or the pulled ones outside it, with the sliders saved at 0%.
-    const plan = zeroPlan(draft);
-    if (plan) options.farm.rememberShares(draft);
-    if (plan ? options.farm.startZero(plan) : options.farm.start(draft)) close();
+    // Go while farming: farming goes on, restarted only if a mode changed.
+    if (farming() && sameModes(draft, savedModes())) { close(); return; }
+    if (startModes(draft)) close();
     else updateSelection();
   });
   /**
-   * F starts Auto Farm with the sliders last set, or stops it, in an Aggro run
+   * F starts Auto Farm with the modes last set, or stops it, in an Aggro run
    * too. Not while typing or under another window. With nothing to farm here
    * it opens the window, which says why.
    */
@@ -428,10 +424,7 @@ export function createAutoFarmPanel(options: {
     if (top && top !== backButton) return;
     event.preventDefault();
     if (farming()) options.farm.stop();
-    else {
-      const saved = options.farm.savedShares(), plan = zeroPlan(saved);
-      if (!(plan ? options.farm.startZero(plan) : options.farm.start(saved))) open();
-    }
+    else if (!startModes(savedModes())) open();
     refresh();
   };
   // Capture: a click leaves focus on the card, and the card keeps keys pressed on it from the world.

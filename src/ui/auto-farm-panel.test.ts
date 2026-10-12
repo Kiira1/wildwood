@@ -48,41 +48,27 @@ function setup(empty = false, map = "forest", overrides: FarmOverrides = {}, sto
     setShowBase: (value: boolean) => { showBase = value; }, setRewardMultiplier: (value: number) => { rewardMultiplier = value; },
     setDamageBonus: (value: number) => { damageBonus = value; } };
 }
-const slider = (s: ReturnType<typeof setup>, key: string) => s.document.querySelector<HTMLInputElement>(`[data-group="${key}"] input`)!;
-/** Drags a slider to `value`, as the input event reports it. */
-function slide(s: ReturnType<typeof setup>, key: string, value: number) {
-  const input = slider(s, key);
-  input.value = String(value);
-  input.dispatchEvent(new s.window.Event('input', { bubbles: true }));
-}
-const values = (s: ReturnType<typeof setup>) => Object.fromEntries([...s.document.querySelectorAll<HTMLElement>('[data-group]')]
-  .map(row => [row.dataset.group!, Number(row.querySelector('input')!.value)]));
-/** The share each slider shows beside it, as a number. */
-const shown = (s: ReturnType<typeof setup>) => Object.fromEntries([...s.document.querySelectorAll<HTMLElement>('.farm-weights [data-group]')]
-  .map(row => [row.dataset.group!, Number.parseInt(row.querySelector('output')!.textContent!, 10)]));
-const sum = (shares: Record<string, number>) => Object.values(shares).reduce((total, share) => total + share, 0);
-it('opens on an even split, moves each slider on its own with its share of 100% beside it, starts farming, and stops from the card', () => {
+type Mode = 'off' | 'farm' | 'aggro';
+/** Each stat's mode as its Off · Farm · Aggro buttons show it. */
+const modes = (s: ReturnType<typeof setup>) => Object.fromEntries([...s.document.querySelectorAll<HTMLElement>('.farm-weights [data-group]')]
+  .map(row => [row.dataset.group!, row.querySelector('[data-mode][aria-checked="true"]')?.getAttribute('data-mode') as Mode]));
+/** Taps a stat's mode button. */
+const setMode = (s: ReturnType<typeof setup>, key: string, mode: Mode) => s.click(`[data-group="${key}"] [data-mode="${mode}"]`);
+const modeButton = (s: ReturnType<typeof setup>, key: string, mode: Mode) => s.document.querySelector<HTMLButtonElement>(`[data-group="${key}"] [data-mode="${mode}"]`)!;
+it('opens with every stat on Farm, sets each Off, Farm or Aggro with a tap, starts farming, and stops from the card', () => {
   const s = setup(true, 'endless_1');
   s.spawnSites.push(...fourStatSites('endless_1'));
   s.click('.farm-toggle');
   expect(!s.content.hidden).toBe(true);
-  // No Auto or Custom: the sliders are the choice.
-  expect(s.document.querySelector('[data-mode]')).toBeNull();
-  const keys = Object.keys(values(s));
+  // No sliders and no percentages: three buttons a stat.
+  expect(s.document.querySelector('.farm-weights input')).toBeNull();
+  const keys = Object.keys(modes(s));
   expect(keys.length).toBe(4);
-  expect(Object.values(values(s))).toEqual([25, 25, 25, 25]);
-  expect(s.document.querySelector(`[data-group="${keys[0]}"] output`)!.textContent).toBe('25%');
-  // Moving one moves only it; the shares beside them still add up to 100%.
-  slide(s, keys[0], 75);
-  expect(values(s)).toEqual({ [keys[0]]: 75, [keys[1]]: 25, [keys[2]]: 25, [keys[3]]: 25 });
-  expect(shown(s)).toEqual({ [keys[0]]: 50, [keys[1]]: 17, [keys[2]]: 17, [keys[3]]: 16 });
-  expect(slider(s, keys[0]).getAttribute('aria-valuetext')).toBe('50%');
-  // One stat alone: the rest to 0.
-  for (const key of [keys[0], keys[2], keys[3]]) slide(s, key, 0);
-  expect(shown(s)).toEqual({ [keys[0]]: 0, [keys[1]]: 100, [keys[2]]: 0, [keys[3]]: 0 });
-  expect(s.document.querySelector(`[data-group="${keys[0]}"]`)!.classList.contains('is-zero')).toBe(true);
-  for (const value of [3, 99, 0, 41]) { slide(s, keys[2], value); expect(sum(shown(s))).toBe(100); }
-  slide(s, keys[2], 0);
+  expect(Object.values(modes(s))).toEqual(['farm', 'farm', 'farm', 'farm']);
+  expect([...s.document.querySelectorAll(`[data-group="${keys[0]}"] [data-mode]`)].map(button => button.textContent)).toEqual(['Off', 'Farm', 'Aggro']);
+  for (const key of [keys[0], keys[2], keys[3]]) setMode(s, key, 'off');
+  expect(modes(s)).toEqual({ [keys[0]]: 'off', [keys[1]]: 'farm', [keys[2]]: 'off', [keys[3]]: 'off' });
+  expect(s.document.querySelector(`[data-group="${keys[0]}"]`)!.classList.contains('is-off')).toBe(true);
   s.click('.farm-start');
   expect(!s.content.hidden).toBe(false);
   expect(s.farm.state()).toMatchObject({ active: true, selected: keys[1], shares: { [keys[1]]: 100 } });
@@ -100,12 +86,11 @@ it('opens on an even split, moves each slider on its own with its share of 100% 
   expect(s.farm.state().active).toBe(false);
   expect(!s.content.hidden).toBe(false);
 });
-
-it('opened while farming, Go keeps farming, applying slider changes; the window shows the live switch lines', () => {
+it('opened while farming, Go keeps farming, applying mode changes; the window shows the live switch lines', () => {
   const s = setup(true, 'endless_1');
   s.spawnSites.push(...fourStatSites('endless_1'));
   s.click('.farm-toggle');
-  const keys = Object.keys(values(s));
+  const keys = Object.keys(modes(s));
   s.click('.farm-start');
   expect(s.farm.state().active).toBe(true);
   s.pause.mockClear();
@@ -116,9 +101,9 @@ it('opened while farming, Go keeps farming, applying slider changes; the window 
   s.click('.farm-start');
   expect(!s.content.hidden).toBe(false);
   expect(s.farm.state()).toMatchObject({ active: true, shares: { [keys[0]]: 25 } });
-  // Changed: farming goes on with the new sliders.
+  // Changed: farming goes on with the new modes.
   s.click('.farm-toggle');
-  for (const key of keys.slice(1)) slide(s, key, 0);
+  for (const key of keys.slice(1)) setMode(s, key, 'off');
   s.click('.farm-start');
   expect(s.farm.state()).toMatchObject({ active: true, shares: { [keys[0]]: 100 } });
   // Closed from outside (Escape): farming goes on.
@@ -127,43 +112,41 @@ it('opened while farming, Go keeps farming, applying slider changes; the window 
   expect(!s.content.hidden).toBe(false);
   expect(s.farm.state().active).toBe(true);
 });
-it('draws one slider per stat, in its colour, from 0 to 100; with every one at 0 there is nothing to start', () => {
+it('draws one row per stat, in its colour; with every one Off there is nothing to start', () => {
   const s = setup(true, 'endless_1');
   s.spawnSites.push(...fourStatSites('endless_1'));
   s.click('.farm-toggle');
   const rows = [...s.document.querySelectorAll<HTMLElement>('.farm-weights [data-group]')];
   expect(rows.length).toBe(s.farm.choices().length);
   expect(rows.every(row => row.style.getPropertyValue('--farm-stat-color'))).toBe(true);
-  expect(rows.map(row => ['min', 'max', 'step'].map(name => row.querySelector('input')!.getAttribute(name)).join())).toEqual(rows.map(() => '0,100,1'));
-  for (const row of rows) slide(s, row.dataset.group!, 0);
-  expect(sum(shown(s))).toBe(0);
+  for (const row of rows) setMode(s, row.dataset.group!, 'off');
   expect(s.document.querySelector<HTMLButtonElement>('.farm-start')!.disabled).toBe(true);
-  expect(s.document.querySelector('.farm-selection')!.textContent).toBe('Set A Stat Above 0% Or Switch On Aggro');
-  slide(s, rows[0].dataset.group!, 10);
+  expect(s.document.querySelector('.farm-selection')!.textContent).toBe('Set A Stat To Farm Or Aggro');
+  setMode(s, rows[0].dataset.group!, 'farm');
   expect(s.document.querySelector<HTMLButtonElement>('.farm-start')!.disabled).toBe(false);
 });
-it('remembers the sliders for the next window, migrating the old 0-200% ones and an old Auto', () => {
+it('remembers the modes for the next window, reading the old sliders and 0-200% weights as Farm or Off', () => {
   const s = setup(true, 'endless_1');
   s.spawnSites.push(...fourStatSites('endless_1'));
   vi.stubGlobal('localStorage', s.storage);
-  // The old sliders: Damage at 200%, one at 0%, the rest never set (100%).
+  // The old 0-200% weights: Damage at 200%, one at 0%, the rest never set (100%): above 0 is Farm.
   const keys = s.farm.choices().map(choice => choice.key), zero = keys.find(key => key !== 'stat:damage')!;
   s.storage.setItem(AUTO_FARM_WEIGHTS_KEY, JSON.stringify({ auto: false, weights: { 'stat:damage': 200, [zero]: 0 } }));
   s.click('.farm-toggle');
-  expect(values(s)).toEqual(Object.fromEntries(keys.map(key => [key, key === 'stat:damage' ? 50 : key === zero ? 0 : 25])));
-  slide(s, zero, 40);
+  expect(modes(s)).toEqual(Object.fromEntries(keys.map(key => [key, key === zero ? 'off' : 'farm'])));
+  setMode(s, zero, 'farm');
+  setMode(s, 'stat:damage', 'off');
   s.click('.farm-start');
-  // Saved as the sliders were set, not as the shares they make: 40 beside 50, 25 and 25.
   const saved = JSON.parse(s.storage.values.get(AUTO_FARM_SHARES_KEY)!);
-  expect(saved).toEqual(Object.fromEntries(keys.map(key => [key, key === 'stat:damage' ? 50 : key === zero ? 40 : 25])));
+  expect(saved).toEqual(Object.fromEntries(keys.map(key => [key, key === 'stat:damage' ? 0 : 1])));
   s.click('.farm-toggle');
-  expect(values(s)).toEqual(saved);
-  // An old Auto, with nothing saved since, opens as an even split.
+  expect(modes(s)).toEqual(Object.fromEntries(keys.map(key => [key, key === 'stat:damage' ? 'off' : 'farm'])));
+  // A slider saved before 0.901.64 at 40% opens as Farm, one at 0% as Off.
   s.click('.farm-close');
-  s.storage.values.delete(AUTO_FARM_SHARES_KEY);
-  s.storage.setItem(AUTO_FARM_WEIGHTS_KEY, JSON.stringify({ auto: true, weights: { 'stat:damage': 200 } }));
+  s.storage.setItem(AUTO_FARM_SHARES_KEY, JSON.stringify(Object.fromEntries(keys.map((key, index) => [key, index ? 0 : 40]))));
+  s.farm.stop();
   s.click('.farm-toggle');
-  expect(Object.values(values(s))).toEqual(keys.map(() => 25));
+  expect(Object.values(modes(s))).toEqual(keys.map((_key, index) => index ? 'off' : 'farm'));
 });
 it('canceling the picker preserves the selected enemy without starting farming', () => {
   const s = setup(); s.farm.start('Bramble'); s.farm.stop();
@@ -190,7 +173,7 @@ it('explains an empty map and disables starting when gameplay becomes unavailabl
   expect(s.pause).not.toHaveBeenCalled();
 });
 
-it('shows four reward stat sliders for a generated map with one species, without enemy counts', () => {
+it('shows four reward stats for a generated map with one species, without enemy counts', () => {
   const s = setup(true, 'endless_1');
   s.spawnSites.push(...fourStatSites('endless_1'));
   s.click('.farm-toggle');
@@ -200,11 +183,10 @@ it('shows four reward stat sliders for a generated map with one species, without
   expect(damage.textContent).not.toContain('enemies');
   expect(damage.querySelector('.farm-weight-sub')!.textContent).toContain('–');
   expect(s.document.querySelector('.farm-weights')!.textContent).not.toContain('Attack Speed');
-  for (const row of choices) if (row !== damage) slide(s, row.dataset.group!, 0);
+  for (const row of choices) if (row !== damage) setMode(s, row.dataset.group!, 'off');
   s.click('.farm-start');
   expect(s.farm.targetType()).toBe('stat:damage');
 });
-
 it('shows earned research and prestige rewards by default, then base rewards when selected', () => {
   const s = setup();
   const base = ENEMY_TYPES.Bramble.reward;
@@ -280,45 +262,43 @@ it('shows each switch with its own status, lit only when the controller says it 
   expect(line('advance').classList.contains('is-ready')).toBe(false);
   expect(line('advance').classList.contains('is-idle')).toBe(true);
 });
-it('shows the Aggro switches and Target in the window with no More to open, even when storage throws', () => {
+it('shows the Aggro buttons and Target in the window with no More to open, even when storage throws', () => {
   const broken = { getItem: () => { throw new Error('blocked'); }, setItem: () => { throw new Error('blocked'); } };
   const s = setup(false, 'forest', {}, broken as unknown as ReturnType<typeof memoryStorage>);
   s.click('.farm-toggle');
   expect(s.document.querySelector('.farm-more-toggle')).toBeNull();
   expect(s.document.querySelector<HTMLElement>('.farm-more')!.hidden).toBe(false);
-  expect(s.document.querySelector('.farm-aggro-switch')).not.toBeNull();
+  expect(s.document.querySelector('[data-mode="aggro"]')).not.toBeNull();
   expect(s.document.querySelector('[data-priority]')).not.toBeNull();
-  s.click('.farm-aggro-switch');
+  s.click('[data-mode="aggro"]');
+  s.click('.farm-start');
   expect(s.farm.pulledGroupKeys()).toHaveLength(1);
 });
-it('switches Aggro on for any number of groups, pulls up to its limit, counts them on top, and hides them during an Aggro run', () => {
+it('puts any number of stats on Aggro, pulls up to its limit, counts them on top, and hides Aggro during an Aggro run', () => {
   let limit = 2;
   const s = setup(true, 'endless_1', { pullLimit: () => limit });
   s.spawnSites.push(...fourStatSites('endless_1'));
   s.click('.farm-toggle');
-  const keys = Object.keys(values(s));
-  const aggro = (key: string) => s.document.querySelector<HTMLButtonElement>(`[data-group="${key}"] .farm-aggro-switch`)!;
+  const keys = Object.keys(modes(s));
   const count = () => s.document.querySelector<HTMLElement>('.farm-aggro-count')!;
   expect(count().textContent).toBe('Aggro 0/2');
-  s.click(`[data-group="${keys[2]}"] .farm-aggro-switch`);
-  s.click(`[data-group="${keys[0]}"] .farm-aggro-switch`);
-  expect(new Set(s.farm.pulledGroupKeys())).toEqual(new Set([keys[2], keys[0]]));
+  setMode(s, keys[2], 'aggro');
+  setMode(s, keys[0], 'aggro');
   expect(count().textContent).toBe('Aggro 2/2');
-  expect(aggro(keys[0]).getAttribute('aria-checked')).toBe('true');
-  // Any number can be on; it still pulls two at once.
-  s.click(`[data-group="${keys[1]}"] .farm-aggro-switch`);
-  expect(new Set(s.farm.aggroGroupKeys())).toEqual(new Set([keys[0], keys[1], keys[2]]));
-  expect(aggro(keys[1]).getAttribute('aria-checked')).toBe('true');
-  expect(s.farm.pulledGroupKeys()).toHaveLength(2);
+  expect(modeButton(s, keys[0], 'aggro').getAttribute('aria-checked')).toBe('true');
+  // Any number can be on; it still pulls two at once, the third waiting its turn (amber, said on screen).
+  setMode(s, keys[1], 'aggro');
   expect(count().textContent).toBe('Aggro 2/2 · 1 Waiting');
-  const waitingKey = keys.find(key => aggro(key).getAttribute('aria-checked') === 'true' && !s.farm.pulledGroupKeys().includes(key))!;
-  expect(aggro(waitingKey).classList.contains('is-waiting')).toBe(true);
-  s.click(`[data-group="${keys[2]}"] .farm-aggro-switch`);
-  s.click(`[data-group="${keys[1]}"] .farm-aggro-switch`);
-  expect(s.farm.pulledGroupKeys()).toEqual([keys[0]]);
+  expect(keys.filter(key => modeButton(s, key, 'aggro').classList.contains('is-waiting'))).toHaveLength(1);
+  s.click('.farm-start');
+  expect(new Set(s.farm.aggroGroupKeys())).toEqual(new Set([keys[0], keys[1], keys[2]]));
+  expect(s.farm.pulledGroupKeys()).toHaveLength(2);
+  // Farm and Aggro together: it farms the Farm stat and fights what it pulls as it comes.
+  expect(s.farm.state().shares).toMatchObject({ [keys[3]]: 100 / 4 });
   limit = 0; s.panel.refresh();
+  s.click('.farm-toggle');
   expect(count().hidden).toBe(true);
-  expect(aggro(keys[0]).hidden).toBe(true);
+  expect(modeButton(s, keys[0], 'aggro').hidden).toBe(true);
 });
 it('has no Push setting, and keeps Target under More', () => {
   const s = setup();
@@ -329,63 +309,61 @@ it('has no Push setting, and keeps Target under More', () => {
   expect(more.querySelector('.farm-target')).not.toBeNull();
   expect([...s.document.querySelectorAll('.farm-body > [data-switch]')].map(entry => entry.getAttribute('data-switch'))).toEqual(['advance', 'bosses']);
 });
-it('outside a run, every slider at 0 with Aggro on pulls those groups and stands still (Vis)', () => {
+it('outside a run, with nothing on Farm and some on Aggro, it pulls those and stands still (Vis)', () => {
   const s = setup(true, 'endless_1', { pullLimit: () => 1 });
   s.spawnSites.push(...fourStatSites('endless_1'));
   vi.stubGlobal('localStorage', s.storage);
   s.click('.farm-toggle');
-  const keys = Object.keys(values(s));
-  for (const key of keys) slide(s, key, 0);
+  const keys = Object.keys(modes(s));
+  for (const key of keys) setMode(s, key, 'off');
   const start = s.document.querySelector<HTMLButtonElement>('.farm-start')!;
   expect(start.disabled).toBe(true);
-  s.click(`[data-group="${keys[1]}"] .farm-aggro-switch`);
+  setMode(s, keys[1], 'aggro');
   expect(start.disabled).toBe(false);
-  expect(s.document.querySelector('.farm-selection')!.textContent).toBe('All At 0%: Pulls Your Aggro Groups And Stands Still');
+  expect(s.document.querySelector('.farm-selection')!.textContent).toBe('Nothing On Farm: Pulls Your Aggro Stats And Stands Still');
   s.click('.farm-start');
   expect(s.farm.state().active).toBe(true);
   expect(s.farm.pulledGroupKeys()).toEqual([keys[1]]);
-  // The sliders stay at 0% for the next window (BillyBigBalls: "it always goes back up").
+  // The modes stay for the next window (BillyBigBalls: "it always goes back up").
   s.farm.stop();
   s.click('.farm-toggle');
-  expect(Object.values(values(s))).toEqual(keys.map(() => 0));
+  expect(Object.values(modes(s))).toEqual(keys.map(key => key === keys[1] ? 'aggro' : 'off'));
 });
-
-it('keeps the sliders as left when the window closes without starting', () => {
+it('keeps the modes as left when the window closes without starting', () => {
   const s = setup(true, 'endless_1');
   s.spawnSites.push(...fourStatSites('endless_1'));
   vi.stubGlobal('localStorage', s.storage);
   s.click('.farm-toggle');
-  const keys = Object.keys(values(s));
-  for (const key of keys) slide(s, key, 0);
+  const keys = Object.keys(modes(s));
+  for (const key of keys) setMode(s, key, 'off');
   s.click('.farm-close');
   s.click('.farm-toggle');
-  expect(Object.values(values(s))).toEqual(keys.map(() => 0));
-  slide(s, keys[0], 70);
+  expect(Object.values(modes(s))).toEqual(keys.map(() => 'off'));
+  setMode(s, keys[0], 'farm');
+  setMode(s, keys[1], 'aggro');
   s.click('.farm-close');
   s.click('.farm-toggle');
-  expect(values(s)[keys[0]]).toBe(70);
+  expect(modes(s)).toMatchObject({ [keys[0]]: 'farm', [keys[1]]: 'aggro', [keys[2]]: 'off' });
 });
-
-it('in an Aggro run, every slider at 0 starts on the chasing groups alone', () => {
+it('in an Aggro run, with nothing on Farm it starts on the chasing groups alone', () => {
   const storage = memoryStorage();
   vi.stubGlobal('localStorage', storage);
   writeAggroPicks('me', AGGRO_GROUPS);
   let chasing: string[] = [];
   const s = setup(false, 'forest', { chasingGroupKeys: () => chasing }, storage, { aggro: () => ({ active: true, completed: 0 }), identity: () => 'me' });
   s.click('.farm-toggle');
-  const key = Object.keys(values(s))[0];
+  const key = Object.keys(modes(s))[0];
   chasing = [key];
-  slide(s, key, 0);
+  setMode(s, key, 'off');
   const start = s.document.querySelector<HTMLButtonElement>('.farm-start')!;
   expect(start.disabled).toBe(false);
-  expect(s.document.querySelector('.farm-selection')!.textContent).toBe('All At 0%: Fights Only What Chases You');
+  expect(s.document.querySelector('.farm-selection')!.textContent).toBe('Nothing On Farm: Fights Only What Chases You');
   s.click('.farm-start');
   expect(s.farm.state().active).toBe(true);
-  // With nothing chasing here, all at 0 still asks for a stat.
-  s.farm.stop(); chasing = []; s.click('.farm-toggle'); slide(s, key, 0);
+  // With nothing chasing here, nothing on Farm still asks for a stat.
+  s.farm.stop(); chasing = []; s.click('.farm-toggle'); setMode(s, key, 'off');
   expect(start.disabled).toBe(true);
 });
-
 it('during an Aggro run the button opens the farm window, with Stop, and Chasing Groups opens the picker', () => {
   let active = true;
   // Picks already made, so the picker does not open by itself.
@@ -416,7 +394,7 @@ it('during an Aggro run the button opens the farm window, with Stop, and Chasing
   expect(s.document.querySelector<HTMLElement>('.farm-aggro-row')!.hidden).toBe(true);
   expect(s.document.querySelector('#autoFarmSheet .farm-target [data-priority="lowest"]')!.getAttribute('aria-checked')).toBe('true');
 });
-it('in the Soul Dimension draws a slider per soul stat present, in its soul colour, with its flat reward', () => {
+it('in the Soul Dimension draws a row per soul stat present, in its soul colour, with its flat reward', () => {
   const s = setup(true, SOUL_MAP_ID);
   const soul = (stat: SoulStatId, camp: number) => s.spawnSites.push({ id: s.spawnSites.length, type: SOUL_ENEMY_SPECIES[stat], x: 900, y: 500 + camp * 40,
     campName: soulCampName(stat, { key: `forest:${camp}` }), leashRange: 500, alive: false, respawnAt: 50,
@@ -438,13 +416,12 @@ it('in the Soul Dimension draws a slider per soul stat present, in its soul colo
   expect(row('damage').querySelector('.farm-weight-sub')!.textContent).toBe('+1');
   expect(row('attackSpeed').querySelector('.farm-weight-sub')!.textContent).toBe('+0.001/s');
   expect(row('critDamage').querySelector('.farm-weight-sub')!.textContent).toBe('+0.002×');
-  // The campaign's Attack Speed pick opens as Soul Attack Speed at 100%; what it left unpicked is 0%.
-  expect(['damage', 'attackSpeed', 'critDamage'].map(stat => slider(s, `soul:${stat}`).value)).toEqual(['0', '100', '0']);
-  slide(s, 'soul:critDamage', 50);
+  // The campaign's Attack Speed pick opens as Soul Attack Speed on Farm; what it left unpicked is Off.
+  expect(modes(s)).toEqual({ 'soul:damage': 'off', 'soul:attackSpeed': 'farm', 'soul:critDamage': 'off' });
+  setMode(s, 'soul:critDamage', 'farm');
   s.click('.farm-start');
-  expect(s.farm.state()).toMatchObject({ active: true, shares: { 'soul:attackSpeed': 67, 'soul:critDamage': 33, 'soul:damage': 0 } });
+  expect(s.farm.state()).toMatchObject({ active: true, shares: { 'soul:attackSpeed': 50, 'soul:critDamage': 50, 'soul:damage': 0 } });
 });
-
 it('the ? opens a page saying what each control does in place of the settings; Back returns to them, then closes', () => {
   const s = setup();
   s.click('.farm-toggle');
@@ -457,7 +434,7 @@ it('the ? opens a page saying what each control does in place of the settings; B
   expect(toggle.getAttribute('aria-expanded')).toBe('true');
   // Every control in the window is explained.
   const terms = [...help.querySelectorAll('dt')].map(term => term.textContent);
-  expect(terms).toEqual(['Sliders', 'Move On', 'Fight Bosses', 'Deaths', 'Aggro', 'Target']);
+  expect(terms).toEqual(['Stats', 'Move On', 'Fight Bosses', 'Deaths', 'Aggro', 'Target']);
   expect([...help.querySelectorAll('dd')].every(line => (line.textContent ?? '').length > 10)).toBe(true);
   s.click('.farm-close');
   expect(!s.content.hidden).toBe(true);
