@@ -167,6 +167,8 @@
 /* Aggro beside each slider (auto-farm-panel.ts): a small slide switch, and the count on the Stats heading. */
 .farm-weight .farm-aggro-switch { --pill-w: 40px; --pill-h: 24px; --knob: 18px; }
 .farm-weight .farm-aggro-switch[hidden] { display: none; }
+/* On but waiting its turn (Aggro pulls only so many at once): amber, not green. */
+.farm-weight .farm-aggro-switch.is-waiting[aria-checked="true"] { background: #e0a53a; }
 .farm-stats-heading { display: flex; align-items: center; justify-content: space-between; }
 .farm-aggro-count { color: #c9ced6; font-size: 13px; font-weight: 800; }
 .farm-aggro-count[hidden] { display: none; }

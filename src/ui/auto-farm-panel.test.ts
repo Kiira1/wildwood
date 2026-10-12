@@ -311,7 +311,9 @@ it('switches Aggro on for any number of groups, pulls up to its limit, counts th
   expect(new Set(s.farm.aggroGroupKeys())).toEqual(new Set([keys[0], keys[1], keys[2]]));
   expect(aggro(keys[1]).getAttribute('aria-checked')).toBe('true');
   expect(s.farm.pulledGroupKeys()).toHaveLength(2);
-  expect(count().textContent).toBe('Aggro 2/2');
+  expect(count().textContent).toBe('Aggro 2/2 · 1 Waiting');
+  const waitingKey = keys.find(key => aggro(key).getAttribute('aria-checked') === 'true' && !s.farm.pulledGroupKeys().includes(key))!;
+  expect(aggro(waitingKey).classList.contains('is-waiting')).toBe(true);
   s.click(`[data-group="${keys[2]}"] .farm-aggro-switch`);
   s.click(`[data-group="${keys[1]}"] .farm-aggro-switch`);
   expect(s.farm.pulledGroupKeys()).toEqual([keys[0]]);

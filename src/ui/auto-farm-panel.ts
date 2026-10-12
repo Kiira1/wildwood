@@ -182,14 +182,16 @@ export function createAutoFarmPanel(options: {
     // Aggro beside each slider: any number on, pulled as many at once as the limit (one, one more per Aggro win);
     // hidden during an Aggro run, whose chasing groups are its pull.
     const limit = options.farm.pullLimit(), pulled = options.farm.pulledGroupKeys(), switched = options.farm.aggroGroupKeys();
-    const countText = `Aggro ${pulled.length}/${limit}`;
+    // Mobile first: what is waiting is said on screen, not in a hover title.
+    const waiting = switched.filter(key => !pulled.includes(key)).length;
+    const countText = `Aggro ${pulled.length}/${limit}${waiting ? ` · ${waiting} Waiting` : ''}`;
     aggroCount.hidden = limit === 0;
     if (aggroCount.textContent !== countText) aggroCount.textContent = countText;
     for (const row of list.querySelectorAll<HTMLElement>('[data-group]')) {
       const aggro = row.querySelector<HTMLButtonElement>('.farm-aggro-switch')!, on = switched.includes(row.dataset.group!);
       aggro.hidden = limit === 0;
       aggro.setAttribute('aria-checked', String(on));
-      aggro.title = on && !pulled.includes(row.dataset.group!) ? `Waiting: Aggro Pulls ${limit} At Once` : '';
+      aggro.classList.toggle('is-waiting', on && !pulled.includes(row.dataset.group!));
     }
     // While farming the window is a look and a change: Stop ends the farm, Go keeps it going with what is set.
     const live = farming();
