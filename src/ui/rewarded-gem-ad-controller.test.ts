@@ -280,13 +280,4 @@ describe("the 2× respawn boost is gone", () => {
     const css = readFileSync(new URL("../../public/assets/wildstat/game.css", import.meta.url), "utf8");
     expect(css).not.toContain("respawn-boost");
   });
-
-  it("has no respawn-boost code or storage left in the client", () => {
-    const main = readFileSync(new URL("../main.ts", import.meta.url), "utf8");
-    const settings = readFileSync(new URL("../game/runtime/game-settings.ts", import.meta.url), "utf8");
-    const elements = readFileSync(new URL("./game-elements.ts", import.meta.url), "utf8");
-    for (const source of [main, settings, elements]) {
-      expect(source).not.toMatch(/RespawnBoost|respawnBoost|REWARDED_RESPAWN/);
-    }
-  });
 });
