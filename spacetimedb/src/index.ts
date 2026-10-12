@@ -1,6 +1,5 @@
-import { playerPrestigeChallenge, playerPrestigeChallengeParked, prestigeChallengeBackup, prestigeChallengeRun, reflectRewardsInPlay, restorePrestigeChallenge } from "./prestige-challenge";
+import { playerPrestigeChallenge, playerPrestigeChallengeParked, prestigeChallengeBackup, prestigeChallengeRun, restorePrestigeChallenge } from "./prestige-challenge";
 import { playerDailyQuest, guildQuestWeek, guildMemberQuestWeek, soloQuestWeek, playerQuestWeekTotal, ensureDailyQuests, pruneOldGuildQuestWeeks, recordDailyQuestKills, memberQuestStanding, questCollectStanding, collectMemberQuests, moveSoloQuestsToGuild, refreshQuestBonus } from "./daily-quests";
-import { challengeAttackInterval } from "../../shared/prestige-challenge";
 import { duelCombatSnapshot } from "./duel-combat-snapshot";
 import { playerEquipmentLock, setEquipmentLock } from "./equipment-locks";
 import { CAMPAIGN_MAPS } from "../../shared/campaign-registry";
@@ -33,7 +32,6 @@ import { playerLootSetting, writeLootSettings } from "./loot-settings";
 import { playerProfileSnapshot, requireSnapshotForIcon, takeProfileSnapshot } from "./profile-snapshot";
 import { claimAdGemReward, playerAdReward } from "./ad-gem-reward";
 import { playerChatMute, setChatMute } from "./chat-mute";
-import { createAutoEquip } from "./auto-equip";
 import { allowedLoadout } from "./loadout";
 import { ERASURE_ROW_BUDGET, eraseIdentityRows, linkedIdentities, requireErasureConfirmation } from "./account-erasure";
 import { LOADOUT_FIELDS } from "../../shared/combat-progress";
@@ -66,7 +64,7 @@ import { publicChatCursor, readPublicChatPage } from "./public-chat-history";
 import { createKillGems } from "./kill-gems";
 import { createPrestige, statRewardMultiplier } from "./prestige";
 import { generateMap, isProceduralMap, proceduralMapId, PROCEDURAL_ENTRY_MAP, PROCEDURAL_ENTRY_BOSS } from "../../shared/procedural-maps";
-import { proceduralMapTables, proceduralBossKey, clearProceduralProgress, generatedMapUnlocked } from "./procedural-maps";
+import { proceduralMapTables, proceduralBossKey, generatedMapUnlocked } from "./procedural-maps";
 import { ingestStoreEvent } from "./gem-store-events";
 import { gemPurchaseTables } from "./gem-purchase-tables";
 import { patreonTables } from "./patreon-tables";
@@ -80,7 +78,7 @@ import { withinStationReach } from "./door-reach";
 import { isTownMap, registerTown, TOWN_ARRIVAL, TOWN_BENCH_POSITION, TOWN_MAP_ID, townPortalUsePoints } from "./town";
 import { enterGuildHall, guildHallMember, memberEnteredWorld, guildHallMemberLeft, guildHallTables, isGuildHallMap, registerGuildHall } from "./guild-hall";
 import { isSoulMap, noteEnemyDefeats, registerSoulDimension, requireSoulDimensionOpen, soulDimensionOpenFor, soulDimensionTables, soulReturnOpenFor, soulAttackCapFor, soulStatsFor, SOUL_ARRIVAL, SOUL_TOWN_PORTAL, wideMotionMap, withSoulStats, worldBoundsFor } from "./soul-dimension";
-import { insertSnapshotRow, updateSnapshotRow, deleteSnapshotRow } from "./snapshot-row-writes";
+import { insertSnapshotRow, updateSnapshotRow } from "./snapshot-row-writes";
 import { createPlayerMotionFrameSampler } from "../../shared/player-motion-sample";
 import { schema, SenderError, Router, table, t, type InferSchema, type ReducerCtx, type ViewCtx } from "spacetimedb/server";
 import { Identity, ScheduleAt, Timestamp } from "spacetimedb";
@@ -132,7 +130,7 @@ import {
 } from "./presence-runtime";
 import { createDuelRuntime, activeDuelFor, clearExpiredDuelRequests } from "./duel-runtime";
 import { createAccountLifecycle, hasSpacetimeAuthAccount, clearExpiredAccountLinks, dailyGemBonusClaimReference } from "./account-lifecycle";
-import { analyticsTables, finishAnalyticsSession, readAnalyticsDashboard, recordAnalyticsConversion, recordAnalyticsMapVisit, recordAnalyticsMilestone, recordAnalyticsSessionStart } from "./analytics";
+import { analyticsTables, finishAnalyticsSession, readAnalyticsDashboard, recordAnalyticsConversion, recordAnalyticsMilestone, recordAnalyticsSessionStart } from "./analytics";
 import {
   DAILY_LOGIN_GEM_BONUS,
   MAX_INVENTORY_SLOT_CAPACITY,
@@ -144,7 +142,7 @@ import {
   researchSpeedUpGemCost,
 } from "../../shared/gems";
 import { socialTables } from "./social-tables";
-import { pausedResearch, pauseActiveResearch, removePausedResearch, takePausedResearch } from "./research-pause";
+import { pausedResearch, pauseActiveResearch, takePausedResearch } from "./research-pause";
 import { createSocialService, socialSnapshot, visibleSocialMessages, latestSocialMessages, socialHistoryPage } from "./social-service";
 import { playerDirectoryJson } from "./player-directory";
 import { guildTables } from "./guild-tables";
@@ -160,7 +158,6 @@ import {
   MAX_SLOT_UPGRADE_TIER,
   STARTER_BOW,
   STARTER_STONE,
-  SUPERIOR_GOLDEN_HELMET,
   WOODEN_ARMOR,
 } from "../../shared/items";
 import {
@@ -196,16 +193,18 @@ import {
 import { readPlayerProgress, withDuelWide } from "./wide-stats";
 import { playerWideStats, duelWideStats, duelReplayWideStats, playerCombatRating } from "./wide-stats-table";
 import { LEGACY_CLIENT_ERRORS, sameConnection, sessionForContext, requireSession, blockedSession, isSupportedProtocol, requireCurrentLegalConsent, requireSupportedSessionProtocol, requireControllingPlayer, isDeveloperIdentity, isDatabaseOwnerIdentity, isVirtualPlayer, requireDeveloperSession, requireDeveloper, touchPlayerAccessAudit, backfillKnownAccessAudit, sameIdentity } from "./session-guards";
-import { defaultPlayerProgress, samePlayerProgressValues, hasFreshProgress, resultIncludesContributor, contributedToLatestPrismshell, forestItemCountForProgress, inventoryForProgress, inventoryWithBetaHelmet, slotUpgradeKey, slotUpgradeTierFor, itemUpgradeLevelFor, playerOwnsItem, restoreItemToProgress, equippedHeadForProgress, equippedChestForProgress, equippedFeetForProgress, equippedRightHandForProgress, equippedLeftHandForProgress, cosmeticEquipmentForProgress, equipmentPresentationForProgress, leaderboardAppearanceForProgress, maxHealthForProgress } from "./progress-helpers";
+import { defaultPlayerProgress, samePlayerProgressValues, hasFreshProgress, resultIncludesContributor, contributedToLatestPrismshell, forestItemCountForProgress, inventoryForProgress, slotUpgradeKey, slotUpgradeTierFor, itemUpgradeLevelFor, playerOwnsItem, restoreItemToProgress, equippedHeadForProgress, equippedChestForProgress, equippedFeetForProgress, equippedRightHandForProgress, equippedLeftHandForProgress, cosmeticEquipmentForProgress, equipmentPresentationForProgress, leaderboardAppearanceForProgress, maxHealthForProgress } from "./progress-helpers";
 import { researchForPlayer, assertResearchAvailable, activeResearchIsAvailable, removeResearchCompletionSchedules, completeActiveResearch, ensureResearchCompletionSchedule, reconcileActiveResearch } from "./research-runtime";
 import { ensurePlayerLifetime, finishLifetimeSession, markPlayerBalanceCurrent, playerBalanceProgress, effectivePowerStatsForProgress, effectivePowerForProgress, powerFieldsForProgress, researchedDamage, researchedArmor, researchedRegen } from "./player-power";
-import { removeItemUpgradeCompletionSchedules, removePlayerItemDrops, removePlayerItemUpgradeData, ensureItemUpgradeCompletionSchedule, completeActiveItemUpgrade, cancelActiveItemUpgrade, reconcileActiveItemUpgrade } from "./item-upgrade-runtime";
+import { removeItemUpgradeCompletionSchedules, removePlayerItemUpgradeData, ensureItemUpgradeCompletionSchedule, completeActiveItemUpgrade, cancelActiveItemUpgrade, reconcileActiveItemUpgrade } from "./item-upgrade-runtime";
 import { ensureGemWallet, applyGemBalanceChange, currentUtcDayKey, ensureDailyGemBonusState } from "./gem-wallet";
 import { writeProgressAndPresentation } from "./player-power";
-import { boundedMapPopulation, refreshLeaderboard, requestLeaderboardRefresh, refreshLeaderboardIfDue } from "./leaderboard-refresh";
+import { refreshLeaderboard, requestLeaderboardRefresh, refreshLeaderboardIfDue } from "./leaderboard-refresh";
 import { generatedDisplayName, isGeneratedDisplayName, requireAllowedDisplayName, syncDisplayNamePresentation, repairModeratedDisplayName, changePlayerDisplayName } from "./display-names";
 import { insertChatMessage, clearExpiredHistory, trimStartupTelemetry, clearExpiredStartupTelemetryRateLimits, sendPlayerChatMessage } from "./chat-runtime";
 import { MAINTENANCE_INTERVAL_MICROS, VIRTUAL_PLAYER_RUN_LIFETIME_MICROS, adjustVirtualPlayerCount, virtualPlayerCountForOwner, clearExpiredVirtualPlayerRuns, clearOrphanRealtimeState, ensureMaintenanceSchedule, ensureMaintenanceSweepSchedule, removePlayerRealtimeState } from "./maintenance-runtime";
+import { autoEquip } from "./player-power";
+import { publishPlayerDeathFrame, resetProgressToDefaults, startFreshRun, respawnWithProgress, transitionPlayerMap } from "./character-reset";
 
 const WORLD = { width: WORLD_WIDTH, height: WORLD_HEIGHT };
 const VALID_MAP_IDS = { has: (id: string) => MAP_IDS.includes(id) || id === HOME_EXTERIOR_MAP_ID || isProceduralMap(id) || isSoulMap(id) || isGuildHallMap(id) || isTownMap(id) };
@@ -220,7 +219,6 @@ const MAP_PORTALS: Record<string, { x: number; y: number; destination: string }[
 const MAP_ARRIVALS: Record<string, { x: number; y: number }> =
   Object.fromEntries(Object.keys(CAMPAIGN_GATEWAYS).map(mapId => [mapId, campaignLanding(mapId)]));
 const MAP_PORTAL_USE_RANGE = 125;
-const autoEquip = createAutoEquip({ inventoryForProgress, itemUpgradeLevelFor, writeProgressAndPresentation });
 // Only regular enemies use server reward/combat bounds. Boss clears persist gates.
 const { combatBoundForReport } = createCombatReport({
   attackIntervalForProgress, itemUpgradeLevelFor, inventoryForProgress,
@@ -2024,21 +2022,6 @@ export const devSwapCharacters = spacetimedb.reducer(
     refreshLeaderboard(ctx);
   },
 );
-
-function publishPlayerDeathFrame(ctx: any, activePlayer: any) {
-  if (boundedMapPopulation(ctx, activePlayer.mapId) < 2) return;
-  const motion = ctx.db.playerMotion.identity.find(activePlayer.identity);
-  if (!motion?.isVisible) return;
-  ctx.db.playerDeathFrame.insert({
-    mapId: activePlayer.mapId,
-    ...playerZone(activePlayer.x, activePlayer.y),
-    networkId: motion.networkId,
-    playerX: activePlayer.x,
-    playerY: activePlayer.y,
-    facing: activePlayer.facing,
-    emittedAt: ctx.timestamp,
-  });
-}
 
 /** What offline-progress.ts needs from this module, wired once. */
 const OFFLINE_GRANT_PORTS = { effectiveStats: effectivePowerStatsForProgress, mapBalance: liveMapBalance,
@@ -4175,70 +4158,6 @@ export const beginAdventure = spacetimedb.reducer(
     else insertSnapshotRow(ctx, "playerProgress", { ...defaultPlayerProgress(ctx.sender), introComplete: true });
   },
 );
-
-/**
- * The whole reset, shared by the player's own reset button and by prestige.
- * Prestige keeps what a run cannot re-earn by playing again: research ranks
- * cost real days, and lifetime kills are the count of everything the account
- * has ever killed, which a rerun does not undo. Kill gems key their ledger
- * reference off that count rising, so holding it steady also keeps a replayed
- * batch from paying twice. It keeps the bag too; each tier is usable again
- * once its map is reached (auto-equip.ts puts on what can be used now).
- */
-function resetProgressToDefaults(ctx: any, activePlayer: any, keep: { research?: boolean; lifetimeKills?: boolean; slotTiers?: boolean; items?: boolean } = {}) {
-    clearProceduralProgress(ctx, ctx.sender);
-    const current = readPlayerProgress(ctx, ctx.sender);
-    const next = defaultPlayerProgress(ctx.sender);
-    next.attackRate = challengeAttackInterval(next.attackRate, reflectRewardsInPlay(ctx, ctx.sender));
-    if (current) next.cosmeticItemsJson = current.cosmeticItemsJson;
-    if (keep.research) next.attackRange = savedAttackRange(ctx, ctx.sender);
-    const history = ctx.db.playerCutsceneHistory.identity.find(ctx.sender);
-    if (history) ctx.db.playerCutsceneHistory.identity.update({ ...history, seenMask: 0, generation: history.generation + 1 });
-    else ctx.db.playerCutsceneHistory.insert({ identity: ctx.sender, seenMask: 0, generation: 0 });
-    if (current && keep.items) Object.assign(next, autoEquip.keepBagThroughPrestige(ctx, next, current));
-    if (current && inventoryForProgress(current).includes(SUPERIOR_GOLDEN_HELMET)) {
-      next.inventoryJson = JSON.stringify(inventoryWithBetaHelmet(next, true));
-    }
-    if (current) updateSnapshotRow(ctx, "playerProgress", next);
-    else insertSnapshotRow(ctx, "playerProgress", next);
-    if (!keep.research) {
-      const research = ctx.db.playerResearch.identity.find(ctx.sender);
-      if (research) deleteSnapshotRow(ctx, "playerResearch", ctx.sender);
-      const activeResearchRow = ctx.db.activeResearch.identity.find(ctx.sender);
-      if (activeResearchRow) ctx.db.activeResearch.identity.delete(ctx.sender);
-      removeResearchCompletionSchedules(ctx, ctx.sender);
-      removePausedResearch(ctx, ctx.sender);
-    }
-    // A tier belongs to the slot, not to whatever is sitting in it. Prestige
-    // leaves the bench work, the way it leaves research and now the gear;
-    // this line predates slot tiers, when it only destroyed levels that were
-    // attached to items a prestige took anyway. A deliberate account reset
-    // still clears the lot.
-    if (keep.slotTiers) removePlayerItemDrops(ctx, ctx.sender, keep.items);
-    else removePlayerItemUpgradeData(ctx, ctx.sender, true);
-    const lifetime = ensurePlayerLifetime(ctx);
-    if (!keep.lifetimeKills) ctx.db.playerLifetime.identity.update({ ...lifetime, enemyKills: 0n });
-    // Re-entry uses recent boss contributions to recover earned map unlocks.
-    // A deliberate reset must remove that evidence along with the unlock flags.
-    for (const boss of Object.keys(BOSS_REWARD_CLAIM_BITS)) {
-      (ctx.db as any)[`${boss}Contribution`].identity.delete(ctx.sender);
-      (ctx.db as any)[`${boss}AttackWindow`].identity.delete(ctx.sender);
-    }
-    respawnWithProgress(ctx, activePlayer, next);
-}
-/** A prestige's fresh run, which a challenge run also starts with (and an Aggro death restarts). */
-function startFreshRun(ctx: any, player: any) { resetProgressToDefaults(ctx, player, { research: true, lifetimeKills: true, slotTiers: true, items: true }); }
-/** After a reset or respec: full health at the new stats, at the forest spawn, and ranked on them at once. */
-function respawnWithProgress(ctx: any, activePlayer: any, next: any, destination = { mapId: TUTORIAL_FOREST_MAP_ID, ...PLAYER_SPAWN }) {
-    const nextPlayer = { ...activePlayer, hp: next.maxHp, maxHp: next.maxHp, ...powerFieldsForProgress(ctx, next),
-      speed: effectiveMovementSpeedForProgress(ctx, next), ...equipmentPresentationForProgress(ctx, next) };
-    persistWorldLocation(ctx, transitionPlayerMap(ctx, nextPlayer, destination.mapId, destination, 0));
-    // The board is built from saved stats on a timer, so without this the
-    // player keeps their old rank until the next sweep, which reads to
-    // everyone else as a reset player still sitting at the top. Throttled
-    // to one rebuild a minute; a reset inside that minute waits for it.
-    requestLeaderboardRefresh(ctx);
-}
 const prestige = createPrestige({
   requireControllingPlayer,
   activeDuelFor,
@@ -4424,44 +4343,6 @@ export const syncPosition = spacetimedb.reducer(
     );
   },
 );
-
-function transitionPlayerMap(
-  ctx: any,
-  current: any,
-  mapId: string,
-  arrival: { x: number; y: number },
-  facing = current.facing,
-) {
-  // Through a door on the same map (Soul village, guild hall) the client keeps its interest and never resends it.
-  if (mapId !== current.mapId && ctx.db.playerMotionInterest.identity.find(current.identity)) ctx.db.playerMotionInterest.identity.delete(current.identity);
-  const currentMotion = ctx.db.playerMotion.identity.find(current.identity);
-  const nextPlayer = {
-    ...current,
-    mapId,
-    x: arrival.x,
-    y: arrival.y,
-    ...playerZone(arrival.x, arrival.y),
-    facing: Number.isFinite(facing) ? facing : 0,
-    moving: false,
-    dx: 0,
-    dy: 0,
-    vx: 0,
-    vy: 0,
-    simulationTick: currentMotion?.simulationTick ?? current.simulationTick ?? 0,
-    motionEpoch: ((currentMotion?.motionEpoch ?? current.motionEpoch ?? 0) + 1) >>> 0,
-    lastInputAt: ctx.timestamp,
-  };
-  updateSnapshotRow(ctx, "player", nextPlayer);
-  // The motion row read above is handed to the presence helpers; each host call is paid for.
-  const motion = syncPlayerMotion(ctx, nextPlayer, { motion: currentMotion });
-  syncPlayerMotionIdentity(ctx, nextPlayer, { motion });
-  syncPlayerMapMarker(ctx, nextPlayer, true);
-  ensureRealtimeFrameSchedules(ctx);
-  // Home, the Town and guild halls have no enemies: nothing reads a pin there, and the old pin still fits on the way back.
-  if (mapId !== HOME_EXTERIOR_MAP_ID && !isTownMap(mapId) && !isGuildHallMap(mapId)) pinMapBalance(ctx, mapId);
-  recordAnalyticsMapVisit(ctx, mapId);
-  return nextPlayer;
-}
 
 export const changeMap = spacetimedb.reducer(
   { mapId: t.string(), x: t.f64(), y: t.f64() },

@@ -16,6 +16,8 @@ import { equipmentDamage, equipmentRegeneration } from "../../shared/items";
 import { updateSnapshotRow, insertSnapshotRow } from "./snapshot-row-writes";
 import { effectiveMovementSpeedForProgress } from "./player-speed";
 import { syncPlayerMotionIdentity, playerWithMotion } from "./presence-runtime";
+import { createAutoEquip } from "./auto-equip";
+import { inventoryForProgress } from "./progress-helpers";
 
 export function ensurePlayerLifetime(ctx: any) {
   const current = ctx.db.playerLifetime.identity.find(ctx.sender);
@@ -147,3 +149,5 @@ export function writeProgressAndPresentation(ctx: any, progress: any) {
   }
   // Ranking snapshots refresh in maintenance, never in the combat/reward path.
 }
+
+export const autoEquip = createAutoEquip({ inventoryForProgress, itemUpgradeLevelFor, writeProgressAndPresentation });

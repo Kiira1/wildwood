@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 const server = readFileSync(new URL("../spacetimedb/src/index.ts", import.meta.url), "utf8");
 // Guest claiming and identity removal bodies live beside the reducer module.
 const lifecycle = readFileSync(new URL("../spacetimedb/src/account-lifecycle.ts", import.meta.url), "utf8");
+const characterReset = readFileSync(new URL("../spacetimedb/src/character-reset.ts", import.meta.url), "utf8");
 function section(start: string, end: string, source = server) {
   const from = source.indexOf(start);
   const to = source.indexOf(end, from + start.length);
@@ -41,7 +42,7 @@ describe("server-owned cutscene history wiring", () => {
     expect(claim).toContain("playerCutsceneHistory.identity.delete(link.guest)");
     // The reset body is shared by the reset button and by prestige, so the
     // guarantee is asserted where the body lives, not at the reducer.
-    const reset = section("function resetProgressToDefaults", "export const resetPlayerProgress =");
+    const reset = section("function resetProgressToDefaults", "function startFreshRun", characterReset);
     expect(reset).toContain("seenMask: 0");
     expect(reset).toContain("generation: history.generation + 1");
     expect(section("export const prestigeAccount =", "export const spendPrestigePerkPoint =")).toContain("prestige.prestigeAccount(ctx)");

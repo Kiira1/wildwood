@@ -1,0 +1,142 @@
+// Resetting a character: the progress reset shared by the reset button and
+// prestige, a fresh run, respawning with given progress, the death frame, and
+// moving a player between maps. Moved out of index.ts unchanged.
+import { boundedMapPopulation, requestLeaderboardRefresh } from "./leaderboard-refresh";
+import { playerZone, persistWorldLocation, syncPlayerMotion, syncPlayerMotionIdentity, syncPlayerMapMarker, ensureRealtimeFrameSchedules } from "./presence-runtime";
+import { clearProceduralProgress } from "./procedural-maps";
+import { readPlayerProgress } from "./wide-stats";
+import { defaultPlayerProgress, inventoryForProgress, inventoryWithBetaHelmet, equipmentPresentationForProgress } from "./progress-helpers";
+import { challengeAttackInterval } from "../../shared/prestige-challenge";
+import { reflectRewardsInPlay } from "./prestige-challenge";
+import { savedAttackRange, effectiveMovementSpeedForProgress } from "./player-speed";
+import { autoEquip, ensurePlayerLifetime, powerFieldsForProgress } from "./player-power";
+import { SUPERIOR_GOLDEN_HELMET } from "../../shared/items";
+import { updateSnapshotRow, insertSnapshotRow, deleteSnapshotRow } from "./snapshot-row-writes";
+import { removeResearchCompletionSchedules } from "./research-runtime";
+import { removePausedResearch } from "./research-pause";
+import { removePlayerItemDrops, removePlayerItemUpgradeData } from "./item-upgrade-runtime";
+import { BOSS_REWARD_CLAIM_BITS, TUTORIAL_FOREST_MAP_ID, PLAYER_SPAWN } from "../../shared/rules";
+import { HOME_EXTERIOR_MAP_ID } from "../../shared/home";
+import { isTownMap } from "./town";
+import { isGuildHallMap } from "./guild-hall";
+import { pinMapBalance } from "./map-balance";
+import { recordAnalyticsMapVisit } from "./analytics";
+
+export function publishPlayerDeathFrame(ctx: any, activePlayer: any) {
+  if (boundedMapPopulation(ctx, activePlayer.mapId) < 2) return;
+  const motion = ctx.db.playerMotion.identity.find(activePlayer.identity);
+  if (!motion?.isVisible) return;
+  ctx.db.playerDeathFrame.insert({
+    mapId: activePlayer.mapId,
+    ...playerZone(activePlayer.x, activePlayer.y),
+    networkId: motion.networkId,
+    playerX: activePlayer.x,
+    playerY: activePlayer.y,
+    facing: activePlayer.facing,
+    emittedAt: ctx.timestamp,
+  });
+}
+
+/**
+ * The whole reset, shared by the player's own reset button and by prestige.
+ * Prestige keeps what a run cannot re-earn by playing again: research ranks
+ * cost real days, and lifetime kills are the count of everything the account
+ * has ever killed, which a rerun does not undo. Kill gems key their ledger
+ * reference off that count rising, so holding it steady also keeps a replayed
+ * batch from paying twice. It keeps the bag too; each tier is usable again
+ * once its map is reached (auto-equip.ts puts on what can be used now).
+ */
+export function resetProgressToDefaults(ctx: any, activePlayer: any, keep: { research?: boolean; lifetimeKills?: boolean; slotTiers?: boolean; items?: boolean } = {}) {
+    clearProceduralProgress(ctx, ctx.sender);
+    const current = readPlayerProgress(ctx, ctx.sender);
+    const next = defaultPlayerProgress(ctx.sender);
+    next.attackRate = challengeAttackInterval(next.attackRate, reflectRewardsInPlay(ctx, ctx.sender));
+    if (current) next.cosmeticItemsJson = current.cosmeticItemsJson;
+    if (keep.research) next.attackRange = savedAttackRange(ctx, ctx.sender);
+    const history = ctx.db.playerCutsceneHistory.identity.find(ctx.sender);
+    if (history) ctx.db.playerCutsceneHistory.identity.update({ ...history, seenMask: 0, generation: history.generation + 1 });
+    else ctx.db.playerCutsceneHistory.insert({ identity: ctx.sender, seenMask: 0, generation: 0 });
+    if (current && keep.items) Object.assign(next, autoEquip.keepBagThroughPrestige(ctx, next, current));
+    if (current && inventoryForProgress(current).includes(SUPERIOR_GOLDEN_HELMET)) {
+      next.inventoryJson = JSON.stringify(inventoryWithBetaHelmet(next, true));
+    }
+    if (current) updateSnapshotRow(ctx, "playerProgress", next);
+    else insertSnapshotRow(ctx, "playerProgress", next);
+    if (!keep.research) {
+      const research = ctx.db.playerResearch.identity.find(ctx.sender);
+      if (research) deleteSnapshotRow(ctx, "playerResearch", ctx.sender);
+      const activeResearchRow = ctx.db.activeResearch.identity.find(ctx.sender);
+      if (activeResearchRow) ctx.db.activeResearch.identity.delete(ctx.sender);
+      removeResearchCompletionSchedules(ctx, ctx.sender);
+      removePausedResearch(ctx, ctx.sender);
+    }
+    // A tier belongs to the slot, not to whatever is sitting in it. Prestige
+    // leaves the bench work, the way it leaves research and now the gear;
+    // this line predates slot tiers, when it only destroyed levels that were
+    // attached to items a prestige took anyway. A deliberate account reset
+    // still clears the lot.
+    if (keep.slotTiers) removePlayerItemDrops(ctx, ctx.sender, keep.items);
+    else removePlayerItemUpgradeData(ctx, ctx.sender, true);
+    const lifetime = ensurePlayerLifetime(ctx);
+    if (!keep.lifetimeKills) ctx.db.playerLifetime.identity.update({ ...lifetime, enemyKills: 0n });
+    // Re-entry uses recent boss contributions to recover earned map unlocks.
+    // A deliberate reset must remove that evidence along with the unlock flags.
+    for (const boss of Object.keys(BOSS_REWARD_CLAIM_BITS)) {
+      (ctx.db as any)[`${boss}Contribution`].identity.delete(ctx.sender);
+      (ctx.db as any)[`${boss}AttackWindow`].identity.delete(ctx.sender);
+    }
+    respawnWithProgress(ctx, activePlayer, next);
+}
+
+/** A prestige's fresh run, which a challenge run also starts with (and an Aggro death restarts). */
+export function startFreshRun(ctx: any, player: any) { resetProgressToDefaults(ctx, player, { research: true, lifetimeKills: true, slotTiers: true, items: true }); }
+
+/** After a reset or respec: full health at the new stats, at the forest spawn, and ranked on them at once. */
+export function respawnWithProgress(ctx: any, activePlayer: any, next: any, destination = { mapId: TUTORIAL_FOREST_MAP_ID, ...PLAYER_SPAWN }) {
+    const nextPlayer = { ...activePlayer, hp: next.maxHp, maxHp: next.maxHp, ...powerFieldsForProgress(ctx, next),
+      speed: effectiveMovementSpeedForProgress(ctx, next), ...equipmentPresentationForProgress(ctx, next) };
+    persistWorldLocation(ctx, transitionPlayerMap(ctx, nextPlayer, destination.mapId, destination, 0));
+    // The board is built from saved stats on a timer, so without this the
+    // player keeps their old rank until the next sweep, which reads to
+    // everyone else as a reset player still sitting at the top. Throttled
+    // to one rebuild a minute; a reset inside that minute waits for it.
+    requestLeaderboardRefresh(ctx);
+}
+
+export function transitionPlayerMap(
+  ctx: any,
+  current: any,
+  mapId: string,
+  arrival: { x: number; y: number },
+  facing = current.facing,
+) {
+  // Through a door on the same map (Soul village, guild hall) the client keeps its interest and never resends it.
+  if (mapId !== current.mapId && ctx.db.playerMotionInterest.identity.find(current.identity)) ctx.db.playerMotionInterest.identity.delete(current.identity);
+  const currentMotion = ctx.db.playerMotion.identity.find(current.identity);
+  const nextPlayer = {
+    ...current,
+    mapId,
+    x: arrival.x,
+    y: arrival.y,
+    ...playerZone(arrival.x, arrival.y),
+    facing: Number.isFinite(facing) ? facing : 0,
+    moving: false,
+    dx: 0,
+    dy: 0,
+    vx: 0,
+    vy: 0,
+    simulationTick: currentMotion?.simulationTick ?? current.simulationTick ?? 0,
+    motionEpoch: ((currentMotion?.motionEpoch ?? current.motionEpoch ?? 0) + 1) >>> 0,
+    lastInputAt: ctx.timestamp,
+  };
+  updateSnapshotRow(ctx, "player", nextPlayer);
+  // The motion row read above is handed to the presence helpers; each host call is paid for.
+  const motion = syncPlayerMotion(ctx, nextPlayer, { motion: currentMotion });
+  syncPlayerMotionIdentity(ctx, nextPlayer, { motion });
+  syncPlayerMapMarker(ctx, nextPlayer, true);
+  ensureRealtimeFrameSchedules(ctx);
+  // Home, the Town and guild halls have no enemies: nothing reads a pin there, and the old pin still fits on the way back.
+  if (mapId !== HOME_EXTERIOR_MAP_ID && !isTownMap(mapId) && !isGuildHallMap(mapId)) pinMapBalance(ctx, mapId);
+  recordAnalyticsMapVisit(ctx, mapId);
+  return nextPlayer;
+}
