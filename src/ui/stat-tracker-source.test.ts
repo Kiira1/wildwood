@@ -36,4 +36,5 @@ it('reads attack speed and crit damage like armor: their number, and what it giv
   expect(snapshot.values.critDamage).toBe(150);
   expect(snapshot.details.attackSpeed).toMatch(/^\d+\.\d{2}\/s$/);
   expect(snapshot.details.critDamage).toMatch(/^\d+\.\d{2}×$/);
+  expect(snapshot.details.armor).toMatch(/^\d+(\.\d+)?% Block$/);
 });

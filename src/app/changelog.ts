@@ -2,6 +2,7 @@ export const RELEASE_NOTES: Record<string, string[]> = {
   "0.901.51": [
     "New Bonuses tab in your profile: switch any prestige perk, research, soul stat or challenge reward off, one at a time, a group at once, or all of them; nothing is lost",
     "Auto Farm: an Aggro switch beside each stat pulls that camp to you, with how many on top (one more for each Aggro win)",
+    "The stat tracker shows Armor's block, like your profile",
     "Attack speed kill popups say Capped at the cap again",
     "Soul Crit Damage popups stay hidden when Stat Gain Popups is off",
   ],

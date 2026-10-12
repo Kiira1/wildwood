@@ -3,6 +3,7 @@ import { effectivePlayerPowerStats, playerPowerForStats, unroundedPlayerPower } 
 import type { TrackerBuild, TrackerValues } from "./stat-tracker-model";
 import { attackCapInterval, attackSpeedLabel, attackSpeedRatingForInterval, critDamageLabel, type AttackCapArg } from "../../shared/stat-rating";
 import { criticalDamage, type CriticalDamageParts } from "../../shared/critical-damage";
+import { formatArmorReduction } from "../game/combat";
 
 /**
  * Reading the tracker's figures needs the connection, the session, the loaded
@@ -47,7 +48,9 @@ export function createStatTrackerSource(deps: {
       damage: stats.damage, armor: stats.armor, regen: stats.regen, attackSpeed: attackSpeedRatingForInterval(deps.player.attackRate, cap),
       critDamage: crit.rating + crit.soul, kills: deps.kills() },
       details: { attackSpeed: attackSpeedLabel(1 / Math.max(deps.player.attackRate, attackCapInterval(cap)), 1 / attackCapInterval(cap)).replace(" (Max)", " Max"),
-        critDamage: critDamageLabel(crit.multiplier, crit.cap).replace(" (Max)", " Max") },
+        critDamage: critDamageLabel(crit.multiplier, crit.cap).replace(" (Max)", " Max"),
+        // Armor's block, as the profile shows it (Ryan): the same armor combat uses.
+        armor: `${formatArmorReduction(stats.armor)} Block` },
       // The run the build belongs to, so the tracker starts over when a challenge swaps it.
       build: { run: coop.aggroChallenge?.()?.active ? "aggro" : coop.prestigeChallenge?.()?.active ? "reflect" : "main",
         basePower: unroundedPlayerPower(base) } };
