@@ -445,8 +445,10 @@ export function createPlayerCombatController(options: {
     }
     // While farming, a boss in range is fair game once nothing of the farmed
     // group (or attacking) is: it used to be skipped, so autofarm stood beside
-    // the boss and shot only while the player steered by hand.
-    if ((!enemyType || !target) && mapBoss && !mapBoss.dead) {
+    // the boss and shot only while the player steered by hand. A ranked Target
+    // weighs it among the farmed group too: Strongest never reached the boss
+    // while anything else was in range (Ryan).
+    if ((!enemyType || !target || ranked) && mapBoss && !mapBoss.dead) {
       // Its real hitbox, as every other range check uses: a circle at its feet
       // left autofarm parked in range on one side and never firing (Koi Shogun).
       const edgeDistance = targetDistance(mapBoss);
@@ -460,10 +462,13 @@ export function createPlayerCombatController(options: {
     // An Endless boss is an enemy with generatedBoss set, which the farming
     // scan above skips: with autofarm on, a player who walked up to it and
     // stood still never fired. It gets the campaign boss's rule.
-    if (enemyType && !target) for (const enemy of enemies) {
+    if (enemyType && (!target || ranked)) for (const enemy of enemies) {
       if (!enemy.generatedBoss || enemy.dead || enemy.remoteCombatGhost) continue;
       const distance = targetDistance(enemy) ** 2;
-      if (distance >= best) continue;
+      // Ranked, it is weighed against what the scan chose, as the campaign boss is; otherwise the nearest wins.
+      if (ranked && target) {
+        if (distance >= attackRange() * attackRange() || compareAutoFarmTargets(priority, enemy, distance, target as EnemyState, best) >= 0) continue;
+      } else if (distance >= best) continue;
       if (enemy === retainedTarget) retainedDistance = distance;
       best = distance; target = enemy;
     }

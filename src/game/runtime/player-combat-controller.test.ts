@@ -764,6 +764,19 @@ describe("autofarm target priority", () => {
     expect(aim("strongest")).toBe("boss");
     expect(aim("lowest")).toBe("wounded");
   });
+
+  // Ryan: Strongest never targeted the boss while anything of the farmed group was in range.
+  it("weighs the map boss while farming a group too, so Strongest takes it; Closest keeps to the group", () => {
+    const aim = (priority: "closest" | "strongest") => {
+      const h = harness();
+      const boss = h.state.bosses.dragon;
+      Object.assign(boss, { dead: false, x: h.state.player.x, y: h.state.player.y + 20, hp: 5_000, maxHp: 5_000 });
+      h.state.controller.attackNearest(h.near.type, null, priority);
+      return aimedAt(h.state, { x: boss.x, y: boss.y + (boss.hitboxOffsetY ?? 0) }) ? "boss" : "group";
+    };
+    expect(aim("strongest")).toBe("boss");
+    expect(aim("closest")).toBe("group");
+  });
 });
 
 describe("bow skills", () => {

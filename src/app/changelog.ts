@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.901.52": [
+    "Auto Farm's Target Strongest takes on the boss when it is in range, not only once nothing else is",
+  ],
   "0.901.51": [
     "New Bonuses tab in your profile: switch any prestige perk, research, soul stat or challenge reward off, one at a time, a group at once, or all of them; nothing is lost",
     "Auto Farm: an Aggro switch beside each stat pulls that camp to you, with how many on top (one more for each Aggro win)",
@@ -3187,6 +3190,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.901.52": "2026-10-11",
   "0.901.51": "2026-10-11",
   "0.901.50": "2026-10-11",
   "0.901.49": "2026-10-10",
