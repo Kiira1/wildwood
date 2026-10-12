@@ -2875,114 +2875,126 @@ export const devAdjustGems = spacetimedb.reducer(
 // not mint extra currency.
 export const devResetDailyGemBonus = spacetimedb.reducer(
   { identity: t.identity() },
-  (ctx, { identity }) => {
-    if (!isDatabaseOwnerIdentity(ctx.sender)) {
-      requireDeveloper(ctx, "dev_reset_daily_gem_bonus");
-      if (!sameIdentity(identity, ctx.sender)) throw new SenderError("Developers may reset only their own daily bonus.");
-    }
-    const dayKey = currentUtcDayKey(ctx);
-    const state = ensureDailyGemBonusState(ctx, identity);
-    if (state.claimableDayKey === dayKey) return;
-
-    const wallet = ensureGemWallet(ctx, identity);
-    if (wallet.balance < DAILY_LOGIN_GEM_BONUS) {
-      throw new SenderError("At least 7 Gems are needed to reverse today's bonus for preview.");
-    }
-    const nextCycle = state.claimCycle + 1n;
-    applyGemBalanceChange(ctx, {
-      identity,
-      delta: -DAILY_LOGIN_GEM_BONUS,
-      kind: "developer_daily_bonus_reset",
-      note: "Reversed today's daily bonus for Claim-window preview.",
-      externalReference: `daily-reset:${identity.toHexString()}:${dayKey}:${nextCycle}`,
-    });
-    ctx.db.dailyGemBonus.identity.update({
-      ...state,
-      claimableDayKey: dayKey,
-      lastClaimedDayKey: "",
-      claimCycle: nextCycle,
-      revision: state.revision + 1n,
-      updatedAt: ctx.timestamp,
-    });
-  },
+  (ctx, args) => devResetDailyBonus(ctx, args),
 );
+
+function devResetDailyBonus(ctx: ModuleReducerCtx, { identity }: { identity: Identity }) {
+  if (!isDatabaseOwnerIdentity(ctx.sender)) {
+    requireDeveloper(ctx, "dev_reset_daily_gem_bonus");
+    if (!sameIdentity(identity, ctx.sender)) throw new SenderError("Developers may reset only their own daily bonus.");
+  }
+  const dayKey = currentUtcDayKey(ctx);
+  const state = ensureDailyGemBonusState(ctx, identity);
+  if (state.claimableDayKey === dayKey) return;
+
+  const wallet = ensureGemWallet(ctx, identity);
+  if (wallet.balance < DAILY_LOGIN_GEM_BONUS) {
+    throw new SenderError("At least 7 Gems are needed to reverse today's bonus for preview.");
+  }
+  const nextCycle = state.claimCycle + 1n;
+  applyGemBalanceChange(ctx, {
+    identity,
+    delta: -DAILY_LOGIN_GEM_BONUS,
+    kind: "developer_daily_bonus_reset",
+    note: "Reversed today's daily bonus for Claim-window preview.",
+    externalReference: `daily-reset:${identity.toHexString()}:${dayKey}:${nextCycle}`,
+  });
+  ctx.db.dailyGemBonus.identity.update({
+    ...state,
+    claimableDayKey: dayKey,
+    lastClaimedDayKey: "",
+    claimCycle: nextCycle,
+    revision: state.revision + 1n,
+    updatedAt: ctx.timestamp,
+  });
+}
 
 export const devBeginVirtualPlayerLoadTest = spacetimedb.reducer(
   { ticket: t.string(), maxCount: t.u32() },
-  (ctx, { ticket, maxCount }) => {
-    // The external Node load generator authenticates as the developer without
-    // taking player control away from the open game tab.
-    requireDeveloperSession(ctx, "dev_begin_virtual_player_load_test");
-    if (!ctx.db.player.identity.find(ctx.sender) || !ctx.db.playerController.identity.find(ctx.sender)) {
-      throw new SenderError("Keep the developer game session open during a virtual-player test.");
-    }
-    if (!isVirtualPlayerTicket(ticket)) throw new SenderError("Invalid virtual-player ticket.");
-    if (maxCount < 1 || maxCount > VIRTUAL_PLAYER_LIMIT) {
-      throw new SenderError(`Virtual-player count must be between 1 and ${VIRTUAL_PLAYER_LIMIT}.`);
-    }
-
-    clearVirtualPlayersForOwner(ctx, ctx.sender);
-    ctx.db.virtualPlayerRun.insert({
-      owner: ctx.sender,
-      ticket,
-      maxCount,
-      expiresAtMicros: ctx.timestamp.microsSinceUnixEpoch + VIRTUAL_PLAYER_RUN_LIFETIME_MICROS,
-    });
-  },
+  (ctx, args) => beginVirtualPlayerLoadTest(ctx, args),
 );
+
+function beginVirtualPlayerLoadTest(ctx: ModuleReducerCtx, { ticket, maxCount }: { ticket: string; maxCount: number }) {
+  // The external Node load generator authenticates as the developer without
+  // taking player control away from the open game tab.
+  requireDeveloperSession(ctx, "dev_begin_virtual_player_load_test");
+  if (!ctx.db.player.identity.find(ctx.sender) || !ctx.db.playerController.identity.find(ctx.sender)) {
+    throw new SenderError("Keep the developer game session open during a virtual-player test.");
+  }
+  if (!isVirtualPlayerTicket(ticket)) throw new SenderError("Invalid virtual-player ticket.");
+  if (maxCount < 1 || maxCount > VIRTUAL_PLAYER_LIMIT) {
+    throw new SenderError(`Virtual-player count must be between 1 and ${VIRTUAL_PLAYER_LIMIT}.`);
+  }
+
+  clearVirtualPlayersForOwner(ctx, ctx.sender);
+  ctx.db.virtualPlayerRun.insert({
+    owner: ctx.sender,
+    ticket,
+    maxCount,
+    expiresAtMicros: ctx.timestamp.microsSinceUnixEpoch + VIRTUAL_PLAYER_RUN_LIFETIME_MICROS,
+  });
+}
 
 export const joinVirtualPlayerLoadTest = spacetimedb.reducer(
   { owner: t.identity(), ticket: t.string(), mapId: t.string(), x: t.f64(), y: t.f64() },
-  (ctx, { owner, ticket, mapId, x, y }) => {
-    const session = requireSupportedSessionProtocol(ctx);
-    if (sameIdentity(ctx.sender, owner) || isDeveloperIdentity(ctx.sender)) {
-      throw new SenderError("Developer cannot become a virtual player.");
-    }
-    if (session.enteredWorld) throw new SenderError("Virtual-player identity must be fresh.");
-    if (!VALID_MAP_IDS.has(mapId) || isGuildHallMap(mapId)) throw new SenderError("Unsupported virtual-player map.");
-    if (!Number.isFinite(x) || !Number.isFinite(y)) throw new SenderError("Virtual-player position must be finite.");
-
-    const run = ctx.db.virtualPlayerRun.owner.find(owner);
-    if (
-      !run ||
-      !isDeveloperIdentity(owner) ||
-      run.ticket !== ticket ||
-      ctx.timestamp.microsSinceUnixEpoch >= run.expiresAtMicros ||
-      !ctx.db.player.identity.find(owner) ||
-      !ctx.db.playerController.identity.find(owner)
-    ) throw new SenderError("Virtual-player test is no longer active.");
-
-    const existing = ctx.db.virtualPlayer.identity.find(ctx.sender);
-    if (existing && !sameIdentity(existing.owner, owner)) throw new SenderError("Virtual player belongs to another test.");
-    if (!existing) {
-      const activeCount = virtualPlayerCountForOwner(ctx, owner);
-      if (activeCount >= run.maxCount || activeCount >= VIRTUAL_PLAYER_LIMIT) {
-        throw new SenderError(`Virtual-player limit is ${Math.min(run.maxCount, VIRTUAL_PLAYER_LIMIT)}.`);
-      }
-      if (
-        ctx.db.player.identity.find(ctx.sender) ||
-        ctx.db.playerProfile.identity.find(ctx.sender) ||
-        readPlayerProgress(ctx, ctx.sender) ||
-        ctx.db.playerLifetime.identity.find(ctx.sender)
-      ) throw new SenderError("Virtual-player identity must be new.");
-    }
-
-    const registration = {
-      identity: ctx.sender,
-      owner,
-      mapId,
-      spawnX: Math.max(PLAYER_RADIUS, Math.min(WORLD.width - PLAYER_RADIUS, x)),
-      spawnY: Math.max(PLAYER_RADIUS, Math.min(WORLD.height - PLAYER_RADIUS, y)),
-      createdAt: existing?.createdAt ?? ctx.timestamp,
-    };
-    if (existing) ctx.db.virtualPlayer.identity.update(registration);
-    else {
-      ctx.db.virtualPlayer.insert(registration);
-      adjustVirtualPlayerCount(ctx, owner, 1);
-    }
-    grantVirtualPlayerConsent(ctx, owner);
-  },
+  (ctx, args) => joinVirtualPlayer(ctx, args),
 );
+
+function joinVirtualPlayer(ctx: ModuleReducerCtx, { owner, ticket, mapId, x, y }: {
+  owner: Identity;
+  ticket: string;
+  mapId: string;
+  x: number;
+  y: number;
+}) {
+  const session = requireSupportedSessionProtocol(ctx);
+  if (sameIdentity(ctx.sender, owner) || isDeveloperIdentity(ctx.sender)) {
+    throw new SenderError("Developer cannot become a virtual player.");
+  }
+  if (session.enteredWorld) throw new SenderError("Virtual-player identity must be fresh.");
+  if (!VALID_MAP_IDS.has(mapId) || isGuildHallMap(mapId)) throw new SenderError("Unsupported virtual-player map.");
+  if (!Number.isFinite(x) || !Number.isFinite(y)) throw new SenderError("Virtual-player position must be finite.");
+
+  const run = ctx.db.virtualPlayerRun.owner.find(owner);
+  if (
+    !run ||
+    !isDeveloperIdentity(owner) ||
+    run.ticket !== ticket ||
+    ctx.timestamp.microsSinceUnixEpoch >= run.expiresAtMicros ||
+    !ctx.db.player.identity.find(owner) ||
+    !ctx.db.playerController.identity.find(owner)
+  ) throw new SenderError("Virtual-player test is no longer active.");
+
+  const existing = ctx.db.virtualPlayer.identity.find(ctx.sender);
+  if (existing && !sameIdentity(existing.owner, owner)) throw new SenderError("Virtual player belongs to another test.");
+  if (!existing) {
+    const activeCount = virtualPlayerCountForOwner(ctx, owner);
+    if (activeCount >= run.maxCount || activeCount >= VIRTUAL_PLAYER_LIMIT) {
+      throw new SenderError(`Virtual-player limit is ${Math.min(run.maxCount, VIRTUAL_PLAYER_LIMIT)}.`);
+    }
+    if (
+      ctx.db.player.identity.find(ctx.sender) ||
+      ctx.db.playerProfile.identity.find(ctx.sender) ||
+      readPlayerProgress(ctx, ctx.sender) ||
+      ctx.db.playerLifetime.identity.find(ctx.sender)
+    ) throw new SenderError("Virtual-player identity must be new.");
+  }
+
+  const registration = {
+    identity: ctx.sender,
+    owner,
+    mapId,
+    spawnX: Math.max(PLAYER_RADIUS, Math.min(WORLD.width - PLAYER_RADIUS, x)),
+    spawnY: Math.max(PLAYER_RADIUS, Math.min(WORLD.height - PLAYER_RADIUS, y)),
+    createdAt: existing?.createdAt ?? ctx.timestamp,
+  };
+  if (existing) ctx.db.virtualPlayer.identity.update(registration);
+  else {
+    ctx.db.virtualPlayer.insert(registration);
+    adjustVirtualPlayerCount(ctx, owner, 1);
+  }
+  grantVirtualPlayerConsent(ctx, owner);
+}
 
 export const devClearVirtualPlayers = spacetimedb.reducer(
   {},
@@ -3019,38 +3031,40 @@ export const devDeleteBugReport = spacetimedb.reducer(
 // screenshot or a player reconnect cannot turn this into a broader deletion.
 export const devDeleteLegacyPlayer = spacetimedb.reducer(
   { identity: t.identity(), expectedDisplayName: t.string() },
-  (ctx, { identity, expectedDisplayName }) => {
-    if (!isDatabaseOwnerIdentity(ctx.sender)) requireDeveloper(ctx, "dev_delete_legacy_player");
-    if (isDeveloperIdentity(identity) || isDatabaseOwnerIdentity(identity)) {
-      throw new SenderError("Protected identity cannot be deleted.");
-    }
-    if (isVirtualPlayer(ctx, identity)) throw new SenderError("Use virtual-player cleanup for simulated players.");
-
-    const profile = ctx.db.playerProfile.identity.find(identity);
-    const progress = readPlayerProgress(ctx, identity);
-    const leaderboard = ctx.db.leaderboardEntry.identity.find(identity);
-    if (!profile || !progress || !leaderboard) throw new SenderError("Legacy player save not found.");
-    if (profile.displayName !== expectedDisplayName.trim()) throw new SenderError("Player name changed; deletion refused.");
-    if (leaderboard.isGuest || leaderboard.powerLevel >= 104 || effectivePowerForProgress(ctx, progress) >= 104) {
-      throw new SenderError("Player no longer matches the requested leaderboard criteria.");
-    }
-    if (ctx.db.playerAccountStatus.identity.find(identity)) {
-      throw new SenderError("Known account status found; deletion refused.");
-    }
-    if (
-      ctx.db.player.identity.find(identity) ||
-      ctx.db.playerController.identity.find(identity) ||
-      [...ctx.db.playerSession.byIdentity.filter(identity) as Iterable<any>].length > 0
-    ) throw new SenderError("Player is online; deletion refused.");
-    for (const current of ctx.db.duel.iter() as Iterable<any>) {
-      if (sameIdentity(current.challenger, identity) || sameIdentity(current.opponent, identity)) {
-        throw new SenderError("Player has an active duel; deletion refused.");
-      }
-    }
-
-    removePlayerIdentityData(ctx, identity);
-  },
+  (ctx, args) => devDeleteLegacy(ctx, args),
 );
+
+function devDeleteLegacy(ctx: ModuleReducerCtx, { identity, expectedDisplayName }: { identity: Identity; expectedDisplayName: string }) {
+  if (!isDatabaseOwnerIdentity(ctx.sender)) requireDeveloper(ctx, "dev_delete_legacy_player");
+  if (isDeveloperIdentity(identity) || isDatabaseOwnerIdentity(identity)) {
+    throw new SenderError("Protected identity cannot be deleted.");
+  }
+  if (isVirtualPlayer(ctx, identity)) throw new SenderError("Use virtual-player cleanup for simulated players.");
+
+  const profile = ctx.db.playerProfile.identity.find(identity);
+  const progress = readPlayerProgress(ctx, identity);
+  const leaderboard = ctx.db.leaderboardEntry.identity.find(identity);
+  if (!profile || !progress || !leaderboard) throw new SenderError("Legacy player save not found.");
+  if (profile.displayName !== expectedDisplayName.trim()) throw new SenderError("Player name changed; deletion refused.");
+  if (leaderboard.isGuest || leaderboard.powerLevel >= 104 || effectivePowerForProgress(ctx, progress) >= 104) {
+    throw new SenderError("Player no longer matches the requested leaderboard criteria.");
+  }
+  if (ctx.db.playerAccountStatus.identity.find(identity)) {
+    throw new SenderError("Known account status found; deletion refused.");
+  }
+  if (
+    ctx.db.player.identity.find(identity) ||
+    ctx.db.playerController.identity.find(identity) ||
+    [...ctx.db.playerSession.byIdentity.filter(identity) as Iterable<any>].length > 0
+  ) throw new SenderError("Player is online; deletion refused.");
+  for (const current of ctx.db.duel.iter() as Iterable<any>) {
+    if (sameIdentity(current.challenger, identity) || sameIdentity(current.opponent, identity)) {
+      throw new SenderError("Player has an active duel; deletion refused.");
+    }
+  }
+
+  removePlayerIdentityData(ctx, identity);
+}
 
 // Maintenance-only correction for legacy account links created before all
 // lifetime metadata was reliably transferred. The CLI runs it as the database
@@ -3077,40 +3091,42 @@ export const devRepairPlayerJoinedAt = spacetimedb.reducer(
 // access, and profile data intentionally remain owned by the target account.
 export const devCopyPlayerCombatStats = spacetimedb.reducer(
   { sourceIdentity: t.identity(), targetIdentity: t.identity() },
-  (ctx, { sourceIdentity, targetIdentity }) => {
-    if (!isDatabaseOwnerIdentity(ctx.sender)) requireDeveloper(ctx, "dev_copy_player_combat_stats");
-    if (sameIdentity(sourceIdentity, targetIdentity)) throw new SenderError("Source and target must differ.");
-    const source = readPlayerProgress(ctx, sourceIdentity);
-    const target = readPlayerProgress(ctx, targetIdentity);
-    if (!source || !target) throw new SenderError("Player progress row not found.");
-
-    const nextProgress = {
-      ...target,
-      maxHp: source.maxHp,
-      damage: source.damage,
-      attackRate: source.attackRate,
-      projectileSpeed: source.projectileSpeed,
-      projectileCount: source.projectileCount,
-      attackRange: source.attackRange,
-      armor: source.armor,
-      regen: source.regen,
-      speed: source.speed,
-      speedOverride: source.speedOverride,
-    };
-    updateSnapshotRow(ctx, "playerProgress", nextProgress);
-    const active = ctx.db.player.identity.find(targetIdentity);
-    if (active) {
-      const nextPlayer = {
-        ...active,
-        speed: effectiveMovementSpeedForProgress(ctx, nextProgress),
-        ...powerFieldsForProgress(ctx, nextProgress),
-      };
-      updateSnapshotRow(ctx, "player", nextPlayer);
-      syncPlayerMotionIdentity(ctx, playerWithMotion(ctx, nextPlayer));
-    }
-    refreshLeaderboard(ctx);
-  },
+  (ctx, args) => devCopyCombatStats(ctx, args),
 );
+
+function devCopyCombatStats(ctx: ModuleReducerCtx, { sourceIdentity, targetIdentity }: { sourceIdentity: Identity; targetIdentity: Identity }) {
+  if (!isDatabaseOwnerIdentity(ctx.sender)) requireDeveloper(ctx, "dev_copy_player_combat_stats");
+  if (sameIdentity(sourceIdentity, targetIdentity)) throw new SenderError("Source and target must differ.");
+  const source = readPlayerProgress(ctx, sourceIdentity);
+  const target = readPlayerProgress(ctx, targetIdentity);
+  if (!source || !target) throw new SenderError("Player progress row not found.");
+
+  const nextProgress = {
+    ...target,
+    maxHp: source.maxHp,
+    damage: source.damage,
+    attackRate: source.attackRate,
+    projectileSpeed: source.projectileSpeed,
+    projectileCount: source.projectileCount,
+    attackRange: source.attackRange,
+    armor: source.armor,
+    regen: source.regen,
+    speed: source.speed,
+    speedOverride: source.speedOverride,
+  };
+  updateSnapshotRow(ctx, "playerProgress", nextProgress);
+  const active = ctx.db.player.identity.find(targetIdentity);
+  if (active) {
+    const nextPlayer = {
+      ...active,
+      speed: effectiveMovementSpeedForProgress(ctx, nextProgress),
+      ...powerFieldsForProgress(ctx, nextProgress),
+    };
+    updateSnapshotRow(ctx, "player", nextPlayer);
+    syncPlayerMotionIdentity(ctx, playerWithMotion(ctx, nextPlayer));
+  }
+  refreshLeaderboard(ctx);
+}
 
 export const setProfileIcon = spacetimedb.reducer(
   { profileIcon: t.u32() },
@@ -3252,55 +3268,69 @@ export const devUpdatePlayerSave = spacetimedb.reducer(
     regen: t.f32(),
     speed: t.f32(),
   },
-  (ctx, update) => {
-    requireDeveloper(ctx, "dev_update_player_save");
-    const profile = ctx.db.playerProfile.identity.find(update.identity);
-    const progress = readPlayerProgress(ctx, update.identity);
-    if (!profile || !progress) throw new SenderError("Player save row not found.");
-    const displayName = update.displayName.trim().replace(/\s+/g, " ");
-    if (!/^[A-Za-z0-9 _-]{2,20}$/.test(displayName)) {
-      throw new SenderError("Name must be 2-20 letters, numbers, spaces, hyphens, or underscores.");
-    }
-    requireAllowedDisplayName(displayName);
-    const bounded = (value: number, min: number, max: number, field: string) => {
-      if (!Number.isFinite(value) || value < min || value > max) {
-        throw new SenderError(`${field} must be between ${min} and ${max}.`);
-      }
-      return value;
-    };
-    const requestedSpeed = bounded(update.speed, 0, MAX_MOVEMENT_SPEED_OVERRIDE, "Move speed");
-    const equipmentSpeed = playerBaseMovementSpeed(false);
-    const nextProgress = {
-      ...progress,
-      maxHp: bounded(update.maxHp, 1, MAX_PLAYER_STAT, "Max HP"),
-      damage: bounded(update.damage, 1, MAX_PLAYER_STAT, "Damage"),
-      attackRate: bounded(update.attackRate, MIN_ATTACK_INTERVAL, 10, "Attack rate"),
-      projectileSpeed: PLAYER_PROJECTILE_SPEED,
-      projectileCount: Math.max(1, Math.min(20, Math.floor(update.projectileCount))),
-      attackRange: bounded(update.attackRange, 1, 5_000, "Attack range"),
-      armor: bounded(update.armor, 0, MAX_ARMOR, "Armor"),
-      regen: bounded(update.regen, 0, MAX_PLAYER_STAT, "Regen"),
-      speed: equipmentSpeed,
-      speedOverride: requestedSpeed === 0 || movementSpeedsMatch(requestedSpeed, equipmentSpeed) ? 0 : requestedSpeed,
-    };
-    updateSnapshotRow(ctx, "playerProfile", { ...profile, displayName });
-    syncDisplayNamePresentation(ctx, update.identity, displayName);
-    updateSnapshotRow(ctx, "playerProgress", nextProgress);
-    const active = ctx.db.player.identity.find(update.identity);
-    if (active) {
-      const nextPlayer = {
-        ...active,
-        speed: effectiveMovementSpeedForProgress(ctx, nextProgress),
-        ...powerFieldsForProgress(ctx, nextProgress),
-      };
-      updateSnapshotRow(ctx, "player", nextPlayer);
-      syncPlayerMotionIdentity(ctx, playerWithMotion(ctx, nextPlayer));
-    }
-    const audit = ctx.db.playerAccessAudit.identity.find(update.identity);
-    if (audit) ctx.db.playerAccessAudit.identity.update({ ...audit, displayName });
-    refreshLeaderboard(ctx);
-  },
+  (ctx, update) => devUpdateSave(ctx, update),
 );
+
+function devUpdateSave(ctx: ModuleReducerCtx, update: {
+  identity: Identity;
+  displayName: string;
+  maxHp: number;
+  damage: number;
+  attackRate: number;
+  projectileSpeed: number;
+  projectileCount: number;
+  attackRange: number;
+  armor: number;
+  regen: number;
+  speed: number;
+}) {
+  requireDeveloper(ctx, "dev_update_player_save");
+  const profile = ctx.db.playerProfile.identity.find(update.identity);
+  const progress = readPlayerProgress(ctx, update.identity);
+  if (!profile || !progress) throw new SenderError("Player save row not found.");
+  const displayName = update.displayName.trim().replace(/\s+/g, " ");
+  if (!/^[A-Za-z0-9 _-]{2,20}$/.test(displayName)) {
+    throw new SenderError("Name must be 2-20 letters, numbers, spaces, hyphens, or underscores.");
+  }
+  requireAllowedDisplayName(displayName);
+  const bounded = (value: number, min: number, max: number, field: string) => {
+    if (!Number.isFinite(value) || value < min || value > max) {
+      throw new SenderError(`${field} must be between ${min} and ${max}.`);
+    }
+    return value;
+  };
+  const requestedSpeed = bounded(update.speed, 0, MAX_MOVEMENT_SPEED_OVERRIDE, "Move speed");
+  const equipmentSpeed = playerBaseMovementSpeed(false);
+  const nextProgress = {
+    ...progress,
+    maxHp: bounded(update.maxHp, 1, MAX_PLAYER_STAT, "Max HP"),
+    damage: bounded(update.damage, 1, MAX_PLAYER_STAT, "Damage"),
+    attackRate: bounded(update.attackRate, MIN_ATTACK_INTERVAL, 10, "Attack rate"),
+    projectileSpeed: PLAYER_PROJECTILE_SPEED,
+    projectileCount: Math.max(1, Math.min(20, Math.floor(update.projectileCount))),
+    attackRange: bounded(update.attackRange, 1, 5_000, "Attack range"),
+    armor: bounded(update.armor, 0, MAX_ARMOR, "Armor"),
+    regen: bounded(update.regen, 0, MAX_PLAYER_STAT, "Regen"),
+    speed: equipmentSpeed,
+    speedOverride: requestedSpeed === 0 || movementSpeedsMatch(requestedSpeed, equipmentSpeed) ? 0 : requestedSpeed,
+  };
+  updateSnapshotRow(ctx, "playerProfile", { ...profile, displayName });
+  syncDisplayNamePresentation(ctx, update.identity, displayName);
+  updateSnapshotRow(ctx, "playerProgress", nextProgress);
+  const active = ctx.db.player.identity.find(update.identity);
+  if (active) {
+    const nextPlayer = {
+      ...active,
+      speed: effectiveMovementSpeedForProgress(ctx, nextProgress),
+      ...powerFieldsForProgress(ctx, nextProgress),
+    };
+    updateSnapshotRow(ctx, "player", nextPlayer);
+    syncPlayerMotionIdentity(ctx, playerWithMotion(ctx, nextPlayer));
+  }
+  const audit = ctx.db.playerAccessAudit.identity.find(update.identity);
+  if (audit) ctx.db.playerAccessAudit.identity.update({ ...audit, displayName });
+  refreshLeaderboard(ctx);
+}
 
 export const savePlayerProgress = spacetimedb.reducer(
   {
@@ -3591,58 +3621,60 @@ export const unlockInventorySlot = spacetimedb.reducer((ctx) => {
 
 export const startItemUpgrade = spacetimedb.reducer(
   { slot: t.u8(), itemId: t.string() },
-  (ctx, { slot: requestedSlot, itemId }) => {
-    const slot = requireUpgradeBenchSlot(requestedSlot);
-    const playerAtBench = requireControllingPlayer(ctx);
-    if (!isTownMap(playerAtBench.mapId) ||
-      !withinStationReach(ctx, playerAtBench, TOWN_BENCH_POSITION, UPGRADE_BENCH_USE_RANGE)) {
-      throw new SenderError("Touch the Upgrade Bench first.");
-    }
-    if (activeDuelFor(ctx, ctx.sender)) throw new SenderError("Finish your duel first.");
-    if (slot === UPGRADE_BENCH_SLOT_TWO && !secondUpgradeSlotUnlockedFor(ctx, ctx.sender)) {
-      throw new SenderError("Unlock the second upgrade slot first.");
-    }
-    if (slot === UPGRADE_BENCH_SLOT_THREE && !thirdUpgradeSlotUnlockedFor(ctx, ctx.sender)) {
-      throw new SenderError("Unlock the third upgrade slot first.");
-    }
-    // `itemId` carries the upgrade slot now: "HAND", "HEAD" or "CHEST". The
-    // parameter keeps its name so the reducer signature is unchanged and no
-    // client is broken by the move from per-item levels to per-slot tiers.
-    const upgradeSlot = itemId;
-    if (!isUpgradeSlot(upgradeSlot)) throw new SenderError("Choose a weapon, helmet or armor slot.");
-
-    const existing = activeItemUpgradeForSlot(ctx, ctx.sender, slot);
-    if (existing) reconcileActiveItemUpgrade(ctx, existing, slot);
-    const active = activeItemUpgradeForSlot(ctx, ctx.sender, slot);
-    if (active) throw new SenderError("That upgrade slot is already in use.");
-    if (activeItemUpgradeEntriesFor(ctx, ctx.sender).some(({ active: other }) => other.itemId === upgradeSlot)) {
-      throw new SenderError(`Your ${UPGRADE_SLOT_LABELS[upgradeSlot]} slot is already upgrading.`);
-    }
-
-    // The bag is untouched: a slot tier is not the item, so nothing is taken
-    // away while it runs and nothing has to be handed back when it finishes.
-    const currentLevel = slotUpgradeTierFor(ctx, ctx.sender, upgradeSlot);
-    if (currentLevel >= MAX_SLOT_UPGRADE_TIER) {
-      throw new SenderError(`Your ${UPGRADE_SLOT_LABELS[upgradeSlot]} slot is already at tier ${MAX_SLOT_UPGRADE_TIER}.`);
-    }
-
-    const durationMicros = BigInt(slotUpgradeDurationWithResearch(itemUpgradeDurationMs(currentLevel), ctx.db.playerResearch.identity.find(ctx.sender)?.slotUpgradeSpeed ?? 0)) * 1_000n;
-    const safeDurationMicros = durationMicros > 0n ? durationMicros : 1n;
-    const completesAt = new Timestamp(ctx.timestamp.microsSinceUnixEpoch + safeDurationMicros);
-    const nextActive = {
-      identity: ctx.sender,
-      itemId: upgradeSlot,
-      currentLevel,
-      targetLevel: currentLevel + 1,
-      startedAt: ctx.timestamp,
-      completesAt,
-      paused: false,
-      remainingMicros: safeDurationMicros,
-    };
-    insertActiveItemUpgrade(ctx, slot, nextActive);
-    ensureItemUpgradeCompletionSchedule(ctx, nextActive, slot);
-  },
+  (ctx, args) => startItemUpgradeFor(ctx, args),
 );
+
+function startItemUpgradeFor(ctx: ModuleReducerCtx, { slot: requestedSlot, itemId }: { slot: number; itemId: string }) {
+  const slot = requireUpgradeBenchSlot(requestedSlot);
+  const playerAtBench = requireControllingPlayer(ctx);
+  if (!isTownMap(playerAtBench.mapId) ||
+    !withinStationReach(ctx, playerAtBench, TOWN_BENCH_POSITION, UPGRADE_BENCH_USE_RANGE)) {
+    throw new SenderError("Touch the Upgrade Bench first.");
+  }
+  if (activeDuelFor(ctx, ctx.sender)) throw new SenderError("Finish your duel first.");
+  if (slot === UPGRADE_BENCH_SLOT_TWO && !secondUpgradeSlotUnlockedFor(ctx, ctx.sender)) {
+    throw new SenderError("Unlock the second upgrade slot first.");
+  }
+  if (slot === UPGRADE_BENCH_SLOT_THREE && !thirdUpgradeSlotUnlockedFor(ctx, ctx.sender)) {
+    throw new SenderError("Unlock the third upgrade slot first.");
+  }
+  // `itemId` carries the upgrade slot now: "HAND", "HEAD" or "CHEST". The
+  // parameter keeps its name so the reducer signature is unchanged and no
+  // client is broken by the move from per-item levels to per-slot tiers.
+  const upgradeSlot = itemId;
+  if (!isUpgradeSlot(upgradeSlot)) throw new SenderError("Choose a weapon, helmet or armor slot.");
+
+  const existing = activeItemUpgradeForSlot(ctx, ctx.sender, slot);
+  if (existing) reconcileActiveItemUpgrade(ctx, existing, slot);
+  const active = activeItemUpgradeForSlot(ctx, ctx.sender, slot);
+  if (active) throw new SenderError("That upgrade slot is already in use.");
+  if (activeItemUpgradeEntriesFor(ctx, ctx.sender).some(({ active: other }) => other.itemId === upgradeSlot)) {
+    throw new SenderError(`Your ${UPGRADE_SLOT_LABELS[upgradeSlot]} slot is already upgrading.`);
+  }
+
+  // The bag is untouched: a slot tier is not the item, so nothing is taken
+  // away while it runs and nothing has to be handed back when it finishes.
+  const currentLevel = slotUpgradeTierFor(ctx, ctx.sender, upgradeSlot);
+  if (currentLevel >= MAX_SLOT_UPGRADE_TIER) {
+    throw new SenderError(`Your ${UPGRADE_SLOT_LABELS[upgradeSlot]} slot is already at tier ${MAX_SLOT_UPGRADE_TIER}.`);
+  }
+
+  const durationMicros = BigInt(slotUpgradeDurationWithResearch(itemUpgradeDurationMs(currentLevel), ctx.db.playerResearch.identity.find(ctx.sender)?.slotUpgradeSpeed ?? 0)) * 1_000n;
+  const safeDurationMicros = durationMicros > 0n ? durationMicros : 1n;
+  const completesAt = new Timestamp(ctx.timestamp.microsSinceUnixEpoch + safeDurationMicros);
+  const nextActive = {
+    identity: ctx.sender,
+    itemId: upgradeSlot,
+    currentLevel,
+    targetLevel: currentLevel + 1,
+    startedAt: ctx.timestamp,
+    completesAt,
+    paused: false,
+    remainingMicros: safeDurationMicros,
+  };
+  insertActiveItemUpgrade(ctx, slot, nextActive);
+  ensureItemUpgradeCompletionSchedule(ctx, nextActive, slot);
+}
 
 /** Inventory ownership is authoritative; a stale client save cannot restore deleted gear. Bodies: equipment-copies.ts. */
 export const destroyEquipment = spacetimedb.reducer(
@@ -4088,44 +4120,46 @@ export const sendChatReply = spacetimedb.reducer(
 
 export const reportChatMessage = spacetimedb.reducer(
   { messageId: t.u64(), reason: t.string() },
-  (ctx, { messageId, reason }) => {
-    requireControllingPlayer(ctx);
-    if (!isChatReportReason(reason)) throw new SenderError("Choose a valid report reason.");
-
-    const message = ctx.db.chatMessage.id.find(messageId);
-    if (!message) throw new SenderError("Message is no longer available.");
-    if (sameIdentity(message.sender, ctx.sender)) throw new SenderError("You cannot report your own message.");
-    if (!message.senderName) throw new SenderError("This message cannot be reported.");
-
-    for (const _existing of ctx.db.chatMessageReport.byReporterMessage.filter([ctx.sender, messageId])) {
-      throw new SenderError("You already reported this message.");
-    }
-
-    consumeReportRate(ctx);
-
-    const reporterName = ctx.db.playerProfile.identity.find(ctx.sender)?.displayName ?? "PLAYER";
-    const report = ctx.db.chatMessageReport.insert({
-      id: 0n,
-      reporter: ctx.sender,
-      reporterName,
-      accused: message.sender,
-      senderName: message.senderName,
-      messageId: message.id,
-      message: message.message,
-      messageModerated: message.moderated,
-      sentAt: message.sentAt,
-      reason,
-      status: "pending",
-      reportedAt: ctx.timestamp,
-      replyToSenderName: message.replyToSenderName,
-      replyToMessage: message.replyToMessage,
-    });
-    if ((isDeveloperIdentity(ctx.sender) || isChatModerator(ctx, ctx.sender)) && hasSpacetimeAuthAccount(ctx)) {
-      moderateReportedMessage(ctx, "public", messageId, reason, "chat_message_report", report.id.toString(), isDeveloperIdentity(ctx.sender) ? "developer" : "moderator");
-      ctx.db.chatMessageReport.id.update({ ...report, status: "resolved" });
-    }
-  },
+  (ctx, args) => reportChatMessageFor(ctx, args),
 );
+
+function reportChatMessageFor(ctx: ModuleReducerCtx, { messageId, reason }: { messageId: bigint; reason: string }) {
+  requireControllingPlayer(ctx);
+  if (!isChatReportReason(reason)) throw new SenderError("Choose a valid report reason.");
+
+  const message = ctx.db.chatMessage.id.find(messageId);
+  if (!message) throw new SenderError("Message is no longer available.");
+  if (sameIdentity(message.sender, ctx.sender)) throw new SenderError("You cannot report your own message.");
+  if (!message.senderName) throw new SenderError("This message cannot be reported.");
+
+  for (const _existing of ctx.db.chatMessageReport.byReporterMessage.filter([ctx.sender, messageId])) {
+    throw new SenderError("You already reported this message.");
+  }
+
+  consumeReportRate(ctx);
+
+  const reporterName = ctx.db.playerProfile.identity.find(ctx.sender)?.displayName ?? "PLAYER";
+  const report = ctx.db.chatMessageReport.insert({
+    id: 0n,
+    reporter: ctx.sender,
+    reporterName,
+    accused: message.sender,
+    senderName: message.senderName,
+    messageId: message.id,
+    message: message.message,
+    messageModerated: message.moderated,
+    sentAt: message.sentAt,
+    reason,
+    status: "pending",
+    reportedAt: ctx.timestamp,
+    replyToSenderName: message.replyToSenderName,
+    replyToMessage: message.replyToMessage,
+  });
+  if ((isDeveloperIdentity(ctx.sender) || isChatModerator(ctx, ctx.sender)) && hasSpacetimeAuthAccount(ctx)) {
+    moderateReportedMessage(ctx, "public", messageId, reason, "chat_message_report", report.id.toString(), isDeveloperIdentity(ctx.sender) ? "developer" : "moderator");
+    ctx.db.chatMessageReport.id.update({ ...report, status: "resolved" });
+  }
+}
 
 export const requestDuel = spacetimedb.reducer(
   { opponent: t.identity() },
@@ -4169,42 +4203,44 @@ export const updateMovementState = spacetimedb.reducer(
 
 export const setPlayerMotionInterest = spacetimedb.reducer(
   { networkIds: t.array(t.u32()) },
-  (ctx, { networkIds }) => {
-    if (blockedSession(ctx)) return;
-    const activePlayer = requireControllingPlayer(ctx);
-    const ownMotion = ctx.db.playerMotion.identity.find(ctx.sender);
-    if (!ownMotion) throw new SenderError("Player motion is unavailable.");
-    if (!ownMotion.isVisible) {
-      if (ctx.db.playerMotionInterest.identity.find(ctx.sender)) ctx.db.playerMotionInterest.identity.delete(ctx.sender);
-      return;
-    }
-    const selected: number[] = [];
-    const seen = new Set<number>();
-    for (const networkId of networkIds.slice(0, PLAYER_MOTION_INTEREST_LIMIT * 4)) { // A longer list is cut, not walked: each id costs a lookup.
-      if (selected.length >= PLAYER_MOTION_INTEREST_LIMIT) break;
-      if (seen.has(networkId) || networkId === ownMotion.networkId) continue;
-      seen.add(networkId);
-      const motion = ctx.db.playerMotion.networkId.find(networkId);
-      if (!motion || !motion.isVisible || motion.mapId !== activePlayer.mapId) continue;
-      selected.push(networkId);
-    }
-
-    const current = ctx.db.playerMotionInterest.identity.find(ctx.sender);
-    if (selected.length === 0) {
-      if (current) ctx.db.playerMotionInterest.identity.delete(ctx.sender);
-      return;
-    }
-    if (
-      current &&
-      current.networkIds.length === selected.length &&
-      current.networkIds.every((networkId: number, index: number) => networkId === selected[index])
-    ) return;
-    const next = { identity: ctx.sender, networkIds: selected };
-    if (current) ctx.db.playerMotionInterest.identity.update(next);
-    else ctx.db.playerMotionInterest.insert(next);
-    ensureMotionDetailFrameSchedule(ctx);
-  },
+  (ctx, args) => setMotionInterest(ctx, args),
 );
+
+function setMotionInterest(ctx: ModuleReducerCtx, { networkIds }: { networkIds: number[] }) {
+  if (blockedSession(ctx)) return;
+  const activePlayer = requireControllingPlayer(ctx);
+  const ownMotion = ctx.db.playerMotion.identity.find(ctx.sender);
+  if (!ownMotion) throw new SenderError("Player motion is unavailable.");
+  if (!ownMotion.isVisible) {
+    if (ctx.db.playerMotionInterest.identity.find(ctx.sender)) ctx.db.playerMotionInterest.identity.delete(ctx.sender);
+    return;
+  }
+  const selected: number[] = [];
+  const seen = new Set<number>();
+  for (const networkId of networkIds.slice(0, PLAYER_MOTION_INTEREST_LIMIT * 4)) { // A longer list is cut, not walked: each id costs a lookup.
+    if (selected.length >= PLAYER_MOTION_INTEREST_LIMIT) break;
+    if (seen.has(networkId) || networkId === ownMotion.networkId) continue;
+    seen.add(networkId);
+    const motion = ctx.db.playerMotion.networkId.find(networkId);
+    if (!motion || !motion.isVisible || motion.mapId !== activePlayer.mapId) continue;
+    selected.push(networkId);
+  }
+
+  const current = ctx.db.playerMotionInterest.identity.find(ctx.sender);
+  if (selected.length === 0) {
+    if (current) ctx.db.playerMotionInterest.identity.delete(ctx.sender);
+    return;
+  }
+  if (
+    current &&
+    current.networkIds.length === selected.length &&
+    current.networkIds.every((networkId: number, index: number) => networkId === selected[index])
+  ) return;
+  const next = { identity: ctx.sender, networkIds: selected };
+  if (current) ctx.db.playerMotionInterest.identity.update(next);
+  else ctx.db.playerMotionInterest.insert(next);
+  ensureMotionDetailFrameSchedule(ctx);
+}
 
 // Rollout bridge for pre-0.424 clients. Current clients never call this path.
 export const syncPosition = spacetimedb.reducer(
@@ -4229,124 +4265,128 @@ export const syncPosition = spacetimedb.reducer(
 
 export const changeMap = spacetimedb.reducer(
   { mapId: t.string(), x: t.f64(), y: t.f64() },
-  (ctx, { mapId, x, y }) => {
-    if (blockedSession(ctx)) return;
-    const current = requireControllingPlayer(ctx);
-    if (activeDuelFor(ctx, ctx.sender)) throw new SenderError("Finish the duel before using a portal.");
-    // "Base" and "Fight" both ask for the Town (Home, retired, means the same): Base from anywhere, Fight from the Town.
-    if (mapId === HOME_EXTERIOR_MAP_ID || isTownMap(mapId)) {
-      if (current.hp <= 0) throw new SenderError("Respawn before teleporting to the Town.");
-      if (isTownMap(current.mapId)) {
-        const saved = ctx.db.homeReturnLocation.identity.find(ctx.sender);
-        // Recover already-linked accounts whose older client/server omitted
-        // their Home return record. Keep their stats and unlocks intact.
-        const progress = readPlayerProgress(ctx, ctx.sender);
-        const savedMapIndex = saved ? MAP_IDS.indexOf(saved.mapId) : -1;
-        // Fight only goes back to a map this run has open: a challenge run (or a reset) must not land on the main run's map 15, or its Soul Dimension.
-        const permitted = (!isSoulMap(saved?.mapId) || soulReturnOpenFor(ctx, ctx.sender)) && (!isGuildHallMap(saved?.mapId) || guildHallMember(ctx, ctx.sender, saved!.mapId)) && Boolean(saved && (isProceduralMap(saved.mapId)
-          ? hasEndlessTravelAccess(ctx, ctx.sender) || generatedMapUnlocked(saved.mapId, ctx.db.proceduralProgress.identity.find(ctx.sender)?.completed ?? 0,
-            Boolean((progress?.bossRewardClaims ?? 0) & BOSS_REWARD_CLAIM_BITS[PROCEDURAL_ENTRY_BOSS]))
-          : savedMapIndex <= 0 || Boolean(progress?.[CAMPAIGN_UNLOCK_FIELDS[savedMapIndex - 1]])));
-        const destination = permitted && saved && saved.mapId !== HOME_EXTERIOR_MAP_ID && !isTownMap(saved.mapId) && VALID_MAP_IDS.has(saved.mapId)
-          && [saved.x, saved.y, saved.facing].every(Number.isFinite)
-          ? saved : { mapId: TUTORIAL_FOREST_MAP_ID, ...PLAYER_SPAWN, facing: 0 };
-        transitionPlayerMap(ctx, current, destination.mapId, destination, destination.facing);
-      } else {
-        if (![x, y].every(Number.isFinite) || x < PLAYER_RADIUS || y < PLAYER_RADIUS || x > worldBoundsFor(current.mapId).width - PLAYER_RADIUS || y > worldBoundsFor(current.mapId).height - PLAYER_RADIUS) throw new SenderError("Invalid teleport position.");
-        const saved = { identity: ctx.sender, mapId: current.mapId, x, y, facing: current.facing };
-        if (isGuildHallMap(current.mapId) || current.mapId === HOME_EXTERIOR_MAP_ID) { /* "Fight" from the Town still goes back to where the fighting was */ } else if (ctx.db.homeReturnLocation.identity.find(ctx.sender)) ctx.db.homeReturnLocation.identity.update(saved);
-        else ctx.db.homeReturnLocation.insert(saved);
-        transitionPlayerMap(ctx, current, TOWN_MAP_ID, TOWN_ARRIVAL);
-      }
-      persistWorldLocation(ctx, ctx.db.player.identity.find(ctx.sender));
-      return;
-    }
-    if (!VALID_MAP_IDS.has(mapId) || mapId === current.mapId) throw new SenderError("Unsupported map destination.");
-    if (!Number.isFinite(x) || !Number.isFinite(y)) throw new SenderError("Portal position must be finite.");
-    if (x < PLAYER_RADIUS || x > worldBoundsFor(current.mapId).width - PLAYER_RADIUS || y < PLAYER_RADIUS || y > worldBoundsFor(current.mapId).height - PLAYER_RADIUS) {
-      throw new SenderError("Portal position is outside the world.");
-    }
-    if (isSoulMap(mapId)) requireSoulDimensionOpen(ctx);
-    if (isGuildHallMap(mapId)) return enterGuildHall(ctx, current, mapId, x, y, { transitionPlayerMap, persistWorldLocation });
-    const currentProgress = readPlayerProgress(ctx, ctx.sender);
-    const campaignIndex = CAMPAIGN_MAPS.findIndex(map => map.id === mapId);
-    if (campaignIndex > 0 && !campaignMapUnlocked(campaignIndex, currentProgress ?? {})) {
-      throw new SenderError(`Defeat ${CAMPAIGN_MAPS[campaignIndex - 1].bossName} before entering ${MAP_DISPLAY_NAMES[mapId]}.`);
-    }
-
-    if (isProceduralMap(mapId) && !generatedMapUnlocked(mapId,
-      ctx.db.proceduralProgress.identity.find(ctx.sender)?.completed ?? 0,
-      Boolean(currentProgress && (currentProgress.bossRewardClaims & BOSS_REWARD_CLAIM_BITS[PROCEDURAL_ENTRY_BOSS])))) {
-      throw new SenderError("Defeat the previous map's boss first.");
-    }
-    // The Town's travel portal (and, for tabs from before the Town, Home's pad) reaches every map the checks above allow.
-    const usePoint = (portal: { x: number; y: number; height: number }, destination: string) => ({ x: portal.x, y: portal.y - portal.height * .32, destination });
-    const sourcePortals = current.mapId === HOME_EXTERIOR_MAP_ID ? [usePoint(HOME_TRAVEL_PORTAL, isSoulMap(mapId) ? "" : mapId)]
-      : isTownMap(current.mapId) ? townPortalUsePoints(mapId)
-      // LEGACY: the forest's old portal spot, where tabs older than 0.901.15 draw the Soul Dimension's (shared/map-gateways.ts).
-      : isSoulMap(current.mapId) ? [usePoint(SOUL_TOWN_PORTAL, SOUL_TOWN_PORTAL.destination), usePoint(LEGACY_CORNER_GATEWAYS[TUTORIAL_FOREST_MAP_ID].portals[0], SOUL_TOWN_PORTAL.destination)]
-      : isProceduralMap(current.mapId)
-      ? generateMap(current.mapId).portals.map(portal => ({ ...portal, y:portal.y-portal.height*.32 }))
-      : [...(MAP_PORTALS[current.mapId as keyof typeof MAP_PORTALS] ?? []),
-        ...(current.mapId === PROCEDURAL_ENTRY_MAP ? [portalUsePoint(endlessEntryPortal(proceduralMapId(1)))] : []),
-        ...legacyPortalUsePoints(current.mapId, proceduralMapId(1))];
-    const sourcePortal = sourcePortals.filter((portal) => portal.destination === mapId).sort((a, b) => Math.hypot(x - a.x, y - a.y) - Math.hypot(x - b.x, y - b.y))[0];
-    if (!sourcePortal) throw new SenderError("Maps are not connected.");
-    // Movement is client-authoritative. Validate the coordinate from this
-    // discrete portal action instead of a potentially one-heartbeat-old
-    // player_motion sample, then move to the destination atomically.
-    const portalDistance = Math.hypot(x - sourcePortal.x, y - sourcePortal.y);
-    if (portalDistance > MAP_PORTAL_USE_RANGE) throw new SenderError("Move closer to the portal.");
-
-    // An old tab that took an old portal puts itself at the old arrival; land it there so the two agree.
-    const arrival = (sourcePortal as { legacyArrival?: { x: number; y: number } | null }).legacyArrival ?? (isProceduralMap(mapId) ? generateMap(mapId).arrival : isSoulMap(mapId) ? SOUL_ARRIVAL : isTownMap(mapId) ? TOWN_ARRIVAL : MAP_ARRIVALS[mapId as keyof typeof MAP_ARRIVALS]);
-    transitionPlayerMap(ctx, current, mapId, arrival);
-  },
+  (ctx, args) => changePlayerMap(ctx, args),
 );
+
+function changePlayerMap(ctx: ModuleReducerCtx, { mapId, x, y }: { mapId: string; x: number; y: number }) {
+  if (blockedSession(ctx)) return;
+  const current = requireControllingPlayer(ctx);
+  if (activeDuelFor(ctx, ctx.sender)) throw new SenderError("Finish the duel before using a portal.");
+  // "Base" and "Fight" both ask for the Town (Home, retired, means the same): Base from anywhere, Fight from the Town.
+  if (mapId === HOME_EXTERIOR_MAP_ID || isTownMap(mapId)) {
+    if (current.hp <= 0) throw new SenderError("Respawn before teleporting to the Town.");
+    if (isTownMap(current.mapId)) {
+      const saved = ctx.db.homeReturnLocation.identity.find(ctx.sender);
+      // Recover already-linked accounts whose older client/server omitted
+      // their Home return record. Keep their stats and unlocks intact.
+      const progress = readPlayerProgress(ctx, ctx.sender);
+      const savedMapIndex = saved ? MAP_IDS.indexOf(saved.mapId) : -1;
+      // Fight only goes back to a map this run has open: a challenge run (or a reset) must not land on the main run's map 15, or its Soul Dimension.
+      const permitted = (!isSoulMap(saved?.mapId) || soulReturnOpenFor(ctx, ctx.sender)) && (!isGuildHallMap(saved?.mapId) || guildHallMember(ctx, ctx.sender, saved!.mapId)) && Boolean(saved && (isProceduralMap(saved.mapId)
+        ? hasEndlessTravelAccess(ctx, ctx.sender) || generatedMapUnlocked(saved.mapId, ctx.db.proceduralProgress.identity.find(ctx.sender)?.completed ?? 0,
+          Boolean((progress?.bossRewardClaims ?? 0) & BOSS_REWARD_CLAIM_BITS[PROCEDURAL_ENTRY_BOSS]))
+        : savedMapIndex <= 0 || Boolean(progress?.[CAMPAIGN_UNLOCK_FIELDS[savedMapIndex - 1]])));
+      const destination = permitted && saved && saved.mapId !== HOME_EXTERIOR_MAP_ID && !isTownMap(saved.mapId) && VALID_MAP_IDS.has(saved.mapId)
+        && [saved.x, saved.y, saved.facing].every(Number.isFinite)
+        ? saved : { mapId: TUTORIAL_FOREST_MAP_ID, ...PLAYER_SPAWN, facing: 0 };
+      transitionPlayerMap(ctx, current, destination.mapId, destination, destination.facing);
+    } else {
+      if (![x, y].every(Number.isFinite) || x < PLAYER_RADIUS || y < PLAYER_RADIUS || x > worldBoundsFor(current.mapId).width - PLAYER_RADIUS || y > worldBoundsFor(current.mapId).height - PLAYER_RADIUS) throw new SenderError("Invalid teleport position.");
+      const saved = { identity: ctx.sender, mapId: current.mapId, x, y, facing: current.facing };
+      if (isGuildHallMap(current.mapId) || current.mapId === HOME_EXTERIOR_MAP_ID) { /* "Fight" from the Town still goes back to where the fighting was */ } else if (ctx.db.homeReturnLocation.identity.find(ctx.sender)) ctx.db.homeReturnLocation.identity.update(saved);
+      else ctx.db.homeReturnLocation.insert(saved);
+      transitionPlayerMap(ctx, current, TOWN_MAP_ID, TOWN_ARRIVAL);
+    }
+    persistWorldLocation(ctx, ctx.db.player.identity.find(ctx.sender));
+    return;
+  }
+  if (!VALID_MAP_IDS.has(mapId) || mapId === current.mapId) throw new SenderError("Unsupported map destination.");
+  if (!Number.isFinite(x) || !Number.isFinite(y)) throw new SenderError("Portal position must be finite.");
+  if (x < PLAYER_RADIUS || x > worldBoundsFor(current.mapId).width - PLAYER_RADIUS || y < PLAYER_RADIUS || y > worldBoundsFor(current.mapId).height - PLAYER_RADIUS) {
+    throw new SenderError("Portal position is outside the world.");
+  }
+  if (isSoulMap(mapId)) requireSoulDimensionOpen(ctx);
+  if (isGuildHallMap(mapId)) return enterGuildHall(ctx, current, mapId, x, y, { transitionPlayerMap, persistWorldLocation });
+  const currentProgress = readPlayerProgress(ctx, ctx.sender);
+  const campaignIndex = CAMPAIGN_MAPS.findIndex(map => map.id === mapId);
+  if (campaignIndex > 0 && !campaignMapUnlocked(campaignIndex, currentProgress ?? {})) {
+    throw new SenderError(`Defeat ${CAMPAIGN_MAPS[campaignIndex - 1].bossName} before entering ${MAP_DISPLAY_NAMES[mapId]}.`);
+  }
+
+  if (isProceduralMap(mapId) && !generatedMapUnlocked(mapId,
+    ctx.db.proceduralProgress.identity.find(ctx.sender)?.completed ?? 0,
+    Boolean(currentProgress && (currentProgress.bossRewardClaims & BOSS_REWARD_CLAIM_BITS[PROCEDURAL_ENTRY_BOSS])))) {
+    throw new SenderError("Defeat the previous map's boss first.");
+  }
+  // The Town's travel portal (and, for tabs from before the Town, Home's pad) reaches every map the checks above allow.
+  const usePoint = (portal: { x: number; y: number; height: number }, destination: string) => ({ x: portal.x, y: portal.y - portal.height * .32, destination });
+  const sourcePortals = current.mapId === HOME_EXTERIOR_MAP_ID ? [usePoint(HOME_TRAVEL_PORTAL, isSoulMap(mapId) ? "" : mapId)]
+    : isTownMap(current.mapId) ? townPortalUsePoints(mapId)
+    // LEGACY: the forest's old portal spot, where tabs older than 0.901.15 draw the Soul Dimension's (shared/map-gateways.ts).
+    : isSoulMap(current.mapId) ? [usePoint(SOUL_TOWN_PORTAL, SOUL_TOWN_PORTAL.destination), usePoint(LEGACY_CORNER_GATEWAYS[TUTORIAL_FOREST_MAP_ID].portals[0], SOUL_TOWN_PORTAL.destination)]
+    : isProceduralMap(current.mapId)
+    ? generateMap(current.mapId).portals.map(portal => ({ ...portal, y:portal.y-portal.height*.32 }))
+    : [...(MAP_PORTALS[current.mapId as keyof typeof MAP_PORTALS] ?? []),
+      ...(current.mapId === PROCEDURAL_ENTRY_MAP ? [portalUsePoint(endlessEntryPortal(proceduralMapId(1)))] : []),
+      ...legacyPortalUsePoints(current.mapId, proceduralMapId(1))];
+  const sourcePortal = sourcePortals.filter((portal) => portal.destination === mapId).sort((a, b) => Math.hypot(x - a.x, y - a.y) - Math.hypot(x - b.x, y - b.y))[0];
+  if (!sourcePortal) throw new SenderError("Maps are not connected.");
+  // Movement is client-authoritative. Validate the coordinate from this
+  // discrete portal action instead of a potentially one-heartbeat-old
+  // player_motion sample, then move to the destination atomically.
+  const portalDistance = Math.hypot(x - sourcePortal.x, y - sourcePortal.y);
+  if (portalDistance > MAP_PORTAL_USE_RANGE) throw new SenderError("Move closer to the portal.");
+
+  // An old tab that took an old portal puts itself at the old arrival; land it there so the two agree.
+  const arrival = (sourcePortal as { legacyArrival?: { x: number; y: number } | null }).legacyArrival ?? (isProceduralMap(mapId) ? generateMap(mapId).arrival : isSoulMap(mapId) ? SOUL_ARRIVAL : isTownMap(mapId) ? TOWN_ARRIVAL : MAP_ARRIVALS[mapId as keyof typeof MAP_ARRIVALS]);
+  transitionPlayerMap(ctx, current, mapId, arrival);
+}
 
 export const setSpeed = spacetimedb.reducer(
   { speed: t.f32() },
-  (ctx, { speed }) => {
-    if (blockedSession(ctx)) return;
-    const current = requireControllingPlayer(ctx);
-    if (movementSpeedsMatch(speed, current.speed)) return;
-
-    // Speed remains server-authoritative. Move Speed research is a legitimate
-    // client-side movement multiplier, so validate its exact server record
-    // instead of treating every researched speed as a malformed packet.
-    const progress = readPlayerProgress(ctx, ctx.sender);
-    const research = ctx.db.playerResearch.identity.find(ctx.sender);
-    const feet = progress ? equippedFeetForProgress(progress) : current.feetItem;
-    const bootsEquipped = false;
-    const moveSpeedRank = research?.moveSpeed ?? 0;
-    const expectedSpeed = progress ? effectiveMovementSpeedForProgress(ctx, progress, research)
-      : effectivePlayerMovementSpeed(bootsEquipped, moveSpeedRank, 0, research?.utilityMoveSpeed ?? 0);
-    // Regular-enemy combat runs locally. Permit its two exact movement states,
-    // while checking ownership/equipment here and never saving a temporary bonus.
-    const blackBootsEquipped = progress && feet === BLACK_BOOTS;
-    const restingSpeed = expectedSpeed + (blackBootsEquipped ? BLACK_BOOTS_SPEED_BONUS : 0);
-    // Bound the maximum rather than demanding one of two exact values. A Move
-    // Speed rank that has just finished leaves the client a beat behind: its
-    // next packet still carries the previous rank's speed, which is lower than
-    // the server now expects, and every rejection on live was exactly that.
-    // Asking to move slower than you are entitled to is not an exploit.
-    const maximumSpeed = Math.max(expectedSpeed, restingSpeed);
-    if (!Number.isFinite(speed) || speed < 0 || speed > maximumSpeed + MOVEMENT_SPEED_EPSILON) {
-      // Name the account in the log; the message alone says nothing about who
-      // sent it. The player-facing text stays put so the error still groups.
-      console.warn("Unsupported player speed", JSON.stringify({ identity: ctx.sender.toHexString(), speed, expectedSpeed, restingSpeed, maximumSpeed, feet, moveSpeedRank }));
-      throw new SenderError("Unsupported player speed");
-    }
-
-    const nextPlayer = {
-      ...current,
-      speed,
-      lastInputAt: ctx.timestamp,
-    };
-    updateSnapshotRow(ctx, "player", nextPlayer);
-    syncPlayerMotionIdentity(ctx, playerWithMotion(ctx, nextPlayer));
-  },
+  (ctx, args) => setPlayerSpeed(ctx, args),
 );
+
+function setPlayerSpeed(ctx: ModuleReducerCtx, { speed }: { speed: number }) {
+  if (blockedSession(ctx)) return;
+  const current = requireControllingPlayer(ctx);
+  if (movementSpeedsMatch(speed, current.speed)) return;
+
+  // Speed remains server-authoritative. Move Speed research is a legitimate
+  // client-side movement multiplier, so validate its exact server record
+  // instead of treating every researched speed as a malformed packet.
+  const progress = readPlayerProgress(ctx, ctx.sender);
+  const research = ctx.db.playerResearch.identity.find(ctx.sender);
+  const feet = progress ? equippedFeetForProgress(progress) : current.feetItem;
+  const bootsEquipped = false;
+  const moveSpeedRank = research?.moveSpeed ?? 0;
+  const expectedSpeed = progress ? effectiveMovementSpeedForProgress(ctx, progress, research)
+    : effectivePlayerMovementSpeed(bootsEquipped, moveSpeedRank, 0, research?.utilityMoveSpeed ?? 0);
+  // Regular-enemy combat runs locally. Permit its two exact movement states,
+  // while checking ownership/equipment here and never saving a temporary bonus.
+  const blackBootsEquipped = progress && feet === BLACK_BOOTS;
+  const restingSpeed = expectedSpeed + (blackBootsEquipped ? BLACK_BOOTS_SPEED_BONUS : 0);
+  // Bound the maximum rather than demanding one of two exact values. A Move
+  // Speed rank that has just finished leaves the client a beat behind: its
+  // next packet still carries the previous rank's speed, which is lower than
+  // the server now expects, and every rejection on live was exactly that.
+  // Asking to move slower than you are entitled to is not an exploit.
+  const maximumSpeed = Math.max(expectedSpeed, restingSpeed);
+  if (!Number.isFinite(speed) || speed < 0 || speed > maximumSpeed + MOVEMENT_SPEED_EPSILON) {
+    // Name the account in the log; the message alone says nothing about who
+    // sent it. The player-facing text stays put so the error still groups.
+    console.warn("Unsupported player speed", JSON.stringify({ identity: ctx.sender.toHexString(), speed, expectedSpeed, restingSpeed, maximumSpeed, feet, moveSpeedRank }));
+    throw new SenderError("Unsupported player speed");
+  }
+
+  const nextPlayer = {
+    ...current,
+    speed,
+    lastInputAt: ctx.timestamp,
+  };
+  updateSnapshotRow(ctx, "player", nextPlayer);
+  syncPlayerMotionIdentity(ctx, playerWithMotion(ctx, nextPlayer));
+}
 
 /** The database owner, or the module calling itself from a schedule. */
 function requireOperator(ctx: any) {
@@ -4672,35 +4712,45 @@ export const myGemPurchases = spacetimedb.view(
 
 export const ingestGemStoreEvent = spacetimedb.reducer(
   { eventId: t.string(), eventHash: t.string(), kind: t.string(), owner: t.string(), packId: t.string(), reference: t.string(), purchasedAtMs: t.f64() },
-  (ctx, event) => {
-    requireGemVerifier(ctx);
-    if (event.purchasedAtMs > Number(ctx.timestamp.microsSinceUnixEpoch / 1000n) + 300_000) throw new SenderError("Payment timestamp is in the future.");
-    ingestStoreEvent({
-      eventHash: (id) => ctx.db.gemStoreEvent.eventId.find(id)?.eventHash ?? null,
-      rememberEvent: (eventId, eventHash) => { ctx.db.gemStoreEvent.insert({ eventId, eventHash, receivedAt: ctx.timestamp }); },
-      receipt: (reference) => ctx.db.gemStoreReceipt.reference.find(reference),
-      saveReceipt: (receipt) => {
-        const row = { ...receipt, updatedAt: ctx.timestamp };
-        if (ctx.db.gemStoreReceipt.reference.find(row.reference)) ctx.db.gemStoreReceipt.reference.update(row);
-        else ctx.db.gemStoreReceipt.insert(row);
-      },
-      reservation: (owner, packId, day) => {
-        const slot = ctx.db.gemPurchaseSlot.key.find(`${owner}:${packId}:${day}`);
-        const row = slot && ctx.db.gemPurchase.reservationId.find(slot.reservationId);
-        return row ? { id: row.reservationId, createdAtMs: Number(row.createdAt.microsSinceUnixEpoch / 1000n), status: row.status } : null;
-      },
-      fulfill: (id, owner, packId, reference) => { purchaseService(ctx).fulfill(id, owner, packId, reference); },
-      balance: (owner) => ctx.db.playerGemWallet.identity.find(Identity.fromString(owner))?.balance ?? 0n,
-      debitRefund: (owner, amount, reference) => {
-        applyGemBalanceChange(ctx, { identity: Identity.fromString(owner), delta: -amount, kind: "gem_refund", note: reference, externalReference: `refund:${reference}` });
-      },
-      hold: (owner, reference, active) => {
-        if (active && !ctx.db.gemCommerceHold.reference.find(reference)) ctx.db.gemCommerceHold.insert({ reference, identity: Identity.fromString(owner) });
-        else if (!active) ctx.db.gemCommerceHold.reference.delete(reference);
-      },
-    }, event);
-  },
+  (ctx, event) => ingestGemStoreEventFor(ctx, event),
 );
+
+function ingestGemStoreEventFor(ctx: ModuleReducerCtx, event: {
+  eventId: string;
+  eventHash: string;
+  kind: string;
+  owner: string;
+  packId: string;
+  reference: string;
+  purchasedAtMs: number;
+}) {
+  requireGemVerifier(ctx);
+  if (event.purchasedAtMs > Number(ctx.timestamp.microsSinceUnixEpoch / 1000n) + 300_000) throw new SenderError("Payment timestamp is in the future.");
+  ingestStoreEvent({
+    eventHash: (id) => ctx.db.gemStoreEvent.eventId.find(id)?.eventHash ?? null,
+    rememberEvent: (eventId, eventHash) => { ctx.db.gemStoreEvent.insert({ eventId, eventHash, receivedAt: ctx.timestamp }); },
+    receipt: (reference) => ctx.db.gemStoreReceipt.reference.find(reference),
+    saveReceipt: (receipt) => {
+      const row = { ...receipt, updatedAt: ctx.timestamp };
+      if (ctx.db.gemStoreReceipt.reference.find(row.reference)) ctx.db.gemStoreReceipt.reference.update(row);
+      else ctx.db.gemStoreReceipt.insert(row);
+    },
+    reservation: (owner, packId, day) => {
+      const slot = ctx.db.gemPurchaseSlot.key.find(`${owner}:${packId}:${day}`);
+      const row = slot && ctx.db.gemPurchase.reservationId.find(slot.reservationId);
+      return row ? { id: row.reservationId, createdAtMs: Number(row.createdAt.microsSinceUnixEpoch / 1000n), status: row.status } : null;
+    },
+    fulfill: (id, owner, packId, reference) => { purchaseService(ctx).fulfill(id, owner, packId, reference); },
+    balance: (owner) => ctx.db.playerGemWallet.identity.find(Identity.fromString(owner))?.balance ?? 0n,
+    debitRefund: (owner, amount, reference) => {
+      applyGemBalanceChange(ctx, { identity: Identity.fromString(owner), delta: -amount, kind: "gem_refund", note: reference, externalReference: `refund:${reference}` });
+    },
+    hold: (owner, reference, active) => {
+      if (active && !ctx.db.gemCommerceHold.reference.find(reference)) ctx.db.gemCommerceHold.insert({ reference, identity: Identity.fromString(owner) });
+      else if (!active) ctx.db.gemCommerceHold.reference.delete(reference);
+    },
+  }, event);
+}
 
 export const devGemPurchaseReview = spacetimedb.view(
   { name: "dev_gem_purchase_review", public: true }, t.array(gemPurchaseTables.gemStoreReceipt.rowType),
