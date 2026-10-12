@@ -4,6 +4,7 @@ export const RELEASE_NOTES: Record<string, string[]> = {
     "Auto Farm: an Aggro switch beside each stat pulls that camp to you, with how many on top (one more for each Aggro win)",
     "The stat tracker shows Armor's block, like your profile",
     "Fixed getting stuck on Game Updating after a connection drop: the game reconnects on its own when no update is live",
+    "Slot upgrades go up to level 99, up from 35",
     "Attack speed kill popups say Capped at the cap again",
     "Soul Crit Damage popups stay hidden when Stat Gain Popups is off",
   ],

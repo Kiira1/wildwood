@@ -163,8 +163,10 @@ describe("equipment catalog", () => {
     expect(itemUpgradeDurationMs(1)).toBe(221_292);
     expect(itemUpgradeDurationMs(MAX_SLOT_UPGRADE_TIER + 99)).toBe(itemUpgradeDurationMs(MAX_SLOT_UPGRADE_TIER));
     let total = 0;
-    for (let tier = 0; tier < MAX_SLOT_UPGRADE_TIER; tier += 1) total += itemUpgradeDurationMs(tier);
+    // The first 35 tiers (the old cap) still take about three hundred hours; the cap is 99 since 0.901.51.
+    for (let tier = 0; tier < 35; tier += 1) total += itemUpgradeDurationMs(tier);
     expect(total / 3.6e6).toBeCloseTo(300, 0);
+    expect(MAX_SLOT_UPGRADE_TIER).toBe(99);
   });
 
   it("only upgrades stat-bearing weapons and armor", () => {
@@ -187,18 +189,18 @@ describe("equipment catalog", () => {
 
   // A finished slot is +140% of whatever the item brings by itself.
   it("adds the slot's tiers on top of the item's own bonus", () => {
-    expect(itemDamageMultiplierBonus(FROST_BOW, MAX_SLOT_UPGRADE_TIER)).toBe(.2743);
-    expect(itemMaxHealthMultiplierBonus(FROST_ARMOR, MAX_SLOT_UPGRADE_TIER)).toBe(.2743);
-    expect(itemRegenerationMultiplierBonus(WOOD_FULL_HELM, MAX_SLOT_UPGRADE_TIER)).toBe(.193);
-    expect(itemDamageMultiplierBonus(STARTER_BOW, MAX_SLOT_UPGRADE_TIER)).toBe(.12);
-    expect(itemMaxHealthMultiplierBonus(WOODEN_ARMOR, MAX_SLOT_UPGRADE_TIER)).toBe(.12);
+    expect(itemDamageMultiplierBonus(FROST_BOW, 35)).toBe(.2743);
+    expect(itemMaxHealthMultiplierBonus(FROST_ARMOR, 35)).toBe(.2743);
+    expect(itemRegenerationMultiplierBonus(WOOD_FULL_HELM, 35)).toBe(.193);
+    expect(itemDamageMultiplierBonus(STARTER_BOW, 35)).toBe(.12);
+    expect(itemMaxHealthMultiplierBonus(WOODEN_ARMOR, 35)).toBe(.12);
     expect(itemRegenerationMultiplierBonus(WOODEN_ARMOR, 10)).toBe(0);
     expect(itemDisplayName(FROST_BOW, 1)).toBe("FROST BOW +1");
     expect(itemStats(STARTER_BOW, 1)).toEqual(["DAMAGE +5.2%"]);
     expect(itemUpgradeStatChanges(STARTER_BOW, 0)).toEqual([
       { label: "DAMAGE", current: "+5%", next: "+5.2%" },
     ]);
-    expect(equipmentDamage(100, STARTER_BOW, "", "", 1.4, MAX_SLOT_UPGRADE_TIER)).toBeCloseTo(156.8);
+    expect(equipmentDamage(100, STARTER_BOW, "", "", 1.4, 35)).toBeCloseTo(156.8);
   });
 });
 
