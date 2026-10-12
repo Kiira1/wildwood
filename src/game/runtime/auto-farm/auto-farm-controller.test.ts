@@ -761,6 +761,24 @@ describe('autofarm plans: sliders, the boss and the next map', () => {
     expect(off.resumeStore.read()).toBeNull();
   });
 
+  it("carries sliders all at 0% to the next map: it pulls there and stands still instead of farming every group", () => {
+    const s = planned({ pullCamps: () => 1, nextPortal: () => ({ x: 200, y: 500, destination: 'beginner_desert' }) });
+    s.add('Bramble', 900, 500); s.add('Needle', 900, 900);
+    s.farm.setGroupPulled(health, true);
+    s.farm.rememberShares({ [health]: 0, [speed]: 0 });
+    expect(s.farm.start(s.farm.pulledGroupKeys(), false)).toBe(true);
+    s.farm.travelStarted();
+    s.setMap('beginner_desert'); s.add('Bramble', 900, 500); s.add('Needle', 900, 900);
+    s.farm.refresh(); s.advance(1_000); s.farm.refresh();
+    expect(s.farm.state()).toMatchObject({ active: true, shares: { [health]: 100 } });
+    // With nothing pulled on the next map, it stops rather than walking off to farm everything.
+    s.farm.setGroupPulled(health, false);
+    s.farm.travelStarted();
+    s.setMap('forest');
+    s.farm.refresh(); s.advance(1_000); s.farm.refresh();
+    expect(s.farm.state()).toMatchObject({ active: false, status: 'Sliders at 0% · nothing to pull here' });
+  });
+
   it("keeps the stats the player picked on the next map, and splits evenly where none of them is paid", () => {
     for (const [arrivals, expected] of [[['Needle', 'Bramble'], [health]], [['Needle'], [speed]]] as const) {
       const s = planned({ nextPortal: () => ({ x: 200, y: 500, destination: 'beginner_desert' }) });

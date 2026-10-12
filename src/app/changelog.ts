@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.901.61": [
+    "Auto Farm with every slider at 0% keeps standing still on the next map",
+  ],
   "0.901.60": [
     "Auto Farm finishes the enemies attacking you before it moves on",
   ],
@@ -3224,6 +3227,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.901.61": "2026-10-12",
   "0.901.60": "2026-10-12",
   "0.901.59": "2026-10-12",
   "0.901.58": "2026-10-12",

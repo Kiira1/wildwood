@@ -267,6 +267,11 @@ export function createAutoFarmController(options: {
     pulledKey = key;
     return pulled;
   }
+  /** Sliders all at 0%: an Aggro run's chasing groups, or the groups pulled outside one (the panel's Go does the same). */
+  function zeroPlanGroups(): string[] {
+    const chasing = [...forcedGroups()];
+    return chasing.length ? chasing : pulling() ? [...pulledGroups()] : [];
+  }
   /** Whether Pull is bringing anything: a group switched to Aggro, or Pull Whole Group on before any was. */
   const pulling = () => pullPicks ? pulledGroups().size > 0 : pullAll;
   /** Pull brings every group it farms: all of it comes to the player, so walking to camps would only waste time. It stands and fights. */
@@ -379,6 +384,13 @@ export function createAutoFarmController(options: {
       // The sliders carried from the map before, as this map names its stats; nothing of them here is an even split.
       const carried = normalizeShares(decodeFarmPlan(pendingResume.choice));
       pendingResume = null;
+      // Every slider at 0% (Pull Only, Chase Only) stays that here: it stands and fights what it pulls or what
+      // chases it, as Go starts it. It used to read as nothing set and split every group evenly, walking off to farm them.
+      if (carried && !Object.values(carried).some(value => value > 0)) {
+        const plan = zeroPlanGroups();
+        if (plan.length) start(plan, false); else stop('Sliders at 0% · nothing to pull here');
+        return;
+      }
       start(sharesForGroups(carried, groups()), false);
     }
   }
