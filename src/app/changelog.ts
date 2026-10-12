@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.901.54": [
+    "Enemy names and stat labels are drawn from a few shared images instead of hundreds, which should help missing names on some Firefox setups",
+  ],
   "0.901.53": [
     "Aggro challenge: set every Auto Farm slider to 0% to fight only what chases you, without walking to other camps",
   ],
@@ -3195,6 +3198,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.901.54": "2026-10-11",
   "0.901.53": "2026-10-11",
   "0.901.52": "2026-10-11",
   "0.901.51": "2026-10-11",

@@ -10,6 +10,7 @@ import type { RemotePlayer } from "../../wildstat-coop";
 import type { PlayerGender } from "../../../shared/player-gender";
 import type { Camera } from "./camera";
 import { ENEMY_HEALTH_BAR_HEIGHT, ENEMY_HEALTH_FILL, createEnemyStatusPlates, fillPill } from "./enemy-status-plate";
+import { createCanvasAtlas, drawAtlasImage, type AtlasImage } from "./canvas-atlas";
 import { enemyHpNumbersEnabled } from "../../ui/enemy-hp-setting";
 import { formatCompactNumber } from "../../ui/number-format";
 import { healthBarTextY } from "./health-bar-layout";
@@ -32,7 +33,7 @@ type Viewport = { width: number; height: number };
 type DrawShadow = (x: number, y: number, width: number, alpha?: number) => void;
 type PixelCircle = (x: number, y: number, radius: number) => void;
 type OutlinedText = (text: string, x: number, y: number, color: string, strokeWidth?: number) => void;
-type LabelBitmap = { canvas: HTMLCanvasElement; width: number; height: number; anchorY: number };
+type LabelBitmap = AtlasImage & { width: number; height: number; anchorY: number };
 type LabelSegment = { text: string; color: string };
 type EnemyLayerPlanPart =
   | { kind: "STATIC"; canvas: HTMLCanvasElement; x: number; y: number }
@@ -225,7 +226,14 @@ export function createActorRenderer(options: {
   const screenX = (worldX: number) => snapWorldRenderCoordinate(worldX - camera.x, camera.zoom, options.devicePixelRatio());
   const screenY = (worldY: number) => snapWorldRenderCoordinate(worldY - camera.y, camera.zoom, options.devicePixelRatio());
   const enemyLabelCache = new Map<string, { name: LabelBitmap; reward: LabelBitmap }>();
-  const statusPlates = createEnemyStatusPlates({ pixelRatio: options.devicePixelRatio });
+  // Labels and plates are packed onto a few shared pages instead of a canvas each (canvas-atlas.ts).
+  // Two atlases: a plate is drawn from a label, and a page is never drawn onto itself.
+  const labelAtlas = createCanvasAtlas();
+  labelAtlas.onReset(() => enemyLabelCache.clear());
+  const plateAtlas = createCanvasAtlas();
+  const statusPlates = createEnemyStatusPlates({ pixelRatio: options.devicePixelRatio, atlas: plateAtlas });
+  /** Text is measured on its own small canvas, before the label's room is taken. */
+  let labelMeasure: CanvasRenderingContext2D | null | undefined;
   // An enemy's "440 / 500" changes only when its health does: kept per enemy, not formatted every frame.
   const hpLabels = new WeakMap<EnemyState, { hp: number; maxHp: number; label: string }>();
   function enemyHpLabel(enemy: EnemyState, hp: number) {
@@ -317,30 +325,41 @@ export function createActorRenderer(options: {
     const scale = 3;
     const paddingX = 5;
     const paddingY = 3;
+    if (labelMeasure === undefined) labelMeasure = document.createElement("canvas").getContext("2d");
+    const measure = labelMeasure;
+    if (!measure) return { canvas: document.createElement("canvas"), width: 0, height: 0, anchorY: 0 };
+    measure.font = enemyLabelFont;
+    const textWidth = segments.reduce((width, segment) => width + measure.measureText(segment.text).width, 0);
+    const width = Math.ceil(textWidth + paddingX * 2);
+    const height = 19;
+    const y = baseline === "top" ? paddingY : height - paddingY;
+    const paint = (labelCtx: CanvasRenderingContext2D) => {
+      labelCtx.transform(scale, 0, 0, scale, 0, 0);
+      labelCtx.font = enemyLabelFont;
+      labelCtx.textAlign = "left";
+      labelCtx.textBaseline = baseline;
+      labelCtx.lineJoin = "round";
+      labelCtx.lineWidth = 4;
+      let x = paddingX;
+      for (const segment of segments) {
+        labelCtx.strokeStyle = "#000";
+        labelCtx.strokeText(segment.text, x, y);
+        labelCtx.fillStyle = segment.color;
+        labelCtx.fillText(segment.text, x, y);
+        x += labelCtx.measureText(segment.text).width;
+      }
+    };
+    const region = labelAtlas.allocate(width * scale, height * scale);
+    if (region && labelAtlas.drawInto(region, paint)) {
+      return { canvas: region.canvas, sx: region.x, sy: region.y, sw: width * scale, sh: height * scale, width, height, anchorY: y };
+    }
+    // The atlas is full until its next start-over: this one label gets a canvas of its own, as before.
     const canvas = document.createElement("canvas");
     const labelCtx = canvas.getContext("2d");
     if (!labelCtx) return { canvas, width: 0, height: 0, anchorY: 0 };
-    labelCtx.font = enemyLabelFont;
-    const textWidth = segments.reduce((width, segment) => width + labelCtx.measureText(segment.text).width, 0);
-    const width = Math.ceil(textWidth + paddingX * 2);
-    const height = 19;
     canvas.width = width * scale;
     canvas.height = height * scale;
-    labelCtx.setTransform(scale, 0, 0, scale, 0, 0);
-    labelCtx.font = enemyLabelFont;
-    labelCtx.textAlign = "left";
-    labelCtx.textBaseline = baseline;
-    labelCtx.lineJoin = "round";
-    labelCtx.lineWidth = 4;
-    let x = paddingX;
-    const y = baseline === "top" ? paddingY : height - paddingY;
-    for (const segment of segments) {
-      labelCtx.strokeStyle = "#000";
-      labelCtx.strokeText(segment.text, x, y);
-      labelCtx.fillStyle = segment.color;
-      labelCtx.fillText(segment.text, x, y);
-      x += labelCtx.measureText(segment.text).width;
-    }
+    paint(labelCtx);
     return { canvas, width, height, anchorY: y };
   }
 
@@ -808,6 +827,9 @@ export function createActorRenderer(options: {
     drawScreenSpaceAt(ctx, camera.zoom, x, y, () => {
       ctx.globalAlpha = visibility;
       const displayAmount = (reward: EnemyDefinition["reward"]) => options.rewardAmount?.(reward.type, reward.amount) ?? reward.amount * options.rewardMultiplier();
+      // A full atlas starts over only here, before this enemy takes anything from it.
+      labelAtlas.resetIfFull();
+      plateAtlas.resetIfFull();
       const soulStat = soulStatOfCampName(enemy.campName);
       const labels = soulStat ? soulEnemyLabels(soulStat)
         : enemyLabels(enemy.displayName ?? (enemy.generatedBoss ? enemy.campName : enemy.type), { ...enemy.reward, amount: displayAmount(enemy.reward) });
@@ -817,7 +839,7 @@ export function createActorRenderer(options: {
       const plate = statusPlates.plate(labels.name, barW, barH, full);
       const smoothing = ctx.imageSmoothingEnabled;
       ctx.imageSmoothingEnabled = true;
-      ctx.drawImage(plate.canvas, barCenterX + plate.left, barY + plate.top, plate.width, plate.height);
+      drawAtlasImage(ctx, plate, barCenterX + plate.left, barY + plate.top, plate.width, plate.height);
       ctx.imageSmoothingEnabled = smoothing;
       if (!full) {
         ctx.fillStyle = ENEMY_HEALTH_FILL;
@@ -842,7 +864,7 @@ export function createActorRenderer(options: {
 
       if (!enemy.remoteCombatGhost && !enemy.generatedBoss) {
         const label = labels.reward;
-        ctx.drawImage(label.canvas, -label.width / 2, rewardY - label.anchorY, label.width, label.height);
+        drawAtlasImage(ctx, label, -label.width / 2, rewardY - label.anchorY, label.width, label.height);
       }
     });
   }

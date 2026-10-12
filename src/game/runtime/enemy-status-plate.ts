@@ -1,12 +1,14 @@
-/** A label already drawn to its own canvas (an enemy's name). */
-export type StatusPlateLabel = { canvas: HTMLCanvasElement; width: number; height: number; anchorY: number };
+import { drawAtlasImage, type AtlasImage, type CanvasAtlas } from "./canvas-atlas";
+
+/** A label already drawn (an enemy's name): on a canvas of its own, or on a shared atlas page (canvas-atlas.ts). */
+export type StatusPlateLabel = AtlasImage & { width: number; height: number; anchorY: number };
 
 /**
  * The part of an enemy's status that every enemy of the same kind shares:
  * its name over the empty health bar and, at full health, the full bar.
  * Positions are relative to the bar's top edge, centred on x.
  */
-export type EnemyStatusPlate = { canvas: HTMLCanvasElement; left: number; top: number; width: number; height: number };
+export type EnemyStatusPlate = AtlasImage & { left: number; top: number; width: number; height: number };
 
 /** An enemy's health bar: a long, thin pill with no numbers on it. */
 export const ENEMY_HEALTH_BAR_HEIGHT = 5;
@@ -43,14 +45,16 @@ export function fillPill(ctx: PillContext, x: number, y: number, width: number, 
 export function createEnemyStatusPlates(options: {
   pixelRatio: () => number;
   createCanvas?: () => HTMLCanvasElement;
+  /** Plates packed onto shared pages (canvas-atlas.ts); without one, or with it full, each plate gets its own canvas. */
+  atlas?: CanvasAtlas;
 }) {
   const plates = new Map<StatusPlateLabel, Map<string, EnemyStatusPlate>>();
   let size = 0;
   const createCanvas = options.createCanvas ?? (() => document.createElement("canvas"));
+  // The atlas starting over drops every plate on it.
+  options.atlas?.onReset(() => { plates.clear(); size = 0; });
 
   function build(name: StatusPlateLabel, barW: number, barH: number, full: boolean, scale: number): EnemyStatusPlate {
-    const canvas = createCanvas();
-    const plateCtx = canvas.getContext("2d");
     const nameTop = -4 - name.anchorY;
     const barLeft = -barW / 2;
     const left = Math.floor(Math.min(-name.width / 2, barLeft - OUTLINE)) - 1;
@@ -59,12 +63,11 @@ export function createEnemyStatusPlates(options: {
     const bottom = Math.ceil(Math.max(nameTop + name.height, barH + OUTLINE)) + 1;
     const width = right - left;
     const height = bottom - top;
-    canvas.width = Math.ceil(width * scale);
-    canvas.height = Math.ceil(height * scale);
-    if (plateCtx) {
-      plateCtx.setTransform(scale, 0, 0, scale, -left * scale, -top * scale);
+    const pixelWidth = Math.ceil(width * scale), pixelHeight = Math.ceil(height * scale);
+    const paint = (plateCtx: CanvasRenderingContext2D) => {
+      plateCtx.transform(scale, 0, 0, scale, -left * scale, -top * scale);
       plateCtx.imageSmoothingEnabled = true;
-      plateCtx.drawImage(name.canvas, -name.width / 2, nameTop, name.width, name.height);
+      drawAtlasImage(plateCtx, name, -name.width / 2, nameTop, name.width, name.height);
       plateCtx.fillStyle = "rgba(0,0,0,.8)";
       fillPill(plateCtx, barLeft - OUTLINE, -OUTLINE, barW + OUTLINE * 2, barH + OUTLINE * 2);
       plateCtx.fillStyle = "#000";
@@ -73,7 +76,16 @@ export function createEnemyStatusPlates(options: {
         plateCtx.fillStyle = ENEMY_HEALTH_FILL;
         fillPill(plateCtx, barLeft, 0, barW, barH);
       }
+    };
+    const region = options.atlas?.allocate(pixelWidth, pixelHeight);
+    if (region && options.atlas!.drawInto(region, paint)) {
+      return { canvas: region.canvas, sx: region.x, sy: region.y, sw: pixelWidth, sh: pixelHeight, left, top, width, height };
     }
+    const canvas = createCanvas();
+    const plateCtx = canvas.getContext("2d");
+    canvas.width = pixelWidth;
+    canvas.height = pixelHeight;
+    if (plateCtx) paint(plateCtx);
     return { canvas, left, top, width, height };
   }
 
