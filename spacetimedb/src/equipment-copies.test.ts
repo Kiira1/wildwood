@@ -294,8 +294,8 @@ it("is erased with the account and removed on every deletion path", () => {
   expect(offers(f)).toEqual([]);
   expect(copies(f, identity("3"))).toHaveLength(1);
   // Both deletion paths remove item drops, and removing drops removes copies and offers.
-  const index = readFileSync(new URL("./index.ts", import.meta.url), "utf8");
-  const drops = index.slice(index.indexOf("function removePlayerItemDrops"), index.indexOf("function removePlayerItemUpgradeData"));
+  const runtime = readFileSync(new URL("./item-upgrade-runtime.ts", import.meta.url), "utf8");
+  const drops = runtime.slice(runtime.indexOf("function removePlayerItemDrops"), runtime.indexOf("function removePlayerItemUpgradeData"));
   expect(drops).toContain("removeEquipmentCopies(ctx, identity)");
   const lifecycle = readFileSync(new URL("./account-lifecycle.ts", import.meta.url), "utf8");
   const section = (start: string, end: string) => lifecycle.slice(lifecycle.indexOf(start), lifecycle.indexOf(end, lifecycle.indexOf(start)));

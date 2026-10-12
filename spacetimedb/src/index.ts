@@ -50,19 +50,17 @@ import { mailboxLetter, mailboxReceipt, mailboxEntryV2, mailboxForPlayerV2, play
 import { rollbackPlayerProgression } from "./player-progression-rollback";
 import { playerItemGift, deliverAlphaTesterGifts, claimItemGift } from "./item-gifts";
 import { playerBowSkill, ensureBowSkillRoll, ensureBowSkillRolls } from "./bow-skills";
-import { playerEquipmentCopy, pendingEquipmentOffer, createEquipmentCopies, publishItemDrop, offerDuplicateEquipment, expireEquipmentOffers, removeEquipmentCopies, removeEquipmentOffers } from "./equipment-copies";
+import { playerEquipmentCopy, pendingEquipmentOffer, createEquipmentCopies, publishItemDrop, offerDuplicateEquipment, expireEquipmentOffers } from "./equipment-copies";
 import { moderateReportedMessage } from "./chat-report-moderation";
 import { PLAYER_SKIN_TONES } from "../../shared/player-skin-tones";
 import { leaderboardPageTables, writeLeaderboardPages, readLeaderboardWindow, readLeaderboardPage, readPrestigeLeaderboardPage, findLeaderboardSpot } from "./leaderboard-pages";
 import { leaderboardEligible } from "../../shared/leaderboard-window";
 import { effectiveMovementSpeedForProgress, refreshPrestigeMovement, attackIntervalForProgress, savedAttackRange } from "./player-speed";
-import { playerBonusToggle, researchInPlay } from "./bonus-toggles";
-import { critPowerFields } from "./crit-power";
+import { playerBonusToggle } from "./bonus-toggles";
 import { registerBonusToggleReducers } from "./bonus-toggles-reducer";
 import { playerPrestige, playerPrestigePerk, prestigeExpansion, playerPrestigeExpansionPerk, playerFreeRespec, ensurePrestigeExpansion } from "./prestige-expansion";
 import { earlierTimestamp } from "./timestamp-utils";
 import { slotUpgradeDurationWithResearch } from "../../shared/utility-research";
-import { createResearchState } from "./research-state";
 import { createCosmeticConversion } from "./cosmetic-conversion";
 import { wearsUnlentLook } from "../../shared/patreon-cosmetics";
 import { publicChatCursor, updatePublicChatCursor, readPublicChatPage } from "./public-chat-history";
@@ -77,7 +75,6 @@ import { beginPatreonLink as beginSupporterLink, refreshPatreon, sweepPatreonLin
 import { requestPatreonSupport } from "./patreon-support";
 import { allowedAvatarFrame, isAvatarFrame } from "../../shared/avatar-frames";
 import { createGemPurchaseService } from "./gem-purchase-service";
-import { rescaleEndgameProgress } from "../../shared/endgame-power-rescale";
 import { CAMPAIGN_UNLOCK_FIELDS, equipmentMapRequirement } from "../../shared/equipment-access";
 import { HOME_EXTERIOR_MAP_ID, HOME_TRAVEL_PORTAL } from "../../shared/home";
 import { withinStationReach } from "./door-reach";
@@ -85,7 +82,6 @@ import { isTownMap, registerTown, TOWN_ARRIVAL, TOWN_BENCH_POSITION, TOWN_MAP_ID
 import { enterGuildHall, guildHallMember, memberEnteredWorld, guildHallMemberLeft, guildHallTables, isGuildHallMap, registerGuildHall } from "./guild-hall";
 import { isSoulMap, noteEnemyDefeats, registerSoulDimension, requireSoulDimensionOpen, soulDimensionOpenFor, soulDimensionTables, soulReturnOpenFor, soulAttackCapFor, soulStatsFor, SOUL_ARRIVAL, SOUL_TOWN_PORTAL, wideMotionMap, withSoulStats, worldBoundsFor } from "./soul-dimension";
 import { insertSnapshotRow, updateSnapshotRow, deleteSnapshotRow } from "./snapshot-row-writes";
-import { compressLegacyMapPower } from "../../shared/map-power-rescale";
 import { createPlayerMotionFrameSampler } from "../../shared/player-motion-sample";
 import { schema, SenderError, Router, table, t, type InferSchema, type ReducerCtx, type ViewCtx } from "spacetimedb/server";
 import { Identity, ScheduleAt, Timestamp } from "spacetimedb";
@@ -95,14 +91,11 @@ import { devReviewTables, findDevPlayers, liftPlayerSuspension, readDevReviewQue
 import { portalCutsceneBit, unlockedPortalCutsceneMask } from "../../shared/portal-cutscenes";
 import { playerBlockKey, playerReportValidationError } from "../../shared/player-safety";
 import {
-  RESEARCH_DEFINITIONS,
   isResearchId,
   researchDurationMs,
-  researchIsAvailable,
-  type ResearchId,
 } from "../../shared/research";
 import { VIRTUAL_PLAYER_LIMIT, isVirtualPlayerTicket } from "../../shared/virtual-player-load-test";
-import { effectivePlayerPower, effectivePlayerPowerStats, legacyU32Power, playerPowerForStats } from "../../shared/player-power";
+import { legacyU32Power } from "../../shared/player-power";
 import {
   PLAYER_GENDER_UNSET,
   isSelectedPlayerGender,
@@ -136,7 +129,7 @@ import {
 } from "./boss-tables";
 import { createCombatReport } from "./boss-combat";
 import { createModuleMigrations } from "./module-migrations";
-import { UPGRADE_BENCH_SLOT_ONE, UPGRADE_BENCH_SLOT_TWO, UPGRADE_BENCH_SLOT_THREE, normalizeUpgradeBenchSlot, requireUpgradeBenchSlot, activeItemUpgradeForSlot, activeItemUpgradeEntriesFor, insertActiveItemUpgrade, deleteActiveItemUpgrade, secondUpgradeSlotUnlockedFor, thirdUpgradeSlotUnlockedFor, rebaseActiveItemUpgradeTimer, refreshActiveSlotUpgrades } from "./upgrade-bench-slots";
+import { UPGRADE_BENCH_SLOT_ONE, UPGRADE_BENCH_SLOT_TWO, UPGRADE_BENCH_SLOT_THREE, normalizeUpgradeBenchSlot, requireUpgradeBenchSlot, activeItemUpgradeForSlot, activeItemUpgradeEntriesFor, insertActiveItemUpgrade, secondUpgradeSlotUnlockedFor, thirdUpgradeSlotUnlockedFor } from "./upgrade-bench-slots";
 import {
   createPresenceRuntime, MOTION_DETAIL_FRAME_INTERVAL_MICROS, MAP_FRAME_INTERVAL_MICROS, playerZone,
   playerWithMotion, stoppedMotionFields, adjustPlayerMotionMapState, syncPlayerMotion, syncPlayerMotionIdentity,
@@ -147,17 +140,10 @@ import { createDuelRuntime, activeDuelFor, clearExpiredDuelRequests } from "./du
 import { createAccountLifecycle, hasSpacetimeAuthAccount, clearExpiredAccountLinks, dailyGemBonusClaimReference } from "./account-lifecycle";
 import { analyticsTables, finishAnalyticsSession, readAnalyticsDashboard, recordAnalyticsConversion, recordAnalyticsMapVisit, recordAnalyticsMilestone, recordAnalyticsSessionStart } from "./analytics";
 import {
-  compressLegacyProgressionOutlier,
-  compressLegacyTopFiveProgression,
-  correctLegacyTopFiveV5Progression,
-  rebalanceLegacyDamageHealth,
-} from "../../shared/progression-balance";
-import {
   DAILY_LOGIN_GEM_BONUS,
   MAX_INVENTORY_SLOT_CAPACITY,
   UPGRADE_BENCH_SECOND_SLOT_GEM_COST,
   UPGRADE_BENCH_THIRD_SLOT_GEM_COST,
-  gemBalanceAfter,
   inventorySlotCapacity,
   inventorySlotUnlockCost,
   itemUpgradeSpeedUpGemCost,
@@ -175,8 +161,6 @@ import { clearAutoFarmPuppet, playerAutoFarmPuppet, registerAutoFarmPuppetReduce
 import { GUILD_MAX_RANGE, guildWeaponRange } from "../../shared/guild-combat";
 import type { DuelFighter } from "../../shared/duel-combat";
 import {
-  equipmentDamage,
-  equipmentRegeneration,
   itemDefinition,
   itemUpgradeDurationMs,
   MAX_SLOT_UPGRADE_TIER,
@@ -194,9 +178,7 @@ import {
 } from "../../shared/player-motion-frame";
 import { PLAYER_MOTION_INTEREST_LIMIT } from "../../shared/player-motion-interest";
 import {
-  ATTACK_BALANCE_VERSION,
   BOSS_REWARD_CLAIM_BITS,
-  DEFAULT_ATTACK_INTERVAL,
   effectivePlayerMovementSpeed,
   INTERMEDIATE_SNOWLANDS_MAP_ID,
   MAP_DISPLAY_NAMES,
@@ -225,6 +207,11 @@ import { playerWideStats, duelWideStats, duelReplayWideStats, playerCombatRating
 import { narrowStat } from "../../shared/wide-stats";
 import { LEGACY_CLIENT_ERRORS, sameConnection, sessionForContext, requireSession, blockedSession, isSupportedProtocol, requireCurrentLegalConsent, requireSupportedSessionProtocol, requireControllingPlayer, isDeveloperIdentity, isDatabaseOwnerIdentity, isVirtualPlayer, requireDeveloperSession, requireDeveloper, touchPlayerAccessAudit, backfillKnownAccessAudit, sameIdentity } from "./session-guards";
 import { defaultPlayerProgress, samePlayerProgressValues, hasFreshProgress, resultIncludesContributor, contributedToLatestPrismshell, forestItemCountForProgress, inventoryForProgress, inventoryWithBetaHelmet, slotUpgradeKey, slotUpgradeTierFor, itemUpgradeLevelFor, playerOwnsItem, restoreItemToProgress, equippedHeadForProgress, equippedChestForProgress, equippedFeetForProgress, equippedRightHandForProgress, equippedLeftHandForProgress, cosmeticEquipmentForProgress, equipmentPresentationForProgress, leaderboardAppearanceForProgress, maxHealthForProgress } from "./progress-helpers";
+import { researchForPlayer, assertResearchAvailable, activeResearchIsAvailable, removeResearchCompletionSchedules, completeActiveResearch, ensureResearchCompletionSchedule, reconcileActiveResearch } from "./research-runtime";
+import { ensurePlayerLifetime, finishLifetimeSession, markPlayerBalanceCurrent, playerBalanceProgress, powerForProgress, effectivePowerStatsForProgress, effectivePowerForProgress, powerFieldsForProgress, researchedDamage, researchedArmor, researchedRegen } from "./player-power";
+import { removeItemUpgradeCompletionSchedules, removePlayerItemDrops, removePlayerItemUpgradeData, ensureItemUpgradeCompletionSchedule, completeActiveItemUpgrade, cancelActiveItemUpgrade, reconcileActiveItemUpgrade } from "./item-upgrade-runtime";
+import { ensureGemWallet, applyGemBalanceChange, currentUtcDayKey, ensureDailyGemBonusState } from "./gem-wallet";
+import { writeProgressAndPresentation } from "./player-power";
 
 const WORLD = { width: WORLD_WIDTH, height: WORLD_HEIGHT };
 const VALID_MAP_IDS = { has: (id: string) => MAP_IDS.includes(id) || id === HOME_EXTERIOR_MAP_ID || isProceduralMap(id) || isSoulMap(id) || isGuildHallMap(id) || isTownMap(id) };
@@ -2141,224 +2128,6 @@ export const devSwapCharacters = spacetimedb.reducer(
   },
 );
 
-const researchForPlayer = createResearchState({ updateSnapshotRow, insertSnapshotRow });
-
-function assertResearchAvailable(research: Record<ResearchId, number>, researchId: ResearchId) {
-  const definition = RESEARCH_DEFINITIONS[researchId];
-  if (research[researchId] >= definition.maxRank) throw new SenderError("Research already complete.");
-  if (!researchIsAvailable(researchId, research)) throw new SenderError("Research prerequisites not met.");
-}
-
-function activeResearchIsAvailable(research: Record<ResearchId, number>, active: any) {
-  const researchId = String(active.researchId);
-  if (!isResearchId(researchId)) return false;
-  const definition = RESEARCH_DEFINITIONS[researchId];
-  if (research[researchId] >= definition.maxRank) return false;
-  // Prerequisites are authoritative when research starts. Once accepted, keep
-  // that rank valid across later tree-layout migrations so no active progress
-  // is discarded merely because its node connections changed.
-  return active.targetRank === research[researchId] + 1;
-}
-
-function activeResearchCanComplete(research: Record<ResearchId, number>, active: any) {
-  return activeResearchIsAvailable(research, active);
-}
-
-function removeResearchCompletionSchedules(ctx: any, identity: any) {
-  const scheduledIds = [...ctx.db.researchCompletionSchedule.identity.filter(identity) as Iterable<any>]
-    .map((scheduled: any) => scheduled.scheduledId);
-  for (const scheduledId of scheduledIds) ctx.db.researchCompletionSchedule.scheduledId.delete(scheduledId);
-}
-
-function completeActiveResearch(ctx: any, active: any) {
-  const research = researchForPlayer(ctx, active.identity);
-  if (!activeResearchCanComplete(research, active)) {
-    ctx.db.activeResearch.identity.delete(active.identity);
-    removeResearchCompletionSchedules(ctx, active.identity);
-    return false;
-  }
-  const nextResearch = { ...research, [active.researchId]: active.targetRank };
-  updateSnapshotRow(ctx, "playerResearch", nextResearch);
-  if (active.researchId === "slotUpgradeSpeed") refreshActiveSlotUpgrades(ctx, active.identity, reconcileActiveItemUpgrade);
-  let progress = readPlayerProgress(ctx, active.identity);
-  if (progress && active.researchId === "utilityAttackRange") {
-    progress = { ...progress, attackRange: savedAttackRange(ctx, active.identity) };
-    updateSnapshotRow(ctx, "playerProgress", progress);
-  }
-  const player = ctx.db.player.identity.find(active.identity);
-  if (progress && player) {
-    const nextPlayer = {
-      ...player,
-      speed: effectiveMovementSpeedForProgress(ctx, progress, nextResearch),
-      ...powerFieldsForProgress(ctx, progress),
-    };
-    updateSnapshotRow(ctx, "player", nextPlayer);
-    syncPlayerMotionIdentity(ctx, playerWithMotion(ctx, nextPlayer));
-  }
-  ctx.db.activeResearch.identity.delete(active.identity);
-  removeResearchCompletionSchedules(ctx, active.identity);
-  return true;
-}
-
-function ensureResearchCompletionSchedule(ctx: any, active: any) {
-  const completesAtMicros = active.completesAt.microsSinceUnixEpoch;
-  for (const scheduled of [...ctx.db.researchCompletionSchedule.identity.filter(active.identity) as Iterable<any>]) {
-    if (scheduled.researchId === active.researchId && scheduled.targetRank === active.targetRank && scheduled.completesAtMicros === completesAtMicros) return;
-    ctx.db.researchCompletionSchedule.scheduledId.delete(scheduled.scheduledId);
-  }
-  ctx.db.researchCompletionSchedule.insert({
-    scheduledId: 0n,
-    scheduledAt: ScheduleAt.time(active.completesAt.microsSinceUnixEpoch),
-    identity: active.identity,
-    researchId: active.researchId,
-    targetRank: active.targetRank,
-    completesAtMicros,
-  });
-}
-
-/**
- * Repairs missing schedules and rebases legacy timers only toward the current,
- * shorter curve. Maintenance calls this for offline players; registration is
- * merely a fast path, never the only recovery mechanism.
- */
-function reconcileActiveResearch(ctx: any, active: any) {
-  const research = researchForPlayer(ctx, active.identity);
-  if (!activeResearchCanComplete(research, active)) {
-    completeActiveResearch(ctx, active);
-    return { active: null, completed: false };
-  }
-  const researchId = active.researchId as ResearchId;
-  const expectedCompletesAtMicros = active.startedAt.microsSinceUnixEpoch +
-    BigInt(researchDurationMs(researchId, active.targetRank - 1, research.researchSpeed)) * 1_000n;
-  const storedCompletesAtMicros = active.completesAt.microsSinceUnixEpoch;
-  const completesAtMicros = storedCompletesAtMicros < expectedCompletesAtMicros
-    ? storedCompletesAtMicros
-    : expectedCompletesAtMicros;
-  const nextActive = completesAtMicros === storedCompletesAtMicros
-    ? active
-    : { ...active, completesAt: new Timestamp(completesAtMicros) };
-
-  if (ctx.timestamp.microsSinceUnixEpoch >= completesAtMicros) {
-    return { active: null, completed: completeActiveResearch(ctx, nextActive) };
-  }
-  if (nextActive !== active) ctx.db.activeResearch.identity.update(nextActive);
-  ensureResearchCompletionSchedule(ctx, nextActive);
-  return { active: nextActive, completed: false };
-}
-
-function ensurePlayerLifetime(ctx: any) {
-  const current = ctx.db.playerLifetime.identity.find(ctx.sender);
-  if (current) return current;
-  const next = {
-    identity: ctx.sender,
-    joinedAt: ctx.timestamp,
-    playedMicros: 0n,
-    sessionStartedAt: ctx.timestamp,
-    enemyKills: 0n,
-    deathCount: 0n,
-  };
-  ctx.db.playerLifetime.insert(next);
-  syncPlayerJoinDate(ctx, ctx.sender, next.joinedAt);
-  return next;
-}
-
-function finishLifetimeSession(ctx: any, identity: any) {
-  const lifetime = ctx.db.playerLifetime.identity.find(identity);
-  if (!lifetime) return;
-  const elapsed = ctx.timestamp.microsSinceUnixEpoch - lifetime.sessionStartedAt.microsSinceUnixEpoch;
-  ctx.db.playerLifetime.identity.update({
-    ...lifetime,
-    playedMicros: lifetime.playedMicros + (elapsed > 0n ? elapsed : 0n),
-    sessionStartedAt: ctx.timestamp,
-  });
-}
-
-function markPlayerBalanceCurrent(ctx: any, identity = ctx.sender) {
-  const current = ctx.db.playerBalanceVersion.identity.find(identity);
-  const next = { identity, version: ATTACK_BALANCE_VERSION };
-  if (current) ctx.db.playerBalanceVersion.identity.update(next);
-  else ctx.db.playerBalanceVersion.insert(next);
-}
-
-function playerBalanceProgress(progress: any, version: number, includeMapRebase = true) {
-  const attackBalanced = {
-    ...progress,
-    // Version 1 halved legacy attack speed once. Version 2 enforces the lower
-    // base-speed cap for existing players.
-    attackRate: Math.max(
-      MIN_ATTACK_INTERVAL,
-      Math.min(DEFAULT_ATTACK_INTERVAL, version < 1 ? progress.attackRate * 2 : progress.attackRate),
-    ),
-  };
-  const outlierBalanced = version < 3 ? compressLegacyProgressionOutlier(attackBalanced) : attackBalanced;
-  const damageHealthBalanced = version < 4 ? rebalanceLegacyDamageHealth(outlierBalanced) : outlierBalanced;
-  const topFiveBalanced = version < 5 ? compressLegacyTopFiveProgression(damageHealthBalanced) : damageHealthBalanced;
-  const corrected = version === 5 ? correctLegacyTopFiveV5Progression(topFiveBalanced) : topFiveBalanced;
-  const mapBalanced = includeMapRebase && version < 7 ? compressLegacyMapPower(corrected) : corrected;
-  return includeMapRebase && version < 8 ? rescaleEndgameProgress(mapBalanced) : mapBalanced;
-}
-
-function powerForProgress(progress: { maxHp: number; damage: number; attackRate: number; armor: number; regen: number }) {
-  return playerPowerForStats(progress);
-}
-
-function effectivePowerStatsForProgress(ctx: any, progress: any) {
-  return effectivePlayerPowerStats(
-    { ...withSoulStats(progress, soulStatsFor(ctx, progress.identity), soulAttackCapFor(ctx, progress.identity)), ...critPowerFields(ctx, progress.identity) },
-    researchInPlay(ctx, progress.identity),
-    (itemId) => itemUpgradeLevelFor(ctx, progress.identity, itemId),
-  );
-}
-
-function effectivePowerForProgress(ctx: any, progress: any) {
-  return effectivePlayerPower(
-    { ...withSoulStats(progress, soulStatsFor(ctx, progress.identity), soulAttackCapFor(ctx, progress.identity)), ...critPowerFields(ctx, progress.identity) },
-    researchInPlay(ctx, progress.identity),
-    (itemId) => itemUpgradeLevelFor(ctx, progress.identity, itemId),
-  );
-}
-
-function powerFieldsForProgress(ctx: any, progress: any) {
-  const powerLevel = effectivePowerForProgress(ctx, progress);
-  return { power: legacyU32Power(powerLevel), powerLevel };
-}
-
-function researchedDamage(ctx: any, identity: any, damage: number, knownProgress?: any, knownResearch?: any) {
-  const rank = (knownResearch === undefined ? researchInPlay(ctx, identity) : knownResearch)?.warcraft ?? 0;
-  const progress = knownProgress ?? readPlayerProgress(ctx, identity);
-  const weaponItem = progress ? equippedRightHandForProgress(progress) || equippedLeftHandForProgress(progress) : "";
-  const headItem = progress ? equippedHeadForProgress(progress) : "";
-  const chestItem = progress ? equippedChestForProgress(progress) : "";
-  return equipmentDamage(damage + (soulStatsFor(ctx, identity)?.damage ?? 0),
-    weaponItem,
-    headItem,
-    chestItem,
-    1 + rank * .02,
-    itemUpgradeLevelFor(ctx, identity, weaponItem),
-    itemUpgradeLevelFor(ctx, identity, headItem),
-    itemUpgradeLevelFor(ctx, identity, chestItem),
-  );
-}
-
-function researchedArmor(ctx: any, identity: any, armor: number) {
-  const rank = researchInPlay(ctx, identity)?.precision ?? 0;
-  return (armor + (soulStatsFor(ctx, identity)?.armor ?? 0)) * (1 + rank * .02);
-}
-
-function researchedRegen(ctx: any, identity: any, regen: number) {
-  const rank = researchInPlay(ctx, identity)?.regeneration ?? 0;
-  const progress = readPlayerProgress(ctx, identity);
-  const headItem = progress ? equippedHeadForProgress(progress) : "";
-  const chestItem = progress ? equippedChestForProgress(progress) : "";
-  return equipmentRegeneration(regen + (soulStatsFor(ctx, identity)?.regen ?? 0),
-    headItem,
-    chestItem,
-    1 + rank * .02,
-    itemUpgradeLevelFor(ctx, identity, headItem),
-    itemUpgradeLevelFor(ctx, identity, chestItem),
-  );
-}
-
 function publishPlayerDeathFrame(ctx: any, activePlayer: any) {
   if (boundedMapPopulation(ctx, activePlayer.mapId) < 2) return;
   const motion = ctx.db.playerMotion.identity.find(activePlayer.identity);
@@ -2514,221 +2283,13 @@ const OFFLINE_GRANT_PORTS = { effectiveStats: effectivePowerStatsForProgress, ma
   statMultiplier: statRewardMultiplier, endlessClaimBit: BOSS_REWARD_CLAIM_BITS[PROCEDURAL_ENTRY_BOSS],
   writeProgress: (ctx: any, progress: any) => writeProgressAndPresentation(ctx, progress) };
 
-function writeProgressAndPresentation(ctx: any, progress: any) {
-  const current = readPlayerProgress(ctx, progress.identity);
-  if (current) updateSnapshotRow(ctx, "playerProgress", progress);
-  else insertSnapshotRow(ctx, "playerProgress", progress);
-  const active = ctx.db.player.identity.find(progress.identity);
-  if (active) {
-    const nextPlayer = {
-      ...active,
-      ...powerFieldsForProgress(ctx, progress),
-      speed: effectiveMovementSpeedForProgress(ctx, progress),
-      ...equipmentPresentationForProgress(ctx, progress),
-    };
-    updateSnapshotRow(ctx, "player", nextPlayer);
-    syncPlayerMotionIdentity(ctx, playerWithMotion(ctx, nextPlayer));
-  }
-  // Ranking snapshots refresh in maintenance, never in the combat/reward path.
-}
-
 const cosmeticConversion = createCosmeticConversion({ requireControllingPlayer, activeDuelFor,
   inventoryForProgress, writeProgressAndPresentation, applyGemBalanceChange });
 
 const equipmentCopies = createEquipmentCopies({ requireControllingPlayer, activeDuelFor, inventoryForProgress,
   restoreItemToProgress, removeItemFromProgress: cosmeticConversion.removeItemFromProgress, writeProgressAndPresentation });
 
-function removeItemUpgradeCompletionSchedules(ctx: any, identity: any, slot?: number) {
-  const scheduledIds = [...ctx.db.itemUpgradeCompletionSchedule.identity.filter(identity) as Iterable<any>]
-    .filter((scheduled: any) => slot === undefined || normalizeUpgradeBenchSlot(scheduled.slot) === slot)
-    .map((scheduled: any) => scheduled.scheduledId);
-  for (const scheduledId of scheduledIds) ctx.db.itemUpgradeCompletionSchedule.scheduledId.delete(scheduledId);
-}
-
-function removePlayerItemDrops(ctx: any, identity: any, keepCopies = false) {
-  for (const drop of [...ctx.db.playerItemDrop.byIdentity.filter(identity) as Iterable<any>]) {
-    ctx.db.playerItemDrop.key.delete(drop.key);
-  }
-  if (keepCopies) removeEquipmentOffers(ctx, identity); // Prestige keeps the bag, kept copies included.
-  else removeEquipmentCopies(ctx, identity); // Kept copies and waiting offers are gear too.
-}
-
-function removePlayerItemUpgradeData(ctx: any, identity: any, removeDrops = false) {
-  if (ctx.db.activeItemUpgrade.identity.find(identity)) ctx.db.activeItemUpgrade.identity.delete(identity);
-  if (ctx.db.activeItemUpgradeSlotTwo.identity.find(identity)) ctx.db.activeItemUpgradeSlotTwo.identity.delete(identity);
-  if (ctx.db.activeItemUpgradeSlotThree.identity.find(identity)) ctx.db.activeItemUpgradeSlotThree.identity.delete(identity);
-  removeItemUpgradeCompletionSchedules(ctx, identity);
-  for (const upgrade of [...ctx.db.playerItemUpgrade.byIdentity.filter(identity) as Iterable<any>]) {
-    deleteSnapshotRow(ctx, "playerItemUpgrade", upgrade.key);
-  }
-  if (removeDrops) removePlayerItemDrops(ctx, identity);
-}
-
-function ensureItemUpgradeCompletionSchedule(ctx: any, active: any, slot: number) {
-  const completesAtMicros = active.completesAt.microsSinceUnixEpoch;
-  // The sweep calls this for every running upgrade; leave a correct schedule alone.
-  const existing = [...ctx.db.itemUpgradeCompletionSchedule.identity.filter(active.identity) as Iterable<any>]
-    .filter((scheduled: any) => normalizeUpgradeBenchSlot(scheduled.slot) === slot);
-  if (!active.paused && existing.length === 1 && existing[0].itemId === active.itemId
-    && existing[0].targetLevel === active.targetLevel && existing[0].completesAtMicros === completesAtMicros) return;
-  removeItemUpgradeCompletionSchedules(ctx, active.identity, slot);
-  if (active.paused) return;
-  ctx.db.itemUpgradeCompletionSchedule.insert({
-    scheduledId: 0n,
-    scheduledAt: ScheduleAt.time(completesAtMicros),
-    identity: active.identity,
-    itemId: active.itemId,
-    targetLevel: active.targetLevel,
-    completesAtMicros,
-    slot,
-  });
-}
-
-function completeActiveItemUpgrade(ctx: any, active: any, slot: number) {
-  // The tier lands by itself the moment the schedule fires, online or not.
-  // Nothing is returned to the bag, because nothing was taken from it.
-  const currentLevel = slotUpgradeTierFor(ctx, active.identity, active.itemId);
-  if (currentLevel === active.currentLevel && active.targetLevel === currentLevel + 1 && active.targetLevel <= MAX_SLOT_UPGRADE_TIER) {
-    const key = slotUpgradeKey(active.identity, active.itemId);
-    const current = ctx.db.playerItemUpgrade.key.find(key);
-    const completed = { key, identity: active.identity, itemId: active.itemId, level: active.targetLevel };
-    if (current) updateSnapshotRow(ctx, "playerItemUpgrade", completed);
-    else insertSnapshotRow(ctx, "playerItemUpgrade", completed);
-    const progress = readPlayerProgress(ctx, active.identity);
-    if (progress) writeProgressAndPresentation(ctx, progress);
-  }
-  deleteActiveItemUpgrade(ctx, active.identity, slot);
-  removeItemUpgradeCompletionSchedules(ctx, active.identity, slot);
-}
-
-function cancelActiveItemUpgrade(ctx: any, active: any, slot: number) {
-  // A slot upgrade takes nothing from the bag, so there is nothing to hand
-  // back. A row left over from when upgrades belonged to items still names an
-  // item, and that one is still returned.
-  if (!isUpgradeSlot(active.itemId)) {
-    const progress = readPlayerProgress(ctx, active.identity) ?? defaultPlayerProgress(active.identity);
-    writeProgressAndPresentation(ctx, restoreItemToProgress(progress, active.itemId));
-  }
-  deleteActiveItemUpgrade(ctx, active.identity, slot);
-  removeItemUpgradeCompletionSchedules(ctx, active.identity, slot);
-}
-
-function reconcileActiveItemUpgrade(ctx: any, active: any, slot: number) {
-  // itemId holds the slot now. Checking it with isUpgradeableItem answered
-  // false for every running slot upgrade, so the next maintenance sweep,
-  // sign-in or completion threw it away — which is why a slot never moved past
-  // the tier the migration handed it.
-  const upgradeSlot = isUpgradeSlot(active.itemId) ? active.itemId : upgradeSlotForItem(active.itemId);
-  if (!upgradeSlot
-    || active.currentLevel !== slotUpgradeTierFor(ctx, active.identity, upgradeSlot)
-    || active.targetLevel !== active.currentLevel + 1) {
-    cancelActiveItemUpgrade(ctx, active, slot);
-    return;
-  }
-  if (active.paused) {
-    cancelActiveItemUpgrade(ctx, active, slot);
-    return;
-  }
-  const nextActive = rebaseActiveItemUpgradeTimer(ctx, active, slot);
-  if (ctx.timestamp.microsSinceUnixEpoch >= nextActive.completesAt.microsSinceUnixEpoch) {
-    completeActiveItemUpgrade(ctx, nextActive, slot);
-    return;
-  }
-  ensureItemUpgradeCompletionSchedule(ctx, nextActive, slot);
-}
-
-function ensureGemWallet(ctx: any, identity: any) {
-  const existing = ctx.db.playerGemWallet.identity.find(identity);
-  if (existing) return existing;
-  return ctx.db.playerGemWallet.insert({
-    identity,
-    balance: 0n,
-    revision: 0n,
-    updatedAt: ctx.timestamp,
-  });
-}
-
 const killGems = createKillGems({ applyGemBalanceChange, isVirtualPlayer });
-
-function applyGemBalanceChange(ctx: any, input: {
-  identity: any;
-  delta: bigint;
-  kind: string;
-  note: string;
-  externalReference: string;
-}) {
-  const duplicate = ctx.db.gemTransaction.externalReference.find(input.externalReference);
-  if (duplicate) {
-    if (!sameIdentity(duplicate.identity, input.identity) || duplicate.delta !== input.delta || duplicate.kind !== input.kind) {
-      throw new SenderError("Gem transaction reference conflict.");
-    }
-    return ensureGemWallet(ctx, input.identity);
-  }
-
-  if (input.delta === 0n) throw new SenderError("Gem amount must not be zero.");
-  if (input.delta < 0n && input.kind !== "gem_refund" &&
-      [...ctx.db.gemCommerceHold.byIdentity.filter(input.identity)].length) {
-    throw new SenderError("Gem spending is paused while a refunded purchase is reconciled.");
-  }
-  const wallet = ensureGemWallet(ctx, input.identity);
-  let balanceAfter: bigint;
-  try {
-    balanceAfter = gemBalanceAfter(wallet.balance, input.delta);
-  } catch (error) {
-    throw new SenderError(error instanceof Error ? error.message : "Gem balance update failed.");
-  }
-  const nextWallet = {
-    ...wallet,
-    balance: balanceAfter,
-    revision: wallet.revision + 1n,
-    updatedAt: ctx.timestamp,
-  };
-  ctx.db.playerGemWallet.identity.update(nextWallet);
-  ctx.db.gemTransaction.insert({
-    id: 0n,
-    identity: input.identity,
-    delta: input.delta,
-    balanceAfter,
-    kind: input.kind,
-    note: input.note,
-    externalReference: input.externalReference,
-    createdAt: ctx.timestamp,
-  });
-  return nextWallet;
-}
-
-const UTC_DAY_MICROS = 86_400_000_000n;
-
-function currentUtcDayKey(ctx: any) {
-  return String(ctx.timestamp.microsSinceUnixEpoch / UTC_DAY_MICROS);
-}
-
-function legacyDailyGemBonusReference(identity: any, dayKey: string) {
-  return `daily-login:${identity.toHexString()}:${dayKey}`;
-}
-
-function ensureDailyGemBonusState(ctx: any, identity: any) {
-  const dayKey = currentUtcDayKey(ctx);
-  const current = ctx.db.dailyGemBonus.identity.find(identity);
-  if (current?.claimableDayKey === dayKey || current?.lastClaimedDayKey === dayKey) return current;
-
-  // v0.501 credited the reward immediately. Preserve that claim for ordinary
-  // players so rollout of the Claim window can never double-credit a day.
-  const legacyClaimed = Boolean(ctx.db.gemTransaction.externalReference.find(
-    legacyDailyGemBonusReference(identity, dayKey),
-  ));
-  const next = {
-    identity,
-    claimableDayKey: legacyClaimed ? "" : dayKey,
-    lastClaimedDayKey: legacyClaimed ? dayKey : current?.lastClaimedDayKey ?? "",
-    claimCycle: current?.claimCycle ?? 0n,
-    revision: (current?.revision ?? 0n) + 1n,
-    updatedAt: ctx.timestamp,
-  };
-  if (current) ctx.db.dailyGemBonus.identity.update(next);
-  else ctx.db.dailyGemBonus.insert(next);
-  return next;
-}
 
 function adjustVirtualPlayerCount(ctx: any, owner: any, change: number) {
   const current = ctx.db.virtualPlayerLoad.owner.find(owner);
