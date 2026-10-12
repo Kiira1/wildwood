@@ -1,11 +1,10 @@
 import { t, SenderError } from "spacetimedb/server";
 import type spacetimedbType from "./index";
 import { parseBonusOff, serializeBonusOff } from "../../shared/bonus-toggles";
-import { playerAttackCap } from "../../shared/prestige-perks";
 import { attackIntervalUnderNewCap } from "../../shared/stat-rating";
 import { bonusOffFor } from "./bonus-toggles";
-import { prestigePerkRanks } from "./prestige";
-import { challengeActive, reflectRewardsInPlay } from "./prestige-challenge";
+import { attackCapInPlay } from "./prestige";
+import { challengeActive } from "./prestige-challenge";
 import { updateSnapshotRow } from "./snapshot-row-writes";
 import { readPlayerProgress } from "./wide-stats";
 
@@ -17,7 +16,7 @@ export type BonusToggleDeps = {
 };
 
 /** The attack speed cap the player's bonuses in play give (Reflect Only wins and Quick Draw). */
-const attackCapNow = (ctx: any) => playerAttackCap(reflectRewardsInPlay(ctx, ctx.sender), prestigePerkRanks(ctx, ctx.sender));
+const attackCapNow = (ctx: any) => attackCapInPlay(ctx, ctx.sender);
 
 /** `offText`: the item ids to have off, comma separated (shared/bonus-toggles.ts); unknown ids are ignored. */
 export function setBonusToggles(ctx: any, offText: string, deps: BonusToggleDeps) {

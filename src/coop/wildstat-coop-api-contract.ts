@@ -158,6 +158,7 @@ type ExpectedApiKey =
   | "setBonusOff"
   | "researchInPlay"
   | "reflectRewardsInPlay"
+  | "attackCapInPlay"
   | "prestigeStatGainInPlay"
   | "prestigeExpansionUnlocksAt"
   | "spendPrestigePerkPoint"

@@ -2,6 +2,8 @@ import type { PrestigeChallenge } from "../../../shared/prestige-challenge";
 import { TUTORIAL_FOREST_MAP_ID } from "../../../shared/rules";
 import { prestigeBonusesOff, type AggroChallenge } from "../../../shared/aggro-challenge";
 import { parseBonusOff, perksInPlayFor, prestigeStatGainOn, reflectRewardsOn, researchInPlayFor, serializeBonusOff } from "../../../shared/bonus-toggles";
+import { playerAttackCap } from "../../../shared/prestige-perks";
+import type { AttackCap } from "../../../shared/stat-rating";
 import { parseDailyQuests, type DailyQuest } from "../../../shared/daily-quests";
 
 export type DailyQuestState = { day: number; quests: DailyQuest[]; bonus: number; guildPoints: number; guildName: string };
@@ -997,6 +999,12 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
       bonusOff: (): string[] => [...bonusOff],
       /** The Reflect Only row whose wins count now: none during an Aggro run, or with Reflect Only switched off. */
       reflectRewardsInPlay: () => aggroChallenge.active || !reflectRewardsOn(bonusOff) ? null : { ...prestigeChallenge },
+      /**
+       * The attack speed cap in play (playerAttackCap): Reflect Only's wins and Quick Draw, each unless switched off.
+       * An Aggro run keeps both, though it plays without every other prestige bonus.
+       */
+      attackCapInPlay: (): AttackCap => playerAttackCap(reflectRewardsOn(bonusOff) ? { ...prestigeChallenge } : null,
+        perksInPlayFor({ keenEdge: 0, doubleStrike: 0, splitShot: 0, riposte: 0, ...localPrestigePerks, ...expansionPerks }, bonusOff)),
       /** Prestige stat gain counts: not during an Aggro run, nor with Stat Gain switched off. */
       prestigeStatGainInPlay: () => !prestigeBonusesOff(aggroChallenge) && prestigeStatGainOn(bonusOff),
       activeResearch: () => activeResearch ? { ...activeResearch } : null,

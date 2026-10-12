@@ -1,7 +1,7 @@
 /**
  * Aggro: the second prestige challenge. A run starts over from the forest
- * with no prestige bonuses at all (stat gain, perks, Reflect Only's attack
- * speed), and on every map some camps chase the player from the moment they
+ * with no prestige bonuses (stat gain, perks, Reflect Only's attack speed) except
+ * the attack speed cap raises (Quick Draw, Reflect Only's wins), and on every map some camps chase the player from the moment they
  * arrive: camps the player picks, one on the first run and one more each run. A camp is a
  * stat group, every enemy on the map paying one stat, as Autofarm offers them.
  * Dying starts the run over (dropping out parks it), and Autofarm's own Pull is off during a run. It

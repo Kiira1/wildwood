@@ -3,11 +3,10 @@ import type { default as spacetimedbType } from "./index";
 import { isDeveloperIdentity } from "../../shared/developer-identity";
 import { isProceduralMap } from "../../shared/procedural-maps";
 import { CAMPAIGN_MAPS } from "../../shared/campaign-registry";
-import { challengeActive, reflectRewardsInPlay } from "./prestige-challenge";
+import { challengeActive } from "./prestige-challenge";
 import { bonusOffFor } from "./bonus-toggles";
 import { soulInPlayFor } from "../../shared/bonus-toggles";
-import { playerAttackCap } from "../../shared/prestige-perks";
-import { prestigePerkRanks } from "./prestige";
+import { attackCapInPlay } from "./prestige";
 import { cleanRating } from "../../shared/stat-rating";
 import {
   addSoulKills, cleanSoulStats, isSoulMap, soulDimensionAccess, soulStatsUnlocked, soulTier,
@@ -87,7 +86,7 @@ export function soulStatsFor(ctx: any, identity: any): SoulStats | null {
 
 /** The attack speed cap the soul's rating adds under: Reflect Only wins and Quick Draw raise it. Soul is in play only outside a challenge. */
 export function soulAttackCapFor(ctx: any, identity: any) {
-  return playerAttackCap(reflectRewardsInPlay(ctx, identity), prestigePerkRanks(ctx, identity));
+  return attackCapInPlay(ctx, identity);
 }
 
 export function rewardKillsFor(ctx: any, identity: any): RewardKillCounts {

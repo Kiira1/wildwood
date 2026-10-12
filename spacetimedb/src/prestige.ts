@@ -13,7 +13,7 @@ import { prestigeExpanded } from "./prestige-expansion";
 import { readPlayerProgress } from "./wide-stats";
 import { aggroChallengeActive } from "./aggro-challenge";
 import { bonusOffFor, researchInPlay } from "./bonus-toggles";
-import { perksInPlayFor, prestigeStatGainOn } from "../../shared/bonus-toggles";
+import { perksInPlayFor, prestigeStatGainOn, reflectRewardsOn } from "../../shared/bonus-toggles";
 import { aggroGoal, aggroGoalMet } from "../../shared/aggro-challenge";
 
 // Prestige bodies. The player_prestige table and the reducer declaration stay
@@ -41,6 +41,16 @@ export const prestigeStatGainInPlay = (ctx: any, identity: any) => !aggroChallen
 export function prestigePerkRanks(ctx: any, identity: any): PrestigePerkRanks {
   if (aggroChallengeActive(ctx, identity)) return Object.fromEntries(PRESTIGE_PERK_IDS.map(perk => [perk, 0])) as PrestigePerkRanks;
   return perksInPlayFor(storedPrestigePerkRanks(ctx, identity), bonusOffFor(ctx, identity));
+}
+
+/**
+ * The attack speed cap in play (playerAttackCap): Reflect Only's wins and Quick Draw, each unless switched off
+ * (bonus-toggles.ts). An Aggro run keeps both, though it plays without every other prestige bonus.
+ */
+export function attackCapInPlay(ctx: any, identity: any) {
+  const off = bonusOffFor(ctx, identity);
+  return playerAttackCap(reflectRewardsOn(off) ? ctx.db.playerPrestigeChallenge.identity.find(identity) : null,
+    perksInPlayFor(storedPrestigePerkRanks(ctx, identity), off));
 }
 
 /** The ranks the player owns, whether or not they are in play: what spending and respeccing work from. */

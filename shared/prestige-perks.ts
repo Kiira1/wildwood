@@ -144,7 +144,7 @@ export function preArmorFactor(armorReduction: number) {
 
 /**
  * The attack speed cap a player plays under (stat-rating.ts AttackCap): Reflect Only's wins in play, and
- * Quick Draw's raise from the perk ranks in play (none during an Aggro run, whose callers pass no ranks).
+ * Quick Draw's raise from the perk ranks. Callers pass both even during an Aggro run (attackCapInPlay).
  */
 export function playerAttackCap(challenge: PrestigeChallenge | null | undefined, ranks: Partial<PrestigePerkRanks> | null | undefined): AttackCap {
   return { minInterval: challengeMinimumInterval(challenge), raise: prestigePerkValue(ranks, "quickDraw") };

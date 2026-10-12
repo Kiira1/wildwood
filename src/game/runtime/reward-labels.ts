@@ -1,8 +1,7 @@
 import type { EnemyDefinition } from "../enemies";
-import { attackSpeedGainLabel, type AttackCapArg } from "../../../shared/stat-rating";
+import { attackSpeedGainLabel, type AttackCap, type AttackCapArg } from "../../../shared/stat-rating";
 import { critMultiplierGainLabel, type CriticalDamageParts } from "../../../shared/critical-damage";
 import { soulAttackSpeedBonus, type SoulStatId } from "../../../shared/soul-dimension";
-import { playerAttackCap } from "../../../shared/prestige-perks";
 
 /**
  * Attack speed and crit damage pay ratings, numbers players can't read, worth less as they near the cap.
@@ -35,7 +34,7 @@ export function soulRewardCapped(stat: SoulStatId, context: RewardLabelContext |
 }
 
 type LabelSource = {
-  coop: () => { reflectRewardsInPlay?: () => import("../../../shared/prestige-challenge").PrestigeChallenge | null; prestigePerks?: () => Partial<import("../../../shared/prestige-perks").PrestigePerkRanks>; savedProgress?: () => { attackRate: number } | null } | null | undefined;
+  coop: () => { attackCapInPlay?: () => AttackCap; savedProgress?: () => { attackRate: number } | null } | null | undefined;
   player: { attackRate: number; critRating?: number };
   soul: { inPlay: () => { attackSpeed: number }; critDamage: () => number };
   critParts: () => CriticalDamageParts;
@@ -46,7 +45,7 @@ export function rewardLabelContextFrom(source: LabelSource): () => RewardLabelCo
   return () => {
     const coop = source.coop();
     return {
-      attackCap: playerAttackCap(coop?.reflectRewardsInPlay?.(), coop?.prestigePerks?.()),
+      attackCap: coop?.attackCapInPlay?.(),
       runAttackInterval: coop?.savedProgress?.()?.attackRate ?? source.player.attackRate,
       soulAttackSpeed: source.soul.inPlay().attackSpeed,
       critParts: { ...source.critParts(), soul: source.soul.critDamage(), rating: source.player.critRating },
