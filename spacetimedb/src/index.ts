@@ -34,14 +34,14 @@ import { playerProfileSnapshot, requireSnapshotForIcon, takeProfileSnapshot } fr
 import { claimAdGemReward, playerAdReward } from "./ad-gem-reward";
 import { assertChatNotMuted, playerChatMute, recordChatStrike, setChatMute } from "./chat-mute";
 import { createAutoEquip } from "./auto-equip";
-import { allowedLoadout, blankHandWeapon, canonicalSavedHand } from "./loadout";
+import { allowedLoadout } from "./loadout";
 import { ERASURE_ROW_BUDGET, eraseIdentityRows, linkedIdentities, requireErasureConfirmation } from "./account-erasure";
 import { LOADOUT_FIELDS } from "../../shared/combat-progress";
 import { chatHeartAllowance, chatReactionCooldown, chatReactionSummary, chatReactionUnlock, playerChatHearts, reactionCountsFor, chatReaction, readChatReactions, setChatReaction, grantGemHeartUnlock, isChatModerator, chatModerator, moderatorHeartFor, setChatModerator, removeMessageReactions, removeAccountReactions } from "./chat-reactions";
 import { pruneIdleStreams, regularEnemyLootCursor, regularEnemyStream, rollRegularEnemyLoot } from "./regular-enemy-loot";
 import { BLACK_BOOTS, BLACK_BOOTS_SPEED_BONUS } from "../../shared/items";
 import { playerOnboarding, advanceOnboarding, needsOnboarding } from "./onboarding";
-import { isUpgradeSlot, normalizeSlotTier, upgradeSlotForItem, UPGRADE_SLOT_LABELS } from "../../shared/slot-upgrades";
+import { isUpgradeSlot, upgradeSlotForItem, UPGRADE_SLOT_LABELS } from "../../shared/slot-upgrades";
 import { deliverDisconnectCompensation, deliverCombatUpdateGift, deliverOutageCompensation, announceOutageCompensation, deliverAutofarmTestGift } from "./disconnect-compensation";
 import { connectionDiagnosticTables, recordConnectionDiagnostics, cleanupConnectionDiagnostics } from "./connection-diagnostics";
 import { moderationTables, recordModerationAction, readModerationHistory, readPlayerModerationHistory, searchModerationHistory } from "./moderation-history";
@@ -64,7 +64,6 @@ import { earlierTimestamp } from "./timestamp-utils";
 import { slotUpgradeDurationWithResearch } from "../../shared/utility-research";
 import { createResearchState } from "./research-state";
 import { createCosmeticConversion } from "./cosmetic-conversion";
-import { cosmeticUnlocks } from "../../shared/cosmetic-conversion";
 import { wearsUnlentLook } from "../../shared/patreon-cosmetics";
 import { publicChatCursor, updatePublicChatCursor, readPublicChatPage } from "./public-chat-history";
 import { createKillGems } from "./kill-gems";
@@ -103,7 +102,7 @@ import {
   type ResearchId,
 } from "../../shared/research";
 import { VIRTUAL_PLAYER_LIMIT, isVirtualPlayerTicket } from "../../shared/virtual-player-load-test";
-import { PLAYER_STARTING_POWER, effectivePlayerPower, effectivePlayerPowerStats, legacyU32Power, playerPowerForStats } from "../../shared/player-power";
+import { effectivePlayerPower, effectivePlayerPowerStats, legacyU32Power, playerPowerForStats } from "../../shared/player-power";
 import {
   PLAYER_GENDER_UNSET,
   isSelectedPlayerGender,
@@ -135,7 +134,7 @@ import {
   tempestKirinBossTables,
   tidewyrmBossTables,
 } from "./boss-tables";
-import { createCombatReport, PRISMSHELL_ID } from "./boss-combat";
+import { createCombatReport } from "./boss-combat";
 import { createModuleMigrations } from "./module-migrations";
 import { UPGRADE_BENCH_SLOT_ONE, UPGRADE_BENCH_SLOT_TWO, UPGRADE_BENCH_SLOT_THREE, normalizeUpgradeBenchSlot, requireUpgradeBenchSlot, activeItemUpgradeForSlot, activeItemUpgradeEntriesFor, insertActiveItemUpgrade, deleteActiveItemUpgrade, secondUpgradeSlotUnlockedFor, thirdUpgradeSlotUnlockedFor, rebaseActiveItemUpgradeTimer, refreshActiveSlotUpgrades } from "./upgrade-bench-slots";
 import {
@@ -164,7 +163,6 @@ import {
   itemUpgradeSpeedUpGemCost,
   researchSpeedUpGemCost,
 } from "../../shared/gems";
-import { HIDDEN_COSMETIC_ITEM_ID, isHiddenCosmeticItem, resolveEquipmentAppearance } from "../../shared/equipment-appearance";
 import { socialTables } from "./social-tables";
 import { pausedResearch, pauseActiveResearch, removePausedResearch, takePausedResearch } from "./research-pause";
 import { createSocialService, socialSnapshot, visibleSocialMessages, latestSocialMessages, socialHistoryPage, pruneExpiredSocialMessages } from "./social-service";
@@ -177,21 +175,13 @@ import { clearAutoFarmPuppet, playerAutoFarmPuppet, registerAutoFarmPuppetReduce
 import { GUILD_MAX_RANGE, guildWeaponRange } from "../../shared/guild-combat";
 import type { DuelFighter } from "../../shared/duel-combat";
 import {
-  BASIC_PAPER_HAT,
-  canonicalItemId,
-  DEVELOPER_ITEM_IDS,
-  EQUIPMENT_DROP_ITEM_IDS,
   equipmentDamage,
-  equipmentMaxHealth,
   equipmentRegeneration,
   itemDefinition,
-  itemFitsEquipmentSlot,
   itemUpgradeDurationMs,
-  MAX_FOREST_ITEM_COUNT,
   MAX_SLOT_UPGRADE_TIER,
   STARTER_BOW,
   STARTER_STONE,
-  STARTER_ITEM_IDS,
   SUPERIOR_GOLDEN_HELMET,
   WOODEN_ARMOR,
 } from "../../shared/items";
@@ -207,7 +197,6 @@ import {
   ATTACK_BALANCE_VERSION,
   BOSS_REWARD_CLAIM_BITS,
   DEFAULT_ATTACK_INTERVAL,
-  DEFAULT_ATTACK_RANGE,
   effectivePlayerMovementSpeed,
   INTERMEDIATE_SNOWLANDS_MAP_ID,
   MAP_DISPLAY_NAMES,
@@ -229,12 +218,13 @@ import {
   PROTOCOL_VERSION,
   TUTORIAL_FOREST_MAP_ID,
   WORLD_HEIGHT,
-  WORLD_WIDTH, isBaseStoredSpeed,
+  WORLD_WIDTH,
 } from "../../shared/rules";
 import { readPlayerProgress, iterPlayerProgress, withDuelWide, deleteReplayWide } from "./wide-stats";
 import { playerWideStats, duelWideStats, duelReplayWideStats, playerCombatRating } from "./wide-stats-table";
 import { narrowStat } from "../../shared/wide-stats";
 import { LEGACY_CLIENT_ERRORS, sameConnection, sessionForContext, requireSession, blockedSession, isSupportedProtocol, requireCurrentLegalConsent, requireSupportedSessionProtocol, requireControllingPlayer, isDeveloperIdentity, isDatabaseOwnerIdentity, isVirtualPlayer, requireDeveloperSession, requireDeveloper, touchPlayerAccessAudit, backfillKnownAccessAudit, sameIdentity } from "./session-guards";
+import { defaultPlayerProgress, samePlayerProgressValues, hasFreshProgress, resultIncludesContributor, contributedToLatestPrismshell, forestItemCountForProgress, inventoryForProgress, inventoryWithBetaHelmet, slotUpgradeKey, slotUpgradeTierFor, itemUpgradeLevelFor, playerOwnsItem, restoreItemToProgress, equippedHeadForProgress, equippedChestForProgress, equippedFeetForProgress, equippedRightHandForProgress, equippedLeftHandForProgress, cosmeticEquipmentForProgress, equipmentPresentationForProgress, leaderboardAppearanceForProgress, maxHealthForProgress } from "./progress-helpers";
 
 const WORLD = { width: WORLD_WIDTH, height: WORLD_HEIGHT };
 const VALID_MAP_IDS = { has: (id: string) => MAP_IDS.includes(id) || id === HOME_EXTERIOR_MAP_ID || isProceduralMap(id) || isSoulMap(id) || isGuildHallMap(id) || isTownMap(id) };
@@ -2151,87 +2141,6 @@ export const devSwapCharacters = spacetimedb.reducer(
   },
 );
 
-function defaultPlayerProgress(identity: any) {
-  return {
-    identity,
-    ...PLAYER_STARTING_POWER,
-    projectileSpeed: PLAYER_PROJECTILE_SPEED,
-    projectileCount: 1,
-    attackRange: DEFAULT_ATTACK_RANGE,
-    speed: PLAYER_SPEED,
-    bootsCollected: true,
-    inventoryJson: JSON.stringify([STARTER_STONE]),
-    equippedHead: "",
-    equippedChest: "",
-    equippedFeet: "",
-    equippedRightHand: STARTER_STONE,
-    equippedLeftHand: "",
-    introComplete: false,
-    desertUnlocked: false,
-    snowlandsUnlocked: false,
-    lavaUnlocked: false,
-    infernalUnlocked: false,
-    waterUnlocked: false,
-    samuraiUnlocked: false,
-    cloudspireUnlocked: false,
-    moonfenUnlocked: false,
-    crystalHollowsUnlocked: false, clockworkRuinsUnlocked: false, duskfallOrchardUnlocked: false, neonBastionUnlocked: false, verdantCatacombsUnlocked: false, ionCitadelUnlocked: false,
-    bossRewardClaims: 0,
-    bowCount: 0,
-    woodenArmorCount: 0,
-    cosmeticHead: "",
-    cosmeticChest: "",
-    cosmeticFeet: "",
-    cosmeticRightHand: "",
-    cosmeticLeftHand: "",
-    cosmeticItemsJson: "[]",
-    speedOverride: 0,
-  };
-}
-
-const PLAYER_PROGRESS_VALUE_FIELDS = [
-  "maxHp",
-  "damage",
-  "attackRate",
-  "projectileSpeed",
-  "projectileCount",
-  "attackRange",
-  "armor",
-  "regen",
-  "speed",
-  "bootsCollected",
-  "inventoryJson",
-  "equippedHead",
-  "equippedChest",
-  "equippedFeet",
-  "equippedRightHand",
-  "equippedLeftHand",
-  "introComplete",
-  "desertUnlocked",
-  "snowlandsUnlocked",
-  "lavaUnlocked",
-  "infernalUnlocked",
-  "waterUnlocked",
-  "samuraiUnlocked",
-  "cloudspireUnlocked",
-  "moonfenUnlocked",
-  "crystalHollowsUnlocked", "clockworkRuinsUnlocked", "duskfallOrchardUnlocked", "neonBastionUnlocked", "verdantCatacombsUnlocked", "ionCitadelUnlocked",
-  "bossRewardClaims",
-  "bowCount",
-  "woodenArmorCount",
-  "cosmeticHead",
-  "cosmeticChest",
-  "cosmeticFeet",
-  "cosmeticRightHand",
-  "cosmeticLeftHand",
-  "cosmeticItemsJson",
-  "speedOverride",
-] as const;
-
-function samePlayerProgressValues(left: any, right: any) {
-  return PLAYER_PROGRESS_VALUE_FIELDS.every((field) => left[field] === right[field]);
-}
-
 const researchForPlayer = createResearchState({ updateSnapshotRow, insertSnapshotRow });
 
 function assertResearchAvailable(research: Record<ResearchId, number>, researchId: ResearchId) {
@@ -2600,136 +2509,6 @@ function refreshLeaderboardIfDue(ctx: any) {
   refreshLeaderboard(ctx);
 }
 
-function hasFreshProgress(progress: any) {
-  const defaultProgress = defaultPlayerProgress(progress.identity);
-  return !progress.introComplete &&
-    progress.maxHp === defaultProgress.maxHp &&
-    progress.damage === defaultProgress.damage &&
-    progress.attackRate === defaultProgress.attackRate &&
-    progress.projectileSpeed === defaultProgress.projectileSpeed &&
-    progress.projectileCount === defaultProgress.projectileCount &&
-    progress.attackRange === defaultProgress.attackRange &&
-    progress.armor === defaultProgress.armor &&
-    (progress.regen === 0 || Math.abs(progress.regen - defaultProgress.regen) < 1e-6) &&
-    isBaseStoredSpeed(progress.speed) &&
-    (progress.speedOverride ?? 0) === 0 &&
-    progress.bootsCollected === defaultProgress.bootsCollected &&
-    progress.inventoryJson === defaultProgress.inventoryJson &&
-    progress.equippedHead === defaultProgress.equippedHead &&
-    progress.equippedFeet === defaultProgress.equippedFeet &&
-    progress.equippedChest === defaultProgress.equippedChest &&
-    progress.equippedRightHand === defaultProgress.equippedRightHand &&
-    progress.equippedLeftHand === defaultProgress.equippedLeftHand &&
-    progress.cosmeticHead === defaultProgress.cosmeticHead &&
-    progress.cosmeticChest === defaultProgress.cosmeticChest &&
-    progress.cosmeticFeet === defaultProgress.cosmeticFeet &&
-    progress.cosmeticRightHand === defaultProgress.cosmeticRightHand &&
-    progress.cosmeticLeftHand === defaultProgress.cosmeticLeftHand &&
-    progress.bowCount === defaultProgress.bowCount &&
-    progress.woodenArmorCount === defaultProgress.woodenArmorCount &&
-    progress.desertUnlocked === defaultProgress.desertUnlocked &&
-    progress.snowlandsUnlocked === defaultProgress.snowlandsUnlocked &&
-    progress.lavaUnlocked === defaultProgress.lavaUnlocked &&
-    progress.infernalUnlocked === defaultProgress.infernalUnlocked &&
-    progress.waterUnlocked === defaultProgress.waterUnlocked &&
-    progress.samuraiUnlocked === defaultProgress.samuraiUnlocked &&
-    progress.cloudspireUnlocked === defaultProgress.cloudspireUnlocked &&
-    progress.moonfenUnlocked === defaultProgress.moonfenUnlocked &&
-    progress.crystalHollowsUnlocked === defaultProgress.crystalHollowsUnlocked &&
-    progress.clockworkRuinsUnlocked === defaultProgress.clockworkRuinsUnlocked &&
-    progress.duskfallOrchardUnlocked === defaultProgress.duskfallOrchardUnlocked &&
-    progress.neonBastionUnlocked === defaultProgress.neonBastionUnlocked &&
-    (progress.bossRewardClaims ?? 0) === defaultProgress.bossRewardClaims;
-}
-
-function resultIncludesContributor(latest: any, identity: any) {
-  if (!latest) return false;
-  try {
-    const contributors = JSON.parse(latest.contributorsJson);
-    const identityHex = identity.toHexString();
-    return Array.isArray(contributors) && contributors.some((entry: any) => entry?.identity === identityHex);
-  } catch {
-    return false;
-  }
-}
-
-function contributedToLatestPrismshell(ctx: any, identity: any) {
-  return resultIncludesContributor(ctx.db.prismshellResult.id.find(PRISMSHELL_ID), identity);
-}
-function forestItemCountForProgress(progress: any, itemId: string, field: "bowCount" | "woodenArmorCount") {
-  const storedCount = Number.isInteger(progress?.[field]) ? progress[field] : 0;
-  let legacyCount = 0;
-  try {
-    const savedItems = JSON.parse(progress.inventoryJson ?? "[]");
-    if (Array.isArray(savedItems)) legacyCount = savedItems.filter((savedItem) => savedItem === itemId).length;
-  } catch {}
-  return Math.max(0, Math.min(MAX_FOREST_ITEM_COUNT, Math.max(storedCount, legacyCount)));
-}
-
-function inventoryForProgress(progress: any) {
-  // Decode once. Previously every catalog item reparsed the same JSON payload.
-  let saved: unknown[] = [];
-  try { const value = JSON.parse(progress.inventoryJson ?? "[]"); if (Array.isArray(value)) saved = value; } catch {}
-  const owned = new Set(saved.map(canonicalItemId).filter(Boolean));
-  const developer = isDeveloperIdentity(progress.identity);
-  const forestCount = (itemId: string, field: string) => Math.max(0, Math.min(MAX_FOREST_ITEM_COUNT,
-    Math.max(Number.isInteger(progress[field]) ? progress[field] : 0, saved.filter(id => id === itemId).length)));
-  return [
-    ...STARTER_ITEM_IDS,
-    ...(developer ? DEVELOPER_ITEM_IDS : DEVELOPER_ITEM_IDS.filter(id => owned.has(id))),
-    ...Array(forestCount(STARTER_BOW, "bowCount")).fill(STARTER_BOW),
-    ...Array(forestCount(WOODEN_ARMOR, "woodenArmorCount")).fill(WOODEN_ARMOR),
-    ...OWNED_EQUIPMENT_DROP_IDS.filter(id => owned.has(id)),
-  ];
-}
-
-// The two original forest drops retain their legacy count-field migration above.
-const OWNED_EQUIPMENT_DROP_IDS = EQUIPMENT_DROP_ITEM_IDS.filter(id => id !== STARTER_BOW && id !== WOODEN_ARMOR);
-
-function inventoryWithBetaHelmet(progress: any, grant: boolean) {
-  const inventory = inventoryForProgress(progress);
-  if (grant && !inventory.includes(SUPERIOR_GOLDEN_HELMET)) inventory.push(SUPERIOR_GOLDEN_HELMET);
-  return inventory;
-}
-
-function slotUpgradeKey(identity: any, slot: string) {
-  return `${identity.toHexString()}:${slot}`;
-}
-
-/** The tier a slot has reached, zero when it has never been upgraded. */
-function slotUpgradeTierFor(ctx: any, identity: any, slot: string | null) {
-  if (!slot) return 0;
-  return normalizeSlotTier(ctx.db.playerItemUpgrade.key.find(slotUpgradeKey(identity, slot))?.level ?? 0);
-}
-
-/** The tier that applies to an item: whatever its slot has earned. */
-function itemUpgradeLevelFor(ctx: any, identity: any, itemId: unknown) {
-  return slotUpgradeTierFor(ctx, identity, upgradeSlotForItem(itemId));
-}
-
-function progressHasItem(progress: any, itemId: string) {
-  return inventoryForProgress(progress).includes(itemId);
-}
-
-function playerOwnsItem(ctx: any, identity: any, itemId: string) {
-  const progress = readPlayerProgress(ctx, identity);
-  if (progressHasItem(progress ?? defaultPlayerProgress(identity), itemId)) return true;
-  return activeItemUpgradeEntriesFor(ctx, identity).some(({ active }) => active.itemId === itemId);
-}
-
-function restoreItemToProgress(progress: any, itemId: string) {
-  let next = { ...progress };
-  if (itemId === STARTER_BOW) next.bowCount = 1;
-  else if (itemId === WOODEN_ARMOR) next.woodenArmorCount = 1;
-  else {
-    const inventory = inventoryForProgress(next);
-    if (!inventory.includes(itemId)) inventory.push(itemId);
-    next.inventoryJson = JSON.stringify(inventory);
-  }
-  next.inventoryJson = JSON.stringify([...new Set(inventoryForProgress(next))]);
-  return next;
-}
-
 /** What offline-progress.ts needs from this module, wired once. */
 const OFFLINE_GRANT_PORTS = { effectiveStats: effectivePowerStatsForProgress, mapBalance: liveMapBalance,
   statMultiplier: statRewardMultiplier, endlessClaimBit: BOSS_REWARD_CLAIM_BITS[PROCEDURAL_ENTRY_BOSS],
@@ -2758,86 +2537,6 @@ const cosmeticConversion = createCosmeticConversion({ requireControllingPlayer, 
 
 const equipmentCopies = createEquipmentCopies({ requireControllingPlayer, activeDuelFor, inventoryForProgress,
   restoreItemToProgress, removeItemFromProgress: cosmeticConversion.removeItemFromProgress, writeProgressAndPresentation });
-
-
-function equippedHeadForProgress(progress: any, inventory = inventoryForProgress(progress)) {
-  if (equipmentMapRequirement(progress.equippedHead, progress)) return "";
-  if (progress.equippedHead === "") return "";
-  return inventory.includes(progress.equippedHead) ? progress.equippedHead : BASIC_PAPER_HAT;
-}
-
-function equippedChestForProgress(progress: any, inventory = inventoryForProgress(progress)) {
-  if (equipmentMapRequirement(progress.equippedChest, progress)) return "";
-  return inventory.includes(progress.equippedChest) ? progress.equippedChest : "";
-}
-
-function equippedFeetForProgress(progress: any, inventory = inventoryForProgress(progress)) {
-  if (equipmentMapRequirement(progress.equippedFeet, progress)) return "";
-  return inventory.includes(progress.equippedFeet) ? progress.equippedFeet : "";
-}
-
-function equippedRightHandForProgress(progress: any, inventory = inventoryForProgress(progress)) {
-  const saved = canonicalSavedHand(progress, "equippedRightHand");
-  if (saved && inventory.includes(saved) && !equipmentMapRequirement(saved, progress)) return saved;
-  return equippedLeftHandForProgress(progress, inventory) ? "" : blankHandWeapon(inventory, progress);
-}
-
-function equippedLeftHandForProgress(progress: any, inventory = inventoryForProgress(progress)) {
-  const saved = canonicalSavedHand(progress, "equippedLeftHand");
-  return saved && inventory.includes(saved) && !equipmentMapRequirement(saved, progress) ? saved : "";
-}
-
-function cosmeticEquipmentForProgress(progress: any, lentLooks: readonly string[], inventory = inventoryForProgress(progress)) {
-  const ownedItemIds = new Set([...inventory, ...cosmeticUnlocks(progress.cosmeticItemsJson), ...lentLooks]);
-  const itemFor = (field: "cosmeticHead" | "cosmeticChest" | "cosmeticFeet" | "cosmeticRightHand" | "cosmeticLeftHand", slot: "HEAD" | "CHEST" | "FEET" | "RIGHT_HAND" | "LEFT_HAND") => {
-    if (isHiddenCosmeticItem(progress[field])) return HIDDEN_COSMETIC_ITEM_ID;
-    const itemId = canonicalItemId(progress[field]);
-    return itemId && ownedItemIds.has(itemId) && itemFitsEquipmentSlot(itemId, slot) ? itemId : "";
-  };
-  const cosmeticRightHand = itemFor("cosmeticRightHand", "RIGHT_HAND");
-  return {
-    cosmeticHead: itemFor("cosmeticHead", "HEAD"),
-    cosmeticChest: itemFor("cosmeticChest", "CHEST"),
-    cosmeticFeet: itemFor("cosmeticFeet", "FEET"),
-    cosmeticRightHand,
-    cosmeticLeftHand: cosmeticRightHand ? "" : itemFor("cosmeticLeftHand", "LEFT_HAND"),
-  };
-}
-
-function equipmentPresentationForProgress(ctx: any, progress: any, inventory = inventoryForProgress(progress)) {
-  // Empty hands look empty; combat bounds still read them as the best weapon owned.
-  const rightHandItem = progress.equippedRightHand || progress.equippedLeftHand ? equippedRightHandForProgress(progress, inventory) : "";
-  const cosmetics = cosmeticEquipmentForProgress(progress, lentLooksFor(ctx, progress.identity), inventory);
-  return resolveEquipmentAppearance({
-    equippedFeet: equippedFeetForProgress(progress, inventory),
-    equippedHead: equippedHeadForProgress(progress, inventory),
-    equippedChest: equippedChestForProgress(progress, inventory),
-    equippedRightHand: rightHandItem,
-    equippedLeftHand: rightHandItem ? "" : equippedLeftHandForProgress(progress, inventory),
-    ...cosmetics,
-  });
-}
-
-function leaderboardAppearanceForProgress(ctx: any, progress: any, profile: any) {
-  return {
-    skinTone: profile?.skinTone ?? 3,
-    ...equipmentPresentationForProgress(ctx, progress),
-  };
-}
-
-
-function maxHealthForProgress(ctx: any, identity: any, progress: any) {
-  const headItem = equippedHeadForProgress(progress);
-  const chestItem = equippedChestForProgress(progress);
-  const vitalityMultiplier = 1 + (researchInPlay(ctx, identity)?.vitality ?? 0) * .02;
-  return equipmentMaxHealth(progress.maxHp + (soulStatsFor(ctx, identity)?.maxHp ?? 0),
-    headItem,
-    chestItem,
-    vitalityMultiplier,
-    itemUpgradeLevelFor(ctx, identity, headItem),
-    itemUpgradeLevelFor(ctx, identity, chestItem),
-  );
-}
 
 function removeItemUpgradeCompletionSchedules(ctx: any, identity: any, slot?: number) {
   const scheduledIds = [...ctx.db.itemUpgradeCompletionSchedule.identity.filter(identity) as Iterable<any>]
