@@ -179,7 +179,7 @@ import { generatedDisplayName, isGeneratedDisplayName, syncDisplayNamePresentati
 import { insertChatMessage, clearExpiredHistory, trimStartupTelemetry, clearExpiredStartupTelemetryRateLimits, sendPlayerChatMessage } from "./chat-runtime";
 import { MAINTENANCE_INTERVAL_MICROS, VIRTUAL_PLAYER_RUN_LIFETIME_MICROS, adjustVirtualPlayerCount, virtualPlayerCountForOwner, clearExpiredVirtualPlayerRuns, clearOrphanRealtimeState, ensureMaintenanceSchedule, ensureMaintenanceSweepSchedule, removePlayerRealtimeState } from "./maintenance-runtime";
 import { autoEquip } from "./player-power";
-import { publishPlayerDeathFrame, resetProgressToDefaults, startFreshRun, respawnWithProgress, transitionPlayerMap } from "./character-reset";
+import { publishPlayerDeathFrame, resetProgressToDefaults, resetWholeSave, startFreshRun, respawnWithProgress, transitionPlayerMap } from "./character-reset";
 import { saveSubmittedProgress } from "./progress-save";
 import { WORLD, VALID_MAP_IDS, canonicalMapId, MAP_ARRIVALS, changePlayerMap, hasEndlessTravelAccess } from "./map-travel";
 import { startItemUpgradeFor } from "./item-upgrade-runtime";
@@ -3878,7 +3878,7 @@ export const resetPlayerProgress = spacetimedb.reducer({}, (ctx) => {
   if (activeDuelFor(ctx, ctx.sender)) throw new SenderError("Finish your duel before resetting progress.");
   // In a challenge the main run is set aside, and dropping out brings it back over a reset of the challenge run.
   if (ctx.db.playerPrestigeChallenge.identity.find(ctx.sender)?.active || ctx.db.playerAggroChallenge.identity.find(ctx.sender)?.active) throw new SenderError("Drop out of the challenge before resetting your save.");
-  resetProgressToDefaults(ctx, activePlayer);
+  resetWholeSave(ctx, activePlayer);
 });
 // Bodies live in prestige.ts; this is the schema-facing declaration.
 export const startPrestigeChallenge = spacetimedb.reducer({}, ctx => prestige.changeChallenge(ctx, true));

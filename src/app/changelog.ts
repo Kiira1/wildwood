@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.901.62": [
+    "Reset Save now erases everything, prestige, perks, soul stats and challenges included; gems and cosmetics stay",
+  ],
   "0.901.61": [
     "Auto Farm with every slider at 0% keeps standing still on the next map",
   ],
@@ -3227,6 +3230,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.901.62": "2026-10-12",
   "0.901.61": "2026-10-12",
   "0.901.60": "2026-10-12",
   "0.901.59": "2026-10-12",

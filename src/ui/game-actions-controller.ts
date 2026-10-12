@@ -98,8 +98,12 @@ export function createGameActionsController(dependencies: GameActionsDependencie
     // and resets twice; window.confirm used to close that gap by blocking.
     resetPending = true;
     const erase = await confirmReset({
-      message: "Erase all saved WildStat progress and start over?",
-      details: [{ label: "This cannot be undone", value: "Everything resets" }],
+      message: "Erase your whole WildStat save and start over?",
+      details: [
+        { label: "Erased", value: "Prestige, Perks, Soul Stats, Challenges, Research, Items, Upgrades" },
+        { label: "Kept", value: "Gems, Purchases, Cosmetics" },
+        { label: "This Cannot Be Undone", value: "You Start From Nothing" },
+      ],
       confirmLabel: "Erase", danger: true,
     });
     if (!erase) { resetPending = false; return; }

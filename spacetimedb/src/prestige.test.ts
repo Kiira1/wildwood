@@ -183,11 +183,23 @@ it("keeps the lifetime kill count through a prestige but not through a plain res
   expect(wiped.db.playerLifetime.identity.find(wiped.ctx.sender).enemyKills).toBe(0n);
 });
 
-it("survives the player's own progress reset", () => {
+it("goes with everything else earned across runs on the player's own Reset Save (ZeII, Yumi), gems kept", () => {
   const f = crystalFixture();
-  f.seed("playerPrestige", { identity: f.ctx.sender, level: 2, perkPoints: 2, peakPower: 5, prestigedAt: f.ctx.timestamp });
+  const me = f.ctx.sender, at = f.ctx.timestamp;
+  f.seed("playerPrestige", { identity: me, level: 2, perkPoints: 2, peakPower: 5, prestigedAt: at });
+  f.seed("playerPrestigePerk", { identity: me, keenEdge: 2, doubleStrike: 0, splitShot: 0, riposte: 1 });
+  f.seed("playerPrestigeChallenge", { identity: me, active: false, completed: 3 });
+  f.seed("playerAggroChallenge", { identity: me, active: false, completed: 1 });
+  f.seed("playerAggroChallengeParked", { identity: me, parkedAt: at });
+  f.seed("playerSoulStats", { identity: me, damage: 5, maxHp: 5, armor: 0, regen: 0, attackSpeed: 10, critDamage: 10, kills: 40 });
+  f.seed("playerBonusToggle", { identity: me, off: "research.warcraft" });
+  const wallet = f.db.playerGemWallet.identity.find(me);
   f.run(server.resetPlayerProgress, {});
-  expect(prestigeRow(f)).toMatchObject({ level: 2, perkPoints: 2 });
+  for (const table of ["playerPrestige", "playerPrestigePerk", "playerPrestigeChallenge", "playerAggroChallenge",
+    "playerAggroChallengeParked", "playerSoulStats", "playerBonusToggle"] as const) {
+    expect(f.db[table].identity.find(me), table).toBeFalsy();
+  }
+  expect(f.db.playerGemWallet.identity.find(me)).toEqual(wallet);
 });
 
 it("refuses a save reset during a Reflect Only or Aggro run, which dropping out would undo", () => {

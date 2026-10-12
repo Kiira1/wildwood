@@ -88,6 +88,27 @@ export function resetProgressToDefaults(ctx: any, activePlayer: any, keep: { res
     respawnWithProgress(ctx, activePlayer, next);
 }
 
+/**
+ * What Reset Save erases besides the run: everything earned across runs. It used to keep prestige, perks,
+ * the soul and challenge wins while its warning said "Everything resets", and two players were left at
+ * prestige 6 and 21 with an empty save (ZeII, Yumi, 2026-10-11). Gems, purchases, cosmetics and mail stay.
+ */
+const RESET_SAVE_TABLES = [
+  "playerPrestige", "playerPrestigePerk", "playerPrestigeExpansionPerk", "playerFreeRespec",
+  "playerPrestigeChallenge", "prestigeChallengeBackup", "prestigeChallengeRun", "playerPrestigeChallengeParked",
+  "playerAggroChallenge", "aggroChallengeRun", "playerAggroChallengeParked",
+  "playerSoulStats", "playerRewardKills", "playerBonusToggle",
+] as const;
+
+/** Reset Save: the account's progression first, so the fresh run starts with none of its bonuses, then the run. */
+export function resetWholeSave(ctx: any, activePlayer: any) {
+  for (const table of RESET_SAVE_TABLES) {
+    const handle = ctx.db[table];
+    if (handle?.identity.find(ctx.sender)) handle.identity.delete(ctx.sender);
+  }
+  resetProgressToDefaults(ctx, activePlayer);
+}
+
 /** A prestige's fresh run, which a challenge run also starts with (and an Aggro death restarts). */
 export function startFreshRun(ctx: any, player: any) { resetProgressToDefaults(ctx, player, { research: true, lifetimeKills: true, slotTiers: true, items: true }); }
 
