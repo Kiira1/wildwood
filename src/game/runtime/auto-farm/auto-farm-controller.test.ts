@@ -771,12 +771,27 @@ describe('autofarm plans: sliders, the boss and the next map', () => {
     s.setMap('beginner_desert'); s.add('Bramble', 900, 500); s.add('Needle', 900, 900);
     s.farm.refresh(); s.advance(1_000); s.farm.refresh();
     expect(s.farm.state()).toMatchObject({ active: true, shares: { [health]: 100 } });
-    // With nothing pulled on the next map, it stops rather than walking off to farm everything.
-    s.farm.setGroupPulled(health, false);
+    // A next map without the pulled group: it stops rather than walking off to farm everything.
     s.farm.travelStarted();
-    s.setMap('forest');
+    s.setMap('forest'); s.enemies.length = 0; s.spawnSites.length = 0; s.add('Needle', 900, 900);
     s.farm.refresh(); s.advance(1_000); s.farm.refresh();
-    expect(s.farm.state()).toMatchObject({ active: false, status: 'Sliders at 0% · nothing to pull here' });
+    expect(s.farm.state()).toMatchObject({ active: false, status: 'Sliders at 0% · switch a group to Aggro' });
+  });
+
+  it("with every slider at 0%, follows the Aggro switches instead of walking off to the group it started on", () => {
+    const s = planned({ pullCamps: () => 1 });
+    s.add('Bramble', 900, 500); s.add('Needle', 900, 900);
+    s.farm.setGroupPulled(health, true);
+    expect(s.farm.startZero()).toBe(true);
+    expect(s.farm.state().shares).toMatchObject({ [health]: 100 });
+    s.farm.setGroupPulled(health, false);
+    s.farm.setGroupPulled(speed, true);
+    expect(s.farm.state()).toMatchObject({ active: true, shares: { [speed]: 100 } });
+    expect(s.farm.state().shares[health] ?? 0).toBe(0);
+    // A farm with sliders set is the player's plan: switching Aggro does not replace it.
+    s.farm.start({ [health]: 100, [speed]: 0 });
+    s.farm.setGroupPulled(health, true);
+    expect(s.farm.state().shares).toMatchObject({ [health]: 100 });
   });
 
   it("keeps the stats the player picked on the next map, and splits evenly where none of them is paid", () => {

@@ -6,7 +6,7 @@ import type { MapBalanceSnapshot } from "./map-balance-types";
 import { endlessSiteLane, generateMap, generatedEnemyStats, isProceduralMap, proceduralMapId } from "./procedural-maps";
 import { MAP_IDS, REGULAR_ENEMY_RESPAWN_SECONDS } from "./rules";
 import { campaignMapUnlocked, type CampaignAccess } from "./equipment-access";
-import type { PlayerPowerStats } from "./player-power";
+import { critPowerFactor, type PlayerPowerStats } from "./player-power";
 
 /** The most farming one absence is worth, however long the player was gone (Offline Time research adds to it). */
 export const OFFLINE_WINDOW_SECONDS = 8 * 60 * 60;
@@ -163,7 +163,9 @@ export function simulateOfflineFarming(
   const totalPopulation = roster.reduce((sum, entry) => sum + entry.population, 0);
   if (!roster.length || !totalPopulation || !seconds) return empty;
 
-  const dps = stats.damage / Math.max(CHALLENGE_ABSOLUTE_MIN_INTERVAL, stats.attackRate);
+  // Crits count, as power counts them (critPowerFactor): without them a crit build, which online one-shots
+  // what it hits, farmed one kill in two minutes away (ChunkyChunkster, 2026-10-12: 253 kills in 8 hours).
+  const dps = stats.damage * critPowerFactor(stats) / Math.max(CHALLENGE_ABSOLUTE_MIN_INTERVAL, stats.attackRate);
   if (!(dps > 0)) return empty;
 
   const meanFightSeconds = roster.reduce((sum, entry) => sum + entry.population * entry.hp / dps, 0) / totalPopulation;

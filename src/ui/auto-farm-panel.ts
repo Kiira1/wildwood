@@ -411,7 +411,7 @@ export function createAutoFarmPanel(options: {
     // All at 0%: the chasing groups in a run, or the pulled ones outside it, with the sliders saved at 0%.
     const plan = zeroPlan(draft);
     if (plan) options.farm.rememberShares(draft);
-    if (plan ? options.farm.start(plan, false) : options.farm.start(draft)) close();
+    if (plan ? options.farm.startZero(plan) : options.farm.start(draft)) close();
     else updateSelection();
   });
   /**
@@ -430,7 +430,7 @@ export function createAutoFarmPanel(options: {
     if (farming()) options.farm.stop();
     else {
       const saved = options.farm.savedShares(), plan = zeroPlan(saved);
-      if (!(plan ? options.farm.start(plan, false) : options.farm.start(saved))) open();
+      if (!(plan ? options.farm.startZero(plan) : options.farm.start(saved))) open();
     }
     refresh();
   };

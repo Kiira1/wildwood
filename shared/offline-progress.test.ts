@@ -99,6 +99,14 @@ describe("offline throughput", () => {
     expect(share).toBeGreaterThanOrEqual(outcome.kills * busiest.population / population - roster.length);
   });
 
+  it("counts crits, as power does: a crit build kills as fast away as its average hit says (ChunkyChunkster)", () => {
+    const stats = referenceStats(3);
+    const plain = simulateOfflineFarming("infernal_depths", stats, OFFLINE_WINDOW_SECONDS);
+    const crit = simulateOfflineFarming("infernal_depths", { ...stats, critChance: .5, critMultiplier: 21 }, OFFLINE_WINDOW_SECONDS);
+    // Half the hits at 21x: an average hit of 11x, so fights take a far smaller share of each kill.
+    expect(crit.kills).toBeGreaterThan(plain.kills * 2);
+  });
+
   it("is capped by the walk between camps once damage stops mattering", () => {
     const stats = { ...referenceStats(0), damage: 1e30 };
     const outcome = simulateOfflineFarming("beginner_desert", stats, OFFLINE_WINDOW_SECONDS);

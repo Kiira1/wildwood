@@ -387,8 +387,7 @@ export function createAutoFarmController(options: {
       // Every slider at 0% (Pull Only, Chase Only) stays that here: it stands and fights what it pulls or what
       // chases it, as Go starts it. It used to read as nothing set and split every group evenly, walking off to farm them.
       if (carried && !Object.values(carried).some(value => value > 0)) {
-        const plan = zeroPlanGroups();
-        if (plan.length) start(plan, false); else stop('Sliders at 0% · nothing to pull here');
+        startZero();
         return;
       }
       start(sharesForGroups(carried, groups()), false);
@@ -438,7 +437,21 @@ export function createAutoFarmController(options: {
    * groups for an even split of them, an empty list every group here).
    * `remember` is false when autofarm restarts itself: only the player's own choice is saved.
    */
+  /**
+   * Sliders all at 0%: farm only what is pulled (or chases, in an Aggro run) and stand still. The farm
+   * follows the Aggro switches: switching groups used to leave it on the old one, walking off to its camp.
+   */
+  let followsPull = false;
+  /** Stopped because the last Aggro switch went off: the next one switched on starts it again. */
+  let zeroWaiting = false;
+  function startZero(plan: readonly string[] = zeroPlanGroups()) {
+    if (!plan.length) { stop('Sliders at 0% · switch a group to Aggro'); zeroWaiting = true; return false; }
+    const started = start(plan, false);
+    followsPull = started;
+    return started;
+  }
   function start(next: FarmShares | readonly string[] | string, remember = true) {
+    followsPull = false; zeroWaiting = false;
     if (options.connection && options.connection() !== 'ready') { stop('Connect to the server to farm'); return false; }
     const reason = options.unavailable();
     if (reason) { stop(reason); return false; }
@@ -483,6 +496,7 @@ export function createAutoFarmController(options: {
    * any travel but its own, and a player farming by hand had to start it again.
    */
   function travelStarted() {
+    zeroWaiting = false;
     if (!active && !pendingResume) return;
     if (!startedIdentity) { stop('Map changed · choose stats'); return; }
     // The player's sliders as last set, not this map's split of them: a stat this map lacks is farmed again where it is paid.
@@ -636,7 +650,7 @@ export function createAutoFarmController(options: {
     return currentPower() >= needs ? 'Boss Next' : `Boss At ${atPower(needs)}`;
   }
 
-  return { start, stop, defeated, refresh, choices, movement, travelStarted,
+  return { start, stop: (reason?: string) => { zeroWaiting = false; stop(reason); }, defeated, refresh, choices, movement, travelStarted,
     /** `waiting`: stopped for travel, and starting again on the next map with enemies. The player can still Stop it. */
     state: () => ({ active, waiting: !active && Boolean(pendingResume), selected, selectedLabel, shares: { ...shares }, phase, advance, fightBosses,
       status: active && !recovering && options.paused() ? 'Paused' : status }),
@@ -662,6 +676,8 @@ export function createAutoFarmController(options: {
     moveReady: () => moveStatus() === 'Moving On',
     bossStatus: bossLine,
     bossReady: () => ['Boss Next', 'Fighting Boss'].includes(bossLine()),
+    /** Sliders all at 0%: farms what is pulled, or what chases in an Aggro run, standing still, and follows the Aggro switches. */
+    startZero,
     /** The sliders saved for this map, for the panel to show, and saving them without starting. */
     savedShares,
     rememberShares,
@@ -690,6 +706,7 @@ export function createAutoFarmController(options: {
       pullPicks = [...elsewhere, ...here];
       writeAutoFarmPullGroups(pullPicks, options.priorityStorage);
       pulledKey = '';
+      if ((active && followsPull) || zeroWaiting) startZero();
       return true;
     },
     // Steering by hand keeps the pull: the group follows the player while they move.
