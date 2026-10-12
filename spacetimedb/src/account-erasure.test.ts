@@ -105,3 +105,18 @@ it("covers the tables 0.812 added", () => {
   expect(f.db.guildJoinRequest.identity.find(f.ctx.sender)).toBeNull();
   expect(f.db.playerJoinDate.identity.find(f.ctx.sender)).toBeNull();
 });
+
+it("reads a unique index (find only, as SpacetimeDB 2.11 has it) instead of crashing on filter", () => {
+  // Every live erase threw "index.filter is not a function" on such an accessor (2026-10-12); the memory
+  // test database gives every index a filter, so only a hand-made one shows the runtime's shape.
+  const player = Identity.fromString("c2".padEnd(64, "4"));
+  const rows = new Map([["k1", { key: "k1", identity: player }]]);
+  const ctx = { db: { pausedResearch: {
+    identity: { find: (identity: any) => [...rows.values()].find(row => row.identity.isEqual(identity)) ?? null },
+    key: { find: (key: string) => rows.get(key) ?? null, delete: (key: string) => rows.delete(key) },
+    iter: () => rows.values(),
+  } } };
+  const result = eraseIdentityRows(ctx, [player]);
+  expect(result).toMatchObject({ deleted: 1, complete: true });
+  expect(rows.size).toBe(0);
+});

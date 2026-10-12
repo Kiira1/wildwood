@@ -239,6 +239,17 @@ function matchesIdentity(row: any, columns: readonly string[], identities: reado
 }
 
 /**
+ * The rows an index gives for one identity: a btree index's filter, or a unique index's find (a row
+ * or none). Null when it is neither, and the table is scanned instead. Every live erase failed on
+ * "index.filter is not a function" (2026-10-12): an accessor named like the column is a unique index.
+ */
+function indexRows(index: any, identity: any): Iterable<any> | null {
+  if (typeof index?.filter === "function") return index.filter(identity);
+  if (typeof index?.find === "function") { const row = index.find(identity); return row ? [row] : []; }
+  return null;
+}
+
+/**
  * Delete up to `budget` rows belonging to `identities`, and report what is
  * left to do. Safe to call repeatedly: it is the same work each time, minus
  * what has already gone. `only` limits the sweep to those tables, which is how
@@ -271,10 +282,10 @@ export function eraseIdentityRows(ctx: any, identities: readonly any[], budget =
     // recipient) is scanned, or the rows naming this player second stay behind.
     const rows: any[] = [];
     const index = target.index ? handle[camel(target.index)] : null;
-    if (target.mode === "index" && index && target.columns.length === 1) {
-      for (const identity of identities) {
-        for (const row of index.filter(identity) as Iterable<any>) rows.push(row);
-      }
+    const viaIndex = target.mode === "index" && index && target.columns.length === 1
+      ? identities.map(identity => indexRows(index, identity)) : null;
+    if (viaIndex && viaIndex.every(Boolean)) {
+      for (const found of viaIndex) for (const row of found!) rows.push(row);
     } else {
       for (const row of handle.iter() as Iterable<any>) {
         if (matchesIdentity(row, target.columns, identities)) rows.push(row);
