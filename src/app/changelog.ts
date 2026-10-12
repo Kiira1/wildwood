@@ -3,6 +3,7 @@ export const RELEASE_NOTES: Record<string, string[]> = {
     "Crit enemies show what a kill adds to your crit multiplier now, like +0.08× Crit Multiplier",
     "Attack speed and crit rewards count your soul stats, and say Capped once you are at the cap",
     "The map's enemy list shows the same live attack speed and crit rewards",
+    "Auto Farm: set every slider to 0% and switch on Aggro to pull those groups and stand still, without walking to camps",
   ],
   "0.901.55": [
     "Soul Attack Speed adds +0.001 attacks a second a kill again, on top of your attack speed, so new players can farm it up to the cap",

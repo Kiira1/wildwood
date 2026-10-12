@@ -22,7 +22,7 @@ const HELP_LINES: readonly [term: string, line: string][] = [
   ['Move On', "Goes to the next map once your power reaches Move At times the map's (1x is even)."],
   ['Fight Bosses', "Fights the boss once your power reaches Fight At times the boss's (1x is even), until it or you go down."],
   ['Deaths', 'It respawns and carries on with the same settings.'],
-  ['Aggro', 'Switch on any stats to pull their camps to you. It pulls one camp at once (one more for each Aggro win), the one it is farming first.'],
+  ['Aggro', 'Switch on any stats to pull their camps to you. It pulls one camp at once (one more for each Aggro win), the one it is farming first. With every slider at 0%, it stands still and fights only what it pulls.'],
   ['Target', 'Which enemy it hits first.'],
 ]
 /** The slider under a switch: how much of the map's or boss's power to have before it goes, 0.1x to 10x. */
@@ -160,6 +160,12 @@ export function createAutoFarmPanel(options: {
    * stands and fights rather than walking off to another camp (Ryan).
    */
   const chaseOnly = () => aggroRun() && nothingSet() && options.farm.chasingGroupKeys().length > 0;
+  /**
+   * Outside a run, every slider at 0 with Aggro switched on for some groups pulls those and stands still:
+   * no percentages to set, no walking to camps (Vis: "i dont want char to move"). It farms only the groups
+   * pulled now (the limit at once), so nothing waiting its turn sends it walking.
+   */
+  const pullOnly = () => !aggroRun() && nothingSet() && options.farm.pulledGroupKeys().length > 0;
   function updateSelection() {
     // Each slider moves on its own; the number beside it is its share of all of them, so they always read 100% together.
     const shares = nothingSet() ? {} : sharesForGroups(draft, groupKeys());
@@ -206,8 +212,10 @@ export function createAutoFarmPanel(options: {
     if (startButton.textContent !== (live ? 'Go' : 'Start')) startButton.textContent = live ? 'Go' : 'Start';
     const reason = options.unavailable();
     const empty = !options.farm.choices().length;
-    startButton.disabled = empty || (nothingSet() && !chaseOnly()) || Boolean(reason);
-    const note = reason ?? (chaseOnly() ? 'All At 0%: Fights Only What Chases You' : !empty && nothingSet() ? 'Set A Stat Above 0%' : '');
+    startButton.disabled = empty || (nothingSet() && !chaseOnly() && !pullOnly()) || Boolean(reason);
+    const note = reason ?? (chaseOnly() ? 'All At 0%: Fights Only What Chases You'
+      : pullOnly() ? 'All At 0%: Pulls Your Aggro Groups And Stands Still'
+      : !empty && nothingSet() ? 'Set A Stat Above 0% Or Switch On Aggro' : '');
     if (selection.textContent !== note) selection.textContent = note;
     selection.hidden = !note;
   }
@@ -393,7 +401,9 @@ export function createAutoFarmPanel(options: {
     // Go while farming: farming goes on, restarted only if the sliders changed.
     if (farming() && sameShares(draft, options.farm.savedShares())) { close(); return; }
     // All at 0% in an Aggro run: the chasing groups, without saving them as the sliders.
-    if (chaseOnly() ? options.farm.start(options.farm.chasingGroupKeys(), false) : options.farm.start(draft)) close();
+    // All at 0%: the chasing groups in a run, or the pulled ones outside it, without saving them as the sliders.
+    const plan = chaseOnly() ? options.farm.chasingGroupKeys() : pullOnly() ? options.farm.pulledGroupKeys() : null;
+    if (plan ? options.farm.start(plan, false) : options.farm.start(draft)) close();
     else updateSelection();
   });
   /**

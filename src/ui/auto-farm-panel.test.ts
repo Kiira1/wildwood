@@ -138,7 +138,7 @@ it('draws one slider per stat, in its colour, from 0 to 100; with every one at 0
   for (const row of rows) slide(s, row.dataset.group!, 0);
   expect(sum(shown(s))).toBe(0);
   expect(s.document.querySelector<HTMLButtonElement>('.farm-start')!.disabled).toBe(true);
-  expect(s.document.querySelector('.farm-selection')!.textContent).toBe('Set A Stat Above 0%');
+  expect(s.document.querySelector('.farm-selection')!.textContent).toBe('Set A Stat Above 0% Or Switch On Aggro');
   slide(s, rows[0].dataset.group!, 10);
   expect(s.document.querySelector<HTMLButtonElement>('.farm-start')!.disabled).toBe(false);
 });
@@ -330,6 +330,22 @@ it('has no Push setting, and keeps Target under More', () => {
   expect(more.querySelector('.farm-target')).not.toBeNull();
   expect([...s.document.querySelectorAll('.farm-body > [data-switch]')].map(entry => entry.getAttribute('data-switch'))).toEqual(['advance', 'bosses']);
 });
+it('outside a run, every slider at 0 with Aggro on pulls those groups and stands still (Vis)', () => {
+  const s = setup(true, 'endless_1', { pullLimit: () => 1 });
+  s.spawnSites.push(...fourStatSites('endless_1'));
+  s.click('.farm-toggle');
+  const keys = Object.keys(values(s));
+  for (const key of keys) slide(s, key, 0);
+  const start = s.document.querySelector<HTMLButtonElement>('.farm-start')!;
+  expect(start.disabled).toBe(true);
+  s.click(`[data-group="${keys[1]}"] .farm-aggro-switch`);
+  expect(start.disabled).toBe(false);
+  expect(s.document.querySelector('.farm-selection')!.textContent).toBe('All At 0%: Pulls Your Aggro Groups And Stands Still');
+  s.click('.farm-start');
+  expect(s.farm.state().active).toBe(true);
+  expect(s.farm.pulledGroupKeys()).toEqual([keys[1]]);
+});
+
 it('in an Aggro run, every slider at 0 starts on the chasing groups alone', () => {
   const storage = memoryStorage();
   vi.stubGlobal('localStorage', storage);
