@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.901.58": [
+    "Aggro runs keep Quick Draw and Reflect Only's higher attack speed cap",
+  ],
   "0.901.57": [
     "Power counts crit: your damage at its average hit, crits included, so crit builds show their real strength",
     "Auto Farm uses the same power, so crit builds Move On and Fight Bosses sooner",
@@ -3214,6 +3217,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.901.58": "2026-10-12",
   "0.901.57": "2026-10-12",
   "0.901.56": "2026-10-11",
   "0.901.55": "2026-10-11",
