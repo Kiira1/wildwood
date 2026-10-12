@@ -29,7 +29,19 @@ export type DevBannedPlayer = {
   by: string;
 };
 
-export type DevConsoleOverview = { pendingReports: number; openBugs: number; muted: number; banned: number };
+export type DevConsoleOverview = { pendingReports: number; openBugs: number; muted: number; banned: number; deletions: number };
+
+/** An in-game Delete Account request (Settings → Account), waiting for the developer to erase it. */
+export type DevDeletionRequest = {
+  identity: string;
+  displayName: string;
+  requestedAtMs: number;
+  /** "pending", or "erasing" when a pass ran out of budget and another is needed. */
+  status: string;
+};
+
+/** Requests are to be fulfilled within this long (docs/account-deletion-operations.md). */
+export const DELETION_DEADLINE_MS = 30 * 86_400_000;
 
 export type DevConsole = {
   overview: DevConsoleOverview;
@@ -37,6 +49,8 @@ export type DevConsole = {
   muted: DevMutedPlayer[];
   /** Soonest to expire first; permanent bans last. */
   banned: DevBannedPlayer[];
+  /** Oldest first: the nearest deadline at the top. */
+  deletions: DevDeletionRequest[];
   serverNowMs: number;
 };
 

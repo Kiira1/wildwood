@@ -40,11 +40,25 @@ describe("developer console", () => {
       note: "x", status: "pending", reportedAt: f.ctx.timestamp });
     f.seed("bugReport", { id: 1n, reporter, reporterName: "Reporter", message: "bug", protocolVersion: 1, reportedAt: f.ctx.timestamp });
     const console = f.read<DevConsole>(server.getDevConsole);
-    expect(console.overview).toEqual({ pendingReports: 1, openBugs: 1, muted: 2, banned: 2 });
+    expect(console.overview).toEqual({ pendingReports: 1, openBugs: 1, muted: 2, banned: 2, deletions: 0 });
     expect(console.muted.map(row => [row.displayName, row.source, row.muteCount])).toEqual([["Spammer", "developer", 1], ["Rude", "developer", 1]]);
     expect(console.banned.map(row => [row.displayName, row.permanent, row.reason, row.by])).toEqual([
       ["Rude", false, "Cooling off", "Ryan"], ["Spammer", true, "Link spam", "Ryan"],
     ]);
+  });
+
+  it("lists deletion requests oldest first, by name, and an erase removes the account and its request", () => {
+    const f = fixture();
+    const at = (seconds: number) => new Timestamp(BigInt(seconds) * 1_000_000n);
+    f.seed("accountDeletionRequest", { identity: spammer, requestedAt: at(20), status: "pending" });
+    f.seed("accountDeletionRequest", { identity: rude, requestedAt: at(10), status: "pending" });
+    let console = f.read<DevConsole>(server.getDevConsole);
+    expect(console.overview.deletions).toBe(2);
+    expect(console.deletions.map(row => [row.displayName, row.requestedAtMs, row.status])).toEqual([["Rude", 10_000, "pending"], ["Spammer", 20_000, "pending"]]);
+    f.run(server.devEraseAccount, { identityHex: rude.toHexString(), confirmation: "ERASE", reason: "In-game deletion request" });
+    console = f.read<DevConsole>(server.getDevConsole);
+    expect(console.deletions.map(row => row.displayName)).toEqual(["Spammer"]);
+    expect(f.db.playerProfile.identity.find(rude)).toBeNull();
   });
 
   it("builds a player card with names, standing, reports, history and their chat across channels", () => {

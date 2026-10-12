@@ -108,6 +108,10 @@ export function createDevModerationService(dependencies: DevModerationDependenci
       liftSuspension(identity: string, reason: string) {
         return reducer("lift suspension", current => current.reducers.devLiftPlayerSuspension({ identity: Identity.fromString(identity), reason }));
       },
+      /** One erasure pass over the account and its linked guest saves (dev_erase_account); a big one may need another. */
+      eraseAccount(identity: string, reason: string) {
+        return reducer("account erasure", current => current.reducers.devEraseAccount({ identityHex: identity, confirmation: "ERASE", reason }));
+      },
       /** `minutes` 0 lifts the mute. */
       setChatMute(identity: string, minutes: number) {
         return reducer("chat mute", current => setChatMute(current, identity, minutes));

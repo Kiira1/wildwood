@@ -283,6 +283,7 @@ const afterUpdateGateShell = String.raw`
       <button id="devBugReportsTab" class="profile-tab" type="button" role="tab" aria-selected="false">Bugs</button>
       <button id="devMutedTab" class="profile-tab" type="button" role="tab" aria-selected="false">Muted</button>
       <button id="devBannedTab" class="profile-tab" type="button" role="tab" aria-selected="false">Banned</button>
+      <button id="devDeletionsTab" class="profile-tab" type="button" role="tab" aria-selected="false">Deletions</button>
       <button id="devPlayersTab" class="profile-tab" type="button" role="tab" aria-selected="false">Players</button>
       <button id="devModerationTab" class="profile-tab" type="button" role="tab" aria-selected="false">Log</button>
       <button id="devControlsTab" class="profile-tab" type="button" role="tab" aria-selected="false">Controls</button>
@@ -294,6 +295,7 @@ const afterUpdateGateShell = String.raw`
     <section id="devBugReportsPanel" class="dev-review-panel" role="tabpanel" aria-labelledby="devBugReportsTab" hidden></section>
     <section id="devMutedPanel" class="dev-review-panel" role="tabpanel" aria-labelledby="devMutedTab" hidden></section>
     <section id="devBannedPanel" class="dev-review-panel" role="tabpanel" aria-labelledby="devBannedTab" hidden></section>
+    <section id="devDeletionsPanel" class="dev-review-panel" role="tabpanel" aria-labelledby="devDeletionsTab" hidden></section>
     <section id="devPlayersPanel" class="dev-review-panel" role="tabpanel" aria-labelledby="devPlayersTab" hidden></section>
     <section id="devBalancePanel" role="tabpanel" aria-labelledby="devBalanceTab" hidden></section>
     <section id="devModerationPanel" role="tabpanel" aria-labelledby="devModerationTab" hidden></section>

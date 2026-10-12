@@ -1,7 +1,7 @@
 import { SenderError } from "spacetimedb/server";
 import {
   WARNING_MAX_LENGTH, warningLetter,
-  type DevBannedPlayer, type DevChatLine, type DevConsole, type DevMutedPlayer, type DevPlayerCard,
+  type DevBannedPlayer, type DevChatLine, type DevConsole, type DevDeletionRequest, type DevMutedPlayer, type DevPlayerCard,
 } from "../../shared/dev-console";
 import { isDeveloperIdentity } from "../../shared/developer-identity";
 import { PERMANENT_SUSPENSION_MICROS } from "./defeat-session";
@@ -67,9 +67,13 @@ export function readDevConsole(ctx: ReadCtx): DevConsole {
       by: !log ? "" : log.actorType === "automatic" ? "Automatic" : log.actorName,
     };
   }).sort((a, b) => Number(a.permanent) - Number(b.permanent) || a.bannedUntilMs - b.bannedUntilMs);
+  const deletions: DevDeletionRequest[] = [...ctx.db.accountDeletionRequest.iter()].map(row => ({
+    identity: row.identity.toHexString(), displayName: displayName(ctx, row.identity),
+    requestedAtMs: toMs(row.requestedAt.microsSinceUnixEpoch), status: row.status,
+  })).sort((a, b) => a.requestedAtMs - b.requestedAtMs);
   return {
-    overview: { ...countOpenItems(ctx), muted: muted.length, banned: banned.length },
-    muted, banned, serverNowMs: toMs(now),
+    overview: { ...countOpenItems(ctx), muted: muted.length, banned: banned.length, deletions: deletions.length },
+    muted, banned, deletions, serverNowMs: toMs(now),
   };
 }
 

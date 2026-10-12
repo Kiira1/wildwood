@@ -8,7 +8,7 @@ import { defeatSessionRestriction, defeatRestrictionError, restrictDefeatSession
 import { findDeveloperTravelTarget, readDeveloperTravelTarget } from "./developer-travel";
 import { mapBalanceVersion, mapBalanceHead, playerMapBalance, balanceEditorState, saveMapBalance, pinMapBalance, pinnedMapBalance, liveMapBalance, mapBalanceForIndex } from "./map-balance";
 import { resolveMapBalance, validateBalanceSettings } from "../../shared/map-balance";
-import { accountDeletionRequest, queueAccountDeletion } from "./account-deletion";
+import { accountDeletionRequest, eraseKeepingRequest, queueAccountDeletion } from "./account-deletion";
 import { mailboxEquipment, deliverEquipmentMail } from "./mailbox-equipment";
 import { gearClaimSpace } from "../../shared/mailbox-equipment";
 import { duelWireAccess } from "./duel-wire-access";
@@ -29,7 +29,7 @@ import { playerLootSetting, writeLootSettings } from "./loot-settings";
 import { playerProfileSnapshot, requireSnapshotForIcon, takeProfileSnapshot } from "./profile-snapshot";
 import { claimAdGemReward, playerAdReward } from "./ad-gem-reward";
 import { playerChatMute, setChatMute } from "./chat-mute";
-import { ERASURE_ROW_BUDGET, eraseIdentityRows, linkedIdentities, requireErasureConfirmation } from "./account-erasure";
+import { linkedIdentities, requireErasureConfirmation } from "./account-erasure";
 import { chatHeartAllowance, chatReactionCooldown, chatReactionSummary, chatReactionUnlock, playerChatHearts, reactionCountsFor, chatReaction, readChatReactions, setChatReaction, grantGemHeartUnlock, isChatModerator, chatModerator, moderatorHeartFor, setChatModerator, removeAccountReactions } from "./chat-reactions";
 import { pruneIdleStreams, regularEnemyLootCursor, regularEnemyStream, rollRegularEnemyLoot } from "./regular-enemy-loot";
 import { playerOnboarding, advanceOnboarding, needsOnboarding } from "./onboarding";
@@ -3805,7 +3805,7 @@ export const devEraseAccount = spacetimedb.reducer(
 
     const identities = linkedIdentities(ctx, target);
     const displayName = ctx.db.playerProfile.identity.find(target)?.displayName ?? "";
-    const result = eraseIdentityRows(ctx, identities, ERASURE_ROW_BUDGET);
+    const result = eraseKeepingRequest(ctx, identities);
 
     // Written before the sweep's own audit row could be caught by a later
     // pass, and outside the erased account's rows, so the record survives it.

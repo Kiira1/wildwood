@@ -1,4 +1,4 @@
-import { CUSTOM_MUTE_MAX_MINUTES, type DevBannedPlayer, type DevConsole, type DevConsoleOverview, type DevMutedPlayer } from "../../shared/dev-console";
+import { CUSTOM_MUTE_MAX_MINUTES, DELETION_DEADLINE_MS, type DevBannedPlayer, type DevConsole, type DevConsoleOverview, type DevDeletionRequest, type DevMutedPlayer } from "../../shared/dev-console";
 import type { ConfirmPrompt } from "./confirm-dialog";
 import { isAccessDenied, relativeTime, remainingLabel } from "./dev-review-format";
 
@@ -10,6 +10,7 @@ export type DevConsoleApi = {
   setChatMute: (identity: string, minutes: number) => Promise<ActionResult>;
   suspend: (identity: string, expectedDisplayName: string, hours: number, reason: string) => Promise<ActionResult>;
   liftSuspension: (identity: string, reason: string) => Promise<ActionResult>;
+  eraseAccount: (identity: string, reason: string) => Promise<ActionResult>;
 };
 
 export type DevConsolePanelDependencies = {
@@ -27,18 +28,18 @@ const ERROR_COLOR = "#ff9b91";
 const POLL_MS = 15_000;
 
 /**
- * The Muted and Banned tabs. Both list soonest-to-end first, so what is about
+ * The Muted, Banned and Deletions tabs. Both list soonest-to-end first, so what is about
  * to lapse is at the top; permanent bans sit last. Rows count down every
  * second and drop out on their own when they expire.
  */
-export function createDevConsolePanels(containers: { muted: HTMLElement; banned: HTMLElement }, dependencies: DevConsolePanelDependencies) {
+export function createDevConsolePanels(containers: { muted: HTMLElement; banned: HTMLElement; deletions: HTMLElement }, dependencies: DevConsolePanelDependencies) {
   let current: DevConsole | null = null;
   let generation = 0;
   let poll: number | null = null;
   let tick: number | null = null;
   const busy = new Set<string>();
-  const status = { muted: statusLine(containers.muted), banned: statusLine(containers.banned) };
-  const lists = { muted: listRoot(containers.muted), banned: listRoot(containers.banned) };
+  const status = { muted: statusLine(containers.muted), banned: statusLine(containers.banned), deletions: statusLine(containers.deletions) };
+  const lists = { muted: listRoot(containers.muted), banned: listRoot(containers.banned), deletions: listRoot(containers.deletions) };
 
   function statusLine(container: HTMLElement) {
     const line = document.createElement("p");
@@ -69,7 +70,7 @@ export function createDevConsolePanels(containers: { muted: HTMLElement; banned:
     } catch (error) {
       if (request !== generation) return;
       if (isAccessDenied(error)) { dependencies.onAccessDenied(); return; }
-      status.muted.textContent = status.banned.textContent = error instanceof Error ? error.message : "Couldn't load. Try again.";
+      status.muted.textContent = status.banned.textContent = status.deletions.textContent = error instanceof Error ? error.message : "Couldn't load. Try again.";
     }
   }
 
@@ -81,11 +82,14 @@ export function createDevConsolePanels(containers: { muted: HTMLElement; banned:
   function render() {
     if (!current) return;
     const muted = live(current.muted), banned = live(current.banned);
-    dependencies.onOverview({ ...current.overview, muted: muted.length, banned: banned.length });
+    const deletions = current.deletions ?? [];
+    dependencies.onOverview({ ...current.overview, muted: muted.length, banned: banned.length, deletions: deletions.length });
     status.muted.textContent = muted.length ? `${muted.length} muted · soonest to end first` : "Nobody is muted.";
     status.banned.textContent = banned.length ? `${banned.length} banned · soonest to end first` : "Nobody is banned.";
+    status.deletions.textContent = deletions.length ? `${deletions.length} waiting · oldest first, due 30 days after asking` : "No deletion requests.";
     lists.muted.replaceChildren(...muted.map(mutedCard));
     lists.banned.replaceChildren(...banned.map(bannedCard));
+    lists.deletions.replaceChildren(...deletions.map(deletionCard));
   }
 
   /** Once a second: move every countdown on, and redraw only when a row has run out. */
@@ -98,7 +102,7 @@ export function createDevConsolePanels(containers: { muted: HTMLElement; banned:
       render();
       return;
     }
-    for (const element of [...lists.muted.querySelectorAll<HTMLElement>("[data-until]"), ...lists.banned.querySelectorAll<HTMLElement>("[data-until]")]) {
+    for (const element of [...lists.muted.querySelectorAll<HTMLElement>("[data-until]"), ...lists.banned.querySelectorAll<HTMLElement>("[data-until]"), ...lists.deletions.querySelectorAll<HTMLElement>("[data-until]")]) {
       element.textContent = `${remainingLabel(Number(element.dataset.until), at)} left`;
     }
   }
@@ -197,6 +201,27 @@ export function createDevConsolePanels(containers: { muted: HTMLElement; banned:
       ]);
   }
 
+  /**
+   * Erase runs dev_erase_account: the account, its linked guest saves and the request, logged in the
+   * moderation log. The sign-in itself (SpacetimeAuth) and the reply to the player stay manual.
+   */
+  function deletionCard(entry: DevDeletionRequest) {
+    const key = `delete:${entry.identity}`, deadline = entry.requestedAtMs + DELETION_DEADLINE_MS;
+    const erasing = entry.status === "erasing";
+    const due = deadline > now() ? countdown(deadline) : Object.assign(document.createElement("time"), { textContent: "Overdue" });
+    return row(key, entry.displayName, erasing ? "Erasing" : "Pending", "open", due,
+      [`asked ${relativeTime(entry.requestedAtMs, now())}`, erasing ? "unfinished: erase again" : "", entry.identity.slice(0, 12)], [
+        action(erasing ? "Erase Again" : "Erase", "danger", async () => {
+          if (await dependencies.confirm({
+            message: `Erase ${entry.displayName || "this player"}'s account for good?`,
+            details: [{ label: "Removes", value: "The save, linked guest saves and every row naming them" }, { label: "Still Manual", value: "Their SpacetimeAuth sign-in and the reply" }],
+            confirmLabel: "Erase", danger: true,
+          })) void run(key, `${entry.displayName || "Account"} erased`, api => api.eraseAccount(entry.identity, "In-game deletion request"));
+        }),
+        action("Player", "plain", () => dependencies.openPlayer(entry.identity, entry.displayName)),
+      ]);
+  }
+
   function stop() {
     if (poll !== null) window.clearInterval(poll);
     if (tick !== null) window.clearInterval(tick);
@@ -218,8 +243,8 @@ export function createDevConsolePanels(containers: { muted: HTMLElement; banned:
       generation++;
       current = null;
       busy.clear();
-      lists.muted.replaceChildren(); lists.banned.replaceChildren();
-      status.muted.textContent = status.banned.textContent = "";
+      lists.muted.replaceChildren(); lists.banned.replaceChildren(); lists.deletions.replaceChildren();
+      status.muted.textContent = status.banned.textContent = status.deletions.textContent = "";
     },
   };
 }

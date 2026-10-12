@@ -19,7 +19,7 @@ import {
 } from "../../shared/virtual-player-load-test";
 import type { AnalyticsDashboard } from "../coop/services/analytics-types";
 
-type DevPanelTab = "reports" | "bugs" | "muted" | "banned" | "players" | "moderation" | "controls" | "balance" | "performance" | "analytics";
+type DevPanelTab = "reports" | "bugs" | "muted" | "banned" | "deletions" | "players" | "moderation" | "controls" | "balance" | "performance" | "analytics";
 
 type BugReportEntry = { id: bigint };
 
@@ -87,6 +87,7 @@ export function createDevPanelController(dependencies: DevPanelDependencies) {
     bugs: requiredElement("devBugReportsTab"),
     muted: requiredElement("devMutedTab"),
     banned: requiredElement("devBannedTab"),
+    deletions: requiredElement("devDeletionsTab"),
     players: requiredElement("devPlayersTab"),
     moderation: requiredElement("devModerationTab"),
     controls: requiredElement("devControlsTab"),
@@ -99,6 +100,7 @@ export function createDevPanelController(dependencies: DevPanelDependencies) {
     bugs: requiredElement("devBugReportsPanel"),
     muted: requiredElement("devMutedPanel"),
     banned: requiredElement("devBannedPanel"),
+    deletions: requiredElement("devDeletionsPanel"),
     players: requiredElement("devPlayersPanel"),
     moderation: requiredElement("devModerationPanel"),
     controls: requiredElement("devControlsPanel"),
@@ -130,13 +132,13 @@ export function createDevPanelController(dependencies: DevPanelDependencies) {
     onCounts: ({ reports, bugs }) => showOverview({ ...counts, pendingReports: reports, openBugs: bugs }),
     openPlayer,
   });
-  const consolePanels = createDevConsolePanels({ muted: tabPanels.muted, banned: tabPanels.banned }, {
+  const consolePanels = createDevConsolePanels({ muted: tabPanels.muted, banned: tabPanels.banned, deletions: tabPanels.deletions }, {
     api: dependencies.review, confirm: dependencies.confirm, showMessage: dependencies.showMessage,
     openPlayer, onOverview: showOverview, onAccessDenied: denyAccess,
   });
-  let counts: DevConsoleOverview = { pendingReports: 0, openBugs: 0, muted: 0, banned: 0 };
+  let counts: DevConsoleOverview = { pendingReports: 0, openBugs: 0, muted: 0, banned: 0, deletions: 0 };
   const overviewTabs: [keyof DevConsoleOverview, DevPanelTab, string][] = [
-    ["pendingReports", "reports", "Reports"], ["openBugs", "bugs", "Bugs"], ["muted", "muted", "Muted"], ["banned", "banned", "Banned"],
+    ["pendingReports", "reports", "Reports"], ["openBugs", "bugs", "Bugs"], ["muted", "muted", "Muted"], ["banned", "banned", "Banned"], ["deletions", "deletions", "Deletions"],
   ];
 
   /** The headline counts, on the strip above the tabs and on the tabs themselves. */
@@ -206,7 +208,7 @@ export function createDevPanelController(dependencies: DevPanelDependencies) {
     if (tab === "balance") void balance.open(); else balance.close();
     if (tab === "moderation") moderation.open();
     else moderation.clear();
-    consolePanels.setActive(tab === "muted" || tab === "banned");
+    consolePanels.setActive(tab === "muted" || tab === "banned" || tab === "deletions");
     for (const [name, element] of Object.entries(tabs) as [DevPanelTab, HTMLElement][]) {
       const selected = name === tab;
       element.classList.toggle("is-active", selected);
