@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CRIT_CAP_CEILING, criticalDamage, criticalDamageMultiplier, critCapForRank, soulCritDamageBonus } from "./critical-damage";
+import { CRIT_CAP_CEILING, criticalDamage, criticalDamageMultiplier, critCapForRank, critMultiplierGainLabel, soulCritDamageBonus } from "./critical-damage";
 import { soulCritRatingAfterKills } from "./soul-dimension";
 import { RESEARCH_DEFINITIONS } from "./research";
 import { RATING_MAX, critDamageForLevels, ratingForLevels } from "./stat-rating";
@@ -48,5 +48,13 @@ describe("critical damage", () => {
     expect(crit.fromRating).toBeCloseTo(critDamageForLevels(5) - 1.05);
     expect(crit.fromSoul).toBeCloseTo(critDamageForLevels(6) - 1.05);
     expect(1.05 + crit.fromRating + crit.fromSoul + crit.fromBonuses).toBeCloseTo(crit.uncapped);
+  });
+
+  it("labels a crit kill by what it adds to the multiplier now, Capped at the cap", () => {
+    const fresh = critMultiplierGainLabel({}, 100)!;
+    expect(fresh).toBe(`+${(critDamageForLevels(1) - 1.05).toFixed(3)}×`);
+    const late = critMultiplierGainLabel({ rating: ratingForLevels(40), capRank: 5 }, 100)!;
+    expect(Number(late.slice(1, -1))).toBeLessThan(Number(fresh.slice(1, -1)));
+    expect(critMultiplierGainLabel({ soul: RATING_MAX }, 100)).toBe("Capped");
   });
 });

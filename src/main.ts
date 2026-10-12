@@ -1,4 +1,5 @@
 import { installOfflineProgressSetting } from "./ui/offline-progress-setting";
+import { rewardLabelContextFrom } from "./game/runtime/reward-labels";
 import { ownProfileInPlay, profileBonusDeps } from "./ui/profile-bonus-toggles";
 import { runtimeMapBalance } from '../shared/map-balance-runtime';
 import { installStatTracker } from './ui/stat-tracker';
@@ -932,6 +933,7 @@ import {
     minimapBoundsObserver.observe(minimapButton);
   }
   refreshMinimapBounds();
+  const rewardLabelContext = rewardLabelContextFrom({ coop: () => coop, player, soul: soulDimension, critParts: research.criticalDamageParts });
   const worldRenderRuntime = createWorldRenderRuntime({
     drawMapHazards: () => proceduralBoss.draw(ctx, camera),
     ctx,
@@ -985,7 +987,7 @@ import {
     },
     enemySprites: ENEMY_SPRITES,
     rewardMultiplier: rewardDisplay.displayedMultiplier,
-    rewardAmount: rewardDisplay.displayedAmount, attackCap: () => playerAttackCap(coop?.reflectRewardsInPlay?.(), coop?.prestigePerks?.()),
+    rewardAmount: rewardDisplay.displayedAmount, rewardContext: rewardLabelContext,
     showBossHitboxes: () => devPanel.bossHitboxesVisible(),
     enemyTextVisible: (enemy) => {
       const { width, height } = canvasRuntime.viewport();
@@ -1428,7 +1430,7 @@ import {
   }, {
     currentMapId: () => currentMapId,
     mapName: (mapId) => MAP_CONFIG[mapId].name,
-    paths, enemies, rewardAmount: rewardDisplay.displayedAmount, mapUnlocked: (mapId) => mapController.portalIsUnlocked({ destination: mapId } as never), mapBalance: (mapId) => coop?.mapIndexBalance?.(mapId) ?? Promise.resolve(null),
+    paths, enemies, rewardAmount: rewardDisplay.displayedAmount, rewardContext: rewardLabelContext, mapUnlocked: (mapId) => mapController.portalIsUnlocked({ destination: mapId } as never), mapBalance: (mapId) => coop?.mapIndexBalance?.(mapId) ?? Promise.resolve(null),
     spawnSites,
     player,
     boss: () => {

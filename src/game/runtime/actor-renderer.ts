@@ -11,7 +11,7 @@ import type { PlayerGender } from "../../../shared/player-gender";
 import type { Camera } from "./camera";
 import { ENEMY_HEALTH_BAR_HEIGHT, ENEMY_HEALTH_FILL, createEnemyStatusPlates, fillPill } from "./enemy-status-plate";
 import { createCanvasAtlas, drawAtlasImage, type AtlasImage } from "./canvas-atlas";
-import { attackSpeedGainLabel, type AttackCapArg } from "../../../shared/stat-rating";
+import { liveRewardText, soulRewardCapped, type RewardLabelContext } from "./reward-labels";
 import { enemyHpNumbersEnabled } from "../../ui/enemy-hp-setting";
 import { formatCompactNumber } from "../../ui/number-format";
 import { healthBarTextY } from "./health-bar-layout";
@@ -212,8 +212,8 @@ export function createActorRenderer(options: {
   player: PlayerState;
   rewardMultiplier: () => number;
   rewardAmount?: (type: EnemyDefinition["reward"]["type"], amount: number) => number;
-  /** The player's attack speed cap, so an attack speed enemy's label shows what a kill gives now (attacks a second). */
-  attackCap?: () => AttackCapArg;
+  /** What attack speed and crit enemies' labels are worked out from, so they show what a kill gives now (Ryan). */
+  rewardContext?: () => RewardLabelContext;
   enemyTextVisible: (enemy: EnemyState) => boolean;
   pixelCircle: PixelCircle;
   outlinedText: OutlinedText;
@@ -368,11 +368,12 @@ export function createActorRenderer(options: {
 
   /** A Soul Dimension enemy is named for the soul stat it pays, and shows that flat reward in its colour. */
   function soulEnemyLabels(stat: SoulStatId) {
-    const cacheKey = `soul:${stat}`;
+    const capped = soulRewardCapped(stat, options.rewardContext?.());
+    const cacheKey = `soul:${stat}:${capped ? "capped" : ""}`;
     const cached = enemyLabelCache.get(cacheKey);
     if (cached) return cached;
     const detail = SOUL_STAT_DETAILS[stat];
-    const amount = stat === "critDamage" ? `+${+(detail.reward * 100).toFixed(1)}%` : stat === "attackSpeed" ? `+${detail.reward}/s` : `+${detail.reward}`;
+    const amount = capped ? "Capped" : stat === "critDamage" ? `+${+(detail.reward * 100).toFixed(1)}%` : stat === "attackSpeed" ? `+${detail.reward}/s` : `+${detail.reward}`;
     const labels = {
       name: createLabelBitmap([{ text: `Soul ${detail.label}`, color: "#f5e9c4" }], "bottom"),
       reward: createLabelBitmap([{ text: amount, color: "#ffffff" }, { text: " ", color: "#ffffff" }, { text: detail.label, color: detail.color }], "top"),
@@ -386,10 +387,10 @@ export function createActorRenderer(options: {
    * shows it (Ryan): the rating is a number players can't read, its worth shrinks as attack speed nears
    * the cap. Rounded, so the label is redrawn only when the shown value changes.
    */
-  const attackSpeedGainText = (rating: number) => attackSpeedGainLabel(options.player.attackRate, rating, options.attackCap?.());
+
 
   function enemyLabels(type: string, reward: EnemyDefinition["reward"]) {
-    const amountText = (reward.type === "speed" && options.attackCap ? attackSpeedGainText(reward.amount) : null) ?? rewardAmountLabel(reward);
+    const amountText = liveRewardText(reward, options.rewardContext?.()) ?? rewardAmountLabel(reward);
     const cacheKey = `${type}:${reward.type}:${amountText}`;
     const cached = enemyLabelCache.get(cacheKey);
     if (cached) return cached;
@@ -398,7 +399,7 @@ export function createActorRenderer(options: {
       reward: createLabelBitmap([
         { text: amountText, color: "#ffffff" },
         { text: " ", color: "#ffffff" },
-        { text: reward.type === "speed" ? "Atk Speed" : rewardStatLabel(reward), color: REWARD_DATA[reward.type].color },
+        { text: reward.type === "speed" ? "Atk Speed" : reward.type === "crit" ? "Crit Multiplier" : rewardStatLabel(reward), color: REWARD_DATA[reward.type].color },
       ], "top"),
     };
     enemyLabelCache.set(cacheKey, labels);

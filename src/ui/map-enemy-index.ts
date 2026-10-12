@@ -10,7 +10,9 @@ export const SHORT_STAT: Record<RewardType, string> = { damage: "Atk", health: "
  * first, then the boss with each of its attacks on a line under it, at a size
  * a phone can read. HP is green and Atk red; rewards wear their stat's colour.
  */
-export function renderEnemyIndexRows(doc: Document, body: HTMLElement, rows: readonly EnemyIndexRow[]) {
+/** `liveText`: a reward's amount as a kill gives it this player now (reward-labels.ts), for attack speed and crit. */
+export function renderEnemyIndexRows(doc: Document, body: HTMLElement, rows: readonly EnemyIndexRow[],
+  liveText: (paid: EnemyIndexRow["reward"]) => string | null = () => null) {
   body.replaceChildren(...rows.flatMap(row => {
     const tr = doc.createElement("tr");
     const name = doc.createElement("th");
@@ -20,7 +22,7 @@ export function renderEnemyIndexRows(doc: Document, body: HTMLElement, rows: rea
     const reward = doc.createElement("td");
     const rewards = row.boss ? row.boss.rewards : [row.reward];
     reward.replaceChildren(...rewards.map(paid => {
-      const line = Object.assign(doc.createElement("span"), { className: "enemy-index-reward", textContent: `${rewardAmountLabel(paid)} ${SHORT_STAT[paid.type]}` });
+      const line = Object.assign(doc.createElement("span"), { className: "enemy-index-reward", textContent: `${liveText(paid) ?? rewardAmountLabel(paid)} ${SHORT_STAT[paid.type]}` });
       line.style.color = REWARD_DATA[paid.type].color;
       return line;
     }));

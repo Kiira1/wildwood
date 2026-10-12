@@ -1,6 +1,6 @@
 import { RESEARCH_DEFINITIONS } from "./research";
 import { prestigeCriticalDamageBonus, type PrestigePerkRanks } from "./prestige-perks";
-import { CRIT_DAMAGE_START, critBonusLevels, critDamageForLevels, ratingLevels } from "./stat-rating";
+import { CRIT_DAMAGE_START, critBonusLevels, critDamageForLevels, formatRateGain, ratingLevels } from "./stat-rating";
 
 /**
  * The critical hit multiplier, for every place that rolls or shows one: client
@@ -76,6 +76,17 @@ export function criticalDamage(parts: CriticalDamageParts) {
   const fromRating = critDamageForLevels(ratingLevels(rating)) - CRITICAL_DAMAGE_BASE;
   return { multiplier, uncapped, cap, capped: uncapped > cap, research, perk, soul, rating, bonusLevels, fromRating, fromSoul,
     fromBonuses: curve - CRITICAL_DAMAGE_BASE - fromRating };
+}
+
+/**
+ * What `rating` more crit damage rating adds to the capped multiplier now, as the label under a crit
+ * enemy shows it ("+0.08×"), or "Capped" at the cap: research, Keen Edge and the soul all in (Ryan).
+ */
+export function critMultiplierGainLabel(parts: CriticalDamageParts, rating: number) {
+  const before = criticalDamage(parts);
+  if (before.cap - before.multiplier < .005) return "Capped";
+  const after = criticalDamage({ ...parts, rating: amount(parts.rating) + Math.max(0, rating) });
+  return formatRateGain(after.multiplier - before.multiplier, "×");
 }
 
 /** The capped critical damage multiplier. */

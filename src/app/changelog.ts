@@ -1,4 +1,9 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.901.56": [
+    "Crit enemies show what a kill adds to your crit multiplier now, like +0.08× Crit Multiplier",
+    "Attack speed and crit rewards count your soul stats, and say Capped once you are at the cap",
+    "The map's enemy list shows the same live attack speed and crit rewards",
+  ],
   "0.901.55": [
     "Soul Attack Speed adds +0.001 attacks a second a kill again, on top of your attack speed, so new players can farm it up to the cap",
     "Attack speed enemies show what a kill gives you now, like +0.004/s Atk Speed, instead of a rating number",
@@ -3204,6 +3209,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.901.56": "2026-10-11",
   "0.901.55": "2026-10-11",
   "0.901.54": "2026-10-11",
   "0.901.53": "2026-10-11",

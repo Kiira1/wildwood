@@ -101,18 +101,26 @@ export function addAttackSpeedRating(interval: number, amount: number, cap: Atta
   return interval > 0 && Number.isFinite(interval) ? Math.min(interval, next) : next;
 }
 /**
- * What `rating` more gives this interval now, in attacks a second, as a label shows it ("+0.004/s"), or
- * "Capped" once it gives next to nothing: the rating is a number players can't read, and its worth shrinks
- * as attack speed nears the cap (Ryan). Rounded, so a cached label changes only when the shown value does.
+ * What `rating` more gives now, in attacks a second, as a label shows it ("+0.004/s"), or "Capped" at the
+ * cap: the rating is a number players can't read, and its worth shrinks toward the cap (Ryan). The rating
+ * goes onto the run's own interval, `runInterval`; the soul's attacks a second (`soulBonus`, flat) sit on
+ * top, both under the cap. Rounded, so a cached label changes only when the shown value does.
  */
-export function attackSpeedGainLabel(interval: number, rating: number, cap: AttackCapArg = MIN_ATTACK_INTERVAL) {
-  if (!(interval > 0) || !Number.isFinite(interval)) return null;
-  const fastest = attackCapInterval(cap), now = 1 / Math.max(interval, fastest);
+export function attackSpeedGainLabel(runInterval: number, rating: number, cap: AttackCapArg = MIN_ATTACK_INTERVAL, soulBonus = 0) {
+  if (!(runInterval > 0) || !Number.isFinite(runInterval)) return null;
+  const fastest = attackCapInterval(cap), capRate = 1 / fastest;
+  const now = Math.min(capRate, 1 / Math.max(runInterval, fastest) + Math.max(0, soulBonus));
   // Capped as the profile's "(Max)" reads it (atCap below); short of that a small gain still shows.
-  if (atCap(now, 1 / fastest)) return "Capped";
-  const gain = Math.max(0, 1 / addAttackSpeedRating(interval, rating, cap) - now);
-  const decimals = gain >= .001 ? 3 : Math.min(8, Math.max(4, Math.ceil(-Math.log10(gain || 1e-8)) + 1));
-  return `+${gain.toFixed(decimals)}/s`;
+  if (atCap(now, capRate)) return "Capped";
+  const after = Math.min(capRate, 1 / addAttackSpeedRating(runInterval, rating, cap) + Math.max(0, soulBonus));
+  return formatRateGain(after - now, "/s");
+}
+
+/** A small gain with enough decimals to show it: 3 from 0.001 up, more below (never "+0.000"). */
+export function formatRateGain(gain: number, unit: string) {
+  const value = Math.max(0, gain);
+  const decimals = value >= .001 ? 3 : Math.min(8, Math.max(4, Math.ceil(-Math.log10(value || 1e-8)) + 1));
+  return `+${value.toFixed(decimals)}${unit}`;
 }
 /** The same rating under another cap: a Quick Draw rank bought or respecced moves the curve under the run. */
 export function attackIntervalUnderNewCap(interval: number, from: AttackCapArg, to: AttackCapArg) {

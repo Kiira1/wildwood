@@ -28,6 +28,7 @@ import { ENEMY_TYPES, REWARD_DATA, type RewardType } from "../game/enemies";
 import { itemArtImage, itemPresentation } from "../game/item-presentation";
 import { drawPortalMapMarker } from "../game/portal-presentation";
 import { createLootFilterWindow, type LootFilterPort } from "./loot-filter-window";
+import { liveRewardText, type RewardLabelContext } from "../game/runtime/reward-labels";
 import {
   ADVANCED_LAVA_WASTES_MAP_ID,
   BEGINNER_DESERT_MAP_ID,
@@ -74,6 +75,8 @@ type MapGuideDependencies = {
   enemies?: readonly EnemyState[];
   /** What a kill's reward is worth to the player, as enemy labels show it. */
   rewardAmount?: (type: RewardType, amount: number) => number;
+  /** What attack speed and crit rewards are worked out from, so the Enemy Index shows what a kill gives now (reward-labels.ts). */
+  rewardContext?: () => RewardLabelContext;
   /** Whether the player has opened a map: browsing goes back to any map and one past the furthest open. */
   mapUnlocked?: (mapId: MapId) => boolean;
   /** Another map's live balance, for its Enemy Index (null when it cannot load). */
@@ -436,9 +439,11 @@ export function createMapGuideController(elements: MapGuideElements, dependencie
   function renderEnemyRows(mapId: MapId) {
     if (!enemyRows) return;
     const paid = dependencies.rewardAmount ?? ((_type: RewardType, amount: number) => amount);
-    if (live()) { renderEnemyIndexRows(document, enemyRows, enemyIndexRows(mapId, dependencies.enemies ?? [], paid, null, dependencies.spawnSites)); return; }
+    const context = dependencies.rewardContext?.();
+    const liveText = (reward: { type: RewardType; amount: number }) => liveRewardText(reward, context);
+    if (live()) { renderEnemyIndexRows(document, enemyRows, enemyIndexRows(mapId, dependencies.enemies ?? [], paid, null, dependencies.spawnSites), liveText); return; }
     if (!dependencies.mapBalance || balances.has(mapId)) {
-      renderEnemyIndexRows(document, enemyRows, enemyIndexRows(mapId, null, paid, balances.get(mapId)));
+      renderEnemyIndexRows(document, enemyRows, enemyIndexRows(mapId, null, paid, balances.get(mapId)), liveText);
       return;
     }
     const loading = document.createElement("tr");

@@ -94,7 +94,10 @@ import { describe, expect, it } from "vitest";
 // 1_943 (2026-10-11): the profile's Bonuses tab, its import and one line
 // handing the window its deps; the switches, their deps from the coop session
 // and the in-play profile live in profile-bonus-toggles.ts.
-const MAX_LINES = 1_943;
+// 1_945 (2026-10-12): live reward labels, its import and one line building
+// the context both the world renderer and the map's Enemy Index read; the
+// context and the labels live in reward-labels.ts.
+const MAX_LINES = 1_945;
 const TARGET_LINES = 1_000;
 
 describe("game composition boundary", () => {
