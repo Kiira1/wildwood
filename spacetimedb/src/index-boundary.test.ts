@@ -201,7 +201,9 @@ import { describe, expect, it } from "vitest";
 // schema, the set_bonus_toggle_state reducer's export (two lines) and two
 // import lines. The table, the in-play reads and the reducer body live in
 // bonus-toggles.ts and bonus-toggles-reducer.ts.
-const MAX_LINES = 6_592;
+// 6_593 (2026-10-12): crit counts in power. One import line; the crit chance and
+// multiplier come from crit-power.ts.
+const MAX_LINES = 6_593;
 const TARGET_LINES = 3_500;
 
 describe("server module boundary", () => {

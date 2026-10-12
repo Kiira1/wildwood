@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { FROST_ARMOR, STARTER_BOW, WOOD_FULL_HELM, WOODEN_ARMOR } from "./items";
-import { effectivePlayerPower, effectivePlayerPowerStats, legacyU32Power, playerPowerForStats } from "./player-power";
+import { critPowerFactor, effectivePlayerPower, effectivePlayerPowerStats, legacyU32Power, playerPowerForStats, unroundedPlayerPower } from "./player-power";
+import { DEFAULT_ATTACK_INTERVAL } from "./rules";
 
 describe("player power", () => {
   it("uses the same research and equipped-item stats everywhere", () => {
@@ -70,5 +71,18 @@ describe("player power", () => {
 
   it("bounds malformed totals", () => {
     expect(playerPowerForStats({ maxHp: Number.NaN, damage: 0, attackRate: 1, armor: 0, regen: 0 })).toBe(0);
+  });
+});
+
+describe("crit in power (0.901.57)", () => {
+  it("counts damage at its average hit, crits included, and nothing changes without crit chance", () => {
+    const stats = { maxHp: 100, damage: 50, attackRate: DEFAULT_ATTACK_INTERVAL, armor: 0, regen: 0 };
+    expect(critPowerFactor({})).toBe(1);
+    expect(critPowerFactor({ critChance: .2, critMultiplier: 30 })).toBeCloseTo(6.8, 9);
+    expect(unroundedPlayerPower({ ...stats, critChance: 0, critMultiplier: 50 })).toBe(unroundedPlayerPower(stats));
+    expect(unroundedPlayerPower({ ...stats, critChance: .2, critMultiplier: 30 })).toBeCloseTo(50 * 6.8 + 100, 9);
+    // A chance past 1 counts as 1; a multiplier under 1 as none.
+    expect(critPowerFactor({ critChance: 2, critMultiplier: 3 })).toBe(3);
+    expect(critPowerFactor({ critChance: .5, critMultiplier: .5 })).toBe(1);
   });
 });

@@ -12,9 +12,25 @@ export type PlayerPowerStats = {
   attackRate: number;
   armor: number;
   regen: number;
-  /** The run's crit damage rating (stat-rating.ts), where a caller tracks it. Not part of power. */
+  /** The run's crit damage rating (stat-rating.ts), where a caller tracks it. Not part of power itself. */
   critRating?: number;
+  /**
+   * Crit chance (0–1) and the crit multiplier in play, where the caller knows them: power counts damage at
+   * its average hit, crits included (critPowerFactor). Without them a hit is plain damage, as before.
+   */
+  critChance?: number;
+  critMultiplier?: number;
 };
+
+/**
+ * What crits multiply the average hit by: 1 + chance × (multiplier − 1), as duels count them. Power ignored
+ * crit, so a crit build read far weaker than it was and Auto Farm held it back (Ryan, 0.901.57).
+ */
+export function critPowerFactor(stats: Pick<PlayerPowerStats, "critChance" | "critMultiplier">) {
+  const chance = Number.isFinite(stats.critChance) ? Math.min(1, Math.max(0, Number(stats.critChance))) : 0;
+  const multiplier = Number.isFinite(stats.critMultiplier) ? Math.max(1, Number(stats.critMultiplier)) : 1;
+  return 1 + chance * (multiplier - 1);
+}
 
 /**
  * The stats kills raise, as a new run starts them: a new account, a prestige
@@ -83,6 +99,9 @@ export function preparePlayerPowerStats(
     attackRate: Math.max(CHALLENGE_ABSOLUTE_MIN_INTERVAL, progress.attackRate),
     armor: progress.armor * precision,
     regen: progress.regen * regen * regeneration,
+    // Crit passes through as given (it is worked out from research, perks, the soul and the rating elsewhere).
+    ...(progress.critChance !== undefined ? { critChance: progress.critChance } : {}),
+    ...(progress.critMultiplier !== undefined ? { critMultiplier: progress.critMultiplier } : {}),
   });
 }
 
@@ -105,7 +124,7 @@ export function playerPowerForStats(stats: PlayerPowerStats) {
 export function unroundedPlayerPower(stats: PlayerPowerStats) {
   const attackSpeedMultiplier = DEFAULT_ATTACK_INTERVAL / Math.max(CHALLENGE_ABSOLUTE_MIN_INTERVAL, stats.attackRate);
   const power =
-    stats.damage * attackSpeedMultiplier +
+    stats.damage * critPowerFactor(stats) * attackSpeedMultiplier +
     stats.maxHp +
     stats.armor * 3 +
     stats.regen * 10;

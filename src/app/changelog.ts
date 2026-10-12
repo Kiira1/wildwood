@@ -1,4 +1,8 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.901.57": [
+    "Power counts crit: your damage at its average hit, crits included, so crit builds show their real strength",
+    "Auto Farm uses the same power, so crit builds Move On and Fight Bosses sooner",
+  ],
   "0.901.56": [
     "Crit enemies show what a kill adds to your crit multiplier now, like +0.08× Crit Multiplier",
     "Attack speed and crit rewards count your soul stats, and say Capped once you are at the cap",
@@ -3210,6 +3214,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.901.57": "2026-10-12",
   "0.901.56": "2026-10-11",
   "0.901.55": "2026-10-11",
   "0.901.54": "2026-10-11",

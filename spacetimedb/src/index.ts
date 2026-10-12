@@ -57,6 +57,7 @@ import { leaderboardPageTables, writeLeaderboardPages, readLeaderboardWindow, re
 import { leaderboardEligible } from "../../shared/leaderboard-window";
 import { effectiveMovementSpeedForProgress, refreshPrestigeMovement, attackIntervalForProgress, savedAttackRange } from "./player-speed";
 import { playerBonusToggle, researchInPlay } from "./bonus-toggles";
+import { critPowerFields } from "./crit-power";
 import { registerBonusToggleReducers } from "./bonus-toggles-reducer";
 import { playerPrestige, playerPrestigePerk, prestigeExpansion, playerPrestigeExpansionPerk, playerFreeRespec, ensurePrestigeExpansion } from "./prestige-expansion";
 import { earlierTimestamp } from "./timestamp-utils";
@@ -2407,7 +2408,7 @@ function powerForProgress(progress: { maxHp: number; damage: number; attackRate:
 
 function effectivePowerStatsForProgress(ctx: any, progress: any) {
   return effectivePlayerPowerStats(
-    withSoulStats(progress, soulStatsFor(ctx, progress.identity), soulAttackCapFor(ctx, progress.identity)),
+    { ...withSoulStats(progress, soulStatsFor(ctx, progress.identity), soulAttackCapFor(ctx, progress.identity)), ...critPowerFields(ctx, progress.identity) },
     researchInPlay(ctx, progress.identity),
     (itemId) => itemUpgradeLevelFor(ctx, progress.identity, itemId),
   );
@@ -2415,7 +2416,7 @@ function effectivePowerStatsForProgress(ctx: any, progress: any) {
 
 function effectivePowerForProgress(ctx: any, progress: any) {
   return effectivePlayerPower(
-    withSoulStats(progress, soulStatsFor(ctx, progress.identity), soulAttackCapFor(ctx, progress.identity)),
+    { ...withSoulStats(progress, soulStatsFor(ctx, progress.identity), soulAttackCapFor(ctx, progress.identity)), ...critPowerFields(ctx, progress.identity) },
     researchInPlay(ctx, progress.identity),
     (itemId) => itemUpgradeLevelFor(ctx, progress.identity, itemId),
   );

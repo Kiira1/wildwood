@@ -2,7 +2,7 @@ import type { PlayerProfileData, PlayerResearch } from "../wildstat-coop";
 import { createEmptyResearchRanks, researchStatRewardMultiplier, utilityMovementSpeedBonus } from "../../shared/research";
 import { prestigeStatMultiplier } from "../../shared/prestige";
 import { PRESTIGE_PERKS, prestigePerkValue, type PrestigePerkRanks } from "../../shared/prestige-perks";
-import { CRITICAL_DAMAGE_BASE, criticalDamage } from "../../shared/critical-damage";
+import { CRITICAL_DAMAGE_BASE, criticalDamage, criticalDamageMultiplier } from "../../shared/critical-damage";
 import { effectivePlayerPower, effectivePlayerPowerStats } from "../../shared/player-power";
 import { equipmentDamageMultiplierBonus, equipmentMaxHealthMultiplierBonus, equipmentRegenerationMultiplierBonus } from "../../shared/items";
 import { formatCompactNumber, formatRate } from "./number-format";
@@ -96,10 +96,14 @@ export function profileSoulInPlay(profile: PlayerProfileData): SoulStats | null 
   return profile.prestigeChallenge?.active || profile.aggroChallenge?.active ? null : profile.soulStats ?? null;
 }
 
-/** The profile's power, with the soul stats in play added as combat adds them. */
+/** The profile's power, with the soul stats in play added as combat adds them, and crits counted (critPowerFactor). */
 export function profilePower(profile: PlayerProfileData, soul: Partial<SoulStats> | null = null) {
+  const clean = cleanSoulStats(soul);
+  const critChance = (profile.research?.criticalChance ?? 0) * .01 + prestigePerkValue(profile.prestigePerks, "keenEdge");
+  const critMultiplier = criticalDamageMultiplier({ researchRank: profile.research?.criticalDamage, perks: profile.prestigePerks,
+    soul: clean.critDamage, rating: profile.progress.critRating, capRank: profile.research?.critCap });
   return effectivePlayerPower(
-    withSoulStats(profile.progress, cleanSoulStats(soul), challengeMinimumInterval(profile.prestigeChallenge)),
+    { ...withSoulStats(profile.progress, clean, challengeMinimumInterval(profile.prestigeChallenge)), critChance, critMultiplier },
     profile.research,
     (itemId) => slotUpgradeLevelFor(profile.itemUpgradeLevels, itemId),
   );

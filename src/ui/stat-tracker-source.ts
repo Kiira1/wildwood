@@ -31,6 +31,8 @@ export function createStatTrackerSource(deps: {
   /** The attack speed cap in play, and critical damage's parts (research, perks, soul, the run's camps). */
   attackCap: () => AttackCapArg;
   critParts: () => CriticalDamageParts;
+  /** Crit chance (0–1): power counts crits (critPowerFactor). */
+  criticalChance?: () => number;
 }) {
   return (): { identity: string; prestigeLevel: number; values: TrackerValues; build: TrackerBuild; details: Partial<Record<keyof TrackerValues, string>> } | null => {
     const coop = deps.coop();
@@ -44,7 +46,7 @@ export function createStatTrackerSource(deps: {
       itemId => coop?.itemUpgradeLevel?.(itemId) ?? 0);
     // Attack speed and crit damage read like armor (Ryan): their number, and what it gives beside it.
     const cap = deps.attackCap(), crit = criticalDamage(deps.critParts());
-    return { identity, prestigeLevel: coop.prestige?.()?.level ?? 0, values: { power: playerPowerForStats(stats), hp: stats.maxHp,
+    return { identity, prestigeLevel: coop.prestige?.()?.level ?? 0, values: { power: playerPowerForStats({ ...stats, critChance: deps.criticalChance?.() ?? 0, critMultiplier: crit.multiplier }), hp: stats.maxHp,
       damage: stats.damage, armor: stats.armor, regen: stats.regen, attackSpeed: attackSpeedRatingForInterval(deps.player.attackRate, cap),
       critDamage: crit.rating + crit.soul, kills: deps.kills() },
       details: { attackSpeed: attackSpeedLabel(1 / Math.max(deps.player.attackRate, attackCapInterval(cap)), 1 / attackCapInterval(cap)).replace(" (Max)", " Max"),

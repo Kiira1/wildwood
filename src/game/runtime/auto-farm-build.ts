@@ -1,4 +1,4 @@
-import { effectivePlayerPowerStats, unroundedPlayerPower, type PlayerPowerProgress, type PlayerPowerResearch, type PlayerPowerStats } from '../../../shared/player-power';
+import { critPowerFactor, effectivePlayerPowerStats, unroundedPlayerPower, type PlayerPowerProgress, type PlayerPowerResearch, type PlayerPowerStats } from '../../../shared/player-power';
 import { addAttackSpeedRating, attackCapInterval, type AttackCapArg } from '../../../shared/stat-rating';
 import type { FarmEvaluation, FarmReward } from './auto-farm-plan';
 import { isProceduralMap, proceduralMapNumber } from '../../../shared/procedural-maps';
@@ -23,7 +23,8 @@ export function createFarmEvaluator(deps: {
   criticalMultiplier: (extraRating?: number) => number;
 }) {
   function build(reward?: FarmReward) {
-    const stats = { ...deps.base() };
+    // Power counts crits (critPowerFactor), as the power the game shows does.
+    const stats: PlayerPowerStats = { ...deps.base(), critChance: deps.criticalChance(), critMultiplier: deps.criticalMultiplier() };
     if (reward) {
       // A soul kill's reward is flat: research and prestige never grow it.
       const amount = reward.amount * (reward.flat ? 1 : deps.rewardMultiplier());
@@ -33,12 +34,7 @@ export function createFarmEvaluator(deps: {
       else if (reward.type === 'armor') stats.armor += amount;
       else if (reward.type === 'regen') stats.regen += amount;
       else if (reward.type === 'speed') stats.attackRate = addAttackSpeedRating(stats.attackRate, amount, deps.minAttackInterval());
-      // Crit damage is not in power: priced as the damage that would raise the average hit as much.
-      else if (reward.type === 'crit') {
-        const chance = Math.min(1, Math.max(0, deps.criticalChance()));
-        const now = 1 + chance * (Math.max(1, deps.criticalMultiplier()) - 1);
-        stats.damage *= (1 + chance * (Math.max(1, deps.criticalMultiplier(amount)) - 1)) / now;
-      }
+      else if (reward.type === 'crit') stats.critMultiplier = deps.criticalMultiplier(amount);
     }
     return effectivePlayerPowerStats({ ...stats, ...deps.equipment() }, deps.research(), deps.upgradeLevel);
   }
@@ -47,8 +43,7 @@ export function createFarmEvaluator(deps: {
     /** Damage per second against a regular enemy, with crits: for how long a kill takes. */
     dps() {
       const stats = build();
-      const chance = Math.min(1, Math.max(0, deps.criticalChance()));
-      return stats.damage * (1 + chance * (Math.max(1, deps.criticalMultiplier()) - 1)) / Math.max(attackCapInterval(deps.minAttackInterval()), stats.attackRate);
+      return stats.damage * critPowerFactor(stats) / Math.max(attackCapInterval(deps.minAttackInterval()), stats.attackRate);
     },
   };
 }

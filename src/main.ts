@@ -740,7 +740,7 @@ import {
         damage: player.damage,
         attackRate: player.attackRate,
         armor: player.armor,
-        regen: player.regen,
+        regen: player.regen, critChance: research.criticalChance(), critMultiplier: research.criticalDamageMultiplier(soulDimension.critDamage()),
       }, {
         equippedHead: equipment.equippedHead,
         equippedChest: equipment.equippedChest,
@@ -1572,7 +1572,7 @@ import {
   let refreshDailyGemBonus = () => {};
   installStatTracker({ storage: localStorage, read: createStatTrackerSource({ coop: () => coop, player, inventory,
     hasStarted: session.hasStarted, isLoadedFor: progress.isLoadedFor, inTutorial, researchRanks, kills: () => totalKills,
-    displayedProgress: displayedPlayerPowerProgress, attackCap: () => playerAttackCap(coop?.reflectRewardsInPlay?.(), coop?.prestigePerks?.()), critParts: () => ({ ...research.criticalDamageParts(), soul: soulDimension.critDamage(), rating: player.critRating }) }) });
+    displayedProgress: displayedPlayerPowerProgress, attackCap: () => playerAttackCap(coop?.reflectRewardsInPlay?.(), coop?.prestigePerks?.()), critParts: () => ({ ...research.criticalDamageParts(), soul: soulDimension.critDamage(), rating: player.critRating }), criticalChance: research.criticalChance }) });
   installQuestTracker({ storage: localStorage, enabled: questTracker.enabled, ensure: () => quests.refresh(), view: () => quests.trackerView(currentMapId), hiddenHere: () => !session.hasStarted() || inTutorial() || document.body.matches(".is-cutscene, .is-replaying, .is-dueling") });
   const mailbox = createGameMailbox(gameElements.mailboxToggle, gameElements.minimapVersionEl, coop,
     () => session.hasStarted() && !inTutorial());
