@@ -37,3 +37,7 @@ export function mergeEquipmentMail(ctx: ModuleReducerCtx, guest: Identity, accou
 export function removeEquipmentMail(ctx: ModuleReducerCtx, identity: Identity) {
   for (const row of ctx.db.mailboxEquipment.identity.filter(identity)) ctx.db.mailboxEquipment.key.delete(row.key);
 }
+/** Every player's gift from these letters, claimed or not, for letters taken out of the mailbox. */
+export function removeEquipmentMailFor(ctx: ModuleReducerCtx, letterIds: ReadonlySet<string>) {
+  for (const row of [...ctx.db.mailboxEquipment.iter()]) if (letterIds.has(row.letterId)) ctx.db.mailboxEquipment.key.delete(row.key);
+}

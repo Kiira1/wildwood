@@ -49,3 +49,8 @@ export function mergePersonalMail(ctx: Pick<ModuleReducerCtx, "db">, guest: Iden
 export function removePersonalMail(ctx: Pick<ModuleReducerCtx, "db">, identity: Identity) {
   for (const row of [...ctx.db.playerMail.identity.filter(identity)]) ctx.db.playerMail.key.delete(row.key);
 }
+
+/** Every personal letter sent at or before `cutoff` (microseconds). A warning's record is the moderation log's, not this. */
+export function removePersonalMailSentBy(ctx: Pick<ModuleReducerCtx, "db">, cutoff: bigint) {
+  for (const row of [...ctx.db.playerMail.iter()]) if (row.createdAt.microsSinceUnixEpoch <= cutoff) ctx.db.playerMail.key.delete(row.key);
+}

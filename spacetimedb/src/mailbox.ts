@@ -1,5 +1,5 @@
-import { equipmentForMail, mergeEquipmentMail, removeEquipmentMail } from "./mailbox-equipment";
-import { mergePersonalMail, personalMailFor, readPersonalMail, removePersonalMail } from "./dev-review-mail";
+import { equipmentForMail, mergeEquipmentMail, removeEquipmentMail, removeEquipmentMailFor } from "./mailbox-equipment";
+import { mergePersonalMail, personalMailFor, readPersonalMail, removePersonalMail, removePersonalMailSentBy } from "./dev-review-mail";
 import { GEAR_MAIL_ID } from "../../shared/mailbox-equipment";
 import { table, t, SenderError } from "spacetimedb/server";
 import type { Identity, Timestamp } from "spacetimedb";
@@ -109,6 +109,30 @@ export function updateMailboxReceipt(ctx: ModuleReducerCtx, id: string, claim: b
   const next = { key, identity: ctx.sender, letterId: id, read: true, claimed, updatedAt: ctx.timestamp };
   if (previous) ctx.db.mailboxReceipt.key.update(next);
   else ctx.db.mailboxReceipt.insert(next);
+}
+
+/** How long a letter stays in the mailbox: a week from when it was sent. */
+export const MAIL_LIFETIME_MICROS = 7n * 24n * 60n * 60n * 1_000_000n;
+
+/**
+ * Takes every letter a week old out of the mailbox, read or not, claimed or
+ * not (Ryan, 2026-10-13: "mail older than a week should be gone"): a shared
+ * letter with everyone's receipts and the gear it held for them, and each
+ * personal letter. A reward left unclaimed goes with it. Gems already paid
+ * stay paid, and a letter id used again cannot pay twice: the gem ledger's
+ * reference stops that, not the receipt (gem-wallet.ts). The maintenance
+ * sweep runs this in its hourly turn, so a letter leaves within the hour after
+ * its week.
+ */
+export function clearExpiredMail(ctx: ModuleReducerCtx) {
+  const cutoff = ctx.timestamp.microsSinceUnixEpoch - MAIL_LIFETIME_MICROS;
+  const expired = new Set([...ctx.db.mailboxLetter.iter()].filter(letter => letter.createdAt.microsSinceUnixEpoch <= cutoff).map(letter => letter.id));
+  if (expired.size) {
+    for (const id of expired) ctx.db.mailboxLetter.id.delete(id);
+    for (const receipt of [...ctx.db.mailboxReceipt.iter()]) if (expired.has(receipt.letterId)) ctx.db.mailboxReceipt.key.delete(receipt.key);
+    removeEquipmentMailFor(ctx, expired);
+  }
+  removePersonalMailSentBy(ctx, cutoff);
 }
 
 export function mergeMailboxReceipts(ctx: ModuleReducerCtx, guest: Identity, account: Identity) {

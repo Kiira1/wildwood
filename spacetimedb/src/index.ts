@@ -38,7 +38,7 @@ import { deliverDisconnectCompensation, deliverCombatUpdateGift, deliverOutageCo
 import { connectionDiagnosticTables, recordConnectionDiagnostics, cleanupConnectionDiagnostics } from "./connection-diagnostics";
 import { moderationTables, recordModerationAction, readModerationHistory, readPlayerModerationHistory, searchModerationHistory } from "./moderation-history";
 import { readDevConsole, readDevPlayerCard, warnPlayer } from "./dev-console";
-import { mailboxLetter, mailboxReceipt, mailboxEntryV2, mailboxForPlayerV2, playerJoinDate, publishMailboxLetter, syncPlayerJoinDate, updateMailboxReceipt } from "./mailbox";
+import { mailboxLetter, mailboxReceipt, mailboxEntryV2, mailboxForPlayerV2, playerJoinDate, publishMailboxLetter, syncPlayerJoinDate, updateMailboxReceipt, clearExpiredMail } from "./mailbox";
 import { rollbackPlayerProgression } from "./player-progression-rollback";
 import { playerItemGift, deliverAlphaTesterGifts, claimItemGift } from "./item-gifts";
 import { playerBowSkill, ensureBowSkillRoll, ensureBowSkillRolls } from "./bow-skills";
@@ -2378,6 +2378,7 @@ export const runMaintenanceSweep = spacetimedb.reducer(
     // reads every player's, online or not. Once an hour: the sweep in its first five minutes.
     if ((ctx.timestamp.microsSinceUnixEpoch / 60_000_000n) % 60n >= 5n) return;
     pruneOldGuildQuestWeeks(ctx);
+    clearExpiredMail(ctx);   // a letter leaves a week after it was sent
     for (const active of [...ctx.db.activeResearch.iter()] as any[]) reconcileActiveResearch(ctx, active);
     for (const active of [...ctx.db.activeItemUpgrade.iter()] as any[]) {
       reconcileActiveItemUpgrade(ctx, active, UPGRADE_BENCH_SLOT_ONE);
