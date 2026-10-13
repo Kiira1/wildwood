@@ -1,4 +1,19 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.902.0": [
+    "Refining: the Smith in Town refines weapons, helmets and armor with ore, up to ★20",
+    "Past the safe level a refine can fail and drop the item a level; ore is used either way",
+    "A gold ★ after an item's name shows its refine, which raises its stats",
+    "The Copper Hills: a mining area east of Town, through the fence by the Inn",
+    "Take a free pickaxe from the Smith, then walk up to a rock to mine it",
+    "Ores stack in your bag, one slot per kind",
+    "Deeper veins open as you reach later maps",
+    "Mysterious rocks can drop a Starshard, needed to refine past ★10",
+    "Your Mining grows as you break rocks, so each break gets quicker",
+    "Swords: every map drops one that hits harder than its bow, up close",
+    "Equip best and Auto equip upgrades never swap a bow for a sword, or a sword for a bow",
+    "Sword and bow looks only show while you hold that kind of weapon",
+    "Mail clears a week after it arrives",
+  ],
   "0.901.69": [
     "Soul Dimension: attack speed rises steadily with each kill instead of jumping around",
   ],
@@ -3263,6 +3278,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.902.0": "2026-10-13",
   "0.901.69": "2026-10-13",
   "0.901.68": "2026-10-13",
   "0.901.67": "2026-10-13",
