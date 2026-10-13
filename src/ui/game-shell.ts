@@ -178,28 +178,42 @@ const afterUpdateGateShell = String.raw`
   <div class="modal profile-editor-modal" role="dialog" aria-modal="true" aria-labelledby="profileEditorTitle">
     <h2 id="profileEditorTitle" class="window-title profile-editor-title">Edit Profile</h2>
     <div class="profile-editor-scroll">
-      <section class="profile-editor-hero" aria-label="How you look in chat">
-        <button id="profileEditorPicture" class="profile-icon profile-editor-picture" type="button" aria-label="Change profile picture"></button>
-        <div class="profile-editor-hero-copy">
-          <span class="profile-editor-caption">In Chat</span>
-          <span id="profileEditorPreview" class="profile-editor-preview"></span>
-          <button id="profileEditorPictureBtn" class="profile-editor-picture-button" type="button">Change Picture</button>
+      <section class="profile-editor-section">
+        <div class="profile-editor-hero">
+          <div class="profile-editor-picture-frame">
+            <button id="profileEditorPicture" class="profile-icon profile-editor-picture" type="button" aria-label="Change profile picture"></button>
+            <button id="profileEditorPictureBtn" class="profile-editor-pencil" type="button" aria-label="Change picture"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm17.71-10.21a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
+          </div>
+          <div class="profile-editor-hero-copy">
+            <span class="profile-editor-caption">In Chat</span>
+            <div class="profile-editor-row">
+              <span id="profileEditorPreview" class="profile-editor-preview"></span>
+              <button id="profileNameToggle" class="profile-editor-pencil" type="button" aria-label="Change name" aria-expanded="false" aria-controls="profileNameEditorForm"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm17.71-10.21a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
+            </div>
+          </div>
         </div>
+        <form id="profileNameEditorForm" class="profile-editor-picker" aria-label="Change player name" hidden>
+          <div class="profile-name-editor-controls">
+            <input id="profileNameInput" maxlength="20" autocomplete="off" spellcheck="false" aria-label="Player name" />
+            <button id="savePlayerNameBtn" type="submit">Save</button>
+          </div>
+        </form>
       </section>
-      <form id="profileNameEditorForm" class="profile-editor-section" aria-label="Change player name">
-        <label class="profile-editor-heading" for="profileNameInput">Name</label>
-        <div class="profile-name-editor-controls">
-          <input id="profileNameInput" maxlength="20" autocomplete="off" spellcheck="false" />
-          <button id="savePlayerNameBtn" type="submit">Save</button>
+      <section class="profile-editor-section">
+        <div class="profile-editor-row">
+          <span class="profile-editor-heading">Name Color</span>
+          <span class="profile-editor-current"><span id="profileNameColorSwatch" class="profile-editor-swatch is-round"></span><span id="profileNameColorValue" class="profile-editor-value"></span></span>
+          <button id="profileNameColorToggle" class="profile-editor-pencil" type="button" aria-label="Change name color" aria-expanded="false" aria-controls="profileNameColorChoices"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm17.71-10.21a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
         </div>
-      </form>
-      <section class="profile-editor-section" aria-labelledby="profileNameColorHeading">
-        <h3 id="profileNameColorHeading" class="profile-editor-heading">Name Color <span id="profileNameColorValue" class="profile-editor-value"></span></h3>
-        <div id="profileNameColorChoices" class="profile-name-color-choices" role="radiogroup" aria-labelledby="profileNameColorHeading"></div>
+        <div id="profileNameColorChoices" class="profile-name-color-choices" role="group" aria-label="Name color" hidden></div>
       </section>
-      <section class="profile-editor-section" aria-labelledby="profileGenderHeading">
-        <h3 id="profileGenderHeading" class="profile-editor-heading">Gender</h3>
-        <div id="profileGenderChoices" class="profile-gender-choices" role="group" aria-labelledby="profileGenderHeading">
+      <section class="profile-editor-section">
+        <div class="profile-editor-row">
+          <span class="profile-editor-heading">Gender</span>
+          <span id="profileGenderValue" class="profile-editor-current profile-editor-value"></span>
+          <button id="profileGenderToggle" class="profile-editor-pencil" type="button" aria-label="Change gender" aria-expanded="false" aria-controls="profileGenderChoices"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm17.71-10.21a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
+        </div>
+        <div id="profileGenderChoices" class="profile-gender-choices" role="group" aria-label="Gender" hidden>
           <button class="profile-gender-choice" type="button" data-gender="1" aria-pressed="false">
             <img data-game-src="assets/wildstat/gender/male-v2.webp" alt="" aria-hidden="true" draggable="false" /><span>Male</span>
           </button>
@@ -208,9 +222,13 @@ const afterUpdateGateShell = String.raw`
           </button>
         </div>
       </section>
-      <section class="profile-editor-section" aria-labelledby="profileSkinToneHeading">
-        <h3 id="profileSkinToneHeading" class="profile-editor-heading">Skin Tone</h3>
-        <div id="profileSkinToneControl" class="profile-skin-tone" role="group" aria-labelledby="profileSkinToneHeading"></div>
+      <section class="profile-editor-section">
+        <div class="profile-editor-row">
+          <span class="profile-editor-heading">Skin Tone</span>
+          <span class="profile-editor-current"><span id="profileSkinToneSwatch" class="profile-editor-swatch"></span><span id="profileSkinToneValue" class="profile-editor-value"></span></span>
+          <button id="profileSkinToneToggle" class="profile-editor-pencil" type="button" aria-label="Change skin tone" aria-expanded="false" aria-controls="profileSkinToneControl"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm17.71-10.21a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
+        </div>
+        <div id="profileSkinToneControl" class="profile-skin-tone" role="group" aria-label="Skin tone" hidden></div>
       </section>
     </div>
     <footer class="window-back-footer">

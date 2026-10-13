@@ -1,5 +1,6 @@
 import { NAME_COLORS, NAME_COLOR_AUTO, nameColorHex } from "../../shared/name-colors";
-import { PLAYER_GENDER_UNSET, isSelectedPlayerGender, type PlayerGender } from "../../shared/player-gender";
+import { PLAYER_GENDER_UNSET, isSelectedPlayerGender, playerGenderLabel, type PlayerGender } from "../../shared/player-gender";
+import { appendPlayerGenderIcon } from "./player-gender";
 import type { NameChangeStatus } from "../../shared/name-change";
 import { appendPlayerIdentity, autoNameColor } from "./player-identity";
 import { createProfileNameEditor } from "./profile-name-editor";
@@ -11,12 +12,15 @@ export type ProfileEditorElements = {
   overlay: HTMLElement; close: HTMLElement; picture: HTMLButtonElement; pictureButton: HTMLButtonElement; preview: HTMLElement;
   nameForm: HTMLFormElement; nameInput: HTMLInputElement; saveName: HTMLButtonElement;
   nameColors: HTMLElement; nameColorValue: HTMLElement; genderChoices: HTMLElement; skinChoices: HTMLElement;
+  /** White pencils, one per setting, each opening its picker (Ryan: "Just use white pencils to open pickers"). */
+  nameToggle: HTMLButtonElement; nameColorToggle: HTMLButtonElement; genderToggle: HTMLButtonElement; skinToggle: HTMLButtonElement;
+  nameColorSwatch: HTMLElement; genderValue: HTMLElement; skinSwatch: HTMLElement; skinValue: HTMLElement;
 };
 
 /**
  * Edit Profile: one window for the picture, name, chat name color, gender and skin tone, opened by the
- * profile's one pencil (Ryan, 2026-10-13: it had three). Everything but the name saves on tap; the top
- * shows the name as chat draws it, so each pick is seen before closing.
+ * profile's one pencil (Ryan, 2026-10-13: it had three). Each shows its current value beside a white
+ * pencil that opens its picker; a pick saves and closes it. The top shows the name as chat draws it.
  */
 export function createProfileEditor(elements: ProfileEditorElements, api: {
   localIdentity: () => string | undefined; localDisplayName: () => string | undefined;
@@ -59,9 +63,19 @@ export function createProfileEditor(elements: ProfileEditorElements, api: {
     const identity = api.localIdentity();
     if (!identity || elements.overlay.hidden) return;
     const icon = api.profileIcon(identity), gender = api.playerGender(identity), color = api.nameColor(identity), skin = api.skinTone(identity);
-    if (paintedIcon !== `${identity}:${icon}`) { paintedIcon = `${identity}:${icon}`; api.paintIcon(elements.picture, icon, identity); }
+    if (paintedIcon !== `${identity}:${icon}`) {
+      paintedIcon = `${identity}:${icon}`;
+      api.paintIcon(elements.picture, icon, identity);
+    }
+    const name = api.localDisplayName() || "PLAYER";
+    replaceChildrenIfChanged(elements.genderValue, target => {
+      if (!isSelectedPlayerGender(gender)) { target.textContent = "Not Set"; return; }
+      const genderIcon = appendPlayerGenderIcon(target, gender);
+      if (genderIcon) { genderIcon.alt = ""; genderIcon.setAttribute("aria-hidden", "true"); }
+      target.append(playerGenderLabel(gender));
+    });
     replaceChildrenIfChanged(elements.preview, target => appendPlayerIdentity(target,
-      { identity, name: api.localDisplayName() || "PLAYER", gender, nameColor: color }, { chat: true }));
+      { identity, name, gender, nameColor: color }, { chat: true }));
     // appendPlayerIdentity colors the element it is given, here the off-page copy, so the preview takes it too.
     const shown = nameColorHex(color) || autoNameColor(identity);
     if (shownColor !== shown) { shownColor = shown; elements.preview.style.color = shown; }
@@ -69,9 +83,25 @@ export function createProfileEditor(elements: ProfileEditorElements, api: {
     press(colorButtons, button => Number(button.dataset.nameColor) === color);
     const label = NAME_COLORS[color]?.name ?? "Auto";
     if (elements.nameColorValue.textContent !== label) elements.nameColorValue.textContent = label;
+    elements.nameColorSwatch.style.background = shown;
+    const skinChoice = skinButtons().find(button => Number(button.dataset.skinTone) === skin);
+    elements.skinSwatch.style.background = skinChoice?.style.background ?? "";
+    const skinLabel = (skinChoice?.getAttribute("aria-label") ?? "").replace(/\b\w/g, letter => letter.toUpperCase());
+    if (elements.skinValue.textContent !== skinLabel) elements.skinValue.textContent = skinLabel;
     press(genderButtons, button => Number(button.dataset.gender) === gender);
     press(skinButtons(), button => Number(button.dataset.skinTone) === skin);
   }
+
+  const pickers = [[elements.nameToggle, elements.nameForm], [elements.nameColorToggle, elements.nameColors],
+    [elements.genderToggle, elements.genderChoices], [elements.skinToggle, elements.skinChoices]] as const;
+  /** Opens one picker (or none); only one is open at a time. */
+  function showPicker(open: HTMLElement | null) {
+    for (const [toggle, choices] of pickers) {
+      choices.hidden = choices !== open;
+      toggle.setAttribute("aria-expanded", String(choices === open));
+    }
+  }
+  for (const [toggle, choices] of pickers) toggle.addEventListener("click", () => showPicker(choices.hidden ? choices : null));
 
   /** Saves one pick with every choice locked until the server answers, then shows it. */
   async function save(action: () => Result, failure: string, success: string, change: { gender?: PlayerGender } = {}) {
@@ -80,7 +110,7 @@ export function createProfileEditor(elements: ProfileEditorElements, api: {
     try {
       const result = await action();
       if (!result?.ok) api.showMessage(result?.error || failure, "#ff9b91");
-      else { api.showMessage(success, "#72ef58"); api.onChanged(change); }
+      else { api.showMessage(success, "#72ef58"); api.onChanged(change); showPicker(null); }
     } catch { api.showMessage(failure, "#ff9b91"); }
     finally { busy = false; render(); }
   }
@@ -112,7 +142,7 @@ export function createProfileEditor(elements: ProfileEditorElements, api: {
   return {
     open() {
       if (!api.localIdentity()) return;
-      paintedIcon = ""; shownColor = "";
+      paintedIcon = ""; shownColor = ""; showPicker(null);
       void nameEditor.open();
       render();
       const scroll = elements.overlay.querySelector<HTMLElement>(".profile-editor-scroll");

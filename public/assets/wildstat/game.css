@@ -3267,20 +3267,33 @@
   .profile-editor-title { flex: 0 0 auto; margin: 0 0 10px; font-size: 18px; text-align: center; }
   .profile-editor-scroll { flex: 1 1 auto; display: grid; align-content: start; gap: 8px; min-height: 0; padding: 0 1px 8px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
   .profile-editor-scroll::-webkit-scrollbar { display: none; }
-  .profile-editor-hero, .profile-editor-section { border: 1px solid rgba(255,255,255,.12); border-radius: 8px; background: rgba(0,0,0,.26); }
-  .profile-editor-hero { display: flex; align-items: center; gap: 12px; padding: 10px; }
-  .profile-editor-picture { position: relative; width: 66px; min-width: 66px; height: 66px; cursor: pointer; }
-  .profile-editor-hero-copy { display: grid; justify-items: start; gap: 5px; min-width: 0; }
   .profile-editor-caption { color: var(--muted); font-size: 11px; font-weight: 900; letter-spacing: .06em; }
-  .profile-editor-preview { display: flex; align-items: center; gap: 4px; max-width: 100%; overflow: hidden; font-family: var(--player-name-font); font-size: 15px; font-weight: 900; line-height: 1.25; white-space: nowrap; }
-  .profile-editor-picture-button { min-height: 32px; margin: 0; padding: 5px 10px; border-width: 2px; border-radius: 6px; font-size: 12px; line-height: 1; text-transform: none; }
-  .profile-editor-section { display: grid; gap: 8px; padding: 10px; }
+  .profile-editor-section { display: grid; gap: 8px; padding: 6px 10px; }
   .profile-editor-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin: 0; color: var(--text); font-size: 13px; font-weight: 900; letter-spacing: .03em; }
   .profile-editor-value { color: var(--muted); font-size: 12px; }
   .profile-name-editor-note { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.4; }
   .profile-name-editor-controls { display: flex; gap: 6px; }
   #profileNameInput { flex: 1; width: 0; min-height: 40px; font-size: 16px; }
   #savePlayerNameBtn { min-width: 0; margin: 0; padding: 6px 12px; border-width: 2px; border-radius: 6px; font-size: 12px; line-height: 1; text-transform: none; white-space: nowrap; }
+  .profile-editor-current { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .profile-editor-swatch { flex: 0 0 auto; width: 28px; height: 28px; border: 2px solid #000; border-radius: 6px; box-shadow: 0 0 0 1px rgba(255,255,255,.35); }
+  .profile-editor-swatch.is-round { border-radius: 50%; }
+  .profile-name-color-choices[hidden], .profile-skin-tone[hidden], .profile-gender-choices[hidden], .profile-editor-picker[hidden] { display: none; }
+  .profile-editor-section > :is(form, div[role="group"]) { margin-bottom: 6px; }
+  .profile-editor-value { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .profile-editor-section { border: 1px solid rgba(255,255,255,.12); border-radius: 8px; background: rgba(0,0,0,.26); }
+  .profile-editor-hero { display: flex; align-items: center; gap: 12px; padding: 4px 0; }
+  .profile-editor-picture-frame { position: relative; flex: 0 0 auto; }
+  .profile-editor-picture { width: 66px; min-width: 66px; height: 66px; cursor: pointer; }
+  .profile-editor-picture-frame > .profile-editor-pencil { position: absolute; right: -6px; bottom: -6px; }
+  .profile-editor-hero-copy { display: grid; gap: 4px; flex: 1; min-width: 0; }
+  .profile-editor-row { display: flex; align-items: center; gap: 10px; min-height: 40px; }
+  .profile-editor-row > .profile-editor-heading { flex: 1; }
+  .profile-editor-preview { display: flex; flex: 1; align-items: center; gap: 4px; min-width: 0; overflow: hidden; font-family: var(--player-name-font); font-size: 15px; font-weight: 900; line-height: 1.25; white-space: nowrap; }
+  .profile-editor-pencil { display: grid; flex: 0 0 auto; place-items: center; width: 32px; min-width: 32px; height: 32px; margin: 0; padding: 0; border: 2px solid #000; border-radius: 8px; background: #2b2b2b; color: #fff; box-shadow: 0 0 0 1px rgba(255,255,255,.28); }
+  .profile-editor-pencil svg { width: 17px; height: 17px; pointer-events: none; }
+  .profile-editor-pencil[aria-expanded="true"] { background: #fff; color: #111; }
+  .profile-editor-current .player-gender-icon { width: 15px; height: 17px; }
   .profile-name-color-choices { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 7px; }
   .profile-name-color-choice { width: 100%; min-width: 0; height: auto; aspect-ratio: 1; margin: 0; padding: 0; border: 2px solid #000; border-radius: 50%; background: var(--name-color); box-shadow: none; }
   .profile-name-color-choice.is-auto { border-radius: 9px; color: #111; font: 900 11px/1 var(--font-rounded, Arial), sans-serif; -webkit-text-stroke: 0; text-shadow: none; }
