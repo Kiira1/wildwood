@@ -6,7 +6,7 @@ import { compactNumberChanged } from "../../shared/compact-number";
 import { denyPrivilegedAccess } from "./privileged-access-audit";
 import { defeatSessionRestriction, defeatRestrictionError, restrictDefeatSession, suspendPlayerAccount } from "./defeat-session";
 import { findDeveloperTravelTarget, readDeveloperTravelTarget } from "./developer-travel";
-import { mapBalanceVersion, mapBalanceHead, playerMapBalance, balanceEditorState, saveMapBalance, pinMapBalance, pinnedMapBalance, liveMapBalance, mapBalanceForIndex } from "./map-balance";
+import { mapBalanceVersion, mapBalanceHead, playerMapBalance, balanceEditorState, saveMapBalance, pinMapBalance, liveMapBalance, mapBalanceForIndex } from "./map-balance";
 import { resolveMapBalance, validateBalanceSettings } from "../../shared/map-balance";
 import { accountDeletionRequest, eraseKeepingRequest, queueAccountDeletion } from "./account-deletion";
 import { mailboxEquipment, deliverEquipmentMail } from "./mailbox-equipment";
@@ -24,14 +24,14 @@ import { grantVirtualPlayerConsent, revokeVirtualPlayerConsent } from "./virtual
 import { offlineProgressTables, beginOfflineWindow, grantOfflineProgress, acknowledgeOfflineProgress, setSimulatedTimeAway } from "./offline-progress";
 import { playerOfflinePreference, writeOfflinePreference } from "./offline-preference";
 import { playerAudioSetting, writeAudioSettings } from "./audio-settings";
-import { keepWantedDrops, playerIgnoredDrop, writeIgnoredDrops } from "./ignored-drops";
+import { playerIgnoredDrop, writeIgnoredDrops } from "./ignored-drops";
 import { playerLootSetting, writeLootSettings } from "./loot-settings";
 import { playerProfileSnapshot, requireSnapshotForIcon, takeProfileSnapshot } from "./profile-snapshot";
 import { claimAdGemReward, playerAdReward } from "./ad-gem-reward";
 import { playerChatMute, setChatMute } from "./chat-mute";
 import { linkedIdentities, requireErasureConfirmation } from "./account-erasure";
 import { chatHeartAllowance, chatReactionCooldown, chatReactionSummary, chatReactionUnlock, playerChatHearts, reactionCountsFor, chatReaction, readChatReactions, setChatReaction, grantGemHeartUnlock, isChatModerator, chatModerator, moderatorHeartFor, setChatModerator, removeAccountReactions } from "./chat-reactions";
-import { pruneIdleStreams, regularEnemyLootCursor, regularEnemyStream, rollRegularEnemyLoot } from "./regular-enemy-loot";
+import { pruneIdleStreams, regularEnemyLootCursor, regularEnemyStream } from "./regular-enemy-loot";
 import { playerOnboarding, advanceOnboarding, needsOnboarding } from "./onboarding";
 import { upgradeSlotForItem } from "../../shared/slot-upgrades";
 import { deliverDisconnectCompensation, deliverCombatUpdateGift, deliverOutageCompensation, announceOutageCompensation, deliverAutofarmTestGift } from "./disconnect-compensation";
@@ -45,7 +45,9 @@ import { playerBowSkill, ensureBowSkillRoll, ensureBowSkillRolls } from "./bow-s
 import { playerEquipmentCopy, pendingEquipmentOffer, createEquipmentCopies, publishItemDrop, offerDuplicateEquipment, expireEquipmentOffers } from "./equipment-copies";
 import { oreKindsHeldFor, playerItemRefine, playerCopyRefine, playerOre, playerRefineResult, registerItemRefine } from "./item-refine";
 import { playerMining, playerMinedNode, registerMining } from "./mining";
-import { playerCard, playerGearSlots, playerCopySlots, registerGearCards } from "./gear-cards";
+import { playerCard, playerGearSlots, playerCopySlots, playerCardDrop, registerGearCards } from "./gear-cards";
+import { awardCardDrops } from "./card-drops";
+import { awardRegularEnemyLoot } from "./enemy-loot-award";
 import { moderateReportedMessage } from "./chat-report-moderation";
 import { PLAYER_SKIN_TONES } from "../../shared/player-skin-tones";
 import { leaderboardPageTables, readLeaderboardWindow, readLeaderboardPage, readPrestigeLeaderboardPage, findLeaderboardSpot } from "./leaderboard-pages";
@@ -1627,7 +1629,7 @@ const spacetimedb = schema({
   dailyGemBonus,
   playerAdReward, playerChatMute,
   balanceApologyNotice,
-  playerEquipmentLock, playerItemGift, playerBowSkill, playerEquipmentCopy, pendingEquipmentOffer, playerIgnoredDrop, playerLootSetting, playerItemRefine, playerCopyRefine, playerOre, playerRefineResult, playerCard, playerGearSlots, playerCopySlots, playerMining, playerMinedNode,
+  playerEquipmentLock, playerItemGift, playerBowSkill, playerEquipmentCopy, pendingEquipmentOffer, playerIgnoredDrop, playerLootSetting, playerItemRefine, playerCopyRefine, playerOre, playerRefineResult, playerCard, playerGearSlots, playerCopySlots, playerCardDrop, playerMining, playerMinedNode,
   mailboxLetter, mailboxReceipt, playerJoinDate, mailboxEquipment, accountDeletionRequest,
   playerOnboarding,
   regularEnemyLootCursor, regularEnemyStream, enemyDefeatBudget, bossDefeatWindow, bossMapDefeatWindow,
@@ -3540,30 +3542,6 @@ export const recordPlayerDeath = spacetimedb.reducer(
   },
 );
 
-/** `balance` is the report's pinned map balance, already read and parsed by acceptEnemyDefeats. */
-function awardRegularEnemyLoot(ctx: ReducerCtx<InferSchema<typeof spacetimedb>>, mapId: string, count: number, balance: ReturnType<typeof pinnedMapBalance>, checkpoint?: { progress: any }) {
-  const drops = keepWantedDrops(ctx, ctx.sender, rollRegularEnemyLoot(ctx, mapId, count, balance?.loot));
-  if (!drops.size) return checkpoint?.progress;
-  const current = checkpoint?.progress ?? readPlayerProgress(ctx, ctx.sender);
-  let next = current ?? defaultPlayerProgress(ctx.sender);
-  const owned = new Set(inventoryForProgress(next));
-  for (const { active } of activeItemUpgradeEntriesFor(ctx, ctx.sender)) owned.add(active.itemId);
-  let inventoryChanged = false;
-  for (const [itemId, quantity] of drops) {
-    const alreadyOwned = owned.has(itemId);
-    publishItemDrop(ctx, ctx.sender, itemId, alreadyOwned, quantity);
-    if (!alreadyOwned) {
-      next = restoreItemToProgress(next, itemId);
-      owned.add(itemId);
-      inventoryChanged = true;
-    }
-  }
-  if (!inventoryChanged || checkpoint) return next;
-  if (current) updateSnapshotRow(ctx, "playerProgress", next);
-  else insertSnapshotRow(ctx, "playerProgress", next);
-  return next;
-}
-
 /** Only enemy identities/counts cross the wire; all reward values are server-owned. */
 const EnemyDefeatEntry = t.object("EnemyDefeat", { enemy: t.string(), count: t.u16() });
 const enemyDefeatArgs = { streamId: t.string(), sequence: t.u64(), mapId: t.string(), enemies: t.array(EnemyDefeatEntry) };
@@ -3606,6 +3584,7 @@ function recordEnemyDefeatsFor(ctx: any, batch: EnemyDefeatBatch) {
       }
     }
     const gate = accepted.bossCleared ? recordBossGateClear(ctx, batch.mapId) : null;
+    awardCardDrops(ctx, ctx.sender, batch.mapId, accepted.kills, accepted.bossCleared ? 1 : 0);
     // New regular loot, or equipment made usable by a newly opened gate.
     autoEquip.equipNewUpgrades(ctx, ctx.sender, base ?? gate?.previousProgress);
     if (accepted.count) {
@@ -4140,7 +4119,7 @@ export const { createGuild, joinGuild, leaveGuild, transferGuildLeadership, setG
 export const { refineItem, myItemRefines, myCopyRefines, myOres, myRefineResult } = registerItemRefine(spacetimedb, { requireControllingPlayer, activeDuelFor, inventoryForProgress, writeProgressAndPresentation });
 // Mining in the Copper Hills (mining.ts, shared/mining.ts).
 export const { claimPickaxe, mineNode, myMining, myMinedNodes } = registerMining(spacetimedb, { requireControllingPlayer, activeDuelFor, inventoryForProgress });
-export const { myCards, myGearSlots, myCopySlots } = registerGearCards(spacetimedb);
+export const { myCards, myGearSlots, myCopySlots, myCardDrop } = registerGearCards(spacetimedb);
 export const { myGuildHall, upgradeGuildHall, useGuildHallDoor } = registerGuildHall(spacetimedb, { requireGuildPlayer, requireControllingPlayer, playerWithMotion, transitionPlayerMap, persistWorldLocation });
 export const getGuildHub = spacetimedb.procedure({ afterId: t.u64() }, t.string(), (ctx, { afterId }) => ctx.withTx(tx => {
   requireGuildConnection(tx);

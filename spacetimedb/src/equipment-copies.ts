@@ -10,7 +10,7 @@ import {
 import { bowSkillKey, bowSkillRollFor, ensureBowSkillRoll } from "./bow-skills";
 import { lootSettingsFor } from "./loot-settings";
 import { oreKindsHeldFor, promoteCopyRefine, refineLevelFor, setRefineLevel, swapFirstCopyRefine } from "./item-refine";
-import { clearGearSlots, gearSlotsFor, promoteCopySlots, swapFirstCopySlots } from "./gear-cards";
+import { clearGearSlots, gearSlotsFor, promoteCopySlots, rollDropSlots, swapFirstCopySlots } from "./gear-cards";
 import { readPlayerProgress } from "./wide-stats";
 
 /**
@@ -159,6 +159,8 @@ export function publishItemDrop(ctx: Ctx, identity: Identity, itemId: string, al
   };
   if (current) ctx.db.playerItemDrop.key.update(next);
   else ctx.db.playerItemDrop.insert(next);
+  // Last, so the bow rolls above draw as they always have.
+  rollDropSlots(ctx, identity, itemId, alreadyOwned, quantity);
 }
 
 /** Maintenance: every offer past its five minutes is ignored, whether or not its player is online. */

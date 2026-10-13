@@ -1,7 +1,7 @@
 import { table, t } from "spacetimedb/server";
 import type { Identity } from "spacetimedb";
 import type spacetimedbType from "./index";
-import { MAX_CARD_SLOTS, OWNED_GEAR_SLOTS, cardDefinition } from "../../shared/cards";
+import { MAX_CARD_SLOTS, OWNED_GEAR_SLOTS, canHoldCards, cardDefinition, rollGearSlots } from "../../shared/cards";
 
 /**
  * Cards (shared/cards.ts) on the server: the cards a player holds, and each piece of gear's slots with the
@@ -37,6 +37,17 @@ export const playerCopySlots = table({ name: "player_copy_slots", public: false 
   itemId: t.string(),
   slots: t.u8(),
   cards: t.array(t.string()),
+});
+
+/**
+ * The cards a player last found, so the client can say so ("Needle Card!"). `sequence` counts every card ever
+ * found, so two finds of the same card still read as two.
+ */
+export const playerCardDrop = table({ name: "player_card_drop", public: false }, {
+  identity: t.identity().primaryKey(),
+  cardIds: t.array(t.string()),
+  sequence: t.u64(),
+  droppedAt: t.timestamp(),
 });
 
 type Ctx = any;
@@ -78,6 +89,20 @@ export function setGearSlots(ctx: Ctx, identity: Identity, itemId: string, copyI
   if (isOwnedGearDefault(next)) { if (current) ctx.db.playerCopySlots.copyId.delete(copyId); return; }
   if (current) { if (!same(current)) ctx.db.playerCopySlots.copyId.update({ ...current, slots: next.slots, cards: [...next.cards] }); }
   else ctx.db.playerCopySlots.insert({ copyId, identity, itemId, slots: next.slots, cards: [...next.cards] });
+}
+
+/**
+ * Slots for gear from a drop (shared/cards.ts rollGearSlots): the first copy entering the bag rolls them, and so
+ * does every duplicate, raising the first copy's slots when it rolls more. Cards already in it stay.
+ */
+export function rollDropSlots(ctx: Ctx, identity: Identity, itemId: string, alreadyOwned: boolean, quantity = 1) {
+  if (!canHoldCards(itemId) || Math.floor(quantity) < 1) return;
+  let next: GearSlots | null = alreadyOwned ? gearSlotsFor(ctx, identity, itemId) : null;
+  for (let drop = 0; drop < Math.floor(quantity); drop++) {
+    const slots = rollGearSlots(ctx.random() * 100);
+    next = next ? { ...next, slots: Math.max(next.slots, slots) } : { slots, cards: [] };
+  }
+  if (next) setGearSlots(ctx, identity, itemId, 0n, next);
 }
 
 /** A copy that is gone takes its slots and its cards with it: nothing of it is left to come back. */
@@ -134,6 +159,7 @@ export function removeCardData(ctx: Ctx, identity: Identity) {
   for (const row of rowsOf(ctx.db.playerCard, identity)) ctx.db.playerCard.key.delete(row.key);
   for (const row of rowsOf(ctx.db.playerGearSlots, identity)) ctx.db.playerGearSlots.key.delete(row.key);
   for (const row of rowsOf(ctx.db.playerCopySlots, identity)) ctx.db.playerCopySlots.copyId.delete(row.copyId);
+  if (ctx.db.playerCardDrop.identity.find(identity)) ctx.db.playerCardDrop.identity.delete(identity);
 }
 
 /**
@@ -151,6 +177,7 @@ export function mergeCardData(ctx: Ctx, guest: Identity, account: Identity) {
     ctx.db.playerGearSlots.insert({ ...row, key: gearSlotsKey(account, row.itemId), identity: account });
   }
   for (const row of rowsOf(ctx.db.playerCopySlots, guest)) ctx.db.playerCopySlots.copyId.update({ ...row, identity: account });
+  if (ctx.db.playerCardDrop.identity.find(guest)) ctx.db.playerCardDrop.identity.delete(guest);
 }
 
 /** The caller's own cards and slots. Another player's first-copy slots are read from player_gear_slots by identity (profiles). */
@@ -161,5 +188,10 @@ export function registerGearCards(spacetimedb: typeof spacetimedbType) {
     (ctx: any) => [...ctx.db.playerGearSlots.identity.filter(ctx.sender)]);
   const myCopySlots = spacetimedb.view({ name: "my_copy_slots", public: true }, t.array(playerCopySlots.rowType),
     (ctx: any) => [...ctx.db.playerCopySlots.identity.filter(ctx.sender)]);
-  return { myCards, myGearSlots, myCopySlots };
+  /** The caller's last find, for the client to announce. */
+  const myCardDrop = spacetimedb.view({ name: "my_card_drop", public: true }, t.array(playerCardDrop.rowType), (ctx: any) => {
+    const row = ctx.db.playerCardDrop.identity.find(ctx.sender);
+    return row ? [row] : [];
+  });
+  return { myCards, myGearSlots, myCopySlots, myCardDrop };
 }

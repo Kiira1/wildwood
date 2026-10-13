@@ -491,6 +491,12 @@
       "ricochet:f32",
       "piercingShot:f32"
     ],
+    "my_card_drop": [
+      "identity:identity",
+      "cardIds:array(string)",
+      "sequence:u64",
+      "droppedAt:timestamp"
+    ],
     "my_cards": [
       "key:string",
       "identity:identity",
