@@ -783,7 +783,7 @@ export function createPresenceService(dependencies: PresenceServiceDependencies)
     const identity = row.identity.toHexString();
     if (!remotePlayersVisible || identity === dependencies.localIdentity() || row.mapId !== currentMapId) return;
     const existing = puppets.get(identity), shown = figures.get(identity)?.figure;
-    // Realistic over accurate (Ryan): a puppet keeps its own route through the
+    // Realistic over accurate: a puppet keeps its own route through the
     // farmer's 30-second re-anchors, and only a new group or camp re-plans it.
     // Any plan starts where their figure already stands (from a puppet, the
     // stream or the map frame), at the speed it already walks: snapping onto
@@ -806,7 +806,7 @@ export function createPresenceService(dependencies: PresenceServiceDependencies)
 
   /**
    * Moves a figure toward where it should be, never faster than a brisk walk:
-   * a remote player never jumps (Ryan: "I never want that"); a gap closes as
+   * a remote player never jumps; a gap closes as
    * walking, whether a new anchor, a clock correction or a handover to the
    * live stream opened it. Returns whether the figure has arrived.
    */

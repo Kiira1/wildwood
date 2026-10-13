@@ -23,7 +23,7 @@ export const SOUL_DEFENSE_FORCE_KILLS = 1000;
 const FEWEST_KILLS = 100;
 const MOST_KILLS = 10_000_000;
 /**
- * Soul kills between its visits for a critical damage multiplier (Ryan): every
+ * Soul kills between its visits for a critical damage multiplier: every
  * 100 at 100x, every 100,000 at 10x, 10^8 / crit^3 between and beyond, never
  * fewer than 100 and at most ten million.
  */

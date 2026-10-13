@@ -17,7 +17,7 @@ function fixture() {
     f.seed(table, { ...f.db[table].identity.find(old), identity: developer });
   }
   f.db.playerSession.connectionId.update({ ...f.db.playerSession.connectionId.find(f.ctx.connectionId), identity: developer });
-  f.patch("playerProfile", { displayName: "Ryan" }, developer);
+  f.patch("playerProfile", { displayName: "Rymel" }, developer);
   f.ctx.sender = developer;
   f.ctx.senderAuth = { jwt: { issuer: SPACETIME_AUTH_ISSUER, audience: [SPACETIME_AUTH_CLIENT_ID] } };
   for (const [who, name] of [[rude, "Rude"], [spammer, "Spammer"], [reporter, "Reporter"]] as const) {
@@ -43,7 +43,7 @@ describe("developer console", () => {
     expect(console.overview).toEqual({ pendingReports: 1, openBugs: 1, muted: 2, banned: 2, deletions: 0 });
     expect(console.muted.map(row => [row.displayName, row.source, row.muteCount])).toEqual([["Spammer", "developer", 1], ["Rude", "developer", 1]]);
     expect(console.banned.map(row => [row.displayName, row.permanent, row.reason, row.by])).toEqual([
-      ["Rude", false, "Cooling off", "Ryan"], ["Spammer", true, "Link spam", "Ryan"],
+      ["Rude", false, "Cooling off", "Rymel"], ["Spammer", true, "Link spam", "Rymel"],
     ]);
   });
 

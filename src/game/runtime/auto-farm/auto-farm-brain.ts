@@ -159,7 +159,7 @@ export function bossFightLosing(fight: BossFightProgress) {
   return !(rates.boss > 0) || fight.player / rates.player < fight.boss / rates.boss;
 }
 
-/** A boss is fought when the fight projects a win inside this long (Ryan: "5-10 minutes"), and left once it no longer does. */
+/** A boss is fought when the fight projects a win inside this long, and left once it no longer does. */
 export const BOSS_FIGHT_SECONDS = 10 * 60;
 /** How long a fight is watched at the boss before its pace alone can send the player away. */
 export const BOSS_PACE_SECONDS = 30;

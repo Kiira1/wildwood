@@ -181,7 +181,7 @@ export function createAutoFarmPanel(options: {
     return options.farm.start(Object.fromEntries([...farmed, ...fought].map(key => [key, 1])), false);
   }
   const farmedNone = () => !keysOn(draft, 'farm').length;
-  /** Nothing on Farm in an Aggro run: it fights only what chases it, standing still (Ryan). */
+  /** Nothing on Farm in an Aggro run: it fights only what chases it, standing still. */
   const chaseOnly = () => aggroRun() && farmedNone() && options.farm.chasingGroupKeys().length > 0;
   /** Nothing on Farm, some on Aggro, outside a run: it pulls those and stands still. */
   const pullOnly = () => !aggroRun() && farmedNone() && keysOn(draft, 'aggro').length > 0;
@@ -297,7 +297,7 @@ export function createAutoFarmPanel(options: {
 
   /**
    * Collapsed it is a small movable card, the quest tracker's size; opened it is
-   * the ordinary Auto Farm window, centred and fixed (Ryan), over a backdrop
+   * the ordinary Auto Farm window, centred and fixed, over a backdrop
    * that closes it. The game is never paused for it.
    */
   function setExpanded(expanded: boolean) {
@@ -346,7 +346,7 @@ export function createAutoFarmPanel(options: {
     refresh();
   }
 
-  /** The card's whole label, collapsed or open: "Autofarm: On" or "Autofarm: Off" (Ryan). */
+  /** The card's whole label, collapsed or open: "Autofarm: On" or "Autofarm: Off". */
   const badgeText = () => `Autofarm: ${farming() ? 'On' : 'Off'}`;
 
   function refresh() {

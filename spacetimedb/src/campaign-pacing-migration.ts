@@ -55,7 +55,7 @@ export function activateCampaignProgression(ctx: Parameters<typeof saveMapBalanc
 /**
  * Migration 46: the campaign and Endless rebalance, tuned in the Balance Lab
  * (2026-09-30) against a typical player with research and gear, from live
- * revision 76. Ryan's rules, checked on every map:
+ * revision 76. The rules, checked on every map:
  * - fast early: the forest about 16 minutes, the desert 26, then each map
  *   longer than the last (x1.6 early easing to x1.1 by map 15, about 7.7 h),
  *   and Endless about 20% longer a map;

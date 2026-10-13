@@ -21,7 +21,7 @@ function queue(): DevReviewQueue {
     reports: [
       report("chat:1", "open", NOW - 60_000),
       report("chat:2", "open", NOW - 3_600_000, { channel: "profile", canRemoveMessage: false }),
-      report("chat:3", "dismissed", NOW - 7_200_000, { decisions: [{ decision: "dismissed", note: "fine", reviewerName: "Ryan", reviewedAtMs: NOW - 1_000, mailed: true }] }),
+      report("chat:3", "dismissed", NOW - 7_200_000, { decisions: [{ decision: "dismissed", note: "fine", reviewerName: "Rymel", reviewedAtMs: NOW - 1_000, mailed: true }] }),
     ],
     bugs: [{ id: "4", status: "open", reporterIdentity: "cc", reporterName: "Bugfinder", protocolVersion: 90, message: "door stuck", reportedAtMs: NOW - 5_000, decisions: [] }],
     openReports: 2, openBugs: 1, serverNowMs: NOW,
@@ -68,7 +68,7 @@ describe("developer review panel", () => {
     filter.checked = false;
     filter.dispatchEvent(new (filter.ownerDocument.defaultView as any).Event("change"));
     expect(h.reports.querySelectorAll(".dev-review-card").length).toBe(3);
-    expect(h.reports.textContent).toContain("Dismissed · Ryan · just now · reporter mailed — fine");
+    expect(h.reports.textContent).toContain("Dismissed · Rymel · just now · reporter mailed — fine");
   });
 
   it("can unmoderate an already reviewed report", async () => {

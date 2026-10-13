@@ -14,11 +14,11 @@ it("slides the health bar and changes only the power number, so neither re-lays 
     playerPower: document.getElementById("power") as unknown as HTMLElement,
     playerName: null, coopStatus: null, minimapPlayers: null,
   };
-  renderPlayerHud(elements, { hp: 60, maxHp: 100 }, "Ryan", 1, 105);
+  renderPlayerHud(elements, { hp: 60, maxHp: 100 }, "Rymel", 1, 105);
   expect(elements.hpFill.style.transform).toBe("translateX(-40.0%)");
   expect(elements.hpFill.style.width || "").toBe("");
   const icon = elements.playerPower.querySelector(".power-icon");
-  renderPlayerHud(elements, { hp: 100, maxHp: 100 }, "Ryan", 1, 106);
+  renderPlayerHud(elements, { hp: 100, maxHp: 100 }, "Rymel", 1, 106);
   expect(elements.hpFill.style.transform).toBe("translateX(0.0%)");
   expect(elements.playerPower.querySelector(".power-icon")).toBe(icon);
   expect(elements.playerPower.querySelector(".power-value")!.textContent).toBe("106");

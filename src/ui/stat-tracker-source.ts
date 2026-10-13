@@ -46,14 +46,14 @@ export function createStatTrackerSource(deps: {
     const progress = deps.displayedProgress(base, deps.inventory);
     const stats = effectivePlayerPowerStats(progress, deps.researchRanks(),
       itemId => coop?.itemLevel?.(itemId) ?? coop?.itemUpgradeLevel?.(itemId) ?? 0);
-    // Attack speed and crit damage read like armor (Ryan): their number, and what it gives beside it.
+    // Attack speed and crit damage read like armor: their number, and what it gives beside it.
     const cap = deps.attackCap(), crit = criticalDamage(deps.critParts());
     return { identity, prestigeLevel: coop.prestige?.()?.level ?? 0, values: { power: playerPowerForStats({ ...stats, critChance: deps.criticalChance?.() ?? 0, critMultiplier: crit.multiplier }), hp: stats.maxHp,
       damage: stats.damage, armor: stats.armor, regen: stats.regen, attackSpeed: attackSpeedRatingForInterval(deps.player.attackRate, cap),
       critDamage: crit.rating + crit.soul, kills: deps.kills() },
       details: { attackSpeed: attackSpeedLabel(1 / Math.max(deps.player.attackRate, attackCapInterval(cap)), 1 / attackCapInterval(cap)).replace(" (Max)", " Max"),
         critDamage: critDamageLabel(crit.multiplier, crit.cap).replace(" (Max)", " Max"),
-        // Armor's block, as the profile shows it (Ryan): the same armor combat uses.
+        // Armor's block, as the profile shows it: the same armor combat uses.
         armor: `${formatArmorReduction(stats.armor)} Block` },
       // The run the build belongs to, so the tracker starts over when a challenge swaps it.
       build: { run: coop.aggroChallenge?.()?.active ? "aggro" : coop.prestigeChallenge?.()?.active ? "reflect" : "main",

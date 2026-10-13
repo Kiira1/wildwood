@@ -5,8 +5,7 @@ import { TOWN_HILLS, townRandom } from "./town";
 
 /**
  * Mining, in the Copper Hills east of the Town (TOWN_HILLS): walk up to an ore rock with a pickaxe and you mine it,
- * as you would attack, and it breaks into ore for the Smith's refines. Peaceful: no monsters, no dying (Ryan,
- * 2026-10-13, on a player's idea: "not the monster stuff, but a mining zone in general").
+ * as you would attack, and it breaks into ore for the Smith's refines. Peaceful: no monsters, no dying.
  *
  * - Four veins, west to east: copper nearest the village, then iron, mithril and adamant, each opening with the map
  *   whose gear that ore refines (shared/refine.ts grades: tiers 1-4 copper, 5-8 iron, 9-12 mithril, 13-15 adamant).
@@ -321,7 +320,7 @@ export const MINING_OUTCROPS: readonly MiningOutcrop[] = Object.freeze(LAID.outc
 export const miningNode = (id: unknown): MiningNode | null =>
   typeof id === "number" && Number.isInteger(id) && id >= 0 ? MINING_NODES[id] ?? null : null;
 
-/** "Large Iron Ore": a rock's name, as Morkyl named them. */
+/** "Large Iron Ore": a rock's name. */
 export const miningNodeName = (node: MiningNode) => `${MINING_NODE_KINDS[node.kind].name} ${REFINE_ORES[node.ore].name}`;
 
 export function normalizeMining(mining: unknown) {

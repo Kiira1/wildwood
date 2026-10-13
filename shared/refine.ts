@@ -4,7 +4,7 @@ import { REFINE_MAX, normalizeRefineLevel } from "./refine-multiplier";
 export { REFINE_MAX, REFINE_STEP_PAST_TEN, REFINE_STEP_TO_TEN, normalizeRefineLevel, refineMultiplier } from "./refine-multiplier";
 
 /**
- * Refining, after Ragnarok Online (Ryan, 2026-10-13): every item refines on its own from +0 to +20 at the
+ * Refining, after Ragnarok Online: every item refines on its own from +0 to +20 at the
  * Town anvil, one ore a try, decided on the spot. Up to its safe limit a try always works; past it the odds
  * fall, and a failed try takes the item down one level. Gems never buy odds or protection.
  *
@@ -36,8 +36,8 @@ export const ARMOR_SAFE_LIMIT = 4;
 
 /**
  * The chance a try past the safe limit works, by the level it is for: Ragnarok's classic table to +10 (rounded),
- * then lower still to +20. Hard on purpose: speeding the game up later is far easier than slowing it down (Ryan,
- * 2026-10-13: "It doesn't need to be reachable right now"). A fail costs a level that has to be climbed again,
+ * then lower still to +20. Hard on purpose: speeding the game up later is far easier than slowing it down.
+ * A fail costs a level that has to be climbed again,
  * so tries multiply level on level: a top-grade item takes about 2,200 tries to +10, a grade 1 item about 44,
  * and +20 is out of reach for now.
  */

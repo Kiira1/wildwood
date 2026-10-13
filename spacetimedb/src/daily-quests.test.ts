@@ -97,7 +97,7 @@ it("counts a new member's quests for the guild from the moment they join, and gi
   const { f, day } = questing();
   f.patch("guildMember", { joinedAt: f.ctx.timestamp.microsSinceUnixEpoch });
   f.seed("guildQuestWeek", { key: `${questWeek(day) - 1}:7`, week: questWeek(day) - 1, guildId: 7n, guildName: "Oaks", points: 300 });
-  // Joined today: the guild's whole bonus from last week, not the member's own (Ryan).
+  // Joined today: the guild's whole bonus from last week, not the member's own.
   expect(guildQuestBonusFor(f.ctx, f.ctx.sender)).toBeCloseTo(1.3);
   spitters(f, 10);
   expect(f.db.guildQuestWeek.key.find(`${questWeek(day)}:7`).points).toBe(1);

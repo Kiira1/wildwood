@@ -158,7 +158,7 @@ describe("farming rate under the respawn ceiling", () => {
   });
 
   it("pays an ordinary lap in full", () => {
-    // Ryan's own pace: a whole map in twenty-eight seconds.
+    // A fast player's pace: a whole map in twenty-eight seconds.
     const run = player({ lapSeconds: 28, minutes: 10 });
     expect(run.paid).toBe(run.claimed);
     expect(run.paidPerSecond).toBeCloseTo(run.claimedPerSecond, 6);

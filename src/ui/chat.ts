@@ -770,7 +770,7 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
     // Capture scrolling from messages and the conversation list, including
     // momentum after the finger lifts. No layout reads or per-event timers.
     // Scrolling and typing both keep the game behind chat at 60fps instead of
-    // its idle 30fps (Ryan's call: typing should feel as smooth as scrolling).
+    // its idle 30fps, so typing feels as smooth as scrolling.
     const noteInteraction = () => {
       if (large && enabled) interactionUntil = performance.now() + 2_000;
     };

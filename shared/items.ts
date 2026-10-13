@@ -77,7 +77,7 @@ export const MAX_FOREST_ITEM_COUNT = MAX_OWNED_ITEM_COUNT;
  * better drop is an upgrade rather than a reason to start again. The track is
  * long on purpose: ninety-nine tiers is an endgame goal, where ten was
  * something the next map's drop could make pointless overnight. Raised from
- * 35 to 99 (Ryan, 0.901.51) with the time growth kept as it was, so the tiers
+ * 35 to 99 (0.901.51) with the time growth kept as it was, so the tiers
  * past the old cap take far longer.
  */
 export const MAX_SLOT_UPGRADE_TIER = 99;

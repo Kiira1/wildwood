@@ -129,7 +129,7 @@ export function endAggroChallenge(ctx: any, player: any, won: boolean, deps: Pic
 
 /**
  * A death during a run starts it over: the forest, starting stats, Endless cleared. Tutorial Forest is the
- * run's safe zone (Ryan): a death there costs nothing, only one on a later map starts the run over.
+ * run's safe zone: a death there costs nothing, only one on a later map starts the run over.
  */
 export function restartAggroRunOnDeath(ctx: any, player: any, startFreshRun: AggroDeps["startFreshRun"]) {
   if (!aggroChallengeActive(ctx, ctx.sender) || !player || player.mapId === TUTORIAL_FOREST_MAP_ID) return false;
@@ -143,7 +143,7 @@ export function restartAggroRunOnDeath(ctx: any, player: any, startFreshRun: Agg
  * her own; the stats are the campaign's expected build for the furthest map
  * whose build her power reached, scaled to that power as the game counts it
  * (gear and research included), with every map before it open and the player
- * at its entrance. Whatever she has now is replaced (Ryan's call): a run under
+ * at its entrance. Whatever she has now is replaced: a run under
  * way takes the rebuilt stats where she stands, a parked one is swapped for it.
  * Skips (and logs) unless exactly one player has the name.
  */

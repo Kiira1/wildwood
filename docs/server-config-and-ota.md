@@ -60,7 +60,7 @@ A manual `npx wrangler deploy` from the Mac ships a `dist` without the feed. Pho
 
 ### One-time setup
 
-Do these in order, from the main checkout (`/Users/ryanguild/Documents/GitHub/wildwood`).
+Do these in order, from the main checkout.
 
 1. **Merge this change first.** The store build in step 4 must contain the new compatibility rule.
 2. **Signing key secret.** This sends the key encrypted to GitHub; it never prints it:

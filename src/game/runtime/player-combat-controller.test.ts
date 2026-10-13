@@ -770,7 +770,7 @@ describe("autofarm target priority", () => {
     expect(aim("lowest")).toBe("wounded");
   });
 
-  // Ryan: Strongest never targeted the boss while anything of the farmed group was in range.
+  // Strongest never targeted the boss while anything of the farmed group was in range.
   it("weighs the map boss while farming a group too, so Strongest takes it; Closest keeps to the group", () => {
     const aim = (priority: "closest" | "strongest") => {
       const h = harness();

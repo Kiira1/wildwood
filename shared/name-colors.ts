@@ -1,7 +1,7 @@
 /**
- * The colors a player can pick for their name in chat (Ryan, 2026-10-13). Zero is Auto: the pastel the
- * name always had, picked from the identity. The rest are the same soft pastels as Auto's (Ryan: the first,
- * saturated set made names more vibrant than intended), so a picked name sits with every other one.
+ * The colors a player can pick for their name in chat. Zero is Auto: the pastel the
+ * name always had, picked from the identity. The rest are the same soft pastels as Auto's,
+ * so a picked name sits with every other one.
  */
 export const NAME_COLOR_AUTO = 0;
 export const NAME_COLORS = [

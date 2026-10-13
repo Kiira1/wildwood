@@ -212,7 +212,7 @@ export function createActorRenderer(options: {
   player: PlayerState;
   rewardMultiplier: () => number;
   rewardAmount?: (type: EnemyDefinition["reward"]["type"], amount: number) => number;
-  /** What attack speed and crit enemies' labels are worked out from, so they show what a kill gives now (Ryan). */
+  /** What attack speed and crit enemies' labels are worked out from, so they show what a kill gives now. */
   rewardContext?: () => RewardLabelContext;
   enemyTextVisible: (enemy: EnemyState) => boolean;
   pixelCircle: PixelCircle;
@@ -384,7 +384,7 @@ export function createActorRenderer(options: {
 
   /**
    * What one attack speed kill gives this player now, in attacks a second, as the label under the enemy
-   * shows it (Ryan): the rating is a number players can't read, its worth shrinks as attack speed nears
+   * shows it: the rating is a number players can't read, its worth shrinks as attack speed nears
    * the cap. Rounded, so the label is redrawn only when the shown value changes.
    */
 

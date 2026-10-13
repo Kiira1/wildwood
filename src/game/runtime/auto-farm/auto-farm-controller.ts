@@ -44,7 +44,7 @@ export const MOVE_ON_FIGHT_MS = 20_000;
 export const BOSS_RETRY_GROWTH = 1.25;
 /** How long each Aggro group's turn at being pulled lasts when more are on Aggro than the pull limit. */
 export const PULL_TURN_SECONDS = 60;
-/** Damage gets this many times the farming time of each other stat on Farm (Ryan, 0.901.65): kills get faster, and every stat with them. */
+/** Damage gets this many times the farming time of each other stat on Farm: kills get faster, and every stat with them. */
 export const DAMAGE_FARM_WEIGHT = 2;
 /**
  * A campaign boss is fought from this close to its hitbox, whatever the
@@ -77,8 +77,7 @@ export function autoFarmStandoff(options: {
 }
 
 /**
- * Autofarm, with simple rules a player can predict (Ryan: "easy simple tools
- * that common sense would say is good"):
+ * Autofarm, with simple rules a player can predict:
  * - Stats: each stat group farmed for its slider's share of the time, the
  *   sliders adding up to 100%, 0% never farmed.
  * - Move On: to the next map once power reaches Move At times its
@@ -267,7 +266,7 @@ export function createAutoFarmController(options: {
     return forcedSet;
   }
 
-  // Pull's groups. Any number can be switched to Aggro (players asked: Ryan); it pulls as many at once as
+  // Pull's groups. Any number can be switched to Aggro; it pulls as many at once as
   // the limit, one more per Aggro win, taking the one being farmed first, then the next largest sliders.
   // Before any switch is touched, Pull Whole Group's own picks: the farmed group, then the largest sliders.
   let pulled = new Set<string>(), pulledKey = '';
@@ -355,7 +354,7 @@ export function createAutoFarmController(options: {
   }
   const needsLine = (readiness: Readiness) => readiness.needs === 'both' ? 'Need More Damage And Health'
     : readiness.needs === 'damage' ? 'Need More Damage' : 'Need More Health';
-  /** Whether the next map is ready, and the status line when it is not (Ryan: no fixed table, worked out on the client). */
+  /** Whether the next map is ready, and the status line when it is not (no fixed table, worked out on the client). */
   function readyForMap(destination: string): { ready: boolean; line: string } {
     if (!options.mapReady) {
       const needs = mapNeeds(destination);
@@ -512,7 +511,7 @@ export function createAutoFarmController(options: {
 
 
   /**
-   * Farm's pick (Ryan, 0.901.64): the Farm groups share the time evenly (damage twice over), leaving out a stat whose kill gives
+   * Farm's pick: the Farm groups share the time evenly (damage twice over), leaving out a stat whose kill gives
    * nothing now (rewardCapped: attack speed or crit at its cap) and an Aggro group waiting its turn, which is
    * never walked to. Picking by power, or by growth a second, was tried in the autofarm sim first: by power
    * it farmed health alone, by growth tough camps (34 kills in ten minutes against the even split's 47).
@@ -735,8 +734,8 @@ export function createAutoFarmController(options: {
 
   let lastHealthyAt = now();
   /**
-   * One line, under the diagnostics' 240 characters, about a death with Auto Farm on (Ryan: "can we learn
-   * where autofarm is dying"): the map, what it was doing and farming, the settings, the enemies within 400
+   * One line, under the diagnostics' 240 characters, about a death with Auto Farm on:
+   * the map, what it was doing and farming, the settings, the enemies within 400
    * (e elite, r ranged, * attacking), the seconds from 90% health to dead, power, and what this map's
    * readiness says is missing.
    */

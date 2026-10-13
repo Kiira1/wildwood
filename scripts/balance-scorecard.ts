@@ -1,5 +1,5 @@
 /**
- * The Balance Lab scorecard: Ryan's per-map checks (memory: balance-design-principles)
+ * The Balance Lab scorecard: the per-map balance checks
  * against the Lab's representative run, on the build it arrives at each map with.
  *
  *   npm run balance:scorecard -- [--trials 5] [--endless 0] [--json]

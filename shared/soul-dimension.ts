@@ -98,8 +98,8 @@ export function addSoulKills(soul: Partial<SoulStats> | null | undefined, stat: 
 /**
  * A soul's crit damage rating after `kills` more, at the pace soul crit always had: each adds 0.002x
  * (SOUL_STAT_DETAILS) to what the soul's own rating gives from a fresh start, up to 100x, stored as the
- * rating that gives that. On the curve alone a point of rating did nothing to a soul already near 100x
- * (Ryan, 0.901.47.1: farming toward 100x still pays).
+ * rating that gives that. On the curve alone a point of rating did nothing to a soul already near 100x;
+ * farming toward 100x still pays.
  */
 export function soulCritRatingAfterKills(rating: number, kills: number) {
   const current = cleanRating(rating), step = SOUL_STAT_DETAILS.critDamage.reward * Math.max(0, kills);
@@ -110,7 +110,7 @@ export function soulCritRatingAfterKills(rating: number, kills: number) {
 /**
  * Attacks a second the soul adds, flat, on top of the run's own. Added to the run's rating instead
  * (0.901.47), a soul kill paid 1 rating, next to nothing, so whoever had farmed it before stayed at the cap
- * and nobody after could catch up (Ryan, 0.901.55). Each kill now adds its 0.001 a second again.
+ * and nobody after could catch up. Each kill now adds its 0.001 a second again.
  *
  * The stored rating is read on the base curve (to 3 a second), the one migration 54 turned the old
  * attacks-a-second values into ratings on, so every soul keeps exactly what it had. A soul at the rating's

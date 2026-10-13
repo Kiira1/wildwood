@@ -15,7 +15,7 @@ function drop(mapId: string, definition: ItemDefinition, wins: number, outcomes:
 }
 
 /**
- * Swords (Ryan, 2026-10-13), one to a map. They strike up close, so each hits half as hard again as its map's
+ * Swords, one to a map. They strike up close, so each hits half as hard again as its map's
  * bows to make up for standing in reach of what it fights, and drops as often as that map's bow. The Wooden
  * Sword, until now a developer's practice weapon, is the forest's.
  */

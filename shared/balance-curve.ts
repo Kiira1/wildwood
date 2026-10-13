@@ -3,8 +3,8 @@ import { MAX_PLAYER_STAT } from './rules';
 /**
  * The per-map balance curve: map 1 by hand, then two numbers.
  *
- * Not in use: maps resolve from the live balance (map-balance.ts), which Ryan
- * chose as the reference on 2026-09-30. curveArmorReduction is still used.
+ * Not in use: maps resolve from the live balance (map-balance.ts), the
+ * reference since 2026-09-30. curveArmorReduction is still used.
  *
  * Map 1's camps and boss are plain numbers: each camp's health, hit and
  * reward, and the boss's health and heaviest hit. Every map after multiplies
