@@ -3132,7 +3132,9 @@
   .player-profile-header h2 { display: flex; align-items: center; gap: 3px; min-width: 0; margin: 0; color: var(--text); font-family: var(--player-name-font); font-size: clamp(12px, 2.9vw, 18px); line-height: 1.08; overflow-wrap: anywhere; }
   .player-name-guest { color: #a9b1ad; font-size: .8em; }
   .player-profile-header h2 .player-name-guest { display: none; }
-  .profile-name-edit { display: grid; flex: 0 0 auto; place-items: center; width: 19px; min-width: 19px; height: 19px; margin: 0; padding: 0; border: 1px solid rgba(255,255,255,.28); border-radius: 4px; background: transparent; color: var(--green); font: 900 12px/1 Arial, sans-serif; -webkit-text-stroke: 0; text-shadow: none; }
+  /* The same white pencil Edit Profile uses, a size smaller beside the name. */
+  .profile-editor-pencil.profile-name-edit { width: 32px; min-width: 32px; height: 32px; margin-left: 4px; border-radius: 8px; }
+  .profile-editor-pencil.profile-name-edit svg { width: 16px; height: 16px; }
   .profile-name-edit[hidden] { display: none; }
   .player-profile-presence { margin-top: 4px; color: var(--muted); font-size: 8px; letter-spacing: .08em; }
   .player-profile-presence.is-online { color: #72ef58; }
