@@ -63,7 +63,7 @@ export function createProfileNameEditor(elements: {
     elements.overlay.hidden = false;
     clearInterval(timer);
     timer = setInterval(render, 1000);
-    requestAnimationFrame(() => { if (!elements.overlay.hidden) { elements.input.focus(); elements.input.select(); } });
+    // No focus on open: the name is one part of Edit Profile, and a phone would raise its keyboard over the rest.
     await loadStatus();
   }
 
@@ -82,7 +82,7 @@ export function createProfileNameEditor(elements: {
       const result = await api.setDisplayName(name, status.cost);
       if (request !== generation) return;
       if (!result?.ok) throw new Error(result?.error || "Name update failed");
-      close();
+      // Edit Profile stays open on the new name; the price below refreshes for the next change.
       api.showMessage("NAME UPDATED", "#c9f5c2");
     } catch (error) {
       if (request !== generation) return;

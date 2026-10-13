@@ -49,6 +49,7 @@ import { leaderboardPageTables, readLeaderboardWindow, readLeaderboardPage, read
 import { effectiveMovementSpeedForProgress, refreshPrestigeMovement, attackIntervalForProgress, savedAttackRange } from "./player-speed";
 import { playerBonusToggle } from "./bonus-toggles";
 import { registerBonusToggleReducers } from "./bonus-toggles-reducer";
+import { playerNameColor, registerProfileLookReducers } from "./profile-look";
 import { playerPrestige, playerPrestigePerk, prestigeExpansion, playerPrestigeExpansionPerk, playerFreeRespec, ensurePrestigeExpansion } from "./prestige-expansion";
 import { earlierTimestamp } from "./timestamp-utils";
 import { createCosmeticConversion } from "./cosmetic-conversion";
@@ -1661,7 +1662,7 @@ const spacetimedb = schema({
   playerPrestigePerk,
   playerPrestigeChallenge, prestigeChallengeBackup, prestigeChallengeRun, playerPrestigeChallengeParked, playerAggroChallenge, aggroChallengeRun, playerAggroChallengeParked, playerAutoFarmPuppet, playerFreeRespec, playerDailyQuest, guildQuestWeek, guildMemberQuestWeek, soloQuestWeek, playerQuestWeekTotal, playerWideStats, playerCombatRating, duelWideStats, duelReplayWideStats, prestigeExpansion,
   playerPrestigeExpansionPerk,
-  playerBonusToggle,
+  playerBonusToggle, playerNameColor,
   duelRiposte, duelCombatSnapshot,
   playerSessionAnalytics,
   developerPresencePreference,
@@ -3075,18 +3076,9 @@ export const setGender = spacetimedb.reducer(
   },
 );
 
-export const setPlayerSprite = spacetimedb.reducer(
-  { playerSprite: t.u32() },
-  (ctx, { playerSprite }) => {
-    requireControllingPlayer(ctx);
-    if (!Number.isInteger(playerSprite) || playerSprite > 3) throw new SenderError("Player sprite must be between 0 and 3.");
-    const profile = ctx.db.playerProfile.identity.find(ctx.sender);
-    if (!profile) throw new SenderError("Player profile not found.");
-    if (profile.playerSprite === playerSprite) return;
-    updateSnapshotRow(ctx, "playerProfile", { ...profile, playerSprite });
-    syncPlayerMotionIdentity(ctx, playerWithMotion(ctx, ctx.db.player.identity.find(ctx.sender)));
-  },
-);
+// Bodies live in profile-look.ts.
+export const { setPlayerSprite, setNameColor } = registerProfileLookReducers(spacetimedb, { requireControllingPlayer,
+  syncLook: ctx => syncPlayerMotionIdentity(ctx, playerWithMotion(ctx, ctx.db.player.identity.find(ctx.sender))) });
 
 export const setSkinTone = spacetimedb.reducer(
   { skinTone: t.u32() },

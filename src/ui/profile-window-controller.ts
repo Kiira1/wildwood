@@ -1,11 +1,10 @@
 import { replaceChildrenIfChanged } from "./replace-children-if-changed";
-import { createProfileNameEditor } from "./profile-name-editor";
+import { createProfileEditor, type ProfileEditorElements } from "./profile-editor";
 import { createProfileLoading } from "./profile-loading";
 import type { NameChangeStatus } from "../../shared/name-change";
 import { applyAvatarFrame } from "../app/avatar-frames";
 import type { PlayerProfileData } from "../wildstat-coop";
-import { PLAYER_GENDER_UNSET, isSelectedPlayerGender, playerGenderLabel, type PlayerGender } from "../../shared/player-gender";
-import { appendPlayerGenderIcon } from "./player-gender";
+import type { PlayerGender } from "../../shared/player-gender";
 import { PRESTIGE_STAT_GAIN_PER_LEVEL } from "../../shared/prestige";
 import type { ItemInspectionController, ItemInspectionAction } from "./item-inspection-controller";
 import { slotUpgradeLevelFor } from "./profile";
@@ -28,8 +27,9 @@ export function createProfileWindowController(elements: {
   /** Your own profile's bonus switches (profile-bonus-toggles.ts); hidden on anyone else's. */
   bonusesTab?: HTMLElement; bonusesPanel?: HTMLElement; bonuses?: ProfileBonusDeps;
   joined: HTMLElement; timePlayed: HTMLElement; kills: HTMLElement; online: HTMLElement; statGrid: HTMLElement;
-  close: HTMLElement; editName: HTMLButtonElement; nameEditor: HTMLElement; nameForm: HTMLFormElement; nameInput: HTMLInputElement; saveName: HTMLButtonElement;
-  skinEdit: HTMLButtonElement; skinChoices: HTMLDivElement; preview: HTMLElement; equipmentHead: HTMLButtonElement; equipmentChest: HTMLButtonElement; equipmentFeet: HTMLButtonElement; equipmentRightHand: HTMLButtonElement; previousSprite: HTMLElement; nextSprite: HTMLElement; genderSetting: HTMLElement; genderValue: HTMLElement; genderEdit: HTMLButtonElement; genderChoices: HTMLElement;
+  /** The one pencil, beside the name: it opens Edit Profile (profile-editor.ts). */
+  close: HTMLElement; editName: HTMLButtonElement; editor: ProfileEditorElements;
+  preview: HTMLElement; equipmentHead: HTMLButtonElement; equipmentChest: HTMLButtonElement; equipmentFeet: HTMLButtonElement; equipmentRightHand: HTMLButtonElement; previousSprite: HTMLElement; nextSprite: HTMLElement;
   duel: HTMLButtonElement;
   settings?: HTMLElement; safetyActions: HTMLElement; report: HTMLButtonElement; block: HTMLButtonElement;
   prestigeRow: HTMLElement; prestige: HTMLElement;
@@ -41,6 +41,7 @@ export function createProfileWindowController(elements: {
   renderName: (element: HTMLElement, identity: string, name: string, gender?: PlayerGender) => void; isGuest: (identity: string) => boolean; isOnline: (identity: string) => boolean; presenceText: (profile: Profile, online: boolean) => string;
   renderCharacter: (identity: string, progress: Profile["progress"] | null, visible: boolean) => void; skinTone: (identity?: string) => number; setSkinTone: (value: number) => Promise<{ ok?: boolean; error?: string } | undefined>;
   playerGender: (identity?: string) => PlayerGender; setGender: (value: PlayerGender) => Promise<{ ok?: boolean; error?: string } | undefined>;
+  nameColor: (identity?: string) => number; setNameColor: (value: number) => Promise<{ ok?: boolean; error?: string } | undefined>; openIconPicker: () => void;
   renderStats: (profile: Profile, element: HTMLElement) => void; formatPower: (profile: Profile) => string; formatPlayedTime: (seconds: number) => string;
   profile: (identity: string) => Profile | null | undefined; loadProfile: (identity: string) => Promise<Profile | null | undefined>; releaseProfile: () => void;
   isDueling: () => boolean; duelCooldownMs: () => number; requestDuel: (identity: string) => Promise<{ ok?: boolean; error?: string } | undefined>;
@@ -62,6 +63,12 @@ export function createProfileWindowController(elements: {
     FEET: elements.equipmentFeet,
     WEAPON: elements.equipmentRightHand,
   };
+
+  const editor = createProfileEditor(elements.editor, { ...api, onChanged: ({ gender }) => {
+    if (gender !== undefined && profileData) profileData = { ...profileData, gender };
+    if (gender !== undefined && identity) api.renderName(elements.name, identity, profileData?.name || api.localDisplayName() || "PLAYER", gender);
+    drawPreview();
+  } });
 
   const tabs = () => ([["overview", elements.overviewTab, elements.overviewPanel], ["stats", elements.statsTab, elements.statsPanel],
     ["bonuses", elements.bonusesTab, elements.bonusesPanel]] as const).filter((entry): entry is readonly [ProfileTab, HTMLElement, HTMLElement] => Boolean(entry[1] && entry[2]));
@@ -85,34 +92,6 @@ export function createProfileWindowController(elements: {
     icon.src = "assets/wildstat/icons/Icon_Battle_Candy_v2.webp"; icon.alt = ""; icon.setAttribute("aria-hidden", "true");
     elements.power.setAttribute("aria-label", `Power ${value}`);
     replaceChildrenIfChanged(elements.power, target => target.append(number, icon));
-  }
-
-  function updateSkinChoices(value: number) {
-    elements.skinChoices.querySelectorAll<HTMLButtonElement>(".profile-skin-tone-choice").forEach((choice) => choice.setAttribute("aria-pressed", String(Number(choice.dataset.skinTone) === value)));
-  }
-
-  function updateGenderChoices(value: PlayerGender) {
-    elements.genderChoices.querySelectorAll<HTMLButtonElement>(".profile-gender-choice").forEach((choice) => {
-      choice.setAttribute("aria-pressed", String(Number(choice.dataset.gender) === value));
-    });
-    if (!isSelectedPlayerGender(value)) {
-      elements.genderValue.setAttribute("aria-label", "Choose gender");
-      replaceChildrenIfChanged(elements.genderValue, target => { target.textContent = "choose"; });
-      return;
-    }
-    elements.genderValue.setAttribute("aria-label", `${playerGenderLabel(value)} selected`);
-    replaceChildrenIfChanged(elements.genderValue, target => {
-      const icon = appendPlayerGenderIcon(target, value);
-      if (icon) {
-        icon.alt = "";
-        icon.setAttribute("aria-hidden", "true");
-      }
-    });
-  }
-
-  function closeGenderChoices() {
-    elements.genderChoices.hidden = true;
-    elements.genderEdit.setAttribute("aria-expanded", "false");
   }
 
   function drawPreview() {
@@ -148,9 +127,8 @@ export function createProfileWindowController(elements: {
   function updatePreview(target: string, ownProfile: boolean) {
     const changed = elements.preview.dataset.identity !== target;
     elements.preview.dataset.identity = target;
-    elements.previousSprite.hidden = true; elements.nextSprite.hidden = true; elements.skinEdit.hidden = !ownProfile;
-    if (!ownProfile || changed) elements.skinChoices.hidden = true;
-    if (ownProfile) updateSkinChoices(api.skinTone(target));
+    elements.previousSprite.hidden = true; elements.nextSprite.hidden = true;
+    if (!ownProfile || changed) editor.close();
     drawPreview();
   }
 
@@ -161,6 +139,7 @@ export function createProfileWindowController(elements: {
     api.onOwnProfile?.(own);
     setText(elements.block, api.isBlocked(identity) ? "Unblock Player" : "Block Player");
     if (!elements.window.hidden && own) bonuses?.render();
+    if (editor.isOpen()) editor.render();
     if (elements.duel.hidden || elements.window.hidden) return;
     if (elements.duel.title !== DUEL_BUTTON_TITLE) elements.duel.title = DUEL_BUTTON_TITLE;
     const remainingSeconds = Math.ceil(api.duelCooldownMs() / 1_000);
@@ -186,12 +165,9 @@ export function createProfileWindowController(elements: {
     if (challengeLine) { challengeLine.hidden = !challenge; challengeLine.textContent = challenge ? `In challenge - ${challenge}` : ""; }
     api.paintIcon(elements.icon, api.profileIcon(profile.identity), profile.identity);
     applyAvatarFrame(elements.icon, profile.identity);
-    elements.icon.classList.toggle("is-editable", own); elements.icon.disabled = !own; elements.icon.setAttribute("aria-label", own ? "Choose profile icon" : `${profile.name}'s profile icon`);
+    elements.icon.classList.toggle("is-editable", own); elements.icon.disabled = !own; elements.icon.setAttribute("aria-label", own ? "Edit profile" : `${profile.name}'s profile icon`);
     elements.editName.hidden = !own;
     if (elements.settings) elements.settings.hidden = !own;
-    elements.genderSetting.hidden = !own;
-    if (own) updateGenderChoices(profile.gender);
-    else closeGenderChoices();
     renderEquipment(profile);
     updatePreview(profile.identity, own);
     renderPower(api.formatPower(profile));
@@ -223,7 +199,7 @@ export function createProfileWindowController(elements: {
     elements.window.hidden = false; updateDuelButton(); api.renderName(elements.name, nextIdentity, fallbackName, api.playerGender(nextIdentity)); elements.guest.hidden = !api.isGuest(nextIdentity);
     const online = api.isOnline(nextIdentity); elements.presence.textContent = online ? "Online" : "CHECKING LAST SEEN"; elements.presence.classList.toggle("is-online", online);
     const challengeLine = elements.window.querySelector<HTMLElement>("#playerProfileChallenge"); if (challengeLine) challengeLine.hidden = true;
-    api.paintIcon(elements.icon, api.profileIcon(nextIdentity), nextIdentity); applyAvatarFrame(elements.icon, nextIdentity); const own = nextIdentity === api.localIdentity(); elements.icon.classList.toggle("is-editable", own); elements.icon.disabled = !own; elements.editName.hidden = !own; elements.genderSetting.hidden = !own; closeGenderChoices(); if (own) updateGenderChoices(api.playerGender(nextIdentity));
+    api.paintIcon(elements.icon, api.profileIcon(nextIdentity), nextIdentity); applyAvatarFrame(elements.icon, nextIdentity); const own = nextIdentity === api.localIdentity(); elements.icon.classList.toggle("is-editable", own); elements.icon.disabled = !own; elements.editName.hidden = !own;
     if (elements.settings) elements.settings.hidden = !own;
     renderEquipment(null); updatePreview(nextIdentity, own); renderPower("—"); selectTab("stats"); showBonusesTab(own); loading.show();
     const cached = api.profile(nextIdentity); if (cached) { render(cached); if (own) return; }
@@ -234,15 +210,14 @@ export function createProfileWindowController(elements: {
   }
 
   function close() {
-    closeNameEditor(); closeGenderChoices(); elements.skinChoices.hidden = true; elements.window.hidden = true; elements.guest.hidden = true; identity = ""; profileData = null; renderEquipment(null); loading.hide(); api.releaseProfile();
+    closeNameEditor(); elements.window.hidden = true; elements.guest.hidden = true; identity = ""; profileData = null; renderEquipment(null); loading.hide(); api.releaseProfile();
   }
 
-  const nameEditor = createProfileNameEditor({ overlay: elements.nameEditor, form: elements.nameForm, input: elements.nameInput, save: elements.saveName }, api);
   function openNameEditor() {
     if (!identity || identity !== api.localIdentity()) return;
-    void nameEditor.open();
+    editor.open();
   }
-  function closeNameEditor() { nameEditor.close(); }
+  function closeNameEditor() { editor.close(); }
 
   elements.overviewTab.addEventListener("click", () => selectTab("overview")); elements.statsTab.addEventListener("click", () => selectTab("stats"));
   elements.bonusesTab?.addEventListener("click", () => selectTab("bonuses"));
@@ -250,33 +225,6 @@ export function createProfileWindowController(elements: {
   elements.block.addEventListener("click", () => api.openSafety(identity, profileData?.name || elements.name.textContent || "PLAYER", "block"));
   for (const slot of PROFILE_EQUIPMENT_SLOTS) equipmentElements[slot].addEventListener("click", () => inspectEquipment(slot));
   elements.close.addEventListener("click", close); elements.editName.addEventListener("click", openNameEditor);
-  elements.skinEdit.addEventListener("click", () => { if (identity !== api.localIdentity()) return; closeGenderChoices(); elements.skinChoices.hidden = !elements.skinChoices.hidden; });
-  elements.skinChoices.addEventListener("click", async (event) => { const choice = (event.target as Element).closest<HTMLButtonElement>(".profile-skin-tone-choice"); if (!choice || identity !== api.localIdentity()) return; const value = Number(choice.dataset.skinTone); if (!Number.isInteger(value)) return; const result = await api.setSkinTone(value); if (!result?.ok) { api.showMessage(result?.error || "SKIN TONE UPDATE FAILED", "#ff9b91"); updateSkinChoices(api.skinTone()); return; } updateSkinChoices(value); elements.skinChoices.hidden = true; drawPreview(); api.showMessage("SKIN TONE UPDATED", "#72ef58"); });
-  elements.genderEdit.addEventListener("click", () => {
-    if (identity !== api.localIdentity()) return;
-    elements.skinChoices.hidden = true;
-    const willOpen = elements.genderChoices.hidden;
-    elements.genderChoices.hidden = !willOpen;
-    elements.genderEdit.setAttribute("aria-expanded", String(willOpen));
-  });
-  elements.genderChoices.addEventListener("click", async (event) => {
-    const choice = (event.target as Element).closest<HTMLButtonElement>(".profile-gender-choice");
-    if (!choice || identity !== api.localIdentity()) return;
-    const selectedGender = Number(choice.dataset.gender);
-    if (!isSelectedPlayerGender(selectedGender)) return;
-    const currentGender = profileData?.gender ?? api.playerGender(identity);
-    const gender = currentGender === selectedGender ? PLAYER_GENDER_UNSET : selectedGender;
-    const choices = [...elements.genderChoices.querySelectorAll<HTMLButtonElement>(".profile-gender-choice")];
-    choices.forEach((button) => { button.disabled = true; });
-    const result = await api.setGender(gender);
-    choices.forEach((button) => { button.disabled = false; });
-    if (!result?.ok) { api.showMessage(result?.error || "GENDER UPDATE FAILED", "#ff9b91"); updateGenderChoices(api.playerGender()); return; }
-    updateGenderChoices(gender);
-    closeGenderChoices();
-    if (profileData) profileData = { ...profileData, gender };
-    api.renderName(elements.name, identity, profileData?.name || api.localDisplayName() || "PLAYER", gender);
-    api.showMessage("GENDER UPDATED", "#72ef58");
-  });
   elements.duel.addEventListener("click", () => { const opponent = elements.duel.dataset.identity || ""; if (!opponent || elements.duel.disabled) return; elements.duel.disabled = true; void api.requestDuel(opponent).then((result) => { if (!result?.ok) api.showMessage(result?.error || "DUEL FAILED", "#ff9b91"); else close(); updateDuelButton(); }); });
-  return { selectTab, render, open, close, drawPreview, openNameEditor, closeNameEditor, updateDuelButton, isOpen: () => !elements.window.hidden, isNameEditorOpen: () => !elements.nameEditor.hidden, identity: () => identity, profile: () => profileData };
+  return { selectTab, render, open, close, drawPreview, openNameEditor, closeNameEditor, updateDuelButton, isOpen: () => !elements.window.hidden, isNameEditorOpen: editor.isOpen, identity: () => identity, profile: () => profileData };
 }

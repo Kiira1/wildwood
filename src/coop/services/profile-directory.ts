@@ -16,6 +16,7 @@ import { clearAvatarFrames } from "../../app/avatar-frames";
 import { PROFILE_ICON_SNAPSHOT, encodeProfileIcon, isSnapshotProfileIcon, normalizeProfileIcon, profileIconBackground } from "../../../shared/profile-icons";
 import { createProfileSnapshots } from "./profile-snapshots";
 import { preloadProfileIcons } from "../../app/profile-icon-preload";
+import { NAME_COLOR_AUTO, isValidNameColor } from "../../../shared/name-colors";
 
 export type ProfilePresentation = {
   identity: string;
@@ -79,6 +80,8 @@ export function createProfileDirectory(dependencies: ProfileDirectoryDependencie
   const genders = new Map<string, PlayerGender>();
   const identities = new Map<string, Identity>();
   const guests = new Map<string, boolean>();
+  /** Chat name colors (player_name_color, the whole table): only the players who picked one. */
+  const nameColors = new Map<string, number>();
   const chatPortraits = createChatPortraits({
     connection: () => dependencies.reducers?.connection() ?? null,
     changed: () => { dependencies.markChatPresentationChanged(); dependencies.notify(); },
@@ -187,6 +190,14 @@ export function createProfileDirectory(dependencies: ProfileDirectoryDependencie
         removePlayerNameTag(row.identity.toHexString());
         dependencies.markChatPresentationChanged(); dependencies.notify();
       },
+      upsertNameColor(row: { identity: Identity; color: number }) {
+        nameColors.set(row.identity.toHexString(), isValidNameColor(row.color) ? row.color : NAME_COLOR_AUTO);
+        dependencies.markChatPresentationChanged(); dependencies.notify();
+      },
+      removeNameColor(row: { identity: Identity }) {
+        if (!nameColors.delete(row.identity.toHexString())) return;
+        dependencies.markChatPresentationChanged(); dependencies.notify();
+      },
     },
     api: {
       ...patreon.api,
@@ -225,6 +236,10 @@ export function createProfileDirectory(dependencies: ProfileDirectoryDependencie
       },
       playerGender(identity = dependencies.localIdentity()) {
         return genders.get(identity) ?? PLAYER_GENDER_UNSET;
+      },
+      /** The picked chat name color (shared/name-colors.ts); 0 is Auto. */
+      nameColor(identity = dependencies.localIdentity()) {
+        return nameColors.get(identity) ?? NAME_COLOR_AUTO;
       },
       localProfileReady: () => localReady,
       isGuest(identity = dependencies.localIdentity()) {
@@ -340,6 +355,25 @@ export function createProfileDirectory(dependencies: ProfileDirectoryDependencie
           return { ok: false, error: message };
         }
       },
+      async setNameColor(color: number) {
+        if (dependencies.reducers.protocolBlocked()) return { ok: false, error: "UPDATE REQUIRED" };
+        const connection = dependencies.reducers.connection();
+        if (!connection) return { ok: false, error: "NOT CONNECTED" };
+        if (!isValidNameColor(color)) return { ok: false, error: "INVALID NAME COLOR" };
+        const identity = dependencies.localIdentity();
+        try {
+          await dependencies.reducers.runWorldReducer(() => connection.reducers.setNameColor({ color }));
+          if (identity === dependencies.localIdentity() && connection === dependencies.reducers.connection()) {
+            if (color === NAME_COLOR_AUTO) nameColors.delete(identity); else nameColors.set(identity, color);
+            dependencies.markChatPresentationChanged(); dependencies.notify();
+          }
+          return { ok: true };
+        } catch (error) {
+          const message = dependencies.reducers.errorMessage(error);
+          dependencies.reducers.handleFailure("name color update", error);
+          return { ok: false, error: message };
+        }
+      },
       async setSkinTone(skinTone: number) {
         if (dependencies.reducers.protocolBlocked()) return { ok: false, error: "UPDATE REQUIRED" };
         const connection = dependencies.reducers.connection();
@@ -383,6 +417,7 @@ export function createProfileDirectory(dependencies: ProfileDirectoryDependencie
       genders.clear();
       identities.clear();
       guests.clear();
+      nameColors.clear();
       localReady = false;
     },
   };

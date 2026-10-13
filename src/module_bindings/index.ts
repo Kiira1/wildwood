@@ -192,6 +192,7 @@ import SetIgnoredDropsReducer from "./set_ignored_drops_reducer";
 import SetLootSettingsReducer from "./set_loot_settings_reducer";
 import SetMapBalanceReducer from "./set_map_balance_reducer";
 import SetMultiplayerEnabledReducer from "./set_multiplayer_enabled_reducer";
+import SetNameColorReducer from "./set_name_color_reducer";
 import SetOfflineProgressEnabledReducer from "./set_offline_progress_enabled_reducer";
 import SetPlayerBlockedReducer from "./set_player_blocked_reducer";
 import SetPlayerMotionInterestReducer from "./set_player_motion_interest_reducer";
@@ -365,6 +366,7 @@ import PlayerMapMarkerRow from "./player_map_marker_table";
 import PlayerMotionDetailFrameRow from "./player_motion_detail_frame_table";
 import PlayerMotionFrameRow from "./player_motion_frame_table";
 import PlayerMotionIdentityRow from "./player_motion_identity_table";
+import PlayerNameColorRow from "./player_name_color_table";
 import PlayerNameTagRow from "./player_name_tag_table";
 import PlayerPrestigeRow from "./player_prestige_table";
 import PlayerPrestigeChallengeRow from "./player_prestige_challenge_table";
@@ -1075,6 +1077,17 @@ const tablesSchema = __schema({
       { name: 'player_motion_identity_network_id_key', constraint: 'unique', columns: ['networkId'] },
     ],
   }, PlayerMotionIdentityRow),
+  playerNameColor: __table({
+    name: 'player_name_color',
+    indexes: [
+      { accessor: 'identity', name: 'player_name_color_identity_idx_btree', algorithm: 'btree', columns: [
+        'identity',
+      ] },
+    ],
+    constraints: [
+      { name: 'player_name_color_identity_key', constraint: 'unique', columns: ['identity'] },
+    ],
+  }, PlayerNameColorRow),
   playerNameTag: __table({
     name: 'player_name_tag',
     indexes: [
@@ -1838,6 +1851,7 @@ const reducersSchema = __reducers(
   __reducerSchema("set_loot_settings", SetLootSettingsReducer),
   __reducerSchema("set_map_balance", SetMapBalanceReducer),
   __reducerSchema("set_multiplayer_enabled", SetMultiplayerEnabledReducer),
+  __reducerSchema("set_name_color", SetNameColorReducer),
   __reducerSchema("set_offline_progress_enabled", SetOfflineProgressEnabledReducer),
   __reducerSchema("set_player_blocked", SetPlayerBlockedReducer),
   __reducerSchema("set_player_motion_interest", SetPlayerMotionInterestReducer),

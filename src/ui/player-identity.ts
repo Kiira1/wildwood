@@ -2,10 +2,12 @@ import { appendPlayerNameTags, appendPrestigeBadge } from "../app/player-name-ta
 import { appendPlayerGenderIcon } from "./player-gender";
 import type { PlayerGender } from "../../shared/player-gender";
 import { formatCompactNumber } from "./number-format";
+import { nameColorHex } from "../../shared/name-colors";
 
 const NAME_COLORS = ["#ffc3dd", "#bce7ff", "#c9f5c2", "#ffe7a8", "#e1c7ff", "#bff3e7", "#ffd1aa", "#d0d9ff"];
 
-function nameColor(identity: string) {
+/** The automatic color, from the identity, for players who left their chat name color on Auto. */
+export function autoNameColor(identity: string) {
   let hash = 2166136261;
   for (const character of identity) {
     hash ^= character.charCodeAt(0);
@@ -17,10 +19,12 @@ function nameColor(identity: string) {
 /** One identity line for chat and guild rosters; layouts only control placement. */
 export function appendPlayerIdentity(target: HTMLElement, player: {
   identity: string; name: string; power?: number; prestige?: number; gender?: PlayerGender; guest?: boolean;
+  /** The picked chat name color (shared/name-colors.ts); Auto or missing falls back to the identity's. */
+  nameColor?: number;
 }, { chat = false, showGuildTag = true }: { chat?: boolean; showGuildTag?: boolean } = {}) {
   const doc = target.ownerDocument;
   target.classList.add("player-identity"); target.title = player.name;
-  target.style.color = nameColor(player.identity);
+  target.style.color = nameColorHex(player.nameColor) || autoNameColor(player.identity);
   const core = doc.createElement("span"); core.className = `player-identity-core${chat ? " chat-name-core" : ""}`;
   appendPlayerNameTags(core, player.identity, undefined, showGuildTag);
   const name = doc.createElement("span"); name.className = `player-identity-name${chat ? " chat-name-text" : ""}`;

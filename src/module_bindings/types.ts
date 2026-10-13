@@ -2101,6 +2101,12 @@ export const PlayerMultiplayerPreference = __t.object("PlayerMultiplayerPreferen
 });
 export type PlayerMultiplayerPreference = __Infer<typeof PlayerMultiplayerPreference>;
 
+export const PlayerNameColor = __t.object("PlayerNameColor", {
+  identity: __t.identity(),
+  color: __t.u8(),
+});
+export type PlayerNameColor = __Infer<typeof PlayerNameColor>;
+
 export const PlayerNameCooldown = __t.object("PlayerNameCooldown", {
   identity: __t.identity(),
   changedAt: __t.timestamp(),

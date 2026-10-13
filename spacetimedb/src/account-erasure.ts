@@ -161,6 +161,7 @@ export const ERASURE_TARGETS: readonly ErasureTarget[] = [
   { table: "playerPrestigePerk", columns: ["identity"], pk: "identity", mode: "key" },
   { table: "playerPrestigeExpansionPerk", columns: ["identity"], pk: "identity", mode: "key" },
   { table: "playerBonusToggle", columns: ["identity"], pk: "identity", mode: "key" },
+  { table: "playerNameColor", columns: ["identity"], pk: "identity", mode: "key" },
   { table: "playerPrestigeChallenge", columns: ["identity"], pk: "identity", mode: "key" },
   { table: "prestigeChallengeBackup", columns: ["identity"], pk: "identity", mode: "key" },
   { table: "prestigeChallengeRun", columns: ["identity"], pk: "identity", mode: "key" },

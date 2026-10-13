@@ -248,7 +248,6 @@
   #playerHudProfileIcon:active { transform: none; }
   .profile-window-icon { width: 58px; min-width: 58px; height: 58px; cursor: default; }
   .profile-window-icon.is-editable { position: relative; border-color: #000; cursor: pointer; }
-  .profile-window-icon.is-editable::after { position: absolute; top: 2px; right: 2px; display: grid; place-items: center; width: 17px; height: 17px; border: 2px solid #080a08; border-radius: 50%; background: var(--green); color: #0f0f0f; content: "✎"; font: 900 11px/1 Arial, sans-serif; -webkit-text-stroke: 0; text-shadow: none; }
   #profileIconPicker { position: fixed; inset: 0; z-index: 13; display: grid; place-items: center; padding: 10px; background: transparent; }
   #profileIconPicker[hidden] { display: none; }
   .profile-icon-picker-modal { display: grid; grid-template-rows: minmax(0, 1fr) auto; width: var(--game-window-width); max-height: calc(100vh - 18px); padding: 12px; overflow: hidden; text-align: left; }
@@ -3168,23 +3167,6 @@
   .profile-character-stage .player-sprite-selector.previous { left: 5px; }
   .profile-character-stage .player-sprite-selector.next { right: 5px; }
   .player-sprite-selector:active { transform: none; box-shadow: inset 0 0 0 999px rgba(0,0,0,.12); }
-  .profile-skin-tone-edit { position: absolute; z-index: 2; top: 6px; right: 6px; display: grid; place-items: center; width: 22px; height: 22px; margin: 0; padding: 0; border: 2px solid #000; border-radius: 4px; background: #fff; color: #111; font: 900 13px/1 Arial, sans-serif; -webkit-text-stroke: 0; text-shadow: none; pointer-events: auto; }
-  .profile-skin-tone-edit[hidden], .profile-skin-tone[hidden] { display: none; }
-  .profile-skin-tone { position: absolute; z-index: 3; top: 32px; right: 6px; display: grid; grid-template-columns: repeat(5, 22px); gap: 4px; padding: 5px; border: 2px solid #000; border-radius: 5px; background: var(--window-surface-neutral); box-shadow: 0 3px 0 rgba(0,0,0,.45); pointer-events: auto; }
-  .profile-skin-tone-choice { width: 22px; height: 22px; margin: 0; padding: 0; border: 2px solid rgba(255,255,255,.45); border-radius: 3px; box-shadow: none; }
-  .profile-skin-tone-choice[aria-pressed="true"] { border-color: #000; box-shadow: 0 0 0 2px #fff; }
-  .profile-gender-setting { position: relative; display: flex; align-items: center; gap: 4px; width: max-content; min-height: 30px; margin: 5px 0 2px auto; padding: 2px 3px 2px 7px; border: 1px solid rgba(255,255,255,.14); border-radius: 6px; background: rgba(0,0,0,.22); }
-  .profile-gender-setting[hidden] { display: none; }
-  .profile-gender-label { color: var(--muted); font-size: 8px; font-weight: 900; letter-spacing: .07em; }
-  .profile-gender-value { display: inline-flex; align-items: center; gap: 2px; min-width: 17px; color: #fff; font-size: 8px; }
-  .profile-gender-value .player-gender-icon { width: 15px; height: 17px; }
-  .profile-gender-edit { display: grid; place-items: center; width: 25px; min-width: 25px; height: 25px; margin: 0; padding: 0; border: 1px solid rgba(255,255,255,.28); border-radius: 4px; background: transparent; color: var(--green); font: 900 13px/1 Arial, sans-serif; -webkit-text-stroke: 0; text-shadow: none; }
-  .profile-gender-choices { position: absolute; z-index: 5; top: calc(100% + 3px); right: 0; display: flex; gap: 4px; padding: 4px; border: 2px solid #000; border-radius: 6px; background: var(--window-surface-neutral); box-shadow: 0 3px 0 rgba(0,0,0,.45); }
-  .profile-gender-choices[hidden] { display: none; }
-  .profile-gender-choice { display: grid; place-items: center; width: 36px; min-width: 36px; height: 36px; margin: 0; padding: 3px; border: 2px solid rgba(255,255,255,.3); border-radius: 6px; background: rgba(255,255,255,.08); }
-  .profile-gender-choice img { width: 23px; height: 27px; object-fit: contain; pointer-events: none; }
-  .profile-gender-choice[aria-pressed="true"] { border-color: var(--green); background: rgba(78,205,82,.2); box-shadow: 0 0 0 1px #000, 0 0 8px rgba(78,205,82,.3); }
-  .profile-gender-choice:disabled { opacity: .58; }
   .profile-tabs { display: flex; gap: 7px; margin: 8px 0 6px; border-bottom: 2px solid rgba(255,255,255,.13); }
   .profile-tab { display: grid; place-items: center; height: 44px; min-height: 44px; margin: 0 0 -2px; padding: 8px 12px; border: 0; border-bottom: 3px solid transparent; border-radius: 5px 5px 0 0; background: transparent; color: var(--muted); font-size: 10px; }
   .profile-tab.is-active { border-bottom-color: var(--green); color: #fff; }
@@ -3278,14 +3260,39 @@
   .profile-stat-speed dt { color: #bf9cff; }
   .profile-stat-stat-gain dt, .profile-stat-critical dt { color: #f3d36b; }
   .profile-stat-double-strike dt, .profile-stat-split-shot dt, .profile-stat-riposte dt { color: #f0c674; }
-  #profileNameEditor { position: fixed; inset: 0; z-index: 14; display: grid; place-items: center; padding: 13px; background: transparent; }
+  /* Edit Profile (profile-editor.ts): over the profile window, under the picture picker it opens. */
+  #profileNameEditor { position: fixed; inset: 0; z-index: 12; display: grid; place-items: center; padding: max(5px, env(safe-area-inset-top)) max(5px, env(safe-area-inset-right)) max(5px, env(safe-area-inset-bottom)) max(5px, env(safe-area-inset-left)); background: rgba(0,0,0,.45); }
   #profileNameEditor[hidden] { display: none; }
-  .profile-name-editor-modal { width: min(340px, calc(100vw - 26px)); padding: 10px; text-align: left; }
-  .profile-name-editor-modal label { display: block; margin-bottom: 6px; color: var(--muted); font-size: 9px; letter-spacing: .08em; }
-  .profile-name-editor-note { margin: 8px 0 0; color: var(--muted); font-size: 11px; line-height: 1.4; }
-  .profile-name-editor-controls { display: flex; gap: 5px; }
-  #profileNameInput { flex: 1; width: 0; }
-  #savePlayerNameBtn { min-width: 0; margin: 0; padding: 4px 8px; border-width: 1px; border-radius: 5px; font-size: 11px; line-height: 1; text-transform: none; }
+  .modal.profile-editor-modal { --window-back-bottom-gap: 9px; display: flex; flex-direction: column; width: var(--game-window-width); height: min(600px, 100%); max-height: 100%; padding: 12px 10px 0; overflow: hidden; border-color: #080808; background: var(--window-surface); text-align: left; transform: none; }
+  .profile-editor-title { flex: 0 0 auto; margin: 0 0 10px; font-size: 18px; text-align: center; }
+  .profile-editor-scroll { flex: 1 1 auto; display: grid; align-content: start; gap: 8px; min-height: 0; padding: 0 1px 8px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
+  .profile-editor-scroll::-webkit-scrollbar { display: none; }
+  .profile-editor-hero, .profile-editor-section { border: 1px solid rgba(255,255,255,.12); border-radius: 8px; background: rgba(0,0,0,.26); }
+  .profile-editor-hero { display: flex; align-items: center; gap: 12px; padding: 10px; }
+  .profile-editor-picture { position: relative; width: 66px; min-width: 66px; height: 66px; cursor: pointer; }
+  .profile-editor-hero-copy { display: grid; justify-items: start; gap: 5px; min-width: 0; }
+  .profile-editor-caption { color: var(--muted); font-size: 11px; font-weight: 900; letter-spacing: .06em; }
+  .profile-editor-preview { display: flex; align-items: center; gap: 4px; max-width: 100%; overflow: hidden; font-family: var(--player-name-font); font-size: 15px; font-weight: 900; line-height: 1.25; white-space: nowrap; }
+  .profile-editor-picture-button { min-height: 32px; margin: 0; padding: 5px 10px; border-width: 2px; border-radius: 6px; font-size: 12px; line-height: 1; text-transform: none; }
+  .profile-editor-section { display: grid; gap: 8px; padding: 10px; }
+  .profile-editor-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin: 0; color: var(--text); font-size: 13px; font-weight: 900; letter-spacing: .03em; }
+  .profile-editor-value { color: var(--muted); font-size: 12px; }
+  .profile-name-editor-note { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.4; }
+  .profile-name-editor-controls { display: flex; gap: 6px; }
+  #profileNameInput { flex: 1; width: 0; min-height: 40px; font-size: 16px; }
+  #savePlayerNameBtn { min-width: 0; margin: 0; padding: 6px 12px; border-width: 2px; border-radius: 6px; font-size: 12px; line-height: 1; text-transform: none; white-space: nowrap; }
+  .profile-name-color-choices { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 7px; }
+  .profile-name-color-choice { width: 100%; min-width: 0; height: auto; aspect-ratio: 1; margin: 0; padding: 0; border: 2px solid #000; border-radius: 50%; background: var(--name-color); box-shadow: none; }
+  .profile-name-color-choice.is-auto { border-radius: 9px; color: #111; font: 900 11px/1 var(--font-rounded, Arial), sans-serif; -webkit-text-stroke: 0; text-shadow: none; }
+  .profile-name-color-choice[aria-pressed="true"] { box-shadow: 0 0 0 2px #fff; }
+  .profile-gender-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+  .profile-gender-choice { display: flex; align-items: center; justify-content: center; gap: 7px; min-width: 0; min-height: 44px; margin: 0; padding: 6px 10px; border: 2px solid rgba(255,255,255,.22); border-radius: 7px; background: rgba(255,255,255,.06); color: var(--text); font-size: 13px; text-transform: none; }
+  .profile-gender-choice img { width: 21px; height: 25px; object-fit: contain; pointer-events: none; }
+  .profile-gender-choice[aria-pressed="true"] { border-color: var(--green); background: rgba(78,205,82,.16); }
+  .profile-skin-tone { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 6px; }
+  .profile-skin-tone-choice { width: 100%; min-width: 0; height: auto; aspect-ratio: 1; margin: 0; padding: 0; border: 2px solid #000; border-radius: 6px; box-shadow: none; }
+  .profile-skin-tone-choice[aria-pressed="true"] { box-shadow: 0 0 0 2px #fff; }
+  .profile-name-color-choice:disabled, .profile-gender-choice:disabled, .profile-skin-tone-choice:disabled { opacity: .6; }
   .modal.leaderboard-modal {
     --leaderboard-content-width: min(var(--window-content-max-width), 100%);
     display: grid;
@@ -4020,13 +4027,10 @@
   .tech-tree-action,
   .player-profile-presence,
   .player-profile-challenge,
-  .profile-gender-label,
-  .profile-gender-value,
   .profile-tab,
   .profile-grid dt,
   .profile-stat-grid dt,
   .profile-stat-grid dd,
-  .profile-name-editor-modal label,
   .leaderboard-podium-name,
   .leaderboard-column-headings,
   .leaderboard-rank,

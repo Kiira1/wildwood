@@ -17,6 +17,8 @@ export type BaseSubscriptionHandlers = {
   removeMotionIdentity: RowHandler;
   nameTag: RowHandler;
   removeNameTag: RowHandler;
+  nameColor: RowHandler;
+  removeNameColor: RowHandler;
   profile: RowHandler;
   removeProfile: RowHandler;
   gemWallet: RowHandler;
@@ -106,6 +108,8 @@ type BaseSubscriptionHandlerSources = {
   profile: {
     upsertNameTag: RowHandler;
     removeNameTag: RowHandler;
+    upsertNameColor: RowHandler;
+    removeNameColor: RowHandler;
     upsertProfile: BaseSubscriptionHandlers["profile"];
     removeProfile: BaseSubscriptionHandlers["removeProfile"];
     upsertAccountStatus: BaseSubscriptionHandlers["accountStatus"];
@@ -185,6 +189,8 @@ export function createBaseSubscriptionHandlers(sources: BaseSubscriptionHandlerS
     removeMotionIdentity: presence.removeMotionIdentity,
     nameTag: profile.upsertNameTag,
     removeNameTag: profile.removeNameTag,
+    nameColor: profile.upsertNameColor,
+    removeNameColor: profile.removeNameColor,
     profile: profile.upsertProfile,
     removeProfile: profile.removeProfile,
     gemWallet: progression.upsertGemWallet,
@@ -303,6 +309,9 @@ export function startBaseSubscription(dependencies: BaseSubscriptionDependencies
   connection.db.playerNameTag.onInsert((_ctx, row) => { if (shouldHandle()) handlers.nameTag(row); });
   connection.db.playerNameTag.onUpdate((_ctx, _old, row) => { if (shouldHandle()) handlers.nameTag(row); });
   connection.db.playerNameTag.onDelete((_ctx, row) => { if (shouldHandle()) handlers.removeNameTag(row); });
+  connection.db.playerNameColor.onInsert((_ctx, row) => { if (shouldHandle()) handlers.nameColor(row); });
+  connection.db.playerNameColor.onUpdate((_ctx, _old, row) => { if (shouldHandle()) handlers.nameColor(row); });
+  connection.db.playerNameColor.onDelete((_ctx, row) => { if (shouldHandle()) handlers.removeNameColor(row); });
   connection.db.playerProfile.onInsert((_ctx, row) => { if (shouldHandle()) handlers.profile(row); });
   connection.db.playerProfile.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.profile(row); });
   connection.db.playerProfile.onDelete((_ctx, row) => { if (shouldHandle()) handlers.removeProfile(row); });
@@ -467,6 +476,8 @@ export function startBaseSubscription(dependencies: BaseSubscriptionDependencies
       tables.playerAccountStatus.where((status) => status.identity.eq(dependencies.identity)),
     ] : [
       tables.playerNameTag,
+      // Whole table, as the tags: every name in chat needs its sender's color. One small row per player who picked one.
+      tables.playerNameColor,
       tables.patreonTickerSupporters,
       tables.player.where((player) => player.identity.eq(dependencies.identity)),
       tables.playerMotionIdentity.where((presence) => presence.identity.eq(dependencies.identity)),
@@ -532,6 +543,7 @@ export function startBaseSubscription(dependencies: BaseSubscriptionDependencies
     hydrate: () => {
       dependencies.batch(() => {
         for (const row of connection.db.playerNameTag.iter()) handlers.nameTag(row);
+        for (const row of connection.db.playerNameColor.iter()) handlers.nameColor(row);
         for (const row of connection.db.playerProfile.iter()) handlers.profile(row);
         for (const row of connection.db.myGemWallet.iter()) handlers.gemWallet(row);
         for (const row of connection.db.myDailyGemBonus.iter()) handlers.dailyGemBonus(row);

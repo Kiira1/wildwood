@@ -90,6 +90,7 @@ type CoopClient = {
   profileIcon?: (identity: string) => number;
   prepareChatPortraits?: (identities: readonly string[]) => Promise<void>;
   playerGender?: (identity: string) => PlayerGender;
+  nameColor?: (identity: string) => number;
   chatRevision?: () => number;
   chatHistoryRevision?: () => number;
   isPlayerBlocked?: (identity: string) => boolean;
@@ -435,6 +436,7 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
     const displayedGender = cachedGender !== PLAYER_GENDER_UNSET ? cachedGender : message.senderGender;
     const guest = !!coop?.isGuest?.(message.sender);
     const iconIndex = normalizeProfileIcon(coop?.profileIcon?.(message.sender) ?? 0);
+    const nameColor = coop?.nameColor?.(message.sender) ?? 0;
     const reactionChannel: "public" | "social" = channel === "public" ? "public" : "social";
     const reactionOverride = reactionOverrides.get(`${reactionChannel}:${message.id}`);
     const reactionCountsJson = reactionOverride?.source === message.reactionCountsJson ? reactionOverride?.value : message.reactionCountsJson;
@@ -442,10 +444,10 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
     const signature = JSON.stringify([
       message.sender, message.senderName, message.message, String(message.replayId), message.guildReplayKey,
       message.powerLevel, displayedGender, message.moderated, String(message.replyToMessageId),
-      message.replyToSenderName, message.replyToMessage, message.sentAtMs, guest, iconIndex,
+      message.replyToSenderName, message.replyToMessage, message.sentAtMs, guest, iconIndex, nameColor,
       playerNamePrefix(message.sender), large ? reactionCountsJson : "", large && chatTimestampsEnabled(),
     ]);
-    return { displayedGender, guest, iconIndex, reactionChannel, reactionCountsJson, rowKey, signature };
+    return { displayedGender, guest, iconIndex, nameColor, reactionChannel, reactionCountsJson, rowKey, signature };
   }
 
   function refresh() {
@@ -590,7 +592,7 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
     // elements: recreating them makes gender/power icons flash while repainting.
     const nextRows = new Map<string, { signature: string; element: HTMLDivElement }>();
     for (const message of messages) {
-      const { displayedGender, guest, iconIndex, reactionChannel, reactionCountsJson, rowKey, signature } = presentMessage(coop, identity, message);
+      const { displayedGender, guest, iconIndex, nameColor, reactionChannel, reactionCountsJson, rowKey, signature } = presentMessage(coop, identity, message);
       const previous = renderedRows.get(rowKey);
       if (previous?.signature === signature) { nextRows.set(rowKey, previous); continue; }
       const line = document.createElement("div");
@@ -623,7 +625,7 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
       const displayedPower = message.powerLevel;
       const name = document.createElement("span");
       name.className = "chat-name";
-      appendPlayerIdentity(name, { identity: displayIdentity, name: displayName, power: displayedPower, gender: displayedGender, guest }, { chat: true });
+      appendPlayerIdentity(name, { identity: displayIdentity, name: displayName, power: displayedPower, gender: displayedGender, guest, nameColor }, { chat: true });
       const openPlayer = (event: Event) => {
         event.stopPropagation();
         if (!large) {

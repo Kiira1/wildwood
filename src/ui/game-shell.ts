@@ -104,7 +104,7 @@ const afterUpdateGateShell = String.raw`
           <div class="player-profile-name-row">
             <span id="playerProfileGuestLabel" class="player-profile-guest" hidden>(guest)</span>
             <h2 id="playerProfileName">PLAYER</h2>
-            <button id="editPlayerNameBtn" class="profile-name-edit" type="button" aria-label="Change player name" hidden>✎</button>
+            <button id="editPlayerNameBtn" class="profile-name-edit" type="button" aria-label="Edit profile" title="Edit profile" hidden>✎</button>
           </div>
           <div id="playerProfilePresence" class="player-profile-presence">CHECKING STATUS</div>
           <div id="playerProfileChallenge" class="player-profile-challenge" hidden></div>
@@ -112,19 +112,6 @@ const afterUpdateGateShell = String.raw`
       </div>
       <button id="settingsBtn" class="profile-settings-button" type="button" aria-label="Open settings" aria-expanded="false" aria-controls="settingsPanel" title="Settings" hidden><img src="assets/wildstat/icons/Icon_Settings.webp" alt="" aria-hidden="true"></button>
     </header>
-    <div id="profileGenderSetting" class="profile-gender-setting" hidden>
-      <span class="profile-gender-label">GENDER</span>
-      <span id="profileGenderValue" class="profile-gender-value" aria-live="polite">choose</span>
-      <button id="profileGenderEdit" class="profile-gender-edit" type="button" aria-label="Change gender" aria-expanded="false" aria-controls="profileGenderChoices">✎</button>
-      <div id="profileGenderChoices" class="profile-gender-choices" role="group" aria-label="Gender" hidden>
-        <button class="profile-gender-choice" type="button" data-gender="1" aria-label="Male" aria-pressed="false" title="Male">
-          <img data-game-src="assets/wildstat/gender/male-v2.webp" alt="" aria-hidden="true" draggable="false" />
-        </button>
-        <button class="profile-gender-choice" type="button" data-gender="2" aria-label="Female" aria-pressed="false" title="Female">
-          <img data-game-src="assets/wildstat/gender/female-v2.webp" alt="" aria-hidden="true" draggable="false" />
-        </button>
-      </div>
-    </div>
     <div id="profileCharacterPreview" class="profile-character-preview character-loadout-preview" aria-label="Player character and equipped items">
       <canvas id="profileCharacterCanvas" class="profile-character-canvas character-preview-canvas" width="240" height="136" aria-hidden="true"></canvas>
       <div id="playerProfilePower" aria-label="Power 0"><span class="power-value">0</span><img class="power-icon" src="assets/wildstat/icons/Icon_Battle_Candy_v2.webp" alt="" aria-hidden="true"></div>
@@ -133,8 +120,6 @@ const afterUpdateGateShell = String.raw`
       <div class="profile-character-stage">
         <button id="previousPlayerSpriteBtn" class="player-sprite-selector previous" type="button" aria-label="Previous character" hidden><span aria-hidden="true"></span></button>
         <button id="nextPlayerSpriteBtn" class="player-sprite-selector next" type="button" aria-label="Next character" hidden><span aria-hidden="true"></span></button>
-        <button id="profileSkinToneEdit" class="profile-skin-tone-edit" type="button" aria-label="Change skin tone" title="Change skin tone" hidden>✎</button>
-        <div id="profileSkinToneControl" class="profile-skin-tone" role="group" aria-label="Skin tone" hidden></div>
       </div>
       <button id="profileEquippedRightHandSlot" class="equipment-slot profile-equipment-slot slot-right-hand" type="button" data-slot="right-hand"><span>WEAPON</span></button>
       <button id="profileEquippedFeetSlot" class="equipment-slot profile-equipment-slot slot-feet" type="button" data-slot="feet"><span>BOOTS</span></button>
@@ -190,13 +175,48 @@ const afterUpdateGateShell = String.raw`
 </div>
 
 <div id="profileNameEditor" hidden>
-  <form id="profileNameEditorForm" class="modal profile-name-editor-modal" aria-label="Change player name">
-    <label for="profileNameInput">PLAYER NAME</label>
-    <div class="profile-name-editor-controls">
-      <input id="profileNameInput" maxlength="20" autocomplete="off" spellcheck="false" />
-      <button id="savePlayerNameBtn" type="submit">save</button>
+  <div class="modal profile-editor-modal" role="dialog" aria-modal="true" aria-labelledby="profileEditorTitle">
+    <h2 id="profileEditorTitle" class="window-title profile-editor-title">Edit Profile</h2>
+    <div class="profile-editor-scroll">
+      <section class="profile-editor-hero" aria-label="How you look in chat">
+        <button id="profileEditorPicture" class="profile-icon profile-editor-picture" type="button" aria-label="Change profile picture"></button>
+        <div class="profile-editor-hero-copy">
+          <span class="profile-editor-caption">In Chat</span>
+          <span id="profileEditorPreview" class="profile-editor-preview"></span>
+          <button id="profileEditorPictureBtn" class="profile-editor-picture-button" type="button">Change Picture</button>
+        </div>
+      </section>
+      <form id="profileNameEditorForm" class="profile-editor-section" aria-label="Change player name">
+        <label class="profile-editor-heading" for="profileNameInput">Name</label>
+        <div class="profile-name-editor-controls">
+          <input id="profileNameInput" maxlength="20" autocomplete="off" spellcheck="false" />
+          <button id="savePlayerNameBtn" type="submit">Save</button>
+        </div>
+      </form>
+      <section class="profile-editor-section" aria-labelledby="profileNameColorHeading">
+        <h3 id="profileNameColorHeading" class="profile-editor-heading">Name Color <span id="profileNameColorValue" class="profile-editor-value"></span></h3>
+        <div id="profileNameColorChoices" class="profile-name-color-choices" role="radiogroup" aria-labelledby="profileNameColorHeading"></div>
+      </section>
+      <section class="profile-editor-section" aria-labelledby="profileGenderHeading">
+        <h3 id="profileGenderHeading" class="profile-editor-heading">Gender</h3>
+        <div id="profileGenderChoices" class="profile-gender-choices" role="group" aria-labelledby="profileGenderHeading">
+          <button class="profile-gender-choice" type="button" data-gender="1" aria-pressed="false">
+            <img data-game-src="assets/wildstat/gender/male-v2.webp" alt="" aria-hidden="true" draggable="false" /><span>Male</span>
+          </button>
+          <button class="profile-gender-choice" type="button" data-gender="2" aria-pressed="false">
+            <img data-game-src="assets/wildstat/gender/female-v2.webp" alt="" aria-hidden="true" draggable="false" /><span>Female</span>
+          </button>
+        </div>
+      </section>
+      <section class="profile-editor-section" aria-labelledby="profileSkinToneHeading">
+        <h3 id="profileSkinToneHeading" class="profile-editor-heading">Skin Tone</h3>
+        <div id="profileSkinToneControl" class="profile-skin-tone" role="group" aria-labelledby="profileSkinToneHeading"></div>
+      </section>
     </div>
-  </form>
+    <footer class="window-back-footer">
+      <button id="closeProfileEditorBtn" class="window-back-button" type="button">Back</button>
+    </footer>
+  </div>
 </div>
 
 <div id="profileIconPicker" hidden>

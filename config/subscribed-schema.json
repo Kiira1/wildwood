@@ -863,6 +863,10 @@
       "rightHandItem:string",
       "leftHandItem:string"
     ],
+    "player_name_color": [
+      "identity:identity",
+      "color:u8"
+    ],
     "player_name_tag": [
       "identity:identity",
       "guildTag:string",

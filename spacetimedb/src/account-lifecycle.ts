@@ -46,6 +46,7 @@ import { deleteSnapshotRow, insertSnapshotRow, updateSnapshotRow } from "./snaps
 import { mergeSocialAccount, removeSocialAccount } from "./social-service";
 import { readPlayerProgress, deleteReplayWide } from "./wide-stats";
 import { eraseIdentityRows } from "./account-erasure";
+import { carryNameColor } from "./profile-look";
 import { LEGACY_BOSS_KEYS } from "./boss-tables";
 
 export const ACCOUNT_LINK_LIFETIME_MICROS = 600_000_000n;
@@ -146,7 +147,7 @@ const PLAYER_STATE_TABLES: ReadonlySet<string> = new Set([
   "duelWireAccess", "endlessTravelAccess", "enemyDefeatReview",
   "forestRewardPrototype", "gemKillProgress", "gemTransaction", "guildMemberQuestWeek", "guildRejoin",
   "homeReturnLocation", "leaderboardEntryLegacy", "leaderboardPosition", "leaderboardPrestigePosition", "loginMove",
-  "offlineProgress", "patreonPreview", "playerAggroChallenge", "playerAggroChallengeParked", "playerBonusToggle",
+  "offlineProgress", "patreonPreview", "playerAggroChallenge", "playerAggroChallengeParked", "playerBonusToggle", "playerNameColor",
   "playerDailyQuest", "playerEndgameRebaseBackup", "playerEndlessRebaseBackup", "playerFreeRespec",
   "playerOfflinePreference", "playerPowerRebaseBackup", "playerPrestige", "playerPrestigeChallenge",
   "playerPrestigeChallengeParked", "playerPrestigeExpansionPerk", "playerPrestigePerk", "playerQuestWeekTotal",
@@ -418,6 +419,7 @@ export function createAccountLifecycle(deps: AccountLifecycleDeps) {
     if (transferGuestName && guestProfile) {
       syncDisplayNamePresentation(ctx, ctx.sender, guestProfile.displayName);
     }
+    if (guestProfile && !preserveAccountName) carryNameColor(ctx, link.guest, ctx.sender);
 
     // A freshly-created guest's generated name must never overwrite an existing
     // authenticated name or carry a name-change lock onto that account.

@@ -33,7 +33,8 @@ it("shows the free price and explicitly submits the displayed paid price later",
   f.submit(); f.submit();
   expect(f.api.setDisplayName).toHaveBeenCalledExactlyOnceWith("New Name", 50);
   await Promise.resolve();
-  expect(f.elements.overlay.hidden).toBe(true);
+  expect(f.elements.overlay.hidden).toBe(false);
+  expect(f.api.showMessage).toHaveBeenCalledWith("NAME UPDATED", "#c9f5c2");
 });
 
 it("blocks saving during cooldown and enables at its boundary using server time", async () => {
