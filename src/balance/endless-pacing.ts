@@ -1,7 +1,7 @@
 import { BOSS_REGEN_FRACTION_PER_SECOND } from "../../shared/boss-regeneration";
 import { generatedBossStats, generatedEnemyStats } from "../../shared/procedural-maps";
 import { BOSS_TARGET_SECONDS } from "../../shared/progression";
-import { AEGIS_PRIME_MAX_HP, MIN_ATTACK_INTERVAL } from "../../shared/rules";
+import { MIN_ATTACK_INTERVAL, BOSS_RULES } from "../../shared/rules";
 
 /** Transparent progression diagnostic, not a prediction of a player's playtime.
  * Carry the prior 90-second boss build into the next map; gates pay no stats.
@@ -9,7 +9,7 @@ import { AEGIS_PRIME_MAX_HP, MIN_ATTACK_INTERVAL } from "../../shared/rules";
  * cannot be hidden by a simultaneous change in the assumed player build. */
 export function endlessPacing(number: number) {
   const boss = generatedBossStats({ number });
-  const previous = number === 1 ? { hp: AEGIS_PRIME_MAX_HP }
+  const previous = number === 1 ? { hp: BOSS_RULES.AEGIS_PRIME_MAX_HP }
     : generatedBossStats({ number: number - 1 });
   const hits = Math.floor(BOSS_TARGET_SECONDS / MIN_ATTACK_INTERVAL) + 1;
   const requiredDamage = (hp: number) => hp * (1 + (hits - 1) * BOSS_REGEN_FRACTION_PER_SECOND * MIN_ATTACK_INTERVAL) / hits;

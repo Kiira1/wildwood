@@ -1,7 +1,7 @@
 import { campaignMapTargetSeconds } from "../../shared/campaign-pacing";
 import {BOSS_TARGET_SECONDS, desertBossHealthAt} from "../../shared/progression";
 import {describe, expect, it} from "vitest";
-import {BALANCE_LATE_BOSS_TARGET_MAX_SECONDS, BALANCE_TARGET_DESERT_DURATION_SECONDS, BALANCE_TARGET_MAP_DURATION_MULTIPLIER, BALANCE_TARGET_MAP_POWER_MULTIPLIER, BALANCE_TARGET_POWER_ARC_BLEND, GLOOMROOT_MAX_HP, MAP_IDS} from "../../shared/rules";
+import { BALANCE_LATE_BOSS_TARGET_MAX_SECONDS, BALANCE_TARGET_DESERT_DURATION_SECONDS, BALANCE_TARGET_MAP_DURATION_MULTIPLIER, BALANCE_TARGET_MAP_POWER_MULTIPLIER, BALANCE_TARGET_POWER_ARC_BLEND, MAP_IDS, BOSS_RULES } from "../../shared/rules";
 import {ADVANCED_LAVA_WASTES_MAP_ID, BEGINNER_DESERT_MAP_ID, CLOUDSPIRE_MAP_ID, INFERNAL_DEPTHS_MAP_ID, INTERMEDIATE_SNOWLANDS_MAP_ID, MOONFEN_MAP_ID, CRYSTAL_HOLLOWS_MAP_ID, SAMURAI_GARDEN_MAP_ID, TUTORIAL_FOREST_MAP_ID, WATER_REACH_MAP_ID} from "../game/world";
 import {DEATHS_PER_HOUR_WARNING, bossReadinessTargetSeconds, defaultBalanceSimulationConfig, runBalanceSimulation, runBalanceSimulationWithStrategyComparisons, targetCurveProgress, targetPowerAtMapProgress} from "./simulator";
 
@@ -39,7 +39,7 @@ describe("balance simulator", () => {
     expect(result.maps.find((map) => map.mapId === CLOUDSPIRE_MAP_ID)?.hasBoss).toBe(true);
     expect(result.maps.find((map) => map.mapId === MOONFEN_MAP_ID)?.hasBoss).toBe(true);
     expect(result.maps.find((map) => map.mapId === CRYSTAL_HOLLOWS_MAP_ID)?.hasBoss).toBe(true);
-    expect(GLOOMROOT_MAX_HP).toBe(desertBossHealthAt(3));
+    expect(BOSS_RULES.GLOOMROOT_MAX_HP).toBe(desertBossHealthAt(3));
   });
 
   it("is deterministic for a fixed seed and configuration", () => {

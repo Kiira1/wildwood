@@ -4,7 +4,7 @@ import {createGameBootstrap} from "../game-bootstrap";
 import {BOSS_AREA_KNOCKBACK_DURATION, SPIDER_WEB_RANGE, createBossController} from "./boss-controller";
 import {BOSS_DAMAGE_PROFILES} from "../../boss-damage";
 import {BOSS_CONE_RANGE, FROSTCLAW_ROAR_RANGE, GLOOMROOT_SWEEP_RANGE, KOI_SHOGUN_SLASH_RANGE, MAGMALISK_BITE_RANGE, MIREMAW_TONGUE_RANGE, PRISMSHELL_SHATTER_RANGE, TEMPEST_KIRIN_CHARGE_RANGE, TIDEWYRM_SURGE_RANGE} from "../../constants";
-import {DRAGON_MAX_HP, FROSTCLAW_MAX_HP, FROSTCLAW_REWARD_ARMOR, FROSTCLAW_REWARD_DAMAGE, FROSTCLAW_REWARD_HEALTH, GLOOMROOT_MAX_HP, GLOOMROOT_REWARD_ARMOR, GLOOMROOT_REWARD_DAMAGE, GLOOMROOT_REWARD_HEALTH, GLOOMROOT_REWARD_REGEN, KOI_SHOGUN_MAX_HP, KOI_SHOGUN_REWARD_ARMOR, KOI_SHOGUN_REWARD_DAMAGE, KOI_SHOGUN_REWARD_HEALTH, KOI_SHOGUN_REWARD_REGEN, MAGMALISK_MAX_HP, MAGMALISK_REWARD_ARMOR, MAGMALISK_REWARD_DAMAGE, MAGMALISK_REWARD_HEALTH, MAGMALISK_REWARD_REGEN, MIREMAW_MAX_HP, PRISMSHELL_MAX_HP, MIREMAW_REWARD_ARMOR, PRISMSHELL_REWARD_ARMOR, MIREMAW_REWARD_DAMAGE, PRISMSHELL_REWARD_DAMAGE, MIREMAW_REWARD_HEALTH, PRISMSHELL_REWARD_HEALTH, MIREMAW_REWARD_REGEN, PRISMSHELL_REWARD_REGEN, TEMPEST_KIRIN_MAX_HP, TEMPEST_KIRIN_REWARD_ARMOR, TEMPEST_KIRIN_REWARD_DAMAGE, TEMPEST_KIRIN_REWARD_HEALTH, TEMPEST_KIRIN_REWARD_REGEN, TIDEWYRM_MAX_HP, TIDEWYRM_REWARD_ARMOR, TIDEWYRM_REWARD_DAMAGE, TIDEWYRM_REWARD_HEALTH, TIDEWYRM_REWARD_REGEN} from "../../../../shared/rules";
+import { BOSS_RULES } from "../../../../shared/rules";
 import {bossAbilityTimelineAt} from "../../../../shared/boss-simulation";
 import {ION_SWEEP} from "../../../../shared/ion-attacks";
 import {ADVANCED_LAVA_WASTES_MAP_ID, BEGINNER_DESERT_MAP_ID, CLOUDSPIRE_MAP_ID, CRYSTAL_HOLLOWS_MAP_ID, INFERNAL_DEPTHS_MAP_ID, INTERMEDIATE_SNOWLANDS_MAP_ID, ION_CITADEL_MAP_ID, MOONFEN_MAP_ID, NEON_BASTION_MAP_ID, SAMURAI_GARDEN_MAP_ID, WATER_REACH_MAP_ID} from "../../world";
@@ -15,9 +15,9 @@ afterEach(() => vi.unstubAllGlobals());
 describe("Dragon boss", () => {
   it("starts at the shared tutorial health balance", () => {
     const { bosses: { dragon: boss } } = createGameBootstrap();
-    expect(DRAGON_MAX_HP).toBe(BOSS_BASE_MAX_HP * TUTORIAL_BOSS_HEALTH_SCALE);
-    expect(boss.maxHp).toBe(DRAGON_MAX_HP);
-    expect(boss.hp).toBe(DRAGON_MAX_HP);
+    expect(BOSS_RULES.DRAGON_MAX_HP).toBe(BOSS_BASE_MAX_HP * TUTORIAL_BOSS_HEALTH_SCALE);
+    expect(boss.maxHp).toBe(BOSS_RULES.DRAGON_MAX_HP);
+    expect(boss.hp).toBe(BOSS_RULES.DRAGON_MAX_HP);
   });
 });
 
@@ -179,7 +179,7 @@ describe("Boss body and map enemies", () => {
 
 describe("Boss defeat presentation", () => {
   it("leaves player stats unchanged when a local boss dies or its result is replayed", () => {
-    let local = { encounter: 71n, hp: FROSTCLAW_MAX_HP, maxHp: FROSTCLAW_MAX_HP, alive: true };
+    let local = { encounter: 71n, hp: BOSS_RULES.FROSTCLAW_MAX_HP, maxHp: BOSS_RULES.FROSTCLAW_MAX_HP, alive: true };
     const { controller, player } = createFrostclawHarness({
       sharedBoss: forKind("frostclaw", () => local),
       bossResult: forKind("frostclaw", () => ({ encounter: 71n, totalDamage: 100,
@@ -196,10 +196,10 @@ describe("Boss defeat presentation", () => {
 
 describe("Frostclaw boss", () => {
   it("follows the shared Snowlands boss health and reward budget", () => {
-    expect(FROSTCLAW_MAX_HP).toBe(desertBossHealthAt(1) * SNOWLANDS_TUNING.bossHealth);
-    expect(FROSTCLAW_REWARD_DAMAGE).toBe(bossRewardValue("damage", 1));
-    expect(FROSTCLAW_REWARD_HEALTH).toBe(bossRewardValue("health", 1));
-    expect(FROSTCLAW_REWARD_ARMOR).toBe(bossRewardValue("armor", 1));
+    expect(BOSS_RULES.FROSTCLAW_MAX_HP).toBe(desertBossHealthAt(1) * SNOWLANDS_TUNING.bossHealth);
+    expect(BOSS_RULES.FROSTCLAW_REWARD_DAMAGE).toBe(bossRewardValue("damage", 1));
+    expect(BOSS_RULES.FROSTCLAW_REWARD_HEALTH).toBe(bossRewardValue("health", 1));
+    expect(BOSS_RULES.FROSTCLAW_REWARD_ARMOR).toBe(bossRewardValue("armor", 1));
   });
 
   it("cycles roar, icefall, and rift as three distinct attacks", () => {
@@ -294,7 +294,7 @@ describe("Frostclaw boss", () => {
   });
 
   it("reveals the Lava Lake portal after a local Frostclaw contribution", () => {
-    let shared = { encounter: 7n, hp: FROSTCLAW_MAX_HP, maxHp: FROSTCLAW_MAX_HP, alive: true };
+    let shared = { encounter: 7n, hp: BOSS_RULES.FROSTCLAW_MAX_HP, maxHp: BOSS_RULES.FROSTCLAW_MAX_HP, alive: true };
     const startLavaPortalCutscene = vi.fn();
     const { controller } = createFrostclawHarness({
       sharedBoss: forKind("frostclaw", () => shared),
@@ -314,7 +314,7 @@ describe("Frostclaw boss", () => {
   });
 
   it("reveals the portal for an earlier Frostclaw winner after rollout", () => {
-    const shared = { encounter: 8n, hp: 0, maxHp: FROSTCLAW_MAX_HP, alive: false };
+    const shared = { encounter: 8n, hp: 0, maxHp: BOSS_RULES.FROSTCLAW_MAX_HP, alive: false };
     const startLavaPortalCutscene = vi.fn();
     const { controller } = createFrostclawHarness({
       sharedBoss: forKind("frostclaw", () => shared),
@@ -334,11 +334,11 @@ describe("Frostclaw boss", () => {
 
 describe("Magmalisk boss", () => {
   it("follows the shared Lava Lake boss health and four-stat reward budget", () => {
-    expect(MAGMALISK_MAX_HP).toBe(desertBossHealthAt(2));
-    expect(MAGMALISK_REWARD_DAMAGE).toBe(bossRewardValue("damage", 2));
-    expect(MAGMALISK_REWARD_HEALTH).toBe(bossRewardValue("health", 2));
-    expect(MAGMALISK_REWARD_ARMOR).toBe(bossRewardValue("armor", 2));
-    expect(MAGMALISK_REWARD_REGEN).toBe(bossRewardValue("regen", 2));
+    expect(BOSS_RULES.MAGMALISK_MAX_HP).toBe(desertBossHealthAt(2));
+    expect(BOSS_RULES.MAGMALISK_REWARD_DAMAGE).toBe(bossRewardValue("damage", 2));
+    expect(BOSS_RULES.MAGMALISK_REWARD_HEALTH).toBe(bossRewardValue("health", 2));
+    expect(BOSS_RULES.MAGMALISK_REWARD_ARMOR).toBe(bossRewardValue("armor", 2));
+    expect(BOSS_RULES.MAGMALISK_REWARD_REGEN).toBe(bossRewardValue("regen", 2));
   });
 
   it("cycles bite and eruption using the selected attack frames", () => {
@@ -361,7 +361,7 @@ describe("Magmalisk boss", () => {
   });
 
   it("reveals Infernal Depths after a local Magmalisk contribution", () => {
-    let shared = { encounter: 9n, hp: MAGMALISK_MAX_HP, maxHp: MAGMALISK_MAX_HP, alive: true };
+    let shared = { encounter: 9n, hp: BOSS_RULES.MAGMALISK_MAX_HP, maxHp: BOSS_RULES.MAGMALISK_MAX_HP, alive: true };
     const startInfernalPortalCutscene = vi.fn();
     const { controller } = createFrostclawHarness({
       currentMapId: () => ADVANCED_LAVA_WASTES_MAP_ID,
@@ -384,11 +384,11 @@ describe("Magmalisk boss", () => {
 
 describe("Gloomroot boss", () => {
   it("caps Night Forest with a four-stat Water Reach unlock reward", () => {
-    expect(GLOOMROOT_MAX_HP).toBe(desertBossHealthAt(3));
-    expect(GLOOMROOT_REWARD_DAMAGE).toBe(bossRewardValue("damage", 3));
-    expect(GLOOMROOT_REWARD_HEALTH).toBe(bossRewardValue("health", 3));
-    expect(GLOOMROOT_REWARD_ARMOR).toBe(bossRewardValue("armor", 3));
-    expect(GLOOMROOT_REWARD_REGEN).toBe(bossRewardValue("regen", 3));
+    expect(BOSS_RULES.GLOOMROOT_MAX_HP).toBe(desertBossHealthAt(3));
+    expect(BOSS_RULES.GLOOMROOT_REWARD_DAMAGE).toBe(bossRewardValue("damage", 3));
+    expect(BOSS_RULES.GLOOMROOT_REWARD_HEALTH).toBe(bossRewardValue("health", 3));
+    expect(BOSS_RULES.GLOOMROOT_REWARD_ARMOR).toBe(bossRewardValue("armor", 3));
+    expect(BOSS_RULES.GLOOMROOT_REWARD_REGEN).toBe(bossRewardValue("regen", 3));
   });
 
   it("cycles a readable root sweep into staggered Gloom Blooms", () => {
@@ -411,7 +411,7 @@ describe("Gloomroot boss", () => {
   });
 
   it("reveals Water Reach after a local Gloomroot contribution", () => {
-    let shared = { encounter: 10n, hp: GLOOMROOT_MAX_HP, maxHp: GLOOMROOT_MAX_HP, alive: true };
+    let shared = { encounter: 10n, hp: BOSS_RULES.GLOOMROOT_MAX_HP, maxHp: BOSS_RULES.GLOOMROOT_MAX_HP, alive: true };
     const startWaterPortalCutscene = vi.fn();
     const { controller } = createFrostclawHarness({
       currentMapId: () => INFERNAL_DEPTHS_MAP_ID,
@@ -434,11 +434,11 @@ describe("Gloomroot boss", () => {
 
 describe("Tidewyrm boss", () => {
   it("caps Water Reach with the scaled Samurai Garden unlock reward", () => {
-    expect(TIDEWYRM_MAX_HP).toBe(desertBossHealthAt(4));
-    expect(TIDEWYRM_REWARD_DAMAGE).toBe(bossRewardValue("damage", 4));
-    expect(TIDEWYRM_REWARD_HEALTH).toBe(bossRewardValue("health", 4));
-    expect(TIDEWYRM_REWARD_ARMOR).toBe(bossRewardValue("armor", 4));
-    expect(TIDEWYRM_REWARD_REGEN).toBe(bossRewardValue("regen", 4));
+    expect(BOSS_RULES.TIDEWYRM_MAX_HP).toBe(desertBossHealthAt(4));
+    expect(BOSS_RULES.TIDEWYRM_REWARD_DAMAGE).toBe(bossRewardValue("damage", 4));
+    expect(BOSS_RULES.TIDEWYRM_REWARD_HEALTH).toBe(bossRewardValue("health", 4));
+    expect(BOSS_RULES.TIDEWYRM_REWARD_ARMOR).toBe(bossRewardValue("armor", 4));
+    expect(BOSS_RULES.TIDEWYRM_REWARD_REGEN).toBe(bossRewardValue("regen", 4));
   });
 
   it("cycles a tidal surge into staggered whirlpools", () => {
@@ -461,7 +461,7 @@ describe("Tidewyrm boss", () => {
   });
 
   it("reveals Samurai Garden after a local Tidewyrm contribution", () => {
-    let shared = { encounter: 11n, hp: TIDEWYRM_MAX_HP, maxHp: TIDEWYRM_MAX_HP, alive: true };
+    let shared = { encounter: 11n, hp: BOSS_RULES.TIDEWYRM_MAX_HP, maxHp: BOSS_RULES.TIDEWYRM_MAX_HP, alive: true };
     const startSamuraiPortalCutscene = vi.fn();
     const { controller } = createFrostclawHarness({
       currentMapId: () => WATER_REACH_MAP_ID,
@@ -482,7 +482,7 @@ describe("Tidewyrm boss", () => {
   });
 
   it("does not add rewards again when hydrating an already-dead encounter", () => {
-    const shared = { encounter: 12n, hp: 0, maxHp: TIDEWYRM_MAX_HP, alive: false };
+    const shared = { encounter: 12n, hp: 0, maxHp: BOSS_RULES.TIDEWYRM_MAX_HP, alive: false };
     const startSamuraiPortalCutscene = vi.fn();
     const { controller, player } = createFrostclawHarness({
       currentMapId: () => WATER_REACH_MAP_ID,
@@ -507,11 +507,11 @@ describe("Tidewyrm boss", () => {
 
 describe("Koi Shogun boss", () => {
   it("caps Samurai Garden with a repeatable late-map reward", () => {
-    expect(KOI_SHOGUN_MAX_HP).toBe(desertBossHealthAt(5));
-    expect(KOI_SHOGUN_REWARD_DAMAGE).toBe(bossRewardValue("damage", 5));
-    expect(KOI_SHOGUN_REWARD_HEALTH).toBe(bossRewardValue("health", 5));
-    expect(KOI_SHOGUN_REWARD_ARMOR).toBe(bossRewardValue("armor", 5));
-    expect(KOI_SHOGUN_REWARD_REGEN).toBe(bossRewardValue("regen", 5));
+    expect(BOSS_RULES.KOI_SHOGUN_MAX_HP).toBe(desertBossHealthAt(5));
+    expect(BOSS_RULES.KOI_SHOGUN_REWARD_DAMAGE).toBe(bossRewardValue("damage", 5));
+    expect(BOSS_RULES.KOI_SHOGUN_REWARD_HEALTH).toBe(bossRewardValue("health", 5));
+    expect(BOSS_RULES.KOI_SHOGUN_REWARD_ARMOR).toBe(bossRewardValue("armor", 5));
+    expect(BOSS_RULES.KOI_SHOGUN_REWARD_REGEN).toBe(bossRewardValue("regen", 5));
   });
 
   it("cycles a water slash into staggered whirlpools", () => {
@@ -536,11 +536,11 @@ describe("Koi Shogun boss", () => {
 
 describe("Tempest Kirin boss", () => {
   it("caps Cloudspire with the next repeatable late-map reward", () => {
-    expect(TEMPEST_KIRIN_MAX_HP).toBe(desertBossHealthAt(6));
-    expect(TEMPEST_KIRIN_REWARD_DAMAGE).toBe(bossRewardValue("damage", 6));
-    expect(TEMPEST_KIRIN_REWARD_HEALTH).toBe(bossRewardValue("health", 6));
-    expect(TEMPEST_KIRIN_REWARD_ARMOR).toBe(bossRewardValue("armor", 6));
-    expect(TEMPEST_KIRIN_REWARD_REGEN).toBe(bossRewardValue("regen", 6));
+    expect(BOSS_RULES.TEMPEST_KIRIN_MAX_HP).toBe(desertBossHealthAt(6));
+    expect(BOSS_RULES.TEMPEST_KIRIN_REWARD_DAMAGE).toBe(bossRewardValue("damage", 6));
+    expect(BOSS_RULES.TEMPEST_KIRIN_REWARD_HEALTH).toBe(bossRewardValue("health", 6));
+    expect(BOSS_RULES.TEMPEST_KIRIN_REWARD_ARMOR).toBe(bossRewardValue("armor", 6));
+    expect(BOSS_RULES.TEMPEST_KIRIN_REWARD_REGEN).toBe(bossRewardValue("regen", 6));
   });
 
   it("cycles a charge wave into targeted thunder circles", () => {
@@ -582,11 +582,11 @@ describe("Miremaw boss", () => {
   });
 
   it("caps Moonfen with the next repeatable late-map reward", () => {
-    expect(MIREMAW_MAX_HP).toBe(desertBossHealthAt(7));
-    expect(MIREMAW_REWARD_DAMAGE).toBe(bossRewardValue("damage", 7));
-    expect(MIREMAW_REWARD_HEALTH).toBe(bossRewardValue("health", 7));
-    expect(MIREMAW_REWARD_ARMOR).toBe(bossRewardValue("armor", 7));
-    expect(MIREMAW_REWARD_REGEN).toBe(bossRewardValue("regen", 7));
+    expect(BOSS_RULES.MIREMAW_MAX_HP).toBe(desertBossHealthAt(7));
+    expect(BOSS_RULES.MIREMAW_REWARD_DAMAGE).toBe(bossRewardValue("damage", 7));
+    expect(BOSS_RULES.MIREMAW_REWARD_HEALTH).toBe(bossRewardValue("health", 7));
+    expect(BOSS_RULES.MIREMAW_REWARD_ARMOR).toBe(bossRewardValue("armor", 7));
+    expect(BOSS_RULES.MIREMAW_REWARD_REGEN).toBe(bossRewardValue("regen", 7));
   });
 
   it("cycles a tongue sweep into staggered bog bursts", () => {
@@ -611,11 +611,11 @@ describe("Miremaw boss", () => {
 
 describe("Prismshell boss", () => {
   it("continues the full progression step after Miremaw", () => {
-    expect(PRISMSHELL_MAX_HP).toBe(desertBossHealthAt(8));
-    expect(PRISMSHELL_REWARD_DAMAGE).toBe(bossRewardValue("damage", 8));
-    expect(PRISMSHELL_REWARD_HEALTH).toBe(bossRewardValue("health", 8));
-    expect(PRISMSHELL_REWARD_ARMOR).toBe(bossRewardValue("armor", 8));
-    expect(PRISMSHELL_REWARD_REGEN).toBe(bossRewardValue("regen", 8));
+    expect(BOSS_RULES.PRISMSHELL_MAX_HP).toBe(desertBossHealthAt(8));
+    expect(BOSS_RULES.PRISMSHELL_REWARD_DAMAGE).toBe(bossRewardValue("damage", 8));
+    expect(BOSS_RULES.PRISMSHELL_REWARD_HEALTH).toBe(bossRewardValue("health", 8));
+    expect(BOSS_RULES.PRISMSHELL_REWARD_ARMOR).toBe(bossRewardValue("armor", 8));
+    expect(BOSS_RULES.PRISMSHELL_REWARD_REGEN).toBe(bossRewardValue("regen", 8));
   });
 
   it("cycles its wider shatter sweep into eight staggered crystal bursts", () => {

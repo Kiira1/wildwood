@@ -2,7 +2,7 @@ import { LEGACY_ENEMY_REWARDS } from "./legacy-enemy-rewards";
 import { CAMPAIGN_MAPS } from "./campaign-registry";
 import { ENEMY_TYPES, type EnemyDefinition } from "./enemy-definitions";
 import * as camps from "./enemy-camps";
-import * as rules from "./rules";
+import { AUTHORED_BOSS_RULES } from "./rules";
 import designs from "./map-designs.json";
 import { BOSS_DAMAGE_REFERENCE } from "./boss-damage";
 import { desertLaneCombatValue, desertLaneRewardValue, desertBossHealthAt, bossHeavyHitAt, bossRewardValue, type ForestProgressionLane, type RewardStat } from "./progression";
@@ -13,7 +13,6 @@ const ENEMIES = JSON.parse(JSON.stringify(ENEMY_TYPES)) as Record<string, EnemyD
 for (const [kind, row] of Object.entries(ENEMIES)) {
   if (LEGACY_ENEMY_REWARDS[kind] !== undefined) row.reward.amount = LEGACY_ENEMY_REWARDS[kind];
 }
-const RULES = { ...rules } as unknown as Record<string, number>;
 export function finalCampaignEnemy(lane: ForestProgressionLane) {
   const map = CAMPAIGN_MAPS[CAMPAIGN_MAPS.length - 1], tier = CAMPAIGN_MAPS.length - 2;
   const expected = { ...desertLaneCombatValue(lane, tier), reward: desertLaneRewardValue(lane, tier) };
@@ -27,8 +26,8 @@ export function finalCampaignEnemy(lane: ForestProgressionLane) {
 export function finalCampaignBoss() {
   const map = CAMPAIGN_MAPS[CAMPAIGN_MAPS.length - 1], tier = CAMPAIGN_MAPS.length - 2;
   return {
-    hp: RULES[`${map.bossArt}_MAX_HP`] ?? desertBossHealthAt(tier),
+    hp: AUTHORED_BOSS_RULES[`${map.bossArt}_MAX_HP`] ?? desertBossHealthAt(tier),
     damage: (BOSS_DAMAGE_REFERENCE as Record<string, number>)[map.bossKind] ?? bossHeavyHitAt(tier),
-    reward: (stat: RewardStat) => RULES[`${map.bossArt}_REWARD_${stat.toUpperCase()}`] ?? bossRewardValue(stat, tier),
+    reward: (stat: RewardStat) => AUTHORED_BOSS_RULES[`${map.bossArt}_REWARD_${stat.toUpperCase()}`] ?? bossRewardValue(stat, tier),
   };
 }

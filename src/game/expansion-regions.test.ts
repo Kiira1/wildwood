@@ -5,7 +5,7 @@ import { ENEMY_TYPES } from "./enemies";
 import { mapVisualTheme } from "./map-design";
 import { MAP_ENEMY_FAMILIES } from "./enemy-sprite-layouts.mjs";
 import { MAP_ASSET_GROUPS } from "./runtime/render/map-asset-groups";
-import { IRONHORN_MAX_HP, DREADREAPER_MAX_HP, PRISMSHELL_MAX_HP } from "../../shared/rules";
+import { BOSS_RULES } from "../../shared/rules";
 
 describe("Clockwork Ruins and Duskfall Orchard", () => {
   it("extends the portal chain in both directions and scales each boss one full tier", () => {
@@ -14,8 +14,8 @@ describe("Clockwork Ruins and Duskfall Orchard", () => {
     expect(mapConfig.clockwork_ruins.portal?.destination).toBe("crystal_hollows");
     expect(mapConfig.clockwork_ruins.secondaryPortal?.destination).toBe("duskfall_orchard");
     expect(mapConfig.duskfall_orchard.portal?.destination).toBe("clockwork_ruins");
-    expect(IRONHORN_MAX_HP / PRISMSHELL_MAX_HP).toBeCloseTo(3);
-    expect(DREADREAPER_MAX_HP / IRONHORN_MAX_HP).toBeCloseTo(3);
+    expect(BOSS_RULES.IRONHORN_MAX_HP / BOSS_RULES.PRISMSHELL_MAX_HP).toBeCloseTo(3);
+    expect(BOSS_RULES.DREADREAPER_MAX_HP / BOSS_RULES.IRONHORN_MAX_HP).toBeCloseTo(3);
   });
   it.each([
     ["clockwork_ruins", "raptor-mechanic", "gear"],

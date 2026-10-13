@@ -17,19 +17,7 @@ import {
   WATER_REACH_MAP_ID,
   type MapId,
 } from "../game/world";
-import {
-  DRAGON_MAX_HP,
-  FROSTCLAW_MAX_HP,
-  GLOOMROOT_MAX_HP,
-  KOI_SHOGUN_MAX_HP,
-  MAGMALISK_MAX_HP,
-  MAP_DISPLAY_NAMES,
-  MIREMAW_MAX_HP,
-  PRISMSHELL_MAX_HP, IRONHORN_MAX_HP, DREADREAPER_MAX_HP, VOLTWARDEN_MAX_HP, GRAVEBLOOM_MAX_HP, AEGIS_PRIME_MAX_HP,
-  SPIDER_MAX_HP,
-  TEMPEST_KIRIN_MAX_HP,
-  TIDEWYRM_MAX_HP,
-} from "../../shared/rules";
+import { MAP_DISPLAY_NAMES, BOSS_RULES } from "../../shared/rules";
 
 type RewardStat = "damage" | "health" | "armor" | "regen";
 type MetricGroup = "combat" | "rewards";
@@ -93,72 +81,72 @@ export const AUTHORED_MAPS: readonly AuthoredMap[] = [
   {
     id: TUTORIAL_FOREST_MAP_ID,
     bossKind: "dragon",
-    bossMaxHp: DRAGON_MAX_HP,
+    bossMaxHp: BOSS_RULES.DRAGON_MAX_HP,
   },
   {
     id: BEGINNER_DESERT_MAP_ID,
     bossKind: "spider",
-    bossMaxHp: SPIDER_MAX_HP,
+    bossMaxHp: BOSS_RULES.SPIDER_MAX_HP,
   },
   {
     id: INTERMEDIATE_SNOWLANDS_MAP_ID,
     bossKind: "frostclaw",
-    bossMaxHp: FROSTCLAW_MAX_HP,
+    bossMaxHp: BOSS_RULES.FROSTCLAW_MAX_HP,
   },
   {
     id: ADVANCED_LAVA_WASTES_MAP_ID,
     bossKind: "magmalisk",
-    bossMaxHp: MAGMALISK_MAX_HP,
+    bossMaxHp: BOSS_RULES.MAGMALISK_MAX_HP,
   },
   {
     id: INFERNAL_DEPTHS_MAP_ID,
     bossKind: "gloomroot",
-    bossMaxHp: GLOOMROOT_MAX_HP,
+    bossMaxHp: BOSS_RULES.GLOOMROOT_MAX_HP,
   },
   {
     id: WATER_REACH_MAP_ID,
     bossKind: "tidewyrm",
-    bossMaxHp: TIDEWYRM_MAX_HP,
+    bossMaxHp: BOSS_RULES.TIDEWYRM_MAX_HP,
   },
   {
     id: SAMURAI_GARDEN_MAP_ID,
     bossKind: "koiShogun",
-    bossMaxHp: KOI_SHOGUN_MAX_HP,
+    bossMaxHp: BOSS_RULES.KOI_SHOGUN_MAX_HP,
   },
   {
     id: CLOUDSPIRE_MAP_ID,
     bossKind: "tempestKirin",
-    bossMaxHp: TEMPEST_KIRIN_MAX_HP,
+    bossMaxHp: BOSS_RULES.TEMPEST_KIRIN_MAX_HP,
   },
   {
     id: MOONFEN_MAP_ID,
     bossKind: "miremaw",
-    bossMaxHp: MIREMAW_MAX_HP,
+    bossMaxHp: BOSS_RULES.MIREMAW_MAX_HP,
   },
   {
     id: CRYSTAL_HOLLOWS_MAP_ID,
     bossKind: "prismshell",
-    bossMaxHp: PRISMSHELL_MAX_HP,
+    bossMaxHp: BOSS_RULES.PRISMSHELL_MAX_HP,
   }, {
     id: CLOCKWORK_RUINS_MAP_ID,
     bossKind: "ironhorn",
-    bossMaxHp: IRONHORN_MAX_HP,
+    bossMaxHp: BOSS_RULES.IRONHORN_MAX_HP,
   }, {
     id: DUSKFALL_ORCHARD_MAP_ID,
     bossKind: "dreadreaper",
-    bossMaxHp: DREADREAPER_MAX_HP,
+    bossMaxHp: BOSS_RULES.DREADREAPER_MAX_HP,
   }, {
     id: NEON_BASTION_MAP_ID,
     bossKind: "voltwarden",
-    bossMaxHp: VOLTWARDEN_MAX_HP,
+    bossMaxHp: BOSS_RULES.VOLTWARDEN_MAX_HP,
   }, {
     id: VERDANT_CATACOMBS_MAP_ID,
     bossKind: "gravebloom",
-    bossMaxHp: GRAVEBLOOM_MAX_HP,
+    bossMaxHp: BOSS_RULES.GRAVEBLOOM_MAX_HP,
   }, {
     id: ION_CITADEL_MAP_ID,
     bossKind: "aegisPrime",
-    bossMaxHp: AEGIS_PRIME_MAX_HP,
+    bossMaxHp: BOSS_RULES.AEGIS_PRIME_MAX_HP,
   },
 ];
 

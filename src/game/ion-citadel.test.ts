@@ -4,7 +4,7 @@ import { createWorldLayout, createSpawnSites, mapSpawnCamps } from "./world";
 import { ENEMY_TYPES } from "./enemies";
 import { mapVisualTheme } from "./map-design";
 import { MAP_ASSET_GROUPS } from "./runtime/render/map-asset-groups";
-import { GRAVEBLOOM_MAX_HP, AEGIS_PRIME_MAX_HP } from "../../shared/rules";
+import { BOSS_RULES } from "../../shared/rules";
 import { BOSS_DAMAGE_REFERENCE } from "./boss-damage";
 
 describe("Ion Citadel", () => {
@@ -12,7 +12,7 @@ describe("Ion Citadel", () => {
     const { mapConfig } = createGameBootstrap();
     expect(mapConfig.verdant_catacombs.secondaryPortal?.destination).toBe("ion_citadel");
     expect(mapConfig.ion_citadel.portal?.destination).toBe("verdant_catacombs");
-    expect(AEGIS_PRIME_MAX_HP / GRAVEBLOOM_MAX_HP).toBeCloseTo(3);
+    expect(BOSS_RULES.AEGIS_PRIME_MAX_HP / BOSS_RULES.GRAVEBLOOM_MAX_HP).toBeCloseTo(3);
     expect(BOSS_DAMAGE_REFERENCE.aegisPrime).toBeGreaterThan(BOSS_DAMAGE_REFERENCE.gravebloom);
     expect(ENEMY_TYPES["Ion Patrol"].hp / ENEMY_TYPES["Mossbound Stalker"].hp).toBeCloseTo(3);
   });

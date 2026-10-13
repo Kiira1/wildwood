@@ -5,7 +5,7 @@ import { campaignEnemyHealthScale } from "../../shared/progression";
 import { ENEMY_TYPES } from "./enemies";
 import { mapVisualTheme } from "./map-design";
 import { MAP_ASSET_GROUPS } from "./runtime/render/map-asset-groups";
-import { DREADREAPER_MAX_HP, VOLTWARDEN_MAX_HP } from "../../shared/rules";
+import { BOSS_RULES } from "../../shared/rules";
 import { BOSS_DAMAGE_REFERENCE } from "./boss-damage";
 
 describe("Neon Bastion", () => {
@@ -13,7 +13,7 @@ describe("Neon Bastion", () => {
     const { mapConfig } = createGameBootstrap();
     expect(mapConfig.duskfall_orchard.secondaryPortal?.destination).toBe("neon_bastion");
     expect(mapConfig.neon_bastion.portal?.destination).toBe("duskfall_orchard");
-    expect(VOLTWARDEN_MAX_HP / DREADREAPER_MAX_HP).toBeCloseTo(3);
+    expect(BOSS_RULES.VOLTWARDEN_MAX_HP / BOSS_RULES.DREADREAPER_MAX_HP).toBeCloseTo(3);
     expect(BOSS_DAMAGE_REFERENCE.voltwarden).toBeGreaterThan(BOSS_DAMAGE_REFERENCE.dreadreaper);
     expect(ENEMY_TYPES["Circuit Prowler"].hp / ENEMY_TYPES["Gourd Prowler"].hp)
       .toBeCloseTo(3 * campaignEnemyHealthScale(12) / campaignEnemyHealthScale(11));

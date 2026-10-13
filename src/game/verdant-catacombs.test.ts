@@ -5,7 +5,7 @@ import { campaignEnemyHealthScale } from "../../shared/progression";
 import { ENEMY_TYPES } from "./enemies";
 import { mapVisualTheme } from "./map-design";
 import { MAP_ASSET_GROUPS } from "./runtime/render/map-asset-groups";
-import { VOLTWARDEN_MAX_HP, GRAVEBLOOM_MAX_HP } from "../../shared/rules";
+import { BOSS_RULES } from "../../shared/rules";
 import { BOSS_DAMAGE_REFERENCE } from "./boss-damage";
 
 describe("Verdant Catacombs", () => {
@@ -13,7 +13,7 @@ describe("Verdant Catacombs", () => {
     const { mapConfig } = createGameBootstrap();
     expect(mapConfig.neon_bastion.secondaryPortal?.destination).toBe("verdant_catacombs");
     expect(mapConfig.verdant_catacombs.portal?.destination).toBe("neon_bastion");
-    expect(GRAVEBLOOM_MAX_HP / VOLTWARDEN_MAX_HP).toBeCloseTo(3);
+    expect(BOSS_RULES.GRAVEBLOOM_MAX_HP / BOSS_RULES.VOLTWARDEN_MAX_HP).toBeCloseTo(3);
     expect(BOSS_DAMAGE_REFERENCE.gravebloom).toBeGreaterThan(BOSS_DAMAGE_REFERENCE.voltwarden);
     expect(ENEMY_TYPES["Mossbound Stalker"].hp / ENEMY_TYPES["Circuit Prowler"].hp)
       .toBeCloseTo(3 * campaignEnemyHealthScale(13) / campaignEnemyHealthScale(12));

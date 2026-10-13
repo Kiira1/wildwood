@@ -22,7 +22,7 @@ const strongest = (index: number, role: string) => {
   const rows = Object.values(maps[index].enemies).filter(enemy => roleOf(enemy) === role);
   return rows.length ? rows.reduce((a, b) => (b.hp > a.hp ? b : a)) : undefined;
 };
-const bossHp = (map: typeof CAMPAIGN_MAPS[number]) => (rules as unknown as Record<string, number>)[`${map.bossArt}_MAX_HP`];
+const bossHp = (map: typeof CAMPAIGN_MAPS[number]) => rules.AUTHORED_BOSS_RULES[`${map.bossArt}_MAX_HP`];
 
 describe("campaign enemies grow map over map", () => {
   it.each(TRACKS)("%s: health, hit and reward all rise from each map to the next", role => {

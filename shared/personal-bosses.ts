@@ -6,7 +6,7 @@ import { proceduralMapCore, generatedBossStats, isProceduralMap } from "./proced
 
 const BOSSES: Record<string, { kind: string; hp: number }> = Object.fromEntries(CAMPAIGN_MAPS.map((map, index) => [map.id, {
   kind: map.bossKind,
-  hp: (rules as unknown as Record<string, number>)[`${map.bossArt}_MAX_HP`] ?? desertBossHealthAt(Math.max(0, index - 1)),
+  hp: rules.BOSS_RULES[`${map.bossArt}_MAX_HP`] ?? desertBossHealthAt(Math.max(0, index - 1)),
 }]));
 
 export function personalBossDefinition(mapId: string, authored = false) {

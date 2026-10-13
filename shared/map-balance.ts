@@ -10,6 +10,7 @@ import { bossRegenFractionFor } from './boss-regeneration';
 import { REGULAR_ENEMY_RESPAWN_SECONDS } from './rules';
 import { generatedEnemyArt } from "./procedural-enemy-art";
 import * as rules from './rules';
+import { AUTHORED_BOSS_RULES } from './rules';
 import { ENEMY_TYPES, type EnemyKind } from './enemy-definitions';
 import { enemyDefeatDefinition, combatMap } from './enemy-defeats';
 import { personalBossDefinition } from './personal-bosses';
@@ -17,7 +18,6 @@ import { generateMap, isProceduralMap } from './procedural-maps';
 import { BOSS_DAMAGE_PROFILES } from './boss-damage';
 import { DEFAULT_BALANCE_FACTORS, type BalanceSettings, type MapBalanceSnapshot } from './map-balance-types';
 import { ratingRewardPerKill } from './stat-rating';
-const AUTHORED_RULES = { ...rules };
 /**
  * Attack speed and crit camps (0.901.47) fight like their map's damage camp of the same rarity, and pay rating
  * points on their own curve (stat-rating.ts): the map's per-kill rating, whatever its reward factors say.
@@ -164,8 +164,8 @@ export function resolveMapBalance(mapId: string, settings: BalanceSettings, revi
     }
     const prefix = BALANCE_MAPS.find(([id]) => id === mapId)![2];
     const rewardValues: Record<string, number> = {};
-    for (const [key, value] of Object.entries(AUTHORED_RULES)) {
-      if (typeof value !== 'number') continue;
+    // Sorted, as the module namespace this once read was, so a snapshot's keys keep their order.
+    for (const [key, value] of Object.entries(AUTHORED_BOSS_RULES).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) {
       if (key === `${prefix}_MAX_HP`) result.rules[key] = value * factors.bossHealth;
       // Bosses pay nothing: beating one opens the next map (Ryan, 2026-09-30).
       if (key.startsWith(`${prefix}_REWARD_`)) {
