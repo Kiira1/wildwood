@@ -4,7 +4,8 @@
 // unchanged; reducers that write progress stay there.
 import { PLAYER_STARTING_POWER } from "../../shared/player-power";
 import { PLAYER_PROJECTILE_SPEED, DEFAULT_ATTACK_RANGE, PLAYER_SPEED, isBaseStoredSpeed } from "../../shared/rules";
-import { STARTER_STONE, MAX_FOREST_ITEM_COUNT, canonicalItemId, STARTER_ITEM_IDS, DEVELOPER_ITEM_IDS, STARTER_BOW, WOODEN_ARMOR, EQUIPMENT_DROP_ITEM_IDS, SUPERIOR_GOLDEN_HELMET, BASIC_PAPER_HAT, itemFitsEquipmentSlot, equipmentMaxHealth } from "../../shared/items";
+import { STARTER_STONE, MAX_FOREST_ITEM_COUNT, canonicalItemId, STARTER_ITEM_IDS, DEVELOPER_ITEM_IDS, STARTER_BOW, WOODEN_ARMOR, EQUIPMENT_DROP_ITEM_IDS, SUPERIOR_GOLDEN_HELMET, BASIC_PAPER_HAT, itemFitsEquipmentSlot, equipmentMaxHealth, type ItemLevel } from "../../shared/items";
+import { refineLevelFor } from "./item-refine";
 import { PRISMSHELL_ID } from "./boss-combat";
 import { isDeveloperIdentity } from "./session-guards";
 import { normalizeSlotTier, upgradeSlotForItem } from "../../shared/slot-upgrades";
@@ -207,6 +208,15 @@ export function itemUpgradeLevelFor(ctx: any, identity: any, itemId: unknown) {
   return slotUpgradeTierFor(ctx, identity, upgradeSlotForItem(itemId));
 }
 
+/**
+ * What a worn item's stat stands on: its slot's tier and its own refine (item-refine.ts). An equipment slot
+ * always holds an item's first copy, so its refine is the first copy's.
+ */
+export function itemLevelFor(ctx: any, identity: any, itemId: unknown): ItemLevel {
+  const canonical = canonicalItemId(itemId);
+  return { tier: itemUpgradeLevelFor(ctx, identity, itemId), refine: canonical ? refineLevelFor(ctx, identity, canonical) : 0 };
+}
+
 export function progressHasItem(progress: any, itemId: string) {
   return inventoryForProgress(progress).includes(itemId);
 }
@@ -303,7 +313,7 @@ export function maxHealthForProgress(ctx: any, identity: any, progress: any) {
     headItem,
     chestItem,
     vitalityMultiplier,
-    itemUpgradeLevelFor(ctx, identity, headItem),
-    itemUpgradeLevelFor(ctx, identity, chestItem),
+    itemLevelFor(ctx, identity, headItem),
+    itemLevelFor(ctx, identity, chestItem),
   );
 }

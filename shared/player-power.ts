@@ -4,6 +4,7 @@ import {
   equipmentDamageMultiplierBonus,
   equipmentMaxHealthMultiplierBonus,
   equipmentRegenerationMultiplierBonus,
+  type ItemLevel,
 } from "./items";
 
 export type PlayerPowerStats = {
@@ -54,7 +55,8 @@ export type PlayerPowerResearch = {
   regeneration?: number;
 };
 
-type ItemUpgradeLevel = (itemId: string) => number;
+/** An item's slot tier, or its slot tier and refine (items.ts ItemLevel). */
+type ItemUpgradeLevel = (itemId: string) => ItemLevel;
 
 function researchRank(value: unknown) {
   return Number.isFinite(value) ? Math.max(0, Math.floor(Number(value))) : 0;

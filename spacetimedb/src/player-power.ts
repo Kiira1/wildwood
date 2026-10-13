@@ -10,7 +10,7 @@ import { playerPowerForStats, effectivePlayerPowerStats, effectivePlayerPower, l
 import { withSoulStats, soulStatsFor, soulAttackCapFor } from "./soul-dimension";
 import { critPowerFields } from "./crit-power";
 import { researchInPlay } from "./bonus-toggles";
-import { itemUpgradeLevelFor, equippedRightHandForProgress, equippedLeftHandForProgress, equippedHeadForProgress, equippedChestForProgress, equipmentPresentationForProgress } from "./progress-helpers";
+import { itemLevelFor, equippedRightHandForProgress, equippedLeftHandForProgress, equippedHeadForProgress, equippedChestForProgress, equipmentPresentationForProgress } from "./progress-helpers";
 import { readPlayerProgress } from "./wide-stats";
 import { equipmentDamage, equipmentRegeneration } from "../../shared/items";
 import { updateSnapshotRow, insertSnapshotRow } from "./snapshot-row-writes";
@@ -79,7 +79,7 @@ export function effectivePowerStatsForProgress(ctx: any, progress: any) {
   return effectivePlayerPowerStats(
     { ...withSoulStats(progress, soulStatsFor(ctx, progress.identity), soulAttackCapFor(ctx, progress.identity)), ...critPowerFields(ctx, progress.identity) },
     researchInPlay(ctx, progress.identity),
-    (itemId) => itemUpgradeLevelFor(ctx, progress.identity, itemId),
+    (itemId) => itemLevelFor(ctx, progress.identity, itemId),
   );
 }
 
@@ -87,7 +87,7 @@ export function effectivePowerForProgress(ctx: any, progress: any) {
   return effectivePlayerPower(
     { ...withSoulStats(progress, soulStatsFor(ctx, progress.identity), soulAttackCapFor(ctx, progress.identity)), ...critPowerFields(ctx, progress.identity) },
     researchInPlay(ctx, progress.identity),
-    (itemId) => itemUpgradeLevelFor(ctx, progress.identity, itemId),
+    (itemId) => itemLevelFor(ctx, progress.identity, itemId),
   );
 }
 
@@ -107,9 +107,9 @@ export function researchedDamage(ctx: any, identity: any, damage: number, knownP
     headItem,
     chestItem,
     1 + rank * .02,
-    itemUpgradeLevelFor(ctx, identity, weaponItem),
-    itemUpgradeLevelFor(ctx, identity, headItem),
-    itemUpgradeLevelFor(ctx, identity, chestItem),
+    itemLevelFor(ctx, identity, weaponItem),
+    itemLevelFor(ctx, identity, headItem),
+    itemLevelFor(ctx, identity, chestItem),
   );
 }
 
@@ -127,8 +127,8 @@ export function researchedRegen(ctx: any, identity: any, regen: number) {
     headItem,
     chestItem,
     1 + rank * .02,
-    itemUpgradeLevelFor(ctx, identity, headItem),
-    itemUpgradeLevelFor(ctx, identity, chestItem),
+    itemLevelFor(ctx, identity, headItem),
+    itemLevelFor(ctx, identity, chestItem),
   );
 }
 
@@ -150,4 +150,4 @@ export function writeProgressAndPresentation(ctx: any, progress: any) {
   // Ranking snapshots refresh in maintenance, never in the combat/reward path.
 }
 
-export const autoEquip = createAutoEquip({ inventoryForProgress, itemUpgradeLevelFor, writeProgressAndPresentation });
+export const autoEquip = createAutoEquip({ inventoryForProgress, itemUpgradeLevelFor: itemLevelFor, writeProgressAndPresentation });

@@ -1,5 +1,6 @@
 import { equipmentStatDefinition } from "./equipment-budget";
 import { CAMPAIGN_ITEM_DEFINITIONS } from "./campaign-equipment";
+import { refineMultiplier } from "./refine-multiplier";
 
 // Browser- and server-safe equipment catalog. Add gameplay-facing item data
 // here; client-only sprites and draw anchors live in item-presentation.ts.
@@ -513,21 +514,34 @@ export function isUpgradeableItem(itemId: unknown) {
     item.modifiers?.regenerationMultiplierBonus !== undefined;
 }
 
-function upgradedStatBonus(baseBonus: number, level: unknown) {
-  return Math.round(baseBonus * (1 + normalizeItemUpgradeLevel(level) * ITEM_UPGRADE_STAT_BONUS) * 100) / 100;
+/**
+ * What an item's stat stands on: its slot's tier and, since refining (shared/refine.ts), its own refine. A bare
+ * number is the slot tier alone, as every caller passed before refining, so those keep working unchanged.
+ */
+export type ItemLevel = number | { tier?: number; refine?: number } | null | undefined;
+export function itemLevelParts(level: ItemLevel) {
+  if (level === null || level === undefined) return { tier: 0, refine: 0 };
+  if (typeof level === "object") return { tier: normalizeItemUpgradeLevel(level.tier ?? 0), refine: level.refine ?? 0 };
+  return { tier: normalizeItemUpgradeLevel(level), refine: 0 };
 }
 
-export function itemDisplayName(itemId: unknown, upgradeLevel: unknown = 0) {
+/** The slot tier adds its share of the base; the refine then multiplies the result (refine-multiplier.ts). */
+function upgradedStatBonus(baseBonus: number, level: ItemLevel) {
+  const { tier, refine } = itemLevelParts(level);
+  return Math.round(baseBonus * (1 + tier * ITEM_UPGRADE_STAT_BONUS) * refineMultiplier(refine) * 100) / 100;
+}
+
+export function itemDisplayName(itemId: unknown, upgradeLevel: ItemLevel = 0) {
   const item = itemDefinition(canonicalItemId(itemId));
   if (!item) return "ITEM";
-  const level = normalizeItemUpgradeLevel(upgradeLevel);
+  const level = itemLevelParts(upgradeLevel).tier;
   return level > 0 ? `${item.name} +${level}` : item.name;
 }
 
-export function itemStats(itemId: unknown, upgradeLevel: unknown = 0): readonly string[] {
+export function itemStats(itemId: unknown, upgradeLevel: ItemLevel = 0): readonly string[] {
   const item = itemDefinition(canonicalItemId(itemId));
   if (!item || !isUpgradeableItem(item.id)) return item?.stats ?? [];
-  const level = normalizeItemUpgradeLevel(upgradeLevel);
+  const level = upgradeLevel;
   const stats: string[] = [];
   if (item.weapon?.damageMultiplierBonus !== undefined) {
     stats.push(`DAMAGE +${upgradedStatBonus(item.weapon.damageMultiplierBonus * 100, level)}%`);
@@ -544,11 +558,11 @@ export function itemStats(itemId: unknown, upgradeLevel: unknown = 0): readonly 
   return stats;
 }
 
-export function itemUpgradeStatChanges(itemId: unknown, currentLevel: unknown) {
-  const level = normalizeItemUpgradeLevel(currentLevel);
+export function itemUpgradeStatChanges(itemId: unknown, currentLevel: ItemLevel) {
+  const { tier: level, refine } = itemLevelParts(currentLevel);
   if (!isUpgradeableItem(itemId) || level >= MAX_ITEM_UPGRADE_LEVEL) return [];
-  const current = itemStats(itemId, level);
-  const next = itemStats(itemId, level + 1);
+  const current = itemStats(itemId, { tier: level, refine });
+  const next = itemStats(itemId, { tier: level + 1, refine });
   return current.map((stat, index) => {
     const splitAt = stat.lastIndexOf(" ");
     return {
@@ -560,32 +574,32 @@ export function itemUpgradeStatChanges(itemId: unknown, currentLevel: unknown) {
 }
 
 /** Equipment percentages scale earned stats without changing saved base values. */
-export function itemDamageMultiplierBonus(itemId: unknown, upgradeLevel = 0) {
+export function itemDamageMultiplierBonus(itemId: unknown, upgradeLevel: ItemLevel = 0) {
   const item = itemDefinition(canonicalItemId(itemId));
   return upgradedStatBonus(((item?.weapon?.damageMultiplierBonus ?? 0) + (item?.modifiers?.damageMultiplierBonus ?? 0)) * 100, upgradeLevel) / 100;
 }
-export function itemMaxHealthMultiplierBonus(itemId: unknown, upgradeLevel = 0) {
+export function itemMaxHealthMultiplierBonus(itemId: unknown, upgradeLevel: ItemLevel = 0) {
   return upgradedStatBonus((itemDefinition(canonicalItemId(itemId))?.modifiers?.maxHealthMultiplierBonus ?? 0) * 100, upgradeLevel) / 100;
 }
-export function itemRegenerationMultiplierBonus(itemId: unknown, upgradeLevel = 0) {
+export function itemRegenerationMultiplierBonus(itemId: unknown, upgradeLevel: ItemLevel = 0) {
   return upgradedStatBonus((itemDefinition(canonicalItemId(itemId))?.modifiers?.regenerationMultiplierBonus ?? 0) * 100, upgradeLevel) / 100;
 }
-export function equipmentDamageMultiplierBonus(weapon: unknown, head: unknown, chest: unknown, weaponLevel = 0, headLevel = 0, chestLevel = 0) {
+export function equipmentDamageMultiplierBonus(weapon: unknown, head: unknown, chest: unknown, weaponLevel: ItemLevel = 0, headLevel: ItemLevel = 0, chestLevel: ItemLevel = 0) {
   return itemDamageMultiplierBonus(weapon, weaponLevel) + itemDamageMultiplierBonus(head, headLevel) + itemDamageMultiplierBonus(chest, chestLevel);
 }
-export function equipmentMaxHealthMultiplierBonus(head: unknown, chest: unknown, headLevel = 0, chestLevel = 0) {
+export function equipmentMaxHealthMultiplierBonus(head: unknown, chest: unknown, headLevel: ItemLevel = 0, chestLevel: ItemLevel = 0) {
   return itemMaxHealthMultiplierBonus(head, headLevel) + itemMaxHealthMultiplierBonus(chest, chestLevel);
 }
-export function equipmentRegenerationMultiplierBonus(head: unknown, chest: unknown, headLevel = 0, chestLevel = 0) {
+export function equipmentRegenerationMultiplierBonus(head: unknown, chest: unknown, headLevel: ItemLevel = 0, chestLevel: ItemLevel = 0) {
   return itemRegenerationMultiplierBonus(head, headLevel) + itemRegenerationMultiplierBonus(chest, chestLevel);
 }
-export function equipmentDamage(base: number, weapon: unknown, head: unknown, chest: unknown, researchMultiplier = 1, weaponLevel = 0, headLevel = 0, chestLevel = 0) {
+export function equipmentDamage(base: number, weapon: unknown, head: unknown, chest: unknown, researchMultiplier = 1, weaponLevel: ItemLevel = 0, headLevel: ItemLevel = 0, chestLevel: ItemLevel = 0) {
   return base * (1 + equipmentDamageMultiplierBonus(weapon, head, chest, weaponLevel, headLevel, chestLevel)) * researchMultiplier;
 }
-export function equipmentMaxHealth(base: number, head: unknown, chest: unknown, researchMultiplier = 1, headLevel = 0, chestLevel = 0) {
+export function equipmentMaxHealth(base: number, head: unknown, chest: unknown, researchMultiplier = 1, headLevel: ItemLevel = 0, chestLevel: ItemLevel = 0) {
   return base * (1 + equipmentMaxHealthMultiplierBonus(head, chest, headLevel, chestLevel)) * researchMultiplier;
 }
-export function equipmentRegeneration(base: number, head: unknown, chest: unknown, researchMultiplier = 1, headLevel = 0, chestLevel = 0) {
+export function equipmentRegeneration(base: number, head: unknown, chest: unknown, researchMultiplier = 1, headLevel: ItemLevel = 0, chestLevel: ItemLevel = 0) {
   return base * (1 + equipmentRegenerationMultiplierBonus(head, chest, headLevel, chestLevel)) * researchMultiplier;
 }
 

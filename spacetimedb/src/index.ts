@@ -170,7 +170,7 @@ import {
 import { readPlayerProgress, withDuelWide } from "./wide-stats";
 import { playerWideStats, duelWideStats, duelReplayWideStats, playerCombatRating } from "./wide-stats-table";
 import { LEGACY_CLIENT_ERRORS, sameConnection, sessionForContext, requireSession, blockedSession, isSupportedProtocol, requireCurrentLegalConsent, requireChatAge, requireSupportedSessionProtocol, requireControllingPlayer, isDeveloperIdentity, isDatabaseOwnerIdentity, isVirtualPlayer, requireDeveloperSession, requireDeveloper, touchPlayerAccessAudit, backfillKnownAccessAudit, sameIdentity } from "./session-guards";
-import { defaultPlayerProgress, samePlayerProgressValues, hasFreshProgress, resultIncludesContributor, contributedToLatestPrismshell, forestItemCountForProgress, inventoryForProgress, slotUpgradeKey, itemUpgradeLevelFor, playerOwnsItem, restoreItemToProgress, equippedHeadForProgress, equippedChestForProgress, equippedFeetForProgress, equippedRightHandForProgress, equippedLeftHandForProgress, cosmeticEquipmentForProgress, equipmentPresentationForProgress, leaderboardAppearanceForProgress, maxHealthForProgress } from "./progress-helpers";
+import { defaultPlayerProgress, samePlayerProgressValues, hasFreshProgress, resultIncludesContributor, contributedToLatestPrismshell, forestItemCountForProgress, inventoryForProgress, slotUpgradeKey, itemUpgradeLevelFor, itemLevelFor, playerOwnsItem, restoreItemToProgress, equippedHeadForProgress, equippedChestForProgress, equippedFeetForProgress, equippedRightHandForProgress, equippedLeftHandForProgress, cosmeticEquipmentForProgress, equipmentPresentationForProgress, leaderboardAppearanceForProgress, maxHealthForProgress } from "./progress-helpers";
 import { researchForPlayer, assertResearchAvailable, activeResearchIsAvailable, removeResearchCompletionSchedules, completeActiveResearch, ensureResearchCompletionSchedule, reconcileActiveResearch } from "./research-runtime";
 import { ensurePlayerLifetime, finishLifetimeSession, markPlayerBalanceCurrent, playerBalanceProgress, effectivePowerStatsForProgress, effectivePowerForProgress, powerFieldsForProgress, researchedDamage, researchedArmor, researchedRegen } from "./player-power";
 import { removeItemUpgradeCompletionSchedules, removePlayerItemUpgradeData, ensureItemUpgradeCompletionSchedule, completeActiveItemUpgrade, cancelActiveItemUpgrade, reconcileActiveItemUpgrade } from "./item-upgrade-runtime";
@@ -189,7 +189,7 @@ import { devResetDailyBonus, devCopyCombatStats, devUpdateSave } from "./dev-sav
 import { setMotionInterest, setPlayerSpeed } from "./movement-requests";
 // Only regular enemies use server reward/combat bounds. Boss clears persist gates.
 const { combatBoundForReport } = createCombatReport({
-  attackIntervalForProgress, itemUpgradeLevelFor, inventoryForProgress,
+  attackIntervalForProgress, itemUpgradeLevelFor: itemLevelFor, inventoryForProgress,
   equippedRightHandForProgress, equippedLeftHandForProgress, equippedHeadForProgress, equippedChestForProgress,
 });
 // Duel bodies live in duel-runtime.ts; the duel reducers and the equipment

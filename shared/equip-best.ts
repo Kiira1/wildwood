@@ -2,6 +2,7 @@ import { bowSkillScore, type BowSkillRoll } from "./bow-skills";
 import {
   BLACK_BOOTS, BLACK_BOOTS_SPEED_BONUS, STARTER_STONE, equipmentDamageMultiplierBonus, isCosmeticOnlyItem, itemDefinition,
   type EquipmentSlot, type ItemSlot,
+  type ItemLevel,
 } from "./items";
 import { equipmentMapRequirement, type CampaignAccess } from "./equipment-access";
 import {
@@ -50,7 +51,7 @@ export type BowSkillsOf = (itemId: string) => Partial<BowSkillRoll> | null | und
 export function equipComparisonPower(
   progress: PlayerPowerProgress,
   research?: PlayerPowerResearch | null,
-  itemUpgradeLevel?: (itemId: string) => number,
+  itemUpgradeLevel?: (itemId: string) => ItemLevel,
   bowSkills?: BowSkillsOf,
 ) {
   const stats = effectivePlayerPowerStats(progress, research, itemUpgradeLevel);

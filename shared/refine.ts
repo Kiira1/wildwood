@@ -1,5 +1,7 @@
 import { canonicalItemId, isUpgradeableItem, itemDefinition } from "./items";
 import { itemTier } from "./item-tier";
+import { REFINE_MAX, normalizeRefineLevel } from "./refine-multiplier";
+export { REFINE_MAX, REFINE_STEP_PAST_TEN, REFINE_STEP_TO_TEN, normalizeRefineLevel, refineMultiplier } from "./refine-multiplier";
 
 /**
  * Refining, after Ragnarok Online (Ryan, 2026-10-13): every item refines on its own from +0 to +20 at the
@@ -8,7 +10,6 @@ import { itemTier } from "./item-tier";
  *
  * This is its own layer. The slot tiers (+N on the Weapon, Helmet and Armor tracks) stay as they were.
  */
-export const REFINE_MAX = 20;
 
 /** Ragnarok's weapon levels: an item's grade follows its Tier, four tiers to a grade (the last one three). */
 export type RefineGrade = 1 | 2 | 3 | 4;
@@ -49,19 +50,6 @@ const WEAPON_ODDS: Readonly<Record<RefineGrade, Readonly<Record<number, number>>
 const ARMOR_ODDS: Readonly<Record<number, number>> = { 5: .6, 6: .6, 7: .4, 8: .4, 9: .2, 10: .1 };
 /** Past +10, never better than the +10 try was for that item. */
 const HIGH_ODDS: Readonly<Record<number, number>> = { 11: .1, 12: .1, 13: .08, 14: .08, 15: .07, 16: .07, 17: .06, 18: .06, 19: .05, 20: .05 };
-
-/**
- * What each level adds: this share of the item's own stat, as its slot tier has left it. Five percent a level
- * to +10 (+50%), ten a level from there (+150% at +20). A higher-tier item gains more, because its stat is
- * bigger.
- */
-export const REFINE_STEP_TO_TEN = .05;
-export const REFINE_STEP_PAST_TEN = .1;
-
-export function normalizeRefineLevel(level: unknown) {
-  const value = Number(level);
-  return Number.isFinite(value) ? Math.max(0, Math.min(REFINE_MAX, Math.floor(value))) : 0;
-}
 
 /** Equipment with a stat to refine: every bow, helmet and armor with a bonus. Cosmetics and the starter stone have none. */
 export function isRefinableItem(itemId: unknown) {
@@ -104,12 +92,6 @@ export function refineCost(itemId: unknown, toLevel: number): Partial<Record<Ore
 export function refineResultLevel(currentLevel: number, succeeded: boolean) {
   const current = normalizeRefineLevel(currentLevel);
   return succeeded ? Math.min(REFINE_MAX, current + 1) : Math.max(0, current - 1);
-}
-
-/** What an item's stat is multiplied by at this refine level. */
-export function refineMultiplier(level: unknown) {
-  const refine = normalizeRefineLevel(level);
-  return 1 + REFINE_STEP_TO_TEN * Math.min(refine, 10) + REFINE_STEP_PAST_TEN * Math.max(0, refine - 10);
 }
 
 /**

@@ -1,6 +1,6 @@
 import { equipmentLocked } from "./equipment-locks";
 import type { Identity } from "spacetimedb";
-import { itemDefinition, STARTER_STONE } from "../../shared/items";
+import { itemDefinition, STARTER_STONE, type ItemLevel } from "../../shared/items";
 import { CAMPAIGN_UNLOCK_FIELDS, equipmentMapRequirement, withoutLockedEquipment } from "../../shared/equipment-access";
 import {
   EQUIP_BEST_SLOTS, equipComparisonPower, equippedInSlot, isEquipUpgrade, withItemEquipped, type EquipLoadout,
@@ -43,7 +43,8 @@ const gainedGearOrMaps = (before: any, after: any) => before.inventoryJson !== a
  */
 export function createAutoEquip(deps: {
   inventoryForProgress: (progress: any) => string[];
-  itemUpgradeLevelFor: (ctx: Ctx, identity: Identity, itemId: string) => number;
+  /** The slot tier and refine of an item (progress-helpers itemLevelFor), so Equip best prefers a refined item. */
+  itemUpgradeLevelFor: (ctx: Ctx, identity: Identity, itemId: string) => ItemLevel;
   writeProgressAndPresentation: (ctx: Ctx, progress: any) => void;
 }) {
   /** The comparison Equip best makes, for this player's stats, research, slot tiers and bow rolls. */

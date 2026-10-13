@@ -2,7 +2,7 @@
 // only unlock gates (boss-gates.ts); the retained IDs below serve old migrations.
 import { upgradeSlotForItem } from "../../shared/slot-upgrades";
 import { preparePlayerPowerStats, playerPowerForStats, legacyU32Power } from "../../shared/player-power";
-import { equipmentDamageMultiplierBonus, itemDefinition } from "../../shared/items";
+import { equipmentDamageMultiplierBonus, itemDefinition, type ItemLevel } from "../../shared/items";
 import { createEnemyRewardAccumulator, type EnemyStatReward } from "../../shared/enemy-reward-accumulator";
 import { attackCapInPlay, statRewardMultiplier, prestigePerkRanks } from "./prestige";
 import { WORLD_REFLECT_SHARE, preArmorFactor, prestigePerkValue, prestigeReachMultiplier, prestigeSwingMultiplier } from "../../shared/prestige-perks";
@@ -28,7 +28,8 @@ export const GRAVEBLOOM_ID = 1;
 // the module free of runtime imports from ./index.
 export type CombatReportDeps = {
   attackIntervalForProgress: (progress: any) => number;
-  itemUpgradeLevelFor: (ctx: any, identity: any, itemId: unknown) => number;
+  /** The slot tier and refine of a worn item (progress-helpers itemLevelFor). */
+  itemUpgradeLevelFor: (ctx: any, identity: any, itemId: unknown) => ItemLevel;
   // The equipped* helpers take an already parsed inventory, so one parse serves all four.
   equippedRightHandForProgress: (progress: any, inventory?: string[]) => string;
   equippedLeftHandForProgress: (progress: any, inventory?: string[]) => string;
@@ -59,12 +60,13 @@ export function createCombatReport(deps: CombatReportDeps) {
     const inventory = inventoryForProgress(progress);
     const weapon = equippedRightHandForProgress(progress, inventory) || equippedLeftHandForProgress(progress, inventory);
     const head = equippedHeadForProgress(progress, inventory), chest = equippedChestForProgress(progress, inventory);
-    const levels = new Map<string, number>();
-    const levelFor = (itemId: unknown) => {
-      const slot = upgradeSlotForItem(itemId);
-      if (!slot) return 0;
-      let level = levels.get(slot);
-      if (level === undefined) levels.set(slot, level = itemUpgradeLevelFor(ctx, ctx.sender, itemId));
+    // Per item: the slot's tier and the item's own refine are both fixed for a report.
+    const levels = new Map<string, ItemLevel>();
+    const levelFor = (itemId: unknown): ItemLevel => {
+      if (!upgradeSlotForItem(itemId)) return 0;
+      const key = String(itemId);
+      let level = levels.get(key);
+      if (level === undefined) levels.set(key, level = itemUpgradeLevelFor(ctx, ctx.sender, itemId));
       return level;
     };
     const [weaponLevel, headLevel, chestLevel] = [levelFor(weapon), levelFor(head), levelFor(chest)];
