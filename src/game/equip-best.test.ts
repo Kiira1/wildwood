@@ -31,6 +31,16 @@ describe("equip best", () => {
     expect(current.cosmeticHead).toBe("superior_golden_helmet");
   });
 
+  it("keeps the kind of weapon in hand: an archer's bow is never traded for a sword, nor a sword for a bow", () => {
+    const current = inventory();
+    current.itemIds.push("wooden_sword", "ion_sword");
+    // Power alone would take the Ion Sovereign Sword: it hits half as hard again as the Ion Bow.
+    const hand = (moves: ReturnType<typeof bestEquipmentMoves>) => moves.find(move => move.destination === "RIGHT_HAND")?.itemId;
+    expect(hand(bestEquipmentMoves(current, power))).toBe("snow_bow");
+    current.equippedRightHand = "wooden_sword";
+    expect(hand(bestEquipmentMoves(current, power))).toBe("ion_sword");
+  });
+
   it("preserves the equipped weapon on ties, including legacy left-hand equipment", () => {
     const current = inventory();
     current.equippedRightHand = "";

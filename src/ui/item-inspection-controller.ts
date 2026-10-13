@@ -139,6 +139,13 @@ export function createItemInspectionController(elements: ItemInspectionElements)
       if (/^ARMOR\b/.test(stat)) value.dataset.statKind = "armor";
       stats.append(value);
     }
+    // A sword strikes up close, which its art alone does not say.
+    if (item.weapon?.mode === "MELEE") {
+      const value = document.createElement("span");
+      value.textContent = "Melee";
+      value.dataset.statKind = "melee";
+      stats.append(value);
+    }
     // Skill names are written in title case and shown exactly as written.
     const roll = request.skills !== undefined ? request.skills : elements.bowSkills?.(item.id);
     for (const line of request.ownItem ? bowSkillLines(roll) : []) {

@@ -2,6 +2,7 @@ import { cleanRating } from "../../../shared/stat-rating";
 import { CHALLENGE_ABSOLUTE_MIN_INTERVAL } from "../../../shared/prestige-challenge";
 import { canonicalItemId, itemDefinition, STARTER_ITEM_IDS } from "../../../shared/items";
 import { fillEmptyHand } from "../../coop/services/server-loadout";
+import { weaponKind } from "../../../shared/equip-best";
 import { cosmeticUnlocks } from "../../../shared/cosmetic-conversion";
 import { equipmentMapRequirement, EQUIPMENT_ACCESS_FIELDS, withoutLockedEquipment } from "../../../shared/equipment-access";
 import { BASE_ATTACK_RANGE, BASE_PROJECTILE_SPEED } from "../constants";
@@ -95,8 +96,8 @@ export function createProgressController(dependencies: ProgressDependencies) {
       inventory.itemIds.every((item, index) => item === ownedItems[index]) &&
       (inventory.cosmeticItemIds ?? []).length === ownedCosmetics.length &&
       (inventory.cosmeticItemIds ?? []).every((item, index) => item === ownedCosmetics[index]);
-    // Whether a weapon was in hand before this reconcile clears locked or lost gear.
-    const heldWeapon = Boolean(inventory.equippedRightHand || inventory.equippedLeftHand);
+    // Whether a weapon was in hand before this reconcile clears locked or lost gear, and its kind.
+    const heldWeapon = inventory.equippedRightHand || inventory.equippedLeftHand;
     let removedLocked = false;
     for (const field of EQUIPMENT_ACCESS_FIELDS) {
       if (inventory[field] && equipmentMapRequirement(inventory[field], saved)) {
@@ -117,7 +118,7 @@ export function createProgressController(dependencies: ProgressDependencies) {
     // Gear taken away or locked again must not leave the player unable to attack.
     // Hands the player emptied stay empty (unarmed Reflect runs): new loot
     // changing the bag used to put the best weapon, usually a bow, into them.
-    if (heldWeapon) fillEmptyHand(inventory, inventory.itemIds, saved);
+    if (heldWeapon) fillEmptyHand(inventory, inventory.itemIds, saved, weaponKind(heldWeapon));
     applyPlayerMaxHealthMultiplierBonus(dependencies.player, dependencies.healthMultiplierBonus());
     dependencies.renderInventory();
   }
@@ -197,8 +198,8 @@ export function createProgressController(dependencies: ProgressDependencies) {
   }
 
   function applyProgress(source: Partial<PlayerProgress>) {
-    // Read before locked gear is stripped: a locked weapon in hand still counts as one.
-    const savedWeapon = Boolean(source.equippedRightHand || source.equippedLeftHand);
+    // Read before locked gear is stripped: a locked weapon in hand still counts as one, and keeps its kind.
+    const savedWeapon = source.equippedRightHand || source.equippedLeftHand;
     source = withoutLockedEquipment(source, source);
     const { player, inventory, bootsPickup } = dependencies;
     player.baseMaxHp = boundedProgressValue(source.maxHp, player.baseMaxHp, 1, MAX_PLAYER_STAT);
@@ -246,7 +247,7 @@ export function createProgressController(dependencies: ProgressDependencies) {
     // best usable one. A hand saved empty is the player's choice and stays
     // empty, as the server has kept it since 0.832; filling it on load equipped
     // the best weapon, usually a bow, on every login.
-    if (savedWeapon) fillEmptyHand(inventory, inventory.itemIds, source);
+    if (savedWeapon) fillEmptyHand(inventory, inventory.itemIds, source, weaponKind(savedWeapon));
     setPlayerBaseMaxHealth(player, player.baseMaxHp, dependencies.healthMultiplierBonus(), true);
     applyMovementSpeed(source, false);
     inventory.selectedItemId = "";

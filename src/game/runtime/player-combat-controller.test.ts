@@ -16,6 +16,7 @@ import { createEnemyLifecycle } from "./enemies/enemy-lifecycle";
 import { rewardLabel } from "../enemies";
 import { researchStatRewardMultiplier } from "../../../shared/research";
 import { prestigeStatMultiplier } from "../../../shared/prestige";
+import { equipmentDamage } from "../../../shared/items";
 
 function createCombatHarness(overrides: Partial<Parameters<typeof createPlayerCombatController>[0]> = {}) {
   const state = createGameBootstrap();
@@ -553,6 +554,8 @@ describe("stable player combat aim", () => {
 });
 
 describe("local sword combat", () => {
+  /** One strike: the player's 10 damage with the Wooden Sword's own bonus. */
+  const SWORD_HIT = equipmentDamage(10, "wooden_sword", "", "");
   function swordHarness(overrides: Partial<Parameters<typeof createPlayerCombatController>[0]> = {}) {
     let now = 0, weapon = "wooden_sword";
     const state = createCombatHarness({ nowSeconds: () => now, equippedWeapon: () => weapon, ...overrides });
@@ -572,8 +575,8 @@ describe("local sword combat", () => {
     const s = swordHarness(), enemy = s.add(565);
     s.step(0); expect(enemy.hp).toBe(100);
     s.step(.119); expect(enemy.hp).toBe(100);
-    s.step(.121); expect(enemy.hp).toBeCloseTo(90);
-    s.step(.4); expect(enemy.hp).toBeCloseTo(90);
+    s.step(.121); expect(enemy.hp).toBeCloseTo(100 - SWORD_HIT);
+    s.step(.4); expect(enemy.hp).toBeCloseTo(100 - SWORD_HIT);
     expect(s.projectileStore.projectiles).toHaveLength(0);
     expect(s.player.attackRange).toBe(200);
   });
@@ -586,7 +589,7 @@ describe("local sword combat", () => {
   it("hits a large target's near edge and only the nearest target on the ray", () => {
     const s = swordHarness(), first = s.add(585, 20), second = s.add(595, 30);
     s.step(0); s.step(.13);
-    expect(first.hp).toBeCloseTo(90); expect(second.hp).toBe(100);
+    expect(first.hp).toBeCloseTo(100 - SWORD_HIT); expect(second.hp).toBe(100);
   });
   it("cancels a queued strike when switching weapons without resetting attack cooldown", () => {
     const s = swordHarness(), enemy = s.add(565);
@@ -670,7 +673,9 @@ it.each(personalBossCases)('applies ranged and sword criticals to %s', (mapId, k
       state.controller.attackNearest(); state.controller.updateProjectiles(1 / 60);
     }
     expect(hit, weapon).toHaveBeenCalled();
-    expect(hit.mock.calls.every(call => call[0] === 20 && call[3] === true), weapon).toBe(true);
+    // Twice the hit: 10 damage with the weapon's own bonus (the stone has none).
+    const critical = 2 * equipmentDamage(10, weapon, "", "");
+    expect(hit.mock.calls.every(call => Math.abs(call[0] - critical) < 1e-9 && call[3] === true), weapon).toBe(true);
   }
 });
 

@@ -12,6 +12,7 @@ import { normalizeSlotTier, upgradeSlotForItem } from "../../shared/slot-upgrade
 import { readPlayerProgress } from "./wide-stats";
 import { activeItemUpgradeEntriesFor } from "./upgrade-bench-slots";
 import { equipmentMapRequirement } from "../../shared/equipment-access";
+import { weaponKind } from "../../shared/equip-best";
 import { canonicalSavedHand, blankHandWeapon } from "./loadout";
 import { cosmeticUnlocks } from "../../shared/cosmetic-conversion";
 import { isHiddenCosmeticItem, HIDDEN_COSMETIC_ITEM_ID, resolveEquipmentAppearance } from "../../shared/equipment-appearance";
@@ -259,7 +260,8 @@ export function equippedFeetForProgress(progress: any, inventory = inventoryForP
 export function equippedRightHandForProgress(progress: any, inventory = inventoryForProgress(progress)) {
   const saved = canonicalSavedHand(progress, "equippedRightHand");
   if (saved && inventory.includes(saved) && !equipmentMapRequirement(saved, progress)) return saved;
-  return equippedLeftHandForProgress(progress, inventory) ? "" : blankHandWeapon(inventory, progress);
+  if (equippedLeftHandForProgress(progress, inventory)) return "";
+  return blankHandWeapon(inventory, progress, weaponKind(saved || canonicalSavedHand(progress, "equippedLeftHand")));
 }
 
 export function equippedLeftHandForProgress(progress: any, inventory = inventoryForProgress(progress)) {

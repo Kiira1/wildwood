@@ -131,12 +131,6 @@ export type ItemDefinition = {
 
 export const ITEM_DEFINITIONS = {
   ...CAMPAIGN_ITEM_DEFINITIONS,
-  [WOODEN_SWORD]: {
-    id: WOODEN_SWORD, name: "WOODEN SWORD", slot: "HAND", acquisition: "DEVELOPER",
-    description: "A simple wooden practice sword for close-range combat.",
-    stats: ["MELEE · 75 RANGE"],
-    weapon: { mode: "MELEE", range: 75 },
-  },
   [BASIC_PAPER_HAT]: {
     id: BASIC_PAPER_HAT,
     cosmeticOnly: true,

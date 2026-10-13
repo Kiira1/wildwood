@@ -1,5 +1,5 @@
 import { BASIC_PAPER_HAT, canonicalItemId, itemFitsEquipmentSlot } from "../../shared/items";
-import { fallbackWeapon, type EquipLoadout } from "../../shared/equip-best";
+import { fallbackWeapon, type EquipLoadout, type WeaponKind } from "../../shared/equip-best";
 import type { CampaignAccess } from "../../shared/equipment-access";
 
 /**
@@ -36,13 +36,14 @@ export function allowedLoadout(requested: EquipLoadout, inventory: readonly stri
 
 /**
  * What a blank or locked right hand reads as when the left hand holds nothing
- * either: the best usable weapon owned, else the starter stone. Never "". A
- * blank hand used to read as "no weapon" whenever the bag held one, and world
- * entry wrote that back, so a player whose weapon's map was locked again was
- * left unable to attack. The client fills an empty hand the same way.
+ * either: the best usable weapon owned of the kind the saved hand held (a
+ * blank one reads as ranged), else the starter stone. Never "". A blank hand
+ * used to read as "no weapon" whenever the bag held one, and world entry
+ * wrote that back, so a player whose weapon's map was locked again was left
+ * unable to attack. The client fills an empty hand the same way.
  */
-export function blankHandWeapon(inventory: readonly string[], access: CampaignAccess) {
-  return fallbackWeapon(inventory, access);
+export function blankHandWeapon(inventory: readonly string[], access: CampaignAccess, kind: WeaponKind = "RANGED") {
+  return fallbackWeapon(inventory, access, kind);
 }
 
 export function canonicalSavedHand(progress: any, field: "equippedRightHand" | "equippedLeftHand") {

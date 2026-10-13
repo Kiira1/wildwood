@@ -52,6 +52,11 @@ it("puts a weapon in one hand the way the inventory does, and fills an empty han
   // A locked weapon in hand counts as empty; a usable one is left alone.
   expect(fillEmptyHand(loadout("iron_bow"), ["starter_stone", "iron_bow"], {})).toBe("starter_stone");
   expect(fillEmptyHand(loadout("starter_bow"), ["starter_stone", "starter_bow"], {})).toBe("");
+  // A locked weapon gives way to one of its own kind: an archer is never handed a sword, a swordsman gets one.
+  expect(fillEmptyHand(loadout("iron_bow"), ["starter_stone", "wooden_sword", "iron_bow"], {})).toBe("starter_stone");
+  expect(fillEmptyHand(loadout("iron_sword"), ["starter_stone", "starter_bow", "wooden_sword", "iron_sword"], {})).toBe("wooden_sword");
+  // A weapon lost from the bag is cleared before the fill, so its kind is passed in.
+  expect(fillEmptyHand(loadout(""), ["starter_stone", "wooden_sword"], {}, "MELEE")).toBe("wooden_sword");
 });
 
 it("names the upgrade, the weapon first, and says nothing for a prestige swap or an emptied slot", () => {

@@ -9,7 +9,10 @@ describe("remote combat stats", () => {
     const progress = { identity, maxHp: 100, damage: 10, attackRate: 1, projectileSpeed: 1000,
       projectileCount: 5, attackRange: 200, armor: 0, regen: 0, equippedHead: "", equippedChest: "",
       equippedRightHand: "wooden_sword", equippedLeftHand: "" };
-    expect(remoteCombatStatsFromRows(progress, null, [])).toMatchObject({ melee: true, attackRange: 75, projectileCount: 1, damage: 10 });
+    const sword = remoteCombatStatsFromRows(progress, null, []);
+    expect(sword).toMatchObject({ melee: true, attackRange: 75, projectileCount: 1 });
+    // One hit with the Wooden Sword's own +7.5%, never multiplied by the five projectiles.
+    expect(sword.damage).toBeCloseTo(10.75);
     expect(progress.attackRange).toBe(200);
     expect(remoteCombatStatsFromRows({ ...progress, equippedRightHand: "starter_bow" }, null, []))
       .toMatchObject({ melee: false, attackRange: 200, projectileCount: 5 });

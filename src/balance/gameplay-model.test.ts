@@ -21,7 +21,7 @@ describe("simulator parity with gameplay", () => {
   it("includes late-map gear and keeps fractional bow odds exact", () => {
     const maps = createMapDefinitions();
     expect(maps.find(m => m.id === "ion_citadel")!.regularDrops.map(d => d.itemId))
-      .toEqual(["ion_bow", "ion_armor", "ion_helmet"]);
+      .toEqual(["ion_bow", "ion_sword", "ion_armor", "ion_helmet"]);
     const bow = maps.find(m => m.id === "samurai_garden")!.regularDrops.find(d => d.itemId === "samurai_bow")!;
     expect(bow.numerator! / bow.denominator).toBe(.0065);
   });

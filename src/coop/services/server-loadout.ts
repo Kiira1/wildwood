@@ -1,5 +1,5 @@
 import { equipmentMapRequirement } from "../../../shared/equipment-access";
-import { fallbackWeapon } from "../../../shared/equip-best";
+import { fallbackWeapon, weaponKind, type WeaponKind } from "../../../shared/equip-best";
 import { itemDefinition, isCosmeticOnlyItem } from "../../../shared/items";
 import type { PlayerProgress, ProgressSave } from "./progress";
 
@@ -67,13 +67,15 @@ export function withServerLoadout(pending: ProgressSave, changes: readonly Serve
 /**
  * A loadout that can attack. Both hands blank (a blank saved hand, or gear
  * whose map is locked again) is filled the way the server reads that hand:
- * the best usable weapon owned, else the starter stone. Returns the weapon
- * put on, or "" when a hand already held one.
+ * the best usable weapon owned of the kind the hand held (`kind`, read before
+ * the locked or lost weapon was cleared), else the starter stone. Returns the
+ * weapon put on, or "" when a hand already held one.
  */
-export function fillEmptyHand(loadout: Loadout, itemIds: readonly string[], access: Parameters<typeof fallbackWeapon>[1]) {
+export function fillEmptyHand(loadout: Loadout, itemIds: readonly string[], access: Parameters<typeof fallbackWeapon>[1],
+  kind: WeaponKind = weaponKind(loadout.equippedRightHand || loadout.equippedLeftHand)) {
   const usable = (itemId: string) => Boolean(itemId) && !equipmentMapRequirement(itemId, access);
   if (usable(loadout.equippedRightHand) || usable(loadout.equippedLeftHand)) return "";
   loadout.equippedLeftHand = "";
-  loadout.equippedRightHand = fallbackWeapon(itemIds, access);
+  loadout.equippedRightHand = fallbackWeapon(itemIds, access, kind);
   return loadout.equippedRightHand;
 }

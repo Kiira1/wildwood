@@ -1,10 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { SUPERIOR_GOLDEN_HELMET, FROST_ARMOR, STARTER_BOW, STARTER_STONE } from "../game/inventory";
 import { inventoryMoveActions, inventoryWeaponSlot } from "./hud";
-import { clearInventorySelection } from "./inventory-controller";
+import { clearInventorySelection, cosmeticReach } from "./inventory-controller";
 import { itemInspectionButtonLabel } from "./item-inspection-controller";
 
 describe("inventory selection", () => {
+  it("says where a look shows: a hand look only on its own kind of weapon", () => {
+    expect(cosmeticReach("ion_sword")).toBe("Shows on a sword");
+    expect(cosmeticReach("galaxy_bow")).toBe("Shows on a bow");
+    expect(cosmeticReach("ion_helmet")).toBe("Appearance only");
+  });
+
   it("presents inventory action labels in Camel Case", () => {
     expect(itemInspectionButtonLabel("EQUIP RIGHT")).toBe("Equip Right");
     expect(itemInspectionButtonLabel("REMOVE COSMETIC")).toBe("Remove Cosmetic");

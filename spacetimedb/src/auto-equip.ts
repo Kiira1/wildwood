@@ -3,7 +3,8 @@ import type { Identity } from "spacetimedb";
 import { itemDefinition, STARTER_STONE, type ItemLevel } from "../../shared/items";
 import { CAMPAIGN_UNLOCK_FIELDS, equipmentMapRequirement, withoutLockedEquipment } from "../../shared/equipment-access";
 import {
-  EQUIP_BEST_SLOTS, equipComparisonPower, equippedInSlot, isEquipUpgrade, withItemEquipped, type EquipLoadout,
+  EQUIP_BEST_SLOTS, equipComparisonPower, equippedInSlot, isEquipUpgrade, weaponKind, withItemEquipped,
+  type EquipLoadout, type WeaponKind,
 } from "../../shared/equip-best";
 import { bowSkillRollFor } from "./bow-skills";
 import { allowedLoadout } from "./loadout";
@@ -28,7 +29,9 @@ const gainedGearOrMaps = (before: any, after: any) => before.inventoryJson !== a
  * slot, by the same measure as the inventory's Equip best (shared/equip-best.ts,
  * bow skills included), and only when the player could have put it on by
  * hand: owned, unlocked by their maps (equipmentMapRequirement) and allowed by
- * save_player_progress's own loadout rules (loadout.ts).
+ * save_player_progress's own loadout rules (loadout.ts). A weapon only
+ * replaces one of its own kind (shared/equip-best.ts): a sword never goes
+ * into an archer's hand, however hard it hits.
  *
  * It happens when new gear arrives from loot, first copies only (duplicates
  * are Auto keep best's), and when reaching a map unlocks the tier of gear the
@@ -58,16 +61,19 @@ export function createAutoEquip(deps: {
   /**
    * The progress with `itemId` on, when that is an upgrade the player may use;
    * otherwise the progress unchanged. Gear the player's maps lock away counts
-   * as an empty slot, which is also how their power sees it.
+   * as an empty slot, which is also how their power sees it, but a locked
+   * weapon still sets the hand's kind: a swordsman whose sword is locked away
+   * is still not handed a bow.
    */
-  function withUpgrade(ctx: Ctx, progress: any, itemId: string, inventory: readonly string[], fillEmptyHand = false) {
+  function withUpgrade(ctx: Ctx, progress: any, itemId: string, inventory: readonly string[], fillEmptyHand = false,
+    kind: WeaponKind = weaponKind(equippedInSlot(progress, "HAND"))) {
     if (!inventory.includes(itemId) || equipmentMapRequirement(itemId, progress)) return progress;
     const slot = itemDefinition(itemId)?.slot;
     // Empty hands are a choice (unarmed Reflect runs): a new weapon never fills them.
     if (slot === "HAND" && !fillEmptyHand && !progress.equippedRightHand && !progress.equippedLeftHand) return progress;
     if (slot && equipmentLocked(ctx, progress.identity, equippedInSlot(progress, slot))) return progress;
     const current = { ...progress, ...withoutLockedEquipment(progress, progress) };
-    if (!isEquipUpgrade(current, itemId, comparisonPower(ctx, progress.identity))) return progress;
+    if (!isEquipUpgrade(current, itemId, comparisonPower(ctx, progress.identity), kind)) return progress;
     const allowed = allowedLoadout(withItemEquipped(current, itemId), inventory);
     if (!Object.values(allowed).includes(itemId)) return progress;
     // Only the item's own slot is written. The comparison reads locked gear as
@@ -103,9 +109,11 @@ export function createAutoEquip(deps: {
    * `previous` the run being traded in. The bag, the forest counts and the
    * loadout carry over, and gear above tier 1 is locked again until its map
    * is reached. Every slot holding locked gear gets the best gear the player
-   * can use instead, and a hand with nothing usable falls back to the starter
-   * stone, which every player owns. Slots holding usable gear, or any slot the
-   * player left empty, hands included, stay as they were.
+   * can use instead, a hand the best weapon of the kind it held: an archer
+   * stays an archer. A swordsman with no usable sword gets the best ranged
+   * weapon, and a hand with nothing usable at all the starter stone, which
+   * every player owns. Slots holding usable gear, or any slot the player left
+   * empty, hands included, stay as they were.
    */
   function keepBagThroughPrestige(ctx: Ctx, fresh: any, previous: any) {
     return equipUsable(ctx, {
@@ -132,10 +140,18 @@ export function createAutoEquip(deps: {
     });
     let next = { ...progress };
     for (const [slot, field] of refill) {
-      if (slot === "HAND") next = { ...next, equippedRightHand: "", equippedLeftHand: "" };
-      else next = { ...next, [field]: "" };
-      for (const itemId of inventory) if (itemDefinition(itemId)?.slot === slot) next = withUpgrade(ctx, next, itemId, inventory, true);
-      if (slot === "HAND" && !equippedInSlot(next, "HAND")) next = { ...next, equippedRightHand: STARTER_STONE };
+      if (slot !== "HAND") {
+        next = { ...next, [field]: "" };
+        for (const itemId of inventory) if (itemDefinition(itemId)?.slot === slot) next = withUpgrade(ctx, next, itemId, inventory, true);
+        continue;
+      }
+      const held = weaponKind(equippedInSlot(progress, "HAND"));
+      next = { ...next, equippedRightHand: "", equippedLeftHand: "" };
+      for (const kind of held === "MELEE" ? ["MELEE", "RANGED"] as const : ["RANGED"] as const) {
+        for (const itemId of inventory) if (itemDefinition(itemId)?.slot === "HAND") next = withUpgrade(ctx, next, itemId, inventory, true, kind);
+        if (equippedInSlot(next, "HAND")) break;
+      }
+      if (!equippedInSlot(next, "HAND")) next = { ...next, equippedRightHand: STARTER_STONE };
     }
     return next;
   }

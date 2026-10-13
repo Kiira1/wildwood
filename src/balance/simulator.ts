@@ -11,6 +11,7 @@ import { itemTier } from "../../shared/item-tier";
 import { REGULAR_ENEMY_RESPAWN_SECONDS } from "../game/runtime/enemies/regular-enemy-respawn";
 import { ONBOARDING_DAMAGE_REWARD, ONBOARDING_REGEN_REWARD } from "../../shared/onboarding";
 import { BLACK_BOOTS } from "../../shared/items";
+import { weaponKind } from "../../shared/equip-best";
 import { criticalDamageMultiplier } from "../../shared/critical-damage";
 import { BALANCE_TARGET_MAP_DURATION_STEP_SECONDS } from "../../shared/rules";
 import { isUpgradeableItem, itemUpgradeDurationMs, MAX_ITEM_UPGRADE_LEVEL } from "../../shared/items";
@@ -1286,11 +1287,16 @@ export function advanceTime(
   state.time = targetTime;
 }
 
+/**
+ * Where the Lab's player wears an item. It plays an archer, fighting from bow range as most players do, and
+ * a weapon only replaces one of its own kind (shared/equip-best.ts), so a sword has no place on it: its loot
+ * still rolls, as in the game, and stays in the bag.
+ */
 function equipmentSlot(itemId: ItemId): keyof EquippedItems | null {
   const slot = ITEM_DEFINITIONS[itemId].slot;
   if (slot === "HEAD") return "head";
   if (slot === "CHEST") return "chest";
-  if (slot === "HAND") return "weapon";
+  if (slot === "HAND") return weaponKind(itemId) === "RANGED" ? "weapon" : null;
   return null;
 }
 

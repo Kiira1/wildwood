@@ -5,6 +5,12 @@ import type { ItemPresentation } from "./item-presentation";
 export const CAMPAIGN_ITEM_PRESENTATIONS = Object.fromEntries(
   Object.entries(CAMPAIGN_ITEM_DEFINITIONS).map(([id, item]): [string, ItemPresentation] => {
     const source = `assets/wildstat/player-parts/${id.replace(/_/g, "-")}.webp`;
+    // A sword swings, held as the Wooden Sword is: every sword is the vendor's Character Parts Pack art at the same
+    // size (scripts/art/import-vendor-swords.mjs), so all of them share its alignment.
+    if (item.weapon?.mode === "MELEE") return [id, {
+      inventory: { source, equippedWidth: 32, equippedHeight: 28 },
+      world: { kind: "SPRITE", source, layer: "HAND", top: 116, handAction: "SWING", weaponCategory: "SWORD" },
+    }];
     if (item.slot === "HAND") return [id, {
       inventory: { source, equippedWidth: 44, equippedHeight: 34 },
       world: { kind: "SPRITE", source, layer: "HAND", width: 115, height: 63, top: 106, handAction: "BOW" },

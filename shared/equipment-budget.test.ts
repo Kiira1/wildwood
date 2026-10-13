@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { referenceBuildForMap, BOSS_TARGET_SECONDS } from "./progression";
 import { ITEM_DEFINITIONS, ITEM_UPGRADE_STAT_BONUS, MAX_SLOT_UPGRADE_TIER, itemDamageMultiplierBonus, itemMaxHealthMultiplierBonus, itemRegenerationMultiplierBonus, itemStats, equipmentDamage } from "./items";
 import { itemMapTierStatScale } from "./equipment-budget";
+import { SWORD_DAMAGE_FACTOR } from "./campaign-equipment";
 import { itemTier } from "./item-tier";
 import { personalBossDefinition } from "./personal-bosses";
 import { MAP_IDS } from "./rules";
@@ -12,7 +13,9 @@ describe("gear cannot supply campaign progression by itself", () => {
       const tier = itemTier(item.id); if (!tier || item.cosmeticOnly || item.slot === "FEET") continue;
       // The ceiling grows with the map: 40% on the first, twice that on the
       // fifteenth, and a finished slot adds MAX_SLOT_UPGRADE_TIER steps on top.
-      const ceiling = .4 * itemMapTierStatScale(tier);
+      // A sword may hit SWORD_DAMAGE_FACTOR times as hard, paid for by fighting
+      // in reach of what it hits; the test below still holds it to the boss.
+      const ceiling = .4 * itemMapTierStatScale(tier) * (item.weapon?.mode === "MELEE" ? SWORD_DAMAGE_FACTOR : 1);
       for (const level of [0, MAX_SLOT_UPGRADE_TIER]) {
         const multiplier = 1 + ITEM_UPGRADE_STAT_BONUS * level;
         expect(itemDamageMultiplierBonus(item.id, level), item.id).toBeLessThanOrEqual(ceiling * multiplier + .0001);

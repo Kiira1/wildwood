@@ -1,6 +1,7 @@
 import { highestCampaignMap, type CampaignAccess } from "./equipment-access";
 import { ITEM_DEFINITIONS, itemDamageMultiplierBonus, itemMaxHealthMultiplierBonus, itemRegenerationMultiplierBonus, itemDefinition, isCosmeticOnlyItem } from "./items";
 import { itemTier } from "./item-tier";
+import { weaponKind } from "./equip-best";
 import { MAP_IDS } from "./rules";
 
 export const GEAR_MAIL_ID = "rebalance-gear-2026-09-17";
@@ -10,7 +11,9 @@ export const GEAR_MAIL_BODY = "Hey WildGang, some of you don't have gear for the
 
 export function gearForHighestMap(progress: CampaignAccess) {
   const tier = Math.min(15, highestCampaignMap(progress) + 1);
-  const items = Object.values(ITEM_DEFINITIONS).filter(item => itemTier(item.id) === tier && !isCosmeticOnlyItem(item.id));
+  // The letter promises a bow (GEAR_MAIL_BODY), so the map's sword, which hits harder, never stands in for it.
+  const items = Object.values(ITEM_DEFINITIONS).filter(item => itemTier(item.id) === tier && !isCosmeticOnlyItem(item.id)
+    && weaponKind(item.id) === "RANGED");
   const itemIds = (["HEAD", "CHEST", "HAND"] as const).map(slot => {
     const candidates = items.filter(item => item.slot === slot).sort((a, b) => {
       const score = (id: string) => itemDamageMultiplierBonus(id) + itemMaxHealthMultiplierBonus(id) + itemRegenerationMultiplierBonus(id) * 10;

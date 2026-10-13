@@ -6,7 +6,7 @@ import { eraseIdentityRows } from "./account-erasure";
 import { ignoredDropKey, isDropIgnored, keepWantedDrops } from "./ignored-drops";
 import { EQUIPMENT_OFFER_LIFETIME_MS } from "../../shared/equipment-copies";
 import { MAX_LOOT_FILTER_BATCH, isDropFiltered, lootFilterId } from "../../shared/loot-filter";
-import { BASIC_PAPER_HAT, FROST_BOW, IRON_BOW, SAMURAI_BOW, SAMURAI_HAT, STARTER_STONE, WOODEN_SWORD } from "../../shared/items";
+import { BASIC_PAPER_HAT, FROST_BOW, GALAXY_BOW, IRON_BOW, SAMURAI_BOW, SAMURAI_HAT, STARTER_STONE, WOODEN_SWORD } from "../../shared/items";
 import { ATTACK_BALANCE_VERSION, BOSS_REWARD_CLAIM_BITS, SPACETIME_AUTH_CLIENT_ID, SPACETIME_AUTH_ISSUER } from "../../shared/rules";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
@@ -26,7 +26,7 @@ const seedOffer = (f: Fixture, itemId: string, who = f.ctx.sender) =>
 const luckyRandom = (f: Fixture) => {
   Object.assign(f.ctx, { random: Object.assign(() => .1, { integerInRange: (min: number) => min }) });
 };
-/** A player on Crystal Hollows who kills one Shard Hopper with every roll won: its bow, armor and helmet all drop. */
+/** A player on Crystal Hollows who kills one Shard Hopper with every roll won: its bow, sword, armor and helmet all drop. */
 function hunt(f: Fixture) {
   luckyRandom(f);
   f.patch("playerProgress", { damage: 1e15 });
@@ -39,11 +39,13 @@ it("accepts the four slot entries and droppable items, and nothing else", () => 
   expect(lootFilterId(IRON_BOW)).toBe(IRON_BOW);
   // A cosmetic look that drops can be filtered too: "only bows" means only bows.
   expect(lootFilterId(BASIC_PAPER_HAT)).toBe(BASIC_PAPER_HAT);
-  for (const bad of ["slot:LEFT_HAND", "slot:", "slot:hand", STARTER_STONE, WOODEN_SWORD, "unknown", "", 7]) {
+  // A sword drops like any bow, so an archer can turn it off.
+  expect(lootFilterId(WOODEN_SWORD)).toBe(WOODEN_SWORD);
+  for (const bad of ["slot:LEFT_HAND", "slot:", "slot:hand", STARTER_STONE, GALAXY_BOW, "unknown", "", 7]) {
     expect(lootFilterId(bad), String(bad)).toBeUndefined();
   }
   const f = crystalFixture();
-  for (const bad of ["slot:RIGHT_HAND", STARTER_STONE, WOODEN_SWORD, "unknown"]) {
+  for (const bad of ["slot:RIGHT_HAND", STARTER_STONE, GALAXY_BOW, "unknown"]) {
     expect(() => filter(f, [IRON_BOW, bad])).toThrow(/cannot be filtered/);
   }
   expect(() => filter(f, Array.from({ length: MAX_LOOT_FILTER_BATCH + 1 }, () => IRON_BOW))).toThrow(/at most/);
@@ -62,7 +64,7 @@ it("filters an item when its slot is off or it is off itself", () => {
   // An item turned back on stays filtered while its slot is off.
   expect(isDropFiltered(SAMURAI_HAT, set("slot:HEAD", "slot:HAND"))).toBe(true);
   // Nothing that never drops is ever filtered.
-  expect(isDropFiltered(WOODEN_SWORD, set("slot:HAND", WOODEN_SWORD))).toBe(false);
+  expect(isDropFiltered(GALAXY_BOW, set("slot:HAND", GALAXY_BOW))).toBe(false);
 });
 
 it("marks and unmarks entries for the caller only, and reads them back through its own view", () => {
@@ -87,9 +89,9 @@ it("never lands a filtered first copy: no bag entry, no offer, no drop event", (
   filter(f, ["crystal_bow"]);
   hunt(f);
   expect(inventory(f)).not.toContain("crystal_bow");
-  expect(inventory(f)).toEqual(expect.arrayContaining(["crystal_armor", "crystal_helmet"]));
+  expect(inventory(f)).toEqual(expect.arrayContaining(["crystal_armor", "crystal_helmet", "crystal_sword"]));
   expect(offers(f)).toEqual([]);
-  expect(drops(f)).toEqual(["crystal_armor", "crystal_helmet"]);
+  expect(drops(f)).toEqual(["crystal_armor", "crystal_helmet", "crystal_sword"]);
 });
 
 it("drops a filtered duplicate without an offer, and never swaps it for another item", () => {
@@ -98,7 +100,7 @@ it("drops a filtered duplicate without an offer, and never swaps it for another 
   filter(f, ["crystal_armor"]);
   hunt(f);
   expect(offers(f)).toEqual([]);
-  expect(drops(f)).toEqual(["crystal_bow", "crystal_helmet"]);
+  expect(drops(f)).toEqual(["crystal_bow", "crystal_helmet", "crystal_sword"]);
   // The roll is taken and thrown away, not spent on something else.
   const rolled = new Map([["crystal_armor", 2], ["crystal_bow", 1]]);
   f.run((ctx: any) => keepWantedDrops(ctx, ctx.sender, rolled));
@@ -107,11 +109,11 @@ it("drops a filtered duplicate without an offer, and never swaps it for another 
 
 it("turns a whole slot off on a map the player never set anything on", () => {
   const f = crystalFixture();
-  // "Only bows": armor, helmets and boots off, nothing said about Crystal Hollows itself.
+  // "Only weapons": armor, helmets and boots off, nothing said about Crystal Hollows itself.
   filter(f, ["slot:CHEST", "slot:HEAD", "slot:FEET"]);
   hunt(f);
-  expect(drops(f)).toEqual(["crystal_bow"]);
-  expect(inventory(f)).toContain("crystal_bow");
+  expect(drops(f)).toEqual(["crystal_bow", "crystal_sword"]);
+  expect(inventory(f)).toEqual(expect.arrayContaining(["crystal_bow", "crystal_sword"]));
   expect(inventory(f)).not.toContain("crystal_armor");
   expect(inventory(f)).not.toContain("crystal_helmet");
 });
@@ -123,7 +125,7 @@ it("keeps an item filtered by its slot even when the item itself is on, and lets
   filter(f, ["slot:HAND"], false);
   filter(f, ["crystal_helmet"]);
   hunt(f);
-  expect(drops(f)).toEqual(["crystal_armor", "crystal_bow"]);
+  expect(drops(f)).toEqual(["crystal_armor", "crystal_bow", "crystal_sword"]);
 });
 
 it("never rolls boss equipment, regardless of the loot filter", () => {

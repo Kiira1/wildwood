@@ -68,7 +68,7 @@ export function createSmithController(deps: {
 
   function renderFocus(item: SmithItem | undefined) {
     if (!item) {
-      focus.innerHTML = `<p class="smith-empty">Bring the Smith a bow, helmet or armor to refine.</p>`;
+      focus.innerHTML = `<p class="smith-empty">Bring the Smith a weapon, helmet or armor to refine.</p>`;
       return;
     }
     const level = deps.refineLevel(item.itemId, item.copyId), next = level + 1, tier = deps.slotTier(item.itemId);

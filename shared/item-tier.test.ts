@@ -18,5 +18,5 @@ it("uses each item's source map across all fifteen campaign maps", () => {
   expect(itemTier("starter_stone")).toBe(1);
 });
 it("does not invent tiers for cosmetics, dev gear, or unknown items", () => {
-  for (const id of ["superior_golden_helmet", "basic_paper_hat", "wooden_sword", "unknown"]) expect(itemTier(id)).toBeUndefined();
+  for (const id of ["superior_golden_helmet", "basic_paper_hat", "galaxy_bow", "unknown"]) expect(itemTier(id)).toBeUndefined();
 });

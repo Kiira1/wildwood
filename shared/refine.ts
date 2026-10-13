@@ -51,7 +51,7 @@ const ARMOR_ODDS: Readonly<Record<number, number>> = { 5: .6, 6: .6, 7: .4, 8: .
 /** Past +10, never better than the +10 try was for that item. */
 const HIGH_ODDS: Readonly<Record<number, number>> = { 11: .1, 12: .1, 13: .08, 14: .08, 15: .07, 16: .07, 17: .06, 18: .06, 19: .05, 20: .05 };
 
-/** Equipment with a stat to refine: every bow, helmet and armor with a bonus. Cosmetics and the starter stone have none. */
+/** Equipment with a stat to refine: every bow, sword, helmet and armor with a bonus. Cosmetics and the starter stone have none. */
 export function isRefinableItem(itemId: unknown) {
   return isUpgradeableItem(itemId);
 }

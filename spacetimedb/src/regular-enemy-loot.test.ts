@@ -7,9 +7,12 @@ import { enemyDefeatDefinition, defeatBudget } from "../../shared/enemy-defeats"
 import { combatTimeKey, reportRateKey, simulationClockKey, killRateKey } from "./enemy-defeats";
 import { ENEMY_TYPES } from "../../shared/enemy-definitions";
 import { rollRegularEnemyLoot } from "./regular-enemy-loot";
+import { regularMapLoot } from "../../shared/regular-map-loot";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 const enemy = Object.keys(ENEMY_TYPES).find(kind => enemyDefeatDefinition("water_reach", kind)?.reward.type === "damage")!;
 const batch = { streamId: "test-stream-123456", sequence: 1n, mapId: "water_reach", enemies: [{ enemy, count: 15 }] };
+/** One roll a kill for each item the map drops: Water Reach's armor, bow, sword and helmet. */
+const rolls = 15 * regularMapLoot(batch.mapId).length;
 it("awards Magma Armor for all seven winning outcomes, but not the next outcome", () => {
   const f = crystalFixture();
   for (let roll = 1; roll <= 8; roll++) {
@@ -27,11 +30,12 @@ it("calculates stats and independent loot rolls once in one transaction", () => 
   expect(update).toHaveBeenCalledTimes(1);
   expect(f.db.playerProgress.identity.find(f.ctx.sender).damage).toBeCloseTo(base.damage + enemyDefeatDefinition(batch.mapId, enemy)!.reward.amount * 15);
   expect(f.db.playerLifetime.identity.find(f.ctx.sender).enemyKills).toBe(15n);
-  expect(f.ctx.random.integerInRange).toHaveBeenCalledTimes(45);
+  expect(rolls).toBe(60);
+  expect(f.ctx.random.integerInRange).toHaveBeenCalledTimes(rolls);
   f.patch("player", { mapId: "town" });
   reportKills(f, batch);
   expect(update).toHaveBeenCalledTimes(1);
-  expect(f.ctx.random.integerInRange).toHaveBeenCalledTimes(45);
+  expect(f.ctx.random.integerInRange).toHaveBeenCalledTimes(rolls);
 });
 it.each([
   { enemies: [{ enemy, count: 0 }] }, { sequence: 2n },
@@ -70,7 +74,7 @@ it("rolls back reward, budget, receipt and loot if a write fails", () => {
   expect([...f.db.enemyDefeatBudget.iter()]).toHaveLength(0);
   expect(f.db.playerProgress.identity.find(f.ctx.sender)).toEqual(base);
   insert.mockRestore(); reportKills(f, batch);
-  expect([...f.db.playerItemDrop.iter()]).toHaveLength(3);
+  expect([...f.db.playerItemDrop.iter()]).toHaveLength(regularMapLoot(batch.mapId).length);
 });
 it("allows grouped kills and acknowledges excess without granting rewards across new streams", () => {
   const f = fixture(); f.ctx.random.integerInRange = (_min: number, max: number) => max;

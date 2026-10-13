@@ -54,9 +54,10 @@ function harness(initial: string[] = [], options: { withSetter?: boolean } = {})
 
 it("lists every item that drops on the map once, cosmetic looks included, never starter items", () => {
   expect(filterableDrops([IRON_BOW, BASIC_PAPER_HAT, IRON_BOW, SAMURAI_HAT])).toEqual([IRON_BOW, BASIC_PAPER_HAT, SAMURAI_HAT]);
-  expect(filterableDrops(["starter_stone", "wooden_sword"])).toEqual([]);
+  expect(filterableDrops(["starter_stone", "galaxy_bow"])).toEqual([]);
   const forest = filterableDrops(mapGuideDrops(TUTORIAL_FOREST_MAP_ID).map(drop => drop.itemId));
-  expect(forest).toEqual(expect.arrayContaining([STARTER_BOW, WOODEN_ARMOR, BASIC_PAPER_HAT]));
+  // The forest's sword can be turned off like its bow.
+  expect(forest).toEqual(expect.arrayContaining([STARTER_BOW, "wooden_sword", WOODEN_ARMOR, BASIC_PAPER_HAT]));
 
   const view = harness();
   view.filter.setMap("Samurai Garden", mapGuideDrops(SAMURAI_GARDEN_MAP_ID).map(drop => drop.itemId));

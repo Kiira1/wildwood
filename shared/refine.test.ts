@@ -9,9 +9,12 @@ import { itemTier } from "./item-tier";
 const bows = { grade1: "starter_bow", grade2: "sky_bow", grade3: "crystal_bow", grade4: "ion_bow" } as const;
 
 describe("what can be refined", () => {
-  it("is every bow, helmet and armor with a stat, and nothing else", () => {
+  it("is every bow, sword, helmet and armor with a stat, and nothing else", () => {
     for (const item of Object.values(ITEM_DEFINITIONS)) expect(isRefinableItem(item.id), item.id).toBe(isUpgradeableItem(item.id));
-    for (const id of ["starter_stone", "black_boots", "basic_paper_hat", "galaxy_bow", "wooden_sword", "not_an_item"]) {
+    // Swords refine as the weapons they are, on a bow's odds.
+    expect(["wooden_sword", "sky_sword", "ion_sword"].map(refineGrade)).toEqual([1, 2, 4]);
+    expect(refineSafeLimit("ion_sword")).toBe(WEAPON_SAFE_LIMITS[4]);
+    for (const id of ["starter_stone", "black_boots", "basic_paper_hat", "galaxy_bow", "not_an_item"]) {
       expect(isRefinableItem(id), id).toBe(false);
       expect(refineGrade(id), id).toBeNull();
       expect(refineCost(id, 1), id).toBeNull();

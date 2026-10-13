@@ -52,9 +52,10 @@ function archer(extra: Record<string, unknown> = {}) {
 it("offers equipment only: never cosmetic looks, starter or developer items", () => {
   expect(isDuplicateOfferItem(IRON_BOW)).toBe(true);
   expect(isDuplicateOfferItem(SAMURAI_HAT)).toBe(true);
+  expect(isDuplicateOfferItem(WOODEN_SWORD)).toBe(true);
   expect(isDuplicateOfferItem(BASIC_PAPER_HAT)).toBe(false);
   expect(isDuplicateOfferItem(STARTER_STONE)).toBe(false);
-  expect(isDuplicateOfferItem(WOODEN_SWORD)).toBe(false);
+  expect(isDuplicateOfferItem("galaxy_bow")).toBe(false);
   expect(isDuplicateOfferItem("unknown")).toBe(false);
   // Equipped items and cosmetics take no bag slot; each kept copy takes one.
   expect(bagSlotsUsed([IRON_BOW, SAMURAI_HAT, BASIC_PAPER_HAT, IRON_BOW], [IRON_BOW], 2)).toBe(3);

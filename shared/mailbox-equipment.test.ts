@@ -6,7 +6,7 @@ import { itemTier } from "./item-tier";
 import { MAP_IDS } from "./rules";
 
 describe("map gear gifts", () => {
-  it("selects the best helmet, chest and weapon for every campaign tier", () => {
+  it("selects the best helmet, chest and bow for every campaign tier", () => {
     const score = (id: string) => itemDamageMultiplierBonus(id) + itemMaxHealthMultiplierBonus(id) + itemRegenerationMultiplierBonus(id) * 10;
     for (let tier = 1; tier <= 15; tier++) {
       const access = Object.fromEntries(CAMPAIGN_UNLOCK_FIELDS.map((field, i) => [field, i < tier - 1]));
@@ -16,8 +16,11 @@ describe("map gear gifts", () => {
       for (const id of gift.itemIds) {
         expect(itemTier(id)).toBe(tier);
         for (const other of Object.values(ITEM_DEFINITIONS)) {
+          // The letter promises a bow: the map's sword, though it hits harder, is not a candidate.
+          if (other.weapon?.mode === "MELEE") continue;
           if (itemTier(other.id) === tier && other.slot === itemDefinition(id)?.slot && !isCosmeticOnlyItem(other.id)) expect(score(id)).toBeGreaterThanOrEqual(score(other.id));
         }
+        expect(itemDefinition(id)?.weapon?.mode ?? "RANGED", id).toBe("RANGED");
       }
     }
     expect(gearForHighestMap({ snowlandsUnlocked: true }).itemIds).toContain("frost_bow");

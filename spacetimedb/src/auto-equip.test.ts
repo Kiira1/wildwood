@@ -8,7 +8,7 @@ import { publishItemDrop } from "./equipment-copies";
 import { CAMPAIGN_UNLOCK_FIELDS } from "../../shared/equipment-access";
 import { BOSS_REWARD_CLAIM_BITS } from "../../shared/rules";
 import { TERMS_VERSION } from "../../shared/legal";
-import { IRON_BOW, SAMURAI_HAT, STARTER_BOW, STARTER_STONE } from "../../shared/items";
+import { IRON_BOW, SAMURAI_HAT, STARTER_BOW, STARTER_STONE, WOODEN_SWORD } from "../../shared/items";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
 type Fixture = ReturnType<typeof crystalFixture>;
@@ -165,6 +165,19 @@ it("leaves a new drop in the bag when it is worse, locked, or the player turned 
   expect(progress(off).equippedRightHand).toBe(IRON_BOW);
 });
 
+// Swords hit half as hard again as bows but only up close, so power alone would take every archer's bow.
+it("keeps the kind of weapon in hand when new weapons drop: an archer's bow, a swordsman's sword", () => {
+  const archer = looter();
+  reportEnemy(archer, ENEMY, 1);
+  expect(inventory(archer)).toEqual(expect.arrayContaining(["crystal_bow", "crystal_sword"]));
+  expect(progress(archer).equippedRightHand).toBe("crystal_bow");
+
+  const swordsman = looter({ inventoryJson: JSON.stringify(["iron_sword"]), equippedRightHand: "iron_sword" });
+  reportEnemy(swordsman, ENEMY, 1);
+  expect(inventory(swordsman)).toEqual(expect.arrayContaining(["crystal_bow", "crystal_sword"]));
+  expect(progress(swordsman).equippedRightHand).toBe("crystal_sword");
+});
+
 it("equips gear already in the bag when reaching a map unlocks it, only with Auto equip on", () => {
   for (const autoEquipBest of [true, false]) {
     const f = crystalFixture();
@@ -197,6 +210,14 @@ it("never blanks a hand that held a weapon: world entry, auto equip and dev gran
   consent(usable);
   usable.run(server.enterWorld, { tabId: "blank-hand" });
   expect(progress(usable).equippedRightHand).toBe(STARTER_BOW);
+  // Of its own kind: a locked bow is never replaced by a sword, nor a locked sword by a bow.
+  for (const [held, fallback] of [[IRON_BOW, STARTER_BOW], ["iron_sword", WOODEN_SWORD]]) {
+    const kind = crystalFixture();
+    kind.patch("playerProgress", { inventoryJson: JSON.stringify([STARTER_STONE, STARTER_BOW, WOODEN_SWORD, held]), bowCount: 1, equippedRightHand: held });
+    consent(kind);
+    kind.run(server.enterWorld, { tabId: "blank-hand" });
+    expect(progress(kind).equippedRightHand).toBe(fallback);
+  }
 
   // Auto equip putting on a helmet leaves a locked bow in hand as it was, never blank.
   const helmet = looter({ inventoryJson: JSON.stringify([STARTER_STONE, "ion_bow"]), equippedRightHand: "ion_bow" });
@@ -284,6 +305,27 @@ it("swaps gear its maps lock away for the best usable gear, never leaving an emp
   bare.run(server.prestigeAccount, {});
   expect(inventory(bare)).toContain("ion_bow");
   expect(progress(bare).equippedRightHand).toBe(STARTER_STONE);
+});
+
+it("keeps the kind of weapon through prestige: an archer gets a bow, a swordsman a sword", () => {
+  const bag = (...weapons: string[]) => JSON.stringify([...weapons, "ion_helmet", "forest_cap", SAMURAI_HAT]);
+  // The Wooden Sword hits harder than the starter bow, but an archer keeps a bow.
+  const archer = veteran();
+  archer.patch("playerProgress", { inventoryJson: bag(STARTER_BOW, WOODEN_SWORD, "ion_bow") });
+  archer.run(server.prestigeAccount, {});
+  expect(progress(archer).equippedRightHand).toBe(STARTER_BOW);
+
+  const swordsman = veteran();
+  swordsman.patch("playerProgress", { inventoryJson: bag(STARTER_BOW, WOODEN_SWORD, "ion_sword"), equippedRightHand: "ion_sword" });
+  swordsman.run(server.prestigeAccount, {});
+  expect(progress(swordsman).equippedRightHand).toBe(WOODEN_SWORD);
+  expect(inventory(swordsman)).toContain("ion_sword");
+
+  // With no sword they can use yet, the best ranged weapon instead.
+  const unarmed = veteran();
+  unarmed.patch("playerProgress", { inventoryJson: bag(STARTER_BOW, "ion_sword"), equippedRightHand: "ion_sword" });
+  unarmed.run(server.prestigeAccount, {});
+  expect(progress(unarmed).equippedRightHand).toBe(STARTER_BOW);
 });
 
 it("still clears the bag and kept copies on a reset", () => {

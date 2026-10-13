@@ -48,6 +48,21 @@ describe("equipment appearance", () => {
     expect(regular.equippedRightHand).toBe("stone");
   });
 
+  it("shows a hand look only on a weapon of its own kind, so what moves matches how it fights", () => {
+    const swordsman = { ...regular, equippedRightHand: "iron_sword" };
+    // A sword's look on a sword, and a bow's on a bow or the stone.
+    expect(resolveEquipmentAppearance({ ...swordsman, cosmeticRightHand: "ion_sword" }).rightHandItem).toBe("ion_sword");
+    expect(resolveEquipmentAppearance({ ...regular, equippedRightHand: "starter_bow", cosmeticRightHand: "galaxy_bow" }).rightHandItem).toBe("galaxy_bow");
+    expect(resolveEquipmentAppearance({ ...regular, cosmeticRightHand: "galaxy_bow" }).rightHandItem).toBe("galaxy_bow");
+    // Across kinds the weapon itself is drawn: no sword swinging out arrows, no bow drawn to strike.
+    expect(resolveEquipmentAppearance({ ...regular, equippedRightHand: "starter_bow", cosmeticRightHand: "ion_sword" }))
+      .toMatchObject({ rightHandItem: "starter_bow", leftHandItem: "" });
+    expect(resolveEquipmentAppearance({ ...swordsman, cosmeticRightHand: "galaxy_bow" }).rightHandItem).toBe("iron_sword");
+    expect(resolveEquipmentAppearance({ ...swordsman, cosmeticLeftHand: "galaxy_bow" })).toMatchObject({ rightHandItem: "iron_sword", leftHandItem: "" });
+    // Hiding the hand works on either.
+    expect(resolveEquipmentAppearance({ ...swordsman, cosmeticRightHand: HIDDEN_COSMETIC_ITEM_ID }).rightHandItem).toBe("");
+  });
+
   it("gives a valid right-hand cosmetic precedence over a stale left hand", () => {
     expect(resolveEquipmentAppearance({
       ...regular,

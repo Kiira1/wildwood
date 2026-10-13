@@ -97,32 +97,57 @@ export function withItemEquipped<T extends EquipLoadout>(loadout: T, itemId: str
   return next;
 }
 
+export type WeaponKind = "RANGED" | "MELEE";
+
 /**
- * What an empty hand means: the strongest weapon the player owns and may use
- * (by the item's own damage bonus), else the starter stone, which every
- * player owns. Never "". A blank hand is a normal saved state (older saves,
+ * How a weapon fights: a sword strikes up close, a bow or the stone from
+ * range. Nothing in the hand reads as ranged, as the stone it falls back to.
+ */
+export function weaponKind(itemId: string | undefined): WeaponKind {
+  return itemDefinition(itemId)?.weapon?.mode === "MELEE" ? "MELEE" : "RANGED";
+}
+
+/**
+ * What an empty hand means: the strongest weapon of the kind the hand held
+ * (weaponKind) that the player owns and may use, by the item's own damage
+ * bonus. The starter stone, which every player owns, is ranged, so a ranged
+ * hand always has one; a sword hand with no usable sword takes the strongest
+ * ranged one. Never "". A blank hand is a normal saved state (older saves,
  * gear whose map is locked again), and a player with no weapon cannot attack,
  * so the server's reading of a saved hand and the client's bag both fill it
  * from here.
  */
-export function fallbackWeapon(itemIds: readonly string[], access: CampaignAccess | null | undefined) {
-  let best: string = STARTER_STONE;
-  let bestBonus = equipmentDamageMultiplierBonus(STARTER_STONE, "", "");
-  for (const itemId of itemIds) {
-    if (itemDefinition(itemId)?.slot !== "HAND" || isCosmeticOnlyItem(itemId) || equipmentMapRequirement(itemId, access)) continue;
-    const bonus = equipmentDamageMultiplierBonus(itemId, "", "");
-    if (bonus > bestBonus) {
-      best = itemId;
-      bestBonus = bonus;
+export function fallbackWeapon(itemIds: readonly string[], access: CampaignAccess | null | undefined, kind: WeaponKind = "RANGED") {
+  const strongest = (wanted: WeaponKind) => {
+    let best = wanted === "RANGED" ? STARTER_STONE : "";
+    let bestBonus = best ? equipmentDamageMultiplierBonus(best, "", "") : -Infinity;
+    for (const itemId of itemIds) {
+      if (itemDefinition(itemId)?.slot !== "HAND" || isCosmeticOnlyItem(itemId) || equipmentMapRequirement(itemId, access)) continue;
+      if (weaponKind(itemId) !== wanted) continue;
+      const bonus = equipmentDamageMultiplierBonus(itemId, "", "");
+      if (bonus > bestBonus) {
+        best = itemId;
+        bestBonus = bonus;
+      }
     }
-  }
-  return best;
+    return best;
+  };
+  return (kind === "MELEE" && strongest("MELEE")) || strongest("RANGED");
 }
 
-/** Whether putting this item on would beat what is in its slot now. Cosmetic looks never do. */
-export function isEquipUpgrade<T extends EquipLoadout>(loadout: T, itemId: string, power: (candidate: T) => number) {
+/**
+ * Whether putting this item on would beat what is in its slot now. Cosmetic
+ * looks never do, and a weapon only ever replaces one of its own kind: swords
+ * hit harder than bows but only up close, so power alone would trade every
+ * archer's bow for a sword. `kind` is the hand's kind, by default what it
+ * holds; callers that read locked gear as an empty hand pass the locked
+ * weapon's kind, so locking a sword away does not make its owner an archer.
+ */
+export function isEquipUpgrade<T extends EquipLoadout>(loadout: T, itemId: string, power: (candidate: T) => number,
+  kind: WeaponKind = weaponKind(equippedInSlot(loadout, "HAND"))) {
   const slot = itemDefinition(itemId)?.slot;
   if (!slot || isCosmeticOnlyItem(itemId)) return false;
+  if (slot === "HAND" && weaponKind(itemId) !== kind) return false;
   const current = equippedInSlot(loadout, slot);
   if (current === itemId) return false;
   const candidate = withItemEquipped(loadout, itemId);

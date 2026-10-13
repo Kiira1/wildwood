@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { CAMPAIGN_EQUIPMENT } from "./campaign-equipment";
-import { canonicalItemId, EQUIPMENT_DROP_ITEM_IDS, itemDefinition, inventoryJsonItemQuantity, itemFitsEquipmentSlot } from "./items";
+import { CAMPAIGN_EQUIPMENT, SWORD_DAMAGE_FACTOR, SWORD_REACH } from "./campaign-equipment";
+import { canonicalItemId, EQUIPMENT_DROP_ITEM_IDS, ITEM_DEFINITIONS, itemDefinition, inventoryJsonItemQuantity, itemFitsEquipmentSlot } from "./items";
+import { itemTier } from "./item-tier";
 import { inventoryFromSave, serialiseInventory } from "../src/game/inventory";
 import { itemPresentation, projectileKindForWeapon } from "../src/game/item-presentation";
 import { mapGuideDrops } from "../src/ui/map-guide-controller";
@@ -44,7 +45,7 @@ describe("campaign equipment progression", () => {
     const art = itemPresentation(id)!;
     expect(readFileSync(new URL(`../public/${art.inventory.source}`, import.meta.url)).length).toBeGreaterThan(100);
     expect(art.world).toMatchObject({ kind: "SPRITE", layer: slot });
-    if (slot === "HAND") expect(projectileKindForWeapon(id)).toBe("ARROW");
+    if (slot === "HAND") expect(projectileKindForWeapon(id)).toBe(entry.definition.weapon?.mode === "MELEE" ? undefined : "ARROW");
     expect(regularMapLoot(entry.mapId)).toContainEqual({ itemId: id, wins: entry.wins, outcomes: entry.outcomes });
     expect(mapGuideDrops(entry.mapId)).toContainEqual(expect.objectContaining({ itemId: id, numerator: entry.wins, denominator: entry.outcomes }));
   });
@@ -56,5 +57,42 @@ describe("campaign equipment progression", () => {
       }
     }
     expect(regularMapLoot("endless_1")).toEqual([]);
+  });
+});
+
+describe("swords", () => {
+  const swords = Object.entries(CAMPAIGN_EQUIPMENT).filter(([, entry]) => entry.definition.weapon?.mode === "MELEE");
+  const odds = (drop: { wins: number; outcomes: number }) => drop.wins / drop.outcomes;
+
+  it("gives every map one sword, of that map's tier", () => {
+    expect(swords.map(([, entry]) => entry.mapId)).toEqual(maps);
+    swords.forEach(([id], index) => expect(itemTier(id), id).toBe(index + 1));
+  });
+
+  it.each(swords)("makes %s hit half as hard again as its tier's best bow, up close", (id, entry) => {
+    const tier = itemTier(id);
+    const bows = Object.values(ITEM_DEFINITIONS).filter(item => item.weapon?.mode === "RANGED" && item.weapon.tier === tier);
+    const bow = Math.max(...bows.map(item => item.weapon?.damageMultiplierBonus ?? 0));
+    const damage = entry.definition.weapon?.damageMultiplierBonus ?? 0;
+    expect(bow).toBeGreaterThan(0);
+    expect(damage).toBeCloseTo(bow * SWORD_DAMAGE_FACTOR, 3);
+    expect(entry.definition.weapon).toMatchObject({ mode: "MELEE", range: SWORD_REACH, tier });
+    expect(entry.definition.stats).toEqual([`DAMAGE +${+(damage * 100).toFixed(2)}%`]);
+  });
+
+  it.each(swords)("drops %s as often as its map's bow", (id, entry) => {
+    const loot = regularMapLoot(entry.mapId);
+    const bows = loot.filter(drop => itemDefinition(drop.itemId)?.weapon?.mode === "RANGED");
+    // Lava Lake's only bow is its boss's, so there the sword drops as often as the helmet.
+    const expected = bows.length ? Math.max(...bows.map(odds)) : odds(loot.find(drop => itemDefinition(drop.itemId)?.slot === "HEAD")!);
+    expect(odds(loot.find(drop => drop.itemId === id)!)).toBe(expected);
+  });
+
+  it("draws every sword from its own art, swung in hand", () => {
+    const sources = swords.map(([id]) => itemPresentation(id)!.inventory.source);
+    expect(new Set(sources).size).toBe(swords.length);
+    for (const [id] of swords) {
+      expect(itemPresentation(id)!.world, id).toMatchObject({ kind: "SPRITE", layer: "HAND", handAction: "SWING", weaponCategory: "SWORD" });
+    }
   });
 });

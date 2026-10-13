@@ -6,6 +6,7 @@ import {
 } from "../game/inventory";
 import { requiredElement } from "../game/runtime/dom";
 import { canDestroyEquipment, itemDefinition, itemDisplayName } from "../../shared/items";
+import { weaponKind } from "../../shared/equip-best";
 import { COSMETIC_CONVERSION_GEM_COST, canConvertToCosmetic } from "../../shared/cosmetic-conversion";
 import { inventoryMoveActions, inventoryWeaponSlot, renderInventoryView, type InventoryMode } from "./hud";
 import type { ItemInspectionController } from "./item-inspection-controller";
@@ -25,6 +26,12 @@ type InventoryLocation = EquipmentSlot | "BAG" | "";
 type SelectableInventory = InventoryState & { selectedItemId: string; selectedItemLocation?: InventoryLocation };
 type Result = { ok: boolean; error?: string } | undefined;
 /** A copy kept from a duplicate drop, beyond the item's first. */
+
+/** Where a look shows: a hand look only on a weapon of its own kind (shared/equipment-appearance.ts). */
+export function cosmeticReach(itemId: string) {
+  if (itemDefinition(itemId)?.slot !== "HAND") return "Appearance only";
+  return weaponKind(itemId) === "MELEE" ? "Shows on a sword" : "Shows on a bow";
+}
 
 export type KeptEquipmentCopy = { id: bigint; itemId: string; roll: Partial<BowSkillRoll> };
 
@@ -215,7 +222,7 @@ export function createInventoryController(dependencies: InventoryDependencies) {
       ...(mode === "EQUIPMENT" ? { refine: dependencies.refineLevel?.(itemId, copyId) ?? 0 } : {}),
       ownItem: mode === "EQUIPMENT",
       ...(kept.length ? { context: `Copy ${copy ? kept.indexOf(copy) + 2 : 1} of ${kept.length + 1}` } : {}),
-      ...(mode === "COSMETICS" ? { context: "Cosmetic · Appearance only" } : {}),
+      ...(mode === "COSMETICS" ? { context: `Cosmetic · ${cosmeticReach(itemId)}` } : {}),
       ...(requiredMap ? { context: `Reach ${requiredMap} to equip` } : {}),
       ...(copy ? { skills: copy.roll } : {}),
       actions: [...(copy ? copyEquipActions(copy, Boolean(requiredMap)) : moves),

@@ -3,7 +3,7 @@ import { applyGalaxyArtTexture, galaxyIconOutlineVariable, skyFinishCssFallback,
 import type { WeaponCategory } from "./equipment-alignment";
 import type { LayerAdjustment } from "./player-layer-alignment";
 import {
-  BASIC_PAPER_HAT, WOODEN_SWORD,
+  BASIC_PAPER_HAT,
   BLACK_BOOTS,
   DARK_METAL_HELMET,
   SAMURAI_HAT,
@@ -100,10 +100,6 @@ export const ITEM_PRESENTATIONS: Partial<Record<ItemId, ItemPresentation>> = {
   [DIAMOND_GALAXY_ARMOR]: galaxyFinish(CAMPAIGN_ITEM_PRESENTATIONS.ion_armor, "DIAMOND_GALAXY"),
   [DIAMOND_GALAXY_BOW]: galaxyFinish(CAMPAIGN_ITEM_PRESENTATIONS.ion_bow, "DIAMOND_GALAXY"),
   [DIAMOND_GALAXY_BOOTS]: galaxyFinish(SKY_BOOTS, "DIAMOND_GALAXY"),
-  [WOODEN_SWORD]: {
-    inventory: { source: `${PLAYER_PARTS}/wooden-sword.webp`, equippedWidth: 32, equippedHeight: 28 },
-    world: { kind: "SPRITE", source: `${PLAYER_PARTS}/wooden-sword.webp`, layer: "HAND", top: 116, handAction: "SWING", weaponCategory: "SWORD" },
-  },
   [BASIC_PAPER_HAT]: {
     inventory: { source: `${PLAYER_PARTS}/basic-paper-hat.webp`, equippedWidth: 30, equippedHeight: 27 },
     world: { kind: "SPRITE", source: `${PLAYER_PARTS}/basic-paper-hat.webp`, layer: "HEAD", bottom: 144 },
