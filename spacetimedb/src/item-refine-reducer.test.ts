@@ -1,15 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
 import { crystalFixture, identity, server } from "../../tests/helpers/crystal-hollows-fixture";
-import { TOWN_BENCH_POSITION } from "../../shared/town";
+import { TOWN_FEET_OFFSET, TOWN_SMITH_POSITION } from "../../shared/town";
 import { addOres, oreCount, refineLevelFor, setRefineLevel } from "./item-refine";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
 type Fixture = ReturnType<typeof crystalFixture>;
 
-/** At the Town bench, holding an Ion Bow (worn) and a Sky Bow, with ores to spend. */
+/** Beside the Smith, holding an Ion Bow (worn) and a Sky Bow, with ores to spend. */
 function atBench() {
   const f = crystalFixture();
-  f.patch("player", { mapId: "town", x: TOWN_BENCH_POSITION.x, y: TOWN_BENCH_POSITION.y });
+  f.patch("player", { mapId: "town", x: TOWN_SMITH_POSITION.x, y: TOWN_SMITH_POSITION.y - TOWN_FEET_OFFSET });
   f.patch("playerProgress", { inventoryJson: JSON.stringify(["ion_bow", "sky_bow"]), equippedRightHand: "ion_bow" });
   addOres(f.ctx, f.ctx.sender, "adamant_ore", 50);
   addOres(f.ctx, f.ctx.sender, "iron_ore", 50);
@@ -21,12 +21,12 @@ function atBench() {
 const result = (f: Fixture) => f.db.playerRefineResult.identity.find(f.ctx.sender);
 
 describe("a refine try", () => {
-  it("is only taken at the Town bench", () => {
+  it("is only taken at the Smith", () => {
     const f = atBench();
-    f.patch("player", { mapId: "town", x: TOWN_BENCH_POSITION.x + 400, y: TOWN_BENCH_POSITION.y });
-    expect(() => f.refine()).toThrow("Touch the Upgrade Bench first.");
-    f.patch("player", { mapId: "crystal_hollows", x: TOWN_BENCH_POSITION.x, y: TOWN_BENCH_POSITION.y });
-    expect(() => f.refine()).toThrow("Touch the Upgrade Bench first.");
+    f.patch("player", { mapId: "town", x: TOWN_SMITH_POSITION.x + 400, y: TOWN_SMITH_POSITION.y - TOWN_FEET_OFFSET });
+    expect(() => f.refine()).toThrow("Talk to the Smith first.");
+    f.patch("player", { mapId: "crystal_hollows", x: TOWN_SMITH_POSITION.x, y: TOWN_SMITH_POSITION.y - TOWN_FEET_OFFSET });
+    expect(() => f.refine()).toThrow("Talk to the Smith first.");
     expect(oreCount(f.ctx, f.ctx.sender, "adamant_ore")).toBe(50);
   });
 

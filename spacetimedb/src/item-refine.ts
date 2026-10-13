@@ -3,7 +3,8 @@ import type { Identity } from "spacetimedb";
 import type spacetimedbType from "./index";
 import { REFINE_MAX, REFINE_ORES, isRefinableItem, normalizeRefineLevel, refineCost, rollRefine, type OreId } from "../../shared/refine";
 import { canonicalItemId } from "../../shared/items";
-import { isTownMap, TOWN_BENCH_POSITION } from "./town";
+import { isTownMap } from "./town";
+import { TOWN_FEET_OFFSET, TOWN_SMITH_POSITION, TOWN_SMITH_SERVER_REACH } from "../../shared/town";
 import { withinStationReach } from "./door-reach";
 import { readPlayerProgress } from "./wide-stats";
 
@@ -160,8 +161,8 @@ export function mergeRefineData(ctx: Ctx, guest: Identity, account: Identity) {
   if (result) ctx.db.playerRefineResult.identity.delete(guest);
 }
 
-/** Refining happens at the Town bench, within the reach its slot upgrades use. */
-export const REFINE_BENCH_USE_RANGE = 75;
+/** Refining happens at the Smith, in the Town's smithy: where a player stands (not their feet) beside him. */
+const SMITH_STAND = { x: TOWN_SMITH_POSITION.x, y: TOWN_SMITH_POSITION.y - TOWN_FEET_OFFSET };
 
 export type ItemRefineDeps = {
   requireControllingPlayer: (ctx: Ctx) => any;
@@ -183,8 +184,8 @@ const oreList = (cost: Partial<Record<OreId, number>>) =>
  */
 export function refineItemFor(ctx: Ctx, args: { itemId: string; copyId: bigint; expectedLevel: number }, deps: ItemRefineDeps) {
   const player = deps.requireControllingPlayer(ctx);
-  if (!isTownMap(player.mapId) || !withinStationReach(ctx, player, TOWN_BENCH_POSITION, REFINE_BENCH_USE_RANGE)) {
-    throw new SenderError("Touch the Upgrade Bench first.");
+  if (!isTownMap(player.mapId) || !withinStationReach(ctx, player, SMITH_STAND, TOWN_SMITH_SERVER_REACH)) {
+    throw new SenderError("Talk to the Smith first.");
   }
   if (deps.activeDuelFor(ctx, ctx.sender)) throw new SenderError("Finish your duel first.");
   const itemId = canonicalItemId(args.itemId);

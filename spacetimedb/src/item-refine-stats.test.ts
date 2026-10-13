@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { crystalFixture, server } from "../../tests/helpers/crystal-hollows-fixture";
-import { TOWN_BENCH_POSITION } from "../../shared/town";
+import { TOWN_FEET_OFFSET, TOWN_SMITH_POSITION } from "../../shared/town";
 import { equipmentDamageMultiplierBonus, itemDamageMultiplierBonus, itemMaxHealthMultiplierBonus, itemStats } from "../../shared/items";
 import { equipComparisonPower } from "../../shared/equip-best";
 import { addOres, setRefineLevel } from "./item-refine";
@@ -63,7 +63,7 @@ describe("on the server", () => {
 
   it("refreshes the player's shown power when the worn item's refine changes", () => {
     const f = wearing();
-    f.patch("player", { mapId: "town", x: TOWN_BENCH_POSITION.x, y: TOWN_BENCH_POSITION.y });
+    f.patch("player", { mapId: "town", x: TOWN_SMITH_POSITION.x, y: TOWN_SMITH_POSITION.y - TOWN_FEET_OFFSET });
     addOres(f.ctx, f.ctx.sender, "copper_ore", 3);
     const before = f.db.player.identity.find(f.ctx.sender).powerLevel;
     f.run(server.refineItem, { itemId: "starter_bow", copyId: 0n, expectedLevel: 0 });

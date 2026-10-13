@@ -124,6 +124,14 @@ export const TOWN_QUEST_BOARD_POSITION = stationIn(5, 300, 44);
 export const TOWN_OX_POSITION = stationIn(8, 120, 100);
 /** How close a player's feet come to Ox's before his shop opens. */
 export const TOWN_OX_REACH = 60;
+/**
+ * The Smith refines gear (shared/refine.ts), after Ragnarok's refiner (Ryan, 2026-10-13: "Add a smith npc"). He
+ * works in the smithy (door 6) beside the Upgrade Bench, in the open floor right of it. Where his feet are.
+ */
+export const TOWN_SMITH_POSITION = stationIn(6, 290, 110);
+/** How close a player's feet come to the Smith's before his window opens; the server allows a little more for lag. */
+export const TOWN_SMITH_REACH = 60;
+export const TOWN_SMITH_SERVER_REACH = 100;
 
 /** The whole row of rooms, walls and all. */
 const TOWN_INTERIOR_AREA = Object.freeze({
