@@ -54,3 +54,7 @@ art-source/unity-workspace/**
 # Local profiling exports and machine-specific test captures #
 #############################################################
 local-data/**
+
+# Local agent state and worktrees #
+##################################
+.claude/
