@@ -53,6 +53,8 @@ export function createRegularEnemyLootQueue(options: {
   simulatedSeconds?: () => number;
   /** True while another device or tab holds the session: this page cannot report, so its play time is not this account's. */
   claimsPaused?: () => boolean;
+  /** A send that threw or outlived its deadline. The batch stays queued and is retried; this only makes the stall visible. */
+  sendFailed?: (error: unknown) => void;
 }) {
   let owner = "", key = "", epoch = 0;
   // Where the last sealed report's simulated time ended. Set at the first
@@ -251,7 +253,7 @@ export function createRegularEnemyLootQueue(options: {
         }
         write(storageKey, stream);
         let accepted: boolean | "discard" | "throttled" = false;
-        try { accepted = await withRequestDeadline(options.send({ streamId: stream.streamId, sequence: BigInt(batch.sequence), mapId: batch.mapId, count: batch.count, enemies: batch.enemies, autoFarm: Boolean(batch.autoFarm), simulatedMillis: batch.simulatedMillis ?? 0 }), ENEMY_DEFEAT_BATCH_TIMEOUT_MS); } catch {}
+        try { accepted = await withRequestDeadline(options.send({ streamId: stream.streamId, sequence: BigInt(batch.sequence), mapId: batch.mapId, count: batch.count, enemies: batch.enemies, autoFarm: Boolean(batch.autoFarm), simulatedMillis: batch.simulatedMillis ?? 0 }), ENEMY_DEFEAT_BATCH_TIMEOUT_MS); } catch (error) { options.sendFailed?.(error); }
         if (accepted === "throttled") noteThrottle(runOwner);
         if (epoch !== runEpoch || options.identity() !== runOwner) return false;
         if (accepted === "throttled") { stream.retryAtMs = wallClockNowMs() + 30_000; write(storageKey, stream); return false; }

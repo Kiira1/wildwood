@@ -154,6 +154,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
   // The game session's simulated seconds, handed over once by claimGameBridge.
   let gameSimulatedSeconds: (() => number) | null = null;
   let gameBridgeClaimed = false;
+  let lastStallDiagnosticAt = Number.NEGATIVE_INFINITY;
   const enemyLoot = createRegularEnemyLootQueue({
     identity: dependencies.localIdentity,
     tabId: dependencies.lootTabId ?? (() => "current-tab"),
@@ -161,6 +162,15 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
     send: sendCombatBatch,
     simulatedSeconds: () => gameSimulatedSeconds?.() ?? 0,
     claimsPaused: () => dependencies.reducers.worldEntryBlocked(),
+    // The kills stay queued and go out on the next flush; once a wait, so a
+    // long outage does not write a row per retry.
+    sendFailed: error => {
+      const now = monotonicNowMs();
+      if (now - lastStallDiagnosticAt < 30_000) return;
+      lastStallDiagnosticAt = now;
+      console.warn("WildStat kill report did not finish:", error);
+      recordConnectionDiagnostic("rewards-stalled", { detail: dependencies.reducers.errorMessage(error) });
+    },
   });
   const progressByIdentity = new Map<string, PlayerProgress>();
   const researchByIdentity = new Map<string, PlayerResearch>();

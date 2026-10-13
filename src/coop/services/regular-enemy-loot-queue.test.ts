@@ -410,3 +410,15 @@ it("charges a long fight's game time to the kill at its end, and still not the i
   simulated = 710; await queue.flush(true);
   expect(f.send.mock.calls.map(([request]) => request.simulatedMillis)).toEqual([101_000, 40_000]);
 });
+
+it("reports a send that throws and keeps the batch for the next flush", async () => {
+  const f = fixture();
+  const failures: unknown[] = [];
+  const queue = createRegularEnemyLootQueue({ ...f.options, sendFailed: error => failures.push(error) });
+  f.send.mockRejectedValueOnce(new Error("socket gone"));
+  queue.record("cloudspire", "Spitter");
+  expect(await queue.flush()).toBe(false);
+  expect(failures.map(String)).toEqual(["Error: socket gone"]);
+  expect(await queue.flush()).toBe(true);
+  expect(f.send.mock.calls.map(([request]) => [request.sequence, request.count])).toEqual([[1n, 1], [1n, 1]]);
+});
