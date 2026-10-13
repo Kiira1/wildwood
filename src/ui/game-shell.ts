@@ -183,19 +183,19 @@ const afterUpdateGateShell = String.raw`
         <button id="profileEditorPictureBtn" class="profile-editor-pencil" type="button" aria-label="Change picture" aria-haspopup="dialog"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm17.71-10.21a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
       </div>
       <div class="profile-editor-item">
-        <span class="profile-editor-pill profile-editor-name-pill" data-opens="profileNameToggle"><span id="profileEditorPreview" class="profile-editor-preview"></span></span>
+        <span class="profile-editor-visual" data-opens="profileNameToggle"><span id="profileEditorPreview" class="profile-editor-preview"></span></span>
         <button id="profileNameToggle" class="profile-editor-pencil" type="button" aria-label="Change name" aria-haspopup="dialog"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm17.71-10.21a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
       </div>
       <div class="profile-editor-item">
-        <span class="profile-editor-pill" data-opens="profileNameColorToggle"><span class="profile-editor-pill-label">Name Color</span><span class="profile-editor-pill-value"><span id="profileNameColorSwatch" class="profile-editor-swatch is-round"></span><span id="profileNameColorValue"></span></span></span>
+        <span class="profile-editor-visual" data-opens="profileNameColorToggle"><span id="profileNameColorSwatch" class="profile-editor-color-dot"></span><span class="profile-editor-caption">Name Color: <span id="profileNameColorValue"></span></span></span>
         <button id="profileNameColorToggle" class="profile-editor-pencil" type="button" aria-label="Change name color" aria-haspopup="dialog"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm17.71-10.21a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
       </div>
       <div class="profile-editor-item">
-        <span class="profile-editor-pill" data-opens="profileGenderToggle"><span class="profile-editor-pill-label">Gender</span><span class="profile-editor-pill-value"><span id="profileGenderValue" class="profile-editor-gender"></span></span></span>
+        <span class="profile-editor-visual" data-opens="profileGenderToggle"><span id="profileGenderValue" class="profile-editor-gender"></span></span>
         <button id="profileGenderToggle" class="profile-editor-pencil" type="button" aria-label="Change gender" aria-haspopup="dialog"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm17.71-10.21a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
       </div>
       <div class="profile-editor-item">
-        <span class="profile-editor-pill" data-opens="profileSkinToneToggle"><span class="profile-editor-pill-label">Skin Tone</span><span class="profile-editor-pill-value"><span id="profileSkinToneSwatch" class="profile-editor-swatch"></span><span id="profileSkinToneValue"></span></span></span>
+        <span class="profile-editor-visual" data-opens="profileSkinToneToggle"><span id="profileSkinToneSwatch" class="profile-editor-skin-swatch"></span><span class="profile-editor-caption">Skin Tone: <span id="profileSkinToneValue"></span></span></span>
         <button id="profileSkinToneToggle" class="profile-editor-pencil" type="button" aria-label="Change skin tone" aria-haspopup="dialog"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm17.71-10.21a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
       </div>
     </div>
