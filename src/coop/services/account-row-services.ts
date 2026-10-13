@@ -7,6 +7,7 @@ import { createSoulDimensionRows } from "./soul-dimension-service";
 import { createGuildHallRows } from "./guild-hall-service";
 import { createItemRefineRows } from "./item-refine-service";
 import { createMiningRows } from "./mining-service";
+import { createCardRows } from "./card-service";
 
 /**
  * The account's own small rows, each read through a caller-scoped view and
@@ -14,7 +15,7 @@ import { createMiningRows } from "./mining-service";
  * opt-out, the bow skill rolls with their copies and loot settings, the
  * rewarded ad's Gem claims, the automatic chat mute and the Soul Dimension's
  * rows (soul stats, kills by reward type, whether it is open) and the guild
- * hall's fund and levels, each item's refine with the ores it costs, and mining. They share one
+ * hall's fund and levels, each item's refine with the ores it costs, mining, and cards. They share one
  * lifecycle, so the connection starts them together and the coop API serves
  * them together.
  */
@@ -27,6 +28,7 @@ export function createAccountRowServices(connection: () => DbConnection | null, 
   const guildHall = createGuildHallRows(connection, notify);
   const itemRefine = createItemRefineRows(notify, slotTierFor);
   const mining = createMiningRows(notify);
+  const cards = createCardRows(notify);
   return {
     watch(current: DbConnection, isCurrent: () => boolean) {
       offlinePreference.watch(current, isCurrent);
@@ -37,6 +39,7 @@ export function createAccountRowServices(connection: () => DbConnection | null, 
       guildHall.watch(current, isCurrent);
       itemRefine.watch(current, isCurrent);
       mining.watch(current, isCurrent);
+      cards.watch(current, isCurrent);
     },
     api: {
       ...offlinePreference.api,
@@ -47,6 +50,7 @@ export function createAccountRowServices(connection: () => DbConnection | null, 
       ...guildHall.api,
       ...itemRefine.api,
       ...mining.api,
+      ...cards.api,
     },
   };
 }
