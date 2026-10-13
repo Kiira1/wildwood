@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.901.66": [
+    "Every enemy has the same hitbox, a Dune Raider's, so big Endless enemies no longer wall off kiting",
+  ],
   "0.901.65": [
     "Move On and Fight Bosses check the real enemies and boss fight, not a fixed power table",
     "Move On and Fight Bosses say what you need: Need More Damage or Need More Health",
@@ -3247,6 +3250,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.901.66": "2026-10-12",
   "0.901.65": "2026-10-12",
   "0.901.64": "2026-10-12",
   "0.901.63": "2026-10-12",

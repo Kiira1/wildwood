@@ -2,12 +2,14 @@ import type { MapBalanceSnapshot } from '../../../shared/map-balance-types';
 import { installMapBalance } from '../../../shared/map-balance-runtime';
 import { installBossRuleValues } from '../../../shared/rules';
 import { ENEMY_TYPES, type EnemyKind } from '../../../shared/enemy-definitions';
+import { ENEMY_HIT_RADIUS } from '../../../shared/enemy-hitbox';
 import { BOSS_DAMAGE_PROFILES } from '../../../shared/boss-damage';
 import { useCurveArmor } from '../combat';
 export function applyMapBalance(snapshot: MapBalanceSnapshot) {
   if (snapshot.schema !== 1) throw new Error('Unsupported map balance. Update WildStat.');
   installMapBalance(snapshot);
-  for (const [kind, row] of Object.entries(snapshot.enemies)) if (Object.prototype.hasOwnProperty.call(ENEMY_TYPES, kind)) Object.assign(ENEMY_TYPES[kind as EnemyKind], { regen: 0, armor: 0 }, row);
+  // A snapshot pinned before 0.901.66 still carries each enemy's old hitbox: every one is ENEMY_HIT_RADIUS now.
+  for (const [kind, row] of Object.entries(snapshot.enemies)) if (Object.prototype.hasOwnProperty.call(ENEMY_TYPES, kind)) Object.assign(ENEMY_TYPES[kind as EnemyKind], { regen: 0, armor: 0 }, row, { r: ENEMY_HIT_RADIUS });
   installBossRuleValues(snapshot.rules);
   useCurveArmor(snapshot.rules.ARMOR_CURVE === 1);
   if (snapshot.boss && Object.prototype.hasOwnProperty.call(BOSS_DAMAGE_PROFILES, snapshot.boss.kind)) {

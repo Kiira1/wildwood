@@ -4,6 +4,7 @@
  * Endless resolves their combat values from its own lanes, so these are only the
  * shape the enemy list needs: melee, regular size, the late maps' attack speed.
  */
+import { ENEMY_HIT_RADIUS } from "./enemy-hitbox";
 import type { EnemyDefinition } from "./enemy-definitions";
 
 /** Each enemy's runtime sprite id under public/assets/wildstat/enemies/. */
@@ -51,7 +52,7 @@ export const ENDLESS_ENEMY_ART = {
   "Poison Worm": "worm-poison",
 } as const;
 
-const endless = { attackSpeed: 0.65, speed: 305, r: 30, color: "#9aa7b5", outline: "#2a3038", hp: 1, damage: 1, reward: { type: "damage", amount: 1 } } as const satisfies EnemyDefinition;
+const endless = { attackSpeed: 0.65, speed: 305, r: ENEMY_HIT_RADIUS, color: "#9aa7b5", outline: "#2a3038", hp: 1, damage: 1, reward: { type: "damage", amount: 1 } } as const satisfies EnemyDefinition;
 export const ENDLESS_ENEMY_BASE_VALUES = {
   "Castle Carapace": endless,
   "Green Carapace": endless,
