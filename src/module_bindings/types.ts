@@ -1494,6 +1494,12 @@ export type MyLootSettings = __Infer<typeof MyLootSettings>;
 export const MyMailboxV2 = __t.object("MyMailboxV2", {});
 export type MyMailboxV2 = __Infer<typeof MyMailboxV2>;
 
+export const MyMinedNodes = __t.object("MyMinedNodes", {});
+export type MyMinedNodes = __Infer<typeof MyMinedNodes>;
+
+export const MyMining = __t.object("MyMining", {});
+export type MyMining = __Infer<typeof MyMining>;
+
 export const MyOfflinePreference = __t.object("MyOfflinePreference", {});
 export type MyOfflinePreference = __Infer<typeof MyOfflinePreference>;
 
@@ -2039,6 +2045,25 @@ export const PlayerMapMarker = __t.object("PlayerMapMarker", {
   updatedAt: __t.timestamp(),
 });
 export type PlayerMapMarker = __Infer<typeof PlayerMapMarker>;
+
+export const PlayerMinedNode = __t.object("PlayerMinedNode", {
+  key: __t.string(),
+  identity: __t.identity(),
+  nodeId: __t.u32(),
+  brokenAt: __t.timestamp(),
+});
+export type PlayerMinedNode = __Infer<typeof PlayerMinedNode>;
+
+export const PlayerMining = __t.object("PlayerMining", {
+  identity: __t.identity(),
+  mining: __t.u32(),
+  rocksBroken: __t.u32(),
+  pickaxeAt: __t.timestamp(),
+  lastBreakAt: __t.timestamp(),
+  lastNodeId: __t.u32(),
+  lastStarshard: __t.bool(),
+});
+export type PlayerMining = __Infer<typeof PlayerMining>;
 
 export const PlayerMotion = __t.object("PlayerMotion", {
   networkId: __t.u32(),

@@ -620,6 +620,21 @@
       "itemIds:array(string)",
       "upgradeLevel:u8"
     ],
+    "my_mined_nodes": [
+      "key:string",
+      "identity:identity",
+      "nodeId:u32",
+      "brokenAt:timestamp"
+    ],
+    "my_mining": [
+      "identity:identity",
+      "mining:u32",
+      "rocksBroken:u32",
+      "pickaxeAt:timestamp",
+      "lastBreakAt:timestamp",
+      "lastNodeId:u32",
+      "lastStarshard:bool"
+    ],
     "my_offline_preference": [
       "identity:identity",
       "enabled:bool"

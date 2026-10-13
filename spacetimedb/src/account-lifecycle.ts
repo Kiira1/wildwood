@@ -29,6 +29,7 @@ import { mergeItemGifts, removeItemGifts } from "./item-gifts";
 import { mergeBowSkills, removeBowSkills } from "./bow-skills";
 import { mergeEquipmentCopies } from "./equipment-copies";
 import { mergeRefineData } from "./item-refine";
+import { mergeMiningData } from "./mining";
 import { mergeMailboxReceipts, removeMailboxReceipts } from "./mailbox";
 import { mergeOnboarding } from "./onboarding";
 import { mergeAudioSettings, removeAudioSettings } from "./audio-settings";
@@ -149,6 +150,7 @@ const PLAYER_STATE_TABLES: ReadonlySet<string> = new Set([
   "forestRewardPrototype", "gemKillProgress", "gemTransaction", "guildMemberQuestWeek", "guildRejoin",
   "homeReturnLocation", "leaderboardEntryLegacy", "leaderboardPosition", "leaderboardPrestigePosition", "loginMove",
   "offlineProgress", "patreonPreview", "playerAggroChallenge", "playerAggroChallengeParked", "playerBonusToggle", "playerNameColor",
+  "playerMining", "playerMinedNode",
   "playerDailyQuest", "playerEndgameRebaseBackup", "playerEndlessRebaseBackup", "playerFreeRespec",
   "playerOfflinePreference", "playerPowerRebaseBackup", "playerPrestige", "playerPrestigeChallenge",
   "playerPrestigeChallengeParked", "playerPrestigeExpansionPerk", "playerPrestigePerk", "playerQuestWeekTotal",
@@ -255,6 +257,7 @@ export function createAccountLifecycle(deps: AccountLifecycleDeps) {
     mergeBowSkills(ctx, link.guest, ctx.sender);
     mergeEquipmentCopies(ctx, link.guest, ctx.sender);
     mergeRefineData(ctx, link.guest, ctx.sender);
+    mergeMiningData(ctx, link.guest, ctx.sender);
     mergeMailboxReceipts(ctx, link.guest, ctx.sender);
     mergeOnboarding(ctx, link.guest, ctx.sender);
     mergeAudioSettings(ctx, link.guest, ctx.sender);

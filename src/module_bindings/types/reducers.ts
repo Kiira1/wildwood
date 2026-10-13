@@ -28,6 +28,7 @@ import ClaimDailyGemBonusReducer from "../claim_daily_gem_bonus_reducer";
 import ClaimDeveloperItemGiftReducer from "../claim_developer_item_gift_reducer";
 import ClaimGuestAccountReducer from "../claim_guest_account_reducer";
 import ClaimMailboxGiftReducer from "../claim_mailbox_gift_reducer";
+import ClaimPickaxeReducer from "../claim_pickaxe_reducer";
 import CollectGuildMemberQuestsReducer from "../collect_guild_member_quests_reducer";
 import CompleteOnboardingStepReducer from "../complete_onboarding_step_reducer";
 import ConfigureGemCommerceReducer from "../configure_gem_commerce_reducer";
@@ -107,6 +108,7 @@ import JoinVirtualPlayerLoadTestReducer from "../join_virtual_player_load_test_r
 import KickGuildMemberReducer from "../kick_guild_member_reducer";
 import LeaveGuildReducer from "../leave_guild_reducer";
 import MarkPortalCutsceneSeenReducer from "../mark_portal_cutscene_seen_reducer";
+import MineNodeReducer from "../mine_node_reducer";
 import PauseResearchReducer from "../pause_research_reducer";
 import PrepareProceduralBossReducer from "../prepare_procedural_boss_reducer";
 import PrepareWorldActionPositionReducer from "../prepare_world_action_position_reducer";
@@ -222,6 +224,7 @@ export type ClaimDailyGemBonusParams = __Infer<typeof ClaimDailyGemBonusReducer>
 export type ClaimDeveloperItemGiftParams = __Infer<typeof ClaimDeveloperItemGiftReducer>;
 export type ClaimGuestAccountParams = __Infer<typeof ClaimGuestAccountReducer>;
 export type ClaimMailboxGiftParams = __Infer<typeof ClaimMailboxGiftReducer>;
+export type ClaimPickaxeParams = __Infer<typeof ClaimPickaxeReducer>;
 export type CollectGuildMemberQuestsParams = __Infer<typeof CollectGuildMemberQuestsReducer>;
 export type CompleteOnboardingStepParams = __Infer<typeof CompleteOnboardingStepReducer>;
 export type ConfigureGemCommerceParams = __Infer<typeof ConfigureGemCommerceReducer>;
@@ -301,6 +304,7 @@ export type JoinVirtualPlayerLoadTestParams = __Infer<typeof JoinVirtualPlayerLo
 export type KickGuildMemberParams = __Infer<typeof KickGuildMemberReducer>;
 export type LeaveGuildParams = __Infer<typeof LeaveGuildReducer>;
 export type MarkPortalCutsceneSeenParams = __Infer<typeof MarkPortalCutsceneSeenReducer>;
+export type MineNodeParams = __Infer<typeof MineNodeReducer>;
 export type PauseResearchParams = __Infer<typeof PauseResearchReducer>;
 export type PrepareProceduralBossParams = __Infer<typeof PrepareProceduralBossReducer>;
 export type PrepareWorldActionPositionParams = __Infer<typeof PrepareWorldActionPositionReducer>;

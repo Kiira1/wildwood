@@ -56,6 +56,7 @@ import ClaimDailyGemBonusReducer from "./claim_daily_gem_bonus_reducer";
 import ClaimDeveloperItemGiftReducer from "./claim_developer_item_gift_reducer";
 import ClaimGuestAccountReducer from "./claim_guest_account_reducer";
 import ClaimMailboxGiftReducer from "./claim_mailbox_gift_reducer";
+import ClaimPickaxeReducer from "./claim_pickaxe_reducer";
 import CollectGuildMemberQuestsReducer from "./collect_guild_member_quests_reducer";
 import CompleteOnboardingStepReducer from "./complete_onboarding_step_reducer";
 import ConfigureGemCommerceReducer from "./configure_gem_commerce_reducer";
@@ -135,6 +136,7 @@ import JoinVirtualPlayerLoadTestReducer from "./join_virtual_player_load_test_re
 import KickGuildMemberReducer from "./kick_guild_member_reducer";
 import LeaveGuildReducer from "./leave_guild_reducer";
 import MarkPortalCutsceneSeenReducer from "./mark_portal_cutscene_seen_reducer";
+import MineNodeReducer from "./mine_node_reducer";
 import PauseResearchReducer from "./pause_research_reducer";
 import PrepareProceduralBossReducer from "./prepare_procedural_boss_reducer";
 import PrepareWorldActionPositionReducer from "./prepare_world_action_position_reducer";
@@ -335,6 +337,8 @@ import MyItemRefinesRow from "./my_item_refines_table";
 import MyLegalConsentRow from "./my_legal_consent_table";
 import MyLootSettingsRow from "./my_loot_settings_table";
 import MyMailboxV2Row from "./my_mailbox_v_2_table";
+import MyMinedNodesRow from "./my_mined_nodes_table";
+import MyMiningRow from "./my_mining_table";
 import MyOfflinePreferenceRow from "./my_offline_preference_table";
 import MyOfflineProgressRow from "./my_offline_progress_table";
 import MyOnboardingRow from "./my_onboarding_table";
@@ -1625,6 +1629,20 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, MyMailboxV2Row),
+  myMinedNodes: __table({
+    name: 'my_mined_nodes',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MyMinedNodesRow),
+  myMining: __table({
+    name: 'my_mining',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MyMiningRow),
   myOfflinePreference: __table({
     name: 'my_offline_preference',
     indexes: [
@@ -1763,6 +1781,7 @@ const reducersSchema = __reducers(
   __reducerSchema("claim_developer_item_gift", ClaimDeveloperItemGiftReducer),
   __reducerSchema("claim_guest_account", ClaimGuestAccountReducer),
   __reducerSchema("claim_mailbox_gift", ClaimMailboxGiftReducer),
+  __reducerSchema("claim_pickaxe", ClaimPickaxeReducer),
   __reducerSchema("collect_guild_member_quests", CollectGuildMemberQuestsReducer),
   __reducerSchema("complete_onboarding_step", CompleteOnboardingStepReducer),
   __reducerSchema("configure_gem_commerce", ConfigureGemCommerceReducer),
@@ -1842,6 +1861,7 @@ const reducersSchema = __reducers(
   __reducerSchema("kick_guild_member", KickGuildMemberReducer),
   __reducerSchema("leave_guild", LeaveGuildReducer),
   __reducerSchema("mark_portal_cutscene_seen", MarkPortalCutsceneSeenReducer),
+  __reducerSchema("mine_node", MineNodeReducer),
   __reducerSchema("pause_research", PauseResearchReducer),
   __reducerSchema("prepare_procedural_boss", PrepareProceduralBossReducer),
   __reducerSchema("prepare_world_action_position", PrepareWorldActionPositionReducer),

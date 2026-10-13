@@ -21,6 +21,7 @@ import { isTownMap } from "./town";
 import { isGuildHallMap } from "./guild-hall";
 import { pinMapBalance } from "./map-balance";
 import { recordAnalyticsMapVisit } from "./analytics";
+import { removeMiningData } from "./mining";
 
 export function publishPlayerDeathFrame(ctx: any, activePlayer: any) {
   if (boundedMapPopulation(ctx, activePlayer.mapId) < 2) return;
@@ -106,6 +107,7 @@ export function resetWholeSave(ctx: any, activePlayer: any) {
     const handle = ctx.db[table];
     if (handle?.identity.find(ctx.sender)) handle.identity.delete(ctx.sender);
   }
+  removeMiningData(ctx, ctx.sender); // Mining is earned across runs too: the pickaxe goes back to the Smith.
   resetProgressToDefaults(ctx, activePlayer);
 }
 

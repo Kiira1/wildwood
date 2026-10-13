@@ -128,6 +128,8 @@ export const ERASURE_TARGETS: readonly ErasureTarget[] = [
   { table: "playerCopyRefine", columns: ["identity"], pk: "copyId", mode: "index", index: "identity" },
   { table: "playerOre", columns: ["identity"], pk: "key", mode: "index", index: "identity" },
   { table: "playerRefineResult", columns: ["identity"], pk: "identity", mode: "key" },
+  { table: "playerMining", columns: ["identity"], pk: "identity", mode: "key" },
+  { table: "playerMinedNode", columns: ["identity"], pk: "key", mode: "index", index: "identity" },
   { table: "playerChatHearts", columns: ["identity"], pk: "identity", mode: "key" },
   { table: "playerChatMute", columns: ["identity"], pk: "identity", mode: "key" },
   { table: "playerCombatRating", columns: ["identity"], pk: "identity", mode: "key" },
