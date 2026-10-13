@@ -1713,7 +1713,8 @@
   #chatUnreadBadge { top: 3px; right: calc(100% - 46px); }
   #chatUnreadBadge[hidden], #chatPanel.is-large #chatUnreadBadge { display: none; }
   #chatPanel[hidden] { display: none; }
-  #chatPanel:not(.is-large) { height: var(--mini-chat-height); min-height: var(--mini-chat-height); max-height: var(--mini-chat-height); border-radius: 0; background: var(--hud-surface); backdrop-filter: none; cursor: pointer; }
+  /* Mini chat: the HUD surface, 10 points more see-through (Ryan, 0.901.67). */
+  #chatPanel:not(.is-large) { height: var(--mini-chat-height); min-height: var(--mini-chat-height); max-height: var(--mini-chat-height); border-radius: 0; background: rgba(24, 24, 24, .50); backdrop-filter: none; cursor: pointer; }
   #chatPanel:not(.is-large) #topMeta { color: #fff; }
   .chat-header,
   #chatForm {
