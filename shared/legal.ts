@@ -6,6 +6,11 @@ export const AGE_SLIDER_MAX = 100;
 export const AGE_BAND_UNDER_13 = 0;
 export const AGE_BAND_TEEN = 1;
 export const AGE_BAND_ADULT = 2;
+/**
+ * Agreed to the Terms but not asked their age yet (Ryan, 2026-10-13: the age question moved from the start
+ * screen to the first time chat is opened). Plays, but chat stays locked until a 13+ age is given.
+ */
+export const AGE_BAND_UNVERIFIED = 3;
 
 export type PlayerAgeBand =
   | typeof AGE_BAND_UNDER_13
@@ -26,3 +31,10 @@ export function playerAgeBand(age: number): PlayerAgeBand {
 export function isEligiblePlayerAgeBand(ageBand: number): ageBand is EligiblePlayerAgeBand {
   return ageBand === AGE_BAND_TEEN || ageBand === AGE_BAND_ADULT;
 }
+
+/** Enough to play: a 13+ age, or not asked yet. Chat needs `isEligiblePlayerAgeBand`. */
+export function isPlayableAgeBand(ageBand: number): ageBand is EligiblePlayerAgeBand | typeof AGE_BAND_UNVERIFIED {
+  return isEligiblePlayerAgeBand(ageBand) || ageBand === AGE_BAND_UNVERIFIED;
+}
+
+export const CHAT_AGE_REQUIRED = "Verify your age to use chat.";

@@ -2393,7 +2393,7 @@
 
   .legal-gate-footer { align-self: end; width: 100%; }
 
-  #legalAgeSlider {
+  :is(#legalAgeSlider, #chatAgeSlider) {
     width: 100%;
     height: 26px;
     margin: 0;
@@ -2404,20 +2404,20 @@
     cursor: pointer;
   }
 
-  #legalAgeSlider::-webkit-slider-runnable-track {
+  :is(#legalAgeSlider, #chatAgeSlider)::-webkit-slider-runnable-track {
     height: 5px;
     border-radius: 999px;
     background: rgba(220, 230, 222, .24);
   }
 
-  #legalAgeSlider::-moz-range-track {
+  :is(#legalAgeSlider, #chatAgeSlider)::-moz-range-track {
     height: 5px;
     border: 0;
     border-radius: 999px;
     background: rgba(220, 230, 222, .24);
   }
 
-  #legalAgeSlider::-webkit-slider-thumb {
+  :is(#legalAgeSlider, #chatAgeSlider)::-webkit-slider-thumb {
     width: 24px;
     height: 24px;
     margin-top: -9.5px;
@@ -2429,7 +2429,7 @@
     box-shadow: 0 2px 8px rgba(0, 0, 0, .38);
   }
 
-  #legalAgeSlider::-moz-range-thumb {
+  :is(#legalAgeSlider, #chatAgeSlider)::-moz-range-thumb {
     width: 20px;
     height: 20px;
     border: 3px solid #0c0c0c;
@@ -2438,9 +2438,9 @@
     box-shadow: 0 2px 8px rgba(0, 0, 0, .38);
   }
 
-  #legalAgeSlider:focus-visible { outline: none; }
-  #legalAgeSlider:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px #fff, 0 2px 8px rgba(0, 0, 0, .38); }
-  #legalAgeSlider:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 3px #fff, 0 2px 8px rgba(0, 0, 0, .38); }
+  :is(#legalAgeSlider, #chatAgeSlider):focus-visible { outline: none; }
+  :is(#legalAgeSlider, #chatAgeSlider):focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px #fff, 0 2px 8px rgba(0, 0, 0, .38); }
+  :is(#legalAgeSlider, #chatAgeSlider):focus-visible::-moz-range-thumb { box-shadow: 0 0 0 3px #fff, 0 2px 8px rgba(0, 0, 0, .38); }
 
   .legal-age-limits {
     display: flex;
@@ -2476,6 +2476,18 @@
   }
 
   .legal-gate-status.is-blocked { color: #ff9b91; }
+  /* The start screen hides its slider (age is asked in chat), and its Terms and Continue once blocked. */
+  #legalGatePanel [hidden] { display: none; }
+  /* Chat's age check: the start screen's slider in a small window over the game (chat-age-gate.ts). */
+  #chatAgeGate { position: fixed; inset: 0; z-index: 14; display: grid; place-items: center; padding: 16px; background: rgba(0,0,0,.55); }
+  #chatAgeGate[hidden] { display: none; }
+  .modal.chat-age-gate-modal { display: grid; justify-items: center; gap: 14px; width: var(--game-window-width); padding: 18px 16px 0; border-color: #080808; background: var(--window-surface); text-align: center; transform: none; }
+  .chat-age-gate-note { margin: 0; color: var(--muted); font-size: 13px; }
+  .chat-age-gate-modal > .window-back-footer { justify-self: stretch; }
+  .chat-age-gate-modal .legal-age-control { margin-top: 40px; }
+  .chat-age-gate-modal #chatAgeContinueBtn { width: min(300px, 100%); margin: 0; transform: none; }
+  .chat-age-gate-modal #chatAgeContinueBtn:active:not(:disabled) { transform: translateY(2px); }
+  .chat-line.chat-age-line { display: flex; align-items: center; color: var(--gold); font-weight: 900; cursor: pointer; }
 
   .setting-legal {
     margin: 6px 0 2px;
@@ -2700,7 +2712,7 @@
   }
 
   .account-choice-modal button,
-  #legalContinueBtn {
+  :is(#legalContinueBtn, #chatAgeContinueBtn) {
     display: block;
     width: min(360px, calc(100vw - 108px));
     max-width: none;
@@ -2727,7 +2739,7 @@
   }
 
   .account-choice-modal #continueGuestBtn,
-  #legalContinueBtn {
+  :is(#legalContinueBtn, #chatAgeContinueBtn) {
     border-color: #303738;
     background: linear-gradient(170deg, #676969 0%, #505d5e 52%, #425052 100%);
     box-shadow:
@@ -2738,10 +2750,10 @@
   }
 
   .account-choice-modal button:hover:not(:disabled),
-  #legalContinueBtn:hover:not(:disabled) { filter: brightness(1.035); }
+  :is(#legalContinueBtn, #chatAgeContinueBtn):hover:not(:disabled) { filter: brightness(1.035); }
 
   .account-choice-modal button:focus-visible,
-  #legalContinueBtn:focus-visible {
+  :is(#legalContinueBtn, #chatAgeContinueBtn):focus-visible {
     outline: 3px solid rgba(255, 255, 255, .92);
     outline-offset: 3px;
   }
@@ -2755,7 +2767,7 @@
   }
 
   .account-choice-modal #continueGuestBtn:active:not(:disabled),
-  #legalContinueBtn:active:not(:disabled) {
+  :is(#legalContinueBtn, #chatAgeContinueBtn):active:not(:disabled) {
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, .24),
       0 1px 0 #202424,
@@ -2764,7 +2776,7 @@
   }
 
   .account-choice-modal button:disabled,
-  #legalContinueBtn:disabled {
+  :is(#legalContinueBtn, #chatAgeContinueBtn):disabled {
     filter: saturate(.6);
     opacity: .58;
     cursor: default;

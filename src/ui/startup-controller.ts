@@ -35,7 +35,8 @@ type StartupDependencies = {
   getLoadingStages: () => LoadingStage[];
   onLoadingComplete: () => void;
   onShowAccountChoice: () => void;
-  acceptLegalTerms: (age: number) => Promise<{ ok?: boolean; error?: string } | undefined> | undefined;
+  acceptLegalTerms: () => Promise<{ ok?: boolean; error?: string } | undefined> | undefined;
+  ageBlocked?: () => boolean;
   onLegalAccepted: () => void;
   onContinueGuest: () => Promise<{ ok?: boolean; error?: string } | undefined> | { ok?: boolean; error?: string } | undefined;
   onBeginAdventure: (name: string) => void;
@@ -80,6 +81,8 @@ export function createStartupController(dependencies: StartupDependencies) {
   const legalGate = createLegalGateController({
     accept: dependencies.acceptLegalTerms,
     onAccepted: dependencies.onLegalAccepted,
+    askAge: false,
+    blocked: () => dependencies.ageBlocked?.() === true,
   });
 
   function showConnecting() {

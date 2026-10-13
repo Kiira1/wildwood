@@ -8,7 +8,7 @@ import { DEVELOPER_IDENTITY as DEVELOPER_IDENTITY_HEX } from "../../shared/devel
 import { requireAllowedDefeatSession, defeatRestrictionError } from "./defeat-session";
 import { SenderError } from "spacetimedb/server";
 import { COMPATIBLE_PROTOCOL_VERSIONS } from "../../shared/rules";
-import { TERMS_VERSION, isEligiblePlayerAgeBand } from "../../shared/legal";
+import { CHAT_AGE_REQUIRED, TERMS_VERSION, isEligiblePlayerAgeBand, isPlayableAgeBand } from "../../shared/legal";
 import { playerWithMotion } from "./presence-runtime";
 import { auditPrivilegedAccess } from "./privileged-access-audit";
 import { hasSpacetimeAuthAccount } from "./account-lifecycle";
@@ -57,10 +57,15 @@ export function isSupportedProtocol(protocolVersion: number) {
 
 export function requireCurrentLegalConsent(ctx: any) {
   const consent = ctx.db.playerLegalConsent.identity.find(ctx.sender);
-  if (consent?.termsVersion !== TERMS_VERSION || !isEligiblePlayerAgeBand(consent?.ageBand ?? -1)) {
+  if (consent?.termsVersion !== TERMS_VERSION || !isPlayableAgeBand(consent?.ageBand ?? -1)) {
     throw new SenderError("Review and accept the Wildstat Terms to continue.");
   }
   return consent;
+}
+
+/** Chat, guild and private messages need a 13+ age; the Terms alone let a player in, not talk. */
+export function requireChatAge(ctx: any) {
+  if (!isEligiblePlayerAgeBand(ctx.db.playerLegalConsent.identity.find(ctx.sender)?.ageBand ?? -1)) throw new SenderError(CHAT_AGE_REQUIRED);
 }
 
 export function requireSupportedSessionProtocol(ctx: any) {

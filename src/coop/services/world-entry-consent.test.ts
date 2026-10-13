@@ -47,7 +47,7 @@ it('does not enter a departed connection and saves acceptance again on its repla
 });
 it('retains accepted consent when world entry fails and exposes it to the entry barrier immediately', async () => {
   const f = fixture(false); f.request.mockImplementation(async () => { expect(f.service.accepted()).toBe(true); await f.enter(); return false; });
-  await expect(f.service.acceptAge(22)).resolves.toMatchObject({ ok: false });
+  await expect(f.service.acceptTerms()).resolves.toMatchObject({ ok: false });
   expect(f.service.accepted()).toBe(true);
   expect(f.first.reducers.acceptTerms).toHaveBeenCalledTimes(1);
   expect(f.first.reducers.enterWorldWithTutorial).toHaveBeenCalledTimes(1);

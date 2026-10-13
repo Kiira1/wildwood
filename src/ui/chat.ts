@@ -87,6 +87,9 @@ type CoopClient = {
   };
   localIdentity?: () => string;
   isGuest?: (identity: string) => boolean;
+  /** Whether chat may open: a 13+ age has been given (legal-consent-service.ts). Missing reads as yes. */
+  ageVerified?: () => boolean;
+  verifyAge?: (age: number) => Promise<{ ok?: boolean; error?: string; blocked?: boolean }>;
   profileIcon?: (identity: string) => number;
   prepareChatPortraits?: (identities: readonly string[]) => Promise<void>;
   playerGender?: (identity: string) => PlayerGender;
@@ -125,9 +128,16 @@ type ChatOptions = {
   onOpenReplay?: (replayId: bigint) => void;
   onOpenPlayer?: (identity: string, displayName: string) => void;
   onLayoutChange?: () => void;
+  /** Opening chat before the age is given asks it instead (chat-age-gate.ts). */
+  onAgeCheck?: () => void;
 };
 
-export function createChatController({ elements, getCoop, showMessage, onOpenReplay, onOpenPlayer, onLayoutChange }: ChatOptions) {
+export function createChatController({ elements, getCoop, showMessage, onOpenReplay, onOpenPlayer, onLayoutChange, onAgeCheck }: ChatOptions) {
+  const ageOk = () => getCoop()?.ageVerified?.() ?? true;
+  // Until then the mini chat shows this one line in place of messages.
+  const ageLine = document.createElement("div");
+  ageLine.className = "chat-line chat-age-line";
+  ageLine.textContent = "Verify your age to use chat. Tap here.";
   let enabled = true;
   let large = false;
   let interactionUntil = 0;
@@ -383,6 +393,7 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
   }
 
   function setLarge(nextLarge: boolean) {
+    if (nextLarge && !large && !ageOk()) { onAgeCheck?.(); return; }
     const closingComposer = large && !nextLarge;
     if (closingComposer) elements.input.blur();
     large = nextLarge;
@@ -539,7 +550,7 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
     // Profile, portrait, hub, other-channel and minute ticks all land here
     // without changing a drawn row. Prove that from data alone: reading scroll
     // metrics forces a page layout, and typing keeps the page dirty.
-    const viewKey = `${viewportRevision}:${readingLatest}:${conversationKey()}:${identity}:${enabled}:${large}:${historyState.revision}`;
+    const viewKey = `${viewportRevision}:${readingLatest}:${conversationKey()}:${identity}:${enabled}:${large}:${historyState.revision}:${ageOk()}`;
     if (renderedRevision !== "" && originalTarget === null && viewKey === renderedViewKey && sameChatRows(renderedSource, allMessages)
       && renderedMessages.every(message => {
         const row = presentMessage(coop, identity, message);
@@ -713,7 +724,7 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
       }
       nextRows.set(rowKey, { signature, element: line });
     }
-    const ordered = large ? [topSpacer, ...(showHistoryRow ? [historyRow] : []), ...[...nextRows.values()].map(row => row.element), bottomSpacer] : [...nextRows.values()].map(row => row.element);
+    const ordered = !large && !ageOk() ? [ageLine] : large ? [topSpacer, ...(showHistoryRow ? [historyRow] : []), ...[...nextRows.values()].map(row => row.element), bottomSpacer] : [...nextRows.values()].map(row => row.element);
     const retained = new Set(ordered);
     for (const child of [...elements.messages.children]) {
       if (!retained.has(child as HTMLDivElement)) child.remove();
@@ -942,6 +953,7 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
     refresh,
     openPrivate,
     minimize: () => { if (large) setLarge(false); },
+    open: () => setLarge(true),
     isMaximized: () => large,
     isInteracting: () => large && enabled && performance.now() < interactionUntil,
   };

@@ -1,6 +1,7 @@
 import { ConnectionId, Identity, Timestamp } from "spacetimedb";
 import * as server from "../../spacetimedb/src/index";
 import { ATTACK_BALANCE_VERSION, PROTOCOL_VERSION } from "../../shared/rules";
+import { AGE_BAND_ADULT, TERMS_VERSION } from "../../shared/legal";
 import { createMemoryDatabase } from "./spacetime-memory-db";
 
 export { server };
@@ -17,7 +18,18 @@ export function crystalFixture() {
     senderAuth: {} as { jwt?: { issuer: string; audience: string[] } },
     random: Object.assign(() => .5, { integerInRange: (min: number, max: number) => Math.floor((min + max) / 2) }),
   };
-  const seed = (table: string, row: Record<string, unknown>) => db[table].insert(storage.row(table, row));
+  const insert = (table: string, row: Record<string, unknown>) => db[table].insert(storage.row(table, row));
+  // A player in the world has agreed to the Terms; test players have also given an adult age, so chat is open.
+  const seed = (table: string, row: Record<string, unknown>) => {
+    if (table === "playerController" && !db.playerLegalConsent.identity.find(row.identity)) {
+      insert("playerLegalConsent", { identity: row.identity, termsVersion: TERMS_VERSION, ageBand: AGE_BAND_ADULT, acceptedAt: ctx.timestamp });
+    }
+    // A test's own consent row replaces that default.
+    if (table === "playerLegalConsent" && db.playerLegalConsent.identity.find(row.identity)) {
+      return db.playerLegalConsent.identity.update(storage.row(table, row));
+    }
+    return insert(table, row);
+  };
   const progress = (who = ctx.sender, overrides: Record<string, unknown> = {}) => seed("playerProgress", {
     identity: who, maxHp: 100, damage: 1_000, attackRate: 1, projectileSpeed: 1_000,
     projectileCount: 2, attackRange: 200, speed: 180, inventoryJson: "[]",

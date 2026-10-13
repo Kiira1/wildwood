@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import {
   AGE_BAND_ADULT,
   AGE_BAND_TEEN,
+  AGE_BAND_UNDER_13,
+  AGE_BAND_UNVERIFIED,
   TERMS_VERSION,
   playerAgeBand,
 } from "../../../shared/legal";
@@ -19,7 +21,31 @@ describe("legal consent", () => {
   it("ignores stale or malformed stored acceptance", () => {
     expect(legalConsentInternals.parseStoredConsent("not json")).toBeNull();
     expect(legalConsentInternals.parseStoredConsent(JSON.stringify({ termsVersion: "old", ageBand: 2 }))).toBeNull();
-    expect(legalConsentInternals.parseStoredConsent(JSON.stringify({ termsVersion: TERMS_VERSION, ageBand: 0 }))).toBeNull();
+    expect(legalConsentInternals.parseStoredConsent(JSON.stringify({ termsVersion: TERMS_VERSION, ageBand: 7 }))).toBeNull();
+  });
+
+  it("agrees to the Terms on the start screen without asking the age; chat asks it later", async () => {
+    const acceptTerms = vi.fn(async () => undefined);
+    const values = new Map<string, string>();
+    const service = createLegalConsentService({
+      storage: { getItem: key => values.get(key) ?? null, setItem: (key, value) => { values.set(key, value); } },
+      storageKey: "legal",
+      connection: () => ({ isActive: true, reducers: { acceptTerms } } as never),
+      protocolReady: () => true,
+      shouldEnterWorld: () => false,
+      requestWorldEntry: vi.fn(async () => true),
+      notify: vi.fn(),
+      handleFailure: vi.fn(),
+    });
+    await expect(service.acceptTerms()).resolves.toMatchObject({ ok: true });
+    expect(acceptTerms).toHaveBeenLastCalledWith({ termsVersion: TERMS_VERSION, ageBand: AGE_BAND_UNVERIFIED });
+    expect([service.accepted(), service.ageVerified()]).toEqual([true, false]);
+    await expect(service.verifyAge(15)).resolves.toMatchObject({ ok: true });
+    expect(acceptTerms).toHaveBeenLastCalledWith({ termsVersion: TERMS_VERSION, ageBand: AGE_BAND_TEEN });
+    expect(service.ageVerified()).toBe(true);
+    // Agreeing again keeps the age it was given.
+    await service.acceptTerms();
+    expect(acceptTerms).toHaveBeenLastCalledWith({ termsVersion: TERMS_VERSION, ageBand: AGE_BAND_TEEN });
   });
 
   it("blocks under-13 selection before any server call", async () => {
@@ -39,9 +65,13 @@ describe("legal consent", () => {
       handleFailure: vi.fn(),
     });
 
-    await expect(service.acceptAge(12)).resolves.toMatchObject({ ok: false });
+    await expect(service.verifyAge(12)).resolves.toMatchObject({ ok: false, blocked: true });
     expect(reducers.acceptTerms).not.toHaveBeenCalled();
-    expect(values.has("legal")).toBe(false);
+    // Kept on this device so the game stays blocked, as the start screen's answer used to.
+    expect(JSON.parse(values.get("legal")!)).toEqual({ termsVersion: TERMS_VERSION, ageBand: AGE_BAND_UNDER_13 });
+    expect([service.accepted(), service.ageBlocked()]).toEqual([false, true]);
+    await expect(service.acceptTerms()).resolves.toMatchObject({ ok: false });
+    expect(reducers.acceptTerms).not.toHaveBeenCalled();
   });
 
   it("takes the account's own answer from the server instead of asking again", async () => {

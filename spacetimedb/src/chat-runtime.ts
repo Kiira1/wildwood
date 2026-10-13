@@ -12,7 +12,7 @@ import { removeMessageReactions } from "./chat-reactions";
 import { pruneExpiredSocialMessages } from "./social-service";
 import { startupTelemetryIdsToDelete, STARTUP_TELEMETRY_MAX_ROWS, STARTUP_TELEMETRY_RATE_WINDOW_MICROS } from "./startup-telemetry-policy";
 import { Identity } from "spacetimedb";
-import { requireControllingPlayer } from "./session-guards";
+import { requireChatAge, requireControllingPlayer } from "./session-guards";
 import { SenderError } from "spacetimedb/server";
 import { assertChatNotMuted, recordChatStrike } from "./chat-mute";
 import { PROTOCOL_VERSION } from "../../shared/rules";
@@ -119,6 +119,7 @@ export function clearExpiredStartupTelemetryRateLimits(ctx: ModuleReducerCtx) {
 
 export function sendPlayerChatMessage(ctx: ModuleReducerCtx, message: string, replyToMessageId = 0n) {
   requireControllingPlayer(ctx);
+  requireChatAge(ctx);
   const profile = ctx.db.playerProfile.identity.find(ctx.sender);
   if (!profile) return;
 

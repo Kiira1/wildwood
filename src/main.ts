@@ -387,7 +387,7 @@ import {
     ],
     onLoadingComplete: finishStartup,
     onShowAccountChoice: showCurrentUpdateNotice,
-    acceptLegalTerms: (age) => coop?.acceptLegalTerms?.(age),
+    acceptLegalTerms: () => coop?.acceptLegalTerms?.(), ageBlocked: () => coop?.ageBlocked?.() === true,
     onLegalAccepted: finishStartup,
     onContinueGuest: () => coop?.continueAsGuest?.(),
     onBeginAdventure: (name) => {

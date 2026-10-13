@@ -1,5 +1,6 @@
 import { requiredElement, requiredSelector } from "../game/runtime/dom";
 import { createChatController } from "./chat";
+import { createChatAgeGate } from "./chat-age-gate";
 
 type ChatOptions = Parameters<typeof createChatController>[0];
 
@@ -7,7 +8,13 @@ export function createChatRuntimeController(options: Pick<ChatOptions, "getCoop"
   openReplay: (replayId: bigint) => void;
   onLayoutChange?: () => void;
 }) {
+  // Chat asks the age the first time it opens; 13 and older opens it straight after.
+  const ageGate = createChatAgeGate({
+    verifyAge: async age => options.getCoop()?.verifyAge?.(age),
+    onVerified: () => chat.open(),
+  });
   const chat = createChatController({
+    onAgeCheck: ageGate.open,
     elements: {
       toggle: requiredElement<HTMLButtonElement>("chatToggle"),
       panel: requiredElement("chatPanel"),

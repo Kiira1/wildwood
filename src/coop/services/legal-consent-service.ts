@@ -1,15 +1,24 @@
 import { tables, type DbConnection } from "../../module_bindings";
 import {
+  AGE_BAND_UNDER_13,
+  AGE_BAND_UNVERIFIED,
+  MINIMUM_PLAYER_AGE,
   TERMS_VERSION,
   isEligiblePlayerAgeBand,
+  isPlayableAgeBand,
   playerAgeBand,
-  type EligiblePlayerAgeBand,
 } from "../../../shared/legal";
 
+/**
+ * The Terms, and the age band once asked. The start screen agrees to the Terms with the age unverified; the
+ * first open of chat asks the age (Ryan, 2026-10-13). Under 13 is kept on this device only, never sent, and
+ * blocks the game as the start screen used to.
+ */
 type StoredLegalConsent = {
   termsVersion: string;
-  ageBand: EligiblePlayerAgeBand;
+  ageBand: number;
 };
+const UNDER_AGE = `WildStat is currently available to players age ${MINIMUM_PLAYER_AGE} and older.`;
 
 type LegalConsentDependencies = {
   storage: Pick<Storage, "getItem" | "setItem">;
@@ -27,7 +36,7 @@ function parseStoredConsent(value: string | null): StoredLegalConsent | null {
   try {
     const parsed = JSON.parse(value) as Partial<StoredLegalConsent>;
     const ageBand = parsed.ageBand;
-    if (parsed.termsVersion !== TERMS_VERSION || typeof ageBand !== "number" || !isEligiblePlayerAgeBand(ageBand)) return null;
+    if (parsed.termsVersion !== TERMS_VERSION || typeof ageBand !== "number" || !(isPlayableAgeBand(ageBand) || ageBand === AGE_BAND_UNDER_13)) return null;
     return { termsVersion: TERMS_VERSION, ageBand };
   } catch {
     return null;
@@ -51,7 +60,10 @@ export function createLegalConsentService(dependencies: LegalConsentDependencies
   function adoptServerConsent(connection: DbConnection) {
     // A connection may be mid-setup, or a test double without this view.
     const row = [...(connection.db?.myLegalConsent?.iter?.() ?? [])][0];
-    if (!row || row.termsVersion !== TERMS_VERSION || !isEligiblePlayerAgeBand(row.ageBand)) return;
+    if (!row || row.termsVersion !== TERMS_VERSION || !isPlayableAgeBand(row.ageBand)) return;
+    // An under-13 answer on this device stands, and an age given here outranks the account's "not asked yet".
+    if (consent?.ageBand === AGE_BAND_UNDER_13) return;
+    if (row.ageBand === AGE_BAND_UNVERIFIED && consent && isEligiblePlayerAgeBand(consent.ageBand)) return;
     const next = { termsVersion: TERMS_VERSION, ageBand: row.ageBand } satisfies StoredLegalConsent;
     if (consent?.termsVersion === next.termsVersion && consent.ageBand === next.ageBand) return;
     // Record it as already synced, so adopting the account's own answer does
@@ -93,7 +105,7 @@ export function createLegalConsentService(dependencies: LegalConsentDependencies
 
   async function syncConnection(connection: DbConnection) {
     adoptServerConsent(connection);
-    if (!consent) return false;
+    if (!consent || !isPlayableAgeBand(consent.ageBand)) return false;
     try {
       await sendToServer(connection, consent);
       return dependencies.connection() === connection && connection.isActive;
@@ -104,17 +116,10 @@ export function createLegalConsentService(dependencies: LegalConsentDependencies
     }
   }
 
-  async function acceptAge(age: number) {
-    let ageBand: ReturnType<typeof playerAgeBand>;
-    try {
-      ageBand = playerAgeBand(age);
-    } catch (error) {
-      return { ok: false, error: error instanceof Error ? error.message : "Choose a valid age." };
-    }
-    if (!isEligiblePlayerAgeBand(ageBand)) {
-      return { ok: false, error: "WildStat is currently available to players age 13 and older." };
-    }
-
+  /** The start screen: agree to the Terms. The age stays as it was, or unverified until chat asks. */
+  async function acceptTerms() {
+    if (consent?.ageBand === AGE_BAND_UNDER_13) return { ok: false, error: UNDER_AGE };
+    const ageBand = consent && isEligiblePlayerAgeBand(consent.ageBand) ? consent.ageBand : AGE_BAND_UNVERIFIED;
     const next = { termsVersion: TERMS_VERSION, ageBand } satisfies StoredLegalConsent;
     const connection = dependencies.connection();
     if (connection?.isActive && dependencies.protocolReady()) {
@@ -139,9 +144,39 @@ export function createLegalConsentService(dependencies: LegalConsentDependencies
     return { ok: true };
   }
 
+  /** Chat's age check. 13 and older unlocks chat; under 13 blocks the game on this device, and is not sent. */
+  async function verifyAge(age: number) {
+    let ageBand: ReturnType<typeof playerAgeBand>;
+    try {
+      ageBand = playerAgeBand(age);
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : "Choose a valid age." };
+    }
+    if (!isEligiblePlayerAgeBand(ageBand)) {
+      store({ termsVersion: TERMS_VERSION, ageBand: AGE_BAND_UNDER_13 });
+      dependencies.notify();
+      return { ok: false, blocked: true, error: UNDER_AGE };
+    }
+    const next = { termsVersion: TERMS_VERSION, ageBand } satisfies StoredLegalConsent;
+    const connection = dependencies.connection();
+    if (!connection?.isActive || !dependencies.protocolReady()) return { ok: false, error: "Not connected. Try again." };
+    try {
+      await sendToServer(connection, next);
+    } catch (error) {
+      dependencies.handleFailure("age check", error);
+      return { ok: false, error: "Could not save your age. Try again." };
+    }
+    store(next);
+    dependencies.notify();
+    return { ok: true };
+  }
+
   return {
-    acceptAge,
-    accepted: () => consent?.termsVersion === TERMS_VERSION,
+    acceptTerms,
+    verifyAge,
+    accepted: () => consent?.termsVersion === TERMS_VERSION && isPlayableAgeBand(consent.ageBand),
+    ageVerified: () => consent?.termsVersion === TERMS_VERSION && isEligiblePlayerAgeBand(consent.ageBand),
+    ageBlocked: () => consent?.ageBand === AGE_BAND_UNDER_13,
     syncConnection,
     watch,
   };

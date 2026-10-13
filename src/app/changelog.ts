@@ -1,4 +1,8 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.901.68": [
+    "Your age is asked the first time you open chat, not before you play",
+    "Name colors are softer, matching everyone else's",
+  ],
   "0.901.67": [
     "Edit Profile: one pencil opens one window for your picture, name, gender and skin tone",
     "Pick your name color in chat",
@@ -3256,6 +3260,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.901.68": "2026-10-13",
   "0.901.67": "2026-10-13",
   "0.901.66": "2026-10-12",
   "0.901.65": "2026-10-12",

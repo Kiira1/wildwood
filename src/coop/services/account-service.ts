@@ -861,7 +861,9 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
       return state;
     },
     legalConsentAccepted: legalConsent.accepted,
-    acceptLegalTerms: legalConsent.acceptAge,
+    acceptLegalTerms: () => legalConsent.acceptTerms(),
+    /** Chat's age check (legal-consent-service.ts). */
+    verifyAge: legalConsent.verifyAge, ageVerified: legalConsent.ageVerified, ageBlocked: legalConsent.ageBlocked,
     /**
      * Settings: move this character to another sign-in, usually Google
      * (spacetimedb/src/account-transfer.ts). Leaves a one-time code on this

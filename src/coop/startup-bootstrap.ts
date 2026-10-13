@@ -21,7 +21,8 @@ type StartupBootstrapDependencies = {
   signIn: () => Promise<StartupActionResult> | StartupActionResult;
   continueAsGuest: () => Promise<StartupActionResult> | StartupActionResult;
   legalConsentAccepted: () => boolean;
-  acceptLegalTerms: (age: number) => Promise<StartupActionResult> | StartupActionResult;
+  acceptLegalTerms: () => Promise<StartupActionResult> | StartupActionResult;
+  ageBlocked?: () => boolean;
   subscribe: (listener: () => void) => () => void;
   beginTelemetryStage?: (stage: "game-bundle") => StartupStageTimer;
 };

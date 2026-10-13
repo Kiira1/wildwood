@@ -6,6 +6,7 @@ vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module
 
 it("lends a bot the owner's current consent, once, and takes it back on erase", () => {
   const f = crystalFixture();
+  f.db.playerLegalConsent.identity.delete(f.ctx.sender); // The fixture's default; this test sets its own.
   const owner = f.ctx.sender;
   const bot = { ...f.ctx, sender: (f as any).identity ? (f as any).identity("77") : { toHexString: () => "77", isEqual: (o: any) => o?.toHexString?.() === "77" } };
   f.db.playerLegalConsent.insert({ identity: owner, termsVersion: TERMS_VERSION, ageBand: 2, acceptedAt: f.ctx.timestamp });
@@ -20,6 +21,7 @@ it("lends a bot the owner's current consent, once, and takes it back on erase", 
 });
 it("lends nothing when the owner's consent is missing or stale", () => {
   const f = crystalFixture();
+  f.db.playerLegalConsent.identity.delete(f.ctx.sender);
   const bot = { ...f.ctx, sender: { toHexString: () => "78", isEqual: (o: any) => o?.toHexString?.() === "78" } };
   grantVirtualPlayerConsent(bot, f.ctx.sender);
   expect(f.db.playerLegalConsent.identity.find(bot.sender)).toBeNull();

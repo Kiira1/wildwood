@@ -231,6 +231,23 @@ const afterUpdateGateShell = String.raw`
   </div>
 </div>
 
+<div id="chatAgeGate" hidden>
+  <div class="modal chat-age-gate-modal" role="dialog" aria-modal="true" aria-labelledby="chatAgeGateTitle">
+    <h2 id="chatAgeGateTitle" class="window-title">Choose your age</h2>
+    <p class="chat-age-gate-note">Chat is for players 13 and older.</p>
+    <div class="legal-age-control">
+      <output id="chatAgeOutput" class="legal-age-output" for="chatAgeSlider" aria-live="polite"></output>
+      <input id="chatAgeSlider" class="is-unset" type="range" min="1" max="100" step="1" value="50" aria-label="Your age" aria-valuetext="Not selected" />
+      <div class="legal-age-limits" aria-hidden="true"><span>1</span><span>100+</span></div>
+    </div>
+    <button id="chatAgeContinueBtn" type="button" disabled>Continue</button>
+    <p id="chatAgeStatus" class="legal-gate-status" role="status">Select your age to continue.</p>
+    <footer class="window-back-footer">
+      <button id="chatAgeBackBtn" class="window-back-button" type="button">Back</button>
+    </footer>
+  </div>
+</div>
+
 <div id="profileIconPicker" hidden>
   <div class="modal profile-icon-picker-modal" role="dialog" aria-modal="true" aria-label="Choose profile icon">
     <div id="profileIconChoices" class="profile-icon-choices"></div>

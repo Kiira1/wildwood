@@ -6,12 +6,22 @@ type LegalGateElements = {
   ageOutput: HTMLOutputElement;
   continueButton: HTMLButtonElement;
   status: HTMLElement;
+  /** Hidden or reworded on the start screen, which no longer asks the age. */
+  intro?: HTMLElement | null; ageControl?: HTMLElement | null; notice?: HTMLElement | null;
 };
 
 type LegalGateDependencies = {
   accept: (age: number) => Promise<{ ok?: boolean; error?: string } | undefined> | { ok?: boolean; error?: string } | undefined;
   onAccepted: () => void;
+  /**
+   * False on the start screen: it only agrees to the Terms, and chat asks the age later (Ryan, 2026-10-13).
+   * Then the slider is hidden and Continue needs no age.
+   */
+  askAge?: boolean;
+  /** An under-13 answer given in chat: the start screen says so and offers no Continue. */
+  blocked?: () => boolean;
 };
+const UNDER_AGE = `WildStat is currently available to players age ${MINIMUM_PLAYER_AGE} and older.`;
 
 export function legalGateElements(documentValue = document): LegalGateElements {
   function get<T extends HTMLElement>(id: string) {
@@ -25,6 +35,9 @@ export function legalGateElements(documentValue = document): LegalGateElements {
     ageOutput: get<HTMLOutputElement>("legalAgeOutput"),
     continueButton: get<HTMLButtonElement>("legalContinueBtn"),
     status: get("legalGateStatus"),
+    intro: documentValue.getElementById("legalGateIntro"),
+    ageControl: documentValue.getElementById("legalAgeSlider")?.parentElement ?? null,
+    notice: documentValue.getElementById("legalAgreementNotice"),
   };
 }
 
@@ -36,7 +49,9 @@ export function createLegalGateController(
   let pending = false;
   let statusOverride = "";
 
+  const askAge = dependencies.askAge ?? true;
   function render() {
+    if (!askAge) return renderTerms();
     const age = Number(elements.ageSlider.value);
     const eligible = ageSelected && Number.isInteger(age) && age >= MINIMUM_PLAYER_AGE;
     elements.ageSlider.classList.toggle("is-unset", !ageSelected);
@@ -52,12 +67,25 @@ export function createLegalGateController(
     elements.status.textContent = statusOverride || (!ageSelected
       ? "Select your age to continue."
       : !eligible
-        ? `WildStat is currently available to players age ${MINIMUM_PLAYER_AGE} and older.`
+        ? UNDER_AGE
         : "");
   }
 
+  /** The start screen: the Terms and Continue, or the under-13 notice in their place. */
+  function renderTerms() {
+    const blocked = dependencies.blocked?.() === true;
+    if (elements.ageControl) elements.ageControl.hidden = true;
+    if (elements.intro) elements.intro.textContent = blocked ? "Sorry" : "Welcome to WildStat";
+    if (elements.notice) elements.notice.hidden = blocked;
+    elements.continueButton.hidden = blocked;
+    elements.continueButton.disabled = pending || blocked;
+    elements.continueButton.textContent = pending ? "Saving…" : "Continue";
+    elements.status.classList.toggle("is-blocked", blocked);
+    elements.status.textContent = statusOverride || (blocked ? UNDER_AGE : "");
+  }
+
   async function accept() {
-    if (elements.continueButton.disabled || !ageSelected) return;
+    if (elements.continueButton.disabled || (askAge && !ageSelected)) return;
     pending = true;
     statusOverride = "";
     render();

@@ -1,21 +1,22 @@
 /**
  * The colors a player can pick for their name in chat (Ryan, 2026-10-13). Zero is Auto: the pastel the
- * name always had, picked from the identity. The rest stay light enough to read on the black chat panel.
+ * name always had, picked from the identity. The rest are the same soft pastels as Auto's (Ryan: the first,
+ * saturated set made names more vibrant than intended), so a picked name sits with every other one.
  */
 export const NAME_COLOR_AUTO = 0;
 export const NAME_COLORS = [
   { name: "Auto", color: "" },
   { name: "White", color: "#ffffff" },
-  { name: "Red", color: "#ff7b7b" },
-  { name: "Orange", color: "#ffab5e" },
-  { name: "Gold", color: "#ffd75e" },
-  { name: "Lime", color: "#c6f06a" },
-  { name: "Green", color: "#72ef58" },
-  { name: "Mint", color: "#6ff0c4" },
-  { name: "Cyan", color: "#6fe3ff" },
-  { name: "Blue", color: "#8fb0ff" },
-  { name: "Purple", color: "#c49bff" },
-  { name: "Pink", color: "#ff9bd8" },
+  { name: "Red", color: "#ffb8b8" },
+  { name: "Orange", color: "#ffd1aa" },
+  { name: "Gold", color: "#ffe7a8" },
+  { name: "Lime", color: "#e4f5b3" },
+  { name: "Green", color: "#c9f5c2" },
+  { name: "Mint", color: "#bff3e7" },
+  { name: "Cyan", color: "#bce7ff" },
+  { name: "Blue", color: "#d0d9ff" },
+  { name: "Purple", color: "#e1c7ff" },
+  { name: "Pink", color: "#ffc3dd" },
 ] as const;
 
 export function isValidNameColor(value: number) {

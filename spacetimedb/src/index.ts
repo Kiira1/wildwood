@@ -90,7 +90,7 @@ import {
 } from "../../shared/player-gender";
 import { isPublicDisplayNameAllowed } from "./chat-moderation";
 import { isChatReportReason } from "../../shared/chat-report";
-import { TERMS_VERSION, isEligiblePlayerAgeBand } from "../../shared/legal";
+import { AGE_BAND_UNVERIFIED, TERMS_VERSION, isEligiblePlayerAgeBand, isPlayableAgeBand } from "../../shared/legal";
 import { nextChatReportRateState } from "./chat-report-rate-limit";
 import {
   STARTUP_TELEMETRY_MAX_BATCH,
@@ -168,7 +168,7 @@ import {
 } from "../../shared/rules";
 import { readPlayerProgress, withDuelWide } from "./wide-stats";
 import { playerWideStats, duelWideStats, duelReplayWideStats, playerCombatRating } from "./wide-stats-table";
-import { LEGACY_CLIENT_ERRORS, sameConnection, sessionForContext, requireSession, blockedSession, isSupportedProtocol, requireCurrentLegalConsent, requireSupportedSessionProtocol, requireControllingPlayer, isDeveloperIdentity, isDatabaseOwnerIdentity, isVirtualPlayer, requireDeveloperSession, requireDeveloper, touchPlayerAccessAudit, backfillKnownAccessAudit, sameIdentity } from "./session-guards";
+import { LEGACY_CLIENT_ERRORS, sameConnection, sessionForContext, requireSession, blockedSession, isSupportedProtocol, requireCurrentLegalConsent, requireChatAge, requireSupportedSessionProtocol, requireControllingPlayer, isDeveloperIdentity, isDatabaseOwnerIdentity, isVirtualPlayer, requireDeveloperSession, requireDeveloper, touchPlayerAccessAudit, backfillKnownAccessAudit, sameIdentity } from "./session-guards";
 import { defaultPlayerProgress, samePlayerProgressValues, hasFreshProgress, resultIncludesContributor, contributedToLatestPrismshell, forestItemCountForProgress, inventoryForProgress, slotUpgradeKey, itemUpgradeLevelFor, playerOwnsItem, restoreItemToProgress, equippedHeadForProgress, equippedChestForProgress, equippedFeetForProgress, equippedRightHandForProgress, equippedLeftHandForProgress, cosmeticEquipmentForProgress, equipmentPresentationForProgress, leaderboardAppearanceForProgress, maxHealthForProgress } from "./progress-helpers";
 import { researchForPlayer, assertResearchAvailable, activeResearchIsAvailable, removeResearchCompletionSchedules, completeActiveResearch, ensureResearchCompletionSchedule, reconcileActiveResearch } from "./research-runtime";
 import { ensurePlayerLifetime, finishLifetimeSession, markPlayerBalanceCurrent, playerBalanceProgress, effectivePowerStatsForProgress, effectivePowerForProgress, powerFieldsForProgress, researchedDamage, researchedArmor, researchedRegen } from "./player-power";
@@ -2662,10 +2662,10 @@ export const acceptTerms = spacetimedb.reducer(
   (ctx, { termsVersion, ageBand }) => {
     requireSession(ctx);
     if (termsVersion !== TERMS_VERSION) throw new SenderError("Wildstat Terms changed. Review them again.");
-    if (!isEligiblePlayerAgeBand(ageBand)) {
-      throw new SenderError("Wildstat is currently available to players age 13 and older.");
-    }
+    if (!isPlayableAgeBand(ageBand)) throw new SenderError("Wildstat is currently available to players age 13 and older.");
     const current = ctx.db.playerLegalConsent.identity.find(ctx.sender);
+    // Agreeing to the Terms again never forgets an age already given.
+    if (ageBand === AGE_BAND_UNVERIFIED && current && isEligiblePlayerAgeBand(current.ageBand)) ageBand = current.ageBand;
     if (current?.termsVersion === termsVersion && current.ageBand === ageBand) return;
     const next = { identity: ctx.sender, termsVersion, ageBand, acceptedAt: ctx.timestamp };
     if (current) ctx.db.playerLegalConsent.identity.update(next);
@@ -4213,7 +4213,7 @@ export const getChatMessageReactions = spacetimedb.procedure(
 export const setChatMessageReaction = spacetimedb.reducer(
   { channel: t.string(), messageId: t.u64(), reaction: t.string(), active: t.bool() },
   (ctx, { channel, messageId, reaction, active }) => {
-    requireSocialPlayer(ctx); setChatReaction(ctx, channel, messageId, reaction, active);
+    requireSocialPlayer(ctx); requireChatAge(ctx); setChatReaction(ctx, channel, messageId, reaction, active);
   },
 );
 export const devGrantGemHeart = spacetimedb.reducer(
@@ -4242,7 +4242,7 @@ export const guildInviteAction = spacetimedb.reducer({ action: t.string(), targe
   requireGuildPlayer(ctx); socialService.guildInviteAction(ctx, action, target, invitationId);
 });
 export const sendSocialMessage = spacetimedb.reducer({ channel: t.string(), target: t.string(), message: t.string(), replyToMessageId: t.u64() }, (ctx, { channel, target, message, replyToMessageId }) => {
-  requireSocialPlayer(ctx); socialService.sendMessage(ctx, channel, target, message, replyToMessageId);
+  requireSocialPlayer(ctx); requireChatAge(ctx); socialService.sendMessage(ctx, channel, target, message, replyToMessageId);
 });
 export const reportSocialMessage = spacetimedb.reducer({ messageId: t.u64(), reason: t.string() }, (ctx, { messageId, reason }) => {
   requireSocialPlayer(ctx);
