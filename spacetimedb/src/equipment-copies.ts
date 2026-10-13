@@ -9,6 +9,7 @@ import {
 } from "../../shared/equipment-copies";
 import { bowSkillKey, bowSkillRollFor, ensureBowSkillRoll } from "./bow-skills";
 import { lootSettingsFor } from "./loot-settings";
+import { promoteCopyRefine, refineLevelFor, setRefineLevel, swapFirstCopyRefine } from "./item-refine";
 import { readPlayerProgress } from "./wide-stats";
 
 /**
@@ -106,10 +107,14 @@ export function offerDuplicateEquipment(ctx: Ctx, identity: Identity, itemId: st
  * once. The old first roll is gone. Anything else is thrown away, as Ignore
  * does. Kept extra copies are never touched. Copies of an item without skills
  * are identical, so they are always thrown away.
+ *
+ * A refined first copy is never replaced, as a locked one is not: its refine is
+ * the player's work, and a better roll is not worth losing it for.
  */
 export function keepBestCopies(ctx: Ctx, identity: Identity, itemId: string, count = 1) {
   const canonical = canonicalItemId(itemId);
   if (!canonical || !isDuplicateOfferItem(canonical) || !isSkillBow(canonical) || equipmentLocked(ctx, identity, canonical)) return;
+  if (refineLevelFor(ctx, identity, canonical) > 0) return;
   const copies = Math.min(MAX_PENDING_EQUIPMENT_OFFERS, Math.max(0, Math.floor(count)));
   for (let copy = 0; copy < copies; copy += 1) {
     const roll = rollBowSkills(canonical, () => ctx.random()) ?? NO_BOW_SKILLS;
@@ -246,9 +251,10 @@ export function createEquipmentCopies(deps: {
     if (inventory.includes(offer.itemId)) {
       ctx.db.playerEquipmentCopy.insert({ id: 0n, identity: ctx.sender, itemId: offer.itemId, ...roll, acquiredAt: ctx.timestamp });
     } else {
-      // The copy they had is gone since the offer was made: this one becomes the first.
+      // The copy they had is gone since the offer was made: this one becomes the first, unrefined.
       deps.writeProgressAndPresentation(ctx, deps.restoreItemToProgress(progress, offer.itemId));
       setFirstCopyRoll(ctx, ctx.sender, offer.itemId, roll);
+      setRefineLevel(ctx, ctx.sender, offer.itemId, 0n, 0);
     }
     ctx.db.pendingEquipmentOffer.id.delete(offer.id);
   }
@@ -258,7 +264,9 @@ export function createEquipmentCopies(deps: {
    * and is what destroy_equipment has always destroyed. When another copy is
    * kept, the oldest one takes the first copy's place, in its slot if it was
    * equipped, and the bag loses a copy rather than the item. The slot's tier
-   * survives either way: it was never the item's to take away.
+   * survives either way: it was never the item's to take away. A refine is the
+   * copy's own: it goes with the copy destroyed, and the copy taking over brings
+   * its own.
    */
   function destroy(ctx: Ctx, itemId: string, copyId: bigint) {
     deps.requireControllingPlayer(ctx);
@@ -270,6 +278,7 @@ export function createEquipmentCopies(deps: {
     if (copyId !== 0n) {
       const copy = ownCopy(ctx, copyId);
       if (copy.itemId !== canonical) throw new SenderError("That copy is not in your inventory.");
+      setRefineLevel(ctx, ctx.sender, canonical, copy.id, 0);
       ctx.db.playerEquipmentCopy.id.delete(copy.id);
       return;
     }
@@ -277,23 +286,32 @@ export function createEquipmentCopies(deps: {
     if (replacement) {
       moveEquipmentLock(ctx, ctx.sender, canonical, replacement.id, 0n);
       setFirstCopyRoll(ctx, ctx.sender, canonical, rollOf(replacement));
+      promoteCopyRefine(ctx, ctx.sender, canonical, replacement.id);
       ctx.db.playerEquipmentCopy.id.delete(replacement.id);
+      // The worn item may have changed level: its power follows.
+      deps.writeProgressAndPresentation(ctx, progress);
       return;
     }
+    setRefineLevel(ctx, ctx.sender, canonical, 0n, 0);
     deps.writeProgressAndPresentation(ctx, deps.removeItemFromProgress(progress, canonical));
   }
 
   /**
    * Makes a kept copy the first copy, the one an equipment slot holds, by
-   * swapping its roll with the first copy's. The client then equips the item
-   * as usual. Copies without a roll are identical, so there is nothing to swap.
+   * swapping its roll and its refine with the first copy's. The client then
+   * equips the item as usual. Copies of other items have no roll, but a refine
+   * of their own still swaps.
    */
   function select(ctx: Ctx, copyId: bigint) {
     deps.requireControllingPlayer(ctx);
     if (deps.activeDuelFor(ctx, ctx.sender)) throw new SenderError("Finish your duel first.");
     const copy = ownCopy(ctx, copyId);
-    ownedProgress(ctx, copy.itemId);
+    const progress = ownedProgress(ctx, copy.itemId);
     swapEquipmentLocks(ctx, ctx.sender, copy.itemId, copy.id);
+    if (refineLevelFor(ctx, ctx.sender, copy.itemId) !== refineLevelFor(ctx, ctx.sender, copy.itemId, copy.id)) {
+      swapFirstCopyRefine(ctx, ctx.sender, copy.itemId, copy.id);
+      deps.writeProgressAndPresentation(ctx, progress);
+    }
     if (!isSkillBow(copy.itemId)) return;
     const first = bowSkillRollFor(ctx, ctx.sender, copy.itemId);
     setFirstCopyRoll(ctx, ctx.sender, copy.itemId, rollOf(copy));
