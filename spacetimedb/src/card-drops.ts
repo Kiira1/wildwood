@@ -4,12 +4,7 @@ import { addCard } from "./gear-cards";
 
 type Ctx = any;
 
-/**
- * Cards from an accepted kill report (shared/cards.ts): every kill of a campaign enemy rolls that enemy's card,
- * once in 10,000 (an elite's in 20,000), and every boss kill its boss's, once in 1,000. Only kills the report
- * was paid for roll, so a clipped claim rolls only what it was paid. `chanceMultiplier` raises every chance
- * alike. What was found goes to the player's cards and to player_card_drop, so the client can say so.
- */
+/** Rolls a card for each paid kill and boss kill in a report; finds go to player_card and player_card_drop. */
 export function awardCardDrops(ctx: Ctx, identity: Identity, mapId: string, kills: readonly { enemy: string; count: number }[],
   bossKills: number, chanceMultiplier = 1) {
   const found: string[] = [];

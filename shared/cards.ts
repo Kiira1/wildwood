@@ -1,26 +1,13 @@
 import type { RewardType } from "./enemy-definitions";
 import { canonicalItemId, isUpgradeableItem, itemDefinition } from "./items";
 
-/**
- * Cards (Release B, 2026-10-13), as in Ragnarok Online: every campaign enemy and boss has a card, a rare
- * drop that goes into a slot of a piece of gear for good and gives it the card's effects. A card fits one kind
- * of gear: weapon cards are for offense, armor cards for defense, helmet cards for utility. Each card's effects
- * are hand-picked (the review page came from the same data); a card grows with its map, map 15 twice map 1,
- * an elite's half as strong again, and a card with two effects carries 70% of each.
- *
- * Gear rolls 0 to 4 slots when it drops; gear owned before cards came has one. A duplicate drop with more slots
- * raises the slots of the copy you have, keeping the cards already in it.
- */
+/** Cards: a rare drop from every campaign enemy and boss, slotted into a weapon, helmet or armor for good. */
 
 export type CardRarity = "regular" | "elite" | "boss";
 /** The gear a card goes in: a weapon (HAND), a helmet (HEAD) or armor (CHEST). */
 export type CardSlot = "HAND" | "HEAD" | "CHEST";
 
-/**
- * What a card can do. Some add to a system the game already runs (a prestige perk, a bow skill, research or a
- * stat); the rest are new with cards. Values are percent unless said otherwise: quickDraw is attacks a second
- * on the attack speed cap, longShot world units of range, iaido and prism are on or off.
- */
+/** Values are percent, except quickDraw (attacks a second), longShot (range) and iaido/prism (on or off). */
 export type CardEffectId =
   // Offense
   | "atk" | "critChance" | "critDamage" | "doubleStrike" | "splitShot" | "bossSlayer" | "eliteSlayer" | "raceSlayer"
@@ -34,11 +21,7 @@ export type CardEffectId =
   | "fleetFoot" | "longShot" | "statGain" | "allStatGain" | "cardHunter" | "treasure" | "respawn" | "miningSpeed"
   | "oreFind" | "starshardFind";
 
-/**
- * One effect of a card. `value` is its strength (negative: a cost). The rest change how a few effects work on
- * the cards that need it: `mapId` is the map a slayer or guard card is for, `stat` the stat a bounty card adds
- * to; a boss card's stronger version of an effect can set its `chance`, `share`, `seconds` or `targets`.
- */
+/** A negative value is a cost. Boss cards may override an effect's chance, share, seconds or targets. */
 export type CardEffect = {
   effect: CardEffectId;
   value: number;
@@ -52,25 +35,24 @@ export type CardEffect = {
 
 export type CardDefinition = {
   id: string;
-  /** The enemy or boss it comes from, by its display name. */
   enemy: string;
   mapId: string;
-  /** The map's place in the campaign, 1 to 15. */
+  /** 1 to 15. */
   tier: number;
   rarity: CardRarity;
   slot: CardSlot;
   effects: readonly CardEffect[];
 };
 
-/** A card drops once in this many kills of its enemy (a boss's: of its boss kills). */
+/** Kills per card drop; for bosses, boss kills. */
 export const CARD_DROP_OUTCOMES: Readonly<Record<CardRarity, number>> = Object.freeze({ regular: 10_000, elite: 20_000, boss: 1_000 });
 export const MAX_CARD_SLOTS = 4;
-/** Gear owned before cards came has one slot. */
+/** Gear owned before cards has one slot. */
 export const OWNED_GEAR_SLOTS = 1;
-/** How many slots new gear drops with: percent for 0, 1, 2, 3 and 4 slots. */
+/** Percent chance of 0 to 4 slots on a drop. */
 export const SLOT_ROLL_PERCENT: readonly number[] = Object.freeze([40, 30, 18, 9, 3]);
 
-/** The slots a drop rolls, from a roll in [0, 100). */
+/** `roll` is in [0, 100). */
 export function rollGearSlots(roll: number) {
   let below = 0;
   for (let slots = 0; slots < SLOT_ROLL_PERCENT.length; slots++) {
@@ -363,22 +345,19 @@ export function cardDefinition(cardId: unknown) {
   return typeof cardId === "string" ? BY_ID.get(cardId) : undefined;
 }
 
-/** The card a campaign enemy drops on its map, by the enemy's kind. */
 export function cardForEnemy(mapId: string, enemy: string) {
   return BY_ENEMY.get(`${mapId}:${enemy}`);
 }
 
-/** The card a campaign map's boss drops. */
 export function cardForBoss(mapId: string) {
   return BY_BOSS.get(mapId);
 }
 
-/** Gear that takes cards: every weapon, helmet and armor with a stat, the gear that can be refined. */
+/** The same gear that can be refined. */
 export function canHoldCards(itemId: unknown) {
   return isUpgradeableItem(itemId);
 }
 
-/** Whether a card goes in this piece of gear: its slot must be the card's kind of gear. */
 export function cardFitsItem(cardId: unknown, itemId: unknown) {
   const card = cardDefinition(cardId);
   const id = canonicalItemId(itemId);

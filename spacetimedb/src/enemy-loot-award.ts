@@ -11,12 +11,7 @@ import type { pinnedMapBalance } from "./map-balance";
 
 type Context = ReducerCtx<InferSchema<typeof schema>>;
 
-/**
- * The gear an accepted kill report drops: each item's own per-kill roll (regular-enemy-loot.ts), less what the
- * loot filter turns away. `balance` is the report's pinned map balance, already read and parsed by
- * acceptEnemyDefeats. With a `checkpoint` the new bag is returned for the caller to write with the rest of the
- * report; without one it is written here.
- */
+/** Gear from an accepted kill report, less what the loot filter drops. With `checkpoint` the caller writes the bag. */
 export function awardRegularEnemyLoot(ctx: Context, mapId: string, count: number, balance: ReturnType<typeof pinnedMapBalance>, checkpoint?: { progress: any }) {
   const drops = keepWantedDrops(ctx, ctx.sender, rollRegularEnemyLoot(ctx, mapId, count, balance?.loot));
   if (!drops.size) return checkpoint?.progress;
