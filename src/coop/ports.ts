@@ -3,6 +3,8 @@ import type { DbConnection } from "../module_bindings";
 export type ReducerPort = {
   connection: () => DbConnection | null;
   protocolBlocked: () => boolean;
+  /** False until this connection has registered its session; the server rejects session-bound calls before then. */
+  protocolReady?: () => boolean;
   worldEntryBlocked: () => boolean;
   runWorldReducer: <T>(reducer: () => T | PromiseLike<T>) => Promise<T>;
   sendReducer: (

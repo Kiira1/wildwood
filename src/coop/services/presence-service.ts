@@ -1167,6 +1167,12 @@ export function createPresenceService(dependencies: PresenceServiceDependencies)
       return;
     }
 
+    // A reconnect has a gap before this connection registers its session. The
+    // server answers movement sent in it with the outdated-client error, which
+    // the host logs as an Error though the client rightly ignores it. Hold the
+    // packet instead: nothing is marked sent, so the first frame after
+    // registration sends the current position.
+    if (dependencies.reducers.protocolReady?.() === false) return;
     lastSentMovement = { ...velocity, sentAt: now, x, y };
     const sequence = ++nextPositionSequence;
     if (localState) {

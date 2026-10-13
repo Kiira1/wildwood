@@ -169,6 +169,27 @@ it("holds speed changes off the wire while the eye is off and flushes once prese
   vi.restoreAllMocks();
 });
 
+it("holds movement until the connection has registered, then sends the current position", () => {
+  const identity = new Identity("1".repeat(64));
+  const sent: string[] = [];
+  let registered = false;
+  const presence = createPresenceService({
+    localIdentity: () => identity.toHexString(), localDbIdentity: () => identity,
+    reducers: {
+      connection: () => ({ isActive: true, reducers: { setSpeed() {}, updateMovementState() {} } }),
+      protocolBlocked: () => false, protocolReady: () => registered, worldEntryBlocked: () => false,
+      sendReducer: (label: string) => { sent.push(label); },
+    },
+    changes: { notify() {}, batch: (fn: () => void) => fn() },
+  } as any);
+  presence.api.syncMovementState(100, 100, 0, 0, "keyboard", true);
+  presence.api.syncMovementState(120, 100, 1, 0, "keyboard", false);
+  expect(sent).not.toContain("movement state");
+  registered = true;
+  presence.api.syncMovementState(140, 100, 1, 0, "keyboard", false);
+  expect(sent.filter(label => label === "movement state")).toHaveLength(1);
+});
+
 /** The per-map world tables. Presence owns their map-scoped subscription; the base subscription holds our own player/motion-identity rows. */
 const MAP_WORLD_QUERY_TABLES = ["player_motion_identity", "player_death_frame", "player_auto_farm_puppet", "player_map_frame", "player_motion_detail_frame"];
 

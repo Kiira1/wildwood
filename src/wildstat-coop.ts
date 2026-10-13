@@ -205,19 +205,18 @@ const virtualPlayerLoadTest = createVirtualPlayerLoadTest({
     y: presenceService?.localState()?.y ?? PLAYER_SPAWN.y,
   }),
   ownerIdentity: () => connection?.identity,
-  beginServerRun: async (ticket, maxCount) => {
-    const conn = connection;
-    if (!conn?.isActive || !isDeveloperIdentity(localIdentity)) throw new Error("DEVELOPER CONNECTION REQUIRED");
-    await runWorldReducer(() => conn.reducers.devBeginVirtualPlayerLoadTest({ ticket, maxCount }));
-  },
-  clearServerPlayers: async () => {
-    const conn = connection;
-    if (!conn?.isActive || !isDeveloperIdentity(localIdentity)) throw new Error("DEVELOPER CONNECTION REQUIRED");
-    await runWorldReducer(() => conn.reducers.devClearVirtualPlayers({}));
-  },
+  beginServerRun: async (ticket, maxCount) => { await runDeveloperReducer(conn => conn.reducers.devBeginVirtualPlayerLoadTest({ ticket, maxCount })); },
+  clearServerPlayers: async () => { await runDeveloperReducer(conn => conn.reducers.devClearVirtualPlayers({})); },
   onProtocolMismatch: (error) => handleReducerFailure("virtual-player protocol", error),
   onStateChange: onChange,
 });
+
+/** Load-test controls run only on the developer's own live connection. */
+function runDeveloperReducer(run: (conn: DbConnection) => unknown) {
+  const conn = connection;
+  if (!conn?.isActive || !isDeveloperIdentity(localIdentity)) throw new Error("DEVELOPER CONNECTION REQUIRED");
+  return runWorldReducer(() => run(conn));
+}
 
 function touchServerActivity() {
   lastServerActivityAt = performance.now();
@@ -350,6 +349,7 @@ function runWorldReducer<T>(reducer: () => T | PromiseLike<T>) {
 const reducerPort: ReducerPort = {
   connection: () => connection,
   protocolBlocked: () => protocolBlocked,
+  protocolReady: () => protocolReadyGeneration === connectionGeneration,
   worldEntryBlocked: () => worldEntryBlocked,
   runWorldReducer,
   sendReducer: (action, reducer, onRejected, onAccepted) => sendReducer(
