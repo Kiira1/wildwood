@@ -191,7 +191,7 @@ const afterUpdateGateShell = String.raw`
         <button id="profileNameColorToggle" class="profile-editor-pencil" type="button" aria-label="Change name color" aria-haspopup="dialog"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm17.71-10.21a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
       </div>
       <div class="profile-editor-item">
-        <span class="profile-editor-visual" data-opens="profileGenderToggle"><span id="profileGenderValue" class="profile-editor-gender"></span></span>
+        <span class="profile-editor-visual" data-opens="profileGenderToggle"><span class="profile-editor-caption">Gender:</span><span id="profileGenderValue" class="profile-editor-gender"></span></span>
         <button id="profileGenderToggle" class="profile-editor-pencil" type="button" aria-label="Change gender" aria-haspopup="dialog"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm17.71-10.21a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
       </div>
       <div class="profile-editor-item">

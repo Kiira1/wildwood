@@ -81,7 +81,7 @@ export function createProfileEditor(elements: ProfileEditorElements, api: {
       target.append(playerGenderLabel(gender));
     });
     replaceChildrenIfChanged(elements.preview, target => appendPlayerIdentity(target,
-      { identity, name, gender, nameColor: color }, { chat: true }));
+      { identity, name, nameColor: color }, { chat: true }));
     // appendPlayerIdentity colors the element it is given, here the off-page copy, so the preview takes it too.
     const shown = nameColorHex(color) || autoNameColor(identity);
     if (shownColor !== shown) { shownColor = shown; elements.preview.style.color = shown; }

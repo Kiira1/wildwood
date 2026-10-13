@@ -3272,14 +3272,14 @@
   .profile-editor-item > :first-child { grid-column: 2; }
   .profile-editor-picture { justify-self: center; width: 104px; min-width: 104px; height: 104px; border-radius: 16px; cursor: pointer; }
   .profile-editor-preview { display: flex; align-items: center; gap: 5px; min-width: 0; overflow: hidden; font-family: var(--player-name-font); font-size: 20px; font-weight: 900; line-height: 1.25; white-space: nowrap; }
-  /* Each value in its own shape: a color circle, the gender symbol, a skin swatch, captioned underneath. */
-  .profile-editor-visual { display: flex; flex-direction: column; align-items: center; gap: 7px; justify-self: center; cursor: pointer; }
-  .profile-editor-caption { color: var(--muted); font-size: 12px; font-weight: 900; white-space: nowrap; }
+  /* Name color, gender and skin tone: one quiet line each, a small square or symbol before the text. */
+  .profile-editor-visual { display: flex; align-items: center; gap: 8px; justify-self: center; cursor: pointer; }
+  .profile-editor-caption { color: var(--muted); font-size: 14px; font-weight: 900; white-space: nowrap; }
   .profile-editor-caption > span { color: var(--text); }
-  .profile-editor-color-dot { width: 54px; height: 54px; border-radius: 50%; box-shadow: 0 0 0 3px #000, 0 0 0 5px rgba(255,255,255,.18); }
-  .profile-editor-skin-swatch { width: 54px; height: 54px; border-radius: 14px; box-shadow: 0 0 0 3px #000, 0 0 0 5px rgba(255,255,255,.18); }
-  .profile-editor-gender { display: flex; flex-direction: column; align-items: center; gap: 7px; min-height: 54px; justify-content: center; color: var(--text); font-size: 12px; font-weight: 900; }
-  .profile-editor-gender .player-gender-icon { width: 44px; height: 50px; }
+  .profile-editor-color-dot { width: 16px; height: 16px; border-radius: 4px; box-shadow: 0 0 0 2px #000; }
+  .profile-editor-skin-swatch { width: 16px; height: 16px; border-radius: 4px; box-shadow: 0 0 0 2px #000; }
+  .profile-editor-gender { display: flex; align-items: center; gap: 8px; color: var(--text); font-size: 14px; font-weight: 900; }
+  .profile-editor-gender .player-gender-icon { width: 16px; height: 18px; }
   .profile-editor-pencil { display: grid; place-items: center; width: 42px; min-width: 42px; height: 42px; margin: 0; padding: 0 0 3px; border: 2px solid #000; border-radius: 9px; background: #3a3d40; color: #fff; box-shadow: inset 0 -4px 0 rgba(0,0,0,.35); }
   .profile-editor-pencil svg { width: 20px; height: 20px; pointer-events: none; }
   .profile-editor-pencil:active { padding: 3px 0 0; box-shadow: inset 0 2px 0 rgba(0,0,0,.35); }
