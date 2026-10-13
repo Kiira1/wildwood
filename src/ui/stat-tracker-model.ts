@@ -7,7 +7,13 @@ export type TrackerValues = Record<TrackedStat, number>;
  * and research, which only climbs within one run.
  */
 export type TrackerBuild = { run: string; basePower: number };
-type Session = { startedAt: number; baseline: TrackerValues; lastKills: number; prestigeLevel: number; run?: string; peakBasePower?: number };
+/**
+ * `carried`: gains banked from earlier runs of this session, kept when a prestige does not reset it.
+ * `runGain`: the most each stat has gained this run, so a prestige that lowers stats before its level
+ * row arrives still banks what the run made.
+ */
+type Session = { startedAt: number; baseline: TrackerValues; lastKills: number; prestigeLevel: number; run?: string; peakBasePower?: number;
+  carried?: Partial<TrackerValues>; runGain?: Partial<TrackerValues> };
 type Store = Pick<Storage, 'getItem' | 'setItem'>;
 
 /**
@@ -37,6 +43,8 @@ export function createStatTrackerModel(storage: Store, now = Date.now) {
   let prestigeLevel = 0;
   let identity = '', session: Session | null = null, current: TrackerValues | null = null;
   let build: TrackerBuild | undefined, changedRunSince: number | null = null;
+  /** Off: a prestige keeps the timer running and carries the gains so far into the next run. */
+  let resetOnPrestige = true;
   const key = () => `wildstat-native-stat-tracker-v1:${identity}`;
   function save() {
     if (identity && session) try { storage.setItem(key(), JSON.stringify(session)); } catch {}
@@ -45,6 +53,16 @@ export function createStatTrackerModel(storage: Store, now = Date.now) {
     if (!current) return;
     changedRunSince = null;
     session = { startedAt: now(), baseline: { ...current }, lastKills: current.kills, prestigeLevel,
+      ...(build ? { run: build.run, peakBasePower: build.basePower } : {}) };
+    save();
+  }
+  /** A prestige with resetting off: the gains so far are banked and the new run is measured from here; the timer runs on. */
+  function carryOver() {
+    if (!current || !session) return;
+    const carried = { ...session.carried };
+    for (const stat of TRACKED_STATS) carried[stat] = (carried[stat] ?? 0) + (session.runGain?.[stat] ?? 0);
+    changedRunSince = null;
+    session = { ...session, baseline: { ...current }, carried, runGain: {},
       ...(build ? { run: build.run, peakBasePower: build.basePower } : {}) };
     save();
   }
@@ -78,12 +96,15 @@ export function createStatTrackerModel(storage: Store, now = Date.now) {
     build = validBuild(nextBuild);
     // Prestige keeps lifetime kills. A temporarily absent prestige row reads as
     // zero and must not erase a session's known level during hydration.
-    if (!session || values.kills < session.lastKills || prestigeLevel > (session.prestigeLevel ?? 0)) reset();
+    if (!session || values.kills < session.lastKills) reset();
+    else if (prestigeLevel > (session.prestigeLevel ?? 0)) { if (resetOnPrestige) reset(); else carryOver(); }
     // A challenge swaps the whole build, so its gains and time are its own.
     // The new run's figures become the baseline once the change has held.
     if (runChanged()) {
       changedRunSince ??= now();
-      if (now() - changedRunSince >= RUN_SETTLE_MS) reset();
+      // The same run falling back is a prestige (its level row can come second): carried over when resetting is off.
+      const fellBack = session!.run === build?.run;
+      if (now() - changedRunSince >= RUN_SETTLE_MS) { if (fellBack && !resetOnPrestige) carryOver(); else reset(); }
     } else {
       changedRunSince = null;
       // Sessions saved before runs were told apart take the run they are read in.
@@ -102,10 +123,12 @@ export function createStatTrackerModel(storage: Store, now = Date.now) {
         // Base stats only climb, so a figure below the baseline is a gear swap
         // rather than progress. Report no gain instead of a loss, which would
         // otherwise persist for the session and drag the hourly rate negative.
-        const gain = Math.max(0, values[stat] - session!.baseline[stat]);
+        const runGain = Math.max(0, values[stat] - session!.baseline[stat]);
+        session!.runGain = { ...session!.runGain, [stat]: Math.max(session!.runGain?.[stat] ?? 0, runGain) };
+        const gain = runGain + (session!.carried?.[stat] ?? 0);
         return { stat, current: values[stat], gain, perHour: elapsedMs >= 1000 ? gain * 3_600_000 / elapsedMs : 0 };
       }),
     };
   }
-  return { update, reset, save };
+  return { update, reset, save, setResetOnPrestige(on: boolean) { resetOnPrestige = on; } };
 }

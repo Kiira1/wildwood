@@ -2,6 +2,7 @@ export const RELEASE_NOTES: Record<string, string[]> = {
   "0.901.67": [
     "Edit Profile: one pencil opens one window for your picture, name, gender and skin tone",
     "Pick your name color in chat",
+    "Stat Tracker: a gear opens its settings: opacity, which stats show, and whether prestige resets the timer",
   ],
   "0.901.66": [
     "Every enemy has the same hitbox, a Dune Raider's, so big Endless enemies no longer wall off kiting",

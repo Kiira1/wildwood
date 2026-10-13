@@ -97,3 +97,27 @@ it('puts itself back on a double tap without losing its chosen opacity', () => {
   expect((panel as HTMLElement).style.left || '').toBe('');
   expect((panel as HTMLElement).style.getPropertyValue('--stat-tracker-bg')).toBe(before);
 });
+
+it('opens its settings from the gear: hiding a stat drops its row, and the prestige reset choice is saved', () => {
+  const { panel, saved, document, Event } = setup();
+  const settings = document.querySelector<HTMLElement>('.stat-tracker-settings')!;
+  Object.assign(settings, { offsetWidth: 220, offsetHeight: 300 });
+  Object.assign(panel, { getBoundingClientRect: () => ({ left: 400, top: 20, right: 700, bottom: 270 }) });
+  expect(settings.hidden).toBe(true);
+  panel.querySelector<HTMLButtonElement>('.stat-tracker-gear')!.dispatchEvent(new Event('click', { bubbles: true }));
+  expect(settings.hidden).toBe(false);
+  expect(settings.style.left).toBe('172px');
+  const regen = settings.querySelector<HTMLInputElement>('input[data-stat="regen"]')!;
+  expect(regen.checked).toBe(true);
+  regen.checked = false;
+  regen.dispatchEvent(new Event('change', { bubbles: true }));
+  expect(panel.querySelector<HTMLElement>('tr[data-stat="regen"]')!.hidden).toBe(true);
+  expect(saved.get('wildstat-stat-tracker-hidden-stats')).toBe('["regen"]');
+  const prestige = settings.querySelector<HTMLInputElement>('.stat-tracker-prestige-reset input')!;
+  expect(prestige.checked).toBe(true);
+  prestige.checked = false;
+  prestige.dispatchEvent(new Event('change', { bubbles: true }));
+  expect(saved.get('wildstat-stat-tracker-reset-on-prestige')).toBe('false');
+  settings.querySelector<HTMLButtonElement>('.stat-tracker-settings-close')!.dispatchEvent(new Event('click', { bubbles: true }));
+  expect(settings.hidden).toBe(true);
+});

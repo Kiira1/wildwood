@@ -170,3 +170,42 @@ it('keeps a session saved before attack speed and crit damage were tracked, star
   expect(result.rows.find(row => row.stat === 'damage')!.gain).toBe(50);
   expect(result.rows.find(row => row.stat === 'attackSpeed')!.gain).toBe(0);
 });
+
+describe('reset timer on prestige switched off', () => {
+  const build = (basePower: number) => ({ run: 'main', basePower });
+  it('keeps the timer through a prestige and carries the gains into the next run', () => {
+    const env = setup(), tracker = createStatTrackerModel(env.storage, env.now);
+    tracker.setResetOnPrestige(false);
+    tracker.update('alice', values, 1, build(1000));
+    env.advance(1_800_000);
+    tracker.update('alice', { ...values, damage: 150, kills: 80 }, 1, build(1500));
+    // The level row comes first, then the stats fall back.
+    tracker.update('alice', { ...values, damage: 150, kills: 80 }, 2, build(1500));
+    tracker.update('alice', { ...values, damage: 10, kills: 80 }, 2, build(100));
+    env.advance(RUN_SETTLE_MS);
+    tracker.update('alice', { ...values, damage: 10, kills: 80 }, 2, build(100));
+    const result = tracker.update('alice', { ...values, damage: 30, kills: 90 }, 2, build(200))!;
+    expect(result.elapsedMs).toBe(1_800_000 + RUN_SETTLE_MS);
+    expect(result.rows.find(row => row.stat === 'damage')!.gain).toBe(70);
+    expect(result.rows.find(row => row.stat === 'kills')!.gain).toBe(40);
+  });
+  it('carries over when the stats fall before the level row arrives', () => {
+    const env = setup(), tracker = createStatTrackerModel(env.storage, env.now);
+    tracker.setResetOnPrestige(false);
+    tracker.update('alice', values, 1, build(1000));
+    env.advance(60_000);
+    tracker.update('alice', { ...values, damage: 150 }, 1, build(1500));
+    tracker.update('alice', { ...values, damage: 10 }, 1, build(100));
+    tracker.update('alice', { ...values, damage: 10 }, 2, build(100));
+    env.advance(RUN_SETTLE_MS);
+    const result = tracker.update('alice', { ...values, damage: 12 }, 2, build(110))!;
+    expect(result.elapsedMs).toBe(60_000 + RUN_SETTLE_MS);
+    expect(result.rows.find(row => row.stat === 'damage')!.gain).toBe(52);
+  });
+  it('still starts over by default', () => {
+    const env = setup(), tracker = createStatTrackerModel(env.storage, env.now);
+    tracker.update('alice', values, 1, build(1000));
+    env.advance(60_000);
+    expect(tracker.update('alice', { ...values, damage: 150 }, 2, build(1500))!.elapsedMs).toBe(0);
+  });
+});

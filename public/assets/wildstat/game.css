@@ -58,6 +58,19 @@
   .stat-tracker-opacity input::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 14px; height: 14px; margin-top: -5.5px; border: 2px solid var(--hud-frame); border-radius: 50%; background: var(--green); }
   .stat-tracker-opacity input::-moz-range-thumb { width: 14px; height: 14px; border: 2px solid var(--hud-frame); border-radius: 50%; background: var(--green); }
   .stat-tracker-reset { text-decoration: none; }
+  /* The gear and the settings card it opens, drawn as the tracker is but always solid enough to read. */
+  .stat-tracker .stat-tracker-gear { display: grid; flex: 0 0 auto; place-items: center; width: 32px; padding: 4px; }
+  .stat-tracker-gear img { width: 18px; height: 18px; object-fit: contain; pointer-events: none; }
+  .stat-tracker.stat-tracker-settings { --stat-tracker-bg: .92; --stat-tracker-ink: 1; min-width: 0; width: 220px; padding-bottom: 10px; }
+  .stat-tracker-settings > * { opacity: 1; }
+  .stat-tracker-settings header { padding: 0 4px 0 10px; }
+  .stat-tracker-settings-title { font-weight: 800; }
+  .stat-tracker-settings .stat-tracker-opacity { display: grid; gap: 2px; margin: 4px 10px 8px; color: var(--muted); font-size: 11px; }
+  .stat-tracker-filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 8px; margin: 0 10px 8px; padding: 6px 0 0; border: 0; border-top: 1px solid var(--border); }
+  .stat-tracker-filters legend { float: left; grid-column: 1 / -1; width: 100%; margin-bottom: 2px; padding: 0; color: var(--muted); font-size: 11px; }
+  .stat-tracker-settings label:not(.stat-tracker-opacity) { display: flex; align-items: center; gap: 6px; min-height: 28px; cursor: pointer; }
+  .stat-tracker-settings input[type="checkbox"] { width: 16px; height: 16px; margin: 0; accent-color: var(--green); cursor: pointer; }
+  .stat-tracker-prestige-reset { margin: 0 10px; padding-top: 6px; border-top: 1px solid var(--border); }
   @media (any-pointer: coarse) { .stat-tracker button, .stat-tracker.is-collapsed .stat-tracker-handle { min-height: 44px; } }
   /* Folded, it is one row the size of the folded quest tracker, not a tall touch block. */
   .stat-tracker.is-collapsed { min-width: 0; border-radius: var(--hud-radius-small); font: 700 11px/1.25 "Wildstat Chat", sans-serif; }
@@ -3132,9 +3145,10 @@
   .player-profile-header h2 { display: flex; align-items: center; gap: 3px; min-width: 0; margin: 0; color: var(--text); font-family: var(--player-name-font); font-size: clamp(12px, 2.9vw, 18px); line-height: 1.08; overflow-wrap: anywhere; }
   .player-name-guest { color: #a9b1ad; font-size: .8em; }
   .player-profile-header h2 .player-name-guest { display: none; }
-  /* The same white pencil Edit Profile uses, a size smaller beside the name. */
-  .profile-editor-pencil.profile-name-edit { width: 32px; min-width: 32px; height: 32px; margin-left: 4px; border-radius: 8px; }
-  .profile-editor-pencil.profile-name-edit svg { width: 16px; height: 16px; }
+  /* The same white pencil Edit Profile uses, beside the settings gear. */
+  .profile-header-actions { display: flex; flex: 0 0 auto; align-self: flex-start; align-items: center; gap: 8px; }
+  .profile-editor-pencil.profile-name-edit { width: 36px; min-width: 36px; height: 36px; border-radius: 8px; }
+  .profile-editor-pencil.profile-name-edit svg { width: 18px; height: 18px; }
   .profile-name-edit[hidden] { display: none; }
   .player-profile-presence { margin-top: 4px; color: var(--muted); font-size: 8px; letter-spacing: .08em; }
   .player-profile-presence.is-online { color: #72ef58; }

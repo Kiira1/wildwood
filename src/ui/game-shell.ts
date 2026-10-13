@@ -104,13 +104,15 @@ const afterUpdateGateShell = String.raw`
           <div class="player-profile-name-row">
             <span id="playerProfileGuestLabel" class="player-profile-guest" hidden>(guest)</span>
             <h2 id="playerProfileName">PLAYER</h2>
-            <button id="editPlayerNameBtn" class="profile-editor-pencil profile-name-edit" type="button" aria-label="Edit profile" aria-haspopup="dialog" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm17.71-10.21a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
           </div>
           <div id="playerProfilePresence" class="player-profile-presence">CHECKING STATUS</div>
           <div id="playerProfileChallenge" class="player-profile-challenge" hidden></div>
         </div>
       </div>
-      <button id="settingsBtn" class="profile-settings-button" type="button" aria-label="Open settings" aria-expanded="false" aria-controls="settingsPanel" title="Settings" hidden><img src="assets/wildstat/icons/Icon_Settings.webp" alt="" aria-hidden="true"></button>
+      <div class="profile-header-actions">
+        <button id="editPlayerNameBtn" class="profile-editor-pencil profile-name-edit" type="button" aria-label="Edit profile" aria-haspopup="dialog" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm17.71-10.21a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
+        <button id="settingsBtn" class="profile-settings-button" type="button" aria-label="Open settings" aria-expanded="false" aria-controls="settingsPanel" title="Settings" hidden><img src="assets/wildstat/icons/Icon_Settings.webp" alt="" aria-hidden="true"></button>
+      </div>
     </header>
     <div id="profileCharacterPreview" class="profile-character-preview character-loadout-preview" aria-label="Player character and equipped items">
       <canvas id="profileCharacterCanvas" class="profile-character-canvas character-preview-canvas" width="240" height="136" aria-hidden="true"></canvas>
