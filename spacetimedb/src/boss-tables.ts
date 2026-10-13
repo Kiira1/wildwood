@@ -45,6 +45,17 @@ function createBossTableSet() {
   };
 }
 
+/**
+ * The fifteen shared-boss table sets, by accessor prefix (`dragonContribution`,
+ * `dragonAttackWindow`, ...). Boss combat is client-side now and nothing writes
+ * these except account linking and removal, which loop over this list instead
+ * of naming every boss. boss-tables.test.ts checks it matches the sets below.
+ */
+export const LEGACY_BOSS_KEYS = [
+  "dragon", "spider", "frostclaw", "magmalisk", "gloomroot", "tidewyrm", "koiShogun", "tempestKirin",
+  "miremaw", "prismshell", "ironhorn", "dreadreaper", "voltwarden", "gravebloom", "aegisPrime",
+] as const;
+
 const dragon = createBossTableSet();
 const spider = createBossTableSet();
 const frostclaw = createBossTableSet();

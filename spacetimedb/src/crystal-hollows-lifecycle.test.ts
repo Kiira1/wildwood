@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { Identity } from "spacetimedb";
 import { ATTACK_BALANCE_VERSION, BOSS_REWARD_CLAIM_BITS, SPACETIME_AUTH_ISSUER, SPACETIME_AUTH_CLIENT_ID } from "../../shared/rules";
 import { crystalFixture, identity, server } from "../../tests/helpers/crystal-hollows-fixture";
+import { LEGACY_BOSS_KEYS } from "./boss-tables";
 
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
@@ -30,17 +31,19 @@ describe("Crystal Hollows unlock and identity lifecycle", () => {
     f.progress(guest, { crystalHollowsUnlocked: true });
     f.seed("playerBalanceVersion", { identity: guest, version: ATTACK_BALANCE_VERSION });
     f.seed("accountLink", { code: "test-link", guest, createdAt: f.ctx.timestamp });
-    for (const [who, damage] of [[guest, 30], [f.ctx.sender, 20]] as const) {
-      f.seed("prismshellContribution", { identity: who, encounter: 7n, damage, displayName: "Before" });
-      f.seed("prismshellAttackWindow", { identity: who, encounter: 7n, hits: 2, startedAtMicros: 10_000_000n });
+    for (const boss of LEGACY_BOSS_KEYS) for (const [who, damage] of [[guest, 30], [f.ctx.sender, 20]] as const) {
+      f.seed(`${boss}Contribution`, { identity: who, encounter: 7n, damage, displayName: "Before" });
+      f.seed(`${boss}AttackWindow`, { identity: who, encounter: 7n, hits: 2, startedAtMicros: 10_000_000n });
     }
     f.ctx.senderAuth = { jwt: { issuer: SPACETIME_AUTH_ISSUER, audience: [SPACETIME_AUTH_CLIENT_ID] } };
     f.run(server.claimGuestAccount, { code: "test-link" });
     expect(f.db.playerProgress.identity.find(f.ctx.sender).crystalHollowsUnlocked).toBe(true);
     expect(f.db.playerProgress.identity.find(guest)).toBeNull();
-    expect(f.db.prismshellContribution.identity.find(guest)).toBeNull();
-    expect(f.db.prismshellContribution.identity.find(f.ctx.sender)).toMatchObject({ damage: 50, encounter: 7n });
-    expect(f.db.prismshellAttackWindow.count()).toBe(0n);
+    for (const boss of LEGACY_BOSS_KEYS) {
+      expect(f.db[`${boss}Contribution`].identity.find(guest), boss).toBeNull();
+      expect(f.db[`${boss}Contribution`].identity.find(f.ctx.sender), boss).toMatchObject({ damage: 50, encounter: 7n });
+      expect(f.db[`${boss}AttackWindow`].count(), boss).toBe(0n);
+    }
     expect(f.db.accountLink.code.find("test-link")).toBeNull();
   });
 

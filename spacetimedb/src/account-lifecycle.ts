@@ -46,6 +46,7 @@ import { deleteSnapshotRow, insertSnapshotRow, updateSnapshotRow } from "./snaps
 import { mergeSocialAccount, removeSocialAccount } from "./social-service";
 import { readPlayerProgress, deleteReplayWide } from "./wide-stats";
 import { eraseIdentityRows } from "./account-erasure";
+import { LEGACY_BOSS_KEYS } from "./boss-tables";
 
 export const ACCOUNT_LINK_LIFETIME_MICROS = 600_000_000n;
 
@@ -120,26 +121,37 @@ export type AccountLifecycleDeps = {
 };
 
 /**
- * A removed player's own state in tables added after the removal functions
- * below were written: prestige, quests, aggro, offline progress, rebase
- * backups, Gem kill credit, boss contributions and the rest. Both removals
- * clear them through the erasure lookups. Deliberately absent: rows the game
+ * Every plain per-player row both removals clear, through the erasure
+ * lookups: the one-row-per-player tables, each shared boss's contribution and
+ * attack window, and the state added since (prestige, quests, aggro, offline
+ * progress, rebase backups, Gem kill credit and the rest). Rows that need more
+ * than a delete (snapshot rows, chat with its reactions, duels with their
+ * replays) stay written out in the functions below. Deliberately absent: rows the game
  * owns rather than the player (a guild, the store config, balance edits,
  * Patreon receipts), Gem purchase records, and analytics history.
  * player-removal.test.ts lists exactly what each removal leaves.
  */
 const PLAYER_STATE_TABLES: ReadonlySet<string> = new Set([
+  // One row per player, cleared the same way by both removals.
+  "activeResearch", "balanceApologyNotice", "bossDefeatWindow", "bossMapDefeatWindow", "chatCooldown",
+  "chatReactionUnlock", "defeatSessionRestriction", "duelRequestCooldown", "leaderboardEntry", "playerAccessAudit",
+  "playerBalanceVersion", "playerController", "playerCutsceneHistory", "playerGemWallet", "playerInventoryCapacity",
+  "playerLastLocation", "playerLegalConsent", "playerLifetime", "playerMapBalance", "playerMapMarker",
+  "playerMovementDemand", "playerMultiplayerPreference", "playerNameCooldown", "playerOnboarding",
+  "playerUpgradeBench", "playerUpgradeBenchThirdSlot",
+  ...LEGACY_BOSS_KEYS.flatMap(boss => [`${boss}Contribution`, `${boss}AttackWindow`]),
+  // Added after the removal functions were first written.
   "accountDeletionRequest", "accountEmail", "aggroChallengeRun", "chatMessageReportRateLimit", "chatModerator",
   "connectionDiagnostic", "connectionDiagnosticRate", "dailyGemBonus", "developerPresencePreference",
-  "dreadreaperAttackWindow", "dreadreaperContribution", "duelWireAccess", "endlessTravelAccess", "enemyDefeatReview",
+  "duelWireAccess", "endlessTravelAccess", "enemyDefeatReview",
   "forestRewardPrototype", "gemKillProgress", "gemTransaction", "guildMemberQuestWeek", "guildRejoin",
   "homeReturnLocation", "leaderboardEntryLegacy", "leaderboardPosition", "leaderboardPrestigePosition", "loginMove",
   "offlineProgress", "patreonPreview", "playerAggroChallenge", "playerAggroChallengeParked", "playerBonusToggle",
   "playerDailyQuest", "playerEndgameRebaseBackup", "playerEndlessRebaseBackup", "playerFreeRespec",
   "playerOfflinePreference", "playerPowerRebaseBackup", "playerPrestige", "playerPrestigeChallenge",
   "playerPrestigeChallengeParked", "playerPrestigeExpansionPerk", "playerPrestigePerk", "playerQuestWeekTotal",
-  "presenceChatCooldown", "prestigeChallengeBackup", "prestigeChallengeRun", "prismshellAttackWindow",
-  "prismshellContribution", "proceduralContribution", "proceduralInstanceContribution", "proceduralProgress",
+  "presenceChatCooldown", "prestigeChallengeBackup", "prestigeChallengeRun",
+  "proceduralContribution", "proceduralInstanceContribution", "proceduralProgress",
   "releaseAcknowledgement", "soloQuestWeek", "startupTelemetryRateLimit", "virtualPlayerLoad", "virtualPlayerRun",
 ]);
 const removePlayerStateRows = (ctx: any, identity: any) => eraseIdentityRows(ctx, [identity], Infinity, PLAYER_STATE_TABLES);
@@ -467,168 +479,11 @@ export function createAccountLifecycle(deps: AccountLifecycleDeps) {
     // Linking during any boss fight keeps the guest's contribution under the
     // authenticated identity. Attack windows are cleared so the next volley is
     // authorized against the new identity and cannot inherit stale hit counts.
-    for (const [contributionTable, attackWindowTable] of [
-      [ctx.db.dragonContribution, ctx.db.dragonAttackWindow],
-      [ctx.db.spiderContribution, ctx.db.spiderAttackWindow],
-      [ctx.db.frostclawContribution, ctx.db.frostclawAttackWindow],
-      [ctx.db.magmaliskContribution, ctx.db.magmaliskAttackWindow],
-      [ctx.db.gloomrootContribution, ctx.db.gloomrootAttackWindow],
-      [ctx.db.tidewyrmContribution, ctx.db.tidewyrmAttackWindow],
-      [ctx.db.koiShogunContribution, ctx.db.koiShogunAttackWindow],
-      [ctx.db.tempestKirinContribution, ctx.db.tempestKirinAttackWindow],
-      [ctx.db.miremawContribution, ctx.db.miremawAttackWindow],
-      [ctx.db.prismshellContribution, ctx.db.prismshellAttackWindow],
-    ] as any[]) {
-      const guestContribution = contributionTable.identity.find(link.guest);
-      const accountContribution = contributionTable.identity.find(ctx.sender);
-      if (guestContribution) {
-        const nextContribution = {
-          identity: ctx.sender,
-          encounter: guestContribution.encounter,
-          displayName: finalDisplayName,
-          damage: accountContribution?.encounter === guestContribution.encounter
-            ? accountContribution.damage + guestContribution.damage
-            : guestContribution.damage,
-        };
-        if (accountContribution) contributionTable.identity.update(nextContribution);
-        else contributionTable.insert(nextContribution);
-        contributionTable.identity.delete(link.guest);
-      }
-      if (attackWindowTable.identity.find(link.guest)) attackWindowTable.identity.delete(link.guest);
-      if (attackWindowTable.identity.find(ctx.sender)) attackWindowTable.identity.delete(ctx.sender);
-    }
-    for (const [contributionTable, attackWindowTable] of [
-      [ctx.db.dragonContribution, ctx.db.dragonAttackWindow],
-      [ctx.db.spiderContribution, ctx.db.spiderAttackWindow],
-      [ctx.db.frostclawContribution, ctx.db.frostclawAttackWindow],
-      [ctx.db.magmaliskContribution, ctx.db.magmaliskAttackWindow],
-      [ctx.db.gloomrootContribution, ctx.db.gloomrootAttackWindow],
-      [ctx.db.tidewyrmContribution, ctx.db.tidewyrmAttackWindow],
-      [ctx.db.koiShogunContribution, ctx.db.koiShogunAttackWindow],
-      [ctx.db.tempestKirinContribution, ctx.db.tempestKirinAttackWindow],
-      [ctx.db.miremawContribution, ctx.db.miremawAttackWindow],
-      [ctx.db.ironhornContribution, ctx.db.ironhornAttackWindow],
-    ] as any[]) {
-      const guestContribution = contributionTable.identity.find(link.guest);
-      const accountContribution = contributionTable.identity.find(ctx.sender);
-      if (guestContribution) {
-        const nextContribution = {
-          identity: ctx.sender,
-          encounter: guestContribution.encounter,
-          displayName: finalDisplayName,
-          damage: accountContribution?.encounter === guestContribution.encounter
-            ? accountContribution.damage + guestContribution.damage
-            : guestContribution.damage,
-        };
-        if (accountContribution) contributionTable.identity.update(nextContribution);
-        else contributionTable.insert(nextContribution);
-        contributionTable.identity.delete(link.guest);
-      }
-      if (attackWindowTable.identity.find(link.guest)) attackWindowTable.identity.delete(link.guest);
-      if (attackWindowTable.identity.find(ctx.sender)) attackWindowTable.identity.delete(ctx.sender);
-    }
-    for (const [contributionTable, attackWindowTable] of [
-      [ctx.db.dragonContribution, ctx.db.dragonAttackWindow],
-      [ctx.db.spiderContribution, ctx.db.spiderAttackWindow],
-      [ctx.db.frostclawContribution, ctx.db.frostclawAttackWindow],
-      [ctx.db.magmaliskContribution, ctx.db.magmaliskAttackWindow],
-      [ctx.db.gloomrootContribution, ctx.db.gloomrootAttackWindow],
-      [ctx.db.tidewyrmContribution, ctx.db.tidewyrmAttackWindow],
-      [ctx.db.koiShogunContribution, ctx.db.koiShogunAttackWindow],
-      [ctx.db.tempestKirinContribution, ctx.db.tempestKirinAttackWindow],
-      [ctx.db.miremawContribution, ctx.db.miremawAttackWindow],
-      [ctx.db.dreadreaperContribution, ctx.db.dreadreaperAttackWindow],
-    ] as any[]) {
-      const guestContribution = contributionTable.identity.find(link.guest);
-      const accountContribution = contributionTable.identity.find(ctx.sender);
-      if (guestContribution) {
-        const nextContribution = {
-          identity: ctx.sender,
-          encounter: guestContribution.encounter,
-          displayName: finalDisplayName,
-          damage: accountContribution?.encounter === guestContribution.encounter
-            ? accountContribution.damage + guestContribution.damage
-            : guestContribution.damage,
-        };
-        if (accountContribution) contributionTable.identity.update(nextContribution);
-        else contributionTable.insert(nextContribution);
-        contributionTable.identity.delete(link.guest);
-      }
-      if (attackWindowTable.identity.find(link.guest)) attackWindowTable.identity.delete(link.guest);
-      if (attackWindowTable.identity.find(ctx.sender)) attackWindowTable.identity.delete(ctx.sender);
-    }
-for (const [contributionTable, attackWindowTable] of [
-      [ctx.db.dragonContribution, ctx.db.dragonAttackWindow],
-      [ctx.db.spiderContribution, ctx.db.spiderAttackWindow],
-      [ctx.db.frostclawContribution, ctx.db.frostclawAttackWindow],
-      [ctx.db.magmaliskContribution, ctx.db.magmaliskAttackWindow],
-      [ctx.db.gloomrootContribution, ctx.db.gloomrootAttackWindow],
-      [ctx.db.tidewyrmContribution, ctx.db.tidewyrmAttackWindow],
-      [ctx.db.koiShogunContribution, ctx.db.koiShogunAttackWindow],
-      [ctx.db.tempestKirinContribution, ctx.db.tempestKirinAttackWindow],
-      [ctx.db.miremawContribution, ctx.db.miremawAttackWindow],
-      [ctx.db.voltwardenContribution, ctx.db.voltwardenAttackWindow],
-    ] as any[]) {
-      const guestContribution = contributionTable.identity.find(link.guest);
-      const accountContribution = contributionTable.identity.find(ctx.sender);
-      if (guestContribution) {
-        const nextContribution = {
-          identity: ctx.sender,
-          encounter: guestContribution.encounter,
-          displayName: finalDisplayName,
-          damage: accountContribution?.encounter === guestContribution.encounter
-            ? accountContribution.damage + guestContribution.damage
-            : guestContribution.damage,
-        };
-        if (accountContribution) contributionTable.identity.update(nextContribution);
-        else contributionTable.insert(nextContribution);
-        contributionTable.identity.delete(link.guest);
-      }
-      if (attackWindowTable.identity.find(link.guest)) attackWindowTable.identity.delete(link.guest);
-      if (attackWindowTable.identity.find(ctx.sender)) attackWindowTable.identity.delete(ctx.sender);
-    }
-for (const [contributionTable, attackWindowTable] of [
-      [ctx.db.dragonContribution, ctx.db.dragonAttackWindow],
-      [ctx.db.spiderContribution, ctx.db.spiderAttackWindow],
-      [ctx.db.frostclawContribution, ctx.db.frostclawAttackWindow],
-      [ctx.db.magmaliskContribution, ctx.db.magmaliskAttackWindow],
-      [ctx.db.gloomrootContribution, ctx.db.gloomrootAttackWindow],
-      [ctx.db.tidewyrmContribution, ctx.db.tidewyrmAttackWindow],
-      [ctx.db.koiShogunContribution, ctx.db.koiShogunAttackWindow],
-      [ctx.db.tempestKirinContribution, ctx.db.tempestKirinAttackWindow],
-      [ctx.db.miremawContribution, ctx.db.miremawAttackWindow],
-      [ctx.db.gravebloomContribution, ctx.db.gravebloomAttackWindow],
-    ] as any[]) {
-      const guestContribution = contributionTable.identity.find(link.guest);
-      const accountContribution = contributionTable.identity.find(ctx.sender);
-      if (guestContribution) {
-        const nextContribution = {
-          identity: ctx.sender,
-          encounter: guestContribution.encounter,
-          displayName: finalDisplayName,
-          damage: accountContribution?.encounter === guestContribution.encounter
-            ? accountContribution.damage + guestContribution.damage
-            : guestContribution.damage,
-        };
-        if (accountContribution) contributionTable.identity.update(nextContribution);
-        else contributionTable.insert(nextContribution);
-        contributionTable.identity.delete(link.guest);
-      }
-      if (attackWindowTable.identity.find(link.guest)) attackWindowTable.identity.delete(link.guest);
-      if (attackWindowTable.identity.find(ctx.sender)) attackWindowTable.identity.delete(ctx.sender);
-    }
-for (const [contributionTable, attackWindowTable] of [
-      [ctx.db.dragonContribution, ctx.db.dragonAttackWindow],
-      [ctx.db.spiderContribution, ctx.db.spiderAttackWindow],
-      [ctx.db.frostclawContribution, ctx.db.frostclawAttackWindow],
-      [ctx.db.magmaliskContribution, ctx.db.magmaliskAttackWindow],
-      [ctx.db.gloomrootContribution, ctx.db.gloomrootAttackWindow],
-      [ctx.db.tidewyrmContribution, ctx.db.tidewyrmAttackWindow],
-      [ctx.db.koiShogunContribution, ctx.db.koiShogunAttackWindow],
-      [ctx.db.tempestKirinContribution, ctx.db.tempestKirinAttackWindow],
-      [ctx.db.miremawContribution, ctx.db.miremawAttackWindow],
-      [ctx.db.aegisPrimeContribution, ctx.db.aegisPrimeAttackWindow],
-    ] as any[]) {
+    // Leftover shared-boss rows: fold the guest's damage into the account's for
+    // the same encounter, and drop both attack windows.
+    for (const boss of LEGACY_BOSS_KEYS) {
+      const contributionTable = ctx.db[`${boss}Contribution`];
+      const attackWindowTable = ctx.db[`${boss}AttackWindow`];
       const guestContribution = contributionTable.identity.find(link.guest);
       const accountContribution = contributionTable.identity.find(ctx.sender);
       if (guestContribution) {
@@ -762,26 +617,14 @@ for (const [contributionTable, attackWindowTable] of [
     const activePlayer = ctx.db.player.identity.find(identity);
     if (activePlayer) deleteSnapshotRow(ctx, "player", identity);
     removePlayerRealtimeState(ctx, identity);
-    if (ctx.db.playerMapMarker.identity.find(identity)) ctx.db.playerMapMarker.identity.delete(identity);
-    if (ctx.db.playerMovementDemand.identity.find(identity)) ctx.db.playerMovementDemand.identity.delete(identity);
     if (ctx.db.playerProfile.identity.find(identity)) deleteSnapshotRow(ctx, "playerProfile", identity);
     if (readPlayerProgress(ctx, identity)) deleteSnapshotRow(ctx, "playerProgress", identity);
-    if (ctx.db.playerLastLocation.identity.find(identity)) ctx.db.playerLastLocation.identity.delete(identity);
     if (ctx.db.playerResearch.identity.find(identity)) deleteSnapshotRow(ctx, "playerResearch", identity);
-    if (ctx.db.chatReactionUnlock.identity.find(identity)) ctx.db.chatReactionUnlock.identity.delete(identity);
-    if (ctx.db.activeResearch.identity.find(identity)) ctx.db.activeResearch.identity.delete(identity);
     removeResearchCompletionSchedules(ctx, identity);
     removePausedResearch(ctx, identity);
     removePlayerItemUpgradeData(ctx, identity, true);
     if (ctx.db.playerAccountStatus.identity.find(identity)) deleteSnapshotRow(ctx, "playerAccountStatus", identity);
-    if (ctx.db.defeatSessionRestriction.identity.find(identity)) ctx.db.defeatSessionRestriction.identity.delete(identity);
-    if (ctx.db.playerLegalConsent.identity.find(identity)) ctx.db.playerLegalConsent.identity.delete(identity);
-    if (ctx.db.playerLifetime.identity.find(identity)) ctx.db.playerLifetime.identity.delete(identity);
     removePlayerJoinDate(ctx, identity);
-    if (ctx.db.playerNameCooldown.identity.find(identity)) ctx.db.playerNameCooldown.identity.delete(identity);
-    if (ctx.db.playerBalanceVersion.identity.find(identity)) ctx.db.playerBalanceVersion.identity.delete(identity);
-    if (ctx.db.playerGemWallet.identity.find(identity)) ctx.db.playerGemWallet.identity.delete(identity);
-    if (ctx.db.balanceApologyNotice.identity.find(identity)) ctx.db.balanceApologyNotice.identity.delete(identity);
     removeAdGemReward(ctx, identity);
     removeChatMute(ctx, identity);
     removeItemGifts(ctx, identity);
@@ -789,9 +632,6 @@ for (const [contributionTable, attackWindowTable] of [
     removeMailboxReceipts(ctx, identity);
     unlinkPatreon(ctx, identity);
     for (const budget of ctx.db.enemyDefeatBudget.identity.filter(identity)) ctx.db.enemyDefeatBudget.key.delete(budget.key);
-    if (ctx.db.bossDefeatWindow.identity.find(identity)) ctx.db.bossDefeatWindow.identity.delete(identity);
-    if (ctx.db.bossMapDefeatWindow.identity.find(identity)) ctx.db.bossMapDefeatWindow.identity.delete(identity);
-    if (ctx.db.playerMultiplayerPreference.identity.find(identity)) ctx.db.playerMultiplayerPreference.identity.delete(identity);
     removeAudioSettings(ctx, identity);
     removeLootSettings(ctx, identity);
     removeProfileSnapshot(ctx, identity);
@@ -799,48 +639,11 @@ for (const [contributionTable, attackWindowTable] of [
     removeEquipmentLocks(ctx, identity);
     removeIgnoredDrops(ctx, identity);
     removeStreamCursors(ctx, identity);
-    if (ctx.db.playerOnboarding.identity.find(identity)) ctx.db.playerOnboarding.identity.delete(identity);
-    if (ctx.db.playerMapBalance.identity.find(identity)) ctx.db.playerMapBalance.identity.delete(identity);
-    if (ctx.db.playerUpgradeBench.identity.find(identity)) ctx.db.playerUpgradeBench.identity.delete(identity);
-    if (ctx.db.playerUpgradeBenchThirdSlot.identity.find(identity)) ctx.db.playerUpgradeBenchThirdSlot.identity.delete(identity);
-    if (ctx.db.playerInventoryCapacity.identity.find(identity)) ctx.db.playerInventoryCapacity.identity.delete(identity);
-    if (ctx.db.playerCutsceneHistory.identity.find(identity)) ctx.db.playerCutsceneHistory.identity.delete(identity);
-    if (ctx.db.playerAccessAudit.identity.find(identity)) ctx.db.playerAccessAudit.identity.delete(identity);
-    if (ctx.db.chatCooldown.identity.find(identity)) ctx.db.chatCooldown.identity.delete(identity);
-    if (ctx.db.duelRequestCooldown.identity.find(identity)) ctx.db.duelRequestCooldown.identity.delete(identity);
-    if (ctx.db.dragonContribution.identity.find(identity)) ctx.db.dragonContribution.identity.delete(identity);
-    if (ctx.db.dragonAttackWindow.identity.find(identity)) ctx.db.dragonAttackWindow.identity.delete(identity);
-    if (ctx.db.spiderContribution.identity.find(identity)) ctx.db.spiderContribution.identity.delete(identity);
-    if (ctx.db.spiderAttackWindow.identity.find(identity)) ctx.db.spiderAttackWindow.identity.delete(identity);
-    if (ctx.db.frostclawContribution.identity.find(identity)) ctx.db.frostclawContribution.identity.delete(identity);
-    if (ctx.db.frostclawAttackWindow.identity.find(identity)) ctx.db.frostclawAttackWindow.identity.delete(identity);
-    if (ctx.db.magmaliskContribution.identity.find(identity)) ctx.db.magmaliskContribution.identity.delete(identity);
-    if (ctx.db.magmaliskAttackWindow.identity.find(identity)) ctx.db.magmaliskAttackWindow.identity.delete(identity);
-    if (ctx.db.gloomrootContribution.identity.find(identity)) ctx.db.gloomrootContribution.identity.delete(identity);
-    if (ctx.db.gloomrootAttackWindow.identity.find(identity)) ctx.db.gloomrootAttackWindow.identity.delete(identity);
-    if (ctx.db.tidewyrmContribution.identity.find(identity)) ctx.db.tidewyrmContribution.identity.delete(identity);
-    if (ctx.db.tidewyrmAttackWindow.identity.find(identity)) ctx.db.tidewyrmAttackWindow.identity.delete(identity);
-    if (ctx.db.koiShogunContribution.identity.find(identity)) ctx.db.koiShogunContribution.identity.delete(identity);
-    if (ctx.db.koiShogunAttackWindow.identity.find(identity)) ctx.db.koiShogunAttackWindow.identity.delete(identity);
-    if (ctx.db.tempestKirinContribution.identity.find(identity)) ctx.db.tempestKirinContribution.identity.delete(identity);
-    if (ctx.db.tempestKirinAttackWindow.identity.find(identity)) ctx.db.tempestKirinAttackWindow.identity.delete(identity);
-    if (ctx.db.miremawContribution.identity.find(identity)) ctx.db.miremawContribution.identity.delete(identity);
-    if (ctx.db.voltwardenContribution.identity.find(identity)) ctx.db.voltwardenContribution.identity.delete(identity);
-    if (ctx.db.gravebloomContribution.identity.find(identity)) ctx.db.gravebloomContribution.identity.delete(identity);
-    if (ctx.db.aegisPrimeContribution.identity.find(identity)) ctx.db.aegisPrimeContribution.identity.delete(identity);
-    if (ctx.db.ironhornContribution.identity.find(identity)) ctx.db.ironhornContribution.identity.delete(identity);
-    if (ctx.db.miremawAttackWindow.identity.find(identity)) ctx.db.miremawAttackWindow.identity.delete(identity);
-    if (ctx.db.voltwardenAttackWindow.identity.find(identity)) ctx.db.voltwardenAttackWindow.identity.delete(identity);
-    if (ctx.db.gravebloomAttackWindow.identity.find(identity)) ctx.db.gravebloomAttackWindow.identity.delete(identity);
-    if (ctx.db.aegisPrimeAttackWindow.identity.find(identity)) ctx.db.aegisPrimeAttackWindow.identity.delete(identity);
-    if (ctx.db.ironhornAttackWindow.identity.find(identity)) ctx.db.ironhornAttackWindow.identity.delete(identity);
-    if (ctx.db.leaderboardEntry.identity.find(identity)) ctx.db.leaderboardEntry.identity.delete(identity);
 
     for (const session of [...ctx.db.playerSession.byIdentity.filter(identity) as Iterable<any>]) {
       ctx.db.playerSession.connectionId.delete(session.connectionId);
       ctx.db.playerSessionAnalytics.connectionId.delete(session.connectionId);
     }
-    if (ctx.db.playerController.identity.find(identity)) ctx.db.playerController.identity.delete(identity);
 
     const linkCodes: string[] = [];
     for (const link of ctx.db.accountLink.iter() as Iterable<any>) {
@@ -874,28 +677,15 @@ for (const [contributionTable, attackWindowTable] of [
     if (activePlayer) deleteSnapshotRow(ctx, "player", identity);
     removePlayerRealtimeState(ctx, identity);
 
-    if (ctx.db.playerMapMarker.identity.find(identity)) ctx.db.playerMapMarker.identity.delete(identity);
-    if (ctx.db.playerMovementDemand.identity.find(identity)) ctx.db.playerMovementDemand.identity.delete(identity);
     if (ctx.db.playerProfile.identity.find(identity)) deleteSnapshotRow(ctx, "playerProfile", identity);
     if (readPlayerProgress(ctx, identity)) deleteSnapshotRow(ctx, "playerProgress", identity);
-    if (ctx.db.playerLastLocation.identity.find(identity)) ctx.db.playerLastLocation.identity.delete(identity);
     if (ctx.db.playerResearch.identity.find(identity)) deleteSnapshotRow(ctx, "playerResearch", identity);
-    if (ctx.db.chatReactionUnlock.identity.find(identity)) ctx.db.chatReactionUnlock.identity.delete(identity);
-    if (ctx.db.activeResearch.identity.find(identity)) ctx.db.activeResearch.identity.delete(identity);
     removeResearchCompletionSchedules(ctx, identity);
     removePausedResearch(ctx, identity);
     removePlayerItemUpgradeData(ctx, identity, true);
 
     if (ctx.db.playerAccountStatus.identity.find(identity)) deleteSnapshotRow(ctx, "playerAccountStatus", identity);
-    if (ctx.db.defeatSessionRestriction.identity.find(identity)) ctx.db.defeatSessionRestriction.identity.delete(identity);
-    if (ctx.db.playerLegalConsent.identity.find(identity)) ctx.db.playerLegalConsent.identity.delete(identity);
-    if (ctx.db.playerLifetime.identity.find(identity)) ctx.db.playerLifetime.identity.delete(identity);
     removePlayerJoinDate(ctx, identity);
-    if (ctx.db.playerNameCooldown.identity.find(identity)) ctx.db.playerNameCooldown.identity.delete(identity);
-    if (ctx.db.playerBalanceVersion.identity.find(identity)) ctx.db.playerBalanceVersion.identity.delete(identity);
-    if (ctx.db.playerGemWallet.identity.find(identity)) ctx.db.playerGemWallet.identity.delete(identity);
-    if (ctx.db.dailyGemBonus.identity.find(identity)) ctx.db.dailyGemBonus.identity.delete(identity);
-    if (ctx.db.balanceApologyNotice.identity.find(identity)) ctx.db.balanceApologyNotice.identity.delete(identity);
     removeAdGemReward(ctx, identity);
     removeChatMute(ctx, identity);
     removeItemGifts(ctx, identity);
@@ -903,9 +693,6 @@ for (const [contributionTable, attackWindowTable] of [
     removeMailboxReceipts(ctx, identity);
     unlinkPatreon(ctx, identity);
     for (const budget of ctx.db.enemyDefeatBudget.identity.filter(identity)) ctx.db.enemyDefeatBudget.key.delete(budget.key);
-    if (ctx.db.bossDefeatWindow.identity.find(identity)) ctx.db.bossDefeatWindow.identity.delete(identity);
-    if (ctx.db.bossMapDefeatWindow.identity.find(identity)) ctx.db.bossMapDefeatWindow.identity.delete(identity);
-    if (ctx.db.playerMultiplayerPreference.identity.find(identity)) ctx.db.playerMultiplayerPreference.identity.delete(identity);
     removeAudioSettings(ctx, identity);
     removeLootSettings(ctx, identity);
     removeProfileSnapshot(ctx, identity);
@@ -913,57 +700,12 @@ for (const [contributionTable, attackWindowTable] of [
     removeEquipmentLocks(ctx, identity);
     removeIgnoredDrops(ctx, identity);
     removeStreamCursors(ctx, identity);
-    if (ctx.db.playerOnboarding.identity.find(identity)) ctx.db.playerOnboarding.identity.delete(identity);
-    if (ctx.db.playerMapBalance.identity.find(identity)) ctx.db.playerMapBalance.identity.delete(identity);
-    if (ctx.db.playerUpgradeBench.identity.find(identity)) ctx.db.playerUpgradeBench.identity.delete(identity);
-    if (ctx.db.playerUpgradeBenchThirdSlot.identity.find(identity)) ctx.db.playerUpgradeBenchThirdSlot.identity.delete(identity);
-    if (ctx.db.playerInventoryCapacity.identity.find(identity)) ctx.db.playerInventoryCapacity.identity.delete(identity);
-    if (ctx.db.playerCutsceneHistory.identity.find(identity)) ctx.db.playerCutsceneHistory.identity.delete(identity);
-    if (ctx.db.playerAccessAudit.identity.find(identity)) ctx.db.playerAccessAudit.identity.delete(identity);
-    if (ctx.db.developerPresencePreference.identity.find(identity)) ctx.db.developerPresencePreference.identity.delete(identity);
-    if (ctx.db.chatCooldown.identity.find(identity)) ctx.db.chatCooldown.identity.delete(identity);
-    if (ctx.db.presenceChatCooldown.identity.find(identity)) ctx.db.presenceChatCooldown.identity.delete(identity);
-    if (ctx.db.duelRequestCooldown.identity.find(identity)) ctx.db.duelRequestCooldown.identity.delete(identity);
-    if (ctx.db.chatMessageReportRateLimit.reporter.find(identity)) ctx.db.chatMessageReportRateLimit.reporter.delete(identity);
-    if (ctx.db.startupTelemetryRateLimit.sender.find(identity)) ctx.db.startupTelemetryRateLimit.sender.delete(identity);
 
-    for (const transaction of [...ctx.db.gemTransaction.byIdentity.filter(identity) as Iterable<any>]) {
-      ctx.db.gemTransaction.id.delete(transaction.id);
-    }
-
-    if (ctx.db.dragonContribution.identity.find(identity)) ctx.db.dragonContribution.identity.delete(identity);
-    if (ctx.db.dragonAttackWindow.identity.find(identity)) ctx.db.dragonAttackWindow.identity.delete(identity);
-    if (ctx.db.spiderContribution.identity.find(identity)) ctx.db.spiderContribution.identity.delete(identity);
-    if (ctx.db.spiderAttackWindow.identity.find(identity)) ctx.db.spiderAttackWindow.identity.delete(identity);
-    if (ctx.db.frostclawContribution.identity.find(identity)) ctx.db.frostclawContribution.identity.delete(identity);
-    if (ctx.db.frostclawAttackWindow.identity.find(identity)) ctx.db.frostclawAttackWindow.identity.delete(identity);
-    if (ctx.db.magmaliskContribution.identity.find(identity)) ctx.db.magmaliskContribution.identity.delete(identity);
-    if (ctx.db.magmaliskAttackWindow.identity.find(identity)) ctx.db.magmaliskAttackWindow.identity.delete(identity);
-    if (ctx.db.gloomrootContribution.identity.find(identity)) ctx.db.gloomrootContribution.identity.delete(identity);
-    if (ctx.db.gloomrootAttackWindow.identity.find(identity)) ctx.db.gloomrootAttackWindow.identity.delete(identity);
-    if (ctx.db.tidewyrmContribution.identity.find(identity)) ctx.db.tidewyrmContribution.identity.delete(identity);
-    if (ctx.db.tidewyrmAttackWindow.identity.find(identity)) ctx.db.tidewyrmAttackWindow.identity.delete(identity);
-    if (ctx.db.koiShogunContribution.identity.find(identity)) ctx.db.koiShogunContribution.identity.delete(identity);
-    if (ctx.db.koiShogunAttackWindow.identity.find(identity)) ctx.db.koiShogunAttackWindow.identity.delete(identity);
-    if (ctx.db.tempestKirinContribution.identity.find(identity)) ctx.db.tempestKirinContribution.identity.delete(identity);
-    if (ctx.db.tempestKirinAttackWindow.identity.find(identity)) ctx.db.tempestKirinAttackWindow.identity.delete(identity);
-    if (ctx.db.miremawContribution.identity.find(identity)) ctx.db.miremawContribution.identity.delete(identity);
-    if (ctx.db.voltwardenContribution.identity.find(identity)) ctx.db.voltwardenContribution.identity.delete(identity);
-    if (ctx.db.gravebloomContribution.identity.find(identity)) ctx.db.gravebloomContribution.identity.delete(identity);
-    if (ctx.db.aegisPrimeContribution.identity.find(identity)) ctx.db.aegisPrimeContribution.identity.delete(identity);
-    if (ctx.db.ironhornContribution.identity.find(identity)) ctx.db.ironhornContribution.identity.delete(identity);
-    if (ctx.db.miremawAttackWindow.identity.find(identity)) ctx.db.miremawAttackWindow.identity.delete(identity);
-    if (ctx.db.voltwardenAttackWindow.identity.find(identity)) ctx.db.voltwardenAttackWindow.identity.delete(identity);
-    if (ctx.db.gravebloomAttackWindow.identity.find(identity)) ctx.db.gravebloomAttackWindow.identity.delete(identity);
-    if (ctx.db.aegisPrimeAttackWindow.identity.find(identity)) ctx.db.aegisPrimeAttackWindow.identity.delete(identity);
-    if (ctx.db.ironhornAttackWindow.identity.find(identity)) ctx.db.ironhornAttackWindow.identity.delete(identity);
-    if (ctx.db.leaderboardEntry.identity.find(identity)) ctx.db.leaderboardEntry.identity.delete(identity);
 
     for (const session of [...ctx.db.playerSession.byIdentity.filter(identity) as Iterable<any>]) {
       ctx.db.playerSession.connectionId.delete(session.connectionId);
       ctx.db.playerSessionAnalytics.connectionId.delete(session.connectionId);
     }
-    if (ctx.db.playerController.identity.find(identity)) ctx.db.playerController.identity.delete(identity);
 
     const linkCodes = [...ctx.db.accountLink.iter() as Iterable<any>]
       .filter((link: any) => sameIdentity(link.guest, identity))
