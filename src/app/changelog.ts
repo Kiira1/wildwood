@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.901.69": [
+    "Soul Dimension: attack speed rises steadily with each kill instead of jumping around",
+  ],
   "0.901.68": [
     "Your age is asked the first time you open chat, not before you play",
     "Name colors are softer, matching everyone else's",
@@ -3260,6 +3263,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.901.69": "2026-10-13",
   "0.901.68": "2026-10-13",
   "0.901.67": "2026-10-13",
   "0.901.66": "2026-10-12",

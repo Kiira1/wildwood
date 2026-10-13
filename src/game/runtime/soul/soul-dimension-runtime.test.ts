@@ -1,4 +1,4 @@
-import { expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 vi.mock("../../../app/developer", () => ({ isDeveloperIdentity: () => false }));
 import { SOUL_CAMPS, SOUL_MAP_ID, SOUL_POPULATION, soulTierKillsNeeded } from "../../../../shared/soul-dimension";
 import { TOWN_SOUL_PORTAL } from "../../../../shared/town";
@@ -7,7 +7,7 @@ import type { MapId, SpawnSite } from "../../world";
 import { createSoulDimensionRuntime } from "./soul-dimension-runtime";
 import type { EnemyState, PlayerState } from "../types";
 import { critDamageForLevels, ratingLevels } from "../../../../shared/stat-rating";
-import { soulAttackSpeedBonus } from "../../../../shared/soul-dimension";
+import { SOUL_STAT_DETAILS, soulAttackSpeedBonus, soulAttackSpeedRatingAfterKills } from "../../../../shared/soul-dimension";
 
 function dimension(options: { kills?: number; prestige?: number; map?: MapId } = {}) {
   const player = { x: 0, y: 0, r: 16, hp: 100, maxHp: 100, moving: false, facing: 0 } as unknown as PlayerState;
@@ -98,4 +98,44 @@ it("counts soul crit damage up 0.002x a kill, as before 0.901.47, and never past
   const before = multiplier(runtime.critDamage());
   for (let kill = 0; kill < 100; kill++) runtime.soulKill("critDamage");
   expect(multiplier(runtime.critDamage())).toBeCloseTo(before + .2, 6);
+});
+
+describe("soul kills the server has not counted yet", () => {
+  function counting() {
+    let soul = { damage: 0, maxHp: 0, armor: 0, regen: 0, attackSpeed: 0, critDamage: 0 };
+    const player = { x: 0, y: 0, r: 16, hp: 100, maxHp: 100, moving: false, facing: 0 } as unknown as PlayerState;
+    const runtime = createSoulDimensionRuntime({
+      source: () => ({ soulDimensionOpen: () => true, prestige: () => ({ level: 1 }), soulStats: () => soul,
+        rewardKills: () => ({ damage: 0, health: 0, armor: 0, regen: 0, speed: 0 }) }),
+      player, enemies: [], spawnSites: [], currentMapId: () => SOUL_MAP_ID, spawnFromSite: () => {}, townMap: {} as never,
+      strength: () => ({ dps: 10, maxHp: 100, armor: 0, regen: 0 }),
+    });
+    return { runtime, serverCounts: (speedKills: number, damage: number) => { soul = { ...soul, attackSpeed: soulAttackSpeedRatingAfterKills(0, speedKills), damage }; } };
+  }
+
+  it("keeps them when the server's row moves, so attack speed rises steadily instead of jumping back (Ryan, 2026-10-13)", () => {
+    const c = counting();
+    c.runtime.inPlay();
+    c.runtime.soulKill("attackSpeed"); c.runtime.soulKill("attackSpeed"); c.runtime.soulKill("damage");
+    expect(soulAttackSpeedBonus(c.runtime.inPlay().attackSpeed)).toBeCloseTo(.002, 9);
+    // The server has counted one speed kill so far: the second is still on its way.
+    c.serverCounts(1, 0);
+    expect(soulAttackSpeedBonus(c.runtime.inPlay().attackSpeed)).toBeCloseTo(.002, 9);
+    expect(c.runtime.inPlay().damage).toBe(SOUL_STAT_DETAILS.damage.reward);
+    c.serverCounts(2, SOUL_STAT_DETAILS.damage.reward);
+    expect(soulAttackSpeedBonus(c.runtime.inPlay().attackSpeed)).toBeCloseTo(.002, 9);
+    expect(c.runtime.inPlay().damage).toBe(SOUL_STAT_DETAILS.damage.reward);
+  });
+
+  it("drops kills the server never counts once their reports have had time to come back", () => {
+    vi.useFakeTimers();
+    try {
+      const c = counting();
+      c.runtime.inPlay();
+      c.runtime.soulKill("attackSpeed");
+      expect(soulAttackSpeedBonus(c.runtime.inPlay().attackSpeed)).toBeCloseTo(.001, 9);
+      vi.advanceTimersByTime(16_000);
+      expect(soulAttackSpeedBonus(c.runtime.inPlay().attackSpeed)).toBe(0);
+    } finally { vi.useRealTimers(); }
+  });
 });

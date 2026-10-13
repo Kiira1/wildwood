@@ -1,7 +1,7 @@
 import { soulInPlayFor } from "../../../../shared/bonus-toggles";
 import {
   addSoulKills, cleanSoulStats, EMPTY_REWARD_KILLS, isSoulMap, soulDimensionAccess, soulEnemyStats, soulTier,
-  withSoulStats, withoutSoulStats, EMPTY_SOUL_STATS, SOUL_CAMPS, SOUL_STAT_DETAILS, soulCritRatingAfterKills, soulAttackSpeedRatingAfterKills,
+  withSoulStats, withoutSoulStats, EMPTY_SOUL_STATS, SOUL_CAMPS, SOUL_STAT_DETAILS, soulCritRatingAfterKills, soulAttackSpeedRatingAfterKills, soulAttackSpeedBonus,
   type RewardKillCounts, type SoulStatId, type SoulStats, type SoulStrength,
 } from "../../../../shared/soul-dimension";
 import { TOWN_SOUL_PORTAL } from "../../../../shared/town";
@@ -15,6 +15,9 @@ import type { EnemyState, PlayerState } from "../types";
 import { createSoulDefenseForce } from "./soul-defense-force";
 import { type AttackCapArg } from "../../../../shared/stat-rating";
 import { gameConfirm } from "../../../ui/confirm-dialog";
+
+/** Long enough for any kill report to come back: soul kills the server has not counted by then never will be. */
+const PENDING_SOUL_KILL_MS = 15_000;
 
 export type SoulDimensionSource = {
   localIdentity?: () => string | undefined;
@@ -79,12 +82,32 @@ export function createSoulDimensionRuntime(deps: {
   let pendingCritKills = 0;
   /** Soul attack speed kills likewise: each adds its 0.001 a second from where the soul stands (soulAttackSpeedRatingAfterKills). */
   let pendingSpeedKills = 0;
+  let lastSoulKillAt = 0;
 
   const source = () => deps.source();
   const serverSoul = () => source()?.soulStats?.() ?? null;
+  /**
+   * A new server row takes off only the kills it counts. Clearing them all dropped kills still on their way,
+   * so attack speed fell back and jumped up again, and the save step took the gap for the run's own speed
+   * (Ryan, 2026-10-13: "keeps jumping around"). Kills the server never counts drop out after a while.
+   */
+  function settle(server: SoulStats | null) {
+    const before = lastServerSoul ? cleanSoulStats(lastServerSoul) : null, after = cleanSoulStats(server);
+    lastServerSoul = server;
+    if (!before) { pending = cleanSoulStats(null); pendingCritKills = 0; pendingSpeedKills = 0; return; }
+    for (const key of ["damage", "maxHp", "armor", "regen"] as const) pending[key] = Math.max(0, pending[key] - Math.max(0, after[key] - before[key]));
+    const speedCounted = (soulAttackSpeedBonus(after.attackSpeed) - soulAttackSpeedBonus(before.attackSpeed)) / SOUL_STAT_DETAILS.attackSpeed.reward;
+    pendingSpeedKills = Number.isFinite(speedCounted) ? Math.max(0, pendingSpeedKills - Math.max(0, Math.round(speedCounted))) : 0;
+    let critCounted = 0;
+    while (critCounted < pendingCritKills && soulCritRatingAfterKills(before.critDamage, critCounted) < after.critDamage - 1e-9) critCounted += 1;
+    pendingCritKills -= critCounted;
+  }
   function soulStats(): SoulStats {
     const server = serverSoul();
-    if (server !== lastServerSoul) { lastServerSoul = server; pending = cleanSoulStats(null); pendingCritKills = 0; pendingSpeedKills = 0; }
+    if (server !== lastServerSoul) settle(server);
+    if (Date.now() - lastSoulKillAt > PENDING_SOUL_KILL_MS && (pendingSpeedKills || pendingCritKills || pending.damage || pending.maxHp || pending.armor || pending.regen)) {
+      pending = cleanSoulStats(null); pendingCritKills = 0; pendingSpeedKills = 0;
+    }
     const base = cleanSoulStats(server);
     return {
       damage: base.damage + pending.damage, maxHp: base.maxHp + pending.maxHp, armor: base.armor + pending.armor,
@@ -162,6 +185,7 @@ export function createSoulDimensionRuntime(deps: {
     /** A soul kill: counted and shown at once, until the server's row catches up (combat adds it to the player itself). */
     soulKill(stat: SoulStatId) {
       soulStats();
+      lastSoulKillAt = Date.now();
       defenseForce.countKill();
       if (stat === "critDamage") pendingCritKills += 1; else if (stat === "attackSpeed") pendingSpeedKills += 1; else pending = addSoulKills(pending, stat, 1);
       const detail = SOUL_STAT_DETAILS[stat];

@@ -1,5 +1,5 @@
 import { SOUL_STAT_DETAILS, soulEnemyId, type SoulStatId } from "../../../shared/soul-dimension";
-import { addAttackSpeedRating, cleanRating, type AttackCapArg } from "../../../shared/stat-rating";
+import { addAttackSpeedRating, attackCapInterval, cleanRating, type AttackCapArg } from "../../../shared/stat-rating";
 import { compareAutoFarmTargets, farmGroupMatches, type AutoFarmGroup, type AutoFarmPriority } from './auto-farm/auto-farm-priority';
 import { isMeleeWeapon, weaponAttackRange, segmentCircleHit, segmentEllipseHit } from "../weapon-combat";
 import { isProceduralMap } from "../../../shared/procedural-maps";
@@ -545,8 +545,10 @@ export function createPlayerCombatController(options: {
       case "health": addPlayerBaseMaxHealth(player, amount, options.healthMultiplierBonus()); break;
       case "armor": player.armor += amount; break;
       case "regen": player.regen += amount; break;
-      // The soul's rating adds to the run's; its crit damage is the Soul Dimension runtime's to count.
-      case "attackSpeed": player.attackRate = addAttackSpeedRating(player.attackRate, amount, attackCap()); break;
+      // The soul's attack speed is attacks a second added flat (withSoulStats), so a kill adds its 0.001 a second
+      // now, to the cap. It used to add 0.001 of rating, which is nothing: the speed then only moved in jumps when
+      // the server's row came back (Ryan, 2026-10-13). Its crit damage is the Soul Dimension runtime's to count.
+      case "attackSpeed": player.attackRate = Math.min(player.attackRate, Math.max(attackCapInterval(attackCap()), 1 / (1 / player.attackRate + amount))); break;
       case "critDamage": break;
     }
     options.onSoulKill?.(stat);
