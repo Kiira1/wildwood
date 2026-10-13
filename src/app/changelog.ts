@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.902.1": [
+    "Other players' fights on your screen count their slot upgrades again",
+  ],
   "0.902.0": [
     "Refining: the Smith in Town refines weapons, helmets and armor with ore, up to ★20",
     "Past the safe level a refine can fail and drop the item a level; ore is used either way",
@@ -3278,6 +3281,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.902.1": "2026-10-13",
   "0.902.0": "2026-10-13",
   "0.901.69": "2026-10-13",
   "0.901.68": "2026-10-13",
