@@ -156,6 +156,8 @@ export type PlayerProfileData = {
   progress: PlayerProgress;
   research: PlayerResearch;
   itemUpgradeLevels: Record<string, number>;
+  /** Each first copy's refine by item id (player_item_refine); the worn items' are what stats read. +0 is missing. */
+  itemRefines?: Record<string, number>;
   lifetime: PlayerLifetime;
   mapId?: string;
 };

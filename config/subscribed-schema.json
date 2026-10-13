@@ -591,6 +591,12 @@
       "claimed:bool",
       "createdAt:timestamp"
     ],
+    "my_item_refines": [
+      "key:string",
+      "identity:identity",
+      "itemId:string",
+      "level:u8"
+    ],
     "my_legal_consent": [
       "identity:identity",
       "termsVersion:string",

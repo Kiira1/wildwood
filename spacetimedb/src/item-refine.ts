@@ -216,6 +216,9 @@ export function refineItemFor(ctx: Ctx, args: { itemId: string; copyId: bigint; 
 export function registerItemRefine(spacetimedb: typeof spacetimedbType, deps: ItemRefineDeps) {
   const refineItem = spacetimedb.reducer({ itemId: t.string(), copyId: t.u64(), expectedLevel: t.u8() },
     (ctx: any, args: { itemId: string; copyId: bigint; expectedLevel: number }) => refineItemFor(ctx, args, deps));
+  /** The caller's own first-copy refines; another player's are read from player_item_refine by identity (profiles). */
+  const myItemRefines = spacetimedb.view({ name: "my_item_refines", public: true }, t.array(playerItemRefine.rowType),
+    (ctx: any) => [...ctx.db.playerItemRefine.identity.filter(ctx.sender)]);
   const myCopyRefines = spacetimedb.view({ name: "my_copy_refines", public: true }, t.array(playerCopyRefine.rowType),
     (ctx: any) => [...ctx.db.playerCopyRefine.identity.filter(ctx.sender)]);
   const myOres = spacetimedb.view({ name: "my_ores", public: true }, t.array(playerOre.rowType),
@@ -224,5 +227,5 @@ export function registerItemRefine(spacetimedb: typeof spacetimedbType, deps: It
     const row = ctx.db.playerRefineResult.identity.find(ctx.sender);
     return row ? [row] : [];
   });
-  return { refineItem, myCopyRefines, myOres, myRefineResult };
+  return { refineItem, myItemRefines, myCopyRefines, myOres, myRefineResult };
 }

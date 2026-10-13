@@ -331,6 +331,7 @@ import MyGuildHallRow from "./my_guild_hall_table";
 import MyIgnoredDropsRow from "./my_ignored_drops_table";
 import MyInventoryCapacityRow from "./my_inventory_capacity_table";
 import MyItemGiftsRow from "./my_item_gifts_table";
+import MyItemRefinesRow from "./my_item_refines_table";
 import MyLegalConsentRow from "./my_legal_consent_table";
 import MyLootSettingsRow from "./my_loot_settings_table";
 import MyMailboxV2Row from "./my_mailbox_v_2_table";
@@ -1596,6 +1597,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, MyItemGiftsRow),
+  myItemRefines: __table({
+    name: 'my_item_refines',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MyItemRefinesRow),
   myLegalConsent: __table({
     name: 'my_legal_consent',
     indexes: [

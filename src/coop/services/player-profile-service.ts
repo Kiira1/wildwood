@@ -115,6 +115,13 @@ export function createPlayerProfileService(dependencies: PlayerProfileServiceDep
       progress: { ...progress },
       research: { ...dependencies.progression.researchFor(identity) ?? createEmptyResearchRanks() },
       itemUpgradeLevels: dependencies.progression.upgradeLevelsFor(identity),
+      // Our own come through my_item_refines; another player's through the profile's player_item_refine subscription.
+      itemRefines: (() => {
+        const db = dependencies.connection()?.db;
+        const rows = identity === dependencies.localIdentity() ? [...(db?.myItemRefines?.iter() ?? [])]
+          : [...(db?.playerItemRefine?.iter() ?? [])].filter(row => row.identity.toHexString() === identity);
+        return Object.fromEntries(rows.map(row => [row.itemId, row.level]));
+      })(),
       lifetime: { ...lifetime },
       mapId: activePlayerMap(identity) ?? undefined,
     };
@@ -256,6 +263,7 @@ export function createPlayerProfileService(dependencies: PlayerProfileServiceDep
           tables.playerPrestigeExpansionPerk.where(row => row.identity.eq(dbIdentity)),
           tables.profileSoulStats.where(row => row.identity.eq(dbIdentity)),
           tables.playerItemUpgrade.where((upgrade) => upgrade.identity.eq(dbIdentity)),
+          tables.playerItemRefine.where(row => row.identity.eq(dbIdentity)),
           tables.player.where((player) => player.identity.eq(dbIdentity)),
         ]);
       if (generation === profileGeneration) activeSubscription = handle;
@@ -347,7 +355,7 @@ export function createPlayerProfileService(dependencies: PlayerProfileServiceDep
       playerProfile(identity = dependencies.localIdentity()) {
         const profile = cachedPlayerProfile(identity);
         return profile
-          ? { ...profile, progress: { ...profile.progress }, itemUpgradeLevels: { ...profile.itemUpgradeLevels }, lifetime: { ...profile.lifetime } }
+          ? { ...profile, progress: { ...profile.progress }, itemUpgradeLevels: { ...profile.itemUpgradeLevels }, itemRefines: { ...profile.itemRefines }, lifetime: { ...profile.lifetime } }
           : null;
       },
       activePlayerMap(identity = dependencies.localIdentity()) {
