@@ -209,6 +209,7 @@ import SetSpeedReducer from "./set_speed_reducer";
 import ShareDuelReplayReducer from "./share_duel_replay_reducer";
 import ShareGuildBattleReducer from "./share_guild_battle_reducer";
 import SimulateTimeAwayReducer from "./simulate_time_away_reducer";
+import SlotCardReducer from "./slot_card_reducer";
 import SnapshotProfileCharacterReducer from "./snapshot_profile_character_reducer";
 import SpeedUpItemUpgradeWithGemsReducer from "./speed_up_item_upgrade_with_gems_reducer";
 import SpeedUpResearchWithGemsReducer from "./speed_up_research_with_gems_reducer";
@@ -1981,6 +1982,7 @@ const reducersSchema = __reducers(
   __reducerSchema("share_duel_replay", ShareDuelReplayReducer),
   __reducerSchema("share_guild_battle", ShareGuildBattleReducer),
   __reducerSchema("simulate_time_away", SimulateTimeAwayReducer),
+  __reducerSchema("slot_card", SlotCardReducer),
   __reducerSchema("snapshot_profile_character", SnapshotProfileCharacterReducer),
   __reducerSchema("speed_up_item_upgrade_with_gems", SpeedUpItemUpgradeWithGemsReducer),
   __reducerSchema("speed_up_research_with_gems", SpeedUpResearchWithGemsReducer),

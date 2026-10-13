@@ -1,7 +1,10 @@
-import { table, t } from "spacetimedb/server";
+import { SenderError, table, t } from "spacetimedb/server";
 import type { Identity } from "spacetimedb";
 import type spacetimedbType from "./index";
-import { MAX_CARD_SLOTS, OWNED_GEAR_SLOTS, canHoldCards, cardDefinition, rollGearSlots } from "../../shared/cards";
+import { MAX_CARD_SLOTS, OWNED_GEAR_SLOTS, canHoldCards, cardDefinition, cardFitsItem, rollGearSlots, type CardSlot } from "../../shared/cards";
+import { canonicalItemId } from "../../shared/items";
+import { standsAtTheSmith } from "./item-refine";
+import { readPlayerProgress } from "./wide-stats";
 
 /**
  * Cards (shared/cards.ts) on the server: the cards a player holds, and each piece of gear's slots with the
@@ -180,8 +183,52 @@ export function mergeCardData(ctx: Ctx, guest: Identity, account: Identity) {
   if (ctx.db.playerCardDrop.identity.find(guest)) ctx.db.playerCardDrop.identity.delete(guest);
 }
 
-/** The caller's own cards and slots. Another player's first-copy slots are read from player_gear_slots by identity (profiles). */
-export function registerGearCards(spacetimedb: typeof spacetimedbType) {
+export type GearCardDeps = {
+  requireControllingPlayer: (ctx: Ctx) => any;
+  activeDuelFor: (ctx: Ctx, identity: Identity) => unknown;
+  inventoryForProgress: (progress: any) => string[];
+  writeProgressAndPresentation: (ctx: Ctx, progress: any) => void;
+};
+
+const GEAR_NAMES: Readonly<Record<CardSlot, string>> = { HAND: "a weapon", HEAD: "a helmet", CHEST: "armor" };
+const equippedFields = (progress: any): string[] =>
+  [progress.equippedHead, progress.equippedChest, progress.equippedFeet, progress.equippedRightHand, progress.equippedLeftHand];
+
+/**
+ * Puts one of the player's cards into a free slot of one copy of an item, for good: `copyId` 0 is the first
+ * copy, the one an equipment slot holds. At the Smith, as refining is. `expectedCards` is how many cards the
+ * player saw in it, so a double tap or a stale window cannot spend a second card on a slot they did not mean
+ * to fill.
+ */
+export function slotCardFor(ctx: Ctx, args: { itemId: string; copyId: bigint; cardId: string; expectedCards: number }, deps: GearCardDeps) {
+  const player = deps.requireControllingPlayer(ctx);
+  if (!standsAtTheSmith(ctx, player)) throw new SenderError("Talk to the Smith first.");
+  if (deps.activeDuelFor(ctx, ctx.sender)) throw new SenderError("Finish your duel first.");
+  const itemId = canonicalItemId(args.itemId);
+  const card = cardDefinition(args.cardId);
+  if (!itemId || !canHoldCards(itemId)) throw new SenderError("That item takes no cards.");
+  if (!card) throw new SenderError("That card does not exist.");
+  if (!cardFitsItem(card.id, itemId)) throw new SenderError(`A ${card.enemy} Card goes in ${GEAR_NAMES[card.slot]}.`);
+  const progress = readPlayerProgress(ctx, ctx.sender);
+  if (!progress || !deps.inventoryForProgress(progress).includes(itemId)) throw new SenderError("That item is not in your inventory.");
+  const copyId = args.copyId;
+  if (copyId !== 0n) {
+    const copy = ctx.db.playerEquipmentCopy.id.find(copyId);
+    if (!copy || !copy.identity.isEqual(ctx.sender) || copy.itemId !== itemId) throw new SenderError("That copy is not in your inventory.");
+  }
+  const current = gearSlotsFor(ctx, ctx.sender, itemId, copyId);
+  if (current.cards.length !== args.expectedCards) throw new SenderError("That item's cards changed. Try again.");
+  if (current.cards.length >= current.slots) throw new SenderError(current.slots ? "Every slot in that item is full." : "That item has no slots.");
+  if (!takeCard(ctx, ctx.sender, card.id)) throw new SenderError(`You have no ${card.enemy} Card.`);
+  setGearSlots(ctx, ctx.sender, itemId, copyId, { slots: current.slots, cards: [...current.cards, card.id] });
+  // The first copy is the one a slot holds: worn, its new card changes the player at once.
+  if (copyId === 0n && equippedFields(progress).includes(itemId)) deps.writeProgressAndPresentation(ctx, progress);
+}
+
+/** Slotting a card, and the caller's own cards and slots. Another player's first-copy slots are read from player_gear_slots by identity (profiles). */
+export function registerGearCards(spacetimedb: typeof spacetimedbType, deps: GearCardDeps) {
+  const slotCard = spacetimedb.reducer({ itemId: t.string(), copyId: t.u64(), cardId: t.string(), expectedCards: t.u8() },
+    (ctx: any, args: { itemId: string; copyId: bigint; cardId: string; expectedCards: number }) => slotCardFor(ctx, args, deps));
   const myCards = spacetimedb.view({ name: "my_cards", public: true }, t.array(playerCard.rowType),
     (ctx: any) => [...ctx.db.playerCard.identity.filter(ctx.sender)]);
   const myGearSlots = spacetimedb.view({ name: "my_gear_slots", public: true }, t.array(playerGearSlots.rowType),
@@ -193,5 +240,5 @@ export function registerGearCards(spacetimedb: typeof spacetimedbType) {
     const row = ctx.db.playerCardDrop.identity.find(ctx.sender);
     return row ? [row] : [];
   });
-  return { myCards, myGearSlots, myCopySlots, myCardDrop };
+  return { slotCard, myCards, myGearSlots, myCopySlots, myCardDrop };
 }

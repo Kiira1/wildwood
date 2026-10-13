@@ -179,6 +179,11 @@ export function mergeRefineData(ctx: Ctx, guest: Identity, account: Identity) {
 /** Refining happens at the Smith, in the Town's smithy: where a player stands (not their feet) beside him. */
 const SMITH_STAND = { x: TOWN_SMITH_POSITION.x, y: TOWN_SMITH_POSITION.y - TOWN_FEET_OFFSET };
 
+/** Whether the player stands beside the Smith in the Town, where refining and slotting cards happen. */
+export function standsAtTheSmith(ctx: Ctx, player: Parameters<typeof withinStationReach>[1]) {
+  return isTownMap(player.mapId) && withinStationReach(ctx, player, SMITH_STAND, TOWN_SMITH_SERVER_REACH);
+}
+
 export type ItemRefineDeps = {
   requireControllingPlayer: (ctx: Ctx) => any;
   activeDuelFor: (ctx: Ctx, identity: Identity) => unknown;
@@ -199,9 +204,7 @@ const oreList = (cost: Partial<Record<OreId, number>>) =>
  */
 export function refineItemFor(ctx: Ctx, args: { itemId: string; copyId: bigint; expectedLevel: number }, deps: ItemRefineDeps) {
   const player = deps.requireControllingPlayer(ctx);
-  if (!isTownMap(player.mapId) || !withinStationReach(ctx, player, SMITH_STAND, TOWN_SMITH_SERVER_REACH)) {
-    throw new SenderError("Talk to the Smith first.");
-  }
+  if (!standsAtTheSmith(ctx, player)) throw new SenderError("Talk to the Smith first.");
   if (deps.activeDuelFor(ctx, ctx.sender)) throw new SenderError("Finish your duel first.");
   const itemId = canonicalItemId(args.itemId);
   if (!itemId || !isRefinableItem(itemId)) throw new SenderError("That item cannot be refined.");
