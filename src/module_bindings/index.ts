@@ -152,6 +152,7 @@ import RecordPlayerDeathReducer from "./record_player_death_reducer";
 import RecordRegularEnemyDefeatsReducer from "./record_regular_enemy_defeats_reducer";
 import RecordSnowEnemyDefeatReducer from "./record_snow_enemy_defeat_reducer";
 import RecordStartupTelemetryReducer from "./record_startup_telemetry_reducer";
+import RefineItemReducer from "./refine_item_reducer";
 import RefreshDailyQuestsReducer from "./refresh_daily_quests_reducer";
 import RegisterClientVersionReducer from "./register_client_version_reducer";
 import RegisterProtocolReducer from "./register_protocol_reducer";
@@ -1850,6 +1851,7 @@ const reducersSchema = __reducers(
   __reducerSchema("record_regular_enemy_defeats", RecordRegularEnemyDefeatsReducer),
   __reducerSchema("record_snow_enemy_defeat", RecordSnowEnemyDefeatReducer),
   __reducerSchema("record_startup_telemetry", RecordStartupTelemetryReducer),
+  __reducerSchema("refine_item", RefineItemReducer),
   __reducerSchema("refresh_daily_quests", RefreshDailyQuestsReducer),
   __reducerSchema("register_client_version", RegisterClientVersionReducer),
   __reducerSchema("register_protocol", RegisterProtocolReducer),

@@ -4134,7 +4134,7 @@ export const { createGuild, joinGuild, leaveGuild, transferGuildLeadership, setG
   setGuildEmblem, kickGuildMember, challengeGuild, guildAdmission, shareGuildBattle, getGuildBattleBadges } = registerGuildReducers(spacetimedb,
   { guildService, requireGuildPlayer, requireGuildConnection, effectivePowerForProgress, isPublicDisplayNameAllowed });
 // Refining (item-refine.ts, shared/refine.ts).
-export const { myCopyRefines, myOres, myRefineResult } = registerItemRefine(spacetimedb);
+export const { refineItem, myCopyRefines, myOres, myRefineResult } = registerItemRefine(spacetimedb, { requireControllingPlayer, activeDuelFor, inventoryForProgress, writeProgressAndPresentation });
 export const { myGuildHall, upgradeGuildHall, useGuildHallDoor } = registerGuildHall(spacetimedb, { requireGuildPlayer, requireControllingPlayer, playerWithMotion, transitionPlayerMap, persistWorldLocation });
 export const getGuildHub = spacetimedb.procedure({ afterId: t.u64() }, t.string(), (ctx, { afterId }) => ctx.withTx(tx => {
   requireGuildConnection(tx);

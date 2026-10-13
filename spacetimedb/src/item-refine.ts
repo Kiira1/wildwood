@@ -1,7 +1,11 @@
-import { table, t } from "spacetimedb/server";
+import { SenderError, table, t } from "spacetimedb/server";
 import type { Identity } from "spacetimedb";
 import type spacetimedbType from "./index";
-import { REFINE_ORES, normalizeRefineLevel, type OreId } from "../../shared/refine";
+import { REFINE_MAX, REFINE_ORES, isRefinableItem, normalizeRefineLevel, refineCost, rollRefine, type OreId } from "../../shared/refine";
+import { canonicalItemId } from "../../shared/items";
+import { isTownMap, TOWN_BENCH_POSITION } from "./town";
+import { withinStationReach } from "./door-reach";
+import { readPlayerProgress } from "./wide-stats";
 
 /**
  * Refining (shared/refine.ts): each item's own level, +0 to +20, and the ores a try costs.
@@ -156,8 +160,62 @@ export function mergeRefineData(ctx: Ctx, guest: Identity, account: Identity) {
   if (result) ctx.db.playerRefineResult.identity.delete(guest);
 }
 
-/** The caller's own copy refines, ores and last try. The refine reducer joins them in step A3. */
-export function registerItemRefine(spacetimedb: typeof spacetimedbType) {
+/** Refining happens at the Town bench, within the reach its slot upgrades use. */
+export const REFINE_BENCH_USE_RANGE = 75;
+
+export type ItemRefineDeps = {
+  requireControllingPlayer: (ctx: Ctx) => any;
+  activeDuelFor: (ctx: Ctx, identity: Identity) => unknown;
+  inventoryForProgress: (progress: any) => string[];
+  writeProgressAndPresentation: (ctx: Ctx, progress: any) => void;
+};
+
+const equippedFields = (progress: any): string[] =>
+  [progress.equippedHead, progress.equippedChest, progress.equippedFeet, progress.equippedRightHand, progress.equippedLeftHand];
+
+const oreList = (cost: Partial<Record<OreId, number>>) =>
+  Object.entries(cost).map(([oreId, count]) => `${count} ${REFINE_ORES[oreId as OreId].name}`).join(" and ");
+
+/**
+ * One refine try on one copy of an item: `copyId` 0 is the first copy, the one a slot holds. `expectedLevel` is
+ * the level the player saw, so a double tap or a stale window cannot spend a second ore on a try they did not
+ * mean. The ore goes whether the try works or not; the roll is the server's (shared/refine.ts rollRefine).
+ */
+export function refineItemFor(ctx: Ctx, args: { itemId: string; copyId: bigint; expectedLevel: number }, deps: ItemRefineDeps) {
+  const player = deps.requireControllingPlayer(ctx);
+  if (!isTownMap(player.mapId) || !withinStationReach(ctx, player, TOWN_BENCH_POSITION, REFINE_BENCH_USE_RANGE)) {
+    throw new SenderError("Touch the Upgrade Bench first.");
+  }
+  if (deps.activeDuelFor(ctx, ctx.sender)) throw new SenderError("Finish your duel first.");
+  const itemId = canonicalItemId(args.itemId);
+  if (!itemId || !isRefinableItem(itemId)) throw new SenderError("That item cannot be refined.");
+  const progress = readPlayerProgress(ctx, ctx.sender);
+  if (!progress || !deps.inventoryForProgress(progress).includes(itemId)) throw new SenderError("That item is not in your inventory.");
+  const copyId = args.copyId;
+  if (copyId !== 0n) {
+    const copy = ctx.db.playerEquipmentCopy.id.find(copyId);
+    if (!copy || !copy.identity.isEqual(ctx.sender) || copy.itemId !== itemId) throw new SenderError("That copy is not in your inventory.");
+  }
+  const from = refineLevelFor(ctx, ctx.sender, itemId, copyId);
+  if (from !== normalizeRefineLevel(args.expectedLevel)) throw new SenderError("That item's refine changed. Try again.");
+  if (from >= REFINE_MAX) throw new SenderError(`That item is already +${REFINE_MAX}.`);
+  const cost = refineCost(itemId, from + 1)!;
+  if (!takeOres(ctx, ctx.sender, cost)) throw new SenderError(`You need ${oreList(cost)}.`);
+  const { succeeded, level } = rollRefine(itemId, from, ctx.random());
+  setRefineLevel(ctx, ctx.sender, itemId, copyId, level);
+  const previous = ctx.db.playerRefineResult.identity.find(ctx.sender);
+  const result = { identity: ctx.sender, itemId, copyId, fromLevel: from, toLevel: level, succeeded,
+    attempt: ((previous?.attempt ?? 0) + 1) % 4_294_967_296, triedAt: ctx.timestamp };
+  if (previous) ctx.db.playerRefineResult.identity.update(result);
+  else ctx.db.playerRefineResult.insert(result);
+  // The first copy is the one a slot holds: worn, its new level changes the player's power at once.
+  if (copyId === 0n && equippedFields(progress).includes(itemId)) deps.writeProgressAndPresentation(ctx, progress);
+}
+
+/** The caller's own copy refines, ores and last try, and the refine try itself. */
+export function registerItemRefine(spacetimedb: typeof spacetimedbType, deps: ItemRefineDeps) {
+  const refineItem = spacetimedb.reducer({ itemId: t.string(), copyId: t.u64(), expectedLevel: t.u8() },
+    (ctx: any, args: { itemId: string; copyId: bigint; expectedLevel: number }) => refineItemFor(ctx, args, deps));
   const myCopyRefines = spacetimedb.view({ name: "my_copy_refines", public: true }, t.array(playerCopyRefine.rowType),
     (ctx: any) => [...ctx.db.playerCopyRefine.identity.filter(ctx.sender)]);
   const myOres = spacetimedb.view({ name: "my_ores", public: true }, t.array(playerOre.rowType),
@@ -166,5 +224,5 @@ export function registerItemRefine(spacetimedb: typeof spacetimedbType) {
     const row = ctx.db.playerRefineResult.identity.find(ctx.sender);
     return row ? [row] : [];
   });
-  return { myCopyRefines, myOres, myRefineResult };
+  return { refineItem, myCopyRefines, myOres, myRefineResult };
 }
