@@ -1,10 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 import {
-  MINING_NODES, MINING_NODE_KINDS, MINING_STARSHARD_CHANCE, MINING_VEINS, miningBreakSeconds, miningGain, miningNode, miningNodeName,
-  miningSpeed, miningVeinMap, miningVeinOpen, miningYield, normalizeMining,
+  MINING_NODES, MINING_NODE_KINDS, MINING_OUTCROP_GAP, MINING_OUTCROPS, MINING_PLATE_ROOM, MINING_REACH, MINING_ROCK_EXTENT, MINING_ROCK_ROOM,
+  MINING_STARSHARD_CHANCE, MINING_TRACK, MINING_TRACK_HALF_WIDTH, MINING_VEINS, miningBreakSeconds, miningGain, miningNode, miningNodeName,
+  miningSpeed, miningTrackDistanceSquared, miningVeinMap, miningVeinOpen, miningYield, normalizeMining,
 } from "./mining";
 import { GRADE_ORES, refineGrade } from "./refine";
-import { TOWN_HILLS, TOWN_WALK_AREA } from "./town";
+import { TOWN_HILLS, TOWN_VILLAGE_WALK_AREA, TOWN_WALK_AREA } from "./town";
 import { ITEM_DEFINITIONS } from "./items";
 import { itemTier } from "./item-tier";
 
@@ -16,8 +17,12 @@ describe("the Copper Hills' veins", () => {
     MINING_VEINS.slice(1).forEach((vein, index) => expect(vein.left).toBe(MINING_VEINS[index].right));
     // Each grade twice as hard as the last.
     expect(MINING_VEINS.map(vein => vein.hardness)).toEqual([1, 2, 4, 8]);
-    // The hills are east of the village's walls as they stand, so the walk out to them is the countryside's.
-    expect(TOWN_HILLS.left).toBeGreaterThan(TOWN_WALK_AREA.right);
+    // East of the village's own countryside, and inside the walls, which reach past them.
+    expect(TOWN_HILLS.left).toBeGreaterThan(TOWN_VILLAGE_WALK_AREA.right);
+    expect(TOWN_WALK_AREA.right).toBeGreaterThan(TOWN_HILLS.right);
+    expect([TOWN_WALK_AREA.top, TOWN_WALK_AREA.bottom]).toEqual([TOWN_VILLAGE_WALK_AREA.top, TOWN_VILLAGE_WALK_AREA.bottom]);
+    expect(TOWN_HILLS.top).toBeGreaterThan(TOWN_WALK_AREA.top);
+    expect(TOWN_HILLS.bottom).toBeLessThan(TOWN_WALK_AREA.bottom);
   });
 
   it("open with the map whose gear their ore refines", () => {
@@ -70,6 +75,70 @@ describe("the rocks", () => {
     // Copper is the biggest vein and adamant the smallest: the deeper, the scarcer.
     const sizes = MINING_VEINS.map((_vein, index) => MINING_NODES.filter(node => node.vein === index).length);
     expect([...sizes].sort((a, b) => b - a)).toEqual(sizes);
+  });
+
+  it("keep their kind's room from each other: none touch, and no spot is in reach of two", () => {
+    for (const a of MINING_NODES) for (const b of MINING_NODES) {
+      if (a.id >= b.id) continue;
+      const distance = Math.hypot(a.x - b.x, a.y - b.y);
+      expect(distance).toBeGreaterThanOrEqual(MINING_ROCK_ROOM[a.kind] + MINING_ROCK_ROOM[b.kind]);
+      // A player's feet within reach of one rock are out of reach of every other.
+      expect(distance).toBeGreaterThan(2 * MINING_REACH);
+    }
+  });
+
+  it("stand in outcrops of a few, each in one vein, with room for grass between outcrops", () => {
+    expect(MINING_OUTCROPS.flatMap(outcrop => outcrop.rocks).sort((a, b) => a - b)).toEqual(MINING_NODES.map(node => node.id));
+    for (const outcrop of MINING_OUTCROPS) {
+      expect(outcrop.rocks.length).toBeGreaterThanOrEqual(3);
+      expect(outcrop.rocks.length).toBeLessThanOrEqual(8);
+      for (const id of outcrop.rocks) expect(MINING_NODES[id].vein).toBe(outcrop.vein);
+      // Its heart is one of its big rocks.
+      expect(MINING_NODES[outcrop.rocks[0]].kind).not.toBe("small");
+    }
+    const outcropOf = new Map(MINING_OUTCROPS.flatMap(outcrop => outcrop.rocks.map(id => [id, outcrop.id] as const)));
+    for (const a of MINING_NODES) for (const b of MINING_NODES) {
+      if (a.id < b.id && outcropOf.get(a.id) !== outcropOf.get(b.id)) expect(Math.hypot(a.x - b.x, a.y - b.y)).toBeGreaterThanOrEqual(MINING_OUTCROP_GAP);
+    }
+    // Every vein has a few outcrops, the deeper the fewer.
+    const counts = MINING_VEINS.map((_vein, index) => MINING_OUTCROPS.filter(outcrop => outcrop.vein === index).length);
+    expect(Math.min(...counts)).toBeGreaterThanOrEqual(3);
+    expect([...counts].sort((a, b) => b - a)).toEqual(counts);
+  });
+
+  it("leave the room under each rock free for the plate that names it while it is mined", () => {
+    for (const under of MINING_NODES) for (const rock of MINING_NODES) {
+      if (rock === under) continue;
+      const extent = MINING_ROCK_EXTENT[rock.kind];
+      const inRoom = Math.abs(rock.x - under.x) < MINING_PLATE_ROOM.half[under.kind] + extent.half
+        && rock.y - extent.up < under.y + MINING_PLATE_ROOM.bottom && rock.y + extent.down > under.y + MINING_PLATE_ROOM.top;
+      expect(inRoom, `rock ${rock.id} in rock ${under.id}'s plate room`).toBe(false);
+    }
+    // The plate hangs below the reach: no miner's feet come that low.
+    expect(MINING_PLATE_ROOM.top).toBeGreaterThan(MINING_REACH);
+  });
+
+  it("keep off the miners' track, which comes in from the river's crossing at the way in and ends among the last outcrop", () => {
+    const [start, end] = [MINING_TRACK[0], MINING_TRACK.at(-1)!];
+    // From the head of the village's river (the walk out comes round it at about 7,640, 4,220) ...
+    expect(Math.hypot(start.x - 7_640, start.y - 4_220)).toBeLessThan(100);
+    expect(start.x).toBeLessThan(TOWN_VILLAGE_WALK_AREA.right);
+    // ... east into the hills at about y 4,220 ...
+    const atEdge = MINING_TRACK.find(point => point.x >= TOWN_HILLS.left)!;
+    expect(Math.abs(atEdge.y - 4_220)).toBeLessThan(40);
+    for (let index = 1; index < MINING_TRACK.length; index++) expect(MINING_TRACK[index].x).toBeGreaterThan(MINING_TRACK[index - 1].x);
+    // ... and on through every vein to the last, where it ends.
+    for (const vein of MINING_VEINS) expect(MINING_TRACK.some(point => point.x > vein.left && point.x < vein.right)).toBe(true);
+    expect(end.x).toBeGreaterThan(MINING_VEINS.at(-1)!.left);
+    expect(end.x).toBeLessThan(TOWN_HILLS.right);
+    // Every rock keeps well off it, but those of the outcrop round its end, which only keep off it.
+    const last = MINING_OUTCROPS.filter(outcrop => outcrop.vein === MINING_VEINS.length - 1)
+      .sort((a, b) => Math.hypot(a.x - end.x, a.y - end.y) - Math.hypot(b.x - end.x, b.y - end.y))[0];
+    expect(Math.hypot(last.x - end.x, last.y - end.y)).toBeLessThan(250);
+    for (const node of MINING_NODES) {
+      const distance = Math.sqrt(miningTrackDistanceSquared(node.x, node.y));
+      expect(distance).toBeGreaterThan(last.rocks.includes(node.id) ? MINING_TRACK_HALF_WIDTH + 60 : 200);
+    }
   });
 
   it("are named as Morkyl named them, and looked up by id", () => {

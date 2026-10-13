@@ -31,11 +31,12 @@ export function isDuplicateOfferItem(itemId: unknown) {
 
 /**
  * Bag slots in use: every distinct non-cosmetic item not in an equipment slot,
- * plus each kept extra copy (an extra copy is never the equipped one). The
- * same count the Mailbox gear claim and the inventory grid use.
+ * plus each kept extra copy (an extra copy is never the equipped one), plus
+ * one for each kind of ore held (shared/ore-bag.ts). The same count the
+ * Mailbox gear claim and the inventory grid use.
  */
-export function bagSlotsUsed(owned: readonly string[], equipped: readonly string[], extraCopies: number) {
+export function bagSlotsUsed(owned: readonly string[], equipped: readonly string[], extraCopies: number, oreKinds = 0) {
   const equippedSet = new Set(equipped);
   const distinct = [...new Set(owned)].filter(id => itemDefinition(id) && !isCosmeticOnlyItem(id) && !equippedSet.has(id));
-  return distinct.length + Math.max(0, Math.floor(extraCopies));
+  return distinct.length + Math.max(0, Math.floor(extraCopies)) + Math.max(0, Math.floor(oreKinds));
 }

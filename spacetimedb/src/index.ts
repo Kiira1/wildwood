@@ -43,7 +43,7 @@ import { rollbackPlayerProgression } from "./player-progression-rollback";
 import { playerItemGift, deliverAlphaTesterGifts, claimItemGift } from "./item-gifts";
 import { playerBowSkill, ensureBowSkillRoll, ensureBowSkillRolls } from "./bow-skills";
 import { playerEquipmentCopy, pendingEquipmentOffer, createEquipmentCopies, publishItemDrop, offerDuplicateEquipment, expireEquipmentOffers } from "./equipment-copies";
-import { playerItemRefine, playerCopyRefine, playerOre, playerRefineResult, registerItemRefine } from "./item-refine";
+import { oreKindsHeldFor, playerItemRefine, playerCopyRefine, playerOre, playerRefineResult, registerItemRefine } from "./item-refine";
 import { playerMining, playerMinedNode, registerMining } from "./mining";
 import { moderateReportedMessage } from "./chat-report-moderation";
 import { PLAYER_SKIN_TONES } from "../../shared/player-skin-tones";
@@ -3356,7 +3356,7 @@ export const claimMailboxGift = spacetimedb.reducer({ id: t.string() }, (ctx, { 
     if (items.some(id => upgrading.includes(id))) throw new SenderError("Finish or cancel the upgrade on your gifted gear, then claim it here.");
     const equipped = [progress.equippedHead, progress.equippedChest, progress.equippedFeet, progress.equippedRightHand, progress.equippedLeftHand];
     const capacity = inventorySlotCapacity(ctx.db.playerInventoryCapacity.identity.find(ctx.sender)?.slotsUnlocked ?? 0);
-    const { missing, slotsToFree } = gearClaimSpace(inventoryForProgress(progress), equipped, upgrading, items, capacity);
+    const { missing, slotsToFree } = gearClaimSpace(inventoryForProgress(progress), equipped, upgrading, items, capacity, oreKindsHeldFor(ctx, ctx.sender));
     if (slotsToFree) throw new SenderError(`Free ${slotsToFree} inventory slot${slotsToFree === 1 ? "" : "s"}, then claim your gear. Your gift will stay in Mail.`);
     let next = progress;
     for (const id of missing) next = restoreItemToProgress(next, id);
@@ -4137,7 +4137,7 @@ export const { createGuild, joinGuild, leaveGuild, transferGuildLeadership, setG
 // Refining (item-refine.ts, shared/refine.ts).
 export const { refineItem, myItemRefines, myCopyRefines, myOres, myRefineResult } = registerItemRefine(spacetimedb, { requireControllingPlayer, activeDuelFor, inventoryForProgress, writeProgressAndPresentation });
 // Mining in the Copper Hills (mining.ts, shared/mining.ts).
-export const { claimPickaxe, mineNode, myMining, myMinedNodes } = registerMining(spacetimedb, { requireControllingPlayer, activeDuelFor });
+export const { claimPickaxe, mineNode, myMining, myMinedNodes } = registerMining(spacetimedb, { requireControllingPlayer, activeDuelFor, inventoryForProgress });
 export const { myGuildHall, upgradeGuildHall, useGuildHallDoor } = registerGuildHall(spacetimedb, { requireGuildPlayer, requireControllingPlayer, playerWithMotion, transitionPlayerMap, persistWorldLocation });
 export const getGuildHub = spacetimedb.procedure({ afterId: t.u64() }, t.string(), (ctx, { afterId }) => ctx.withTx(tx => {
   requireGuildConnection(tx);

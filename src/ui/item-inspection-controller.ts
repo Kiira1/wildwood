@@ -10,6 +10,9 @@ import {
 import { bowSkillLines, type BowSkillRoll } from "../../shared/bow-skills";
 import { normalizeRefineLevel } from "../../shared/refine-multiplier";
 import { refineStars } from "./refine-badge";
+import { oreIconSource } from "./ore-icon";
+import { oreDescription } from "../../shared/ore-bag";
+import { REFINE_ORES, type OreId } from "../../shared/refine";
 
 export type ItemInspectionAction = {
   label: string;
@@ -179,10 +182,49 @@ export function createItemInspectionController(elements: ItemInspectionElements)
     return true;
   }
 
+  /** An ore stack's window (shared/ore-bag.ts): its icon and name, how many are in the bag, what it refines and where it comes from. */
+  function openOre(request: { oreId: OreId; count: number }) {
+    if (elements.panel.hidden) {
+      returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    }
+    elements.title.textContent = REFINE_ORES[request.oreId].name;
+    const icon = document.createElement("div");
+    icon.className = "item-inspection-icon";
+    const source = oreIconSource(request.oreId);
+    if (source) {
+      const image = document.createElement("img");
+      image.src = source;
+      image.alt = "";
+      image.draggable = false;
+      icon.append(image);
+    }
+    const preview = document.createElement("div");
+    preview.className = "item-inspection-preview";
+    preview.append(elements.title, icon);
+    const copy = document.createElement("div");
+    copy.className = "item-inspection-copy";
+    const context = document.createElement("div");
+    context.className = "item-inspection-context";
+    context.textContent = `${request.count.toLocaleString()} in your bag`;
+    const { use, from } = oreDescription(request.oreId);
+    const description = document.createElement("p");
+    description.textContent = `${use} ${from}`;
+    copy.append(context, description);
+    tools.replaceChildren();
+    const summary = document.createElement("div");
+    summary.className = "item-inspection-summary";
+    summary.append(preview, copy);
+    elements.content.replaceChildren(summary);
+    elements.panel.hidden = false;
+    elements.back.focus({ preventScroll: true });
+    return true;
+  }
+
   elements.back.addEventListener("click", close);
 
   return {
     open,
+    openOre,
     close,
     isOpen: () => !elements.panel.hidden,
   };

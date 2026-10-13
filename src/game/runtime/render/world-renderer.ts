@@ -1,7 +1,10 @@
 import { SOUL_VILLAGE_GROUND } from "../../soul-village";
 import { WORLD_WIDTH } from "../../../../shared/rules";
 import { isSoulMap, SOUL_STAT_DETAILS } from "../../../../shared/soul-dimension";
-import { inTownInteriors, isTownMap, TOWN_DOORS, TOWN_INTERIOR_MARGIN, TOWN_WALK_AREA } from "../../../../shared/town";
+import { inTownInteriors, isTownMap, TOWN_DOORS, TOWN_INTERIOR_MARGIN, TOWN_VILLAGE_WALK_AREA, TOWN_WALK_AREA } from "../../../../shared/town";
+import { MINING_NODES } from "../../../../shared/mining";
+import { ORE_COLORS } from "../town/ore-rock-renderer";
+import { miningScene } from "../town/mining-scene";
 import { soulStatOfCampName } from "../../soul-world";
 import { residentDrawable } from "./resident-image";
 import { drawHomeCourtyard, drawHomeQuestBoard, drawHomeResearchDesk, drawHomeStationSign } from "../town/home-courtyard";
@@ -996,14 +999,30 @@ if (options.getMapId() === ION_CITADEL_MAP_ID) { drawIonRoads(ctx, options.paths
     draw.drawImage(soulVillageThumbnail, (area.x - ox) * sx, (area.y - oy) * sy, area.w * sx, area.h * sy);
   }
 
-  /** Where the minimap looks on the Town, or null on any other map (it shows the whole world). */
+  /**
+   * Where the minimap looks on the Town, or null on any other map (it shows the whole world): the walled village,
+   * or once the player is out past it, the Copper Hills and the walk out to them.
+   */
   function townMinimapFrame() {
     if (!isTownMap(options.getMapId())) return null;
     if (inTownInteriors(options.player.x, options.player.y, TOWN_INTERIOR_MARGIN)) {
-      return { x: options.player.x - TOWN_ROOMS_MINIMAP_SPAN / 2, y: options.player.y - TOWN_ROOMS_MINIMAP_SPAN / 2, span: TOWN_ROOMS_MINIMAP_SPAN, rooms: true };
+      return { x: options.player.x - TOWN_ROOMS_MINIMAP_SPAN / 2, y: options.player.y - TOWN_ROOMS_MINIMAP_SPAN / 2, span: TOWN_ROOMS_MINIMAP_SPAN, rooms: true, hills: false };
     }
-    const span = Math.max(TOWN_WALK_AREA.right - TOWN_WALK_AREA.left, TOWN_WALK_AREA.bottom - TOWN_WALK_AREA.top);
-    return { x: (TOWN_WALK_AREA.left + TOWN_WALK_AREA.right - span) / 2, y: (TOWN_WALK_AREA.top + TOWN_WALK_AREA.bottom - span) / 2, span, rooms: false };
+    const hills = options.player.x > TOWN_VILLAGE_WALK_AREA.right;
+    const area = hills ? { ...TOWN_WALK_AREA, left: TOWN_VILLAGE_WALK_AREA.right - 300 } : TOWN_VILLAGE_WALK_AREA;
+    const span = Math.max(area.right - area.left, area.bottom - area.top);
+    return { x: (area.left + area.right - span) / 2, y: (area.top + area.bottom - span) / 2, span, rooms: false, hills };
+  }
+
+  /** The hills' ore rocks on the minimap: a dot each in its ore's colour, faded while it is bare. */
+  function drawOreRocksOnMinimap(draw: CanvasRenderingContext2D, ox: number, oy: number, sx: number, sy: number) {
+    for (const node of MINING_NODES) {
+      const px = (node.x - ox) * sx, py = (node.y - oy) * sy;
+      draw.globalAlpha = miningScene.bare.has(node.id) ? .35 : 1;
+      draw.fillStyle = "#101010"; draw.fillRect(px - 2, py - 2, 4, 4);
+      draw.fillStyle = ORE_COLORS[node.ore].light; draw.fillRect(px - 1, py - 1, 2, 2);
+    }
+    draw.globalAlpha = 1;
   }
 
   /** Inside a village room the map is that room in the dark, as the world is. */
@@ -1038,6 +1057,7 @@ if (options.getMapId() === ION_CITADEL_MAP_ID) { drawIonRoads(ctx, options.paths
     const colors = mapColors();
     draw.fillStyle = colors.ground; draw.fillRect(innerX, innerY, innerSize, innerSize);
     if (frame && !frame.rooms) drawSoulVillageOnMinimap(draw, ox, oy, sx, sy);
+    if (frame?.hills) drawOreRocksOnMinimap(draw, ox, oy, sx, sy);
     if (frame?.rooms) drawSoulRoomsOnMinimap(draw, innerSize, ox, oy, sx, sy);
     draw.fillStyle = colors.path; for (const path of options.paths) draw.fillRect(innerX + (path.x - ox) * sx, innerY + (path.y - oy) * sy, path.w * sx, path.h * sy);
     draw.save();

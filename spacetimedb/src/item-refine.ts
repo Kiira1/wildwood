@@ -104,6 +104,21 @@ export function oreCount(ctx: Ctx, identity: Identity, oreId: string) {
   return ctx.db.playerOre.key.find(oreKey(identity, oreId))?.count ?? 0;
 }
 
+/** Bag slots the player's ores take: one for each kind held (shared/ore-bag.ts). A kind with none has no row. */
+export function oreKindsHeldFor(ctx: Ctx, identity: Identity) {
+  return [...ctx.db.playerOre.identity.filter(identity)].filter((row: any) => row.count > 0).length;
+}
+
+/** The player's ores by kind, as the bag counts them. */
+export function oreCountsFor(ctx: Ctx, identity: Identity): Partial<Record<OreId, number>> {
+  const counts: Partial<Record<OreId, number>> = {};
+  for (const row of ctx.db.playerOre.identity.filter(identity) as Iterable<{ oreId: unknown; count: number }>) {
+    const oreId = row.oreId;
+    if (isOreId(oreId) && row.count > 0) counts[oreId] = row.count;
+  }
+  return counts;
+}
+
 const ORE_COUNT_MAX = 4_294_967_295;
 export function addOres(ctx: Ctx, identity: Identity, oreId: OreId, count: number) {
   const amount = Math.floor(count);

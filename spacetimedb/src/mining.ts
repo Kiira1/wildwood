@@ -10,7 +10,10 @@ import { TOWN_FEET_OFFSET, TOWN_SMITH_POSITION, TOWN_SMITH_SERVER_REACH } from "
 import { isTownMap } from "./town";
 import { withinStationReach } from "./door-reach";
 import { readPlayerProgress } from "./wide-stats";
-import { addOres } from "./item-refine";
+import { addOres, oreCountsFor } from "./item-refine";
+import { extraCopiesOf } from "./equipment-copies";
+import { inventorySlotCapacity } from "../../shared/gems";
+import { bagFullForOres, rockOreKinds, roomForOres } from "../../shared/ore-bag";
 
 /**
  * Mining (shared/mining.ts): a player's Mining stat, the pickaxe the Smith gives them, and the rocks they broke
@@ -97,7 +100,12 @@ const SMITH_STAND = { x: TOWN_SMITH_POSITION.x, y: TOWN_SMITH_POSITION.y - TOWN_
 export type MiningDeps = {
   requireControllingPlayer: (ctx: Ctx) => any;
   activeDuelFor: (ctx: Ctx, identity: Identity) => unknown;
+  /** The bag's items from the saved progress, for its space: each kind of ore takes a slot (shared/ore-bag.ts). */
+  inventoryForProgress?: (progress: any) => string[];
 };
+
+const equippedFields = (progress: any): string[] =>
+  [progress.equippedHead, progress.equippedChest, progress.equippedFeet, progress.equippedRightHand, progress.equippedLeftHand];
 
 /** The Smith's free pickaxe (Morkyl's "it's a quest, so it's free"): what every rock asks for. */
 export function claimPickaxeFor(ctx: Ctx, deps: MiningDeps) {
@@ -126,9 +134,17 @@ export function mineNodeFor(ctx: Ctx, args: { nodeId: number }, deps: MiningDeps
   }
   if (deps.activeDuelFor(ctx, ctx.sender)) throw new SenderError("Finish your duel first.");
   const vein = MINING_VEINS[node.vein];
-  if (!miningVeinOpen(vein, readPlayerProgress(ctx, ctx.sender))) {
+  const progress = readPlayerProgress(ctx, ctx.sender);
+  if (!miningVeinOpen(vein, progress)) {
     throw new SenderError(`Reach ${miningVeinMap(vein)} to mine ${REFINE_ORES[vein.ore].name}.`);
   }
+  // A kind of ore not held yet needs a free bag slot, for everything the rock could give, before it is broken.
+  const { needed, room } = roomForOres({
+    owned: progress && deps.inventoryForProgress ? deps.inventoryForProgress(progress) : [], equipped: progress ? equippedFields(progress) : [],
+    extraCopies: extraCopiesOf(ctx, ctx.sender).length, ores: oreCountsFor(ctx, ctx.sender),
+    capacity: inventorySlotCapacity(ctx.db.playerInventoryCapacity.identity.find(ctx.sender)?.slotsUnlocked ?? 0),
+  }, rockOreKinds(node));
+  if (!room) throw new SenderError(bagFullForOres(needed));
   pruneMinedNodes(ctx, ctx.sender);
   if (nodeBareFor(ctx, ctx.sender, node)) throw new SenderError("That rock is still growing back.");
   if (microsSince(ctx, mining.lastBreakAt) < miningBreakSeconds(node, mining.mining) * MINING_RATE_SLACK * 1_000_000) {

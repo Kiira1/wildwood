@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 vi.mock("../app/developer", () => ({ isDeveloperIdentity: () => false }));
 import { HOME_BENCH_POSITION, HOME_QUEST_BOARD_POSITION, HOME_RESEARCH_POSITION } from "../../shared/home";
-import { TOWN_ARRIVAL, TOWN_BENCH_POSITION, TOWN_CENTER, TOWN_DOORS, TOWN_FEET_OFFSET, TOWN_OX_POSITION, TOWN_QUEST_BOARD_POSITION, TOWN_RESEARCH_POSITION, TOWN_SMITH_POSITION, TOWN_SMITH_REACH, TOWN_SMITH_SERVER_REACH, TOWN_TRAVEL_PORTAL, inTownVillage, townRoomAt } from "../../shared/town";
-import { SOUL_INTERIOR_DECOR, SOUL_INTERIOR_SOLIDS, SOUL_VILLAGE_SOLIDS } from "./soul-village";
-import { TOWN_SIGNPOST, townWindowDecor } from "./town-world";
+import { TOWN_ARRIVAL, TOWN_BENCH_POSITION, TOWN_CENTER, TOWN_DOORS, TOWN_EAST_FENCE_GAP, TOWN_EAST_FENCE_GAP_OUTSIDE, TOWN_FEET_OFFSET, TOWN_OX_POSITION, TOWN_QUEST_BOARD_POSITION, TOWN_RESEARCH_POSITION, TOWN_SMITH_POSITION, TOWN_SMITH_REACH, TOWN_SMITH_SERVER_REACH, TOWN_TRAVEL_PORTAL, inTownVillage, townRoomAt } from "../../shared/town";
+import { SOUL_INTERIOR_DECOR, SOUL_INTERIOR_SOLIDS, SOUL_VILLAGE_DECOR, SOUL_VILLAGE_SOLIDS } from "./soul-village";
+import { TOWN_HILLS_SIGNPOST, TOWN_SIGNPOST, townWindowDecor } from "./town-world";
 import { UPGRADE_BENCH_POSITION } from "./world";
 import { pushOutOf } from "./runtime/town/town-runtime";
 import { createHomeStationTouchHandler } from "../ui/game-ui-runtime";
@@ -187,6 +187,37 @@ describe("the Smith at the forge house", () => {
     Object.assign(player, TOWN_ARRIVAL); touch();
     Object.assign(player, stand); touch();
     expect(openSmith).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("the way out east, to the Copper Hills", () => {
+  const gapMiddle = (TOWN_EAST_FENCE_GAP.top + TOWN_EAST_FENCE_GAP.bottom) / 2;
+  const within = (area: { left: number; right: number; top: number; bottom: number }, x: number, y: number) =>
+    x > area.left && x < area.right && y > area.top && y < area.bottom;
+
+  it("goes through a gap in the fence east of the Inn, with nothing standing in it or just outside it", () => {
+    // From where everyone lands, out through the gap and on east.
+    expect(walkable(TOWN_ARRIVAL, { x: TOWN_EAST_FENCE_GAP.right + 140, y: gapMiddle - TOWN_FEET_OFFSET }, 10)).toBe(true);
+    // Open all the way across, fence line and all.
+    for (let x = TOWN_EAST_FENCE_GAP.left - 40; x <= TOWN_EAST_FENCE_GAP.right + 60; x += 10) expect(standable(x, gapMiddle - TOWN_FEET_OFFSET), `at ${x}`).toBe(true);
+    // The tall tree that stood in the way out, hiding whoever walked through, is gone with its shadow.
+    const standingThere = SOUL_VILLAGE_DECOR.filter(item => item.type === "soulProp" && !item.ground
+      && (within(TOWN_EAST_FENCE_GAP, item.x, item.y) || within(TOWN_EAST_FENCE_GAP_OUTSIDE, item.x, item.y)));
+    expect(standingThere).toEqual([]);
+  });
+
+  it("is signed just outside the gap, below its south post, pointing east, on open ground", () => {
+    expect(townWindowDecor(TOWN_ARRIVAL.x, TOWN_ARRIVAL.y)).toContain(TOWN_HILLS_SIGNPOST);
+    expect(TOWN_HILLS_SIGNPOST).toMatchObject({ type: "soulProp", signpost: "Copper Hills", flip: true });
+    // Outside the fence, beside the gap's south end: seen from the square through the gap, and in passing.
+    expect(TOWN_HILLS_SIGNPOST.x).toBeGreaterThan(TOWN_EAST_FENCE_GAP.right);
+    expect(TOWN_HILLS_SIGNPOST.x - TOWN_EAST_FENCE_GAP.right).toBeLessThan(80);
+    expect(TOWN_HILLS_SIGNPOST.y).toBeGreaterThan(TOWN_EAST_FENCE_GAP.bottom);
+    expect(TOWN_HILLS_SIGNPOST.y - TOWN_EAST_FENCE_GAP.bottom).toBeLessThan(100);
+    expect(within(TOWN_EAST_FENCE_GAP_OUTSIDE, TOWN_HILLS_SIGNPOST.x, TOWN_HILLS_SIGNPOST.y)).toBe(true);
+    // Its post stands on open ground, out of the way of whoever walks through the gap.
+    expect(standable(TOWN_HILLS_SIGNPOST.x, TOWN_HILLS_SIGNPOST.y - TOWN_FEET_OFFSET)).toBe(true);
+    expect(TOWN_HILLS_SIGNPOST.y - gapMiddle).toBeGreaterThan(120);
   });
 });
 

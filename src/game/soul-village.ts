@@ -1,4 +1,4 @@
-import { TOWN_CENTER, TOWN_INTERIORS } from "../../shared/town";
+import { TOWN_CENTER, TOWN_EAST_FENCE_GAP, TOWN_EAST_FENCE_GAP_OUTSIDE, TOWN_INTERIORS } from "../../shared/town";
 import atlas from "./soul-atlas.json";
 import scene from "./soul-village-scene.json";
 import type { WorldDecor } from "./world";
@@ -27,15 +27,25 @@ export const SOUL_VILLAGE_GROUND = Object.freeze({
 
 /** Every village prop as world decor: drawn at its own point, sorted by its group's depth. */
 const animations = scene.animations as Record<string, { frames?: number[]; times?: number[]; length?: number; spin?: number } | undefined>;
-export const SOUL_VILLAGE_DECOR: readonly WorldDecor[] = scene.props.map(([frame, x, y, depth, flags, open, door], index) => {
+/**
+ * Inside the gap cut in the fence east of the Inn (TOWN_EAST_FENCE_GAP): nothing stands or blocks there. Just
+ * outside it (TOWN_EAST_FENCE_GAP_OUTSIDE), nothing stands either, shadows and all: the tall tree that grew there
+ * hid whoever walked through, and the sign to the Copper Hills stands there now.
+ */
+type Area = { left: number; right: number; top: number; bottom: number };
+const inside = (area: Area, x: number, y: number) => x > area.left && x < area.right && y > area.top && y < area.bottom;
+const CLEARED: readonly Area[] = [TOWN_EAST_FENCE_GAP, TOWN_EAST_FENCE_GAP_OUTSIDE];
+export const SOUL_VILLAGE_DECOR: readonly WorldDecor[] = scene.props.flatMap(([frame, x, y, depth, flags, open, door], index): WorldDecor[] => {
+  if ((flags & 3) === 0 && CLEARED.some(area => inside(area, originX + x, originY + depth))) return [];
+  if ((flags & 2) === 2 && inside(TOWN_EAST_FENCE_GAP_OUTSIDE, originX + x, originY + depth)) return [];
   const clip = animations[index];
-  return {
+  return [{
     type: "soulProp", sheet: "village", frame: String(frame), s: 1, x: originX + x, y: originY + depth, dy: y - depth,
     ground: (flags & 1) === 1, shadow: (flags & 2) === 2,
     ...((flags & 4) === 4 ? { door, openFrame: String(open) } : {}),
     ...(clip?.frames ? { anim: { frames: clip.frames, times: clip.times ?? [], length: clip.length ?? 1 } } : {}),
     ...(clip?.spin ? { spin: clip.spin } : {}),
-  };
+  }];
 });
 
 export type SoulEmitter = (typeof scene.emitters)[number];
@@ -51,7 +61,8 @@ function solid(flat: readonly number[], dx: number, dy: number): SoulSolid {
   return { xs, ys, left: Math.min(...xs), top: Math.min(...ys), right: Math.max(...xs), bottom: Math.max(...ys) };
 }
 /** What a player cannot walk through: the pack's own colliders, as drawn (a round fountain stays round). */
-export const SOUL_VILLAGE_SOLIDS: readonly SoulSolid[] = scene.solids.map(flat => solid(flat, originX, originY));
+export const SOUL_VILLAGE_SOLIDS: readonly SoulSolid[] = scene.solids.map(flat => solid(flat, originX, originY))
+  .filter(wall => !CLEARED.some(area => inside(area, wall.left + 1, wall.top + 1) && inside(area, wall.right - 1, wall.bottom - 1)));
 
 /** Which doors stand open now: the Town's runtime opens one as someone walks up, the renderer draws it so. */
 export const SOUL_DOORS_OPEN = new Set<number>();

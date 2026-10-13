@@ -1,0 +1,132 @@
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { MINING_NODES, MINING_NODE_KINDS, miningBreakSeconds } from "../../../../shared/mining";
+import { TOWN_ARRIVAL, TOWN_FEET_OFFSET } from "../../../../shared/town";
+import { createMiningRuntime, type MiningSource } from "./mining-runtime";
+import { miningScene, resetMiningScene } from "./mining-scene";
+import type { PlayerState } from "../types";
+import type { BagSpace } from "../../../../shared/ore-bag";
+
+afterEach(() => resetMiningScene());
+
+const rock = (ore: string, kind: string) => MINING_NODES.find(node => node.ore === ore && node.kind === kind)!;
+const copper = rock("copper_ore", "small"), iron = rock("iron_ore", "small");
+const NOW = 1_800_000_000_000;
+
+/** A miner standing with their feet on a rock's foot, and a session that has given them the pickaxe. */
+function miner(at: { x: number; y: number } = copper, overrides: Partial<MiningSource> = {}, bag?: () => BagSpace) {
+  const player = { x: at.x, y: at.y - TOWN_FEET_OFFSET, hp: 100, moving: false } as PlayerState;
+  let onBreak: ((result: { nodeId: number; starshard: boolean; rocksBroken: number }) => void) | null = null;
+  const source: MiningSource = {
+    hasPickaxe: () => true, mining: () => 0, minedNodeAt: () => null, serverNowMs: () => NOW, savedProgress: () => ({}),
+    mineNode: vi.fn(async () => ({ ok: true })),
+    setOnMiningBreak: callback => { onBreak = callback; },
+    ...overrides,
+  };
+  const message = vi.fn(), logPickup = vi.fn(), burst = vi.fn();
+  const runtime = createMiningRuntime({ source: () => source, player, message, logPickup, burst, bag });
+  /** Runs the runtime for `seconds` in frames of a tenth of a second. */
+  const run = (seconds: number, active = true) => { for (let t = 0; t < seconds - 1e-9; t += .1) runtime.update(.1, active); };
+  return { player, source, runtime, run, message, logPickup, burst, broke: (result: { nodeId: number; starshard: boolean; rocksBroken: number }) => onBreak?.(result) };
+}
+const flush = () => new Promise(resolve => setTimeout(resolve, 0));
+
+describe("mining in the Copper Hills", () => {
+  it("swings at the rock in reach while the player stands still, and asks the server to take it once it breaks", () => {
+    const m = miner();
+    m.run(1);
+    expect(miningScene).toMatchObject({ target: copper.id, pickaxeOut: true });
+    expect(miningScene.progress).toBeCloseTo(1 / miningBreakSeconds(copper, 0), 1);
+    expect(m.source.mineNode).not.toHaveBeenCalled();
+    m.run(miningBreakSeconds(copper, 0));
+    expect(m.source.mineNode).toHaveBeenCalledWith(copper.id);
+    expect(m.source.mineNode).toHaveBeenCalledTimes(1);
+    // Bare at once, before the server's word.
+    expect(miningScene.bare.has(copper.id)).toBe(true);
+  });
+
+  it("pauses while the player walks, keeping the progress made", () => {
+    const m = miner();
+    m.run(2);
+    const made = miningScene.progress;
+    m.player.moving = true;
+    m.run(3);
+    expect(miningScene.progress).toBeCloseTo(made, 5);
+    expect(m.source.mineNode).not.toHaveBeenCalled();
+  });
+
+  it("is quicker with more Mining", () => {
+    const m = miner(copper, { mining: () => 500 });
+    m.run(miningBreakSeconds(copper, 500) + .2);
+    expect(m.source.mineNode).toHaveBeenCalledWith(copper.id);
+  });
+
+  it("without the pickaxe says where to get one, and does not repeat itself every frame", () => {
+    const m = miner(copper, { hasPickaxe: () => false });
+    m.run(3);
+    expect(m.message).toHaveBeenCalledTimes(1);
+    expect(m.message).toHaveBeenCalledWith("You need a pickaxe. The Smith in Town has one.", "#ffd75e");
+    expect(miningScene.pickaxeOut).toBe(false);
+    expect(m.source.mineNode).not.toHaveBeenCalled();
+  });
+
+  it("at a vein not open yet says which map opens it", () => {
+    const m = miner(iron);
+    m.run(1);
+    expect(m.message).toHaveBeenCalledWith("Reach Night Forest - 5 to mine Iron Ore.", "#ff9b91");
+    const open = miner(iron, { savedProgress: () => ({ infernalUnlocked: true }) });
+    open.run(miningBreakSeconds(iron, 0) + .2);
+    expect(open.source.mineNode).toHaveBeenCalledWith(iron.id);
+  });
+
+  it("with no bag slot for a kind of ore not held yet, says so before a single swing", () => {
+    const full: BagSpace = { owned: [], equipped: [], extraCopies: 30, ores: {}, capacity: 30 };
+    const m = miner(copper, {}, () => full);
+    m.run(miningBreakSeconds(copper, 0) + 1);
+    expect(m.message).toHaveBeenCalledWith("Your bag is full. Free a slot for Copper Ore.", "#ff9b91");
+    expect(miningScene.pickaxeOut).toBe(false);
+    expect(m.source.mineNode).not.toHaveBeenCalled();
+    // More of a kind already held needs no slot.
+    const held = miner(copper, {}, () => ({ ...full, extraCopies: 29, ores: { copper_ore: 4 } }));
+    held.run(miningBreakSeconds(copper, 0) + .2);
+    expect(held.source.mineNode).toHaveBeenCalledWith(copper.id);
+  });
+
+  it("puts the rock back when the server refuses the break, and says why", async () => {
+    const m = miner(copper, { mineNode: vi.fn(async () => ({ ok: false, error: "That rock is still growing back." })) });
+    m.run(miningBreakSeconds(copper, 0) + .2);
+    await flush();
+    expect(miningScene.bare.has(copper.id)).toBe(false);
+    expect(m.message).toHaveBeenCalledWith("That rock is still growing back.", "#ff9b91");
+  });
+
+  it("shows what each break the server takes gave, over its rock", () => {
+    const m = miner();
+    m.run(.1);
+    m.broke({ nodeId: copper.id, starshard: true, rocksBroken: 1 });
+    expect(m.logPickup).toHaveBeenCalledWith("+1 Copper Ore", expect.any(String));
+    expect(m.logPickup).toHaveBeenCalledWith("+1 Starshard", expect.any(String));
+  });
+
+  it("leaves a rock the server lists as broken bare until it grows back", () => {
+    let brokenAt = NOW - 30_000;
+    const m = miner(copper, { minedNodeAt: id => (id === copper.id ? brokenAt : null) });
+    m.run(1);
+    expect(miningScene.bare.has(copper.id)).toBe(true);
+    expect(miningScene.target).not.toBe(copper.id);
+    brokenAt = NOW - MINING_NODE_KINDS.small.respawnSeconds * 1_000 - 1;
+    m.run(1);
+    expect(miningScene.bare.has(copper.id)).toBe(false);
+    expect(miningScene.target).toBe(copper.id);
+  });
+
+  it("does nothing away from the hills, or while the player is not free to act", () => {
+    const away = miner(TOWN_ARRIVAL);
+    away.run(10);
+    expect(away.source.mineNode).not.toHaveBeenCalled();
+    expect(miningScene.target).toBeNull();
+    const busy = miner();
+    busy.run(10, false);
+    expect(busy.source.mineNode).not.toHaveBeenCalled();
+    expect(miningScene.pickaxeOut).toBe(false);
+  });
+});

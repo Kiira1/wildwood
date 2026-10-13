@@ -795,6 +795,9 @@
 .smith-sheet .smith-outcome.is-good { color: #ffd75e; }
 .smith-sheet .smith-outcome.is-bad { color: #ff9b91; }
 .smith-sheet .smith-ores { margin: 0 14px 10px; color: var(--muted); text-align: center; font-size: 12px; line-height: 1.4; }
+/* Where ore comes from: the Copper Hills, and the Smith's free pickaxe until it is taken. */
+.smith-sheet .smith-mining { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 12px; margin: 0 14px 12px; color: var(--muted); font-size: 13px; text-align: center; }
+.smith-sheet .smith-mining .smith-pickaxe { flex: 0 0 auto; height: 38px; min-height: 38px; font-size: 14px; }
 .smith-sheet .smith-items { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin: 0 14px 12px; }
 .smith-sheet .smith-choice { position: relative; display: grid; place-items: center; aspect-ratio: 1; min-width: 0; margin: 0; padding: 4px; border: 2px solid rgba(255,255,255,.12); border-radius: 10px; background: rgba(255,255,255,.04); box-shadow: none; }
 .smith-sheet .smith-choice[aria-selected="true"] { border-color: #ffd75e; background: rgba(255,215,94,.1); }
@@ -809,6 +812,15 @@
 .inventory-item > .refine-badge { top: 15px; right: 5px; z-index: 2; }
 .profile-equipment-slot > .refine-badge { top: 12px; right: 2px; font-size: 8px; }
 .refine-stars { color: #ffd75e; }
+/* An ore stack in the bag: its count in the bottom corner, outlined like the tier label over it. */
+.inventory-item > .inventory-stack-count { position: absolute; right: 6px; bottom: 4px; z-index: 2; color: #fff; font: 900 13px/1 var(--font-rounded); -webkit-text-stroke: 3px #080b08; paint-order: stroke fill; pointer-events: none; }
+/* Six filter tabs (Ores the sixth) and the bag's buttons need about 375px: narrower, the tabs take a row of their own
+   and the buttons sit under them on the right, rather than the last tab scrolling out of sight. */
+@container (max-width: 380px) {
+  .inventory-bag-toolbar { flex-wrap: wrap; row-gap: 4px; }
+  .inventory-bag-toolbar > .inventory-filters { flex: 1 0 100%; justify-content: space-between; }
+}
+html.text-outline-shadow .inventory-stack-count { text-shadow: 1px 0 0 #080b08, -1px 0 0 #080b08, 0 1px 0 #080b08, 0 -1px 0 #080b08, .7px .7px 0 #080b08, -.7px .7px 0 #080b08, .7px -.7px 0 #080b08, -.7px -.7px 0 #080b08; }
 /* The Soul Dimension portal's window: its stats and tier progress, in the travel window's frame. */
 .soul-sheet .soul-body { display: flex; flex-direction: column; gap: 10px; }
 .soul-section { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; border: 2px solid rgba(196,140,255,.28); border-radius: 12px; background: #ffffff06; }

@@ -2,6 +2,7 @@ import { townChunkOf, townInteriorArea, TOWN_INTERIOR_MARGIN, TOWN_WORLD } from 
 import { SOUL_ATLAS, SOUL_INTERIOR_ROOMS, SOUL_VILLAGE_DECOR, SOUL_VILLAGE_GROUND } from "../../soul-village";
 import { townChunkDecor, TOWN_INTERIOR_DECOR } from "../../town-world";
 import type { WorldDecor } from "../../world";
+import { paintHillsGround } from "./hills-ground";
 import { SOUL_SHADOW_STRENGTH, soulFrame, soulPropExtent, type SoulPropDecor } from "../soul/soul-prop-renderer";
 
 type Rect = { left: number; top: number; right: number; bottom: number };
@@ -148,6 +149,7 @@ export function createTownGroundTilePainter(images: Images) {
         }
       }
     }
+    paintHillsGround(context, rect, ox, oy);
     const { flat, shadows } = townGroundPropsIn(rect);
     paintGroundProps(context, flat, shadows, ox, oy, tileSize);
     return true;

@@ -6,7 +6,7 @@ import type { OreId } from "../../shared/refine";
 afterEach(() => vi.unstubAllGlobals());
 
 // The server rolls every try (refine_item); the window shows the odds, sends the level the player saw, and shows the verdict.
-function smith(options: { inTown?: boolean; ores?: Partial<Record<OreId, number>> } = {}) {
+function smith(options: { inTown?: boolean; ores?: Partial<Record<OreId, number>>; pickaxe?: boolean; mining?: number } = {}) {
   const { document, window } = parseHTML("<html><body></body></html>");
   vi.stubGlobal("document", document); vi.stubGlobal("HTMLElement", window.HTMLElement);
   const levels: Record<string, number> = { [`${STARTER_BOW}:0`]: 7, [`${WOODEN_ARMOR}:0`]: 2 };
@@ -18,8 +18,11 @@ function smith(options: { inTown?: boolean; ores?: Partial<Record<OreId, number>
   ];
   const refine = vi.fn(async () => ({ ok: true }));
   const showMessage = vi.fn();
+  let pickaxe = options.pickaxe ?? false;
+  const claimPickaxe = vi.fn(async () => { pickaxe = true; return { ok: true }; });
   const controller = createSmithController({
     inTown: () => options.inTown ?? true, items: () => items, refine, showMessage,
+    hasPickaxe: () => pickaxe, claimPickaxe, mining: () => options.mining ?? 0,
     refineLevel: (itemId, copyId) => levels[`${itemId}:${copyId}`] ?? 0, slotTier: () => 0,
     ores: () => options.ores ?? { copper_ore: 3 },
   });
@@ -29,7 +32,7 @@ function smith(options: { inTown?: boolean; ores?: Partial<Record<OreId, number>
   const q = (selector: string) => dialog.querySelector(selector) as unknown as HTMLElement;
   const facts = () => Object.fromEntries([...dialog.querySelectorAll(".smith-facts div")].map(row => [row.querySelector("dt")!.textContent, row.querySelector("dd")!.textContent]));
   const choices = () => [...dialog.querySelectorAll<HTMLElement>(".smith-choice")];
-  return { controller, dialog, q, facts, choices, refine, showMessage, levels };
+  return { controller, dialog, q, facts, choices, refine, showMessage, levels, claimPickaxe };
 }
 
 it("lists only gear the Smith can refine, worn first, and shows a risky try's odds and what a fail costs", () => {
@@ -86,4 +89,30 @@ it("opens only in the Town", () => {
   const view = smith({ inTown: false });
   view.controller.open();
   expect(view.dialog.open).toBe(false);
+});
+
+it("hands over the free pickaxe once, and then shows Mining instead", async () => {
+  const view = smith();
+  view.controller.open();
+  const button = view.q(".smith-pickaxe") as HTMLButtonElement;
+  expect([button.hidden, view.q(".smith-mining-text").textContent]).toEqual([false, "Ore is in the Copper Hills, east of Town."]);
+  button.click();
+  await vi.waitFor(() => expect(button.hidden).toBe(true));
+  expect(view.claimPickaxe).toHaveBeenCalledTimes(1);
+  expect(view.showMessage).toHaveBeenCalledWith("The Smith hands you a pickaxe. Walk east to the Copper Hills.", "#ffd75e");
+  expect(view.q(".smith-mining-text").textContent).toBe("Mining 0 · Ore is in the Copper Hills, east of Town");
+  const miner = smith({ pickaxe: true, mining: 40 });
+  miner.controller.open();
+  expect([(miner.q(".smith-pickaxe") as HTMLButtonElement).hidden, miner.q(".smith-mining-text").textContent])
+    .toEqual([true, "Mining 40 · Ore is in the Copper Hills, east of Town"]);
+});
+
+it("keeps the pickaxe on offer when the server refuses, and says why", async () => {
+  const view = smith();
+  view.claimPickaxe.mockResolvedValueOnce({ ok: false, error: "Talk to the Smith first." } as never);
+  view.controller.open();
+  const button = view.q(".smith-pickaxe") as HTMLButtonElement;
+  button.click();
+  await vi.waitFor(() => expect(view.showMessage).toHaveBeenCalledWith("Talk to the Smith first.", "#ff9b91"));
+  expect([button.hidden, button.disabled]).toEqual([false, false]);
 });

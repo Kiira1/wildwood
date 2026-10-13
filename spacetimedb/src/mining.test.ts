@@ -3,7 +3,11 @@ import { Timestamp } from "spacetimedb";
 import { crystalFixture, identity, server } from "../../tests/helpers/crystal-hollows-fixture";
 import { TOWN_FEET_OFFSET, TOWN_SMITH_POSITION } from "../../shared/town";
 import { MINING_NODES, MINING_NODE_KINDS, MINING_RATE_SLACK, miningBreakSeconds, type MiningNode } from "../../shared/mining";
-import { oreCount } from "./item-refine";
+import { addOres, oreCount } from "./item-refine";
+import { inventorySlotCapacity } from "../../shared/gems";
+import { bagSlotsUsed } from "../../shared/equipment-copies";
+import { inventoryForProgress } from "./progress-helpers";
+import { IRON_BOW } from "../../shared/items";
 import { mergeMiningData, minedNodeKey, miningFor, nodeBareFor, removeMiningData } from "./mining";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
@@ -120,6 +124,40 @@ describe("breaking a rock", () => {
     f.later(MINING_NODE_KINDS.small.respawnSeconds);
     f.mine(copperLarge);
     expect([...f.db.playerMinedNode.identity.filter(f.ctx.sender)].map(row => row.nodeId)).toEqual([copperLarge.id]);
+  });
+});
+
+describe("ore in the bag", () => {
+  /** A bag with every slot taken: these ores, and kept copies in the rest. */
+  function fullBag(ores: Record<string, number> = {}) {
+    const f = miner();
+    f.patch("playerProgress", { inventoryJson: JSON.stringify([IRON_BOW]), equippedRightHand: IRON_BOW });
+    for (const [oreId, count] of Object.entries(ores)) addOres(f.ctx, f.ctx.sender, oreId as never, count);
+    // What the bag holds already (the starter items are always in it), counted the server's way.
+    const progress = f.db.playerProgress.identity.find(f.ctx.sender);
+    const used = bagSlotsUsed(inventoryForProgress(progress), [IRON_BOW], 0, Object.keys(ores).length);
+    for (let index = used; index < inventorySlotCapacity(0); index++) {
+      f.seed("playerEquipmentCopy", { id: 0n, identity: f.ctx.sender, itemId: IRON_BOW, arrowStorm: 0, ricochet: 0, piercingShot: 0, acquiredAt: f.ctx.timestamp });
+    }
+    return f;
+  }
+
+  it("needs a free slot for a kind of ore not held yet, and none for more of one held", () => {
+    const f = fullBag();
+    expect(() => f.mine(copper)).toThrow("Your bag is full. Free a slot for Copper Ore.");
+    expect(f.ore("copper_ore")).toBe(0);
+    const held = fullBag({ copper_ore: 1 });
+    held.mine(copper);
+    expect(held.ore("copper_ore")).toBe(2);
+  });
+
+  it("makes room for everything a Mysterious rock could give before it is broken", () => {
+    const f = fullBag({ copper_ore: 1 });
+    expect(() => f.mine(mysterious)).toThrow("Your bag is full. Free a slot for Starshard.");
+    f.db.playerEquipmentCopy.id.delete([...f.db.playerEquipmentCopy.identity.filter(f.ctx.sender)][0].id);
+    f.rolls(0);
+    f.mine(mysterious);
+    expect([f.ore("copper_ore"), f.ore("starshard")]).toEqual([3, 1]);
   });
 });
 

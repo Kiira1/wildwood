@@ -1,7 +1,8 @@
 /**
  * The Town square's signpost: a wooden post with one arrow plank, painted in the
  * ForestVillage pack's style (warm wood, dark brown outline), its label on the
- * plank. The plank points left and a little up, the way to the travel portal.
+ * plank. The plank points left and a little up, the way to the travel portal;
+ * mirrored, it points right, as the Copper Hills sign by the Smith's yard does.
  */
 const OUTLINE = "#3b2a1e";
 const WOOD = "#b47b48";
@@ -10,6 +11,7 @@ const POST = "#9b6a3f";
 
 /** How far the signpost reaches from its foot, for culling. */
 export const TOWN_SIGNPOST_EXTENT = Object.freeze({ left: 80, right: 56, up: 128, down: 10 });
+export const TOWN_SIGNPOST_EXTENT_MIRRORED = Object.freeze({ left: 56, right: 80, up: 128, down: 10 });
 
 function rounded(c: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   c.beginPath();
@@ -19,8 +21,8 @@ function rounded(c: CanvasRenderingContext2D, x: number, y: number, w: number, h
   c.lineTo(x, y + r); c.quadraticCurveTo(x, y, x + r, y); c.closePath();
 }
 
-/** Draws the signpost with its foot at (x, y), in the canvas's current (world) units. */
-export function drawTownSignpost(c: CanvasRenderingContext2D, x: number, y: number, label: string) {
+/** Draws the signpost with its foot at (x, y), in the canvas's current (world) units; `mirrored` points it right. */
+export function drawTownSignpost(c: CanvasRenderingContext2D, x: number, y: number, label: string, mirrored = false) {
   c.save();
   c.translate(x, y);
   c.lineJoin = "round";
@@ -33,6 +35,7 @@ export function drawTownSignpost(c: CanvasRenderingContext2D, x: number, y: numb
   c.fillStyle = WOOD_LIGHT; c.fillRect(-3, -106, 3, 100);
   // The arrow plank, tilted so its point is raised: up the road, towards the portal.
   c.save();
+  if (mirrored) c.scale(-1, 1);
   c.translate(-6, -76);
   c.rotate(.18);
   c.beginPath();
@@ -45,7 +48,10 @@ export function drawTownSignpost(c: CanvasRenderingContext2D, x: number, y: numb
   c.font = '900 17px "Arial Rounded MT Bold", "Arial Rounded MT", Arial, sans-serif';
   c.textAlign = "center"; c.textBaseline = "middle";
   c.strokeStyle = OUTLINE; c.lineWidth = 4; c.fillStyle = "#fff1d2";
-  c.strokeText(label, 2, 1, 100); c.fillText(label, 2, 1, 100);
+  // The label reads the right way round whichever way the plank points.
+  if (mirrored) c.scale(-1, 1);
+  const textX = mirrored ? -2 : 2;
+  c.strokeText(label, textX, 1, 100); c.fillText(label, textX, 1, 100);
   c.restore();
   c.restore();
 }

@@ -434,7 +434,7 @@ import {
       showMessage("BEST EQUIPMENT EQUIPPED", "#72ef58");
       return true;
     },
-    upgradeLevel: (itemId) => coop?.itemUpgradeLevel?.(itemId) ?? 0, refineLevel: (itemId, copyId) => coop?.itemRefine?.(itemId, copyId) ?? 0,
+    upgradeLevel: (itemId) => coop?.itemUpgradeLevel?.(itemId) ?? 0, refineLevel: (itemId, copyId) => coop?.itemRefine?.(itemId, copyId) ?? 0, ores: () => coop?.ores?.() ?? {},
     slotTier: slot => coop?.slotUpgradeTier?.(slot) ?? 0,
     inventorySlotsUnlocked: () => coop?.inventorySlotsUnlocked?.() ?? 0,
     gemBalance: () => coop?.gemBalance?.() ?? 0n,
@@ -810,7 +810,7 @@ import {
   const quests = createQuestBoardRuntime({ source: () => coop, atHome: () => currentMapId === "town", tracker: questTracker,
     pause: () => {}, clearInput: playerInput.clear, mapName: id => MAP_CONFIG[id as MapId]?.name ?? id, showProgress: (enemy, count, target) => runtimeHud.showQuestProgress(enemy, count, target) });
   const homeTravel = createHomeTravelController({ source: () => coop, travel: mapController.travelFromHome, departure: mapController.homeDeparture, atHome: () => currentMapId === "town", pause: () => {}, clearInput: playerInput.clear, mapName: id => MAP_CONFIG[id].name, guildHall: () => guildHall.hallMap() });
-  const soulDimension = createSoulDimension({ source: () => coop, player, enemies, spawnSites, decor, currentMapId: () => currentMapId, spawnFromSite, invalidateDepthOrder: () => worldRenderRuntime.invalidateDepthOrder(), townMap: MAP_CONFIG.town,
+  const soulDimension = createSoulDimension({ source: () => coop, player, inventory, enemies, spawnSites, decor, currentMapId: () => currentMapId, spawnFromSite, invalidateDepthOrder: () => worldRenderRuntime.invalidateDepthOrder(), townMap: MAP_CONFIG.town,
     strength: () => ({ dps: playerCombat.expectedDps(), maxHp: player.maxHp, armor: effectiveArmor(), regen: regenerationPerSecond() }), fullDps: () => playerCombat.expectedFullDps(), logPickup, damagePlayer: (damage, source) => playerCombat.damagePlayer(damage, source), message: showMessage, burst: spawnBurst, sendToTown: () => mapController.teleportHome(), researchCritMultiplier: researchCriticalDamageMultiplier,
     attackCap: () => coop?.attackCapInPlay?.(), travel: mapController.travelFromHome, clearInput: playerInput.clear, fadeToWorld: (action, ms) => session.fadeToWorld(action, ms) });
   const guildHall = createGuildHall({ source: () => coop, player, decor, currentMapId: () => currentMapId, invalidateDepthOrder: () => worldRenderRuntime.invalidateDepthOrder(), clearInput: playerInput.clear, fadeToWorld: (action, ms) => session.fadeToWorld(action, ms),

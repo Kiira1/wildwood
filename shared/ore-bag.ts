@@ -1,0 +1,53 @@
+import { bagSlotsUsed } from "./equipment-copies";
+import type { MiningNode } from "./mining";
+import { REFINE_ORES, type OreId } from "./refine";
+
+/**
+ * Ores in the bag (Ryan, 2026-10-13: ores stack in bag slots, "a slot each"): every kind held takes one bag slot,
+ * however many are in the stack, and counts toward the bag's capacity like any item. A kind the player holds none
+ * of needs a free slot before it can come in, so a full bag stops a new kind from being mined.
+ */
+
+/** The ores in the order the bag and the Smith list them: the grade ores, then the Starshard. */
+export const ORE_ORDER: readonly OreId[] = Object.freeze(["copper_ore", "iron_ore", "mithril_ore", "adamant_ore", "starshard"]);
+
+export type OreCounts = Readonly<Partial<Record<OreId, number>>>;
+
+/** The kinds held, in bag order. */
+export const oreKindsHeld = (ores: OreCounts) => ORE_ORDER.filter(oreId => (ores[oreId] ?? 0) > 0);
+
+/** What a rock can give: its vein's ore, and from a Mysterious rock a Starshard too. */
+export const rockOreKinds = (node: Pick<MiningNode, "ore" | "kind">): OreId[] => node.kind === "mysterious" ? [node.ore, "starshard"] : [node.ore];
+
+export type BagSpace = {
+  /** Distinct items the player owns (inventoryJson) and the ones worn, as bagSlotsUsed counts them. */
+  owned: readonly string[];
+  equipped: readonly string[];
+  /** Copies kept beyond each item's first: each takes its own slot. */
+  extraCopies: number;
+  ores: OreCounts;
+  capacity: number;
+};
+
+/** Bag slots in use, ore stacks included. */
+export const bagSlotsWithOres = (bag: BagSpace) => bagSlotsUsed(bag.owned, bag.equipped, bag.extraCopies, oreKindsHeld(bag.ores).length);
+
+/** Whether these ores can come in: the kinds not held yet each need a free slot. */
+export function roomForOres(bag: BagSpace, oreIds: readonly OreId[]) {
+  const needed = [...new Set(oreIds)].filter(oreId => !((bag.ores[oreId] ?? 0) > 0));
+  return { needed, room: !needed.length || bagSlotsWithOres(bag) + needed.length <= bag.capacity };
+}
+
+/** "Your bag is full. Free a slot for Iron Ore." */
+export function bagFullForOres(needed: readonly OreId[]) {
+  const names = needed.map(oreId => REFINE_ORES[oreId].name).join(" and ");
+  return `Your bag is full. Free ${needed.length === 1 ? "a slot" : `${needed.length} slots`} for ${names}.`;
+}
+
+/** The ore's own lines in the item window: what it refines, and where it comes from. */
+export function oreDescription(oreId: OreId) {
+  if (oreId === "starshard") return { use: "Refining from ★11 up takes one a try, with the gear's ore.", from: "Rarely found in Mysterious rocks in the Copper Hills." };
+  const grade = REFINE_ORES[oreId].grade;
+  const tiers = { 1: "1–4", 2: "5–8", 3: "9–12", 4: "13–15" }[grade];
+  return { use: `The Smith refines Tier ${tiers} gear with it, one a try.`, from: "Mined in the Copper Hills, east of Town." };
+}

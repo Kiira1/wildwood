@@ -11,23 +11,26 @@ import { IRON_BOW, SAMURAI_HAT, STARTER_STONE } from "../game/inventory";
 import { BASIC_PAPER_HAT, WOODEN_ARMOR, itemStats } from "../../shared/items";
 import { createEmptyResearchRanks } from "../../shared/research";
 import { MIN_ATTACK_INTERVAL } from "../../shared/rules";
+import type { OreId } from "../../shared/refine";
+import { inventorySlotCapacity } from "../../shared/gems";
 afterEach(() => vi.unstubAllGlobals());
 
 // A refine is one copy's (★N, gold); the slot's tier keeps its green +N. Ryan: "Keep +N for tiers; refine is ★7".
 const ROLL = { arrowStorm: 0, ricochet: 3, piercingShot: 0 };
 const REFINES: Record<string, number> = { [`${IRON_BOW}:0`]: 5, [`${IRON_BOW}:5`]: 2 };
 
-function bag(copies: KeptEquipmentCopy[] = [{ id: 5n, itemId: IRON_BOW, roll: ROLL }]) {
+function bag(copies: KeptEquipmentCopy[] = [{ id: 5n, itemId: IRON_BOW, roll: ROLL }], ores: Partial<Record<OreId, number>> = {}) {
   const ids = ["inventoryPanel", "inventoryItems", "inventoryCount", "equippedHeadSlot", "equippedChestSlot", "equippedFeetSlot", "equippedRightHandSlot", "inventoryEquipmentTab", "inventoryCosmeticsTab", "inventoryContent"];
   const { document, window } = parseHTML(`<html><body>${ids.map(id => `<div id="${id}"></div>`).join("")}</body></html>`);
   vi.stubGlobal("document", document); vi.stubGlobal("window", window); vi.stubGlobal("navigator", {});
   const inventory = { itemIds: [STARTER_STONE, IRON_BOW, SAMURAI_HAT], equippedHead: "", equippedChest: "", equippedFeet: "", equippedRightHand: IRON_BOW, equippedLeftHand: "", cosmeticHead: "", cosmeticChest: "", cosmeticFeet: "", cosmeticRightHand: "", cosmeticLeftHand: "", selectedItemId: "", selectedItemLocation: "" as const };
   const opened: ItemInspectionRequest[] = [];
+  const oreOpened: { oreId: string; count: number }[] = [];
   const asked: ConfirmRequest[] = [];
   const controller = createInventoryController({ inventory, toggleCosmeticVisibility: () => false,
     move: () => true, moveCosmetic: () => false, upgradeLevel: () => 0, inventorySlotsUnlocked: () => 0, gemBalance: () => 0n,
-    refineLevel: (itemId, copyId = 0n) => REFINES[`${itemId}:${copyId}`] ?? 0,
-    itemInspection: { close() {}, open(request: ItemInspectionRequest) { opened.push(request); return true; } } as any,
+    refineLevel: (itemId, copyId = 0n) => REFINES[`${itemId}:${copyId}`] ?? 0, ores: () => ores,
+    itemInspection: { close() {}, open(request: ItemInspectionRequest) { opened.push(request); return true; }, openOre(request: { oreId: string; count: number }) { oreOpened.push(request); return true; } } as any,
     destroyEquipment: async () => ({ ok: true }), destroyEquipmentCopy: async () => ({ ok: true }),
     equipmentCopies: () => copies, confirmDestroy: async request => { asked.push(request); return false; },
     unlockInventorySlot: async () => undefined, showMessage() {} });
@@ -36,7 +39,7 @@ function bag(copies: KeptEquipmentCopy[] = [{ id: 5n, itemId: IRON_BOW, roll: RO
   const tile = (itemId: string, copyId?: bigint) => [...items.querySelectorAll<HTMLElement>(`[data-item-id="${itemId}"]`)]
     .find(button => button.getAttribute("data-copy-id") === (copyId === undefined ? null : String(copyId)))!;
   const star = (element: Element) => element.querySelector(".refine-badge")?.textContent ?? null;
-  return { document, items, tile, star, opened, asked, controller };
+  return { document, items, tile, star, opened, oreOpened, asked, controller };
 }
 
 describe("refines in the inventory", () => {
@@ -71,6 +74,40 @@ describe("refines in the inventory", () => {
       view.controller.render();
       expect(view.star(view.tile(IRON_BOW, 5n))).toBe("★3");
     } finally { REFINES[`${IRON_BOW}:5`] = 2; }
+  });
+
+  it("stacks each kind of ore held in a bag slot of its own after the gear, counted toward the bag", () => {
+    const view = bag(undefined, { copper_ore: 22, adamant_ore: 0, starshard: 1 });
+    const tiles = [...view.items.querySelectorAll<HTMLElement>(".inventory-item.is-filled")];
+    const ores = tiles.filter(tile => tile.dataset.oreId);
+    expect(ores.map(tile => [tile.dataset.oreId, tile.querySelector(".item-tier-label")?.textContent, tile.querySelector(".inventory-stack-count")?.textContent]))
+      .toEqual([["copper_ore", "Copper", "22"], ["starshard", "Starshard", "1"]]);
+    // After every piece of gear, and in the bag's count with it.
+    expect(tiles.indexOf(ores[0])).toBe(tiles.length - 2);
+    const gear = tiles.length - 2;
+    expect(view.document.getElementById("inventoryCount")!.textContent).toBe(`${gear + 2} / ${inventorySlotCapacity(0)} Items`);
+    expect(ores[0].getAttribute("aria-label")).toBe("Copper Ore, 22. Tap to inspect.");
+    ores[0].click();
+    expect(view.oreOpened).toEqual([{ oreId: "copper_ore", count: 22 }]);
+    // No ore held, no ore slot.
+    expect(bag().items.querySelector(".is-ore")).toBeNull();
+  });
+
+  it("shows the ores alone under the Ores filter, and no ores under a gear filter", () => {
+    const view = bag(undefined, { iron_ore: 3 });
+    const filter = (label: string) => [...view.document.querySelectorAll<HTMLElement>(".inventory-filter")].find(button => button.textContent === label)!;
+    filter("Ores").click();
+    expect([...view.items.querySelectorAll<HTMLElement>(".inventory-item.is-filled")].map(tile => tile.dataset.oreId ?? tile.dataset.itemId)).toEqual(["iron_ore"]);
+    filter("Helmets").click();
+    expect(view.items.querySelector(".is-ore")).toBeNull();
+  });
+
+  it("never picks an ore stack in delete mode", () => {
+    const view = bag(undefined, { copper_ore: 4 });
+    view.document.querySelector<HTMLElement>(".inventory-delete-toggle")!.click();
+    view.items.querySelector<HTMLElement>(".is-ore")!.click();
+    expect(view.oreOpened).toEqual([]);
+    expect(view.items.querySelector(".is-ore")!.classList.contains("is-delete-selected")).toBe(false);
   });
 
   it("warns before delete mode takes refined gear", async () => {

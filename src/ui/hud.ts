@@ -2,6 +2,9 @@ import { formatEquipmentAmount } from "./equipment-stat-format";
 import { itemTier } from "../../shared/item-tier";
 import { appendItemTierLabel } from "./item-tier-label";
 import { appendRefineBadge, withRefineStars } from "./refine-badge";
+import { oreIconSource } from "./ore-icon";
+import { oreKindsHeld, type OreCounts } from "../../shared/ore-bag";
+import { REFINE_ORES, type OreId } from "../../shared/refine";
 import { cosmeticInventoryStacks, bagInventoryStacks, ITEM_DEFINITIONS, type EquipmentSlot } from "../game/inventory";
 import { itemArtMarkup } from "../game/item-presentation";
 import { formatCompactNumber } from "./number-format";
@@ -278,6 +281,39 @@ function renderEquipmentSlot(
   appendRefineBadge(element, refine);
 }
 
+/**
+ * One kind of ore in the bag: its icon, its name over it as a tier sits over gear, and the stack's count in the
+ * corner. Tapping it opens the item window. It takes a bag slot like an item, but is never picked to delete.
+ */
+function oreTile(oreId: OreId, count: number, onInspect?: (oreId: OreId) => void) {
+  const name = REFINE_ORES[oreId].name;
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "inventory-item is-filled is-ore";
+  button.dataset.inventoryLocation = "ORE";
+  button.dataset.oreId = oreId;
+  button.setAttribute("aria-label", `${name}, ${count}. Tap to inspect.`);
+  const art = document.createElement("span");
+  art.className = "inventory-item-art-wrap";
+  const source = oreIconSource(oreId);
+  if (source) {
+    const image = document.createElement("span");
+    image.className = "inventory-item-art";
+    image.setAttribute("aria-hidden", "true");
+    image.style.backgroundImage = `url(${source})`;
+    art.append(image);
+  }
+  const label = document.createElement("span");
+  label.className = "item-tier-label is-above";
+  label.textContent = name.replace(/ Ore$/, "");
+  const stack = document.createElement("span");
+  stack.className = "inventory-stack-count";
+  stack.textContent = count < 10_000 ? String(count) : formatCompactNumber(count);
+  button.append(art, label, stack);
+  button.addEventListener("click", () => onInspect?.(oreId));
+  return button;
+}
+
 export function renderInventoryView(
   elements: InventoryElements,
   inventory: InventoryViewState,
@@ -290,11 +326,14 @@ export function renderInventoryView(
     /** One copy's refine (★N); `copyId` 0n is the first copy, the one a slot holds. */
     refineLevel?: (itemId: string, copyId?: bigint) => number;
     slotCapacity: number;
-    filter?: ItemSlot;
+    filter?: ItemSlot | "ORE";
     nextSlotCost?: bigint;
     onUnlockSlot?: () => void;
     /** Copies kept from duplicate drops, beyond each item's first. Each takes its own bag slot. */
     copies?: readonly { id: bigint; itemId: string }[];
+    /** Ores held: each kind is a stack in one bag slot, after the gear (shared/ore-bag.ts). */
+    ores?: OreCounts;
+    onInspectOre?: (oreId: OreId) => void;
   },
 ) {
   elements.items.replaceChildren();
@@ -308,7 +347,8 @@ export function renderInventoryView(
       || itemDisplayName(a.itemId).localeCompare(itemDisplayName(b.itemId))
       || (a.copyId < b.copyId ? -1 : a.copyId > b.copyId ? 1 : 0));
   const slotCapacity = cosmetics ? Math.max(50, bagStacks.length) : actions.slotCapacity;
-  elements.count.textContent = `${bagStacks.length} / ${slotCapacity} ${cosmetics ? "Cosmetics" : "Items"}`;
+  const oreStacks = cosmetics ? [] : oreKindsHeld(actions.ores ?? {});
+  elements.count.textContent = `${bagStacks.length + oreStacks.length} / ${slotCapacity} ${cosmetics ? "Cosmetics" : "Items"}`;
   const wornRefine = actions.refineLevel && ((itemId: string) => actions.refineLevel!(itemId, 0n));
   renderEquipmentSlot(elements.equippedHead, inventory, "HEAD", "HEAD", mode, actions.upgradeLevel, actions.slotTier, wornRefine);
   renderEquipmentSlot(elements.equippedChest, inventory, "CHEST", "ARMOR", mode, actions.upgradeLevel, actions.slotTier, wornRefine);
@@ -316,10 +356,18 @@ export function renderInventoryView(
   renderEquipmentSlot(elements.equippedFeet, inventory, "FEET", "BOOTS", mode, actions.upgradeLevel, actions.slotTier, wornRefine);
 
   const visibleStacks = actions.filter ? bagStacks.filter(stack => itemDefinition(stack.itemId)?.slot === actions.filter) : bagStacks;
+  const visibleOres = !actions.filter || actions.filter === "ORE" ? oreStacks : [];
   // Keep the full grid footprint while filtering so scroll clamping cannot
   // pull the character preview/tabs around, even when there are no matches.
-  const visibleSlots = slotCapacity + (actions.filter && !cosmetics && actions.nextSlotCost !== undefined ? 1 : 0);
+  // Never fewer slots than what is in the bag: nothing held is ever hidden.
+  const visibleSlots = Math.max(slotCapacity + (actions.filter && !cosmetics && actions.nextSlotCost !== undefined ? 1 : 0),
+    visibleStacks.length + visibleOres.length);
   for (let index = 0; index < visibleSlots; index += 1) {
+    const ore = visibleOres[index - visibleStacks.length];
+    if (index >= visibleStacks.length && ore) {
+      elements.items.appendChild(oreTile(ore, actions.ores?.[ore] ?? 0, actions.onInspectOre));
+      continue;
+    }
     const stack = visibleStacks[index];
     const itemId = stack?.itemId;
     const copyId = stack?.copyId ?? 0n;
@@ -371,10 +419,10 @@ export function renderInventoryView(
     }
     elements.items.appendChild(button);
   }
-  if (actions.filter && visibleStacks.length === 0) {
+  if (actions.filter && visibleStacks.length + visibleOres.length === 0) {
     const empty = document.createElement("p");
     empty.className = "inventory-filter-empty";
-    empty.textContent = `No ${{ HAND: "weapons", CHEST: "armor", HEAD: "helmets", FEET: "boots" }[actions.filter] ?? "items"}`;
+    empty.textContent = `No ${{ HAND: "weapons", CHEST: "armor", HEAD: "helmets", FEET: "boots", ORE: "ores" }[actions.filter] ?? "items"}`;
     elements.items.append(empty);
   }
   if (!actions.filter && !cosmetics && actions.nextSlotCost !== undefined) {

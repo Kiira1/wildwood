@@ -9,7 +9,7 @@ import {
 } from "../../shared/equipment-copies";
 import { bowSkillKey, bowSkillRollFor, ensureBowSkillRoll } from "./bow-skills";
 import { lootSettingsFor } from "./loot-settings";
-import { promoteCopyRefine, refineLevelFor, setRefineLevel, swapFirstCopyRefine } from "./item-refine";
+import { oreKindsHeldFor, promoteCopyRefine, refineLevelFor, setRefineLevel, swapFirstCopyRefine } from "./item-refine";
 import { readPlayerProgress } from "./wide-stats";
 
 /**
@@ -244,7 +244,7 @@ export function createEquipmentCopies(deps: {
     if (!progress) throw new SenderError("Player unavailable.");
     const inventory = deps.inventoryForProgress(progress);
     const capacity = inventorySlotCapacity(ctx.db.playerInventoryCapacity.identity.find(ctx.sender)?.slotsUnlocked ?? 0);
-    if (bagSlotsUsed(inventory, equippedFields(progress), extraCopiesOf(ctx, ctx.sender).length) >= capacity) {
+    if (bagSlotsUsed(inventory, equippedFields(progress), extraCopiesOf(ctx, ctx.sender).length, oreKindsHeldFor(ctx, ctx.sender)) >= capacity) {
       throw new SenderError("Your bag is full. Free a slot to keep it.");
     }
     const roll = rollOf(offer);

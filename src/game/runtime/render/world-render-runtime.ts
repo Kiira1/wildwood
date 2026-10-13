@@ -1,5 +1,8 @@
 import { TOWN_FEET_OFFSET } from "../../../../shared/town";
 import { drawHomeTeleport } from "../town/home-teleport";
+import { createOreRockRenderer } from "../town/ore-rock-renderer";
+import { createPickaxeSprite, MINING_PICKAXE, PICKAXE_OVERRIDES } from "../town/pickaxe-sprite";
+import { miningScene } from "../town/mining-scene";
 import { drawSoulWellFall } from "../soul/soul-well-fall";
 import { createActorRenderer, type ActorStatus } from "./actor-renderer";
 import { createBossRenderer } from "../boss/boss-renderer";
@@ -168,6 +171,9 @@ export function createWorldRenderRuntime(options: WorldRenderRuntimeOptions) {
   let invalidateDepthOrder = () => {};
   let soulGround: ReturnType<typeof createSoulGroundRenderer>;
   let hallGround: ReturnType<typeof createSoulGroundRenderer>;
+  // The pickaxe is painted, not loaded: it joins the equipment art under its own name.
+  const pickaxeSprite = createPickaxeSprite();
+  if (pickaxeSprite) options.playerAppearanceAssets.equipment[MINING_PICKAXE] = { sprite: pickaxeSprite };
   const drawEntityShadow: DrawShadow = (x, y, width, alpha) => {
     // Arena scenes are visually separate from the current world map and retain
     // their shadows. Night Forest relies on its vignette to ground world actors.
@@ -263,6 +269,8 @@ export function createWorldRenderRuntime(options: WorldRenderRuntimeOptions) {
     remoteDeath: options.remoteDeath,
     drawPlayerAppearance: (rendered, alpha) => drawStartingPlayer(options.ctx, options.playerAppearanceAssets, {
       ...rendered,
+      // Mining in the Copper Hills: the Smith's pickaxe in hand, swinging on the mining's own clock.
+      ...(rendered.rightHandItem === MINING_PICKAXE ? { throwClock: miningScene.swingClock, presentationOverrides: PICKAXE_OVERRIDES } : {}),
       gameTime: rendered.gameTime ?? options.gameTime(),
       skinTone: rendered.skinTone ?? options.skinTone(rendered.identity ?? rendered.id) ?? DEFAULT_SKIN_TONE,
       alpha,
@@ -270,8 +278,8 @@ export function createWorldRenderRuntime(options: WorldRenderRuntimeOptions) {
     localHeadItem: () => options.equippedItems().head,
     localChestItem: () => options.equippedItems().chest,
     localFeetItem: () => options.equippedItems().feet,
-    localRightHandItem: () => options.equippedItems().rightHand,
-    localLeftHandItem: () => options.equippedItems().leftHand,
+    localRightHandItem: () => miningScene.pickaxeOut && pickaxeSprite ? MINING_PICKAXE : options.equippedItems().rightHand,
+    localLeftHandItem: () => miningScene.pickaxeOut && pickaxeSprite ? "" : options.equippedItems().leftHand,
     equipmentForIdentity: options.equipmentForIdentity,
     itemSprite: (itemId) => itemId ? options.playerAppearanceAssets.equipment[itemId]?.sprite : undefined,
     enemySprites: options.enemySprites,
@@ -392,6 +400,8 @@ export function createWorldRenderRuntime(options: WorldRenderRuntimeOptions) {
       drawUpgradeBench: world.drawUpgradeBench,
       drawCharredTree: world.drawCharredTree,
       drawSoulProp,
+      drawOreRock: createOreRockRenderer({ ctx: options.ctx, camera: options.camera, devicePixelRatio: options.devicePixelRatio, time: options.gameTime,
+        drawSoulProp, outlinedText: options.outlinedText }),
       drawEnemy: actor.drawEnemy,
       enemyOpacity: (enemy) => options.currentMapId() === options.infernalMapId
         ? nightEnemyOpacity(Math.hypot(enemy.x - options.player.x, enemy.y - options.player.y), options.player.attackRange, enemy.r)

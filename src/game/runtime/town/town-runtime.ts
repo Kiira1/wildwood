@@ -6,8 +6,16 @@ import { townWindowDecor } from "../../town-world";
 import type { MapId, WorldDecor } from "../../world";
 import { soulWellFall } from "../soul/soul-well-fall";
 import type { PlayerState } from "../types";
+import { createMiningRuntime, type MiningSource } from "./mining-runtime";
+import type { InventoryState } from "../../inventory";
+import type { OreCounts } from "../../../../shared/ore-bag";
+import { inventorySlotCapacity } from "../../../../shared/gems";
 
-export type TownSource = {
+export type TownSource = MiningSource & {
+  /** What the bag holds besides its items: kept copies, ore stacks, and how many slots are bought. */
+  equipmentCopies?: () => readonly unknown[];
+  ores?: () => OreCounts;
+  inventorySlotsUnlocked?: () => number;
   fallIntoWell?: () => Promise<boolean>;
   useTownDoor?: (door: number) => Promise<boolean>;
   /** A movement packet; forced, it is sent whatever the sparse-movement rules would hold back. */
@@ -109,12 +117,28 @@ export function createTownRuntime(deps: {
   currentMapId: () => MapId;
   invalidateDepthOrder: () => void;
   logPickup?: (label: string, color: string) => void;
+  /** The game's message line and its particle bursts, for mining in the Copper Hills. */
+  message?: (text: string, color: string) => void;
+  /** The bag, for the room a new kind of ore needs. */
+  inventory?: Pick<InventoryState, "itemIds" | "equippedHead" | "equippedChest" | "equippedFeet" | "equippedRightHand" | "equippedLeftHand">;
+  burst?: (x: number, y: number, color: string, count: number, speed: number) => void;
   /** Darkens the screen, runs the action once it is black, and brings the world back around the player. */
   fadeToWorld?: (onBlack: () => void, durationMs?: number) => void;
   clearInput?: () => void;
 }) {
   let windowKey = "";
   const source = () => deps.source();
+  // The bag as the server counts it: its items, kept copies, ore stacks and capacity.
+  const bag = () => {
+    const inventory = deps.inventory, current = source();
+    if (!inventory || !current) return null;
+    return {
+      owned: inventory.itemIds, ores: current.ores?.() ?? {}, extraCopies: current.equipmentCopies?.().length ?? 0,
+      equipped: [inventory.equippedHead, inventory.equippedChest, inventory.equippedFeet, inventory.equippedRightHand, inventory.equippedLeftHand],
+      capacity: inventorySlotCapacity(current.inventorySlotsUnlocked?.() ?? 0),
+    };
+  };
+  const mining = createMiningRuntime({ source, player: deps.player, message: deps.message, logPickup: deps.logPickup, burst: deps.burst, bag });
 
   /** Brings the props around the player up to date. */
   function refreshWindow(force = false) {
@@ -255,17 +279,23 @@ export function createTownRuntime(deps: {
     if (room && heading > 0 && Math.abs(feetX - room.exit.x) < room.exit.half && feetY > room.exit.y + 4) startDoorway(room, false);
   }
 
+  /** One frame of the Town's own rules; whether the player is left free to act (not at a door, not falling). */
+  function step(dt: number) {
+    if (!isTownMap(deps.currentMapId())) { windowKey = ""; return false; }
+    refreshWindow();
+    if (fall) { updateFall(dt); return false; }
+    if (doorway) { walkDoorway(dt); return false; }
+    checkDoors();
+    if (doorway) return false;
+    checkWells();
+    resolveCollision();
+    lastY = deps.player.y;
+    return true;
+  }
+
   return {
     update(dt: number) {
-      if (!isTownMap(deps.currentMapId())) { windowKey = ""; return; }
-      refreshWindow();
-      if (fall) { updateFall(dt); return; }
-      if (doorway) { walkDoorway(dt); return; }
-      checkDoors();
-      if (doorway) return;
-      checkWells();
-      resolveCollision();
-      lastY = deps.player.y;
+      mining.update(dt, step(dt));
     },
     /** Forces the window to rebuild, as after the map loads. */
     refresh: () => refreshWindow(true),

@@ -29,12 +29,24 @@ export const TOWN_VILLAGE_BOUNDS = Object.freeze({ left: -2_560, right: 2_120, t
 export const inTownVillage = (x: number, y: number, margin = 0) =>
   x > TOWN_CENTER.x + TOWN_VILLAGE_BOUNDS.left - margin && x < TOWN_CENTER.x + TOWN_VILLAGE_BOUNDS.right + margin
   && y > TOWN_CENTER.y + TOWN_VILLAGE_BOUNDS.top - margin && y < TOWN_CENTER.y + TOWN_VILLAGE_BOUNDS.bottom + margin;
+/**
+ * The Copper Hills: the mining country east of the village, a short walk past its river (a player's idea,
+ * Morkyl's; Ryan, 2026-10-13: "a mining zone in general", without the monsters). Ore rocks in four veins, copper
+ * nearest the village and adamant furthest out; shared/mining.ts lays them. Part of the Town's own world, so it
+ * is the Town's map: walk out east and you are there.
+ */
+export const TOWN_HILLS = Object.freeze({ left: TOWN_CENTER.x + 3_000, right: TOWN_CENTER.x + 7_400, top: TOWN_CENTER.y - 1_400, bottom: TOWN_CENTER.y + 1_900 });
+export const inTownHills = (x: number, y: number, margin = 0) =>
+  x > TOWN_HILLS.left - margin && x < TOWN_HILLS.right + margin && y > TOWN_HILLS.top - margin && y < TOWN_HILLS.bottom + margin;
 /** How far past the village's ground anyone may walk: the countryside's edge, walled. */
 export const TOWN_WALK_MARGIN = 320;
-export const TOWN_WALK_AREA = Object.freeze({
+/** The village and the countryside round it, as walled before the hills: what the minimap shows from the village. */
+export const TOWN_VILLAGE_WALK_AREA = Object.freeze({
   left: TOWN_CENTER.x + TOWN_VILLAGE_BOUNDS.left - TOWN_WALK_MARGIN, right: TOWN_CENTER.x + TOWN_VILLAGE_BOUNDS.right + TOWN_WALK_MARGIN,
   top: TOWN_CENTER.y + TOWN_VILLAGE_BOUNDS.top - TOWN_WALK_MARGIN, bottom: TOWN_CENTER.y + TOWN_VILLAGE_BOUNDS.bottom + TOWN_WALK_MARGIN,
 });
+/** Where anyone may walk: the village's countryside, and east of it as far as the hills reach. */
+export const TOWN_WALK_AREA = Object.freeze({ ...TOWN_VILLAGE_WALK_AREA, right: Math.max(TOWN_VILLAGE_WALK_AREA.right, TOWN_HILLS.right + TOWN_WALK_MARGIN) });
 
 type Pad = { x: number; y: number; width: number; height: number; depth: number };
 const pad = (dx: number, dy: number): Pad => Object.freeze({ x: TOWN_CENTER.x + dx, y: TOWN_CENTER.y + dy, width: 150, height: 150, depth: TOWN_CENTER.y + dy });
@@ -48,13 +60,6 @@ export const TOWN_SOUL_PORTAL = Object.freeze({ ...pad(-609, 1_985), destination
 /** The rune stone that marks the Soul Dimension's portal, beside it. */
 export const TOWN_SOUL_RUNESTONE = Object.freeze({ x: TOWN_SOUL_PORTAL.x + 118, y: TOWN_SOUL_PORTAL.y - 6 });
 
-/**
- * The Copper Hills: the mining country east of the village, a short walk past its river (a player's idea,
- * Morkyl's; Ryan, 2026-10-13: "a mining zone in general", without the monsters). Ore rocks in four veins, copper
- * nearest the village and adamant furthest out; shared/mining.ts lays them. Part of the Town's own world, so it
- * is the Town's map: walk out east and you are there.
- */
-export const TOWN_HILLS = Object.freeze({ left: TOWN_CENTER.x + 3_000, right: TOWN_CENTER.x + 7_400, top: TOWN_CENTER.y - 1_400, bottom: TOWN_CENTER.y + 1_900 });
 
 /** A seeded random stream from whole-number parts: the countryside is laid from it, the same on every client. */
 export function townRandom(...parts: number[]) {
@@ -142,6 +147,24 @@ export const TOWN_SMITH_POSITION = Object.freeze({ x: TOWN_CENTER.x + 354, y: TO
 /** How close a player's feet come to the Smith's before his window opens; the server allows a little more for lag. */
 export const TOWN_SMITH_REACH = 60;
 export const TOWN_SMITH_SERVER_REACH = 100;
+/**
+ * A gap in the log fence east of the Inn (Ryan, 2026-10-13: "make a gap in the fence"): the square's way out east,
+ * to the river's crossing in the north-east and the Copper Hills past it. The fence's middle log section on that
+ * side, and its collider, are left out (soul-village.ts).
+ */
+export const TOWN_EAST_FENCE_GAP = Object.freeze({ left: TOWN_CENTER.x + 900, right: TOWN_CENTER.x + 960, top: TOWN_CENTER.y + 140, bottom: TOWN_CENTER.y + 310 });
+/**
+ * Just outside the gap, where the village's tall tree stood in the way out (soul-village.ts leaves it out, its
+ * shadow and its trunk with it): open grass, so whoever walks through the gap stays in view.
+ */
+export const TOWN_EAST_FENCE_GAP_OUTSIDE = Object.freeze({
+  left: TOWN_EAST_FENCE_GAP.left + 45, right: TOWN_EAST_FENCE_GAP.right + 80, top: TOWN_EAST_FENCE_GAP.top, bottom: TOWN_EAST_FENCE_GAP.bottom + 110,
+});
+/**
+ * The sign to the Copper Hills: just outside the gap, below its south post, pointing east the way to go. It stands
+ * clear of the Inn, the yard's cart and the fence, so its plank reads whole from the square and from the gap.
+ */
+export const TOWN_HILLS_SIGNPOST_POSITION = Object.freeze({ x: TOWN_EAST_FENCE_GAP.right + 50, y: TOWN_EAST_FENCE_GAP.bottom + 62 });
 
 /** The whole row of rooms, walls and all. */
 const TOWN_INTERIOR_AREA = Object.freeze({
@@ -196,9 +219,16 @@ const WILD_PROPS: readonly [TownPropKind, number][] = [
   ["stone", 1.5], ["stump", 1], ["log", .8],
 ];
 const WILD_WEIGHT = WILD_PROPS.reduce((sum, [, weight]) => sum + weight, 0);
+/**
+ * How far round the Copper Hills their own scenery reaches (src/game/town-world.ts lays it: the trees that frame
+ * them, the hedges between the veins, the grass between the outcrops): the countryside's props keep out of it.
+ */
+export const TOWN_HILLS_BORDER = 330;
+/** Nor any loose stones this near them: beside the ore rocks, a plain stone reads as a rock with nothing in it. */
+export const TOWN_HILLS_STONE_FREE = 1_200;
 /** Where the portals stand: the countryside keeps clear of them. */
 const PORTAL_CLEARINGS = [TOWN_TRAVEL_PORTAL, TOWN_SOUL_PORTAL];
-/** A chunk's scattered props, clear of the village, its portals and the rooms. */
+/** A chunk's scattered props, clear of the village, its portals, the rooms and the Copper Hills. */
 export function townChunkProps(cx: number, cy: number): TownProp[] {
   if (!townChunkInWorld(cx, cy)) return [];
   const random = townRandom(cx, cy, 2);
@@ -212,7 +242,8 @@ export function townChunkProps(cx: number, cy: number): TownProp[] {
     const s = .9 + random() * .2;
     const flip = random() < .5;
     const variant = Math.floor(random() * 1_000);
-    if (inTownVillage(x, y, 60) || inTownInteriors(x, y, TOWN_INTERIOR_MARGIN)) continue;
+    if (inTownVillage(x, y, 60) || inTownInteriors(x, y, TOWN_INTERIOR_MARGIN) || inTownHills(x, y, TOWN_HILLS_BORDER)) continue;
+    if ((kind === "stone" || kind === "stoneSmall") && inTownHills(x, y, TOWN_HILLS_STONE_FREE)) continue;
     if (kind !== "grass" && PORTAL_CLEARINGS.some(portal => Math.hypot(portal.x - x, portal.y - y) < 260)) continue;
     props.push({ kind, x: Math.round(x), y: Math.round(y), s, flip, variant });
   }

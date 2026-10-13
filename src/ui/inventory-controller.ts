@@ -19,11 +19,13 @@ import { gameConfirm, type ConfirmPrompt, type ConfirmRequest } from "./confirm-
 import { type BowSkillRoll } from "../../shared/bow-skills";
 import { createInventoryDeleteMode } from "./inventory-delete-mode";
 import { withRefineStars } from "./refine-badge";
+import type { OreId } from "../../shared/refine";
 
 type InventoryLocation = EquipmentSlot | "BAG" | "";
 type SelectableInventory = InventoryState & { selectedItemId: string; selectedItemLocation?: InventoryLocation };
 type Result = { ok: boolean; error?: string } | undefined;
 /** A copy kept from a duplicate drop, beyond the item's first. */
+
 export type KeptEquipmentCopy = { id: bigint; itemId: string; roll: Partial<BowSkillRoll> };
 
 type InventoryDependencies = {
@@ -35,6 +37,8 @@ type InventoryDependencies = {
   slotTier?: (slot: "HAND" | "HEAD" | "CHEST") => number;
   /** One copy's refine (★N); `copyId` 0n is the first copy, the one a slot holds. */
   refineLevel?: (itemId: string, copyId?: bigint) => number;
+  /** Ores held, by kind (mined in the Copper Hills, spent at the Smith): a stack in one bag slot each. */
+  ores?: () => Readonly<Partial<Record<OreId, number>>>;
   equipBest?: () => boolean;
   equipmentLocked?: (itemId: string, copyId?: bigint) => boolean;
   setEquipmentLocked?: (itemId: string, locked: boolean, copyId?: bigint) => Promise<Result>;
@@ -175,6 +179,13 @@ export function createInventoryController(dependencies: InventoryDependencies) {
 
   const keptCopiesOf = (itemId: string) => (dependencies.equipmentCopies?.() ?? []).filter(copy => copy.itemId === itemId);
 
+  /** An ore stack: its window, with what the ore is for and how many are held. Delete and lock modes leave it be. */
+  function inspectOre(oreId: OreId) {
+    if (lockMode.active() || deleteMode.active()) return;
+    clearInventorySelection(dependencies.inventory);
+    dependencies.itemInspection.openOre?.({ oreId, count: dependencies.ores?.()[oreId] ?? 0 });
+  }
+
   /** `copyId` 0n is the item's first copy: the bag entry, or whatever its slot holds. */
   function inspect(itemId: string, location: Exclude<InventoryLocation, "">, copyId = 0n) {
     if (lockMode.active() && mode === "EQUIPMENT") { void lockMode.pick(itemId, copyId); return; }
@@ -309,7 +320,8 @@ export function createInventoryController(dependencies: InventoryDependencies) {
   function render() {
     const inventory = dependencies.inventory;
     const copies = dependencies.equipmentCopies?.() ?? [];
-    const nextState = JSON.stringify([mode, filter, inventory, inventory.itemIds.map(id => dependencies.equipmentLocked?.(id)), dependencies.inventorySlotsUnlocked(), unlockingSlot,
+    const held = dependencies.ores?.() ?? {};
+    const nextState = JSON.stringify([mode, filter, inventory, held, inventory.itemIds.map(id => dependencies.equipmentLocked?.(id)), dependencies.inventorySlotsUnlocked(), unlockingSlot,
       ["HEAD", "CHEST", "HAND"].map(slot => dependencies.slotTier?.(slot as "HEAD" | "CHEST" | "HAND")), inventory.itemIds.map(itemId => `${dependencies.upgradeLevel(itemId)}:${dependencies.refineLevel?.(itemId, 0n)}`),
       copies.map(copy => `${copy.id}:${copy.itemId}:${dependencies.equipmentLocked?.(copy.itemId, copy.id)}:${dependencies.refineLevel?.(copy.itemId, copy.id)}`)]);
     if (nextState === renderedState) return;
@@ -335,6 +347,8 @@ export function createInventoryController(dependencies: InventoryDependencies) {
       mode,
       {
         onInspect: inspect,
+        onInspectOre: inspectOre,
+        ores: held,
         copies,
         filter: filter === "ALL" ? undefined : filter,
         upgradeLevel: dependencies.upgradeLevel,

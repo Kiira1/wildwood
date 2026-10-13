@@ -23,10 +23,11 @@ export function gearForHighestMap(progress: CampaignAccess) {
 }
 
 /** Bag space excludes equipped items and cosmetics; running upgrades reserve their return slots. */
-export function gearClaimSpace(owned: string[], equipped: string[], upgrading: string[], gift: string[], capacity: number) {
+export function gearClaimSpace(owned: string[], equipped: string[], upgrading: string[], gift: string[], capacity: number, oreKinds = 0) {
   const allOwned = new Set([...owned, ...upgrading]);
   const equippedSet = new Set(equipped);
-  const used = [...allOwned].filter(id => itemDefinition(id) && !isCosmeticOnlyItem(id) && !equippedSet.has(id)).length;
+  // Each kind of ore held takes a slot too (shared/ore-bag.ts).
+  const used = [...allOwned].filter(id => itemDefinition(id) && !isCosmeticOnlyItem(id) && !equippedSet.has(id)).length + Math.max(0, Math.floor(oreKinds));
   const missing = [...new Set(gift)].filter(id => !allOwned.has(id));
   return { missing, slotsToFree: missing.length ? Math.max(0, used + missing.length - capacity) : 0 };
 }

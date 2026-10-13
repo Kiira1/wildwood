@@ -6,13 +6,13 @@ import { itemArtMarkup } from "../game/item-presentation";
 import { itemInspectionButtonLabel } from "./item-inspection-controller";
 import { formatEquipmentStat } from "./equipment-stat-format";
 import { refineStars } from "./refine-badge";
+import { ORE_ORDER } from "../../shared/ore-bag";
 
 type Result = { ok: boolean; error?: string } | undefined;
 type RefineResult = { itemId: string; copyId: bigint; fromLevel: number; toLevel: number; succeeded: boolean };
 /** One copy of an item the player holds: copy id 0 is the first copy, the one a slot holds. */
 export type SmithItem = { itemId: string; copyId: bigint; equipped: boolean };
 
-const ORE_ORDER: readonly OreId[] = ["copper_ore", "iron_ore", "mithril_ore", "adamant_ore", "starshard"];
 const key = (item: { itemId: string; copyId: bigint }) => `${item.itemId}:${item.copyId}`;
 const nameOf = (itemId: string) => itemInspectionButtonLabel(itemDisplayName(itemId));
 const percent = (chance: number) => `${Math.round(chance * 100)}%`;
@@ -32,6 +32,10 @@ export function createSmithController(deps: {
   ores: () => Readonly<Partial<Record<OreId, number>>>;
   refine: (itemId: string, copyId: bigint, expectedLevel: number) => Promise<Result>;
   showMessage: (text: string, color: string) => void;
+  /** Mining (shared/mining.ts): the free pickaxe he hands over, and the Mining stat once it is in hand. */
+  hasPickaxe?: () => boolean;
+  claimPickaxe?: () => Promise<Result>;
+  mining?: () => number;
 }) {
   const dialog = document.createElement("dialog");
   dialog.className = "farm-sheet quest-sheet smith-sheet";
@@ -40,6 +44,7 @@ export function createSmithController(deps: {
     + `<div class="quest-body"><p class="farm-map smith-intro">Refine gear with ore. Safe up to its limit; past it a fail drops one ★.</p>`
     + `<section class="smith-focus" aria-live="polite"></section>`
     + `<p class="smith-ores" aria-label="Your ores"></p>`
+    + `<div class="smith-mining"><span class="smith-mining-text"></span><button type="button" class="farm-start smith-refine smith-pickaxe">Take a Pickaxe</button></div>`
     + `<div class="smith-items" role="listbox" aria-label="Your gear"></div></div>`
     + `<footer class="farm-footer"><div class="farm-actions"><button type="button" class="window-back-button">Back</button></div></footer>`;
   document.body.append(dialog);
@@ -47,8 +52,12 @@ export function createSmithController(deps: {
   const oreLine = dialog.querySelector<HTMLElement>(".smith-ores")!;
   const list = dialog.querySelector<HTMLElement>(".smith-items")!;
   const back = dialog.querySelector<HTMLButtonElement>(".window-back-button")!;
+  const miningText = dialog.querySelector<HTMLElement>(".smith-mining-text")!;
+  const pickaxeButton = dialog.querySelector<HTMLButtonElement>(".smith-pickaxe")!;
   let selected: string | null = null;
   let refining = false;
+  /** Taken here and on its way: the button goes before the server's row arrives. */
+  let pickaxeTaken = false, takingPickaxe = false;
   let lastResult: { text: string; good: boolean } | null = null;
 
   function choices() {
@@ -114,6 +123,11 @@ export function createSmithController(deps: {
     renderFocus(items.find(item => key(item) === selected));
     const held = deps.ores();
     oreLine.textContent = ORE_ORDER.map(oreId => `${REFINE_ORES[oreId].name} ${held[oreId] ?? 0}`).join(" · ");
+    // Where the ore comes from, and the pickaxe to get it with.
+    const pickaxe = pickaxeTaken || Boolean(deps.hasPickaxe?.());
+    miningText.textContent = pickaxe ? `Mining ${deps.mining?.() ?? 0} · Ore is in the Copper Hills, east of Town` : "Ore is in the Copper Hills, east of Town.";
+    pickaxeButton.hidden = pickaxe || !deps.claimPickaxe;
+    pickaxeButton.disabled = takingPickaxe;
     list.replaceChildren(...items.map(item => {
       const option = document.createElement("button");
       option.type = "button";
@@ -173,6 +187,21 @@ export function createSmithController(deps: {
     back.focus();
   }
 
+  pickaxeButton.addEventListener("click", async () => {
+    if (takingPickaxe || !deps.claimPickaxe) return;
+    takingPickaxe = true;
+    render();
+    try {
+      const result = await deps.claimPickaxe();
+      if (result?.ok) {
+        pickaxeTaken = true;
+        deps.showMessage("The Smith hands you a pickaxe. Walk east to the Copper Hills.", "#ffd75e");
+      } else deps.showMessage(result?.error ?? "Not Connected", "#ff9b91");
+    } finally {
+      takingPickaxe = false;
+      if (dialog.open) render();
+    }
+  });
   back.addEventListener("click", close);
   dialog.addEventListener("cancel", event => { event.preventDefault(); close(); });
   return { open, close, isOpen: () => dialog.open, render, showResult, destroy() { close(); dialog.remove(); } };
@@ -181,6 +210,9 @@ export function createSmithController(deps: {
 /** The Smith as main.ts uses it: refining through the coop session, the bag's copies, and each try's verdict. */
 export function createSmithRuntime(deps: {
   coop: () => {
+    hasPickaxe?: () => boolean;
+    claimPickaxe?: () => Promise<Result>;
+    mining?: () => number;
     itemRefine?: (itemId: string, copyId?: bigint) => number;
     itemUpgradeLevel?: (itemId: string) => number;
     ores?: () => Readonly<Partial<Record<OreId, number>>>;
@@ -208,6 +240,9 @@ export function createSmithRuntime(deps: {
     slotTier: itemId => deps.coop()?.itemUpgradeLevel?.(itemId) ?? 0,
     ores: () => deps.coop()?.ores?.() ?? {},
     refine: async (itemId, copyId, expectedLevel) => deps.coop()?.refineItem?.(itemId, copyId, expectedLevel) ?? { ok: false, error: "Not Connected" },
+    hasPickaxe: () => deps.coop()?.hasPickaxe?.() ?? false,
+    claimPickaxe: async () => deps.coop()?.claimPickaxe?.() ?? { ok: false, error: "Not Connected" },
+    mining: () => deps.coop()?.mining?.() ?? 0,
   });
   let listening = false;
   return {
