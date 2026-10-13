@@ -1440,6 +1440,9 @@ export type MyBowSkills = __Infer<typeof MyBowSkills>;
 export const MyChatMute = __t.object("MyChatMute", {});
 export type MyChatMute = __Infer<typeof MyChatMute>;
 
+export const MyCopyRefines = __t.object("MyCopyRefines", {});
+export type MyCopyRefines = __Infer<typeof MyCopyRefines>;
+
 export const MyCutsceneHistory = __t.object("MyCutsceneHistory", {});
 export type MyCutsceneHistory = __Infer<typeof MyCutsceneHistory>;
 
@@ -1497,11 +1500,17 @@ export type MyOfflineProgress = __Infer<typeof MyOfflineProgress>;
 export const MyOnboarding = __t.object("MyOnboarding", {});
 export type MyOnboarding = __Infer<typeof MyOnboarding>;
 
+export const MyOres = __t.object("MyOres", {});
+export type MyOres = __Infer<typeof MyOres>;
+
 export const MyPlayerBlocks = __t.object("MyPlayerBlocks", {});
 export type MyPlayerBlocks = __Infer<typeof MyPlayerBlocks>;
 
 export const MyProceduralBoss = __t.object("MyProceduralBoss", {});
 export type MyProceduralBoss = __Infer<typeof MyProceduralBoss>;
+
+export const MyRefineResult = __t.object("MyRefineResult", {});
+export type MyRefineResult = __Infer<typeof MyRefineResult>;
 
 export const MyRewardKills = __t.object("MyRewardKills", {});
 export type MyRewardKills = __Infer<typeof MyRewardKills>;
@@ -1795,6 +1804,14 @@ export const PlayerController = __t.object("PlayerController", {
 });
 export type PlayerController = __Infer<typeof PlayerController>;
 
+export const PlayerCopyRefine = __t.object("PlayerCopyRefine", {
+  copyId: __t.u64(),
+  identity: __t.identity(),
+  itemId: __t.string(),
+  level: __t.u8(),
+});
+export type PlayerCopyRefine = __Infer<typeof PlayerCopyRefine>;
+
 export const PlayerCutsceneHistory = __t.object("PlayerCutsceneHistory", {
   identity: __t.identity(),
   seenMask: __t.u32(),
@@ -1927,6 +1944,14 @@ export const PlayerItemGift = __t.object("PlayerItemGift", {
   createdAt: __t.timestamp(),
 });
 export type PlayerItemGift = __Infer<typeof PlayerItemGift>;
+
+export const PlayerItemRefine = __t.object("PlayerItemRefine", {
+  key: __t.string(),
+  identity: __t.identity(),
+  itemId: __t.string(),
+  level: __t.u8(),
+});
+export type PlayerItemRefine = __Infer<typeof PlayerItemRefine>;
 
 export const PlayerItemUpgrade = __t.object("PlayerItemUpgrade", {
   key: __t.string(),
@@ -2132,6 +2157,14 @@ export const PlayerOnboarding = __t.object("PlayerOnboarding", {
 });
 export type PlayerOnboarding = __Infer<typeof PlayerOnboarding>;
 
+export const PlayerOre = __t.object("PlayerOre", {
+  key: __t.string(),
+  identity: __t.identity(),
+  oreId: __t.string(),
+  count: __t.u32(),
+});
+export type PlayerOre = __Infer<typeof PlayerOre>;
+
 export const PlayerPowerRebaseBackup = __t.object("PlayerPowerRebaseBackup", {
   identity: __t.identity(),
   version: __t.u32(),
@@ -2263,6 +2296,18 @@ export const PlayerQuestWeekTotal = __t.object("PlayerQuestWeekTotal", {
   lastDone: __t.u32(),
 });
 export type PlayerQuestWeekTotal = __Infer<typeof PlayerQuestWeekTotal>;
+
+export const PlayerRefineResult = __t.object("PlayerRefineResult", {
+  identity: __t.identity(),
+  itemId: __t.string(),
+  copyId: __t.u64(),
+  fromLevel: __t.u8(),
+  toLevel: __t.u8(),
+  succeeded: __t.bool(),
+  attempt: __t.u32(),
+  triedAt: __t.timestamp(),
+});
+export type PlayerRefineResult = __Infer<typeof PlayerRefineResult>;
 
 export const PlayerReport = __t.object("PlayerReport", {
   id: __t.u64(),

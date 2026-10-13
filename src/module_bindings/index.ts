@@ -316,6 +316,7 @@ import MyAudioSettingsRow from "./my_audio_settings_table";
 import MyBalanceApologyNoticeRow from "./my_balance_apology_notice_table";
 import MyBowSkillsRow from "./my_bow_skills_table";
 import MyChatMuteRow from "./my_chat_mute_table";
+import MyCopyRefinesRow from "./my_copy_refines_table";
 import MyCutsceneHistoryRow from "./my_cutscene_history_table";
 import MyDailyGemBonusRow from "./my_daily_gem_bonus_table";
 import MyDefeatSessionRestrictionRow from "./my_defeat_session_restriction_table";
@@ -335,8 +336,10 @@ import MyMailboxV2Row from "./my_mailbox_v_2_table";
 import MyOfflinePreferenceRow from "./my_offline_preference_table";
 import MyOfflineProgressRow from "./my_offline_progress_table";
 import MyOnboardingRow from "./my_onboarding_table";
+import MyOresRow from "./my_ores_table";
 import MyPlayerBlocksRow from "./my_player_blocks_table";
 import MyProceduralBossRow from "./my_procedural_boss_table";
+import MyRefineResultRow from "./my_refine_result_table";
 import MyRewardKillsRow from "./my_reward_kills_table";
 import MySocialHubRow from "./my_social_hub_table";
 import MySocialMessagesRow from "./my_social_messages_table";
@@ -359,6 +362,7 @@ import PlayerDeathFrameRow from "./player_death_frame_table";
 import PlayerFreeRespecRow from "./player_free_respec_table";
 import PlayerGemDropRow from "./player_gem_drop_table";
 import PlayerItemDropRow from "./player_item_drop_table";
+import PlayerItemRefineRow from "./player_item_refine_table";
 import PlayerItemUpgradeRow from "./player_item_upgrade_table";
 import PlayerLifetimeRow from "./player_lifetime_table";
 import PlayerMapFrameRow from "./player_map_frame_table";
@@ -984,6 +988,20 @@ const tablesSchema = __schema({
       { name: 'player_item_drop_key_key', constraint: 'unique', columns: ['key'] },
     ],
   }, PlayerItemDropRow),
+  playerItemRefine: __table({
+    name: 'player_item_refine',
+    indexes: [
+      { accessor: 'identity', name: 'player_item_refine_identity_idx_btree', algorithm: 'btree', columns: [
+        'identity',
+      ] },
+      { accessor: 'key', name: 'player_item_refine_key_idx_btree', algorithm: 'btree', columns: [
+        'key',
+      ] },
+    ],
+    constraints: [
+      { name: 'player_item_refine_key_key', constraint: 'unique', columns: ['key'] },
+    ],
+  }, PlayerItemRefineRow),
   playerItemUpgrade: __table({
     name: 'player_item_upgrade',
     indexes: [
@@ -1479,6 +1497,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, MyChatMuteRow),
+  myCopyRefines: __table({
+    name: 'my_copy_refines',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MyCopyRefinesRow),
   myCutsceneHistory: __table({
     name: 'my_cutscene_history',
     indexes: [
@@ -1612,6 +1637,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, MyOnboardingRow),
+  myOres: __table({
+    name: 'my_ores',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MyOresRow),
   myPlayerBlocks: __table({
     name: 'my_player_blocks',
     indexes: [
@@ -1626,6 +1658,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, MyProceduralBossRow),
+  myRefineResult: __table({
+    name: 'my_refine_result',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MyRefineResultRow),
   myRewardKills: __table({
     name: 'my_reward_kills',
     indexes: [

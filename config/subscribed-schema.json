@@ -498,6 +498,12 @@
       "lastMuteAtMicros:u64",
       "muteCount:u32"
     ],
+    "my_copy_refines": [
+      "copyId:u64",
+      "identity:identity",
+      "itemId:string",
+      "level:u8"
+    ],
     "my_cutscene_history": [
       "identity:identity",
       "seenMask:u32",
@@ -631,6 +637,12 @@
       "identity:identity",
       "step:u8"
     ],
+    "my_ores": [
+      "key:string",
+      "identity:identity",
+      "oreId:string",
+      "count:u32"
+    ],
     "my_player_blocks": [
       "key:string",
       "owner:identity",
@@ -644,6 +656,16 @@
       "hp:f64",
       "maxHp:f64",
       "respawnAtMicros:u64"
+    ],
+    "my_refine_result": [
+      "identity:identity",
+      "itemId:string",
+      "copyId:u64",
+      "fromLevel:u8",
+      "toLevel:u8",
+      "succeeded:bool",
+      "attempt:u32",
+      "triedAt:timestamp"
     ],
     "my_reward_kills": [
       "identity:identity",
@@ -799,6 +821,12 @@
       "alreadyOwned:bool",
       "sequence:u64",
       "droppedAt:timestamp"
+    ],
+    "player_item_refine": [
+      "key:string",
+      "identity:identity",
+      "itemId:string",
+      "level:u8"
     ],
     "player_item_upgrade": [
       "key:string",
