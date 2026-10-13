@@ -48,6 +48,14 @@ export const TOWN_SOUL_PORTAL = Object.freeze({ ...pad(-609, 1_985), destination
 /** The rune stone that marks the Soul Dimension's portal, beside it. */
 export const TOWN_SOUL_RUNESTONE = Object.freeze({ x: TOWN_SOUL_PORTAL.x + 118, y: TOWN_SOUL_PORTAL.y - 6 });
 
+/**
+ * The Copper Hills: the mining country east of the village, a short walk past its river (a player's idea,
+ * Morkyl's; Ryan, 2026-10-13: "a mining zone in general", without the monsters). Ore rocks in four veins, copper
+ * nearest the village and adamant furthest out; shared/mining.ts lays them. Part of the Town's own world, so it
+ * is the Town's map: walk out east and you are there.
+ */
+export const TOWN_HILLS = Object.freeze({ left: TOWN_CENTER.x + 3_000, right: TOWN_CENTER.x + 7_400, top: TOWN_CENTER.y - 1_400, bottom: TOWN_CENTER.y + 1_900 });
+
 /** A seeded random stream from whole-number parts: the countryside is laid from it, the same on every client. */
 export function townRandom(...parts: number[]) {
   let h = 0x50f1d1;
