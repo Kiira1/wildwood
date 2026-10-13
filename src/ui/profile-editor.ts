@@ -15,12 +15,15 @@ export type ProfileEditorElements = {
   /** White pencils, one per setting, each opening its picker (Ryan: "Just use white pencils to open pickers"). */
   nameToggle: HTMLButtonElement; nameColorToggle: HTMLButtonElement; genderToggle: HTMLButtonElement; skinToggle: HTMLButtonElement;
   nameColorSwatch: HTMLElement; genderValue: HTMLElement; skinSwatch: HTMLElement; skinValue: HTMLElement;
+  /** The window each picker opens in (Ryan: "Pickers should open there own windows"). */
+  picker: HTMLElement; pickerTitle: HTMLElement; pickerBack: HTMLElement;
 };
 
 /**
  * Edit Profile: one window for the picture, name, chat name color, gender and skin tone, opened by the
- * profile's one pencil (Ryan, 2026-10-13: it had three). Each shows its current value beside a white
- * pencil that opens its picker; a pick saves and closes it. The top shows the name as chat draws it.
+ * profile's one pencil (Ryan, 2026-10-13: it had three). A minimal centered stack: the picture, then the
+ * name as chat draws it, name color, gender and skin tone, each with a white pencil beside it (the field
+ * opens it too) that opens its picker in a window of its own; a pick saves and closes it.
  */
 export function createProfileEditor(elements: ProfileEditorElements, api: {
   localIdentity: () => string | undefined; localDisplayName: () => string | undefined;
@@ -35,7 +38,10 @@ export function createProfileEditor(elements: ProfileEditorElements, api: {
   /** A look was saved; the profile window repaints its character and name. */
   onChanged: (change: { gender?: PlayerGender }) => void;
 }) {
-  const nameEditor = createProfileNameEditor({ overlay: elements.overlay, form: elements.nameForm, input: elements.nameInput, save: elements.saveName }, api);
+  // A saved name closes its window, as the other picks do.
+  const nameEditor = createProfileNameEditor({ overlay: elements.overlay, form: elements.nameForm, input: elements.nameInput, save: elements.saveName }, {
+    ...api, setDisplayName: async (name, cost) => { const result = await api.setDisplayName(name, cost); if (result?.ok) showPicker(null); return result; },
+  });
   let paintedIcon = "", shownColor = "", busy = false;
 
   const colorButtons = NAME_COLORS.map((entry, index) => {
@@ -94,14 +100,24 @@ export function createProfileEditor(elements: ProfileEditorElements, api: {
 
   const pickers = [[elements.nameToggle, elements.nameForm], [elements.nameColorToggle, elements.nameColors],
     [elements.genderToggle, elements.genderChoices], [elements.skinToggle, elements.skinChoices]] as const;
-  /** Opens one picker (or none); only one is open at a time. */
+  const TITLES = new Map<HTMLElement, string>([[elements.nameForm, "Name"], [elements.nameColors, "Name Color"], [elements.genderChoices, "Gender"], [elements.skinChoices, "Skin Tone"]]);
+  /** Opens one picker's window, or closes it with null. */
   function showPicker(open: HTMLElement | null) {
-    for (const [toggle, choices] of pickers) {
-      choices.hidden = choices !== open;
-      toggle.setAttribute("aria-expanded", String(choices === open));
-    }
+    for (const [, choices] of pickers) choices.hidden = choices !== open;
+    elements.picker.hidden = !open;
+    if (!open) return;
+    elements.pickerTitle.textContent = TITLES.get(open) ?? "";
+    if (open === elements.nameForm) { elements.nameInput.value = api.localDisplayName() || ""; elements.nameInput.focus(); }
   }
-  for (const [toggle, choices] of pickers) toggle.addEventListener("click", () => showPicker(choices.hidden ? choices : null));
+  for (const [toggle, choices] of pickers) toggle.addEventListener("click", () => showPicker(choices));
+  elements.pickerBack.addEventListener("click", () => showPicker(null));
+  // A field opens its picker too, not only its pencil.
+  elements.overlay.addEventListener("click", event => {
+    const target = event.target as Element;
+    const tile = target.closest<HTMLElement>("[data-opens]");
+    if (!tile || target.closest("button")) return;
+    elements.overlay.ownerDocument.getElementById(tile.dataset.opens || "")?.click();
+  });
 
   /** Saves one pick with every choice locked until the server answers, then shows it. */
   async function save(action: () => Result, failure: string, success: string, change: { gender?: PlayerGender } = {}) {
@@ -137,7 +153,7 @@ export function createProfileEditor(elements: ProfileEditorElements, api: {
   });
   elements.picture.addEventListener("click", () => api.openIconPicker());
   elements.pictureButton.addEventListener("click", () => api.openIconPicker());
-  elements.close.addEventListener("click", () => nameEditor.close());
+  elements.close.addEventListener("click", () => { showPicker(null); nameEditor.close(); });
 
   return {
     open() {
@@ -148,7 +164,7 @@ export function createProfileEditor(elements: ProfileEditorElements, api: {
       const scroll = elements.overlay.querySelector<HTMLElement>(".profile-editor-scroll");
       if (scroll) scroll.scrollTop = 0;
     },
-    close: () => nameEditor.close(),
+    close: () => { showPicker(null); nameEditor.close(); },
     render,
     isOpen: () => !elements.overlay.hidden,
   };

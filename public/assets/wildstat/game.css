@@ -3263,48 +3263,46 @@
   /* Edit Profile (profile-editor.ts): over the profile window, under the picture picker it opens. */
   #profileNameEditor { position: fixed; inset: 0; z-index: 12; display: grid; place-items: center; padding: max(5px, env(safe-area-inset-top)) max(5px, env(safe-area-inset-right)) max(5px, env(safe-area-inset-bottom)) max(5px, env(safe-area-inset-left)); background: rgba(0,0,0,.45); }
   #profileNameEditor[hidden] { display: none; }
-  .modal.profile-editor-modal { --window-back-bottom-gap: 9px; display: flex; flex-direction: column; width: var(--game-window-width); height: min(600px, 100%); max-height: 100%; padding: 12px 10px 0; overflow: hidden; border-color: #080808; background: var(--window-surface); text-align: left; transform: none; }
-  .profile-editor-title { flex: 0 0 auto; margin: 0 0 10px; font-size: 18px; text-align: center; }
-  .profile-editor-scroll { flex: 1 1 auto; display: grid; align-content: start; gap: 8px; min-height: 0; padding: 0 1px 8px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
+  .modal.profile-editor-modal { --window-back-bottom-gap: 9px; display: flex; flex-direction: column; width: var(--game-window-width); height: min(620px, 100%); max-height: 100%; padding: 12px 12px 0; overflow: hidden; border-color: #080808; background: var(--window-surface); text-align: left; transform: none; }
+  .profile-editor-title { flex: 0 0 auto; margin: 0 0 6px; font-size: 18px; text-align: center; }
+  /* A centered stack spread down the window: each thing, then its white pencil beside it. */
+  .profile-editor-scroll { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: space-evenly; gap: 14px; min-height: 0; padding: 10px 0 14px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
   .profile-editor-scroll::-webkit-scrollbar { display: none; }
-  .profile-editor-caption { color: var(--muted); font-size: 11px; font-weight: 900; letter-spacing: .06em; }
-  .profile-editor-section { display: grid; gap: 8px; padding: 6px 10px; }
-  .profile-editor-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin: 0; color: var(--text); font-size: 13px; font-weight: 900; letter-spacing: .03em; }
-  .profile-editor-value { color: var(--muted); font-size: 12px; }
-  .profile-name-editor-note { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.4; }
-  .profile-name-editor-controls { display: flex; gap: 6px; }
-  #profileNameInput { flex: 1; width: 0; min-height: 40px; font-size: 16px; }
-  #savePlayerNameBtn { min-width: 0; margin: 0; padding: 6px 12px; border-width: 2px; border-radius: 6px; font-size: 12px; line-height: 1; text-transform: none; white-space: nowrap; }
-  .profile-editor-current { display: flex; align-items: center; gap: 8px; min-width: 0; }
-  .profile-editor-swatch { flex: 0 0 auto; width: 28px; height: 28px; border: 2px solid #000; border-radius: 6px; box-shadow: 0 0 0 1px rgba(255,255,255,.35); }
+  .profile-editor-item { display: grid; grid-template-columns: 42px minmax(0, 250px) 42px; justify-content: center; align-items: center; gap: 12px; }
+  .profile-editor-item > :first-child { grid-column: 2; }
+  .profile-editor-picture { justify-self: center; width: 104px; min-width: 104px; height: 104px; border-radius: 16px; cursor: pointer; }
+  .profile-editor-pill { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-width: 0; height: 44px; padding: 0 18px; border-radius: 22px; background: rgba(255,255,255,.08); cursor: pointer; }
+  .profile-editor-pill-label { color: var(--muted); font-size: 13px; font-weight: 900; white-space: nowrap; }
+  .profile-editor-pill-value { display: flex; align-items: center; gap: 7px; min-width: 0; overflow: hidden; color: var(--text); font-size: 14px; font-weight: 900; white-space: nowrap; }
+  .profile-editor-name-pill { justify-content: flex-start; }
+  .profile-editor-preview { display: flex; align-items: center; gap: 5px; min-width: 0; overflow: hidden; font-family: var(--player-name-font); font-size: 16px; font-weight: 900; line-height: 1.25; white-space: nowrap; }
+  .profile-editor-swatch { flex: 0 0 auto; width: 18px; height: 18px; border-radius: 5px; box-shadow: 0 0 0 2px rgba(0,0,0,.6); }
   .profile-editor-swatch.is-round { border-radius: 50%; }
-  .profile-name-color-choices[hidden], .profile-skin-tone[hidden], .profile-gender-choices[hidden], .profile-editor-picker[hidden] { display: none; }
-  .profile-editor-section > :is(form, div[role="group"]) { margin-bottom: 6px; }
-  .profile-editor-value { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .profile-editor-section { border: 1px solid rgba(255,255,255,.12); border-radius: 8px; background: rgba(0,0,0,.26); }
-  .profile-editor-hero { display: flex; align-items: center; gap: 12px; padding: 4px 0; }
-  .profile-editor-picture-frame { position: relative; flex: 0 0 auto; }
-  .profile-editor-picture { width: 66px; min-width: 66px; height: 66px; cursor: pointer; }
-  .profile-editor-picture-frame > .profile-editor-pencil { position: absolute; right: -6px; bottom: -6px; }
-  .profile-editor-hero-copy { display: grid; gap: 4px; flex: 1; min-width: 0; }
-  .profile-editor-row { display: flex; align-items: center; gap: 10px; min-height: 40px; }
-  .profile-editor-row > .profile-editor-heading { flex: 1; }
-  .profile-editor-preview { display: flex; flex: 1; align-items: center; gap: 4px; min-width: 0; overflow: hidden; font-family: var(--player-name-font); font-size: 15px; font-weight: 900; line-height: 1.25; white-space: nowrap; }
-  .profile-editor-pencil { display: grid; flex: 0 0 auto; place-items: center; width: 32px; min-width: 32px; height: 32px; margin: 0; padding: 0; border: 2px solid #000; border-radius: 8px; background: #2b2b2b; color: #fff; box-shadow: 0 0 0 1px rgba(255,255,255,.28); }
-  .profile-editor-pencil svg { width: 17px; height: 17px; pointer-events: none; }
-  .profile-editor-pencil[aria-expanded="true"] { background: #fff; color: #111; }
-  .profile-editor-current .player-gender-icon { width: 15px; height: 17px; }
-  .profile-name-color-choices { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 7px; }
-  .profile-name-color-choice { width: 100%; min-width: 0; height: auto; aspect-ratio: 1; margin: 0; padding: 0; border: 2px solid #000; border-radius: 50%; background: var(--name-color); box-shadow: none; }
-  .profile-name-color-choice.is-auto { border-radius: 9px; color: #111; font: 900 11px/1 var(--font-rounded, Arial), sans-serif; -webkit-text-stroke: 0; text-shadow: none; }
-  .profile-name-color-choice[aria-pressed="true"] { box-shadow: 0 0 0 2px #fff; }
-  .profile-gender-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
-  .profile-gender-choice { display: flex; align-items: center; justify-content: center; gap: 7px; min-width: 0; min-height: 44px; margin: 0; padding: 6px 10px; border: 2px solid rgba(255,255,255,.22); border-radius: 7px; background: rgba(255,255,255,.06); color: var(--text); font-size: 13px; text-transform: none; }
-  .profile-gender-choice img { width: 21px; height: 25px; object-fit: contain; pointer-events: none; }
-  .profile-gender-choice[aria-pressed="true"] { border-color: var(--green); background: rgba(78,205,82,.16); }
-  .profile-skin-tone { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 6px; }
-  .profile-skin-tone-choice { width: 100%; min-width: 0; height: auto; aspect-ratio: 1; margin: 0; padding: 0; border: 2px solid #000; border-radius: 6px; box-shadow: none; }
-  .profile-skin-tone-choice[aria-pressed="true"] { box-shadow: 0 0 0 2px #fff; }
+  .profile-editor-gender { display: flex; align-items: center; gap: 5px; }
+  .profile-editor-gender .player-gender-icon { width: 15px; height: 17px; }
+  .profile-editor-pencil { display: grid; place-items: center; width: 42px; min-width: 42px; height: 42px; margin: 0; padding: 0 0 3px; border: 2px solid #000; border-radius: 9px; background: #3a3d40; color: #fff; box-shadow: inset 0 -4px 0 rgba(0,0,0,.35); }
+  .profile-editor-pencil svg { width: 20px; height: 20px; pointer-events: none; }
+  .profile-editor-pencil:active { padding: 3px 0 0; box-shadow: inset 0 2px 0 rgba(0,0,0,.35); }
+  /* Each picker opens in a window of its own over Edit Profile. */
+  .profile-editor-picker-overlay { position: fixed; inset: 0; z-index: 1; display: grid; place-items: center; padding: 16px; background: rgba(0,0,0,.55); }
+  .profile-editor-picker-overlay[hidden] { display: none; }
+  .modal.profile-editor-picker-window { --window-back-bottom-gap: 9px; display: grid; gap: 16px; width: var(--game-window-width); max-height: 100%; padding: 16px 16px 0; overflow-y: auto; border-color: #080808; background: var(--window-surface); text-align: left; transform: none; }
+  .profile-editor-picker-window > [hidden] { display: none; }
+  .profile-name-editor-note { margin: 8px 0 0; color: var(--muted); font-size: 12px; line-height: 1.4; }
+  .profile-name-editor-controls { display: flex; gap: 8px; }
+  #profileNameInput { flex: 1; width: 0; min-height: 44px; font-size: 16px; }
+  #savePlayerNameBtn { min-width: 0; margin: 0; padding: 6px 14px; border-width: 2px; border-radius: 8px; font-size: 13px; line-height: 1; text-transform: none; white-space: nowrap; }
+  .profile-name-color-choices { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; padding: 4px 6px; }
+  .profile-name-color-choice { width: 100%; min-width: 0; height: auto; aspect-ratio: 1; margin: 0; padding: 0; border: 0; border-radius: 50%; background: var(--name-color); box-shadow: 0 0 0 2px rgba(0,0,0,.6); }
+  .profile-name-color-choice.is-auto { border-radius: 14px; color: #111; font: 900 13px/1 var(--font-rounded, Arial), sans-serif; -webkit-text-stroke: 0; text-shadow: none; }
+  .profile-name-color-choice[aria-pressed="true"] { box-shadow: 0 0 0 2px #000, 0 0 0 5px #fff; }
+  .profile-gender-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .profile-gender-choice { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; min-width: 0; min-height: 120px; margin: 0; padding: 12px; border: 0; border-radius: 14px; background: rgba(255,255,255,.06); color: var(--text); font-size: 15px; text-transform: none; box-shadow: none; }
+  .profile-gender-choice img { width: 40px; height: 46px; object-fit: contain; pointer-events: none; }
+  .profile-gender-choice[aria-pressed="true"] { background: rgba(78,205,82,.18); box-shadow: inset 0 0 0 2px var(--green); }
+  .profile-skin-tone { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; padding: 4px 6px; }
+  .profile-skin-tone-choice { width: 100%; min-width: 0; height: auto; aspect-ratio: 1; margin: 0; padding: 0; border: 0; border-radius: 12px; box-shadow: 0 0 0 2px rgba(0,0,0,.6); }
+  .profile-skin-tone-choice[aria-pressed="true"] { box-shadow: 0 0 0 2px #000, 0 0 0 5px #fff; }
   .profile-name-color-choice:disabled, .profile-gender-choice:disabled, .profile-skin-tone-choice:disabled { opacity: .6; }
   .modal.leaderboard-modal {
     --leaderboard-content-width: min(var(--window-content-max-width), 100%);

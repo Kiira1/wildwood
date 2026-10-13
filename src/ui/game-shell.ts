@@ -178,62 +178,54 @@ const afterUpdateGateShell = String.raw`
   <div class="modal profile-editor-modal" role="dialog" aria-modal="true" aria-labelledby="profileEditorTitle">
     <h2 id="profileEditorTitle" class="window-title profile-editor-title">Edit Profile</h2>
     <div class="profile-editor-scroll">
-      <section class="profile-editor-section">
-        <div class="profile-editor-hero">
-          <div class="profile-editor-picture-frame">
-            <button id="profileEditorPicture" class="profile-icon profile-editor-picture" type="button" aria-label="Change profile picture"></button>
-            <button id="profileEditorPictureBtn" class="profile-editor-pencil" type="button" aria-label="Change picture"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm17.71-10.21a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
-          </div>
-          <div class="profile-editor-hero-copy">
-            <span class="profile-editor-caption">In Chat</span>
-            <div class="profile-editor-row">
-              <span id="profileEditorPreview" class="profile-editor-preview"></span>
-              <button id="profileNameToggle" class="profile-editor-pencil" type="button" aria-label="Change name" aria-expanded="false" aria-controls="profileNameEditorForm"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm17.71-10.21a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
-            </div>
-          </div>
-        </div>
-        <form id="profileNameEditorForm" class="profile-editor-picker" aria-label="Change player name" hidden>
-          <div class="profile-name-editor-controls">
-            <input id="profileNameInput" maxlength="20" autocomplete="off" spellcheck="false" aria-label="Player name" />
-            <button id="savePlayerNameBtn" type="submit">Save</button>
-          </div>
-        </form>
-      </section>
-      <section class="profile-editor-section">
-        <div class="profile-editor-row">
-          <span class="profile-editor-heading">Name Color</span>
-          <span class="profile-editor-current"><span id="profileNameColorSwatch" class="profile-editor-swatch is-round"></span><span id="profileNameColorValue" class="profile-editor-value"></span></span>
-          <button id="profileNameColorToggle" class="profile-editor-pencil" type="button" aria-label="Change name color" aria-expanded="false" aria-controls="profileNameColorChoices"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm17.71-10.21a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
-        </div>
-        <div id="profileNameColorChoices" class="profile-name-color-choices" role="group" aria-label="Name color" hidden></div>
-      </section>
-      <section class="profile-editor-section">
-        <div class="profile-editor-row">
-          <span class="profile-editor-heading">Gender</span>
-          <span id="profileGenderValue" class="profile-editor-current profile-editor-value"></span>
-          <button id="profileGenderToggle" class="profile-editor-pencil" type="button" aria-label="Change gender" aria-expanded="false" aria-controls="profileGenderChoices"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm17.71-10.21a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
-        </div>
-        <div id="profileGenderChoices" class="profile-gender-choices" role="group" aria-label="Gender" hidden>
-          <button class="profile-gender-choice" type="button" data-gender="1" aria-pressed="false">
-            <img data-game-src="assets/wildstat/gender/male-v2.webp" alt="" aria-hidden="true" draggable="false" /><span>Male</span>
-          </button>
-          <button class="profile-gender-choice" type="button" data-gender="2" aria-pressed="false">
-            <img data-game-src="assets/wildstat/gender/female-v2.webp" alt="" aria-hidden="true" draggable="false" /><span>Female</span>
-          </button>
-        </div>
-      </section>
-      <section class="profile-editor-section">
-        <div class="profile-editor-row">
-          <span class="profile-editor-heading">Skin Tone</span>
-          <span class="profile-editor-current"><span id="profileSkinToneSwatch" class="profile-editor-swatch"></span><span id="profileSkinToneValue" class="profile-editor-value"></span></span>
-          <button id="profileSkinToneToggle" class="profile-editor-pencil" type="button" aria-label="Change skin tone" aria-expanded="false" aria-controls="profileSkinToneControl"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm17.71-10.21a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
-        </div>
-        <div id="profileSkinToneControl" class="profile-skin-tone" role="group" aria-label="Skin tone" hidden></div>
-      </section>
+      <div class="profile-editor-item">
+        <button id="profileEditorPicture" class="profile-icon profile-editor-picture" type="button" aria-label="Change profile picture"></button>
+        <button id="profileEditorPictureBtn" class="profile-editor-pencil" type="button" aria-label="Change picture" aria-haspopup="dialog"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm17.71-10.21a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
+      </div>
+      <div class="profile-editor-item">
+        <span class="profile-editor-pill profile-editor-name-pill" data-opens="profileNameToggle"><span id="profileEditorPreview" class="profile-editor-preview"></span></span>
+        <button id="profileNameToggle" class="profile-editor-pencil" type="button" aria-label="Change name" aria-haspopup="dialog"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm17.71-10.21a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
+      </div>
+      <div class="profile-editor-item">
+        <span class="profile-editor-pill" data-opens="profileNameColorToggle"><span class="profile-editor-pill-label">Name Color</span><span class="profile-editor-pill-value"><span id="profileNameColorSwatch" class="profile-editor-swatch is-round"></span><span id="profileNameColorValue"></span></span></span>
+        <button id="profileNameColorToggle" class="profile-editor-pencil" type="button" aria-label="Change name color" aria-haspopup="dialog"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm17.71-10.21a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
+      </div>
+      <div class="profile-editor-item">
+        <span class="profile-editor-pill" data-opens="profileGenderToggle"><span class="profile-editor-pill-label">Gender</span><span class="profile-editor-pill-value"><span id="profileGenderValue" class="profile-editor-gender"></span></span></span>
+        <button id="profileGenderToggle" class="profile-editor-pencil" type="button" aria-label="Change gender" aria-haspopup="dialog"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm17.71-10.21a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
+      </div>
+      <div class="profile-editor-item">
+        <span class="profile-editor-pill" data-opens="profileSkinToneToggle"><span class="profile-editor-pill-label">Skin Tone</span><span class="profile-editor-pill-value"><span id="profileSkinToneSwatch" class="profile-editor-swatch"></span><span id="profileSkinToneValue"></span></span></span>
+        <button id="profileSkinToneToggle" class="profile-editor-pencil" type="button" aria-label="Change skin tone" aria-haspopup="dialog"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm17.71-10.21a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
+      </div>
     </div>
     <footer class="window-back-footer">
       <button id="closeProfileEditorBtn" class="window-back-button" type="button">Back</button>
     </footer>
+  </div>
+  <div id="profileEditorPicker" class="profile-editor-picker-overlay" hidden>
+    <div class="modal profile-editor-picker-window" role="dialog" aria-modal="true" aria-labelledby="profileEditorPickerTitle">
+      <h2 id="profileEditorPickerTitle" class="window-title profile-editor-title"></h2>
+      <form id="profileNameEditorForm" class="profile-editor-picker" aria-label="Change player name" hidden>
+        <div class="profile-name-editor-controls">
+          <input id="profileNameInput" maxlength="20" autocomplete="off" spellcheck="false" aria-label="Player name" />
+          <button id="savePlayerNameBtn" type="submit">Save</button>
+        </div>
+      </form>
+      <div id="profileNameColorChoices" class="profile-name-color-choices" role="group" aria-label="Name color" hidden></div>
+      <div id="profileGenderChoices" class="profile-gender-choices" role="group" aria-label="Gender" hidden>
+        <button class="profile-gender-choice" type="button" data-gender="1" aria-pressed="false">
+          <img data-game-src="assets/wildstat/gender/male-v2.webp" alt="" aria-hidden="true" draggable="false" /><span>Male</span>
+        </button>
+        <button class="profile-gender-choice" type="button" data-gender="2" aria-pressed="false">
+          <img data-game-src="assets/wildstat/gender/female-v2.webp" alt="" aria-hidden="true" draggable="false" /><span>Female</span>
+        </button>
+      </div>
+      <div id="profileSkinToneControl" class="profile-skin-tone" role="group" aria-label="Skin tone" hidden></div>
+      <footer class="window-back-footer">
+        <button id="profileEditorPickerBack" class="window-back-button" type="button">Back</button>
+      </footer>
+    </div>
   </div>
 </div>
 

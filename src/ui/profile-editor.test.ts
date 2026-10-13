@@ -12,6 +12,8 @@ beforeEach(() => {
     <span id="value"></span><div id="colors"></div><button id="colorToggle"></button><span id="colorSwatch"></span>
     <button id="skinToggle"></button><span id="skinSwatch"></span><span id="skinValue"></span>
     <button id="nameToggle"></button><button id="genderToggle"></button><span id="genderValue"></span>
+    <section data-opens="colorToggle"><span id="tileLabel"></span></section>
+    <div id="picker" hidden><h2 id="pickerTitle"></h2><button id="pickerBack"></button></div>
     <div id="genders"><button class="profile-gender-choice" data-gender="1"></button><button class="profile-gender-choice" data-gender="2"></button></div>
     <div id="skins"><button class="profile-skin-tone-choice" data-skin-tone="0" aria-label="Porcelain"></button><button class="profile-skin-tone-choice" data-skin-tone="1" aria-label="Ivory"></button></div>
   </div></body></html>`);
@@ -38,6 +40,7 @@ function fixture() {
     nameColors: $("colors"), nameColorValue: $("value"), genderChoices: $("genders"), skinChoices: $("skins"),
     nameColorToggle: $("colorToggle"), nameColorSwatch: $("colorSwatch"), skinToggle: $("skinToggle"), skinSwatch: $("skinSwatch"), skinValue: $("skinValue"),
     nameToggle: $("nameToggle"), genderToggle: $("genderToggle"), genderValue: $("genderValue"),
+    picker: $("picker"), pickerTitle: $("pickerTitle"), pickerBack: $("pickerBack"),
   }, api);
   const click = (element: Element) => element.dispatchEvent(new document.defaultView!.Event("click", { bubbles: true }));
   const settle = () => new Promise(resolve => setTimeout(resolve, 0));
@@ -54,22 +57,27 @@ it("offers Auto and every name color, and shows the name as chat will", () => {
   expect(f.$("preview").style.color).toBe(autoNameColor("abc"));
 });
 
-it("opens the name color picker from its row, one picker at a time", () => {
+it("opens each picker in its own window, from its pencil or its tile, and Back closes it", () => {
   const f = fixture();
   f.editor.open();
-  expect(f.$("colors").hidden).toBe(true);
-  expect(f.$("skins").hidden).toBe(true);
+  expect(f.$("picker").hidden).toBe(true);
   f.click(f.$("colorToggle"));
+  expect(f.$("picker").hidden).toBe(false);
+  expect(f.$("pickerTitle").textContent).toBe("Name Color");
   expect(f.$("colors").hidden).toBe(false);
-  expect(f.$("colorToggle").getAttribute("aria-expanded")).toBe("true");
   f.click(f.$("skinToggle"));
-  expect(f.$("colors").hidden).toBe(true);
-  expect(f.$("skins").hidden).toBe(false);
+  expect(f.$("pickerTitle").textContent).toBe("Skin Tone");
+  expect([f.$("colors").hidden, f.$("skins").hidden]).toEqual([true, false]);
   expect(f.$("skinValue").textContent).toBe("Porcelain");
   f.click(f.$("nameToggle"));
-  expect(f.$("form").hidden).toBe(false);
-  expect(f.$("skins").hidden).toBe(true);
+  expect(f.$("pickerTitle").textContent).toBe("Name");
+  expect(f.$<HTMLInputElement>("input").value).toBe("Vis");
   expect(f.$("genderValue").textContent).toContain("Male");
+  f.click(f.$("pickerBack"));
+  expect(f.$("picker").hidden).toBe(true);
+  expect(f.editor.isOpen()).toBe(true);
+  f.click(f.$("tileLabel"));
+  expect(f.$("pickerTitle").textContent).toBe("Name Color");
 });
 
 it("saves a name color on tap, closes the picker and repaints the preview in it", async () => {
@@ -83,7 +91,7 @@ it("saves a name color on tap, closes the picker and repaints the preview in it"
   expect(f.$("value").textContent).toBe(NAME_COLORS[4].name);
   expect(f.$("preview").style.color).toBe(NAME_COLORS[4].color);
   expect(f.api.showMessage).toHaveBeenCalledWith("NAME COLOR UPDATED", "#72ef58");
-  expect(f.$("colors").hidden).toBe(true);
+  expect(f.$("picker").hidden).toBe(true);
   expect(f.$("colorSwatch").style.background).toBe(NAME_COLORS[4].color);
 });
 
