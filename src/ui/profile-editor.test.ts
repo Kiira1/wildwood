@@ -9,8 +9,8 @@ beforeEach(() => {
   const { document } = parseHTML(`<html><body><div id="overlay" hidden>
     <button id="close"></button><button id="picture"></button><button id="pictureButton"></button><span id="preview"></span>
     <form id="form"><input id="input"><button id="save"></button></form>
-    <span id="value"></span><div id="colors"></div><button id="colorToggle"></button><span id="colorSwatch"></span>
-    <button id="skinToggle"></button><span id="skinSwatch"></span><span id="skinValue"></span>
+    <div id="colors"></div><button id="colorToggle"></button><span id="colorSwatch"></span>
+    <button id="skinToggle"></button><span id="skinSwatch"></span>
     <button id="nameToggle"></button><button id="genderToggle"></button><span id="genderValue"></span>
     <section data-opens="colorToggle"><span id="tileLabel"></span></section>
     <div id="picker" hidden><h2 id="pickerTitle"></h2><button id="pickerBack"></button></div>
@@ -37,8 +37,8 @@ function fixture() {
   const editor = createProfileEditor({
     overlay: $("overlay"), close: $("close"), picture: $("picture"), pictureButton: $("pictureButton"), preview: $("preview"),
     nameForm: $("form"), nameInput: $("input"), saveName: $("save"),
-    nameColors: $("colors"), nameColorValue: $("value"), genderChoices: $("genders"), skinChoices: $("skins"),
-    nameColorToggle: $("colorToggle"), nameColorSwatch: $("colorSwatch"), skinToggle: $("skinToggle"), skinSwatch: $("skinSwatch"), skinValue: $("skinValue"),
+    nameColors: $("colors"), genderChoices: $("genders"), skinChoices: $("skins"),
+    nameColorToggle: $("colorToggle"), nameColorSwatch: $("colorSwatch"), skinToggle: $("skinToggle"), skinSwatch: $("skinSwatch"),
     nameToggle: $("nameToggle"), genderToggle: $("genderToggle"), genderValue: $("genderValue"),
     picker: $("picker"), pickerTitle: $("pickerTitle"), pickerBack: $("pickerBack"),
   }, api);
@@ -52,7 +52,7 @@ it("offers Auto and every name color, and shows the name as chat will", () => {
   f.editor.open();
   expect(f.colors().map(button => button.getAttribute("aria-label"))).toEqual(NAME_COLORS.map(entry => entry.name));
   expect(f.colors()[0].getAttribute("aria-pressed")).toBe("true");
-  expect(f.$("value").textContent).toBe("Auto");
+  expect(f.$("colorSwatch").getAttribute("aria-label")).toBe("Auto");
   expect(f.$("preview").textContent).toContain("Vis");
   expect(f.$("preview").style.color).toBe(autoNameColor("abc"));
 });
@@ -68,11 +68,11 @@ it("opens each picker in its own window, from its pencil or its tile, and Back c
   f.click(f.$("skinToggle"));
   expect(f.$("pickerTitle").textContent).toBe("Skin Tone");
   expect([f.$("colors").hidden, f.$("skins").hidden]).toEqual([true, false]);
-  expect(f.$("skinValue").textContent).toBe("Porcelain");
+  expect(f.$("skinSwatch").getAttribute("aria-label")).toBe("Porcelain");
   f.click(f.$("nameToggle"));
   expect(f.$("pickerTitle").textContent).toBe("Name");
   expect(f.$<HTMLInputElement>("input").value).toBe("Vis");
-  expect(f.$("genderValue").textContent).toContain("Male");
+  expect(f.$("genderValue").querySelector("img")?.getAttribute("alt")).toBe("Male");
   f.click(f.$("pickerBack"));
   expect(f.$("picker").hidden).toBe(true);
   expect(f.editor.isOpen()).toBe(true);
@@ -88,7 +88,7 @@ it("saves a name color on tap, closes the picker and repaints the preview in it"
   await f.settle();
   expect(f.api.setNameColor).toHaveBeenCalledExactlyOnceWith(4);
   expect(f.colors()[4].getAttribute("aria-pressed")).toBe("true");
-  expect(f.$("value").textContent).toBe(NAME_COLORS[4].name);
+  expect(f.$("colorSwatch").getAttribute("aria-label")).toBe(NAME_COLORS[4].name);
   expect(f.$("preview").style.color).toBe(NAME_COLORS[4].color);
   expect(f.api.showMessage).toHaveBeenCalledWith("NAME COLOR UPDATED", "#72ef58");
   expect(f.$("picker").hidden).toBe(true);
@@ -112,7 +112,7 @@ it("saves a skin tone, and opens the picture picker from the picture", async () 
   await f.settle();
   expect(f.api.setSkinTone).toHaveBeenCalledWith(1);
   expect(f.$("skins").querySelector('[data-skin-tone="1"]')!.getAttribute("aria-pressed")).toBe("true");
-  expect(f.$("skinValue").textContent).toBe("Ivory");
+  expect(f.$("skinSwatch").getAttribute("aria-label")).toBe("Ivory");
   f.click(f.$("picture"));
   f.click(f.$("pictureButton"));
   expect(f.api.openIconPicker).toHaveBeenCalledTimes(2);

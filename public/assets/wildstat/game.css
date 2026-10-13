@@ -3271,7 +3271,9 @@
   .profile-editor-item { display: grid; grid-template-columns: 42px minmax(0, 250px) 42px; justify-content: center; align-items: center; gap: 12px; }
   .profile-editor-item > :first-child { grid-column: 2; }
   .profile-editor-picture { justify-self: center; width: 104px; min-width: 104px; height: 104px; border-radius: 16px; cursor: pointer; }
-  .profile-editor-preview { display: flex; align-items: center; gap: 5px; min-width: 0; overflow: hidden; font-family: var(--player-name-font); font-size: 20px; font-weight: 900; line-height: 1.25; white-space: nowrap; }
+  /* Only the name sits in a pill, as in Ryan's reference. */
+  .profile-editor-name-pill { display: flex; align-items: center; min-width: 0; height: 46px; padding: 0 18px; border-radius: 23px; background: #0c0c0c; box-shadow: inset 0 0 0 1px rgba(255,255,255,.1); cursor: pointer; }
+  .profile-editor-preview { display: flex; align-items: center; gap: 5px; min-width: 0; overflow: hidden; font-family: var(--player-name-font); font-size: 17px; font-weight: 900; line-height: 1.25; white-space: nowrap; }
   /* Name color, gender and skin tone: one quiet line each, a small square or symbol before the text. */
   .profile-editor-visual { display: flex; align-items: center; gap: 8px; justify-self: center; cursor: pointer; }
   .profile-editor-caption { color: var(--muted); font-size: 14px; font-weight: 900; white-space: nowrap; }

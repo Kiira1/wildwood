@@ -11,10 +11,11 @@ type Result = Promise<{ ok?: boolean; error?: string } | undefined>;
 export type ProfileEditorElements = {
   overlay: HTMLElement; close: HTMLElement; picture: HTMLButtonElement; pictureButton: HTMLButtonElement; preview: HTMLElement;
   nameForm: HTMLFormElement; nameInput: HTMLInputElement; saveName: HTMLButtonElement;
-  nameColors: HTMLElement; nameColorValue: HTMLElement; genderChoices: HTMLElement; skinChoices: HTMLElement;
+  nameColors: HTMLElement; genderChoices: HTMLElement; skinChoices: HTMLElement;
   /** White pencils, one per setting, each opening its picker (Ryan: "Just use white pencils to open pickers"). */
   nameToggle: HTMLButtonElement; nameColorToggle: HTMLButtonElement; genderToggle: HTMLButtonElement; skinToggle: HTMLButtonElement;
-  nameColorSwatch: HTMLElement; genderValue: HTMLElement; skinSwatch: HTMLElement; skinValue: HTMLElement;
+  /** Just the mark after each label (Ryan: "Dont be redundant"): the color square, the gender symbol, the skin square. */
+  nameColorSwatch: HTMLElement; genderValue: HTMLElement; skinSwatch: HTMLElement;
   /** The window each picker opens in (Ryan: "Pickers should open there own windows"). */
   picker: HTMLElement; pickerTitle: HTMLElement; pickerBack: HTMLElement;
 };
@@ -77,8 +78,7 @@ export function createProfileEditor(elements: ProfileEditorElements, api: {
     replaceChildrenIfChanged(elements.genderValue, target => {
       if (!isSelectedPlayerGender(gender)) { target.textContent = "Not Set"; return; }
       const genderIcon = appendPlayerGenderIcon(target, gender);
-      if (genderIcon) { genderIcon.alt = ""; genderIcon.setAttribute("aria-hidden", "true"); }
-      target.append(playerGenderLabel(gender));
+      if (genderIcon) genderIcon.alt = playerGenderLabel(gender);
     });
     replaceChildrenIfChanged(elements.preview, target => appendPlayerIdentity(target,
       { identity, name, nameColor: color }, { chat: true }));
@@ -88,12 +88,12 @@ export function createProfileEditor(elements: ProfileEditorElements, api: {
     colorButtons[NAME_COLOR_AUTO].style.setProperty("--name-color", autoNameColor(identity));
     press(colorButtons, button => Number(button.dataset.nameColor) === color);
     const label = NAME_COLORS[color]?.name ?? "Auto";
-    if (elements.nameColorValue.textContent !== label) elements.nameColorValue.textContent = label;
+    if (elements.nameColorSwatch.getAttribute("aria-label") !== label) { elements.nameColorSwatch.setAttribute("aria-label", label); elements.nameColorSwatch.title = label; }
     elements.nameColorSwatch.style.background = shown;
     const skinChoice = skinButtons().find(button => Number(button.dataset.skinTone) === skin);
     elements.skinSwatch.style.background = skinChoice?.style.background ?? "";
     const skinLabel = (skinChoice?.getAttribute("aria-label") ?? "").replace(/\b\w/g, letter => letter.toUpperCase());
-    if (elements.skinValue.textContent !== skinLabel) elements.skinValue.textContent = skinLabel;
+    if (elements.skinSwatch.getAttribute("aria-label") !== skinLabel) { elements.skinSwatch.setAttribute("aria-label", skinLabel); elements.skinSwatch.title = skinLabel; }
     press(genderButtons, button => Number(button.dataset.gender) === gender);
     press(skinButtons(), button => Number(button.dataset.skinTone) === skin);
   }
