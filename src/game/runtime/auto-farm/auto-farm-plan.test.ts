@@ -140,8 +140,8 @@ it('Fight At is 1x until set, snaps anything to the nearest step, and survives a
   expect(powerStep(.01)).toBe(.1);
   m.values.set(AUTO_FARM_BOSS_POWER_KEY, 'nope');
   expect(readBossPower(m.storage)).toBe(1);
-  // Move At is its own slider, kept apart.
-  expect(readMovePower(m.storage)).toBe(1);
+  // Move At is its own slider, kept apart, 2x until set (DEFAULT_MOVE_STEP).
+  expect(readMovePower(m.storage)).toBe(2);
   writeMovePower(3, m.storage);
   expect(m.values.get(AUTO_FARM_MOVE_POWER_KEY)).toBe('3');
   expect(readBossPower(m.storage)).toBe(1);

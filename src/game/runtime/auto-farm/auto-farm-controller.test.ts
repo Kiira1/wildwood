@@ -4,7 +4,7 @@ import { parseHTML } from 'linkedom';
 import { createBalanceApologyGiftController } from '../../../ui/balance-apology-gift-controller';
 import { createGameBootstrap } from '../game-bootstrap';
 import { createEnemyLifecycle } from '../enemies/enemy-lifecycle';
-import { createAutoFarmController, autoFarmStandoff, AUTO_FARM_REACH_MARGIN, MOVE_ON_FIGHT_MS, PULL_WAIT_SECONDS } from './auto-farm-controller';
+import { createAutoFarmController, autoFarmStandoff, AUTO_FARM_REACH_MARGIN, BOSS_RETRY_GROWTH, MOVE_ON_FIGHT_MS, PULL_TURN_SECONDS, PULL_WAIT_SECONDS } from './auto-farm-controller';
 import { formatCompactNumber } from '../../../../shared/compact-number';
 import { createEnemySimulation } from '../enemies/enemy-simulation';
 import { attackRangeWithResearch } from '../../../../shared/utility-research';
@@ -537,6 +537,7 @@ describe('autofarm plans: sliders, the boss and the next map', () => {
       const s = planned({ power: () => power, mapPower: mapId => mapId === 'beginner_desert' ? 1_200 : 100,
         nextPortal: () => ({ x: 200, y: 500, destination: 'beginner_desert' }) });
       s.add('Bramble', 900, 500);
+      s.farm.setMovePower(1);
       s.farm.start([health]);
       // Move On off: it farms, and tells quietly what it would wait for.
       s.tick();
@@ -635,7 +636,7 @@ describe('autofarm plans: sliders, the boss and the next map', () => {
       expect(s.values.get(AUTO_FARM_MOVE_POWER_KEY)).toBe('0.5');
     });
 
-    it('Fight Bosses fights once power reaches the boss, until it or the player is down, and goes again with no wait', () => {
+    it('Fight Bosses fights once power reaches the boss, until it or the player is down, and tries again once power has grown', () => {
       let power = 1_500;
       const boss = { x: 900, y: 500, r: 60, hp: 1_000, maxHp: 1_000 };
       const s = planned({ power: () => power, bossPower: () => 2_000, mapBoss: () => boss, bossUnlocksNext: () => true });
@@ -657,9 +658,12 @@ describe('autofarm plans: sliders, the boss and the next map', () => {
       s.player.hp = s.player.maxHp * .05;
       s.tick();
       expect(s.farm.state().phase).toBe('boss');
-      // Killed by the boss: back after the respawn at the same power, no wait and no more power asked.
+      // Killed by the boss: not again until power has grown BOSS_RETRY_GROWTH times.
       s.farm.defeated();
       s.player.hp = s.player.maxHp; s.advance(1_000); s.tick();
+      expect(s.farm.state().phase).toBe('farm');
+      expect(s.farm.bossStatus()).toBe(`Boss Again At ${at(2_000 * BOSS_RETRY_GROWTH)}`);
+      power = 2_000 * BOSS_RETRY_GROWTH; s.advance(1_000); s.tick();
       expect(s.farm.state().phase).toBe('boss');
       expect(s.farm.bossStatus()).toBe('Fighting Boss');
     });
@@ -849,6 +853,23 @@ describe('autofarm plans: sliders, the boss and the next map', () => {
     const pulled = s.farm.pulledGroupKeys();
     expect(pulled).toHaveLength(1);
     expect(s.farm.state().selected).toBe(pulled[0]);
+  });
+
+  it("with more on Aggro than the limit, they take turns being pulled instead of some waiting for good", () => {
+    const s = planned({ pullCamps: () => 1 });
+    s.add('Bramble', 900, 500); s.add('Needle', 900, 900);
+    s.farm.setAggroGroups([health, speed]);
+    expect(s.farm.startZero()).toBe(true);
+    const first = s.farm.pulledGroupKeys();
+    expect(first).toHaveLength(1);
+    const seen = new Set(first);
+    // Two minutes of farming, a frame at a time: the pull moves on each PULL_TURN_SECONDS.
+    for (let frame = 0; frame < (PULL_TURN_SECONDS * 2 + 5) * 10; frame++) {
+      s.farm.movement({ x: 0, y: 0, source: 'none' }, .1);
+      for (const key of s.farm.pulledGroupKeys()) seen.add(key);
+    }
+    expect(seen).toEqual(new Set([health, speed]));
+    expect(s.farm.state().active).toBe(true);
   });
 
   it("keeps the stats the player picked on the next map, and splits evenly where none of them is paid", () => {

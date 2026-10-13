@@ -43,3 +43,4 @@ export function mapReadiness(mapId: string, stats: PlayerPowerStats, balance: Ma
   const hits = stats.regen >= incoming || hit <= 0 ? Infinity : stats.maxHp / hit;
   return verdict(fightSeconds, hits, READINESS_LIMITS.fightSeconds, READINESS_LIMITS.hits);
 }
+

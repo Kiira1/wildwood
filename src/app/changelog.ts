@@ -3,6 +3,10 @@ export const RELEASE_NOTES: Record<string, string[]> = {
     "Move On and Fight Bosses check the real enemies and boss fight, not a fixed power table",
     "Move On and Fight Bosses say what you need: Need More Damage or Need More Health",
     "Auto Farm gives Damage twice the farming time of other stats",
+    "Move At defaults to 2x: Auto Farm moves on once it could handle enemies twice as strong",
+    "After dying to a boss, Auto Farm tries it again once your power has grown 25%",
+    "More stats on Aggro than you can pull now take turns instead of waiting",
+    "Dying no longer blocks taps on menus and chat",
   ],
   "0.901.64": [
     "Auto Farm: tap Off, Farm or Aggro for each stat, in place of the sliders",

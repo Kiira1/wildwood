@@ -214,13 +214,19 @@ export function powerStep(value: number) {
   return POWER_STEPS.reduce((best, step) => Math.abs(Math.log(step / value)) < Math.abs(Math.log(best / value)) ? step : best, DEFAULT_POWER_STEP as number);
 }
 export const powerLabel = (value: number) => `${powerStep(value)}x`;
-function readStep(key: string, storage: () => Storage | undefined) {
-  try { const saved = storage()?.getItem(key); return saved == null ? DEFAULT_POWER_STEP : powerStep(Number(saved)); } catch { return DEFAULT_POWER_STEP; }
+function readStep(key: string, storage: () => Storage | undefined, fallback: number = DEFAULT_POWER_STEP) {
+  try { const saved = storage()?.getItem(key); return saved == null ? fallback : powerStep(Number(saved)); } catch { return fallback; }
 }
+/**
+ * Move At for a player who never set it: 2x, ready for the next map's enemies twice as strong. Chosen in the
+ * autofarm sim over six hours from a fresh character (0.901.66): 1x 330k power and 207 deaths, 1.5x 375k and
+ * 158, 2x 436k and 107, 3x 414k and 63. Waiting for the margin made the next map safe enough to farm faster.
+ */
+export const DEFAULT_MOVE_STEP = 2;
 function writeStep(key: string, value: number, storage: () => Storage | undefined) {
   try { storage()?.setItem(key, String(powerStep(value))); } catch { /* Applies this session. */ }
 }
-export const readMovePower = (storage: () => Storage | undefined = () => localStorage) => readStep(AUTO_FARM_MOVE_POWER_KEY, storage);
+export const readMovePower = (storage: () => Storage | undefined = () => localStorage) => readStep(AUTO_FARM_MOVE_POWER_KEY, storage, DEFAULT_MOVE_STEP);
 export const writeMovePower = (value: number, storage: () => Storage | undefined = () => localStorage) => writeStep(AUTO_FARM_MOVE_POWER_KEY, value, storage);
 export const readBossPower = (storage: () => Storage | undefined = () => localStorage) => readStep(AUTO_FARM_BOSS_POWER_KEY, storage);
 export const writeBossPower = (value: number, storage: () => Storage | undefined = () => localStorage) => writeStep(AUTO_FARM_BOSS_POWER_KEY, value, storage);

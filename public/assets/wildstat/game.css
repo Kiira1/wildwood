@@ -2251,7 +2251,8 @@
     height: 100dvh;
     background: transparent;
     color: #f02d3d;
-    pointer-events: auto;
+    /* Taps go through to the menus and chat under it (Ryan: death "shouldn't interrupt clicking menus or chatting"). */
+    pointer-events: none;
     opacity: 0;
     transition: opacity .24s ease-out;
   }

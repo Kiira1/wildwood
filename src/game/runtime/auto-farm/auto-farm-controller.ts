@@ -36,6 +36,14 @@ const BOSS_WIN_SETTLE_MS = 5_000;
  * the agro group, time to move on"); an Aggro run's chasers never stop coming, so the wait has an end.
  */
 export const MOVE_ON_FIGHT_MS = 20_000;
+/**
+ * After dying to a boss (or on the way to it), it is tried again only once power has grown this much. The
+ * readiness check plays the fight with nobody dodging and misses some of a boss's damage; a build it judged
+ * ready died to the forest dragon hundreds of times over in the autofarm sim.
+ */
+export const BOSS_RETRY_GROWTH = 1.25;
+/** How long each Aggro group's turn at being pulled lasts when more are on Aggro than the pull limit. */
+export const PULL_TURN_SECONDS = 60;
 /** Damage gets this many times the farming time of each other stat on Farm (Ryan, 0.901.65): kills get faster, and every stat with them. */
 export const DAMAGE_FARM_WEIGHT = 2;
 /**
@@ -270,28 +278,52 @@ export function createAutoFarmController(options: {
   }
   function pulledGroups() {
     // Zero during an Aggro run: its own chasing groups are the run's pull.
-    const count = pullLimit(), key = `${options.mapId()}|${spawnSites.length}|${selected}|${count}|${order.join()}|${pullPicks?.join() ?? '-'}`;
+    const count = pullLimit(), key = `${options.mapId()}|${spawnSites.length}|${selected}|${count}|${order.join()}|${pullPicks?.join() ?? '-'}|${pullTurn}`;
     if (key === pulledKey) return pulled;
     const preferred = [selected, ...order].filter((group): group is string => Boolean(group));
     if (pullPicks) {
       const switched = aggroGroups();
-      pulled = new Set([...new Set([...preferred.filter(group => switched.includes(group)), ...switched])].slice(0, count));
+      // More on Aggro than the limit: they take turns, the ones pulled least on this map first (a player:
+      // "split my agro priorities evenly instead of just ignoring them entirely"). Within the limit, all of them.
+      const turns = switched.length > count && pulledTime.size
+        ? [...switched].sort((a, b) => (pulledTime.get(a) ?? 0) - (pulledTime.get(b) ?? 0))
+        : [...new Set([...preferred.filter(group => switched.includes(group)), ...switched])];
+      pulled = new Set(turns.slice(0, count));
     } else pulled = new Set([...new Set(preferred)].slice(0, count));
     pulledKey = key;
     return pulled;
   }
-  /** Sliders all at 0%: an Aggro run's chasing groups, or the groups pulled outside one (the panel's Go does the same). */
+  /** Seconds each Aggro group has been pulled on this map, and the turn counter that moves the pull on. */
+  const pulledTime = new Map<string, number>();
+  let pullTurn = 0, pullTurnClock = 0, pullTimeMap = '';
+  /**
+   * Turns move on every PULL_TURN_SECONDS of farming, or at once when every pulled group is cleared while one
+   * waiting has enemies up. A new turn picks again, so the camp being farmed is one that is coming.
+   */
+  function takePullTurns(dt: number) {
+    if (pullTimeMap !== options.mapId()) { pullTimeMap = options.mapId(); pulledTime.clear(); pullTurnClock = 0; }
+    const switched = pullPicks ? aggroGroups() : [];
+    if (switched.length <= pullLimit()) return;
+    const pulledNow = pulledGroups();
+    for (const group of pulledNow) pulledTime.set(group, (pulledTime.get(group) ?? 0) + dt);
+    pullTurnClock += dt;
+    const alive = new Map(choices().map(entry => [entry.key as string, entry.alive]));
+    const cleared = [...pulledNow].every(group => !(alive.get(group) ?? 0)) && switched.some(group => !pulledNow.has(group) && (alive.get(group) ?? 0) > 0);
+    if (pullTurnClock >= PULL_TURN_SECONDS || cleared) { pullTurn++; pullTurnClock = 0; planClock = 0; }
+  }
+  /** Nothing on Farm: an Aggro run's chasing groups, or every group on Aggro outside one, taking turns (the panel's Go does the same). */
   function zeroPlanGroups(): string[] {
     const chasing = [...forcedGroups()];
-    return chasing.length ? chasing : pulling() ? [...pulledGroups()] : [];
+    return chasing.length ? chasing : pulling() ? (pullPicks ? aggroGroups() : [...pulledGroups()]) : [];
   }
   /** Whether Pull is bringing anything: a group switched to Aggro, or Pull Whole Group on before any was. */
   const pulling = () => pullPicks ? pulledGroups().size > 0 : pullAll;
   /** Pull brings every group it farms: all of it comes to the player, so walking to camps would only waste time. It stands and fights. */
   function pullCoversFarm() {
     if (!pulling() || !active || manualControl || phase !== 'farm' || !order.length) return false;
-    const pulledNow = pulledGroups();
-    return order.every(group => pulledNow.has(group));
+    // An Aggro group waiting its turn counts as coming: it is never walked to.
+    const pulledNow = pulledGroups(), switched = new Set(pullPicks ? aggroGroups() : []);
+    return order.every(group => pulledNow.has(group) || switched.has(group));
   }
   const pulledEnemy = (enemy: EnemyState) => !enemy.dead && !enemy.remoteCombatGhost && !enemy.generatedBoss && enemy.hp > 0 && pulledGroups().has(choiceKey(enemy));
   /** Pull Whole Group on: every enemy of the pulled groups comes, while it farms. */
@@ -355,8 +387,11 @@ export function createAutoFarmController(options: {
     }
     if (!fightBosses || options.reflectOnly?.() || !boss || boss.dead || bossBeaten()) return false;
     // A fight under way goes on until the boss or the player is down.
-    return phase === 'boss' || readyForBoss().ready;
+    if (phase === 'boss') return true;
+    return currentPower() >= (bossRetryPower.get(mapId) ?? 0) && readyForBoss().ready;
   }
+  /** Each map's boss after a death to it: the power to reach before trying again. */
+  const bossRetryPower = new Map<string, number>();
   /** Whether this map's boss is ready to fight with Fight At's margin, and the status line when it is not. */
   function readyForBoss(): { ready: boolean; line: string } {
     const readiness = options.bossReady ? cachedReady(`boss:${options.mapId()}:${bossPower}`, () => options.bossReady!(bossPower)) : null;
@@ -374,7 +409,11 @@ export function createAutoFarmController(options: {
    */
   function defeated() {
     if (!active && !pendingResume) return;
-    if (phase === 'boss') { phase = 'farm'; target = null; route = []; lastGoal = null; routeClock = 0; holding = false; }
+    if (phase === 'boss') {
+      // Killed by the boss, or on the way to it: not again on this map until the build has grown.
+      bossRetryPower.set(options.mapId(), currentPower() * BOSS_RETRY_GROWTH);
+      phase = 'farm'; target = null; route = []; lastGoal = null; routeClock = 0; holding = false;
+    }
   }
 
   function stop(reason = 'Autofarm stopped') {
@@ -466,6 +505,7 @@ export function createAutoFarmController(options: {
     const key = shareFarmKey(farmWeights(all), group => spent.get(group) ?? 0);
     if (key) select(key);
   }
+
 
   /**
    * Farm's pick (Ryan, 0.901.64): the Farm groups share the time evenly (damage twice over), leaving out a stat whose kill gives
@@ -583,6 +623,7 @@ export function createAutoFarmController(options: {
     }
     if (!active || options.paused()) return manual;
     choosePhase(dt);
+    if (phase === 'farm') takePullTurns(dt);
     const boss = phase === 'boss' ? options.mapBoss?.() ?? null : null;
     const portal = phase === 'portal' ? exitPortal() : null;
     if (phase !== 'farm') target = null;
@@ -709,6 +750,8 @@ export function createAutoFarmController(options: {
     if (bossBeaten()) return 'Boss Beaten';
     const boss = options.mapBoss?.();
     if (!boss || boss.dead) return '';
+    const retry = bossRetryPower.get(options.mapId()) ?? 0;
+    if (currentPower() < retry) return `Boss Again At ${atPower(retry)}`;
     const check = readyForBoss();
     return check.ready ? 'Boss Next' : check.line;
   }

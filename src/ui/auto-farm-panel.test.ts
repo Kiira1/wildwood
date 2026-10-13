@@ -480,19 +480,19 @@ it('Fight At sets how much of the boss power to wait for, 0.1x to 10x with 1x in
   expect(slider.getAttribute('aria-valuetext')).toBe('10x');
 });
 
-it('Move At sits under Move On, 0.1x to 10x of the next map power, and can be set while Move On is off', () => {
+it('Move At sits under Move On, 0.1x to 10x of the enemies\' strength, 2x until set, and can be set while Move On is off', () => {
   const s = setup();
   s.click('.farm-toggle');
   const row = s.document.querySelector<HTMLElement>('.farm-move-power')!, slider = row.querySelector('input')!;
-  expect(row.querySelector('output')!.textContent).toBe('1x');
+  expect(row.querySelector('output')!.textContent).toBe('2x');
   expect(slider.disabled).toBe(false);
   expect(row.classList.contains('is-off')).toBe(true);
   s.click('[data-switch="advance"]');
   expect(row.classList.contains('is-off')).toBe(false);
-  slider.value = '7';
+  slider.value = '8';
   slider.dispatchEvent(new s.window.Event('input', { bubbles: true }));
-  expect(s.farm.movePower()).toBe(2);
-  expect(row.querySelector('output')!.textContent).toBe('2x');
+  expect(s.farm.movePower()).toBe(3);
+  expect(row.querySelector('output')!.textContent).toBe('3x');
   // Its own setting: Fight At is untouched.
   expect(s.farm.bossPower()).toBe(1);
 });

@@ -22,7 +22,7 @@ const HELP_LINES: readonly [term: string, line: string][] = [
   ['Move On', "Goes to the next map once you'd kill its enemies fast and survive their hits, with them Move At times as strong (1x is just enough)."],
   ['Fight Bosses', "Fights the boss once you'd beat it, with it Fight At times as strong (1x is just enough), until it or you go down."],
   ['Deaths', 'It respawns and carries on with the same settings.'],
-  ['Aggro', 'Pulls its camps to you: one at a time, one more for each Aggro win. With nothing on Farm it stands still and fights only what it pulls.'],
+  ['Aggro', 'Pulls its camps to you: one at a time, one more for each Aggro win, taking turns when more are on Aggro. With nothing on Farm it stands still and fights only what it pulls.'],
   ['Target', 'Which enemy it hits first.'],
 ]
 /** The slider under a switch: how much of the map's or boss's power to have before it goes, 0.1x to 10x. */
@@ -174,7 +174,7 @@ export function createAutoFarmPanel(options: {
     saveModes(modes);
     const farmed = keysOn(modes, 'farm');
     if (!farmed.length) {
-      const plan = aggroRun() ? options.farm.chasingGroupKeys() : options.farm.pulledGroupKeys();
+      const plan = aggroRun() ? options.farm.chasingGroupKeys() : options.farm.aggroGroupKeys();
       return plan.length > 0 && options.farm.startZero(plan);
     }
     const fought = aggroRun() ? [] : keysOn(modes, 'aggro');

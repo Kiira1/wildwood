@@ -57,7 +57,7 @@ import { challengeMinimumInterval } from '../../../../../shared/prestige-challen
 import { createEmptyResearchRanks, type ResearchRanks } from '../../../../../shared/research';
 import type { BowSkillRoll } from '../../../../../shared/bow-skills';
 import type { PlayerPowerStats } from '../../../../../shared/player-power';
-import { AUTO_FARM_ADVANCE_KEY, AUTO_FARM_BOSSES_KEY } from '../auto-farm-plan';
+import { AUTO_FARM_ADVANCE_KEY, AUTO_FARM_BOSSES_KEY, writeMovePower } from '../auto-farm-plan';
 
 export const SIM_STEP_SECONDS = 1 / 60;
 const STEP_MS = 1000 / 60;
@@ -101,6 +101,8 @@ export type VirtualPlayerProfile = {
   push: FarmPush;
   /** "Boss & Next Map". */
   advance: boolean;
+  /** Move At: the margin Move On asks for (1 unless set). */
+  moveAt?: number;
   /** Move On and Fight Bosses by readiness from the live balance (map-readiness.ts), as the game does; off, by the old power table. */
   readiness?: boolean;
   /** The Reflect Only prestige challenge. */
@@ -232,6 +234,7 @@ export function createVirtualPlayer(profile: VirtualPlayerProfile, options: { du
   storage.setItem(AUTO_FARM_ADVANCE_KEY, profile.advance ? '1' : '0');
   // Fight Bosses with Move On: the profiles that move on fight what holds the way.
   storage.setItem(AUTO_FARM_BOSSES_KEY, profile.advance ? '1' : '0');
+  if (profile.moveAt) writeMovePower(profile.moveAt, () => storage as Storage);
   storage.setItem(AUTO_FARM_PULL_KEY, profile.pull ? '1' : '0');
 
   const bootstrap = createGameBootstrap();
