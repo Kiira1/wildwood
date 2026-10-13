@@ -2,7 +2,7 @@ import type { RewardType } from "./enemy-definitions";
 import { canonicalItemId, isUpgradeableItem, itemDefinition } from "./items";
 
 /**
- * Cards (Release B, Ryan 2026-10-13), as in Ragnarok Online: every campaign enemy and boss has a card, a rare
+ * Cards (Release B, 2026-10-13), as in Ragnarok Online: every campaign enemy and boss has a card, a rare
  * drop that goes into a slot of a piece of gear for good and gives it the card's effects. A card fits one kind
  * of gear: weapon cards are for offense, armor cards for defense, helmet cards for utility. Each card's effects
  * are hand-picked (the review page came from the same data); a card grows with its map, map 15 twice map 1,
