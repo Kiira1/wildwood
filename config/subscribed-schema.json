@@ -491,6 +491,12 @@
       "ricochet:f32",
       "piercingShot:f32"
     ],
+    "my_cards": [
+      "key:string",
+      "identity:identity",
+      "cardId:string",
+      "count:u32"
+    ],
     "my_chat_mute": [
       "identity:identity",
       "strikeAtMicros:array(u64)",
@@ -503,6 +509,13 @@
       "identity:identity",
       "itemId:string",
       "level:u8"
+    ],
+    "my_copy_slots": [
+      "copyId:u64",
+      "identity:identity",
+      "itemId:string",
+      "slots:u8",
+      "cards:array(string)"
     ],
     "my_cutscene_history": [
       "identity:identity",
@@ -550,6 +563,13 @@
       "piercingShot:f32",
       "createdAt:timestamp",
       "expiresAt:timestamp"
+    ],
+    "my_gear_slots": [
+      "key:string",
+      "identity:identity",
+      "itemId:string",
+      "slots:u8",
+      "cards:array(string)"
     ],
     "my_gem_purchases": [
       "reservationId:string",
@@ -828,6 +848,13 @@
     "player_free_respec": [
       "identity:identity",
       "usedAt:timestamp"
+    ],
+    "player_gear_slots": [
+      "key:string",
+      "identity:identity",
+      "itemId:string",
+      "slots:u8",
+      "cards:array(string)"
     ],
     "player_gem_drop": [
       "identity:identity",

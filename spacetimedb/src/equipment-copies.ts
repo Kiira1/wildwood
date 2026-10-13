@@ -10,6 +10,7 @@ import {
 import { bowSkillKey, bowSkillRollFor, ensureBowSkillRoll } from "./bow-skills";
 import { lootSettingsFor } from "./loot-settings";
 import { oreKindsHeldFor, promoteCopyRefine, refineLevelFor, setRefineLevel, swapFirstCopyRefine } from "./item-refine";
+import { clearGearSlots, gearSlotsFor, promoteCopySlots, swapFirstCopySlots } from "./gear-cards";
 import { readPlayerProgress } from "./wide-stats";
 
 /**
@@ -255,6 +256,7 @@ export function createEquipmentCopies(deps: {
       deps.writeProgressAndPresentation(ctx, deps.restoreItemToProgress(progress, offer.itemId));
       setFirstCopyRoll(ctx, ctx.sender, offer.itemId, roll);
       setRefineLevel(ctx, ctx.sender, offer.itemId, 0n, 0);
+      clearGearSlots(ctx, ctx.sender, offer.itemId);
     }
     ctx.db.pendingEquipmentOffer.id.delete(offer.id);
   }
@@ -266,7 +268,7 @@ export function createEquipmentCopies(deps: {
    * equipped, and the bag loses a copy rather than the item. The slot's tier
    * survives either way: it was never the item's to take away. A refine is the
    * copy's own: it goes with the copy destroyed, and the copy taking over brings
-   * its own.
+   * its own, and so are its slots and the cards in them.
    */
   function destroy(ctx: Ctx, itemId: string, copyId: bigint) {
     deps.requireControllingPlayer(ctx);
@@ -279,6 +281,7 @@ export function createEquipmentCopies(deps: {
       const copy = ownCopy(ctx, copyId);
       if (copy.itemId !== canonical) throw new SenderError("That copy is not in your inventory.");
       setRefineLevel(ctx, ctx.sender, canonical, copy.id, 0);
+      clearGearSlots(ctx, ctx.sender, canonical, copy.id);
       ctx.db.playerEquipmentCopy.id.delete(copy.id);
       return;
     }
@@ -287,20 +290,22 @@ export function createEquipmentCopies(deps: {
       moveEquipmentLock(ctx, ctx.sender, canonical, replacement.id, 0n);
       setFirstCopyRoll(ctx, ctx.sender, canonical, rollOf(replacement));
       promoteCopyRefine(ctx, ctx.sender, canonical, replacement.id);
+      promoteCopySlots(ctx, ctx.sender, canonical, replacement.id);
       ctx.db.playerEquipmentCopy.id.delete(replacement.id);
       // The worn item may have changed level: its power follows.
       deps.writeProgressAndPresentation(ctx, progress);
       return;
     }
     setRefineLevel(ctx, ctx.sender, canonical, 0n, 0);
+    clearGearSlots(ctx, ctx.sender, canonical);
     deps.writeProgressAndPresentation(ctx, deps.removeItemFromProgress(progress, canonical));
   }
 
   /**
    * Makes a kept copy the first copy, the one an equipment slot holds, by
-   * swapping its roll and its refine with the first copy's. The client then
-   * equips the item as usual. Copies of other items have no roll, but a refine
-   * of their own still swaps.
+   * swapping its roll, its refine and its slots with the first copy's. The
+   * client then equips the item as usual. Copies of other items have no roll,
+   * but a refine and slots of their own still swap.
    */
   function select(ctx: Ctx, copyId: bigint) {
     deps.requireControllingPlayer(ctx);
@@ -308,10 +313,12 @@ export function createEquipmentCopies(deps: {
     const copy = ownCopy(ctx, copyId);
     const progress = ownedProgress(ctx, copy.itemId);
     swapEquipmentLocks(ctx, ctx.sender, copy.itemId, copy.id);
-    if (refineLevelFor(ctx, ctx.sender, copy.itemId) !== refineLevelFor(ctx, ctx.sender, copy.itemId, copy.id)) {
-      swapFirstCopyRefine(ctx, ctx.sender, copy.itemId, copy.id);
-      deps.writeProgressAndPresentation(ctx, progress);
-    }
+    const refineDiffers = refineLevelFor(ctx, ctx.sender, copy.itemId) !== refineLevelFor(ctx, ctx.sender, copy.itemId, copy.id);
+    const firstSlots = gearSlotsFor(ctx, ctx.sender, copy.itemId), keptSlots = gearSlotsFor(ctx, ctx.sender, copy.itemId, copy.id);
+    const slotsDiffer = firstSlots.slots !== keptSlots.slots || firstSlots.cards.join() !== keptSlots.cards.join();
+    if (refineDiffers) swapFirstCopyRefine(ctx, ctx.sender, copy.itemId, copy.id);
+    if (slotsDiffer) swapFirstCopySlots(ctx, ctx.sender, copy.itemId, copy.id);
+    if (refineDiffers || slotsDiffer) deps.writeProgressAndPresentation(ctx, progress);
     if (!isSkillBow(copy.itemId)) return;
     const first = bowSkillRollFor(ctx, ctx.sender, copy.itemId);
     setFirstCopyRoll(ctx, ctx.sender, copy.itemId, rollOf(copy));

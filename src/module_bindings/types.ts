@@ -1437,11 +1437,17 @@ export type MyBalanceApologyNotice = __Infer<typeof MyBalanceApologyNotice>;
 export const MyBowSkills = __t.object("MyBowSkills", {});
 export type MyBowSkills = __Infer<typeof MyBowSkills>;
 
+export const MyCards = __t.object("MyCards", {});
+export type MyCards = __Infer<typeof MyCards>;
+
 export const MyChatMute = __t.object("MyChatMute", {});
 export type MyChatMute = __Infer<typeof MyChatMute>;
 
 export const MyCopyRefines = __t.object("MyCopyRefines", {});
 export type MyCopyRefines = __Infer<typeof MyCopyRefines>;
+
+export const MyCopySlots = __t.object("MyCopySlots", {});
+export type MyCopySlots = __Infer<typeof MyCopySlots>;
 
 export const MyCutsceneHistory = __t.object("MyCutsceneHistory", {});
 export type MyCutsceneHistory = __Infer<typeof MyCutsceneHistory>;
@@ -1463,6 +1469,9 @@ export type MyEquipmentLocks = __Infer<typeof MyEquipmentLocks>;
 
 export const MyEquipmentOffers = __t.object("MyEquipmentOffers", {});
 export type MyEquipmentOffers = __Infer<typeof MyEquipmentOffers>;
+
+export const MyGearSlots = __t.object("MyGearSlots", {});
+export type MyGearSlots = __Infer<typeof MyGearSlots>;
 
 export const MyGemPurchases = __t.object("MyGemPurchases", {});
 export type MyGemPurchases = __Infer<typeof MyGemPurchases>;
@@ -1786,6 +1795,14 @@ export const PlayerBowSkill = __t.object("PlayerBowSkill", {
 });
 export type PlayerBowSkill = __Infer<typeof PlayerBowSkill>;
 
+export const PlayerCard = __t.object("PlayerCard", {
+  key: __t.string(),
+  identity: __t.identity(),
+  cardId: __t.string(),
+  count: __t.u32(),
+});
+export type PlayerCard = __Infer<typeof PlayerCard>;
+
 export const PlayerChatHearts = __t.object("PlayerChatHearts", {
   identity: __t.identity(),
   chatHeartsReceived: __t.u64(),
@@ -1820,6 +1837,15 @@ export const PlayerCopyRefine = __t.object("PlayerCopyRefine", {
   level: __t.u8(),
 });
 export type PlayerCopyRefine = __Infer<typeof PlayerCopyRefine>;
+
+export const PlayerCopySlots = __t.object("PlayerCopySlots", {
+  copyId: __t.u64(),
+  identity: __t.identity(),
+  itemId: __t.string(),
+  slots: __t.u8(),
+  cards: __t.array(__t.string()),
+});
+export type PlayerCopySlots = __Infer<typeof PlayerCopySlots>;
 
 export const PlayerCutsceneHistory = __t.object("PlayerCutsceneHistory", {
   identity: __t.identity(),
@@ -1903,6 +1929,15 @@ export const PlayerFreeRespec = __t.object("PlayerFreeRespec", {
   usedAt: __t.timestamp(),
 });
 export type PlayerFreeRespec = __Infer<typeof PlayerFreeRespec>;
+
+export const PlayerGearSlots = __t.object("PlayerGearSlots", {
+  key: __t.string(),
+  identity: __t.identity(),
+  itemId: __t.string(),
+  slots: __t.u8(),
+  cards: __t.array(__t.string()),
+});
+export type PlayerGearSlots = __Infer<typeof PlayerGearSlots>;
 
 export const PlayerGemDrop = __t.object("PlayerGemDrop", {
   identity: __t.identity(),

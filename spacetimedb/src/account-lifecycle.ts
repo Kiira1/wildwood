@@ -29,6 +29,7 @@ import { mergeItemGifts, removeItemGifts } from "./item-gifts";
 import { mergeBowSkills, removeBowSkills } from "./bow-skills";
 import { mergeEquipmentCopies } from "./equipment-copies";
 import { mergeRefineData } from "./item-refine";
+import { mergeCardData } from "./gear-cards";
 import { mergeMiningData } from "./mining";
 import { mergeMailboxReceipts, removeMailboxReceipts } from "./mailbox";
 import { mergeOnboarding } from "./onboarding";
@@ -257,6 +258,7 @@ export function createAccountLifecycle(deps: AccountLifecycleDeps) {
     mergeBowSkills(ctx, link.guest, ctx.sender);
     mergeEquipmentCopies(ctx, link.guest, ctx.sender);
     mergeRefineData(ctx, link.guest, ctx.sender);
+    mergeCardData(ctx, link.guest, ctx.sender);
     mergeMiningData(ctx, link.guest, ctx.sender);
     mergeMailboxReceipts(ctx, link.guest, ctx.sender);
     mergeOnboarding(ctx, link.guest, ctx.sender);

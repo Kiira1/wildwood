@@ -4,6 +4,7 @@
 import { normalizeUpgradeBenchSlot, deleteActiveItemUpgrade, rebaseActiveItemUpgradeTimer } from "./upgrade-bench-slots";
 import { removeEquipmentOffers, removeEquipmentCopies } from "./equipment-copies";
 import { removeRefineData } from "./item-refine";
+import { removeCardData } from "./gear-cards";
 import { deleteSnapshotRow, updateSnapshotRow, insertSnapshotRow } from "./snapshot-row-writes";
 import { ScheduleAt } from "spacetimedb";
 import { slotUpgradeTierFor, slotUpgradeKey, defaultPlayerProgress, restoreItemToProgress } from "./progress-helpers";
@@ -34,8 +35,8 @@ export function removePlayerItemDrops(ctx: any, identity: any, keepCopies = fals
   for (const drop of [...ctx.db.playerItemDrop.byIdentity.filter(identity) as Iterable<any>]) {
     ctx.db.playerItemDrop.key.delete(drop.key);
   }
-  if (keepCopies) removeEquipmentOffers(ctx, identity); // Prestige keeps the bag, kept copies, refines and ores included.
-  else { removeEquipmentCopies(ctx, identity); removeRefineData(ctx, identity); } // Kept copies, waiting offers, refines and ores are gear too.
+  if (keepCopies) removeEquipmentOffers(ctx, identity); // Prestige keeps the bag, kept copies, refines, ores and cards included.
+  else { removeEquipmentCopies(ctx, identity); removeRefineData(ctx, identity); removeCardData(ctx, identity); } // Kept copies, waiting offers, refines, ores and cards are gear too.
 }
 
 export function removePlayerItemUpgradeData(ctx: any, identity: any, removeDrops = false) {

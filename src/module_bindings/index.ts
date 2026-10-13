@@ -318,8 +318,10 @@ import MyAdGemRewardRow from "./my_ad_gem_reward_table";
 import MyAudioSettingsRow from "./my_audio_settings_table";
 import MyBalanceApologyNoticeRow from "./my_balance_apology_notice_table";
 import MyBowSkillsRow from "./my_bow_skills_table";
+import MyCardsRow from "./my_cards_table";
 import MyChatMuteRow from "./my_chat_mute_table";
 import MyCopyRefinesRow from "./my_copy_refines_table";
+import MyCopySlotsRow from "./my_copy_slots_table";
 import MyCutsceneHistoryRow from "./my_cutscene_history_table";
 import MyDailyGemBonusRow from "./my_daily_gem_bonus_table";
 import MyDefeatSessionRestrictionRow from "./my_defeat_session_restriction_table";
@@ -327,6 +329,7 @@ import MyEndlessTravelAccessRow from "./my_endless_travel_access_table";
 import MyEquipmentCopiesRow from "./my_equipment_copies_table";
 import MyEquipmentLocksRow from "./my_equipment_locks_table";
 import MyEquipmentOffersRow from "./my_equipment_offers_table";
+import MyGearSlotsRow from "./my_gear_slots_table";
 import MyGemPurchasesRow from "./my_gem_purchases_table";
 import MyGemWalletRow from "./my_gem_wallet_table";
 import MyGuildHallRow from "./my_guild_hall_table";
@@ -366,6 +369,7 @@ import PlayerCombatRatingRow from "./player_combat_rating_table";
 import PlayerDailyQuestRow from "./player_daily_quest_table";
 import PlayerDeathFrameRow from "./player_death_frame_table";
 import PlayerFreeRespecRow from "./player_free_respec_table";
+import PlayerGearSlotsRow from "./player_gear_slots_table";
 import PlayerGemDropRow from "./player_gem_drop_table";
 import PlayerItemDropRow from "./player_item_drop_table";
 import PlayerItemRefineRow from "./player_item_refine_table";
@@ -968,6 +972,20 @@ const tablesSchema = __schema({
       { name: 'player_free_respec_identity_key', constraint: 'unique', columns: ['identity'] },
     ],
   }, PlayerFreeRespecRow),
+  playerGearSlots: __table({
+    name: 'player_gear_slots',
+    indexes: [
+      { accessor: 'identity', name: 'player_gear_slots_identity_idx_btree', algorithm: 'btree', columns: [
+        'identity',
+      ] },
+      { accessor: 'key', name: 'player_gear_slots_key_idx_btree', algorithm: 'btree', columns: [
+        'key',
+      ] },
+    ],
+    constraints: [
+      { name: 'player_gear_slots_key_key', constraint: 'unique', columns: ['key'] },
+    ],
+  }, PlayerGearSlotsRow),
   playerGemDrop: __table({
     name: 'player_gem_drop',
     indexes: [
@@ -1496,6 +1514,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, MyBowSkillsRow),
+  myCards: __table({
+    name: 'my_cards',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MyCardsRow),
   myChatMute: __table({
     name: 'my_chat_mute',
     indexes: [
@@ -1510,6 +1535,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, MyCopyRefinesRow),
+  myCopySlots: __table({
+    name: 'my_copy_slots',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MyCopySlotsRow),
   myCutsceneHistory: __table({
     name: 'my_cutscene_history',
     indexes: [
@@ -1559,6 +1591,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, MyEquipmentOffersRow),
+  myGearSlots: __table({
+    name: 'my_gear_slots',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MyGearSlotsRow),
   myGemPurchases: __table({
     name: 'my_gem_purchases',
     indexes: [
