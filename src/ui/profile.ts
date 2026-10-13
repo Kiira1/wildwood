@@ -36,6 +36,7 @@ export function effectiveProfileStats(
   progress: PlayerProfileData["progress"],
   research: PlayerResearch = createEmptyResearchRanks(),
   itemUpgradeLevels: Record<string, number> = {},
+  itemRefines: Record<string, number> = {},
 ) {
   const multiplier = (rank = 0, percentPerRank = 0) => 1 + rank * percentPerRank / 100;
   const weaponItem = progress.equippedRightHand || progress.equippedLeftHand;
@@ -44,10 +45,17 @@ export function effectiveProfileStats(
   // whatever is in it inherits the tier. Looking one up by item id missed
   // every time, so the panel showed the gear with no upgrades behind it.
   const slotUpgradeLevel = (itemId: string) => slotUpgradeLevelFor(itemUpgradeLevels, itemId);
-  const headUpgradeLevel = slotUpgradeLevel(progress.equippedHead);
-  const chestUpgradeLevel = slotUpgradeLevel(progress.equippedChest);
-  const weaponUpgradeLevel = slotUpgradeLevel(weaponItem);
+  // What stats read: the slot's tier and the worn item's own refine (items.ts ItemLevel).
+  const itemLevel = (itemId: string) => ({ tier: slotUpgradeLevel(itemId), refine: itemRefines[itemId] ?? 0 });
+  const headUpgradeLevel = itemLevel(progress.equippedHead);
+  const chestUpgradeLevel = itemLevel(progress.equippedChest);
+  const weaponUpgradeLevel = itemLevel(weaponItem);
   const healthEquipmentBonus = equipmentMaxHealthMultiplierBonus(progress.equippedHead, progress.equippedChest, headUpgradeLevel, chestUpgradeLevel);
+  // The same gear with its slot tiers but no refines: the step between the two is what refining added.
+  const tieredHealthBonus = equipmentMaxHealthMultiplierBonus(progress.equippedHead, progress.equippedChest, slotUpgradeLevel(progress.equippedHead), slotUpgradeLevel(progress.equippedChest));
+  const tieredDamageBonus = equipmentDamageMultiplierBonus(weaponItem, progress.equippedHead, progress.equippedChest,
+    slotUpgradeLevel(weaponItem), slotUpgradeLevel(progress.equippedHead), slotUpgradeLevel(progress.equippedChest));
+  const tieredRegenBonus = equipmentRegenerationMultiplierBonus(progress.equippedHead, progress.equippedChest, slotUpgradeLevel(progress.equippedHead), slotUpgradeLevel(progress.equippedChest));
   // The same gear with no slot tiers behind it. The difference is what the
   // bench has paid for, which is otherwise invisible inside one Equipment line.
   const bareHealthBonus = equipmentMaxHealthMultiplierBonus(progress.equippedHead, progress.equippedChest, 0, 0);
@@ -61,16 +69,21 @@ export function effectiveProfileStats(
   const speedMultiplier = multiplier(research.moveSpeed, 2);
   const baseSpeed = progress.speedOverride > 0 ? progress.speedOverride : progress.speed;
   const utilitySpeed = utilityMovementSpeedBonus(research.utilityMoveSpeed);
-  const powerStats = effectivePlayerPowerStats(progress, research, slotUpgradeLevel);
+  const powerStats = effectivePlayerPowerStats(progress, research, itemLevel);
   return {
     ...powerStats,
     speed: baseSpeed * speedMultiplier + utilitySpeed,
     equipment: { health: healthEquipmentBonus, damage: damageEquipmentBonus, regen: regenEquipmentBonus },
     gear: { health: bareHealthBonus, damage: bareDamageBonus, regen: bareRegenBonus },
     slotTiers: {
-      health: Math.max(0, healthEquipmentBonus - bareHealthBonus),
-      damage: Math.max(0, damageEquipmentBonus - bareDamageBonus),
-      regen: Math.max(0, regenEquipmentBonus - bareRegenBonus),
+      health: Math.max(0, tieredHealthBonus - bareHealthBonus),
+      damage: Math.max(0, tieredDamageBonus - bareDamageBonus),
+      regen: Math.max(0, tieredRegenBonus - bareRegenBonus),
+    },
+    refines: {
+      health: Math.max(0, healthEquipmentBonus - tieredHealthBonus),
+      damage: Math.max(0, damageEquipmentBonus - tieredDamageBonus),
+      regen: Math.max(0, regenEquipmentBonus - tieredRegenBonus),
     },
     multipliers: {
       healthResearch: healthResearchMultiplier,
@@ -105,7 +118,7 @@ export function profilePower(profile: PlayerProfileData, soul: Partial<SoulStats
   return effectivePlayerPower(
     { ...withSoulStats(profile.progress, clean, challengeMinimumInterval(profile.prestigeChallenge)), critChance, critMultiplier },
     profile.research,
-    (itemId) => slotUpgradeLevelFor(profile.itemUpgradeLevels, itemId),
+    (itemId) => ({ tier: slotUpgradeLevelFor(profile.itemUpgradeLevels, itemId), refine: profile.itemRefines?.[itemId] ?? 0 }),
   );
 }
 
@@ -148,7 +161,7 @@ export function profileStatDisplayRows(
   const minAttackInterval = attackCapInterval(attackCap);
   const ranks = research ?? profile.research ?? createEmptyResearchRanks();
   const statValue = (value: number) => Math.abs(value) >= 1_000_000 ? formatCompactNumber(value) : Math.round(value).toLocaleString();
-  const effective = effectiveProfileStats({ ...progress, attackRate: Math.max(minAttackInterval, progress.attackRate) }, ranks, profile.itemUpgradeLevels);
+  const effective = effectiveProfileStats({ ...progress, attackRate: Math.max(minAttackInterval, progress.attackRate) }, ranks, profile.itemUpgradeLevels, profile.itemRefines);
   const researchBonus = (rank = 0, percentPerRank = 0) => rank * percentPerRank;
   const multiplierValue = (value: number) => value.toFixed(2);
   const equipmentBonusValue = (value: number) => `+${Math.round(value * 10000) / 100}%`;

@@ -1,4 +1,4 @@
-import { equipmentRegeneration } from "../../../shared/items";
+import { equipmentRegeneration, type ItemLevel } from "../../../shared/items";
 import type { RewardType } from "../../../shared/enemy-definitions";
 import type { ResearchRanks } from "../../../shared/research";
 import { effectiveRewardAmount } from "../../../shared/reward-display";
@@ -10,7 +10,7 @@ type EquippedStats = {
 
 export function createRewardDisplay(
   statGain: () => number, ranks: () => ResearchRanks, showBase: () => boolean,
-  equipped: () => EquippedStats, upgradeLevel: (itemId: string) => number,
+  equipped: () => EquippedStats, upgradeLevel: (itemId: string) => ItemLevel,
 ) {
   const totalAmount = (type: RewardType, amount: number) => {
     const items = equipped();
@@ -30,7 +30,7 @@ export function createRewardDisplay(
 
 export function playerRegenerationPerSecond(
   base: number, equipped: Pick<EquippedStats, "equippedHead" | "equippedChest">,
-  researchMultiplier: number, upgradeLevel: (itemId: string) => number,
+  researchMultiplier: number, upgradeLevel: (itemId: string) => ItemLevel,
 ) {
   const head = equipped.equippedHead, chest = equipped.equippedChest;
   return equipmentRegeneration(base, head, chest, researchMultiplier, upgradeLevel(head), upgradeLevel(chest));

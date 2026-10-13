@@ -1,3 +1,4 @@
+import type { ItemLevel } from "../../shared/items";
 import { hasApprovedGameSession } from "../coop/startup-state-machine";
 import { effectivePlayerPowerStats, playerPowerForStats, unroundedPlayerPower } from "../../shared/player-power";
 import type { TrackerBuild, TrackerValues } from "./stat-tracker-model";
@@ -19,6 +20,7 @@ export function createStatTrackerSource(deps: {
     aggroChallenge?: () => { active?: boolean } | null;
     accountState?: () => unknown;
     itemUpgradeLevel?: (itemId: string) => number;
+    itemLevel?: (itemId: string) => ItemLevel;
   } | null | undefined;
   hasStarted: () => boolean;
   isLoadedFor: (identity: string) => boolean;
@@ -43,7 +45,7 @@ export function createStatTrackerSource(deps: {
       attackRate: deps.player.attackRate, armor: deps.player.armor, regen: deps.player.regen };
     const progress = deps.displayedProgress(base, deps.inventory);
     const stats = effectivePlayerPowerStats(progress, deps.researchRanks(),
-      itemId => coop?.itemUpgradeLevel?.(itemId) ?? 0);
+      itemId => coop?.itemLevel?.(itemId) ?? coop?.itemUpgradeLevel?.(itemId) ?? 0);
     // Attack speed and crit damage read like armor (Ryan): their number, and what it gives beside it.
     const cap = deps.attackCap(), crit = criticalDamage(deps.critParts());
     return { identity, prestigeLevel: coop.prestige?.()?.level ?? 0, values: { power: playerPowerForStats({ ...stats, critChance: deps.criticalChance?.() ?? 0, critMultiplier: crit.multiplier }), hp: stats.maxHp,

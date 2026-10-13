@@ -1,5 +1,6 @@
 import { tables, type DbConnection } from "../../module_bindings";
 import { REFINE_ORES, normalizeRefineLevel, type OreId } from "../../../shared/refine";
+import type { ItemLevel } from "../../../shared/items";
 import { reducerErrorMessage } from "./reducer-errors";
 
 /** What the last refine try did, as the server recorded it (player_refine_result). */
@@ -17,7 +18,7 @@ const isOreId = (value: string): value is OreId => Object.prototype.hasOwnProper
  * my_ores and my_refine_result views, and the refine_item reducer. The server rolls every try and owns every
  * level; this only carries rows and requests.
  */
-export function createItemRefineRows(notify: () => void) {
+export function createItemRefineRows(notify: () => void, slotTierFor: (itemId: string) => number = () => 0) {
   let target: Target | null = null;
   let levels = new Map<string, number>();
   let ores: Partial<Record<OreId, number>> = {};
@@ -72,6 +73,11 @@ export function createItemRefineRows(notify: () => void) {
     api: {
       /** One copy's refine level: copy id 0 is the first copy, the one a slot holds. */
       itemRefine: (itemId: string, copyId = 0n) => levels.get(copyKey(itemId, copyId)) ?? 0,
+      /**
+       * What one of our items' stats stand on (items.ts ItemLevel): its slot's tier and the first copy's refine, the
+       * copy a slot holds. Everything that works stats out reads this; the +N label still reads the tier alone.
+       */
+      itemLevel: (itemId: string): ItemLevel => ({ tier: slotTierFor(itemId), refine: levels.get(copyKey(itemId, 0n)) ?? 0 }),
       /** Ores held, by kind; a kind not held is missing. */
       ores: (): Readonly<Partial<Record<OreId, number>>> => ores,
       lastRefineResult: (): RefineResult | null => result,

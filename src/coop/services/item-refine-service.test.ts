@@ -63,3 +63,13 @@ it("does nothing without a current connection", async () => {
   const service = createItemRefineRows(vi.fn());
   await expect(service.api.refineItem("ion_bow", 0n, 0)).resolves.toEqual({ ok: false, error: "NOT CONNECTED" });
 });
+
+it("gives stats an item's slot tier with its first copy's refine", () => {
+  const fake = fakeConnection(), service = createItemRefineRows(vi.fn(), itemId => (itemId === "ion_bow" ? 12 : 0));
+  fake.rows.first.push({ itemId: "ion_bow", level: 5 });
+  fake.rows.copies.push({ copyId: 4n, itemId: "ion_bow", level: 9 });
+  service.watch(fake.connection, () => true);
+  fake.settle();
+  expect(service.api.itemLevel("ion_bow")).toEqual({ tier: 12, refine: 5 });
+  expect(service.api.itemLevel("sky_bow")).toEqual({ tier: 0, refine: 0 });
+});

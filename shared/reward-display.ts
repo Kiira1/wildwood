@@ -1,10 +1,12 @@
 import type { RewardType } from "./enemy-definitions";
 import { preparePlayerPowerStats } from "./player-power";
 import type { ResearchRanks } from "./research";
+import type { ItemLevel } from "./items";
 
 type RewardEquipment = {
   weapon: string; head: string; chest: string;
-  weaponLevel: number; headLevel: number; chestLevel: number;
+  /** Each worn item's slot tier and refine (items.ts ItemLevel). */
+  weaponLevel: ItemLevel; headLevel: ItemLevel; chestLevel: ItemLevel;
 };
 
 const ZERO_STATS = { damage: 0, maxHp: 0, attackRate: 1, armor: 0, regen: 0 };
@@ -29,7 +31,7 @@ export function effectiveRewardAmount(
   // Attack speed has no gear or research factor.
   if (!field) return amount;
   const { weapon, head, chest, weaponLevel, headLevel, chestLevel } = equipment;
-  const levelOf = (itemId: string) => itemId === weapon ? weaponLevel : itemId === head ? headLevel : itemId === chest ? chestLevel : 0;
+  const levelOf = (itemId: string): ItemLevel => itemId === weapon ? weaponLevel : itemId === head ? headLevel : itemId === chest ? chestLevel : 0;
   const scale = preparePlayerPowerStats({ ...ZERO_STATS, equippedRightHand: weapon, equippedHead: head, equippedChest: chest }, research, levelOf);
   return scale({ ...ZERO_STATS, [field]: amount })[field];
 }

@@ -17,14 +17,14 @@ import { createItemRefineRows } from "./item-refine-service";
  * lifecycle, so the connection starts them together and the coop API serves
  * them together.
  */
-export function createAccountRowServices(connection: () => DbConnection | null, notify: () => void) {
+export function createAccountRowServices(connection: () => DbConnection | null, notify: () => void, slotTierFor: (itemId: string) => number = () => 0) {
   const offlinePreference = createOfflineProgressPreference(connection, notify);
   const bowSkills = createBowSkills(notify);
   const adGemReward = createAdGemReward(notify);
   const chatMute = createChatMute(notify);
   const soulDimension = createSoulDimensionRows(connection, notify);
   const guildHall = createGuildHallRows(connection, notify);
-  const itemRefine = createItemRefineRows(notify);
+  const itemRefine = createItemRefineRows(notify, slotTierFor);
   return {
     watch(current: DbConnection, isCurrent: () => boolean) {
       offlinePreference.watch(current, isCurrent);

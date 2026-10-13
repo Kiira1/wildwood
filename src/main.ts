@@ -238,7 +238,7 @@ import {
   });
   // Gear and Vitality together, as one bonus on saved health (Vitality is live since 0.883, like other research).
   const healthMultiplierBonus = () => (1 + equipmentMaxHealthMultiplierBonus(inventory.equippedHead, inventory.equippedChest,
-    coop?.itemUpgradeLevel?.(inventory.equippedHead) ?? 0, coop?.itemUpgradeLevel?.(inventory.equippedChest) ?? 0))
+    coop?.itemLevel?.(inventory.equippedHead) ?? 0, coop?.itemLevel?.(inventory.equippedChest) ?? 0))
     * (1 + Math.max(0, coop?.researchInPlay?.()?.vitality ?? 0) * .02) - 1;
   const LEGACY_SAVE_KEY = "wildwood-player-progress-v1";
   const respawnMemory = createRespawnMemory(localStorage, () => coop?.localIdentity?.() ?? '');
@@ -529,7 +529,7 @@ import {
   let farmConnection: 'ready' | 'recovering' | 'ended' = 'recovering';
   const farmProgress = createAutoFarmProgress({ mapId: () => currentMapId, fetchBalance: mapId => coop?.mapIndexBalance?.(mapId), base: () => ({ maxHp: player.baseMaxHp, damage: player.damage, attackRate: player.attackRate, armor: player.armor, regen: player.regen }),
     equipment: () => ({ equippedHead: inventory.equippedHead, equippedChest: inventory.equippedChest, equippedRightHand: inventory.equippedRightHand, equippedLeftHand: inventory.equippedLeftHand }),
-    research: () => researchRanks(), upgradeLevel: itemId => coop?.itemUpgradeLevel?.(itemId) ?? 0, rewardMultiplier: () => researchRewardMultiplier(), minAttackInterval: () => coop?.attackCapInPlay?.(), criticalChance: () => researchCriticalChance(), criticalMultiplier: (extra = 0) => researchCriticalDamageMultiplier(soulDimension.critDamage(), (player.critRating ?? 0) + extra),
+    research: () => researchRanks(), upgradeLevel: itemId => coop?.itemLevel?.(itemId) ?? 0, rewardMultiplier: () => researchRewardMultiplier(), minAttackInterval: () => coop?.attackCapInPlay?.(), criticalChance: () => researchCriticalChance(), criticalMultiplier: (extra = 0) => researchCriticalDamageMultiplier(soulDimension.critDamage(), (player.critRating ?? 0) + extra),
     reflectOnly: () => Boolean(coop?.prestigeChallenge?.()?.active), mapBoss: () => proceduralBoss.boss() ?? bossStateForMap(bosses, currentMapId), portalUnlocked: portal => mapController.portalIsUnlocked(portal as never), portals: () => { const config = MAP_CONFIG[currentMapId]; return [config.portal, "secondaryPortal" in config ? config.secondaryPortal : null]; } });
   const autoFarm = createAutoFarmController({
     resumeStore: createAutoFarmResumeStore(),
@@ -614,12 +614,12 @@ import {
     applyVitality: applyVitalityResearch,
   } = research;
   const rewardDisplay = createRewardDisplay(researchRewardMultiplier, researchRanks, appShell.showBaseStatRewards,
-    () => inventory, itemId => coop?.itemUpgradeLevel?.(itemId) ?? 0);
+    () => inventory, itemId => coop?.itemLevel?.(itemId) ?? 0);
   const travelSpeed = createOutOfCombatSpeed();
   const movementMultiplier = () => researchMovementSpeedMultiplier()
     + travelSpeed.bonus(inventory.equippedFeet, isDueling()) / Math.max(1, player.speed);
   const regenerationPerSecond = () => playerRegenerationPerSecond(player.regen, inventory, researchRegenerationMultiplier(),
-    itemId => coop?.itemUpgradeLevel?.(itemId) ?? 0);
+    itemId => coop?.itemLevel?.(itemId) ?? 0);
   progress = createProgressController({
     player,
     inventory,
@@ -661,11 +661,11 @@ import {
     prestigeSplitShot: () => prestigePerkValue(coop?.prestigePerks?.(), "splitShot"), prestigeReflect: () => prestigePerkValue(coop?.prestigePerks?.(), "riposte"),
     bowSkills: () => coop?.bowSkills?.(inventory.equippedRightHand || inventory.equippedLeftHand),
     equippedWeapon: () => inventory.equippedRightHand || inventory.equippedLeftHand,
-    equippedWeaponUpgradeLevel: () => coop?.itemUpgradeLevel?.(inventory.equippedRightHand || inventory.equippedLeftHand) ?? 0,
+    equippedWeaponUpgradeLevel: () => coop?.itemLevel?.(inventory.equippedRightHand || inventory.equippedLeftHand) ?? 0,
     equippedHead: () => inventory.equippedHead,
-    equippedHeadUpgradeLevel: () => coop?.itemUpgradeLevel?.(inventory.equippedHead) ?? 0,
+    equippedHeadUpgradeLevel: () => coop?.itemLevel?.(inventory.equippedHead) ?? 0,
     equippedChest: () => inventory.equippedChest,
-    equippedChestUpgradeLevel: () => coop?.itemUpgradeLevel?.(inventory.equippedChest) ?? 0,
+    equippedChestUpgradeLevel: () => coop?.itemLevel?.(inventory.equippedChest) ?? 0,
     healthMultiplierBonus,
     minAttackInterval: () => attackCapInterval(coop?.attackCapInPlay?.()),
     reflectOnly: () => Boolean(coop?.prestigeChallenge?.()?.active),
@@ -748,7 +748,7 @@ import {
         equippedLeftHand: equipment.equippedLeftHand,
       }),
       researchRanks(),
-      (itemId) => coop?.itemUpgradeLevel?.(itemId) ?? 0,
+      (itemId) => coop?.itemLevel?.(itemId) ?? 0,
       compare ? (itemId) => coop?.bowSkills?.(itemId) : undefined,
     );
     return compare ? power : Math.round(power);

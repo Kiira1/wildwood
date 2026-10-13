@@ -1,3 +1,4 @@
+import type { ItemLevel } from "../../../../shared/items";
 import { critPowerFactor, effectivePlayerPowerStats, unroundedPlayerPower, type PlayerPowerProgress, type PlayerPowerResearch, type PlayerPowerStats } from '../../../../shared/player-power';
 import { addAttackSpeedRating, attackCapInterval, type AttackCapArg } from '../../../../shared/stat-rating';
 import type { FarmEvaluation, FarmReward } from './auto-farm-plan';
@@ -18,7 +19,8 @@ export function createFarmEvaluator(deps: {
   base: () => PlayerPowerStats;
   equipment: () => Omit<PlayerPowerProgress, keyof PlayerPowerStats>;
   research: () => PlayerPowerResearch | null | undefined;
-  upgradeLevel: (itemId: string) => number;
+  /** An item's slot tier and refine (coop itemLevel). */
+  upgradeLevel: (itemId: string) => ItemLevel;
   rewardMultiplier: () => number;
   /** The attack speed cap (stat-rating.ts AttackCap). */
   minAttackInterval: () => AttackCapArg;

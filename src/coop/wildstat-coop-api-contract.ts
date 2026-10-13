@@ -91,6 +91,7 @@ type ExpectedApiKey =
   | "isReconnectingAfterWake"
   | "isReconnectingQuietly"
   | "itemUpgradeLevel"
+  | "itemLevel"
   | "itemUpgradeLevels"
   | "slotUpgradeTier"
   | "knownCharacter"

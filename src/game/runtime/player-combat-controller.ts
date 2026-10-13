@@ -14,7 +14,7 @@ import { createSpatialGrid } from "./spatial-grid";
 import type { BossTarget, EnemyState, PlayerState, Projectile, RuntimeReward } from "./types";
 import { bossStateForMap, type BossStates } from "./boss/boss-registry";
 import type { SpawnSite } from "../world";
-import { equipmentDamage, itemDefinition } from "../../../shared/items";
+import { equipmentDamage, itemDefinition, type ItemLevel } from "../../../shared/items";
 import { worldReflectDamage } from "../../../shared/prestige-perks";
 import { createMarbleBag } from "../../../shared/marble-bag";
 import { ARROW_STORM_DAMAGE_SHARE, ARROW_STORM_RADIUS, ARROW_STORM_SCORE_WEIGHT, RICOCHET_DAMAGE_SHARE, bowSkillChance, hasBowSkills, rollArrowSkillProcs, type BowSkillRoll } from "../../../shared/bow-skills";
@@ -122,11 +122,12 @@ export function createPlayerCombatController(options: {
   /** Random source for bow skill procs; tests inject a fixed sequence. */
   random?: () => number;
   equippedWeapon: () => string;
-  equippedWeaponUpgradeLevel?: () => number;
+  /** The worn weapon's slot tier and refine (coop itemLevel). */
+  equippedWeaponUpgradeLevel?: () => ItemLevel;
   equippedHead: () => string;
-  equippedHeadUpgradeLevel?: () => number;
+  equippedHeadUpgradeLevel?: () => ItemLevel;
   equippedChest: () => string;
-  equippedChestUpgradeLevel?: () => number;
+  equippedChestUpgradeLevel?: () => ItemLevel;
   healthMultiplierBonus: () => number;
   /** The attack speed cap: Reflect Only wins and Quick Draw (stat-rating.ts AttackCap). */
   minAttackInterval: AttackCapArg | (() => AttackCapArg);

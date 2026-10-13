@@ -1,3 +1,4 @@
+import type { ItemLevel } from "../../../../shared/items";
 /**
  * The growth forecast's inputs (growth-forecast.ts), built from what the game
  * has: this map's live spawn sites, another map's live balance (the snapshot
@@ -95,7 +96,7 @@ export function forecastBuild(deps: {
   base: PlayerPowerStats;
   equipment: Omit<PlayerPowerProgress, keyof PlayerPowerStats>;
   research: PlayerPowerResearch | null | undefined;
-  upgradeLevel: (itemId: string) => number;
+  upgradeLevel: (itemId: string) => ItemLevel;
   rewardMultiplier: number;
   minAttackInterval: number;
   criticalChance: number;

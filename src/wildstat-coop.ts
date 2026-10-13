@@ -115,7 +115,7 @@ let worldEntryPromise: Promise<boolean> | null = null;
 let worldEntryGeneration = 0;
 let worldEntryBlocked = false;
 let protocolReadyGeneration = 0;
-const accountRows = createAccountRowServices(() => connection, onChange);
+const accountRows = createAccountRowServices(() => connection, onChange, itemId => progressionService.api.itemUpgradeLevel(itemId));
 const accountAudio = createAccountAudioSettings();
 let accountService!: AccountService;
 const startupTelemetryRuntime = createStartupTelemetryRuntime({

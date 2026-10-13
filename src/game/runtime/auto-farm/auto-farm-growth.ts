@@ -1,3 +1,4 @@
+import type { ItemLevel } from "../../../../shared/items";
 import { attackCapInterval, type AttackCapArg } from '../../../../shared/stat-rating';
 /**
  * Autofarm's growth planner: the growth forecast (growth-forecast.ts) run on
@@ -295,7 +296,7 @@ export function createGrowthContextSource(deps: {
   equipment: () => Omit<PlayerPowerProgress, keyof PlayerPowerStats>;
   weapon: () => string;
   research: () => PlayerPowerResearch & { enemyRespawn?: number };
-  upgradeLevel: (itemId: string) => number;
+  upgradeLevel: (itemId: string) => ItemLevel;
   rewardMultiplier: () => number;
   minAttackInterval: () => AttackCapArg;
   criticalChance: () => number;
