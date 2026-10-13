@@ -19,8 +19,8 @@ const defaultStorage = (): PanelStorage | undefined => { try { return window.loc
 /** The "?" page: what each control does, a line each, in the words a player would use. */
 const HELP_LINES: readonly [term: string, line: string][] = [
   ['Stats', 'Tap Off, Farm or Aggro for each stat. Farm walks to its camps and picks whichever raises your power fastest right now.'],
-  ['Move On', "Goes to the next map once your power reaches Move At times the map's (1x is even)."],
-  ['Fight Bosses', "Fights the boss once your power reaches Fight At times the boss's (1x is even), until it or you go down."],
+  ['Move On', "Goes to the next map once you'd kill its enemies fast and survive their hits, with them Move At times as strong (1x is just enough)."],
+  ['Fight Bosses', "Fights the boss once you'd beat it, with it Fight At times as strong (1x is just enough), until it or you go down."],
   ['Deaths', 'It respawns and carries on with the same settings.'],
   ['Aggro', 'Pulls its camps to you: one at a time, one more for each Aggro win. With nothing on Farm it stands still and fights only what it pulls.'],
   ['Target', 'Which enemy it hits first.'],
@@ -87,10 +87,10 @@ export function createAutoFarmPanel(options: {
     + `<p class="farm-empty" hidden>No Enemies Here</p>`
     + `<button type="button" class="farm-switch farm-move" role="switch" data-switch="advance" aria-checked="false" aria-describedby="autoFarmBossStatus">`
     + `<span class="farm-switch-copy"><span class="farm-switch-label">Move On</span><small id="autoFarmBossStatus" class="farm-boss-status"></small></span><span class="farm-knob" aria-hidden="true"></span></button>`
-    + powerSlider('farm-move-power', 'Move At', 'Of Map Power', 'Move On At This Much Of The Next Map Power')
+    + powerSlider('farm-move-power', 'Move At', 'Enemy Strength', 'Move On Once Ready For Next Map Enemies This Many Times As Strong')
     + `<button type="button" class="farm-switch farm-bosses" role="switch" data-switch="bosses" aria-checked="false" aria-describedby="autoFarmBossLine">`
     + `<span class="farm-switch-copy"><span class="farm-switch-label">Fight Bosses</span><small id="autoFarmBossLine" class="farm-boss-status"></small></span><span class="farm-knob" aria-hidden="true"></span></button>`
-    + powerSlider('farm-boss-power', 'Fight At', 'Of Boss Power', 'Fight Bosses At This Much Of Their Power')
+    + powerSlider('farm-boss-power', 'Fight At', 'Boss Strength', 'Fight Bosses Once Ready For Them This Many Times As Strong')
     + `<div class="farm-more">`
     + `<div class="farm-setting farm-aggro-row" hidden><span class="farm-setting-label">Chasing Groups</span><div class="farm-segment"><button type="button" class="farm-aggro-pick">Choose</button></div></div>`
     + segment('Target', 'autoFarmTargetLabel', 'farm-target', AUTO_FARM_PRIORITIES.map(entry => `<button type="button" role="radio" data-priority="${entry.id}">${entry.label}</button>`).join(''))

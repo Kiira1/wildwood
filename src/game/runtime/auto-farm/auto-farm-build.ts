@@ -4,6 +4,9 @@ import type { FarmEvaluation, FarmReward } from './auto-farm-plan';
 import { isProceduralMap, proceduralMapNumber } from '../../../../shared/procedural-maps';
 import { MAP_IDS as CAMPAIGN_MAP_IDS } from '../../../../shared/rules';
 import { recommendedBossPower, recommendedMapPower } from './auto-farm-power';
+import { mapReadiness } from '../../../../shared/map-readiness';
+import { bossReadiness } from './boss-readiness';
+import type { MapBalanceSnapshot } from '../../../../shared/map-balance-types';
 
 /**
  * Prices a kill's reward against the player's live build, for autofarm to
@@ -67,8 +70,13 @@ export function createAutoFarmProgress(deps: Parameters<typeof createFarmEvaluat
   portals: () => readonly (FarmPortal | null | undefined)[];
   portalUnlocked: (portal: FarmPortal) => boolean;
   reflectOnly: () => boolean;
+  /** A map's live balance, fetched once (coop.mapIndexBalance): Move On and Fight Bosses read readiness from it. */
+  fetchBalance?: (mapId: string) => Promise<MapBalanceSnapshot | null> | MapBalanceSnapshot | undefined;
 }) {
   const evaluator = createFarmEvaluator(deps);
+  const balanceFor = deps.fetchBalance ? createRetryingBalanceCache(deps.fetchBalance) : null;
+  /** The live build as readiness reads it: effective stats, gear, research and crit in. */
+  const liveStats = () => evaluator.evaluate().stats!;
   const ranked = (direction: 1 | -1) => {
     const here = farmMapRank(deps.mapId());
     return deps.portals().find((portal): portal is FarmPortal => Boolean(portal) && Math.sign(farmMapRank(portal!.destination) - here) === direction && deps.portalUnlocked(portal!)) ?? null;
@@ -93,8 +101,37 @@ export function createAutoFarmProgress(deps: Parameters<typeof createFarmEvaluat
       return deps.portals().some(portal => Boolean(portal) && farmMapRank(portal!.destination) > here && !deps.portalUnlocked(portal!));
     },
     reflectOnly: deps.reflectOnly,
-    /** A map's recommended power (auto-farm-power.ts), and this map's boss's. */
+    /** A map's recommended power (auto-farm-power.ts), and this map's boss's: used only without live balance. */
     mapPower: recommendedMapPower,
     bossPower: () => recommendedBossPower(deps.mapId()),
+    /** Readiness from the map's live enemies (map-readiness.ts); undefined while its balance loads. */
+    mapReady: balanceFor ? (mapId: string, margin: number) => {
+      const balance = balanceFor(mapId);
+      return balance === undefined ? undefined : mapReadiness(mapId, liveStats(), balance ?? undefined, margin);
+    } : undefined,
+    bossReady: balanceFor ? (margin: number) => {
+      const mapId = deps.mapId(), balance = balanceFor(mapId);
+      return balance === undefined ? undefined : bossReadiness(mapId, balance?.boss, liveStats(), margin);
+    } : undefined,
+  };
+}
+
+/**
+ * Each map's live balance, fetched once and read synchronously after: undefined while it loads. A failed
+ * fetch (no connection yet) is tried again after a while rather than kept, so readiness never settles on
+ * the authored stats for a whole session.
+ */
+export function createRetryingBalanceCache(fetch: (mapId: string) => Promise<MapBalanceSnapshot | null> | MapBalanceSnapshot | undefined, retryMs = 30_000, now = () => Date.now()) {
+  const balances = new Map<string, { value: MapBalanceSnapshot | null | undefined; at: number }>();
+  return (mapId: string): MapBalanceSnapshot | null | undefined => {
+    const entry = balances.get(mapId);
+    if (entry && !(entry.value === null && now() - entry.at > retryMs)) return entry.value;
+    const pending = fetch(mapId);
+    // A snapshot in hand (the autofarm sim resolves its own) is kept at once.
+    if (pending && !(pending instanceof Promise)) { balances.set(mapId, { value: pending, at: now() }); return pending; }
+    const next = { value: pending ? undefined : null, at: now() } as { value: MapBalanceSnapshot | null | undefined; at: number };
+    balances.set(mapId, next);
+    void pending?.then(snapshot => { next.value = snapshot; next.at = now(); }, () => { next.value = null; next.at = now(); });
+    return next.value;
   };
 }

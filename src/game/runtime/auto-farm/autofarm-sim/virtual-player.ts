@@ -65,6 +65,18 @@ const STEP_MS = 1000 / 60;
 const DEATH_RESPAWN_MS = 850 + 3_000;
 const SIM_EPOCH_MS = Date.UTC(2026, 9, 7, 12);
 
+/**
+ * Each map's live balance as the server would send it, resolved before any virtual player applies one:
+ * applyMapBalance rewrites the shared enemy and boss definitions, so resolving after it scales them twice.
+ */
+const pristineBalances = new Map<string, ReturnType<typeof resolveMapBalance>>();
+for (const mapId of CAMPAIGN_MAP_IDS) pristineBalances.set(mapId, resolveMapBalance(mapId, LIVE_BALANCE.settings, LIVE_BALANCE.revision));
+function pristineBalance(mapId: string) {
+  let snapshot = pristineBalances.get(mapId);
+  if (!snapshot) { snapshot = resolveMapBalance(mapId, LIVE_BALANCE.settings, LIVE_BALANCE.revision); pristineBalances.set(mapId, snapshot); }
+  return snapshot;
+}
+
 export type VirtualPlayerProfile = {
   name: string;
   seed: number;
@@ -89,6 +101,8 @@ export type VirtualPlayerProfile = {
   push: FarmPush;
   /** "Boss & Next Map". */
   advance: boolean;
+  /** Move On and Fight Bosses by readiness from the live balance (map-readiness.ts), as the game does; off, by the old power table. */
+  readiness?: boolean;
   /** The Reflect Only prestige challenge. */
   reflectOnly?: boolean;
   /** The kite's tuning, for comparing kites (the game's defaults otherwise). */
@@ -360,6 +374,7 @@ export function createVirtualPlayer(profile: VirtualPlayerProfile, options: { du
     research: () => research, upgradeLevel: () => 0, rewardMultiplier: () => researchController.rewardMultiplier(), minAttackInterval,
     criticalChance: () => researchController.criticalChance(), criticalMultiplier: () => researchController.criticalDamageMultiplier(),
     reflectOnly: () => Boolean(profile.reflectOnly),
+    fetchBalance: profile.readiness ? pristineBalance : undefined,
     mapBoss: () => {
       const boss = proceduralBoss.boss() ?? bossStateForMap(bosses, currentMapId);
       // A duel fights to the end: without its health the controller cannot judge the fight, so it never walks away.

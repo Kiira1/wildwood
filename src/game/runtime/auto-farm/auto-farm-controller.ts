@@ -1,3 +1,4 @@
+import type { Readiness } from '../../../../shared/map-readiness';
 import { isWeaponItem } from '../../../../shared/items';
 import { isMeleeWeapon, weaponAttackRange } from "../../weapon-combat";
 import { WORLD } from '../../constants';
@@ -35,6 +36,8 @@ const BOSS_WIN_SETTLE_MS = 5_000;
  * the agro group, time to move on"); an Aggro run's chasers never stop coming, so the wait has an end.
  */
 export const MOVE_ON_FIGHT_MS = 20_000;
+/** Damage gets this many times the farming time of each other stat on Farm (Ryan, 0.901.65): kills get faster, and every stat with them. */
+export const DAMAGE_FARM_WEIGHT = 2;
 /**
  * A campaign boss is fought from this close to its hitbox, whatever the
  * weapon's reach: its cones widen from its body, so near it one is a short
@@ -101,6 +104,14 @@ export function createAutoFarmController(options: {
   mapPower?: (mapId: string) => number | null;
   /** This map's boss's recommended power; null when it has none (the map's own is used). */
   bossPower?: () => number | null;
+  /**
+   * Whether the build is ready for a map's enemies made `margin` times as strong (map-readiness.ts): what Move On
+   * goes by. Undefined while that map's live balance loads; null when the map has no regular enemies. Without
+   * it (tests, the sim), the recommended power above is used.
+   */
+  mapReady?: (mapId: string, margin: number) => Readiness | null | undefined;
+  /** The same for this map's boss and Fight Bosses; null when it cannot tell, and the boss's power is used. */
+  bossReady?: (margin: number) => Readiness | null | undefined;
   /** This map's boss while it stands (null once it is down or respawning). */
   mapBoss?: () => (Fight & { dead?: boolean }) | null;
   /** Reflect Only: the bow does nothing, so enemies must be stood among to be hit and hit back. */
@@ -298,11 +309,34 @@ export function createAutoFarmController(options: {
     fightHeldSince ??= now();
     return now() - fightHeldSince < MOVE_ON_FIGHT_MS;
   }
-  /** The next map's portal, once power reaches what Move At asks of it. */
+  /** Readiness, read at most twice a second for each question: building a map's roster is not free. */
+  const readyCache = new Map<string, { at: number; value: Readiness | null | undefined }>();
+  function cachedReady(key: string, read: () => Readiness | null | undefined) {
+    const at = now(), hit = readyCache.get(key);
+    if (hit && at >= hit.at && at - hit.at < 500) return hit.value;
+    if (readyCache.size > 32) readyCache.clear();
+    const value = read();
+    readyCache.set(key, { at, value });
+    return value;
+  }
+  const needsLine = (readiness: Readiness) => readiness.needs === 'both' ? 'Need More Damage And Health'
+    : readiness.needs === 'damage' ? 'Need More Damage' : 'Need More Health';
+  /** Whether the next map is ready, and the status line when it is not (Ryan: no fixed table, worked out on the client). */
+  function readyForMap(destination: string): { ready: boolean; line: string } {
+    if (!options.mapReady) {
+      const needs = mapNeeds(destination);
+      return { ready: currentPower() >= needs, line: `Next Map At ${atPower(needs)}` };
+    }
+    const readiness = cachedReady(`map:${destination}:${movePower}`, () => options.mapReady!(destination, movePower));
+    if (readiness === undefined) return { ready: false, line: 'Reading Next Map' };
+    if (readiness === null || readiness.ready) return { ready: true, line: '' };
+    return { ready: false, line: `Next Map: ${needsLine(readiness)}` };
+  }
+  /** The next map's portal, once the build is ready for it with Move At's margin. */
   function exitPortal() {
     if (!advance || options.reflectOnly?.()) return null;
     const portal = options.nextPortal?.();
-    return portal && currentPower() >= mapNeeds(portal.destination) ? portal : null;
+    return portal && readyForMap(portal.destination).ready ? portal : null;
   }
 
   // ---- Fight Bosses ----
@@ -321,7 +355,15 @@ export function createAutoFarmController(options: {
     }
     if (!fightBosses || options.reflectOnly?.() || !boss || boss.dead || bossBeaten()) return false;
     // A fight under way goes on until the boss or the player is down.
-    return phase === 'boss' || currentPower() >= bossNeeds();
+    return phase === 'boss' || readyForBoss().ready;
+  }
+  /** Whether this map's boss is ready to fight with Fight At's margin, and the status line when it is not. */
+  function readyForBoss(): { ready: boolean; line: string } {
+    const readiness = options.bossReady ? cachedReady(`boss:${options.mapId()}:${bossPower}`, () => options.bossReady!(bossPower)) : null;
+    if (readiness === undefined) return { ready: false, line: 'Reading Boss' };
+    if (readiness) return { ready: readiness.ready, line: readiness.ready ? '' : `Boss: ${needsLine(readiness)}` };
+    const needs = bossNeeds();
+    return { ready: currentPower() >= needs, line: `Boss At ${atPower(needs)}` };
   }
 
   /**
@@ -426,7 +468,7 @@ export function createAutoFarmController(options: {
   }
 
   /**
-   * Farm's pick (Ryan, 0.901.64): the Farm groups share the time evenly, leaving out a stat whose kill gives
+   * Farm's pick (Ryan, 0.901.64): the Farm groups share the time evenly (damage twice over), leaving out a stat whose kill gives
    * nothing now (rewardCapped: attack speed or crit at its cap) and an Aggro group waiting its turn, which is
    * never walked to. Picking by power, or by growth a second, was tried in the autofarm sim first: by power
    * it farmed health alone, by growth tough camps (34 kills in ten minutes against the even split's 47).
@@ -434,7 +476,7 @@ export function createAutoFarmController(options: {
   function farmWeights(all: ReturnType<typeof choices>) {
     const switched = new Set(aggroGroups()), pulledNow = pulledGroups();
     const weights = all.map(entry => ({ key: entry.key, alive: entry.alive,
-      weight: switched.has(entry.key) && !pulledNow.has(entry.key) ? 0 : shares[entry.key] ?? 0 }));
+      weight: switched.has(entry.key) && !pulledNow.has(entry.key) ? 0 : (shares[entry.key] ?? 0) * (entry.reward.type === 'damage' ? DAMAGE_FARM_WEIGHT : 1) }));
     const open = weights.map((entry, index) => ({ ...entry,
       weight: entry.weight > 0 && !options.rewardCapped?.(all[index].reward, all[index].soul) ? entry.weight : 0 }));
     // Every one capped: farm them anyway rather than stand idle.
@@ -652,8 +694,8 @@ export function createAutoFarmController(options: {
     if (phase === 'portal') return 'Moving On';
     const portal = options.nextPortal?.();
     if (portal) {
-      const needs = mapNeeds(portal.destination);
-      if (currentPower() < needs) return `Next Map At ${atPower(needs)}`;
+      const check = readyForMap(portal.destination);
+      if (!check.ready) return check.line;
       return fightHeldSince !== null && active ? 'Moving On After This Fight' : 'Moving On';
     }
     // The way forward is shut until this map's boss is beaten.
@@ -667,8 +709,8 @@ export function createAutoFarmController(options: {
     if (bossBeaten()) return 'Boss Beaten';
     const boss = options.mapBoss?.();
     if (!boss || boss.dead) return '';
-    const needs = bossNeeds();
-    return currentPower() >= needs ? 'Boss Next' : `Boss At ${atPower(needs)}`;
+    const check = readyForBoss();
+    return check.ready ? 'Boss Next' : check.line;
   }
 
   return { start, stop: (reason?: string) => { zeroWaiting = false; stop(reason); }, defeated, refresh, choices, movement, travelStarted,

@@ -1,4 +1,9 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.901.65": [
+    "Move On and Fight Bosses check the real enemies and boss fight, not a fixed power table",
+    "Move On and Fight Bosses say what you need: Need More Damage or Need More Health",
+    "Auto Farm gives Damage twice the farming time of other stats",
+  ],
   "0.901.64": [
     "Auto Farm: tap Off, Farm or Aggro for each stat, in place of the sliders",
     "Auto Farm skips stats that are Capped",
@@ -3238,6 +3243,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.901.65": "2026-10-12",
   "0.901.64": "2026-10-12",
   "0.901.63": "2026-10-12",
   "0.901.62": "2026-10-12",

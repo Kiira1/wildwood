@@ -1,3 +1,4 @@
+import type { Readiness } from '../../../../shared/map-readiness';
 import { describe, expect, it, vi } from 'vitest';
 import { parseHTML } from 'linkedom';
 import { createBalanceApologyGiftController } from '../../../ui/balance-apology-gift-controller';
@@ -577,6 +578,43 @@ describe('autofarm plans: sliders, the boss and the next map', () => {
       expect(t.farm.state().phase).toBe('portal');
     });
 
+    it("Move On by readiness from the live balance: waits while it loads, says what is missing, goes once ready", () => {
+      let ready: Readiness | null | undefined;
+      const margins: number[] = [];
+      const s = planned({ mapReady: (_mapId, margin) => { margins.push(margin); return ready; },
+        nextPortal: () => ({ x: 200, y: 500, destination: 'beginner_desert' }) });
+      s.add('Bramble', 900, 500);
+      s.farm.setAdvance(true);
+      s.farm.start([health]);
+      s.tick();
+      expect(s.farm.state().phase).toBe('farm');
+      expect(s.farm.moveStatus()).toBe('Reading Next Map');
+      ready = { ready: false, needs: 'damage' }; s.advance(1_000); s.tick();
+      expect(s.farm.moveStatus()).toBe('Next Map: Need More Damage');
+      expect(s.farm.state().phase).toBe('farm');
+      ready = { ready: false, needs: 'both' }; s.advance(1_000);
+      expect(s.farm.moveStatus()).toBe('Next Map: Need More Damage And Health');
+      // Move At is the margin it asks readiness with.
+      expect(margins.at(-1)).toBe(s.farm.movePower());
+      ready = { ready: true, needs: null }; s.advance(1_000); s.tick();
+      expect(s.farm.state().phase).toBe('portal');
+    });
+
+    it("Fight Bosses by readiness says what the boss needs, and falls back to its power when it cannot tell", () => {
+      let ready: Readiness | null | undefined = { ready: false, needs: 'health' };
+      const s = planned({ bossReady: () => ready, mapBoss: () => ({ x: 900, y: 900, r: 40, hp: 10, maxHp: 10 }) as never,
+        bossPower: () => 1_200, power: () => 100, bossUnlocksNext: () => true });
+      s.add('Bramble', 900, 500);
+      s.farm.setFightBosses(true);
+      s.farm.start([health]);
+      s.tick();
+      expect(s.farm.bossStatus()).toBe('Boss: Need More Health');
+      ready = undefined; s.advance(1_000);
+      expect(s.farm.bossStatus()).toBe('Reading Boss');
+      ready = null; s.advance(1_000);
+      expect(s.farm.bossStatus()).toMatch(/^Boss At /);
+    });
+
     it('never steps back a map or remembers deaths: Move On goes as soon as power reaches Move At times the next map', () => {
       let power = 5_000;
       const s = planned({ power: () => power, mapPower: () => 4_000, mapId: () => 'beginner_desert',
@@ -863,7 +901,7 @@ describe('autofarm plans: sliders, the boss and the next map', () => {
     expect(saved()).toEqual([health]);
   });
 
-  it("splits farming time by the sliders: 80 / 10 / 10, and a 0% group is never farmed", () => {
+  it("splits farming time by the shares, damage counting twice: 80 / 10 / 10 farms 160 / 10 / 10; a 0% group is never farmed", () => {
     const s = planned();
     const damage = `stat:${ENEMY_TYPES.Spitter.reward.type}`;
     // Enemies that never die, side by side, so every group always has some alive.
@@ -880,9 +918,9 @@ describe('autofarm plans: sliders, the boss and the next map', () => {
       time.set(at, (time.get(at) ?? 0) + .1);
       if (at !== last) { switches++; last = at; }
     }
-    expect((time.get(damage) ?? 0) / 7_200).toBeCloseTo(.8, 1);
-    expect((time.get(health) ?? 0) / 7_200).toBeCloseTo(.1, 1);
-    expect((time.get(speed) ?? 0) / 7_200).toBeCloseTo(.1, 1);
+    expect((time.get(damage) ?? 0) / 7_200).toBeCloseTo(160 / 180, 1);
+    expect((time.get(health) ?? 0) / 7_200).toBeCloseTo(10 / 180, 1);
+    expect((time.get(speed) ?? 0) / 7_200).toBeCloseTo(10 / 180, 1);
     expect(time.get(zero)).toBeUndefined();
     // It stays with a group between looks (every twenty seconds), not a hop every kill.
     expect(switches).toBeLessThan(7_200 / 20);
