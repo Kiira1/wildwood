@@ -1,0 +1,78 @@
+import { describe, expect, it } from "vitest";
+import {
+  CARD_CHANCE_CAP, CARD_DODGE_CAP, CARD_GUARD_CAP, NO_CARDS, cardChance, cardDamageDealtMultiplier, cardDamageTakenMultiplier,
+  cardTotals, cardValue, equippedCardIds,
+} from "./card-effects";
+
+describe("card totals", () => {
+  it("adds up stats and costs, and skips unknown cards", () => {
+    const totals = cardTotals(["spitter_card", "spitter_card", "ember_raider_card", "not_a_card"]);
+    // Spitter +2% damage twice; Ember Raider (map 4) +2x damage, -1x max health.
+    expect(cardValue(totals, "atk")).toBeCloseTo(2 + 2 + 4.9, 5);
+    expect(cardValue(totals, "maxHealth")).toBeCloseTo(-3.6, 5);
+    expect(cardTotals([])).toBe(NO_CARDS);
+  });
+
+  it("keeps map cards and bounties by their map and stat", () => {
+    const totals = cardTotals(["dune_raider_card", "dune_regent_card", "seed_spitter_card"]);
+    expect(totals.raceSlayer).toEqual({ beginner_desert: 9 });
+    expect(Object.keys(totals.raceGuard)).toEqual(["beginner_desert"]);
+    expect(totals.statGain.health).toBeGreaterThan(0);
+    expect(cardValue(totals, "raceSlayer")).toBe(0);
+  });
+
+  it("rolls procs on their own: equal ones add chances, a boss card's stronger one stays apart, all capped", () => {
+    const burns = cardTotals(["cindermaw_card", "cindermaw_card", "magmalisk_card"]).procs.filter(proc => proc.effect === "burn");
+    expect(burns).toHaveLength(2);
+    expect(burns.find(proc => proc.share === undefined)?.chance).toBeCloseTo(6, 5);
+    expect(burns.find(proc => proc.share === .3)?.chance).toBe(CARD_CHANCE_CAP);
+    const splash = cardTotals(["tidewyrm_card", "shard_hopper_card"]);
+    expect(splash.procs).toEqual([{ effect: "splash", chance: 15, share: .6 }]);
+    expect(cardValue(splash, "splash")).toBeGreaterThan(0);
+  });
+
+  it("caps chances at 50% and dodge at 30%", () => {
+    const many = (cardId: string, times: number) => Array.from({ length: times }, () => cardId);
+    expect(cardChance(cardTotals(many("ion_needle_card", 1)), "doubleStrike")).toBe(0);
+    expect(cardChance(cardTotals(many("needle_card", 60)), "doubleStrike")).toBe(CARD_CHANCE_CAP);
+    expect(cardChance(cardTotals(many("petal_regent_card", 20)), "dodge")).toBe(CARD_DODGE_CAP);
+  });
+
+  it("keeps the quickest shield refill and the longest web", () => {
+    expect(cardTotals(["glacier_regent_card"]).timing.shield).toBe(8);
+    expect(cardTotals(["glacier_regent_card", "aegis_prime_card"]).timing.shield).toBe(6);
+    expect(cardTotals(["desert_spider_card"]).timing.web).toBe(2);
+    expect(NO_CARDS.timing).toEqual({ shield: 8, web: 2 });
+  });
+});
+
+describe("guards and slayers", () => {
+  it("adds every guard that applies to the attacker, at most 60% off", () => {
+    const totals = cardTotals(["glacier_archer_card", "bastion_defender_card", "magma_guard_card"]);
+    const ranged = cardDamageTakenMultiplier(totals, { ranged: true });
+    expect(ranged).toBeLessThan(1);
+    expect(cardDamageTakenMultiplier(totals, { ranged: false })).toBe(1);
+    expect(cardDamageTakenMultiplier(totals, { ranged: true, boss: true })).toBeLessThan(ranged);
+    expect(cardDamageTakenMultiplier(totals, { mapId: "advanced_lava_wastes" })).toBeLessThan(1);
+    const stacked = cardTotals(Array.from({ length: 12 }, () => "ironhorn_card"));
+    expect(cardDamageTakenMultiplier(stacked, { boss: true, elite: true })).toBeCloseTo(1 - CARD_GUARD_CAP / 100, 5);
+  });
+
+  it("adds every slayer that applies to the target", () => {
+    const totals = cardTotals(["dread_warden_card", "nimbus_archer_card", "dune_raider_card"]);
+    expect(cardDamageDealtMultiplier(totals, {})).toBe(1);
+    expect(cardDamageDealtMultiplier(totals, { elite: true })).toBeCloseTo(1.09, 5);
+    expect(cardDamageDealtMultiplier(totals, { elite: true, ranged: true, mapId: "beginner_desert" })).toBeGreaterThan(1.09);
+  });
+});
+
+describe("worn cards", () => {
+  it("reads the weapon in either hand, the helmet and the armor, never boots", () => {
+    const cards: Record<string, string[]> = { ion_bow: ["needle_card"], ion_helmet: ["brood_card"], ion_armor: ["mossback_card"], black_boots: ["x"] };
+    const of = (itemId: string) => cards[itemId] ?? [];
+    expect(equippedCardIds({ equippedRightHand: "ion_bow", equippedHead: "ion_helmet", equippedChest: "ion_armor" }, of))
+      .toEqual(["needle_card", "brood_card", "mossback_card"]);
+    expect(equippedCardIds({ equippedLeftHand: "ion_bow" }, of)).toEqual(["needle_card"]);
+    expect(equippedCardIds({}, of)).toEqual([]);
+  });
+});
