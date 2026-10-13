@@ -21,7 +21,7 @@ function fixture() {
     f.seed(table, { ...f.db[table].identity.find(old), identity: developer });
   }
   f.db.playerSession.connectionId.update({ ...f.db.playerSession.connectionId.find(f.ctx.connectionId), identity: developer });
-  f.patch("playerProfile", { displayName: "Ryan" }, developer);
+  f.patch("playerProfile", { displayName: "Rymel" }, developer);
   f.ctx.sender = developer;
   f.ctx.senderAuth = { jwt: { issuer: SPACETIME_AUTH_ISSUER, audience: [SPACETIME_AUTH_CLIENT_ID] } };
   f.seed("playerProfile", { identity: accused, displayName: "Rude" });
@@ -82,7 +82,7 @@ describe("developer review queue", () => {
     expect(f.db.chatMessageReport.id.find(3n).status).toBe("pending");
     const queue = f.queue();
     expect(queue.openReports).toBe(3);
-    expect(queue.reports.find(entry => entry.key === "chat:1")?.decisions).toMatchObject([{ decision: "removed", note: "slur", reviewerName: "Ryan" }]);
+    expect(queue.reports.find(entry => entry.key === "chat:1")?.decisions).toMatchObject([{ decision: "removed", note: "slur", reviewerName: "Rymel" }]);
     expect(queue.reports.find(entry => entry.key === "chat:2")?.decisions[0].note).toContain("Same message as chat:1");
     expect([...f.db.moderationAction.iter()][0]).toMatchObject({ action: "Message removed", actorType: "developer", reportId: "1" });
   });
@@ -273,7 +273,7 @@ describe("developer mute and ban", () => {
     const f = fixture();
     for (const target of [developer, owner]) {
       expect(() => f.run(server.devSetChatMute, { identity: target, minutes: 60 })).toThrow("Protected identity");
-      expect(() => f.run(server.devSuspendPlayerAccount, { identity: target, expectedDisplayName: "Ryan", untilMicros: 0n, reason: "x" }))
+      expect(() => f.run(server.devSuspendPlayerAccount, { identity: target, expectedDisplayName: "Rymel", untilMicros: 0n, reason: "x" }))
         .toThrow("Protected identity");
     }
   });

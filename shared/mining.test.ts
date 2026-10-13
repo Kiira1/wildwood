@@ -141,7 +141,7 @@ describe("the rocks", () => {
     }
   });
 
-  it("are named as Morkyl named them, and looked up by id", () => {
+  it("are named by size and ore, and looked up by id", () => {
     const large = MINING_NODES.find(node => node.kind === "large" && node.ore === "iron_ore")!;
     expect(miningNodeName(large)).toBe("Large Iron Ore");
     expect(miningNode(large.id)).toBe(large);

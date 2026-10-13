@@ -3,7 +3,7 @@ import type { MiningNode } from "./mining";
 import { REFINE_ORES, type OreId } from "./refine";
 
 /**
- * Ores in the bag (Ryan, 2026-10-13: ores stack in bag slots, "a slot each"): every kind held takes one bag slot,
+ * Ores in the bag: every kind held takes one bag slot,
  * however many are in the stack, and counts toward the bag's capacity like any item. A kind the player holds none
  * of needs a free slot before it can come in, so a full bag stops a new kind from being mined.
  */

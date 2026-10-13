@@ -5,8 +5,8 @@ import { critPowerFactor, type PlayerPowerStats } from "./player-power";
 import { CHALLENGE_ABSOLUTE_MIN_INTERVAL } from "./prestige-challenge";
 
 /**
- * Whether a build is ready for a map or a boss, read from its live enemies (Ryan, 0.901.65: "i dont want move
- * on to use a fixed table"). It replaced a table of the power the Balance Lab brought to each map, which went
+ * Whether a build is ready for a map or a boss, read from its live enemies.
+ * It replaced a table of the power the Balance Lab brought to each map, which went
  * stale with every retune and never counted crit. Two questions, each with the enemy `margin` times as strong
  * (Move At, Fight At): does the build kill one fast enough, and can it take enough of its hits?
  */

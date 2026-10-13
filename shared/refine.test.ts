@@ -59,7 +59,7 @@ describe("safe limits and odds", () => {
   });
 
   it("make +10 a real goal, harder the higher the grade, and +20 far off for now", () => {
-    // In tries, one ore each. Hard on purpose (Ryan: easier to speed the game up later than to slow it down).
+    // In tries, one ore each. Hard on purpose.
     const tries = [bows.grade1, bows.grade2, bows.grade3, bows.grade4].map(expectedRefineTries);
     expect(tries[0][7]).toBe(7);
     expect(tries[3][4]).toBe(4);

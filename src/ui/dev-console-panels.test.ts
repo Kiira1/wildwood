@@ -20,7 +20,7 @@ function harness() {
       { identity: "bb", displayName: "Later", mutedUntilMs: NOW + 90 * 60_000, startedAtMs: NOW - 60_000, muteCount: 2, source: "developer", reason: "" },
     ],
     banned: [
-      { identity: "cc", displayName: "Timed", bannedUntilMs: NOW + 3_600_000, permanent: false, startedAtMs: NOW, reason: "spam", by: "Ryan" },
+      { identity: "cc", displayName: "Timed", bannedUntilMs: NOW + 3_600_000, permanent: false, startedAtMs: NOW, reason: "spam", by: "Rymel" },
       { identity: "dd", displayName: "Forever", bannedUntilMs: 0, permanent: true, startedAtMs: NOW, reason: "cheating", by: "Automatic" },
     ],
     deletions: [

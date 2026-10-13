@@ -113,7 +113,7 @@ describe("soul kills the server has not counted yet", () => {
     return { runtime, serverCounts: (speedKills: number, damage: number) => { soul = { ...soul, attackSpeed: soulAttackSpeedRatingAfterKills(0, speedKills), damage }; } };
   }
 
-  it("keeps them when the server's row moves, so attack speed rises steadily instead of jumping back (Ryan, 2026-10-13)", () => {
+  it("keeps them when the server's row moves, so attack speed rises steadily instead of jumping back", () => {
     const c = counting();
     c.runtime.inPlay();
     c.runtime.soulKill("attackSpeed"); c.runtime.soulKill("attackSpeed"); c.runtime.soulKill("damage");

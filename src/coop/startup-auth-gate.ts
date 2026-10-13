@@ -62,7 +62,7 @@ function startupElements(documentValue: Document): StartupAuthElements {
     detail.textContent = "Google and Spacetime Email links can open different characters.";
     hint.replaceChildren("Use your original sign-in method.", detail);
     // Behind a Sign-in Help line, so the card does not read as a wall of
-    // account rules to someone who only wants to play (Ryan).
+    // account rules to someone who only wants to play.
     hint.hidden = true;
     const help = documentValue.createElement("button");
     help.id = "accountSignInHelp"; help.className = "account-sign-in-help"; help.type = "button";

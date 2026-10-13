@@ -7,7 +7,7 @@ export { aggroPullCamps } from "../../../../shared/aggro-challenge";
 /**
  * Which stat groups chase the player during an Aggro run: the player's own
  * picks, one more each run, saved per account on this device. They used to be
- * a random pick on every arrival; Ryan wanted them chosen and kept. A picked
+ * a random pick on every arrival; now they are chosen and kept. A picked
  * group a map does not have simply has no one there to chase.
  */
 export const AGGRO_GROUPS: readonly RewardType[] = ["damage", "health", "speed", "armor", "regen", "crit"];

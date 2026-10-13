@@ -42,7 +42,7 @@ const STRENGTH_REFRESH_SECONDS = 1;
  * builds each one at the player's strength as it spawns, and owns the Town's
  * portal's presence and the soul stats combat adds.
  */
-/** The Soul Defense Force is off for now (Ryan, 0.901.38): the crit cap took away the runs it answered. Kills still count. */
+/** The Soul Defense Force is off for now: the crit cap took away the runs it answered. Kills still count. */
 const SOUL_DEFENSE_FORCE_ON = false;
 
 export function createSoulDimensionRuntime(deps: {
@@ -88,8 +88,8 @@ export function createSoulDimensionRuntime(deps: {
   const serverSoul = () => source()?.soulStats?.() ?? null;
   /**
    * A new server row takes off only the kills it counts. Clearing them all dropped kills still on their way,
-   * so attack speed fell back and jumped up again, and the save step took the gap for the run's own speed
-   * (Ryan, 2026-10-13: "keeps jumping around"). Kills the server never counts drop out after a while.
+   * so attack speed fell back and jumped up again, and the save step took the gap for the run's own speed.
+   * Kills the server never counts drop out after a while.
    */
   function settle(server: SoulStats | null) {
     const before = lastServerSoul ? cleanSoulStats(lastServerSoul) : null, after = cleanSoulStats(server);

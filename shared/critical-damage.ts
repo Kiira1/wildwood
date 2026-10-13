@@ -55,7 +55,7 @@ export function criticalDamageBonuses(parts: Pick<CriticalDamageParts, "research
 /**
  * What the soul adds: a flat multiplier, as before 0.901.47, so each soul crit kill adds its 0.002x to the
  * total (soulCritRatingAfterKills stores it as the rating that gives that from nothing). Added to the run's
- * rating on the curve instead, a kill did nothing visible once the run's own crit was high (Ryan, 0.901.49 chat).
+ * rating on the curve instead, a kill did nothing visible once the run's own crit was high.
  */
 export function soulCritDamageBonus(soul: unknown) {
   const rating = amount(soul);
@@ -80,7 +80,7 @@ export function criticalDamage(parts: CriticalDamageParts) {
 
 /**
  * What `rating` more crit damage rating adds to the capped multiplier now, as the label under a crit
- * enemy shows it ("+0.08×"), or "Capped" at the cap: research, Keen Edge and the soul all in (Ryan).
+ * enemy shows it ("+0.08×"), or "Capped" at the cap: research, Keen Edge and the soul all in.
  */
 export function critMultiplierGainLabel(parts: CriticalDamageParts, rating: number) {
   const before = criticalDamage(parts);

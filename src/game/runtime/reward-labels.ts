@@ -6,7 +6,7 @@ import { soulAttackSpeedBonus, type SoulStatId } from "../../../shared/soul-dime
 /**
  * Attack speed and crit damage pay ratings, numbers players can't read, worth less as they near the cap.
  * Wherever a reward is shown (the label under an enemy, the map's Enemy Index) these say what one kill
- * gives this player now instead: "+0.004/s", "+0.08×", or "Capped" (Ryan).
+ * gives this player now instead: "+0.004/s", "+0.08×", or "Capped".
  */
 export type RewardLabelContext = {
   attackCap: AttackCapArg;

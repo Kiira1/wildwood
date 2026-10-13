@@ -10,7 +10,7 @@ export function drawPlayerPowerLabel(
   bottom: number,
 ) {
   ctx.save();
-  // 10px, as the name above it and the health bar's numbers (Ryan).
+  // 10px, as the name above it and the health bar's numbers.
   ctx.font = '900 10px "Arial Rounded MT Bold", "Arial Rounded MT", Arial, sans-serif';
   ctx.textBaseline = "bottom";
   ctx.textAlign = "left";

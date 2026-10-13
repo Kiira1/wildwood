@@ -3,7 +3,7 @@ import { ORE_ORDER, bagFullForOres, bagSlotsWithOres, oreDescription, oreKindsHe
 import { gearClaimSpace } from "./mailbox-equipment";
 import { IRON_BOW, SAMURAI_HAT } from "./items";
 
-// Ryan, 2026-10-13: ore stacks take "a slot each" in the bag, like any item.
+// Ore stacks take a slot each in the bag, like any item.
 const bag = (extraCopies: number, ores: Record<string, number> = {}, capacity = 5) =>
   ({ owned: [IRON_BOW, SAMURAI_HAT], equipped: [IRON_BOW], extraCopies, ores, capacity });
 

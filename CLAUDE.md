@@ -5,16 +5,16 @@ Maincloud (`wildwood-coop`, one database — sharding was removed in 0.766).
 
 ## Shipping a version
 
-**Ryan runs the command that ships. Every time.** Claude works on a branch, gets it
+**Rymel runs the command that ships. Every time.** Claude works on a branch, gets it
 green, hands over the exact command and stops. That covers committing to `main`
 (the post-commit hook pushes and deploys straight to players), the server publish,
-and any production `spacetime sql` write. Ryan can waive it for one change by
+and any production `spacetime sql` write. Rymel can waive it for one change by
 saying so; the waiver does not carry to the next one.
 
 The client and the server deploy by completely separate routes. A commit ships the
 client by itself; it never touches the server.
 
-**Client (Ryan commits).** Committing to `main` auto-pushes — `.githooks/post-commit`,
+**Client (Rymel commits).** Committing to `main` auto-pushes — `.githooks/post-commit`,
 main only, not branches. That is why Claude does not commit there: the commit *is*
 the deploy. The push triggers `.github/workflows/pages.yml`, which runs
 `check:release`, `typecheck:coop`, `typecheck:server`, `test:unit`, `build:client`
@@ -22,7 +22,7 @@ and deploys the same `dist` to two places:
 
 - GitHub Pages — `https://tydoskus.github.io/wildwood/version.json`.
 - wildstatmmo.com — the Cloudflare Worker `wildstat`. For now the Cloudflare
-  dashboard's own Git build deploys it (Ryan's choice), and that build skips
+  dashboard's own Git build deploys it (Rymel's choice), and that build skips
   every test. The workflow's `wrangler deploy` step ships the same tested `dist`
   instead, but is off unless the repo variable `CLOUDFLARE_DEPLOY` is `on`;
   running both deployed every push twice. Check
@@ -33,11 +33,11 @@ committed `src/module_bindings` match it. It never deploys anything.
 
 After a push to main, confirm `gh run list --limit 2` is green.
 
-**Server (Ryan runs it).** Changes under `spacetimedb/` do nothing until:
+**Server (Rymel runs it).** Changes under `spacetimedb/` do nothing until:
 
     npm run spacetime:publish:live
 
-Ryan runs that himself in his terminal — never run it from an agent session, and
+Rymel runs that himself in his terminal — never run it from an agent session, and
 never publish to `wildwood-coop`, `wildwood-balance-local`, or maincloud from a
 worktree. End any report that touched `spacetimedb/` by handing him that command.
 

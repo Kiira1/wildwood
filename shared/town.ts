@@ -30,8 +30,8 @@ export const inTownVillage = (x: number, y: number, margin = 0) =>
   x > TOWN_CENTER.x + TOWN_VILLAGE_BOUNDS.left - margin && x < TOWN_CENTER.x + TOWN_VILLAGE_BOUNDS.right + margin
   && y > TOWN_CENTER.y + TOWN_VILLAGE_BOUNDS.top - margin && y < TOWN_CENTER.y + TOWN_VILLAGE_BOUNDS.bottom + margin;
 /**
- * The Copper Hills: the mining country east of the village, a short walk past its river (a player's idea,
- * Morkyl's; Ryan, 2026-10-13: "a mining zone in general", without the monsters). Ore rocks in four veins, copper
+ * The Copper Hills: the mining country east of the village, a short walk past its river.
+ * Ore rocks in four veins, copper
  * nearest the village and adamant furthest out; shared/mining.ts lays them. Part of the Town's own world, so it
  * is the Town's map: walk out east and you are there.
  */
@@ -138,7 +138,7 @@ export const TOWN_OX_POSITION = stationIn(8, 120, 100);
 /** How close a player's feet come to Ox's before his shop opens. */
 export const TOWN_OX_REACH = 60;
 /**
- * The Smith refines gear (shared/refine.ts), after Ragnarok's refiner (Ryan, 2026-10-13: "Add a smith npc"). He
+ * The Smith refines gear (shared/refine.ts), after Ragnarok's refiner. He
  * works outdoors at the blue forge house right of the Upgrade Bench's building (door 6), the one with crossed
  * swords on its sign: in its yard, between the weapon rack and the forge, behind the anvil. Players walk in
  * from the road on the left. Where his feet are.
@@ -148,7 +148,7 @@ export const TOWN_SMITH_POSITION = Object.freeze({ x: TOWN_CENTER.x + 354, y: TO
 export const TOWN_SMITH_REACH = 60;
 export const TOWN_SMITH_SERVER_REACH = 100;
 /**
- * A gap in the log fence east of the Inn (Ryan, 2026-10-13: "make a gap in the fence"): the square's way out east,
+ * A gap in the log fence east of the Inn: the square's way out east,
  * to the river's crossing in the north-east and the Copper Hills past it. The fence's middle log section on that
  * side, and its collider, are left out (soul-village.ts).
  */
