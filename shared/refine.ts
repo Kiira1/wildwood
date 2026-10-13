@@ -1,0 +1,139 @@
+import { canonicalItemId, isUpgradeableItem, itemDefinition } from "./items";
+import { itemTier } from "./item-tier";
+
+/**
+ * Refining, after Ragnarok Online (Ryan, 2026-10-13): every item refines on its own from +0 to +20 at the
+ * Town anvil, one ore a try, decided on the spot. Up to its safe limit a try always works; past it the odds
+ * fall, and a failed try takes the item down one level. Gems never buy odds or protection.
+ *
+ * This is its own layer. The slot tiers (+N on the Weapon, Helmet and Armor tracks) stay as they were.
+ */
+export const REFINE_MAX = 20;
+
+/** Ragnarok's weapon levels: an item's grade follows its Tier, four tiers to a grade (the last one three). */
+export type RefineGrade = 1 | 2 | 3 | 4;
+
+/** The ore a try costs: one grade ore, plus a Starshard from +11 on. */
+export const REFINE_ORES = {
+  copper_ore: { name: "Copper Ore", grade: 1 },
+  iron_ore: { name: "Iron Ore", grade: 2 },
+  mithril_ore: { name: "Mithril Ore", grade: 3 },
+  adamant_ore: { name: "Adamant Ore", grade: 4 },
+  starshard: { name: "Starshard", grade: null },
+} as const;
+export type OreId = keyof typeof REFINE_ORES;
+export const GRADE_ORES: Readonly<Record<RefineGrade, OreId>> = { 1: "copper_ore", 2: "iron_ore", 3: "mithril_ore", 4: "adamant_ore" };
+/** From this level on, a try also takes a Starshard. */
+export const STARSHARD_FROM_LEVEL = 11;
+
+/**
+ * Where a try stops being certain. Weapons as Ragnarok's weapon levels: the higher the grade, the lower the
+ * limit. Helmets and armor are +4 at every grade, as Ragnarok's armor.
+ */
+export const WEAPON_SAFE_LIMITS: Readonly<Record<RefineGrade, number>> = { 1: 7, 2: 6, 3: 5, 4: 4 };
+export const ARMOR_SAFE_LIMIT = 4;
+
+/**
+ * The chance a try past the safe limit works, by the level it is for: Ragnarok's classic table to +10 (rounded),
+ * then lower still to +20. Hard on purpose: speeding the game up later is far easier than slowing it down (Ryan,
+ * 2026-10-13: "It doesn't need to be reachable right now"). A fail costs a level that has to be climbed again,
+ * so tries multiply level on level: a top-grade item takes about 2,200 tries to +10, a grade 1 item about 44,
+ * and +20 is out of reach for now.
+ */
+const WEAPON_ODDS: Readonly<Record<RefineGrade, Readonly<Record<number, number>>>> = {
+  1: { 8: .6, 9: .4, 10: .2 },
+  2: { 7: .6, 8: .4, 9: .2, 10: .2 },
+  3: { 6: .6, 7: .5, 8: .2, 9: .2, 10: .2 },
+  4: { 5: .6, 6: .4, 7: .4, 8: .2, 9: .2, 10: .1 },
+};
+const ARMOR_ODDS: Readonly<Record<number, number>> = { 5: .6, 6: .6, 7: .4, 8: .4, 9: .2, 10: .1 };
+/** Past +10, never better than the +10 try was for that item. */
+const HIGH_ODDS: Readonly<Record<number, number>> = { 11: .1, 12: .1, 13: .08, 14: .08, 15: .07, 16: .07, 17: .06, 18: .06, 19: .05, 20: .05 };
+
+/**
+ * What each level adds: this share of the item's own stat, as its slot tier has left it. Five percent a level
+ * to +10 (+50%), ten a level from there (+150% at +20). A higher-tier item gains more, because its stat is
+ * bigger.
+ */
+export const REFINE_STEP_TO_TEN = .05;
+export const REFINE_STEP_PAST_TEN = .1;
+
+export function normalizeRefineLevel(level: unknown) {
+  const value = Number(level);
+  return Number.isFinite(value) ? Math.max(0, Math.min(REFINE_MAX, Math.floor(value))) : 0;
+}
+
+/** Equipment with a stat to refine: every bow, helmet and armor with a bonus. Cosmetics and the starter stone have none. */
+export function isRefinableItem(itemId: unknown) {
+  return isUpgradeableItem(itemId);
+}
+
+export function refineGrade(itemId: unknown): RefineGrade | null {
+  const id = canonicalItemId(itemId);
+  if (!id || !isRefinableItem(id)) return null;
+  const tier = itemTier(id) ?? itemDefinition(id)?.weapon?.tier ?? 1;
+  return tier <= 4 ? 1 : tier <= 8 ? 2 : tier <= 12 ? 3 : 4;
+}
+
+export function refineSafeLimit(itemId: unknown) {
+  const grade = refineGrade(itemId);
+  if (!grade) return 0;
+  return itemDefinition(itemId)?.slot === "HAND" ? WEAPON_SAFE_LIMITS[grade] : ARMOR_SAFE_LIMIT;
+}
+
+/** The chance a try for `toLevel` works: certain up to the safe limit, then the tables above. Zero when it can't be tried. */
+export function refineSuccessChance(itemId: unknown, toLevel: number) {
+  const grade = refineGrade(itemId);
+  if (!grade || !Number.isInteger(toLevel) || toLevel < 1 || toLevel > REFINE_MAX) return 0;
+  if (toLevel <= refineSafeLimit(itemId)) return 1;
+  if (toLevel > 10) return HIGH_ODDS[toLevel] ?? 0;
+  const table = itemDefinition(itemId)?.slot === "HAND" ? WEAPON_ODDS[grade] : ARMOR_ODDS;
+  return table[toLevel] ?? 0;
+}
+
+/** What a try for `toLevel` costs, or null when the item can't be refined to it. */
+export function refineCost(itemId: unknown, toLevel: number): Partial<Record<OreId, number>> | null {
+  const grade = refineGrade(itemId);
+  if (!grade || !Number.isInteger(toLevel) || toLevel < 1 || toLevel > REFINE_MAX) return null;
+  const cost: Partial<Record<OreId, number>> = { [GRADE_ORES[grade]]: 1 };
+  if (toLevel >= STARSHARD_FROM_LEVEL) cost.starshard = 1;
+  return cost;
+}
+
+/** Where a try leaves the item: one up when it works, one down when it fails. Tries within the safe limit never fail. */
+export function refineResultLevel(currentLevel: number, succeeded: boolean) {
+  const current = normalizeRefineLevel(currentLevel);
+  return succeeded ? Math.min(REFINE_MAX, current + 1) : Math.max(0, current - 1);
+}
+
+/** What an item's stat is multiplied by at this refine level. */
+export function refineMultiplier(level: unknown) {
+  const refine = normalizeRefineLevel(level);
+  return 1 + REFINE_STEP_TO_TEN * Math.min(refine, 10) + REFINE_STEP_PAST_TEN * Math.max(0, refine - 10);
+}
+
+/**
+ * The expected number of tries to bring an item from +0 to each level, failures and the levels they cost
+ * included: index n holds the tries to reach +n. For the refine window's "about N tries" and the balance checks.
+ */
+export function expectedRefineTries(itemId: unknown): number[] {
+  const totals = [0];
+  let toPrevious = 0, total = 0;
+  for (let level = 1; level <= REFINE_MAX; level++) {
+    const chance = refineSuccessChance(itemId, level);
+    // One try, and on a fail the climb back to where this try started.
+    const toThis = chance > 0 ? (1 + (1 - chance) * toPrevious) / chance : Number.POSITIVE_INFINITY;
+    total += toThis; totals.push(total); toPrevious = toThis;
+  }
+  return totals;
+}
+
+/**
+ * Rolls one try. `roll` is a number in [0, 1) from the server's random source; a try works when it lands
+ * under the chance. Returns the level the item ends on.
+ */
+export function rollRefine(itemId: unknown, currentLevel: number, roll: number) {
+  const current = normalizeRefineLevel(currentLevel);
+  const succeeded = roll < refineSuccessChance(itemId, current + 1);
+  return { succeeded, level: refineResultLevel(current, succeeded) };
+}
