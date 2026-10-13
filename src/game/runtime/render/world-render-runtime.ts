@@ -1,3 +1,4 @@
+import { TOWN_FEET_OFFSET } from "../../../../shared/town";
 import { drawHomeTeleport } from "../town/home-teleport";
 import { drawSoulWellFall } from "../soul/soul-well-fall";
 import { createActorRenderer, type ActorStatus } from "./actor-renderer";
@@ -232,6 +233,14 @@ export function createWorldRenderRuntime(options: WorldRenderRuntimeOptions) {
     drawOx: (x, y) => {
       drawEntityShadow(x, y, 34, .17);
       drawOxSprite(options.ctx, x, y);
+    },
+    // The Smith is a villager in the game's own gear: a fire-forged helm, magma plate and a sword, facing the room.
+    drawSmith: (x, y) => {
+      drawEntityShadow(x, y, 30, .17);
+      drawStartingPlayer(options.ctx, options.playerAppearanceAssets, {
+        x, y: y - TOWN_FEET_OFFSET, facing: Math.PI / 2, gameTime: options.gameTime(), skinTone: 5,
+        headItem: "fire_metal_helmet", chestItem: "magma_armor", rightHandItem: "wooden_sword", leftHandItem: "",
+      });
     },
     ...options.assets,
     customStaticTiles: mapId => isTownMap(mapId) ? townStaticTiles : mapId === TUTORIAL_FOREST_MAP_ID ? forestStaticTiles : null,

@@ -13,6 +13,8 @@ export type InventoryDeleteModeDependencies = {
   /** Copy id 0n is the item's first copy; the server moves a kept copy into its place. */
   destroyEquipmentCopy?: (itemId: string, copyId: bigint) => Promise<Result>;
   confirm: ConfirmPrompt;
+  /** One copy's refine (★N), so the prompt can warn before refined gear goes. */
+  refineLevel?: (itemId: string, copyId: bigint) => number;
   showMessage: (message: string, color?: string) => void;
   /** After a deletion: the bag has changed and must be drawn again. */
   onDeleted: () => void;
@@ -112,9 +114,12 @@ export function createInventoryDeleteMode(dependencies: InventoryDeleteModeDepen
       picks.set(itemId, [...(picks.get(itemId) ?? []), BigInt(key.slice(split + 1))]);
     }
     const count = selected.size;
+    const refined = [...picks].reduce((total, [itemId, copyIds]) =>
+      total + copyIds.filter(copyId => (dependencies.refineLevel?.(itemId, copyId) ?? 0) > 0).length, 0);
     if (!await dependencies.confirm({
       message: `Delete ${count} selected item${count === 1 ? "" : "s"} permanently?`,
-      details: [{ label: "This cannot be undone", value: "No refund" }],
+      details: [{ label: "This cannot be undone", value: "No refund" },
+        ...(refined ? [{ label: "Refined Gear", value: `${refined} Item${refined === 1 ? "" : "s"} ★` }] : [])],
       confirmLabel: "Delete", danger: true,
     })) return;
     busy = true;

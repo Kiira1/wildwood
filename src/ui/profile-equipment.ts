@@ -1,5 +1,6 @@
 import { replaceChildrenIfChanged } from "./replace-children-if-changed";
 import { appendItemTierLabel } from "./item-tier-label";
+import { appendRefineBadge, withRefineStars } from "./refine-badge";
 import type { PlayerProgress } from "../coop/services/progress";
 import { itemArtMarkup } from "../game/item-presentation";
 import { isHiddenCosmeticItem } from "../../shared/equipment-appearance";
@@ -107,16 +108,23 @@ export function profileEquipmentPresentation(
   };
 }
 
+/** The worn item's refine, from the profile's first-copy refines; a cosmetic only changes the look, so it has none. */
+export function profileEquipmentRefine(presentation: ProfileEquipmentPresentation, itemRefines: Readonly<Record<string, number>> | undefined) {
+  return presentation.kind === "COSMETIC" ? 0 : itemRefines?.[presentation.inspectionItemId] ?? 0;
+}
+
 export function renderProfileEquipmentSlot(
   element: HTMLButtonElement,
   presentation: ProfileEquipmentPresentation,
   upgradeLevel: number,
+  refineLevel = 0,
 ) {
   const item = itemDefinition(presentation.displayItemId);
   const inspectionItem = itemDefinition(presentation.inspectionItemId);
   const level = normalizeItemUpgradeLevel(upgradeLevel);
   const cosmetic = presentation.kind === "COSMETIC";
   const hidden = presentation.kind === "HIDDEN";
+  const refine = cosmetic ? 0 : refineLevel;
 
   element.classList.toggle("is-equipped", Boolean(item));
   element.classList.toggle("is-cosmetic", cosmetic);
@@ -124,10 +132,11 @@ export function renderProfileEquipmentSlot(
   element.disabled = !inspectionItem;
   if (inspectionItem) element.dataset.itemId = inspectionItem.id;
   else delete element.dataset.itemId;
+  const name = inspectionItem ? withRefineStars(itemDisplayName(inspectionItem.id, level), refine) : "";
   element.setAttribute("aria-label", inspectionItem
-    ? `${presentation.label}: ${itemDisplayName(inspectionItem.id, level)}. ${cosmetic ? "Cosmetic active. " : hidden ? "Equipped but hidden by cosmetic. " : "Equipped. "}Tap to inspect.`
+    ? `${presentation.label}: ${name}. ${cosmetic ? "Cosmetic active. " : hidden ? "Equipped but hidden by cosmetic. " : "Equipped. "}Tap to inspect.`
     : `${presentation.label}: ${hidden ? "hidden by cosmetic" : "empty"}`);
-  element.title = inspectionItem ? `Inspect ${itemDisplayName(inspectionItem.id, level)}` : "";
+  element.title = inspectionItem ? `Inspect ${name}` : "";
 
   const label = document.createElement("span");
   label.className = "equipment-slot-label";
@@ -167,5 +176,6 @@ export function renderProfileEquipmentSlot(
       badge.textContent = `+${level}`;
       target.append(badge);
     }
+    if (item) appendRefineBadge(target, refine);
   });
 }

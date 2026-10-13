@@ -8,6 +8,8 @@ import {
   normalizeItemUpgradeLevel,
 } from "../../shared/items";
 import { bowSkillLines, type BowSkillRoll } from "../../shared/bow-skills";
+import { normalizeRefineLevel } from "../../shared/refine-multiplier";
+import { refineStars } from "./refine-badge";
 
 export type ItemInspectionAction = {
   label: string;
@@ -19,6 +21,8 @@ export type ItemInspectionAction = {
 export type ItemInspectionRequest = {
   itemId: string;
   upgradeLevel?: number;
+  /** The inspected copy's refine: a gold ★N after its name, and counted in its stats. */
+  refine?: number;
   context?: string;
   description?: string;
   actions?: readonly ItemInspectionAction[];
@@ -70,11 +74,19 @@ export function createItemInspectionController(elements: ItemInspectionElements)
     const item = itemDefinition(request.itemId);
     if (!item) return false;
     const level = normalizeItemUpgradeLevel(request.upgradeLevel);
+    const refine = normalizeRefineLevel(request.refine);
     if (elements.panel.hidden) {
       returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     }
 
     elements.title.textContent = itemInspectionButtonLabel(itemDisplayName(item.id));
+    // "Ion Bow ★7": the refine after the name, in gold.
+    if (refine > 0) {
+      const stars = document.createElement("span");
+      stars.className = "refine-stars";
+      stars.textContent = ` ${refineStars(refine)}`;
+      elements.title.append(stars);
+    }
     const icon = document.createElement("div");
     icon.className = "item-inspection-icon";
     const source = itemPresentation(item.id)?.inventory.source;
@@ -115,7 +127,7 @@ export function createItemInspectionController(elements: ItemInspectionElements)
 
     const stats = document.createElement("div");
     stats.className = "item-inspection-stats";
-    for (const stat of itemStats(item.id, level)) {
+    for (const stat of itemStats(item.id, { tier: level, refine })) {
       const value = document.createElement("span");
       value.textContent = formatEquipmentStat(itemInspectionButtonLabel(stat));
       if (/^DAMAGE\b/.test(stat)) value.dataset.statKind = "damage";

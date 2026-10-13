@@ -1,6 +1,7 @@
 import { formatEquipmentAmount } from "./equipment-stat-format";
 import { itemTier } from "../../shared/item-tier";
 import { appendItemTierLabel } from "./item-tier-label";
+import { appendRefineBadge, withRefineStars } from "./refine-badge";
 import { cosmeticInventoryStacks, bagInventoryStacks, ITEM_DEFINITIONS, type EquipmentSlot } from "../game/inventory";
 import { itemArtMarkup } from "../game/item-presentation";
 import { formatCompactNumber } from "./number-format";
@@ -207,6 +208,7 @@ function renderEquipmentSlot(
   mode: InventoryMode,
   upgradeLevel: (itemId: string) => number,
   slotTier?: (slot: "HAND" | "HEAD" | "CHEST") => number,
+  refineLevel?: (itemId: string) => number,
 ) {
   const itemId = equipmentItemId(inventory, destination, mode);
   const item = itemsById[itemId];
@@ -227,8 +229,10 @@ function renderEquipmentSlot(
   element.classList.toggle("is-cosmetic-hidden", cosmeticHidden);
   const track = destination === "HEAD" || destination === "CHEST" ? destination : destination === "FEET" ? null : "HAND";
   const level = (track && slotTier ? slotTier(track) : item ? upgradeLevel(itemId) : 0);
+  // A slot holds the item's first copy, so its refine is the first copy's. Cosmetics only change the look.
+  const refine = item && mode === "EQUIPMENT" ? refineLevel?.(itemId) ?? 0 : 0;
   element.setAttribute("aria-label", item
-    ? `${label}: ${itemDisplayName(itemId, level)}. Tap to inspect.`
+    ? `${label}: ${withRefineStars(itemDisplayName(itemId, level), refine)}. Tap to inspect.`
     : cosmeticHidden
       ? `${label}: wearing nothing over equipped item. Tap to show equipment.`
       : inheritedItem
@@ -271,6 +275,7 @@ function renderEquipmentSlot(
     badge.textContent = `+${level}`;
     element.append(badge);
   }
+  appendRefineBadge(element, refine);
 }
 
 export function renderInventoryView(
@@ -282,6 +287,8 @@ export function renderInventoryView(
     onInspect: (itemId: string, location: EquipmentSlot | "BAG", copyId?: bigint) => void;
     upgradeLevel: (itemId: string) => number;
     slotTier?: (slot: "HAND" | "HEAD" | "CHEST") => number;
+    /** One copy's refine (★N); `copyId` 0n is the first copy, the one a slot holds. */
+    refineLevel?: (itemId: string, copyId?: bigint) => number;
     slotCapacity: number;
     filter?: ItemSlot;
     nextSlotCost?: bigint;
@@ -302,10 +309,11 @@ export function renderInventoryView(
       || (a.copyId < b.copyId ? -1 : a.copyId > b.copyId ? 1 : 0));
   const slotCapacity = cosmetics ? Math.max(50, bagStacks.length) : actions.slotCapacity;
   elements.count.textContent = `${bagStacks.length} / ${slotCapacity} ${cosmetics ? "Cosmetics" : "Items"}`;
-  renderEquipmentSlot(elements.equippedHead, inventory, "HEAD", "HEAD", mode, actions.upgradeLevel, actions.slotTier);
-  renderEquipmentSlot(elements.equippedChest, inventory, "CHEST", "ARMOR", mode, actions.upgradeLevel, actions.slotTier);
-  renderEquipmentSlot(elements.equippedRightHand, inventory, inventoryWeaponSlot(inventory, mode), "WEAPON", mode, actions.upgradeLevel, actions.slotTier);
-  renderEquipmentSlot(elements.equippedFeet, inventory, "FEET", "BOOTS", mode, actions.upgradeLevel, actions.slotTier);
+  const wornRefine = actions.refineLevel && ((itemId: string) => actions.refineLevel!(itemId, 0n));
+  renderEquipmentSlot(elements.equippedHead, inventory, "HEAD", "HEAD", mode, actions.upgradeLevel, actions.slotTier, wornRefine);
+  renderEquipmentSlot(elements.equippedChest, inventory, "CHEST", "ARMOR", mode, actions.upgradeLevel, actions.slotTier, wornRefine);
+  renderEquipmentSlot(elements.equippedRightHand, inventory, inventoryWeaponSlot(inventory, mode), "WEAPON", mode, actions.upgradeLevel, actions.slotTier, wornRefine);
+  renderEquipmentSlot(elements.equippedFeet, inventory, "FEET", "BOOTS", mode, actions.upgradeLevel, actions.slotTier, wornRefine);
 
   const visibleStacks = actions.filter ? bagStacks.filter(stack => itemDefinition(stack.itemId)?.slot === actions.filter) : bagStacks;
   // Keep the full grid footprint while filtering so scroll clamping cannot
@@ -321,7 +329,9 @@ export function renderInventoryView(
     button.className = "inventory-item" + (itemId ? " is-filled" : " is-empty");
     if (itemId) {
       const level = normalizeItemUpgradeLevel(actions.upgradeLevel(itemId));
-      button.setAttribute("aria-label", `${itemDisplayName(itemId, level)}${copyId ? ", another copy" : ""}. Tap to inspect and equip.`);
+      // Each copy carries its own refine, so two copies of one bow can read ★7 and ★0.
+      const refine = cosmetics ? 0 : actions.refineLevel?.(itemId, copyId) ?? 0;
+      button.setAttribute("aria-label", `${withRefineStars(itemDisplayName(itemId, level), refine)}${copyId ? ", another copy" : ""}. Tap to inspect and equip.`);
       button.dataset.itemId = itemId;
       if (copyId) button.dataset.copyId = String(copyId);
       const art = document.createElement("span");
@@ -332,7 +342,7 @@ export function renderInventoryView(
       if (!cosmetics) {
         const bonuses = document.createElement("span");
         bonuses.className = "inventory-item-bonuses";
-        const stats = itemStats(itemId, level);
+        const stats = itemStats(itemId, { tier: level, refine });
         for (const stat of stats) {
           const match = /^(DAMAGE|MAX HEALTH|REGEN) (\+[\d.]+)(%?)$/.exec(stat);
           if (!match) continue;
@@ -347,7 +357,8 @@ export function renderInventoryView(
       }
       // No +N on a loose item: the number belongs to the slot it goes in, and
       // showing it here made every weapon in the bag claim the weapon slot's
-      // tier as its own.
+      // tier as its own. A refine is the copy's own, so its ★N does show.
+      appendRefineBadge(button, refine);
       button.addEventListener("click", () => actions.onInspect(itemId, "BAG", copyId));
     } else {
       button.setAttribute("aria-label", `Empty bag slot ${index + 1}`);

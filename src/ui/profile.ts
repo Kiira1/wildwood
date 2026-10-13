@@ -123,7 +123,7 @@ export function profilePower(profile: PlayerProfileData, soul: Partial<SoulStats
 }
 
 export type ProfileStatDisplaySource = {
-  label: "Tech" | "Equipment" | "Slot Upgrade" | "Prestige" | "Guild" | "Soul";
+  label: "Tech" | "Equipment" | "Slot Upgrade" | "Refine" | "Prestige" | "Guild" | "Soul";
   value: string;
 };
 
@@ -165,7 +165,7 @@ export function profileStatDisplayRows(
   const researchBonus = (rank = 0, percentPerRank = 0) => rank * percentPerRank;
   const multiplierValue = (value: number) => value.toFixed(2);
   const equipmentBonusValue = (value: number) => `+${Math.round(value * 10000) / 100}%`;
-  const multiplierSources = (researchPercent?: number, equipmentBonus?: number, slotTierBonus?: number): ProfileStatDisplaySource[] => {
+  const multiplierSources = (researchPercent?: number, equipmentBonus?: number, slotTierBonus?: number, refineBonus?: number): ProfileStatDisplaySource[] => {
     const sources: ProfileStatDisplaySource[] = [];
     if (researchPercent) sources.push({ label: "Tech", value: `+${researchPercent}%` });
     if (equipmentBonus !== undefined && equipmentBonus > 0) {
@@ -175,6 +175,10 @@ export function profileStatDisplayRows(
     // was impossible to tell a slot upgrade had done anything at all.
     if (slotTierBonus !== undefined && slotTierBonus > 0) {
       sources.push({ label: "Slot Upgrade", value: equipmentBonusValue(slotTierBonus) });
+    }
+    // What the Smith's refines added on top, the same way.
+    if (refineBonus !== undefined && refineBonus > 0) {
+      sources.push({ label: "Refine", value: equipmentBonusValue(refineBonus) });
     }
     return sources;
   };
@@ -207,13 +211,13 @@ export function profileStatDisplayRows(
       equationOperator: "×",
       multiplier: multiplierValue(effective.multipliers.healthResearch * (1 + effective.equipment.health)),
       total: statValue(effective.maxHp),
-      sources: [...soulSource(soul.maxHp, statValue), ...multiplierSources(healthResearchBonus, effective.gear.health, effective.slotTiers.health)],
+      sources: [...soulSource(soul.maxHp, statValue), ...multiplierSources(healthResearchBonus, effective.gear.health, effective.slotTiers.health, effective.refines.health)],
     },
     {
       kind: "damage", label: "Damage:", base: statValue(progress.damage),
       equationOperator: "×",
       multiplier: multiplierValue(effective.multipliers.damageResearch * (1 + effective.equipment.damage)), total: statValue(effective.damage),
-      sources: [...soulSource(soul.damage, statValue), ...multiplierSources(damageResearchBonus, effective.gear.damage, effective.slotTiers.damage)],
+      sources: [...soulSource(soul.damage, statValue), ...multiplierSources(damageResearchBonus, effective.gear.damage, effective.slotTiers.damage, effective.refines.damage)],
     },
     {
       kind: "armor", label: "Armor:", base: statValue(progress.armor),
@@ -244,7 +248,7 @@ export function profileStatDisplayRows(
       base: `${formatRate(progress.regen)}/s`,
       equationOperator: "×",
       multiplier: multiplierValue(effective.multipliers.regenResearch * (1 + effective.equipment.regen)), total: regen,
-      sources: [...soulSource(soul.regen, value => `${formatRate(value)}/s`), ...multiplierSources(regenResearchBonus, effective.gear.regen, effective.slotTiers.regen)],
+      sources: [...soulSource(soul.regen, value => `${formatRate(value)}/s`), ...multiplierSources(regenResearchBonus, effective.gear.regen, effective.slotTiers.regen, effective.refines.regen)],
     },
     {
       kind: "speed", label: "Move Speed:", base: statValue(progress.speedOverride > 0 ? progress.speedOverride : progress.speed),

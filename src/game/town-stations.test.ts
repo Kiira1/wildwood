@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 vi.mock("../app/developer", () => ({ isDeveloperIdentity: () => false }));
 import { HOME_BENCH_POSITION, HOME_QUEST_BOARD_POSITION, HOME_RESEARCH_POSITION } from "../../shared/home";
-import { TOWN_ARRIVAL, TOWN_BENCH_POSITION, TOWN_CENTER, TOWN_DOORS, TOWN_FEET_OFFSET, TOWN_OX_POSITION, TOWN_QUEST_BOARD_POSITION, TOWN_RESEARCH_POSITION, TOWN_TRAVEL_PORTAL, townRoomAt } from "../../shared/town";
+import { TOWN_ARRIVAL, TOWN_BENCH_POSITION, TOWN_CENTER, TOWN_DOORS, TOWN_FEET_OFFSET, TOWN_OX_POSITION, TOWN_QUEST_BOARD_POSITION, TOWN_RESEARCH_POSITION, TOWN_SMITH_POSITION, TOWN_SMITH_REACH, TOWN_SMITH_SERVER_REACH, TOWN_TRAVEL_PORTAL, inTownVillage, townRoomAt } from "../../shared/town";
 import { SOUL_INTERIOR_DECOR, SOUL_INTERIOR_SOLIDS, SOUL_VILLAGE_SOLIDS } from "./soul-village";
 import { TOWN_SIGNPOST, townWindowDecor } from "./town-world";
 import { UPGRADE_BENCH_POSITION } from "./world";
@@ -17,6 +17,9 @@ const STATIONS = [
 ] as const;
 /** Where a player stands to use each station: on the floor in front of it. */
 const SPOTS = { "Upgrade Bench": { dx: 0, dy: -35 }, "Tech Research": { dx: 0, dy: -25 }, "Quest Board": { dx: 0, dy: -14 } } as const;
+
+/** The stations and people drawn in the decor window around a point, by label. */
+const stationLabels = (at: { x: number; y: number }) => townWindowDecor(at.x, at.y).flatMap(item => (item.type === "upgradeBench" ? [item.label] : []));
 
 const FEET_RADIUS = 12;
 /** Whether a player standing here is clear of every wall and piece of furniture. */
@@ -53,8 +56,8 @@ describe("Home's stations in the Town's buildings", () => {
       const decor = townWindowDecor(at.x, at.y);
       expect(decor).toContainEqual(expect.objectContaining({ type: "upgradeBench", x: at.x, y: at.y, label }));
     }
-    // Out in the village, the rooms' stations are not in the window.
-    expect(townWindowDecor(TOWN_ARRIVAL.x, TOWN_ARRIVAL.y).some(item => item.type === "upgradeBench")).toBe(false);
+    // Out in the village, the rooms' stations are not in the window: only the Smith, who works outdoors.
+    expect(stationLabels(TOWN_ARRIVAL)).toEqual(["Smith"]);
   });
   it("takes the place of one piece of furniture each, and overlaps no other", () => {
     const decor = townWindowDecor(TOWN_BENCH_POSITION.x, TOWN_BENCH_POSITION.y);
@@ -129,6 +132,61 @@ describe("Ox in the bottom-right house", () => {
     Object.assign(player, TOWN_DOORS[8].inside); touch();
     Object.assign(player, { x: TOWN_OX_POSITION.x, y: TOWN_OX_POSITION.y - TOWN_FEET_OFFSET }); touch();
     expect(openOx).toHaveBeenCalledTimes(2);
+  });
+});
+
+/** Walks a coarse grid across the village from one spot: can a player get within `reach` of another? */
+function walkable(from: { x: number; y: number }, to: { x: number; y: number }, reach: number) {
+  const step = 8, key = (x: number, y: number) => `${x},${y}`;
+  const box = { left: Math.min(from.x, to.x) - 200, right: Math.max(from.x, to.x) + 200, top: Math.min(from.y, to.y) - 200, bottom: Math.max(from.y, to.y) + 200 };
+  const start = { x: Math.round(from.x), y: Math.round(from.y) }, seen = new Set([key(start.x, start.y)]), queue = [start];
+  while (queue.length) {
+    const at = queue.shift()!;
+    if (Math.hypot(at.x - to.x, at.y - to.y) <= reach) return true;
+    for (const [dx, dy] of [[step, 0], [-step, 0], [0, step], [0, -step]]) {
+      const x = at.x + dx, y = at.y + dy;
+      if (seen.has(key(x, y)) || x < box.left || x > box.right || y < box.top || y > box.bottom) continue;
+      seen.add(key(x, y));
+      if (standable(x, y)) queue.push({ x, y });
+    }
+  }
+  return false;
+}
+
+describe("the Smith at the forge house", () => {
+  // Where a player stands when he is in reach: his own spot, the way the player's position is measured.
+  const stand = { x: TOWN_SMITH_POSITION.x, y: TOWN_SMITH_POSITION.y - TOWN_FEET_OFFSET };
+  it("works outdoors in the village, right of the Upgrade Bench's building, drawn with the village", () => {
+    expect(inTownVillage(TOWN_SMITH_POSITION.x, TOWN_SMITH_POSITION.y)).toBe(true);
+    expect(townRoomAt(TOWN_SMITH_POSITION.x, TOWN_SMITH_POSITION.y)).toBeNull();
+    // The forge house is the next building right of door 6, a little further down the square.
+    expect(TOWN_SMITH_POSITION.x - TOWN_DOORS[6].x).toBeGreaterThan(100);
+    expect(TOWN_SMITH_POSITION.x - TOWN_DOORS[6].x).toBeLessThan(260);
+    expect(townWindowDecor(TOWN_SMITH_POSITION.x, TOWN_SMITH_POSITION.y)).toContainEqual(expect.objectContaining({ type: "upgradeBench", label: "Smith" }));
+    expect(stationLabels(TOWN_BENCH_POSITION)).not.toContain("Smith");
+  });
+  it("stands on open ground a player can walk to from where everyone lands", () => {
+    expect(standable(stand.x, stand.y)).toBe(true);
+    expect(walkable(TOWN_ARRIVAL, stand, TOWN_SMITH_REACH * .8)).toBe(true);
+  });
+  it("opens his window once as a player walks up, again only after they step away, and the server agrees they are in reach", () => {
+    const openSmith = vi.fn(), player = { x: TOWN_ARRIVAL.x, y: TOWN_ARRIVAL.y };
+    let inTown = true;
+    const touch = createHomeStationTouchHandler(() => inTown, player, vi.fn(), vi.fn(), vi.fn(), vi.fn(), openSmith);
+    touch();
+    expect(openSmith).not.toHaveBeenCalled();
+    // In from the road on his left, as the yard is entered.
+    Object.assign(player, { x: stand.x - 50, y: stand.y });
+    touch(); touch();
+    expect(openSmith).toHaveBeenCalledOnce();
+    expect(Math.hypot(player.x - stand.x, player.y - stand.y)).toBeLessThanOrEqual(TOWN_SMITH_SERVER_REACH);
+    Object.assign(player, TOWN_ARRIVAL); touch();
+    Object.assign(player, { x: stand.x - 40, y: stand.y }); touch();
+    expect(openSmith).toHaveBeenCalledTimes(2);
+    inTown = false;
+    Object.assign(player, TOWN_ARRIVAL); touch();
+    Object.assign(player, stand); touch();
+    expect(openSmith).toHaveBeenCalledTimes(2);
   });
 });
 

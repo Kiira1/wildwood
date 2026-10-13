@@ -770,6 +770,45 @@
 .ox-shop-sheet .quest-copy strong { font-size: 15px; }
 .ox-shop-sheet .farm-start.ox-shop-buy { flex: 0 0 96px; height: 40px; min-height: 40px; font-size: 13px; text-transform: none; }
 .ox-shop-sheet .is-owned { border-color: rgba(201,184,255,.5); }
+/* The Smith's window (smith-window.ts): the chosen copy on top, its odds and cost, the gear to pick from below. */
+.smith-sheet .smith-intro { margin: 0 14px 8px; color: var(--muted); text-align: center; font-size: 13px; line-height: 1.35; }
+.smith-sheet .smith-focus { display: grid; gap: 10px; margin: 0 14px 10px; padding: 12px; border-radius: 12px; background: rgba(255,255,255,.05); }
+.smith-sheet .smith-empty { margin: 6px 0; color: var(--muted); text-align: center; font-size: 13px; }
+.smith-sheet .smith-item { display: flex; align-items: center; gap: 12px; }
+.smith-sheet .smith-art { flex: 0 0 56px; display: grid; place-items: center; width: 56px; height: 56px; }
+.smith-sheet .smith-art .inventory-item-art { width: 52px; height: 48px; }
+.smith-sheet .smith-copy { display: grid; gap: 3px; min-width: 0; }
+.smith-sheet .smith-copy strong { font-size: 16px; }
+.smith-sheet .smith-stat { color: var(--green); font-size: 13px; font-weight: 800; }
+.smith-sheet .smith-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 12px; margin: 0; }
+.smith-sheet .smith-facts div { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; }
+.smith-sheet .smith-facts dt { color: var(--muted); }
+.smith-sheet .smith-facts dd { margin: 0; font-weight: 800; }
+.smith-sheet .smith-facts .is-safe dd { color: var(--green); }
+.smith-sheet .smith-facts .is-risky dd { color: #ffb070; }
+/* The Smith's button is gold, the refine's own color (Ryan: "yellowish goldish"), and button-sized, not the
+   card's full width. Its text stays white with the black outline every button's text has: dark text under that
+   outline read as black on black. */
+.smith-sheet .farm-start.smith-refine { justify-self: center; min-width: 150px; height: 44px; min-height: 44px; padding: 0 18px 2px; border-color: #5a3c00; background: linear-gradient(#ffe07a, #e2a628); box-shadow: 0 3px 0 #5a3c00; font-size: 15px; text-transform: none; }
+.smith-sheet .farm-start.smith-refine:active:not(:disabled) { box-shadow: 0 1px 0 #5a3c00; }
+.smith-sheet .smith-outcome { margin: 0; text-align: center; font-size: 14px; font-weight: 900; }
+.smith-sheet .smith-outcome.is-good { color: #ffd75e; }
+.smith-sheet .smith-outcome.is-bad { color: #ff9b91; }
+.smith-sheet .smith-ores { margin: 0 14px 10px; color: var(--muted); text-align: center; font-size: 12px; line-height: 1.4; }
+.smith-sheet .smith-items { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin: 0 14px 12px; }
+.smith-sheet .smith-choice { position: relative; display: grid; place-items: center; aspect-ratio: 1; min-width: 0; margin: 0; padding: 4px; border: 2px solid rgba(255,255,255,.12); border-radius: 10px; background: rgba(255,255,255,.04); box-shadow: none; }
+.smith-sheet .smith-choice[aria-selected="true"] { border-color: #ffd75e; background: rgba(255,215,94,.1); }
+.smith-sheet .smith-choice-art .inventory-item-art { width: 40px; height: 36px; }
+.smith-sheet .smith-worn { position: absolute; bottom: 2px; left: 4px; color: var(--muted); font-size: 10px; font-weight: 800; }
+/* A refine on any item: a gold star and its level, where the slot tier keeps its green +N. */
+.refine-badge { position: absolute; top: 2px; right: 4px; color: #ffd75e; font-size: 11px; font-weight: 900; text-shadow: 0 1px 0 #000, 0 0 3px rgba(0,0,0,.8); pointer-events: none; }
+/* A worn slot hides its +N (the banner says the level), so the star takes that corner. A bag tile's tier sits
+   over its top middle, so the star sits a line lower, clear of it. A profile slot keeps its +N in the corner,
+   so the star sits under it. After a name, the star is just gold text. */
+.equipment-slot > .refine-badge { top: 4px; right: 5px; z-index: 2; }
+.inventory-item > .refine-badge { top: 15px; right: 5px; z-index: 2; }
+.profile-equipment-slot > .refine-badge { top: 12px; right: 2px; font-size: 8px; }
+.refine-stars { color: #ffd75e; }
 /* The Soul Dimension portal's window: its stats and tier progress, in the travel window's frame. */
 .soul-sheet .soul-body { display: flex; flex-direction: column; gap: 10px; }
 .soul-section { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; border: 2px solid rgba(196,140,255,.28); border-radius: 12px; background: #ffffff06; }

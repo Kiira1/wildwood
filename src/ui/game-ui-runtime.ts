@@ -1,9 +1,10 @@
 import { onProfileSnapshotsChanged } from "../app/profile-snapshot-portraits";
 export { challengeMinimumInterval } from "../../shared/prestige-challenge";
 export { attackCapInterval } from "../../shared/stat-rating";
+export { createSmithRuntime } from "./smith-window";
 import { createGemShopController } from "./gem-shop-controller";
 import { installDesktopHotkeys } from "./desktop-hotkeys";
-import { TOWN_FEET_OFFSET, TOWN_OX_POSITION, TOWN_OX_REACH, TOWN_QUEST_BOARD_POSITION, TOWN_RESEARCH_POSITION } from "../../shared/town";
+import { TOWN_FEET_OFFSET, TOWN_OX_POSITION, TOWN_OX_REACH, TOWN_QUEST_BOARD_POSITION, TOWN_RESEARCH_POSITION, TOWN_SMITH_POSITION, TOWN_SMITH_REACH } from "../../shared/town";
 import { recentReleaseNotes } from "../app/changelog";
 import { isDeveloperIdentity } from "../app/developer";
 import {
@@ -24,7 +25,7 @@ import { installLoginMove } from "./login-move-controller";
 import { createTechTreeController } from "./tech-tree-controller";
 import { installCameraZoomControl } from "./camera-zoom-control";
 
-/** Tech Research, the Weekly Quests board and Ox's shop, in the Town's windmill, Inn and bottom-right house, open as a player walks up to them. */
+/** Tech Research, the Weekly Quests board and Ox's shop, in the Town's windmill, Inn and bottom-right house, and the Smith in the forge house's yard, open as a player walks up to them. */
 export function createHomeStationTouchHandler(
   isHome: () => boolean,
   player: { x: number; y: number },
@@ -32,8 +33,9 @@ export function createHomeStationTouchHandler(
   updateBench: () => void,
   openQuestBoard?: () => void,
   openOxShop?: () => void,
+  openSmith?: () => void,
 ) {
-  let touchingResearch = false, touchingQuestBoard = false, touchingOx = false;
+  let touchingResearch = false, touchingQuestBoard = false, touchingOx = false, touchingSmith = false;
   return () => {
     const touching = isHome() && Math.hypot(player.x - TOWN_RESEARCH_POSITION.x, player.y - (TOWN_RESEARCH_POSITION.y - 36)) < 42.5;
     if (touching && !touchingResearch) openResearch();
@@ -46,6 +48,10 @@ export function createHomeStationTouchHandler(
     const atOx = isHome() && Math.hypot(player.x - TOWN_OX_POSITION.x, player.y + TOWN_FEET_OFFSET - TOWN_OX_POSITION.y) < TOWN_OX_REACH;
     if (atOx && !touchingOx) openOxShop?.();
     touchingOx = atOx;
+    // The Smith likewise, feet against feet, outdoors at the forge house.
+    const atSmith = isHome() && Math.hypot(player.x - TOWN_SMITH_POSITION.x, player.y + TOWN_FEET_OFFSET - TOWN_SMITH_POSITION.y) < TOWN_SMITH_REACH;
+    if (atSmith && !touchingSmith) openSmith?.();
+    touchingSmith = atSmith;
     updateBench();
   };
 }

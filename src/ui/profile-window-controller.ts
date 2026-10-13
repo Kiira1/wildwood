@@ -13,6 +13,7 @@ import { createProfileBonusToggles, type ProfileBonusDeps } from "./profile-bonu
 import {
   PROFILE_EQUIPMENT_SLOTS,
   profileEquipmentPresentation,
+  profileEquipmentRefine,
   renderProfileEquipmentSlot,
   type ProfileEquipmentSlot,
 } from "./profile-equipment";
@@ -107,6 +108,7 @@ export function createProfileWindowController(elements: {
         equipmentElements[slot],
         presentation,
         profile?.itemUpgradeLevels[slot === "WEAPON" ? "HAND" : slot] ?? 0,
+        profileEquipmentRefine(presentation, profile?.itemRefines),
       );
     }
   }
@@ -118,6 +120,7 @@ export function createProfileWindowController(elements: {
     api.itemInspection.open({
       itemId: presentation.inspectionItemId,
       upgradeLevel: slotUpgradeLevelFor(profileData.itemUpgradeLevels, presentation.inspectionItemId),
+      refine: profileEquipmentRefine(presentation, profileData.itemRefines),
       context: presentation.context,
       ownItem: identity === api.localIdentity(),
       actions: identity === api.localIdentity() ? api.destructionActions?.(presentation.inspectionItemId) : undefined,

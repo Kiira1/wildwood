@@ -18,6 +18,7 @@ import { gemSpendConfirmation } from "./gem-spend-confirmation";
 import { gameConfirm, type ConfirmPrompt, type ConfirmRequest } from "./confirm-dialog";
 import { type BowSkillRoll } from "../../shared/bow-skills";
 import { createInventoryDeleteMode } from "./inventory-delete-mode";
+import { withRefineStars } from "./refine-badge";
 
 type InventoryLocation = EquipmentSlot | "BAG" | "";
 type SelectableInventory = InventoryState & { selectedItemId: string; selectedItemLocation?: InventoryLocation };
@@ -32,6 +33,8 @@ type InventoryDependencies = {
   toggleCosmeticVisibility: (destination: EquipmentSlot) => boolean;
   upgradeLevel: (itemId: string) => number;
   slotTier?: (slot: "HAND" | "HEAD" | "CHEST") => number;
+  /** One copy's refine (★N); `copyId` 0n is the first copy, the one a slot holds. */
+  refineLevel?: (itemId: string, copyId?: bigint) => number;
   equipBest?: () => boolean;
   equipmentLocked?: (itemId: string, copyId?: bigint) => boolean;
   setEquipmentLocked?: (itemId: string, locked: boolean, copyId?: bigint) => Promise<Result>;
@@ -127,6 +130,7 @@ export function createInventoryController(dependencies: InventoryDependencies) {
     destroyEquipment: dependencies.destroyEquipment,
     destroyEquipmentCopy: dependencies.destroyEquipmentCopy,
     confirm: request => ask(confirmDestroy, request),
+    refineLevel: dependencies.refineLevel,
     showMessage: dependencies.showMessage,
     onDeleted: () => { clearInventorySelection(dependencies.inventory); render(); },
     // Equip best makes way for Cancel and Delete while picking.
@@ -197,6 +201,7 @@ export function createInventoryController(dependencies: InventoryDependencies) {
     dependencies.itemInspection.open({
       itemId,
       upgradeLevel: dependencies.upgradeLevel(itemId),
+      ...(mode === "EQUIPMENT" ? { refine: dependencies.refineLevel?.(itemId, copyId) ?? 0 } : {}),
       ownItem: mode === "EQUIPMENT",
       ...(kept.length ? { context: `Copy ${copy ? kept.indexOf(copy) + 2 : 1} of ${kept.length + 1}` } : {}),
       ...(mode === "COSMETICS" ? { context: "Cosmetic · Appearance only" } : {}),
@@ -286,7 +291,7 @@ export function createInventoryController(dependencies: InventoryDependencies) {
       kind: "DESTROY" as const,
       onActivate: async () => {
         if (!await ask(confirmDestroy, {
-          message: `Destroy ${oneOfSeveral ? "this copy of " : ""}${itemDisplayName(itemId, dependencies.upgradeLevel(itemId))} permanently?`,
+          message: `Destroy ${oneOfSeveral ? "this copy of " : ""}${withRefineStars(itemDisplayName(itemId, dependencies.upgradeLevel(itemId)), dependencies.refineLevel?.(itemId, copyId) ?? 0)} permanently?`,
           details: [{ label: "This cannot be undone", value: "No refund" }],
           confirmLabel: "Destroy", danger: true,
         })) return;
@@ -305,7 +310,8 @@ export function createInventoryController(dependencies: InventoryDependencies) {
     const inventory = dependencies.inventory;
     const copies = dependencies.equipmentCopies?.() ?? [];
     const nextState = JSON.stringify([mode, filter, inventory, inventory.itemIds.map(id => dependencies.equipmentLocked?.(id)), dependencies.inventorySlotsUnlocked(), unlockingSlot,
-      ["HEAD", "CHEST", "HAND"].map(slot => dependencies.slotTier?.(slot as "HEAD" | "CHEST" | "HAND")), inventory.itemIds.map(itemId => dependencies.upgradeLevel(itemId)), copies.map(copy => `${copy.id}:${copy.itemId}:${dependencies.equipmentLocked?.(copy.itemId, copy.id)}`)]);
+      ["HEAD", "CHEST", "HAND"].map(slot => dependencies.slotTier?.(slot as "HEAD" | "CHEST" | "HAND")), inventory.itemIds.map(itemId => `${dependencies.upgradeLevel(itemId)}:${dependencies.refineLevel?.(itemId, 0n)}`),
+      copies.map(copy => `${copy.id}:${copy.itemId}:${dependencies.equipmentLocked?.(copy.itemId, copy.id)}:${dependencies.refineLevel?.(copy.itemId, copy.id)}`)]);
     if (nextState === renderedState) return;
     renderedState = nextState;
     const cosmeticsActive = mode === "COSMETICS";
@@ -333,6 +339,7 @@ export function createInventoryController(dependencies: InventoryDependencies) {
         filter: filter === "ALL" ? undefined : filter,
         upgradeLevel: dependencies.upgradeLevel,
         slotTier: dependencies.slotTier,
+        refineLevel: dependencies.refineLevel,
         slotCapacity,
         nextSlotCost: slotCapacity < MAX_INVENTORY_SLOT_CAPACITY
           ? inventorySlotUnlockCost(slotsUnlocked)
