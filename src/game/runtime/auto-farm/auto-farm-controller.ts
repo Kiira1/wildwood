@@ -134,6 +134,8 @@ export function createAutoFarmController(options: {
   pullCamps?: () => number;
   /** During an Aggro run: the stat groups the player picked and how many must chase them on every map, farming or not. */
   forcedGroups?: () => { groups: readonly string[]; needed: number } | null;
+  /** Sends one line about a death while farming (deathReport), so where Auto Farm dies can be read from real play. */
+  reportDeath?: (detail: string) => void;
   /** Whether a kill of this reward gives nothing now, the stat at its cap: the "Capped" its label shows (reward-labels.ts). */
   rewardCapped?: (reward: FarmReward, soul: SoulStatId | null) => boolean;
 }) {
@@ -409,6 +411,8 @@ export function createAutoFarmController(options: {
    */
   function defeated() {
     if (!active && !pendingResume) return;
+    const report = deathReport();
+    if (report) options.reportDeath?.(report);
     if (phase === 'boss') {
       // Killed by the boss, or on the way to it: not again on this map until the build has grown.
       bossRetryPower.set(options.mapId(), currentPower() * BOSS_RETRY_GROWTH);
@@ -623,6 +627,7 @@ export function createAutoFarmController(options: {
     }
     if (!active || options.paused()) return manual;
     choosePhase(dt);
+    if (player.maxHp > 0 && player.hp >= player.maxHp * .9) lastHealthyAt = now();
     if (phase === 'farm') takePullTurns(dt);
     const boss = phase === 'boss' ? options.mapBoss?.() ?? null : null;
     const portal = phase === 'portal' ? exitPortal() : null;
@@ -726,6 +731,28 @@ export function createAutoFarmController(options: {
     status = threat ? 'Moving to attacker' : portal ? 'Heading to the next map' : boss ? 'Moving to the boss' : target ? 'Moving to enemy' : 'Moving to spawn';
     const length = distance(waypoint), magnitude = Math.min(1, length / Math.max(1, options.speed() * dt));
     return { x: (waypoint.x - player.x) / length * magnitude, y: (waypoint.y - player.y) / length * magnitude, source: 'steer' };
+  }
+
+  let lastHealthyAt = now();
+  /**
+   * One line, under the diagnostics' 240 characters, about a death with Auto Farm on (Ryan: "can we learn
+   * where autofarm is dying"): the map, what it was doing and farming, the settings, the enemies within 400
+   * (e elite, r ranged, * attacking), the seconds from 90% health to dead, power, and what this map's
+   * readiness says is missing.
+   */
+  function deathReport(): string | null {
+    const near = new Map<string, number>();
+    for (const enemy of enemies) {
+      if (enemy.dead || enemy.remoteCombatGhost || !(enemy.hp > 0) || distance(enemy) > 400) continue;
+      const definition = enemy.definition ?? ENEMY_TYPES[enemy.type];
+      const tag = `${enemy.type}${definition?.elite ? 'e' : ''}${definition?.ranged ? 'r' : ''}${isEnemyAttackingPlayer(enemy, options.localIdentity?.()) ? '*' : ''}`;
+      near.set(tag, (near.get(tag) ?? 0) + 1);
+    }
+    const crowd = [...near].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([tag, count]) => `${tag}:${count}`).join(',');
+    const here = options.mapReady ? cachedReady(`map:${options.mapId()}:1`, () => options.mapReady!(options.mapId(), 1)) : null;
+    return [`map=${options.mapId()}`, `st=${status}`, `ph=${phase}`, `sel=${selected ?? '-'}`, `mv=${movePower}`, `fb=${bossPower}`,
+      `pull=${pulling() ? pulledGroups().size : 0}/${pullLimit()}`, `near=${crowd || '-'}`, `burst=${((now() - lastHealthyAt) / 1000).toFixed(1)}s`,
+      `pw=${atPower(currentPower())}`, `need=${here ? here.needs ?? 'none' : '?'}`].join(';').slice(0, 240);
   }
 
   const atPower = (power: number) => formatCompactNumber(Math.ceil(power));

@@ -5,6 +5,7 @@ import { isProceduralMap, proceduralMapNumber } from '../../../../shared/procedu
 import { MAP_IDS as CAMPAIGN_MAP_IDS } from '../../../../shared/rules';
 import { recommendedBossPower, recommendedMapPower } from './auto-farm-power';
 import { mapReadiness } from '../../../../shared/map-readiness';
+import { recordConnectionDiagnostic } from '../../../coop/services/connection-diagnostic-runtime';
 import { bossReadiness } from './boss-readiness';
 import type { MapBalanceSnapshot } from '../../../../shared/map-balance-types';
 
@@ -104,6 +105,8 @@ export function createAutoFarmProgress(deps: Parameters<typeof createFarmEvaluat
     /** A map's recommended power (auto-farm-power.ts), and this map's boss's: used only without live balance. */
     mapPower: recommendedMapPower,
     bossPower: () => recommendedBossPower(deps.mapId()),
+    /** A death while farming, to the connection diagnostics (where Auto Farm dies, from real play). */
+    reportDeath: (detail: string) => recordConnectionDiagnostic('autofarm-death', { detail, mapId: deps.mapId() }),
     /** Readiness from the map's live enemies (map-readiness.ts); undefined while its balance loads. */
     mapReady: balanceFor ? (mapId: string, margin: number) => {
       const balance = balanceFor(mapId);

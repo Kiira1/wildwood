@@ -872,6 +872,24 @@ describe('autofarm plans: sliders, the boss and the next map', () => {
     expect(s.farm.state().active).toBe(true);
   });
 
+  it("reports a death while farming in one short line: the map, what it did, the crowd, how fast it fell", () => {
+    const reports: string[] = [];
+    const s = planned({ reportDeath: detail => reports.push(detail), power: () => 1_234 });
+    const attacker = s.add('Bramble', 520, 500);
+    attacker.engaged = true;
+    s.farm.start([health]);
+    s.tick();
+    s.player.hp = s.player.maxHp * .05;
+    s.advance(3_000); s.tick();
+    s.farm.defeated();
+    expect(reports).toHaveLength(1);
+    expect(reports[0].length).toBeLessThanOrEqual(240);
+    expect(reports[0]).toMatch(/^map=forest;st=[^;]+;ph=farm;sel=stat:health;mv=2;fb=1;pull=0\/1;near=Bramble[^;]*\*:1;burst=3\.0s;pw=1\.23k;need=\?$/i);
+    // Not farming: nothing to report.
+    s.farm.stop(); s.farm.defeated();
+    expect(reports).toHaveLength(1);
+  });
+
   it("keeps the stats the player picked on the next map, and splits evenly where none of them is paid", () => {
     for (const [arrivals, expected] of [[['Needle', 'Bramble'], [health]], [['Needle'], [speed]]] as const) {
       const s = planned({ nextPortal: () => ({ x: 200, y: 500, destination: 'beginner_desert' }) });
