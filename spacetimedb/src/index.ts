@@ -46,7 +46,7 @@ import { playerEquipmentCopy, pendingEquipmentOffer, createEquipmentCopies, publ
 import { playerItemRefine, playerCopyRefine, playerOre, playerRefineResult, registerItemRefine } from "./item-refine";
 import { playerMining, playerMinedNode, registerMining } from "./mining";
 import { playerCard, playerGearSlots, playerCopySlots, playerCardDrop, registerGearCards } from "./gear-cards"; import { playerCardAttackCap, syncCardAttackCap } from "./card-attack-cap";
-import { awardCardDrops } from "./card-drops";
+import { awardCardDrops, playerBossCardRoll } from "./card-drops";
 import { awardRegularEnemyLoot } from "./enemy-loot-award";
 import { moderateReportedMessage } from "./chat-report-moderation";
 import { PLAYER_SKIN_TONES } from "../../shared/player-skin-tones";
@@ -1629,7 +1629,7 @@ const spacetimedb = schema({
   dailyGemBonus,
   playerAdReward, playerChatMute,
   balanceApologyNotice,
-  playerEquipmentLock, playerItemGift, playerBowSkill, playerSwordSkill, playerEquipmentCopy, pendingEquipmentOffer, playerIgnoredDrop, playerLootSetting, playerItemRefine, playerCopyRefine, playerOre, playerRefineResult, playerCard, playerGearSlots, playerCopySlots, playerCardDrop, playerCardAttackCap, playerMining, playerMinedNode,
+  playerEquipmentLock, playerItemGift, playerBowSkill, playerSwordSkill, playerEquipmentCopy, pendingEquipmentOffer, playerIgnoredDrop, playerLootSetting, playerItemRefine, playerCopyRefine, playerOre, playerRefineResult, playerCard, playerGearSlots, playerCopySlots, playerCardDrop, playerCardAttackCap, playerBossCardRoll, playerMining, playerMinedNode,
   mailboxLetter, mailboxReceipt, playerJoinDate, mailboxEquipment, accountDeletionRequest,
   playerOnboarding,
   regularEnemyLootCursor, regularEnemyStream, enemyDefeatBudget, bossDefeatWindow, bossMapDefeatWindow,

@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { Timestamp } from "spacetimedb";
 import { crystalFixture } from "../../tests/helpers/crystal-hollows-fixture";
 import { fillDefeatBudget, reportEnemy } from "../../tests/helpers/enemy-defeat";
 import { awardCardDrops } from "./card-drops";
@@ -62,6 +63,30 @@ describe("card drops", () => {
     expect(f.db.playerCardDrop.identity.find(f.ctx.sender)).toMatchObject({ cardIds: ["brood_card"], sequence: 3n });
   });
 
+  it("rolls a boss card at most once per boss respawn on each map, so a repeated boss claim rolls nothing", () => {
+    const f = crystalFixture();
+    always(f, 0); // every roll wins
+    const at = (seconds: number) => { f.ctx.timestamp = new Timestamp(10_000_000n + BigInt(seconds * 1_000_000)); };
+    at(0);
+    award(f, "tutorial_forest", [], 5);
+    expect(cards(f, "dragon_card")).toBe(1);
+    // The Dragon respawns in 45 seconds; a claim well inside that rolls nothing, and the gate is not the card's to judge.
+    at(20);
+    award(f, "tutorial_forest", [], 1);
+    expect(cards(f, "dragon_card")).toBe(1);
+    // Another map's boss keeps its own timer.
+    award(f, "beginner_desert", [], 1);
+    expect(f.db.playerCard.count()).toBe(2n);
+    at(34);
+    award(f, "tutorial_forest", [], 1);
+    expect(cards(f, "dragon_card")).toBe(2);
+    // Boss Respawn research brings the boss back sooner, and its card with it.
+    f.transaction(() => f.ctx.db.playerResearch.insert({ ...f.ctx.db.playerResearch.identity.find(f.ctx.sender), identity: f.ctx.sender, bossRespawn: 5 }));
+    at(65);
+    award(f, "tutorial_forest", [], 1);
+    expect(cards(f, "dragon_card")).toBe(3);
+  });
+
   it("rolls the cards of a paid kill report on Crystal Hollows", () => {
     const f = crystalFixture();
     f.patch("playerProgress", { damage: 1e15 });
@@ -102,6 +127,27 @@ describe("slots from drops", () => {
     always(f, .975); // 2 slots
     drop(f, "snow_helmet", true, 2);
     expect(gearSlotsFor(f.ctx, f.ctx.sender, "snow_helmet")).toEqual({ slots: 2, cards: [] });
+  });
+
+  it("raises the kept copy with the fewest slots once your item has all four", () => {
+    const f = crystalFixture();
+    f.transaction(() => setGearSlots(f.ctx, f.ctx.sender, IRON_BOW, 0n, { slots: 4, cards: ["needle_card"] }));
+    const keep = () => f.transaction(() => f.ctx.db.playerEquipmentCopy.insert({ id: 0n, identity: f.ctx.sender, itemId: IRON_BOW,
+      arrowStorm: 0, ricochet: 0, piercingShot: 0, whirlwind: 0, deflect: 0, shockwave: 0, acquiredAt: f.ctx.timestamp }).id as bigint);
+    const older = keep(), newer = keep();
+    f.transaction(() => setGearSlots(f.ctx, f.ctx.sender, IRON_BOW, older, { slots: 2, cards: ["needle_card"] }));
+    const slots = (copyId = 0n) => gearSlotsFor(f.ctx, f.ctx.sender, IRON_BOW, copyId);
+    always(f, .99); // 3 slots: the newer copy has only the default one
+    drop(f, IRON_BOW, true);
+    expect([slots(), slots(older), slots(newer)]).toEqual([
+      { slots: 4, cards: ["needle_card"] }, { slots: 2, cards: ["needle_card"] }, { slots: 3, cards: [] }]);
+    // Now the older copy has the fewest; it keeps its card.
+    drop(f, IRON_BOW, true);
+    expect(slots(older)).toEqual({ slots: 3, cards: ["needle_card"] });
+    // A roll that beats neither changes nothing.
+    always(f, .5);
+    drop(f, IRON_BOW, true);
+    expect([slots(older).slots, slots(newer).slots]).toEqual([3, 3]);
   });
 
   it("gives no slots to gear that takes no cards", () => {

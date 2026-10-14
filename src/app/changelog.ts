@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.903.5": [
+    "Once gear has 4 card slots, a duplicate's slot roll goes to your spare copy with the fewest",
+  ],
   "0.903.4": [
     "Take a card back out at the Smith for 5 Starshards; it returns to your Cards",
     "Auto Farm walks past enemies of stats set to Off instead of getting stuck fighting them",
@@ -3327,6 +3330,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.903.5": "2026-10-14",
   "0.903.4": "2026-10-14",
   "0.903.3": "2026-10-14",
   "0.903.2": "2026-10-14",

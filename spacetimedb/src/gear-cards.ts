@@ -82,15 +82,30 @@ export function setGearSlots(ctx: Ctx, identity: Identity, itemId: string, copyI
   else ctx.db.playerCopySlots.insert({ copyId, identity, itemId, slots: next.slots, cards: [...next.cards] });
 }
 
-/** A new item rolls its slots; each duplicate rolls too and raises them if higher, keeping the cards. */
+/**
+ * A new item rolls its slots; each duplicate rolls too and raises them if higher, keeping the cards. Once the
+ * first copy has every slot, a duplicate's roll raises the kept copy with the fewest instead.
+ */
 export function rollDropSlots(ctx: Ctx, identity: Identity, itemId: string, alreadyOwned: boolean, quantity = 1) {
   if (!canHoldCards(itemId) || Math.floor(quantity) < 1) return;
   let next: GearSlots | null = alreadyOwned ? gearSlotsFor(ctx, identity, itemId) : null;
   for (let drop = 0; drop < Math.floor(quantity); drop++) {
     const slots = rollGearSlots(ctx.random() * 1000);
-    next = next ? { ...next, slots: Math.max(next.slots, slots) } : { slots, cards: [] };
+    if (next && next.slots >= MAX_CARD_SLOTS) raiseSpareCopySlots(ctx, identity, itemId, slots);
+    else next = next ? { ...next, slots: Math.max(next.slots, slots) } : { slots, cards: [] };
   }
   if (next) setGearSlots(ctx, identity, itemId, 0n, next);
+}
+
+/** Raises the kept copy of `itemId` with the fewest slots, oldest first on a tie, when `slots` beats it. */
+function raiseSpareCopySlots(ctx: Ctx, identity: Identity, itemId: string, slots: number) {
+  let lowest: { copyId: bigint; value: GearSlots } | null = null;
+  for (const copy of rowsOf(ctx.db.playerEquipmentCopy, identity)) {
+    if (copy.itemId !== itemId) continue;
+    const value = gearSlotsFor(ctx, identity, itemId, copy.id);
+    if (!lowest || value.slots < lowest.value.slots || (value.slots === lowest.value.slots && copy.id < lowest.copyId)) lowest = { copyId: copy.id, value };
+  }
+  if (lowest && slots > lowest.value.slots) setGearSlots(ctx, identity, itemId, lowest.copyId, { ...lowest.value, slots });
 }
 
 /** A copy kept from an offer rolls its own slots, as a drop does. */
@@ -154,6 +169,7 @@ export function removeCardData(ctx: Ctx, identity: Identity) {
   for (const row of rowsOf(ctx.db.playerCopySlots, identity)) ctx.db.playerCopySlots.copyId.delete(row.copyId);
   if (ctx.db.playerCardDrop.identity.find(identity)) ctx.db.playerCardDrop.identity.delete(identity);
   if (ctx.db.playerCardAttackCap?.identity.find(identity)) ctx.db.playerCardAttackCap.identity.delete(identity);
+  for (const row of ctx.db.playerBossCardRoll ? rowsOf(ctx.db.playerBossCardRoll, identity) : []) ctx.db.playerBossCardRoll.key.delete(row.key);
 }
 
 /** On link the guest's cards and slots replace the account's, as the bag does. */
@@ -169,6 +185,7 @@ export function mergeCardData(ctx: Ctx, guest: Identity, account: Identity) {
   }
   for (const row of rowsOf(ctx.db.playerCopySlots, guest)) ctx.db.playerCopySlots.copyId.update({ ...row, identity: account });
   if (ctx.db.playerCardDrop.identity.find(guest)) ctx.db.playerCardDrop.identity.delete(guest);
+  for (const row of ctx.db.playerBossCardRoll ? rowsOf(ctx.db.playerBossCardRoll, guest) : []) ctx.db.playerBossCardRoll.key.delete(row.key);
   // The guest's saved attack speed comes across with its cards, so the cap it sits under does too.
   const basis = ctx.db.playerCardAttackCap?.identity.find(guest);
   if (basis) { ctx.db.playerCardAttackCap.identity.delete(guest); ctx.db.playerCardAttackCap.insert({ ...basis, identity: account }); }

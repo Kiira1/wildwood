@@ -1804,6 +1804,13 @@ export const PlayerBonusToggle = __t.object("PlayerBonusToggle", {
 });
 export type PlayerBonusToggle = __Infer<typeof PlayerBonusToggle>;
 
+export const PlayerBossCardRoll = __t.object("PlayerBossCardRoll", {
+  key: __t.string(),
+  identity: __t.identity(),
+  rolledAt: __t.timestamp(),
+});
+export type PlayerBossCardRoll = __Infer<typeof PlayerBossCardRoll>;
+
 export const PlayerBowSkill = __t.object("PlayerBowSkill", {
   key: __t.string(),
   identity: __t.identity(),
