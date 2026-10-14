@@ -357,6 +357,10 @@ export function cardForBoss(mapId: string) {
 
 /** The same gear that can be refined. */
 /** The player_gear_slots row of a player's first copy of an item. */
+/** The most attacks a second worn Quick Draw cards could add: every slot of all five worn items holding the best one. */
+export const MAX_CARD_QUICK_DRAW = 5 * MAX_CARD_SLOTS
+  * Math.max(0, ...CARDS.flatMap(card => card.effects.filter(effect => effect.effect === "quickDraw").map(effect => effect.value)));
+
 export const gearSlotsKey = (identity: { toHexString(): string }, itemId: string) => `${identity.toHexString()}:${itemId}`;
 
 export function canHoldCards(itemId: unknown) {

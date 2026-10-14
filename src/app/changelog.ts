@@ -1,5 +1,6 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
   "0.903.6": [
+    "Attack speed is no longer held at 6.00/s when Quick Draw cards raise the cap",
     "With a raised attack speed cap, attack speed no longer jumps ahead and snaps back after kills",
   ],
   "0.903.5": [

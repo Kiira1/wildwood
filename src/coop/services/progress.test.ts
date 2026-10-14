@@ -54,6 +54,10 @@ describe("progress persistence rules", () => {
     expect(copyProgress({ ...pending, attackRange: 230 }).attackRange).toBe(230);
   });
 
+  it("keeps an attack speed past 6 a second that Quick Draw cards allow", () => {
+    expect(copyProgress({ ...pending, attackRate: 1 / 6.2 }).attackRate).toBe(1 / 6.2);
+  });
+
   it("caps combat stats at the f64 ceiling while retaining speed caps", () => {
     expect(copyProgress({
       ...pending,

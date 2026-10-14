@@ -1,12 +1,13 @@
 import { CAMPAIGN_MAPS, type CampaignMapDefinition } from "./campaign-registry";
 import { MAX_BASE_ATTACKS_PER_SECOND, QUICK_DRAW_MAX_CAP_RAISE } from "./rules";
+import { MAX_CARD_QUICK_DRAW } from "./cards";
 
 export const PRESTIGE_CHALLENGE_LIMIT = 4;
 export const PRESTIGE_CHALLENGE_ATTACKS_PER_SECOND = .5;
 /** `parked`: a challenge run the player dropped out of, waiting for them to drop back in. */
 export type PrestigeChallenge = { active: boolean; completed: number; parked?: boolean };
-/** The fastest anyone attacks: the base cap, four Reflect Only wins and every Quick Draw rank. */
-export const CHALLENGE_ABSOLUTE_MIN_INTERVAL = 1 / (MAX_BASE_ATTACKS_PER_SECOND + 2 + QUICK_DRAW_MAX_CAP_RAISE);
+/** The fastest anyone attacks: the base cap, four Reflect Only wins, every Quick Draw rank and Quick Draw cards in every slot. */
+export const CHALLENGE_ABSOLUTE_MIN_INTERVAL = 1 / (MAX_BASE_ATTACKS_PER_SECOND + 2 + QUICK_DRAW_MAX_CAP_RAISE + MAX_CARD_QUICK_DRAW);
 export function challengeMinimumInterval(challenge: PrestigeChallenge | null | undefined) {
   return 1 / (MAX_BASE_ATTACKS_PER_SECOND + (challenge?.active ? 0 : Math.max(0, Math.min(4, challenge?.completed ?? 0))) * .5);
 }
