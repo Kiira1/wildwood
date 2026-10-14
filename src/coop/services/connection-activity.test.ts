@@ -5,9 +5,10 @@ import { guardConnectionActivity } from "./connection-activity";
 async function openConnection() {
   // Use the real SDK's v3 batching; browsers delay the close event after
   // readyState changes, unlike a mock that fires onclose inside close().
+  const unattached = () => {};
   const socket = {
     protocol: "v3.bsatn.spacetimedb", readyState: 1,
-    onopen: () => {}, onclose: (_event: CloseEvent) => {},
+    onopen: unattached, onclose: (_event: CloseEvent) => {},
     onmessage: (_message: { data: Uint8Array }) => {}, onerror: (_event: ErrorEvent) => {},
     send: vi.fn((_message: Uint8Array) => { sentStates.push(socket.readyState); }),
     close: vi.fn(() => { socket.readyState = 2; }),
@@ -17,7 +18,8 @@ async function openConnection() {
   const connection = guardConnectionActivity(DbConnection.builder()
     .withUri("ws://localhost:3000").withDatabaseName("connection-test")
     .withWSFn(async () => socket).onDisconnect(disconnected).build());
-  await Promise.resolve();
+  // The SDK sets its handlers once its token and socket steps settle, as a real socket's open comes later.
+  await vi.waitFor(() => expect(socket.onopen).not.toBe(unattached));
   socket.onopen();
   const queue = () => connection.subscriptionBuilder().subscribe("SELECT * FROM player");
   return { connection, socket, sentStates, disconnected, queue };
