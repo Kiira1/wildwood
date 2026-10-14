@@ -14,6 +14,7 @@ import {
   PROFILE_EQUIPMENT_SLOTS,
   profileEquipmentPresentation,
   profileEquipmentRefine,
+  profileEquipmentCardSlots,
   renderProfileEquipmentSlot,
   type ProfileEquipmentSlot,
 } from "./profile-equipment";
@@ -121,6 +122,7 @@ export function createProfileWindowController(elements: {
       itemId: presentation.inspectionItemId,
       upgradeLevel: slotUpgradeLevelFor(profileData.itemUpgradeLevels, presentation.inspectionItemId),
       refine: profileEquipmentRefine(presentation, profileData.itemRefines),
+      cardSlots: profileEquipmentCardSlots(presentation, profileData.itemCardSlots),
       context: presentation.context,
       ownItem: identity === api.localIdentity(),
       actions: identity === api.localIdentity() ? api.destructionActions?.(presentation.inspectionItemId) : undefined,

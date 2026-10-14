@@ -8,7 +8,7 @@ import {
   STARTER_STONE,
   WOODEN_ARMOR,
 } from "../../shared/items";
-import { PROFILE_EQUIPMENT_SLOTS, profileEquipmentPresentation, renderProfileEquipmentSlot, type ProfileEquipmentProgress } from "./profile-equipment";
+import { PROFILE_EQUIPMENT_SLOTS, profileEquipmentCardSlots, profileEquipmentPresentation, renderProfileEquipmentSlot, type ProfileEquipmentProgress } from "./profile-equipment";
 
 function equipment(overrides: Partial<ProfileEquipmentProgress> = {}): ProfileEquipmentProgress {
   return {
@@ -25,6 +25,16 @@ function equipment(overrides: Partial<ProfileEquipmentProgress> = {}): ProfileEq
     ...overrides,
   };
 }
+
+describe("profile card slots", () => {
+  it("shows a worn item's slots, one empty slot with no row yet, and none for a look or gear without card slots", () => {
+    const chest = profileEquipmentPresentation(equipment(), "CHEST");
+    expect(profileEquipmentCardSlots(chest, { [WOODEN_ARMOR]: { slots: 2, cards: ["mossback_card"] } })).toEqual({ slots: 2, cards: ["mossback_card"] });
+    expect(profileEquipmentCardSlots(chest, undefined)).toEqual({ slots: 1, cards: [] });
+    expect(profileEquipmentCardSlots(profileEquipmentPresentation(equipment({ cosmeticChest: FROST_ARMOR }), "CHEST"), {})).toBeUndefined();
+    expect(profileEquipmentCardSlots(profileEquipmentPresentation(equipment(), "FEET"), {})).toBeUndefined();
+  });
+});
 
 describe("profile equipment presentation", () => {
   it("shows stat equipment when no cosmetic overrides it", () => {

@@ -9,7 +9,7 @@ function fixture() {
   const connection = {
     isActive: true,
     procedures: { getPrestigeLeaderboardPage: vi.fn() },
-    db: Object.fromEntries(["playerPrestige", "playerPrestigePerk", "playerPrestigeExpansionPerk", "playerPrestigeChallenge", "playerChatHearts", "playerProgress", "playerLifetime", "playerResearch", "playerItemUpgrade", "playerItemRefine", "myItemRefines", "playerProfile", "playerAccountStatus", "player", "profileSoulStats"].map(name => [name, { iter: () => [] }])),
+    db: Object.fromEntries(["playerPrestige", "playerPrestigePerk", "playerPrestigeExpansionPerk", "playerPrestigeChallenge", "playerChatHearts", "playerProgress", "playerLifetime", "playerResearch", "playerItemUpgrade", "playerItemRefine", "myItemRefines", "playerGearSlots", "myGearSlots", "playerProfile", "playerAccountStatus", "player", "profileSoulStats"].map(name => [name, { iter: () => [] }])),
     subscriptionBuilder() {
       let applied = () => {}, ready = false;
       const unsubscribe = vi.fn(() => { if (!ready) throw new Error("Cannot unsubscribe pending"); });
@@ -166,4 +166,16 @@ it("loads the inspected player's refines, and only theirs, with the profile", as
   f.connection.db.playerItemRefine.iter = () => [{ identity, itemId: "ion_bow", level: 7 }, { identity: other, itemId: "ion_bow", level: 2 }] as any;
   f.subscriptions[0].apply();
   expect(await request).toMatchObject({ itemRefines: { ion_bow: 7 } });
+});
+
+it("loads the inspected player's card slots, and only theirs, with the profile", async () => {
+  const f = fixture(), identity = new Identity("1".repeat(64)), other = new Identity("2".repeat(64)), hex = identity.toHexString();
+  f.progression.progressFor.mockReturnValue({ damage: 10 });
+  f.progression.lifetimeFor.mockReturnValue({ enemyKills: 5 });
+  const request = f.service.api.loadPlayerProfile(hex);
+  const sql = f.subscriptions[0].queries.map(query => (query as { toSql(): string }).toSql());
+  expect(sql.some(query => query.includes("player_gear_slots"))).toBe(true);
+  f.connection.db.playerGearSlots.iter = () => [{ identity, itemId: "ion_bow", slots: 2, cards: ["needle_card", "not_a_card"] }, { identity: other, itemId: "ion_bow", slots: 4, cards: [] }] as any;
+  f.subscriptions[0].apply();
+  expect((await request)?.itemCardSlots).toEqual({ ion_bow: { slots: 2, cards: ["needle_card"] } });
 });

@@ -126,7 +126,7 @@ import { hasApprovedGameSession } from "./coop/startup-state-machine";
 import { createHudTimerColumn } from "./ui/hud-timer-column";
 import { createGameElements } from "./ui/game-elements";
 import { bindGameInteractionListeners } from "./ui/game-interaction-bindings";
-import { attackCapInterval, createSmithRuntime, createDevPanel, createDuplicateLoginRuntime, createGameActionsRuntime, createGameOverlays, createGameRuntimeHud, createHomeStationTouchHandler, createLeaderboardPanel, createPrestigeUnlockRuntime, createTechTreePanel } from "./ui/game-ui-runtime";
+import { attackCapInterval, createSmithRuntime, watchCardDrops, createDevPanel, createDuplicateLoginRuntime, createGameActionsRuntime, createGameOverlays, createGameRuntimeHud, createHomeStationTouchHandler, createLeaderboardPanel, createPrestigeUnlockRuntime, createTechTreePanel } from "./ui/game-ui-runtime";
 import { formatCompactNumber, formatGemAmount } from "./ui/number-format";
 import { playerGenderIconPath } from "./ui/player-gender";
 import type { LeaderboardEntry } from "./wildstat-coop";
@@ -435,7 +435,7 @@ import {
       return true;
     },
     upgradeLevel: (itemId) => coop?.itemUpgradeLevel?.(itemId) ?? 0, refineLevel: (itemId, copyId) => coop?.itemRefine?.(itemId, copyId) ?? 0, ores: () => coop?.ores?.() ?? {}, cards: () => coop?.cards?.() ?? {},
-    slotTier: slot => coop?.slotUpgradeTier?.(slot) ?? 0,
+    slotTier: slot => coop?.slotUpgradeTier?.(slot) ?? 0, gearSlots: (itemId, copyId) => coop?.gearSlots?.(itemId, copyId) ?? { slots: 0, cards: [] },
     inventorySlotsUnlocked: () => coop?.inventorySlotsUnlocked?.() ?? 0,
     gemBalance: () => coop?.gemBalance?.() ?? 0n,
     unlockInventorySlot: async () => coop?.unlockInventorySlot?.(),
@@ -1898,7 +1898,7 @@ import {
     readyToShow: () => !inTutorial() && Boolean(session?.isRunning()),
   });
   if (coop?.setOnChange) coop.setOnChange(coopSession.onChange);
-  coop?.setOnGemDrop?.(({ amount }) => runtimeHud.showGemDrop(amount));
+  coop?.setOnGemDrop?.(({ amount }) => runtimeHud.showGemDrop(amount)); watchCardDrops(coop, runtimeHud.showItemDrop);
   // A duplicate of held equipment is not revealed here: Auto keep best or a Keep/Ignore offer settles it.
   createEquipmentOfferPrompt({ coop, inventory, renderInventory, showMessage, ready: () => Boolean(session?.isRunning()) });
   coop?.setOnItemDrop?.(({ itemId, alreadyOwned }) => {

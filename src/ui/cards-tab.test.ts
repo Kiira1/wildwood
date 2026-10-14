@@ -4,7 +4,10 @@ import { createCardsTab } from "./cards-tab";
 import { createInventoryController } from "./inventory-controller";
 import { createItemInspectionController } from "./item-inspection-controller";
 import { formatCompactNumber } from "./number-format";
-import { STARTER_BOW, STARTER_STONE } from "../game/inventory";
+import { IRON_BOW, STARTER_BOW, STARTER_STONE } from "../game/inventory";
+import { watchCardDrops } from "./card-drop-feedback";
+import { CARD_FRAME_COLORS } from "./card-portrait";
+import { cardDefinition } from "../../shared/cards";
 afterEach(() => vi.unstubAllGlobals());
 
 function page(body = "") {
@@ -22,13 +25,14 @@ const INVENTORY_PANEL = `<div id="inventoryPanel">
   </div>
 </div>`;
 
-function inventoryWithCards(cards?: () => Record<string, number>) {
+function inventoryWithCards(cards?: () => Record<string, number>, gearSlots?: (itemId: string, copyId?: bigint) => { slots: number; cards: string[] }) {
   const { document, window } = page(INVENTORY_PANEL);
-  const inventory = { itemIds: [STARTER_STONE, STARTER_BOW], equippedHead: "", equippedChest: "", equippedFeet: "", equippedRightHand: STARTER_STONE, equippedLeftHand: "", cosmeticHead: "", cosmeticChest: "", cosmeticFeet: "", cosmeticRightHand: "", cosmeticLeftHand: "", selectedItemId: "", selectedItemLocation: "" as const };
+  const inventory = { itemIds: [STARTER_STONE, STARTER_BOW, IRON_BOW], equippedHead: "", equippedChest: "", equippedFeet: "", equippedRightHand: STARTER_STONE, equippedLeftHand: "", cosmeticHead: "", cosmeticChest: "", cosmeticFeet: "", cosmeticRightHand: "", cosmeticLeftHand: "", selectedItemId: "", selectedItemLocation: "" as const };
   const cardOpened: unknown[] = [];
+  const opened: Array<Record<string, unknown>> = [];
   const controller = createInventoryController({ inventory, move: () => false, moveCosmetic: () => false, toggleCosmeticVisibility: () => false,
-    upgradeLevel: () => 0, inventorySlotsUnlocked: () => 0, gemBalance: () => 0n, cards,
-    itemInspection: { close() {}, open() { return true; }, openCard(request: unknown) { cardOpened.push(request); return true; } } as any,
+    upgradeLevel: () => 0, inventorySlotsUnlocked: () => 0, gemBalance: () => 0n, cards, gearSlots,
+    itemInspection: { close() {}, open(request: Record<string, unknown>) { opened.push(request); return true; }, openCard(request: unknown) { cardOpened.push(request); return true; } } as any,
     destroyEquipment: async () => undefined, unlockInventorySlot: async () => undefined, showMessage() {} });
   controller.render();
   const press = (target: Element, key: string) => {
@@ -36,7 +40,7 @@ function inventoryWithCards(cards?: () => Record<string, number>) {
     Object.defineProperty(event, "key", { value: key });
     target.dispatchEvent(event);
   };
-  return { document, controller, cardOpened, press };
+  return { document, controller, cardOpened, opened, press };
 }
 
 it("shows the cards held in map order, regular before elite before boss, each with its count", () => {
@@ -99,4 +103,38 @@ it("opens a card's window: where it drops, what it goes in, each effect, and its
   expect(content.querySelector(".item-inspection-context")!.textContent).toBe("Goes In: Weapon · 2 held");
   expect([...content.querySelectorAll(".item-inspection-stats span")].map(span => [span.textContent, span.getAttribute("data-stat-kind")]))
     .toEqual([["Damage +4.9%", "card"], ["Max Health -3.6%", "cost"]]);
+});
+
+it("shows a gear item's card slots in its window, and none for gear that holds no cards", () => {
+  const view = inventoryWithCards(() => ({}), (itemId, copyId) => ({ slots: 2, cards: itemId === IRON_BOW && copyId === 0n ? ["needle_card"] : [] }));
+  view.document.querySelector<HTMLElement>(`#inventoryItems [data-item-id="${IRON_BOW}"]`)!.click();
+  expect(view.opened.at(-1)).toMatchObject({ itemId: IRON_BOW, cardSlots: { slots: 2, cards: ["needle_card"] } });
+  view.document.querySelector<HTMLElement>(`#inventoryItems [data-item-id="${STARTER_STONE}"]`)?.click();
+  expect(view.opened.filter(request => request.itemId === STARTER_STONE).every(request => request.cardSlots === undefined)).toBe(true);
+});
+
+it("lists a gear copy's card slots under its stats: each card and what it does, then the open ones", () => {
+  const { document } = page(`<section id="panel" hidden><div class="item-inspection-tools"></div><h2 id="title"></h2><div id="content"></div><button id="back"></button></section>`);
+  const content = document.getElementById("content")!;
+  const controller = createItemInspectionController({ panel: document.getElementById("panel")!, title: document.getElementById("title")!,
+    content, back: document.getElementById("back") as HTMLButtonElement });
+  controller.open({ itemId: IRON_BOW, ownItem: true, cardSlots: { slots: 3, cards: ["needle_card", "ember_raider_card"] } });
+  expect([...content.querySelectorAll(".item-inspection-cards > span")].map(span => span.textContent)).toEqual([
+    "Card Slots 2 / 3", "Needle Card: 1% chance a hit lands twice", "Ember Raider Card: Damage +4.9%, Max Health -3.6%", "Empty Slot",
+  ]);
+  controller.open({ itemId: IRON_BOW });
+  expect(content.querySelector(".item-inspection-cards")).toBeNull();
+});
+
+it("pops up each card found, in the order found, with its frame colour, name and effects", async () => {
+  page();
+  let listener = null as ((drop: { cardIds: readonly string[] }) => void) | null;
+  const shown: Array<{ name: string; color: string; stats: readonly string[] }> = [];
+  watchCardDrops({ setOnCardDrop: callback => { listener = callback; } }, details => shown.push(details));
+  listener?.({ cardIds: ["needle_card", "not_a_card", "dragon_card"] });
+  await vi.waitFor(() => expect(shown).toHaveLength(2));
+  expect(shown.map(drop => [drop.name, drop.color, drop.stats.length])).toEqual([
+    ["Needle Card", CARD_FRAME_COLORS.regular.rim, 1], ["Dragon Card", CARD_FRAME_COLORS.boss.rim, cardDefinition("dragon_card")!.effects.length],
+  ]);
+  expect(shown[0].stats).toEqual(["1% chance a hit lands twice"]);
 });

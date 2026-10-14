@@ -2,6 +2,7 @@ import { onProfileSnapshotsChanged } from "../app/profile-snapshot-portraits";
 export { challengeMinimumInterval } from "../../shared/prestige-challenge";
 export { attackCapInterval } from "../../shared/stat-rating";
 export { createSmithRuntime } from "./smith-window";
+export { watchCardDrops } from "./card-drop-feedback";
 import { createGemShopController } from "./gem-shop-controller";
 import { installDesktopHotkeys } from "./desktop-hotkeys";
 import { TOWN_FEET_OFFSET, TOWN_OX_POSITION, TOWN_OX_REACH, TOWN_QUEST_BOARD_POSITION, TOWN_RESEARCH_POSITION, TOWN_SMITH_POSITION, TOWN_SMITH_REACH } from "../../shared/town";

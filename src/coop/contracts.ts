@@ -158,6 +158,8 @@ export type PlayerProfileData = {
   itemUpgradeLevels: Record<string, number>;
   /** Each first copy's refine by item id (player_item_refine); the worn items' are what stats read. +0 is missing. */
   itemRefines?: Record<string, number>;
+  /** Each first copy's card slots by item id (player_gear_slots); gear with no row has one empty slot. */
+  itemCardSlots?: Record<string, { slots: number; cards: readonly string[] }>;
   lifetime: PlayerLifetime;
   mapId?: string;
 };

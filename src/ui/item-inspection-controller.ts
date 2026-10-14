@@ -38,6 +38,8 @@ export type ItemInspectionRequest = {
   ownItem?: boolean;
   /** A kept copy's own roll, shown instead of the item's first copy's. */
   skills?: WeaponSkillRoll | null;
+  /** This copy's card slots: each slotted card and what it does, then the open ones. */
+  cardSlots?: { slots: number; cards: readonly string[] };
 };
 
 export type ItemInspectionController = ReturnType<typeof createItemInspectionController>;
@@ -62,6 +64,24 @@ export function itemInspectionButtonLabel(label: string) {
   if (!trimmed || trimmed !== trimmed.toUpperCase()) return trimmed;
   return trimmed.toLowerCase().replace(/(^|[\s/-])([a-z])/g, (_match, separator: string, letter: string) =>
     `${separator}${letter.toUpperCase()}`);
+}
+
+/** A gear copy's card slots, as lines under its stats: "Needle Card: 1% chance a hit lands twice", then "Empty Slot". */
+function cardSlotList({ slots, cards }: { slots: number; cards: readonly string[] }) {
+  const list = document.createElement("div");
+  list.className = "item-inspection-cards";
+  const title = document.createElement("span");
+  title.className = "item-inspection-cards-title";
+  title.textContent = `Card Slots ${Math.min(cards.length, slots)} / ${slots}`;
+  list.append(title);
+  for (let index = 0; index < slots; index++) {
+    const card = cardDefinition(cards[index]);
+    const line = document.createElement("span");
+    line.className = card ? `item-inspection-card is-${card.rarity}` : "item-inspection-card is-empty";
+    line.textContent = card ? `${cardName(card)}: ${card.effects.map(effect => cardEffectText(effect)).join(", ")}` : "Empty Slot";
+    list.append(line);
+  }
+  return list;
 }
 
 /** Standalone item window shared by inventory and future item-bearing screens. */
@@ -161,6 +181,7 @@ export function createItemInspectionController(elements: ItemInspectionElements)
       stats.append(value);
     }
     copy.append(stats);
+    if (request.cardSlots && request.cardSlots.slots > 0) copy.append(cardSlotList(request.cardSlots));
 
     const actionRow = renderActions(request.actions);
 

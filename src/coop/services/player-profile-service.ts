@@ -9,6 +9,7 @@ import { cleanSoulStats } from "../../../shared/soul-dimension";
 import { normalizePlayerGender } from "../../../shared/player-gender";
 import { resolvePlayerPresenceMap } from "./profile-presence";
 import { withWideProgress } from "./wide-progress";
+import { gearSlotsOf } from "./card-service";
 import type { LeaderboardEntry, PlayerProfileData } from "../contracts";
 import type { ProfileDirectory } from "./profile-directory";
 import type { ProgressionService } from "./progression-service";
@@ -121,6 +122,13 @@ export function createPlayerProfileService(dependencies: PlayerProfileServiceDep
         const rows = identity === dependencies.localIdentity() ? [...(db?.myItemRefines?.iter() ?? [])]
           : [...(db?.playerItemRefine?.iter() ?? [])].filter(row => row.identity.toHexString() === identity);
         return Object.fromEntries(rows.map(row => [row.itemId, row.level]));
+      })(),
+      // Each first copy's card slots, from my_gear_slots or the profile's player_gear_slots subscription.
+      itemCardSlots: (() => {
+        const db = dependencies.connection()?.db;
+        const rows = identity === dependencies.localIdentity() ? [...(db?.myGearSlots?.iter() ?? [])]
+          : [...(db?.playerGearSlots?.iter() ?? [])].filter(row => row.identity.toHexString() === identity);
+        return Object.fromEntries(rows.map(row => [row.itemId, gearSlotsOf(row)]));
       })(),
       lifetime: { ...lifetime },
       mapId: activePlayerMap(identity) ?? undefined,
@@ -264,6 +272,7 @@ export function createPlayerProfileService(dependencies: PlayerProfileServiceDep
           tables.profileSoulStats.where(row => row.identity.eq(dbIdentity)),
           tables.playerItemUpgrade.where((upgrade) => upgrade.identity.eq(dbIdentity)),
           tables.playerItemRefine.where(row => row.identity.eq(dbIdentity)),
+          tables.playerGearSlots.where(row => row.identity.eq(dbIdentity)),
           tables.player.where((player) => player.identity.eq(dbIdentity)),
         ]);
       if (generation === profileGeneration) activeSubscription = handle;
@@ -355,7 +364,7 @@ export function createPlayerProfileService(dependencies: PlayerProfileServiceDep
       playerProfile(identity = dependencies.localIdentity()) {
         const profile = cachedPlayerProfile(identity);
         return profile
-          ? { ...profile, progress: { ...profile.progress }, itemUpgradeLevels: { ...profile.itemUpgradeLevels }, itemRefines: { ...profile.itemRefines }, lifetime: { ...profile.lifetime } }
+          ? { ...profile, progress: { ...profile.progress }, itemUpgradeLevels: { ...profile.itemUpgradeLevels }, itemRefines: { ...profile.itemRefines }, itemCardSlots: { ...profile.itemCardSlots }, lifetime: { ...profile.lifetime } }
           : null;
       },
       activePlayerMap(identity = dependencies.localIdentity()) {

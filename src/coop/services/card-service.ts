@@ -11,7 +11,8 @@ type Target = { connection: DbConnection; isCurrent: () => boolean };
 const copyKey = (itemId: string, copyId: bigint) => `${itemId}:${copyId}`;
 const OWNED_GEAR: GearSlots = Object.freeze({ slots: OWNED_GEAR_SLOTS, cards: Object.freeze([]) as readonly string[] });
 
-const gearSlotsOf = (row: { slots: number; cards: readonly string[] }): GearSlots => {
+/** A slots row as the client reads it: at most four slots, unknown cards dropped. */
+export const gearSlotsOf = (row: { slots: number; cards: readonly string[] }): GearSlots => {
   const slots = Math.max(0, Math.min(MAX_CARD_SLOTS, Math.floor(row.slots)));
   return { slots, cards: row.cards.filter(cardId => cardDefinition(cardId)).slice(0, slots) };
 };

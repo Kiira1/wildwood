@@ -22,6 +22,7 @@ import { createInventoryDeleteMode } from "./inventory-delete-mode";
 import { withRefineStars } from "./refine-badge";
 import { REFINE_ORES, type OreId } from "../../shared/refine";
 import { createCardsTab } from "./cards-tab";
+import { canHoldCards } from "../../shared/cards";
 
 type InventoryLocation = EquipmentSlot | "BAG" | "";
 type SelectableInventory = InventoryState & { selectedItemId: string; selectedItemLocation?: InventoryLocation };
@@ -49,6 +50,8 @@ type InventoryDependencies = {
   ores?: () => Readonly<Partial<Record<OreId, number>>>;
   /** Cards held, by card id: the Cards tab. */
   cards?: () => Readonly<Record<string, number>>;
+  /** One copy's card slots and the cards in them; `copyId` 0n is the first copy. */
+  gearSlots?: (itemId: string, copyId?: bigint) => { slots: number; cards: readonly string[] };
   destroyOre?: (oreId: OreId, expectedCount: number) => Promise<Result>;
   equipBest?: () => boolean;
   equipmentLocked?: (itemId: string, copyId?: bigint) => boolean;
@@ -260,6 +263,7 @@ export function createInventoryController(dependencies: InventoryDependencies) {
       ...(mode === "COSMETICS" ? { context: `Cosmetic · ${cosmeticReach(itemId)}` } : {}),
       ...(requiredMap ? { context: `Reach ${requiredMap} to equip` } : {}),
       ...(copy ? { skills: copy.roll } : {}),
+      ...(mode === "EQUIPMENT" && canHoldCards(itemId) && dependencies.gearSlots ? { cardSlots: dependencies.gearSlots(itemId, copyId) } : {}),
       actions: [...(copy ? copyEquipActions(copy, Boolean(requiredMap)) : moves),
         ...conversionActions(itemId), ...destructionActions(itemId, copyId)],
     });
