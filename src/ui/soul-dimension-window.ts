@@ -3,7 +3,7 @@ import {
   type RewardKillCounts, type SoulStats, type SoulTierKillType,
 } from "../../shared/soul-dimension";
 import { formatCompactNumber as compactNumber } from "../../shared/compact-number";
-import { RATING_MAX } from "../../shared/stat-rating";
+import { CRIT_DAMAGE_START, CRIT_DAMAGE_TARGET, RATING_MAX } from "../../shared/stat-rating";
 import { soulCritDamageBonus } from "../../shared/critical-damage";
 
 const KILL_LABELS: Readonly<Record<SoulTierKillType, string>> = {
@@ -20,9 +20,11 @@ export type SoulWindowState = {
 };
 
 // Attack speed is a rating since 0.901.47, shown as the profile shows it; crit damage is the multiplier it adds.
-function soulValue(soul: SoulStats, stat: (typeof SOUL_STAT_ORDER)[number]) {
+export function soulValue(soul: SoulStats, stat: (typeof SOUL_STAT_ORDER)[number]) {
   const value = soulStatValue(soul, stat);
-  if (stat === "critDamage") return `+${soulCritDamageBonus(value).toFixed(2)}×`;
+  // Max once it reaches the curve's top (10x, less the 1.05x everyone starts with), as attack speed says.
+  if (stat === "critDamage") return value >= RATING_MAX || soulCritDamageBonus(value) >= CRIT_DAMAGE_TARGET - CRIT_DAMAGE_START - .005
+    ? "Max" : `+${soulCritDamageBonus(value).toFixed(2)}×`;
   // Attacks a second the soul adds, flat (soulAttackSpeedBonus); Max once it fills anyone's cap.
   if (stat === "attackSpeed") return value >= RATING_MAX ? "Max" : `+${soulAttackSpeedBonus(value).toFixed(3)}/s`;
   return `+${compactNumber(value)}`;

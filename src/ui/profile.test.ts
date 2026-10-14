@@ -5,7 +5,7 @@ import { createEmptyResearchRanks } from "../../shared/research";
 import { FIRE_METAL_HELMET, FROST_ARMOR, FROST_BOW, STARTER_BOW, WOOD_FULL_HELM, WOODEN_ARMOR } from "../../shared/items";
 import { MIN_ATTACK_INTERVAL } from "../../shared/rules";
 import type { PlayerProgress } from "../wildstat-coop";
-import { effectiveProfileStats, profilePower, profilePresenceText, profileSoulInPlay, profileStatDisplayRows } from "./profile";
+import { effectiveProfileStats, profileAttackCap, profilePower, profilePresenceText, profileSoulInPlay, profileStatDisplayRows } from "./profile";
 
 const progress = (equippedRightHand = "", equippedChest = ""): PlayerProgress => ({
   maxHp: 100,
@@ -428,4 +428,21 @@ describe("another player's soul stats", () => {
     expect(row(rows(profile), "damage").sources.some(source => source.label === "Soul")).toBe(false);
     expect(profilePower(profile, profileSoulInPlay(profile))).toBe(profilePower(withoutSoul(profile)));
   });
+});
+
+it("adds worn cards' reflect, double strike and split shot chances to their rows, as combat does", () => {
+  const profile = { progress: progress(FROST_BOW, WOODEN_ARMOR), research: createEmptyResearchRanks(), itemUpgradeLevels: {},
+    itemCardSlots: { [WOODEN_ARMOR]: { slots: 1, cards: ["prismshell_card"] } } } as unknown as Parameters<typeof profileStatDisplayRows>[0];
+  const rows = profileStatDisplayRows(profile, () => "0%", MIN_ATTACK_INTERVAL, undefined, 0, null);
+  // No Riposte point, yet Prismshell's 8% reflect shows.
+  expect(rows.find(row => row.kind === "riposte")).toMatchObject({ total: "8%", sources: [{ label: "Cards", value: "+8%" }] });
+  const both = profileStatDisplayRows(profile, () => "0%", MIN_ATTACK_INTERVAL, undefined, 0, { riposte: 1 });
+  expect(both.find(row => row.kind === "riposte")!.sources.map(source => source.label)).toEqual(["Prestige", "Cards"]);
+});
+
+it("counts another player's Quick Draw cards in their attack speed cap", () => {
+  const profile = { progress: progress(FROST_BOW), research: createEmptyResearchRanks(), itemUpgradeLevels: {},
+    itemCardSlots: { [FROST_BOW]: { slots: 2, cards: ["ion_needle_card", "ion_needle_card"] } } } as unknown as Parameters<typeof profileAttackCap>[0];
+  const bare = profileAttackCap({ ...profile, itemCardSlots: {} });
+  expect(profileAttackCap(profile).raise).toBeGreaterThan(bare.raise);
 });

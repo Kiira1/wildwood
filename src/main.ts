@@ -30,7 +30,7 @@ import { createItemGiftController } from "./ui/item-gift-controller";
 import { createReconnectRecovery } from "./ui/reconnect-recovery";
 import { isProceduralMap, proceduralMapId } from "../shared/procedural-maps";
 import { createAutoFarmProgress } from "./game/runtime/auto-farm/auto-farm-build";
-import { playerAttackCap, prestigePerkValue } from "../shared/prestige-perks";
+import { prestigePerkValue } from "../shared/prestige-perks";
 import { aggroPullCamps, forcedAggroGroups } from "./game/runtime/auto-farm/aggro-picks";
 import { createPrestigeExpansionRuntime } from "./ui/prestige-expansion-runtime";
 import { leaderboardEligible } from "../shared/leaderboard-window";
@@ -114,7 +114,7 @@ import { createInventoryController } from "./ui/inventory-controller";
 import { createItemInspectionController, itemStatsWithWeaponSkills } from "./ui/item-inspection-controller";
 import { createUpgradeBenchController } from "./ui/upgrade-bench-controller";
 import { createProfileWindowController } from "./ui/profile-window-controller";
-import { formatPlayedTime, profilePower, profilePresenceText, profileSoulInPlay, renderProfileStats } from "./ui/profile";
+import { formatPlayedTime, profileAttackCap, profilePower, profilePresenceText, profileSoulInPlay, renderProfileStats } from "./ui/profile";
 import { campaignMapUnlocked, equipmentMapRequirement } from "../shared/equipment-access";
 import { createAppShellController } from "./ui/app-shell-controller";
 import { createStartupController } from "./ui/startup-controller";
@@ -1219,7 +1219,7 @@ import {
     renderCharacter: (identity, progress, visible) => profileCharacterPreview.draw({ visible, progress, skinTone: coop?.skinTone?.(identity) ?? DEFAULT_SKIN_TONE }),
     skinTone: (identity) => coop?.skinTone?.(identity) ?? DEFAULT_SKIN_TONE, setSkinTone: async (value) => coop?.setSkinTone?.(value),
     playerGender: (identity) => coop?.playerGender?.(identity) ?? 0, setGender: async (value) => coop?.setGender?.(value), openIconPicker: openProfileIconPicker, nameColor: (identity) => coop?.nameColor?.(identity) ?? 0, setNameColor: async (value) => coop?.setNameColor?.(value),
-    renderStats: (profile, element) => renderProfileStats(profile, element, formatArmorReduction, profile.identity === coop?.localIdentity?.() ? coop?.attackCapInPlay?.() : playerAttackCap(profile.prestigeChallenge, profile.prestigePerks), profile.identity === coop?.localIdentity?.() ? coop?.researchInPlay?.() ?? profile.research : profile.research,
+    renderStats: (profile, element) => renderProfileStats(profile, element, formatArmorReduction, profile.identity === coop?.localIdentity?.() ? coop?.attackCapInPlay?.() : profileAttackCap(profile), profile.identity === coop?.localIdentity?.() ? coop?.researchInPlay?.() ?? profile.research : profile.research,
       profile.identity === coop?.localIdentity?.() ? (coop?.prestigeStatGainInPlay?.() === false ? 0 : coop?.prestige?.()?.level ?? 0) : profile.prestigeLevel ?? 0,
       profile.identity === coop?.localIdentity?.() ? coop?.prestigePerks?.() : profile.prestigePerks,
       profile.identity === coop?.localIdentity?.() ? coop?.dailyQuests?.()?.bonus ?? 1 : 1,

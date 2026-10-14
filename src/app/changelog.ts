@@ -3,6 +3,9 @@ export const RELEASE_NOTES: Record<string, string[]> = {
     "Boss cards, refines and Starshards no longer roll far luckier than intended",
     "Attack speed cap cards speed you up as soon as they're slotted or worn",
     "The profile shows your attack speed cap beside your attack speed",
+    "The profile counts cards in Reflect, Double Strike and Split Shot",
+    "Other players' profiles count their attack speed cap cards",
+    "Soul crit damage says Max at its top",
   ],
   "0.903.2": [
     "New Utility research: Bag Slots adds a bag slot a level, up to 5",
