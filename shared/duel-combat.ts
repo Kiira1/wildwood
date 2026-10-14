@@ -4,6 +4,8 @@ import { regularEnemySeededUnit } from "./regular-enemy-simulation";
 import { RIPOSTE_REFLECT_SHARE } from "./prestige-perks";
 import { marbleBagHit } from "./marble-bag";
 import { ARROW_STORM_ARROWS, ARROW_STORM_DAMAGE_SHARE, DUEL_RICOCHET_REHITS, RICOCHET_DAMAGE_SHARE, type BowSkillId } from "./bow-skills";
+import { SHOCKWAVE_DAMAGE_SHARE, WHIRLWIND_DAMAGE_SHARE, WHIRLWIND_TICKS, type SwordSkillId } from "./sword-skills";
+import { itemDefinition } from "./items";
 
 export type DuelFighter = { maxHp: number; damage: number; armor: number; regen: number; attackRate: number };
 /**
@@ -11,8 +13,10 @@ export type DuelFighter = { maxHp: number; damage: number; armor: number; regen:
  * 5: Riposte (Reflect) draws from a marble bag instead of a coin per hit.
  * 6: Riposte throws back half the hit before the defender's armor, not after.
  * 7: a thrown-back hit is capped at the reflecting player's max health (0.867).
+ * 8: sword skills; projectile Deflect blocks and returns the ranged attack through its sender's armor.
  */
-export const DUEL_COMBAT_VERSION = 7;
+export const DUEL_COMBAT_VERSION = 8;
+export const DUEL_SWORD_SKILLS_VERSION = 8;
 export const DUEL_BOW_SKILLS_VERSION = 4;
 export const DUEL_RIPOSTE_BAG_VERSION = 5;
 export const DUEL_RIPOSTE_PRE_ARMOR_VERSION = 6;
@@ -41,12 +45,33 @@ export type DuelCombat = DuelWeapons & {
   // They roll from the same stored seed as Riposte, under their own salt.
   challengerArrowStorm?: number; challengerRicochet?: number; challengerPiercingShot?: number;
   opponentArrowStorm?: number; opponentRicochet?: number; opponentPiercingShot?: number;
+  challengerWhirlwind?: number; challengerDeflect?: number; challengerShockwave?: number;
+  opponentWhirlwind?: number; opponentDeflect?: number; opponentShockwave?: number;
 };
 
 const DUEL_SKILL_FIELDS = {
   challenger: { arrowStorm: "challengerArrowStorm", ricochet: "challengerRicochet", piercingShot: "challengerPiercingShot" },
   opponent: { arrowStorm: "opponentArrowStorm", ricochet: "opponentRicochet", piercingShot: "opponentPiercingShot" },
 } as const;
+
+const DUEL_SWORD_FIELDS = {
+  challenger: { whirlwind: "challengerWhirlwind", deflect: "challengerDeflect", shockwave: "challengerShockwave" },
+  opponent: { whirlwind: "opponentWhirlwind", deflect: "opponentDeflect", shockwave: "opponentShockwave" },
+} as const;
+
+export function duelSwordSkillProc(duel: DuelCombat, side: "challenger" | "opponent", attack: number, skill: SwordSkillId) {
+  if ((duel.combatVersion ?? 0) < DUEL_SWORD_SKILLS_VERSION) return false;
+  const percent = Number(duel[DUEL_SWORD_FIELDS[side][skill]] ?? 0);
+  const chance = Number.isFinite(percent) ? Math.max(0, Math.min(100, percent)) / 100 : 0;
+  return chance > 0 && regularEnemySeededUnit("duel-sword-skill", String(duel.riposteSeed ?? 0), side, attack, skill) < chance;
+}
+
+/** Melee attacks cannot be deflected. Use the attacker count for each incoming projectile. */
+export function duelDeflected(duel: DuelCombat, defender: "challenger" | "opponent", attack: number) {
+  const attacker = defender === "challenger" ? "opponent" : "challenger";
+  const weapon = duel[`${attacker}WeaponItem`] || duel[`${attacker}RightHandItem`] || duel[`${attacker}LeftHandItem`];
+  return itemDefinition(weapon)?.weapon?.mode === "RANGED" && duelSwordSkillProc(duel, defender, attack, "deflect");
+}
 
 /**
  * Whether a duellist's bow skill fires on one of their attacks. Deterministic
@@ -79,6 +104,14 @@ function duelAttackDamage(duel: DuelCombat, side: "challenger" | "opponent", att
     const bounce = raw * RICOCHET_DAMAGE_SHARE;
     dealt += DUEL_RICOCHET_REHITS * damageAfterArmor(bounce, arrowArmor);
     incoming += DUEL_RICOCHET_REHITS * bounce;
+  }
+  if (duelSwordSkillProc(duel, side, attack, "whirlwind")) {
+    dealt += WHIRLWIND_TICKS * damageAfterArmor(raw * WHIRLWIND_DAMAGE_SHARE, armor);
+    incoming += WHIRLWIND_TICKS * raw * WHIRLWIND_DAMAGE_SHARE;
+  }
+  if (duelSwordSkillProc(duel, side, attack, "shockwave")) {
+    dealt += damageAfterArmor(raw * SHOCKWAVE_DAMAGE_SHARE, armor);
+    incoming += raw * SHOCKWAVE_DAMAGE_SHARE;
   }
   return { dealt, blocked: Math.max(0, incoming - dealt) };
 }
@@ -146,9 +179,14 @@ export function advanceDuelCombat(
       const challengerDamage = duel.challengerDamage * multiplier;
       state.challengerAttacks++;
       const challengerHit = duelAttackDamage(duel, "challenger", state.challengerAttacks, challengerDamage, duel.opponentArmor);
-      const taken = Math.min(state.opponentHp, challengerHit.dealt);
+      const deflected = duelDeflected(duel, "opponent", state.challengerAttacks);
+      const taken = deflected ? 0 : Math.min(state.opponentHp, challengerHit.dealt);
       state.opponentHp -= taken; state.challengerDamageDealt += taken;
-      state.opponentBlocked += challengerHit.blocked;
+      state.opponentBlocked += challengerHit.blocked + (deflected ? challengerHit.dealt : 0);
+      if (deflected) {
+        const returned = Math.min(state.challengerHp, damageAfterArmor(Math.min(challengerHit.dealt + challengerHit.blocked, duel.opponentMaxHp), duel.challengerArmor));
+        state.challengerHp -= returned; state.opponentDamageDealt += returned;
+      }
       if (taken > 0 && duelRiposted(duel, "opponent", state.challengerAttacks)) {
         const thrown = Math.min(state.challengerHp, riposteThrown(duel, riposteBase(duel, challengerHit, taken), duel.opponentMaxHp));
         state.challengerHp -= thrown; state.opponentDamageDealt += thrown;
@@ -158,9 +196,14 @@ export function advanceDuelCombat(
       const opponentDamage = duel.opponentDamage * multiplier;
       state.opponentAttacks++;
       const opponentHit = duelAttackDamage(duel, "opponent", state.opponentAttacks, opponentDamage, duel.challengerArmor);
-      const taken = Math.min(state.challengerHp, opponentHit.dealt);
+      const deflected = duelDeflected(duel, "challenger", state.opponentAttacks);
+      const taken = deflected ? 0 : Math.min(state.challengerHp, opponentHit.dealt);
       state.challengerHp -= taken; state.opponentDamageDealt += taken;
-      state.challengerBlocked += opponentHit.blocked;
+      state.challengerBlocked += opponentHit.blocked + (deflected ? opponentHit.dealt : 0);
+      if (deflected) {
+        const returned = Math.min(state.opponentHp, damageAfterArmor(Math.min(opponentHit.dealt + opponentHit.blocked, duel.challengerMaxHp), duel.opponentArmor));
+        state.opponentHp -= returned; state.challengerDamageDealt += returned;
+      }
       if (taken > 0 && duelRiposted(duel, "challenger", state.opponentAttacks)) {
         const thrown = Math.min(state.opponentHp, riposteThrown(duel, riposteBase(duel, opponentHit, taken), duel.challengerMaxHp));
         state.opponentHp -= thrown; state.challengerDamageDealt += thrown;
@@ -191,4 +234,6 @@ export function simulateDuelBattle(challenger: DuelFighter, opponent: DuelFighte
   return { combat, result, outcome: duelOutcome(combat, result), durationMicros: Math.max(3_000_000, result.resolvedMicros) };
 }
 
-export type DuelCombatModifiers = Pick<DuelCombat, "challengerRiposte" | "opponentRiposte" | "riposteSeed" | "challengerArrowStorm" | "challengerRicochet" | "challengerPiercingShot" | "opponentArrowStorm" | "opponentRicochet" | "opponentPiercingShot">;
+export type DuelCombatModifiers = Pick<DuelCombat, "challengerRiposte" | "opponentRiposte" | "riposteSeed"
+  | "challengerArrowStorm" | "challengerRicochet" | "challengerPiercingShot" | "opponentArrowStorm" | "opponentRicochet" | "opponentPiercingShot"
+  | "challengerWhirlwind" | "challengerDeflect" | "challengerShockwave" | "opponentWhirlwind" | "opponentDeflect" | "opponentShockwave">;

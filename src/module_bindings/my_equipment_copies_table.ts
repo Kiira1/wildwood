@@ -18,4 +18,7 @@ export default __t.row({
   ricochet: __t.f32(),
   piercingShot: __t.f32().name("piercing_shot"),
   acquiredAt: __t.timestamp().name("acquired_at"),
+  whirlwind: __t.f32(),
+  deflect: __t.f32(),
+  shockwave: __t.f32(),
 });

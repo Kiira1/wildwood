@@ -38,7 +38,7 @@ function smith(options: { inTown?: boolean; ores?: Partial<Record<OreId, number>
 it("lists only gear the Smith can refine, worn first, and shows a risky try's odds and what a fail costs", () => {
   const view = smith();
   view.controller.open();
-  expect(view.choices().map(choice => choice.getAttribute("aria-label"))).toEqual(["Bow ★7, worn", "Iron Bow", "Wooden Armor ★2"]);
+  expect(view.choices().map(choice => choice.getAttribute("aria-label"))).toEqual(["Bow ★7, worn", "Stone Bow", "Wooden Armor ★2"]);
   expect(view.q(".smith-item strong").textContent).toBe("Bow ★7");
   // The starter bow is safe to ★7 (grade 1); +8 is the first risky step.
   expect(view.facts()).toEqual({ Chance: "60%", "Safe to": "★7", "If it fails": "Drops to ★6", Costs: "1 Copper Ore" });

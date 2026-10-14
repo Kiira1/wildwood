@@ -1,4 +1,4 @@
-import { showDuelSkillEffects, type DuelSkillEffects } from "./duel-skill-effects";
+import { duelSwordSpinClock, showDuelSkillEffects, type DuelSkillEffects } from "./duel-skill-effects";
 import { duelAttackDelays, duelPositionsAt, duelWeapon } from "../../../../shared/duel-approach";
 import { duelHitMultiplier } from "../../../../shared/duel-combat";
 import {
@@ -173,6 +173,8 @@ export function createDuelPresentation(hooks: DuelPresentationHooks) {
           isChallenger ? duelWeapon(duel, true) : duelWeapon(duel, false),
           isChallenger ? delays.challenger : delays.opponent,
         ),
+        swordSpinClock: combatOver ? 0 : duelSwordSpinClock(duel, isChallenger ? "challenger" : "opponent",
+          presentation.elapsed, isChallenger ? presentation.state.challengerAttacks : presentation.state.opponentAttacks),
         isLocal: identity === localId,
         headItem: isChallenger ? duel.challengerHeadItem : duel.opponentHeadItem,
         chestItem: isChallenger ? duel.challengerChestItem : duel.opponentChestItem,
@@ -264,6 +266,8 @@ export function createDuelPresentation(hooks: DuelPresentationHooks) {
           isChallenger ? duelWeapon(replay, true) : duelWeapon(replay, false),
           isChallenger ? delays.challenger : delays.opponent,
         ),
+        swordSpinClock: combatOver ? 0 : duelSwordSpinClock(replay, isChallenger ? "challenger" : "opponent",
+          elapsed, isChallenger ? state.challengerAttacks : state.opponentAttacks),
         isLocal: false,
         headItem: isChallenger ? replay.challengerHeadItem : replay.opponentHeadItem,
         chestItem: isChallenger ? replay.challengerChestItem : replay.opponentChestItem,

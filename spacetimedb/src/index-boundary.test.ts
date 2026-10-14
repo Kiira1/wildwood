@@ -24,7 +24,7 @@ import { describe, expect, it } from "vitest";
 // power, item upgrades, the gem wallet, the leaderboard refresh, display names,
 // chat, maintenance, character reset, map travel and twelve reducer bodies
 // moved to their own modules.
-const MAX_LINES = 4_638;
+const MAX_LINES = 4_625;
 const TARGET_LINES = 3_500;
 
 describe("server module boundary", () => {

@@ -17,7 +17,7 @@ import {
 } from "../../shared/gems";
 import { gemSpendConfirmation } from "./gem-spend-confirmation";
 import { gameConfirm, type ConfirmPrompt, type ConfirmRequest } from "./confirm-dialog";
-import { type BowSkillRoll } from "../../shared/bow-skills";
+import { type WeaponSkillRoll } from "../../shared/weapon-skills";
 import { createInventoryDeleteMode } from "./inventory-delete-mode";
 import { withRefineStars } from "./refine-badge";
 import { REFINE_ORES, type OreId } from "../../shared/refine";
@@ -34,7 +34,7 @@ export function cosmeticReach(itemId: string) {
   return weaponKind(itemId) === "MELEE" ? "Shows on a sword" : "Shows on a bow";
 }
 
-export type KeptEquipmentCopy = { id: bigint; itemId: string; roll: Partial<BowSkillRoll> };
+export type KeptEquipmentCopy = { id: bigint; itemId: string; roll: WeaponSkillRoll };
 
 type InventoryDependencies = {
   inventory: SelectableInventory;
@@ -266,7 +266,7 @@ export function createInventoryController(dependencies: InventoryDependencies) {
   }
 
   /**
-   * Equipping a kept copy. A bow's copies differ, so the server first makes
+   * Equipping a kept copy. A weapon's copies differ, so the server first makes
    * this copy the one its slot holds. Locks follow the selected copy too.
    */
   function copyEquipActions(copy: KeptEquipmentCopy, locked: boolean) {

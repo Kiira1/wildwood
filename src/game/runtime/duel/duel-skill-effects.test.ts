@@ -1,5 +1,5 @@
 import { expect, it, vi } from "vitest";
-import { showDuelSkillEffects } from "./duel-skill-effects";
+import { duelSwordSpinClock, showDuelSkillEffects } from "./duel-skill-effects";
 import { ARROW_STORM_ARROWS } from "../../../../shared/bow-skills";
 import type { DuelCombat } from "../../../../shared/duel-combat";
 
@@ -17,4 +17,26 @@ it("shows all three bow effects only on the hit crossing, and respects old duels
   showDuelSkillEffects(duel, 1, 1.1, counts, effects);
   showDuelSkillEffects({ ...duel, combatVersion: 3 }, .9, 1, counts, effects);
   expect(effects.spawnArcingArrow).toHaveBeenCalledTimes(ARROW_STORM_ARROWS);
+});
+
+
+it("shows native sword effects once and uses the incoming attack count for Deflect", () => {
+  const duel: DuelCombat = { combatVersion: 8, riposteSeed: 42n,
+    challengerMaxHp: 1e9, challengerDamage: 100, challengerArmor: 0, challengerRegen: 0, challengerAttackRate: 1,
+    opponentMaxHp: 1e9, opponentDamage: 100, opponentArmor: 0, opponentRegen: 0, opponentAttackRate: 1,
+    challengerWhirlwind: 100, challengerShockwave: 100 };
+  const effects = { spawnArcingArrow: vi.fn(), spawnSkillStreak: vi.fn(), spawnSkillRing: vi.fn(),
+    spawnSwordSpin: vi.fn(), spawnSwordWave: vi.fn(), spawnDeflectedShot: vi.fn() };
+  const counts = { challengerAttacks: 1, opponentAttacks: 1 };
+  showDuelSkillEffects(duel, .9, 1, counts, effects);
+  expect(effects.spawnSwordSpin).toHaveBeenCalledOnce(); expect(effects.spawnSwordWave).toHaveBeenCalledOnce();
+  expect(duelSwordSpinClock(duel, "challenger", 1.2, 1)).toBeCloseTo(.4);
+  expect(duelSwordSpinClock(duel, "challenger", 2, 1)).toBe(0);
+  showDuelSkillEffects(duel, 1, 1.1, counts, effects);
+  showDuelSkillEffects({ ...duel, combatVersion: 7 }, .9, 1, counts, effects);
+  expect(effects.spawnSwordSpin).toHaveBeenCalledOnce();
+  showDuelSkillEffects({ ...duel, challengerWeaponItem: "ion_bow", challengerArrowStorm: 100,
+    opponentWeaponItem: "ion_sword", opponentDeflect: 100 }, .9, 1, counts, effects);
+  expect(effects.spawnDeflectedShot).toHaveBeenCalledOnce();
+  expect(effects.spawnArcingArrow).not.toHaveBeenCalled();
 });

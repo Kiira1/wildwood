@@ -6,7 +6,7 @@ import {
   EQUIP_BEST_SLOTS, equipComparisonPower, equippedInSlot, isEquipUpgrade, weaponKind, withItemEquipped,
   type EquipLoadout, type WeaponKind,
 } from "../../shared/equip-best";
-import { bowSkillRollFor } from "./bow-skills";
+import { weaponSkillRollFor } from "./weapon-skills";
 import { allowedLoadout } from "./loadout";
 import { lootSettingsFor } from "./loot-settings";
 import { readPlayerProgress } from "./wide-stats";
@@ -55,7 +55,7 @@ export function createAutoEquip(deps: {
     const research = ctx.db.playerResearch.identity.find(identity);
     return (candidate: any) => equipComparisonPower(candidate, research,
       itemId => deps.itemUpgradeLevelFor(ctx, identity, itemId),
-      itemId => bowSkillRollFor(ctx, identity, itemId));
+      itemId => weaponSkillRollFor(ctx, identity, itemId));
   }
 
   /**

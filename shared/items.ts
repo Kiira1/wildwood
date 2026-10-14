@@ -275,10 +275,10 @@ export const ITEM_DEFINITIONS = {
   },
   [IRON_BOW]: {
     id: IRON_BOW,
-    name: "IRON BOW",
+    name: "STONE BOW",
     slot: "HAND",
     acquisition: "DESERT_DROP",
-    description: "A reinforced iron bow carried by Beginner Desert monsters that strengthens every shot.",
+    description: "A sturdy stone bow carried by Beginner Desert monsters that strengthens every shot.",
     ...equipmentStatDefinition(2, "HAND"),
   },
   [SNOW_BOW]: {

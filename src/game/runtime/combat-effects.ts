@@ -1,3 +1,4 @@
+import { drawSwordSkillEffect } from "./sword-skill-effects";
 import { TAU } from "../constants";
 import { clamp, rand, randi } from "../math";
 import { formatCompactNumber } from "../../../shared/compact-number";
@@ -36,7 +37,8 @@ export type DamageNumber = {
  * (controlX, controlY) to (toX, toY).
  */
 export type SkillEffect = {
-  kind: "arrow" | "streak" | "ring";
+  kind: "arrow" | "streak" | "ring" | "spin" | "wave" | "return";
+  anchor?: { x: number; y: number };
   x: number; y: number; toX: number; toY: number; controlX: number; controlY: number;
   delay: number; life: number; maxLife: number;
   width: number; color: string; jagged: boolean;
@@ -154,7 +156,7 @@ export function createCombatEffects() {
   function spawnSkillEffect(kind: SkillEffect["kind"], x: number, y: number, toX: number, toY: number,
     life: number, width: number, color: string, delay = 0, jagged = false) {
     const effect = acquireSkillEffect();
-    Object.assign(effect, { kind, x, y, toX, toY, controlX: (x + toX) / 2, controlY: (y + toY) / 2, life, maxLife: life, width, color, delay, jagged });
+    Object.assign(effect, { kind, x, y, toX, toY, controlX: (x + toX) / 2, controlY: (y + toY) / 2, life, maxLife: life, width, color, delay, jagged, anchor: undefined });
     return effect;
   }
 
@@ -184,6 +186,19 @@ export function createCombatEffects() {
 
   function spawnSkillRing(x: number, y: number, color: string, radius = 26, life = .3) {
     spawnSkillEffect("ring", x, y, x, y, life, radius, color);
+  }
+
+  function spawnSwordSpin(x: number, y: number, radius: number, life: number, anchor?: { x: number; y: number }) {
+    spawnSkillEffect("spin", x, y, x, y, life, radius, "#ffdb79").anchor = anchor;
+  }
+
+  function spawnSwordWave(x: number, y: number, toX: number, toY: number, radius: number, life: number) {
+    spawnSkillEffect("wave", x, y, toX, toY, life, radius, "#9cecff");
+  }
+
+  function spawnDeflectedShot(x: number, y: number, toX: number, toY: number, life: number) {
+    spawnSkillRing(x, y, "#a2e4ff", 32, .2);
+    spawnSkillEffect("return", x, y, toX, toY, life, 3, "#60baff");
   }
 
   function update(dt: number) {
@@ -256,7 +271,9 @@ export function createCombatEffects() {
       const fade = 1 - progress;
       const x = effect.x - camera.x, y = effect.y - camera.y;
       const toX = effect.toX - camera.x, toY = effect.toY - camera.y;
-      if (effect.kind === "arrow") {
+      if (effect.kind === "spin" || effect.kind === "wave" || effect.kind === "return") {
+        drawSwordSkillEffect(ctx, effect, camera, progress);
+      } else if (effect.kind === "arrow") {
         // The head runs along the curve; a glowing tail traces the path behind it.
         const controlX = effect.controlX - camera.x, controlY = effect.controlY - camera.y;
         const at = (t: number): [number, number] => {
@@ -368,5 +385,6 @@ export function createCombatEffects() {
   }
 
   return { particles, damageNumbers, skillEffects, spawnParticle, spawnBurst, spawnDamageNumber, spawnArcingArrow, spawnSkillStreak, spawnSkillRing,
+    spawnSwordSpin, spawnSwordWave, spawnDeflectedShot,
     update, drawParticles, drawDamageNumbers, clearParticles, clearDamageNumbers, clear };
 }

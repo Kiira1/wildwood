@@ -11,6 +11,8 @@ import { criticalDamageMultiplier } from "../../shared/critical-damage";
 import { soulStatsFor, withSoulStats } from "./soul-dimension";
 import { bowSkillRollFor } from "./bow-skills";
 import { bowSkillReachMultiplier } from "../../shared/bow-skills";
+import { swordSkillChance, swordSkillReachMultiplier } from "../../shared/sword-skills";
+import { swordSkillRollFor } from "./sword-skills";
 import type { ModuleReducerCtx as GameReducerContext } from "./index";
 import { readPlayerProgress } from "./wide-stats";
 
@@ -133,6 +135,7 @@ export function createCombatReport(deps: CombatReportDeps) {
       // enemy, so they widen reach; the Split Shot arrow rolls the bow's skills
       // too, so the two reaches multiply.
       const bowSkills = bowSkillRollFor(ctx, ctx.sender, loadout.weapon);
+      const swordSkills = swordSkillRollFor(ctx, ctx.sender, loadout.weapon);
       return { saved, earned, statsFor, armorFor, soul, minInterval, gear: {
         loadout, critical, swing: prestigeSwingMultiplier(ranks),
         // Projectile count is not a kill reward, so the saved row holds for the whole report.
@@ -140,8 +143,9 @@ export function createCombatReport(deps: CombatReportDeps) {
         projectiles: !armed || itemDefinition(loadout.weapon)?.weapon?.mode === "MELEE" ? 1 : Math.max(1, saved.projectileCount),
         // Reflect returns the hit before armor, so armor raises what it adds.
         reach: prestigeReachMultiplier(ranks, armorFor(statsFor(withSoulStats(saved, soul, minInterval)).armor).reduction)
-          * bowSkillReachMultiplier(bowSkills),
+          * bowSkillReachMultiplier(bowSkills) * swordSkillReachMultiplier(swordSkills),
         reflects: prestigePerkValue(ranks, "riposte") > 0,
+        deflects: swordSkillChance(swordSkills, "deflect") > 0,
         secondWind: prestigePerkValue(ranks, "secondWind"),
         reflectOnly: Boolean(challenge?.active),
       } };
@@ -162,14 +166,17 @@ export function createCombatReport(deps: CombatReportDeps) {
         // what Second Wind heals on kills before they fall, and a hit before
         // armor is what got through times preArmorFactor: so that, scaled, is
         // the most Reflect can deal, whatever its bag drew.
-        const stats = gear.reflects ? statsFor!(progress) : null;
+        const stats = gear.reflects || gear.deflects ? statsFor!(progress) : null;
         const reflect = stats ? { maxHp: stats.maxHp, regen: stats.regen, preArmor: armorFor(stats.armor).preArmor } : null;
         // Damage taken per second that Reflect can answer: regen, a health bar
         // per life (a life no shorter than REFLECT_ONLY_LIFE_SECONDS), and
         // Second Wind's heal at the most kills a second any map can respawn.
         const absorbed = reflect ? reflect.regen + reflect.maxHp / REFLECT_ONLY_LIFE_SECONDS + gear.secondWind * reflect.maxHp * SECOND_WIND_KILLS_PER_SECOND : 0;
         // The perk's chance is left out, so the bound only ever errs towards paying.
-        const reflectDps = reflect ? WORLD_REFLECT_SHARE * reflect.preArmor * absorbed : 0;
+        // Deflect prevents the hit, so health lost cannot bound it. Each return is capped at max health,
+        // and shares the player's .1s hurt window. Leave its chance out, as for Reflect's lucky streaks.
+        const reflectDps = (reflect && gear.reflects ? WORLD_REFLECT_SHARE * reflect.preArmor * absorbed : 0)
+          + (stats && gear.deflects ? stats.maxHp / REFLECT_ONLY_TICK_SECONDS : 0);
         // Reflect Only: the weapon counts for nothing, and every kill has to come from hits taken.
         if (gear.reflectOnly) {
           return { attackInterval: REFLECT_ONLY_TICK_SECONDS, projectiles: 1, reach: 1, dps: reflectDps, reflectDps: 0, reflectTick: REFLECT_ONLY_TICK_SECONDS };

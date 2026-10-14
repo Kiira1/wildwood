@@ -21,4 +21,10 @@ export default __t.row({
   opponentArrowStorm: __t.f64().name("opponent_arrow_storm"),
   opponentRicochet: __t.f64().name("opponent_ricochet"),
   opponentPiercingShot: __t.f64().name("opponent_piercing_shot"),
+  challengerWhirlwind: __t.f64().name("challenger_whirlwind"),
+  challengerDeflect: __t.f64().name("challenger_deflect"),
+  challengerShockwave: __t.f64().name("challenger_shockwave"),
+  opponentWhirlwind: __t.f64().name("opponent_whirlwind"),
+  opponentDeflect: __t.f64().name("opponent_deflect"),
+  opponentShockwave: __t.f64().name("opponent_shockwave"),
 });

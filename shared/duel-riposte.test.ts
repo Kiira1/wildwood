@@ -87,7 +87,8 @@ it("caps a thrown-back hit at the reflecting player's max health from version 7,
     expect(state.challengerAttacks).toBe(1);
     return 1_000_000 - state.challengerHp - state.opponentAttacks;
   };
-  expect(DUEL_COMBAT_VERSION).toBe(DUEL_RIPOSTE_MAX_HP_VERSION);
+  expect(DUEL_COMBAT_VERSION).toBeGreaterThanOrEqual(DUEL_RIPOSTE_MAX_HP_VERSION);
+  expect(thrownOnFirstHit(DUEL_COMBAT_VERSION)).toBeCloseTo(100, 0);
   expect(thrownOnFirstHit(DUEL_RIPOSTE_MAX_HP_VERSION)).toBeCloseTo(100, 0);     // the reflector's 100, not half of 1,000
   expect(thrownOnFirstHit(DUEL_RIPOSTE_MAX_HP_VERSION - 1)).toBeCloseTo(500, 0); // a version 6 replay still throws back 500
 });

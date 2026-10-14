@@ -196,7 +196,7 @@ export function createActorRenderer(options: {
   localDeath: () => PlayerDeathAnimationState | null;
   remoteDeath: (identity: string) => PlayerDeathAnimationState | null;
   /** `gameTime`, when given, holds the idle pose at that moment instead of the frame clock's. */
-  drawPlayerAppearance: (actor: { skinTone?: number; x: number; y: number; facing: number; combatFacing?: number | null; moving?: boolean; gameTime?: number; throwClock?: number; identity?: string; id?: string; headItem?: string; chestItem?: string; feetItem?: string; rightHandItem?: string; leftHandItem?: string }, alpha: number) => void;
+  drawPlayerAppearance: (actor: { skinTone?: number; x: number; y: number; facing: number; combatFacing?: number | null; moving?: boolean; gameTime?: number; throwClock?: number; swordSpinClock?: number; identity?: string; id?: string; headItem?: string; chestItem?: string; feetItem?: string; rightHandItem?: string; leftHandItem?: string }, alpha: number) => void;
   localHeadItem: () => string;
   localChestItem: () => string;
   localFeetItem: () => string;
@@ -407,7 +407,7 @@ export function createActorRenderer(options: {
   }
 
   function drawPlayerSprite(
-    actor: { skinTone?: number; x: number; y: number; facing: number; combatFacing?: number | null; moving?: boolean; gameTime?: number; throwClock?: number; identity?: string; id?: string; headItem?: string; chestItem?: string; feetItem?: string; rightHandItem?: string; leftHandItem?: string },
+    actor: { skinTone?: number; x: number; y: number; facing: number; combatFacing?: number | null; moving?: boolean; gameTime?: number; throwClock?: number; swordSpinClock?: number; identity?: string; id?: string; headItem?: string; chestItem?: string; feetItem?: string; rightHandItem?: string; leftHandItem?: string },
     alpha = 1,
   ) {
     options.drawPlayerAppearance(actor, alpha);

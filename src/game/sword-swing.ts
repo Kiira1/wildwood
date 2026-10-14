@@ -1,3 +1,4 @@
+import { WHIRLWIND_SECONDS, WHIRLWIND_TICKS } from "../../shared/sword-skills";
 import { ATTACK_ANIMATION_SECONDS } from "./attack-timeline";
 
 const smooth = (t: number) => t * t * (3 - 2 * t);
@@ -26,4 +27,11 @@ export function drawSwordTrail(ctx: CanvasRenderingContext2D, x: number, y: numb
     ctx.globalAlpha /= alpha * opacity;
   }
   ctx.restore();
+}
+
+/** Three complete turns, driven by combat time rather than the normal swing clock. */
+export function swordWhirlwindPose(remaining: number) {
+  if (remaining <= 0) return null;
+  const progress = 1 - Math.min(1, remaining / WHIRLWIND_SECONDS);
+  return { angle: progress * 360 * WHIRLWIND_TICKS - 28, trail: Math.min(1, remaining / .08) };
 }

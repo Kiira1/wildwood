@@ -31,6 +31,8 @@ export type PlayerState = Circle & {
   regen: number;
   attackClock: number;
   throwClock: number;
+  /** Time remaining in a native Whirlwind animation. */
+  swordSpinClock?: number;
   hurtClock: number;
   facing: number;
   combatFacing: number | null;
@@ -349,6 +351,7 @@ export type DuelCombatant = Position & {
   facing: number;
   combatFacing: number;
   throwClock: number;
+  swordSpinClock?: number;
   isLocal: boolean;
   headItem: string;
   chestItem: string;

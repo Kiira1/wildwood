@@ -357,6 +357,7 @@ import MySocialHubRow from "./my_social_hub_table";
 import MySocialMessagesRow from "./my_social_messages_table";
 import MySocialMessagesWithReactionsRow from "./my_social_messages_with_reactions_table";
 import MySoulStatsRow from "./my_soul_stats_table";
+import MySwordSkillsRow from "./my_sword_skills_table";
 import MyUpgradeBenchRow from "./my_upgrade_bench_table";
 import MyUpgradeBenchThirdSlotRow from "./my_upgrade_bench_third_slot_table";
 import PatreonTickerSupportersRow from "./patreon_ticker_supporters_table";
@@ -1776,6 +1777,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, MySoulStatsRow),
+  mySwordSkills: __table({
+    name: 'my_sword_skills',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MySwordSkillsRow),
   myUpgradeBench: __table({
     name: 'my_upgrade_bench',
     indexes: [

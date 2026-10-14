@@ -1,10 +1,12 @@
 import { duelAttackDelays, duelPositionsAt } from "../../../../shared/duel-approach";
-import { duelBowSkillProc, type DuelCombat } from "../../../../shared/duel-combat";
+import { duelDeflected, duelSwordSkillProc, duelBowSkillProc, type DuelCombat } from "../../../../shared/duel-combat";
+import { DEFLECT_RETURN_SPEED, WHIRLWIND_SECONDS, WHIRLWIND_RADIUS, SHOCKWAVE_RADIUS, SHOCKWAVE_SPEED } from "../../../../shared/sword-skills";
+import type { SwordSkillEffects } from "../sword-skill-runtime";
 import { ARROW_STORM_ARROWS } from "../../../../shared/bow-skills";
 import { DUEL_ARENA, DUEL_COMBAT_Y } from "../../duel";
 import type { createCombatEffects } from "../combat-effects";
 
-export type DuelSkillEffects = Pick<ReturnType<typeof createCombatEffects>, "spawnArcingArrow" | "spawnSkillStreak" | "spawnSkillRing">;
+export type DuelSkillEffects = SwordSkillEffects & Pick<ReturnType<typeof createCombatEffects>, "spawnArcingArrow" | "spawnSkillStreak" | "spawnSkillRing">;
 
 /** Emit each proc once, using the same seed and attack number as combat. */
 export function showDuelSkillEffects(duel: DuelCombat, from: number, to: number,
@@ -23,6 +25,17 @@ export function showDuelSkillEffects(duel: DuelCombat, from: number, to: number,
       const sourceX = DUEL_ARENA.x + (side === "challenger" ? positions.challengerX : positions.opponentX);
       const targetX = DUEL_ARENA.x + (side === "challenger" ? positions.opponentX : positions.challengerX);
       const y = DUEL_COMBAT_Y;
+      const defender = side === "challenger" ? "opponent" : "challenger";
+      if (duelDeflected(duel, defender, attack)) {
+        effects.spawnDeflectedShot?.(targetX, y, sourceX, y, Math.max(.04, Math.abs(targetX - sourceX) / DEFLECT_RETURN_SPEED));
+        continue;
+      }
+      if (duelSwordSkillProc(duel, side, attack, "whirlwind")) {
+        effects.spawnSwordSpin?.(sourceX, y, WHIRLWIND_RADIUS, WHIRLWIND_SECONDS);
+      }
+      if (duelSwordSkillProc(duel, side, attack, "shockwave")) {
+        effects.spawnSwordWave?.(sourceX, y, targetX, y, SHOCKWAVE_RADIUS, Math.max(.04, Math.abs(targetX - sourceX) / SHOCKWAVE_SPEED));
+      }
       if (duelBowSkillProc(duel, side, attack, "arrowStorm")) {
         for (let index = 0; index < ARROW_STORM_ARROWS; index++) effects.spawnArcingArrow(sourceX, y, targetX, y, index, "#ffd957");
       }
@@ -38,4 +51,16 @@ export function showDuelSkillEffects(duel: DuelCombat, from: number, to: number,
       }
     }
   }
+}
+
+/** Match the held-sword animation to the most recent active spin, including when seeking a replay. */
+export function duelSwordSpinClock(duel: DuelCombat, side: "challenger" | "opponent", elapsed: number, attacks: number) {
+  const delay = duelAttackDelays(duel)[side];
+  const interval = Math.max(.000001, Math.round(duel[`${side}AttackRate`] * 1e6) / 1e6);
+  for (let attack = attacks; attack > 0; attack--) {
+    const age = elapsed - (delay + attack * interval);
+    if (age >= WHIRLWIND_SECONDS) break;
+    if (age >= 0 && duelSwordSkillProc(duel, side, attack, "whirlwind")) return WHIRLWIND_SECONDS - age;
+  }
+  return 0;
 }

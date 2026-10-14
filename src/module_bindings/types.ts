@@ -546,6 +546,12 @@ export const DuelCombatSnapshot = __t.object("DuelCombatSnapshot", {
   opponentArrowStorm: __t.f64(),
   opponentRicochet: __t.f64(),
   opponentPiercingShot: __t.f64(),
+  challengerWhirlwind: __t.f64(),
+  challengerDeflect: __t.f64(),
+  challengerShockwave: __t.f64(),
+  opponentWhirlwind: __t.f64(),
+  opponentDeflect: __t.f64(),
+  opponentShockwave: __t.f64(),
 });
 export type DuelCombatSnapshot = __Infer<typeof DuelCombatSnapshot>;
 
@@ -1548,6 +1554,9 @@ export type MySocialMessagesWithReactions = __Infer<typeof MySocialMessagesWithR
 export const MySoulStats = __t.object("MySoulStats", {});
 export type MySoulStats = __Infer<typeof MySoulStats>;
 
+export const MySwordSkills = __t.object("MySwordSkills", {});
+export type MySwordSkills = __Infer<typeof MySwordSkills>;
+
 export const MyUpgradeBench = __t.object("MyUpgradeBench", {});
 export type MyUpgradeBench = __Infer<typeof MyUpgradeBench>;
 
@@ -1674,6 +1683,9 @@ export const PendingEquipmentOffer = __t.object("PendingEquipmentOffer", {
   piercingShot: __t.f32(),
   createdAt: __t.timestamp(),
   expiresAt: __t.timestamp(),
+  whirlwind: __t.f32(),
+  deflect: __t.f32(),
+  shockwave: __t.f32(),
 });
 export type PendingEquipmentOffer = __Infer<typeof PendingEquipmentOffer>;
 
@@ -1924,6 +1936,9 @@ export const PlayerEquipmentCopy = __t.object("PlayerEquipmentCopy", {
   ricochet: __t.f32(),
   piercingShot: __t.f32(),
   acquiredAt: __t.timestamp(),
+  whirlwind: __t.f32(),
+  deflect: __t.f32(),
+  shockwave: __t.f32(),
 });
 export type PlayerEquipmentCopy = __Infer<typeof PlayerEquipmentCopy>;
 
@@ -2467,6 +2482,16 @@ export const PlayerSoulStats = __t.object("PlayerSoulStats", {
   kills: __t.u64(),
 });
 export type PlayerSoulStats = __Infer<typeof PlayerSoulStats>;
+
+export const PlayerSwordSkill = __t.object("PlayerSwordSkill", {
+  key: __t.string(),
+  identity: __t.identity(),
+  itemId: __t.string(),
+  whirlwind: __t.f32(),
+  deflect: __t.f32(),
+  shockwave: __t.f32(),
+});
+export type PlayerSwordSkill = __Infer<typeof PlayerSwordSkill>;
 
 export const PlayerUpgradeBench = __t.object("PlayerUpgradeBench", {
   identity: __t.identity(),

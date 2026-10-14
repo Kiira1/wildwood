@@ -208,6 +208,8 @@ type ExpectedApiKey =
   | "setOfflineProgressEnabled"
   | "accountAudio"
   | "bowSkills"
+  | "swordSkills"
+  | "weaponSkills"
   | "equipmentLocked"
   | "setEquipmentLocked"
   | "equipmentCopies"

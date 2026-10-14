@@ -57,7 +57,7 @@ const flush = async () => { await Promise.resolve(); await Promise.resolve(); };
 it("shows the new copy's skills beside the one the player has, with the time left", () => {
   const view = harness([bowOffer(4n)]);
   expect(view.card.hidden).toBe(false);
-  expect(view.text(".equipment-offer-name")).toBe("Iron Bow");
+  expect(view.text(".equipment-offer-name")).toBe("Stone Bow");
   expect(view.text(".equipment-offer-note")).toBe("You already have this");
   expect(view.lines("is-yours")).toEqual(["Arrow Storm 2.4%"]);
   expect(view.lines("is-new")).toEqual(["Ricochet 3.1%"]);
@@ -157,8 +157,8 @@ it("redraws the inventory when the kept copies change", () => {
 
 it("says when Auto keep best kept a better roll, with both scores to one decimal", () => {
   const view = harness([]);
-  expect(betterRollMessage("iron_bow", 4.75, 7.5)).toBe("Better Iron Bow kept (Skills +4.8% → +7.5%)");
+  expect(betterRollMessage("iron_bow", 4.75, 7.5)).toBe("Better Stone Bow kept (Skills +4.8% → +7.5%)");
   view.betterRoll()!({ itemId: "iron_bow", before: 4.75, after: 7.5 });
-  expect(view.messages).toEqual(["Better Iron Bow kept (Skills +4.8% → +7.5%)"]);
+  expect(view.messages).toEqual(["Better Stone Bow kept (Skills +4.8% → +7.5%)"]);
   expect(view.card.hidden).toBe(true);
 });

@@ -20,6 +20,9 @@ import { createMarbleBag } from "../../../shared/marble-bag";
 import { ARROW_STORM_DAMAGE_SHARE, ARROW_STORM_RADIUS, ARROW_STORM_SCORE_WEIGHT, RICOCHET_DAMAGE_SHARE, bowSkillChance, hasBowSkills, rollArrowSkillProcs, type BowSkillRoll } from "../../../shared/bow-skills";
 import { ARROW_STORM_FLIGHT_SECONDS, ARROW_STORM_STAGGER_SECONDS } from "./combat-effects";
 import { arrowPassesThrough, isSkillSecondaryTarget, rainArrowStorm, ricochetChain } from "./bow-skill-procs";
+import { swordSkillBossDamageMultiplier } from "../../../shared/sword-skills";
+import type { WeaponSkillRoll } from "../../../shared/weapon-skills";
+import { createSwordSkillRuntime, type SwordSkillEffects } from "./sword-skill-runtime";
 import { addPlayerBaseMaxHealth } from "./player-health";
 import {
   absoluteAttackTimestamps,
@@ -119,7 +122,9 @@ export function createPlayerCombatController(options: {
   prestigeSecondWind?: () => number;
   /** The equipped bow's skill roll (Arrow Storm, Ricochet, Piercing Shot), if it has one. */
   bowSkills?: () => Partial<BowSkillRoll> | null | undefined;
-  /** Random source for bow skill procs; tests inject a fixed sequence. */
+  /** The equipped weapon copy's native skill roll. */
+  weaponSkills?: () => WeaponSkillRoll | null | undefined;
+  /** Random source for weapon skill procs; tests inject a fixed sequence. */
   random?: () => number;
   equippedWeapon: () => string;
   /** The worn weapon's slot tier and refine (coop itemLevel). */
@@ -143,8 +148,8 @@ export function createPlayerCombatController(options: {
   spawnBurst: (x: number, y: number, color: string, count?: number, speed?: number) => void;
   spawnParticle: (x: number, y: number, vx: number, vy: number, life: number, maxLife: number, size: number, color: string) => void;
   spawnDamageNumber: (x: number, y: number, amount: number, critical?: boolean, damageTaken?: boolean, reflected?: boolean) => void;
-  /** Bow skill visuals; combat still works without them (tests, tools). */
-  skillEffects?: {
+  /** Weapon skill visuals; combat still works without them (tests, tools). */
+  skillEffects?: SwordSkillEffects & {
     spawnArcingArrow: (fromX: number, fromY: number, toX: number, toY: number, index: number, color: string) => void;
     spawnSkillStreak: (x: number, y: number, toX: number, toY: number, color: string, width?: number, life?: number, jagged?: boolean) => void;
     spawnSkillRing: (x: number, y: number, color: string, radius?: number, life?: number) => void;
@@ -178,6 +183,12 @@ export function createPlayerCombatController(options: {
   const { projectiles, enemyShots } = projectileStore;
   const attackCap = () => typeof minAttackInterval === "function" ? minAttackInterval() : minAttackInterval;
   const random = options.random ?? Math.random;
+  const weaponSkills = (): WeaponSkillRoll | null | undefined => options.weaponSkills?.() ?? options.bowSkills?.();
+  const swordSkills = createSwordSkillRuntime({
+    player, enemies, currentMapId: options.currentMapId, equippedWeapon: options.equippedWeapon,
+    activeBoss: activeMapBoss, roll: weaponSkills, nowSeconds: options.nowSeconds, random,
+    isDueling, onCombat: options.onCombat, effects: options.skillEffects, hit: applyPlayerHit,
+  });
   // Reflect draws from a marble bag, so its rate corrects itself instead of
   // running dry for a hundred hits at 6%. Only hits it could answer draw.
   const reflectBag = createMarbleBag(random);
@@ -335,8 +346,10 @@ export function createPlayerCombatController(options: {
     const critical = (!hit.enemy.isBoss || Boolean(options.hitPersonalBoss)) && Math.random() < researchCriticalChance();
     // Double Strike lands the same blow twice rather than hitting harder, so a
     // second kill can come out of one swing.
+    const damage = weaponDamage(critical);
     const strikes = Math.random() < (options.prestigeDoubleStrike?.() ?? 0) ? 2 : 1;
-    for (let strike = 0; strike < strikes; strike++) applyPlayerHit(hit.enemy, weaponDamage(critical), critical, angle);
+    for (let strike = 0; strike < strikes; strike++) applyPlayerHit(hit.enemy, damage, critical, angle);
+    swordSkills.swing(hit.enemy, damage, critical, angle);
     spawnBurst(player.x + Math.cos(angle) * attackRange() * hit.t, player.y + Math.sin(angle) * attackRange() * hit.t, "#f3f7ff", 6, 55);
     const second = splitShotTarget(hit.enemy);
     if (second) applyPlayerHit(second, weaponDamage(critical), critical, Math.atan2(second.y - player.y, second.x - player.x));
@@ -348,7 +361,7 @@ export function createPlayerCombatController(options: {
     const distance = Math.hypot(dx, dy) || 1;
     const baseAngle = Math.atan2(dy, dx);
     const weaponItem = options.equippedWeapon();
-    const bowSkills = options.bowSkills?.();
+    const bowSkills = weaponSkills();
     const skilled = hasBowSkills(bowSkills);
     const fire = (angle: number) => {
       const projectileLifeBonus = 1.25;
@@ -782,6 +795,7 @@ export function createPlayerCombatController(options: {
     const nowSeconds = options.nowSeconds();
     if (stormHits.length) landStormHits(nowSeconds);
     syncAttackTimeline(nowSeconds);
+    swordSkills.update();
     if (projectiles.length > 0) rebuildTargetGrid();
     for (const projectile of projectiles) {
       const projectileStepSeconds = projectileSimulationSeconds(projectile.spawnedAtSeconds, nowSeconds, dt);
@@ -833,7 +847,7 @@ export function createPlayerCombatController(options: {
       // A shot that lands inside the hurt window waits on the player for it to
       // pass, as a melee swing does. It used to vanish there, so a ranged pack's
       // volley landed one hit and threw away the rest unrolled for Reflect.
-      if (damagePlayer(shot.damage, shot.source) || isDueling() || player.hp <= 0) shot.life = 0;
+      if (swordSkills.deflect(shot) || damagePlayer(shot.damage, shot.source) || isDueling() || player.hp <= 0) shot.life = 0;
       else { shot.x = player.x; shot.y = player.y; shot.vx = 0; shot.vy = 0; }
     }
     projectileStore.compactEnemyShots();
@@ -848,8 +862,10 @@ export function createPlayerCombatController(options: {
 
   /** expectedDps with Double Strike and Arrow Storm in, against one enemy: what the Soul Defense Force is built against. */
   function expectedFullDps() {
-    const storm = isMeleeWeapon(options.equippedWeapon()) ? 0 : bowSkillChance(options.bowSkills?.(), "arrowStorm") * ARROW_STORM_SCORE_WEIGHT;
-    return expectedDps() * (1 + Math.max(0, options.prestigeDoubleStrike?.() ?? 0)) * (1 + storm);
+    const double = 1 + Math.max(0, options.prestigeDoubleStrike?.() ?? 0);
+    return expectedDps() * (isMeleeWeapon(options.equippedWeapon())
+      ? double + swordSkillBossDamageMultiplier(weaponSkills()) - 1
+      : double * (1 + bowSkillChance(weaponSkills(), "arrowStorm") * ARROW_STORM_SCORE_WEIGHT));
   }
 
   return {
@@ -864,6 +880,8 @@ export function createPlayerCombatController(options: {
     damageEnemiesFromBoss,
     pushEnemiesFromBoss,
     clearPendingThrow: () => {
+      swordSkills.clear();
+      stormHits.length = 0;
       retainedTarget = null;
       nextTargetSearchAt = 0;
       searchedEnemyCount = -1;

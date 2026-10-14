@@ -24,6 +24,7 @@ import { researchInPlay } from "./bonus-toggles";
 import { prestigePerkValue, prestigeRiposteChance, prestigeSwingMultiplier } from "../../shared/prestige-perks";
 import { criticalDamageMultiplier } from "../../shared/critical-damage";
 import { duelBowSkillFields } from "./bow-skills";
+import { duelSwordSkillFields } from "./sword-skills";
 import { readCritRating, readPlayerProgress } from "./wide-stats";
 
 export const DUEL_REQUEST_COOLDOWN_MICROS = 120_000_000n;
@@ -232,9 +233,9 @@ export function createDuelRuntime(deps: DuelRuntimeDeps) {
       ? current.endsAtMicros
       : ctx.timestamp.microsSinceUnixEpoch;
     const riposte = ctx.db.duelRiposte.duelId.find(current.id);
-    // Bow skills are read from each duellist's rolls for the bow the duel
-    // froze. Rolls never change, so every resolution sees the same chances.
-    const { resolvedMicros, ...combat } = advanceDuelCombat({ ...current, ...(ctx.db.duelCombatSnapshot.duelId.find(current.id) ?? { ...riposte, ...duelBowSkillFields(ctx, current) }) }, current,
+    // The snapshot freezes both weapons' rolls, so changing equipment cannot change a running fight.
+    // Old records without a snapshot keep their historical combat version.
+    const { resolvedMicros, ...combat } = advanceDuelCombat({ ...current, ...(ctx.db.duelCombatSnapshot.duelId.find(current.id) ?? { ...riposte, ...duelBowSkillFields(ctx, current), ...duelSwordSkillFields(ctx, current) }) }, current,
       Number(current.lastResolvedAt.microsSinceUnixEpoch - current.startsAtMicros),
       Number(resolutionMicros - current.startsAtMicros));
     const next = {
@@ -367,7 +368,7 @@ export function createDuelRuntime(deps: DuelRuntimeDeps) {
       opponentRiposte: prestigeRiposteChance(prestigePerkRanks(ctx, opponent)),
       riposteSeed: ctx.timestamp.microsSinceUnixEpoch,
     });
-    ctx.db.duelCombatSnapshot.insert({ ...ctx.db.duelRiposte.duelId.find(insertedDuel.id), ...duelBowSkillFields(ctx, insertedDuel) });
+    ctx.db.duelCombatSnapshot.insert({ ...ctx.db.duelRiposte.duelId.find(insertedDuel.id), ...duelBowSkillFields(ctx, insertedDuel), ...duelSwordSkillFields(ctx, insertedDuel) });
     ctx.db.duelResolutionSchedule.insert({
       scheduledId: 0n,
       scheduledAt: ScheduleAt.time(endsAtMicros),

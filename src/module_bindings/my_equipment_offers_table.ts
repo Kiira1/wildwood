@@ -19,4 +19,7 @@ export default __t.row({
   piercingShot: __t.f32().name("piercing_shot"),
   createdAt: __t.timestamp().name("created_at"),
   expiresAt: __t.timestamp().name("expires_at"),
+  whirlwind: __t.f32(),
+  deflect: __t.f32(),
+  shockwave: __t.f32(),
 });

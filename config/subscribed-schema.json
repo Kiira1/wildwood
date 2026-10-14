@@ -1,5 +1,5 @@
 {
-  "protocolVersion": 112,
+  "protocolVersion": 113,
   "tables": {
     "active_item_upgrade_slot_three": [
       "identity:identity",
@@ -155,7 +155,13 @@
       "challengerPiercingShot:f64",
       "opponentArrowStorm:f64",
       "opponentRicochet:f64",
-      "opponentPiercingShot:f64"
+      "opponentPiercingShot:f64",
+      "challengerWhirlwind:f64",
+      "challengerDeflect:f64",
+      "challengerShockwave:f64",
+      "opponentWhirlwind:f64",
+      "opponentDeflect:f64",
+      "opponentShockwave:f64"
     ],
     "duel_replay": [
       "id:u64",
@@ -552,7 +558,10 @@
       "arrowStorm:f32",
       "ricochet:f32",
       "piercingShot:f32",
-      "acquiredAt:timestamp"
+      "acquiredAt:timestamp",
+      "whirlwind:f32",
+      "deflect:f32",
+      "shockwave:f32"
     ],
     "my_equipment_locks": [
       "key:string",
@@ -568,7 +577,10 @@
       "ricochet:f32",
       "piercingShot:f32",
       "createdAt:timestamp",
-      "expiresAt:timestamp"
+      "expiresAt:timestamp",
+      "whirlwind:f32",
+      "deflect:f32",
+      "shockwave:f32"
     ],
     "my_gear_slots": [
       "key:string",
@@ -776,6 +788,14 @@
       "attackSpeed:f64",
       "critDamage:f64",
       "kills:u64"
+    ],
+    "my_sword_skills": [
+      "key:string",
+      "identity:identity",
+      "itemId:string",
+      "whirlwind:f32",
+      "deflect:f32",
+      "shockwave:f32"
     ],
     "my_upgrade_bench": [
       "identity:identity",

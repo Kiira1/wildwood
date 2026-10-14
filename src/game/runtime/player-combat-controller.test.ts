@@ -975,3 +975,54 @@ it("pushes map enemies, elites included, out of a boss's body, and leaves bosses
   for (const enemy of state.enemies.slice(0, 2)) expect(Math.hypot(enemy.x - 500, enemy.y - 500)).toBeCloseTo(80 + enemy.r, 5);
   expect(state.enemies[2].x).toBe(505);
 });
+
+
+describe("native sword combat", () => {
+  const spawn = (state: ReturnType<typeof createCombatHarness>) => {
+    state.bosses.dragon.dead = true;
+    Object.assign(state.player, { x: 500, y: 500, hp: 100, maxHp: 100, damage: 10, hurtClock: 0, knockback: 0 });
+    createEnemyLifecycle(state.enemies, state.spawnSites, () => {}).spawnFromSite({ id: 0, type: "Spitter", x: 550, y: 500,
+      campName: "Sword", leashRange: 500, alive: false, respawnAt: 0 });
+    const enemy = state.enemies[0]; enemy.hp = enemy.maxHp = 100_000;
+    return enemy;
+  };
+  it("adds the timed spin and wave to one ordinary swing, while Reflect Only suppresses them", () => {
+    for (const reflectOnly of [false, true]) {
+      let now = 0;
+      const state = createCombatHarness({ nowSeconds: () => now, equippedWeapon: () => "wooden_sword",
+        weaponSkills: () => ({ whirlwind: 100, shockwave: 100 }), random: () => 0, reflectOnly: () => reflectOnly });
+      const enemy = spawn(state);
+      state.controller.attackNearest();
+      now = .2; state.controller.updateProjectiles(.2);
+      const ordinary = 100_000 - enemy.hp;
+      now = .81; state.controller.updateProjectiles(.61);
+      expect(100_000 - enemy.hp).toBeCloseTo(ordinary * 3.15);
+      expect(ordinary > 0).toBe(!reflectOnly);
+      expect(state.player.swordSpinClock).toBe(0);
+    }
+  });
+  it("intercepts a projectile before damage and Reflect, then returns it through the reward path", () => {
+    let now = 0;
+    const kills = vi.fn();
+    const state = createCombatHarness({ nowSeconds: () => now, equippedWeapon: () => "wooden_sword",
+      weaponSkills: () => ({ deflect: 100 }), random: () => 0, prestigeReflect: () => 1, incrementKills: kills });
+    const enemy = spawn(state); enemy.hp = 50;
+    Object.assign(state.projectileStore.acquireEnemyShot(), { x: 500, y: 500, r: 5, vx: 0, vy: 0, damage: 60, life: 1, source: enemy });
+    state.controller.updateProjectiles(.01);
+    expect(state.player.hp).toBe(100); expect(enemy.hp).toBe(50);
+    expect(state.projectileStore.enemyShots).toHaveLength(0);
+    now = .1; state.controller.updateProjectiles(.09);
+    expect(enemy.dead).toBe(true); expect(kills).toHaveBeenCalledOnce();
+    expect(state.player.hp).toBe(100);
+  });
+  it("clears all pending sword hits when combat is reset", () => {
+    let now = 0;
+    const state = createCombatHarness({ nowSeconds: () => now, equippedWeapon: () => "wooden_sword",
+      weaponSkills: () => ({ whirlwind: 100, shockwave: 100 }), random: () => 0 });
+    const enemy = spawn(state);
+    state.controller.attackNearest(); now = .2; state.controller.updateProjectiles(.2);
+    const hp = enemy.hp;
+    state.controller.clearPendingThrow(); now = 1; state.controller.updateProjectiles(.8);
+    expect(enemy.hp).toBe(hp); expect(state.player.swordSpinClock).toBe(0);
+  });
+});

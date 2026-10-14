@@ -1,4 +1,5 @@
-import { bowSkillLines, formatBowSkillScore, isSkillBow, type BowSkillRoll } from "../../shared/bow-skills";
+import { formatBowSkillScore } from "../../shared/bow-skills";
+import { isSkillWeapon, weaponSkillLines, type WeaponSkillRoll } from "../../shared/weapon-skills";
 import { itemDisplayName } from "../../shared/items";
 import { itemArtMarkup } from "../game/item-presentation";
 import type { InventoryState } from "../game/inventory";
@@ -6,14 +7,15 @@ import { formatRemaining } from "./format-remaining";
 import { itemDropColor } from "./item-drop-color";
 import { itemInspectionButtonLabel } from "./item-inspection-controller";
 
-type Offer = { id: bigint; itemId: string; roll: BowSkillRoll; expiresAtMs: number };
+type Offer = { id: bigint; itemId: string; roll: WeaponSkillRoll; expiresAtMs: number };
 type Result = { ok: boolean; error?: string } | undefined;
 
 /** What the prompt needs from the coop session. Everything is optional so an old bundle's API is simply "no offers". */
 export type EquipmentOfferPort = {
   equipmentOffers?: () => readonly Offer[];
   equipmentCopies?: () => readonly { id: bigint; itemId: string }[];
-  bowSkills?: (itemId: string) => Partial<BowSkillRoll> | null | undefined;
+  bowSkills?: (itemId: string) => WeaponSkillRoll | null | undefined;
+  weaponSkills?: (itemId: string) => WeaponSkillRoll | null | undefined;
   resolveEquipmentOffer?: (id: bigint, keep: boolean) => Promise<Result>;
   serverNowMs?: () => number;
   /** Auto keep best settles duplicates without an offer; this says when one was better. */
@@ -33,12 +35,12 @@ export type EquipmentOfferPromptOptions = {
 };
 
 /** A roll's skills, side by side with the other copy's. */
-const skillList = (roll: Partial<BowSkillRoll> | null | undefined) => {
-  const lines = bowSkillLines(roll);
+const skillList = (itemId: string, roll: WeaponSkillRoll | null | undefined) => {
+  const lines = weaponSkillLines(itemId, roll);
   return lines.length ? lines : ["No skills"];
 };
 
-/** The toast when Auto keep best replaced a bow's roll with a better one. */
+/** The toast when Auto keep best replaced a weapon's roll with a better one. */
 export function betterRollMessage(itemId: string, before: number, after: number) {
   const name = itemInspectionButtonLabel(itemDisplayName(itemId));
   return `Better ${name} kept (Skills ${formatBowSkillScore(before)} → ${formatBowSkillScore(after)})`;
@@ -134,11 +136,11 @@ export function createEquipmentOfferPrompt(options: EquipmentOfferPromptOptions)
     note.textContent = !holds ? "You no longer have this" : extra
       ? `You already have ${extra + 1} of these`
       : "You already have this";
-    const skilled = isSkillBow(offer.itemId);
+    const skilled = isSkillWeapon(offer.itemId);
     compare.hidden = !skilled;
     if (skilled) {
-      showLines(yours, holds ? skillList(options.coop?.bowSkills?.(offer.itemId)) : ["None"]);
-      showLines(fresh, skillList(offer.roll));
+      showLines(yours, holds ? skillList(offer.itemId, (options.coop?.weaponSkills ?? options.coop?.bowSkills)?.(offer.itemId)) : ["None"]);
+      showLines(fresh, skillList(offer.itemId, offer.roll));
     }
     const remaining = formatRemaining(offer.expiresAtMs - now());
     timer.textContent = total > 1 ? `Ignored in ${remaining} · ${position} of ${total}` : `Ignored in ${remaining}`;

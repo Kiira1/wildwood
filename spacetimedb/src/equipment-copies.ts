@@ -1,13 +1,17 @@
 import { equipmentLocked, moveEquipmentLock, swapEquipmentLocks } from "./equipment-locks";
 import { SenderError, table, t } from "spacetimedb/server";
 import { Timestamp, type Identity } from "spacetimedb";
-import { NO_BOW_SKILLS, bowSkillScore, isSkillBow, rollBowSkills, type BowSkillRoll } from "../../shared/bow-skills";
+import { isSkillBow } from "../../shared/bow-skills";
+import { isSkillSword } from "../../shared/sword-skills";
+import { isSkillWeapon, rollWeaponSkills, weaponSkillColumns, weaponSkillRollOf, weaponSkillScore, type WeaponSkillRoll } from "../../shared/weapon-skills";
 import { canDestroyEquipment, canonicalItemId } from "../../shared/items";
 import { inventorySlotCapacity } from "../../shared/gems";
 import {
   EQUIPMENT_OFFER_LIFETIME_MS, MAX_PENDING_EQUIPMENT_OFFERS, bagSlotsUsed, isDuplicateOfferItem,
 } from "../../shared/equipment-copies";
-import { bowSkillKey, bowSkillRollFor, ensureBowSkillRoll } from "./bow-skills";
+import { bowSkillKey } from "./bow-skills";
+import { setSwordSkillRoll } from "./sword-skills";
+import { ensureWeaponSkillRoll, weaponSkillRollFor } from "./weapon-skills";
 import { lootSettingsFor } from "./loot-settings";
 import { oreKindsHeldFor, promoteCopyRefine, refineLevelFor, setRefineLevel, swapFirstCopyRefine } from "./item-refine";
 import { clearGearSlots, gearSlotsFor, promoteCopySlots, rollDropSlots, swapFirstCopySlots } from "./gear-cards";
@@ -17,12 +21,12 @@ import { readPlayerProgress } from "./wide-stats";
  * Copies of an item beyond the first, one row per copy a player chose to keep.
  *
  * The first copy is the item id in inventoryJson, with its roll in
- * player_bow_skill. It is always the copy an equipment slot holds: equipping
+ * player_bow_skill or player_sword_skill. It is always the copy an equipment slot holds: equipping
  * another copy swaps the two rolls (see select below), so kill validation,
- * duels and the client's combat keep reading the equipped bow's roll by item
+ * duels and the client's combat keep reading the equipped weapon's roll by item
  * id, and inventoryJson, the equipment fields and every catalog lookup stay as
  * they were. Old clients see one copy of each item and nothing else changes
- * for them. Non-bows store zeros: their copies are identical.
+ * for them. Other gear stores zero skill chances.
  *
  * Private, read through the caller-scoped my_equipment_copies view. New
  * tables rather than columns: a column on a table every session reads would
@@ -36,12 +40,13 @@ export const playerEquipmentCopy = table({ name: "player_equipment_copy", public
   ricochet: t.f32(),
   piercingShot: t.f32(),
   acquiredAt: t.timestamp(),
+  whirlwind: t.f32().default(0), deflect: t.f32().default(0), shockwave: t.f32().default(0),
 });
 
 /**
  * A drop of equipment the player already had, waiting for Keep or Ignore.
  * The new copy's roll is made when the offer is, with the same rules as any
- * new bow, so the player compares the real thing. Unanswered offers are
+ * new weapon, so the player compares the real thing. Unanswered offers are
  * ignored by maintenance once expiresAt passes; at most
  * MAX_PENDING_EQUIPMENT_OFFERS wait per player.
  */
@@ -54,6 +59,7 @@ export const pendingEquipmentOffer = table({ name: "pending_equipment_offer", pu
   piercingShot: t.f32(),
   createdAt: t.timestamp(),
   expiresAt: t.timestamp(),
+  whirlwind: t.f32().default(0), deflect: t.f32().default(0), shockwave: t.f32().default(0),
 });
 
 type Ctx = any;
@@ -61,9 +67,7 @@ type Ctx = any;
 const sameIdentity = (a: Identity, b: Identity) => a.toHexString() === b.toHexString();
 const byId = (a: { id: bigint }, b: { id: bigint }) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 
-function rollOf(row: any): BowSkillRoll {
-  return { arrowStorm: row.arrowStorm, ricochet: row.ricochet, piercingShot: row.piercingShot };
-}
+const rollOf = weaponSkillRollOf;
 
 /** A player's kept extra copies, oldest first, optionally of one item. */
 export function extraCopiesOf(ctx: Ctx, identity: Identity, itemId?: string): any[] {
@@ -91,7 +95,7 @@ export function offerDuplicateEquipment(ctx: Ctx, identity: Identity, itemId: st
   if (!offers) return;
   const expiresAt = new Timestamp(ctx.timestamp.microsSinceUnixEpoch + BigInt(EQUIPMENT_OFFER_LIFETIME_MS) * 1_000n);
   for (let offer = 0; offer < offers; offer += 1) {
-    const roll = rollBowSkills(canonical, () => ctx.random()) ?? NO_BOW_SKILLS;
+    const roll = weaponSkillColumns(rollWeaponSkills(canonical, () => ctx.random()));
     ctx.db.pendingEquipmentOffer.insert({ id: 0n, identity, itemId: canonical, ...roll, createdAt: ctx.timestamp, expiresAt });
   }
   trimOffers(ctx, identity);
@@ -100,10 +104,10 @@ export function offerDuplicateEquipment(ctx: Ctx, identity: Identity, itemId: st
 /**
  * Auto keep best: `count` duplicate copies settled on the spot, no offer.
  *
- * Each copy rolls like any new bow and is compared, by skill score, with the
+ * Each copy rolls like any new weapon and is compared, by skill score, with the
  * best copy the player has: the first copy, or a kept extra copy when one of
  * those is better. A copy strictly better than all of them becomes the first
- * copy: its roll replaces the first copy's in player_bow_skill, so the bow in
+ * copy: its roll replaces the first copy's in its weapon skill table, so the weapon in
  * the slot improves with nothing to press and kill bounds and duels read it at
  * once. The old first roll is gone. Anything else is thrown away, as Ignore
  * does. Kept extra copies are never touched. Copies of an item without skills
@@ -114,16 +118,16 @@ export function offerDuplicateEquipment(ctx: Ctx, identity: Identity, itemId: st
  */
 export function keepBestCopies(ctx: Ctx, identity: Identity, itemId: string, count = 1) {
   const canonical = canonicalItemId(itemId);
-  if (!canonical || !isDuplicateOfferItem(canonical) || !isSkillBow(canonical) || equipmentLocked(ctx, identity, canonical)) return;
+  if (!canonical || !isDuplicateOfferItem(canonical) || !isSkillWeapon(canonical) || equipmentLocked(ctx, identity, canonical)) return;
   if (refineLevelFor(ctx, identity, canonical) > 0) return;
   const copies = Math.min(MAX_PENDING_EQUIPMENT_OFFERS, Math.max(0, Math.floor(count)));
   for (let copy = 0; copy < copies; copy += 1) {
-    const roll = rollBowSkills(canonical, () => ctx.random()) ?? NO_BOW_SKILLS;
+    const roll = rollWeaponSkills(canonical, () => ctx.random());
     const best = Math.max(
-      bowSkillScore(bowSkillRollFor(ctx, identity, canonical)),
-      ...extraCopiesOf(ctx, identity, canonical).map(row => bowSkillScore(rollOf(row))),
+      weaponSkillScore(canonical, weaponSkillRollFor(ctx, identity, canonical)),
+      ...extraCopiesOf(ctx, identity, canonical).map(row => weaponSkillScore(canonical, rollOf(row))),
     );
-    if (bowSkillScore(roll) > best) setFirstCopyRoll(ctx, identity, canonical, roll);
+    if (weaponSkillScore(canonical, roll) > best) setFirstCopyRoll(ctx, identity, canonical, roll);
   }
 }
 
@@ -145,7 +149,7 @@ export function receiveDuplicateEquipment(ctx: Ctx, identity: Identity, itemId: 
  * whichever the player chose, instead of being thrown away unseen.
  */
 export function publishItemDrop(ctx: Ctx, identity: Identity, itemId: string, alreadyOwned: boolean, quantity = 1) {
-  if (!alreadyOwned) ensureBowSkillRoll(ctx, identity, itemId); // Only a bow entering the bag rolls.
+  if (!alreadyOwned) ensureWeaponSkillRoll(ctx, identity, itemId);
   receiveDuplicateEquipment(ctx, identity, itemId, alreadyOwned ? quantity : quantity - 1);
   const key = `${identity.toHexString()}:${itemId}`;
   const current = ctx.db.playerItemDrop.key.find(key);
@@ -159,7 +163,7 @@ export function publishItemDrop(ctx: Ctx, identity: Identity, itemId: string, al
   };
   if (current) ctx.db.playerItemDrop.key.update(next);
   else ctx.db.playerItemDrop.insert(next);
-  // Last, so the bow rolls above draw as they always have.
+  // Last, so the weapon rolls above draw as they always have.
   rollDropSlots(ctx, identity, itemId, alreadyOwned, quantity);
 }
 
@@ -194,10 +198,12 @@ export function mergeEquipmentCopies(ctx: Ctx, guest: Identity, account: Identit
   trimOffers(ctx, account);
 }
 
-/** Writes the first copy's roll. Anything that is not a skill bow has none to write. */
-function setFirstCopyRoll(ctx: Ctx, identity: Identity, itemId: string, roll: BowSkillRoll) {
+/** Writes the first copy's roll. Anything that is not a skill weapon has none to write. */
+function setFirstCopyRoll(ctx: Ctx, identity: Identity, itemId: string, roll: WeaponSkillRoll) {
+  if (isSkillSword(itemId)) { setSwordSkillRoll(ctx, identity, itemId, roll); return; }
   if (!isSkillBow(itemId)) return;
-  const row = { key: bowSkillKey(identity, itemId), identity, itemId, ...roll };
+  const { arrowStorm, ricochet, piercingShot } = weaponSkillColumns(roll);
+  const row = { key: bowSkillKey(identity, itemId), identity, itemId, arrowStorm, ricochet, piercingShot };
   if (ctx.db.playerBowSkill.key.find(row.key)) ctx.db.playerBowSkill.key.update(row);
   else ctx.db.playerBowSkill.insert(row);
 }
@@ -252,7 +258,7 @@ export function createEquipmentCopies(deps: {
     }
     const roll = rollOf(offer);
     if (inventory.includes(offer.itemId)) {
-      ctx.db.playerEquipmentCopy.insert({ id: 0n, identity: ctx.sender, itemId: offer.itemId, ...roll, acquiredAt: ctx.timestamp });
+      ctx.db.playerEquipmentCopy.insert({ id: 0n, identity: ctx.sender, itemId: offer.itemId, ...weaponSkillColumns(roll), acquiredAt: ctx.timestamp });
     } else {
       // The copy they had is gone since the offer was made: this one becomes the first, unrefined.
       deps.writeProgressAndPresentation(ctx, deps.restoreItemToProgress(progress, offer.itemId));
@@ -321,10 +327,10 @@ export function createEquipmentCopies(deps: {
     if (refineDiffers) swapFirstCopyRefine(ctx, ctx.sender, copy.itemId, copy.id);
     if (slotsDiffer) swapFirstCopySlots(ctx, ctx.sender, copy.itemId, copy.id);
     if (refineDiffers || slotsDiffer) deps.writeProgressAndPresentation(ctx, progress);
-    if (!isSkillBow(copy.itemId)) return;
-    const first = bowSkillRollFor(ctx, ctx.sender, copy.itemId);
+    if (!isSkillWeapon(copy.itemId)) return;
+    const first = weaponSkillRollFor(ctx, ctx.sender, copy.itemId);
     setFirstCopyRoll(ctx, ctx.sender, copy.itemId, rollOf(copy));
-    ctx.db.playerEquipmentCopy.id.update({ ...copy, ...rollOf(first) });
+    ctx.db.playerEquipmentCopy.id.update({ ...copy, ...weaponSkillColumns(first) });
   }
 
   return { resolveOffer, destroy, select };

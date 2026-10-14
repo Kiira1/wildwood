@@ -72,7 +72,7 @@ it("slots the exact kept copy once and waits for authoritative card rows", async
   expect(view.q(".smith-stat").textContent).toBe("Card Slots 0 / 1");
   // The reducer result is not an inventory update. Only rows change counts and slots.
   finish({ ok: true });
-  await vi.waitFor(() => expect(view.q(".smith-outcome")?.textContent).toBe("Needle Card slotted into Iron Bow."));
+  await vi.waitFor(() => expect(view.q(".smith-outcome")?.textContent).toBe("Needle Card slotted into Stone Bow."));
   expect(view.held.needle_card).toBe(2);
   expect(view.gear[`${IRON_BOW}:4`].cards).toEqual([]);
   view.held.needle_card = 1;

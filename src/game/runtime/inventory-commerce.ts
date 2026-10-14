@@ -1,11 +1,11 @@
 import type { InventoryState } from "../inventory";
 import { setInventoryItemQuantity } from "../inventory";
 import { applyPlayerMaxHealthMultiplierBonus } from "./player-health";
-import type { BowSkillRoll } from "../../../shared/bow-skills";
+import type { WeaponSkillRoll } from "../../../shared/weapon-skills";
 import type { OreId } from "../../../shared/refine";
 
 type Result = { ok: boolean; error?: string } | undefined;
-type KeptCopy = { id: bigint; itemId: string; roll: BowSkillRoll };
+type KeptCopy = { id: bigint; itemId: string; roll: WeaponSkillRoll };
 
 /** Apply confirmed server ownership changes to the visible local loadout. */
 export function createInventoryCommerceActions(options: {

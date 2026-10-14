@@ -1,4 +1,4 @@
-import { bowSkillScore, type BowSkillRoll } from "./bow-skills";
+import { weaponSkillScore, type WeaponSkillRoll } from "./weapon-skills";
 import {
   BLACK_BOOTS, BLACK_BOOTS_SPEED_BONUS, STARTER_STONE, equipmentDamageMultiplierBonus, isCosmeticOnlyItem, itemDefinition,
   type EquipmentSlot, type ItemSlot,
@@ -17,8 +17,8 @@ import {
  * two never disagree about what "better" means. Equipment bonuses are
  * additive, so each slot is scored on its own: the player's power with the
  * candidate in that slot. Boots add no power; only Black Boots' speed counts.
- * A bow's skills count too, multiplied into its damage (see
- * equipComparisonPower), so of two copies of one bow the better roll wins.
+ * A weapon's skills count too, multiplied into its damage (see
+ * equipComparisonPower), so of two copies of one weapon the better roll wins.
  */
 export type EquipLoadout = {
   equippedHead: string;
@@ -40,23 +40,23 @@ export const EQUIP_BEST_SLOTS: readonly (readonly [ItemSlot, LoadoutField, Equip
 
 const LOADOUT_FIELDS: readonly LoadoutField[] = ["equippedHead", "equippedChest", "equippedFeet", "equippedRightHand", "equippedLeftHand"];
 
-export type BowSkillsOf = (itemId: string) => Partial<BowSkillRoll> | null | undefined;
+export type WeaponSkillsOf = (itemId: string) => WeaponSkillRoll | null | undefined;
 
 /**
  * Power for comparing gear, not for showing: the same stats as the player's
  * power, unrounded, with the weapon's damage raised by its skill score, so a
- * bow with Skills +7.5% counts as 7.5% more damage. Without `bowSkills` it is
+ * bow with Skills +7.5% counts as 7.5% more damage. Without `weaponSkills` it is
  * exactly the displayed power before rounding.
  */
 export function equipComparisonPower(
   progress: PlayerPowerProgress,
   research?: PlayerPowerResearch | null,
   itemUpgradeLevel?: (itemId: string) => ItemLevel,
-  bowSkills?: BowSkillsOf,
+  weaponSkills?: WeaponSkillsOf,
 ) {
   const stats = effectivePlayerPowerStats(progress, research, itemUpgradeLevel);
   const weapon = progress.equippedRightHand || progress.equippedLeftHand || "";
-  const skills = weapon && bowSkills ? bowSkillScore(bowSkills(weapon)) : 0;
+  const skills = weapon && weaponSkills ? weaponSkillScore(weapon, weaponSkills(weapon)) : 0;
   return unroundedPlayerPower({ ...stats, damage: stats.damage * (1 + skills / 100) });
 }
 

@@ -111,7 +111,7 @@ import { createChatRuntimeController } from "./ui/chat-runtime-controller";
 import { createPlayerSafetyController } from "./ui/player-safety-controller";
 import { equipBestInventory } from "./game/equip-best";
 import { createInventoryController } from "./ui/inventory-controller";
-import { createItemInspectionController, itemStatsWithBowSkills } from "./ui/item-inspection-controller";
+import { createItemInspectionController, itemStatsWithWeaponSkills } from "./ui/item-inspection-controller";
 import { createUpgradeBenchController } from "./ui/upgrade-bench-controller";
 import { createProfileWindowController } from "./ui/profile-window-controller";
 import { formatPlayedTime, profilePower, profilePresenceText, profileSoulInPlay, renderProfileStats } from "./ui/profile";
@@ -417,7 +417,7 @@ import {
     title: itemInspectionTitle,
     content: itemInspectionContent,
     back: itemInspectionBack,
-    bowSkills: (itemId) => coop?.bowSkills?.(itemId),
+    weaponSkills: (itemId) => coop?.weaponSkills?.(itemId),
   });
   const inventoryCommerce = createInventoryCommerceActions({ inventory, player, coop: () => coop,
     healthMultiplierBonus, movementSpeed: () => progress.movementSpeedForEquipment(false) * localTestMultiplier });
@@ -659,7 +659,7 @@ import {
     prestigeSecondWind: () => prestigePerkValue(coop?.prestigePerks?.(), "secondWind"),
     prestigeDoubleStrike: () => prestigePerkValue(coop?.prestigePerks?.(), "doubleStrike"),
     prestigeSplitShot: () => prestigePerkValue(coop?.prestigePerks?.(), "splitShot"), prestigeReflect: () => prestigePerkValue(coop?.prestigePerks?.(), "riposte"),
-    bowSkills: () => coop?.bowSkills?.(inventory.equippedRightHand || inventory.equippedLeftHand),
+    weaponSkills: () => coop?.weaponSkills?.(inventory.equippedRightHand || inventory.equippedLeftHand),
     equippedWeapon: () => inventory.equippedRightHand || inventory.equippedLeftHand,
     equippedWeaponUpgradeLevel: () => coop?.itemLevel?.(inventory.equippedRightHand || inventory.equippedLeftHand) ?? 0,
     equippedHead: () => inventory.equippedHead,
@@ -749,7 +749,7 @@ import {
       }),
       researchRanks(),
       (itemId) => coop?.itemLevel?.(itemId) ?? 0,
-      compare ? (itemId) => coop?.bowSkills?.(itemId) : undefined,
+      compare ? (itemId) => coop?.weaponSkills?.(itemId) : undefined,
     );
     return compare ? power : Math.round(power);
   }
@@ -1910,7 +1910,7 @@ import {
       artSource: itemPresentation(itemId)?.inventory.source ?? "", itemId,
       color: itemDropColor(itemId),
       name: itemDisplayName(itemId),
-      stats: itemStatsWithBowSkills(itemId, level, coop?.bowSkills?.(itemId)),
+      stats: itemStatsWithWeaponSkills(itemId, level, coop?.weaponSkills?.(itemId)),
     });
   });
   const showItemUpgrade = createItemUpgradeFeedback({ inventory, player, healthMultiplierBonus, renderInventory, saveProgress, showMessage });

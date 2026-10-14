@@ -1,4 +1,4 @@
-import { swordSwingPose, drawSwordTrail } from "./sword-swing";
+import { swordWhirlwindPose, swordSwingPose, drawSwordTrail } from "./sword-swing";
 import { defaultWeaponAlignment } from "./equipment-alignment";
 import { EXPANSION_HEAD_FRAME, DEFAULT_HEAD_ALIGNMENT } from "./player-head-template";
 import { drawPlayerHead, drawPlayerEyes } from "./player-face";
@@ -315,7 +315,7 @@ function drawEgg(ctx: CanvasRenderingContext2D, width: number, height: number, i
 export function drawStartingPlayer(
   ctx: CanvasRenderingContext2D,
   assets: PlayerAppearanceAssets,
-  options: { x: number; y: number; facing: number; combatFacing?: number | null; moving?: boolean; gameTime: number; throwClock?: number; skinTone?: number; headItem?: string; chestItem?: string; feetItem?: string; rightHandItem?: string; leftHandItem?: string; alpha?: number; scale?: number; smooth?: boolean; alignment?: PlayerLayerAlignment; helmetOpacity?: number; presentationOverrides?: Record<string, WorldSpritePresentation>; onLayerBounds?: (layer: PlayerLayer, bounds: LayerBounds) => void },
+  options: { x: number; y: number; facing: number; combatFacing?: number | null; moving?: boolean; gameTime: number; throwClock?: number; swordSpinClock?: number; skinTone?: number; headItem?: string; chestItem?: string; feetItem?: string; rightHandItem?: string; leftHandItem?: string; alpha?: number; scale?: number; smooth?: boolean; alignment?: PlayerLayerAlignment; helmetOpacity?: number; presentationOverrides?: Record<string, WorldSpritePresentation>; onLayerBounds?: (layer: PlayerLayer, bounds: LayerBounds) => void },
 ) {
   const scale = options.scale ?? PLAYER_WORLD_SCALE;
   const walkFrame = options.moving ? Math.floor(options.gameTime * 10) % 3 + 1 : 0;
@@ -325,7 +325,8 @@ export function drawStartingPlayer(
     front: [{ x: 0, y: 0 }, { x: -1, y: -3 }, { x: -4, y: 0 }, { x: 2, y: 0 }][walkFrame] ?? { x: 0, y: 0 },
     head: [0, -2, -3, -2][idleFrame] ?? 0,
   };
-  const facingLeft = Math.cos(options.facing) < 0;
+  const spin = swordWhirlwindPose(options.swordSpinClock ?? 0);
+  const facingLeft = Math.cos(options.facing + (spin?.angle ?? 0) * DEGREES_TO_RADIANS) < 0;
   const attackElapsed = Math.max(0, .42 - (options.throwClock ?? 0));
   const handStateKnown = options.rightHandItem !== undefined || options.leftHandItem !== undefined;
   const heldItem = options.rightHandItem || options.leftHandItem || (!handStateKnown ? STARTER_STONE : "");
@@ -492,7 +493,7 @@ export function drawStartingPlayer(
     ctx.scale(bowAlignment.scaleX, 1);
     if (swordHeld && readyImage(asset)) {
       const alignment = options.alignment?.weapon ?? defaultWeaponAlignment(heldSpritePresentation) ?? { x: 0, y: 0, scale: 1 };
-      const pose = swordSwingPose(options.throwClock ?? 0);
+      const pose = spin ?? swordSwingPose(options.throwClock ?? 0);
       const aim = options.combatFacing == null ? 0 : (facingLeft ? Math.PI - options.combatFacing : options.combatFacing);
       const angle = (alignment.angle ?? -28) + aim / DEGREES_TO_RADIANS + pose.angle + 28;
       const pivotX = -width / 2 + width * (alignment.pivotX ?? .5);

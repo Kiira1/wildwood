@@ -9,8 +9,7 @@ import { findDeveloperTravelTarget, readDeveloperTravelTarget } from "./develope
 import { mapBalanceVersion, mapBalanceHead, playerMapBalance, balanceEditorState, saveMapBalance, pinMapBalance, liveMapBalance, mapBalanceForIndex } from "./map-balance";
 import { resolveMapBalance, validateBalanceSettings } from "../../shared/map-balance";
 import { accountDeletionRequest, eraseKeepingRequest, queueAccountDeletion } from "./account-deletion";
-import { mailboxEquipment, deliverEquipmentMail } from "./mailbox-equipment";
-import { gearClaimSpace } from "../../shared/mailbox-equipment";
+import { mailboxEquipment, deliverEquipmentMail, claimEquipmentMail } from "./mailbox-equipment";
 import { duelWireAccess } from "./duel-wire-access";
 import { leaderboardEntryLegacy } from "./leaderboard-legacy";
 import { nameChangeStatus } from "../../shared/name-change";
@@ -33,7 +32,6 @@ import { linkedIdentities, requireErasureConfirmation } from "./account-erasure"
 import { chatHeartAllowance, chatReactionCooldown, chatReactionSummary, chatReactionUnlock, playerChatHearts, reactionCountsFor, chatReaction, readChatReactions, setChatReaction, grantGemHeartUnlock, isChatModerator, chatModerator, moderatorHeartFor, setChatModerator, removeAccountReactions } from "./chat-reactions";
 import { pruneIdleStreams, regularEnemyLootCursor, regularEnemyStream } from "./regular-enemy-loot";
 import { playerOnboarding, advanceOnboarding, needsOnboarding } from "./onboarding";
-import { upgradeSlotForItem } from "../../shared/slot-upgrades";
 import { deliverDisconnectCompensation, deliverCombatUpdateGift, deliverOutageCompensation, announceOutageCompensation, deliverAutofarmTestGift } from "./disconnect-compensation";
 import { connectionDiagnosticTables, recordConnectionDiagnostics, cleanupConnectionDiagnostics } from "./connection-diagnostics";
 import { moderationTables, recordModerationAction, readModerationHistory, readPlayerModerationHistory, searchModerationHistory } from "./moderation-history";
@@ -41,9 +39,11 @@ import { readDevConsole, readDevPlayerCard, warnPlayer } from "./dev-console";
 import { mailboxLetter, mailboxReceipt, mailboxEntryV2, mailboxForPlayerV2, playerJoinDate, publishMailboxLetter, syncPlayerJoinDate, updateMailboxReceipt, clearExpiredMail } from "./mailbox";
 import { rollbackPlayerProgression } from "./player-progression-rollback";
 import { playerItemGift, deliverAlphaTesterGifts, claimItemGift } from "./item-gifts";
-import { playerBowSkill, ensureBowSkillRoll, ensureBowSkillRolls } from "./bow-skills";
+import { playerBowSkill } from "./bow-skills";
+import { playerSwordSkill } from "./sword-skills";
+import { ensureWeaponSkillRoll } from "./weapon-skills";
 import { playerEquipmentCopy, pendingEquipmentOffer, createEquipmentCopies, publishItemDrop, offerDuplicateEquipment, expireEquipmentOffers } from "./equipment-copies";
-import { oreKindsHeldFor, playerItemRefine, playerCopyRefine, playerOre, playerRefineResult, registerItemRefine } from "./item-refine";
+import { playerItemRefine, playerCopyRefine, playerOre, playerRefineResult, registerItemRefine } from "./item-refine";
 import { playerMining, playerMinedNode, registerMining } from "./mining";
 import { playerCard, playerGearSlots, playerCopySlots, playerCardDrop, registerGearCards } from "./gear-cards";
 import { awardCardDrops } from "./card-drops";
@@ -1629,7 +1629,7 @@ const spacetimedb = schema({
   dailyGemBonus,
   playerAdReward, playerChatMute,
   balanceApologyNotice,
-  playerEquipmentLock, playerItemGift, playerBowSkill, playerEquipmentCopy, pendingEquipmentOffer, playerIgnoredDrop, playerLootSetting, playerItemRefine, playerCopyRefine, playerOre, playerRefineResult, playerCard, playerGearSlots, playerCopySlots, playerCardDrop, playerMining, playerMinedNode,
+  playerEquipmentLock, playerItemGift, playerBowSkill, playerSwordSkill, playerEquipmentCopy, pendingEquipmentOffer, playerIgnoredDrop, playerLootSetting, playerItemRefine, playerCopyRefine, playerOre, playerRefineResult, playerCard, playerGearSlots, playerCopySlots, playerCardDrop, playerMining, playerMinedNode,
   mailboxLetter, mailboxReceipt, playerJoinDate, mailboxEquipment, accountDeletionRequest,
   playerOnboarding,
   regularEnemyLootCursor, regularEnemyStream, enemyDefeatBudget, bossDefeatWindow, bossMapDefeatWindow,
@@ -3310,7 +3310,7 @@ export const claimDeveloperItemGift = spacetimedb.reducer({ key: t.string() }, (
     if (!progress) throw new SenderError("Player unavailable.");
     if (playerOwnsItem(ctx, ctx.sender, itemId)) return offerDuplicateEquipment(ctx, ctx.sender, itemId);
     updateSnapshotRow(ctx, "playerProgress", restoreItemToProgress(progress, itemId));
-    ensureBowSkillRoll(ctx, ctx.sender, itemId);
+    ensureWeaponSkillRoll(ctx, ctx.sender, itemId);
   });
 });
 
@@ -3354,25 +3354,7 @@ export const claimMailboxGift = spacetimedb.reducer({ id: t.string() }, (ctx, { 
   updateMailboxReceipt(ctx, id, true, (amount, reference, title) => {
     applyGemBalanceChange(ctx, { identity: ctx.sender, delta: amount, kind: "mailbox_gift", note: title, externalReference: reference });
   }, (items, level) => {
-    const progress = readPlayerProgress(ctx, ctx.sender);
-    if (!progress) throw new SenderError("Player unavailable.");
-    const upgrading = activeItemUpgradeEntriesFor(ctx, ctx.sender).map(({ active }) => active.itemId);
-    if (items.some(id => upgrading.includes(id))) throw new SenderError("Finish or cancel the upgrade on your gifted gear, then claim it here.");
-    const equipped = [progress.equippedHead, progress.equippedChest, progress.equippedFeet, progress.equippedRightHand, progress.equippedLeftHand];
-    const capacity = inventorySlotCapacity(ctx.db.playerInventoryCapacity.identity.find(ctx.sender)?.slotsUnlocked ?? 0);
-    const { missing, slotsToFree } = gearClaimSpace(inventoryForProgress(progress), equipped, upgrading, items, capacity, oreKindsHeldFor(ctx, ctx.sender));
-    if (slotsToFree) throw new SenderError(`Free ${slotsToFree} inventory slot${slotsToFree === 1 ? "" : "s"}, then claim your gear. Your gift will stay in Mail.`);
-    let next = progress;
-    for (const id of missing) next = restoreItemToProgress(next, id);
-    ensureBowSkillRolls(ctx, ctx.sender, missing);
-    for (const slotName of new Set(items.map(upgradeSlotForItem).filter(Boolean) as string[])) {
-      const key = slotUpgradeKey(ctx.sender, slotName), current = ctx.db.playerItemUpgrade.key.find(key);
-      if ((current?.level ?? 0) >= level) continue;
-      const upgraded = { key, identity: ctx.sender, itemId: slotName, level };
-      if (current) updateSnapshotRow(ctx, "playerItemUpgrade", upgraded);
-      else insertSnapshotRow(ctx, "playerItemUpgrade", upgraded);
-    }
-    writeProgressAndPresentation(ctx, next);
+    claimEquipmentMail(ctx, items, level);
   });
 });
 export const requestAccountDeletion = spacetimedb.reducer({ confirmation: t.string() }, (ctx, { confirmation }) => {
@@ -3685,6 +3667,11 @@ export const setOfflineProgressEnabled = spacetimedb.reducer({ enabled: t.bool()
 export const myBowSkills = spacetimedb.view(
   { name: "my_bow_skills", public: true }, t.array(playerBowSkill.rowType),
   ctx => [...ctx.db.playerBowSkill.identity.filter(ctx.sender)],
+);
+
+export const mySwordSkills = spacetimedb.view(
+  { name: "my_sword_skills", public: true }, t.array(playerSwordSkill.rowType),
+  ctx => [...ctx.db.playerSwordSkill.identity.filter(ctx.sender)],
 );
 export const myEquipmentLocks = spacetimedb.view(
   { name: "my_equipment_locks", public: true }, t.array(playerEquipmentLock.rowType),

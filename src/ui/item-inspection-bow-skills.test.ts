@@ -1,7 +1,7 @@
 import { afterEach, expect, it } from "vitest";
 import { parseHTML } from "linkedom";
 import { readFileSync } from "node:fs";
-import { createItemInspectionController, itemInspectionButtonLabel, itemStatsWithBowSkills } from "./item-inspection-controller";
+import { createItemInspectionController, itemInspectionButtonLabel, itemStatsWithWeaponSkills } from "./item-inspection-controller";
 import { itemStats } from "../../shared/items";
 import { formatEquipmentStat } from "./equipment-stat-format";
 
@@ -59,7 +59,22 @@ it("is never uppercased by a stylesheet in the item window or the drop reveal", 
 });
 
 it("appends the skills to a dropped bow's stat lines", () => {
-  expect(itemStatsWithBowSkills("iron_bow", 0, { arrowStorm: 0, ricochet: 5.1, piercingShot: 0 }))
+  expect(itemStatsWithWeaponSkills("iron_bow", 0, { arrowStorm: 0, ricochet: 5.1, piercingShot: 0 }))
     .toEqual([...itemStats("iron_bow", 0), "Ricochet 5.1%"]);
-  expect(itemStatsWithBowSkills("iron_bow", 0, null)).toEqual(itemStats("iron_bow", 0));
+  expect(itemStatsWithWeaponSkills("iron_bow", 0, null)).toEqual(itemStats("iron_bow", 0));
+});
+
+
+it.each([true, false])("shows the profile's + rating when inspecting equipment (own: %s)", ownItem => {
+  const view = inspection();
+  view.controller.open({ itemId: "iron_bow", upgradeLevel: 12, ownItem });
+  expect(view.document.getElementById("title")?.textContent).toBe("Stone Bow +12");
+  view.controller.open({ itemId: "iron_bow", upgradeLevel: 0, ownItem });
+  expect(view.document.getElementById("title")?.textContent).toBe("Stone Bow");
+});
+
+it("shows a sword copy's three native skills in its inspection", () => {
+  const view = inspection();
+  view.controller.open({ itemId: "ion_sword", ownItem: true, skills: { whirlwind: 7.2, deflect: 8, shockwave: 9.1 } });
+  expect(view.lines().slice(-3)).toEqual(["Whirlwind 7.2%", "Deflect 8.0%", "Shockwave 9.1%"]);
 });

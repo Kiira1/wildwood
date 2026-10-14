@@ -80,7 +80,7 @@ describe("item presentation", () => {
     expect(itemPresentation(NIGHT_BOW)?.world).toMatchObject({ layer: "HAND", width: 115, height: 63, top: 106, handAction: "BOW" });
   });
 
-  it("uses the requested Wood Full Helm and Iron Bow vendor assets", () => {
+  it("uses the requested Wood Full Helm and Stone Bow vendor assets", () => {
     const helm = readFileSync(new URL("../../public/assets/wildstat/player-parts/wood-full-helm.webp", import.meta.url));
     const bow = readFileSync(new URL("../../public/assets/wildstat/player-parts/iron-bow.webp", import.meta.url));
     expect(createHash("sha256").update(helm).digest("hex")).toBe("9c1fe44f900d50c4a257cf076043e8aa445a5b005eb1f6c36a7fb20c2a006a1a");

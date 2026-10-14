@@ -1,19 +1,17 @@
 import { tables, type DbConnection } from "../../module_bindings";
-import type { BowSkillRoll } from "../../../shared/bow-skills";
+import { weaponSkillRollOf, type WeaponSkillRoll } from "../../../shared/weapon-skills";
 import { reducerErrorMessage } from "./reducer-errors";
 import { createIgnoredDrops } from "./ignored-drops";
 import { createLootSettings } from "./loot-settings";
 
 /** A copy of an item beyond the first, kept from a duplicate drop. */
-export type EquipmentCopy = { id: bigint; itemId: string; roll: BowSkillRoll };
+export type EquipmentCopy = { id: bigint; itemId: string; roll: WeaponSkillRoll };
 /** A duplicate drop waiting for Keep or Ignore, with the new copy's roll. */
-export type EquipmentOffer = { id: bigint; itemId: string; roll: BowSkillRoll; createdAtMs: number; expiresAtMs: number };
+export type EquipmentOffer = { id: bigint; itemId: string; roll: WeaponSkillRoll; createdAtMs: number; expiresAtMs: number };
 export type EquipmentCopyResult = { ok: boolean; error?: string };
 
 type Target = { connection: DbConnection; isCurrent: () => boolean };
-type Row = { id: bigint; itemId: string; arrowStorm: number; ricochet: number; piercingShot: number };
-
-const rollOf = (row: Row): BowSkillRoll => ({ arrowStorm: row.arrowStorm, ricochet: row.ricochet, piercingShot: row.piercingShot });
+const rollOf = weaponSkillRollOf;
 const byId = (a: { id: bigint }, b: { id: bigint }) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 const millis = (timestamp: { microsSinceUnixEpoch: bigint }) => Number(timestamp.microsSinceUnixEpoch / 1000n);
 /** How long after this tab equips, destroys or keeps a copy a change to that bow's roll is taken as its doing. */

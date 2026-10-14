@@ -105,3 +105,16 @@ describe("bow skill effects and crowded damage numbers", () => {
     expect(effects.skillEffects.length).toBe(0);
   });
 });
+
+
+it("keeps sword visuals in the bounded effect pool and clears actor anchors before reusing it", () => {
+  const effects = createCombatEffects(), player = { x: 10, y: 20 };
+  effects.spawnSwordSpin(10, 20, 110, .6, player);
+  expect(effects.skillEffects[0].anchor).toBe(player);
+  effects.update(1);
+  effects.spawnSwordWave(0, 0, 260, 0, 20, .5);
+  expect(effects.skillEffects[0].anchor).toBeUndefined();
+  effects.spawnDeflectedShot(0, 0, 200, 0, .3);
+  expect(effects.skillEffects.map(effect => effect.kind)).toEqual(["wave", "ring", "return"]);
+  effects.clear(); expect(effects.skillEffects).toHaveLength(0);
+});

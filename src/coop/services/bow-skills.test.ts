@@ -3,7 +3,7 @@ import { betterRollsKept, createBowSkills } from "./bow-skills";
 
 type Row = { itemId: string; arrowStorm: number; ricochet: number; piercingShot: number };
 
-function fakeConnection(rows: Row[] = []) {
+function fakeConnection(rows: Row[] = [], swords: { itemId: string; whirlwind: number; deflect: number; shockwave: number }[] = []) {
   const handlers: Array<() => void> = [];
   let applied: (() => void) | null = null;
   const subscribe = vi.fn();
@@ -15,10 +15,10 @@ function fakeConnection(rows: Row[] = []) {
   });
   // The service also carries kept copies and duplicate offers on the same connection.
   const connection = {
-    db: { myEquipmentLocks: view(() => []), myBowSkills: view(() => rows), myEquipmentCopies: view(() => []), myEquipmentOffers: view(() => []), myIgnoredDrops: view(() => []), myLootSettings: view(() => []) },
+    db: { myEquipmentLocks: view(() => []), myBowSkills: view(() => rows), mySwordSkills: view(() => swords), myEquipmentCopies: view(() => []), myEquipmentOffers: view(() => []), myIgnoredDrops: view(() => []), myLootSettings: view(() => []) },
     subscriptionBuilder: () => ({ onApplied(callback: () => void) { applied = callback; return this; }, subscribe }),
   };
-  return { connection: connection as never, rows, subscribe, settle: () => applied?.(), fire: () => handlers.forEach(handler => handler()) };
+  return { connection: connection as never, rows, swords, subscribe, settle: () => applied?.(), fire: () => handlers.forEach(handler => handler()) };
 }
 
 it("serves this account's roll for each bow once the view settles, and follows changes", () => {
@@ -54,7 +54,7 @@ it("finds the first-copy rolls that got better, and nothing else", () => {
   const roll = (arrowStorm: number, ricochet = 0, piercingShot = 0) => ({ arrowStorm, ricochet, piercingShot });
   const before = new Map([["iron_bow", roll(1.9)], ["snow_bow", roll(3)], ["night_bow", roll(0, 4)]]);
   const after = new Map([["iron_bow", roll(3)], ["snow_bow", roll(2)], ["night_bow", roll(0, 4)], ["lava_bow", roll(9)]]);
-  // Iron Bow went from +4.8% to +7.5%. A worse roll, the same roll and a bow
+  // Stone Bow went from +4.8% to +7.5%. A worse roll, the same roll and a bow
   // that only now has one (a new first copy) are not "kept better".
   expect(betterRollsKept(before, after)).toEqual([{ itemId: "iron_bow", before: 4.75, after: 7.5 }]);
   expect(betterRollsKept(before, after, itemId => itemId === "iron_bow")).toEqual([]);
@@ -77,4 +77,18 @@ it("says when Auto keep best replaced a roll, but not for the standing rows or t
   expect(kept).toHaveBeenCalledTimes(1);
   expect(kept).toHaveBeenCalledWith({ itemId: "iron_bow", before: 4.75, after: 7.5 });
   expect(skills.bowSkills("iron_bow")).toEqual({ arrowStorm: 3, ricochet: 0, piercingShot: 0 });
+});
+
+
+it("reads a sword's own roll, announces a better copy and keeps bow-only callers separate", () => {
+  const kept = vi.fn(), skills = createBowSkills(() => {});
+  skills.api.setOnBetterRollKept(kept);
+  const conn = fakeConnection([], [{ itemId: "ion_sword", whirlwind: 5, deflect: 0, shockwave: 0 }]);
+  skills.watch(conn.connection, () => true); conn.settle();
+  expect(skills.api.swordSkills("ion_sword")).toEqual({ whirlwind: 5, deflect: 0, shockwave: 0 });
+  expect(skills.api.weaponSkills("ion_sword")).toEqual(skills.api.swordSkills("ion_sword"));
+  expect(skills.bowSkills("ion_sword")).toBeNull();
+  expect(skills.api.swordSkills("ion_bow")).toBeNull();
+  conn.swords[0].shockwave = 10; conn.fire();
+  expect(kept).toHaveBeenCalledWith({ itemId: "ion_sword", before: 13.5, after: 29.5 });
 });

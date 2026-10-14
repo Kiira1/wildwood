@@ -137,11 +137,11 @@ describe("refines in the item window", () => {
   it("names the item with its ★ in gold and counts the refine in its stats", () => {
     const view = inspection();
     view.controller.open({ itemId: IRON_BOW, upgradeLevel: 3, refine: 7 });
-    expect(view.title.textContent).toBe("Iron Bow ★7");
+    expect(view.title.textContent).toBe("Stone Bow +3 ★7");
     expect(view.title.querySelector(".refine-stars")!.textContent).toBe(" ★7");
     expect(view.lines()).toEqual([formatEquipmentStat(itemInspectionButtonLabel(itemStats(IRON_BOW, { tier: 3, refine: 7 })[0]))]);
     view.controller.open({ itemId: IRON_BOW, upgradeLevel: 3 });
-    expect(view.title.textContent).toBe("Iron Bow");
+    expect(view.title.textContent).toBe("Stone Bow +3");
     expect(view.lines()).toEqual([formatEquipmentStat(itemInspectionButtonLabel(itemStats(IRON_BOW, 3)[0]))]);
   });
 });

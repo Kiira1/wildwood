@@ -7,7 +7,7 @@ import {
   itemStats,
   normalizeItemUpgradeLevel,
 } from "../../shared/items";
-import { bowSkillLines, type BowSkillRoll } from "../../shared/bow-skills";
+import { weaponSkillLines, type WeaponSkillRoll } from "../../shared/weapon-skills";
 import { normalizeRefineLevel } from "../../shared/refine-multiplier";
 import { refineStars } from "./refine-badge";
 import { oreIconSource } from "./ore-icon";
@@ -34,10 +34,10 @@ export type ItemInspectionRequest = {
   context?: string;
   description?: string;
   actions?: readonly ItemInspectionAction[];
-  /** The item is this player's own, so its bow skill roll (if any) is shown. */
+  /** The item is this player's own, so its weapon skill roll (if any) is shown. */
   ownItem?: boolean;
   /** A kept copy's own roll, shown instead of the item's first copy's. */
-  skills?: Partial<BowSkillRoll> | null;
+  skills?: WeaponSkillRoll | null;
 };
 
 export type ItemInspectionController = ReturnType<typeof createItemInspectionController>;
@@ -47,13 +47,14 @@ type ItemInspectionElements = {
   title: HTMLElement;
   content: HTMLElement;
   back: HTMLButtonElement;
-  /** This account's roll on one of its bows. */
-  bowSkills?: (itemId: string) => Partial<BowSkillRoll> | null | undefined;
+  /** Legacy bow-only getter; weaponSkills includes swords as well. */
+  bowSkills?: (itemId: string) => WeaponSkillRoll | null | undefined;
+  weaponSkills?: (itemId: string) => WeaponSkillRoll | null | undefined;
 };
 
-/** A bow's stat lines followed by its skills, title case ("Arrow Storm 2.4%"). */
-export function itemStatsWithBowSkills(itemId: string, level: number, roll: Partial<BowSkillRoll> | null | undefined) {
-  return [...itemStats(itemId, level), ...bowSkillLines(roll)];
+/** A weapon's stat lines followed by its skills, title case ("Arrow Storm 2.4%"). */
+export function itemStatsWithWeaponSkills(itemId: string, level: number, roll: WeaponSkillRoll | null | undefined) {
+  return [...itemStats(itemId, level), ...weaponSkillLines(itemId, roll)];
 }
 
 export function itemInspectionButtonLabel(label: string) {
@@ -87,7 +88,7 @@ export function createItemInspectionController(elements: ItemInspectionElements)
       returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     }
 
-    elements.title.textContent = itemInspectionButtonLabel(itemDisplayName(item.id));
+    elements.title.textContent = itemInspectionButtonLabel(itemDisplayName(item.id, level));
     // "Ion Bow ★7": the refine after the name, in gold.
     if (refine > 0) {
       const stars = document.createElement("span");
@@ -152,8 +153,8 @@ export function createItemInspectionController(elements: ItemInspectionElements)
       stats.append(value);
     }
     // Skill names are written in title case and shown exactly as written.
-    const roll = request.skills !== undefined ? request.skills : elements.bowSkills?.(item.id);
-    for (const line of request.ownItem ? bowSkillLines(roll) : []) {
+    const roll = request.skills !== undefined ? request.skills : (elements.weaponSkills ?? elements.bowSkills)?.(item.id);
+    for (const line of request.ownItem ? weaponSkillLines(item.id, roll) : []) {
       const value = document.createElement("span");
       value.textContent = line;
       value.dataset.statKind = "skill";
