@@ -1453,9 +1453,6 @@ export type MyBuilds = __Infer<typeof MyBuilds>;
 export const MyCardDrop = __t.object("MyCardDrop", {});
 export type MyCardDrop = __Infer<typeof MyCardDrop>;
 
-export const MyCardMeters = __t.object("MyCardMeters", {});
-export type MyCardMeters = __Infer<typeof MyCardMeters>;
-
 export const MyCards = __t.object("MyCards", {});
 export type MyCards = __Infer<typeof MyCards>;
 

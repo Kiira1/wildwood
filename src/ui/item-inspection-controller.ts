@@ -13,7 +13,7 @@ import { refineStars } from "./refine-badge";
 import { oreIconSource } from "./ore-icon";
 import { oreDescription } from "../../shared/ore-bag";
 import { REFINE_ORES, type OreId } from "../../shared/refine";
-import { cardMeterFull, cardDefinition } from "../../shared/cards";
+import { cardDefinition } from "../../shared/cards";
 import { CARD_SLOT_NAMES, cardEffectText, cardName, cardOrigin } from "../../shared/card-text";
 import { cardPortrait } from "./card-portrait";
 
@@ -261,7 +261,7 @@ export function createItemInspectionController(elements: ItemInspectionElements)
 
   /** A card's window: its portrait, where it drops, how many are held, what gear it goes in and each effect. */
   /** `found` false is a card the player has never had: its shadow, and no count. */
-  function openCard(request: { cardId: string; count: number; found?: boolean; meter?: number }) {
+  function openCard(request: { cardId: string; count: number; found?: boolean }) {
     const card = cardDefinition(request.cardId);
     if (!card) return false;
     if (elements.panel.hidden) {
@@ -288,9 +288,7 @@ export function createItemInspectionController(elements: ItemInspectionElements)
     copy.className = "item-inspection-copy";
     const context = document.createElement("div");
     context.className = "item-inspection-context";
-    const meter = Math.min(100, Math.floor((request.meter ?? 0) / cardMeterFull(card.rarity) * 100));
-    // The meter only shows once it has started: how close the guaranteed copy is.
-    context.textContent = `Goes In: ${CARD_SLOT_NAMES[card.slot]} · ${request.found === false ? "Not Found Yet" : `${request.count.toLocaleString()} held`}${meter > 0 ? ` · Card Meter ${meter}%` : ""}`;
+    context.textContent = `Goes In: ${CARD_SLOT_NAMES[card.slot]} · ${request.found === false ? "Not Found Yet" : `${request.count.toLocaleString()} held`}`;
     const stats = document.createElement("div");
     stats.className = "item-inspection-stats";
     for (const effect of card.effects) {

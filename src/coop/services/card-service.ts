@@ -24,7 +24,6 @@ export function createCardRows(notify: () => void) {
   let slots = new Map<string, GearSlots>();
   let slotted: ReadonlySet<string> = new Set();
   let drop: CardDrop | null = null;
-  let meters: Record<string, number> = {};
   let dropListener: ((drop: CardDrop) => void) | null = null;
 
   function watch(connection: DbConnection, isCurrent: () => boolean) {
@@ -33,7 +32,6 @@ export function createCardRows(notify: () => void) {
     slots = new Map();
     slotted = new Set();
     drop = null;
-    meters = {};
     // The standing row on connect is an old find, not one to announce.
     let hydrated = false;
     const readCards = () => {
@@ -65,24 +63,14 @@ export function createCardRows(notify: () => void) {
       view.onInsert(readSlots); view.onUpdate(readSlots); view.onDelete(readSlots);
     }
     connection.db.myCardDrop.onInsert(readDrop); connection.db.myCardDrop.onUpdate(readDrop); connection.db.myCardDrop.onDelete(readDrop);
-    const readMeters = () => {
-      if (!isCurrent()) return;
-      const next: Record<string, number> = {};
-      for (const row of connection.db.myCardMeters.iter()) if (cardDefinition(row.cardId)) next[row.cardId] = row.progress;
-      meters = next;
-      notify();
-    };
-    connection.db.myCardMeters.onInsert(readMeters); connection.db.myCardMeters.onUpdate(readMeters); connection.db.myCardMeters.onDelete(readMeters);
     connection.subscriptionBuilder()
-      .onApplied(() => { readCards(); readSlots(); readDrop(); readMeters(); hydrated = true; })
-      .subscribe([tables.myCards, tables.myGearSlots, tables.myCopySlots, tables.myCardDrop, tables.myCardMeters]);
+      .onApplied(() => { readCards(); readSlots(); readDrop(); hydrated = true; })
+      .subscribe([tables.myCards, tables.myGearSlots, tables.myCopySlots, tables.myCardDrop]);
   }
 
   return {
     watch,
     api: {
-      /** How full a card's meter is, in kills at plain odds (shared/cards.ts cardMeterFull). */
-      cardMeter: (cardId: string) => meters[cardId] ?? 0,
       /** Cards held, by card id; a card not held is missing. */
       cards: (): Readonly<Record<string, number>> => counts,
       /** One copy's slots and cards; copy id 0 is the first copy. No row is one empty slot. */

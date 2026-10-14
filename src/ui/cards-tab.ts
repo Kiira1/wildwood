@@ -1,4 +1,4 @@
-import { CARDS, cardMeterFull, type CardDefinition } from "../../shared/cards";
+import { CARDS, type CardDefinition } from "../../shared/cards";
 import { cardName, mapName } from "../../shared/card-text";
 import { cardPortrait } from "./card-portrait";
 import { formatCompactNumber } from "./number-format";
@@ -10,7 +10,7 @@ export const byMapThenRarity = (a: CardDefinition, b: CardDefinition) =>
   a.tier - b.tier || RARITY_ORDER[a.rarity] - RARITY_ORDER[b.rarity] || (CARD_ORDER.get(a.id) ?? 0) - (CARD_ORDER.get(b.id) ?? 0);
 
 /** One card as a bag-style tile: its enemy's name, its portrait and the count held. Not found yet, only its shadow. */
-export function cardTile(card: CardDefinition, count: number, onPick: () => void, found = true, meter = 0) {
+export function cardTile(card: CardDefinition, count: number, onPick: () => void, found = true) {
   const button = document.createElement("button");
   button.type = "button";
   button.className = `inventory-item is-filled is-card is-${card.rarity}${found ? "" : " is-unfound"}`;
@@ -29,13 +29,7 @@ export function cardTile(card: CardDefinition, count: number, onPick: () => void
   const stack = document.createElement("span");
   stack.className = "inventory-stack-count";
   stack.textContent = count < 10_000 ? String(count) : formatCompactNumber(count);
-  // How close the guaranteed copy is: a thin bar along the tile's foot.
-  const share = Math.max(0, Math.min(1, meter / cardMeterFull(card.rarity)));
-  const bar = document.createElement("span");
-  bar.className = "card-meter";
-  bar.setAttribute("aria-hidden", "true");
-  bar.style.setProperty("--card-meter", `${(share * 100).toFixed(1)}%`);
-  button.append(label, art, ...(found ? [stack] : []), ...(share > 0 ? [bar] : []));
+  button.append(label, art, ...(found ? [stack] : []));
   button.addEventListener("click", onPick);
   return button;
 }
@@ -62,7 +56,6 @@ function zoneDivider(mapId: string, found: number, total: number) {
 export function createCardsTab(options: {
   cards: () => Readonly<Record<string, number>>;
   slotted?: () => ReadonlySet<string>;
-  meter?: (cardId: string) => number;
   onInspect: (cardId: string, found: boolean) => void;
 }) {
   const element = document.createElement("section");
@@ -83,8 +76,7 @@ export function createCardsTab(options: {
   function render() {
     const held = options.cards();
     const slotted = options.slotted?.() ?? NONE_SLOTTED;
-    const meters = ordered.map(card => Math.round(options.meter?.(card.id) ?? 0));
-    const state = JSON.stringify([held, [...slotted].sort(), meters]);
+    const state = JSON.stringify([held, [...slotted].sort()]);
     if (state === rendered) return;
     rendered = state;
     const found = (cardId: string) => (held[cardId] ?? 0) > 0 || slotted.has(cardId);
@@ -96,7 +88,7 @@ export function createCardsTab(options: {
         const zone = ordered.filter(other => other.mapId === card.mapId);
         children.push(zoneDivider(card.mapId, zone.filter(other => found(other.id)).length, zone.length));
       }
-      children.push(cardTile(card, held[card.id] ?? 0, () => options.onInspect(card.id, found(card.id)), found(card.id), options.meter?.(card.id) ?? 0));
+      children.push(cardTile(card, held[card.id] ?? 0, () => options.onInspect(card.id, found(card.id)), found(card.id)));
     });
     grid.replaceChildren(...children);
   }

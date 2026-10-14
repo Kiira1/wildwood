@@ -74,9 +74,3 @@ export function awardCardDrops(ctx: Ctx, identity: Identity, mapId: string, kill
   else ctx.db.playerCardDrop.insert(next);
   return found;
 }
-
-/** The caller's card meters. */
-export function registerCardMeters(spacetimedb: any) {
-  return spacetimedb.view({ name: "my_card_meters", public: true }, t.array(playerCardMeter.rowType),
-    (ctx: any) => [...ctx.db.playerCardMeter.identity.filter(ctx.sender)]);
-}

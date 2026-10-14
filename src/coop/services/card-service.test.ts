@@ -6,7 +6,7 @@ afterEach(() => vi.useRealTimers());
 function fakeConnection() {
   const handlers: Array<() => void> = [];
   const applied: Array<() => void> = [];
-  const rows = { cards: [] as any[], first: [] as any[], copies: [] as any[], drop: [] as any[], meters: [] as any[] };
+  const rows = { cards: [] as any[], first: [] as any[], copies: [] as any[], drop: [] as any[] };
   const view = (list: unknown[]) => ({
     iter: () => list[Symbol.iterator](),
     onInsert: (handler: () => void) => handlers.push(handler),
@@ -16,7 +16,7 @@ function fakeConnection() {
   const reducers = { slotCard: vi.fn(async () => {}) };
   const connection = {
     isActive: true,
-    db: { myCards: view(rows.cards), myGearSlots: view(rows.first), myCopySlots: view(rows.copies), myCardDrop: view(rows.drop), myCardMeters: view(rows.meters) },
+    db: { myCards: view(rows.cards), myGearSlots: view(rows.first), myCopySlots: view(rows.copies), myCardDrop: view(rows.drop) },
     reducers,
     subscriptionBuilder: () => ({ onApplied(callback: () => void) { applied.push(callback); return this; }, subscribe: vi.fn() }),
   };
@@ -78,14 +78,4 @@ it("releases a slotting request that never answers, so the same slot count can b
   expect(completed).toHaveBeenCalledWith({ ok: false, error: "Request timed out. Try again." });
   await expect(service.api.slotCard("ion_bow", 4n, "needle_card", 1)).resolves.toEqual({ ok: true });
   expect(fake.reducers.slotCard).toHaveBeenLastCalledWith({ itemId: "ion_bow", copyId: 4n, cardId: "needle_card", expectedCards: 1 });
-});
-
-it("serves each card's meter from the meters view", () => {
-  const fake = fakeConnection();
-  const service = createCardRows(() => {});
-  service.watch(fake.connection, () => true);
-  fake.rows.meters.push({ cardId: "needle_card", progress: 1234 });
-  fake.settle();
-  expect(service.api.cardMeter("needle_card")).toBe(1234);
-  expect(service.api.cardMeter("brood_card")).toBe(0);
 });
