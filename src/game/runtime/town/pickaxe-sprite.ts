@@ -13,7 +13,10 @@ const OUTLINE = "#14100c";
 const WOOD = "#9b6a3f", WOOD_LIGHT = "#cf9a62", WRAP = "#5a3b22";
 const STEEL = "#c7d0d6", STEEL_DARK = "#8995a0";
 
-/** Paints the pickaxe into a 118 × 59 canvas (the wooden sword's size): the grip on the left, the head at the far end. */
+/**
+ * Paints the pickaxe into a 118 × 59 canvas (the wooden sword's size): the grip on the left, the head at the far end,
+ * about as long overall as the sword.
+ */
 export function paintPickaxe(c: CanvasRenderingContext2D) {
   c.lineJoin = "round"; c.lineCap = "round";
   const line = (width: number, color: string, from: [number, number], to: [number, number]) => {
@@ -21,22 +24,23 @@ export function paintPickaxe(c: CanvasRenderingContext2D) {
     c.beginPath(); c.moveTo(...from); c.lineTo(...to); c.stroke();
   };
   // The haft, outlined like the sword, lit along its top, wrapped at the grip.
-  line(15, OUTLINE, [10, 30], [100, 30]);
-  line(8, WOOD, [10, 30], [100, 30]);
-  line(3, WOOD_LIGHT, [13, 27], [97, 27]);
-  line(8, WRAP, [12, 30], [30, 30]);
-  // The head: a curved steel bar across the haft's end, its points bent back towards the hand.
+  line(14, OUTLINE, [14, 30], [78, 30]);
+  line(8, WOOD, [14, 30], [78, 30]);
+  line(3, WOOD_LIGHT, [17, 27], [76, 27]);
+  line(8, WRAP, [15, 30], [32, 30]);
+  // The head: a deep steel bar across the haft's end, thick at the eye, tapering to points bent back towards the hand.
   const head = () => {
     c.beginPath();
-    c.moveTo(86, 6); c.quadraticCurveTo(116, 14, 112, 30); c.quadraticCurveTo(116, 46, 86, 53);
-    c.quadraticCurveTo(102, 42, 100, 30); c.quadraticCurveTo(102, 18, 86, 6); c.closePath();
+    c.moveTo(72, 4); c.quadraticCurveTo(94, 9, 96, 21); c.lineTo(96, 39); c.quadraticCurveTo(94, 51, 72, 56);
+    c.quadraticCurveTo(80, 47, 77, 38); c.lineTo(77, 22); c.quadraticCurveTo(80, 13, 72, 4); c.closePath();
   };
   head(); c.lineWidth = 6; c.strokeStyle = OUTLINE; c.stroke();
   head(); c.fillStyle = STEEL_DARK; c.fill();
-  c.save(); head(); c.clip(); c.fillStyle = STEEL; c.fillRect(80, 0, 40, 30); c.restore();
-  // The socket where the haft goes through.
-  c.fillStyle = OUTLINE; c.fillRect(96, 23, 9, 14);
-  c.fillStyle = STEEL_DARK; c.fillRect(98, 25, 5, 10);
+  c.save(); head(); c.clip(); c.fillStyle = STEEL; c.fillRect(60, 0, 50, 30); c.restore();
+  // The eye where the haft goes through, lit on top like the head.
+  c.fillStyle = OUTLINE; c.fillRect(74, 20, 17, 20);
+  c.fillStyle = STEEL_DARK; c.fillRect(76, 22, 13, 16);
+  c.fillStyle = STEEL; c.fillRect(76, 22, 13, 7);
 }
 
 /** The pickaxe as an image the player's drawing can hold, or nothing where there is no canvas (tests). */
