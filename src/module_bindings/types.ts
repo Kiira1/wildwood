@@ -1822,6 +1822,12 @@ export const PlayerCard = __t.object("PlayerCard", {
 });
 export type PlayerCard = __Infer<typeof PlayerCard>;
 
+export const PlayerCardAttackCap = __t.object("PlayerCardAttackCap", {
+  identity: __t.identity(),
+  raise: __t.f64(),
+});
+export type PlayerCardAttackCap = __Infer<typeof PlayerCardAttackCap>;
+
 export const PlayerCardDrop = __t.object("PlayerCardDrop", {
   identity: __t.identity(),
   cardIds: __t.array(__t.string()),
