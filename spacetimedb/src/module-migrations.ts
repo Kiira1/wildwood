@@ -47,8 +47,9 @@ import { readPlayerProgress, iterPlayerProgress } from "./wide-stats";
 import { moveSoloQuestsToGuild } from "./daily-quests";
 import { rebuildParkedAggroRun } from "./aggro-challenge";
 import { convertToStatRatings, trimStoredSoulCritDamage } from "./stat-rating-migration";
+import { repinMapBalances } from "./map-balance";
 
-export const MODULE_MIGRATION_VERSION = 54;
+export const MODULE_MIGRATION_VERSION = 55;
 
 /**
  * Migration 50 (0.856): the ranking snapshot moves to leaderboard_entry_v2,
@@ -562,6 +563,8 @@ export function createModuleMigrations(deps: ModuleMigrationDeps) {
     if (currentVersion < 53) trimStoredSoulCritDamage(ctx);
     // 54 (0.901.47): attack speed and crit damage become ratings; soul stats converted so nobody is weaker (stat-rating-migration.ts).
     if (currentVersion < 54) convertToStatRatings(ctx);
+    // 55 (0.902): every map's sword joined its loot; a visit pinned before then kept loot without it until travel.
+    if (currentVersion < 55) repinMapBalances(ctx);
     const next = { id: 0, version: MODULE_MIGRATION_VERSION };
     if (state) ctx.db.moduleMigrationState.id.update(next);
     else ctx.db.moduleMigrationState.insert(next);
