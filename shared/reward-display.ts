@@ -1,5 +1,6 @@
 import type { RewardType } from "./enemy-definitions";
 import { preparePlayerPowerStats } from "./player-power";
+import { cardStatGainFactor, cardTotalsForLevels } from "./card-effects";
 import type { ResearchRanks } from "./research";
 import type { ItemLevel } from "./items";
 
@@ -26,11 +27,12 @@ export function effectiveRewardAmount(
   type: RewardType, baseAmount: number, statGainMultiplier: number,
   research: Partial<ResearchRanks>, equipment: RewardEquipment,
 ) {
-  const amount = baseAmount * statGainMultiplier;
+  const { weapon, head, chest, weaponLevel, headLevel, chestLevel } = equipment;
+  // Bounty cards, carried by the worn items' levels, add to this type's stat gain.
+  const amount = baseAmount * statGainMultiplier * cardStatGainFactor(cardTotalsForLevels(weaponLevel, headLevel, chestLevel), type);
   const field = SCALED_STAT[type as keyof typeof SCALED_STAT];
   // Attack speed has no gear or research factor.
   if (!field) return amount;
-  const { weapon, head, chest, weaponLevel, headLevel, chestLevel } = equipment;
   const levelOf = (itemId: string): ItemLevel => itemId === weapon ? weaponLevel : itemId === head ? headLevel : itemId === chest ? chestLevel : 0;
   const scale = preparePlayerPowerStats({ ...ZERO_STATS, equippedRightHand: weapon, equippedHead: head, equippedChest: chest }, research, levelOf);
   return scale({ ...ZERO_STATS, [field]: amount })[field];

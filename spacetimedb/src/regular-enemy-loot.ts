@@ -84,12 +84,13 @@ export function acceptRegularEnemyLootBatch(ctx: Context, batch: {
 }
 
 /** Keep each item's independent per-kill roll; combine only the resulting writes. */
-export function rollRegularEnemyLoot(ctx: Pick<Context, "random">, mapId: string, count: number, configuredLoot?: readonly MapLootDrop[]) {
+/** `chanceMultiplier` raises every drop's chance (Treasure cards); one leaves the roll exactly as it was. */
+export function rollRegularEnemyLoot(ctx: Pick<Context, "random">, mapId: string, count: number, configuredLoot?: readonly MapLootDrop[], chanceMultiplier = 1) {
   const rewards = new Map<string, number>();
   const loot = configuredLoot ?? regularMapLoot(mapId);
   for (let kill = 0; kill < count; kill++) {
     for (const drop of loot) {
-      if (ctx.random.integerInRange(1, drop.outcomes) <= drop.wins) {
+      if (ctx.random.integerInRange(1, drop.outcomes) <= drop.wins * chanceMultiplier) {
         rewards.set(drop.itemId, (rewards.get(drop.itemId) ?? 0) + 1);
       }
     }

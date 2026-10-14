@@ -60,7 +60,7 @@ import { earlierTimestamp } from "./timestamp-utils";
 import { createCosmeticConversion } from "./cosmetic-conversion";
 import { publicChatCursor, readPublicChatPage } from "./public-chat-history";
 import { createKillGems } from "./kill-gems";
-import { createPrestige, statRewardMultiplier } from "./prestige";
+import { createPrestige, statRewardMultiplierFor } from "./prestige";
 import { generateMap, proceduralMapId, PROCEDURAL_ENTRY_BOSS } from "../../shared/procedural-maps";
 import { proceduralMapTables, proceduralBossKey } from "./procedural-maps";
 import { ingestStoreEvent } from "./gem-store-events";
@@ -1996,7 +1996,7 @@ export const devSwapCharacters = spacetimedb.reducer(
 
 /** What offline-progress.ts needs from this module, wired once. */
 const OFFLINE_GRANT_PORTS = { effectiveStats: effectivePowerStatsForProgress, mapBalance: liveMapBalance,
-  statMultiplier: statRewardMultiplier, endlessClaimBit: BOSS_REWARD_CLAIM_BITS[PROCEDURAL_ENTRY_BOSS],
+  statMultiplier: statRewardMultiplierFor, endlessClaimBit: BOSS_REWARD_CLAIM_BITS[PROCEDURAL_ENTRY_BOSS],
   writeProgress: (ctx: any, progress: any) => writeProgressAndPresentation(ctx, progress) };
 
 const cosmeticConversion = createCosmeticConversion({ requireControllingPlayer, activeDuelFor,

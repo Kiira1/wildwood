@@ -24,7 +24,7 @@ import { swordSkillBossDamageMultiplier } from "../../../shared/sword-skills";
 import type { WeaponSkillRoll } from "../../../shared/weapon-skills";
 import { createSwordSkillRuntime, type SwordSkillEffects } from "./sword-skill-runtime";
 import { createCardCombat } from "./card-combat";
-import { NO_CARDS, cardChance, cardValue, type CardTotals } from "../../../shared/card-effects";
+import { NO_CARDS, cardChance, cardStatGainFactor, cardValue, type CardTotals } from "../../../shared/card-effects";
 import { bowSkillsWithCards } from "../../../shared/card-bounds";
 import { isSkillBow } from "../../../shared/bow-skills";
 import { addPlayerBaseMaxHealth } from "./player-health";
@@ -554,7 +554,8 @@ export function createPlayerCombatController(options: {
   }
 
   function applyReward(reward: RuntimeReward, x: number, y: number) {
-    const enhanced = { ...reward, amount: reward.amount * researchRewardMultiplier() };
+    // Bounty cards add to the stat gain of their reward's type, as the server pays it.
+    const enhanced = { ...reward, amount: reward.amount * researchRewardMultiplier() * cardStatGainFactor(wornCards(), reward.type) };
     switch (enhanced.type) {
       case "damage": player.damage += enhanced.amount; break;
       case "health": addPlayerBaseMaxHealth(player, enhanced.amount, options.healthMultiplierBonus()); break;

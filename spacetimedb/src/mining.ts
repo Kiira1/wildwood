@@ -1,5 +1,7 @@
 import { SenderError, table, t } from "spacetimedb/server";
 import type { Identity } from "spacetimedb";
+import { cardStatFactors } from "../../shared/card-effects";
+import { wornCardTotalsFor } from "./worn-cards";
 import type spacetimedbType from "./index";
 import {
   MINING_NODE_KINDS, MINING_RATE_SLACK, MINING_SERVER_REACH, MINING_VEINS, miningBreakSeconds, miningGain, miningNode, miningVeinMap,
@@ -147,10 +149,12 @@ export function mineNodeFor(ctx: Ctx, args: { nodeId: number }, deps: MiningDeps
   if (!room) throw new SenderError(bagFullForOres(needed));
   pruneMinedNodes(ctx, ctx.sender);
   if (nodeBareFor(ctx, ctx.sender, node)) throw new SenderError("That rock is still growing back.");
-  if (microsSince(ctx, mining.lastBreakAt) < miningBreakSeconds(node, mining.mining) * MINING_RATE_SLACK * 1_000_000) {
+  // Mining Speed, Ore Find and Starshard cards in the worn gear.
+  const cards = cardStatFactors(wornCardTotalsFor(ctx, ctx.sender, progress));
+  if (microsSince(ctx, mining.lastBreakAt) < miningBreakSeconds(node, mining.mining, cards.miningSpeed) * MINING_RATE_SLACK * 1_000_000) {
     throw new SenderError("Still mining.");
   }
-  const ores = miningYield(node, ctx.random());
+  const ores = miningYield(node, ctx.random(), cards, cards.oreFind > 0 ? ctx.random() : 1);
   for (const [oreId, count] of Object.entries(ores)) addOres(ctx, ctx.sender, oreId as OreId, count ?? 0);
   ctx.db.playerMining.identity.update({
     ...mining,

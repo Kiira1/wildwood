@@ -3,6 +3,7 @@ import type { SpawnSite } from "../../world";
 export { REGULAR_ENEMY_RESPAWN_SECONDS } from "../../../../shared/rules";
 import { REGULAR_ENEMY_RESPAWN_SECONDS } from "../../../../shared/rules";
 import { enemyRespawnSecondsWithResearch } from "../../../../shared/utility-research";
+import { respawnSecondsWithCards } from "../../../../shared/card-effects";
 
 export type RegularEnemyRespawn = {
   respawnSeconds: () => number;
@@ -22,13 +23,15 @@ export function createRegularEnemyRespawn(
   respawnSpeedMultiplier = 1,
   baseRespawnSeconds = () => REGULAR_ENEMY_RESPAWN_SECONDS,
   enemyRespawnRank: () => number = () => 0,
+  /** What Respawn cards add to how often enemies come back (card-effects.ts respawnSecondsWithCards). */
+  cardRespawn: () => number = () => 0,
 ): RegularEnemyRespawn {
   const speedMultiplier = Number.isFinite(respawnSpeedMultiplier)
     ? Math.max(1, respawnSpeedMultiplier)
     : 1;
 
   function respawnSeconds() {
-    return enemyRespawnSecondsWithResearch(baseRespawnSeconds() / speedMultiplier, enemyRespawnRank());
+    return respawnSecondsWithCards(enemyRespawnSecondsWithResearch(baseRespawnSeconds() / speedMultiplier, enemyRespawnRank()), cardRespawn());
   }
 
   function schedule(site: SpawnSite) {

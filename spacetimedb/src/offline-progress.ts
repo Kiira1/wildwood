@@ -1,5 +1,8 @@
 import { countRewardKills, soulAttackCapFor } from "./soul-dimension";
 import { table, t } from "spacetimedb/server";
+import { cardStatFactors, respawnSecondsWithCards } from "../../shared/card-effects";
+import { wornCardTotalsFor } from "./worn-cards";
+import type { StatRewardMultiplier } from "../../shared/enemy-defeats";
 import { offlineProgressEnabled } from "./offline-preference";
 import {
   OFFLINE_MINIMUM_SECONDS,
@@ -107,6 +110,8 @@ export type OfflineGrantDependencies = {
   balanceFor?: (mapId: string) => MapBalanceSnapshot | undefined;
   offlineWindowRank?: number;
   enemyRespawnRank?: number;
+  /** What Respawn cards add to how often enemies come back. */
+  cardRespawn?: number;
 };
 
 export type OfflineGrant = {
@@ -132,10 +137,10 @@ export function resolveOfflineGrant(
   if (!maps.length) return null;
   const outcome = resolveOfflineFarming(maps, dependencies.stats, seconds, {
     balanceFor: dependencies.balanceFor,
-    respawnSecondsFor: mapId => enemyRespawnSecondsWithResearch(
+    respawnSecondsFor: mapId => respawnSecondsWithCards(enemyRespawnSecondsWithResearch(
       dependencies.balanceFor?.(mapId)?.regularRespawnSeconds ?? REGULAR_ENEMY_RESPAWN_SECONDS,
       dependencies.enemyRespawnRank ?? 0,
-    ),
+    ), dependencies.cardRespawn ?? 0),
   });
   return outcome ? { seconds, outcome } : null;
 }
@@ -182,7 +187,7 @@ export type OfflineGrantPorts = {
   effectiveStats: (ctx: any, progress: any) => PlayerPowerStats;
   /** The balance a kill on this map pays right now: the pinned visit, or what arriving would pin. */
   mapBalance: (ctx: any, identity: any, mapId: string) => MapBalanceSnapshot | null | undefined;
-  statMultiplier: (ctx: any, identity: any) => number;
+  statMultiplier: (ctx: any, identity: any) => StatRewardMultiplier;
   writeProgress: (ctx: any, progress: any) => void;
   endlessClaimBit: number;
 };
@@ -214,6 +219,7 @@ export function grantOfflineProgress(ctx: any, progress: any, ports: OfflineGran
     offlineWindowRank: ctx.db.playerResearch.identity.find(ctx.sender)?.offlineWindow ?? 0,
     // Respawn research farms faster only while Research is in play (bonus-toggles.ts); the window is a timer and stays.
     enemyRespawnRank: researchInPlay(ctx, ctx.sender)?.enemyRespawn ?? 0,
+    cardRespawn: cardStatFactors(wornCardTotalsFor(ctx, ctx.sender)).respawn,
     stats: ports.effectiveStats(ctx, progress),
     progress,
     endless: {

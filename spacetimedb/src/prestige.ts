@@ -12,7 +12,7 @@ import { PRESTIGE_EXPANSION_PERK_IDS } from "../../shared/prestige-expansion";
 import { prestigeExpanded } from "./prestige-expansion";
 import { readPlayerProgress } from "./wide-stats";
 import { wornCardTotalsFor } from "./worn-cards";
-import { cardStatFactors } from "../../shared/card-effects";
+import { cardStatFactors, cardStatGainFactor } from "../../shared/card-effects";
 import { aggroChallengeActive } from "./aggro-challenge";
 import { bonusOffFor, researchInPlay } from "./bonus-toggles";
 import { perksInPlayFor, prestigeStatGainOn, reflectRewardsOn } from "../../shared/bonus-toggles";
@@ -34,6 +34,12 @@ export function statRewardMultiplier(ctx: any, identity: any) {
     * prestigeStatMultiplier(prestigeStatGainInPlay(ctx, identity) ? ctx.db.playerPrestige.identity.find(identity)?.level ?? 0 : 0)
     // The guild's daily quest points last week (daily-quests.ts).
     * guildQuestBonusFor(ctx, identity);
+}
+
+/** The stat gain for each type of reward: statRewardMultiplier, and the worn Bounty cards on top. */
+export function statRewardMultiplierFor(ctx: any, identity: any) {
+  const base = statRewardMultiplier(ctx, identity), cards = wornCardTotalsFor(ctx, identity);
+  return (type: string) => base * cardStatGainFactor(cards, type);
 }
 
 /** Whether prestige stat gain counts: not during an Aggro run, nor with Stat Gain switched off (bonus-toggles.ts). */

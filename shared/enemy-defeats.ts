@@ -170,12 +170,15 @@ export function defeatBudget(population: number, minRespawnSeconds = DEFEAT_MIN_
  * (stat-rating.ts): speed adds to the rating behind the stored attack interval,
  * crit to `critRating`, which a caller that tracks it carries on `base`.
  */
+/** One stat gain for every reward, or one for each type of reward (Bounty cards, card-effects.ts cardStatGainFactor). */
+export type StatRewardMultiplier = number | ((type: string) => number);
+
 export function applyEnemyRewards<T extends { damage: number; maxHp: number; attackRate: number; armor: number; regen: number; critRating?: number }>(
-  base: T, rewards: { type: string; amount: number; count: number }[], multiplier: number, minAttackInterval: AttackCapArg = MIN_ATTACK_INTERVAL,
+  base: T, rewards: { type: string; amount: number; count: number }[], multiplier: StatRewardMultiplier, minAttackInterval: AttackCapArg = MIN_ATTACK_INTERVAL,
 ): T {
   const next = { ...base };
   for (const reward of rewards) {
-    const amount = reward.amount * reward.count * multiplier;
+    const amount = reward.amount * reward.count * (typeof multiplier === "number" ? multiplier : multiplier(reward.type));
     switch (reward.type) {
       case "damage": next.damage = Math.min(MAX_PLAYER_STAT, next.damage + amount); break;
       case "health": next.maxHp = Math.min(MAX_PLAYER_STAT, next.maxHp + amount); break;

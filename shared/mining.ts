@@ -339,8 +339,9 @@ export function miningSpeed(mining: unknown) {
 }
 
 /** Seconds to break a rock at this Mining. */
-export function miningBreakSeconds(node: MiningNode, mining: unknown) {
-  return MINING_NODE_KINDS[node.kind].breakSeconds * MINING_VEINS[node.vein].hardness / miningSpeed(mining);
+/** `cardSpeed` is what Mining Speed cards add, a fraction. */
+export function miningBreakSeconds(node: MiningNode, mining: unknown, cardSpeed = 0) {
+  return MINING_NODE_KINDS[node.kind].breakSeconds * MINING_VEINS[node.vein].hardness / (miningSpeed(mining) * (1 + Math.max(0, cardSpeed)));
 }
 
 /** What breaking a rock adds to Mining: its ore, weighted by its vein's hardness, so deeper veins teach faster. */
@@ -348,10 +349,13 @@ export function miningGain(node: MiningNode) {
   return MINING_NODE_KINDS[node.kind].ore * MINING_VEINS[node.vein].hardness;
 }
 
-/** What a broken rock gives: its vein's ore, and from a Mysterious rock perhaps a Starshard. `roll` is in [0, 1). */
-export function miningYield(node: MiningNode, roll: number): Partial<Record<OreId, number>> {
-  const ores: Partial<Record<OreId, number>> = { [node.ore]: MINING_NODE_KINDS[node.kind].ore };
-  if (node.kind === "mysterious" && roll < MINING_STARSHARD_CHANCE) ores.starshard = 1;
+/**
+ * What a broken rock gives: its vein's ore, and from a Mysterious rock perhaps a Starshard. `roll` is in [0, 1).
+ * Cards: Starshard cards raise its chance, and an Ore Find card's chance (`extraRoll` against it) adds one more ore.
+ */
+export function miningYield(node: MiningNode, roll: number, cards: { starshardFind?: number; oreFind?: number } = {}, extraRoll = 1) {
+  const ores: Partial<Record<OreId, number>> = { [node.ore]: MINING_NODE_KINDS[node.kind].ore + (extraRoll < (cards.oreFind ?? 0) ? 1 : 0) };
+  if (node.kind === "mysterious" && roll < MINING_STARSHARD_CHANCE * (1 + Math.max(0, cards.starshardFind ?? 0))) ores.starshard = 1;
   return ores;
 }
 

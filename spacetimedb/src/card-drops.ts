@@ -1,5 +1,7 @@
 import type { Identity } from "spacetimedb";
 import { CARD_DROP_OUTCOMES, cardForBoss, cardForEnemy } from "../../shared/cards";
+import { cardStatFactors } from "../../shared/card-effects";
+import { wornCardTotalsFor } from "./worn-cards";
 import { addCard } from "./gear-cards";
 
 type Ctx = any;
@@ -8,8 +10,10 @@ type Ctx = any;
 export function awardCardDrops(ctx: Ctx, identity: Identity, mapId: string, kills: readonly { enemy: string; count: number }[],
   bossKills: number, chanceMultiplier = 1) {
   const found: string[] = [];
+  // Card Hunter cards in the worn gear raise every roll.
+  const odds = chanceMultiplier * (1 + cardStatFactors(wornCardTotalsFor(ctx, identity)).cardHunter);
   const roll = (cardId: string, outcomes: number, times: number) => {
-    for (let kill = 0; kill < times; kill++) if (ctx.random() * outcomes < chanceMultiplier) found.push(cardId);
+    for (let kill = 0; kill < times; kill++) if (ctx.random() * outcomes < odds) found.push(cardId);
   };
   for (const { enemy, count } of kills) {
     const card = cardForEnemy(mapId, enemy);

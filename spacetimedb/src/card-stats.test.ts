@@ -11,6 +11,10 @@ import { readPlayerProgress } from "./wide-stats";
 import { createCombatReport } from "./boss-combat";
 import { cardTotals } from "../../shared/card-effects";
 import { cardOffenseBound } from "../../shared/card-bounds";
+import { statRewardMultiplierFor, statRewardMultiplier } from "./prestige";
+import { awardCardDrops } from "./card-drops";
+import { cardCount } from "./gear-cards";
+import { rollRegularEnemyLoot } from "./regular-enemy-loot";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
 // Tier 1 gear, worn: a bow, a cap and armor that each hold cards.
@@ -99,5 +103,32 @@ describe("cards in the kill bound", () => {
     expect(bounded({ wooden_armor: ["prismshell_card"] }).reflectDps).toBeCloseTo(reflect * 7, 6);
     expect(bounded({ wooden_armor: ["bramble_card", "glacier_regent_card"] }).reflectDps).toBeGreaterThan(reflect);
     expect(bounded({ wooden_armor: ["bramble_card", "glacier_archer_card"] }).reflectDps).toBeGreaterThan(reflect);
+  });
+});
+
+describe("cards outside a fight, on the server", () => {
+  it("pays Bounty cards on their stat's kills", () => {
+    const view = wearing();
+    view.slot("forest_cap", ["seed_spitter_card"]);
+    const pay = statRewardMultiplierFor(view.f.ctx, view.f.ctx.sender), base = statRewardMultiplier(view.f.ctx, view.f.ctx.sender);
+    expect(pay("health")).toBeCloseTo(base * 1.036, 9);
+    expect(pay("damage")).toBeCloseTo(base, 9);
+  });
+
+  it("raises card and gear drop odds with Card Hunter and Treasure cards", () => {
+    const view = wearing();
+    // A roll that just misses a regular card at 1 in 10,000 lands once Card Hunter's +10% is worn.
+    Object.assign(view.f.ctx, { random: Object.assign(() => 1.05 / 10_000, { integerInRange: (_min: number, max: number) => max }) });
+    const award = () => view.f.transaction(() => awardCardDrops(view.f.ctx, view.f.ctx.sender, "tutorial_forest", [{ enemy: "Needle", count: 1 }], 0));
+    award();
+    expect(cardCount(view.f.ctx, view.f.ctx.sender, "needle_card")).toBe(0);
+    view.slot("forest_cap", ["nether_oracle_card"]);
+    award();
+    expect(cardCount(view.f.ctx, view.f.ctx.sender, "needle_card")).toBe(1);
+    // A drop at 1 in 100 rolled at 1.05 lands with Treasure's +6%.
+    const loot = [{ itemId: "forest_cap", wins: 1, outcomes: 100 }] as any;
+    const roll = { random: Object.assign(() => 0, { integerInRange: () => 1.05 }) } as any;
+    expect(rollRegularEnemyLoot(roll, "tutorial_forest", 1, loot).size).toBe(0);
+    expect(rollRegularEnemyLoot(roll, "tutorial_forest", 1, loot, 1.06).get("forest_cap")).toBe(1);
   });
 });

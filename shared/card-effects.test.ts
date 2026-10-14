@@ -4,6 +4,10 @@ import {
   cardStatFactors, cardTotals, cardTotalsForLevels, cardValue, equippedCardIds,
 } from "./card-effects";
 import { criticalDamage } from "./critical-damage";
+import { cardStatGainFactor, respawnSecondsWithCards } from "./card-effects";
+import { applyEnemyRewards } from "./enemy-defeats";
+import { MINING_NODES, MINING_STARSHARD_CHANCE, miningBreakSeconds, miningYield } from "./mining";
+import { effectiveRewardAmount } from "./reward-display";
 import { effectivePlayerPowerStats } from "./player-power";
 
 describe("card totals", () => {
@@ -84,7 +88,8 @@ describe("worn cards", () => {
 
 describe("card stats", () => {
   it("turns stat cards into multipliers, crit and the caps, and leaves everything at one without cards", () => {
-    expect(cardStatFactors(NO_CARDS)).toEqual({ damage: 1, maxHp: 1, armor: 1, regen: 1, critChance: 0, critDamage: 0, attackCapRaise: 0, moveSpeed: 0, range: 0 });
+    expect(cardStatFactors(NO_CARDS)).toEqual({ damage: 1, maxHp: 1, armor: 1, regen: 1, critChance: 0, critDamage: 0, attackCapRaise: 0, moveSpeed: 0, range: 0,
+      miningSpeed: 0, oreFind: 0, starshardFind: 0, cardHunter: 0, treasure: 0, respawn: 0 });
     const stats = cardStatFactors(cardTotals(["spitter_card", "ember_raider_card", "mossback_card", "brood_card", "striker_card", "dune_striker_card", "dune_needle_card", "tempest_kirin_card", "dune_archer_card"]));
     expect(stats.damage).toBeCloseTo(1.069, 9);
     expect(stats.maxHp).toBeCloseTo(.964, 9);
@@ -120,5 +125,38 @@ describe("card stats", () => {
     expect(carded.multiplier).toBeCloseTo(plain.multiplier * 1.15, 9);
     expect(carded.fromCards).toBeCloseTo(plain.multiplier * .15, 9);
     expect(criticalDamage({ rating: 1e9, card: 10 }).multiplier).toBe(criticalDamage({ rating: 1e9 }).cap);
+  });
+});
+
+describe("cards outside a fight", () => {
+  it("adds Bounty cards to their own stat's gain and to all stats'", () => {
+    const totals = cardTotals(["seed_spitter_card", "aurora_oracle_card"]);
+    expect(cardStatGainFactor(totals, "health")).toBeCloseTo(1.053, 9);
+    expect(cardStatGainFactor(totals, "damage")).toBeCloseTo(1.017, 9);
+    expect(cardStatGainFactor(NO_CARDS, "health")).toBe(1);
+    const next = applyEnemyRewards({ damage: 10, maxHp: 100, attackRate: 1, armor: 0, regen: 0 },
+      [{ type: "health", amount: 10, count: 2 }, { type: "damage", amount: 1, count: 1 }], type => 2 * cardStatGainFactor(totals, type));
+    expect(next.maxHp).toBeCloseTo(100 + 40 * 1.053, 9);
+    expect(next.damage).toBeCloseTo(10 + 2 * 1.017, 9);
+  });
+
+  it("shows a Bounty card's share in a reward's popup, from the worn levels", () => {
+    const equipment = { weapon: "", head: "forest_cap", chest: "", weaponLevel: 0, headLevel: { cards: ["seed_spitter_card"] }, chestLevel: 0 };
+    const plain = effectiveRewardAmount("health", 10, 1, {}, { ...equipment, headLevel: 0 });
+    expect(effectiveRewardAmount("health", 10, 1, {}, equipment)).toBeCloseTo(plain * 1.036, 9);
+    expect(effectiveRewardAmount("speed", 10, 1, {}, equipment)).toBe(10);
+  });
+
+  it("speeds respawns and mining, raises Starshard odds and finds an extra ore", () => {
+    expect(respawnSecondsWithCards(10, .03)).toBeCloseTo(10 / 1.03, 9);
+    expect(respawnSecondsWithCards(10, 0)).toBe(10);
+    const rock = MINING_NODES.find(node => node.kind === "mysterious")!;
+    expect(miningBreakSeconds(rock, 0, .07)).toBeCloseTo(miningBreakSeconds(rock, 0) / 1.07, 9);
+    const roll = MINING_STARSHARD_CHANCE * 1.1;
+    expect(miningYield(rock, roll).starshard).toBeUndefined();
+    expect(miningYield(rock, roll, { starshardFind: .24 }).starshard).toBe(1);
+    const plain = miningYield(rock, .99)[rock.ore]!;
+    expect(miningYield(rock, .99, { oreFind: .07 }, .05)[rock.ore]).toBe(plain + 1);
+    expect(miningYield(rock, .99, { oreFind: .07 }, .5)[rock.ore]).toBe(plain);
   });
 });

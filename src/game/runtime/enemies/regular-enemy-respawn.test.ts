@@ -57,3 +57,9 @@ it("applies the owner's enemy respawn research", () => {
   const clock = createRegularEnemyRespawn(() => 0, 1, () => 20, () => 5);
   expect(clock.respawnSeconds()).toBe(17.5);
 });
+
+it("brings enemies back sooner with Respawn cards, after research", () => {
+  const plain = createRegularEnemyRespawn(() => 0, 1, () => 10, () => 2);
+  const carded = createRegularEnemyRespawn(() => 0, 1, () => 10, () => 2, () => .03);
+  expect(carded.respawnSeconds()).toBeCloseTo(plain.respawnSeconds() / 1.03, 9);
+});

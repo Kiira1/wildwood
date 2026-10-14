@@ -19,6 +19,8 @@ export type MiningSource = {
   sessionGeneration?: () => number;
   hasPickaxe?: () => boolean;
   mining?: () => number;
+  /** What the worn cards add to mining speed (card-effects.ts), a fraction. */
+  wornCardStats?: () => { miningSpeed: number };
   minedNodeAt?: (nodeId: number) => number | null;
   mineNode?: (nodeId: number) => Promise<Result>;
   setOnMiningBreak?: (callback: ((result: MiningBreak) => void) | null) => void;
@@ -204,7 +206,7 @@ export function createMiningRuntime(deps: {
       const { needed, room } = roomForOres(space, rockOreKinds(rock));
       if (!room) { stop(); say(bagFullForOres(needed), "#ff9b91", rock.id); return; }
     }
-    const seconds = miningBreakSeconds(rock, source.mining?.() ?? 0), hits = miningHits(seconds);
+    const seconds = miningBreakSeconds(rock, source.mining?.() ?? 0, source.wornCardStats?.().miningSpeed ?? 0), hits = miningHits(seconds);
     miningScene.target = rock.id;
     miningScene.pickaxeOut = true;
     miningScene.swingClock = Math.max(0, miningScene.swingClock - dt);

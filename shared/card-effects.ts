@@ -145,6 +145,22 @@ export function cardStatFactors(totals: CardTotals) {
     attackCapRaise: Math.max(0, cardValue(totals, "quickDraw")),
     moveSpeed: Math.max(0, cardValue(totals, "fleetFoot")) / 100,
     range: Math.max(0, cardValue(totals, "longShot")),
+    // What they do outside a fight, as fractions: faster mining, an extra ore's chance, Starshard, card and gear
+    // drop chances, and faster respawns.
+    miningSpeed: Math.max(0, cardValue(totals, "miningSpeed")) / 100,
+    oreFind: cardChance(totals, "oreFind") / 100,
+    starshardFind: Math.max(0, cardValue(totals, "starshardFind")) / 100,
+    cardHunter: Math.max(0, cardValue(totals, "cardHunter")) / 100,
+    treasure: Math.max(0, cardValue(totals, "treasure")) / 100,
+    respawn: Math.max(0, cardValue(totals, "respawn")) / 100,
   };
 }
+
+/** What Bounty cards multiply a kill's stat reward of this type by: their own stat's and all stats', added. */
+export function cardStatGainFactor(totals: CardTotals, type: string) {
+  return 1 + Math.max(0, (totals.statGain[type as RewardType] ?? 0) + cardValue(totals, "allStatGain")) / 100;
+}
+
+/** A respawn sped up by the worn cards: they add a share to how often enemies come back. */
+export const respawnSecondsWithCards = (seconds: number, respawn: number) => seconds / (1 + Math.max(0, respawn));
 export type CardStatFactors = ReturnType<typeof cardStatFactors>;

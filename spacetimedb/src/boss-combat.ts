@@ -4,7 +4,7 @@ import { upgradeSlotForItem } from "../../shared/slot-upgrades";
 import { preparePlayerPowerStats, playerPowerForStats, legacyU32Power } from "../../shared/player-power";
 import { equipmentDamageMultiplierBonus, itemDefinition, type ItemLevel } from "../../shared/items";
 import { createEnemyRewardAccumulator, type EnemyStatReward } from "../../shared/enemy-reward-accumulator";
-import { attackCapInPlay, statRewardMultiplier, prestigePerkRanks } from "./prestige";
+import { attackCapInPlay, statRewardMultiplierFor, prestigePerkRanks } from "./prestige";
 import { WORLD_REFLECT_SHARE, preArmorFactor, prestigePerkValue, prestigeReachMultiplier, prestigeSwingMultiplier } from "../../shared/prestige-perks";
 import { armorDamageReduction } from "../../shared/combat";
 import { criticalDamageMultiplier } from "../../shared/critical-damage";
@@ -99,7 +99,7 @@ export function createCombatReport(deps: CombatReportDeps) {
     function load() {
       const saved = readPlayerProgress(ctx, ctx.sender);
       const research = ctx.db.playerResearch.identity.find(ctx.sender);
-      const statMultiplier = statRewardMultiplier(ctx, ctx.sender);
+      const statMultiplier = statRewardMultiplierFor(ctx, ctx.sender);
       // Soul stats add to the run's in every fight; the saved row and the earned rewards stay the run's alone.
       const soul = soulStatsFor(ctx, ctx.sender);
       const loadout = saved ? damageLoadout(ctx, saved, research) : null;

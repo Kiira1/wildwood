@@ -1,4 +1,4 @@
-import { applyEnemyRewards } from "./enemy-defeats";
+import { applyEnemyRewards, type StatRewardMultiplier } from "./enemy-defeats";
 import type { PlayerPowerStats } from "./player-power";
 import type { AttackCapArg } from "./stat-rating";
 
@@ -8,7 +8,7 @@ export type EnemyStatReward = { type: string; amount: number; count: number };
  * Reward order, stat caps and attack-speed rounding stay identical to replaying
  * the whole accepted prefix. A clipped preview never leaks into the next entry.
  */
-export function createEnemyRewardAccumulator<T extends PlayerPowerStats>(base: T, multiplier: number, minInterval: AttackCapArg) {
+export function createEnemyRewardAccumulator<T extends PlayerPowerStats>(base: T, multiplier: StatRewardMultiplier, minInterval: AttackCapArg) {
   let current = base;
   let pending: { reward: EnemyStatReward; progress: T } | undefined;
   function preview(reward: EnemyStatReward) {

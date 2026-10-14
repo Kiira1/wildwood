@@ -321,7 +321,7 @@ import {
     () => session.gameTime(),
     localTestMultiplier,
     () => runtimeMapBalance(currentMapId)?.regularRespawnSeconds ?? REGULAR_ENEMY_RESPAWN_SECONDS,
-    () => coop?.researchInPlay?.()?.enemyRespawn ?? 0,
+    () => coop?.researchInPlay?.()?.enemyRespawn ?? 0, () => coop?.wornCardStats?.().respawn ?? 0,
   );
 
   const duelSession = createDuelSessionController({
