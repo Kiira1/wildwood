@@ -75,7 +75,7 @@ export const CAMPAIGN_GATEWAYS: Readonly<Record<string, MapGateways>> =
 
 /**
  * Where a traveller lands on a campaign map. Tutorial Forest's land at its starting spot (PLAYER_SPAWN), as new
- * characters and the dead do (Ryan): its portal's arrival is among enemies a fresh character cannot beat.
+ * characters and the dead do: its portal's arrival is among enemies a fresh character cannot beat.
  */
 export function campaignLanding(mapId: string) {
   return mapId === TUTORIAL_FOREST_MAP_ID ? { ...PLAYER_SPAWN } : CAMPAIGN_GATEWAYS[mapId] && { ...CAMPAIGN_GATEWAYS[mapId].arrival };

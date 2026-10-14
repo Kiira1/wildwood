@@ -54,6 +54,20 @@ describe("remote combat stats", () => {
     expect(stats.damage).toBeCloseTo(110);
     expect(stats.regen).toBeCloseTo(5.3);
   });
+  it("gives worn gear its slot's tier: upgrade rows are keyed by slot, not by item", () => {
+    const stats = remoteCombatStatsFromRows({ identity, maxHp: 100, damage: 10, attackRate: 1, projectileSpeed: 1000,
+      projectileCount: 1, attackRange: 200, armor: 0, regen: 10, equippedHead: "wood_full_helm",
+      equippedChest: "wooden_armor", equippedRightHand: "starter_bow", equippedLeftHand: "" }, null, [
+      { identity, itemId: "HAND", level: 10 },
+      { identity, itemId: "CHEST", level: 4 },
+      { identity, itemId: "HEAD", level: 7 },
+    ]);
+    // Each tier adds 4% of the item's own bonus: the bow's +5% damage is +7% at tier 10,
+    // the armor's +5% health +5.8% at tier 4, the helm's +8.04% regen +10.29% at tier 7.
+    expect(stats.damage).toBeCloseTo(10.7);
+    expect(stats.maxHp).toBeCloseTo(105.8);
+    expect(stats.regen).toBeCloseTo(11.029);
+  });
 });
 
 describe("remote combat stats loading", () => {

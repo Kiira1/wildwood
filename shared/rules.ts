@@ -80,7 +80,7 @@ export const KILL_REPORT_REFILL_SECONDS = 3;
  * 10 seconds is simply the respawn, and the ad pays Gems instead.
  */
 export const REGULAR_ENEMY_RESPAWN_SECONDS = 10;
-/** The base attack speed cap: 2.625 until 0.901.47, 3 since (Ryan). Reflect Only wins and Quick Draw raise it. */
+/** The base attack speed cap: 2.625 until 0.901.47, 3 since. Reflect Only wins and Quick Draw raise it. */
 export const MAX_BASE_ATTACKS_PER_SECOND = 3;
 /** Quick Draw (prestige perk): the attack speed cap, 0.2 attacks a second higher a rank, five ranks. */
 export const QUICK_DRAW_CAP_PER_RANK = .2;

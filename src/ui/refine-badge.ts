@@ -1,4 +1,4 @@
-/** "★7": an item's refine, a gold star after its name, where the slot tier keeps its green +N (Ryan's pick). */
+/** "★7": an item's refine, a gold star after its name, where the slot tier keeps its green +N. */
 export const refineStars = (level: number) => (level > 0 ? `★${level}` : "");
 
 /** An item's name with its refine after it: "Ion Bow ★7", or the name alone at ★0. */

@@ -25,7 +25,7 @@ export type PlayerPowerStats = {
 
 /**
  * What crits multiply the average hit by: 1 + chance × (multiplier − 1), as duels count them. Power ignored
- * crit, so a crit build read far weaker than it was and Auto Farm held it back (Ryan, 0.901.57).
+ * crit, so a crit build read far weaker than it was and Auto Farm held it back.
  */
 export function critPowerFactor(stats: Pick<PlayerPowerStats, "critChance" | "critMultiplier">) {
   const chance = Number.isFinite(stats.critChance) ? Math.min(1, Math.max(0, Number(stats.critChance))) : 0;

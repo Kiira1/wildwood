@@ -317,7 +317,7 @@ export function createPlayerIdentityRenderer(options: {
     const displayName = guest ? name.replace(/\s*\(guest\)$/i, "") : name;
     const powerValue = power === null ? "" : formatCompactNumber(power);
     ctx.save();
-    // Names, power and the health bar's numbers are all 10px (Ryan).
+    // Names, power and the health bar's numbers are all 10px.
     ctx.font = '900 10px "Arial Rounded MT Bold", "Arial Rounded MT", Arial, sans-serif';
     ctx.textBaseline = "bottom";
     const nameWidth = ctx.measureText(displayName).width;

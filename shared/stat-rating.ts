@@ -1,7 +1,7 @@
 import { DEFAULT_ATTACK_INTERVAL, MAX_BASE_ATTACKS_PER_SECOND, MIN_ATTACK_INTERVAL } from "./rules";
 
 /**
- * Attack speed and critical damage as ratings (Ryan, 0.901.47).
+ * Attack speed and critical damage as ratings (0.901.47).
  *
  * Kills add plain rating points; a formula turns the points into attacks a
  * second or a critical multiplier. The formula is a log: every doubling of
@@ -102,7 +102,7 @@ export function addAttackSpeedRating(interval: number, amount: number, cap: Atta
 }
 /**
  * What `rating` more gives now, in attacks a second, as a label shows it ("+0.004/s"), or "Capped" at the
- * cap: the rating is a number players can't read, and its worth shrinks toward the cap (Ryan). The rating
+ * cap: the rating is a number players can't read, and its worth shrinks toward the cap. The rating
  * goes onto the run's own interval, `runInterval`; the soul's attacks a second (`soulBonus`, flat) sit on
  * top, both under the cap. Rounded, so a cached label changes only when the shown value does.
  */

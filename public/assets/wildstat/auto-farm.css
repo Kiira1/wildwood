@@ -786,7 +786,7 @@
 .smith-sheet .smith-facts dd { margin: 0; font-weight: 800; }
 .smith-sheet .smith-facts .is-safe dd { color: var(--green); }
 .smith-sheet .smith-facts .is-risky dd { color: #ffb070; }
-/* The Smith's button is gold, the refine's own color (Ryan: "yellowish goldish"), and button-sized, not the
+/* The Smith's button is gold, the refine's own color, and button-sized, not the
    card's full width. Its text stays white with the black outline every button's text has: dark text under that
    outline read as black on black. */
 .smith-sheet .farm-start.smith-refine { justify-self: center; min-width: 150px; height: 44px; min-height: 44px; padding: 0 18px 2px; border-color: #5a3c00; background: linear-gradient(#ffe07a, #e2a628); box-shadow: 0 3px 0 #5a3c00; font-size: 15px; text-transform: none; }

@@ -20,7 +20,7 @@
   .quest-tracker.is-collapsed .quest-tracker-list { display: none; }
   .quest-tracker-list { display: grid; gap: 5px; margin: 0; padding: 0 8px; list-style: none; }
   .quest-tracker-item { display: grid; gap: 2px; }
-  /* A quest on another map is dimmed, but not its location line: that is what says where to go (Thresh couldn't find it). */
+  /* A quest on another map is dimmed, but not its location line: that is what says where to go. */
   .quest-tracker-item:not(.is-here) > :not(.quest-tracker-where) { opacity: .6; }
   .quest-tracker-line { display: flex; justify-content: space-between; gap: 6px; }
   .quest-tracker-enemy { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1713,7 +1713,7 @@
   #chatUnreadBadge { top: 3px; right: calc(100% - 46px); }
   #chatUnreadBadge[hidden], #chatPanel.is-large #chatUnreadBadge { display: none; }
   #chatPanel[hidden] { display: none; }
-  /* Mini chat: the HUD surface, 10 points more see-through (Ryan, 0.901.67). */
+  /* Mini chat: the HUD surface, a little see-through. */
   #chatPanel:not(.is-large) { height: var(--mini-chat-height); min-height: var(--mini-chat-height); max-height: var(--mini-chat-height); border-radius: 0; background: rgba(24, 24, 24, .50); backdrop-filter: none; cursor: pointer; }
   #chatPanel:not(.is-large) #topMeta { color: #fff; }
   .chat-header,
@@ -2048,7 +2048,7 @@
     height: calc(100vh + 30px);
     height: calc(100lvh + 30px);
     isolation: isolate;
-    /* Plain black behind sign-in and loading (Ryan): the painted artwork was cropped and out of scale on large screens. */
+    /* Plain black behind sign-in and loading: the painted artwork was cropped and out of scale on large screens. */
     background: #000;
   }
 
@@ -2264,7 +2264,7 @@
     height: 100dvh;
     background: transparent;
     color: #f02d3d;
-    /* Taps go through to the menus and chat under it (Ryan: death "shouldn't interrupt clicking menus or chatting"). */
+    /* Taps go through to the menus and chat under it. */
     pointer-events: none;
     opacity: 0;
     transition: opacity .24s ease-out;
@@ -3300,7 +3300,7 @@
   .profile-editor-item { display: grid; grid-template-columns: 42px minmax(0, 250px) 42px; justify-content: center; align-items: center; gap: 12px; }
   .profile-editor-item > :first-child { grid-column: 2; }
   .profile-editor-picture { justify-self: center; width: 104px; min-width: 104px; height: 104px; border-radius: 16px; cursor: pointer; }
-  /* Only the name sits in a pill, as in Ryan's reference. */
+  /* Only the name sits in a pill. */
   .profile-editor-name-pill { display: flex; align-items: center; min-width: 0; height: 46px; padding: 0 18px; border-radius: 23px; background: #0c0c0c; box-shadow: inset 0 0 0 1px rgba(255,255,255,.1); cursor: pointer; }
   .profile-editor-preview { display: flex; align-items: center; gap: 5px; min-width: 0; overflow: hidden; font-family: var(--player-name-font); font-size: 17px; font-weight: 900; line-height: 1.25; white-space: nowrap; }
   /* Name color, gender and skin tone: one quiet line each, a small square or symbol before the text. */

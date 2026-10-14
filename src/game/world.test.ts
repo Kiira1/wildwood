@@ -339,7 +339,7 @@ describe("regional group aggro", () => {
     const bootstrap = createGameBootstrap();
     const { arrival, portal } = bootstrap.mapConfig[TUTORIAL_FOREST_MAP_ID];
     if (!portal) throw new Error("The forest has a portal.");
-    // The portal moved to the middle (0.901.15); everyone arriving still lands by the easiest enemies (Ryan).
+    // The portal moved to the middle (0.901.15); everyone arriving still lands by the easiest enemies.
     expect(bootstrap.startSpawn).toEqual(PLAYER_SPAWN);
     expect(bootstrap.player).toMatchObject(PLAYER_SPAWN);
     expect(arrival).toEqual(PLAYER_SPAWN);
@@ -408,7 +408,7 @@ describe("enemy regions (0.871)", () => {
       expect(site.x).toBeGreaterThanOrEqual(45); expect(site.x).toBeLessThanOrEqual(4755);
       expect(site.y).toBeGreaterThanOrEqual(45); expect(site.y).toBeLessThanOrEqual(4755);
     }
-    // Even: every enemy on the map sits about the same distance from its nearest campmate (Ryan).
+    // Even: every enemy on the map sits about the same distance from its nearest campmate.
     const gaps = camps.flatMap(camp => {
       const mates = sites.filter(s => s.campName === camp.name);
       return mates.length < 2 ? [] : mates.map((a, i) => Math.min(...mates.filter((_, j) => j !== i).map(b => Math.hypot(a.x - b.x, a.y - b.y))));

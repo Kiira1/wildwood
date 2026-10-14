@@ -4,7 +4,7 @@ import { AGE_BAND_ADULT, AGE_BAND_UNDER_13, AGE_BAND_UNVERIFIED, CHAT_AGE_REQUIR
 import { requireCurrentLegalConsent } from "./session-guards";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
-// The start screen agrees to the Terms with the age unverified; chat asks the age (Ryan, 2026-10-13).
+// The start screen agrees to the Terms with the age unverified; chat asks the age.
 const consent = (f: ReturnType<typeof crystalFixture>) => f.db.playerLegalConsent.identity.find(f.ctx.sender);
 
 it("lets a player in on the Terms alone, but keeps chat closed until a 13+ age is given", () => {

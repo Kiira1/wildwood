@@ -116,7 +116,7 @@ export const MAIL_LIFETIME_MICROS = 7n * 24n * 60n * 60n * 1_000_000n;
 
 /**
  * Takes every letter a week old out of the mailbox, read or not, claimed or
- * not (Ryan, 2026-10-13: "mail older than a week should be gone"): a shared
+ * not: a shared
  * letter with everyone's receipts and the gear it held for them, and each
  * personal letter. A reward left unclaimed goes with it. Gems already paid
  * stay paid, and a letter id used again cannot pay twice: the gem ledger's

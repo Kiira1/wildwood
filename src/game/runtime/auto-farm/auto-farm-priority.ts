@@ -102,7 +102,7 @@ export function writeAutoFarmPull(pull: boolean, storage: () => Storage | undefi
 export const AUTO_FARM_PULL_GROUPS_KEY = 'wildstat:autofarm-pull-groups:v1';
 
 /**
- * The groups the player switched Aggro on for, beside their sliders (Ryan), as group keys; null
+ * The groups the player switched Aggro on for, beside their sliders, as group keys; null
  * before they ever touched one, when Pull Whole Group's own picks (the farmed group, then the
  * largest sliders) still apply.
  */

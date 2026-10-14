@@ -85,7 +85,7 @@ export function validateBalanceSettings(value: unknown): BalanceSettings {
  *   are finite, but slowly.
  * At about 5x a map, enemies reach the stat cap around Endless 30.
  */
-/** Every regen-paying enemy's reward, times this, campaign and Endless alike (Ryan, 2026-10-01). */
+/** Every regen-paying enemy's reward, times this, campaign and Endless alike. */
 export const REGEN_REWARD_BOOST = 1.5;
 
 export const ENDLESS_STEPS: Readonly<{ health: number; hit: number; reward: number; bossHealth: number }> = Object.freeze({ health: 5.2, hit: 5.68, reward: 4.75, bossHealth: 5.06 });
@@ -167,7 +167,7 @@ export function resolveMapBalance(mapId: string, settings: BalanceSettings, revi
     // Sorted, as the module namespace this once read was, so a snapshot's keys keep their order.
     for (const [key, value] of Object.entries(AUTHORED_BOSS_RULES).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) {
       if (key === `${prefix}_MAX_HP`) result.rules[key] = value * factors.bossHealth;
-      // Bosses pay nothing: beating one opens the next map (Ryan, 2026-09-30).
+      // Bosses pay nothing: beating one opens the next map.
       if (key.startsWith(`${prefix}_REWARD_`)) {
         result.rules[key] = 0;
         rewardValues[key.slice(`${prefix}_REWARD_`.length).toLowerCase()] = 0;

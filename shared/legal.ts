@@ -7,7 +7,7 @@ export const AGE_BAND_UNDER_13 = 0;
 export const AGE_BAND_TEEN = 1;
 export const AGE_BAND_ADULT = 2;
 /**
- * Agreed to the Terms but not asked their age yet (Ryan, 2026-10-13: the age question moved from the start
+ * Agreed to the Terms but not asked their age yet (the age question moved from the start
  * screen to the first time chat is opened). Plays, but chat stays locked until a 13+ age is given.
  */
 export const AGE_BAND_UNVERIFIED = 3;

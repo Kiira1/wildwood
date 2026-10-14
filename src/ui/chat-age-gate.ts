@@ -3,7 +3,7 @@ import { createLegalGateController } from "./legal-gate";
 type AgeResult = { ok?: boolean; error?: string; blocked?: boolean } | undefined;
 
 /**
- * The age question, asked the first time chat is opened rather than on the start screen (Ryan, 2026-10-13).
+ * The age question, asked the first time chat is opened rather than on the start screen.
  * 13 and older opens chat. Under 13 blocks the game as the start screen did: the page reloads onto its notice.
  */
 export function createChatAgeGate(options: {

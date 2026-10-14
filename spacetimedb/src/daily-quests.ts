@@ -180,7 +180,7 @@ function weekPoints(ctx: Ctx, week: number, guildId: bigint) {
 /**
  * This week's multiplier on every stat reward the player earns: 0.1% for
  * each point their guild earned last week, from the moment they join it
- * (Ryan: joining a guild gives its bonus for the week, period). It is only
+ * (joining a guild gives its bonus for the week, period). It is only
  * ever the current guild's, so leaving drops it and nothing stacks. Without a
  * guild it is their own week: 1% for each quest they finished, guild or not, up to 15%.
  */

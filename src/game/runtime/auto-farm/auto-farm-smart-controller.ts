@@ -34,8 +34,8 @@ import { soulStatOfCampName } from '../../soul-world';
  * The autofarm that thinks for the player: the growth planner choosing when
  * to move on or step back by forecast growth, Pull priced by the forecast,
  * kiting and dodging, trials of a new map, boss readiness projected from the
- * fight. Kept for later, switched off (Ryan: "keep disabled and hidden for
- * now"): the game runs auto-farm-controller.ts, the simple rules, and never
+ * fight. Kept for later, switched off:
+ * the game runs auto-farm-controller.ts, the simple rules, and never
  * constructs this one while AUTO_FARM_PLANNER is off. Turning it on means
  * wiring it in main.ts as commit 0e515c81 did (createGrowthContextSource).
  */
@@ -170,7 +170,7 @@ export function createSmartAutoFarmController(options: {
   /**
    * Pull brings every group it farms (every slider above 0%): all of it comes
    * to the player, so walking to camps or cycling between them only wastes
-   * time (Ryan). It stands and fights.
+   * time. It stands and fights.
    */
   function pullCoversFarm() {
     if (!pulling() || !active || manualControl || phase !== 'farm' || !weightOrder.length) return false;
@@ -757,7 +757,7 @@ export function createSmartAutoFarmController(options: {
   /**
    * Whether these melee chasers are worth kiting (auto-farm-kite-model.ts):
    * on a circle that holds them (as many as trail clear of the player at its
-   * speed, Ryan's "3 or less"), whenever standing would cost health
+   * speed, 3 or less), whenever standing would cost health
    * regeneration does not put back; past that, each chaser lands a blow per
    * ramp-and-catch-up, and the mob is stood and farmed in place unless
    * standing it would take the player below TANK_RESERVE and kiting would cost less.
@@ -885,8 +885,8 @@ export function createSmartAutoFarmController(options: {
       && !enemy.dead && !enemy.remoteCombatGhost && !enemy.generatedBoss && enemy.hp > 0 && pulledGroups().has(choiceKey(enemy)) && pullable().has(enemy);
   }
   /**
-   * Pull Whole Group is for a mob the build can farm standing ("mob pull is
-   * for full farm mob", Ryan): of the pulled groups, the ones already coming
+   * Pull Whole Group is for a mob the build can farm standing:
+   * of the pulled groups, the ones already coming
    * and then the nearest, as many as tankableCount says it can stand through
    * without falling below TANK_RESERVE. Too strong a group comes a few at a
    * time, to be kited. Chosen again twice a second.
@@ -967,7 +967,7 @@ export function createSmartAutoFarmController(options: {
       holding = true; route = []; status = 'Healing for the boss';
       return idle();
     }
-    // Everything it farms comes to it: it stands its ground (Ryan: no walking out, whatever arrives).
+    // Everything it farms comes to it: it stands its ground (no walking out, whatever arrives).
     if (phase === 'farm' && pullCoversFarm()) {
       const reachAll = weaponAttackRange(options.equippedWeapon?.(), player.attackRange);
       const inReach = enemies.some(enemy => pulledEnemy(enemy) && distance(enemy) <= reachAll + enemy.r);

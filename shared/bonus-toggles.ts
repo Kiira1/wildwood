@@ -1,8 +1,7 @@
 /**
  * Bonus toggles: each player can switch bonuses off, one at a time or a whole
  * group at once, to play (and test a change) as an account without them,
- * without making a new one. Players asked for it (Jasmean, Foxy, Oct 2026);
- * Ryan put it in the profile, as a dropdown a group.
+ * without making a new one. In the profile, as a dropdown a group.
  *
  * Off plays as if the player did not have the bonus: combat, kill rewards,
  * duels and power all leave it out, the server's as well as the client's.

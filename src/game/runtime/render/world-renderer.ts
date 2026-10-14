@@ -862,7 +862,7 @@ if (options.getMapId() === ION_CITADEL_MAP_ID) { drawIonRoads(ctx, options.paths
     // The generated sprite has generous transparent padding below its feet;
     // Lift the shadow into the sprite's padded feet so the bench stays planted.
     options.drawShadow(x, y - 27, Math.round(width * .75), .2);
-    // Drawn mirrored (Ryan, 2026-10-01): the sprite faces left as generated.
+    // Drawn mirrored: the sprite faces left as generated.
     ctx.save();
     ctx.translate(x, 0);
     ctx.scale(-1, 1);

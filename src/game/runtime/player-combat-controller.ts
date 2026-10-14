@@ -448,7 +448,7 @@ export function createPlayerCombatController(options: {
     // group (or attacking) is: it used to be skipped, so autofarm stood beside
     // the boss and shot only while the player steered by hand. A ranked Target
     // weighs it among the farmed group too: Strongest never reached the boss
-    // while anything else was in range (Ryan).
+    // while anything else was in range.
     if ((!enemyType || !target || ranked) && mapBoss && !mapBoss.dead) {
       // Its real hitbox, as every other range check uses: a circle at its feet
       // left autofarm parked in range on one side and never firing (Koi Shogun).
@@ -548,7 +548,7 @@ export function createPlayerCombatController(options: {
       case "regen": player.regen += amount; break;
       // The soul's attack speed is attacks a second added flat (withSoulStats), so a kill adds its 0.001 a second
       // now, to the cap. It used to add 0.001 of rating, which is nothing: the speed then only moved in jumps when
-      // the server's row came back (Ryan, 2026-10-13). Its crit damage is the Soul Dimension runtime's to count.
+      // the server's row came back. Its crit damage is the Soul Dimension runtime's to count.
       case "attackSpeed": player.attackRate = Math.min(player.attackRate, Math.max(attackCapInterval(attackCap()), 1 / (1 / player.attackRate + amount))); break;
       case "critDamage": break;
     }

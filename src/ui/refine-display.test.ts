@@ -15,7 +15,7 @@ import type { OreId } from "../../shared/refine";
 import { inventorySlotCapacity } from "../../shared/gems";
 afterEach(() => vi.unstubAllGlobals());
 
-// A refine is one copy's (★N, gold); the slot's tier keeps its green +N. Ryan: "Keep +N for tiers; refine is ★7".
+// A refine is one copy's (★N, gold); the slot's tier keeps its green +N.
 const ROLL = { arrowStorm: 0, ricochet: 3, piercingShot: 0 };
 const REFINES: Record<string, number> = { [`${IRON_BOW}:0`]: 5, [`${IRON_BOW}:5`]: 2 };
 

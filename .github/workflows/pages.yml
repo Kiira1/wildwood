@@ -46,8 +46,8 @@ jobs:
           npm run build:client
           node scripts/check-client-build.mjs
 
-      # The Android app's copy of the same dist. Off until Ryan turns on
-      # automatic app updates with: gh variable set OTA_AUTO_PUBLISH --body on
+      # The Android app's copy of the same dist. Off until automatic app updates
+      # are turned on with: gh variable set OTA_AUTO_PUBLISH --body on
       # A failure here only skips the app update, never the website.
       - name: Stage Android app bundle
         id: stage

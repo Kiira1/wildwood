@@ -1,7 +1,7 @@
 // npm run dev:live: this checkout's client, served on this computer, playing on the live game server
 // (wildwood-coop on Maincloud), the same server wildstatmmo.com uses. Same saves, same rules.
 // Client edits rebuild and refresh the tab. Server code (spacetimedb/) never changes here: only
-// Ryan's publish changes the live server, so its edits do nothing in this mode.
+// a server publish changes the live server, so its edits do nothing in this mode.
 import { readFile } from 'node:fs/promises';
 import { relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';

@@ -12,17 +12,17 @@ export type ProfileEditorElements = {
   overlay: HTMLElement; close: HTMLElement; picture: HTMLButtonElement; pictureButton: HTMLButtonElement; preview: HTMLElement;
   nameForm: HTMLFormElement; nameInput: HTMLInputElement; saveName: HTMLButtonElement;
   nameColors: HTMLElement; genderChoices: HTMLElement; skinChoices: HTMLElement;
-  /** White pencils, one per setting, each opening its picker (Ryan: "Just use white pencils to open pickers"). */
+  /** White pencils, one per setting, each opening its picker. */
   nameToggle: HTMLButtonElement; nameColorToggle: HTMLButtonElement; genderToggle: HTMLButtonElement; skinToggle: HTMLButtonElement;
-  /** Just the mark after each label (Ryan: "Dont be redundant"): the color square, the gender symbol, the skin square. */
+  /** Just the mark after each label: the color square, the gender symbol, the skin square. */
   nameColorSwatch: HTMLElement; genderValue: HTMLElement; skinSwatch: HTMLElement;
-  /** The window each picker opens in (Ryan: "Pickers should open there own windows"). */
+  /** The window each picker opens in. */
   picker: HTMLElement; pickerTitle: HTMLElement; pickerBack: HTMLElement;
 };
 
 /**
  * Edit Profile: one window for the picture, name, chat name color, gender and skin tone, opened by the
- * profile's one pencil (Ryan, 2026-10-13: it had three). A minimal centered stack: the picture, then the
+ * profile's one pencil. A minimal centered stack: the picture, then the
  * name as chat draws it, name color, gender and skin tone, each with a white pencil beside it (the field
  * opens it too) that opens its picker in a window of its own; a pick saves and closes it.
  */

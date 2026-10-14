@@ -32,7 +32,7 @@ const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
 const SPIRAL_CLOSEST = 1.55;
 /** How far out an even camp of `count` reaches at `spacing`: its outermost point. */
 export const evenCampRadius = (count: number, spacing: number) => spacing / SPIRAL_CLOSEST * Math.sqrt(Math.max(1, count) - .5);
-/** Even camps keep this far apart, and this far between their enemies at most and at least (Ryan: as spread as can be, all equal). */
+/** Even camps keep this far apart, and this far between their enemies at most and at least (as spread as can be, all equal). */
 export const EVEN_CAMP_GAP = 120;
 export const EVEN_SPACING_MAX = 340;
 export const EVEN_SPACING_MIN = 150;

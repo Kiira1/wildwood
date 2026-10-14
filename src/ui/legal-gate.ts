@@ -14,7 +14,7 @@ type LegalGateDependencies = {
   accept: (age: number) => Promise<{ ok?: boolean; error?: string } | undefined> | { ok?: boolean; error?: string } | undefined;
   onAccepted: () => void;
   /**
-   * False on the start screen: it only agrees to the Terms, and chat asks the age later (Ryan, 2026-10-13).
+   * False on the start screen: it only agrees to the Terms, and chat asks the age later.
    * Then the slider is hidden and Continue needs no age.
    */
   askAge?: boolean;

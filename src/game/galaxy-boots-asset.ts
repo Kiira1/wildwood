@@ -1,7 +1,7 @@
 // The winged Galaxy Boots, as their inventory icon: rasterised at four times
 // 26 × 22 from art-source/galaxy-boots/galaxy-boots-front.svg. On the character
-// they are the game's own boot legs (item-presentation.ts SKY_BOOTS); Ryan liked
-// this shape as the icon, not on the walking player. Embedded rather than shipped under
+// they are the game's own boot legs (item-presentation.ts SKY_BOOTS); this
+// shape is the icon only, not the walking player. Embedded rather than shipped under
 // public/assets: the galaxy finish only reads their shape and shading, and a
 // data URL never taints the canvas a profile snapshot is exported from.
 const FRONT_BASE64 = [

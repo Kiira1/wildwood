@@ -10,7 +10,7 @@ function setup() {
 }
 const page: ModerationHistoryPage = { beforeId: "51", hasMore: true, entries: [{ id: "100",
   targetIdentity: "account", targetName: "Player", channel: "world", messageId: "5", action: "Message removed",
-  reason: "harassment", actorType: "developer", actorIdentity: "moderator", actorName: "Ryan", rule: "",
+  reason: "harassment", actorType: "developer", actorIdentity: "moderator", actorName: "Rymel", rule: "",
   reportTable: "chat_message_report", reportId: "6", before: "<img src=x onerror=alert(1)>",
   after: "Message moderated.", recordedAtMs: 1234567890,
 }] };

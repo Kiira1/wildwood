@@ -4,7 +4,7 @@ export const LATENCY_WINDOW = 7;
  * The reading is the quickest quarter of them, not the middle: a round trip is
  * the network plus however long this reducer waited behind everyone else's on
  * the server, and the quick ones are the ones that waited least, so they track
- * the connection rather than the server's queue (Ryan: the middle jumped about).
+ * the connection rather than the server's queue (the middle jumped about).
  */
 export const LATENCY_PERCENTILE = .25;
 

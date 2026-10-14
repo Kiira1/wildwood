@@ -188,7 +188,7 @@ export function profileStatDisplayRows(
   // expanded line names the rating behind the rate, as Armor names its Block, and "(Max)" shows once
   // the rate reads the same as the cap.
   const speedRating = attackSpeedRatingForInterval(baseAttackInterval, attackCap);
-  // Attack speed and crit damage read like armor (Ryan): their number, and what it gives in brackets. No "rating".
+  // Attack speed and crit damage read like armor: their number, and what it gives in brackets. No "rating".
   const ratingText = formatRating;
   const bracket = (label: string) => `(${label.replace(" (Max)", " Max")})`;
   const baseAttackSpeed = attackSpeedLabel(1 / baseAttackInterval, 1 / minAttackInterval);
