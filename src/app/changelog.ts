@@ -1,4 +1,19 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.903.0": [
+    "Cards: every enemy and boss has a rare card to find",
+    "Slot cards into weapons, helmets and armor at the Smith to add their effects",
+    "Over 50 card effects, from burns and stuns to shields, bounties and faster mining",
+    "New gear drops with up to 4 card slots; a duplicate with more raises your item's",
+    "A Cards tab in the Inventory shows every card you hold",
+    "Item windows and profiles show the cards in each item",
+    "Cards work in duels too",
+    "Swords roll skills like bows: Whirlwind, Deflect and Shockwave",
+    "Iron Bow is now called Stone Bow",
+    "A stone bridge crosses the river on the way east",
+    "The pickaxe has a shorter haft, and a rock's bar steps with each hit",
+    "Ranged enemies close in to the reach of the weapon you hold",
+    "Max health follows a refine of your worn helmet or armor",
+  ],
   "0.902.1": [
     "Other players' fights on your screen count their slot upgrades again",
   ],
@@ -3281,6 +3296,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.903.0": "2026-10-13",
   "0.902.1": "2026-10-13",
   "0.902.0": "2026-10-13",
   "0.901.69": "2026-10-13",
