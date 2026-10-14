@@ -918,3 +918,15 @@ html.text-outline-shadow .inventory-stack-count { text-shadow: 1px 0 0 #080b08, 
 @media (prefers-reduced-motion: reduce) {
   .card-found, .card-found * { animation-duration: .01ms !important; animation-delay: 0s !important; animation-iteration-count: 1 !important; }
 }
+
+/* A zone's heading across the Cards grid: its name and found count between two hairlines fading out. */
+.cards-zone-divider { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; margin: 12px 2px 2px; color: #e8c45f; }
+.cards-zone-divider:first-child { margin-top: 2px; }
+.cards-zone-divider::before, .cards-zone-divider::after { flex: 1; height: 1px; content: ""; }
+.cards-zone-divider::before { background: linear-gradient(90deg, transparent, rgba(232,196,95,.8)); }
+.cards-zone-divider::after { background: linear-gradient(90deg, rgba(232,196,95,.8), transparent); }
+.cards-zone-name { font: 900 13px/1 var(--font-rounded); letter-spacing: .06em; white-space: nowrap; }
+.cards-zone-name::before, .cards-zone-count::after { content: "◆"; font-size: 7px; vertical-align: 2px; opacity: .8; }
+.cards-zone-name::before { margin-right: 7px; }
+.cards-zone-count::after { margin-left: 7px; color: #e8c45f; }
+.cards-zone-count { color: var(--inventory-muted, #b9bdb9); font: 800 13px/1 var(--font-rounded); white-space: nowrap; }

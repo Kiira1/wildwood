@@ -1,7 +1,7 @@
 import { table, t, SenderError } from "spacetimedb/server";
 import type { Identity } from "spacetimedb";
 import type { ModuleReducerCtx, ModuleViewCtx } from "./index";
-import { inventorySlotCapacity } from "../../shared/gems";
+import { bagCapacityFor } from "./bag-capacity";
 import { upgradeSlotForItem } from "../../shared/slot-upgrades";
 import { activeItemUpgradeEntriesFor } from "./upgrade-bench-slots";
 import { inventoryForProgress, restoreItemToProgress, slotUpgradeKey } from "./progress-helpers";
@@ -57,7 +57,7 @@ export function claimEquipmentMail(ctx: ModuleReducerCtx, items: string[], level
   const upgrading = activeItemUpgradeEntriesFor(ctx, ctx.sender).map(({ active }) => active.itemId);
   if (items.some(id => upgrading.includes(id))) throw new SenderError("Finish or cancel the upgrade on your gifted gear, then claim it here.");
   const equipped = [progress.equippedHead, progress.equippedChest, progress.equippedFeet, progress.equippedRightHand, progress.equippedLeftHand];
-  const capacity = inventorySlotCapacity(ctx.db.playerInventoryCapacity.identity.find(ctx.sender)?.slotsUnlocked ?? 0);
+  const capacity = bagCapacityFor(ctx, ctx.sender);
   const { missing, slotsToFree } = gearClaimSpace(inventoryForProgress(progress), equipped, upgrading, items, capacity, oreKindsHeldFor(ctx, ctx.sender));
   if (slotsToFree) throw new SenderError(`Free ${slotsToFree} inventory slot${slotsToFree === 1 ? "" : "s"}, then claim your gear. Your gift will stay in Mail.`);
   let next = progress;

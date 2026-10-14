@@ -30,4 +30,5 @@ export default __t.row({
   utilityMoveSpeed: __t.u32().name("utility_move_speed"),
   utilityAttackRange: __t.u32().name("utility_attack_range"),
   critCap: __t.u32().name("crit_cap"),
+  inventorySlots: __t.u32().name("inventory_slots"),
 });

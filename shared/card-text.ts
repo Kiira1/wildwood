@@ -38,8 +38,8 @@ export function cardEffectText(effect: CardEffect): string {
     weaken: () => `${abs}% chance: the enemy deals ${percent(CARD_EFFECT_DEFAULTS.weaken.weaken)} less damage for ${CARD_EFFECT_DEFAULTS.weaken.seconds}s`,
     knockback: () => `${abs}% chance to knock an enemy back`,
     splash: () => effect.chance !== undefined
-      ? `${number(effect.chance)}% chance to strike every enemy near the target for ${abs}%`
-      : `Hits deal ${abs}% damage to enemies near the target`,
+      ? `${number(effect.chance)}% chance a hit also deals ${abs}% of its damage to every enemy near the target`
+      : `Every hit also deals ${abs}% of its damage to enemies near the target`,
     chainLightning: () => `${abs}% chance to arc to ${effect.targets ?? CARD_EFFECT_DEFAULTS.chainLightning.targets} more enemies for ${percent(effect.share ?? CARD_EFFECT_DEFAULTS.chainLightning.share)}`,
     lifesteal: () => `Heal ${abs}% of the damage you deal`,
     quickDraw: () => `Attack speed cap ${signed(v)}/s`,

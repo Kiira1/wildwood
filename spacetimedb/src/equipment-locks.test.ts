@@ -36,8 +36,14 @@ it('prevents auto equip and duplicate bow rolls from replacing locked gear', () 
   f.run(server.setEquipmentLocked, { itemId: IRON_BOW, copyId: 0n, locked: true });
   const key = `${f.ctx.sender.toHexString()}:${IRON_BOW}`;
   f.seed('playerBowSkill', { key, identity: f.ctx.sender, itemId: IRON_BOW, arrowStorm: 0, ricochet: 0, piercingShot: 0 });
+  // Every skill appears, so each copy rolls better than the locked one.
+  Object.assign(f.ctx, { random: Object.assign(() => .1, { integerInRange: (min: number) => min }) });
   keepBestCopies(f.ctx as any, f.ctx.sender, IRON_BOW, 10);
   expect(f.db.playerBowSkill.key.find(key)).toMatchObject({ arrowStorm: 0, ricochet: 0, piercingShot: 0 });
+  // The better rolls wait as Keep/Ignore offers instead of being thrown away.
+  const offers = [...f.db.pendingEquipmentOffer.identity.filter(f.ctx.sender)];
+  expect(offers.length).toBeGreaterThan(0);
+  expect(offers.every(offer => offer.itemId === IRON_BOW)).toBe(true);
   const before = f.db.playerProgress.identity.find(f.ctx.sender);
   f.patch('playerProgress', { inventoryJson: JSON.stringify([IRON_BOW, 'ion_bow']), ionCitadelUnlocked: true });
   const write = vi.fn();

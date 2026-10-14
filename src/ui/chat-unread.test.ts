@@ -61,3 +61,17 @@ it("drops the previous guild count and quietly hydrates a newly joined guild", (
   expect(tracker.refresh("me", [row(10n)], new Map(), null).guild).toBe(0);
   expect(tracker.refresh("me", [row(10n), row(11n)], new Map(), null).guild).toBe(1);
 });
+
+it("drops a conversation's count once it leaves the list, without counting it again when it comes back", () => {
+  const tracker = createChatUnreadTracker(100);
+  tracker.refresh("me", [], new Map(), null);
+  const listed = new Map([["challenger", [row(5n, 101, "challenger")]], ["friend", [row(6n)]]]);
+  expect(tracker.refresh("me", [], listed, null).private).toBe(2);
+  // The duel result expired: that conversation is gone and can no longer be opened to clear it.
+  const left = tracker.refresh("me", [], new Map([["friend", [row(6n)]]]), null);
+  expect(left.private).toBe(1);
+  expect(left.conversations.has("challenger")).toBe(false);
+  // A reconnect empties the list for a moment; the same rows are not counted twice when it fills again.
+  tracker.refresh("me", [], new Map(), null);
+  expect(tracker.refresh("me", [], new Map([["friend", [row(6n)]]]), null).private).toBe(1);
+});

@@ -1,4 +1,15 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.903.2": [
+    "New Utility research: Bag Slots adds a bag slot a level, up to 5",
+    "The crit damage cap is now 5×, plus 1× a Crit Cap rank (10× at most)",
+    "Crit damage climbs more slowly, toward 10×",
+    "Auto Keep Best asks before passing up a better roll for a refined or locked weapon",
+    "Duel results no longer leave a message notification that won't clear",
+    "Swords make a sound when they swing",
+    "The Cards tab groups cards by zone",
+    "The pickaxe shows in a Tool slot in the Inventory",
+    "Clearer splash card text",
+  ],
   "0.903.1": [
     "A full bag no longer overfills: new drops wait as Keep or Ignore until a slot is free",
     "Unequipping needs a free bag slot",
@@ -3304,6 +3315,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.903.2": "2026-10-14",
   "0.903.1": "2026-10-13",
   "0.903.0": "2026-10-13",
   "0.902.1": "2026-10-13",

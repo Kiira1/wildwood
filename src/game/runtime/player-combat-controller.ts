@@ -175,6 +175,7 @@ export function createPlayerCombatController(options: {
    */
   keepTarget?: () => boolean;
   playBowAttackSound?: () => void;
+  playSwordAttackSound?: () => void;
   /** `value` is the shown amount unrounded, so a popup that sums several kills adds what was paid, not what the text rounded it to. */
   logPickup: (text: string, color: string, value?: number) => void;
   saveProgress: () => void;
@@ -363,6 +364,8 @@ export function createPlayerCombatController(options: {
   }
 
   function strikeMelee(target: AttackTarget) {
+    // Every swing swishes, a miss included, as every arrow twangs.
+    options.playSwordAttackSound?.();
     rebuildTargetGrid();
     const angle = Math.atan2(targetAimY(target) - player.y, target.x - player.x);
     const hit = raycastProjectile(player.x, player.y, player.x + Math.cos(angle) * attackRange(), player.y + Math.sin(angle) * attackRange(), 0);

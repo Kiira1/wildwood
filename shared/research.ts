@@ -20,6 +20,7 @@ export const UTILITY_RESEARCH_IDS = [
   "utilityMoveSpeed",
   "utilityAttackRange",
   "critCap",
+  "inventorySlots",
 ] as const;
 export const RESEARCH_IDS = [...POWER_RESEARCH_IDS, ...UTILITY_RESEARCH_IDS] as const;
 export type ResearchId = typeof RESEARCH_IDS[number];
@@ -34,7 +35,7 @@ export type ResearchDefinition = {
   maxRank: number;
   effect: string;
   valuePerRank: number;
-  unit?: "%" | "s" | "min" | "speed" | "range" | "x";
+  unit?: "%" | "s" | "min" | "speed" | "range" | "x" | "slot";
   durationStartMs: number;
   /** Ranks required from connected technologies inside the same rank band. */
   prerequisites?: Partial<Record<ResearchId, number>>;
@@ -101,9 +102,12 @@ export const RESEARCH_DEFINITIONS: Record<ResearchId, ResearchDefinition> = {
   utilityAttackRange: { id: "utilityAttackRange", title: "ATTACK RANGE", icon: "◎", ranksPerBand: 5, maxRank: 5,
     effect: "ATTACK RANGE", valuePerRank: 10, unit: "range", durationStartMs: 120_000,
     prerequisiteAny: ["offlineWindow", "utilityMoveSpeed"] },
-  // The end of the utility tree: each rank raises the critical damage cap 10× (shared/critical-damage.ts).
+  // Near the end of the utility tree: each rank raises the critical damage cap 1× (shared/critical-damage.ts).
   critCap: { id: "critCap", title: "CRIT CAP", icon: "✸", ranksPerBand: 5, maxRank: 5,
-    effect: "CRITICAL DAMAGE CAP", valuePerRank: 10, unit: "x", durationStartMs: 180_000, prerequisites: { utilityAttackRange: 1 } },
+    effect: "CRITICAL DAMAGE CAP", valuePerRank: 1, unit: "x", durationStartMs: 180_000, prerequisites: { utilityAttackRange: 1 } },
+  // Beside Crit Cap: each rank adds a bag slot on top of the ones bought with Gems (shared/gems.ts).
+  inventorySlots: { id: "inventorySlots", title: "BAG SLOTS", icon: "▣", ranksPerBand: 5, maxRank: 5,
+    effect: "BAG SLOTS", valuePerRank: 1, unit: "slot", durationStartMs: 180_000, prerequisites: { utilityAttackRange: 1 } },
 };
 
 export function researchTreeFor(researchId: ResearchId): ResearchTree {

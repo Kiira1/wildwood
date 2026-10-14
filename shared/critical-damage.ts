@@ -12,13 +12,13 @@ import { CRIT_DAMAGE_START, critBonusLevels, critDamageForLevels, formatRateGain
  * the curve turns the total into a multiplier, 1.05x at nothing, 3% closer to
  * 100x a map's worth. Critical Damage research (+0.05x a rank) and Keen Edge
  * (+0.12x a rank) are levels on the same curve, worth exactly their old bonus
- * from nothing. The total stops at the cap: 50x, 10x more for each Crit Cap
- * rank, up to 100x, which the curve never reaches.
+ * from nothing. The total stops at the cap: 5x, 1x more for each Crit Cap
+ * rank, up to 10x.
  */
 export const CRITICAL_DAMAGE_BASE = CRIT_DAMAGE_START;
 export const CRITICAL_DAMAGE_PER_RANK = .05;
-export const CRIT_CAP_BASE = 50;
-export const CRIT_CAP_PER_RANK = 10;
+export const CRIT_CAP_BASE = 5;
+export const CRIT_CAP_PER_RANK = 1;
 export const CRIT_CAP_MAX_RANK = 5;
 /** The highest cap research reaches. */
 export const CRIT_CAP_CEILING = CRIT_CAP_BASE + CRIT_CAP_PER_RANK * CRIT_CAP_MAX_RANK;
@@ -41,7 +41,7 @@ export type CriticalDamageParts = {
 const whole = (value: unknown, max: number) => Number.isFinite(value) ? Math.min(max, Math.max(0, Math.floor(Number(value)))) : 0;
 const amount = (value: unknown) => Number.isFinite(value) ? Math.max(0, Number(value)) : 0;
 
-/** The cap a Crit Cap rank sets: 50×, 60×… 100×. */
+/** The cap a Crit Cap rank sets: 5×, 6×… 10×. */
 export function critCapForRank(rank: unknown) {
   return CRIT_CAP_BASE + whole(rank, CRIT_CAP_MAX_RANK) * CRIT_CAP_PER_RANK;
 }

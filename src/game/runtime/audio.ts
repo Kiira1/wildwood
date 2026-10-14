@@ -56,6 +56,51 @@ const BOW_ATTACK_SOUND_MIN_GAP_SECONDS = .055;
 const BOW_ATTACK_SOUND_MAX_VOICES = 3;
 /** A shot fired while the clip is still decoding plays once it arrives, if that is soon enough to still feel like the shot. */
 export const BOW_ATTACK_SOUND_LATE_PLAY_MS = 300;
+/**
+ * A sword swing is a swish made here from filtered noise: there is no clip to download. Measured 2026-10-14:
+ * at 1.4 it sits about 7 dB RMS under the bow release, so swings, which come often, stay below arrows.
+ */
+export const SWORD_SWING_SOUND_GAIN = 1.4;
+export const SWORD_SWING_SOUND_SECONDS = .18;
+const SWORD_SWING_SOUND_MIN_GAP_SECONDS = .07;
+const SWORD_SWING_SOUND_MAX_VOICES = 3;
+
+/** White noise for the sword's swish; a falling band-pass gives it the sweep. */
+export function swingNoiseBuffer(context: BaseAudioContext, seconds = SWORD_SWING_SOUND_SECONDS) {
+  const buffer = context.createBuffer(1, Math.ceil(context.sampleRate * seconds), context.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let index = 0; index < data.length; index += 1) data[index] = Math.random() * 2 - 1;
+  return buffer;
+}
+
+/** One swish into `destination`, starting at `at`; returns the nodes to clean up, or null. */
+export function scheduleSwordSwing(context: BaseAudioContext, noise: AudioBuffer, destination: AudioNode, at: number, randomValue = Math.random()) {
+  const source = context.createBufferSource();
+  const filter = context.createBiquadFilter();
+  const gain = context.createGain();
+  source.buffer = noise;
+  filter.type = "bandpass";
+  filter.Q.value = 1.1;
+  const from = 1700 + Math.min(1, Math.max(0, randomValue)) * 500;
+  filter.frequency.setValueAtTime(from, at);
+  filter.frequency.exponentialRampToValueAtTime(from * .3, at + SWORD_SWING_SOUND_SECONDS);
+  gain.gain.setValueAtTime(.0001, at);
+  gain.gain.exponentialRampToValueAtTime(SWORD_SWING_SOUND_GAIN, at + .025);
+  gain.gain.exponentialRampToValueAtTime(.0001, at + SWORD_SWING_SOUND_SECONDS);
+  source.connect(filter);
+  filter.connect(gain);
+  gain.connect(destination);
+  try {
+    source.start(at);
+    source.stop(at + SWORD_SWING_SOUND_SECONDS + .02);
+  } catch {
+    source.disconnect();
+    filter.disconnect();
+    gain.disconnect();
+    return null;
+  }
+  return { source, filter, gain };
+}
 /** Soundtracks are kept as Blob URLs for the map you are on and the one you left; older ones are released. */
 const MUSIC_OBJECT_URL_KEEP = 2;
 
@@ -102,6 +147,7 @@ export type MapMusicController = {
   ensurePlaying(allowed: boolean): void;
   playDeathSound(): void;
   playBowAttackSound(): void;
+  playSwordAttackSound(): void;
 };
 
 type BowAttackVoice = {
@@ -168,6 +214,9 @@ export function createMapMusicController(
   const encodedBowAttack = fetchEncoded(BOW_ATTACK_SOUND_SOURCE);
   const encodedDeath = fetchEncoded(DEATH_SOUND_SOURCE);
   const activeBowAttackVoices: BowAttackVoice[] = [];
+  let swingNoise: AudioBuffer | null = null;
+  let lastSwordSwingAt = Number.NEGATIVE_INFINITY;
+  let activeSwordSwings = 0;
   const musicObjectUrls = new Map<string, string>();
   let requestedMusicSource = SIGN_IN_MUSIC_SOURCE;
   let attachedMusicSource = "";
@@ -429,6 +478,26 @@ export function createMapMusicController(
     }
   }
 
+  function playSwordAttackSound() {
+    if (sfxVolume <= 0) return;
+    const context = ensureAudioGraph();
+    if (!context || !sfxGainNode) return;
+    resumeAudioContext(context);
+    const now = context.currentTime;
+    if (now - lastSwordSwingAt < SWORD_SWING_SOUND_MIN_GAP_SECONDS || activeSwordSwings >= SWORD_SWING_SOUND_MAX_VOICES) return;
+    swingNoise ??= swingNoiseBuffer(context);
+    const swing = scheduleSwordSwing(context, swingNoise, sfxGainNode, now);
+    if (!swing) return;
+    lastSwordSwingAt = now;
+    activeSwordSwings += 1;
+    swing.source.onended = () => {
+      activeSwordSwings = Math.max(0, activeSwordSwings - 1);
+      swing.source.disconnect();
+      swing.filter.disconnect();
+      swing.gain.disconnect();
+    };
+  }
+
   return {
     audio,
     get volume() { return volume; },
@@ -440,5 +509,6 @@ export function createMapMusicController(
     ensurePlaying,
     playDeathSound,
     playBowAttackSound,
+    playSwordAttackSound,
   };
 }

@@ -330,6 +330,15 @@ describe("chat channels", () => {
     h.window.dispatchEvent(new h.window.CustomEvent("wildwood:open-private-chat", { detail: { username: "Moss", identity: "friend" } }));
     expect(h.button("Private").textContent).toBe("Private");
   });
+  it("does not count a duel result as an unread private message", () => {
+    const h = setup();
+    vi.advanceTimersByTime(1_000);
+    h.coop.social.privateMessages.mockReturnValue([{ ...h.coop.social.privateMessages()[0], replayId: 7n }]);
+    h.coop.social.privateConversations = () => [{ identity: "friend", name: "Moss" }];
+    h.coop.social.revision = () => 2;
+    h.chat.refresh();
+    expect((h.button("Private").querySelector(".chat-channel-unread") as HTMLElement).hidden).toBe(true);
+  });
   it("keeps a private recipient pinned to identity after a username change", async () => {
     const h = setup();
     h.window.dispatchEvent(new h.window.CustomEvent("wildwood:open-private-chat", { detail: { username: "Moss" } }));

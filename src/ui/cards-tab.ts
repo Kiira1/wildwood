@@ -1,5 +1,5 @@
 import { CARDS, type CardDefinition } from "../../shared/cards";
-import { cardName } from "../../shared/card-text";
+import { cardName, mapName } from "../../shared/card-text";
 import { cardPortrait } from "./card-portrait";
 import { formatCompactNumber } from "./number-format";
 
@@ -36,6 +36,22 @@ export function cardTile(card: CardDefinition, count: number, onPick: () => void
 
 const NONE_SLOTTED: ReadonlySet<string> = new Set();
 
+/** A zone's heading across the grid: its name and how many of its cards are found, between two fading lines. */
+function zoneDivider(mapId: string, found: number, total: number) {
+  const divider = document.createElement("div");
+  divider.className = "cards-zone-divider";
+  divider.setAttribute("role", "heading");
+  divider.setAttribute("aria-level", "3");
+  const name = document.createElement("span");
+  name.className = "cards-zone-name";
+  name.textContent = mapName(mapId);
+  const count = document.createElement("span");
+  count.className = "cards-zone-count";
+  count.textContent = `${found} / ${total}`;
+  divider.append(name, count);
+  return divider;
+}
+
 /** The Cards tab: every card in map order, with the count held. A card held or slotted is found; the rest are shadows. */
 export function createCardsTab(options: {
   cards: () => Readonly<Record<string, number>>;
@@ -65,8 +81,16 @@ export function createCardsTab(options: {
     rendered = state;
     const found = (cardId: string) => (held[cardId] ?? 0) > 0 || slotted.has(cardId);
     count.textContent = `${ordered.filter(card => found(card.id)).length} / ${ordered.length} Found`;
-    grid.replaceChildren(...ordered.map(card =>
-      cardTile(card, held[card.id] ?? 0, () => options.onInspect(card.id, found(card.id)), found(card.id))));
+    const children: HTMLElement[] = [];
+    ordered.forEach((card, index) => {
+      // Map order keeps each zone's cards together; a divider opens each zone.
+      if (card.mapId !== ordered[index - 1]?.mapId) {
+        const zone = ordered.filter(other => other.mapId === card.mapId);
+        children.push(zoneDivider(card.mapId, zone.filter(other => found(other.id)).length, zone.length));
+      }
+      children.push(cardTile(card, held[card.id] ?? 0, () => options.onInspect(card.id, found(card.id)), found(card.id)));
+    });
+    grid.replaceChildren(...children);
   }
 
   return {

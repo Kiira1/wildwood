@@ -9,7 +9,7 @@ import { createCombatReport } from "./boss-combat";
 import { createDuelRuntime } from "./duel-runtime";
 import { MODULE_MIGRATION_VERSION } from "./module-migrations";
 import { criticalDamage } from "../../shared/critical-damage";
-import { RATING_MAX, attackIntervalForRating, critDamageForLevels, ratingForLevels, ratingLevels } from "../../shared/stat-rating";
+import { RATING_MAX, attackIntervalForRating, critDamageForLevels, ratingLevels } from "../../shared/stat-rating";
 import { withSoulStats } from "../../shared/soul-dimension";
 import { DEFAULT_ATTACK_INTERVAL } from "../../shared/rules";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
@@ -40,11 +40,12 @@ function boundDps(critDamage: number, critCap = 0, runRating = 0) {
 
 it("bounds kills by the capped critical, the run's crit rating and the soul's together", () => {
   const base = boundDps(0);
-  expect(boundDps(RATING_MAX) / base).toBeCloseTo(50 / 1.05);
-  expect(boundDps(ratingForLevels(10)) / base).toBeCloseTo(critDamageForLevels(10) / 1.05);
-  expect(boundDps(0, 0, ratingForLevels(10)) / base).toBeCloseTo(critDamageForLevels(10) / 1.05);
-  expect(boundDps(RATING_MAX, 3) / base).toBeCloseTo(80 / 1.05);
-  expect(boundDps(RATING_MAX, 5) / base).toBeCloseTo(100 / 1.05);
+  expect(boundDps(RATING_MAX) / base).toBeCloseTo(5 / 1.05);
+  // One level of crit is under the 5× cap, from the soul or from the run.
+  expect(boundDps(100) / base).toBeCloseTo(critDamageForLevels(1) / 1.05);
+  expect(boundDps(0, 0, 100) / base).toBeCloseTo(critDamageForLevels(1) / 1.05);
+  expect(boundDps(RATING_MAX, 3) / base).toBeCloseTo(8 / 1.05);
+  expect(boundDps(RATING_MAX, 5) / base).toBeCloseTo(10 / 1.05);
 });
 
 it("deals the capped critical in duels, the run's crit rating included", () => {
@@ -58,8 +59,8 @@ it("deals the capped critical in duels, the run's crit rating included", () => {
   };
   expect(duel(0)).toBeCloseTo(10.5);
   expect(duel(0, 0, 100)).toBeCloseTo(10 * critDamageForLevels(1));
-  expect(duel(RATING_MAX)).toBeCloseTo(500);
-  expect(duel(RATING_MAX, 1)).toBeCloseTo(600);
+  expect(duel(RATING_MAX)).toBeCloseTo(50);
+  expect(duel(RATING_MAX, 1)).toBeCloseTo(60);
 });
 
 it("raises the cap when Crit Cap research completes", () => {
@@ -95,8 +96,8 @@ it("migration 54 turns soul attack speed and crit damage into ratings, nobody we
   const mine = f.db.playerSoulStats.identity.find(f.ctx.sender);
   // 53 trimmed it to 100x with research and Keen Edge; 54 keeps 100x: the rating's top.
   expect(mine.critDamage).toBe(RATING_MAX);
-  // 1.05 + 60 was 61.05x (capped at 50 then as now): the rating gives exactly that.
-  expect(criticalDamage({ soul: f.db.playerSoulStats.identity.find(other).critDamage }).uncapped).toBeCloseTo(61.05, 6);
+  // 1.05 + 60 was 61.05x, past the curve's 10x top since 0.903.2: the rating is the top.
+  expect(criticalDamage({ soul: f.db.playerSoulStats.identity.find(other).critDamage }).uncapped).toBeCloseTo(10, 6);
   // A fresh run with this soul starts at 0.64 + 1 attacks a second, as it did.
   expect(1 / withSoulStats({ damage: 1, maxHp: 1, armor: 0, regen: 0, attackRate: DEFAULT_ATTACK_INTERVAL }, mine).attackRate).toBeCloseTo(1 / DEFAULT_ATTACK_INTERVAL + 1, 5);
   // This run at 1.5 a second plus the soul's 1 was 2.5: nobody plays slower than that (since 0.901.55 the soul adds flat on top).

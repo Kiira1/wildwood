@@ -16,7 +16,7 @@ describe("stat ratings", () => {
   it("closes 5% of the attack speed gap and 3% of the crit gap a map's worth, never reaching either cap", () => {
     for (const maps of [1, 5, 15, 65]) {
       expect(attacksPerSecondForRating(ratingForLevels(maps))).toBeCloseTo(CAP - (CAP - START) * .95 ** maps, 9);
-      expect(critDamageForLevels(maps)).toBeCloseTo(100 - 98.95 * .97 ** maps, 9);
+      expect(critDamageForLevels(maps)).toBeCloseTo(10 - 8.95 * .97 ** maps, 9);
     }
     expect(attacksPerSecondForRating(0)).toBeCloseTo(START, 12);
     expect(attacksPerSecondForRating(1e200)).toBeLessThan(CAP);
@@ -80,12 +80,13 @@ describe("stat ratings", () => {
   it("keeps research and Keen Edge worth their old bonus from nothing, a share closer on top of a rating, capped", () => {
     expect(criticalDamage({ researchRank: 20 }).multiplier).toBeCloseTo(2.05, 9);
     expect(criticalDamage({ researchRank: 20, perks: { keenEdge: 5 } }).multiplier).toBeCloseTo(2.65, 9);
-    const rated = criticalDamage({ rating: ratingForLevels(10) }).multiplier;
-    const withResearch = criticalDamage({ rating: ratingForLevels(10), researchRank: 20 }).multiplier;
+    // On the curve, before the cap.
+    const rated = criticalDamage({ rating: ratingForLevels(10) }).uncapped;
+    const withResearch = criticalDamage({ rating: ratingForLevels(10), researchRank: 20 }).uncapped;
     expect(withResearch).toBeCloseTo(critDamageForLevels(10 + critBonusLevels(1)), 9);
     expect(withResearch).toBeGreaterThan(rated);
-    expect(criticalDamage({ rating: RATING_MAX }).multiplier).toBe(50);
-    expect(criticalDamage({ rating: RATING_MAX, capRank: 5 }).multiplier).toBeLessThanOrEqual(100);
+    expect(criticalDamage({ rating: RATING_MAX }).multiplier).toBe(5);
+    expect(criticalDamage({ rating: RATING_MAX, capRank: 5 }).multiplier).toBeCloseTo(10, 9);
   });
 
   it("says Max once the rate reads the same as the cap", () => {

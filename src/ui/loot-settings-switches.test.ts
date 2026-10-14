@@ -42,7 +42,7 @@ it("shows both switches on for an account that never chose, with the hint under 
   expect(view.state("autoEquipBest")).toEqual(["true", "On"]);
   expect(view.button("autoKeepBest").querySelector("strong")!.textContent).toBe("Auto keep best copy");
   expect(view.button("autoKeepBest").querySelector(".loot-filter-detail")!.textContent)
-    .toBe("Replaces only unrefined, unlocked copies with better skill rolls. Other duplicates are discarded. Off = ask me.");
+    .toBe("Better skill rolls replace unrefined, unlocked copies; for refined or locked ones, you're asked. Worse duplicates are discarded. Off = ask me.");
   expect(view.button("autoEquipBest").querySelector("strong")!.textContent).toBe("Auto equip upgrades");
   expect(view.button("autoKeepBest").getAttribute("role")).toBe("switch");
 });

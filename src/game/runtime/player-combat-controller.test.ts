@@ -1001,6 +1001,17 @@ describe("native sword combat", () => {
       expect(state.player.swordSpinClock).toBe(0);
     }
   });
+  it("swishes on every sword swing, never with the bow's release sound", () => {
+    let now = 0;
+    const swish = vi.fn(), twang = vi.fn();
+    const state = createCombatHarness({ nowSeconds: () => now, equippedWeapon: () => "wooden_sword", random: () => 0,
+      playSwordAttackSound: swish, playBowAttackSound: twang });
+    spawn(state);
+    state.controller.attackNearest();
+    now = .2; state.controller.updateProjectiles(.2);
+    expect(swish).toHaveBeenCalledTimes(1);
+    expect(twang).not.toHaveBeenCalled();
+  });
   it("intercepts a projectile before damage and Reflect, then returns it through the reward path", () => {
     let now = 0;
     const kills = vi.fn();

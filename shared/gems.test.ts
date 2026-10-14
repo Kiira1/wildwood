@@ -8,6 +8,7 @@ import {
   UPGRADE_BENCH_THIRD_SLOT_GEM_COST,
   gemBalanceAfter,
   itemUpgradeSpeedUpGemCost,
+  bagSlotCapacity,
   inventorySlotCapacity,
   inventorySlotUnlockCost,
   researchSpeedUpGemCost,
@@ -42,6 +43,14 @@ describe("Gem balance rules", () => {
     expect(inventorySlotUnlockCost(0)).toBe(1n);
     expect(inventorySlotUnlockCost(1)).toBe(2n);
     expect(inventorySlotUnlockCost(2)).toBe(3n);
+  });
+
+  it("adds a Bag Slots research slot per rank on top of the bought ones, up to five", () => {
+    expect(bagSlotCapacity(0)).toBe(30);
+    expect(bagSlotCapacity(0, 2)).toBe(32);
+    expect(bagSlotCapacity(44, 5)).toBe(79);
+    expect(bagSlotCapacity(44, 9)).toBe(79);
+    expect(bagSlotCapacity(10, Number.NaN)).toBe(40);
   });
 
   it("prices research at one Gem per started ten-minute block", () => {

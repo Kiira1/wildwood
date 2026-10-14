@@ -290,7 +290,7 @@ describe("prestige perks in the stat panel", () => {
       sources: [{ label: "Tech", value: "+4%" }, { label: "Prestige", value: "+25%" }],
     });
     expect(rows.find((row) => row.kind === "critical-damage")).toMatchObject({
-      equationTotal: "1.80×", expandedDetail: "(1.80×) · 50× Cap", equationOperator: "+", multiplier: "0.75×",
+      equationTotal: "1.80×", expandedDetail: "(1.80×) · 5× Cap", equationOperator: "+", multiplier: "0.75×",
       sources: [{ label: "Tech", value: "+0.15×" }, { label: "Prestige", value: "+0.60×" }],
     });
   });
@@ -359,9 +359,9 @@ it("adds the soul stats in play to each row's base, before the multipliers, and 
   expect(row(soul, "damage")).toMatchObject({ base: "150", multiplier: "1.10", total: "165" });
   expect(row(soul, "damage").sources).toEqual([{ label: "Soul", value: "+50" }, { label: "Tech", value: "+10%" }]);
   expect(row(soul, "health")).toMatchObject({ base: "700", total: "700" });
-  // 100 soul rating gives what one level gives from nothing (3% of the way from 1.05× to 100×), flat.
-  expect(row(soul, "critical-damage")).toMatchObject({ equationTotal: "4.02×" });
-  expect(row(soul, "critical-damage").sources).toContainEqual({ label: "Soul", value: "+2.97×" });
+  // 100 soul rating gives what one level gives from nothing (3% of the way from 1.05× to 10×), flat.
+  expect(row(soul, "critical-damage")).toMatchObject({ equationTotal: "1.32×" });
+  expect(row(soul, "critical-damage").sources).toContainEqual({ label: "Soul", value: "+0.27×" });
   // None to add: the rows are as they were.
   expect(profileStatDisplayRows(profile, () => "0%", MIN_ATTACK_INTERVAL, undefined, 0, null, 1, null)).toEqual(plain);
 });
@@ -370,12 +370,13 @@ it("holds critical damage at the cap and says so, research a share closer on top
   const profile = { progress: { ...progress(), critRating: ratingForLevels(40) }, research: createEmptyResearchRanks(), itemUpgradeLevels: {} } as Parameters<typeof profileStatDisplayRows>[0];
   const row = (critCap: number, critDamage: number) => profileStatDisplayRows(profile, () => "0%", MIN_ATTACK_INTERVAL,
     { ...createEmptyResearchRanks(), criticalDamage: 20, critCap }, 0, null, 1, { critDamage }).find(entry => entry.kind === "critical-damage")!;
-  // Forty levels: 100 - 98.95 x 0.97^40 is 70.4x before research; the 50x cap holds it.
-  expect(row(0, 0)).toMatchObject({ equationTotal: "50.00×", multiplier: "48.95×", expandedDetail: "(50.00× Max) · 50× Cap" });
-  // Five Crit Cap ranks: 100x, which the curve never reaches.
+  // Forty levels: 10 - 8.95 x 0.97^40 is 7.35x before research; the 5x cap holds it.
+  expect(row(0, 0)).toMatchObject({ equationTotal: "5.00×", multiplier: "3.95×", expandedDetail: "(5.00× Max) · 5× Cap" });
+  // Five Crit Cap ranks: a 10x cap, which forty levels and research stay under.
   const open = row(5, 0);
-  expect(open.total).not.toContain("(Max)");
-  expect(Number.parseFloat(open.total)).toBeGreaterThan(70);
+  expect(open.expandedDetail).not.toContain("Max");
+  expect(Number.parseFloat(open.equationTotal!)).toBeGreaterThan(7);
+  expect(Number.parseFloat(open.equationTotal!)).toBeLessThan(10);
   expect(open.sources[0]).toMatchObject({ label: "Tech" });
 });
 

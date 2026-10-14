@@ -163,3 +163,21 @@ it("refuses to unequip into a full bag, counting kept copies, and unequips once 
   unequip();
   expect(move).toHaveBeenCalledWith(STARTER_STONE, "BAG");
 });
+
+it("adds Bag Slots research on top of the bought slots and keeps selling slots up to the Gem maximum", () => {
+  const ids = ["inventoryPanel", "inventoryItems", "inventoryCount", "equippedHeadSlot", "equippedChestSlot", "equippedFeetSlot", "equippedRightHandSlot", "inventoryEquipmentTab", "inventoryCosmeticsTab", "inventoryContent"];
+  const { document, window } = parseHTML(`<html><body>${ids.map(id => `<div id="${id}"></div>`).join("")}</body></html>`);
+  vi.stubGlobal("document", document); vi.stubGlobal("window", window);
+  const inventory = { itemIds: [STARTER_STONE, STARTER_BOW], equippedHead: "", equippedChest: "", equippedFeet: "", equippedRightHand: STARTER_STONE, equippedLeftHand: "", cosmeticHead: "", cosmeticChest: "", cosmeticFeet: "", cosmeticRightHand: "", cosmeticLeftHand: "", selectedItemId: "", selectedItemLocation: "" as const };
+  let bought = 0;
+  const controller = createInventoryController({ inventory, move: () => false, moveCosmetic: () => false, toggleCosmeticVisibility: () => false,
+    upgradeLevel: () => 0, itemInspection: { close() {}, open() {} } as any, inventorySlotsUnlocked: () => bought, researchBagSlots: () => 5, gemBalance: () => 0n,
+    destroyEquipment: async () => undefined, unlockInventorySlot: async () => undefined, showMessage() {} });
+  controller.render();
+  expect(document.getElementById("inventoryCount")!.textContent).toBe("1 / 35 Items");
+  expect(document.querySelector("#inventoryItems .is-locked")).not.toBeNull();
+  bought = 44;
+  controller.render();
+  expect(document.getElementById("inventoryCount")!.textContent).toBe("1 / 79 Items");
+  expect(document.querySelector("#inventoryItems .is-locked")).toBeNull();
+});

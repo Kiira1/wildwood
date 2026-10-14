@@ -9,13 +9,14 @@ import type { PlayerState } from "../types";
 import { createMiningRuntime, type MiningSource } from "./mining-runtime";
 import type { InventoryState } from "../../inventory";
 import type { OreCounts } from "../../../../shared/ore-bag";
-import { inventorySlotCapacity } from "../../../../shared/gems";
+import { bagSlotCapacity } from "../../../../shared/gems";
 
 export type TownSource = MiningSource & {
   /** What the bag holds besides its items: kept copies, ore stacks, and how many slots are bought. */
   equipmentCopies?: () => readonly unknown[];
   ores?: () => OreCounts;
   inventorySlotsUnlocked?: () => number;
+  research?: () => { inventorySlots?: number };
   fallIntoWell?: () => Promise<boolean>;
   useTownDoor?: (door: number) => Promise<boolean>;
   /** A movement packet; forced, it is sent whatever the sparse-movement rules would hold back. */
@@ -135,7 +136,7 @@ export function createTownRuntime(deps: {
     return {
       owned: inventory.itemIds, ores: current.ores?.() ?? {}, extraCopies: current.equipmentCopies?.().length ?? 0,
       equipped: [inventory.equippedHead, inventory.equippedChest, inventory.equippedFeet, inventory.equippedRightHand, inventory.equippedLeftHand],
-      capacity: inventorySlotCapacity(current.inventorySlotsUnlocked?.() ?? 0),
+      capacity: bagSlotCapacity(current.inventorySlotsUnlocked?.() ?? 0, current.research?.().inventorySlots ?? 0),
     };
   };
   const mining = createMiningRuntime({ source, player: deps.player, message: deps.message, logPickup: deps.logPickup, burst: deps.burst, bag });

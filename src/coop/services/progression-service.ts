@@ -490,6 +490,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
       utilityMoveSpeed: row.utilityMoveSpeed ?? 0,
       utilityAttackRange: row.utilityAttackRange ?? 0,
       critCap: row.critCap ?? 0,
+      inventorySlots: row.inventorySlots ?? 0,
     };
     researchByIdentity.set(identity, research);
     if (identity !== dependencies.localIdentity()) {

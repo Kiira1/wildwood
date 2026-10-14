@@ -38,14 +38,13 @@ export function createChatUnreadTracker(startedAtMs = Date.now()) {
       hydrateGuild = false;
       for (const [identity, rows] of conversations) collect(`private:${identity}`, rows);
       initialized = true;
-      const counts: ChatUnreadCounts = { world: 0, guild: 0, private: 0, conversations: new Map() };
-      for (const [key, state] of channels) {
-        if (key === "world") counts.world = state.count;
-        else if (key === "guild") counts.guild = state.count;
-        else {
-          counts.private += state.count;
-          if (state.count) counts.conversations.set(key.slice("private:".length), state.count);
-        }
+      const counts: ChatUnreadCounts = { world: channels.get("world")?.count ?? 0, guild: channels.get("guild")?.count ?? 0, private: 0, conversations: new Map() };
+      // Only listed conversations count: one that left the list (an expired duel result, a blocked player)
+      // can no longer be opened to clear it. Its cursor is kept, so a reconnect does not count it again.
+      for (const identity of conversations.keys()) {
+        const count = channels.get(`private:${identity}`)?.count ?? 0;
+        counts.private += count;
+        if (count) counts.conversations.set(identity, count);
       }
       return counts;
     },

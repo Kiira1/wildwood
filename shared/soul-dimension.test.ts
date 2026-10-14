@@ -133,13 +133,13 @@ it("keeps soul attack speed and crit damage as rating points, never past the rat
 });
 
 describe("soul crit damage at the old pace (0.901.47.1)", () => {
-  it("adds 0.002x crit damage a kill even near 100x, where a point of rating did nothing", () => {
-    const at50 = ratingForLevels(critDamageLevelsFor(50));
-    expect(critDamageForLevels(ratingLevels(soulCritRatingAfterKills(at50, 1)))).toBeCloseTo(50.002, 6);
-    expect(critDamageForLevels(ratingLevels(soulCritRatingAfterKills(at50, 1_000)))).toBeCloseTo(52, 6);
-    // 50x to 100x is 25,000 kills, as it was.
-    expect(soulCritRatingAfterKills(at50, 25_000)).toBe(RATING_MAX);
-    expect(critDamageForLevels(ratingLevels(soulCritRatingAfterKills(at50, 24_990)))).toBeLessThan(100);
+  it("adds 0.002x crit damage a kill even near the curve's top, where a point of rating did nothing", () => {
+    const at5 = ratingForLevels(critDamageLevelsFor(5));
+    expect(critDamageForLevels(ratingLevels(soulCritRatingAfterKills(at5, 1)))).toBeCloseTo(5.002, 6);
+    expect(critDamageForLevels(ratingLevels(soulCritRatingAfterKills(at5, 1_000)))).toBeCloseTo(7, 6);
+    // 5x to the 10x top is 2,500 kills.
+    expect(soulCritRatingAfterKills(at5, 2_500)).toBe(RATING_MAX);
+    expect(critDamageForLevels(ratingLevels(soulCritRatingAfterKills(at5, 2_490)))).toBeLessThan(10);
   });
 });
 

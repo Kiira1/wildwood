@@ -527,8 +527,10 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
       if (unreadKey !== unreadInputs || !unreadCounts) {
         unreadInputs = unreadKey;
         const eligibleUnread = (rows: ChatMessage[]) => rows.filter(message => !coop?.isPlayerBlocked?.(message.sender));
+        // A duel result is a record of a fight the player just saw, with its replay: it does not ask to be read.
+        const privateUnread = (rows: ChatMessage[]) => eligibleUnread(rows).filter(message => !(message.replayId > 0n));
         unreadCounts = unread.refresh(identity, eligibleUnread(guildRows),
-          new Map(privateRows.map(([person, rows]) => [person, eligibleUnread(rows)])),
+          new Map(privateRows.map(([person, rows]) => [person, privateUnread(rows)])),
           readConversation,
           eligibleUnread(worldRows).filter(message => shouldShowGlobalChatMessage(message.senderName)));
       }

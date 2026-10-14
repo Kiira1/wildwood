@@ -59,10 +59,16 @@ export function createTechTreeLayout(tree: ResearchTree = "power"): TechTreeLayo
       [node("utilityAttackRange")],
       // Both hang behind Attack Range: Enemy Respawn's second band and Crit Cap.
       [node("enemyRespawn", 1), node("critCap")],
+      // Also behind Attack Range, in a row of its own: a row holds two nodes at most.
+      [node("inventorySlots")],
     ];
+    // Each line runs from a node's real prerequisites, so a node two rows down is not drawn behind the row between.
     const paths: TechTreeLayout["paths"] = [];
-    for (let row = 0; row < rows.length - 1; row += 1) {
-      for (const from of rows[row]) for (const to of rows[row + 1]) paths.push([from.id, to.id]);
+    for (const to of rows.flat()) {
+      const definition = RESEARCH_DEFINITIONS[to.researchId];
+      const from = to.rankBandIndex > 0 ? Object.keys(definition.laterBandPrerequisites ?? {})
+        : [...Object.keys(definition.prerequisites ?? {}), ...(definition.prerequisiteAny ?? [])];
+      for (const id of from) paths.push([`tech-utility-${id}`, to.id]);
     }
     return { rows, nodes: rows.flat(), paths };
   }

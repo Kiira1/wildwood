@@ -13,7 +13,7 @@ const DEFAULT_SETTINGS: LootSettings = { autoKeepBest: true, autoEquipBest: true
 
 /** The switches, in order, with the line under each. */
 export const LOOT_SETTING_SWITCHES: readonly { setting: LootSetting; label: string; hint: string }[] = [
-  { setting: "autoKeepBest", label: "Auto keep best copy", hint: "Replaces only unrefined, unlocked copies with better skill rolls. Other duplicates are discarded. Off = ask me." },
+  { setting: "autoKeepBest", label: "Auto keep best copy", hint: "Better skill rolls replace unrefined, unlocked copies; for refined or locked ones, you're asked. Worse duplicates are discarded. Off = ask me." },
   { setting: "autoEquipBest", label: "Auto equip upgrades", hint: "Counts refines and bow skills. Keeps your weapon type; replaced gear stays in your bag." },
 ];
 

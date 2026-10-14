@@ -13,7 +13,11 @@ import {
   DEFAULT_SFX_VOLUME,
   musicGainForSource,
   musicSourceForMap,
+  scheduleSwordSwing,
   SIGN_IN_MUSIC_SOURCE,
+  swingNoiseBuffer,
+  SWORD_SWING_SOUND_GAIN,
+  SWORD_SWING_SOUND_SECONDS,
 } from "./audio";
 import {
   ADVANCED_LAVA_WASTES_MAP_ID,
@@ -349,5 +353,29 @@ describe("compact music downloads", () => {
     for (const track of ["desert", "forest", "lava", "night-forest", "signin", "snow"]) {
       expect(existsSync(new URL(`../../../public/assets/wildstat/audio/${track}.m4a`, import.meta.url))).toBe(true);
     }
+  });
+});
+
+describe("sword swing", () => {
+  it("sweeps a noise burst down through a band-pass, peaking at its gain and ending on time", () => {
+    const calls: string[] = [];
+    const param = (name: string) => ({ value: 0,
+      setValueAtTime: (value: number, at: number) => calls.push(`${name} set ${value} @${at}`),
+      exponentialRampToValueAtTime: (value: number, at: number) => calls.push(`${name} ramp ${value} @${at}`) });
+    const node = <T extends object>(extra: T) => ({ connect: vi.fn(), disconnect: vi.fn(), ...extra });
+    const filter = node({ type: "", Q: { value: 0 }, frequency: param("frequency") });
+    const gain = node({ gain: param("gain") });
+    const source = node({ buffer: null as unknown, start: vi.fn(), stop: vi.fn() });
+    const context = { sampleRate: 1_000, createBuffer: (_channels: number, length: number) => ({ length, getChannelData: () => new Float32Array(length) }),
+      createBufferSource: () => source, createBiquadFilter: () => filter, createGain: () => gain } as unknown as BaseAudioContext;
+    const noise = swingNoiseBuffer(context);
+    expect(noise.length).toBe(Math.ceil(1_000 * SWORD_SWING_SOUND_SECONDS));
+    expect(scheduleSwordSwing(context, noise, {} as AudioNode, 2, 0)).not.toBeNull();
+    expect(filter.type).toBe("bandpass");
+    expect(calls).toContain("frequency set 1700 @2");
+    expect(calls).toContain(`frequency ramp ${1700 * .3} @${2 + SWORD_SWING_SOUND_SECONDS}`);
+    expect(calls).toContain(`gain ramp ${SWORD_SWING_SOUND_GAIN} @${2 + .025}`);
+    expect(source.start).toHaveBeenCalledWith(2);
+    expect(source.stop).toHaveBeenCalledWith(2 + SWORD_SWING_SOUND_SECONDS + .02);
   });
 });

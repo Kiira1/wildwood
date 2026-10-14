@@ -29,11 +29,11 @@ it('reads attack speed and crit damage like armor: their number, and what it giv
     coop: () => ({ localIdentity: () => 'alice', isConnected: () => true, accountState: () => ({ signedIn: true }), prestige: () => ({ level: 0 }) }),
     hasStarted: () => true, isLoadedFor: () => true, inTutorial: () => false, player, inventory: {},
     displayedProgress: stats => stats, researchRanks: () => ({}) as never, kills: () => 0,
-    attackCap: () => MIN_ATTACK_INTERVAL, critParts: () => ({ rating: 100, soul: 50 }),
+    attackCap: () => MIN_ATTACK_INTERVAL, critParts: () => ({ rating: 50, soul: 25 }),
   });
   const snapshot = read()!;
   expect(snapshot.values.attackSpeed).toBeCloseTo(300, 6);
-  expect(snapshot.values.critDamage).toBe(150);
+  expect(snapshot.values.critDamage).toBe(75);
   expect(snapshot.details.attackSpeed).toMatch(/^\d+\.\d{2}\/s$/);
   expect(snapshot.details.critDamage).toMatch(/^\d+\.\d{2}×$/);
   expect(snapshot.details.armor).toMatch(/^\d+(\.\d+)?% Block$/);

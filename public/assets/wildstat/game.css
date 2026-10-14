@@ -4949,3 +4949,9 @@ html.text-outline-shadow .death-countdown { text-shadow: var(--text-outline-ring
 .aggro-pick-done { min-height: 44px; margin: 0; font-size: 16px; }
 .aggro-pick-done:disabled { filter: grayscale(.8); opacity: .5; }
 .enemy-index-table td.enemy-index-loading { padding: 14px 4px; color: #8c94a1; text-align: center; font-weight: 700; }
+
+/* The pickaxe's Tool slot: small, in the character stage's free bottom-left corner. */
+.inventory-loadout .equipment-slot.slot-tool { z-index: 2; grid-column: 2; grid-row: 2; align-self: end; justify-self: start; width: 44px; height: 44px; min-height: 0; margin: 0 0 4px 4px; padding: 2px; grid-template-rows: minmax(0, 1fr); }
+.inventory-loadout .equipment-slot.slot-tool[hidden] { display: none; }
+.inventory-loadout .equipment-slot.slot-tool > span:not(.slot-tool-art) { place-self: center; font-size: var(--font-readable-min); }
+.inventory-loadout .slot-tool .slot-tool-art { width: 100%; height: 100%; margin: 0; background: center / contain no-repeat; transform: rotate(-35deg); }

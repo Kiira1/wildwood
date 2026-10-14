@@ -14,7 +14,7 @@ import { withinStationReach } from "./door-reach";
 import { readPlayerProgress } from "./wide-stats";
 import { addOres, oreCountsFor } from "./item-refine";
 import { extraCopiesOf } from "./equipment-copies";
-import { inventorySlotCapacity } from "../../shared/gems";
+import { bagCapacityFor } from "./bag-capacity";
 import { bagFullForOres, rockOreKinds, roomForOres } from "../../shared/ore-bag";
 
 /**
@@ -144,7 +144,7 @@ export function mineNodeFor(ctx: Ctx, args: { nodeId: number }, deps: MiningDeps
   const { needed, room } = roomForOres({
     owned: progress && deps.inventoryForProgress ? deps.inventoryForProgress(progress) : [], equipped: progress ? equippedFields(progress) : [],
     extraCopies: extraCopiesOf(ctx, ctx.sender).length, ores: oreCountsFor(ctx, ctx.sender),
-    capacity: inventorySlotCapacity(ctx.db.playerInventoryCapacity.identity.find(ctx.sender)?.slotsUnlocked ?? 0),
+    capacity: bagCapacityFor(ctx, ctx.sender),
   }, rockOreKinds(node));
   if (!room) throw new SenderError(bagFullForOres(needed));
   pruneMinedNodes(ctx, ctx.sender);

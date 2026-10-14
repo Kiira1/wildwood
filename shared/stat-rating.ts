@@ -9,7 +9,7 @@ import { DEFAULT_ATTACK_INTERVAL, MAX_BASE_ATTACKS_PER_SECOND, MIN_ATTACK_INTERV
  * what is left to the cap:
  *
  *   attacks/s = 3     - (3     - 0.641) x 0.95 ^ level    (5% closer a level)
- *   crit      = 100   - (100   - 1.05 ) x 0.97 ^ level    (3% closer a level)
+ *   crit      = 10    - (10    - 1.05 ) x 0.97 ^ level    (3% closer a level)
  *
  * Each map's attack speed and crit camps pay so that a map's worth of kills
  * (RATING_MAP_WORTH_KILLS) doubles the rating: one level a map, so 5% / 3%
@@ -28,7 +28,8 @@ export const RATING_MAX = 1e300;
 export const ATTACK_SPEED_CLOSER = .05;
 export const CRIT_DAMAGE_CLOSER = .03;
 export const CRIT_DAMAGE_START = 1.05;
-export const CRIT_DAMAGE_TARGET = 100;
+/** Since 0.903.2 the curve closes in on 10x, the highest Crit Cap; it was 100x, which made one level about 4x. */
+export const CRIT_DAMAGE_TARGET = 10;
 export const ATTACK_SPEED_START = 1 / DEFAULT_ATTACK_INTERVAL;
 const CRIT_GAP = CRIT_DAMAGE_TARGET - CRIT_DAMAGE_START;
 

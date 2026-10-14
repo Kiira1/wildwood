@@ -17,7 +17,8 @@ describe("card text", () => {
     expect(cardEffectText({ effect: "raceSlayer", value: 9, mapId: "beginner_desert" })).toBe("Damage to Beginner Desert enemies +9%");
     expect(cardEffectText({ effect: "statGain", value: 4, stat: "health" })).toBe("Max Health from kills +4%");
     expect(cardEffectText({ effect: "burn", value: 100, share: .3 })).toBe("Every hit burns: 30% of the hit over 3s");
-    expect(cardEffectText({ effect: "splash", value: 60, chance: 15 })).toBe("15% chance to strike every enemy near the target for 60%");
+    expect(cardEffectText({ effect: "splash", value: 60, chance: 15 })).toBe("15% chance a hit also deals 60% of its damage to every enemy near the target");
+    expect(cardEffectText({ effect: "splash", value: 10 })).toBe("Every hit also deals 10% of its damage to enemies near the target");
     expect(cardEffectText({ effect: "chainLightning", value: 20, targets: 3, share: .7 })).toBe("20% chance to arc to 3 more enemies for 70%");
   });
 

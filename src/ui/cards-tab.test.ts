@@ -1,6 +1,6 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { parseHTML } from "linkedom";
-import { createCardsTab } from "./cards-tab";
+import { byMapThenRarity, createCardsTab } from "./cards-tab";
 import { createInventoryController } from "./inventory-controller";
 import { createItemInspectionController } from "./item-inspection-controller";
 import { formatCompactNumber } from "./number-format";
@@ -71,6 +71,19 @@ it("shows every card in map order, regular before elite before boss: found ones 
   tab.render();
   expect(found()).toEqual([]);
   expect(tab.element.querySelector(".cards-tab-count")!.textContent).toBe(`0 / ${CARDS.length} Found`);
+});
+
+it("heads each zone's cards with its name and how many of them are found", () => {
+  page();
+  const tab = createCardsTab({ cards: () => ({ spitter_card: 3, needle_card: 1, dragon_card: 1 }), onInspect: () => undefined });
+  tab.show(true);
+  const dividers = [...tab.element.querySelectorAll<HTMLElement>(".cards-zone-divider")];
+  expect(dividers).toHaveLength(new Set(CARDS.map(card => card.mapId)).size);
+  expect(dividers[0].querySelector(".cards-zone-name")!.textContent).toBe("Tutorial Forest");
+  expect(dividers[0].querySelector(".cards-zone-count")!.textContent).toBe(`3 / ${CARDS.filter(card => card.mapId === "tutorial_forest").length}`);
+  expect(dividers[0].getAttribute("role")).toBe("heading");
+  // Each divider sits right before its zone's first card.
+  expect(dividers[1].nextElementSibling!.getAttribute("data-card-id")).toBe(CARDS.filter(card => card.mapId === "beginner_desert").sort(byMapThenRarity)[0].id);
 });
 
 it("puts a Cards tab beside Equipment and Cosmetics that swaps the loadout and bag for the cards", () => {
@@ -155,4 +168,28 @@ it("hands each card found to the card moment, in the order found, with its portr
   await vi.waitFor(() => expect(shown).toHaveLength(2));
   expect(shown.map(found => found.cardId)).toEqual(["needle_card", "dragon_card"]);
   expect(shown.every(found => typeof found.artSource === "string")).toBe(true);
+});
+
+it("shows the pickaxe in the loadout's Tool slot, never to be equipped, and says what it does", () => {
+  const { document } = page(INVENTORY_PANEL);
+  const inventory = { itemIds: [STARTER_STONE], equippedHead: "", equippedChest: "", equippedFeet: "", equippedRightHand: STARTER_STONE, equippedLeftHand: "", cosmeticHead: "", cosmeticChest: "", cosmeticFeet: "", cosmeticRightHand: "", cosmeticLeftHand: "", selectedItemId: "", selectedItemLocation: "" as const };
+  let owned = false;
+  const messages: string[] = [];
+  const controller = createInventoryController({ inventory, move: () => false, moveCosmetic: () => false, toggleCosmeticVisibility: () => false,
+    upgradeLevel: () => 0, inventorySlotsUnlocked: () => 0, gemBalance: () => 0n, hasPickaxe: () => owned,
+    itemInspection: { close() {}, open() { return true; } } as any,
+    destroyEquipment: async () => undefined, unlockInventorySlot: async () => undefined, showMessage: (message: string) => { messages.push(message); } });
+  controller.render();
+  const tool = document.querySelector<HTMLButtonElement>(".inventory-loadout .slot-tool")!;
+  expect(tool.textContent).toBe("TOOL");
+  tool.click();
+  expect(messages.at(-1)).toBe("Get a pickaxe from the Smith in Town.");
+  owned = true;
+  controller.render();
+  expect(tool.classList.contains("is-equipped")).toBe(true);
+  expect(tool.getAttribute("aria-label")).toBe("Tool: Pickaxe, always ready");
+  tool.click();
+  expect(messages.at(-1)).toContain("no need to equip");
+  document.getElementById("inventoryCosmeticsTab")!.click();
+  expect(tool.hidden).toBe(true);
 });

@@ -2435,6 +2435,7 @@ export const PlayerResearch = __t.object("PlayerResearch", {
   utilityMoveSpeed: __t.u32(),
   utilityAttackRange: __t.u32(),
   critCap: __t.u32(),
+  inventorySlots: __t.u32(),
 });
 export type PlayerResearch = __Infer<typeof PlayerResearch>;
 

@@ -1,3 +1,5 @@
+import { RESEARCH_DEFINITIONS } from "./research";
+
 /** Currency rules shared by the browser and authoritative server module. */
 export const GEM_CURRENCY_ID = "gems";
 export const GEM_DISPLAY_NAME = "Gems";
@@ -32,6 +34,13 @@ export function normalizedInventorySlotsUnlocked(value: unknown) {
 
 export function inventorySlotCapacity(slotsUnlocked: unknown) {
   return BASE_INVENTORY_SLOT_CAPACITY + normalizedInventorySlotsUnlocked(slotsUnlocked);
+}
+
+/** The bag's size: the slots bought, then one more for each Bag Slots research rank, on top of the Gem maximum. */
+export function bagSlotCapacity(slotsUnlocked: unknown, researchRank: unknown = 0) {
+  const research = Number.isFinite(researchRank)
+    ? Math.max(0, Math.min(RESEARCH_DEFINITIONS.inventorySlots.maxRank, Math.floor(Number(researchRank)))) : 0;
+  return inventorySlotCapacity(slotsUnlocked) + research;
 }
 
 /** The first extra bag slot costs one Gem, the second two, and so on. */

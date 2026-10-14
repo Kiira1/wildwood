@@ -7,6 +7,7 @@ import { bowSkillKey, bowSkillRollFor, duelBowSkillFields } from "./bow-skills";
 import { offerDuplicateEquipment, offerItemForFullBag, publishItemDrop } from "./equipment-copies";
 import { gearSlotsFor } from "./gear-cards";
 import { inventoryForProgress } from "./progress-helpers";
+import { createEmptyResearchRanks } from "../../shared/research";
 import {
   EQUIPMENT_OFFER_LIFETIME_MS, MAX_PENDING_EQUIPMENT_OFFERS, bagSlotsUsed, isDuplicateOfferItem,
 } from "../../shared/equipment-copies";
@@ -206,6 +207,16 @@ it("offers every new drop when the bag is full, and Keep makes one the first cop
   expect(inventory(f)).toContain("crystal_bow");
   // It rolls its slots as a drop does: 100 of 1,000 is no slot.
   expect(gearSlotsFor(f.ctx, f.ctx.sender, "crystal_bow")).toEqual({ slots: 0, cards: [] });
+});
+
+it("counts Bag Slots research as room for a new drop", () => {
+  const f = archer({ damage: 1e15 });
+  luckyRandom(f);
+  fillBag(f, 0);
+  f.seed("playerResearch", { identity: f.ctx.sender, frontierMastery: 0, ...createEmptyResearchRanks(), inventorySlots: 1 });
+  fillDefeatBudget(f, "crystal_hollows", "Shard Hopper");
+  reportEnemy(f, "Shard Hopper", 1);
+  expect(NEW_CRYSTAL_GEAR.filter(itemId => inventory(f).includes(itemId))).toHaveLength(1);
 });
 
 it("waits once for gear without skills, but offers each weapon roll, when the bag is full", () => {
