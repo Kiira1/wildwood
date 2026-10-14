@@ -1,6 +1,8 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
   "0.903.7": [
     "Controller support, and a Controls tab in Settings to remap keys and buttons",
+    "Replay the tutorial from Settings, now with a narrator",
+    "A smoother sword swing sound",
   ],
   "0.903.6": [
     "Attack speed is no longer held at 6.00/s when Quick Draw cards raise the cap",

@@ -3,7 +3,7 @@ import { controlsTabUseful, createControlsSettings } from './controls-settings';
 import { onGamepadChange } from './gamepad-controls';
 
 const SETTINGS_GROUPS = [
-  { id: "game", label: "Game", selectors: ["#toolbarHapticsToggle", "#selfProfileTapToggle", "#scientificNotationToggle", "#statPopupsToggle", "#enemyHpNumbersToggle", "#attackRangeToggle", "#remoteGhostsToggle", "#cameraZoomToggle", "#highResolutionToggle", "#chatToggle", "#chatTimestampsToggle", "#statTrackerToggle", "#baseStatRewardsToggle", "#gameTickerToggle", "#fullscreenToggle", "#keepScreenOnToggle", "#lowPerformanceToggle", "#fpsToggle", "#latencyToggle"] },
+  { id: "game", label: "Game", selectors: ["#toolbarHapticsToggle", "#selfProfileTapToggle", "#scientificNotationToggle", "#statPopupsToggle", "#enemyHpNumbersToggle", "#attackRangeToggle", "#remoteGhostsToggle", "#cameraZoomToggle", "#highResolutionToggle", "#chatToggle", "#chatTimestampsToggle", "#statTrackerToggle", "#baseStatRewardsToggle", "#gameTickerToggle", "#fullscreenToggle", "#keepScreenOnToggle", "#lowPerformanceToggle", "#fpsToggle", "#latencyToggle", "#replayTutorialRow"] },
   { id: "controls", label: "Controls", selectors: ["#controlsSettings"] },
   { id: "audio", label: "Audio", selectors: ["#musicVolume", "#sfxVolume"] },
   { id: "account", label: "Account", selectors: ["#offlineProgressToggle", "#accountButton", "#accountStatus", ".setting-support", ".setting-legal", "#developerSettingsRow", ".setting-reset"] },
@@ -57,6 +57,20 @@ export function installSettingsTabs(doc: Document) {
   }
   settings.append(privacy);
   settings.append(createControlsSettings(doc));
+  if (!doc.getElementById("replayTutorialRow")) {
+    const row = doc.createElement("div");
+    row.className = "setting-row";
+    row.id = "replayTutorialRow";
+    const label = doc.createElement("span");
+    label.textContent = "Tutorial";
+    const button = doc.createElement("button");
+    button.id = "replayTutorialBtn";
+    button.type = "button";
+    button.className = "setting-toggle";
+    button.textContent = "Replay";
+    row.append(label, button);
+    settings.append(row);
+  }
   const tablist = doc.createElement("div");
   tablist.id = "settingsTabs";
   tablist.className = "settings-tabs";

@@ -16,8 +16,12 @@ import {
   scheduleSwordSwing,
   SIGN_IN_MUSIC_SOURCE,
   swingNoiseBuffer,
+  SWORD_SWING_PITCH_MIN,
   SWORD_SWING_SOUND_GAIN,
+  SWORD_SWING_SOUND_MIN_SECONDS,
   SWORD_SWING_SOUND_SECONDS,
+  swordSwingLevel,
+  swordSwingSeconds,
 } from "./audio";
 import {
   ADVANCED_LAVA_WASTES_MAP_ID,
@@ -357,25 +361,43 @@ describe("compact music downloads", () => {
 });
 
 describe("sword swing", () => {
-  it("sweeps a noise burst down through a band-pass, peaking at its gain and ending on time", () => {
+  it("sweeps a low band up and back down under a rounded swell, pitched down only, and ending on time", () => {
     const calls: string[] = [];
     const param = (name: string) => ({ value: 0,
       setValueAtTime: (value: number, at: number) => calls.push(`${name} set ${value} @${at}`),
-      exponentialRampToValueAtTime: (value: number, at: number) => calls.push(`${name} ramp ${value} @${at}`) });
+      exponentialRampToValueAtTime: (value: number, at: number) => calls.push(`${name} ramp ${value} @${at}`),
+      setValueCurveAtTime: (values: Float32Array, at: number, seconds: number) => calls.push(`${name} curve max ${Math.max(...values).toFixed(3)} @${at} for ${seconds}`) });
     const node = <T extends object>(extra: T) => ({ connect: vi.fn(), disconnect: vi.fn(), ...extra });
-    const filter = node({ type: "", Q: { value: 0 }, frequency: param("frequency") });
+    const filters = [node({ type: "", Q: { value: 0 }, frequency: param("frequency") }), node({ type: "", Q: { value: 0 }, frequency: param("lowpass") })];
+    const [filter, lowpass] = filters;
     const gain = node({ gain: param("gain") });
     const source = node({ buffer: null as unknown, start: vi.fn(), stop: vi.fn() });
+    let next = 0;
     const context = { sampleRate: 1_000, createBuffer: (_channels: number, length: number) => ({ length, getChannelData: () => new Float32Array(length) }),
-      createBufferSource: () => source, createBiquadFilter: () => filter, createGain: () => gain } as unknown as BaseAudioContext;
+      createBufferSource: () => source, createBiquadFilter: () => filters[next++], createGain: () => gain } as unknown as BaseAudioContext;
     const noise = swingNoiseBuffer(context);
-    expect(noise.length).toBe(Math.ceil(1_000 * SWORD_SWING_SOUND_SECONDS));
-    expect(scheduleSwordSwing(context, noise, {} as AudioNode, 2, 0)).not.toBeNull();
-    expect(filter.type).toBe("bandpass");
-    expect(calls).toContain("frequency set 1700 @2");
-    expect(calls).toContain(`frequency ramp ${1700 * .3} @${2 + SWORD_SWING_SOUND_SECONDS}`);
-    expect(calls).toContain(`gain ramp ${SWORD_SWING_SOUND_GAIN} @${2 + .025}`);
+    expect(noise.length).toBe(Math.ceil(1_000 * (SWORD_SWING_SOUND_SECONDS + .05)));
+    expect(scheduleSwordSwing(context, noise, {} as AudioNode, 2, 1, .2)).not.toBeNull();
+    expect([filter.type, lowpass.type]).toEqual(["bandpass", "lowpass"]);
+    expect(calls).toContain("frequency set 380 @2");
+    expect(calls).toContain(`frequency ramp ${380 * 2.2} @${2 + .2 * .4}`);
+    expect(calls).toContain(`frequency ramp ${380 * .7} @${2.2}`);
+    expect(calls).toContain(`gain curve max ${SWORD_SWING_SOUND_GAIN.toFixed(3)} @2 for 0.2`);
     expect(source.start).toHaveBeenCalledWith(2);
-    expect(source.stop).toHaveBeenCalledWith(2 + SWORD_SWING_SOUND_SECONDS + .02);
+    expect(source.stop).toHaveBeenCalledWith(2.2 + .02);
+    // The lowest roll only pitches down.
+    next = 0; calls.length = 0;
+    scheduleSwordSwing(context, noise, {} as AudioNode, 3, 0);
+    expect(calls).toContain(`frequency set ${380 * SWORD_SWING_PITCH_MIN} @3`);
+  });
+
+  it("shortens the swoosh for fast swings, within its bounds", () => {
+    expect(swordSwingSeconds()).toBe(SWORD_SWING_SOUND_SECONDS);
+    expect(swordSwingSeconds(1)).toBe(SWORD_SWING_SOUND_SECONDS);
+    expect(swordSwingSeconds(1 / 6)).toBeCloseTo(1.3 / 6);
+    expect(swordSwingSeconds(.05)).toBe(SWORD_SWING_SOUND_MIN_SECONDS);
+    // Full volume up to three swings a second, then quieter so the stream stays as loud.
+    expect([swordSwingLevel(), swordSwingLevel(1), swordSwingLevel(1 / 3)]).toEqual([1, 1, 1]);
+    expect(swordSwingLevel(1 / 6)).toBeCloseTo(Math.SQRT1_2);
   });
 });

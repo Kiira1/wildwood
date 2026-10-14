@@ -7,7 +7,7 @@ import { createEnemyLifecycle } from "../game/runtime/enemies/enemy-lifecycle";
 import { ONBOARDING_MAP_ID, ONBOARDING_WORLD, ONBOARDING_STEP as S, ONBOARDING_ENEMY_POSITION } from "../../shared/onboarding";
 afterEach(() => vi.unstubAllGlobals());
 const settle = async () => { for (let i = 0; i < 8; i++) await Promise.resolve(); };
-function fixture(initial = 1) {
+function fixture(initial = 1, replay = false) {
   const { document } = parseHTML('<html><body><canvas id="game"></canvas></body></html>');
   vi.stubGlobal("document", document); vi.stubGlobal("navigator", { maxTouchPoints: 1 });
   const { player, enemies, spawnSites: sites } = createGameBootstrap();
@@ -22,19 +22,20 @@ function fixture(initial = 1) {
   const logPickup = vi.fn(), clearInput = vi.fn(), closeWindows = vi.fn(), waitForNameSave = vi.fn(async () => {});
   const clearCombat = vi.fn(), finish = vi.fn(), setName = vi.fn(async () => ({ ok: true })), cancel = vi.fn();
   const fadeToWorld = vi.fn((action: () => void | Promise<void>) => { void action(); });
+  const stopVoice = vi.fn(), playWelcome = vi.fn(() => stopVoice);
   const scene = createOnboardingTutorial({ player, enemies, sites, step: () => step, identity: () => identity,
     connected: () => connected, stats: () => saved, complete,
     spawn: createEnemyLifecycle(enemies, sites, vi.fn()).spawnFromSite, enter, respawn,
     clearCombat, clearInput, logPickup, fadeToWorld,
-    profileOpen: () => profileOpen, setName, cancel, hasChosenName: () => chosenName, closeWindows, waitForNameSave,
+    profileOpen: () => profileOpen, setName, cancel, hasChosenName: () => chosenName, closeWindows, waitForNameSave, playWelcome,
   });
-  scene.start(finish);
+  scene.start(finish, replay);
   const advanceTime = (seconds: number) => { for (let i = 0; i < Math.ceil(seconds * 60); i++) scene.update(1 / 60); };
   const advanceUntil = (done: () => boolean) => {
     for (let i = 0; i < 1200 && !done(); i++) scene.update(1 / 60);
     expect(done()).toBe(true);
   };
-  return { scene, closeWindows, waitForNameSave, setChosenName: (value: boolean) => { chosenName = value; }, clearInput, logPickup, advanceUntil, setName, cancel, fadeToWorld, complete, saved, player, enemies, sites, document, enter, respawn, finish, advanceTime,
+  return { scene, playWelcome, stopVoice, closeWindows, waitForNameSave, setChosenName: (value: boolean) => { chosenName = value; }, clearInput, logPickup, advanceUntil, setName, cancel, fadeToWorld, complete, saved, player, enemies, sites, document, enter, respawn, finish, advanceTime,
     setProfileOpen: (value: boolean) => { profileOpen = value; },
     setIdentity: (value: string) => { identity = value; }, setConnected: (value: boolean) => { connected = value; } };
 }
@@ -202,3 +203,40 @@ describe("private tutorial map", () => {
     expect(f.finish).not.toHaveBeenCalled();
   });
 });
+
+describe("replaying the tutorial from Settings", () => {
+  const playThrough = async (f: ReturnType<typeof fixture>) => {
+    expect(f.playWelcome).toHaveBeenCalledOnce();
+    expect(f.document.querySelector(".onboarding-hint")?.textContent).toBe("Drag to move");
+    f.player.x += 70; f.scene.update(1 / 60); await settle();
+    f.setProfileOpen(true); f.scene.update(1 / 60); f.setProfileOpen(false); f.scene.update(1 / 60); await settle();
+    expect(f.enemies[0]).toMatchObject({ type: "Spitter" });
+    f.scene.enemyDefeated(); await settle();
+    f.advanceUntil(() => f.enemies[0]?.type === "Brood");
+    f.scene.enemyDefeated(); await settle();
+    // The lesson that ends in a death cannot be outlasted by a veteran's damage and armor.
+    f.advanceUntil(() => f.enemies.length > 0);
+    expect(f.enemies[0].hp).toBeGreaterThan(1e200);
+    expect(f.enemies[0].damage).toBeGreaterThan(f.player.maxHp * 1000);
+    f.player.hp = 0; f.scene.died();
+    f.advanceUntil(() => f.fadeToWorld.mock.calls.length > 0); await settle();
+    f.document.querySelector<HTMLButtonElement>(".onboarding-skip")!.click(); await settle();
+    expect(f.finish).toHaveBeenCalledOnce();
+    expect(f.stopVoice).toHaveBeenCalled();
+  };
+
+  it("runs every lesson again for a finished player and saves nothing, rewards included", async () => {
+    const f = fixture(S.complete, true);
+    const before = { ...f.saved };
+    await playThrough(f);
+    expect(f.complete).not.toHaveBeenCalled();
+    expect(f.saved).toEqual(before);
+  });
+
+  it("marks a player who never finished it complete at the end, without the lesson rewards", async () => {
+    const f = fixture(0, true);
+    await playThrough(f);
+    expect(f.complete.mock.calls.map(([step]) => step)).toEqual([S.complete]);
+  });
+});
+

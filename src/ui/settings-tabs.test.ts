@@ -77,7 +77,8 @@ describe("Settings tabs", () => {
     expect(get("settings-game-panel").hidden).toBe(false);
     expect(get("settings-audio-panel").hidden).toBe(true);
     expect(get("settings-account-panel").hidden).toBe(true);
-    expect(get("settings-game-panel").querySelectorAll(".setting-row")).toHaveLength(8);
+    // Seven fixture rows and the Replay Tutorial row; the Controls tab holds the bindings.
+    expect(get("settings-game-panel").querySelectorAll(".setting-row")).toHaveLength(8 + 1);
     expect(get("settings-audio-panel").querySelector("#sfxVolume")).toBe(audio);
     audio.dispatch("input");
     expect(listener).toHaveBeenCalledOnce();

@@ -49,6 +49,16 @@ describe("new character tutorial", () => {
     expect(f.db.playerOnboarding.identity.find(f.ctx.sender)).toBeNull();
     expect(() => f.run(server.completeOnboardingStep, { step: 2 })).toThrow("does not need");
   });
+  it("marks a pre-tutorial character's replay complete at its end, with no rewards", () => {
+    const f = crystalFixture();
+    const before = f.db.playerProgress.identity.find(f.ctx.sender);
+    expect(f.db.playerOnboarding.identity.find(f.ctx.sender)).toBeNull();
+    f.run(server.completeOnboardingStep, { step: 6 });
+    expect(f.db.playerOnboarding.identity.find(f.ctx.sender)?.step).toBe(6);
+    // Replaying again later changes nothing.
+    for (const step of [2, 4, 5, 6]) f.run(server.completeOnboardingStep, { step });
+    expect(f.db.playerProgress.identity.find(f.ctx.sender)).toMatchObject({ damage: before.damage, regen: before.regen });
+  });
   it("preserves an unfinished guest lesson when linked, and skips for older guests", () => {
     const f = crystalFixture(), account = identity("2");
     f.seed("playerOnboarding", { identity: f.ctx.sender, step: 4 });

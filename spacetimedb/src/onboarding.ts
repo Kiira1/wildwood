@@ -12,8 +12,13 @@ export function needsOnboarding(ctx: ModuleReducerCtx, identity: Identity) {
 }
 export function advanceOnboarding(ctx: ModuleReducerCtx, step: number, writeProgress: (progress: any) => void) {
   const state = ctx.db.playerOnboarding.identity.find(ctx.sender);
-  if (!state) throw new SenderError("This character does not need the tutorial.");
   if (step < 2 || step > ONBOARDING_STEP.complete) throw new SenderError("Invalid tutorial step.");
+  if (!state) {
+    // A character from before the tutorial can replay it from Settings; finishing marks it done, with no rewards.
+    if (step !== ONBOARDING_STEP.complete) throw new SenderError("This character does not need the tutorial.");
+    ctx.db.playerOnboarding.insert({ identity: ctx.sender, step });
+    return;
+  }
   if (step <= state.step) return;
   // The final step can also be reached through Skip tutorial. It grants no unearned rewards.
   if (step !== ONBOARDING_STEP.complete && step !== state.step + 1) throw new SenderError("Finish the current tutorial step first.");

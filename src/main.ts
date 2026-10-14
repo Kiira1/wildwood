@@ -25,7 +25,7 @@ import { createPersonalBosses } from "./game/runtime/boss/personal-bosses";
 import { createLocalCorpses } from "./game/runtime/enemies/local-corpses";
 import { ONBOARDING_MAP_ID, ONBOARDING_WORLD } from "../shared/onboarding";
 import { createOutOfCombatSpeed } from "./game/runtime/out-of-combat-speed";
-import { createOnboardingTutorial } from "./ui/onboarding-tutorial";
+import { createOnboardingTutorial } from "./ui/onboarding-tutorial"; import { installTutorialReplay, tutorialReplayBlocked } from "./ui/tutorial-replay";
 import { createItemGiftController } from "./ui/item-gift-controller";
 import { createReconnectRecovery } from "./ui/reconnect-recovery";
 import { isProceduralMap, proceduralMapId } from "../shared/procedural-maps";
@@ -1666,9 +1666,9 @@ import {
     setName: async name => coop?.setDisplayName?.(name),
     hasChosenName: () => coop?.hasChosenDisplayName?.() ?? false,
     waitForNameSave: async () => { try { await pendingProfileNameSave; } catch {} },
-    closeWindows: () => { profileWindow.close(); itemInspectionController.close(); },
+    closeWindows: () => { profileWindow.close(); itemInspectionController.close(); }, playWelcome: () => mapMusic.playVoiceLine("assets/wildstat/audio/tutorial-welcome.mp3"),
     cancel: () => { canvasRuntime.resize(); profileWindow.close(); setCurrentMap(TUTORIAL_FOREST_MAP_ID); session.stop(); session.setHasStarted(false); loadProgress(); finishStartup(); },
-  });
+  }); installTutorialReplay({ doc: document, showMessage, blocked: () => tutorialReplayBlocked({ running: session.isRunning(), inTutorial: Boolean(onboarding?.isActive()), dueling: isDueling(), challenge: Boolean(coop?.aggroChallenge?.()?.active || coop?.prestigeChallenge?.()?.active) }), begin: () => { autoFarm.stop(); playerInput.clear(); onboarding?.start(() => { canvasRuntime.resize(); setCurrentMap(TUTORIAL_FOREST_MAP_ID); loadProgress(); startGame(false, true); }, true); } });
 
   const scheduledUpdate = createScheduledUpdateController({
     now: () => Date.now(), release: () => coop?.releaseWindow?.() ?? null,

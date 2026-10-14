@@ -27,6 +27,8 @@ type Options = {
   waitForNameSave: () => Promise<void>;
   closeWindows: () => void;
   cancel: () => void;
+  /** The narrator's welcome as the first lesson starts; returns a stop. */
+  playWelcome?: () => () => void;
 };
 
 /** A private map in the ordinary world runtime. This module only sequences lessons and UI. */
@@ -36,6 +38,8 @@ export function createOnboardingTutorial(o: Options) {
   let afterHold: "enemy" | "death-intro" | "complete" | "fade" = "enemy";
   let host: HTMLElement | null = null;
   let naming = false, profileSeen = false, abort = new AbortController();
+  // A replay from Settings runs every lesson again without saving them; only an unfinished tutorial is marked done.
+  let replaying = false, stopVoice: () => void = () => {};
   let instruction: HTMLElement, hint: HTMLElement, progress: HTMLElement, retry: HTMLButtonElement, pointer: HTMLElement;
   let copy = DEFAULT_TUTORIAL_COPY, titleKey = "moveTitle", hintKey = "moveTouchHint", textValues: Record<string, number> = {};
   function showText(title: string, detail: string, values: Record<string, number> = {}) {
@@ -49,7 +53,7 @@ export function createOnboardingTutorial(o: Options) {
   }
   function clearEnemy() { o.enemies.length = 0; o.sites.length = 0; o.clearCombat(); }
   function dispose() {
-    active = false; abort.abort(); host?.remove(); host = null;
+    active = false; abort.abort(); host?.remove(); host = null; stopVoice(); stopVoice = () => {};
     document.body.classList.remove("is-onboarding", "is-onboarding-profile");
   }
 
@@ -87,9 +91,10 @@ export function createOnboardingTutorial(o: Options) {
     const demonstration = step === S.death;
     const site: SpawnSite = { id: 0, type, campName: "First Steps", x: demonstration ? o.player.x : ONBOARDING_ENEMY_POSITION.x, y: demonstration ? Math.max(180, o.player.y - 100) : ONBOARDING_ENEMY_POSITION.y,
       alive: false, respawnAt: 0, groupAggro: false, leashRange: 1500,
-      definition: { ...ENEMY_TYPES[type], hp: demonstration ? Math.max(40, o.player.damage * 12) : step === S.regen ? ONBOARDING_REGEN_ENEMY_HP : ONBOARDING_ENEMY_HP,
+      // A replaying veteran's crits and armor would outlast the lesson that has to end in their death.
+      definition: { ...ENEMY_TYPES[type], hp: demonstration ? (replaying ? 1e300 : Math.max(40, o.player.damage * 12)) : step === S.regen ? ONBOARDING_REGEN_ENEMY_HP : ONBOARDING_ENEMY_HP,
         speed: demonstration ? 260 : step === S.spitter ? ENEMY_TYPES.Spitter.speed : 45,
-        damage: demonstration ? o.player.maxHp * 2 : step === S.spitter ? 10 : 1,
+        damage: demonstration ? o.player.maxHp * (replaying ? 1e6 : 2) : step === S.spitter ? 10 : 1,
         attackSpeed: demonstration ? 1 : .5, aggro: demonstration ? 2000 : 100,
         reward: { type: step === S.regen ? "regen" : "damage", amount: demonstration ? 0 : step === S.regen ? .2 : 1 } },
     };
@@ -99,12 +104,17 @@ export function createOnboardingTutorial(o: Options) {
     enemy.displayName = demonstration ? "Spitter" : step === S.regen ? "Baby Brood" : "Baby Spitter";
 
   }
+  /** A lesson saved to the server, or, in a replay, kept here: replayed lessons pay nothing twice. */
+  async function save(target: number) {
+    if (replaying && (target < S.complete || o.step() >= S.complete)) return { ok: true };
+    return o.complete(target);
+  }
   async function saveStep() {
     if (!active || saving || !pending) return;
     saving = true; failed = false; retry.hidden = true;
     const target = pending, identity = owner;
     let result;
-    try { result = await o.complete(target); } catch { result = undefined; }
+    try { result = await save(target); } catch { result = undefined; }
     if (!active || naming || owner !== identity || o.identity() !== identity) return;
     saving = false;
     if (!result?.ok) { failed = true; hint.textContent = "Connection interrupted. Retry to continue."; retry.hidden = false; return; }
@@ -136,7 +146,7 @@ export function createOnboardingTutorial(o: Options) {
             if (!named?.ok) return { ok: false, error: named?.error || "Could not save that username." };
           }
           if (!active || o.identity() !== owner) return { ok: false, error: "Your account changed." };
-          return await o.complete(S.complete) ?? { ok: false, error: "Connection interrupted. Try again." };
+          return await save(S.complete) ?? { ok: false, error: "Connection interrupted. Try again." };
         },
       });
       if (accepted && active) { dispose(); finish(); }
@@ -149,9 +159,10 @@ export function createOnboardingTutorial(o: Options) {
     required: () => onboardingPending(o.step()),
     canOpenProfile: () => active && step === S.profile,
     blocksInput: () => active && (step >= S.complete || o.profileOpen() || deadFor >= 0 || !o.connected()),
-    start(onComplete: () => void) {
+    /** `replay`: from the first lesson whatever was finished, as Settings' Replay Tutorial does. */
+    start(onComplete: () => void, replay = false) {
       if (active) return;
-      active = true; owner = o.identity(); step = o.step(); finish = onComplete;
+      active = true; owner = o.identity(); replaying = replay; step = replay ? S.move : o.step(); finish = onComplete;
       hold = pending = walked = 0; saving = failed = profileSeen = naming = false; afterHold = "enemy"; deadFor = -1; abort = new AbortController();
       host = document.createElement("section"); host.className = "onboarding-tutorial"; host.setAttribute("aria-label", "First adventure tutorial");
       host.innerHTML = '<header><div class="onboarding-progress" role="progressbar" aria-label="Tutorial progress" aria-valuemin="1" aria-valuemax="5"></div><p class="onboarding-instruction" role="status"></p><p class="onboarding-hint"></p><button type="button" class="window-back-button" hidden>Retry</button></header><button type="button" class="onboarding-skip-tutorial">Skip tutorial</button><div class="onboarding-pointer" hidden aria-hidden="true"><svg viewBox="0 0 48 64" role="presentation"><path d="M24 5 L44 31 H33 V59 H15 V31 H4 Z" /></svg></div>';
@@ -164,6 +175,7 @@ export function createOnboardingTutorial(o: Options) {
       document.body.append(host); document.body.classList.add("is-onboarding");
       o.enter(ONBOARDING_MAP_ID); lastX = o.player.x; lastY = o.player.y;
       labels();
+      if (step === S.move) stopVoice = o.playWelcome?.() ?? (() => {});
       if (step === S.death) { clearEnemy(); hold = readingTime(4); }
       else spawnLessonEnemy();
       const identity = owner;

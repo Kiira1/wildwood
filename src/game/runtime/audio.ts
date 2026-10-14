@@ -57,49 +57,91 @@ const BOW_ATTACK_SOUND_MAX_VOICES = 3;
 /** A shot fired while the clip is still decoding plays once it arrives, if that is soon enough to still feel like the shot. */
 export const BOW_ATTACK_SOUND_LATE_PLAY_MS = 300;
 /**
- * A sword swing is a swish made here from filtered noise: there is no clip to download. Measured 2026-10-14:
- * at 1.4 it sits about 7 dB RMS under the bow release, so swings, which come often, stay below arrows.
+ * A sword swing is a swoosh made here from smoothed noise: there is no clip to download. A low band rises
+ * then falls through the swing, under a rounded swell, with the highs cut, so it whooshes rather than hisses.
+ * Its gain matches the first swish's loudness, about 7 dB RMS under the bow release, so swings stay below arrows.
  */
-export const SWORD_SWING_SOUND_GAIN = 1.4;
-export const SWORD_SWING_SOUND_SECONDS = .18;
+export const SWORD_SWING_SOUND_GAIN = .48;
+export const SWORD_SWING_SOUND_SECONDS = .28;
+/** Fast swings get shorter swooshes, so six a second stay six swooshes rather than one smear. */
+export const SWORD_SWING_SOUND_MIN_SECONDS = .16;
+const SWORD_SWING_SOUND_INTERVAL_SHARE = 1.3;
+/** Each swing pitches down by up to this much, as the bow's release does, so repeats never sound copied. */
+export const SWORD_SWING_PITCH_MIN = .85;
 const SWORD_SWING_SOUND_MIN_GAP_SECONDS = .07;
 const SWORD_SWING_SOUND_MAX_VOICES = 3;
 
-/** White noise for the sword's swish; a falling band-pass gives it the sweep. */
-export function swingNoiseBuffer(context: BaseAudioContext, seconds = SWORD_SWING_SOUND_SECONDS) {
+/**
+ * How loud one swing plays at this attack interval: full up to three a second, then quieter as they come
+ * faster, so six a second are no louder overall than three, the way rapid-fire games keep a stream even.
+ */
+export function swordSwingLevel(attackInterval?: number) {
+  if (!(attackInterval !== undefined && attackInterval > 0 && Number.isFinite(attackInterval))) return 1;
+  return Math.min(1, Math.sqrt(attackInterval * 3));
+}
+
+/** How long one swoosh lasts at this attack interval. */
+export function swordSwingSeconds(attackInterval?: number) {
+  if (!(attackInterval !== undefined && attackInterval > 0 && Number.isFinite(attackInterval))) return SWORD_SWING_SOUND_SECONDS;
+  return Math.min(SWORD_SWING_SOUND_SECONDS, Math.max(SWORD_SWING_SOUND_MIN_SECONDS, attackInterval * SWORD_SWING_SOUND_INTERVAL_SHARE));
+}
+
+/** Noise with its grain smoothed off by a one-pole low-pass, long enough for the longest swoosh. */
+export function swingNoiseBuffer(context: BaseAudioContext, seconds = SWORD_SWING_SOUND_SECONDS + .05) {
   const buffer = context.createBuffer(1, Math.ceil(context.sampleRate * seconds), context.sampleRate);
   const data = buffer.getChannelData(0);
-  for (let index = 0; index < data.length; index += 1) data[index] = Math.random() * 2 - 1;
+  let level = 0, peak = 0;
+  for (let index = 0; index < data.length; index += 1) {
+    level = .6 * level + .4 * (Math.random() * 2 - 1);
+    data[index] = level;
+    peak = Math.max(peak, Math.abs(level));
+  }
+  if (peak > 0) for (let index = 0; index < data.length; index += 1) data[index] /= peak;
   return buffer;
 }
 
-/** One swish into `destination`, starting at `at`; returns the nodes to clean up, or null. */
-export function scheduleSwordSwing(context: BaseAudioContext, noise: AudioBuffer, destination: AudioNode, at: number, randomValue = Math.random()) {
+/** A rounded swell that peaks 40% of the way in: no corner to click on. */
+const SWING_SWELL = Array.from({ length: 64 }, (_, index) => {
+  const t = index / 63, x = t < .4 ? t / .4 : 1 - (t - .4) / .6;
+  return Math.max(.0001, Math.sin(x * Math.PI / 2) ** 2);
+});
+
+/** One swoosh into `destination`, starting at `at`; returns the nodes to clean up, or null. */
+export function scheduleSwordSwing(context: BaseAudioContext, noise: AudioBuffer, destination: AudioNode, at: number,
+  randomValue = Math.random(), seconds = SWORD_SWING_SOUND_SECONDS, level = 1) {
   const source = context.createBufferSource();
   const filter = context.createBiquadFilter();
+  const lowpass = context.createBiquadFilter();
   const gain = context.createGain();
+  const end = at + seconds;
   source.buffer = noise;
   filter.type = "bandpass";
-  filter.Q.value = 1.1;
-  const from = 1700 + Math.min(1, Math.max(0, randomValue)) * 500;
+  filter.Q.value = 1;
+  const pitch = SWORD_SWING_PITCH_MIN + Math.min(1, Math.max(0, randomValue)) * (1 - SWORD_SWING_PITCH_MIN);
+  const from = 380 * pitch;
   filter.frequency.setValueAtTime(from, at);
-  filter.frequency.exponentialRampToValueAtTime(from * .3, at + SWORD_SWING_SOUND_SECONDS);
+  filter.frequency.exponentialRampToValueAtTime(from * 2.2, at + seconds * .4);
+  filter.frequency.exponentialRampToValueAtTime(from * .7, end);
+  lowpass.type = "lowpass";
+  lowpass.frequency.value = 2000;
+  lowpass.Q.value = .4;
   gain.gain.setValueAtTime(.0001, at);
-  gain.gain.exponentialRampToValueAtTime(SWORD_SWING_SOUND_GAIN, at + .025);
-  gain.gain.exponentialRampToValueAtTime(.0001, at + SWORD_SWING_SOUND_SECONDS);
+  gain.gain.setValueCurveAtTime(Float32Array.from(SWING_SWELL, swell => swell * SWORD_SWING_SOUND_GAIN * level), at, seconds);
   source.connect(filter);
-  filter.connect(gain);
+  filter.connect(lowpass);
+  lowpass.connect(gain);
   gain.connect(destination);
   try {
     source.start(at);
-    source.stop(at + SWORD_SWING_SOUND_SECONDS + .02);
+    source.stop(end + .02);
   } catch {
     source.disconnect();
     filter.disconnect();
+    lowpass.disconnect();
     gain.disconnect();
     return null;
   }
-  return { source, filter, gain };
+  return { source, filter, lowpass, gain };
 }
 /** Soundtracks are kept as Blob URLs for the map you are on and the one you left; older ones are released. */
 const MUSIC_OBJECT_URL_KEEP = 2;
@@ -147,8 +189,13 @@ export type MapMusicController = {
   ensurePlaying(allowed: boolean): void;
   playDeathSound(): void;
   playBowAttackSound(): void;
-  playSwordAttackSound(): void;
+  playSwordAttackSound(attackInterval?: number): void;
+  /** A narrator line on the sound effects volume, with the music dipped under it; returns a stop. */
+  playVoiceLine(src: string): () => void;
 };
+
+/** How far the music dips while a narrator line plays. */
+export const VOICE_MUSIC_DUCK = .35;
 
 type BowAttackVoice = {
   source: AudioBufferSourceNode;
@@ -216,6 +263,7 @@ export function createMapMusicController(
   const activeBowAttackVoices: BowAttackVoice[] = [];
   let swingNoise: AudioBuffer | null = null;
   let lastSwordSwingAt = Number.NEGATIVE_INFINITY;
+  let voice: HTMLAudioElement | null = null;
   let activeSwordSwings = 0;
   const musicObjectUrls = new Map<string, string>();
   let requestedMusicSource = SIGN_IN_MUSIC_SOURCE;
@@ -343,13 +391,14 @@ export function createMapMusicController(
   }
 
   function applyMusicVolume() {
-    const adjusted = volume * musicGainForSource(requestedMusicSource);
+    const adjusted = volume * musicGainForSource(requestedMusicSource) * (voice ? VOICE_MUSIC_DUCK : 1);
     if (musicGainNode) musicGainNode.gain.value = adjusted;
     else audio.volume = Math.min(1, adjusted);
   }
 
   function setSfxVolume(nextVolume: number) {
     sfxVolume = Math.min(1, Math.max(0, nextVolume));
+    if (voice) voice.volume = sfxVolume;
     if (sfxGainNode) sfxGainNode.gain.value = sfxVolume;
     else deathAudio.volume = Math.min(1, sfxVolume * DEATH_SOUND_GAIN);
   }
@@ -478,7 +527,7 @@ export function createMapMusicController(
     }
   }
 
-  function playSwordAttackSound() {
+  function playSwordAttackSound(attackInterval?: number) {
     if (sfxVolume <= 0) return;
     const context = ensureAudioGraph();
     if (!context || !sfxGainNode) return;
@@ -486,7 +535,7 @@ export function createMapMusicController(
     const now = context.currentTime;
     if (now - lastSwordSwingAt < SWORD_SWING_SOUND_MIN_GAP_SECONDS || activeSwordSwings >= SWORD_SWING_SOUND_MAX_VOICES) return;
     swingNoise ??= swingNoiseBuffer(context);
-    const swing = scheduleSwordSwing(context, swingNoise, sfxGainNode, now);
+    const swing = scheduleSwordSwing(context, swingNoise, sfxGainNode, now, Math.random(), swordSwingSeconds(attackInterval), swordSwingLevel(attackInterval));
     if (!swing) return;
     lastSwordSwingAt = now;
     activeSwordSwings += 1;
@@ -494,8 +543,28 @@ export function createMapMusicController(
       activeSwordSwings = Math.max(0, activeSwordSwings - 1);
       swing.source.disconnect();
       swing.filter.disconnect();
+      swing.lowpass.disconnect();
       swing.gain.disconnect();
     };
+  }
+
+  function playVoiceLine(src: string) {
+    voice?.pause();
+    if (sfxVolume <= 0) return () => {};
+    const line = new Audio(src);
+    line.volume = sfxVolume;
+    voice = line;
+    applyMusicVolume();
+    const stop = () => {
+      line.pause();
+      if (voice !== line) return;
+      voice = null;
+      applyMusicVolume();
+    };
+    line.addEventListener("ended", stop);
+    line.addEventListener("error", stop);
+    void line.play().catch(stop);
+    return stop;
   }
 
   return {
@@ -510,5 +579,6 @@ export function createMapMusicController(
     playDeathSound,
     playBowAttackSound,
     playSwordAttackSound,
+    playVoiceLine,
   };
 }
