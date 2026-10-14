@@ -66,6 +66,8 @@ type RuntimeHudDependencies = {
   profileIcon: () => number;
   applyProfileIcon: (target: HTMLElement, icon: number, identity?: string) => void;
   playerPower: (player: PlayerState) => number;
+  /** A card shield in play (card-combat.ts), shown on the health bar. */
+  playerShield?: () => { amount: number } | null | undefined;
   setDeveloperAccess: (enabled: boolean) => void;
   applyVitalityResearch: () => void;
   updateTechNotice: () => void;
@@ -406,7 +408,7 @@ export function createRuntimeHudController(dependencies: RuntimeHudDependencies)
     const displayName = dependencies.localDisplayName() || "WANDERER";
     renderPlayerHud(
       { hpFill: elements.hpFill, hpText: elements.hpText, playerName: elements.playerName, playerPower: elements.playerPower, coopStatus: elements.coopStatus, minimapPlayers: elements.minimapPlayers },
-      dependencies.player,
+      { hp: dependencies.player.hp, maxHp: dependencies.player.maxHp, shield: dependencies.playerShield?.()?.amount ?? 0 },
       displayName,
       playerCount,
       dependencies.playerPower(dependencies.player),

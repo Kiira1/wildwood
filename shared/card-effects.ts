@@ -28,8 +28,9 @@ const PROC_EFFECTS: ReadonlySet<CardEffectId> = new Set(["burn", "poison", "chil
 /** An effect that rolls on its own. Same effect and strength add chances; a boss card's version rolls apart. */
 export type CardProc = {
   effect: CardEffectId;
-  /** Percent, after the cap. */
+  /** Percent, after the cap. A card that does it on every hit (100) is no chance, so the cap leaves it be. */
   chance: number;
+  always?: boolean;
   share?: number;
   seconds?: number;
   targets?: number;
@@ -69,7 +70,7 @@ export function cardTotals(cardIds: readonly string[]): CardTotals {
   const addProc = (proc: CardProc) => {
     const key = `${proc.effect}:${proc.share ?? ""}:${proc.seconds ?? ""}:${proc.targets ?? ""}`;
     const current = procs.get(key);
-    procs.set(key, current ? { ...current, chance: current.chance + proc.chance } : proc);
+    procs.set(key, current ? { ...current, chance: current.chance + proc.chance, ...(current.always || proc.always ? { always: true } : {}) } : proc);
   };
   for (const cardId of cardIds) {
     for (const effect of cardDefinition(cardId)?.effects ?? []) addEffect(effect);
@@ -81,7 +82,7 @@ export function cardTotals(cardIds: readonly string[]): CardTotals {
     // A splash with a chance rolls on its own; an always-on one adds up.
     if (effect.effect === "splash" && effect.chance !== undefined) return addProc({ effect: "splash", chance: effect.chance, share: effect.value / 100 });
     if (PROC_EFFECTS.has(effect.effect)) {
-      return addProc({ effect: effect.effect, chance: effect.value,
+      return addProc({ effect: effect.effect, chance: effect.value, ...(effect.value >= 100 ? { always: true } : {}),
         ...(effect.share !== undefined ? { share: effect.share } : {}),
         ...(effect.seconds !== undefined ? { seconds: effect.seconds } : {}),
         ...(effect.targets !== undefined ? { targets: effect.targets } : {}) });
@@ -92,7 +93,7 @@ export function cardTotals(cardIds: readonly string[]): CardTotals {
     add(sum, effect.effect, effect.value);
   }
   return { sum, raceSlayer, raceGuard, statGain,
-    procs: [...procs.values()].map(proc => ({ ...proc, chance: Math.min(CARD_CHANCE_CAP, proc.chance) })),
+    procs: [...procs.values()].map(proc => ({ ...proc, chance: proc.always ? 100 : Math.min(CARD_CHANCE_CAP, proc.chance) })),
     timing: { shield: shield ?? DEFAULT_TIMING.shield, web: web ?? DEFAULT_TIMING.web } };
 }
 

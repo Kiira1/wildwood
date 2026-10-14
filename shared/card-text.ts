@@ -34,7 +34,7 @@ export function cardEffectText(effect: CardEffect): string {
     burn: () => `${v >= 100 ? "Every hit burns" : `${abs}% chance to burn`}: ${percent(effect.share ?? CARD_EFFECT_DEFAULTS.burn.share)} of the hit over ${effect.seconds ?? CARD_EFFECT_DEFAULTS.burn.seconds}s`,
     poison: () => `${abs}% chance to poison: ${percent(CARD_EFFECT_DEFAULTS.poison.share)} of the hit over ${CARD_EFFECT_DEFAULTS.poison.seconds}s, and the enemy hits ${percent(CARD_EFFECT_DEFAULTS.poison.weaken)} softer`,
     chill: () => `${abs}% chance to slow an enemy ${percent(CARD_EFFECT_DEFAULTS.chill.slow)} for ${CARD_EFFECT_DEFAULTS.chill.seconds}s`,
-    stun: () => `${abs}% chance to stun an enemy for ${effect.seconds ?? CARD_EFFECT_DEFAULTS.stun.seconds}s (bosses are slowed)`,
+    stun: () => `${abs}% chance to stun an enemy for ${effect.seconds ?? CARD_EFFECT_DEFAULTS.stun.seconds}s (not bosses)`,
     weaken: () => `${abs}% chance: the enemy deals ${percent(CARD_EFFECT_DEFAULTS.weaken.weaken)} less damage for ${CARD_EFFECT_DEFAULTS.weaken.seconds}s`,
     knockback: () => `${abs}% chance to knock an enemy back`,
     splash: () => effect.chance !== undefined

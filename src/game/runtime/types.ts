@@ -68,8 +68,17 @@ export type EnemyShot = Circle & {
   source?: EnemyState | null;
 };
 
+/** A card effect on an enemy (card-combat.ts): seconds left of each, and what it does while it lasts. */
+export type EnemyCardStatus = {
+  stun?: number;
+  slow?: { share: number; left: number };
+  weaken?: { share: number; left: number };
+};
+
 export type EnemyState = Circle & {
   displayName?: string;
+  /** Stun, slow and weaken from the player's cards; the enemy simulation obeys them. */
+  cardStatus?: EnemyCardStatus;
   hideStatus?: boolean;
   definition?: EnemyDefinition;
   generatedBoss?: boolean;

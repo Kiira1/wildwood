@@ -44,6 +44,8 @@ type ProgressDependencies = {
   setAppliedVitalityRank: (rank: number) => void;
   renderInventory: () => void;
   onLoaded: () => void;
+  /** Range the worn Long Shot cards add on top of the saved range, which the server keeps without them. */
+  cardRange?: () => number;
 };
 
 /** Server progress persistence, legacy migration, bounds checks, and load state. */
@@ -177,7 +179,7 @@ export function createProgressController(dependencies: ProgressDependencies) {
         player.regen = boundedProgressValue(saved.regen, player.regen, 0, MAX_PLAYER_STAT);
         applyCritRating(saved.critRating);
         player.projectileCount = saved.projectileCount;
-        player.attackRange = boundedProgressValue(saved.attackRange, player.attackRange, BASE_ATTACK_RANGE, BASE_ATTACK_RANGE + 75);
+        player.attackRange = boundedProgressValue(saved.attackRange, BASE_ATTACK_RANGE, BASE_ATTACK_RANGE, BASE_ATTACK_RANGE + 75) + (dependencies.cardRange?.() ?? 0);
         if (player.baseMaxHp !== saved.maxHp) setPlayerBaseMaxHealth(player, saved.maxHp, dependencies.healthMultiplierBonus());
         reconcileInventory(saved);
         applyMovementSpeed(saved, false);
@@ -216,7 +218,7 @@ export function createProgressController(dependencies: ProgressDependencies) {
     serverCritRating = player.critRating = cleanRating(source.critRating);
     player.projectileSpeed = BASE_PROJECTILE_SPEED;
     player.projectileCount = Math.floor(boundedProgressValue(source.projectileCount, player.projectileCount, 1, 20));
-    player.attackRange = boundedProgressValue(source.attackRange, BASE_ATTACK_RANGE, BASE_ATTACK_RANGE, BASE_ATTACK_RANGE + 75);
+    player.attackRange = boundedProgressValue(source.attackRange, BASE_ATTACK_RANGE, BASE_ATTACK_RANGE, BASE_ATTACK_RANGE + 75) + (dependencies.cardRange?.() ?? 0);
     player.armor = boundedProgressValue(source.armor, player.armor, 0, MAX_ARMOR);
     player.regen = boundedProgressValue(source.regen, player.regen, 0, MAX_PLAYER_STAT);
     bootsPickup.collected = source.bootsCollected === true;

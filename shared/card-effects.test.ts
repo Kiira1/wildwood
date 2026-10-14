@@ -23,11 +23,14 @@ describe("card totals", () => {
     expect(cardValue(totals, "raceSlayer")).toBe(0);
   });
 
-  it("rolls procs on their own: equal ones add chances, a boss card's stronger one stays apart, all capped", () => {
+  it("rolls procs on their own: equal ones add chances under the cap, a boss card's every-hit one stays apart and always fires", () => {
     const burns = cardTotals(["cindermaw_card", "cindermaw_card", "magmalisk_card"]).procs.filter(proc => proc.effect === "burn");
     expect(burns).toHaveLength(2);
     expect(burns.find(proc => proc.share === undefined)?.chance).toBeCloseTo(6, 5);
-    expect(burns.find(proc => proc.share === .3)?.chance).toBe(CARD_CHANCE_CAP);
+    expect(burns.find(proc => proc.share === .3)).toMatchObject({ chance: 100, always: true });
+    const stacked = cardTotals(Array.from({ length: 30 }, () => "cindermaw_card")).procs[0];
+    expect(stacked.chance).toBe(CARD_CHANCE_CAP);
+    expect(stacked.always).toBeUndefined();
     const splash = cardTotals(["tidewyrm_card", "shard_hopper_card"]);
     expect(splash.procs).toEqual([{ effect: "splash", chance: 15, share: .6 }]);
     expect(cardValue(splash, "splash")).toBeGreaterThan(0);

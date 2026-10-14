@@ -1,4 +1,5 @@
 import { enemyChaseSpeed } from "../../../../shared/rules";
+import { enemyCardControl } from "../card-combat";
 import {
   BASE_ATTACK_RANGE,
   ENEMY_HIT_MIN_MOVE_SPEED,
@@ -230,7 +231,9 @@ export function createEnemySimulation(
       // A curve map's regen camps heal while they live.
       if (base.regen && enemy.hp < enemy.maxHp) enemy.hp = Math.min(enemy.maxHp, enemy.hp + base.regen * dt);
       if (enemy.hpLossFlashTimer) enemy.hpLossFlashTimer = Math.max(0, enemy.hpLossFlashTimer - dt);
-      enemy.attackClock -= dt;
+      // The player's cards can stun, slow or weaken it (card-combat.ts).
+      const control = enemyCardControl(enemy);
+      enemy.attackClock -= dt * control.attack;
       if (enemy.attackAnimationElapsed !== undefined) enemy.attackAnimationElapsed += dt;
       enemy.moveSpeedRecovery = Math.min(ENEMY_HIT_SPEED_RECOVERY_SECONDS, enemy.moveSpeedRecovery + dt);
       const localDx = player.x - enemy.x;
@@ -257,7 +260,7 @@ export function createEnemySimulation(
       }
 
       if (enemy.leashing) {
-        const homeDistance = moveToward(enemy, enemy.homeX, enemy.homeY, recoverySpeed(enemy, chaseSpeedFor(enemy)), dt);
+        const homeDistance = moveToward(enemy, enemy.homeX, enemy.homeY, recoverySpeed(enemy, chaseSpeedFor(enemy)) * control.move, dt);
         if (homeDistance < 10) {
           enemy.leashing = false;
           enemy.x = ambient.x;
@@ -309,7 +312,7 @@ export function createEnemySimulation(
           } else {
             enemy.combatTargetX = target.x;
             enemy.combatTargetY = target.y;
-            moveEngagedEnemy(enemy, target, recoverySpeed(enemy, chaseSpeedFor(enemy)), dt, Boolean(base.ranged));
+            moveEngagedEnemy(enemy, target, recoverySpeed(enemy, chaseSpeedFor(enemy)) * control.move, dt, Boolean(base.ranged));
 
             const actualDx = player.x - enemy.x;
             const actualDy = player.y - enemy.y;
@@ -325,7 +328,7 @@ export function createEnemySimulation(
                 actualDx / actualDistance * RANGED_PROJECTILE_SPEED,
                 actualDy / actualDistance * RANGED_PROJECTILE_SPEED,
                 6,
-                enemy.damage,
+                enemy.damage * control.damage,
                 4,
                 enemy,
               );
@@ -339,7 +342,7 @@ export function createEnemySimulation(
                 1 / Math.max(.01, base.attackSpeed),
               );
             } else if (!base.ranged && enemy.attackClock <= 0 && circlesOverlap(player, enemy)) {
-              if (damagePlayer(enemy.damage, enemy)) {
+              if (damagePlayer(enemy.damage * control.damage, enemy)) {
                 enemy.attackAnimationElapsed = 0;
                 enemy.attackClock = 1 / Math.max(.01, base.attackSpeed);
                 enemy.moveSpeedRecovery = 0;

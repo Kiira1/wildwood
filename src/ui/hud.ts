@@ -18,7 +18,23 @@ import { appendPlayerNameTags, appendPrestigeBadge, playerNamePrefix, playerPres
 type PlayerHudState = {
   hp: number;
   maxHp: number;
+  /** A card shield's health on top (card-combat.ts). */
+  shield?: number;
 };
+
+const shieldStrips = new WeakMap<HTMLElement, HTMLElement>();
+/** The light strip along the top of the health bar that shows a card shield, made once per bar. */
+function shieldStrip(hpFill: HTMLElement) {
+  let strip = shieldStrips.get(hpFill);
+  if (!strip) {
+    strip = document.createElement("div");
+    strip.className = "hp-shield";
+    strip.setAttribute("aria-hidden", "true");
+    hpFill.after(strip);
+    shieldStrips.set(hpFill, strip);
+  }
+  return strip;
+}
 
 type HudElements = {
   hpFill: HTMLElement;
@@ -47,7 +63,17 @@ export function renderPlayerHud(
   const hpShift = `translateX(${((hpRatio - 1) * 100).toFixed(1)}%)`;
   if (elements.hpFill.style.transform !== hpShift) elements.hpFill.style.transform = hpShift;
   const hpText = `${formatCompactNumber(Math.max(0, Math.ceil(player.hp)))} / ${formatCompactNumber(Math.ceil(player.maxHp))}`;
-  if (elements.hpText.textContent !== hpText) elements.hpText.textContent = hpText;
+  const shield = Math.max(0, Math.floor(player.shield ?? 0));
+  const shieldText = shield > 0 ? ` +${formatCompactNumber(shield)}` : "";
+  if (elements.hpText.textContent !== hpText + shieldText) {
+    elements.hpText.textContent = hpText;
+    if (shieldText) elements.hpText.append(Object.assign(document.createElement("span"), { className: "hp-shield-text", textContent: shieldText }));
+  }
+  if (shield > 0 || shieldStrips.has(elements.hpFill)) {
+    const scale = `scaleX(${Math.min(1, shield / Math.max(1, player.maxHp)).toFixed(3)})`;
+    const strip = shieldStrip(elements.hpFill);
+    if (strip.style.transform !== scale) strip.style.transform = scale;
+  }
   if (elements.playerName) {
     const name = displayName || "WANDERER";
     const nameKey = `${playerNamePrefix(identity, isDeveloper)}:${name}:${gender}:${guest}:${playerPrestigeLevel(identity)}`;

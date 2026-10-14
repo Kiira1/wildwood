@@ -858,6 +858,9 @@
 .card-origin.is-boss { color: #f2c14e; }
 .item-inspection-stats [data-stat-kind="card"] { color: #e8eee9; }
 .item-inspection-stats [data-stat-kind="cost"] { color: #ff9b91; }
+/* A card shield (card-combat.ts): a light strip along the top of the health bar, and its amount after the health. */
+.bar > .hp-shield { position: absolute; inset: 0 0 auto 0; height: 34%; border-radius: 5px 5px 0 0; background: #9fdcff; transform: scaleX(0); transform-origin: left center; pointer-events: none; }
+#hpText .hp-shield-text { color: #b9e6ff; }
 /* A gear copy's card slots under its stats: the slotted cards in their rarity's colour, then the open slots. */
 .item-inspection-cards { display: grid; justify-items: center; gap: 4px; margin-top: 10px; text-align: center; }
 .item-inspection-cards-title { color: var(--muted, #b9bdb9); font: 900 13px/16px var(--font-rounded); }

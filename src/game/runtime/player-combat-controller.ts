@@ -23,6 +23,10 @@ import { arrowPassesThrough, isSkillSecondaryTarget, rainArrowStorm, ricochetCha
 import { swordSkillBossDamageMultiplier } from "../../../shared/sword-skills";
 import type { WeaponSkillRoll } from "../../../shared/weapon-skills";
 import { createSwordSkillRuntime, type SwordSkillEffects } from "./sword-skill-runtime";
+import { createCardCombat } from "./card-combat";
+import { NO_CARDS, cardChance, cardValue, type CardTotals } from "../../../shared/card-effects";
+import { bowSkillsWithCards } from "../../../shared/card-bounds";
+import { isSkillBow } from "../../../shared/bow-skills";
 import { addPlayerBaseMaxHealth } from "./player-health";
 import {
   absoluteAttackTimestamps,
@@ -92,6 +96,8 @@ export type PlayerCombatController = {
   /** Pushes map enemies out of a boss's body. */
   pushEnemiesFromBoss: (boss: { x: number; y: number; r: number; ry?: number; hitboxOffsetY?: number }) => void;
   clearPendingThrow: () => void;
+  /** The card shield in play and its most (card-combat.ts), for the health bar. */
+  cardShield: () => { amount: number; max: number };
 };
 
 /** Owns player attacks, projectile hits, enemy rewards, and incoming damage. */
@@ -126,6 +132,8 @@ export function createPlayerCombatController(options: {
   weaponSkills?: () => WeaponSkillRoll | null | undefined;
   /** Random source for weapon skill procs; tests inject a fixed sequence. */
   random?: () => number;
+  /** The cards in the worn weapon, helmet and armor (card-effects.ts); none without. */
+  cards?: () => CardTotals | null | undefined;
   equippedWeapon: () => string;
   /** The worn weapon's slot tier and refine (coop itemLevel). */
   equippedWeaponUpgradeLevel?: () => ItemLevel;
@@ -183,11 +191,27 @@ export function createPlayerCombatController(options: {
   const { projectiles, enemyShots } = projectileStore;
   const attackCap = () => typeof minAttackInterval === "function" ? minAttackInterval() : minAttackInterval;
   const random = options.random ?? Math.random;
-  const weaponSkills = (): WeaponSkillRoll | null | undefined => options.weaponSkills?.() ?? options.bowSkills?.();
+  const wornCards = () => options.cards?.() ?? NO_CARDS;
+  // Card chances add to the perks of the same name (card-effects.ts).
+  const doubleStrikeChance = () => (options.prestigeDoubleStrike?.() ?? 0) + cardChance(wornCards(), "doubleStrike") / 100;
+  const splitShotChance = () => (options.prestigeSplitShot?.() ?? 0) + cardChance(wornCards(), "splitShot") / 100;
+  const reflectChanceInPlay = () => (options.prestigeReflect?.() ?? 0) + cardChance(wornCards(), "reflect") / 100;
+  const bossSlayer = () => (options.prestigeBossSlayer?.() ?? 0) + Math.max(0, cardValue(wornCards(), "bossSlayer")) / 100;
+  const weaponSkills = (): WeaponSkillRoll | null | undefined => {
+    const roll = options.weaponSkills?.() ?? options.bowSkills?.();
+    // Bow skill cards add to a bow's own roll.
+    return wornCards() !== NO_CARDS && isSkillBow(options.equippedWeapon()) ? { ...roll, ...bowSkillsWithCards(roll, wornCards()) } : roll;
+  };
   const swordSkills = createSwordSkillRuntime({
     player, enemies, currentMapId: options.currentMapId, equippedWeapon: options.equippedWeapon,
     activeBoss: activeMapBoss, roll: weaponSkills, nowSeconds: options.nowSeconds, random,
     isDueling, onCombat: options.onCombat, effects: options.skillEffects, hit: applyPlayerHit,
+  });
+  const cardCombat = createCardCombat({
+    cards: wornCards, player, enemies, random, mapId: options.currentMapId, isDueling, spawnBurst, spawnParticle,
+    strike: (target, damage, reflected) => applyPlayerHit(target, damage, false, 0, reflected === true, true),
+    streak: (fromX, fromY, toX, toY, color) => options.skillEffects
+      ? options.skillEffects.spawnSkillStreak(fromX, fromY, toX, toY, color, 3, .28, true) : streak(fromX, fromY, toX, toY, color),
   });
   // Reflect draws from a marble bag, so its rate corrects itself instead of
   // running dry for a hundred hits at 6%. Only hits it could answer draw.
@@ -327,7 +351,7 @@ export function createPlayerCombatController(options: {
   }
   /** The nearest other enemy a Split Shot could also reach. Bosses stand alone. */
   function splitShotTarget(primary: EnemyState | BossTarget | null) {
-    if (Math.random() >= (options.prestigeSplitShot?.() ?? 0)) return null;
+    if (Math.random() >= splitShotChance()) return null;
     const reach = attackRange();
     let best: EnemyState | null = null, bestDistance = Infinity;
     for (const enemy of enemies) {
@@ -347,7 +371,7 @@ export function createPlayerCombatController(options: {
     // Double Strike lands the same blow twice rather than hitting harder, so a
     // second kill can come out of one swing.
     const damage = weaponDamage(critical);
-    const strikes = Math.random() < (options.prestigeDoubleStrike?.() ?? 0) ? 2 : 1;
+    const strikes = Math.random() < doubleStrikeChance() ? 2 : 1;
     for (let strike = 0; strike < strikes; strike++) applyPlayerHit(hit.enemy, damage, critical, angle);
     swordSkills.swing(hit.enemy, damage, critical, angle);
     spawnBurst(player.x + Math.cos(angle) * attackRange() * hit.t, player.y + Math.sin(angle) * attackRange() * hit.t, "#f3f7ff", 6, 55);
@@ -377,7 +401,7 @@ export function createPlayerCombatController(options: {
       projectile.vy = Math.sin(angle) * player.projectileSpeed;
       projectile.r = 6;
       // Each arrow rolls its own second hit, landing as one heavier impact.
-      projectile.damage = weaponDamage(critical) * (Math.random() < (options.prestigeDoubleStrike?.() ?? 0) ? 2 : 1);
+      projectile.damage = weaponDamage(critical) * (Math.random() < doubleStrikeChance() ? 2 : 1);
       projectile.critical = critical;
       projectile.hitLife = player.attackRange / player.projectileSpeed * projectileLifeBonus;
       projectile.life = (player.attackRange + PLAYER_PROJECTILE_VISUAL_TAIL) / player.projectileSpeed * projectileLifeBonus;
@@ -577,8 +601,9 @@ export function createPlayerCombatController(options: {
       return;
     }
     incrementKills();
-    // Regular enemy kills only; bosses and duel opponents do not trigger healing.
-    if (player.hp > 0) player.hp = Math.min(player.maxHp, player.hp + player.maxHp * (options.prestigeSecondWind?.() ?? 0));
+    // Regular enemy kills only; bosses and duel opponents do not trigger healing. Second Wind cards add to the perk.
+    if (player.hp > 0) player.hp = Math.min(player.maxHp, player.hp + player.maxHp * ((options.prestigeSecondWind?.() ?? 0) + cardCombat.secondWind()));
+    cardCombat.onKill();
     const site = spawnSites[enemy.siteId];
     if (site) scheduleEnemyRespawn(site);
     const base = enemy.definition ?? ENEMY_TYPES[enemy.type];
@@ -643,14 +668,17 @@ export function createPlayerCombatController(options: {
 
   function damagePlayer(amount: number, source?: EnemyState | BossTarget | null) {
     if (isDueling() || player.hurtClock > 0) return false;
-    const dealt = damageAfterArmor(amount, effectiveArmor());
+    // Cards: a dodge spends the attack and lands nothing; guards lower the hit, and a shield takes what armor lets through.
+    const guarded = cardCombat.incoming(amount, source);
+    if (guarded === null) return true;
+    const dealt = cardCombat.absorb(damageAfterArmor(guarded, effectiveArmor()));
     if (dealt > 0) options.onCombat?.();
     player.hp -= dealt;
     // Reflect throws the hit back at whoever dealt it, bosses included, as it
     // arrived (before armor, which spares only the player), but never more
     // than the player's max health; a Reflect Only run has no cap.
     // The server's bounds allow it.
-    const reflectChance = options.prestigeReflect?.() ?? 0;
+    const reflectChance = reflectChanceInPlay();
     if (source && !source.dead && dealt > 0 && reflectChance > 0 && reflectBag.draw(reflectChance)) {
       const reflected = worldReflectDamage(amount, player.maxHp, options.reflectOnly?.() === true);
       // Some enemies throw a Reflect back: it lands on the player through armor, and does not bounce again.
@@ -659,8 +687,12 @@ export function createPlayerCombatController(options: {
         player.hp -= back;
         spawnDamageNumber(player.x, player.y - 18, back, false, true);
         spawnBurst(source.x, source.y, "#c9d4ff", 10, 140);
-      } else applyPlayerHit(source, reflected, false, Math.atan2(source.y - player.y, source.x - player.x), true);
+      } else {
+        applyPlayerHit(source, reflected, false, Math.atan2(source.y - player.y, source.x - player.x), true);
+        cardCombat.afterReflect(source, reflected);
+      }
     }
+    cardCombat.afterHurt(source);
     spawnDamageNumber(player.x, player.y, dealt, false, true);
     player.hurtClock = .1;
     spawnBurst(player.x, player.y, "#ff5f55", 13, 115);
@@ -715,9 +747,16 @@ export function createPlayerCombatController(options: {
     }
   }
 
-  function applyPlayerHit(target: EnemyState | BossTarget, damage: number, critical: boolean, angle: number, reflected = false) {
+  /** `fromCard` is card damage (burn, splash, chain lightning): no crit, slayer or card of its own. */
+  function applyPlayerHit(target: EnemyState | BossTarget, damage: number, critical: boolean, angle: number, reflected = false, fromCard = false) {
     if (!reflected && options.reflectOnly?.()) return;
-    if ((target.isBoss || target.generatedBoss) && !reflected) damage *= 1 + (options.prestigeBossSlayer?.() ?? 0);
+    const weaponHit = !reflected && !fromCard;
+    if (weaponHit) {
+      // Iaido lands a first hit as a critical; the slayer and conditional cards multiply the rest.
+      if (cardCombat.firstHitCrit(target) && !critical) { damage *= researchCriticalDamageMultiplier(); critical = true; }
+      damage *= cardCombat.hitMultiplier(target);
+    }
+    if ((target.isBoss || target.generatedBoss) && weaponHit) damage *= 1 + bossSlayer();
     // A reflected hit shows blue, so the player can see Reflect fire.
     if (!target.isBoss && !target.generatedBoss) spawnDamageNumber(target.x, target.y, damage, critical, false, reflected);
     target.hurt = .12;
@@ -743,6 +782,7 @@ export function createPlayerCombatController(options: {
       }
       if (target.hp <= 0) killEnemy(target);
     }
+    if (weaponHit) cardCombat.afterHit(target, damage, angle);
   }
 
   /** A few motionless sparks along a line, so a bounce reads as a streak. */
@@ -796,6 +836,7 @@ export function createPlayerCombatController(options: {
     if (stormHits.length) landStormHits(nowSeconds);
     syncAttackTimeline(nowSeconds);
     swordSkills.update();
+    cardCombat.update(dt);
     if (projectiles.length > 0) rebuildTargetGrid();
     for (const projectile of projectiles) {
       const projectileStepSeconds = projectileSimulationSeconds(projectile.spawnedAtSeconds, nowSeconds, dt);
@@ -862,7 +903,7 @@ export function createPlayerCombatController(options: {
 
   /** expectedDps with Double Strike and Arrow Storm in, against one enemy: what the Soul Defense Force is built against. */
   function expectedFullDps() {
-    const double = 1 + Math.max(0, options.prestigeDoubleStrike?.() ?? 0);
+    const double = 1 + Math.max(0, doubleStrikeChance());
     return expectedDps() * (isMeleeWeapon(options.equippedWeapon())
       ? double + swordSkillBossDamageMultiplier(weaponSkills()) - 1
       : double * (1 + bowSkillChance(weaponSkills(), "arrowStorm") * ARROW_STORM_SCORE_WEIGHT));
@@ -872,7 +913,8 @@ export function createPlayerCombatController(options: {
     expectedDps,
     expectedFullDps,
     /** The same against a boss, Boss Slayer included: how long a boss fight would take. */
-    expectedBossDps: () => expectedDps() * (1 + (options.prestigeBossSlayer?.() ?? 0)),
+    expectedBossDps: () => expectedDps() * (1 + bossSlayer()),
+    cardShield: () => cardCombat.shield(),
     attackNearest,
     updateProjectiles,
     damagePlayer,

@@ -11,7 +11,9 @@ import { criticalDamageMultiplier } from "../../shared/critical-damage";
 import { cardStatFactors, cardTotalsForLevels } from "../../shared/card-effects";
 import { soulStatsFor, withSoulStats } from "./soul-dimension";
 import { bowSkillRollFor } from "./bow-skills";
-import { bowSkillReachMultiplier } from "../../shared/bow-skills";
+import { bowSkillReachMultiplier, isSkillBow } from "../../shared/bow-skills";
+import { CARD_SPLASH_MAX_TARGETS, bowSkillsWithCards, cardGuardFactor, cardOffenseBound, cardSustainBound } from "../../shared/card-bounds";
+import { cardValue } from "../../shared/card-effects";
 import { swordSkillChance, swordSkillReachMultiplier } from "../../shared/sword-skills";
 import { swordSkillRollFor } from "./sword-skills";
 import type { ModuleReducerCtx as GameReducerContext } from "./index";
@@ -76,8 +78,9 @@ export function createCombatReport(deps: CombatReportDeps) {
     const warcraft = 1 + (research?.warcraft ?? 0) * .02;
     const equipment = 1 + equipmentDamageMultiplierBonus(weapon, head, chest, weaponLevel, headLevel, chestLevel);
     // The worn cards, carried by the levels: attack cards multiply damage as they do power.
-    const cards = cardStatFactors(cardTotalsForLevels(weaponLevel, headLevel, chestLevel));
-    return { weapon, levelFor, cards, damage: (base: number) => base * equipment * warcraft * cards.damage };
+    const cardTotals = cardTotalsForLevels(weaponLevel, headLevel, chestLevel);
+    const cards = cardStatFactors(cardTotals);
+    return { weapon, levelFor, cardTotals, cards, damage: (base: number) => base * equipment * warcraft * cards.damage };
   }
 
   /**
@@ -128,7 +131,9 @@ export function createCombatReport(deps: CombatReportDeps) {
       // Keen Edge grants crit on its own, so a player with no crit research can
       // still be critting; the bound has to know that or it clips them.
       // Crit kills inside the report raise the run's rating, so the multiplier is read per entry.
-      const crits = (research?.criticalChance ?? 0) > 0 || prestigePerkValue(ranks, "keenEdge") > 0 || loadout.cards.critChance > 0;
+      // Card effects in combat (card-bounds.ts): more damage a hit and more enemies reached, all counted at once.
+      const cardBound = cardOffenseBound(loadout.cardTotals);
+      const crits = (research?.criticalChance ?? 0) > 0 || prestigePerkValue(ranks, "keenEdge") > 0 || loadout.cards.critChance > 0 || cardBound.crits;
       const critical = (rating = 0) => crits
         ? criticalDamageMultiplier({ researchRank: research?.criticalDamage, perks: ranks, soul: soul?.critDamage, rating, capRank: research?.critCap,
           card: loadout.cards.critDamage }) : 1;
@@ -138,19 +143,26 @@ export function createCombatReport(deps: CombatReportDeps) {
       // skills are both. Every storm arrow, bounce and pierce can reach another
       // enemy, so they widen reach; the Split Shot arrow rolls the bow's skills
       // too, so the two reaches multiply.
-      const bowSkills = bowSkillRollFor(ctx, ctx.sender, loadout.weapon);
+      // Bow skill cards add to a bow's own roll.
+      const bowSkills = isSkillBow(loadout.weapon) ? bowSkillsWithCards(bowSkillRollFor(ctx, ctx.sender, loadout.weapon), loadout.cardTotals) : null;
       const swordSkills = swordSkillRollFor(ctx, ctx.sender, loadout.weapon);
+      const armorReduction = armorFor(statsFor(withSoulStats(saved, soul, minInterval)).armor).reduction;
       return { saved, earned, statsFor, armorFor, soul, minInterval, gear: {
         loadout, critical, swing: prestigeSwingMultiplier(ranks),
         // Projectile count is not a kill reward, so the saved row holds for the whole report.
         armed,
         projectiles: !armed || itemDefinition(loadout.weapon)?.weapon?.mode === "MELEE" ? 1 : Math.max(1, saved.projectileCount),
         // Reflect returns the hit before armor, so armor raises what it adds.
-        reach: prestigeReachMultiplier(ranks, armorFor(statsFor(withSoulStats(saved, soul, minInterval)).armor).reduction)
-          * bowSkillReachMultiplier(bowSkills) * swordSkillReachMultiplier(swordSkills),
-        reflects: prestigePerkValue(ranks, "riposte") > 0,
+        reach: (prestigeReachMultiplier(ranks, armorReduction) + cardBound.reflect * WORLD_REFLECT_SHARE * preArmorFactor(armorReduction))
+          * bowSkillReachMultiplier(bowSkills) * swordSkillReachMultiplier(swordSkills) * cardBound.reach,
+        cardDamage: cardBound.damage,
+        reflects: prestigePerkValue(ranks, "riposte") > 0 || cardBound.reflect > 0,
+        // Prism: a reflected hit strikes the enemies near its attacker as well.
+        reflectReach: cardBound.prism ? 1 + CARD_SPLASH_MAX_TARGETS : 1,
         deflects: swordSkillChance(swordSkills, "deflect") > 0,
-        secondWind: prestigePerkValue(ranks, "secondWind"),
+        // Second Wind cards add to the perk.
+        secondWind: prestigePerkValue(ranks, "secondWind") + Math.max(0, cardValue(loadout.cardTotals, "secondWind")) / 100,
+        cardTotals: loadout.cardTotals,
         reflectOnly: Boolean(challenge?.active),
       } };
     }
@@ -163,7 +175,8 @@ export function createCombatReport(deps: CombatReportDeps) {
         const progress = withSoulStats(earned!.preview(reward), soul, minInterval);
         const attackInterval = attackIntervalForProgress(progress);
         if (!gear) return { dps: 0, attackInterval, projectiles: 1 };
-        const dps = gear.armed ? gear.loadout.damage(progress.damage) * gear.critical(progress.critRating) * gear.swing * gear.projectiles / attackInterval : 0;
+        const dps = gear.armed
+          ? gear.loadout.damage(progress.damage) * gear.critical(progress.critRating) * gear.swing * gear.cardDamage * gear.projectiles / attackInterval : 0;
         // Reflect throws a hit back as it arrived before armor
         // (capped at max health outside Reflect Only). What got through can
         // never total more than the player's health, what regen restores and
@@ -171,15 +184,17 @@ export function createCombatReport(deps: CombatReportDeps) {
         // armor is what got through times preArmorFactor: so that, scaled, is
         // the most Reflect can deal, whatever its bag drew.
         const stats = gear.reflects || gear.deflects ? statsFor!(progress) : null;
-        const reflect = stats ? { maxHp: stats.maxHp, regen: stats.regen, preArmor: armorFor(stats.armor).preArmor } : null;
+        // Guard cards let less of a hit through, so a reflected hit is that much bigger than what was lost.
+        const reflect = stats ? { maxHp: stats.maxHp, regen: stats.regen, preArmor: armorFor(stats.armor).preArmor * cardGuardFactor(gear.cardTotals) } : null;
         // Damage taken per second that Reflect can answer: regen, a health bar
         // per life (a life no shorter than REFLECT_ONLY_LIFE_SECONDS), and
         // Second Wind's heal at the most kills a second any map can respawn.
-        const absorbed = reflect ? reflect.regen + reflect.maxHp / REFLECT_ONLY_LIFE_SECONDS + gear.secondWind * reflect.maxHp * SECOND_WIND_KILLS_PER_SECOND : 0;
+        const absorbed = reflect ? reflect.regen + reflect.maxHp / REFLECT_ONLY_LIFE_SECONDS + gear.secondWind * reflect.maxHp * SECOND_WIND_KILLS_PER_SECOND
+          + cardSustainBound(gear.cardTotals, reflect.maxHp, dps, 1 / REFLECT_ONLY_TICK_SECONDS, REFLECT_ONLY_LIFE_SECONDS) : 0;
         // The perk's chance is left out, so the bound only ever errs towards paying.
         // Deflect prevents the hit, so health lost cannot bound it. Each return is capped at max health,
         // and shares the player's .1s hurt window. Leave its chance out, as for Reflect's lucky streaks.
-        const reflectDps = (reflect && gear.reflects ? WORLD_REFLECT_SHARE * reflect.preArmor * absorbed : 0)
+        const reflectDps = (reflect && gear.reflects ? WORLD_REFLECT_SHARE * reflect.preArmor * absorbed * gear.reflectReach : 0)
           + (stats && gear.deflects ? stats.maxHp / REFLECT_ONLY_TICK_SECONDS : 0);
         // Reflect Only: the weapon counts for nothing, and every kill has to come from hits taken.
         if (gear.reflectOnly) {

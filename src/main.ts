@@ -633,7 +633,7 @@ import {
     getTotalKills: () => totalKills,
     setTotalKills: (kills) => { totalKills = kills; },
     researchVitalityRank: () => researchRanks().vitality,
-    healthMultiplierBonus,
+    healthMultiplierBonus, cardRange: () => coop?.wornCardStats?.().range ?? 0,
     setAppliedVitalityRank: research.setAppliedVitalityRank,
     renderInventory,
     onLoaded: finishStartup,
@@ -659,7 +659,7 @@ import {
     prestigeSecondWind: () => prestigePerkValue(coop?.prestigePerks?.(), "secondWind"),
     prestigeDoubleStrike: () => prestigePerkValue(coop?.prestigePerks?.(), "doubleStrike"),
     prestigeSplitShot: () => prestigePerkValue(coop?.prestigePerks?.(), "splitShot"), prestigeReflect: () => prestigePerkValue(coop?.prestigePerks?.(), "riposte"),
-    weaponSkills: () => coop?.weaponSkills?.(inventory.equippedRightHand || inventory.equippedLeftHand),
+    weaponSkills: () => coop?.weaponSkills?.(inventory.equippedRightHand || inventory.equippedLeftHand), cards: () => coop?.wornCardTotals?.(),
     equippedWeapon: () => inventory.equippedRightHand || inventory.equippedLeftHand,
     equippedWeaponUpgradeLevel: () => coop?.itemLevel?.(inventory.equippedRightHand || inventory.equippedLeftHand) ?? 0,
     equippedHead: () => inventory.equippedHead,
@@ -1456,7 +1456,7 @@ import {
   });
 
   runtimeHud = createGameRuntimeHud({
-    e: gameElements, coop, player, activeDuel, duelOpponentName, applyProfileIcon, playerPower,
+    e: gameElements, coop, player, activeDuel, duelOpponentName, applyProfileIcon, playerPower, playerShield: () => playerCombat?.cardShield(),
     setDeveloperAccess: devPanel.setDeveloperAccess, applyVitalityResearch, updateTechNotice: techTree.updateNotice,
     tickTechTree: techTree.tick, refreshAppStatus: appShell.refreshStatus, updateProfileDuelButton: profileWindow.updateDuelButton,
   });
