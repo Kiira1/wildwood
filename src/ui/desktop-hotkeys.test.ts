@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { parseHTML } from "linkedom";
 import { installDesktopHotkeys, pressTopBack } from "./desktop-hotkeys";
+import { defaultBindings, dispatchControlAction, setControlBindings, withKey } from "./control-bindings";
 
 /** linkedom has no layout: each element gets a box, and a hit test returns the topmost listed box. */
 function setup(html: string) {
@@ -58,6 +59,25 @@ describe("PC keyboard", () => {
     expect(panel.hidden).toBe(false);
     s.key("KeyI");
     expect(panel.hidden).toBe(true);
+  });
+
+  it("follows a rebound key, names it on the button, and answers a controller's press", () => {
+    const s = setup(`<button id="inventoryBtn" aria-label="Open inventory">Inventory</button><div id="panel" hidden><button id="close">Back</button></div>`);
+    const open = s.pick("#inventoryBtn"), panel = s.pick("#panel"), close = s.pick("#close");
+    open.addEventListener("click", () => { panel.hidden = false; });
+    close.addEventListener("click", () => { panel.hidden = true; });
+    s.place(open, 0); s.place(close, 20);
+    try {
+      installDesktopHotkeys(s.document);
+      setControlBindings(withKey(defaultBindings(), "inventory", "KeyU"));
+      expect(open.title).toBe("Open inventory (U)");
+      s.key("KeyI");
+      expect(panel.hidden).toBe(true);
+      s.key("KeyU");
+      expect(panel.hidden).toBe(false);
+      dispatchControlAction(s.document as unknown as Document, "inventory");
+      expect(panel.hidden).toBe(true);
+    } finally { setControlBindings(defaultBindings()); }
   });
 
   it("ignores shortcuts while typing, with a modifier held, or when the button is covered", () => {

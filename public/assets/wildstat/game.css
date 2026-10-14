@@ -403,7 +403,21 @@
   .settings-panel > * { flex: 0 0 auto; width: min(520px, 100%); }
   .settings-panel .setting-row { min-height: 44px; padding: 4px 0; }
   .settings-panel .setting-toggle { min-height: 44px; }
-  .settings-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; padding-bottom: 8px; }
+  .settings-tabs { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 6px; padding-bottom: 8px; }
+  .settings-tabs [hidden] { display: none; }
+  .controls-settings { display: flex; flex-direction: column; gap: 6px; }
+  .controls-status { margin: 0 0 4px; font-size: 13px; opacity: .85; }
+  .controls-row { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 6px; font-size: 13px; }
+  .controls-header { font-size: 13px; opacity: .7; }
+  .controls-list { display: flex; flex-direction: column; gap: 6px; }
+  .controls-settings .controls-bind { min-width: 0; min-height: 40px; font-size: 13px; background: linear-gradient(#3a3a3a, #262626); border-color: #555; color: #fff; box-shadow: none; text-shadow: none; }
+  .controls-settings .controls-bind:disabled { opacity: .55; cursor: default; }
+  .controls-settings .controls-bind.is-listening { border-color: var(--gold); color: var(--gold); }
+  .controls-help { margin: 6px 0 0; font-size: 13px; line-height: 1.4; opacity: .75; }
+  .controls-settings .controls-reset { background: linear-gradient(#3a3a3a, #262626); border-color: #555; color: #fff; box-shadow: none; text-shadow: none; }
+  .controls-settings .controls-reset { align-self: flex-start; min-height: 44px; margin-top: 8px; font-size: 13px; }
+  /* A controller moves focus without a keyboard, so its highlight is drawn whenever one is in use. */
+  html[data-input="gamepad"] .pad-focus { outline: 3px solid var(--gold) !important; outline-offset: 2px; }
   .settings-panel .settings-connection { min-height: 28px; margin: 0 0 8px; font-size: 11px; opacity: .8; }
   .settings-panel > .settings-content { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; padding: 2px 3px 12px; }
   .settings-panel > .settings-content::-webkit-scrollbar { display: none; }

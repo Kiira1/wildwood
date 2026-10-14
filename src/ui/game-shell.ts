@@ -1,5 +1,6 @@
 import { installFeedbackControls } from "./feedback-settings";
 import { installSettingsTabs } from "./settings-tabs";
+import { installGamepadControls } from "./gamepad-controls";
 import { applyTextOutlineMode } from "./text-outline-mode";
 
 const beforeStartShell = String.raw`
@@ -529,6 +530,8 @@ export function installGameShell(doc: Document = document) {
       <button id="upgradeBenchSlotThree" class="inventory-item upgrade-bench-slot is-locked" type="button" aria-label="Unlock a third upgrade slot for 200 Gems" aria-pressed="false" hidden></button>`);
   }
   installSettingsTabs(doc);
+  // From the title screen on, so a controller can sign in too.
+  installGamepadControls(doc);
   const start = doc.getElementById("start");
   if (!start) throw new Error("WildStat startup shell is missing #start");
   if (!doc.getElementById("dailyGemBonus")) {

@@ -7,6 +7,7 @@ import { POWER_STEPS, powerLabel } from '../game/runtime/auto-farm/auto-farm-pla
 import { aggroPicksNeeded, readAggroPicks, writeAggroPicks } from '../game/runtime/auto-farm/aggro-picks';
 import { createAggroPickPrompt } from './aggro-pick-prompt';
 import { topBackButton } from './desktop-hotkeys';
+import { actionForKey, onControlAction } from './control-bindings';
 import { installMovableHudCard } from './movable-hud-card';
 import type { AggroChallenge } from '../../shared/aggro-challenge';
 import type { RewardType } from '../game/enemies';
@@ -411,26 +412,30 @@ export function createAutoFarmPanel(options: {
     else updateSelection();
   });
   /**
-   * F starts Auto Farm with the modes last set, or stops it, in an Aggro run
-   * too. Not while typing or under another window. With nothing to farm here
-   * it opens the window, which says why.
+   * The Auto Farm key (F unless rebound) or controller button starts Auto Farm with the modes last set,
+   * or stops it, in an Aggro run too. Not while typing or under another window. With nothing to farm
+   * here it opens the window, which says why.
    */
-  const onKey = (event: KeyboardEvent) => {
-    if (event.code !== 'KeyF' || event.defaultPrevented || event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
-    const target = event.target as HTMLElement | null;
-    if (target?.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target?.tagName ?? '')) return;
-    if (!options.visible()) return;
+  const toggleFarming = () => {
+    if (!options.visible()) return false;
     const top = topBackButton(document);
-    if (top && top !== backButton) return;
-    event.preventDefault();
+    if (top && top !== backButton) return false;
     if (farming()) options.farm.stop();
     else if (!startModes(savedModes())) open();
     refresh();
+    return true;
+  };
+  const onKey = (event: KeyboardEvent) => {
+    if (actionForKey(event.code) !== 'autoFarm' || event.defaultPrevented || event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
+    const target = event.target as HTMLElement | null;
+    if (target?.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target?.tagName ?? '')) return;
+    if (toggleFarming()) event.preventDefault();
   };
   // Capture: a click leaves focus on the card, and the card keeps keys pressed on it from the world.
   document.addEventListener('keydown', onKey, true);
+  const stopControl = onControlAction(document, 'autoFarm', () => { toggleFarming(); });
   // Hidden, there is no button to update; autofarm itself refreshes from its movement step.
   const timer = window.setInterval(() => { if (!document.hidden) refresh(); }, 250);
   refresh();
-  return { close, refresh, destroy() { document.removeEventListener('keydown', onKey, true); movable.destroy(); window.clearInterval(timer); backdrop.remove(); sheet.remove(); } };
+  return { close, refresh, destroy() { document.removeEventListener('keydown', onKey, true); stopControl(); movable.destroy(); window.clearInterval(timer); backdrop.remove(); sheet.remove(); } };
 }

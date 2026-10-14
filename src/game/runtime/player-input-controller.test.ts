@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { parseHTML } from "linkedom";
-import { JOYSTICK_DEAD_ZONE, JOYSTICK_MAXIMUM, radialJoystickInput, swallowsGameKeys } from "./player-input-controller";
+import { createPlayerInputController, JOYSTICK_DEAD_ZONE, JOYSTICK_MAXIMUM, radialJoystickInput, setAnalogMovementSource, swallowsGameKeys } from "./player-input-controller";
+import { defaultBindings, setControlBindings, withKey } from "../../ui/control-bindings";
 
 describe("radial touch joystick", () => {
   it("filters finger noise inside the dead zone", () => {
@@ -41,5 +42,41 @@ describe("keyboard ownership", () => {
   it("gives the world every key when nothing focusable is typing", () => {
     expect(swallowsGameKeys(document.createElement("canvas"), "KeyW")).toBe(false);
     expect(swallowsGameKeys(null, "KeyW")).toBe(false);
+  });
+});
+
+describe("bound movement", () => {
+  afterEach(() => { setAnalogMovementSource(null); setControlBindings(defaultBindings()); vi.unstubAllGlobals(); });
+  function controller() {
+    const { document, window } = parseHTML("<canvas></canvas><div id=j></div><div id=s></div>");
+    vi.stubGlobal("window", window);
+    vi.stubGlobal("document", document);
+    const input = createPlayerInputController({ canvas: document.querySelector("canvas") as any, joystick: document.querySelector("#j") as any,
+      stick: document.querySelector("#s") as any, running: () => true, onTapPlayer: () => {}, onEscape: () => false });
+    const key = (type: string, code: string) => {
+      const event = new window.Event(type, { bubbles: true, cancelable: true });
+      Object.defineProperty(event, "code", { value: code });
+      window.dispatchEvent(event);
+    };
+    return { input, key };
+  }
+
+  it("walks on a rebound key, still on the arrows, and no longer on the old key", () => {
+    setControlBindings(withKey(defaultBindings(), "moveUp", "KeyZ"));
+    const { input, key } = controller();
+    key("keydown", "KeyW");
+    expect(input.movement()).toMatchObject({ x: 0, y: 0, source: "none" });
+    key("keyup", "KeyW");
+    key("keydown", "KeyZ");
+    expect(input.movement()).toMatchObject({ y: -1, source: "keyboard" });
+    key("keyup", "KeyZ");
+    key("keydown", "ArrowUp");
+    expect(input.movement()).toMatchObject({ y: -1, source: "keyboard" });
+  });
+
+  it("walks a controller's stick at its own speed, sent like the touch joystick", () => {
+    const { input } = controller();
+    setAnalogMovementSource(() => ({ x: .4, y: 0 }));
+    expect(input.movement()).toEqual({ x: .4, y: 0, source: "touch" });
   });
 });

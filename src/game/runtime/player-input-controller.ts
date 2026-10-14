@@ -1,4 +1,20 @@
 import { createDesktopMovement, type DesktopMovementOptions } from "./desktop-movement";
+import { ARROW_FOR, controlBindings, type ControlAction } from "../../ui/control-bindings";
+
+/**
+ * A controller's stick, as an analog vector the touch joystick would give; installed by the gamepad
+ * runtime. Kept on the page, not in this module: the page loads the shell and the game as two bundles.
+ */
+const ANALOG_MOVEMENT = Symbol.for("wildstat.analogMovement");
+type AnalogSource = (() => { x: number; y: number }) | null;
+export function setAnalogMovementSource(source: AnalogSource) { (globalThis as Record<symbol, AnalogSource>)[ANALOG_MOVEMENT] = source; }
+const analogMovement = () => (globalThis as Record<symbol, AnalogSource>)[ANALOG_MOVEMENT] ?? null;
+
+const MOVE_ACTIONS: readonly ControlAction[] = ["moveUp", "moveLeft", "moveDown", "moveRight"];
+/** Whether a key moves the player: its bound key or its arrow. */
+function isMovementKey(code: string) {
+  return MOVE_ACTIONS.some(action => controlBindings().keys[action] === code || ARROW_FOR[action] === code);
+}
 
 /**
  * "keyboard" is eight-way WASD: the vector only changes when a key does, so a
@@ -149,7 +165,7 @@ export function createPlayerInputController(options: {
     if (swallowsGameKeys(event.target, event.code)) return;
     if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(event.code)) event.preventDefault();
     keys.add(event.code);
-    if (["KeyA", "KeyD", "KeyW", "KeyS", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.code)) desktop?.clear();
+    if (isMovementKey(event.code)) desktop?.clear();
   });
   window.addEventListener("keyup", (event) => keys.delete(event.code));
   window.addEventListener("blur", () => clear());
@@ -172,21 +188,23 @@ export function createPlayerInputController(options: {
 
   return {
     movement: (dt) => {
-      const left = keys.has("KeyA") || keys.has("ArrowLeft");
-      const right = keys.has("KeyD") || keys.has("ArrowRight");
-      const up = keys.has("KeyW") || keys.has("ArrowUp");
-      const down = keys.has("KeyS") || keys.has("ArrowDown");
+      const bound = controlBindings().keys;
+      const held = (action: ControlAction) => keys.has(bound[action]) || keys.has(ARROW_FOR[action]!);
+      const left = held("moveLeft"), right = held("moveRight"), up = held("moveUp"), down = held("moveDown");
       const keyboard = left || right || up || down;
-      if (keyboard || touch.active) desktop?.clear();
-      const pointing = !keyboard && !touch.active ? desktop?.movement(dt) : undefined;
+      const pad = analogMovement()?.() ?? { x: 0, y: 0 };
+      const stick = Boolean(pad.x || pad.y);
+      if (keyboard || touch.active || stick) desktop?.clear();
+      const pointing = !keyboard && !touch.active && !stick ? desktop?.movement(dt) : undefined;
       if (pointing && (pointing.x || pointing.y)) {
         // The pointer aims a continuously turning vector: see MovementInputSource.
         return { ...pointing, source: "steer" };
       }
       return {
-        x: (right ? 1 : 0) - (left ? 1 : 0) + touch.x,
-        y: (down ? 1 : 0) - (up ? 1 : 0) + touch.y,
-        source: touch.active ? "touch" : left || right || up || down ? "keyboard" : "none",
+        x: (right ? 1 : 0) - (left ? 1 : 0) + touch.x + pad.x,
+        y: (down ? 1 : 0) - (up ? 1 : 0) + touch.y + pad.y,
+        // A stick turns continuously like the touch joystick, so it is rate-limited like one.
+        source: touch.active || stick ? "touch" : left || right || up || down ? "keyboard" : "none",
       };
     },
     clear,

@@ -1,7 +1,10 @@
 import { createCommunityLinks } from './community-links';
+import { controlsTabUseful, createControlsSettings } from './controls-settings';
+import { onGamepadChange } from './gamepad-controls';
 
 const SETTINGS_GROUPS = [
   { id: "game", label: "Game", selectors: ["#toolbarHapticsToggle", "#selfProfileTapToggle", "#scientificNotationToggle", "#statPopupsToggle", "#enemyHpNumbersToggle", "#attackRangeToggle", "#remoteGhostsToggle", "#cameraZoomToggle", "#highResolutionToggle", "#chatToggle", "#chatTimestampsToggle", "#statTrackerToggle", "#baseStatRewardsToggle", "#gameTickerToggle", "#fullscreenToggle", "#keepScreenOnToggle", "#lowPerformanceToggle", "#fpsToggle", "#latencyToggle"] },
+  { id: "controls", label: "Controls", selectors: ["#controlsSettings"] },
   { id: "audio", label: "Audio", selectors: ["#musicVolume", "#sfxVolume"] },
   { id: "account", label: "Account", selectors: ["#offlineProgressToggle", "#accountButton", "#accountStatus", ".setting-support", ".setting-legal", "#developerSettingsRow", ".setting-reset"] },
 ] as const;
@@ -53,6 +56,7 @@ export function installSettingsTabs(doc: Document) {
     privacy.append(link);
   }
   settings.append(privacy);
+  settings.append(createControlsSettings(doc));
   const tablist = doc.createElement("div");
   tablist.id = "settingsTabs";
   tablist.className = "settings-tabs";
@@ -93,4 +97,13 @@ export function installSettingsTabs(doc: Document) {
   // Only the body scrolls, keeping navigation and Back visible on short screens.
   settings.insertBefore(content, settings.querySelector(".window-back-footer"));
   bindSettingsTabs(tabs, panels);
+  // Touch-only phones have nothing to rebind until a controller connects.
+  const controlsTab = doc.getElementById("settings-controls-tab");
+  const showControls = () => {
+    if (!controlsTab) return;
+    controlsTab.hidden = !controlsTabUseful(doc);
+    if (controlsTab.hidden && controlsTab.getAttribute("aria-selected") === "true") tabs[0].click();
+  };
+  showControls();
+  onGamepadChange(showControls);
 }

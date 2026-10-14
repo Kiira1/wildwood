@@ -1,18 +1,20 @@
+import { actionForKey, controlBindings, keyLabel, onControlAction, onControlBindingsChange, type ControlAction } from "./control-bindings";
+
 /**
- * Keyboard shortcuts for PC players. Each one does exactly what clicking its
- * button does, and only when that button could be clicked: on screen, enabled
- * and not under another window. Escape presses the Back of whichever window is
- * on top, so every window closes the same way its own Back does. Enter opens
- * the chat to type in; Escape from the chat box closes it again.
+ * Keyboard shortcuts for PC players, on the keys the Controls tab binds. Each one does exactly what
+ * clicking its button does, and only when that button could be clicked: on screen, enabled and not
+ * under another window. A controller button bound to the same action does the same. Escape presses
+ * the Back of whichever window is on top, so every window closes the same way its own Back does.
+ * Enter opens the chat to type in; Escape from the chat box closes it again.
  */
 export const DESKTOP_HOTKEYS = [
-  { code: "KeyI", label: "I", selector: "#inventoryBtn" },
-  { code: "KeyL", label: "L", selector: "#leaderboardBtn" },
-  { code: "KeyG", label: "G", selector: "#guildBtn" },
-  { code: "KeyM", label: "M", selector: "#minimapButton" },
-  { code: "KeyP", label: "P", selector: "#playerHudProfileGear" },
-] as const;
-// F starts and stops Auto Farm itself (auto-farm-panel.ts), rather than opening its window.
+  { action: "inventory", selector: "#inventoryBtn" },
+  { action: "leaderboard", selector: "#leaderboardBtn" },
+  { action: "guild", selector: "#guildBtn" },
+  { action: "map", selector: "#minimapButton" },
+  { action: "profile", selector: "#playerHudProfileGear" },
+] as const satisfies readonly { action: ControlAction; selector: string }[];
+// Auto Farm starts and stops itself (auto-farm-panel.ts), rather than opening its window.
 
 /** Whether a click at the element's centre would reach it. */
 export function clickable(element: Element | null): element is HTMLElement {
@@ -51,10 +53,37 @@ export function installDesktopHotkeys(doc: Document = document) {
   // The Back each shortcut's window showed when it opened: the same key closes it again.
   const opened = new Map<string, HTMLElement>();
 
-  for (const hotkey of DESKTOP_HOTKEYS) {
+  // Each button's tooltip names its key, and follows a rebinding.
+  const labelButtons = () => {
+    for (const hotkey of DESKTOP_HOTKEYS) {
+      const button = doc.querySelector<HTMLElement>(hotkey.selector);
+      if (!button) continue;
+      const base = (button.title || button.getAttribute("aria-label") || "").replace(/ \([^)]*\)$/, "").trim();
+      const code = controlBindings().keys[hotkey.action];
+      button.title = code ? `${base} (${keyLabel(code)})`.trim() : base;
+    }
+  };
+  labelButtons();
+
+  /** Opens the shortcut's window as its button does, or closes the window it opened. */
+  const run = (hotkey: (typeof DESKTOP_HOTKEYS)[number]) => {
+    const back = topBackButton(doc);
+    const own = opened.get(hotkey.action);
+    if (back && back === own) { back.click(); opened.delete(hotkey.action); return true; }
     const button = doc.querySelector<HTMLElement>(hotkey.selector);
-    if (button && !button.title.includes(`(${hotkey.label})`)) button.title = `${button.title || button.getAttribute("aria-label") || ""} (${hotkey.label})`.trim();
-  }
+    if (!clickable(button)) return false;
+    button.click();
+    opened.delete(hotkey.action);
+    // The window draws on the next frame; remember its Back then.
+    const nextFrame = (next: () => void) => view?.requestAnimationFrame ? view.requestAnimationFrame(next) : setTimeout(next, 16);
+    nextFrame(() => {
+      const shown = topBackButton(doc);
+      if (shown && shown !== back) opened.set(hotkey.action, shown);
+    });
+    return true;
+  };
+  // Settings sits in the profile window, so its button is pressed wherever it is.
+  const openSettings = () => doc.getElementById("settingsBtn")?.click();
 
   const onKey = (event: KeyboardEvent) => {
     if (event.defaultPrevented || event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
@@ -75,23 +104,16 @@ export function installDesktopHotkeys(doc: Document = document) {
       (doc.getElementById("chatInput") as HTMLTextAreaElement | null)?.focus();
       return;
     }
-    const hotkey = DESKTOP_HOTKEYS.find(entry => entry.code === event.code);
-    if (!hotkey) return;
-    const back = topBackButton(doc);
-    const own = opened.get(hotkey.code);
-    if (back && back === own) { event.preventDefault(); back.click(); opened.delete(hotkey.code); return; }
-    const button = doc.querySelector<HTMLElement>(hotkey.selector);
-    if (!clickable(button)) return;
-    event.preventDefault();
-    button.click();
-    opened.delete(hotkey.code);
-    // The window draws on the next frame; remember its Back then.
-    const nextFrame = (run: () => void) => view?.requestAnimationFrame ? view.requestAnimationFrame(run) : setTimeout(run, 16);
-    nextFrame(() => {
-      const shown = topBackButton(doc);
-      if (shown && shown !== back) opened.set(hotkey.code, shown);
-    });
+    const action = actionForKey(event.code);
+    if (action === "settings") { event.preventDefault(); openSettings(); return; }
+    const hotkey = DESKTOP_HOTKEYS.find(entry => entry.action === action);
+    if (hotkey && run(hotkey)) event.preventDefault();
   };
   doc.addEventListener("keydown", onKey);
-  return () => doc.removeEventListener("keydown", onKey);
+  const stops = [
+    ...DESKTOP_HOTKEYS.map(hotkey => onControlAction(doc, hotkey.action, () => { run(hotkey); })),
+    onControlAction(doc, "settings", openSettings),
+    onControlBindingsChange(labelButtons),
+  ];
+  return () => { doc.removeEventListener("keydown", onKey); for (const stop of stops) stop(); };
 }

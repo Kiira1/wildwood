@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.903.7": [
+    "Controller support, and a Controls tab in Settings to remap keys and buttons",
+  ],
   "0.903.6": [
     "Attack speed is no longer held at 6.00/s when Quick Draw cards raise the cap",
     "With a raised attack speed cap, attack speed no longer jumps ahead and snaps back after kills",
@@ -3334,6 +3337,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.903.7": "2026-10-14",
   "0.903.6": "2026-10-14",
   "0.903.5": "2026-10-14",
   "0.903.4": "2026-10-14",
