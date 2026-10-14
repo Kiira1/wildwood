@@ -13,6 +13,9 @@ import { refineStars } from "./refine-badge";
 import { oreIconSource } from "./ore-icon";
 import { oreDescription } from "../../shared/ore-bag";
 import { REFINE_ORES, type OreId } from "../../shared/refine";
+import { cardDefinition } from "../../shared/cards";
+import { CARD_SLOT_NAMES, cardEffectText, cardName, cardOrigin } from "../../shared/card-text";
+import { cardPortrait } from "./card-portrait";
 
 export type ItemInspectionAction = {
   label: string;
@@ -227,11 +230,62 @@ export function createItemInspectionController(elements: ItemInspectionElements)
     return true;
   }
 
+  /** A card's window: its portrait, where it drops, how many are held, what gear it goes in and each effect. */
+  function openCard(request: { cardId: string; count: number }) {
+    const card = cardDefinition(request.cardId);
+    if (!card) return false;
+    if (elements.panel.hidden) {
+      returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    }
+    elements.title.textContent = cardName(card);
+    const icon = document.createElement("div");
+    icon.className = "item-inspection-icon is-card";
+    const image = document.createElement("img");
+    image.alt = "";
+    image.draggable = false;
+    void cardPortrait(card.id).then(source => { if (source) image.src = source; });
+    icon.append(image);
+    const metadata = document.createElement("div");
+    metadata.className = "item-inspection-metadata";
+    const origin = document.createElement("span");
+    origin.className = `card-origin is-${card.rarity}`;
+    origin.textContent = cardOrigin(card);
+    metadata.append(origin);
+    const preview = document.createElement("div");
+    preview.className = "item-inspection-preview";
+    preview.append(elements.title, metadata, icon);
+    const copy = document.createElement("div");
+    copy.className = "item-inspection-copy";
+    const context = document.createElement("div");
+    context.className = "item-inspection-context";
+    context.textContent = `Goes In: ${CARD_SLOT_NAMES[card.slot]} · ${request.count.toLocaleString()} held`;
+    const stats = document.createElement("div");
+    stats.className = "item-inspection-stats";
+    for (const effect of card.effects) {
+      const value = document.createElement("span");
+      value.textContent = cardEffectText(effect);
+      value.dataset.statKind = effect.value < 0 ? "cost" : "card";
+      stats.append(value);
+    }
+    const description = document.createElement("p");
+    description.textContent = "Slot it into gear at the Smith.";
+    copy.append(context, stats, description);
+    tools.replaceChildren();
+    const summary = document.createElement("div");
+    summary.className = "item-inspection-summary";
+    summary.append(preview, copy);
+    elements.content.replaceChildren(summary);
+    elements.panel.hidden = false;
+    elements.back.focus({ preventScroll: true });
+    return true;
+  }
+
   elements.back.addEventListener("click", close);
 
   return {
     open,
     openOre,
+    openCard,
     close,
     isOpen: () => !elements.panel.hidden,
   };

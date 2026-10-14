@@ -434,7 +434,7 @@ import {
       showMessage("BEST EQUIPMENT EQUIPPED", "#72ef58");
       return true;
     },
-    upgradeLevel: (itemId) => coop?.itemUpgradeLevel?.(itemId) ?? 0, refineLevel: (itemId, copyId) => coop?.itemRefine?.(itemId, copyId) ?? 0, ores: () => coop?.ores?.() ?? {},
+    upgradeLevel: (itemId) => coop?.itemUpgradeLevel?.(itemId) ?? 0, refineLevel: (itemId, copyId) => coop?.itemRefine?.(itemId, copyId) ?? 0, ores: () => coop?.ores?.() ?? {}, cards: () => coop?.cards?.() ?? {},
     slotTier: slot => coop?.slotUpgradeTier?.(slot) ?? 0,
     inventorySlotsUnlocked: () => coop?.inventorySlotsUnlocked?.() ?? 0,
     gemBalance: () => coop?.gemBalance?.() ?? 0n,

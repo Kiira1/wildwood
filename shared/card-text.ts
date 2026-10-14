@@ -1,0 +1,86 @@
+import { CARD_EFFECT_DEFAULTS } from "./card-effects";
+import { type CardDefinition, type CardEffect, type CardEffectId, type CardSlot } from "./cards";
+import { MAP_DISPLAY_NAMES } from "./rules";
+import type { RewardType } from "./enemy-definitions";
+
+const STAT_NAMES: Readonly<Record<RewardType, string>> = {
+  damage: "Damage", health: "Max Health", speed: "Attack Speed", armor: "Armor", regen: "Regen", crit: "Crit Damage",
+};
+export const CARD_SLOT_NAMES: Readonly<Record<CardSlot, string>> = { HAND: "Weapon", HEAD: "Helmet", CHEST: "Armor" };
+
+const number = (value: number) => `${Math.round(value * 100) / 100}`;
+const percent = (share: number) => `${Math.round(share * 100)}%`;
+const signed = (value: number) => (value < 0 ? `-${number(-value)}` : `+${number(value)}`);
+export const mapName = (mapId: string) => (MAP_DISPLAY_NAMES as Record<string, string>)[mapId]?.replace(/ - \d+$/, "") ?? mapId;
+
+/** What one effect of a card does, as players read it. */
+export function cardEffectText(effect: CardEffect): string {
+  const v = effect.value, abs = number(Math.abs(v));
+  const lines: Partial<Record<CardEffectId, () => string>> = {
+    atk: () => `Damage ${signed(v)}%`,
+    critChance: () => `Crit Chance ${signed(v)}%`,
+    critDamage: () => `Crit Damage ${signed(v)}%`,
+    doubleStrike: () => `${abs}% chance a hit lands twice`,
+    splitShot: () => `${abs}% chance to also hit a second nearby enemy`,
+    bossSlayer: () => `Damage to bosses ${signed(v)}%`,
+    eliteSlayer: () => `Damage to elites ${signed(v)}%`,
+    raceSlayer: () => `Damage to ${mapName(effect.mapId ?? "")} enemies ${signed(v)}%`,
+    rangedSlayer: () => `Damage to ranged enemies ${signed(v)}%`,
+    execute: () => `Damage to enemies under ${percent(CARD_EFFECT_DEFAULTS.execute.below)} health ${signed(v)}%`,
+    opener: () => `Damage to enemies at full health ${signed(v)}%`,
+    berserk: () => `Damage ${signed(v)}% while you are under ${percent(CARD_EFFECT_DEFAULTS.berserk.below)} health`,
+    steady: () => `Damage ${signed(v)}% while you stand still`,
+    momentum: () => `Each kill: damage ${signed(v)}% for ${CARD_EFFECT_DEFAULTS.momentum.seconds}s, stacks ${CARD_EFFECT_DEFAULTS.momentum.stacks} times`,
+    burn: () => `${v >= 100 ? "Every hit burns" : `${abs}% chance to burn`}: ${percent(effect.share ?? CARD_EFFECT_DEFAULTS.burn.share)} of the hit over ${effect.seconds ?? CARD_EFFECT_DEFAULTS.burn.seconds}s`,
+    poison: () => `${abs}% chance to poison: ${percent(CARD_EFFECT_DEFAULTS.poison.share)} of the hit over ${CARD_EFFECT_DEFAULTS.poison.seconds}s, and the enemy hits ${percent(CARD_EFFECT_DEFAULTS.poison.weaken)} softer`,
+    chill: () => `${abs}% chance to slow an enemy ${percent(CARD_EFFECT_DEFAULTS.chill.slow)} for ${CARD_EFFECT_DEFAULTS.chill.seconds}s`,
+    stun: () => `${abs}% chance to stun an enemy for ${effect.seconds ?? CARD_EFFECT_DEFAULTS.stun.seconds}s (bosses are slowed)`,
+    weaken: () => `${abs}% chance: the enemy deals ${percent(CARD_EFFECT_DEFAULTS.weaken.weaken)} less damage for ${CARD_EFFECT_DEFAULTS.weaken.seconds}s`,
+    knockback: () => `${abs}% chance to knock an enemy back`,
+    splash: () => effect.chance !== undefined
+      ? `${number(effect.chance)}% chance to strike every enemy near the target for ${abs}%`
+      : `Hits deal ${abs}% damage to enemies near the target`,
+    chainLightning: () => `${abs}% chance to arc to ${effect.targets ?? CARD_EFFECT_DEFAULTS.chainLightning.targets} more enemies for ${percent(effect.share ?? CARD_EFFECT_DEFAULTS.chainLightning.share)}`,
+    lifesteal: () => `Heal ${abs}% of the damage you deal`,
+    quickDraw: () => `Attack speed cap ${signed(v)}/s`,
+    arrowStorm: () => `With a bow: Arrow Storm chance ${signed(v)}%`,
+    ricochet: () => `With a bow: Ricochet chance ${signed(v)}%`,
+    piercing: () => `With a bow: Piercing Shot chance ${signed(v)}%`,
+    iaido: () => "Your first hit on each enemy is always a critical",
+    reap: () => `Regular enemies under ${abs}% health die at once`,
+    maxHealth: () => `Max Health ${signed(v)}%`,
+    armor: () => `Armor ${signed(v)}%`,
+    regen: () => `Regen ${signed(v)}%`,
+    reflect: () => `${abs}% chance to send a hit back`,
+    secondWind: () => `Heal ${abs}% of max health on each kill`,
+    dodge: () => `${abs}% chance to dodge a hit`,
+    rangedGuard: () => `Damage from ranged enemies -${abs}%`,
+    meleeGuard: () => `Damage from melee enemies -${abs}%`,
+    bossGuard: () => `Damage from bosses -${abs}%`,
+    eliteGuard: () => `Damage from elites -${abs}%`,
+    raceGuard: () => `Damage from ${mapName(effect.mapId ?? "")} enemies -${abs}%`,
+    shield: () => `A shield of ${abs}% max health, back ${effect.seconds ?? CARD_EFFECT_DEFAULTS.shield.seconds}s after the last hit`,
+    panicHeal: () => `Hit under ${percent(CARD_EFFECT_DEFAULTS.panicHeal.below)} health: ${abs}% chance to heal ${percent(CARD_EFFECT_DEFAULTS.panicHeal.heal)}`,
+    lastStand: () => `Once per map visit, a killing blow leaves you at ${abs}% health`,
+    web: () => `Enemies that hit you are slowed ${abs}% for ${effect.seconds ?? CARD_EFFECT_DEFAULTS.web.seconds}s`,
+    prism: () => "A reflected hit also strikes enemies near the attacker",
+    fleetFoot: () => `Move Speed ${signed(v)}%`,
+    longShot: () => `Attack Range ${signed(v)}`,
+    statGain: () => `${STAT_NAMES[effect.stat ?? "damage"]} from kills ${signed(v)}%`,
+    allStatGain: () => `All stats from kills ${signed(v)}%`,
+    cardHunter: () => `Card drop chance ${signed(v)}%`,
+    treasure: () => `Gear drop chance ${signed(v)}%`,
+    respawn: () => `Enemies respawn ${abs}% faster`,
+    miningSpeed: () => `Mining speed ${signed(v)}%`,
+    oreFind: () => `${abs}% chance for an extra ore`,
+    starshardFind: () => `Starshard chance ${signed(v)}%`,
+  };
+  return lines[effect.effect]?.() ?? effect.effect;
+}
+
+/** "Needle Card". */
+export const cardName = (card: CardDefinition) => `${card.enemy} Card`;
+
+/** "Elite · Tutorial Forest". */
+export const cardOrigin = (card: CardDefinition) =>
+  `${card.rarity === "boss" ? "Boss" : card.rarity === "elite" ? "Elite" : "Regular"} · ${mapName(card.mapId)}`;

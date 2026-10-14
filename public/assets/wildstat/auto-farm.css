@@ -820,6 +820,29 @@
   .inventory-bag-toolbar { flex-wrap: wrap; row-gap: 4px; }
   .inventory-bag-toolbar > .inventory-filters { flex: 1 0 100%; justify-content: space-between; }
 }
+/* The Cards tab: each card held as a bag-style tile, its portrait framed in its rarity's colour. */
+.inventory-tabs { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
+.inventory-content > [hidden] { display: none; }
+.cards-tab { display: grid; grid-column: 1; grid-row: 1 / span 2; align-content: start; gap: 6px; container-type: inline-size; min-width: 0; padding: 7px; }
+.cards-tab-note { margin: 0 8px 4px; }
+.cards-tab-empty { margin: 18px 0; color: var(--inventory-muted, #b9bdb9); font: 700 14px/1.4 var(--font-rounded); text-align: center; }
+.cards-tab-empty[hidden] { display: none; }
+/* A card tile is card-shaped: its enemy's name (up to two lines) over the portrait, the count in the corner. */
+.inventory-items > .inventory-item.is-card { aspect-ratio: 3 / 4; grid-template-rows: 24px minmax(0, 1fr); gap: 1px; padding: 3px 3px 4px; }
+.inventory-item.is-card.is-elite { border-color: rgba(180,140,255,.45); }
+.inventory-item.is-card.is-boss { border-color: rgba(242,193,78,.55); }
+.inventory-item.is-card > .item-tier-label { position: static; display: flex; align-items: center; justify-content: center; width: 100%; height: 24px; overflow: hidden; transform: none; font-size: 10px; line-height: 11px; text-align: center; overflow-wrap: break-word; }
+.inventory-item.is-card .inventory-item-art-wrap .card-tile-art { width: 100%; height: 100%; image-rendering: auto; }
+/* Phone width: four wider cards, so a one-word name like Dreadreaper keeps to one line. */
+@container (max-width: 380px) {
+  .cards-tab-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+.item-inspection-icon.is-card img { width: 112px; height: 140px; image-rendering: auto; }
+.card-origin { color: #b9c3cc; font: 900 13px/16px var(--font-rounded); }
+.card-origin.is-elite { color: #c9adff; }
+.card-origin.is-boss { color: #f2c14e; }
+.item-inspection-stats [data-stat-kind="card"] { color: #e8eee9; }
+.item-inspection-stats [data-stat-kind="cost"] { color: #ff9b91; }
 html.text-outline-shadow .inventory-stack-count { text-shadow: 1px 0 0 #080b08, -1px 0 0 #080b08, 0 1px 0 #080b08, 0 -1px 0 #080b08, .7px .7px 0 #080b08, -.7px .7px 0 #080b08, .7px -.7px 0 #080b08, -.7px -.7px 0 #080b08; }
 /* The Soul Dimension portal's window: its stats and tier progress, in the travel window's frame. */
 .soul-sheet .soul-body { display: flex; flex-direction: column; gap: 10px; }

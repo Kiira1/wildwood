@@ -21,6 +21,7 @@ import { type BowSkillRoll } from "../../shared/bow-skills";
 import { createInventoryDeleteMode } from "./inventory-delete-mode";
 import { withRefineStars } from "./refine-badge";
 import type { OreId } from "../../shared/refine";
+import { createCardsTab } from "./cards-tab";
 
 type InventoryLocation = EquipmentSlot | "BAG" | "";
 type SelectableInventory = InventoryState & { selectedItemId: string; selectedItemLocation?: InventoryLocation };
@@ -46,6 +47,8 @@ type InventoryDependencies = {
   refineLevel?: (itemId: string, copyId?: bigint) => number;
   /** Ores held, by kind (mined in the Copper Hills, spent at the Smith): a stack in one bag slot each. */
   ores?: () => Readonly<Partial<Record<OreId, number>>>;
+  /** Cards held, by card id: the Cards tab. */
+  cards?: () => Readonly<Record<string, number>>;
   equipBest?: () => boolean;
   equipmentLocked?: (itemId: string, copyId?: bigint) => boolean;
   setEquipmentLocked?: (itemId: string, locked: boolean, copyId?: bigint) => Promise<Result>;
@@ -83,8 +86,10 @@ export function createInventoryController(dependencies: InventoryDependencies) {
   const equippedRightHand = requiredElement("equippedRightHandSlot");
   const equipmentTab = requiredElement<HTMLButtonElement>("inventoryEquipmentTab");
   const cosmeticsTab = requiredElement<HTMLButtonElement>("inventoryCosmeticsTab");
+  const cardsTab = document.getElementById("inventoryCardsTab") as HTMLButtonElement | null;
   const content = requiredElement("inventoryContent");
   const loadout = panel.querySelector<HTMLElement>(".inventory-loadout");
+  const bagSection = items.closest<HTMLElement>(".bag-section");
   const tabs = equipmentTab.closest(".inventory-tabs");
   if (tabs) {
     const scroll = document.createElement("div");
@@ -192,6 +197,16 @@ export function createInventoryController(dependencies: InventoryDependencies) {
     clearInventorySelection(dependencies.inventory);
     dependencies.itemInspection.openOre?.({ oreId, count: dependencies.ores?.()[oreId] ?? 0 });
   }
+
+  const cardsView = cardsTab && dependencies.cards ? createCardsTab({
+    cards: dependencies.cards,
+    onInspect: cardId => dependencies.itemInspection.openCard?.({ cardId, count: dependencies.cards?.()[cardId] ?? 0 }),
+  }) : null;
+  if (cardsView) content.append(cardsView.element);
+  else cardsTab?.remove();
+  let cardsShown = false;
+  const tabViews: Array<[HTMLButtonElement, InventoryMode | "CARDS"]> = [[equipmentTab, "EQUIPMENT"], [cosmeticsTab, "COSMETICS"]];
+  if (cardsView && cardsTab) tabViews.push([cardsTab, "CARDS"]);
 
   /** `copyId` 0n is the item's first copy: the bag entry, or whatever its slot holds. */
   function inspect(itemId: string, location: Exclude<InventoryLocation, "">, copyId = 0n) {
@@ -325,10 +340,11 @@ export function createInventoryController(dependencies: InventoryDependencies) {
   }
 
   function render() {
+    if (cardsShown) cardsView?.render();
     const inventory = dependencies.inventory;
     const copies = dependencies.equipmentCopies?.() ?? [];
     const held = dependencies.ores?.() ?? {};
-    const nextState = JSON.stringify([mode, filter, inventory, held, inventory.itemIds.map(id => dependencies.equipmentLocked?.(id)), dependencies.inventorySlotsUnlocked(), unlockingSlot,
+    const nextState = JSON.stringify([cardsShown, mode, filter, inventory, held, inventory.itemIds.map(id => dependencies.equipmentLocked?.(id)), dependencies.inventorySlotsUnlocked(), unlockingSlot,
       ["HEAD", "CHEST", "HAND"].map(slot => dependencies.slotTier?.(slot as "HEAD" | "CHEST" | "HAND")), inventory.itemIds.map(itemId => `${dependencies.upgradeLevel(itemId)}:${dependencies.refineLevel?.(itemId, 0n)}`),
       copies.map(copy => `${copy.id}:${copy.itemId}:${dependencies.equipmentLocked?.(copy.itemId, copy.id)}:${dependencies.refineLevel?.(copy.itemId, copy.id)}`)]);
     if (nextState === renderedState) return;
@@ -338,13 +354,16 @@ export function createInventoryController(dependencies: InventoryDependencies) {
     filters.setCosmetics(cosmeticsActive);
     deleteMode.element.hidden = cosmeticsActive;
     if (equipBestButton && deleteMode.active()) equipBestButton.hidden = true;
-    equipmentTab.classList.toggle("is-active", !cosmeticsActive);
-    equipmentTab.setAttribute("aria-selected", String(!cosmeticsActive));
-    equipmentTab.tabIndex = cosmeticsActive ? -1 : 0;
-    cosmeticsTab.classList.toggle("is-active", cosmeticsActive);
-    cosmeticsTab.setAttribute("aria-selected", String(cosmeticsActive));
-    cosmeticsTab.tabIndex = cosmeticsActive ? 0 : -1;
-    content.setAttribute("aria-labelledby", cosmeticsActive ? cosmeticsTab.id : equipmentTab.id);
+    const activeTab = cardsShown && cardsTab ? cardsTab : cosmeticsActive ? cosmeticsTab : equipmentTab;
+    for (const [tab] of tabViews) {
+      tab.classList.toggle("is-active", tab === activeTab);
+      tab.setAttribute("aria-selected", String(tab === activeTab));
+      tab.tabIndex = tab === activeTab ? 0 : -1;
+    }
+    content.setAttribute("aria-labelledby", activeTab.id);
+    if (loadout) loadout.hidden = cardsShown;
+    if (bagSection) bagSection.hidden = cardsShown;
+    cardsView?.show(cardsShown);
     if (loadout) loadout.setAttribute("aria-label", cosmeticsActive ? "Cosmetic items" : "Equipped items");
     const slotsUnlocked = dependencies.inventorySlotsUnlocked();
     const slotCapacity = inventorySlotCapacity(slotsUnlocked);
@@ -432,25 +451,25 @@ export function createInventoryController(dependencies: InventoryDependencies) {
     clickEquipment(destination, itemInSlot(destination));
   });
   equippedFeet.addEventListener("click", () => clickEquipment("FEET", itemInSlot("FEET")));
-  const setMode = (nextMode: InventoryMode) => {
-    if (mode === nextMode) return;
+  const setView = (next: InventoryMode | "CARDS") => {
+    if (next === "CARDS" ? cardsShown : !cardsShown && mode === next) return;
     deleteMode.exit();
     lockMode.exit();
-    mode = nextMode;
+    cardsShown = next === "CARDS";
+    if (next !== "CARDS") mode = next;
     clearInventorySelection(dependencies.inventory);
     render();
   };
-  equipmentTab.addEventListener("click", () => setMode("EQUIPMENT"));
-  cosmeticsTab.addEventListener("click", () => setMode("COSMETICS"));
-  for (const tab of [equipmentTab, cosmeticsTab]) {
+  tabViews.forEach(([tab, view], index) => {
+    tab.addEventListener("click", () => setView(view));
     tab.addEventListener("keydown", (event) => {
       if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
       event.preventDefault();
-      const nextTab = tab === equipmentTab ? cosmeticsTab : equipmentTab;
-      setMode(nextTab === cosmeticsTab ? "COSMETICS" : "EQUIPMENT");
+      const [nextTab, nextView] = tabViews[(index + (event.key === "ArrowRight" ? 1 : tabViews.length - 1)) % tabViews.length];
+      setView(nextView);
       nextTab.focus();
     });
-  }
+  });
 
   return {
     destructionActions,
