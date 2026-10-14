@@ -69,6 +69,13 @@ const near = (item: Prop) => overlap(boxOf(item), { left: TOWN_HILLS.left - 1_80
 const plateSlots = MINING_NODES.map(node => ({ left: node.x - 80, right: node.x + 80, top: node.y + MINING_PLATE.drop, bottom: node.y + MINING_PLATE.drop + 45 }));
 const where = (item: Prop) => `${item.frame} at ${item.x},${item.y}`;
 
+describe("the Copper Hills' rocks as laid", () => {
+  it("stand where they always have: the server keeps each player's broken rocks by id", () => {
+    const fingerprint = MINING_NODES.reduce((hash, node) => Math.imul(hash ^ (node.x * 7_919 + node.y * 104_729 + node.kind.length), 0x9e3779b1) >>> 0, 17);
+    expect([MINING_NODES.length, MINING_OUTCROPS.length, fingerprint]).toEqual([100, 18, 67_313_776]);
+  });
+});
+
 describe("the Copper Hills' rocks as drawn", () => {
   it("are drawn no bigger than the layout leaves each kind room for, Large ones bigger than Small", () => {
     for (const node of MINING_NODES) {

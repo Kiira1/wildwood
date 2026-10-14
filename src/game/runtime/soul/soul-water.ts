@@ -1,3 +1,4 @@
+import { TOWN_EAST_BRIDGE } from "../../../../shared/town";
 import { SOUL_VILLAGE_GROUND } from "../../soul-village";
 import type { Camera } from "../render/camera";
 
@@ -196,18 +197,31 @@ export function createSoulWater(options: {
     if (!layer) return;
     const showWidth = showRight - showLeft, showHeight = showBottom - showTop;
     ctx.save();
+    // The east bridge's deck was laid after the masks were baked: neither light nor foam shows on it.
+    const deck = EAST_BRIDGE_DECK;
+    if (deck.left < showRight && deck.right > showLeft && deck.top < showBottom && deck.bottom > showTop) {
+      ctx.beginPath();
+      ctx.rect(showLeft - camera.x, showTop - camera.y, showWidth, showHeight);
+      ctx.rect(deck.left - camera.x, deck.top - camera.y, deck.right - deck.left, deck.bottom - deck.top);
+      ctx.clip("evenodd");
+    }
     ctx.globalAlpha = .3;
     // Smoothly scaled up to the screen, as the glints and the mask always were.
+    const smoothing = ctx.imageSmoothingEnabled;
     ctx.imageSmoothingEnabled = true;
     ctx.drawImage(layer, showLeft - left, showTop - top, showWidth, showHeight, showLeft - camera.x, showTop - camera.y, showWidth, showHeight);
-    ctx.restore();
+    ctx.imageSmoothingEnabled = smoothing;
     // Foam along the shore, breathing.
     if (shore?.complete && shore.naturalWidth > 0) {
-      ctx.save();
       ctx.globalAlpha = .35 + .2 * Math.sin(t * 1.4);
       ctx.drawImage(shore, (showLeft - area.x) * scaleX, (showTop - area.y) * scaleY, showWidth * scaleX, showHeight * scaleY,
         showLeft - camera.x, showTop - camera.y, showWidth, showHeight);
-      ctx.restore();
     }
+    ctx.restore();
   };
 }
+
+/** Where the east bridge's deck covers the river, as drawn (its two halves' solid part). */
+export const EAST_BRIDGE_DECK = Object.freeze({
+  left: TOWN_EAST_BRIDGE.x - 137, right: TOWN_EAST_BRIDGE.x + 136, top: TOWN_EAST_BRIDGE.y - 58, bottom: TOWN_EAST_BRIDGE.y + 70,
+});

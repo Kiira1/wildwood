@@ -1,7 +1,7 @@
 import { campaignMapUnlocked, type CampaignAccess } from "./equipment-access";
 import { REFINE_ORES, type OreId } from "./refine";
 import { MAP_DISPLAY_NAMES, MAP_IDS } from "./rules";
-import { TOWN_HILLS, townRandom } from "./town";
+import { TOWN_EAST_BRIDGE, TOWN_EAST_FENCE_GAP, TOWN_HILLS, townRandom } from "./town";
 
 /**
  * Mining, in the Copper Hills east of the Town (TOWN_HILLS): walk up to an ore rock with a pickaxe and you mine it,
@@ -72,13 +72,17 @@ export type MiningNode = { id: number; x: number; y: number; kind: MiningNodeKin
 type Point = { readonly x: number; readonly y: number };
 const hills = (dx: number, dy: number): Point => ({ x: TOWN_HILLS.left + dx, y: TOWN_HILLS.top + dy });
 
+const bridge = (dx: number, dy: number): Point => ({ x: TOWN_EAST_BRIDGE.x + dx, y: TOWN_EAST_BRIDGE.y + dy });
 /**
- * The miners' track, laid as the village's own roads are (earth, rimmed): from the head of the village's river,
- * where the walk out east comes round it, straight on to the hills, in through the gap in their trees, and on
- * through every vein to the last. Its centre line, a point every few units; the rocks keep off it.
+ * The miners' track, laid as the village's own roads are (earth, rimmed): out of the gap in the village's fence,
+ * up along the fence and over the east bridge, on to the hills, in through the gap in their trees, and on through
+ * every vein to the last. Its centre line, a point every few units; the rocks keep off it. The rocks are laid from
+ * the part in the hills alone (a test holds them where they are).
  */
 const TRACK_WAYPOINTS: readonly Point[] = [
-  hills(-1_400, 600), hills(-760, 608), hills(-60, 620), hills(500, 660), hills(1_000, 820), hills(1_500, 1_100),
+  { x: TOWN_EAST_FENCE_GAP.right + 30, y: (TOWN_EAST_FENCE_GAP.top + TOWN_EAST_FENCE_GAP.bottom) / 2 },
+  bridge(-319, 224), bridge(-294, 59), bridge(-204, 4), bridge(-110, 0), bridge(110, 0), bridge(336, -21), bridge(636, -206),
+  hills(-760, 608), hills(-60, 620), hills(500, 660), hills(1_000, 820), hills(1_500, 1_100),
   hills(2_000, 1_380), hills(2_550, 1_570), hills(3_150, 1_660), hills(3_700, 1_650),
 ];
 /** Catmull-Rom through the waypoints: a smooth line, a point every `step` units or so. */
