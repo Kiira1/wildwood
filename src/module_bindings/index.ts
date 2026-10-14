@@ -83,6 +83,7 @@ import DamageTidewyrmFromPositionReducer from "./damage_tidewyrm_from_position_r
 import DamageVoltwardenFromPositionReducer from "./damage_voltwarden_from_position_reducer";
 import DestroyEquipmentReducer from "./destroy_equipment_reducer";
 import DestroyEquipmentCopyReducer from "./destroy_equipment_copy_reducer";
+import DestroyOreReducer from "./destroy_ore_reducer";
 import DevAdjustGemsReducer from "./dev_adjust_gems_reducer";
 import DevAnnounceOutageCompensationReducer from "./dev_announce_outage_compensation_reducer";
 import DevBeginVirtualPlayerLoadTestReducer from "./dev_begin_virtual_player_load_test_reducer";
@@ -1808,6 +1809,7 @@ const reducersSchema = __reducers(
   __reducerSchema("damage_voltwarden_from_position", DamageVoltwardenFromPositionReducer),
   __reducerSchema("destroy_equipment", DestroyEquipmentReducer),
   __reducerSchema("destroy_equipment_copy", DestroyEquipmentCopyReducer),
+  __reducerSchema("destroy_ore", DestroyOreReducer),
   __reducerSchema("dev_adjust_gems", DevAdjustGemsReducer),
   __reducerSchema("dev_announce_outage_compensation", DevAnnounceOutageCompensationReducer),
   __reducerSchema("dev_begin_virtual_player_load_test", DevBeginVirtualPlayerLoadTestReducer),

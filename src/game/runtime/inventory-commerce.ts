@@ -2,6 +2,7 @@ import type { InventoryState } from "../inventory";
 import { setInventoryItemQuantity } from "../inventory";
 import { applyPlayerMaxHealthMultiplierBonus } from "./player-health";
 import type { BowSkillRoll } from "../../../shared/bow-skills";
+import type { OreId } from "../../../shared/refine";
 
 type Result = { ok: boolean; error?: string } | undefined;
 type KeptCopy = { id: bigint; itemId: string; roll: BowSkillRoll };
@@ -14,6 +15,7 @@ export function createInventoryCommerceActions(options: {
     equipmentLocked?: (itemId: string, copyId?: bigint) => boolean;
     setEquipmentLocked?: (itemId: string, locked: boolean, copyId?: bigint) => Promise<Result>;
     destroyEquipment?: (itemId: string) => Promise<Result>;
+    destroyOre?: (oreId: OreId, expectedCount: number) => Promise<Result>;
     convertItemToCosmetic?: (itemId: string) => Promise<Result>;
     equipmentCopies?: () => readonly KeptCopy[];
     destroyEquipmentCopy?: (itemId: string, copyId: bigint) => Promise<Result>;
@@ -29,6 +31,7 @@ export function createInventoryCommerceActions(options: {
   return {
     equipmentLocked: (itemId: string, copyId = 0n) => options.coop()?.equipmentLocked?.(itemId, copyId) ?? false,
     setEquipmentLocked: async (itemId: string, locked: boolean, copyId = 0n) => options.coop()?.setEquipmentLocked?.(itemId, locked, copyId),
+    destroyOre: async (oreId: OreId, expectedCount: number) => options.coop()?.destroyOre?.(oreId, expectedCount),
     async destroyEquipment(itemId: string) {
       const result = await options.coop()?.destroyEquipment?.(itemId);
       if (result?.ok) {

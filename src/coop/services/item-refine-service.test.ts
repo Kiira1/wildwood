@@ -13,7 +13,7 @@ function fakeConnection() {
     onUpdate: (handler: () => void) => handlers.push(handler),
     onDelete: (handler: () => void) => handlers.push(handler),
   });
-  const reducers = { refineItem: vi.fn(async () => {}) };
+  const reducers = { refineItem: vi.fn(async () => {}), destroyOre: vi.fn(async () => {}) };
   const connection = {
     isActive: true,
     db: { myItemRefines: view(rows.first), myCopyRefines: view(rows.copies), myOres: view(rows.ores), myRefineResult: view(rows.result) },
@@ -62,6 +62,39 @@ it("sends a try with the level the player saw, and reports the server's refusal"
 it("does nothing without a current connection", async () => {
   const service = createItemRefineRows(vi.fn());
   await expect(service.api.refineItem("ion_bow", 0n, 0)).resolves.toEqual({ ok: false, error: "NOT CONNECTED" });
+  await expect(service.api.destroyOre("copper_ore", 12)).resolves.toEqual({ ok: false, error: "NOT CONNECTED" });
+  const fake = fakeConnection();
+  service.watch(fake.connection, () => false);
+  await expect(service.api.destroyOre("copper_ore", 12)).resolves.toEqual({ ok: false, error: "NOT CONNECTED" });
+  expect(fake.reducers.destroyOre).not.toHaveBeenCalled();
+});
+
+it("sends the confirmed ore count and leaves rows authoritative on a refusal", async () => {
+  const fake = fakeConnection(), service = createItemRefineRows(vi.fn());
+  fake.rows.ores.push({ oreId: "copper_ore", count: 12 });
+  service.watch(fake.connection, () => true);
+  fake.settle();
+  await expect(service.api.destroyOre("copper_ore", 12)).resolves.toEqual({ ok: true });
+  expect(fake.reducers.destroyOre).toHaveBeenCalledWith({ oreId: "copper_ore", expectedCount: 12 });
+  fake.reducers.destroyOre.mockRejectedValueOnce(new Error("Your ore stack changed. Reopen it and try again."));
+  await expect(service.api.destroyOre("copper_ore", 12)).resolves.toMatchObject({ ok: false, error: expect.stringContaining("ore stack changed") });
+  expect(service.api.ores()).toEqual({ copper_ore: 12 });
+  fake.rows.ores.splice(0);
+  fake.fire();
+  expect(service.api.ores()).toEqual({});
+});
+
+it("times out an unanswered ore deletion without retrying it", async () => {
+  vi.useFakeTimers();
+  try {
+    const fake = fakeConnection(), service = createItemRefineRows(vi.fn());
+    service.watch(fake.connection, () => true);
+    fake.reducers.destroyOre.mockImplementation(() => new Promise<void>(() => {}));
+    const result = service.api.destroyOre("copper_ore", 12);
+    await vi.advanceTimersByTimeAsync(10_000);
+    await expect(result).resolves.toEqual({ ok: false, error: "Request timed out. Try again." });
+    expect(fake.reducers.destroyOre).toHaveBeenCalledTimes(1);
+  } finally { vi.useRealTimers(); }
 });
 
 it("gives stats an item's slot tier with its first copy's refine", () => {

@@ -228,10 +228,21 @@ export function refineItemFor(ctx: Ctx, args: { itemId: string; copyId: bigint; 
   if (copyId === 0n && equippedFields(progress).includes(itemId)) deps.writeProgressAndPresentation(ctx, progress);
 }
 
-/** The caller's own copy refines, ores and last try, and the refine try itself. */
+/** The caller's own copy refines, ores and last try, with refining and ore destruction. */
 export function registerItemRefine(spacetimedb: typeof spacetimedbType, deps: ItemRefineDeps) {
   const refineItem = spacetimedb.reducer({ itemId: t.string(), copyId: t.u64(), expectedLevel: t.u8() },
     (ctx: any, args: { itemId: string; copyId: bigint; expectedLevel: number }) => refineItemFor(ctx, args, deps));
+  // Reject a stale confirmation when mining or refining changes the stack count.
+  const destroyOre = spacetimedb.reducer({ oreId: t.string(), expectedCount: t.u32() }, (ctx, { oreId, expectedCount }) => {
+    deps.requireControllingPlayer(ctx);
+    if (deps.activeDuelFor(ctx, ctx.sender)) throw new SenderError("Finish your duel first.");
+    if (!isOreId(oreId)) throw new SenderError("That is not an ore.");
+    const key = oreKey(ctx.sender, oreId);
+    const stack = ctx.db.playerOre.key.find(key);
+    if (!stack || stack.count === 0) throw new SenderError("That ore is not in your bag.");
+    if (stack.count !== expectedCount) throw new SenderError("Your ore stack changed. Reopen it and try again.");
+    ctx.db.playerOre.key.delete(key);
+  });
   /** The caller's own first-copy refines; another player's are read from player_item_refine by identity (profiles). */
   const myItemRefines = spacetimedb.view({ name: "my_item_refines", public: true }, t.array(playerItemRefine.rowType),
     (ctx: any) => [...ctx.db.playerItemRefine.identity.filter(ctx.sender)]);
@@ -243,5 +254,5 @@ export function registerItemRefine(spacetimedb: typeof spacetimedbType, deps: It
     const row = ctx.db.playerRefineResult.identity.find(ctx.sender);
     return row ? [row] : [];
   });
-  return { refineItem, myItemRefines, myCopyRefines, myOres, myRefineResult };
+  return { refineItem, destroyOre, myItemRefines, myCopyRefines, myOres, myRefineResult };
 }

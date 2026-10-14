@@ -20,7 +20,7 @@ import { gameConfirm, type ConfirmPrompt, type ConfirmRequest } from "./confirm-
 import { type BowSkillRoll } from "../../shared/bow-skills";
 import { createInventoryDeleteMode } from "./inventory-delete-mode";
 import { withRefineStars } from "./refine-badge";
-import type { OreId } from "../../shared/refine";
+import { REFINE_ORES, type OreId } from "../../shared/refine";
 
 type InventoryLocation = EquipmentSlot | "BAG" | "";
 type SelectableInventory = InventoryState & { selectedItemId: string; selectedItemLocation?: InventoryLocation };
@@ -46,6 +46,7 @@ type InventoryDependencies = {
   refineLevel?: (itemId: string, copyId?: bigint) => number;
   /** Ores held, by kind (mined in the Copper Hills, spent at the Smith): a stack in one bag slot each. */
   ores?: () => Readonly<Partial<Record<OreId, number>>>;
+  destroyOre?: (oreId: OreId, expectedCount: number) => Promise<Result>;
   equipBest?: () => boolean;
   equipmentLocked?: (itemId: string, copyId?: bigint) => boolean;
   setEquipmentLocked?: (itemId: string, locked: boolean, copyId?: bigint) => Promise<Result>;
@@ -186,11 +187,30 @@ export function createInventoryController(dependencies: InventoryDependencies) {
 
   const keptCopiesOf = (itemId: string) => (dependencies.equipmentCopies?.() ?? []).filter(copy => copy.itemId === itemId);
 
-  /** An ore stack: its window, with what the ore is for and how many are held. Delete and lock modes leave it be. */
+  /** Ore destruction is confirmed per stack in its window. Bulk delete and lock modes leave it be. */
   function inspectOre(oreId: OreId) {
     if (lockMode.active() || deleteMode.active()) return;
+    const count = dependencies.ores?.()[oreId] ?? 0;
+    if (!(count > 0)) return;
     clearInventorySelection(dependencies.inventory);
-    dependencies.itemInspection.openOre?.({ oreId, count: dependencies.ores?.()[oreId] ?? 0 });
+    dependencies.itemInspection.openOre?.({ oreId, count, actions: dependencies.destroyOre ? [{
+      label: "Destroy ore",
+      kind: "DESTROY",
+      onActivate: async () => {
+        if (!await ask(confirmDestroy, {
+          message: `Destroy all ${count.toLocaleString()} ${REFINE_ORES[oreId].name} permanently?`,
+          details: [{ label: "This cannot be undone", value: "No refund" }],
+          confirmLabel: "Destroy", danger: true,
+        })) return;
+        dependencies.itemInspection.close();
+        const result = await dependencies.destroyOre!(oreId, count);
+        if (result?.ok) {
+          clearInventorySelection(dependencies.inventory);
+          render();
+          dependencies.showMessage("ORE DESTROYED", "#ff9b91");
+        } else dependencies.showMessage(result?.error ?? "NOT CONNECTED", "#ff9b91");
+      },
+    }] : [] });
   }
 
   /** `copyId` 0n is the item's first copy: the bag entry, or whatever its slot holds. */

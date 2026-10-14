@@ -21,6 +21,8 @@ export type ItemInspectionAction = {
   onActivate: () => void | Promise<void>;
 };
 
+export type OreInspectionRequest = { oreId: OreId; count: number; actions?: readonly ItemInspectionAction[] };
+
 export type ItemInspectionRequest = {
   itemId: string;
   upgradeLevel?: number;
@@ -156,17 +158,29 @@ export function createItemInspectionController(elements: ItemInspectionElements)
     }
     copy.append(stats);
 
+    const actionRow = renderActions(request.actions);
+
+    const summary = document.createElement("div");
+    summary.className = "item-inspection-summary";
+    summary.append(preview, copy);
+    elements.content.replaceChildren(summary, actionRow);
+    elements.panel.hidden = false;
+    elements.back.focus({ preventScroll: true });
+    return true;
+  }
+
+  function renderActions(actions: readonly ItemInspectionAction[] = []) {
     const actionRow = document.createElement("div");
     actionRow.className = "item-inspection-actions";
     tools.replaceChildren();
-    for (const action of request.actions ?? []) {
+    for (const action of actions) {
       const button = document.createElement("button");
       button.type = "button";
       button.className = action.kind === "SECONDARY" ? "item-inspection-action-secondary" : "item-inspection-action-primary";
       if (action.kind === "DESTROY") {
         button.className = "window-back-button item-inspection-destroy";
-        button.setAttribute("aria-label", "Destroy item");
-        button.title = "Destroy item";
+        button.setAttribute("aria-label", action.label);
+        button.title = action.label;
         button.innerHTML = '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7"/></svg>';
       } else button.textContent = itemInspectionButtonLabel(action.label);
       button.disabled = action.disabled === true;
@@ -179,18 +193,11 @@ export function createItemInspectionController(elements: ItemInspectionElements)
       if (action.kind === "DESTROY") tools.append(button);
       else actionRow.append(button);
     }
-
-    const summary = document.createElement("div");
-    summary.className = "item-inspection-summary";
-    summary.append(preview, copy);
-    elements.content.replaceChildren(summary, actionRow);
-    elements.panel.hidden = false;
-    elements.back.focus({ preventScroll: true });
-    return true;
+    return actionRow;
   }
 
   /** An ore stack's window (shared/ore-bag.ts): its icon and name, how many are in the bag, what it refines and where it comes from. */
-  function openOre(request: { oreId: OreId; count: number }) {
+  function openOre(request: OreInspectionRequest) {
     if (elements.panel.hidden) {
       returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     }
@@ -217,11 +224,11 @@ export function createItemInspectionController(elements: ItemInspectionElements)
     const description = document.createElement("p");
     description.textContent = `${use} ${from}`;
     copy.append(context, description);
-    tools.replaceChildren();
+    const actionRow = renderActions(request.actions);
     const summary = document.createElement("div");
     summary.className = "item-inspection-summary";
     summary.append(preview, copy);
-    elements.content.replaceChildren(summary);
+    elements.content.replaceChildren(summary, actionRow);
     elements.panel.hidden = false;
     elements.back.focus({ preventScroll: true });
     return true;

@@ -55,6 +55,7 @@ import DamageTidewyrmFromPositionReducer from "../damage_tidewyrm_from_position_
 import DamageVoltwardenFromPositionReducer from "../damage_voltwarden_from_position_reducer";
 import DestroyEquipmentReducer from "../destroy_equipment_reducer";
 import DestroyEquipmentCopyReducer from "../destroy_equipment_copy_reducer";
+import DestroyOreReducer from "../destroy_ore_reducer";
 import DevAdjustGemsReducer from "../dev_adjust_gems_reducer";
 import DevAnnounceOutageCompensationReducer from "../dev_announce_outage_compensation_reducer";
 import DevBeginVirtualPlayerLoadTestReducer from "../dev_begin_virtual_player_load_test_reducer";
@@ -251,6 +252,7 @@ export type DamageTidewyrmFromPositionParams = __Infer<typeof DamageTidewyrmFrom
 export type DamageVoltwardenFromPositionParams = __Infer<typeof DamageVoltwardenFromPositionReducer>;
 export type DestroyEquipmentParams = __Infer<typeof DestroyEquipmentReducer>;
 export type DestroyEquipmentCopyParams = __Infer<typeof DestroyEquipmentCopyReducer>;
+export type DestroyOreParams = __Infer<typeof DestroyOreReducer>;
 export type DevAdjustGemsParams = __Infer<typeof DevAdjustGemsReducer>;
 export type DevAnnounceOutageCompensationParams = __Infer<typeof DevAnnounceOutageCompensationReducer>;
 export type DevBeginVirtualPlayerLoadTestParams = __Infer<typeof DevBeginVirtualPlayerLoadTestReducer>;

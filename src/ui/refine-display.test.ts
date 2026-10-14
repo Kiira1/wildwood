@@ -88,7 +88,7 @@ describe("refines in the inventory", () => {
     expect(view.document.getElementById("inventoryCount")!.textContent).toBe(`${gear + 2} / ${inventorySlotCapacity(0)} Items`);
     expect(ores[0].getAttribute("aria-label")).toBe("Copper Ore, 22. Tap to inspect.");
     ores[0].click();
-    expect(view.oreOpened).toEqual([{ oreId: "copper_ore", count: 22 }]);
+    expect(view.oreOpened).toEqual([{ oreId: "copper_ore", count: 22, actions: [] }]);
     // No ore held, no ore slot.
     expect(bag().items.querySelector(".is-ore")).toBeNull();
   });
