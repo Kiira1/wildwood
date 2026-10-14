@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.903.3": [
+    "Boss cards, refines and Starshards no longer roll far luckier than intended",
+  ],
   "0.903.2": [
     "New Utility research: Bag Slots adds a bag slot a level, up to 5",
     "The crit damage cap is now 5×, plus 1× a Crit Cap rank (10× at most)",
@@ -3315,6 +3318,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.903.3": "2026-10-14",
   "0.903.2": "2026-10-14",
   "0.903.1": "2026-10-13",
   "0.903.0": "2026-10-13",

@@ -8,7 +8,8 @@
   },
   "scripts": {
     "spacetime:generate": "spacetime generate --lang typescript --out-dir src/module_bindings --module-path spacetimedb",
-    "spacetime:build": "spacetime build --module-path spacetimedb",
+    "spacetime:build": "node scripts/patch-spacetimedb-rng.mjs && spacetime build --module-path spacetimedb",
+    "postinstall": "node scripts/patch-spacetimedb-rng.mjs",
     "typecheck:server": "tsc -p spacetimedb/tsconfig.json",
     "spacetime:publish:local": "spacetime publish wildwood-coop --module-path spacetimedb --server local",
     "spacetime:publish:cloud": "spacetime publish wildwood-coop --module-path spacetimedb --server maincloud",

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { spawnSync } from "node:child_process";
+import { patchSpacetimeRng } from "./patch-spacetimedb-rng.mjs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { createReleaseApi } from "./releases/rollout.mjs";
@@ -46,6 +47,8 @@ function verifyAndBuild() {
   console.log("Typechecking the server...");
   run("npx", ["tsc", "-p", "spacetimedb/tsconfig.json"], "Server typecheck");
   console.log("Building the server...");
+  // Never ships SpacetimeDB's biased first random draw (scripts/patch-spacetimedb-rng.mjs).
+  patchSpacetimeRng();
   run(spacetimeBin, ["build", "--module-path", "spacetimedb"], "Server build");
   return { branch, commit: run("git", ["rev-parse", "HEAD"], "Reading the commit"), dirty: Boolean(dirty) };
 }

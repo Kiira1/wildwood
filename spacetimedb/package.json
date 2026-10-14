@@ -3,6 +3,9 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "scripts": {
+    "postinstall": "node ../scripts/patch-spacetimedb-rng.mjs"
+  },
   "dependencies": {
     "spacetimedb": "2.12.0"
   },
