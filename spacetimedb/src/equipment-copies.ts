@@ -11,7 +11,7 @@ import {
   EQUIPMENT_OFFER_LIFETIME_MS, MAX_PENDING_EQUIPMENT_OFFERS, bagSlotsUsed, isDuplicateOfferItem,
 } from "../../shared/equipment-copies";
 import { bowSkillKey } from "./bow-skills";
-import { setSwordSkillRoll } from "./sword-skills";
+import { setSwordSkillRoll, swordSkillKey } from "./sword-skills";
 import { ensureWeaponSkillRoll, weaponSkillRollFor } from "./weapon-skills";
 import { addOres, oreKindsHeldFor, promoteCopyRefine, refineLevelFor, setRefineLevel, swapFirstCopyRefine } from "./item-refine";
 import { clearGearSlots, gearSlotsFor, returnSlottedCards, promoteCopySlots, rollCopySlots, rollDropSlots, swapFirstCopySlots } from "./gear-cards";
@@ -216,6 +216,14 @@ function salvage(ctx: Ctx, itemId: string) {
   if (ore) addOres(ctx, ctx.sender, ore, 1);
 }
 
+/** Deletes the first copy's roll, bow or sword. */
+function forgetFirstCopyRoll(ctx: Ctx, identity: Identity, itemId: string) {
+  const bow = ctx.db.playerBowSkill.key.find(bowSkillKey(identity, itemId));
+  if (bow) ctx.db.playerBowSkill.key.delete(bow.key);
+  const sword = ctx.db.playerSwordSkill.key.find(swordSkillKey(identity, itemId));
+  if (sword) ctx.db.playerSwordSkill.key.delete(sword.key);
+}
+
 /** Writes the first copy's roll. Anything that is not a skill weapon has none to write. */
 function setFirstCopyRoll(ctx: Ctx, identity: Identity, itemId: string, roll: WeaponSkillRoll) {
   if (isSkillSword(itemId)) { setSwordSkillRoll(ctx, identity, itemId, roll); return; }
@@ -333,7 +341,10 @@ export function createEquipmentCopies(deps: {
     setRefineLevel(ctx, ctx.sender, canonical, 0n, 0);
     clearGearSlots(ctx, ctx.sender, canonical);
     salvage(ctx, canonical);
-    deps.writeProgressAndPresentation(ctx, deps.removeItemFromProgress(progress, canonical));
+    const next = deps.removeItemFromProgress(progress, canonical);
+    // The last one gone, its roll goes too: the next to drop rolls fresh instead of bringing this one back.
+    if (!deps.inventoryForProgress(next).includes(canonical)) forgetFirstCopyRoll(ctx, ctx.sender, canonical);
+    deps.writeProgressAndPresentation(ctx, next);
   }
 
   /**

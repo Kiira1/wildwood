@@ -305,11 +305,11 @@ it("destroys exactly the copy asked for, and a destroyed first copy is replaced 
   expect(firstRoll(f)).toEqual(B);
   expect(copies(f)).toEqual([]);
   expect(f.db.playerProgress.identity.find(f.ctx.sender).equippedRightHand).toBe(IRON_BOW);
-  // The last copy goes the way it always has, and its roll is remembered.
+  // The last copy goes the way it always has, and its roll goes with it.
   f.run(server.destroyEquipment, { itemId: IRON_BOW });
   expect(inventory(f)).not.toContain(IRON_BOW);
   expect(f.db.playerProgress.identity.find(f.ctx.sender).equippedRightHand).toBe("");
-  expect(firstRoll(f)).toEqual(B);
+  expect(f.db.playerBowSkill.key.find(bowSkillKey(f.ctx.sender, IRON_BOW))).toBeNull();
 });
 
 it("routes the old destroy_equipment through the same replacement rule and refuses a copy of another item", () => {
@@ -400,4 +400,14 @@ it("records each item that drops in the Gear Collection once, for good", () => {
   f.run((ctx: any) => publishItemDrop(ctx, ctx.sender, IRON_BOW, true, 3));
   f.run((ctx: any) => publishItemDrop(ctx, ctx.sender, SAMURAI_HAT, false));
   expect([...f.db.playerItemCollection.identity.filter(f.ctx.sender)].map((row: any) => row.itemId).sort()).toEqual([IRON_BOW, SAMURAI_HAT].sort());
+});
+
+it("forgets a weapon's roll once its last copy is destroyed, so the next one to drop rolls fresh", () => {
+  const f = archer();
+  f.patch("playerProgress", { equippedRightHand: "" });
+  f.run(server.destroyEquipment, { itemId: IRON_BOW });
+  expect(f.db.playerBowSkill.key.find(bowSkillKey(f.ctx.sender, IRON_BOW))).toBeNull();
+  luckyRandom(f, .05);
+  f.run((ctx: any) => publishItemDrop(ctx, ctx.sender, IRON_BOW, false));
+  expect(firstRoll(f)).not.toEqual(A);
 });

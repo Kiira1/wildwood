@@ -2,6 +2,7 @@ export const RELEASE_NOTES: Record<string, string[]> = {
   "0.904.0": [
     "Builds: save your gear and cards in the Inventory, and swap between them in one tap",
     "Salvaging gear gives back an ore of its tier",
+    "A weapon you delete no longer comes back with the same skills when it drops again",
     "The map window marks every drop you've collected",
   ],
   "0.903.8": [
