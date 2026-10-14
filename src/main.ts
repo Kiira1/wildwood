@@ -1392,7 +1392,7 @@ import {
     secondSlotUnlocked: () => coop?.secondUpgradeSlotUnlocked?.() ?? false,
     thirdSlotUnlocked: () => coop?.thirdUpgradeSlotUnlocked?.() ?? false,
     gemBalance: () => coop?.gemBalance?.() ?? 0n,
-    upgradeLevel: (itemId) => coop?.itemUpgradeLevel?.(itemId) ?? 0,
+    upgradeLevel: (itemId) => coop?.itemUpgradeLevel?.(itemId) ?? 0, refineLevel: itemId => coop?.itemRefine?.(itemId) ?? 0,
     slotTier: (track) => coop?.slotUpgradeTier?.(track) ?? 0,
     slotUpgradeSpeedRank: () => coop?.research?.()?.slotUpgradeSpeed ?? 0,
     equippedIn: track => track === "HAND" ? (inventory.equippedRightHand || inventory.equippedLeftHand) : track === "HEAD" ? inventory.equippedHead : inventory.equippedChest,

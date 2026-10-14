@@ -52,6 +52,8 @@ type UpgradeBenchDependencies = {
   slotUpgradeSpeedRank?: () => number;
   /** The item worn in a track's slot, for showing what a tier is worth. */
   equippedIn: (track: UpgradeSlot) => string;
+  /** That item's own refine (its first copy's): the numbers a tier shows stand on it too. */
+  refineLevel?: (itemId: string) => number;
   startUpgrade: (slot: UpgradeBenchSlot, itemId: string, position: { x: number; y: number }) => Promise<UpgradeResult>;
   cancelUpgrade: (slot: UpgradeBenchSlot) => Promise<UpgradeResult>;
   speedUpUpgrade: (slot: UpgradeBenchSlot) => Promise<UpgradeResult>;
@@ -107,11 +109,11 @@ export function playerTouchesUpgradeBench(
  * equipped there: that is the gear the tier will actually be scaling. With the
  * slot empty there is nothing to measure, so only the tier itself is shown.
  */
-export function upgradePickerPreview(track: UpgradeSlot, tier: unknown, equippedItemId = "") {
+export function upgradePickerPreview(track: UpgradeSlot, tier: unknown, equippedItemId = "", refine = 0) {
   const level = normalizeSlotTier(tier);
   return {
     name: `${UPGRADE_SLOT_LABELS[track]} \u00b7 TIER ${level} \u2192 ${level + 1}`,
-    changes: equippedItemId ? itemUpgradeStatChanges(equippedItemId, level) : [],
+    changes: equippedItemId ? itemUpgradeStatChanges(equippedItemId, { tier: level, refine }) : [],
     equippedItemId,
   };
 }
@@ -330,7 +332,7 @@ export function createUpgradeBenchController(elements: UpgradeBenchElements, dep
     // Measured against whatever is equipped in that slot: the tier scales the
     // gear actually being worn, so those are the numbers worth showing.
     const equipped = isUpgradeSlot(itemId) ? dependencies.equippedIn(itemId) : "";
-    const rows = equipped ? itemUpgradeStatChanges(equipped, level).map((change) => {
+    const rows = equipped ? itemUpgradeStatChanges(equipped, { tier: level, refine: dependencies.refineLevel?.(equipped) ?? 0 }).map((change) => {
       const row = document.createElement("div");
       row.className = "upgrade-bench-stat-row";
       if (/^REGEN\b/.test(change.label)) row.dataset.statKind = "regen";
@@ -447,7 +449,8 @@ export function createUpgradeBenchController(elements: UpgradeBenchElements, dep
   function renderPicker(slot: UpgradeBenchSlot) {
     const rows = eligibleItems(slot).map((track) => {
       const level = dependencies.slotTier(track);
-      const preview = upgradePickerPreview(track, level, dependencies.equippedIn(track));
+      const worn = dependencies.equippedIn(track);
+      const preview = upgradePickerPreview(track, level, worn, worn ? dependencies.refineLevel?.(worn) ?? 0 : 0);
       const button = document.createElement("button");
       button.type = "button";
       button.className = "upgrade-bench-picker-item";

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { parseHTML } from "linkedom";
-import { FROST_BOW, MAX_SLOT_UPGRADE_TIER } from "../../shared/items";
+import { FROST_BOW, MAX_SLOT_UPGRADE_TIER, itemUpgradeStatChanges } from "../../shared/items";
 import { UPGRADE_BENCH_TOUCH_OFFSET_Y, UPGRADE_CANCEL_CONFIRMATION, createUpgradeBenchController, playerTouchesUpgradeBench, upgradeBenchCanStart, upgradeBenchTouchTransition, upgradePickerPreview, upgradeSlotAfterPickerDismiss, upgradesFinishedSinceLastPoll } from "./upgrade-bench-controller";
 import type { ActiveItemUpgrade } from "../wildstat-coop";
 import { createInventoryNotice } from "./inventory-notice";
@@ -53,6 +53,10 @@ describe("upgrade bench touch latch", () => {
     expect(upgradePickerPreview("HEAD", 4)).toEqual({
       name: "HELMET \u00b7 TIER 4 \u2192 5", equippedItemId: "", changes: [],
     });
+    // A refined bow: both numbers stand on its refine, as the item window's do.
+    const refined = upgradePickerPreview("HAND", 3, FROST_BOW, 5).changes[0];
+    expect(refined).toEqual(itemUpgradeStatChanges(FROST_BOW, { tier: 3, refine: 5 })[0]);
+    expect(parseFloat(refined.current)).toBeGreaterThan(parseFloat(upgradePickerPreview("HAND", 3, FROST_BOW).changes[0].current));
   });
 
   it("restores a slotted item's actions when item choices are dismissed", () => {
