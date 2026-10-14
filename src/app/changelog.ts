@@ -1,6 +1,8 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
   "0.903.3": [
     "Boss cards, refines and Starshards no longer roll far luckier than intended",
+    "Attack speed cap cards speed you up as soon as they're slotted or worn",
+    "The profile shows your attack speed cap beside your attack speed",
   ],
   "0.903.2": [
     "New Utility research: Bag Slots adds a bag slot a level, up to 5",

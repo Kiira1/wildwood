@@ -153,6 +153,7 @@ export function removeCardData(ctx: Ctx, identity: Identity) {
   for (const row of rowsOf(ctx.db.playerGearSlots, identity)) ctx.db.playerGearSlots.key.delete(row.key);
   for (const row of rowsOf(ctx.db.playerCopySlots, identity)) ctx.db.playerCopySlots.copyId.delete(row.copyId);
   if (ctx.db.playerCardDrop.identity.find(identity)) ctx.db.playerCardDrop.identity.delete(identity);
+  if (ctx.db.playerCardAttackCap?.identity.find(identity)) ctx.db.playerCardAttackCap.identity.delete(identity);
 }
 
 /** On link the guest's cards and slots replace the account's, as the bag does. */
@@ -168,6 +169,9 @@ export function mergeCardData(ctx: Ctx, guest: Identity, account: Identity) {
   }
   for (const row of rowsOf(ctx.db.playerCopySlots, guest)) ctx.db.playerCopySlots.copyId.update({ ...row, identity: account });
   if (ctx.db.playerCardDrop.identity.find(guest)) ctx.db.playerCardDrop.identity.delete(guest);
+  // The guest's saved attack speed comes across with its cards, so the cap it sits under does too.
+  const basis = ctx.db.playerCardAttackCap?.identity.find(guest);
+  if (basis) { ctx.db.playerCardAttackCap.identity.delete(guest); ctx.db.playerCardAttackCap.insert({ ...basis, identity: account }); }
 }
 
 export type GearCardDeps = {
@@ -175,6 +179,8 @@ export type GearCardDeps = {
   activeDuelFor: (ctx: Ctx, identity: Identity) => unknown;
   inventoryForProgress: (progress: any) => string[];
   writeProgressAndPresentation: (ctx: Ctx, progress: any) => void;
+  /** Quick Draw cards move the attack speed cap: the saved speed follows (card-attack-cap.ts). */
+  syncAttackCap?: (ctx: Ctx, identity: Identity) => void;
 };
 
 const GEAR_NAMES: Readonly<Record<CardSlot, string>> = { HAND: "a weapon", HEAD: "a helmet", CHEST: "armor" };
@@ -204,7 +210,10 @@ export function slotCardFor(ctx: Ctx, args: { itemId: string; copyId: bigint; ca
   if (!takeCard(ctx, ctx.sender, card.id)) throw new SenderError(`You have no ${card.enemy} Card.`);
   setGearSlots(ctx, ctx.sender, itemId, copyId, { slots: current.slots, cards: [...current.cards, card.id] });
   // A worn item's new card changes the player's stats now.
-  if (copyId === 0n && equippedFields(progress).includes(itemId)) deps.writeProgressAndPresentation(ctx, progress);
+  if (copyId === 0n && equippedFields(progress).includes(itemId)) {
+    deps.syncAttackCap?.(ctx, ctx.sender);
+    deps.writeProgressAndPresentation(ctx, readPlayerProgress(ctx, ctx.sender) ?? progress);
+  }
 }
 
 /** The slot_card reducer and the caller's own card views. */

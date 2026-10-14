@@ -253,7 +253,8 @@ export function profileStatDisplayRows(
       kind: "attack", label: "Attack Speed:", base: baseAttackSpeed,
       equationOperator: "×",
       multiplier: multiplierValue(effective.multipliers.attackSpeed), total: ratingText(speedRating), equationTotal: attackSpeed,
-      expandedDetail: bracket(attackSpeedLabel(1 / effective.attackRate, 1 / minAttackInterval)),
+      // The cap beside the rate, as critical damage shows its own: how close the player is to the fastest.
+      expandedDetail: `${bracket(attackSpeedLabel(1 / effective.attackRate, 1 / minAttackInterval))} · ${(1 / minAttackInterval).toFixed(2)}/s Cap`,
       // The soul's own share, which adds to the run's and is kept through prestige.
       // The soul adds attacks a second flat (soulAttackSpeedBonus), so its line is that, not a rating.
       sources: soulSource(soulAttackSpeedBonus(soul.attackSpeed), value => Number.isFinite(value) ? `${value.toFixed(3)}/s` : "Max"),
@@ -317,7 +318,7 @@ export function profileStatDisplayRows(
     ],
   });
   // A rating on a curve toward 100× (shared/stat-rating.ts): crit camps' rating, the soul's on top, then
-  // research and Keen Edge, each a share closer. Combat stops at the cap (50×, 10× more a Crit Cap rank),
+  // research and Keen Edge, each a share closer. Combat stops at the cap (5×, 1× more a Crit Cap rank),
   // so the row does too, and says (Max) once it reads the same as the cap.
   const crit = criticalDamage({ researchRank: ranks.criticalDamage, perks, soul: soul.critDamage, rating: profile.progress.critRating, capRank: ranks.critCap,
     card: effective.cards.critDamage });

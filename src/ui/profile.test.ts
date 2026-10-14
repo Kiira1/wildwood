@@ -196,7 +196,7 @@ describe("profile stat display", () => {
       base: "3.00/s (Max)",
       equationOperator: "×",
       multiplier: "1.00",
-      total: "Max", equationTotal: "3.00/s", expandedDetail: "(3.00/s Max)",
+      total: "Max", equationTotal: "3.00/s", expandedDetail: "(3.00/s Max) · 3.00/s Cap",
       sources: [],
     });
   });
