@@ -47,6 +47,8 @@ export type CardDefinition = {
 /** Kills per card drop; for bosses, boss kills. */
 export const CARD_DROP_OUTCOMES: Readonly<Record<CardRarity, number>> = Object.freeze({ regular: 10_000, elite: 20_000, boss: 1_000 });
 export const MAX_CARD_SLOTS = 4;
+/** Starshards the Smith takes to lift one card back out of gear; the card returns to the player's cards. */
+export const CARD_REMOVAL_STARSHARDS = 5;
 /** Gear owned before cards has one slot. */
 export const OWNED_GEAR_SLOTS = 1;
 /** Chance in 1,000 of 0 to 4 slots on a drop. */

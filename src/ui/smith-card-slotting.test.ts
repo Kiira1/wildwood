@@ -6,7 +6,7 @@ import { IRON_BOW, STARTER_BOW, WOODEN_ARMOR } from "../../shared/items";
 vi.mock("./card-portrait", () => ({ cardPortrait: async () => "" }));
 afterEach(() => vi.unstubAllGlobals());
 
-function smith() {
+function smith(extra: Partial<Parameters<typeof createSmithController>[0]> = {}) {
   const { document, window } = parseHTML("<html><body></body></html>");
   vi.stubGlobal("document", document);
   vi.stubGlobal("HTMLElement", window.HTMLElement);
@@ -26,7 +26,7 @@ function smith() {
   const controller = createSmithController({
     inTown: () => true, items: () => items, refineLevel: () => 0, slotTier: () => 0,
     ores: () => ({ copper_ore: 1 }), refine: async () => ({ ok: true }), showMessage,
-    cards: () => held, gearSlots: (itemId, copyId) => gear[`${itemId}:${copyId}`], slotCard,
+    cards: () => held, gearSlots: (itemId, copyId) => gear[`${itemId}:${copyId}`], slotCard, ...extra,
   });
   const dialog = document.querySelector("dialog") as unknown as HTMLDialogElement;
   Object.assign(dialog, { showModal() { dialog.setAttribute("open", ""); }, close() { dialog.removeAttribute("open"); } });
@@ -115,4 +115,24 @@ it("preserves controls for unrelated updates and refreshes changed card counts",
   view.held.needle_card = 3;
   view.controller.render();
   expect(view.q('[data-card-id="needle_card"]').getAttribute("aria-label")).toBe("Needle Card, 3");
+});
+
+it("takes a slotted card back out for Starshards after a second tap", async () => {
+  const ores: Record<string, number> = { starshard: 4 };
+  const removeCard = vi.fn(async () => ({ ok: true }));
+  const view = smith({ ores: () => ores, removeCard });
+  const remove = () => view.q(".smith-slot.is-filled .smith-slot-remove");
+  expect(view.q(".smith-focus").textContent).not.toContain("for good");
+  expect(remove().textContent).toBe("Need 5 Starshards");
+  expect(remove().disabled).toBe(true);
+  ores.starshard = 5;
+  view.controller.render();
+  expect(remove().textContent).toBe("Remove · 5 Starshards");
+  remove().click();
+  expect(removeCard).not.toHaveBeenCalled();
+  expect(remove().textContent).toBe("Confirm Remove");
+  remove().click();
+  expect(removeCard).toHaveBeenCalledExactlyOnceWith(STARTER_BOW, 0n, 0, 1);
+  await vi.waitFor(() => expect(view.q(".smith-outcome")?.textContent).toBe("Needle Card is back in your cards."));
+  expect(view.showMessage).toHaveBeenCalledWith("Card Removed · Needle Card", "#ffd75e");
 });

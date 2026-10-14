@@ -81,6 +81,17 @@ export function createCardRows(notify: () => void) {
       itemCards: (itemId: string): readonly string[] => slots.get(copyKey(itemId, 0n))?.cards ?? OWNED_GEAR.cards,
       /** Called with each new find, not with the standing row on connect. */
       setOnCardDrop(callback: ((drop: CardDrop) => void) | null) { dropListener = callback; },
+      /** Lifts the card at `index` back out at the Smith for Starshards; `expectedCards` guards a double tap as slotCard's does. */
+      async removeCard(itemId: string, copyId: bigint, index: number, expectedCards: number): Promise<SlotCardResult> {
+        const current = target;
+        if (!current || !current.isCurrent() || !current.connection.isActive) return { ok: false, error: "NOT CONNECTED" };
+        try {
+          await withRequestDeadline(current.connection.reducers.removeCard({ itemId, copyId, index, expectedCards }));
+          return { ok: true };
+        } catch (error) {
+          return { ok: false, error: reducerErrorMessage(error) };
+        }
+      },
       /** `expectedCards` is how many cards the player saw in the item, so a double tap cannot spend two. */
       async slotCard(itemId: string, copyId: bigint, cardId: string, expectedCards: number): Promise<SlotCardResult> {
         const current = target;

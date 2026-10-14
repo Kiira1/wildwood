@@ -156,7 +156,7 @@ describe('autofarm', () => {
     expect(s.farm.targetType()).toBe('stat:health');
   });
 
-  it('stops to fight an attacker of another type, then resumes its original farm route', () => {
+  it('walks on past an attacker of a stat set to Off, to the camp it farms', () => {
     const s = setup();
     s.add('Bramble', 1500, 500);
     const attacker = s.add('Needle', 500, 550);
@@ -164,11 +164,23 @@ describe('autofarm', () => {
     expect(s.tick().x).toBeGreaterThan(0);
     attacker.engaged = true;
     attacker.aggroTargetId = 'local-player';
-    expect(s.tick()).toEqual(idle);
-    expect(s.farm.state()).toMatchObject({ active: true, selected: 'stat:health', status: 'Defending' });
+    // A high-aggro camp it does not farm cannot hold it there: it leashes home once the player is gone.
+    expect(s.tick().x).toBeGreaterThan(0);
+    expect(s.farm.state()).toMatchObject({ active: true, selected: 'stat:health', status: 'Moving to enemy' });
+  });
+
+  it('stops to fight an attacker of another stat it farms, then resumes its route', () => {
+    const s = setup();
+    s.add('Bramble', 1500, 500);
+    const attacker = s.add('Needle', 500, 550);
+    s.farm.start(['Bramble', 'Needle']);
+    s.tick();
+    attacker.engaged = true;
+    attacker.aggroTargetId = 'local-player';
+    s.tick();
+    expect(s.farm.state().status).toMatch(/Defending|Moving to attacker/);
     attacker.dead = true;
     expect(s.tick().x).toBeGreaterThan(0);
-    expect(s.farm.targetType()).toBe('stat:health');
   });
 
   it('does not detour for enemies fighting someone else or returning to their spawn', () => {

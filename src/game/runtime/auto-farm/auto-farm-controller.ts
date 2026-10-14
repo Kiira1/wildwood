@@ -183,6 +183,8 @@ export function createAutoFarmController(options: {
   const distance = (point: Position) => Math.hypot(point.x - player.x, point.y - player.y);
   const validEnemy = (enemy: EnemyState) => !enemy.dead && !enemy.remoteCombatGhost && !enemy.generatedBoss && selectedType !== null
     && farmGroupMatches(enemy, selectedType) && enemy.hp > 0;
+  /** A stat with a share on Farm, or one an Aggro run chases. */
+  const farmedGroup = (enemy: EnemyState) => order.includes(choiceKey(enemy)) || forcedGroups().has(choiceKey(enemy));
   // Power is read for every decision; the build changes a kill at a time, so twice a second is plenty.
   let powerAt = -Infinity, powerNow = 0;
   function currentPower() {
@@ -640,8 +642,9 @@ export function createAutoFarmController(options: {
     }
     let threat: EnemyState | null = null;
     // On the way to the boss or the next map it shoots what it passes but chases nobody. A pulled group is coming anyway.
+    // Only a stat it farms is fought off: one set to Off is walked away from, and leashes home, as a player would leave it.
     if (phase === 'farm' && !pulling()) for (const enemy of enemies) {
-      if (!enemy.generatedBoss && isEnemyAttackingPlayer(enemy, options.localIdentity?.()) && (!threat || distance(enemy) < distance(threat))) threat = enemy;
+      if (!enemy.generatedBoss && farmedGroup(enemy) && isEnemyAttackingPlayer(enemy, options.localIdentity?.()) && (!threat || distance(enemy) < distance(threat))) threat = enemy;
     }
     // Everything it farms comes to it: it stands its ground.
     if (phase === 'farm' && pullCoversFarm()) {

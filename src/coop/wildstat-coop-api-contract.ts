@@ -34,6 +34,7 @@ type ExpectedApiKey =
   | "wornCardStats"
   | "setOnCardDrop"
   | "slotCard"
+  | "removeCard"
   | "verifyAge"
   | "ageVerified"
   | "ageBlocked"

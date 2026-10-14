@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import { crystalFixture, server } from "../../tests/helpers/crystal-hollows-fixture";
 import { TOWN_FEET_OFFSET, TOWN_SMITH_POSITION } from "../../shared/town";
 import { addCard, cardCount, gearSlotsFor, setGearSlots } from "./gear-cards";
+import { addOres, oreCount } from "./item-refine";
+import { CARD_REMOVAL_STARSHARDS } from "../../shared/cards";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
 /** Beside the Smith, wearing an Ion Bow with two slots, holding a Sky Bow and an Ion Helmet, with cards. */
@@ -77,5 +79,45 @@ describe("slotting a card", () => {
     expect(f.slots("ion_bow", copy.id)).toEqual({ slots: 1, cards: ["needle_card"] });
     expect(f.slots()).toEqual({ slots: 2, cards: [] });
     expect(() => f.slot("needle_card", "sky_bow", copy.id)).toThrow("That copy is not in your inventory.");
+  });
+});
+
+describe("taking a card back out", () => {
+  const starshards = (f: ReturnType<typeof atTheSmith>) => oreCount(f.ctx, f.ctx.sender, "starshard");
+  const remove = (f: ReturnType<typeof atTheSmith>, index: number, expectedCards = f.slots().cards.length) =>
+    f.run(server.removeCard, { itemId: "ion_bow", copyId: 0n, index, expectedCards });
+
+  it("returns the card to the player's cards for 5 Starshards, and frees the slot", () => {
+    const f = atTheSmith();
+    f.slot("needle_card"); f.slot("needle_card");
+    expect(f.cards()).toBe(1);
+    f.transaction(() => addOres(f.ctx, f.ctx.sender, "starshard", CARD_REMOVAL_STARSHARDS + 2));
+    remove(f, 1);
+    expect(f.slots()).toEqual({ slots: 2, cards: ["needle_card"] });
+    expect(f.cards()).toBe(2);
+    expect(starshards(f)).toBe(2);
+    // The freed slot takes a card again.
+    f.slot("needle_card");
+    expect(f.slots().cards).toEqual(["needle_card", "needle_card"]);
+  });
+
+  it("refuses without the Starshards, for an empty slot, after the cards changed, or away from the Smith", () => {
+    const f = atTheSmith();
+    f.slot("needle_card");
+    expect(() => remove(f, 0)).toThrow(`You need ${CARD_REMOVAL_STARSHARDS} Starshards.`);
+    f.transaction(() => addOres(f.ctx, f.ctx.sender, "starshard", CARD_REMOVAL_STARSHARDS));
+    expect(() => remove(f, 1)).toThrow("That slot is empty.");
+    expect(() => remove(f, 0, 2)).toThrow("That item's cards changed. Try again.");
+    expect(f.slots().cards).toEqual(["needle_card"]);
+    expect(starshards(f)).toBe(CARD_REMOVAL_STARSHARDS);
+    // Away from the Smith, on a fresh player whose recent steps never reached it.
+    const away = atTheSmith();
+    away.transaction(() => {
+      setGearSlots(away.ctx, away.ctx.sender, "ion_bow", 0n, { slots: 2, cards: ["needle_card"] });
+      addOres(away.ctx, away.ctx.sender, "starshard", CARD_REMOVAL_STARSHARDS);
+    });
+    away.patch("player", { mapId: "town", x: TOWN_SMITH_POSITION.x + 400, y: TOWN_SMITH_POSITION.y - TOWN_FEET_OFFSET });
+    expect(() => remove(away, 0)).toThrow("Talk to the Smith first.");
+    expect(starshards(away)).toBe(CARD_REMOVAL_STARSHARDS);
   });
 });

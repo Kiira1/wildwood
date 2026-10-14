@@ -811,6 +811,9 @@
 .smith-sheet .smith-slot.is-filled { border-style: solid; border-color: #b9c3cc; color: #fff; }
 .smith-sheet .smith-slot.is-elite { border-color: #b48cff; }
 .smith-sheet .smith-slot.is-boss { border-color: #f2c14e; }
+.smith-sheet .smith-slot-remove { min-height: 32px; margin-left: 4px; padding: 2px 8px; border: 1px solid rgba(255,255,255,.3); border-radius: 6px; background: rgba(0,0,0,.35); color: #fff; font: 800 13px/1 var(--font-rounded); }
+.smith-sheet .smith-slot-remove.is-armed { border-color: #ff9b91; color: #ff9b91; }
+.smith-sheet .smith-slot-remove:disabled { opacity: .55; }
 .smith-sheet .smith-slot img { width: 28px; height: 35px; }
 .smith-sheet .smith-card-effects { display: grid; gap: 3px; margin: 0; padding: 0; list-style: none; text-align: center; font-size: 14px; font-weight: 800; }
 .smith-sheet .smith-card-effects .is-cost { color: #ff9b91; }

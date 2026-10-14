@@ -159,6 +159,7 @@ import RefineItemReducer from "./refine_item_reducer";
 import RefreshDailyQuestsReducer from "./refresh_daily_quests_reducer";
 import RegisterClientVersionReducer from "./register_client_version_reducer";
 import RegisterProtocolReducer from "./register_protocol_reducer";
+import RemoveCardReducer from "./remove_card_reducer";
 import ReportAutoFarmEnemyDefeatsReducer from "./report_auto_farm_enemy_defeats_reducer";
 import ReportChatMessageReducer from "./report_chat_message_reducer";
 import ReportEnemyDefeatsReducer from "./report_enemy_defeats_reducer";
@@ -1941,6 +1942,7 @@ const reducersSchema = __reducers(
   __reducerSchema("refresh_daily_quests", RefreshDailyQuestsReducer),
   __reducerSchema("register_client_version", RegisterClientVersionReducer),
   __reducerSchema("register_protocol", RegisterProtocolReducer),
+  __reducerSchema("remove_card", RemoveCardReducer),
   __reducerSchema("report_auto_farm_enemy_defeats", ReportAutoFarmEnemyDefeatsReducer),
   __reducerSchema("report_chat_message", ReportChatMessageReducer),
   __reducerSchema("report_enemy_defeats", ReportEnemyDefeatsReducer),
