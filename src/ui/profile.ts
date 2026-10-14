@@ -11,6 +11,7 @@ import { formatRating } from "./rating-text";
 import { upgradeSlotForItem } from "../../shared/slot-upgrades";
 import { cleanSoulStats, soulAttackSpeedBonus, withSoulStats, type SoulStats } from "../../shared/soul-dimension";
 import { challengeMinimumInterval } from "../../shared/prestige-challenge";
+import { weaponAttackRange } from "../game/weapon-combat";
 
 export function formatPlayedTime(seconds: number) {
   const wholeMinutes = Math.max(0, Math.floor(seconds / 60));
@@ -202,7 +203,9 @@ export function profileStatDisplayRows(
   // Long Shot and Fleet Foot pay outside an Aggro run, as the server pays them: the saved range already holds Long Shot.
   const perksInPlay = profile.aggroChallenge?.active ? null : perks;
   const rangePerkBonus = prestigePerkValue(perksInPlay, "longShot"), speedPerkBonus = prestigePerkValue(perksInPlay, "fleetFoot");
-  const baseRange = Math.max(1, progress.attackRange - rangeResearchBonus - rangePerkBonus);
+  // A sword reaches its own range, with the same Tech and Long Shot on top (weaponAttackRange).
+  const reach = weaponAttackRange(progress.equippedRightHand || progress.equippedLeftHand, progress.attackRange);
+  const baseRange = Math.max(1, reach - rangeResearchBonus - rangePerkBonus);
   const stats: ProfileStatDisplayRow[] = [
     {
       kind: "health", label: "Max Hp:",
@@ -239,7 +242,7 @@ export function profileStatDisplayRows(
     {
       kind: "range", label: "Attack Range:", base: statValue(baseRange),
       equationOperator: "×",
-      multiplier: multiplierValue(progress.attackRange / baseRange), total: statValue(progress.attackRange),
+      multiplier: multiplierValue(reach / baseRange), total: statValue(reach),
       sources: [...(rangeResearchBonus ? [{ label: "Tech" as const, value: `+${rangeResearchBonus} range` }] : []),
         ...(rangePerkBonus ? [{ label: "Prestige" as const, value: `+${rangePerkBonus} range` }] : [])],
     },

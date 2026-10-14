@@ -157,6 +157,17 @@ describe("profile stat display", () => {
     });
   });
 
+  it("shows a sword's own reach, with the same Tech on top", () => {
+    const profile = {
+      progress: { ...progress("wooden_sword"), attackRange: 230 },
+      research: { ...createEmptyResearchRanks(), utilityAttackRange: 3 },
+      itemUpgradeLevels: {},
+    } as Parameters<typeof profileStatDisplayRows>[0];
+    expect(profileStatDisplayRows(profile, () => "0%", MIN_ATTACK_INTERVAL).find(row => row.kind === "range")).toMatchObject({
+      base: "75", total: "105", sources: [{ label: "Tech", value: "+30 range" }],
+    });
+  });
+
   it("shows Long Shot inside the saved range and Fleet Foot on Move Speed, as Prestige, outside an Aggro run", () => {
     const profile = {
       progress: { ...progress(), attackRange: 240, speed: 200 },
