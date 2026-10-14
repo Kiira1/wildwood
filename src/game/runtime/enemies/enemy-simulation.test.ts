@@ -236,6 +236,34 @@ describe("deterministic enemy simulation", () => {
     expect(enemy.x).toBeGreaterThanOrEqual(held - 1);
   });
 
+  it("closes to fire from inside the reach of the weapon in hand: a sword's, not the bow's range stat", () => {
+    const run = (reach?: number) => {
+      const enemy = idleEnemyAt(100, 100);
+      enemy.type = "Dune Archer";
+      enemy.r = 17;
+      enemy.aggroRadius = 800;
+      enemy.leashRange = 800;
+      engage(enemy, "local-player");
+      const local = playerAt(280, 100);
+      local.attackRange = 200;
+      const shots: number[] = [];
+      const simulation = createEnemySimulation([enemy], () => { shots.push(Math.hypot(local.x - enemy.x, local.y - enemy.y)); }, local,
+        () => ({ width: 800, height: 800, zoom: 1 }), engage, () => false,
+        { localIdentity: () => "local-player", ...(reach ? { playerAttackRange: () => reach } : {}) });
+      for (let frame = 0; frame < 240; frame++) simulation.update(1 / 60);
+      return { distance: Math.hypot(local.x - enemy.x, local.y - enemy.y), shots };
+    };
+    // A bow's reach: it stands off where it is and fires from there.
+    const bow = run();
+    expect(bow.distance).toBeGreaterThan(170);
+    expect(bow.shots.length).toBeGreaterThan(0);
+    // A sword's 75: it walks in and fires from inside it, where the sword strikes back.
+    const sword = run(75);
+    expect(sword.distance).toBeLessThanOrEqual(75 - 15);
+    expect(sword.shots.length).toBeGreaterThan(0);
+    expect(Math.max(...sword.shots)).toBeLessThanOrEqual(75 - 15);
+  });
+
   it("does not flicker an engaged ranged enemy when acquisition exceeds its authored leash", () => {
     const enemy = idleEnemyAt(100, 100);
     enemy.type = "Moonblade Reaper";

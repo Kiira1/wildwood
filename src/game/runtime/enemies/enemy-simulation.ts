@@ -57,6 +57,11 @@ export type EnemySimulationSharedOptions = {
   remotePlayers?: () => readonly RemotePlayer[];
   /** The player's actual movement speed, including equipment bonuses. */
   playerMovementSpeed?: () => number;
+  /**
+   * The player's reach with the weapon in hand (weaponAttackRange): a ranged enemy fires from inside it, as it does
+   * at another player's ghost fight. Without it, the attackRange stat, a bow's reach.
+   */
+  playerAttackRange?: () => number;
   remoteCombatStats?: (identity: string) => RemoteCombatStats | null | undefined;
   spawnDamageNumber?: (x: number, y: number, amount: number, critical?: boolean, damageTaken?: boolean) => void;
   spawnBurst?: (x: number, y: number, color: string, count?: number, speed?: number) => void;
@@ -90,6 +95,8 @@ export function createEnemySimulation(
     spawnBurst: shared.spawnBurst,
     ghostsPerFight: () => shared.remoteGhostsEnabled?.() === false ? 0 : REMOTE_GHOSTS_PER_FIGHT,
   });
+
+  const playerReach = () => shared.playerAttackRange?.() ?? player.attackRange;
 
   /** Chase speed tracks the player in front of the enemy, a step ahead of them. */
   function chaseSpeedFor(enemy: EnemyState) {
@@ -143,7 +150,7 @@ export function createEnemySimulation(
     let direction = 1;
     // A ranged enemy walks in until it is in range, then stands and fires,
     // however close the player comes.
-    if (ranged) direction = distance > rangedEnemyHoldBand(player.attackRange, player.r + enemy.r + 4).approachAbove ? 1 : 0;
+    if (ranged) direction = distance > rangedEnemyHoldBand(playerReach(), player.r + enemy.r + 4).approachAbove ? 1 : 0;
     // Exponential easing makes authored speed the actual cruising speed at
     // both low and high frame rates, instead of acceleration/damping overshoot.
     const blend = 1 - Math.exp(-ENEMY_CHASE_TURN_RATE * dt);
@@ -310,7 +317,7 @@ export function createEnemySimulation(
             if (
               base.ranged &&
               enemy.attackClock <= 0 &&
-              actualDistance <= rangedEnemyAttackRange(player.attackRange)
+              actualDistance <= rangedEnemyAttackRange(playerReach())
             ) {
               spawnEnemyShot(
                 enemy.x,

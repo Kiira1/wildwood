@@ -585,7 +585,7 @@ import {
       remotePlayers: () => (inTutorial() ? [] : coop?.remotePlayers?.() ?? [])
         .filter((remote) => !coop?.remotePlayerDeath?.(remote.id)),
       remoteCombatStats: (identity) => coop?.remoteCombatStats?.(identity),
-      playerMovementSpeed: () => player.speed * movementMultiplier(),
+      playerMovementSpeed: () => player.speed * movementMultiplier(), playerAttackRange: () => weaponAttackRange(inventory.equippedRightHand || inventory.equippedLeftHand, player.attackRange),
       spawnDamageNumber, remoteGhostsEnabled: appShell.remoteGhostsEnabled,
       spawnBurst,
       pullAggro: enemy => autoFarm.pulls(enemy) || autoFarm.forced(enemy),
