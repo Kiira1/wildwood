@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 vi.mock("../app/developer", () => ({ isDeveloperIdentity: () => false }));
 import { HOME_BENCH_POSITION, HOME_QUEST_BOARD_POSITION, HOME_RESEARCH_POSITION } from "../../shared/home";
-import { TOWN_ARRIVAL, TOWN_BENCH_POSITION, TOWN_CENTER, TOWN_DOORS, TOWN_EAST_FENCE_GAP, TOWN_EAST_FENCE_GAP_OUTSIDE, TOWN_FEET_OFFSET, TOWN_OX_POSITION, TOWN_QUEST_BOARD_POSITION, TOWN_RESEARCH_POSITION, TOWN_SMITH_POSITION, TOWN_SMITH_REACH, TOWN_SMITH_SERVER_REACH, TOWN_TRAVEL_PORTAL, inTownVillage, townRoomAt } from "../../shared/town";
+import { MINING_TRACK, miningTrackDistanceSquared } from "../../shared/mining";
+import { TOWN_ARRIVAL, TOWN_BENCH_POSITION, TOWN_CENTER, TOWN_DOORS, TOWN_EAST_BRIDGE, TOWN_EAST_BRIDGE_APPROACHES, TOWN_EAST_FENCE_GAP, TOWN_EAST_FENCE_GAP_OUTSIDE, TOWN_FEET_OFFSET, TOWN_OX_POSITION, TOWN_QUEST_BOARD_POSITION, TOWN_RESEARCH_POSITION, TOWN_SMITH_POSITION, TOWN_SMITH_REACH, TOWN_SMITH_SERVER_REACH, TOWN_TRAVEL_PORTAL, inTownVillage, townRoomAt } from "../../shared/town";
 import { SOUL_INTERIOR_DECOR, SOUL_INTERIOR_SOLIDS, SOUL_VILLAGE_DECOR, SOUL_VILLAGE_SOLIDS } from "./soul-village";
 import { TOWN_HILLS_SIGNPOST, TOWN_SIGNPOST, townWindowDecor } from "./town-world";
 import { UPGRADE_BENCH_POSITION } from "./world";
@@ -204,6 +205,29 @@ describe("the way out east, to the Copper Hills", () => {
     const standingThere = SOUL_VILLAGE_DECOR.filter(item => item.type === "soulProp" && !item.ground
       && (within(TOWN_EAST_FENCE_GAP, item.x, item.y) || within(TOWN_EAST_FENCE_GAP_OUTSIDE, item.x, item.y)));
     expect(standingThere).toEqual([]);
+  });
+
+  it("crosses the river on a bridge north-east of the gap, with the miners' track over its deck", () => {
+    const deckY = TOWN_EAST_BRIDGE.y - TOWN_FEET_OFFSET;
+    // From just outside the gap to the far bank, within 200 of the two: not the long way round the river's head.
+    expect(walkable({ x: TOWN_EAST_FENCE_GAP.right + 40, y: gapMiddle - TOWN_FEET_OFFSET }, { x: TOWN_EAST_BRIDGE.x + 220, y: deckY }, 10)).toBe(true);
+    // Open from bank to bank between its railings, with the river on either side of it.
+    for (let x = TOWN_EAST_BRIDGE.x - 130; x <= TOWN_EAST_BRIDGE.x + 130; x += 10) expect(standable(x, deckY), `deck at ${x}`).toBe(true);
+    for (const dy of [-37, 36, -60, 60, -120, 120]) expect(standable(TOWN_EAST_BRIDGE.x + 20, deckY + dy), `off the deck by ${dy}`).toBe(false);
+    // The track crosses on the deck.
+    const crossing = MINING_TRACK.filter(point => Math.abs(point.x - TOWN_EAST_BRIDGE.x) <= TOWN_EAST_BRIDGE.halfWidth && Math.abs(point.y - TOWN_EAST_BRIDGE.y) < 300);
+    expect(crossing.length).toBeGreaterThan(5);
+    for (const point of crossing) expect(Math.abs(point.y - TOWN_EAST_BRIDGE.y), `${point.x},${point.y}`).toBeLessThanOrEqual(2);
+    // The deck is drawn with the village, and the trees that hid the way up to it and off it are gone, shadows and all.
+    expect(SOUL_VILLAGE_DECOR.filter(item => item.type === "soulProp" && item.ground && Math.abs(item.y - TOWN_EAST_BRIDGE.y) < 1 && Math.abs(item.x - TOWN_EAST_BRIDGE.x) < 80))
+      .toHaveLength(2);
+    const approaches = SOUL_VILLAGE_DECOR.filter(item => item.type === "soulProp" && !item.ground
+      && TOWN_EAST_BRIDGE_APPROACHES.some(area => within(area, item.x, item.y)));
+    expect(approaches).toEqual([]);
+    // Nothing of the village's grows on the track.
+    const onTrack = SOUL_VILLAGE_DECOR.filter(item => item.type === "soulProp" && item.ground && !(Math.abs(item.y - TOWN_EAST_BRIDGE.y) < 1)
+      && miningTrackDistanceSquared(item.x, item.y, 60) < 54 ** 2);
+    expect(onTrack).toEqual([]);
   });
 
   it("is signed just outside the gap, below its south post, pointing east, on open ground", () => {

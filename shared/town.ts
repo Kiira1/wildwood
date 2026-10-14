@@ -165,6 +165,19 @@ export const TOWN_EAST_FENCE_GAP_OUTSIDE = Object.freeze({
  * clear of the Inn, the yard's cart and the fence, so its plank reads whole from the square and from the gap.
  */
 export const TOWN_HILLS_SIGNPOST_POSITION = Object.freeze({ x: TOWN_EAST_FENCE_GAP.right + 50, y: TOWN_EAST_FENCE_GAP.bottom + 62 });
+/**
+ * The stone bridge over the river north-east of the gap, where the river runs as narrow as under the village's
+ * west bridge: the same two deck halves, the miners' track crossing it. Its middle, and the deck's reach either way.
+ */
+export const TOWN_EAST_BRIDGE = Object.freeze({ x: TOWN_CENTER.x + 1_314, y: TOWN_CENTER.y - 234, halfWidth: 154, halfHeight: 77 });
+/**
+ * The way up from the gap to the bridge, and off its far end: the trees that stood there hid whoever walked the
+ * track, so they are gone (soul-village.ts), as the one outside the gap is.
+ */
+export const TOWN_EAST_BRIDGE_APPROACHES = Object.freeze([
+  Object.freeze({ left: TOWN_EAST_BRIDGE.x - 334, right: TOWN_EAST_BRIDGE.x - 114, top: TOWN_EAST_BRIDGE.y - 66, bottom: TOWN_EAST_BRIDGE.y + 334 }),
+  Object.freeze({ left: TOWN_EAST_BRIDGE.x + 126, right: TOWN_EAST_BRIDGE.x + 446, top: TOWN_EAST_BRIDGE.y - 26, bottom: TOWN_EAST_BRIDGE.y + 114 }),
+]);
 
 /** The whole row of rooms, walls and all. */
 const TOWN_INTERIOR_AREA = Object.freeze({

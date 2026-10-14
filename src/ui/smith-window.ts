@@ -181,6 +181,8 @@ export function createSmithController(deps: {
   function open() {
     if (!deps.inTown() || dialog.open) return;
     lastResult = null;
+    // Each visit goes by the server's word on the pickaxe: a reset save takes it back.
+    pickaxeTaken = false;
     render();
     deps.clearInput?.();
     dialog.showModal();

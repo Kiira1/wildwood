@@ -468,6 +468,27 @@ describe("autofarm against a ranged enemy with researched attack range", () => {
     expect(distance).toBeLessThanOrEqual(range);
   });
 
+  it("with a sword, stands for a pulled ranged group that comes into the sword's reach", () => {
+    const s = setup([], "wooden_sword");
+    const brood = s.add("Brood", 1500, 500);
+    brood.hp = brood.maxHp = 1e9;
+    const lifecycle = createEnemyLifecycle(s.enemies, s.spawnSites, () => {});
+    let serverNow = 0;
+    const simulation = createEnemySimulation(s.enemies, () => {}, s.player,
+      () => ({ width: 1200, height: 800, zoom: 1 }), lifecycle.engageEnemy, () => false,
+      { playerMovementSpeed: () => s.player.speed, serverNowMs: () => serverNow, currentMapId: () => "forest",
+        pullAggro: enemy => s.farm.pulls(enemy), playerAttackRange: () => weaponAttackRange("wooden_sword", s.player.attackRange) });
+    s.farm.setPullAll(true);
+    s.farm.start("Brood");
+    for (let frame = 0; frame < 900; frame++) {
+      serverNow += 1000 / 60;
+      s.tick();
+      simulation.update(1 / 60);
+    }
+    expect(s.farm.state().status).toBe("Farming");
+    expect(Math.hypot(brood.x - s.player.x, brood.y - s.player.y) - brood.r).toBeLessThan(75);
+  });
+
   it("stops at the edge of full reach, research and Long Shot included, never further in", () => {
     const at = (range: number) => autoFarmStandoff({ weaponRange: range, playerAttackRange: range, melee: false, playerRadius: 18,
       destination: { x: 0, y: 0, r: 16, type: "Bramble" }, enemy: true });

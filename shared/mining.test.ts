@@ -5,7 +5,7 @@ import {
   miningSpeed, miningTrackDistanceSquared, miningVeinMap, miningVeinOpen, miningYield, normalizeMining,
 } from "./mining";
 import { GRADE_ORES, refineGrade } from "./refine";
-import { TOWN_HILLS, TOWN_VILLAGE_WALK_AREA, TOWN_WALK_AREA } from "./town";
+import { TOWN_EAST_BRIDGE, TOWN_EAST_FENCE_GAP, TOWN_HILLS, TOWN_VILLAGE_WALK_AREA, TOWN_WALK_AREA } from "./town";
 import { ITEM_DEFINITIONS } from "./items";
 import { itemTier } from "./item-tier";
 
@@ -118,15 +118,20 @@ describe("the rocks", () => {
     expect(MINING_PLATE_ROOM.top).toBeGreaterThan(MINING_REACH);
   });
 
-  it("keep off the miners' track, which comes in from the river's crossing at the way in and ends among the last outcrop", () => {
+  it("keep off the miners' track, which comes out of the village over the east bridge and ends among the last outcrop", () => {
     const [start, end] = [MINING_TRACK[0], MINING_TRACK.at(-1)!];
-    // From the head of the village's river (the walk out comes round it at about 7,640, 4,220) ...
-    expect(Math.hypot(start.x - 7_640, start.y - 4_220)).toBeLessThan(100);
-    expect(start.x).toBeLessThan(TOWN_VILLAGE_WALK_AREA.right);
-    // ... east into the hills at about y 4,220 ...
+    // From just outside the gap in the village's fence, up along it ...
+    expect(start.x - TOWN_EAST_FENCE_GAP.right).toBeGreaterThan(0);
+    expect(start.x - TOWN_EAST_FENCE_GAP.right).toBeLessThan(60);
+    expect(start.y).toBeGreaterThan(TOWN_EAST_FENCE_GAP.top);
+    expect(start.y).toBeLessThan(TOWN_EAST_FENCE_GAP.bottom);
+    // ... over the east bridge's deck ...
+    const onBridge = MINING_TRACK.findIndex(point => point.x >= TOWN_EAST_BRIDGE.x);
+    expect(Math.abs(MINING_TRACK[onBridge].y - TOWN_EAST_BRIDGE.y)).toBeLessThan(3);
+    // ... and east into the hills at about y 4,220 ...
     const atEdge = MINING_TRACK.find(point => point.x >= TOWN_HILLS.left)!;
     expect(Math.abs(atEdge.y - 4_220)).toBeLessThan(40);
-    for (let index = 1; index < MINING_TRACK.length; index++) expect(MINING_TRACK[index].x).toBeGreaterThan(MINING_TRACK[index - 1].x);
+    for (let index = onBridge; index < MINING_TRACK.length; index++) expect(MINING_TRACK[index].x).toBeGreaterThan(MINING_TRACK[index - 1].x);
     // ... and on through every vein to the last, where it ends.
     for (const vein of MINING_VEINS) expect(MINING_TRACK.some(point => point.x > vein.left && point.x < vein.right)).toBe(true);
     expect(end.x).toBeGreaterThan(MINING_VEINS.at(-1)!.left);

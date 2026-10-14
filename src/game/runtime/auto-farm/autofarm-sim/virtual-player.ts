@@ -368,6 +368,7 @@ export function createVirtualPlayer(profile: VirtualPlayerProfile, options: { du
       () => playerCombat.damagePlayer(amount, source)), {
       currentMapId: () => currentMapId, serverNowMs: () => clock.ms, localIdentity: () => identity,
       remotePlayers: () => [], playerMovementSpeed: () => player.speed * movementMultiplier(),
+      playerAttackRange: () => weaponAttackRange(weapon(), player.attackRange),
       pullAggro: enemy => autoFarm.pulls(enemy) || autoFarm.forced(enemy),
     });
 

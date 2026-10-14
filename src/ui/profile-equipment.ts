@@ -4,6 +4,7 @@ import { appendRefineBadge, withRefineStars } from "./refine-badge";
 import type { PlayerProgress } from "../coop/services/progress";
 import { itemArtMarkup } from "../game/item-presentation";
 import { isHiddenCosmeticItem } from "../../shared/equipment-appearance";
+import { weaponKind } from "../../shared/equip-best";
 import {
   itemDefinition,
   itemDisplayName,
@@ -63,8 +64,10 @@ export function profileEquipmentPresentation(
   const equippedItemId = slot === "WEAPON"
     ? knownItemId(progress.equippedRightHand) || knownItemId(progress.equippedLeftHand)
     : knownItemId(progress[details.equipped]);
+  // A hand look shows only on a weapon of its own kind, as the character is drawn (shared/equipment-appearance.ts).
+  const fits = (look: string) => isHiddenCosmeticItem(look) || weaponKind(look) === weaponKind(equippedItemId);
   const selectedCosmetic = slot === "WEAPON"
-    ? cosmeticValue(progress.cosmeticRightHand) || cosmeticValue(progress.cosmeticLeftHand)
+    ? [cosmeticValue(progress.cosmeticRightHand), cosmeticValue(progress.cosmeticLeftHand)].find(look => look && fits(look)) ?? ""
     : cosmeticValue(progress[details.cosmetic]);
 
   const cosmeticItemId = knownItemId(selectedCosmetic);

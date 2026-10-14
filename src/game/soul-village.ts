@@ -1,4 +1,5 @@
-import { TOWN_CENTER, TOWN_EAST_FENCE_GAP, TOWN_EAST_FENCE_GAP_OUTSIDE, TOWN_INTERIORS } from "../../shared/town";
+import { TOWN_CENTER, TOWN_EAST_BRIDGE, TOWN_EAST_BRIDGE_APPROACHES, TOWN_EAST_FENCE_GAP, TOWN_EAST_FENCE_GAP_OUTSIDE, TOWN_INTERIORS } from "../../shared/town";
+import { MINING_TRACK_HALF_WIDTH, miningTrackDistanceSquared } from "../../shared/mining";
 import atlas from "./soul-atlas.json";
 import scene from "./soul-village-scene.json";
 import type { WorldDecor } from "./world";
@@ -29,15 +30,29 @@ export const SOUL_VILLAGE_GROUND = Object.freeze({
 const animations = scene.animations as Record<string, { frames?: number[]; times?: number[]; length?: number; spin?: number } | undefined>;
 /**
  * Inside the gap cut in the fence east of the Inn (TOWN_EAST_FENCE_GAP): nothing stands or blocks there. Just
- * outside it (TOWN_EAST_FENCE_GAP_OUTSIDE), nothing stands either, shadows and all: the tall tree that grew there
- * hid whoever walked through, and the sign to the Copper Hills stands there now.
+ * outside it (TOWN_EAST_FENCE_GAP_OUTSIDE), and on the way up to the east bridge and off it, nothing stands
+ * either, shadows and all: the trees that grew there hid whoever walked the track. Nothing grows on the track.
  */
 type Area = { left: number; right: number; top: number; bottom: number };
 const inside = (area: Area, x: number, y: number) => x > area.left && x < area.right && y > area.top && y < area.bottom;
-const CLEARED: readonly Area[] = [TOWN_EAST_FENCE_GAP, TOWN_EAST_FENCE_GAP_OUTSIDE];
-export const SOUL_VILLAGE_DECOR: readonly WorldDecor[] = scene.props.flatMap(([frame, x, y, depth, flags, open, door], index): WorldDecor[] => {
+const CLEARINGS: readonly Area[] = [TOWN_EAST_FENCE_GAP_OUTSIDE, ...TOWN_EAST_BRIDGE_APPROACHES];
+const CLEARED: readonly Area[] = [TOWN_EAST_FENCE_GAP, ...CLEARINGS];
+const TRACK_REACH = MINING_TRACK_HALF_WIDTH + 10;
+const onTrack = (x: number, y: number) => miningTrackDistanceSquared(x, y, TRACK_REACH) < TRACK_REACH * TRACK_REACH;
+/**
+ * The east bridge (TOWN_EAST_BRIDGE): the deck of the village's own west bridge, its two halves, over the river.
+ * The water under it is open ground, and its railings, out to the water, hold the walk between them.
+ */
+const DECK = { left: TOWN_EAST_BRIDGE.x - TOWN_EAST_BRIDGE.halfWidth, right: TOWN_EAST_BRIDGE.x + TOWN_EAST_BRIDGE.halfWidth,
+  top: TOWN_EAST_BRIDGE.y - TOWN_EAST_BRIDGE.halfHeight, bottom: TOWN_EAST_BRIDGE.y + TOWN_EAST_BRIDGE.halfHeight };
+const EAST_BRIDGE_DECK: readonly WorldDecor[] = ([["168", -77], ["169", 77]] as const).map(([frame, dx]): WorldDecor => ({
+  type: "soulProp", sheet: "village", frame, s: 1, x: TOWN_EAST_BRIDGE.x + dx, y: TOWN_EAST_BRIDGE.y, dy: 0, ground: true, shadow: false,
+}));
+const railing = (from: number, to: number) => [-104, from, 105, from, 105, to, -104, to].map((value, index) => value + (index % 2 ? TOWN_EAST_BRIDGE.y : TOWN_EAST_BRIDGE.x));
+export const SOUL_VILLAGE_DECOR: readonly WorldDecor[] = [...scene.props.flatMap(([frame, x, y, depth, flags, open, door], index): WorldDecor[] => {
   if ((flags & 3) === 0 && CLEARED.some(area => inside(area, originX + x, originY + depth))) return [];
-  if ((flags & 2) === 2 && inside(TOWN_EAST_FENCE_GAP_OUTSIDE, originX + x, originY + depth)) return [];
+  if ((flags & 2) === 2 && CLEARINGS.some(area => inside(area, originX + x, originY + depth))) return [];
+  if ((flags & 1) === 1 && onTrack(originX + x, originY + depth)) return [];
   const clip = animations[index];
   return [{
     type: "soulProp", sheet: "village", frame: String(frame), s: 1, x: originX + x, y: originY + depth, dy: y - depth,
@@ -46,7 +61,7 @@ export const SOUL_VILLAGE_DECOR: readonly WorldDecor[] = scene.props.flatMap(([f
     ...(clip?.frames ? { anim: { frames: clip.frames, times: clip.times ?? [], length: clip.length ?? 1 } } : {}),
     ...(clip?.spin ? { spin: clip.spin } : {}),
   }];
-});
+}), ...EAST_BRIDGE_DECK];
 
 export type SoulEmitter = (typeof scene.emitters)[number];
 /** The village's particle emitters (chimney smoke, campfire smoke and sparks), in world units. */
@@ -61,8 +76,9 @@ function solid(flat: readonly number[], dx: number, dy: number): SoulSolid {
   return { xs, ys, left: Math.min(...xs), top: Math.min(...ys), right: Math.max(...xs), bottom: Math.max(...ys) };
 }
 /** What a player cannot walk through: the pack's own colliders, as drawn (a round fountain stays round). */
-export const SOUL_VILLAGE_SOLIDS: readonly SoulSolid[] = scene.solids.map(flat => solid(flat, originX, originY))
-  .filter(wall => !CLEARED.some(area => inside(area, wall.left + 1, wall.top + 1) && inside(area, wall.right - 1, wall.bottom - 1)));
+export const SOUL_VILLAGE_SOLIDS: readonly SoulSolid[] = [...scene.solids.map(flat => solid(flat, originX, originY))
+  .filter(wall => ![...CLEARED, DECK].some(area => inside(area, wall.left + 1, wall.top + 1) && inside(area, wall.right - 1, wall.bottom - 1))),
+  solid(railing(-TOWN_EAST_BRIDGE.halfHeight, -34), 0, 0), solid(railing(33, TOWN_EAST_BRIDGE.halfHeight), 0, 0)];
 
 /** Which doors stand open now: the Town's runtime opens one as someone walks up, the renderer draws it so. */
 export const SOUL_DOORS_OPEN = new Set<number>();

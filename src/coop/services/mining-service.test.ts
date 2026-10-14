@@ -79,3 +79,19 @@ it("does nothing without a current connection", async () => {
   fake.settle();
   expect(service.api.hasPickaxe()).toBe(false);
 });
+
+it("gives up on a break or the pickaxe when the server never answers, so mining is not left waiting", async () => {
+  vi.useFakeTimers();
+  try {
+    const fake = fakeConnection(), service = createMiningRows(vi.fn());
+    service.watch(fake.connection, () => true);
+    fake.settle();
+    // A dropped connection never settles the call.
+    fake.reducers.mineNode.mockImplementation(() => new Promise<void>(() => {}));
+    fake.reducers.claimPickaxe.mockImplementation(() => new Promise<void>(() => {}));
+    const broke = service.api.mineNode(3), claimed = service.api.claimPickaxe();
+    await vi.advanceTimersByTimeAsync(10_000);
+    await expect(broke).resolves.toEqual({ ok: false, error: "Request timed out. Try again." });
+    await expect(claimed).resolves.toEqual({ ok: false, error: "Request timed out. Try again." });
+  } finally { vi.useRealTimers(); }
+});

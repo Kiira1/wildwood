@@ -16,6 +16,7 @@ type ExpectedApiKey =
   | "acceptLegalTerms"
   | "itemRefine"
   | "ores"
+  | "destroyOre"
   | "lastRefineResult"
   | "setOnRefineResult"
   | "refineItem"

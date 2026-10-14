@@ -82,6 +82,16 @@ describe("profile equipment presentation", () => {
     expect(profileEquipmentPresentation(null, "WEAPON").kind).toBe("EMPTY");
   });
 
+  it("shows a hand look only on a weapon of its own kind, as the character is drawn", () => {
+    // A bow's look over a sword is not worn: the sword is what shows.
+    expect(profileEquipmentPresentation(equipment({ equippedRightHand: "ion_sword", cosmeticRightHand: STARTER_BOW }), "WEAPON")).toMatchObject({
+      kind: "EQUIPMENT", displayItemId: "ion_sword",
+    });
+    // The other hand's look, when that one fits, as the renderer takes it.
+    expect(profileEquipmentPresentation(equipment({ equippedRightHand: "ion_sword", cosmeticRightHand: STARTER_BOW, cosmeticLeftHand: "wooden_sword" }), "WEAPON"))
+      .toMatchObject({ kind: "COSMETIC", displayItemId: "wooden_sword" });
+  });
+
   it("keeps right-hand cosmetic precedence identical to the character renderer", () => {
     expect(profileEquipmentPresentation(equipment({ cosmeticRightHand: STARTER_STONE, cosmeticLeftHand: STARTER_BOW }), "WEAPON")).toMatchObject({
       kind: "COSMETIC", displayItemId: STARTER_STONE,

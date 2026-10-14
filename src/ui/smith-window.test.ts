@@ -32,7 +32,7 @@ function smith(options: { inTown?: boolean; ores?: Partial<Record<OreId, number>
   const q = (selector: string) => dialog.querySelector(selector) as unknown as HTMLElement;
   const facts = () => Object.fromEntries([...dialog.querySelectorAll(".smith-facts div")].map(row => [row.querySelector("dt")!.textContent, row.querySelector("dd")!.textContent]));
   const choices = () => [...dialog.querySelectorAll<HTMLElement>(".smith-choice")];
-  return { controller, dialog, q, facts, choices, refine, showMessage, levels, claimPickaxe };
+  return { controller, dialog, q, facts, choices, refine, showMessage, levels, claimPickaxe, setPickaxe: (value: boolean) => { pickaxe = value; } };
 }
 
 it("lists only gear the Smith can refine, worn first, and shows a risky try's odds and what a fail costs", () => {
@@ -105,6 +105,18 @@ it("hands over the free pickaxe once, and then shows Mining instead", async () =
   miner.controller.open();
   expect([(miner.q(".smith-pickaxe") as HTMLButtonElement).hidden, miner.q(".smith-mining-text").textContent])
     .toEqual([true, "Mining 40 · Ore is in the Copper Hills, east of Town"]);
+});
+
+it("offers the pickaxe again once the server no longer has it (a reset save takes it back)", async () => {
+  const view = smith();
+  view.controller.open();
+  const button = view.q(".smith-pickaxe") as HTMLButtonElement;
+  button.click();
+  await vi.waitFor(() => expect(button.hidden).toBe(true));
+  view.controller.close();
+  view.setPickaxe(false);
+  view.controller.open();
+  expect([button.hidden, view.q(".smith-mining-text").textContent]).toEqual([false, "Ore is in the Copper Hills, east of Town."]);
 });
 
 it("keeps the pickaxe on offer when the server refuses, and says why", async () => {

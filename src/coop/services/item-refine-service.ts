@@ -2,6 +2,7 @@ import { tables, type DbConnection } from "../../module_bindings";
 import { REFINE_ORES, normalizeRefineLevel, type OreId } from "../../../shared/refine";
 import type { ItemLevel } from "../../../shared/items";
 import { reducerErrorMessage } from "./reducer-errors";
+import { withRequestDeadline } from "./request-deadline";
 
 /** What the last refine try did, as the server recorded it (player_refine_result). */
 export type RefineResult = {
@@ -15,8 +16,8 @@ const isOreId = (value: string): value is OreId => Object.prototype.hasOwnProper
 
 /**
  * This account's refines, ores and last refine try, from the caller-scoped my_item_refines, my_copy_refines,
- * my_ores and my_refine_result views, and the refine_item reducer. The server rolls every try and owns every
- * level; this only carries rows and requests.
+ * my_ores and my_refine_result views, and the refine_item / destroy_ore reducers. The server rolls every try
+ * and owns every level; this only carries rows and requests.
  */
 export function createItemRefineRows(notify: () => void, slotTierFor: (itemId: string) => number = () => 0) {
   let target: Target | null = null;
@@ -80,6 +81,17 @@ export function createItemRefineRows(notify: () => void, slotTierFor: (itemId: s
       itemLevel: (itemId: string): ItemLevel => ({ tier: slotTierFor(itemId), refine: levels.get(copyKey(itemId, 0n)) ?? 0 }),
       /** Ores held, by kind; a kind not held is missing. */
       ores: (): Readonly<Partial<Record<OreId, number>>> => ores,
+      /** Discard the ore stack the player confirmed; a changed count is rejected by the server. */
+      async destroyOre(oreId: OreId, expectedCount: number): Promise<RefineTryResult> {
+        const current = target;
+        if (!current || !current.isCurrent() || !current.connection.isActive) return { ok: false, error: "NOT CONNECTED" };
+        try {
+          await withRequestDeadline(current.connection.reducers.destroyOre({ oreId, expectedCount }));
+          return { ok: true };
+        } catch (error) {
+          return { ok: false, error: reducerErrorMessage(error) };
+        }
+      },
       lastRefineResult: (): RefineResult | null => result,
       /** Called with each new try's result, once the window has asked for it (not for the standing row on connect). */
       setOnRefineResult(callback: ((result: RefineResult) => void) | null) { resultListener = callback; },
@@ -88,7 +100,8 @@ export function createItemRefineRows(notify: () => void, slotTierFor: (itemId: s
         const current = target;
         if (!current || !current.isCurrent() || !current.connection.isActive) return { ok: false, error: "NOT CONNECTED" };
         try {
-          await current.connection.reducers.refineItem({ itemId, copyId, expectedLevel });
+          // A try cut off by a dropped connection never settles; the deadline frees the window (expectedLevel guards a retry).
+          await withRequestDeadline(current.connection.reducers.refineItem({ itemId, copyId, expectedLevel }));
           return { ok: true };
         } catch (error) {
           return { ok: false, error: reducerErrorMessage(error) };

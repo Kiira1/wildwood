@@ -1,7 +1,8 @@
 import type { Identity } from "spacetimedb";
 import { tables, type DbConnection } from "../../module_bindings";
 import { effectivePlayerPowerStats } from "../../../shared/player-power";
-import { itemDefinition, normalizeItemUpgradeLevel } from "../../../shared/items";
+import { itemDefinition } from "../../../shared/items";
+import { itemSlotTier, type SlotTiers } from "../../../shared/slot-upgrades";
 import { guildWeaponRange } from "../../../shared/guild-combat";
 import { criticalDamageMultiplier } from "../../../shared/critical-damage";
 import type { RemoteCombatStats } from "../contracts";
@@ -52,6 +53,7 @@ type ResearchRow = {
 
 type UpgradeRow = {
   identity: Identity;
+  /** The upgrade slot, "HAND", "HEAD" or "CHEST", despite the name (migration 38). */
   itemId: string;
   level: number;
 };
@@ -80,13 +82,13 @@ export function remoteCombatStatsFromRows(
   research: ResearchRow | null | undefined,
   upgrades: readonly UpgradeRow[],
 ): RemoteCombatStats {
-  const upgradeLevels = new Map(
-    upgrades.map((upgrade) => [upgrade.itemId, normalizeItemUpgradeLevel(upgrade.level)]),
-  );
+  // A tier belongs to the slot and whatever is worn there inherits it. Looking
+  // one up by item id missed every time, so other players fought here untiered.
+  const slotTiers: SlotTiers = Object.fromEntries(upgrades.map((upgrade) => [upgrade.itemId, upgrade.level]));
   const effective = effectivePlayerPowerStats(
     progress,
     research,
-    (itemId) => upgradeLevels.get(itemId) ?? 0,
+    (itemId) => itemSlotTier(slotTiers, itemId),
   );
   const weapon = itemDefinition(progress.equippedRightHand || progress.equippedLeftHand)?.weapon;
   const melee = weapon?.mode === "MELEE";

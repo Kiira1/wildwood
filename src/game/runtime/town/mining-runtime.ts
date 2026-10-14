@@ -4,7 +4,7 @@ import {
 import { REFINE_ORES } from "../../../../shared/refine";
 import type { CampaignAccess } from "../../../../shared/equipment-access";
 import { inTownHills, TOWN_FEET_OFFSET } from "../../../../shared/town";
-import { ATTACK_ANIMATION_SECONDS } from "../../attack-timeline";
+import { ATTACK_ANIMATION_SECONDS, ATTACK_WINDUP_SECONDS } from "../../attack-timeline";
 import type { PlayerState } from "../types";
 import { miningScene, resetMiningScene } from "./mining-scene";
 import { ORE_COLORS } from "./ore-rock-renderer";
@@ -15,6 +15,8 @@ type MiningBreak = { nodeId: number; starshard: boolean; rocksBroken: number };
 
 /** What mining needs from the session (mining-service.ts on the coop API). */
 export type MiningSource = {
+  localIdentity?: () => string | undefined;
+  sessionGeneration?: () => number;
   hasPickaxe?: () => boolean;
   mining?: () => number;
   minedNodeAt?: (nodeId: number) => number | null;
@@ -26,6 +28,20 @@ export type MiningSource = {
 
 /** A pickaxe swing this often while mining. */
 const SWING_SECONDS = .7;
+/** How long a broken rock's full bar stays up, so the hit that breaks it is seen to fill it. */
+const BROKEN_SHOW_SECONDS = .35;
+
+/** How many hits break a rock that takes `seconds`: its time in swings, rounded up. */
+export function miningHits(seconds: number) {
+  return Math.max(1, Math.ceil(seconds / SWING_SECONDS - 1e-9));
+}
+/**
+ * When hit `index` (from 0) lands, in seconds of mining the rock: a swing apart, the last just as the break is due
+ * (the timing the server checks), and none before the first swing's windup.
+ */
+export function miningHitAt(seconds: number, index: number) {
+  return Math.max(ATTACK_WINDUP_SECONDS, seconds - (miningHits(seconds) - 1 - index) * SWING_SECONDS);
+}
 /** A hint (no pickaxe, a shut vein) says itself again only after this long, or for another rock. */
 const HINT_SECONDS = 6;
 /** How often the bare rocks are looked over: they only change as rocks grow back and break. */
@@ -35,8 +51,8 @@ const PENDING_LIMIT_MS = MINING_NODE_KINDS.mysterious.respawnSeconds * 1_000;
 
 /**
  * Mining in play. Standing within reach of a rock with the Smith's pickaxe, the player swings at the nearest one
- * that is not bare until it breaks (shared/mining.ts times it by Mining), and the server is asked to take the
- * break; what it gave shows when the server's row says so. A rock broken here is bare at once, before the
+ * that is not bare until it breaks (shared/mining.ts times it by Mining; its bar steps once per hit), and the
+ * server is asked to take the break; what it gave shows when the server's row says so. A rock broken here is bare at once, before the
  * server's word, and comes back if the server refuses. Walking pauses the swing; walking away, or to another
  * rock, starts the next one afresh. Without the pickaxe, at a vein not open yet, or with no bag slot for a kind
  * of ore not held yet, it says why instead.
@@ -51,15 +67,25 @@ export function createMiningRuntime(deps: {
   bag?: () => BagSpace | null | undefined;
 }) {
   let target: MiningNode | null = null;
-  let elapsed = 0, swing = 0, bareCheck = 0, clock = 0;
+  /** Seconds spent mining the target, its swings started and hits landed, and how long a broken rock's full bar has left. */
+  let elapsed = 0, swung = 0, landed = 0, bareCheck = 0, clock = 0, brokenShown = 0;
   /** The rock whose break is with the server: nothing else is mined until it answers. */
   let sending: number | null = null;
   /** Rocks broken here, by when, that the server has yet to list. */
   const pending = new Map<number, number>();
   let hint = { text: "", at: -Infinity, rock: -1 };
   let listeningTo: MiningSource | null = null;
+  /** Pending breaks and bare rocks belong to the account and connection that made them. */
+  let session: { source: MiningSource; identity: string; generation: number; pickaxe: boolean } | null = null;
 
   const now = () => deps.source()?.serverNowMs?.() ?? Date.now();
+
+  function sameSession(source: MiningSource | null | undefined) {
+    return Boolean(source && session?.source === source
+      && session.identity === (source.localIdentity?.() ?? "")
+      && session.generation === (source.sessionGeneration?.() ?? 0)
+      && session.pickaxe === Boolean(source.hasPickaxe?.()));
+  }
 
   function isBare(node: MiningNode, at: number) {
     const brokenAt = deps.source()?.minedNodeAt?.(node.id) ?? pending.get(node.id) ?? null;
@@ -86,8 +112,15 @@ export function createMiningRuntime(deps: {
   }
 
   function stop() {
-    target = null; elapsed = 0; swing = 0;
+    target = null; elapsed = 0; swung = 0; landed = 0; brokenShown = 0;
     miningScene.target = null; miningScene.progress = 0; miningScene.pickaxeOut = false; miningScene.swingClock = 0;
+  }
+
+  function reset() {
+    stop(); resetMiningScene(); pending.clear(); sending = null;
+    listeningTo?.setOnMiningBreak?.(null);
+    listeningTo = null; session = null; bareCheck = 0;
+    hint = { text: "", at: -Infinity, rock: -1 };
   }
 
   function say(text: string, color: string, rock: number) {
@@ -100,7 +133,9 @@ export function createMiningRuntime(deps: {
   function listen(source: MiningSource) {
     if (listeningTo === source || !source.setOnMiningBreak) return;
     listeningTo = source;
+    const started = session;
     source.setOnMiningBreak(result => {
+      if (session !== started || !sameSession(deps.source())) return;
       const node = MINING_NODES[result.nodeId];
       if (!node) return;
       const color = ORE_COLORS[node.ore].light;
@@ -112,12 +147,18 @@ export function createMiningRuntime(deps: {
 
   function breakRock(source: MiningSource, rock: MiningNode, at: number) {
     const id = rock.id;
+    const started = session;
     sending = id;
     pending.set(id, at);
     miningScene.bare.add(id);
     stop();
+    // The breaking hit fills the bar: it stays up a moment over the broken rock.
+    Object.assign(miningScene, { target: id, progress: 1, pickaxeOut: true, swingClock: ATTACK_ANIMATION_SECONDS - ATTACK_WINDUP_SECONDS });
+    brokenShown = BROKEN_SHOW_SECONDS;
     deps.burst?.(rock.x, rock.y - 18, "#c7ced3", 14, 120);
     void Promise.resolve(source.mineNode?.(id) ?? { ok: false, error: "Not Connected" }).then(result => {
+      // A reply from before a reconnect or Reset Save must not clear a newer break.
+      if (session !== started || !sameSession(deps.source())) return;
       sending = null;
       if (result?.ok) return;
       // Refused: the rock was never broken, so it stands again.
@@ -131,13 +172,25 @@ export function createMiningRuntime(deps: {
   function update(dt: number, active: boolean) {
     clock += dt;
     const source = deps.source();
+    if (!sameSession(source)) {
+      reset();
+      if (!source) return;
+      session = { source, identity: source.localIdentity?.() ?? "", generation: source.sessionGeneration?.() ?? 0, pickaxe: Boolean(source.hasPickaxe?.()) };
+    }
     const at = now();
     if ((bareCheck -= dt) <= 0) { bareCheck = BARE_REFRESH_SECONDS; refreshBare(at); }
     if (!active || !source || deps.player.hp <= 0 || !inTownHills(deps.player.x, deps.player.y, MINING_REACH * 2)) { stop(); return; }
     listen(source);
+    // The broken rock's full bar, while it lasts; walking on ends it.
+    if (brokenShown > 0) {
+      brokenShown -= dt;
+      miningScene.swingClock = Math.max(0, miningScene.swingClock - dt);
+      if (brokenShown > 0 && !deps.player.moving) return;
+      stop();
+    }
     const rock = sending === null ? rockInReach() : null;
     if (!rock) { stop(); return; }
-    if (rock.id !== target?.id) { target = rock; elapsed = 0; swing = 0; }
+    if (rock.id !== target?.id) { target = rock; elapsed = 0; swung = 0; landed = 0; }
     if (!source.hasPickaxe?.()) { stop(); say("You need a pickaxe. The Smith in Town has one.", "#ffd75e", rock.id); return; }
     const vein = MINING_VEINS[rock.vein];
     if (!miningVeinOpen(vein, source.savedProgress?.())) {
@@ -151,25 +204,30 @@ export function createMiningRuntime(deps: {
       const { needed, room } = roomForOres(space, rockOreKinds(rock));
       if (!room) { stop(); say(bagFullForOres(needed), "#ff9b91", rock.id); return; }
     }
-    const seconds = miningBreakSeconds(rock, source.mining?.() ?? 0);
+    const seconds = miningBreakSeconds(rock, source.mining?.() ?? 0), hits = miningHits(seconds);
     miningScene.target = rock.id;
     miningScene.pickaxeOut = true;
     miningScene.swingClock = Math.max(0, miningScene.swingClock - dt);
-    // Walking pauses the swing; the progress made on this rock stays.
-    if (deps.player.moving) { miningScene.progress = Math.min(1, elapsed / seconds); return; }
-    elapsed += dt;
-    if ((swing -= dt) <= 0) {
-      swing = SWING_SECONDS;
-      miningScene.swingClock = ATTACK_ANIMATION_SECONDS;
-      deps.burst?.(rock.x, rock.y - 26, "#c7ced3", 3, 55);
+    // Walking pauses the swing; the hits made on this rock stay.
+    if (!deps.player.moving) {
+      elapsed += dt;
+      // Each swing starts a windup before its hit lands, so the bar steps as the pick meets the rock.
+      if (swung < hits && elapsed >= miningHitAt(seconds, swung) - ATTACK_WINDUP_SECONDS) {
+        swung++;
+        miningScene.swingClock = ATTACK_ANIMATION_SECONDS;
+      }
+      while (landed < swung && elapsed >= miningHitAt(seconds, landed)) {
+        landed++;
+        deps.burst?.(rock.x, rock.y - 26, "#c7ced3", 3, 55);
+      }
     }
-    miningScene.progress = Math.min(1, elapsed / seconds);
+    miningScene.progress = Math.min(1, landed / hits);
     if (elapsed >= seconds) breakRock(source, rock, at);
   }
 
   return {
     update,
-    /** Leaves the hills behind: a map change or the session going. */
-    reset() { stop(); resetMiningScene(); pending.clear(); sending = null; },
+    /** Clears this session's local mining and stops listening for its breaks. */
+    reset,
   };
 }

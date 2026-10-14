@@ -71,6 +71,8 @@ export function createProgressController(dependencies: ProgressDependencies) {
   let ownedItems: string[] = [];
   let cosmeticOwnershipJson = "";
   let ownedCosmetics: string[] = [];
+  /** The health bonus the last load saw, so a change that comes with no other change is applied. */
+  let healthBonusSeen = Number.NaN;
 
   function reconcileInventory(saved: PlayerProgress) {
     // Cache decoding, but compare the current bag too: reconnect hydration can
@@ -179,6 +181,12 @@ export function createProgressController(dependencies: ProgressDependencies) {
         if (player.baseMaxHp !== saved.maxHp) setPlayerBaseMaxHealth(player, saved.maxHp, dependencies.healthMultiplierBonus());
         reconcileInventory(saved);
         applyMovementSpeed(saved, false);
+        // A refine of worn gear changes the health bonus with nothing else changing: max health follows it.
+        const healthBonus = dependencies.healthMultiplierBonus();
+        if (healthBonus !== healthBonusSeen) {
+          healthBonusSeen = healthBonus;
+          applyPlayerMaxHealthMultiplierBonus(player, healthBonus);
+        }
       }
       return;
     }
