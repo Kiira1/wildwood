@@ -1,6 +1,8 @@
 import { table, t } from "spacetimedb/server";
 import type { Identity } from "spacetimedb";
 import { NO_BOW_SKILLS, isSkillBow, rollBowSkills, type BowSkillRoll } from "../../shared/bow-skills";
+import { bowSkillsWithCards } from "../../shared/card-bounds";
+import { wornCardTotalsFor } from "./worn-cards";
 
 /**
  * Each player's bow skill rolls, one row per bow id obtained since skills were
@@ -84,8 +86,11 @@ export function mergeBowSkills(ctx: Ctx, guest: Identity, account: Identity) {
  * same fight each time; startDuel rolls any bow that had not been yet.
  */
 export function duelBowSkillFields(ctx: Ctx, duel: { challenger: Identity; opponent: Identity; challengerWeaponItem?: string; opponentWeaponItem?: string }) {
-  const challenger = bowSkillRollFor(ctx, duel.challenger, duel.challengerWeaponItem ?? "");
-  const opponent = bowSkillRollFor(ctx, duel.opponent, duel.opponentWeaponItem ?? "");
+  // Bow skill cards add to a bow's own roll, as in the world.
+  const withCards = (identity: Identity, weapon: string) =>
+    isSkillBow(weapon) ? bowSkillsWithCards(bowSkillRollFor(ctx, identity, weapon), wornCardTotalsFor(ctx, identity)) : bowSkillRollFor(ctx, identity, weapon);
+  const challenger = withCards(duel.challenger, duel.challengerWeaponItem ?? "");
+  const opponent = withCards(duel.opponent, duel.opponentWeaponItem ?? "");
   return {
     challengerArrowStorm: challenger.arrowStorm, challengerRicochet: challenger.ricochet, challengerPiercingShot: challenger.piercingShot,
     opponentArrowStorm: opponent.arrowStorm, opponentRicochet: opponent.ricochet, opponentPiercingShot: opponent.piercingShot,

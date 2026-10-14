@@ -552,6 +552,10 @@ export const DuelCombatSnapshot = __t.object("DuelCombatSnapshot", {
   opponentWhirlwind: __t.f64(),
   opponentDeflect: __t.f64(),
   opponentShockwave: __t.f64(),
+  challengerCards: __t.array(__t.string()),
+  opponentCards: __t.array(__t.string()),
+  challengerFirstHit: __t.f64(),
+  opponentFirstHit: __t.f64(),
 });
 export type DuelCombatSnapshot = __Infer<typeof DuelCombatSnapshot>;
 

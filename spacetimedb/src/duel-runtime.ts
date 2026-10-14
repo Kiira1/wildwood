@@ -17,7 +17,11 @@ import {
   playerZone, playerWithMotion, stoppedMotionFields, syncPlayerMotion, syncPlayerMotionIdentity,
   syncPlayerMapMarker, ensureRealtimeFrameSchedules,
 } from "./presence-runtime";
-import { advanceDuelCombat, duelOutcome, DUEL_COMBAT_VERSION } from "../../shared/duel-combat";
+import { advanceDuelCombat, duelOutcome, initialDuelCombatState, DUEL_COMBAT_VERSION } from "../../shared/duel-combat";
+import { DUEL_CARDS_VERSION } from "../../shared/duel-cards";
+import { cardChance, cardStatFactors, cardValue, equippedCardIds } from "../../shared/card-effects";
+import { itemDefinition } from "../../shared/items";
+import { itemCardsFor, wornCardTotalsFor } from "./worn-cards";
 import { duelAnnouncementText } from "../../shared/duel-announcement";
 import { prestigePerkRanks } from "./prestige";
 import { researchInPlay } from "./bonus-toggles";
@@ -108,16 +112,37 @@ export function createDuelRuntime(deps: DuelRuntimeDeps) {
     equipmentPresentationForProgress,
   } = deps;
 
-  function duelDamage(ctx: any, identity: any, damage: number) {
+  /** Crit chance and multiplier in a duel: research, Keen Edge, the soul, the rating and cards. */
+  function duelCrit(ctx: any, identity: any) {
     const research = researchInPlay(ctx, identity);
     const ranks = prestigePerkRanks(ctx, identity);
+    const cards = cardStatFactors(wornCardTotalsFor(ctx, identity));
+    return {
+      chance: Math.min(1, (research?.criticalChance ?? 0) * .01 + prestigePerkValue(ranks, "keenEdge") + cards.critChance),
+      multiplier: criticalDamageMultiplier({ researchRank: research?.criticalDamage, perks: ranks,
+        soul: soulStatsFor(ctx, identity)?.critDamage, rating: readCritRating(ctx, identity), capRank: research?.critCap, card: cards.critDamage }),
+    };
+  }
+
+  function duelDamage(ctx: any, identity: any, damage: number, opponentWeapon = "") {
+    const ranks = prestigePerkRanks(ctx, identity);
+    const totals = wornCardTotalsFor(ctx, identity);
     const baseDamage = researchedDamage(ctx, identity, damage);
-    const criticalChance = (research?.criticalChance ?? 0) * .01 + prestigePerkValue(ranks, "keenEdge");
-    const criticalMultiplier = criticalDamageMultiplier({ researchRank: research?.criticalDamage, perks: ranks,
-      soul: soulStatsFor(ctx, identity)?.critDamage, rating: readCritRating(ctx, identity), capRank: research?.critCap });
+    const crit = duelCrit(ctx, identity);
     // Duel simulation is deterministic and both sides replay it, so random
-    // rolls fold into expected damage. Criticals and Double Strike both do.
-    return baseDamage * (1 + criticalChance * (criticalMultiplier - 1)) * prestigeSwingMultiplier(ranks);
+    // rolls fold into expected damage. Criticals and Double Strike both do,
+    // and the cards that never change in a duel: Double Strike, Steady (duellists
+    // stand) and Ranged Slayer against a bow (shared/duel-cards.ts plays the rest).
+    const cards = (1 + cardChance(totals, "doubleStrike") / 100) * (1 + Math.max(0, cardValue(totals, "steady")) / 100)
+      * (itemDefinition(opponentWeapon)?.weapon?.mode === "RANGED" ? 1 + Math.max(0, cardValue(totals, "rangedSlayer")) / 100 : 1);
+    return baseDamage * (1 + crit.chance * (crit.multiplier - 1)) * prestigeSwingMultiplier(ranks) * cards;
+  }
+
+  /** Iaido's first hit is a full critical: its damage over the averaged hit. */
+  function duelFirstHit(ctx: any, identity: any) {
+    if (cardValue(wornCardTotalsFor(ctx, identity), "iaido") <= 0) return 1;
+    const crit = duelCrit(ctx, identity);
+    return crit.multiplier / (1 + crit.chance * (crit.multiplier - 1));
   }
 
   function finishDuel(ctx: any, current: any) {
@@ -235,8 +260,11 @@ export function createDuelRuntime(deps: DuelRuntimeDeps) {
     const riposte = ctx.db.duelRiposte.duelId.find(current.id);
     // The snapshot freezes both weapons' rolls, so changing equipment cannot change a running fight.
     // Old records without a snapshot keep their historical combat version.
-    const { resolvedMicros, ...combat } = advanceDuelCombat({ ...current, ...(ctx.db.duelCombatSnapshot.duelId.find(current.id) ?? { ...riposte, ...duelBowSkillFields(ctx, current), ...duelSwordSkillFields(ctx, current) }) }, current,
-      Number(current.lastResolvedAt.microsSinceUnixEpoch - current.startsAtMicros),
+    const fight = { ...current, ...(ctx.db.duelCombatSnapshot.duelId.find(current.id) ?? { ...riposte, ...duelBowSkillFields(ctx, current), ...duelSwordSkillFields(ctx, current) }) };
+    // Card duels keep running state the duel row does not store, so they resolve from the start each time.
+    const fromStart = (current.combatVersion ?? 0) >= DUEL_CARDS_VERSION;
+    const { resolvedMicros, cards: _cards, ...combat } = advanceDuelCombat(fight, fromStart ? initialDuelCombatState(fight) : current,
+      fromStart ? 0 : Number(current.lastResolvedAt.microsSinceUnixEpoch - current.startsAtMicros),
       Number(resolutionMicros - current.startsAtMicros));
     const next = {
       ...current, ...combat,
@@ -325,7 +353,7 @@ export function createDuelRuntime(deps: DuelRuntimeDeps) {
       opponentOriginY: 0,
       challengerHp: challengerMaxHp,
       challengerMaxHp,
-      challengerDamage: duelDamage(ctx, ctx.sender, challengerProgress.damage),
+      challengerDamage: duelDamage(ctx, ctx.sender, challengerProgress.damage, opponentRightHandItem || opponentLeftHandItem),
       challengerArmor: researchedArmor(ctx, ctx.sender, challengerProgress.armor),
       challengerAttackRate: challengerRightHandItem || challengerLeftHandItem ? attackIntervalForProgress(withSoulStats(challengerProgress, soulStatsFor(ctx, challengerProgress.identity), soulAttackCapFor(ctx, challengerProgress.identity))) : inactiveAttackRate,
       challengerRegen: researchedRegen(ctx, ctx.sender, challengerProgress.regen),
@@ -335,7 +363,7 @@ export function createDuelRuntime(deps: DuelRuntimeDeps) {
       challengerBlocked: 0,
       opponentHp: opponentMaxHp,
       opponentMaxHp,
-      opponentDamage: duelDamage(ctx, opponent, opponentProgress.damage),
+      opponentDamage: duelDamage(ctx, opponent, opponentProgress.damage, challengerRightHandItem || challengerLeftHandItem),
       opponentArmor: researchedArmor(ctx, opponent, opponentProgress.armor),
       opponentAttackRate: opponentRightHandItem || opponentLeftHandItem ? attackIntervalForProgress(withSoulStats(opponentProgress, soulStatsFor(ctx, opponentProgress.identity), soulAttackCapFor(ctx, opponentProgress.identity))) : inactiveAttackRate,
       opponentRegen: researchedRegen(ctx, opponent, opponentProgress.regen),
@@ -364,11 +392,15 @@ export function createDuelRuntime(deps: DuelRuntimeDeps) {
     // resolves the same way however many times it is replayed.
     ctx.db.duelRiposte.insert({
       duelId: insertedDuel.id,
-      challengerRiposte: prestigeRiposteChance(prestigePerkRanks(ctx, ctx.sender)),
-      opponentRiposte: prestigeRiposteChance(prestigePerkRanks(ctx, opponent)),
+      // Reflect cards add to the perk.
+      challengerRiposte: prestigeRiposteChance(prestigePerkRanks(ctx, ctx.sender)) + cardChance(wornCardTotalsFor(ctx, ctx.sender), "reflect") / 100,
+      opponentRiposte: prestigeRiposteChance(prestigePerkRanks(ctx, opponent)) + cardChance(wornCardTotalsFor(ctx, opponent), "reflect") / 100,
       riposteSeed: ctx.timestamp.microsSinceUnixEpoch,
     });
-    ctx.db.duelCombatSnapshot.insert({ ...ctx.db.duelRiposte.duelId.find(insertedDuel.id), ...duelBowSkillFields(ctx, insertedDuel), ...duelSwordSkillFields(ctx, insertedDuel) });
+    ctx.db.duelCombatSnapshot.insert({ ...ctx.db.duelRiposte.duelId.find(insertedDuel.id), ...duelBowSkillFields(ctx, insertedDuel), ...duelSwordSkillFields(ctx, insertedDuel),
+      challengerCards: [...equippedCardIds(challengerProgress, itemId => itemCardsFor(ctx, ctx.sender, itemId))],
+      opponentCards: [...equippedCardIds(opponentProgress, itemId => itemCardsFor(ctx, opponent, itemId))],
+      challengerFirstHit: duelFirstHit(ctx, ctx.sender), opponentFirstHit: duelFirstHit(ctx, opponent) });
     ctx.db.duelResolutionSchedule.insert({
       scheduledId: 0n,
       scheduledAt: ScheduleAt.time(endsAtMicros),

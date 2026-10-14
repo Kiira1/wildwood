@@ -6,6 +6,10 @@ import { marbleBagHit } from "./marble-bag";
 import { ARROW_STORM_ARROWS, ARROW_STORM_DAMAGE_SHARE, DUEL_RICOCHET_REHITS, RICOCHET_DAMAGE_SHARE, type BowSkillId } from "./bow-skills";
 import { SHOCKWAVE_DAMAGE_SHARE, WHIRLWIND_DAMAGE_SHARE, WHIRLWIND_TICKS, type SwordSkillId } from "./sword-skills";
 import { itemDefinition } from "./items";
+import {
+  DUEL_CARDS_VERSION, duelCardAfterHit, duelCardAttack, duelCardDamageOverTime, duelCardDefend, initialDuelCardState,
+  type DuelCardFields, type DuelCardState, type DuelSide,
+} from "./duel-cards";
 
 export type DuelFighter = { maxHp: number; damage: number; armor: number; regen: number; attackRate: number };
 /**
@@ -14,8 +18,9 @@ export type DuelFighter = { maxHp: number; damage: number; armor: number; regen:
  * 6: Riposte throws back half the hit before the defender's armor, not after.
  * 7: a thrown-back hit is capped at the reflecting player's max health (0.867).
  * 8: sword skills; projectile Deflect blocks and returns the ranged attack through its sender's armor.
+ * 9: cards (duel-cards.ts).
  */
-export const DUEL_COMBAT_VERSION = 8;
+export const DUEL_COMBAT_VERSION = 9;
 export const DUEL_SWORD_SKILLS_VERSION = 8;
 export const DUEL_BOW_SKILLS_VERSION = 4;
 export const DUEL_RIPOSTE_BAG_VERSION = 5;
@@ -34,7 +39,7 @@ export function duelHitMultiplier(seconds: number, version = 0) {
   return version >= 1 ? 1 + Math.min(4, Math.max(0, seconds - 10) / 5) : 1;
 }
 
-export type DuelCombat = DuelWeapons & {
+export type DuelCombat = DuelWeapons & DuelCardFields & {
   combatVersion?: number;
   challengerMaxHp: number; challengerDamage: number; challengerArmor: number; challengerRegen: number; challengerAttackRate: number;
   opponentMaxHp: number; opponentDamage: number; opponentArmor: number; opponentRegen: number; opponentAttackRate: number;
@@ -138,11 +143,59 @@ export type DuelCombatState = {
   challengerHp: number; opponentHp: number; challengerAttacks: number; opponentAttacks: number;
   challengerDamageDealt: number; opponentDamageDealt: number; challengerRegened: number; opponentRegened: number;
   challengerBlocked: number; opponentBlocked: number;
+  /** The cards' running state (version 9): never stored, so a card duel is always resolved from its start. */
+  cards?: DuelCardState;
 };
 export function initialDuelCombatState(duel: DuelCombat): DuelCombatState {
   return { challengerHp: duel.challengerMaxHp, opponentHp: duel.opponentMaxHp,
     challengerAttacks: 0, opponentAttacks: 0, challengerDamageDealt: 0, opponentDamageDealt: 0,
-    challengerRegened: 0, opponentRegened: 0, challengerBlocked: 0, opponentBlocked: 0 };
+    challengerRegened: 0, opponentRegened: 0, challengerBlocked: 0, opponentBlocked: 0,
+    // Only a fight with cards worn carries card state; one without plays exactly as version 8 did.
+    ...((duel.combatVersion ?? 0) >= DUEL_CARDS_VERSION && (duel.challengerCards?.length || duel.opponentCards?.length)
+      ? { cards: initialDuelCardState(duel) } : {}) };
+}
+
+const cloneSide = (side: DuelCardState["challenger"]) => ({ ...side, dots: { ...side.dots }, slow: { ...side.slow }, weaken: { ...side.weaken } });
+const cloneCards = (cards: DuelCardState): DuelCardState => ({ challenger: cloneSide(cards.challenger), opponent: cloneSide(cards.opponent) });
+
+/** One side's attack: its hit, the defender's Deflect, cards and Riposte, and what each side ends on. */
+function resolveAttack(duel: DuelCombat, state: DuelCombatState, attacker: DuelSide, multiplier: number, now: number) {
+  const defender: DuelSide = attacker === "challenger" ? "opponent" : "challenger";
+  const attackKey = attacker === "challenger" ? "challengerAttacks" : "opponentAttacks";
+  const attack = ++state[attackKey];
+  const hp = (side: DuelSide) => side === "challenger" ? state.challengerHp : state.opponentHp;
+  const setHp = (side: DuelSide, value: number) => { if (side === "challenger") state.challengerHp = value; else state.opponentHp = value; };
+  const maxHp = (side: DuelSide) => side === "challenger" ? duel.challengerMaxHp : duel.opponentMaxHp;
+  const dealtKey = (side: DuelSide) => side === "challenger" ? "challengerDamageDealt" as const : "opponentDamageDealt" as const;
+  const blockedKey = defender === "challenger" ? "challengerBlocked" as const : "opponentBlocked" as const;
+  const cards = state.cards;
+  const health = () => ({ attacker: hp(attacker), attackerMax: maxHp(attacker), defender: hp(defender), defenderMax: maxHp(defender) });
+  let raw = (attacker === "challenger" ? duel.challengerDamage : duel.opponentDamage) * multiplier;
+  if (cards) raw = duelCardAttack(duel, cards, attacker, attack, raw, now, health());
+  const hit = duelAttackDamage(duel, attacker, attack, raw, defender === "challenger" ? duel.challengerArmor : duel.opponentArmor);
+  const deflected = duelDeflected(duel, defender, attack);
+  const defended = cards && !deflected && hit.dealt > 0 ? duelCardDefend(duel, cards, defender, attack, hit.dealt, now, maxHp(defender)) : undefined;
+  const landed = defended === null ? 0 : defended ? defended.taken : hit.dealt;
+  const taken = deflected ? 0 : Math.min(hp(defender), landed);
+  setHp(defender, hp(defender) - taken);
+  state[dealtKey(attacker)] += taken;
+  state[blockedKey] += hit.blocked + (deflected || defended === null ? hit.dealt : defended ? defended.blocked : 0);
+  if (deflected) {
+    const returned = Math.min(hp(attacker), damageAfterArmor(Math.min(hit.dealt + hit.blocked, maxHp(defender)),
+      attacker === "challenger" ? duel.challengerArmor : duel.opponentArmor));
+    setHp(attacker, hp(attacker) - returned);
+    state[dealtKey(defender)] += returned;
+  }
+  if (cards && taken > 0) {
+    const after = duelCardAfterHit(duel, cards, attacker, attack, raw, taken, now, health());
+    setHp(attacker, after.attackerHp);
+    setHp(defender, after.defenderHp);
+  }
+  if (taken > 0 && duelRiposted(duel, defender, attack)) {
+    const thrown = Math.min(hp(attacker), riposteThrown(duel, riposteBase(duel, hit, taken), maxHp(defender)));
+    setHp(attacker, hp(attacker) - thrown);
+    state[dealtKey(defender)] += thrown;
+  }
 }
 
 /** Raw earned stats, with simultaneous hits and identical microsecond rounding
@@ -151,7 +204,7 @@ export function advanceDuelCombat(
   duel: DuelCombat, previous: DuelCombatState, fromMicros: number, toMicros: number,
   limits: { challengerAttacks?: number; opponentAttacks?: number } = {},
 ) {
-  const state = { ...previous };
+  const state = { ...previous, ...(previous.cards ? { cards: cloneCards(previous.cards) } : {}) };
   let resolvedMicros = Math.max(0, Math.round(fromMicros));
   const end = Math.max(resolvedMicros, Math.round(toMicros));
   const challengerInterval = Math.max(1, Math.round(duel.challengerAttackRate * 1_000_000));
@@ -171,10 +224,24 @@ export function advanceDuelCombat(
     const opponentRegen = Math.min(duel.opponentMaxHp - state.opponentHp, Math.max(0, duel.opponentRegen) * delta);
     state.challengerHp += challengerRegen; state.challengerRegened += challengerRegen;
     state.opponentHp += opponentRegen; state.opponentRegened += opponentRegen;
+    // Burn and poison tick between attacks, and can finish a fight.
+    if (state.cards) {
+      const from = resolvedMicros / 1_000_000, to = next / 1_000_000;
+      const onChallenger = Math.min(state.challengerHp, duelCardDamageOverTime(state.cards, "challenger", from, to));
+      const onOpponent = Math.min(state.opponentHp, duelCardDamageOverTime(state.cards, "opponent", from, to));
+      state.challengerHp -= onChallenger; state.opponentDamageDealt += onChallenger;
+      state.opponentHp -= onOpponent; state.challengerDamageDealt += onOpponent;
+    }
     resolvedMicros = next;
     const multiplier = duelHitMultiplier(next / 1_000_000, duel.combatVersion);
     // Resolve both scheduled attacks even if the first is lethal. Calculate
     // mitigation only for actual hits, not regeneration-only server pulses.
+    if (state.cards) {
+      // Card duels go through resolveAttack, the same rules on one side and the other.
+      if (challengerNext === next) resolveAttack(duel, state, "challenger", multiplier, next / 1_000_000);
+      if (opponentNext === next) resolveAttack(duel, state, "opponent", multiplier, next / 1_000_000);
+      continue;
+    }
     if (challengerNext === next) {
       const challengerDamage = duel.challengerDamage * multiplier;
       state.challengerAttacks++;
@@ -234,6 +301,6 @@ export function simulateDuelBattle(challenger: DuelFighter, opponent: DuelFighte
   return { combat, result, outcome: duelOutcome(combat, result), durationMicros: Math.max(3_000_000, result.resolvedMicros) };
 }
 
-export type DuelCombatModifiers = Pick<DuelCombat, "challengerRiposte" | "opponentRiposte" | "riposteSeed"
+export type DuelCombatModifiers = DuelCardFields & Pick<DuelCombat, "challengerRiposte" | "opponentRiposte" | "riposteSeed"
   | "challengerArrowStorm" | "challengerRicochet" | "challengerPiercingShot" | "opponentArrowStorm" | "opponentRicochet" | "opponentPiercingShot"
   | "challengerWhirlwind" | "challengerDeflect" | "challengerShockwave" | "opponentWhirlwind" | "opponentDeflect" | "opponentShockwave">;

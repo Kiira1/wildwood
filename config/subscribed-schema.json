@@ -1,5 +1,5 @@
 {
-  "protocolVersion": 113,
+  "protocolVersion": 114,
   "tables": {
     "active_item_upgrade_slot_three": [
       "identity:identity",
@@ -161,7 +161,11 @@
       "challengerShockwave:f64",
       "opponentWhirlwind:f64",
       "opponentDeflect:f64",
-      "opponentShockwave:f64"
+      "opponentShockwave:f64",
+      "challengerCards:array(string)",
+      "opponentCards:array(string)",
+      "challengerFirstHit:f64",
+      "opponentFirstHit:f64"
     ],
     "duel_replay": [
       "id:u64",

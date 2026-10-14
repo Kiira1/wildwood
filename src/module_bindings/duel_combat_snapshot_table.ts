@@ -27,4 +27,8 @@ export default __t.row({
   opponentWhirlwind: __t.f64().name("opponent_whirlwind"),
   opponentDeflect: __t.f64().name("opponent_deflect"),
   opponentShockwave: __t.f64().name("opponent_shockwave"),
+  challengerCards: __t.array(__t.string()).name("challenger_cards"),
+  opponentCards: __t.array(__t.string()).name("opponent_cards"),
+  challengerFirstHit: __t.f64().name("challenger_first_hit"),
+  opponentFirstHit: __t.f64().name("opponent_first_hit"),
 });
