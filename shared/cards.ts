@@ -46,6 +46,13 @@ export type CardDefinition = {
 
 /** Kills per card drop; for bosses, boss kills. */
 export const CARD_DROP_OUTCOMES: Readonly<Record<CardRarity, number>> = Object.freeze({ regular: 10_000, elite: 20_000, boss: 1_000 });
+/**
+ * Each kill also fills its card's meter by the kill's odds; a full meter guarantees the card. Full is this many times
+ * the average kills a card takes, so the odds stay the same but nobody goes forever without one.
+ */
+export const CARD_METER_MULTIPLE = 2;
+/** The meter a card needs, in kills at plain odds. */
+export const cardMeterFull = (rarity: CardRarity) => CARD_DROP_OUTCOMES[rarity] * CARD_METER_MULTIPLE;
 export const MAX_CARD_SLOTS = 4;
 /** Gear owned before cards has one slot. */
 export const OWNED_GEAR_SLOTS = 1;

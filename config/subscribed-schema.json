@@ -515,6 +515,12 @@
       "sequence:u64",
       "droppedAt:timestamp"
     ],
+    "my_card_meters": [
+      "key:string",
+      "identity:identity",
+      "cardId:string",
+      "progress:f64"
+    ],
     "my_cards": [
       "key:string",
       "identity:identity",

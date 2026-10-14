@@ -6,7 +6,7 @@ import { awardCardDrops } from "./card-drops";
 import { cardCount, gearSlotsFor } from "./gear-cards";
 import { publishItemDrop } from "./equipment-copies";
 import { setGearSlots } from "./gear-cards";
-import { CARD_DROP_OUTCOMES } from "../../shared/cards";
+import { CARD_DROP_OUTCOMES, cardMeterFull } from "../../shared/cards";
 import { BLACK_BOOTS, IRON_BOW } from "../../shared/items";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
@@ -61,6 +61,23 @@ describe("card drops", () => {
     expect(f.db.playerCardDrop.identity.find(f.ctx.sender)).toMatchObject({ cardIds: ["needle_card", "needle_card"], sequence: 2n });
     award(f, "tutorial_forest", [{ enemy: "Brood", count: 1 }]);
     expect(f.db.playerCardDrop.identity.find(f.ctx.sender)).toMatchObject({ cardIds: ["brood_card"], sequence: 3n });
+  });
+
+  it("guarantees a card once its meter fills, at twice the average kills, and starts the meter again", () => {
+    const f = crystalFixture();
+    always(f, .999); // every roll loses
+    const meter = () => f.db.playerCardMeter.key.find(`${f.ctx.sender.toHexString()}:needle_card`)?.progress ?? 0;
+    award(f, "tutorial_forest", [{ enemy: "Needle", count: cardMeterFull("regular") - 1 }]);
+    expect(cards(f, "needle_card")).toBe(0);
+    expect(meter()).toBe(cardMeterFull("regular") - 1);
+    award(f, "tutorial_forest", [{ enemy: "Needle", count: 1 }]);
+    expect(cards(f, "needle_card")).toBe(1);
+    expect(meter()).toBe(0);
+    // A lucky roll empties the meter too.
+    award(f, "tutorial_forest", [{ enemy: "Needle", count: 10 }]);
+    always(f, 0);
+    award(f, "tutorial_forest", [{ enemy: "Needle", count: 1 }]);
+    expect(meter()).toBe(0);
   });
 
   it("rolls a boss card at most once per boss respawn on each map, so a repeated boss claim rolls nothing", () => {

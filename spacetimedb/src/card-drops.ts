@@ -1,6 +1,6 @@
 import { table, t } from "spacetimedb/server";
 import type { Identity } from "spacetimedb";
-import { CARD_DROP_OUTCOMES, cardForBoss, cardForEnemy } from "../../shared/cards";
+import { CARD_DROP_OUTCOMES, CARD_METER_MULTIPLE, cardForBoss, cardForEnemy } from "../../shared/cards";
 import { cardStatFactors } from "../../shared/card-effects";
 import { personalBossDefinition } from "../../shared/personal-bosses";
 import { bossRespawnSecondsWithResearch } from "../../shared/utility-research";
@@ -15,6 +15,14 @@ export const playerBossCardRoll = table({ name: "player_boss_card_roll", public:
   key: t.string().primaryKey(),
   identity: t.identity().index("btree"),
   rolledAt: t.timestamp(),
+});
+
+/** How full each card's meter is, in kills at plain odds; a full one guarantees the card (shared/cards.ts). */
+export const playerCardMeter = table({ name: "player_card_meter", public: false }, {
+  key: t.string().primaryKey(),
+  identity: t.identity().index("btree"),
+  cardId: t.string(),
+  progress: t.f64(),
 });
 
 /** Slack for reports that arrive late or bunched together. */
@@ -40,7 +48,17 @@ export function awardCardDrops(ctx: Ctx, identity: Identity, mapId: string, kill
   // Card Hunter cards in the worn gear raise every roll.
   const odds = chanceMultiplier * (1 + cardStatFactors(wornCardTotalsFor(ctx, identity)).cardHunter);
   const roll = (cardId: string, outcomes: number, times: number) => {
-    for (let kill = 0; kill < times; kill++) if (ctx.random() * outcomes < odds) found.push(cardId);
+    if (times < 1) return;
+    const key = `${identity.toHexString()}:${cardId}`;
+    const meter = ctx.db.playerCardMeter.key.find(key);
+    const full = outcomes * CARD_METER_MULTIPLE;
+    let progress = meter?.progress ?? 0;
+    for (let kill = 0; kill < times; kill++) {
+      progress += odds;
+      if (ctx.random() * outcomes < odds || progress >= full) { found.push(cardId); progress = 0; }
+    }
+    if (meter) ctx.db.playerCardMeter.key.update({ ...meter, progress });
+    else ctx.db.playerCardMeter.insert({ key, identity, cardId, progress });
   };
   for (const { enemy, count } of kills) {
     const card = cardForEnemy(mapId, enemy);
@@ -55,4 +73,10 @@ export function awardCardDrops(ctx: Ctx, identity: Identity, mapId: string, kill
   if (previous) ctx.db.playerCardDrop.identity.update(next);
   else ctx.db.playerCardDrop.insert(next);
   return found;
+}
+
+/** The caller's card meters. */
+export function registerCardMeters(spacetimedb: any) {
+  return spacetimedb.view({ name: "my_card_meters", public: true }, t.array(playerCardMeter.rowType),
+    (ctx: any) => [...ctx.db.playerCardMeter.identity.filter(ctx.sender)]);
 }

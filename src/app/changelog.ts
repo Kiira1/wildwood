@@ -1,6 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
   "0.904.0": [
     "Builds: save your gear and cards in the Inventory, and swap between them in one tap",
+    "Card Meter: every kill fills its card's meter, and a full meter guarantees the card",
   ],
   "0.903.8": [
     "Taking a card out at the Smith is free, and destroying gear gives its cards back",

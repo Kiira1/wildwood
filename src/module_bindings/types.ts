@@ -1453,6 +1453,9 @@ export type MyBuilds = __Infer<typeof MyBuilds>;
 export const MyCardDrop = __t.object("MyCardDrop", {});
 export type MyCardDrop = __Infer<typeof MyCardDrop>;
 
+export const MyCardMeters = __t.object("MyCardMeters", {});
+export type MyCardMeters = __Infer<typeof MyCardMeters>;
+
 export const MyCards = __t.object("MyCards", {});
 export type MyCards = __Infer<typeof MyCards>;
 
@@ -1855,6 +1858,14 @@ export const PlayerCardDrop = __t.object("PlayerCardDrop", {
   droppedAt: __t.timestamp(),
 });
 export type PlayerCardDrop = __Infer<typeof PlayerCardDrop>;
+
+export const PlayerCardMeter = __t.object("PlayerCardMeter", {
+  key: __t.string(),
+  identity: __t.identity(),
+  cardId: __t.string(),
+  progress: __t.f64(),
+});
+export type PlayerCardMeter = __Infer<typeof PlayerCardMeter>;
 
 export const PlayerChatHearts = __t.object("PlayerChatHearts", {
   identity: __t.identity(),

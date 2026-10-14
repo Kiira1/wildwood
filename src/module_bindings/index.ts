@@ -325,6 +325,7 @@ import MyBalanceApologyNoticeRow from "./my_balance_apology_notice_table";
 import MyBowSkillsRow from "./my_bow_skills_table";
 import MyBuildsRow from "./my_builds_table";
 import MyCardDropRow from "./my_card_drop_table";
+import MyCardMetersRow from "./my_card_meters_table";
 import MyCardsRow from "./my_cards_table";
 import MyChatMuteRow from "./my_chat_mute_table";
 import MyCopyRefinesRow from "./my_copy_refines_table";
@@ -1536,6 +1537,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, MyCardDropRow),
+  myCardMeters: __table({
+    name: 'my_card_meters',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MyCardMetersRow),
   myCards: __table({
     name: 'my_cards',
     indexes: [

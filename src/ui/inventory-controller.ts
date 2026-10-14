@@ -61,6 +61,7 @@ type InventoryDependencies = {
   slottedCards?: () => ReadonlySet<string>;
   /** Saved loadouts for the Builds tab; without them the tab is not shown. */
   builds?: BuildActions;
+  cardMeter?: (cardId: string) => number;
   /** One copy's card slots and the cards in them; `copyId` 0n is the first copy. */
   gearSlots?: (itemId: string, copyId?: bigint) => { slots: number; cards: readonly string[] };
   destroyOre?: (oreId: OreId, expectedCount: number) => Promise<Result>;
@@ -280,7 +281,8 @@ export function createInventoryController(dependencies: InventoryDependencies) {
   const cardsView = cardsTab && dependencies.cards ? createCardsTab({
     cards: dependencies.cards,
     slotted: dependencies.slottedCards,
-    onInspect: (cardId, found) => dependencies.itemInspection.openCard?.({ cardId, count: dependencies.cards?.()[cardId] ?? 0, found }),
+    meter: dependencies.cardMeter,
+    onInspect: (cardId, found) => dependencies.itemInspection.openCard?.({ cardId, count: dependencies.cards?.()[cardId] ?? 0, found, meter: dependencies.cardMeter?.(cardId) }),
   }) : null;
   if (cardsView) content.append(cardsView.element);
   else cardsTab?.remove();

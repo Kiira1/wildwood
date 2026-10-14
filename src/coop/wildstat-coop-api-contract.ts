@@ -35,6 +35,7 @@ type ExpectedApiKey =
   | "setOnCardDrop"
   | "slotCard"
   | "removeCard"
+  | "cardMeter"
   | "builds"
   | "saveBuild"
   | "applyBuildCards"
