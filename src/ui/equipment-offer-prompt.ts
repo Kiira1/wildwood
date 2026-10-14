@@ -18,7 +18,7 @@ export type EquipmentOfferPort = {
   weaponSkills?: (itemId: string) => WeaponSkillRoll | null | undefined;
   resolveEquipmentOffer?: (id: bigint, keep: boolean) => Promise<Result>;
   serverNowMs?: () => number;
-  /** Auto keep best settles duplicates without an offer; this says when one was better. */
+  /** Duplicates settle without an offer; this says when one upgraded the weapon's skills. */
   setOnBetterRollKept?: (callback: ((kept: { itemId: string; before: number; after: number }) => void) | null) => void;
 };
 
@@ -40,10 +40,10 @@ const skillList = (itemId: string, roll: WeaponSkillRoll | null | undefined) => 
   return lines.length ? lines : ["No skills"];
 };
 
-/** The toast when Auto keep best replaced a weapon's roll with a better one. */
+/** The toast when a duplicate drop upgraded a weapon's skills in place. */
 export function betterRollMessage(itemId: string, before: number, after: number) {
   const name = itemInspectionButtonLabel(itemDisplayName(itemId));
-  return `Better ${name} kept (Skills ${formatBowSkillScore(before)} → ${formatBowSkillScore(after)})`;
+  return `${name} Skills Upgraded (${formatBowSkillScore(before)} → ${formatBowSkillScore(after)})`;
 }
 
 /**
@@ -220,8 +220,8 @@ export function createEquipmentOfferPrompt(options: EquipmentOfferPromptOptions)
     event.stopImmediatePropagation();
     close(true);
   }, true);
-  // With Auto keep best on there is no card: a better copy simply becomes the
-  // one in the slot, and a toast says so. A worse copy goes without a word.
+  // A duplicate never makes a card: a better roll upgrades the weapon in place,
+  // and a toast says so. Anything else goes without a word.
   options.coop?.setOnBetterRollKept?.(({ itemId, before, after }) => {
     options.showMessage(betterRollMessage(itemId, before, after), "#72ef58");
     options.renderInventory();

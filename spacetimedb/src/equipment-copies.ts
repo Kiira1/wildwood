@@ -3,7 +3,7 @@ import { SenderError, table, t } from "spacetimedb/server";
 import { Timestamp, type Identity } from "spacetimedb";
 import { isSkillBow } from "../../shared/bow-skills";
 import { isSkillSword } from "../../shared/sword-skills";
-import { isSkillWeapon, rollWeaponSkills, weaponSkillColumns, weaponSkillRollOf, weaponSkillScore, type WeaponSkillRoll } from "../../shared/weapon-skills";
+import { isSkillWeapon, rollBeatsOnEverySkill, rollWeaponSkills, weaponSkillColumns, weaponSkillRollOf, type WeaponSkillRoll } from "../../shared/weapon-skills";
 import { canDestroyEquipment, canonicalItemId } from "../../shared/items";
 import { bagCapacityFor } from "./bag-capacity";
 import {
@@ -12,7 +12,6 @@ import {
 import { bowSkillKey } from "./bow-skills";
 import { setSwordSkillRoll } from "./sword-skills";
 import { ensureWeaponSkillRoll, weaponSkillRollFor } from "./weapon-skills";
-import { lootSettingsFor } from "./loot-settings";
 import { oreKindsHeldFor, promoteCopyRefine, refineLevelFor, setRefineLevel, swapFirstCopyRefine } from "./item-refine";
 import { clearGearSlots, gearSlotsFor, promoteCopySlots, rollCopySlots, rollDropSlots, swapFirstCopySlots } from "./gear-cards";
 import { readPlayerProgress } from "./wide-stats";
@@ -110,56 +109,25 @@ export function offerItemForFullBag(ctx: Ctx, identity: Identity, itemId: string
 }
 
 /**
- * Auto keep best: `count` duplicate copies settled on the spot, no offer.
- *
- * Each copy rolls like any new weapon and is compared, by skill score, with the
- * best copy the player has: the first copy, or a kept extra copy when one of
- * those is better. A copy strictly better than all of them becomes the first
- * copy: its roll replaces the first copy's in its weapon skill table, so the weapon in
- * the slot improves with nothing to press and kill bounds and duels read it at
- * once. The old first roll is gone. Anything else is thrown away, as Ignore
- * does. Kept extra copies are never touched. Copies of an item without skills
- * are identical, so they are always thrown away.
- *
- * A refined or locked first copy is never replaced: its refine or lock is the
- * player's work. A better copy waits as a Keep/Ignore offer instead, so the
- * roll is not thrown away unseen; a worse one still goes without a word.
- */
-export function keepBestCopies(ctx: Ctx, identity: Identity, itemId: string, count = 1) {
-  const canonical = canonicalItemId(itemId);
-  if (!canonical || !isDuplicateOfferItem(canonical) || !isSkillWeapon(canonical)) return;
-  const kept = equipmentLocked(ctx, identity, canonical) || refineLevelFor(ctx, identity, canonical) > 0;
-  const copies = Math.min(MAX_PENDING_EQUIPMENT_OFFERS, Math.max(0, Math.floor(count)));
-  let offered = false;
-  for (let copy = 0; copy < copies; copy += 1) {
-    const roll = rollWeaponSkills(canonical, () => ctx.random());
-    const best = Math.max(
-      weaponSkillScore(canonical, weaponSkillRollFor(ctx, identity, canonical)),
-      ...extraCopiesOf(ctx, identity, canonical).map(row => weaponSkillScore(canonical, rollOf(row))),
-    );
-    if (weaponSkillScore(canonical, roll) <= best) continue;
-    if (kept) { insertOffer(ctx, identity, canonical, roll); offered = true; }
-    else setFirstCopyRoll(ctx, identity, canonical, roll);
-  }
-  if (offered) trimOffers(ctx, identity);
-}
-
-/**
- * Duplicates from loot. With the player's Auto keep best on (the default)
- * they are settled at once by keepBestCopies; off, each becomes a Keep/Ignore
- * offer. Gifts and mail do not come through here and always offer.
+ * Duplicates from loot, settled on the spot: no offer, no spare copy. Each copy of a skill weapon rolls like
+ * any new one, and a roll at least as good on every skill and better on one replaces the first copy's roll in
+ * place. The weapon keeps its refine, cards, slots and lock, so the one in the slot simply gets better. Every
+ * other copy is thrown away. Gifts and mail do not come through here and always offer.
  */
 export function receiveDuplicateEquipment(ctx: Ctx, identity: Identity, itemId: string, count = 1) {
-  if (Math.floor(count) < 1) return;
-  if (lootSettingsFor(ctx, identity).autoKeepBest) keepBestCopies(ctx, identity, itemId, count);
-  else offerDuplicateEquipment(ctx, identity, itemId, count);
+  const canonical = canonicalItemId(itemId);
+  if (!canonical || !isDuplicateOfferItem(canonical) || !isSkillWeapon(canonical)) return;
+  const copies = Math.min(MAX_PENDING_EQUIPMENT_OFFERS, Math.max(0, Math.floor(count)));
+  for (let copy = 0; copy < copies; copy += 1) {
+    const roll = rollWeaponSkills(canonical, () => ctx.random());
+    if (rollBeatsOnEverySkill(canonical, roll, weaponSkillRollFor(ctx, identity, canonical))) setFirstCopyRoll(ctx, identity, canonical, roll);
+  }
 }
 
 /**
  * Announces a drop to its player. The first copy of an item enters the bag and
  * rolls; a drop of equipment already held, and every copy past the first in
- * one batch, is settled by Auto keep best or becomes a Keep/Ignore offer,
- * whichever the player chose, instead of being thrown away unseen.
+ * one batch, can only upgrade the held weapon's skills (receiveDuplicateEquipment).
  */
 export function publishItemDrop(ctx: Ctx, identity: Identity, itemId: string, alreadyOwned: boolean, quantity = 1) {
   if (!alreadyOwned) ensureWeaponSkillRoll(ctx, identity, itemId);

@@ -41,8 +41,8 @@ export function filterableDrops(itemIds: readonly string[]) {
 /**
  * The Loot Filter, opened from the map window.
  *
- * At the very top, two account switches: Auto keep best copy and Auto equip
- * upgrades (loot-settings-switches.ts). Below them the filter itself,
+ * At the very top, the account's Auto equip upgrades switch
+ * (loot-settings-switches.ts). Below it the filter itself,
  * phrased as what the player picks up. Four slot chips turn a whole
  * slot off on every map, which is the one-tap way to farm only bows. Below,
  * this map's items each have a Pick up switch; an item whose slot is off
@@ -98,8 +98,8 @@ export function createLootFilterWindow(options: LootFilterWindowOptions) {
     chip.addEventListener("click", () => { void change([slotFilterId(slot)], !listed(slotFilterId(slot))); });
     slots.append(chip);
   }
-  // Auto keep best and Auto equip upgrades, above the slots: they decide what
-  // happens to what does drop, where the filter decides what drops at all.
+  // Auto equip upgrades, above the slots: it decides what happens to what does
+  // drop, where the filter decides what drops at all.
   const settings = createLootSettingsSwitches({ container: part(".loot-filter-settings"), port: options.port, setStatus, root: doc });
 
   /**

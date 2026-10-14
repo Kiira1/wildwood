@@ -6,7 +6,6 @@ import { publishItemDrop } from "./equipment-copies";
 import { refineLevelFor, setRefineLevel } from "./item-refine";
 import { EQUIPMENT_OFFER_LIFETIME_MS } from "../../shared/equipment-copies";
 import { IRON_BOW, SAMURAI_HAT } from "../../shared/items";
-import { weaponSkillRollOf, weaponSkillScore } from "../../shared/weapon-skills";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
 // A refine belongs to one copy of an item, and follows it wherever the copy goes (item-refine.ts).
@@ -74,20 +73,22 @@ describe("a refine follows its copy", () => {
   });
 });
 
-describe("Auto keep best", () => {
+describe("duplicate drops on a refined weapon", () => {
   const luckyRandom = (f: Fixture) => Object.assign(f.ctx, { random: Object.assign(() => .1, { integerInRange: (min: number) => min }) });
 
   const offers = (f: Fixture) => [...f.db.pendingEquipmentOffer.identity.filter(f.ctx.sender)];
 
-  it("never replaces a refined first copy: a better roll waits as a Keep/Ignore offer instead", () => {
+  it("upgrades a refined weapon's skills in place when better on every skill, keeping the refine", () => {
     const f = archer();
     setRefineLevel(f.ctx, f.ctx.sender, IRON_BOW, 0n, 3);
+    const key = bowSkillKey(f.ctx.sender, IRON_BOW);
+    f.db.playerBowSkill.key.update({ key, identity: f.ctx.sender, itemId: IRON_BOW, arrowStorm: .1, ricochet: 0, piercingShot: 0 });
     luckyRandom(f);
     publishItemDrop(f.ctx, f.ctx.sender, IRON_BOW, true, 1);
-    expect(bowSkillRollFor(f.ctx, f.ctx.sender, IRON_BOW)).toMatchObject(A);
+    const roll = bowSkillRollFor(f.ctx, f.ctx.sender, IRON_BOW);
+    expect(roll.ricochet > 0 && roll.piercingShot > 0 && roll.arrowStorm >= .1).toBe(true);
     expect(level(f)).toBe(3);
-    expect(offers(f)).toHaveLength(1);
-    expect(weaponSkillScore(IRON_BOW, weaponSkillRollOf(offers(f)[0]))).toBeGreaterThan(weaponSkillScore(IRON_BOW, A));
+    expect(offers(f)).toEqual([]);
   });
 
   it("offers nothing for a refined first copy when the new roll is no better", () => {
@@ -100,10 +101,13 @@ describe("Auto keep best", () => {
     expect(offers(f)).toEqual([]);
   });
 
-  it("still replaces an unrefined one, as before", () => {
+  it("throws away a roll that is better on some skills but worse on another", () => {
     const f = archer();
+    const key = bowSkillKey(f.ctx.sender, IRON_BOW);
+    f.db.playerBowSkill.key.update({ key, identity: f.ctx.sender, itemId: IRON_BOW, arrowStorm: 50, ricochet: 0, piercingShot: 0 });
     luckyRandom(f);
     publishItemDrop(f.ctx, f.ctx.sender, IRON_BOW, true, 1);
-    expect(bowSkillRollFor(f.ctx, f.ctx.sender, IRON_BOW)).not.toMatchObject(A);
+    expect(bowSkillRollFor(f.ctx, f.ctx.sender, IRON_BOW)).toMatchObject({ arrowStorm: 50, ricochet: 0, piercingShot: 0 });
+    expect(offers(f)).toEqual([]);
   });
 });

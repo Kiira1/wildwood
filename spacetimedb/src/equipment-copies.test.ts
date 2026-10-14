@@ -5,7 +5,8 @@ import { fillDefeatBudget, reportEnemy } from "../../tests/helpers/enemy-defeat"
 import { eraseIdentityRows } from "./account-erasure";
 import { bowSkillKey, bowSkillRollFor, duelBowSkillFields } from "./bow-skills";
 import { offerDuplicateEquipment, offerItemForFullBag, publishItemDrop } from "./equipment-copies";
-import { gearSlotsFor } from "./gear-cards";
+import { gearSlotsFor, setGearSlots } from "./gear-cards";
+import { refineLevelFor, setRefineLevel } from "./item-refine";
 import { inventoryForProgress } from "./progress-helpers";
 import { createEmptyResearchRanks } from "../../shared/research";
 import {
@@ -41,9 +42,6 @@ const later = (f: Fixture, ms: number) => { f.ctx.timestamp = new Timestamp(f.ct
 const luckyRandom = (f: Fixture, float = .1) => {
   Object.assign(f.ctx, { random: Object.assign(() => float, { integerInRange: (min: number) => min }) });
 };
-/** Auto keep best off: duplicates from loot become Keep/Ignore offers, as they did before it existed. */
-const askMe = (f: Fixture, who = f.ctx.sender) =>
-  f.seed("playerLootSetting", { identity: who, autoKeepBest: false, autoEquipBest: true, updatedAt: f.ctx.timestamp });
 /** A player holding an iron bow with roll A in their hand. */
 function archer(extra: Record<string, unknown> = {}) {
   const f = crystalFixture();
@@ -64,45 +62,57 @@ it("offers equipment only: never cosmetic looks, starter or developer items", ()
   expect(bagSlotsUsed([IRON_BOW, SAMURAI_HAT, BASIC_PAPER_HAT, IRON_BOW], [IRON_BOW], 2)).toBe(3);
 });
 
-it("with Auto keep best off, turns a duplicate enemy drop into an offer instead of throwing it away", () => {
+it("settles a duplicate enemy drop on the spot: no offer and no spare copy", () => {
   const f = crystalFixture();
-  askMe(f);
   luckyRandom(f);
   f.patch("playerProgress", { damage: 1e15, inventoryJson: '["crystal_armor"]' });
   fillDefeatBudget(f, "crystal_hollows", "Shard Hopper");
   reportEnemy(f, "Shard Hopper", 1);
-  // The bow and helmet were new and went into the bag; the armor waits as an offer.
+  // The bow and helmet were new and went into the bag; the armor already held is simply settled.
   expect(inventory(f)).toEqual(expect.arrayContaining(["crystal_bow", "crystal_helmet", "crystal_armor"]));
   expect(inventory(f).filter(id => id === "crystal_armor")).toHaveLength(1);
-  expect(offers(f).map(offer => [offer.itemId, rollOf(offer)])).toEqual([["crystal_armor", NONE]]);
-  const [armor] = offers(f);
-  expect(armor.expiresAt.microsSinceUnixEpoch - armor.createdAt.microsSinceUnixEpoch).toBe(BigInt(EQUIPMENT_OFFER_LIFETIME_MS) * 1_000n);
+  expect(offers(f)).toEqual([]);
+  expect(copies(f)).toEqual([]);
   // The drop event still says "already owned", which older clients ignore.
   expect(f.db.playerItemDrop.key.find(`${f.ctx.sender.toHexString()}:crystal_armor`).alreadyOwned).toBe(true);
 });
 
-it("with Auto keep best off, rolls an offered bow like a new bow and leaves the first copy's roll alone", () => {
+it("upgrades the held weapon's skills in place only when the new roll is as good on every skill and better on one", () => {
   const f = archer();
-  askMe(f);
+  const weak = { arrowStorm: .1, ricochet: 0, piercingShot: 0 };
+  f.db.playerBowSkill.key.update({ key: bowSkillKey(f.ctx.sender, IRON_BOW), identity: f.ctx.sender, itemId: IRON_BOW, ...weak });
+  f.transaction(() => {
+    setRefineLevel(f.ctx as any, f.ctx.sender, IRON_BOW, 0n, 4);
+    setGearSlots(f.ctx as any, f.ctx.sender, IRON_BOW, 0n, { slots: 2, cards: ["needle_card"] });
+  });
+  f.seed("playerEquipmentLock", { key: `${f.ctx.sender.toHexString()}:${IRON_BOW}`, identity: f.ctx.sender, itemId: IRON_BOW, copyId: 0n });
   luckyRandom(f, .05);
-  f.run((ctx: any) => publishItemDrop(ctx, ctx.sender, "crystal_bow", true));
-  // Tier 10: 4.9-10.7%; a draw of .05 lands 2 tenths in. A duplicate never rolls onto the first copy.
-  expect(offers(f).map(rollOf)).toEqual([{ arrowStorm: 5.1, ricochet: 5.1, piercingShot: 5.1 }]);
-  expect(f.db.playerBowSkill.key.find(bowSkillKey(f.ctx.sender, "crystal_bow"))).toBeNull();
   f.run((ctx: any) => publishItemDrop(ctx, ctx.sender, IRON_BOW, true));
-  expect(firstRoll(f)).toEqual(A);
+  const upgraded = firstRoll(f);
+  // Every skill rolled, so every skill is at least A's; the refine, cards, slots and lock stay with the weapon.
+  expect(upgraded.arrowStorm).toBeGreaterThanOrEqual(weak.arrowStorm);
+  expect(upgraded.ricochet).toBeGreaterThan(0);
+  expect(upgraded.piercingShot).toBeGreaterThan(0);
+  expect(refineLevelFor(f.ctx as any, f.ctx.sender, IRON_BOW)).toBe(4);
+  expect(gearSlotsFor(f.ctx as any, f.ctx.sender, IRON_BOW).cards).toEqual(["needle_card"]);
+  expect([offers(f), copies(f)]).toEqual([[], []]);
+  // A trade-off, better on two skills but worse on one, is thrown away.
+  const strong = { arrowStorm: 99, ricochet: 0, piercingShot: 0 };
+  f.db.playerBowSkill.key.update({ key: bowSkillKey(f.ctx.sender, IRON_BOW), identity: f.ctx.sender, itemId: IRON_BOW, ...strong });
+  f.run((ctx: any) => publishItemDrop(ctx, ctx.sender, IRON_BOW, true));
+  expect(firstRoll(f)).toEqual(strong);
+  // An equal roll changes nothing either.
+  f.db.playerBowSkill.key.update({ key: bowSkillKey(f.ctx.sender, IRON_BOW), identity: f.ctx.sender, itemId: IRON_BOW, ...upgraded });
+  f.run((ctx: any) => publishItemDrop(ctx, ctx.sender, IRON_BOW, true));
+  expect(firstRoll(f)).toEqual(upgraded);
 });
 
-it("with Auto keep best off, offers every copy past the first when one report drops several", () => {
+it("settles every copy past the first when one report drops several, keeping none", () => {
   const f = crystalFixture();
-  askMe(f);
   f.run((ctx: any) => publishItemDrop(ctx, ctx.sender, IRON_BOW, false, 3));
-  expect(offers(f)).toHaveLength(2);
   f.run((ctx: any) => publishItemDrop(ctx, ctx.sender, IRON_BOW, true, 2));
-  expect(offers(f)).toHaveLength(4);
-  // A cosmetic look dropping again is only announced, as before.
   f.run((ctx: any) => publishItemDrop(ctx, ctx.sender, BASIC_PAPER_HAT, true, 2));
-  expect(offers(f)).toHaveLength(4);
+  expect([offers(f), copies(f)]).toEqual([[], []]);
 });
 
 it("offers a gifted item the player already has instead of dropping it", () => {

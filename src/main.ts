@@ -1899,7 +1899,7 @@ import {
   });
   if (coop?.setOnChange) coop.setOnChange(coopSession.onChange);
   coop?.setOnGemDrop?.(({ amount }) => runtimeHud.showGemDrop(amount)); watchCardDrops(coop);
-  // A duplicate of held equipment is not revealed here: Auto keep best or a Keep/Ignore offer settles it.
+  // A duplicate of held equipment is not revealed here: it can only upgrade the held weapon's skills.
   createEquipmentOfferPrompt({ coop, inventory, renderInventory, showMessage, ready: () => Boolean(session?.isRunning()) });
   coop?.setOnItemDrop?.(({ itemId, alreadyOwned }) => {
     if (alreadyOwned) return;

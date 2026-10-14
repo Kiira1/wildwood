@@ -160,7 +160,7 @@ export const RICOCHET_SCORE_WEIGHT = RICOCHET_MAX_BOUNCES * RICOCHET_DAMAGE_SHAR
 /**
  * Expected extra damage per arrow from a roll, in percent: 7.5 means an arrow
  * from this bow is worth 7.5% more than one with no skills. It decides which
- * copy of a bow is better (Auto keep best, Equip best, auto equip). No roll,
+ * copy of a bow is better (Equip best, auto equip). No roll,
  * or a malformed one, scores 0.
  */
 export function bowSkillScore(roll: Partial<BowSkillRoll> | null | undefined) {

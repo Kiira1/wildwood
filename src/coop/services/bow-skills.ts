@@ -4,12 +4,12 @@ import { isSkillSword, type SwordSkillRoll } from "../../../shared/sword-skills"
 import { weaponSkillScore, type WeaponSkillRoll } from "../../../shared/weapon-skills";
 import { createEquipmentCopies } from "./equipment-copies";
 
-/** A first copy's roll that Auto keep best replaced with a better one, and the two scores. */
+/** A first copy's roll that a duplicate drop upgraded, and the two scores. */
 export type BetterRollKept = { itemId: string; before: number; after: number };
 
 /**
  * The first-copy rolls that got better between two readings of the account weapon views.
- * Auto keep best is the only thing that improves a roll this tab did not ask
+ * A duplicate drop is the only thing that improves a roll this tab did not ask
  * for, so no schema change is needed to announce it. A weapon that only now has
  * a roll is a first copy, not a better one, and `skip` leaves out the weapons
  * this tab just equipped, destroyed or kept a copy of.
@@ -36,8 +36,8 @@ export function betterRollsKept(
  * equips. Further copies kept from duplicate drops, with their own rolls, and
  * the duplicate offers waiting for an answer ride along on the same
  * connection. The server owns every roll; the client only reads them to fire
- * the skills, to show them on the weapon, and to say when Auto keep best kept a
- * better one.
+ * the skills, to show them on the weapon, and to say when a duplicate upgraded
+ * one.
  */
 export function createBowSkills(notify: () => void) {
   let rolls = new Map<string, WeaponSkillRoll>();

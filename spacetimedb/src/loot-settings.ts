@@ -3,9 +3,8 @@ import { SenderError, table, t } from "spacetimedb/server";
 /**
  * The account's loot automation, set at the top of the Loot Filter window.
  *
- * autoKeepBest: a duplicate drop is settled on the spot instead of becoming a
- * Keep/Ignore offer. The better skill roll becomes the first copy, the one in
- * the slot, and the rest is thrown away (see equipment-copies.ts).
+ * autoKeepBest: no longer read. Every duplicate drop is settled on the spot now
+ * (equipment-copies.ts); the column stays so old clients can still send it.
  * autoEquipBest: a new item from loot, or gear a newly reached map makes
  * usable, goes on when it beats what is in its slot (see auto-equip.ts).
  *

@@ -34,30 +34,26 @@ function harness(server: LootSettings | null = null, options: { withSetter?: boo
   return { switches, container, button, state, calls, answer, statuses, stored: () => stored };
 }
 
-it("shows both switches on for an account that never chose, with the hint under Auto keep best", () => {
+it("shows only Auto equip upgrades, on for an account that never chose: duplicates need no switch now", () => {
   const view = harness();
   view.switches.sync();
   expect(view.container.hidden).toBe(false);
-  expect(view.state("autoKeepBest")).toEqual(["true", "On"]);
+  expect(view.button("autoKeepBest")).toBeNull();
   expect(view.state("autoEquipBest")).toEqual(["true", "On"]);
-  expect(view.button("autoKeepBest").querySelector("strong")!.textContent).toBe("Auto keep best copy");
-  expect(view.button("autoKeepBest").querySelector(".loot-filter-detail")!.textContent)
-    .toBe("Better skill rolls replace unrefined, unlocked copies; for refined or locked ones, you're asked. Worse duplicates are discarded. Off = ask me.");
   expect(view.button("autoEquipBest").querySelector("strong")!.textContent).toBe("Auto equip upgrades");
-  expect(view.button("autoKeepBest").getAttribute("role")).toBe("switch");
+  expect(view.button("autoEquipBest").getAttribute("role")).toBe("switch");
 });
 
-it("switches at once, sends both settings, and stays switched once the server agrees", async () => {
-  const view = harness({ autoKeepBest: true, autoEquipBest: true });
+it("switches at once, sends the account's settings, and stays switched once the server agrees", async () => {
+  const view = harness({ autoKeepBest: false, autoEquipBest: true });
   view.switches.sync();
-  view.button("autoKeepBest").click();
-  expect(view.state("autoKeepBest")).toEqual(["false", "Off"]);
-  expect(view.calls.map(call => call.settings)).toEqual([{ autoKeepBest: false, autoEquipBest: true }]);
-  await view.answer();
-  expect(view.state("autoKeepBest")).toEqual(["false", "Off"]);
-  expect(view.stored()).toEqual({ autoKeepBest: false, autoEquipBest: true });
   view.button("autoEquipBest").click();
+  expect(view.state("autoEquipBest")).toEqual(["false", "Off"]);
+  // The retired Auto keep best value goes back as the server had it.
   expect(view.calls.map(call => call.settings)).toEqual([{ autoKeepBest: false, autoEquipBest: false }]);
+  await view.answer();
+  expect(view.state("autoEquipBest")).toEqual(["false", "Off"]);
+  expect(view.stored()).toEqual({ autoKeepBest: false, autoEquipBest: false });
 });
 
 it("goes back and says why when the server refuses", async () => {
@@ -73,11 +69,11 @@ it("goes back and says why when the server refuses", async () => {
 it("never lets a late answer to an older press undo a newer one", async () => {
   const view = harness({ autoKeepBest: true, autoEquipBest: true });
   view.switches.sync();
-  view.button("autoKeepBest").click();
-  view.button("autoKeepBest").click();
-  expect(view.state("autoKeepBest")).toEqual(["true", "On"]);
+  view.button("autoEquipBest").click();
+  view.button("autoEquipBest").click();
+  expect(view.state("autoEquipBest")).toEqual(["true", "On"]);
   await view.answer({ ok: false, error: "Try again" });
-  expect(view.state("autoKeepBest")).toEqual(["true", "On"]);
+  expect(view.state("autoEquipBest")).toEqual(["true", "On"]);
 });
 
 it("hides the switches when the session cannot change them", () => {

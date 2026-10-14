@@ -86,12 +86,16 @@ it("throws away a worse or equal duplicate without an offer", () => {
   }
 });
 
-it("measures a new copy against the best kept copy too, and never touches kept copies", () => {
+it("measures a duplicate against the weapon itself, upgrades it in place, and never touches kept copies", () => {
   const f = archer(LOW);
   seedCopy(f, TOP);
-  draws(f, ARROW_STORM_ONLY_AT_THE_TOP); // +7.5%: better than the first copy, not the kept one
+  draws(f, ARROW_STORM_ONLY_AT_THE_TOP);
   f.run((ctx: any) => publishItemDrop(ctx, ctx.sender, STARTER_BOW, true));
-  expect(firstRoll(f)).toEqual(LOW);
+  // Higher Arrow Storm and nothing lower: a pure upgrade, even with a better copy kept aside.
+  expect(firstRoll(f).arrowStorm).toBeGreaterThan(LOW.arrowStorm);
+  draws(f, EVERY_SKILL_AT_THE_TOP);
+  f.run((ctx: any) => publishItemDrop(ctx, ctx.sender, STARTER_BOW, true));
+  expect(firstRoll(f)).toEqual(TOP);
   expect(copies(f).map(rollOf)).toEqual([TOP]);
   expect(offers(f)).toEqual([]);
 });
@@ -106,13 +110,13 @@ it("throws away duplicates of gear without skills, silently", () => {
   expect(f.db.playerItemDrop.key.find(`${f.ctx.sender.toHexString()}:${SAMURAI_HAT}`).alreadyOwned).toBe(true);
 });
 
-it("still makes a Keep/Ignore offer when the player turned Auto keep best off", () => {
+it("upgrades in place even for an account that once turned the old Auto keep best switch off", () => {
   const f = archer(LOW);
   settings(f, false, true);
   draws(f, EVERY_SKILL_AT_THE_TOP);
   f.run((ctx: any) => publishItemDrop(ctx, ctx.sender, STARTER_BOW, true));
-  expect(offers(f).map(rollOf)).toEqual([TOP]);
-  expect(firstRoll(f)).toEqual(LOW);
+  expect(offers(f)).toEqual([]);
+  expect(firstRoll(f)).toEqual(TOP);
 });
 
 it("lets the loot filter win: a filtered bow never drops, so it is never compared", () => {

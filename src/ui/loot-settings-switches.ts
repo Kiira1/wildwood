@@ -11,14 +11,13 @@ export type LootSettingsPort = {
 /** Both on until the player says otherwise, as on the server. */
 const DEFAULT_SETTINGS: LootSettings = { autoKeepBest: true, autoEquipBest: true };
 
-/** The switches, in order, with the line under each. */
+/** The switches, in order, with the line under each. Duplicates need none: a better roll always upgrades in place. */
 export const LOOT_SETTING_SWITCHES: readonly { setting: LootSetting; label: string; hint: string }[] = [
-  { setting: "autoKeepBest", label: "Auto keep best copy", hint: "Better skill rolls replace unrefined, unlocked copies; for refined or locked ones, you're asked. Worse duplicates are discarded. Off = ask me." },
   { setting: "autoEquipBest", label: "Auto equip upgrades", hint: "Counts refines and bow skills. Keeps your weapon type; replaced gear stays in your bag." },
 ];
 
 /**
- * The two loot automation switches at the top of the Loot Filter window,
+ * The loot automation switch at the top of the Loot Filter window,
  * drawn like its item rows. A switch changes the moment it is pressed and the
  * server is told; if the server refuses or cannot be reached it goes back and
  * `setStatus` says why, the same way the filter's own switches behave.

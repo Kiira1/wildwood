@@ -1,5 +1,5 @@
 import { createAutoEquip } from "./auto-equip";
-import { keepBestCopies } from "./equipment-copies";
+import { receiveDuplicateEquipment } from "./equipment-copies";
 import { expect, it, vi } from 'vitest';
 import { crystalFixture, server, identity } from '../../tests/helpers/crystal-hollows-fixture';
 import { IRON_BOW } from '../../shared/items';
@@ -30,7 +30,7 @@ it('keeps locks across account linking without giving them to other players', ()
   expect(equipmentLocked(f.ctx as any, f.ctx.sender, IRON_BOW)).toBe(false);
 });
 
-it('prevents auto equip and duplicate bow rolls from replacing locked gear', () => {
+it('keeps locked gear in its slot against auto equip, while a better duplicate roll still upgrades it in place', () => {
   const f = crystalFixture();
   f.patch('playerProgress', { inventoryJson: JSON.stringify([IRON_BOW]), equippedRightHand: IRON_BOW });
   f.run(server.setEquipmentLocked, { itemId: IRON_BOW, copyId: 0n, locked: true });
@@ -38,12 +38,12 @@ it('prevents auto equip and duplicate bow rolls from replacing locked gear', () 
   f.seed('playerBowSkill', { key, identity: f.ctx.sender, itemId: IRON_BOW, arrowStorm: 0, ricochet: 0, piercingShot: 0 });
   // Every skill appears, so each copy rolls better than the locked one.
   Object.assign(f.ctx, { random: Object.assign(() => .1, { integerInRange: (min: number) => min }) });
-  keepBestCopies(f.ctx as any, f.ctx.sender, IRON_BOW, 10);
-  expect(f.db.playerBowSkill.key.find(key)).toMatchObject({ arrowStorm: 0, ricochet: 0, piercingShot: 0 });
-  // The better rolls wait as Keep/Ignore offers instead of being thrown away.
-  const offers = [...f.db.pendingEquipmentOffer.identity.filter(f.ctx.sender)];
-  expect(offers.length).toBeGreaterThan(0);
-  expect(offers.every(offer => offer.itemId === IRON_BOW)).toBe(true);
+  receiveDuplicateEquipment(f.ctx as any, f.ctx.sender, IRON_BOW, 1);
+  // The lock is the player's: it stays, and the weapon under it simply gets better.
+  const upgraded = f.db.playerBowSkill.key.find(key);
+  expect(upgraded.arrowStorm > 0 && upgraded.ricochet > 0 && upgraded.piercingShot > 0).toBe(true);
+  expect(f.db.playerEquipmentLock.key.find(key)).toBeTruthy();
+  expect([...f.db.pendingEquipmentOffer.identity.filter(f.ctx.sender)]).toEqual([]);
   const before = f.db.playerProgress.identity.find(f.ctx.sender);
   f.patch('playerProgress', { inventoryJson: JSON.stringify([IRON_BOW, 'ion_bow']), ionCitadelUnlocked: true });
   const write = vi.fn();

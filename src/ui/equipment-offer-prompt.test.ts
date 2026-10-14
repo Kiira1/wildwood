@@ -155,10 +155,10 @@ it("redraws the inventory when the kept copies change", () => {
   expect(view.renderInventory).toHaveBeenCalledOnce();
 });
 
-it("says when Auto keep best kept a better roll, with both scores to one decimal", () => {
+it("says when a duplicate upgraded a weapon's skills, with both scores to one decimal", () => {
   const view = harness([]);
-  expect(betterRollMessage("iron_bow", 4.75, 7.5)).toBe("Better Stone Bow kept (Skills +4.8% → +7.5%)");
+  expect(betterRollMessage("iron_bow", 4.75, 7.5)).toBe("Stone Bow Skills Upgraded (+4.8% → +7.5%)");
   view.betterRoll()!({ itemId: "iron_bow", before: 4.75, after: 7.5 });
-  expect(view.messages).toEqual(["Better Stone Bow kept (Skills +4.8% → +7.5%)"]);
+  expect(view.messages).toEqual(["Stone Bow Skills Upgraded (+4.8% → +7.5%)"]);
   expect(view.card.hidden).toBe(true);
 });
