@@ -130,6 +130,7 @@ export const ERASURE_TARGETS: readonly ErasureTarget[] = [
   { table: "playerOre", columns: ["identity"], pk: "key", mode: "index", index: "identity" },
   { table: "playerCard", columns: ["identity"], pk: "key", mode: "index", index: "identity" },
   { table: "playerGearSlots", columns: ["identity"], pk: "key", mode: "index", index: "identity" },
+  { table: "playerBuild", columns: ["identity"], pk: "key", mode: "index", index: "identity" },
   { table: "playerCopySlots", columns: ["identity"], pk: "copyId", mode: "index", index: "identity" },
   { table: "playerRefineResult", columns: ["identity"], pk: "identity", mode: "key" },
   { table: "playerMining", columns: ["identity"], pk: "identity", mode: "key" },

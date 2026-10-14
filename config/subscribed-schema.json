@@ -501,6 +501,14 @@
       "ricochet:f32",
       "piercingShot:f32"
     ],
+    "my_builds": [
+      "key:string",
+      "identity:identity",
+      "slot:u8",
+      "gearJson:string",
+      "cardsJson:string",
+      "savedAt:timestamp"
+    ],
     "my_card_drop": [
       "identity:identity",
       "cardIds:array(string)",

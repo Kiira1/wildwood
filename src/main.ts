@@ -25,7 +25,7 @@ import { createPersonalBosses } from "./game/runtime/boss/personal-bosses";
 import { createLocalCorpses } from "./game/runtime/enemies/local-corpses";
 import { ONBOARDING_MAP_ID, ONBOARDING_WORLD } from "../shared/onboarding";
 import { createOutOfCombatSpeed } from "./game/runtime/out-of-combat-speed";
-import { createOnboardingTutorial } from "./ui/onboarding-tutorial"; import { installTutorialReplay, tutorialReplayBlocked } from "./ui/tutorial-replay";
+import { createOnboardingTutorial } from "./ui/onboarding-tutorial"; import { installTutorialReplay, tutorialReplayBlocked } from "./ui/tutorial-replay"; import { createBuildActions } from "./ui/build-actions";
 import { createItemGiftController } from "./ui/item-gift-controller";
 import { createReconnectRecovery } from "./ui/reconnect-recovery";
 import { isProceduralMap, proceduralMapId } from "../shared/procedural-maps";
@@ -437,7 +437,7 @@ import {
     upgradeLevel: (itemId) => coop?.itemUpgradeLevel?.(itemId) ?? 0, refineLevel: (itemId, copyId) => coop?.itemRefine?.(itemId, copyId) ?? 0, ores: () => coop?.ores?.() ?? {}, cards: () => coop?.cards?.() ?? {}, slottedCards: () => coop?.slottedCards?.() ?? new Set<string>(),
     slotTier: slot => coop?.slotUpgradeTier?.(slot) ?? 0, gearSlots: (itemId, copyId) => coop?.gearSlots?.(itemId, copyId) ?? { slots: 0, cards: [] },
     inventorySlotsUnlocked: () => coop?.inventorySlotsUnlocked?.() ?? 0, researchBagSlots: () => coop?.research?.().inventorySlots ?? 0, hasPickaxe: () => coop?.hasPickaxe?.() ?? false,
-    gemBalance: () => coop?.gemBalance?.() ?? 0n,
+    gemBalance: () => coop?.gemBalance?.() ?? 0n, builds: createBuildActions({ coop: () => coop, inventory, requirement: itemId => equipmentMapRequirement(itemId, coop?.savedProgress?.()), blocked: () => isDueling() ? "Finish Your Duel First" : null, afterGearChange: () => { player.speed = progress.movementSpeedForEquipment(false) * localTestMultiplier; applyPlayerMaxHealthMultiplierBonus(player, healthMultiplierBonus()); saveProgress(true); } }),
     unlockInventorySlot: async () => coop?.unlockInventorySlot?.(),
     ...inventoryCommerce,
     showMessage,

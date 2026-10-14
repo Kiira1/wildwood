@@ -1447,6 +1447,9 @@ export type MyBalanceApologyNotice = __Infer<typeof MyBalanceApologyNotice>;
 export const MyBowSkills = __t.object("MyBowSkills", {});
 export type MyBowSkills = __Infer<typeof MyBowSkills>;
 
+export const MyBuilds = __t.object("MyBuilds", {});
+export type MyBuilds = __Infer<typeof MyBuilds>;
+
 export const MyCardDrop = __t.object("MyCardDrop", {});
 export type MyCardDrop = __Infer<typeof MyCardDrop>;
 
@@ -1820,6 +1823,16 @@ export const PlayerBowSkill = __t.object("PlayerBowSkill", {
   piercingShot: __t.f32(),
 });
 export type PlayerBowSkill = __Infer<typeof PlayerBowSkill>;
+
+export const PlayerBuild = __t.object("PlayerBuild", {
+  key: __t.string(),
+  identity: __t.identity(),
+  slot: __t.u8(),
+  gearJson: __t.string(),
+  cardsJson: __t.string(),
+  savedAt: __t.timestamp(),
+});
+export type PlayerBuild = __Infer<typeof PlayerBuild>;
 
 export const PlayerCard = __t.object("PlayerCard", {
   key: __t.string(),

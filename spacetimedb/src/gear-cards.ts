@@ -175,11 +175,17 @@ export function removeCardData(ctx: Ctx, identity: Identity) {
   if (ctx.db.playerCardDrop.identity.find(identity)) ctx.db.playerCardDrop.identity.delete(identity);
   if (ctx.db.playerCardAttackCap?.identity.find(identity)) ctx.db.playerCardAttackCap.identity.delete(identity);
   for (const row of ctx.db.playerBossCardRoll ? rowsOf(ctx.db.playerBossCardRoll, identity) : []) ctx.db.playerBossCardRoll.key.delete(row.key);
+  for (const row of ctx.db.playerBuild ? rowsOf(ctx.db.playerBuild, identity) : []) ctx.db.playerBuild.key.delete(row.key);
 }
 
 /** On link the guest's cards and slots replace the account's, as the bag does. */
 export function mergeCardData(ctx: Ctx, guest: Identity, account: Identity) {
   removeCardData(ctx, account);
+  // The guest's builds come across with the cards they hold.
+  for (const row of ctx.db.playerBuild ? rowsOf(ctx.db.playerBuild, guest) : []) {
+    ctx.db.playerBuild.key.delete(row.key);
+    ctx.db.playerBuild.insert({ ...row, key: `${account.toHexString()}:${row.slot}`, identity: account });
+  }
   for (const row of rowsOf(ctx.db.playerCard, guest)) {
     ctx.db.playerCard.key.delete(row.key);
     ctx.db.playerCard.insert({ ...row, key: cardKey(account, row.cardId), identity: account });

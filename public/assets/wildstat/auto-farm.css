@@ -841,6 +841,16 @@
 /* The Cards tab: each card held as a bag-style tile, its portrait framed in its rarity's colour. */
 .inventory-tabs { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
 .inventory-content > [hidden] { display: none; }
+.builds-tab { display: flex; flex-direction: column; gap: 10px; grid-column: 1; grid-row: 1 / span 2; min-width: 0; padding: 7px; }
+.builds-tab[hidden] { display: none; }
+.builds-tab-list { display: flex; flex-direction: column; gap: 10px; }
+.builds-tab-card { display: flex; flex-direction: column; gap: 6px; padding: 12px; border: 1px solid rgba(255,255,255,.14); border-radius: 10px; background: rgba(255,255,255,.04); }
+.builds-tab-card strong { font-size: 15px; color: #fff; }
+.builds-tab-detail { font-size: 13px; line-height: 1.4; color: rgba(255,255,255,.72); }
+.builds-tab-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px; }
+.builds-tab-actions button { min-height: 44px; border: 1px solid #555; border-radius: 8px; background: linear-gradient(#3a3a3a, #262626); color: #fff; font: inherit; font-size: 13px; font-weight: 700; }
+.builds-tab-actions .builds-tab-equip:not(:disabled) { border-color: var(--green, #5fd35a); }
+.builds-tab-actions button:disabled { opacity: .5; }
 .cards-tab { display: grid; grid-column: 1; grid-row: 1 / span 2; align-content: start; gap: 6px; container-type: inline-size; min-width: 0; padding: 7px; }
 .cards-tab-note { margin: 0 8px 4px; }
 .cards-tab-count { display: block; margin: 0 auto 4px; }

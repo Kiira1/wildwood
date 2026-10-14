@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.904.0": [
+    "Builds: save your gear and cards in the Inventory, and swap between them in one tap",
+  ],
   "0.903.8": [
     "Taking a card out at the Smith is free, and destroying gear gives its cards back",
     "Crit Damage cards raise the crit damage cap",
@@ -3346,6 +3349,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.904.0": "2026-10-14",
   "0.903.8": "2026-10-14",
   "0.903.7": "2026-10-14",
   "0.903.6": "2026-10-14",
