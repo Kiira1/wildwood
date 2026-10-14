@@ -126,7 +126,7 @@ import { hasApprovedGameSession } from "./coop/startup-state-machine";
 import { createHudTimerColumn } from "./ui/hud-timer-column";
 import { createGameElements } from "./ui/game-elements";
 import { bindGameInteractionListeners } from "./ui/game-interaction-bindings";
-import { attackCapInterval, createSmithRuntime, watchCardDrops, createDevPanel, createDuplicateLoginRuntime, createGameActionsRuntime, createGameOverlays, createGameRuntimeHud, createHomeStationTouchHandler, createLeaderboardPanel, createPrestigeUnlockRuntime, createTechTreePanel } from "./ui/game-ui-runtime";
+import { createSmithRuntime, watchCardDrops, createDevPanel, createDuplicateLoginRuntime, createGameActionsRuntime, createGameOverlays, createGameRuntimeHud, createHomeStationTouchHandler, createLeaderboardPanel, createPrestigeUnlockRuntime, createTechTreePanel } from "./ui/game-ui-runtime";
 import { formatCompactNumber, formatGemAmount } from "./ui/number-format";
 import { playerGenderIconPath } from "./ui/player-gender";
 import type { LeaderboardEntry } from "./wildstat-coop";
@@ -667,7 +667,7 @@ import {
     equippedChest: () => inventory.equippedChest,
     equippedChestUpgradeLevel: () => coop?.itemLevel?.(inventory.equippedChest) ?? 0,
     healthMultiplierBonus,
-    minAttackInterval: () => attackCapInterval(coop?.attackCapInPlay?.()),
+    minAttackInterval: () => coop?.attackCapInPlay?.(),
     reflectOnly: () => Boolean(coop?.prestigeChallenge?.()?.active),
     effectiveArmor,
     isDueling,

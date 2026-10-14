@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.903.6": [
+    "With a raised attack speed cap, attack speed no longer jumps ahead and snaps back after kills",
+  ],
   "0.903.5": [
     "Once gear has 4 card slots, a duplicate's slot roll goes to your spare copy with the fewest",
   ],
@@ -3330,6 +3333,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.903.6": "2026-10-14",
   "0.903.5": "2026-10-14",
   "0.903.4": "2026-10-14",
   "0.903.3": "2026-10-14",

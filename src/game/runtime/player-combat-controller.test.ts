@@ -17,6 +17,9 @@ import { rewardLabel } from "../enemies";
 import { researchStatRewardMultiplier } from "../../../shared/research";
 import { prestigeStatMultiplier } from "../../../shared/prestige";
 import { equipmentDamage } from "../../../shared/items";
+import { attackIntervalForRating, ratingForLevels } from "../../../shared/stat-rating";
+import { applyEnemyRewards } from "../../../shared/enemy-defeats";
+import { MIN_ATTACK_INTERVAL } from "../../../shared/rules";
 
 function createCombatHarness(overrides: Partial<Parameters<typeof createPlayerCombatController>[0]> = {}) {
   const state = createGameBootstrap();
@@ -92,6 +95,23 @@ describe("player attack timing", () => {
     const shown = reward.amount * multiplier * 1.75;
     expect(logPickup).toHaveBeenCalledWith(rewardLabel({ ...reward, amount: shown }), expect.any(String), shown);
     if (reward.type === "damage") expect(state.player.damage - before).toBeCloseTo(reward.amount * multiplier);
+  });
+
+  it("raises attack speed on the curve a Quick Draw cap sets, as the server does", () => {
+    const cap = { minInterval: MIN_ATTACK_INTERVAL, raise: 3.2 };
+    let now = 0;
+    const state = createCombatHarness({ nowSeconds: () => now, minAttackInterval: () => cap });
+    state.bosses.dragon.dead = true;
+    Object.assign(state.player, { x: 500, y: 500, damage: 1000, attackRange: 200, attackRate: attackIntervalForRating(ratingForLevels(20), cap) });
+    createEnemyLifecycle(state.enemies, state.spawnSites, () => {}).spawnFromSite({ id: 0, type: "Needle", x: 550, y: 500,
+      campName: "Test", leashRange: 500, alive: false, respawnAt: 0 });
+    const enemy = state.enemies[0]; enemy.hp = enemy.maxHp = 1;
+    const before = state.player.attackRate, reward = enemy.reward;
+    for (let i = 0; i < 180 && !enemy.dead; i++) { now += 1 / 60; state.controller.attackNearest(); state.controller.updateProjectiles(1 / 60); }
+    expect(enemy.dead).toBe(true);
+    expect(state.player.attackRate).toBeCloseTo(applyEnemyRewards({ damage: 0, maxHp: 0, armor: 0, regen: 0, attackRate: before },
+      [{ type: reward.type, amount: reward.amount, count: 1 }], 1, cap).attackRate, 12);
+    expect(state.player.attackRate).toBeLessThan(before);
   });
 
   it("heals once after a regular kill with Second Wind", () => {
