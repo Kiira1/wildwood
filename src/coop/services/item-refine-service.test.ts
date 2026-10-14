@@ -73,3 +73,17 @@ it("gives stats an item's slot tier with its first copy's refine", () => {
   expect(service.api.itemLevel("ion_bow")).toEqual({ tier: 12, refine: 5 });
   expect(service.api.itemLevel("sky_bow")).toEqual({ tier: 0, refine: 0 });
 });
+
+it("gives up on a try the server never answers, so the window frees itself", async () => {
+  vi.useFakeTimers();
+  try {
+    const fake = fakeConnection(), service = createItemRefineRows(vi.fn());
+    service.watch(fake.connection, () => true);
+    fake.settle();
+    // A dropped connection never settles the call.
+    fake.reducers.refineItem.mockImplementation(() => new Promise<void>(() => {}));
+    const result = service.api.refineItem("ion_bow", 0n, 3);
+    await vi.advanceTimersByTimeAsync(10_000);
+    await expect(result).resolves.toEqual({ ok: false, error: "Request timed out. Try again." });
+  } finally { vi.useRealTimers(); }
+});

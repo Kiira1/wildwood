@@ -2,6 +2,7 @@ import { tables, type DbConnection } from "../../module_bindings";
 import { REFINE_ORES, normalizeRefineLevel, type OreId } from "../../../shared/refine";
 import type { ItemLevel } from "../../../shared/items";
 import { reducerErrorMessage } from "./reducer-errors";
+import { withRequestDeadline } from "./request-deadline";
 
 /** What the last refine try did, as the server recorded it (player_refine_result). */
 export type RefineResult = {
@@ -88,7 +89,8 @@ export function createItemRefineRows(notify: () => void, slotTierFor: (itemId: s
         const current = target;
         if (!current || !current.isCurrent() || !current.connection.isActive) return { ok: false, error: "NOT CONNECTED" };
         try {
-          await current.connection.reducers.refineItem({ itemId, copyId, expectedLevel });
+          // A try cut off by a dropped connection never settles; the deadline frees the window (expectedLevel guards a retry).
+          await withRequestDeadline(current.connection.reducers.refineItem({ itemId, copyId, expectedLevel }));
           return { ok: true };
         } catch (error) {
           return { ok: false, error: reducerErrorMessage(error) };

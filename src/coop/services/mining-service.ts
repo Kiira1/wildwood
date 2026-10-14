@@ -1,6 +1,7 @@
 import { tables, type DbConnection } from "../../module_bindings";
 import { normalizeMining } from "../../../shared/mining";
 import { reducerErrorMessage } from "./reducer-errors";
+import { withRequestDeadline } from "./request-deadline";
 
 /** A rock the server took as broken (player_mining's last break), for the "+3 Copper Ore" over it. */
 export type MiningBreak = { nodeId: number; starshard: boolean; rocksBroken: number };
@@ -55,7 +56,8 @@ export function createMiningRows(notify: () => void) {
     const current = target;
     if (!current || !current.isCurrent() || !current.connection.isActive) return { ok: false, error: "NOT CONNECTED" };
     try {
-      await send(current.connection);
+      // A call cut off by a dropped connection never settles: without a deadline the next rock would wait for it forever.
+      await withRequestDeadline(send(current.connection));
       return { ok: true };
     } catch (error) {
       return { ok: false, error: reducerErrorMessage(error) };
