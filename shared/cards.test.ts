@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  CARDS, CARD_DROP_OUTCOMES, MAX_CARD_SLOTS, OWNED_GEAR_SLOTS, SLOT_ROLL_PERCENT, canHoldCards, cardDefinition,
+  CARDS, CARD_DROP_OUTCOMES, MAX_CARD_SLOTS, OWNED_GEAR_SLOTS, SLOT_ROLL_PER_THOUSAND, canHoldCards, cardDefinition,
   cardFitsItem, cardForBoss, cardForEnemy, rollGearSlots, type CardEffectId,
 } from "./cards";
 import { CAMPAIGN_MAPS } from "./campaign-registry";
@@ -68,14 +68,14 @@ describe("drops and slots", () => {
     expect(CARD_DROP_OUTCOMES).toEqual({ regular: 10_000, elite: 20_000, boss: 1_000 });
   });
 
-  it("rolls 0 to 4 slots: 40, 30, 18, 9 and 3 in 100", () => {
-    expect(SLOT_ROLL_PERCENT.reduce((sum, percent) => sum + percent, 0)).toBe(100);
+  it("rolls 0 to 4 slots: 940, 30, 18, 9 and 3 in 1,000", () => {
+    expect(SLOT_ROLL_PER_THOUSAND.reduce((sum, chance) => sum + chance, 0)).toBe(1_000);
     const counts = [0, 0, 0, 0, 0];
-    for (let roll = 0; roll < 100; roll++) counts[rollGearSlots(roll)]++;
-    expect(counts).toEqual([40, 30, 18, 9, 3]);
-    expect(rollGearSlots(39.999)).toBe(0);
-    expect(rollGearSlots(40)).toBe(1);
-    expect(rollGearSlots(99.999)).toBe(MAX_CARD_SLOTS);
+    for (let roll = 0; roll < 1_000; roll++) counts[rollGearSlots(roll)]++;
+    expect(counts).toEqual([940, 30, 18, 9, 3]);
+    expect(rollGearSlots(939.999)).toBe(0);
+    expect(rollGearSlots(940)).toBe(1);
+    expect(rollGearSlots(999.999)).toBe(MAX_CARD_SLOTS);
     expect(OWNED_GEAR_SLOTS).toBe(1);
   });
 

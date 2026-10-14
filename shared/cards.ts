@@ -49,17 +49,17 @@ export const CARD_DROP_OUTCOMES: Readonly<Record<CardRarity, number>> = Object.f
 export const MAX_CARD_SLOTS = 4;
 /** Gear owned before cards has one slot. */
 export const OWNED_GEAR_SLOTS = 1;
-/** Percent chance of 0 to 4 slots on a drop. */
-export const SLOT_ROLL_PERCENT: readonly number[] = Object.freeze([40, 30, 18, 9, 3]);
+/** Chance in 1,000 of 0 to 4 slots on a drop. */
+export const SLOT_ROLL_PER_THOUSAND: readonly number[] = Object.freeze([940, 30, 18, 9, 3]);
 
-/** `roll` is in [0, 100). */
+/** `roll` is in [0, 1000). */
 export function rollGearSlots(roll: number) {
   let below = 0;
-  for (let slots = 0; slots < SLOT_ROLL_PERCENT.length; slots++) {
-    below += SLOT_ROLL_PERCENT[slots];
+  for (let slots = 0; slots < SLOT_ROLL_PER_THOUSAND.length; slots++) {
+    below += SLOT_ROLL_PER_THOUSAND[slots];
     if (roll < below) return slots;
   }
-  return SLOT_ROLL_PERCENT.length - 1;
+  return SLOT_ROLL_PER_THOUSAND.length - 1;
 }
 
 export const CARDS: readonly CardDefinition[] = Object.freeze([

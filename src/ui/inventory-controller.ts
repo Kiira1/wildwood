@@ -1,6 +1,7 @@
 import { createInventoryLockMode } from "./inventory-lock-mode";
 import { createInventoryFilters, type InventoryFilter } from "./inventory-filters";
 import {
+  bagInventoryStacks,
   type EquipmentSlot,
   type InventoryState,
 } from "../game/inventory";
@@ -23,6 +24,7 @@ import { withRefineStars } from "./refine-badge";
 import { REFINE_ORES, type OreId } from "../../shared/refine";
 import { createCardsTab } from "./cards-tab";
 import { canHoldCards } from "../../shared/cards";
+import { oreKindsHeld } from "../../shared/ore-bag";
 
 type InventoryLocation = EquipmentSlot | "BAG" | "";
 type SelectableInventory = InventoryState & { selectedItemId: string; selectedItemLocation?: InventoryLocation };
@@ -50,6 +52,8 @@ type InventoryDependencies = {
   ores?: () => Readonly<Partial<Record<OreId, number>>>;
   /** Cards held, by card id: the Cards tab. */
   cards?: () => Readonly<Record<string, number>>;
+  /** Cards in any gear's slots: they count as found in the Cards tab. */
+  slottedCards?: () => ReadonlySet<string>;
   /** One copy's card slots and the cards in them; `copyId` 0n is the first copy. */
   gearSlots?: (itemId: string, copyId?: bigint) => { slots: number; cards: readonly string[] };
   destroyOre?: (oreId: OreId, expectedCount: number) => Promise<Result>;
@@ -96,10 +100,11 @@ export function createInventoryController(dependencies: InventoryDependencies) {
   const bagSection = items.closest<HTMLElement>(".bag-section");
   const tabs = equipmentTab.closest(".inventory-tabs");
   if (tabs) {
+    // Only the content scrolls; the tabs stay pinned above it.
     const scroll = document.createElement("div");
     scroll.className = "inventory-scroll";
-    tabs.before(scroll);
-    scroll.append(tabs, content);
+    content.before(scroll);
+    scroll.append(content);
   }
   const countRow = count.closest(".inventory-section-title");
   if (countRow) items.after(countRow);
@@ -182,7 +187,20 @@ export function createInventoryController(dependencies: InventoryDependencies) {
     if (typeof navigator.vibrate === "function") navigator.vibrate(10);
   }
 
+  /** The bag's count as its header shows it: gear, kept copies and ore stacks against the slots bought. */
+  function bagFull() {
+    const inventory = dependencies.inventory;
+    const copies = (dependencies.equipmentCopies?.() ?? []).filter(copy => inventory.itemIds.includes(copy.itemId)).length;
+    const used = bagInventoryStacks(inventory).length + copies + oreKindsHeld(dependencies.ores?.() ?? {}).length;
+    return used >= inventorySlotCapacity(dependencies.inventorySlotsUnlocked());
+  }
+
   function move(itemId: string, destination: EquipmentSlot | "BAG") {
+    // Unequipping puts the item in the bag, so it needs a free slot like a drop does.
+    if (mode === "EQUIPMENT" && destination === "BAG" && bagFull()) {
+      dependencies.showMessage("Your bag is full. Free a slot first.", "#ff9b91");
+      return false;
+    }
     const moved = mode === "COSMETICS"
       ? dependencies.moveCosmetic(itemId, destination)
       : dependencies.move(itemId, destination);
@@ -223,7 +241,8 @@ export function createInventoryController(dependencies: InventoryDependencies) {
 
   const cardsView = cardsTab && dependencies.cards ? createCardsTab({
     cards: dependencies.cards,
-    onInspect: cardId => dependencies.itemInspection.openCard?.({ cardId, count: dependencies.cards?.()[cardId] ?? 0 }),
+    slotted: dependencies.slottedCards,
+    onInspect: (cardId, found) => dependencies.itemInspection.openCard?.({ cardId, count: dependencies.cards?.()[cardId] ?? 0, found }),
   }) : null;
   if (cardsView) content.append(cardsView.element);
   else cardsTab?.remove();

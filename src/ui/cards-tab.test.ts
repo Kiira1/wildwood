@@ -7,7 +7,7 @@ import { formatCompactNumber } from "./number-format";
 import { IRON_BOW, STARTER_BOW, STARTER_STONE } from "../game/inventory";
 import { watchCardDrops } from "./card-drop-feedback";
 import { CARD_FRAME_COLORS } from "./card-portrait";
-import { cardDefinition } from "../../shared/cards";
+import { CARDS, cardDefinition } from "../../shared/cards";
 afterEach(() => vi.unstubAllGlobals());
 
 function page(body = "") {
@@ -43,24 +43,35 @@ function inventoryWithCards(cards?: () => Record<string, number>, gearSlots?: (i
   return { document, controller, cardOpened, opened, press };
 }
 
-it("shows the cards held in map order, regular before elite before boss, each with its count", () => {
+it("shows every card in map order, regular before elite before boss: found ones with their count, the rest as shadows", () => {
   page();
-  const inspected: string[] = [];
+  const inspected: Array<[string, boolean]> = [];
   let held: Record<string, number> = { dragon_card: 1, ember_raider_card: 12_345, spitter_card: 3, king_slime_card: 2, not_a_card: 4, needle_card: 0 };
-  const tab = createCardsTab({ cards: () => held, onInspect: cardId => inspected.push(cardId) });
+  let slotted: ReadonlySet<string> = new Set(["brood_card"]);
+  const tab = createCardsTab({ cards: () => held, slotted: () => slotted, onInspect: (cardId, found) => inspected.push([cardId, found]) });
   tab.show(true);
   const tiles = () => [...tab.element.querySelectorAll<HTMLElement>(".is-card")];
-  expect(tiles().map(tile => tile.getAttribute("data-card-id"))).toEqual(["spitter_card", "king_slime_card", "dragon_card", "ember_raider_card"]);
-  expect(tiles().map(tile => tile.querySelector(".item-tier-label")!.textContent)).toEqual(["Spitter", "King Slime", "Dragon", "Ember Raider"]);
-  expect(tiles().map(tile => tile.querySelector(".inventory-stack-count")!.textContent)).toEqual(["3", "2", "1", formatCompactNumber(12_345)]);
-  expect(tiles()[2].classList.contains("is-boss")).toBe(true);
-  expect(tab.element.querySelector<HTMLElement>(".cards-tab-empty")!.hidden).toBe(true);
-  tiles()[1].click();
-  expect(inspected).toEqual(["king_slime_card"]);
+  const found = () => tiles().filter(tile => !tile.classList.contains("is-unfound"));
+  expect(tiles()).toHaveLength(CARDS.length);
+  // A card slotted into gear and none held is still found.
+  expect(found().map(tile => tile.getAttribute("data-card-id"))).toEqual(["spitter_card", "brood_card", "king_slime_card", "dragon_card", "ember_raider_card"]);
+  expect(found().map(tile => tile.querySelector(".item-tier-label")!.textContent)).toEqual(["Spitter", "Brood", "King Slime", "Dragon", "Ember Raider"]);
+  expect(found().map(tile => tile.querySelector(".inventory-stack-count")!.textContent)).toEqual(["3", "0", "2", "1", formatCompactNumber(12_345)]);
+  expect(found()[3].classList.contains("is-boss")).toBe(true);
+  expect(tab.element.querySelector(".cards-tab-count")!.textContent).toBe(`5 / ${CARDS.length} Found`);
+  const shadow = tiles().find(tile => tile.getAttribute("data-card-id") === "needle_card")!;
+  expect(shadow.classList.contains("is-unfound")).toBe(true);
+  expect(shadow.querySelector(".inventory-stack-count")).toBeNull();
+  expect(shadow.querySelector(".item-tier-label")!.textContent).toBe("Needle");
+  expect(shadow.getAttribute("aria-label")).toBe("Needle Card, not found yet");
+  shadow.click();
+  found()[2].click();
+  expect(inspected).toEqual([["needle_card", false], ["king_slime_card", true]]);
   held = {};
+  slotted = new Set();
   tab.render();
-  expect(tiles()).toEqual([]);
-  expect(tab.element.querySelector<HTMLElement>(".cards-tab-empty")!.hidden).toBe(false);
+  expect(found()).toEqual([]);
+  expect(tab.element.querySelector(".cards-tab-count")!.textContent).toBe(`0 / ${CARDS.length} Found`);
 });
 
 it("puts a Cards tab beside Equipment and Cosmetics that swaps the loadout and bag for the cards", () => {
@@ -72,8 +83,8 @@ it("puts a Cards tab beside Equipment and Cosmetics that swaps the loadout and b
   expect(shown()).toEqual([false, false, true]);
   expect([equipment, cosmetics, cards].map(tab => tab.getAttribute("aria-selected"))).toEqual(["false", "false", "true"]);
   expect(view.document.getElementById("inventoryContent")!.getAttribute("aria-labelledby")).toBe("inventoryCardsTab");
-  view.document.querySelector<HTMLElement>(".cards-tab .is-card")!.click();
-  expect(view.cardOpened).toEqual([{ cardId: "needle_card", count: 2 }]);
+  view.document.querySelector<HTMLElement>('.cards-tab .is-card[data-card-id="needle_card"]')!.click();
+  expect(view.cardOpened).toEqual([{ cardId: "needle_card", count: 2, found: true }]);
   // Arrow keys walk all three tabs and wrap around.
   view.press(cards, "ArrowRight");
   expect(equipment.getAttribute("aria-selected")).toBe("true");
@@ -83,6 +94,13 @@ it("puts a Cards tab beside Equipment and Cosmetics that swaps the loadout and b
   cosmetics.click();
   expect(cosmetics.getAttribute("aria-selected")).toBe("true");
   expect(shown()).toEqual([true, true, false]);
+});
+
+it("pins the tabs above the inventory body, which scrolls by itself", () => {
+  const view = inventoryWithCards(() => ({}));
+  const scroll = view.document.querySelector(".inventory-scroll")!;
+  expect(scroll.contains(view.document.getElementById("inventoryContent"))).toBe(true);
+  expect(scroll.contains(view.document.querySelector(".inventory-tabs"))).toBe(false);
 });
 
 it("leaves the Cards tab out where there are no card rows", () => {
@@ -103,6 +121,9 @@ it("opens a card's window: where it drops, what it goes in, each effect, and its
   expect(content.querySelector(".item-inspection-context")!.textContent).toBe("Goes In: Weapon · 2 held");
   expect([...content.querySelectorAll(".item-inspection-stats span")].map(span => [span.textContent, span.getAttribute("data-stat-kind")]))
     .toEqual([["Damage +4.9%", "card"], ["Max Health -3.6%", "cost"]]);
+  // One never found says so instead of a count.
+  controller.openCard({ cardId: "needle_card", count: 0, found: false });
+  expect(content.querySelector(".item-inspection-context")!.textContent).toBe("Goes In: Weapon · Not Found Yet");
 });
 
 it("shows a gear item's card slots in its window, and none for gear that holds no cards", () => {

@@ -260,7 +260,8 @@ export function createItemInspectionController(elements: ItemInspectionElements)
   }
 
   /** A card's window: its portrait, where it drops, how many are held, what gear it goes in and each effect. */
-  function openCard(request: { cardId: string; count: number }) {
+  /** `found` false is a card the player has never had: its shadow, and no count. */
+  function openCard(request: { cardId: string; count: number; found?: boolean }) {
     const card = cardDefinition(request.cardId);
     if (!card) return false;
     if (elements.panel.hidden) {
@@ -272,7 +273,7 @@ export function createItemInspectionController(elements: ItemInspectionElements)
     const image = document.createElement("img");
     image.alt = "";
     image.draggable = false;
-    void cardPortrait(card.id).then(source => { if (source) image.src = source; });
+    void cardPortrait(card.id, request.found === false).then(source => { if (source) image.src = source; });
     icon.append(image);
     const metadata = document.createElement("div");
     metadata.className = "item-inspection-metadata";
@@ -287,7 +288,7 @@ export function createItemInspectionController(elements: ItemInspectionElements)
     copy.className = "item-inspection-copy";
     const context = document.createElement("div");
     context.className = "item-inspection-context";
-    context.textContent = `Goes In: ${CARD_SLOT_NAMES[card.slot]} · ${request.count.toLocaleString()} held`;
+    context.textContent = `Goes In: ${CARD_SLOT_NAMES[card.slot]} · ${request.found === false ? "Not Found Yet" : `${request.count.toLocaleString()} held`}`;
     const stats = document.createElement("div");
     stats.className = "item-inspection-stats";
     for (const effect of card.effects) {

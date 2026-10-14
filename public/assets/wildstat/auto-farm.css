@@ -840,8 +840,9 @@
 .inventory-content > [hidden] { display: none; }
 .cards-tab { display: grid; grid-column: 1; grid-row: 1 / span 2; align-content: start; gap: 6px; container-type: inline-size; min-width: 0; padding: 7px; }
 .cards-tab-note { margin: 0 8px 4px; }
-.cards-tab-empty { margin: 18px 0; color: var(--inventory-muted, #b9bdb9); font: 700 14px/1.4 var(--font-rounded); text-align: center; }
-.cards-tab-empty[hidden] { display: none; }
+.cards-tab-count { display: block; margin: 0 auto 4px; }
+.inventory-item.is-card.is-unfound { border-color: rgba(255,255,255,.08); opacity: .78; }
+.inventory-item.is-card.is-unfound > .item-tier-label { color: var(--inventory-muted, #b9bdb9); }
 /* A card tile is card-shaped: its enemy's name (up to two lines) over the portrait, the count in the corner. */
 .inventory-items > .inventory-item.is-card { aspect-ratio: 3 / 4; grid-template-rows: 24px minmax(0, 1fr); gap: 1px; padding: 3px 3px 4px; }
 .inventory-item.is-card.is-elite { border-color: rgba(180,140,255,.45); }

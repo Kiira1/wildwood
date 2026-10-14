@@ -3,6 +3,7 @@ import { parseHTML } from "linkedom";
 import { createInventoryController } from "./inventory-controller";
 import type { ConfirmRequest } from "./confirm-dialog";
 import { SUPERIOR_GOLDEN_HELMET, STARTER_BOW, STARTER_STONE, FROST_ARMOR } from "../game/inventory";
+import { inventorySlotCapacity } from "../../shared/gems";
 afterEach(() => vi.unstubAllGlobals());
 it("keeps slots mounted until inventory, upgrades, or selection changes", () => {
   const ids = ["inventoryPanel", "inventoryItems", "inventoryCount", "equippedHeadSlot", "equippedChestSlot", "equippedFeetSlot", "equippedRightHandSlot", "inventoryEquipmentTab", "inventoryCosmeticsTab", "inventoryContent"];
@@ -138,4 +139,27 @@ it("filters the bag without changing capacity and applies best equipment once", 
   expect(equipBest).toHaveBeenCalledTimes(1);
   document.getElementById("inventoryCosmeticsTab")!.click();
   expect(document.querySelector<HTMLButtonElement>(".inventory-equip-best")!.hidden).toBe(true);
+});
+
+it("refuses to unequip into a full bag, counting kept copies, and unequips once a slot is free", () => {
+  const ids = ["inventoryPanel", "inventoryItems", "inventoryCount", "equippedHeadSlot", "equippedChestSlot", "equippedFeetSlot", "equippedRightHandSlot", "inventoryEquipmentTab", "inventoryCosmeticsTab", "inventoryContent"];
+  const { document, window } = parseHTML(`<html><body>${ids.map(id => `<div id="${id}"></div>`).join("")}</body></html>`);
+  vi.stubGlobal("document", document); vi.stubGlobal("window", window); vi.stubGlobal("navigator", {});
+  const inventory = { itemIds: [STARTER_STONE, STARTER_BOW], equippedHead: "", equippedChest: "", equippedFeet: "", equippedRightHand: STARTER_STONE, equippedLeftHand: "", cosmeticHead: "", cosmeticChest: "", cosmeticFeet: "", cosmeticRightHand: "", cosmeticLeftHand: "", selectedItemId: "", selectedItemLocation: "" as const };
+  // The bow takes one slot and its kept copies fill the rest.
+  let kept = inventorySlotCapacity(0) - 1;
+  const move = vi.fn(() => false), open = vi.fn(), showMessage = vi.fn();
+  const controller = createInventoryController({ inventory, move, moveCosmetic: move, toggleCosmeticVisibility: () => false,
+    upgradeLevel: () => 0, itemInspection: { close() {}, open } as any, inventorySlotsUnlocked: () => 0, gemBalance: () => 0n,
+    equipmentCopies: () => Array.from({ length: kept }, (_, index) => ({ id: BigInt(index + 1), itemId: STARTER_BOW })) as any,
+    destroyEquipment: async () => undefined, unlockInventorySlot: async () => undefined, showMessage });
+  controller.render();
+  document.getElementById("equippedRightHandSlot")!.click();
+  const unequip = () => open.mock.lastCall![0].actions.find((action: any) => action.label === "UNEQUIP").onActivate();
+  unequip();
+  expect(move).not.toHaveBeenCalled();
+  expect(showMessage).toHaveBeenCalledWith("Your bag is full. Free a slot first.", "#ff9b91");
+  kept -= 1;
+  unequip();
+  expect(move).toHaveBeenCalledWith(STARTER_STONE, "BAG");
 });

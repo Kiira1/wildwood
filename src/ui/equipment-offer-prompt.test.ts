@@ -114,7 +114,7 @@ it("closes for later on Escape, stays closed, and comes back from the inventory"
   expect(view.card.hidden).toBe(true);
   expect(view.badge().textContent).toBe("1");
   expect(view.review().hidden).toBe(false);
-  expect(view.review().textContent).toBe("1 duplicate item waiting · Review");
+  expect(view.review().textContent).toBe("1 item waiting · Review");
   // A new drop pops up by itself; the one closed earlier still waits behind it.
   view.list.push(bowOffer(2n));
   vi.advanceTimersByTime(1_000);

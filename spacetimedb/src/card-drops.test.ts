@@ -78,7 +78,7 @@ describe("slots from drops", () => {
 
   it("rolls 0 to 4 slots for gear entering the bag", () => {
     const f = crystalFixture();
-    always(f, .9); // 90 of 100: 3 slots (40 + 30 + 18 = 88 are 0 to 2)
+    always(f, .99); // 990 of 1,000: 3 slots (940 + 30 + 18 = 988 are 0 to 2)
     drop(f, IRON_BOW, false);
     expect(gearSlotsFor(f.ctx, f.ctx.sender, IRON_BOW)).toEqual({ slots: 3, cards: [] });
     always(f, .1);
@@ -92,14 +92,14 @@ describe("slots from drops", () => {
     always(f, .1); // 0 slots: no change
     drop(f, IRON_BOW, true);
     expect(gearSlotsFor(f.ctx, f.ctx.sender, IRON_BOW)).toEqual({ slots: 2, cards: ["needle_card"] });
-    always(f, .995); // 4 slots
+    always(f, .998); // 4 slots
     drop(f, IRON_BOW, true);
     expect(gearSlotsFor(f.ctx, f.ctx.sender, IRON_BOW)).toEqual({ slots: 4, cards: ["needle_card"] });
     // Gear owned before cards (no row) has one slot to raise from.
     always(f, .5);
     drop(f, "snow_helmet", true);
     expect(gearSlotsFor(f.ctx, f.ctx.sender, "snow_helmet")).toEqual({ slots: 1, cards: [] });
-    always(f, .8);
+    always(f, .975); // 2 slots
     drop(f, "snow_helmet", true, 2);
     expect(gearSlotsFor(f.ctx, f.ctx.sender, "snow_helmet")).toEqual({ slots: 2, cards: [] });
   });

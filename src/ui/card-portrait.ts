@@ -159,10 +159,13 @@ function drawFrame(ctx: CanvasRenderingContext2D, rarity: CardRarity) {
 }
 
 const portraits = new Map<string, Promise<string>>();
+/** Lighter than the card's own dark backing, so the shape still reads. */
+const CARD_SHADOW_COLOR = "#43474b";
 
 /** A card's portrait as an image source: its enemy's own sprite, standing, in a frame of its rarity. */
-export function cardPortrait(cardId: string): Promise<string> {
-  const cached = portraits.get(cardId);
+export function cardPortrait(cardId: string, shadow = false): Promise<string> {
+  const key = shadow ? `${cardId}:shadow` : cardId;
+  const cached = portraits.get(key);
   if (cached) return cached;
   const card = cardDefinition(cardId);
   const portrait = (async () => {
@@ -186,6 +189,13 @@ export function cardPortrait(cardId: string): Promise<string> {
     } catch {
       // Art that will not load leaves an empty frame; the card's name still says what it is.
     }
+    if (shadow) {
+      // A card not found yet shows only its enemy's shape.
+      scratchContext.setTransform(1, 0, 0, 1, 0, 0);
+      scratchContext.globalCompositeOperation = "source-in";
+      scratchContext.fillStyle = CARD_SHADOW_COLOR;
+      scratchContext.fillRect(0, 0, SCRATCH, SCRATCH);
+    }
     drawFrame(context, card.rarity);
     const bounds = drawnBounds(scratchContext);
     if (bounds) {
@@ -197,6 +207,6 @@ export function cardPortrait(cardId: string): Promise<string> {
     }
     return canvas.toDataURL("image/png");
   })();
-  portraits.set(cardId, portrait);
+  portraits.set(key, portrait);
   return portrait;
 }

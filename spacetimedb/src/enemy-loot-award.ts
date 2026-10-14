@@ -7,7 +7,8 @@ import { wornCardTotalsFor } from "./worn-cards";
 import { cardStatFactors } from "../../shared/card-effects";
 import { defaultPlayerProgress, inventoryForProgress, restoreItemToProgress } from "./progress-helpers";
 import { activeItemUpgradeEntriesFor } from "./upgrade-bench-slots";
-import { publishItemDrop } from "./equipment-copies";
+import { freeBagSlots, offerItemForFullBag, publishItemDrop } from "./equipment-copies";
+import { isDuplicateOfferItem } from "../../shared/equipment-copies";
 import { insertSnapshotRow, updateSnapshotRow } from "./snapshot-row-writes";
 import type { pinnedMapBalance } from "./map-balance";
 
@@ -24,8 +25,15 @@ export function awardRegularEnemyLoot(ctx: Context, mapId: string, count: number
   const owned = new Set(inventoryForProgress(next));
   for (const { active } of activeItemUpgradeEntriesFor(ctx, ctx.sender)) owned.add(active.itemId);
   let inventoryChanged = false;
+  let free: number | null = null;
   for (const [itemId, quantity] of drops) {
     const alreadyOwned = owned.has(itemId);
+    if (!alreadyOwned && isDuplicateOfferItem(itemId)) {
+      free ??= freeBagSlots(ctx, ctx.sender, next, inventoryForProgress(next));
+      // A full bag never overfills: the new item waits as a Keep/Ignore offer instead.
+      if (free <= 0) { offerItemForFullBag(ctx, ctx.sender, itemId, quantity); continue; }
+      free -= 1;
+    }
     publishItemDrop(ctx, ctx.sender, itemId, alreadyOwned, quantity);
     if (!alreadyOwned) {
       next = restoreItemToProgress(next, itemId);

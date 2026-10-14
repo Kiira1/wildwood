@@ -1,4 +1,11 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.903.1": [
+    "A full bag no longer overfills: new drops wait as Keep or Ignore until a slot is free",
+    "Unequipping needs a free bag slot",
+    "Card slots on gear are 10 times rarer, and kept copies roll their own",
+    "The Cards tab shows every card; ones not found yet are shadows",
+    "The Inventory tabs stay at the top while you scroll",
+  ],
   "0.903.0": [
     "Cards: every enemy and boss has a rare card to find",
     "Slot cards into weapons, helmets and armor at the Smith to add their effects",
@@ -3296,6 +3303,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.903.1": "2026-10-13",
   "0.903.0": "2026-10-13",
   "0.902.1": "2026-10-13",
   "0.902.0": "2026-10-13",

@@ -47,7 +47,7 @@ export function betterRollMessage(itemId: string, before: number, after: number)
 }
 
 /**
- * The Keep / Ignore window for duplicate equipment drops.
+ * The Keep / Ignore window for duplicate equipment drops, and for new drops that found the bag full.
  *
  * It is a small non-modal card: the game keeps running and keeps its input,
  * nothing is paused, and focus is only taken when the player opened it. One
@@ -133,7 +133,7 @@ export function createEquipmentOfferPrompt(options: EquipmentOfferPromptOptions)
     }
     name.textContent = itemInspectionButtonLabel(itemDisplayName(offer.itemId));
     name.style.color = itemDropColor(offer.itemId);
-    note.textContent = !holds ? "You no longer have this" : extra
+    note.textContent = !holds ? "New item · Needs a free bag slot" : extra
       ? `You already have ${extra + 1} of these`
       : "You already have this";
     const skilled = isSkillWeapon(offer.itemId);
@@ -162,7 +162,7 @@ export function createEquipmentOfferPrompt(options: EquipmentOfferPromptOptions)
     const count = offers.length;
     // Refreshed every second; the badge sits in the toolbar, which repaints with any text it is handed.
     const badgeText = count > 9 ? "9+" : String(count);
-    const reviewText = count === 1 ? "1 duplicate item waiting · Review" : `${count} duplicate items waiting · Review`;
+    const reviewText = count === 1 ? "1 item waiting · Review" : `${count} items waiting · Review`;
     badge.hidden = count === 0;
     if (badge.textContent !== badgeText) badge.textContent = badgeText;
     review.hidden = count === 0;

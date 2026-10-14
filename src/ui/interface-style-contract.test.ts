@@ -172,5 +172,7 @@ describe("functional stylesheet contracts (not visual QA)", () => {
     expect(declarations(".settings-panel > .settings-content")["overflow-y"]).toBe("auto");
     expect(declarations(".inventory-scroll")["overflow-y"]).toBe("auto");
     expect(declarations(".inventory-scroll")["touch-action"]).toBe("pan-y");
+    // Banner, pinned tabs, the scrolling body, then Back.
+    expect(declarations(".card.inventory-panel")["grid-template-rows"]).toBe("auto auto minmax(0, 1fr) auto");
   });
 });

@@ -87,10 +87,15 @@ export function rollDropSlots(ctx: Ctx, identity: Identity, itemId: string, alre
   if (!canHoldCards(itemId) || Math.floor(quantity) < 1) return;
   let next: GearSlots | null = alreadyOwned ? gearSlotsFor(ctx, identity, itemId) : null;
   for (let drop = 0; drop < Math.floor(quantity); drop++) {
-    const slots = rollGearSlots(ctx.random() * 100);
+    const slots = rollGearSlots(ctx.random() * 1000);
     next = next ? { ...next, slots: Math.max(next.slots, slots) } : { slots, cards: [] };
   }
   if (next) setGearSlots(ctx, identity, itemId, 0n, next);
+}
+
+/** A copy kept from an offer rolls its own slots, as a drop does. */
+export function rollCopySlots(ctx: Ctx, identity: Identity, itemId: string, copyId: bigint) {
+  if (canHoldCards(itemId)) setGearSlots(ctx, identity, itemId, copyId, { slots: rollGearSlots(ctx.random() * 1000), cards: [] });
 }
 
 /** A destroyed copy takes its slots and cards with it. */

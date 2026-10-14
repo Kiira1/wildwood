@@ -3,7 +3,9 @@ import { cardEffectText, cardName } from "../../shared/card-text";
 import { CARD_FRAME_COLORS, cardPortrait } from "./card-portrait";
 import type { ItemDropRevealDetails } from "./item-drop-reveal";
 
-type CardDropSource = { setOnCardDrop?: (callback: ((drop: { cardIds: readonly string[] }) => void) | null) => void };
+type CardDropListener = (drop: { cardIds: readonly string[] }) => void;
+/** Optional, so a coop bundle without cards simply never announces one. */
+type CardDropSource = { setOnCardDrop?: (listener: CardDropListener | null) => void };
 
 /** A card found pops up the way a new item does: its portrait, its name and what it does, in the order found. */
 export function watchCardDrops(coop: CardDropSource | null | undefined, show: (details: ItemDropRevealDetails) => void) {

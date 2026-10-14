@@ -4,7 +4,9 @@ import { crystalFixture, identity, server } from "../../tests/helpers/crystal-ho
 import { fillDefeatBudget, reportEnemy } from "../../tests/helpers/enemy-defeat";
 import { eraseIdentityRows } from "./account-erasure";
 import { bowSkillKey, bowSkillRollFor, duelBowSkillFields } from "./bow-skills";
-import { offerDuplicateEquipment, publishItemDrop } from "./equipment-copies";
+import { offerDuplicateEquipment, offerItemForFullBag, publishItemDrop } from "./equipment-copies";
+import { gearSlotsFor } from "./gear-cards";
+import { inventoryForProgress } from "./progress-helpers";
 import {
   EQUIPMENT_OFFER_LIFETIME_MS, MAX_PENDING_EQUIPMENT_OFFERS, bagSlotsUsed, isDuplicateOfferItem,
 } from "../../shared/equipment-copies";
@@ -160,6 +162,66 @@ it("makes a kept copy the first one when the copy the player had is gone", () =>
   expect(inventory(f)).toContain(IRON_BOW);
   expect(copies(f)).toEqual([]);
   expect(firstRoll(f)).toEqual(B);
+});
+
+/** Bag slots in use, counted as the server counts them (starter items included). */
+const bagUsed = (f: Fixture) => {
+  const progress = f.db.playerProgress.identity.find(f.ctx.sender);
+  return bagSlotsUsed(inventoryForProgress(progress), [progress.equippedHead, progress.equippedChest, progress.equippedFeet, progress.equippedRightHand, progress.equippedLeftHand], copies(f).length);
+};
+/** Fills the bag with kept hat copies until `free` slots are left. */
+const fillBag = (f: Fixture, free: number) => {
+  for (let n = bagUsed(f); n < BASE_INVENTORY_SLOT_CAPACITY - free; n += 1) seedCopy(f, NONE, SAMURAI_HAT);
+};
+const NEW_CRYSTAL_GEAR = ["crystal_bow", "crystal_helmet", "crystal_armor", "crystal_sword"];
+
+it("turns new drops that find the bag full into offers, so the bag never holds more than its size", () => {
+  const f = archer({ damage: 1e15 });
+  luckyRandom(f);
+  fillBag(f, 1);
+  fillDefeatBudget(f, "crystal_hollows", "Shard Hopper");
+  reportEnemy(f, "Shard Hopper", 1);
+  // One slot was free: one new item went in, and the rest wait.
+  const kept = NEW_CRYSTAL_GEAR.filter(itemId => inventory(f).includes(itemId));
+  expect(kept).toHaveLength(1);
+  expect(offers(f).map(offer => offer.itemId).sort()).toEqual(NEW_CRYSTAL_GEAR.filter(itemId => !kept.includes(itemId)).sort());
+  expect(bagUsed(f)).toBe(BASE_INVENTORY_SLOT_CAPACITY);
+  // An item waiting in an offer is not announced as found.
+  for (const offer of offers(f)) expect(f.db.playerItemDrop.key.find(`${f.ctx.sender.toHexString()}:${offer.itemId}`)).toBeFalsy();
+});
+
+it("offers every new drop when the bag is full, and Keep makes one the first copy with its own slots once a slot is free", () => {
+  const f = archer({ damage: 1e15 });
+  luckyRandom(f);
+  fillBag(f, 0);
+  const before = inventory(f);
+  fillDefeatBudget(f, "crystal_hollows", "Shard Hopper");
+  reportEnemy(f, "Shard Hopper", 1);
+  expect(inventory(f)).toEqual(before);
+  expect(offers(f).map(offer => offer.itemId).sort()).toEqual([...NEW_CRYSTAL_GEAR].sort());
+  const bow = offers(f).find(offer => offer.itemId === "crystal_bow")!;
+  expect(() => f.run(server.resolveEquipmentOffer, { id: bow.id, keep: true })).toThrow("bag is full");
+  f.seed("playerInventoryCapacity", { identity: f.ctx.sender, slotsUnlocked: 1, updatedAt: f.ctx.timestamp });
+  f.run(server.resolveEquipmentOffer, { id: bow.id, keep: true });
+  expect(inventory(f)).toContain("crystal_bow");
+  // It rolls its slots as a drop does: 100 of 1,000 is no slot.
+  expect(gearSlotsFor(f.ctx, f.ctx.sender, "crystal_bow")).toEqual({ slots: 0, cards: [] });
+});
+
+it("waits once for gear without skills, but offers each weapon roll, when the bag is full", () => {
+  const f = archer();
+  f.run((ctx: any) => { offerItemForFullBag(ctx, ctx.sender, "crystal_helmet"); offerItemForFullBag(ctx, ctx.sender, "crystal_helmet", 2); });
+  f.run((ctx: any) => { offerItemForFullBag(ctx, ctx.sender, "crystal_bow"); offerItemForFullBag(ctx, ctx.sender, "crystal_bow", 2); });
+  expect(offers(f).map(offer => offer.itemId)).toEqual(["crystal_helmet", "crystal_bow", "crystal_bow", "crystal_bow"]);
+});
+
+it("rolls a kept copy's own slots instead of handing it a free one", () => {
+  const f = archer();
+  const offer = seedOffer(f, B);
+  luckyRandom(f, .998); // 998 of 1,000: four slots
+  f.run(server.resolveEquipmentOffer, { id: offer.id, keep: true });
+  const [copy] = copies(f);
+  expect(gearSlotsFor(f.ctx, f.ctx.sender, IRON_BOW, copy.id)).toEqual({ slots: 4, cards: [] });
 });
 
 it("ignores unanswered offers after five minutes, and an ignored offer cannot be kept", () => {

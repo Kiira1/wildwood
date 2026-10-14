@@ -29,6 +29,7 @@ type ExpectedApiKey =
   | "cards"
   | "gearSlots"
   | "itemCards"
+  | "slottedCards"
   | "wornCardTotals"
   | "wornCardStats"
   | "setOnCardDrop"
