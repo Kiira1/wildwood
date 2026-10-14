@@ -1,5 +1,6 @@
 import { CHALLENGE_ABSOLUTE_MIN_INTERVAL } from "./prestige-challenge";
 import { DEFAULT_ATTACK_INTERVAL, PLAYER_BASE_DAMAGE, PLAYER_BASE_HP, PLAYER_BASE_REGEN } from "./rules";
+import { cardStatFactors, cardTotalsForLevels } from "./card-effects";
 import {
   equipmentDamageMultiplierBonus,
   equipmentMaxHealthMultiplierBonus,
@@ -95,12 +96,14 @@ export function preparePlayerPowerStats(
   const warcraft = 1 + researchRank(research?.warcraft) * .02;
   const precision = 1 + researchRank(research?.precision) * .02;
   const regeneration = 1 + researchRank(research?.regeneration) * .02;
+  // The cards slotted in the worn items, as their levels carry them; a factor of one without any.
+  const cards = cardStatFactors(cardTotalsForLevels(weaponLevel, headLevel, chestLevel));
   return progress => ({
-    maxHp: progress.maxHp * health * vitality,
-    damage: progress.damage * damage * warcraft,
+    maxHp: progress.maxHp * health * vitality * cards.maxHp,
+    damage: progress.damage * damage * warcraft * cards.damage,
     attackRate: Math.max(CHALLENGE_ABSOLUTE_MIN_INTERVAL, progress.attackRate),
-    armor: progress.armor * precision,
-    regen: progress.regen * regen * regeneration,
+    armor: progress.armor * precision * cards.armor,
+    regen: progress.regen * regen * regeneration * cards.regen,
     // Crit passes through as given (it is worked out from research, perks, the soul and the rating elsewhere).
     ...(progress.critChance !== undefined ? { critChance: progress.critChance } : {}),
     ...(progress.critMultiplier !== undefined ? { critMultiplier: progress.critMultiplier } : {}),

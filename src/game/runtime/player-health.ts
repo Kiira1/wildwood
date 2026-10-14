@@ -6,8 +6,9 @@ export type PlayerHealthState = {
   maxHp: number;
 };
 
+/** A health card's cost can take the bonus below nothing (card-effects.ts), never to none at all. */
 function safeBonus(multiplierBonus: number) {
-  return Number.isFinite(multiplierBonus) ? Math.max(0, multiplierBonus) : 0;
+  return Number.isFinite(multiplierBonus) ? Math.max(-.9, multiplierBonus) : 0;
 }
 
 /** Rebuilds effective max health without ever writing equipment bonuses to the save stat. */

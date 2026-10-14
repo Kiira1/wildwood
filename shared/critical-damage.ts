@@ -34,6 +34,8 @@ export type CriticalDamageParts = {
   rating?: number;
   /** Crit Cap research rank. */
   capRank?: number;
+  /** What worn cards add, a fraction of the whole multiplier (card-effects.ts cardStatFactors critDamage). */
+  card?: number;
 };
 
 const whole = (value: unknown, max: number) => Number.isFinite(value) ? Math.min(max, Math.max(0, Math.floor(Number(value)))) : 0;
@@ -70,12 +72,13 @@ export function criticalDamage(parts: CriticalDamageParts) {
   const cap = critCapForRank(parts.capRank);
   const fromSoul = soulCritDamageBonus(soul);
   const curve = critDamageForLevels(ratingLevels(rating) + bonusLevels);
-  const uncapped = curve + fromSoul;
+  const cardFactor = 1 + amount(parts.card);
+  const uncapped = (curve + fromSoul) * cardFactor;
   const multiplier = Math.min(cap, uncapped);
   // Each part's share, as the profile lists it.
   const fromRating = critDamageForLevels(ratingLevels(rating)) - CRITICAL_DAMAGE_BASE;
   return { multiplier, uncapped, cap, capped: uncapped > cap, research, perk, soul, rating, bonusLevels, fromRating, fromSoul,
-    fromBonuses: curve - CRITICAL_DAMAGE_BASE - fromRating };
+    fromBonuses: curve - CRITICAL_DAMAGE_BASE - fromRating, fromCards: (curve + fromSoul) * (cardFactor - 1) };
 }
 
 /**

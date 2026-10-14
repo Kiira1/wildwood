@@ -6,6 +6,8 @@ import { PLAYER_STARTING_POWER } from "../../shared/player-power";
 import { PLAYER_PROJECTILE_SPEED, DEFAULT_ATTACK_RANGE, PLAYER_SPEED, isBaseStoredSpeed } from "../../shared/rules";
 import { STARTER_STONE, MAX_FOREST_ITEM_COUNT, canonicalItemId, STARTER_ITEM_IDS, DEVELOPER_ITEM_IDS, STARTER_BOW, WOODEN_ARMOR, EQUIPMENT_DROP_ITEM_IDS, SUPERIOR_GOLDEN_HELMET, BASIC_PAPER_HAT, itemFitsEquipmentSlot, equipmentMaxHealth, type ItemLevel } from "../../shared/items";
 import { refineLevelFor } from "./item-refine";
+import { itemCardsFor, wornCardTotalsFor } from "./worn-cards";
+import { cardStatFactors } from "../../shared/card-effects";
 import { PRISMSHELL_ID } from "./boss-combat";
 import { isDeveloperIdentity } from "./session-guards";
 import { normalizeSlotTier, upgradeSlotForItem } from "../../shared/slot-upgrades";
@@ -210,12 +212,13 @@ export function itemUpgradeLevelFor(ctx: any, identity: any, itemId: unknown) {
 }
 
 /**
- * What a worn item's stat stands on: its slot's tier and its own refine (item-refine.ts). An equipment slot
- * always holds an item's first copy, so its refine is the first copy's.
+ * What a worn item's stat stands on: its slot's tier, its own refine (item-refine.ts) and the cards slotted in
+ * it (gear-cards.ts). An equipment slot always holds an item's first copy, so both are the first copy's.
  */
 export function itemLevelFor(ctx: any, identity: any, itemId: unknown): ItemLevel {
   const canonical = canonicalItemId(itemId);
-  return { tier: itemUpgradeLevelFor(ctx, identity, itemId), refine: canonical ? refineLevelFor(ctx, identity, canonical) : 0 };
+  return { tier: itemUpgradeLevelFor(ctx, identity, itemId), refine: canonical ? refineLevelFor(ctx, identity, canonical) : 0,
+    cards: canonical ? itemCardsFor(ctx, identity, canonical) : [] };
 }
 
 export function progressHasItem(progress: any, itemId: string) {
@@ -317,5 +320,5 @@ export function maxHealthForProgress(ctx: any, identity: any, progress: any) {
     vitalityMultiplier,
     itemLevelFor(ctx, identity, headItem),
     itemLevelFor(ctx, identity, chestItem),
-  );
+  ) * cardStatFactors(wornCardTotalsFor(ctx, identity, progress)).maxHp;
 }

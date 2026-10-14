@@ -115,7 +115,7 @@ let worldEntryPromise: Promise<boolean> | null = null;
 let worldEntryGeneration = 0;
 let worldEntryBlocked = false;
 let protocolReadyGeneration = 0;
-const accountRows = createAccountRowServices(() => connection, onChange, itemId => progressionService.api.itemUpgradeLevel(itemId));
+const accountRows = createAccountRowServices(() => connection, onChange, itemId => progressionService.api.itemUpgradeLevel(itemId), () => progressionService.api.savedProgress());
 const accountAudio = createAccountAudioSettings();
 let accountService!: AccountService;
 const startupTelemetryRuntime = createStartupTelemetryRuntime({
@@ -425,7 +425,7 @@ const progressionService = createProgressionService({ gameBridgeCaller: () => ru
   reserveStoppedMotion: () => presenceService.reserveStoppedMotion(),
   commitStoppedPosition: (position, sequence) => presenceService.commitStoppedPosition(position, sequence),
   storage: localStorage,
-  pendingProgressKey,
+  pendingProgressKey, cardAttackCapRaise: () => accountRows.api.wornCardStats().attackCapRaise,
   lootTabId: () => accountService.tabId(),
 });
 

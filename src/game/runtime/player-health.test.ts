@@ -32,3 +32,12 @@ it("reconciles earned health and equipment without compounding Vitality or upgra
   expect(player.maxHp).toBe(144);
   expect(player.hp).toBe(72);
 });
+
+it("lets a health card's cost lower max health, never to nothing", () => {
+  const player = { hp: 100, baseMaxHp: 100, maxHp: 100 };
+  applyPlayerMaxHealthMultiplierBonus(player, -.036);
+  expect(player.maxHp).toBeCloseTo(96.4, 9);
+  expect(player.hp).toBeCloseTo(96.4, 9);
+  applyPlayerMaxHealthMultiplierBonus(player, -5);
+  expect(player.maxHp).toBeCloseTo(10, 9);
+});

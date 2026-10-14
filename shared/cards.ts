@@ -354,6 +354,9 @@ export function cardForBoss(mapId: string) {
 }
 
 /** The same gear that can be refined. */
+/** The player_gear_slots row of a player's first copy of an item. */
+export const gearSlotsKey = (identity: { toHexString(): string }, itemId: string) => `${identity.toHexString()}:${itemId}`;
+
 export function canHoldCards(itemId: unknown) {
   return isUpgradeableItem(itemId);
 }

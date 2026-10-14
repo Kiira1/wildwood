@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   CARD_CHANCE_CAP, CARD_DODGE_CAP, CARD_GUARD_CAP, NO_CARDS, cardChance, cardDamageDealtMultiplier, cardDamageTakenMultiplier,
-  cardTotals, cardValue, equippedCardIds,
+  cardStatFactors, cardTotals, cardTotalsForLevels, cardValue, equippedCardIds,
 } from "./card-effects";
+import { criticalDamage } from "./critical-damage";
+import { effectivePlayerPowerStats } from "./player-power";
 
 describe("card totals", () => {
   it("adds up stats and costs, and skips unknown cards", () => {
@@ -74,5 +76,46 @@ describe("worn cards", () => {
       .toEqual(["needle_card", "brood_card", "mossback_card"]);
     expect(equippedCardIds({ equippedLeftHand: "ion_bow" }, of)).toEqual(["needle_card"]);
     expect(equippedCardIds({}, of)).toEqual([]);
+  });
+});
+
+describe("card stats", () => {
+  it("turns stat cards into multipliers, crit and the caps, and leaves everything at one without cards", () => {
+    expect(cardStatFactors(NO_CARDS)).toEqual({ damage: 1, maxHp: 1, armor: 1, regen: 1, critChance: 0, critDamage: 0, attackCapRaise: 0, moveSpeed: 0, range: 0 });
+    const stats = cardStatFactors(cardTotals(["spitter_card", "ember_raider_card", "mossback_card", "brood_card", "striker_card", "dune_striker_card", "dune_needle_card", "tempest_kirin_card", "dune_archer_card"]));
+    expect(stats.damage).toBeCloseTo(1.069, 9);
+    expect(stats.maxHp).toBeCloseTo(.964, 9);
+    expect(stats.armor).toBeCloseTo(1.03, 9);
+    expect(stats.regen).toBeCloseTo(1.04, 9);
+    expect(stats.critChance).toBeCloseTo(.01, 9);
+    expect(stats.critDamage).toBeCloseTo(.06, 9);
+    expect(stats.attackCapRaise).toBeCloseTo(.25, 9);
+    expect(stats.moveSpeed).toBeCloseTo(.12, 9);
+    expect(stats.range).toBe(2);
+  });
+
+  it("reads the cards each worn item's level carries", () => {
+    expect(cardTotalsForLevels({ tier: 2, cards: ["spitter_card"] }, 3, null, { refine: 1, cards: ["mossback_card", "not_a_card"] }).sum).toEqual({ atk: 2, armor: 3 });
+    expect(cardTotalsForLevels(1, undefined, { tier: 0 })).toBe(NO_CARDS);
+  });
+
+  it("multiplies power's stats, and changes nothing without cards", () => {
+    const progress = { maxHp: 200, damage: 50, attackRate: .8, armor: 10, regen: 2, equippedRightHand: "starter_bow", equippedChest: "wooden_armor" };
+    const plain = effectivePlayerPowerStats(progress, null, () => ({ tier: 1 }));
+    expect(effectivePlayerPowerStats(progress, null, () => ({ tier: 1, cards: [] }))).toEqual(plain);
+    const cards: Record<string, string[]> = { starter_bow: ["ember_raider_card"], wooden_armor: ["mossback_card"] };
+    const carded = effectivePlayerPowerStats(progress, null, itemId => ({ tier: 1, cards: cards[itemId] ?? [] }));
+    expect(carded.damage).toBeCloseTo(plain.damage * 1.049, 9);
+    expect(carded.maxHp).toBeCloseTo(plain.maxHp * .964, 9);
+    expect(carded.armor).toBeCloseTo(plain.armor * 1.03, 9);
+    expect(carded.regen).toBeCloseTo(plain.regen, 9);
+  });
+
+  it("multiplies critical damage before the cap", () => {
+    const plain = criticalDamage({ rating: 40 });
+    const carded = criticalDamage({ rating: 40, card: .15 });
+    expect(carded.multiplier).toBeCloseTo(plain.multiplier * 1.15, 9);
+    expect(carded.fromCards).toBeCloseTo(plain.multiplier * .15, 9);
+    expect(criticalDamage({ rating: 1e9, card: 10 }).multiplier).toBe(criticalDamage({ rating: 1e9 }).cap);
   });
 });

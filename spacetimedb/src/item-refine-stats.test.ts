@@ -43,8 +43,8 @@ describe("on the server", () => {
   it("reads the worn first copy's refine with its slot tier", () => {
     const f = wearing();
     setRefineLevel(f.ctx, f.ctx.sender, "starter_bow", 0n, 6);
-    expect(itemLevelFor(f.ctx, f.ctx.sender, "starter_bow")).toEqual({ tier: 0, refine: 6 });
-    expect(itemLevelFor(f.ctx, f.ctx.sender, "")).toEqual({ tier: 0, refine: 0 });
+    expect(itemLevelFor(f.ctx, f.ctx.sender, "starter_bow")).toEqual({ tier: 0, refine: 6, cards: [] });
+    expect(itemLevelFor(f.ctx, f.ctx.sender, "")).toEqual({ tier: 0, refine: 0, cards: [] });
   });
 
   it("raises worn damage, health and power, and a refined copy in the bag changes nothing", () => {

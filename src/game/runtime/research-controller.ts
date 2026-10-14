@@ -5,6 +5,7 @@ import { movementSpeedMultiplier } from "../../../shared/rules";
 import { prestigeStatMultiplier } from "../../../shared/prestige";
 import { prestigePerkValue, type PrestigePerkRanks } from "../../../shared/prestige-perks";
 import { criticalDamageMultiplier, type CriticalDamageParts } from "../../../shared/critical-damage";
+import type { CardStatFactors } from "../../../shared/card-effects";
 
 export type { ResearchRanks } from "../../../shared/research";
 
@@ -21,6 +22,8 @@ type ResearchControllerOptions = {
   guildQuestBonus?: () => number;
   /** Prestige perk ranks. Keen Edge grants criticals outside the tech tree. */
   prestigePerks?: () => Partial<PrestigePerkRanks> | null | undefined;
+  /** What the worn cards do to stats (card-effects.ts cardStatFactors); none without. */
+  cards?: () => CardStatFactors | null | undefined;
 };
 
 const EMPTY_RANKS = createEmptyResearchRanks();
@@ -29,22 +32,25 @@ export function createResearchController(options: ResearchControllerOptions) {
   let appliedVitalityRank = 0;
 
   const ranks = (): ResearchRanks => options.getRanks() ?? EMPTY_RANKS;
+  const cards = () => options.cards?.();
 
   return {
     ranks,
-    damageMultiplier: () => 1 + ranks().warcraft * .02,
+    /** Warcraft, and attack cards on top: what weapon damage is multiplied by beyond the gear. */
+    damageMultiplier: () => (1 + ranks().warcraft * .02) * (cards()?.damage ?? 1),
     movementSpeedMultiplier: () => (movementSpeedMultiplier(ranks().moveSpeed) + utilityMovementSpeedBonus(ranks().utilityMoveSpeed) / Math.max(1, options.player.speed))
-      * (1 + prestigePerkValue(options.prestigePerks?.(), "fleetFoot")),
+      * (1 + prestigePerkValue(options.prestigePerks?.(), "fleetFoot") + (cards()?.moveSpeed ?? 0)),
     rewardMultiplier: () => researchStatRewardMultiplier(ranks()) * prestigeStatMultiplier(options.prestigeLevel?.() ?? 0)
       * Math.max(1, options.guildQuestBonus?.() ?? 1),
-    effectiveArmor: () => options.player.armor * (1 + ranks().precision * .02),
-    regenerationMultiplier: () => 1 + ranks().regeneration * .02,
-    criticalChance: () => ranks().criticalChance * .01 + prestigePerkValue(options.prestigePerks?.(), "keenEdge"),
+    effectiveArmor: () => options.player.armor * (1 + ranks().precision * .02) * (cards()?.armor ?? 1),
+    regenerationMultiplier: () => (1 + ranks().regeneration * .02) * (cards()?.regen ?? 1),
+    criticalChance: () => ranks().criticalChance * .01 + prestigePerkValue(options.prestigePerks?.(), "keenEdge") + (cards()?.critChance ?? 0),
     /** Everything critical damage adds up from but the soul's share, and the cap's rank. */
-    criticalDamageParts: (): CriticalDamageParts => ({ researchRank: ranks().criticalDamage, perks: options.prestigePerks?.(), capRank: ranks().critCap }),
-    /** The capped multiplier: the run's crit rating, the soul's when there is some, research and Keen Edge. */
+    criticalDamageParts: (): CriticalDamageParts => ({ researchRank: ranks().criticalDamage, perks: options.prestigePerks?.(), capRank: ranks().critCap,
+      card: cards()?.critDamage }),
+    /** The capped multiplier: the run's crit rating, the soul's when there is some, research, Keen Edge and cards. */
     criticalDamageMultiplier: (soul = 0, rating = options.player.critRating ?? 0) => criticalDamageMultiplier({
-      researchRank: ranks().criticalDamage, perks: options.prestigePerks?.(), soul, rating, capRank: ranks().critCap,
+      researchRank: ranks().criticalDamage, perks: options.prestigePerks?.(), soul, rating, capRank: ranks().critCap, card: cards()?.critDamage,
     }),
     setAppliedVitalityRank: (rank: number) => { appliedVitalityRank = rank; },
     /**

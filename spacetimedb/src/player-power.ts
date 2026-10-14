@@ -2,6 +2,8 @@
 // version stamping, effective power, and researched damage/armor/regen. Moved
 // out of index.ts unchanged.
 import { syncPlayerJoinDate } from "./mailbox";
+import { cardStatFactors, cardTotalsForLevels } from "../../shared/card-effects";
+import { wornCardTotalsFor } from "./worn-cards";
 import { ATTACK_BALANCE_VERSION, MIN_ATTACK_INTERVAL, DEFAULT_ATTACK_INTERVAL } from "../../shared/rules";
 import { compressLegacyProgressionOutlier, rebalanceLegacyDamageHealth, compressLegacyTopFiveProgression, correctLegacyTopFiveV5Progression } from "../../shared/progression-balance";
 import { compressLegacyMapPower } from "../../shared/map-power-rescale";
@@ -102,20 +104,20 @@ export function researchedDamage(ctx: any, identity: any, damage: number, knownP
   const weaponItem = progress ? equippedRightHandForProgress(progress) || equippedLeftHandForProgress(progress) : "";
   const headItem = progress ? equippedHeadForProgress(progress) : "";
   const chestItem = progress ? equippedChestForProgress(progress) : "";
+  const levels = [itemLevelFor(ctx, identity, weaponItem), itemLevelFor(ctx, identity, headItem), itemLevelFor(ctx, identity, chestItem)] as const;
+  // Attack cards multiply it as they multiply power (player-power.ts).
   return equipmentDamage(damage + (soulStatsFor(ctx, identity)?.damage ?? 0),
     weaponItem,
     headItem,
     chestItem,
     1 + rank * .02,
-    itemLevelFor(ctx, identity, weaponItem),
-    itemLevelFor(ctx, identity, headItem),
-    itemLevelFor(ctx, identity, chestItem),
-  );
+    ...levels,
+  ) * cardStatFactors(cardTotalsForLevels(...levels)).damage;
 }
 
 export function researchedArmor(ctx: any, identity: any, armor: number) {
   const rank = researchInPlay(ctx, identity)?.precision ?? 0;
-  return (armor + (soulStatsFor(ctx, identity)?.armor ?? 0)) * (1 + rank * .02);
+  return (armor + (soulStatsFor(ctx, identity)?.armor ?? 0)) * (1 + rank * .02) * cardStatFactors(wornCardTotalsFor(ctx, identity)).armor;
 }
 
 export function researchedRegen(ctx: any, identity: any, regen: number) {
@@ -129,7 +131,7 @@ export function researchedRegen(ctx: any, identity: any, regen: number) {
     1 + rank * .02,
     itemLevelFor(ctx, identity, headItem),
     itemLevelFor(ctx, identity, chestItem),
-  );
+  ) * cardStatFactors(wornCardTotalsFor(ctx, identity, progress)).regen;
 }
 
 export function writeProgressAndPresentation(ctx: any, progress: any) {

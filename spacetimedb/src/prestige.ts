@@ -11,6 +11,8 @@ import { PRESTIGE_PERK_IDS, isPrestigePerkId, playerAttackCap, prestigePerkMaxRa
 import { PRESTIGE_EXPANSION_PERK_IDS } from "../../shared/prestige-expansion";
 import { prestigeExpanded } from "./prestige-expansion";
 import { readPlayerProgress } from "./wide-stats";
+import { wornCardTotalsFor } from "./worn-cards";
+import { cardStatFactors } from "../../shared/card-effects";
 import { aggroChallengeActive } from "./aggro-challenge";
 import { bonusOffFor, researchInPlay } from "./bonus-toggles";
 import { perksInPlayFor, prestigeStatGainOn, reflectRewardsOn } from "../../shared/bonus-toggles";
@@ -49,8 +51,11 @@ export function prestigePerkRanks(ctx: any, identity: any): PrestigePerkRanks {
  */
 export function attackCapInPlay(ctx: any, identity: any) {
   const off = bonusOffFor(ctx, identity);
-  return playerAttackCap(reflectRewardsOn(off) ? ctx.db.playerPrestigeChallenge.identity.find(identity) : null,
+  const cap = playerAttackCap(reflectRewardsOn(off) ? ctx.db.playerPrestigeChallenge.identity.find(identity) : null,
     perksInPlayFor(storedPrestigePerkRanks(ctx, identity), off));
+  // Quick Draw cards raise the cap as the perk does.
+  const cards = cardStatFactors(wornCardTotalsFor(ctx, identity)).attackCapRaise;
+  return cards > 0 ? { ...cap, raise: cap.raise + cards } : cap;
 }
 
 /** The ranks the player owns, whether or not they are in play: what spending and respeccing work from. */

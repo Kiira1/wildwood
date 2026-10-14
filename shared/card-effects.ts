@@ -1,5 +1,6 @@
 import { cardDefinition, type CardEffect, type CardEffectId } from "./cards";
 import type { RewardType } from "./enemy-definitions";
+import type { ItemLevel } from "./items";
 
 /** The cards in worn gear, added up for server, client and duels, with caps: chances 50%, dodge 30%, guards 60%. */
 export const CARD_CHANCE_CAP = 50;
@@ -124,3 +125,25 @@ export function cardDamageDealtMultiplier(totals: CardTotals, target: { boss?: b
   if (target.mapId) bonus += totals.raceSlayer[target.mapId] ?? 0;
   return 1 + Math.max(0, bonus) / 100;
 }
+
+/** The cards the worn items' levels carry (items.ts ItemLevel). */
+export function cardTotalsForLevels(...levels: readonly ItemLevel[]) {
+  return cardTotals(levels.flatMap(level => level !== null && typeof level === "object" ? level.cards ?? [] : []));
+}
+
+/**
+ * What the worn cards do to a player's stats: multipliers on damage, max health, armor and regen, crit chance
+ * and crit damage as fractions, and the attack speed cap, move speed and range they add.
+ */
+export function cardStatFactors(totals: CardTotals) {
+  const factor = (effect: CardEffectId) => Math.max(0, 1 + cardValue(totals, effect) / 100);
+  return {
+    damage: factor("atk"), maxHp: factor("maxHealth"), armor: factor("armor"), regen: factor("regen"),
+    critChance: cardChance(totals, "critChance") / 100,
+    critDamage: Math.max(0, cardValue(totals, "critDamage")) / 100,
+    attackCapRaise: Math.max(0, cardValue(totals, "quickDraw")),
+    moveSpeed: Math.max(0, cardValue(totals, "fleetFoot")) / 100,
+    range: Math.max(0, cardValue(totals, "longShot")),
+  };
+}
+export type CardStatFactors = ReturnType<typeof cardStatFactors>;

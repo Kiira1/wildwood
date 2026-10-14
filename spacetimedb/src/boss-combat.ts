@@ -8,6 +8,7 @@ import { attackCapInPlay, statRewardMultiplier, prestigePerkRanks } from "./pres
 import { WORLD_REFLECT_SHARE, preArmorFactor, prestigePerkValue, prestigeReachMultiplier, prestigeSwingMultiplier } from "../../shared/prestige-perks";
 import { armorDamageReduction } from "../../shared/combat";
 import { criticalDamageMultiplier } from "../../shared/critical-damage";
+import { cardStatFactors, cardTotalsForLevels } from "../../shared/card-effects";
 import { soulStatsFor, withSoulStats } from "./soul-dimension";
 import { bowSkillRollFor } from "./bow-skills";
 import { bowSkillReachMultiplier } from "../../shared/bow-skills";
@@ -74,7 +75,9 @@ export function createCombatReport(deps: CombatReportDeps) {
     const [weaponLevel, headLevel, chestLevel] = [levelFor(weapon), levelFor(head), levelFor(chest)];
     const warcraft = 1 + (research?.warcraft ?? 0) * .02;
     const equipment = 1 + equipmentDamageMultiplierBonus(weapon, head, chest, weaponLevel, headLevel, chestLevel);
-    return { weapon, levelFor, damage: (base: number) => base * equipment * warcraft };
+    // The worn cards, carried by the levels: attack cards multiply damage as they do power.
+    const cards = cardStatFactors(cardTotalsForLevels(weaponLevel, headLevel, chestLevel));
+    return { weapon, levelFor, cards, damage: (base: number) => base * equipment * warcraft * cards.damage };
   }
 
   /**
@@ -125,9 +128,10 @@ export function createCombatReport(deps: CombatReportDeps) {
       // Keen Edge grants crit on its own, so a player with no crit research can
       // still be critting; the bound has to know that or it clips them.
       // Crit kills inside the report raise the run's rating, so the multiplier is read per entry.
-      const crits = (research?.criticalChance ?? 0) > 0 || prestigePerkValue(ranks, "keenEdge") > 0;
+      const crits = (research?.criticalChance ?? 0) > 0 || prestigePerkValue(ranks, "keenEdge") > 0 || loadout.cards.critChance > 0;
       const critical = (rating = 0) => crits
-        ? criticalDamageMultiplier({ researchRank: research?.criticalDamage, perks: ranks, soul: soul?.critDamage, rating, capRank: research?.critCap }) : 1;
+        ? criticalDamageMultiplier({ researchRank: research?.criticalDamage, perks: ranks, soul: soul?.critDamage, rating, capRank: research?.critCap,
+          card: loadout.cards.critDamage }) : 1;
       // Double Strike is more damage per swing; Split Shot and Riposte are more
       // enemies reached per swing. The first belongs in damage per second, the
       // second in how many kills per second that damage can finish. The bow's

@@ -8,6 +8,10 @@ import { createGuildHallRows } from "./guild-hall-service";
 import { createItemRefineRows } from "./item-refine-service";
 import { createMiningRows } from "./mining-service";
 import { createCardRows } from "./card-service";
+import { itemLevelParts, type ItemLevel } from "../../../shared/items";
+import { NO_CARDS, cardStatFactors, cardTotals, equippedCardIds, type CardTotals } from "../../../shared/card-effects";
+
+type WornLoadout = { equippedHead?: string; equippedChest?: string; equippedRightHand?: string; equippedLeftHand?: string };
 
 /**
  * The account's own small rows, each read through a caller-scoped view and
@@ -19,7 +23,8 @@ import { createCardRows } from "./card-service";
  * lifecycle, so the connection starts them together and the coop API serves
  * them together.
  */
-export function createAccountRowServices(connection: () => DbConnection | null, notify: () => void, slotTierFor: (itemId: string) => number = () => 0) {
+export function createAccountRowServices(connection: () => DbConnection | null, notify: () => void, slotTierFor: (itemId: string) => number = () => 0,
+  wornItems: () => WornLoadout | null | undefined = () => null) {
   const offlinePreference = createOfflineProgressPreference(connection, notify);
   const bowSkills = createBowSkills(notify);
   const adGemReward = createAdGemReward(notify);
@@ -29,6 +34,18 @@ export function createAccountRowServices(connection: () => DbConnection | null, 
   const itemRefine = createItemRefineRows(notify, slotTierFor);
   const mining = createMiningRows(notify);
   const cards = createCardRows(notify);
+  // The saved loadout's cards, added up again only when they change.
+  let wornKey = "", worn: { totals: CardTotals; stats: ReturnType<typeof cardStatFactors> } = { totals: NO_CARDS, stats: cardStatFactors(NO_CARDS) };
+  const wornCards = () => {
+    const ids = equippedCardIds(wornItems() ?? {}, cards.api.itemCards);
+    const key = ids.join(",");
+    if (key !== wornKey) {
+      const totals = cardTotals(ids);
+      wornKey = key;
+      worn = { totals, stats: cardStatFactors(totals) };
+    }
+    return worn;
+  };
   return {
     watch(current: DbConnection, isCurrent: () => boolean) {
       offlinePreference.watch(current, isCurrent);
@@ -51,6 +68,12 @@ export function createAccountRowServices(connection: () => DbConnection | null, 
       ...itemRefine.api,
       ...mining.api,
       ...cards.api,
+      /** A worn copy's level carries its cards, which power reads (items.ts ItemLevel). */
+      itemLevel: (itemId: string): ItemLevel => ({ ...itemLevelParts(itemRefine.api.itemLevel(itemId)), cards: cards.api.itemCards(itemId) }),
+      /** The cards in the worn weapon, helmet and armor, added up (card-effects.ts). */
+      wornCardTotals: () => wornCards().totals,
+      /** What those cards do to stats (card-effects.ts cardStatFactors). */
+      wornCardStats: () => wornCards().stats,
     },
   };
 }

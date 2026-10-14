@@ -70,6 +70,8 @@ type ProgressionServiceDependencies = {
   commitStoppedPosition: (position: { x: number; y: number }, sequence: number) => void;
   storage: Storage;
   pendingProgressKey: string;
+  /** What Quick Draw cards in the worn gear add to the attack speed cap. */
+  cardAttackCapRaise?: () => number;
 };
 
 /** What the game bundle gets from claimGameBridge: the only way to report a kill. */
@@ -1013,8 +1015,12 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
        * The attack speed cap in play (playerAttackCap): Reflect Only's wins and Quick Draw, each unless switched off.
        * An Aggro run keeps both, though it plays without every other prestige bonus.
        */
-      attackCapInPlay: (): AttackCap => playerAttackCap(reflectRewardsOn(bonusOff) ? { ...prestigeChallenge } : null,
-        perksInPlayFor({ keenEdge: 0, doubleStrike: 0, splitShot: 0, riposte: 0, ...localPrestigePerks, ...expansionPerks }, bonusOff)),
+      attackCapInPlay: (): AttackCap => {
+        const cap = playerAttackCap(reflectRewardsOn(bonusOff) ? { ...prestigeChallenge } : null,
+          perksInPlayFor({ keenEdge: 0, doubleStrike: 0, splitShot: 0, riposte: 0, ...localPrestigePerks, ...expansionPerks }, bonusOff));
+        const cards = dependencies.cardAttackCapRaise?.() ?? 0;
+        return cards > 0 ? { ...cap, raise: cap.raise + cards } : cap;
+      },
       /** Prestige stat gain counts: not during an Aggro run, nor with Stat Gain switched off. */
       prestigeStatGainInPlay: () => !prestigeBonusesOff(aggroChallenge) && prestigeStatGainOn(bonusOff),
       activeResearch: () => activeResearch ? { ...activeResearch } : null,

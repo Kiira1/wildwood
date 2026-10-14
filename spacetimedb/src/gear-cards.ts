@@ -1,7 +1,7 @@
 import { SenderError, table, t } from "spacetimedb/server";
 import type { Identity } from "spacetimedb";
 import type spacetimedbType from "./index";
-import { MAX_CARD_SLOTS, OWNED_GEAR_SLOTS, canHoldCards, cardDefinition, cardFitsItem, rollGearSlots, type CardSlot } from "../../shared/cards";
+import { MAX_CARD_SLOTS, OWNED_GEAR_SLOTS, canHoldCards, cardDefinition, cardFitsItem, gearSlotsKey, rollGearSlots, type CardSlot } from "../../shared/cards";
 import { canonicalItemId } from "../../shared/items";
 import { standsAtTheSmith } from "./item-refine";
 import { readPlayerProgress } from "./wide-stats";
@@ -45,7 +45,7 @@ type Ctx = any;
 export type GearSlots = { slots: number; cards: readonly string[] };
 
 export const cardKey = (identity: { toHexString(): string }, cardId: string) => `${identity.toHexString()}:${cardId}`;
-export const gearSlotsKey = (identity: { toHexString(): string }, itemId: string) => `${identity.toHexString()}:${itemId}`;
+export { gearSlotsKey };
 
 /** 0 to 4 slots, real cards only, no more cards than slots. */
 export function normalizeGearSlots(value: { slots?: unknown; cards?: unknown } | null | undefined): GearSlots {
