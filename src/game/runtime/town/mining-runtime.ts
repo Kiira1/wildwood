@@ -15,6 +15,8 @@ type MiningBreak = { nodeId: number; starshard: boolean; rocksBroken: number };
 
 /** What mining needs from the session (mining-service.ts on the coop API). */
 export type MiningSource = {
+  localIdentity?: () => string | undefined;
+  sessionGeneration?: () => number;
   hasPickaxe?: () => boolean;
   mining?: () => number;
   minedNodeAt?: (nodeId: number) => number | null;
@@ -73,8 +75,17 @@ export function createMiningRuntime(deps: {
   const pending = new Map<number, number>();
   let hint = { text: "", at: -Infinity, rock: -1 };
   let listeningTo: MiningSource | null = null;
+  /** Pending breaks and bare rocks belong to the account and connection that made them. */
+  let session: { source: MiningSource; identity: string; generation: number; pickaxe: boolean } | null = null;
 
   const now = () => deps.source()?.serverNowMs?.() ?? Date.now();
+
+  function sameSession(source: MiningSource | null | undefined) {
+    return Boolean(source && session?.source === source
+      && session.identity === (source.localIdentity?.() ?? "")
+      && session.generation === (source.sessionGeneration?.() ?? 0)
+      && session.pickaxe === Boolean(source.hasPickaxe?.()));
+  }
 
   function isBare(node: MiningNode, at: number) {
     const brokenAt = deps.source()?.minedNodeAt?.(node.id) ?? pending.get(node.id) ?? null;
@@ -105,6 +116,13 @@ export function createMiningRuntime(deps: {
     miningScene.target = null; miningScene.progress = 0; miningScene.pickaxeOut = false; miningScene.swingClock = 0;
   }
 
+  function reset() {
+    stop(); resetMiningScene(); pending.clear(); sending = null;
+    listeningTo?.setOnMiningBreak?.(null);
+    listeningTo = null; session = null; bareCheck = 0;
+    hint = { text: "", at: -Infinity, rock: -1 };
+  }
+
   function say(text: string, color: string, rock: number) {
     if (text === hint.text && rock === hint.rock && clock - hint.at < HINT_SECONDS) return;
     hint = { text, at: clock, rock };
@@ -115,7 +133,9 @@ export function createMiningRuntime(deps: {
   function listen(source: MiningSource) {
     if (listeningTo === source || !source.setOnMiningBreak) return;
     listeningTo = source;
+    const started = session;
     source.setOnMiningBreak(result => {
+      if (session !== started || !sameSession(deps.source())) return;
       const node = MINING_NODES[result.nodeId];
       if (!node) return;
       const color = ORE_COLORS[node.ore].light;
@@ -127,6 +147,7 @@ export function createMiningRuntime(deps: {
 
   function breakRock(source: MiningSource, rock: MiningNode, at: number) {
     const id = rock.id;
+    const started = session;
     sending = id;
     pending.set(id, at);
     miningScene.bare.add(id);
@@ -136,6 +157,8 @@ export function createMiningRuntime(deps: {
     brokenShown = BROKEN_SHOW_SECONDS;
     deps.burst?.(rock.x, rock.y - 18, "#c7ced3", 14, 120);
     void Promise.resolve(source.mineNode?.(id) ?? { ok: false, error: "Not Connected" }).then(result => {
+      // A reply from before a reconnect or Reset Save must not clear a newer break.
+      if (session !== started || !sameSession(deps.source())) return;
       sending = null;
       if (result?.ok) return;
       // Refused: the rock was never broken, so it stands again.
@@ -149,6 +172,11 @@ export function createMiningRuntime(deps: {
   function update(dt: number, active: boolean) {
     clock += dt;
     const source = deps.source();
+    if (!sameSession(source)) {
+      reset();
+      if (!source) return;
+      session = { source, identity: source.localIdentity?.() ?? "", generation: source.sessionGeneration?.() ?? 0, pickaxe: Boolean(source.hasPickaxe?.()) };
+    }
     const at = now();
     if ((bareCheck -= dt) <= 0) { bareCheck = BARE_REFRESH_SECONDS; refreshBare(at); }
     if (!active || !source || deps.player.hp <= 0 || !inTownHills(deps.player.x, deps.player.y, MINING_REACH * 2)) { stop(); return; }
@@ -199,7 +227,7 @@ export function createMiningRuntime(deps: {
 
   return {
     update,
-    /** Leaves the hills behind: a map change or the session going. */
-    reset() { stop(); resetMiningScene(); pending.clear(); sending = null; },
+    /** Clears this session's local mining and stops listening for its breaks. */
+    reset,
   };
 }

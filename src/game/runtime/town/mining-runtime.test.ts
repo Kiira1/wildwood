@@ -30,6 +30,12 @@ function miner(at: { x: number; y: number } = copper, overrides: Partial<MiningS
 }
 const flush = () => new Promise(resolve => setTimeout(resolve, 0));
 
+function pendingReply() {
+  let resolve!: (result: { ok: boolean; error?: string }) => void;
+  const promise = new Promise<{ ok: boolean; error?: string }>(done => { resolve = done; });
+  return { promise, resolve };
+}
+
 describe("mining in the Copper Hills", () => {
   it("swings at the rock in reach while the player stands still, and asks the server to take it once it breaks", () => {
     const m = miner();
@@ -130,6 +136,68 @@ describe("mining in the Copper Hills", () => {
     await flush();
     expect(miningScene.bare.has(copper.id)).toBe(false);
     expect(m.message).toHaveBeenCalledWith("That rock is still growing back.", "#ff9b91");
+  });
+
+  it.each(["account", "connection"])("starts mining afresh after the %s changes, without waiting for an old break", change => {
+    let identity = "first-miner", generation = 1;
+    const old = pendingReply();
+    const mineNode = vi.fn(() => old.promise);
+    const m = miner(copper, { mineNode, localIdentity: () => identity, sessionGeneration: () => generation });
+    m.run(miningBreakSeconds(copper, 0) + .1);
+    expect(mineNode).toHaveBeenCalledTimes(1);
+    if (change === "account") identity = "second-miner";
+    else generation++;
+    m.run(miningBreakSeconds(copper, 0) + .1);
+    expect(mineNode).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([true, false])("ignores an old break's late reply (ok=%s) while the new session's break is pending", async ok => {
+    let generation = 1;
+    const old = pendingReply(), current = pendingReply();
+    const mineNode = vi.fn().mockReturnValueOnce(old.promise).mockReturnValue(current.promise);
+    const m = miner(copper, { mineNode, sessionGeneration: () => generation });
+    m.run(miningBreakSeconds(copper, 0) + .1);
+    generation++;
+    m.run(miningBreakSeconds(copper, 0) + .1);
+    old.resolve({ ok, error: "Old request timed out." });
+    await flush();
+    expect(miningScene.bare.has(copper.id)).toBe(true);
+    expect(m.message).not.toHaveBeenCalled();
+    // A different rock must still wait for the current request.
+    const next = MINING_NODES.find(node => node.ore === "copper_ore" && node.kind === "small" && node.id !== copper.id)!;
+    m.player.x = next.x; m.player.y = next.y - TOWN_FEET_OFFSET;
+    m.run(miningBreakSeconds(next, 0) + 1);
+    expect(mineNode).toHaveBeenCalledTimes(2);
+    current.resolve({ ok: false, error: "Current break refused." });
+    await flush();
+    expect(miningScene.bare.has(copper.id)).toBe(false);
+    expect(m.message).toHaveBeenCalledExactlyOnceWith("Current break refused.", "#ff9b91");
+  });
+
+  it("forgets local bare rocks when Reset Save takes the pickaxe back", async () => {
+    let pickaxe = true;
+    const m = miner(copper, { hasPickaxe: () => pickaxe });
+    m.run(miningBreakSeconds(copper, 0) + .1);
+    await flush();
+    expect(miningScene.bare.has(copper.id)).toBe(true);
+    pickaxe = false;
+    m.run(.1);
+    pickaxe = true;
+    m.run(miningBreakSeconds(copper, 0) + .1);
+    expect(m.source.mineNode).toHaveBeenCalledTimes(2);
+  });
+
+  it("ignores a previous session's reply even before the next frame sees the changed identity", async () => {
+    let identity = "first-miner";
+    const old = pendingReply();
+    const m = miner(copper, { localIdentity: () => identity, mineNode: () => old.promise });
+    m.run(miningBreakSeconds(copper, 0) + .1);
+    identity = "second-miner";
+    old.resolve({ ok: false, error: "Previous account's error." });
+    await flush();
+    expect(m.message).not.toHaveBeenCalled();
+    m.broke({ nodeId: copper.id, starshard: true, rocksBroken: 1 });
+    expect(m.logPickup).not.toHaveBeenCalled();
   });
 
   it("shows what each break the server takes gave, over its rock", () => {
