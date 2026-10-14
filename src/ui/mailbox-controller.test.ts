@@ -59,3 +59,18 @@ it("shows equipment above the message and retains the claim after a full-bag rej
   await Promise.resolve(); await Promise.resolve();
   expect(f.document.querySelector(".mailbox-status")!.textContent).toBe("Gear added to your inventory.");
 });
+
+it("lets a letter go when it leaves the mailbox, even after a claim that failed", async () => {
+  const f = fixture();
+  f.messages([{ id: "gear", title: "Gear for your map", body: "Make room if needed.", gems: 0n, createdAtMs: 1000, read: true, claimed: false, itemIds: ["forest_cap"], upgradeLevel: 9 }]);
+  f.claim.mockResolvedValueOnce({ ok: false, error: "Free 1 inventory slot, then claim your gear." } as never);
+  f.ui.open(); f.document.querySelector<HTMLButtonElement>(".mailbox-row")!.click();
+  f.document.querySelector<HTMLButtonElement>(".mailbox-claim-button")!.click();
+  await Promise.resolve(); await Promise.resolve();
+  // A week on, the letter is gone from the server: gone from the open mailbox too, and the badge with it.
+  f.messages([]); f.ui.refresh();
+  f.document.querySelector<HTMLButtonElement>(".window-back-button")!.click();
+  expect(f.document.querySelectorAll(".mailbox-row")).toHaveLength(0);
+  expect(f.document.querySelector(".mailbox-empty")!.textContent).toBe("You're all caught up.");
+  expect(f.button.querySelector<HTMLElement>(".mailbox-unread-dot")!.hidden).toBe(true);
+});

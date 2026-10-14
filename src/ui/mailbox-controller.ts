@@ -150,13 +150,15 @@ export function createMailboxController(button: HTMLButtonElement, versionButton
     const started = generation;
     // A claim can remove a legacy/daily subscription row before its promise settles.
     // Keep the letter visible through that ordering, including a failed/retried claim.
-    completed.set(entry.id, entry);
+    // A server letter is only ever updated by a claim: it leaves the list when it leaves the mailbox (a week on).
+    if (entry.action) completed.set(entry.id, entry);
     pending = true; status.textContent = ""; refresh();
     try {
       const result = await (entry.action ? entry.action() : hooks.claim(entry.id));
       if (started !== generation || owner !== hooks.identity()) return;
       if (result?.ok) {
-        read.add(entry.id); claimed.add(entry.id); completed.set(entry.id, { ...entry, read: true, claimed: true });
+        read.add(entry.id); claimed.add(entry.id);
+        if (entry.action) completed.set(entry.id, { ...entry, read: true, claimed: true });
         status.textContent = entry.itemIds?.length ? "Gear added to your inventory." : entry.actionLabel === "Got it" ? "Already added to your balance." : `${entry.gems} gems claimed!`;
       } else status.textContent = result?.error ?? "Couldn't claim. Please try again.";
     } catch { if (started === generation) status.textContent = "Couldn't claim. Please try again."; }
