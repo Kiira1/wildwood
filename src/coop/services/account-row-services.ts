@@ -9,6 +9,7 @@ import { createItemRefineRows } from "./item-refine-service";
 import { createMiningRows } from "./mining-service";
 import { createCardRows } from "./card-service";
 import { createBuildRows } from "./build-service";
+import { createItemCollectionRows } from "./item-collection-service";
 import { itemLevelParts, type ItemLevel } from "../../../shared/items";
 import { NO_CARDS, cardStatFactors, cardTotals, equippedCardIds, type CardTotals } from "../../../shared/card-effects";
 
@@ -36,6 +37,7 @@ export function createAccountRowServices(connection: () => DbConnection | null, 
   const mining = createMiningRows(notify);
   const cards = createCardRows(notify);
   const builds = createBuildRows(notify);
+  const collection = createItemCollectionRows(notify);
   // The saved loadout's cards, added up again only when they change.
   let wornKey = "", worn: { totals: CardTotals; stats: ReturnType<typeof cardStatFactors> } = { totals: NO_CARDS, stats: cardStatFactors(NO_CARDS) };
   const wornCards = () => {
@@ -60,6 +62,7 @@ export function createAccountRowServices(connection: () => DbConnection | null, 
       mining.watch(current, isCurrent);
       cards.watch(current, isCurrent);
       builds.watch(current, isCurrent);
+      collection.watch(current, isCurrent);
     },
     api: {
       ...offlinePreference.api,
@@ -72,6 +75,7 @@ export function createAccountRowServices(connection: () => DbConnection | null, 
       ...mining.api,
       ...cards.api,
       ...builds.api,
+      ...collection.api,
       /** A worn copy's level carries its cards, which power reads (items.ts ItemLevel). */
       itemLevel: (itemId: string): ItemLevel => ({ ...itemLevelParts(itemRefine.api.itemLevel(itemId)), cards: cards.api.itemCards(itemId) }),
       /** The cards in the worn weapon, helmet and armor, added up (card-effects.ts). */

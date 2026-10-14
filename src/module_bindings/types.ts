@@ -1507,6 +1507,9 @@ export type MyIgnoredDrops = __Infer<typeof MyIgnoredDrops>;
 export const MyInventoryCapacity = __t.object("MyInventoryCapacity", {});
 export type MyInventoryCapacity = __Infer<typeof MyInventoryCapacity>;
 
+export const MyItemCollection = __t.object("MyItemCollection", {});
+export type MyItemCollection = __Infer<typeof MyItemCollection>;
+
 export const MyItemGifts = __t.object("MyItemGifts", {});
 export type MyItemGifts = __Infer<typeof MyItemGifts>;
 
@@ -2035,6 +2038,13 @@ export const PlayerInventoryCapacity = __t.object("PlayerInventoryCapacity", {
   updatedAt: __t.timestamp(),
 });
 export type PlayerInventoryCapacity = __Infer<typeof PlayerInventoryCapacity>;
+
+export const PlayerItemCollection = __t.object("PlayerItemCollection", {
+  key: __t.string(),
+  identity: __t.identity(),
+  itemId: __t.string(),
+});
+export type PlayerItemCollection = __Infer<typeof PlayerItemCollection>;
 
 export const PlayerItemDrop = __t.object("PlayerItemDrop", {
   key: __t.string(),

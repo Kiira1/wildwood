@@ -5,6 +5,7 @@ import { isSkillBow } from "../../shared/bow-skills";
 import { isSkillSword } from "../../shared/sword-skills";
 import { isSkillWeapon, mergeSkillRolls, rollWeaponSkills, weaponSkillColumns, weaponSkillRollOf, type WeaponSkillRoll } from "../../shared/weapon-skills";
 import { canDestroyEquipment, canonicalItemId } from "../../shared/items";
+import { salvageOre } from "../../shared/refine";
 import { bagCapacityFor } from "./bag-capacity";
 import {
   EQUIPMENT_OFFER_LIFETIME_MS, MAX_PENDING_EQUIPMENT_OFFERS, bagSlotsUsed, isDuplicateOfferItem,
@@ -12,7 +13,7 @@ import {
 import { bowSkillKey } from "./bow-skills";
 import { setSwordSkillRoll } from "./sword-skills";
 import { ensureWeaponSkillRoll, weaponSkillRollFor } from "./weapon-skills";
-import { oreKindsHeldFor, promoteCopyRefine, refineLevelFor, setRefineLevel, swapFirstCopyRefine } from "./item-refine";
+import { addOres, oreKindsHeldFor, promoteCopyRefine, refineLevelFor, setRefineLevel, swapFirstCopyRefine } from "./item-refine";
 import { clearGearSlots, gearSlotsFor, returnSlottedCards, promoteCopySlots, rollCopySlots, rollDropSlots, swapFirstCopySlots } from "./gear-cards";
 import { readPlayerProgress } from "./wide-stats";
 
@@ -41,6 +42,32 @@ export const playerEquipmentCopy = table({ name: "player_equipment_copy", public
   acquiredAt: t.timestamp(),
   whirlwind: t.f32().default(0), deflect: t.f32().default(0), shockwave: t.f32().default(0),
 });
+
+/**
+ * Every item a player has ever had drop, for the Gear Collection in the map window: one row per item, kept for
+ * good. Gear held from before it existed counts too, read from the bag on the client.
+ */
+export const playerItemCollection = table({ name: "player_item_collection", public: false }, {
+  key: t.string().primaryKey(),
+  identity: t.identity().index("btree"),
+  itemId: t.string(),
+});
+
+/** Marks an item collected, once. */
+export function collectItem(ctx: Ctx, identity: Identity, itemId: string) {
+  const canonical = canonicalItemId(itemId);
+  if (!canonical) return;
+  const key = `${identity.toHexString()}:${canonical}`;
+  if (!ctx.db.playerItemCollection.key.find(key)) ctx.db.playerItemCollection.insert({ key, identity, itemId: canonical });
+}
+
+/** Prestige keeps the collection; Reset Save and account deletion take it (removeEquipmentCopies). A guest's joins the account's. */
+export function mergeItemCollection(ctx: Ctx, guest: Identity, account: Identity) {
+  for (const row of [...ctx.db.playerItemCollection.identity.filter(guest)] as any[]) {
+    ctx.db.playerItemCollection.key.delete(row.key);
+    collectItem(ctx, account, row.itemId);
+  }
+}
 
 /**
  * A drop of equipment the player already had, waiting for Keep or Ignore.
@@ -104,6 +131,7 @@ export function offerDuplicateEquipment(ctx: Ctx, identity: Identity, itemId: st
 
 /** A new item that found the bag full. Each weapon roll differs, so each waits; other gear waits once. */
 export function offerItemForFullBag(ctx: Ctx, identity: Identity, itemId: string, count = 1) {
+  collectItem(ctx, identity, itemId);
   if (isSkillWeapon(itemId)) { offerDuplicateEquipment(ctx, identity, itemId, count); return; }
   if (!pendingOffersOf(ctx, identity).some(offer => offer.itemId === itemId)) offerDuplicateEquipment(ctx, identity, itemId, 1);
 }
@@ -131,6 +159,7 @@ export function receiveDuplicateEquipment(ctx: Ctx, identity: Identity, itemId: 
  * one batch, can only raise the held weapon's skills (receiveDuplicateEquipment).
  */
 export function publishItemDrop(ctx: Ctx, identity: Identity, itemId: string, alreadyOwned: boolean, quantity = 1) {
+  collectItem(ctx, identity, itemId);
   if (!alreadyOwned) ensureWeaponSkillRoll(ctx, identity, itemId);
   receiveDuplicateEquipment(ctx, identity, itemId, alreadyOwned ? quantity : quantity - 1);
   const key = `${identity.toHexString()}:${itemId}`;
@@ -157,9 +186,10 @@ export function expireEquipmentOffers(ctx: Ctx) {
   }
 }
 
-/** Wherever a player's gear goes (reset, deletion), their extra copies and pending offers go with it. */
+/** Wherever a player's gear goes (reset, deletion), their extra copies, pending offers and Gear Collection go with it. */
 export function removeEquipmentCopies(ctx: Ctx, identity: Identity) {
   for (const row of extraCopiesOf(ctx, identity)) ctx.db.playerEquipmentCopy.id.delete(row.id);
+  for (const row of [...ctx.db.playerItemCollection.identity.filter(identity)] as any[]) ctx.db.playerItemCollection.key.delete(row.key);
   removeEquipmentOffers(ctx, identity);
 }
 
@@ -178,6 +208,12 @@ export function mergeEquipmentCopies(ctx: Ctx, guest: Identity, account: Identit
   for (const row of extraCopiesOf(ctx, guest)) ctx.db.playerEquipmentCopy.id.update({ ...row, identity: account });
   for (const offer of pendingOffersOf(ctx, guest)) ctx.db.pendingEquipmentOffer.id.update({ ...offer, identity: account });
   trimOffers(ctx, account);
+}
+
+/** Destroyed gear gives back one ore of its refine grade. */
+function salvage(ctx: Ctx, itemId: string) {
+  const ore = salvageOre(itemId);
+  if (ore) addOres(ctx, ctx.sender, ore, 1);
 }
 
 /** Writes the first copy's roll. Anything that is not a skill weapon has none to write. */
@@ -278,6 +314,7 @@ export function createEquipmentCopies(deps: {
       returnSlottedCards(ctx, ctx.sender, canonical, copy.id);
       clearGearSlots(ctx, ctx.sender, canonical, copy.id);
       ctx.db.playerEquipmentCopy.id.delete(copy.id);
+      salvage(ctx, canonical);
       return;
     }
     const [replacement] = extraCopiesOf(ctx, ctx.sender, canonical);
@@ -288,12 +325,14 @@ export function createEquipmentCopies(deps: {
       promoteCopyRefine(ctx, ctx.sender, canonical, replacement.id);
       promoteCopySlots(ctx, ctx.sender, canonical, replacement.id);
       ctx.db.playerEquipmentCopy.id.delete(replacement.id);
+      salvage(ctx, canonical);
       // The worn item may have changed level: its power follows.
       deps.writeProgressAndPresentation(ctx, progress);
       return;
     }
     setRefineLevel(ctx, ctx.sender, canonical, 0n, 0);
     clearGearSlots(ctx, ctx.sender, canonical);
+    salvage(ctx, canonical);
     deps.writeProgressAndPresentation(ctx, deps.removeItemFromProgress(progress, canonical));
   }
 
@@ -322,4 +361,10 @@ export function createEquipmentCopies(deps: {
   }
 
   return { resolveOffer, destroy, select };
+}
+
+/** The caller's Gear Collection. */
+export function registerItemCollection(spacetimedb: any) {
+  return spacetimedb.view({ name: "my_item_collection", public: true }, t.array(playerItemCollection.rowType),
+    (ctx: any) => [...ctx.db.playerItemCollection.identity.filter(ctx.sender)]);
 }

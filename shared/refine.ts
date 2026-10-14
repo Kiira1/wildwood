@@ -52,6 +52,12 @@ const ARMOR_ODDS: Readonly<Record<number, number>> = { 5: .6, 6: .6, 7: .4, 8: .
 const HIGH_ODDS: Readonly<Record<number, number>> = { 11: .1, 12: .1, 13: .08, 14: .08, 15: .07, 16: .07, 17: .06, 18: .06, 19: .05, 20: .05 };
 
 /** Equipment with a stat to refine: every bow, sword, helmet and armor with a bonus. Cosmetics and the starter stone have none. */
+/** The ore a piece of gear gives back when destroyed: one of its refine grade's ore. Null for anything else. */
+export function salvageOre(itemId: unknown): OreId | null {
+  const grade = refineGrade(itemId);
+  return grade ? GRADE_ORES[grade] : null;
+}
+
 export function isRefinableItem(itemId: unknown) {
   return isUpgradeableItem(itemId);
 }

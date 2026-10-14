@@ -343,6 +343,7 @@ import MyGemWalletRow from "./my_gem_wallet_table";
 import MyGuildHallRow from "./my_guild_hall_table";
 import MyIgnoredDropsRow from "./my_ignored_drops_table";
 import MyInventoryCapacityRow from "./my_inventory_capacity_table";
+import MyItemCollectionRow from "./my_item_collection_table";
 import MyItemGiftsRow from "./my_item_gifts_table";
 import MyItemRefinesRow from "./my_item_refines_table";
 import MyLegalConsentRow from "./my_legal_consent_table";
@@ -1663,6 +1664,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, MyInventoryCapacityRow),
+  myItemCollection: __table({
+    name: 'my_item_collection',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MyItemCollectionRow),
   myItemGifts: __table({
     name: 'my_item_gifts',
     indexes: [

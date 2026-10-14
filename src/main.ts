@@ -1429,7 +1429,7 @@ import {
     back: mapGuideBack,
   }, {
     currentMapId: () => currentMapId,
-    mapName: (mapId) => MAP_CONFIG[mapId].name,
+    mapName: (mapId) => MAP_CONFIG[mapId].name, collected: itemId => Boolean(coop?.collectedItems?.().has(itemId)) || inventory.itemIds.includes(itemId),
     paths, enemies, rewardAmount: rewardDisplay.displayedAmount, rewardContext: rewardLabelContext, mapUnlocked: (mapId) => mapController.portalIsUnlocked({ destination: mapId } as never), mapBalance: (mapId) => coop?.mapIndexBalance?.(mapId) ?? Promise.resolve(null),
     spawnSites,
     player,

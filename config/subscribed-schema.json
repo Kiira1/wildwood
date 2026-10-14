@@ -639,6 +639,11 @@
       "slotsUnlocked:u32",
       "updatedAt:timestamp"
     ],
+    "my_item_collection": [
+      "key:string",
+      "identity:identity",
+      "itemId:string"
+    ],
     "my_item_gifts": [
       "key:string",
       "identity:identity",

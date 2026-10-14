@@ -69,6 +69,8 @@ type MapGuideDependencies = {
   portals: () => MapGuidePortal[];
   beforeOpen: () => void;
   clearPlayerInput: () => void;
+  /** Whether the player has ever had this item, for the Gear Collection marks on the drops. */
+  collected?: (itemId: string) => boolean;
   /** The coop session, for the account's loot filter. Without it the map has no Loot filter button. */
   lootFilter?: LootFilterPort | null;
   /** The live enemies of the player's map, for its Enemy Index; other maps read the shipped balance. */
@@ -298,10 +300,19 @@ export function createMapGuideController(elements: MapGuideElements, dependencie
     zoneLabels.replaceChildren(...labels);
   }
 
+  // The Gear Collection: how many of this map's drops the player has ever had, beside the drops' heading.
+  const collectedCount = document.createElement("span");
+  collectedCount.className = "map-guide-collected-count";
+  collectedCount.hidden = true;
+  dropsHeader?.querySelector("h3, h2")?.after(collectedCount);
   function renderDrops(mapId: MapId) {
-    const cards = mapGuideDrops(mapId).map((drop) => {
+    const drops = mapGuideDrops(mapId);
+    const isCollected = (itemId: string) => dependencies.collected?.(itemId) ?? false;
+    collectedCount.hidden = !dependencies.collected || !drops.length;
+    collectedCount.textContent = `Collected ${drops.filter(drop => isCollected(drop.itemId)).length} / ${drops.length}`;
+    const cards = drops.map((drop) => {
       const card = document.createElement("article");
-      card.className = "map-guide-drop-card";
+      card.className = `map-guide-drop-card${isCollected(drop.itemId) ? " is-collected" : ""}`;
       card.dataset.itemId = drop.itemId;
 
       const art = document.createElement("div");
@@ -322,6 +333,12 @@ export function createMapGuideController(elements: MapGuideElements, dependencie
         stats.append(statLabel);
       }
       copy.append(heading, source, stats);
+      if (isCollected(drop.itemId)) {
+        const mark = document.createElement("span");
+        mark.className = "map-guide-collected";
+        mark.textContent = "Collected";
+        copy.append(mark);
+      }
 
       const chance = document.createElement("div");
       chance.className = "map-guide-drop-chance";

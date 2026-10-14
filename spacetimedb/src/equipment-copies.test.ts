@@ -6,7 +6,8 @@ import { eraseIdentityRows } from "./account-erasure";
 import { bowSkillKey, bowSkillRollFor, duelBowSkillFields } from "./bow-skills";
 import { offerDuplicateEquipment, offerItemForFullBag, publishItemDrop } from "./equipment-copies";
 import { gearSlotsFor, setGearSlots } from "./gear-cards";
-import { refineLevelFor, setRefineLevel } from "./item-refine";
+import { oreCount, refineLevelFor, setRefineLevel } from "./item-refine";
+import { salvageOre } from "../../shared/refine";
 import { inventoryForProgress } from "./progress-helpers";
 import { createEmptyResearchRanks } from "../../shared/research";
 import {
@@ -376,4 +377,27 @@ it("is erased with the account and leaves other accounts alone", () => {
   expect(copies(f)).toEqual([]);
   expect(offers(f)).toEqual([]);
   expect(copies(f, identity("3"))).toHaveLength(1);
+});
+
+it("gives back one ore of the gear's refine grade when it is destroyed, a kept copy included", () => {
+  const f = archer();
+  const ore = salvageOre(IRON_BOW)!;
+  expect(ore).toBeTruthy();
+  seedCopy(f, B);
+  const [copy] = copies(f);
+  f.run(server.destroyEquipmentCopy, { itemId: IRON_BOW, copyId: copy.id });
+  expect(oreCount(f.ctx as any, f.ctx.sender, ore)).toBe(1);
+  f.patch("playerProgress", { equippedRightHand: "" });
+  f.run(server.destroyEquipment, { itemId: IRON_BOW });
+  expect(oreCount(f.ctx as any, f.ctx.sender, ore)).toBe(2);
+  // Gear without a refine grade gives nothing back.
+  expect(salvageOre(BASIC_PAPER_HAT)).toBeNull();
+});
+
+it("records each item that drops in the Gear Collection once, for good", () => {
+  const f = crystalFixture();
+  f.run((ctx: any) => publishItemDrop(ctx, ctx.sender, IRON_BOW, false));
+  f.run((ctx: any) => publishItemDrop(ctx, ctx.sender, IRON_BOW, true, 3));
+  f.run((ctx: any) => publishItemDrop(ctx, ctx.sender, SAMURAI_HAT, false));
+  expect([...f.db.playerItemCollection.identity.filter(f.ctx.sender)].map((row: any) => row.itemId).sort()).toEqual([IRON_BOW, SAMURAI_HAT].sort());
 });

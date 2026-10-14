@@ -22,7 +22,7 @@ import { gameConfirm, type ConfirmPrompt, type ConfirmRequest } from "./confirm-
 import { type WeaponSkillRoll } from "../../shared/weapon-skills";
 import { createInventoryDeleteMode } from "./inventory-delete-mode";
 import { withRefineStars } from "./refine-badge";
-import { REFINE_ORES, type OreId } from "../../shared/refine";
+import { REFINE_ORES, salvageOre, type OreId } from "../../shared/refine";
 import { createCardsTab } from "./cards-tab";
 import { canHoldCards } from "../../shared/cards";
 import type { BuildActions } from "./build-actions";
@@ -410,21 +410,22 @@ export function createInventoryController(dependencies: InventoryDependencies) {
     if (!dependencies.inventory.itemIds.includes(itemId) || dependencies.equipmentLocked?.(itemId, copyId)) return [];
     const destroyCopy = dependencies.destroyEquipmentCopy;
     const oneOfSeveral = Boolean(destroyCopy) && (copyId !== 0n || keptCopiesOf(itemId).length > 0);
+    const ore = salvageOre(itemId);
     return canDestroyEquipment(itemId) ? [{
-      label: "Destroy item",
+      label: "Salvage Item",
       kind: "DESTROY" as const,
       onActivate: async () => {
         if (!await ask(confirmDestroy, {
           message: `Destroy ${oneOfSeveral ? "this copy of " : ""}${withRefineStars(itemDisplayName(itemId, dependencies.upgradeLevel(itemId)), dependencies.refineLevel?.(itemId, copyId) ?? 0)} permanently?`,
-          details: [{ label: "This cannot be undone", value: "No refund" }],
-          confirmLabel: "Destroy", danger: true,
+          details: [{ label: "This cannot be undone", value: ore ? `Gives back 1 ${REFINE_ORES[ore].name}` : "No refund" }],
+          confirmLabel: "Salvage", danger: true,
         })) return;
         dependencies.itemInspection.close();
         const result = oneOfSeveral ? await destroyCopy!(itemId, copyId) : await dependencies.destroyEquipment(itemId);
         if (result?.ok) {
           clearInventorySelection(dependencies.inventory);
           render();
-          dependencies.showMessage("ITEM DESTROYED", "#ff9b91");
+          dependencies.showMessage(ore ? `Item Salvaged · +1 ${REFINE_ORES[ore].name}` : "Item Destroyed", "#ff9b91");
         } else dependencies.showMessage(result?.error ?? "NOT CONNECTED", "#ff9b91");
       },
     }] : [];
