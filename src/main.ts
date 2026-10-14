@@ -1898,7 +1898,7 @@ import {
     readyToShow: () => !inTutorial() && Boolean(session?.isRunning()),
   });
   if (coop?.setOnChange) coop.setOnChange(coopSession.onChange);
-  coop?.setOnGemDrop?.(({ amount }) => runtimeHud.showGemDrop(amount)); watchCardDrops(coop, runtimeHud.showItemDrop);
+  coop?.setOnGemDrop?.(({ amount }) => runtimeHud.showGemDrop(amount)); watchCardDrops(coop);
   // A duplicate of held equipment is not revealed here: Auto keep best or a Keep/Ignore offer settles it.
   createEquipmentOfferPrompt({ coop, inventory, renderInventory, showMessage, ready: () => Boolean(session?.isRunning()) });
   coop?.setOnItemDrop?.(({ itemId, alreadyOwned }) => {

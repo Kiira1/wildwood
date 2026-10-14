@@ -5,6 +5,7 @@ export const RELEASE_NOTES: Record<string, string[]> = {
     "Card slots on gear are 10 times rarer, and kept copies roll their own",
     "The Cards tab shows every card; ones not found yet are shadows",
     "The Inventory tabs stay at the top while you scroll",
+    "A card found now lights up the screen and stays until you tap it",
   ],
   "0.903.0": [
     "Cards: every enemy and boss has a rare card to find",

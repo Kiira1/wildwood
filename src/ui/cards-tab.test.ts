@@ -6,8 +6,7 @@ import { createItemInspectionController } from "./item-inspection-controller";
 import { formatCompactNumber } from "./number-format";
 import { IRON_BOW, STARTER_BOW, STARTER_STONE } from "../game/inventory";
 import { watchCardDrops } from "./card-drop-feedback";
-import { CARD_FRAME_COLORS } from "./card-portrait";
-import { CARDS, cardDefinition } from "../../shared/cards";
+import { CARDS } from "../../shared/cards";
 afterEach(() => vi.unstubAllGlobals());
 
 function page(body = "") {
@@ -147,15 +146,13 @@ it("lists a gear copy's card slots under its stats: each card and what it does, 
   expect(content.querySelector(".item-inspection-cards")).toBeNull();
 });
 
-it("pops up each card found, in the order found, with its frame colour, name and effects", async () => {
+it("hands each card found to the card moment, in the order found, with its portrait", async () => {
   page();
   let listener = null as ((drop: { cardIds: readonly string[] }) => void) | null;
-  const shown: Array<{ name: string; color: string; stats: readonly string[] }> = [];
-  watchCardDrops({ setOnCardDrop: callback => { listener = callback; } }, details => shown.push(details));
+  const shown: Array<{ cardId: string; artSource: string }> = [];
+  watchCardDrops({ setOnCardDrop: callback => { listener = callback; } }, found => shown.push(found));
   listener?.({ cardIds: ["needle_card", "not_a_card", "dragon_card"] });
   await vi.waitFor(() => expect(shown).toHaveLength(2));
-  expect(shown.map(drop => [drop.name, drop.color, drop.stats.length])).toEqual([
-    ["Needle Card", CARD_FRAME_COLORS.regular.rim, 1], ["Dragon Card", CARD_FRAME_COLORS.boss.rim, cardDefinition("dragon_card")!.effects.length],
-  ]);
-  expect(shown[0].stats).toEqual(["1% chance a hit lands twice"]);
+  expect(shown.map(found => found.cardId)).toEqual(["needle_card", "dragon_card"]);
+  expect(shown.every(found => typeof found.artSource === "string")).toBe(true);
 });
