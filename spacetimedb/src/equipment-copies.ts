@@ -3,7 +3,7 @@ import { SenderError, table, t } from "spacetimedb/server";
 import { Timestamp, type Identity } from "spacetimedb";
 import { isSkillBow } from "../../shared/bow-skills";
 import { isSkillSword } from "../../shared/sword-skills";
-import { isSkillWeapon, rollBeatsOnEverySkill, rollWeaponSkills, weaponSkillColumns, weaponSkillRollOf, type WeaponSkillRoll } from "../../shared/weapon-skills";
+import { isSkillWeapon, mergeSkillRolls, rollWeaponSkills, weaponSkillColumns, weaponSkillRollOf, type WeaponSkillRoll } from "../../shared/weapon-skills";
 import { canDestroyEquipment, canonicalItemId } from "../../shared/items";
 import { bagCapacityFor } from "./bag-capacity";
 import {
@@ -110,9 +110,9 @@ export function offerItemForFullBag(ctx: Ctx, identity: Identity, itemId: string
 
 /**
  * Duplicates from loot, settled on the spot: no offer, no spare copy. Each copy of a skill weapon rolls like
- * any new one, and a roll at least as good on every skill and better on one replaces the first copy's roll in
- * place. The weapon keeps its refine, cards, slots and lock, so the one in the slot simply gets better. Every
- * other copy is thrown away. Gifts and mail do not come through here and always offer.
+ * any new one and merges into the first copy's roll (mergeSkillRolls): taken whole when at least as good on
+ * every skill, otherwise only adding the skills the weapon lacks. A skill never goes down. The weapon keeps
+ * its refine, cards, slots and lock. Gifts and mail do not come through here and always offer.
  */
 export function receiveDuplicateEquipment(ctx: Ctx, identity: Identity, itemId: string, count = 1) {
   const canonical = canonicalItemId(itemId);
@@ -120,14 +120,15 @@ export function receiveDuplicateEquipment(ctx: Ctx, identity: Identity, itemId: 
   const copies = Math.min(MAX_PENDING_EQUIPMENT_OFFERS, Math.max(0, Math.floor(count)));
   for (let copy = 0; copy < copies; copy += 1) {
     const roll = rollWeaponSkills(canonical, () => ctx.random());
-    if (rollBeatsOnEverySkill(canonical, roll, weaponSkillRollFor(ctx, identity, canonical))) setFirstCopyRoll(ctx, identity, canonical, roll);
+    const merged = mergeSkillRolls(canonical, weaponSkillRollFor(ctx, identity, canonical), roll);
+    if (merged) setFirstCopyRoll(ctx, identity, canonical, merged);
   }
 }
 
 /**
  * Announces a drop to its player. The first copy of an item enters the bag and
  * rolls; a drop of equipment already held, and every copy past the first in
- * one batch, can only upgrade the held weapon's skills (receiveDuplicateEquipment).
+ * one batch, can only raise the held weapon's skills (receiveDuplicateEquipment).
  */
 export function publishItemDrop(ctx: Ctx, identity: Identity, itemId: string, alreadyOwned: boolean, quantity = 1) {
   if (!alreadyOwned) ensureWeaponSkillRoll(ctx, identity, itemId);

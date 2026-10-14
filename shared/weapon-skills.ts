@@ -19,9 +19,16 @@ export function weaponSkillRollOf(row: WeaponSkillRoll & { itemId: string }): We
     : { arrowStorm: row.arrowStorm ?? 0, ricochet: row.ricochet ?? 0, piercingShot: row.piercingShot ?? 0 };
 }
 
-/** Whether `next` is at least as good as `current` on every skill and better on one: a pure upgrade, no trade-off. */
-export function rollBeatsOnEverySkill(itemId: unknown, next: WeaponSkillRoll | null | undefined, current: WeaponSkillRoll | null | undefined) {
+/**
+ * A duplicate's roll merged into the held one, so a skill never goes down and one skill is never traded for
+ * another. A roll at least as good on every skill takes over outright; otherwise it only adds the skills the
+ * weapon lacks, at the drop's chance. Null when nothing would change.
+ */
+export function mergeSkillRolls(itemId: unknown, current: WeaponSkillRoll | null | undefined, next: WeaponSkillRoll | null | undefined): WeaponSkillRoll | null {
   const skills: readonly (keyof WeaponSkillRoll)[] = isSkillSword(itemId) ? SWORD_SKILL_IDS : isSkillBow(itemId) ? BOW_SKILL_IDS : [];
   const value = (roll: WeaponSkillRoll | null | undefined, skill: keyof WeaponSkillRoll) => Number(roll?.[skill] ?? 0) || 0;
-  return skills.every(skill => value(next, skill) >= value(current, skill)) && skills.some(skill => value(next, skill) > value(current, skill));
+  const everyBetter = skills.every(skill => value(next, skill) >= value(current, skill));
+  const merged = Object.fromEntries(skills.map(skill => [skill,
+    everyBetter || value(current, skill) === 0 ? Math.max(value(current, skill), value(next, skill)) : value(current, skill)])) as WeaponSkillRoll;
+  return skills.some(skill => value(merged, skill) !== value(current, skill)) ? merged : null;
 }

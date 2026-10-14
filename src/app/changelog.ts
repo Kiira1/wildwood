@@ -3,7 +3,7 @@ export const RELEASE_NOTES: Record<string, string[]> = {
     "Controller support, and a Controls tab in Settings to remap keys and buttons",
     "Replay the tutorial from Settings, now with a narrator",
     "A smoother sword swing sound",
-    "Duplicate drops now upgrade your gear's skills when better on every skill, otherwise they're discarded",
+    "Duplicate drops now raise your gear's skills instead of making copies; a skill never goes down",
     "Simpler Loot Filter",
   ],
   "0.903.6": [

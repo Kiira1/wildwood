@@ -91,7 +91,7 @@ it("measures a duplicate against the weapon itself, upgrades it in place, and ne
   seedCopy(f, TOP);
   draws(f, ARROW_STORM_ONLY_AT_THE_TOP);
   f.run((ctx: any) => publishItemDrop(ctx, ctx.sender, STARTER_BOW, true));
-  // Higher Arrow Storm and nothing lower: a pure upgrade, even with a better copy kept aside.
+  // Higher Arrow Storm, nothing lower: raised in place, even with a better copy kept aside.
   expect(firstRoll(f).arrowStorm).toBeGreaterThan(LOW.arrowStorm);
   draws(f, EVERY_SKILL_AT_THE_TOP);
   f.run((ctx: any) => publishItemDrop(ctx, ctx.sender, STARTER_BOW, true));

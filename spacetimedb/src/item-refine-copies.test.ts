@@ -78,7 +78,7 @@ describe("duplicate drops on a refined weapon", () => {
 
   const offers = (f: Fixture) => [...f.db.pendingEquipmentOffer.identity.filter(f.ctx.sender)];
 
-  it("upgrades a refined weapon's skills in place when better on every skill, keeping the refine", () => {
+  it("raises a refined weapon's skills in place, keeping the refine", () => {
     const f = archer();
     setRefineLevel(f.ctx, f.ctx.sender, IRON_BOW, 0n, 3);
     const key = bowSkillKey(f.ctx.sender, IRON_BOW);
@@ -101,13 +101,15 @@ describe("duplicate drops on a refined weapon", () => {
     expect(offers(f)).toEqual([]);
   });
 
-  it("throws away a roll that is better on some skills but worse on another", () => {
+  it("keeps a high skill and adds the drop's lower ones beside it", () => {
     const f = archer();
     const key = bowSkillKey(f.ctx.sender, IRON_BOW);
     f.db.playerBowSkill.key.update({ key, identity: f.ctx.sender, itemId: IRON_BOW, arrowStorm: 50, ricochet: 0, piercingShot: 0 });
     luckyRandom(f);
     publishItemDrop(f.ctx, f.ctx.sender, IRON_BOW, true, 1);
-    expect(bowSkillRollFor(f.ctx, f.ctx.sender, IRON_BOW)).toMatchObject({ arrowStorm: 50, ricochet: 0, piercingShot: 0 });
+    const roll = bowSkillRollFor(f.ctx, f.ctx.sender, IRON_BOW);
+    expect(roll.arrowStorm).toBe(50);
+    expect(roll.ricochet > 0 && roll.piercingShot > 0).toBe(true);
     expect(offers(f)).toEqual([]);
   });
 });

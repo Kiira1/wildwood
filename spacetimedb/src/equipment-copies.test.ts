@@ -77,7 +77,7 @@ it("settles a duplicate enemy drop on the spot: no offer and no spare copy", () 
   expect(f.db.playerItemDrop.key.find(`${f.ctx.sender.toHexString()}:crystal_armor`).alreadyOwned).toBe(true);
 });
 
-it("upgrades the held weapon's skills in place only when the new roll is as good on every skill and better on one", () => {
+it("raises the held weapon's skills in place, each to the higher of the two rolls, never lower", () => {
   const f = archer();
   const weak = { arrowStorm: .1, ricochet: 0, piercingShot: 0 };
   f.db.playerBowSkill.key.update({ key: bowSkillKey(f.ctx.sender, IRON_BOW), identity: f.ctx.sender, itemId: IRON_BOW, ...weak });
@@ -96,11 +96,11 @@ it("upgrades the held weapon's skills in place only when the new roll is as good
   expect(refineLevelFor(f.ctx as any, f.ctx.sender, IRON_BOW)).toBe(4);
   expect(gearSlotsFor(f.ctx as any, f.ctx.sender, IRON_BOW).cards).toEqual(["needle_card"]);
   expect([offers(f), copies(f)]).toEqual([[], []]);
-  // A trade-off, better on two skills but worse on one, is thrown away.
+  // A high skill stays high; the drop's low ones are added beside it.
   const strong = { arrowStorm: 99, ricochet: 0, piercingShot: 0 };
   f.db.playerBowSkill.key.update({ key: bowSkillKey(f.ctx.sender, IRON_BOW), identity: f.ctx.sender, itemId: IRON_BOW, ...strong });
   f.run((ctx: any) => publishItemDrop(ctx, ctx.sender, IRON_BOW, true));
-  expect(firstRoll(f)).toEqual(strong);
+  expect(firstRoll(f)).toEqual({ arrowStorm: 99, ricochet: upgraded.ricochet, piercingShot: upgraded.piercingShot });
   // An equal roll changes nothing either.
   f.db.playerBowSkill.key.update({ key: bowSkillKey(f.ctx.sender, IRON_BOW), identity: f.ctx.sender, itemId: IRON_BOW, ...upgraded });
   f.run((ctx: any) => publishItemDrop(ctx, ctx.sender, IRON_BOW, true));
