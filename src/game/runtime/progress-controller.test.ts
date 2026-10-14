@@ -47,6 +47,27 @@ function savedProgress(): PlayerProgress {
 }
 
 describe("loaded progress reconciliation", () => {
+  it("keeps max health in step when a refine of worn gear changes the health bonus and nothing else", () => {
+    const state = createGameBootstrap();
+    const saved = { ...savedProgress(), maxHp: 1_000 };
+    let bonus = .5;
+    const controller = createProgressController({
+      player: state.player, inventory: state.inventory, bootsPickup: state.bootsPickup, legacyStorageKey: "unused-legacy-save",
+      getSavedProgress: () => saved, saveRemoteProgress: vi.fn(), localIdentity: () => "guest-identity", lifetimeEnemyKills: () => 0,
+      isDeveloper: () => false, getTotalKills: () => 0, setTotalKills: vi.fn(), researchVitalityRank: () => 0,
+      healthMultiplierBonus: () => bonus, setAppliedVitalityRank: vi.fn(), renderInventory: vi.fn(), onLoaded: vi.fn(),
+    });
+    controller.load();
+    controller.load();
+    expect(state.player.maxHp).toBeCloseTo(1_500);
+    state.player.hp = 750;
+    // The armor's refine rises: its health bonus with it, and the save is the same.
+    bonus = .625;
+    controller.load();
+    expect(state.player.maxHp).toBeCloseTo(1_625);
+    expect(state.player.hp / state.player.maxHp).toBeCloseTo(.5);
+  });
+
   it("reconciles stat rewards and claimed gift ownership after initial load without replacing equipment", () => {
     const state = createGameBootstrap();
     let saved = savedProgress();
