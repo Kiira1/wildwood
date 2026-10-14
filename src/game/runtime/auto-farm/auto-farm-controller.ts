@@ -20,6 +20,9 @@ import { formatCompactNumber } from '../../../../shared/compact-number';
 import { isSoulMap, SOUL_STAT_DETAILS, type SoulStatId } from '../../../../shared/soul-dimension';
 import { soulStatOfCampName } from '../../soul-world';
 
+/** An attacker of another kind is fought off on the way only if it dies within this many seconds. */
+const QUICK_DEFENCE_SECONDS = 3;
+
 export type AutoFarmController = ReturnType<typeof createAutoFarmController>;
 const idle = (): Movement => ({ x: 0, y: 0, source: 'none' });
 /** How far inside its full reach autofarm stops: enough that a target at the stop point is still in range. */
@@ -643,8 +646,12 @@ export function createAutoFarmController(options: {
     let threat: EnemyState | null = null;
     // On the way to the boss or the next map it shoots what it passes but chases nobody. A pulled group is coming anyway.
     // Only a stat it farms is fought off: one set to Off is walked away from, and leashes home, as a player would leave it.
+    // On the way to its target it stops only for an attacker of the same kind or one it kills in a moment; a slow fight
+    // with another kind is walked away from, so a weak character is never pinned for minutes.
+    const quickKill = (enemy: EnemyState) => enemy.hp <= player.damage / Math.max(.05, player.attackRate) * QUICK_DEFENCE_SECONDS;
+    const worthDefending = (enemy: EnemyState) => !target || choiceKey(enemy) === choiceKey(target) || quickKill(enemy);
     if (phase === 'farm' && !pulling()) for (const enemy of enemies) {
-      if (!enemy.generatedBoss && farmedGroup(enemy) && isEnemyAttackingPlayer(enemy, options.localIdentity?.()) && (!threat || distance(enemy) < distance(threat))) threat = enemy;
+      if (!enemy.generatedBoss && farmedGroup(enemy) && worthDefending(enemy) && isEnemyAttackingPlayer(enemy, options.localIdentity?.()) && (!threat || distance(enemy) < distance(threat))) threat = enemy;
     }
     // Everything it farms comes to it: it stands its ground.
     if (phase === 'farm' && pullCoversFarm()) {

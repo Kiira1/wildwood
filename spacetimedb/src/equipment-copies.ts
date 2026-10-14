@@ -13,7 +13,7 @@ import { bowSkillKey } from "./bow-skills";
 import { setSwordSkillRoll } from "./sword-skills";
 import { ensureWeaponSkillRoll, weaponSkillRollFor } from "./weapon-skills";
 import { oreKindsHeldFor, promoteCopyRefine, refineLevelFor, setRefineLevel, swapFirstCopyRefine } from "./item-refine";
-import { clearGearSlots, gearSlotsFor, promoteCopySlots, rollCopySlots, rollDropSlots, swapFirstCopySlots } from "./gear-cards";
+import { clearGearSlots, gearSlotsFor, returnSlottedCards, promoteCopySlots, rollCopySlots, rollDropSlots, swapFirstCopySlots } from "./gear-cards";
 import { readPlayerProgress } from "./wide-stats";
 
 /**
@@ -275,11 +275,13 @@ export function createEquipmentCopies(deps: {
       const copy = ownCopy(ctx, copyId);
       if (copy.itemId !== canonical) throw new SenderError("That copy is not in your inventory.");
       setRefineLevel(ctx, ctx.sender, canonical, copy.id, 0);
+      returnSlottedCards(ctx, ctx.sender, canonical, copy.id);
       clearGearSlots(ctx, ctx.sender, canonical, copy.id);
       ctx.db.playerEquipmentCopy.id.delete(copy.id);
       return;
     }
     const [replacement] = extraCopiesOf(ctx, ctx.sender, canonical);
+    returnSlottedCards(ctx, ctx.sender, canonical);
     if (replacement) {
       moveEquipmentLock(ctx, ctx.sender, canonical, replacement.id, 0n);
       setFirstCopyRoll(ctx, ctx.sender, canonical, rollOf(replacement));

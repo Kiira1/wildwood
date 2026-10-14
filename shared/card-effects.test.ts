@@ -119,12 +119,12 @@ describe("card stats", () => {
     expect(carded.regen).toBeCloseTo(plain.regen, 9);
   });
 
-  it("multiplies critical damage before the cap", () => {
+  it("multiplies critical damage, and raises its cap by the same factor", () => {
     const plain = criticalDamage({ rating: 40 });
     const carded = criticalDamage({ rating: 40, card: .15 });
     expect(carded.multiplier).toBeCloseTo(plain.multiplier * 1.15, 9);
     expect(carded.fromCards).toBeCloseTo(plain.multiplier * .15, 9);
-    expect(criticalDamage({ rating: 1e9, card: 10 }).multiplier).toBe(criticalDamage({ rating: 1e9 }).cap);
+    expect(criticalDamage({ rating: 1e9, card: 10 }).cap).toBeCloseTo(criticalDamage({ rating: 1e9 }).cap * 11, 9);
   });
 });
 

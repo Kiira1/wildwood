@@ -169,10 +169,12 @@ describe('autofarm', () => {
     expect(s.farm.state()).toMatchObject({ active: true, selected: 'stat:health', status: 'Moving to enemy' });
   });
 
-  it('stops to fight an attacker of another stat it farms, then resumes its route', () => {
+  it('stops for an attacker of another stat it farms when it dies in a moment, then resumes its route', () => {
     const s = setup();
+    Object.assign(s.player, { damage: 100, attackRate: 1 });
     s.add('Bramble', 1500, 500);
     const attacker = s.add('Needle', 500, 550);
+    attacker.hp = 150;
     s.farm.start(['Bramble', 'Needle']);
     s.tick();
     attacker.engaged = true;
@@ -181,6 +183,21 @@ describe('autofarm', () => {
     expect(s.farm.state().status).toMatch(/Defending|Moving to attacker/);
     attacker.dead = true;
     expect(s.tick().x).toBeGreaterThan(0);
+  });
+
+  it('walks on to its target past an attacker of another stat it would take long to kill', () => {
+    const s = setup();
+    Object.assign(s.player, { damage: 1, attackRate: 1 });
+    s.add('Bramble', 1500, 500);
+    const attacker = s.add('Needle', 500, 550);
+    attacker.hp = 1_000;
+    s.farm.start(['Bramble', 'Needle']);
+    s.tick();
+    attacker.engaged = true;
+    attacker.aggroTargetId = 'local-player';
+    const step = s.tick();
+    expect(s.farm.state().status).not.toMatch(/Defending|Moving to attacker/);
+    expect(step.x).toBeGreaterThan(0);
   });
 
   it('does not detour for enemies fighting someone else or returning to their spawn', () => {

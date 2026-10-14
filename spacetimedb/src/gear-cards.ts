@@ -1,9 +1,9 @@
 import { SenderError, table, t } from "spacetimedb/server";
 import type { Identity } from "spacetimedb";
 import type spacetimedbType from "./index";
-import { CARD_REMOVAL_STARSHARDS, MAX_CARD_SLOTS, OWNED_GEAR_SLOTS, canHoldCards, cardDefinition, cardFitsItem, gearSlotsKey, rollGearSlots, type CardSlot } from "../../shared/cards";
+import { MAX_CARD_SLOTS, OWNED_GEAR_SLOTS, canHoldCards, cardDefinition, cardFitsItem, gearSlotsKey, rollGearSlots, type CardSlot } from "../../shared/cards";
 import { canonicalItemId } from "../../shared/items";
-import { standsAtTheSmith, takeOres } from "./item-refine";
+import { standsAtTheSmith } from "./item-refine";
 import { readPlayerProgress } from "./wide-stats";
 
 /**
@@ -113,7 +113,12 @@ export function rollCopySlots(ctx: Ctx, identity: Identity, itemId: string, copy
   if (canHoldCards(itemId)) setGearSlots(ctx, identity, itemId, copyId, { slots: rollGearSlots(ctx.random() * 1000), cards: [] });
 }
 
-/** A destroyed copy takes its slots and cards with it. */
+/** A destroyed copy's cards go back to the player's cards: taking one out is free, so destroying never costs one. */
+export function returnSlottedCards(ctx: Ctx, identity: Identity, itemId: string, copyId = 0n) {
+  for (const cardId of gearSlotsFor(ctx, identity, itemId, copyId).cards) addCard(ctx, identity, cardId);
+}
+
+/** A destroyed copy takes its slots with it; the caller returns its cards first. */
 export function clearGearSlots(ctx: Ctx, identity: Identity, itemId: string, copyId = 0n) {
   if (copyId === 0n) {
     const key = gearSlotsKey(identity, itemId);
@@ -233,7 +238,7 @@ export function slotCardFor(ctx: Ctx, args: { itemId: string; copyId: bigint; ca
   }
 }
 
-/** Lifts the card at `index` back out of a copy at the Smith, for CARD_REMOVAL_STARSHARDS; the card returns to the player's cards. */
+/** Lifts the card at `index` back out of a copy at the Smith, free; the card returns to the player's cards. */
 export function removeCardFor(ctx: Ctx, args: { itemId: string; copyId: bigint; index: number; expectedCards: number }, deps: GearCardDeps) {
   const player = deps.requireControllingPlayer(ctx);
   if (!standsAtTheSmith(ctx, player)) throw new SenderError("Talk to the Smith first.");
@@ -251,7 +256,6 @@ export function removeCardFor(ctx: Ctx, args: { itemId: string; copyId: bigint; 
   if (current.cards.length !== args.expectedCards) throw new SenderError("That item's cards changed. Try again.");
   const cardId = current.cards[args.index];
   if (cardId === undefined) throw new SenderError("That slot is empty.");
-  if (!takeOres(ctx, ctx.sender, { starshard: CARD_REMOVAL_STARSHARDS })) throw new SenderError(`You need ${CARD_REMOVAL_STARSHARDS} Starshards.`);
   setGearSlots(ctx, ctx.sender, itemId, copyId, { slots: current.slots, cards: current.cards.filter((_, index) => index !== args.index) });
   addCard(ctx, ctx.sender, cardId);
   // A worn item losing a card changes the player's stats now, attack speed cap included.

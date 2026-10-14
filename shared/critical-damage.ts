@@ -69,10 +69,11 @@ export function criticalDamage(parts: CriticalDamageParts) {
   const { research, perk } = criticalDamageBonuses(parts);
   const soul = amount(parts.soul), rating = amount(parts.rating);
   const bonusLevels = critBonusLevels(research + perk);
-  const cap = critCapForRank(parts.capRank);
   const fromSoul = soulCritDamageBonus(soul);
   const curve = critDamageForLevels(ratingLevels(rating) + bonusLevels);
   const cardFactor = 1 + amount(parts.card);
+  // Crit damage cards raise the cap with the damage, so they still help a player already at it.
+  const cap = critCapForRank(parts.capRank) * cardFactor;
   const uncapped = (curve + fromSoul) * cardFactor;
   const multiplier = Math.min(cap, uncapped);
   // Each part's share, as the profile lists it.

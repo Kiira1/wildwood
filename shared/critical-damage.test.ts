@@ -59,3 +59,14 @@ describe("critical damage", () => {
     expect(critMultiplierGainLabel({ soul: RATING_MAX }, 100)).toBe("Capped");
   });
 });
+
+describe("crit damage cards", () => {
+  it("raise the cap with the damage, so a capped player still gains from them", () => {
+    const capped = { rating: RATING_MAX, capRank: 5 };
+    expect(criticalDamageMultiplier(capped)).toBeCloseTo(CRIT_CAP_CEILING);
+    const carded = criticalDamage({ ...capped, card: .15 });
+    expect(carded.cap).toBeCloseTo(CRIT_CAP_CEILING * 1.15);
+    expect(carded.multiplier).toBeCloseTo(CRIT_CAP_CEILING * 1.15);
+    expect(critMultiplierGainLabel({ ...capped, card: .15 }, 100)).toBe("Capped");
+  });
+});

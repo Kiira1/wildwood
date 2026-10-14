@@ -1,4 +1,9 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.903.8": [
+    "Taking a card out at the Smith is free, and destroying gear gives its cards back",
+    "Crit Damage cards raise the crit damage cap",
+    "Auto Farm no longer gets pinned by attackers it's slow to kill",
+  ],
   "0.903.7": [
     "Controller support, and a Controls tab in Settings to remap keys and buttons",
     "Replay the tutorial from Settings, now with a narrator",
@@ -3341,6 +3346,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.903.8": "2026-10-14",
   "0.903.7": "2026-10-14",
   "0.903.6": "2026-10-14",
   "0.903.5": "2026-10-14",

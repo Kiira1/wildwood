@@ -7,7 +7,7 @@ import { itemInspectionButtonLabel } from "./item-inspection-controller";
 import { formatEquipmentStat } from "./equipment-stat-format";
 import { refineStars } from "./refine-badge";
 import { ORE_ORDER } from "../../shared/ore-bag";
-import { CARDS, CARD_REMOVAL_STARSHARDS, cardDefinition, cardFitsItem, type CardSlot } from "../../shared/cards";
+import { CARDS, cardDefinition, cardFitsItem, type CardSlot } from "../../shared/cards";
 import { CARD_SLOT_NAMES, cardEffectText, cardName } from "../../shared/card-text";
 import { byMapThenRarity, cardTile } from "./cards-tab";
 import { cardPortrait } from "./card-portrait";
@@ -199,7 +199,7 @@ export function createSmithController(deps: {
       button.addEventListener("click", () => { void slot(item, card.id, cards.length); });
       const warning = document.createElement("p");
       warning.className = "smith-empty";
-      warning.textContent = deps.removeCard ? `Taking a card back out costs ${CARD_REMOVAL_STARSHARDS} Starshards.` : "A slotted card stays in for good.";
+      warning.textContent = deps.removeCard ? "Cards come back out free here, and return to your cards if the gear is destroyed." : "A slotted card stays in for good.";
       focus.append(effects, button, warning);
     }
     appendOutcome();
@@ -313,18 +313,16 @@ export function createSmithController(deps: {
     if (dialog.open) render();
   }
 
-  /** Remove on a slotted card: a first tap arms it, a second removes it for Starshards. */
+  /** Remove on a slotted card: a first tap arms it, a second takes it out, free. */
   function removeButton(item: SmithItem, index: number, expectedCards: number) {
     const slotKey = `${key(item)}:${index}`;
-    const held = deps.ores()?.starshard ?? 0;
     const button = document.createElement("button");
     button.type = "button";
     button.className = "smith-slot-remove";
     const armed = armedRemoval === slotKey;
-    button.textContent = slotting ? "Working…" : held < CARD_REMOVAL_STARSHARDS ? `Need ${CARD_REMOVAL_STARSHARDS} Starshards`
-      : armed ? "Confirm Remove" : `Remove · ${CARD_REMOVAL_STARSHARDS} Starshards`;
+    button.textContent = slotting ? "Working…" : armed ? "Confirm Remove" : "Remove";
     button.classList.toggle("is-armed", armed);
-    button.disabled = slotting || held < CARD_REMOVAL_STARSHARDS;
+    button.disabled = slotting;
     button.addEventListener("click", () => {
       if (armedRemoval !== slotKey) { armedRemoval = slotKey; render(); return; }
       armedRemoval = null;

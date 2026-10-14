@@ -19,7 +19,7 @@ export function cardEffectText(effect: CardEffect): string {
   const lines: Partial<Record<CardEffectId, () => string>> = {
     atk: () => `Damage ${signed(v)}%`,
     critChance: () => `Crit Chance ${signed(v)}%`,
-    critDamage: () => `Crit Damage ${signed(v)}%`,
+    critDamage: () => `Crit Damage and its cap ${signed(v)}%`,
     doubleStrike: () => `${abs}% chance a hit lands twice`,
     splitShot: () => `${abs}% chance to also hit a second nearby enemy`,
     bossSlayer: () => `Damage to bosses ${signed(v)}%`,

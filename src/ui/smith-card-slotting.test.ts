@@ -117,17 +117,12 @@ it("preserves controls for unrelated updates and refreshes changed card counts",
   expect(view.q('[data-card-id="needle_card"]').getAttribute("aria-label")).toBe("Needle Card, 3");
 });
 
-it("takes a slotted card back out for Starshards after a second tap", async () => {
-  const ores: Record<string, number> = { starshard: 4 };
+it("takes a slotted card back out free after a second tap", async () => {
   const removeCard = vi.fn(async () => ({ ok: true }));
-  const view = smith({ ores: () => ores, removeCard });
+  const view = smith({ removeCard });
   const remove = () => view.q(".smith-slot.is-filled .smith-slot-remove");
-  expect(view.q(".smith-focus").textContent).not.toContain("for good");
-  expect(remove().textContent).toBe("Need 5 Starshards");
-  expect(remove().disabled).toBe(true);
-  ores.starshard = 5;
-  view.controller.render();
-  expect(remove().textContent).toBe("Remove · 5 Starshards");
+  expect(remove().textContent).toBe("Remove");
+  expect(remove().disabled).toBe(false);
   remove().click();
   expect(removeCard).not.toHaveBeenCalled();
   expect(remove().textContent).toBe("Confirm Remove");
