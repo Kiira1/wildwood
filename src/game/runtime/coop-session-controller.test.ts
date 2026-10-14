@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("../../wildstat-coop", () => ({ wildstatCoop: {} }));
 
-import { createCoopSessionController } from "./coop-session-controller";
+import { createCoopSessionController, createSessionWindowRefresh } from "./coop-session-controller";
 
 function harness() {
   const frames: Array<() => void> = [];
@@ -18,7 +18,7 @@ function harness() {
   const controller = createCoopSessionController({
     coop,
     syncLifetimeKills: noop, refreshGemCounter: noop, refreshBalanceApologyGift: noop, refreshDailyGemBonus: noop,
-    refreshOpenProfile: noop, refreshLeaderboard: noop, refreshDevPanel: noop, loadProgress,
+    refreshWindows: noop, refreshLeaderboard: noop, refreshDevPanel: noop, loadProgress,
     observedSessionGeneration: () => state.observed,
     setObservedSessionGeneration: (generation) => { state.observed = generation; },
     resetMovementSync, running: () => false, syncPlayerState: noop, reconcileMap: noop, syncBossState: noop,
@@ -68,4 +68,17 @@ describe("coop session controller", () => {
     h.controller.onChange();
     expect(h.loadProgress).toHaveBeenCalledTimes(2);
   });
+});
+
+it("refreshes inventory card rows and an open Smith even with no profile open", () => {
+  const inventory = { render: vi.fn() }, smith = { isOpen: () => true, render: vi.fn() };
+  const profileWindow = { identity: () => null, render: vi.fn() };
+  const refresh = createSessionWindowRefresh({ coop: null, playerSafety: { refresh: vi.fn() }, inventory, smith, profileWindow });
+  refresh();
+  expect(inventory.render).toHaveBeenCalledOnce();
+  expect(smith.render).toHaveBeenCalledOnce();
+  expect(profileWindow.render).not.toHaveBeenCalled();
+  smith.isOpen = () => false;
+  refresh();
+  expect(smith.render).toHaveBeenCalledOnce();
 });

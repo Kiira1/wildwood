@@ -59,7 +59,7 @@ import { createCamera } from "./game/runtime/render/camera";
 import { createCombatEffects } from "./game/runtime/combat-effects";
 import { createEnemyLifecycle } from "./game/runtime/enemies/enemy-lifecycle";
 import { createEnemySimulation, LOCAL_REGULAR_ENEMY_TARGET_ID } from "./game/runtime/enemies/enemy-simulation";
-import { claimCoopClient, createCoopSessionController } from "./game/runtime/coop-session-controller";
+import { claimCoopClient, createCoopSessionController, createSessionWindowRefresh } from "./game/runtime/coop-session-controller";
 import { createProgressController } from "./game/runtime/progress-controller";
 import { createGameSessionController } from "./game/runtime/game-session-controller";
 import { backgroundMapPreloadAvailability, createAdjacentMapAssetPreloader } from "./game/runtime/render/map-asset-preloader";
@@ -1858,13 +1858,7 @@ import {
     refreshGemCounter,
     refreshBalanceApologyGift: mailbox.refresh,
     refreshDailyGemBonus,
-    refreshOpenProfile: () => {
-      playerSafety.refresh();
-      const identity = profileWindow.identity();
-      if (!identity) return;
-      const profile = coop?.playerProfile?.(identity);
-      if (profile) profileWindow.render(profile);
-    },
+    refreshWindows: createSessionWindowRefresh({ coop, playerSafety, profileWindow, inventory: inventoryController, smith }),
     refreshLeaderboard: () => leaderboard.setUnlocked(leaderboardEligible(
       coop?.savedProgress?.()?.desertUnlocked,
       coop?.prestige?.()?.level,

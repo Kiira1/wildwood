@@ -1,5 +1,7 @@
-import { expect, it, vi } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import { createCardRows } from "./card-service";
+
+afterEach(() => vi.useRealTimers());
 
 function fakeConnection() {
   const handlers: Array<() => void> = [];
@@ -62,4 +64,18 @@ it("sends a card with the count of cards the player saw, and reports the server'
 it("does nothing without a current connection", async () => {
   const service = createCardRows(vi.fn());
   await expect(service.api.slotCard("ion_bow", 0n, "needle_card", 0)).resolves.toEqual({ ok: false, error: "NOT CONNECTED" });
+});
+
+it("releases a slotting request that never answers, so the same slot count can be retried", async () => {
+  vi.useFakeTimers();
+  const fake = fakeConnection(), service = createCardRows(vi.fn());
+  service.watch(fake.connection, () => true);
+  fake.reducers.slotCard.mockImplementationOnce(() => new Promise(() => {}));
+  const request = service.api.slotCard("ion_bow", 4n, "needle_card", 1);
+  const completed = vi.fn();
+  void request.then(completed);
+  await vi.advanceTimersByTimeAsync(10_000);
+  expect(completed).toHaveBeenCalledWith({ ok: false, error: "Request timed out. Try again." });
+  await expect(service.api.slotCard("ion_bow", 4n, "needle_card", 1)).resolves.toEqual({ ok: true });
+  expect(fake.reducers.slotCard).toHaveBeenLastCalledWith({ itemId: "ion_bow", copyId: 4n, cardId: "needle_card", expectedCards: 1 });
 });

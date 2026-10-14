@@ -1,6 +1,7 @@
 import { tables, type DbConnection } from "../../module_bindings";
 import { MAX_CARD_SLOTS, OWNED_GEAR_SLOTS, cardDefinition } from "../../../shared/cards";
 import { reducerErrorMessage } from "./reducer-errors";
+import { withRequestDeadline } from "./request-deadline";
 
 export type GearSlots = { slots: number; cards: readonly string[] };
 export type CardDrop = { cardIds: readonly string[]; sequence: bigint };
@@ -79,7 +80,8 @@ export function createCardRows(notify: () => void) {
         const current = target;
         if (!current || !current.isCurrent() || !current.connection.isActive) return { ok: false, error: "NOT CONNECTED" };
         try {
-          await current.connection.reducers.slotCard({ itemId, copyId, cardId, expectedCards });
+          // expectedCards makes a retry safe if the connection drops after the server commits.
+          await withRequestDeadline(current.connection.reducers.slotCard({ itemId, copyId, cardId, expectedCards }));
           return { ok: true };
         } catch (error) {
           return { ok: false, error: reducerErrorMessage(error) };

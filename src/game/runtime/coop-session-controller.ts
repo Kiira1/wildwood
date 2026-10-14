@@ -18,13 +18,31 @@ export function claimCoopClient(simulatedSeconds: () => number) {
 }
 type AccountState = ReturnType<CoopClient["accountState"]>;
 
+/** Refresh row-backed windows even when the saved inventory's ownership has not changed. */
+export function createSessionWindowRefresh(options: {
+  coop: CoopClient | null;
+  playerSafety: { refresh: () => void };
+  profileWindow: { identity: () => string | null; render: (profile: NonNullable<ReturnType<CoopClient["playerProfile"]>>) => void };
+  inventory: { render: () => void };
+  smith: { isOpen: () => boolean; render: () => void };
+}) {
+  return () => {
+    options.playerSafety.refresh();
+    options.inventory.render();
+    if (options.smith.isOpen()) options.smith.render();
+    const identity = options.profileWindow.identity();
+    const profile = identity ? options.coop?.playerProfile?.(identity) : null;
+    if (profile) options.profileWindow.render(profile);
+  };
+}
+
 type CoopSessionDependencies = {
   coop: CoopClient | null;
   syncLifetimeKills: (identity: string) => void;
   refreshGemCounter: () => void;
   refreshBalanceApologyGift: () => void;
   refreshDailyGemBonus: () => void;
-  refreshOpenProfile: () => void;
+  refreshWindows: () => void;
   refreshLeaderboard: () => void;
   refreshDevPanel: () => void;
   loadProgress: () => void;
@@ -77,10 +95,10 @@ export function createCoopSessionController(dependencies: CoopSessionDependencie
     refreshedIdentity = identity;
     dependencies.syncLifetimeKills(identity);
     dependencies.refreshGemCounter();
-    dependencies.refreshOpenProfile();
     dependencies.refreshLeaderboard();
     dependencies.refreshDevPanel();
     dependencies.loadProgress();
+    dependencies.refreshWindows();
 
     const nextGeneration = coop.sessionGeneration?.() || 0;
     if (nextGeneration !== dependencies.observedSessionGeneration()) {

@@ -803,6 +803,21 @@
 .smith-sheet .smith-choice[aria-selected="true"] { border-color: #ffd75e; background: rgba(255,215,94,.1); }
 .smith-sheet .smith-choice-art .inventory-item-art { width: 40px; height: 36px; }
 .smith-sheet .smith-worn { position: absolute; bottom: 2px; left: 4px; color: var(--muted); font-size: 10px; font-weight: 800; }
+/* The Smith's Cards tab: the copy's slots, the picked card's effects, and the cards that fit it. */
+.smith-sheet .smith-tabs { margin: 0 auto 4px; }
+.smith-sheet .smith-mining[hidden], .smith-sheet .smith-cards[hidden], .smith-sheet .smith-cards-note[hidden] { display: none; }
+.smith-sheet .smith-slot-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.smith-sheet .smith-slot { display: flex; align-items: center; gap: 6px; min-height: 44px; padding: 4px 10px; border: 2px dashed rgba(255,255,255,.22); border-radius: 8px; color: var(--muted); font-size: 13px; font-weight: 800; }
+.smith-sheet .smith-slot.is-filled { border-style: solid; border-color: #b9c3cc; color: #fff; }
+.smith-sheet .smith-slot.is-elite { border-color: #b48cff; }
+.smith-sheet .smith-slot.is-boss { border-color: #f2c14e; }
+.smith-sheet .smith-slot img { width: 28px; height: 35px; }
+.smith-sheet .smith-card-effects { display: grid; gap: 3px; margin: 0; padding: 0; list-style: none; text-align: center; font-size: 14px; font-weight: 800; }
+.smith-sheet .smith-card-effects .is-cost { color: #ff9b91; }
+.smith-sheet .smith-cards { display: grid; gap: 6px; margin: 0 14px 12px; container-type: inline-size; }
+.smith-sheet .smith-card-grid .is-card[aria-selected="true"] { border-color: #ffd75e; background: rgba(255,215,94,.1); }
+.smith-sheet .smith-card-grid .is-card:disabled { opacity: .55; cursor: default; }
+.smith-sheet .smith-slot-pips { position: absolute; top: 2px; left: 4px; color: #ffd75e; font-size: 11px; letter-spacing: 1px; line-height: 1; }
 /* A refine on any item: a gold star and its level, where the slot tier keeps its green +N. */
 .refine-badge { position: absolute; top: 2px; right: 4px; color: #ffd75e; font-size: 11px; font-weight: 900; text-shadow: 0 1px 0 #000, 0 0 3px rgba(0,0,0,.8); pointer-events: none; }
 /* A worn slot hides its +N (the banner says the level), so the star takes that corner. A bag tile's tier sits
@@ -835,7 +850,7 @@
 .inventory-item.is-card .inventory-item-art-wrap .card-tile-art { width: 100%; height: 100%; image-rendering: auto; }
 /* Phone width: four wider cards, so a one-word name like Dreadreaper keeps to one line. */
 @container (max-width: 380px) {
-  .cards-tab-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .cards-tab-grid, .smith-card-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 .item-inspection-icon.is-card img { width: 112px; height: 140px; image-rendering: auto; }
 .card-origin { color: #b9c3cc; font: 900 13px/16px var(--font-rounded); }

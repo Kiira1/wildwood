@@ -97,7 +97,9 @@ import { describe, expect, it } from "vitest";
 // 1_945 (2026-10-12): live reward labels, its import and one line building
 // the context both the world renderer and the map's Enemy Index read; the
 // context and the labels live in reward-labels.ts.
-const MAX_LINES = 1_945;
+// 1_939: refreshing row-backed windows moved into coop-session-controller.ts;
+// card counts and open Smith slots now refresh even when gear ownership is unchanged.
+const MAX_LINES = 1_939;
 const TARGET_LINES = 1_000;
 
 describe("game composition boundary", () => {

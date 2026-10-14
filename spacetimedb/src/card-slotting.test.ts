@@ -62,6 +62,14 @@ describe("slotting a card", () => {
     expect(f.cards()).toBe(3);
   });
 
+  it("spends only one card when a timed-out request is retried with the same observed count", () => {
+    const f = atTheSmith();
+    f.slot("needle_card", "ion_bow", 0n, 0);
+    expect(() => f.slot("needle_card", "ion_bow", 0n, 0)).toThrow("That item's cards changed.");
+    expect(f.slots()).toEqual({ slots: 2, cards: ["needle_card"] });
+    expect(f.cards()).toBe(2);
+  });
+
   it("slots a kept copy's own slots, not the first copy's", () => {
     const f = atTheSmith();
     const copy = f.seed("playerEquipmentCopy", { id: 0n, identity: f.ctx.sender, itemId: "ion_bow", arrowStorm: 0, ricochet: 0, piercingShot: 0, acquiredAt: f.ctx.timestamp });
