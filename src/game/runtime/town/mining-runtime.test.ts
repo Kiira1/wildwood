@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { MINING_NODES, MINING_NODE_KINDS, miningBreakSeconds } from "../../../../shared/mining";
 import { TOWN_ARRIVAL, TOWN_FEET_OFFSET } from "../../../../shared/town";
-import { createMiningRuntime, type MiningSource } from "./mining-runtime";
+import { createMiningRuntime, miningHitAt, miningHits, type MiningSource } from "./mining-runtime";
 import { miningScene, resetMiningScene } from "./mining-scene";
 import type { PlayerState } from "../types";
 import type { BagSpace } from "../../../../shared/ore-bag";
@@ -35,13 +35,46 @@ describe("mining in the Copper Hills", () => {
     const m = miner();
     m.run(1);
     expect(miningScene).toMatchObject({ target: copper.id, pickaxeOut: true });
-    expect(miningScene.progress).toBeCloseTo(1 / miningBreakSeconds(copper, 0), 1);
+    // A 4 s rock takes 6 hits, the first landing at 0.5 s.
+    expect(miningScene.progress).toBeCloseTo(1 / 6, 5);
     expect(m.source.mineNode).not.toHaveBeenCalled();
     m.run(miningBreakSeconds(copper, 0));
     expect(m.source.mineNode).toHaveBeenCalledWith(copper.id);
     expect(m.source.mineNode).toHaveBeenCalledTimes(1);
     // Bare at once, before the server's word.
     expect(miningScene.bare.has(copper.id)).toBe(true);
+  });
+
+  it("steps the bar once per hit, a swing apart, full on the hit that breaks the rock when the break is due", () => {
+    for (const [node, mining] of [[copper, 0], [rock("copper_ore", "large"), 0], [copper, 240]] as const) {
+      resetMiningScene();
+      const m = miner(node, { mining: () => mining });
+      const seconds = miningBreakSeconds(node, mining), hits = miningHits(seconds);
+      expect(hits).toBe(Math.ceil(seconds / .7 - 1e-9));
+      const steps: { at: number; progress: number }[] = [], swings: number[] = [];
+      let at = 0, progress = 0, swing = 0, breakAt = NaN;
+      const dt = 1 / 120;
+      while (Number.isNaN(breakAt) && at < seconds + 1) {
+        m.runtime.update(dt, true);
+        at += dt;
+        if (miningScene.swingClock > swing) swings.push(at);
+        swing = miningScene.swingClock;
+        if (miningScene.progress !== progress) { progress = miningScene.progress; steps.push({ at, progress }); }
+        if ((m.source.mineNode as ReturnType<typeof vi.fn>).mock.calls.length) breakAt = at;
+      }
+      // One step of 1/hits on each hit landing, a swing (0.7 s) apart, the last as the break is due.
+      expect(steps.map(step => step.progress)).toEqual(Array.from({ length: hits }, (_, index) => expect.closeTo((index + 1) / hits, 9)));
+      steps.forEach((step, index) => expect(step.at, `hit ${index}`).toBeCloseTo(miningHitAt(seconds, index), 1));
+      for (let index = 1; index < hits; index++) expect(steps[index].at - steps[index - 1].at).toBeLessThanOrEqual(.7 + dt);
+      expect(breakAt).toBeCloseTo(seconds, 1);
+      expect(steps.at(-1)!.at).toBeCloseTo(breakAt, 5);
+      // Each swing starts its windup before its hit, and the full bar stays up over the broken rock a moment.
+      expect(swings).toHaveLength(hits);
+      swings.forEach((started, index) => expect(steps[index].at - started).toBeLessThanOrEqual(.12 + dt));
+      expect(miningScene).toMatchObject({ target: node.id, progress: 1 });
+      m.run(1);
+      expect(miningScene.target).not.toBe(node.id);
+    }
   });
 
   it("pauses while the player walks, keeping the progress made", () => {
