@@ -437,6 +437,19 @@ describe('autofarm update handoff', () => {
     s.setMap('forest'); s.setUnavailable(null); s.advance(1000);
     expect(s.tick().x).toBeGreaterThan(0);
   });
+  it('keeps a restored farm through travel from the Town after an update reload', () => {
+    const memory = store(), before = setup([], 'starter_bow', memory);
+    before.add('Bramble', 1000, 500); before.farm.start('Bramble');
+    // The farm's own Move On reaches the Town, which has nothing to farm, and an update reloads the tab there.
+    before.setMap('town'); before.farm.refresh();
+    const after = setup([], 'starter_bow', memory);
+    after.setMap('town'); after.farm.refresh();
+    after.farm.travelStarted();
+    expect(memory.read()).not.toBeNull();
+    after.setMap('forest'); after.add('Bramble', 1000, 500);
+    after.farm.refresh(); after.advance(1000);
+    expect(after.tick().x).toBeGreaterThan(0);
+  });
   it.each(['stop', 'character', 'sign-in'] as const)('does not resurrect farming after %s', change => {
     const memory = store(), before = setup([], 'starter_bow', memory);
     before.add('Bramble', 1000, 500); before.farm.start('Bramble');
@@ -846,11 +859,11 @@ describe('autofarm plans: sliders, the boss and the next map', () => {
     expect(s.farm.state()).toMatchObject({ active: false, status: 'Moving to the next map' });
     expect(s.resumeStore.read()).toMatchObject({ identity: 'me', map: 'beginner_desert' });
     expect(decodeFarmPlan(s.resumeStore.read()!.choice)![health]).toBe(100);
-    // Without the switch, travel ends the farm as it always has.
+    // Without the switch the farm still follows travel the player starts, and a reload on the way keeps it.
     const off = planned({ nextPortal: () => ({ x: 200, y: 500, destination: 'beginner_desert' }) });
     off.add('Bramble', 900, 500); off.farm.start([]); off.tick();
     off.farm.travelStarted();
-    expect(off.resumeStore.read()).toBeNull();
+    expect(off.resumeStore.read()).toMatchObject({ identity: 'me' });
   });
 
   it("carries sliders all at 0% to the next map: it pulls there and stands still instead of farming every group", () => {

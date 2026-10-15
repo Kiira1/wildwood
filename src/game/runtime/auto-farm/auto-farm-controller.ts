@@ -613,9 +613,13 @@ export function createAutoFarmController(options: {
   function travelStarted() {
     zeroWaiting = false;
     if (!active && !pendingResume) return;
-    if (!startedIdentity) { stop('Map changed · choose stats'); return; }
+    // After an update reload the farm waits as a restored intent, with no startedIdentity yet: travel carries that intent on.
+    const identity = startedIdentity ?? pendingResume?.identity;
+    if (!identity) { stop('Map changed · choose stats'); return; }
     // The player's sliders as last set, not this map's split of them: a stat this map lacks is farmed again where it is paid.
-    const intent = { identity: startedIdentity, map: travellingTo ?? '', choice: encodeFarmPlan(readSavedShares(startedMap, options.priorityStorage) ?? shares) };
+    const choice = startedIdentity ? encodeFarmPlan(readSavedShares(startedMap, options.priorityStorage) ?? shares) : pendingResume!.choice;
+    // A stored intent needs a map, or it is not read back after a reload; any map will do, restoring does not check it.
+    const intent = { identity, map: travellingTo ?? options.mapId(), choice };
     const label = travellingTo ? 'Moving to the next map' : 'Changing map';
     stop(label);
     pendingResume = intent;
