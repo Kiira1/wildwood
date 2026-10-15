@@ -1,4 +1,8 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.906.0": [
+    "Refining no longer drops a level when it fails",
+    "Refining now goes up to ★30",
+  ],
   "0.905.1": [
     "No pause after stepping through a portal: walk on straight away",
     "Portals bring you out inside the matching portal, right where you went in",
@@ -3372,6 +3376,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.906.0": "2026-10-15",
   "0.905.1": "2026-10-15",
   "0.905.0": "2026-10-14",
   "0.904.2": "2026-10-14",

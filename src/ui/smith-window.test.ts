@@ -35,13 +35,13 @@ function smith(options: { inTown?: boolean; ores?: Partial<Record<OreId, number>
   return { controller, dialog, q, facts, choices, refine, showMessage, levels, claimPickaxe, setPickaxe: (value: boolean) => { pickaxe = value; } };
 }
 
-it("lists only gear the Smith can refine, worn first, and shows a risky try's odds and what a fail costs", () => {
+it("lists only gear the Smith can refine, worn first, and shows a risky try's odds and its cost", () => {
   const view = smith();
   view.controller.open();
   expect(view.choices().map(choice => choice.getAttribute("aria-label"))).toEqual(["Bow ★7, worn", "Stone Bow", "Wooden Armor ★2"]);
   expect(view.q(".smith-item strong").textContent).toBe("Bow ★7");
   // The starter bow is safe to ★7 (grade 1); +8 is the first risky step.
-  expect(view.facts()).toEqual({ Chance: "60%", "Safe to": "★7", "If it fails": "Drops to ★6", Costs: "1 Copper Ore" });
+  expect(view.facts()).toEqual({ Chance: "60%", "Safe to": "★7", Costs: "1 Copper Ore" });
   expect(view.q(".smith-stat").textContent).toMatch(/^Damage \+[\d.]+% → \+[\d.]+%$/);
   const button = view.q(".smith-refine") as HTMLButtonElement;
   expect([button.textContent, button.disabled]).toEqual(["Refine", false]);
@@ -71,9 +71,8 @@ it("sends the level the player saw, and shows the server's verdict either way", 
   view.controller.showResult({ itemId: STARTER_BOW, copyId: 0n, fromLevel: 7, toLevel: 8, succeeded: true });
   expect(view.q(".smith-outcome").textContent).toBe("Success! Bow ★8");
   expect(view.showMessage).toHaveBeenLastCalledWith("Refined · Bow ★8", "#ffd75e");
-  view.levels[`${STARTER_BOW}:0`] = 7;
-  view.controller.showResult({ itemId: STARTER_BOW, copyId: 0n, fromLevel: 8, toLevel: 7, succeeded: false });
-  expect(view.q(".smith-outcome").textContent).toBe("It failed. Dropped to ★7.");
+  view.controller.showResult({ itemId: STARTER_BOW, copyId: 0n, fromLevel: 8, toLevel: 8, succeeded: false });
+  expect(view.q(".smith-outcome").textContent).toBe("It failed. Nothing lost but the ore.");
 });
 
 it("shows the server's refusal where the player is looking", async () => {

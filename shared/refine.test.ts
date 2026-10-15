@@ -58,15 +58,16 @@ describe("safe limits and odds", () => {
     }
   });
 
-  it("make +10 a real goal, harder the higher the grade, and +20 far off for now", () => {
-    // In tries, one ore each. Hard on purpose.
+  it("take more tries the higher the grade and the level, +30 the longest climb", () => {
+    // In tries, one ore each; a fail keeps the level.
     const tries = [bows.grade1, bows.grade2, bows.grade3, bows.grade4].map(expectedRefineTries);
     expect(tries[0][7]).toBe(7);
     expect(tries[3][4]).toBe(4);
-    expect(tries[0][10]).toBeGreaterThan(20); expect(tries[0][10]).toBeLessThan(100);
-    expect(tries[3][10]).toBeGreaterThan(1_000); expect(tries[3][10]).toBeLessThan(5_000);
+    expect(tries[0][10]).toBeCloseTo(7 + 1 / .6 + 1 / .4 + 1 / .2, 9);
+    expect(tries[3][10]).toBeGreaterThan(20); expect(tries[3][10]).toBeLessThan(40);
     for (let grade = 1; grade < 4; grade++) expect(tries[grade][10], `grade ${grade + 1}`).toBeGreaterThan(tries[grade - 1][10]);
-    expect(tries[3][20]).toBeGreaterThan(1e9);
+    expect(tries[3][20]).toBeGreaterThan(150); expect(tries[3][20]).toBeLessThan(200);
+    expect(tries[3][30]).toBeGreaterThan(500); expect(tries[3][30]).toBeLessThan(600);
     for (let level = 1; level <= REFINE_MAX; level++) expect(Number.isFinite(tries[3][level]), `+${level}`).toBe(true);
   });
 });
@@ -81,9 +82,11 @@ describe("a try", () => {
     expect(refineCost(bows.grade4, REFINE_MAX + 1)).toBeNull();
   });
 
-  it("goes up a level when it works and down one when it fails, never below +0 or past +20", () => {
+  it("goes up a level when it works and keeps its level when it fails, never past +30", () => {
+    expect(REFINE_MAX).toBe(30);
     expect(refineResultLevel(4, true)).toBe(5);
-    expect(refineResultLevel(4, false)).toBe(3);
+    expect(refineResultLevel(4, false)).toBe(4);
+    expect(refineResultLevel(25, false)).toBe(25);
     expect(refineResultLevel(0, false)).toBe(0);
     expect(refineResultLevel(REFINE_MAX, true)).toBe(REFINE_MAX);
     expect(normalizeRefineLevel(-3)).toBe(0);
@@ -95,7 +98,7 @@ describe("a try", () => {
   it("works when the roll lands under the chance", () => {
     // Ion Bow +4 to +5: 60%.
     expect(rollRefine(bows.grade4, 4, .599)).toEqual({ succeeded: true, level: 5 });
-    expect(rollRefine(bows.grade4, 4, .6)).toEqual({ succeeded: false, level: 3 });
+    expect(rollRefine(bows.grade4, 4, .6)).toEqual({ succeeded: false, level: 4 });
     // Within the safe limit any roll works.
     expect(rollRefine(bows.grade4, 3, .9999)).toEqual({ succeeded: true, level: 4 });
   });
@@ -108,6 +111,7 @@ describe("what a level adds", () => {
     expect(refineMultiplier(10)).toBeCloseTo(1.5, 9);
     expect(refineMultiplier(11)).toBeCloseTo(1.6, 9);
     expect(refineMultiplier(20)).toBeCloseTo(2.5, 9);
-    expect(refineMultiplier(25)).toBeCloseTo(2.5, 9);
+    expect(refineMultiplier(30)).toBeCloseTo(3.5, 9);
+    expect(refineMultiplier(35)).toBeCloseTo(3.5, 9);
   });
 });

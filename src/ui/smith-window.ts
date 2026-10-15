@@ -122,7 +122,6 @@ export function createSmithController(deps: {
     if (!atTop) {
       fact("Chance", next <= safe ? "Safe" : percent(chance), next <= safe ? "is-safe" : "is-risky");
       fact("Safe to", `★${safe}`);
-      if (next > safe) fact("If it fails", level > 0 ? `Drops to ${refineStars(level - 1) || "★0"}` : "Stays at ★0", "is-risky");
       fact("Costs", Object.entries(cost!).map(([oreId, count]) => `${count} ${REFINE_ORES[oreId as OreId].name}`).join(" + "));
     }
     const button = document.createElement("button");
@@ -246,7 +245,7 @@ export function createSmithController(deps: {
       button.disabled = slotting;
     }
     intro.textContent = tab === "cards" ? "Slot cards into gear. Each card adds its effects to the gear it is in."
-      : "Refine gear with ore. Safe up to its limit; past it a fail drops one ★.";
+      : "Refine gear with ore. Safe up to its limit; past it a try can fail, and a fail costs only the ore.";
     oreLine.hidden = mining.hidden = tab === "cards";
     renderCardList(chosen);
     if (tab === "cards") renderSlots(chosen);
@@ -308,7 +307,7 @@ export function createSmithController(deps: {
     const name = `${nameOf(result.itemId)} ${refineStars(result.toLevel) || "★0"}`;
     lastResult = result.succeeded
       ? { text: `Success! ${name}`, good: true }
-      : { text: `It failed. ${result.toLevel < result.fromLevel ? `Dropped to ${refineStars(result.toLevel) || "★0"}` : "Nothing lost but the ore"}.`, good: false };
+      : { text: "It failed. Nothing lost but the ore.", good: false };
     deps.showMessage(result.succeeded ? `Refined · ${name}` : `Refine Failed · ${name}`, result.succeeded ? "#ffd75e" : "#ff9b91");
     if (dialog.open) render();
   }

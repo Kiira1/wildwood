@@ -55,13 +55,13 @@ describe("a refine try", () => {
     expect(result(f)).toMatchObject({ itemId: "ion_bow", copyId: 0n, fromLevel: 3, toLevel: 4, succeeded: true, attempt: 4 });
   });
 
-  it("past the safe limit works under the chance and drops a level over it, spending the ore either way", () => {
+  it("past the safe limit works under the chance and keeps its level over it, spending the ore either way", () => {
     const f = atBench();
     setRefineLevel(f.ctx, f.ctx.sender, "ion_bow", 0n, 4);
     f.rolls(.999);
     f.refine();
-    expect(f.level()).toBe(3);
-    expect(result(f)).toMatchObject({ fromLevel: 4, toLevel: 3, succeeded: false });
+    expect(f.level()).toBe(4);
+    expect(result(f)).toMatchObject({ fromLevel: 4, toLevel: 4, succeeded: false });
     setRefineLevel(f.ctx, f.ctx.sender, "ion_bow", 0n, 4);
     f.rolls(0);
     f.refine();
@@ -69,7 +69,7 @@ describe("a refine try", () => {
     expect(oreCount(f.ctx, f.ctx.sender, "adamant_ore")).toBe(48);
   });
 
-  it("takes a Starshard as well from +11, and stops at +20", () => {
+  it("takes a Starshard as well from +11, goes past +20, and stops at +30", () => {
     const f = atBench();
     f.rolls(0);
     setRefineLevel(f.ctx, f.ctx.sender, "ion_bow", 0n, 10);
@@ -79,7 +79,11 @@ describe("a refine try", () => {
     expect(f.level()).toBe(11);
     expect(oreCount(f.ctx, f.ctx.sender, "starshard")).toBe(0);
     setRefineLevel(f.ctx, f.ctx.sender, "ion_bow", 0n, 20);
-    expect(() => f.refine()).toThrow("already +20");
+    addOres(f.ctx, f.ctx.sender, "starshard", 1);
+    f.refine();
+    expect(f.level()).toBe(21);
+    setRefineLevel(f.ctx, f.ctx.sender, "ion_bow", 0n, 30);
+    expect(() => f.refine()).toThrow("already +30");
   });
 
   it("uses the item's own grade ore", () => {

@@ -4,9 +4,9 @@ import { REFINE_MAX, normalizeRefineLevel } from "./refine-multiplier";
 export { REFINE_MAX, REFINE_STEP_PAST_TEN, REFINE_STEP_TO_TEN, normalizeRefineLevel, refineMultiplier } from "./refine-multiplier";
 
 /**
- * Refining, after Ragnarok Online: every item refines on its own from +0 to +20 at the
+ * Refining, after Ragnarok Online: every item refines on its own from +0 to +30 at the
  * Town anvil, one ore a try, decided on the spot. Up to its safe limit a try always works; past it the odds
- * fall, and a failed try takes the item down one level. Gems never buy odds or protection.
+ * fall, and a failed try costs only its ore: the item keeps its level. Gems never buy odds or protection.
  *
  * This is its own layer. The slot tiers (+N on the Weapon, Helmet and Armor tracks) stay as they were.
  */
@@ -36,10 +36,8 @@ export const ARMOR_SAFE_LIMIT = 4;
 
 /**
  * The chance a try past the safe limit works, by the level it is for: Ragnarok's classic table to +10 (rounded),
- * then lower still to +20. Hard on purpose: speeding the game up later is far easier than slowing it down.
- * A fail costs a level that has to be climbed again,
- * so tries multiply level on level: a top-grade item takes about 2,200 tries to +10, a grade 1 item about 44,
- * and +20 is out of reach for now.
+ * then lower still to +30. A fail costs only the ore, so a level takes one over its chance in tries: a top-grade
+ * item about 27 tries to +10, about 175 to +20 and about 530 to +30, every try from +11 a Starshard as well.
  */
 const WEAPON_ODDS: Readonly<Record<RefineGrade, Readonly<Record<number, number>>>> = {
   1: { 8: .6, 9: .4, 10: .2 },
@@ -49,7 +47,8 @@ const WEAPON_ODDS: Readonly<Record<RefineGrade, Readonly<Record<number, number>>
 };
 const ARMOR_ODDS: Readonly<Record<number, number>> = { 5: .6, 6: .6, 7: .4, 8: .4, 9: .2, 10: .1 };
 /** Past +10, never better than the +10 try was for that item. */
-const HIGH_ODDS: Readonly<Record<number, number>> = { 11: .1, 12: .1, 13: .08, 14: .08, 15: .07, 16: .07, 17: .06, 18: .06, 19: .05, 20: .05 };
+const HIGH_ODDS: Readonly<Record<number, number>> = { 11: .1, 12: .1, 13: .08, 14: .08, 15: .07, 16: .07, 17: .06, 18: .06, 19: .05, 20: .05,
+  21: .04, 22: .04, 23: .035, 24: .035, 25: .03, 26: .03, 27: .025, 28: .025, 29: .02, 30: .02 };
 
 /** Equipment with a stat to refine: every bow, sword, helmet and armor with a bonus. Cosmetics and the starter stone have none. */
 /** The ore a piece of gear gives back when destroyed: one of its refine grade's ore. Null for anything else. */
@@ -94,24 +93,24 @@ export function refineCost(itemId: unknown, toLevel: number): Partial<Record<Ore
   return cost;
 }
 
-/** Where a try leaves the item: one up when it works, one down when it fails. Tries within the safe limit never fail. */
+/** Where a try leaves the item: one up when it works, where it was when it fails. Tries within the safe limit never fail. */
 export function refineResultLevel(currentLevel: number, succeeded: boolean) {
   const current = normalizeRefineLevel(currentLevel);
-  return succeeded ? Math.min(REFINE_MAX, current + 1) : Math.max(0, current - 1);
+  return succeeded ? Math.min(REFINE_MAX, current + 1) : current;
 }
 
 /**
- * The expected number of tries to bring an item from +0 to each level, failures and the levels they cost
- * included: index n holds the tries to reach +n. For the refine window's "about N tries" and the balance checks.
+ * The expected number of tries to bring an item from +0 to each level, failures included: index n holds the
+ * tries to reach +n. For the refine window's "about N tries" and the balance checks.
  */
 export function expectedRefineTries(itemId: unknown): number[] {
   const totals = [0];
-  let toPrevious = 0, total = 0;
+  let total = 0;
   for (let level = 1; level <= REFINE_MAX; level++) {
     const chance = refineSuccessChance(itemId, level);
-    // One try, and on a fail the climb back to where this try started.
-    const toThis = chance > 0 ? (1 + (1 - chance) * toPrevious) / chance : Number.POSITIVE_INFINITY;
-    total += toThis; totals.push(total); toPrevious = toThis;
+    // A fail keeps the level, so a level takes one over its chance in tries.
+    total += chance > 0 ? 1 / chance : Number.POSITIVE_INFINITY;
+    totals.push(total);
   }
   return totals;
 }
