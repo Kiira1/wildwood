@@ -1,6 +1,8 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
   "0.905.1": [
     "No pause after stepping through a portal: walk on straight away",
+    "Portals bring you out inside the matching portal, right where you went in",
+    "The Town's map picker brings you out of the map's portal instead of its spawn",
   ],
   "0.905.0": [
     "Portals: walk straight through to the next map, no loading screen",

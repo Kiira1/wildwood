@@ -5,7 +5,7 @@ import type { EnemyState, PlayerState } from "./types";
 import { BOSS_KINDS, clearBossAttack, type BossHazards, type BossStates } from "./boss/boss-registry";
 import type { MapId, SpawnSite } from "../world";
 import { portalTravelScene } from "./render/portal-glimpse";
-import { portalExit } from "../../../shared/map-gateways";
+import { exitPortalFor, stepThrough } from "../../../shared/map-gateways";
 import { MAP_IDS } from "../../../shared/rules";
 import { isProceduralMap } from "../../../shared/procedural-maps";
 
@@ -153,18 +153,23 @@ export function createMapController(options: {
   const initialPortal = mapConfig[tutorialMapId].portal;
   if (!initialPortal) throw new Error("Tutorial map requires an introductory portal.");
   let portalCutscenePortal: MapPortal = initialPortal;
-  portalTravelScene.arrival = (mapId, from) => mapId in mapConfig ? arrivalFrom(mapId as MapId, from as MapId) : null;
+  // A glimpse is painted before anyone walks in: centred where a player coming up from below steps out.
+  portalTravelScene.arrival = (mapId, from) => mapId in mapConfig ? arrivalFrom(mapId as MapId, from as MapId, { x: 0, y: 40 }) : null;
 
   /**
-   * Where the server lands a traveller from `from` (map-travel.ts): a campaign or Endless map brings them out in
-   * front of its portal back; anywhere else, at its arrival.
+   * Where the server lands a traveller from `from` (map-travel.ts): a campaign or Endless map brings them out of
+   * its portal back, `offset` from its middle as they stood in the one they walked into; anywhere else, its arrival.
    */
-  function arrivalFrom(destination: MapId, from: MapId) {
+  function arrivalFrom(destination: MapId, from: MapId, offset: { x: number; y: number }) {
     const entry = mapConfig[destination];
     const travelled = (MAP_IDS as readonly string[]).includes(destination) || isProceduralMap(destination);
-    const portals = [entry.portal, entry.secondaryPortal].filter((portal): portal is MapPortal => Boolean(portal));
-    return (travelled ? portalExit(portals, from) : null) ?? entry.arrival;
+    const portals = travelled ? [entry.portal, entry.secondaryPortal].filter((portal): portal is MapPortal => Boolean(portal)) : [];
+    const exit = exitPortalFor(destination, portals, from, from === "town");
+    return exit ? stepThrough(exit, offset) : entry.arrival;
   }
+
+  /** Where the player stands relative to a portal's middle (its use point, as the server measures it). */
+  const offsetIn = (portal: MapPortal) => ({ x: player.x - portal.x, y: player.y - (portal.y - portal.height * .32) });
 
   /**
    * The map loads on the fade's dark, and loading is what ends the travel lock.
@@ -332,6 +337,7 @@ export function createMapController(options: {
     player.moving = false;
     const destination = portal.destination;
     const departure = getCurrentMapId();
+    const offset = offsetIn(portal);
     if (options.instantTravelReady?.(destination)) { void travelThroughPortal(portal, destination); return; }
     const attempt = mapLoadGeneration;
     void prepareMapTransition(
@@ -345,10 +351,10 @@ export function createMapController(options: {
         portalCooldown = 1;
         return;
       }
-      const arrival = arrivalFrom(destination, departure);
+      const arrival = arrivalFrom(destination, departure, offset);
       fadeToMap(() => {
         if (attempt !== mapLoadGeneration) return;
-        loadMap(destination, arrival.x, arrival.y, Math.PI / 2);
+        loadMap(destination, arrival.x, arrival.y, player.facing);
         snapCameraToPlayer(camera, player, viewport());
         resetPresentationState();
         syncStoppedPosition();
@@ -369,9 +375,9 @@ export function createMapController(options: {
    */
   function travelThroughPortal(portal: MapPortal | null, destination: MapId): Promise<boolean> {
     const departure = { mapId: getCurrentMapId(), x: player.x, y: player.y, facing: player.facing };
-    const arrival = arrivalFrom(destination, departure.mapId);
+    const arrival = arrivalFrom(destination, departure.mapId, portal ? offsetIn(portal) : { x: 0, y: 0 });
     const move = Promise.resolve(changeMap(destination, departure.x, departure.y));
-    loadMap(destination, arrival.x, arrival.y, Math.PI / 2);
+    loadMap(destination, arrival.x, arrival.y, departure.facing);
     snapCameraToPlayer(camera, player, viewport());
     resetPresentationState();
     portalTravelScene.arrivedAt = performance.now();
@@ -489,7 +495,8 @@ export function createMapController(options: {
       if (plain && options.instantTravelReady?.(destination) && running() && player.hp > 0 && !isDueling() && !mapTransitioning && !arrivalPending && !portalCutscene.active) {
         options.onTravelStarted?.();
         keys.clear(); stopTouchMove(); player.moving = false;
-        return travelThroughPortal(null, destination);
+        // Out of the picker's pad, as from a walk-in portal: the server measures from the same pad.
+        return travelThroughPortal(mapConfig.town.portal, destination);
       }
       return teleport(destination, async () => Boolean(await changeMap(destination, player.x, player.y)));
     },

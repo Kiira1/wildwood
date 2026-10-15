@@ -1,4 +1,4 @@
-import { portalExit } from "../../shared/map-gateways";
+import { stepThrough } from "../../shared/map-gateways";
 import { describe, expect, it, vi } from "vitest";
 import { BOSS_REWARD_CLAIM_BITS } from "../../shared/rules";
 import { generateMap } from "../../shared/procedural-maps";
@@ -35,7 +35,7 @@ describe("production generated map reducers", () => {
     f.run(server.changeMap, { mapId: "endless_1", x: 2510, y: 2337 });
     expect(f.db.player.identity.find(f.ctx.sender)).toMatchObject({
       mapId: "endless_1",
-      ...portalExit(generateMap("endless_1").portals, "ion_citadel"),
+      ...stepThrough(generateMap("endless_1").portals.find(portal => portal.destination === "ion_citadel")!, { x: 0, y: 2337 - (2400 - 198 * .32) }),
     });
     expect(() =>
       f.run(server.changeMap, { mapId: "endless_2", x: 2510, y: 2337 }),

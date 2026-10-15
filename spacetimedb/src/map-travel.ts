@@ -8,7 +8,7 @@ import { isProceduralMap, PROCEDURAL_ENTRY_BOSS, generateMap, PROCEDURAL_ENTRY_M
 import { isSoulMap, soulReturnOpenFor, worldBoundsFor, requireSoulDimensionOpen, SOUL_TOWN_PORTAL, SOUL_ARRIVAL } from "./soul-dimension";
 import { isGuildHallMap, guildHallMember, enterGuildHall } from "./guild-hall";
 import { isTownMap, TOWN_MAP_ID, TOWN_ARRIVAL, townPortalUsePoints } from "./town";
-import { CAMPAIGN_GATEWAYS, portalUsePoint, campaignLanding, LEGACY_CORNER_GATEWAYS, endlessEntryPortal, legacyPortalUsePoints, portalExit } from "../../shared/map-gateways";
+import { CAMPAIGN_GATEWAYS, portalUsePoint, campaignLanding, LEGACY_CORNER_GATEWAYS, endlessEntryPortal, legacyPortalUsePoints, exitPortalFor, stepThrough } from "../../shared/map-gateways";
 import { blockedSession, requireControllingPlayer, isDeveloperIdentity } from "./session-guards";
 import { activeDuelFor } from "./duel-runtime";
 import { SenderError } from "spacetimedb/server";
@@ -109,8 +109,11 @@ export function changePlayerMap(ctx: ModuleReducerCtx, { mapId, x, y }: { mapId:
   if (portalDistance > MAP_PORTAL_USE_RANGE) throw new SenderError("Move closer to the portal.");
 
   // An old tab that took an old portal puts itself at the old arrival; land it there so the two agree.
-  // Otherwise a campaign or Endless map lands the traveller in front of its portal back (the client does the same).
-  const arrival = (sourcePortal as { legacyArrival?: { x: number; y: number } | null }).legacyArrival ?? portalExit(destinationPortals(mapId), current.mapId) ?? (isProceduralMap(mapId) ? generateMap(mapId).arrival : isSoulMap(mapId) ? SOUL_ARRIVAL : isTownMap(mapId) ? TOWN_ARRIVAL : MAP_ARRIVALS[mapId as keyof typeof MAP_ARRIVALS]);
+  // Otherwise a campaign or Endless map brings them out of its portal back, where they stood in the one they
+  // walked into (the client does the same, so nothing on screen moves but the world).
+  const exit = exitPortalFor(mapId, destinationPortals(mapId), current.mapId, isTownMap(current.mapId));
+  const arrival = (sourcePortal as { legacyArrival?: { x: number; y: number } | null }).legacyArrival
+    ?? (exit ? stepThrough(exit, { x: x - sourcePortal.x, y: y - sourcePortal.y }) : null) ?? (isProceduralMap(mapId) ? generateMap(mapId).arrival : isSoulMap(mapId) ? SOUL_ARRIVAL : isTownMap(mapId) ? TOWN_ARRIVAL : MAP_ARRIVALS[mapId as keyof typeof MAP_ARRIVALS]);
   transitionPlayerMap(ctx, current, mapId, arrival);
 }
 

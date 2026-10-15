@@ -7,7 +7,7 @@ import { createGameBootstrap } from "./game-bootstrap";
 import { createGameSessionController } from "./game-session-controller";
 import { parseHTML } from "linkedom";
 import { CRYSTAL_HOLLOWS_MAP_ID, MOONFEN_MAP_ID, type MapId } from "../world";
-import { PORTAL_EXIT_DROP, portalExit } from "../../../shared/map-gateways";
+import { stepThrough } from "../../../shared/map-gateways";
 
 type MapControllerOptions = Parameters<typeof createMapController>[0];
 
@@ -160,8 +160,8 @@ describe("portal arrival activation", () => {
     // Moonfen's way on and Crystal Hollows' way back, in the middle of their maps.
     const useOf = (portal: { x: number; y: number; height: number } | null | undefined) => ({ x: portal!.x, y: portal!.y - portal!.height * .32 });
     const onward = useOf(bootstrap.mapConfig[MOONFEN_MAP_ID].secondaryPortal), back = useOf(bootstrap.mapConfig[CRYSTAL_HOLLOWS_MAP_ID].portal);
-    // Out of Crystal Hollows' portal back to Moonfen, as the server lands them (map-travel.ts).
-    const arrival = portalExit([bootstrap.mapConfig[CRYSTAL_HOLLOWS_MAP_ID].portal!], MOONFEN_MAP_ID)!;
+    // Out of Crystal Hollows' portal back to Moonfen, where they stood in Moonfen's, as the server lands them (map-travel.ts).
+    const arrival = stepThrough(bootstrap.mapConfig[CRYSTAL_HOLLOWS_MAP_ID].portal!, { x: 0, y: 0 });
     controller.loadMap(MOONFEN_MAP_ID, bootstrap.mapConfig[MOONFEN_MAP_ID].arrival.x, bootstrap.mapConfig[MOONFEN_MAP_ID].arrival.y);
     harness.setUnlocked(false);
     player.x = onward.x;
@@ -177,6 +177,9 @@ describe("portal arrival activation", () => {
     expect(player).toMatchObject(arrival);
 
     bootstrap.bossHazards.prismshell.push({ x: 100, y: 100, r: 86, timer: .5, maxTimer: 1 });
+    // Out of the portal it arrived in first.
+    player.y += 120;
+    controller.updatePortal(1 / 60);
     player.x = back.x;
     player.y = back.y;
     controller.updatePortal(1 / 60);
@@ -195,12 +198,16 @@ describe("portal arrival activation", () => {
     expect(harness.prepareMapAssets).toHaveBeenCalledWith(CRYSTAL_HOLLOWS_MAP_ID);
   });
 
-  it("is active immediately after arriving outside the destination trigger", async () => {
+  it("arrives inside the portal back, which takes the player home once they have stepped out of it", async () => {
     const { changeMap, controller, currentMapId, desertMapId, player } = portalArrivalHarness({ x: 300, y: 400 });
     controller.updatePortal(1 / 60);
     await vi.waitFor(() => expect(currentMapId()).toBe(desertMapId));
+    expect(player).toMatchObject({ x: 300, y: 268 });
+    controller.updatePortal(1 / 60);
+    expect(changeMap).toHaveBeenCalledTimes(1);
 
-    player.x = 300;
+    player.y = 400;
+    controller.updatePortal(1 / 60);
     player.y = 268;
     controller.updatePortal(1 / 60);
     await vi.waitFor(() => expect(changeMap).toHaveBeenCalledTimes(2));
@@ -234,8 +241,8 @@ describe("walking straight through a portal", () => {
     const f = confirmable();
     f.controller.updatePortal(1 / 60);
     expect(f.currentMapId()).toBe(f.desertMapId);
-    // Out of the desert's portal back to the forest, not at the desert's arrival.
-    expect(f.player).toMatchObject({ x: 300, y: 300 + PORTAL_EXIT_DROP });
+    // Out of the desert's portal back to the forest, standing in it as they stood in the forest's (its middle).
+    expect(f.player).toMatchObject({ x: 300, y: 268 });
     expect(f.changeMap).toHaveBeenCalledWith(f.desertMapId, 100, 68);
     expect(f.prepareMapAssets).toHaveBeenCalledWith(f.desertMapId);
     // Free to walk, but no other travel until the server answers.
@@ -692,7 +699,9 @@ describe("stuck at the portal", () => {
     expect(h.currentMapId()).toBe(h.desertMapId);
     expect(h.controller.isMapTransitioning()).toBe(false);
 
-    // On to the next portal while the first fade still waits for a frame to lift.
+    // Out of the portal it arrived in, and back in, while the first fade still waits for a frame to lift.
+    h.player.y = 400;
+    h.controller.updatePortal(1 / 60);
     h.player.x = 300;
     h.player.y = 268;
     h.controller.updatePortal(1 / 60);
