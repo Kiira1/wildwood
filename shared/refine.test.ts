@@ -66,8 +66,9 @@ describe("safe limits and odds", () => {
     expect(tries[0][10]).toBeCloseTo(7 + 1 / .6 + 1 / .4 + 1 / .2, 9);
     expect(tries[3][10]).toBeGreaterThan(20); expect(tries[3][10]).toBeLessThan(40);
     for (let grade = 1; grade < 4; grade++) expect(tries[grade][10], `grade ${grade + 1}`).toBeGreaterThan(tries[grade - 1][10]);
-    expect(tries[3][20]).toBeGreaterThan(150); expect(tries[3][20]).toBeLessThan(200);
-    expect(tries[3][30]).toBeGreaterThan(500); expect(tries[3][30]).toBeLessThan(600);
+    expect(tries[3][20]).toBeGreaterThan(1_500); expect(tries[3][20]).toBeLessThan(2_000);
+    // +30 is a long goal: about 20,000 tries.
+    expect(tries[3][30]).toBeGreaterThan(18_000); expect(tries[3][30]).toBeLessThan(21_000);
     for (let level = 1; level <= REFINE_MAX; level++) expect(Number.isFinite(tries[3][level]), `+${level}`).toBe(true);
   });
 });

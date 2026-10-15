@@ -36,8 +36,8 @@ export const ARMOR_SAFE_LIMIT = 4;
 
 /**
  * The chance a try past the safe limit works, by the level it is for: Ragnarok's classic table to +10 (rounded),
- * then lower still to +30. A fail costs only the ore, so a level takes one over its chance in tries: a top-grade
- * item about 27 tries to +10, about 175 to +20 and about 530 to +30, every try from +11 a Starshard as well.
+ * then far lower to +30. A fail costs only the ore, so a level takes one over its chance in tries: a top-grade
+ * item about 27 tries to +10, about 1,700 to +20 and about 19,000 to +30, every try from +11 a Starshard as well.
  */
 const WEAPON_ODDS: Readonly<Record<RefineGrade, Readonly<Record<number, number>>>> = {
   1: { 8: .6, 9: .4, 10: .2 },
@@ -47,8 +47,10 @@ const WEAPON_ODDS: Readonly<Record<RefineGrade, Readonly<Record<number, number>>
 };
 const ARMOR_ODDS: Readonly<Record<number, number>> = { 5: .6, 6: .6, 7: .4, 8: .4, 9: .2, 10: .1 };
 /** Past +10, never better than the +10 try was for that item. */
-const HIGH_ODDS: Readonly<Record<number, number>> = { 11: .1, 12: .1, 13: .08, 14: .08, 15: .07, 16: .07, 17: .06, 18: .06, 19: .05, 20: .05,
-  21: .04, 22: .04, 23: .035, 24: .035, 25: .03, 26: .03, 27: .025, 28: .025, 29: .02, 30: .02 };
+const HIGH_ODDS: Readonly<Record<number, number>> = {
+  11: .02, 12: .015, 13: .012, 14: .01, 15: .008, 16: .006, 17: .005, 18: .004, 19: .0035, 20: .003,
+  21: .0015, 22: .0012, 23: .001, 24: .0008, 25: .0007, 26: .0006, 27: .0005, 28: .0004, 29: .00035, 30: .0003,
+};
 
 /** Equipment with a stat to refine: every bow, sword, helmet and armor with a bonus. Cosmetics and the starter stone have none. */
 /** The ore a piece of gear gives back when destroyed: one of its refine grade's ore. Null for anything else. */
