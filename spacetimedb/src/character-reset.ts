@@ -15,7 +15,7 @@ import { updateSnapshotRow, insertSnapshotRow, deleteSnapshotRow } from "./snaps
 import { removeResearchCompletionSchedules } from "./research-runtime";
 import { removePausedResearch } from "./research-pause";
 import { removePlayerItemDrops, removePlayerItemUpgradeData } from "./item-upgrade-runtime";
-import { BOSS_REWARD_CLAIM_BITS, TUTORIAL_FOREST_MAP_ID, PLAYER_SPAWN } from "../../shared/rules";
+import { TUTORIAL_FOREST_MAP_ID, PLAYER_SPAWN } from "../../shared/rules";
 import { HOME_EXTERIOR_MAP_ID } from "../../shared/home";
 import { isTownMap } from "./town";
 import { isGuildHallMap } from "./guild-hall";
@@ -80,12 +80,6 @@ export function resetProgressToDefaults(ctx: any, activePlayer: any, keep: { res
     else removePlayerItemUpgradeData(ctx, ctx.sender, true);
     const lifetime = ensurePlayerLifetime(ctx);
     if (!keep.lifetimeKills) ctx.db.playerLifetime.identity.update({ ...lifetime, enemyKills: 0n });
-    // Re-entry uses recent boss contributions to recover earned map unlocks.
-    // A deliberate reset must remove that evidence along with the unlock flags.
-    for (const boss of Object.keys(BOSS_REWARD_CLAIM_BITS)) {
-      (ctx.db as any)[`${boss}Contribution`].identity.delete(ctx.sender);
-      (ctx.db as any)[`${boss}AttackWindow`].identity.delete(ctx.sender);
-    }
     respawnWithProgress(ctx, activePlayer, next);
 }
 

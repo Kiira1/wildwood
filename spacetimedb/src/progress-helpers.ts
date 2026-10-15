@@ -157,7 +157,7 @@ export function resultIncludesContributor(latest: any, identity: any) {
 }
 
 export function contributedToLatestPrismshell(ctx: any, identity: any) {
-  return resultIncludesContributor(ctx.db.prismshellResult.id.find(PRISMSHELL_ID), identity);
+  return resultIncludesContributor(ctx.db.prismshellResult?.id.find(PRISMSHELL_ID), identity);
 }
 
 export function forestItemCountForProgress(progress: any, itemId: string, field: "bowCount" | "woodenArmorCount") {

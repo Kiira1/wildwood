@@ -44,31 +44,10 @@ export function pruneIdleDefeatBudgets(ctx: Pick<GameReducerContext, "db" | "tim
   for (const key of idle) ctx.db.enemyDefeatBudget.key.delete(key);
   return idle.length;
 }
-// Retained for non-destructive schema compatibility with previous releases.
-// Reward validation now uses earned combat time, not a fixed defeat count.
-export const bossDefeatWindow = table({ name: "boss_defeat_window" }, {
-  identity: t.identity().primaryKey(), acceptedAtMicros: t.array(t.u64()),
-});
-// Historical per-map receipt timestamps; no longer read or written for limits.
-export const bossMapDefeatWindow = table({ name: "boss_map_defeat_window" }, {
-  identity: t.identity().primaryKey(), acceptedAtMicros: t.array(t.u64()), acceptedMapIds: t.array(t.string()),
-});
 
 /** Seconds of regular-enemy combat the player has banked, across every map and species. */
 export const combatTimeKey = (identity: { toHexString(): string }) => `${identity.toHexString()}:combat-time-v1`;
 
-// Retained for non-destructive schema compatibility. Nothing writes here any
-// more: a clipped claim is simply paid what it earned, which needs no queue and
-// no person. Payouts are bounded by the respawn ceiling, the combat clock and
-// the simulation clock (see acceptEnemyDefeats), and none of them ever costs
-// anyone their session.
-export const enemyDefeatReview = table(
-  { name: "enemy_defeat_review", public: false, indexes: [{ accessor: "byIdentity", algorithm: "btree", columns: ["identity"] as const }] },
-  {
-    id: t.u64().primaryKey().autoInc(), identity: t.identity(), mapId: t.string(), enemy: t.string(), kind: t.string(),
-    requested: t.u32(), accepted: t.u32(), detail: t.string(), recordedAt: t.timestamp(),
-  },
-);
 /** Combat time a report may draw on at once. Per-species banks held five
  * minutes each, so a player fighting several species could deliver a longer
  * backlog after a dropped socket; one shared bank needs the longer window. */

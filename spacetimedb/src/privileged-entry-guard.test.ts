@@ -13,14 +13,13 @@ afterEach(() => vi.restoreAllMocks());
  * "dev" is covered automatically, so a new developer tool that forgets its
  * guard fails here; the explicit list covers privileged names without it.
  */
-const DEV_VIEWS = new Set(["devAccessAudit", "devBugReports", "devGemPurchaseReview", "devForestRewardPrototype"]);
+const DEV_VIEWS = new Set(["devAccessAudit", "devBugReports", "devGemPurchaseReview"]);
 const PRIVILEGED_WITHOUT_DEV_PREFIX = [
   "setDeveloperNameTag", "setDeveloperPresence", "simulateTimeAway",
   "getBalanceEditor", "previewMapBalance", "setMapBalance", "restoreMapBalance",
   "getModerationHistory", "getPlayerModerationHistory", "getDevReviewQueue", "getDevConsole", "getDevPlayerCard", "getModerationLog",
   "getAnalyticsDashboard", "getDeveloperTravelTarget",
   "configurePatreon", "configureGemCommerce", "setReleaseWindow", "seedTemporaryGuild",
-  "beginForestRewardPrototype", "attackForestRewardPrototype",
 ];
 const REFUSED = /Developer access required|Database owner required|Account database owner required|Developer travel access required|Database operator required|WildStat updated\. Refresh to continue\./;
 

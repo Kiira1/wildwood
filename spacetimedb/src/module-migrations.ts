@@ -59,11 +59,11 @@ export const MODULE_MIGRATION_VERSION = 56;
  * cleared (duel-wire-access.ts). Both old tables are left empty.
  */
 export function moveToWideTables(ctx: any) {
-  for (const row of [...ctx.db.leaderboardEntryLegacy.iter()] as any[]) {
+  for (const row of [...ctx.db.leaderboardEntryLegacy?.iter() ?? []] as any[]) {
     if (!ctx.db.leaderboardEntry.identity.find(row.identity)) ctx.db.leaderboardEntry.insert({ ...row });
     ctx.db.leaderboardEntryLegacy.identity.delete(row.identity);
   }
-  for (const row of [...ctx.db.duelWireAccess.iter()] as any[]) ctx.db.duelWireAccess.key.delete(row.key);
+  for (const row of [...ctx.db.duelWireAccess?.iter() ?? []] as any[]) ctx.db.duelWireAccess.key.delete(row.key);
 }
 
 /** Migration 47's one player, matched on the whole display name, ignoring case. */
@@ -133,7 +133,7 @@ export function createModuleMigrations(deps: ModuleMigrationDeps) {
       }
     }
     if (currentVersion < 2) {
-      for (const demand of [...ctx.db.playerMovementDemand.iter()] as any[]) {
+      for (const demand of [...ctx.db.playerMovementDemand?.iter() ?? []] as any[]) {
         ctx.db.playerMovementDemand.identity.delete(demand.identity);
       }
     }
@@ -273,7 +273,7 @@ export function createModuleMigrations(deps: ModuleMigrationDeps) {
     if (currentVersion < 13) {
       // Preserve the unlock for players who contributed to the latest completed
       // Magmalisk encounter before Infernal Depths existed.
-      const result = ctx.db.magmaliskResult.id.find(MAGMALISK_ID);
+      const result = ctx.db.magmaliskResult?.id.find(MAGMALISK_ID);
       if (result) {
         try {
           const contributors = JSON.parse(result.contributorsJson);
@@ -390,7 +390,7 @@ export function createModuleMigrations(deps: ModuleMigrationDeps) {
     if (currentVersion < 20) {
       // Players who cleared Tempest Kirin before Moonfen shipped keep the unlock
       // they already earned when the new destination becomes available.
-      const result = ctx.db.tempestKirinResult.id.find(TEMPEST_KIRIN_ID);
+      const result = ctx.db.tempestKirinResult?.id.find(TEMPEST_KIRIN_ID);
       if (result) {
         try {
           const contributors = JSON.parse(result.contributorsJson);
@@ -410,7 +410,7 @@ export function createModuleMigrations(deps: ModuleMigrationDeps) {
     if (currentVersion < 21) {
       // Preserve the latest recorded Miremaw clear, without inferring a victory
       // from stats or merely being present in Moonfen.
-      const result = ctx.db.miremawResult.id.find(MIREMAW_ID);
+      const result = ctx.db.miremawResult?.id.find(MIREMAW_ID);
       if (result) {
         for (const progress of iterPlayerProgress(ctx) as Iterable<any>) {
           if (!progress.crystalHollowsUnlocked && resultIncludesContributor(result, progress.identity)) {
@@ -712,13 +712,13 @@ export function createModuleMigrations(deps: ModuleMigrationDeps) {
   }
 
   function contributedToLatestDreadreaper(ctx: any, identity: any) {
-    return resultIncludesContributor(ctx.db.dreadreaperResult.id.find(DREADREAPER_ID), identity);
+    return resultIncludesContributor(ctx.db.dreadreaperResult?.id.find(DREADREAPER_ID), identity);
   }
   function contributedToLatestVoltwarden(ctx: any, identity: any) {
-    return resultIncludesContributor(ctx.db.voltwardenResult.id.find(VOLTWARDEN_ID), identity);
+    return resultIncludesContributor(ctx.db.voltwardenResult?.id.find(VOLTWARDEN_ID), identity);
   }
   function contributedToLatestGravebloom(ctx: any, identity: any) {
-    return resultIncludesContributor(ctx.db.gravebloomResult.id.find(GRAVEBLOOM_ID), identity);
+    return resultIncludesContributor(ctx.db.gravebloomResult?.id.find(GRAVEBLOOM_ID), identity);
   }
 
   function grantBalanceApologyGifts(ctx: any) {
@@ -753,7 +753,7 @@ export function createModuleMigrations(deps: ModuleMigrationDeps) {
 
   function rebaseLegacyPlayersToMaps(ctx: any) {
     const plans = [...iterPlayerProgress(ctx) as Iterable<any>].map((progress) => {
-      const archived = ctx.db.playerPowerRebaseBackup.identity.find(progress.identity);
+      const archived = ctx.db.playerPowerRebaseBackup?.identity.find(progress.identity);
       const next = archived ? progress : compressLegacyMapPower(progress);
       return { progress, next, archived, before: effectivePowerForProgress(ctx, progress), after: effectivePowerForProgress(ctx, next) };
     });
@@ -767,7 +767,7 @@ export function createModuleMigrations(deps: ModuleMigrationDeps) {
       }
     }
     for (const { progress, next, archived, before, after } of plans) {
-      if (!archived) ctx.db.playerPowerRebaseBackup.insert({
+      if (!archived) ctx.db.playerPowerRebaseBackup?.insert({
         identity: progress.identity, version: 7, maxHp: progress.maxHp, damage: progress.damage,
         armor: progress.armor, regen: progress.regen, attackRate: progress.attackRate,
         beforePower: before, afterPower: after, recordedAt: ctx.timestamp,
@@ -790,7 +790,7 @@ export function createModuleMigrations(deps: ModuleMigrationDeps) {
       return rescaleRankingStats(effective);
     };
     const plans = [...iterPlayerProgress(ctx) as Iterable<any>].map((progress) => {
-      const archived = ctx.db.playerEndgameRebaseBackup.identity.find(progress.identity);
+      const archived = ctx.db.playerEndgameRebaseBackup?.identity.find(progress.identity);
       const next = archived ? progress : rescaleEndgameProgress(progress);
       return { progress, next, archived, before: stats(progress), after: stats(next) };
     });
@@ -801,7 +801,7 @@ export function createModuleMigrations(deps: ModuleMigrationDeps) {
     const conflict = rescaleRankingConflict(plans) ?? rescaleRankingConflict(displayedPlans);
     if (conflict) throw new SenderError(`Endgame rescale needs a fresh ${conflict} ranking audit; no stats changed.`);
     for (const { progress, next, archived, before, after } of plans) {
-      if (!archived) ctx.db.playerEndgameRebaseBackup.insert({
+      if (!archived) ctx.db.playerEndgameRebaseBackup?.insert({
         identity: progress.identity, maxHp: progress.maxHp, damage: progress.damage,
         armor: progress.armor, regen: progress.regen, attackRate: progress.attackRate,
         beforePower: before.power, afterPower: after.power, recordedAt: ctx.timestamp,
@@ -856,8 +856,6 @@ export function createModuleMigrations(deps: ModuleMigrationDeps) {
     }
     // Old DPS/time credit must never validate kills after a stat reduction.
     for (const row of ctx.db.enemyDefeatBudget.identity.filter(progress.identity)) ctx.db.enemyDefeatBudget.key.delete(row.key);
-    if (ctx.db.bossDefeatWindow.identity.find(progress.identity)) ctx.db.bossDefeatWindow.identity.delete(progress.identity);
-    if (ctx.db.bossMapDefeatWindow.identity.find(progress.identity)) ctx.db.bossMapDefeatWindow.identity.delete(progress.identity);
     // Keep accepted-loot sequence cursors: deleting them would permit double rewards.
     return next;
   }

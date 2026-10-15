@@ -1,5 +1,5 @@
 import { expect, it, vi } from "vitest";
-import { crystalFixture, server } from "../../tests/helpers/crystal-hollows-fixture";
+import { crystalFixture } from "../../tests/helpers/crystal-hollows-fixture";
 import { reportEnemy, reportKills } from "../../tests/helpers/enemy-defeat";
 import { CAMPAIGN_MAPS } from "../../shared/campaign-registry";
 import { CAMPAIGN_UNLOCK_FIELDS } from "../../shared/equipment-access";
@@ -31,9 +31,7 @@ it.each([...CAMPAIGN_MAPS.map(map => map.id), "endless_1", "endless_40"])("recor
   expect([...f.db.playerDailyQuest.iter()]).toEqual([]);
   expect(rolls).not.toHaveBeenCalled();
   expect([...f.db.enemyDefeatBudget.iter()].map(row => row.key)).toEqual([`${f.ctx.sender.toHexString()}:report-rate-v1`]);
-  expect([...f.db.dragonContribution.iter()]).toEqual([]);
   expect([...f.db.proceduralInstanceContribution.iter()]).toEqual([]);
-  expect([...f.db.dragonRespawnSchedule.iter()]).toEqual([]);
 });
 
 it.each(["tutorial_forest", "endless_40"])("retries and repeated %s clears never repay or rewrite the gate", mapId => {
@@ -80,8 +78,4 @@ it("checks session, map and report identity before recording a gate", () => {
   expect(() => reportKills(f, { ...batch, mapId: "crystal_hollows", enemies: [...batch.enemies, ...batch.enemies] })).toThrow("Invalid enemy");
   f.ctx.connectionId = null;
   expect(() => reportKills(f, { ...batch, mapId: "crystal_hollows" })).toThrow();
-});
-it.each(["damageDragon", "damageSpiderFromPosition", "damageFrostclawFromPosition", "damageMagmaliskFromPosition", "damageGloomrootFromPosition", "damageTidewyrmFromPosition", "damageKoiShogunFromPosition", "damageTempestKirinFromPosition", "damageMiremawFromPosition", "damagePrismshellFromPosition", "damageIronhornFromPosition", "damageDreadreaperFromPosition", "damageVoltwardenFromPosition", "damageGravebloomFromPosition", "damageAegisPrimeFromPosition", "hitProceduralBoss", "hitProceduralBossBatch"])("blocks old shared combat endpoint %s", name => {
-  const f = crystalFixture();
-  expect(() => f.run((server as any)[name], { hits: 100, x: 4050, y: 4050, mapId: "endless_1", encounter: 1n, bossKey: "old" })).toThrow("updated");
 });

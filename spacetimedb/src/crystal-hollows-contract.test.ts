@@ -14,7 +14,6 @@ describe("Crystal Hollows reducer behavior (in-memory, not native host integrati
     expect(names.indexOf("crystalHollowsUnlocked")).toBeGreaterThan(names.indexOf("moonfenUnlocked"));
     expect(names.indexOf("bossRewardClaims")).toBeGreaterThan(names.indexOf("crystalHollowsUnlocked"));
     expect(reducerParameters.get(server.savePlayerProgress)).not.toHaveProperty("crystalHollowsUnlocked");
-    expect(Object.keys(reducerParameters.get(server.damagePrismshellFromPosition)!).sort()).toEqual(["hits", "x", "y"]);
   });
 
   it("cannot grant or revoke the unlock through a player save", () => {

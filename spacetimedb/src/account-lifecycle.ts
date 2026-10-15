@@ -51,7 +51,6 @@ import { mergeSocialAccount, removeSocialAccount } from "./social-service";
 import { readPlayerProgress, deleteReplayWide } from "./wide-stats";
 import { eraseIdentityRows } from "./account-erasure";
 import { carryNameColor } from "./profile-look";
-import { LEGACY_BOSS_KEYS } from "./boss-tables";
 
 export const ACCOUNT_LINK_LIFETIME_MICROS = 600_000_000n;
 
@@ -138,23 +137,22 @@ export type AccountLifecycleDeps = {
  */
 const PLAYER_STATE_TABLES: ReadonlySet<string> = new Set([
   // One row per player, cleared the same way by both removals.
-  "activeResearch", "balanceApologyNotice", "bossDefeatWindow", "bossMapDefeatWindow", "chatCooldown",
+  "activeResearch", "balanceApologyNotice", "chatCooldown",
   "chatReactionUnlock", "defeatSessionRestriction", "duelRequestCooldown", "leaderboardEntry", "playerAccessAudit",
   "playerBalanceVersion", "playerController", "playerCutsceneHistory", "playerGemWallet", "playerInventoryCapacity",
   "playerLastLocation", "playerLegalConsent", "playerLifetime", "playerMapBalance", "playerMapMarker",
-  "playerMovementDemand", "playerMultiplayerPreference", "playerNameCooldown", "playerOnboarding",
+  "playerMultiplayerPreference", "playerNameCooldown", "playerOnboarding",
   "playerUpgradeBench", "playerUpgradeBenchThirdSlot",
-  ...LEGACY_BOSS_KEYS.flatMap(boss => [`${boss}Contribution`, `${boss}AttackWindow`]),
   // Added after the removal functions were first written.
   "accountDeletionRequest", "accountEmail", "aggroChallengeRun", "chatMessageReportRateLimit", "chatModerator",
   "connectionDiagnostic", "connectionDiagnosticRate", "dailyGemBonus", "developerPresencePreference",
-  "duelWireAccess", "endlessTravelAccess", "enemyDefeatReview",
-  "forestRewardPrototype", "gemKillDaily", "gemKillProgress", "gemTransaction", "guildMemberQuestWeek", "guildRejoin",
-  "homeReturnLocation", "leaderboardEntryLegacy", "leaderboardPosition", "leaderboardPrestigePosition", "loginMove",
+  "endlessTravelAccess",
+  "gemKillDaily", "gemKillProgress", "gemTransaction", "guildMemberQuestWeek", "guildRejoin",
+  "homeReturnLocation", "leaderboardPosition", "leaderboardPrestigePosition", "loginMove",
   "offlineProgress", "patreonPreview", "playerAggroChallenge", "playerAggroChallengeParked", "playerBonusToggle", "playerNameColor",
   "playerMining", "playerMinedNode", "playerMiningLevel",
-  "playerDailyQuest", "playerEndgameRebaseBackup", "playerEndlessRebaseBackup", "playerFreeRespec",
-  "playerOfflinePreference", "playerPowerRebaseBackup", "playerPrestige", "playerPrestigeChallenge",
+  "playerDailyQuest", "playerEndlessRebaseBackup", "playerFreeRespec",
+  "playerOfflinePreference", "playerPrestige", "playerPrestigeChallenge",
   "playerPrestigeChallengeParked", "playerPrestigeExpansionPerk", "playerPrestigePerk", "playerQuestWeekTotal",
   "presenceChatCooldown", "prestigeChallengeBackup", "prestigeChallengeRun",
   "proceduralContribution", "proceduralInstanceContribution", "proceduralProgress",
@@ -488,33 +486,6 @@ export function createAccountLifecycle(deps: AccountLifecycleDeps) {
     }
     if (guestLeaderboardEntry) ctx.db.leaderboardEntry.identity.delete(link.guest);
     moveLeaderboardPrestigePosition(ctx, link.guest, ctx.sender);
-    // Linking during any boss fight keeps the guest's contribution under the
-    // authenticated identity. Attack windows are cleared so the next volley is
-    // authorized against the new identity and cannot inherit stale hit counts.
-    // Leftover shared-boss rows: fold the guest's damage into the account's for
-    // the same encounter, and drop both attack windows.
-    for (const boss of LEGACY_BOSS_KEYS) {
-      const contributionTable = ctx.db[`${boss}Contribution`];
-      const attackWindowTable = ctx.db[`${boss}AttackWindow`];
-      const guestContribution = contributionTable.identity.find(link.guest);
-      const accountContribution = contributionTable.identity.find(ctx.sender);
-      if (guestContribution) {
-        const nextContribution = {
-          identity: ctx.sender,
-          encounter: guestContribution.encounter,
-          displayName: finalDisplayName,
-          damage: accountContribution?.encounter === guestContribution.encounter
-            ? accountContribution.damage + guestContribution.damage
-            : guestContribution.damage,
-        };
-        if (accountContribution) contributionTable.identity.update(nextContribution);
-        else contributionTable.insert(nextContribution);
-        contributionTable.identity.delete(link.guest);
-      }
-      if (attackWindowTable.identity.find(link.guest)) attackWindowTable.identity.delete(link.guest);
-      if (attackWindowTable.identity.find(ctx.sender)) attackWindowTable.identity.delete(ctx.sender);
-    }
-
     const accountBalance = ctx.db.playerBalanceVersion.identity.find(ctx.sender);
     const nextBalance = { identity: ctx.sender, version: ATTACK_BALANCE_VERSION };
     if (accountBalance) ctx.db.playerBalanceVersion.identity.update(nextBalance);
@@ -529,7 +500,6 @@ export function createAccountLifecycle(deps: AccountLifecycleDeps) {
     }
     removePlayerRealtimeState(ctx, link.guest);
     if (ctx.db.playerMapMarker.identity.find(link.guest)) ctx.db.playerMapMarker.identity.delete(link.guest);
-    if (ctx.db.playerMovementDemand.identity.find(link.guest)) ctx.db.playerMovementDemand.identity.delete(link.guest);
     if (guestProgress) deleteSnapshotRow(ctx, "playerProgress", link.guest);
     if (ctx.db.playerLegalConsent.identity.find(link.guest)) ctx.db.playerLegalConsent.identity.delete(link.guest);
     if (guestLocation) ctx.db.playerLastLocation.identity.delete(link.guest);
@@ -612,7 +582,6 @@ export function createAccountLifecycle(deps: AccountLifecycleDeps) {
         : activePlayer);
       deleteSnapshotRow(ctx, "player", identity);
       if (ctx.db.playerMapMarker.identity.find(identity)) ctx.db.playerMapMarker.identity.delete(identity);
-      if (ctx.db.playerMovementDemand.identity.find(identity)) ctx.db.playerMovementDemand.identity.delete(identity);
     }
     removePlayerRealtimeState(ctx, identity);
   }

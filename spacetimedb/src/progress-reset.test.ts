@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { type ConnectionId } from "spacetimedb";
 import { crystalFixture, identity, server } from "../../tests/helpers/crystal-hollows-fixture";
-import { BOSS_REWARD_CLAIM_BITS, MAP_IDS, PLAYER_BASE_HP, PLAYER_SPEED, PLAYER_SPAWN, PROTOCOL_VERSION, TUTORIAL_FOREST_MAP_ID } from "../../shared/rules";
+import { MAP_IDS, PLAYER_BASE_HP, PLAYER_SPEED, PLAYER_SPAWN, PROTOCOL_VERSION, TUTORIAL_FOREST_MAP_ID } from "../../shared/rules";
 import { AGE_BAND_ADULT, TERMS_VERSION } from "../../shared/legal";
 import { STARTER_STONE, SUPERIOR_GOLDEN_HELMET } from "../../shared/items";
 
@@ -70,16 +70,8 @@ describe("progress reset returns the character to the tutorial", () => {
 
   it("keeps the tutorial location and locked portals after disconnect and re-entry", () => {
     const f = crystalFixture();
-    for (const boss of Object.keys(BOSS_REWARD_CLAIM_BITS)) {
-      f.seed(`${boss}Contribution`, { identity: f.ctx.sender, encounter: 7n });
-      f.seed(`${boss}AttackWindow`, { identity: f.ctx.sender });
-    }
     f.run(server.acceptTerms, { termsVersion: TERMS_VERSION, ageBand: AGE_BAND_ADULT });
     f.run(server.resetPlayerProgress);
-    for (const boss of Object.keys(BOSS_REWARD_CLAIM_BITS)) {
-      expect(f.db[`${boss}Contribution`].identity.find(f.ctx.sender)).toBeNull();
-      expect(f.db[`${boss}AttackWindow`].identity.find(f.ctx.sender)).toBeNull();
-    }
     f.run(server.onDisconnect);
     expect(f.db.playerLastLocation.identity.find(f.ctx.sender)).toMatchObject(spawn);
     // Use the fixture SDK's constructor (the module has its own SDK install).

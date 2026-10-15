@@ -74,17 +74,3 @@ it("keeps a duel's stats past f32 beside it, from the insert on, and reads them 
   expect(f.db.duelWideStats.duelId.find(duel.id)).toBeNull();
 });
 
-it("moves the f32 ranking into leaderboard_entry_v2, which holds stats past f32", async () => {
-  const { moveToWideTables } = await import("./module-migrations");
-  const f = crystalFixture();
-  const row = { identity: f.ctx.sender, displayName: "Big", damage: 3e38, maxHp: 5, isGuest: false, power: 1, armor: 0, regen: 0, playedMicros: 0n,
-    profileIcon: 0, powerLevel: 1, gender: 0, skinTone: 3, headItem: "", chestItem: "", feetItem: "", rightHandItem: "", leftHandItem: "" };
-  f.seed("leaderboardEntryLegacy", row);
-  f.seed("duelWireAccess", { key: "x:0", identity: f.ctx.sender, combatVersion: 0 });
-  moveToWideTables(f.ctx);
-  expect(f.db.leaderboardEntry.identity.find(f.ctx.sender)).toMatchObject({ displayName: "Big", damage: 3e38 });
-  expect([...f.db.leaderboardEntryLegacy.iter()]).toHaveLength(0);
-  expect([...f.db.duelWireAccess.iter()]).toHaveLength(0);
-  f.db.leaderboardEntry.identity.update({ ...f.db.leaderboardEntry.identity.find(f.ctx.sender), damage: 7e60 });
-  expect(f.db.leaderboardEntry.identity.find(f.ctx.sender).damage).toBe(7e60);
-});

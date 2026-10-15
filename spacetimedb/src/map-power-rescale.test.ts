@@ -24,14 +24,11 @@ describe("one-time live map power migration", () => {
     expect(next).toEqual(rescaleEndgameProgress(compressLegacyMapPower(original)));
     expect(f.db.playerProgress.identity.find(identity("3"))).toEqual({ ...next, identity: identity("3") });
     expect(f.db.playerProgress.identity.find(f.ctx.sender)).toEqual(low);
-    expect(f.db.playerPowerRebaseBackup.identity.find(identity("2"))).toMatchObject({ damage: 1e10, maxHp: 2e10, version: 7 });
-    expect(f.db.playerPowerRebaseBackup.count()).toBe(3n);
     expect(f.db.playerBalanceVersion.identity.find(identity("2")).version).toBe(9);
     expect(f.db.moduleMigrationState.id.find(0).version).toBe(MODULE_MIGRATION_VERSION);
     f.patch("playerProgress", { damage: next.damage + 1000 }, identity("2"));
     f.run(server.onConnect);
     expect(f.db.playerProgress.identity.find(identity("2")).damage).toBe(next.damage + 1000);
-    expect(f.db.playerPowerRebaseBackup.identity.find(identity("2")).damage).toBe(1e10);
   });
 
   it("rejects the entire transaction if equipment/research would reverse effective ranking", () => {
@@ -42,7 +39,6 @@ describe("one-time live map power migration", () => {
     const before = [...f.db.playerProgress.iter()];
     expect(() => f.run(server.onConnect)).toThrow("fresh ranking audit");
     expect([...f.db.playerProgress.iter()]).toEqual(before);
-    expect(f.db.playerPowerRebaseBackup.count()).toBe(0n);
     expect(f.db.moduleMigrationState.id.find(0).version).toBe(23);
   });
 });

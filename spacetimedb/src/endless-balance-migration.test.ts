@@ -40,20 +40,3 @@ it("converts online and offline accounts once, backs up stats, gates gear and re
   expect(f.db.playerEndlessRebaseBackup.identity.find(identity("2")).damage).toBe(original.damage);
 });
 
-it("does not restore rolled-back map access from historical shared-boss results on reconnect", async () => {
-  const { TERMS_VERSION, AGE_BAND_ADULT } = await import("../../shared/legal");
-  const f = crystalFixture();
-  f.patch("playerProgress", { desertUnlocked: true, crystalHollowsUnlocked: true,
-    ionCitadelUnlocked: false, bossRewardClaims: 511,
-    inventoryJson: '["ion_bow","starter_bow"]', equippedRightHand: "starter_bow" });
-  f.patch("player", { mapId: "home_exterior" });
-  f.seed("aegisPrimeResult", { id: 1, encounter: 3n, totalDamage: 10,
-    contributorsJson: JSON.stringify([{ identity: f.ctx.sender.toHexString(), damage: 10 }]), createdAt: f.ctx.timestamp });
-  f.run(server.acceptTerms, { termsVersion: TERMS_VERSION, ageBand: AGE_BAND_ADULT });
-  f.run(server.enterWorldWithTutorial, { forceTakeover: true, tabId: "rebase-reconnect-test" });
-  const progress = f.db.playerProgress.identity.find(f.ctx.sender);
-  expect(progress.ionCitadelUnlocked).toBe(false);
-  expect(progress.bossRewardClaims).toBe(511);
-  expect(() => f.run(server.savePlayerProgress, { ...progress, equippedRightHand: "ion_bow" })).toThrow("Ion Citadel");
-  expect(() => f.run(server.changeMap, { mapId: "ion_citadel", x: 600, y: 442 })).toThrow("Gravebloom");
-});

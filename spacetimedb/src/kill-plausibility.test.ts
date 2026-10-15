@@ -10,7 +10,6 @@ vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module
 
 const ENEMY = "Shard Hopper";
 const claim = (count: number, sequence = 1n) => ({ streamId: "plausibility-stream-01", sequence, mapId: "crystal_hollows", enemies: [{ enemy: ENEMY, count }] });
-const flags = (f: ReturnType<typeof crystalFixture>) => [...f.db.enemyDefeatReview.iter()].map(row => row.kind);
 const restricted = (f: ReturnType<typeof crystalFixture>) => Boolean(f.db.defeatSessionRestriction.identity.find(f.ctx.sender));
 const kills = (f: ReturnType<typeof crystalFixture>) => f.db.playerLifetime.identity.find(f.ctx.sender)?.enemyKills ?? 0n;
 
@@ -36,17 +35,14 @@ it("pays a weak player only what they could have killed and does not restrict th
   f.patch("playerProgress", { equippedRightHand: STARTER_BOW, damage: 1 });
   reportKills(f, claim(50));
   expect(kills(f)).toBeLessThan(50n);
-  // Bounded, not reported: there is no queue for anyone to read.
-  expect(flags(f)).toEqual([]);
   expect(restricted(f)).toBe(false);
 });
 
-it("pays a strong player in full with nothing to review", () => {
+it("pays a strong player in full", () => {
   const f = crystalFixture();
   f.patch("playerProgress", { equippedRightHand: STARTER_BOW, damage: 1e15 });
   reportKills(f, claim(6));
   expect(kills(f)).toBe(6n);
-  expect(flags(f)).toEqual([]);
 });
 
 it("estimates with the stats the report itself grants, as the client had them by its last kill", () => {
@@ -67,7 +63,6 @@ it("estimates with the stats the report itself grants, as the client had them by
   fillDefeatBudget(f, "tutorial_forest", "Needle");
   reportKills(f, { streamId: "plausibility-stream-02", sequence: 1n, mapId: "tutorial_forest", enemies: [{ enemy: "Needle", count: CLAIM }] });
   expect(kills(f)).toBe(BigInt(CLAIM));
-  expect(flags(f)).toEqual([]);
 });
 
 it("charges every kill at least the map's respawn over its whole population, so hopping maps earns no more", () => {

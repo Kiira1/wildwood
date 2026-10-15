@@ -51,7 +51,7 @@ function legacyDelete(f: Fixture, target: Identity) {
 
 // Event tables are delivered and dropped by the real server, so they never
 // hold a row to remove; the in-memory test database keeps what is seeded.
-const EVENT_TABLES = ["bossHitResult", "playerGemDrop", "playerMotionDetailFrame"];
+const EVENT_TABLES = ["playerGemDrop", "playerMotionDetailFrame"];
 // What both removals keep on purpose (see PLAYER_STATE_TABLES in
 // account-lifecycle.ts): rows the game owns rather than the player, Gem
 // purchase records, analytics history, and a duel's own stats row.

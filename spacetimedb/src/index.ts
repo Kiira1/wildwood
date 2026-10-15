@@ -10,15 +10,13 @@ import { mapBalanceVersion, mapBalanceHead, playerMapBalance, balanceEditorState
 import { resolveMapBalance, validateBalanceSettings } from "../../shared/map-balance";
 import { accountDeletionRequest, eraseKeepingRequest, queueAccountDeletion } from "./account-deletion";
 import { mailboxEquipment, deliverEquipmentMail, claimEquipmentMail } from "./mailbox-equipment";
-import { duelWireAccess } from "./duel-wire-access";
-import { leaderboardEntryLegacy } from "./leaderboard-legacy";
 import { nameChangeStatus } from "../../shared/name-change";
 import { validPatreonRedirect } from "./patreon-url";
 import { isValidProfileIcon } from "../../shared/profile-icons";
 import { releaseNotice, releaseAcknowledgement, writeReleaseWindow, acknowledgeReleaseWindow } from "./release-control";
 import { recordBossGateClear } from "./boss-gates";
 import { playerMultiplayerPreference, writeMultiplayerPreference } from "./multiplayer-preference";
-import { enemyDefeatBudget, bossDefeatWindow, bossMapDefeatWindow, acceptEnemyDefeats, enemyDefeatReview, permittedDefeatMaps, pruneIdleDefeatBudgets, throttleKillReports, type EnemyDefeatBatch } from "./enemy-defeats";
+import { enemyDefeatBudget, acceptEnemyDefeats, permittedDefeatMaps, pruneIdleDefeatBudgets, throttleKillReports, type EnemyDefeatBatch } from "./enemy-defeats";
 import { grantVirtualPlayerConsent, revokeVirtualPlayerConsent } from "./virtual-player-consent";
 import { offlineProgressTables, beginOfflineWindow, grantOfflineProgress, acknowledgeOfflineProgress, setSimulatedTimeAway } from "./offline-progress";
 import { playerOfflinePreference, writeOfflinePreference } from "./offline-preference";
@@ -104,18 +102,6 @@ import {
 import {
   nextStartupTelemetryRateState,
 } from "./startup-telemetry-policy";
-import {
-  dragonBossTables,
-  frostclawBossTables,
-  gloomrootBossTables,
-  koiShogunBossTables,
-  magmaliskBossTables,
-  miremawBossTables,
-  prismshellBossTables, ironhornBossTables, dreadreaperBossTables, voltwardenBossTables, gravebloomBossTables, aegisPrimeBossTables,
-  spiderBossTables,
-  tempestKirinBossTables,
-  tidewyrmBossTables,
-} from "./boss-tables";
 import { createCombatReport } from "./boss-combat";
 import { createModuleMigrations } from "./module-migrations";
 import { UPGRADE_BENCH_SLOT_ONE, UPGRADE_BENCH_SLOT_TWO, UPGRADE_BENCH_SLOT_THREE, normalizeUpgradeBenchSlot, requireUpgradeBenchSlot, activeItemUpgradeForSlot, activeItemUpgradeEntriesFor, insertActiveItemUpgrade } from "./upgrade-bench-slots";
@@ -353,25 +339,6 @@ const playerMotionIdentity = table(
   },
 );
 
-// Inert event table retained for schema compatibility. Current publishers use
-// only the two bounded packed tables below.
-const playerMotionFrame = table(
-  {
-    public: true,
-    event: true,
-    indexes: [
-      { accessor: "byMapZone", algorithm: "btree", columns: ["mapId", "zoneX", "zoneY"] as const },
-    ],
-  },
-  {
-    mapId: t.string(),
-    zoneX: t.i32(),
-    zoneY: t.i32(),
-    emittedAt: t.timestamp(),
-    playerCount: t.u32(),
-    payload: t.byteArray(),
-  },
-);
 
 // One private, bounded interest set per controlling player. Clients derive it
 // from the all-map position snapshot, so the server publisher performs O(NK)
@@ -416,38 +383,7 @@ const playerMapFrame = table(
   },
 );
 
-// Inert schema-compatibility table. It carried confirmed shared-boss hit
-// numbers; bosses are personal now and nothing inserts into it.
-const bossHitResult = table(
-  { public: true, event: true, indexes: [{ accessor: "byIdentity", algorithm: "btree", columns: ["identity"] as const }] },
-  { identity: t.identity(), mapId: t.string(), x: t.f64(), y: t.f64(), damage: t.f64(), critical: t.bool() },
-);
 
-// Inert schema-compatibility table. Boss attack presentation is reconstructed
-// from the encounter seed, authoritative player motion, and saved combat stats;
-// deleting this populated table would require a destructive database publish.
-const bossAttackFrame = table(
-  {
-    public: true,
-    event: true,
-    indexes: [
-      { accessor: "byMapZone", algorithm: "btree", columns: ["mapId", "zoneX", "zoneY"] as const },
-    ],
-  },
-  {
-    mapId: t.string(),
-    zoneX: t.i32(),
-    zoneY: t.i32(),
-    networkId: t.u32(),
-    attackerX: t.f64(),
-    attackerY: t.f64(),
-    targetX: t.f64(),
-    targetY: t.f64(),
-    targetRadius: t.f32(),
-    hits: t.u32(),
-    emittedAt: t.timestamp(),
-  },
-);
 
 // One authoritative death event lets same-map clients play the full presentation
 // locally without turning health into continuously synchronized public state.
@@ -907,28 +843,7 @@ const playerBalanceVersion = table(
   },
 );
 
-// Durable pre-conversion stats for recovery/audit. Never deleted by rescaling.
-const playerPowerRebaseBackup = table(
-  { public: false },
-  {
-    identity: t.identity().primaryKey(),
-    version: t.u32(),
-    maxHp: t.f32(), damage: t.f32(), armor: t.f32(), regen: t.f32(), attackRate: t.f32(),
-    beforePower: t.f64(), afterPower: t.f64(),
-    recordedAt: t.timestamp(),
-  },
-);
 
-// Separate v8 archive retains the original v7 recovery records.
-const playerEndgameRebaseBackup = table(
-  { public: false },
-  {
-    identity: t.identity().primaryKey(),
-    maxHp: t.f32(), damage: t.f32(), armor: t.f32(), regen: t.f32(), attackRate: t.f32(),
-    beforePower: t.f64(), afterPower: t.f64(),
-    recordedAt: t.timestamp(),
-  },
-);
 
 // Separate v9 archive: retain the original values even after future migrations.
 // Permanent account bonuses. A prestige reset clears progress and unlocks but
@@ -951,14 +866,6 @@ const developerPresencePreference = table(
   },
 );
 
-// Private interest signal for visible players currently watched by an
-// invisible developer. Public clients can read only their identity-scoped view.
-const playerMovementDemand = table(
-  { public: false },
-  {
-    identity: t.identity().primaryKey(),
-  },
-);
 
 // Persistent sign-in history. Private storage prevents account activity from
 // becoming public player data. The viewer index powers the developer-only view
@@ -1441,143 +1348,15 @@ const duelResolutionSchedule = table(
   },
 );
 
-const dragonRespawnSchedule = table(
-  { scheduled: (): any => respawnDragon },
-  {
-    scheduledId: t.u64().primaryKey().autoInc(),
-    scheduledAt: t.scheduleAt(),
-    encounter: t.u64(),
-  },
-);
 
-const spiderRespawnSchedule = table(
-  { scheduled: (): any => respawnSpider },
-  {
-    scheduledId: t.u64().primaryKey().autoInc(),
-    scheduledAt: t.scheduleAt(),
-    encounter: t.u64(),
-  },
-);
 
-const frostclawRespawnSchedule = table(
-  { scheduled: (): any => respawnFrostclaw },
-  {
-    scheduledId: t.u64().primaryKey().autoInc(),
-    scheduledAt: t.scheduleAt(),
-    encounter: t.u64(),
-  },
-);
 
-const magmaliskRespawnSchedule = table(
-  { scheduled: (): any => respawnMagmalisk },
-  {
-    scheduledId: t.u64().primaryKey().autoInc(),
-    scheduledAt: t.scheduleAt(),
-    encounter: t.u64(),
-  },
-);
 
-const gloomrootRespawnSchedule = table(
-  { scheduled: (): any => respawnGloomroot },
-  {
-    scheduledId: t.u64().primaryKey().autoInc(),
-    scheduledAt: t.scheduleAt(),
-    encounter: t.u64(),
-  },
-);
 
-const tidewyrmRespawnSchedule = table(
-  { scheduled: (): any => respawnTidewyrm },
-  {
-    scheduledId: t.u64().primaryKey().autoInc(),
-    scheduledAt: t.scheduleAt(),
-    encounter: t.u64(),
-  },
-);
 
-const koiShogunRespawnSchedule = table(
-  { scheduled: (): any => respawnKoiShogun },
-  {
-    scheduledId: t.u64().primaryKey().autoInc(),
-    scheduledAt: t.scheduleAt(),
-    encounter: t.u64(),
-  },
-);
 
-const tempestKirinRespawnSchedule = table(
-  { scheduled: (): any => respawnTempestKirin },
-  {
-    scheduledId: t.u64().primaryKey().autoInc(),
-    scheduledAt: t.scheduleAt(),
-    encounter: t.u64(),
-  },
-);
 
-const miremawRespawnSchedule = table(
-  { scheduled: (): any => respawnMiremaw },
-  {
-    scheduledId: t.u64().primaryKey().autoInc(),
-    scheduledAt: t.scheduleAt(),
-    encounter: t.u64(),
-  },
-);
-const prismshellRespawnSchedule = table(
-  { scheduled: (): any => respawnPrismshell },
-  {
-    scheduledId: t.u64().primaryKey().autoInc(),
-    scheduledAt: t.scheduleAt(),
-    encounter: t.u64(),
-  },
-);
-const ironhornRespawnSchedule = table(
-  { scheduled: (): any => respawnIronhorn },
-  {
-    scheduledId: t.u64().primaryKey().autoInc(),
-    scheduledAt: t.scheduleAt(),
-    encounter: t.u64(),
-  },
-);
-const dreadreaperRespawnSchedule = table(
-  { scheduled: (): any => respawnDreadreaper },
-  {
-    scheduledId: t.u64().primaryKey().autoInc(),
-    scheduledAt: t.scheduleAt(),
-    encounter: t.u64(),
-  },
-);
-const voltwardenRespawnSchedule = table(
-  { scheduled: (): any => respawnVoltwarden },
-  {
-    scheduledId: t.u64().primaryKey().autoInc(),
-    scheduledAt: t.scheduleAt(),
-    encounter: t.u64(),
-  },
-);
-const gravebloomRespawnSchedule = table(
-  { scheduled: (): any => respawnGravebloom },
-  {
-    scheduledId: t.u64().primaryKey().autoInc(),
-    scheduledAt: t.scheduleAt(),
-    encounter: t.u64(),
-  },
-);
-const aegisPrimeRespawnSchedule = table(
-  { scheduled: (): any => respawnAegisPrime },
-  {
-    scheduledId: t.u64().primaryKey().autoInc(),
-    scheduledAt: t.scheduleAt(),
-    encounter: t.u64(),
-  },
-);
 
-const forestRewardPrototype = table(
-  { name: "forest_reward_prototype", public: false },
-  {
-    identity: t.identity().primaryKey(),
-    encounter: t.u64(), enemyHp: t.u32(), damage: t.u32(), kills: t.u64(),
-    lastAttack: t.u64(), nextAttackAt: t.u64(), respawnAt: t.u64(),
-  },
-);
 
 // The last trace of map sharding. The live publish tooling still reads the
 // operator token from this table, so it stays until that tooling has another
@@ -1610,18 +1389,14 @@ const spacetimedb = schema({
   pausedResearch,
   patreonSweepSchedule,
   shardCoordinatorConnection,
-  forestRewardPrototype,
   player,
   playerMapMarker,
   playerMotion,
   playerMotionMapState,
   playerMotionIdentity,
-  playerMotionFrame,
   playerMotionInterest,
   playerMotionDetailFrame,
   playerMapFrame,
-  bossAttackFrame,
-  bossHitResult,
   playerDeathFrame,
   playerProfile, playerProfileSnapshot,
   playerGemWallet,
@@ -1632,8 +1407,7 @@ const spacetimedb = schema({
   playerEquipmentLock, playerItemGift, playerBowSkill, playerSwordSkill, playerEquipmentCopy, pendingEquipmentOffer, playerIgnoredDrop, playerLootSetting, playerItemRefine, playerCopyRefine, playerOre, playerRefineResult, playerCard, playerGearSlots, playerCopySlots, playerCardDrop, playerCardAttackCap, playerBossCardRoll, playerBuild, playerCardMeter, playerItemCollection, playerWornSkill, playerMining, playerMinedNode, playerMiningLevel, gemKillDaily, gemLedgerTrim,
   mailboxLetter, mailboxReceipt, playerJoinDate, mailboxEquipment, accountDeletionRequest,
   playerOnboarding,
-  regularEnemyLootCursor, regularEnemyStream, enemyDefeatBudget, bossDefeatWindow, bossMapDefeatWindow,
-  enemyDefeatReview,
+  regularEnemyLootCursor, regularEnemyStream, enemyDefeatBudget,
   playerMultiplayerPreference,
   chatReaction, chatHeartAllowance, chatReactionCooldown, chatReactionSummary, chatReactionUnlock, chatModerator, playerChatHearts,
   playerUpgradeBench,
@@ -1649,7 +1423,7 @@ const spacetimedb = schema({
   activeItemUpgradeSlotTwo,
   activeItemUpgradeSlotThree,
   playerItemDrop,
-  leaderboardEntry, leaderboardEntryLegacy,
+  leaderboardEntry,
   playerAccountStatus,
   playerLegalConsent,
   worldStatus,
@@ -1660,8 +1434,6 @@ const spacetimedb = schema({
   playerLifetime,
   playerNameCooldown,
   playerBalanceVersion,
-  playerPowerRebaseBackup,
-  playerEndgameRebaseBackup,
   playerEndlessRebaseBackup,
   playerPrestige,
   playerPrestigePerk,
@@ -1671,7 +1443,6 @@ const spacetimedb = schema({
   duelRiposte, duelCombatSnapshot,
   playerSessionAnalytics,
   developerPresencePreference,
-  playerMovementDemand,
   playerAccessAudit,
   playerSession,
   playerController,
@@ -1694,8 +1465,6 @@ const spacetimedb = schema({
   ...analyticsTables,
   duel,
   duelReplay,
-  duelWireAccess,
-  ...dragonBossTables,
   maintenanceSchedule,
   maintenanceSweepSchedule,
   startupTelemetryCleanupSchedule,
@@ -1704,25 +1473,6 @@ const spacetimedb = schema({
   researchCompletionSchedule,
   itemUpgradeCompletionSchedule,
   duelResolutionSchedule,
-  dragonRespawnSchedule,
-  ...spiderBossTables,
-  spiderRespawnSchedule,
-  ...frostclawBossTables,
-  frostclawRespawnSchedule,
-  ...magmaliskBossTables,
-  magmaliskRespawnSchedule,
-  ...gloomrootBossTables,
-  gloomrootRespawnSchedule,
-  ...tidewyrmBossTables,
-  tidewyrmRespawnSchedule,
-  ...koiShogunBossTables,
-  koiShogunRespawnSchedule,
-  ...tempestKirinBossTables,
-  tempestKirinRespawnSchedule,
-  ...miremawBossTables,
-  ...prismshellBossTables, ...ironhornBossTables, ...dreadreaperBossTables, ...voltwardenBossTables, ...gravebloomBossTables, ...aegisPrimeBossTables,
-  miremawRespawnSchedule,
-  prismshellRespawnSchedule, ironhornRespawnSchedule, dreadreaperRespawnSchedule, voltwardenRespawnSchedule, gravebloomRespawnSchedule, aegisPrimeRespawnSchedule,
 });
 export default spacetimedb;
 
@@ -1752,18 +1502,7 @@ export const receivedDuelMessages = spacetimedb.clientVisibilityFilter.sql("SELE
 export type ModuleViewCtx = import("spacetimedb/server").ViewCtx<InferSchema<typeof spacetimedb>>;
 export type ModuleReducerCtx = ReducerCtx<InferSchema<typeof spacetimedb>>;
 
-export const devForestRewardPrototype = spacetimedb.view(
-  { name: "dev_forest_reward_prototype", public: true },
-  t.option(forestRewardPrototype.rowType),
-  (ctx) => isDeveloperIdentity(ctx.sender) ? ctx.db.forestRewardPrototype.identity.find(ctx.sender) ?? undefined : undefined,
-);
 
-// The Tutorial Forest reward prototype left the developer tools. Its table and
-// view stay so a developer tab still open on the old client keeps its
-// subscription; the two reducers only refuse.
-export const beginForestRewardPrototype = spacetimedb.reducer({}, () => { throw new SenderError("WildStat updated. Refresh to continue."); });
-export const attackForestRewardPrototype = spacetimedb.reducer({ encounter: t.u64(), firstAttack: t.u64(), count: t.u8() },
-  () => { throw new SenderError("WildStat updated. Refresh to continue."); });
 
 export const myPlayerBlocks = spacetimedb.view(
   { name: "my_player_blocks", public: true },
@@ -2521,52 +2260,6 @@ export const resolveScheduledDuel = spacetimedb.reducer(
   },
 );
 
-// Retired shared-boss respawns. Each schedule table names its reducer, so the
-// reducer stays for as long as the table does; nothing inserts a schedule row
-// any more, and a one-shot row still pending is removed by the host once this
-// runs. The tables go in the release that drops the shared-boss tables.
-export const respawnDragon = spacetimedb.reducer({ schedule: dragonRespawnSchedule.rowType }, () => {});
-export const respawnSpider = spacetimedb.reducer({ schedule: spiderRespawnSchedule.rowType }, () => {});
-export const respawnFrostclaw = spacetimedb.reducer({ schedule: frostclawRespawnSchedule.rowType }, () => {});
-export const respawnMagmalisk = spacetimedb.reducer({ schedule: magmaliskRespawnSchedule.rowType }, () => {});
-export const respawnGloomroot = spacetimedb.reducer({ schedule: gloomrootRespawnSchedule.rowType }, () => {});
-export const respawnTidewyrm = spacetimedb.reducer({ schedule: tidewyrmRespawnSchedule.rowType }, () => {});
-export const respawnKoiShogun = spacetimedb.reducer({ schedule: koiShogunRespawnSchedule.rowType }, () => {});
-export const respawnTempestKirin = spacetimedb.reducer({ schedule: tempestKirinRespawnSchedule.rowType }, () => {});
-export const respawnMiremaw = spacetimedb.reducer({ schedule: miremawRespawnSchedule.rowType }, () => {});
-export const respawnPrismshell = spacetimedb.reducer({ schedule: prismshellRespawnSchedule.rowType }, () => {});
-export const respawnIronhorn = spacetimedb.reducer({ schedule: ironhornRespawnSchedule.rowType }, () => {});
-export const respawnDreadreaper = spacetimedb.reducer({ schedule: dreadreaperRespawnSchedule.rowType }, () => {});
-export const respawnVoltwarden = spacetimedb.reducer({ schedule: voltwardenRespawnSchedule.rowType }, () => {});
-export const respawnGravebloom = spacetimedb.reducer({ schedule: gravebloomRespawnSchedule.rowType }, () => {});
-export const respawnAegisPrime = spacetimedb.reducer({ schedule: aegisPrimeRespawnSchedule.rowType }, () => {});
-
-// Retired shared-boss hits. Boss fights are personal and settle through
-// report_enemy_defeats; these keep their wire shapes so a stale tab gets an
-// explicit update error instead of an unknown reducer.
-const retiredBossHitArgs = { hits: t.u32(), x: t.f64(), y: t.f64() };
-function refuseRetiredBossHit(): never {
-  throw new SenderError("WildStat updated. Refresh to continue.");
-}
-export const damageDragon = spacetimedb.reducer({}, () => refuseRetiredBossHit());
-export const damageDragonBatch = spacetimedb.reducer({ hits: t.u32() }, () => refuseRetiredBossHit());
-export const damageDragonFromPosition = spacetimedb.reducer(retiredBossHitArgs, () => refuseRetiredBossHit());
-export const damageSpiderBatch = spacetimedb.reducer({ hits: t.u32() }, () => refuseRetiredBossHit());
-export const damageSpiderFromPosition = spacetimedb.reducer(retiredBossHitArgs, () => refuseRetiredBossHit());
-export const damageFrostclawFromPosition = spacetimedb.reducer(retiredBossHitArgs, () => refuseRetiredBossHit());
-export const damageMagmaliskFromPosition = spacetimedb.reducer(retiredBossHitArgs, () => refuseRetiredBossHit());
-export const damageGloomrootFromPosition = spacetimedb.reducer(retiredBossHitArgs, () => refuseRetiredBossHit());
-export const damageTidewyrmFromPosition = spacetimedb.reducer(retiredBossHitArgs, () => refuseRetiredBossHit());
-export const damageKoiShogunFromPosition = spacetimedb.reducer(retiredBossHitArgs, () => refuseRetiredBossHit());
-export const damageTempestKirinFromPosition = spacetimedb.reducer(retiredBossHitArgs, () => refuseRetiredBossHit());
-export const damageMiremawFromPosition = spacetimedb.reducer(retiredBossHitArgs, () => refuseRetiredBossHit());
-export const damagePrismshellFromPosition = spacetimedb.reducer(retiredBossHitArgs, () => refuseRetiredBossHit());
-export const damageIronhornFromPosition = spacetimedb.reducer(retiredBossHitArgs, () => refuseRetiredBossHit());
-export const damageDreadreaperFromPosition = spacetimedb.reducer(retiredBossHitArgs, () => refuseRetiredBossHit());
-export const damageVoltwardenFromPosition = spacetimedb.reducer(retiredBossHitArgs, () => refuseRetiredBossHit());
-export const damageGravebloomFromPosition = spacetimedb.reducer(retiredBossHitArgs, () => refuseRetiredBossHit());
-export const damageAegisPrimeFromPosition = spacetimedb.reducer(retiredBossHitArgs, () => refuseRetiredBossHit());
-
 // Release control stays on the account database; no map publish is needed for notices.
 export const setReleaseWindow = spacetimedb.reducer(
   { id: t.string(), version: t.string(), phase: t.string(), startsAt: t.f64(), reload: t.bool() },
@@ -3121,12 +2814,6 @@ export const devRollbackPlayerProgression = spacetimedb.reducer(
     },
     apply: (progress, mapIndex) => {
       writeProgressAndPresentation(ctx, progress);
-      // Old shared-boss evidence must not restore revoked map access on login.
-      for (const [boss, bit] of Object.entries(BOSS_REWARD_CLAIM_BITS)) {
-        if (progress.bossRewardClaims & bit) continue;
-        (ctx.db as any)[`${boss}Contribution`].identity.delete(args.identity);
-        (ctx.db as any)[`${boss}AttackWindow`].identity.delete(args.identity);
-      }
       const procedural = ctx.db.proceduralProgress.identity.find(args.identity);
       if (procedural) ctx.db.proceduralProgress.identity.update({ ...procedural, completed: 0 });
       const history = ctx.db.playerCutsceneHistory.identity.find(args.identity);
@@ -3148,8 +2835,6 @@ export const devRollbackPlayerProgression = spacetimedb.reducer(
         else ctx.db.playerLastLocation.insert(location);
       }
       for (const row of ctx.db.enemyDefeatBudget.identity.filter(args.identity)) ctx.db.enemyDefeatBudget.key.delete(row.key);
-      if (ctx.db.bossDefeatWindow.identity.find(args.identity)) ctx.db.bossDefeatWindow.identity.delete(args.identity);
-      if (ctx.db.bossMapDefeatWindow.identity.find(args.identity)) ctx.db.bossMapDefeatWindow.identity.delete(args.identity);
       // Keep accepted report cursors so old batches cannot award the same loot twice.
       refreshLeaderboard(ctx);
     },
@@ -4430,13 +4115,9 @@ export const myProceduralBoss = spacetimedb.view(
   },
 );
 
-// Retired shared Endless boss endpoints. Endless bosses are personal and settle
-// through report_enemy_defeats. Preparing was already a silent no-op for
-// current clients, so it stays one; the hits refuse like the map bosses above.
+// Retired shared Endless boss endpoint. Endless bosses are personal and settle
+// through report_enemy_defeats; preparing was already a silent no-op for current clients.
 export const prepareProceduralBoss = spacetimedb.reducer({ mapId:t.string() }, () => {});
-const proceduralHitArgs = { mapId:t.string(), bossKey:t.string(), encounter:t.u64(), hits:t.u32(), x:t.f64(), y:t.f64() };
-export const hitProceduralBoss = spacetimedb.reducer(proceduralHitArgs, () => refuseRetiredBossHit());
-export const hitProceduralBossBatch = spacetimedb.reducer(proceduralHitArgs, () => refuseRetiredBossHit());
 
 const rankedLeaderboardPlayer = t.object("RankedLeaderboardPlayer", { rank: t.u32(), entry: leaderboardEntry.rowType });
 export const getLeaderboardWindow = spacetimedb.procedure(

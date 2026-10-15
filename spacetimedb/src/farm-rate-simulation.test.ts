@@ -115,7 +115,6 @@ function player(options: { lapSeconds: number; minutes: number; reportSeconds?: 
     paidPerSecond: paid / totalSeconds,
     restricted: Boolean(f.db.defeatSessionRestriction.identity.find(f.ctx.sender)),
     stillInWorld: Boolean(f.db.player.identity.find(f.ctx.sender)),
-    reviewed: [...f.db.enemyDefeatReview.iter()].length,
   };
 }
 
@@ -163,7 +162,6 @@ describe("farming rate under the respawn ceiling", () => {
     expect(run.paid).toBe(run.claimed);
     expect(run.paidPerSecond).toBeCloseTo(run.claimedPerSecond, 6);
     expect(run.restricted).toBe(false);
-    expect(run.reviewed).toBe(0);
   });
 
   it("pays a fast player on the 10-second respawn in full", () => {
@@ -173,7 +171,6 @@ describe("farming rate under the respawn ceiling", () => {
     const run = player({ lapSeconds: DEFEAT_MIN_RESPAWN_SECONDS, minutes: 10 });
     expect(run.paid).toBe(run.claimed);
     expect(run.restricted).toBe(false);
-    expect(run.reviewed).toBe(0);
   });
 
   it("clips the old ad-halved rate of a 10-second respawn", () => {
@@ -197,7 +194,6 @@ describe("farming rate under the respawn ceiling", () => {
     // No ban, no disconnect, no queue for a person to read.
     expect(run.restricted).toBe(false);
     expect(run.stillInWorld).toBe(true);
-    expect(run.reviewed).toBe(0);
   });
 
   it("holds a flat-out script to the same ceiling", () => {

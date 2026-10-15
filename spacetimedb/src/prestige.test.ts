@@ -233,7 +233,6 @@ it("never accepts fewer kills from a prestiged player than a plain one", () => {
   const kills = (f: ReturnType<typeof crystalFixture>) => f.db.playerLifetime.identity.find(f.ctx.sender)?.enemyKills ?? 0n;
   farmSpitters(plain, 60); farmSpitters(prestiged, 60);
   expect(kills(prestiged)).toBeGreaterThanOrEqual(kills(plain));
-  expect([...prestiged.db.enemyDefeatReview.iter()]).toEqual([]);
 });
 
 it("spends a banked point on one rank and refuses anything it cannot pay for", () => {

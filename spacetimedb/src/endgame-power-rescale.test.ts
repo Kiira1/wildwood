@@ -25,13 +25,11 @@ describe("endgame account migration", () => {
     expect(next).toEqual(rescaleEndgameProgress(original));
     expect(f.db.playerProgress.identity.find(identity("3"))).toEqual({ ...next, identity: identity("3") });
     expect(f.db.playerProgress.identity.find(f.ctx.sender)).toEqual(low);
-    expect(f.db.playerEndgameRebaseBackup.identity.find(identity("2"))).toMatchObject({ damage: original.damage, maxHp: original.maxHp });
     expect(f.db.moduleMigrationState.id.find(0).version).toBe(MODULE_MIGRATION_VERSION);
     expect(f.db.playerBalanceVersion.identity.find(identity("2")).version).toBe(9);
     f.patch("playerProgress", { damage: next.damage + 1000 }, identity("2"));
     f.run(server.onConnect);
     expect(f.db.playerProgress.identity.find(identity("2")).damage).toBe(next.damage + 1000);
-    expect(f.db.playerEndgameRebaseBackup.identity.find(identity("2")).damage).toBe(original.damage);
   });
 
   it("rolls back if a stat leaderboard would change even when power order survives", () => {
@@ -41,7 +39,6 @@ describe("endgame account migration", () => {
     const before = [...f.db.playerProgress.iter()];
     expect(() => f.run(server.onConnect)).toThrow("fresh damage ranking audit");
     expect([...f.db.playerProgress.iter()]).toEqual(before);
-    expect(f.db.playerEndgameRebaseBackup.count()).toBe(0n);
     expect(f.db.moduleMigrationState.id.find(0).version).toBe(25);
   });
 });

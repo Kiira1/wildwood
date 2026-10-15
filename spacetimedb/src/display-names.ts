@@ -59,23 +59,6 @@ export function syncDisplayNamePresentation(ctx: any, identity: any, displayName
   if (audit && audit.displayName !== displayName) {
     ctx.db.playerAccessAudit.identity.update({ ...audit, displayName });
   }
-  for (const table of [
-    ctx.db.dragonContribution,
-    ctx.db.spiderContribution,
-    ctx.db.frostclawContribution,
-    ctx.db.magmaliskContribution,
-    ctx.db.gloomrootContribution,
-    ctx.db.tidewyrmContribution,
-    ctx.db.koiShogunContribution,
-    ctx.db.tempestKirinContribution,
-    ctx.db.miremawContribution,
-    ctx.db.prismshellContribution,
-  ]) {
-    const contribution = table.identity.find(identity);
-    if (contribution && contribution.displayName !== displayName) {
-      table.identity.update({ ...contribution, displayName });
-    }
-  }
   syncDisplayNameHistory(ctx, identity, displayName);
   for (const duel of [...ctx.db.duel.byChallenger.filter(identity)].map(row => withDuelWide(ctx, row)) as any[]) {
     if (duel.challengerName !== displayName) updateSnapshotRow(ctx, "duel", { ...duel, challengerName: displayName });
