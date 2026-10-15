@@ -423,9 +423,9 @@ export function createPresenceRuntime(deps: PresenceRuntimeDeps) {
 
   function savedWorldLocation(ctx: any, identity: any, progress: any) {
     const saved = ctx.db.playerLastLocation.identity.find(identity);
-    // A new account starts in the Town, and so does one saved at Home (retired: its coordinates mean nothing in the Town);
-    // a saved place that no longer exists falls back to the forest.
-    const requestedMap = !saved || saved.mapId === HOME_EXTERIOR_MAP_ID ? TOWN_MAP_ID : VALID_MAP_IDS.has(saved.mapId) ? saved.mapId : TUTORIAL_FOREST_MAP_ID;
+    // A new account starts in the Tutorial Forest, where the fighting is; one saved at Home (retired: its coordinates mean
+    // nothing in the Town) arrives in the Town; a saved place that no longer exists falls back to the forest.
+    const requestedMap = !saved ? TUTORIAL_FOREST_MAP_ID : saved.mapId === HOME_EXTERIOR_MAP_ID ? TOWN_MAP_ID : VALID_MAP_IDS.has(saved.mapId) ? saved.mapId : TUTORIAL_FOREST_MAP_ID;
     let mapId = requestedMap;
     mapId = accessibleCampaignMap(mapId, progress);
     if (isSoulMap(mapId) && !soulDimensionOpenFor(ctx, identity)) mapId = TOWN_MAP_ID;

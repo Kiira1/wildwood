@@ -41,6 +41,16 @@ describe("new character tutorial", () => {
     expect(f.db.player.identity.find(f.ctx.sender).isVisible).toBe(false);
     expect(f.db.playerOnboarding.identity.find(f.ctx.sender).step).toBe(6);
   });
+  it("starts a brand-new character in the Tutorial Forest, not the Town", () => {
+    const f = crystalFixture();
+    f.db.player.identity.delete(f.ctx.sender);
+    f.db.playerProgress.identity.delete(f.ctx.sender);
+    f.db.playerProfile.identity.delete(f.ctx.sender);
+    if (f.db.playerLastLocation?.identity.find(f.ctx.sender)) f.db.playerLastLocation.identity.delete(f.ctx.sender);
+    f.run(server.acceptTerms, { termsVersion: TERMS_VERSION, ageBand: AGE_BAND_ADULT });
+    f.run(server.enterWorldWithTutorial, { forceTakeover: false, tabId: "new-forest" });
+    expect(f.db.player.identity.find(f.ctx.sender)?.mapId).toBe("tutorial_forest");
+  });
   it("does not enroll existing players, including players missing legacy progress", () => {
     const f = crystalFixture();
     f.db.playerProgress.identity.delete(f.ctx.sender);

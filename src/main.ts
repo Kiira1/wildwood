@@ -1666,7 +1666,7 @@ import {
     setName: async name => coop?.setDisplayName?.(name),
     hasChosenName: () => coop?.hasChosenDisplayName?.() ?? false,
     waitForNameSave: async () => { try { await pendingProfileNameSave; } catch {} },
-    closeWindows: () => { profileWindow.close(); itemInspectionController.close(); }, playWelcome: () => mapMusic.playVoiceLine("assets/wildstat/audio/tutorial-welcome.mp3"),
+    closeWindows: () => { profileWindow.close(); itemInspectionController.close(); },
     cancel: () => { canvasRuntime.resize(); profileWindow.close(); setCurrentMap(TUTORIAL_FOREST_MAP_ID); session.stop(); session.setHasStarted(false); loadProgress(); finishStartup(); },
   }); installTutorialReplay({ doc: document, showMessage, blocked: () => tutorialReplayBlocked({ running: session.isRunning(), inTutorial: Boolean(onboarding?.isActive()), dueling: isDueling(), challenge: Boolean(coop?.aggroChallenge?.()?.active || coop?.prestigeChallenge?.()?.active) }), begin: () => { autoFarm.stop(); playerInput.clear(); onboarding?.start(() => { canvasRuntime.resize(); setCurrentMap(TUTORIAL_FOREST_MAP_ID); loadProgress(); startGame(false, true); }, true); } });
 

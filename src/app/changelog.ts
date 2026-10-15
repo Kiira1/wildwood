@@ -1,6 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
   "0.904.1": [
     "Player profiles show the cards and weapon skills in use",
+    "New players start in the Tutorial Forest",
   ],
   "0.904.0": [
     "Builds: save your gear and cards in the Inventory, and swap between them in one tap",
