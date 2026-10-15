@@ -166,13 +166,15 @@ export function resumeParkedChallenge(ctx: any): { progress: any; mapId: string;
 }
 
 export function mergePrestigeChallenges(ctx: any, guest: any, account: any) {
+  // The saved main run belongs to either challenge, so it moves even for a guest who never played Reflect Only:
+  // an Aggro run linked without it could never be dropped out of.
+  const backup = ctx.db.prestigeChallengeBackup.identity.find(guest);
+  if (backup && !ctx.db.prestigeChallengeBackup.identity.find(account)) ctx.db.prestigeChallengeBackup.insert({ ...backup, identity: account });
+  if (backup) ctx.db.prestigeChallengeBackup.identity.delete(guest);
   const source = ctx.db.playerPrestigeChallenge.identity.find(guest);
   if (!source) return;
   const target = ctx.db.playerPrestigeChallenge.identity.find(account);
   const next = { identity: account, active: Boolean(target?.active || source.active), completed: Math.max(target?.completed ?? 0, source.completed) };
-  const backup = ctx.db.prestigeChallengeBackup.identity.find(guest);
-  if (backup && !ctx.db.prestigeChallengeBackup.identity.find(account)) ctx.db.prestigeChallengeBackup.insert({ ...backup, identity: account });
-  if (backup) ctx.db.prestigeChallengeBackup.identity.delete(guest);
   const parked = ctx.db.prestigeChallengeRun.identity.find(guest);
   if (parked && !ctx.db.prestigeChallengeRun.identity.find(account)) {
     ctx.db.prestigeChallengeRun.insert({ ...parked, identity: account });

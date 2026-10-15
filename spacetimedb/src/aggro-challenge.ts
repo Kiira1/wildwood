@@ -198,7 +198,7 @@ export function mergeAggroChallenges(ctx: any, guest: any, account: any) {
   const source = ctx.db.playerAggroChallenge.identity.find(guest);
   if (!source) return;
   const target = ctx.db.playerAggroChallenge.identity.find(account);
-  // The backup moves with Reflect Only's merge; a run comes across only with it.
+  // The backup moves with Reflect Only's merge (mergePrestigeChallenges), which runs first.
   writeRow(ctx, { identity: account, active: Boolean(target?.active || source.active), completed: Math.max(target?.completed ?? 0, source.completed) });
   ctx.db.playerAggroChallenge.identity.delete(guest);
 }

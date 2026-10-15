@@ -238,3 +238,17 @@ it("never takes an Aggro run back to a map only the main run has open: Fight fro
   f.run(server.changeMap, { mapId: "town", x: 6120, y: 5110 });
   expect(f.db.player.identity.find(f.ctx.sender).mapId).toBe("tutorial_forest");
 });
+
+it("brings a guest's Aggro run to the account with its saved main run, Reflect Only never played", async () => {
+  const { mergeLinkedPrestige } = await import("./prestige-transfer");
+  const { Identity } = await import("../../tests/helpers/spacetime-memory-db");
+  const f = fixture();
+  f.run(server.startAggroRun);
+  expect(f.db.playerPrestigeChallenge.identity.find(f.ctx.sender)).toBeFalsy();
+  const guest = f.ctx.sender, account = new Identity("c2".padEnd(64, "7"));
+  mergeLinkedPrestige(f.ctx, guest, account);
+  expect(f.db.playerAggroChallenge.identity.find(account)).toMatchObject({ active: true });
+  // Its main run is there to drop out to.
+  expect(f.db.prestigeChallengeBackup.identity.find(account)).toBeTruthy();
+  expect(f.db.prestigeChallengeBackup.identity.find(guest)).toBeFalsy();
+});

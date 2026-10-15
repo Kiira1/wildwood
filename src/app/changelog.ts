@@ -5,6 +5,7 @@ export const RELEASE_NOTES: Record<string, string[]> = {
     "You can see a glimpse of the next map through each portal",
     "The Town's map picker takes you there instantly",
     "Smoother menus when playing with a controller",
+    "Fixed Aggro runs that couldn't be dropped out of after signing in to save a guest",
   ],
   "0.904.2": [
     "Reflect now fires on hits your shield fully absorbs",
