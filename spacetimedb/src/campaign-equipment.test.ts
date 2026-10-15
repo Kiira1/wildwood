@@ -9,6 +9,7 @@ import { ENEMY_TYPES } from "../../shared/enemy-definitions";
 import { enemyDefeatDefinition } from "../../shared/enemy-defeats";
 import { regularMapLoot } from "../../shared/regular-map-loot";
 import { canReplayRegularEnemyLoot, rollRegularEnemyLoot } from "./regular-enemy-loot";
+import { progressOf } from "../../tests/helpers/progress";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
 const maps = [...new Set(Object.values(CAMPAIGN_EQUIPMENT).map(entry => entry.mapId))];
@@ -23,12 +24,12 @@ it.each(maps)("awards, equips, and preserves the new %s drops through an authori
   const batch = { streamId: "campaign-loot-test-1234", sequence: 1n, mapId, enemies: [{ enemy, count: 1 }] };
   reportKills(f, batch);
   const earned = regularMapLoot(mapId).map(drop => drop.itemId);
-  let progress = f.db.playerProgress.identity.find(f.ctx.sender);
+  let progress = progressOf(f, f.ctx.sender);
   expect(JSON.parse(progress.inventoryJson)).toEqual(expect.arrayContaining(earned));
   for (const [id, entry] of Object.entries(CAMPAIGN_EQUIPMENT).filter(([, entry]) => entry.mapId === mapId)) {
     const field = entry.definition.slot === "HEAD" ? "equippedHead" : entry.definition.slot === "CHEST" ? "equippedChest" : "equippedRightHand";
     f.run(server.savePlayerProgress, { ...progress, inventoryJson: "[]", [field]: id });
-    progress = f.db.playerProgress.identity.find(f.ctx.sender);
+    progress = progressOf(f, f.ctx.sender);
     expect(progress[field]).toBe(id);
     expect(JSON.parse(progress.inventoryJson)).toContain(id);
   }

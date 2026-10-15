@@ -6,6 +6,7 @@ import { publishItemDrop } from "./equipment-copies";
 import { refineLevelFor, setRefineLevel } from "./item-refine";
 import { EQUIPMENT_OFFER_LIFETIME_MS } from "../../shared/equipment-copies";
 import { IRON_BOW, SAMURAI_HAT } from "../../shared/items";
+import { progressOf } from "../../tests/helpers/progress";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
 // A refine belongs to one copy of an item, and follows it wherever the copy goes (item-refine.ts).
@@ -21,7 +22,7 @@ function archer() {
 const keepCopy = (f: Fixture, itemId = IRON_BOW) =>
   f.seed("playerEquipmentCopy", { id: 0n, identity: f.ctx.sender, itemId, arrowStorm: 0, ricochet: 3, piercingShot: 0, acquiredAt: f.ctx.timestamp });
 const level = (f: Fixture, itemId = IRON_BOW, copyId = 0n) => refineLevelFor(f.ctx, f.ctx.sender, itemId, copyId);
-const inventory = (f: Fixture): string[] => JSON.parse(f.db.playerProgress.identity.find(f.ctx.sender).inventoryJson);
+const inventory = (f: Fixture): string[] => JSON.parse(progressOf(f, f.ctx.sender).inventoryJson);
 
 describe("a refine follows its copy", () => {
   it("swaps with the first copy when a kept copy is chosen, bow or not", () => {

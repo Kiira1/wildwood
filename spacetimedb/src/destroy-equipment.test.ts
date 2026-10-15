@@ -1,6 +1,7 @@
 import { expect, it, vi } from "vitest";
 import { SAMURAI_HAT, STARTER_BOW, STARTER_STONE, WOODEN_ARMOR } from "../../shared/items";
 import { crystalFixture, server } from "../../tests/helpers/crystal-hollows-fixture";
+import { progressOf } from "../../tests/helpers/progress";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
 it("destroys owned equipment, cosmetic references and upgrade levels together", () => {
@@ -8,7 +9,7 @@ it("destroys owned equipment, cosmetic references and upgrade levels together", 
   f.patch("playerProgress", { inventoryJson: JSON.stringify([SAMURAI_HAT, STARTER_BOW]), equippedHead: SAMURAI_HAT, cosmeticHead: SAMURAI_HAT });
   f.seed("playerItemUpgrade", { key: `${f.ctx.sender.toHexString()}:${SAMURAI_HAT}`, identity: f.ctx.sender, itemId: SAMURAI_HAT, level: 4 });
   f.run(server.destroyEquipment, { itemId: SAMURAI_HAT });
-  const progress = f.db.playerProgress.identity.find(f.ctx.sender);
+  const progress = progressOf(f, f.ctx.sender);
   expect(JSON.parse(progress.inventoryJson)).not.toContain(SAMURAI_HAT);
   expect(JSON.parse(progress.inventoryJson)).toContain(STARTER_BOW);
   expect(progress.equippedHead).toBe(""); expect(progress.cosmeticHead).toBe("");
@@ -22,7 +23,7 @@ it.each([[STARTER_BOW, "bowCount"], [WOODEN_ARMOR, "woodenArmorCount"]])("remove
   const f = crystalFixture();
   f.patch("playerProgress", { inventoryJson: JSON.stringify([itemId]), [counter]: 1 });
   f.run(server.destroyEquipment, { itemId });
-  const progress = f.db.playerProgress.identity.find(f.ctx.sender);
+  const progress = progressOf(f, f.ctx.sender);
   expect(progress[counter]).toBe(0);
   expect(JSON.parse(progress.inventoryJson)).not.toContain(itemId);
 });

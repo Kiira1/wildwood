@@ -1,15 +1,19 @@
 import { table, t } from "spacetimedb/server";
 
-/** Full-precision combat stats for players past f32: see wide-stats.ts. */
+/**
+ * A player's bag, apart from player_progress so a kill report's progress write does not resend it
+ * (shared/progress-row.ts). Public like player_progress: profiles read another player's.
+ */
+export const playerInventory = table({ name: "player_inventory", public: true }, {
+  identity: t.identity().primaryKey(), inventoryJson: t.string(), cosmeticItemsJson: t.string(),
+});
+
+// player_wide_stats and player_combat_rating moved onto player_progress (migration 57) and nothing reads
+// them; they go in the next release that breaks clients (docs/pending-client-break.md).
 export const playerWideStats = table({ name: "player_wide_stats", public: true }, {
   identity: t.identity().primaryKey(), maxHp: t.f64(), damage: t.f64(), armor: t.f64(), regen: t.f64(),
 });
 
-/**
- * The run's crit damage rating (shared/stat-rating.ts), from crit camps: reset on prestige like any run stat.
- * Its own table, read and written with player_progress (wide-stats.ts), rather than a column every session's
- * table would have to add. No row means 0. Attack speed has no column: its rating is read back from attackRate.
- */
 export const playerCombatRating = table({ name: "player_combat_rating", public: true }, {
   identity: t.identity().primaryKey(), critDamage: t.f64(),
 });

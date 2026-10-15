@@ -12,6 +12,7 @@ import { criticalDamage } from "../../shared/critical-damage";
 import { RATING_MAX, attackIntervalForRating, critDamageForLevels, ratingLevels } from "../../shared/stat-rating";
 import { withSoulStats } from "../../shared/soul-dimension";
 import { DEFAULT_ATTACK_INTERVAL } from "../../shared/rules";
+import { progressOf } from "../../tests/helpers/progress";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
 const soulRow = (f: any, critDamage: number, identity = f.ctx.sender) =>
@@ -22,7 +23,7 @@ const research = (f: any, ranks: Record<string, number>) =>
 /** The kill bound's damage a second for a critting bow player with this much soul critical damage. */
 function boundDps(critDamage: number, critCap = 0, runRating = 0) {
   const f = crystalFixture();
-  if (runRating) f.seed("playerCombatRating", { identity: f.ctx.sender, critDamage: runRating });
+  if (runRating) f.patch("playerProgress", { critRating: runRating });
   f.patch("playerProgress", { damage: 1_000, equippedRightHand: STARTER_BOW, inventoryJson: '["starter_bow"]' });
   research(f, { criticalChance: 1, critCap });
   soulRow(f, critDamage);
@@ -54,7 +55,7 @@ it("deals the capped critical in duels, the run's crit rating included", () => {
     const f = crystalFixture();
     research(f, { criticalChance: 100, critCap });
     soulRow(f, critDamage);
-    if (runRating) f.seed("playerCombatRating", { identity: f.ctx.sender, critDamage: runRating });
+    if (runRating) f.patch("playerProgress", { critRating: runRating });
     return duelDamage(f.ctx, f.ctx.sender, 10);
   };
   expect(duel(0)).toBeCloseTo(10.5);
@@ -101,7 +102,7 @@ it("migration 54 turns soul attack speed and crit damage into ratings, nobody we
   // A fresh run with this soul starts at 0.64 + 1 attacks a second, as it did.
   expect(1 / withSoulStats({ damage: 1, maxHp: 1, armor: 0, regen: 0, attackRate: DEFAULT_ATTACK_INTERVAL }, mine).attackRate).toBeCloseTo(1 / DEFAULT_ATTACK_INTERVAL + 1, 5);
   // This run at 1.5 a second plus the soul's 1 was 2.5: nobody plays slower than that (since 0.901.55 the soul adds flat on top).
-  const progress = f.db.playerProgress.identity.find(f.ctx.sender);
+  const progress = progressOf(f, f.ctx.sender);
   expect(1 / withSoulStats(progress, mine).attackRate).toBeGreaterThanOrEqual(2.5 - 1e-6);
   // Running it again changes nothing.
   f.run(server.onConnect);

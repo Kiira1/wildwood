@@ -116,6 +116,8 @@ export function saveSubmittedProgress(ctx: ModuleReducerCtx, progress: {
     moonfenUnlocked: base.moonfenUnlocked,
     crystalHollowsUnlocked: base.crystalHollowsUnlocked, clockworkRuinsUnlocked: base.clockworkRuinsUnlocked, duskfallOrchardUnlocked: base.duskfallOrchardUnlocked, neonBastionUnlocked: base.neonBastionUnlocked, verdantCatacombsUnlocked: base.verdantCatacombsUnlocked, ionCitadelUnlocked: base.ionCitadelUnlocked,
     bossRewardClaims: base.bossRewardClaims ?? 0,
+    // The stats above are full values; the write sets the *Wide columns from them.
+    critRating: base.critRating ?? 0, maxHpWide: 0, damageWide: 0, armorWide: 0, regenWide: 0,
     bowCount: forestItemCountForProgress(base, STARTER_BOW, "bowCount"),
     woodenArmorCount: forestItemCountForProgress(base, WOODEN_ARMOR, "woodenArmorCount"),
   };

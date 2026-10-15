@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { BOSS_REWARD_CLAIM_BITS } from "../../shared/rules";
 import { crystalFixture, server } from "../../tests/helpers/crystal-hollows-fixture";
 import { reducerParameters } from "../../tests/helpers/spacetime-module";
+import { progressOf } from "../../tests/helpers/progress";
 
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
@@ -19,16 +20,16 @@ describe("Crystal Hollows reducer behavior (in-memory, not native host integrati
   it("cannot grant or revoke the unlock through a player save", () => {
     const f = crystalFixture();
     const save = (forged: boolean) => f.run(server.savePlayerProgress, {
-      ...f.db.playerProgress.identity.find(f.ctx.sender), enemyKills: 0, crystalHollowsUnlocked: forged,
+      ...progressOf(f, f.ctx.sender), enemyKills: 0, crystalHollowsUnlocked: forged,
     });
     save(true);
-    expect(f.db.playerProgress.identity.find(f.ctx.sender).crystalHollowsUnlocked).toBe(false);
+    expect(progressOf(f, f.ctx.sender).crystalHollowsUnlocked).toBe(false);
     f.patch("playerProgress", { bossRewardClaims: BOSS_REWARD_CLAIM_BITS.prismshell });
     save(false);
-    expect(f.db.playerProgress.identity.find(f.ctx.sender).bossRewardClaims).toBe(BOSS_REWARD_CLAIM_BITS.prismshell);
+    expect(progressOf(f, f.ctx.sender).bossRewardClaims).toBe(BOSS_REWARD_CLAIM_BITS.prismshell);
     f.patch("playerProgress", { crystalHollowsUnlocked: true });
     save(false);
-    expect(f.db.playerProgress.identity.find(f.ctx.sender).crystalHollowsUnlocked).toBe(true);
+    expect(progressOf(f, f.ctx.sender).crystalHollowsUnlocked).toBe(true);
   });
 
   it("rejects locked travel without moving the player, then accepts an earned unlock", () => {

@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { Identity, Timestamp } from "../../tests/helpers/spacetime-memory-db";
 import { crystalFixture, identity, server } from "../../tests/helpers/crystal-hollows-fixture";
 import { SPACETIME_AUTH_CLIENT_ID, SPACETIME_AUTH_ISSUER } from "../../shared/rules";
+import { progressOf } from "../../tests/helpers/progress";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
 const owner = new Identity("c200383520521c925f3cf6deafb20cd6a7d6168d1c31cb3c0ddb731c197a2d79");
@@ -37,7 +38,7 @@ describe("swapping characters between logins", () => {
     f.swap();
     expect(f.db.playerProfile.identity.find(moth)?.displayName).toBe("Vis");
     expect(f.db.playerProfile.identity.find(vis)?.displayName).toBe("Brave Moth 509");
-    expect(f.db.playerProgress.identity.find(moth)?.damage).toBe(9_999);
+    expect(progressOf(f, moth)?.damage).toBe(9_999);
     expect(f.db.playerItemUpgrade.key.find(`${hex(moth)}:IRON_BOW`)).toMatchObject({ identity: moth, level: 5 });
     expect(f.db.playerItemUpgrade.key.find(`${hex(vis)}:IRON_BOW`)).toBeFalsy();
     // Both directions of the friendship, and the DM thread, follow the character.
@@ -62,7 +63,7 @@ describe("swapping characters between logins", () => {
     f.swap();
     f.swap({ expectedFirstName: "Brave Moth 509", expectedSecondName: "Vis" });
     expect(f.db.playerProfile.identity.find(vis)?.displayName).toBe("Vis");
-    expect(f.db.playerProgress.identity.find(vis)?.damage).toBe(9_999);
+    expect(progressOf(f, vis)?.damage).toBe(9_999);
     expect(f.db.playerItemUpgrade.key.find(`${hex(vis)}:IRON_BOW`)).toMatchObject({ identity: vis });
     expect(f.db.socialMessage.id.find(1n)).toMatchObject({ recipient: vis, conversation: dmKey(vis, friend) });
   });
@@ -133,7 +134,7 @@ describe("a player moving their character to another sign-in", () => {
     const f = moveFixture();
     f.finish();
     expect(f.db.playerProfile.identity.find(google)?.displayName).toBe("Vis");
-    expect(f.db.playerProgress.identity.find(google)?.damage).toBe(9_999);
+    expect(progressOf(f, google)?.damage).toBe(9_999);
     expect(f.db.playerProfile.identity.find(vis)?.displayName).toBe("Quiet Fern 12");
     expect(f.db.socialFriend.key.find(`${hex(friend)}:${hex(google)}`)).toMatchObject({ peer: google });
     // The live connection stays with the login that opened it, and the code is spent.

@@ -3,6 +3,7 @@ import { Timestamp } from "spacetimedb";
 import { crystalFixture, identity, server } from "../../tests/helpers/crystal-hollows-fixture";
 import { deliverAlphaTesterGifts, mergeItemGifts } from "./item-gifts";
 import { ALPHA_TESTER_GIFT_CAMPAIGN, ALPHA_TESTER_GIFT_ITEM, ALPHA_TESTER_REGISTRATION_START, ALPHA_TESTER_REGISTRATION_END } from "../../shared/item-gifts";
+import { progressOf } from "../../tests/helpers/progress";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 function fixture(type = "guest", firstSeen = ALPHA_TESTER_REGISTRATION_START) {
   const f = crystalFixture();
@@ -13,7 +14,7 @@ function fixture(type = "guest", firstSeen = ALPHA_TESTER_REGISTRATION_START) {
 }
 describe("developer item gifts", () => {
   it.each(["account", "guest"])("delivers %s gifts once, keeps them pending, and claims the cosmetic without replacing gear", type => {
-    const f = fixture(type), before = f.db.playerProgress.identity.find(f.ctx.sender);
+    const f = fixture(type), before = progressOf(f, f.ctx.sender);
     f.deliver(); f.deliver();
     expect(f.db.playerItemGift.count()).toBe(1n);
     expect(server.myItemGifts(f.ctx as never)).toHaveLength(1);
@@ -21,7 +22,7 @@ describe("developer item gifts", () => {
     expect(server.myItemGifts({ ...f.ctx, sender: peer } as never)).toEqual([]);
     f.run(server.claimDeveloperItemGift, { key: f.key });
     f.run(server.claimDeveloperItemGift, { key: f.key }); f.deliver();
-    const progress = f.db.playerProgress.identity.find(f.ctx.sender);
+    const progress = progressOf(f, f.ctx.sender);
     expect(JSON.parse(progress.inventoryJson).filter((id: string) => id === ALPHA_TESTER_GIFT_ITEM)).toHaveLength(1);
     expect(progress.equippedHead).toBe(before.equippedHead);
     expect(progress.maxHp).toBe(before.maxHp);

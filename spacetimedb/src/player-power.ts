@@ -80,7 +80,7 @@ export function powerForProgress(progress: { maxHp: number; damage: number; atta
 
 export function effectivePowerStatsForProgress(ctx: any, progress: any) {
   return effectivePlayerPowerStats(
-    { ...withSoulStats(progress, soulStatsFor(ctx, progress.identity), soulAttackCapFor(ctx, progress.identity)), ...critPowerFields(ctx, progress.identity) },
+    { ...withSoulStats(progress, soulStatsFor(ctx, progress.identity), soulAttackCapFor(ctx, progress.identity)), ...critPowerFields(ctx, progress.identity, progress.critRating) },
     researchInPlay(ctx, progress.identity),
     (itemId) => itemLevelFor(ctx, progress.identity, itemId),
   );
@@ -88,7 +88,7 @@ export function effectivePowerStatsForProgress(ctx: any, progress: any) {
 
 export function effectivePowerForProgress(ctx: any, progress: any) {
   return effectivePlayerPower(
-    { ...withSoulStats(progress, soulStatsFor(ctx, progress.identity), soulAttackCapFor(ctx, progress.identity)), ...critPowerFields(ctx, progress.identity) },
+    { ...withSoulStats(progress, soulStatsFor(ctx, progress.identity), soulAttackCapFor(ctx, progress.identity)), ...critPowerFields(ctx, progress.identity, progress.critRating) },
     researchInPlay(ctx, progress.identity),
     (itemId) => itemLevelFor(ctx, progress.identity, itemId),
   );

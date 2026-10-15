@@ -23,7 +23,7 @@ const MAX_PROJECTILE_SPEED = 2730;
 
 export type PlayerProgress = {
   bossRewardClaims?: number;
-  /** The run's crit damage rating (player_combat_rating), 0 without a row. */
+  /** The run's crit damage rating (player_progress.critRating). */
   critRating?: number;
   maxHp: number;
   damage: number;

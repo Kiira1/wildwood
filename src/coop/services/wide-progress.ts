@@ -1,28 +1,23 @@
-import { DUEL_WIDE_FIELDS, REPLAY_WIDE_FIELDS, applyWideFields, wideStatsApply } from "../../../shared/wide-stats";
+import { DUEL_WIDE_FIELDS, REPLAY_WIDE_FIELDS, applyWideFields } from "../../../shared/wide-stats";
+import { progressWithBag, progressWithWideColumns, type StoredBag, type WideColumns } from "../../../shared/progress-row";
 
 type Identified = { identity: { toHexString(): string } };
 type Stats = { maxHp: number; damage: number; armor: number; regen: number };
-type Connection = { db: {
-  playerWideStats?: { iter(): Iterable<Identified & Stats> };
-  playerCombatRating?: { iter(): Iterable<Identified & { critDamage: number }> };
-} };
+type Connection = { db: { playerInventory?: { iter(): Iterable<Identified & StoredBag> } } };
 
 /**
- * A player_progress row with its full-precision stats from player_wide_stats
- * laid over it, the same way the server reads it (shared/wide-stats.ts), and
- * the run's crit rating from player_combat_rating (0 without a row). Both
- * tables hold rows for few players, so these are scans of almost nothing.
+ * A player_progress row as the server reads it (shared/progress-row.ts): full stats from its wide
+ * columns, its crit rating, and its bag from player_inventory. Only subscribed players' bags are
+ * here, so the scan is of a handful of rows.
  */
-export function withWideProgress<T extends Identified & Stats>(connection: Connection, row: T): T & { critRating: number } {
+export function withWideProgress<T extends Identified & Stats & WideColumns & Partial<StoredBag> & { critRating?: number }>(connection: Connection, row: T): T & StoredBag & { critRating: number } {
   const id = row.identity.toHexString();
-  let critRating = 0;
-  for (const rating of connection.db.playerCombatRating?.iter() ?? []) {
-    if (rating.identity.toHexString() === id) { critRating = rating.critDamage; break; }
+  let bag: StoredBag | undefined;
+  for (const candidate of connection.db.playerInventory?.iter() ?? []) {
+    if (candidate.identity.toHexString() === id) { bag = candidate; break; }
   }
-  for (const wide of connection.db.playerWideStats?.iter() ?? []) {
-    if (wide.identity.toHexString() === id) return { ...wideStatsApply(row, wide), critRating };
-  }
-  return { ...row, critRating };
+  const full = progressWithBag(progressWithWideColumns(row), bag);
+  return { ...full, critRating: full.critRating ?? 0 };
 }
 
 type WideRows = { iter(): Iterable<{ statsJson: string } & Record<string, any>> };

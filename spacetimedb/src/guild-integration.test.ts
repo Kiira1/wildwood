@@ -4,6 +4,7 @@ import { crystalFixture, identity, server } from "../../tests/helpers/crystal-ho
 import { STARTER_BOW } from "../../shared/items";
 import { SPACETIME_AUTH_CLIENT_ID, SPACETIME_AUTH_ISSUER } from "../../shared/rules";
 import type { GuildSnapshot } from "../../shared/guilds";
+import { progressOf } from "../../tests/helpers/progress";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
 function fixture() {
@@ -15,7 +16,7 @@ function fixture() {
     f.ctx.sender = who;
     f.ctx.connectionId = connection;
     f.ctx.senderAuth = registered ? { jwt: { issuer: SPACETIME_AUTH_ISSUER, audience: [SPACETIME_AUTH_CLIENT_ID] } } : {};
-    if (!f.db.playerProgress.identity.find(who)) f.progress(who);
+    if (!progressOf(f, who)) f.progress(who);
     if (!f.db.playerProfile.identity.find(who)) f.seed("playerProfile", { identity: who, displayName: `Player ${digit}`, skinTone: 3 });
     if (!f.db.player.identity.find(who)) f.seed("player", { ...basePlayer, identity: who });
     if (!f.db.playerController.identity.find(who)) f.seed("playerController", { identity: who, connectionId: connection });
@@ -46,7 +47,7 @@ describe("guild root reducer integration", () => {
   });
   it("requires one billion saved power only for creation, including at the boundary", () => {
     const f = fixture(); f.actor("1");
-    const saved = f.db.playerProgress.identity.find(f.ctx.sender);
+    const saved = progressOf(f, f.ctx.sender);
     const setPower = (maxHp: number) => f.db.playerProgress.identity.update({ ...saved,
       maxHp, damage: 0, armor: 0, regen: 0, equippedHead: "", equippedChest: "",
       equippedRightHand: "", equippedLeftHand: "" });

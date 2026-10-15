@@ -7,6 +7,7 @@ import {
 import { BOSS_REWARD_CLAIM_BITS } from "../../shared/rules";
 import { CAMPAIGN_UNLOCK_FIELDS } from "../../shared/equipment-access";
 import { IRON_BOW, SAMURAI_HAT } from "../../shared/items";
+import { progressOf } from "../../tests/helpers/progress";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
 // Slots and the cards in them belong to one copy of an item and follow it, as a refine does (gear-cards.ts).
@@ -23,7 +24,7 @@ const keepCopy = (f: Fixture, itemId = IRON_BOW) =>
 const slots = (f: Fixture, itemId = IRON_BOW, copyId = 0n) => gearSlotsFor(f.ctx, f.ctx.sender, itemId, copyId);
 const set = (f: Fixture, value: { slots: number; cards: string[] }, itemId = IRON_BOW, copyId = 0n) =>
   f.transaction(() => setGearSlots(f.ctx, f.ctx.sender, itemId, copyId, value));
-const inventory = (f: Fixture): string[] => JSON.parse(f.db.playerProgress.identity.find(f.ctx.sender).inventoryJson);
+const inventory = (f: Fixture): string[] => JSON.parse(progressOf(f, f.ctx.sender).inventoryJson);
 
 describe("gear slots", () => {
   it("gives gear with no row one empty slot, and stores anything else", () => {

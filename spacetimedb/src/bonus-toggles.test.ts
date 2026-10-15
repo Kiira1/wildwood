@@ -8,6 +8,7 @@ import { reflectRewardsInPlay } from "./prestige-challenge";
 import { PRESTIGE_PERK_IDS, playerAttackCap } from "../../shared/prestige-perks";
 import { attackSpeedRatingForInterval, attackIntervalForRating } from "../../shared/stat-rating";
 import { BONUS_ITEM_IDS } from "../../shared/bonus-toggles";
+import { progressOf } from "../../tests/helpers/progress";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
 const ALL_ON = { off: "" };
@@ -44,13 +45,13 @@ it("plays without everything switched off, and brings it all back when switched 
   expect(reflectRewardsInPlay(f.ctx, f.ctx.sender)).toBeNull();
   expect(soulAttackCapFor(f.ctx, f.ctx.sender)).toEqual(playerAttackCap(null, zero));
   // The saved range leaves out range research and Long Shot.
-  expect(f.db.playerProgress.identity.find(f.ctx.sender).attackRange).toBeLessThan(range);
+  expect(progressOf(f, f.ctx.sender).attackRange).toBeLessThan(range);
 
   f.run(server.setBonusToggleState, ALL_ON);
   expect(f.db.playerBonusToggle.identity.find(f.ctx.sender)).toBeFalsy();
   expect(prestigePerkRanks(f.ctx, f.ctx.sender)).toEqual(ranks);
   expect(statRewardMultiplier(f.ctx, f.ctx.sender)).toBeCloseTo(multiplier);
-  expect(f.db.playerProgress.identity.find(f.ctx.sender).attackRange).toBe(range);
+  expect(progressOf(f, f.ctx.sender).attackRange).toBe(range);
   expect(soulStatsFor(f.ctx, f.ctx.sender)).toMatchObject({ damage: 50 });
 });
 
@@ -61,10 +62,10 @@ it("keeps the run's attack speed rating when the cap moves under it, and gives t
   f.patch("playerProgress", { attackRate: interval });
   f.run(server.setBonusToggleState, { off: "prestige.quickDraw,challenge.reflect" });
   const capOff = playerAttackCap(null, { ...prestigePerkRanks(f.ctx, f.ctx.sender), quickDraw: 0 });
-  const off = f.db.playerProgress.identity.find(f.ctx.sender).attackRate;
+  const off = progressOf(f, f.ctx.sender).attackRate;
   expect(attackSpeedRatingForInterval(off, capOff)).toBeCloseTo(attackSpeedRatingForInterval(interval, capOn), 3);
   f.run(server.setBonusToggleState, ALL_ON);
-  expect(f.db.playerProgress.identity.find(f.ctx.sender).attackRate).toBeCloseTo(interval, 9);
+  expect(progressOf(f, f.ctx.sender).attackRate).toBeCloseTo(interval, 9);
 });
 
 it("can't switch during a challenge", () => {

@@ -6,6 +6,7 @@ import { SPACETIME_AUTH_CLIENT_ID, SPACETIME_AUTH_ISSUER } from "../../shared/ru
 import { TOWN_MAP_ID } from "../../shared/town";
 import { GUILD_HALL_ARRIVAL, GUILD_HALL_DOOR, GUILD_HALL_FEET_OFFSET, GUILD_HALL_WORLD, guildHallMapId, guildHallRoom, parseGuildHallLevels } from "../../shared/guild-hall";
 import { PLAYER_POSITION_SCALE } from "../../shared/player-motion-frame";
+import { progressOf } from "../../tests/helpers/progress";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
 function fixture() {
@@ -17,7 +18,7 @@ function fixture() {
     f.ctx.sender = who;
     f.ctx.connectionId = connection;
     f.ctx.senderAuth = { jwt: { issuer: SPACETIME_AUTH_ISSUER, audience: [SPACETIME_AUTH_CLIENT_ID] } };
-    if (!f.db.playerProgress.identity.find(who)) f.progress(who);
+    if (!progressOf(f, who)) f.progress(who);
     if (!f.db.playerProfile.identity.find(who)) f.seed("playerProfile", { identity: who, displayName: `Player ${digit}`, skinTone: 3 });
     if (!f.db.player.identity.find(who)) f.seed("player", { ...basePlayer, identity: who });
     if (!f.db.playerController.identity.find(who)) f.seed("playerController", { identity: who, connectionId: connection });

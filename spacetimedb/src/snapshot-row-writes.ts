@@ -1,6 +1,6 @@
 import type { InferSchema, ReducerCtx } from "spacetimedb/server";
 import type schema from "./index";
-import { deleteDuelWide, writeDuelWide, writeDuelWideAfterInsert, writeWideStats } from "./wide-stats";
+import { deleteDuelWide, deleteProgressExtras, writeDuelWide, writeDuelWideAfterInsert, writeProgressRow } from "./wide-stats";
 import { DUEL_WIDE_FIELDS, narrowStat } from "../../shared/wide-stats";
 
 /** Writes to the rows that make up a player's account state. These helpers used
@@ -10,15 +10,15 @@ import { DUEL_WIDE_FIELDS, narrowStat } from "../../shared/wide-stats";
 type SnapshotTable = "player" | "playerProgress" | "playerProfile" | "playerResearch"
   | "playerAccountStatus" | "playerItemUpgrade" | "duel";
 type Database = ReducerCtx<InferSchema<typeof schema>>["db"];
-type Context = { db: Pick<Database, SnapshotTable> & Partial<Pick<Database, "playerWideStats" | "playerCombatRating" | "duelWideStats">> };
+type Context = { db: Pick<Database, SnapshotTable> & Partial<Pick<Database, "playerInventory" | "duelWideStats">> };
 type Row<T extends SnapshotTable> = Parameters<Database[T]["insert"]>[0];
 const primaryKey = (table: SnapshotTable) => table === "duel" ? "id" : table === "playerItemUpgrade" ? "key" : "identity";
 
 // f32 stat columns elsewhere: clamped so a value past f32's range stores as the limit, never Infinity.
 const NARROWED: Partial<Record<SnapshotTable, readonly string[]>> = { player: ["hp", "maxHp"] };
-// Progress and duel stats past f32 go to their companion rows; the tables keep them clamped (wide-stats.ts).
+// Progress rows are stored as shared/progress-row.ts says; duel stats past f32 go to their companion rows.
 const stored = <T extends SnapshotTable>(ctx: Context, table: T, row: Row<T>) => {
-  if (table === "playerProgress") return writeWideStats(ctx, row as any) as Row<T>;
+  if (table === "playerProgress") return writeProgressRow(ctx, row as any) as Row<T>;
   if (table === "duel") return writeDuelWide(ctx, row as any) as Row<T>;
   const fields = NARROWED[table];
   if (!fields) return row;
@@ -31,7 +31,7 @@ const pickStats = (row: Record<string, any>) => Object.fromEntries(DUEL_WIDE_FIE
 
 /**
  * Returns the stored row (with any auto-assigned id); for progress, the row
- * with its wide stats, so a caller keeps the full values rather than the clamp.
+ * as given, so a caller keeps the full values and the bag rather than the stored form.
  */
 export function insertSnapshotRow<T extends SnapshotTable>(ctx: Context, table: T, row: Row<T>): Row<T> {
   const inserted = ctx.db[table].insert(stored(ctx, table, row) as never) as Row<T>;
@@ -44,8 +44,7 @@ export function updateSnapshotRow<T extends SnapshotTable>(ctx: Context, table: 
   return table === "playerProgress" || table === "duel" ? row : updated;
 }
 export function deleteSnapshotRow(ctx: Context, table: SnapshotTable, key: any) {
-  if (table === "playerProgress" && ctx.db.playerWideStats?.identity.find(key)) ctx.db.playerWideStats.identity.delete(key);
-  if (table === "playerProgress" && ctx.db.playerCombatRating?.identity.find(key)) ctx.db.playerCombatRating.identity.delete(key);
+  if (table === "playerProgress") deleteProgressExtras(ctx, key);
   if (table === "duel") deleteDuelWide(ctx, key);
   return (ctx.db[table] as any)[primaryKey(table)].delete(key);
 }

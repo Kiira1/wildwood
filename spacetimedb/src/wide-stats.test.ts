@@ -6,14 +6,14 @@ import { F32_STAT_LIMIT } from "../../shared/wide-stats";
 import { applyEnemyRewards } from "../../shared/enemy-defeats";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
-it("keeps stats past f32 in player_wide_stats and reads them back whole", () => {
+it("keeps stats past f32 in player_progress's wide columns and reads them back whole", () => {
   const f = crystalFixture();
   const progress = readPlayerProgress(f.ctx, f.ctx.sender);
   const written = updateSnapshotRow(f.ctx as any, "playerProgress", { ...progress, damage: 1e40, maxHp: 5e45, armor: 12, regen: 3 });
   // The caller keeps the full row; player_progress holds the clamp.
   expect(written).toMatchObject({ damage: 1e40, maxHp: 5e45 });
-  expect(f.db.playerProgress.identity.find(f.ctx.sender)).toMatchObject({ damage: F32_STAT_LIMIT, maxHp: F32_STAT_LIMIT, armor: 12 });
-  expect(f.db.playerWideStats.identity.find(f.ctx.sender)).toMatchObject({ damage: 1e40, maxHp: 5e45 });
+  expect(f.db.playerProgress.identity.find(f.ctx.sender)).toMatchObject({ damage: F32_STAT_LIMIT, maxHp: F32_STAT_LIMIT, armor: 12,
+    damageWide: 1e40, maxHpWide: 5e45, armorWide: 12 });
   expect(readPlayerProgress(f.ctx, f.ctx.sender)).toMatchObject({ damage: 1e40, maxHp: 5e45, armor: 12, regen: 3 });
   expect([...iterPlayerProgress(f.ctx)].find(row => row.identity.equals(f.ctx.sender))).toMatchObject({ damage: 1e40 });
 });
@@ -27,7 +27,7 @@ it("grows past the old ceiling through ordinary rewards", () => {
   expect(readPlayerProgress(f.ctx, f.ctx.sender).damage).toBeCloseTo(5.9e38, -36);
 });
 
-it("lets a direct write to player_progress win, and drops the wide row when stats fall back", () => {
+it("lets a direct write to player_progress win, and clears the wide columns when stats fall back", () => {
   const f = crystalFixture();
   const progress = readPlayerProgress(f.ctx, f.ctx.sender);
   updateSnapshotRow(f.ctx as any, "playerProgress", { ...progress, damage: 1e40 });
@@ -36,10 +36,38 @@ it("lets a direct write to player_progress win, and drops the wide row when stat
   expect(readPlayerProgress(f.ctx, f.ctx.sender).damage).toBe(7);
   // A prestige back to small numbers drops the row.
   updateSnapshotRow(f.ctx as any, "playerProgress", { ...progress, damage: 10 });
-  expect(f.db.playerWideStats.identity.find(f.ctx.sender)).toBeNull();
+  expect(f.db.playerProgress.identity.find(f.ctx.sender)).toMatchObject({ damage: 10, damageWide: 0, maxHpWide: 0 });
   updateSnapshotRow(f.ctx as any, "playerProgress", { ...progress, damage: 1e40 });
   deleteSnapshotRow(f.ctx as any, "playerProgress", f.ctx.sender);
-  expect(f.db.playerWideStats.identity.find(f.ctx.sender)).toBeNull();
+  expect(f.db.playerProgress.identity.find(f.ctx.sender)).toBeNull();
+  expect(f.db.playerInventory.identity.find(f.ctx.sender)).toBeNull();
+});
+
+it("keeps the bag in player_inventory, so a progress write without a bag change sends no bag", () => {
+  const f = crystalFixture();
+  f.patch("playerProgress", { inventoryJson: '["starter_bow"]', cosmeticItemsJson: '["cosmetic_crown"]' });
+  const progress = readPlayerProgress(f.ctx, f.ctx.sender);
+  updateSnapshotRow(f.ctx as any, "playerProgress", { ...progress, damage: 50 });
+  expect(f.db.playerProgress.identity.find(f.ctx.sender)).toMatchObject({ inventoryJson: "", cosmeticItemsJson: "", damage: 50 });
+  expect(f.db.playerInventory.identity.find(f.ctx.sender)).toMatchObject({ inventoryJson: '["starter_bow"]', cosmeticItemsJson: '["cosmetic_crown"]' });
+  expect(readPlayerProgress(f.ctx, f.ctx.sender)).toMatchObject({ inventoryJson: '["starter_bow"]', cosmeticItemsJson: '["cosmetic_crown"]', damage: 50 });
+  // The next write with the same bag leaves player_inventory alone.
+  const updates = vi.spyOn(f.db.playerInventory.identity, "update");
+  updateSnapshotRow(f.ctx as any, "playerProgress", { ...readPlayerProgress(f.ctx, f.ctx.sender), damage: 60 });
+  expect(updates).not.toHaveBeenCalled();
+  // A direct write to the progress row's bag wins over player_inventory.
+  f.patch("playerProgress", { inventoryJson: '["starter_stone"]' });
+  expect(readPlayerProgress(f.ctx, f.ctx.sender).inventoryJson).toBe('["starter_stone"]');
+});
+
+it("copies the crit rating and stats past f32 onto player_progress once (migration 57)", async () => {
+  const { moveCombatColumnsOntoProgress } = await import("./wide-stats");
+  const f = crystalFixture();
+  f.patch("playerProgress", { damage: F32_STAT_LIMIT });
+  f.seed("playerCombatRating", { identity: f.ctx.sender, critDamage: 250 });
+  f.seed("playerWideStats", { identity: f.ctx.sender, maxHp: 100, damage: 4e40, armor: 0, regen: 0 });
+  moveCombatColumnsOntoProgress(f.ctx);
+  expect(readPlayerProgress(f.ctx, f.ctx.sender)).toMatchObject({ critRating: 250, damage: 4e40 });
 });
 
 it("clamps other f32 stat columns instead of storing Infinity", () => {

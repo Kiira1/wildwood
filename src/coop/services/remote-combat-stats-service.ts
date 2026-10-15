@@ -205,8 +205,7 @@ export function createRemoteCombatStatsService(dependencies: {
         .onError(() => finish(null))
         .subscribe([
           tables.playerProgress.where((row) => row.identity.eq(dbIdentity)),
-          tables.playerWideStats.where((row) => row.identity.eq(dbIdentity)),
-          tables.playerCombatRating.where((row) => row.identity.eq(dbIdentity)),
+          tables.playerInventory.where((row) => row.identity.eq(dbIdentity)),
           tables.playerResearch.where((row) => row.identity.eq(dbIdentity)),
           tables.playerItemUpgrade.where((row) => row.identity.eq(dbIdentity)),
         ]);

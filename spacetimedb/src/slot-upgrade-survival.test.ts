@@ -6,6 +6,7 @@ import { slotUpgradeDurationWithResearch } from "../../shared/utility-research";
 import { UPGRADE_BENCH_THIRD_SLOT_GEM_COST } from "../../shared/gems";
 import { createEmptyResearchRanks } from "../../shared/research";
 import { Timestamp } from "spacetimedb";
+import { progressOf } from "../../tests/helpers/progress";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
 /** A slot upgrade part-way through, as startItemUpgrade writes it. */
@@ -50,7 +51,7 @@ it("does not put the slot's name in the bag if the upgrade is cancelled", () => 
   f.run(server.runMaintenanceSweep);
 
   expect([...f.db.activeItemUpgrade.iter()]).toHaveLength(0);
-  const progress = f.db.playerProgress.identity.find(f.ctx.sender);
+  const progress = progressOf(f, f.ctx.sender);
   expect(JSON.parse(progress?.inventoryJson ?? "[]")).not.toContain("CHEST");
 });
 

@@ -166,6 +166,7 @@ export const ERASURE_TARGETS: readonly ErasureTarget[] = [
   { table: "playerProfile", columns: ["identity"], pk: "identity", mode: "key" },
   { table: "playerProfileSnapshot", columns: ["identity"], pk: "identity", mode: "key" },
   { table: "playerProgress", columns: ["identity"], pk: "identity", mode: "key" },
+  { table: "playerInventory", columns: ["identity"], pk: "identity", mode: "key" },
   { table: "playerWideStats", columns: ["identity"], pk: "identity", mode: "key" },
   { table: "playerReport", columns: ["reporter","target"], pk: "id", mode: "scan" },
   { table: "playerResearch", columns: ["identity"], pk: "identity", mode: "key" },

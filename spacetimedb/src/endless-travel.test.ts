@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { Identity } from "spacetimedb";
 import { crystalFixture, server, identity } from "../../tests/helpers/crystal-hollows-fixture";
 import { generateMap } from "../../shared/procedural-maps";
+import { progressOf } from "../../tests/helpers/progress";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
 function grant(f: ReturnType<typeof crystalFixture>, enabled = true) {
@@ -23,13 +24,13 @@ describe("developer Endless travel", () => {
   it("jumps to 40, resets movement, persists arrival, and leaves stats/unlocks unchanged", () => {
     const f = crystalFixture();
     grant(f);
-    const before = f.db.playerProgress.identity.find(f.ctx.sender);
+    const before = progressOf(f, f.ctx.sender);
     f.patch("player", { moving: true, dx: 1, vx: 180, motionEpoch: 3 });
     f.run(server.devTeleportEndless, { number: 40 });
     const arrival = { mapId: "endless_40", ...generateMap("endless_40").arrival };
     expect(f.db.player.identity.find(f.ctx.sender)).toMatchObject({ ...arrival, moving: false, vx: 0, dx: 0, motionEpoch: 4 });
     expect(f.db.playerLastLocation.identity.find(f.ctx.sender)).toMatchObject(arrival);
-    expect(f.db.playerProgress.identity.find(f.ctx.sender)).toEqual(before);
+    expect(progressOf(f, f.ctx.sender)).toEqual(before);
     expect(f.db.proceduralProgress.identity.find(f.ctx.sender)).toBeNull();
     f.run(server.changeMap, { mapId: "town", x: arrival.x, y: arrival.y });
     f.run(server.changeMap, { mapId: "town", x: 0, y: 0 });

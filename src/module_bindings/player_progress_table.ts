@@ -53,4 +53,9 @@ export default __t.row({
   verdantCatacombsUnlocked: __t.bool().name("verdant_catacombs_unlocked"),
   ionCitadelUnlocked: __t.bool().name("ion_citadel_unlocked"),
   cosmeticItemsJson: __t.string().name("cosmetic_items_json"),
+  critRating: __t.f64().name("crit_rating"),
+  maxHpWide: __t.f64().name("max_hp_wide"),
+  damageWide: __t.f64().name("damage_wide"),
+  armorWide: __t.f64().name("armor_wide"),
+  regenWide: __t.f64().name("regen_wide"),
 });

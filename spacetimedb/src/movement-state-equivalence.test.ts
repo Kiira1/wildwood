@@ -13,6 +13,7 @@ import { BLACK_BOOTS, BLACK_BOOTS_SPEED_BONUS } from "../../shared/items";
 import { HOME_EXTERIOR_MAP_ID, HOME_WORLD_HEIGHT, HOME_WORLD_WIDTH } from "../../shared/home";
 import { PLAYER_VELOCITY_SCALE } from "../../shared/player-motion-frame";
 import { COMPATIBLE_PROTOCOL_VERSIONS, PLAYER_RADIUS, PLAYER_SPEED } from "../../shared/rules";
+import { progressOf } from "../../tests/helpers/progress";
 
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 // The old algorithm below needs the production WORLD and equippedFeetForProgress,
@@ -120,7 +121,7 @@ function legacyApplyMovementState(
   const moving = Math.abs(boundedVx) > 1e-6 || Math.abs(boundedVy) > 1e-6;
   const compatibilitySpeed = Math.max(1e-6, Number.isFinite(current.speed) ? current.speed : PLAYER_SPEED);
   const requestedSpeed = Math.hypot(boundedVx, boundedVy);
-  const progress = ctx.db.playerProgress.identity.find(ctx.sender);
+  const progress = progressOf(ctx, ctx.sender);
   const expectedSpeed = progress ? effectiveMovementSpeedForProgress(ctx, progress) : compatibilitySpeed;
   const bootedSpeed = progress && equippedFeetForProgress(progress) === BLACK_BOOTS
     ? expectedSpeed + BLACK_BOOTS_SPEED_BONUS : expectedSpeed;
@@ -217,7 +218,7 @@ const attempt = (f: Fixture, reducer: (ctx: any, args: any) => unknown, args: an
 };
 
 function ownedSpeed(f: Fixture, compatibilitySpeed: number) {
-  const progress = f.db.playerProgress.identity.find(f.ctx.sender);
+  const progress = progressOf(f, f.ctx.sender);
   const expectedSpeed = progress ? effectiveMovementSpeedForProgress(f.ctx, progress) : compatibilitySpeed;
   const booted = progress && captured.deps.equippedFeetForProgress(progress) === BLACK_BOOTS ? expectedSpeed + BLACK_BOOTS_SPEED_BONUS : expectedSpeed;
   return Math.max(compatibilitySpeed, expectedSpeed, booted);
@@ -235,7 +236,7 @@ function runScenario(seed: number, steps: number) {
     if (current) f.db[table].identity.update({ ...current, ...row });
     else f.seed(table, { identity: f.ctx.sender, ...row });
   };
-  const savedProgress = next.db.playerProgress.identity.find(next.ctx.sender);
+  const savedProgress = progressOf(next, next.ctx.sender);
   const savedController = next.db.playerController.identity.find(next.ctx.sender);
 
   // Starting state: the player row's speed, research, boots and map vary.
@@ -352,7 +353,7 @@ function runScenario(seed: number, steps: number) {
         { inventoryJson: "[]" },
         { inventoryJson: "not json" },
       ]);
-      both(f => { if (f.db.playerProgress.identity.find(f.ctx.sender)) f.patch("playerProgress", change); });
+      both(f => { if (progressOf(f, f.ctx.sender)) f.patch("playerProgress", change); });
     } else if (roll < 0.75) {
       const speed = pick([180, 205, 190.8, 216.8, 0, 400, 1e-9]);
       both(f => f.patch("player", { speed }));
@@ -398,7 +399,7 @@ function runScenario(seed: number, steps: number) {
         }
       });
     } else {
-      const present = Boolean(next.db.playerProgress.identity.find(next.ctx.sender));
+      const present = Boolean(progressOf(next, next.ctx.sender));
       both(f => { if (present) f.db.playerProgress.identity.delete(f.ctx.sender); else f.db.playerProgress.insert(savedProgress); });
     }
 

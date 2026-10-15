@@ -42,10 +42,8 @@ import AcknowledgeBalanceApologyGiftReducer from "./acknowledge_balance_apology_
 import AcknowledgeOfflineSummaryReducer from "./acknowledge_offline_summary_reducer";
 import AcknowledgeReleaseReducer from "./acknowledge_release_reducer";
 import ApplyBuildCardsReducer from "./apply_build_cards_reducer";
-import AttackForestRewardPrototypeReducer from "./attack_forest_reward_prototype_reducer";
 import BeginAccountLinkReducer from "./begin_account_link_reducer";
 import BeginAdventureReducer from "./begin_adventure_reducer";
-import BeginForestRewardPrototypeReducer from "./begin_forest_reward_prototype_reducer";
 import BuyOxShopCosmeticReducer from "./buy_ox_shop_cosmetic_reducer";
 import CancelGemPurchaseReducer from "./cancel_gem_purchase_reducer";
 import CancelItemUpgradeReducer from "./cancel_item_upgrade_reducer";
@@ -64,24 +62,6 @@ import ConfigureGemCommerceReducer from "./configure_gem_commerce_reducer";
 import ConfigurePatreonReducer from "./configure_patreon_reducer";
 import ConvertItemToCosmeticReducer from "./convert_item_to_cosmetic_reducer";
 import CreateGuildReducer from "./create_guild_reducer";
-import DamageAegisPrimeFromPositionReducer from "./damage_aegis_prime_from_position_reducer";
-import DamageDragonReducer from "./damage_dragon_reducer";
-import DamageDragonBatchReducer from "./damage_dragon_batch_reducer";
-import DamageDragonFromPositionReducer from "./damage_dragon_from_position_reducer";
-import DamageDreadreaperFromPositionReducer from "./damage_dreadreaper_from_position_reducer";
-import DamageFrostclawFromPositionReducer from "./damage_frostclaw_from_position_reducer";
-import DamageGloomrootFromPositionReducer from "./damage_gloomroot_from_position_reducer";
-import DamageGravebloomFromPositionReducer from "./damage_gravebloom_from_position_reducer";
-import DamageIronhornFromPositionReducer from "./damage_ironhorn_from_position_reducer";
-import DamageKoiShogunFromPositionReducer from "./damage_koi_shogun_from_position_reducer";
-import DamageMagmaliskFromPositionReducer from "./damage_magmalisk_from_position_reducer";
-import DamageMiremawFromPositionReducer from "./damage_miremaw_from_position_reducer";
-import DamagePrismshellFromPositionReducer from "./damage_prismshell_from_position_reducer";
-import DamageSpiderBatchReducer from "./damage_spider_batch_reducer";
-import DamageSpiderFromPositionReducer from "./damage_spider_from_position_reducer";
-import DamageTempestKirinFromPositionReducer from "./damage_tempest_kirin_from_position_reducer";
-import DamageTidewyrmFromPositionReducer from "./damage_tidewyrm_from_position_reducer";
-import DamageVoltwardenFromPositionReducer from "./damage_voltwarden_from_position_reducer";
 import DestroyEquipmentReducer from "./destroy_equipment_reducer";
 import DestroyEquipmentCopyReducer from "./destroy_equipment_copy_reducer";
 import DestroyOreReducer from "./destroy_ore_reducer";
@@ -130,8 +110,6 @@ import FriendActionReducer from "./friend_action_reducer";
 import FulfillGemPurchaseReducer from "./fulfill_gem_purchase_reducer";
 import GuildAdmissionReducer from "./guild_admission_reducer";
 import GuildInviteActionReducer from "./guild_invite_action_reducer";
-import HitProceduralBossReducer from "./hit_procedural_boss_reducer";
-import HitProceduralBossBatchReducer from "./hit_procedural_boss_batch_reducer";
 import IngestGemStoreEventReducer from "./ingest_gem_store_event_reducer";
 import JoinGuildReducer from "./join_guild_reducer";
 import JoinVirtualPlayerLoadTestReducer from "./join_virtual_player_load_test_reducer";
@@ -281,44 +259,19 @@ import ActiveItemUpgradeRow from "./active_item_upgrade_table";
 import ActiveItemUpgradeSlotThreeRow from "./active_item_upgrade_slot_three_table";
 import ActiveItemUpgradeSlotTwoRow from "./active_item_upgrade_slot_two_table";
 import ActiveResearchRow from "./active_research_table";
-import AegisPrimeBossRow from "./aegis_prime_boss_table";
-import AegisPrimeResultRow from "./aegis_prime_result_table";
-import BossAttackFrameRow from "./boss_attack_frame_table";
-import BossHitResultRow from "./boss_hit_result_table";
 import DevAccessAuditRow from "./dev_access_audit_table";
 import DevBugReportsRow from "./dev_bug_reports_table";
-import DevForestRewardPrototypeRow from "./dev_forest_reward_prototype_table";
 import DevGemPurchaseReviewRow from "./dev_gem_purchase_review_table";
-import DragonBossRow from "./dragon_boss_table";
-import DragonResultRow from "./dragon_result_table";
-import DreadreaperBossRow from "./dreadreaper_boss_table";
-import DreadreaperResultRow from "./dreadreaper_result_table";
 import DuelRow from "./duel_table";
 import DuelCombatSnapshotRow from "./duel_combat_snapshot_table";
 import DuelReplayRow from "./duel_replay_table";
 import DuelReplayWideStatsRow from "./duel_replay_wide_stats_table";
 import DuelRiposteRow from "./duel_riposte_table";
 import DuelWideStatsRow from "./duel_wide_stats_table";
-import DuelWireAccessRow from "./duel_wire_access_table";
-import FrostclawBossRow from "./frostclaw_boss_table";
-import FrostclawResultRow from "./frostclaw_result_table";
-import GloomrootBossRow from "./gloomroot_boss_table";
-import GloomrootResultRow from "./gloomroot_result_table";
-import GravebloomBossRow from "./gravebloom_boss_table";
-import GravebloomResultRow from "./gravebloom_result_table";
 import GuildQuestWeekRow from "./guild_quest_week_table";
-import IronhornBossRow from "./ironhorn_boss_table";
-import IronhornResultRow from "./ironhorn_result_table";
-import KoiShogunBossRow from "./koi_shogun_boss_table";
-import KoiShogunResultRow from "./koi_shogun_result_table";
 import LatestChatMessagesRow from "./latest_chat_messages_table";
 import LatestChatMessagesWithReactionsRow from "./latest_chat_messages_with_reactions_table";
 import LeaderboardEntryRow from "./leaderboard_entry_table";
-import LeaderboardEntryLegacyRow from "./leaderboard_entry_legacy_table";
-import MagmaliskBossRow from "./magmalisk_boss_table";
-import MagmaliskResultRow from "./magmalisk_result_table";
-import MiremawBossRow from "./miremaw_boss_table";
-import MiremawResultRow from "./miremaw_result_table";
 import MyAdGemRewardRow from "./my_ad_gem_reward_table";
 import MyAudioSettingsRow from "./my_audio_settings_table";
 import MyBalanceApologyNoticeRow from "./my_balance_apology_notice_table";
@@ -380,6 +333,7 @@ import PlayerDeathFrameRow from "./player_death_frame_table";
 import PlayerFreeRespecRow from "./player_free_respec_table";
 import PlayerGearSlotsRow from "./player_gear_slots_table";
 import PlayerGemDropRow from "./player_gem_drop_table";
+import PlayerInventoryRow from "./player_inventory_table";
 import PlayerItemDropRow from "./player_item_drop_table";
 import PlayerItemRefineRow from "./player_item_refine_table";
 import PlayerItemUpgradeRow from "./player_item_upgrade_table";
@@ -388,7 +342,6 @@ import PlayerMapFrameRow from "./player_map_frame_table";
 import PlayerMapMarkerRow from "./player_map_marker_table";
 import PlayerMiningLevelRow from "./player_mining_level_table";
 import PlayerMotionDetailFrameRow from "./player_motion_detail_frame_table";
-import PlayerMotionFrameRow from "./player_motion_frame_table";
 import PlayerMotionIdentityRow from "./player_motion_identity_table";
 import PlayerNameColorRow from "./player_name_color_table";
 import PlayerNameTagRow from "./player_name_tag_table";
@@ -404,22 +357,12 @@ import PlayerResearchRow from "./player_research_table";
 import PlayerWideStatsRow from "./player_wide_stats_table";
 import PlayerWornSkillRow from "./player_worn_skill_table";
 import PrestigeExpansionRow from "./prestige_expansion_table";
-import PrismshellBossRow from "./prismshell_boss_table";
-import PrismshellResultRow from "./prismshell_result_table";
 import ProceduralBossRow from "./procedural_boss_table";
 import ProceduralProgressRow from "./procedural_progress_table";
 import ProfileSoulStatsRow from "./profile_soul_stats_table";
 import ReleaseNoticeRow from "./release_notice_table";
 import SocialDuelMessageRow from "./social_duel_message_table";
 import SoulDimensionConfigRow from "./soul_dimension_config_table";
-import SpiderBossRow from "./spider_boss_table";
-import SpiderResultRow from "./spider_result_table";
-import TempestKirinBossRow from "./tempest_kirin_boss_table";
-import TempestKirinResultRow from "./tempest_kirin_result_table";
-import TidewyrmBossRow from "./tidewyrm_boss_table";
-import TidewyrmResultRow from "./tidewyrm_result_table";
-import VoltwardenBossRow from "./voltwarden_boss_table";
-import VoltwardenResultRow from "./voltwarden_result_table";
 import WorldStatusRow from "./world_status_table";
 
 /** Type-only namespace exports for generated type groups. */
@@ -470,96 +413,6 @@ const tablesSchema = __schema({
       { name: 'active_research_identity_key', constraint: 'unique', columns: ['identity'] },
     ],
   }, ActiveResearchRow),
-  aegisPrimeBoss: __table({
-    name: 'aegis_prime_boss',
-    indexes: [
-      { accessor: 'id', name: 'aegis_prime_boss_id_idx_btree', algorithm: 'btree', columns: [
-        'id',
-      ] },
-    ],
-    constraints: [
-      { name: 'aegis_prime_boss_id_key', constraint: 'unique', columns: ['id'] },
-    ],
-  }, AegisPrimeBossRow),
-  aegisPrimeResult: __table({
-    name: 'aegis_prime_result',
-    indexes: [
-      { accessor: 'id', name: 'aegis_prime_result_id_idx_btree', algorithm: 'btree', columns: [
-        'id',
-      ] },
-    ],
-    constraints: [
-      { name: 'aegis_prime_result_id_key', constraint: 'unique', columns: ['id'] },
-    ],
-  }, AegisPrimeResultRow),
-  bossAttackFrame: __table({
-    name: 'boss_attack_frame',
-    indexes: [
-      { accessor: 'byMapZone', name: 'boss_attack_frame_map_id_zone_x_zone_y_idx_btree', algorithm: 'btree', columns: [
-        'mapId',
-        'zoneX',
-        'zoneY',
-      ] },
-    ],
-    constraints: [
-    ],
-    event: true,
-  }, BossAttackFrameRow),
-  bossHitResult: __table({
-    name: 'boss_hit_result',
-    indexes: [
-      { accessor: 'byIdentity', name: 'boss_hit_result_identity_idx_btree', algorithm: 'btree', columns: [
-        'identity',
-      ] },
-    ],
-    constraints: [
-    ],
-    event: true,
-  }, BossHitResultRow),
-  dragonBoss: __table({
-    name: 'dragon_boss',
-    indexes: [
-      { accessor: 'id', name: 'dragon_boss_id_idx_btree', algorithm: 'btree', columns: [
-        'id',
-      ] },
-    ],
-    constraints: [
-      { name: 'dragon_boss_id_key', constraint: 'unique', columns: ['id'] },
-    ],
-  }, DragonBossRow),
-  dragonResult: __table({
-    name: 'dragon_result',
-    indexes: [
-      { accessor: 'id', name: 'dragon_result_id_idx_btree', algorithm: 'btree', columns: [
-        'id',
-      ] },
-    ],
-    constraints: [
-      { name: 'dragon_result_id_key', constraint: 'unique', columns: ['id'] },
-    ],
-  }, DragonResultRow),
-  dreadreaperBoss: __table({
-    name: 'dreadreaper_boss',
-    indexes: [
-      { accessor: 'id', name: 'dreadreaper_boss_id_idx_btree', algorithm: 'btree', columns: [
-        'id',
-      ] },
-    ],
-    constraints: [
-      { name: 'dreadreaper_boss_id_key', constraint: 'unique', columns: ['id'] },
-    ],
-  }, DreadreaperBossRow),
-  dreadreaperResult: __table({
-    name: 'dreadreaper_result',
-    indexes: [
-      { accessor: 'id', name: 'dreadreaper_result_id_idx_btree', algorithm: 'btree', columns: [
-        'id',
-      ] },
-    ],
-    constraints: [
-      { name: 'dreadreaper_result_id_key', constraint: 'unique', columns: ['id'] },
-    ],
-  }, DreadreaperResultRow),
   duel: __table({
     name: 'duel',
     indexes: [
@@ -638,89 +491,6 @@ const tablesSchema = __schema({
       { name: 'duel_wide_stats_duel_id_key', constraint: 'unique', columns: ['duelId'] },
     ],
   }, DuelWideStatsRow),
-  duelWireAccess: __table({
-    name: 'duel_wire_access',
-    indexes: [
-      { accessor: 'combatVersion', name: 'duel_wire_access_combat_version_idx_btree', algorithm: 'btree', columns: [
-        'combatVersion',
-      ] },
-      { accessor: 'byIdentity', name: 'duel_wire_access_identity_idx_btree', algorithm: 'btree', columns: [
-        'identity',
-      ] },
-      { accessor: 'key', name: 'duel_wire_access_key_idx_btree', algorithm: 'btree', columns: [
-        'key',
-      ] },
-    ],
-    constraints: [
-      { name: 'duel_wire_access_key_key', constraint: 'unique', columns: ['key'] },
-    ],
-  }, DuelWireAccessRow),
-  frostclawBoss: __table({
-    name: 'frostclaw_boss',
-    indexes: [
-      { accessor: 'id', name: 'frostclaw_boss_id_idx_btree', algorithm: 'btree', columns: [
-        'id',
-      ] },
-    ],
-    constraints: [
-      { name: 'frostclaw_boss_id_key', constraint: 'unique', columns: ['id'] },
-    ],
-  }, FrostclawBossRow),
-  frostclawResult: __table({
-    name: 'frostclaw_result',
-    indexes: [
-      { accessor: 'id', name: 'frostclaw_result_id_idx_btree', algorithm: 'btree', columns: [
-        'id',
-      ] },
-    ],
-    constraints: [
-      { name: 'frostclaw_result_id_key', constraint: 'unique', columns: ['id'] },
-    ],
-  }, FrostclawResultRow),
-  gloomrootBoss: __table({
-    name: 'gloomroot_boss',
-    indexes: [
-      { accessor: 'id', name: 'gloomroot_boss_id_idx_btree', algorithm: 'btree', columns: [
-        'id',
-      ] },
-    ],
-    constraints: [
-      { name: 'gloomroot_boss_id_key', constraint: 'unique', columns: ['id'] },
-    ],
-  }, GloomrootBossRow),
-  gloomrootResult: __table({
-    name: 'gloomroot_result',
-    indexes: [
-      { accessor: 'id', name: 'gloomroot_result_id_idx_btree', algorithm: 'btree', columns: [
-        'id',
-      ] },
-    ],
-    constraints: [
-      { name: 'gloomroot_result_id_key', constraint: 'unique', columns: ['id'] },
-    ],
-  }, GloomrootResultRow),
-  gravebloomBoss: __table({
-    name: 'gravebloom_boss',
-    indexes: [
-      { accessor: 'id', name: 'gravebloom_boss_id_idx_btree', algorithm: 'btree', columns: [
-        'id',
-      ] },
-    ],
-    constraints: [
-      { name: 'gravebloom_boss_id_key', constraint: 'unique', columns: ['id'] },
-    ],
-  }, GravebloomBossRow),
-  gravebloomResult: __table({
-    name: 'gravebloom_result',
-    indexes: [
-      { accessor: 'id', name: 'gravebloom_result_id_idx_btree', algorithm: 'btree', columns: [
-        'id',
-      ] },
-    ],
-    constraints: [
-      { name: 'gravebloom_result_id_key', constraint: 'unique', columns: ['id'] },
-    ],
-  }, GravebloomResultRow),
   guildQuestWeek: __table({
     name: 'guild_quest_week',
     indexes: [
@@ -735,61 +505,6 @@ const tablesSchema = __schema({
       { name: 'guild_quest_week_key_key', constraint: 'unique', columns: ['key'] },
     ],
   }, GuildQuestWeekRow),
-  ironhornBoss: __table({
-    name: 'ironhorn_boss',
-    indexes: [
-      { accessor: 'id', name: 'ironhorn_boss_id_idx_btree', algorithm: 'btree', columns: [
-        'id',
-      ] },
-    ],
-    constraints: [
-      { name: 'ironhorn_boss_id_key', constraint: 'unique', columns: ['id'] },
-    ],
-  }, IronhornBossRow),
-  ironhornResult: __table({
-    name: 'ironhorn_result',
-    indexes: [
-      { accessor: 'id', name: 'ironhorn_result_id_idx_btree', algorithm: 'btree', columns: [
-        'id',
-      ] },
-    ],
-    constraints: [
-      { name: 'ironhorn_result_id_key', constraint: 'unique', columns: ['id'] },
-    ],
-  }, IronhornResultRow),
-  koiShogunBoss: __table({
-    name: 'koi_shogun_boss',
-    indexes: [
-      { accessor: 'id', name: 'koi_shogun_boss_id_idx_btree', algorithm: 'btree', columns: [
-        'id',
-      ] },
-    ],
-    constraints: [
-      { name: 'koi_shogun_boss_id_key', constraint: 'unique', columns: ['id'] },
-    ],
-  }, KoiShogunBossRow),
-  koiShogunResult: __table({
-    name: 'koi_shogun_result',
-    indexes: [
-      { accessor: 'id', name: 'koi_shogun_result_id_idx_btree', algorithm: 'btree', columns: [
-        'id',
-      ] },
-    ],
-    constraints: [
-      { name: 'koi_shogun_result_id_key', constraint: 'unique', columns: ['id'] },
-    ],
-  }, KoiShogunResultRow),
-  leaderboardEntryLegacy: __table({
-    name: 'leaderboard_entry',
-    indexes: [
-      { accessor: 'identity', name: 'leaderboard_entry_identity_idx_btree', algorithm: 'btree', columns: [
-        'identity',
-      ] },
-    ],
-    constraints: [
-      { name: 'leaderboard_entry_identity_key', constraint: 'unique', columns: ['identity'] },
-    ],
-  }, LeaderboardEntryLegacyRow),
   leaderboardEntry: __table({
     name: 'leaderboard_entry_v2',
     indexes: [
@@ -801,50 +516,6 @@ const tablesSchema = __schema({
       { name: 'leaderboard_entry_v2_identity_key', constraint: 'unique', columns: ['identity'] },
     ],
   }, LeaderboardEntryRow),
-  magmaliskBoss: __table({
-    name: 'magmalisk_boss',
-    indexes: [
-      { accessor: 'id', name: 'magmalisk_boss_id_idx_btree', algorithm: 'btree', columns: [
-        'id',
-      ] },
-    ],
-    constraints: [
-      { name: 'magmalisk_boss_id_key', constraint: 'unique', columns: ['id'] },
-    ],
-  }, MagmaliskBossRow),
-  magmaliskResult: __table({
-    name: 'magmalisk_result',
-    indexes: [
-      { accessor: 'id', name: 'magmalisk_result_id_idx_btree', algorithm: 'btree', columns: [
-        'id',
-      ] },
-    ],
-    constraints: [
-      { name: 'magmalisk_result_id_key', constraint: 'unique', columns: ['id'] },
-    ],
-  }, MagmaliskResultRow),
-  miremawBoss: __table({
-    name: 'miremaw_boss',
-    indexes: [
-      { accessor: 'id', name: 'miremaw_boss_id_idx_btree', algorithm: 'btree', columns: [
-        'id',
-      ] },
-    ],
-    constraints: [
-      { name: 'miremaw_boss_id_key', constraint: 'unique', columns: ['id'] },
-    ],
-  }, MiremawBossRow),
-  miremawResult: __table({
-    name: 'miremaw_result',
-    indexes: [
-      { accessor: 'id', name: 'miremaw_result_id_idx_btree', algorithm: 'btree', columns: [
-        'id',
-      ] },
-    ],
-    constraints: [
-      { name: 'miremaw_result_id_key', constraint: 'unique', columns: ['id'] },
-    ],
-  }, MiremawResultRow),
   pausedResearch: __table({
     name: 'paused_research',
     indexes: [
@@ -1009,6 +680,17 @@ const tablesSchema = __schema({
     ],
     event: true,
   }, PlayerGemDropRow),
+  playerInventory: __table({
+    name: 'player_inventory',
+    indexes: [
+      { accessor: 'identity', name: 'player_inventory_identity_idx_btree', algorithm: 'btree', columns: [
+        'identity',
+      ] },
+    ],
+    constraints: [
+      { name: 'player_inventory_identity_key', constraint: 'unique', columns: ['identity'] },
+    ],
+  }, PlayerInventoryRow),
   playerItemDrop: __table({
     name: 'player_item_drop',
     indexes: [
@@ -1110,19 +792,6 @@ const tablesSchema = __schema({
     ],
     event: true,
   }, PlayerMotionDetailFrameRow),
-  playerMotionFrame: __table({
-    name: 'player_motion_frame',
-    indexes: [
-      { accessor: 'byMapZone', name: 'player_motion_frame_map_id_zone_x_zone_y_idx_btree', algorithm: 'btree', columns: [
-        'mapId',
-        'zoneX',
-        'zoneY',
-      ] },
-    ],
-    constraints: [
-    ],
-    event: true,
-  }, PlayerMotionFrameRow),
   playerMotionIdentity: __table({
     name: 'player_motion_identity',
     indexes: [
@@ -1295,28 +964,6 @@ const tablesSchema = __schema({
       { name: 'prestige_expansion_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, PrestigeExpansionRow),
-  prismshellBoss: __table({
-    name: 'prismshell_boss',
-    indexes: [
-      { accessor: 'id', name: 'prismshell_boss_id_idx_btree', algorithm: 'btree', columns: [
-        'id',
-      ] },
-    ],
-    constraints: [
-      { name: 'prismshell_boss_id_key', constraint: 'unique', columns: ['id'] },
-    ],
-  }, PrismshellBossRow),
-  prismshellResult: __table({
-    name: 'prismshell_result',
-    indexes: [
-      { accessor: 'id', name: 'prismshell_result_id_idx_btree', algorithm: 'btree', columns: [
-        'id',
-      ] },
-    ],
-    constraints: [
-      { name: 'prismshell_result_id_key', constraint: 'unique', columns: ['id'] },
-    ],
-  }, PrismshellResultRow),
   proceduralBoss: __table({
     name: 'procedural_boss',
     indexes: [
@@ -1378,94 +1025,6 @@ const tablesSchema = __schema({
       { name: 'soul_dimension_config_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, SoulDimensionConfigRow),
-  spiderBoss: __table({
-    name: 'spider_boss',
-    indexes: [
-      { accessor: 'id', name: 'spider_boss_id_idx_btree', algorithm: 'btree', columns: [
-        'id',
-      ] },
-    ],
-    constraints: [
-      { name: 'spider_boss_id_key', constraint: 'unique', columns: ['id'] },
-    ],
-  }, SpiderBossRow),
-  spiderResult: __table({
-    name: 'spider_result',
-    indexes: [
-      { accessor: 'id', name: 'spider_result_id_idx_btree', algorithm: 'btree', columns: [
-        'id',
-      ] },
-    ],
-    constraints: [
-      { name: 'spider_result_id_key', constraint: 'unique', columns: ['id'] },
-    ],
-  }, SpiderResultRow),
-  tempestKirinBoss: __table({
-    name: 'tempest_kirin_boss',
-    indexes: [
-      { accessor: 'id', name: 'tempest_kirin_boss_id_idx_btree', algorithm: 'btree', columns: [
-        'id',
-      ] },
-    ],
-    constraints: [
-      { name: 'tempest_kirin_boss_id_key', constraint: 'unique', columns: ['id'] },
-    ],
-  }, TempestKirinBossRow),
-  tempestKirinResult: __table({
-    name: 'tempest_kirin_result',
-    indexes: [
-      { accessor: 'id', name: 'tempest_kirin_result_id_idx_btree', algorithm: 'btree', columns: [
-        'id',
-      ] },
-    ],
-    constraints: [
-      { name: 'tempest_kirin_result_id_key', constraint: 'unique', columns: ['id'] },
-    ],
-  }, TempestKirinResultRow),
-  tidewyrmBoss: __table({
-    name: 'tidewyrm_boss',
-    indexes: [
-      { accessor: 'id', name: 'tidewyrm_boss_id_idx_btree', algorithm: 'btree', columns: [
-        'id',
-      ] },
-    ],
-    constraints: [
-      { name: 'tidewyrm_boss_id_key', constraint: 'unique', columns: ['id'] },
-    ],
-  }, TidewyrmBossRow),
-  tidewyrmResult: __table({
-    name: 'tidewyrm_result',
-    indexes: [
-      { accessor: 'id', name: 'tidewyrm_result_id_idx_btree', algorithm: 'btree', columns: [
-        'id',
-      ] },
-    ],
-    constraints: [
-      { name: 'tidewyrm_result_id_key', constraint: 'unique', columns: ['id'] },
-    ],
-  }, TidewyrmResultRow),
-  voltwardenBoss: __table({
-    name: 'voltwarden_boss',
-    indexes: [
-      { accessor: 'id', name: 'voltwarden_boss_id_idx_btree', algorithm: 'btree', columns: [
-        'id',
-      ] },
-    ],
-    constraints: [
-      { name: 'voltwarden_boss_id_key', constraint: 'unique', columns: ['id'] },
-    ],
-  }, VoltwardenBossRow),
-  voltwardenResult: __table({
-    name: 'voltwarden_result',
-    indexes: [
-      { accessor: 'id', name: 'voltwarden_result_id_idx_btree', algorithm: 'btree', columns: [
-        'id',
-      ] },
-    ],
-    constraints: [
-      { name: 'voltwarden_result_id_key', constraint: 'unique', columns: ['id'] },
-    ],
-  }, VoltwardenResultRow),
   worldStatus: __table({
     name: 'world_status',
     indexes: [
@@ -1491,13 +1050,6 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, DevBugReportsRow),
-  devForestRewardPrototype: __table({
-    name: 'dev_forest_reward_prototype',
-    indexes: [
-    ],
-    constraints: [
-    ],
-  }, DevForestRewardPrototypeRow),
   devGemPurchaseReview: __table({
     name: 'dev_gem_purchase_review',
     indexes: [
@@ -1867,10 +1419,8 @@ const reducersSchema = __reducers(
   __reducerSchema("acknowledge_offline_summary", AcknowledgeOfflineSummaryReducer),
   __reducerSchema("acknowledge_release", AcknowledgeReleaseReducer),
   __reducerSchema("apply_build_cards", ApplyBuildCardsReducer),
-  __reducerSchema("attack_forest_reward_prototype", AttackForestRewardPrototypeReducer),
   __reducerSchema("begin_account_link", BeginAccountLinkReducer),
   __reducerSchema("begin_adventure", BeginAdventureReducer),
-  __reducerSchema("begin_forest_reward_prototype", BeginForestRewardPrototypeReducer),
   __reducerSchema("buy_ox_shop_cosmetic", BuyOxShopCosmeticReducer),
   __reducerSchema("cancel_gem_purchase", CancelGemPurchaseReducer),
   __reducerSchema("cancel_item_upgrade", CancelItemUpgradeReducer),
@@ -1889,24 +1439,6 @@ const reducersSchema = __reducers(
   __reducerSchema("configure_patreon", ConfigurePatreonReducer),
   __reducerSchema("convert_item_to_cosmetic", ConvertItemToCosmeticReducer),
   __reducerSchema("create_guild", CreateGuildReducer),
-  __reducerSchema("damage_aegis_prime_from_position", DamageAegisPrimeFromPositionReducer),
-  __reducerSchema("damage_dragon", DamageDragonReducer),
-  __reducerSchema("damage_dragon_batch", DamageDragonBatchReducer),
-  __reducerSchema("damage_dragon_from_position", DamageDragonFromPositionReducer),
-  __reducerSchema("damage_dreadreaper_from_position", DamageDreadreaperFromPositionReducer),
-  __reducerSchema("damage_frostclaw_from_position", DamageFrostclawFromPositionReducer),
-  __reducerSchema("damage_gloomroot_from_position", DamageGloomrootFromPositionReducer),
-  __reducerSchema("damage_gravebloom_from_position", DamageGravebloomFromPositionReducer),
-  __reducerSchema("damage_ironhorn_from_position", DamageIronhornFromPositionReducer),
-  __reducerSchema("damage_koi_shogun_from_position", DamageKoiShogunFromPositionReducer),
-  __reducerSchema("damage_magmalisk_from_position", DamageMagmaliskFromPositionReducer),
-  __reducerSchema("damage_miremaw_from_position", DamageMiremawFromPositionReducer),
-  __reducerSchema("damage_prismshell_from_position", DamagePrismshellFromPositionReducer),
-  __reducerSchema("damage_spider_batch", DamageSpiderBatchReducer),
-  __reducerSchema("damage_spider_from_position", DamageSpiderFromPositionReducer),
-  __reducerSchema("damage_tempest_kirin_from_position", DamageTempestKirinFromPositionReducer),
-  __reducerSchema("damage_tidewyrm_from_position", DamageTidewyrmFromPositionReducer),
-  __reducerSchema("damage_voltwarden_from_position", DamageVoltwardenFromPositionReducer),
   __reducerSchema("destroy_equipment", DestroyEquipmentReducer),
   __reducerSchema("destroy_equipment_copy", DestroyEquipmentCopyReducer),
   __reducerSchema("destroy_ore", DestroyOreReducer),
@@ -1955,8 +1487,6 @@ const reducersSchema = __reducers(
   __reducerSchema("fulfill_gem_purchase", FulfillGemPurchaseReducer),
   __reducerSchema("guild_admission", GuildAdmissionReducer),
   __reducerSchema("guild_invite_action", GuildInviteActionReducer),
-  __reducerSchema("hit_procedural_boss", HitProceduralBossReducer),
-  __reducerSchema("hit_procedural_boss_batch", HitProceduralBossBatchReducer),
   __reducerSchema("ingest_gem_store_event", IngestGemStoreEventReducer),
   __reducerSchema("join_guild", JoinGuildReducer),
   __reducerSchema("join_virtual_player_load_test", JoinVirtualPlayerLoadTestReducer),

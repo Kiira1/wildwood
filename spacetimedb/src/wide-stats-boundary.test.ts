@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { expect, it } from "vitest";
 
 /**
- * Stats past f32 live in player_wide_stats, laid over player_progress by
+ * Stats past f32, the crit rating and the bag are laid over player_progress by
  * readPlayerProgress. A direct read would see the clamp, and writing that row
  * back would throw the real value away, so every read goes through the helper.
  */

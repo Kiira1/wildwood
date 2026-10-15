@@ -9,6 +9,7 @@ import { bagSlotsUsed } from "../../shared/equipment-copies";
 import { inventoryForProgress } from "./progress-helpers";
 import { IRON_BOW } from "../../shared/items";
 import { mergeMiningData, minedNodeKey, miningFor, nodeBareFor, removeMiningData } from "./mining";
+import { progressOf } from "../../tests/helpers/progress";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
 const rock = (ore: string, kind: string, skip = 0) => MINING_NODES.filter(node => node.ore === ore && node.kind === kind)[skip]!;
@@ -134,7 +135,7 @@ describe("ore in the bag", () => {
     f.patch("playerProgress", { inventoryJson: JSON.stringify([IRON_BOW]), equippedRightHand: IRON_BOW });
     for (const [oreId, count] of Object.entries(ores)) addOres(f.ctx, f.ctx.sender, oreId as never, count);
     // What the bag holds already (the starter items are always in it), counted the server's way.
-    const progress = f.db.playerProgress.identity.find(f.ctx.sender);
+    const progress = progressOf(f, f.ctx.sender);
     const used = bagSlotsUsed(inventoryForProgress(progress), [IRON_BOW], 0, Object.keys(ores).length);
     for (let index = used; index < inventorySlotCapacity(0); index++) {
       f.seed("playerEquipmentCopy", { id: 0n, identity: f.ctx.sender, itemId: IRON_BOW, arrowStorm: 0, ricochet: 0, piercingShot: 0, acquiredAt: f.ctx.timestamp });

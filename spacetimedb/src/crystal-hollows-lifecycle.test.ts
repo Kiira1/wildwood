@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { Identity } from "spacetimedb";
 import { ATTACK_BALANCE_VERSION, SPACETIME_AUTH_ISSUER, SPACETIME_AUTH_CLIENT_ID } from "../../shared/rules";
 import { crystalFixture, identity, server } from "../../tests/helpers/crystal-hollows-fixture";
+import { progressOf } from "../../tests/helpers/progress";
 
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
@@ -15,8 +16,8 @@ describe("Crystal Hollows unlock and identity lifecycle", () => {
     f.seed("accountLink", { code: "test-link", guest, createdAt: f.ctx.timestamp });
     f.ctx.senderAuth = { jwt: { issuer: SPACETIME_AUTH_ISSUER, audience: [SPACETIME_AUTH_CLIENT_ID] } };
     f.run(server.claimGuestAccount, { code: "test-link" });
-    expect(f.db.playerProgress.identity.find(f.ctx.sender).crystalHollowsUnlocked).toBe(true);
-    expect(f.db.playerProgress.identity.find(guest)).toBeNull();
+    expect(progressOf(f, f.ctx.sender).crystalHollowsUnlocked).toBe(true);
+    expect(progressOf(f, guest)).toBeNull();
     expect(f.db.accountLink.code.find("test-link")).toBeNull();
   });
 
@@ -38,7 +39,7 @@ describe("Crystal Hollows unlock and identity lifecycle", () => {
     const peer = identity("2");
     f.seed("virtualPlayer", { identity: f.ctx.sender, owner: peer, mapId: "crystal_hollows", createdAt: f.ctx.timestamp });
     f.run(server.onDisconnect);
-    expect(f.db.playerProgress.identity.find(f.ctx.sender)).toBeNull();
+    expect(progressOf(f, f.ctx.sender)).toBeNull();
   });
 
   it("guards complete legacy-player removal", () => {
@@ -52,7 +53,7 @@ describe("Crystal Hollows unlock and identity lifecycle", () => {
     // Public owner identifier in the module, used only with an in-memory DB.
     f.ctx.sender = new Identity("c200383520521c925f3cf6deafb20cd6a7d6168d1c31cb3c0ddb731c197a2d79");
     remove();
-    expect(f.db.playerProgress.identity.find(target)).toBeNull();
-    expect(f.db.playerProgress.identity.find(identity("1"))).not.toBeNull();
+    expect(progressOf(f, target)).toBeNull();
+    expect(progressOf(f, identity("1"))).not.toBeNull();
   });
 });

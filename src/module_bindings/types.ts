@@ -79,49 +79,6 @@ export const ActiveResearch = __t.object("ActiveResearch", {
 });
 export type ActiveResearch = __Infer<typeof ActiveResearch>;
 
-export const AegisPrimeAttackWindow = __t.object("AegisPrimeAttackWindow", {
-  identity: __t.identity(),
-  encounter: __t.u64(),
-  startedAtMicros: __t.u64(),
-  hits: __t.u32(),
-});
-export type AegisPrimeAttackWindow = __Infer<typeof AegisPrimeAttackWindow>;
-
-export const AegisPrimeBoss = __t.object("AegisPrimeBoss", {
-  id: __t.u32(),
-  encounter: __t.u64(),
-  hp: __t.f32(),
-  maxHp: __t.f32(),
-  alive: __t.bool(),
-  respawnAtMicros: __t.u64(),
-  lastDamageAtMicros: __t.u64(),
-});
-export type AegisPrimeBoss = __Infer<typeof AegisPrimeBoss>;
-
-export const AegisPrimeContribution = __t.object("AegisPrimeContribution", {
-  identity: __t.identity(),
-  encounter: __t.u64(),
-  displayName: __t.string(),
-  damage: __t.f32(),
-});
-export type AegisPrimeContribution = __Infer<typeof AegisPrimeContribution>;
-
-export const AegisPrimeRespawnSchedule = __t.object("AegisPrimeRespawnSchedule", {
-  scheduledId: __t.u64(),
-  scheduledAt: __t.scheduleAt(),
-  encounter: __t.u64(),
-});
-export type AegisPrimeRespawnSchedule = __Infer<typeof AegisPrimeRespawnSchedule>;
-
-export const AegisPrimeResult = __t.object("AegisPrimeResult", {
-  id: __t.u32(),
-  encounter: __t.u64(),
-  totalDamage: __t.f32(),
-  contributorsJson: __t.string(),
-  createdAt: __t.timestamp(),
-});
-export type AegisPrimeResult = __Infer<typeof AegisPrimeResult>;
-
 export const AggroChallengeRun = __t.object("AggroChallengeRun", {
   identity: __t.identity(),
   progressJson: __t.string(),
@@ -177,44 +134,6 @@ export const BalanceApologyNotice = __t.object("BalanceApologyNotice", {
   createdAt: __t.timestamp(),
 });
 export type BalanceApologyNotice = __Infer<typeof BalanceApologyNotice>;
-
-export const BossAttackFrame = __t.object("BossAttackFrame", {
-  mapId: __t.string(),
-  zoneX: __t.i32(),
-  zoneY: __t.i32(),
-  networkId: __t.u32(),
-  attackerX: __t.f64(),
-  attackerY: __t.f64(),
-  targetX: __t.f64(),
-  targetY: __t.f64(),
-  targetRadius: __t.f32(),
-  hits: __t.u32(),
-  emittedAt: __t.timestamp(),
-});
-export type BossAttackFrame = __Infer<typeof BossAttackFrame>;
-
-export const BossDefeatWindow = __t.object("BossDefeatWindow", {
-  identity: __t.identity(),
-  acceptedAtMicros: __t.array(__t.u64()),
-});
-export type BossDefeatWindow = __Infer<typeof BossDefeatWindow>;
-
-export const BossHitResult = __t.object("BossHitResult", {
-  identity: __t.identity(),
-  mapId: __t.string(),
-  x: __t.f64(),
-  y: __t.f64(),
-  damage: __t.f64(),
-  critical: __t.bool(),
-});
-export type BossHitResult = __Infer<typeof BossHitResult>;
-
-export const BossMapDefeatWindow = __t.object("BossMapDefeatWindow", {
-  identity: __t.identity(),
-  acceptedAtMicros: __t.array(__t.u64()),
-  acceptedMapIds: __t.array(__t.string()),
-});
-export type BossMapDefeatWindow = __Infer<typeof BossMapDefeatWindow>;
 
 export const BugReport = __t.object("BugReport", {
   id: __t.u64(),
@@ -371,9 +290,6 @@ export type DevAccessAudit = __Infer<typeof DevAccessAudit>;
 export const DevBugReports = __t.object("DevBugReports", {});
 export type DevBugReports = __Infer<typeof DevBugReports>;
 
-export const DevForestRewardPrototype = __t.object("DevForestRewardPrototype", {});
-export type DevForestRewardPrototype = __Infer<typeof DevForestRewardPrototype>;
-
 export const DevGemPurchaseReview = __t.object("DevGemPurchaseReview", {});
 export type DevGemPurchaseReview = __Infer<typeof DevGemPurchaseReview>;
 
@@ -394,92 +310,6 @@ export const DeveloperPresencePreference = __t.object("DeveloperPresencePreferen
   visible: __t.bool(),
 });
 export type DeveloperPresencePreference = __Infer<typeof DeveloperPresencePreference>;
-
-export const DragonAttackWindow = __t.object("DragonAttackWindow", {
-  identity: __t.identity(),
-  encounter: __t.u64(),
-  startedAtMicros: __t.u64(),
-  hits: __t.u32(),
-});
-export type DragonAttackWindow = __Infer<typeof DragonAttackWindow>;
-
-export const DragonBoss = __t.object("DragonBoss", {
-  id: __t.u32(),
-  encounter: __t.u64(),
-  hp: __t.f32(),
-  maxHp: __t.f32(),
-  alive: __t.bool(),
-  respawnAtMicros: __t.u64(),
-  lastDamageAtMicros: __t.u64(),
-});
-export type DragonBoss = __Infer<typeof DragonBoss>;
-
-export const DragonContribution = __t.object("DragonContribution", {
-  identity: __t.identity(),
-  encounter: __t.u64(),
-  displayName: __t.string(),
-  damage: __t.f32(),
-});
-export type DragonContribution = __Infer<typeof DragonContribution>;
-
-export const DragonRespawnSchedule = __t.object("DragonRespawnSchedule", {
-  scheduledId: __t.u64(),
-  scheduledAt: __t.scheduleAt(),
-  encounter: __t.u64(),
-});
-export type DragonRespawnSchedule = __Infer<typeof DragonRespawnSchedule>;
-
-export const DragonResult = __t.object("DragonResult", {
-  id: __t.u32(),
-  encounter: __t.u64(),
-  totalDamage: __t.f32(),
-  contributorsJson: __t.string(),
-  createdAt: __t.timestamp(),
-});
-export type DragonResult = __Infer<typeof DragonResult>;
-
-export const DreadreaperAttackWindow = __t.object("DreadreaperAttackWindow", {
-  identity: __t.identity(),
-  encounter: __t.u64(),
-  startedAtMicros: __t.u64(),
-  hits: __t.u32(),
-});
-export type DreadreaperAttackWindow = __Infer<typeof DreadreaperAttackWindow>;
-
-export const DreadreaperBoss = __t.object("DreadreaperBoss", {
-  id: __t.u32(),
-  encounter: __t.u64(),
-  hp: __t.f32(),
-  maxHp: __t.f32(),
-  alive: __t.bool(),
-  respawnAtMicros: __t.u64(),
-  lastDamageAtMicros: __t.u64(),
-});
-export type DreadreaperBoss = __Infer<typeof DreadreaperBoss>;
-
-export const DreadreaperContribution = __t.object("DreadreaperContribution", {
-  identity: __t.identity(),
-  encounter: __t.u64(),
-  displayName: __t.string(),
-  damage: __t.f32(),
-});
-export type DreadreaperContribution = __Infer<typeof DreadreaperContribution>;
-
-export const DreadreaperRespawnSchedule = __t.object("DreadreaperRespawnSchedule", {
-  scheduledId: __t.u64(),
-  scheduledAt: __t.scheduleAt(),
-  encounter: __t.u64(),
-});
-export type DreadreaperRespawnSchedule = __Infer<typeof DreadreaperRespawnSchedule>;
-
-export const DreadreaperResult = __t.object("DreadreaperResult", {
-  id: __t.u32(),
-  encounter: __t.u64(),
-  totalDamage: __t.f32(),
-  contributorsJson: __t.string(),
-  createdAt: __t.timestamp(),
-});
-export type DreadreaperResult = __Infer<typeof DreadreaperResult>;
 
 export const Duel = __t.object("Duel", {
   id: __t.u64(),
@@ -640,13 +470,6 @@ export const DuelWideStats = __t.object("DuelWideStats", {
 });
 export type DuelWideStats = __Infer<typeof DuelWideStats>;
 
-export const DuelWireAccess = __t.object("DuelWireAccess", {
-  key: __t.string(),
-  identity: __t.identity(),
-  combatVersion: __t.u8(),
-});
-export type DuelWireAccess = __Infer<typeof DuelWireAccess>;
-
 export const EndlessTravelAccess = __t.object("EndlessTravelAccess", {
   identity: __t.identity(),
 });
@@ -665,74 +488,6 @@ export const EnemyDefeatBudget = __t.object("EnemyDefeatBudget", {
   updatedAtMicros: __t.u64(),
 });
 export type EnemyDefeatBudget = __Infer<typeof EnemyDefeatBudget>;
-
-export const EnemyDefeatReview = __t.object("EnemyDefeatReview", {
-  id: __t.u64(),
-  identity: __t.identity(),
-  mapId: __t.string(),
-  enemy: __t.string(),
-  kind: __t.string(),
-  requested: __t.u32(),
-  accepted: __t.u32(),
-  detail: __t.string(),
-  recordedAt: __t.timestamp(),
-});
-export type EnemyDefeatReview = __Infer<typeof EnemyDefeatReview>;
-
-export const ForestRewardPrototype = __t.object("ForestRewardPrototype", {
-  identity: __t.identity(),
-  encounter: __t.u64(),
-  enemyHp: __t.u32(),
-  damage: __t.u32(),
-  kills: __t.u64(),
-  lastAttack: __t.u64(),
-  nextAttackAt: __t.u64(),
-  respawnAt: __t.u64(),
-});
-export type ForestRewardPrototype = __Infer<typeof ForestRewardPrototype>;
-
-export const FrostclawAttackWindow = __t.object("FrostclawAttackWindow", {
-  identity: __t.identity(),
-  encounter: __t.u64(),
-  startedAtMicros: __t.u64(),
-  hits: __t.u32(),
-});
-export type FrostclawAttackWindow = __Infer<typeof FrostclawAttackWindow>;
-
-export const FrostclawBoss = __t.object("FrostclawBoss", {
-  id: __t.u32(),
-  encounter: __t.u64(),
-  hp: __t.f32(),
-  maxHp: __t.f32(),
-  alive: __t.bool(),
-  respawnAtMicros: __t.u64(),
-  lastDamageAtMicros: __t.u64(),
-});
-export type FrostclawBoss = __Infer<typeof FrostclawBoss>;
-
-export const FrostclawContribution = __t.object("FrostclawContribution", {
-  identity: __t.identity(),
-  encounter: __t.u64(),
-  displayName: __t.string(),
-  damage: __t.f32(),
-});
-export type FrostclawContribution = __Infer<typeof FrostclawContribution>;
-
-export const FrostclawRespawnSchedule = __t.object("FrostclawRespawnSchedule", {
-  scheduledId: __t.u64(),
-  scheduledAt: __t.scheduleAt(),
-  encounter: __t.u64(),
-});
-export type FrostclawRespawnSchedule = __Infer<typeof FrostclawRespawnSchedule>;
-
-export const FrostclawResult = __t.object("FrostclawResult", {
-  id: __t.u32(),
-  encounter: __t.u64(),
-  totalDamage: __t.f32(),
-  contributorsJson: __t.string(),
-  createdAt: __t.timestamp(),
-});
-export type FrostclawResult = __Infer<typeof FrostclawResult>;
 
 export const GemCommerceConfig = __t.object("GemCommerceConfig", {
   id: __t.u8(),
@@ -820,92 +575,6 @@ export const GemTransaction = __t.object("GemTransaction", {
   createdAt: __t.timestamp(),
 });
 export type GemTransaction = __Infer<typeof GemTransaction>;
-
-export const GloomrootAttackWindow = __t.object("GloomrootAttackWindow", {
-  identity: __t.identity(),
-  encounter: __t.u64(),
-  startedAtMicros: __t.u64(),
-  hits: __t.u32(),
-});
-export type GloomrootAttackWindow = __Infer<typeof GloomrootAttackWindow>;
-
-export const GloomrootBoss = __t.object("GloomrootBoss", {
-  id: __t.u32(),
-  encounter: __t.u64(),
-  hp: __t.f32(),
-  maxHp: __t.f32(),
-  alive: __t.bool(),
-  respawnAtMicros: __t.u64(),
-  lastDamageAtMicros: __t.u64(),
-});
-export type GloomrootBoss = __Infer<typeof GloomrootBoss>;
-
-export const GloomrootContribution = __t.object("GloomrootContribution", {
-  identity: __t.identity(),
-  encounter: __t.u64(),
-  displayName: __t.string(),
-  damage: __t.f32(),
-});
-export type GloomrootContribution = __Infer<typeof GloomrootContribution>;
-
-export const GloomrootRespawnSchedule = __t.object("GloomrootRespawnSchedule", {
-  scheduledId: __t.u64(),
-  scheduledAt: __t.scheduleAt(),
-  encounter: __t.u64(),
-});
-export type GloomrootRespawnSchedule = __Infer<typeof GloomrootRespawnSchedule>;
-
-export const GloomrootResult = __t.object("GloomrootResult", {
-  id: __t.u32(),
-  encounter: __t.u64(),
-  totalDamage: __t.f32(),
-  contributorsJson: __t.string(),
-  createdAt: __t.timestamp(),
-});
-export type GloomrootResult = __Infer<typeof GloomrootResult>;
-
-export const GravebloomAttackWindow = __t.object("GravebloomAttackWindow", {
-  identity: __t.identity(),
-  encounter: __t.u64(),
-  startedAtMicros: __t.u64(),
-  hits: __t.u32(),
-});
-export type GravebloomAttackWindow = __Infer<typeof GravebloomAttackWindow>;
-
-export const GravebloomBoss = __t.object("GravebloomBoss", {
-  id: __t.u32(),
-  encounter: __t.u64(),
-  hp: __t.f32(),
-  maxHp: __t.f32(),
-  alive: __t.bool(),
-  respawnAtMicros: __t.u64(),
-  lastDamageAtMicros: __t.u64(),
-});
-export type GravebloomBoss = __Infer<typeof GravebloomBoss>;
-
-export const GravebloomContribution = __t.object("GravebloomContribution", {
-  identity: __t.identity(),
-  encounter: __t.u64(),
-  displayName: __t.string(),
-  damage: __t.f32(),
-});
-export type GravebloomContribution = __Infer<typeof GravebloomContribution>;
-
-export const GravebloomRespawnSchedule = __t.object("GravebloomRespawnSchedule", {
-  scheduledId: __t.u64(),
-  scheduledAt: __t.scheduleAt(),
-  encounter: __t.u64(),
-});
-export type GravebloomRespawnSchedule = __Infer<typeof GravebloomRespawnSchedule>;
-
-export const GravebloomResult = __t.object("GravebloomResult", {
-  id: __t.u32(),
-  encounter: __t.u64(),
-  totalDamage: __t.f32(),
-  contributorsJson: __t.string(),
-  createdAt: __t.timestamp(),
-});
-export type GravebloomResult = __Infer<typeof GravebloomResult>;
 
 export const Guild = __t.object("Guild", {
   id: __t.u64(),
@@ -1039,49 +708,6 @@ export const HomeReturnLocation = __t.object("HomeReturnLocation", {
 });
 export type HomeReturnLocation = __Infer<typeof HomeReturnLocation>;
 
-export const IronhornAttackWindow = __t.object("IronhornAttackWindow", {
-  identity: __t.identity(),
-  encounter: __t.u64(),
-  startedAtMicros: __t.u64(),
-  hits: __t.u32(),
-});
-export type IronhornAttackWindow = __Infer<typeof IronhornAttackWindow>;
-
-export const IronhornBoss = __t.object("IronhornBoss", {
-  id: __t.u32(),
-  encounter: __t.u64(),
-  hp: __t.f32(),
-  maxHp: __t.f32(),
-  alive: __t.bool(),
-  respawnAtMicros: __t.u64(),
-  lastDamageAtMicros: __t.u64(),
-});
-export type IronhornBoss = __Infer<typeof IronhornBoss>;
-
-export const IronhornContribution = __t.object("IronhornContribution", {
-  identity: __t.identity(),
-  encounter: __t.u64(),
-  displayName: __t.string(),
-  damage: __t.f32(),
-});
-export type IronhornContribution = __Infer<typeof IronhornContribution>;
-
-export const IronhornRespawnSchedule = __t.object("IronhornRespawnSchedule", {
-  scheduledId: __t.u64(),
-  scheduledAt: __t.scheduleAt(),
-  encounter: __t.u64(),
-});
-export type IronhornRespawnSchedule = __Infer<typeof IronhornRespawnSchedule>;
-
-export const IronhornResult = __t.object("IronhornResult", {
-  id: __t.u32(),
-  encounter: __t.u64(),
-  totalDamage: __t.f32(),
-  contributorsJson: __t.string(),
-  createdAt: __t.timestamp(),
-});
-export type IronhornResult = __Infer<typeof IronhornResult>;
-
 export const ItemUpgradeCompletionSchedule = __t.object("ItemUpgradeCompletionSchedule", {
   scheduledId: __t.u64(),
   scheduledAt: __t.scheduleAt(),
@@ -1093,76 +719,11 @@ export const ItemUpgradeCompletionSchedule = __t.object("ItemUpgradeCompletionSc
 });
 export type ItemUpgradeCompletionSchedule = __Infer<typeof ItemUpgradeCompletionSchedule>;
 
-export const KoiShogunAttackWindow = __t.object("KoiShogunAttackWindow", {
-  identity: __t.identity(),
-  encounter: __t.u64(),
-  startedAtMicros: __t.u64(),
-  hits: __t.u32(),
-});
-export type KoiShogunAttackWindow = __Infer<typeof KoiShogunAttackWindow>;
-
-export const KoiShogunBoss = __t.object("KoiShogunBoss", {
-  id: __t.u32(),
-  encounter: __t.u64(),
-  hp: __t.f32(),
-  maxHp: __t.f32(),
-  alive: __t.bool(),
-  respawnAtMicros: __t.u64(),
-  lastDamageAtMicros: __t.u64(),
-});
-export type KoiShogunBoss = __Infer<typeof KoiShogunBoss>;
-
-export const KoiShogunContribution = __t.object("KoiShogunContribution", {
-  identity: __t.identity(),
-  encounter: __t.u64(),
-  displayName: __t.string(),
-  damage: __t.f32(),
-});
-export type KoiShogunContribution = __Infer<typeof KoiShogunContribution>;
-
-export const KoiShogunRespawnSchedule = __t.object("KoiShogunRespawnSchedule", {
-  scheduledId: __t.u64(),
-  scheduledAt: __t.scheduleAt(),
-  encounter: __t.u64(),
-});
-export type KoiShogunRespawnSchedule = __Infer<typeof KoiShogunRespawnSchedule>;
-
-export const KoiShogunResult = __t.object("KoiShogunResult", {
-  id: __t.u32(),
-  encounter: __t.u64(),
-  totalDamage: __t.f32(),
-  contributorsJson: __t.string(),
-  createdAt: __t.timestamp(),
-});
-export type KoiShogunResult = __Infer<typeof KoiShogunResult>;
-
 export const LatestChatMessages = __t.object("LatestChatMessages", {});
 export type LatestChatMessages = __Infer<typeof LatestChatMessages>;
 
 export const LatestChatMessagesWithReactions = __t.object("LatestChatMessagesWithReactions", {});
 export type LatestChatMessagesWithReactions = __Infer<typeof LatestChatMessagesWithReactions>;
-
-export const LeaderboardEntry = __t.object("LeaderboardEntry", {
-  identity: __t.identity(),
-  displayName: __t.string(),
-  damage: __t.f32(),
-  maxHp: __t.f32(),
-  isGuest: __t.bool(),
-  power: __t.u32(),
-  armor: __t.f32(),
-  regen: __t.f32(),
-  playedMicros: __t.u64(),
-  profileIcon: __t.u32(),
-  powerLevel: __t.f64(),
-  gender: __t.u8(),
-  skinTone: __t.u32(),
-  headItem: __t.string(),
-  chestItem: __t.string(),
-  feetItem: __t.string(),
-  rightHandItem: __t.string(),
-  leftHandItem: __t.string(),
-});
-export type LeaderboardEntry = __Infer<typeof LeaderboardEntry>;
 
 export const LeaderboardEntryV2 = __t.object("LeaderboardEntryV2", {
   identity: __t.identity(),
@@ -1254,49 +815,6 @@ export const LoginMove = __t.object("LoginMove", {
 });
 export type LoginMove = __Infer<typeof LoginMove>;
 
-export const MagmaliskAttackWindow = __t.object("MagmaliskAttackWindow", {
-  identity: __t.identity(),
-  encounter: __t.u64(),
-  startedAtMicros: __t.u64(),
-  hits: __t.u32(),
-});
-export type MagmaliskAttackWindow = __Infer<typeof MagmaliskAttackWindow>;
-
-export const MagmaliskBoss = __t.object("MagmaliskBoss", {
-  id: __t.u32(),
-  encounter: __t.u64(),
-  hp: __t.f32(),
-  maxHp: __t.f32(),
-  alive: __t.bool(),
-  respawnAtMicros: __t.u64(),
-  lastDamageAtMicros: __t.u64(),
-});
-export type MagmaliskBoss = __Infer<typeof MagmaliskBoss>;
-
-export const MagmaliskContribution = __t.object("MagmaliskContribution", {
-  identity: __t.identity(),
-  encounter: __t.u64(),
-  displayName: __t.string(),
-  damage: __t.f32(),
-});
-export type MagmaliskContribution = __Infer<typeof MagmaliskContribution>;
-
-export const MagmaliskRespawnSchedule = __t.object("MagmaliskRespawnSchedule", {
-  scheduledId: __t.u64(),
-  scheduledAt: __t.scheduleAt(),
-  encounter: __t.u64(),
-});
-export type MagmaliskRespawnSchedule = __Infer<typeof MagmaliskRespawnSchedule>;
-
-export const MagmaliskResult = __t.object("MagmaliskResult", {
-  id: __t.u32(),
-  encounter: __t.u64(),
-  totalDamage: __t.f32(),
-  contributorsJson: __t.string(),
-  createdAt: __t.timestamp(),
-});
-export type MagmaliskResult = __Infer<typeof MagmaliskResult>;
-
 export const MailboxEntryV2 = __t.object("MailboxEntryV2", {
   id: __t.string(),
   title: __t.string(),
@@ -1372,49 +890,6 @@ export const MapFrameSchedule = __t.object("MapFrameSchedule", {
   scheduledAt: __t.scheduleAt(),
 });
 export type MapFrameSchedule = __Infer<typeof MapFrameSchedule>;
-
-export const MiremawAttackWindow = __t.object("MiremawAttackWindow", {
-  identity: __t.identity(),
-  encounter: __t.u64(),
-  startedAtMicros: __t.u64(),
-  hits: __t.u32(),
-});
-export type MiremawAttackWindow = __Infer<typeof MiremawAttackWindow>;
-
-export const MiremawBoss = __t.object("MiremawBoss", {
-  id: __t.u32(),
-  encounter: __t.u64(),
-  hp: __t.f32(),
-  maxHp: __t.f32(),
-  alive: __t.bool(),
-  respawnAtMicros: __t.u64(),
-  lastDamageAtMicros: __t.u64(),
-});
-export type MiremawBoss = __Infer<typeof MiremawBoss>;
-
-export const MiremawContribution = __t.object("MiremawContribution", {
-  identity: __t.identity(),
-  encounter: __t.u64(),
-  displayName: __t.string(),
-  damage: __t.f32(),
-});
-export type MiremawContribution = __Infer<typeof MiremawContribution>;
-
-export const MiremawRespawnSchedule = __t.object("MiremawRespawnSchedule", {
-  scheduledId: __t.u64(),
-  scheduledAt: __t.scheduleAt(),
-  encounter: __t.u64(),
-});
-export type MiremawRespawnSchedule = __Infer<typeof MiremawRespawnSchedule>;
-
-export const MiremawResult = __t.object("MiremawResult", {
-  id: __t.u32(),
-  encounter: __t.u64(),
-  totalDamage: __t.f32(),
-  contributorsJson: __t.string(),
-  createdAt: __t.timestamp(),
-});
-export type MiremawResult = __Infer<typeof MiremawResult>;
 
 export const ModerationAction = __t.object("ModerationAction", {
   id: __t.u64(),
@@ -1959,18 +1434,18 @@ export const PlayerDeathFrame = __t.object("PlayerDeathFrame", {
 });
 export type PlayerDeathFrame = __Infer<typeof PlayerDeathFrame>;
 
-export const PlayerEndgameRebaseBackup = __t.object("PlayerEndgameRebaseBackup", {
+export const PlayerDefeatClock = __t.object("PlayerDefeatClock", {
   identity: __t.identity(),
-  maxHp: __t.f32(),
-  damage: __t.f32(),
-  armor: __t.f32(),
-  regen: __t.f32(),
-  attackRate: __t.f32(),
-  beforePower: __t.f64(),
-  afterPower: __t.f64(),
-  recordedAt: __t.timestamp(),
+  reportTokens: __t.f64(),
+  reportAt: __t.u64(),
+  simTokens: __t.f64(),
+  simAt: __t.u64(),
+  combatTokens: __t.f64(),
+  combatAt: __t.u64(),
+  rateTokens: __t.f64(),
+  rateAt: __t.u64(),
 });
-export type PlayerEndgameRebaseBackup = __Infer<typeof PlayerEndgameRebaseBackup>;
+export type PlayerDefeatClock = __Infer<typeof PlayerDefeatClock>;
 
 export const PlayerEndlessRebaseBackup = __t.object("PlayerEndlessRebaseBackup", {
   identity: __t.identity(),
@@ -2047,6 +1522,13 @@ export const PlayerIgnoredDrop = __t.object("PlayerIgnoredDrop", {
   itemId: __t.string(),
 });
 export type PlayerIgnoredDrop = __Infer<typeof PlayerIgnoredDrop>;
+
+export const PlayerInventory = __t.object("PlayerInventory", {
+  identity: __t.identity(),
+  inventoryJson: __t.string(),
+  cosmeticItemsJson: __t.string(),
+});
+export type PlayerInventory = __Infer<typeof PlayerInventory>;
 
 export const PlayerInventoryCapacity = __t.object("PlayerInventoryCapacity", {
   identity: __t.identity(),
@@ -2230,16 +1712,6 @@ export const PlayerMotionDetailFrame = __t.object("PlayerMotionDetailFrame", {
 });
 export type PlayerMotionDetailFrame = __Infer<typeof PlayerMotionDetailFrame>;
 
-export const PlayerMotionFrame = __t.object("PlayerMotionFrame", {
-  mapId: __t.string(),
-  zoneX: __t.i32(),
-  zoneY: __t.i32(),
-  emittedAt: __t.timestamp(),
-  playerCount: __t.u32(),
-  payload: __t.byteArray(),
-});
-export type PlayerMotionFrame = __Infer<typeof PlayerMotionFrame>;
-
 export const PlayerMotionIdentity = __t.object("PlayerMotionIdentity", {
   networkId: __t.u32(),
   identity: __t.identity(),
@@ -2275,11 +1747,6 @@ export const PlayerMotionMapState = __t.object("PlayerMotionMapState", {
   visibleCount: __t.u32(),
 });
 export type PlayerMotionMapState = __Infer<typeof PlayerMotionMapState>;
-
-export const PlayerMovementDemand = __t.object("PlayerMovementDemand", {
-  identity: __t.identity(),
-});
-export type PlayerMovementDemand = __Infer<typeof PlayerMovementDemand>;
 
 export const PlayerMultiplayerPreference = __t.object("PlayerMultiplayerPreference", {
   identity: __t.identity(),
@@ -2326,20 +1793,6 @@ export const PlayerOre = __t.object("PlayerOre", {
   count: __t.u32(),
 });
 export type PlayerOre = __Infer<typeof PlayerOre>;
-
-export const PlayerPowerRebaseBackup = __t.object("PlayerPowerRebaseBackup", {
-  identity: __t.identity(),
-  version: __t.u32(),
-  maxHp: __t.f32(),
-  damage: __t.f32(),
-  armor: __t.f32(),
-  regen: __t.f32(),
-  attackRate: __t.f32(),
-  beforePower: __t.f64(),
-  afterPower: __t.f64(),
-  recordedAt: __t.timestamp(),
-});
-export type PlayerPowerRebaseBackup = __Infer<typeof PlayerPowerRebaseBackup>;
 
 export const PlayerPrestige = __t.object("PlayerPrestige", {
   identity: __t.identity(),
@@ -2447,6 +1900,11 @@ export const PlayerProgress = __t.object("PlayerProgress", {
   verdantCatacombsUnlocked: __t.bool(),
   ionCitadelUnlocked: __t.bool(),
   cosmeticItemsJson: __t.string(),
+  critRating: __t.f64(),
+  maxHpWide: __t.f64(),
+  damageWide: __t.f64(),
+  armorWide: __t.f64(),
+  regenWide: __t.f64(),
 });
 export type PlayerProgress = __Infer<typeof PlayerProgress>;
 
@@ -2647,49 +2105,6 @@ export const PrestigeLeaderboardPage = __t.object("PrestigeLeaderboardPage", {
   levels: __t.array(__t.u32()),
 });
 export type PrestigeLeaderboardPage = __Infer<typeof PrestigeLeaderboardPage>;
-
-export const PrismshellAttackWindow = __t.object("PrismshellAttackWindow", {
-  identity: __t.identity(),
-  encounter: __t.u64(),
-  startedAtMicros: __t.u64(),
-  hits: __t.u32(),
-});
-export type PrismshellAttackWindow = __Infer<typeof PrismshellAttackWindow>;
-
-export const PrismshellBoss = __t.object("PrismshellBoss", {
-  id: __t.u32(),
-  encounter: __t.u64(),
-  hp: __t.f32(),
-  maxHp: __t.f32(),
-  alive: __t.bool(),
-  respawnAtMicros: __t.u64(),
-  lastDamageAtMicros: __t.u64(),
-});
-export type PrismshellBoss = __Infer<typeof PrismshellBoss>;
-
-export const PrismshellContribution = __t.object("PrismshellContribution", {
-  identity: __t.identity(),
-  encounter: __t.u64(),
-  displayName: __t.string(),
-  damage: __t.f32(),
-});
-export type PrismshellContribution = __Infer<typeof PrismshellContribution>;
-
-export const PrismshellRespawnSchedule = __t.object("PrismshellRespawnSchedule", {
-  scheduledId: __t.u64(),
-  scheduledAt: __t.scheduleAt(),
-  encounter: __t.u64(),
-});
-export type PrismshellRespawnSchedule = __Infer<typeof PrismshellRespawnSchedule>;
-
-export const PrismshellResult = __t.object("PrismshellResult", {
-  id: __t.u32(),
-  encounter: __t.u64(),
-  totalDamage: __t.f32(),
-  contributorsJson: __t.string(),
-  createdAt: __t.timestamp(),
-});
-export type PrismshellResult = __Infer<typeof PrismshellResult>;
 
 export const ProceduralBoss = __t.object("ProceduralBoss", {
   mapId: __t.string(),
@@ -2951,49 +2366,6 @@ export const SoulDimensionConfig = __t.object("SoulDimensionConfig", {
 });
 export type SoulDimensionConfig = __Infer<typeof SoulDimensionConfig>;
 
-export const SpiderAttackWindow = __t.object("SpiderAttackWindow", {
-  identity: __t.identity(),
-  encounter: __t.u64(),
-  startedAtMicros: __t.u64(),
-  hits: __t.u32(),
-});
-export type SpiderAttackWindow = __Infer<typeof SpiderAttackWindow>;
-
-export const SpiderBoss = __t.object("SpiderBoss", {
-  id: __t.u32(),
-  encounter: __t.u64(),
-  hp: __t.f32(),
-  maxHp: __t.f32(),
-  alive: __t.bool(),
-  respawnAtMicros: __t.u64(),
-  lastDamageAtMicros: __t.u64(),
-});
-export type SpiderBoss = __Infer<typeof SpiderBoss>;
-
-export const SpiderContribution = __t.object("SpiderContribution", {
-  identity: __t.identity(),
-  encounter: __t.u64(),
-  displayName: __t.string(),
-  damage: __t.f32(),
-});
-export type SpiderContribution = __Infer<typeof SpiderContribution>;
-
-export const SpiderRespawnSchedule = __t.object("SpiderRespawnSchedule", {
-  scheduledId: __t.u64(),
-  scheduledAt: __t.scheduleAt(),
-  encounter: __t.u64(),
-});
-export type SpiderRespawnSchedule = __Infer<typeof SpiderRespawnSchedule>;
-
-export const SpiderResult = __t.object("SpiderResult", {
-  id: __t.u32(),
-  encounter: __t.u64(),
-  totalDamage: __t.f32(),
-  contributorsJson: __t.string(),
-  createdAt: __t.timestamp(),
-});
-export type SpiderResult = __Infer<typeof SpiderResult>;
-
 export const StartupTelemetryCleanupSchedule = __t.object("StartupTelemetryCleanupSchedule", {
   scheduledId: __t.u64(),
   scheduledAt: __t.scheduleAt(),
@@ -3032,92 +2404,6 @@ export const StartupTelemetrySample = __t.object("StartupTelemetrySample", {
 });
 export type StartupTelemetrySample = __Infer<typeof StartupTelemetrySample>;
 
-export const TempestKirinAttackWindow = __t.object("TempestKirinAttackWindow", {
-  identity: __t.identity(),
-  encounter: __t.u64(),
-  startedAtMicros: __t.u64(),
-  hits: __t.u32(),
-});
-export type TempestKirinAttackWindow = __Infer<typeof TempestKirinAttackWindow>;
-
-export const TempestKirinBoss = __t.object("TempestKirinBoss", {
-  id: __t.u32(),
-  encounter: __t.u64(),
-  hp: __t.f32(),
-  maxHp: __t.f32(),
-  alive: __t.bool(),
-  respawnAtMicros: __t.u64(),
-  lastDamageAtMicros: __t.u64(),
-});
-export type TempestKirinBoss = __Infer<typeof TempestKirinBoss>;
-
-export const TempestKirinContribution = __t.object("TempestKirinContribution", {
-  identity: __t.identity(),
-  encounter: __t.u64(),
-  displayName: __t.string(),
-  damage: __t.f32(),
-});
-export type TempestKirinContribution = __Infer<typeof TempestKirinContribution>;
-
-export const TempestKirinRespawnSchedule = __t.object("TempestKirinRespawnSchedule", {
-  scheduledId: __t.u64(),
-  scheduledAt: __t.scheduleAt(),
-  encounter: __t.u64(),
-});
-export type TempestKirinRespawnSchedule = __Infer<typeof TempestKirinRespawnSchedule>;
-
-export const TempestKirinResult = __t.object("TempestKirinResult", {
-  id: __t.u32(),
-  encounter: __t.u64(),
-  totalDamage: __t.f32(),
-  contributorsJson: __t.string(),
-  createdAt: __t.timestamp(),
-});
-export type TempestKirinResult = __Infer<typeof TempestKirinResult>;
-
-export const TidewyrmAttackWindow = __t.object("TidewyrmAttackWindow", {
-  identity: __t.identity(),
-  encounter: __t.u64(),
-  startedAtMicros: __t.u64(),
-  hits: __t.u32(),
-});
-export type TidewyrmAttackWindow = __Infer<typeof TidewyrmAttackWindow>;
-
-export const TidewyrmBoss = __t.object("TidewyrmBoss", {
-  id: __t.u32(),
-  encounter: __t.u64(),
-  hp: __t.f32(),
-  maxHp: __t.f32(),
-  alive: __t.bool(),
-  respawnAtMicros: __t.u64(),
-  lastDamageAtMicros: __t.u64(),
-});
-export type TidewyrmBoss = __Infer<typeof TidewyrmBoss>;
-
-export const TidewyrmContribution = __t.object("TidewyrmContribution", {
-  identity: __t.identity(),
-  encounter: __t.u64(),
-  displayName: __t.string(),
-  damage: __t.f32(),
-});
-export type TidewyrmContribution = __Infer<typeof TidewyrmContribution>;
-
-export const TidewyrmRespawnSchedule = __t.object("TidewyrmRespawnSchedule", {
-  scheduledId: __t.u64(),
-  scheduledAt: __t.scheduleAt(),
-  encounter: __t.u64(),
-});
-export type TidewyrmRespawnSchedule = __Infer<typeof TidewyrmRespawnSchedule>;
-
-export const TidewyrmResult = __t.object("TidewyrmResult", {
-  id: __t.u32(),
-  encounter: __t.u64(),
-  totalDamage: __t.f32(),
-  contributorsJson: __t.string(),
-  createdAt: __t.timestamp(),
-});
-export type TidewyrmResult = __Infer<typeof TidewyrmResult>;
-
 export const VirtualPlayer = __t.object("VirtualPlayer", {
   identity: __t.identity(),
   owner: __t.identity(),
@@ -3141,49 +2427,6 @@ export const VirtualPlayerRun = __t.object("VirtualPlayerRun", {
   expiresAtMicros: __t.u64(),
 });
 export type VirtualPlayerRun = __Infer<typeof VirtualPlayerRun>;
-
-export const VoltwardenAttackWindow = __t.object("VoltwardenAttackWindow", {
-  identity: __t.identity(),
-  encounter: __t.u64(),
-  startedAtMicros: __t.u64(),
-  hits: __t.u32(),
-});
-export type VoltwardenAttackWindow = __Infer<typeof VoltwardenAttackWindow>;
-
-export const VoltwardenBoss = __t.object("VoltwardenBoss", {
-  id: __t.u32(),
-  encounter: __t.u64(),
-  hp: __t.f32(),
-  maxHp: __t.f32(),
-  alive: __t.bool(),
-  respawnAtMicros: __t.u64(),
-  lastDamageAtMicros: __t.u64(),
-});
-export type VoltwardenBoss = __Infer<typeof VoltwardenBoss>;
-
-export const VoltwardenContribution = __t.object("VoltwardenContribution", {
-  identity: __t.identity(),
-  encounter: __t.u64(),
-  displayName: __t.string(),
-  damage: __t.f32(),
-});
-export type VoltwardenContribution = __Infer<typeof VoltwardenContribution>;
-
-export const VoltwardenRespawnSchedule = __t.object("VoltwardenRespawnSchedule", {
-  scheduledId: __t.u64(),
-  scheduledAt: __t.scheduleAt(),
-  encounter: __t.u64(),
-});
-export type VoltwardenRespawnSchedule = __Infer<typeof VoltwardenRespawnSchedule>;
-
-export const VoltwardenResult = __t.object("VoltwardenResult", {
-  id: __t.u32(),
-  encounter: __t.u64(),
-  totalDamage: __t.f32(),
-  contributorsJson: __t.string(),
-  createdAt: __t.timestamp(),
-});
-export type VoltwardenResult = __Infer<typeof VoltwardenResult>;
 
 export const WorldStatus = __t.object("WorldStatus", {
   id: __t.u32(),

@@ -41,14 +41,14 @@ import { grantGemHeartUnlock } from "./chat-reactions";
 import { GEM_KILL_CREDIT_PER_GEM } from "../../shared/gem-drops";
 import { syncPlayerJoinDate } from "./mailbox";
 import { enrollInPrestigeChallenge } from "./prestige-challenge";
-import { readPlayerProgress, iterPlayerProgress } from "./wide-stats";
+import { readPlayerProgress, iterPlayerProgress, moveCombatColumnsOntoProgress } from "./wide-stats";
 import { moveSoloQuestsToGuild } from "./daily-quests";
 import { rebuildParkedAggroRun } from "./aggro-challenge";
 import { backfillMiningLevels } from "./mining";
 import { convertToStatRatings, trimStoredSoulCritDamage } from "./stat-rating-migration";
 import { repinMapBalances } from "./map-balance";
 
-export const MODULE_MIGRATION_VERSION = 56;
+export const MODULE_MIGRATION_VERSION = 57;
 
 /**
  * Migration 50 (0.856): the ranking snapshot moves to leaderboard_entry_v2,
@@ -566,6 +566,8 @@ export function createModuleMigrations(deps: ModuleMigrationDeps) {
     if (currentVersion < 55) repinMapBalances(ctx);
     // 56 (0.906.1): profiles show Mining; player_mining_level copies it from the pickaxes already out.
     if (currentVersion < 56) backfillMiningLevels(ctx);
+    // 57 (0.907): the crit rating and stats past f32 move onto player_progress (shared/progress-row.ts).
+    if (currentVersion < 57) moveCombatColumnsOntoProgress(ctx);
     const next = { id: 0, version: MODULE_MIGRATION_VERSION };
     if (state) ctx.db.moduleMigrationState.id.update(next);
     else ctx.db.moduleMigrationState.insert(next);

@@ -4,6 +4,7 @@ import { expect, it, vi } from 'vitest';
 import { crystalFixture, server, identity } from '../../tests/helpers/crystal-hollows-fixture';
 import { IRON_BOW } from '../../shared/items';
 import { equipmentLocked, mergeEquipmentLocks } from './equipment-locks';
+import { progressOf } from "../../tests/helpers/progress";
 vi.mock('spacetimedb/server', () => import('../../tests/helpers/spacetime-module'));
 it('requires ownership and prevents deletion until unlocked', () => {
   const f = crystalFixture();
@@ -44,7 +45,7 @@ it('keeps locked gear in its slot against auto equip, while a better duplicate r
   expect(upgraded.arrowStorm > 0 && upgraded.ricochet > 0 && upgraded.piercingShot > 0).toBe(true);
   expect(f.db.playerEquipmentLock.key.find(key)).toBeTruthy();
   expect([...f.db.pendingEquipmentOffer.identity.filter(f.ctx.sender)]).toEqual([]);
-  const before = f.db.playerProgress.identity.find(f.ctx.sender);
+  const before = progressOf(f, f.ctx.sender);
   f.patch('playerProgress', { inventoryJson: JSON.stringify([IRON_BOW, 'ion_bow']), ionCitadelUnlocked: true });
   const write = vi.fn();
   createAutoEquip({ inventoryForProgress: p => JSON.parse(p.inventoryJson), itemUpgradeLevelFor: () => 0, writeProgressAndPresentation: write }).equipNewUpgrades(f.ctx as any, f.ctx.sender, before);

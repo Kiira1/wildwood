@@ -79,7 +79,7 @@ describe("remote combat stats loading", () => {
     const conn = {
       db: {
         playerProgress: { iter: () => players.map(progress) },
-        playerWideStats: { iter: () => [], identity: { find: () => undefined } },
+        playerInventory: { iter: () => [] },
         playerResearch: { iter: () => [] },
         playerItemUpgrade: { iter: () => [] },
       },

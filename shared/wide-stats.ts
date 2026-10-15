@@ -1,8 +1,8 @@
 /**
  * Stats past f32's range (0.855). Several tables store combat stats as f32,
  * finite only to about 3.4e38; a value is clamped to F32_STAT_LIMIT there, and
- * player_progress's full value lives in player_wide_stats (spacetimedb/src/wide-stats.ts).
- * The client lays that row back over its progress the same way the server does.
+ * player_progress's full value lives in its own wide columns (shared/progress-row.ts),
+ * which the client lays back over the row the same way the server does.
  */
 export const F32_STAT_LIMIT = 3e38;
 export const WIDE_STAT_FIELDS = ["maxHp", "damage", "armor", "regen"] as const;
@@ -37,7 +37,7 @@ export function wideStatsApply<T extends Stats>(row: T, wide: Stats | null | und
  * Duel and replay stats past f32 (0.856). The duel row's id is auto-assigned
  * and keys its replay, riposte and combat snapshot, so the row stays where it
  * is and its stats past the limit ride in a companion row as JSON, the same
- * way player_wide_stats extends player_progress.
+ * player_progress's wide columns extend it.
  */
 const sides = (stats: readonly string[]) => stats.flatMap(stat => [`challenger${stat}`, `opponent${stat}`]);
 export const DUEL_WIDE_FIELDS = sides(["Hp", "MaxHp", "Damage", "Armor", "Regen", "DamageDealt", "Regened", "Blocked"]);

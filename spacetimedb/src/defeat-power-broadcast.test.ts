@@ -3,6 +3,7 @@ import { crystalFixture } from "../../tests/helpers/crystal-hollows-fixture";
 import { reportKills } from "../../tests/helpers/enemy-defeat";
 import { STARTER_BOW } from "../../shared/items";
 import { compactNumberChanged, formatCompactNumber } from "../../shared/compact-number";
+import { progressOf } from "../../tests/helpers/progress";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
 /** A forest farmer, as in prestige.test.ts: Spitters pay damage. */
@@ -30,9 +31,9 @@ it("leaves the public player row alone when the plate would read the same", () =
   f.patch("playerProgress", { damage: 1e12, maxHp: 1e12 });
   report(f, 1n, 10);                       // lands the exact figure once
   const synced = f.db.player.identity.find(f.ctx.sender)!;
-  const damageBefore = f.db.playerProgress.identity.find(f.ctx.sender)!.damage;
+  const damageBefore = progressOf(f, f.ctx.sender)!.damage;
   report(f, 2n, 1);
-  expect(f.db.playerProgress.identity.find(f.ctx.sender)!.damage).toBeGreaterThan(damageBefore);
+  expect(progressOf(f, f.ctx.sender)!.damage).toBeGreaterThan(damageBefore);
   expect(f.db.player.identity.find(f.ctx.sender)!.powerLevel).toBe(synced.powerLevel);
 });
 

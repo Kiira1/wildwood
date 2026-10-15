@@ -6,6 +6,7 @@ import { crystalFixture, server } from "../../tests/helpers/crystal-hollows-fixt
 import { reportKills } from "../../tests/helpers/enemy-defeat";
 import { SPACETIME_AUTH_CLIENT_ID, SPACETIME_AUTH_ISSUER, PROTOCOL_VERSION } from "../../shared/rules";
 import { requireAllowedDefeatSession } from "./defeat-session";
+import { progressOf } from "../../tests/helpers/progress";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
 const report = { streamId: "enforcement-stream-01", sequence: 1n, mapId: "endless_1", enemies: [{ enemy: "site:0", count: 100 }] };
@@ -26,14 +27,14 @@ function fixture(registered = false) {
   return f;
 }
 it("commits the guest restriction, receipt and private audit together", () => {
-  const f = fixture(); const before = f.db.playerProgress.identity.find(f.ctx.sender);
+  const f = fixture(); const before = progressOf(f, f.ctx.sender);
   reportKills(f, oversized);
   expect(f.db.defeatSessionRestriction.identity.find(f.ctx.sender)).toMatchObject({ requireSignIn: false, blockedUntilMicros: 40_000_000n });
   expect(f.db.playerController.identity.find(f.ctx.sender)).toBeNull();
   expect(f.db.player.identity.find(f.ctx.sender)).toBeNull();
   expect(f.db.playerSession.connectionId.find(f.ctx.connectionId).enteredWorld).toBe(false);
   expect(f.db.playerLifetime.identity.find(f.ctx.sender)?.enemyKills ?? 0n).toBe(0n);
-  expect(f.db.playerProgress.identity.find(f.ctx.sender).inventoryJson).toBe(before.inventoryJson);
+  expect(progressOf(f, f.ctx.sender).inventoryJson).toBe(before.inventoryJson);
   expect([...f.db.moderationAction.iter()]).toMatchObject([{ action: "guest_connection_blocked", rule: "enemy_defeat_allowance" }]);
   expect([...f.db.regularEnemyStream.iter()]).toMatchObject([{ sequence: 1n }]);
   expect(() => f.run(server.registerProtocol, { protocolVersion: PROTOCOL_VERSION })).toThrow("DEFEAT_SESSION_COOLDOWN");
@@ -41,7 +42,7 @@ it("commits the guest restriction, receipt and private audit together", () => {
   expect(() => requireAllowedDefeatSession(f.ctx as any)).toThrow("DEFEAT_SESSION_COOLDOWN");
   f.ctx.timestamp = new Timestamp(40_000_000n);
   expect(() => f.run(server.registerProtocol, { protocolVersion: PROTOCOL_VERSION })).not.toThrow();
-  expect(f.db.playerProgress.identity.find(f.ctx.sender)).not.toBeNull();
+  expect(progressOf(f, f.ctx.sender)).not.toBeNull();
 });
 it("revokes existing and refreshed account tokens, while allowing a later verified authentication", () => {
   const f = fixture(true);

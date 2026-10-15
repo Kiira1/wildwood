@@ -3,12 +3,13 @@ import { describe, expect, it, vi } from "vitest";
 import { crystalFixture, identity, server } from "../../tests/helpers/crystal-hollows-fixture";
 import { Timestamp } from "../../tests/helpers/spacetime-memory-db";
 import { mergeSocialAccount, removeSocialAccount } from "./social-service";
+import { progressOf } from "../../tests/helpers/progress";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 function fixture() {
   const f = crystalFixture(), basePlayer = f.db.player.identity.find(f.ctx.sender), connection = f.ctx.connectionId!;
   function actor(digit: string) {
     const who = identity(digit); f.ctx.sender = who; f.ctx.connectionId = connection;
-    if (!f.db.playerProgress.identity.find(who)) f.progress(who);
+    if (!progressOf(f, who)) f.progress(who);
     if (!f.db.playerProfile.identity.find(who)) f.seed("playerProfile", { identity: who, displayName: `Player ${digit}`, skinTone: 3 });
     f.db.playerProfile.identity.update({ ...f.db.playerProfile.identity.find(who), displayName: `Player ${digit}` });
     if (!f.db.player.identity.find(who)) f.seed("player", { ...basePlayer, identity: who });

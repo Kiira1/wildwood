@@ -1,79 +1,75 @@
-import { DUEL_WIDE_FIELDS, F32_STAT_LIMIT, REPLAY_WIDE_FIELDS, WIDE_STAT_FIELDS, applyWideFields, atWideClamp, narrowStat, needsWideStats, splitWideFields, wideStatsApply } from "../../shared/wide-stats";
+import { DUEL_WIDE_FIELDS, REPLAY_WIDE_FIELDS, applyWideFields, atWideClamp, splitWideFields } from "../../shared/wide-stats";
+import { progressStatColumns, progressWithBag, progressWithWideColumns, type StoredBag } from "../../shared/progress-row";
+import { cleanRating } from "../../shared/stat-rating";
 
 /**
- * Full-precision combat stats for players past what player_progress can hold.
- *
- * player_progress keeps maxHp, damage, armor and regen as f32, which tops out
- * near 3.4e38, and SpacetimeDB cannot widen a column in place. So a player
- * whose stats pass F32_STAT_LIMIT gets a row here with the real f64 values,
- * and player_progress keeps the value clamped to the limit. Nobody else has a
- * row, so ordinary saves and reads cost nothing extra.
- *
- * Every write goes through snapshot-row-writes.ts (writeWideStats below) and
- * every read through readPlayerProgress / iterPlayerProgress. The table is
- * declared in wide-stats-table.ts, so these helpers load without the server library. A row here is
- * used only while it agrees with player_progress's clamped value, so a direct
- * write to player_progress always wins over a stale one.
+ * Every read of player_progress goes through readPlayerProgress / iterPlayerProgress and every write
+ * through snapshot-row-writes.ts (writeProgressRow below), so the way the row is stored
+ * (shared/progress-row.ts) stays in these few functions: stats past f32 in its *Wide columns, the
+ * crit rating in critRating, and the bag in player_inventory.
  */
-
-import { cleanRating } from "../../shared/stat-rating";
 
 type Ctx = { db: any };
 type Progress = { identity: any; maxHp: number; damage: number; armor: number; regen: number };
 
+/** A stored player_progress row as the game uses it: full stats, the crit rating and the bag. */
+function readRow(ctx: Ctx, row: any) {
+  if (!row) return row;
+  const bag = ctx.db.playerInventory?.identity.find(row.identity);
+  const full = progressWithBag(progressWithWideColumns(row), bag);
+  return { ...full, critRating: cleanRating(full.critRating ?? 0) };
+}
+
 /**
- * Stores a progress row's stats: the wide row when any passes the limit (and
- * drops a stale one when none does), and the row clamped for player_progress.
+ * Stores a progress row: f32 stats clamped with full values beside them, the crit rating cleaned, and
+ * the bag in player_inventory when it changed. Returns the row as player_progress keeps it.
  */
-export function writeWideStats<T extends Progress>(ctx: Ctx, written: T): T {
-  // The run's crit rating rides on progress but lives in its own table: written
-  // when the row carries one (a reset carries 0), left alone when it does not.
-  const { critRating, ...stats } = written as T & { critRating?: number };
-  if (critRating !== undefined) writeCritRating(ctx, stats.identity, critRating);
-  // A row read without its wide stats still carries the clamp; keep what is behind it.
-  const row = withWideStats(ctx, stats as T);
-  const existing = ctx.db.playerWideStats?.identity.find(row.identity);
-  if (!needsWideStats(row)) {
-    if (existing) ctx.db.playerWideStats.identity.delete(row.identity);
-    return row;
+export function writeProgressRow<T extends Progress>(ctx: Ctx, written: T): T {
+  // A row built from a stored one still carries its *Wide columns; keep what is behind a clamp.
+  const row = progressWithWideColumns(written as T & Record<string, any>) as T & Partial<StoredBag> & { critRating?: number };
+  const bag = { inventoryJson: row.inventoryJson || "[]", cosmeticItemsJson: row.cosmeticItemsJson || "[]" };
+  if (ctx.db.playerInventory) {
+    const existing = ctx.db.playerInventory.identity.find(row.identity);
+    const next = { identity: row.identity, ...bag };
+    if (!existing) ctx.db.playerInventory.insert(next);
+    else if (existing.inventoryJson !== bag.inventoryJson || existing.cosmeticItemsJson !== bag.cosmeticItemsJson) ctx.db.playerInventory.identity.update(next);
   }
-  const wide = { identity: row.identity, maxHp: row.maxHp, damage: row.damage, armor: row.armor, regen: row.regen };
-  if (existing) ctx.db.playerWideStats.identity.update(wide); else ctx.db.playerWideStats.insert(wide);
-  const narrowed = { ...row };
-  for (const field of WIDE_STAT_FIELDS) narrowed[field] = narrowStat(row[field]) as T[typeof field];
-  return narrowed;
+  return { ...row, ...progressStatColumns(row), critRating: cleanRating(row.critRating ?? 0),
+    ...(ctx.db.playerInventory ? { inventoryJson: "", cosmeticItemsJson: "" } : {}) } as T;
 }
 
-/** A player_progress row with its full-precision stats restored. */
-export function withWideStats<T extends Progress | null | undefined>(ctx: Ctx, row: T): T {
-  // Only a stat sitting at the clamp can have more behind it.
-  if (!row || !WIDE_STAT_FIELDS.some(field => Math.fround(row[field]) >= Math.fround(F32_STAT_LIMIT))) return row;
-  return wideStatsApply(row, ctx.db.playerWideStats?.identity.find(row.identity)) as T;
+/** A save's rows beside player_progress: its bag, and the retired side tables until they are dropped. */
+export function deleteProgressExtras(ctx: Ctx, identity: any) {
+  for (const table of [ctx.db.playerInventory, ctx.db.playerWideStats, ctx.db.playerCombatRating]) {
+    if (table?.identity.find(identity)) table.identity.delete(identity);
+  }
 }
 
-/** The run's crit damage rating (player_combat_rating): 0 without a row. */
+/** Migration 57: player_combat_rating and player_wide_stats copied onto their player_progress rows. */
+export function moveCombatColumnsOntoProgress(ctx: any) {
+  for (const rating of [...ctx.db.playerCombatRating?.iter() ?? []] as any[]) {
+    const row = ctx.db.playerProgress.identity.find(rating.identity);
+    if (row) ctx.db.playerProgress.identity.update({ ...row, critRating: rating.critDamage });
+  }
+  for (const wide of [...ctx.db.playerWideStats?.iter() ?? []] as any[]) {
+    const row = ctx.db.playerProgress.identity.find(wide.identity);
+    if (row) ctx.db.playerProgress.identity.update({ ...row, maxHpWide: wide.maxHp, damageWide: wide.damage, armorWide: wide.armor, regenWide: wide.regen });
+  }
+}
+
+/** The run's crit damage rating: 0 without a save. */
 export function readCritRating(ctx: Ctx, identity: any) {
-  return cleanRating(ctx.db.playerCombatRating?.identity.find(identity)?.critDamage ?? 0);
+  return cleanRating(ctx.db.playerProgress.identity.find(identity)?.critRating ?? 0);
 }
-function writeCritRating(ctx: Ctx, identity: any, rating: number) {
-  const table = ctx.db.playerCombatRating;
-  if (!table) return;
-  const critDamage = cleanRating(rating), existing = table.identity.find(identity);
-  if (!critDamage) { if (existing) table.identity.delete(identity); return; }
-  if (existing?.critDamage === critDamage) return;
-  if (existing) table.identity.update({ identity, critDamage }); else table.insert({ identity, critDamage });
-}
-const withCritRating = <T extends Progress | null | undefined>(ctx: Ctx, row: T) =>
-  row ? { ...row, critRating: readCritRating(ctx, row.identity) } as T & { critRating: number } : row;
 
-/** The one way to read a player's progress: player_progress with any wide stats and its crit rating laid over it. */
+/** The one way to read a player's progress. */
 export function readPlayerProgress(ctx: Ctx, identity: any) {
-  return withCritRating(ctx, withWideStats(ctx, ctx.db.playerProgress.identity.find(identity)));
+  return readRow(ctx, ctx.db.playerProgress.identity.find(identity));
 }
 
-/** Every player's progress, wide stats and crit rating included. */
+/** Every player's progress, read the same way. */
 export function* iterPlayerProgress(ctx: Ctx): Generator<any> {
-  for (const row of ctx.db.playerProgress.iter() as Iterable<any>) yield withCritRating(ctx, withWideStats(ctx, row));
+  for (const row of ctx.db.playerProgress.iter() as Iterable<any>) yield readRow(ctx, row);
 }
 
 /**

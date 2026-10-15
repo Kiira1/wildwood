@@ -17,6 +17,7 @@ import { BASIC_PAPER_HAT, IRON_BOW, SAMURAI_HAT, STARTER_ITEM_IDS, STARTER_STONE
 import { BASE_INVENTORY_SLOT_CAPACITY } from "../../shared/gems";
 import { ATTACK_BALANCE_VERSION, BOSS_REWARD_CLAIM_BITS, SPACETIME_AUTH_CLIENT_ID, SPACETIME_AUTH_ISSUER } from "../../shared/rules";
 import { cosmeticUnlocks } from "../../shared/cosmetic-conversion";
+import { progressOf } from "../../tests/helpers/progress";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
 type Fixture = ReturnType<typeof crystalFixture>;
@@ -30,7 +31,7 @@ const offers = (f: Fixture, who = f.ctx.sender) => [...f.db.pendingEquipmentOffe
 const copies = (f: Fixture, who = f.ctx.sender) => [...f.db.playerEquipmentCopy.identity.filter(who)];
 const rollOf = (row: any): Roll => ({ arrowStorm: row.arrowStorm, ricochet: row.ricochet, piercingShot: row.piercingShot });
 const firstRoll = (f: Fixture, itemId = IRON_BOW, who = f.ctx.sender) => rollOf(bowSkillRollFor(f.ctx as any, who, itemId));
-const inventory = (f: Fixture, who = f.ctx.sender): string[] => JSON.parse(f.db.playerProgress.identity.find(who).inventoryJson);
+const inventory = (f: Fixture, who = f.ctx.sender): string[] => JSON.parse(progressOf(f, who).inventoryJson);
 const seedFirst = (f: Fixture, roll: Roll, itemId = IRON_BOW, who = f.ctx.sender) =>
   f.seed("playerBowSkill", { key: bowSkillKey(who, itemId), identity: who, itemId, ...roll });
 const seedCopy = (f: Fixture, roll: Roll, itemId = IRON_BOW, who = f.ctx.sender) =>
@@ -178,7 +179,7 @@ it("makes a kept copy the first one when the copy the player had is gone", () =>
 
 /** Bag slots in use, counted as the server counts them (starter items included). */
 const bagUsed = (f: Fixture) => {
-  const progress = f.db.playerProgress.identity.find(f.ctx.sender);
+  const progress = progressOf(f, f.ctx.sender);
   return bagSlotsUsed(inventoryForProgress(progress), [progress.equippedHead, progress.equippedChest, progress.equippedFeet, progress.equippedRightHand, progress.equippedLeftHand], copies(f).length);
 };
 /** Fills the bag with kept hat copies until `free` slots are left. */
@@ -304,11 +305,11 @@ it("destroys exactly the copy asked for, and a destroyed first copy is replaced 
   f.run(server.destroyEquipmentCopy, { itemId: IRON_BOW, copyId: 0n });
   expect(firstRoll(f)).toEqual(B);
   expect(copies(f)).toEqual([]);
-  expect(f.db.playerProgress.identity.find(f.ctx.sender).equippedRightHand).toBe(IRON_BOW);
+  expect(progressOf(f, f.ctx.sender).equippedRightHand).toBe(IRON_BOW);
   // The last copy goes the way it always has, and its roll goes with it.
   f.run(server.destroyEquipment, { itemId: IRON_BOW });
   expect(inventory(f)).not.toContain(IRON_BOW);
-  expect(f.db.playerProgress.identity.find(f.ctx.sender).equippedRightHand).toBe("");
+  expect(progressOf(f, f.ctx.sender).equippedRightHand).toBe("");
   expect(f.db.playerBowSkill.key.find(bowSkillKey(f.ctx.sender, IRON_BOW))).toBeNull();
 });
 
@@ -330,7 +331,7 @@ it("converts an item to a cosmetic without touching any copy", () => {
   seedCopy(f, B);
   f.seed("playerGemWallet", { identity: f.ctx.sender, balance: 100n, revision: 0n, updatedAt: f.ctx.timestamp });
   f.run(server.convertItemToCosmetic, { itemId: IRON_BOW });
-  expect(cosmeticUnlocks(f.db.playerProgress.identity.find(f.ctx.sender).cosmeticItemsJson)).toContain(IRON_BOW);
+  expect(cosmeticUnlocks(progressOf(f, f.ctx.sender).cosmeticItemsJson)).toContain(IRON_BOW);
   expect(copies(f).map(rollOf)).toEqual([B]);
   expect(firstRoll(f)).toEqual(A);
 });

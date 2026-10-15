@@ -8,6 +8,7 @@ import { CAMPAIGN_UNLOCK_FIELDS } from "../../shared/equipment-access";
 import { BOSS_REWARD_CLAIM_BITS } from "../../shared/rules";
 import { TERMS_VERSION } from "../../shared/legal";
 import { IRON_BOW, SAMURAI_HAT, STARTER_BOW, STARTER_STONE, WOODEN_SWORD } from "../../shared/items";
+import { progressOf } from "../../tests/helpers/progress";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
 type Fixture = ReturnType<typeof crystalFixture>;
@@ -22,7 +23,7 @@ const rollOf = (row: any): Roll => ({ arrowStorm: row.arrowStorm, ricochet: row.
 const firstRoll = (f: Fixture, itemId = STARTER_BOW) => rollOf(bowSkillRollFor(f.ctx as any, f.ctx.sender, itemId));
 const offers = (f: Fixture) => [...f.db.pendingEquipmentOffer.identity.filter(f.ctx.sender)];
 const copies = (f: Fixture) => [...f.db.playerEquipmentCopy.identity.filter(f.ctx.sender)];
-const progress = (f: Fixture) => f.db.playerProgress.identity.find(f.ctx.sender);
+const progress = (f: Fixture) => progressOf(f, f.ctx.sender);
 const inventory = (f: Fixture): string[] => JSON.parse(progress(f).inventoryJson);
 const seedFirst = (f: Fixture, roll: Roll, itemId = STARTER_BOW) =>
   f.seed("playerBowSkill", { key: bowSkillKey(f.ctx.sender, itemId), identity: f.ctx.sender, itemId, ...roll });

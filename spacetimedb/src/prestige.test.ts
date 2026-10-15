@@ -7,6 +7,7 @@ import { ATTACK_BALANCE_VERSION, BOSS_REWARD_CLAIM_BITS, SPACETIME_AUTH_CLIENT_I
 import { PRESTIGE_CAP_HINT, PRESTIGE_MAX_LEVEL, PRESTIGE_STAT_GAIN_PER_LEVEL, prestigeRequirementHint, prestigeStatMultiplier, prestigeUnlocked } from "../../shared/prestige";
 import { PRESTIGE_PERK_MAX_RANK } from "../../shared/prestige-perks";
 import { attackIntervalForRating, ratingForLevels } from "../../shared/stat-rating";
+import { progressOf } from "../../tests/helpers/progress";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
 const CAMPAIGN_COMPLETE = BOSS_REWARD_CLAIM_BITS.aegisPrime;
@@ -65,7 +66,7 @@ it("banks a level and a perk point, then sends the player back to the forest wit
   const banked = prestigeRow(f);
   expect(banked).toMatchObject({ level: 1, perkPoints: 1 });
   expect(banked!.peakPower).toBeGreaterThan(0);
-  const progress = f.db.playerProgress.identity.find(f.ctx.sender);
+  const progress = progressOf(f, f.ctx.sender);
   expect(progress.damage).toBeLessThan(5_000);
   expect(progress.bossRewardClaims).toBe(0);
   expect(progress.desertUnlocked).toBe(false);
@@ -208,19 +209,19 @@ it("refuses a save reset during a Reflect Only or Aggro run, which dropping out 
     f.patch("playerProgress", { damage: 1_000 });
     f.seed(table, { identity: f.ctx.sender, active: true, completed: 0 });
     expect(() => f.run(server.resetPlayerProgress, {})).toThrow("Drop out of the challenge before resetting your save.");
-    expect(f.db.playerProgress.identity.find(f.ctx.sender)?.damage).toBe(1_000);
+    expect(progressOf(f, f.ctx.sender)?.damage).toBe(1_000);
     f.db[table].identity.update({ identity: f.ctx.sender, active: false, completed: 0 });
     f.run(server.resetPlayerProgress, {});
-    expect(f.db.playerProgress.identity.find(f.ctx.sender)?.damage).not.toBe(1_000);
+    expect(progressOf(f, f.ctx.sender)?.damage).not.toBe(1_000);
   }
 });
 
 it("pays ten percent more stat per kill for each prestige level", () => {
   const plain = farmer(0), prestiged = farmer(1);
-  const before = plain.db.playerProgress.identity.find(plain.ctx.sender).damage;
+  const before = progressOf(plain, plain.ctx.sender).damage;
   farmSpitters(plain); farmSpitters(prestiged);
-  const plainGain = plain.db.playerProgress.identity.find(plain.ctx.sender).damage - before;
-  const prestigedGain = prestiged.db.playerProgress.identity.find(prestiged.ctx.sender).damage - before;
+  const plainGain = progressOf(plain, plain.ctx.sender).damage - before;
+  const prestigedGain = progressOf(prestiged, prestiged.ctx.sender).damage - before;
   expect(plainGain).toBeGreaterThan(0);
   expect(prestigedGain / plainGain).toBeCloseTo(1 + PRESTIGE_STAT_GAIN_PER_LEVEL);
 });
@@ -259,10 +260,10 @@ it("Quick Draw raises the attack speed cap the run's rating closes in on, and a 
   f.run(server.spendPrestigePerkPoint, { perk: "quickDraw" });
   expect(f.db.playerPrestigeExpansionPerk.identity.find(f.ctx.sender)).toMatchObject({ quickDraw: 2 });
   // Same ten levels, on a curve to 3.4 attacks a second instead of 3.
-  const raised = f.db.playerProgress.identity.find(f.ctx.sender).attackRate;
+  const raised = progressOf(f, f.ctx.sender).attackRate;
   expect(1 / raised).toBeCloseTo(3.4 - (3.4 - 1 / 1.56) * .95 ** 10, 4);
   f.run(server.respecPrestigePerks, {});
-  expect(f.db.playerProgress.identity.find(f.ctx.sender).attackRate).toBeCloseTo(before, 6);
+  expect(progressOf(f, f.ctx.sender).attackRate).toBeCloseTo(before, 6);
 });
 
 it("refuses to push a perk past its highest rank", () => {
@@ -339,7 +340,7 @@ it("keeps a prestiged player on the leaderboard at their reset power", () => {
   f.seed("playerProfile", { identity: identity("9"), displayName: "Rival" });
   f.run(server.prestigeAccount, {});
   const entry = f.db.leaderboardEntry.identity.find(f.ctx.sender);
-  expect(f.db.playerProgress.identity.find(f.ctx.sender).desertUnlocked).toBe(false);
+  expect(progressOf(f, f.ctx.sender).desertUnlocked).toBe(false);
   expect(entry).toBeTruthy();
   expect(entry.powerLevel).toBeLessThan(5_000_000);
   expect(entry.damage).toBeLessThan(5_000_000);
@@ -356,7 +357,7 @@ it("respecs every spent perk point back for free, as often as wanted, keeping th
   f.run(server.respecPrestigePerks, {});
   expect(perkRow(f)).toMatchObject({ keenEdge: 0, doubleStrike: 0, splitShot: 0, riposte: 0 });
   expect(prestigeRow(f)).toMatchObject({ level: 4, perkPoints: 4 });
-  expect(f.db.playerProgress.identity.find(f.ctx.sender)).toMatchObject({ ...unlocked, maxHp: 90_000, damage: 40_000, armor: 300, regen: 900, attackRate: .4 });
+  expect(progressOf(f, f.ctx.sender)).toMatchObject({ ...unlocked, maxHp: 90_000, damage: 40_000, armor: 300, regen: 900, attackRate: .4 });
   expect(f.db.player.identity.find(f.ctx.sender).mapId).toBe("ion_citadel");
   // Again, at once: nothing is used up. The old free-respec reducer is the same respec.
   f.run(server.spendPrestigePerkPoint, { perk: "keenEdge" });
@@ -364,15 +365,15 @@ it("respecs every spent perk point back for free, as often as wanted, keeping th
   f.run(server.spendPrestigePerkPoint, { perk: "keenEdge" });
   f.run(server.useFreePrestigeRespec, {});
   expect(prestigeRow(f)).toMatchObject({ perkPoints: 4 });
-  expect(f.db.playerProgress.identity.find(f.ctx.sender)).toMatchObject({ damage: 40_000 });
+  expect(progressOf(f, f.ctx.sender)).toMatchObject({ damage: 40_000 });
 });
 
 it("refuses a respec with nothing spent, and changes nothing", () => {
   const f = farmer();
   f.seed("playerPrestige", { identity: f.ctx.sender, level: 1, perkPoints: 1, peakPower: 0, prestigedAt: f.ctx.timestamp });
-  const before = f.db.playerProgress.identity.find(f.ctx.sender);
+  const before = progressOf(f, f.ctx.sender);
   expect(() => f.run(server.respecPrestigePerks, {})).toThrow("No perk points to respec.");
-  expect(f.db.playerProgress.identity.find(f.ctx.sender)).toEqual(before);
+  expect(progressOf(f, f.ctx.sender)).toEqual(before);
   expect(prestigeRow(f)).toMatchObject({ perkPoints: 1 });
 });
 

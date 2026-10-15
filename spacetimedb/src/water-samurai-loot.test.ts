@@ -4,6 +4,7 @@ import { CLOUDSPIRE_ARMOR, CLOUDSPIRE_BOW, CLOUDSPIRE_HELMET, MOONFEN_ARMOR, WAT
 import { inventoryFromSave, inventoryItemQuantity, serialiseInventory } from "../../src/game/inventory";
 import { crystalFixture } from "../../tests/helpers/crystal-hollows-fixture";
 import { regularMapLoot } from "../../shared/regular-map-loot";
+import { progressOf } from "../../tests/helpers/progress";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
 // Each map's sword drops on its bow's odds, rolled on its own: the bow's boundary is the sword's too.
@@ -28,7 +29,7 @@ it.each([
   expect(f.ctx.random.integerInRange).toHaveBeenCalledWith(1, bowMax);
   expect([...f.db.playerItemDrop.iter()].map((row: any) => row.itemId)).toEqual(expected);
   for (const itemId of expected) {
-    const progress = f.db.playerProgress.identity.find(f.ctx.sender);
+    const progress = progressOf(f, f.ctx.sender);
     const saved = inventoryFromSave(progress.inventoryJson, "", "", "", false);
     expect(inventoryItemQuantity(saved, itemId)).toBe(1);
   }
@@ -41,7 +42,7 @@ it("keeps Water Reach equipment through reloads and repeat drops without duplica
   f.ctx.random.integerInRange = () => 1;
   reportEnemy(f);
   reportEnemy(f);
-  const progress = f.db.playerProgress.identity.find(f.ctx.sender);
+  const progress = progressOf(f, f.ctx.sender);
   const inventory = inventoryFromSave(progress.inventoryJson, "", "", WATER_ARMOR, false, false, SKY_BOW);
   const reloaded = inventoryFromSave(serialiseInventory(inventory), "", "", WATER_ARMOR, false, false, SKY_BOW);
   expect(reloaded.equippedChest).toBe(WATER_ARMOR);
@@ -86,12 +87,12 @@ it.each([
   const alike = regularMapLoot(mapId).filter(drop => drop.wins === wins && drop.outcomes === outcomes).map(drop => drop.itemId);
   expect([...f.db.playerItemDrop.iter()].map((row: any) => row.itemId)).toEqual(alike);
   expect([...f.db.playerItemDrop.iter()].find((row: any) => row.itemId === itemId)).toMatchObject({ alreadyOwned: false });
-  const progress = f.db.playerProgress.identity.find(f.ctx.sender);
+  const progress = progressOf(f, f.ctx.sender);
   const inventory = inventoryFromSave(progress.inventoryJson, "", slot === "HEAD" ? itemId : "", slot === "CHEST" ? itemId : "", false, false, slot === "HAND" ? itemId : "");
   expect(inventoryItemQuantity(inventory, itemId)).toBe(1);
   expect(slot === "HEAD" ? inventory.equippedHead : slot === "HAND" ? inventory.equippedRightHand : inventory.equippedChest).toBe(itemId);
   reportEnemy(f);
-  expect(JSON.parse(f.db.playerProgress.identity.find(f.ctx.sender).inventoryJson).filter((id: string) => id === itemId)).toHaveLength(1);
+  expect(JSON.parse(progressOf(f, f.ctx.sender).inventoryJson).filter((id: string) => id === itemId)).toHaveLength(1);
 });
 
 it("can grant all four Cloudspire items from independent successful rolls", () => {
@@ -99,7 +100,7 @@ it("can grant all four Cloudspire items from independent successful rolls", () =
   f.patch("playerProgress", { equippedRightHand: "starter_stone", damage: 1e15 });
   f.ctx.random.integerInRange = () => 1;
   reportEnemy(f);
-  const saved = inventoryFromSave(f.db.playerProgress.identity.find(f.ctx.sender).inventoryJson, "", "", "", false);
+  const saved = inventoryFromSave(progressOf(f, f.ctx.sender).inventoryJson, "", "", "", false);
   for (const id of [CLOUDSPIRE_HELMET, CLOUDSPIRE_BOW, "cloudspire_sword", CLOUDSPIRE_ARMOR]) expect(inventoryItemQuantity(saved, id)).toBe(1);
   expect(itemDamageMultiplierBonus(CLOUDSPIRE_BOW)).toBeCloseTo(.3375, 4);
   expect(itemMaxHealthMultiplierBonus(CLOUDSPIRE_HELMET)).toBe(0);

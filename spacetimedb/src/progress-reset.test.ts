@@ -4,6 +4,7 @@ import { crystalFixture, identity, server } from "../../tests/helpers/crystal-ho
 import { MAP_IDS, PLAYER_BASE_HP, PLAYER_SPEED, PLAYER_SPAWN, PROTOCOL_VERSION, TUTORIAL_FOREST_MAP_ID } from "../../shared/rules";
 import { AGE_BAND_ADULT, TERMS_VERSION } from "../../shared/legal";
 import { STARTER_STONE, SUPERIOR_GOLDEN_HELMET } from "../../shared/items";
+import { progressOf } from "../../tests/helpers/progress";
 
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 const spawn = { mapId: TUTORIAL_FOREST_MAP_ID, ...PLAYER_SPAWN };
@@ -15,7 +16,7 @@ describe("progress reset returns the character to the tutorial", () => {
     f.run(server.acceptTerms, { termsVersion: TERMS_VERSION, ageBand: AGE_BAND_ADULT });
     for (let visit = 0; visit < 2; visit++) {
       f.run(server.enterWorld, { tabId: "starter-test-tab" });
-      const progress = f.db.playerProgress.identity.find(f.ctx.sender);
+      const progress = progressOf(f, f.ctx.sender);
       // Nobody starts shod any more: Trailblazer Boots are gone entirely.
       expect(progress.equippedFeet).toBe("");
       expect(progress.speed).toBe(PLAYER_SPEED);
@@ -43,7 +44,7 @@ describe("progress reset returns the character to the tutorial", () => {
     const f = crystalFixture();
     f.patch("playerProgress", { inventoryJson: JSON.stringify([SUPERIOR_GOLDEN_HELMET]) });
     f.run(server.resetPlayerProgress);
-    expect(JSON.parse(f.db.playerProgress.identity.find(f.ctx.sender).inventoryJson)).toContain(SUPERIOR_GOLDEN_HELMET);
+    expect(JSON.parse(progressOf(f, f.ctx.sender).inventoryJson)).toContain(SUPERIOR_GOLDEN_HELMET);
   });
 
   it.each(MAP_IDS)("resets location, movement and progress from %s", (mapId) => {
@@ -59,9 +60,9 @@ describe("progress reset returns the character to the tutorial", () => {
     expect(f.db.playerMotion.identity.find(f.ctx.sender)).toMatchObject({ ...spawn, moving: false, motionEpoch: 5 });
     expect(f.db.playerLastLocation.identity.find(f.ctx.sender)).toMatchObject(spawn);
     expect(f.db.playerMapMarker.identity.find(f.ctx.sender)).toMatchObject(spawn);
-    expect(f.db.playerProgress.identity.find(f.ctx.sender)).toMatchObject({ introComplete: false,
+    expect(progressOf(f, f.ctx.sender)).toMatchObject({ introComplete: false,
       desertUnlocked: false, crystalHollowsUnlocked: false, maxHp: PLAYER_BASE_HP, bossRewardClaims: 0 });
-    const progress = f.db.playerProgress.identity.find(f.ctx.sender);
+    const progress = progressOf(f, f.ctx.sender);
     expect(progress.equippedFeet).toBe("");
     expect(progress.bootsCollected).toBe(true);
     expect(JSON.parse(progress.inventoryJson)).toEqual([STARTER_STONE]);
@@ -80,7 +81,7 @@ describe("progress reset returns the character to the tutorial", () => {
     expect(f.db.playerSession.connectionId.find(f.ctx.connectionId)?.identity).toEqual(f.ctx.sender);
     f.run(server.enterWorld, { tabId: "reset-test-tab" });
     expect(f.db.player.identity.find(f.ctx.sender)).toMatchObject(spawn);
-    expect(f.db.playerProgress.identity.find(f.ctx.sender)).toMatchObject({ introComplete: false,
+    expect(progressOf(f, f.ctx.sender)).toMatchObject({ introComplete: false,
       desertUnlocked: false, crystalHollowsUnlocked: false, clockworkRuinsUnlocked: false });
   });
 
@@ -98,9 +99,9 @@ describe("progress reset returns the character to the tutorial", () => {
   it("rejects a reset during a duel before deleting progress or moving the player", () => {
     const f = crystalFixture();
     f.seed("duel", { id: 1n, challenger: f.ctx.sender, opponent: identity("2"), status: "active" });
-    const before = f.db.playerProgress.identity.find(f.ctx.sender);
+    const before = progressOf(f, f.ctx.sender);
     expect(() => f.run(server.resetPlayerProgress)).toThrow("Finish your duel");
-    expect(f.db.playerProgress.identity.find(f.ctx.sender)).toEqual(before);
+    expect(progressOf(f, f.ctx.sender)).toEqual(before);
     expect(f.db.player.identity.find(f.ctx.sender).mapId).toBe("crystal_hollows");
   });
 });

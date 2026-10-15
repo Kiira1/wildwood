@@ -2,6 +2,7 @@ import { expect, it, vi } from "vitest";
 import { Identity } from "spacetimedb";
 import { crystalFixture, identity, server } from "../../tests/helpers/crystal-hollows-fixture";
 import { isPublicDisplayNameAllowed } from "./chat-moderation";
+import { progressOf } from "../../tests/helpers/progress";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 const owner = new Identity("c200383520521c925f3cf6deafb20cd6a7d6168d1c31cb3c0ddb731c197a2d79");
 
@@ -17,7 +18,7 @@ it("repairs an offline name and public presentation without changing the save", 
   f.seed("guildMember", { identity: target, guildId: 1n, name });
   f.seed("chatMessage", { id: 1n, sender: target, senderName: name, message: "Hello", sentAt: f.ctx.timestamp });
   f.seed("playerNameCooldown", { identity: target });
-  const before = f.db.playerProgress.identity.find(target);
+  const before = progressOf(f, target);
   const args = { identity: target, expectedDisplayName: name };
   expect(() => f.run(server.devRepairDisplayName, args)).toThrow("Database owner required");
   f.ctx.sender = owner;
@@ -30,7 +31,7 @@ it("repairs an offline name and public presentation without changing the save", 
   expect(f.db.guildMember.identity.find(target).name).toBe(repaired);
   expect(f.db.chatMessage.id.find(1n)).toMatchObject({ senderName: repaired, message: "Hello" });
   expect(f.db.playerNameCooldown.identity.find(target)).toBeNull();
-  expect(f.db.playerProgress.identity.find(target)).toEqual(before);
+  expect(progressOf(f, target)).toEqual(before);
   expect(f.db.player.identity.find(target)).toBeNull();
   expect([...f.db.moderationAction.iter()][0]).toMatchObject({ action: "Name changed", actorType: "owner",
     actorIdentity: owner.toHexString(), before: name, after: repaired, rule: "content-filter-v5" });

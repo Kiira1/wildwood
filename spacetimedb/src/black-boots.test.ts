@@ -4,19 +4,20 @@ import { BLACK_BOOTS, BLACK_BOOTS_DROP_DENOMINATOR } from "../../shared/items";
 import { INFERNAL_DEPTHS_MAP_ID, PLAYER_SPEED } from "../../shared/rules";
 import { inventoryFromSave } from "../../src/game/inventory";
 import { crystalFixture, server } from "../../tests/helpers/crystal-hollows-fixture";
+import { progressOf } from "../../tests/helpers/progress";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 it("rolls black boots independently at 2% in Night Forest and keeps equipped feet on reload", () => {
   const f = crystalFixture(); f.patch("player", { mapId: INFERNAL_DEPTHS_MAP_ID });
   f.patch("playerProgress", { equippedRightHand: "starter_stone", damage: 1e15 });
   f.ctx.random.integerInRange = vi.fn((_min, max) => max === BLACK_BOOTS_DROP_DENOMINATOR ? 1 : max);
   reportEnemy(f);
-  const progress = f.db.playerProgress.identity.find(f.ctx.sender);
+  const progress = progressOf(f, f.ctx.sender);
   expect(JSON.parse(progress.inventoryJson)).toContain(BLACK_BOOTS);
   const inventory = inventoryFromSave(progress.inventoryJson, BLACK_BOOTS, "", "", false);
   expect(inventory.equippedFeet).toBe(BLACK_BOOTS);
   expect([...f.db.playerItemDrop.iter()]).toMatchObject([{ itemId: BLACK_BOOTS, alreadyOwned: false }]);
   reportEnemy(f);
-  expect(JSON.parse(f.db.playerProgress.identity.find(f.ctx.sender).inventoryJson).filter((id: string) => id === BLACK_BOOTS)).toHaveLength(1);
+  expect(JSON.parse(progressOf(f, f.ctx.sender).inventoryJson).filter((id: string) => id === BLACK_BOOTS)).toHaveLength(1);
 });
 it("rejects unowned or cosmetic-only speed boosts and accepts the exact equipped bonus", () => {
   const f = crystalFixture();
@@ -30,7 +31,7 @@ it("rejects unowned or cosmetic-only speed boosts and accepts the exact equipped
   const shod = PLAYER_SPEED + 25;
   f.run(server.setSpeed, { speed: shod });
   expect(f.db.player.identity.find(f.ctx.sender).speed).toBe(shod);
-  expect(f.db.playerProgress.identity.find(f.ctx.sender).speed).toBe(180);
+  expect(progressOf(f, f.ctx.sender).speed).toBe(180);
   expect(() => f.run(server.updateMovementState, {
     x: 4050, y: 4050, vx: shod, vy: 0, simulationTick: 1, motionEpoch: 1, sequence: 1,
   })).not.toThrow();

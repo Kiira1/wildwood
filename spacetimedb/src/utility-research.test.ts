@@ -2,6 +2,7 @@ import { expect, it, vi } from "vitest";
 import { ScheduleAt, Timestamp } from "spacetimedb";
 import { crystalFixture, server } from "../../tests/helpers/crystal-hollows-fixture";
 import { createEmptyResearchRanks, researchDurationMs, type ResearchId, type ResearchRanks } from "../../shared/research";
+import { progressOf } from "../../tests/helpers/progress";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
 function startWithRanks(researchId: ResearchId, ranks: Partial<ResearchRanks> = {}) {
@@ -51,10 +52,10 @@ it("adds attack range when research completes and preserves it through a normal 
   f.ctx.timestamp = active.completesAt;
   f.run(server.completeResearch, { schedule: scheduled });
   expect(f.db.playerResearch.identity.find(f.ctx.sender).utilityAttackRange).toBe(1);
-  expect(f.db.playerProgress.identity.find(f.ctx.sender).attackRange).toBe(210);
-  const progress = f.db.playerProgress.identity.find(f.ctx.sender);
+  expect(progressOf(f, f.ctx.sender).attackRange).toBe(210);
+  const progress = progressOf(f, f.ctx.sender);
   f.run(server.savePlayerProgress, { ...progress, attackRange: 200 });
-  expect(f.db.playerProgress.identity.find(f.ctx.sender).attackRange).toBe(210);
+  expect(progressOf(f, f.ctx.sender).attackRange).toBe(210);
 });
 
 it("shortens research already in progress when the speed rank rises", () => {

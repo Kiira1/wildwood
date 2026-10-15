@@ -5,6 +5,7 @@ import { PRESTIGE_PERK_IDS } from "../../shared/prestige-perks";
 import { prestigePerkRanks, writePrestigePerkRanks } from "./prestige";
 import { effectiveMovementSpeedForProgress } from "./player-speed";
 import { mergeLinkedPrestige } from "./prestige-transfer";
+import { progressOf } from "../../tests/helpers/progress";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
 function expansion() {
@@ -39,9 +40,9 @@ it("applies range and speed immediately and accepts the researched perk speed", 
   const f = expansion();
   f.seed("playerResearch", { identity: f.ctx.sender, utilityAttackRange: 5, moveSpeed: 20, utilityMoveSpeed: 5 });
   f.run(server.spendPrestigePerkPoint, { perk: "longShot" });
-  expect(f.db.playerProgress.identity.find(f.ctx.sender).attackRange).toBe(255);
+  expect(progressOf(f, f.ctx.sender).attackRange).toBe(255);
   f.run(server.spendPrestigePerkPoint, { perk: "fleetFoot" });
-  const speed = effectiveMovementSpeedForProgress(f.ctx, f.db.playerProgress.identity.find(f.ctx.sender));
+  const speed = effectiveMovementSpeedForProgress(f.ctx, progressOf(f, f.ctx.sender));
   expect(f.db.player.identity.find(f.ctx.sender).speed).toBe(speed);
   expect(() => f.run(server.setSpeed, { speed })).not.toThrow();
   expect(() => f.run(server.setSpeed, { speed: speed + 10 })).toThrow("Unsupported player speed");
@@ -53,7 +54,7 @@ it("respec refunds both sets of perks and removes range and speed bonuses", () =
   f.run(server.respecPrestigePerks);
   expect(f.db.playerPrestige.identity.find(f.ctx.sender).perkPoints).toBe(10);
   expect(prestigePerkRanks(f.ctx, f.ctx.sender)).toEqual(Object.fromEntries(PRESTIGE_PERK_IDS.map(id => [id, 0])));
-  expect(f.db.playerProgress.identity.find(f.ctx.sender).attackRange).toBe(200);
+  expect(progressOf(f, f.ctx.sender).attackRange).toBe(200);
 });
 
 it("preserves expansion ranks and excess points when linking a guest account", () => {

@@ -49,6 +49,7 @@ it('gives offline farming the balance a kill pays right now, on maps the player 
 
 import { crystalFixture, server } from '../../tests/helpers/crystal-hollows-fixture';
 import { reportKills } from '../../tests/helpers/enemy-defeat';
+import { progressOf } from "../../tests/helpers/progress";
 it('rejects non-developer changes and previews; rejects balance queries for a different map', () => {
   const f = crystalFixture();
   const proc = { withTx: (action: any) => f.transaction(() => action(f.ctx)) } as any;
@@ -63,9 +64,9 @@ it('awards the snapshot shown to the client even after an administrator edits re
   const settings = balanceEditorState(f.ctx as any).settings; settings.maps.crystal_hollows.bossRewards = 3;
   f.transaction(() => saveMapBalance(f.ctx as any, 0, JSON.stringify(settings)));
   f.patch('playerProgress', { damage: 1e15 });
-  const before = f.db.playerProgress.identity.find(f.ctx.sender);
+  const before = progressOf(f, f.ctx.sender);
   reportKills(f, { streamId: 'balance-boss-rewards-01', sequence: 1n, mapId: 'crystal_hollows', enemies: [{ enemy: 'boss', count: 1 }] });
-  const after = f.db.playerProgress.identity.find(f.ctx.sender);
+  const after = progressOf(f, f.ctx.sender);
   expect(after.maxHp - before.maxHp).toBe(snapshot.boss.rewards.health);
   expect(after.clockworkRuinsUnlocked).toBe(true);
   f.transaction(() => { pinMapBalance(f.ctx as any, 'home_exterior'); pinMapBalance(f.ctx as any, 'crystal_hollows'); });
@@ -206,7 +207,7 @@ it('runs pending campaign migrations from the connection path only once', () => 
   f.seed('mapBalanceVersion', { revision: 73, settingsJson: JSON.stringify(bakeFixture.settings), editor: f.ctx.sender, createdAt: f.ctx.timestamp });
   f.ctx.connectionId = null;
   f.run(server.onConnect);
-  expect(f.db.moduleMigrationState.id.find(0).version).toBe(56);
+  expect(f.db.moduleMigrationState.id.find(0).version).toBe(57);
   expect(f.db.mapBalanceVersion.revision.find(75).settingsJson).toBe(JSON.stringify(validateBalanceSettings(revision75)));
   // 45 made revision 76, 46 raised its enemy hits as revision 77, 48 its boss hits as 78, and 49 eased Endless as 79.
   expectProgressionCurve(JSON.parse(f.db.mapBalanceVersion.revision.find(76).settingsJson));

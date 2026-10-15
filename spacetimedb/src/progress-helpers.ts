@@ -48,6 +48,7 @@ export function defaultPlayerProgress(identity: any) {
     moonfenUnlocked: false,
     crystalHollowsUnlocked: false, clockworkRuinsUnlocked: false, duskfallOrchardUnlocked: false, neonBastionUnlocked: false, verdantCatacombsUnlocked: false, ionCitadelUnlocked: false,
     bossRewardClaims: 0,
+    critRating: 0, maxHpWide: 0, damageWide: 0, armorWide: 0, regenWide: 0,
     bowCount: 0,
     woodenArmorCount: 0,
     cosmeticHead: "",

@@ -12,13 +12,13 @@ import { cardStatFactors } from "../../shared/card-effects";
  * research, Keen Edge and cards for the chance; research, Keen Edge, the soul, the run's rating and cards for
  * the multiplier, under the Crit Cap. As duelDamage counts them (duel-runtime.ts).
  */
-export function critPowerFields(ctx: any, identity: any) {
+export function critPowerFields(ctx: any, identity: any, rating?: number) {
   const research = researchInPlay(ctx, identity);
   const ranks = prestigePerkRanks(ctx, identity);
   const cards = cardStatFactors(wornCardTotalsFor(ctx, identity));
   return {
     critChance: (research?.criticalChance ?? 0) * .01 + prestigePerkValue(ranks, "keenEdge") + cards.critChance,
     critMultiplier: criticalDamageMultiplier({ researchRank: research?.criticalDamage, perks: ranks,
-      soul: soulStatsFor(ctx, identity)?.critDamage, rating: readCritRating(ctx, identity), capRank: research?.critCap, card: cards.critDamage }),
+      soul: soulStatsFor(ctx, identity)?.critDamage, rating: rating ?? readCritRating(ctx, identity), capRank: research?.critCap, card: cards.critDamage }),
   };
 }

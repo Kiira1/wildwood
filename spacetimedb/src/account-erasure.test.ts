@@ -2,6 +2,7 @@ import { expect, it, vi } from "vitest";
 import { ERASURE_TARGETS, eraseIdentityRows, linkedIdentities } from "./account-erasure";
 import { crystalFixture } from "../../tests/helpers/crystal-hollows-fixture";
 import { Identity } from "../../tests/helpers/spacetime-memory-db";
+import { progressOf } from "../../tests/helpers/progress";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
 it("covers every table that holds an identity, and nothing twice", () => {
@@ -35,11 +36,11 @@ it("removes the account's rows and leaves everyone else's alone", () => {
 
   expect(result.complete).toBe(true);
   expect(result.deleted).toBeGreaterThan(0);
-  expect(f.db.playerProgress.identity.find(f.ctx.sender)).toBeNull();
+  expect(progressOf(f, f.ctx.sender)).toBeNull();
   expect(f.db.playerLegalConsent.identity.find(f.ctx.sender)).toBeNull();
   expect(f.db.accountDeletionRequest.identity.find(f.ctx.sender)).toBeNull();
   // The other player is untouched.
-  expect(f.db.playerProgress.identity.find(other)).not.toBeNull();
+  expect(progressOf(f, other)).not.toBeNull();
   expect(f.db.playerLegalConsent.identity.find(other)).not.toBeNull();
 });
 
@@ -62,7 +63,7 @@ it("stops at its row budget and says what is left", () => {
   let guard = 0;
   while (!eraseIdentityRows(f.ctx, [f.ctx.sender], 1).complete && guard++ < 200);
   expect(guard).toBeLessThan(200);
-  expect(f.db.playerProgress.identity.find(f.ctx.sender)).toBeNull();
+  expect(progressOf(f, f.ctx.sender)).toBeNull();
 });
 
 it("takes the guest half of an account with it", () => {
@@ -76,8 +77,8 @@ it("takes the guest half of an account with it", () => {
   eraseIdentityRows(f.ctx, identities);
 
   // Erasing only the identity that asked would have left this behind.
-  expect(f.db.playerProgress.identity.find(guest)).toBeNull();
-  expect(f.db.playerProgress.identity.find(f.ctx.sender)).toBeNull();
+  expect(progressOf(f, guest)).toBeNull();
+  expect(progressOf(f, f.ctx.sender)).toBeNull();
 });
 
 it("finds rows keyed in snake_case and rows naming the player second", () => {

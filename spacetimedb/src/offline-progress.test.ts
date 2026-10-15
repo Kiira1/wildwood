@@ -7,6 +7,7 @@ import { TERMS_VERSION } from "../../shared/legal";
 import { DEVELOPER_IDENTITY } from "../../shared/developer-identity";
 import { SPACETIME_AUTH_CLIENT_ID, SPACETIME_AUTH_ISSUER } from "../../shared/rules";
 import { Identity } from "../../tests/helpers/spacetime-memory-db";
+import { progressOf } from "../../tests/helpers/progress";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
 /** A build that can hold Snowlands, standing in Home after the window opened. */
@@ -44,7 +45,7 @@ function enter(fixture: ReturnType<typeof crystalFixture>) {
 
 it("pays out the highest map the build can hold, and closes the window behind it", () => {
   const fixture = away(OFFLINE_WINDOW_SECONDS);
-  const before = fixture.db.playerProgress.identity.find(fixture.ctx.sender);
+  const before = progressOf(fixture, fixture.ctx.sender);
 
   enter(fixture);
 
@@ -57,7 +58,7 @@ it("pays out the highest map the build can hold, and closes the window behind it
   // Reopening at zero is what stops the same absence paying twice.
   expect(row.awaySinceMicros).toBe(0n);
 
-  const after = fixture.db.playerProgress.identity.find(fixture.ctx.sender);
+  const after = progressOf(fixture, fixture.ctx.sender);
   expect(after.damage + after.maxHp + after.armor + after.regen)
     .toBeGreaterThan(before.damage + before.maxHp + before.armor + before.regen);
   expect(row.damage + row.health + row.armor + row.regen).toBeGreaterThan(0);
@@ -78,14 +79,14 @@ it("credits twelve hours to a player with all three offline-time ranks", () => {
 
 it("pays nothing for a reconnect", () => {
   const fixture = away(OFFLINE_MINIMUM_SECONDS - 1);
-  const before = fixture.db.playerProgress.identity.find(fixture.ctx.sender).damage;
+  const before = progressOf(fixture, fixture.ctx.sender).damage;
 
   enter(fixture);
 
   const row = fixture.db.offlineProgress.identity.find(fixture.ctx.sender);
   expect(row.pending).toBe(false);
   expect(row.kills).toBe(0);
-  expect(fixture.db.playerProgress.identity.find(fixture.ctx.sender).damage).toBe(before);
+  expect(progressOf(fixture, fixture.ctx.sender).damage).toBe(before);
 });
 
 it("steps down to the map the build can actually survive", () => {
@@ -101,7 +102,7 @@ it("steps down to the map the build can actually survive", () => {
 
 it("reports a blocked window instead of paying for a map that would kill them", () => {
   const fixture = away(OFFLINE_WINDOW_SECONDS, { damage: 1, maxHp: 1, armor: 0, regen: 0, attackRate: 1 });
-  const before = fixture.db.playerProgress.identity.find(fixture.ctx.sender).damage;
+  const before = progressOf(fixture, fixture.ctx.sender).damage;
 
   enter(fixture);
 
@@ -109,18 +110,18 @@ it("reports a blocked window instead of paying for a map that would kill them", 
   expect(row.blocked).toBe(true);
   expect(row.kills).toBe(0);
   expect(row.pending).toBe(true);
-  expect(fixture.db.playerProgress.identity.find(fixture.ctx.sender).damage).toBe(before);
+  expect(progressOf(fixture, fixture.ctx.sender).damage).toBe(before);
 });
 
 it("only pays once, however many times the player re-enters", () => {
   const fixture = away(OFFLINE_WINDOW_SECONDS);
   enter(fixture);
-  const paid = fixture.db.playerProgress.identity.find(fixture.ctx.sender).damage;
+  const paid = progressOf(fixture, fixture.ctx.sender).damage;
   const granted = fixture.db.offlineProgress.identity.find(fixture.ctx.sender).grantedAtMicros;
 
   enter(fixture);
 
-  expect(fixture.db.playerProgress.identity.find(fixture.ctx.sender).damage).toBe(paid);
+  expect(progressOf(fixture, fixture.ctx.sender).damage).toBe(paid);
   expect(fixture.db.offlineProgress.identity.find(fixture.ctx.sender).grantedAtMicros).toBe(granted);
 });
 
@@ -177,11 +178,11 @@ it("opens the window when the account's last session ends", () => {
 it("pays nothing to an account that switched offline progress off, and closes the window anyway", () => {
   const fixture = away(OFFLINE_WINDOW_SECONDS);
   fixture.seed("playerOfflinePreference", { identity: fixture.ctx.sender, enabled: false });
-  const before = fixture.db.playerProgress.identity.find(fixture.ctx.sender);
+  const before = progressOf(fixture, fixture.ctx.sender);
 
   enter(fixture);
 
-  const after = fixture.db.playerProgress.identity.find(fixture.ctx.sender);
+  const after = progressOf(fixture, fixture.ctx.sender);
   expect(after.damage).toBe(before.damage);
   expect(after.maxHp).toBe(before.maxHp);
   const row = fixture.db.offlineProgress.identity.find(fixture.ctx.sender);
@@ -194,9 +195,9 @@ it("pays nothing to an account that switched offline progress off, and closes th
 it("pays no offline farming while a Reflect Only challenge runs", () => {
   const fixture = away(OFFLINE_WINDOW_SECONDS);
   fixture.seed("playerPrestigeChallenge", { identity: fixture.ctx.sender, active: true, completed: 0 });
-  const before = fixture.db.playerProgress.identity.find(fixture.ctx.sender);
+  const before = progressOf(fixture, fixture.ctx.sender);
   enter(fixture);
-  const after = fixture.db.playerProgress.identity.find(fixture.ctx.sender);
+  const after = progressOf(fixture, fixture.ctx.sender);
   expect([after.damage, after.maxHp, after.armor, after.regen]).toEqual([before.damage, before.maxHp, before.armor, before.regen]);
   expect(fixture.db.offlineProgress.identity.find(fixture.ctx.sender).kills).toBe(0);
 });

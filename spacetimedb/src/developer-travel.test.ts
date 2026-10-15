@@ -3,6 +3,7 @@ import { Identity } from "../../tests/helpers/spacetime-memory-db";
 import { crystalFixture, identity, server } from "../../tests/helpers/crystal-hollows-fixture";
 import { DEVELOPER_IDENTITY } from "../../shared/developer-identity";
 import { SPACETIME_AUTH_CLIENT_ID, SPACETIME_AUTH_ISSUER } from "../../shared/rules";
+import { progressOf } from "../../tests/helpers/progress";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
 function fixture(developer = true) {
@@ -30,9 +31,9 @@ it("looks up case-insensitive names and IDs; moves only the developer without gr
   const f = fixture();
   expect(f.lookup(" TARGET PLAYER ")).toMatchObject({ mapId: "crystal_hollows" });
   expect(f.lookup(f.target.toHexString()).identity).toBe(f.target.toHexString());
-  const before = f.db.playerProgress.identity.find(f.who), target = f.db.player.identity.find(f.target);
+  const before = progressOf(f, f.who), target = f.db.player.identity.find(f.target);
   expect(JSON.parse(f.jump())).toMatchObject({ mapId: target.mapId, x: target.x, y: target.y });
-  expect(f.db.playerProgress.identity.find(f.who)).toEqual(before);
+  expect(progressOf(f, f.who)).toEqual(before);
   expect(f.db.player.identity.find(f.target)).toEqual(target);
   expect(f.db.playerLastLocation.identity.find(f.who).mapId).toBe(target.mapId);
 });

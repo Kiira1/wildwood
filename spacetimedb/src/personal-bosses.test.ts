@@ -3,6 +3,7 @@ import { crystalFixture } from "../../tests/helpers/crystal-hollows-fixture";
 import { reportEnemy, reportKills, readDefeatClock, seedDefeatClock } from "../../tests/helpers/enemy-defeat";
 import { CAMPAIGN_MAPS } from "../../shared/campaign-registry";
 import { CAMPAIGN_UNLOCK_FIELDS } from "../../shared/equipment-access";
+import { progressOf } from "../../tests/helpers/progress";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
 const baseStats = (row: any) => Object.fromEntries(["damage", "maxHp", "armor", "regen", "attackRate", "inventoryJson"].map(key => [key, row[key]]));
@@ -12,10 +13,10 @@ it.each([...CAMPAIGN_MAPS.map(map => map.id), "endless_1", "endless_40"])("recor
   f.patch("player", { mapId });
   // No weapon, no DPS, no simulated time: there is no server-side boss fight.
   f.patch("playerProgress", { damage: 0, equippedRightHand: "", equippedLeftHand: "" });
-  const before = baseStats(f.db.playerProgress.identity.find(f.ctx.sender));
+  const before = baseStats(progressOf(f, f.ctx.sender));
   const rolls = vi.spyOn(f.ctx.random, "integerInRange");
   reportEnemy(f, "boss");
-  const after = f.db.playerProgress.identity.find(f.ctx.sender);
+  const after = progressOf(f, f.ctx.sender);
   expect(baseStats(after)).toEqual(before);
   if (mapId.startsWith("endless_")) {
     expect(f.db.proceduralProgress.identity.find(f.ctx.sender).completed).toBe(Number(mapId.slice(8)));
@@ -52,7 +53,7 @@ it("leaves both regular-enemy clocks alone on a gate-only report", () => {
   for (const clock of ["combat", "sim"] as const) seedDefeatClock(f, clock, 0);
   reportEnemy(f, "boss", 1, 60_000);
   for (const clock of ["combat", "sim"] as const) expect(readDefeatClock(f, clock)!.tokens).toBe(0);
-  expect(f.db.playerProgress.identity.find(f.ctx.sender).clockworkRuinsUnlocked).toBe(true);
+  expect(progressOf(f, f.ctx.sender).clockworkRuinsUnlocked).toBe(true);
 });
 
 it("keeps regular rewards and kill counts identical when the same batch also opens a gate", () => {
@@ -62,10 +63,10 @@ it("keeps regular rewards and kill counts identical when the same batch also ope
     enemies: [{ enemy: "Shard Hopper", count: 3 }] };
   reportKills(regular, batch);
   reportKills(mixed, { ...batch, enemies: [...batch.enemies, { enemy: "boss", count: 7 }] });
-  expect(baseStats(mixed.db.playerProgress.identity.find(mixed.ctx.sender))).toEqual(baseStats(regular.db.playerProgress.identity.find(regular.ctx.sender)));
+  expect(baseStats(progressOf(mixed, mixed.ctx.sender))).toEqual(baseStats(progressOf(regular, regular.ctx.sender)));
   expect(mixed.db.playerLifetime.identity.find(mixed.ctx.sender).enemyKills).toBe(3n);
   expect([...mixed.db.playerItemDrop.iter()]).toEqual([...regular.db.playerItemDrop.iter()]);
-  expect(mixed.db.playerProgress.identity.find(mixed.ctx.sender).clockworkRuinsUnlocked).toBe(true);
+  expect(progressOf(mixed, mixed.ctx.sender).clockworkRuinsUnlocked).toBe(true);
 });
 
 it("checks session, map and report identity before recording a gate", () => {

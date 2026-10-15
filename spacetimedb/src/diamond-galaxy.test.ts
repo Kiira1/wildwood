@@ -5,6 +5,7 @@ import { DIAMOND_GALAXY_ARMOR, DIAMOND_GALAXY_BOW, STARTER_STONE } from "../../s
 import { PATREON_DIAMOND_ITEM_IDS } from "../../shared/patreon-cosmetics";
 import { crystalFixture, server } from "../../tests/helpers/crystal-hollows-fixture";
 import { lentLooksFor } from "./patreon";
+import { progressOf } from "../../tests/helpers/progress";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
 const DEVELOPER = Identity.fromString(DEVELOPER_IDENTITY);
@@ -20,9 +21,9 @@ function patron(tier: string, validForMs: number) {
 
 /** Saves the player's progress wearing Diamond Galaxy armor and a bow, then reads back what was kept. */
 function wearDiamond(f: ReturnType<typeof crystalFixture>) {
-  const progress = f.db.playerProgress.identity.find(f.ctx.sender);
+  const progress = progressOf(f, f.ctx.sender);
   f.run(server.savePlayerProgress, { ...progress, cosmeticChest: DIAMOND_GALAXY_ARMOR, cosmeticRightHand: DIAMOND_GALAXY_BOW, enemyKills: 0 });
-  return f.db.playerProgress.identity.find(f.ctx.sender);
+  return progressOf(f, f.ctx.sender);
 }
 
 it("lets an active Diamond patron wear the Diamond Galaxy set, and shows it on their player", () => {
@@ -40,9 +41,9 @@ it("strips the set from a lapsed Diamond patron at their next save", () => {
   wearDiamond(f);
   const link = f.db.patreonLink.identity.find(f.ctx.sender);
   f.db.patreonLink.identity.update({ ...link, validUntilMs: f.now - 1 });
-  const progress = f.db.playerProgress.identity.find(f.ctx.sender);
+  const progress = progressOf(f, f.ctx.sender);
   f.run(server.savePlayerProgress, { ...progress, enemyKills: 0 });
-  const saved = f.db.playerProgress.identity.find(f.ctx.sender);
+  const saved = progressOf(f, f.ctx.sender);
   expect(saved.cosmeticChest).toBe("");
   expect(saved.cosmeticRightHand).toBe("");
 });

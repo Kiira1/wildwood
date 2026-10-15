@@ -3,6 +3,7 @@ import { expect, it, vi } from "vitest";
 import { Identity, Timestamp } from "../../tests/helpers/spacetime-memory-db";
 import { crystalFixture, server } from "../../tests/helpers/crystal-hollows-fixture";
 import { PROTOCOL_VERSION } from "../../shared/rules";
+import { progressOf } from "../../tests/helpers/progress";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
 function fixture(protocol: number, recent = false) {
@@ -17,13 +18,13 @@ function fixture(protocol: number, recent = false) {
   return { ...f, identity };
 }
 it("cleans an abandoned obsolete session without banking idle days or touching progress", () => {
-  const f = fixture(104), before = { ...f.db.playerProgress.identity.find(f.identity) };
+  const f = fixture(104), before = { ...progressOf(f, f.identity) };
   f.run(server.devCleanupStaleSessions, {});
   expect(f.db.player.identity.find(f.identity)).toBeNull();
   expect(f.db.playerSession.count()).toBe(0n);
   expect(f.db.playerController.identity.find(f.identity)).toBeNull();
   expect(f.db.playerLifetime.identity.find(f.identity)).toMatchObject({ playedMicros: 123000000n, enemyKills: 15n });
-  expect(f.db.playerProgress.identity.find(f.identity)).toEqual(before);
+  expect(progressOf(f, f.identity)).toEqual(before);
   f.run(server.devCleanupStaleSessions, {});
   expect(f.db.playerLifetime.identity.find(f.identity).playedMicros).toBe(123000000n);
 });

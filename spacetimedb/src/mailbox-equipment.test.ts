@@ -5,6 +5,7 @@ import { publishMailboxLetter, mergeMailboxReceipts } from "./mailbox";
 import { GEAR_MAIL_ID, GEAR_MAIL_TITLE, GEAR_MAIL_BODY } from "../../shared/mailbox-equipment";
 import { EQUIPMENT_DROP_ITEM_IDS } from "../../shared/items";
 import { BASE_INVENTORY_SLOT_CAPACITY } from "../../shared/gems";
+import { progressOf } from "../../tests/helpers/progress";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 function fixture() {
   const f = crystalFixture();
@@ -28,7 +29,7 @@ describe("equipment mailbox", () => {
     const key = `${f.ctx.sender.toHexString()}:HAND`;
     f.seed("playerItemUpgrade", { key, identity: f.ctx.sender, itemId: "starter_bow", level: 10 });
     f.run(server.claimMailboxGift, { id: GEAR_MAIL_ID });
-    const progress = f.db.playerProgress.identity.find(f.ctx.sender);
+    const progress = progressOf(f, f.ctx.sender);
     expect(JSON.parse(progress.inventoryJson)).toEqual(expect.arrayContaining(["forest_cap", "wooden_armor", "starter_bow"]));
     expect(progress.equippedRightHand).toBe("");
     // The gift raises the slots its items belong to: the weapon track keeps
@@ -38,16 +39,16 @@ describe("equipment mailbox", () => {
     expect(f.db.gemTransaction.count()).toBe(0n);
     f.patch("playerProgress", { inventoryJson: "[]", bowCount: 0, woodenArmorCount: 0 });
     f.run(server.claimMailboxGift, { id: GEAR_MAIL_ID });
-    expect(f.db.playerProgress.identity.find(f.ctx.sender).inventoryJson).toBe("[]");
+    expect(progressOf(f, f.ctx.sender).inventoryJson).toBe("[]");
     expect(server.myMailboxV2(f.ctx as never)[0].claimed).toBe(true);
   });
   it("leaves a full-bag gift unclaimed and awards everything after the player frees space", () => {
     const f = fixture();
     const filler = EQUIPMENT_DROP_ITEM_IDS.filter(id => !["forest_cap", "wooden_armor", "starter_bow"].includes(id)).slice(0, BASE_INVENTORY_SLOT_CAPACITY);
     f.patch("playerProgress", { inventoryJson: JSON.stringify(filler) });
-    const before = f.db.playerProgress.identity.find(f.ctx.sender);
+    const before = progressOf(f, f.ctx.sender);
     expect(() => f.run(server.claimMailboxGift, { id: GEAR_MAIL_ID })).toThrow(/Free .* inventory slot/);
-    expect(f.db.playerProgress.identity.find(f.ctx.sender)).toEqual(before);
+    expect(progressOf(f, f.ctx.sender)).toEqual(before);
     expect(f.db.playerItemUpgrade.count()).toBe(0n);
     expect(server.myMailboxV2(f.ctx as never)[0].claimed).toBe(false);
     f.patch("playerProgress", { inventoryJson: "[]" });

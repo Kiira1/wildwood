@@ -355,19 +355,16 @@ export function startBaseSubscription(dependencies: BaseSubscriptionDependencies
   connection.db.worldStatus.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.worldStatus(row); });
   connection.db.playerProgress.onInsert((_ctx, row) => { if (shouldHandle()) handlers.progress(withWideProgress(connection, row)); });
   connection.db.playerProgress.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.progress(withWideProgress(connection, row)); });
-  // Stats past f32 arrive in their own row; a change there re-reads the progress it extends.
-  const progressAgain = (wide: { identity: { toHexString(): string } }) => {
+  // The bag arrives in its own row (player_inventory); a change there re-reads the progress it belongs to.
+  const progressAgain = (bag: { identity: { toHexString(): string } }) => {
     if (!shouldHandle()) return;
     for (const row of connection.db.playerProgress.iter()) {
-      if (row.identity.toHexString() === wide.identity.toHexString()) handlers.progress(withWideProgress(connection, row));
+      if (row.identity.toHexString() === bag.identity.toHexString()) handlers.progress(withWideProgress(connection, row));
     }
   };
-  connection.db.playerWideStats.onInsert((_ctx, row) => progressAgain(row));
-  connection.db.playerWideStats.onUpdate((_ctx, _oldRow, row) => progressAgain(row));
-  connection.db.playerWideStats.onDelete((_ctx, row) => progressAgain(row));
-  connection.db.playerCombatRating.onInsert((_ctx, row) => progressAgain(row));
-  connection.db.playerCombatRating.onUpdate((_ctx, _oldRow, row) => progressAgain(row));
-  connection.db.playerCombatRating.onDelete((_ctx, row) => progressAgain(row));
+  connection.db.playerInventory.onInsert((_ctx, row) => progressAgain(row));
+  connection.db.playerInventory.onUpdate((_ctx, _oldRow, row) => progressAgain(row));
+  connection.db.playerInventory.onDelete((_ctx, row) => progressAgain(row));
   connection.db.playerResearch.onInsert((_ctx, row) => { if (shouldHandle()) handlers.research(row); });
   connection.db.playerResearch.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.research(row); });
   connection.db.playerResearch.onDelete((_ctx, row) => { if (shouldHandle()) handlers.removeResearch(row); });
@@ -464,8 +461,7 @@ export function startBaseSubscription(dependencies: BaseSubscriptionDependencies
       .subscribe(scope === "account" ? [
       tables.playerProfile.where((profile) => profile.identity.eq(dependencies.identity)),
       tables.playerProgress.where((progress) => progress.identity.eq(dependencies.identity)),
-      tables.playerWideStats.where((wide) => wide.identity.eq(dependencies.identity)),
-      tables.playerCombatRating.where((rating) => rating.identity.eq(dependencies.identity)),
+      tables.playerInventory.where((bag) => bag.identity.eq(dependencies.identity)),
       tables.playerAccountStatus.where((status) => status.identity.eq(dependencies.identity)),
     ] : [
       tables.playerNameTag,
@@ -490,8 +486,7 @@ export function startBaseSubscription(dependencies: BaseSubscriptionDependencies
       tables.worldStatus,
       tables.releaseNotice,
       tables.playerProgress.where((progress) => progress.identity.eq(dependencies.identity)),
-      tables.playerWideStats.where((wide) => wide.identity.eq(dependencies.identity)),
-      tables.playerCombatRating.where((rating) => rating.identity.eq(dependencies.identity)),
+      tables.playerInventory.where((bag) => bag.identity.eq(dependencies.identity)),
       tables.playerResearch.where((research) => research.identity.eq(dependencies.identity)),
       tables.activeResearch.where((research) => research.identity.eq(dependencies.identity)),
       tables.pausedResearch.where((research) => research.identity.eq(dependencies.identity)),

@@ -6,6 +6,7 @@ import { reportKills } from "../../tests/helpers/enemy-defeat";
 import { enemyDefeatDefinition } from "../../shared/enemy-defeats";
 import { ENEMY_TYPES } from "../../shared/enemy-definitions";
 import { LEGACY_LOOT_CURSOR_RETIRED_AT_MICROS, REGULAR_ENEMY_STREAM_IDLE_MICROS, pruneIdleStreams } from "./regular-enemy-loot";
+import { progressOf } from "../../tests/helpers/progress";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
 const DAY = 86_400_000_000n;
@@ -26,9 +27,9 @@ it("moves a stream from the old cursor table on its next report, and still refus
   reportKills(f, { ...batch, sequence: 5n });
   expect(f.db.regularEnemyLootCursor.key.find(streamKey(f))).toBeFalsy();
   expect(f.db.regularEnemyStream.key.find(streamKey(f))).toMatchObject({ sequence: 5n, updatedAtMicros: f.ctx.timestamp.microsSinceUnixEpoch });
-  const before = f.db.playerProgress.identity.find(f.ctx.sender).damage;
+  const before = progressOf(f, f.ctx.sender).damage;
   reportKills(f, { ...batch, sequence: 5n });
-  expect(f.db.playerProgress.identity.find(f.ctx.sender).damage).toBe(before);
+  expect(progressOf(f, f.ctx.sender).damage).toBe(before);
 });
 
 it("drops streams idle a month and keeps recent ones", () => {

@@ -8,13 +8,14 @@ import { EQUIPMENT_OFFER_LIFETIME_MS } from "../../shared/equipment-copies";
 import { MAX_LOOT_FILTER_BATCH, isDropFiltered, lootFilterId } from "../../shared/loot-filter";
 import { BASIC_PAPER_HAT, FROST_BOW, GALAXY_BOW, IRON_BOW, SAMURAI_BOW, SAMURAI_HAT, STARTER_STONE, WOODEN_SWORD } from "../../shared/items";
 import { ATTACK_BALANCE_VERSION, BOSS_REWARD_CLAIM_BITS, SPACETIME_AUTH_CLIENT_ID, SPACETIME_AUTH_ISSUER } from "../../shared/rules";
+import { progressOf } from "../../tests/helpers/progress";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
 type Fixture = ReturnType<typeof crystalFixture>;
 
 const listed = (f: Fixture, who = f.ctx.sender) => [...f.db.playerIgnoredDrop.identity.filter(who)].map(row => row.itemId).sort();
 const offers = (f: Fixture, who = f.ctx.sender) => [...f.db.pendingEquipmentOffer.identity.filter(who)];
-const inventory = (f: Fixture, who = f.ctx.sender): string[] => JSON.parse(f.db.playerProgress.identity.find(who).inventoryJson);
+const inventory = (f: Fixture, who = f.ctx.sender): string[] => JSON.parse(progressOf(f, who).inventoryJson);
 const drops = (f: Fixture) => [...f.db.playerItemDrop.byIdentity.filter(f.ctx.sender)].map(row => row.itemId).sort();
 const filter = (f: Fixture, itemIds: string[], off = true) => f.run(server.setIgnoredDrops, { itemIds, ignored: off });
 const seedListed = (f: Fixture, filterId: string, who = f.ctx.sender) =>
