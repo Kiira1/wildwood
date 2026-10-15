@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.906.3": [
+    "Player profiles no longer flash \"Last seen\" for players who are online",
+  ],
   "0.906.2": [
     "Auto Farm in an Aggro run no longer flips between targets every frame",
   ],
@@ -3383,6 +3386,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.906.3": "2026-10-15",
   "0.906.2": "2026-10-15",
   "0.906.1": "2026-10-15",
   "0.906.0": "2026-10-15",

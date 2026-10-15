@@ -111,10 +111,32 @@ it("tracks an autofarming hidden player's presence and departure without polling
   expect(f.service.api.activePlayerMap(id)).toBe("beginner_desert");
   for (const fn of f.presenceEvents.update) fn({}, row, { ...row, mapId: "home_exterior" });
   expect(f.service.api.activePlayerMap(id)).toBe("home_exterior");
+  // The row going is asked about, not taken as leaving: here the server says they have gone.
+  Object.assign(f.connection.procedures, { getPlayerPresence: vi.fn(async () => JSON.stringify({ online: false })) });
+  Object.assign(f.connection.db.player, { identity: { find: () => undefined } });
   for (const fn of f.presenceEvents.remove) fn({}, row);
-  expect(f.service.api.activePlayerMap(id)).toBe("");
+  expect(f.service.api.activePlayerMap(id)).toBe("home_exterior");
+  await vi.waitFor(() => expect(f.service.api.activePlayerMap(id)).toBe(""));
   f.service.api.releasePlayerProfile();
   expect([...f.presenceEvents.insert, ...f.presenceEvents.update, ...f.presenceEvents.remove]).toHaveLength(0);
+});
+
+it("keeps an eye-off player online while their row comes and goes, instead of flashing Last seen", async () => {
+  const f = fixture();
+  const row = { identity: new Identity("1".repeat(64)), mapId: "beginner_desert", isVisible: true };
+  const id = row.identity.toHexString();
+  f.connection.db.player.iter = () => [row] as never;
+  Object.assign(f.connection.db.player, { identity: { find: () => undefined } });
+  const presence = vi.fn(async () => JSON.stringify({ online: true, mapId: "beginner_desert" }));
+  Object.assign(f.connection.procedures, { getPlayerPresence: presence });
+  const pending = f.service.api.loadPlayerProfile(id);
+  f.subscriptions[0].apply(); await pending;
+  // Hidden as they start playing by hand: still on the map, then and once the server answers.
+  for (const fn of f.presenceEvents.remove) fn({}, row);
+  expect(f.service.api.activePlayerMap(id)).toBe("beginner_desert");
+  await vi.waitFor(() => expect(presence).toHaveBeenCalled());
+  await new Promise(resolve => setTimeout(resolve, 0));
+  expect(f.service.api.activePlayerMap(id)).toBe("beginner_desert");
 });
 
 it("loads remote prestige, perks and slot tiers despite already cached base stats", async () => {

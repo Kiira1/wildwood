@@ -197,8 +197,20 @@ export function createPlayerProfileService(dependencies: PlayerProfileServiceDep
       );
     };
     const update: Parameters<typeof connection.db.player.onUpdate>[0] = (ctx, _old, row) => observe(ctx, row);
+    /**
+     * An eye-off player's row is withheld from other clients (0.877), and is shown while they idle or autofarm,
+     * so it comes and goes as they play: asked the server instead, which knows whether they are on. Until it
+     * answers the profile keeps what it showed, rather than flashing "Last seen" at every switch.
+     */
+    const askPresence = () => {
+      void Promise.resolve().then(() => connection.procedures.getPlayerPresence({ identity: dbIdentity })).then(json => {
+        const presence = JSON.parse(json) as { online?: boolean; mapId?: string };
+        if (connection.db.player.identity?.find(dbIdentity)) return;
+        rememberMap(presence.online && presence.mapId ? presence.mapId : "");
+      }).catch(() => rememberMap(""));
+    };
     const remove: Parameters<typeof connection.db.player.onDelete>[0] = (_ctx, row) => {
-      if (row.identity.toHexString() === identity) rememberMap("");
+      if (row.identity.toHexString() === identity) askPresence();
     };
     connection.db.player.onInsert(observe);
     connection.db.player.onUpdate(update);
@@ -261,13 +273,7 @@ export function createPlayerProfileService(dependencies: PlayerProfileServiceDep
           }
           // An eye-off player's row is withheld from other clients (0.877), so
           // ask the server whether they are on; an older server without it leaves them offline.
-          if (!rowVisible) void Promise.resolve().then(() => connection.procedures.getPlayerPresence({ identity: dbIdentity })).then(json => {
-            const presence = JSON.parse(json) as { online?: boolean; mapId?: string };
-            if (presence.online && presence.mapId && generation === profileGeneration && activeIdentity === identity) {
-              profilePlayerMaps.set(identity, presence.mapId);
-              dependencies.notify();
-            }
-          }).catch(() => {});
+          if (!rowVisible) askPresence();
           finish(cachedPlayerProfile(identity));
         })
         .onError(() => {
