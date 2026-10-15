@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.906.4": [
+    "The Ping readout no longer jumps after a reconnect or when you come back to the tab",
+  ],
   "0.906.3": [
     "Player profiles no longer flash \"Last seen\" for players who are online",
   ],
@@ -3386,6 +3389,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.906.4": "2026-10-15",
   "0.906.3": "2026-10-15",
   "0.906.2": "2026-10-15",
   "0.906.1": "2026-10-15",

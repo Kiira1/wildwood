@@ -5,7 +5,7 @@ import { createAccountRowServices } from "./coop/services/account-row-services";
 import { consumeUpdateResumeMode, reloadWithUpdateResume } from "./coop/services/update-resume-browser";
 import { configureConnectionDiagnostics, recordConnectionDiagnostic, flushConnectionDiagnostics } from "./coop/services/connection-diagnostic-runtime";
 import { bindProgressFlushOnHide } from "./coop/services/flush-on-hide";
-import { createLatencySamples } from "./coop/services/latency-samples";
+import { createLatencyProbe } from "./coop/services/latency-probe";
 import { diagnosticWebSocket } from "./coop/services/diagnostic-websocket";
 import { createStaleBundleGuard } from "./coop/services/stale-bundle-guard";
 import { enterWorldAfterConsent } from "./coop/services/world-entry-consent";
@@ -68,8 +68,8 @@ type WildStatRuntime = Window & {
   WILDWOOD_SPACETIMEDB_DB_NAME?: string;
 };
 // Timing reducers the game sends anyway costs nothing: four a second, only the small steady ones (a duel or puppet message reads as lag).
-const LATENCY_SAMPLE_INTERVAL_MS = 250, LATENCY_ACTIONS = new Set(["movement state", "speed sync", "motion interest"]);
-const latencySamples = createLatencySamples();
+const LATENCY_ACTIONS = new Set(["movement state", "speed sync", "motion interest"]);
+const latency = createLatencyProbe(detail => recordConnectionDiagnostic("latency-spike", { detail }));
 // Allow normal connection/session deadlines to recover before restarting a stalled attempt.
 const WAKE_RECONNECT_WATCHDOG_MS = 45_000;
 const CONNECTION_OPEN_TIMEOUT_MS = 15_000;
@@ -94,8 +94,6 @@ let localIdentity = "";
 /** Held until the UI has shown it; the server keeps its own copy until then. */
 let pendingOfflineProgress: OfflineProgressSummary | null = null;
 let localDbIdentity: Identity | null = null;
-let latencyMs: number | null = null;
-let lastLatencyProbeStartedAt = 0;
 let connecting = false;
 let connectionGeneration = 0;
 const staleBundle = createStaleBundleGuard({ version: GAME_VERSION, reload: () => reloadWithUpdateResume(GAME_VERSION, accountService.prepareUpdateReload) });
@@ -131,7 +129,7 @@ startupTelemetryRuntime.startPageLoadMeasurement();
 configureConnectionDiagnostics({ storageKey: `${authTabKey}:connection-diagnostics`,
   snapshot: () => ({ owner: localIdentity, mapId: presenceService.currentMapId(), database: databaseName,
     transport: "account", phase: connectionLifecycle.snapshot().phase, attempt: connectionLifecycle.snapshot().attempt,
-    lastActivityAgeMs: performance.now() - lastServerActivityAt, latencyMs: latencyMs ?? 0 }),
+    lastActivityAgeMs: performance.now() - lastServerActivityAt, latencyMs: latency.value() ?? 0 }),
   submit: () => connection?.isActive && connection.identity?.toHexString() === localIdentity
     ? payload => connection!.reducers.recordConnectionDiagnostic({ payload }) : null,
 });
@@ -222,11 +220,6 @@ function touchServerActivity() {
   lastServerActivityAt = performance.now();
 }
 
-function recordLatency(startedAt: number) {
-  latencySamples.record(Math.max(0, performance.now() - startedAt));
-  latencyMs = latencySamples.value();
-}
-
 function handleReducerFailure(action: string, error: unknown) {
   const message = reducerErrorMessage(error);
   if (accountService.handleDefeatRestriction(message)) return;
@@ -266,13 +259,11 @@ function handleReducerFailure(action: string, error: unknown) {
 function sendReducer(action: string, reducer: () => unknown, onRejected?: () => void, onAccepted?: () => void) {
   if (protocolBlocked || worldEntryBlocked) return;
   try {
-    const startedAt = performance.now();
-    const measureLatency = LATENCY_ACTIONS.has(action) && startedAt - lastLatencyProbeStartedAt >= LATENCY_SAMPLE_INTERVAL_MS;
-    if (measureLatency) lastLatencyProbeStartedAt = startedAt;
+    const probe = LATENCY_ACTIONS.has(action) ? latency.begin() : null;
     void runWorldReducer(() => Promise.resolve(reducer()))
       .then(() => {
         onAccepted?.();
-        if (measureLatency) recordLatency(startedAt);
+        latency.finish(probe);
       })
       .catch((error) => {
         onRejected?.();
@@ -464,7 +455,7 @@ presenceService = createPresenceService({
   },
   directory: profileDirectory,
   developer: developerService,
-  latencyMs: () => latencyMs,
+  latencyMs: () => latency.value(),
 });
 
 accountService = createAccountService({
@@ -565,9 +556,7 @@ function abandonConnection(disconnectTransport: boolean) {
   wakeRecovery.cancel();
   worldEntryPromise = null;
   worldEntryGeneration = 0;
-  latencyMs = null;
-  latencySamples.reset();
-  lastLatencyProbeStartedAt = 0;
+  latency.reset();
   connectionGeneration += 1;
   virtualPlayerLoadTest.disconnectLocal();
   presenceService.markDisconnected();
@@ -722,9 +711,7 @@ function connect() {
       profileDirectory.prepareSession(accountService.rememberedCharacter(signedIn));
       progressionService.beginSession(identityChanged);
       presenceService.beginSession(identityChanged);
-      latencyMs = null;
-      latencySamples.reset();
-      lastLatencyProbeStartedAt = 0;
+      latency.reset();
       clearRealtimeCaches();
       if (!signedIn) accountService.storeGuestToken(token);
       accountService.watchLegalConsent(conn);
@@ -735,14 +722,14 @@ function connect() {
       });
       accountRows.watch(conn, () => generation === connectionGeneration && connection === conn);
       accountAudio.watch(conn, () => generation === connectionGeneration && connection === conn, () => protocolReadyGeneration === generation && !protocolBlocked);
-      const protocolStartedAt = performance.now();
+      const protocolProbe = latency.begin(true);
       void conn.reducers.registerProtocol({ protocolVersion: PROTOCOL_VERSION }).then(async () => {
         if (generation !== connectionGeneration || connection !== conn) return;
+        latency.finish(protocolProbe); // this call alone: timing the next one too read double after every reconnect
         await conn.reducers.registerClientVersion({ clientVersion: GAME_VERSION });
         if (generation !== connectionGeneration || connection !== conn) return;
         protocolReadyGeneration = generation;
         accountService.clearRetry();
-        recordLatency(protocolStartedAt);
         const isCurrentConnection = () => {
           const current = generation === connectionGeneration && connection === conn;
           if (current) touchServerActivity();
@@ -874,7 +861,7 @@ export const wildstatCoop = {
     lifecycle: connectionLifecycle, reconnect: reconnectScheduler,
     connected: () => Boolean(connection?.isActive && hydrationReady),
     flags: () => [protocolBlocked, wakeReconnectVisible, networkReconnectVisible, quietReturn.active()],
-    latency: () => latencyMs,
+    latency: () => latency.value(),
   }),
   beginStartupTelemetryStage(stage: StartupTelemetryStage) {
     return startupTelemetryRuntime.beginStage(stage);
