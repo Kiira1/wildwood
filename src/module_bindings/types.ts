@@ -725,6 +725,11 @@ export type LatestChatMessages = __Infer<typeof LatestChatMessages>;
 export const LatestChatMessagesWithReactions = __t.object("LatestChatMessagesWithReactions", {});
 export type LatestChatMessagesWithReactions = __Infer<typeof LatestChatMessagesWithReactions>;
 
+export const LeaderboardDirty = __t.object("LeaderboardDirty", {
+  identity: __t.identity(),
+});
+export type LeaderboardDirty = __Infer<typeof LeaderboardDirty>;
+
 export const LeaderboardEntryV2 = __t.object("LeaderboardEntryV2", {
   identity: __t.identity(),
   displayName: __t.string(),
@@ -1594,6 +1599,16 @@ export const PlayerLastLocation = __t.object("PlayerLastLocation", {
   facing: __t.f64(),
 });
 export type PlayerLastLocation = __Infer<typeof PlayerLastLocation>;
+
+export const PlayerLeaderboardStanding = __t.object("PlayerLeaderboardStanding", {
+  identity: __t.identity(),
+  prestige: __t.u32(),
+  power: __t.f64(),
+  playedMicros: __t.u64(),
+  joinedAtMicros: __t.u64(),
+  pages: __t.array(__t.u32()),
+});
+export type PlayerLeaderboardStanding = __Infer<typeof PlayerLeaderboardStanding>;
 
 export const PlayerLegalConsent = __t.object("PlayerLegalConsent", {
   identity: __t.identity(),

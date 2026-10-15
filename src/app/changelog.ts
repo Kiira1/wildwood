@@ -1,4 +1,9 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.908.0": [
+    "Leaderboard: Power, Prestige and Time Played",
+    "Time Played can show only accounts that joined in the last 30 or 7 days",
+    "Auto Farm pauses for a duel and picks up again afterwards",
+  ],
   "0.907.0": [
     "Auto Farm keeps going when you pick a map after an update",
     "Fights send less data, so the server keeps up more easily",
@@ -3393,6 +3398,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.908.0": "2026-10-15",
   "0.907.0": "2026-10-15",
   "0.906.4": "2026-10-15",
   "0.906.3": "2026-10-15",

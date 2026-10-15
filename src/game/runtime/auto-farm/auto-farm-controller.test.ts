@@ -271,6 +271,21 @@ describe('autofarm', () => {
     expect(s.tick().x).toBeGreaterThan(0);
   });
 
+  it('holds through a duel and farms on afterwards with the same sliders', () => {
+    const s = setup(); s.add('Bramble', 1500, 500); s.farm.start('Bramble');
+    const shares = s.farm.state().shares;
+    const home = { x: s.player.x, y: s.player.y };
+    // In the arena: far outside the world, and a lost duel leaves 0 health until the result closes.
+    s.setPaused(true); s.player.x = -50_000; s.player.hp = 0;
+    s.farm.refresh();
+    expect(s.tick()).toEqual(idle);
+    expect(s.farm.state()).toMatchObject({ active: true, status: 'Paused' });
+    s.setPaused(false); Object.assign(s.player, home, { hp: s.player.maxHp });
+    s.farm.refresh();
+    expect(s.tick().x).toBeGreaterThan(0);
+    expect(s.farm.state().shares).toEqual(shares);
+  });
+
   it('keeps farming through a death: holds while the player is down and picks the camp up again after the respawn', () => {
     const s = setup(); s.add('Bramble', 1500, 500); s.farm.start('Bramble');
     expect(s.tick().x).toBeGreaterThan(0);

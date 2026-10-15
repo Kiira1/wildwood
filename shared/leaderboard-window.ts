@@ -1,13 +1,29 @@
-export const LEADERBOARD_STATS = ["power", "damage", "health", "armor", "regen", "time"] as const;
-export type LeaderboardStat = typeof LEADERBOARD_STATS[number];
+/**
+ * The boards. Power ranks everyone by power; Prestige by prestige level, power
+ * breaking ties; Time Played by hours, over every account or only those that
+ * joined in the last 30 or 7 days. Each is stored as pages of 100 identities
+ * (spacetimedb/src/leaderboard-pages.ts).
+ */
+export const LEADERBOARD_BOARDS = ["power", "prestige", "time", "time-30d", "time-7d"] as const;
+export type LeaderboardBoard = typeof LEADERBOARD_BOARDS[number];
+/** The window's three tabs; Time Played picks one of its boards by account age. */
+export const LEADERBOARD_TABS = ["power", "prestige", "time"] as const;
+export type LeaderboardStat = typeof LEADERBOARD_TABS[number];
+export const LEADERBOARD_AGE_FILTERS = [
+  { board: "time", days: 0, label: "Any Account Age" },
+  { board: "time-30d", days: 30, label: "Joined Last 30 Days" },
+  { board: "time-7d", days: 7, label: "Joined Last 7 Days" },
+] as const satisfies readonly { board: LeaderboardBoard; days: number; label: string }[];
 export const LEADERBOARD_PAGE_SIZE = 100;
 /** Dragon access is reset by prestige, but a prestige level proves the player beat it. */
 export function leaderboardEligible(desertUnlocked: boolean | undefined, prestigeLevel: number | undefined): boolean {
   return Boolean(desertUnlocked || (prestigeLevel ?? 0) > 0);
 }
-export function leaderboardStat(value: string): LeaderboardStat {
-  if (!(LEADERBOARD_STATS as readonly string[]).includes(value)) throw new Error("Unknown leaderboard stat");
-  return value as LeaderboardStat;
+/** A requested board. The stat boards a client before 0.908 asks for read the Power board. */
+export function leaderboardBoard(value: string): LeaderboardBoard {
+  if ((LEADERBOARD_BOARDS as readonly string[]).includes(value)) return value as LeaderboardBoard;
+  if (["damage", "health", "armor", "regen"].includes(value)) return "power";
+  throw new Error("Unknown leaderboard board");
 }
 export function leaderboardWindowRanks(rank: number, total: number) {
   const ranks = new Set<number>();
@@ -25,16 +41,4 @@ export type LeaderboardPage<Entry> = {
   endRank: number;
   localRank: number;
   total: number;
-};
-
-/** One prestige level's board, and every level that has anyone on it. */
-/**
- * The switcher's choice for the combined board: every player, highest prestige
- * first. It is read from the combined pages, never sent as a prestige level.
- */
-export const GLOBAL_LEADERBOARD_PRESTIGE = -1;
-
-export type PrestigeLeaderboardPage<Entry> = LeaderboardPage<Entry> & {
-  prestige: number;
-  levels: number[];
 };

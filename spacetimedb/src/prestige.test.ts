@@ -344,7 +344,7 @@ it("keeps a prestiged player on the leaderboard at their reset power", () => {
   expect(entry).toBeTruthy();
   expect(entry.powerLevel).toBeLessThan(5_000_000);
   expect(entry.damage).toBeLessThan(5_000_000);
-  expect(f.db.leaderboardPosition.identity.find(f.ctx.sender)?.ranks[0]).toBeGreaterThan(0);
+  expect(f.db.leaderboardStanding.identity.find(f.ctx.sender)?.pages[0]).toBeGreaterThan(0);
 });
 
 it("respecs every spent perk point back for free, as often as wanted, keeping the run's stats, map and gear", () => {

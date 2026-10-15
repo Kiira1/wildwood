@@ -263,21 +263,18 @@ const afterUpdateGateShell = String.raw`
     <h2 id="leaderboardTitle" class="window-banner window-banner--gold"><span>Leaderboard</span></h2>
     <section id="leaderboardPodium" class="leaderboard-podium" aria-label="Top three players" hidden></section>
     <div class="profile-tabs leaderboard-tabs" role="tablist" aria-label="Leaderboard stat">
-      <button id="leaderboardPowerTab" class="profile-tab is-active" type="button" role="tab" aria-selected="true" aria-label="Power"></button>
-      <button id="leaderboardDamageTab" class="profile-tab" type="button" role="tab" aria-selected="false" aria-label="Damage"></button>
-      <button id="leaderboardHealthTab" class="profile-tab" type="button" role="tab" aria-selected="false" aria-label="Health"></button>
-      <button id="leaderboardArmorTab" class="profile-tab" type="button" role="tab" aria-selected="false" aria-label="Armor"></button>
-      <button id="leaderboardRegenTab" class="profile-tab" type="button" role="tab" aria-selected="false" aria-label="Regen"></button>
-      <button id="leaderboardTimeTab" class="profile-tab" type="button" role="tab" aria-selected="false" aria-label="Time"></button>
+      <button id="leaderboardPowerTab" class="profile-tab is-active" type="button" role="tab" aria-selected="true">Power</button>
+      <button id="leaderboardPrestigeTab" class="profile-tab" type="button" role="tab" aria-selected="false">Prestige</button>
+      <button id="leaderboardTimeTab" class="profile-tab" type="button" role="tab" aria-selected="false">Time Played</button>
     </div>
-    <div class="leaderboard-column-headings" aria-hidden="true"><span>RANK</span><span class="leaderboard-player-heading">PLAYER</span><span id="leaderboardValueHeading">POWER</span></div>
+    <div class="leaderboard-column-headings" aria-hidden="true"><span>Rank</span><span class="leaderboard-player-heading">Player</span><span id="leaderboardValueHeading">Power</span></div>
     <div class="leaderboard-scroll">
     <ol id="leaderboardRows" class="leaderboard-rows"></ol>
     <div id="leaderboardLoading" class="leaderboard-loading" role="status" aria-label="Loading leaderboard" hidden><span class="leaderboard-spinner" aria-hidden="true"></span></div>
     <div id="leaderboardEmpty" class="profile-loading" hidden>NO RANKINGS YET</div>
     </div>
     <div class="leaderboard-prestige">
-      <div id="leaderboardPrestigeChips" class="leaderboard-prestige-chips" role="listbox" aria-label="Prestige level" hidden></div>
+      <div id="leaderboardPrestigeChips" class="leaderboard-prestige-chips" role="listbox" aria-label="Account age" hidden></div>
       <button id="leaderboardPrestigeHeading" class="leaderboard-prestige-heading" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="leaderboardPrestigeChips"></button>
     </div>
     <footer class="window-back-footer">

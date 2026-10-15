@@ -42,7 +42,7 @@ import { mergeSoulDimensionRows, removeSoulDimensionRows } from "./soul-dimensio
 import { mergeIgnoredDrops, removeIgnoredDrops } from "./ignored-drops";
 import { mergeOfflinePreference } from "./offline-preference";
 import { mergeLinkedPrestige } from "./prestige-transfer";
-import { moveLeaderboardPrestigePosition } from "./leaderboard-pages";
+import { moveLeaderboardStanding } from "./leaderboard-pages";
 import { unlinkPatreon } from "./patreon";
 import { clearProceduralProgress, mergeProceduralProgress } from "./procedural-maps";
 import { deleteSnapshotRow, insertSnapshotRow, updateSnapshotRow } from "./snapshot-row-writes";
@@ -147,7 +147,7 @@ const PLAYER_STATE_TABLES: ReadonlySet<string> = new Set([
   "connectionDiagnostic", "connectionDiagnosticRate", "dailyGemBonus", "developerPresencePreference",
   "endlessTravelAccess",
   "gemKillDaily", "gemKillProgress", "gemTransaction", "guildMemberQuestWeek", "guildRejoin",
-  "homeReturnLocation", "leaderboardPosition", "leaderboardPrestigePosition", "loginMove",
+  "homeReturnLocation", "leaderboardDirty", "leaderboardPosition", "leaderboardPrestigePosition", "leaderboardStanding", "loginMove",
   "offlineProgress", "patreonPreview", "playerAggroChallenge", "playerAggroChallengeParked", "playerBonusToggle", "playerNameColor",
   "playerMining", "playerMinedNode", "playerMiningLevel",
   "playerDailyQuest", "playerEndlessRebaseBackup", "playerFreeRespec",
@@ -483,7 +483,7 @@ export function createAccountLifecycle(deps: AccountLifecycleDeps) {
       else ctx.db.leaderboardEntry.insert(nextLeaderboardEntry);
     }
     if (guestLeaderboardEntry) ctx.db.leaderboardEntry.identity.delete(link.guest);
-    moveLeaderboardPrestigePosition(ctx, link.guest, ctx.sender);
+    moveLeaderboardStanding(ctx, link.guest, ctx.sender);
 
     // Migration transfers a guest save into the authenticated identity. Leave
     // no second durable save behind; otherwise an old guest token can later

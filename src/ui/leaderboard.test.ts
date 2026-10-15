@@ -40,7 +40,7 @@ describe("leaderboard podium", () => {
       [1, "Alpha"],
       [2, "Bravo"],
     ]);
-    expect(leaderboardPodiumEntries("damage", entries).map(({ rank, entry: player }) => [rank, player?.name])).toEqual([
+    expect(leaderboardPodiumEntries("time", entries.map(row => ({ ...row, playedSeconds: row.damage }))).map(({ rank, entry: player }) => [rank, player?.name])).toEqual([
       [3, "Delta"],
       [1, "Bravo"],
       [2, "Charlie"],
@@ -53,7 +53,7 @@ describe("leaderboard podium", () => {
   });
 
   it("formats podium values with the same rules as leaderboard rows", () => {
-    expect(leaderboardValueText("regen", entry("r", "Regen", { regen: 12.345 }))).toBe("12.3/s");
+    expect(leaderboardValueText("power", entry("p", "Power", { power: 12_345 }))).toBe("12.3k");
     expect(leaderboardValueText("time", entry("t", "Time", { playedSeconds: 9_000 }))).toBe("2h 30m");
   });
 });

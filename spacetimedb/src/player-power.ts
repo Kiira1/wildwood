@@ -39,6 +39,8 @@ export function ensurePlayerLifetime(ctx: any) {
 }
 
 export function finishLifetimeSession(ctx: any, identity: any) {
+  // Their last minutes of play reach the leaderboard at its next snapshot, though they are offline by then.
+  if (ctx.db.leaderboardDirty && !ctx.db.leaderboardDirty.identity.find(identity)) ctx.db.leaderboardDirty.insert({ identity });
   const lifetime = ctx.db.playerLifetime.identity.find(identity);
   if (!lifetime) return;
   const elapsed = ctx.timestamp.microsSinceUnixEpoch - lifetime.sessionStartedAt.microsSinceUnixEpoch;

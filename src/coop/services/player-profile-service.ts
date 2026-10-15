@@ -1,7 +1,7 @@
 import { isDeveloperIdentity } from "../../../shared/developer-identity";
 import { withRequestDeadline } from "./request-deadline";
 import { unsubscribeIfActive, type ActiveSubscription } from "./subscription-handoff";
-import { GLOBAL_LEADERBOARD_PRESTIGE, type LeaderboardStat, type PrestigeLeaderboardPage } from "../../../shared/leaderboard-window";
+import type { LeaderboardBoard, LeaderboardPage, LeaderboardStat } from "../../../shared/leaderboard-window";
 import { Identity } from "spacetimedb";
 import { tables, type DbConnection } from "../../module_bindings";
 import { createEmptyResearchRanks } from "../../../shared/research";
@@ -76,7 +76,7 @@ export function createPlayerProfileService(dependencies: PlayerProfileServiceDep
   const playerProfileLoads = new Map<string, Promise<PlayerProfileData | null>>();
   let leaderboardGeneration = 0;
   const leaderboardRequests = new Map<LeaderboardStat, Promise<LeaderboardEntry[]>>();
-  const leaderboardPages = new Map<string, Promise<PrestigeLeaderboardPage<LeaderboardEntry>>>();
+  const leaderboardPages = new Map<string, Promise<LeaderboardPage<LeaderboardEntry>>>();
   let activeIdentity = "";
   let activeSubscription: ActiveSubscription | null = null;
   let profileGeneration = 0;
@@ -343,19 +343,15 @@ export function createPlayerProfileService(dependencies: PlayerProfileServiceDep
     return request;
   }
 
-  /** One prestige level's board; 0 is the players who have never prestiged. */
-  function loadLeaderboardPage(stat: LeaderboardStat, prestige: number, startRank = 0, count = 100): Promise<PrestigeLeaderboardPage<LeaderboardEntry>> {
-    const key = `${stat}:${prestige}:${startRank}:${count}`;
+  /** One board's ranks; a start of 0 opens at the viewer. */
+  function loadLeaderboardPage(board: LeaderboardBoard, startRank = 0, count = 100): Promise<LeaderboardPage<LeaderboardEntry>> {
+    const key = `${board}:${startRank}:${count}`;
     const existing = leaderboardPages.get(key);
     if (existing) return existing;
     const connection = dependencies.connection();
     if (!connection?.isActive) return Promise.reject(new Error("Not connected. Try again."));
     const generation = leaderboardGeneration, identity = dependencies.localIdentity();
-    // Global reads the combined pages; it has no level list of its own.
-    const fetchPage = prestige === GLOBAL_LEADERBOARD_PRESTIGE
-      ? connection.procedures.getLeaderboardPage({ stat, startRank, count }).then(page => ({ ...page, prestige, levels: [] as number[] }))
-      : connection.procedures.getPrestigeLeaderboardPage({ stat, prestige, startRank, count });
-    const request = withRequestDeadline(fetchPage).then(page => {
+    const request = withRequestDeadline(connection.procedures.getLeaderboardPage({ stat: board, startRank, count })).then(page => {
       if (generation !== leaderboardGeneration || connection !== dependencies.connection() || identity !== dependencies.localIdentity()) throw new Error("Session changed. Reopen the leaderboard.");
       const entries = page.entries.map(({ rank, entry: row }) => {
         const entry = { ...leaderboardEntryFromRow(row), rank };
@@ -369,11 +365,12 @@ export function createPlayerProfileService(dependencies: PlayerProfileServiceDep
     return request;
   }
 
-  /** Where a searched player stands on a board: their rank, and the prestige level whose board holds it. Rank 0 is unranked. */
-  function findLeaderboardSpot(stat: LeaderboardStat, prestige: number, identity: string): Promise<{ rank: number; prestige: number }> {
+  /** Where a searched player stands on a board. Rank 0 is unranked. */
+  function findLeaderboardSpot(board: LeaderboardBoard, identity: string): Promise<number> {
     const connection = dependencies.connection();
     if (!connection?.isActive) return Promise.reject(new Error("Not connected. Try again."));
-    return withRequestDeadline(connection.procedures.findLeaderboardPlayer({ stat, prestige, identity: Identity.fromString(identity.replace(/^0x/, "")) }));
+    return withRequestDeadline(connection.procedures.findLeaderboardPlayer({ stat: board, prestige: -1, identity: Identity.fromString(identity.replace(/^0x/, "")) }))
+      .then(spot => spot.rank);
   }
 
   return {

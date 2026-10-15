@@ -1,10 +1,11 @@
 import { applyAvatarFrame } from "../app/avatar-frames";
-import { appendPlayerNameTags, appendPrestigeBadge } from "../app/player-name-tags";
-import { formatCompactNumber, formatRate } from "./number-format";
+import { appendPlayerNameTags, appendPrestigeBadge, playerPrestigeLevel } from "../app/player-name-tags";
+import { LEADERBOARD_TABS, type LeaderboardStat } from "../../shared/leaderboard-window";
+import { formatCompactNumber } from "./number-format";
 import type { LeaderboardEntry } from "../wildstat-coop";
 import { appendPlayerGenderIcon } from "./player-gender";
 
-export type LeaderboardStat = "power" | "damage" | "health" | "armor" | "regen" | "time";
+export type { LeaderboardStat };
 export type LeaderboardPodiumRank = 1 | 2 | 3;
 
 export type RenderedLeaderboardPodiumPlayer = {
@@ -30,8 +31,9 @@ export function formatPlayedTime(seconds: number) {
   return `${minutes}m`;
 }
 
-export function leaderboardValueKey(stat: LeaderboardStat): "power" | "damage" | "maxHp" | "armor" | "regen" | "playedSeconds" {
-  return stat === "health" ? "maxHp" : stat === "time" ? "playedSeconds" : stat;
+/** What orders a list without ranks; the Prestige board breaks ties by power, so power stands in for it. */
+export function leaderboardValueKey(stat: LeaderboardStat): "power" | "playedSeconds" {
+  return stat === "time" ? "playedSeconds" : "power";
 }
 
 export function sortedLeaderboardEntries(stat: LeaderboardStat, entries: LeaderboardEntry[], limit = Infinity) {
@@ -46,8 +48,8 @@ export function leaderboardValueText(stat: LeaderboardStat, entry: LeaderboardEn
   const valueKey = leaderboardValueKey(stat);
   return stat === "time"
     ? formatPlayedTime(entry.playedSeconds)
-    : stat === "regen"
-      ? `${formatRate(entry.regen)}/s`
+    : stat === "prestige"
+      ? String(playerPrestigeLevel(entry.identity))
       : formatCompactNumber(entry[valueKey]);
 }
 
@@ -67,20 +69,13 @@ export function setLeaderboardTab(
   elements: LeaderboardElements,
   requested: string,
 ): LeaderboardStat {
-  const stat = (["power", "damage", "health", "armor", "regen", "time"] as const)
-    .includes(requested as LeaderboardStat)
-    ? requested as LeaderboardStat
-    : "power";
+  const stat = (LEADERBOARD_TABS as readonly string[]).includes(requested) ? requested as LeaderboardStat : "power";
   for (const [tab, element] of Object.entries(elements.tabs) as Array<[LeaderboardStat, HTMLElement]>) {
     const active = tab === stat;
     element.classList.toggle("is-active", active);
     element.setAttribute("aria-selected", String(active));
   }
-  elements.valueHeading.textContent = stat === "health"
-    ? "HEALTH"
-    : stat === "time"
-      ? "TIME PLAYED"
-      : stat.toUpperCase();
+  elements.valueHeading.textContent = stat === "time" ? "Time Played" : stat === "prestige" ? "Prestige" : "Power";
   return stat;
 }
 

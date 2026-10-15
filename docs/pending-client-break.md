@@ -16,6 +16,9 @@ remove their declarations, in the next release that breaks clients:
 - `prestige_expansion`: the countdown ended on 2026-09-30.
 - `player_wide_stats`, `player_combat_rating`: copied onto `player_progress` by migration 57.
   `deleteProgressExtras` (`wide-stats.ts`) still clears them on account removal.
+- `leaderboard_position`, `leaderboard_prestige_position`, `leaderboard_prestige_rank_page`,
+  `leaderboard_prestige_size` (0.908.0): the per-prestige-level boards. The first full snapshot
+  empties them; also drop the `getPrestigeLeaderboardPage` procedure older tabs still call.
 
     spacetime sql -s maincloud wildwood-coop "DELETE FROM player_balance_version"
 
