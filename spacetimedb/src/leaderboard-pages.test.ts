@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { crystalFixture, identity, server } from "../../tests/helpers/crystal-hollows-fixture";
 import { Identity, Timestamp } from "../../tests/helpers/spacetime-memory-db";
-import { findLeaderboardSpot, moveLeaderboardStanding, readLeaderboardPage, readLeaderboardWindow, readPrestigeLeaderboardPage, writeLeaderboardPages, type Standing } from "./leaderboard-pages";
+import { findLeaderboardSpot, moveLeaderboardStanding, readLeaderboardPage, readLeaderboardRanks, readLeaderboardWindow, readPrestigeLeaderboardPage, writeLeaderboardPages, type Standing } from "./leaderboard-pages";
 import { markLeaderboardDirty, refreshLeaderboard } from "./leaderboard-refresh";
 import { eraseIdentityRows } from "./account-erasure";
 import { ATTACK_BALANCE_VERSION, SPACETIME_AUTH_CLIENT_ID, SPACETIME_AUTH_ISSUER } from "../../shared/rules";
@@ -18,7 +18,7 @@ function writeBoards(f: Fixture, rows: Standing[]) {
   for (const row of rows) {
     if (!f.db.leaderboardEntry.identity.find(row.identity)) f.seed("leaderboardEntry", { identity: row.identity, displayName: `P${row.power}`, isGuest: false });
   }
-  const pages = writeLeaderboardPages(f.ctx as never, rows, NOW);
+  const pages = writeLeaderboardPages(f.ctx as never, rows);
   for (const row of rows) {
     const next = { ...row, pages: pages.get(row.identity.toHexString())! };
     if (f.db.leaderboardStanding.identity.find(row.identity)) f.db.leaderboardStanding.identity.update(next);
@@ -42,15 +42,19 @@ describe("leaderboard boards", () => {
     expect(names(readLeaderboardPage(as(f, a), "prestige", 0, 100).entries)[2]).toBe("3:P10");
   });
 
-  it("filters Time Played by how long ago the account joined", () => {
+  it("ranks Account Created oldest first, and Rivals by power within the viewer's own prestige", () => {
     const f = crystalFixture();
-    const [veteran, month, week] = [numbered(1), numbered(2), numbered(3)];
-    writeBoards(f, [standing(veteran, 1, { hours: 500, joinedDaysAgo: 200 }), standing(month, 2, { hours: 40, joinedDaysAgo: 20 }),
-      standing(week, 3, { hours: 30, joinedDaysAgo: 3 })]);
-    expect(readLeaderboardPage(as(f, week), "time", 0, 100).total).toBe(3);
-    expect(names(readLeaderboardPage(as(f, week), "time-30d", 0, 100).entries)).toEqual(["1:P2", "2:P3"]);
-    expect(readLeaderboardPage(as(f, week), "time-7d", 0, 100)).toMatchObject({ total: 1, localRank: 1 });
-    expect(readLeaderboardPage(as(f, veteran), "time-7d", 0, 100).localRank).toBe(0);
+    const [veteran, middle, newest, rival] = [numbered(1), numbered(2), numbered(3), numbered(4)];
+    writeBoards(f, [standing(veteran, 1, { joinedDaysAgo: 200 }), standing(middle, 2, { joinedDaysAgo: 20 }),
+      standing(newest, 3, { joinedDaysAgo: 3, prestige: 2 }), standing(rival, 9, { joinedDaysAgo: 50, prestige: 2 })]);
+    expect(names(readLeaderboardRanks(as(f, newest), "created", 0, 100).entries)).toEqual(["1:P1", "2:P9", "3:P2", "4:P3"]);
+    expect(readLeaderboardRanks(as(f, newest), "created", 0, 100).entries[0].joinedAtMicros).toBe(NOW - 200n * DAY);
+    expect(readLeaderboardRanks(as(f, newest), "rivals", 0, 100)).toMatchObject({ total: 2, localRank: 2, prestige: 2 });
+    expect(names(readLeaderboardRanks(as(f, newest), "rivals", 0, 100).entries)).toEqual(["1:P9", "2:P3"]);
+    expect(names(readLeaderboardRanks(as(f, veteran), "rivals", 0, 100).entries)).toEqual(["1:P2", "2:P1"]);
+    // A searched player on another level is not on the viewer's Rivals board.
+    expect(findLeaderboardSpot(as(f, veteran), "rivals", -1, rival).rank).toBe(0);
+    expect(findLeaderboardSpot(as(f, newest), "rivals", -1, rival).rank).toBe(1);
   });
 
   it("rewrites only the pages whose players changed", () => {
@@ -61,8 +65,8 @@ describe("leaderboard boards", () => {
     const updates = vi.spyOn(f.db.leaderboardRankPage.key, "update");
     // The last player overtakes the one above them: only the third page of each board changes.
     rows[249] = { ...rows[249], power: 752.5, playedMicros: 752n * 3_600_000_000n + 1n };
-    writeLeaderboardPages(f.ctx as never, rows, NOW);
-    expect(updates.mock.calls.map(([page]) => (page as { key: string }).key).sort()).toEqual(["power:2", "prestige:2", "time:2"]);
+    writeLeaderboardPages(f.ctx as never, rows);
+    expect(updates.mock.calls.map(([page]) => (page as { key: string }).key).sort()).toEqual(["power:2", "prestige:2", "rivals:0:2", "time:2"]);
   });
 
   it("reads a window of the top three and the hundred around the viewer, from their page", () => {
@@ -122,7 +126,8 @@ describe("leaderboard snapshots", () => {
     f.seed("leaderboardPrestigeSize", { prestige: 0, total: 1 });
     refreshLeaderboard(f.ctx);
     expect(f.db.leaderboardStanding.identity.find(gone)).toBeTruthy();
-    expect([...f.db.leaderboardPrestigePosition.iter(), ...f.db.leaderboardPrestigeSize.iter()]).toHaveLength(0);
+    expect([...f.db.leaderboardPrestigePosition.iter()]).toHaveLength(0);
+    expect(f.db.leaderboardPrestigeSize.prestige.find(0)).toMatchObject({ total: 2 });
     f.patch("playerProgress", { desertUnlocked: false }, gone);
     refreshLeaderboard(f.ctx);
     expect(f.db.leaderboardStanding.identity.find(gone)).toBeNull();

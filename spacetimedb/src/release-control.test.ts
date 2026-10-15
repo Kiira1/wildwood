@@ -32,3 +32,17 @@ it("does not revive an expired release", () => {
   f.run(server.setReleaseWindow, { ...args, id: "replacement", startsAt: 500000 });
   expect(() => f.run(server.setReleaseWindow, { ...args, phase: "cancelled" })).toThrow("changed");
 });
+it("announces a live client to open tabs: a short updating window, then a completed one with a reload", () => {
+  const f = crystalFixture();
+  const notice = () => parseReleaseWindow(f.db.releaseNotice.id.find(0)?.releaseJson);
+  expect(() => f.run(server.announceClientUpdate, { version: "0.908.2", step: "start" })).toThrow("owner");
+  f.ctx.sender = owner;
+  expect(() => f.run(server.announceClientUpdate, { version: "0.908.2", step: "finish" })).toThrow("under way");
+  f.run(server.announceClientUpdate, { version: "0.908.2", step: "start" });
+  expect(notice()).toMatchObject({ phase: "updating", version: "0.908.2", reload: true });
+  f.run(server.announceClientUpdate, { version: "0.908.2", step: "finish" });
+  expect(notice()).toMatchObject({ phase: "complete", version: "0.908.2", reload: true });
+  // A scheduled release is never overwritten by an announcement.
+  f.run(server.setReleaseWindow, args);
+  expect(() => f.run(server.announceClientUpdate, { version: "0.908.3", step: "start" })).toThrow("under way");
+});

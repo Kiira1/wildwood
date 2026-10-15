@@ -1,8 +1,8 @@
 import { playerNameTagsRevision } from "../app/player-name-tags";
-import { renderLeaderboard, renderLeaderboardPodium, setLeaderboardTab, type LeaderboardStat, type RenderedLeaderboardPodiumPlayer } from "./leaderboard";
+import { leaderboardValueHeading, renderLeaderboard, renderLeaderboardPodium, setLeaderboardTab, type LeaderboardStat, type RenderedLeaderboardPodiumPlayer } from "./leaderboard";
 import type { LeaderboardEntry } from "../wildstat-coop";
 import type { LeaderboardBoard, LeaderboardPage } from "../../shared/leaderboard-window";
-import { renderLeaderboardAgeFilter } from "./leaderboard-age-filter";
+import { renderLeaderboardViewSwitch } from "./leaderboard-view-switch";
 import { createPlayerSearch } from "./player-search";
 import type { PlayerDirectoryEntry } from "../../shared/player-search";
 
@@ -40,13 +40,13 @@ export type LeaderboardControllerHooks = {
 
 export function createLeaderboardController(elements: LeaderboardControllerElements, hooks: LeaderboardControllerHooks) {
   const scroller = elements.rows.closest<HTMLElement>(".leaderboard-scroll") ?? elements.rows;
-  let stat: LeaderboardStat = "power", requestGeneration = 0, snapshotIdentity = "", error = "";
+  let stat: LeaderboardStat = "rivals", requestGeneration = 0, snapshotIdentity = "", error = "";
   let loading = false, snapshot: Window | undefined, lastScrollTop = 0;
-  // Keyed by board: Time Played has one per account age.
+  // Keyed by board: the Time Played tab has two, Time Played and Account Created.
   const snapshots = new Map<LeaderboardBoard, Window>();
   let timeBoard: LeaderboardBoard = "time";
   const board = (): LeaderboardBoard => stat === "time" ? timeBoard : stat;
-  // Another account age empties the podium while it loads, so one age's winners never stand on another's.
+  // A switch between Time Played and Account Created empties the podium while it loads, so one's winners never stand on the other's.
   let clearPodium = false;
   let podiumPlayers: RenderedLeaderboardPodiumPlayer[] = [], nameTagRevision = -1;
   let podiumDirty = true;
@@ -106,7 +106,7 @@ export function createLeaderboardController(elements: LeaderboardControllerEleme
   }
   function renderRows(center = false) {
     const saved = center ? undefined : anchor();
-    renderLeaderboard({ rows: elements.rows, empty: elements.empty }, stat, snapshot?.entries ?? [], hooks.localIdentity(), actions);
+    renderLeaderboard({ rows: elements.rows, empty: elements.empty }, board(), snapshot?.entries ?? [], hooks.localIdentity(), actions);
     if (snapshot?.entries.length) {
       if (snapshot.startRank > 1) elements.rows.prepend(edge("above"));
       if (snapshot.endRank < snapshot.total) elements.rows.append(edge("below"));
@@ -116,8 +116,9 @@ export function createLeaderboardController(elements: LeaderboardControllerEleme
     if (center) centerPlayer(); else restore(saved);
   }
   function renderFilter() {
-    renderLeaderboardAgeFilter({ chips: elements.filterChips, heading: elements.filterHeading },
-      { filterable: stat === "time", board: board(), localRank: snapshot?.localRank ?? 0, loading }, pickAge);
+    renderLeaderboardViewSwitch({ chips: elements.filterChips, heading: elements.filterHeading },
+      { tab: stat, board: board(), prestige: snapshot?.prestige, localRank: snapshot?.localRank ?? 0, loading }, pickAge);
+    elements.valueHeading.textContent = leaderboardValueHeading(board());
   }
   function render(center = false) {
     nameTagRevision = playerNameTagsRevision();
@@ -125,12 +126,12 @@ export function createLeaderboardController(elements: LeaderboardControllerEleme
     renderFilter();
     if (loading) {
       elements.rows.hidden = true; elements.empty.hidden = true; elements.loading.hidden = false;
-      if (clearPodium) { podiumPlayers = renderLeaderboardPodium(elements.podium, stat, [], actions); clearPodium = false; }
+      if (clearPodium) { podiumPlayers = renderLeaderboardPodium(elements.podium, board(), [], actions); clearPodium = false; }
       return;
     }
     elements.loading.hidden = true;
     elements.empty.textContent = error || "NO PLAYERS YET";
-    podiumPlayers = renderLeaderboardPodium(elements.podium, stat, snapshot?.podium ?? [], actions);
+    podiumPlayers = renderLeaderboardPodium(elements.podium, board(), snapshot?.podium ?? [], actions);
     podiumDirty = true;
     drawPodium();
     renderRows(center);
@@ -232,7 +233,7 @@ export function createLeaderboardController(elements: LeaderboardControllerEleme
     if (delta < 0 && top < EDGE_DISTANCE) void loadMore("above");
     else if (delta > 0 && scroller.scrollHeight - scroller.clientHeight - top < EDGE_DISTANCE) void loadMore("below");
   }
-  /** An account age on Time Played. The pick holds for the session. */
+  /** Time Played or Account Created. The pick holds for the session. */
   function pickAge(next: LeaderboardBoard) {
     timeBoard = next; clearPodium = true;
     if (!elements.overlay.hidden) void select(stat);
@@ -241,7 +242,7 @@ export function createLeaderboardController(elements: LeaderboardControllerEleme
     hooks.beforeOpen(); elements.overlay.hidden = false; elements.button.setAttribute("aria-expanded", "true");
     if (snapshotIdentity !== hooks.localIdentity()) {
       snapshots.clear(); snapshot = undefined; timeBoard = "time";
-      podiumPlayers = renderLeaderboardPodium(elements.podium, stat, [], actions);
+      podiumPlayers = renderLeaderboardPodium(elements.podium, board(), [], actions);
     }
     snapshotIdentity = hooks.localIdentity();
     await select(stat);

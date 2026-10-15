@@ -1670,7 +1670,7 @@ import {
   }); installTutorialReplay({ doc: document, showMessage, blocked: () => tutorialReplayBlocked({ running: session.isRunning(), inTutorial: Boolean(onboarding?.isActive()), dueling: isDueling(), challenge: Boolean(coop?.aggroChallenge?.()?.active || coop?.prestigeChallenge?.()?.active) }), begin: () => { autoFarm.stop(); playerInput.clear(); onboarding?.start(() => { canvasRuntime.resize(); setCurrentMap(TUTORIAL_FOREST_MAP_ID); loadProgress(); startGame(false, true); }, true); } });
 
   const scheduledUpdate = createScheduledUpdateController({
-    now: () => Date.now(), release: () => coop?.releaseWindow?.() ?? null,
+    now: () => Date.now(), release: () => coop?.releaseWindow?.() ?? null, version: GAME_VERSION,
     forcedUpdateRequired: () => coop?.accountState?.().updating === true,
     playing: () => session.hasStarted(), pause: paused => setGameplayPause("scheduled-update", paused),
     save: () => { saveProgress(true); coop?.syncMovementState?.(player.x, player.y, 0, 0, "keyboard", true); }, drain: async () => await coop?.drainForUpdate?.() ?? true,

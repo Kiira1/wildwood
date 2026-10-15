@@ -1,5 +1,5 @@
 import { table, t } from "spacetimedb/server";
-import { LEADERBOARD_AGE_FILTERS, LEADERBOARD_BOARDS, LEADERBOARD_PAGE_SIZE, leaderboardBoard, leaderboardWindowRanks, type LeaderboardBoard } from "../../shared/leaderboard-window";
+import { LEADERBOARD_BOARDS, LEADERBOARD_PAGE_SIZE, leaderboardBoard, leaderboardWindowRanks, type LeaderboardBoard } from "../../shared/leaderboard-window";
 import type { GameReducerContext, GameViewContext } from "./index";
 import type { Identity } from "spacetimedb";
 
@@ -25,6 +25,8 @@ export const leaderboardPageTables = {
     identity: t.identity().primaryKey(), prestige: t.u32(), power: t.f64(), playedMicros: t.u64(), joinedAtMicros: t.u64(),
     pages: t.array(t.u32()),
   }),
+  /** Players at each prestige level: the size of that level's Rivals board. */
+  leaderboardPrestigeSize: table({ public: false }, { prestige: t.u32().primaryKey(), total: t.u32() }),
   /** Players to recompute at the next snapshot although they are offline: they left, or something changed them. */
   leaderboardDirty: table({ name: "leaderboard_dirty", public: false }, { identity: t.identity().primaryKey() }),
   // Retired with the per-prestige-level boards (0.908); emptied by the first full snapshot and dropped in the next
@@ -38,64 +40,89 @@ export const leaderboardPageTables = {
   leaderboardPrestigeRankPage: table({ public: false }, {
     key: t.string().primaryKey(), identities: t.array(t.identity()),
   }),
-  leaderboardPrestigeSize: table({ public: false }, { prestige: t.u32().primaryKey(), total: t.u32() }),
 };
 
 export type Standing = { identity: Identity; prestige: number; power: number; playedMicros: bigint; joinedAtMicros: bigint; pages: number[] };
-const DAY_MICROS = 86_400_000_000n;
 const key = (standing: Standing) => standing.identity.toHexString();
 
 /** Each board's players in order. Ties fall to the identity, so the order never flickers between snapshots. */
-export function sortBoards(standings: readonly Standing[], nowMicros: bigint): Record<LeaderboardBoard, Standing[]> {
+export function sortBoards(standings: readonly Standing[]): Record<LeaderboardBoard, Standing[]> {
   const byIdentity = (a: Standing, b: Standing) => key(a) < key(b) ? -1 : key(a) > key(b) ? 1 : 0;
   const byPower = (a: Standing, b: Standing) => b.power - a.power || byIdentity(a, b);
   const byTime = (a: Standing, b: Standing) => (a.playedMicros > b.playedMicros ? -1 : a.playedMicros < b.playedMicros ? 1 : 0) || byIdentity(a, b);
-  const time = [...standings].sort(byTime);
-  const joinedWithin = (days: number) => (row: Standing) => nowMicros - row.joinedAtMicros < BigInt(days) * DAY_MICROS;
-  const boards = {
+  // Oldest account first; a save with no recorded start (0) goes last.
+  const created = (row: Standing) => row.joinedAtMicros > 0n ? row.joinedAtMicros : 1n << 63n;
+  const prestige = [...standings].sort((a, b) => b.prestige - a.prestige || byPower(a, b));
+  return {
+    // Each level's Rivals board is this order cut at the level: power within one prestige.
+    rivals: prestige,
     power: [...standings].sort(byPower),
-    prestige: [...standings].sort((a, b) => b.prestige - a.prestige || byPower(a, b)),
-    time,
-  } as Record<LeaderboardBoard, Standing[]>;
-  for (const filter of LEADERBOARD_AGE_FILTERS) if (filter.days) boards[filter.board] = time.filter(joinedWithin(filter.days));
-  return boards;
+    prestige,
+    time: [...standings].sort(byTime),
+    created: [...standings].sort((a, b) => (created(a) < created(b) ? -1 : created(a) > created(b) ? 1 : 0) || byIdentity(a, b)),
+  };
 }
+
+/** A page's key. Rivals has a board per prestige level. */
+const pageKey = (board: LeaderboardBoard, level: number, page: number) => board === "rivals" ? `rivals:${level}:${page}` : `${board}:${page}`;
 
 /**
  * Writes the pages that changed and returns each player's page per board, in
  * LEADERBOARD_BOARDS order. Built once per snapshot, never in a viewer's request.
  */
-export function writeLeaderboardPages(ctx: Pick<GameReducerContext, "db">, standings: readonly Standing[], nowMicros: bigint) {
-  const boards = sortBoards(standings, nowMicros);
+export function writeLeaderboardPages(ctx: Pick<GameReducerContext, "db">, standings: readonly Standing[]) {
+  const boards = sortBoards(standings);
   const pages = new Map(standings.map(row => [key(row), LEADERBOARD_BOARDS.map(() => 0)]));
-  const live = new Set<string>();
-  for (const [index, board] of LEADERBOARD_BOARDS.entries()) {
-    const rows = boards[board];
+  const live = new Set<string>(), levels = new Map<number, number>();
+  const writePages = (index: number, board: LeaderboardBoard, level: number, rows: Standing[]) => {
     for (let offset = 0, page = 0; offset < rows.length; offset += LEADERBOARD_PAGE_SIZE, page++) {
-      const identities = rows.slice(offset, offset + LEADERBOARD_PAGE_SIZE).map(row => row.identity);
-      for (const row of rows.slice(offset, offset + LEADERBOARD_PAGE_SIZE)) pages.get(key(row))![index] = page + 1;
-      const pageKey = `${board}:${page}`;
-      live.add(pageKey);
-      const old = ctx.db.leaderboardRankPage.key.find(pageKey);
-      if (!old) ctx.db.leaderboardRankPage.insert({ key: pageKey, identities });
+      const slice = rows.slice(offset, offset + LEADERBOARD_PAGE_SIZE), identities = slice.map(row => row.identity);
+      for (const row of slice) pages.get(key(row))![index] = page + 1;
+      const pageId = pageKey(board, level, page);
+      live.add(pageId);
+      const old = ctx.db.leaderboardRankPage.key.find(pageId);
+      if (!old) ctx.db.leaderboardRankPage.insert({ key: pageId, identities });
       else if (old.identities.length !== identities.length || old.identities.some((id, i) => !id.equals(identities[i]))) {
-        ctx.db.leaderboardRankPage.key.update({ key: pageKey, identities });
+        ctx.db.leaderboardRankPage.key.update({ key: pageId, identities });
       }
     }
+  };
+  for (const [index, board] of LEADERBOARD_BOARDS.entries()) {
+    const rows = boards[board];
+    if (board === "rivals") {
+      const byLevel = new Map<number, Standing[]>();
+      for (const row of rows) byLevel.set(row.prestige, [...byLevel.get(row.prestige) ?? [], row]);
+      for (const [level, levelRows] of byLevel) { writePages(index, board, level, levelRows); levels.set(level, levelRows.length); }
+    } else writePages(index, board, 0, rows);
     const size = { id: index, total: rows.length };
     const oldSize = ctx.db.leaderboardSize.id.find(index);
     if (!oldSize) ctx.db.leaderboardSize.insert(size); else if (oldSize.total !== size.total) ctx.db.leaderboardSize.id.update(size);
   }
   for (const old of [...ctx.db.leaderboardRankPage.iter()]) if (!live.has(old.key)) ctx.db.leaderboardRankPage.key.delete(old.key);
   for (const old of [...ctx.db.leaderboardSize.iter()]) if (old.id >= LEADERBOARD_BOARDS.length) ctx.db.leaderboardSize.id.delete(old.id);
+  // Players per prestige level: the size of each Rivals board.
+  for (const old of [...ctx.db.leaderboardPrestigeSize.iter()]) if (!levels.has(old.prestige)) ctx.db.leaderboardPrestigeSize.prestige.delete(old.prestige);
+  for (const [prestige, total] of levels) {
+    const old = ctx.db.leaderboardPrestigeSize.prestige.find(prestige);
+    if (!old) ctx.db.leaderboardPrestigeSize.insert({ prestige, total });
+    else if (old.total !== total) ctx.db.leaderboardPrestigeSize.prestige.update({ prestige, total });
+  }
   return pages;
+}
+
+type Viewer = Pick<GameViewContext, "db" | "sender">;
+
+/** The prestige level whose Rivals board a player is on: their standing's, else their prestige now. */
+function rivalsLevel(ctx: Pick<GameViewContext, "db">, identity: Identity) {
+  return ctx.db.leaderboardStanding.identity.find(identity)?.prestige ?? ctx.db.playerPrestige.identity.find(identity)?.level ?? 0;
 }
 
 /** A player's rank on one board: their page, then their place on it. 0 is unranked. Two key lookups. */
 export function leaderboardRank(ctx: Pick<GameViewContext, "db">, board: LeaderboardBoard, identity: Identity) {
-  const page = ctx.db.leaderboardStanding.identity.find(identity)?.pages[LEADERBOARD_BOARDS.indexOf(board)] ?? 0;
-  if (!page) return 0;
-  const place = ctx.db.leaderboardRankPage.key.find(`${board}:${page - 1}`)?.identities.findIndex(id => id.equals(identity)) ?? -1;
+  const standing = ctx.db.leaderboardStanding.identity.find(identity);
+  const page = standing?.pages[LEADERBOARD_BOARDS.indexOf(board)] ?? 0;
+  if (!standing || !page) return 0;
+  const place = ctx.db.leaderboardRankPage.key.find(pageKey(board, standing.prestige, page - 1))?.identities.findIndex(id => id.equals(identity)) ?? -1;
   return place < 0 ? 0 : (page - 1) * LEADERBOARD_PAGE_SIZE + place + 1;
 }
 
@@ -113,30 +140,35 @@ export function moveLeaderboardStanding(ctx: Pick<GameReducerContext, "db">, gue
   ctx.db.leaderboardStanding.insert({ ...standing, identity: account });
   for (const [index, board] of LEADERBOARD_BOARDS.entries()) {
     const page = standing.pages[index];
-    const row = page ? ctx.db.leaderboardRankPage.key.find(`${board}:${page - 1}`) : null;
+    const row = page ? ctx.db.leaderboardRankPage.key.find(pageKey(board, standing.prestige, page - 1)) : null;
     if (row) ctx.db.leaderboardRankPage.key.update({ ...row, identities: row.identities.map(id => id.equals(guest) ? account : id) });
   }
 }
 
-type Viewer = Pick<GameViewContext, "db" | "sender">;
-
-function readRanks(ctx: Viewer, board: LeaderboardBoard, ranks: number[]) {
+function readRanks(ctx: Viewer, board: LeaderboardBoard, level: number, ranks: number[]) {
   const pages = new Map<number, Identity[]>();
   return ranks.flatMap(rank => {
     const page = Math.floor((rank - 1) / LEADERBOARD_PAGE_SIZE);
-    if (!pages.has(page)) pages.set(page, ctx.db.leaderboardRankPage.key.find(`${board}:${page}`)?.identities ?? []);
+    if (!pages.has(page)) pages.set(page, ctx.db.leaderboardRankPage.key.find(pageKey(board, level, page))?.identities ?? []);
     const identity = pages.get(page)![(rank - 1) % LEADERBOARD_PAGE_SIZE];
     const entry = identity && ctx.db.leaderboardEntry.identity.find(identity);
-    return entry ? [{ rank, entry }] : [];
+    if (!entry) return [];
+    // When the account began, for the Account Created board; read only for the rows sent.
+    return [{ rank, entry, joinedAtMicros: ctx.db.leaderboardStanding.identity.find(identity)?.joinedAtMicros ?? 0n }];
   });
 }
 
-const boardTotal = (ctx: Viewer, board: LeaderboardBoard) => ctx.db.leaderboardSize.id.find(LEADERBOARD_BOARDS.indexOf(board))?.total ?? 0;
+const boardTotal = (ctx: Viewer, board: LeaderboardBoard, level: number) => board === "rivals"
+  ? ctx.db.leaderboardPrestigeSize.prestige.find(level)?.total ?? 0
+  : ctx.db.leaderboardSize.id.find(LEADERBOARD_BOARDS.indexOf(board))?.total ?? 0;
+
+/** Ranks and entries only, as procedures from before 0.908.2 return them. */
+const legacyRows = (rows: ReturnType<typeof readRanks>) => rows.map(({ rank, entry }) => ({ rank, entry }));
 
 /** The top three and the hundred around the viewer: at most 104 entry lookups and four pages. */
 export function readLeaderboardWindow(ctx: Viewer, requested: string) {
-  const board = leaderboardBoard(requested);
-  return readRanks(ctx, board, leaderboardWindowRanks(leaderboardRank(ctx, board, ctx.sender), boardTotal(ctx, board)));
+  const board = leaderboardBoard(requested), level = rivalsLevel(ctx, ctx.sender);
+  return legacyRows(readRanks(ctx, board, level, leaderboardWindowRanks(leaderboardRank(ctx, board, ctx.sender), boardTotal(ctx, board, level))));
 }
 
 /** Zero starts at the viewer; a later request is clamped to one page of ranks. */
@@ -150,23 +182,33 @@ function pageRanks(localRank: number, total: number, requestedStart: number, req
   return { ranks, startRank, endRank };
 }
 
-/** Zero starts at the viewer; later requests read at most 100 ranks. */
-export function readLeaderboardPage(ctx: Viewer, requested: string, requestedStart: number, requestedCount: number) {
-  const board = leaderboardBoard(requested);
-  const localRank = leaderboardRank(ctx, board, ctx.sender), total = boardTotal(ctx, board);
+/**
+ * Zero starts at the viewer; later requests read at most 100 ranks. Rivals is
+ * the viewer's own prestige level's board, and `prestige` says which.
+ */
+export function readLeaderboardRanks(ctx: Viewer, requested: string, requestedStart: number, requestedCount: number) {
+  const board = leaderboardBoard(requested), prestige = rivalsLevel(ctx, ctx.sender);
+  const localRank = leaderboardRank(ctx, board, ctx.sender), total = boardTotal(ctx, board, prestige);
   const { ranks, startRank, endRank } = pageRanks(localRank, total, requestedStart, requestedCount);
-  return { entries: readRanks(ctx, board, ranks), startRank, endRank, localRank, total };
+  return { entries: readRanks(ctx, board, prestige, ranks), startRank, endRank, localRank, total, prestige };
+}
+
+export function readLeaderboardPage(ctx: Viewer, requested: string, requestedStart: number, requestedCount: number) {
+  const { entries, startRank, endRank, localRank, total } = readLeaderboardRanks(ctx, requested, requestedStart, requestedCount);
+  return { entries: legacyRows(entries), startRank, endRank, localRank, total };
 }
 
 /**
- * Tabs from before 0.908 ask for one prestige level's board. The per-level
- * boards are gone; they get the whole board until they reload.
+ * Tabs from before 0.908 ask for one prestige level's board; they get the
+ * whole board until they reload.
  */
 export function readPrestigeLeaderboardPage(ctx: Viewer, requested: string, _level: number, requestedStart: number, requestedCount: number) {
   return { ...readLeaderboardPage(ctx, requested, requestedStart, requestedCount), prestige: -1, levels: [] as number[] };
 }
 
-/** Where one player stands on a board, for the leaderboard's search. Rank 0 is unranked. */
-export function findLeaderboardSpot(ctx: Pick<GameViewContext, "db">, requested: string, _prestige: number, identity: Identity) {
-  return { rank: leaderboardRank(ctx, leaderboardBoard(requested), identity), prestige: -1 };
+/** Where one player stands on a board, for the leaderboard's search. Rank 0 is unranked, and so is another level's rival. */
+export function findLeaderboardSpot(ctx: Viewer, requested: string, _prestige: number, identity: Identity) {
+  const board = leaderboardBoard(requested);
+  if (board === "rivals" && rivalsLevel(ctx, identity) !== rivalsLevel(ctx, ctx.sender)) return { rank: 0, prestige: -1 };
+  return { rank: leaderboardRank(ctx, board, identity), prestige: -1 };
 }

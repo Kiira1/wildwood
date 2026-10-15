@@ -263,7 +263,8 @@ const afterUpdateGateShell = String.raw`
     <h2 id="leaderboardTitle" class="window-banner window-banner--gold"><span>Leaderboard</span></h2>
     <section id="leaderboardPodium" class="leaderboard-podium" aria-label="Top three players" hidden></section>
     <div class="profile-tabs leaderboard-tabs" role="tablist" aria-label="Leaderboard stat">
-      <button id="leaderboardPowerTab" class="profile-tab is-active" type="button" role="tab" aria-selected="true">Power</button>
+      <button id="leaderboardRivalsTab" class="profile-tab is-active" type="button" role="tab" aria-selected="true" aria-label="Rivals: players at your prestige level, by power">Rivals</button>
+      <button id="leaderboardPowerTab" class="profile-tab" type="button" role="tab" aria-selected="false">Power</button>
       <button id="leaderboardPrestigeTab" class="profile-tab" type="button" role="tab" aria-selected="false">Prestige</button>
       <button id="leaderboardTimeTab" class="profile-tab" type="button" role="tab" aria-selected="false">Time Played</button>
     </div>
@@ -274,7 +275,7 @@ const afterUpdateGateShell = String.raw`
     <div id="leaderboardEmpty" class="profile-loading" hidden>NO RANKINGS YET</div>
     </div>
     <div class="leaderboard-prestige">
-      <div id="leaderboardPrestigeChips" class="leaderboard-prestige-chips" role="listbox" aria-label="Account age" hidden></div>
+      <div id="leaderboardPrestigeChips" class="leaderboard-prestige-chips" role="listbox" aria-label="Ranking" hidden></div>
       <button id="leaderboardPrestigeHeading" class="leaderboard-prestige-heading" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="leaderboardPrestigeChips"></button>
     </div>
     <footer class="window-back-footer">

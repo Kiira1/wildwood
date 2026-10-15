@@ -351,10 +351,10 @@ export function createPlayerProfileService(dependencies: PlayerProfileServiceDep
     const connection = dependencies.connection();
     if (!connection?.isActive) return Promise.reject(new Error("Not connected. Try again."));
     const generation = leaderboardGeneration, identity = dependencies.localIdentity();
-    const request = withRequestDeadline(connection.procedures.getLeaderboardPage({ stat: board, startRank, count })).then(page => {
+    const request = withRequestDeadline(connection.procedures.getLeaderboardRanks({ board, startRank, count })).then(page => {
       if (generation !== leaderboardGeneration || connection !== dependencies.connection() || identity !== dependencies.localIdentity()) throw new Error("Session changed. Reopen the leaderboard.");
-      const entries = page.entries.map(({ rank, entry: row }) => {
-        const entry = { ...leaderboardEntryFromRow(row), rank };
+      const entries = page.entries.map(({ rank, entry: row, joinedAtMicros }) => {
+        const entry = { ...leaderboardEntryFromRow(row), rank, joinedAt: Number(joinedAtMicros / 1000n) || undefined };
         dependencies.directory.rememberPresentation({ identity: entry.identity, identityValue: row.identity,
           displayName: entry.name, profileIcon: row.profileIcon, skinTone: entry.skinTone, gender: entry.gender, isGuest: entry.isGuest });
         return entry;

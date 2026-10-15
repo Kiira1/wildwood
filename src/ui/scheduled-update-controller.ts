@@ -1,9 +1,12 @@
 import { activeRelease, type ReleaseWindow } from "../../shared/release-window";
+import { isNewerGameVersion } from "../app/version";
 
 type UpdateView = { text: string; blocking: boolean; urgent: boolean };
 export function createScheduledUpdateController(d: {
   now: () => number;
   release: () => ReleaseWindow | null;
+  /** This build. A window for a version it already runs (a client update announced after it loaded) is not for it. */
+  version?: string;
   playing: () => boolean;
   forcedUpdateRequired?: () => boolean;
   pause: (paused: boolean) => void;
@@ -16,6 +19,10 @@ export function createScheduledUpdateController(d: {
 }) {
   let busy = false, acknowledged = "", retryAt = 0, paused = false, seen = "";
   let generation = 0;
+  const release = () => {
+    const notice = d.release();
+    return notice && d.version && notice.id.startsWith("client-") && !isNewerGameVersion(notice.version, d.version) ? null : notice;
+  };
   function pause(value: boolean) { if (paused !== value) { paused = value; d.pause(value); } }
   async function drain() {
     d.save();
@@ -27,7 +34,7 @@ export function createScheduledUpdateController(d: {
   }
   async function prepareReload(version: string) {
     if (!d.playing()) return true;
-    if (activeRelease(d.release(), d.now()) || busy) return false;
+    if (activeRelease(release(), d.now()) || busy) return false;
     busy = true;
     const currentGeneration = generation;
     pause(true);
@@ -36,7 +43,7 @@ export function createScheduledUpdateController(d: {
     // An already-enforced protocol change cannot acknowledge old reducers.
     // Its persisted reward queue must resume in the new client instead of
     // trapping the account on the old build indefinitely.
-    const ready = (saved || d.forcedUpdateRequired?.() === true) && currentGeneration === generation && !activeRelease(d.release(), d.now()) && d.rememberSession(version);
+    const ready = (saved || d.forcedUpdateRequired?.() === true) && currentGeneration === generation && !activeRelease(release(), d.now()) && d.rememberSession(version);
     busy = false;
     if (!ready) {
       pause(false);
@@ -45,15 +52,15 @@ export function createScheduledUpdateController(d: {
     return ready;
   }
   function tick() {
-    const release = d.release(), now = d.now();
-    const active = activeRelease(release, now);
+    const current = release(), now = d.now();
+    const active = activeRelease(current, now);
     const key = active ? `${active.id}:${active.phase}` : "";
     if (key !== seen) {
       generation++;
       seen = key;
       if (!active) {
         pause(false);
-        if (release?.phase === "complete" && release.reload) d.checkVersion();
+        if (current?.phase === "complete" && current.reload) d.checkVersion();
       }
     }
     if (!active) {
@@ -74,12 +81,12 @@ export function createScheduledUpdateController(d: {
     busy = true;
     const currentGeneration = generation;
     void drain().then(async saved => {
-      if (!saved || currentGeneration !== generation || !activeRelease(d.release(), d.now())) return;
+      if (!saved || currentGeneration !== generation || !activeRelease(release(), d.now())) return;
       await d.acknowledge(active.id);
       if (currentGeneration === generation) acknowledged = active.id;
     }).catch(() => {}).finally(() => { busy = false; retryAt = d.now() + 2_000; });
   }
-  return { tick, prepareReload, canReload: () => !activeRelease(d.release(), d.now()) };
+  return { tick, prepareReload, canReload: () => !activeRelease(release(), d.now()) };
 }
 
 export function createScheduledUpdateView(documentValue = document) {

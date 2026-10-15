@@ -83,7 +83,7 @@ it("keeps the preview mounted during a stat fetch and reuses cached tab results"
   await switching;
   expect(f.elements.podium.getAttribute("aria-busy")).toBe("false");
   expect(f.elements.podium.textContent).toContain("Health winner");
-  await f.controller.select("power");
+  await f.controller.select("rivals");
   expect(f.loadPage).toHaveBeenCalledTimes(2);
   expect(f.elements.podium.hidden).toBe(false);
   expect(f.elements.podium.textContent).toContain("Power winner");
@@ -109,7 +109,7 @@ it("centers the local rank and preserves its visual position while inserting 100
   f.elements.rows.scrollTop = 60;
   const before = f.elements.rows.querySelector<HTMLElement>('[data-rank="451"]')!.getBoundingClientRect().top;
   const loading = f.controller.loadMore("above");
-  expect(f.loadPage).toHaveBeenLastCalledWith("power", 350, 100);
+  expect(f.loadPage).toHaveBeenLastCalledWith("rivals", 350, 100);
   expect(f.elements.rows.querySelector('[data-direction="above"] .leaderboard-spinner')).not.toBeNull();
   await f.controller.loadMore("above");
   expect(f.loadPage).toHaveBeenCalledTimes(2);
@@ -121,7 +121,7 @@ it("centers the local rank and preserves its visual position while inserting 100
 it("loads 100 below, keeps rows through an error, and stops at the last rank", async () => {
   const f = fixture(), opening = f.controller.open(); f.pending[0].resolvePage(page(450, 550)); await opening;
   const next = f.controller.loadMore("below");
-  expect(f.loadPage).toHaveBeenLastCalledWith("power", 551, 100);
+  expect(f.loadPage).toHaveBeenLastCalledWith("rivals", 551, 100);
   f.pending[1].reject(new Error("Offline")); await next;
   expect(f.elements.rows.querySelectorAll(".leaderboard-row")).toHaveLength(101);
   expect(f.elements.rows.textContent).toContain("Retry");
@@ -138,7 +138,7 @@ it("caps mounted rows while allowing discarded ranges to be loaded again", async
   }
   expect(f.elements.rows.querySelectorAll(".leaderboard-row")).toHaveLength(501);
   const back = f.controller.loadMore("above");
-  expect(f.loadPage).toHaveBeenLastCalledWith("power", 450, 100);
+  expect(f.loadPage).toHaveBeenLastCalledWith("rivals", 450, 100);
   f.pending[6].resolvePage(page(450, 549, 500, 100_000)); await back;
   expect(f.elements.rows.querySelector(".is-local")).not.toBeNull();
 });
@@ -198,44 +198,46 @@ it("keeps static podium canvases between frames and redraws on resize", async ()
   expect(f.drawPodiumCharacter).toHaveBeenCalledTimes(6);
 });
 
-describe("account age on Time Played", () => {
+describe("Time Played and Account Created", () => {
   const heading = (f: ReturnType<typeof fixture>) => f.elements.filterHeading.textContent;
   const pick = (f: ReturnType<typeof fixture>, board: string) =>
     (f.elements.filterChips.querySelector(`[data-board="${board}"]`) as HTMLElement).click();
 
-  it("offers the account ages only on Time Played, and the viewer's rank on every board", async () => {
+  it("opens on Rivals for the viewer's prestige, and offers the switch only on Time Played", async () => {
     const f = fixture();
     const opened = f.controller.open();
-    f.pending[0].resolve([entry(1, "Winner"), entry(4, "me")]);
+    expect(f.loadPage).toHaveBeenLastCalledWith("rivals");
+    f.pending[0].resolvePage({ entries: [entry(1, "Winner"), entry(4, "me")], startRank: 1, endRank: 4, localRank: 4, total: 4, prestige: 3 });
     await opened;
     expect(f.elements.filterHeading.dataset.filter).toBe("off");
-    expect(heading(f)).toContain("All Players");
+    expect(heading(f)).toContain("Prestige 3 Players");
     expect(heading(f)).toContain("You're #4");
     const time = f.controller.select("time");
     expect(f.loadPage).toHaveBeenLastCalledWith("time");
     f.pending[1].resolve([entry(1, "me")]);
     await time;
     expect(f.elements.filterHeading.dataset.filter).toBe("on");
-    expect(heading(f)).toContain("Any Account Age");
+    expect(heading(f)).toContain("Time Played");
   });
 
-  it("loads the board for the picked age, keeps the pick across tabs, and forgets it for another account", async () => {
+  it("loads Account Created when picked, keeps the pick across tabs, and forgets it for another account", async () => {
     const f = fixture();
     const opened = f.controller.open();
     f.pending[0].resolve([entry(1, "Winner")]);
     await opened;
     const time = f.controller.select("time");
-    f.pending[1].resolve([entry(1, "Veteran")]);
+    f.pending[1].resolve([entry(1, "Grinder")]);
     await time;
-    pick(f, "time-7d");
-    expect(f.loadPage).toHaveBeenLastCalledWith("time-7d");
-    f.pending[2].resolve([entry(1, "Newcomer")]);
-    await vi.waitFor(() => expect(f.elements.rows.textContent).toContain("Newcomer"));
-    expect(heading(f)).toContain("Joined Last 7 Days");
-    expect(f.controller.board()).toBe("time-7d");
-    await f.controller.select("power");
+    pick(f, "created");
+    expect(f.loadPage).toHaveBeenLastCalledWith("created");
+    f.pending[2].resolve([{ ...entry(1, "Founder"), joinedAt: Date.UTC(2025, 8, 21, 12) }]);
+    await vi.waitFor(() => expect(f.elements.rows.textContent).toContain("Founder"));
+    expect(f.elements.rows.textContent).toContain("Sep 21, 2025");
+    expect(f.elements.valueHeading.textContent).toBe("Created");
+    expect(f.controller.board()).toBe("created");
+    await f.controller.select("rivals");
     await f.controller.select("time");
-    expect(f.controller.board()).toBe("time-7d");
+    expect(f.controller.board()).toBe("created");
     f.controller.close();
     f.identity("someone else");
     const reopened = f.controller.open();
@@ -253,7 +255,7 @@ describe("player search", () => {
     await opened;
     const jump = f.controller.jumpTo({ identity: "Far", name: "Far" });
     await vi.waitFor(() => expect(f.pending).toHaveLength(2));
-    expect(f.loadPage).toHaveBeenLastCalledWith("power", 851, 100);
+    expect(f.loadPage).toHaveBeenLastCalledWith("rivals", 851, 100);
     f.pending[1].resolvePage({ entries: [entry(899, "Above"), entry(900, "Far"), entry(901, "Below")], startRank: 899, endRank: 901, localRank: 5, total: 2_000 });
     await jump;
     const hit = f.elements.rows.querySelector(".is-search-hit") as HTMLElement;

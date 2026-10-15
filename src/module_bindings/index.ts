@@ -41,6 +41,7 @@ import AcceptTermsReducer from "./accept_terms_reducer";
 import AcknowledgeBalanceApologyGiftReducer from "./acknowledge_balance_apology_gift_reducer";
 import AcknowledgeOfflineSummaryReducer from "./acknowledge_offline_summary_reducer";
 import AcknowledgeReleaseReducer from "./acknowledge_release_reducer";
+import AnnounceClientUpdateReducer from "./announce_client_update_reducer";
 import ApplyBuildCardsReducer from "./apply_build_cards_reducer";
 import BeginAccountLinkReducer from "./begin_account_link_reducer";
 import BeginAdventureReducer from "./begin_adventure_reducer";
@@ -235,6 +236,7 @@ import * as GetGuildHubProcedure from "./get_guild_hub_procedure";
 import * as GetGuildPreviewProcedure from "./get_guild_preview_procedure";
 import * as GetGuildReplayProcedure from "./get_guild_replay_procedure";
 import * as GetLeaderboardPageProcedure from "./get_leaderboard_page_procedure";
+import * as GetLeaderboardRanksProcedure from "./get_leaderboard_ranks_procedure";
 import * as GetLeaderboardWindowProcedure from "./get_leaderboard_window_procedure";
 import * as GetMapBalanceProcedure from "./get_map_balance_procedure";
 import * as GetMapConfigurationProcedure from "./get_map_configuration_procedure";
@@ -1418,6 +1420,7 @@ const reducersSchema = __reducers(
   __reducerSchema("acknowledge_balance_apology_gift", AcknowledgeBalanceApologyGiftReducer),
   __reducerSchema("acknowledge_offline_summary", AcknowledgeOfflineSummaryReducer),
   __reducerSchema("acknowledge_release", AcknowledgeReleaseReducer),
+  __reducerSchema("announce_client_update", AnnounceClientUpdateReducer),
   __reducerSchema("apply_build_cards", ApplyBuildCardsReducer),
   __reducerSchema("begin_account_link", BeginAccountLinkReducer),
   __reducerSchema("begin_adventure", BeginAdventureReducer),
@@ -1614,6 +1617,7 @@ const proceduresSchema = __procedures(
   __procedureSchema("get_guild_preview", GetGuildPreviewProcedure.params, GetGuildPreviewProcedure.returnType),
   __procedureSchema("get_guild_replay", GetGuildReplayProcedure.params, GetGuildReplayProcedure.returnType),
   __procedureSchema("get_leaderboard_page", GetLeaderboardPageProcedure.params, GetLeaderboardPageProcedure.returnType),
+  __procedureSchema("get_leaderboard_ranks", GetLeaderboardRanksProcedure.params, GetLeaderboardRanksProcedure.returnType),
   __procedureSchema("get_leaderboard_window", GetLeaderboardWindowProcedure.params, GetLeaderboardWindowProcedure.returnType),
   __procedureSchema("get_map_balance", GetMapBalanceProcedure.params, GetMapBalanceProcedure.returnType),
   __procedureSchema("get_map_configuration", GetMapConfigurationProcedure.params, GetMapConfigurationProcedure.returnType),

@@ -1,28 +1,28 @@
 /**
- * The boards. Power ranks everyone by power; Prestige by prestige level, power
- * breaking ties; Time Played by hours, over every account or only those that
- * joined in the last 30 or 7 days. Each is stored as pages of 100 identities
- * (spacetimedb/src/leaderboard-pages.ts).
+ * The boards. Rivals ranks power among the viewer's own prestige level; Power
+ * ranks everyone by power; Prestige by prestige level, power breaking ties;
+ * Time Played by hours; Account Created by when the account began, oldest
+ * first. Each is stored as pages of 100 identities (spacetimedb/src/leaderboard-pages.ts).
  */
-export const LEADERBOARD_BOARDS = ["power", "prestige", "time", "time-30d", "time-7d"] as const;
+export const LEADERBOARD_BOARDS = ["rivals", "power", "prestige", "time", "created"] as const;
 export type LeaderboardBoard = typeof LEADERBOARD_BOARDS[number];
-/** The window's three tabs; Time Played picks one of its boards by account age. */
-export const LEADERBOARD_TABS = ["power", "prestige", "time"] as const;
+/** The window's tabs, Rivals first; the Time Played tab switches between its two boards. */
+export const LEADERBOARD_TABS = ["rivals", "power", "prestige", "time"] as const;
 export type LeaderboardStat = typeof LEADERBOARD_TABS[number];
-export const LEADERBOARD_AGE_FILTERS = [
-  { board: "time", days: 0, label: "Any Account Age" },
-  { board: "time-30d", days: 30, label: "Joined Last 30 Days" },
-  { board: "time-7d", days: 7, label: "Joined Last 7 Days" },
-] as const satisfies readonly { board: LeaderboardBoard; days: number; label: string }[];
+export const LEADERBOARD_TIME_VIEWS = [
+  { board: "time", label: "Time Played" },
+  { board: "created", label: "Account Created" },
+] as const satisfies readonly { board: LeaderboardBoard; label: string }[];
 export const LEADERBOARD_PAGE_SIZE = 100;
 /** Dragon access is reset by prestige, but a prestige level proves the player beat it. */
 export function leaderboardEligible(desertUnlocked: boolean | undefined, prestigeLevel: number | undefined): boolean {
   return Boolean(desertUnlocked || (prestigeLevel ?? 0) > 0);
 }
-/** A requested board. The stat boards a client before 0.908 asks for read the Power board. */
+/** A requested board. Boards older tabs ask for read the nearest one still kept. */
 export function leaderboardBoard(value: string): LeaderboardBoard {
   if ((LEADERBOARD_BOARDS as readonly string[]).includes(value)) return value as LeaderboardBoard;
   if (["damage", "health", "armor", "regen"].includes(value)) return "power";
+  if (value === "time-30d" || value === "time-7d") return "time";
   throw new Error("Unknown leaderboard board");
 }
 export function leaderboardWindowRanks(rank: number, total: number) {
@@ -41,4 +41,6 @@ export type LeaderboardPage<Entry> = {
   endRank: number;
   localRank: number;
   total: number;
+  /** The prestige level the Rivals board is for: the viewer's own. */
+  prestige?: number;
 };

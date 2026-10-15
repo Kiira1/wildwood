@@ -179,6 +179,8 @@ export type LeaderboardEntry = {
   armor: number;
   regen: number;
   playedSeconds: number;
+  /** When the account began (ms), sent with Account Created. */
+  joinedAt?: number;
   isGuest: boolean;
   skinTone: number;
   headItem: string;

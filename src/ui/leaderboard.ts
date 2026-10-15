@@ -1,11 +1,13 @@
 import { applyAvatarFrame } from "../app/avatar-frames";
 import { appendPlayerNameTags, appendPrestigeBadge, playerPrestigeLevel } from "../app/player-name-tags";
-import { LEADERBOARD_TABS, type LeaderboardStat } from "../../shared/leaderboard-window";
+import { LEADERBOARD_TABS, type LeaderboardBoard, type LeaderboardStat } from "../../shared/leaderboard-window";
 import { formatCompactNumber } from "./number-format";
 import type { LeaderboardEntry } from "../wildstat-coop";
 import { appendPlayerGenderIcon } from "./player-gender";
 
 export type { LeaderboardStat };
+/** What a list shows: a tab's board, or Time Played's Account Created. */
+export type LeaderboardView = LeaderboardBoard;
 export type LeaderboardPodiumRank = 1 | 2 | 3;
 
 export type RenderedLeaderboardPodiumPlayer = {
@@ -31,12 +33,22 @@ export function formatPlayedTime(seconds: number) {
   return `${minutes}m`;
 }
 
-/** What orders a list without ranks; the Prestige board breaks ties by power, so power stands in for it. */
-export function leaderboardValueKey(stat: LeaderboardStat): "power" | "playedSeconds" {
-  return stat === "time" ? "playedSeconds" : "power";
+/** What orders a list without ranks; Rivals and Prestige rank by power within a level, so power stands in for them. */
+export function leaderboardValueKey(view: LeaderboardView): "power" | "playedSeconds" {
+  return view === "time" ? "playedSeconds" : "power";
 }
 
-export function sortedLeaderboardEntries(stat: LeaderboardStat, entries: LeaderboardEntry[], limit = Infinity) {
+/** When an account began, as a date: "Sep 21, 2026". */
+export function formatCreatedDate(ms: number | undefined) {
+  if (!ms) return "—";
+  return new Date(ms).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+export function leaderboardValueHeading(view: LeaderboardView) {
+  return view === "time" ? "Time Played" : view === "created" ? "Created" : view === "prestige" ? "Prestige" : "Power";
+}
+
+export function sortedLeaderboardEntries(stat: LeaderboardView, entries: LeaderboardEntry[], limit = Infinity) {
   const valueKey = leaderboardValueKey(stat);
   return entries
     .filter((entry) => Number.isFinite(entry[valueKey]))
@@ -44,17 +56,19 @@ export function sortedLeaderboardEntries(stat: LeaderboardStat, entries: Leaderb
     .slice(0, limit);
 }
 
-export function leaderboardValueText(stat: LeaderboardStat, entry: LeaderboardEntry) {
+export function leaderboardValueText(stat: LeaderboardView, entry: LeaderboardEntry) {
   const valueKey = leaderboardValueKey(stat);
   return stat === "time"
     ? formatPlayedTime(entry.playedSeconds)
+    : stat === "created"
+      ? formatCreatedDate(entry.joinedAt)
     : stat === "prestige"
       ? String(playerPrestigeLevel(entry.identity))
       : formatCompactNumber(entry[valueKey]);
 }
 
 /** Visual order is third, first, second so the winner owns the center podium. */
-export function leaderboardPodiumEntries(stat: LeaderboardStat, entries: LeaderboardEntry[]) {
+export function leaderboardPodiumEntries(stat: LeaderboardView, entries: LeaderboardEntry[]) {
   const sorted = sortedLeaderboardEntries(stat, entries, 3);
   const [first, second, third] = entries.some(entry => entry.rank !== undefined)
     ? [1, 2, 3].map(rank => sorted.find(entry => entry.rank === rank)) : sorted;
@@ -69,19 +83,19 @@ export function setLeaderboardTab(
   elements: LeaderboardElements,
   requested: string,
 ): LeaderboardStat {
-  const stat = (LEADERBOARD_TABS as readonly string[]).includes(requested) ? requested as LeaderboardStat : "power";
+  const stat = (LEADERBOARD_TABS as readonly string[]).includes(requested) ? requested as LeaderboardStat : "rivals";
   for (const [tab, element] of Object.entries(elements.tabs) as Array<[LeaderboardStat, HTMLElement]>) {
     const active = tab === stat;
     element.classList.toggle("is-active", active);
     element.setAttribute("aria-selected", String(active));
   }
-  elements.valueHeading.textContent = stat === "time" ? "Time Played" : stat === "prestige" ? "Prestige" : "Power";
+  elements.valueHeading.textContent = leaderboardValueHeading(stat);
   return stat;
 }
 
 export function renderLeaderboardPodium(
   podium: HTMLElement,
-  stat: LeaderboardStat,
+  stat: LeaderboardView,
   entries: LeaderboardEntry[],
   actions: {
     isDeveloper: (identity: string) => boolean;
@@ -141,7 +155,7 @@ export function renderLeaderboardPodium(
 
 export function renderLeaderboard(
   elements: Pick<LeaderboardElements, "rows" | "empty">,
-  stat: LeaderboardStat,
+  stat: LeaderboardView,
   entries: LeaderboardEntry[],
   localIdentity: string,
   actions: {

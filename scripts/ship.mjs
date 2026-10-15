@@ -6,6 +6,7 @@
  *   npm run ship                          checks, then ships whatever main has that is not live
  *   npm run ship -- --dry-run             says what it would do, ships nothing
  *   npm run ship -- --allow-client-break  agrees to a server change that reconnects every player
+ *   npm run ship -- --no-announce         ships without telling open tabs to reload
  *
  * The order:
  * - A compatible server change goes first, then the client: a new client may
@@ -15,6 +16,11 @@
  *   old server meanwhile, and the publish sends everyone straight to a client
  *   that is already live (a refused tab looks for a new build every 5 seconds).
  *   Published first, every player waited the whole deploy (0.907.0).
+ *
+ * Once a new client is live, open tabs are told so (announce_client_update):
+ * they save, reload onto it and pick Auto Farm back up. A tab otherwise waits
+ * for its next version check, and a hidden one never checks; after 0.908.0,
+ * three in four players were still on the old client an hour later.
  *
  * Nothing ships until the checks pass: check:release (the 0.907.0 deploy
  * failed on it), both typechecks, the server bindings against a fresh
@@ -36,7 +42,7 @@ const ANDROID_FEED = "https://wildstatmmo.com/ota/production-android.json";
  * What to ship and in which order. `server` is "none", "compatible" or "breaking".
  * Returns the steps, or a refusal that ships nothing.
  */
-export function planShip({ clientAhead, server, allowClientBreak }) {
+export function planShip({ clientAhead, server, allowClientBreak, announce = true }) {
   if (server === "breaking" && !allowClientBreak) {
     return { refuse: "The server change reconnects every player. Run again with --allow-client-break to ship it (the client goes first, so it takes seconds)." };
   }
@@ -46,6 +52,7 @@ export function planShip({ clientAhead, server, allowClientBreak }) {
   // A breaking publish waits for the live client even when it was pushed already (the post-commit hook pushes main).
   if (clientAhead || server === "breaking") steps.push("wait-for-deploy");
   if (server === "breaking") steps.push("publish-breaking");
+  if (clientAhead && announce) steps.push("announce");
   if (!steps.length) return { refuse: "Nothing to ship: origin/main has every commit and the server is published from this one." };
   return { steps };
 }
@@ -137,9 +144,21 @@ async function waitForDeploy(sha, version) {
   } catch { console.log("  Android update feed: not read"); }
 }
 
+/** Tells every open tab that v`version` is live; see announceClientUpdate in spacetimedb/src/release-control.ts. */
+async function announceClientUpdate(version) {
+  const call = step => run("spacetime", ["call", "wildwood-coop", "announce_client_update", JSON.stringify(version), JSON.stringify(step),
+    "--server", "maincloud"], { capture: true });
+  call("start");
+  // Long enough for a visible tab's quarter-second check to see the update begin.
+  await new Promise(done => setTimeout(done, 3_000));
+  call("finish");
+  console.log(`  ✓ open tabs told to reload onto v${version}`);
+}
+
 async function main() {
   const args = process.argv.slice(2);
   const dryRun = args.includes("--dry-run"), quick = args.includes("--quick"), allowClientBreak = args.includes("--allow-client-break");
+  const announce = !args.includes("--no-announce");
   // A dry run may look at a branch; only main ships.
   const offMain = git("branch", "--show-current") !== "main";
   if (offMain && !dryRun) throw new Error("Ship from main.");
@@ -162,7 +181,7 @@ async function main() {
   console.log("  ✓ server bindings");
 
   const server = await serverChange(head, offMain);
-  const plan = planShip({ clientAhead: ahead > 0, server, allowClientBreak });
+  const plan = planShip({ clientAhead: ahead > 0, server, allowClientBreak, announce });
   if (plan.refuse) throw new Error(plan.refuse);
   console.log(`Plan: ${plan.steps.join(" → ")} (client ${ahead ? `${ahead} commit(s) ahead` : "already pushed"}, server ${server})`);
   if (dryRun) return;
@@ -172,6 +191,7 @@ async function main() {
     if (step === "push") run("git", ["push", "origin", "main"]);
     if (step === "wait-for-deploy") await waitForDeploy(head, version);
     if (step === "publish-breaking") run("node", ["scripts/publish-server-live.mjs", "--allow-client-break"]);
+    if (step === "announce") await announceClientUpdate(version);
   }
   console.log(`Shipped v${version}.`);
 }

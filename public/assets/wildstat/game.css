@@ -3585,36 +3585,45 @@
     .leaderboard-modal > .leaderboard-prestige { grid-area: prestige; align-self: end; margin: 0 0 2px; }
     .leaderboard-modal > .leaderboard-podium { grid-area: podium; align-self: start; }
     .leaderboard-modal > .leaderboard-tabs { grid-area: tabs; align-self: start; margin-top: 2px; }
-    .leaderboard-modal > .leaderboard-tabs .profile-tab { aspect-ratio: auto; min-height: 36px; }
     .leaderboard-modal > .leaderboard-column-headings { grid-area: headings; }
     .leaderboard-modal > .leaderboard-scroll { grid-area: list; }
     .leaderboard-modal > .window-back-footer { grid-area: footer; min-height: 52px; }
   }
   .leaderboard-scroll > .leaderboard-loading,
   .leaderboard-scroll > #leaderboardEmpty { min-height: 60px; }
+  #leaderboardRivalsTab, .leaderboard-podium[data-stat="rivals"] { --leaderboard-tab-color: #ff8a6b; }
   #leaderboardPowerTab, .leaderboard-podium[data-stat="power"] { --leaderboard-tab-color: #ffe05d; }
   #leaderboardPrestigeTab, .leaderboard-podium[data-stat="prestige"] { --leaderboard-tab-color: #c79bff; }
-  #leaderboardTimeTab, .leaderboard-podium[data-stat="time"] { --leaderboard-tab-color: #c3cbcf; }
+  #leaderboardTimeTab, .leaderboard-podium[data-stat="time"], .leaderboard-podium[data-stat="created"] { --leaderboard-tab-color: #c3cbcf; }
   /* Reference stage is 460 × 200; container units keep its artwork and live players aligned. */
-  .leaderboard-tabs.profile-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); max-width: 100%; gap: 0; overflow: visible; padding: 0; border: 0; }
+  /* A segmented bar: four tabs of one height, the open one lit in its board's colour. */
+  .leaderboard-tabs.profile-tabs {
+    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); max-width: 100%; gap: 3px; overflow: visible;
+    padding: 3px; border: 1px solid rgba(255,255,255,.09); border-radius: 11px; background: rgba(255,255,255,.035);
+  }
   .leaderboard-tabs .profile-tab {
-    position: relative; display: flex; align-items: center; justify-content: center; gap: 9px;
-    width: 100%; height: auto; aspect-ratio: 2; min-width: 0; min-height: 0; margin: 0; padding: 0;
-    border: 0; border-radius: 0;
-    background: transparent; box-shadow: none;
+    position: relative; display: flex; align-items: center; justify-content: center; gap: 6px;
+    width: 100%; height: 36px; aspect-ratio: auto; min-width: 0; min-height: 0; margin: 0; padding: 0 6px;
+    border: 0; border-radius: 8px;
+    background: transparent; box-shadow: none; white-space: nowrap;
     color: #a5a599; opacity: 1; font-size: 13px; text-shadow: 0 1px 1px #14150e;
+    transition: background-color .15s, color .15s;
   }
-  .leaderboard-tabs .profile-tab::before { content: ""; flex: 0 0 21px; width: 21px; height: 23px; background: var(--leaderboard-tab-color); mask: var(--leaderboard-stat-icon) center / contain no-repeat; }
+  .leaderboard-tabs .profile-tab::before { content: ""; flex: 0 0 16px; width: 16px; height: 16px; background: var(--leaderboard-tab-color); opacity: .75; mask: var(--leaderboard-stat-icon) center / contain no-repeat; }
+  #leaderboardRivalsTab { --leaderboard-stat-icon: url("ui/leaderboard/rivals.svg"); }
   #leaderboardPowerTab { --leaderboard-stat-icon: url("ui/leaderboard/power.svg"); }
-  #leaderboardPrestigeTab { --leaderboard-stat-icon: url("ui/leaderboard/laurels.svg"); }
+  #leaderboardPrestigeTab { --leaderboard-stat-icon: url("ui/leaderboard/prestige.svg"); }
   #leaderboardTimeTab { --leaderboard-stat-icon: url("ui/leaderboard/time.svg"); }
-  .leaderboard-tabs .profile-tab.is-active { color: var(--leaderboard-tab-color); }
+  .leaderboard-tabs .profile-tab:hover { color: #e8e8dc; background: rgba(255,255,255,.04); transform: none; }
   .leaderboard-tabs .profile-tab.is-active {
-    border: 0; background: rgba(255,255,255,.065);
-    box-shadow: none; opacity: 1;
+    border: 0; opacity: 1; color: var(--leaderboard-tab-color);
+    background: color-mix(in srgb, var(--leaderboard-tab-color) 15%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--leaderboard-tab-color) 42%, transparent);
   }
-  .leaderboard-tabs .profile-tab + .profile-tab::after { content: ""; position: absolute; left: 0; top: 28%; bottom: 28%; width: 1px; background: rgba(255,255,255,.16); pointer-events: none; }
-  .leaderboard-tabs .profile-tab:focus-visible { outline: 1px solid rgba(255,255,255,.7); outline-offset: -3px; }
+  .leaderboard-tabs .profile-tab.is-active::before { opacity: 1; }
+  .leaderboard-tabs .profile-tab:focus-visible { outline: 1px solid rgba(255,255,255,.7); outline-offset: -2px; }
+  /* Four labels fit a phone only without their icons. */
+  @media (max-width: 440px) { .leaderboard-tabs .profile-tab::before { display: none; } }
   .leaderboard-podium {
     container-type: inline-size; position: relative; display: grid;
     grid-template-columns: 26% 31% 28%; align-items: end; justify-content: center; gap: 2.4%;
@@ -3871,7 +3880,7 @@
     .leaderboard-prestige { margin: 5px auto 2px; }
     .leaderboard-prestige .leaderboard-prestige-heading { min-height: 36px; padding: 5px 10px; }
     .leaderboard-prestige .leaderboard-prestige-chip { min-height: 34px; padding: 5px 10px; }
-    .leaderboard-tabs .profile-tab { padding: 5px 6px; gap: 7px; font-size: 10px; }
+    .leaderboard-tabs .profile-tab { padding: 0 4px; gap: 5px; font-size: 10px; }
     .leaderboard-podium { margin-bottom: 3px; }
     .leaderboard-column-headings { padding: 8px 7px 5px; font-size: 7px; }
     .leaderboard-rows { gap: 0; padding: 0; }

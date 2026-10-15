@@ -13,7 +13,7 @@ import { mailboxEquipment, deliverEquipmentMail, claimEquipmentMail } from "./ma
 import { nameChangeStatus } from "../../shared/name-change";
 import { validPatreonRedirect } from "./patreon-url";
 import { isValidProfileIcon } from "../../shared/profile-icons";
-import { releaseNotice, releaseAcknowledgement, writeReleaseWindow, acknowledgeReleaseWindow } from "./release-control";
+import { releaseNotice, releaseAcknowledgement, writeReleaseWindow, acknowledgeReleaseWindow, announceClientUpdate as announceClientUpdateWindow } from "./release-control";
 import { recordBossGateClear } from "./boss-gates";
 import { playerMultiplayerPreference, writeMultiplayerPreference } from "./multiplayer-preference";
 import { enemyDefeatBudget, playerDefeatClock, acceptEnemyDefeats, permittedDefeatMaps, pruneIdleDefeatBudgets, throttleKillReports, type DefeatClocks, type EnemyDefeatBatch } from "./enemy-defeats";
@@ -48,7 +48,7 @@ import { awardCardDrops, playerBossCardRoll, playerCardMeter } from "./card-drop
 import { awardRegularEnemyLoot } from "./enemy-loot-award";
 import { moderateReportedMessage } from "./chat-report-moderation";
 import { PLAYER_SKIN_TONES } from "../../shared/player-skin-tones";
-import { leaderboardPageTables, readLeaderboardWindow, readLeaderboardPage, readPrestigeLeaderboardPage, findLeaderboardSpot } from "./leaderboard-pages";
+import { leaderboardPageTables, readLeaderboardWindow, readLeaderboardPage, readLeaderboardRanks, readPrestigeLeaderboardPage, findLeaderboardSpot } from "./leaderboard-pages";
 import { effectiveMovementSpeedForProgress, refreshPrestigeMovement, attackIntervalForProgress, savedAttackRange } from "./player-speed";
 import { playerBonusToggle } from "./bonus-toggles";
 import { registerBonusToggleReducers } from "./bonus-toggles-reducer";
@@ -2267,6 +2267,10 @@ export const setReleaseWindow = spacetimedb.reducer(
     writeReleaseWindow(ctx, args);
   },
 );
+export const announceClientUpdate = spacetimedb.reducer({ version: t.string(), step: t.string() }, (ctx, { version, step }) => {
+  if (!isDatabaseOwnerIdentity(ctx.sender)) denyPrivilegedAccess(ctx, "announce_client_update", "Database owner required.");
+  announceClientUpdateWindow(ctx, version, step);
+});
 export const acknowledgeRelease = spacetimedb.reducer({ id: t.string() }, (ctx, { id }) => {
   requireControllingPlayer(ctx);
   acknowledgeReleaseWindow(ctx, id);
@@ -4126,6 +4130,13 @@ export const getLeaderboardPage = spacetimedb.procedure(
   { stat: t.string(), startRank: t.u32(), count: t.u32() },
   t.object("LeaderboardPage", { entries: t.array(rankedLeaderboardPlayer), startRank: t.u32(), endRank: t.u32(), localRank: t.u32(), total: t.u32() }),
   (ctx, { stat, startRank, count }) => ctx.withTx(tx => readLeaderboardPage(tx, stat, startRank, count)),
+);
+// The board's ranks with each account's start, and which prestige level Rivals is (0.908.2).
+export const getLeaderboardRanks = spacetimedb.procedure(
+  { board: t.string(), startRank: t.u32(), count: t.u32() },
+  t.object("LeaderboardRanks", { entries: t.array(t.object("LeaderboardRank", { rank: t.u32(), entry: leaderboardEntry.rowType, joinedAtMicros: t.u64() })),
+    startRank: t.u32(), endRank: t.u32(), localRank: t.u32(), total: t.u32(), prestige: t.u32() }),
+  (ctx, { board, startRank, count }) => ctx.withTx(tx => readLeaderboardRanks(tx, board, startRank, count)),
 );
 // One prestige level's board; the page shape above plus the level and the list
 // of levels anyone is on. The body lives in leaderboard-pages.ts.

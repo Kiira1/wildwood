@@ -79,3 +79,26 @@ it("uses the existing update screen and preserves its independent protocol gate"
   render({ text: "Update in 2:00", blocking: false, urgent: false });
   expect(gate.hasAttribute("hidden")).toBe(false);
 });
+describe("a client update announced after the tab loaded", () => {
+  const announced = (version: string, phase: ReleaseWindow["phase"]): ReleaseWindow =>
+    ({ id: `client-${version}-1000`, version, phase, startsAt: 1000, expiresAt: 91000, updatedAt: 1000, reload: true });
+  function tab(version: string) {
+    let release: ReleaseWindow | null = announced("0.908.2", "updating");
+    const d = { now: () => 2000, release: () => release, playing: () => true, version,
+      pause: vi.fn(), save: vi.fn(), drain: vi.fn(async () => true), acknowledge: vi.fn(async () => {}),
+      rememberSession: vi.fn(() => true), render: vi.fn(), checkVersion: vi.fn() };
+    return { d, controller: createScheduledUpdateController(d), finish: () => { release = announced("0.908.2", "complete"); } };
+  }
+  it("sends an older tab to check for the new build", () => {
+    const f = tab("0.908.0");
+    f.controller.tick(); f.finish(); f.controller.tick();
+    expect(f.d.checkVersion).toHaveBeenCalledOnce();
+  });
+  it("leaves a tab already on that build playing", () => {
+    const f = tab("0.908.2");
+    f.controller.tick(); f.finish(); f.controller.tick();
+    expect(f.d.pause).not.toHaveBeenCalled();
+    expect(f.d.checkVersion).not.toHaveBeenCalled();
+    expect(f.controller.canReload()).toBe(true);
+  });
+});

@@ -78,7 +78,6 @@ function clearRetiredTables(ctx: any) {
     for (const row of [...table.iter()]) table.identity.delete(row.identity);
   }
   for (const row of [...ctx.db.leaderboardPrestigeRankPage.iter()]) ctx.db.leaderboardPrestigeRankPage.key.delete(row.key);
-  for (const row of [...ctx.db.leaderboardPrestigeSize.iter()]) ctx.db.leaderboardPrestigeSize.prestige.delete(row.prestige);
 }
 
 /**
@@ -122,7 +121,7 @@ export function refreshLeaderboard(ctx: any, { full = true }: { full?: boolean }
 
   // Sort everyone, write the pages that changed, then the standings that changed.
   const rows = [...standings.values()];
-  const pages = writeLeaderboardPages(ctx, rows, now);
+  const pages = writeLeaderboardPages(ctx, rows);
   for (const row of rows) {
     const next = { ...row, pages: pages.get(row.identity.toHexString()) ?? LEADERBOARD_BOARDS.map(() => 0) };
     const old = ctx.db.leaderboardStanding.identity.find(row.identity);

@@ -788,11 +788,32 @@ export const LeaderboardPrestigeSize = __t.object("LeaderboardPrestigeSize", {
 });
 export type LeaderboardPrestigeSize = __Infer<typeof LeaderboardPrestigeSize>;
 
+export const LeaderboardRank = __t.object("LeaderboardRank", {
+  rank: __t.u32(),
+  get entry() {
+    return LeaderboardEntryV2;
+  },
+  joinedAtMicros: __t.u64(),
+});
+export type LeaderboardRank = __Infer<typeof LeaderboardRank>;
+
 export const LeaderboardRankPage = __t.object("LeaderboardRankPage", {
   key: __t.string(),
   identities: __t.array(__t.identity()),
 });
 export type LeaderboardRankPage = __Infer<typeof LeaderboardRankPage>;
+
+export const LeaderboardRanks = __t.object("LeaderboardRanks", {
+  get entries() {
+    return __t.array(LeaderboardRank);
+  },
+  startRank: __t.u32(),
+  endRank: __t.u32(),
+  localRank: __t.u32(),
+  total: __t.u32(),
+  prestige: __t.u32(),
+});
+export type LeaderboardRanks = __Infer<typeof LeaderboardRanks>;
 
 export const LeaderboardRefreshState = __t.object("LeaderboardRefreshState", {
   id: __t.u32(),

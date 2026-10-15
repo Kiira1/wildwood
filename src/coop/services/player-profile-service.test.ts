@@ -8,7 +8,7 @@ function fixture() {
   const presenceEvents = { insert: new Set<Function>(), update: new Set<Function>(), remove: new Set<Function>() };
   const connection = {
     isActive: true,
-    procedures: { getLeaderboardPage: vi.fn() },
+    procedures: { getLeaderboardRanks: vi.fn() },
     db: Object.fromEntries(["playerPrestige", "playerPrestigePerk", "playerPrestigeExpansionPerk", "playerPrestigeChallenge", "playerChatHearts", "playerProgress", "playerLifetime", "playerResearch", "playerItemUpgrade", "playerItemRefine", "myItemRefines", "playerGearSlots", "myGearSlots", "playerProfile", "playerAccountStatus", "player", "profileSoulStats"].map(name => [name, { iter: () => [] }])),
     subscriptionBuilder() {
       let applied = () => {}, ready = false;
@@ -78,12 +78,12 @@ it("a stalled profile request times out safely and still disposes a late subscri
 it("deduplicates leaderboard pages and rejects a late page after the session is cleared", async () => {
   const f = fixture();
   let finish!: (page: unknown) => void;
-  f.connection.procedures.getLeaderboardPage.mockImplementation(() => new Promise(resolve => { finish = resolve; }));
-  const first = f.service.api.loadLeaderboardPage("time-30d", 250, 100);
-  const duplicate = f.service.api.loadLeaderboardPage("time-30d", 250, 100);
+  f.connection.procedures.getLeaderboardRanks.mockImplementation(() => new Promise(resolve => { finish = resolve; }));
+  const first = f.service.api.loadLeaderboardPage("created", 250, 100);
+  const duplicate = f.service.api.loadLeaderboardPage("created", 250, 100);
   expect(first).toBe(duplicate);
-  expect(f.connection.procedures.getLeaderboardPage).toHaveBeenCalledOnce();
-  expect(f.connection.procedures.getLeaderboardPage).toHaveBeenCalledWith({ stat: "time-30d", startRank: 250, count: 100 });
+  expect(f.connection.procedures.getLeaderboardRanks).toHaveBeenCalledOnce();
+  expect(f.connection.procedures.getLeaderboardRanks).toHaveBeenCalledWith({ board: "created", startRank: 250, count: 100 });
   f.service.clearSession();
   const rejected = expect(first).rejects.toThrow("Session changed");
   finish({ entries: [], startRank: 250, endRank: 349, localRank: 300, total: 1000 });
@@ -92,10 +92,10 @@ it("deduplicates leaderboard pages and rejects a late page after the session is 
 
 it("keeps each board's pages apart", async () => {
   const f = fixture();
-  f.connection.procedures.getLeaderboardPage.mockImplementation(({ stat }: { stat: string }) =>
-    Promise.resolve({ entries: [], startRank: 1, endRank: 0, localRank: 0, total: stat === "time" ? 9 : 2 }));
+  f.connection.procedures.getLeaderboardRanks.mockImplementation(({ board }: { board: string }) =>
+    Promise.resolve({ entries: [], startRank: 1, endRank: 0, localRank: 0, total: board === "time" ? 9 : 2, prestige: 0 }));
   const all = f.service.api.loadLeaderboardPage("time");
-  const week = f.service.api.loadLeaderboardPage("time-7d");
+  const week = f.service.api.loadLeaderboardPage("created");
   expect(all).not.toBe(week);
   expect((await all).total).toBe(9);
   expect((await week).total).toBe(2);
