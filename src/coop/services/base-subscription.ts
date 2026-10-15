@@ -65,8 +65,6 @@ export type BaseSubscriptionHandlers = {
   aggroChallengeParked: RowHandler; removeAggroChallengeParked: RowHandler;
   freeRespec: RowHandler; removeFreeRespec: RowHandler;
   dailyQuest: RowHandler; removeDailyQuest: RowHandler; guildQuestWeek: RowHandler; removeGuildQuestWeek: RowHandler;
-  prestigeExpansion: RowHandler;
-  removePrestigeExpansion: RowHandler;
   prestigeExpansionPerk: RowHandler;
   removePrestigeExpansionPerk: RowHandler;
   bonusToggle: RowHandler; removeBonusToggle: RowHandler;
@@ -132,7 +130,6 @@ type BaseSubscriptionHandlerSources = {
     upsertAggroChallengeParked: RowHandler; removeAggroChallengeParked: RowHandler;
     upsertFreeRespec: RowHandler; removeFreeRespec: RowHandler;
     upsertDailyQuest: RowHandler; removeDailyQuest: RowHandler; upsertGuildQuestWeek: RowHandler; removeGuildQuestWeek: RowHandler;
-    upsertPrestigeExpansion: RowHandler; removePrestigeExpansion: RowHandler;
     upsertPrestigeExpansionPerk: RowHandler; removePrestigeExpansionPerk: RowHandler;
     upsertBonusToggle: RowHandler; removeBonusToggle: RowHandler;
     removePrestigePerk: BaseSubscriptionHandlers["removePrestigePerk"];
@@ -238,7 +235,6 @@ export function createBaseSubscriptionHandlers(sources: BaseSubscriptionHandlerS
     freeRespec: progression.upsertFreeRespec, removeFreeRespec: progression.removeFreeRespec,
     dailyQuest: progression.upsertDailyQuest, removeDailyQuest: progression.removeDailyQuest,
     guildQuestWeek: progression.upsertGuildQuestWeek, removeGuildQuestWeek: progression.removeGuildQuestWeek,
-    prestigeExpansion: progression.upsertPrestigeExpansion, removePrestigeExpansion: progression.removePrestigeExpansion,
     prestigeExpansionPerk: progression.upsertPrestigeExpansionPerk, removePrestigeExpansionPerk: progression.removePrestigeExpansionPerk,
     bonusToggle: progression.upsertBonusToggle, removeBonusToggle: progression.removeBonusToggle,
     removePrestigePerk: progression.removePrestigePerk,
@@ -402,9 +398,6 @@ export function startBaseSubscription(dependencies: BaseSubscriptionDependencies
   connection.db.guildQuestWeek.onInsert((_ctx, row) => { if (shouldHandle()) handlers.guildQuestWeek(row); });
   connection.db.guildQuestWeek.onUpdate((_ctx, _old, row) => { if (shouldHandle()) handlers.guildQuestWeek(row); });
   connection.db.guildQuestWeek.onDelete((_ctx, row) => { if (shouldHandle()) handlers.removeGuildQuestWeek(row); });
-  connection.db.prestigeExpansion.onInsert((_ctx, row) => { if (shouldHandle()) handlers.prestigeExpansion(row); });
-  connection.db.prestigeExpansion.onUpdate((_ctx, _old, row) => { if (shouldHandle()) handlers.prestigeExpansion(row); });
-  connection.db.prestigeExpansion.onDelete((_ctx, row) => { if (shouldHandle()) handlers.removePrestigeExpansion(row); });
   connection.db.playerPrestigeExpansionPerk.onInsert((_ctx, row) => { if (shouldHandle()) handlers.prestigeExpansionPerk(row); });
   connection.db.playerPrestigeExpansionPerk.onUpdate((_ctx, _old, row) => { if (shouldHandle()) handlers.prestigeExpansionPerk(row); });
   connection.db.playerPrestigeExpansionPerk.onDelete((_ctx, row) => { if (shouldHandle()) handlers.removePrestigeExpansionPerk(row); });
@@ -514,7 +507,6 @@ export function startBaseSubscription(dependencies: BaseSubscriptionDependencies
       // Every guild's quest points this week, for the ranking. From this week
       // on, so a tab left open past the turn of the week still gets the new one.
       tables.guildQuestWeek.where(row => row.week.gte(questWeek(questDay(BigInt(Date.now()) * 1000n)))),
-      tables.prestigeExpansion,
       tables.playerPrestigeExpansionPerk.where(row => row.identity.eq(dependencies.identity)),
       tables.playerBonusToggle.where(row => row.identity.eq(dependencies.identity)),
       tables.playerPrestigePerk.where((prestigePerk) => prestigePerk.identity.eq(dependencies.identity)),
@@ -574,7 +566,6 @@ export function startBaseSubscription(dependencies: BaseSubscriptionDependencies
         for (const row of connection.db.playerFreeRespec.iter()) handlers.freeRespec(row);
         for (const row of connection.db.playerDailyQuest.iter()) handlers.dailyQuest(row);
         for (const row of connection.db.guildQuestWeek.iter()) handlers.guildQuestWeek(row);
-        for (const row of connection.db.prestigeExpansion.iter()) handlers.prestigeExpansion(row);
         for (const row of connection.db.playerPrestigeExpansionPerk.iter()) handlers.prestigeExpansionPerk(row);
         if (![...connection.db.playerPrestigeExpansionPerk.iter()].some(row => row.identity.toHexString() === dependencies.identity.toHexString())) handlers.removePrestigeExpansionPerk({ identity: dependencies.identity });
         for (const row of connection.db.playerBonusToggle.iter()) handlers.bonusToggle(row);

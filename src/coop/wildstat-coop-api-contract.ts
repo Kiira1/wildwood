@@ -190,7 +190,6 @@ type ExpectedApiKey =
   | "reflectRewardsInPlay"
   | "attackCapInPlay"
   | "prestigeStatGainInPlay"
-  | "prestigeExpansionUnlocksAt"
   | "spendPrestigePerkPoint"
   | "respecPrestigePerks"
   | "freeRespecAvailable"

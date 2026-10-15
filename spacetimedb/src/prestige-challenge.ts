@@ -1,6 +1,5 @@
 import { table, t, SenderError } from "spacetimedb/server";
 import { CHALLENGE_ABSOLUTE_MIN_INTERVAL, PRESTIGE_CHALLENGE_LIMIT, challengeGoalMet } from "../../shared/prestige-challenge";
-import { prestigeExpanded } from "./prestige-expansion";
 import { bonusOffFor } from "./bonus-toggles";
 import { reflectRewardsOn } from "../../shared/bonus-toggles";
 import { updateSnapshotRow } from "./snapshot-row-writes";
@@ -32,7 +31,6 @@ export const challengeActive = (ctx: any, identity: any) => Boolean(ctx.db.playe
 export function setPrestigeChallenge(ctx: any, active: boolean, player: any) {
   const row = ctx.db.playerPrestigeChallenge.identity.find(ctx.sender);
   if (active) {
-    if (!prestigeExpanded(ctx)) throw new SenderError("Challenge mode unlocks when the countdown finishes.");
     if (!(ctx.db.playerPrestige.identity.find(ctx.sender)?.level > 0)) throw new SenderError("Prestige once before starting a challenge.");
     if (row?.active) throw new SenderError("A prestige challenge is already active.");
     if ((row?.completed ?? 0) >= PRESTIGE_CHALLENGE_LIMIT) throw new SenderError("All four prestige challenges are complete.");

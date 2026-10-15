@@ -13,7 +13,6 @@ import { removePlayerJoinDate, syncPlayerJoinDate } from "./mailbox";
 import { movePausedResearch, removePausedResearch } from "./research-pause";
 import { removeStreamCursors } from "./regular-enemy-loot";
 import {
-  ATTACK_BALANCE_VERSION,
   DEFAULT_ATTACK_INTERVAL,
   SPACETIME_AUTH_CLIENT_ID,
   SPACETIME_AUTH_ISSUER,
@@ -270,9 +269,8 @@ export function createAccountLifecycle(deps: AccountLifecycleDeps) {
     mergeEquipmentLocks(ctx, link.guest, ctx.sender);
     mergeIgnoredDrops(ctx, link.guest, ctx.sender);
     mergeOfflinePreference(ctx, link.guest, ctx.sender);
-    const guestBalance = ctx.db.playerBalanceVersion.identity.find(link.guest);
-    const guestBalanceVersion = guestBalance?.version ?? 0;
-    const guestAttackRate = guestBalanceVersion >= 1 ? guestProgress.attackRate : guestProgress.attackRate * 2;
+    // Every save is at the current balance version (player_balance_version, 2026-10-15), so the guest's is too.
+    const guestAttackRate = guestProgress.attackRate;
     const nextProgress = {
       ...guestProgress,
       identity: ctx.sender,
@@ -486,10 +484,6 @@ export function createAccountLifecycle(deps: AccountLifecycleDeps) {
     }
     if (guestLeaderboardEntry) ctx.db.leaderboardEntry.identity.delete(link.guest);
     moveLeaderboardPrestigePosition(ctx, link.guest, ctx.sender);
-    const accountBalance = ctx.db.playerBalanceVersion.identity.find(ctx.sender);
-    const nextBalance = { identity: ctx.sender, version: ATTACK_BALANCE_VERSION };
-    if (accountBalance) ctx.db.playerBalanceVersion.identity.update(nextBalance);
-    else ctx.db.playerBalanceVersion.insert(nextBalance);
 
     // Migration transfers a guest save into the authenticated identity. Leave
     // no second durable save behind; otherwise an old guest token can later
@@ -537,7 +531,7 @@ export function createAccountLifecycle(deps: AccountLifecycleDeps) {
     }
     const guestDuelRequestCooldown = ctx.db.duelRequestCooldown.identity.find(link.guest);
     if (guestDuelRequestCooldown) ctx.db.duelRequestCooldown.identity.delete(link.guest);
-    if (guestBalance) ctx.db.playerBalanceVersion.identity.delete(link.guest);
+    if (ctx.db.playerBalanceVersion.identity.find(link.guest)) ctx.db.playerBalanceVersion.identity.delete(link.guest);
     const guestGemWallet = ctx.db.playerGemWallet.identity.find(link.guest);
     if (guestGemWallet) ctx.db.playerGemWallet.identity.delete(link.guest);
     if (ctx.db.playerUpgradeBench.identity.find(link.guest)) ctx.db.playerUpgradeBench.identity.delete(link.guest);

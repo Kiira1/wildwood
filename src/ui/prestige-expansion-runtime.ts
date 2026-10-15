@@ -1,6 +1,3 @@
-import { createPrestigeExpansionNotice } from "./prestige-expansion-notice";
-import { prestigeExpansionLabel } from "../../shared/prestige-expansion";
-import { activeRelease } from "../../shared/release-window";
 import { createPrestigePanel } from "./game-ui-runtime";
 import { createPrestigeChallengePanel, installPrestigeTabs } from "./prestige-challenge-panel";
 import { gameConfirm } from "./confirm-dialog";
@@ -9,15 +6,11 @@ import { createAggroChallengePanel } from "./aggro-challenge-panel";
 import { readAggroPicks, writeAggroPicks } from "../game/runtime/auto-farm/aggro-picks";
 import { AGGRO_CHALLENGE_LIMIT, aggroGoal, aggroPullCamps } from "../../shared/aggro-challenge";
 
-/** Compose the shared launch notice, map label and account prestige controls. */
+/** Compose the map label and account prestige controls. Prestige past 20 and the newer perks are open to everyone. */
 export function createPrestigeExpansionRuntime(d: {
-  coop: any; started: () => boolean; mapName: () => string; mapLabel: HTMLElement;
+  coop: any; mapName: () => string; mapLabel: HTMLElement;
 }) {
   const { coop } = d;
-  const now = () => coop?.serverNowMs?.() ?? Date.now();
-  const unlocksAt = () => coop?.prestigeExpansionUnlocksAt?.();
-  const notice = createPrestigeExpansionNotice({ unlocksAt, now,
-    visible: () => d.started() && !activeRelease(coop?.releaseWindow?.() ?? null, now()) });
   let challengePanel: ReturnType<typeof createPrestigeChallengePanel> | undefined;
   let lastChallenge: { identity: string; active: boolean; completed: number } | null = null;
   let aggroPanel: ReturnType<typeof createAggroChallengePanel> | undefined;
@@ -31,11 +24,10 @@ export function createPrestigeExpansionRuntime(d: {
   /** An Aggro run's goal, the same for every run and player: a first prestige's (shared/aggro-challenge.ts). */
   const aggroRunGoal = () => ({ label: aggroGoal().label, met: Boolean(coop?.prestigeCampaignComplete?.(1)) });
   return {
-    unlocked: notice.unlocked,
+    unlocked: () => true,
     tick() {
       const name = d.mapName();
       if (d.mapLabel.textContent !== name) d.mapLabel.textContent = name;
-      notice.tick();
       challengePanel?.render();
       aggroPanel?.render();
       const aggro = coop?.aggroChallenge?.(), who = coop?.localIdentity?.() ?? "";
@@ -58,8 +50,7 @@ export function createPrestigeExpansionRuntime(d: {
     },
     createPanel(options: Record<string, any>) {
       const panel = createPrestigePanel({ ...options,
-        prestige: () => coop?.prestige?.() ?? null, expanded: notice.unlocked,
-        expansionCountdown: () => unlocksAt() ? prestigeExpansionLabel(unlocksAt(), now()) : "",
+        prestige: () => coop?.prestige?.() ?? null, expanded: () => true,
         perks: () => coop?.storedPrestigePerks?.() ?? coop?.prestigePerks?.(), spendPerk: (perk: string) => coop?.spendPrestigePerkPoint?.(perk),
         unlocked: () => Boolean(coop?.prestigeCampaignComplete?.((coop?.prestige?.()?.level ?? 0) + 1)),
         completed: () => coop?.proceduralCompleted?.() ?? 0,
@@ -75,16 +66,14 @@ export function createPrestigeExpansionRuntime(d: {
       installPrestigeTabs(doc);
       challengePanel = createPrestigeChallengePanel({ container: doc.getElementById("prestigeChallengeTab")!,
         state: () => coop?.prestigeChallenge?.() ?? { active: false, completed: 0 },
-        locked: () => !notice.unlocked() ? "Unlocks when the prestige countdown ends"
-          : (coop?.prestige?.()?.level ?? 0) < 1 ? "Prestige once to unlock"
+        locked: () => (coop?.prestige?.()?.level ?? 0) < 1 ? "Prestige once to unlock"
           : coop?.aggroChallenge?.()?.active ? "Finish Aggro first" : null,
         start: () => both(options.runPrestige(coop?.startPrestigeChallenge)),
         abandon: () => both(options.runPrestige(coop?.abandonPrestigeChallenge)),
       });
       aggroPanel = createAggroChallengePanel({ container: doc.getElementById("prestigeChallengeTab")!,
         state: () => coop?.aggroChallenge?.() ?? { active: false, completed: 0 },
-        locked: () => !notice.unlocked() ? "Unlocks when the prestige countdown ends"
-          : (coop?.prestige?.()?.level ?? 0) < 1 ? "Prestige once to unlock"
+        locked: () => (coop?.prestige?.()?.level ?? 0) < 1 ? "Prestige once to unlock"
           : coop?.prestigeChallenge?.()?.active ? "Finish Reflect Only first" : null,
         goal: () => aggroGoal().label,
         picks: () => readAggroPicks(coop?.localIdentity?.()),

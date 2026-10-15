@@ -1,6 +1,5 @@
 import { expect, it, vi } from "vitest";
 import { crystalFixture, server } from "../../tests/helpers/crystal-hollows-fixture";
-import { ensurePrestigeExpansion } from "./prestige-expansion";
 import { prestigePerkRanks, statRewardMultiplier, storedPrestigePerkRanks, writePrestigePerkRanks } from "./prestige";
 import { prestigeRangeBonus, savedAttackRange } from "./player-speed";
 import { researchInPlay } from "./bonus-toggles";
@@ -16,8 +15,6 @@ const EVERYTHING_OFF = { off: BONUS_ITEM_IDS.join(",") };
 
 function fixture() {
   const f = crystalFixture();
-  ensurePrestigeExpansion(f.ctx as any);
-  f.ctx.timestamp = f.db.prestigeExpansion.id.find(0).unlocksAt;
   f.seed("playerPrestige", { identity: f.ctx.sender, level: 3, perkPoints: 0, peakPower: 0, prestigedAt: f.ctx.timestamp });
   writePrestigePerkRanks(f.ctx, f.ctx.sender, { keenEdge: 2, doubleStrike: 1, splitShot: 0, riposte: 1, bossSlayer: 0, secondWind: 0, longShot: 4, fleetFoot: 3, quickDraw: 5 });
   f.seed("playerPrestigeChallenge", { identity: f.ctx.sender, active: false, completed: 2 });

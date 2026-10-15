@@ -1,8 +1,7 @@
 import { BOSS_DAMAGE_REBALANCE, ENDLESS_EASE, activateCampaignPacing, activateCampaignProgression, applyCampaignRebalance, activateCampaignRewardFloor } from './campaign-pacing-migration';
 // One-time data migrations: the version-gated steps runPendingModuleMigrations
-// walks once per module version, the legacy balance rebases they call and the
-// per-connection migratePlayerBalance catch-up for saves that predate the
-// current balance version. The moduleMigrationState table, the schema
+// walks once per module version and the legacy balance rebases they call.
+// The moduleMigrationState table, the schema
 // registration and the connect/runMaintenance reducers that invoke these stay
 // in index.ts; this module only owns the bodies. Helpers that still live in
 // index.ts arrive through createModuleMigrations' deps so the moved code reads
@@ -15,7 +14,6 @@ import { RESEARCH_DEFINITIONS, createEmptyResearchRanks, shouldBackfillLegacyReg
 import { STARTER_BOW, STARTER_STONE, WOODEN_ARMOR } from "../../shared/items";
 import { normalizeSlotTier, upgradeSlotForItem } from "../../shared/slot-upgrades";
 import {
-  ATTACK_BALANCE_VERSION,
   BOSS_REWARD_CLAIM_BITS,
   MAP_IDS,
   MAX_MOVEMENT_SPEED_OVERRIDE,
@@ -861,14 +859,5 @@ export function createModuleMigrations(deps: ModuleMigrationDeps) {
     return next;
   }
 
-  function migratePlayerBalance(ctx: any, progress: any) {
-    const current = ctx.db.playerBalanceVersion.identity.find(ctx.sender);
-    if ((current?.version ?? 0) >= ATTACK_BALANCE_VERSION) return progress;
-    const migrated = rebaseEndlessPlayer(ctx, playerBalanceProgress(progress, current?.version ?? 0));
-    updateSnapshotRow(ctx, "playerProgress", migrated);
-    markPlayerBalanceCurrent(ctx);
-    return migrated;
-  }
-
-  return { runPendingModuleMigrations, migratePlayerBalance };
+  return { runPendingModuleMigrations };
 }

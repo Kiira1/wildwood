@@ -1156,7 +1156,7 @@ import {
 
   let offlineProgressSummary: ReturnType<typeof createOfflineProgressSummary> | undefined;
   let offlineProgressSetting: { refresh: () => void } | undefined;
-  const expansionNotice = createPrestigeExpansionRuntime({ coop, started: () => Boolean(session?.hasStarted()), mapName: () => MAP_CONFIG[currentMapId].name, mapLabel: gameElements.minimapMapNameEl });
+  const expansionNotice = createPrestigeExpansionRuntime({ coop, mapName: () => MAP_CONFIG[currentMapId].name, mapLabel: gameElements.minimapMapNameEl });
   const prestigeUnlock = createPrestigeUnlockRuntime({ coop, expanded: expansionNotice.unlocked, showMessage, runPrestige, playing: () => session?.hasStarted() && !inTutorial(),
     blocked: () => session.isPaused(), pause: () => {} });
   const duplicateLogin = createDuplicateLoginRuntime({ coop, started: () => session?.hasStarted(), pause: (paused: boolean) => setGameplayPause("duplicate-login", paused) });

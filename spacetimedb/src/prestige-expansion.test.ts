@@ -1,53 +1,29 @@
 import { expect, it, vi } from "vitest";
-import { Timestamp } from "spacetimedb";
 import { crystalFixture, server } from "../../tests/helpers/crystal-hollows-fixture";
 import { BOSS_REWARD_CLAIM_BITS } from "../../shared/rules";
 import { PRESTIGE_PERK_IDS } from "../../shared/prestige-perks";
-import { PRESTIGE_EXPANSION_DELAY_MS } from "../../shared/prestige-expansion";
-import { ensurePrestigeExpansion } from "./prestige-expansion";
 import { prestigePerkRanks, writePrestigePerkRanks } from "./prestige";
 import { effectiveMovementSpeedForProgress } from "./player-speed";
 import { mergeLinkedPrestige } from "./prestige-transfer";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
-/** The launch as live had it: a shared 30-minute countdown. */
 function expansion() {
   const f = crystalFixture();
-  f.seed("prestigeExpansion", { id: 0, launchedAt: f.ctx.timestamp,
-    unlocksAt: new Timestamp(f.ctx.timestamp.microsSinceUnixEpoch + BigInt(PRESTIGE_EXPANSION_DELAY_MS) * 1000n) });
-  const launch = f.db.prestigeExpansion.id.find(0);
-  const unlock = () => { f.ctx.timestamp = launch.unlocksAt; };
   f.seed("playerPrestige", { identity: f.ctx.sender, level: 20, perkPoints: 10, peakPower: 0, prestigedAt: f.ctx.timestamp });
-  return { ...f, launch, unlock };
+  return f;
 }
 
-it("starts a new database unlocked, and never rewrites an existing deadline", () => {
-  const fresh = crystalFixture();
-  ensurePrestigeExpansion(fresh.ctx as any);
-  const row = fresh.db.prestigeExpansion.id.find(0);
-  expect(row.unlocksAt.microsSinceUnixEpoch).toBe(row.launchedAt.microsSinceUnixEpoch);
-  const f = expansion();
-  f.ctx.timestamp = new Timestamp(f.ctx.timestamp.microsSinceUnixEpoch + 60_000_000n);
-  ensurePrestigeExpansion(f.ctx as any);
-  expect(f.db.prestigeExpansion.id.find(0)).toEqual(f.launch);
-});
-
-it("keeps prestige 21 and new perks locked until the exact shared deadline", () => {
+it("opens prestige past 20 and the newer perks with no countdown", () => {
   const f = expansion();
   f.patch("playerProgress", { bossRewardClaims: BOSS_REWARD_CLAIM_BITS.aegisPrime });
   f.seed("proceduralProgress", { identity: f.ctx.sender, completed: 20 });
-  f.ctx.timestamp = new Timestamp(f.launch.unlocksAt.microsSinceUnixEpoch - 1n);
-  expect(() => f.run(server.prestigeAccount)).toThrow("capped at level 20");
-  expect(() => f.run(server.spendPrestigePerkPoint, { perk: "bossSlayer" })).toThrow("countdown");
-  expect(f.db.playerPrestige.identity.find(f.ctx.sender).perkPoints).toBe(10);
-  f.unlock();
   f.run(server.spendPrestigePerkPoint, { perk: "bossSlayer" });
   f.run(server.prestigeAccount);
   expect(f.db.playerPrestige.identity.find(f.ctx.sender)).toMatchObject({ level: 21, perkPoints: 10 });
 });
 
 it("continues past all maxed perks and banks points instead of stopping", () => {
-  const f = expansion(); f.unlock();
+  const f = expansion();
   writePrestigePerkRanks(f.ctx, f.ctx.sender, Object.fromEntries(PRESTIGE_PERK_IDS.map(id => [id, 5])) as any);
   f.patch("playerPrestige", { level: 100, perkPoints: 60 });
   f.patch("playerProgress", { bossRewardClaims: BOSS_REWARD_CLAIM_BITS.aegisPrime });
@@ -60,7 +36,7 @@ it("continues past all maxed perks and banks points instead of stopping", () => 
 });
 
 it("applies range and speed immediately and accepts the researched perk speed", () => {
-  const f = expansion(); f.unlock();
+  const f = expansion();
   f.seed("playerResearch", { identity: f.ctx.sender, utilityAttackRange: 5, moveSpeed: 20, utilityMoveSpeed: 5 });
   f.run(server.spendPrestigePerkPoint, { perk: "longShot" });
   expect(f.db.playerProgress.identity.find(f.ctx.sender).attackRange).toBe(255);
@@ -72,7 +48,7 @@ it("applies range and speed immediately and accepts the researched perk speed", 
 });
 
 it("respec refunds both sets of perks and removes range and speed bonuses", () => {
-  const f = expansion(); f.unlock();
+  const f = expansion();
   for (const perk of ["keenEdge", "longShot", "fleetFoot", "secondWind"]) f.run(server.spendPrestigePerkPoint, { perk });
   f.run(server.respecPrestigePerks);
   expect(f.db.playerPrestige.identity.find(f.ctx.sender).perkPoints).toBe(10);
@@ -81,7 +57,7 @@ it("respec refunds both sets of perks and removes range and speed bonuses", () =
 });
 
 it("preserves expansion ranks and excess points when linking a guest account", () => {
-  const f = expansion(); f.unlock();
+  const f = expansion();
   const guest = f.ctx.sender; const account = new (guest.constructor as any)("2".repeat(64));
   writePrestigePerkRanks(f.ctx, guest, { ...prestigePerkRanks(f.ctx, guest), fleetFoot: 4 });
   f.seed("playerPrestige", { identity: account, level: 30, perkPoints: 0, peakPower: 0, prestigedAt: f.ctx.timestamp });

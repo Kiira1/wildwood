@@ -6,7 +6,6 @@ import { STARTER_BOW } from "../../shared/items";
 import { SOUL_ARRIVAL, SOUL_MAP_ID, SOUL_TOWN_PORTAL } from "../../shared/soul-dimension";
 import { TOWN_ARRIVAL, TOWN_SOUL_PORTAL } from "../../shared/town";
 import { HOME_TRAVEL_PORTAL } from "../../shared/home";
-import { ensurePrestigeExpansion } from "./prestige-expansion";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
 function soulReady(options: { open?: boolean; prestige?: number; kills?: number } = {}) {
@@ -107,8 +106,6 @@ it("goes in from the Town's bottom road, and back to the Town through the forest
 
 it("is where Fight goes back to in the main run, never in a challenge run, whose start is the forest", () => {
   const f = soulReady();
-  ensurePrestigeExpansion(f.ctx as any);
-  f.ctx.timestamp = f.db.prestigeExpansion.id.find(0).unlocksAt;
   const me = () => f.db.player.identity.find(f.ctx.sender);
   // Base from the Soul Dimension keeps the spot, and Fight goes back to it.
   f.patch("player", { mapId: SOUL_MAP_ID, ...SOUL_ARRIVAL });

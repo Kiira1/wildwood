@@ -53,7 +53,7 @@ import { effectiveMovementSpeedForProgress, refreshPrestigeMovement, attackInter
 import { playerBonusToggle } from "./bonus-toggles";
 import { registerBonusToggleReducers } from "./bonus-toggles-reducer";
 import { playerNameColor, registerProfileLookReducers } from "./profile-look";
-import { playerPrestige, playerPrestigePerk, prestigeExpansion, playerPrestigeExpansionPerk, playerFreeRespec, ensurePrestigeExpansion } from "./prestige-expansion";
+import { playerPrestige, playerPrestigePerk, prestigeExpansion, playerPrestigeExpansionPerk, playerFreeRespec } from "./prestige-expansion";
 import { earlierTimestamp } from "./timestamp-utils";
 import { createCosmeticConversion } from "./cosmetic-conversion";
 import { publicChatCursor, readPublicChatPage } from "./public-chat-history";
@@ -195,7 +195,7 @@ const { duelDamage, finishDuel, resolveDuel, startDuel, publishDuelReplay } = cr
 // One-time data migrations live in module-migrations.ts; connect and
 // runMaintenance keep calling runPendingModuleMigrations by name. Placed after
 // the boss factory and the bench slot consts, the last consts it reads.
-const { runPendingModuleMigrations, migratePlayerBalance } = createModuleMigrations({
+const { runPendingModuleMigrations } = createModuleMigrations({
   MAP_ARRIVALS, MAINTENANCE_INTERVAL_MICROS, UPGRADE_BENCH_SLOT_ONE, inventoryForProgress,
   equippedRightHandForProgress, equippedLeftHandForProgress, equippedFeetForProgress,
   equipmentPresentationForProgress, forestItemCountForProgress, cancelActiveItemUpgrade,
@@ -1831,9 +1831,7 @@ function enterWorldPresence(ctx: any, tabId: string, forceTakeover = false, supp
     existingProgress = defaultPlayerProgress(ctx.sender);
     if (supportsTutorial && !existingProfile && !virtualRegistration) ctx.db.playerOnboarding.insert({ identity: ctx.sender, step: 1 });
     insertSnapshotRow(ctx, "playerProgress", existingProgress);
-    markPlayerBalanceCurrent(ctx);
   } else {
-    existingProgress = migratePlayerBalance(ctx, existingProgress);
     // Balance v9 unlocks are authoritative. Historical shared-boss results and
     // a stale presence row must not re-open maps deliberately locked by rebalancing.
     const equippedFeet = equippedFeetForProgress(existingProgress);
@@ -2009,7 +2007,6 @@ export const onConnect = spacetimedb.clientConnected((ctx) => {
   ensureMaintenanceSchedule(ctx); ensureMaintenanceSweepSchedule(ctx); ensureRepeatingSchedule(ctx.db.startupTelemetryCleanupSchedule, 15n * MAINTENANCE_INTERVAL_MICROS);
   ensurePatreonSweep(ctx, ScheduleAt.interval(PATREON_SWEEP_INTERVAL_MICROS));
   // Initialization and balance reconciliation run once per module version.
-  ensurePrestigeExpansion(ctx);
   runPendingModuleMigrations(ctx);
 
   if (!ctx.connectionId) return;
@@ -2085,7 +2082,6 @@ export const runMaintenance = spacetimedb.reducer(
     for (const current of finishedDuels) finishDuel(ctx, current);
     clearExpiredDuelRequests(ctx);
     ensureMotionDetailFrameSchedule(ctx);
-    ensurePrestigeExpansion(ctx);
     runPendingModuleMigrations(ctx);
     // The online count lives here only: every client subscribes to it, so a
     // refresh per connect and disconnect made a mass reload players-squared.

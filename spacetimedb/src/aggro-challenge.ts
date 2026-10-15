@@ -3,7 +3,6 @@ import type spacetimedbType from "./index";
 import { AGGRO_CHALLENGE_LIMIT } from "../../shared/aggro-challenge";
 import { TUTORIAL_FOREST_MAP_ID } from "../../shared/rules";
 import { carryOwnership, savedMainRun, writeEndless } from "./prestige-challenge";
-import { prestigeExpanded } from "./prestige-expansion";
 import { updateSnapshotRow } from "./snapshot-row-writes";
 import { readPlayerProgress } from "./wide-stats";
 import { CAMPAIGN_MAPS } from "../../shared/campaign-registry";
@@ -83,7 +82,6 @@ function writeRow(ctx: any, row: { identity: any; active: boolean; completed: nu
 export function startAggroChallenge(ctx: any, deps: AggroDeps) {
   const player = deps.requireControllingPlayer(ctx);
   if (deps.activeDuelFor(ctx, ctx.sender)) throw new SenderError("Finish your duel before starting a challenge.");
-  if (!prestigeExpanded(ctx)) throw new SenderError("Challenges unlock when the countdown finishes.");
   if (!(ctx.db.playerPrestige.identity.find(ctx.sender)?.level > 0)) throw new SenderError("Prestige once before starting a challenge.");
   const row = ctx.db.playerAggroChallenge.identity.find(ctx.sender);
   if (row?.active) throw new SenderError("An Aggro run is already under way.");

@@ -190,7 +190,6 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
   let expansionPerks = { bossSlayer: 0, secondWind: 0, longShot: 0, fleetFoot: 0, quickDraw: 0 };
   /** The bonuses switched off (shared/bonus-toggles.ts). Kept through a disconnect: only this player's own reducer changes them. */
   let bonusOff: ReadonlySet<string> = new Set();
-  let prestigeExpansionUnlocksAt: number | null = null;
   let prestigeChallenge: PrestigeChallenge = { active: false, completed: 0 };
   let challengeParked = false;
   let aggroChallenge: AggroChallenge = { active: false, completed: 0 };
@@ -662,17 +661,6 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
     dependencies.notify();
   }
 
-  function upsertPrestigeExpansion(row: { id: number; unlocksAt: { microsSinceUnixEpoch: bigint } }) {
-    if (row.id !== 0) return;
-    prestigeExpansionUnlocksAt = Number(row.unlocksAt.microsSinceUnixEpoch / 1000n);
-    dependencies.notify();
-  }
-
-  function removePrestigeExpansion(row: { id: number }) {
-    if (row.id === 0) prestigeExpansionUnlocksAt = null;
-    dependencies.notify();
-  }
-
   function upsertPrestigeExpansionPerk(row: { identity: Identity; bossSlayer: number; secondWind: number; longShot: number; fleetFoot: number; quickDraw?: number }) {
     if (row.identity.toHexString() === dependencies.localIdentity()) {
       expansionPerks = { bossSlayer: row.bossSlayer, secondWind: row.secondWind, longShot: row.longShot, fleetFoot: row.fleetFoot, quickDraw: row.quickDraw ?? 0 };
@@ -843,7 +831,6 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
       upsertAggroChallengeParked, removeAggroChallengeParked,
       upsertFreeRespec, removeFreeRespec,
       upsertDailyQuest, removeDailyQuest, upsertGuildQuestWeek, removeGuildQuestWeek,
-      upsertPrestigeExpansion, removePrestigeExpansion,
       upsertPrestigeExpansionPerk, removePrestigeExpansionPerk,
       upsertBonusToggle, removeBonusToggle,
       removePrestigePerk,
@@ -1039,7 +1026,6 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
       refreshDailyQuests() {
         return reducerResult("daily quests", (active) => active.reducers.refreshDailyQuests({}))();
       },
-      prestigeExpansionUnlocksAt: () => prestigeExpansionUnlocksAt,
       /** The ranks in play: none during an Aggro run, which plays without prestige bonuses, and each switched-off perk zero. */
       prestigePerks: (): PlayerPrestigePerks => prestigeBonusesOff(aggroChallenge)
         ? { keenEdge: 0, doubleStrike: 0, splitShot: 0, riposte: 0, bossSlayer: 0, secondWind: 0, longShot: 0, fleetFoot: 0, quickDraw: 0 }

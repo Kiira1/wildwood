@@ -37,7 +37,7 @@ it("opens only once the campaign's last boss is down, and one Endless stage furt
   expect(prestigeStatMultiplier(3)).toBeCloseTo(1 + 3 * PRESTIGE_STAT_GAIN_PER_LEVEL);
 });
 
-it("caps prestige where every perk is maxed, and says so", () => {
+it("caps prestige at 20 only without the expansion, which the server always has now", () => {
   expect(PRESTIGE_MAX_LEVEL).toBe(20);
   expect(prestigeUnlocked(CAMPAIGN_COMPLETE, 99, PRESTIGE_MAX_LEVEL)).toBe(true);
   expect(prestigeUnlocked(CAMPAIGN_COMPLETE, 99, PRESTIGE_MAX_LEVEL + 1)).toBe(false);
@@ -46,8 +46,8 @@ it("caps prestige where every perk is maxed, and says so", () => {
   f.patch("playerProgress", { bossRewardClaims: CAMPAIGN_COMPLETE });
   f.seed("proceduralProgress", { identity: f.ctx.sender, completed: 99 });
   f.seed("playerPrestige", { identity: f.ctx.sender, level: PRESTIGE_MAX_LEVEL, perkPoints: 0, peakPower: 0, prestigedAt: f.ctx.timestamp });
-  expect(() => f.run(server.prestigeAccount, {})).toThrow("capped at level 20");
-  expect(prestigeRow(f)).toMatchObject({ level: PRESTIGE_MAX_LEVEL });
+  f.run(server.prestigeAccount, {});
+  expect(prestigeRow(f)).toMatchObject({ level: PRESTIGE_MAX_LEVEL + 1 });
 });
 
 it("refuses to prestige an unfinished campaign", () => {
