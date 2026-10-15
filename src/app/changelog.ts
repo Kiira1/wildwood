@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.905.1": [
+    "No pause after stepping through a portal: walk on straight away",
+  ],
   "0.905.0": [
     "Portals: walk straight through to the next map, no loading screen",
     "You step out of the matching portal on the other side",
@@ -3367,6 +3370,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.905.1": "2026-10-15",
   "0.905.0": "2026-10-14",
   "0.904.2": "2026-10-14",
   "0.904.1": "2026-10-14",

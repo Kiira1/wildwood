@@ -1119,6 +1119,12 @@ export function createPresenceService(dependencies: PresenceServiceDependencies)
     return true;
   }
 
+  /**
+   * While a map change is on its way to the server, movement is not sent: a step taken on the new map would reach
+   * the server before the move and read as a jump on the old one. The player walks on locally; the map controller
+   * sends where they stand once the server agrees.
+   */
+  let movementHeldForMapChange = false;
   function syncMovementState(
     x: number,
     y: number,
@@ -1131,6 +1137,7 @@ export function createPresenceService(dependencies: PresenceServiceDependencies)
   ) {
     const connection = dependencies.reducers.connection();
     if (dependencies.reducers.protocolBlocked() || !connection || !Number.isFinite(x) || !Number.isFinite(y)) return;
+    if (movementHeldForMapChange) return;
     if (farm) {
       puppetSiteList = farm.sites;
       // Eye on or off: an eye-off farmer is still seen, as a puppet, by players with it on.
@@ -1258,6 +1265,7 @@ export function createPresenceService(dependencies: PresenceServiceDependencies)
           !Number.isFinite(y) ||
           !isProceduralMap(mapId) && !isSoulMap(mapId) && !isGuildHallMap(mapId) && !["home_exterior", "town", TUTORIAL_FOREST_MAP_ID, BEGINNER_DESERT_MAP_ID, INTERMEDIATE_SNOWLANDS_MAP_ID, ADVANCED_LAVA_WASTES_MAP_ID, INFERNAL_DEPTHS_MAP_ID, WATER_REACH_MAP_ID, SAMURAI_GARDEN_MAP_ID, CLOUDSPIRE_MAP_ID, MOONFEN_MAP_ID, CRYSTAL_HOLLOWS_MAP_ID, CLOCKWORK_RUINS_MAP_ID, DUSKFALL_ORCHARD_MAP_ID, NEON_BASTION_MAP_ID, VERDANT_CATACOMBS_MAP_ID, ION_CITADEL_MAP_ID].includes(mapId)
         ) return false;
+        movementHeldForMapChange = true;
         try {
           if (dependencies.drainEnemyLoot && !await dependencies.drainEnemyLoot()) throw new Error("Enemy rewards are still syncing. Try the portal again.");
           await dependencies.reducers.runWorldReducer(() => connection.reducers.changeMap({ mapId, x, y }));
@@ -1267,6 +1275,8 @@ export function createPresenceService(dependencies: PresenceServiceDependencies)
           recordConnectionDiagnostic("portal-failed", { detail: `destination:${mapId}; ${error instanceof Error ? error.message : "map-change-failed"}` });
           dependencies.reducers.handleFailure("map change", error);
           return false;
+        } finally {
+          movementHeldForMapChange = false;
         }
       },
       remotePlayers() {

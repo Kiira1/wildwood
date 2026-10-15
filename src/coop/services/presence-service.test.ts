@@ -91,6 +91,25 @@ it("drains regular-enemy loot before a portal changes the authoritative map", as
   expect(changeMap).toHaveBeenCalledOnce();
 });
 
+it("holds movement back while a map change is on its way, so no step reaches the server before the move", async () => {
+  let finish!: (value: boolean) => void;
+  const updateMovementState = vi.fn();
+  const connection = { reducers: { changeMap: vi.fn(async () => {}), updateMovementState } };
+  const presence = createPresenceService({
+    drainEnemyLoot: () => new Promise(resolve => { finish = resolve; }),
+    reducers: { connection: () => connection, protocolBlocked: () => false, worldEntryBlocked: () => false,
+      runWorldReducer: (action: () => unknown) => action(), handleFailure: vi.fn(),
+      sendReducer: (_name: string, run: (current: typeof connection) => void) => run(connection) },
+  } as any);
+  const travel = presence.api.changeMap("beginner_desert", 100, 100);
+  presence.api.syncMovementState(300, 340, 0, 200, "keyboard", true);
+  expect(updateMovementState).not.toHaveBeenCalled();
+  finish(true); expect(await travel).toBe(true);
+  presence.api.syncMovementState(300, 360, 0, 200, "keyboard", true);
+  expect(updateMovementState).toHaveBeenCalledOnce();
+  expect(updateMovementState.mock.calls[0][0]).toMatchObject({ x: 300, y: 360 });
+});
+
 it("defaults to no remote subscriptions and fences late data when visibility is switched off", () => {
   const identity = new Identity("1".repeat(64));
   const subscriptions: any[] = [];

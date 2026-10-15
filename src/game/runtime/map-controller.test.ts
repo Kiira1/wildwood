@@ -230,7 +230,7 @@ describe("walking straight through a portal", () => {
     return { ...harness, changeMap, syncStoppedPosition, answer: (changed: boolean) => answer(changed) };
   }
 
-  it("is on the next map the same frame, and walks on once the server agrees", async () => {
+  it("is on the next map the same frame and walks on at once, sending where it stands once the server agrees", async () => {
     const f = confirmable();
     f.controller.updatePortal(1 / 60);
     expect(f.currentMapId()).toBe(f.desertMapId);
@@ -238,12 +238,19 @@ describe("walking straight through a portal", () => {
     expect(f.player).toMatchObject({ x: 300, y: 300 + PORTAL_EXIT_DROP });
     expect(f.changeMap).toHaveBeenCalledWith(f.desertMapId, 100, 68);
     expect(f.prepareMapAssets).toHaveBeenCalledWith(f.desertMapId);
-    expect(f.controller.isMapTransitioning()).toBe(true);
+    // Free to walk, but no other travel until the server answers.
+    expect(f.controller.isMapTransitioning()).toBe(false);
+    expect(f.controller.isArrivalPending()).toBe(true);
     expect(f.syncStoppedPosition).not.toHaveBeenCalled();
+    f.player.y = 268;
+    f.controller.updatePortal(1 / 60);
+    expect(f.changeMap).toHaveBeenCalledOnce();
+    f.player.y = 360;
     f.answer(true);
-    await vi.waitFor(() => expect(f.controller.isMapTransitioning()).toBe(false));
+    await vi.waitFor(() => expect(f.controller.isArrivalPending()).toBe(false));
     expect(f.syncStoppedPosition).toHaveBeenCalledOnce();
     expect(f.currentMapId()).toBe(f.desertMapId);
+    expect(f.player.y).toBe(360);
   });
 
   it("puts the player back in the portal they walked into when the server refuses", async () => {
