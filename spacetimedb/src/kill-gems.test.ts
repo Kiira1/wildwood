@@ -51,7 +51,16 @@ it("never pays twice for a replayed report", () => {
   f.patch("playerProgress", { damage: 1e15, inventoryJson: '["starter_bow"]', equippedRightHand: "starter_bow" });
   reportKills(f, { streamId: "kill-gems-test-stream", sequence: 1n, mapId: "crystal_hollows", enemies: [{ enemy: "Shard Hopper", count: 1 }] });
   expect(f.db.playerGemWallet.identity.find(f.ctx.sender)?.balance).toBe(1n);
-  expect([...f.db.gemTransaction.iter()].filter(row => row.kind === "enemy_kills")).toHaveLength(1);
+});
+
+it("keeps one row a day of kills and gems instead of a ledger row per payout", () => {
+  const f = crystalFixture();
+  f.seed("gemKillProgress", { identity: f.ctx.sender, credit: GEM_KILL_CREDIT_PER_GEM - 5n });
+  killRegular(f, 1n); killRegular(f, 2n);
+  expect([...f.db.gemTransaction.iter()]).toHaveLength(0);
+  const days = [...f.db.gemKillDaily.iter()];
+  expect(days).toHaveLength(1);
+  expect(days[0]).toMatchObject({ identity: f.ctx.sender, kills: 2n, gems: 1n });
 });
 
 it("preserves existing partial gem credit when the ledger unit changes", () => {
@@ -64,33 +73,25 @@ it("preserves existing partial gem credit when the ledger unit changes", () => {
   expect(f.db.gemKillProgress.identity.find(f.ctx.sender)?.credit).toBe(5_997n);
 });
 
-it("pays kills earned before kill gems existed once, at the idle rate, and never again", async () => {
-  const { Identity } = await import("../../tests/helpers/spacetime-memory-db");
-  const { DEVELOPER_IDENTITY } = await import("../../shared/developer-identity");
-  const { SPACETIME_AUTH_CLIENT_ID, SPACETIME_AUTH_ISSUER } = await import("../../shared/rules");
-  const f = crystalFixture(), veteran = f.ctx.sender;
-  // A veteran with 4,500 lifetime kills and a brand-new player with 300.
-  f.seed("playerLifetime", { identity: veteran, joinedAt: f.ctx.timestamp, playedMicros: 0n, sessionStartedAt: f.ctx.timestamp, enemyKills: 4_500n, deathCount: 0n });
-  const rookie = (await import("../../tests/helpers/crystal-hollows-fixture")).identity("3");
-  f.seed("playerLifetime", { identity: rookie, joinedAt: f.ctx.timestamp, playedMicros: 0n, sessionStartedAt: f.ctx.timestamp, enemyKills: 300n, deathCount: 0n });
-  // Act as the developer, the way developer-travel.test.ts does.
-  const who = Identity.fromString(DEVELOPER_IDENTITY);
-  const connectionId = new (f.ctx.connectionId!.constructor as any)(2n);
-  f.seed("player", { ...f.db.player.identity.find(veteran), identity: who });
-  f.progress(who);
-  f.seed("playerSession", { ...f.db.playerSession.connectionId.find(f.ctx.connectionId), identity: who, connectionId });
-  f.seed("playerController", { identity: who, connectionId });
-  f.ctx.sender = who; f.ctx.connectionId = connectionId;
-  f.ctx.senderAuth = { jwt: { issuer: SPACETIME_AUTH_ISSUER, audience: [SPACETIME_AUTH_CLIENT_ID] } };
+it("refuses the retroactive grant, whose ledger is no longer kept", async () => {
+  const { createKillGems } = await import("./kill-gems");
+  const credit = vi.fn();
+  expect(() => createKillGems({ creditGemsWithoutLedger: credit }).grantRetroactiveKillGems({})).toThrow(/already run/);
+  expect(credit).not.toHaveBeenCalled();
+});
 
-  f.run(server.devGrantRetroactiveKillGems, {});
-  expect(f.db.playerGemWallet.identity.find(veteran)?.balance).toBe(2n);
-  expect(f.db.gemKillProgress.identity.find(veteran)?.credit).toBe(1_500n);
-  // Under a block: nothing paid, but the progress row records the credit.
-  expect(f.db.playerGemWallet.identity.find(rookie)?.balance ?? 0n).toBe(0n);
-  expect(f.db.gemKillProgress.identity.find(rookie)?.credit).toBe(900n);
-  // Running it again pays nobody twice.
-  f.run(server.devGrantRetroactiveKillGems, {});
-  expect(f.db.playerGemWallet.identity.find(veteran)?.balance).toBe(2n);
-  expect([...f.db.gemTransaction.iter()].filter(row => row.kind === "enemy_kills")).toHaveLength(1);
+it("clears the old kill-gem ledger rows a batch at a time and keeps everything else", async () => {
+  const { identity } = await import("../../tests/helpers/crystal-hollows-fixture");
+  const f = crystalFixture(), who = identity("3");
+  const row = (id: bigint, kind: string, ref: string) => f.seed("gemTransaction",
+    { id, identity: who, delta: 1n, balanceAfter: 1n, kind, note: "", externalReference: ref, createdAt: f.ctx.timestamp });
+  for (let id = 1n; id <= 6_000n; id++) row(id, "enemy_kills", `kill-gems:${id}`);
+  row(6_001n, "enemy_kills", "kill-gems:retro:abc");
+  row(6_002n, "ad_reward", "ad:1");
+  f.run(server.runMaintenance, { maintenance: {} });
+  expect(f.db.gemLedgerTrim.id.find(0)).toMatchObject({ nextId: 5_000n, endId: 6_002n, done: false });
+  expect([...f.db.gemTransaction.iter()]).toHaveLength(1_003);
+  f.run(server.runMaintenance, { maintenance: {} });
+  expect(f.db.gemLedgerTrim.id.find(0)?.done).toBe(true);
+  expect([...f.db.gemTransaction.iter()].map(r => r.externalReference).sort()).toEqual(["ad:1", "kill-gems:retro:abc"]);
 });

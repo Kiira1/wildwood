@@ -149,7 +149,7 @@ const PLAYER_STATE_TABLES: ReadonlySet<string> = new Set([
   "accountDeletionRequest", "accountEmail", "aggroChallengeRun", "chatMessageReportRateLimit", "chatModerator",
   "connectionDiagnostic", "connectionDiagnosticRate", "dailyGemBonus", "developerPresencePreference",
   "duelWireAccess", "endlessTravelAccess", "enemyDefeatReview",
-  "forestRewardPrototype", "gemKillProgress", "gemTransaction", "guildMemberQuestWeek", "guildRejoin",
+  "forestRewardPrototype", "gemKillDaily", "gemKillProgress", "gemTransaction", "guildMemberQuestWeek", "guildRejoin",
   "homeReturnLocation", "leaderboardEntryLegacy", "leaderboardPosition", "leaderboardPrestigePosition", "loginMove",
   "offlineProgress", "patreonPreview", "playerAggroChallenge", "playerAggroChallengeParked", "playerBonusToggle", "playerNameColor",
   "playerMining", "playerMinedNode", "playerMiningLevel",

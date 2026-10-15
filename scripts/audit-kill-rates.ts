@@ -2,13 +2,12 @@
  * Read-only: who has been paid kills faster than honest play, and who the
  * server has written down for it.
  *
- * The kill-gem ledger holds one row per 1,200 paid kills, stamped with the
- * account's lifetime kill count and the time. Between two rows, kills per
- * second of wall time is what the account was paid, online and offline
- * together (offline progress accrues at or below the honest rate over the
- * same absence, so it cannot inflate it). Kills that arrive in bulk (a guest
- * account merged in, tooling) leave no rows in between and show as a single
- * jump rather than sustained time above a rate.
+ * gem_kill_daily holds each account's reported kills a UTC day, with the
+ * first and last report. Kills over that span is the slowest the account
+ * could have been farming: an honest player who also took breaks shows
+ * lower, never higher, so a span rate above honest play needs a look. A day
+ * with more kills than honest play fits in 24 hours cannot be honest at all.
+ * (Before 2026-10-15 the ledger kept a row per 1,200 kills; those are gone.)
  *
  * Alongside it, the moderation lines the server writes by itself:
  * sustained_kill_rate (paid kills above honest play for a stretch) and
@@ -30,7 +29,6 @@ const option = (name: string, fallback: number) => {
 };
 const TOP = option("top", 20);
 const ABOVE = option("above", 2.2);
-const WINDOW_SECONDS = 15 * 60;
 
 function sql(query: string): Row[] {
   const output = execFileSync(process.env.SPACETIME_BIN || "spacetime", [
@@ -51,61 +49,32 @@ const when = (epochSeconds: number) => new Date(epochSeconds * 1000).toISOString
 const names = new Map(sql("SELECT identity, display_name FROM player_profile").map(row => [hex(row.identity), row.display_name as string]));
 const nameOf = (identity: string) => names.get(identity) || identity.slice(0, 12);
 
-const series = new Map<string, { at: number; kills: number }[]>();
-for (const row of sql("SELECT identity, external_reference, created_at FROM gem_transaction WHERE kind = 'enemy_kills'")) {
-  const match = /^kill-gems:([0-9a-f]{64}):(\d+)$/.exec(String(row.external_reference));
-  if (!match) continue; // retroactive grants carry no kill count
-  const points = series.get(match[1]) ?? [];
-  points.push({ at: seconds(row.created_at), kills: Number(match[2]) });
-  series.set(match[1], points);
-}
+/** Spans shorter than this say little: a quick burst between two reports. */
+const MIN_SPAN_SECONDS = 15 * 60;
+type Day = { identity: string; day: string; kills: number; span: number; rate: number };
+const days: Day[] = sql("SELECT identity, day_key, kills, first_at, last_at FROM gem_kill_daily").map(row => {
+  const span = seconds(row.last_at) - seconds(row.first_at);
+  const kills = Number(row.kills);
+  return { identity: hex(row.identity), day: new Date(Number(row.day_key) * 86_400_000).toISOString().slice(5, 10), kills, span,
+    rate: span >= MIN_SPAN_SECONDS ? kills / span : 0 };
+});
+const accounts = new Set(days.map(day => day.identity));
+const rates = days.filter(day => day.rate > 0).map(day => day.rate).sort((a, b) => a - b);
+const percentile = (p: number) => rates.length ? rates[Math.min(rates.length - 1, Math.floor(rates.length * p))] : 0;
+const span = [...new Set(days.map(day => day.day))].sort();
+console.log(`Kill days: ${accounts.size} accounts, ${days.length} days, ${span[0] ?? "-"} to ${span.at(-1) ?? "-"} UTC.`);
+console.log(`Kills over each day's first-to-last report: median ${percentile(.5).toFixed(2)}/s, p99 ${percentile(.99).toFixed(2)}/s.\n`);
 
-/**
- * Reported kills write a ledger row every 1,200, and offline progress adds at
- * most an hour and a half of farming between two of them. An interval holding
- * more than this came in bulk (a guest account merged in, tooling), not from
- * farming at any rate, and is left out of the rates.
- */
-const BULK_KILLS = 4 * 1_200;
-type Summary = { identity: string; peak: number; peakAt: number; hoursAbove: number; jumps: number; first: number; last: number };
-const summaries: Summary[] = [];
-for (const [identity, points] of series) {
-  points.sort((a, b) => a.at - b.at);
-  let peak = 0, peakAt = 0, hoursAbove = 0, jumps = 0;
-  let j = 0;
-  for (let i = 0; i < points.length; i++) {
-    const a = points[i], b = points[i + 1];
-    if (b && b.kills >= a.kills && b.at > a.at) {
-      const rate = (b.kills - a.kills) / (b.at - a.at);
-      if (b.kills - a.kills > BULK_KILLS) jumps++;
-      else if (rate >= ABOVE && b.at - a.at <= 3_600) hoursAbove += (b.at - a.at) / 3_600;
-    }
-    j = Math.max(j, i + 1);
-    while (j < points.length && points[j].at - a.at < WINDOW_SECONDS) j++;
-    if (j >= points.length) continue;
-    const c = points[j];
-    if (c.kills < a.kills || points.slice(i, j).some((p, k) => points[i + k + 1].kills - p.kills > BULK_KILLS)) continue;
-    const rate = (c.kills - a.kills) / (c.at - a.at);
-    if (rate > peak) { peak = rate; peakAt = a.at; }
-  }
-  summaries.push({ identity, peak, peakAt, hoursAbove, jumps, first: points[0].at, last: points.at(-1)!.at });
-}
-
-const peaks = summaries.map(summary => summary.peak).sort((a, b) => a - b);
-const percentile = (p: number) => peaks.length ? peaks[Math.min(peaks.length - 1, Math.floor(peaks.length * p))] : 0;
-console.log(`Kill-gem ledger: ${summaries.length} accounts, ${when(Math.min(...summaries.map(s => s.first)))} to ${when(Math.max(...summaries.map(s => s.last)))} UTC.`);
-console.log(`Best fifteen minutes per account: median ${percentile(.5).toFixed(2)}/s, p99 ${percentile(.99).toFixed(2)}/s.\n`);
-
-console.log(`Time paid above ${ABOVE}/s (the most suspicious first):`);
-const suspicious = summaries.filter(summary => summary.hoursAbove > 0 || summary.peak >= ABOVE)
-  .sort((a, b) => b.hoursAbove - a.hoursAbove || b.peak - a.peak);
+console.log(`Days above ${ABOVE}/s, or with more kills than ${ABOVE}/s fits in a day:`);
+const suspicious = days.filter(day => day.rate >= ABOVE || day.kills > ABOVE * 86_400)
+  .sort((a, b) => b.kills / 86_400 - a.kills / 86_400 || b.rate - a.rate);
 if (!suspicious.length) console.log("  nobody");
-for (const summary of suspicious.slice(0, TOP))
-  console.log(`  ${nameOf(summary.identity).padEnd(22)} ${(summary.hoursAbove * 60).toFixed(0).padStart(5)} min above   best 15 min ${summary.peak.toFixed(2)}/s at ${when(summary.peakAt)}`);
+for (const day of suspicious.slice(0, TOP))
+  console.log(`  ${nameOf(day.identity).padEnd(22)} ${day.day}  ${String(day.kills).padStart(8)} kills over ${(day.span / 3_600).toFixed(1).padStart(4)} h  ${day.rate.toFixed(2)}/s`);
 
-console.log(`\nFastest ${TOP} by best fifteen minutes:`);
-for (const summary of [...summaries].sort((a, b) => b.peak - a.peak).slice(0, TOP))
-  console.log(`  ${nameOf(summary.identity).padEnd(22)} ${summary.peak.toFixed(2)}/s at ${when(summary.peakAt)}${summary.jumps ? `   (${summary.jumps} bulk jump${summary.jumps > 1 ? "s" : ""} excluded)` : ""}`);
+console.log(`\nMost kills in a day (top ${TOP}):`);
+for (const day of [...days].sort((a, b) => b.kills - a.kills).slice(0, TOP))
+  console.log(`  ${nameOf(day.identity).padEnd(22)} ${day.day}  ${String(day.kills).padStart(8)} kills over ${(day.span / 3_600).toFixed(1).padStart(4)} h  ${day.rate.toFixed(2)}/s`);
 
 const flags = sql("SELECT target_identity, target_name, action, rule, reason, recorded_at FROM moderation_action WHERE actor_type = 'automatic'")
   .filter(row => ["pay_ceiling_shadow", "sustained_kill_rate", "simulation_clock_ahead", "enemy_defeat_allowance", "movement_speed_allowance"].includes(row.rule));

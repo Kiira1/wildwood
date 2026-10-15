@@ -78,6 +78,7 @@ export const ERASURE_TARGETS: readonly ErasureTarget[] = [
   { table: "frostclawContribution", columns: ["identity"], pk: "identity", mode: "key" },
   { table: "gemCommerceConfig", columns: ["verifier"], pk: "id", mode: "scan" },
   { table: "gemCommerceHold", columns: ["identity"], pk: "reference", mode: "index", index: "byIdentity" },
+  { table: "gemKillDaily", columns: ["identity"], pk: "key", mode: "index", index: "byIdentity" },
   { table: "gemKillProgress", columns: ["identity"], pk: "identity", mode: "key" },
   { table: "gemPurchase", columns: ["identity"], pk: "reservation_id", mode: "index", index: "byIdentity" },
   { table: "gemTransaction", columns: ["identity"], pk: "id", mode: "index", index: "byIdentity" },

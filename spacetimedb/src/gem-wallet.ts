@@ -62,6 +62,22 @@ export function applyGemBalanceChange(ctx: any, input: {
   return nextWallet;
 }
 
+/**
+ * Gems added with no ledger row: kill gems, which are paid on nearly every kill report. Those reports are
+ * replay-safe by their stream cursor, and gem_kill_daily keeps each player's kills and gems a day for audits.
+ * Purchases, ads, spending and compensation keep their ledger rows through applyGemBalanceChange.
+ */
+export function creditGemsWithoutLedger(ctx: any, identity: any, delta: bigint) {
+  if (delta <= 0n) throw new SenderError("Gem amount must be positive.");
+  const wallet = ensureGemWallet(ctx, identity);
+  let balance: bigint;
+  try { balance = gemBalanceAfter(wallet.balance, delta); }
+  catch (error) { throw new SenderError(error instanceof Error ? error.message : "Gem balance update failed."); }
+  const next = { ...wallet, balance, revision: wallet.revision + 1n, updatedAt: ctx.timestamp };
+  ctx.db.playerGemWallet.identity.update(next);
+  return next;
+}
+
 export const UTC_DAY_MICROS = 86_400_000_000n;
 
 export function currentUtcDayKey(ctx: any) {

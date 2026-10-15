@@ -747,11 +747,30 @@ export const GemCommerceHold = __t.object("GemCommerceHold", {
 });
 export type GemCommerceHold = __Infer<typeof GemCommerceHold>;
 
+export const GemKillDaily = __t.object("GemKillDaily", {
+  key: __t.string(),
+  identity: __t.identity(),
+  dayKey: __t.string(),
+  kills: __t.u64(),
+  gems: __t.u64(),
+  firstAt: __t.timestamp(),
+  lastAt: __t.timestamp(),
+});
+export type GemKillDaily = __Infer<typeof GemKillDaily>;
+
 export const GemKillProgress = __t.object("GemKillProgress", {
   identity: __t.identity(),
   credit: __t.u64(),
 });
 export type GemKillProgress = __Infer<typeof GemKillProgress>;
+
+export const GemLedgerTrim = __t.object("GemLedgerTrim", {
+  id: __t.u8(),
+  nextId: __t.u64(),
+  endId: __t.u64(),
+  done: __t.bool(),
+});
+export type GemLedgerTrim = __Infer<typeof GemLedgerTrim>;
 
 export const GemPurchase = __t.object("GemPurchase", {
   reservationId: __t.string(),

@@ -59,7 +59,7 @@ import { playerPrestige, playerPrestigePerk, prestigeExpansion, playerPrestigeEx
 import { earlierTimestamp } from "./timestamp-utils";
 import { createCosmeticConversion } from "./cosmetic-conversion";
 import { publicChatCursor, readPublicChatPage } from "./public-chat-history";
-import { createKillGems } from "./kill-gems";
+import { createKillGems, gemKillDaily, gemLedgerTrim } from "./kill-gems";
 import { createPrestige, statRewardMultiplierFor } from "./prestige";
 import { generateMap, proceduralMapId, PROCEDURAL_ENTRY_BOSS } from "../../shared/procedural-maps";
 import { proceduralMapTables, proceduralBossKey } from "./procedural-maps";
@@ -178,7 +178,7 @@ import { defaultPlayerProgress, samePlayerProgressValues, hasFreshProgress, resu
 import { researchForPlayer, assertResearchAvailable, activeResearchIsAvailable, removeResearchCompletionSchedules, completeActiveResearch, ensureResearchCompletionSchedule, reconcileActiveResearch } from "./research-runtime";
 import { ensurePlayerLifetime, finishLifetimeSession, markPlayerBalanceCurrent, playerBalanceProgress, effectivePowerStatsForProgress, effectivePowerForProgress, powerFieldsForProgress, researchedDamage, researchedArmor, researchedRegen } from "./player-power";
 import { removeItemUpgradeCompletionSchedules, removePlayerItemUpgradeData, ensureItemUpgradeCompletionSchedule, completeActiveItemUpgrade, cancelActiveItemUpgrade, reconcileActiveItemUpgrade } from "./item-upgrade-runtime";
-import { ensureGemWallet, applyGemBalanceChange, currentUtcDayKey, ensureDailyGemBonusState } from "./gem-wallet";
+import { ensureGemWallet, applyGemBalanceChange, creditGemsWithoutLedger, currentUtcDayKey, ensureDailyGemBonusState } from "./gem-wallet";
 import { writeProgressAndPresentation } from "./player-power";
 import { refreshLeaderboard, requestLeaderboardRefresh, refreshLeaderboardIfDue } from "./leaderboard-refresh";
 import { generatedDisplayName, isGeneratedDisplayName, syncDisplayNamePresentation, repairModeratedDisplayName, changePlayerDisplayName } from "./display-names";
@@ -1629,7 +1629,7 @@ const spacetimedb = schema({
   dailyGemBonus,
   playerAdReward, playerChatMute,
   balanceApologyNotice,
-  playerEquipmentLock, playerItemGift, playerBowSkill, playerSwordSkill, playerEquipmentCopy, pendingEquipmentOffer, playerIgnoredDrop, playerLootSetting, playerItemRefine, playerCopyRefine, playerOre, playerRefineResult, playerCard, playerGearSlots, playerCopySlots, playerCardDrop, playerCardAttackCap, playerBossCardRoll, playerBuild, playerCardMeter, playerItemCollection, playerWornSkill, playerMining, playerMinedNode, playerMiningLevel,
+  playerEquipmentLock, playerItemGift, playerBowSkill, playerSwordSkill, playerEquipmentCopy, pendingEquipmentOffer, playerIgnoredDrop, playerLootSetting, playerItemRefine, playerCopyRefine, playerOre, playerRefineResult, playerCard, playerGearSlots, playerCopySlots, playerCardDrop, playerCardAttackCap, playerBossCardRoll, playerBuild, playerCardMeter, playerItemCollection, playerWornSkill, playerMining, playerMinedNode, playerMiningLevel, gemKillDaily, gemLedgerTrim,
   mailboxLetter, mailboxReceipt, playerJoinDate, mailboxEquipment, accountDeletionRequest,
   playerOnboarding,
   regularEnemyLootCursor, regularEnemyStream, enemyDefeatBudget, bossDefeatWindow, bossMapDefeatWindow,
@@ -2005,7 +2005,7 @@ const cosmeticConversion = createCosmeticConversion({ requireControllingPlayer, 
 const equipmentCopies = createEquipmentCopies({ requireControllingPlayer, activeDuelFor, inventoryForProgress,
   restoreItemToProgress, removeItemFromProgress: cosmeticConversion.removeItemFromProgress, writeProgressAndPresentation });
 
-const killGems = createKillGems({ applyGemBalanceChange, isVirtualPlayer });
+const killGems = createKillGems({ creditGemsWithoutLedger });
 
 function clearVirtualPlayersForOwner(ctx: any, owner: any) {
   if (ctx.db.virtualPlayerRun.owner.find(owner)) ctx.db.virtualPlayerRun.owner.delete(owner);
@@ -2352,7 +2352,7 @@ export const runMaintenance = spacetimedb.reducer(
     // refresh per connect and disconnect made a mass reload players-squared.
     reconcileOnlinePlayers(ctx);
     refreshLeaderboardIfDue(ctx);
-    expireEquipmentOffers(ctx);
+    expireEquipmentOffers(ctx); killGems.trimKillGemLedger(ctx);
   },
 );
 
