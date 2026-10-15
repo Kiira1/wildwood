@@ -1,10 +1,10 @@
 import { Timestamp } from "spacetimedb";
 import { expect, it, vi } from "vitest";
 import { crystalFixture, identity, server } from "../../tests/helpers/crystal-hollows-fixture";
-import { fillDefeatBudget, reportEnemy } from "../../tests/helpers/enemy-defeat";
+import { fillDefeatBudget, reportEnemy, seedDefeatClock } from "../../tests/helpers/enemy-defeat";
 import { eraseIdentityRows } from "./account-erasure";
 import { bowSkillKey } from "./bow-skills";
-import { combatTimeKey, PLAUSIBLE_KILL_TOLERANCE } from "./enemy-defeats";
+import { PLAUSIBLE_KILL_TOLERANCE } from "./enemy-defeats";
 import { bowSkillChanceRangeTenths, bowSkillReachMultiplier } from "../../shared/bow-skills";
 import { ATTACK_BALANCE_VERSION, REGULAR_ENEMY_RESPAWN_SECONDS, SPACETIME_AUTH_CLIENT_ID, SPACETIME_AUTH_ISSUER } from "../../shared/rules";
 import { mapEnemyPopulation } from "../../shared/enemy-defeats";
@@ -116,7 +116,7 @@ function oneShotter(roll?: typeof TOP) {
   f.patch("playerProgress", { equippedRightHand: STARTER_BOW, inventoryJson: '["starter_bow"]', bowCount: 1, damage: 1e15, attackRate: 1, projectileCount: 1 });
   if (roll) seedRoll(f, STARTER_BOW, roll);
   fillDefeatBudget(f, "crystal_hollows", ENEMY);
-  f.seed("enemyDefeatBudget", { key: combatTimeKey(f.ctx.sender), identity: f.ctx.sender, tokens: 10, updatedAtMicros: f.ctx.timestamp.microsSinceUnixEpoch });
+  seedDefeatClock(f, "combat", 10);
   return f;
 }
 

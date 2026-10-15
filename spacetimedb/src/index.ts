@@ -16,7 +16,7 @@ import { isValidProfileIcon } from "../../shared/profile-icons";
 import { releaseNotice, releaseAcknowledgement, writeReleaseWindow, acknowledgeReleaseWindow } from "./release-control";
 import { recordBossGateClear } from "./boss-gates";
 import { playerMultiplayerPreference, writeMultiplayerPreference } from "./multiplayer-preference";
-import { enemyDefeatBudget, acceptEnemyDefeats, permittedDefeatMaps, pruneIdleDefeatBudgets, throttleKillReports, type EnemyDefeatBatch } from "./enemy-defeats";
+import { enemyDefeatBudget, playerDefeatClock, acceptEnemyDefeats, permittedDefeatMaps, pruneIdleDefeatBudgets, throttleKillReports, type DefeatClocks, type EnemyDefeatBatch } from "./enemy-defeats";
 import { grantVirtualPlayerConsent, revokeVirtualPlayerConsent } from "./virtual-player-consent";
 import { offlineProgressTables, beginOfflineWindow, grantOfflineProgress, acknowledgeOfflineProgress, setSimulatedTimeAway } from "./offline-progress";
 import { playerOfflinePreference, writeOfflinePreference } from "./offline-preference";
@@ -1407,7 +1407,7 @@ const spacetimedb = schema({
   playerEquipmentLock, playerItemGift, playerBowSkill, playerSwordSkill, playerEquipmentCopy, pendingEquipmentOffer, playerIgnoredDrop, playerLootSetting, playerItemRefine, playerCopyRefine, playerOre, playerRefineResult, playerCard, playerGearSlots, playerCopySlots, playerCardDrop, playerCardAttackCap, playerBossCardRoll, playerBuild, playerCardMeter, playerItemCollection, playerWornSkill, playerMining, playerMinedNode, playerMiningLevel, gemKillDaily, gemLedgerTrim,
   mailboxLetter, mailboxReceipt, playerJoinDate, mailboxEquipment, accountDeletionRequest,
   playerOnboarding,
-  regularEnemyLootCursor, regularEnemyStream, enemyDefeatBudget,
+  regularEnemyLootCursor, regularEnemyStream, enemyDefeatBudget, playerDefeatClock,
   playerMultiplayerPreference,
   chatReaction, chatHeartAllowance, chatReactionCooldown, chatReactionSummary, chatReactionUnlock, chatModerator, playerChatHearts,
   playerUpgradeBench,
@@ -2834,7 +2834,7 @@ export const devRollbackPlayerProgression = spacetimedb.reducer(
         if (ctx.db.playerLastLocation.identity.find(args.identity)) ctx.db.playerLastLocation.identity.update(location);
         else ctx.db.playerLastLocation.insert(location);
       }
-      for (const row of ctx.db.enemyDefeatBudget.identity.filter(args.identity)) ctx.db.enemyDefeatBudget.key.delete(row.key);
+      for (const row of ctx.db.enemyDefeatBudget.identity.filter(args.identity)) ctx.db.enemyDefeatBudget.key.delete(row.key); ctx.db.playerDefeatClock.identity.delete(args.identity);
       // Keep accepted report cursors so old batches cannot award the same loot twice.
       refreshLeaderboard(ctx);
     },
@@ -3214,12 +3214,12 @@ const EnemyDefeatEntry = t.object("EnemyDefeat", { enemy: t.string(), count: t.u
 const enemyDefeatArgs = { streamId: t.string(), sequence: t.u64(), mapId: t.string(), enemies: t.array(EnemyDefeatEntry) };
 // Plus the milliseconds the client simulated since its previous report (0 when it cannot say); see simulationClock.
 const enemyDefeatReportArgs = { streamId: t.string(), sequence: t.u64(), mapId: t.string(), simulatedMillis: t.u32(), enemies: t.array(EnemyDefeatEntry) };
-function recordEnemyDefeatsFor(ctx: any, batch: EnemyDefeatBatch) {
+function recordEnemyDefeatsFor(ctx: any, batch: EnemyDefeatBatch, clocks?: DefeatClocks) {
     const player = requireControllingPlayer(ctx);
     if (activeDuelFor(ctx, ctx.sender)) throw new SenderError("Enemy rewards require your account world connection."); const worn = syncCardAttackCap(ctx, ctx.sender);
     // Everything the combat bound reads, read once for the whole report.
     const combat = combatBoundForReport(ctx, worn);
-    const accepted = acceptEnemyDefeats(ctx, batch, permittedDefeatMaps(ctx, player, TOWN_MAP_ID), combat);
+    const accepted = acceptEnemyDefeats(ctx, batch, permittedDefeatMaps(ctx, player, TOWN_MAP_ID), combat, clocks);
     if (!accepted) return;
     const enforce = () => {
       // Only a report no real client could have sent. A clipped claim is
@@ -3270,8 +3270,7 @@ function recordEnemyDefeatsFor(ctx: any, batch: EnemyDefeatBatch) {
 }
 // The throttle comes before any other read; throttleKillReports says why.
 const killReport = (ctx: any, batch: any) => {
-  throttleKillReports(ctx);
-  recordEnemyDefeatsFor(ctx, batch);
+  recordEnemyDefeatsFor(ctx, batch, throttleKillReports(ctx));
 };
 export const reportEnemyDefeats = spacetimedb.reducer(enemyDefeatReportArgs, killReport);
 // Same reward as reportEnemyDefeats: which reducer a client calls is its own claim.

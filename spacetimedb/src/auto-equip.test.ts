@@ -1,9 +1,8 @@
 import { Identity } from "spacetimedb";
 import { expect, it, vi } from "vitest";
 import { crystalFixture, server } from "../../tests/helpers/crystal-hollows-fixture";
-import { fillDefeatBudget, reportEnemy } from "../../tests/helpers/enemy-defeat";
+import { fillDefeatBudget, reportEnemy, seedDefeatClock } from "../../tests/helpers/enemy-defeat";
 import { bowSkillKey, bowSkillRollFor } from "./bow-skills";
-import { combatTimeKey } from "./enemy-defeats";
 import { publishItemDrop } from "./equipment-copies";
 import { CAMPAIGN_UNLOCK_FIELDS } from "../../shared/equipment-access";
 import { BOSS_REWARD_CLAIM_BITS } from "../../shared/rules";
@@ -53,7 +52,7 @@ function archer(roll: Roll = LOW) {
   f.patch("playerProgress", { equippedRightHand: STARTER_BOW, inventoryJson: '["starter_bow"]', bowCount: 1, damage: 1e15, attackRate: 1, projectileCount: 1 });
   seedFirst(f, roll);
   fillDefeatBudget(f, "crystal_hollows", ENEMY);
-  f.seed("enemyDefeatBudget", { key: combatTimeKey(f.ctx.sender), identity: f.ctx.sender, tokens: 10, updatedAtMicros: f.ctx.timestamp.microsSinceUnixEpoch });
+  seedDefeatClock(f, "combat", 10);
   return f;
 }
 

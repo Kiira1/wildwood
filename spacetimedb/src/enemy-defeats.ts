@@ -20,6 +20,34 @@ export const enemyDefeatBudget = table({ name: "enemy_defeat_budget" }, {
 });
 
 /**
+ * The account-wide clocks a kill report spends, one row per player: the report
+ * limiter, the simulation clock, the combat clock and the kill-rate watch. They
+ * were four rows of enemy_defeat_budget, each found and written on every report.
+ * A clock at time 0 has never run, which reads as no row did.
+ */
+export const playerDefeatClock = table({ name: "player_defeat_clock", public: false }, {
+  identity: t.identity().primaryKey(),
+  reportTokens: t.f64(), reportAt: t.u64(), simTokens: t.f64(), simAt: t.u64(),
+  combatTokens: t.f64(), combatAt: t.u64(), rateTokens: t.f64(), rateAt: t.u64(),
+});
+export type DefeatClockName = "report" | "sim" | "combat" | "rate";
+export type DefeatClocks = { identity: any; reportTokens: number; reportAt: bigint; simTokens: number; simAt: bigint;
+  combatTokens: number; combatAt: bigint; rateTokens: number; rateAt: bigint };
+/** One clock as the arithmetic below reads it; undefined when it has never run. */
+export function defeatClock(row: DefeatClocks | null | undefined, name: DefeatClockName) {
+  const at = row?.[`${name}At`] ?? 0n;
+  return row && at > 0n ? { tokens: row[`${name}Tokens`], updatedAtMicros: at } : undefined;
+}
+export function withDefeatClock(row: DefeatClocks, name: DefeatClockName, tokens: number, at: bigint): DefeatClocks {
+  return { ...row, [`${name}Tokens`]: tokens, [`${name}At`]: at };
+}
+const emptyClocks = (identity: any): DefeatClocks => ({ identity, reportTokens: 0, reportAt: 0n, simTokens: 0, simAt: 0n,
+  combatTokens: 0, combatAt: 0n, rateTokens: 0, rateAt: 0n });
+function writeDefeatClocks(ctx: DefeatContext, row: DefeatClocks, exists: boolean) {
+  if (exists) ctx.db.playerDefeatClock.identity.update(row); else ctx.db.playerDefeatClock.insert(row);
+}
+
+/**
  * A budget row nobody has touched for this long is dropped by the maintenance
  * sweep. Rows were only ever added (one per player, map and species, and every
  * Endless level is its own map), so the table grew without end. Dropping one
@@ -45,8 +73,6 @@ export function pruneIdleDefeatBudgets(ctx: Pick<GameReducerContext, "db" | "tim
   return idle.length;
 }
 
-/** Seconds of regular-enemy combat the player has banked, across every map and species. */
-export const combatTimeKey = (identity: { toHexString(): string }) => `${identity.toHexString()}:combat-time-v1`;
 
 /** Combat time a report may draw on at once. Per-species banks held five
  * minutes each, so a player fighting several species could deliver a longer
@@ -82,12 +108,6 @@ export function permittedDefeatMaps(ctx: DefeatContext, player: { mapId: string 
   const left = ctx.db.homeReturnLocation.identity.find(ctx.sender)?.mapId;
   return left && left !== homeMapId ? [player.mapId, left] : [player.mapId];
 }
-/** How far this account's game simulation may still run ahead of real time. */
-export const simulationClockKey = (identity: { toHexString(): string }) => `${identity.toHexString()}:sim-clock-v1`;
-/** The account's kill-report limiter; see KILL_REPORT_BURST. */
-export const reportRateKey = (identity: { toHexString(): string }) => `${identity.toHexString()}:report-rate-v1`;
-/** The account's kill-rate watch; see watchKillRate. */
-export const killRateKey = (identity: { toHexString(): string }) => `${identity.toHexString()}:kill-rate-v1`;
 
 /**
  * The watch's line: paid kills per second that honest play cannot sustain.
@@ -179,15 +199,12 @@ export const PAY_CEILING = { enforced: false };
  * catches what the simulation clock cannot, a client edited to report
  * honest-looking game time, which the spawn wall still pays.
  */
-function watchKillRate(ctx: DefeatContext, mapId: string, respawnSeconds: number, paidKills: number, creditedSeconds: number) {
-  const key = killRateKey(ctx.sender);
-  const previous = ctx.db.enemyDefeatBudget.key.find(key);
+function watchKillRate(ctx: DefeatContext, clocks: DefeatClocks, mapId: string, respawnSeconds: number, paidKills: number, creditedSeconds: number) {
   const now = ctx.timestamp.microsSinceUnixEpoch;
   const line = killRateWatchLine(mapId, respawnSeconds);
-  const watch = killRateWatch(previous, now, paidKills, creditedSeconds, line);
-  const next = { key, identity: ctx.sender, tokens: watch.tokens, updatedAtMicros: now };
-  if (previous) ctx.db.enemyDefeatBudget.key.update(next); else ctx.db.enemyDefeatBudget.insert(next);
-  if (!watch.episodeStarted) return;
+  const watch = killRateWatch(defeatClock(clocks, "rate"), now, paidKills, creditedSeconds, line);
+  const next = withDefeatClock(clocks, "rate", watch.tokens, now);
+  if (!watch.episodeStarted) return next;
   const displayName = ctx.db.playerProfile.identity.find(ctx.sender)?.displayName ?? "";
   const detail = { identity: ctx.sender.toHexString(), displayName, mapId, excessKills: Math.round(watch.level),
     abovePerSecond: Number(line.toFixed(2)) };
@@ -196,6 +213,7 @@ function watchKillRate(ctx: DefeatContext, mapId: string, respawnSeconds: number
     action: "kill_rate_flag", actorType: "automatic", rule: "sustained_kill_rate",
     reason: `Paid kills stayed above ${detail.abovePerSecond}/s long enough to bank ${detail.excessKills} over it on ${mapId}. Nothing was clipped; review with npm run audit:kill-rates.`,
     before: "", after: "" });
+  return next;
 }
 
 /**
@@ -221,16 +239,18 @@ function watchKillRate(ctx: DefeatContext, mapId: string, respawnSeconds: number
  * throws later (a wrong map, an invalid enemy) is not counted, and costs the
  * reads up to its throw: the session and controller checks and the cursor.
  */
-export function throttleKillReports(ctx: DefeatContext) {
-  const key = reportRateKey(ctx.sender);
-  const previous = ctx.db.enemyDefeatBudget.key.find(key);
+export function throttleKillReports(ctx: DefeatContext): DefeatClocks {
+  const row = ctx.db.playerDefeatClock.identity.find(ctx.sender);
+  const previous = defeatClock(row, "report");
   const now = ctx.timestamp.microsSinceUnixEpoch;
   const tokens = previous
     ? Math.min(KILL_REPORT_BURST, previous.tokens + Math.max(0, Number(now - previous.updatedAtMicros) / 1e6) / KILL_REPORT_REFILL_SECONDS)
     : KILL_REPORT_BURST;
   if (tokens < 1 - 1e-9) throw new SenderError("Enemy rewards are catching up.");
-  const next = { key, identity: ctx.sender, tokens: Math.max(0, tokens - 1), updatedAtMicros: now };
-  if (previous) ctx.db.enemyDefeatBudget.key.update(next); else ctx.db.enemyDefeatBudget.insert(next);
+  const next = withDefeatClock(row ?? emptyClocks(ctx.sender), "report", Math.max(0, tokens - 1), now);
+  if (row) ctx.db.playerDefeatClock.identity.update(next); else ctx.db.playerDefeatClock.insert(next);
+  // The report goes on to spend the account's other clocks from this same row.
+  return next;
 }
 
 /**
@@ -313,13 +333,10 @@ export function scaledDefeatCounts(counts: readonly number[], scale: number, fir
  * the payout scale and the game seconds the server accepts as played: the
  * claim, cut to the real-time share when it ran ahead.
  */
-function chargeSimulationClock(ctx: DefeatContext, mapId: string, simulatedMillis: number) {
-  const key = simulationClockKey(ctx.sender);
-  const previous = ctx.db.enemyDefeatBudget.key.find(key);
+function chargeSimulationClock(ctx: DefeatContext, clocks: DefeatClocks, mapId: string, simulatedMillis: number) {
   const now = ctx.timestamp.microsSinceUnixEpoch;
-  const clock = simulationClock(previous, now, simulatedMillis);
-  const next = { key, identity: ctx.sender, tokens: clock.tokens, updatedAtMicros: now };
-  if (previous) ctx.db.enemyDefeatBudget.key.update(next); else ctx.db.enemyDefeatBudget.insert(next);
+  const clock = simulationClock(defeatClock(clocks, "sim"), now, simulatedMillis);
+  const next = withDefeatClock(clocks, "sim", clock.tokens, now);
   // Once per episode: the first scaled report. Reports while it stays scaled
   // are the same episode and stay quiet.
   if (clock.episodeStarted) {
@@ -335,7 +352,7 @@ function chargeSimulationClock(ctx: DefeatContext, mapId: string, simulatedMilli
       reason: `Simulated ${detail.claimed}s against ${detail.credit}s of server time on ${mapId} (${detail.ratio}x); kill rewards scaled to the real-time share.`,
       before: "", after: "" });
   }
-  return { scale: clock.scale, creditedSeconds: clock.claimed * clock.scale };
+  return { scale: clock.scale, creditedSeconds: clock.claimed * clock.scale, clocks: next };
 }
 
 export type EnemyDefeatBatch = { streamId: string; sequence: bigint; mapId: string; enemies: EnemyDefeat[];
@@ -366,7 +383,9 @@ export function acceptEnemyDefeats(ctx: DefeatContext, batch: EnemyDefeatBatch, 
     commit: (reward: EnemyStatReward) => void;
     /** The worn cards, when the caller already read them for this report. */
     wornCards?: () => CardTotals | undefined;
-  }) {
+  },
+  /** The account's clocks as throttleKillReports left them; read here when not given. */
+  clocksRow?: DefeatClocks) {
   if (!/^[a-zA-Z0-9-]{16,80}$/.test(batch.streamId) || batch.sequence < 1n || !batch.enemies.length)
     throw new SenderError("Invalid enemy defeat batch.");
   const key = `${ctx.sender.toHexString()}:${batch.streamId}`;
@@ -398,7 +417,10 @@ export function acceptEnemyDefeats(ctx: DefeatContext, batch: EnemyDefeatBatch, 
   }
   // Scale first, then the bounds below, so the spawn wall and combat clock see
   // only what real time allowed and are not drained by the excess.
-  const simulation = chargeSimulationClock(ctx, batch.mapId, batch.simulatedMillis);
+  // throttleKillReports has always written the row by now; a caller without it reads it here.
+  const storedClocks = clocksRow ?? ctx.db.playerDefeatClock.identity.find(ctx.sender);
+  const simulation = chargeSimulationClock(ctx, storedClocks ?? emptyClocks(ctx.sender), batch.mapId, batch.simulatedMillis);
+  let clocks = simulation.clocks;
   const scale = simulation.scale;
   const balance = pinnedMapBalance(ctx, ctx.sender, batch.mapId);
   const utility = ctx.db.playerResearch.identity.find(ctx.sender);
@@ -418,8 +440,7 @@ export function acceptEnemyDefeats(ctx: DefeatContext, batch: EnemyDefeatBatch, 
   // One clock for the whole account: a kill spends the seconds this player
   // needs to make it. Per-species buckets let a script claim every species on
   // every map at the full rate at once, each from its own bank.
-  const clockKey = combatTimeKey(ctx.sender);
-  const clockPrevious = ctx.db.enemyDefeatBudget.key.find(clockKey);
+  const clockPrevious = defeatClock(clocks, "combat");
   // The clock refills with the game time the simulation clock accepted, not
   // the wall clock: kills have to be paid for with play the server believes
   // happened. A report claiming no time (a client that cannot say, or one
@@ -490,12 +511,11 @@ export function acceptEnemyDefeats(ctx: DefeatContext, batch: EnemyDefeatBatch, 
     kills.push({ enemy: entry.enemy, count: acceptedCount });
     if (definition.loot) lootCount += acceptedCount;
   }
-  if (clockSpent || simulation.creditedSeconds > 0) {
-    const clock = { key: clockKey, identity: ctx.sender, tokens: combatSeconds, updatedAtMicros: now };
-    if (clockPrevious) ctx.db.enemyDefeatBudget.key.update(clock); else ctx.db.enemyDefeatBudget.insert(clock);
-  }
+  if (clockSpent || simulation.creditedSeconds > 0) clocks = withDefeatClock(clocks, "combat", combatSeconds, now);
   advanceStreamCursor(ctx, key, batch.sequence, prior);
-  if (count > 0) watchKillRate(ctx, batch.mapId, defeatMinRespawnSeconds(regularRespawn), count, simulation.creditedSeconds);
+  if (count > 0) clocks = watchKillRate(ctx, clocks, batch.mapId, defeatMinRespawnSeconds(regularRespawn), count, simulation.creditedSeconds);
+  // One write for the simulation clock, the combat clock and the watch.
+  writeDefeatClocks(ctx, clocks, Boolean(storedClocks));
   // A clipped claim is bounded, never a session action: the spawn wall clips
   // an honest client too (a portal round-trip re-presents a personal boss the
   // earned-time clock has not paid for yet, and a map change starts a fresh

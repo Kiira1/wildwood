@@ -1,11 +1,11 @@
 import { Timestamp } from "spacetimedb";
 import { describe, expect, it, vi } from "vitest";
 import { crystalFixture, server } from "../../tests/helpers/crystal-hollows-fixture";
-import { fillDefeatBudget } from "../../tests/helpers/enemy-defeat";
+import { fillDefeatBudget, readDefeatClock, seedDefeatClock } from "../../tests/helpers/enemy-defeat";
 import { STARTER_BOW } from "../../shared/items";
 import { SIM_CLOCK_BANK_SECONDS } from "../../shared/enemy-defeats";
 import { KILL_REPORT_BURST, KILL_REPORT_REFILL_SECONDS, REGULAR_KILL_REPORT_SECONDS } from "../../shared/rules";
-import { reportRateKey, scaledDefeatCounts, simulationClock, simulationClockKey, SIM_CLOCK_EPISODE_RECOVERY_SECONDS } from "./enemy-defeats";
+import { scaledDefeatCounts, simulationClock, SIM_CLOCK_EPISODE_RECOVERY_SECONDS } from "./enemy-defeats";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
 const MAP = "crystal_hollows", ENEMY = "Shard Hopper";
@@ -108,7 +108,7 @@ function fixture() {
     return f.run(server.reportEnemyDefeats, { streamId: "clock-test-stream-01", sequence: next, mapId: options.mapId ?? MAP, simulatedMillis, enemies: [{ enemy: ENEMY, count }] });
   };
   const advance = (seconds: number) => { f.ctx.timestamp = new Timestamp(f.ctx.timestamp.microsSinceUnixEpoch + at(seconds)); };
-  return { ...f, kills, report, advance, clock: () => f.db.enemyDefeatBudget.key.find(simulationClockKey(f.ctx.sender)) };
+  return { ...f, kills, report, advance, clock: () => readDefeatClock(f, "sim") };
 }
 
 describe("simulation clock on report_enemy_defeats", () => {
@@ -133,7 +133,7 @@ describe("simulation clock on report_enemy_defeats", () => {
 
   it("consumes a report it pays nothing, so it never blocks the stream", () => {
     const f = fixture();
-    f.seed("enemyDefeatBudget", { key: simulationClockKey(f.ctx.sender), identity: f.ctx.sender, tokens: 0, updatedAtMicros: f.ctx.timestamp.microsSinceUnixEpoch });
+    seedDefeatClock(f, "sim", 0);
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     f.advance(1);
     f.report(3, 60_000);
@@ -146,7 +146,7 @@ describe("simulation clock on report_enemy_defeats", () => {
 
   it("warns and writes one audit line per episode, and restricts nothing", () => {
     const f = fixture();
-    f.seed("enemyDefeatBudget", { key: simulationClockKey(f.ctx.sender), identity: f.ctx.sender, tokens: 10, updatedAtMicros: f.ctx.timestamp.microsSinceUnixEpoch });
+    seedDefeatClock(f, "sim", 10);
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     f.advance(30); f.report(10, 80_000);
     f.advance(30); f.report(10, 90_000);
@@ -168,7 +168,7 @@ describe("simulation clock on report_enemy_defeats", () => {
       expect(() => f.run(reducer, { streamId: "clock-test-legacy-01", sequence: 1n, mapId: MAP, enemies: [{ enemy: ENEMY, count: 5 }] }))
         .toThrow("WildStat updated. Refresh to continue.");
     expect(f.kills()).toBe(0);
-    expect(f.clock()).toBeNull();
+    expect(f.clock()).toBeUndefined();
   });
 });
 
@@ -190,7 +190,7 @@ describe("kill report throttle", () => {
 
   it("is the first check, ahead of the session guard", () => {
     const f = fixture();
-    f.seed("enemyDefeatBudget", { key: reportRateKey(f.ctx.sender), identity: f.ctx.sender, tokens: 0, updatedAtMicros: f.ctx.timestamp.microsSinceUnixEpoch });
+    seedDefeatClock(f, "report", 0);
     f.db.playerController.identity.delete(f.ctx.sender);
     expect(() => f.report(1, 0)).toThrow("Enemy rewards are catching up.");
   });
@@ -198,7 +198,7 @@ describe("kill report throttle", () => {
   it("spends nothing on a report that fails later", () => {
     const f = fixture();
     for (let i = 0; i < KILL_REPORT_BURST * 2; i++) expect(() => f.report(1, 0, { mapId: "water_reach" })).toThrow("another map");
-    expect(f.db.enemyDefeatBudget.key.find(reportRateKey(f.ctx.sender))).toBeNull();
+    expect(readDefeatClock(f, "report")).toBeUndefined();
     f.report(1, 0, { sequence: 1n });
     expect(f.kills()).toBe(1);
   });

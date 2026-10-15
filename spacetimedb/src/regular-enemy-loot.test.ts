@@ -4,7 +4,6 @@ import { expect, it, vi } from "vitest";
 import { crystalFixture, server } from "../../tests/helpers/crystal-hollows-fixture";
 import { reportKills } from "../../tests/helpers/enemy-defeat";
 import { enemyDefeatDefinition, defeatBudget } from "../../shared/enemy-defeats";
-import { combatTimeKey, reportRateKey, simulationClockKey, killRateKey } from "./enemy-defeats";
 import { ENEMY_TYPES } from "../../shared/enemy-definitions";
 import { rollRegularEnemyLoot } from "./regular-enemy-loot";
 import { regularMapLoot } from "../../shared/regular-map-loot";
@@ -53,11 +52,8 @@ it("honours a report for the map the player left for the Town, paid by that map'
   f.db.homeReturnLocation.insert({ identity: f.ctx.sender, mapId: batch.mapId, x: 1, y: 1, facing: 0 });
   reportKills(f, batch);
   expect(f.db.playerProgress.identity.find(f.ctx.sender).damage).toBeCloseTo(base.damage + enemyDefeatDefinition(batch.mapId, enemy)!.reward.amount * 15);
-  // Spawn budgets are the map's own; the account-wide clocks and the report
-  // limiter have no map.
-  const accountWide = [combatTimeKey, reportRateKey, simulationClockKey, killRateKey].map(key => key(f.ctx.sender));
-  expect([...f.db.enemyDefeatBudget.iter()].filter(row => !accountWide.includes(row.key))
-    .every(row => row.key.includes(`:${batch.mapId}:`))).toBe(true);
+  // Spawn budgets are the map's own; the account-wide clocks live in player_defeat_clock.
+  expect([...f.db.enemyDefeatBudget.iter()].every(row => row.key.includes(`:${batch.mapId}:`))).toBe(true);
 });
 it("still rejects a report for a map the player did not come to the Town from, even when unlocked", () => {
   const f = fixture(); f.patch("player", { mapId: "town" }); f.patch("playerProgress", { waterUnlocked: true });

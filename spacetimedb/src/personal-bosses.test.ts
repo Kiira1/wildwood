@@ -1,9 +1,8 @@
 import { expect, it, vi } from "vitest";
 import { crystalFixture } from "../../tests/helpers/crystal-hollows-fixture";
-import { reportEnemy, reportKills } from "../../tests/helpers/enemy-defeat";
+import { reportEnemy, reportKills, readDefeatClock, seedDefeatClock } from "../../tests/helpers/enemy-defeat";
 import { CAMPAIGN_MAPS } from "../../shared/campaign-registry";
 import { CAMPAIGN_UNLOCK_FIELDS } from "../../shared/equipment-access";
-import { combatTimeKey, simulationClockKey } from "./enemy-defeats";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
 const baseStats = (row: any) => Object.fromEntries(["damage", "maxHp", "armor", "regen", "attackRate", "inventoryJson"].map(key => [key, row[key]]));
@@ -30,7 +29,8 @@ it.each([...CAMPAIGN_MAPS.map(map => map.id), "endless_1", "endless_40"])("recor
   expect([...f.db.playerItemDrop.iter()]).toEqual([]);
   expect([...f.db.playerDailyQuest.iter()]).toEqual([]);
   expect(rolls).not.toHaveBeenCalled();
-  expect([...f.db.enemyDefeatBudget.iter()].map(row => row.key)).toEqual([`${f.ctx.sender.toHexString()}:report-rate-v1`]);
+  expect([...f.db.enemyDefeatBudget.iter()]).toEqual([]);
+  expect(readDefeatClock(f, "combat")).toBeUndefined();
   expect([...f.db.proceduralInstanceContribution.iter()]).toEqual([]);
 });
 
@@ -49,11 +49,9 @@ it.each(["tutorial_forest", "endless_40"])("retries and repeated %s clears never
 
 it("leaves both regular-enemy clocks alone on a gate-only report", () => {
   const f = crystalFixture();
-  for (const key of [combatTimeKey(f.ctx.sender), simulationClockKey(f.ctx.sender)]) {
-    f.seed("enemyDefeatBudget", { key, identity: f.ctx.sender, tokens: 0, updatedAtMicros: f.ctx.timestamp.microsSinceUnixEpoch });
-  }
+  for (const clock of ["combat", "sim"] as const) seedDefeatClock(f, clock, 0);
   reportEnemy(f, "boss", 1, 60_000);
-  for (const key of [combatTimeKey(f.ctx.sender), simulationClockKey(f.ctx.sender)]) expect(f.db.enemyDefeatBudget.key.find(key).tokens).toBe(0);
+  for (const clock of ["combat", "sim"] as const) expect(readDefeatClock(f, clock)!.tokens).toBe(0);
   expect(f.db.playerProgress.identity.find(f.ctx.sender).clockworkRuinsUnlocked).toBe(true);
 });
 

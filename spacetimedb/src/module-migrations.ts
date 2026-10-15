@@ -856,6 +856,7 @@ export function createModuleMigrations(deps: ModuleMigrationDeps) {
     }
     // Old DPS/time credit must never validate kills after a stat reduction.
     for (const row of ctx.db.enemyDefeatBudget.identity.filter(progress.identity)) ctx.db.enemyDefeatBudget.key.delete(row.key);
+    ctx.db.playerDefeatClock?.identity.delete(progress.identity);
     // Keep accepted-loot sequence cursors: deleting them would permit double rewards.
     return next;
   }

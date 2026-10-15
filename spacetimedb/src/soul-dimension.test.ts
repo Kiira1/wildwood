@@ -1,13 +1,12 @@
 import { expect, it, vi } from "vitest";
 import { Identity, Timestamp } from "spacetimedb";
 import { crystalFixture, server } from "../../tests/helpers/crystal-hollows-fixture";
-import { fillDefeatBudget, reportKills } from "../../tests/helpers/enemy-defeat";
+import { fillDefeatBudget, reportKills, seedDefeatClock } from "../../tests/helpers/enemy-defeat";
 import { STARTER_BOW } from "../../shared/items";
 import { SOUL_ARRIVAL, SOUL_MAP_ID, SOUL_TOWN_PORTAL } from "../../shared/soul-dimension";
 import { TOWN_ARRIVAL, TOWN_SOUL_PORTAL } from "../../shared/town";
 import { HOME_TRAVEL_PORTAL } from "../../shared/home";
 import { ensurePrestigeExpansion } from "./prestige-expansion";
-import { combatTimeKey } from "./enemy-defeats";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
 function soulReady(options: { open?: boolean; prestige?: number; kills?: number } = {}) {
@@ -58,7 +57,7 @@ it("pays a Reflect build's soul kills, whose enemies are built from its weapon d
     if (riposte) f.seed("playerPrestigePerk", { identity: f.ctx.sender, riposte });
     f.patch("player", { mapId: SOUL_MAP_ID, x: SOUL_ARRIVAL.x, y: SOUL_ARRIVAL.y });
     fillDefeatBudget(f, SOUL_MAP_ID, "soul:damage");
-    f.seed("enemyDefeatBudget", { key: combatTimeKey(f.ctx.sender), identity: f.ctx.sender, tokens: 0, updatedAtMicros: f.ctx.timestamp.microsSinceUnixEpoch });
+    seedDefeatClock(f, "combat", 0);
     reportKills(f, { streamId: "soul-stream-000001", sequence: 1n, mapId: SOUL_MAP_ID, simulatedMillis: 10_000, enemies: [{ enemy: "soul:damage", count: 100 }] });
     return f.db.playerSoulStats.identity.find(f.ctx.sender)?.damage ?? 0;
   };

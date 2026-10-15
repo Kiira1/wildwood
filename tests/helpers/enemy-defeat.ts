@@ -1,7 +1,7 @@
 import { defeatBudget, enemyDefeatDefinition } from "../../shared/enemy-defeats";
 import { ENEMY_TYPES } from "../../shared/enemy-definitions";
 import { server } from "./crystal-hollows-fixture";
-import { combatTimeKey, simulationClockKey } from "../../spacetimedb/src/enemy-defeats";
+import { defeatClock, withDefeatClock, type DefeatClockName } from "../../spacetimedb/src/enemy-defeats";
 /**
  * The game time an honest tab reports: the real time since the account's
  * combat clock last moved (else since its previous report). Paid that,
@@ -9,9 +9,19 @@ import { combatTimeKey, simulationClockKey } from "../../spacetimedb/src/enemy-d
  * real time, as the retired record_enemy_defeats did.
  */
 export function honestSimulatedMillis(f: any) {
-  const since = f.db.enemyDefeatBudget.key.find(combatTimeKey(f.ctx.sender))
-    ?? f.db.enemyDefeatBudget.key.find(simulationClockKey(f.ctx.sender));
+  const since = readDefeatClock(f, "combat") ?? readDefeatClock(f, "sim");
   return since ? Math.max(0, Math.round(Number(f.ctx.timestamp.microsSinceUnixEpoch - since.updatedAtMicros) / 1000)) : 0;
+}
+
+/** One of the account's clocks in player_defeat_clock, undefined when it has never run. */
+export const readDefeatClock = (f: any, name: DefeatClockName) => defeatClock(f.db.playerDefeatClock.identity.find(f.ctx.sender), name);
+
+/** Sets one of the account's clocks, as a report at `at` would have left it. */
+export function seedDefeatClock(f: any, name: DefeatClockName, tokens: number, at: bigint = f.ctx.timestamp.microsSinceUnixEpoch) {
+  const row = f.db.playerDefeatClock.identity.find(f.ctx.sender);
+  const next = withDefeatClock(row ?? { identity: f.ctx.sender, reportTokens: 0, reportAt: 0n, simTokens: 0, simAt: 0n,
+    combatTokens: 0, combatAt: 0n, rateTokens: 0, rateAt: 0n }, name, tokens, at);
+  if (row) f.db.playerDefeatClock.identity.update(next); else f.db.playerDefeatClock.insert(next);
 }
 
 /** Sends a kill report as the current client does, with honest game time unless the batch says otherwise. */
