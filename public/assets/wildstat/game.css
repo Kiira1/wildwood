@@ -3306,6 +3306,7 @@
   .profile-stat-range dt { color: #74d8ff; }
   .profile-stat-speed dt { color: #bf9cff; }
   .profile-stat-stat-gain dt, .profile-stat-critical dt { color: #f3d36b; }
+  .profile-stat-mining dt { color: #e3a46b; }
   .profile-stat-double-strike dt, .profile-stat-split-shot dt, .profile-stat-riposte dt { color: #f0c674; }
   /* Edit Profile (profile-editor.ts): over the profile window, under the picture picker it opens. */
   #profileNameEditor { position: fixed; inset: 0; z-index: 12; display: grid; place-items: center; padding: max(5px, env(safe-area-inset-top)) max(5px, env(safe-area-inset-right)) max(5px, env(safe-area-inset-bottom)) max(5px, env(safe-area-inset-left)); background: rgba(0,0,0,.45); }

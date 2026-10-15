@@ -189,10 +189,6 @@ export function createProfileWindowController(elements: {
     const prestigeLevel = own ? api.prestigeLevel?.() ?? profile.prestigeLevel ?? 0 : profile.prestigeLevel ?? 0;
     elements.prestigeRow.hidden = prestigeLevel <= 0;
     elements.prestige.textContent = `${prestigeLevel} (+${Math.round(prestigeLevel * PRESTIGE_STAT_GAIN_PER_LEVEL * 100)}% stat gain)`;
-    // Mining, once the Smith has handed over a pickaxe.
-    const miningRow = elements.window.querySelector<HTMLElement>("#profileMiningRow");
-    const mining = elements.window.querySelector<HTMLElement>("#profileMining");
-    if (miningRow && mining) { miningRow.hidden = profile.mining == null; mining.textContent = (profile.mining ?? 0).toLocaleString(); }
     api.renderStats(profile, elements.statGrid);
     loading.hide();
     showBonusesTab(own);

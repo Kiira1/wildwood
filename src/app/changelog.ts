@@ -1,6 +1,6 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
   "0.906.1": [
-    "Profiles show Mining",
+    "Profiles show Mining in Stats",
     "Cards and skills moved from the profile into the item window, with a clearer look",
   ],
   "0.906.0": [

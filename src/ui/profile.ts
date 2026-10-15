@@ -1,4 +1,5 @@
 import type { PlayerProfileData, PlayerResearch } from "../wildstat-coop";
+import { miningSpeed } from "../../shared/mining";
 import { createEmptyResearchRanks, researchStatRewardMultiplier, utilityMovementSpeedBonus } from "../../shared/research";
 import { prestigeStatMultiplier } from "../../shared/prestige";
 import { PRESTIGE_PERKS, playerAttackCap, prestigePerkValue, type PrestigePerkRanks } from "../../shared/prestige-perks";
@@ -366,6 +367,13 @@ export function profileStatDisplayRows(
   perkRow("doubleStrike", "double-strike", "(Chance a hit lands twice)", "doubleStrike");
   perkRow("splitShot", "split-shot", "(Chance to strike a second enemy)", "splitShot");
   perkRow("riposte", "riposte", "(Reflects 100% of each hit before armor, up to your max health; no cap in Reflect Only; half in duels)", "reflect");
+  // Mining, once the Smith has handed over a pickaxe: every rock raises it, and it breaks rocks faster.
+  if (profile.mining != null) {
+    stats.push({
+      kind: "mining", label: "Mining:", base: profile.mining.toLocaleString(), multiplier: "", hideEquation: true,
+      total: profile.mining.toLocaleString(), expandedDetail: `(Breaks rocks ${miningSpeed(profile.mining).toFixed(2)}× as fast)`, sources: [],
+    });
+  }
   return stats;
 }
 
