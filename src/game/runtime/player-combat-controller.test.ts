@@ -17,6 +17,7 @@ import { rewardLabel } from "../enemies";
 import { researchStatRewardMultiplier } from "../../../shared/research";
 import { prestigeStatMultiplier } from "../../../shared/prestige";
 import { equipmentDamage } from "../../../shared/items";
+import { cardTotals } from "../../../shared/card-effects";
 import { attackIntervalForRating, ratingForLevels } from "../../../shared/stat-rating";
 import { applyEnemyRewards } from "../../../shared/enemy-defeats";
 import { MIN_ATTACK_INTERVAL } from "../../../shared/rules";
@@ -190,6 +191,18 @@ describe("player attack timing", () => {
     const boss = spawn(bossFight); boss.generatedBoss = true;
     bossFight.controller.damagePlayer(40, boss);
     expect(hitGeneratedBoss).toHaveBeenCalledWith(boss, 40, false, true);
+  });
+
+  it("reflects a hit the card shield soaks completely, since it still landed", () => {
+    const state = createCombatHarness({ prestigeReflect: () => 1, cards: () => cardTotals(["glacier_regent_card"]) });
+    createEnemyLifecycle(state.enemies, state.spawnSites, () => {}).spawnFromSite({ id: 0, type: "Spitter", x: 520, y: 500,
+      campName: "Test", leashRange: 500, alive: false, respawnAt: 0 });
+    const attacker = state.enemies[0]; attacker.hp = attacker.maxHp = 1000;
+    Object.assign(state.player, { x: 500, y: 500, hp: 1000, maxHp: 1000, hurtClock: 0 });
+    state.controller.updateProjectiles(.016); // the shield fills: 5% of max health, 50
+    state.controller.damagePlayer(40, attacker);
+    expect(state.player.hp).toBe(1000);
+    expect(attacker.hp).toBe(960);
   });
 
   it("reflects the hit before armor, so armor spares the player and not the attacker", () => {

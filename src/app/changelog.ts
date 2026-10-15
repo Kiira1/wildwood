@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.904.2": [
+    "Reflect now fires on hits your shield fully absorbs",
+  ],
   "0.904.1": [
     "Player profiles show the cards and weapon skills in use",
     "New players start in the Tutorial Forest",
@@ -3356,6 +3359,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.904.2": "2026-10-14",
   "0.904.1": "2026-10-14",
   "0.904.0": "2026-10-14",
   "0.903.8": "2026-10-14",

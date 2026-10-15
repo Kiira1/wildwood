@@ -675,15 +675,16 @@ export function createPlayerCombatController(options: {
     // Cards: a dodge spends the attack and lands nothing; guards lower the hit, and a shield takes what armor lets through.
     const guarded = cardCombat.incoming(amount, source);
     if (guarded === null) return true;
-    const dealt = cardCombat.absorb(damageAfterArmor(guarded, effectiveArmor()));
+    const throughArmor = damageAfterArmor(guarded, effectiveArmor());
+    const dealt = cardCombat.absorb(throughArmor);
     if (dealt > 0) options.onCombat?.();
     player.hp -= dealt;
     // Reflect throws the hit back at whoever dealt it, bosses included, as it
     // arrived (before armor, which spares only the player), but never more
     // than the player's max health; a Reflect Only run has no cap.
-    // The server's bounds allow it.
+    // The server's bounds allow it. A hit the shield soaks still landed, so it reflects as well.
     const reflectChance = reflectChanceInPlay();
-    if (source && !source.dead && dealt > 0 && reflectChance > 0 && reflectBag.draw(reflectChance)) {
+    if (source && !source.dead && throughArmor > 0 && reflectChance > 0 && reflectBag.draw(reflectChance)) {
       const reflected = worldReflectDamage(amount, player.maxHp, options.reflectOnly?.() === true);
       // Some enemies throw a Reflect back: it lands on the player through armor, and does not bounce again.
       if (!source.isBoss && random() < (source.reflectsReflect ?? 0)) {
