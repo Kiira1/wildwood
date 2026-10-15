@@ -1,5 +1,5 @@
 {
-  "protocolVersion": 115,
+  "protocolVersion": 116,
   "tables": {
     "active_item_upgrade_slot_three": [
       "identity:identity",
@@ -905,6 +905,11 @@
       "sequence:u64",
       "droppedAt:timestamp"
     ],
+    "player_inventory": [
+      "identity:identity",
+      "inventoryJson:string",
+      "cosmeticItemsJson:string"
+    ],
     "player_item_drop": [
       "key:string",
       "identity:identity",
@@ -1086,7 +1091,12 @@
       "neonBastionUnlocked:bool",
       "verdantCatacombsUnlocked:bool",
       "ionCitadelUnlocked:bool",
-      "cosmeticItemsJson:string"
+      "cosmeticItemsJson:string",
+      "critRating:f64",
+      "maxHpWide:f64",
+      "damageWide:f64",
+      "armorWide:f64",
+      "regenWide:f64"
     ],
     "player_research": [
       "identity:identity",
