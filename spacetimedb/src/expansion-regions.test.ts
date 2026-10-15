@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { crystalFixture, server } from "../../tests/helpers/crystal-hollows-fixture";
 import { BOSS_REWARD_CLAIM_BITS } from "../../shared/rules";
+import { PORTAL_EXIT_DROP } from "../../shared/map-gateways";
 import { reducerParameters } from "../../tests/helpers/spacetime-module";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
@@ -41,9 +42,10 @@ it("enforces the complete portal chain and survives repeated forward/return trip
   expect(() => travel("duskfall_orchard", 2510)).toThrow("Ironhorn");
   f.patch("playerProgress", { duskfallOrchardUnlocked: true });
   for (let repeat = 0; repeat < 3; repeat++) {
-    for (const [mapId, x] of [["duskfall_orchard", 2510], ["clockwork_ruins", 2290], ["crystal_hollows", 2290], ["clockwork_ruins", 2510]] as const) {
+    // Each trip steps out in front of the destination's portal back: forward lands at its back portal, back at its next.
+    for (const [mapId, x, exitX] of [["duskfall_orchard", 2510, 2290], ["clockwork_ruins", 2290, 2510], ["crystal_hollows", 2290, 2510], ["clockwork_ruins", 2510, 2290]] as const) {
       travel(mapId, x);
-      expect(f.db.player.identity.find(f.ctx.sender)).toMatchObject({ mapId, x: 2400, y: 2490 });
+      expect(f.db.player.identity.find(f.ctx.sender)).toMatchObject({ mapId, x: exitX, y: 2400 + PORTAL_EXIT_DROP });
       expect(f.db.playerMotion.identity.find(f.ctx.sender).mapId).toBe(mapId);
     }
   }

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { crystalFixture, server } from "../../tests/helpers/crystal-hollows-fixture";
-import { CAMPAIGN_GATEWAYS, endlessEntryPortal, LEGACY_CORNER_GATEWAYS, LEGACY_ENDLESS_ENTRY_PORTAL, portalUsePoint, type MapGatewayPortal } from "../../shared/map-gateways";
+import { CAMPAIGN_GATEWAYS, endlessEntryPortal, LEGACY_CORNER_GATEWAYS, LEGACY_ENDLESS_ENTRY_PORTAL, portalExit, portalUsePoint, type MapGatewayPortal } from "../../shared/map-gateways";
 import { generateMap } from "../../shared/procedural-maps";
 import { BOSS_REWARD_CLAIM_BITS } from "../../shared/rules";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
@@ -12,13 +12,13 @@ const use = (portal: MapGatewayPortal) => portalUsePoint(portal);
 const portalTo = (gateways: { portals: MapGatewayPortal[] }, destination: string) => gateways.portals.find(portal => portal.destination === destination)!;
 
 describe("portal use at the new middle and the old corner (until the legacy table goes)", () => {
-  it("takes the new portal and lands the player at the new arrival", () => {
+  it("takes the new portal and lands the player in front of the portal back", () => {
     const f = crystalFixture();
     f.patch("player", { mapId: "moonfen" });
     f.patch("playerProgress", { crystalHollowsUnlocked: true });
     const gate = use(portalTo(CAMPAIGN_GATEWAYS.moonfen, "crystal_hollows"));
     f.run(server.changeMap, { mapId: "crystal_hollows", x: gate.x, y: gate.y });
-    expect(f.db.player.identity.find(f.ctx.sender)).toMatchObject({ mapId: "crystal_hollows", ...CAMPAIGN_GATEWAYS.crystal_hollows.arrival });
+    expect(f.db.player.identity.find(f.ctx.sender)).toMatchObject({ mapId: "crystal_hollows", ...portalExit(CAMPAIGN_GATEWAYS.crystal_hollows.portals, "moonfen") });
   });
 
   it("takes an old tab's corner portal and lands it at the old arrival, where that tab puts itself", () => {
@@ -42,14 +42,14 @@ describe("portal use at the new middle and the old corner (until the legacy tabl
     expect(f.db.player.identity.find(f.ctx.sender)).toMatchObject({ mapId: "tutorial_forest", x: 1025, y: 850 });
   });
 
-  it("takes the last map's way into Endless at either place; Endless's arrival never moved", () => {
+  it("takes the last map's way into Endless at either place, out of Endless's portal back", () => {
     for (const portal of [endlessEntryPortal("endless_1"), { ...LEGACY_ENDLESS_ENTRY_PORTAL, destination: "endless_1" }]) {
       const f = crystalFixture();
       f.patch("player", { mapId: "ion_citadel" });
       f.patch("playerProgress", { ionCitadelUnlocked: true, bossRewardClaims: BOSS_REWARD_CLAIM_BITS.aegisPrime });
       const gate = use(portal);
       f.run(server.changeMap, { mapId: "endless_1", x: gate.x, y: gate.y });
-      expect(f.db.player.identity.find(f.ctx.sender)).toMatchObject({ mapId: "endless_1", ...generateMap("endless_1").arrival });
+      expect(f.db.player.identity.find(f.ctx.sender)).toMatchObject({ mapId: "endless_1", ...portalExit(generateMap("endless_1").portals, "ion_citadel") });
     }
   });
 
@@ -67,7 +67,7 @@ describe("portal use at the new middle and the old corner (until the legacy tabl
     const gate = use(portalTo(CAMPAIGN_GATEWAYS.moonfen, "crystal_hollows"));
     f.run(server.updateMovementState, { x: gate.x, y: gate.y, vx: 0, vy: 0, simulationTick: 1, motionEpoch: 1, sequence: 1 });
     f.run(server.changeMap, { mapId: "crystal_hollows", x: gate.x, y: gate.y });
-    const { arrival } = CAMPAIGN_GATEWAYS.crystal_hollows;
+    const arrival = portalExit(CAMPAIGN_GATEWAYS.crystal_hollows.portals, "moonfen")!;
     f.run(server.updateMovementState, { x: arrival.x, y: arrival.y, vx: 0, vy: 0, simulationTick: 2, motionEpoch: 2, sequence: 2 });
     // Its first packet from the arrival is taken as it stands, not pulled back toward the old map's portal.
     expect(f.db.player.identity.find(f.ctx.sender)).toMatchObject({ mapId: "crystal_hollows", x: arrival.x, y: arrival.y });

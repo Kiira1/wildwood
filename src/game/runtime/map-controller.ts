@@ -5,6 +5,9 @@ import type { EnemyState, PlayerState } from "./types";
 import { BOSS_KINDS, clearBossAttack, type BossHazards, type BossStates } from "./boss/boss-registry";
 import type { MapId, SpawnSite } from "../world";
 import { portalTravelScene } from "./render/portal-glimpse";
+import { portalExit } from "../../../shared/map-gateways";
+import { MAP_IDS } from "../../../shared/rules";
+import { isProceduralMap } from "../../../shared/procedural-maps";
 
 export type MapPortal = { x: number; y: number; width: number; height: number; depth: number; destination: MapId; label?: string };
 
@@ -147,11 +150,18 @@ export function createMapController(options: {
   const initialPortal = mapConfig[tutorialMapId].portal;
   if (!initialPortal) throw new Error("Tutorial map requires an introductory portal.");
   let portalCutscenePortal: MapPortal = initialPortal;
-  portalTravelScene.arrival = (mapId) => (mapConfig as Partial<MapConfig>)[mapId as MapId]?.arrival ?? null;
-  portalTravelScene.portals = (mapId) => {
-    const entry = (mapConfig as Partial<MapConfig>)[mapId as MapId];
-    return [entry?.portal, entry?.secondaryPortal].filter((portal): portal is MapPortal => Boolean(portal));
-  };
+  portalTravelScene.arrival = (mapId, from) => mapId in mapConfig ? arrivalFrom(mapId as MapId, from as MapId) : null;
+
+  /**
+   * Where the server lands a traveller from `from` (map-travel.ts): a campaign or Endless map brings them out in
+   * front of its portal back; anywhere else, at its arrival.
+   */
+  function arrivalFrom(destination: MapId, from: MapId) {
+    const entry = mapConfig[destination];
+    const travelled = (MAP_IDS as readonly string[]).includes(destination) || isProceduralMap(destination);
+    const portals = [entry.portal, entry.secondaryPortal].filter((portal): portal is MapPortal => Boolean(portal));
+    return (travelled ? portalExit(portals, from) : null) ?? entry.arrival;
+  }
 
   /**
    * The map loads on the fade's dark, and loading is what ends the travel lock.
@@ -316,7 +326,8 @@ export function createMapController(options: {
     stopTouchMove();
     player.moving = false;
     const destination = portal.destination;
-    if (options.instantTravelReady?.(destination)) { travelThroughPortal(portal); return; }
+    const departure = getCurrentMapId();
+    if (options.instantTravelReady?.(destination)) { void travelThroughPortal(portal, destination); return; }
     const attempt = mapLoadGeneration;
     void prepareMapTransition(
       () => changeMap(destination, player.x, player.y),
@@ -329,7 +340,7 @@ export function createMapController(options: {
         portalCooldown = 1;
         return;
       }
-      const arrival = mapConfig[destination].arrival;
+      const arrival = arrivalFrom(destination, departure);
       fadeToMap(() => {
         if (attempt !== mapLoadGeneration) return;
         loadMap(destination, arrival.x, arrival.y, Math.PI / 2);
@@ -351,32 +362,32 @@ export function createMapController(options: {
    * while the server confirms the move. Movement waits for that answer (a round trip), and a refusal puts the
    * player back in the portal they walked into.
    */
-  function travelThroughPortal(portal: MapPortal) {
-    const destination = portal.destination;
+  function travelThroughPortal(portal: MapPortal | null, destination: MapId): Promise<boolean> {
     const departure = { mapId: getCurrentMapId(), x: player.x, y: player.y, facing: player.facing };
-    const arrival = mapConfig[destination].arrival;
+    const arrival = arrivalFrom(destination, departure.mapId);
     const move = Promise.resolve(changeMap(destination, departure.x, departure.y));
     loadMap(destination, arrival.x, arrival.y, Math.PI / 2);
     snapCameraToPlayer(camera, player, viewport());
     resetPresentationState();
-    beginHomeTeleport(true);
     portalTravelScene.arrivedAt = performance.now();
     mapTransitioning = true;
     const attempt = mapLoadGeneration;
     const goBack = () => {
-      if (attempt !== mapLoadGeneration) return;
+      if (attempt !== mapLoadGeneration) return false;
       loadMap(departure.mapId, departure.x, departure.y, departure.facing);
       snapCameraToPlayer(camera, player, viewport());
       resetPresentationState();
       syncStoppedPosition();
-      portalExitGuard = portal;
+      if (portal) portalExitGuard = portal;
       portalCooldown = 1;
+      return false;
     };
-    void withMapDeadline(move).then((changed) => {
-      if (attempt !== mapLoadGeneration) return;
-      if (!changed) { goBack(); return; }
+    return withMapDeadline(move).then((changed) => {
+      if (attempt !== mapLoadGeneration) return false;
+      if (!changed) return goBack();
       syncStoppedPosition();
       mapTransitioning = false;
+      return true;
     }, goBack);
   }
 
@@ -465,8 +476,17 @@ export function createMapController(options: {
   return {
     teleportHome: () => teleport(),
     teleportToMap: (destination, request) => teleport(destination, request),
-    travelFromHome: async (destination) => getCurrentMapId() === "town" && destination !== "town" && destination !== "home_exterior"
-      && teleport(destination, async () => Boolean(await changeMap(destination, player.x, player.y))),
+    travelFromHome: async (destination) => {
+      if (getCurrentMapId() !== "town" || destination === "town" || destination === "home_exterior") return false;
+      // A campaign or Endless map whose art is in hand opens straight away, as a walk-in portal does.
+      const plain = (MAP_IDS as readonly string[]).includes(destination) || isProceduralMap(destination);
+      if (plain && options.instantTravelReady?.(destination) && running() && player.hp > 0 && !isDueling() && !mapTransitioning && !portalCutscene.active) {
+        options.onTravelStarted?.();
+        keys.clear(); stopTouchMove(); player.moving = false;
+        return travelThroughPortal(null, destination);
+      }
+      return teleport(destination, async () => Boolean(await changeMap(destination, player.x, player.y)));
+    },
     homeDeparture: () => homeDeparture,
     activePortal,
     secondaryPortal,

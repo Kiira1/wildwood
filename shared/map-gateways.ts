@@ -81,6 +81,18 @@ export function campaignLanding(mapId: string) {
   return mapId === TUTORIAL_FOREST_MAP_ID ? { ...PLAYER_SPAWN } : CAMPAIGN_GATEWAYS[mapId] && { ...CAMPAIGN_GATEWAYS[mapId].arrival };
 }
 
+/** How far in front of a portal's feet a traveller steps out of it. */
+export const PORTAL_EXIT_DROP = 24;
+
+/**
+ * Where a traveller from `from` steps out on a map with these portals: in front of its portal leading back, so
+ * walking through a portal brings them out of the matching one. Null when no portal there leads back.
+ */
+export function portalExit(portals: readonly { x: number; y: number; destination: string }[], from: string) {
+  const back = portals.find(portal => portal.destination === from);
+  return back ? { x: back.x, y: back.y + PORTAL_EXIT_DROP } : null;
+}
+
 /** The last campaign map's portal into Endless (`destination`, its first map): where a next portal would stand. */
 export function endlessEntryPortal(destination: string): MapGatewayPortal {
   return middleGateways(gatewayPoint(LAST_CAMPAIGN_MAP.id), CAMPAIGN_MAPS[CAMPAIGN_MAPS.length - 2].id, destination).portals[1];

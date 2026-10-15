@@ -7,6 +7,7 @@ import { createGameBootstrap } from "./game-bootstrap";
 import { createGameSessionController } from "./game-session-controller";
 import { parseHTML } from "linkedom";
 import { CRYSTAL_HOLLOWS_MAP_ID, MOONFEN_MAP_ID, type MapId } from "../world";
+import { PORTAL_EXIT_DROP, portalExit } from "../../../shared/map-gateways";
 
 type MapControllerOptions = Parameters<typeof createMapController>[0];
 
@@ -159,7 +160,8 @@ describe("portal arrival activation", () => {
     // Moonfen's way on and Crystal Hollows' way back, in the middle of their maps.
     const useOf = (portal: { x: number; y: number; height: number } | null | undefined) => ({ x: portal!.x, y: portal!.y - portal!.height * .32 });
     const onward = useOf(bootstrap.mapConfig[MOONFEN_MAP_ID].secondaryPortal), back = useOf(bootstrap.mapConfig[CRYSTAL_HOLLOWS_MAP_ID].portal);
-    const arrival = bootstrap.mapConfig[CRYSTAL_HOLLOWS_MAP_ID].arrival;
+    // Out of Crystal Hollows' portal back to Moonfen, as the server lands them (map-travel.ts).
+    const arrival = portalExit([bootstrap.mapConfig[CRYSTAL_HOLLOWS_MAP_ID].portal!], MOONFEN_MAP_ID)!;
     controller.loadMap(MOONFEN_MAP_ID, bootstrap.mapConfig[MOONFEN_MAP_ID].arrival.x, bootstrap.mapConfig[MOONFEN_MAP_ID].arrival.y);
     harness.setUnlocked(false);
     player.x = onward.x;
@@ -232,7 +234,8 @@ describe("walking straight through a portal", () => {
     const f = confirmable();
     f.controller.updatePortal(1 / 60);
     expect(f.currentMapId()).toBe(f.desertMapId);
-    expect(f.player).toMatchObject({ x: 300, y: 400 });
+    // Out of the desert's portal back to the forest, not at the desert's arrival.
+    expect(f.player).toMatchObject({ x: 300, y: 300 + PORTAL_EXIT_DROP });
     expect(f.changeMap).toHaveBeenCalledWith(f.desertMapId, 100, 68);
     expect(f.prepareMapAssets).toHaveBeenCalledWith(f.desertMapId);
     expect(f.controller.isMapTransitioning()).toBe(true);
@@ -254,6 +257,26 @@ describe("walking straight through a portal", () => {
     // Standing in the portal after the refusal never sends the player straight back in.
     f.controller.updatePortal(1 / 60);
     expect(f.changeMap).toHaveBeenCalledOnce();
+  });
+
+  it("opens the Town picker's choice straight away, without the teleport's wait", async () => {
+    const f = confirmable();
+    f.setMap("town");
+    const travel = f.controller.travelFromHome(f.desertMapId);
+    expect(f.currentMapId()).toBe(f.desertMapId);
+    expect(f.changeMap).toHaveBeenCalledWith(f.desertMapId, 100, 68);
+    f.answer(true);
+    expect(await travel).toBe(true);
+    expect(f.controller.isMapTransitioning()).toBe(false);
+  });
+
+  it("takes a refused Town picker trip back to the Town, so the picker can say so", async () => {
+    const f = confirmable();
+    f.setMap("town");
+    const travel = f.controller.travelFromHome(f.desertMapId);
+    f.answer(false);
+    expect(await travel).toBe(false);
+    expect(f.currentMapId()).toBe("town");
   });
 
   it("waits for the server, as before, when the destination's art is still loading", async () => {
