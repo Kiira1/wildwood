@@ -774,7 +774,7 @@ import {
     samuraiCutsceneSeenKey: SAMURAI_PORTAL_CUTSCENE_SEEN_KEY,
     getCurrentMapId: () => currentMapId,
     setCurrentMapId: setCurrentMap,
-    prepareMapAssets: (mapId) => prepareMapAssets(mapId),
+    prepareMapAssets: (mapId) => prepareMapAssets(mapId), instantTravelReady: (mapId) => !inTutorial() && assets.mapAssetsReady(mapId),
     player,
     camera,
     viewport: canvasRuntime.viewport,
@@ -787,7 +787,7 @@ import {
     localMapState: () => inTutorial() ? null : coop?.localState?.(),
     changeMap: async (mapId, x, y) => {
       const changed = await coop?.changeMap?.(mapId, x, y);
-      if (changed) { mapBalance.reset(); await mapBalance.ensure(mapId); }
+      if (changed) { mapBalance.reset(); void mapBalance.ensure(mapId).catch(() => {}); }
       return changed;
     },
     syncStoppedPosition: () => { if (!inTutorial()) coop?.correctMovementPosition?.(player.x, player.y, true); },
@@ -1077,7 +1077,7 @@ import {
   });
   const renderController = worldRenderRuntime.createFrameRenderer({
     bootsPickup,
-    remotePlayers: () => inTutorial() ? [] : [
+    remotePlayers: () => inTutorial() || coop?.localState?.()?.mapId !== currentMapId ? [] : [
       ...enemySimulation.renderRemotePlayers(coop?.remotePlayers?.() ?? [])
         .filter((other) => !coop?.remotePlayerDeath?.(other.id)),
       ...(coop?.remotePlayerCorpses?.() ?? []),

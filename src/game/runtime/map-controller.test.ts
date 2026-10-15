@@ -219,6 +219,51 @@ describe("portal arrival activation", () => {
   });
 });
 
+describe("walking straight through a portal", () => {
+  function confirmable() {
+    let answer!: (changed: boolean) => void;
+    const changeMap = vi.fn(() => new Promise<boolean>((resolve) => { answer = resolve; }));
+    const syncStoppedPosition = vi.fn();
+    const harness = portalArrivalHarness({ x: 300, y: 400 }, { changeMap, syncStoppedPosition, instantTravelReady: () => true });
+    return { ...harness, changeMap, syncStoppedPosition, answer: (changed: boolean) => answer(changed) };
+  }
+
+  it("is on the next map the same frame, and walks on once the server agrees", async () => {
+    const f = confirmable();
+    f.controller.updatePortal(1 / 60);
+    expect(f.currentMapId()).toBe(f.desertMapId);
+    expect(f.player).toMatchObject({ x: 300, y: 400 });
+    expect(f.changeMap).toHaveBeenCalledWith(f.desertMapId, 100, 68);
+    expect(f.prepareMapAssets).toHaveBeenCalledWith(f.desertMapId);
+    expect(f.controller.isMapTransitioning()).toBe(true);
+    expect(f.syncStoppedPosition).not.toHaveBeenCalled();
+    f.answer(true);
+    await vi.waitFor(() => expect(f.controller.isMapTransitioning()).toBe(false));
+    expect(f.syncStoppedPosition).toHaveBeenCalledOnce();
+    expect(f.currentMapId()).toBe(f.desertMapId);
+  });
+
+  it("puts the player back in the portal they walked into when the server refuses", async () => {
+    const f = confirmable();
+    f.controller.updatePortal(1 / 60);
+    f.answer(false);
+    await vi.waitFor(() => expect(f.currentMapId()).toBe("tutorial_forest"));
+    expect(f.player).toMatchObject({ x: 100, y: 68 });
+    expect(f.controller.isMapTransitioning()).toBe(false);
+    expect(f.syncStoppedPosition).toHaveBeenCalledOnce();
+    // Standing in the portal after the refusal never sends the player straight back in.
+    f.controller.updatePortal(1 / 60);
+    expect(f.changeMap).toHaveBeenCalledOnce();
+  });
+
+  it("waits for the server, as before, when the destination's art is still loading", async () => {
+    const f = portalArrivalHarness({ x: 300, y: 400 }, { instantTravelReady: () => false });
+    f.controller.updatePortal(1 / 60);
+    expect(f.currentMapId()).toBe("tutorial_forest");
+    await vi.waitFor(() => expect(f.currentMapId()).toBe(f.desertMapId));
+  });
+});
+
 describe("map asset transition gate", () => {
   it("handles asset failure even when the server rejects the move", async () => {
     await expect(prepareMapTransition(() => false, () => Promise.reject(new Error("missing art")))).resolves.toBe(false);

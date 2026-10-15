@@ -30,6 +30,9 @@ import { drawScreenSpaceAt, snapWorldRenderCoordinate } from "./render-space";
 import { nightGroundShadowsVisible } from "./night-visibility";
 import { createTintedImageCanvas } from "./image-tint";
 import { decorPaletteColor, mapVisualTheme } from "../../map-design";
+import { mapWorldLayout } from "../../map-layout";
+import { isGuildHallMap } from "../../../../shared/guild-hall";
+import { portalTravelScene } from "./portal-glimpse";
 
 export { snapWorldRenderCoordinate } from "./render-space";
 
@@ -167,13 +170,26 @@ export type WorldRendererOptions = {
     world: { w: number; h: number };
     /** Whether it can paint yet (its images have loaded). */
     ready: () => boolean;
-    /** `paintBase` paints the map's own tile (ground, paths, painted decor) first, for a map that adds to it. */
-    paint: (context: CanvasRenderingContext2D, tileX: number, tileY: number, tileSize: number, paintBase: () => void) => boolean;
+    /**
+     * `paintBase` paints the map's own tile (ground, paths, painted decor) first, for a map that adds to it.
+     * `layout` is another visit's paths and decor (a portal's glimpse of the map); the map's own when absent.
+     */
+    paint: (context: CanvasRenderingContext2D, tileX: number, tileY: number, tileSize: number, paintBase: () => void,
+      layout?: { paths: WorldPath[]; decor: WorldDecor[] }) => boolean;
   } | null;
 };
 
 /** Tiles of a custom-painted map built ahead of the camera, at most, per frame: walking never waits on a row of them. */
 const CUSTOM_STATIC_TILE_PRELOADS_PER_FRAME = 1;
+/** A portal's glimpse of its destination: the ground and trees around the arrival, painted once per map. */
+const PORTAL_GLIMPSE_WIDTH = 768;
+const PORTAL_GLIMPSE_HEIGHT = 512;
+/** How close the player comes before a portal's glimpse is painted, so it is ready by the time they look through. */
+const PORTAL_GLIMPSE_REACH = 900;
+/** Glimpses kept: the maps either side and one spare. Each is a 768×512 canvas, about 1.5 MB. */
+const PORTAL_GLIMPSE_LIMIT = 3;
+/** How long after stepping through the glimpse may stand in for ground tiles still being painted. */
+const PORTAL_ARRIVAL_COVER_MS = 4_000;
 
 export function createWorldRenderer(options: WorldRendererOptions) {
   const { ctx, camera } = options;
@@ -511,6 +527,7 @@ export function createWorldRenderer(options: WorldRendererOptions) {
     );
     const gpuTiles: StaticWorldTileFrame[] = [];
     const visibleTileKeys: string[] = [];
+    let unpainted = false;
     const useWebGL = Boolean(options.staticWorldLayer?.active());
     // Build the visible working set first so startup and camera movement never
     // wait behind offscreen preload work.
@@ -523,6 +540,7 @@ export function createWorldRenderer(options: WorldRendererOptions) {
         const key = tileKey(tileX, tileY);
         visibleTileKeys.push(key);
         const source = staticTile(tileX, tileY);
+        if (source === staticTilePlaceholder) unpainted = true;
         if (useWebGL) gpuTiles.push({ key, source, left, top, width: right - left, height: bottom - top });
         else ctx.drawImage(source, left, top, right - left, bottom - top);
       }
@@ -543,6 +561,7 @@ export function createWorldRenderer(options: WorldRendererOptions) {
         }
       }
     }
+    if (unpainted) drawArrivalCover();
     // Ring preloads run after visible work for request priority. Re-touch the
     // visible set so asynchronous cache insertion still evicts distant tiles
     // before anything needed by the current frame.
@@ -704,8 +723,9 @@ if (options.getMapId() === ION_CITADEL_MAP_ID) { drawIonRoads(ctx, options.paths
   }
 
   /** Which spritesheet and per-variant bounds the active map's trees use. */
-  function treeSheet() {
-    const mapId = options.getMapId();
+  function treeSheet() { return treeSheetFor(options.getMapId()); }
+
+  function treeSheetFor(mapId: MapId) {
     if (mapId === SAMURAI_GARDEN_MAP_ID) {
       return { spritesheet: options.cherryTreeSpritesheet, bounds: options.cherryTreeSpriteBounds() };
     }
@@ -732,6 +752,151 @@ if (options.getMapId() === ION_CITADEL_MAP_ID) { drawIonRoads(ctx, options.paths
     ctx.drawImage(spritesheet, source.x, source.y, source.w, source.h, x - drawWidth / 2, y - drawSize, drawWidth, drawSize);
   }
 
+  type PortalGlimpse = { canvas: HTMLCanvasElement; left: number; top: number; trees: boolean };
+  const portalGlimpses = new Map<MapId, PortalGlimpse>();
+  let portalGlimpseQueued: MapId | null = null;
+
+  /** Paints a destination's ground and trees around its arrival, exactly as its tiles will paint them. */
+  function paintPortalGlimpse(mapId: MapId): PortalGlimpse | null {
+    const arrival = portalTravelScene.arrival?.(mapId);
+    if (!arrival || isTownMap(mapId) || isGuildHallMap(mapId) || mapId === "home_exterior") return null;
+    const custom = options.customStaticTiles?.(mapId);
+    if (custom && !custom.ready()) return null;
+    const layout = mapWorldLayout(arrival, mapId);
+    const canvas = document.createElement("canvas");
+    canvas.width = PORTAL_GLIMPSE_WIDTH;
+    canvas.height = PORTAL_GLIMPSE_HEIGHT;
+    const context = canvas.getContext("2d");
+    if (!context) return null;
+    const left = Math.round(arrival.x - PORTAL_GLIMPSE_WIDTH / 2), top = Math.round(arrival.y - PORTAL_GLIMPSE_HEIGHT * .55);
+    const sheet = treeSheetFor(mapId);
+    const scene: StaticTileScene = {
+      tileSize: PORTAL_GLIMPSE_WIDTH,
+      colors: mapVisualTheme(mapId),
+      paths: layout.paths,
+      decor: layout.decor.filter((decor) => decor.type !== "lavaRock"),
+      treeBounds: sheet.bounds,
+      treeShadowsVisible: nightGroundShadowsVisible(mapId, options.infernalMapId),
+      snowPineAspect: options.snowPine.naturalWidth > 0 ? options.snowPine.naturalWidth / options.snowPine.naturalHeight : 0,
+    };
+    const tileX = left / PORTAL_GLIMPSE_WIDTH, tileY = top / PORTAL_GLIMPSE_WIDTH;
+    const paintBase = () => paintStaticTile(context, scene, tileX, tileY, actorShadow(), staticImages(options.lavaPools));
+    if (custom) {
+      context.fillStyle = scene.colors.ground;
+      context.fillRect(0, 0, PORTAL_GLIMPSE_WIDTH, PORTAL_GLIMPSE_HEIGHT);
+      if (!custom.paint(context, tileX, tileY, PORTAL_GLIMPSE_WIDTH, paintBase, layout)) return null;
+    } else paintBase();
+    const sheetReady = sheet.spritesheet.complete && sheet.spritesheet.naturalWidth > 0 && sheet.bounds.length > 0;
+    const inView = (item: { x: number; y: number }) => item.x > left - 120 && item.x < left + PORTAL_GLIMPSE_WIDTH + 120 && item.y > top && item.y < top + PORTAL_GLIMPSE_HEIGHT + 200;
+    const standing = layout.decor.filter((decor): decor is TreeDecor | SnowPineDecor => decor.type === "tree" || decor.type === "snowPine").filter(inView);
+    const gates = (portalTravelScene.portals?.(mapId) ?? []).filter(inView);
+    const upright = [...standing, ...gates.map((gate) => ({ ...gate, type: "gate" as const }))].sort((a, b) => a.y - b.y);
+    for (const decor of upright) {
+      const x = decor.x - left, y = decor.y - top;
+      if (decor.type === "gate") {
+        // The far side's own portal: its arch round a still swirl in its destination's colour.
+        const swirl = tintedPortalSwirl(decor.destination as MapId);
+        const width = Math.round(decor.width * .59 * 1.265 * 1.05), height = Math.round(decor.height * .75 * 1.265);
+        if (swirl) context.drawImage(swirl, 0, 0, swirl.width / 4, swirl.height / 4, x - width / 2, y - height - 5, width, height);
+        if (options.portalArch.complete && options.portalArch.naturalWidth > 0) context.drawImage(options.portalArch, x - decor.width / 2, y - decor.height, decor.width, decor.height);
+        continue;
+      }
+      if (decor.type === "snowPine") {
+        if (!options.snowPine.complete || options.snowPine.naturalWidth <= 0) continue;
+        const height = Math.round(185 * decor.s), width = Math.round(height * options.snowPine.naturalWidth / options.snowPine.naturalHeight);
+        context.drawImage(residentDrawable(options.snowPine), x - width / 2, y - height, width, height);
+        continue;
+      }
+      const source = sheetReady ? sheet.bounds[Math.abs(Math.trunc(decor.variant)) % sheet.bounds.length] : undefined;
+      if (!source) continue;
+      const drawSize = Math.round(154 * decor.s), drawWidth = Math.round(drawSize * source.w / source.h);
+      context.drawImage(sheet.spritesheet, source.x, source.y, source.w, source.h, x - drawWidth / 2, y - drawSize, drawWidth, drawSize);
+    }
+    // Done unless a tree in view was left out for want of its sheet.
+    return { canvas, left, top, trees: sheetReady || !standing.some((decor) => decor.type === "tree") };
+  }
+
+  /** The lens the glimpse is cut through each frame: the destination, fading out to nothing at the swirl's rim. */
+  const glimpseLens = document.createElement("canvas");
+  function glimpseThroughLens(glimpse: PortalGlimpse, sourceX: number, sourceY: number, sourceWidth: number, sourceHeight: number, width: number, height: number) {
+    const lensWidth = Math.max(1, Math.round(width)), lensHeight = Math.max(1, Math.round(height));
+    if (glimpseLens.width !== lensWidth || glimpseLens.height !== lensHeight) { glimpseLens.width = lensWidth; glimpseLens.height = lensHeight; }
+    const lens = glimpseLens.getContext("2d");
+    if (!lens) return null;
+    lens.globalCompositeOperation = "source-over";
+    lens.clearRect(0, 0, lensWidth, lensHeight);
+    lens.imageSmoothingEnabled = true;
+    lens.drawImage(glimpse.canvas, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, lensWidth, lensHeight);
+    lens.globalCompositeOperation = "destination-in";
+    lens.save();
+    lens.scale(1, lensHeight / lensWidth);
+    const fade = lens.createRadialGradient(lensWidth / 2, lensWidth / 2, 0, lensWidth / 2, lensWidth / 2, lensWidth / 2);
+    fade.addColorStop(0, "rgba(0,0,0,1)");
+    fade.addColorStop(.5, "rgba(0,0,0,.85)");
+    fade.addColorStop(1, "rgba(0,0,0,0)");
+    lens.fillStyle = fade;
+    lens.fillRect(0, 0, lensWidth, lensWidth);
+    lens.restore();
+    lens.globalCompositeOperation = "source-over";
+    return glimpseLens;
+  }
+
+  /** The destination's glimpse, painted in idle time once the player is near; repainted once its trees load. */
+  function portalGlimpse(mapId: MapId, paintIfMissing: boolean) {
+    const glimpse = portalGlimpses.get(mapId);
+    if (glimpse && (glimpse.trees || !paintIfMissing)) return glimpse;
+    if (!paintIfMissing || portalGlimpseQueued) return glimpse ?? null;
+    const sheet = treeSheetFor(mapId);
+    if (glimpse && !(sheet.spritesheet.complete && sheet.bounds.length > 0)) return glimpse;
+    portalGlimpseQueued = mapId;
+    const paint = () => {
+      portalGlimpseQueued = null;
+      const painted = paintPortalGlimpse(mapId);
+      if (!painted) return;
+      const previous = portalGlimpses.get(mapId);
+      if (previous) closeStaticTile(previous.canvas);
+      portalGlimpses.delete(mapId);
+      portalGlimpses.set(mapId, painted);
+      while (portalGlimpses.size > PORTAL_GLIMPSE_LIMIT) {
+        const oldest = portalGlimpses.keys().next().value!;
+        closeStaticTile(portalGlimpses.get(oldest)!.canvas);
+        portalGlimpses.delete(oldest);
+      }
+    };
+    const idle = (globalThis as { requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number }).requestIdleCallback;
+    if (idle) idle(paint, { timeout: 500 }); else globalThis.setTimeout(paint, 30);
+    return glimpse ?? null;
+  }
+
+  /** The destination showing through the middle of the swirl, rippling a little, the swirl still turning round it. */
+  function drawPortalGlimpse(portal: Portal, x: number, y: number, width: number, height: number) {
+    const near = Math.hypot(options.player.x - portal.x, options.player.y - portal.y) < PORTAL_GLIMPSE_REACH;
+    const glimpse = portalGlimpse(portal.destination, near);
+    if (!glimpse) return;
+    const centerX = x, centerY = y - height / 2 - 5;
+    const lensWidth = width * .8, lensHeight = height * .86;
+    const time = options.getGameTime();
+    // Wide enough to take in the arrival and the portals beside it, a little above where the player steps out.
+    const sourceWidth = 420, sourceHeight = sourceWidth * lensHeight / lensWidth;
+    const sourceX = PORTAL_GLIMPSE_WIDTH / 2 - sourceWidth / 2 + Math.sin(time * 1.3) * 5;
+    const sourceY = PORTAL_GLIMPSE_HEIGHT * .55 - 60 - sourceHeight / 2 + Math.cos(time * 1.1) * 4;
+    const lens = glimpseThroughLens(glimpse, sourceX, sourceY, sourceWidth, sourceHeight, lensWidth, lensHeight);
+    if (!lens) return;
+    ctx.save();
+    ctx.globalAlpha = .85;
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(lens, centerX - lensWidth / 2, centerY - lensHeight / 2, lensWidth, lensHeight);
+    ctx.restore();
+  }
+
+  /** Just through a portal, the arrival's glimpse covers ground tiles the worker has yet to paint. */
+  function drawArrivalCover() {
+    if (performance.now() - portalTravelScene.arrivedAt > PORTAL_ARRIVAL_COVER_MS) return;
+    const glimpse = portalGlimpses.get(options.getMapId());
+    if (!glimpse) return;
+    ctx.drawImage(glimpse.canvas, snapToWorldPixel(glimpse.left - camera.x), snapToWorldPixel(glimpse.top - camera.y));
+  }
+
   function drawPortalAt(portal: Portal, cutscene = false) {
     if (!options.portalArch.complete || options.portalArch.naturalWidth <= 0) return;
     const x = snapToWorldPixel(portal.x - camera.x);
@@ -755,6 +920,7 @@ if (options.getMapId() === ION_CITADEL_MAP_ID) { drawIonRoads(ctx, options.paths
       ctx.globalAlpha = portalIntensity;
       ctx.drawImage(portalSwirl, (frame % 4) * cellWidth, Math.floor(frame / 4) * cellHeight, cellWidth, cellHeight, x - width / 2, y - height - 5, width, height);
       ctx.restore();
+      if (!cutsceneActive && portalIntensity >= 1) drawPortalGlimpse(portal, x, y, width, height);
     }
     ctx.drawImage(options.portalArch, x - portal.width / 2, y - portal.height, portal.width, portal.height);
     const destinationOpacity = cutsceneActive ? options.portalDestinationOpacity() : options.portalIsUnlocked(portal) ? 1 : 0;

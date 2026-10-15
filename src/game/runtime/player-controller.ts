@@ -1,8 +1,7 @@
-import { withPackMushrooms } from "../pack-mushrooms";
-import { withPackForest } from "../pack-forest";
+import { mapWorldLayout } from "../map-layout";
 import { WORLD } from "../constants";
 import { clamp } from "../math";
-import { createSpawnSites, createWorldLayout, type MapId, type SpawnSite, type WorldDecor, type WorldPath } from "../world";
+import { createSpawnSites, type MapId, type SpawnSite, type WorldDecor, type WorldPath } from "../world";
 import type { Movement } from "./player-input-controller";
 import type { DragonBossState, EnemyState, PlayerState, DuelScene, RuntimeDuelReplay, RuntimeDuelState } from "./types";
 import { setPlayerBaseMaxHealth } from "./player-health";
@@ -92,8 +91,8 @@ export function createPlayerController(options: {
 
   function rebuildWorld() {
     const mapId = getCurrentMapId();
-    const layout = createWorldLayout(player, mapId);
-    decor.splice(0, decor.length, ...withPackForest(withPackMushrooms(layout.decor, mapId), mapId));
+    const layout = mapWorldLayout(player, mapId);
+    decor.splice(0, decor.length, ...layout.decor);
     paths.splice(0, paths.length, ...layout.paths);
     spawnSites.splice(0, spawnSites.length, ...createSpawnSites(boss, mapId));
     invalidateStaticWorld();

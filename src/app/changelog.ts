@@ -1,4 +1,9 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.905.0": [
+    "Portals: walk straight through to the next map, no loading screen",
+    "You can see a glimpse of the next map through each portal",
+    "Smoother menus when playing with a controller",
+  ],
   "0.904.2": [
     "Reflect now fires on hits your shield fully absorbs",
   ],
@@ -3359,6 +3364,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.905.0": "2026-10-14",
   "0.904.2": "2026-10-14",
   "0.904.1": "2026-10-14",
   "0.904.0": "2026-10-14",

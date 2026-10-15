@@ -13,6 +13,11 @@ const NAV_THRESHOLD = .55;
 const NAV_FIRST_REPEAT_MS = 380;
 const NAV_REPEAT_MS = 130;
 const SCROLL_PIXELS_PER_SECOND = 900;
+/**
+ * How often the window on top is looked for while no button is newly pressed. Finding it walks every button and
+ * forces a layout, which every frame cost controller players a steady slice of each frame.
+ */
+const TOP_WINDOW_RECHECK_MS = 150;
 const FOCUSABLE = "button, [href], input, select, textarea, [tabindex]:not([tabindex='-1']), [role='tab']";
 
 type Pad = { buttons: readonly { pressed: boolean; value?: number }[]; axes: readonly number[]; id: string; mapping?: string; connected?: boolean };
@@ -86,6 +91,7 @@ export function installGamepadControls(doc: Document = document, readPads?: () =
   let move = { x: 0, y: 0 };
   let navDirection: Direction | null = null, navNextAt = 0;
   let lastFrame = 0, frame = 0, running = false;
+  let scopeCache: HTMLElement | null = null, scopeCheckedAt = -Infinity;
   const root = doc.documentElement;
 
   const usingPad = () => { root.dataset.input = "gamepad"; };
@@ -158,7 +164,12 @@ export function installGamepadControls(doc: Document = document, readPads?: () =
     const went = (index: number) => pressed[index] && !held[index];
     const anyInput = pressed.some(Boolean) || pad.axes.some(axis => Math.abs(axis) > STICK_DEAD_ZONE);
     if (anyInput) usingPad();
-    const scope = topWindow(doc);
+    const pressedNow = pressed.some((down, button) => down && !held[button]);
+    if (pressedNow || time - scopeCheckedAt >= TOP_WINDOW_RECHECK_MS || (scopeCache && !scopeCache.isConnected)) {
+      scopeCache = topWindow(doc);
+      scopeCheckedAt = time;
+    }
+    const scope = scopeCache;
     const stick = stickVector(pad.axes[0] ?? 0, pad.axes[1] ?? 0);
 
     if (capture) {

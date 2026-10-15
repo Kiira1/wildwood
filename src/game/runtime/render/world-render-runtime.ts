@@ -190,11 +190,12 @@ export function createWorldRenderRuntime(options: WorldRenderRuntimeOptions) {
   const forestStaticTiles = {
     world: WORLD,
     ready: () => Boolean(options.assets.soulAtlas?.complete && options.assets.forestRoad?.complete),
-    paint(context: CanvasRenderingContext2D, tileX: number, tileY: number, tileSize: number, paintBase: () => void) {
+    paint(context: CanvasRenderingContext2D, tileX: number, tileY: number, tileSize: number, paintBase: () => void,
+      layout: { paths: WorldPath[]; decor: WorldDecor[] } = options) {
       paintBase();
       const rect = { left: tileX * tileSize, top: tileY * tileSize, right: (tileX + 1) * tileSize, bottom: (tileY + 1) * tileSize };
-      if (!forestRoads(context, options.paths, rect.left, rect.top, tileSize, mapVisualTheme(TUTORIAL_FOREST_MAP_ID).ground)) return false;
-      const { flat, shadows } = soulGroundPropsIn(options.decor, rect);
+      if (!forestRoads(context, layout.paths, rect.left, rect.top, tileSize, mapVisualTheme(TUTORIAL_FOREST_MAP_ID).ground)) return false;
+      const { flat, shadows } = soulGroundPropsIn(layout.decor, rect);
       context.imageSmoothingEnabled = false;
       forestProps(context, flat, shadows, rect.left, rect.top, tileSize);
       return true;

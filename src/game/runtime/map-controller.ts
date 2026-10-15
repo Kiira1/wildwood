@@ -4,6 +4,7 @@ import { snapCameraToPlayer, type Camera } from "./render/camera";
 import type { EnemyState, PlayerState } from "./types";
 import { BOSS_KINDS, clearBossAttack, type BossHazards, type BossStates } from "./boss/boss-registry";
 import type { MapId, SpawnSite } from "../world";
+import { portalTravelScene } from "./render/portal-glimpse";
 
 export type MapPortal = { x: number; y: number; width: number; height: number; depth: number; destination: MapId; label?: string };
 
@@ -109,6 +110,8 @@ export function createMapController(options: {
   localMapState: () => { mapId: string; x: number; y: number; facing: number } | null | undefined;
   changeMap: (mapId: MapId, x: number, y: number) => Promise<boolean | undefined> | boolean | undefined;
   prepareMapAssets: (mapId: MapId) => Promise<void>;
+  /** Whether a destination's art is in hand, so a portal can swap maps on the spot while the server confirms. */
+  instantTravelReady?: (mapId: MapId) => boolean;
   syncStoppedPosition: () => void;
   resetPresentationState: () => void;
   fadeToWorld: (action: () => void) => void;
@@ -144,6 +147,11 @@ export function createMapController(options: {
   const initialPortal = mapConfig[tutorialMapId].portal;
   if (!initialPortal) throw new Error("Tutorial map requires an introductory portal.");
   let portalCutscenePortal: MapPortal = initialPortal;
+  portalTravelScene.arrival = (mapId) => (mapConfig as Partial<MapConfig>)[mapId as MapId]?.arrival ?? null;
+  portalTravelScene.portals = (mapId) => {
+    const entry = (mapConfig as Partial<MapConfig>)[mapId as MapId];
+    return [entry?.portal, entry?.secondaryPortal].filter((portal): portal is MapPortal => Boolean(portal));
+  };
 
   /**
    * The map loads on the fade's dark, and loading is what ends the travel lock.
@@ -308,6 +316,7 @@ export function createMapController(options: {
     stopTouchMove();
     player.moving = false;
     const destination = portal.destination;
+    if (options.instantTravelReady?.(destination)) { travelThroughPortal(portal); return; }
     const attempt = mapLoadGeneration;
     void prepareMapTransition(
       () => changeMap(destination, player.x, player.y),
@@ -335,6 +344,40 @@ export function createMapController(options: {
       portalExitGuard = portal;
       portalCooldown = 1;
     });
+  }
+
+  /**
+   * Walks straight through: the destination is on screen the same frame, the player materialising at its arrival,
+   * while the server confirms the move. Movement waits for that answer (a round trip), and a refusal puts the
+   * player back in the portal they walked into.
+   */
+  function travelThroughPortal(portal: MapPortal) {
+    const destination = portal.destination;
+    const departure = { mapId: getCurrentMapId(), x: player.x, y: player.y, facing: player.facing };
+    const arrival = mapConfig[destination].arrival;
+    const move = Promise.resolve(changeMap(destination, departure.x, departure.y));
+    loadMap(destination, arrival.x, arrival.y, Math.PI / 2);
+    snapCameraToPlayer(camera, player, viewport());
+    resetPresentationState();
+    beginHomeTeleport(true);
+    portalTravelScene.arrivedAt = performance.now();
+    mapTransitioning = true;
+    const attempt = mapLoadGeneration;
+    const goBack = () => {
+      if (attempt !== mapLoadGeneration) return;
+      loadMap(departure.mapId, departure.x, departure.y, departure.facing);
+      snapCameraToPlayer(camera, player, viewport());
+      resetPresentationState();
+      syncStoppedPosition();
+      portalExitGuard = portal;
+      portalCooldown = 1;
+    };
+    void withMapDeadline(move).then((changed) => {
+      if (attempt !== mapLoadGeneration) return;
+      if (!changed) { goBack(); return; }
+      syncStoppedPosition();
+      mapTransitioning = false;
+    }, goBack);
   }
 
   function reconcileMapFromServer() {
