@@ -2,7 +2,7 @@ import { table, t, SenderError } from "spacetimedb/server";
 import type { default as spacetimedbType } from "./index";
 import { HOME_EXTERIOR_MAP_ID } from "../../shared/home";
 import { isTownMap } from "../../shared/town";
-import { AUTO_FARM_PUPPET_CAMP_MAX, AUTO_FARM_PUPPET_GROUP_MAX, AUTO_FARM_PUPPET_MIN_RESEND_MICROS } from "../../shared/autofarm-puppet";
+import { AUTO_FARM_PUPPET_CAMP_MAX, AUTO_FARM_PUPPET_GROUP_MAX, AUTO_FARM_PUPPET_MIN_CHANGE_MICROS, AUTO_FARM_PUPPET_MIN_RESEND_MICROS } from "../../shared/autofarm-puppet";
 
 /**
  * Autofarm puppets: an autofarming player sends what they farm, not where they
@@ -57,6 +57,10 @@ export function setAutoFarmPuppetFor(ctx: any, group: string, camp: string, deps
   // The same plan again within a few seconds says nothing new; every write goes to the whole map.
   if (current && current.mapId === player.mapId && current.group === group && current.camp === camp
     && ctx.timestamp.microsSinceUnixEpoch - current.startedAt.microsSinceUnixEpoch < AUTO_FARM_PUPPET_MIN_RESEND_MICROS) return;
+  // A changed plan on the same map, too soon after the last: dropped. Tabs before 0.906.2 could send one every
+  // frame in an Aggro run, half of the module's compute in fan-out to the map.
+  if (current && current.mapId === player.mapId
+    && ctx.timestamp.microsSinceUnixEpoch - current.startedAt.microsSinceUnixEpoch < AUTO_FARM_PUPPET_MIN_CHANGE_MICROS) return;
   // The anchor is where the server last validated them, not a position the client names.
   const at = deps.playerWithMotion(ctx, player);
   const next = { identity: ctx.sender, mapId: player.mapId, group, camp, x: at.x, y: at.y, startedAt: ctx.timestamp };

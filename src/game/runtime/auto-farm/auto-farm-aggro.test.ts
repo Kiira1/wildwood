@@ -27,6 +27,26 @@ function setup(options: { pullCamps?: number; forced?: string[]; needed?: number
 const health = `stat:${ENEMY_TYPES.Bramble.reward.type}`, speed = `stat:${ENEMY_TYPES.Needle.reward.type}`;
 
 describe('Aggro challenge on the client', () => {
+  it("with the farmed groups empty and an Aggro group alive, keeps its pick instead of swapping every frame", () => {
+    // Each swap was a puppet write to everyone on the map: three such players were half the server's compute.
+    const s = setup({ pullCamps: 0 });
+    const moss = `stat:${ENEMY_TYPES.Mossback.reward.type}`;
+    const bramble = s.add('Bramble', 700, 500, 'b'), needle = s.add('Needle', 1200, 900, 'n');
+    s.add('Mossback', 1500, 500, 'm');
+    s.farm.start([health, speed, moss]);
+    s.farm.setGroupPulled(moss, true);
+    const still = { x: 0, y: 0, source: 'none' as const };
+    s.farm.movement(still, 1 / 60);
+    bramble.dead = true; needle.dead = true;
+    let swaps = 0, last = s.farm.state().selected;
+    for (let frame = 0; frame < 120; frame++) {
+      s.farm.movement(still, 1 / 60);
+      if (s.farm.state().selected !== last) swaps++;
+      last = s.farm.state().selected;
+    }
+    expect(swaps).toBeLessThanOrEqual(1);
+  });
+
   it('counts camps: one more chasing each run, one more pulled each win', () => {
     expect(aggroForcedCamps({ active: false, completed: 2 })).toBe(0);
     expect([0, 1, 3].map(completed => aggroForcedCamps({ active: true, completed }))).toEqual([1, 2, 4]);

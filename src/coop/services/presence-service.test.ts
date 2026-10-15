@@ -110,6 +110,20 @@ it("holds movement back while a map change is on its way, so no step reaches the
   expect(updateMovementState.mock.calls[0][0]).toMatchObject({ x: 300, y: 360 });
 });
 
+it("sends an autofarm plan that flickers between groups once, not every frame", () => {
+  const setAutoFarmPuppet = vi.fn();
+  const connection = { reducers: { setAutoFarmPuppet, updateMovementState: vi.fn() } };
+  const presence = createPresenceService({
+    reducers: { connection: () => connection, protocolBlocked: () => false, worldEntryBlocked: () => false,
+      sendReducer: (_name: string, run: (current: typeof connection) => void) => run(connection) },
+  } as any);
+  const groups = ["stat:speed", "stat:crit", "stat:armor"];
+  for (let frame = 0; frame < 120; frame++) {
+    presence.api.syncMovementState(300, 300, 0, 0, "keyboard", false, undefined, { group: groups[frame % 3], camp: null, sites: [] });
+  }
+  expect(setAutoFarmPuppet).toHaveBeenCalledOnce();
+});
+
 it("defaults to no remote subscriptions and fences late data when visibility is switched off", () => {
   const identity = new Identity("1".repeat(64));
   const subscriptions: any[] = [];

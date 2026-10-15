@@ -507,10 +507,14 @@ export function createAutoFarmController(options: {
     if (selected) spent.set(selected, (spent.get(selected) ?? 0) + dt);
     planClock -= dt;
     const current = all.find(entry => entry.key === selected && (shares[entry.key] ?? 0) > 0);
-    const anyAlive = all.some(entry => entry.alive > 0 && (shares[entry.key] ?? 0) > 0);
+    const weights = farmWeights(all);
+    // Only a group the pick can go to counts as somewhere to go. An Aggro group is in the shares but never walked
+    // to, so with the farmed groups empty it read as "something alive": the pick re-ran every frame, swapping between
+    // the empty groups by time spent, and each swap went to the server.
+    const anyAlive = weights.some(entry => entry.alive > 0 && entry.weight > 0);
     if (current && (current.alive > 0 ? planClock > 0 : !anyAlive)) return;
     planClock = SHARE_REPLAN_SECONDS;
-    const key = shareFarmKey(farmWeights(all), group => spent.get(group) ?? 0);
+    const key = shareFarmKey(weights, group => spent.get(group) ?? 0);
     if (key) select(key);
   }
 

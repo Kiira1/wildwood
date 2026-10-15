@@ -301,7 +301,8 @@ export function createPresenceService(dependencies: PresenceServiceDependencies)
   let puppetSiteList: readonly PuppetSite[] = [];
   let puppetTableConnection: unknown = null;
   let farmIntent: { group: string; camp: string } | null = null;
-  let campChange: { camp: string; at: number } | null = null;
+  /** A new plan (group or camp) waiting to settle before the puppet takes it. */
+  let planChange: { group: string; camp: string; at: number } | null = null;
   let sentFarmIntentKey = "";
   let lastPuppetSentAt = Number.NEGATIVE_INFINITY;
   let puppetRetryAt = Number.NEGATIVE_INFINITY;
@@ -1144,11 +1145,13 @@ export function createPresenceService(dependencies: PresenceServiceDependencies)
       // A moment off the farm (a boss fight, a tap, a respawn) keeps the puppet; only a pause this long ends it.
       if (farm.group) {
         const camp = farm.hold ? PUPPET_HOLD_CAMP : farm.camp ?? "", at = monotonicNowMs();
-        if (farmIntent?.group !== farm.group) { farmIntent = { group: farm.group, camp }; campChange = null; }
-        else if (farmIntent.camp === camp) campChange = null;
+        // The first plan is sent at once; a change, of group or camp, only once it has held. Autofarm in an
+        // Aggro run could swap groups every frame, and each swap was a write to everyone on the map.
+        if (!farmIntent) { farmIntent = { group: farm.group, camp }; planChange = null; }
+        else if (farmIntent.group === farm.group && farmIntent.camp === camp) planChange = null;
         else {
-          if (campChange?.camp !== camp) campChange = { camp, at };
-          if (at - campChange.at >= PUPPET_HOLD_SETTLE_MS) { farmIntent = { group: farm.group, camp }; campChange = null; }
+          if (planChange?.group !== farm.group || planChange.camp !== camp) planChange = { group: farm.group, camp, at };
+          if (at - planChange.at >= PUPPET_HOLD_SETTLE_MS) { farmIntent = { group: farm.group, camp }; planChange = null; }
         }
         farmIntentLostAt = null;
       }

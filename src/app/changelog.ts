@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.906.2": [
+    "Auto Farm in an Aggro run no longer flips between targets every frame",
+  ],
   "0.906.1": [
     "Profiles show Mining in Stats",
     "Cards and skills moved from the profile into the item window, with a clearer look",
@@ -3380,6 +3383,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.906.2": "2026-10-15",
   "0.906.1": "2026-10-15",
   "0.906.0": "2026-10-15",
   "0.905.1": "2026-10-15",

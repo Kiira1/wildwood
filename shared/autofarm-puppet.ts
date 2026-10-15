@@ -6,6 +6,8 @@ export const AUTO_FARM_PUPPET_GROUP_MAX = 32;
 export const AUTO_FARM_PUPPET_CAMP_MAX = 64;
 /** The server ignores the same plan resent sooner than this. */
 export const AUTO_FARM_PUPPET_MIN_RESEND_MICROS = 5_000_000n;
+/** Nor does it take a changed plan on the same map sooner than this: a plan that flickers cannot write every frame. */
+export const AUTO_FARM_PUPPET_MIN_CHANGE_MICROS = 2_000_000n;
 /** How often a farmer re-anchors their puppet, riding on the solo movement checkpoint. */
 export const AUTO_FARM_PUPPET_REANCHOR_MS = 30_000;
 /** Puppets drawn at once, nearest first; past this a farmer is a minimap dot. */

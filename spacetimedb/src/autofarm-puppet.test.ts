@@ -26,7 +26,11 @@ it("holds an autofarmer's plan for their map, anchored where the server last pla
   later(f, 5_000_000n);
   f.run(server.setAutoFarmPuppet, { group: "stat:damage", camp: "" });
   expect(puppet(f).startedAt.microsSinceUnixEpoch).toBeGreaterThan(first);
-  // A new group is sent at once; an empty one ends the puppet.
+  // A new group right after the last write is dropped, so a plan that flickers cannot write every frame to
+  // the whole map; two seconds on it is taken. An empty one ends the puppet at once.
+  f.run(server.setAutoFarmPuppet, { group: "stat:health", camp: "Health Camp" });
+  expect(puppet(f)).toMatchObject({ group: "stat:damage" });
+  later(f, 2_000_000n);
   f.run(server.setAutoFarmPuppet, { group: "stat:health", camp: "Health Camp" });
   expect(puppet(f)).toMatchObject({ group: "stat:health", camp: "Health Camp" });
   f.run(server.setAutoFarmPuppet, { group: "", camp: "" });
