@@ -4,7 +4,7 @@ import { keepWantedDrops } from "./ignored-drops";
 import { rollRegularEnemyLoot } from "./regular-enemy-loot";
 import { readPlayerProgress } from "./wide-stats";
 import { wornCardTotalsFor } from "./worn-cards";
-import { cardStatFactors } from "../../shared/card-effects";
+import { cardStatFactors, type CardTotals } from "../../shared/card-effects";
 import { defaultPlayerProgress, inventoryForProgress, restoreItemToProgress } from "./progress-helpers";
 import { activeItemUpgradeEntriesFor } from "./upgrade-bench-slots";
 import { freeBagSlots, offerItemForFullBag, publishItemDrop } from "./equipment-copies";
@@ -15,9 +15,10 @@ import type { pinnedMapBalance } from "./map-balance";
 type Context = ReducerCtx<InferSchema<typeof schema>>;
 
 /** Gear from an accepted kill report, less what the loot filter drops. With `checkpoint` the caller writes the bag. */
-export function awardRegularEnemyLoot(ctx: Context, mapId: string, count: number, balance: ReturnType<typeof pinnedMapBalance>, checkpoint?: { progress: any }) {
+export function awardRegularEnemyLoot(ctx: Context, mapId: string, count: number, balance: ReturnType<typeof pinnedMapBalance>,
+  checkpoint?: { progress: any; cards?: CardTotals }) {
   // Treasure cards in the worn gear raise every drop's chance.
-  const treasure = 1 + cardStatFactors(wornCardTotalsFor(ctx, ctx.sender)).treasure;
+  const treasure = 1 + cardStatFactors(checkpoint?.cards ?? wornCardTotalsFor(ctx, ctx.sender)).treasure;
   const drops = keepWantedDrops(ctx, ctx.sender, rollRegularEnemyLoot(ctx, mapId, count, balance?.loot, treasure));
   if (!drops.size) return checkpoint?.progress;
   const current = checkpoint?.progress ?? readPlayerProgress(ctx, ctx.sender);

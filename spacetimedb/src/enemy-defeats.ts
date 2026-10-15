@@ -10,7 +10,7 @@ import { KILL_REPORT_BURST, KILL_REPORT_REFILL_SECONDS, REGULAR_ENEMY_RESPAWN_SE
 import { recordModerationAction } from "./moderation-history";
 import { advanceStreamCursor, streamCursor } from "./regular-enemy-loot";
 import type { GameReducerContext } from "./index";
-import { cardStatFactors, respawnSecondsWithCards } from "../../shared/card-effects";
+import { cardStatFactors, respawnSecondsWithCards, type CardTotals } from "../../shared/card-effects";
 import { wornCardTotalsFor } from "./worn-cards";
 
 type DefeatContext = Pick<GameReducerContext, "db" | "sender" | "timestamp">;
@@ -385,6 +385,8 @@ export function acceptEnemyDefeats(ctx: DefeatContext, batch: EnemyDefeatBatch, 
   combat: {
     preview: (reward: EnemyStatReward) => { dps: number; attackInterval: number; projectiles?: number; reach?: number; reflectDps?: number; reflectTick?: number };
     commit: (reward: EnemyStatReward) => void;
+    /** The worn cards, when the caller already read them for this report. */
+    wornCards?: () => CardTotals | undefined;
   }) {
   if (!/^[a-zA-Z0-9-]{16,80}$/.test(batch.streamId) || batch.sequence < 1n || !batch.enemies.length)
     throw new SenderError("Invalid enemy defeat batch.");
@@ -423,7 +425,7 @@ export function acceptEnemyDefeats(ctx: DefeatContext, batch: EnemyDefeatBatch, 
   const utility = ctx.db.playerResearch.identity.find(ctx.sender);
   // Respawn cards bring the map back sooner, so the spawn wall below comes down with them.
   const regularRespawn = respawnSecondsWithCards(enemyRespawnSecondsWithResearch(balance?.regularRespawnSeconds ?? REGULAR_ENEMY_RESPAWN_SECONDS, utility?.enemyRespawn ?? 0),
-    cardStatFactors(wornCardTotalsFor(ctx, ctx.sender)).respawn);
+    cardStatFactors(combat.wornCards?.() ?? wornCardTotalsFor(ctx, ctx.sender)).respawn);
   const mapPopulation = mapEnemyPopulation(batch.mapId);
   // The least combat time one kill on this map can cost: the whole map comes
   // back once per respawn, so no player can sustain more than population /

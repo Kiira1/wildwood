@@ -1,6 +1,6 @@
 import { table, t } from "spacetimedb/server";
 import type { Identity } from "spacetimedb";
-import { cardStatFactors } from "../../shared/card-effects";
+import { NO_CARDS, cardStatFactors } from "../../shared/card-effects";
 import { attackIntervalUnderNewCap } from "../../shared/stat-rating";
 import { attackCapInPlay } from "./prestige";
 import { readPlayerProgress } from "./wide-stats";
@@ -18,18 +18,23 @@ export const playerCardAttackCap = table({ name: "player_card_attack_cap", publi
 
 type Ctx = any;
 
-/** Moves the saved attack speed onto the curve the worn cards set now, as a Quick Draw perk change does. */
+/**
+ * Moves the saved attack speed onto the curve the worn cards set now, as a Quick Draw perk change does. Returns
+ * the worn cards it read, for a kill report to use throughout: nothing it does changes them.
+ */
 export function syncCardAttackCap(ctx: Ctx, identity: Identity) {
   const progress = readPlayerProgress(ctx, identity);
-  if (!progress) return;
-  const current = cardStatFactors(wornCardTotalsFor(ctx, identity, progress)).attackCapRaise;
+  if (!progress) return NO_CARDS;
+  const worn = wornCardTotalsFor(ctx, identity, progress);
+  const current = cardStatFactors(worn).attackCapRaise;
   const row = ctx.db.playerCardAttackCap.identity.find(identity);
   const basis = row?.raise ?? 0;
-  if (Math.abs(current - basis) < 1e-9) return;
-  const now = attackCapInPlay(ctx, identity);
+  if (Math.abs(current - basis) < 1e-9) return worn;
+  const now = attackCapInPlay(ctx, identity, worn);
   const before = { ...now, raise: Math.max(0, now.raise - current + basis) };
   const attackRate = attackIntervalUnderNewCap(progress.attackRate, before, now);
   if (attackRate !== progress.attackRate) updateSnapshotRow(ctx, "playerProgress", { ...progress, attackRate });
   if (row) ctx.db.playerCardAttackCap.identity.update({ identity, raise: current });
   else ctx.db.playerCardAttackCap.insert({ identity, raise: current });
+  return worn;
 }

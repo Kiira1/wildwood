@@ -1,7 +1,7 @@
 import { table, t } from "spacetimedb/server";
 import type { Identity } from "spacetimedb";
 import { CARD_DROP_OUTCOMES, CARD_METER_MULTIPLE, cardForBoss, cardForEnemy } from "../../shared/cards";
-import { cardStatFactors } from "../../shared/card-effects";
+import { cardStatFactors, type CardTotals } from "../../shared/card-effects";
 import { personalBossDefinition } from "../../shared/personal-bosses";
 import { bossRespawnSecondsWithResearch } from "../../shared/utility-research";
 import { wornCardTotalsFor } from "./worn-cards";
@@ -43,12 +43,13 @@ function bossCardRollReady(ctx: Ctx, identity: Identity, mapId: string) {
 
 /** Rolls a card for each paid kill, and one for a boss kill the boss had time to respawn for; finds go to player_card and player_card_drop. */
 export function awardCardDrops(ctx: Ctx, identity: Identity, mapId: string, kills: readonly { enemy: string; count: number }[],
-  bossKills: number, chanceMultiplier = 1) {
+  bossKills: number, chanceMultiplier = 1, worn?: CardTotals) {
   const found: string[] = [];
-  // Card Hunter cards in the worn gear raise every roll.
-  const odds = chanceMultiplier * (1 + cardStatFactors(wornCardTotalsFor(ctx, identity)).cardHunter);
+  // Card Hunter cards in the worn gear raise every roll; read only once a kill has a card to roll for.
+  let odds = 0, oddsRead = false;
   const roll = (cardId: string, outcomes: number, times: number) => {
     if (times < 1) return;
+    if (!oddsRead) { odds = chanceMultiplier * (1 + cardStatFactors(worn ?? wornCardTotalsFor(ctx, identity)).cardHunter); oddsRead = true; }
     const key = `${identity.toHexString()}:${cardId}`;
     const meter = ctx.db.playerCardMeter.key.find(key);
     const full = outcomes * CARD_METER_MULTIPLE;

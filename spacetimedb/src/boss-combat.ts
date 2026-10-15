@@ -8,7 +8,7 @@ import { attackCapInPlay, statRewardMultiplierFor, prestigePerkRanks } from "./p
 import { WORLD_REFLECT_SHARE, preArmorFactor, prestigePerkValue, prestigeReachMultiplier, prestigeSwingMultiplier } from "../../shared/prestige-perks";
 import { armorDamageReduction } from "../../shared/combat";
 import { criticalDamageMultiplier } from "../../shared/critical-damage";
-import { cardStatFactors, cardTotalsForLevels } from "../../shared/card-effects";
+import { cardStatFactors, cardTotalsForLevels, type CardTotals } from "../../shared/card-effects";
 import { soulStatsFor, withSoulStats } from "./soul-dimension";
 import { bowSkillRollFor } from "./bow-skills";
 import { bowSkillReachMultiplier, isSkillBow } from "../../shared/bow-skills";
@@ -94,12 +94,13 @@ export function createCombatReport(deps: CombatReportDeps) {
    * inventory parses each, thirty-one times on an Endless report), which was
    * most of what the kill reducer cost.
    */
-  function combatBoundForReport(ctx: GameReducerContext) {
+  function combatBoundForReport(ctx: GameReducerContext, worn?: CardTotals) {
     let loaded: ReturnType<typeof load> | undefined;
     function load() {
       const saved = readPlayerProgress(ctx, ctx.sender);
       const research = ctx.db.playerResearch.identity.find(ctx.sender);
-      const statMultiplier = statRewardMultiplierFor(ctx, ctx.sender);
+      // The worn cards, read once for the report (syncCardAttackCap) rather than again by each helper.
+      const statMultiplier = statRewardMultiplierFor(ctx, ctx.sender, worn);
       // Soul stats add to the run's in every fight; the saved row and the earned rewards stay the run's alone.
       const soul = soulStatsFor(ctx, ctx.sender);
       const loadout = saved ? damageLoadout(ctx, saved, research) : null;
@@ -107,7 +108,7 @@ export function createCombatReport(deps: CombatReportDeps) {
       // Reflect Only wins and Quick Draw set the attack speed cap, Aggro runs included (attackCapInPlay).
       // The bounds above keep stored research, the looser side.
       const ranks = prestigePerkRanks(ctx, ctx.sender);
-      const minInterval = attackCapInPlay(ctx, ctx.sender);
+      const minInterval = attackCapInPlay(ctx, ctx.sender, worn);
       const earned = saved ? createEnemyRewardAccumulator(saved, statMultiplier, minInterval) : null;
       const statsFor = saved ? preparePlayerPowerStats(saved, research, loadout?.levelFor) : null;
       // Armor rewards can change the nonlinear reduction inside a report.
@@ -205,6 +206,8 @@ export function createCombatReport(deps: CombatReportDeps) {
         return { attackInterval, projectiles: gear.projectiles, reach: gear.reach, dps, reflectDps, reflectTick: REFLECT_ONLY_TICK_SECONDS };
       },
       commit: (reward: EnemyStatReward) => report().earned?.commit(reward),
+      /** The worn cards the caller read for this report, if it passed them. */
+      wornCards: () => worn,
       rewardedProgress: () => report().earned?.current(),
       /** The saved progress row as the report found it; nothing in validation writes it. */
       savedProgress: () => report().saved,

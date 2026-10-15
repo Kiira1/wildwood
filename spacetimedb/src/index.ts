@@ -3531,9 +3531,9 @@ const enemyDefeatArgs = { streamId: t.string(), sequence: t.u64(), mapId: t.stri
 const enemyDefeatReportArgs = { streamId: t.string(), sequence: t.u64(), mapId: t.string(), simulatedMillis: t.u32(), enemies: t.array(EnemyDefeatEntry) };
 function recordEnemyDefeatsFor(ctx: any, batch: EnemyDefeatBatch) {
     const player = requireControllingPlayer(ctx);
-    if (activeDuelFor(ctx, ctx.sender)) throw new SenderError("Enemy rewards require your account world connection."); syncCardAttackCap(ctx, ctx.sender);
+    if (activeDuelFor(ctx, ctx.sender)) throw new SenderError("Enemy rewards require your account world connection."); const worn = syncCardAttackCap(ctx, ctx.sender);
     // Everything the combat bound reads, read once for the whole report.
-    const combat = combatBoundForReport(ctx);
+    const combat = combatBoundForReport(ctx, worn);
     const accepted = acceptEnemyDefeats(ctx, batch, permittedDefeatMaps(ctx, player, TOWN_MAP_ID), combat);
     if (!accepted) return;
     const enforce = () => {
@@ -3552,7 +3552,7 @@ function recordEnemyDefeatsFor(ctx: any, batch: EnemyDefeatBatch) {
     const base = accepted.count ? combat.savedProgress() : null;
     if (accepted.count) {
       const next = combat.rewardedProgress()!;
-      const rewarded = awardRegularEnemyLoot(ctx, batch.mapId, accepted.lootCount, accepted.balance, { progress: next });
+      const rewarded = awardRegularEnemyLoot(ctx, batch.mapId, accepted.lootCount, accepted.balance, { progress: next, cards: worn });
       updateSnapshotRow(ctx, "playerProgress", rewarded);
       const power = combat.powerFields(rewarded);
       // Both rows below are broadcast to everyone on the map, and kills move
@@ -3566,7 +3566,7 @@ function recordEnemyDefeatsFor(ctx: any, batch: EnemyDefeatBatch) {
       }
     }
     const gate = accepted.bossCleared ? recordBossGateClear(ctx, batch.mapId) : null;
-    awardCardDrops(ctx, ctx.sender, batch.mapId, accepted.kills, accepted.bossCleared ? 1 : 0);
+    awardCardDrops(ctx, ctx.sender, batch.mapId, accepted.kills, accepted.bossCleared ? 1 : 0, 1, worn);
     // New regular loot, or equipment made usable by a newly opened gate.
     autoEquip.equipNewUpgrades(ctx, ctx.sender, base ?? gate?.previousProgress);
     if (accepted.count) {
