@@ -11,35 +11,43 @@ green, hands over the exact command and stops. That covers committing to `main`
 and any production `spacetime sql` write. Rymel can waive it for one change by
 saying so; the waiver does not carry to the next one.
 
+**The ship command.** Once main holds the release:
+
+    npm run ship
+
+It runs the fast checks (`check:release`, both typechecks, the server bindings
+against a fresh generate, the unit tests), works out what is not live yet, and
+ships it in the order that keeps players playing:
+
+- client only: push, wait until both sites serve the new version;
+- a compatible server change: publish first, then push (a new client may need
+  the new server; old clients work on it);
+- a server change that disconnects everyone: refused unless run with
+  `--allow-client-break`; then the client is pushed and live first and the server
+  is published last, so the reload lands on a client that is already there.
+
+`npm run ship -- --dry-run` prints the plan and ships nothing. Claude hands over
+`npm run ship` (with the flag when needed) instead of the separate commands below.
+
 The client and the server deploy by completely separate routes. A commit ships the
 client by itself; it never touches the server.
 
-**Client (Rymel commits).** Committing to `main` auto-pushes — `.githooks/post-commit`,
+**Client.** Committing to `main` auto-pushes — `.githooks/post-commit`,
 main only, not branches. That is why Claude does not commit there: the commit *is*
-the deploy. The push triggers `.github/workflows/pages.yml`, which runs
-`check:release`, `typecheck:coop`, `typecheck:server`, `test:unit`, `build:client`
-and deploys the same `dist` to two places:
-
-- GitHub Pages — `https://tydoskus.github.io/wildwood/version.json`.
-- wildstatmmo.com — the Cloudflare Worker `wildstat`. For now the Cloudflare
-  dashboard's own Git build deploys it (Rymel's choice), and that build skips
-  every test. The workflow's `wrangler deploy` step ships the same tested `dist`
-  instead, but is off unless the repo variable `CLOUDFLARE_DEPLOY` is `on`;
-  running both deployed every push twice. Check
-  `https://wildstatmmo.com/version.json` too.
+the deploy. The push triggers `.github/workflows/pages.yml`: the site build, both
+typechecks and the unit tests (in four parallel parts) run side by side, then the
+signed Android update feed, then the deploy of the same `dist` to wildstatmmo.com
+(the Cloudflare Worker `wildstat`, deployed by the workflow since 2026-10-10; the
+dashboard's Git build is off) and to GitHub Pages. About two minutes. Check
+`https://wildstatmmo.com/version.json`.
 
 `.github/workflows/server-checks.yml` builds the server module and checks the
 committed `src/module_bindings` match it. It never deploys anything.
 
-After a push to main, confirm `gh run list --limit 2` is green.
-
-**Server (Rymel runs it).** Changes under `spacetimedb/` do nothing until:
-
-    npm run spacetime:publish:live
-
-Rymel runs that himself in his terminal — never run it from an agent session, and
-never publish to `wildwood-coop`, `wildwood-balance-local`, or maincloud from a
-worktree. End any report that touched `spacetimedb/` by handing him that command.
+**Server.** Changes under `spacetimedb/` or `shared/` do nothing until published:
+`npm run ship` does it, or by hand `npm run spacetime:publish:live`. Rymel runs
+either himself in his terminal — never run them from an agent session, and never
+publish to `wildwood-coop`, `wildwood-balance-local`, or maincloud from a worktree.
 
 **Version bump.** For a client-only release the one-shot helper is:
 

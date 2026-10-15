@@ -13,8 +13,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Checks and builds everything. No secrets and a read-only token here: this is
-  # the job that runs npm installs.
+  # The site build, the typechecks and the tests run side by side; the app
+  # update and the deploy wait for all of them. One job ran them in a row in
+  # about three and a half minutes, two of them the test suite.
+  # No secrets and a read-only token in these three: they run npm installs.
   build:
     runs-on: ubuntu-latest
     outputs:
@@ -36,13 +38,9 @@ jobs:
       - name: Validate and build client
         run: |
           npm ci
-          # The shared unit suite includes native bridge tests.
           npm ci --prefix mobile
           npm ci --prefix spacetimedb
           npm run check:release
-          npm run typecheck:coop
-          npm run typecheck:server
-          npm run test:unit
           npm run build:client
           node scripts/check-client-build.mjs
 
@@ -72,13 +70,68 @@ jobs:
           include-hidden-files: true
           retention-days: 1
 
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            mobile/package-lock.json
+            spacetimedb/package-lock.json
+
+      - name: Typecheck client and server
+        run: |
+          npm ci
+          npm ci --prefix mobile
+          npm ci --prefix spacetimedb
+          npm run typecheck:coop
+          npm run typecheck:server
+
+  # The unit suite in four parts at once. Vitest splits the test files the same
+  # way on every run, so a failing file always lands in the same part.
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            mobile/package-lock.json
+            spacetimedb/package-lock.json
+
+      - name: Unit tests, part ${{ matrix.shard }} of 4
+        run: |
+          npm ci
+          # The shared unit suite includes native bridge tests.
+          npm ci --prefix mobile
+          npm ci --prefix spacetimedb
+          npm run test:unit -- --shard=${{ matrix.shard }}/4
+
   # Signs the app bundle, attaches it to a GitHub release and writes the signed
   # production feed. Runs no npm installs: only the repo's own Node scripts see
   # the signing key and the write token. Every "nothing to publish" case exits
   # cleanly with a notice; a real failure turns this job red but the web deploy
   # below still goes out (without a new feed).
   android-ota:
-    needs: build
+    # It attaches a GitHub release, so only for a build that passed everything.
+    needs: [build, typecheck, test]
     if: vars.OTA_AUTO_PUBLISH == 'on' && needs.build.outputs.app-bundle == 'yes'
     runs-on: ubuntu-latest
     permissions:
@@ -128,9 +181,9 @@ jobs:
           retention-days: 1
 
   deploy:
-    needs: [build, android-ota]
-    # Deploy whenever the build passed, whether the app update ran, skipped or failed.
-    if: ${{ !cancelled() && needs.build.result == 'success' }}
+    needs: [build, typecheck, test, android-ota]
+    # Deploy once the build, typechecks and tests passed, whether the app update ran, skipped or failed.
+    if: ${{ !cancelled() && needs.build.result == 'success' && needs.typecheck.result == 'success' && needs.test.result == 'success' }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

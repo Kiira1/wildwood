@@ -398,6 +398,13 @@ that function, not the version list, is what keeps an old decoder out.
   one. `player_prestige_perk`, `duel_riposte` and `player_session_analytics` all
   exist for this reason.
 - New tables, new reducers and new procedures are additive and pass cleanly.
+- **Players keep playing through a release when it adds before it removes.** Add the
+  new table (or the column, in a release that reloads anyway) and the code that uses
+  it; stop reading the old one; drop it in a later reload, listed in
+  `docs/pending-client-break.md` meanwhile. When a reload is due,
+  `npm run ship -- --allow-client-break` puts the new client live first and publishes
+  last, so tabs reload straight onto it (0.907.0 published first and everyone waited
+  out the deploy).
 - `npm run spacetime:publish:live -- --preflight` checks without publishing. It
   reports only that something failed; for the reason, POST the built bundle to
   `/v1/database/<name>/pre_publish?host_type=Js` with the operator token and read

@@ -40,13 +40,13 @@ A feed covers a **range** of builds: every recorded build next to the target tha
 
 `.github/workflows/pages.yml` does this when the repo variable `OTA_AUTO_PUBLISH` is `on`:
 
-1. **build** (read-only token, no secrets): the usual checks and `build:client`, then `node mobile/scripts/build.mjs --skip-client-build` stages the same `dist` as the app bundle in `mobile/www`.
-2. **android-ota** (the only job with the signing key and a write token; it runs no npm installs): `node mobile/scripts/ota/cli.mjs publish --platform android`. It
+1. **build**, **typecheck** and **test** (four parallel parts), side by side (read-only token, no secrets). **build** runs `check:release` and `build:client`, then `node mobile/scripts/build.mjs --skip-client-build` stages the same `dist` as the app bundle in `mobile/www`.
+2. **android-ota**, once all of those passed (the only job with the signing key and a write token; it runs no npm installs): `node mobile/scripts/ota/cli.mjs publish --platform android`. It
    - skips if `public/ota/production-android.json` is committed (production is pinned by hand, see Rollback);
    - skips if the `OTA_SIGNING_PRIVATE_KEY` secret is missing;
    - skips if no committed Android baseline matches the pushed native code;
    - otherwise names the bundle `android-<version>-<hash of the app files>`. If a GitHub prerelease `ota-<that name>` already exists with intact files, it reuses it, so a push that does not change the app (docs, server, tooling) makes no phone download anything. If not, it zips, signs, creates the prerelease on this repository, downloads it back to check the bytes, and writes the signed production feed for the matching build range.
-3. **deploy**: puts the feed at `dist/ota/production-android.json` in the same `dist` it deploys, so GitHub Pages and wildstatmmo.com get the website and its feed together. It runs whenever **build** passed, whether the app step published, skipped or failed.
+3. **deploy**: puts the feed at `dist/ota/production-android.json` in the same `dist` it deploys, so GitHub Pages and wildstatmmo.com get the website and its feed together. It runs whenever build, typecheck and test passed, whether the app step published, skipped or failed.
 
 Each skip shows as a notice on the run page. A real failure in **android-ota** turns the run red, but the website still deploys.
 
