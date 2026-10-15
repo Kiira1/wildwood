@@ -947,6 +947,10 @@
       "isVisible:bool",
       "updatedAt:timestamp"
     ],
+    "player_mining_level": [
+      "identity:identity",
+      "mining:u32"
+    ],
     "player_motion_detail_frame": [
       "recipient:identity",
       "emittedAt:timestamp",

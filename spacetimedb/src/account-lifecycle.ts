@@ -152,7 +152,7 @@ const PLAYER_STATE_TABLES: ReadonlySet<string> = new Set([
   "forestRewardPrototype", "gemKillProgress", "gemTransaction", "guildMemberQuestWeek", "guildRejoin",
   "homeReturnLocation", "leaderboardEntryLegacy", "leaderboardPosition", "leaderboardPrestigePosition", "loginMove",
   "offlineProgress", "patreonPreview", "playerAggroChallenge", "playerAggroChallengeParked", "playerBonusToggle", "playerNameColor",
-  "playerMining", "playerMinedNode",
+  "playerMining", "playerMinedNode", "playerMiningLevel",
   "playerDailyQuest", "playerEndgameRebaseBackup", "playerEndlessRebaseBackup", "playerFreeRespec",
   "playerOfflinePreference", "playerPowerRebaseBackup", "playerPrestige", "playerPrestigeChallenge",
   "playerPrestigeChallengeParked", "playerPrestigeExpansionPerk", "playerPrestigePerk", "playerQuestWeekTotal",

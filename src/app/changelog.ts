@@ -1,4 +1,8 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.906.1": [
+    "Profiles show Mining",
+    "Cards and skills moved from the profile into the item window, with a clearer look",
+  ],
   "0.906.0": [
     "Refining no longer drops a level when it fails",
     "Refining now goes up to ★30",
@@ -3376,6 +3380,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.906.1": "2026-10-15",
   "0.906.0": "2026-10-15",
   "0.905.1": "2026-10-15",
   "0.905.0": "2026-10-14",

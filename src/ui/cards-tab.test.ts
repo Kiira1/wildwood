@@ -146,15 +146,20 @@ it("shows a gear item's card slots in its window, and none for gear that holds n
   expect(view.opened.filter(request => request.itemId === STARTER_STONE).every(request => request.cardSlots === undefined)).toBe(true);
 });
 
-it("lists a gear copy's card slots under its stats: each card and what it does, then the open ones", () => {
+it("shows a gear copy's card slots in a Cards section: each card's portrait, name and effects, then the open ones", () => {
   const { document } = page(`<section id="panel" hidden><div class="item-inspection-tools"></div><h2 id="title"></h2><div id="content"></div><button id="back"></button></section>`);
   const content = document.getElementById("content")!;
   const controller = createItemInspectionController({ panel: document.getElementById("panel")!, title: document.getElementById("title")!,
     content, back: document.getElementById("back") as HTMLButtonElement });
   controller.open({ itemId: IRON_BOW, ownItem: true, cardSlots: { slots: 3, cards: ["needle_card", "ember_raider_card"] } });
-  expect([...content.querySelectorAll(".item-inspection-cards > span")].map(span => span.textContent)).toEqual([
-    "Card Slots 2 / 3", "Needle Card: 1% chance a hit lands twice", "Ember Raider Card: Damage +4.9%, Max Health -3.6%", "Empty Slot",
+  expect(content.querySelector(".item-inspection-cards .item-inspection-section-title")?.textContent).toBe("Cards2 / 3");
+  expect([...content.querySelectorAll(".item-card-slot")].map(slot => [slot.className,
+    ...[...slot.querySelectorAll(".item-card-text > *")].map(line => line.textContent)])).toEqual([
+    ["item-card-slot is-regular", "Needle Card", "1% chance a hit lands twice"],
+    ["item-card-slot is-regular", "Ember Raider Card", "Damage +4.9%", "Max Health -3.6%"],
+    ["item-card-slot is-empty", "Empty Slot", "Slot a card at the Smith"],
   ]);
+  expect(content.querySelectorAll(".item-card-slot:not(.is-empty) .item-card-art img")).toHaveLength(2);
   controller.open({ itemId: IRON_BOW });
   expect(content.querySelector(".item-inspection-cards")).toBeNull();
 });

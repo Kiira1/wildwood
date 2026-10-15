@@ -16,6 +16,7 @@ import { REFINE_ORES, type OreId } from "../../shared/refine";
 import { cardDefinition } from "../../shared/cards";
 import { CARD_SLOT_NAMES, cardEffectText, cardName, cardOrigin } from "../../shared/card-text";
 import { cardPortrait } from "./card-portrait";
+import { itemSkillDetails } from "./item-skill-details";
 
 export type ItemInspectionAction = {
   label: string;
@@ -66,22 +67,86 @@ export function itemInspectionButtonLabel(label: string) {
     `${separator}${letter.toUpperCase()}`);
 }
 
-/** A gear copy's card slots, as lines under its stats: "Needle Card: 1% chance a hit lands twice", then "Empty Slot". */
-function cardSlotList({ slots, cards }: { slots: number; cards: readonly string[] }) {
-  const list = document.createElement("div");
-  list.className = "item-inspection-cards";
-  const title = document.createElement("span");
-  title.className = "item-inspection-cards-title";
-  title.textContent = `Card Slots ${Math.min(cards.length, slots)} / ${slots}`;
-  list.append(title);
+function section(title: string, count?: string) {
+  const block = document.createElement("section");
+  block.className = "item-inspection-section";
+  const heading = document.createElement("h3");
+  heading.className = "item-inspection-section-title";
+  heading.textContent = title;
+  if (count) {
+    const tally = document.createElement("span");
+    tally.textContent = count;
+    heading.append(tally);
+  }
+  block.append(heading);
+  return block;
+}
+
+/**
+ * A weapon's skills: each one's chance, and a bar for where it sits between the worst and best roll this
+ * weapon can have, with that range written under it, so a roll can be judged at a glance.
+ */
+function skillSection(itemId: string, roll: Parameters<typeof itemSkillDetails>[1]) {
+  const skills = itemSkillDetails(itemId, roll);
+  if (!skills.length) return null;
+  const block = section("Skills");
+  block.classList.add("item-inspection-skills");
+  for (const skill of skills) {
+    const row = document.createElement("div");
+    row.className = "item-skill";
+    const head = document.createElement("div");
+    head.className = "item-skill-head";
+    const name = document.createElement("strong");
+    name.textContent = skill.label;
+    const chance = document.createElement("span");
+    chance.className = "item-skill-chance";
+    chance.textContent = `${skill.percent.toFixed(1)}%`;
+    head.append(name, chance);
+    const bar = document.createElement("div");
+    bar.className = "item-skill-bar";
+    const fill = document.createElement("span");
+    fill.style.width = `${Math.round(8 + skill.quality * 92)}%`;
+    bar.append(fill);
+    const note = document.createElement("span");
+    note.className = "item-skill-note";
+    note.textContent = `${skill.quality >= 1 ? "Best Roll" : skill.quality <= 0 ? "Lowest Roll" : `${Math.round(skill.quality * 100)}% of Best`} · ${skill.min}–${skill.max}%`;
+    row.append(head, bar, note);
+    block.append(row);
+  }
+  return block;
+}
+
+/** A gear copy's card slots: each slotted card's portrait, name and effects, then the open slots. */
+function cardSection({ slots, cards }: { slots: number; cards: readonly string[] }) {
+  const block = section("Cards", `${Math.min(cards.length, slots)} / ${slots}`);
+  block.classList.add("item-inspection-cards");
   for (let index = 0; index < slots; index++) {
     const card = cardDefinition(cards[index]);
-    const line = document.createElement("span");
-    line.className = card ? `item-inspection-card is-${card.rarity}` : "item-inspection-card is-empty";
-    line.textContent = card ? `${cardName(card)}: ${card.effects.map(effect => cardEffectText(effect)).join(", ")}` : "Empty Slot";
-    list.append(line);
+    const row = document.createElement("div");
+    row.className = card ? `item-card-slot is-${card.rarity}` : "item-card-slot is-empty";
+    const art = document.createElement("span");
+    art.className = "item-card-art";
+    if (card) {
+      const image = document.createElement("img");
+      image.alt = "";
+      image.draggable = false;
+      void cardPortrait(card.id).then(source => { if (source) image.src = source; });
+      art.append(image);
+    }
+    const text = document.createElement("div");
+    text.className = "item-card-text";
+    const name = document.createElement("strong");
+    name.textContent = card ? cardName(card) : "Empty Slot";
+    text.append(name);
+    for (const line of card ? card.effects.map(effect => cardEffectText(effect)) : ["Slot a card at the Smith"]) {
+      const effect = document.createElement("span");
+      effect.textContent = line;
+      text.append(effect);
+    }
+    row.append(art, text);
+    block.append(row);
   }
-  return list;
+  return block;
 }
 
 /** Standalone item window shared by inventory and future item-bearing screens. */
@@ -172,17 +237,12 @@ export function createItemInspectionController(elements: ItemInspectionElements)
       value.dataset.statKind = "melee";
       stats.append(value);
     }
-    // Skill names are written in title case and shown exactly as written.
-    const roll = request.skills !== undefined ? request.skills : (elements.weaponSkills ?? elements.bowSkills)?.(item.id);
-    // Another player's weapon shows the roll its profile passes (player_worn_skill).
-    for (const line of request.ownItem || request.skills ? weaponSkillLines(item.id, roll) : []) {
-      const value = document.createElement("span");
-      value.textContent = line;
-      value.dataset.statKind = "skill";
-      stats.append(value);
-    }
     copy.append(stats);
-    if (request.cardSlots && request.cardSlots.slots > 0) copy.append(cardSlotList(request.cardSlots));
+    // Another player's weapon shows the roll its profile passes (player_worn_skill).
+    const roll = request.skills !== undefined ? request.skills : (elements.weaponSkills ?? elements.bowSkills)?.(item.id);
+    const skills = request.ownItem || request.skills ? skillSection(item.id, roll) : null;
+    if (skills) copy.append(skills);
+    if (request.cardSlots && request.cardSlots.slots > 0) copy.append(cardSection(request.cardSlots));
 
     const actionRow = renderActions(request.actions);
 

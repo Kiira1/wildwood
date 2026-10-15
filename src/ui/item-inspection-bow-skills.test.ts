@@ -21,16 +21,22 @@ function inspection(roll = { arrowStorm: 2.4, ricochet: 0, piercingShot: 12 }) {
     bowSkills: itemId => itemId === "iron_bow" ? roll : null,
   });
   const lines = () => [...document.querySelectorAll(".item-inspection-stats span")].map(span => span.textContent);
-  return { controller, lines, document };
+  /** The Skills section: each skill's name and chance. */
+  const skills = () => [...document.querySelectorAll(".item-skill")].map(row =>
+    `${row.querySelector("strong")?.textContent} ${row.querySelector(".item-skill-chance")?.textContent}`);
+  return { controller, lines, skills, document };
 }
 
-it("lists a player's own bow skills in title case under its stats", () => {
+it("lists a player's own bow skills in title case in a Skills section under its stats", () => {
   const view = inspection();
   view.controller.open({ itemId: "iron_bow", ownItem: true });
-  expect(view.lines()).toEqual([DAMAGE, "Arrow Storm 2.4%", "Piercing Shot 12.0%"]);
-  const skill = view.document.querySelector<HTMLElement>('[data-stat-kind="skill"]')!;
-  expect(skill.textContent).toBe("Arrow Storm 2.4%");
-  expect(skill.getAttribute("style")).toBeNull();
+  expect(view.lines()).toEqual([DAMAGE]);
+  expect(view.skills()).toEqual(["Arrow Storm 2.4%", "Piercing Shot 12.0%"]);
+  expect(view.document.querySelector(".item-inspection-skills .item-inspection-section-title")?.textContent).toBe("Skills");
+  // Each says where it sits in what this weapon can roll, on screen rather than in a hover.
+  const notes = [...view.document.querySelectorAll(".item-skill-note")].map(note => note.textContent);
+  expect(notes).toHaveLength(2);
+  for (const note of notes) expect(note).toMatch(/(Best Roll|Lowest Roll|\d+% of Best) · [\d.]+–[\d.]+%$/);
   // The skill score decides which copy is kept; the window shows only the skills.
   expect(view.document.querySelector('[data-stat-kind="skill-score"]')).toBeNull();
 });
@@ -38,16 +44,18 @@ it("lists a player's own bow skills in title case under its stats", () => {
 it("shows a kept copy's own roll", () => {
   const view = inspection();
   view.controller.open({ itemId: "iron_bow", ownItem: true, skills: { arrowStorm: 0, ricochet: 5, piercingShot: 0 } });
-  expect(view.lines()).toEqual([DAMAGE, "Ricochet 5.0%"]);
+  expect(view.skills()).toEqual(["Ricochet 5.0%"]);
 });
 
 it("shows nothing extra for a bow without skills, or for someone else's bow", () => {
   const view = inspection({ arrowStorm: 0, ricochet: 0, piercingShot: 0 });
   view.controller.open({ itemId: "iron_bow", ownItem: true });
   expect(view.lines()).toEqual([DAMAGE]);
+  expect(view.document.querySelector(".item-inspection-skills")).toBeNull();
   const other = inspection();
   other.controller.open({ itemId: "iron_bow" });
   expect(other.lines()).toEqual([DAMAGE]);
+  expect(other.skills()).toEqual([]);
 });
 
 it("is never uppercased by a stylesheet in the item window or the drop reveal", () => {
@@ -76,5 +84,5 @@ it.each([true, false])("shows the profile's + rating when inspecting equipment (
 it("shows a sword copy's three native skills in its inspection", () => {
   const view = inspection();
   view.controller.open({ itemId: "ion_sword", ownItem: true, skills: { whirlwind: 7.2, deflect: 8, shockwave: 9.1 } });
-  expect(view.lines().slice(-3)).toEqual(["Whirlwind 7.2%", "Deflect 8.0%", "Shockwave 9.1%"]);
+  expect(view.skills()).toEqual(["Whirlwind 7.2%", "Deflect 8.0%", "Shockwave 9.1%"]);
 });

@@ -386,6 +386,7 @@ import PlayerItemUpgradeRow from "./player_item_upgrade_table";
 import PlayerLifetimeRow from "./player_lifetime_table";
 import PlayerMapFrameRow from "./player_map_frame_table";
 import PlayerMapMarkerRow from "./player_map_marker_table";
+import PlayerMiningLevelRow from "./player_mining_level_table";
 import PlayerMotionDetailFrameRow from "./player_motion_detail_frame_table";
 import PlayerMotionFrameRow from "./player_motion_frame_table";
 import PlayerMotionIdentityRow from "./player_motion_identity_table";
@@ -1087,6 +1088,17 @@ const tablesSchema = __schema({
       { name: 'player_map_marker_identity_key', constraint: 'unique', columns: ['identity'] },
     ],
   }, PlayerMapMarkerRow),
+  playerMiningLevel: __table({
+    name: 'player_mining_level',
+    indexes: [
+      { accessor: 'identity', name: 'player_mining_level_identity_idx_btree', algorithm: 'btree', columns: [
+        'identity',
+      ] },
+    ],
+    constraints: [
+      { name: 'player_mining_level_identity_key', constraint: 'unique', columns: ['identity'] },
+    ],
+  }, PlayerMiningLevelRow),
   playerMotionDetailFrame: __table({
     name: 'player_motion_detail_frame',
     indexes: [

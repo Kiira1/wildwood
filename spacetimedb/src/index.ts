@@ -44,7 +44,7 @@ import { playerSwordSkill } from "./sword-skills";
 import { ensureWeaponSkillRoll } from "./weapon-skills";
 import { playerEquipmentCopy, pendingEquipmentOffer, createEquipmentCopies, publishItemDrop, offerDuplicateEquipment, expireEquipmentOffers, playerItemCollection, registerItemCollection } from "./equipment-copies";
 import { playerItemRefine, playerCopyRefine, playerOre, playerRefineResult, registerItemRefine } from "./item-refine";
-import { playerMining, playerMinedNode, registerMining } from "./mining";
+import { playerMining, playerMinedNode, playerMiningLevel, registerMining } from "./mining";
 import { playerCard, playerGearSlots, playerCopySlots, playerCardDrop, registerGearCards } from "./gear-cards"; import { playerCardAttackCap, syncCardAttackCap } from "./card-attack-cap"; import { playerBuild, registerBuilds } from "./builds"; import { playerWornSkill, syncWornSkill } from "./worn-skill";
 import { awardCardDrops, playerBossCardRoll, playerCardMeter } from "./card-drops";
 import { awardRegularEnemyLoot } from "./enemy-loot-award";
@@ -1629,7 +1629,7 @@ const spacetimedb = schema({
   dailyGemBonus,
   playerAdReward, playerChatMute,
   balanceApologyNotice,
-  playerEquipmentLock, playerItemGift, playerBowSkill, playerSwordSkill, playerEquipmentCopy, pendingEquipmentOffer, playerIgnoredDrop, playerLootSetting, playerItemRefine, playerCopyRefine, playerOre, playerRefineResult, playerCard, playerGearSlots, playerCopySlots, playerCardDrop, playerCardAttackCap, playerBossCardRoll, playerBuild, playerCardMeter, playerItemCollection, playerWornSkill, playerMining, playerMinedNode,
+  playerEquipmentLock, playerItemGift, playerBowSkill, playerSwordSkill, playerEquipmentCopy, pendingEquipmentOffer, playerIgnoredDrop, playerLootSetting, playerItemRefine, playerCopyRefine, playerOre, playerRefineResult, playerCard, playerGearSlots, playerCopySlots, playerCardDrop, playerCardAttackCap, playerBossCardRoll, playerBuild, playerCardMeter, playerItemCollection, playerWornSkill, playerMining, playerMinedNode, playerMiningLevel,
   mailboxLetter, mailboxReceipt, playerJoinDate, mailboxEquipment, accountDeletionRequest,
   playerOnboarding,
   regularEnemyLootCursor, regularEnemyStream, enemyDefeatBudget, bossDefeatWindow, bossMapDefeatWindow,

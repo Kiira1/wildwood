@@ -46,6 +46,26 @@ export const playerMinedNode = table({ name: "player_mined_node", public: false 
 type Ctx = any;
 const U32_MAX = 4_294_967_295;
 
+/** Each player's Mining stat, public, for profiles (player_mining stays private); writeMiningLevel keeps it in step. */
+export const playerMiningLevel = table({ name: "player_mining_level", public: true }, {
+  identity: t.identity().primaryKey(),
+  mining: t.u32(),
+});
+
+/** Copies a player's Mining stat to player_mining_level, or removes it with no pickaxe. */
+export function writeMiningLevel(ctx: Ctx, identity: Identity) {
+  const row = ctx.db.playerMining.identity.find(identity), level = ctx.db.playerMiningLevel.identity.find(identity);
+  if (!row) { if (level) ctx.db.playerMiningLevel.identity.delete(identity); return; }
+  const mining = normalizeMining(row.mining);
+  if (!level) ctx.db.playerMiningLevel.insert({ identity, mining });
+  else if (level.mining !== mining) ctx.db.playerMiningLevel.identity.update({ identity, mining });
+}
+
+/** Fills player_mining_level from every pickaxe already handed out (module migration 56). */
+export function backfillMiningLevels(ctx: Ctx) {
+  for (const row of [...ctx.db.playerMining.iter()] as any[]) writeMiningLevel(ctx, row.identity);
+}
+
 export const minedNodeKey = (identity: { toHexString(): string }, nodeId: number) => `${identity.toHexString()}:${nodeId}`;
 
 const microsSince = (ctx: Ctx, at: { microsSinceUnixEpoch: bigint }) => Number(ctx.timestamp.microsSinceUnixEpoch - at.microsSinceUnixEpoch);
@@ -79,6 +99,7 @@ function rowsOf(handle: any, identity: Identity): any[] {
 /** Reset Save and a deleted account take Mining, the pickaxe and the bare rocks. Prestige keeps them all. */
 export function removeMiningData(ctx: Ctx, identity: Identity) {
   if (ctx.db.playerMining.identity.find(identity)) ctx.db.playerMining.identity.delete(identity);
+  writeMiningLevel(ctx, identity);
   for (const row of rowsOf(ctx.db.playerMinedNode, identity)) ctx.db.playerMinedNode.key.delete(row.key);
 }
 
@@ -89,6 +110,8 @@ export function mergeMiningData(ctx: Ctx, guest: Identity, account: Identity) {
   if (mining) {
     ctx.db.playerMining.identity.delete(guest);
     ctx.db.playerMining.insert({ ...mining, identity: account });
+    writeMiningLevel(ctx, guest);
+    writeMiningLevel(ctx, account);
   }
   for (const row of rowsOf(ctx.db.playerMinedNode, guest)) {
     ctx.db.playerMinedNode.key.delete(row.key);
@@ -118,6 +141,7 @@ export function claimPickaxeFor(ctx: Ctx, deps: MiningDeps) {
   if (ctx.db.playerMining.identity.find(ctx.sender)) throw new SenderError("You already have a pickaxe.");
   ctx.db.playerMining.insert({ identity: ctx.sender, mining: 0, rocksBroken: 0, pickaxeAt: ctx.timestamp, lastBreakAt: ctx.timestamp,
     lastNodeId: 0, lastStarshard: false });
+  writeMiningLevel(ctx, ctx.sender);
 }
 
 /**
@@ -164,6 +188,7 @@ export function mineNodeFor(ctx: Ctx, args: { nodeId: number }, deps: MiningDeps
     lastNodeId: node.id,
     lastStarshard: Boolean(ores.starshard),
   });
+  writeMiningLevel(ctx, ctx.sender);
   const key = minedNodeKey(ctx.sender, node.id), bare = ctx.db.playerMinedNode.key.find(key);
   if (bare) ctx.db.playerMinedNode.key.update({ ...bare, brokenAt: ctx.timestamp });
   else ctx.db.playerMinedNode.insert({ key, identity: ctx.sender, nodeId: node.id, brokenAt: ctx.timestamp });

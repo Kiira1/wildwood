@@ -143,6 +143,12 @@ export function createPlayerProfileService(dependencies: PlayerProfileServiceDep
         return row ? { itemId: row.itemId, roll: { arrowStorm: row.arrowStorm, ricochet: row.ricochet, piercingShot: row.piercingShot,
           whirlwind: row.whirlwind, deflect: row.deflect, shockwave: row.shockwave } } : null;
       })(),
+      mining: (() => {
+        const db = dependencies.connection()?.db;
+        const row = identity === dependencies.localIdentity() ? [...(db?.myMining?.iter() ?? [])][0]
+          : [...(db?.playerMiningLevel?.iter() ?? [])].find(row => row.identity.toHexString() === identity);
+        return row ? row.mining : null;
+      })(),
       lifetime: { ...lifetime },
       mapId: activePlayerMap(identity) ?? undefined,
     };
@@ -287,6 +293,7 @@ export function createPlayerProfileService(dependencies: PlayerProfileServiceDep
           tables.playerItemRefine.where(row => row.identity.eq(dbIdentity)),
           tables.playerGearSlots.where(row => row.identity.eq(dbIdentity)),
           tables.playerWornSkill.where(row => row.identity.eq(dbIdentity)),
+          tables.playerMiningLevel.where(row => row.identity.eq(dbIdentity)),
           tables.player.where((player) => player.identity.eq(dbIdentity)),
         ]);
       if (generation === profileGeneration) activeSubscription = handle;

@@ -2174,6 +2174,12 @@ export const PlayerMining = __t.object("PlayerMining", {
 });
 export type PlayerMining = __Infer<typeof PlayerMining>;
 
+export const PlayerMiningLevel = __t.object("PlayerMiningLevel", {
+  identity: __t.identity(),
+  mining: __t.u32(),
+});
+export type PlayerMiningLevel = __Infer<typeof PlayerMiningLevel>;
+
 export const PlayerMotion = __t.object("PlayerMotion", {
   networkId: __t.u32(),
   identity: __t.identity(),

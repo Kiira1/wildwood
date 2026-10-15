@@ -405,10 +405,6 @@
   .settings-panel .setting-toggle { min-height: 44px; }
   .settings-tabs { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 6px; padding-bottom: 8px; }
   .settings-tabs [hidden] { display: none; }
-  .profile-loadout-summary { display: flex; flex-direction: column; gap: 4px; margin: 8px 0 0; font-size: 13px; line-height: 1.4; color: rgba(255,255,255,.8); text-align: center; }
-  .profile-loadout-summary[hidden] { display: none; }
-  .profile-loadout-summary p { margin: 0; }
-  .profile-loadout-summary strong { color: #fff; }
   .map-guide-collected-count { margin-left: 8px; font-size: 13px; font-weight: 700; color: rgba(255,255,255,.7); }
   .map-guide-collected { display: inline-block; margin-top: 4px; font-size: 13px; font-weight: 700; color: var(--gold); }
   .controls-settings { display: flex; flex-direction: column; gap: 6px; }
@@ -3219,6 +3215,8 @@
   .profile-tabs { display: flex; gap: 7px; margin: 8px 0 6px; border-bottom: 2px solid rgba(255,255,255,.13); }
   .profile-tab { display: grid; place-items: center; height: 44px; min-height: 44px; margin: 0 0 -2px; padding: 8px 12px; border: 0; border-bottom: 3px solid transparent; border-radius: 5px 5px 0 0; background: transparent; color: var(--muted); font-size: 10px; }
   .profile-tab.is-active { border-bottom-color: var(--green); color: #fff; }
+  /* The Bonuses tab is your own profile's: hidden on anyone else's, which display: grid above would undo. */
+  .profile-tab[hidden] { display: none; }
   .profile-loading { grid-area: 1 / 1; align-self: center; justify-self: center; padding: 8px; color: var(--muted); font-size: 11px; text-align: center; z-index: 1; }
   .profile-panel[hidden], .profile-loading[hidden] { display: none; }
   .player-profile-modal .profile-panel { min-height: 0; }
