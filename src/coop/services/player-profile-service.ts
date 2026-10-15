@@ -130,6 +130,19 @@ export function createPlayerProfileService(dependencies: PlayerProfileServiceDep
           : [...(db?.playerGearSlots?.iter() ?? [])].filter(row => row.identity.toHexString() === identity);
         return Object.fromEntries(rows.map(row => [row.itemId, gearSlotsOf(row)]));
       })(),
+      wornSkill: (() => {
+        const db = dependencies.connection()?.db;
+        // Your own weapon reads its roll from my_bow_skills / my_sword_skills; another player's from player_worn_skill.
+        if (identity === dependencies.localIdentity()) {
+          const weapon = progress.equippedRightHand || progress.equippedLeftHand || "";
+          const own = [...(db?.myBowSkills?.iter() ?? []), ...(db?.mySwordSkills?.iter() ?? [])].find(row => row.itemId === weapon) as Record<string, any> | undefined;
+          return own ? { itemId: weapon, roll: { arrowStorm: own.arrowStorm ?? 0, ricochet: own.ricochet ?? 0, piercingShot: own.piercingShot ?? 0,
+            whirlwind: own.whirlwind ?? 0, deflect: own.deflect ?? 0, shockwave: own.shockwave ?? 0 } } : null;
+        }
+        const row = [...(db?.playerWornSkill?.iter() ?? [])].find(row => row.identity.toHexString() === identity);
+        return row ? { itemId: row.itemId, roll: { arrowStorm: row.arrowStorm, ricochet: row.ricochet, piercingShot: row.piercingShot,
+          whirlwind: row.whirlwind, deflect: row.deflect, shockwave: row.shockwave } } : null;
+      })(),
       lifetime: { ...lifetime },
       mapId: activePlayerMap(identity) ?? undefined,
     };
@@ -273,6 +286,7 @@ export function createPlayerProfileService(dependencies: PlayerProfileServiceDep
           tables.playerItemUpgrade.where((upgrade) => upgrade.identity.eq(dbIdentity)),
           tables.playerItemRefine.where(row => row.identity.eq(dbIdentity)),
           tables.playerGearSlots.where(row => row.identity.eq(dbIdentity)),
+          tables.playerWornSkill.where(row => row.identity.eq(dbIdentity)),
           tables.player.where((player) => player.identity.eq(dbIdentity)),
         ]);
       if (generation === profileGeneration) activeSubscription = handle;

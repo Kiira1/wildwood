@@ -1144,6 +1144,16 @@
       "armor:f64",
       "regen:f64"
     ],
+    "player_worn_skill": [
+      "identity:identity",
+      "itemId:string",
+      "arrowStorm:f32",
+      "ricochet:f32",
+      "piercingShot:f32",
+      "whirlwind:f32",
+      "deflect:f32",
+      "shockwave:f32"
+    ],
     "prestige_expansion": [
       "id:u8",
       "launchedAt:timestamp",

@@ -401,6 +401,7 @@ import PlayerProfileSnapshotRow from "./player_profile_snapshot_table";
 import PlayerProgressRow from "./player_progress_table";
 import PlayerResearchRow from "./player_research_table";
 import PlayerWideStatsRow from "./player_wide_stats_table";
+import PlayerWornSkillRow from "./player_worn_skill_table";
 import PrestigeExpansionRow from "./prestige_expansion_table";
 import PrismshellBossRow from "./prismshell_boss_table";
 import PrismshellResultRow from "./prismshell_result_table";
@@ -1260,6 +1261,17 @@ const tablesSchema = __schema({
       { name: 'player_wide_stats_identity_key', constraint: 'unique', columns: ['identity'] },
     ],
   }, PlayerWideStatsRow),
+  playerWornSkill: __table({
+    name: 'player_worn_skill',
+    indexes: [
+      { accessor: 'identity', name: 'player_worn_skill_identity_idx_btree', algorithm: 'btree', columns: [
+        'identity',
+      ] },
+    ],
+    constraints: [
+      { name: 'player_worn_skill_identity_key', constraint: 'unique', columns: ['identity'] },
+    ],
+  }, PlayerWornSkillRow),
   prestigeExpansion: __table({
     name: 'prestige_expansion',
     indexes: [

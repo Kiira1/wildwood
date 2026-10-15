@@ -45,7 +45,7 @@ import { ensureWeaponSkillRoll } from "./weapon-skills";
 import { playerEquipmentCopy, pendingEquipmentOffer, createEquipmentCopies, publishItemDrop, offerDuplicateEquipment, expireEquipmentOffers, playerItemCollection, registerItemCollection } from "./equipment-copies";
 import { playerItemRefine, playerCopyRefine, playerOre, playerRefineResult, registerItemRefine } from "./item-refine";
 import { playerMining, playerMinedNode, registerMining } from "./mining";
-import { playerCard, playerGearSlots, playerCopySlots, playerCardDrop, registerGearCards } from "./gear-cards"; import { playerCardAttackCap, syncCardAttackCap } from "./card-attack-cap"; import { playerBuild, registerBuilds } from "./builds";
+import { playerCard, playerGearSlots, playerCopySlots, playerCardDrop, registerGearCards } from "./gear-cards"; import { playerCardAttackCap, syncCardAttackCap } from "./card-attack-cap"; import { playerBuild, registerBuilds } from "./builds"; import { playerWornSkill, syncWornSkill } from "./worn-skill";
 import { awardCardDrops, playerBossCardRoll, playerCardMeter } from "./card-drops";
 import { awardRegularEnemyLoot } from "./enemy-loot-award";
 import { moderateReportedMessage } from "./chat-report-moderation";
@@ -1629,7 +1629,7 @@ const spacetimedb = schema({
   dailyGemBonus,
   playerAdReward, playerChatMute,
   balanceApologyNotice,
-  playerEquipmentLock, playerItemGift, playerBowSkill, playerSwordSkill, playerEquipmentCopy, pendingEquipmentOffer, playerIgnoredDrop, playerLootSetting, playerItemRefine, playerCopyRefine, playerOre, playerRefineResult, playerCard, playerGearSlots, playerCopySlots, playerCardDrop, playerCardAttackCap, playerBossCardRoll, playerBuild, playerCardMeter, playerItemCollection, playerMining, playerMinedNode,
+  playerEquipmentLock, playerItemGift, playerBowSkill, playerSwordSkill, playerEquipmentCopy, pendingEquipmentOffer, playerIgnoredDrop, playerLootSetting, playerItemRefine, playerCopyRefine, playerOre, playerRefineResult, playerCard, playerGearSlots, playerCopySlots, playerCardDrop, playerCardAttackCap, playerBossCardRoll, playerBuild, playerCardMeter, playerItemCollection, playerWornSkill, playerMining, playerMinedNode,
   mailboxLetter, mailboxReceipt, playerJoinDate, mailboxEquipment, accountDeletionRequest,
   playerOnboarding,
   regularEnemyLootCursor, regularEnemyStream, enemyDefeatBudget, bossDefeatWindow, bossMapDefeatWindow,
@@ -2041,7 +2041,7 @@ function clearOrphanVirtualPlayers(ctx: any) {
 
 function enterWorldPresence(ctx: any, tabId: string, forceTakeover = false, supportsTutorial = false) {
   const session = requireSupportedSessionProtocol(ctx);
-  requireCurrentLegalConsent(ctx);
+  requireCurrentLegalConsent(ctx); syncWornSkill(ctx, ctx.sender); // The weapon in hand shows on the profile from login on.
   if (!ctx.connectionId) return;
   const normalizedTabId = tabId.trim();
   if (!/^[A-Za-z0-9_-]{8,64}$/.test(normalizedTabId)) throw new SenderError("Invalid Wildstat tab session.");

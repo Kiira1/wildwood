@@ -1,5 +1,7 @@
 import { replaceChildrenIfChanged } from "./replace-children-if-changed";
 import { createProfileEditor, type ProfileEditorElements } from "./profile-editor";
+import { cardDefinition } from "../../shared/cards";
+import { weaponSkillLines } from "../../shared/weapon-skills";
 import { createProfileLoading } from "./profile-loading";
 import type { NameChangeStatus } from "../../shared/name-change";
 import { applyAvatarFrame } from "../app/avatar-frames";
@@ -102,7 +104,37 @@ export function createProfileWindowController(elements: {
     api.renderCharacter(elements.preview.dataset.identity || "", progress, !elements.window.hidden);
   }
 
+  // Under the gear: the cards in the worn weapon, helmet and armor, and the weapon's skills, readable at a glance.
+  const loadoutSummary = document.createElement("div");
+  loadoutSummary.className = "profile-loadout-summary";
+  elements.equipmentHead.parentElement?.after(loadoutSummary);
+  function renderLoadoutSummary(profile: Profile | null) {
+    const progress = profile?.progress;
+    const weapon = progress ? progress.equippedRightHand || progress.equippedLeftHand || "" : "";
+    const counts = new Map<string, number>();
+    for (const itemId of progress ? [weapon, progress.equippedHead, progress.equippedChest] : []) {
+      for (const cardId of (itemId && profile?.itemCardSlots?.[itemId]?.cards) || []) counts.set(cardId, (counts.get(cardId) ?? 0) + 1);
+    }
+    const cards = [...counts].map(([cardId, count]) => {
+      const card = cardDefinition(cardId);
+      return card ? `${card.enemy}${count > 1 ? ` ×${count}` : ""}` : "";
+    }).filter(Boolean);
+    const skills = profile?.wornSkill && profile.wornSkill.itemId === weapon ? weaponSkillLines(weapon, profile.wornSkill.roll) : [];
+    const lines: [string, string[]][] = [["Cards", cards], ["Skills", skills]];
+    loadoutSummary.textContent = "";
+    for (const [label, values] of lines) {
+      if (!values.length) continue;
+      const line = document.createElement("p");
+      const name = document.createElement("strong");
+      name.textContent = `${label} `;
+      line.append(name, values.join(" · "));
+      loadoutSummary.append(line);
+    }
+    loadoutSummary.hidden = !loadoutSummary.childElementCount;
+  }
+
   function renderEquipment(profile: Profile | null) {
+    renderLoadoutSummary(profile);
     for (const slot of PROFILE_EQUIPMENT_SLOTS) {
       const presentation = profileEquipmentPresentation(profile?.progress ?? null, slot);
       renderProfileEquipmentSlot(
@@ -123,6 +155,7 @@ export function createProfileWindowController(elements: {
       upgradeLevel: slotUpgradeLevelFor(profileData.itemUpgradeLevels, presentation.inspectionItemId),
       refine: profileEquipmentRefine(presentation, profileData.itemRefines),
       cardSlots: profileEquipmentCardSlots(presentation, profileData.itemCardSlots),
+      skills: profileData.wornSkill?.itemId === presentation.inspectionItemId ? profileData.wornSkill.roll : undefined,
       context: presentation.context,
       ownItem: identity === api.localIdentity(),
       actions: identity === api.localIdentity() ? api.destructionActions?.(presentation.inspectionItemId) : undefined,

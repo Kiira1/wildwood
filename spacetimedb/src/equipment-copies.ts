@@ -16,6 +16,7 @@ import { ensureWeaponSkillRoll, weaponSkillRollFor } from "./weapon-skills";
 import { addOres, oreKindsHeldFor, promoteCopyRefine, refineLevelFor, setRefineLevel, swapFirstCopyRefine } from "./item-refine";
 import { clearGearSlots, gearSlotsFor, returnSlottedCards, promoteCopySlots, rollCopySlots, rollDropSlots, swapFirstCopySlots } from "./gear-cards";
 import { readPlayerProgress } from "./wide-stats";
+import { syncWornSkill } from "./worn-skill";
 
 /**
  * Copies of an item beyond the first, one row per copy a player chose to keep.
@@ -226,6 +227,11 @@ function forgetFirstCopyRoll(ctx: Ctx, identity: Identity, itemId: string) {
 
 /** Writes the first copy's roll. Anything that is not a skill weapon has none to write. */
 function setFirstCopyRoll(ctx: Ctx, identity: Identity, itemId: string, roll: WeaponSkillRoll) {
+  writeFirstCopyRoll(ctx, identity, itemId, roll);
+  // The weapon in hand shows its skills on the player's profile.
+  syncWornSkill(ctx, identity);
+}
+function writeFirstCopyRoll(ctx: Ctx, identity: Identity, itemId: string, roll: WeaponSkillRoll) {
   if (isSkillSword(itemId)) { setSwordSkillRoll(ctx, identity, itemId, roll); return; }
   if (!isSkillBow(itemId)) return;
   const { arrowStorm, ricochet, piercingShot } = weaponSkillColumns(roll);

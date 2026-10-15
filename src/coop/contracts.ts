@@ -160,6 +160,8 @@ export type PlayerProfileData = {
   itemRefines?: Record<string, number>;
   /** Each first copy's card slots by item id (player_gear_slots); gear with no row has one empty slot. */
   itemCardSlots?: Record<string, { slots: number; cards: readonly string[] }>;
+  /** The equipped weapon's skill roll (player_worn_skill), for showing it on the profile. */
+  wornSkill?: { itemId: string; roll: Record<string, number> } | null;
   lifetime: PlayerLifetime;
   mapId?: string;
 };

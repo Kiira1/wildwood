@@ -174,7 +174,8 @@ export function createItemInspectionController(elements: ItemInspectionElements)
     }
     // Skill names are written in title case and shown exactly as written.
     const roll = request.skills !== undefined ? request.skills : (elements.weaponSkills ?? elements.bowSkills)?.(item.id);
-    for (const line of request.ownItem ? weaponSkillLines(item.id, roll) : []) {
+    // Another player's weapon shows the roll its profile passes (player_worn_skill).
+    for (const line of request.ownItem || request.skills ? weaponSkillLines(item.id, roll) : []) {
       const value = document.createElement("span");
       value.textContent = line;
       value.dataset.statKind = "skill";

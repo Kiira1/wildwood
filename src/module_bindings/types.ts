@@ -2564,6 +2564,18 @@ export const PlayerWideStats = __t.object("PlayerWideStats", {
 });
 export type PlayerWideStats = __Infer<typeof PlayerWideStats>;
 
+export const PlayerWornSkill = __t.object("PlayerWornSkill", {
+  identity: __t.identity(),
+  itemId: __t.string(),
+  arrowStorm: __t.f32(),
+  ricochet: __t.f32(),
+  piercingShot: __t.f32(),
+  whirlwind: __t.f32(),
+  deflect: __t.f32(),
+  shockwave: __t.f32(),
+});
+export type PlayerWornSkill = __Infer<typeof PlayerWornSkill>;
+
 export const PresenceChatCooldown = __t.object("PresenceChatCooldown", {
   identity: __t.identity(),
   lastLoginAtMicros: __t.u64(),

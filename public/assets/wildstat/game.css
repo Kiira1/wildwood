@@ -405,6 +405,10 @@
   .settings-panel .setting-toggle { min-height: 44px; }
   .settings-tabs { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 6px; padding-bottom: 8px; }
   .settings-tabs [hidden] { display: none; }
+  .profile-loadout-summary { display: flex; flex-direction: column; gap: 4px; margin: 8px 0 0; font-size: 13px; line-height: 1.4; color: rgba(255,255,255,.8); text-align: center; }
+  .profile-loadout-summary[hidden] { display: none; }
+  .profile-loadout-summary p { margin: 0; }
+  .profile-loadout-summary strong { color: #fff; }
   .map-guide-collected-count { margin-left: 8px; font-size: 13px; font-weight: 700; color: rgba(255,255,255,.7); }
   .map-guide-collected { display: inline-block; margin-top: 4px; font-size: 13px; font-weight: 700; color: var(--gold); }
   .controls-settings { display: flex; flex-direction: column; gap: 6px; }

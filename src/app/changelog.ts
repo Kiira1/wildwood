@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.904.1": [
+    "Player profiles show the cards and weapon skills in use",
+  ],
   "0.904.0": [
     "Builds: save your gear and cards in the Inventory, and swap between them in one tap",
     "Salvaging gear gives back an ore of its tier",
@@ -3352,6 +3355,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.904.1": "2026-10-14",
   "0.904.0": "2026-10-14",
   "0.903.8": "2026-10-14",
   "0.903.7": "2026-10-14",
