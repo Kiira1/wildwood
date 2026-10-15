@@ -1,13 +1,14 @@
 import { App } from '@capacitor/app';
+import { Browser } from '@capacitor/browser';
 import { registerPlugin } from '@capacitor/core';
 import { ANDROID_UPDATE_CHECK_MS, createAndroidUpdateController, type AndroidUpdateBridge } from './android-update-controller';
 import { installClosedBetaInvite } from './closed-beta-invite';
 
 /** Google Play decides availability for this tester and installed build. */
 export function installAndroidUpdates() {
-  const bridge = registerPlugin<AndroidUpdateBridge & { openTesting(): Promise<void> }>('WildStatUpdates');
-  // The closed test's opt-in page: the store listing showed internal testers their own track.
-  installClosedBetaInvite(() => bridge.openTesting());
+  const bridge = registerPlugin<AndroidUpdateBridge>('WildStatUpdates');
+  // Use the existing browser plugin so this works through OTA on older shells too.
+  installClosedBetaInvite(url => Browser.open({ url }));
   const mount = () => {
     const banner = document.createElement('section');
     banner.id = 'androidUpdateBanner'; banner.hidden = true;

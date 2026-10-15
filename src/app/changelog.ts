@@ -1,4 +1,8 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.908.1": [
+    "Android closed beta: join the Google Group and Google Play test from the app",
+    "Clearer instructions for moving from internal testing to the closed beta",
+  ],
   "0.908.0": [
     "Leaderboard: Power, Prestige and Time Played",
     "Time Played can show only accounts that joined in the last 30 or 7 days",
@@ -3398,6 +3402,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.908.1": "2026-10-15",
   "0.908.0": "2026-10-15",
   "0.907.0": "2026-10-15",
   "0.906.4": "2026-10-15",
