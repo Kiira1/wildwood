@@ -38,43 +38,6 @@
       "startedAt:timestamp",
       "completesAt:timestamp"
     ],
-    "aegis_prime_boss": [
-      "id:u32",
-      "encounter:u64",
-      "hp:f32",
-      "maxHp:f32",
-      "alive:bool",
-      "respawnAtMicros:u64",
-      "lastDamageAtMicros:u64"
-    ],
-    "aegis_prime_result": [
-      "id:u32",
-      "encounter:u64",
-      "totalDamage:f32",
-      "contributorsJson:string",
-      "createdAt:timestamp"
-    ],
-    "boss_attack_frame": [
-      "mapId:string",
-      "zoneX:i32",
-      "zoneY:i32",
-      "networkId:u32",
-      "attackerX:f64",
-      "attackerY:f64",
-      "targetX:f64",
-      "targetY:f64",
-      "targetRadius:f32",
-      "hits:u32",
-      "emittedAt:timestamp"
-    ],
-    "boss_hit_result": [
-      "identity:identity",
-      "mapId:string",
-      "x:f64",
-      "y:f64",
-      "damage:f64",
-      "critical:bool"
-    ],
     "dev_access_audit": [
       "identity:identity",
       "viewer:identity",
@@ -93,16 +56,6 @@
       "protocolVersion:u32",
       "reportedAt:timestamp"
     ],
-    "dev_forest_reward_prototype": [
-      "identity:identity",
-      "encounter:u64",
-      "enemyHp:u32",
-      "damage:u32",
-      "kills:u64",
-      "lastAttack:u64",
-      "nextAttackAt:u64",
-      "respawnAt:u64"
-    ],
     "dev_gem_purchase_review": [
       "reference:string",
       "owner:string",
@@ -112,38 +65,6 @@
       "reservationId:string",
       "reason:string",
       "updatedAt:timestamp"
-    ],
-    "dragon_boss": [
-      "id:u32",
-      "encounter:u64",
-      "hp:f32",
-      "maxHp:f32",
-      "alive:bool",
-      "respawnAtMicros:u64",
-      "lastDamageAtMicros:u64"
-    ],
-    "dragon_result": [
-      "id:u32",
-      "encounter:u64",
-      "totalDamage:f32",
-      "contributorsJson:string",
-      "createdAt:timestamp"
-    ],
-    "dreadreaper_boss": [
-      "id:u32",
-      "encounter:u64",
-      "hp:f32",
-      "maxHp:f32",
-      "alive:bool",
-      "respawnAtMicros:u64",
-      "lastDamageAtMicros:u64"
-    ],
-    "dreadreaper_result": [
-      "id:u32",
-      "encounter:u64",
-      "totalDamage:f32",
-      "contributorsJson:string",
-      "createdAt:timestamp"
     ],
     "duel_combat_snapshot": [
       "duelId:u64",
@@ -279,97 +200,12 @@
       "challenger:identity",
       "statsJson:string"
     ],
-    "duel_wire_access": [
-      "key:string",
-      "identity:identity",
-      "combatVersion:u8"
-    ],
-    "frostclaw_boss": [
-      "id:u32",
-      "encounter:u64",
-      "hp:f32",
-      "maxHp:f32",
-      "alive:bool",
-      "respawnAtMicros:u64",
-      "lastDamageAtMicros:u64"
-    ],
-    "frostclaw_result": [
-      "id:u32",
-      "encounter:u64",
-      "totalDamage:f32",
-      "contributorsJson:string",
-      "createdAt:timestamp"
-    ],
-    "gloomroot_boss": [
-      "id:u32",
-      "encounter:u64",
-      "hp:f32",
-      "maxHp:f32",
-      "alive:bool",
-      "respawnAtMicros:u64",
-      "lastDamageAtMicros:u64"
-    ],
-    "gloomroot_result": [
-      "id:u32",
-      "encounter:u64",
-      "totalDamage:f32",
-      "contributorsJson:string",
-      "createdAt:timestamp"
-    ],
-    "gravebloom_boss": [
-      "id:u32",
-      "encounter:u64",
-      "hp:f32",
-      "maxHp:f32",
-      "alive:bool",
-      "respawnAtMicros:u64",
-      "lastDamageAtMicros:u64"
-    ],
-    "gravebloom_result": [
-      "id:u32",
-      "encounter:u64",
-      "totalDamage:f32",
-      "contributorsJson:string",
-      "createdAt:timestamp"
-    ],
     "guild_quest_week": [
       "key:string",
       "week:u32",
       "guildId:u64",
       "guildName:string",
       "points:u32"
-    ],
-    "ironhorn_boss": [
-      "id:u32",
-      "encounter:u64",
-      "hp:f32",
-      "maxHp:f32",
-      "alive:bool",
-      "respawnAtMicros:u64",
-      "lastDamageAtMicros:u64"
-    ],
-    "ironhorn_result": [
-      "id:u32",
-      "encounter:u64",
-      "totalDamage:f32",
-      "contributorsJson:string",
-      "createdAt:timestamp"
-    ],
-    "koi_shogun_boss": [
-      "id:u32",
-      "encounter:u64",
-      "hp:f32",
-      "maxHp:f32",
-      "alive:bool",
-      "respawnAtMicros:u64",
-      "lastDamageAtMicros:u64"
-    ],
-    "koi_shogun_result": [
-      "id:u32",
-      "encounter:u64",
-      "totalDamage:f32",
-      "contributorsJson:string",
-      "createdAt:timestamp"
     ],
     "latest_chat_messages": [
       "id:u64",
@@ -404,26 +240,6 @@
       "guildReplayKey:string",
       "reactionCountsJson:string"
     ],
-    "leaderboard_entry_legacy": [
-      "identity:identity",
-      "displayName:string",
-      "damage:f32",
-      "maxHp:f32",
-      "isGuest:bool",
-      "power:u32",
-      "armor:f32",
-      "regen:f32",
-      "playedMicros:u64",
-      "profileIcon:u32",
-      "powerLevel:f64",
-      "gender:u8",
-      "skinTone:u32",
-      "headItem:string",
-      "chestItem:string",
-      "feetItem:string",
-      "rightHandItem:string",
-      "leftHandItem:string"
-    ],
     "leaderboard_entry": [
       "identity:identity",
       "displayName:string",
@@ -443,38 +259,6 @@
       "feetItem:string",
       "rightHandItem:string",
       "leftHandItem:string"
-    ],
-    "magmalisk_boss": [
-      "id:u32",
-      "encounter:u64",
-      "hp:f32",
-      "maxHp:f32",
-      "alive:bool",
-      "respawnAtMicros:u64",
-      "lastDamageAtMicros:u64"
-    ],
-    "magmalisk_result": [
-      "id:u32",
-      "encounter:u64",
-      "totalDamage:f32",
-      "contributorsJson:string",
-      "createdAt:timestamp"
-    ],
-    "miremaw_boss": [
-      "id:u32",
-      "encounter:u64",
-      "hp:f32",
-      "maxHp:f32",
-      "alive:bool",
-      "respawnAtMicros:u64",
-      "lastDamageAtMicros:u64"
-    ],
-    "miremaw_result": [
-      "id:u32",
-      "encounter:u64",
-      "totalDamage:f32",
-      "contributorsJson:string",
-      "createdAt:timestamp"
     ],
     "my_ad_gem_reward": [
       "identity:identity",
@@ -962,14 +746,6 @@
       "playerCount:u32",
       "payload:byteArray"
     ],
-    "player_motion_frame": [
-      "mapId:string",
-      "zoneX:i32",
-      "zoneY:i32",
-      "emittedAt:timestamp",
-      "playerCount:u32",
-      "payload:byteArray"
-    ],
     "player_motion_identity": [
       "networkId:u32",
       "identity:identity",
@@ -1173,22 +949,6 @@
       "launchedAt:timestamp",
       "unlocksAt:timestamp"
     ],
-    "prismshell_boss": [
-      "id:u32",
-      "encounter:u64",
-      "hp:f32",
-      "maxHp:f32",
-      "alive:bool",
-      "respawnAtMicros:u64",
-      "lastDamageAtMicros:u64"
-    ],
-    "prismshell_result": [
-      "id:u32",
-      "encounter:u64",
-      "totalDamage:f32",
-      "contributorsJson:string",
-      "createdAt:timestamp"
-    ],
     "procedural_boss": [
       "mapId:string",
       "encounter:u64",
@@ -1224,70 +984,6 @@
     "soul_dimension_config": [
       "id:u8",
       "open:bool"
-    ],
-    "spider_boss": [
-      "id:u32",
-      "encounter:u64",
-      "hp:f32",
-      "maxHp:f32",
-      "alive:bool",
-      "respawnAtMicros:u64",
-      "lastDamageAtMicros:u64"
-    ],
-    "spider_result": [
-      "id:u32",
-      "encounter:u64",
-      "totalDamage:f32",
-      "contributorsJson:string",
-      "createdAt:timestamp"
-    ],
-    "tempest_kirin_boss": [
-      "id:u32",
-      "encounter:u64",
-      "hp:f32",
-      "maxHp:f32",
-      "alive:bool",
-      "respawnAtMicros:u64",
-      "lastDamageAtMicros:u64"
-    ],
-    "tempest_kirin_result": [
-      "id:u32",
-      "encounter:u64",
-      "totalDamage:f32",
-      "contributorsJson:string",
-      "createdAt:timestamp"
-    ],
-    "tidewyrm_boss": [
-      "id:u32",
-      "encounter:u64",
-      "hp:f32",
-      "maxHp:f32",
-      "alive:bool",
-      "respawnAtMicros:u64",
-      "lastDamageAtMicros:u64"
-    ],
-    "tidewyrm_result": [
-      "id:u32",
-      "encounter:u64",
-      "totalDamage:f32",
-      "contributorsJson:string",
-      "createdAt:timestamp"
-    ],
-    "voltwarden_boss": [
-      "id:u32",
-      "encounter:u64",
-      "hp:f32",
-      "maxHp:f32",
-      "alive:bool",
-      "respawnAtMicros:u64",
-      "lastDamageAtMicros:u64"
-    ],
-    "voltwarden_result": [
-      "id:u32",
-      "encounter:u64",
-      "totalDamage:f32",
-      "contributorsJson:string",
-      "createdAt:timestamp"
     ],
     "world_status": [
       "id:u32",
