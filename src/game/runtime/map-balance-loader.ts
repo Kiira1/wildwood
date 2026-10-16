@@ -5,6 +5,7 @@ import { ENEMY_TYPES, type EnemyKind } from '../../../shared/enemy-definitions';
 import { ENEMY_HIT_RADIUS } from '../../../shared/enemy-hitbox';
 import { BOSS_DAMAGE_PROFILES } from '../../../shared/boss-damage';
 import { useCurveArmor } from '../combat';
+import { recordConnectionDiagnostic } from '../../coop/services/connection-diagnostic-runtime';
 export function applyMapBalance(snapshot: MapBalanceSnapshot) {
   if (snapshot.schema !== 1) throw new Error('Unsupported map balance. Update WildStat.');
   installMapBalance(snapshot);
@@ -32,14 +33,30 @@ export function createMapBalanceLoader(options: { identity: () => string; mapId:
       if (Date.now() < retryAt) throw new Error('Retrying map balance.');
       const attempt = ++generation;
       pendingKey = key;
-      let timeout: ReturnType<typeof setTimeout> | undefined;
-      pending = Promise.race([options.fetch(mapId), new Promise<never>((_resolve, reject) => {
-        timeout = setTimeout(() => reject(new Error('Map balance timed out. Retrying…')), 12_000);
-      })]).then(snapshot => {
-        if (attempt !== generation || options.mapId() !== mapId || keyFor(mapId) !== key) return;
+      let timeout: ReturnType<typeof setTimeout> | undefined, timedOut = false;
+      // Installs a reply while the player is still on this map with it unloaded; true when it did.
+      const install = (snapshot: MapBalanceSnapshot) => {
+        if (readyKey === key || options.mapId() !== mapId || keyFor(mapId) !== key) return false;
         if (snapshot.mapId !== mapId) throw new Error('Wrong map balance response.');
         applyMapBalance(snapshot); readyKey = key; retryAt = 0; options.changed(snapshot);
-      }).catch(error => { if (attempt === generation) retryAt = Date.now() + 1500; throw error; })
+        return true;
+      };
+      const request = options.fetch(mapId);
+      // A reply that lands after the timeout is still this map's: the world waits frozen on it, so take it
+      // rather than start over. Thrown away, a server slower than 12 s never let the player move.
+      void request.then(snapshot => { if (timedOut) install(snapshot); }).catch(() => {});
+      pending = Promise.race([request, new Promise<never>((_resolve, reject) => {
+        timeout = setTimeout(() => { timedOut = true; reject(new Error('Map balance timed out. Retrying…')); }, 12_000);
+      })]).then(snapshot => {
+        if (attempt !== generation) return;
+        install(snapshot);
+      }).catch(error => {
+        if (attempt === generation) {
+          retryAt = Date.now() + 1500;
+          recordConnectionDiagnostic('map-retry', { mapId, detail: `map balance: ${error instanceof Error ? error.message : 'failed'}` });
+        }
+        throw error;
+      })
         .finally(() => { clearTimeout(timeout); if (attempt === generation) { pendingKey = ''; pending = null; } });
       return pending;
     },

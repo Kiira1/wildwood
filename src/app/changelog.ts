@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.909.3": [
+    "Fixed the game freezing for a long time after changing maps when the server was slow to answer",
+  ],
   "0.909.2": [
     "Fixed being pushed off the Town's travel portal while Auto Farm waited to resume",
     "Smoother card found animation",
@@ -3463,6 +3466,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.909.3": "2026-10-16",
   "0.909.2": "2026-10-16",
   "0.909.1": "2026-10-16",
   "0.909.0": "2026-10-16",

@@ -26,6 +26,35 @@ it('bounds a hanging request, retries, and caches until a new map visit', async 
   await loader.ensure('home_exterior'); expect(fetch).toHaveBeenCalledTimes(2);
   loader.reset(); await loader.ensure('home_exterior'); expect(fetch).toHaveBeenCalledTimes(3);
 });
+it('takes a reply that lands after the timeout while the player is still on that map', async () => {
+  vi.useFakeTimers();
+  const snapshot = resolveMapBalance('home_exterior', defaultBalanceSettings(), 1);
+  let answer!: (value: typeof snapshot) => void;
+  // The server answers every request, just slower than the 12 s budget.
+  const fetch = vi.fn(() => new Promise<typeof snapshot>(r => { answer = r; }));
+  const changed = vi.fn();
+  const loader = createMapBalanceLoader({ identity: () => 'alice', mapId: () => 'home_exterior', fetch, changed });
+  const first = loader.ensure('home_exterior'); const timedOut = expect(first).rejects.toThrow('timed out');
+  await vi.advanceTimersByTimeAsync(12000); await timedOut;
+  // The first reply arrives at 13 s: the world no longer waits for a second try.
+  answer(snapshot); await vi.advanceTimersByTimeAsync(1000);
+  expect(loader.ready('home_exterior')).toBe(true);
+  expect(changed).toHaveBeenCalledOnce();
+  expect(fetch).toHaveBeenCalledTimes(1);
+});
+it('ignores a late reply once the player has left that map', async () => {
+  vi.useFakeTimers();
+  let map = 'home_exterior';
+  const snapshot = resolveMapBalance('home_exterior', defaultBalanceSettings(), 1);
+  let answer!: (value: typeof snapshot) => void;
+  const loader = createMapBalanceLoader({ identity: () => 'alice', mapId: () => map, fetch: () => new Promise<typeof snapshot>(r => { answer = r; }), changed: vi.fn() });
+  const first = loader.ensure('home_exterior'); const timedOut = expect(first).rejects.toThrow('timed out');
+  await vi.advanceTimersByTimeAsync(12000); await timedOut;
+  map = 'tutorial_forest'; loader.reset();
+  answer(snapshot); await vi.advanceTimersByTimeAsync(1000);
+  expect(loader.ready('home_exterior')).toBe(false);
+  expect(runtimeMapBalance('home_exterior')).toBeNull();
+});
 it('blocks hits on the curve armor rule, keeping small hits fractional', async () => {
   const { applyMapBalance } = await import('./map-balance-loader');
   const { damageAfterArmor } = await import('../combat');
