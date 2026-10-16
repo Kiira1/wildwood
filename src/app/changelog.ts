@@ -1,4 +1,9 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.908.3": [
+    "Smoother full-screen chat scrolling",
+    "Older chat messages load before you reach the top",
+    "Guild battle posts show both crests in full-screen chat",
+  ],
   "0.908.2": [
     "Leaderboard: new Rivals tab, the players at your prestige level ranked by power",
     "Time Played can switch to Account Created, oldest accounts first",
@@ -3408,6 +3413,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.908.3": "2026-10-15",
   "0.908.2": "2026-10-15",
   "0.908.1": "2026-10-15",
   "0.908.0": "2026-10-15",

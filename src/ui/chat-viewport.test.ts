@@ -7,7 +7,10 @@ it("bounds mounted rows through a long history and reaches both ends", () => {
   view.select(rows(1, 500), 360);
   for (let top = 0; top < 50_000; top += 137) {
     const range = view.window(top, 800);
-    expect(range.end - range.start).toBeLessThanOrEqual(22);
+    expect(range.end - range.start).toBeLessThanOrEqual(38);
+    // A screen and a half of rows above and below what is visible.
+    if (top >= 1_200) expect(range.top).toBeLessThanOrEqual(top - 1_200);
+    if (top + 2_000 <= 50_000) expect(50_000 - range.bottom).toBeGreaterThanOrEqual(top + 2_000);
     expect(range.top + range.bottom + (range.end - range.start) * 100).toBe(50_000);
   }
   expect(view.window(0, 600).start).toBe(0);
@@ -59,18 +62,28 @@ it("handles empty conversations and jumps to arbitrary cached messages", () => {
   expect(range.end).toBeGreaterThan(249);
 });
 
-it("uses the existing overscan through small scrolls and refills before visible rows run out", () => {
+it("uses the existing overscan through small scrolls and refills with half a screen still mounted", () => {
   const view = createChatViewport();
   view.select(rows(1, 500), 360);
   view.window(10_000, 600);
-  for (const delta of [-300, -100, 0, 100, 300]) expect(view.needsRender(10_000 + delta, 600)).toBe(false);
-  expect(view.needsRender(9_500, 600)).toBe(true);
-  expect(view.needsRender(10_500, 600)).toBe(true);
+  for (const delta of [-500, -300, 0, 300, 500]) expect(view.needsRender(10_000 + delta, 600)).toBe(false);
+  expect(view.needsRender(9_350, 600)).toBe(true);
+  expect(view.needsRender(10_750, 600)).toBe(true);
   expect(view.needsRender(40_000, 600)).toBe(true);
   view.window(0, 600);
   expect(view.needsRender(0, 600)).toBe(false);
   view.window(0, 600, true);
   expect(view.needsRender(49_400, 600)).toBe(false);
+});
+
+it("keeps the visible rows when the overscan would pass the mounted-row cap", () => {
+  const view = createChatViewport();
+  view.select(rows(1, 500), 360);
+  const range = view.window(20_000, 4_000);
+  expect(range.end - range.start).toBe(60);
+  expect(range.start).toBeLessThanOrEqual(200);
+  expect(range.end).toBeGreaterThan(240);
+  expect(view.rowsAbove(20_050)).toBe(200);
 });
 
 it("absorbs fractional row measurements without changing the active scroll coordinate", () => {

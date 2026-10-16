@@ -39,6 +39,7 @@ import { chatListFingerprint, createChatInputMemo, sameChatRows, setChatAttribut
 const CHAT_ENABLED_KEY = "wildwood-chat-enabled-v1";
 const CHAT_DISPLAY_TTL_MS = 86_400_000;
 const CHAT_COOLDOWN_MS = 3_000;
+const HISTORY_PREFETCH_ROWS = 20;
 
 export function focusChatReplyInput(input: Pick<HTMLTextAreaElement, "focus" | "setSelectionRange" | "value">) {
   // Native focus scrolling is required here: revealing the reply preview moves
@@ -242,7 +243,6 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
       const pending = history.load(async before => {
         const page = await fetch(before);
         await coop?.prepareChatPortraits?.([...new Set(page.messages.map(message => message.sender))]);
-        if (!latest) await scrollIdle.wait();
         return page;
       }, currentMessages(), latest);
       refresh();
@@ -583,16 +583,21 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
     // Do not rely on scrolling hidden rows in compact mode. Its DOM contains
     // exactly the newest two rows in the same oldest-to-newest order as the
     // expanded view.
-    if (revealHistoryBoundary || !scrollIdle.active() || followNewestMessage || originalTarget !== null) viewport.settle();
+    const holding = large && !revealHistoryBoundary && scrollIdle.active() && !followNewestMessage && originalTarget === null;
+    if (!holding) viewport.settle();
     // Reserve a real row at the history boundary before a request starts.
     // Showing the spinner therefore changes neither layout nor momentum.
     const hasHistoryRow = large && (historyState.hasMore || historyState.loading);
     const historyRowCount = hasHistoryRow ? 1 : 0;
-    viewport.select(hasHistoryRow ? [{ id: historyRowId }, ...allMessages] : allMessages, elements.messages.clientWidth || 0);
     const targetAnchor = originalTarget !== null ? { id: originalTarget, offset: 0 }
       : visibleAnchor ? { id: BigInt(visibleAnchor.element.dataset.messageId!), offset: viewportBounds!.top - visibleAnchor.bounds.top }
         : virtualAnchor;
     originalTarget = null;
+    // Mid-swipe, an older page landing above goes past the top instead of
+    // moving scrollTop, which would stop the swipe; it settles once idle.
+    const heldTop = holding ? viewport.restore(targetAnchor, previousScrollTop) : 0;
+    viewport.select(hasHistoryRow ? [{ id: historyRowId }, ...allMessages] : allMessages, elements.messages.clientWidth || 0);
+    if (holding) viewport.preserve(targetAnchor, heldTop);
     const windowTop = viewport.restore(targetAnchor, previousScrollTop);
     const windowRange = viewport.window(windowTop, elements.messages.clientHeight || 600, followNewestMessage);
     const messages = large ? allMessages.slice(Math.max(0, windowRange.start - historyRowCount), Math.max(0, windowRange.end - historyRowCount)) : allMessages.slice(-2);
@@ -798,6 +803,10 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
       requestAnimationFrame(() => {
         scrollFrame = false;
         if (!large || !enabled || (channel === "private" && !privatePeer)) return;
+        if (!elements.panel.classList.contains("is-scrolling")) {
+          elements.panel.classList.add("is-scrolling");
+          void scrollIdle.wait().then(() => elements.panel.classList.remove("is-scrolling"));
+        }
         const top = elements.messages.scrollTop;
         const scrollingUp = top < lastScrollTop;
         lastScrollTop = top;
@@ -806,12 +815,9 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
         if (!atLatest) history.freeze(currentMessages());
         refreshLatestButton();
         if (viewport.needsRender(top, elements.messages.clientHeight || 600) || (top <= 0 && viewport.shifted())) { viewportRevision++; refresh(); }
-        // ScrollTop alone is unreliable while virtual row heights are being
-        // corrected. Wait until the actual loading row is fully on screen.
-        const boundary = scrollingUp && historyRow.parentElement === elements.messages
-          ? historyRow.getBoundingClientRect() : null;
-        const bounds = boundary ? elements.messages.getBoundingClientRect() : null;
-        if (boundary && bounds && boundary.top >= bounds.top - .5 && boundary.bottom <= bounds.bottom) void loadHistory();
+        // Fetch the older page well before the top, so a swipe up never meets the end.
+        const historyNow = history.state();
+        if (scrollingUp && historyNow.hasMore && !historyNow.loading && viewport.rowsAbove(top) < HISTORY_PREFETCH_ROWS) void loadHistory();
         else if (atLatest && history.state().frozen && !history.state().detached && !history.state().loading) void loadHistory(true);
         else if (atLatest) refresh();
       });

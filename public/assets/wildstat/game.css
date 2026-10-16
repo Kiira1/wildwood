@@ -1813,7 +1813,10 @@
     scrollbar-width: none;
   }
   .chat-viewport-spacer { flex: 0 0 auto; width: 1px; pointer-events: none; }
-  #chatPanel.is-large #chatMessages { overflow-anchor: none; }
+  /* Row churn lays out only the list; a swipe at either end stays in it. */
+  #chatPanel.is-large #chatMessages { overflow-anchor: none; overscroll-behavior: contain; contain: layout paint; }
+  /* Frame glints repaint every frame; hold them still while the list moves. */
+  #chatPanel.is-scrolling .avatar-frame-glow-mask::before { animation-play-state: paused; }
   #chatPanel.is-large #chatMessages::before { flex: 0 0 auto; margin-top: auto; content: ""; }
   #chatPanel.is-large #chatMessages::-webkit-scrollbar { display: none; width: 0; height: 0; }
   #chatPanel.is-large {
