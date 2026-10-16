@@ -154,6 +154,20 @@ describe("chat channels", () => {
     }
   });
 
+  it("shows the guilds' crests on a battle post in the small chat and in full screen", async () => {
+    const h = setup();
+    const announcement = { ...h.coop.chatMessages()[0], senderName: "GUILDS", guildReplayKey: "1:42", message: "[Oak] defeated [Pine]" };
+    h.coop.chatMessages = () => [announcement];
+    h.coop.chatRevision = () => 2;
+    (h.coop as any).guild = { ...(h.coop as any).guild, battleBadges: async () => [{ name: "Oak", emblem: 2 }, { name: "Pine", emblem: -1 }] };
+    h.chat.refresh();
+    await vi.waitFor(() => expect(h.document.querySelectorAll(".chat-guild-crest")).toHaveLength(2));
+    // Full screen adds a replay button to the same message; the crests must still draw.
+    h.document.getElementById("chatSizeToggle")!.click();
+    await vi.waitFor(() => expect(h.document.querySelectorAll(".chat-guild-crest")).toHaveLength(2));
+    expect(h.document.querySelector(".chat-replay")).not.toBeNull();
+  });
+
   it("opens guild replay announcements and sends public replies to them", async () => {
     const h = setup();
     vi.stubGlobal("CustomEvent", h.window.CustomEvent);

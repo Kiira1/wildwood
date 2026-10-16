@@ -624,8 +624,12 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
       }
       const messageBody = document.createElement("span");
       messageBody.className = "chat-message-body";
-      messageBody.textContent = shownMessage;
-      if (guildReplayKey && !message.moderated) guildCrests(messageBody, guildReplayKey);
+      // The words in their own span: crests draw into it once their badges arrive, and the expanded view's
+      // replay button, appended to the body, must not change the text they check against.
+      const messageWords = document.createElement("span");
+      messageWords.textContent = shownMessage;
+      messageBody.append(messageWords);
+      if (guildReplayKey && !message.moderated) guildCrests(messageWords, guildReplayKey);
       if (!large && message.replyToMessageId > 0n) {
         const replyPrefix = document.createElement("span");
         replyPrefix.className = "chat-reply-prefix";
