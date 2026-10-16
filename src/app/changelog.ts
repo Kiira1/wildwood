@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.908.10": [
+    "Profiles show the cards, refine and skills of gear worn under a cosmetic look",
+  ],
   "0.908.9": [
     "Portals keep your controls: walk on while you hold, stop when you let go",
     "No more being walked out of a portal on your own",
@@ -3443,6 +3446,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.908.10": "2026-10-16",
   "0.908.9": "2026-10-16",
   "0.908.8": "2026-10-15",
   "0.908.7": "2026-10-15",

@@ -31,7 +31,11 @@ describe("profile card slots", () => {
     const chest = profileEquipmentPresentation(equipment(), "CHEST");
     expect(profileEquipmentCardSlots(chest, { [WOODEN_ARMOR]: { slots: 2, cards: ["mossback_card"] } })).toEqual({ slots: 2, cards: ["mossback_card"] });
     expect(profileEquipmentCardSlots(chest, undefined)).toEqual({ slots: 1, cards: [] });
-    expect(profileEquipmentCardSlots(profileEquipmentPresentation(equipment({ cosmeticChest: FROST_ARMOR }), "CHEST"), {})).toBeUndefined();
+    // A look over the armor keeps the armor's cards: the look changes appearance only.
+    expect(profileEquipmentCardSlots(profileEquipmentPresentation(equipment({ cosmeticChest: FROST_ARMOR }), "CHEST"), { [WOODEN_ARMOR]: { slots: 2, cards: ["mossback_card"] } }))
+      .toEqual({ slots: 2, cards: ["mossback_card"] });
+    // A look with no gear under it has none.
+    expect(profileEquipmentCardSlots(profileEquipmentPresentation(equipment({ cosmeticChest: FROST_ARMOR, equippedChest: "" }), "CHEST"), {})).toBeUndefined();
     expect(profileEquipmentCardSlots(profileEquipmentPresentation(equipment(), "FEET"), {})).toBeUndefined();
   });
 });
@@ -45,8 +49,13 @@ describe("profile equipment presentation", () => {
     });
   });
 
-  it("shows and inspects an active cosmetic instead of the stat item", () => {
+  it("shows an active cosmetic but inspects the gear under it", () => {
     expect(profileEquipmentPresentation(equipment({ cosmeticChest: FROST_ARMOR }), "CHEST")).toMatchObject({
+      kind: "COSMETIC",
+      displayItemId: FROST_ARMOR,
+      inspectionItemId: WOODEN_ARMOR,
+    });
+    expect(profileEquipmentPresentation(equipment({ cosmeticChest: FROST_ARMOR, equippedChest: "" }), "CHEST")).toMatchObject({
       kind: "COSMETIC",
       displayItemId: FROST_ARMOR,
       inspectionItemId: FROST_ARMOR,
@@ -61,12 +70,12 @@ describe("profile equipment presentation", () => {
     });
   });
 
-  it("shows the one active hand cosmetic in the single weapon slot", () => {
+  it("shows the one active hand cosmetic in the single weapon slot, over the weapon it inspects", () => {
     const progress = equipment({ cosmeticLeftHand: STARTER_BOW });
     expect(profileEquipmentPresentation(progress, "WEAPON")).toMatchObject({
       kind: "COSMETIC",
       displayItemId: STARTER_BOW,
-      inspectionItemId: STARTER_BOW,
+      inspectionItemId: STARTER_STONE,
     });
   });
 

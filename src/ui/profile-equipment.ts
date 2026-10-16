@@ -73,13 +73,15 @@ export function profileEquipmentPresentation(
 
   const cosmeticItemId = knownItemId(selectedCosmetic);
   if (cosmeticItemId) {
+    // The look shows; the gear under it is what is inspected, with its own refine, skills and cards.
     return {
       slot,
       label: details.label,
       kind: "COSMETIC",
       displayItemId: cosmeticItemId,
-      inspectionItemId: cosmeticItemId,
-      context: `${details.label} · COSMETIC ACTIVE · VISUAL ONLY`,
+      inspectionItemId: equippedItemId || cosmeticItemId,
+      context: equippedItemId ? `${details.label} · EQUIPPED · ${itemDisplayName(cosmeticItemId).toUpperCase()} LOOK`
+        : `${details.label} · COSMETIC ACTIVE · VISUAL ONLY`,
     };
   }
   if (isHiddenCosmeticItem(selectedCosmetic)) {
@@ -112,14 +114,18 @@ export function profileEquipmentPresentation(
   };
 }
 
-/** The worn item's refine, from the profile's first-copy refines; a cosmetic only changes the look, so it has none. */
+/** The worn item's refine, from the profile's first-copy refines, under a look too; a look alone has none. */
 export function profileEquipmentRefine(presentation: ProfileEquipmentPresentation, itemRefines: Readonly<Record<string, number>> | undefined) {
-  return presentation.kind === "COSMETIC" ? 0 : itemRefines?.[presentation.inspectionItemId] ?? 0;
+  return wearsGear(presentation) ? itemRefines?.[presentation.inspectionItemId] ?? 0 : 0;
 }
+
+/** A slot with real gear in it, shown as itself or under a look. */
+const wearsGear = (presentation: ProfileEquipmentPresentation) =>
+  presentation.kind !== "COSMETIC" || presentation.inspectionItemId !== presentation.displayItemId;
 
 /** A worn item's card slots: one empty slot with no row yet, none for a look or for gear that holds no cards. */
 export function profileEquipmentCardSlots(presentation: ProfileEquipmentPresentation, itemCardSlots: Readonly<Record<string, { slots: number; cards: readonly string[] }>> | undefined) {
-  if (presentation.kind === "COSMETIC" || !canHoldCards(presentation.inspectionItemId)) return undefined;
+  if (!wearsGear(presentation) || !canHoldCards(presentation.inspectionItemId)) return undefined;
   return itemCardSlots?.[presentation.inspectionItemId] ?? { slots: OWNED_GEAR_SLOTS, cards: [] };
 }
 
