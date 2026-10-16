@@ -1046,7 +1046,7 @@ import {
       if (onboarding?.blocksInput()) return { x: 0, y: 0, source: "none" };
       const manual = playerInput.movement(dt);
       playerVisibility.noteActivity(Boolean(manual.x || manual.y), Boolean(autoFarm.targetType()));
-      return autoFarm.movement(manual, dt);
+      return mapController.stepOutMovement() ?? autoFarm.movement(manual, dt);
     },
     isMapTransitioning: () => mapController.isMapTransitioning(),
     resolvePortalCollision: () => mapController.resolvePortalCollision(),

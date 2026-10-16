@@ -177,3 +177,26 @@ it.each([MOONFEN_MAP_ID, CRYSTAL_HOLLOWS_MAP_ID, "clockwork_ruins", "duskfall_or
     expect(edge.some((call) => ["miremaw", "prismshell", "ironhorn", "dreadreaper", "voltwarden"].includes(call))).toBe(true);
   },
 );
+
+it("draws a player standing in a portal's gateway over its swirl, and one behind the arch behind it", () => {
+  const order = (player: Partial<PlayerState>, remote: { x: number; y: number; moving?: boolean; facing?: number }) => {
+    const calls: string[] = [];
+    createDepthWorldRenderer({
+      camera: { x: 0, y: 0, zoom: 1 } as Camera, viewport: () => ({ width: 800, height: 800 }), decor: [], enemies: [],
+      player: { moving: false, ...player } as PlayerState, bosses: {} as BossStates, bootsPickup: { y: 0, r: 0, collected: true },
+      currentMapId: () => "town" as MapId,
+      activePortal: () => ({ x: 200, y: 300, width: 198, height: 198, depth: 300 }), secondaryPortal: () => null,
+      drawTree: () => {}, drawCactus: () => {}, drawSnowPine: () => {}, drawUpgradeBench: () => {}, drawCharredTree: () => {},
+      drawEnemy: () => {}, drawBoss: () => {}, drawBootPickup: () => {},
+      drawPortal: () => calls.push("portal"), drawSecondaryPortal: () => {},
+      drawRemotePlayer: () => calls.push("remote"), drawPlayer: () => calls.push("player"),
+    }).drawDepthSortedWorld([{ id: "remote", moving: false, facing: 0, ...remote } as never]);
+    return calls;
+  };
+  // Arrived at the gate's middle, a third of its height up: feet above its base, yet standing in it.
+  expect(order({ x: 200, y: 237 }, { x: 230, y: 250 })).toEqual(["portal", "remote", "player"]);
+  // Above the arch, or beside its pillars, the portal still stands in front.
+  expect(order({ x: 200, y: 120 }, { x: 330, y: 237 })).toEqual(["player", "remote", "portal"]);
+  // Walking up through the gate is going out its back: behind the swirl.
+  expect(order({ x: 200, y: 237, moving: true, moveX: 0, moveY: -1 }, { x: 230, y: 250, moving: true, facing: -Math.PI / 2 })).toEqual(["player", "remote", "portal"]);
+});

@@ -5,6 +5,7 @@ import type { EnemyState, PlayerState } from "./types";
 import { BOSS_KINDS, clearBossAttack, type BossHazards, type BossStates } from "./boss/boss-registry";
 import type { MapId, SpawnSite } from "../world";
 import { portalTravelScene } from "./render/portal-glimpse";
+import { isHeadingUp } from "./heading";
 import { exitPortalFor, stepThrough } from "../../../shared/map-gateways";
 import { MAP_IDS } from "../../../shared/rules";
 import { isProceduralMap } from "../../../shared/procedural-maps";
@@ -14,6 +15,8 @@ export type MapPortal = { x: number; y: number; width: number; height: number; d
 type MapConfig = Record<MapId, { portal: MapPortal | null; arrival: { x: number; y: number }; secondaryPortal?: MapPortal }>;
 
 const PORTAL_TRIGGER_RADIUS = 48;
+/** The walk out of a portal gives up after this long (blocked, or very slow). */
+const STEP_OUT_MAX_MS = 2_500;
 /** How long a map change waits for its fade's dark before it loads without it. */
 const MAP_FADE_FALLBACK_MS = 5_000;
 
@@ -74,6 +77,8 @@ export type MapController = {
   isMapTransitioning: () => boolean;
   /** Through a portal and walking, while the server has yet to confirm the move: no other travel meanwhile. */
   isArrivalPending: () => boolean;
+  /** The walk out of the portal just come through, while it lasts. */
+  stepOutMovement: () => { x: number; y: number; source: "steer" } | null;
   cutscenePortal: () => MapPortal;
   portalRevealIntensity: () => number;
   portalBlackoutOpacity: () => number;
@@ -161,12 +166,32 @@ export function createMapController(options: {
    * its portal back, `offset` from its middle as they stood in the one they walked into; anywhere else, its arrival.
    */
   function arrivalFrom(destination: MapId, from: MapId, offset: { x: number; y: number }) {
+    const exit = exitFor(destination, from);
+    return exit ? stepThrough(exit, offset) : mapConfig[destination].arrival;
+  }
+  function exitFor(destination: MapId, from: MapId) {
     const entry = mapConfig[destination];
     const travelled = (MAP_IDS as readonly string[]).includes(destination) || isProceduralMap(destination);
     const portals = travelled ? [entry.portal, entry.secondaryPortal].filter((portal): portal is MapPortal => Boolean(portal)) : [];
-    const exit = exitPortalFor(destination, portals, from, from === "town");
-    return exit ? stepThrough(exit, offset) : entry.arrival;
+    return exitPortalFor(destination, portals, from, from === "town");
   }
+
+  /**
+   * Out of the far portal the way they went in: walking up, out its back and clear of the arch; otherwise out
+   * its front. Where the server lands them stays the same; this is an ordinary walk from there.
+   */
+  let stepOut: { x: number; y: number; until: number } | null = null;
+  function beginStepOut(destination: MapId, from: MapId, up: boolean) {
+    const exit = exitFor(destination, from);
+    stepOut = exit ? { x: player.x, y: up ? exit.y - exit.height - 35 : exit.y + 12, until: performance.now() + STEP_OUT_MAX_MS } : null;
+  }
+  function stepOutMovement() {
+    if (!stepOut) return null;
+    const dx = stepOut.x - player.x, dy = stepOut.y - player.y, distance = Math.hypot(dx, dy);
+    if (distance < 6 || performance.now() > stepOut.until || mapTransitioning || player.hp <= 0 || isDueling()) { stepOut = null; return null; }
+    return { x: dx / distance, y: dy / distance, source: "steer" as const };
+  }
+  const headingUp = () => isHeadingUp(player);
 
   /** Where the player stands relative to a portal's middle (its use point, as the server measures it). */
   const offsetIn = (portal: MapPortal) => ({ x: player.x - portal.x, y: player.y - (portal.y - portal.height * .32) });
@@ -289,6 +314,7 @@ export function createMapController(options: {
     player.y = y;
     player.facing = facing;
     player.moving = false;
+    stepOut = null;
     guardPortalContainingPlayer();
     enemies.length = 0;
     spawnSites.length = 0;
@@ -332,13 +358,14 @@ export function createMapController(options: {
     }
     options.onTravelStarted?.();
     mapTransitioning = true;
+    const up = headingUp();
     keys.clear();
     stopTouchMove();
     player.moving = false;
     const destination = portal.destination;
     const departure = getCurrentMapId();
     const offset = offsetIn(portal);
-    if (options.instantTravelReady?.(destination)) { void travelThroughPortal(portal, destination); return; }
+    if (options.instantTravelReady?.(destination)) { void travelThroughPortal(portal, destination, up); return; }
     const attempt = mapLoadGeneration;
     void prepareMapTransition(
       () => changeMap(destination, player.x, player.y),
@@ -359,6 +386,7 @@ export function createMapController(options: {
         resetPresentationState();
         syncStoppedPosition();
         mapTransitioning = false;
+        beginStepOut(destination, departure, up);
       });
     }).catch(() => {
       if (attempt !== mapLoadGeneration) return;
@@ -373,13 +401,16 @@ export function createMapController(options: {
    * the portal back. Their movement is held from the server until it confirms the move (presence-service), then
    * where they stand is sent. A refusal puts the player back in the portal they walked into.
    */
-  function travelThroughPortal(portal: MapPortal | null, destination: MapId): Promise<boolean> {
+  function travelThroughPortal(portal: MapPortal | null, destination: MapId, up = false): Promise<boolean> {
     const departure = { mapId: getCurrentMapId(), x: player.x, y: player.y, facing: player.facing };
     const arrival = arrivalFrom(destination, departure.mapId, portal ? offsetIn(portal) : { x: 0, y: 0 });
     const move = Promise.resolve(changeMap(destination, departure.x, departure.y));
     loadMap(destination, arrival.x, arrival.y, departure.facing);
-    snapCameraToPlayer(camera, player, viewport());
+    // The camera moves as far as the player did, so the arch holds its place on screen and the follow keeps its ease.
+    camera.x += player.x - departure.x;
+    camera.y += player.y - departure.y;
     resetPresentationState();
+    beginStepOut(destination, departure.mapId, up);
     portalTravelScene.arrivedAt = performance.now();
     arrivalPending = true;
     const attempt = mapLoadGeneration;
@@ -531,6 +562,7 @@ export function createMapController(options: {
     isCutsceneActive: () => portalCutscene.active,
     isMapTransitioning: () => mapTransitioning,
     isArrivalPending: () => arrivalPending,
+    stepOutMovement,
     cutscenePortal: () => portalCutscenePortal,
     portalRevealIntensity: () => portalCutsceneIntensity,
     portalBlackoutOpacity: () => portalCutsceneBlackoutOpacity,

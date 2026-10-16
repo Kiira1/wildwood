@@ -5,6 +5,7 @@ import type { EnemyState, PlayerState } from "../types";
 import { bossForMap, type BossKind, type BossStates } from "../boss/boss-registry";
 import { soulPropExtent, type SoulPropDecor } from "../soul/soul-prop-renderer";
 import { oreRockExtent, type OreRockDecor } from "../town/ore-rock-renderer";
+import { isHeadingUp } from "../heading";
 
 type Viewport = { width: number; height: number };
 type TreeDecor = Extract<WorldDecor, { type: "tree" }>;
@@ -13,7 +14,7 @@ type SnowPineDecor = Extract<WorldDecor, { type: "snowPine" }>;
 type UpgradeBenchDecor = Extract<WorldDecor, { type: "upgradeBench" }>;
 type CharredTreeDecor = Extract<WorldDecor, { type: "charredTree" }>;
 type TallDecor = TreeDecor | CactusDecor | SnowPineDecor | UpgradeBenchDecor | CharredTreeDecor | SoulPropDecor | OreRockDecor;
-type Portal = { depth: number };
+type Portal = { depth: number; x?: number; width?: number; height?: number };
 type BootsPickup = { y: number; r: number; collected: boolean };
 type DepthLayerKind = "enemy" | "boss" | "boots" | "portal" | "secondaryPortal" | "remotePlayer" | "player";
 type DepthLayer = { depth: number; priority: number; kind: DepthLayerKind; entity?: WorldDecor | EnemyState | RemotePlayer; opacity: number };
@@ -218,6 +219,17 @@ export function createDepthWorldRenderer(options: {
     if (includePortal && portal) queueLayer(portal.depth, 2, "portal");
     const secondary = options.secondaryPortal();
     if (secondary) queueLayer(secondary.depth, 2, "secondaryPortal");
+    // Someone standing in a gateway (arriving through it) draws over its swirl, not behind it;
+    // someone heading up through it is going out its back, so stays behind.
+    const inFront = (x: number, feet: number, up: boolean) => {
+      let depth = feet;
+      if (up) return depth;
+      for (const gate of [includePortal ? portal : null, secondary]) {
+        if (!gate || gate.x === undefined || !gate.width || !gate.height) continue;
+        if (Math.abs(x - gate.x) <= gate.width * .32 && feet < gate.depth && feet > gate.depth - gate.height * .5) depth = Math.max(depth, gate.depth + .5);
+      }
+      return depth;
+    };
     for (const remotePlayer of remotePlayers) {
       if (
         remotePlayer.x < camera.x - 65 ||
@@ -225,9 +237,11 @@ export function createDepthWorldRenderer(options: {
         remotePlayer.y < camera.y - 70 ||
         remotePlayer.y > camera.y + visibleH + 70
       ) continue;
-      queueLayer(remotePlayer.y + 29, 1, "remotePlayer", remotePlayer);
+      const remoteUp = remotePlayer.moving && Math.sin(remotePlayer.facing) < -.5;
+      queueLayer(inFront(remotePlayer.x, remotePlayer.y + 29, remoteUp), 1, "remotePlayer", remotePlayer);
     }
-    queueLayer(options.player.y + 29, 1, "player");
+    const local = options.player;
+    queueLayer(inFront(local.x, local.y + 29, local.moving && isHeadingUp(local)), 1, "player");
     dynamicLayers.length = layerCount;
     dynamicLayers.sort((a, b) => a.depth - b.depth || a.priority - b.priority);
 

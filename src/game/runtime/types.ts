@@ -37,6 +37,9 @@ export type PlayerState = Circle & {
   facing: number;
   combatFacing: number | null;
   moving: boolean;
+  /** This frame's movement direction (0, 0 standing): which way the player went into a portal. */
+  moveX?: number;
+  moveY?: number;
 };
 
 export type Projectile = Circle & {

@@ -1,4 +1,10 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.908.5": [
+    "Walking through a portal carries you out the other side, the way you were going",
+    "No more standing behind a portal's swirl after arriving",
+    "Auto Farm no longer stands inside the portal after moving maps",
+    "Smoother camera through portals",
+  ],
   "0.908.4": [
     "Leaderboard's Time Played menu in black and grey instead of green",
   ],
@@ -3416,6 +3422,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.908.5": "2026-10-15",
   "0.908.4": "2026-10-15",
   "0.908.3": "2026-10-15",
   "0.908.2": "2026-10-15",
