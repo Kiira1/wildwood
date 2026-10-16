@@ -83,8 +83,39 @@ async function syncTree(source, destination, keep = []) {
   }
 }
 
+const WORKSPACE_PREFIX = 'dev-workspace-';
+const OWNER_FILE = '.owner-pid';
+
+const processAlive = (pid) => {
+  try { process.kill(pid, 0); return true; }
+  catch (error) { return error.code === 'EPERM'; }
+};
+
+/**
+ * Removes workspaces left by runs that ended without cleaning up (killed, crashed, terminal closed): those
+ * whose owning process is gone, or older ones with no owner recorded. A workspace another run still uses stays.
+ */
+export async function sweepStaleWorkspaces(root, alive = processAlive) {
+  const folder = join(root, 'local-data');
+  let entries;
+  try { entries = await readdir(folder, { withFileTypes: true }); }
+  catch (error) { if (error.code === 'ENOENT') return []; throw error; }
+  const removed = [];
+  for (const entry of entries) {
+    if (!entry.isDirectory() || !entry.name.startsWith(WORKSPACE_PREFIX)) continue;
+    const directory = join(folder, entry.name);
+    const pid = Number((await readFile(join(directory, OWNER_FILE), 'utf8').catch(() => '')).trim());
+    if (Number.isInteger(pid) && pid > 0 && alive(pid)) continue;
+    await rm(directory, { recursive: true, force: true });
+    removed.push(entry.name);
+  }
+  return removed;
+}
+
 export async function createLocalWorkspace(root, columns) {
   await mkdir(join(root, 'local-data'), { recursive: true });
+  const swept = await sweepStaleWorkspaces(root);
+  if (swept.length) console.log(`Removed ${swept.length} leftover local workspace${swept.length === 1 ? '' : 's'}.`);
   let localIdentity = process.env.WILDSTAT_LOCAL_DEVELOPER_IDENTITY;
   if (!localIdentity) {
     try { localIdentity = (await readFile(join(root, 'local-data/developer-identity.txt'), 'utf8')).trim(); }
@@ -97,7 +128,8 @@ export async function createLocalWorkspace(root, columns) {
   }
   const rewards = rewardMultiplier ? Number(rewardMultiplier) : 1;
   if (rewards !== 1) console.log(`Local stat rewards ×${rewards} (local-data/reward-multiplier.txt).`);
-  const directory = await mkdtemp(join(root, 'local-data/dev-workspace-'));
+  const directory = await mkdtemp(join(root, `local-data/${WORKSPACE_PREFIX}`));
+  await writeFile(join(directory, OWNER_FILE), String(process.pid));
   await cp(join(root, 'package.json'), join(directory, 'package.json'));
   await symlink(join(root, 'node_modules'), join(directory, 'node_modules'), 'junction');
   await symlink(join(root, 'public'), join(directory, 'public'), 'junction');

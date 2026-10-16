@@ -1,6 +1,9 @@
 import { expect, it } from 'vitest';
 import ts from 'typescript';
-import { localLegacyColumns, preserveLocalColumns } from './local-dev-workspace.mjs';
+import { localLegacyColumns, preserveLocalColumns, sweepStaleWorkspaces } from './local-dev-workspace.mjs';
+import { mkdtemp, mkdir, readdir, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 function schema(type = 'U64', extra = false) {
   return { sections: [
@@ -59,4 +62,23 @@ it('preserves the local boss map-history array without changing the release sche
   expect(preserveLocalColumns(source, columns)).toContain('acceptedMapIds: t.array(t.string()).default([])');
   expect(preserveLocalColumns(source, columns)).toContain('find(row.identity)?.acceptedMapIds');
   expect(() => localLegacyColumns(bossSchema('U64'))).toThrow('Unexpected legacy column');
+});
+
+it('removes workspaces left by runs that ended, and keeps one another run still uses', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'wildstat-sweep-'));
+  const folder = join(root, 'local-data');
+  await mkdir(folder);
+  const workspace = async (name: string, pid?: number) => {
+    await mkdir(join(folder, name));
+    if (pid !== undefined) await writeFile(join(folder, name, '.owner-pid'), String(pid));
+  };
+  await workspace('dev-workspace-running', 111);
+  await workspace('dev-workspace-killed', 222);
+  await workspace('dev-workspace-old');
+  await mkdir(join(folder, 'trailer'));
+  const removed = await sweepStaleWorkspaces(root, (pid: number) => pid === 111);
+  expect(removed.sort()).toEqual(['dev-workspace-killed', 'dev-workspace-old']);
+  expect((await readdir(folder)).sort()).toEqual(['dev-workspace-running', 'trailer']);
+  // No local-data folder yet is nothing to sweep.
+  expect(await sweepStaleWorkspaces(join(root, 'missing'))).toEqual([]);
 });
