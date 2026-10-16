@@ -188,6 +188,7 @@ export function createCardSellerRuntime(deps: {
     cards?: () => Readonly<Record<string, number>>;
     cardShopBought?: (rotation: number) => readonly string[];
     buyShopCard?: (rotation: number, cardId: string) => Promise<Result>;
+    serverNowMs?: () => number;
   } | null | undefined;
   showMessage: (text: string, color: string) => void;
   clearInput?: () => void;
@@ -195,6 +196,8 @@ export function createCardSellerRuntime(deps: {
 }) {
   return createCardSellerController({
     inTown: deps.inTown, clearInput: deps.clearInput, showMessage: deps.showMessage,
+    // The server's clock, so a device set to the wrong time still shows the cards the server sells.
+    now: () => deps.coop()?.serverNowMs?.() ?? Date.now(),
     ores: () => deps.coop()?.ores?.() ?? {},
     cards: () => deps.coop()?.cards?.() ?? {},
     bought: rotation => deps.coop()?.cardShopBought?.(rotation) ?? [],
