@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.909.4": [
+    "Smoother play around players wearing Galaxy gear: its shimmer costs far less to draw",
+  ],
   "0.909.3": [
     "Fixed the game freezing for a long time after changing maps when the server was slow to answer",
   ],
@@ -3466,6 +3469,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.909.4": "2026-10-16",
   "0.909.3": "2026-10-16",
   "0.909.2": "2026-10-16",
   "0.909.1": "2026-10-16",

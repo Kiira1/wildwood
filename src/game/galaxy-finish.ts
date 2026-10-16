@@ -79,7 +79,8 @@ const PALETTES: Record<SkyFinish, SkyPalette> = {
 
 /** Frame canvases are this many times the drawn size, enough for a phone's DPR at preview scale. */
 const RESOLUTION = 2;
-const FRAME_MS = 1_000 / 30;
+/** The sky drifts slowly: twenty repaints a second look as smooth as thirty, at two thirds of the cost. */
+const FRAME_MS = 1_000 / 20;
 const TILE = 256;
 /** Below this luminance an art pixel is outline, kept dark so the piece's shape still reads. */
 const OUTLINE_LUMINANCE = .2;
@@ -382,11 +383,15 @@ function paintPiece(piece: Piece, sprite: CanvasImageSource, seconds: number, pa
   const { context, frame } = piece, width = frame.width, height = frame.height;
   context.globalAlpha = 1;
   context.globalCompositeOperation = "source-over";
+  // Whole-pixel offsets with smoothing off copy the tiles instead of blending them: a fractional
+  // scroll made every fill a bilinear resample, most of the game's frame in Firefox's software canvas.
+  const smoothing = context.imageSmoothingEnabled;
+  context.imageSmoothingEnabled = false;
   LAYERS.forEach((layer, index) => {
     if (index === 1) context.globalCompositeOperation = "lighter";
     context.globalAlpha = layer.twinkle === undefined ? 1 : .3 + .7 * (.5 + .5 * Math.sin(seconds * palette.twinkleRate + layer.twinkle));
-    const offsetX = ((seconds * layer.velocityX + piece.phase * (index + 1)) % TILE + TILE) % TILE;
-    const offsetY = ((seconds * layer.velocityY + piece.phase * (index + 2)) % TILE + TILE) % TILE;
+    const offsetX = Math.round(((seconds * layer.velocityX + piece.phase * (index + 1)) % TILE + TILE) % TILE) % TILE;
+    const offsetY = Math.round(((seconds * layer.velocityY + piece.phase * (index + 2)) % TILE + TILE) % TILE) % TILE;
     // The pattern is anchored to the transform, so shifting the transform scrolls it.
     context.save();
     context.translate(-offsetX, -offsetY);
@@ -394,6 +399,7 @@ function paintPiece(piece: Piece, sprite: CanvasImageSource, seconds: number, pa
     context.fillRect(offsetX, offsetY, width, height);
     context.restore();
   });
+  context.imageSmoothingEnabled = smoothing;
   context.globalAlpha = 1;
   if (piece.shade) {
     context.globalCompositeOperation = "overlay";

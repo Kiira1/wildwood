@@ -74,7 +74,7 @@ describe("galaxy finish rendering", () => {
     expect(galaxyFinishFrame(image("plain"))).toBeNull();
   });
 
-  it("shares one frame per piece, repainted at most thirty times a second", () => {
+  it("shares one frame per piece, repainted at most twenty times a second", () => {
     vi.stubGlobal("document", { createElement: fakeCanvas });
     const sprite = image("chest", 76, 68);
     const frame = galaxyFinishFrame(sprite, undefined, 1_000);
@@ -83,6 +83,30 @@ describe("galaxy finish rendering", () => {
     // The size is the drawn one, so large source art does not shrink the sky's grain.
     expect(galaxyFinishFrame(image("boot", 104, 88), { width: 26, height: 22 }, 1_000)).toMatchObject({ width: 52, height: 44 });
     expect(galaxyFinishFrame(image("boot-leg", 21, 20), undefined, 1_000)).toMatchObject({ width: 42, height: 40 });
+  });
+
+  it("scrolls the sky by whole pixels with smoothing off, so a repaint copies tiles instead of blending them", () => {
+    const fills: { smoothing: unknown; x: number; y: number }[] = [];
+    let translate = { x: 0, y: 0 };
+    vi.stubGlobal("document", { createElement: () => {
+      const canvas = { width: 300, height: 150, toDataURL: () => "data:image/jpeg;base64,", getContext: () => context };
+      const context = new Proxy(fakeContext(canvas) as unknown as Record<string, unknown>, {
+        get(target, key) {
+          if (key === "translate") return (x: number, y: number) => { translate = { x, y }; };
+          if (key === "fillRect") return () => { fills.push({ smoothing: target.imageSmoothingEnabled, ...translate }); };
+          return target[key as string];
+        },
+        set(target, key, value) { target[key as string] = value; return true; },
+      });
+      return canvas;
+    } });
+    galaxyFinishFrame(image("smooth-test", 60, 50), undefined, 1_234.5);
+    const skyFills = fills.filter(fill => fill.smoothing === false);
+    expect(skyFills.length).toBeGreaterThanOrEqual(3);
+    for (const fill of skyFills) {
+      expect(Number.isInteger(fill.x)).toBe(true);
+      expect(Number.isInteger(fill.y)).toBe(true);
+    }
   });
 
   it("draws live pieces in body order around the cached halves of the body", () => {

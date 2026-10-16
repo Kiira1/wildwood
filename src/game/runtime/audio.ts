@@ -352,6 +352,9 @@ export function createMapMusicController(
 
   function ensureAudioGraph() {
     if (audioContext && musicGainNode && sfxGainNode && deathGainNode) return audioContext;
+    // Browsers keep audio paused until the first click or key, and warn about a context made sooner.
+    // Where the page can tell, wait for that first input; until then the music element plays on its own.
+    if (typeof navigator !== "undefined" && navigator.userActivation && !navigator.userActivation.hasBeenActive) return null;
     const AudioContextConstructor = window.AudioContext || (window as WebkitAudioWindow).webkitAudioContext;
     if (!AudioContextConstructor) return null;
     try {
