@@ -126,3 +126,27 @@ it("reads a unique index (find only, as SpacetimeDB 2.11 has it) instead of cras
   expect(result).toMatchObject({ deleted: 1, complete: true });
   expect(rows.size).toBe(0);
 });
+
+it("erases the card tables for the account asked for, and only that account", async () => {
+  // player_boss_card_roll, player_card_attack_cap and player_card_drop were missing from the list.
+  const { server } = await import("../../tests/helpers/crystal-hollows-fixture");
+  const f = crystalFixture();
+  const target = Identity.fromString("c2".padEnd(64, "3"));
+  const other = f.ctx.sender;
+  f.progress(target, { damage: 3 });
+  for (const identity of [target, other]) {
+    const hex = identity.toHexString();
+    f.seed("playerBossCardRoll", { key: `${hex}:map-1`, identity, rolledAt: f.ctx.timestamp });
+    f.seed("playerCardAttackCap", { identity, raise: 0.2 });
+    f.seed("playerCardDrop", { identity, cardIds: ["card-a"], sequence: 1n, droppedAt: f.ctx.timestamp });
+  }
+  f.ctx.sender = Identity.fromString("c200383520521c925f3cf6deafb20cd6a7d6168d1c31cb3c0ddb731c197a2d79");
+  f.run(server.devEraseAccount, { identityHex: target.toHexString(), confirmation: "ERASE", reason: "test" });
+
+  expect([...f.db.playerBossCardRoll.identity.filter(target)]).toHaveLength(0);
+  expect(f.db.playerCardAttackCap.identity.find(target)).toBeNull();
+  expect(f.db.playerCardDrop.identity.find(target)).toBeNull();
+  expect([...f.db.playerBossCardRoll.identity.filter(other)]).toHaveLength(1);
+  expect(f.db.playerCardAttackCap.identity.find(other)).not.toBeNull();
+  expect(f.db.playerCardDrop.identity.find(other)).not.toBeNull();
+});
