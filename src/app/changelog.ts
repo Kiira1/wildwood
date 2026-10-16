@@ -1,4 +1,9 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.910.1": [
+    "Endless bosses hurt on touch, so Reflect answers touching them",
+    "Endless bosses are drawn to fit their size",
+    "Auto Farm no longer walks you out of the portal you arrive in",
+  ],
   "0.910.0": [
     "Auto Mine: pick ores in the Town and it walks to the Copper Hills and mines them",
   ],
@@ -3472,6 +3477,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.910.1": "2026-10-16",
   "0.910.0": "2026-10-16",
   "0.909.4": "2026-10-16",
   "0.909.3": "2026-10-16",

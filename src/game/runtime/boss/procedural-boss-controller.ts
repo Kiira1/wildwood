@@ -21,6 +21,9 @@ const ENEMY_CONTACT_SECONDS = .75;
 /** Its pulse lands this long into each six-second round, on everything this close to its centre; the ring is drawn from the round's start. */
 const PULSE_WINDUP = 1.4;
 const PULSE_RADIUS = 330;
+/** Touching its body hurts like a campaign boss's: half its heaviest hit, every .75 s, a hair past the edge it pushes you to. */
+const PLAYER_CONTACT_SHARE = .5;
+const PLAYER_CONTACT_SLACK = 1.02;
 
 export function createProceduralBossController(options: {
   mapId: () => string;
@@ -61,11 +64,12 @@ export function createProceduralBossController(options: {
     pulseFired = false,
     shotElapsed = 0,
     contactElapsed = 0,
-    contactRound: object | null = null;
+    contactRound: object | null = null,
+    playerContactClock = 0;
   let observedCompleted: number | null = null, pendingReveal = false;
   let definition: ReturnType<typeof generateMap> | null = null;
   function resetAttacks() {
-    attackElapsed = shotElapsed = 0;
+    attackElapsed = shotElapsed = playerContactClock = 0;
     pulseFired = false;
     if (boss) boss.attackAnimationElapsed = undefined;
   }
@@ -192,7 +196,14 @@ export function createProceduralBossController(options: {
         boss,
       );
     }
-    if (distance < boss.r + options.player.r) {
+    playerContactClock = Math.max(0, playerContactClock - step);
+    const contactReach = boss.r + options.player.r;
+    // Its touch is what Reflect answers; without it, standing against an Endless boss reflected nothing.
+    if (distance <= contactReach * PLAYER_CONTACT_SLACK && playerContactClock <= 0) {
+      options.damagePlayer(boss.damage * PLAYER_CONTACT_SHARE, boss);
+      playerContactClock = ENEMY_CONTACT_SECONDS;
+    }
+    if (distance < contactReach) {
       const angle = Math.atan2(
         options.player.y - boss.y,
         options.player.x - boss.x,

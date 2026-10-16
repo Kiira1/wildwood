@@ -163,3 +163,24 @@ it("says when its pulse will land on a spot while the ring is drawn, and nothing
   expect(landed / 1000).toBeCloseTo(predicted, 1);
   expect(h.controller.danger(h.player.x, h.player.y)).toBe(Infinity);
 });
+
+it("hurts a player touching its body, from the boss so Reflect answers it, once per contact round", () => {
+  const h = harness();
+  h.controller.update(.016);
+  const boss = h.controller.boss()!;
+  // Pushed out to the edge, the player still touches it.
+  Object.assign(h.player, { x: boss.x + boss.r + h.player.r - 2, y: boss.y, hp: 100 });
+  h.advance(50);
+  expect(h.damagePlayer).toHaveBeenCalledTimes(1);
+  expect(h.damagePlayer).toHaveBeenCalledWith(boss.damage * .5, boss);
+  expect(Math.hypot(h.player.x - boss.x, h.player.y - boss.y)).toBeCloseTo(boss.r + h.player.r);
+  const wait = (ms: number) => { for (let at = 0; at < ms; at += 50) h.advance(50); };
+  wait(500);
+  expect(h.damagePlayer).toHaveBeenCalledTimes(1);
+  wait(300);
+  expect(h.damagePlayer).toHaveBeenCalledTimes(2);
+  // A step away is no contact (its pulse still lands there).
+  Object.assign(h.player, { x: boss.x + (boss.r + h.player.r) * 1.05 });
+  wait(800);
+  expect((h.damagePlayer.mock.calls as unknown as [number][]).filter(([amount]) => amount === boss.damage * .5)).toHaveLength(2);
+});
