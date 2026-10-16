@@ -67,7 +67,11 @@ export function isRefinableItem(itemId: unknown) {
 export function refineGrade(itemId: unknown): RefineGrade | null {
   const id = canonicalItemId(itemId);
   if (!id || !isRefinableItem(id)) return null;
-  const tier = itemTier(id) ?? itemDefinition(id)?.weapon?.tier ?? 1;
+  return tierGrade(itemTier(id) ?? itemDefinition(id)?.weapon?.tier ?? 1);
+}
+
+/** A map tier's grade: four tiers to a grade, the last one three. */
+export function tierGrade(tier: number): RefineGrade {
   return tier <= 4 ? 1 : tier <= 8 ? 2 : tier <= 12 ? 3 : 4;
 }
 

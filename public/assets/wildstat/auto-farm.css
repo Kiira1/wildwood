@@ -825,6 +825,25 @@
 .smith-sheet .smith-card-grid .is-card[aria-selected="true"] { border-color: #ffd75e; background: rgba(255,215,94,.1); }
 .smith-sheet .smith-card-grid .is-card:disabled { opacity: .55; cursor: default; }
 .smith-sheet .smith-slot-pips { position: absolute; top: 2px; left: 4px; color: #ffd75e; font-size: 11px; letter-spacing: 1px; line-height: 1; }
+/* The Card Seller's window (card-seller-window.ts), in the Smith's sheet: the countdown, then a row per card for sale. */
+.card-seller-sheet .card-seller-timer { margin: 0 14px 10px; color: #fff; text-align: center; font-size: 15px; font-weight: 900; }
+.card-seller-sheet .card-seller-offers { display: grid; gap: 10px; margin: 0 14px 10px; }
+.card-seller-sheet .card-seller-offer { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 12px; align-items: start; padding: 12px; border: 2px solid rgba(255,255,255,.1); border-radius: 12px; background: rgba(255,255,255,.05); }
+.card-seller-sheet .card-seller-offer.is-elite { border-color: rgba(180,140,255,.35); }
+.card-seller-sheet .card-seller-offer.is-boss { border-color: rgba(242,193,78,.45); }
+.card-seller-sheet .card-seller-art { display: block; width: 76px; }
+.card-seller-sheet .card-seller-art > .inventory-item.is-card { width: 76px; pointer-events: none; }
+.card-seller-sheet .card-seller-copy { display: grid; gap: 4px; min-width: 0; }
+.card-seller-sheet .card-seller-copy strong { font-size: 16px; }
+.card-seller-sheet .card-seller-slot { color: var(--muted); font-size: 13px; font-weight: 800; }
+.card-seller-sheet .card-seller-effects { margin: 2px 0; text-align: left; font-size: 13px; }
+.card-seller-sheet .card-seller-price { display: grid; gap: 2px; margin: 2px 0 4px; padding: 0; list-style: none; font-size: 13px; font-weight: 800; }
+.card-seller-sheet .card-seller-price li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 10px; }
+.card-seller-sheet .card-seller-have { color: var(--muted); }
+.card-seller-sheet .card-seller-price .is-short .card-seller-have { color: #ff9b91; }
+.card-seller-sheet .farm-start.card-seller-buy { justify-self: start; min-width: 120px; height: 40px; min-height: 40px; font-size: 14px; }
+.card-seller-sheet .smith-outcome { margin: 0 14px 10px; }
+.card-seller-sheet .smith-outcome[hidden] { display: none; }
 /* A refine on any item: a gold star and its level, where the slot tier keeps its green +N. */
 .refine-badge { position: absolute; top: 2px; right: 4px; color: #ffd75e; font-size: 11px; font-weight: 900; text-shadow: 0 1px 0 #000, 0 0 3px rgba(0,0,0,.8); pointer-events: none; }
 /* A worn slot hides its +N (the banner says the level), so the star takes that corner. A bag tile's tier sits

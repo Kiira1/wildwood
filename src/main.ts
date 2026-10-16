@@ -126,7 +126,7 @@ import { hasApprovedGameSession } from "./coop/startup-state-machine";
 import { createHudTimerColumn } from "./ui/hud-timer-column";
 import { createGameElements } from "./ui/game-elements";
 import { bindGameInteractionListeners } from "./ui/game-interaction-bindings";
-import { createSmithRuntime, watchCardDrops, createDevPanel, createDuplicateLoginRuntime, createGameActionsRuntime, createGameOverlays, createGameRuntimeHud, createHomeStationTouchHandler, createLeaderboardPanel, createPrestigeUnlockRuntime, createTechTreePanel } from "./ui/game-ui-runtime";
+import { createSmithRuntime, createCardSellerRuntime, watchCardDrops, createDevPanel, createDuplicateLoginRuntime, createGameActionsRuntime, createGameOverlays, createGameRuntimeHud, createHomeStationTouchHandler, createLeaderboardPanel, createPrestigeUnlockRuntime, createTechTreePanel } from "./ui/game-ui-runtime";
 import { formatCompactNumber, formatGemAmount } from "./ui/number-format";
 import { playerGenderIconPath } from "./ui/player-gender";
 import type { LeaderboardEntry } from "./wildstat-coop";
@@ -1358,15 +1358,15 @@ import {
   });
 
   bindHomeTeleportButton(gameElements.techTreeBtn, {
-    beforeTeleport: () => { techTree.close(); upgradeBenchController.close(); quests.board.close(); oxShop.close(); smith.close(); },
+    beforeTeleport: () => { techTree.close(); upgradeBenchController.close(); quests.board.close(); oxShop.close(); smith.close(); cardSeller.close(); },
     teleport: () => inTutorial() ? Promise.resolve(false) : mapController.teleportHome(),
     showFailure: failed => showMessage(failed ? "TELEPORT FAILED · TRY AGAIN" : "TELEPORT UNAVAILABLE", "#ffbc91"), showBlocked: text => showMessage(text, "#ffbc91"),
   });
-  const oxShop = createOxShopRuntime({ coop: () => coop, inventory, renderInventory, showMessage, clearInput: playerInput.clear, inTown: () => currentMapId === "town" }), smith = createSmithRuntime({ coop: () => coop, inventory, showMessage, clearInput: playerInput.clear, inTown: () => currentMapId === "town" });
+  const oxShop = createOxShopRuntime({ coop: () => coop, inventory, renderInventory, showMessage, clearInput: playerInput.clear, inTown: () => currentMapId === "town" }), smith = createSmithRuntime({ coop: () => coop, inventory, showMessage, clearInput: playerInput.clear, inTown: () => currentMapId === "town" }), cardSeller = createCardSellerRuntime({ coop: () => coop, showMessage, clearInput: playerInput.clear, inTown: () => currentMapId === "town" });
   const updateHomeStations = createHomeStationTouchHandler(
     () => currentMapId === "town" && !mapController.isMapTransitioning(), player,
     () => { playerInput.clear(); techTree.open(); }, () => { upgradeBenchController.updateTouch(); quests.refreshAtHome(); },
-    () => { playerInput.clear(); quests.board.open(); }, () => { playerInput.clear(); oxShop.open(); }, () => { playerInput.clear(); smith.open(); },
+    () => { playerInput.clear(); quests.board.open(); }, () => { playerInput.clear(); oxShop.open(); }, () => { playerInput.clear(); smith.open(); }, () => { playerInput.clear(); cardSeller.open(); },
   );
   upgradeBenchController = createUpgradeBenchController({
     panel: gameElements.upgradeBenchPanel,
@@ -1857,7 +1857,7 @@ import {
     refreshGemCounter,
     refreshBalanceApologyGift: mailbox.refresh,
     refreshDailyGemBonus,
-    refreshWindows: createSessionWindowRefresh({ coop, playerSafety, profileWindow, inventory: inventoryController, smith }),
+    refreshWindows: createSessionWindowRefresh({ coop, playerSafety, profileWindow, inventory: inventoryController, smith, cardSeller }),
     refreshLeaderboard: () => leaderboard.setUnlocked(leaderboardEligible(
       coop?.savedProgress?.()?.desertUnlocked,
       coop?.prestige?.()?.level,

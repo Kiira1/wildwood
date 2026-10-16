@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  CARDS, CARD_DROP_OUTCOMES, MAX_CARD_SLOTS, OWNED_GEAR_SLOTS, SLOT_ROLL_PER_THOUSAND, canHoldCards, cardDefinition,
+  ALPHA_CARD_DROP_BOOST, CARDS, CARD_DROP_OUTCOMES, DESIGNED_CARD_DROP_OUTCOMES, cardDropChance, cardMeterFull, MAX_CARD_SLOTS, OWNED_GEAR_SLOTS, SLOT_ROLL_PER_THOUSAND, canHoldCards, cardDefinition,
   cardFitsItem, cardForBoss, cardForEnemy, rollGearSlots, type CardEffectId,
 } from "./cards";
 import { CAMPAIGN_MAPS } from "./campaign-registry";
@@ -64,8 +64,18 @@ describe("the cards", () => {
 });
 
 describe("drops and slots", () => {
-  it("drops a card once in 10,000 kills, an elite's in 20,000, a boss's in 1,000 boss kills", () => {
-    expect(CARD_DROP_OUTCOMES).toEqual({ regular: 10_000, elite: 20_000, boss: 1_000 });
+  it("drops a card once in 10,000 kills, an elite's in 20,000, a boss's in 1,000 boss kills, as designed", () => {
+    expect(DESIGNED_CARD_DROP_OUTCOMES).toEqual({ regular: 10_000, elite: 20_000, boss: 1_000 });
+  });
+
+  it("drops cards ten times as often during the alpha, and the meter fills ten times as soon", () => {
+    expect(ALPHA_CARD_DROP_BOOST).toBe(10);
+    expect(CARD_DROP_OUTCOMES).toEqual({ regular: 1_000, elite: 2_000, boss: 100 });
+    expect(cardMeterFull("regular")).toBe(2_000);
+    expect(cardMeterFull("elite")).toBe(4_000);
+    expect(cardMeterFull("boss")).toBe(200);
+    expect(cardDropChance(CARD_DROP_OUTCOMES.regular, 1)).toBeCloseTo(1 / 1_000, 12);
+    expect(cardDropChance(CARD_DROP_OUTCOMES.boss, 1)).toBeCloseTo(1 / 100, 12);
   });
 
   it("rolls 0 to 4 slots: 940, 30, 18, 9 and 3 in 1,000", () => {

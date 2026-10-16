@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("../app/developer", () => ({ isDeveloperIdentity: () => false }));
 import { HOME_BENCH_POSITION, HOME_QUEST_BOARD_POSITION, HOME_RESEARCH_POSITION } from "../../shared/home";
 import { MINING_TRACK, miningTrackDistanceSquared } from "../../shared/mining";
-import { TOWN_ARRIVAL, TOWN_BENCH_POSITION, TOWN_CENTER, TOWN_DOORS, TOWN_EAST_BRIDGE, TOWN_EAST_BRIDGE_APPROACHES, TOWN_EAST_FENCE_GAP, TOWN_EAST_FENCE_GAP_OUTSIDE, TOWN_FEET_OFFSET, TOWN_OX_POSITION, TOWN_QUEST_BOARD_POSITION, TOWN_RESEARCH_POSITION, TOWN_SMITH_POSITION, TOWN_SMITH_REACH, TOWN_SMITH_SERVER_REACH, TOWN_TRAVEL_PORTAL, inTownVillage, townRoomAt } from "../../shared/town";
+import { TOWN_ARRIVAL, TOWN_BENCH_POSITION, TOWN_CARD_SELLER_POSITION, TOWN_CARD_SELLER_REACH, TOWN_CARD_SELLER_SERVER_REACH, TOWN_CARD_SELLER_STALL, TOWN_CENTER, TOWN_DOORS, TOWN_EAST_BRIDGE, TOWN_EAST_BRIDGE_APPROACHES, TOWN_EAST_FENCE_GAP, TOWN_EAST_FENCE_GAP_OUTSIDE, TOWN_FEET_OFFSET, TOWN_OX_POSITION, TOWN_QUEST_BOARD_POSITION, TOWN_RESEARCH_POSITION, TOWN_SMITH_POSITION, TOWN_SMITH_REACH, TOWN_SMITH_SERVER_REACH, TOWN_TRAVEL_PORTAL, inTownVillage, townRoomAt } from "../../shared/town";
 import { SOUL_INTERIOR_DECOR, SOUL_INTERIOR_SOLIDS, SOUL_VILLAGE_DECOR, SOUL_VILLAGE_SOLIDS } from "./soul-village";
 import { TOWN_HILLS_SIGNPOST, TOWN_SIGNPOST, townWindowDecor } from "./town-world";
 import { UPGRADE_BENCH_POSITION } from "./world";
@@ -60,8 +60,8 @@ describe("Home's stations in the Town's buildings", () => {
       const decor = townWindowDecor(at.x, at.y);
       expect(decor).toContainEqual(expect.objectContaining({ type: "upgradeBench", x: at.x, y: at.y, label }));
     }
-    // Out in the village, the rooms' stations are not in the window: only the Smith, who works outdoors.
-    expect(stationLabels(TOWN_ARRIVAL)).toEqual(["Smith"]);
+    // Out in the village, the rooms' stations are not in the window: only the Smith and the Card Seller, outdoors.
+    expect(stationLabels(TOWN_ARRIVAL)).toEqual(["Smith", "Card Seller"]);
   });
   it("takes the place of one piece of furniture each, and overlaps no other", () => {
     const decor = townWindowDecor(TOWN_BENCH_POSITION.x, TOWN_BENCH_POSITION.y);
@@ -191,6 +191,43 @@ describe("the Smith at the forge house", () => {
     Object.assign(player, TOWN_ARRIVAL); touch();
     Object.assign(player, stand); touch();
     expect(openSmith).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("the Card Seller at the market stall", () => {
+  const stand = { x: TOWN_CARD_SELLER_POSITION.x, y: TOWN_CARD_SELLER_POSITION.y - TOWN_FEET_OFFSET };
+  it("keeps one of the square's own stalls, its name drawn over it", () => {
+    const stall = SOUL_VILLAGE_DECOR.find(item => item.type === "soulProp" && item.x === TOWN_CARD_SELLER_STALL.x && Math.abs(item.y - TOWN_CARD_SELLER_STALL.y) < 1);
+    expect(stall).toBeTruthy();
+    expect(inTownVillage(TOWN_CARD_SELLER_STALL.x, TOWN_CARD_SELLER_STALL.y)).toBe(true);
+    expect(townRoomAt(TOWN_CARD_SELLER_STALL.x, TOWN_CARD_SELLER_STALL.y)).toBeNull();
+    expect(townWindowDecor(TOWN_ARRIVAL.x, TOWN_ARRIVAL.y)).toContainEqual(expect.objectContaining({ type: "upgradeBench", label: "Card Seller", x: TOWN_CARD_SELLER_STALL.x }));
+  });
+  it("is served from open ground in front of the counter, a walk from where everyone lands", () => {
+    expect(standable(stand.x, stand.y)).toBe(true);
+    expect(walkable(TOWN_ARRIVAL, stand, TOWN_CARD_SELLER_REACH * .8)).toBe(true);
+    // Far from the Smith, so walking up to one never opens the other.
+    expect(Math.hypot(TOWN_CARD_SELLER_POSITION.x - TOWN_SMITH_POSITION.x, TOWN_CARD_SELLER_POSITION.y - TOWN_SMITH_POSITION.y)).toBeGreaterThan(TOWN_SMITH_REACH + TOWN_CARD_SELLER_REACH);
+  });
+  it("opens the window once as a player walks up, again only after they step away, and the server agrees they are in reach", () => {
+    const openSeller = vi.fn(), openSmith = vi.fn(), player = { x: TOWN_ARRIVAL.x, y: TOWN_ARRIVAL.y };
+    let inTown = true;
+    const touch = createHomeStationTouchHandler(() => inTown, player, vi.fn(), vi.fn(), vi.fn(), vi.fn(), openSmith, openSeller);
+    touch();
+    expect(openSeller).not.toHaveBeenCalled();
+    // In from the square on the lane's right.
+    Object.assign(player, { x: stand.x + 50, y: stand.y });
+    touch(); touch();
+    expect(openSeller).toHaveBeenCalledOnce();
+    expect(Math.hypot(player.x - stand.x, player.y - stand.y)).toBeLessThanOrEqual(TOWN_CARD_SELLER_SERVER_REACH);
+    Object.assign(player, TOWN_ARRIVAL); touch();
+    Object.assign(player, stand); touch();
+    expect(openSeller).toHaveBeenCalledTimes(2);
+    inTown = false;
+    Object.assign(player, TOWN_ARRIVAL); touch();
+    Object.assign(player, stand); touch();
+    expect(openSeller).toHaveBeenCalledTimes(2);
+    expect(openSmith).not.toHaveBeenCalled();
   });
 });
 

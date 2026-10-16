@@ -148,6 +148,16 @@ export const TOWN_SMITH_POSITION = Object.freeze({ x: TOWN_CENTER.x + 354, y: TO
 export const TOWN_SMITH_REACH = 60;
 export const TOWN_SMITH_SERVER_REACH = 100;
 /**
+ * The Card Seller (shared/card-shop.ts) keeps the market stall at the square's edge, the right one of the
+ * top row, beige with teal stripes. Its foot, where the name hangs over it, and where a player's feet stand
+ * at its counter, in the lane between the two rows of stalls.
+ */
+export const TOWN_CARD_SELLER_STALL = Object.freeze({ x: TOWN_CENTER.x - 185, y: TOWN_CENTER.y + 212 });
+export const TOWN_CARD_SELLER_POSITION = Object.freeze({ x: TOWN_CARD_SELLER_STALL.x, y: TOWN_CARD_SELLER_STALL.y + 50 });
+/** As the Smith's: how close a player's feet come before the window opens, and the server's allowance for lag. */
+export const TOWN_CARD_SELLER_REACH = 60;
+export const TOWN_CARD_SELLER_SERVER_REACH = 100;
+/**
  * A gap in the log fence east of the Inn: the square's way out east,
  * to the river's crossing in the north-east and the Copper Hills past it. The fence's middle log section on that
  * side, and its collider, are left out (soul-village.ts).

@@ -45,8 +45,16 @@ export type CardDefinition = {
   effects: readonly CardEffect[];
 };
 
-/** Kills per card drop; for bosses, boss kills. */
-export const CARD_DROP_OUTCOMES: Readonly<Record<CardRarity, number>> = Object.freeze({ regular: 10_000, elite: 20_000, boss: 1_000 });
+/** Kills per card drop as designed; for bosses, boss kills. */
+export const DESIGNED_CARD_DROP_OUTCOMES: Readonly<Record<CardRarity, number>> = Object.freeze({ regular: 10_000, elite: 20_000, boss: 1_000 });
+/** The alpha's boost to every card drop; removing it restores the designed odds. */
+export const ALPHA_CARD_DROP_BOOST = 10;
+/** Kills per card drop in play; for bosses, boss kills. */
+export const CARD_DROP_OUTCOMES: Readonly<Record<CardRarity, number>> = Object.freeze({
+  regular: DESIGNED_CARD_DROP_OUTCOMES.regular / ALPHA_CARD_DROP_BOOST,
+  elite: DESIGNED_CARD_DROP_OUTCOMES.elite / ALPHA_CARD_DROP_BOOST,
+  boss: DESIGNED_CARD_DROP_OUTCOMES.boss / ALPHA_CARD_DROP_BOOST,
+});
 /**
  * Each kill also fills its card's meter by the kill's odds; a full meter guarantees the card. Full is this many times
  * the average kills a card takes, so the odds stay the same but nobody goes forever without one.

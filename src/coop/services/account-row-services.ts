@@ -8,6 +8,7 @@ import { createGuildHallRows } from "./guild-hall-service";
 import { createItemRefineRows } from "./item-refine-service";
 import { createMiningRows } from "./mining-service";
 import { createCardRows } from "./card-service";
+import { createCardShopRows } from "./card-shop-service";
 import { createBuildRows } from "./build-service";
 import { createItemCollectionRows } from "./item-collection-service";
 import { itemLevelParts, type ItemLevel } from "../../../shared/items";
@@ -21,7 +22,7 @@ type WornLoadout = { equippedHead?: string; equippedChest?: string; equippedRigh
  * opt-out, the bow skill rolls with their copies and loot settings, the
  * rewarded ad's Gem claims, the automatic chat mute and the Soul Dimension's
  * rows (soul stats, kills by reward type, whether it is open) and the guild
- * hall's fund and levels, each item's refine with the ores it costs, mining, and cards. They share one
+ * hall's fund and levels, each item's refine with the ores it costs, mining, cards and the Card Seller's buys. They share one
  * lifecycle, so the connection starts them together and the coop API serves
  * them together.
  */
@@ -36,6 +37,7 @@ export function createAccountRowServices(connection: () => DbConnection | null, 
   const itemRefine = createItemRefineRows(notify, slotTierFor);
   const mining = createMiningRows(notify);
   const cards = createCardRows(notify);
+  const cardShop = createCardShopRows(notify);
   const builds = createBuildRows(notify);
   const collection = createItemCollectionRows(notify);
   // The saved loadout's cards, added up again only when they change.
@@ -61,6 +63,7 @@ export function createAccountRowServices(connection: () => DbConnection | null, 
       itemRefine.watch(current, isCurrent);
       mining.watch(current, isCurrent);
       cards.watch(current, isCurrent);
+      cardShop.watch(current, isCurrent);
       builds.watch(current, isCurrent);
       collection.watch(current, isCurrent);
     },
@@ -74,6 +77,7 @@ export function createAccountRowServices(connection: () => DbConnection | null, 
       ...itemRefine.api,
       ...mining.api,
       ...cards.api,
+      ...cardShop.api,
       ...builds.api,
       ...collection.api,
       /** A worn copy's level carries its cards, which power reads (items.ts ItemLevel). */

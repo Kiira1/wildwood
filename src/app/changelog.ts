@@ -1,4 +1,8 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.909.0": [
+    "Cards drop 10× more often during the alpha",
+    "New Card Seller in Town: three cards for ore, new ones every 3 hours",
+  ],
   "0.908.11": [
     "Auto Farm walks out of the portal it arrives in instead of standing in it",
     "Lighter combat: no sparks on hits (deaths keep theirs), and enemies no longer fade when hit",
@@ -3451,6 +3455,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.909.0": "2026-10-16",
   "0.908.11": "2026-10-16",
   "0.908.10": "2026-10-16",
   "0.908.9": "2026-10-16",

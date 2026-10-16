@@ -30,6 +30,7 @@ import { mergeSwordSkills, removeSwordSkills } from "./sword-skills";
 import { mergeEquipmentCopies, mergeItemCollection } from "./equipment-copies";
 import { mergeRefineData } from "./item-refine";
 import { mergeCardData } from "./gear-cards";
+import { mergeCardShopPurchases } from "./card-shop";
 import { mergeMiningData } from "./mining";
 import { mergeMailboxReceipts, removeMailboxReceipts } from "./mailbox";
 import { mergeOnboarding } from "./onboarding";
@@ -150,7 +151,7 @@ const PLAYER_STATE_TABLES: ReadonlySet<string> = new Set([
   "gemKillDaily", "gemKillProgress", "gemTransaction", "guildMemberQuestWeek", "guildRejoin",
   "homeReturnLocation", "leaderboardDirty", "leaderboardPosition", "leaderboardPrestigePosition", "leaderboardStanding", "loginMove",
   "offlineProgress", "patreonPreview", "playerAggroChallenge", "playerAggroChallengeParked", "playerBonusToggle", "playerNameColor",
-  "playerMining", "playerMinedNode", "playerMiningLevel", "playerLuckResearch",
+  "playerMining", "playerMinedNode", "playerMiningLevel", "playerLuckResearch", "playerCardShopPurchase",
   "playerDailyQuest", "playerEndlessRebaseBackup", "playerFreeRespec",
   "playerOfflinePreference", "playerPrestige", "playerPrestigeChallenge",
   "playerPrestigeChallengeParked", "playerPrestigeExpansionPerk", "playerPrestigePerk", "playerQuestWeekTotal",
@@ -260,6 +261,7 @@ export function createAccountLifecycle(deps: AccountLifecycleDeps) {
     mergeItemCollection(ctx, link.guest, ctx.sender);
     mergeRefineData(ctx, link.guest, ctx.sender);
     mergeCardData(ctx, link.guest, ctx.sender);
+    mergeCardShopPurchases(ctx, link.guest, ctx.sender);
     mergeMiningData(ctx, link.guest, ctx.sender);
     mergeMailboxReceipts(ctx, link.guest, ctx.sender);
     mergeOnboarding(ctx, link.guest, ctx.sender);

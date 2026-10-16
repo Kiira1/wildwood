@@ -2,10 +2,11 @@ import { onProfileSnapshotsChanged } from "../app/profile-snapshot-portraits";
 export { challengeMinimumInterval } from "../../shared/prestige-challenge";
 export { attackCapInterval } from "../../shared/stat-rating";
 export { createSmithRuntime } from "./smith-window";
+export { createCardSellerRuntime } from "./card-seller-window";
 export { watchCardDrops } from "./card-drop-feedback";
 import { createGemShopController } from "./gem-shop-controller";
 import { installDesktopHotkeys } from "./desktop-hotkeys";
-import { TOWN_FEET_OFFSET, TOWN_OX_POSITION, TOWN_OX_REACH, TOWN_QUEST_BOARD_POSITION, TOWN_RESEARCH_POSITION, TOWN_SMITH_POSITION, TOWN_SMITH_REACH } from "../../shared/town";
+import { TOWN_CARD_SELLER_POSITION, TOWN_CARD_SELLER_REACH, TOWN_FEET_OFFSET, TOWN_OX_POSITION, TOWN_OX_REACH, TOWN_QUEST_BOARD_POSITION, TOWN_RESEARCH_POSITION, TOWN_SMITH_POSITION, TOWN_SMITH_REACH } from "../../shared/town";
 import { recentReleaseNotes } from "../app/changelog";
 import { isDeveloperIdentity } from "../app/developer";
 import {
@@ -26,7 +27,7 @@ import { installLoginMove } from "./login-move-controller";
 import { createTechTreeController } from "./tech-tree-controller";
 import { installCameraZoomControl } from "./camera-zoom-control";
 
-/** Tech Research, the Weekly Quests board and Ox's shop, in the Town's windmill, Inn and bottom-right house, and the Smith in the forge house's yard, open as a player walks up to them. */
+/** Tech Research, the Weekly Quests board and Ox's shop, in the Town's windmill, Inn and bottom-right house, the Smith in the forge house's yard and the Card Seller's stall, open as a player walks up to them. */
 export function createHomeStationTouchHandler(
   isHome: () => boolean,
   player: { x: number; y: number },
@@ -35,8 +36,9 @@ export function createHomeStationTouchHandler(
   openQuestBoard?: () => void,
   openOxShop?: () => void,
   openSmith?: () => void,
+  openCardSeller?: () => void,
 ) {
-  let touchingResearch = false, touchingQuestBoard = false, touchingOx = false, touchingSmith = false;
+  let touchingResearch = false, touchingQuestBoard = false, touchingOx = false, touchingSmith = false, touchingCardSeller = false;
   return () => {
     const touching = isHome() && Math.hypot(player.x - TOWN_RESEARCH_POSITION.x, player.y - (TOWN_RESEARCH_POSITION.y - 36)) < 42.5;
     if (touching && !touchingResearch) openResearch();
@@ -53,6 +55,10 @@ export function createHomeStationTouchHandler(
     const atSmith = isHome() && Math.hypot(player.x - TOWN_SMITH_POSITION.x, player.y + TOWN_FEET_OFFSET - TOWN_SMITH_POSITION.y) < TOWN_SMITH_REACH;
     if (atSmith && !touchingSmith) openSmith?.();
     touchingSmith = atSmith;
+    // The Card Seller from the lane in front of the stall's counter.
+    const atCardSeller = isHome() && Math.hypot(player.x - TOWN_CARD_SELLER_POSITION.x, player.y + TOWN_FEET_OFFSET - TOWN_CARD_SELLER_POSITION.y) < TOWN_CARD_SELLER_REACH;
+    if (atCardSeller && !touchingCardSeller) openCardSeller?.();
+    touchingCardSeller = atCardSeller;
     updateBench();
   };
 }

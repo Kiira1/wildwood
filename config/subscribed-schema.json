@@ -299,6 +299,12 @@
       "sequence:u64",
       "droppedAt:timestamp"
     ],
+    "my_card_shop_purchases": [
+      "key:string",
+      "identity:identity",
+      "rotation:u64",
+      "cardIds:array(string)"
+    ],
     "my_cards": [
       "key:string",
       "identity:identity",

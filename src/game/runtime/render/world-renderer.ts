@@ -977,6 +977,19 @@ if (options.getMapId() === ION_CITADEL_MAP_ID) { drawIonRoads(ctx, options.paths
       });
       return;
     }
+    // The stall is the village's own art; only its name hangs over the awning.
+    if (bench.label === "Card Seller") {
+      drawScreenSpaceAt(ctx, camera.zoom, x, y - 128, () => {
+        ctx.textAlign = "center";
+        ctx.textBaseline = "bottom";
+        const bob = Math.sin(options.getGameTime() * 2.2) * 2;
+        ctx.font = '900 15px "Arial Rounded MT Bold", "Arial Rounded MT", Arial, sans-serif';
+        options.outlinedText("Card Seller", 0, -18 + bob, "#ffb347", 4);
+        ctx.font = '900 13px "Arial Rounded MT Bold", "Arial Rounded MT", Arial, sans-serif';
+        options.outlinedText("Cards for Ore", 0, -2 + bob, "#ffd75e", 4);
+      });
+      return;
+    }
     if (bench.label === "Quest Board") {
       const quests = options.questBoardStatus?.();
       drawHomeQuestBoard(ctx, x, y, options.getGameTime(), quests?.finished ?? []);
