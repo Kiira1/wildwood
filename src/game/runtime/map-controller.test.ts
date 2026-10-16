@@ -301,14 +301,19 @@ describe("walking straight through a portal", () => {
     expect(camera).toEqual({ x: 240, y: 210, zoom: 1 });
     // Not heading up: out the front, past the arch's base (y 300).
     expect(down.controller.stepOutMovement()).toEqual({ x: 0, y: 1, source: "steer" });
+    expect(down.player.portalExit).toBe("front");
     down.player.y = 312;
     expect(down.controller.stepOutMovement()).toBeNull();
+    expect(down.player.portalExit).toBeNull();
 
     const up = portalArrivalHarness({ x: 300, y: 400 }, { instantTravelReady: () => true, changeMap: vi.fn(() => new Promise<boolean>(() => {})) });
     Object.assign(up.player, { moveX: .3, moveY: -.95 });
     up.controller.updatePortal(1 / 60);
-    // Heading up: out the back, clear above the arch's top (y 200).
-    expect(up.controller.stepOutMovement()).toEqual({ x: 0, y: -1, source: "steer" });
+    // Heading up and a little right: out the back the same way, clear above the arch's top (y 200).
+    const out = up.controller.stepOutMovement()!;
+    expect(out.x).toBeCloseTo(.3 / Math.hypot(.3, .95));
+    expect(out.y).toBeCloseTo(-.95 / Math.hypot(.3, .95));
+    expect(up.player.portalExit).toBe("back");
     up.player.y = 165;
     expect(up.controller.stepOutMovement()).toBeNull();
   });

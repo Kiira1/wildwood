@@ -807,31 +807,6 @@ if (options.getMapId() === ION_CITADEL_MAP_ID) { drawIonRoads(ctx, options.paths
     return { mapId, canvas, left, top, trees: sheetReady || !standing.some((decor) => decor.type === "tree") };
   }
 
-  /** The lens the glimpse is cut through each frame: the destination, fading out to nothing at the swirl's rim. */
-  const glimpseLens = document.createElement("canvas");
-  function glimpseThroughLens(glimpse: PortalGlimpse, sourceX: number, sourceY: number, sourceWidth: number, sourceHeight: number, width: number, height: number) {
-    const lensWidth = Math.max(1, Math.round(width)), lensHeight = Math.max(1, Math.round(height));
-    if (glimpseLens.width !== lensWidth || glimpseLens.height !== lensHeight) { glimpseLens.width = lensWidth; glimpseLens.height = lensHeight; }
-    const lens = glimpseLens.getContext("2d");
-    if (!lens) return null;
-    lens.globalCompositeOperation = "source-over";
-    lens.clearRect(0, 0, lensWidth, lensHeight);
-    lens.imageSmoothingEnabled = true;
-    lens.drawImage(glimpse.canvas, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, lensWidth, lensHeight);
-    lens.globalCompositeOperation = "destination-in";
-    lens.save();
-    lens.scale(1, lensHeight / lensWidth);
-    const fade = lens.createRadialGradient(lensWidth / 2, lensWidth / 2, 0, lensWidth / 2, lensWidth / 2, lensWidth / 2);
-    fade.addColorStop(0, "rgba(0,0,0,1)");
-    fade.addColorStop(.5, "rgba(0,0,0,.85)");
-    fade.addColorStop(1, "rgba(0,0,0,0)");
-    lens.fillStyle = fade;
-    lens.fillRect(0, 0, lensWidth, lensWidth);
-    lens.restore();
-    lens.globalCompositeOperation = "source-over";
-    return glimpseLens;
-  }
-
   /** The destination's glimpse, painted in idle time once the player is near; repainted once its trees load. */
   function portalGlimpse(mapId: MapId, arrival: { x: number; y: number }, paintIfMissing: boolean) {
     const key = `${mapId}@${Math.round(arrival.x)},${Math.round(arrival.y)}`;
@@ -860,27 +835,15 @@ if (options.getMapId() === ION_CITADEL_MAP_ID) { drawIonRoads(ctx, options.paths
     return glimpse ?? null;
   }
 
-  /** The destination showing through the middle of the swirl, rippling a little, the swirl still turning round it. */
-  function drawPortalGlimpse(portal: Portal, x: number, y: number, width: number, height: number) {
+  /**
+   * Paints the destination's glimpse once the player is near, for the arrival cover. The swirl stays solid:
+   * the destination showing through it read as a see-through portal.
+   */
+  function preparePortalGlimpse(portal: Portal) {
     const arrival = portalTravelScene.arrival?.(portal.destination, options.getMapId());
     if (!arrival) return;
     const near = Math.hypot(options.player.x - portal.x, options.player.y - portal.y) < PORTAL_GLIMPSE_REACH;
-    const glimpse = portalGlimpse(portal.destination, arrival, near);
-    if (!glimpse) return;
-    const centerX = x, centerY = y - height / 2 - 5;
-    const lensWidth = width * .8, lensHeight = height * .86;
-    const time = options.getGameTime();
-    // A little wider than life, centred just past where the player steps out: what lies on the other side.
-    const sourceWidth = lensWidth * 1.35, sourceHeight = sourceWidth * lensHeight / lensWidth;
-    const sourceX = arrival.x - glimpse.left - sourceWidth / 2 + Math.sin(time * 1.3) * 3;
-    const sourceY = arrival.y - glimpse.top + 30 - sourceHeight / 2 + Math.cos(time * 1.1) * 2;
-    const lens = glimpseThroughLens(glimpse, sourceX, sourceY, sourceWidth, sourceHeight, lensWidth, lensHeight);
-    if (!lens) return;
-    ctx.save();
-    ctx.globalAlpha = .85;
-    ctx.imageSmoothingEnabled = true;
-    ctx.drawImage(lens, centerX - lensWidth / 2, centerY - lensHeight / 2, lensWidth, lensHeight);
-    ctx.restore();
+    portalGlimpse(portal.destination, arrival, near);
   }
 
   /** Just through a portal, the arrival's glimpse covers ground tiles the worker has yet to paint. */
@@ -918,7 +881,7 @@ if (options.getMapId() === ION_CITADEL_MAP_ID) { drawIonRoads(ctx, options.paths
       ctx.globalAlpha = portalIntensity;
       ctx.drawImage(portalSwirl, (frame % 4) * cellWidth, Math.floor(frame / 4) * cellHeight, cellWidth, cellHeight, x - width / 2, y - height - 5, width, height);
       ctx.restore();
-      if (!cutsceneActive && portalIntensity >= 1) drawPortalGlimpse(portal, x, y, width, height);
+      if (!cutsceneActive && portalIntensity >= 1) preparePortalGlimpse(portal);
     }
     ctx.drawImage(options.portalArch, x - portal.width / 2, y - portal.height, portal.width, portal.height);
     const destinationOpacity = cutsceneActive ? options.portalDestinationOpacity() : options.portalIsUnlocked(portal) ? 1 : 0;
