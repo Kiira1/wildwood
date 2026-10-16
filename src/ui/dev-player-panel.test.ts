@@ -22,6 +22,7 @@ function harness() {
     findPlayers: vi.fn(async () => []), playerCard: vi.fn(async () => card()),
     setChatMute: vi.fn(async () => ({ ok: true })), suspend: vi.fn(async () => ({ ok: true })), liftSuspension: vi.fn(async () => ({ ok: true })),
     warn: vi.fn(async () => ({ ok: true })), resetDisplayName: vi.fn(async () => ({ ok: true })),
+    eraseAccount: vi.fn(async () => ({ ok: true })),
   };
   const confirm = vi.fn(async () => true);
   const showMessage = vi.fn();
@@ -76,5 +77,27 @@ describe("player card", () => {
     h.button("Mute").click();
     await settle();
     expect(h.api.setChatMute).toHaveBeenCalledWith("ab".repeat(32), 90);
+  });
+
+  it("deletes a player for good after confirming, and clears the card once they are gone", async () => {
+    const h = harness();
+    h.panel.open("c2target", "Bright Fox 814");
+    await settle();
+    vi.mocked(h.api.playerCard).mockRejectedValue(new Error("Player not found."));
+    h.button("Delete player").click();
+    await vi.waitFor(() => expect(h.showMessage).toHaveBeenCalledWith("Rude deleted", "#72ef58"));
+    expect(h.confirm).toHaveBeenCalledWith(expect.objectContaining({ confirmLabel: "Delete", danger: true }));
+    expect(h.api.eraseAccount).toHaveBeenCalledExactlyOnceWith("c2target", "Deleted from the player view");
+    expect(h.root.textContent).not.toContain("Rude");
+  });
+
+  it("deletes nothing when the confirmation is declined", async () => {
+    const h = harness();
+    h.panel.open("c2target", "Bright Fox 814");
+    await settle();
+    h.confirm.mockResolvedValueOnce(false);
+    h.button("Delete player").click();
+    await settle();
+    expect(h.api.eraseAccount).not.toHaveBeenCalled();
   });
 });

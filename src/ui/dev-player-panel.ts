@@ -14,7 +14,12 @@ export type DevPlayerApi = {
   liftSuspension: (identity: string, reason: string) => Promise<ActionResult>;
   warn: (identity: string, message: string) => Promise<ActionResult>;
   resetDisplayName: (identity: string, expectedDisplayName: string, reason: string) => Promise<ActionResult>;
+  /** One pass of dev_erase_account over this account alone; a linked guest or registered account stays. */
+  eraseAccount: (identity: string, reason: string) => Promise<ActionResult>;
 };
+
+/** Erase passes before giving up; every erasure so far has finished in one. */
+const ERASE_PASSES = 3;
 
 export type DevPlayerPanelDependencies = {
   api: () => DevPlayerApi | null;
@@ -240,6 +245,8 @@ export function createDevPlayerPanel(container: HTMLElement, dependencies: DevPl
         textInput("Warning letter to the player", warning, WARNING_MAX_LENGTH, value => { warning = value; }),
         button("Send warning", "plain", () => { void warn(); }),
         button("Reset name", "danger", () => { void resetName(); })),
+      ...group("Delete",
+        button("Delete player", "danger", () => { void deletePlayer(); })),
       element("h4", "", "Moderation history"), history,
       chat,
     );
@@ -321,6 +328,48 @@ export function createDevPlayerPanel(container: HTMLElement, dependencies: DevPl
     if (confirmed) await run(`${target.displayName}'s name was reset`, api => api.resetDisplayName(target.identity, target.displayName, reason.trim()));
   }
 
+  /**
+   * Erases this account for good, as a deletion request does: its save and every row naming it, logged in the
+   * moderation log. A guest it was linked to, or the account a guest became, stays. A large account can take
+   * another pass; it stops once the card is gone.
+   */
+  async function deletePlayer() {
+    const target = selected, api = dependencies.api();
+    if (!target || !api || busy) return;
+    const text = reason.trim() || "Deleted from the player view";
+    const confirmed = await dependencies.confirm({
+      message: `Delete ${target.displayName} for good? This cannot be undone.`,
+      details: [{ label: "Removes", value: "This account's save and every row naming it" },
+        { label: "Keeps", value: "Any guest or registered account it was linked to" },
+        { label: "Still Manual", value: "Their SpacetimeAuth sign-in" }, { label: "Reason", value: text, kind: "cost" }],
+      confirmLabel: "Delete", danger: true,
+    });
+    if (!confirmed) return;
+    busy = true;
+    renderCard();
+    try {
+      for (let pass = 1; pass <= ERASE_PASSES; pass++) {
+        const result = await api.eraseAccount(target.identity, text);
+        if (!result?.ok) { dependencies.showMessage(result?.error || "That didn't go through. Try again.", ERROR_COLOR); return; }
+        const gone = await api.playerCard(target.identity).then(() => false, () => true);
+        if (gone) { dependencies.showMessage(`${target.displayName} deleted`, OK_COLOR); clear(); return; }
+      }
+      dependencies.showMessage(`${target.displayName} is not fully deleted yet. Press Delete again.`, ERROR_COLOR);
+    } finally {
+      busy = false;
+      if (selected) await select(target.identity, target.displayName);
+    }
+  }
+
+  function clear() {
+    generation++;
+    selected = null; card = null; reason = ""; warning = ""; busy = false;
+    input.value = "";
+    status.textContent = "";
+    results.replaceChildren();
+    renderCard();
+  }
+
   form.addEventListener("submit", event => {
     event.preventDefault();
     const query = input.value.trim();
@@ -335,13 +384,6 @@ export function createDevPlayerPanel(container: HTMLElement, dependencies: DevPl
       status.textContent = "";
       void select(identity, displayName);
     },
-    clear() {
-      generation++;
-      selected = null; card = null; reason = ""; warning = ""; busy = false;
-      input.value = "";
-      status.textContent = "";
-      results.replaceChildren();
-      renderCard();
-    },
+    clear,
   };
 }

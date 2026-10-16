@@ -202,7 +202,7 @@ export function createDevConsolePanels(containers: { muted: HTMLElement; banned:
   }
 
   /**
-   * Erase runs dev_erase_account: the account, its linked guest saves and the request, logged in the
+   * Erase runs dev_erase_account: this account alone (a linked guest or registered account stays) and the request, logged in the
    * moderation log. The sign-in itself (SpacetimeAuth) and the reply to the player stay manual.
    */
   function deletionCard(entry: DevDeletionRequest) {
@@ -214,7 +214,7 @@ export function createDevConsolePanels(containers: { muted: HTMLElement; banned:
         action(erasing ? "Erase Again" : "Erase", "danger", async () => {
           if (await dependencies.confirm({
             message: `Erase ${entry.displayName || "this player"}'s account for good?`,
-            details: [{ label: "Removes", value: "The save, linked guest saves and every row naming them" }, { label: "Still Manual", value: "Their SpacetimeAuth sign-in and the reply" }],
+            details: [{ label: "Removes", value: "This account's save and every row naming it" }, { label: "Keeps", value: "Any guest or registered account it was linked to" }, { label: "Still Manual", value: "Their SpacetimeAuth sign-in and the reply" }],
             confirmLabel: "Erase", danger: true,
           })) void run(key, `${entry.displayName || "Account"} erased`, api => api.eraseAccount(entry.identity, "In-game deletion request"));
         }),

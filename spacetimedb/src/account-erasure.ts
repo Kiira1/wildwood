@@ -286,27 +286,6 @@ export function eraseIdentityRows(ctx: any, identities: readonly any[], budget =
   return { deleted, complete: !exhausted, remaining };
 }
 
-/**
- * Every identity that is the same person.
- *
- * A player who signed up after playing as a guest has two: analytics_conversion
- * is the durable record of that pairing. account_link is not — it is a pending
- * claim code with no account column — so erasing only the identity that asked
- * would leave the guest half of the account behind.
- *
- * Both directions are followed, because either half may be the one requesting.
- */
-export function linkedIdentities(ctx: any, identity: any): any[] {
-  const found = [identity];
-  const seen = (candidate: any) => found.some(existing => existing.isEqual?.(candidate) ?? existing === candidate);
-  for (const conversion of ctx.db.analyticsConversion.iter() as Iterable<any>) {
-    const { guestIdentity, accountIdentity } = conversion;
-    if (guestIdentity?.isEqual?.(identity) && accountIdentity && !seen(accountIdentity)) found.push(accountIdentity);
-    if (accountIdentity?.isEqual?.(identity) && guestIdentity && !seen(guestIdentity)) found.push(guestIdentity);
-  }
-  return found;
-}
-
 export function requireErasureConfirmation(confirmation: string) {
   if (confirmation !== "ERASE") throw new SenderError("Confirm erasure by sending ERASE.");
 }

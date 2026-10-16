@@ -1,5 +1,5 @@
 import { expect, it, vi } from "vitest";
-import { ERASURE_TARGETS, eraseIdentityRows, linkedIdentities } from "./account-erasure";
+import { ERASURE_TARGETS, eraseIdentityRows } from "./account-erasure";
 import { crystalFixture } from "../../tests/helpers/crystal-hollows-fixture";
 import { Identity } from "../../tests/helpers/spacetime-memory-db";
 import { progressOf } from "../../tests/helpers/progress";
@@ -66,19 +66,24 @@ it("stops at its row budget and says what is left", () => {
   expect(progressOf(f, f.ctx.sender)).toBeNull();
 });
 
-it("takes the guest half of an account with it", () => {
+it("erases only the account asked for: a linked guest or registered half stays, the link between them goes", async () => {
+  const { server } = await import("../../tests/helpers/crystal-hollows-fixture");
   const f = crystalFixture();
   const guest = Identity.fromString("c2".padEnd(64, "9"));
   f.progress(guest, { damage: 3 });
+  f.seed("playerProfile", { identity: guest, displayName: "Bright Fox 814" });
   f.seed("analyticsConversion", { id: 1n, guestIdentity: guest, accountIdentity: f.ctx.sender, dayKey: "2026-09-22" });
-
-  const identities = linkedIdentities(f.ctx, f.ctx.sender);
-  expect(identities).toHaveLength(2);
-  eraseIdentityRows(f.ctx, identities);
-
-  // Erasing only the identity that asked would have left this behind.
+  const account = f.ctx.sender;
+  f.ctx.sender = Identity.fromString("c200383520521c925f3cf6deafb20cd6a7d6168d1c31cb3c0ddb731c197a2d79");
+  f.run(server.devEraseAccount, { identityHex: guest.toHexString(), confirmation: "ERASE", reason: "test" });
   expect(progressOf(f, guest)).toBeNull();
-  expect(progressOf(f, f.ctx.sender)).toBeNull();
+  expect(progressOf(f, account)).not.toBeNull();
+  expect(f.db.analyticsConversion.count()).toBe(0n);
+  f.seed("analyticsConversion", { id: 2n, guestIdentity: guest, accountIdentity: account, dayKey: "2026-09-22" });
+  f.progress(guest, { damage: 3 });
+  f.run(server.devEraseAccount, { identityHex: account.toHexString(), confirmation: "ERASE", reason: "test" });
+  expect(progressOf(f, account)).toBeNull();
+  expect(progressOf(f, guest)).not.toBeNull();
 });
 
 it("finds rows keyed in snake_case and rows naming the player second", () => {

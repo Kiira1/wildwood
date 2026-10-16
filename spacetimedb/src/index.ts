@@ -26,7 +26,7 @@ import { playerLootSetting, writeLootSettings } from "./loot-settings";
 import { playerProfileSnapshot, requireSnapshotForIcon, takeProfileSnapshot } from "./profile-snapshot";
 import { claimAdGemReward, playerAdReward } from "./ad-gem-reward";
 import { playerChatMute, setChatMute } from "./chat-mute";
-import { linkedIdentities, requireErasureConfirmation } from "./account-erasure";
+import { requireErasureConfirmation } from "./account-erasure";
 import { chatHeartAllowance, chatReactionCooldown, chatReactionSummary, chatReactionUnlock, playerChatHearts, reactionCountsFor, chatReaction, readChatReactions, setChatReaction, grantGemHeartUnlock, isChatModerator, chatModerator, moderatorHeartFor, setChatModerator, removeAccountReactions } from "./chat-reactions";
 import { pruneIdleStreams, regularEnemyLootCursor, regularEnemyStream } from "./regular-enemy-loot";
 import { playerOnboarding, advanceOnboarding, needsOnboarding } from "./onboarding";
@@ -3432,8 +3432,9 @@ export const setAudioSettings = spacetimedb.reducer({ musicVolume: t.f32(), sfxV
  * left. Run it until `complete` is true and the row count reaches zero. It is
  * the same work each time, so a repeat is harmless.
  *
- * A guest half of the account goes with it — analytics_conversion says which
- * identities are the same person, and leaving one behind is not erasure.
+ * Only the account asked for goes. A guest that became a registered account
+ * (analytics_conversion) is a second account: erasing one leaves the other,
+ * and only the record linking them goes with it.
  *
  * What this cannot do: remove the SpacetimeAuth account itself, or anything
  * held by a provider. Those are separate administrative steps, and a request
@@ -3452,7 +3453,7 @@ export const devEraseAccount = spacetimedb.reducer(
     catch { throw new SenderError("That is not an identity."); }
     if (isDeveloperIdentity(target)) throw new SenderError("Refusing to erase a developer identity.");
 
-    const identities = linkedIdentities(ctx, target);
+    const identities = [target];
     const displayName = ctx.db.playerProfile.identity.find(target)?.displayName ?? "";
     const result = eraseKeepingRequest(ctx, identities);
 
