@@ -1,5 +1,6 @@
 import { expect, it, vi } from "vitest";
-import { createRegularEnemyLootQueue, DRAIN_EXTRA_BATCHES, ENEMY_DEFEAT_BATCH_TIMEOUT_MS, ORPHAN_QUEUE_AFTER_MS, type EnemyLootRequest } from "./regular-enemy-loot-queue";
+import { createRegularEnemyLootQueue, DRAIN_EXTRA_BATCHES, ENEMY_DEFEAT_BATCH_TIMEOUT_MS, IDLE_SIMULATION_ALLOWANCE_SECONDS, ORPHAN_QUEUE_AFTER_MS, type EnemyLootRequest } from "./regular-enemy-loot-queue";
+import { REGULAR_ENEMY_LOOT_BATCH_MAX as FULL } from "../../../shared/regular-map-loot";
 function fixture() {
   const data = new Map<string, string>();
   const storage = { getItem: (key: string) => data.get(key) ?? null, setItem: (key: string, value: string) => data.set(key, value),
@@ -17,9 +18,9 @@ it("combines kills, keeps source maps separate, and bounds batches", async () =>
   expect(f.send).not.toHaveBeenCalled();
   await f.queue.flush();
   expect(f.send.mock.calls.map(([r]) => [r.mapId, r.count, r.sequence])).toEqual([["cloudspire", 25, 1n], ["moonfen", 1, 2n]]);
-  for (let i = 0; i < 205; i++) f.queue.record("cloudspire", "Spitter");
+  for (let i = 0; i < 2 * FULL + 5; i++) f.queue.record("cloudspire", "Spitter");
   await f.queue.flush(true);
-  expect(f.send.mock.calls.slice(2).map(([r]) => r.count)).toEqual([100, 100, 5]);
+  expect(f.send.mock.calls.slice(2).map(([r]) => r.count)).toEqual([FULL, FULL, 5]);
 });
 it("combines Auto Farm switches into one report and keeps wholly automatic batches automatic", async () => {
   const f = fixture();
@@ -179,10 +180,10 @@ it('respects an adopted orphan throttle before draining either stream', async ()
 
 it('holds full batches for the periodic save instead of sending during combat', async () => {
   const f = fixture();
-  for (let i = 0; i < 250; i++) f.queue.record('water_reach', 'Spitter');
+  for (let i = 0; i < 2 * FULL + 50; i++) f.queue.record('water_reach', 'Spitter');
   expect(f.send).not.toHaveBeenCalled();
   await f.queue.flush();
-  expect(f.send.mock.calls.map(([r]) => r.count)).toEqual([100, 100, 50]);
+  expect(f.send.mock.calls.map(([r]) => r.count)).toEqual([FULL, FULL, 50]);
 });
 
 it('retries a boss reward after a failed send without another kill or periodic save', async () => {
@@ -278,11 +279,11 @@ it("charges each sealed report the game time simulated since the previous one", 
   queue.begin();                                       // a reconnect keeps the unsealed batch's time
   simulated = 60; await queue.flush();
   // One flush sealing several batches splits the interval where the time went:
-  // all 150 kills landed at 60 s, so the first hundred cover none of it and the
+  // every kill landed at 60 s, so the full batch covers none of it and the
   // last batch the thirty idle seconds after.
-  for (let i = 0; i < 150; i++) queue.record("cloudspire", "Spitter");
+  for (let i = 0; i < FULL + 50; i++) queue.record("cloudspire", "Spitter");
   simulated = 90.0004; await queue.flush(true);
-  expect(f.send.mock.calls.map(([request]) => [request.count, request.simulatedMillis])).toEqual([[1, 30_000], [1, 30_000], [100, 0], [50, 30_000]]);
+  expect(f.send.mock.calls.map(([request]) => [request.count, request.simulatedMillis])).toEqual([[1, 30_000], [1, 30_000], [FULL, 0], [50, 30_000]]);
 });
 it("never claims the time another device held the session", async () => {
   const f = fixture(); let simulated = 0, blocked = false;
@@ -305,12 +306,12 @@ it("seals every pending batch of a flush together, so the ones behind the first 
   const send = vi.fn(async (_request: EnemyLootRequest) => { simulated += .5; return true as const; });
   const queue = createRegularEnemyLootQueue({ ...f.options, send, simulatedSeconds: () => simulated });
   queue.begin();
-  // A fast client: 100 kills over the first 20 s, 50 more over the next 10.
-  for (let i = 1; i <= 100; i++) { simulated = i * .2; queue.record("cloudspire", "Spitter"); }
+  // A fast client: a full batch over the first 20 s, 50 more over the next 10.
+  for (let i = 1; i <= FULL; i++) { simulated = i * 20 / FULL; queue.record("cloudspire", "Spitter"); }
   for (let i = 1; i <= 50; i++) { simulated = 20 + i * .2; queue.record("cloudspire", "Spitter"); }
   await queue.flush(true);
   // The second batch keeps its own ten seconds, not the half second it waited behind the first.
-  expect(send.mock.calls.map(([request]) => [request.count, request.simulatedMillis])).toEqual([[100, 20_000], [50, 10_000]]);
+  expect(send.mock.calls.map(([request]) => [request.count, request.simulatedMillis])).toEqual([[FULL, 20_000], [50, 10_000]]);
 });
 it("keeps a reloaded page's unsent kills on the time the earlier page recorded", async () => {
   const f = fixture(); let simulated = 0;
@@ -367,10 +368,11 @@ it("does not charge a report for game time with no kills in it", async () => {
   simulated = 600; queue.record("cloudspire", "Spitter");
   simulated = 610; queue.record("cloudspire", "Spitter");
   simulated = 630; await queue.flush(true);
-  // Charged from half a minute before the first kill, not from the page's start.
+  // Charged from one report window before the first kill, not from the page's start.
   simulated = 1_500; queue.record("cloudspire", "Spitter");
   simulated = 1_510; await queue.flush(true);
-  expect(f.send.mock.calls.map(([request]) => request.simulatedMillis)).toEqual([60_000, 40_000]);
+  const idle = IDLE_SIMULATION_ALLOWANCE_SECONDS * 1_000;
+  expect(f.send.mock.calls.map(([request]) => request.simulatedMillis)).toEqual([30_000 + idle, 10_000 + idle]);
 });
 it("starts a character's report time at its own begin, not at another character's last report", async () => {
   const f = fixture(); let simulated = 0;
@@ -408,7 +410,7 @@ it("charges a long fight's game time to the kill at its end, and still not the i
   simulated = 700; queue.engaged();
   simulated = 705; queue.record("cloudspire", "Spitter");
   simulated = 710; await queue.flush(true);
-  expect(f.send.mock.calls.map(([request]) => request.simulatedMillis)).toEqual([101_000, 40_000]);
+  expect(f.send.mock.calls.map(([request]) => request.simulatedMillis)).toEqual([101_000, 10_000 + IDLE_SIMULATION_ALLOWANCE_SECONDS * 1_000]);
 });
 
 it("reports a send that throws and keeps the batch for the next flush", async () => {

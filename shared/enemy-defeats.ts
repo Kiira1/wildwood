@@ -9,11 +9,11 @@ import { MAX_ARMOR, MAX_PLAYER_STAT, MIN_ATTACK_INTERVAL, REGULAR_ENEMY_RESPAWN_
 import { addAttackSpeedRating, cleanRating, type AttackCapArg } from "./stat-rating";
 
 export type EnemyDefeat = { enemy: string; count: number };
-export const ENEMY_DEFEAT_BATCH_MAX = 100;
+export const ENEMY_DEFEAT_BATCH_MAX = 1000;
 /**
  * How much unclaimed allowance a player can bank. This stays generous on
  * purpose: a bank smaller than one report clips honest players, and a report
- * can carry a hundred kills after a dropped socket or a tab left hidden. It is
+ * can carry a thousand kills after a dropped socket or a tab left hidden. It is
  * not the anti-script lever either way, because a single report can never
  * claim more than ENEMY_DEFEAT_BATCH_MAX. The sustained ceiling below is what
  * bounds a script, and that is the number worth tuning.

@@ -142,7 +142,7 @@ export const PROGRESS_STORE_WRITE_DELAY_MS = 2_000;
 /**
  * The periodic flush timer fires every REGULAR_ENEMY_LOOT_DELAY_MS, but no timer
  * lands on the millisecond. Without this slack a tick a hair early would find
- * the last report not quite thirty seconds old and skip a whole period.
+ * the last report not quite sixty seconds old and skip a whole period.
  */
 export const KILL_REPORT_CADENCE_SLACK_MS = 1_000;
 
@@ -213,7 +213,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
   let deferredStoreWrite: { identity: string; progress: ProgressSave; timer: ReturnType<typeof setTimeout> } | null = null;
   let saveInFlightUntil = 0;
   let nextPeriodicSaveAt = monotonicNowMs() + PROGRESS_SAVE_INTERVAL_MS;
-  // When the last kill report was sent. Ordinary reports go every thirty seconds
+  // When the last kill report was sent. Ordinary reports go every sixty seconds
   // and no sooner; see flushEnemyLoot.
   let lastKillReportAt = monotonicNowMs();
   let savePromise: Promise<boolean> | null = null;
@@ -344,9 +344,9 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
   /**
    * Sends queued kills. A forced flush (portal drain, boss kill, page hide,
    * update drain, immediate save) goes at once. Anything else waits until the
-   * last report is thirty seconds old. Every acknowledgement updates the
+   * last report is sixty seconds old. Every acknowledgement updates the
    * progress row, and the row's handler flushes again; nextPeriodicSaveAt only
-   * moves when progress itself is saved, so after the first thirty seconds that
+   * moves when progress itself is saved, so after the first sixty seconds that
    * chain used to send a fresh report on every acknowledgement.
    */
   function flushEnemyLoot(force: boolean) {
@@ -360,7 +360,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
   async function sendCombatBatch(request: EnemyLootRequest): Promise<boolean | "discard" | "throttled"> {
     if (!dependencies.worldEntryReady() || !dependencies.hydrationReady() || dependencies.reducers.worldEntryBlocked() || resetPending) return false;
     // The cadence runs from reports that go out, so a flush that could not send
-    // (a reconnect still hydrating) does not hold the kills back another thirty seconds.
+    // (a reconnect still hydrating) does not hold the kills back another sixty seconds.
     lastKillReportAt = monotonicNowMs();
     // simulatedMillis is how much game time this tab ran since its previous
     // report; the server holds kills to what that much play could produce.

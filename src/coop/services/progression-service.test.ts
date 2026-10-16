@@ -408,14 +408,14 @@ describe("server-calculated defeat batches", () => {
     } finally { vi.useRealTimers(); }
   });
 
-  it("schedules ordinary progress and loot batches every thirty seconds", () => {
+  it("schedules ordinary progress and loot batches every minute", () => {
     const h = setup();
     expect(window.setInterval).toHaveBeenCalledWith(expect.any(Function), PROGRESS_SAVE_INTERVAL_MS);
-    expect(PROGRESS_SAVE_INTERVAL_MS).toBe(30_000);
+    expect(PROGRESS_SAVE_INTERVAL_MS).toBe(60_000);
     h.service.dispose();
   });
 
-  it("sends ordinary kill reports at most once per thirty seconds while acknowledgements keep arriving", async () => {
+  it("sends ordinary kill reports at most once a minute while acknowledgements keep arriving", async () => {
     vi.useFakeTimers();
     try {
       const h = setup(); const base = progress();
@@ -433,13 +433,13 @@ describe("server-calculated defeat batches", () => {
         h.service.recordRegularEnemyDefeat("water_reach", "Tide Raider");
         h.service.api.saveProgress(saveFrom(base, { damage: base.damage + kill }));
         await vi.advanceTimersByTimeAsync(500);
-        if (kill % 60 === 0) periodicFlush();                // the thirty-second timer
+        if (kill % (PROGRESS_SAVE_INTERVAL_MS / 500) === 0) periodicFlush();   // the minute timer
       }
-      expect(reportedAt.length).toBeGreaterThanOrEqual(9);
-      expect(reportedAt.length).toBeLessThanOrEqual(10);
-      expect(reportedAt[0] - startedAt).toBeGreaterThanOrEqual(30_000 - KILL_REPORT_CADENCE_SLACK_MS);
+      expect(reportedAt.length).toBeGreaterThanOrEqual(4);
+      expect(reportedAt.length).toBeLessThanOrEqual(5);
+      expect(reportedAt[0] - startedAt).toBeGreaterThanOrEqual(PROGRESS_SAVE_INTERVAL_MS - KILL_REPORT_CADENCE_SLACK_MS);
       for (let index = 1; index < reportedAt.length; index++) {
-        expect(reportedAt[index] - reportedAt[index - 1]).toBeGreaterThanOrEqual(30_000 - KILL_REPORT_CADENCE_SLACK_MS);
+        expect(reportedAt[index] - reportedAt[index - 1]).toBeGreaterThanOrEqual(PROGRESS_SAVE_INTERVAL_MS - KILL_REPORT_CADENCE_SLACK_MS);
       }
       // A forced flush still goes at once: a boss kill is reported immediately.
       const before = h.reportEnemyDefeats.mock.calls.length;
@@ -459,7 +459,7 @@ describe("server-calculated defeat batches", () => {
       const periodicFlush = vi.mocked(window.setInterval).mock.calls[0][0] as () => void;
       h.service.recordRegularEnemyDefeat("water_reach", "Tide Raider");
       h.service.api.saveProgress(saveFrom(base, { equippedHead: "samurai_hat" }));
-      await vi.advanceTimersByTimeAsync(30_000);
+      await vi.advanceTimersByTimeAsync(PROGRESS_SAVE_INTERVAL_MS);
       // The tick sends the kill report first, which restarts the kill cadence;
       // the equipment save behind it must not wait for the next one.
       periodicFlush();
@@ -476,12 +476,12 @@ describe("server-calculated defeat batches", () => {
       const h = setup();
       h.entry.hydrated = false;
       h.service.recordRegularEnemyDefeat("water_reach", "Tide Raider");
-      await vi.advanceTimersByTimeAsync(30_000);
+      await vi.advanceTimersByTimeAsync(PROGRESS_SAVE_INTERVAL_MS);
       // A reconnect's forced flush, before the world has hydrated, sends nothing...
       h.service.flushPendingProgress(true);
       await vi.advanceTimersByTimeAsync(0);
       expect(h.reportEnemyDefeats).not.toHaveBeenCalled();
-      // ...so the ordinary flush once it has arrived is not held back thirty seconds more.
+      // ...so the ordinary flush once it has arrived is not held back another minute.
       h.entry.hydrated = true;
       h.service.flushPendingProgress();
       await vi.advanceTimersByTimeAsync(0);

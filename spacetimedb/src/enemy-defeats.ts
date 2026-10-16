@@ -223,16 +223,16 @@ function watchKillRate(ctx: DefeatContext, clocks: DefeatClocks, mapId: string, 
  * whatever it pays, and nothing else stopped a script sending them as fast as
  * the socket allowed.
  *
- * An honest client never gets near it. It reports every 30 seconds, plus a
+ * An honest client never gets near it. It reports every 60 seconds, plus a
  * drain before a portal, a boss reward, a hidden tab and an update screen,
  * each a single report. (Clients up to 0.826 reported on every
  * acknowledgement, through record_enemy_defeats, which now only tells them to
  * refresh.) After a dropped socket the backlog goes out back to back, but a
- * tab keeps adding to its unsent batch until it holds a hundred kills, so
+ * tab keeps adding to its unsent batch until it holds a thousand kills, so
  * even five minutes offline is a handful of reports, and orphaned tabs add a
  * few more. Sixteen covers all of that at once, and a minute later it is full
  * again. If it ever were reached, the kills stay queued in the tab and are
- * paid thirty seconds later: nothing is refused, only delayed.
+ * paid a minute later: nothing is refused, only delayed.
  *
  * A reducer that throws rolls this write back with everything else, so only a
  * report the server actually processed spends from the bucket. A report that
@@ -469,7 +469,7 @@ export function acceptEnemyDefeats(ctx: DefeatContext, batch: EnemyDefeatBatch, 
     const tokens = previous ? Math.min(budget.capacity, previous.tokens + elapsed * budget.perSecond) : ((budget as { initial?: number }).initial ?? budget.capacity);
     let acceptedCount = claimed;
     // A sealed batch must be consumable even when it exceeds the maximum
-    // bucket (one Endless spawn holds 91 kills; a report can contain 100).
+    // bucket (one Endless spawn holds 91 kills; a report can contain 1000).
     // Award only the server-earned allowance, then acknowledge the report so
     // it cannot permanently block saving or travel. Retrying a new stream
     // cannot restore the spent allowance.

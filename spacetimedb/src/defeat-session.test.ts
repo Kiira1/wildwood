@@ -1,5 +1,5 @@
 import { STARTER_BOW } from "../../shared/items";
-import { defeatBudget, enemyDefeatDefinition } from "../../shared/enemy-defeats";
+import { defeatBudget, enemyDefeatDefinition, ENEMY_DEFEAT_BATCH_MAX } from "../../shared/enemy-defeats";
 import { expect, it, vi } from "vitest";
 import { Timestamp } from "spacetimedb";
 import { crystalFixture, server } from "../../tests/helpers/crystal-hollows-fixture";
@@ -13,7 +13,7 @@ const report = { streamId: "enforcement-stream-01", sequence: 1n, mapId: "endles
 // A real client seals at most REGULAR_ENEMY_LOOT_BATCH_MAX kills per report, so
 // only a larger one is proof of a forged claim. Everything a client could have
 // sent is bounded instead; see enemy-defeats.ts.
-const oversized = { ...report, enemies: [{ enemy: "site:0", count: 101 }] };
+const oversized = { ...report, enemies: [{ enemy: "site:0", count: ENEMY_DEFEAT_BATCH_MAX + 1 }] };
 // One spawn site holds one enemy; a report can bank at most this many of its kills.
 const SITE_BUDGET = defeatBudget(enemyDefeatDefinition("endless_1", "site:0")!.population);
 /** What a first report on a map can earn: the enemy there plus one report window. */
@@ -128,7 +128,7 @@ it.each([false, true])("logs actual kill-limit enforcement with its durable audi
       displayName: "Test Player", action: registered ? "session_revoked" : "guest_connection_blocked",
       moderationId: audit.id.toString(), mapId: report.mapId, streamId: report.streamId, sequence: "1",
       requireSignIn: registered, blockedUntilMs: registered ? 0 : 40_000,
-      violations: [{ enemy: "batch", requested: 101, accepted: 0 }] });
+      violations: [{ enemy: "batch", requested: ENEMY_DEFEAT_BATCH_MAX + 1, accepted: 0 }] });
     expect(event.violations).toEqual(JSON.parse(audit.before).violations);
     expect(f.db.player.identity.find(f.ctx.sender)).toBeNull();
     expect(event).not.toHaveProperty("jwt");

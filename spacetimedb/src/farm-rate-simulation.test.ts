@@ -229,7 +229,7 @@ const rosterOf = (mapId: string) => {
  * Drives the current client through report_enemy_defeats. Kills land lap by
  * lap in the client's own game time and go into batches of at most
  * ENEMY_DEFEAT_BATCH_MAX. A batch is sealed when it fills or when the
- * 30-second report timer fires, and each report carries the game time the
+ * report timer fires (REGULAR_KILL_REPORT_SECONDS), and each report carries the game time the
  * client simulated since it sealed the one before. `speed` is game seconds per
  * real second: 1 for an honest client, 3 or 5 for a hooked performance.now and
  * requestAnimationFrame, which runs walking, attacks and respawns faster but
@@ -416,8 +416,8 @@ describe("the current client, held to the server's clock", () => {
     for (const speed of [3, 5]) {
       const hack = currentClient({ lapSeconds: HONEST_LAP, minutes: 60, speed });
       expect(hack.claimedPerSecond).toBeCloseTo(honest.claimedPerSecond * speed, 1);
-      // The bank is the whole head start: ten minutes of free overclaim in the hour.
-      expect(hack.paid / honest.paid).toBeLessThan((3_600 + SIM_CLOCK_BANK_SECONDS) / 3_600 * 1.02);
+      // The bank is the head start, and the report it is sealing: ten minutes and one report of free overclaim in the hour.
+      expect(hack.paid / honest.paid).toBeLessThan((3_600 + SIM_CLOCK_BANK_SECONDS + REGULAR_KILL_REPORT_SECONDS) / 3_600 * 1.02);
       // After the five-minute bank is spent it earns the honest rate.
       expect(hack.sustainedPerSecond / honest.sustainedPerSecond).toBeLessThan(1.02);
       // One warning and one audit line for the whole episode, and no punishment.

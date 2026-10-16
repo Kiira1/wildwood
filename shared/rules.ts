@@ -61,14 +61,15 @@ export const DEFAULT_ATTACK_INTERVAL = 1.56;
  * claim more in one go than the client could have gathered.
  */
 // Kills are only real once the server has the report; until then they live in
-// one browser tab. Thirty seconds bounds what a closed tab can lose to half a
-// minute, and the per-player cost of the report is small next to a view.
-export const REGULAR_KILL_REPORT_SECONDS = 30;
+// one browser tab, which drains them when hidden or closed. A report is the
+// busiest reducer the game has and costs the same however many kills it holds,
+// so a minute halves the server's largest cost.
+export const REGULAR_KILL_REPORT_SECONDS = 60;
 /**
  * The server's limit on kill reports per account: a bucket of this many that
  * refills one report every KILL_REPORT_REFILL_SECONDS. A report over it gets
  * "Enemy rewards are catching up." and the client keeps the kills queued and
- * retries in 30 seconds. It is a cost bound, not an anti-cheat one: every
+ * retries in 60 seconds. It is a cost bound, not an anti-cheat one: every
  * report runs the whole kill reducer, whatever it ends up paying.
  */
 export const KILL_REPORT_BURST = 16;
