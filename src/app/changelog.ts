@@ -4,7 +4,11 @@ export const RELEASE_NOTES: Record<string, string[]> = {
     "No more standing behind a portal's swirl after arriving",
     "Auto Farm no longer stands inside the portal after moving maps",
     "Smoother camera through portals",
-    "Settings: on/off switches, Game settings in sections, tighter rows",
+    "Settings: on/off switches, Game settings in sections, Title Case labels, tighter rows",
+    "New Damage Numbers setting to hide damage popups",
+    "Enemy HP numbers are on by default",
+    "Smithy: filter gear by type and sort by tier",
+    "Item window keeps Equip and its other buttons in view",
   ],
   "0.908.4": [
     "Leaderboard's Time Played menu in black and grey instead of green",

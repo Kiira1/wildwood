@@ -127,3 +127,23 @@ it("keeps the pickaxe on offer when the server refuses, and says why", async () 
   await vi.waitFor(() => expect(view.showMessage).toHaveBeenCalledWith("Talk to the Smith first.", "#ff9b91"));
   expect([button.hidden, button.disabled]).toEqual([false, false]);
 });
+
+it("filters the gear as the bag does and sorts it by tier, worn first", () => {
+  const view = smith();
+  view.controller.open();
+  const label = () => view.choices().map(choice => choice.getAttribute("aria-label"));
+  const filter = (name: string) => [...view.dialog.querySelectorAll<HTMLElement>(".smith-filters .inventory-filter")].find(button => button.textContent === name)!;
+  expect([...view.dialog.querySelectorAll(".smith-filters .inventory-filter")].map(button => button.textContent)).toEqual(["All", "Weapons", "Armor", "Helmets"]);
+  expect(filter("All").getAttribute("aria-pressed")).toBe("true");
+  filter("Armor").click();
+  expect(label()).toEqual(["Wooden Armor ★2"]);
+  // The picked gear follows the filter, so the focus never shows something the list hides.
+  expect(view.q(".smith-item strong").textContent).toBe("Wooden Armor ★2");
+  filter("Helmets").click();
+  expect(label()).toEqual([]);
+  expect(view.q(".smith-filter-empty").hidden).toBe(false);
+  expect(view.q(".smith-filter-empty").textContent).toBe("No helmets to bring");
+  filter("Weapons").click();
+  expect(label()[0]).toBe("Bow ★7, worn");
+  expect(view.q(".smith-filter-empty").hidden).toBe(true);
+});

@@ -54,11 +54,11 @@ export function renderFullscreenSetting(
   active: boolean,
 ) {
   button.disabled = !supported;
-  button.textContent = supported ? (active ? "EXIT" : "ENTER") : "N/A";
+  button.textContent = supported ? (active ? "Exit" : "Enter") : "N/A";
 }
 
 export function renderConnectionStatus(element: HTMLElement, connected: boolean) {
-  setText(element, connected ? "ONLINE" : "OFFLINE");
+  setText(element, connected ? "Online" : "Offline");
   if (element.classList.contains("is-offline") !== !connected) element.classList.toggle("is-offline", !connected);
 }
 
@@ -67,8 +67,8 @@ export function renderAccountStatus(
   status: HTMLElement,
   account: { signedIn: boolean; notice: string },
 ) {
-  setText(button, account.signedIn ? "SIGN OUT" : "SIGN IN / CREATE");
-  const text = account.notice || (account.signedIn ? "SIGNED IN · ACCOUNT SAVE" : "GUEST · DEVICE SAVE");
+  setText(button, account.signedIn ? "Sign Out" : "Sign In / Create");
+  const text = account.notice || (account.signedIn ? "Signed In · Account Save" : "Guest · Device Save");
   setText(status, text);
   const error = /FAILED|WAIT|CHECK|NOT MOVED|STILL OPEN/.test(text);
   if (status.classList.contains("is-signed-in") !== account.signedIn) status.classList.toggle("is-signed-in", account.signedIn);

@@ -11,6 +11,7 @@ import { CARDS, cardDefinition, cardFitsItem, type CardSlot } from "../../shared
 import { CARD_SLOT_NAMES, cardEffectText, cardName } from "../../shared/card-text";
 import { byMapThenRarity, cardTile } from "./cards-tab";
 import { cardPortrait } from "./card-portrait";
+import { itemTier } from "../../shared/item-tier";
 
 type Result = { ok: boolean; error?: string } | undefined;
 type GearSlots = { slots: number; cards: readonly string[] };
@@ -19,6 +20,8 @@ type RefineResult = { itemId: string; copyId: bigint; fromLevel: number; toLevel
 export type SmithItem = { itemId: string; copyId: bigint; equipped: boolean };
 
 const key = (item: { itemId: string; copyId: bigint }) => `${item.itemId}:${item.copyId}`;
+/** The bag's filters for the gear the Smith works on (boots are not refined). */
+const SMITH_FILTERS = [["ALL", "All"], ["HAND", "Weapons"], ["CHEST", "Armor"], ["HEAD", "Helmets"]] as const;
 const nameOf = (itemId: string) => itemInspectionButtonLabel(itemDisplayName(itemId));
 const percent = (chance: number) => `${Math.round(chance * 100)}%`;
 
@@ -59,6 +62,8 @@ export function createSmithController(deps: {
     + `<p class="smith-ores" aria-label="Your ores"></p>`
     + `<div class="smith-mining"><span class="smith-mining-text"></span><button type="button" class="farm-start smith-refine smith-pickaxe">Take a Pickaxe</button></div>`
     + `<section class="smith-cards" aria-label="Your cards that fit"><p class="smith-empty smith-cards-note"></p><div class="inventory-items smith-card-grid"></div></section>`
+    + `<div class="inventory-filters smith-filters" role="group" aria-label="Show gear"></div>`
+    + `<p class="smith-empty smith-filter-empty" hidden></p>`
     + `<div class="smith-items" role="listbox" aria-label="Your gear"></div></div>`
     + `<footer class="farm-footer"><div class="farm-actions"><button type="button" class="window-back-button">Back</button></div></footer>`;
   document.body.append(dialog);
@@ -74,6 +79,19 @@ export function createSmithController(deps: {
   const cardGrid = dialog.querySelector<HTMLElement>(".smith-card-grid")!;
   const cardsNote = dialog.querySelector<HTMLElement>(".smith-cards-note")!;
   const tabButtons = [...dialog.querySelectorAll<HTMLButtonElement>(".smith-tabs .inventory-tab")];
+  const filterBar = dialog.querySelector<HTMLElement>(".smith-filters")!;
+  const filterEmpty = dialog.querySelector<HTMLElement>(".smith-filter-empty")!;
+  /** The gear shown, as the bag filters it: everything, or one kind. */
+  let shown: (typeof SMITH_FILTERS)[number][0] = "ALL";
+  for (const [kind, label] of SMITH_FILTERS) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "inventory-filter";
+    button.dataset.filter = kind;
+    button.textContent = label;
+    button.addEventListener("click", () => { if (shown !== kind) { shown = kind; render(); } });
+    filterBar.append(button);
+  }
   const canSlot = Boolean(deps.cards && deps.gearSlots && deps.slotCard);
   if (!canSlot) dialog.querySelector(".smith-tabs")!.remove();
   let tab: "refine" | "cards" = "refine";
@@ -89,9 +107,10 @@ export function createSmithController(deps: {
   let renderedState = "";
 
   function choices() {
-    return deps.items().filter(item => isRefinableItem(item.itemId))
-      // Worn first, then the bag; a kept copy after its first copy.
-      .sort((a, b) => Number(b.equipped) - Number(a.equipped) || a.itemId.localeCompare(b.itemId) || (a.copyId < b.copyId ? -1 : 1));
+    return deps.items().filter(item => isRefinableItem(item.itemId) && (shown === "ALL" || itemDefinition(item.itemId)?.slot === shown))
+      // Worn first, then the bag by tier as the bag sorts it, highest first; a kept copy after its first copy.
+      .sort((a, b) => Number(b.equipped) - Number(a.equipped) || (itemTier(b.itemId) ?? 0) - (itemTier(a.itemId) ?? 0)
+        || nameOf(a.itemId).localeCompare(nameOf(b.itemId)) || (a.copyId < b.copyId ? -1 : 1));
   }
 
   function renderFocus(item: SmithItem | undefined) {
@@ -231,7 +250,7 @@ export function createSmithController(deps: {
     const chosen = items.find(item => key(item) === selected);
     // Presence updates also refresh open windows. Keep focus and buttons in place until this window changes.
     const state = JSON.stringify([
-      tab, selected, pickedCard, slotting, armedRemoval, refining, lastResult, pickaxeTaken, takingPickaxe,
+      tab, shown, selected, pickedCard, slotting, armedRemoval, refining, lastResult, pickaxeTaken, takingPickaxe,
       deps.ores(), deps.hasPickaxe?.(), deps.mining?.(), deps.cards?.(),
       items.map(item => [key(item), item.equipped, deps.refineLevel(item.itemId, item.copyId), deps.slotTier(item.itemId), slotsOf(item)]),
     ]);
@@ -247,6 +266,9 @@ export function createSmithController(deps: {
     intro.textContent = tab === "cards" ? "Slot cards into gear. Each card adds its effects to the gear it is in."
       : "Refine gear with ore. Safe up to its limit; past it a try can fail, and a fail costs only the ore.";
     oreLine.hidden = mining.hidden = tab === "cards";
+    for (const button of filterBar.querySelectorAll<HTMLButtonElement>(".inventory-filter")) button.setAttribute("aria-pressed", String(button.dataset.filter === shown));
+    filterEmpty.hidden = items.length > 0 || shown === "ALL";
+    filterEmpty.textContent = `No ${SMITH_FILTERS.find(([kind]) => kind === shown)?.[1].toLowerCase() ?? "gear"} to bring`;
     renderCardList(chosen);
     if (tab === "cards") renderSlots(chosen);
     else renderFocus(chosen);

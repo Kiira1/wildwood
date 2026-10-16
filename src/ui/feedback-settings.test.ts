@@ -88,3 +88,28 @@ it("turns stat gain popups off and remembers it", async () => {
   expect(statPopupsEnabled()).toBe(false);
   setStatPopupsEnabled(true);
 });
+
+it("shows enemy HP numbers and damage numbers until the player turns them off, and remembers it", async () => {
+  const { parseHTML } = await import("linkedom");
+  const { enemyHpNumbersEnabled, setEnemyHpNumbersEnabled } = await import("./enemy-hp-setting");
+  const { damageNumbersEnabled, setDamageNumbersEnabled } = await import("./damage-number-setting");
+  const { createCombatEffects } = await import("../game/runtime/combat-effects");
+  const values = new Map<string, string>();
+  const make = () => {
+    const { document, Event } = parseHTML(`<html><body><div id="toolbar"></div><section><button id="toolbarHapticsToggle"></button><button id="selfProfileTapToggle"></button><button id="scientificNotationToggle"></button><button id="enemyHpNumbersToggle"></button><button id="damageNumbersToggle"></button></section></body></html>`);
+    installFeedbackSettings(document, { getItem: key => values.get(key) ?? null, setItem: (key, value) => { values.set(key, value); } }, () => {});
+    return (id: string) => document.getElementById(id)!.dispatchEvent(new Event("click", { bubbles: true }));
+  };
+  const click = make();
+  expect([enemyHpNumbersEnabled(), damageNumbersEnabled()]).toEqual([true, true]);
+  click("damageNumbersToggle");
+  expect(damageNumbersEnabled()).toBe(false);
+  // Off, a hit spawns no number.
+  const effects = createCombatEffects();
+  effects.spawnDamageNumber(10, 20, 1500);
+  expect(effects.damageNumbers).toHaveLength(0);
+  click("enemyHpNumbersToggle");
+  make();
+  expect([enemyHpNumbersEnabled(), damageNumbersEnabled()]).toEqual([false, false]);
+  setEnemyHpNumbersEnabled(true); setDamageNumbersEnabled(true);
+});

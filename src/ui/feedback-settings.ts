@@ -3,6 +3,7 @@ import { setNumberNotation } from "../../shared/compact-number";
 import { setStatPopupsEnabled } from "./stat-popup-setting";
 import { setChatTimestampsEnabled } from "./chat-timestamp-setting";
 import { setEnemyHpNumbersEnabled } from "./enemy-hp-setting";
+import { setDamageNumbersEnabled } from "./damage-number-setting";
 
 const TOOLBAR_HAPTICS_KEY = "wildwood-toolbar-haptics-enabled-v1";
 const SELF_PROFILE_TAP_KEY = "wildstat-self-profile-tap-enabled-v1";
@@ -10,6 +11,7 @@ const SCIENTIFIC_NOTATION_KEY = "wildstat-scientific-notation-v1";
 const STAT_POPUPS_KEY = "wildstat-stat-popups-v1";
 const CHAT_TIMESTAMPS_KEY = "wildstat-chat-timestamps-v1";
 const ENEMY_HP_NUMBERS_KEY = "wildstat-enemy-hp-numbers-v1";
+const DAMAGE_NUMBERS_KEY = "wildstat-damage-numbers-v1";
 
 /** Device preferences apply immediately, even when storage is unavailable. */
 export function installFeedbackSettings(doc: Document, storage: Pick<Storage, "getItem" | "setItem"> | undefined, haptic: () => void) {
@@ -38,7 +40,8 @@ export function installFeedbackSettings(doc: Document, storage: Pick<Storage, "g
   toggle("scientificNotationToggle", SCIENTIFIC_NOTATION_KEY, false, enabled => setNumberNotation(enabled ? "scientific" : "suffix"));
   if (doc.getElementById("statPopupsToggle")) toggle("statPopupsToggle", STAT_POPUPS_KEY, true, setStatPopupsEnabled);
   if (doc.getElementById("chatTimestampsToggle")) toggle("chatTimestampsToggle", CHAT_TIMESTAMPS_KEY, false, setChatTimestampsEnabled);
-  if (doc.getElementById("enemyHpNumbersToggle")) toggle("enemyHpNumbersToggle", ENEMY_HP_NUMBERS_KEY, false, setEnemyHpNumbersEnabled);
+  if (doc.getElementById("enemyHpNumbersToggle")) toggle("enemyHpNumbersToggle", ENEMY_HP_NUMBERS_KEY, true, setEnemyHpNumbersEnabled);
+  if (doc.getElementById("damageNumbersToggle")) toggle("damageNumbersToggle", DAMAGE_NUMBERS_KEY, true, setDamageNumbersEnabled);
   // Capture before navigation; only direct toolbar buttons, not settings inside it.
   doc.addEventListener("click", event => {
     const target = event.target as Element | null;
@@ -54,17 +57,18 @@ export function installFeedbackControls(doc: Document) {
   const panel = doc.getElementById("settingsPanel");
   if (!panel) return;
   for (const [id, label, enabled] of [
-    ["toolbarHapticsToggle", "TOOLBAR HAPTICS", true],
-    ["selfProfileTapToggle", "TAP SELF TO OPEN PROFILE", false],
-    ["scientificNotationToggle", "SCIENTIFIC NOTATION", false],
-    ["statPopupsToggle", "STAT GAIN POPUPS", true],
-    ["chatTimestampsToggle", "CHAT TIMESTAMPS", false],
-    ["enemyHpNumbersToggle", "Enemy HP Numbers", false],
-    ["keepScreenOnToggle", "KEEP SCREEN ON", false],
-    ["gameTickerToggle", "GAME TIPS", true],
+    ["toolbarHapticsToggle", "Toolbar Haptics", true],
+    ["selfProfileTapToggle", "Tap Self to Open Profile", false],
+    ["scientificNotationToggle", "Scientific Notation", false],
+    ["statPopupsToggle", "Stat Gain Popups", true],
+    ["chatTimestampsToggle", "Chat Timestamps", false],
+    ["enemyHpNumbersToggle", "Enemy HP Numbers", true],
+    ["damageNumbersToggle", "Damage Numbers", true],
+    ["keepScreenOnToggle", "Keep Screen On", false],
+    ["gameTickerToggle", "Game Tips", true],
     // Account-scoped and server-backed, so this only builds the row; the
     // binding lives with the connection that owns the preference.
-    ["offlineProgressToggle", "OFFLINE PROGRESS", true],
+    ["offlineProgressToggle", "Offline Progress", true],
   ] as const) {
     if (doc.getElementById(id)) continue;
     const row = doc.createElement("div");

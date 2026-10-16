@@ -134,6 +134,20 @@ describe("refines in the item window", () => {
     return { controller, lines, title: document.getElementById("title")! };
   }
 
+  it("keeps the buttons out of the scrolling details, just above Back, so Equip is always in view", () => {
+    const view = inspection();
+    const equip = vi.fn();
+    view.controller.open({ itemId: IRON_BOW, upgradeLevel: 3, actions: [{ label: "Equip", onActivate: equip }] });
+    const content = document.getElementById("content")!, host = document.querySelector(".item-inspection-actions-host")!;
+    expect(content.querySelector("button")).toBeNull();
+    expect(host.previousElementSibling).toBe(content);
+    expect(host.querySelector("button")!.textContent).toBe("Equip");
+    (host.querySelector("button") as HTMLButtonElement).click();
+    expect(equip).toHaveBeenCalledOnce();
+    view.controller.close();
+    expect(host.childElementCount).toBe(0);
+  });
+
   it("names the item with its ★ in gold and counts the refine in its stats", () => {
     const view = inspection();
     view.controller.open({ itemId: IRON_BOW, upgradeLevel: 3, refine: 7 });

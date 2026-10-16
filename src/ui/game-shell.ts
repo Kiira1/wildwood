@@ -509,7 +509,7 @@ export function installGameShell(doc: Document = document) {
         <summary>Blocked players</summary><div id="blockedPlayersList"></div>
       </details>
       <div class="setting-support">
-        <span>HELP &amp; SUPPORT</span>
+        <span>Help &amp; Support</span>
         <a href="mailto:support@wildstatmmo.com">support@wildstatmmo.com</a>
         <small>Report bugs with /bug in chat. For player concerns, use Report or Block on their profile.</small>
       </div>`);
@@ -520,7 +520,7 @@ export function installGameShell(doc: Document = document) {
   installFeedbackControls(doc);
   if (!doc.getElementById("baseStatRewardsToggle")) {
     doc.getElementById("statTrackerToggle")?.closest(".setting-row")?.insertAdjacentHTML("afterend", `
-      <div class="setting-row"><span>BASE STAT REWARDS</span>
+      <div class="setting-row"><span>Base Stat Rewards</span>
       <button id="baseStatRewardsToggle" class="setting-toggle" type="button" aria-label="Show base stat rewards under enemies, in autofarm and reward popups" aria-pressed="false">OFF</button></div>`);
   }
   if (!doc.getElementById("upgradeBenchSlotThree")) {

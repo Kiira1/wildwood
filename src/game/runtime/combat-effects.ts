@@ -2,6 +2,7 @@ import { drawSwordSkillEffect } from "./sword-skill-effects";
 import { TAU } from "../constants";
 import { clamp, rand, randi } from "../math";
 import { formatCompactNumber } from "../../../shared/compact-number";
+import { damageNumbersEnabled } from "../../ui/damage-number-setting";
 import { drawScreenSpaceAt, snapWorldRenderCoordinate } from "./render/render-space";
 
 export type Particle = {
@@ -116,7 +117,7 @@ export function createCombatEffects() {
   }
 
   function spawnDamageNumber(x: number, y: number, amount: number, critical = false, damageTaken = false, reflected = false) {
-    if (!Number.isFinite(amount) || amount <= 0) return;
+    if (!Number.isFinite(amount) || amount <= 0 || !damageNumbersEnabled()) return;
     let number: DamageNumber;
     if (damageNumbers.length < MAX_DAMAGE_NUMBERS) {
       number = damageNumberPool.pop() ?? { x: 0, y: 0, startY: 0, life: 0, maxLife: 0, opacity: 1, text: "", critical: false, damageTaken: false, reflected: false };

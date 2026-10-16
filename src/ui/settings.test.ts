@@ -47,9 +47,9 @@ describe("app status rendering on the HUD tick", () => {
     const account = { signedIn: true, notice: "" };
     renderConnectionStatus(connection.element, false);
     renderAccountStatus(button.element, status.element, account);
-    expect(connection.element.textContent).toBe("OFFLINE");
+    expect(connection.element.textContent).toBe("Offline");
     expect(connection.classes.has("is-offline")).toBe(true);
-    expect(status.element.textContent).toBe("SIGNED IN · ACCOUNT SAVE");
+    expect(status.element.textContent).toBe("Signed In · Account Save");
     expect(status.classes.has("is-signed-in")).toBe(true);
     const before = connection.writes.count + button.writes.count + status.writes.count;
 
@@ -60,7 +60,7 @@ describe("app status rendering on the HUD tick", () => {
     expect(connection.writes.count + button.writes.count + status.writes.count).toBe(before);
 
     renderConnectionStatus(connection.element, true);
-    expect(connection.element.textContent).toBe("ONLINE");
+    expect(connection.element.textContent).toBe("Online");
     expect(connection.classes.has("is-offline")).toBe(false);
     renderAccountStatus(button.element, status.element, { signedIn: true, notice: "SIGN-IN FAILED" });
     expect(status.classes.has("is-error")).toBe(true);

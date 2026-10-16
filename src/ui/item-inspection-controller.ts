@@ -153,11 +153,16 @@ function cardSection({ slots, cards }: { slots: number; cards: readonly string[]
 export function createItemInspectionController(elements: ItemInspectionElements) {
   let returnFocus: HTMLElement | null = null;
   const tools = elements.panel.querySelector<HTMLElement>(".item-inspection-tools")!;
+  // The buttons stand under the scrolling details, above Back, so a long item never pushes Equip out of view.
+  const actionsHost = document.createElement("div");
+  actionsHost.className = "item-inspection-actions-host";
+  elements.content.after(actionsHost);
 
   function close() {
     if (elements.panel.hidden) return;
     elements.panel.hidden = true;
     elements.content.replaceChildren();
+    actionsHost.replaceChildren();
     tools.replaceChildren();
     const focusTarget = returnFocus;
     returnFocus = null;
@@ -249,7 +254,8 @@ export function createItemInspectionController(elements: ItemInspectionElements)
     const summary = document.createElement("div");
     summary.className = "item-inspection-summary";
     summary.append(preview, copy);
-    elements.content.replaceChildren(summary, actionRow);
+    elements.content.replaceChildren(summary);
+    actionsHost.replaceChildren(actionRow);
     elements.panel.hidden = false;
     elements.back.focus({ preventScroll: true });
     return true;
@@ -314,7 +320,8 @@ export function createItemInspectionController(elements: ItemInspectionElements)
     const summary = document.createElement("div");
     summary.className = "item-inspection-summary";
     summary.append(preview, copy);
-    elements.content.replaceChildren(summary, actionRow);
+    elements.content.replaceChildren(summary);
+    actionsHost.replaceChildren(actionRow);
     elements.panel.hidden = false;
     elements.back.focus({ preventScroll: true });
     return true;
@@ -366,6 +373,7 @@ export function createItemInspectionController(elements: ItemInspectionElements)
     summary.className = "item-inspection-summary";
     summary.append(preview, copy);
     elements.content.replaceChildren(summary);
+    actionsHost.replaceChildren();
     elements.panel.hidden = false;
     elements.back.focus({ preventScroll: true });
     return true;

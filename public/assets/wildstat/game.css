@@ -779,7 +779,7 @@
 
   .item-inspection-panel { position: fixed; inset: 0 0 var(--window-bottom-inset); z-index: 15; display: grid; place-items: center; padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 16px max(16px, env(safe-area-inset-left)); overflow: hidden; background: rgba(0,0,0,.4); color: #f4f3e8; pointer-events: auto; }
   .item-inspection-panel[hidden] { display: none; }
-  .item-inspection-window { position: relative; display: grid; grid-template-rows: minmax(0, 1fr) auto; width: min(320px, 100%); max-height: 100%; min-height: 0; overflow: hidden; border: 2px solid rgba(255,255,255,.25); border-radius: 12px; background: var(--window-surface-brown); box-shadow: 0 16px 48px rgba(0,0,0,.55); }
+  .item-inspection-window { position: relative; display: grid; grid-template-rows: minmax(0, 1fr) auto auto; width: min(320px, 100%); max-height: 100%; min-height: 0; overflow: hidden; border: 2px solid rgba(255,255,255,.25); border-radius: 12px; background: var(--window-surface-brown); box-shadow: 0 16px 48px rgba(0,0,0,.55); }
   .item-inspection-summary { display: grid; justify-items: center; gap: 8px; width: 100%; min-width: 0; }
   .item-inspection-preview { display: grid; justify-items: center; align-content: center; gap: 6px; min-width: 0; width: 100%; }
   .item-inspection-tools { position: absolute; top: 8px; left: 8px; z-index: 1; display: flex; align-items: center; }
@@ -803,6 +803,9 @@
   .item-inspection-window > .window-back-footer { padding: 2px 16px 14px; min-height: 60px; }
   .item-inspection-window .item-inspection-back { width: 100%; }
   .item-inspection-actions:empty { display: none; }
+  .item-inspection-actions-host { padding: 8px 16px 0; }
+  .item-inspection-actions-host:empty { display: none; }
+  .item-inspection-actions-host > .item-inspection-actions { margin-top: 0; }
   .item-inspection-actions button { min-width: 0; min-height: 44px; margin: 0; padding: 8px; border: 2px solid #312a22; border-radius: 8px; box-shadow: 0 3px 0 rgba(59,46,31,.36); color: #fff; font-size: var(--font-readable-min); line-height: 1.15; }
   .item-inspection-actions button:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(59,46,31,.36); }
   .item-inspection-action-primary { background: linear-gradient(#507c51, #315c38); }
