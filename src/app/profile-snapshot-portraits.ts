@@ -14,7 +14,10 @@ type Source = { look: (identity: string) => ProfileSnapshotLook | undefined; rev
 
 /** Distinct looks kept drawn. A chat page or a leaderboard page is well under it. */
 export const PROFILE_SNAPSHOT_PORTRAIT_LIMIT = 192;
-const WATCH_SWEEP_AT = 512;
+/** Watched elements that left the page are let go each time the map doubles past this: chat rebuilds a row per message, and
+ * at a fixed 512 every scrolled-off row, its icon and its click handlers stayed in memory until the 512th. */
+const WATCH_SWEEP_FROM = 32;
+let sweepAt = WATCH_SWEEP_FROM;
 
 let source: Source | null = null;
 let renderer: Renderer | null = null;
@@ -80,8 +83,13 @@ export function profileSnapshotPortrait(identity: string | undefined) {
 export function watchProfileSnapshotElement(element: HTMLElement, repaint: (() => void) | null) {
   if (!repaint) { watched.delete(element); return; }
   watched.set(element, repaint);
-  if (watched.size > WATCH_SWEEP_AT) for (const key of [...watched.keys()]) if (key !== element && !key.isConnected) watched.delete(key);
+  if (watched.size <= sweepAt) return;
+  for (const key of [...watched.keys()]) if (key !== element && !key.isConnected) watched.delete(key);
+  sweepAt = Math.max(WATCH_SWEEP_FROM, watched.size * 2);
 }
+
+/** Tests only: how many elements are watched. */
+export const watchedProfileSnapshotCount = () => watched.size;
 
 export function onProfileSnapshotsChanged(listener: () => void) {
   listeners.add(listener);
@@ -92,5 +100,5 @@ export function onProfileSnapshotsChanged(listener: () => void) {
 export function resetProfileSnapshotPortraits() {
   setProfileSnapshotSource(null);
   renderer = null;
-  portraits.clear(); watched.clear(); listeners.clear();
+  portraits.clear(); watched.clear(); listeners.clear(); sweepAt = WATCH_SWEEP_FROM;
 }

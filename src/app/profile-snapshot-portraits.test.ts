@@ -8,7 +8,7 @@ import { profileSnapshotKey, type ProfileSnapshotLook } from "../../shared/profi
 import { applyProfileIcon, createProfileIconCanvasPainter } from "./profile-icons";
 import {
   PROFILE_SNAPSHOT_PORTRAIT_LIMIT, checkProfileSnapshots, profileSnapshotPortrait, resetProfileSnapshotPortraits,
-  setProfileSnapshotRenderer, setProfileSnapshotSource,
+  setProfileSnapshotRenderer, setProfileSnapshotSource, watchedProfileSnapshotCount,
 } from "./profile-snapshot-portraits";
 import { keepCanvasMoving, movingCanvasCount } from "./moving-canvases";
 
@@ -169,4 +169,19 @@ it("draws a galaxy look live, in DOM and canvas portraits alike, and stops once 
   expect(context.drawImage).not.toHaveBeenCalled();
   expect(movingCanvasCount()).toBe(1);
   keepCanvasMoving(canvas, null);
+});
+
+it("lets go of icons whose rows left the page, as chat rebuilds a row per message, long before hundreds pile up", () => {
+  setup();
+  const shown: HTMLElement[] = [];
+  let mostWatched = 0;
+  for (let message = 0; message < 300; message++) {
+    const icon = document.createElement("span"); document.body.append(icon);
+    applyProfileIcon(icon, PROFILE_ICON_SNAPSHOT, `player-${message}`);
+    shown.push(icon);
+    // The collapsed chat keeps its newest two rows.
+    while (shown.length > 2) shown.shift()!.remove();
+    mostWatched = Math.max(mostWatched, watchedProfileSnapshotCount());
+  }
+  expect(mostWatched).toBeLessThanOrEqual(64);
 });

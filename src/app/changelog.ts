@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.910.5": [
+    "Old chat messages no longer stay in memory during long sessions",
+  ],
   "0.910.4": [
     "Kills are sent to the server once a minute, so drops can take up to a minute to appear",
   ],
@@ -3486,6 +3489,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.910.5": "2026-10-16",
   "0.910.4": "2026-10-16",
   "0.910.3": "2026-10-16",
   "0.910.2": "2026-10-16",
