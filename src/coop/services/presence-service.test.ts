@@ -3,6 +3,14 @@ import { Identity } from "spacetimedb";
 import { createPresenceService } from "./presence-service";
 import { SPEED_SYNC_HOLD_MS } from "./speed-sync";
 
+// The service reads the trusted clock, which keeps its own handle on the real timer, so patching
+// performance.now only sometimes reached it. Tests set `clockNow` to own the time; null is the real clock.
+let clockNow: number | null = null;
+vi.mock("../../app/trusted-clock", async (original) => {
+  const real = await original<typeof import("../../app/trusted-clock")>();
+  return { ...real, monotonicNowMs: () => clockNow ?? real.monotonicNowMs() };
+});
+
 it("preserves the global online total through map handoffs and resets it on account disconnect", () => {
   const presence = createPresenceService({ changes: { notify() {} } } as any);
   presence.tables.upsertWorldStatus({ id: 0, onlinePlayers: 21 });
@@ -192,14 +200,13 @@ it("holds speed changes off the wire while the eye is off and flushes once prese
   // Turning the eye back on restores the server's stored speed once the value
   // has settled, and keeps offering it until then rather than dropping it.
   multiplayerEnabled = true;
-  const start = performance.now();
-  vi.spyOn(performance, "now").mockReturnValue(start);
+  clockNow = 1_000_000;
   presence.api.syncMovementState(100, 100, 0, 0, "keyboard", true);
   expect(sent).not.toContain("speed sync");
-  vi.spyOn(performance, "now").mockReturnValue(start + SPEED_SYNC_HOLD_MS);
+  clockNow += SPEED_SYNC_HOLD_MS;
   presence.api.syncMovementState(100, 100, 0, 0, "keyboard", true);
   expect(sent).toContain("speed sync");
-  vi.restoreAllMocks();
+  clockNow = null;
 });
 
 it("holds movement until the connection has registered, then sends the current position", () => {
