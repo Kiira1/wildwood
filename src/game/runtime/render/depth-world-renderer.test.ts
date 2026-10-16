@@ -197,8 +197,6 @@ it("draws a player standing in a portal's gateway over its swirl, and one behind
   expect(order({ x: 200, y: 237 }, { x: 230, y: 250 })).toEqual(["portal", "remote", "player"]);
   // Above the arch, or beside its pillars, the portal still stands in front.
   expect(order({ x: 200, y: 120 }, { x: 330, y: 237 })).toEqual(["player", "remote", "portal"]);
-  // Stepping out of the front draws over the swirl while walking.
-  expect(order({ x: 200, y: 237, moving: true, portalExit: "front" }, { x: 330, y: 237 })).toEqual(["remote", "portal", "player"]);
-  // Walking up through the gate, or down into it from behind, stays behind the swirl.
-  expect(order({ x: 200, y: 237, moving: true, moveX: 0, moveY: -1 }, { x: 230, y: 250, moving: true, facing: -Math.PI / 2 })).toEqual(["player", "remote", "portal"]);
+  // Walking through the gate sorts by the feet: above the arch's base, behind the swirl.
+  expect(order({ x: 200, y: 237, moving: true }, { x: 230, y: 250, moving: true })).toEqual(["player", "remote", "portal"]);
 });

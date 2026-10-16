@@ -218,11 +218,11 @@ export function createDepthWorldRenderer(options: {
     if (includePortal && portal) queueLayer(portal.depth, 2, "portal");
     const secondary = options.secondaryPortal();
     if (secondary) queueLayer(secondary.depth, 2, "secondaryPortal");
-    // Someone stepping out of a gateway's front, or standing in it (arrived), draws over its swirl. Walking in from
-    // behind or out its back stays behind it, so nobody pops in front of the arch partway through.
-    const inFront = (x: number, feet: number, front: boolean) => {
+    // Someone standing still in a gateway draws over its swirl; walking, everyone sorts by their feet, so they
+    // sink into a portal and come out of it.
+    const inFront = (x: number, feet: number, standing: boolean) => {
       let depth = feet;
-      if (!front) return depth;
+      if (!standing) return depth;
       for (const gate of [includePortal ? portal : null, secondary]) {
         if (!gate || gate.x === undefined || !gate.width || !gate.height) continue;
         if (Math.abs(x - gate.x) <= gate.width * .32 && feet < gate.depth && feet > gate.depth - gate.height * .5) depth = Math.max(depth, gate.depth + .5);
@@ -239,7 +239,7 @@ export function createDepthWorldRenderer(options: {
       queueLayer(inFront(remotePlayer.x, remotePlayer.y + 29, !remotePlayer.moving), 1, "remotePlayer", remotePlayer);
     }
     const local = options.player;
-    queueLayer(inFront(local.x, local.y + 29, local.portalExit === "front" || (!local.moving && local.portalExit !== "back")), 1, "player");
+    queueLayer(inFront(local.x, local.y + 29, !local.moving), 1, "player");
     dynamicLayers.length = layerCount;
     dynamicLayers.sort((a, b) => a.depth - b.depth || a.priority - b.priority);
 

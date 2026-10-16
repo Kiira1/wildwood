@@ -1,4 +1,8 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.908.9": [
+    "Portals keep your controls: walk on while you hold, stop when you let go",
+    "No more being walked out of a portal on your own",
+  ],
   "0.908.8": [
     "Utility tree: new Card, Gear, Mining, Skill and Refine Luck research",
     "Utility tree branches evenly: one node, then two",
@@ -3439,6 +3443,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.908.9": "2026-10-16",
   "0.908.8": "2026-10-15",
   "0.908.7": "2026-10-15",
   "0.908.6": "2026-10-15",

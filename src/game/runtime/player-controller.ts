@@ -171,7 +171,6 @@ export function createPlayerController(options: {
     let { x: mx, y: my } = clampMovementVector(input.x, input.y);
     const source = input.source;
     player.moving = Math.hypot(mx, my) > 0;
-    player.moveX = mx; player.moveY = my;
     if (player.moving) {
       player.x += mx * movementSpeed * dt;
       player.y += my * movementSpeed * dt;

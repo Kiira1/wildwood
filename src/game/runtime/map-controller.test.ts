@@ -293,29 +293,24 @@ describe("walking straight through a portal", () => {
     expect(f.currentMapId()).toBe("town");
   });
 
-  it("walks out of the far portal the way it went in, and carries the camera with the player", () => {
-    const camera = { x: 40, y: 10, zoom: 1 };
-    const down = portalArrivalHarness({ x: 300, y: 400 }, { instantTravelReady: () => true, camera, changeMap: vi.fn(() => new Promise<boolean>(() => {})) });
-    down.controller.updatePortal(1 / 60);
+  it("leaves the player's own input alone through a walk-through, and carries the camera with the player", () => {
+    const camera = { x: 40, y: 10, zoom: 1 }, keys = { clear: vi.fn() }, stopTouchMove = vi.fn();
+    const f = portalArrivalHarness({ x: 300, y: 400 }, { instantTravelReady: () => true, camera, keys, stopTouchMove, changeMap: vi.fn(() => new Promise<boolean>(() => {})) });
+    f.controller.updatePortal(1 / 60);
+    expect(f.currentMapId()).toBe(f.desertMapId);
+    // Held keys and the stick carry on: the player walks on as long as they hold them, and stops when they let go.
+    expect(keys.clear).not.toHaveBeenCalled();
+    expect(stopTouchMove).not.toHaveBeenCalled();
     // The arch holds its place on screen: the camera moved exactly as far as the player.
     expect(camera).toEqual({ x: 240, y: 210, zoom: 1 });
-    // Not heading up: out the front, past the arch's base (y 300).
-    expect(down.controller.stepOutMovement()).toEqual({ x: 0, y: 1, source: "steer" });
-    expect(down.player.portalExit).toBe("front");
-    down.player.y = 312;
-    expect(down.controller.stepOutMovement()).toBeNull();
-    expect(down.player.portalExit).toBeNull();
+  });
 
-    const up = portalArrivalHarness({ x: 300, y: 400 }, { instantTravelReady: () => true, changeMap: vi.fn(() => new Promise<boolean>(() => {})) });
-    Object.assign(up.player, { moveX: .3, moveY: -.95 });
-    up.controller.updatePortal(1 / 60);
-    // Heading up and a little right: out the back the same way, clear above the arch's top (y 200).
-    const out = up.controller.stepOutMovement()!;
-    expect(out.x).toBeCloseTo(.3 / Math.hypot(.3, .95));
-    expect(out.y).toBeCloseTo(-.95 / Math.hypot(.3, .95));
-    expect(up.player.portalExit).toBe("back");
-    up.player.y = 165;
-    expect(up.controller.stepOutMovement()).toBeNull();
+  it("still stops the player for a crossing that waits on the server behind the fade", () => {
+    const keys = { clear: vi.fn() }, stopTouchMove = vi.fn();
+    const f = portalArrivalHarness({ x: 300, y: 400 }, { instantTravelReady: () => false, keys, stopTouchMove });
+    f.controller.updatePortal(1 / 60);
+    expect(keys.clear).toHaveBeenCalled();
+    expect(stopTouchMove).toHaveBeenCalled();
   });
 
   it("waits for the server, as before, when the destination's art is still loading", async () => {
