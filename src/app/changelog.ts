@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.908.4": [
+    "Leaderboard's Time Played menu in black and grey instead of green",
+  ],
   "0.908.3": [
     "Smoother full-screen chat scrolling",
     "Older chat messages load before you reach the top",
@@ -3413,6 +3416,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.908.4": "2026-10-15",
   "0.908.3": "2026-10-15",
   "0.908.2": "2026-10-15",
   "0.908.1": "2026-10-15",
