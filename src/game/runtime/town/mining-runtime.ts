@@ -114,7 +114,7 @@ export function createMiningRuntime(deps: {
   }
 
   function stop() {
-    target = null; elapsed = 0; swung = 0; landed = 0; brokenShown = 0;
+    target = null; elapsed = 0; swung = 0; landed = 0; brokenShown = 0; miningScene.blocked = null;
     miningScene.target = null; miningScene.progress = 0; miningScene.pickaxeOut = false; miningScene.swingClock = 0;
   }
 
@@ -193,10 +193,11 @@ export function createMiningRuntime(deps: {
     const rock = sending === null ? rockInReach() : null;
     if (!rock) { stop(); return; }
     if (rock.id !== target?.id) { target = rock; elapsed = 0; swung = 0; landed = 0; }
-    if (!source.hasPickaxe?.()) { stop(); say("You need a pickaxe. The Smith in Town has one.", "#ffd75e", rock.id); return; }
+    if (!source.hasPickaxe?.()) { stop(); miningScene.blocked = "pickaxe"; say("You need a pickaxe. The Smith in Town has one.", "#ffd75e", rock.id); return; }
     const vein = MINING_VEINS[rock.vein];
     if (!miningVeinOpen(vein, source.savedProgress?.())) {
       stop();
+      miningScene.blocked = "vein";
       say(`Reach ${miningVeinMap(vein)} to mine ${REFINE_ORES[vein.ore].name}.`, "#ff9b91", rock.id);
       return;
     }
@@ -204,7 +205,7 @@ export function createMiningRuntime(deps: {
     const space = deps.bag?.();
     if (space) {
       const { needed, room } = roomForOres(space, rockOreKinds(rock));
-      if (!room) { stop(); say(bagFullForOres(needed), "#ff9b91", rock.id); return; }
+      if (!room) { stop(); miningScene.blocked = "bag"; say(bagFullForOres(needed), "#ff9b91", rock.id); return; }
     }
     const seconds = miningBreakSeconds(rock, source.mining?.() ?? 0, source.wornCardStats?.().miningSpeed ?? 0), hits = miningHits(seconds);
     miningScene.target = rock.id;

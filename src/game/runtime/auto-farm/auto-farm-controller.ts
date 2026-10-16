@@ -19,6 +19,7 @@ import {
 import { formatCompactNumber } from '../../../../shared/compact-number';
 import { isSoulMap, SOUL_STAT_DETAILS, type SoulStatId } from '../../../../shared/soul-dimension';
 import { soulStatOfCampName } from '../../soul-world';
+import { createAutoMine, type AutoMineSource } from './auto-mine';
 
 /** An attacker of another kind is fought off on the way only if it dies within this many seconds. */
 const QUICK_DEFENCE_SECONDS = 3;
@@ -140,9 +141,14 @@ export function createAutoFarmController(options: {
   reportDeath?: (detail: string) => void;
   /** Whether a kill of this reward gives nothing now, the stat at its cap: the "Capped" its label shows (reward-labels.ts). */
   rewardCapped?: (reward: FarmReward, soul: SoulStatId | null) => boolean;
+  /** The mining session: with it, the Town's button runs Auto Mine (auto-mine.ts) instead. */
+  mining?: () => AutoMineSource | null | undefined;
 }) {
   const { player, enemies, spawnSites } = options;
   const now = options.now ?? monotonicNowMs;
+  /** Auto Mine steers in the Town, where nothing is farmed; Auto Farm everywhere else. */
+  const mine = options.mining ? createAutoMine({ player, mapId: options.mapId, source: options.mining, storage: options.priorityStorage,
+    unavailable: options.unavailable, connection: options.connection, paused: options.paused, speed: options.speed, now }) : null;
   let priority: AutoFarmPriority = readAutoFarmPriority(options.priorityStorage);
   let pullAll = readAutoFarmPull(options.priorityStorage);
   /** The groups switched to Aggro beside their sliders; null until one is touched, when Pull Whole Group's own picks apply. */
@@ -611,6 +617,7 @@ export function createAutoFarmController(options: {
    * any travel but its own, and a player farming by hand had to start it again.
    */
   function travelStarted() {
+    mine?.travelStarted();
     zeroWaiting = false;
     if (!active && !pendingResume) return;
     // After an update reload the farm waits as a restored intent, with no startedIdentity yet: travel carries that intent on.
@@ -644,6 +651,8 @@ export function createAutoFarmController(options: {
 
   function movement(manual: Movement, dt: number): Movement {
     refresh();
+    const mining = mine?.movement(manual, dt);
+    if (mining) return mining;
     manualControl = Boolean(manual.x || manual.y);
     if (recovering) return idle();
     // Arrived in a portal: walk out before resuming, farming or holding ground. Never on the way into one, and
@@ -821,7 +830,7 @@ export function createAutoFarmController(options: {
     return check.ready ? 'Boss Next' : check.line;
   }
 
-  return { start, stop: (reason?: string) => { zeroWaiting = false; stop(reason); }, defeated, refresh, choices, movement, travelStarted,
+  return { start, stop: (reason?: string) => { zeroWaiting = false; stop(reason); }, defeated, refresh, choices, movement, travelStarted, mine,
     /** `waiting`: stopped for travel, and starting again on the next map with enemies. The player can still Stop it. */
     state: () => ({ active, waiting: !active && Boolean(pendingResume), selected, selectedLabel, shares: { ...shares }, phase, advance, fightBosses,
       status: active && !recovering && options.paused() ? 'Paused' : status }),

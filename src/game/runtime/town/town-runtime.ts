@@ -57,10 +57,10 @@ export function goThroughDoor(options: {
 }
 
 /** The village's water and building footprints, and the rooms' walls and furniture: a player cannot walk through them. */
-const SOLIDS = [...SOUL_VILLAGE_SOLIDS, ...SOUL_INTERIOR_SOLIDS];
+export const TOWN_SOLIDS: readonly SoulSolid[] = [...SOUL_VILLAGE_SOLIDS, ...SOUL_INTERIOR_SOLIDS];
 /** Where the feet are below the player's position (depth-world-renderer sorts the player there too), and how wide. */
 const FEET_OFFSET = TOWN_FEET_OFFSET;
-const FEET_RADIUS = 12;
+export const TOWN_FEET_RADIUS = 12;
 /** A door swings open while feet are this near its sill. */
 const DOOR_OPEN_RANGE = 120;
 /** Going through: a few steps into the doorway while the screen goes dark. */
@@ -158,8 +158,8 @@ export function createTownRuntime(deps: {
    */
   function resolveCollision() {
     const { player } = deps;
-    const feet = { x: player.x, y: player.y + FEET_OFFSET, r: FEET_RADIUS };
-    for (const solid of SOLIDS) {
+    const feet = { x: player.x, y: player.y + FEET_OFFSET, r: TOWN_FEET_RADIUS };
+    for (const solid of TOWN_SOLIDS) {
       if (feet.x <= solid.left - feet.r || feet.x >= solid.right + feet.r || feet.y <= solid.top - feet.r || feet.y >= solid.bottom + feet.r) continue;
       pushOutOf(feet, solid);
     }
@@ -274,7 +274,7 @@ export function createTownRuntime(deps: {
     const feetX = player.x, feetY = player.y + FEET_OFFSET;
     const heading = Number.isFinite(lastY) ? player.y - lastY : 0;
     for (const door of TOWN_DOORS) if (Math.hypot(feetX - door.x, feetY - door.y) < DOOR_OPEN_RANGE) SOUL_DOORS_OPEN.add(door.index);
-    const into = TOWN_DOORS.find(door => SOUL_DOORS_OPEN.has(door.index) && Math.abs(feetX - door.x) < door.half && feetY < door.enter + FEET_RADIUS + 8);
+    const into = TOWN_DOORS.find(door => SOUL_DOORS_OPEN.has(door.index) && Math.abs(feetX - door.x) < door.half && feetY < door.enter + TOWN_FEET_RADIUS + 8);
     if (into && heading < 0) { startDoorway(into, true); return; }
     const room = townRoomAt(player.x, player.y);
     if (room && heading > 0 && Math.abs(feetX - room.exit.x) < room.exit.half && feetY > room.exit.y + 4) startDoorway(room, false);

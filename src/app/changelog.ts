@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.910.0": [
+    "Auto Mine: pick ores in the Town and it walks to the Copper Hills and mines them",
+  ],
   "0.909.4": [
     "Smoother play around players wearing Galaxy gear: its shimmer costs far less to draw",
   ],
@@ -3469,6 +3472,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.910.0": "2026-10-16",
   "0.909.4": "2026-10-16",
   "0.909.3": "2026-10-16",
   "0.909.2": "2026-10-16",

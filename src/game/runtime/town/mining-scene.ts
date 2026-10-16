@@ -14,6 +14,8 @@ export const miningScene = {
   pickaxeOut: false,
   /** The pickaxe swing's clock, counting down like a weapon's attack clock (sword-swing.ts reads it). */
   swingClock: 0,
+  /** Why the rock in reach is not being mined, if it is not: no pickaxe, its vein shut, or no bag room. */
+  blocked: null as "pickaxe" | "vein" | "bag" | null,
 };
 
 export function resetMiningScene() {
@@ -22,4 +24,5 @@ export function resetMiningScene() {
   miningScene.progress = 0;
   miningScene.pickaxeOut = false;
   miningScene.swingClock = 0;
+  miningScene.blocked = null;
 }
