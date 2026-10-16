@@ -13,7 +13,8 @@ import { upgradeSlotForItem } from "../../shared/slot-upgrades";
 import { cleanSoulStats, soulAttackSpeedBonus, withSoulStats, type SoulStats } from "../../shared/soul-dimension";
 import { challengeMinimumInterval } from "../../shared/prestige-challenge";
 import { weaponAttackRange } from "../game/weapon-combat";
-import { cardChance, cardStatFactors, cardTotalsForLevels } from "../../shared/card-effects";
+import { cardChance, cardStatFactors, cardTotalsForLevels, cardValue } from "../../shared/card-effects";
+import { STAT_NAMES } from "../../shared/card-text";
 
 type ItemCardSlots = Readonly<Record<string, { cards: readonly string[] }>>;
 
@@ -304,20 +305,26 @@ export function profileStatDisplayRows(
   const techGain = researchStatRewardMultiplier(ranks), prestigeGain = prestigeStatMultiplier(prestigeLevel);
   // The guild's daily quest bonus multiplies in last, as the server pays it.
   const guildGain = Math.max(1, Number.isFinite(guildBonus) ? guildBonus : 1);
+  // Worn cards multiply on top: all-stat ones (Gravebloom) every reward, Bounty ones a single stat's.
+  const cardTotals = profileCardTotals(profile);
+  const cardGain = 1 + Math.max(0, cardValue(cardTotals, "allStatGain")) / 100;
+  const singleStatCards = (Object.entries(cardTotals.statGain) as [keyof typeof STAT_NAMES, number][]).filter(([, value]) => value > 0);
   const percentPoints = (fraction: number) => `${Math.round(fraction * 1000) / 10}%`;
   // Both factors have whole-percent precision. Round their integer product
   // once so half-percent ties and the expanded/collapsed totals agree.
-  const gainPercent = Math.round(Math.round(techGain * 100) * Math.round(prestigeGain * 100) / 100 * Math.round(guildGain * 100) / 100) - 100;
+  const gainPercent = Math.round(Math.round(techGain * 100) * Math.round(prestigeGain * 100) / 100 * Math.round(guildGain * 100) / 100 * Math.round(cardGain * 100) / 100) - 100;
   const statGain = `+${gainPercent}%`;
   stats.push({
     kind: "stat-gain", label: "Stat Gain:", base: techGain.toFixed(2),
-    equationOperator: "×", multiplier: (prestigeGain * guildGain).toFixed(2), total: statGain,
+    equationOperator: "×", multiplier: (prestigeGain * guildGain * cardGain).toFixed(2), total: statGain,
     equationTotal: `${((gainPercent + 100) / 100).toFixed(2)}×`,
-    hideEquation: techGain <= 1 || prestigeGain * guildGain <= 1,
+    hideEquation: techGain <= 1 || prestigeGain * guildGain * cardGain <= 1,
     sources: [
       ...(techGain > 1 ? [{ label: "Tech" as const, value: `${techGain.toFixed(2)}×` }] : []),
       ...(prestigeGain > 1 ? [{ label: "Prestige" as const, value: `${prestigeGain.toFixed(2)}×` }] : []),
       ...(guildGain > 1 ? [{ label: "Guild" as const, value: `${guildGain.toFixed(2)}×` }] : []),
+      ...(cardGain > 1 ? [{ label: "Cards" as const, value: `${cardGain.toFixed(2)}×` }] : []),
+      ...singleStatCards.map(([stat, value]) => ({ label: "Cards" as const, value: `+${Math.round(value * 10) / 10}% ${STAT_NAMES[stat]}` })),
     ],
   });
   // Keen Edge pays critical chance and critical damage on top of research, so

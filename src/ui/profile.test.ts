@@ -331,6 +331,15 @@ describe("stat gain multiplication", () => {
       sources: [{ label: "Tech", value: "1.45×" }, { label: "Prestige", value: "1.10×" }] });
     expect(gain(5, 1)).toMatchObject({ equationTotal: "1.27×", total: "+27%" });
   });
+  it("multiplies in the worn cards' stat gain, and names single-stat ones", () => {
+    const row = (cards: string[]) => profileStatDisplayRows({
+      progress: { ...progress(), equippedHead: "basic_paper_hat" }, research: createEmptyResearchRanks(), itemUpgradeLevels: {},
+      itemCardSlots: { basic_paper_hat: { cards } },
+    } as unknown as Parameters<typeof profileStatDisplayRows>[0], () => "0%", MIN_ATTACK_INTERVAL, undefined, 1).find(r => r.kind === "stat-gain")!;
+    expect(row(["gravebloom_card"])).toMatchObject({ total: "+21%", hideEquation: true,
+      sources: [{ label: "Prestige", value: "1.10×" }, { label: "Cards", value: "1.10×" }] });
+    expect(row(["seed_spitter_card"]).sources).toContainEqual({ label: "Cards", value: "+3.6% Max Health" });
+  });
   it("omits the equation for one or zero bonuses", () => {
     expect(gain(0, 1)).toMatchObject({ hideEquation: true, sources: [{ label: "Prestige", value: "1.10×" }] });
     expect(gain(0, 0)).toMatchObject({ hideEquation: true, sources: [], total: "+0%" });

@@ -3,7 +3,7 @@ import { type CardDefinition, type CardEffect, type CardEffectId, type CardSlot 
 import { MAP_DISPLAY_NAMES } from "./rules";
 import type { RewardType } from "./enemy-definitions";
 
-const STAT_NAMES: Readonly<Record<RewardType, string>> = {
+export const STAT_NAMES: Readonly<Record<RewardType, string>> = {
   damage: "Damage", health: "Max Health", speed: "Attack Speed", armor: "Armor", regen: "Regen", crit: "Crit Damage",
 };
 export const CARD_SLOT_NAMES: Readonly<Record<CardSlot, string>> = { HAND: "Weapon", HEAD: "Helmet", CHEST: "Armor" };
