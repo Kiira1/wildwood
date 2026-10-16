@@ -11,6 +11,9 @@ import { createHomeStationTouchHandler } from "../ui/game-ui-runtime";
 import { playerTouchesUpgradeBench } from "../ui/upgrade-bench-controller";
 import { MAP_ASSET_GROUPS } from "./runtime/render/map-asset-groups";
 
+// Several tests walk a whole route through the Town step by step: seconds each, more on a busy machine.
+vi.setConfig({ testTimeout: 30_000 });
+
 const STATIONS = [
   { label: "Upgrade Bench", at: TOWN_BENCH_POSITION, door: 6 },
   { label: "Tech Research", at: TOWN_RESEARCH_POSITION, door: 1 },
