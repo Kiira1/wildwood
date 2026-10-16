@@ -5,6 +5,7 @@ import {
 import { REFINE_ORES } from '../../../../shared/refine';
 import { inTownHills, isTownMap, townRoomAt, TOWN_FEET_OFFSET } from '../../../../shared/town';
 import { monotonicNowMs } from '../../../app/trusted-clock';
+import { isNativePreview } from '../../../app/native-preview';
 import type { Movement } from '../player-input-controller';
 import { miningScene } from '../town/mining-scene';
 import { planTownPath, townFeetClear, type TownPoint } from '../town/town-path';
@@ -12,7 +13,10 @@ import type { PlayerState } from '../types';
 
 /** The ores picked to mine, per device, as Auto Farm's sliders are. */
 export const AUTO_MINE_ORES_KEY = 'wildstat:automine-ores:v1';
+/** Whose Auto Mine was on, kept where Auto Farm keeps its own, so an update's reload carries on mining. */
+export const AUTO_MINE_RESUME_KEY = 'wildstat:automine-resume:v1';
 type Store = Pick<Storage, 'getItem' | 'setItem'>;
+type ResumeStore = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
 
 /** What Auto Mine reads of the session: the pickaxe, the player's bare rocks, the server's clock and the unlocks. */
 export type AutoMineSource = {
@@ -93,6 +97,9 @@ export function createAutoMine(options: {
   mapId: () => string;
   source: () => AutoMineSource | null | undefined;
   storage?: () => Store | undefined;
+  /** Tab-local on the web, as Auto Farm's resume is; kept across an app upgrade on native. */
+  resumeStorage?: () => ResumeStore | undefined;
+  identity?: () => string | undefined;
   unavailable?: () => string | null;
   connection?: () => 'ready' | 'recovering' | 'ended';
   paused?: () => boolean;
@@ -105,8 +112,14 @@ export function createAutoMine(options: {
   const now = options.now ?? monotonicNowMs;
   const plan = options.plan ?? planTownPath;
   let picked = new Set(readOres(storage));
+  const resumeStorage = options.resumeStorage ?? (() => { try { return isNativePreview() ? window.localStorage : window.sessionStorage; } catch { return undefined; } });
+  const readResume = () => { try { return resumeStorage()?.getItem(AUTO_MINE_RESUME_KEY) ?? null; } catch { return null; } };
+  const writeResume = () => { try { resumeStorage()?.setItem(AUTO_MINE_RESUME_KEY, options.identity?.() ?? ''); } catch { /* It still runs this session. */ } };
+  const clearResume = () => { try { resumeStorage()?.removeItem(AUTO_MINE_RESUME_KEY); } catch { /* Nothing to carry over. */ } };
+  /** On when the page went away (an update's reload) or the session dropped: it comes back on once it can mine. */
+  let pending = readResume() !== null;
   let active = false;
-  let status = 'Off';
+  let status = pending ? 'Resuming Auto Mine' : 'Off';
   let target: { node: MiningNode; readyAt: number | null } | null = null;
   let chooseClock = 0;
   let route: TownPoint[] = [];
@@ -137,10 +150,23 @@ export function createAutoMine(options: {
   }
 
   function forget() { target = null; route = []; goal = null; chooseClock = 0; progress = { at: 0, distance: Infinity, waypoint: null }; }
-  function stop(reason = 'Auto Mine Stopped') {
+  /** `resume` keeps it to come back on (a dropped session); otherwise it stays off. */
+  function stop(reason = 'Auto Mine Stopped', resume = false) {
+    if (resume && active) pending = true;
+    if (!resume) { pending = false; clearResume(); }
     active = false;
     status = reason;
     forget();
+  }
+  /** Back on after a reload or a dropped session, once in the Town, connected and able to mine, for the same player. */
+  function resumeWhenReady() {
+    if (!pending) return;
+    const saved = readResume(), identity = options.identity?.();
+    if (saved && identity && saved !== identity) { stop('Off'); return; }
+    if (!isTownMap(options.mapId()) || (options.connection && options.connection() !== 'ready') || !options.source()
+      || options.unavailable?.() || options.paused?.() || problem()) return;
+    pending = false;
+    start();
   }
   function start() {
     if (options.connection && options.connection() !== 'ready') { stop('Connect to the Server to Mine'); return false; }
@@ -148,6 +174,8 @@ export function createAutoMine(options: {
     if (reason) { stop(reason); return false; }
     forget();
     active = true;
+    pending = false;
+    writeResume();
     status = 'Starting';
     return true;
   }
@@ -171,14 +199,15 @@ export function createAutoMine(options: {
   }
 
   function movement(manual: Movement, dt: number): Movement | null {
+    if (!active) resumeWhenReady();
     if (!active) return null;
     if (!isTownMap(options.mapId())) { stop('Auto Mine Stopped: Left the Town'); return null; }
     const connection = options.connection?.() ?? 'ready';
-    if (connection === 'ended') { stop('Auto Mine Stopped for Sign-In'); return null; }
+    if (connection === 'ended') { stop('Auto Mine Stopped for Sign-In', true); return null; }
     if (manual.x || manual.y) { status = 'Manual Control'; route = []; goal = null; return manual; }
     if (connection === 'recovering') { status = 'Reconnecting'; route = []; goal = null; return idle(); }
     const reason = options.unavailable?.();
-    if (reason) { stop(reason); return null; }
+    if (reason) { stop(reason, true); return null; }
     if (options.paused?.()) { status = 'Paused'; return idle(); }
     const blocker = problem();
     if (blocker) { status = blocker; forget(); return idle(); }
@@ -220,10 +249,10 @@ export function createAutoMine(options: {
     stop,
     movement,
     /** Any travel: leaving the Town ends it, and it does not come back on its own. */
-    travelStarted() { if (active) stop('Auto Mine Stopped: Left the Town'); },
+    travelStarted() { if (active || pending) stop('Auto Mine Stopped: Left the Town'); },
     inTown: () => isTownMap(options.mapId()),
     problem,
-    state: () => ({ active, status, target: target?.node ?? null }),
+    state: () => ({ active, waiting: !active && pending, status, target: target?.node ?? null }),
     picked: (ore: VeinOreId) => picked.has(ore),
     setPicked(ore: VeinOreId, on: boolean) {
       const next = new Set(picked);

@@ -273,3 +273,45 @@ describe('Auto Mine inside Auto Farm', () => {
     expect(s.farm.movement(none, DT)).toEqual(none);
   });
 });
+
+describe('after an update reload', () => {
+  function tab(resume: Map<string, string>, options: { identity?: string; map?: string; connection?: 'ready' | 'recovering' | 'ended' } = {}) {
+    const world = { map: options.map ?? 'town', connection: options.connection ?? 'ready' as 'ready' | 'recovering' | 'ended' };
+    const resumeStorage = { getItem: (key: string) => resume.get(key) ?? null, setItem: (key: string, value: string) => { resume.set(key, value); },
+      removeItem: (key: string) => { resume.delete(key); } };
+    const source = { hasPickaxe: () => true, minedNodeAt: () => null, serverNowMs: () => 5_000_000, savedProgress: () => ({}) };
+    const mine = createAutoMine({ player: { ...TOWN_ARRIVAL } as PlayerState, mapId: () => world.map, source: () => source,
+      storage: () => memoryStorage(), resumeStorage: () => resumeStorage, identity: () => options.identity ?? 'me',
+      connection: () => world.connection, speed: () => SPEED, now: () => 0 });
+    return { mine, world };
+  }
+  it('comes back on in the new page once connected in the Town', () => {
+    const resume = new Map<string, string>();
+    expect(tab(resume).mine.start()).toBe(true);
+    const reloaded = tab(resume, { connection: 'recovering' });
+    expect(reloaded.mine.state()).toMatchObject({ active: false, waiting: true });
+    reloaded.mine.movement(none, DT);
+    expect(reloaded.mine.state().active).toBe(false);
+    reloaded.world.connection = 'ready';
+    reloaded.mine.movement(none, DT);
+    expect(reloaded.mine.state().active).toBe(true);
+  });
+  it('stays off after Stop, after leaving the Town, and for another player', () => {
+    const stopped = new Map<string, string>();
+    const first = tab(stopped);
+    first.mine.start(); first.mine.stop();
+    const afterStop = tab(stopped); afterStop.mine.movement(none, DT);
+    expect(afterStop.mine.state().active).toBe(false);
+
+    const travelled = new Map<string, string>();
+    const second = tab(travelled);
+    second.mine.start(); second.mine.travelStarted();
+    const afterTravel = tab(travelled); afterTravel.mine.movement(none, DT);
+    expect(afterTravel.mine.state().active).toBe(false);
+
+    const shared = new Map<string, string>();
+    tab(shared, { identity: 'me' }).mine.start();
+    const other = tab(shared, { identity: 'someone else' }); other.mine.movement(none, DT);
+    expect(other.mine.state()).toMatchObject({ active: false, waiting: false });
+  });
+});

@@ -147,7 +147,7 @@ export function createAutoFarmController(options: {
   const { player, enemies, spawnSites } = options;
   const now = options.now ?? monotonicNowMs;
   /** Auto Mine steers in the Town, where nothing is farmed; Auto Farm everywhere else. */
-  const mine = options.mining ? createAutoMine({ player, mapId: options.mapId, source: options.mining, storage: options.priorityStorage,
+  const mine = options.mining ? createAutoMine({ player, mapId: options.mapId, source: options.mining, storage: options.priorityStorage, identity: options.localIdentity,
     unavailable: options.unavailable, connection: options.connection, paused: options.paused, speed: options.speed, now }) : null;
   let priority: AutoFarmPriority = readAutoFarmPriority(options.priorityStorage);
   let pullAll = readAutoFarmPull(options.priorityStorage);
