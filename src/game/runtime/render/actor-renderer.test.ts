@@ -142,7 +142,8 @@ describe("layered enemy rendering", () => {
     expect(ctx.drawImage).toHaveBeenCalledTimes(1);
     expect(ctx.scale).toHaveBeenCalledWith(-1, 1);
     expect(ctx.rotate).toHaveBeenCalledWith(.25 * .42 * -1);
-    expect(ctx.globalAlpha).toBeCloseTo(.7 * .75);
+    // A hit no longer fades the enemy; only its death fades it.
+    expect(ctx.globalAlpha).toBeCloseTo(.75);
   });
 
   const animatedFacingCases = Object.entries(ENEMY_SPRITE_LAYOUTS)

@@ -237,7 +237,6 @@ export function createPlayerCombatController(options: {
           if (distance <= nearest) { nearest = distance; target = enemy; }
         }
       }
-      spawnBurst(hit.x, hit.y, "#ffe9a6", 3, 40);
       if (target) applyPlayerHit(target, hit.damage, hit.critical, Math.PI / 2);
     }
   }
@@ -377,7 +376,6 @@ export function createPlayerCombatController(options: {
     const strikes = Math.random() < doubleStrikeChance() ? 2 : 1;
     for (let strike = 0; strike < strikes; strike++) applyPlayerHit(hit.enemy, damage, critical, angle);
     swordSkills.swing(hit.enemy, damage, critical, angle);
-    spawnBurst(player.x + Math.cos(angle) * attackRange() * hit.t, player.y + Math.sin(angle) * attackRange() * hit.t, "#f3f7ff", 6, 55);
     const second = splitShotTarget(hit.enemy);
     if (second) applyPlayerHit(second, weaponDamage(critical), critical, Math.atan2(second.y - player.y, second.x - player.x));
   }
@@ -804,8 +802,8 @@ export function createPlayerCombatController(options: {
    */
   function arrowImpact(projectile: Projectile, target: EnemyState | BossTarget, x: number, y: number) {
     const critical = projectile.critical === true;
+    // No spark on a hit: hits are too many to draw sparks for. Deaths keep their burst.
     applyPlayerHit(target, projectile.damage, critical, Math.atan2(projectile.vy, projectile.vx));
-    spawnBurst(x, y, "#fff0a1", 5, 52);
     const procs = projectile.skills;
     if (!procs?.arrowStorm && !procs?.ricochet) return;
     projectile.skills = procs.piercingShot ? PIERCE_ONLY : null;
@@ -829,7 +827,6 @@ export function createPlayerCombatController(options: {
           options.skillEffects.spawnSkillStreak(from.x, from.y, next.x, next.y, "#8fe3ff", 4, .32, true);
           options.skillEffects.spawnSkillRing(next.x, next.y, "#8fe3ff", 20, .26);
         } else streak(from.x, from.y, next.x, next.y, "#8fe3ff");
-        spawnBurst(next.x, next.y, "#8fe3ff", 4, 50);
         applyPlayerHit(next, projectile.damage * RICOCHET_DAMAGE_SHARE, critical, Math.atan2(next.y - from.y, next.x - from.x));
         from = next;
       }
@@ -869,7 +866,6 @@ export function createPlayerCombatController(options: {
         options.skillEffects?.spawnSkillStreak(beamFromX, beamFromY, beamFromX + projectile.vx / speed * PIERCING_SHOT_FLIGHT_DISTANCE,
           beamFromY + projectile.vy / speed * PIERCING_SHOT_FLIGHT_DISTANCE, "#ffc94d", 5, .3);
         options.skillEffects?.spawnSkillRing(hit.enemy.x, hit.enemy.y, "#ffe08a", 22, .24);
-        spawnBurst(hit.enemy.x, hit.enemy.y, "#ffe08a", 6, 70);
         hit = raycastProjectile(startX, startY, hitEndX, hitEndY, projectile.r, projectile.pierced);
       }
       if (hit) {

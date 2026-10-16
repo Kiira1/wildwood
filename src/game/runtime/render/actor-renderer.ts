@@ -742,7 +742,7 @@ export function createActorRenderer(options: {
       y: enemy.combatTargetY ?? options.player.y,
     };
     if (layers && sprite) {
-      ctx.globalAlpha = (enemy.hurt > 0 ? .7 : 1) * visibility;
+      ctx.globalAlpha = visibility;
       if (sprite.animation) {
         const animation = sprite.animation;
         const frame = sampleEnemyAnimation(enemy, animation, options.gameTime(), base.attackSpeed);
@@ -803,7 +803,7 @@ export function createActorRenderer(options: {
         }
       }
     } else if (imageReady && image && sprite) {
-      ctx.globalAlpha = (enemy.hurt > 0 ? .7 : 1) * visibility;
+      ctx.globalAlpha = visibility;
       ctx.drawImage(
         residentDrawable(image),
         -sprite.size / 2,
