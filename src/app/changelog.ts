@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.908.6": [
+    "Android beta signup explains what to do when the old internal-test link is unavailable",
+  ],
   "0.908.5": [
     "Walking through a portal carries you out the other side, the way you were going",
     "No more standing behind a portal's swirl after arriving",
@@ -3427,6 +3430,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.908.6": "2026-10-15",
   "0.908.5": "2026-10-15",
   "0.908.4": "2026-10-15",
   "0.908.3": "2026-10-15",

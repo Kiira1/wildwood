@@ -55,13 +55,13 @@ export function installClosedBetaInvite(openPage: (url: string) => Promise<void>
     overlay.innerHTML = '<div class="closed-beta-card"><h2 id="closedBetaInviteTitle">Join the WildStat closed beta</h2>'
       + '<p>Already joined the closed beta? Tap &ldquo;I\'ve joined&rdquo; below. Otherwise:</p>'
       + '<ol><li>Join the <strong>WildStat Android Beta Google Group</strong> with the same Google account as your phone\'s Play Store. Already a member? Go to step 2.</li>'
-      + '<li>Open Google Play below and choose <strong>Become a tester</strong>. Group membership alone does not enroll you in the closed test.</li></ol>'
-      + '<p>Previously an internal tester? Open the old internal test below and choose <strong>Leave the program</strong>, then return to step 2. If Play still shows internal testing, allow a few hours and retry. Keep WildStat installed.</p>'
+      + '<li>Open Google Play below and choose <strong>Become a tester</strong>. If it already says <strong>You are a tester</strong>, stay enrolled. Group membership alone does not enroll you in the closed test.</li></ol>'
+      + '<p>Still shown as an internal tester? Try the old internal link below and leave that program only. If it says <strong>App not available</strong>, skip that link and return to step 2. Do not leave an existing closed-beta enrollment. Keep WildStat installed.</p>'
       + '<p>Please play, report bugs, and stay opted in for at least 14 continuous days to help us qualify for public release.</p>'
       + '<p class="closed-beta-status" role="status" hidden></p>'
       + '<button type="button" class="closed-beta-group closed-beta-step">1. Join Google Group</button>'
       + '<button type="button" class="closed-beta-join closed-beta-step">2. Join on Google Play</button>'
-      + '<button type="button" class="closed-beta-internal">Former internal tester? Leave the old test</button>'
+      + '<button type="button" class="closed-beta-internal">Still in internal testing? Check the old test</button>'
       + '<div class="closed-beta-actions"><button type="button" class="closed-beta-later">Later</button><button type="button" class="closed-beta-confirm">I\'ve joined the closed beta</button></div></div>';
     const join = overlay.querySelector<HTMLButtonElement>('.closed-beta-join')!;
     const status = overlay.querySelector<HTMLElement>('.closed-beta-status')!;
@@ -88,8 +88,8 @@ export function installClosedBetaInvite(openPage: (url: string) => Promise<void>
       'After joining the closed test on Google Play, return here and tap “I\'ve joined the closed beta”.',
       'Could not open Google Play. Try again later.');
     bindPage('.closed-beta-internal', ANDROID_INTERNAL_TEST_URL,
-      'Leave only the old internal test, then return here and complete step 2. Already in the closed beta? Stay enrolled.',
-      'Could not open the old internal test. Try again later.');
+      'If the old page says App not available, skip it and open step 2. Leave only a program identified as internal testing; stay enrolled in the closed beta.',
+      'Could not open the old internal test. Try step 2 instead.');
     document.head.append(style);
     document.body.append(overlay);
     join.focus();

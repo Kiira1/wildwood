@@ -58,6 +58,14 @@ The internal track is paused and its tester list was deselected and saved on
 `https://play.google.com/apps/internaltest/4700797577968294212`; share it only as
 an exit route for former internal testers, never as an enrollment invitation.
 
+After internal eligibility was removed, the old internal link was verified to
+show **App not available** for an account whose main testing page still showed
+**You are a tester** and a Leave button. Do not require the old link as a signup
+step. If unavailable, go straight to the main testing page after joining the
+Group. Do not tell an already-enrolled closed tester to leave and rejoin. The
+generic **You are a tester** page does not identify the track, so it cannot by
+itself verify an individual tester's contribution to the closed-test count.
+
 Google requires each internal tester to opt out before opting into a closed test.
 Opening the testing link alone does not migrate them. See
 [Google's testing guidance](https://support.google.com/googleplay/android-developer/answer/9845334?hl=en).
