@@ -97,6 +97,7 @@ import DevSetAccessAuditLabelReducer from "./dev_set_access_audit_label_reducer"
 import DevSetChatModeratorReducer from "./dev_set_chat_moderator_reducer";
 import DevSetChatMuteReducer from "./dev_set_chat_mute_reducer";
 import DevSetEndlessTravelAccessReducer from "./dev_set_endless_travel_access_reducer";
+import DevSetJoinDateReducer from "./dev_set_join_date_reducer";
 import DevSuspendPlayerAccountReducer from "./dev_suspend_player_account_reducer";
 import DevSwapCharactersReducer from "./dev_swap_characters_reducer";
 import DevTeleportEndlessReducer from "./dev_teleport_endless_reducer";
@@ -1476,6 +1477,7 @@ const reducersSchema = __reducers(
   __reducerSchema("dev_set_chat_moderator", DevSetChatModeratorReducer),
   __reducerSchema("dev_set_chat_mute", DevSetChatMuteReducer),
   __reducerSchema("dev_set_endless_travel_access", DevSetEndlessTravelAccessReducer),
+  __reducerSchema("dev_set_join_date", DevSetJoinDateReducer),
   __reducerSchema("dev_suspend_player_account", DevSuspendPlayerAccountReducer),
   __reducerSchema("dev_swap_characters", DevSwapCharactersReducer),
   __reducerSchema("dev_teleport_endless", DevTeleportEndlessReducer),

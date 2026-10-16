@@ -3470,6 +3470,36 @@ export const devEraseAccount = spacetimedb.reducer(
   },
 );
 
+/**
+ * Corrects when an account began: the profile's Joined and the leaderboard's Account Created (from its next
+ * snapshot). `date` is YYYY-MM-DD and is stored at noon UTC, so it reads as that day in nearly every time zone.
+ */
+export const devSetJoinDate = spacetimedb.reducer(
+  { identityHex: t.string(), date: t.string(), reason: t.string() },
+  (ctx, { identityHex, date, reason }) => {
+    if (!isDatabaseOwnerIdentity(ctx.sender)) requireDeveloper(ctx, "dev_set_join_date");
+    const parts = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
+    const ms = parts ? Date.UTC(Number(parts[1]), Number(parts[2]) - 1, Number(parts[3]), 12) : NaN;
+    if (!Number.isFinite(ms) || new Date(ms).toISOString().slice(0, 10) !== date) throw new SenderError("Use a date like 2026-08-06.");
+    if (BigInt(ms) * 1000n > ctx.timestamp.microsSinceUnixEpoch) throw new SenderError("That date is in the future.");
+    let target: any;
+    try { target = Identity.fromString(identityHex); }
+    catch { throw new SenderError("That is not an identity."); }
+    const lifetime = ctx.db.playerLifetime.identity.find(target);
+    if (!lifetime) throw new SenderError("No account with that identity.");
+    const joinedAt = new Timestamp(BigInt(ms) * 1000n);
+    ctx.db.playerLifetime.identity.update({ ...lifetime, joinedAt });
+    syncPlayerJoinDate(ctx, target, joinedAt);
+    const standing = ctx.db.leaderboardStanding.identity.find(target);
+    if (standing) ctx.db.leaderboardStanding.identity.update({ ...standing, joinedAtMicros: joinedAt.microsSinceUnixEpoch });
+    recordModerationAction(ctx, {
+      targetIdentity: identityHex, targetName: ctx.db.playerProfile.identity.find(target)?.displayName ?? "",
+      channel: "account", action: "Join date set", reason: reason.trim() || "Corrected by the developer", actorType: "owner", rule: "account-correction",
+      before: lifetime.joinedAt.toDate().toISOString(), after: joinedAt.toDate().toISOString(),
+    });
+  },
+);
+
 /** The summary has been shown. Nothing else about the window changes. */
 export const acknowledgeOfflineSummary = spacetimedb.reducer({}, (ctx) => {
   requireControllingPlayer(ctx);
