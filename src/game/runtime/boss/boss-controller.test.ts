@@ -177,6 +177,31 @@ describe("Boss body and map enemies", () => {
   });
 });
 
+describe("Boss body contact with the player", () => {
+  it("counts standing anywhere on the body's edge as touching it, once per contact cooldown", () => {
+    vi.useFakeTimers();
+    const boss = () => harness.bosses.frostclaw;
+    const harness = createFrostclawHarness();
+    for (let step = 0; step < 24; step++) {
+      const angle = step / 24 * Math.PI * 2;
+      // Walk in from this side until pushed onto the edge, then stand still there.
+      harness.player.x = boss().x + Math.cos(angle) * 5; harness.player.y = boss().y + (boss().hitboxOffsetY ?? 0) + Math.sin(angle) * 5;
+      harness.controller.byKind.frostclaw.resolveCollision();
+      harness.damagePlayer.mockClear();
+      vi.advanceTimersByTime(800);
+      boss().contactDamageClock = 0;
+      harness.controller.byKind.frostclaw.resolveCollision();
+      expect(harness.damagePlayer, `standing still on the edge at ${Math.round(angle * 180 / Math.PI)} degrees`).toHaveBeenCalledOnce();
+    }
+    // A step away from the body is no contact.
+    harness.player.x = boss().x + boss().r + harness.player.r + 20; harness.player.y = boss().y + (boss().hitboxOffsetY ?? 0);
+    boss().contactDamageClock = 0; harness.damagePlayer.mockClear();
+    harness.controller.byKind.frostclaw.resolveCollision();
+    expect(harness.damagePlayer).not.toHaveBeenCalled();
+    vi.useRealTimers();
+  });
+});
+
 describe("Boss defeat presentation", () => {
   it("leaves player stats unchanged when a local boss dies or its result is replayed", () => {
     let local = { encounter: 71n, hp: BOSS_RULES.FROSTCLAW_MAX_HP, maxHp: BOSS_RULES.FROSTCLAW_MAX_HP, alive: true };
@@ -570,14 +595,20 @@ describe("Miremaw boss", () => {
     expect(miremawBoss.hitboxOffsetY).toBe(63);
     const top = miremawBoss.y + (miremawBoss.hitboxOffsetY ?? 0) - (miremawBoss.ry ?? miremawBoss.r) - player.r;
     player.x = miremawBoss.x;
-    player.y = top - 1;
+    player.y = top - 6;
     controller.byKind.miremaw.resolveCollision();
     expect(damagePlayer).not.toHaveBeenCalled();
-    expect(player.y).toBe(top - 1);
+    expect(player.y).toBe(top - 6);
 
-    player.y = top + 1;
+    // Right on the edge is touching: it hits, and there is nothing to push.
+    player.y = top - 1;
     controller.byKind.miremaw.resolveCollision();
     expect(damagePlayer).toHaveBeenCalledOnce();
+    expect(player.y).toBe(top - 1);
+
+    // Inside the body, the player is pushed back onto the edge.
+    player.y = top + 1;
+    controller.byKind.miremaw.resolveCollision();
     expect(player.y).toBeCloseTo(top);
   });
 

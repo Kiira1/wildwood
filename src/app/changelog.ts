@@ -2,6 +2,7 @@ export const RELEASE_NOTES: Record<string, string[]> = {
   "0.908.11": [
     "Auto Farm walks out of the portal it arrives in instead of standing in it",
     "Lighter combat: no sparks on hits (deaths keep theirs), and enemies no longer fade when hit",
+    "Touching a boss anywhere now counts for its touch damage, so Reflect works all around it",
   ],
   "0.908.10": [
     "Profiles show the cards, refine and skills of gear worn under a cosmetic look",
