@@ -4,6 +4,7 @@ export const RELEASE_NOTES: Record<string, string[]> = {
     "No more standing behind a portal's swirl after arriving",
     "Auto Farm no longer stands inside the portal after moving maps",
     "Smoother camera through portals",
+    "Settings: on/off switches, Game settings in sections, tighter rows",
   ],
   "0.908.4": [
     "Leaderboard's Time Played menu in black and grey instead of green",

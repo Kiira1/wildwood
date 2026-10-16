@@ -401,8 +401,31 @@
   .settings-panel[hidden] { display: none; }
 
   .settings-panel > * { flex: 0 0 auto; width: min(520px, 100%); }
-  .settings-panel .setting-row { min-height: 44px; padding: 4px 0; }
-  .settings-panel .setting-toggle { min-height: 44px; }
+  .settings-panel .setting-row { min-height: 40px; padding: 1px 0; }
+  .settings-panel .setting-row + .setting-row { margin-top: 2px; }
+  .settings-panel .setting-toggle { min-height: 36px; }
+  /* Game's sections: a quiet heading over a hairline, none above the first. */
+  .settings-section-title { margin: 12px 0 2px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,.12); color: #9a9a9a; font: 900 13px/1 var(--font-rounded); letter-spacing: .04em; }
+  .settings-section-title:first-child { margin-top: 0; padding-top: 2px; border-top: 0; }
+  /* On/off settings are switches: grey off, the chat send button's green on. */
+  .settings-panel .setting-toggle[aria-pressed] {
+    position: relative; flex: 0 0 auto; width: 56px; min-width: 56px; height: 36px; margin: 0; padding: 0;
+    border: 0; background: none; box-shadow: none; color: transparent; font-size: 0; text-shadow: none; filter: none; transform: none;
+  }
+  .settings-panel .setting-toggle[aria-pressed]::before {
+    content: ""; position: absolute; top: 50%; left: 4px; right: 4px; height: 26px; margin-top: -13px; border-radius: 13px;
+    background: #3a3a3a; box-shadow: inset 0 0 0 1px rgba(255,255,255,.14); transition: background-color .15s;
+  }
+  .settings-panel .setting-toggle[aria-pressed="true"]::before { background: linear-gradient(#63ad5c, #347536); box-shadow: inset 0 0 0 1px #18371b; }
+  .settings-panel .setting-toggle[aria-pressed]::after {
+    content: ""; position: absolute; top: 50%; left: 8px; width: 18px; height: 18px; margin-top: -9px; border-radius: 50%;
+    background: #bdbdbd; box-shadow: 0 1px 2px rgba(0,0,0,.5); transition: transform .15s, background-color .15s;
+  }
+  .settings-panel .setting-toggle[aria-pressed="true"]::after { background: #fff; transform: translateX(22px); }
+  .settings-panel .setting-toggle[aria-pressed]:hover, .settings-panel .setting-toggle[aria-pressed]:active { background: none; filter: none; transform: none; }
+  .settings-panel .setting-toggle[aria-pressed]:focus-visible { outline: 2px solid rgba(255,255,255,.7); outline-offset: 0; border-radius: 18px; }
+  /* Buttons that act (Enter, Sign In, Replay): the chat send green, not the bright one. */
+  .settings-panel .setting-toggle:not([aria-pressed]):not(.danger) { border-color: #18371b; background: linear-gradient(#63ad5c, #347536); box-shadow: 0 3px 0 #18371b; }
   .settings-tabs { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 6px; padding-bottom: 8px; }
   .settings-tabs [hidden] { display: none; }
   .map-guide-collected-count { margin-left: 8px; font-size: 13px; font-weight: 700; color: rgba(255,255,255,.7); }
@@ -420,8 +443,8 @@
   .controls-settings .controls-reset { align-self: flex-start; min-height: 44px; margin-top: 8px; font-size: 13px; }
   /* A controller moves focus without a keyboard, so its highlight is drawn whenever one is in use. */
   html[data-input="gamepad"] .pad-focus { outline: 3px solid var(--gold) !important; outline-offset: 2px; }
-  .settings-panel .settings-connection { min-height: 28px; margin: 0 0 8px; font-size: 11px; opacity: .8; }
-  .settings-panel > .settings-content { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; padding: 2px 3px 12px; }
+  .settings-panel .settings-connection { min-height: 28px; margin: 0 0 8px; padding-inline: 12px; font-size: 11px; opacity: .8; }
+  .settings-panel > .settings-content { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; padding: 2px 12px 12px; }
   .settings-panel > .settings-content::-webkit-scrollbar { display: none; }
   .settings-tab-panel[hidden] { display: none; }
   .settings-tab-panel .setting-reset { margin-top: 28px; }
@@ -877,7 +900,7 @@
     border: 0;
     border-radius: 0;
     background: transparent;
-    accent-color: var(--green);
+    accent-color: #4f9a4a;
     appearance: none;
     -webkit-appearance: none;
     cursor: pointer;
@@ -886,7 +909,7 @@
   .volume-control input[type="range"]::-webkit-slider-runnable-track {
     height: 8px;
     border-radius: 999px;
-    background: linear-gradient(to right, var(--green) 0, var(--green) var(--volume-percent), #39463d var(--volume-percent), #39463d 100%);
+    background: linear-gradient(to right, #4f9a4a 0, #4f9a4a var(--volume-percent), #3a3a3a var(--volume-percent), #3a3a3a 100%);
     box-shadow: 0 0 0 2px #050805, inset 0 1px 2px rgba(0,0,0,.55);
   }
 
@@ -897,7 +920,7 @@
     margin-top: -18px;
     border: 3px solid #050805;
     border-radius: 50%;
-    background: linear-gradient(#efffe9, #69e56f);
+    background: linear-gradient(#a6dd9e, #4f9a4a);
     box-shadow: 0 3px 0 rgba(0,0,0,.42), 0 0 0 2px rgba(255,255,255,.18);
     appearance: none;
     -webkit-appearance: none;
@@ -907,14 +930,14 @@
     height: 8px;
     border: 0;
     border-radius: 999px;
-    background: #39463d;
+    background: #3a3a3a;
     box-shadow: 0 0 0 2px #050805, inset 0 1px 2px rgba(0,0,0,.55);
   }
 
   .volume-control input[type="range"]::-moz-range-progress {
     height: 8px;
     border-radius: 999px;
-    background: var(--green);
+    background: #4f9a4a;
   }
 
   .volume-control input[type="range"]::-moz-range-thumb {
@@ -923,7 +946,7 @@
     height: 44px;
     border: 3px solid #050805;
     border-radius: 50%;
-    background: linear-gradient(#efffe9, #69e56f);
+    background: linear-gradient(#a6dd9e, #4f9a4a);
     box-shadow: 0 3px 0 rgba(0,0,0,.42), 0 0 0 2px rgba(255,255,255,.18);
   }
 

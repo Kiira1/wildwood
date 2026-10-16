@@ -79,6 +79,13 @@ describe("Settings tabs", () => {
     expect(get("settings-account-panel").hidden).toBe(true);
     // Seven fixture rows and the Replay Tutorial row; the Controls tab holds the bindings.
     expect(get("settings-game-panel").querySelectorAll(".setting-row")).toHaveLength(8 + 1);
+    // Headed sections, each only where it has a row: Display, Chat, Device, Performance, Help.
+    const game = get("settings-game-panel").children;
+    expect(game.filter(child => child.className === "settings-section-title").map(child => child.textContent)).toEqual(["Display", "Chat", "Device", "Performance", "Help"]);
+    expect(game.map(child => child.className === "settings-section-title" ? child.textContent : child.children[0]?.id)).toEqual([
+      "Display", "attackRangeToggle", "Chat", "chatToggle", "Device", "toolbarHapticsToggle", "fullscreenToggle", "keepScreenOnToggle",
+      "Performance", "lowPerformanceToggle", "fpsToggle", "latencyToggle", "Help", "",
+    ]);
     expect(get("settings-audio-panel").querySelector("#sfxVolume")).toBe(audio);
     audio.dispatch("input");
     expect(listener).toHaveBeenCalledOnce();

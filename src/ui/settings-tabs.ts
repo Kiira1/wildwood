@@ -2,12 +2,21 @@ import { createCommunityLinks } from './community-links';
 import { controlsTabUseful, createControlsSettings } from './controls-settings';
 import { onGamepadChange } from './gamepad-controls';
 
-const SETTINGS_GROUPS = [
-  { id: "game", label: "Game", selectors: ["#toolbarHapticsToggle", "#selfProfileTapToggle", "#scientificNotationToggle", "#statPopupsToggle", "#enemyHpNumbersToggle", "#attackRangeToggle", "#remoteGhostsToggle", "#cameraZoomToggle", "#highResolutionToggle", "#chatToggle", "#chatTimestampsToggle", "#statTrackerToggle", "#baseStatRewardsToggle", "#gameTickerToggle", "#fullscreenToggle", "#keepScreenOnToggle", "#lowPerformanceToggle", "#fpsToggle", "#latencyToggle", "#replayTutorialRow"] },
-  { id: "controls", label: "Controls", selectors: ["#controlsSettings"] },
-  { id: "audio", label: "Audio", selectors: ["#musicVolume", "#sfxVolume"] },
-  { id: "account", label: "Account", selectors: ["#offlineProgressToggle", "#accountButton", "#accountStatus", ".setting-support", ".setting-legal", "#developerSettingsRow", ".setting-reset"] },
-] as const;
+type SettingsSection = { title?: string; selectors: readonly string[] };
+
+/** Game's long list is split into headed sections; the other tabs are one section each. */
+const SETTINGS_GROUPS: readonly { id: string; label: string; sections: readonly SettingsSection[] }[] = [
+  { id: "game", label: "Game", sections: [
+    { title: "Display", selectors: ["#attackRangeToggle", "#remoteGhostsToggle", "#cameraZoomToggle", "#enemyHpNumbersToggle", "#statPopupsToggle", "#baseStatRewardsToggle", "#scientificNotationToggle", "#statTrackerToggle", "#gameTickerToggle"] },
+    { title: "Chat", selectors: ["#chatToggle", "#chatTimestampsToggle"] },
+    { title: "Device", selectors: ["#toolbarHapticsToggle", "#selfProfileTapToggle", "#fullscreenToggle", "#keepScreenOnToggle"] },
+    { title: "Performance", selectors: ["#highResolutionToggle", "#lowPerformanceToggle", "#fpsToggle", "#latencyToggle"] },
+    { title: "Help", selectors: ["#replayTutorialRow"] },
+  ] },
+  { id: "controls", label: "Controls", sections: [{ selectors: ["#controlsSettings"] }] },
+  { id: "audio", label: "Audio", sections: [{ selectors: ["#musicVolume", "#sfxVolume"] }] },
+  { id: "account", label: "Account", sections: [{ selectors: ["#offlineProgressToggle", "#accountButton", "#accountStatus", ".setting-support", ".setting-legal", "#developerSettingsRow", ".setting-reset"] }] },
+];
 
 export function bindSettingsTabs(tabs: HTMLButtonElement[], panels: HTMLElement[]) {
   function select(index: number, focus = false) {
@@ -93,10 +102,16 @@ export function installSettingsTabs(doc: Document) {
     panel.className = "settings-tab-panel";
     panel.setAttribute("role", "tabpanel");
     panel.setAttribute("aria-labelledby", tab.id);
-    for (const selector of group.selectors) {
-      for (const control of settings.querySelectorAll<HTMLElement>(selector)) {
-        panel.append(control.closest(".setting-row") ?? control);
+    for (const section of group.sections) {
+      const rows = section.selectors.flatMap(selector => [...settings.querySelectorAll<HTMLElement>(selector)].map(control => control.closest<HTMLElement>(".setting-row") ?? control));
+      if (!rows.length) continue;
+      if (section.title) {
+        const heading = doc.createElement("h3");
+        heading.className = "settings-section-title";
+        heading.textContent = section.title;
+        panel.append(heading);
       }
+      for (const row of rows) panel.append(row);
     }
     tablist.append(tab);
     content.append(panel);
