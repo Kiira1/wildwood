@@ -6,6 +6,7 @@ import { createItemInspectionController } from "./item-inspection-controller";
 import { formatCompactNumber } from "./number-format";
 import { IRON_BOW, STARTER_BOW, STARTER_STONE } from "../game/inventory";
 import { watchCardDrops } from "./card-drop-feedback";
+import { setCardFoundPopupsEnabled } from "./card-found-setting";
 import { CARDS } from "../../shared/cards";
 afterEach(() => vi.unstubAllGlobals());
 
@@ -197,4 +198,18 @@ it("shows the pickaxe in the loadout's Tool slot, never to be equipped, and says
   expect(messages.at(-1)).toContain("no need to equip");
   document.getElementById("inventoryCosmeticsTab")!.click();
   expect(tool.hidden).toBe(true);
+});
+
+it("shows no card moment with Card Found Popups switched off", async () => {
+  page();
+  let listener = null as ((drop: { cardIds: readonly string[] }) => void) | null;
+  const shown: unknown[] = [];
+  watchCardDrops({ setOnCardDrop: callback => { listener = callback; } }, found => shown.push(found));
+  setCardFoundPopupsEnabled(false);
+  listener?.({ cardIds: ["needle_card"] });
+  await new Promise(resolve => setTimeout(resolve, 20));
+  expect(shown).toEqual([]);
+  setCardFoundPopupsEnabled(true);
+  listener?.({ cardIds: ["needle_card"] });
+  await vi.waitFor(() => expect(shown).toHaveLength(1));
 });

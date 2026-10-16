@@ -563,6 +563,21 @@ describe("autofarm against a ranged enemy with researched attack range", () => {
     expect(s.farm.state().status).not.toBe("Leaving the portal");
   });
 
+  it("leaves a player alone at a portal on a map with nothing to farm, such as the Town's travel portal", () => {
+    const portal: Circle = { x: 500, y: 490, r: 160 };
+    const s = setup([portal]);
+    s.add("Brood", 900, 900);
+    s.farm.start("Brood");
+    // Travel to the Town: the farm waits to resume on a map with enemies.
+    s.farm.travelStarted();
+    s.enemies.length = 0; s.spawnSites.length = 0;
+    s.setMap("town");
+    for (let frame = 0; frame < 90; frame++) s.advance(1000 / 60), s.tick();
+    expect(s.farm.state().waiting).toBe(true);
+    expect(s.player).toMatchObject({ x: 500, y: 500 });
+    expect(s.farm.state().status).not.toBe("Leaving the portal");
+  });
+
   it("stops at the edge of full reach, research and Long Shot included, never further in", () => {
     const at = (range: number) => autoFarmStandoff({ weaponRange: range, playerAttackRange: range, melee: false, playerRadius: 18,
       destination: { x: 0, y: 0, r: 16, type: "Bramble" }, enemy: true });

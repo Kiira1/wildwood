@@ -1,5 +1,6 @@
 import { cardDefinition } from "../../shared/cards";
 import { cardPortrait } from "./card-portrait";
+import { cardFoundPopupsEnabled } from "./card-found-setting";
 import { createCardFoundOverlay, type CardFound } from "./card-found-overlay";
 
 type CardDropListener = (drop: { cardIds: readonly string[] }) => void;
@@ -11,6 +12,8 @@ export function watchCardDrops(coop: CardDropSource | null | undefined, show?: (
   let announce = show;
   let queue = Promise.resolve();
   coop?.setOnCardDrop?.(({ cardIds }) => {
+    // Switched off, a find goes straight to the Cards tab with no popup.
+    if (!cardFoundPopupsEnabled()) return;
     announce ??= createCardFoundOverlay().show;
     for (const cardId of cardIds) {
       if (!cardDefinition(cardId)) continue;

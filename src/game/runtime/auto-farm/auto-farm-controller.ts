@@ -646,8 +646,9 @@ export function createAutoFarmController(options: {
     refresh();
     manualControl = Boolean(manual.x || manual.y);
     if (recovering) return idle();
-    // Arrived in a portal: walk out before resuming, farming or holding ground. Never on the way into one.
-    if (!manualControl && (active || pendingResume) && phase !== 'portal' && !options.paused()) {
+    // Arrived in a portal: walk out before resuming, farming or holding ground. Never on the way into one, and
+    // never where there is nothing to farm: a farm waiting in the Town pushed players off its travel portal.
+    if (!manualControl && (active || pendingResume) && groups().length > 0 && phase !== 'portal' && !options.paused()) {
       const stoodIn = portalStoodIn();
       if (stoodIn) return leavePortal(stoodIn);
     }

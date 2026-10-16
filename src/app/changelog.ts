@@ -1,4 +1,9 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.909.2": [
+    "Fixed being pushed off the Town's travel portal while Auto Farm waited to resume",
+    "Smoother card found animation",
+    "New Card Found Popups setting to turn the card animation off",
+  ],
   "0.909.1": [
     "Android app: a notice when an update is ready, applied by closing and reopening WildStat",
   ],
@@ -3458,6 +3463,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.909.2": "2026-10-16",
   "0.909.1": "2026-10-16",
   "0.909.0": "2026-10-16",
   "0.908.11": "2026-10-16",
