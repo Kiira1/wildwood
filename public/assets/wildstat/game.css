@@ -4415,9 +4415,9 @@
   .window-banner--long > span { font-size: 5.5cqw; }
 
 /* Native Android only: a dismissible prompt, safely above the bottom toolbar. */
-#androidUpdateBanner { position: fixed; z-index: 30; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 108px); transform: translateX(-50%); display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px; width: max-content; max-width: calc(100vw - 32px); box-sizing: border-box; padding: 12px 14px; border: 2px solid #090e13; border-radius: 12px; background: #121b24; box-shadow: 0 4px 16px #0008; color: #fff; font-size: 15px; font-weight: 900; }
-#androidUpdateBanner[hidden] { display: none; }
-#androidUpdateBanner button { min-width: 66px; min-height: 44px; padding: 8px 12px; border: 1px solid #416980; border-radius: 8px; background: #264e68; color: #fff; font: inherit; }
+#androidUpdateBanner, #appUpdateReadyBanner { position: fixed; z-index: 30; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 108px); transform: translateX(-50%); display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px; width: max-content; max-width: calc(100vw - 32px); box-sizing: border-box; padding: 12px 14px; border: 2px solid #090e13; border-radius: 12px; background: #121b24; box-shadow: 0 4px 16px #0008; color: #fff; font-size: 15px; font-weight: 900; }
+#androidUpdateBanner[hidden], #appUpdateReadyBanner[hidden] { display: none; }
+#androidUpdateBanner button, #appUpdateReadyBanner button { min-width: 66px; min-height: 44px; padding: 8px 12px; border: 1px solid #416980; border-radius: 8px; background: #264e68; color: #fff; font: inherit; }
 #androidUpdateBanner .android-update-later { border-color: transparent; background: transparent; }
 #androidUpdateBanner button:disabled { opacity: .6; }
 

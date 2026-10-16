@@ -8,6 +8,7 @@ import { createGemShopController } from "./gem-shop-controller";
 import { installDesktopHotkeys } from "./desktop-hotkeys";
 import { TOWN_CARD_SELLER_POSITION, TOWN_CARD_SELLER_REACH, TOWN_FEET_OFFSET, TOWN_OX_POSITION, TOWN_OX_REACH, TOWN_QUEST_BOARD_POSITION, TOWN_RESEARCH_POSITION, TOWN_SMITH_POSITION, TOWN_SMITH_REACH } from "../../shared/town";
 import { recentReleaseNotes } from "../app/changelog";
+import { installAppUpdateNotice } from "../app/app-update-notice";
 import { isDeveloperIdentity } from "../app/developer";
 import {
   VIRTUAL_PLAYER_MOVEMENT_HZ,
@@ -78,6 +79,7 @@ export function createGameOverlays(d: Record<string, any>) {
   e.signinVersionButton.setAttribute("aria-label", `WildStat alpha version ${d.version}. Toggle release notes`);
   e.minimapVersionEl.textContent = versionLabel;
   e.minimapVersionEl.setAttribute("aria-label", `Game alpha version ${d.version}. Open release notes`);
+  installAppUpdateNotice();
   return overlays;
 }
 

@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.909.1": [
+    "Android app: a notice when an update is ready, applied by closing and reopening WildStat",
+  ],
   "0.909.0": [
     "Cards drop 10× more often during the alpha",
     "New Card Seller in Town: three cards for ore, new ones every 3 hours",
@@ -3455,6 +3458,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.909.1": "2026-10-16",
   "0.909.0": "2026-10-16",
   "0.908.11": "2026-10-16",
   "0.908.10": "2026-10-16",

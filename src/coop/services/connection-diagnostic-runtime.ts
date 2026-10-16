@@ -8,6 +8,8 @@ const key = Symbol.for("wildstat.connection-diagnostics");
 const globals = globalThis as typeof globalThis & { [key: symbol]: unknown };
 const bus = (globals[key] ??= {}) as { collector?: ReturnType<typeof createConnectionDiagnostics> };
 export function recordConnectionDiagnostic(kind: ConnectionEventKind, data: Partial<ConnectionDiagnostic> = {}) { bus.collector?.record(kind, data); }
+/** Whether a collector is listening: events recorded before it starts are dropped. */
+export function connectionDiagnosticsActive() { return Boolean(bus.collector); }
 /** For events with no identity yet: delivered by the next connection in this tab. */
 export function recordCarriedConnectionDiagnostic(kind: ConnectionEventKind, data: Partial<ConnectionDiagnostic> = {}) { bus.collector?.record(kind, data, true); }
 export function flushConnectionDiagnostics() { return bus.collector?.flush() ?? Promise.resolve(); }
