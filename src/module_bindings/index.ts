@@ -341,6 +341,7 @@ import PlayerItemDropRow from "./player_item_drop_table";
 import PlayerItemRefineRow from "./player_item_refine_table";
 import PlayerItemUpgradeRow from "./player_item_upgrade_table";
 import PlayerLifetimeRow from "./player_lifetime_table";
+import PlayerLuckResearchRow from "./player_luck_research_table";
 import PlayerMapFrameRow from "./player_map_frame_table";
 import PlayerMapMarkerRow from "./player_map_marker_table";
 import PlayerMiningLevelRow from "./player_mining_level_table";
@@ -747,6 +748,17 @@ const tablesSchema = __schema({
       { name: 'player_lifetime_identity_key', constraint: 'unique', columns: ['identity'] },
     ],
   }, PlayerLifetimeRow),
+  playerLuckResearch: __table({
+    name: 'player_luck_research',
+    indexes: [
+      { accessor: 'identity', name: 'player_luck_research_identity_idx_btree', algorithm: 'btree', columns: [
+        'identity',
+      ] },
+    ],
+    constraints: [
+      { name: 'player_luck_research_identity_key', constraint: 'unique', columns: ['identity'] },
+    ],
+  }, PlayerLuckResearchRow),
   playerMapFrame: __table({
     name: 'player_map_frame',
     indexes: [

@@ -24,9 +24,9 @@ export function setSwordSkillRoll(ctx: Ctx, identity: Identity, itemId: string, 
   else ctx.db.playerSwordSkill.insert(row);
 }
 /** Destruction and prestige retain a roll, so neither can be used to reroll the last copy. */
-export function ensureSwordSkillRoll(ctx: Ctx, identity: Identity, itemId: string) {
+export function ensureSwordSkillRoll(ctx: Ctx, identity: Identity, itemId: string, skillLuck = 0) {
   if (!isSkillSword(itemId) || ctx.db.playerSwordSkill.key.find(swordSkillKey(identity, itemId))) return;
-  setSwordSkillRoll(ctx, identity, itemId, rollSwordSkills(itemId, () => ctx.random())!);
+  setSwordSkillRoll(ctx, identity, itemId, rollSwordSkills(itemId, () => ctx.random(), skillLuck)!);
 }
 export function removeSwordSkills(ctx: Ctx, identity: Identity) {
   for (const row of [...ctx.db.playerSwordSkill.identity.filter(identity)]) ctx.db.playerSwordSkill.key.delete(row.key);

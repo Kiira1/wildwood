@@ -17,9 +17,9 @@ it("adds a bag slot for each Bag Slots rank, on top of every slot bought", () =>
   expect(bagCapacityFor(f.ctx, f.ctx.sender)).toBe(BASE_INVENTORY_SLOT_CAPACITY + 44 + 3);
 });
 
-it("researches Bag Slots behind Attack Range, each level taking 40% longer", () => {
+it("researches Bag Slots behind Crit Cap, each level taking 40% longer", () => {
   const f = crystalFixture();
-  research(f, { utilityAttackRange: 1 });
+  research(f, { utilityAttackRange: 1, critCap: 1 });
   f.run(server.startResearch, { researchId: "inventorySlots" });
   const first = f.db.activeResearch.identity.find(f.ctx.sender);
   expect(span(first)).toBe(180_000_000n);
@@ -30,8 +30,14 @@ it("researches Bag Slots behind Attack Range, each level taking 40% longer", () 
   expect(span(f.db.activeResearch.identity.find(f.ctx.sender))).toBe(252_000_000n);
 });
 
-it("refuses Bag Slots before Attack Range", () => {
+it("opens Bag Slots from Enemy Respawn's second band as well", () => {
   const f = crystalFixture();
-  research(f, { offlineWindow: 1 });
+  research(f, { utilityAttackRange: 1, enemyRespawn: 6 });
+  expect(() => f.run(server.startResearch, { researchId: "inventorySlots" })).not.toThrow();
+});
+
+it("refuses Bag Slots before Crit Cap or Enemy Respawn's second band", () => {
+  const f = crystalFixture();
+  research(f, { utilityAttackRange: 1, enemyRespawn: 5 });
   expect(() => f.run(server.startResearch, { researchId: "inventorySlots" })).toThrow("Research prerequisites not met.");
 });

@@ -159,14 +159,18 @@ it("asks each prestige for one Endless stage more than the last", () => {
 it("keeps research through a prestige but not through a plain reset", () => {
   const prestiged = crystalFixture();
   prestiged.seed("playerResearch", { identity: prestiged.ctx.sender, foraging: 4, warcraft: 3 });
+  prestiged.seed("playerLuckResearch", { identity: prestiged.ctx.sender, cardLuck: 2, gearLuck: 0, miningLuck: 0, skillLuck: 0, refineLuck: 1 });
   prestiged.patch("playerProgress", { bossRewardClaims: CAMPAIGN_COMPLETE });
   prestiged.run(server.prestigeAccount, {});
   expect(prestiged.db.playerResearch.identity.find(prestiged.ctx.sender)).toMatchObject({ foraging: 4, warcraft: 3 });
+  expect(prestiged.db.playerLuckResearch.identity.find(prestiged.ctx.sender)).toMatchObject({ cardLuck: 2, refineLuck: 1 });
 
   const wiped = crystalFixture();
   wiped.seed("playerResearch", { identity: wiped.ctx.sender, foraging: 4, warcraft: 3 });
+  wiped.seed("playerLuckResearch", { identity: wiped.ctx.sender, cardLuck: 2, gearLuck: 0, miningLuck: 0, skillLuck: 0, refineLuck: 1 });
   wiped.run(server.resetPlayerProgress, {});
   expect(wiped.db.playerResearch.identity.find(wiped.ctx.sender)).toBeFalsy();
+  expect(wiped.db.playerLuckResearch.identity.find(wiped.ctx.sender)).toBeFalsy();
 });
 
 it("keeps the lifetime kill count through a prestige but not through a plain reset", () => {

@@ -1,4 +1,5 @@
 import { itemDefinition } from "./items";
+import { chanceWithLuck } from "./luck-research";
 
 /**
  * Random bow skills.
@@ -81,15 +82,16 @@ export function bowSkillChanceRangeTenths(tier: number) {
 /**
  * Rolls a bow's skills. `random` returns a float in [0, 1), like ctx.random.
  * Each skill takes two draws, appearance then chance, in a fixed order, so the
- * same sequence always gives the same bow.
+ * same sequence always gives the same bow. Skill Luck raises each skill's appear chance.
  */
-export function rollBowSkills(itemId: unknown, random: () => number): BowSkillRoll | null {
+export function rollBowSkills(itemId: unknown, random: () => number, skillLuckRank = 0): BowSkillRoll | null {
   const tier = bowSkillTier(itemId);
   if (tier === null) return null;
   const { min, max } = bowSkillChanceRangeTenths(tier);
   const roll = { ...NO_BOW_SKILLS };
+  const appearChance = chanceWithLuck(BOW_SKILL_APPEAR_CHANCE, "skillLuck", skillLuckRank);
   for (const skill of BOW_SKILL_IDS) {
-    const appears = random() < BOW_SKILL_APPEAR_CHANCE;
+    const appears = random() < appearChance;
     const tenths = min + Math.min(max - min, Math.floor(random() * (max - min + 1)));
     if (appears) roll[skill] = tenths / 10;
   }

@@ -51,6 +51,7 @@ import { PLAYER_SKIN_TONES } from "../../shared/player-skin-tones";
 import { leaderboardPageTables, readLeaderboardWindow, readLeaderboardPage, readLeaderboardRanks, readPrestigeLeaderboardPage, findLeaderboardSpot } from "./leaderboard-pages";
 import { effectiveMovementSpeedForProgress, refreshPrestigeMovement, attackIntervalForProgress, savedAttackRange } from "./player-speed";
 import { playerBonusToggle } from "./bonus-toggles";
+import { playerLuckResearch } from "./luck-research";
 import { registerBonusToggleReducers } from "./bonus-toggles-reducer";
 import { playerNameColor, registerProfileLookReducers } from "./profile-look";
 import { playerPrestige, playerPrestigePerk, prestigeExpansion, playerPrestigeExpansionPerk, playerFreeRespec } from "./prestige-expansion";
@@ -1420,6 +1421,7 @@ const spacetimedb = schema({
   playerProgress,
   playerLastLocation,
   playerResearch,
+  playerLuckResearch,
   activeResearch,
   playerItemUpgrade,
   activeItemUpgrade,

@@ -21,7 +21,15 @@ export const UTILITY_RESEARCH_IDS = [
   "utilityAttackRange",
   "critCap",
   "inventorySlots",
+  "cardLuck",
+  "gearLuck",
+  "miningLuck",
+  "skillLuck",
+  "refineLuck",
 ] as const;
+/** The luck research, stored in player_luck_research rather than player_research. */
+export const LUCK_RESEARCH_IDS = ["cardLuck", "gearLuck", "miningLuck", "skillLuck", "refineLuck"] as const;
+export type LuckResearchId = typeof LUCK_RESEARCH_IDS[number];
 export const RESEARCH_IDS = [...POWER_RESEARCH_IDS, ...UTILITY_RESEARCH_IDS] as const;
 export type ResearchId = typeof RESEARCH_IDS[number];
 export type ResearchRanks = Record<ResearchId, number>;
@@ -41,6 +49,8 @@ export type ResearchDefinition = {
   prerequisites?: Partial<Record<ResearchId, number>>;
   /** One rank in any listed technology unlocks this node. */
   prerequisiteAny?: ResearchId[];
+  /** Any one listed technology at its stored rank unlocks this node. */
+  prerequisiteAnyOf?: Partial<Record<ResearchId, number>>;
   /** Stored ranks that open every band past the first, for a node the tree shows again further down. */
   laterBandPrerequisites?: Partial<Record<ResearchId, number>>;
 };
@@ -89,7 +99,7 @@ export const RESEARCH_DEFINITIONS: Record<ResearchId, ResearchDefinition> = {
     effect: "RESEARCH SPEED", valuePerRank: 1, unit: "%", durationStartMs: 45_000 },
   slotUpgradeSpeed: { id: "slotUpgradeSpeed", title: "SLOT SPEED", icon: "⚒", ranksPerBand: 5, maxRank: 5,
     effect: "SLOT UPGRADE SPEED", valuePerRank: 1, unit: "%", durationStartMs: 45_000, prerequisites: { researchSpeed: 1 } },
-  // Ranks 6-10 are a second node at the bottom of the utility tree, behind Attack Range.
+  // Ranks 6-10 are a second node further down the utility tree, behind Attack Range.
   enemyRespawn: { id: "enemyRespawn", title: "ENEMY RESPAWN", icon: "↻", ranksPerBand: 5, maxRank: 10,
     effect: "ENEMY RESPAWN", valuePerRank: .5, unit: "s", durationStartMs: 60_000, prerequisites: { researchSpeed: 1 },
     laterBandPrerequisites: { utilityAttackRange: 1 } },
@@ -105,9 +115,21 @@ export const RESEARCH_DEFINITIONS: Record<ResearchId, ResearchDefinition> = {
   // Near the end of the utility tree: each rank raises the critical damage cap 1× (shared/critical-damage.ts).
   critCap: { id: "critCap", title: "CRIT CAP", icon: "✸", ranksPerBand: 5, maxRank: 5,
     effect: "CRITICAL DAMAGE CAP", valuePerRank: 1, unit: "x", durationStartMs: 180_000, prerequisites: { utilityAttackRange: 1 } },
-  // Beside Crit Cap: each rank adds a bag slot on top of the ones bought with Gems (shared/gems.ts).
+  // Below Enemy Respawn's second band and Crit Cap: each rank adds a bag slot on top of the ones bought with Gems (shared/gems.ts).
   inventorySlots: { id: "inventorySlots", title: "BAG SLOTS", icon: "▣", ranksPerBand: 5, maxRank: 5,
-    effect: "BAG SLOTS", valuePerRank: 1, unit: "slot", durationStartMs: 180_000, prerequisites: { utilityAttackRange: 1 } },
+    effect: "BAG SLOTS", valuePerRank: 1, unit: "slot", durationStartMs: 180_000, prerequisiteAnyOf: { enemyRespawn: 6, critCap: 1 } },
+  // Luck (shared/luck-research.ts). Ranks 6-10 of Card Luck are a second node, behind Mining Luck.
+  cardLuck: { id: "cardLuck", title: "CARD LUCK", icon: "♣", ranksPerBand: 5, maxRank: 10,
+    effect: "CARD DROP RATE", valuePerRank: 5, unit: "%", durationStartMs: 200_000, prerequisites: { inventorySlots: 1 },
+    laterBandPrerequisites: { miningLuck: 1 } },
+  gearLuck: { id: "gearLuck", title: "GEAR LUCK", icon: "⛨", ranksPerBand: 5, maxRank: 5,
+    effect: "EQUIPMENT DROP RATE", valuePerRank: 5, unit: "%", durationStartMs: 200_000, prerequisites: { inventorySlots: 1 } },
+  miningLuck: { id: "miningLuck", title: "MINING LUCK", icon: "⛏", ranksPerBand: 5, maxRank: 5,
+    effect: "STARSHARD CHANCE", valuePerRank: 10, unit: "%", durationStartMs: 220_000, prerequisiteAny: ["cardLuck", "gearLuck"] },
+  skillLuck: { id: "skillLuck", title: "SKILL LUCK", icon: "✪", ranksPerBand: 5, maxRank: 5,
+    effect: "WEAPON SKILL CHANCE", valuePerRank: 5, unit: "%", durationStartMs: 240_000, prerequisites: { miningLuck: 1 } },
+  refineLuck: { id: "refineLuck", title: "REFINE LUCK", icon: "⚜", ranksPerBand: 5, maxRank: 5,
+    effect: "REFINE CHANCE", valuePerRank: 2, unit: "%", durationStartMs: 300_000, prerequisiteAnyOf: { cardLuck: 6, skillLuck: 1 } },
 };
 
 export function researchTreeFor(researchId: ResearchId): ResearchTree {
@@ -185,7 +207,9 @@ export function researchIsAvailable(researchId: ResearchId, ranks: ResearchRanks
   if (ranks[researchId] >= definition.maxRank) return false;
   if (!Object.entries(researchPrerequisitesForNextRank(researchId, ranks[researchId]))
     .every(([id, rank]) => ranks[id as ResearchId] >= Number(rank))) return false;
-  return !definition.prerequisiteAny?.length || definition.prerequisiteAny.some(id => ranks[id] >= 1);
+  if (definition.prerequisiteAny?.length && !definition.prerequisiteAny.some(id => ranks[id] >= 1)) return false;
+  const anyOf = Object.entries(definition.prerequisiteAnyOf ?? {});
+  return !anyOf.length || anyOf.some(([id, rank]) => ranks[id as ResearchId] >= Number(rank));
 }
 
 export const RESEARCH_DURATION_CAP_MS = 72 * 60 * 60 * 1_000;

@@ -39,6 +39,8 @@ export function createSmithController(deps: {
   slotTier: (itemId: string) => number;
   ores: () => Readonly<Partial<Record<OreId, number>>>;
   refine: (itemId: string, copyId: bigint, expectedLevel: number) => Promise<Result>;
+  /** Refine Luck's rank, which raises the odds the server rolls against. */
+  refineLuck?: () => number;
   showMessage: (text: string, color: string) => void;
   /** Mining (shared/mining.ts): the free pickaxe he hands over, and the Mining stat once it is in hand. */
   hasPickaxe?: () => boolean;
@@ -119,7 +121,7 @@ export function createSmithController(deps: {
       return;
     }
     const level = deps.refineLevel(item.itemId, item.copyId), next = level + 1, tier = deps.slotTier(item.itemId);
-    const atTop = level >= REFINE_MAX, safe = refineSafeLimit(item.itemId), chance = atTop ? 0 : refineSuccessChance(item.itemId, next);
+    const atTop = level >= REFINE_MAX, safe = refineSafeLimit(item.itemId), chance = atTop ? 0 : refineSuccessChance(item.itemId, next, deps.refineLuck?.() ?? 0);
     const cost = atTop ? null : refineCost(item.itemId, next);
     const held = deps.ores();
     const short = cost ? Object.entries(cost).filter(([oreId, count]) => (held[oreId as OreId] ?? 0) < (count ?? 0)) : [];
@@ -461,6 +463,7 @@ export function createSmithRuntime(deps: {
     itemUpgradeLevel?: (itemId: string) => number;
     ores?: () => Readonly<Partial<Record<OreId, number>>>;
     refineItem?: (itemId: string, copyId: bigint, expectedLevel: number) => Promise<Result>;
+    researchInPlay?: () => { refineLuck?: number };
     equipmentCopies?: () => readonly { id: bigint; itemId: string }[];
     setOnRefineResult?: (callback: ((result: RefineResult) => void) | null) => void;
     cards?: () => Readonly<Record<string, number>>;
@@ -488,6 +491,7 @@ export function createSmithRuntime(deps: {
     slotTier: itemId => deps.coop()?.itemUpgradeLevel?.(itemId) ?? 0,
     ores: () => deps.coop()?.ores?.() ?? {},
     refine: async (itemId, copyId, expectedLevel) => deps.coop()?.refineItem?.(itemId, copyId, expectedLevel) ?? { ok: false, error: "Not Connected" },
+    refineLuck: () => deps.coop()?.researchInPlay?.()?.refineLuck ?? 0,
     hasPickaxe: () => deps.coop()?.hasPickaxe?.() ?? false,
     claimPickaxe: async () => deps.coop()?.claimPickaxe?.() ?? { ok: false, error: "Not Connected" },
     mining: () => deps.coop()?.mining?.() ?? 0,

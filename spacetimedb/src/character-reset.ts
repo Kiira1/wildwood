@@ -14,6 +14,7 @@ import { SUPERIOR_GOLDEN_HELMET } from "../../shared/items";
 import { updateSnapshotRow, insertSnapshotRow, deleteSnapshotRow } from "./snapshot-row-writes";
 import { removeResearchCompletionSchedules } from "./research-runtime";
 import { removePausedResearch } from "./research-pause";
+import { deleteLuckResearch } from "./luck-research";
 import { removePlayerItemDrops, removePlayerItemUpgradeData } from "./item-upgrade-runtime";
 import { TUTORIAL_FOREST_MAP_ID, PLAYER_SPAWN } from "../../shared/rules";
 import { HOME_EXTERIOR_MAP_ID } from "../../shared/home";
@@ -66,6 +67,7 @@ export function resetProgressToDefaults(ctx: any, activePlayer: any, keep: { res
     if (!keep.research) {
       const research = ctx.db.playerResearch.identity.find(ctx.sender);
       if (research) deleteSnapshotRow(ctx, "playerResearch", ctx.sender);
+      deleteLuckResearch(ctx, ctx.sender);
       const activeResearchRow = ctx.db.activeResearch.identity.find(ctx.sender);
       if (activeResearchRow) ctx.db.activeResearch.identity.delete(ctx.sender);
       removeResearchCompletionSchedules(ctx, ctx.sender);

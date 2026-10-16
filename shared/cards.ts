@@ -1,5 +1,6 @@
 import type { RewardType } from "./enemy-definitions";
 import { canonicalItemId, isUpgradeableItem, itemDefinition } from "./items";
+import { chanceWithLuck } from "./luck-research";
 
 /** Cards: a rare drop from every campaign enemy and boss, slotted into a weapon, helmet or armor for good. */
 
@@ -53,6 +54,9 @@ export const CARD_DROP_OUTCOMES: Readonly<Record<CardRarity, number>> = Object.f
 export const CARD_METER_MULTIPLE = 2;
 /** The meter a card needs, in kills at plain odds. */
 export const cardMeterFull = (rarity: CardRarity) => CARD_DROP_OUTCOMES[rarity] * CARD_METER_MULTIPLE;
+/** One kill's chance at its card: `odds` kills' worth out of `outcomes`, raised by Card Luck, never past certainty. */
+export const cardDropChance = (outcomes: number, odds: number, cardLuckRank = 0) =>
+  outcomes > 0 ? chanceWithLuck(odds / outcomes, "cardLuck", cardLuckRank) : 0;
 export const MAX_CARD_SLOTS = 4;
 /** Gear owned before cards has one slot. */
 export const OWNED_GEAR_SLOTS = 1;

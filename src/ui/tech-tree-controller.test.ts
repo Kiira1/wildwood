@@ -48,7 +48,7 @@ it("opens Power and Utility from separate nodes and returns to the chooser", asy
   expect(element("categories").hidden).toBe(false);
   click('[data-research-tree="utility"]');
   expect(element("viewport").hidden).toBe(false);
-  expect(map.querySelectorAll("[data-tech-node]")).toHaveLength(10);
+  expect(map.querySelectorAll("[data-tech-node]")).toHaveLength(16);
   click('[data-tech-node="tech-utility-critCap"]');
   expect(element("content").textContent).toContain("CRITICAL DAMAGE CAP");
   expect(element("content").textContent).toContain("+1× PER RANK");

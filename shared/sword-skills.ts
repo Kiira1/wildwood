@@ -1,5 +1,6 @@
 import { itemDefinition } from "./items";
 import { bowSkillChanceRangeTenths } from "./bow-skills";
+import { chanceWithLuck } from "./luck-research";
 
 /** Each sword copy rolls these independently, just as a bow rolls its three skills. */
 export const SWORD_SKILL_IDS = ["whirlwind", "deflect", "shockwave"] as const;
@@ -32,13 +33,14 @@ export function swordSkillTier(itemId: unknown): number | null {
 export const isSkillSword = (itemId: unknown) => swordSkillTier(itemId) !== null;
 
 /** Stored percentages: 2.4 means a 2.4% trigger chance. The tier ranges match bows. */
-export function rollSwordSkills(itemId: unknown, random: () => number): SwordSkillRoll | null {
+export function rollSwordSkills(itemId: unknown, random: () => number, skillLuckRank = 0): SwordSkillRoll | null {
   const tier = swordSkillTier(itemId);
   if (tier === null) return null;
   const { min, max } = bowSkillChanceRangeTenths(tier);
   const roll = { ...NO_SWORD_SKILLS };
+  const appearChance = chanceWithLuck(SWORD_SKILL_APPEAR_CHANCE, "skillLuck", skillLuckRank);
   for (const skill of SWORD_SKILL_IDS) {
-    const appears = random() < SWORD_SKILL_APPEAR_CHANCE;
+    const appears = random() < appearChance;
     const tenths = min + Math.min(max - min, Math.floor(random() * (max - min + 1)));
     if (appears) roll[skill] = tenths / 10;
   }

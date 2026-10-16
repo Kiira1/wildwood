@@ -14,16 +14,30 @@ describe("tech tree layout", () => {
     expect(new Set(layout.nodes.map((node) => node.id)).size).toBe(layout.nodes.length);
   });
 
-  it("shows each utility technology once with its own rank cap, Enemy Respawn again beside Crit Cap, and Bag Slots last", () => {
+  it("lays the utility tree out one node, then two, with each single node fed by the pair above", () => {
     const layout = createTechTreeLayout("utility");
-    const once = UTILITY_RESEARCH_IDS.filter(id => id !== "critCap" && id !== "inventorySlots");
-    expect(layout.nodes.map(node => node.researchId)).toEqual([...once, "enemyRespawn", "critCap", "inventorySlots"]);
-    expect(layout.rows.map(row => row.length)).toEqual([1, 2, 1, 2, 1, 2, 1]);
-    expect(layout.nodes.slice(0, -3).map(node => node.endRank))
-      .toEqual(once.map(id => Math.min(5, RESEARCH_DEFINITIONS[id].maxRank)));
-    expect(layout.nodes.at(-3)).toMatchObject({ id: "tech-utility-enemyRespawn-2", startRank: 5, endRank: 10 });
-    expect(layout.nodes.at(-2)).toMatchObject({ id: "tech-utility-critCap", startRank: 0, endRank: 5 });
-    expect(layout.nodes.at(-1)).toMatchObject({ id: "tech-utility-inventorySlots", startRank: 0, endRank: 5 });
+    expect(layout.rows.map(row => row.map(node => node.id.replace("tech-utility-", "")))).toEqual([
+      ["researchSpeed"],
+      ["slotUpgradeSpeed", "enemyRespawn"],
+      ["bossRespawn"],
+      ["offlineWindow", "utilityMoveSpeed"],
+      ["utilityAttackRange"],
+      ["enemyRespawn-2", "critCap"],
+      ["inventorySlots"],
+      ["cardLuck", "gearLuck"],
+      ["miningLuck"],
+      ["cardLuck-2", "skillLuck"],
+      ["refineLuck"],
+    ]);
+    expect(layout.rows.map(row => row.length)).toEqual([1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1]);
+    // Every utility technology appears, Enemy Respawn and Card Luck twice.
+    expect(new Set(layout.nodes.map(node => node.researchId))).toEqual(new Set(UTILITY_RESEARCH_IDS));
+    expect(layout.nodes.find(node => node.id === "tech-utility-enemyRespawn-2")).toMatchObject({ startRank: 5, endRank: 10 });
+    expect(layout.nodes.find(node => node.id === "tech-utility-cardLuck")).toMatchObject({ startRank: 0, endRank: 5 });
+    expect(layout.nodes.find(node => node.id === "tech-utility-cardLuck-2")).toMatchObject({ startRank: 5, endRank: 10 });
+    for (const node of layout.nodes.filter(node => node.rankBandIndex === 0)) {
+      expect(node.endRank).toBe(Math.min(5, RESEARCH_DEFINITIONS[node.researchId].maxRank));
+    }
     expect(layout.paths).toEqual([
       ["tech-utility-researchSpeed", "tech-utility-slotUpgradeSpeed"],
       ["tech-utility-researchSpeed", "tech-utility-enemyRespawn"],
@@ -35,8 +49,25 @@ describe("tech tree layout", () => {
       ["tech-utility-utilityMoveSpeed", "tech-utility-utilityAttackRange"],
       ["tech-utility-utilityAttackRange", "tech-utility-enemyRespawn-2"],
       ["tech-utility-utilityAttackRange", "tech-utility-critCap"],
-      ["tech-utility-utilityAttackRange", "tech-utility-inventorySlots"],
+      ["tech-utility-enemyRespawn-2", "tech-utility-inventorySlots"],
+      ["tech-utility-critCap", "tech-utility-inventorySlots"],
+      ["tech-utility-inventorySlots", "tech-utility-cardLuck"],
+      ["tech-utility-inventorySlots", "tech-utility-gearLuck"],
+      ["tech-utility-cardLuck", "tech-utility-miningLuck"],
+      ["tech-utility-gearLuck", "tech-utility-miningLuck"],
+      ["tech-utility-miningLuck", "tech-utility-cardLuck-2"],
+      ["tech-utility-miningLuck", "tech-utility-skillLuck"],
+      ["tech-utility-cardLuck-2", "tech-utility-refineLuck"],
+      ["tech-utility-skillLuck", "tech-utility-refineLuck"],
     ]);
+    // Every line joins adjacent rows, and every single node below the top has two lines in.
+    const rowByNode = new Map(layout.rows.flatMap((row, index) => row.map(node => [node.id, index] as const)));
+    for (const [from, to] of layout.paths) expect(rowByNode.get(to)).toBe((rowByNode.get(from) ?? -1) + 1);
+    for (const [index, row] of layout.rows.entries()) {
+      if (index === 0 || row.length !== 1) continue;
+      expect(layout.paths.filter(([, to]) => to === row[0].id).map(([from]) => from).sort())
+        .toEqual(layout.rows[index - 1].map(node => node.id).sort());
+    }
   });
 
   it("alternates one and two nodes through every tier", () => {

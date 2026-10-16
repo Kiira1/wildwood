@@ -15,6 +15,7 @@ import { readPlayerProgress } from "./wide-stats";
 import { addOres, oreCountsFor } from "./item-refine";
 import { extraCopiesOf } from "./equipment-copies";
 import { bagCapacityFor } from "./bag-capacity";
+import { luckInPlay } from "./luck-research";
 import { bagFullForOres, rockOreKinds, roomForOres } from "../../shared/ore-bag";
 
 /**
@@ -178,7 +179,9 @@ export function mineNodeFor(ctx: Ctx, args: { nodeId: number }, deps: MiningDeps
   if (microsSince(ctx, mining.lastBreakAt) < miningBreakSeconds(node, mining.mining, cards.miningSpeed) * MINING_RATE_SLACK * 1_000_000) {
     throw new SenderError("Still mining.");
   }
-  const ores = miningYield(node, ctx.random(), cards, cards.oreFind > 0 ? ctx.random() : 1);
+  // Mining Luck raises a Mysterious rock's Starshard chance; other rocks hold none, so no read.
+  const miningLuck = node.kind === "mysterious" ? luckInPlay(ctx, ctx.sender).miningLuck : 0;
+  const ores = miningYield(node, ctx.random(), cards, cards.oreFind > 0 ? ctx.random() : 1, miningLuck);
   for (const [oreId, count] of Object.entries(ores)) addOres(ctx, ctx.sender, oreId as OreId, count ?? 0);
   ctx.db.playerMining.identity.update({
     ...mining,

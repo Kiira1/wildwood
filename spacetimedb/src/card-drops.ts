@@ -1,12 +1,13 @@
 import { table, t } from "spacetimedb/server";
 import type { Identity } from "spacetimedb";
-import { CARD_DROP_OUTCOMES, CARD_METER_MULTIPLE, cardForBoss, cardForEnemy } from "../../shared/cards";
+import { CARD_DROP_OUTCOMES, CARD_METER_MULTIPLE, cardDropChance, cardForBoss, cardForEnemy } from "../../shared/cards";
 import { cardStatFactors, type CardTotals } from "../../shared/card-effects";
 import { personalBossDefinition } from "../../shared/personal-bosses";
 import { bossRespawnSecondsWithResearch } from "../../shared/utility-research";
 import { wornCardTotalsFor } from "./worn-cards";
 import { addCard } from "./gear-cards";
 import { pinnedMapBalance } from "./map-balance";
+import { luckInPlay } from "./luck-research";
 
 type Ctx = any;
 
@@ -45,18 +46,24 @@ function bossCardRollReady(ctx: Ctx, identity: Identity, mapId: string) {
 export function awardCardDrops(ctx: Ctx, identity: Identity, mapId: string, kills: readonly { enemy: string; count: number }[],
   bossKills: number, chanceMultiplier = 1, worn?: CardTotals) {
   const found: string[] = [];
-  // Card Hunter cards in the worn gear raise every roll; read only once a kill has a card to roll for.
-  let odds = 0, oddsRead = false;
+  // Card Hunter cards in the worn gear raise every roll, and Card Luck the chance but not the meter;
+  // read only once a kill has a card to roll for.
+  let odds = 0, cardLuck = 0, oddsRead = false;
   const roll = (cardId: string, outcomes: number, times: number) => {
     if (times < 1) return;
-    if (!oddsRead) { odds = chanceMultiplier * (1 + cardStatFactors(worn ?? wornCardTotalsFor(ctx, identity)).cardHunter); oddsRead = true; }
+    if (!oddsRead) {
+      odds = chanceMultiplier * (1 + cardStatFactors(worn ?? wornCardTotalsFor(ctx, identity)).cardHunter);
+      cardLuck = luckInPlay(ctx, identity).cardLuck;
+      oddsRead = true;
+    }
+    const chance = cardDropChance(outcomes, odds, cardLuck);
     const key = `${identity.toHexString()}:${cardId}`;
     const meter = ctx.db.playerCardMeter.key.find(key);
     const full = outcomes * CARD_METER_MULTIPLE;
     let progress = meter?.progress ?? 0;
     for (let kill = 0; kill < times; kill++) {
       progress += odds;
-      if (ctx.random() * outcomes < odds || progress >= full) { found.push(cardId); progress = 0; }
+      if (ctx.random() < chance || progress >= full) { found.push(cardId); progress = 0; }
     }
     if (meter) ctx.db.playerCardMeter.key.update({ ...meter, progress });
     else ctx.db.playerCardMeter.insert({ key, identity, cardId, progress });

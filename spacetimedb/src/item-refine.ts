@@ -7,6 +7,7 @@ import { isTownMap } from "./town";
 import { TOWN_FEET_OFFSET, TOWN_SMITH_POSITION, TOWN_SMITH_SERVER_REACH } from "../../shared/town";
 import { withinStationReach } from "./door-reach";
 import { readPlayerProgress } from "./wide-stats";
+import { luckInPlay } from "./luck-research";
 
 /**
  * Refining (shared/refine.ts): each item's own level, +0 to +20, and the ores a try costs.
@@ -220,7 +221,7 @@ export function refineItemFor(ctx: Ctx, args: { itemId: string; copyId: bigint; 
   if (from >= REFINE_MAX) throw new SenderError(`That item is already +${REFINE_MAX}.`);
   const cost = refineCost(itemId, from + 1)!;
   if (!takeOres(ctx, ctx.sender, cost)) throw new SenderError(`You need ${oreList(cost)}.`);
-  const { succeeded, level } = rollRefine(itemId, from, ctx.random());
+  const { succeeded, level } = rollRefine(itemId, from, ctx.random(), luckInPlay(ctx, ctx.sender).refineLuck);
   setRefineLevel(ctx, ctx.sender, itemId, copyId, level);
   const previous = ctx.db.playerRefineResult.identity.find(ctx.sender);
   const result = { identity: ctx.sender, itemId, copyId, fromLevel: from, toLevel: level, succeeded,

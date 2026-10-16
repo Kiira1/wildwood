@@ -51,24 +51,30 @@ export function createTechTreeLayout(tree: ResearchTree = "power"): TechTreeLayo
       startRank: researchRankBandStart(researchId, rankBandIndex),
       endRank: Math.min(RESEARCH_DEFINITIONS[researchId].maxRank, researchRankBandEnd(researchId, rankBandIndex)),
     });
+    // One node, then two, all the way down; each single node opens from the pair above it.
     const rows: TechTreeNode[][] = [
       [node("researchSpeed")],
       [node("slotUpgradeSpeed"), node("enemyRespawn")],
       [node("bossRespawn")],
       [node("offlineWindow"), node("utilityMoveSpeed")],
       [node("utilityAttackRange")],
-      // Both hang behind Attack Range: Enemy Respawn's second band and Crit Cap.
       [node("enemyRespawn", 1), node("critCap")],
-      // Also behind Attack Range, in a row of its own: a row holds two nodes at most.
       [node("inventorySlots")],
+      [node("cardLuck"), node("gearLuck")],
+      [node("miningLuck")],
+      [node("cardLuck", 1), node("skillLuck")],
+      [node("refineLuck")],
     ];
-    // Each line runs from a node's real prerequisites, so a node two rows down is not drawn behind the row between.
+    // Each line runs from a node's real prerequisites, to the node holding the rank asked for.
+    const nodeHolding = (id: ResearchId, rank: number) =>
+      `tech-utility-${id}${rank > RESEARCH_DEFINITIONS[id].ranksPerBand ? `-${Math.ceil(rank / RESEARCH_DEFINITIONS[id].ranksPerBand)}` : ""}`;
     const paths: TechTreeLayout["paths"] = [];
     for (const to of rows.flat()) {
       const definition = RESEARCH_DEFINITIONS[to.researchId];
-      const from = to.rankBandIndex > 0 ? Object.keys(definition.laterBandPrerequisites ?? {})
-        : [...Object.keys(definition.prerequisites ?? {}), ...(definition.prerequisiteAny ?? [])];
-      for (const id of from) paths.push([`tech-utility-${id}`, to.id]);
+      const from: [string, number][] = to.rankBandIndex > 0 ? Object.entries(definition.laterBandPrerequisites ?? {})
+        : [...Object.entries(definition.prerequisites ?? {}), ...(definition.prerequisiteAny ?? []).map(id => [id, 1] as [string, number]),
+          ...Object.entries(definition.prerequisiteAnyOf ?? {})];
+      for (const [id, rank] of from) paths.push([nodeHolding(id as ResearchId, Number(rank)), to.id]);
     }
     return { rows, nodes: rows.flat(), paths };
   }

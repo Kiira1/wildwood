@@ -722,6 +722,14 @@
       "enemyKills:u64",
       "deathCount:u64"
     ],
+    "player_luck_research": [
+      "identity:identity",
+      "cardLuck:u32",
+      "gearLuck:u32",
+      "miningLuck:u32",
+      "skillLuck:u32",
+      "refineLuck:u32"
+    ],
     "player_map_frame": [
       "mapId:string",
       "emittedAt:timestamp",

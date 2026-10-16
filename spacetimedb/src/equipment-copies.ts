@@ -17,6 +17,7 @@ import { addOres, oreKindsHeldFor, promoteCopyRefine, refineLevelFor, setRefineL
 import { clearGearSlots, gearSlotsFor, returnSlottedCards, promoteCopySlots, rollCopySlots, rollDropSlots, swapFirstCopySlots } from "./gear-cards";
 import { readPlayerProgress } from "./wide-stats";
 import { syncWornSkill } from "./worn-skill";
+import { luckInPlay } from "./luck-research";
 
 /**
  * Copies of an item beyond the first, one row per copy a player chose to keep.
@@ -121,19 +122,22 @@ function insertOffer(ctx: Ctx, identity: Identity, itemId: string, roll: WeaponS
 }
 
 /** Offers `count` copies of an item the player already holds. Anything that is not equipment is dropped as before. */
-export function offerDuplicateEquipment(ctx: Ctx, identity: Identity, itemId: string, count = 1) {
+export function offerDuplicateEquipment(ctx: Ctx, identity: Identity, itemId: string, count = 1, skillLuck = 0) {
   const canonical = canonicalItemId(itemId);
   if (!canonical || !isDuplicateOfferItem(canonical)) return;
   const offers = Math.min(MAX_PENDING_EQUIPMENT_OFFERS, Math.max(0, Math.floor(count)));
   if (!offers) return;
-  for (let offer = 0; offer < offers; offer += 1) insertOffer(ctx, identity, canonical, rollWeaponSkills(canonical, () => ctx.random()));
+  for (let offer = 0; offer < offers; offer += 1) insertOffer(ctx, identity, canonical, rollWeaponSkills(canonical, () => ctx.random(), skillLuck));
   trimOffers(ctx, identity);
 }
+
+/** A dropped weapon's Skill Luck rank; read only for a skill weapon. */
+const dropSkillLuck = (ctx: Ctx, identity: Identity, itemId: string) => isSkillWeapon(itemId) ? luckInPlay(ctx, identity).skillLuck : 0;
 
 /** A new item that found the bag full. Each weapon roll differs, so each waits; other gear waits once. */
 export function offerItemForFullBag(ctx: Ctx, identity: Identity, itemId: string, count = 1) {
   collectItem(ctx, identity, itemId);
-  if (isSkillWeapon(itemId)) { offerDuplicateEquipment(ctx, identity, itemId, count); return; }
+  if (isSkillWeapon(itemId)) { offerDuplicateEquipment(ctx, identity, itemId, count, dropSkillLuck(ctx, identity, itemId)); return; }
   if (!pendingOffersOf(ctx, identity).some(offer => offer.itemId === itemId)) offerDuplicateEquipment(ctx, identity, itemId, 1);
 }
 
@@ -143,12 +147,12 @@ export function offerItemForFullBag(ctx: Ctx, identity: Identity, itemId: string
  * every skill, otherwise only adding the skills the weapon lacks. A skill never goes down. The weapon keeps
  * its refine, cards, slots and lock. Gifts and mail do not come through here and always offer.
  */
-export function receiveDuplicateEquipment(ctx: Ctx, identity: Identity, itemId: string, count = 1) {
+export function receiveDuplicateEquipment(ctx: Ctx, identity: Identity, itemId: string, count = 1, skillLuck = 0) {
   const canonical = canonicalItemId(itemId);
   if (!canonical || !isDuplicateOfferItem(canonical) || !isSkillWeapon(canonical)) return;
   const copies = Math.min(MAX_PENDING_EQUIPMENT_OFFERS, Math.max(0, Math.floor(count)));
   for (let copy = 0; copy < copies; copy += 1) {
-    const roll = rollWeaponSkills(canonical, () => ctx.random());
+    const roll = rollWeaponSkills(canonical, () => ctx.random(), skillLuck);
     const merged = mergeSkillRolls(canonical, weaponSkillRollFor(ctx, identity, canonical), roll);
     if (merged) setFirstCopyRoll(ctx, identity, canonical, merged);
   }
@@ -161,8 +165,9 @@ export function receiveDuplicateEquipment(ctx: Ctx, identity: Identity, itemId: 
  */
 export function publishItemDrop(ctx: Ctx, identity: Identity, itemId: string, alreadyOwned: boolean, quantity = 1) {
   collectItem(ctx, identity, itemId);
-  if (!alreadyOwned) ensureWeaponSkillRoll(ctx, identity, itemId);
-  receiveDuplicateEquipment(ctx, identity, itemId, alreadyOwned ? quantity : quantity - 1);
+  const skillLuck = dropSkillLuck(ctx, identity, itemId);
+  if (!alreadyOwned) ensureWeaponSkillRoll(ctx, identity, itemId, skillLuck);
+  receiveDuplicateEquipment(ctx, identity, itemId, alreadyOwned ? quantity : quantity - 1, skillLuck);
   const key = `${identity.toHexString()}:${itemId}`;
   const current = ctx.db.playerItemDrop.key.find(key);
   const next = {

@@ -28,6 +28,7 @@ import { itemUpgradeDurationMs, type UpgradeSlot } from "../../../shared/items";
 import { slotUpgradeDurationWithResearch } from "../../../shared/utility-research";
 import { normalizeSlotTier, upgradeSlotForItem } from "../../../shared/slot-upgrades";
 import { createEmptyResearchRanks, RESEARCH_DEFINITIONS, isResearchId, type ResearchId } from "../../../shared/research";
+import { emptyLuckRanks, luckRanksOf, type LuckRanks } from "../../../shared/luck-research";
 import type {
   ActiveItemUpgrade,
   ActiveResearch,
@@ -176,6 +177,8 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
   });
   const progressByIdentity = new Map<string, PlayerProgress>();
   const researchByIdentity = new Map<string, PlayerResearch>();
+  // Luck ranks arrive in player_luck_research and are merged into the research above.
+  const luckByIdentity = new Map<string, LuckRanks>();
   const upgradeLevelsByIdentity = new Map<string, Map<string, number>>();
   const heartsByIdentity = new Map<string, number>();
   const lifetimeByIdentity = new Map<string, PlayerLifetime>();
@@ -490,7 +493,26 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
       utilityAttackRange: row.utilityAttackRange ?? 0,
       critCap: row.critCap ?? 0,
       inventorySlots: row.inventorySlots ?? 0,
+      ...(luckByIdentity.get(identity) ?? emptyLuckRanks()),
     };
+    storeResearch(identity, research);
+  }
+
+  function upsertLuckResearch(row: { identity: Identity } & Partial<LuckRanks>) {
+    const identity = row.identity.toHexString();
+    const luck = luckRanksOf(row);
+    luckByIdentity.set(identity, luck);
+    storeResearch(identity, { ...(researchByIdentity.get(identity) ?? createEmptyResearchRanks()), ...luck });
+  }
+
+  function removeLuckResearch(row: { identity: Identity }) {
+    const identity = row.identity.toHexString();
+    luckByIdentity.delete(identity);
+    const research = researchByIdentity.get(identity);
+    if (research) storeResearch(identity, { ...research, ...emptyLuckRanks() });
+  }
+
+  function storeResearch(identity: string, research: PlayerResearch) {
     researchByIdentity.set(identity, research);
     if (identity !== dependencies.localIdentity()) {
       if (identity === dependencies.activeProfileIdentity()) dependencies.notify();
@@ -504,7 +526,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
     const identity = row.identity.toHexString();
     researchByIdentity.delete(identity);
     if (identity !== dependencies.localIdentity()) return;
-    localResearch = createEmptyResearchRanks();
+    localResearch = { ...createEmptyResearchRanks(), ...luckByIdentity.get(identity) };
     dependencies.notify();
   }
 
@@ -818,6 +840,8 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
       upsertProgress,
       upsertResearch,
       removeResearch,
+      upsertLuckResearch,
+      removeLuckResearch,
       upsertActiveResearch,
       removeActiveResearch,
       upsertPausedResearch,
@@ -1393,6 +1417,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
     clearProfile(identity: string) {
       progressByIdentity.delete(identity);
       researchByIdentity.delete(identity);
+      luckByIdentity.delete(identity);
       upgradeLevelsByIdentity.delete(identity);
       lifetimeByIdentity.delete(identity); heartsByIdentity.delete(identity);
     },
@@ -1411,6 +1436,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
       inventorySlotsUnlocked = 0;
       progressByIdentity.clear();
       researchByIdentity.clear();
+      luckByIdentity.clear();
       upgradeLevelsByIdentity.clear();
       activeItemUpgrades.clear();
       lifetimeByIdentity.clear(); heartsByIdentity.clear();

@@ -255,6 +255,9 @@ export function createPlayerProfileService(dependencies: PlayerProfileServiceDep
           for (const row of connection.db.playerResearch.iter()) {
             if (row.identity.toHexString() === identity) dependencies.progression.tables.upsertResearch(row);
           }
+          for (const row of connection.db.playerLuckResearch.iter()) {
+            if (row.identity.toHexString() === identity) dependencies.progression.tables.upsertLuckResearch(row);
+          }
           for (const row of connection.db.playerItemUpgrade.iter()) {
             if (row.identity.toHexString() === identity) dependencies.progression.tables.upsertItemUpgrade(row);
           }
@@ -288,6 +291,7 @@ export function createPlayerProfileService(dependencies: PlayerProfileServiceDep
           tables.playerChatHearts.where(row => row.identity.eq(dbIdentity)),
           tables.playerLifetime.where((lifetime) => lifetime.identity.eq(dbIdentity)),
           tables.playerResearch.where((research) => research.identity.eq(dbIdentity)),
+          tables.playerLuckResearch.where((research) => research.identity.eq(dbIdentity)),
           tables.playerPrestige.where(row => row.identity.eq(dbIdentity)),
           tables.playerPrestigePerk.where(row => row.identity.eq(dbIdentity)),
           tables.playerPrestigeChallenge.where(row => row.identity.eq(dbIdentity)),

@@ -1,4 +1,8 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.908.8": [
+    "Utility tree: new Card, Gear, Mining, Skill and Refine Luck research",
+    "Utility tree branches evenly: one node, then two",
+  ],
   "0.908.7": [
     "Portals are solid again, not see-through",
     "Walking through a portal keeps your direction, diagonals included",
@@ -3435,6 +3439,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.908.8": "2026-10-15",
   "0.908.7": "2026-10-15",
   "0.908.6": "2026-10-15",
   "0.908.5": "2026-10-15",

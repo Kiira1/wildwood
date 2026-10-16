@@ -201,23 +201,29 @@ export function createTechTreeController(elements: TechTreeControllerElements, h
     };
   }
 
+  function requirementLabel(id: string, rank: unknown) {
+    const requiredId = id as ResearchId;
+    const ranksPerBand = RESEARCH_DEFINITIONS[requiredId].ranksPerBand;
+    const requiredBand = Math.max(0, Math.ceil(Number(rank) / ranksPerBand) - 1);
+    const localRank = Number(rank) - researchRankBandStart(requiredId, requiredBand);
+    return `${RESEARCH_DEFINITIONS[requiredId].effect} T${requiredBand + 1} ${localRank}/${ranksPerBand}`;
+  }
+
   function requirementText(researchId: ResearchId, ranks: ResearchRanks) {
     const any = RESEARCH_DEFINITIONS[researchId].prerequisiteAny;
     if (any?.length && !any.some(id => ranks[id] >= 1)) {
       return any.map(id => `${RESEARCH_DEFINITIONS[id].effect} 1/${RESEARCH_DEFINITIONS[id].ranksPerBand}`).join(" OR ");
+    }
+    const anyOf = Object.entries(RESEARCH_DEFINITIONS[researchId].prerequisiteAnyOf ?? {});
+    if (anyOf.length && !anyOf.some(([id, rank]) => ranks[id as ResearchId] >= Number(rank))) {
+      return anyOf.map(([id, rank]) => requirementLabel(id, rank)).join(" OR ");
     }
     const completedRanks = ranks[researchId];
     const requirements = Object.entries(researchPrerequisitesForNextRank(researchId, completedRanks))
       .filter(([id, rank]) => ranks[id as ResearchId] < Number(rank));
     if (!requirements.length) return "AVAILABLE";
     if (requirements.length > 3) return "FINISH PREVIOUS LEVELS";
-    return requirements.map(([id, rank]) => {
-      const requiredId = id as ResearchId;
-      const ranksPerBand = RESEARCH_DEFINITIONS[requiredId].ranksPerBand;
-      const requiredBand = Math.max(0, Math.ceil(Number(rank) / ranksPerBand) - 1);
-      const localRank = Number(rank) - researchRankBandStart(requiredId, requiredBand);
-      return `${RESEARCH_DEFINITIONS[requiredId].effect} T${requiredBand + 1} ${localRank}/${ranksPerBand}`;
-    }).join(" + ");
+    return requirements.map(([id, rank]) => requirementLabel(id, rank)).join(" + ");
   }
 
   let linksSize = "";

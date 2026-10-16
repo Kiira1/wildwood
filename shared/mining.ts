@@ -1,5 +1,6 @@
 import { campaignMapUnlocked, type CampaignAccess } from "./equipment-access";
 import { REFINE_ORES, type OreId } from "./refine";
+import { luckMultiplier } from "./luck-research";
 import { MAP_DISPLAY_NAMES, MAP_IDS } from "./rules";
 import { TOWN_EAST_BRIDGE, TOWN_EAST_FENCE_GAP, TOWN_HILLS, townRandom } from "./town";
 
@@ -353,9 +354,11 @@ export function miningGain(node: MiningNode) {
  * What a broken rock gives: its vein's ore, and from a Mysterious rock perhaps a Starshard. `roll` is in [0, 1).
  * Cards: Starshard cards raise its chance, and an Ore Find card's chance (`extraRoll` against it) adds one more ore.
  */
-export function miningYield(node: MiningNode, roll: number, cards: { starshardFind?: number; oreFind?: number } = {}, extraRoll = 1) {
+export function miningYield(node: MiningNode, roll: number, cards: { starshardFind?: number; oreFind?: number } = {}, extraRoll = 1, miningLuckRank = 0) {
   const ores: Partial<Record<OreId, number>> = { [node.ore]: MINING_NODE_KINDS[node.kind].ore + (extraRoll < (cards.oreFind ?? 0) ? 1 : 0) };
-  if (node.kind === "mysterious" && roll < MINING_STARSHARD_CHANCE * (1 + Math.max(0, cards.starshardFind ?? 0))) ores.starshard = 1;
+  // Starshard cards and Mining Luck each raise the chance.
+  const starshard = MINING_STARSHARD_CHANCE * (1 + Math.max(0, cards.starshardFind ?? 0)) * luckMultiplier("miningLuck", miningLuckRank);
+  if (node.kind === "mysterious" && roll < starshard) ores.starshard = 1;
   return ores;
 }
 

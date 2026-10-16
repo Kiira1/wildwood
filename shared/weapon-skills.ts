@@ -4,8 +4,8 @@ import { NO_SWORD_SKILLS, SWORD_SKILL_IDS, isSkillSword, rollSwordSkills, swordS
 /** Kept copies and offers carry either kind of weapon's roll. */
 export type WeaponSkillRoll = Partial<BowSkillRoll & SwordSkillRoll>;
 export const isSkillWeapon = (itemId: unknown) => isSkillBow(itemId) || isSkillSword(itemId);
-export const rollWeaponSkills = (itemId: unknown, random: () => number): WeaponSkillRoll =>
-  rollBowSkills(itemId, random) ?? rollSwordSkills(itemId, random) ?? NO_BOW_SKILLS;
+export const rollWeaponSkills = (itemId: unknown, random: () => number, skillLuckRank = 0): WeaponSkillRoll =>
+  rollBowSkills(itemId, random, skillLuckRank) ?? rollSwordSkills(itemId, random, skillLuckRank) ?? NO_BOW_SKILLS;
 export const weaponSkillScore = (itemId: unknown, roll: WeaponSkillRoll | null | undefined) =>
   isSkillSword(itemId) ? swordSkillScore(roll) : isSkillBow(itemId) ? bowSkillScore(roll) : 0;
 export const weaponSkillLines = (itemId: unknown, roll: WeaponSkillRoll | null | undefined) =>

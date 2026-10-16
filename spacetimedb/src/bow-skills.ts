@@ -51,11 +51,11 @@ export function bowSkillRollFor(ctx: Ctx, identity: Identity, itemId: string): B
  * path that hands out an item: anything that is not a skill bow costs no read,
  * and a bow already rolled keeps its roll.
  */
-export function ensureBowSkillRoll(ctx: Ctx, identity: Identity, itemId: string) {
+export function ensureBowSkillRoll(ctx: Ctx, identity: Identity, itemId: string, skillLuck = 0) {
   if (!isSkillBow(itemId)) return;
   const key = bowSkillKey(identity, itemId);
   if (ctx.db.playerBowSkill.key.find(key)) return;
-  const roll = rollBowSkills(itemId, () => ctx.random())!;
+  const roll = rollBowSkills(itemId, () => ctx.random(), skillLuck)!;
   ctx.db.playerBowSkill.insert({ key, identity, itemId, ...roll });
 }
 

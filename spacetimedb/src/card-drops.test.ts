@@ -22,7 +22,7 @@ const cards = (f: Fixture, cardId: string) => cardCount(f.ctx, f.ctx.sender, car
 describe("card drops", () => {
   it("drops a regular enemy's card once in 10,000 kills, an elite's in 20,000, a boss's in 1,000 boss kills", () => {
     const f = crystalFixture();
-    // ctx.random() * outcomes < 1 wins: just under 1 / outcomes wins, 1 / outcomes itself does not.
+    // ctx.random() < 1 / outcomes wins: just under 1 / outcomes wins, 1 / outcomes itself does not.
     always(f, .99 / CARD_DROP_OUTCOMES.regular);
     award(f, "tutorial_forest", [{ enemy: "Needle", count: 3 }, { enemy: "King Slime", count: 1 }]);
     expect(cards(f, "needle_card")).toBe(3);

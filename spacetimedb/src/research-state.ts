@@ -1,4 +1,9 @@
-/** Server-owned research row creation and legacy-rank repair. */
+import { luckRanksOf } from "../../shared/luck-research";
+
+/**
+ * Server-owned research row creation and legacy-rank repair. A player's ranks are their player_research row
+ * with the luck ranks from player_luck_research on top.
+ */
 export function createResearchState(deps: {
   updateSnapshotRow: (ctx: any, table: "playerResearch", row: any) => void;
   insertSnapshotRow: (ctx: any, table: "playerResearch", row: any) => void;
@@ -10,7 +15,7 @@ export function createResearchState(deps: {
       utilityAttackRange: 0, critCap: 0, inventorySlots: 0 };
   }
 
-  return function researchForPlayer(ctx: any, identity: any) {
+  function storedResearch(ctx: any, identity: any) {
     const existing = ctx.db.playerResearch.identity.find(identity);
     if (existing) {
       if (existing.frontierMastery === 0) return existing;
@@ -21,5 +26,9 @@ export function createResearchState(deps: {
     const next = defaultPlayerResearch(identity);
     deps.insertSnapshotRow(ctx, "playerResearch", next);
     return next;
+  }
+
+  return function researchForPlayer(ctx: any, identity: any) {
+    return { ...storedResearch(ctx, identity), ...luckRanksOf(ctx.db.playerLuckResearch?.identity.find(identity)) };
   };
 }

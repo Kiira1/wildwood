@@ -1657,6 +1657,16 @@ export const PlayerLootSetting = __t.object("PlayerLootSetting", {
 });
 export type PlayerLootSetting = __Infer<typeof PlayerLootSetting>;
 
+export const PlayerLuckResearch = __t.object("PlayerLuckResearch", {
+  identity: __t.identity(),
+  cardLuck: __t.u32(),
+  gearLuck: __t.u32(),
+  miningLuck: __t.u32(),
+  skillLuck: __t.u32(),
+  refineLuck: __t.u32(),
+});
+export type PlayerLuckResearch = __Infer<typeof PlayerLuckResearch>;
+
 export const PlayerMail = __t.object("PlayerMail", {
   key: __t.string(),
   identity: __t.identity(),
