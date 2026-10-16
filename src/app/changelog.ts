@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.908.11": [
+    "Auto Farm walks out of the portal it arrives in instead of standing in it",
+  ],
   "0.908.10": [
     "Profiles show the cards, refine and skills of gear worn under a cosmetic look",
   ],
@@ -3446,6 +3449,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.908.11": "2026-10-16",
   "0.908.10": "2026-10-16",
   "0.908.9": "2026-10-16",
   "0.908.8": "2026-10-15",

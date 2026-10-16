@@ -546,6 +546,23 @@ describe("autofarm against a ranged enemy with researched attack range", () => {
     expect(Math.hypot(brood.x - s.player.x, brood.y - s.player.y) - brood.r).toBeLessThan(75);
   });
 
+  it("walks out of a portal it arrived in before pulling or holding ground there", () => {
+    // A portal's keep-clear circle around the player, as a crossing leaves it; the camp is right beside it.
+    const portal: Circle = { x: 500, y: 490, r: 160 };
+    const s = setup([portal]);
+    s.add("Brood", 540, 470);
+    s.farm.setPullAll(true);
+    s.farm.start("Brood");
+    const first = s.tick();
+    expect(s.farm.state().status).toBe("Leaving the portal");
+    expect(first.y).toBeGreaterThan(.9);
+    for (let frame = 0; frame < 120 && Math.hypot(s.player.x - portal.x, s.player.y - portal.y) < portal.r; frame++) s.tick();
+    expect(Math.hypot(s.player.x - portal.x, s.player.y - portal.y)).toBeGreaterThanOrEqual(portal.r);
+    // Out of it, the pull holds ground as before, in front of the portal rather than inside it.
+    s.tick();
+    expect(s.farm.state().status).not.toBe("Leaving the portal");
+  });
+
   it("stops at the edge of full reach, research and Long Shot included, never further in", () => {
     const at = (range: number) => autoFarmStandoff({ weaponRange: range, playerAttackRange: range, melee: false, playerRadius: 18,
       destination: { x: 0, y: 0, r: 16, type: "Bramble" }, enemy: true });

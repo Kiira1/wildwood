@@ -627,10 +627,30 @@ export function createAutoFarmController(options: {
     status = label;
   }
 
+  /** A portal's keep-clear circle it stands in: where a crossing lands it, or where it was pushed. */
+  function portalStoodIn() {
+    const body = options.mapBoss?.();
+    return options.obstacles().find(circle => (!body || Math.hypot(circle.x - body.x, circle.y - body.y) > 4)
+      && Math.hypot(player.x - circle.x, player.y - circle.y) < circle.r) ?? null;
+  }
+  /** Out of the portal's front before anything else: holding ground there left it standing in the arch. */
+  function leavePortal(circle: Circle): Movement {
+    const exit = { x: circle.x, y: Math.min(WORLD.h - player.r, circle.y + circle.r + 8) };
+    const waypoint = farmRoute(player, exit, options.obstacles().filter(other => other !== circle), WORLD, player.r)[0] ?? exit;
+    route = []; holding = false; status = 'Leaving the portal';
+    const length = Math.max(1, distance(waypoint));
+    return { x: (waypoint.x - player.x) / length, y: (waypoint.y - player.y) / length, source: 'steer' };
+  }
+
   function movement(manual: Movement, dt: number): Movement {
     refresh();
     manualControl = Boolean(manual.x || manual.y);
     if (recovering) return idle();
+    // Arrived in a portal: walk out before resuming, farming or holding ground. Never on the way into one.
+    if (!manualControl && (active || pendingResume) && phase !== 'portal' && !options.paused()) {
+      const stoodIn = portalStoodIn();
+      if (stoodIn) return leavePortal(stoodIn);
+    }
     // Waiting to resume on another map, the player can still walk (a town has nothing to farm).
     if (pendingResume && !manual.x && !manual.y) return idle();
     if (manual.x || manual.y) {
