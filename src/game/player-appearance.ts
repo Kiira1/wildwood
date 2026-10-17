@@ -1,4 +1,10 @@
 import { swordWhirlwindPose, swordSwingPose, drawSwordTrail } from "./sword-swing";
+import { drawStaffRune, drawStaffTipGlow, staffBoltColor, staffCastPose } from "./staff-look";
+
+/** An upright staff: where it is held across, how far down its length the hand grips, and its lean at rest. */
+const STAFF_HELD_X = 30;
+const STAFF_GRIP = .62;
+const STAFF_REST_TILT = .12;
 import { defaultWeaponAlignment } from "./equipment-alignment";
 import { EXPANSION_HEAD_FRAME, DEFAULT_HEAD_ALIGNMENT } from "./player-head-template";
 import { drawPlayerHead, drawPlayerEyes } from "./player-face";
@@ -336,13 +342,16 @@ export function drawStartingPlayer(
     ? heldPresentation
     : undefined;
   const swordHeld = heldSpritePresentation?.handAction === "SWING";
+  const staffHeld = heldSpritePresentation?.handAction === "CAST";
+  // A sword and a staff have poses of their own; the shared nudge below is for bows and stones.
+  const posed = swordHeld || staffHeld;
   const bowHeld = heldSpritePresentation?.handAction === "BOW";
   // Keep the grip attached to the same hand in local character space.
   // The actor transform mirrors it when turning; a second facing-dependent
   // offset here would make the weapon slide sideways across the hand.
   let heldX = bowHeld
     ? bowHeldAnchorX(heldInLeftHand, facingLeft)
-    : heldInLeftHand ? 30 : -11;
+    : staffHeld ? STAFF_HELD_X : heldInLeftHand ? 30 : -11;
   let heldY = heldSpritePresentation?.top ?? 116;
   const bowAlignment = heldSpritePresentation?.handAction === "BOW"
     ? bowHeldAlignment(heldInLeftHand)
@@ -355,21 +364,21 @@ export function drawStartingPlayer(
       const windup = attackElapsed / .12;
       heldX -= 11 * (1 - (1 - windup) * (1 - windup));
       heldY += 2 * windup;
-    } else if (!swordHeld && attackElapsed >= .12 && attackElapsed < .20) {
+    } else if (!posed && attackElapsed >= .12 && attackElapsed < .20) {
       heldVisible = false;
-    } else if (!swordHeld && attackElapsed >= .20 && attackElapsed < .42) {
+    } else if (!posed && attackElapsed >= .20 && attackElapsed < .42) {
       const reload = (attackElapsed - .20) / .22;
       heldX += 14 * (1 - reload);
       heldY -= Math.sin(reload * Math.PI) * 5;
     }
-  } else if (!swordHeld && attackElapsed > 0 && attackElapsed < .12) {
+  } else if (!posed && attackElapsed > 0 && attackElapsed < .12) {
     const windup = attackElapsed / .12;
     heldX -= 6 * (1 - (1 - windup) * (1 - windup));
     heldY += 2 * windup;
-  } else if (!swordHeld && attackElapsed >= .12 && attackElapsed < .20) {
+  } else if (!posed && attackElapsed >= .12 && attackElapsed < .20) {
     const release = (attackElapsed - .12) / .08;
     heldX += 4 * (1 - release);
-  } else if (!swordHeld && attackElapsed >= .20 && attackElapsed < .42) {
+  } else if (!posed && attackElapsed >= .20 && attackElapsed < .42) {
     const settle = (attackElapsed - .20) / .22;
     heldX += 3 * (1 - settle);
     heldY -= Math.sin(settle * Math.PI) * 2;
@@ -476,6 +485,8 @@ export function drawStartingPlayer(
   ctx.translate(options.x, options.y + 29);
   if (facingLeft) ctx.scale(-1, 1);
   ctx.scale(scale, scale); ctx.translate(-90, -171);
+  // A staff's cast draws a rune circle at the feet, under everything else.
+  if (staffHeld) drawStaffRune(ctx, 90, 168, staffCastPose(options.throwClock ?? 0).rune, staffBoltColor(heldItem));
   const drawHeldItem = () => {
     if (!heldItem || !heldSpritePresentation || !heldVisible) return;
     const sprite = assets.equipment[heldItem]?.sprite;
@@ -484,6 +495,17 @@ export function drawStartingPlayer(
     const width = heldSpritePresentation.width ?? sprite.naturalWidth;
     const height = heldSpritePresentation.height ?? sprite.naturalHeight;
     const left = 90 - width / 2 + heldX;
+    if (staffHeld) {
+      // Held upright at its grip, leaning a little forward; the cast lifts, leans and thrusts it, and its head glows.
+      const pose = staffCastPose(options.throwClock ?? 0);
+      ctx.save();
+      ctx.translate(left + width / 2 + pose.forward, heldY + height * STAFF_GRIP - pose.lift);
+      ctx.rotate(STAFF_REST_TILT + pose.tilt + runMotion.rotation);
+      drawLayer(ctx, asset, -width / 2, -height * STAFF_GRIP, width, height, "weapon", true, asset !== sprite);
+      drawStaffTipGlow(ctx, 0, -height * STAFF_GRIP + 9, pose.glow, staffBoltColor(heldItem));
+      ctx.restore();
+      return;
+    }
     ctx.save();
     ctx.translate(left + width / 2, heldY + height / 2);
     const baseRotation = heldSpritePresentation.handAction === "BOW"

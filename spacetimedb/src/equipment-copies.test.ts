@@ -186,7 +186,7 @@ const bagUsed = (f: Fixture) => {
 const fillBag = (f: Fixture, free: number) => {
   for (let n = bagUsed(f); n < BASE_INVENTORY_SLOT_CAPACITY - free; n += 1) seedCopy(f, NONE, SAMURAI_HAT);
 };
-const NEW_CRYSTAL_GEAR = ["crystal_bow", "crystal_helmet", "crystal_armor", "crystal_sword"];
+const NEW_CRYSTAL_GEAR = ["crystal_bow", "crystal_helmet", "crystal_armor", "crystal_sword", "crystal_staff"];
 
 it("turns new drops that find the bag full into offers, so the bag never holds more than its size", () => {
   const f = archer({ damage: 1e15 });

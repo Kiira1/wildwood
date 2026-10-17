@@ -76,6 +76,8 @@ export function createMiningRows(notify: () => void) {
       setOnMiningBreak(callback: ((result: MiningBreak) => void) | null) { breakListener = callback; },
       mineNode: (nodeId: number) => call(connection => connection.reducers.mineNode({ nodeId })),
       claimPickaxe: () => call(connection => connection.reducers.claimPickaxe({})),
+      /** The Smith's Starter Staff, handed out like the pickaxe. */
+      claimStarterStaff: () => call(connection => connection.reducers.claimStarterStaff({})),
     },
   };
 }

@@ -36,10 +36,11 @@ import { mapGuideDropChance, mapGuideDrops, mapGuideItemStats, mapGuideZones } f
 
 describe("map guide", () => {
   it("lists canonical per-map item sources and drop denominators", () => {
-    // Each map's sword is listed right after its bows, on the same odds as the bow.
+    // Each map's sword is listed right after its bows, and its staff after the sword, on the same odds as the bow.
     expect(mapGuideDrops(TUTORIAL_FOREST_MAP_ID).map(({ itemId, denominator }) => [itemId, denominator])).toEqual([
       [STARTER_BOW, 25],
       ["wooden_sword", 25],
+      ["forest_staff", 25],
       [WOODEN_ARMOR, 25],
       ["basic_paper_hat", 100],
       ["forest_cap", 25],
@@ -48,11 +49,13 @@ describe("map guide", () => {
       [WOOD_FULL_HELM, 50],
       [IRON_BOW, 50],
       ["iron_sword", 50],
+      ["desert_staff", 50],
       ["desert_armor", 50],
     ]);
     expect(mapGuideDrops(INTERMEDIATE_SNOWLANDS_MAP_ID).map(({ itemId, denominator }) => [itemId, denominator])).toEqual([
       [SNOW_BOW, SNOW_ITEM_DROP_DENOMINATOR],
       ["snow_sword", SNOW_ITEM_DROP_DENOMINATOR],
+      ["snow_staff", SNOW_ITEM_DROP_DENOMINATOR],
       ["snow_helmet", 50],
       [FROST_ARMOR, 5],
       [FROST_BOW, 25],
@@ -62,12 +65,14 @@ describe("map guide", () => {
       [MAGMA_ARMOR, LAVA_ITEM_DROP_DENOMINATOR],
       [FIRE_METAL_HELMET, LAVA_HELMET_ITEM_DROP_DENOMINATOR],
       ["lava_sword", LAVA_HELMET_ITEM_DROP_DENOMINATOR],
+      ["lava_staff", LAVA_HELMET_ITEM_DROP_DENOMINATOR],
       [LAVA_BOW, 25],
     ]);
     expect(mapGuideDrops(INFERNAL_DEPTHS_MAP_ID).map(({ itemId, denominator }) => [itemId, denominator])).toEqual([
       [NIGHT_BOW, NIGHT_FOREST_BOW_ITEM_DROP_DENOMINATOR],
       [FIRE_METAL_BOW, INFERNAL_ITEM_DROP_DENOMINATOR],
       ["night_sword", NIGHT_FOREST_BOW_ITEM_DROP_DENOMINATOR],
+      ["night_staff", NIGHT_FOREST_BOW_ITEM_DROP_DENOMINATOR],
       [DARK_METAL_HELMET, NIGHT_FOREST_HELMET_ITEM_DROP_DENOMINATOR],
       [BLACK_BOOTS, BLACK_BOOTS_DROP_DENOMINATOR],
       ["night_armor", 1000],
@@ -78,14 +83,14 @@ describe("map guide", () => {
     expect(mapGuideDropChance(magma.denominator, magma.numerator)).toBe("0.70%");
     expect(mapGuideDropChance(LAVA_HELMET_ITEM_DROP_DENOMINATOR)).toBe("0.80%");
     expect(mapGuideDrops(INFERNAL_DEPTHS_MAP_ID).map(drop => mapGuideDropChance(drop.denominator, drop.numerator)))
-      .toEqual(["1%", "0.50%", "1%", "0.80%", "2%", "0.70%"]);
+      .toEqual(["1%", "0.50%", "1%", "1%", "0.80%", "2%", "0.70%"]);
   });
 
   it.each([
-    [WATER_REACH_MAP_ID, [[WATER_ARMOR, "1%"], [SKY_BOW, "0.70%"], ["sky_sword", "0.70%"], ["water_helmet", "0.80%"]]],
-    [SAMURAI_GARDEN_MAP_ID, [[SAMURAI_HAT, "0.80%"], [SAMURAI_BOW, "0.65%"], ["samurai_sword", "0.65%"], ["samurai_armor", "0.70%"]]],
-    [CLOUDSPIRE_MAP_ID, [[CLOUDSPIRE_HELMET, "0.80%"], [CLOUDSPIRE_BOW, "0.50%"], ["cloudspire_sword", "0.50%"], [CLOUDSPIRE_ARMOR, "0.70%"]]],
-    [MOONFEN_MAP_ID, [[MOONFEN_ARMOR, "0.70%"], ["moonfen_bow", "0.50%"], ["moonfen_sword", "0.50%"], ["moonfen_helmet", "0.80%"]]],
+    [WATER_REACH_MAP_ID, [[WATER_ARMOR, "1%"], [SKY_BOW, "0.70%"], ["sky_sword", "0.70%"], ["sky_staff", "0.70%"], ["water_helmet", "0.80%"]]],
+    [SAMURAI_GARDEN_MAP_ID, [[SAMURAI_HAT, "0.80%"], [SAMURAI_BOW, "0.65%"], ["samurai_sword", "0.65%"], ["samurai_staff", "0.65%"], ["samurai_armor", "0.70%"]]],
+    [CLOUDSPIRE_MAP_ID, [[CLOUDSPIRE_HELMET, "0.80%"], [CLOUDSPIRE_BOW, "0.50%"], ["cloudspire_sword", "0.50%"], ["cloudspire_staff", "0.50%"], [CLOUDSPIRE_ARMOR, "0.70%"]]],
+    [MOONFEN_MAP_ID, [[MOONFEN_ARMOR, "0.70%"], ["moonfen_bow", "0.50%"], ["moonfen_sword", "0.50%"], ["moonfen_staff", "0.50%"], ["moonfen_helmet", "0.80%"]]],
   ] as const)("shows every server drop and its exact chance for %s", (mapId, expected) => {
     const drops = mapGuideDrops(mapId);
     expect(drops.map(drop => [drop.itemId, mapGuideDropChance(drop.denominator, drop.numerator)])).toEqual(expected);

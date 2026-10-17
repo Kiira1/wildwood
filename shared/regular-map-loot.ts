@@ -53,19 +53,23 @@ const LOOT: Readonly<Record<string, readonly MapLootDrop[]>> = {
   [MOONFEN_MAP_ID]: [{ itemId: MOONFEN_ARMOR, wins: 7, outcomes: 1000 }], // 0.7%
 };
 // Resolve the map lists once, not once per kill or map-guide render. A map's sword is listed right after its
-// bows, so the map guide and the loot filter read bow, sword, then armor; with no bow on the map, it comes last.
+// bows and its staff after the sword, so the map guide and the loot filter read bow, sword, staff, then armor.
 const ALL_LOOT: Record<string, readonly MapLootDrop[]> = { ...LOOT };
 const isSword = (itemId: string) => CAMPAIGN_EQUIPMENT[itemId as CampaignItemId]?.definition.weapon?.mode === "MELEE";
-const isBow = (itemId: string) => itemDefinition(itemId)?.weapon?.mode === "RANGED";
+const isStaff = (itemId: string) => CAMPAIGN_EQUIPMENT[itemId as CampaignItemId]?.definition.weapon?.projectile === "BOLT";
+const isBow = (itemId: string) => itemDefinition(itemId)?.weapon?.projectile === "ARROW";
 const campaignDrops = Object.entries(CAMPAIGN_EQUIPMENT);
-for (const [itemId, { mapId, wins, outcomes }] of campaignDrops.filter(([itemId]) => !isSword(itemId))) {
+for (const [itemId, { mapId, wins, outcomes }] of campaignDrops.filter(([itemId]) => !isSword(itemId) && !isStaff(itemId))) {
   ALL_LOOT[mapId] = [...(ALL_LOOT[mapId] ?? []), { itemId: itemId as CampaignItemId, wins, outcomes }];
 }
-for (const [itemId, { mapId, wins, outcomes }] of campaignDrops.filter(([itemId]) => isSword(itemId))) {
-  const drops = [...(ALL_LOOT[mapId] ?? [])];
-  let at = drops.length;
-  drops.forEach((drop, index) => { if (isBow(drop.itemId)) at = index + 1; });
-  drops.splice(at, 0, { itemId: itemId as CampaignItemId, wins, outcomes });
-  ALL_LOOT[mapId] = drops;
+// Swords go after the map's bows, then each staff after its sword.
+for (const [weapon, after] of [[isSword, isBow], [isStaff, (itemId: string) => isBow(itemId) || isSword(itemId)]] as const) {
+  for (const [itemId, { mapId, wins, outcomes }] of campaignDrops.filter(([itemId]) => weapon(itemId))) {
+    const drops = [...(ALL_LOOT[mapId] ?? [])];
+    let at = drops.length;
+    drops.forEach((drop, index) => { if (after(drop.itemId)) at = index + 1; });
+    drops.splice(at, 0, { itemId: itemId as CampaignItemId, wins, outcomes });
+    ALL_LOOT[mapId] = drops;
+  }
 }
 export function regularMapLoot(mapId: string, authored = false): readonly MapLootDrop[] { return (!authored && runtimeMapBalance(mapId)?.loot) || ALL_LOOT[mapId] || []; }

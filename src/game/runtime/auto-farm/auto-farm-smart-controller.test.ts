@@ -909,8 +909,8 @@ describe('autofarm plans: sliders, the boss and the next map', () => {
     }
   });
 
-  it("with a bow, circles a melee enemy closing in and keeps it in reach; never with a sword or in Reflect Only", () => {
-    for (const [weapon, reflectOnly, kites] of [['starter_bow', false, true], ['wooden_sword', false, false], ['starter_bow', true, false]] as const) {
+  it("with a bow or a staff, circles a melee enemy closing in and keeps it in reach; never with a sword or in Reflect Only", () => {
+    for (const [weapon, reflectOnly, kites] of [['starter_bow', false, true], ['forest_staff', false, true], ['wooden_sword', false, false], ['starter_bow', true, false]] as const) {
       const s = planned({ equippedWeapon: () => weapon, reflectOnly: () => reflectOnly });
       const mob = s.add('Bramble', 540, 500);
       mob.engaged = true;

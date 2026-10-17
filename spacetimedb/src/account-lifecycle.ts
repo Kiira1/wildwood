@@ -27,6 +27,7 @@ import { mergeAccountReactions, removeMessageReactions } from "./chat-reactions"
 import { mergeItemGifts, removeItemGifts } from "./item-gifts";
 import { mergeBowSkills, removeBowSkills } from "./bow-skills";
 import { mergeSwordSkills, removeSwordSkills } from "./sword-skills";
+import { mergeStaffSkills, removeStaffSkills } from "./staff-skills";
 import { mergeEquipmentCopies, mergeItemCollection } from "./equipment-copies";
 import { mergeRefineData } from "./item-refine";
 import { mergeCardData } from "./gear-cards";
@@ -257,6 +258,7 @@ export function createAccountLifecycle(deps: AccountLifecycleDeps) {
     mergeItemGifts(ctx, link.guest, ctx.sender);
     mergeBowSkills(ctx, link.guest, ctx.sender);
     mergeSwordSkills(ctx, link.guest, ctx.sender);
+    mergeStaffSkills(ctx, link.guest, ctx.sender);
     mergeEquipmentCopies(ctx, link.guest, ctx.sender);
     mergeItemCollection(ctx, link.guest, ctx.sender);
     mergeRefineData(ctx, link.guest, ctx.sender);
@@ -611,6 +613,7 @@ export function createAccountLifecycle(deps: AccountLifecycleDeps) {
     removeItemGifts(ctx, identity);
     removeBowSkills(ctx, identity);
     removeSwordSkills(ctx, identity);
+    removeStaffSkills(ctx, identity);
     removeMailboxReceipts(ctx, identity);
     unlinkPatreon(ctx, identity);
     for (const budget of ctx.db.enemyDefeatBudget.identity.filter(identity)) ctx.db.enemyDefeatBudget.key.delete(budget.key);
@@ -674,6 +677,7 @@ export function createAccountLifecycle(deps: AccountLifecycleDeps) {
     removeItemGifts(ctx, identity);
     removeBowSkills(ctx, identity);
     removeSwordSkills(ctx, identity);
+    removeStaffSkills(ctx, identity);
     removeMailboxReceipts(ctx, identity);
     unlinkPatreon(ctx, identity);
     for (const budget of ctx.db.enemyDefeatBudget.identity.filter(identity)) ctx.db.enemyDefeatBudget.key.delete(budget.key);

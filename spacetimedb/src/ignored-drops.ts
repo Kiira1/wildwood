@@ -1,6 +1,7 @@
 import { SenderError, table, t } from "spacetimedb/server";
 import type { Identity } from "spacetimedb";
 import { MAX_LOOT_FILTER_BATCH, isDropFiltered, lootFilterId } from "../../shared/loot-filter";
+import { deleteOffer } from "./equipment-copies";
 
 /**
  * The player's loot filter: one row per entry turned off, either a whole slot
@@ -68,7 +69,7 @@ export function writeIgnoredDrops(ctx: Ctx, { itemIds, ignored }: { itemIds: str
   if (!ignored) return;
   const marked = new Set(ids);
   for (const offer of [...ctx.db.pendingEquipmentOffer.identity.filter(ctx.sender)] as any[]) {
-    if (isDropFiltered(offer.itemId, filterId => marked.has(filterId))) ctx.db.pendingEquipmentOffer.id.delete(offer.id);
+    if (isDropFiltered(offer.itemId, filterId => marked.has(filterId))) deleteOffer(ctx, offer);
   }
 }
 

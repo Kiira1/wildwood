@@ -26,6 +26,7 @@ import { finishedEquipmentSprite } from "../../player-appearance";
 import type { StaticWorldSpriteFrame } from "./webgl-static-world-layer";
 import { drawScreenSpaceAt, snapWorldRenderCoordinate } from "./render-space";
 import { createTintedImageCanvas } from "./image-tint";
+import { boltSprite, drawBolt, staffBoltColor } from "../../staff-look";
 import { createEnemyAnimationSampler } from "../enemies/enemy-animation";
 import { ENEMY_HP_LOSS_FLASH_SECONDS } from "../../constants";
 
@@ -311,6 +312,7 @@ export function createActorRenderer(options: {
     const projectileKind = enemy ? undefined : projectileKindForWeapon(weaponItem);
     let source: HTMLCanvasElement | HTMLImageElement | null = null;
     if (projectileKind === "ARROW") source = arrowSprite();
+    else if (projectileKind === "BOLT") source = boltSprite(staffBoltColor(weaponItem));
     else if (projectileKind === "ROCK") {
       const image = options.itemSprite(weaponItem);
       if (image?.complete && image.naturalWidth > 0) source = image;
@@ -321,7 +323,7 @@ export function createActorRenderer(options: {
     const { width, height } = projectileKind === "ROCK"
       ? rockProjectileSize(weaponItem, sourceWidth, sourceHeight)
       : { width: sourceWidth, height: sourceHeight };
-    const rotation = projectileKind === "ARROW" || projectileKind === "ROCK"
+    const rotation = projectileKind === "ARROW" || projectileKind === "ROCK" || projectileKind === "BOLT"
       ? Math.atan2(projectile.vy, projectile.vx)
       : undefined;
     return { source, left: x - width / 2, top: y - height / 2, width, height, rotation };
@@ -533,6 +535,10 @@ export function createActorRenderer(options: {
         drawArrow(x, y, shot.angle);
         continue;
       }
+      if (projectileKind === "BOLT") {
+        drawBolt(ctx, x, y, shot.angle, staffBoltColor(shot.weaponItem));
+        continue;
+      }
       if (projectileKind === "ROCK" && drawRock(shot.weaponItem, x, y, shot.angle)) continue;
       ctx.fillStyle = shot.color;
       options.pixelCircle(x, y, 6);
@@ -643,6 +649,7 @@ export function createActorRenderer(options: {
           ctx.restore();
         }
         if (projectileKind === "ARROW") drawArrow(projectileX, projectileY, Math.atan2(dy, dx), offset);
+        else if (projectileKind === "BOLT") drawBolt(ctx, projectileX, projectileY + offset, Math.atan2(dy, dx), staffBoltColor(weaponItem));
         else if (projectileKind !== "ROCK" || !drawRock(weaponItem, projectileX, projectileY, Math.atan2(dy, dx), offset)) {
           ctx.save(); ctx.translate(projectileX, projectileY);
           ctx.fillStyle = "#ffe76a";
@@ -822,6 +829,19 @@ export function createActorRenderer(options: {
       ctx.fillStyle = enemy.hurt > 0 ? "#fff3d0" : base.color;
       options.pixelCircle(0, 0, enemy.r);
     }
+    // Slowed (Frost Nova, or a chill card): a pale blue glaze over the body and a frost ring at its feet.
+    if (enemy.cardStatus?.slow && deathProgress <= 0) {
+      const glaze = (sprite?.size ?? enemy.r * 2) * .42;
+      ctx.globalAlpha = .26 * visibility;
+      ctx.globalCompositeOperation = "lighter";
+      ctx.fillStyle = "#8fdcff";
+      ctx.beginPath(); ctx.ellipse(0, (spriteBounds.top + spriteBounds.bottom) / 2, glaze, (spriteBounds.bottom - spriteBounds.top) * .5, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.globalCompositeOperation = "source-over";
+      ctx.globalAlpha = .7 * visibility;
+      ctx.strokeStyle = "#bdeeff";
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.ellipse(0, spriteBounds.bottom - 2, glaze, glaze * .32, 0, 0, Math.PI * 2); ctx.stroke();
+    }
     ctx.restore();
 
     if (enemy.hideStatus || !options.enemyTextVisible(enemy) || deathProgress > 0) return;
@@ -894,6 +914,10 @@ export function createActorRenderer(options: {
       : undefined;
     if (projectileKind === "ARROW") {
       drawArrow(x, y, Math.atan2(projectile.vy, projectile.vx));
+      return;
+    }
+    if (projectileKind === "BOLT") {
+      drawBolt(ctx, x, y, Math.atan2(projectile.vy, projectile.vx), staffBoltColor(weaponItem));
       return;
     }
     if (projectileKind === "ROCK" && drawRock(weaponItem, x, y, Math.atan2(projectile.vy, projectile.vx))) return;

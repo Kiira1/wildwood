@@ -2,6 +2,7 @@ import type { DuelCombatModifiers } from "../../../shared/duel-combat";
 import type { EnemyDefinition, EnemyKind, RewardType } from "../enemies";
 import type { PlayerGender } from "../../../shared/player-gender";
 import type { ArrowSkillProcs } from "../../../shared/bow-skills";
+import type { BoltSkillProcs } from "../../../shared/staff-skills";
 
 /** Shared position used by collision, projectiles, and world actors. */
 export type Position = {
@@ -52,6 +53,8 @@ export type Projectile = Circle & {
   trail: number;
   /** Bow skills this arrow rolled when fired; cleared as each is spent. */
   skills?: ArrowSkillProcs | null;
+  /** A staff's bolt: the Chain and Frost Nova it rolled when cast; null for arrows. */
+  bolt?: BoltSkillProcs | null;
   /** Enemies a Piercing Shot arrow has already passed through. */
   pierced?: Set<object> | null;
   /** Where the arrow left the bow, so a Piercing Shot beam can be drawn from it. */

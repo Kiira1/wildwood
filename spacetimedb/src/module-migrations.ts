@@ -48,7 +48,7 @@ import { backfillMiningLevels } from "./mining";
 import { convertToStatRatings, trimStoredSoulCritDamage } from "./stat-rating-migration";
 import { repinMapBalances } from "./map-balance";
 
-export const MODULE_MIGRATION_VERSION = 57;
+export const MODULE_MIGRATION_VERSION = 58;
 
 /**
  * Migration 50 (0.856): the ranking snapshot moves to leaderboard_entry_v2,
@@ -568,6 +568,8 @@ export function createModuleMigrations(deps: ModuleMigrationDeps) {
     if (currentVersion < 56) backfillMiningLevels(ctx);
     // 57 (0.907): the crit rating and stats past f32 move onto player_progress (shared/progress-row.ts).
     if (currentVersion < 57) moveCombatColumnsOntoProgress(ctx);
+    // 58 (0.911): every map's staff joined its loot; a visit pinned before then kept loot without it until travel.
+    if (currentVersion < 58) repinMapBalances(ctx);
     const next = { id: 0, version: MODULE_MIGRATION_VERSION };
     if (state) ctx.db.moduleMigrationState.id.update(next);
     else ctx.db.moduleMigrationState.insert(next);

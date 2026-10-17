@@ -1,4 +1,5 @@
 import type { Identity } from "spacetimedb";
+import { weaponAttackInterval, weaponHitFactor } from "../../../shared/staff-skills";
 import { tables, type DbConnection } from "../../module_bindings";
 import { effectivePlayerPowerStats } from "../../../shared/player-power";
 import { itemDefinition } from "../../../shared/items";
@@ -96,11 +97,12 @@ export function remoteCombatStatsFromRows(
   const criticalDamageRank = normalizedRank(research?.criticalDamage ?? 0);
   return {
     melee,
-    damage: finitePositive(effective.damage, 1),
+    // A staff's bolts hit a little harder and come slower (shared/staff-skills.ts).
+    damage: finitePositive(effective.damage * weaponHitFactor(progress.equippedRightHand || progress.equippedLeftHand), 1),
     maxHp: finitePositive(effective.maxHp, 100),
     armor: Math.max(0, Number.isFinite(effective.armor) ? effective.armor : 0),
     regen: Math.max(0, Number.isFinite(effective.regen) ? effective.regen : 0),
-    attackInterval: finitePositive(effective.attackRate, 1),
+    attackInterval: finitePositive(weaponAttackInterval(progress.equippedRightHand || progress.equippedLeftHand, effective.attackRate), 1),
     projectileSpeed: finitePositive(progress.projectileSpeed, 390),
     projectileCount: melee ? 1 : Number.isInteger(progress.projectileCount)
       ? Math.max(1, Math.min(20, progress.projectileCount))

@@ -58,6 +58,7 @@ import ClaimDeveloperItemGiftReducer from "./claim_developer_item_gift_reducer";
 import ClaimGuestAccountReducer from "./claim_guest_account_reducer";
 import ClaimMailboxGiftReducer from "./claim_mailbox_gift_reducer";
 import ClaimPickaxeReducer from "./claim_pickaxe_reducer";
+import ClaimStarterStaffReducer from "./claim_starter_staff_reducer";
 import CollectGuildMemberQuestsReducer from "./collect_guild_member_quests_reducer";
 import CompleteOnboardingStepReducer from "./complete_onboarding_step_reducer";
 import ConfigureGemCommerceReducer from "./configure_gem_commerce_reducer";
@@ -271,6 +272,7 @@ import DuelCombatSnapshotRow from "./duel_combat_snapshot_table";
 import DuelReplayRow from "./duel_replay_table";
 import DuelReplayWideStatsRow from "./duel_replay_wide_stats_table";
 import DuelRiposteRow from "./duel_riposte_table";
+import DuelStaffSkillRow from "./duel_staff_skill_table";
 import DuelWideStatsRow from "./duel_wide_stats_table";
 import GuildQuestWeekRow from "./guild_quest_week_table";
 import LatestChatMessagesRow from "./latest_chat_messages_table";
@@ -320,6 +322,7 @@ import MySocialHubRow from "./my_social_hub_table";
 import MySocialMessagesRow from "./my_social_messages_table";
 import MySocialMessagesWithReactionsRow from "./my_social_messages_with_reactions_table";
 import MySoulStatsRow from "./my_soul_stats_table";
+import MyStaffSkillsRow from "./my_staff_skills_table";
 import MySwordSkillsRow from "./my_sword_skills_table";
 import MyUpgradeBenchRow from "./my_upgrade_bench_table";
 import MyUpgradeBenchThirdSlotRow from "./my_upgrade_bench_third_slot_table";
@@ -362,6 +365,7 @@ import PlayerProgressRow from "./player_progress_table";
 import PlayerResearchRow from "./player_research_table";
 import PlayerWideStatsRow from "./player_wide_stats_table";
 import PlayerWornSkillRow from "./player_worn_skill_table";
+import PlayerWornStaffSkillRow from "./player_worn_staff_skill_table";
 import PrestigeExpansionRow from "./prestige_expansion_table";
 import ProceduralBossRow from "./procedural_boss_table";
 import ProceduralProgressRow from "./procedural_progress_table";
@@ -486,6 +490,17 @@ const tablesSchema = __schema({
       { name: 'duel_riposte_duel_id_key', constraint: 'unique', columns: ['duelId'] },
     ],
   }, DuelRiposteRow),
+  duelStaffSkill: __table({
+    name: 'duel_staff_skill',
+    indexes: [
+      { accessor: 'duelId', name: 'duel_staff_skill_duel_id_idx_btree', algorithm: 'btree', columns: [
+        'duelId',
+      ] },
+    ],
+    constraints: [
+      { name: 'duel_staff_skill_duel_id_key', constraint: 'unique', columns: ['duelId'] },
+    ],
+  }, DuelStaffSkillRow),
   duelWideStats: __table({
     name: 'duel_wide_stats',
     indexes: [
@@ -970,6 +985,17 @@ const tablesSchema = __schema({
       { name: 'player_worn_skill_identity_key', constraint: 'unique', columns: ['identity'] },
     ],
   }, PlayerWornSkillRow),
+  playerWornStaffSkill: __table({
+    name: 'player_worn_staff_skill',
+    indexes: [
+      { accessor: 'identity', name: 'player_worn_staff_skill_identity_idx_btree', algorithm: 'btree', columns: [
+        'identity',
+      ] },
+    ],
+    constraints: [
+      { name: 'player_worn_staff_skill_identity_key', constraint: 'unique', columns: ['identity'] },
+    ],
+  }, PlayerWornStaffSkillRow),
   prestigeExpansion: __table({
     name: 'prestige_expansion',
     indexes: [
@@ -1396,6 +1422,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, MySoulStatsRow),
+  myStaffSkills: __table({
+    name: 'my_staff_skills',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MyStaffSkillsRow),
   mySwordSkills: __table({
     name: 'my_sword_skills',
     indexes: [
@@ -1459,6 +1492,7 @@ const reducersSchema = __reducers(
   __reducerSchema("claim_guest_account", ClaimGuestAccountReducer),
   __reducerSchema("claim_mailbox_gift", ClaimMailboxGiftReducer),
   __reducerSchema("claim_pickaxe", ClaimPickaxeReducer),
+  __reducerSchema("claim_starter_staff", ClaimStarterStaffReducer),
   __reducerSchema("collect_guild_member_quests", CollectGuildMemberQuestsReducer),
   __reducerSchema("complete_onboarding_step", CompleteOnboardingStepReducer),
   __reducerSchema("configure_gem_commerce", ConfigureGemCommerceReducer),

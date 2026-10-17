@@ -16,6 +16,8 @@ import { CARD_SPLASH_MAX_TARGETS, bowSkillsWithCards, cardGuardFactor, cardOffen
 import { cardValue } from "../../shared/card-effects";
 import { swordSkillChance, swordSkillReachMultiplier } from "../../shared/sword-skills";
 import { swordSkillRollFor } from "./sword-skills";
+import { STAFF_BOLT_DAMAGE_FACTOR, isStaff, staffSkillReachMultiplier, weaponAttackInterval } from "../../shared/staff-skills";
+import { staffSkillRollFor } from "./staff-skills";
 import type { ModuleReducerCtx as GameReducerContext } from "./index";
 import { readPlayerProgress } from "./wide-stats";
 
@@ -147,6 +149,9 @@ export function createCombatReport(deps: CombatReportDeps) {
       // Bow skill cards add to a bow's own roll.
       const bowSkills = isSkillBow(loadout.weapon) ? bowSkillsWithCards(bowSkillRollFor(ctx, ctx.sender, loadout.weapon), loadout.cardTotals) : null;
       const swordSkills = swordSkillRollFor(ctx, ctx.sender, loadout.weapon);
+      // A staff's bolt bursts on every enemy around its impact, and its skills reach further (staff-skills.ts).
+      const staff = isStaff(loadout.weapon);
+      const staffReach = staff ? staffSkillReachMultiplier(staffSkillRollFor(ctx, ctx.sender, loadout.weapon)) : 1;
       const armorReduction = armorFor(statsFor(withSoulStats(saved, soul, minInterval)).armor).reduction;
       return { saved, earned, statsFor, armorFor, soul, minInterval, gear: {
         loadout, critical, swing: prestigeSwingMultiplier(ranks),
@@ -155,7 +160,9 @@ export function createCombatReport(deps: CombatReportDeps) {
         projectiles: !armed || itemDefinition(loadout.weapon)?.weapon?.mode === "MELEE" ? 1 : Math.max(1, saved.projectileCount),
         // Reflect returns the hit before armor, so armor raises what it adds.
         reach: (prestigeReachMultiplier(ranks, armorReduction) + cardBound.reflect * WORLD_REFLECT_SHARE * preArmorFactor(armorReduction))
-          * bowSkillReachMultiplier(bowSkills) * swordSkillReachMultiplier(swordSkills) * cardBound.reach,
+          * bowSkillReachMultiplier(bowSkills) * swordSkillReachMultiplier(swordSkills) * staffReach * cardBound.reach,
+        // A bolt hits a little harder than an arrow, and casts come slower.
+        weapon: loadout.weapon, boltDamage: staff ? STAFF_BOLT_DAMAGE_FACTOR : 1,
         cardDamage: cardBound.damage,
         reflects: prestigePerkValue(ranks, "riposte") > 0 || cardBound.reflect > 0,
         // Prism: a reflected hit strikes the enemies near its attacker as well.
@@ -174,10 +181,10 @@ export function createCombatReport(deps: CombatReportDeps) {
         const { saved, earned, gear, statsFor, armorFor, soul, minInterval } = report();
         if (!saved) return { dps: 0, attackInterval: 1 };
         const progress = withSoulStats(earned!.preview(reward), soul, minInterval);
-        const attackInterval = attackIntervalForProgress(progress);
-        if (!gear) return { dps: 0, attackInterval, projectiles: 1 };
+        if (!gear) return { dps: 0, attackInterval: attackIntervalForProgress(progress), projectiles: 1 };
+        const attackInterval = weaponAttackInterval(gear.weapon, attackIntervalForProgress(progress));
         const dps = gear.armed
-          ? gear.loadout.damage(progress.damage) * gear.critical(progress.critRating) * gear.swing * gear.cardDamage * gear.projectiles / attackInterval : 0;
+          ? gear.loadout.damage(progress.damage) * gear.boltDamage * gear.critical(progress.critRating) * gear.swing * gear.cardDamage * gear.projectiles / attackInterval : 0;
         // Reflect throws a hit back as it arrived before armor
         // (capped at max health outside Reflect Only). What got through can
         // never total more than the player's health, what regen restores and

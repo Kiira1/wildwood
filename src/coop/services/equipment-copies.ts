@@ -1,5 +1,6 @@
 import { tables, type DbConnection } from "../../module_bindings";
 import { weaponSkillRollOf, type WeaponSkillRoll } from "../../../shared/weapon-skills";
+import { isSkillStaff } from "../../../shared/staff-skills";
 import { reducerErrorMessage } from "./reducer-errors";
 import { createIgnoredDrops } from "./ignored-drops";
 import { createLootSettings } from "./loot-settings";
@@ -11,7 +12,10 @@ export type EquipmentOffer = { id: bigint; itemId: string; roll: WeaponSkillRoll
 export type EquipmentCopyResult = { ok: boolean; error?: string };
 
 type Target = { connection: DbConnection; isCurrent: () => boolean };
-const rollOf = weaponSkillRollOf;
+/** Staff rolls of kept copies and offers, by "copy:<id>" or "offer:<id>" (my_staff_skills). */
+type StaffRolls = ReadonlyMap<string, WeaponSkillRoll>;
+const rollOf = (row: WeaponSkillRoll & { id: bigint; itemId: string }, staff: StaffRolls, kind: "copy" | "offer") =>
+  isSkillStaff(row.itemId) ? staff.get(`${kind}:${row.id}`) ?? { meteor: 0, chain: 0, frostNova: 0 } : weaponSkillRollOf(row);
 const byId = (a: { id: bigint }, b: { id: bigint }) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 const millis = (timestamp: { microsSinceUnixEpoch: bigint }) => Number(timestamp.microsSinceUnixEpoch / 1000n);
 /** How long after this tab equips, destroys or keeps a copy a change to that bow's roll is taken as its doing. */
@@ -48,26 +52,40 @@ export function createEquipmentCopies(notify: () => void, now: () => number = Da
     connection.db.myEquipmentLocks.onInsert(readLocks);
     connection.db.myEquipmentLocks.onDelete(readLocks);
     offers = [];
+    let staff: StaffRolls = new Map();
     const readCopies = () => {
       if (!isCurrent()) return;
-      copies = [...connection.db.myEquipmentCopies.iter()].sort(byId).map(row => ({ id: row.id, itemId: row.itemId, roll: rollOf(row) }));
+      copies = [...connection.db.myEquipmentCopies.iter()].sort(byId).map(row => ({ id: row.id, itemId: row.itemId, roll: rollOf(row, staff, "copy") }));
       notify();
     };
     const readOffers = () => {
       if (!isCurrent()) return;
       offers = [...connection.db.myEquipmentOffers.iter()].sort(byId).map(row => ({
-        id: row.id, itemId: row.itemId, roll: rollOf(row), createdAtMs: millis(row.createdAt), expiresAtMs: millis(row.expiresAt),
+        id: row.id, itemId: row.itemId, roll: rollOf(row, staff, "offer"), createdAtMs: millis(row.createdAt), expiresAtMs: millis(row.expiresAt),
       }));
       notify();
     };
+    const readStaff = () => {
+      if (!isCurrent()) return;
+      const next = new Map<string, WeaponSkillRoll>();
+      for (const row of connection.db.myStaffSkills.iter()) {
+        if (row.copyId === 0n && row.offerId === 0n) continue;
+        next.set(row.copyId ? `copy:${row.copyId}` : `offer:${row.offerId}`, { meteor: row.meteor, chain: row.chain, frostNova: row.frostNova });
+      }
+      staff = next;
+      readCopies(); readOffers();
+    };
+    connection.db.myStaffSkills.onInsert(readStaff);
+    connection.db.myStaffSkills.onUpdate(readStaff);
+    connection.db.myStaffSkills.onDelete(readStaff);
     connection.db.myEquipmentCopies.onInsert(readCopies);
     connection.db.myEquipmentCopies.onUpdate(readCopies);
     connection.db.myEquipmentCopies.onDelete(readCopies);
     connection.db.myEquipmentOffers.onInsert(readOffers);
     connection.db.myEquipmentOffers.onUpdate(readOffers);
     connection.db.myEquipmentOffers.onDelete(readOffers);
-    connection.subscriptionBuilder().onApplied(() => { readCopies(); readOffers(); readIgnoredDrops(); readLootSettings(); readLocks(); })
-      .subscribe([tables.myEquipmentLocks, tables.myEquipmentCopies, tables.myEquipmentOffers, ignoredDrops.table, lootSettings.table]);
+    connection.subscriptionBuilder().onApplied(() => { readStaff(); readIgnoredDrops(); readLootSettings(); readLocks(); })
+      .subscribe([tables.myEquipmentLocks, tables.myEquipmentCopies, tables.myEquipmentOffers, tables.myStaffSkills, ignoredDrops.table, lootSettings.table]);
   }
 
   async function call(send: (connection: DbConnection) => Promise<unknown>, itemId?: string): Promise<EquipmentCopyResult> {

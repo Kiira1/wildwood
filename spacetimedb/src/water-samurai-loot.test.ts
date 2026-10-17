@@ -7,14 +7,14 @@ import { regularMapLoot } from "../../shared/regular-map-loot";
 import { progressOf } from "../../tests/helpers/progress";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
-// Each map's sword drops on its bow's odds, rolled on its own: the bow's boundary is the sword's too.
+// Each map's sword and staff drop on its bow's odds, rolled on their own: the bow's boundary is theirs too.
 it.each([
-  ["water_reach", 1, 7, [WATER_ARMOR, SKY_BOW, "sky_sword"]],
-  ["water_reach", 2, 7, [SKY_BOW, "sky_sword"]],
+  ["water_reach", 1, 7, [WATER_ARMOR, SKY_BOW, "sky_sword", "sky_staff"]],
+  ["water_reach", 2, 7, [SKY_BOW, "sky_sword", "sky_staff"]],
   ["water_reach", 1, 8, [WATER_ARMOR]],
   ["water_reach", 2, 8, []],
-  ["samurai_garden", 1, 13, [SAMURAI_HAT, SAMURAI_BOW, "samurai_sword"]],
-  ["samurai_garden", 2, 13, [SAMURAI_BOW, "samurai_sword"]],
+  ["samurai_garden", 1, 13, [SAMURAI_HAT, SAMURAI_BOW, "samurai_sword", "samurai_staff"]],
+  ["samurai_garden", 2, 13, [SAMURAI_BOW, "samurai_sword", "samurai_staff"]],
   ["samurai_garden", 1, 14, [SAMURAI_HAT]],
   ["samurai_garden", 2, 14, []],
 ] as const)("rolls independent loot in %s at boundaries %s / %s", (mapId, armorRoll, bowRoll, expected) => {
@@ -62,7 +62,7 @@ it.each(["home_exterior", "crystal_hollows", "endless_1"])("does not roll these 
   f.ctx.random.integerInRange = vi.fn(() => 1);
   if (mapId === "home_exterior") expect(() => reportEnemy(f)).toThrow(); else reportEnemy(f);
   if (mapId === "crystal_hollows") {
-    expect([...f.db.playerItemDrop.iter()].map(drop => drop.itemId)).toEqual(["crystal_bow", "crystal_sword", "crystal_armor", "crystal_helmet"]);
+    expect([...f.db.playerItemDrop.iter()].map(drop => drop.itemId)).toEqual(["crystal_bow", "crystal_sword", "crystal_staff", "crystal_armor", "crystal_helmet"]);
   } else expect(f.ctx.random.integerInRange).not.toHaveBeenCalled();
 });
 

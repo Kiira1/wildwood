@@ -90,9 +90,9 @@ it("never lands a filtered first copy: no bag entry, no offer, no drop event", (
   filter(f, ["crystal_bow"]);
   hunt(f);
   expect(inventory(f)).not.toContain("crystal_bow");
-  expect(inventory(f)).toEqual(expect.arrayContaining(["crystal_armor", "crystal_helmet", "crystal_sword"]));
+  expect(inventory(f)).toEqual(expect.arrayContaining(["crystal_armor", "crystal_helmet", "crystal_sword", "crystal_staff"]));
   expect(offers(f)).toEqual([]);
-  expect(drops(f)).toEqual(["crystal_armor", "crystal_helmet", "crystal_sword"]);
+  expect(drops(f)).toEqual(["crystal_armor", "crystal_helmet", "crystal_staff", "crystal_sword"]);
 });
 
 it("drops a filtered duplicate without an offer, and never swaps it for another item", () => {
@@ -101,7 +101,7 @@ it("drops a filtered duplicate without an offer, and never swaps it for another 
   filter(f, ["crystal_armor"]);
   hunt(f);
   expect(offers(f)).toEqual([]);
-  expect(drops(f)).toEqual(["crystal_bow", "crystal_helmet", "crystal_sword"]);
+  expect(drops(f)).toEqual(["crystal_bow", "crystal_helmet", "crystal_staff", "crystal_sword"]);
   // The roll is taken and thrown away, not spent on something else.
   const rolled = new Map([["crystal_armor", 2], ["crystal_bow", 1]]);
   f.run((ctx: any) => keepWantedDrops(ctx, ctx.sender, rolled));
@@ -113,8 +113,8 @@ it("turns a whole slot off on a map the player never set anything on", () => {
   // "Only weapons": armor, helmets and boots off, nothing said about Crystal Hollows itself.
   filter(f, ["slot:CHEST", "slot:HEAD", "slot:FEET"]);
   hunt(f);
-  expect(drops(f)).toEqual(["crystal_bow", "crystal_sword"]);
-  expect(inventory(f)).toEqual(expect.arrayContaining(["crystal_bow", "crystal_sword"]));
+  expect(drops(f)).toEqual(["crystal_bow", "crystal_staff", "crystal_sword"]);
+  expect(inventory(f)).toEqual(expect.arrayContaining(["crystal_bow", "crystal_staff", "crystal_sword"]));
   expect(inventory(f)).not.toContain("crystal_armor");
   expect(inventory(f)).not.toContain("crystal_helmet");
 });
@@ -126,7 +126,7 @@ it("keeps an item filtered by its slot even when the item itself is on, and lets
   filter(f, ["slot:HAND"], false);
   filter(f, ["crystal_helmet"]);
   hunt(f);
-  expect(drops(f)).toEqual(["crystal_armor", "crystal_bow", "crystal_sword"]);
+  expect(drops(f)).toEqual(["crystal_armor", "crystal_bow", "crystal_staff", "crystal_sword"]);
 });
 
 it("never rolls boss equipment, regardless of the loot filter", () => {

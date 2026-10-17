@@ -21,6 +21,7 @@ import { cardTotals } from "../../../shared/card-effects";
 import { attackIntervalForRating, ratingForLevels } from "../../../shared/stat-rating";
 import { applyEnemyRewards } from "../../../shared/enemy-defeats";
 import { MIN_ATTACK_INTERVAL } from "../../../shared/rules";
+import { STAFF_BOLT_DAMAGE_FACTOR } from "../../../shared/staff-skills";
 
 function createCombatHarness(overrides: Partial<Parameters<typeof createPlayerCombatController>[0]> = {}) {
   const state = createGameBootstrap();
@@ -1068,5 +1069,57 @@ describe("native sword combat", () => {
     const hp = enemy.hp;
     state.controller.clearPendingThrow(); now = 1; state.controller.updateProjectiles(.8);
     expect(enemy.hp).toBe(hp); expect(state.player.swordSpinClock).toBe(0);
+  });
+});
+
+describe("staff combat", () => {
+  const pack = (state: ReturnType<typeof createCombatHarness>) => {
+    state.bosses.dragon.dead = true;
+    Object.assign(state.player, { x: 500, y: 500, hp: 100, maxHp: 100, damage: 10, attackRate: 1, attackRange: 400, projectileCount: 1, knockback: 0 });
+    const lifecycle = createEnemyLifecycle(state.enemies, state.spawnSites, () => {});
+    for (const [id, y] of [[0, 500], [1, 540], [2, 460]] as const) {
+      lifecycle.spawnFromSite({ id, type: "Spitter", x: 800, y, campName: "Pack", leashRange: 500, alive: false, respawnAt: 0 });
+    }
+    for (const enemy of state.enemies) enemy.hp = enemy.maxHp = 100_000;
+    return state.enemies;
+  };
+  function cast(weapon: string, seconds: number, extra: Partial<Parameters<typeof createPlayerCombatController>[0]> = {}) {
+    let now = 0;
+    const state = createCombatHarness({ nowSeconds: () => now, equippedWeapon: () => weapon, random: () => .99, ...extra });
+    const enemies = pack(state);
+    for (let frame = 0; frame < seconds * 60; frame++) {
+      now += 1 / 60; state.controller.attackNearest(); state.controller.updateProjectiles(1 / 60);
+    }
+    return { state, enemies, lost: enemies.map(enemy => 100_000 - enemy.hp) };
+  }
+
+  it("casts slower, heavier bolts that burst on the whole pack", () => {
+    const twang = vi.fn(), swish = vi.fn();
+    const bow = cast("ion_bow", 6.7, { playBowAttackSound: twang }), staff = cast("ion_staff", 6.7, { playSwordAttackSound: swish });
+    // Casts every 1.35 s against the bow's every second.
+    expect(twang).toHaveBeenCalledTimes(7);
+    expect(swish).toHaveBeenCalledTimes(5);
+    const arrow = equipmentDamage(10, "ion_bow", "", ""), bolt = equipmentDamage(10, "ion_staff", "", "") * STAFF_BOLT_DAMAGE_FACTOR;
+    // The bow's arrows strike only the nearest; every bolt bursts on all three at full damage.
+    expect(bow.lost[1] + bow.lost[2]).toBe(0);
+    expect(Number.isInteger(Math.round(bow.lost[0] / arrow * 1e6) / 1e6)).toBe(true);
+    expect(staff.lost.every(lost => Math.abs(lost - staff.lost[0]) < 1e-6)).toBe(true);
+    const bolts = staff.lost[0] / bolt;
+    expect(Math.abs(bolts - Math.round(bolts))).toBeLessThan(1e-6);
+    expect(bolts).toBeGreaterThanOrEqual(3);
+  });
+
+  it("whooshes each cast, never twangs, and leaves no spark trail", () => {
+    const swish = vi.fn(), twang = vi.fn(), spawnParticle = vi.fn();
+    cast("ion_staff", 1.5, { playSwordAttackSound: swish, playBowAttackSound: twang, spawnParticle });
+    expect(swish).toHaveBeenCalledTimes(2);
+    expect(twang).not.toHaveBeenCalled();
+    expect(spawnParticle).not.toHaveBeenCalled();
+  });
+
+  it("counts a staff at three quarters of its tier's bow against one target", () => {
+    const bow = createCombatHarness({ equippedWeapon: () => "ion_bow" }), staff = createCombatHarness({ equippedWeapon: () => "ion_staff" });
+    for (const state of [bow, staff]) Object.assign(state.player, { damage: 10, attackRate: 1, projectileCount: 1 });
+    expect(staff.controller.expectedDps() / bow.controller.expectedDps()).toBeCloseTo(.75, 6);
   });
 });

@@ -357,3 +357,24 @@ it("still clears the bag and kept copies on a reset", () => {
   expect(offers(f)).toEqual([]);
   expect(progress(f).equippedRightHand).toBe(STARTER_STONE);
 });
+
+it("keeps a staff player on staffs: new drops, prestige, and no usable staff falling back to ranged", () => {
+  const mage = looter({ inventoryJson: JSON.stringify(["desert_staff"]), equippedRightHand: "desert_staff" });
+  reportEnemy(mage, ENEMY, 1);
+  expect(inventory(mage)).toEqual(expect.arrayContaining(["crystal_bow", "crystal_sword", "crystal_staff"]));
+  expect(progress(mage).equippedRightHand).toBe("crystal_staff");
+  // An archer is never handed a staff, nor a swordsman.
+  const archer = looter();
+  reportEnemy(archer, ENEMY, 1);
+  expect(progress(archer).equippedRightHand).toBe("crystal_bow");
+
+  const bag = (...weapons: string[]) => JSON.stringify([...weapons, "ion_helmet", "forest_cap", SAMURAI_HAT]);
+  const veteranMage = veteran();
+  veteranMage.patch("playerProgress", { inventoryJson: bag(STARTER_BOW, WOODEN_SWORD, "forest_staff", "ion_staff"), equippedRightHand: "ion_staff" });
+  veteranMage.run(server.prestigeAccount, {});
+  expect(progress(veteranMage).equippedRightHand).toBe("forest_staff");
+  const unarmed = veteran();
+  unarmed.patch("playerProgress", { inventoryJson: bag(STARTER_BOW, "ion_staff"), equippedRightHand: "ion_staff" });
+  unarmed.run(server.prestigeAccount, {});
+  expect(progress(unarmed).equippedRightHand).toBe(STARTER_BOW);
+});

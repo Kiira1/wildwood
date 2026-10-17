@@ -143,6 +143,15 @@
       "opponentRiposte:f32",
       "riposteSeed:u64"
     ],
+    "duel_staff_skill": [
+      "duelId:u64",
+      "challengerMeteor:f64",
+      "challengerChain:f64",
+      "challengerFrostNova:f64",
+      "opponentMeteor:f64",
+      "opponentChain:f64",
+      "opponentFrostNova:f64"
+    ],
     "duel": [
       "id:u64",
       "challenger:identity",
@@ -596,6 +605,16 @@
       "critDamage:f64",
       "kills:u64"
     ],
+    "my_staff_skills": [
+      "key:string",
+      "identity:identity",
+      "itemId:string",
+      "copyId:u64",
+      "offerId:u64",
+      "meteor:f32",
+      "chain:f32",
+      "frostNova:f32"
+    ],
     "my_sword_skills": [
       "key:string",
       "identity:identity",
@@ -957,6 +976,13 @@
       "whirlwind:f32",
       "deflect:f32",
       "shockwave:f32"
+    ],
+    "player_worn_staff_skill": [
+      "identity:identity",
+      "itemId:string",
+      "meteor:f32",
+      "chain:f32",
+      "frostNova:f32"
     ],
     "prestige_expansion": [
       "id:u8",

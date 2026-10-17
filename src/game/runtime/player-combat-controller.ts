@@ -23,6 +23,12 @@ import { arrowPassesThrough, isSkillSecondaryTarget, rainArrowStorm, ricochetCha
 import { swordSkillBossDamageMultiplier } from "../../../shared/sword-skills";
 import type { WeaponSkillRoll } from "../../../shared/weapon-skills";
 import { createSwordSkillRuntime, type SwordSkillEffects } from "./sword-skill-runtime";
+import { createStaffSkillRuntime, type StaffSkillEffects } from "./staff-skill-runtime";
+import {
+  STAFF_BOLT_DAMAGE_FACTOR, STAFF_BOLT_SPEED_FACTOR, STAFF_DPS_FACTOR, isStaff, rollBoltSkillProcs, staffSkillBossDamageMultiplier,
+  weaponAttackInterval,
+} from "../../../shared/staff-skills";
+import { staffBoltColor } from "../staff-look";
 import { createCardCombat } from "./card-combat";
 import { NO_CARDS, cardChance, cardStatGainFactor, cardValue, type CardTotals } from "../../../shared/card-effects";
 import { bowSkillsWithCards } from "../../../shared/card-bounds";
@@ -157,7 +163,7 @@ export function createPlayerCombatController(options: {
   spawnParticle: (x: number, y: number, vx: number, vy: number, life: number, maxLife: number, size: number, color: string) => void;
   spawnDamageNumber: (x: number, y: number, amount: number, critical?: boolean, damageTaken?: boolean, reflected?: boolean) => void;
   /** Weapon skill visuals; combat still works without them (tests, tools). */
-  skillEffects?: SwordSkillEffects & {
+  skillEffects?: SwordSkillEffects & StaffSkillEffects & {
     spawnArcingArrow: (fromX: number, fromY: number, toX: number, toY: number, index: number, color: string) => void;
     spawnSkillStreak: (x: number, y: number, toX: number, toY: number, color: string, width?: number, life?: number, jagged?: boolean) => void;
     spawnSkillRing: (x: number, y: number, color: string, radius?: number, life?: number) => void;
@@ -207,6 +213,12 @@ export function createPlayerCombatController(options: {
     player, enemies, currentMapId: options.currentMapId, equippedWeapon: options.equippedWeapon,
     activeBoss: activeMapBoss, roll: weaponSkills, nowSeconds: options.nowSeconds, random,
     isDueling, onCombat: options.onCombat, effects: options.skillEffects, hit: applyPlayerHit,
+  });
+  const staffSkills = createStaffSkillRuntime({
+    player, enemies, currentMapId: options.currentMapId, equippedWeapon: options.equippedWeapon,
+    activeBoss: activeMapBoss, roll: weaponSkills, nowSeconds: options.nowSeconds, random, isDueling,
+    boltColor: () => staffBoltColor(options.equippedWeapon()), effects: options.skillEffects,
+    hit: (target, damage, critical, angle) => applyPlayerHit(target, damage, critical, angle),
   });
   const cardCombat = createCardCombat({
     cards: wornCards, player, enemies, random, mapId: options.currentMapId, isDueling, spawnBurst, spawnParticle,
@@ -388,6 +400,9 @@ export function createPlayerCombatController(options: {
     const weaponItem = options.equippedWeapon();
     const bowSkills = weaponSkills();
     const skilled = hasBowSkills(bowSkills);
+    // A staff casts slower, heavier bolts that burst where they land (staff-skill-runtime.ts).
+    const staff = isStaff(weaponItem);
+    const speed = player.projectileSpeed * (staff ? STAFF_BOLT_SPEED_FACTOR : 1);
     const fire = (angle: number) => {
       const projectileLifeBonus = 1.25;
       // Personal bosses use the same crit roll as ordinary enemies. Only the
@@ -398,18 +413,19 @@ export function createPlayerCombatController(options: {
       projectile.y = player.y + Math.sin(angle) * 20;
       projectile.originX = projectile.x;
       projectile.originY = projectile.y;
-      projectile.vx = Math.cos(angle) * player.projectileSpeed;
-      projectile.vy = Math.sin(angle) * player.projectileSpeed;
+      projectile.vx = Math.cos(angle) * speed;
+      projectile.vy = Math.sin(angle) * speed;
       projectile.r = 6;
       // Each arrow rolls its own second hit, landing as one heavier impact.
-      projectile.damage = weaponDamage(critical) * (Math.random() < doubleStrikeChance() ? 2 : 1);
+      projectile.damage = weaponDamage(critical) * (staff ? STAFF_BOLT_DAMAGE_FACTOR : 1) * (Math.random() < doubleStrikeChance() ? 2 : 1);
       projectile.critical = critical;
-      projectile.hitLife = player.attackRange / player.projectileSpeed * projectileLifeBonus;
-      projectile.life = (player.attackRange + PLAYER_PROJECTILE_VISUAL_TAIL) / player.projectileSpeed * projectileLifeBonus;
+      projectile.hitLife = player.attackRange / speed * projectileLifeBonus;
+      projectile.life = (player.attackRange + PLAYER_PROJECTILE_VISUAL_TAIL) / speed * projectileLifeBonus;
       projectile.trail = 0;
       projectile.spawnedAtSeconds = releasedAtSeconds;
       // Every arrow, the Split Shot one included, rolls each bow skill itself.
       projectile.skills = skilled ? rollArrowSkillProcs(bowSkills, random) : null;
+      projectile.bolt = staff ? rollBoltSkillProcs(weaponSkills(), random) : null;
       projectile.pierced = null;
       if (projectile.skills?.piercingShot) {
         projectile.hitLife *= PIERCING_SHOT_RANGE_MULTIPLIER;
@@ -424,6 +440,12 @@ export function createPlayerCombatController(options: {
     if (second) fire(Math.atan2(second.y - player.y, second.x - player.x));
     const projectileKind = itemDefinition(weaponItem)?.weapon?.projectile;
     if (projectileKind === "ARROW" || projectileKind === "ROCK") options.playBowAttackSound?.();
+    if (staff) {
+      // The cast whooshes; Meteor rolls once a cast, on what was aimed at. The staff's own glow marks the release.
+      options.playSwordAttackSound?.(weaponAttackInterval(weaponItem, player.attackRate));
+      if (!target.isBoss || options.hitPersonalBoss) staffSkills.cast({ x: target.x, y: targetAimY(target) }, weaponDamage(false) * STAFF_BOLT_DAMAGE_FACTOR, false);
+      return;
+    }
     spawnBurst(player.x + dx / distance * 17, player.y + dy / distance * 17, "#ffe36b", 4, 38);
   }
 
@@ -548,7 +570,7 @@ export function createPlayerCombatController(options: {
       player.attackClock = Math.max(0, nextAttackAtSeconds - nowSeconds);
       return;
     }
-    const attackInterval = player.attackRate;
+    const attackInterval = weaponAttackInterval(options.equippedWeapon(), player.attackRate);
     if (target.isBoss && fireAtSharedBossCycle(target, attackInterval, nowSeconds)) return;
     if (nowSeconds < nextAttackAtSeconds) return;
     fireAt(target, attackInterval, nowSeconds);
@@ -802,6 +824,11 @@ export function createPlayerCombatController(options: {
    */
   function arrowImpact(projectile: Projectile, target: EnemyState | BossTarget, x: number, y: number) {
     const critical = projectile.critical === true;
+    if (projectile.bolt) {
+      // A bolt stops where it bursts (its life is spent), so it bursts once.
+      staffSkills.burst(target, x, y, projectile.damage, critical, Math.atan2(projectile.vy, projectile.vx), projectile.bolt);
+      return;
+    }
     // No spark on a hit: hits are too many to draw sparks for. Deaths keep their burst.
     applyPlayerHit(target, projectile.damage, critical, Math.atan2(projectile.vy, projectile.vx));
     const procs = projectile.skills;
@@ -838,6 +865,7 @@ export function createPlayerCombatController(options: {
     if (stormHits.length) landStormHits(nowSeconds);
     syncAttackTimeline(nowSeconds);
     swordSkills.update();
+    staffSkills.update();
     cardCombat.update(dt);
     if (projectiles.length > 0) rebuildTargetGrid();
     for (const projectile of projectiles) {
@@ -874,7 +902,8 @@ export function createPlayerCombatController(options: {
         projectile.life = 0;
         arrowImpact(projectile, hit.enemy, projectile.x, projectile.y);
       } else { projectile.x = endX; projectile.y = endY; }
-      if (projectile.trail <= 0) {
+      // A bolt's tail is part of its sprite; arrows leave a few sparks.
+      if (projectile.trail <= 0 && !projectile.bolt) {
         projectile.trail = .035;
         const piercing = Boolean(projectile.skills?.piercingShot);
         spawnParticle(projectile.x, projectile.y, 0, 0, piercing ? .24 : .16, piercing ? .24 : .16, piercing ? 4 : 3, piercing ? "#ffc94d" : "#ffd957");
@@ -899,7 +928,9 @@ export function createPlayerCombatController(options: {
   function expectedDps() {
     const chance = Math.max(0, Math.min(1, researchCriticalChance()));
     const projectiles = isMeleeWeapon(options.equippedWeapon()) ? 1 : Math.max(1, player.projectileCount ?? 1);
-    return weaponDamage(false) * (1 + chance * (researchCriticalDamageMultiplier() - 1)) * projectiles / Math.max(.05, player.attackRate);
+    // A staff's slower, heavier casts, against one target (its bursts reach more, which this leaves out).
+    const staff = isStaff(options.equippedWeapon()) ? STAFF_DPS_FACTOR : 1;
+    return weaponDamage(false) * staff * (1 + chance * (researchCriticalDamageMultiplier() - 1)) * projectiles / Math.max(.05, player.attackRate);
   }
 
   /** expectedDps with Double Strike and Arrow Storm in, against one enemy: what the Soul Defense Force is built against. */
@@ -907,6 +938,7 @@ export function createPlayerCombatController(options: {
     const double = 1 + Math.max(0, doubleStrikeChance());
     return expectedDps() * (isMeleeWeapon(options.equippedWeapon())
       ? double + swordSkillBossDamageMultiplier(weaponSkills()) - 1
+      : isStaff(options.equippedWeapon()) ? double * staffSkillBossDamageMultiplier(weaponSkills())
       : double * (1 + bowSkillChance(weaponSkills(), "arrowStorm") * ARROW_STORM_SCORE_WEIGHT));
   }
 
@@ -924,6 +956,7 @@ export function createPlayerCombatController(options: {
     pushEnemiesFromBoss,
     clearPendingThrow: () => {
       swordSkills.clear();
+      staffSkills.clear();
       stormHits.length = 0;
       retainedTarget = null;
       nextTargetSearchAt = 0;

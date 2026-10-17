@@ -1,12 +1,17 @@
 import { duelAttackDelays, duelPositionsAt } from "../../../../shared/duel-approach";
-import { duelDeflected, duelSwordSkillProc, duelBowSkillProc, type DuelCombat } from "../../../../shared/duel-combat";
+import { duelDeflected, duelSwordSkillProc, duelBowSkillProc, duelStaffSkillProc, type DuelCombat } from "../../../../shared/duel-combat";
+import { FROST_NOVA_RADIUS, METEOR_RADIUS, STAFF_SPLASH_RADIUS, isStaff } from "../../../../shared/staff-skills";
+import { staffBoltColor } from "../../staff-look";
 import { DEFLECT_RETURN_SPEED, WHIRLWIND_SECONDS, WHIRLWIND_RADIUS, SHOCKWAVE_RADIUS, SHOCKWAVE_SPEED } from "../../../../shared/sword-skills";
 import type { SwordSkillEffects } from "../sword-skill-runtime";
 import { ARROW_STORM_ARROWS } from "../../../../shared/bow-skills";
 import { DUEL_ARENA, DUEL_COMBAT_Y } from "../../duel";
 import type { createCombatEffects } from "../combat-effects";
 
-export type DuelSkillEffects = SwordSkillEffects & Pick<ReturnType<typeof createCombatEffects>, "spawnArcingArrow" | "spawnSkillStreak" | "spawnSkillRing">;
+export type DuelSkillEffects = SwordSkillEffects & Pick<ReturnType<typeof createCombatEffects>, "spawnArcingArrow" | "spawnSkillStreak" | "spawnSkillRing">
+  & Partial<Pick<ReturnType<typeof createCombatEffects>, "spawnStaffBurst" | "spawnMeteor" | "spawnFrostNova">>;
+/** In a duel the meteor's damage lands with the bolt, so its warning is only a glimpse. */
+const DUEL_METEOR_WARNING = .2;
 
 /** Emit each proc once, using the same seed and attack number as combat. */
 export function showDuelSkillEffects(duel: DuelCombat, from: number, to: number,
@@ -44,6 +49,17 @@ export function showDuelSkillEffects(duel: DuelCombat, from: number, to: number,
         effects.spawnSkillStreak(targetX, y, bounceX, y - 45, "#8fe3ff", 4, .32, true);
         effects.spawnSkillStreak(bounceX, y - 45, targetX, y, "#8fe3ff", 4, .32, true);
         effects.spawnSkillRing(targetX, y, "#8fe3ff", 20, .26);
+      }
+      const weapon = duel[`${side}WeaponItem`] || duel[`${side}RightHandItem`] || duel[`${side}LeftHandItem`];
+      if (isStaff(weapon)) {
+        effects.spawnStaffBurst?.(targetX, y, STAFF_SPLASH_RADIUS, staffBoltColor(weapon));
+        if (duelStaffSkillProc(duel, side, attack, "meteor")) effects.spawnMeteor?.(targetX, y, METEOR_RADIUS, DUEL_METEOR_WARNING);
+        if (duelStaffSkillProc(duel, side, attack, "chain")) {
+          const jumpX = targetX + Math.sign(targetX - sourceX) * 60;
+          effects.spawnSkillStreak(targetX, y - 10, jumpX, y - 50, "#bfe6ff", 3, .3, true);
+          effects.spawnSkillStreak(jumpX, y - 50, targetX, y - 10, "#bfe6ff", 3, .3, true);
+        }
+        if (duelStaffSkillProc(duel, side, attack, "frostNova")) effects.spawnFrostNova?.(targetX, y, FROST_NOVA_RADIUS);
       }
       if (duelBowSkillProc(duel, side, attack, "piercingShot")) {
         effects.spawnSkillStreak(sourceX, y, targetX + Math.sign(targetX - sourceX) * 100, y, "#ffc94d", 5, .3);

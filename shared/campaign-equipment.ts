@@ -31,6 +31,19 @@ function sword(id: string, name: string, tier: number): ItemDefinition {
   };
 }
 
+/**
+ * Wizard staffs, one to a map, at that map's sword odds. A staff carries its tier's bow damage bonus; its bolts
+ * are slower and burst on impact (shared/staff-skills.ts has every number to tune).
+ */
+function staff(id: string, name: string, tier: number): ItemDefinition {
+  const bow = equipmentStatDefinition(tier, "HAND");
+  return {
+    id, name: name.toUpperCase(), slot: "HAND", acquisition: "CAMPAIGN_DROP",
+    description: "A staff that increases damage. Its bolts burst on whatever they hit.",
+    stats: bow.stats, weapon: { mode: "RANGED", projectile: "BOLT", damageMultiplierBonus: bow.weapon?.damageMultiplierBonus, tier },
+  };
+}
+
 export const CAMPAIGN_EQUIPMENT = {
   // Swords, at each map's bow odds (shared/items.ts has the first maps' as constants; a map with no regular bow,
   // Lava Lake, takes its helmet's).
@@ -49,6 +62,22 @@ export const CAMPAIGN_EQUIPMENT = {
   neon_sword: drop("neon_bastion", sword("neon_sword", "Neon Arc Sword", 13), 1, 200),
   verdant_sword: drop("verdant_catacombs", sword("verdant_sword", "Bonewing Sword", 14), 1, 200),
   ion_sword: drop("ion_citadel", sword("ion_sword", "Ion Sovereign Sword", 15), 1, 200),
+  // Staffs, at each map's sword odds; regular-map-loot.ts lists each one after its map's sword.
+  forest_staff: drop("tutorial_forest", staff("forest_staff", "Forest Staff", 1), 1, 25),
+  desert_staff: drop("beginner_desert", staff("desert_staff", "Desert Staff", 2), 1, 50),
+  snow_staff: drop("intermediate_snowlands", staff("snow_staff", "Snow Staff", 3), 1, 50),
+  lava_staff: drop("advanced_lava_wastes", staff("lava_staff", "Lava Staff", 4), 1, 125),
+  night_staff: drop("infernal_depths", staff("night_staff", "Night Staff", 5), 1, 100),
+  sky_staff: drop("water_reach", staff("sky_staff", "Sky Staff", 6), 7, 1000),
+  samurai_staff: drop("samurai_garden", staff("samurai_staff", "Samurai Staff", 7), 13, 2000),
+  cloudspire_staff: drop("cloudspire", staff("cloudspire_staff", "Cloudspire Staff", 8), 1, 200),
+  moonfen_staff: drop("moonfen", staff("moonfen_staff", "Moonfen Staff", 9), 1, 200),
+  crystal_staff: drop("crystal_hollows", staff("crystal_staff", "Crystalwing Staff", 10), 1, 200),
+  clockwork_staff: drop("clockwork_ruins", staff("clockwork_staff", "Clockwork Staff", 11), 1, 200),
+  duskfall_staff: drop("duskfall_orchard", staff("duskfall_staff", "Duskwing Staff", 12), 1, 200),
+  neon_staff: drop("neon_bastion", staff("neon_staff", "Neon Arc Staff", 13), 1, 200),
+  verdant_staff: drop("verdant_catacombs", staff("verdant_staff", "Bonewing Staff", 14), 1, 200),
+  ion_staff: drop("ion_citadel", staff("ion_staff", "Ion Sovereign Staff", 15), 1, 200),
   forest_cap: drop("tutorial_forest", equipment("forest_cap", "Forest Cap", "HEAD", 1), 1, 25),
   desert_armor: drop("beginner_desert", equipment("desert_armor", "Desert Armor", "CHEST", 2), 1, 50),
   snow_helmet: drop("intermediate_snowlands", equipment("snow_helmet", "Snow Helmet", "HEAD", 3), 1, 50),

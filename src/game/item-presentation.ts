@@ -1,4 +1,4 @@
-import { CAMPAIGN_ITEM_PRESENTATIONS } from "./campaign-item-presentation";
+import { CAMPAIGN_ITEM_PRESENTATIONS, staffPresentation } from "./campaign-item-presentation";
 import { applyGalaxyArtTexture, galaxyIconOutlineVariable, skyFinishCssFallback, skyFinishCssVariable, type SkyFinish } from "./galaxy-finish";
 import type { WeaponCategory } from "./equipment-alignment";
 import type { LayerAdjustment } from "./player-layer-alignment";
@@ -34,6 +34,7 @@ import {
   SNOW_BOW,
   STARTER_BOW,
   STARTER_STONE,
+  STARTER_STAFF,
   SUPERIOR_GOLDEN_HELMET,
   WOOD_FULL_HELM,
   WOODEN_ARMOR,
@@ -59,7 +60,7 @@ export type WorldSpritePresentation = {
   height?: number;
   bottom?: number;
   top?: number;
-  handAction?: "THROW" | "BOW" | "SWING";
+  handAction?: "THROW" | "BOW" | "SWING" | "CAST";
   weaponCategory?: WeaponCategory;
   alignment?: LayerAdjustment;
 };
@@ -199,6 +200,7 @@ export const ITEM_PRESENTATIONS: Partial<Record<ItemId, ItemPresentation>> = {
     },
     projectile: "ROCK",
   },
+  [STARTER_STAFF]: staffPresentation(`${PLAYER_PARTS}/starter-staff.webp`),
   [STARTER_BOW]: {
     inventory: { source: STARTER_BOW_ASSET_SOURCE, equippedWidth: 44, equippedHeight: 34 },
     world: {
@@ -314,7 +316,8 @@ export function appearanceHasGalaxyFinish(look: { headItem?: string; chestItem?:
 /** UI-only rotation shared by bag, loadout, and inspection; world grips stay unchanged. */
 export function itemInventoryRotation(itemId: string) {
   const world = itemPresentation(itemId)?.world;
-  return world?.kind === "SPRITE" && world.handAction === "BOW" ? -45 : 0;
+  // A staff lies across the slot, its head up and to the right.
+  return world?.kind === "SPRITE" && world.handAction === "BOW" ? -45 : world?.kind === "SPRITE" && world.handAction === "CAST" ? 40 : 0;
 }
 
 export function itemArtMarkup(itemId: string, hidden = true) {

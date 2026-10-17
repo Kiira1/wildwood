@@ -1,4 +1,5 @@
 import { installKeepScreenOnSettings } from "./keep-screen-on-settings";
+import { setLightStaffEffects } from "../game/staff-look";
 import { installFeedbackSettings } from "./feedback-settings";
 import type { MapMusicController } from "../game/runtime/audio";
 import type { AccountAudioRemote } from "../coop/services/account-audio-settings";
@@ -76,6 +77,7 @@ export function createAppShellController(dependencies: AppShellDependencies) {
   let highResolution = readBoolean("wildstat-high-resolution-v1", false);
   setHighResolutionCanvas(highResolution);
   let lowPerformanceMode = readBoolean(dependencies.storageKeys.lowPerformance, false);
+  setLightStaffEffects(lowPerformanceMode);
   let fpsVisible = readBoolean(dependencies.storageKeys.fps, false);
   let latencyVisible = readBoolean(dependencies.storageKeys.latency, false);
   let lastAudibleMusicVolume = dependencies.mapMusic.volume > 0 ? dependencies.mapMusic.volume : .35;
@@ -169,6 +171,7 @@ export function createAppShellController(dependencies: AppShellDependencies) {
   lowPerformanceToggle.addEventListener("click", () => {
     lowPerformanceMode = !lowPerformanceMode;
     writeBoolean(dependencies.storageKeys.lowPerformance, lowPerformanceMode);
+    setLightStaffEffects(lowPerformanceMode);
     dependencies.onLowPerformanceChanged();
     refreshSettings();
   });

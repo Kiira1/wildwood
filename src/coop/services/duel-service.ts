@@ -1,6 +1,6 @@
 import type { DuelCombatModifiers } from "../../../shared/duel-combat";
 import type { Identity } from "spacetimedb";
-import { tables } from "../../module_bindings";
+import { tables, type DbConnection } from "../../module_bindings";
 import { normalizePlayerGender } from "../../../shared/player-gender";
 import type { DuelReplay, DuelState } from "../contracts";
 import type { ReducerPort } from "../ports";
@@ -63,6 +63,13 @@ type DuelRow = {
   opponentLeftHandItem: string;
 };
 
+/** A duel's snapshot with its staff rolls, which sit in their own table (duel_staff_skill). */
+function withStaffSkills<T extends { duelId: bigint }>(connection: DbConnection, snapshot: T | null | undefined) {
+  if (!snapshot) return snapshot;
+  const { duelId: _duelId, ...staff } = connection.db.duelStaffSkill.duelId.find(snapshot.duelId) ?? { duelId: 0n };
+  return { ...snapshot, ...staff };
+}
+
 export function createDuelService(dependencies: DuelServiceDependencies) {
   const cooldownStore = createDuelCooldownStore(dependencies.storage, DUEL_COOLDOWN_KEY_PREFIX);
   const duels = new Map<bigint, DuelState>();
@@ -79,7 +86,7 @@ export function createDuelService(dependencies: DuelServiceDependencies) {
     const subscription = connection.subscriptionBuilder().onApplied(() => {
       applied = true;
       if (dependencies.reducers.connection() === connection) {
-        const row = connection.db.duelCombatSnapshot.duelId.find(id);
+        const row = withStaffSkills(connection, connection.db.duelCombatSnapshot.duelId.find(id));
         if (row) {
           modifiers.set(id, row);
           const duel = duels.get(id);
@@ -89,7 +96,7 @@ export function createDuelService(dependencies: DuelServiceDependencies) {
       }
       modifierLoads.get(id)?.unsubscribe();
       modifierLoads.delete(id);
-    }).onError(() => { modifierLoads.delete(id); }).subscribe([tables.duelCombatSnapshot.where(row => row.duelId.eq(id))]);
+    }).onError(() => { modifierLoads.delete(id); }).subscribe([tables.duelCombatSnapshot.where(row => row.duelId.eq(id)), tables.duelStaffSkill.where(row => row.duelId.eq(id))]);
     if (applied) subscription.unsubscribe();
     else modifierLoads.set(id, subscription);
   }
@@ -249,7 +256,7 @@ export function createDuelService(dependencies: DuelServiceDependencies) {
       .onApplied(() => {
         if (dependencies.reducers.connection() !== connection) return finish(null);
         const row = [...connection.db.duelReplay.iter()].find((replay) => replay.id === id);
-        const snapshot = connection.db.duelCombatSnapshot.duelId.find(id);
+        const snapshot = withStaffSkills(connection, connection.db.duelCombatSnapshot.duelId.find(id));
         if (snapshot) modifiers.set(id, snapshot);
         if (row) upsertReplay(withWideReplay(connection, row));
         const replay = replays.get(id);
@@ -257,7 +264,7 @@ export function createDuelService(dependencies: DuelServiceDependencies) {
       })
       .onError(() => finish(null))
       .subscribe([tables.duelReplay.where((replay) => replay.id.eq(id)), tables.duelReplayWideStats.where(row => row.replayId.eq(id)),
-        tables.duelCombatSnapshot.where(row => row.duelId.eq(id))]);
+        tables.duelCombatSnapshot.where(row => row.duelId.eq(id)), tables.duelStaffSkill.where(row => row.duelId.eq(id))]);
     if (unsubscribeAfterSubscribe) releaseSubscription();
     return request;
   }

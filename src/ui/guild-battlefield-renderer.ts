@@ -1,4 +1,5 @@
 import { guildEntrancePosition, type GuildReplayEntrance } from "./guild-replay-entrance";
+import { drawBolt, staffBoltColor } from "../game/staff-look";
 import { GUILD_MOVE_SPEED } from "../../shared/guild-entrance";
 import { createGuildReplayLabels } from "./guild-replay-labels";
 import { formatCompactNumber } from "./number-format";
@@ -172,6 +173,7 @@ export function createGuildBattlefieldRenderer(canvas: HTMLCanvasElement, ctx: C
         const angle = Math.atan2(to.y - from.y, to.x - from.x);
         if (kind === "ARROW") paintArrowProjectile(ctx, x, y, angle);
         else if (kind === "ROCK") paintRockProjectile(ctx, assets.player.equipment[weapon!]?.sprite, weapon, x, y, angle + progress * Math.PI * 2);
+        else if (kind === "BOLT") drawBolt(ctx, x, y, angle, staffBoltColor(timeline.fighters[shot.actor].weaponItem || weapon));
       } else if (time - shot.impact < .16) {
         const progress = (time - shot.impact) / .16;
         ctx.globalAlpha = 1 - progress; ctx.strokeStyle = "#fff3c5"; ctx.lineWidth = 2;

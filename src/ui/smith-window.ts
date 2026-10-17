@@ -1,4 +1,4 @@
-import { itemDefinition, itemDisplayName, itemStats } from "../../shared/items";
+import { STARTER_STAFF, itemDefinition, itemDisplayName, itemStats } from "../../shared/items";
 import {
   REFINE_MAX, REFINE_ORES, isRefinableItem, refineCost, refineSafeLimit, refineSuccessChance, type OreId,
 } from "../../shared/refine";
@@ -50,6 +50,9 @@ export function createSmithController(deps: {
   hasPickaxe?: () => boolean;
   claimPickaxe?: () => Promise<Result>;
   mining?: () => number;
+  /** The free Starter Staff he hands out, as he does the pickaxe. */
+  hasStarterStaff?: () => boolean;
+  claimStarterStaff?: () => Promise<Result>;
   /** Cards (shared/cards.ts): those held, a copy's slots, and slotting one in. Without them there is no Cards tab. */
   cards?: () => Readonly<Record<string, number>>;
   gearSlots?: (itemId: string, copyId: bigint) => GearSlots;
@@ -67,6 +70,7 @@ export function createSmithController(deps: {
     + `<section class="smith-focus" aria-live="polite"></section>`
     + `<p class="smith-ores" aria-label="Your ores"></p>`
     + `<div class="smith-mining"><span class="smith-mining-text"></span><button type="button" class="farm-start smith-refine smith-pickaxe">Take a Pickaxe</button></div>`
+    + `<div class="smith-mining smith-staff-row"><span class="smith-mining-text">Starter Staff · Casts bolts that burst on a pack</span><button type="button" class="farm-start smith-refine smith-staff">Take a Staff</button></div>`
     + `<section class="smith-cards" aria-label="Your cards that fit"><p class="smith-empty smith-cards-note"></p><div class="inventory-items smith-card-grid"></div></section>`
     + `<div class="inventory-filters smith-filters" role="group" aria-label="Show gear"></div>`
     + `<p class="smith-empty smith-filter-empty" hidden></p>`
@@ -79,6 +83,8 @@ export function createSmithController(deps: {
   const back = dialog.querySelector<HTMLButtonElement>(".window-back-button")!;
   const miningText = dialog.querySelector<HTMLElement>(".smith-mining-text")!;
   const pickaxeButton = dialog.querySelector<HTMLButtonElement>(".smith-pickaxe")!;
+  const staffRow = dialog.querySelector<HTMLElement>(".smith-staff-row")!;
+  const staffButton = dialog.querySelector<HTMLButtonElement>(".smith-staff")!;
   const intro = dialog.querySelector<HTMLElement>(".smith-intro")!;
   const mining = dialog.querySelector<HTMLElement>(".smith-mining")!;
   const cardsSection = dialog.querySelector<HTMLElement>(".smith-cards")!;
@@ -108,7 +114,7 @@ export function createSmithController(deps: {
   let selected: string | null = null;
   let refining = false;
   /** Taken here and on its way: the button goes before the server's row arrives. */
-  let pickaxeTaken = false, takingPickaxe = false;
+  let pickaxeTaken = false, takingPickaxe = false, takingStaff = false;
   let lastResult: { text: string; good: boolean } | null = null;
   let renderedState = "";
 
@@ -256,7 +262,7 @@ export function createSmithController(deps: {
     const chosen = items.find(item => key(item) === selected);
     // Presence updates also refresh open windows. Keep focus and buttons in place until this window changes.
     const state = JSON.stringify([
-      tab, shown, selected, pickedCard, slotting, armedRemoval, refining, lastResult, pickaxeTaken, takingPickaxe,
+      tab, shown, selected, pickedCard, slotting, armedRemoval, refining, lastResult, pickaxeTaken, takingPickaxe, takingStaff, deps.hasStarterStaff?.(),
       deps.ores(), deps.hasPickaxe?.(), deps.mining?.(), deps.cards?.(),
       items.map(item => [key(item), item.equipped, deps.refineLevel(item.itemId, item.copyId), deps.slotTier(item.itemId), slotsOf(item)]),
     ]);
@@ -272,6 +278,9 @@ export function createSmithController(deps: {
     intro.textContent = tab === "cards" ? "Slot cards into gear. Each card adds its effects to the gear it is in."
       : "Refine gear with ore. Safe up to its limit; past it a try can fail, and a fail costs only the ore.";
     oreLine.hidden = mining.hidden = tab === "cards";
+    // Shown until the bag holds one; a thrown-away staff can be taken again.
+    staffRow.hidden = tab === "cards" || !deps.claimStarterStaff || Boolean(deps.hasStarterStaff?.());
+    staffButton.disabled = takingStaff;
     for (const button of filterBar.querySelectorAll<HTMLButtonElement>(".inventory-filter")) button.setAttribute("aria-pressed", String(button.dataset.filter === shown));
     filterEmpty.hidden = items.length > 0 || shown === "ALL";
     filterEmpty.textContent = `No ${SMITH_FILTERS.find(([kind]) => kind === shown)?.[1].toLowerCase() ?? "gear"} to bring`;
@@ -442,6 +451,19 @@ export function createSmithController(deps: {
       if (dialog.open) render();
     }
   });
+  staffButton.addEventListener("click", async () => {
+    if (takingStaff || !deps.claimStarterStaff) return;
+    takingStaff = true;
+    render();
+    try {
+      const result = await deps.claimStarterStaff();
+      if (result?.ok) deps.showMessage("The Smith hands you a Starter Staff. Equip it from your bag.", "#ffd75e");
+      else deps.showMessage(result?.error ?? "Not Connected", "#ff9b91");
+    } finally {
+      takingStaff = false;
+      if (dialog.open) render();
+    }
+  });
   tabButtons.forEach((button, index) => {
     button.addEventListener("click", () => setTab(button.dataset.tab === "cards" ? "cards" : "refine"));
     button.addEventListener("keydown", event => {
@@ -462,6 +484,7 @@ export function createSmithRuntime(deps: {
   coop: () => {
     hasPickaxe?: () => boolean;
     claimPickaxe?: () => Promise<Result>;
+    claimStarterStaff?: () => Promise<Result>;
     mining?: () => number;
     itemRefine?: (itemId: string, copyId?: bigint) => number;
     itemUpgradeLevel?: (itemId: string) => number;
@@ -498,6 +521,8 @@ export function createSmithRuntime(deps: {
     refineLuck: () => deps.coop()?.researchInPlay?.()?.refineLuck ?? 0,
     hasPickaxe: () => deps.coop()?.hasPickaxe?.() ?? false,
     claimPickaxe: async () => deps.coop()?.claimPickaxe?.() ?? { ok: false, error: "Not Connected" },
+    hasStarterStaff: () => inventory.itemIds.includes(STARTER_STAFF),
+    claimStarterStaff: async () => deps.coop()?.claimStarterStaff?.() ?? { ok: false, error: "Not Connected" },
     mining: () => deps.coop()?.mining?.() ?? 0,
     cards: () => deps.coop()?.cards?.() ?? {},
     gearSlots: (itemId, copyId) => deps.coop()?.gearSlots?.(itemId, copyId) ?? { slots: 0, cards: [] },

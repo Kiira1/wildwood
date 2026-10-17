@@ -1,4 +1,8 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.911.0": [
+    "Wizard Staffs: a staff on every map that casts exploding bolts, with Meteor, Chain and Frost Nova skills",
+    "The Smith hands out a free Starter Staff in the Town",
+  ],
   "0.910.8": [
     "Auto Equip and Equip Best rank gear by the gear itself, not its cards, so higher-tier gear goes on with your cards in it",
   ],
@@ -3500,6 +3504,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.911.0": "2026-10-17",
   "0.910.8": "2026-10-17",
   "0.910.7": "2026-10-17",
   "0.910.6": "2026-10-17",

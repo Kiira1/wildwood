@@ -130,15 +130,20 @@ export function createPlayerProfileService(dependencies: PlayerProfileServiceDep
           : [...(db?.playerGearSlots?.iter() ?? [])].filter(row => row.identity.toHexString() === identity);
         return Object.fromEntries(rows.map(row => [row.itemId, gearSlotsOf(row)]));
       })(),
-      wornSkill: (() => {
+      wornSkill: ((): { itemId: string; roll: Record<string, number> } | null => {
         const db = dependencies.connection()?.db;
-        // Your own weapon reads its roll from my_bow_skills / my_sword_skills; another player's from player_worn_skill.
+        // Your own weapon reads its roll from my_bow_skills / my_sword_skills / my_staff_skills; another player's
+        // from player_worn_skill, or player_worn_staff_skill for a staff.
         if (identity === dependencies.localIdentity()) {
           const weapon = progress.equippedRightHand || progress.equippedLeftHand || "";
+          const staff = [...(db?.myStaffSkills?.iter() ?? [])].find(row => row.itemId === weapon && !row.copyId && !row.offerId);
+          if (staff) return { itemId: weapon, roll: { meteor: staff.meteor, chain: staff.chain, frostNova: staff.frostNova } };
           const own = [...(db?.myBowSkills?.iter() ?? []), ...(db?.mySwordSkills?.iter() ?? [])].find(row => row.itemId === weapon) as Record<string, any> | undefined;
           return own ? { itemId: weapon, roll: { arrowStorm: own.arrowStorm ?? 0, ricochet: own.ricochet ?? 0, piercingShot: own.piercingShot ?? 0,
             whirlwind: own.whirlwind ?? 0, deflect: own.deflect ?? 0, shockwave: own.shockwave ?? 0 } } : null;
         }
+        const staff = [...(db?.playerWornStaffSkill?.iter() ?? [])].find(row => row.identity.toHexString() === identity);
+        if (staff) return { itemId: staff.itemId, roll: { meteor: staff.meteor, chain: staff.chain, frostNova: staff.frostNova } };
         const row = [...(db?.playerWornSkill?.iter() ?? [])].find(row => row.identity.toHexString() === identity);
         return row ? { itemId: row.itemId, roll: { arrowStorm: row.arrowStorm, ricochet: row.ricochet, piercingShot: row.piercingShot,
           whirlwind: row.whirlwind, deflect: row.deflect, shockwave: row.shockwave } } : null;
@@ -302,6 +307,7 @@ export function createPlayerProfileService(dependencies: PlayerProfileServiceDep
           tables.playerItemRefine.where(row => row.identity.eq(dbIdentity)),
           tables.playerGearSlots.where(row => row.identity.eq(dbIdentity)),
           tables.playerWornSkill.where(row => row.identity.eq(dbIdentity)),
+          tables.playerWornStaffSkill.where(row => row.identity.eq(dbIdentity)),
           tables.playerMiningLevel.where(row => row.identity.eq(dbIdentity)),
           tables.player.where((player) => player.identity.eq(dbIdentity)),
         ]);

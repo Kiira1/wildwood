@@ -1,6 +1,7 @@
 import { tables, type DbConnection } from "../../module_bindings";
 import type { BowSkillRoll } from "../../../shared/bow-skills";
 import { isSkillSword, type SwordSkillRoll } from "../../../shared/sword-skills";
+import { isSkillStaff, type StaffSkillRoll } from "../../../shared/staff-skills";
 import { weaponSkillScore, type WeaponSkillRoll } from "../../../shared/weapon-skills";
 import { createEquipmentCopies } from "./equipment-copies";
 
@@ -32,7 +33,7 @@ export function betterRollsKept(
 
 /**
  * This account's weapon skill rolls, keyed by item id, from caller-scoped
- * bow and sword views: the roll of each item's first copy, the one a slot
+ * bow, sword and staff views: the roll of each item's first copy, the one a slot
  * equips. Further copies kept from duplicate drops, with their own rolls, and
  * the duplicate offers waiting for an answer ride along on the same
  * connection. The server owns every roll; the client only reads them to fire
@@ -62,6 +63,10 @@ export function createBowSkills(notify: () => void) {
       for (const row of connection.db.mySwordSkills.iter()) {
         next.set(row.itemId, { whirlwind: row.whirlwind, deflect: row.deflect, shockwave: row.shockwave });
       }
+      // Only first copies here; kept copies' and offers' staff rolls ride with them (equipment-copies.ts).
+      for (const row of connection.db.myStaffSkills.iter()) {
+        if (row.copyId === 0n && row.offerId === 0n) next.set(row.itemId, { meteor: row.meteor, chain: row.chain, frostNova: row.frostNova });
+      }
       const kept = hydrated ? betterRollsKept(seen, next, copies.changedLocally) : [];
       for (const [itemId, roll] of next) seen.set(itemId, roll);
       rolls = next;
@@ -71,21 +76,25 @@ export function createBowSkills(notify: () => void) {
     for (const view of [connection.db.myBowSkills, connection.db.mySwordSkills]) {
       view.onInsert(read); view.onUpdate(read); view.onDelete(read);
     }
-    connection.subscriptionBuilder().onApplied(() => { read(); hydrated = true; }).subscribe([tables.myBowSkills, tables.mySwordSkills]);
+    connection.db.myStaffSkills.onInsert(read); connection.db.myStaffSkills.onUpdate(read); connection.db.myStaffSkills.onDelete(read);
+    connection.subscriptionBuilder().onApplied(() => { read(); hydrated = true; }).subscribe([tables.myBowSkills, tables.mySwordSkills, tables.myStaffSkills]);
   }
 
   /** The roll on the first copy of one of this account's weapons, or null when it has none yet. */
   const weaponSkills = (itemId: string | null | undefined): WeaponSkillRoll | null => (itemId && rolls.get(itemId)) || null;
   const bowSkills = (itemId: string | null | undefined): BowSkillRoll | null =>
-    isSkillSword(itemId) ? null : weaponSkills(itemId) as BowSkillRoll | null;
+    isSkillSword(itemId) || isSkillStaff(itemId) ? null : weaponSkills(itemId) as BowSkillRoll | null;
   const swordSkills = (itemId: string | null | undefined): SwordSkillRoll | null =>
     isSkillSword(itemId) ? weaponSkills(itemId) as SwordSkillRoll | null : null;
+  const staffSkills = (itemId: string | null | undefined): StaffSkillRoll | null =>
+    isSkillStaff(itemId) ? weaponSkills(itemId) as StaffSkillRoll | null : null;
   return {
     watch,
     bowSkills,
     api: {
       bowSkills,
       swordSkills,
+      staffSkills,
       weaponSkills,
       ...copies.api,
       /** Called when Auto keep best replaces a weapon's roll with a better one. */

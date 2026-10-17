@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { CAMPAIGN_EQUIPMENT, SWORD_DAMAGE_FACTOR, SWORD_REACH } from "./campaign-equipment";
-import { canonicalItemId, EQUIPMENT_DROP_ITEM_IDS, ITEM_DEFINITIONS, itemDefinition, inventoryJsonItemQuantity, itemFitsEquipmentSlot } from "./items";
+import { equipmentStatDefinition } from "./equipment-budget";
+import { canonicalItemId, EQUIPMENT_DROP_ITEM_IDS, ITEM_DEFINITIONS, STARTER_STAFF, itemDefinition, inventoryJsonItemQuantity, itemFitsEquipmentSlot } from "./items";
 import { itemTier } from "./item-tier";
 import { inventoryFromSave, serialiseInventory } from "../src/game/inventory";
 import { itemPresentation, projectileKindForWeapon } from "../src/game/item-presentation";
@@ -45,7 +46,7 @@ describe("campaign equipment progression", () => {
     const art = itemPresentation(id)!;
     expect(readFileSync(new URL(`../public/${art.inventory.source}`, import.meta.url)).length).toBeGreaterThan(100);
     expect(art.world).toMatchObject({ kind: "SPRITE", layer: slot });
-    if (slot === "HAND") expect(projectileKindForWeapon(id)).toBe(entry.definition.weapon?.mode === "MELEE" ? undefined : "ARROW");
+    if (slot === "HAND") expect(projectileKindForWeapon(id)).toBe(entry.definition.weapon?.mode === "MELEE" ? undefined : entry.definition.weapon?.projectile);
     expect(regularMapLoot(entry.mapId)).toContainEqual({ itemId: id, wins: entry.wins, outcomes: entry.outcomes });
     expect(mapGuideDrops(entry.mapId)).toContainEqual(expect.objectContaining({ itemId: id, numerator: entry.wins, denominator: entry.outcomes }));
   });
@@ -94,5 +95,44 @@ describe("swords", () => {
     for (const [id] of swords) {
       expect(itemPresentation(id)!.world, id).toMatchObject({ kind: "SPRITE", layer: "HAND", handAction: "SWING", weaponCategory: "SWORD" });
     }
+  });
+});
+
+describe("staffs", () => {
+  const staffs = Object.entries(CAMPAIGN_EQUIPMENT).filter(([, entry]) => entry.definition.weapon?.projectile === "BOLT");
+  const odds = (drop: { wins: number; outcomes: number }) => drop.wins / drop.outcomes;
+
+  it("gives every map one staff, of that map's tier, listed right after its sword", () => {
+    expect(staffs.map(([, entry]) => entry.mapId)).toEqual(maps);
+    staffs.forEach(([id], index) => expect(itemTier(id), id).toBe(index + 1));
+    for (const [id, entry] of staffs) {
+      const loot = regularMapLoot(entry.mapId).map(drop => drop.itemId);
+      expect(loot[loot.indexOf(id) - 1], id).toMatch(/_sword$/);
+    }
+  });
+
+  it.each(staffs)("gives %s its tier's full bow bonus and drops it as often as the map's sword", (id, entry) => {
+    const tier = itemTier(id)!;
+    expect(entry.definition.weapon).toMatchObject({ mode: "RANGED", projectile: "BOLT", tier, damageMultiplierBonus: equipmentStatDefinition(tier, "HAND").weapon!.damageMultiplierBonus });
+    const loot = regularMapLoot(entry.mapId);
+    const sword = loot.find(drop => itemDefinition(drop.itemId)?.weapon?.mode === "MELEE")!;
+    expect(odds(loot.find(drop => drop.itemId === id)!)).toBe(odds(sword));
+  });
+
+  it("draws every staff from its own art, held to cast, firing bolts", () => {
+    const sources = [...staffs.map(([id]) => itemPresentation(id)!.inventory.source), itemPresentation(STARTER_STAFF)!.inventory.source];
+    expect(new Set(sources).size).toBe(staffs.length + 1);
+    for (const id of [...staffs.map(([id]) => id), STARTER_STAFF]) {
+      expect(itemPresentation(id)!.world, id).toMatchObject({ kind: "SPRITE", layer: "HAND", handAction: "CAST" });
+      expect(projectileKindForWeapon(id)).toBe("BOLT");
+      expect(readFileSync(new URL(`../public/${itemPresentation(id)!.inventory.source}`, import.meta.url)).length).toBeGreaterThan(100);
+    }
+  });
+
+  it("keeps the Smith's Starter Staff in the bag like a drop, with no stats and no tier", () => {
+    expect(EQUIPMENT_DROP_ITEM_IDS).toContain(STARTER_STAFF);
+    expect(itemTier(STARTER_STAFF)).toBeUndefined();
+    expect(itemDefinition(STARTER_STAFF)!.weapon).toEqual({ mode: "RANGED", projectile: "BOLT" });
+    for (const map of maps) expect(regularMapLoot(map).map(drop => drop.itemId)).not.toContain(STARTER_STAFF);
   });
 });

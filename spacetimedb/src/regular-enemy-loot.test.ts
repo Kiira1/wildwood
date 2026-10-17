@@ -30,7 +30,7 @@ it("calculates stats and independent loot rolls once in one transaction", () => 
   expect(update).toHaveBeenCalledTimes(1);
   expect(progressOf(f, f.ctx.sender).damage).toBeCloseTo(base.damage + enemyDefeatDefinition(batch.mapId, enemy)!.reward.amount * 15);
   expect(f.db.playerLifetime.identity.find(f.ctx.sender).enemyKills).toBe(15n);
-  expect(rolls).toBe(60);
+  expect(rolls).toBe(75);
   expect(f.ctx.random.integerInRange).toHaveBeenCalledTimes(rolls);
   f.patch("player", { mapId: "town" });
   reportKills(f, batch);

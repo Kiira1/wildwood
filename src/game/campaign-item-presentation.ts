@@ -1,6 +1,15 @@
 import { CAMPAIGN_ITEM_DEFINITIONS, type CampaignItemId } from "../../shared/campaign-equipment";
 import type { ItemPresentation } from "./item-presentation";
 
+/** A staff is held upright and casts (player-appearance.ts); its art is already the in-hand size (import-vendor-staffs.mjs). */
+export const staffPresentation = (source: string): ItemPresentation => ({
+  inventory: { source, equippedWidth: 22, equippedHeight: 42 },
+  world: { kind: "SPRITE", source, layer: "HAND", top: STAFF_HELD_TOP, handAction: "CAST" },
+  projectile: "BOLT",
+});
+/** Where an upright staff's top sits in the character's frame: its head clears the hat. */
+export const STAFF_HELD_TOP = 64;
+
 /** Vendor parts use the same anchors and shared alignment controls as existing gear. */
 export const CAMPAIGN_ITEM_PRESENTATIONS = Object.fromEntries(
   Object.entries(CAMPAIGN_ITEM_DEFINITIONS).map(([id, item]): [string, ItemPresentation] => {
@@ -11,6 +20,7 @@ export const CAMPAIGN_ITEM_PRESENTATIONS = Object.fromEntries(
       inventory: { source, equippedWidth: 32, equippedHeight: 28 },
       world: { kind: "SPRITE", source, layer: "HAND", top: 116, handAction: "SWING", weaponCategory: "SWORD" },
     }];
+    if (item.weapon?.projectile === "BOLT") return [id, staffPresentation(source)];
     if (item.slot === "HAND") return [id, {
       inventory: { source, equippedWidth: 44, equippedHeight: 34 },
       world: { kind: "SPRITE", source, layer: "HAND", width: 115, height: 63, top: 106, handAction: "BOW" },

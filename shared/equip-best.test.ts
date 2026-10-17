@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { equipComparisonPower, fallbackWeapon, isEquipUpgrade, weaponKind } from "./equip-best";
-import { IRON_BOW, STARTER_BOW, STARTER_STONE, WOODEN_SWORD } from "./items";
+import { IRON_BOW, STARTER_BOW, STARTER_STAFF, STARTER_STONE, WOODEN_SWORD } from "./items";
 
 const stats = { maxHp: 1000, damage: 100, attackRate: .38, armor: 50, regen: 10 };
 const loadout = (rightHand: string) => ({
@@ -44,5 +44,30 @@ describe("weapon kinds", () => {
     // and with no usable sword the strongest ranged weapon, the stone at least.
     expect(fallbackWeapon([STARTER_BOW, "iron_sword"], {}, "MELEE")).toBe(STARTER_BOW);
     expect(fallbackWeapon(["iron_sword"], {}, "MELEE")).toBe(STARTER_STONE);
+  });
+});
+
+describe("staffs, a kind of their own", () => {
+  it("reads every staff, the Smith's included, as magic", () => {
+    for (const id of [STARTER_STAFF, "forest_staff", "ion_staff"]) expect(weaponKind(id)).toBe("MAGIC");
+  });
+
+  it("only trades a staff for a staff, and never hands one to an archer or a swordsman", () => {
+    expect(isEquipUpgrade(loadout("forest_staff"), "desert_staff", power)).toBe(true);
+    expect(isEquipUpgrade(loadout("desert_staff"), "forest_staff", power)).toBe(false);
+    expect(isEquipUpgrade(loadout("forest_staff"), IRON_BOW, power)).toBe(false);
+    expect(isEquipUpgrade(loadout("forest_staff"), "iron_sword", power)).toBe(false);
+    expect(isEquipUpgrade(loadout(STARTER_BOW), "desert_staff", power)).toBe(false);
+    expect(isEquipUpgrade(loadout(WOODEN_SWORD), "desert_staff", power)).toBe(false);
+    expect(isEquipUpgrade(loadout(""), "forest_staff", power, "MAGIC")).toBe(true);
+  });
+
+  it("fills a staff hand with the best usable staff, then the best ranged weapon", () => {
+    const bag = [STARTER_STONE, STARTER_BOW, IRON_BOW, STARTER_STAFF, "forest_staff", "desert_staff"];
+    expect(fallbackWeapon(bag, {}, "MAGIC")).toBe("forest_staff");
+    expect(fallbackWeapon(bag, DESERT, "MAGIC")).toBe("desert_staff");
+    expect(fallbackWeapon([STARTER_BOW, STARTER_STAFF], {}, "MAGIC")).toBe(STARTER_STAFF);
+    expect(fallbackWeapon([STARTER_BOW, "desert_staff"], {}, "MAGIC")).toBe(STARTER_BOW);
+    expect(fallbackWeapon(bag, DESERT)).toBe(IRON_BOW);
   });
 });

@@ -1,4 +1,5 @@
 import { drawSwordSkillEffect } from "./sword-skill-effects";
+import { FROST_NOVA_EFFECT_SECONDS, METEOR_BLAST_SECONDS, STAFF_BURST_SECONDS, drawStaffSkillEffect } from "./staff-skill-effects";
 import { TAU } from "../constants";
 import { clamp, rand, randi } from "../math";
 import { formatCompactNumber } from "../../../shared/compact-number";
@@ -38,8 +39,10 @@ export type DamageNumber = {
  * (controlX, controlY) to (toX, toY).
  */
 export type SkillEffect = {
-  kind: "arrow" | "streak" | "ring" | "spin" | "wave" | "return";
+  kind: "arrow" | "streak" | "ring" | "spin" | "wave" | "return" | "burst" | "meteor" | "nova";
   anchor?: { x: number; y: number };
+  /** A meteor's warning before its fireball lands, drawn as it counts down. */
+  warning?: number;
   x: number; y: number; toX: number; toY: number; controlX: number; controlY: number;
   delay: number; life: number; maxLife: number;
   width: number; color: string; jagged: boolean;
@@ -157,7 +160,7 @@ export function createCombatEffects() {
   function spawnSkillEffect(kind: SkillEffect["kind"], x: number, y: number, toX: number, toY: number,
     life: number, width: number, color: string, delay = 0, jagged = false) {
     const effect = acquireSkillEffect();
-    Object.assign(effect, { kind, x, y, toX, toY, controlX: (x + toX) / 2, controlY: (y + toY) / 2, life, maxLife: life, width, color, delay, jagged, anchor: undefined });
+    Object.assign(effect, { kind, x, y, toX, toY, controlX: (x + toX) / 2, controlY: (y + toY) / 2, life, maxLife: life, width, color, delay, jagged, anchor: undefined, warning: undefined });
     return effect;
   }
 
@@ -195,6 +198,20 @@ export function createCombatEffects() {
 
   function spawnSwordWave(x: number, y: number, toX: number, toY: number, radius: number, life: number) {
     spawnSkillEffect("wave", x, y, toX, toY, life, radius, "#9cecff");
+  }
+
+  /** A staff bolt bursting: a flash and a ring out to the splash radius. */
+  function spawnStaffBurst(x: number, y: number, radius: number, color: string) {
+    spawnSkillEffect("burst", x, y, x, y, STAFF_BURST_SECONDS, radius, color);
+  }
+
+  /** Meteor: a warning circle for `warning` seconds, the fireball dropping through its end, then the blast. */
+  function spawnMeteor(x: number, y: number, radius: number, warning: number) {
+    spawnSkillEffect("meteor", x, y, x, y, warning + METEOR_BLAST_SECONDS, radius, "#ff8a2b").warning = warning;
+  }
+
+  function spawnFrostNova(x: number, y: number, radius: number) {
+    spawnSkillEffect("nova", x, y, x, y, FROST_NOVA_EFFECT_SECONDS, radius, "#a8ecff");
   }
 
   function spawnDeflectedShot(x: number, y: number, toX: number, toY: number, life: number) {
@@ -274,6 +291,8 @@ export function createCombatEffects() {
       const toX = effect.toX - camera.x, toY = effect.toY - camera.y;
       if (effect.kind === "spin" || effect.kind === "wave" || effect.kind === "return") {
         drawSwordSkillEffect(ctx, effect, camera, progress);
+      } else if (effect.kind === "burst" || effect.kind === "meteor" || effect.kind === "nova") {
+        drawStaffSkillEffect(ctx, effect, camera);
       } else if (effect.kind === "arrow") {
         // The head runs along the curve; a glowing tail traces the path behind it.
         const controlX = effect.controlX - camera.x, controlY = effect.controlY - camera.y;
@@ -386,6 +405,6 @@ export function createCombatEffects() {
   }
 
   return { particles, damageNumbers, skillEffects, spawnParticle, spawnBurst, spawnDamageNumber, spawnArcingArrow, spawnSkillStreak, spawnSkillRing,
-    spawnSwordSpin, spawnSwordWave, spawnDeflectedShot,
+    spawnSwordSpin, spawnSwordWave, spawnDeflectedShot, spawnStaffBurst, spawnMeteor, spawnFrostNova,
     update, drawParticles, drawDamageNumbers, clearParticles, clearDamageNumbers, clear };
 }

@@ -10,6 +10,7 @@ function fakeConnection() {
   const offers: unknown[] = [];
   const ignored: unknown[] = [];
   const lootSettings: unknown[] = [];
+  const staff: unknown[] = [];
   const view = (rows: unknown[]) => ({
     iter: () => rows[Symbol.iterator](),
     onInsert: (handler: () => void) => handlers.push(handler),
@@ -25,12 +26,12 @@ function fakeConnection() {
   };
   const connection = {
     isActive: true,
-    db: { myEquipmentLocks: view([]), myEquipmentCopies: view(copies), myEquipmentOffers: view(offers), myIgnoredDrops: view(ignored), myLootSettings: view(lootSettings) },
+    db: { myEquipmentLocks: view([]), myEquipmentCopies: view(copies), myEquipmentOffers: view(offers), myIgnoredDrops: view(ignored), myLootSettings: view(lootSettings), myStaffSkills: view(staff) },
     reducers,
     subscriptionBuilder: () => ({ onApplied(callback: () => void) { applied.push(callback); return this; }, subscribe: vi.fn() }),
   };
   return {
-    connection: connection as never, copies, offers, ignored, lootSettings, reducers,
+    connection: connection as never, copies, offers, ignored, lootSettings, staff, reducers,
     settle: () => applied.forEach(callback => callback()), fire: () => handlers.forEach(handler => handler()),
   };
 }
@@ -130,4 +131,18 @@ it("remembers for a moment which items this tab changed the copies of", async ()
   expect(service.changedLocally("crystal_bow")).toBe(true);
   now += 10_000;
   expect(service.changedLocally("iron_bow")).toBe(false);
+});
+
+it("gives a kept staff copy and a staff offer their rolls from my_staff_skills", () => {
+  const service = createEquipmentCopies(() => {});
+  const conn = fakeConnection();
+  service.watch(conn.connection, () => true);
+  conn.copies.push({ id: 7n, itemId: "ion_staff", arrowStorm: 0, ricochet: 0, piercingShot: 0 });
+  conn.offers.push({ id: 4n, itemId: "ion_staff", arrowStorm: 0, ricochet: 0, piercingShot: 0, createdAt: at(1_000), expiresAt: at(301_000) });
+  conn.staff.push({ itemId: "ion_staff", copyId: 7n, offerId: 0n, meteor: 3, chain: 0, frostNova: 0 },
+    { itemId: "ion_staff", copyId: 0n, offerId: 4n, meteor: 0, chain: 5, frostNova: 0 },
+    { itemId: "ion_staff", copyId: 0n, offerId: 0n, meteor: 9, chain: 9, frostNova: 9 });
+  conn.settle();
+  expect(service.api.equipmentCopies()[0].roll).toEqual({ meteor: 3, chain: 0, frostNova: 0 });
+  expect(service.api.equipmentOffers()[0].roll).toEqual({ meteor: 0, chain: 5, frostNova: 0 });
 });

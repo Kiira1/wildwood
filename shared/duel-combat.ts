@@ -5,6 +5,7 @@ import { RIPOSTE_REFLECT_SHARE } from "./prestige-perks";
 import { marbleBagHit } from "./marble-bag";
 import { ARROW_STORM_ARROWS, ARROW_STORM_DAMAGE_SHARE, DUEL_RICOCHET_REHITS, RICOCHET_DAMAGE_SHARE, type BowSkillId } from "./bow-skills";
 import { SHOCKWAVE_DAMAGE_SHARE, WHIRLWIND_DAMAGE_SHARE, WHIRLWIND_TICKS, type SwordSkillId } from "./sword-skills";
+import { CHAIN_DAMAGE_SHARE, FROST_NOVA_SECONDS, FROST_NOVA_SLOW, METEOR_DAMAGE_SHARE, type StaffSkillId } from "./staff-skills";
 import { itemDefinition } from "./items";
 import {
   DUEL_CARDS_VERSION, duelCardAfterHit, duelCardAttack, duelCardDamageOverTime, duelCardDefend, initialDuelCardState,
@@ -19,8 +20,12 @@ export type DuelFighter = { maxHp: number; damage: number; armor: number; regen:
  * 7: a thrown-back hit is capped at the reflecting player's max health (0.867).
  * 8: sword skills; projectile Deflect blocks and returns the ranged attack through its sender's armor.
  * 9: cards (duel-cards.ts).
+ * 10: staff skills (Meteor, Chain, Frost Nova).
  */
-export const DUEL_COMBAT_VERSION = 9;
+export const DUEL_COMBAT_VERSION = 10;
+export const DUEL_STAFF_SKILLS_VERSION = 10;
+/** One opponent: Chain comes back off them once at its share, as Ricochet does. */
+export const DUEL_CHAIN_REHITS = 1;
 export const DUEL_SWORD_SKILLS_VERSION = 8;
 export const DUEL_BOW_SKILLS_VERSION = 4;
 export const DUEL_RIPOSTE_BAG_VERSION = 5;
@@ -52,6 +57,8 @@ export type DuelCombat = DuelWeapons & DuelCardFields & {
   opponentArrowStorm?: number; opponentRicochet?: number; opponentPiercingShot?: number;
   challengerWhirlwind?: number; challengerDeflect?: number; challengerShockwave?: number;
   opponentWhirlwind?: number; opponentDeflect?: number; opponentShockwave?: number;
+  challengerMeteor?: number; challengerChain?: number; challengerFrostNova?: number;
+  opponentMeteor?: number; opponentChain?: number; opponentFrostNova?: number;
 };
 
 const DUEL_SKILL_FIELDS = {
@@ -63,6 +70,29 @@ const DUEL_SWORD_FIELDS = {
   challenger: { whirlwind: "challengerWhirlwind", deflect: "challengerDeflect", shockwave: "challengerShockwave" },
   opponent: { whirlwind: "opponentWhirlwind", deflect: "opponentDeflect", shockwave: "opponentShockwave" },
 } as const;
+
+const DUEL_STAFF_FIELDS = {
+  challenger: { meteor: "challengerMeteor", chain: "challengerChain", frostNova: "challengerFrostNova" },
+  opponent: { meteor: "opponentMeteor", chain: "opponentChain", frostNova: "opponentFrostNova" },
+} as const;
+
+/** Whether a duellist's staff skill fires on one of their attacks; deterministic like the bow's. */
+export function duelStaffSkillProc(duel: DuelCombat, side: "challenger" | "opponent", attack: number, skill: StaffSkillId) {
+  if ((duel.combatVersion ?? 0) < DUEL_STAFF_SKILLS_VERSION) return false;
+  const percent = Number(duel[DUEL_STAFF_FIELDS[side][skill]] ?? 0);
+  const chance = Number.isFinite(percent) ? Math.max(0, Math.min(100, percent)) / 100 : 0;
+  return chance > 0 && regularEnemySeededUnit("duel-staff-skill", String(duel.riposteSeed ?? 0), side, attack, skill) < chance;
+}
+
+/** A side Frost Nova chilled hits softer until its chill runs out. */
+function chillFactor(state: DuelCombatState, side: "challenger" | "opponent", now: number) {
+  return now < (state[side === "challenger" ? "challengerChilledUntil" : "opponentChilledUntil"] ?? -Infinity) ? 1 - FROST_NOVA_SLOW : 1;
+}
+/** After an attack: a Frost Nova chills the defender. */
+function chillOnNova(duel: DuelCombat, state: DuelCombatState, attacker: "challenger" | "opponent", attack: number, now: number) {
+  if (!duelStaffSkillProc(duel, attacker, attack, "frostNova")) return;
+  state[attacker === "challenger" ? "opponentChilledUntil" : "challengerChilledUntil"] = now + FROST_NOVA_SECONDS;
+}
 
 export function duelSwordSkillProc(duel: DuelCombat, side: "challenger" | "opponent", attack: number, skill: SwordSkillId) {
   if ((duel.combatVersion ?? 0) < DUEL_SWORD_SKILLS_VERSION) return false;
@@ -118,6 +148,15 @@ function duelAttackDamage(duel: DuelCombat, side: "challenger" | "opponent", att
     dealt += damageAfterArmor(raw * SHOCKWAVE_DAMAGE_SHARE, armor);
     incoming += raw * SHOCKWAVE_DAMAGE_SHARE;
   }
+  // A staff's burst finds only the one opponent; a meteor falls on them and a chain comes back off them.
+  if (duelStaffSkillProc(duel, side, attack, "meteor")) {
+    dealt += damageAfterArmor(raw * METEOR_DAMAGE_SHARE, armor);
+    incoming += raw * METEOR_DAMAGE_SHARE;
+  }
+  if (duelStaffSkillProc(duel, side, attack, "chain")) {
+    dealt += DUEL_CHAIN_REHITS * damageAfterArmor(raw * CHAIN_DAMAGE_SHARE, armor);
+    incoming += DUEL_CHAIN_REHITS * raw * CHAIN_DAMAGE_SHARE;
+  }
   return { dealt, blocked: Math.max(0, incoming - dealt) };
 }
 
@@ -145,6 +184,8 @@ export type DuelCombatState = {
   challengerBlocked: number; opponentBlocked: number;
   /** The cards' running state (version 9): never stored, so a card duel is always resolved from its start. */
   cards?: DuelCardState;
+  /** Until when (seconds) each side is chilled by a Frost Nova (version 10); never stored either. */
+  challengerChilledUntil?: number; opponentChilledUntil?: number;
 };
 export function initialDuelCombatState(duel: DuelCombat): DuelCombatState {
   return { challengerHp: duel.challengerMaxHp, opponentHp: duel.opponentMaxHp,
@@ -170,7 +211,7 @@ function resolveAttack(duel: DuelCombat, state: DuelCombatState, attacker: DuelS
   const blockedKey = defender === "challenger" ? "challengerBlocked" as const : "opponentBlocked" as const;
   const cards = state.cards;
   const health = () => ({ attacker: hp(attacker), attackerMax: maxHp(attacker), defender: hp(defender), defenderMax: maxHp(defender) });
-  let raw = (attacker === "challenger" ? duel.challengerDamage : duel.opponentDamage) * multiplier;
+  let raw = (attacker === "challenger" ? duel.challengerDamage : duel.opponentDamage) * multiplier * chillFactor(state, attacker, now);
   if (cards) raw = duelCardAttack(duel, cards, attacker, attack, raw, now, health());
   const hit = duelAttackDamage(duel, attacker, attack, raw, defender === "challenger" ? duel.challengerArmor : duel.opponentArmor);
   const deflected = duelDeflected(duel, defender, attack);
@@ -196,6 +237,7 @@ function resolveAttack(duel: DuelCombat, state: DuelCombatState, attacker: DuelS
     setHp(attacker, hp(attacker) - thrown);
     state[dealtKey(defender)] += thrown;
   }
+  chillOnNova(duel, state, attacker, attack, now);
 }
 
 /** Raw earned stats, with simultaneous hits and identical microsecond rounding
@@ -243,7 +285,7 @@ export function advanceDuelCombat(
       continue;
     }
     if (challengerNext === next) {
-      const challengerDamage = duel.challengerDamage * multiplier;
+      const challengerDamage = duel.challengerDamage * multiplier * chillFactor(state, "challenger", next / 1_000_000);
       state.challengerAttacks++;
       const challengerHit = duelAttackDamage(duel, "challenger", state.challengerAttacks, challengerDamage, duel.opponentArmor);
       const deflected = duelDeflected(duel, "opponent", state.challengerAttacks);
@@ -258,9 +300,10 @@ export function advanceDuelCombat(
         const thrown = Math.min(state.challengerHp, riposteThrown(duel, riposteBase(duel, challengerHit, taken), duel.opponentMaxHp));
         state.challengerHp -= thrown; state.opponentDamageDealt += thrown;
       }
+      chillOnNova(duel, state, "challenger", state.challengerAttacks, next / 1_000_000);
     }
     if (opponentNext === next) {
-      const opponentDamage = duel.opponentDamage * multiplier;
+      const opponentDamage = duel.opponentDamage * multiplier * chillFactor(state, "opponent", next / 1_000_000);
       state.opponentAttacks++;
       const opponentHit = duelAttackDamage(duel, "opponent", state.opponentAttacks, opponentDamage, duel.challengerArmor);
       const deflected = duelDeflected(duel, "challenger", state.opponentAttacks);
@@ -275,6 +318,7 @@ export function advanceDuelCombat(
         const thrown = Math.min(state.opponentHp, riposteThrown(duel, riposteBase(duel, opponentHit, taken), duel.challengerMaxHp));
         state.opponentHp -= thrown; state.challengerDamageDealt += thrown;
       }
+      chillOnNova(duel, state, "opponent", state.opponentAttacks, next / 1_000_000);
     }
   }
   return { ...state, resolvedMicros };
@@ -303,4 +347,5 @@ export function simulateDuelBattle(challenger: DuelFighter, opponent: DuelFighte
 
 export type DuelCombatModifiers = DuelCardFields & Pick<DuelCombat, "challengerRiposte" | "opponentRiposte" | "riposteSeed"
   | "challengerArrowStorm" | "challengerRicochet" | "challengerPiercingShot" | "opponentArrowStorm" | "opponentRicochet" | "opponentPiercingShot"
-  | "challengerWhirlwind" | "challengerDeflect" | "challengerShockwave" | "opponentWhirlwind" | "opponentDeflect" | "opponentShockwave">;
+  | "challengerWhirlwind" | "challengerDeflect" | "challengerShockwave" | "opponentWhirlwind" | "opponentDeflect" | "opponentShockwave"
+  | "challengerMeteor" | "challengerChain" | "challengerFrostNova" | "opponentMeteor" | "opponentChain" | "opponentFrostNova">;

@@ -235,11 +235,11 @@ export function createItemInspectionController(elements: ItemInspectionElements)
       if (/^ARMOR\b/.test(stat)) value.dataset.statKind = "armor";
       stats.append(value);
     }
-    // A sword strikes up close, which its art alone does not say.
-    if (item.weapon?.mode === "MELEE") {
+    // A sword strikes up close and a staff's bolts burst, which their art alone does not say.
+    if (item.weapon?.mode === "MELEE" || item.weapon?.projectile === "BOLT") {
       const value = document.createElement("span");
-      value.textContent = "Melee";
-      value.dataset.statKind = "melee";
+      value.textContent = item.weapon.mode === "MELEE" ? "Melee" : "Magic · Bursting Bolts";
+      value.dataset.statKind = item.weapon.mode === "MELEE" ? "melee" : "magic";
       stats.append(value);
     }
     copy.append(stats);

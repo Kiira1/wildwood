@@ -3,7 +3,8 @@ import { betterRollsKept, createBowSkills } from "./bow-skills";
 
 type Row = { itemId: string; arrowStorm: number; ricochet: number; piercingShot: number };
 
-function fakeConnection(rows: Row[] = [], swords: { itemId: string; whirlwind: number; deflect: number; shockwave: number }[] = []) {
+type StaffRow = { itemId: string; copyId: bigint; offerId: bigint; meteor: number; chain: number; frostNova: number };
+function fakeConnection(rows: Row[] = [], swords: { itemId: string; whirlwind: number; deflect: number; shockwave: number }[] = [], staffs: StaffRow[] = []) {
   const handlers: Array<() => void> = [];
   let applied: (() => void) | null = null;
   const subscribe = vi.fn();
@@ -15,10 +16,10 @@ function fakeConnection(rows: Row[] = [], swords: { itemId: string; whirlwind: n
   });
   // The service also carries kept copies and duplicate offers on the same connection.
   const connection = {
-    db: { myEquipmentLocks: view(() => []), myBowSkills: view(() => rows), mySwordSkills: view(() => swords), myEquipmentCopies: view(() => []), myEquipmentOffers: view(() => []), myIgnoredDrops: view(() => []), myLootSettings: view(() => []) },
+    db: { myEquipmentLocks: view(() => []), myBowSkills: view(() => rows), mySwordSkills: view(() => swords), myStaffSkills: view(() => staffs), myEquipmentCopies: view(() => []), myEquipmentOffers: view(() => []), myIgnoredDrops: view(() => []), myLootSettings: view(() => []) },
     subscriptionBuilder: () => ({ onApplied(callback: () => void) { applied = callback; return this; }, subscribe }),
   };
-  return { connection: connection as never, rows, swords, subscribe, settle: () => applied?.(), fire: () => handlers.forEach(handler => handler()) };
+  return { connection: connection as never, rows, swords, staffs, subscribe, settle: () => applied?.(), fire: () => handlers.forEach(handler => handler()) };
 }
 
 it("serves this account's roll for each bow once the view settles, and follows changes", () => {
@@ -91,4 +92,19 @@ it("reads a sword's own roll, announces a better copy and keeps bow-only callers
   expect(skills.api.swordSkills("ion_bow")).toBeNull();
   conn.swords[0].shockwave = 10; conn.fire();
   expect(kept).toHaveBeenCalledWith({ itemId: "ion_sword", before: 13.5, after: 29.5 });
+});
+
+it("reads a staff's first-copy roll and leaves kept copies' and offers' rolls to the copies", () => {
+  const skills = createBowSkills(() => {});
+  const conn = fakeConnection([], [], [
+    { itemId: "ion_staff", copyId: 0n, offerId: 0n, meteor: 9, chain: 0, frostNova: 4 },
+    { itemId: "ion_staff", copyId: 3n, offerId: 0n, meteor: 1, chain: 1, frostNova: 1 },
+    { itemId: "ion_staff", copyId: 0n, offerId: 5n, meteor: 2, chain: 2, frostNova: 2 },
+  ]);
+  skills.watch(conn.connection, () => true);
+  conn.settle();
+  expect(skills.api.staffSkills("ion_staff")).toEqual({ meteor: 9, chain: 0, frostNova: 4 });
+  expect(skills.api.weaponSkills("ion_staff")).toEqual({ meteor: 9, chain: 0, frostNova: 4 });
+  expect(skills.bowSkills("ion_staff")).toBeNull();
+  expect(skills.api.equipmentCopies()).toEqual([]);
 });

@@ -39,7 +39,8 @@ type Result = { ok: boolean; error?: string } | undefined;
 /** Where a look shows: a hand look only on a weapon of its own kind (shared/equipment-appearance.ts). */
 export function cosmeticReach(itemId: string) {
   if (itemDefinition(itemId)?.slot !== "HAND") return "Appearance only";
-  return weaponKind(itemId) === "MELEE" ? "Shows on a sword" : "Shows on a bow";
+  const kind = weaponKind(itemId);
+  return kind === "MELEE" ? "Shows on a sword" : kind === "MAGIC" ? "Shows on a staff" : "Shows on a bow";
 }
 
 export type KeptEquipmentCopy = { id: bigint; itemId: string; roll: WeaponSkillRoll };

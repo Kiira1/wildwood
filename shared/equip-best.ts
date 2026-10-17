@@ -106,14 +106,16 @@ export function withItemEquipped<T extends EquipLoadout>(loadout: T, itemId: str
   return next;
 }
 
-export type WeaponKind = "RANGED" | "MELEE";
+export type WeaponKind = "RANGED" | "MELEE" | "MAGIC";
 
 /**
- * How a weapon fights: a sword strikes up close, a bow or the stone from
- * range. Nothing in the hand reads as ranged, as the stone it falls back to.
+ * How a weapon fights: a sword strikes up close, a staff casts bursting bolts,
+ * a bow or the stone shoots from range. Nothing in the hand reads as ranged,
+ * as the stone it falls back to.
  */
 export function weaponKind(itemId: string | undefined): WeaponKind {
-  return itemDefinition(itemId)?.weapon?.mode === "MELEE" ? "MELEE" : "RANGED";
+  const weapon = itemDefinition(itemId)?.weapon;
+  return weapon?.mode === "MELEE" ? "MELEE" : weapon?.projectile === "BOLT" ? "MAGIC" : "RANGED";
 }
 
 /**
@@ -121,7 +123,7 @@ export function weaponKind(itemId: string | undefined): WeaponKind {
  * (weaponKind) that the player owns and may use, by the item's own damage
  * bonus. The starter stone, which every player owns, is ranged, so a ranged
  * hand always has one; a sword hand with no usable sword takes the strongest
- * ranged one. Never "". A blank hand is a normal saved state (older saves,
+ * ranged one, and so does a staff hand with no usable staff. Never "". A blank hand is a normal saved state (older saves,
  * gear whose map is locked again), and a player with no weapon cannot attack,
  * so the server's reading of a saved hand and the client's bag both fill it
  * from here.
@@ -141,14 +143,14 @@ export function fallbackWeapon(itemIds: readonly string[], access: CampaignAcces
     }
     return best;
   };
-  return (kind === "MELEE" && strongest("MELEE")) || strongest("RANGED");
+  return (kind !== "RANGED" && strongest(kind)) || strongest("RANGED");
 }
 
 /**
  * Whether putting this item on would beat what is in its slot now. Cosmetic
  * looks never do, and a weapon only ever replaces one of its own kind: swords
  * hit harder than bows but only up close, so power alone would trade every
- * archer's bow for a sword. `kind` is the hand's kind, by default what it
+ * archer's bow for a sword (or a staff). `kind` is the hand's kind, by default what it
  * holds; callers that read locked gear as an empty hand pass the locked
  * weapon's kind, so locking a sword away does not make its owner an archer.
  */
