@@ -126,9 +126,9 @@ describe("cards outside a fight, on the server", () => {
     view.slot("forest_cap", ["nether_oracle_card"]);
     award();
     expect(cardCount(view.f.ctx, view.f.ctx.sender, "needle_card")).toBe(1);
-    // A drop at 1 in 100 rolled at 1.05 lands with Treasure's +6%.
+    // A drop at 1 in 100 that rolled 2 lands with Treasure's +6% when the second draw falls in that 6%.
     const loot = [{ itemId: "forest_cap", wins: 1, outcomes: 100 }] as any;
-    const roll = { random: Object.assign(() => 0, { integerInRange: () => 1.05 }) } as any;
+    const roll = { random: Object.assign(() => .05, { integerInRange: () => 2 }) } as any;
     expect(rollRegularEnemyLoot(roll, "tutorial_forest", 1, loot).size).toBe(0);
     expect(rollRegularEnemyLoot(roll, "tutorial_forest", 1, loot, 1.06).get("forest_cap")).toBe(1);
   });

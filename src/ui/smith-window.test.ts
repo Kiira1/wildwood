@@ -2,11 +2,11 @@ import { afterEach, expect, it, vi } from "vitest";
 import { parseHTML } from "linkedom";
 import { createSmithController, type SmithItem } from "./smith-window";
 import { IRON_BOW, STARTER_BOW, STARTER_STONE, WOODEN_ARMOR } from "../../shared/items";
-import type { OreId } from "../../shared/refine";
+import { refineSuccessChance, type OreId } from "../../shared/refine";
 afterEach(() => vi.unstubAllGlobals());
 
 // The server rolls every try (refine_item); the window shows the odds, sends the level the player saw, and shows the verdict.
-function smith(options: { inTown?: boolean; ores?: Partial<Record<OreId, number>>; pickaxe?: boolean; mining?: number } = {}) {
+function smith(options: { inTown?: boolean; ores?: Partial<Record<OreId, number>>; pickaxe?: boolean; mining?: number; refineLuck?: number } = {}) {
   const { document, window } = parseHTML("<html><body></body></html>");
   vi.stubGlobal("document", document); vi.stubGlobal("HTMLElement", window.HTMLElement);
   const levels: Record<string, number> = { [`${STARTER_BOW}:0`]: 7, [`${WOODEN_ARMOR}:0`]: 2 };
@@ -24,7 +24,7 @@ function smith(options: { inTown?: boolean; ores?: Partial<Record<OreId, number>
     inTown: () => options.inTown ?? true, items: () => items, refine, showMessage,
     hasPickaxe: () => pickaxe, claimPickaxe, mining: () => options.mining ?? 0,
     refineLevel: (itemId, copyId) => levels[`${itemId}:${copyId}`] ?? 0, slotTier: () => 0,
-    ores: () => options.ores ?? { copper_ore: 3 },
+    ores: () => options.ores ?? { copper_ore: 3 }, refineLuck: () => options.refineLuck ?? 0,
   });
   const dialog = document.querySelector("dialog") as unknown as HTMLDialogElement;
   Object.assign(dialog, { showModal() { dialog.setAttribute("open", ""); }, close() { dialog.removeAttribute("open"); } });
@@ -45,6 +45,14 @@ it("lists only gear the Smith can refine, worn first, and shows a risky try's od
   expect(view.q(".smith-stat").textContent).toMatch(/^Damage \+[\d.]+% → \+[\d.]+%$/);
   const button = view.q(".smith-refine") as HTMLButtonElement;
   expect([button.textContent, button.disabled]).toEqual(["Refine", false]);
+});
+
+it("shows Refine Luck's raise to the decimal, never rounded away", () => {
+  const view = smith({ refineLuck: 1 });
+  view.controller.open();
+  const shown = `${Number((refineSuccessChance(STARTER_BOW, 8, 1) * 100).toFixed(1))}%`;
+  expect(shown).not.toBe("60%");
+  expect(view.facts().Chance).toBe(shown);
 });
 
 it("calls a safe try safe, with nothing to lose", () => {

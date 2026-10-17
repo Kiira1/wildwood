@@ -1,4 +1,8 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.910.6": [
+    "Gear Luck and Treasure cards raise every equipment drop by their full amount",
+    "The Smith shows refine odds with decimals, so Refine Luck's raise is visible",
+  ],
   "0.910.5": [
     "Old chat messages no longer stay in memory during long sessions",
   ],
@@ -3489,6 +3493,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.910.6": "2026-10-17",
   "0.910.5": "2026-10-16",
   "0.910.4": "2026-10-16",
   "0.910.3": "2026-10-16",

@@ -23,7 +23,11 @@ const key = (item: { itemId: string; copyId: bigint }) => `${item.itemId}:${item
 /** The bag's filters for the gear the Smith works on (boots are not refined). */
 const SMITH_FILTERS = [["ALL", "All"], ["HAND", "Weapons"], ["CHEST", "Armor"], ["HEAD", "Helmets"]] as const;
 const nameOf = (itemId: string) => itemInspectionButtonLabel(itemDisplayName(itemId));
-const percent = (chance: number) => `${Math.round(chance * 100)}%`;
+// Refine Luck moves the odds by fractions of a percent, so they keep their decimals (2.2%, 0.031%).
+const percent = (chance: number) => {
+  const value = chance * 100;
+  return `${Number(value.toFixed(value >= 10 ? 1 : value >= 1 ? 2 : 3))}%`;
+};
 
 /**
  * The Smith's window, in the Town's smithy: pick a copy of an item, see what a try costs and how likely it is,

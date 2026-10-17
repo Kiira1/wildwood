@@ -83,14 +83,24 @@ export function acceptRegularEnemyLootBatch(ctx: Context, batch: {
   return true;
 }
 
+/**
+ * Whether a drop of `wins` in `outcomes`, its chance multiplied, lands. The outcome the raised chance ends partway
+ * into wins for that part: compared as whole rolls, 1 in 200 raised by half stayed 1 in 200.
+ */
+export function dropLands(ctx: Pick<Context, "random">, wins: number, outcomes: number, multiplier: number) {
+  const threshold = Math.min(outcomes, wins * multiplier), whole = Math.floor(threshold), part = threshold - whole;
+  const roll = ctx.random.integerInRange(1, outcomes);
+  return roll <= whole || (part > 0 && roll === whole + 1 && ctx.random() < part);
+}
+
 /** Keep each item's independent per-kill roll; combine only the resulting writes. */
-/** `chanceMultiplier` raises every drop's chance (Treasure cards); one leaves the roll exactly as it was. */
+/** `chanceMultiplier` raises every drop's chance (Treasure cards, Gear Luck); one leaves the roll exactly as it was. */
 export function rollRegularEnemyLoot(ctx: Pick<Context, "random">, mapId: string, count: number, configuredLoot?: readonly MapLootDrop[], chanceMultiplier = 1) {
   const rewards = new Map<string, number>();
   const loot = configuredLoot ?? regularMapLoot(mapId);
   for (let kill = 0; kill < count; kill++) {
     for (const drop of loot) {
-      if (ctx.random.integerInRange(1, drop.outcomes) <= drop.wins * chanceMultiplier) {
+      if (dropLands(ctx, drop.wins, drop.outcomes, chanceMultiplier)) {
         rewards.set(drop.itemId, (rewards.get(drop.itemId) ?? 0) + 1);
       }
     }

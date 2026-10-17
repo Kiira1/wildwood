@@ -1,11 +1,11 @@
 import { STARTER_BOW } from "../../shared/items";
 import { Timestamp } from "spacetimedb";
-import { expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { crystalFixture, server } from "../../tests/helpers/crystal-hollows-fixture";
 import { reportKills } from "../../tests/helpers/enemy-defeat";
 import { enemyDefeatDefinition, defeatBudget } from "../../shared/enemy-defeats";
 import { ENEMY_TYPES } from "../../shared/enemy-definitions";
-import { rollRegularEnemyLoot } from "./regular-enemy-loot";
+import { dropLands, rollRegularEnemyLoot } from "./regular-enemy-loot";
 import { regularMapLoot } from "../../shared/regular-map-loot";
 import { progressOf } from "../../tests/helpers/progress";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
@@ -122,4 +122,32 @@ it('rolls pinned server drop chances instead of the current compiled table', () 
   const drop = { itemId: 'starter_bow' as const, outcomes: 1_000_000, wins: 500_000 };
   expect(rollRegularEnemyLoot({ random } as any, 'tutorial_forest', 2, [drop]).get('starter_bow')).toBe(2);
   expect(rollRegularEnemyLoot({ random } as any, 'tutorial_forest', 2, [{ ...drop, wins: 0 }]).size).toBe(0);
+});
+
+describe("raised drop chances", () => {
+  /** The exact chance a drop lands: every whole roll, and a fine grid of the second draw. */
+  const chance = (wins: number, outcomes: number, multiplier: number) => {
+    const steps = 1_000;
+    let landed = 0;
+    for (let roll = 1; roll <= outcomes; roll++) for (let step = 0; step < steps; step++) {
+      const random = Object.assign(() => (step + .5) / steps, { integerInRange: () => roll });
+      if (dropLands({ random } as any, wins, outcomes, multiplier)) landed++;
+    }
+    return landed / (outcomes * steps);
+  };
+  it("pays the full raise on a 1 in 200 drop, the same as on 10 in 2000", () => {
+    expect(chance(1, 200, 1.55)).toBeCloseTo(.00775, 6);
+    expect(chance(10, 2000, 1.55)).toBeCloseTo(.00775, 6);
+  });
+  it("rolls an unraised drop exactly as before, with no second draw", () => {
+    const second = vi.fn(() => 0);
+    const random = Object.assign(second, { integerInRange: () => 1 });
+    expect(dropLands({ random } as any, 1, 200, 1)).toBe(true);
+    expect(dropLands({ random: Object.assign(second, { integerInRange: () => 2 }) } as any, 1, 200, 1)).toBe(false);
+    expect(second).not.toHaveBeenCalled();
+    expect(chance(1, 200, 1)).toBeCloseTo(.005, 6);
+  });
+  it("never goes past certain", () => {
+    expect(chance(150, 200, 2)).toBe(1);
+  });
 });
