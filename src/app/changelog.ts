@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.910.8": [
+    "Auto Equip and Equip Best rank gear by the gear itself, not its cards, so higher-tier gear goes on with your cards in it",
+  ],
   "0.910.7": [
     "Duplicate weapons raise each skill on its own: a better skill on a drop is always kept",
     "Auto Farm moves on right after beating a boss instead of finishing the fight first",
@@ -3497,6 +3500,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.910.8": "2026-10-17",
   "0.910.7": "2026-10-17",
   "0.910.6": "2026-10-17",
   "0.910.5": "2026-10-16",

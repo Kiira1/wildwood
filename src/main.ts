@@ -133,7 +133,7 @@ import type { LeaderboardEntry } from "./wildstat-coop";
 import type { ResearchId } from "../shared/research";
 import { PLAYER_GENDER_FEMALE, PLAYER_GENDER_MALE } from "../shared/player-gender";
 import { regularEnemySimulationTick } from "../shared/regular-enemy-simulation";
-import { equipComparisonPower } from "../shared/equip-best";
+import { equipComparisonPower, gearOnlyLevel } from "../shared/equip-best";
 import { equipmentMaxHealthMultiplierBonus, isWeaponItem, itemDisplayName } from "../shared/items";
 import { createRewardDisplay, playerRegenerationPerSecond } from "./game/runtime/reward-display";
 import { createInventoryCommerceActions } from "./game/runtime/inventory-commerce";
@@ -748,7 +748,7 @@ import {
         equippedLeftHand: equipment.equippedLeftHand,
       }),
       researchRanks(),
-      (itemId) => coop?.itemLevel?.(itemId) ?? 0,
+      compare ? gearOnlyLevel((itemId) => coop?.itemLevel?.(itemId) ?? 0) : (itemId) => coop?.itemLevel?.(itemId) ?? 0,
       compare ? (itemId) => coop?.weaponSkills?.(itemId) : undefined,
     );
     return compare ? power : Math.round(power);

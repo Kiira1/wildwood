@@ -3,7 +3,7 @@ import type { Identity } from "spacetimedb";
 import { itemDefinition, STARTER_STONE, type ItemLevel } from "../../shared/items";
 import { CAMPAIGN_UNLOCK_FIELDS, equipmentMapRequirement, withoutLockedEquipment } from "../../shared/equipment-access";
 import {
-  EQUIP_BEST_SLOTS, equipComparisonPower, equippedInSlot, isEquipUpgrade, weaponKind, withItemEquipped,
+  EQUIP_BEST_SLOTS, equipComparisonPower, equippedInSlot, gearOnlyLevel, isEquipUpgrade, weaponKind, withItemEquipped,
   type EquipLoadout, type WeaponKind,
 } from "../../shared/equip-best";
 import { weaponSkillRollFor } from "./weapon-skills";
@@ -50,11 +50,11 @@ export function createAutoEquip(deps: {
   itemUpgradeLevelFor: (ctx: Ctx, identity: Identity, itemId: string) => ItemLevel;
   writeProgressAndPresentation: (ctx: Ctx, progress: any) => void;
 }) {
-  /** The comparison Equip best makes, for this player's stats, research, slot tiers and bow rolls. */
+  /** The comparison Equip best makes, for this player's stats, research, slot tiers, refines and bow rolls (not cards). */
   function comparisonPower(ctx: Ctx, identity: Identity) {
     const research = ctx.db.playerResearch.identity.find(identity);
     return (candidate: any) => equipComparisonPower(candidate, research,
-      itemId => deps.itemUpgradeLevelFor(ctx, identity, itemId),
+      gearOnlyLevel(itemId => deps.itemUpgradeLevelFor(ctx, identity, itemId)),
       itemId => weaponSkillRollFor(ctx, identity, itemId));
   }
 

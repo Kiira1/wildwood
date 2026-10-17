@@ -5,6 +5,7 @@ import { fillDefeatBudget, reportEnemy, seedDefeatClock } from "../../tests/help
 import { bowSkillKey, bowSkillRollFor } from "./bow-skills";
 import { publishItemDrop } from "./equipment-copies";
 import { CAMPAIGN_UNLOCK_FIELDS } from "../../shared/equipment-access";
+import { gearSlotsKey } from "../../shared/cards";
 import { BOSS_REWARD_CLAIM_BITS } from "../../shared/rules";
 import { TERMS_VERSION } from "../../shared/legal";
 import { IRON_BOW, SAMURAI_HAT, STARTER_BOW, STARTER_STONE, WOODEN_SWORD } from "../../shared/items";
@@ -192,6 +193,22 @@ it("equips gear already in the bag when reaching a map unlocks it, only with Aut
     expect(progress(f).clockworkRuinsUnlocked).toBe(true);
     expect(progress(f).equippedRightHand).toBe(autoEquipBest ? "clockwork_bow" : IRON_BOW);
   }
+});
+
+it("ranks armor by the armor, not the cards in it: a Reflect build's carded tier-11 beats a regen-carded tier-10", () => {
+  const f = crystalFixture();
+  // A Reflect build: health and regen far above its damage, so four Miremaws' regen outscored a higher tier.
+  f.patch("playerProgress", { maxHp: 2e9, damage: 5e5, regen: 4e8, armor: 3e4,
+    inventoryJson: JSON.stringify([IRON_BOW, "crystal_armor", "clockwork_armor"]), equippedRightHand: IRON_BOW, equippedChest: "crystal_armor", ...UP_TO_CRYSTAL });
+  settings(f, true, true);
+  const slot = (itemId: string, cards: string[]) =>
+    f.seed("playerGearSlots", { key: gearSlotsKey(f.ctx.sender, itemId), identity: f.ctx.sender, itemId, slots: 4, cards });
+  slot("crystal_armor", Array(4).fill("miremaw_card"));
+  slot("clockwork_armor", Array(4).fill("prismshell_card"));
+  // Prismshell's reward opens Clockwork Ruins, the clockwork armor's tier.
+  reportEnemy(f, "boss", 1);
+  expect(progress(f).clockworkRuinsUnlocked).toBe(true);
+  expect(progress(f).equippedChest).toBe("clockwork_armor");
 });
 
 const consent = (f: Fixture) =>

@@ -19,6 +19,9 @@ import {
  * candidate in that slot. Boots add no power; only Black Boots' speed counts.
  * A weapon's skills count too, multiplied into its damage (see
  * equipComparisonPower), so of two copies of one weapon the better roll wins.
+ * Slotted cards do not: power counts a card's stats but not its other effects
+ * (Reflect, Prism), so a regen-carded tier-10 armor outscored the tier-15 one
+ * carrying the build's Prismshells. Cards go with whichever piece is worn.
  */
 export type EquipLoadout = {
   equippedHead: string;
@@ -41,6 +44,12 @@ export const EQUIP_BEST_SLOTS: readonly (readonly [ItemSlot, LoadoutField, Equip
 const LOADOUT_FIELDS: readonly LoadoutField[] = ["equippedHead", "equippedChest", "equippedFeet", "equippedRightHand", "equippedLeftHand"];
 
 export type WeaponSkillsOf = (itemId: string) => WeaponSkillRoll | null | undefined;
+
+/** An item's level for comparing gear: its slot tier and refine, without the cards slotted in it. */
+export const gearOnlyLevel = (itemUpgradeLevel: (itemId: string) => ItemLevel) => (itemId: string): ItemLevel => {
+  const level = itemUpgradeLevel(itemId);
+  return level && typeof level === "object" ? { ...level, cards: [] } : level;
+};
 
 /**
  * Power for comparing gear, not for showing: the same stats as the player's
