@@ -15,11 +15,12 @@ describe("a duplicate's skills merged into the held weapon", () => {
     expect(mergeSkillRolls(IRON_BOW, bow(9, 9, 0), bow(2, 2, 2))).toEqual(bow(9, 9, 2));
   });
 
-  it("never trades a skill the weapon has for another", () => {
-    // Three low skills and a bow with one high one: nothing changes.
-    expect(mergeSkillRolls(IRON_BOW, bow(2, 2, 2), bow(9, 0, 0))).toBeNull();
-    // A higher chance on a skill held is not taken while another would be lost.
-    expect(mergeSkillRolls(IRON_BOW, bow(2, 2, 0), bow(9, 0, 4))).toEqual(bow(2, 2, 4));
+  it("takes each better skill on its own, never lowering another", () => {
+    // A drop with one high skill raises that one and leaves the rest.
+    expect(mergeSkillRolls(IRON_BOW, bow(2, 2, 2), bow(9, 0, 0))).toEqual(bow(9, 2, 2));
+    expect(mergeSkillRolls(IRON_BOW, bow(2, 2, 0), bow(9, 0, 4))).toEqual(bow(9, 2, 4));
+    // A 1/15/15 bow and a 15/1/1 drop make 15/15/15.
+    expect(mergeSkillRolls(IRON_BOW, bow(1, 15, 15), bow(15, 1, 1))).toEqual(bow(15, 15, 15));
   });
 
   it("changes nothing for an equal or worse roll, or for gear without skills", () => {

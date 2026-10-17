@@ -143,8 +143,8 @@ export function offerItemForFullBag(ctx: Ctx, identity: Identity, itemId: string
 
 /**
  * Duplicates from loot, settled on the spot: no offer, no spare copy. Each copy of a skill weapon rolls like
- * any new one and merges into the first copy's roll (mergeSkillRolls): taken whole when at least as good on
- * every skill, otherwise only adding the skills the weapon lacks. A skill never goes down. The weapon keeps
+ * any new one and merges into the first copy's roll (mergeSkillRolls): each skill keeps the higher of the two,
+ * so a skill never goes down. The weapon keeps
  * its refine, cards, slots and lock. Gifts and mail do not come through here and always offer.
  */
 export function receiveDuplicateEquipment(ctx: Ctx, identity: Identity, itemId: string, count = 1, skillLuck = 0) {

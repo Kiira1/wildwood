@@ -1,4 +1,8 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.910.7": [
+    "Duplicate weapons raise each skill on its own: a better skill on a drop is always kept",
+    "Auto Farm moves on right after beating a boss instead of finishing the fight first",
+  ],
   "0.910.6": [
     "Gear Luck and Treasure cards raise every equipment drop by their full amount",
     "The Smith shows refine odds with decimals, so Refine Luck's raise is visible",
@@ -3493,6 +3497,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.910.7": "2026-10-17",
   "0.910.6": "2026-10-17",
   "0.910.5": "2026-10-16",
   "0.910.4": "2026-10-16",

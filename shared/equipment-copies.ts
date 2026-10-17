@@ -10,9 +10,8 @@ import { canDestroyEquipment, isCosmeticOnlyItem, itemDefinition } from "./items
  * one a slot equips: equipping another copy swaps the two rolls, so
  * everything that reads the equipped bow's roll by item id keeps working.
  *
- * A drop of equipment the player already owns is settled on the spot: its roll
- * replaces the held weapon's when no skill would go down, or else only adds the
- * skills the weapon lacks. Offers remain for gifts, mail and new drops
+ * A drop of equipment the player already owns is settled on the spot: each
+ * skill keeps the higher of the held weapon's and the drop's. Offers remain for gifts, mail and new drops
  * that find the bag full; one nobody answers is ignored after five minutes, on
  * the server, so it happens with the tab closed too.
  */

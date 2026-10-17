@@ -683,6 +683,25 @@ describe('autofarm plans: sliders, the boss and the next map', () => {
       expect(t.farm.state().phase).toBe('portal');
     });
 
+    it('Move On goes straight on after beating the boss, without finishing the fight around it', () => {
+      const boss = { x: 900, y: 500, r: 60, hp: 1_000, maxHp: 1_000, dead: false };
+      const portal = { x: 200, y: 500, destination: 'beginner_desert' };
+      const s = planned({ power: () => 2_000, mapPower: () => 1_000, bossPower: () => 1_000, mapBoss: () => boss as never,
+        bossUnlocksNext: () => true, nextPortal: () => boss.dead ? portal : null });
+      s.farm.setAdvance(true);
+      s.farm.setFightBosses(true);
+      s.add('Bramble', 500, 1_500);
+      s.farm.start([health]);
+      s.advance(1_000); s.tick();
+      expect(s.farm.state().phase).toBe('boss');
+      // The boss falls with the camp beside its pit still on the player.
+      boss.dead = true;
+      s.add('Bramble', 520, 500).engaged = true;
+      s.tick();
+      expect(s.farm.state().phase).toBe('portal');
+      expect(s.farm.moveStatus()).toBe('Moving On');
+    });
+
     it("Move On by readiness from the live balance: waits while it loads, says what is missing, goes once ready", () => {
       let ready: Readiness | null | undefined;
       const margins: number[] = [];
