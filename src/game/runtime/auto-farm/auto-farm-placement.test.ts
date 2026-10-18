@@ -122,28 +122,31 @@ describe('autofarm placement', () => {
       expect(Math.hypot(s.player.x - outside.x, s.player.y - outside.y)).toBeLessThan(220);
     });
 
-    it('fights on a boss the player walked up to and hit, and leaves alone one only others are fighting', () => {
-      for (const steered of [true, false]) {
-        const boss = { ...pit, r: 80, hp: 1_000, maxHp: 1_000, dead: false };
-        const s = farmWith({ mapBoss: () => boss }, map);
-        s.player.x = pit.x - 200; s.player.y = pit.y;
-        s.add('Bramble', pit.x - zone - 300, pit.y);
-        s.farm.start([health]);
-        if (steered) s.farm.movement({ x: 1, y: 0, source: 'keyboard' }, 1 / 60);
-        s.tick();
-        boss.hp -= 50;
-        for (let frame = 0; frame < 60 * 3; frame++) s.tick();
-        if (steered) {
-          expect(s.farm.state().phase).toBe('boss');
-          expect(near(s)).toBeLessThan(260);
-          // Its win is the player's: not counted as Fight Bosses beating it.
-          boss.dead = true; boss.hp = 0; s.tick();
-          expect(s.farm.state().phase).toBe('farm');
-        } else {
-          expect(s.farm.state().phase).toBe('farm');
-          expect(near(s)).toBeGreaterThan(260);
-        }
-      }
+    it("leaves a boss fight the player walked into alone: neither in nor out, until they leave or it is down", () => {
+      const boss = { ...pit, r: 80, hp: 1_000, maxHp: 1_000, dead: false };
+      const s = farmWith({ mapBoss: () => boss }, map);
+      s.player.x = pit.x - 300; s.player.y = pit.y;
+      s.add('Bramble', pit.x - zone - 300, pit.y);
+      s.farm.start([health]);
+      s.farm.movement({ x: 1, y: 0, source: 'keyboard' }, 1 / 60);
+      const at = { x: s.player.x, y: s.player.y };
+      for (let frame = 0; frame < 60 * 3; frame++) expect(s.tick()).toMatchObject({ x: 0, y: 0 });
+      expect(s.player).toMatchObject(at);
+      expect(s.farm.state().status).toBe('Your boss fight');
+      expect(s.farm.attackType()).toBeNull();
+      // Down, it farms again, out of the pit.
+      boss.dead = true;
+      for (let frame = 0; frame < 60 * 3; frame++) s.tick();
+      expect(near(s)).toBeGreaterThan(300);
+      // Stepping out of the range by hand ends it too.
+      const t = farmWith({ mapBoss: () => ({ ...pit, r: 80, hp: 1_000, maxHp: 1_000 }) }, map);
+      t.player.x = pit.x - 300; t.player.y = pit.y;
+      t.add('Bramble', pit.x - zone - 300, pit.y);
+      t.farm.start([health]);
+      t.farm.movement({ x: 1, y: 0, source: 'keyboard' }, 1 / 60);
+      t.player.x = pit.x - zone - 50;
+      t.farm.movement({ x: -1, y: 0, source: 'keyboard' }, 1 / 60);
+      expect(t.tick().x).not.toBe(0);
     });
 
     it('walks out of the pit after a boss win when Pull brings everything, and stands clear of it', () => {
