@@ -5,6 +5,7 @@ import { damageAfterArmor } from '../../../../shared/combat';
 import type { MapBalanceSnapshot } from '../../../../shared/map-balance-types';
 import { readinessDps, type Readiness } from '../../../../shared/map-readiness';
 import type { PlayerPowerStats } from '../../../../shared/player-power';
+import { PROCEDURAL_BOSS_ATTACKS } from '../boss/procedural-boss-controller';
 
 /**
  * A boss fight takes this many times as long as damage over its health says: the player walks to it and
@@ -31,13 +32,17 @@ export function bossReadiness(mapId: string, boss: MapBalanceSnapshot['boss'] | 
     if (!(net > 0)) return false;
     const seconds = hp / net * BOSS_FIGHT_STRETCH.factor;
     const maxHp = stats.maxHp * healthScale;
-    const attacker: Attacker = boss.kind in BOSS_DAMAGE_PROFILES
-      ? bossAttacker(boss.kind as keyof typeof BOSS_DAMAGE_PROFILES, strongest, stats.armor)
-      : { start: 1, interval: 2, hit: damageAfterArmor(strongest, stats.armor) };
-    return resolveFight(maxHp, maxHp, stats.regen * healthScale, seconds, [attacker]).diedAt === null;
+    return resolveFight(maxHp, maxHp, stats.regen * healthScale, seconds, bossAttackers(boss.kind, strongest, stats.armor)).diedAt === null;
   };
   if (wins(1, 1)) return { ready: true, needs: null };
   const damage = wins(2, 1), health = wins(1, 2);
   // Either alone would do: damage, which Auto Farm favours. Neither alone: both.
   return { ready: false, needs: damage ? 'damage' : health ? 'health' : 'both' };
+}
+
+/** A campaign boss by its ability profile; an Endless boss by its pulse and aimed shot, as it attacks. */
+function bossAttackers(kind: string, strongest: number, armor: number): Attacker[] {
+  if (kind in BOSS_DAMAGE_PROFILES) return [bossAttacker(kind as keyof typeof BOSS_DAMAGE_PROFILES, strongest, armor)];
+  if (kind === 'procedural') return PROCEDURAL_BOSS_ATTACKS.map(attack => ({ start: attack.start, interval: attack.interval, hit: damageAfterArmor(strongest * attack.share, armor) }));
+  return [{ start: 1, interval: 2, hit: damageAfterArmor(strongest, armor) }];
 }

@@ -1,10 +1,11 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { simulateExistingPlayer } from '../../../../balance/simulator';
+import { defaultBalanceSimulationConfig, runBalanceSimulation, simulateExistingPlayer, simulationUpgradeLevel } from '../../../../balance/simulator';
 import { LIVE_BALANCE } from '../../../../balance/live-balance';
 import { createEmptyResearchRanks } from '../../../../../shared/research';
 import { DEFAULT_ATTACK_INTERVAL, PLAYER_BASE_DAMAGE, PLAYER_BASE_HP, PLAYER_BASE_REGEN } from '../../../../../shared/rules';
-import type { PlayerPowerStats } from '../../../../../shared/player-power';
+import { critPowerFactor, effectivePlayerPowerStats, type PlayerPowerStats } from '../../../../../shared/player-power';
+import { criticalDamageMultiplier } from '../../../../../shared/critical-damage';
 
 /** What the Balance Lab expects a player to bring to a map, and how long it expects the map to take. */
 export type ReferenceBuild = {
@@ -42,6 +43,32 @@ export function campaignReferenceBuilds(cacheDir: string): ReferenceBuild[] {
     minutes: map.exitedAtSeconds === null ? null : (map.exitedAtSeconds - map.enteredAtSeconds) / 60,
     exit: map.exitedAtSeconds === null ? null : { stats: stats(map.exitState.stats), equipped: { ...map.exitState.equipped } },
   }));
+  mkdirSync(cacheDir, { recursive: true });
+  writeFileSync(file, JSON.stringify(builds, null, 1));
+  return builds;
+}
+
+/** A Lab arrival with research, gear and upgrades folded into base stats (crit into damage): the virtual player has no upgrades. */
+export type FoldedArrival = { mapId: string; stats: PlayerPowerStats };
+
+/**
+ * The Balance Lab's representative run (research and upgrades on, as the scorecard plays it), each map's
+ * arrival build as plain stats. For maps the research-free campaign above never reaches. Cached like it.
+ */
+export function labArrivalBuilds(cacheDir: string, endlessMaps = 13): FoldedArrival[] {
+  const file = join(cacheDir, `lab-arrivals-r${LIVE_BALANCE.revision}-e${endlessMaps}.json`);
+  if (existsSync(file)) return JSON.parse(readFileSync(file, 'utf8'));
+  const result = runBalanceSimulation({ ...defaultBalanceSimulationConfig(), balanceSettings: structuredClone(LIVE_BALANCE.settings), trials: 1, endlessMaps });
+  const builds: FoldedArrival[] = [];
+  for (const map of result.maps) {
+    const arrival = result.arrivalStates?.[map.mapId];
+    if (!arrival) continue;
+    const effective = effectivePlayerPowerStats({ ...arrival.stats, equippedHead: arrival.equipped.head, equippedChest: arrival.equipped.chest, equippedRightHand: arrival.equipped.weapon },
+      arrival.research, itemId => simulationUpgradeLevel(arrival, itemId));
+    const crit = critPowerFactor({ critChance: (arrival.research.criticalChance ?? 0) / 100,
+      critMultiplier: criticalDamageMultiplier({ researchRank: arrival.research.criticalDamage, rating: arrival.stats.critRating, capRank: arrival.research.critCap }) });
+    builds.push({ mapId: map.mapId, stats: stats({ ...effective, damage: effective.damage * crit }) });
+  }
   mkdirSync(cacheDir, { recursive: true });
   writeFileSync(file, JSON.stringify(builds, null, 1));
   return builds;

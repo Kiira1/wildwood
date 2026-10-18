@@ -1,5 +1,5 @@
 import { MAP_IDS as CAMPAIGN_MAP_IDS, DEFAULT_ATTACK_INTERVAL, PLAYER_BASE_DAMAGE, PLAYER_BASE_HP, PLAYER_BASE_REGEN } from '../../../../../shared/rules';
-import type { ReferenceBuild } from './reference-builds';
+import type { FoldedArrival, ReferenceBuild } from './reference-builds';
 import type { VirtualPlayerProfile } from './virtual-player';
 
 type Scale = { damage?: number; maxHp?: number; armor?: number; regen?: number };
@@ -9,9 +9,11 @@ type Scale = { damage?: number; maxHp?: number; armor?: number; regen?: number }
  * arrival at their map (reference-builds.ts), each stat scaled, wearing the
  * gear the Lab had found by then. "Map n" counts from 1 = Forest.
  */
-export function virtualPlayers(references: readonly ReferenceBuild[]): VirtualPlayerProfile[] {
+export function virtualPlayers(references: readonly ReferenceBuild[], arrivals: readonly FoldedArrival[] = []): VirtualPlayerProfile[] {
   const map = (number: number) => CAMPAIGN_MAP_IDS[number - 1];
-  const reference = (mapId: string) => references.find(entry => entry.mapId === mapId)!;
+  // The Lab's research-free run may never reach a map: its players are left out rather than built from nothing.
+  const missing = new Set<string>();
+  const reference = (mapId: string) => references.find(entry => entry.mapId === mapId) ?? (missing.add(mapId), references[references.length - 1]);
   function campaignPlayer(name: string, seed: number, mapNumber: number, scale: Scale, extra: Partial<VirtualPlayerProfile> = {}): VirtualPlayerProfile {
     const build = reference(map(mapNumber));
     return {
@@ -29,7 +31,7 @@ export function virtualPlayers(references: readonly ReferenceBuild[]): VirtualPl
     ...(last.exit ? { base: last.exit.stats, weapon: last.exit.equipped.weapon, head: last.exit.equipped.head, chest: last.exit.equipped.chest }
       : { base: { ...last.stats, damage: last.stats.damage * 3, maxHp: last.stats.maxHp * 3, armor: last.stats.armor * 3, regen: last.stats.regen * 3 } }),
   };
-  return [
+  const players: VirtualPlayerProfile[] = [
     { name: 'fresh', seed: 1, startMap: map(1), highestUnlocked: 0, weapon: 'starter_bow', push: 'normal', advance: true,
       base: { damage: PLAYER_BASE_DAMAGE, maxHp: PLAYER_BASE_HP, armor: 0, regen: PLAYER_BASE_REGEN, attackRate: DEFAULT_ATTACK_INTERVAL } },
     campaignPlayer('glass-cannon', 2, 5, glass),
@@ -49,5 +51,15 @@ export function virtualPlayers(references: readonly ReferenceBuild[]): VirtualPl
     // Reflect Only: Reflect does all the damage; the boss and next map are left to the player.
     campaignPlayer('reflect-only', 11, 4, { maxHp: 1.2, armor: 1.2, regen: 1.2 }, { reflectOnly: true, perks: { riposte: 5 }, prestigeLevel: 5 }),
   ];
+  // The Lab's arrival (research and upgrades in) where the research-free run stops: a mid-campaign map and Endless.
+  const arrival = (name: string, seed: number, mapId: string, extra: Partial<VirtualPlayerProfile> = {}): VirtualPlayerProfile[] => {
+    const build = arrivals.find(entry => entry.mapId === mapId);
+    if (!build) return [];
+    const endless = mapId.startsWith('endless_') ? Number(mapId.slice('endless_'.length)) : 0;
+    return [{ name, seed, startMap: mapId, highestUnlocked: endless ? CAMPAIGN_MAP_IDS.length : CAMPAIGN_MAP_IDS.indexOf(mapId), endlessCompleted: endless ? endless - 1 : 0,
+      weapon: 'starter_bow', push: 'normal', advance: true, base: { ...build.stats }, ...extra }];
+  };
+  return [...players.filter(player => !missing.has(player.startMap)),
+    ...arrival('lab-cloudspire', 13, 'cloudspire'), ...arrival('lab-endless-3', 14, 'endless_3'), ...arrival('lab-endless-10', 15, 'endless_10')];
 }
 

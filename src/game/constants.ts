@@ -4,6 +4,7 @@ export const TAU = Math.PI * 2;
 export const WORLD = { w: WORLD_WIDTH, h: WORLD_HEIGHT };
 export const BOSS_ENEMY_SAFE_DISTANCE = 900;
 export const BOSS_AGGRO_RANGE = 575;
+export const SPIDER_AGGRO_RANGE = 575;
 export const BOSS_CONE_RANGE = 760;
 export const BOSS_CONE_HALF_ANGLE = 0.42;
 export const BOSS_RAIN_RANGE = 135;

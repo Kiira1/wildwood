@@ -36,4 +36,20 @@ describe('autofarm build', () => {
     expect(progress(MAP_IDS[0], { mapBoss: () => boss }).mapBoss()).toMatchObject({ hp: 40, maxHp: 100 });
     expect(progress(MAP_IDS[0], { mapBoss: () => ({ ...boss, dead: true }) }).mapBoss()).toBeNull();
   });
+
+  it("prices a staff's slower casts for readiness: a bow's boss win is not the staff's, and Meteor adds back", () => {
+    const boss = { kind: 'dragon', hp: 1_000, respawnSeconds: 60, damage: 1, attacks: {}, rewards: {} };
+    const balance = { schema: 1, revision: 1, mapId: MAP_IDS[0], enemies: {}, lanes: {}, rules: {}, boss } as never;
+    // 100 damage a second kills 1,000 health in 10 s, 20 s stretched: the dragon's regeneration is what a slower weapon loses to.
+    const wielding = (weapon: string, extra = {}) => progress(MAP_IDS[0], { fetchBalance: () => balance, ...extra,
+      equipment: () => ({ equippedHead: '', equippedChest: '', equippedRightHand: weapon, equippedLeftHand: '' }) as never,
+      base: () => ({ maxHp: 1_000, damage: 1.5, armor: 0, regen: 0, attackRate: 1 }) });
+    const ready = (weapon: string, extra = {}) => {
+      for (let margin = .05; margin < 20; margin *= 1.05) if (!wielding(weapon, extra).bossReady!(margin)?.ready) return margin;
+      return Infinity;
+    };
+    const bow = ready('starter_bow'), staff = ready('forest_staff');
+    expect(staff).toBeLessThan(bow * .9);
+    expect(ready('forest_staff', { weaponSkills: () => ({ meteor: 10 }) })).toBeGreaterThan(staff);
+  });
 });

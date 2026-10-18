@@ -6,6 +6,7 @@ import { ION_SWEEP, ION_BURSTS, ionSweepHits, ionBurstHits, ionBurstSites } from
 import { NEON_LASER, NEON_EMP, neonLaserHits, neonEmpHits } from "../../../../shared/neon-attacks";
 import {
   BOSS_AGGRO_RANGE,
+  SPIDER_AGGRO_RANGE,
   BOSS_CONE_HALF_ANGLE,
   BOSS_CONE_RANGE,
   BOSS_RAIN_RANGE,
@@ -64,7 +65,6 @@ export function bossAreaKnockbackDistance(attackRange: number, bossRadius: numbe
 
 const DRAGON_CONE_WINDUP = .75;
 const DRAGON_CONE_DURATION = 1.2;
-const SPIDER_AGGRO_RANGE = 575;
 const DRAGON_CONTACT_DAMAGE_COOLDOWN = .75;
 const FROSTCLAW_ROAR_WINDUP = .85;
 const FROSTCLAW_ROAR_DURATION = .95;

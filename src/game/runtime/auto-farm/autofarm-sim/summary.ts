@@ -38,6 +38,12 @@ export function summarize(reports: readonly VirtualPlayerReport[], references: r
       lines.push(`combat: hits ${(all / alive).toFixed(1)}/min (melee ${(melee / alive).toFixed(1)}, shots ${(count(['shots']) / alive).toFixed(1)}, boss ${(count(['boss']) / alive).toFixed(1)}), health lost ${(taken / alive).toFixed(2)} max/min; `
         + `shots fired ${(combat.shots / alive).toFixed(1)}/min, landed ${((combat.landed ?? 0) / alive).toFixed(1)}/min, shooting ${share(combat.shootingSeconds, combat.aliveSeconds)} of alive time, kiting ${share(combat.kitingSeconds, combat.aliveSeconds)}`);
     }
+    const place = report.placement;
+    if (place) {
+      const lingers = place.lingers.map(value => value.toFixed(0) + 's').join(',') || '-';
+      lines.push(`placement: inside a standing boss's range ${minutes(place.nearBossSeconds)}, boss hits while farming ${place.bossHitsFarming}, after a boss win clear of the pit in ${lingers}; sharp turns ${(place.reversals / Math.max(1, place.walkingSeconds / 60)).toFixed(1)}/walking min`
+        + ` (${Object.entries(place.turnStatuses ?? {}).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([key, count]) => `${key} ${count}`).join(', ')})`);
+    }
     if (wakes) lines.push(`wake-ups by walking near: other camps ${wakes.other} (${wakes.otherKiting} while kiting or dodging), own ${wakes.own}`);
     lines.push(`time: ${Object.entries(report.activity).sort((a, b) => b[1] - a[1]).map(([key, value]) => `${key} ${share(value, total)}`).join(', ')}`);
     const farmed = Object.values(report.groups).reduce((sum, value) => sum + value, 0);

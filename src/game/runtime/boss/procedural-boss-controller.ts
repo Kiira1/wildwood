@@ -21,6 +21,17 @@ const ENEMY_CONTACT_SECONDS = .75;
 /** Its pulse lands this long into each six-second round, on everything this close to its centre; the ring is drawn from the round's start. */
 const PULSE_WINDUP = 1.4;
 const PULSE_RADIUS = 330;
+/** It fights any player this close to it, and lets go past it. */
+export const PROCEDURAL_BOSS_ENGAGE_RANGE = 850;
+const PULSE_ROUND_SECONDS = 6;
+/** Its aimed shot: this often, this share of its heaviest hit. */
+const SHOT_SECONDS = 1.6;
+const SHOT_SHARE = .3;
+/** Its attacks as a fight model reads them (boss-readiness.ts): the pulse and the aimed shot. */
+export const PROCEDURAL_BOSS_ATTACKS = [
+  { start: PULSE_WINDUP, interval: PULSE_ROUND_SECONDS, share: 1 },
+  { start: SHOT_SECONDS, interval: SHOT_SECONDS, share: SHOT_SHARE },
+] as const;
 /** Touching its body hurts like a campaign boss's: half its heaviest hit, every .75 s, a hair past the edge it pushes you to. */
 const PLAYER_CONTACT_SHARE = .5;
 const PLAYER_CONTACT_SLACK = 1.02;
@@ -154,7 +165,7 @@ export function createProceduralBossController(options: {
       options.player.x - boss.x,
       options.player.y - boss.y,
     );
-    if (distance > 850 || options.player.hp <= 0) {
+    if (distance > PROCEDURAL_BOSS_ENGAGE_RANGE || options.player.hp <= 0) {
       boss.engaged = false;
       resetAttacks();
       return;
@@ -167,8 +178,8 @@ export function createProceduralBossController(options: {
       boss.attackAnimationElapsed += step;
     attackElapsed += step;
     shotElapsed += step;
-    if (attackElapsed >= 6) {
-      attackElapsed %= 6;
+    if (attackElapsed >= PULSE_ROUND_SECONDS) {
+      attackElapsed %= PULSE_ROUND_SECONDS;
       pulseFired = false;
     }
     if (attackElapsed >= PULSE_WINDUP && !pulseFired) {
@@ -178,8 +189,8 @@ export function createProceduralBossController(options: {
       const { x, y } = boss;
       options.damageEnemies?.({}, boss.damage, (ex, ey, r) => Math.hypot(ex - x, ey - y) < PULSE_RADIUS + r);
     }
-    if (shotElapsed >= 1.6) {
-      shotElapsed %= 1.6;
+    if (shotElapsed >= SHOT_SECONDS) {
+      shotElapsed %= SHOT_SECONDS;
       boss.attackAnimationElapsed = 0;
       const angle = Math.atan2(
         options.player.y - boss.y,
@@ -191,7 +202,7 @@ export function createProceduralBossController(options: {
         Math.cos(angle) * 230,
         Math.sin(angle) * 230,
         10,
-        boss.damage * 0.3,
+        boss.damage * SHOT_SHARE,
         4,
         boss,
       );
@@ -235,7 +246,7 @@ export function createProceduralBossController(options: {
       const phase = attackElapsed;
       if (
         phase > 1.65 ||
-        Math.hypot(options.player.x - boss.x, options.player.y - boss.y) > 850
+        Math.hypot(options.player.x - boss.x, options.player.y - boss.y) > PROCEDURAL_BOSS_ENGAGE_RANGE
       )
         return;
       ctx.save();

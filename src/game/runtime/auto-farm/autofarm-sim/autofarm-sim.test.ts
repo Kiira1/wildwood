@@ -9,7 +9,9 @@
  * turns off the boss and next map for every profile, AUTOFARM_SIM_PULL=1 turns
  * on Pull Whole Group, AUTOFARM_SIM_AGGRO=n runs an Aggro run with n groups
  * chasing, AUTOFARM_SIM_SEED shifts every profile's seed for another sample,
- * and AUTOFARM_SIM_GROWTH=0 runs autofarm without its growth planner.
+ * AUTOFARM_SIM_GROWTH=0 runs autofarm without its growth planner, AUTOFARM_SIM_MOVE_AT and
+ * AUTOFARM_SIM_FIGHT_AT set the two sliders, AUTOFARM_SIM_SCALE multiplies every profile's stats (attack speed aside), and AUTOFARM_SIM_READINESS=0 goes by the old power
+ * table instead of readiness from the live balance (what the game does).
  *
  * Reports go to AUTOFARM_SIM_OUT (default: the system temp directory), one JSON
  * per player plus summary.txt.
@@ -19,7 +21,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { virtualPlayers } from './profiles';
-import { campaignReferenceBuilds } from './reference-builds';
+import { campaignReferenceBuilds, labArrivalBuilds } from './reference-builds';
 import { bossDuel, createVirtualPlayer, type VirtualPlayerReport } from './virtual-player';
 import { summarize } from './summary';
 import type { KiteTuning } from '../auto-farm-dodge';
@@ -32,19 +34,29 @@ const kite = process.env.AUTOFARM_SIM_KITE ? JSON.parse(process.env.AUTOFARM_SIM
 const farmOnly = process.env.AUTOFARM_SIM_FARM_ONLY === '1';
 const seedShift = Number(process.env.AUTOFARM_SIM_SEED ?? 0);
 const pull = process.env.AUTOFARM_SIM_PULL === '1';
+/** AUTOFARM_SIM_AGGRO_GROUPS: stat groups switched to Aggro, comma separated (e.g. stat:health). */
+const aggroGroups = process.env.AUTOFARM_SIM_AGGRO_GROUPS?.split(',').filter(Boolean);
 const aggro = Number(process.env.AUTOFARM_SIM_AGGRO ?? 0);
 /** AUTOFARM_SIM_GROWTH=0: without the growth planner (auto-farm-growth.ts). */
 const growth = process.env.AUTOFARM_SIM_GROWTH !== '0';
 /** AUTOFARM_SIM_GROWTH_TUNING: the growth planner's tuning as JSON (GrowthTuning, e.g. '{"horizonMinutes":30}'). */
 const growthTuning = process.env.AUTOFARM_SIM_GROWTH_TUNING ? JSON.parse(process.env.AUTOFARM_SIM_GROWTH_TUNING) : undefined;
+const readiness = process.env.AUTOFARM_SIM_READINESS !== '0';
+const scale = Number(process.env.AUTOFARM_SIM_SCALE ?? 1);
+/** AUTOFARM_SIM_WEAPON: every profile wields this weapon instead (a sword or a staff). */
+const weapon = process.env.AUTOFARM_SIM_WEAPON;
+const moveAt = process.env.AUTOFARM_SIM_MOVE_AT ? Number(process.env.AUTOFARM_SIM_MOVE_AT) : undefined;
+const fightAt = process.env.AUTOFARM_SIM_FIGHT_AT ? Number(process.env.AUTOFARM_SIM_FIGHT_AT) : undefined;
 
 describe.skipIf(!enabled)('autofarm virtual players', () => {
   it('runs every profile and writes its report', async () => {
     mkdirSync(out, { recursive: true });
     const references = campaignReferenceBuilds(out);
     const reports: VirtualPlayerReport[] = [];
-    for (const listed of virtualPlayers(references).filter(entry => !only.length || only.includes(entry.name))) {
-      const profile = { ...listed, seed: listed.seed + seedShift, kite, pull, aggro, growth, growthTuning, ...farmOnly ? { advance: false } : {} };
+    for (const listed of virtualPlayers(references, labArrivalBuilds(out)).filter(entry => !only.length || only.includes(entry.name))) {
+      const base = { ...listed.base, damage: listed.base.damage * scale, maxHp: listed.base.maxHp * scale, armor: listed.base.armor * scale, regen: listed.base.regen * scale };
+      const profile = { ...listed, base, ...weapon ? { weapon } : {}, seed: listed.seed + seedShift, kite, pull, aggroGroups, aggro, growth, growthTuning, readiness,
+        ...moveAt ? { moveAt } : {}, ...fightAt ? { fightAt } : {}, ...farmOnly ? { advance: false } : {} };
       const player = createVirtualPlayer(profile);
       try {
         const report = await player.run(hours * 3600, progress => {

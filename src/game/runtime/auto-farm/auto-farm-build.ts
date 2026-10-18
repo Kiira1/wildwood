@@ -9,6 +9,13 @@ import { mapReadiness } from '../../../../shared/map-readiness';
 import { recordConnectionDiagnostic } from '../../../coop/services/connection-diagnostic-runtime';
 import { bossReadiness } from './boss-readiness';
 import type { MapBalanceSnapshot } from '../../../../shared/map-balance-types';
+import { STAFF_DPS_FACTOR, isStaff, staffSkillBossDamageMultiplier, type StaffSkillRoll } from '../../../../shared/staff-skills';
+
+/**
+ * A staff's damage a second on a camp against a bow of the same tier: its slower casts on one target, with the
+ * bursts that catch a second enemy now and then (autofarm sim, camp fights, 0.911.1).
+ */
+export const STAFF_CAMP_DPS_SHARE = .83;
 
 /**
  * Prices a kill's reward against the player's live build, for autofarm to
@@ -75,11 +82,20 @@ export function createAutoFarmProgress(deps: Parameters<typeof createFarmEvaluat
   reflectOnly: () => boolean;
   /** A map's live balance, fetched once (coop.mapIndexBalance): Move On and Fight Bosses read readiness from it. */
   fetchBalance?: (mapId: string) => Promise<MapBalanceSnapshot | null> | MapBalanceSnapshot | undefined;
+  /** The worn weapon's skill roll: a staff's Meteor adds to its boss damage. */
+  weaponSkills?: () => Partial<StaffSkillRoll> | null | undefined;
 }) {
   const evaluator = createFarmEvaluator(deps);
   const balanceFor = deps.fetchBalance ? createRetryingBalanceCache(deps.fetchBalance) : null;
   /** The live build as readiness reads it: effective stats, gear, research and crit in. */
   const liveStats = () => evaluator.evaluate().stats!;
+  /** As readiness prices the weapon: a staff's casts are slower, its bursts help on a camp and only Meteor adds on a boss. */
+  const readinessStats = (against: 'map' | 'boss') => {
+    const stats = liveStats(), equipped = deps.equipment(), weapon = equipped.equippedRightHand || equipped.equippedLeftHand;
+    if (!isStaff(weapon)) return stats;
+    const share = against === 'boss' ? STAFF_DPS_FACTOR * staffSkillBossDamageMultiplier(deps.weaponSkills?.()) : STAFF_CAMP_DPS_SHARE;
+    return { ...stats, damage: stats.damage * share };
+  };
   const ranked = (direction: 1 | -1) => {
     const here = farmMapRank(deps.mapId());
     return deps.portals().find((portal): portal is FarmPortal => Boolean(portal) && Math.sign(farmMapRank(portal!.destination) - here) === direction && deps.portalUnlocked(portal!)) ?? null;
@@ -112,11 +128,11 @@ export function createAutoFarmProgress(deps: Parameters<typeof createFarmEvaluat
     /** Readiness from the map's live enemies (map-readiness.ts); undefined while its balance loads. */
     mapReady: balanceFor ? (mapId: string, margin: number) => {
       const balance = balanceFor(mapId);
-      return balance === undefined ? undefined : mapReadiness(mapId, liveStats(), balance ?? undefined, margin);
+      return balance === undefined ? undefined : mapReadiness(mapId, readinessStats('map'), balance ?? undefined, margin);
     } : undefined,
     bossReady: balanceFor ? (margin: number) => {
       const mapId = deps.mapId(), balance = balanceFor(mapId);
-      return balance === undefined ? undefined : bossReadiness(mapId, balance?.boss, liveStats(), margin);
+      return balance === undefined ? undefined : bossReadiness(mapId, balance?.boss, readinessStats('boss'), margin);
     } : undefined,
   };
 }

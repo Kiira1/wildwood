@@ -1,4 +1,12 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.912.2": [
+    "Auto Farm stays at a camp while it has enemies nearby instead of crossing the map every 20 seconds",
+    "Auto Farm keeps out of a boss's range while it isn't fighting it, and leaves the pit after a win",
+    "Auto Farm heals up before it goes to a boss or the next map",
+    "Auto Farm with a sword walks up to enemies instead of waiting at bow range",
+    "Auto Farm fights Endless bosses sooner: it reads their attacks as they really land",
+    "Auto Farm judges bosses and maps right for a staff's slower bolts",
+  ],
   "0.912.1": [
     "Smoother play for signed-in players: the game no longer re-reads your sign-in every frame",
   ],
@@ -3515,6 +3523,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.912.2": "2026-10-17",
   "0.912.1": "2026-10-17",
   "0.912.0": "2026-10-17",
   "0.911.0": "2026-10-17",
