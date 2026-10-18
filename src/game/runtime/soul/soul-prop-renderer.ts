@@ -4,6 +4,7 @@ import { guildHallDoorState, guildHallFrame } from "../../guild-hall";
 import type { WorldDecor } from "../../world";
 import type { Camera } from "../render/camera";
 import { snapWorldRenderCoordinate } from "../render/render-space";
+import { createShrunkImages, deviceScale } from "../render/shrunk-image";
 import { drawTownSignpost, TOWN_SIGNPOST_EXTENT, TOWN_SIGNPOST_EXTENT_MIRRORED } from "../town/town-signpost";
 
 export type SoulPropDecor = Extract<WorldDecor, { type: "soulProp" }>;
@@ -53,6 +54,13 @@ export function createSoulPropRenderer(options: {
   /** Seconds, for the pack's animations. */
   time: () => number;
 }) {
+  // Live draws copy each frame cut at its size on screen (shrunk-image.ts); baking into tiles (a target) draws from the sheet.
+  const shrunkImages = createShrunkImages();
+  const sheetFrame = (ctx: CanvasRenderingContext2D, image: HTMLImageElement, frame: { x: number; y: number; w: number; h: number }, w: number, h: number, live: boolean) => {
+    if (!live) return null;
+    const scale = deviceScale(ctx);
+    return shrunkImages(image, w * scale, h * scale, ctx.imageSmoothingEnabled, frame);
+  };
   return function drawSoulProp(item: SoulPropDecor, target?: CanvasRenderingContext2D) {
     if (item.crest) {
       const { camera } = options;
@@ -76,12 +84,14 @@ export function createSoulPropRenderer(options: {
     const x = snapWorldRenderCoordinate(item.x - camera.x, camera.zoom, options.devicePixelRatio());
     const y = snapWorldRenderCoordinate(item.y + (item.dy ?? 0) - camera.y, camera.zoom, options.devicePixelRatio());
     const w = frame.w * item.s, h = frame.h * item.s;
+    const cut = sheetFrame(ctx, image, frame, w, h, !target);
     if (item.spin) {
       // Unity turns counter-clockwise for a positive angle; the canvas, with y down, the other way.
       ctx.save();
       ctx.translate(x, y);
       ctx.rotate(-item.spin * options.time() * Math.PI / 180);
-      ctx.drawImage(image, frame.x, frame.y, frame.w, frame.h, -frame.ax * item.s, -frame.ay * item.s, w, h);
+      if (cut) ctx.drawImage(cut, -frame.ax * item.s, -frame.ay * item.s, w, h);
+      else ctx.drawImage(image, frame.x, frame.y, frame.w, frame.h, -frame.ax * item.s, -frame.ay * item.s, w, h);
       ctx.restore();
       return;
     }
@@ -89,11 +99,13 @@ export function createSoulPropRenderer(options: {
       ctx.save();
       ctx.translate(x, y);
       ctx.scale(-1, 1);
-      ctx.drawImage(image, frame.x, frame.y, frame.w, frame.h, -frame.ax * item.s, -frame.ay * item.s, w, h);
+      if (cut) ctx.drawImage(cut, -frame.ax * item.s, -frame.ay * item.s, w, h);
+      else ctx.drawImage(image, frame.x, frame.y, frame.w, frame.h, -frame.ax * item.s, -frame.ay * item.s, w, h);
       ctx.restore();
       return;
     }
-    ctx.drawImage(image, frame.x, frame.y, frame.w, frame.h, x - frame.ax * item.s, y - frame.ay * item.s, w, h);
+    if (cut) ctx.drawImage(cut, x - frame.ax * item.s, y - frame.ay * item.s, w, h);
+    else ctx.drawImage(image, frame.x, frame.y, frame.w, frame.h, x - frame.ax * item.s, y - frame.ay * item.s, w, h);
   };
 }
 

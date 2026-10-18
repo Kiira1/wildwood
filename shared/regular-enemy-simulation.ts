@@ -44,6 +44,19 @@ function mixString(hash: number, value: string) {
   return mixed >>> 0;
 }
 
+const digits = new Uint8Array(16);
+/** mixString(hash, `${Math.trunc(value)}`) without building the string: the ambient pose hashes ~7 numbers per enemy each step. */
+export function mixInteger(hash: number, value: number) {
+  let rest = Math.trunc(value);
+  if (!(Math.abs(rest) <= Number.MAX_SAFE_INTEGER)) return mixString(hash, `${rest}`);
+  let mixed = hash >>> 0;
+  if (rest < 0) { mixed = Math.imul(mixed ^ 45, 0x01000193); rest = -rest; }
+  let count = 0;
+  do { digits[count++] = rest % 10; rest = (rest - digits[count - 1]) / 10; } while (rest > 0);
+  while (count > 0) mixed = Math.imul(mixed ^ (48 + digits[--count]), 0x01000193);
+  return mixed >>> 0;
+}
+
 function avalanche(hash: number) {
   let mixed = hash >>> 0;
   mixed ^= mixed >>> 16;
@@ -58,9 +71,18 @@ function avalanche(hash: number) {
 export function regularEnemySeededUnit(...parts: readonly (string | number)[]) {
   let hash = REGULAR_ENEMY_WORLD_SEED;
   for (const part of parts) {
-    hash = mixString(hash, typeof part === "number" ? `${Math.trunc(part)}` : part);
+    hash = typeof part === "number" ? mixInteger(hash, part) : mixString(hash, part);
     hash ^= 0x9e3779b9;
   }
+  return avalanche(hash) / UINT32_RANGE;
+}
+
+/** regularEnemySeededUnit(label, mapId, siteId[, segment]) without its rest-argument array: the ambient pose asks seven times per enemy each step. */
+export function regularEnemySiteUnit(label: string, mapId: string, siteId: number, segment?: number) {
+  let hash = mixString(REGULAR_ENEMY_WORLD_SEED, label) ^ 0x9e3779b9;
+  hash = mixString(hash, mapId) ^ 0x9e3779b9;
+  hash = mixInteger(hash, siteId) ^ 0x9e3779b9;
+  if (segment !== undefined) hash = mixInteger(hash, segment) ^ 0x9e3779b9;
   return avalanche(hash) / UINT32_RANGE;
 }
 
@@ -69,13 +91,14 @@ export function regularEnemySimulationTick(serverNowMs: number) {
   return Math.floor(now / REGULAR_ENEMY_TICK_MS);
 }
 
-function waypoint(mapId: string, siteId: number, segment: number, homeX: number, homeY: number) {
-  const angle = regularEnemySeededUnit("ambient-angle", mapId, siteId, segment) * TAU;
-  const distance = AMBIENT_MIN_RADIUS + regularEnemySeededUnit("ambient-distance", mapId, siteId, segment) * (AMBIENT_RADIUS - AMBIENT_MIN_RADIUS);
-  return {
-    x: homeX + Math.cos(angle) * distance,
-    y: homeY + Math.sin(angle) * distance,
-  };
+// Reused by regularEnemyAmbientPose, which reads them straight back: two waypoints per enemy each step.
+const previousPoint = { x: 0, y: 0 }, nextPoint = { x: 0, y: 0 };
+function waypoint(mapId: string, siteId: number, segment: number, homeX: number, homeY: number, out: { x: number; y: number }) {
+  const angle = regularEnemySiteUnit("ambient-angle", mapId, siteId, segment) * TAU;
+  const distance = AMBIENT_MIN_RADIUS + regularEnemySiteUnit("ambient-distance", mapId, siteId, segment) * (AMBIENT_RADIUS - AMBIENT_MIN_RADIUS);
+  out.x = homeX + Math.cos(angle) * distance;
+  out.y = homeY + Math.sin(angle) * distance;
+  return out;
 }
 
 function smoothstep(value: number) {
@@ -92,25 +115,25 @@ export function regularEnemyAmbientPose(
   serverNowMs: number,
 ): RegularEnemyAmbientPose {
   const now = Number.isFinite(serverNowMs) ? Math.max(0, serverNowMs) : 0;
-  const phaseOffset = regularEnemySeededUnit("ambient-phase", mapId, siteId) * AMBIENT_SEGMENT_MS;
+  const phaseOffset = regularEnemySiteUnit("ambient-phase", mapId, siteId) * AMBIENT_SEGMENT_MS;
   const timeline = now + phaseOffset;
   const segment = Math.floor(timeline / AMBIENT_SEGMENT_MS);
   const segmentProgress = timeline / AMBIENT_SEGMENT_MS - segment;
-  const previous = waypoint(mapId, siteId, segment - 1, homeX, homeY);
-  const next = waypoint(mapId, siteId, segment, homeX, homeY);
-  const holdFraction = .44 + regularEnemySeededUnit("ambient-hold", mapId, siteId, segment) * .25;
+  const previous = waypoint(mapId, siteId, segment - 1, homeX, homeY, previousPoint);
+  const next = waypoint(mapId, siteId, segment, homeX, homeY, nextPoint);
+  const holdFraction = .44 + regularEnemySiteUnit("ambient-hold", mapId, siteId, segment) * .25;
   const travelProgress = smoothstep((segmentProgress - holdFraction) / Math.max(.01, 1 - holdFraction));
   const x = previous.x + (next.x - previous.x) * travelProgress;
   const y = previous.y + (next.y - previous.y) * travelProgress;
   const facingDelta = next.x - previous.x;
   const facingX = Math.abs(facingDelta) > .5
     ? facingDelta < 0 ? -1 : 1
-    : regularEnemySeededUnit("ambient-facing", mapId, siteId, segment) < .5 ? -1 : 1;
+    : regularEnemySiteUnit("ambient-facing", mapId, siteId, segment) < .5 ? -1 : 1;
   return {
     x,
     y,
     facingX,
-    phase: (now / 1_000 * 3 + regularEnemySeededUnit("animation-phase", mapId, siteId) * TAU) % TAU,
+    phase: (now / 1_000 * 3 + regularEnemySiteUnit("animation-phase", mapId, siteId) * TAU) % TAU,
   };
 }
 
@@ -148,17 +171,17 @@ export function selectRegularEnemyAggroTarget(options: {
 }) {
   const acquireRadius = Math.max(0, options.acquireRadius);
   const retainRadius = Math.max(acquireRadius, options.retainRadius);
-  const ordered = [...options.candidates].sort((left, right) => {
+  // The first of each in nearest-then-stable order, found in one pass: copying and sorting the candidates ran for every enemy each step.
+  const before = (left: RegularEnemyAggroCandidate, right: RegularEnemyAggroCandidate) => {
     const distanceDifference = distanceSquaredTo(options.enemyX, options.enemyY, left) - distanceSquaredTo(options.enemyX, options.enemyY, right);
-    return distanceDifference || stableCandidateOrder(left, right);
-  });
-  const best = ordered.find((candidate) => {
+    return distanceDifference ? distanceDifference < 0 : stableCandidateOrder(left, right) < 0;
+  };
+  let best: RegularEnemyAggroCandidate | null = null, current: RegularEnemyAggroCandidate | null = null;
+  for (const candidate of options.candidates) {
     const candidateAcquireRadius = Math.max(0, candidate.acquireRadius ?? acquireRadius);
-    return distanceSquaredTo(options.enemyX, options.enemyY, candidate) <= candidateAcquireRadius * candidateAcquireRadius;
-  }) ?? null;
-  const current = options.currentTargetId
-    ? ordered.find((candidate) => candidate.id === options.currentTargetId) ?? null
-    : null;
+    if (distanceSquaredTo(options.enemyX, options.enemyY, candidate) <= candidateAcquireRadius * candidateAcquireRadius && (!best || before(candidate, best))) best = candidate;
+    if (options.currentTargetId && candidate.id === options.currentTargetId && (!current || before(candidate, current))) current = candidate;
+  }
   if (!current || distanceSquaredTo(options.enemyX, options.enemyY, current) > retainRadius * retainRadius) return best;
   if (!best || best.id === current.id) return current;
   const bestDistance = Math.sqrt(distanceSquaredTo(options.enemyX, options.enemyY, best));

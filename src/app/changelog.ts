@@ -1,4 +1,8 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.913.5": [
+    "Smoother play in Firefox: the screen's dark edges, your range ring, portals and the Town's buildings are cheaper to draw",
+    "Less memory churn every frame, for fewer stutters",
+  ],
   "0.913.4": [
     "A boss fight you walk into is yours: Auto Farm no longer walks you toward the boss or out of its range until you leave or it's down",
   ],
@@ -3539,6 +3543,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.913.5": "2026-10-17",
   "0.913.4": "2026-10-17",
   "0.913.3": "2026-10-17",
   "0.913.2": "2026-10-17",

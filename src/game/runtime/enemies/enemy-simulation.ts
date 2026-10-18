@@ -25,6 +25,7 @@ import { rangedEnemyAttackRange, rangedEnemyHoldBand } from "./ranged-enemy-rang
 import type { EnemyState, PlayerState } from "../types";
 
 const FULL_SIMULATION_MARGIN = 220;
+const noRemoteCombatStats = () => null;
 export const LOCAL_REGULAR_ENEMY_TARGET_ID = "local-player";
 /**
  * How quickly a chasing enemy turns: its velocity eases toward the player at
@@ -213,6 +214,9 @@ export function createEnemySimulation(
       radius: player.r,
       local: true,
     };
+    // Made once a step and shared by every enemy, rather than one of each per enemy.
+    const localCandidates = [localCandidate];
+    const statsFor = shared.remoteCombatStats ?? noRemoteCombatStats;
     const remotePlayers = [...(shared.remotePlayers?.() ?? [])];
     remoteCombat.beginFrame(mapId, serverNowMs, dt, remotePlayers);
     activeCrowd.length = 0;
@@ -247,7 +251,7 @@ export function createEnemySimulation(
           ambient,
           acquireRadius: regularEnemyAggroRadius(enemy),
           engagementTick: serverTick,
-          statsFor: shared.remoteCombatStats ?? (() => null),
+          statsFor,
         });
       }
 
@@ -278,7 +282,7 @@ export function createEnemySimulation(
           acquireRadius: pulled ? Number.POSITIVE_INFINITY : regularEnemyAggroRadius(enemy),
           retainRadius: pulled ? Number.POSITIVE_INFINITY : regularRetainRadius(enemy),
           currentTargetId: enemy.engaged ? enemy.aggroTargetId : null,
-          candidates: [localCandidate],
+          candidates: localCandidates,
         });
         if (!enemy.engaged && selected) engageEnemy(enemy, selected.id, serverTick);
         else if (enemy.engaged && selected && selected.id !== enemy.aggroTargetId) engageEnemy(enemy, selected.id, serverTick);
@@ -293,13 +297,7 @@ export function createEnemySimulation(
         // Seeded consensus determines when aggro starts. From this point on,
         // the authoritative local fight follows the actual local player with
         // the original responsive velocity-based movement.
-        const target: RegularEnemyAggroCandidate | undefined = enemy.aggroTargetId === id ? {
-          id,
-          x: player.x,
-          y: player.y,
-          radius: player.r,
-          local: true,
-        } : undefined;
+        const target: RegularEnemyAggroCandidate | undefined = enemy.aggroTargetId === id ? localCandidate : undefined;
         if (!target) {
           beginLeashing(enemy);
         } else {

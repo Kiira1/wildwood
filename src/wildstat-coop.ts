@@ -3,6 +3,7 @@ import { watchOfflineProgress, type OfflineProgressSummary } from "./coop/servic
 import { createAccountAudioSettings } from "./coop/services/account-audio-settings";
 import { createAccountRowServices } from "./coop/services/account-row-services";
 import { activeCardSlots } from "../shared/active-cards";
+import { createFramePlayers } from "./coop/services/frame-players";
 import { consumeUpdateResumeMode, reloadWithUpdateResume } from "./coop/services/update-resume-browser";
 import { configureConnectionDiagnostics, recordConnectionDiagnostic, flushConnectionDiagnostics } from "./coop/services/connection-diagnostic-runtime";
 import { bindProgressFlushOnHide } from "./coop/services/flush-on-hide";
@@ -202,6 +203,7 @@ function batchChanges(action: () => void) {
 }
 
 let presenceService!: PresenceService;
+const frameRemotePlayers = createFramePlayers(() => presenceService.api.remotePlayers());
 const virtualPlayerLoadTest = createVirtualPlayerLoadTest({
   host,
   databaseName,
@@ -932,6 +934,7 @@ export const wildstatCoop = {
   ...remoteCombatStatsService.api,
   ...chatService.api,
   ...duelService.api,
+  remotePlayers: frameRemotePlayers,
   guild: guildService.api,
   social: socialService.api,
   devModeration: devModerationService.api,

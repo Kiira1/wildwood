@@ -33,6 +33,7 @@ import { decorPaletteColor, mapVisualTheme } from "../../map-design";
 import { mapWorldLayout } from "../../map-layout";
 import { isGuildHallMap } from "../../../../shared/guild-hall";
 import { portalTravelScene } from "./portal-glimpse";
+import { createShrunkImages, deviceScale } from "./shrunk-image";
 
 export { snapWorldRenderCoordinate } from "./render-space";
 
@@ -858,6 +859,7 @@ if (options.getMapId() === ION_CITADEL_MAP_ID) { drawIonRoads(ctx, options.paths
     ctx.drawImage(glimpse.canvas, snapToWorldPixel(glimpse.left - camera.x), snapToWorldPixel(glimpse.top - camera.y));
   }
 
+  const shrunkImages = createShrunkImages();
   function drawPortalAt(portal: Portal, cutscene = false) {
     if (!options.portalArch.complete || options.portalArch.naturalWidth <= 0) return;
     const x = snapToWorldPixel(portal.x - camera.x);
@@ -883,7 +885,9 @@ if (options.getMapId() === ION_CITADEL_MAP_ID) { drawIonRoads(ctx, options.paths
       ctx.restore();
       if (!cutsceneActive && portalIntensity >= 1) preparePortalGlimpse(portal);
     }
-    ctx.drawImage(options.portalArch, x - portal.width / 2, y - portal.height, portal.width, portal.height);
+    const onScreen = deviceScale(ctx);
+    const arch = shrunkImages(options.portalArch, portal.width * onScreen, portal.height * onScreen, ctx.imageSmoothingEnabled) ?? options.portalArch;
+    ctx.drawImage(arch, x - portal.width / 2, y - portal.height, portal.width, portal.height);
     const destinationOpacity = cutsceneActive ? options.portalDestinationOpacity() : options.portalIsUnlocked(portal) ? 1 : 0;
     if (destinationOpacity <= 0) return;
     drawScreenSpaceAt(ctx, camera.zoom, x, y - portal.height, () => {

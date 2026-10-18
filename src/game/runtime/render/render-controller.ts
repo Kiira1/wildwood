@@ -102,61 +102,99 @@ export function createRenderController(options: {
     ctx.restore();
   }
 
+  function strokeAttackRange(target: CanvasRenderingContext2D, x: number, y: number, radius: number) {
+    target.save();
+    target.setLineDash([8, 14]);
+    target.lineDashOffset = 0;
+    target.lineCap = "round";
+    target.beginPath();
+    target.arc(x, y, radius, 0, Math.PI * 2);
+    target.strokeStyle = "rgba(215,239,250,.55)";
+    target.lineWidth = 2;
+    target.stroke();
+    // Put dark dashes in the light dashes' gaps, with a little breathing room.
+    target.lineDashOffset = 11;
+    target.strokeStyle = "rgba(20,40,50,.45)";
+    target.stroke();
+    target.restore();
+  }
+  // Two dashed strokes a frame were slow in Firefox's software canvas: the ring is drawn once and copied,
+  // and drawn again only when the range, zoom or pixel ratio changes.
+  const rangeCanvas = typeof document === "undefined" ? null : document.createElement("canvas");
+  let rangeKey = "", rangeHalf = 0;
   function drawAttackRange() {
     if (attackRangeVisible() && !isDueling()) {
       const { dpr } = viewport();
       const x = snapWorldRenderCoordinate(player.x - camera.x, camera.zoom, dpr);
       const y = snapWorldRenderCoordinate(player.y - camera.y, camera.zoom, dpr);
-      ctx.save();
-      ctx.setLineDash([8, 14]);
-      ctx.lineDashOffset = 0;
-      ctx.lineCap = "round";
-      ctx.beginPath();
-      ctx.arc(x, y, options.weaponAttackRange?.() ?? player.attackRange, 0, Math.PI * 2);
-      ctx.strokeStyle = "rgba(215,239,250,.55)";
-      ctx.lineWidth = 2;
-      ctx.stroke();
-      // Put dark dashes in the light dashes' gaps, with a little breathing room.
-      ctx.lineDashOffset = 11;
-      ctx.strokeStyle = "rgba(20,40,50,.45)";
-      ctx.stroke();
-      ctx.restore();
+      const radius = options.weaponAttackRange?.() ?? player.attackRange;
+      const cache = rangeCanvas?.getContext("2d");
+      if (!rangeCanvas || !cache) { strokeAttackRange(ctx, x, y, radius); return; }
+      const scale = camera.zoom * dpr, key = `${radius}|${scale}`;
+      if (key !== rangeKey) {
+        rangeKey = key;
+        const halfPixels = Math.ceil((radius + 3) * scale);
+        rangeHalf = halfPixels / scale;
+        rangeCanvas.width = rangeCanvas.height = Math.max(1, halfPixels * 2);
+        cache.setTransform(scale, 0, 0, scale, halfPixels, halfPixels);
+        strokeAttackRange(cache, 0, 0, radius);
+      }
+      ctx.drawImage(rangeCanvas, x - rangeHalf, y - rangeHalf, rangeHalf * 2, rangeHalf * 2);
     }
   }
 
-  // The camera keeps the player centred, so the vignette is nearly always the
-  // same picture: paint it once and copy it, instead of a full-screen radial
-  // gradient every frame. It is repainted when size, zoom or position change.
-  const vignetteCanvas = typeof document === "undefined" ? null : document.createElement("canvas");
-  let vignetteKey = "";
+  // The vignette is a CSS gradient on an element over the canvas, moved with a transform: no canvas work at all.
+  // In the canvas it was a full-screen copy every frame, and a full-screen canvas reallocated and repainted
+  // whenever the player moved on screen (camera held at a map edge), over half a millisecond in Firefox's software canvas.
+  let vignetteFrame: HTMLDivElement | null = null, vignetteSky: HTMLDivElement | null = null;
+  let vignetteLook = "", vignetteAt = "", vignetteWanted = false, vignetteShown = false;
+  function vignetteElement() {
+    if (vignetteSky || typeof document === "undefined" || !ctx.canvas?.isConnected) return vignetteSky;
+    const frame = document.createElement("div");
+    frame.setAttribute("aria-hidden", "true");
+    frame.style.cssText = "position:fixed;left:0;top:0;z-index:1;pointer-events:none;overflow:hidden;display:none";
+    const sky = document.createElement("div");
+    sky.style.cssText = "position:absolute;left:0;top:0;will-change:transform";
+    frame.append(sky);
+    ctx.canvas.insertAdjacentElement("afterend", frame);
+    vignetteFrame = frame;
+    return vignetteSky = sky;
+  }
+  function showVignette(on: boolean) {
+    if (!vignetteFrame || on === vignetteShown) return;
+    vignetteShown = on;
+    vignetteFrame.style.display = on ? "block" : "none";
+  }
   function drawVignette() {
     if (currentMapIsInfernal() && !isDueling()) return;
-    const { width, height, dpr } = viewport();
-    // Four-pixel steps: camera smoothing moves the player a pixel or two a
-    // frame while walking, which would repaint every frame; four is invisible.
-    const x = Math.round(((player.x - camera.x) * camera.zoom) / 4) * 4;
-    const y = Math.round(((player.y - camera.y) * camera.zoom) / 4) * 4;
-    const farthestCorner = Math.max(Math.hypot(x, y), Math.hypot(width - x, y), Math.hypot(x, height - y), Math.hypot(width - x, height - y));
-    const innerRadius = Math.round(clamp(player.attackRange * camera.zoom * 1.08, 56, farthestCorner * .72));
-    const paint = (target: CanvasRenderingContext2D) => {
-      const gradient = target.createRadialGradient(x, y, innerRadius, x, y, farthestCorner);
+    const { width, height } = viewport();
+    const x = Math.round((player.x - camera.x) * camera.zoom);
+    const y = Math.round((player.y - camera.y) * camera.zoom);
+    // Darkest at the corners of a centred view; off centre (a map edge) the far side stays at that darkness.
+    const outerRadius = Math.ceil(Math.hypot(width, height) / 2);
+    const innerRadius = Math.round(clamp(player.attackRange * camera.zoom * 1.08, 56, outerRadius * .72));
+    const sky = vignetteElement();
+    if (!sky || !vignetteFrame) {
+      const gradient = ctx.createRadialGradient(x, y, innerRadius, x, y, outerRadius);
       gradient.addColorStop(0, "rgba(0,0,0,0)");
       gradient.addColorStop(1, "rgba(0,0,0,.33)");
-      target.fillStyle = gradient;
-      target.fillRect(0, 0, width, height);
-    };
-    const cache = vignetteCanvas?.getContext("2d");
-    if (!vignetteCanvas || !cache) { paint(ctx); return; }
-    const key = `${width}x${height}@${dpr}:${x},${y}:${innerRadius}`;
-    if (key !== vignetteKey) {
-      vignetteKey = key;
-      vignetteCanvas.width = Math.max(1, Math.round(width * dpr));
-      vignetteCanvas.height = Math.max(1, Math.round(height * dpr));
-      cache.setTransform(dpr, 0, 0, dpr, 0, 0);
-      cache.clearRect(0, 0, width, height);
-      paint(cache);
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, width, height);
+      return;
     }
-    ctx.drawImage(vignetteCanvas, 0, 0, width, height);
+    vignetteWanted = true;
+    // Twice the view, centred on the player: it covers the view wherever the player stands in it.
+    const look = `${width}x${height}:${innerRadius}`;
+    if (look !== vignetteLook) {
+      vignetteLook = look;
+      vignetteFrame.style.width = `${width}px`;
+      vignetteFrame.style.height = `${height}px`;
+      sky.style.width = `${width * 2}px`;
+      sky.style.height = `${height * 2}px`;
+      sky.style.background = `radial-gradient(circle ${outerRadius}px at ${width}px ${height}px, rgba(0,0,0,0) ${innerRadius}px, rgba(0,0,0,.33) ${outerRadius}px)`;
+    }
+    const at = `${x - width}px,${y - height}px`;
+    if (at !== vignetteAt) { vignetteAt = at; sky.style.transform = `translate3d(${at},0)`; }
   }
 
   function drawNightMask() {
@@ -282,7 +320,8 @@ export function createRenderController(options: {
   }
 
   function render() {
-    try { renderFrame(); }
+    vignetteWanted = false;
+    try { renderFrame(); showVignette(vignetteWanted); }
     catch (error) {
       // Clear leaked clipping, transforms, filters and save-stack entries before retrying.
       // Assigning the backing width resets the existing context without changing layout.

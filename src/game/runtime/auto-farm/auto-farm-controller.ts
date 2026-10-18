@@ -222,10 +222,39 @@ export function createAutoFarmController(options: {
    * One choice per stat: a camp's regulars and elites, and every camp paying
    * it, are one entry. In the Soul Dimension, one per soul stat the player's tier has woken.
    */
-  const choiceKey = (site: Pick<SpawnSite, 'type' | 'definition' | 'campName'>) => farmGroupOf(site);
-  function choices() {
-    const counts = new Map<string, { key: AutoFarmGroup; type: EnemyKind; kinds: EnemyKind[]; label: string;
-      alive: number; total: number; reward: FarmReward; maxReward: number; soul: SoulStatId | null }>();
+  // Each enemy's and site's group, kept while what it is made from stays: asked for every enemy several times a frame.
+  const keptKeys = new WeakMap<object, { type: string; definition: unknown; campName: unknown; key: AutoFarmGroup }>();
+  const choiceKey = (site: Pick<SpawnSite, 'type' | 'definition' | 'campName'>) => {
+    const kept = keptKeys.get(site);
+    if (kept && kept.type === site.type && kept.definition === site.definition && kept.campName === site.campName) return kept.key;
+    const key = farmGroupOf(site);
+    keptKeys.set(site, { type: site.type, definition: site.definition, campName: site.campName, key });
+    return key;
+  };
+  type Choice = { key: AutoFarmGroup; type: EnemyKind; kinds: EnemyKind[]; label: string;
+    alive: number; total: number; reward: FarmReward; maxReward: number; soul: SoulStatId | null };
+  // The groups as this map's sites make them, built again only when the sites change; alive is counted on each call (every frame).
+  // A live balance load swaps a kind's reward in place (map-balance-loader.ts), so each site's reward is part of what is compared.
+  let builtChoices: Choice[] = [], builtMap = '', builtSites: SpawnSite[] = [], builtRewards: unknown[] = [];
+  const choiceByKey = new Map<string, Choice>();
+  const siteReward = (site: SpawnSite) => (site.definition ?? ENEMY_TYPES[site.type]).reward;
+  const sitesChanged = () => builtMap !== options.mapId() || builtSites.length !== spawnSites.length
+    || spawnSites.some((site, index) => site !== builtSites[index] || siteReward(site) !== builtRewards[index]);
+  function choices(): Choice[] {
+    if (sitesChanged()) {
+      builtMap = options.mapId(); builtSites = [...spawnSites]; builtRewards = spawnSites.map(siteReward);
+      builtChoices = buildChoices(); choiceByKey.clear();
+      for (const choice of builtChoices) choiceByKey.set(choice.key, choice);
+    }
+    for (const choice of builtChoices) choice.alive = 0;
+    for (const enemy of enemies) if (!enemy.dead && !enemy.remoteCombatGhost && !enemy.generatedBoss && enemy.hp > 0) {
+      const choice = choiceByKey.get(choiceKey(enemy));
+      if (choice) choice.alive++;
+    }
+    return builtChoices;
+  }
+  function buildChoices() {
+    const counts = new Map<string, Choice>();
     for (const site of spawnSites) {
       const key = choiceKey(site), definition = site.definition ?? ENEMY_TYPES[site.type];
       // A soul enemy pays its soul stat, flat, and nothing to the run.
@@ -237,10 +266,6 @@ export function createAutoFarmController(options: {
       choice.reward.amount = Math.min(choice.reward.amount, reward.amount);
       choice.maxReward = Math.max(choice.maxReward, reward.amount);
       counts.set(key, choice);
-    }
-    for (const enemy of enemies) if (!enemy.dead && !enemy.remoteCombatGhost && !enemy.generatedBoss && enemy.hp > 0) {
-      const choice = counts.get(choiceKey(enemy));
-      if (choice) choice.alive++;
     }
     return [...counts.values()];
   }
@@ -615,14 +640,16 @@ export function createAutoFarmController(options: {
     if (selected) spent.set(selected, (spent.get(selected) ?? 0) + dt);
     planClock -= dt;
     const current = all.find(entry => entry.key === selected && (shares[entry.key] ?? 0) > 0);
+    stint += dt;
+    const campHere = () => stint < CAMP_STINT_SECONDS && enemies.some(enemy => validEnemy(enemy) && distance(enemy) < CAMP_STAY_RADIUS);
+    if (current && current.alive > 0 && (planClock > 0 || campHere())) return;
+    // Weighed only when the pick may change: the cap checks build reward text for every group.
     const weights = farmWeights(all);
     // Only a group the pick can go to counts as somewhere to go. An Aggro group is in the shares but never walked
     // to, so with the farmed groups empty it read as "something alive": the pick re-ran every frame, swapping between
     // the empty groups by time spent, and each swap went to the server.
     const anyAlive = weights.some(entry => entry.alive > 0 && entry.weight > 0);
-    stint += dt;
-    const campHere = () => stint < CAMP_STINT_SECONDS && enemies.some(enemy => validEnemy(enemy) && distance(enemy) < CAMP_STAY_RADIUS);
-    if (current && (current.alive > 0 ? planClock > 0 || campHere() : !anyAlive)) return;
+    if (current && current.alive <= 0 && !anyAlive) return;
     planClock = SHARE_REPLAN_SECONDS;
     const key = shareFarmKey(weights, group => spent.get(group) ?? 0);
     if (key) select(key);
@@ -943,7 +970,9 @@ export function createAutoFarmController(options: {
     return check.ready ? waitsForHealth() ? 'Boss Once Healed' : 'Boss Next' : check.line;
   }
 
-  return { start, stop: (reason?: string) => { zeroWaiting = false; stop(reason); }, defeated, refresh, choices, movement, travelStarted, mine,
+  return { start, stop: (reason?: string) => { zeroWaiting = false; stop(reason); }, defeated, refresh,
+    // Copies for the window: the kept ones are recounted every frame.
+    choices: () => choices().map(choice => ({ ...choice, kinds: [...choice.kinds], reward: { ...choice.reward } })), movement, travelStarted, mine,
     /** `waiting`: stopped for travel, and starting again on the next map with enemies. The player can still Stop it. */
     state: () => ({ active, waiting: !active && Boolean(pendingResume), selected, selectedLabel, shares: { ...shares }, phase, advance, fightBosses,
       status: active && !recovering && options.paused() ? 'Paused' : status }),
