@@ -12,9 +12,8 @@ import { createCardShopRows } from "./card-shop-service";
 import { createBuildRows } from "./build-service";
 import { createItemCollectionRows } from "./item-collection-service";
 import { itemLevelParts, type ItemLevel } from "../../../shared/items";
-import { NO_CARDS, cardStatFactors, cardTotals, equippedCardIds, type CardTotals } from "../../../shared/card-effects";
-
-type WornLoadout = { equippedHead?: string; equippedChest?: string; equippedRightHand?: string; equippedLeftHand?: string };
+import { NO_CARDS, cardStatFactors, cardTotals, type CardTotals } from "../../../shared/card-effects";
+import { BASE_CARD_SLOTS, activeCardsInPlay, type ActiveCardSlots } from "../../../shared/active-cards";
 
 /**
  * The account's own small rows, each read through a caller-scoped view and
@@ -27,7 +26,8 @@ type WornLoadout = { equippedHead?: string; equippedChest?: string; equippedRigh
  * them together.
  */
 export function createAccountRowServices(connection: () => DbConnection | null, notify: () => void, slotTierFor: (itemId: string) => number = () => 0,
-  wornItems: () => WornLoadout | null | undefined = () => null) {
+  /** Active card slots of each type in play (Card Slots perks). */
+  cardSlots: () => ActiveCardSlots = () => BASE_CARD_SLOTS) {
   const offlinePreference = createOfflineProgressPreference(connection, notify);
   const bowSkills = createBowSkills(notify);
   const adGemReward = createAdGemReward(notify);
@@ -40,17 +40,17 @@ export function createAccountRowServices(connection: () => DbConnection | null, 
   const cardShop = createCardShopRows(notify);
   const builds = createBuildRows(notify);
   const collection = createItemCollectionRows(notify);
-  // The saved loadout's cards, added up again only when they change.
-  let wornKey = "", worn: { totals: CardTotals; stats: ReturnType<typeof cardStatFactors> } = { totals: NO_CARDS, stats: cardStatFactors(NO_CARDS) };
-  const wornCards = () => {
-    const ids = equippedCardIds(wornItems() ?? {}, cards.api.itemCards);
+  // The active cards in play, added up again only when they change.
+  let activeKey = "", active: { ids: readonly string[]; totals: CardTotals; stats: ReturnType<typeof cardStatFactors> } = { ids: [], totals: NO_CARDS, stats: cardStatFactors(NO_CARDS) };
+  const activeCards = () => {
+    const ids = activeCardsInPlay(cards.api.activeCards(), cardSlots());
     const key = ids.join(",");
-    if (key !== wornKey) {
+    if (key !== activeKey) {
       const totals = cardTotals(ids);
-      wornKey = key;
-      worn = { totals, stats: cardStatFactors(totals) };
+      activeKey = key;
+      active = { ids, totals, stats: cardStatFactors(totals) };
     }
-    return worn;
+    return active;
   };
   return {
     watch(current: DbConnection, isCurrent: () => boolean) {
@@ -80,12 +80,16 @@ export function createAccountRowServices(connection: () => DbConnection | null, 
       ...cardShop.api,
       ...builds.api,
       ...collection.api,
-      /** A worn copy's level carries its cards, which power reads (items.ts ItemLevel). */
-      itemLevel: (itemId: string): ItemLevel => ({ ...itemLevelParts(itemRefine.api.itemLevel(itemId)), cards: cards.api.itemCards(itemId) }),
-      /** The cards in the worn weapon, helmet and armor, added up (card-effects.ts). */
-      wornCardTotals: () => wornCards().totals,
-      /** What those cards do to stats (card-effects.ts cardStatFactors). */
-      wornCardStats: () => wornCards().stats,
+      /** An item's slot tier and refine (items.ts ItemLevel). */
+      itemLevel: (itemId: string): ItemLevel => itemLevelParts(itemRefine.api.itemLevel(itemId)),
+      /** The active card slots of each type in play. */
+      cardSlots,
+      /** The active cards that count now: each type's first slots in play. */
+      activeCardIds: () => activeCards().ids,
+      /** Those cards added up (card-effects.ts). */
+      activeCardTotals: () => activeCards().totals,
+      /** What they do to stats (card-effects.ts cardStatFactors). */
+      activeCardStats: () => activeCards().stats,
     },
   };
 }

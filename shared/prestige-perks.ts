@@ -24,7 +24,15 @@ export const PRESTIGE_PERKS = {
   fleetFoot: { title: "Fleet Foot", perRank: .02, detail: "Move faster. Adds to Move Speed research." },
   // Attacks a second the attack speed cap rises a rank (0.901.47): the attack speed rating closes in on the higher cap.
   quickDraw: { title: "Quick Draw", perRank: QUICK_DRAW_CAP_PER_RANK, detail: "Raises the attack speed cap. Your attack speed climbs toward the higher cap." },
+  // One more active card of a type per rank (shared/active-cards.ts), three ranks.
+  weaponCards: { title: "Weapon Card Slots", perRank: 1, detail: "One more active weapon card in the Cards tab." },
+  helmetCards: { title: "Helmet Card Slots", perRank: 1, detail: "One more active helmet card in the Cards tab." },
+  armorCards: { title: "Armor Card Slots", perRank: 1, detail: "One more active armor card in the Cards tab." },
 } as const;
+
+/** The card slot perks stop at three ranks: four active cards of a type. */
+export const CARD_SLOT_PERK_MAX_RANK = 3;
+const CARD_SLOT_PERK_IDS: ReadonlySet<string> = new Set(["weaponCards", "helmetCards", "armorCards"]);
 
 /**
  * Keen Edge grants critical damage as well as chance. Chance alone was close to
@@ -72,6 +80,7 @@ export const REFLECT_RANKS_PER_CHALLENGE = 1;
  */
 export function prestigePerkMaxRank(perk: PrestigePerkId, challengesWon = PRESTIGE_CHALLENGE_LIMIT) {
   const wins = Math.max(0, Math.min(PRESTIGE_CHALLENGE_LIMIT, Math.floor(Number.isFinite(challengesWon) ? challengesWon : 0)));
+  if (CARD_SLOT_PERK_IDS.has(perk)) return CARD_SLOT_PERK_MAX_RANK;
   return PRESTIGE_PERK_MAX_RANK + (perk === "riposte" ? wins * REFLECT_RANKS_PER_CHALLENGE : 0);
 }
 
@@ -110,6 +119,10 @@ export function prestigePerkEffectLabel(perk: PrestigePerkId, rank: number) {
   if (perk === "longShot") return `+${prestigePerkValue(ranks, perk)} attack range`;
   if (perk === "fleetFoot") return `+${chance} move speed`;
   if (perk === "quickDraw") return `+${(prestigePerkValue(ranks, perk)).toFixed(1)} attack speed cap`;
+  if (CARD_SLOT_PERK_IDS.has(perk)) {
+    const slots = 1 + prestigePerkRank(ranks, perk);
+    return `${slots} active ${perk === "weaponCards" ? "weapon" : perk === "helmetCards" ? "helmet" : "armor"} card${slots === 1 ? "" : "s"}`;
+  }
   return `${chance} chance to reflect a hit`;
 }
 

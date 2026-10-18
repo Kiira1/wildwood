@@ -2,7 +2,7 @@ import { expect, it, vi } from "vitest";
 import { Timestamp } from "spacetimedb";
 import { crystalFixture, identity, server } from "../../tests/helpers/crystal-hollows-fixture";
 import { advanceDuelCombat, initialDuelCombatState, DUEL_COMBAT_VERSION } from "../../shared/duel-combat";
-import { setGearSlots } from "./gear-cards";
+import { setActiveCards } from "../../tests/helpers/active-cards";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
 it("freezes each side's cards for a duel, Reflect cards in its chance, and resolves them as a replay will", () => {
@@ -12,8 +12,7 @@ it("freezes each side's cards for a duel, Reflect cards in its chance, and resol
   f.progress(opponent, { inventoryJson: '["starter_bow"]', equippedRightHand: "starter_bow", damage: 10, maxHp: 10000 });
   f.seed("playerProfile", { identity: opponent, displayName: "Opponent" });
   f.seed("player", { ...f.db.player.identity.find(who), identity: opponent });
-  setGearSlots(f.ctx as any, who, "starter_bow", 0n, { slots: 2, cards: ["magmalisk_card", "koi_shogun_card"] });
-  setGearSlots(f.ctx as any, who, "wooden_armor", 0n, { slots: 1, cards: ["bramble_card"] });
+  setActiveCards(f.ctx as any, who, ["magmalisk_card", "koi_shogun_card", "bramble_card"]);
   f.run(server.requestDuel, { opponent });
   const duel = [...f.db.duel.iter()][0];
   const frozen = f.db.duelCombatSnapshot.duelId.find(duel.id);

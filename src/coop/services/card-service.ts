@@ -1,36 +1,26 @@
 import { tables, type DbConnection } from "../../module_bindings";
-import { MAX_CARD_SLOTS, OWNED_GEAR_SLOTS, cardDefinition } from "../../../shared/cards";
+import { cardDefinition, type CardSlot } from "../../../shared/cards";
+import { NO_ACTIVE_CARDS, activeCardsOfRow, type ActiveCards } from "../../../shared/active-cards";
 import { reducerErrorMessage } from "./reducer-errors";
 import { withRequestDeadline } from "./request-deadline";
 
-export type GearSlots = { slots: number; cards: readonly string[] };
 export type CardDrop = { cardIds: readonly string[]; sequence: bigint };
-export type SlotCardResult = { ok: boolean; error?: string };
+export type CardResult = { ok: boolean; error?: string };
 
 type Target = { connection: DbConnection; isCurrent: () => boolean };
-const copyKey = (itemId: string, copyId: bigint) => `${itemId}:${copyId}`;
-const OWNED_GEAR: GearSlots = Object.freeze({ slots: OWNED_GEAR_SLOTS, cards: Object.freeze([]) as readonly string[] });
 
-/** A slots row as the client reads it: at most four slots, unknown cards dropped. */
-export const gearSlotsOf = (row: { slots: number; cards: readonly string[] }): GearSlots => {
-  const slots = Math.max(0, Math.min(MAX_CARD_SLOTS, Math.floor(row.slots)));
-  return { slots, cards: row.cards.filter(cardId => cardDefinition(cardId)).slice(0, slots) };
-};
-
-/** This account's cards, each copy's slots, and new card finds, from the my_* card views; and slot_card. */
+/** This account's cards, its active cards and new card finds, from the my_* card views; and switching cards on and off. */
 export function createCardRows(notify: () => void) {
   let target: Target | null = null;
   let counts: Record<string, number> = {};
-  let slots = new Map<string, GearSlots>();
-  let slotted: ReadonlySet<string> = new Set();
+  let active: ActiveCards = NO_ACTIVE_CARDS;
   let drop: CardDrop | null = null;
   let dropListener: ((drop: CardDrop) => void) | null = null;
 
   function watch(connection: DbConnection, isCurrent: () => boolean) {
     target = { connection, isCurrent };
     counts = {};
-    slots = new Map();
-    slotted = new Set();
+    active = NO_ACTIVE_CARDS;
     drop = null;
     // The standing row on connect is an old find, not one to announce.
     let hydrated = false;
@@ -41,13 +31,9 @@ export function createCardRows(notify: () => void) {
       counts = next;
       notify();
     };
-    const readSlots = () => {
+    const readActive = () => {
       if (!isCurrent()) return;
-      const next = new Map<string, GearSlots>();
-      for (const row of connection.db.myGearSlots.iter()) next.set(copyKey(row.itemId, 0n), gearSlotsOf(row));
-      for (const row of connection.db.myCopySlots.iter()) next.set(copyKey(row.itemId, row.copyId), gearSlotsOf(row));
-      slots = next;
-      slotted = new Set([...next.values()].flatMap(gear => gear.cards));
+      active = activeCardsOfRow([...connection.db.myActiveCards.iter()][0]);
       notify();
     };
     const readDrop = () => {
@@ -59,51 +45,38 @@ export function createCardRows(notify: () => void) {
       if (hydrated && drop && drop.sequence !== previous?.sequence && drop.cardIds.length) dropListener?.(drop);
     };
     connection.db.myCards.onInsert(readCards); connection.db.myCards.onUpdate(readCards); connection.db.myCards.onDelete(readCards);
-    for (const view of [connection.db.myGearSlots, connection.db.myCopySlots]) {
-      view.onInsert(readSlots); view.onUpdate(readSlots); view.onDelete(readSlots);
-    }
+    connection.db.myActiveCards.onInsert(readActive); connection.db.myActiveCards.onUpdate(readActive); connection.db.myActiveCards.onDelete(readActive);
     connection.db.myCardDrop.onInsert(readDrop); connection.db.myCardDrop.onUpdate(readDrop); connection.db.myCardDrop.onDelete(readDrop);
     connection.subscriptionBuilder()
-      .onApplied(() => { readCards(); readSlots(); readDrop(); hydrated = true; })
-      .subscribe([tables.myCards, tables.myGearSlots, tables.myCopySlots, tables.myCardDrop]);
+      .onApplied(() => { readCards(); readActive(); readDrop(); hydrated = true; })
+      .subscribe([tables.myCards, tables.myActiveCards, tables.myCardDrop]);
+  }
+
+  async function call(send: (connection: DbConnection) => Promise<unknown>): Promise<CardResult> {
+    const current = target;
+    if (!current || !current.isCurrent() || !current.connection.isActive) return { ok: false, error: "NOT CONNECTED" };
+    try {
+      await withRequestDeadline(send(current.connection));
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, error: reducerErrorMessage(error) };
+    }
   }
 
   return {
     watch,
     api: {
-      /** Cards held, by card id; a card not held is missing. */
+      /** Cards owned, by card id, active ones included; a card not owned is missing. */
       cards: (): Readonly<Record<string, number>> => counts,
-      /** One copy's slots and cards; copy id 0 is the first copy. No row is one empty slot. */
-      gearSlots: (itemId: string, copyId = 0n): GearSlots => slots.get(copyKey(itemId, copyId)) ?? OWNED_GEAR,
-      /** Every card in a slot of any copy: slotted away, it still counts as found. */
-      slottedCards: (): ReadonlySet<string> => slotted,
-      /** The cards in an item's first copy, the one an equipment slot holds. */
-      itemCards: (itemId: string): readonly string[] => slots.get(copyKey(itemId, 0n))?.cards ?? OWNED_GEAR.cards,
+      /** The chosen cards of each type in slot order, waiting ones past the slots in play included. */
+      activeCards: (): ActiveCards => active,
       /** Called with each new find, not with the standing row on connect. */
       setOnCardDrop(callback: ((drop: CardDrop) => void) | null) { dropListener = callback; },
-      /** Lifts the card at `index` back out at the Smith for Starshards; `expectedCards` guards a double tap as slotCard's does. */
-      async removeCard(itemId: string, copyId: bigint, index: number, expectedCards: number): Promise<SlotCardResult> {
-        const current = target;
-        if (!current || !current.isCurrent() || !current.connection.isActive) return { ok: false, error: "NOT CONNECTED" };
-        try {
-          await withRequestDeadline(current.connection.reducers.removeCard({ itemId, copyId, index, expectedCards }));
-          return { ok: true };
-        } catch (error) {
-          return { ok: false, error: reducerErrorMessage(error) };
-        }
-      },
-      /** `expectedCards` is how many cards the player saw in the item, so a double tap cannot spend two. */
-      async slotCard(itemId: string, copyId: bigint, cardId: string, expectedCards: number): Promise<SlotCardResult> {
-        const current = target;
-        if (!current || !current.isCurrent() || !current.connection.isActive) return { ok: false, error: "NOT CONNECTED" };
-        try {
-          // expectedCards makes a retry safe if the connection drops after the server commits.
-          await withRequestDeadline(current.connection.reducers.slotCard({ itemId, copyId, cardId, expectedCards }));
-          return { ok: true };
-        } catch (error) {
-          return { ok: false, error: reducerErrorMessage(error) };
-        }
-      },
+      /** `expectedActive` is how many copies the player saw active, so a retried tap switches on one. */
+      activateCard: (cardId: string, expectedActive: number) =>
+        call(connection => connection.reducers.activateCard({ cardId, expectedActive })),
+      deactivateCard: (cardType: CardSlot, index: number, cardId: string) =>
+        call(connection => connection.reducers.deactivateCard({ cardType, index, cardId })),
     },
   };
 }

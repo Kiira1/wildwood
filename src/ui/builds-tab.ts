@@ -3,7 +3,7 @@ import type { SavedBuild } from "../../shared/builds";
 import type { BuildActions } from "./build-actions";
 
 /**
- * The Builds tab: three saved loadouts, each the gear in every slot and the cards in each item. Save Current
+ * The Builds tab: three saved loadouts, each the gear in every slot and the active cards. Save Current
  * stores what is worn now (a second tap confirms over a saved build); Equip puts it all back on.
  */
 export function createBuildsTab(options: {
@@ -16,7 +16,7 @@ export function createBuildsTab(options: {
   element.hidden = true;
   const note = document.createElement("p");
   note.className = "inventory-cosmetics-note builds-tab-note";
-  note.textContent = "Save what you wear and its cards, then swap back in one tap.";
+  note.textContent = "Save what you wear and your active cards, then swap back in one tap.";
   const list = document.createElement("div");
   list.className = "builds-tab-list";
   element.append(note, list);

@@ -7,14 +7,14 @@ import type { PlayerProfileData } from "../wildstat-coop";
 import type { PlayerGender } from "../../shared/player-gender";
 import { PRESTIGE_STAT_GAIN_PER_LEVEL } from "../../shared/prestige";
 import type { ItemInspectionController, ItemInspectionAction } from "./item-inspection-controller";
-import { slotUpgradeLevelFor } from "./profile";
+import { profileActiveCardIds, slotUpgradeLevelFor } from "./profile";
 import { setText } from "./settings";
 import { createProfileBonusToggles, type ProfileBonusDeps } from "./profile-bonus-toggles";
 import {
   PROFILE_EQUIPMENT_SLOTS,
   profileEquipmentPresentation,
   profileEquipmentRefine,
-  profileEquipmentCardSlots,
+  profileEquipmentActiveCards,
   renderProfileEquipmentSlot,
   type ProfileEquipmentSlot,
 } from "./profile-equipment";
@@ -122,7 +122,7 @@ export function createProfileWindowController(elements: {
       itemId: presentation.inspectionItemId,
       upgradeLevel: slotUpgradeLevelFor(profileData.itemUpgradeLevels, presentation.inspectionItemId),
       refine: profileEquipmentRefine(presentation, profileData.itemRefines),
-      cardSlots: profileEquipmentCardSlots(presentation, profileData.itemCardSlots),
+      activeCards: profileEquipmentActiveCards(presentation, profileActiveCardIds(profileData)),
       skills: profileData.wornSkill?.itemId === presentation.inspectionItemId ? profileData.wornSkill.roll : undefined,
       context: presentation.context,
       ownItem: identity === api.localIdentity(),

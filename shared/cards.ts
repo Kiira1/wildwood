@@ -1,11 +1,10 @@
 import type { RewardType } from "./enemy-definitions";
-import { canonicalItemId, isUpgradeableItem, itemDefinition } from "./items";
 import { chanceWithLuck } from "./luck-research";
 
-/** Cards: a rare drop from every campaign enemy and boss, slotted into a weapon, helmet or armor for good. */
+/** Cards: a rare drop from every campaign enemy and boss, switched on in the Cards tab (active-cards.ts). */
 
 export type CardRarity = "regular" | "elite" | "boss";
-/** The gear a card goes in: a weapon (HAND), a helmet (HEAD) or armor (CHEST). */
+/** A card's type: a weapon (HAND), helmet (HEAD) or armor (CHEST) card. */
 export type CardSlot = "HAND" | "HEAD" | "CHEST";
 
 /** Values are percent, except quickDraw (attacks a second), longShot (range) and iaido/prism (on or off). */
@@ -65,21 +64,12 @@ export const cardMeterFull = (rarity: CardRarity) => CARD_DROP_OUTCOMES[rarity] 
 /** One kill's chance at its card: `odds` kills' worth out of `outcomes`, raised by Card Luck, never past certainty. */
 export const cardDropChance = (outcomes: number, odds: number, cardLuckRank = 0) =>
   outcomes > 0 ? chanceWithLuck(odds / outcomes, "cardLuck", cardLuckRank) : 0;
-export const MAX_CARD_SLOTS = 4;
-/** Gear owned before cards has one slot. */
-export const OWNED_GEAR_SLOTS = 1;
-/** Chance in 1,000 of 0 to 4 slots on a drop. */
-export const SLOT_ROLL_PER_THOUSAND: readonly number[] = Object.freeze([940, 30, 18, 9, 3]);
-
-/** `roll` is in [0, 1000). */
-export function rollGearSlots(roll: number) {
-  let below = 0;
-  for (let slots = 0; slots < SLOT_ROLL_PER_THOUSAND.length; slots++) {
-    below += SLOT_ROLL_PER_THOUSAND[slots];
-    if (roll < below) return slots;
-  }
-  return SLOT_ROLL_PER_THOUSAND.length - 1;
-}
+/** One kill's chance at this card as the server rolls it: Card Hunter cards raise the odds, Card Luck the chance. */
+export const cardKillChance = (card: Pick<CardDefinition, "rarity">, cardHunter = 0, cardLuckRank = 0) =>
+  cardDropChance(CARD_DROP_OUTCOMES[card.rarity], 1 + Math.max(0, cardHunter), cardLuckRank);
+/** Kills from an empty meter to a sure drop: each kill fills it by the Card Hunter odds (Card Luck does not). */
+export const cardSureByKills = (card: Pick<CardDefinition, "rarity">, cardHunter = 0) =>
+  Math.ceil(cardMeterFull(card.rarity) / (1 + Math.max(0, cardHunter)) - 1e-9);
 
 export const CARDS: readonly CardDefinition[] = Object.freeze([
   { id: "bramble_card", enemy: "Bramble", mapId: "tutorial_forest", tier: 1, rarity: "regular", slot: "CHEST",
@@ -372,20 +362,9 @@ export function cardForBoss(mapId: string) {
   return BY_BOSS.get(mapId);
 }
 
-/** The same gear that can be refined. */
-/** The player_gear_slots row of a player's first copy of an item. */
-/** The most attacks a second worn Quick Draw cards could add: every slot of all five worn items holding the best one. */
-export const MAX_CARD_QUICK_DRAW = 5 * MAX_CARD_SLOTS
+/**
+ * The most attacks a second Quick Draw cards could add, kept at its old bound of twenty slots of the best one:
+ * at most twelve cards are active, and this sets the attack speed floor every run plays under.
+ */
+export const MAX_CARD_QUICK_DRAW = 20
   * Math.max(0, ...CARDS.flatMap(card => card.effects.filter(effect => effect.effect === "quickDraw").map(effect => effect.value)));
-
-export const gearSlotsKey = (identity: { toHexString(): string }, itemId: string) => `${identity.toHexString()}:${itemId}`;
-
-export function canHoldCards(itemId: unknown) {
-  return isUpgradeableItem(itemId);
-}
-
-export function cardFitsItem(cardId: unknown, itemId: unknown) {
-  const card = cardDefinition(cardId);
-  const id = canonicalItemId(itemId);
-  return Boolean(card && id && canHoldCards(id) && itemDefinition(id)?.slot === card.slot);
-}

@@ -1,6 +1,6 @@
 import type { RewardType } from "./enemy-definitions";
 import { preparePlayerPowerStats } from "./player-power";
-import { cardStatGainFactor, cardTotalsForLevels } from "./card-effects";
+import { cardStatGainFactor, cardTotals } from "./card-effects";
 import type { ResearchRanks } from "./research";
 import type { ItemLevel } from "./items";
 
@@ -8,6 +8,8 @@ type RewardEquipment = {
   weapon: string; head: string; chest: string;
   /** Each worn item's slot tier and refine (items.ts ItemLevel). */
   weaponLevel: ItemLevel; headLevel: ItemLevel; chestLevel: ItemLevel;
+  /** The active cards in play (active-cards.ts). */
+  activeCards?: readonly string[];
 };
 
 const ZERO_STATS = { damage: 0, maxHp: 0, attackRate: 1, armor: 0, regen: 0 };
@@ -27,13 +29,14 @@ export function effectiveRewardAmount(
   type: RewardType, baseAmount: number, statGainMultiplier: number,
   research: Partial<ResearchRanks>, equipment: RewardEquipment,
 ) {
-  const { weapon, head, chest, weaponLevel, headLevel, chestLevel } = equipment;
-  // Bounty cards, carried by the worn items' levels, add to this type's stat gain.
-  const amount = baseAmount * statGainMultiplier * cardStatGainFactor(cardTotalsForLevels(weaponLevel, headLevel, chestLevel), type);
+  const { weapon, head, chest, weaponLevel, headLevel, chestLevel, activeCards = [] } = equipment;
+  // Active Bounty cards add to this type's stat gain.
+  const cards = cardTotals(activeCards);
+  const amount = baseAmount * statGainMultiplier * cardStatGainFactor(cards, type);
   const field = SCALED_STAT[type as keyof typeof SCALED_STAT];
   // Attack speed has no gear or research factor.
   if (!field) return amount;
   const levelOf = (itemId: string): ItemLevel => itemId === weapon ? weaponLevel : itemId === head ? headLevel : itemId === chest ? chestLevel : 0;
-  const scale = preparePlayerPowerStats({ ...ZERO_STATS, equippedRightHand: weapon, equippedHead: head, equippedChest: chest }, research, levelOf);
+  const scale = preparePlayerPowerStats({ ...ZERO_STATS, equippedRightHand: weapon, equippedHead: head, equippedChest: chest }, research, levelOf, cards);
   return scale({ ...ZERO_STATS, [field]: amount })[field];
 }

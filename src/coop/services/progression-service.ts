@@ -191,6 +191,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
   let localPrestige: PlayerPrestige | null = null;
   let localPrestigePerks: PlayerPrestigePerks | null = null;
   let expansionPerks = { bossSlayer: 0, secondWind: 0, longShot: 0, fleetFoot: 0, quickDraw: 0 };
+  let cardPerks = { weaponCards: 0, helmetCards: 0, armorCards: 0 };
   /** The bonuses switched off (shared/bonus-toggles.ts). Kept through a disconnect: only this player's own reducer changes them. */
   let bonusOff: ReadonlySet<string> = new Set();
   let prestigeChallenge: PrestigeChallenge = { active: false, completed: 0 };
@@ -700,6 +701,16 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
     dependencies.notify();
   }
 
+  function upsertPrestigeCardPerk(row: { identity: Identity; weaponCards: number; helmetCards: number; armorCards: number }) {
+    if (row.identity.toHexString() === dependencies.localIdentity()) cardPerks = { weaponCards: row.weaponCards, helmetCards: row.helmetCards, armorCards: row.armorCards };
+    dependencies.notify();
+  }
+
+  function removePrestigeCardPerk(row: { identity: Identity }) {
+    if (row.identity.toHexString() === dependencies.localIdentity()) cardPerks = { weaponCards: 0, helmetCards: 0, armorCards: 0 };
+    dependencies.notify();
+  }
+
   function removePrestigeExpansionPerk(row: { identity: Identity }) {
     if (row.identity.toHexString() === dependencies.localIdentity()) expansionPerks = { bossSlayer: 0, secondWind: 0, longShot: 0, fleetFoot: 0, quickDraw: 0 };
     dependencies.notify();
@@ -855,7 +866,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
       upsertAggroChallengeParked, removeAggroChallengeParked,
       upsertFreeRespec, removeFreeRespec,
       upsertDailyQuest, removeDailyQuest, upsertGuildQuestWeek, removeGuildQuestWeek,
-      upsertPrestigeExpansionPerk, removePrestigeExpansionPerk,
+      upsertPrestigeExpansionPerk, removePrestigeExpansionPerk, upsertPrestigeCardPerk, removePrestigeCardPerk,
       upsertBonusToggle, removeBonusToggle,
       removePrestigePerk,
       upsertItemUpgrade,
@@ -1029,7 +1040,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
        */
       attackCapInPlay: (): AttackCap => {
         const cap = playerAttackCap(reflectRewardsOn(bonusOff) ? { ...prestigeChallenge } : null,
-          perksInPlayFor({ keenEdge: 0, doubleStrike: 0, splitShot: 0, riposte: 0, ...localPrestigePerks, ...expansionPerks }, bonusOff));
+          perksInPlayFor({ keenEdge: 0, doubleStrike: 0, splitShot: 0, riposte: 0, ...localPrestigePerks, ...expansionPerks, ...cardPerks }, bonusOff));
         const cards = dependencies.cardAttackCapRaise?.() ?? 0;
         return cards > 0 ? { ...cap, raise: cap.raise + cards } : cap;
       },
@@ -1052,10 +1063,10 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
       },
       /** The ranks in play: none during an Aggro run, which plays without prestige bonuses, and each switched-off perk zero. */
       prestigePerks: (): PlayerPrestigePerks => prestigeBonusesOff(aggroChallenge)
-        ? { keenEdge: 0, doubleStrike: 0, splitShot: 0, riposte: 0, bossSlayer: 0, secondWind: 0, longShot: 0, fleetFoot: 0, quickDraw: 0 }
-        : perksInPlayFor({ keenEdge: 0, doubleStrike: 0, splitShot: 0, riposte: 0, ...localPrestigePerks, ...expansionPerks }, bonusOff),
+        ? { keenEdge: 0, doubleStrike: 0, splitShot: 0, riposte: 0, bossSlayer: 0, secondWind: 0, longShot: 0, fleetFoot: 0, quickDraw: 0, weaponCards: 0, helmetCards: 0, armorCards: 0 }
+        : perksInPlayFor({ keenEdge: 0, doubleStrike: 0, splitShot: 0, riposte: 0, ...localPrestigePerks, ...expansionPerks, ...cardPerks }, bonusOff),
       /** The ranks the player owns, for the Prestige window. */
-      storedPrestigePerks: (): PlayerPrestigePerks => ({ keenEdge: 0, doubleStrike: 0, splitShot: 0, riposte: 0, ...localPrestigePerks, ...expansionPerks }),
+      storedPrestigePerks: (): PlayerPrestigePerks => ({ keenEdge: 0, doubleStrike: 0, splitShot: 0, riposte: 0, ...localPrestigePerks, ...expansionPerks, ...cardPerks }),
       /** The tier that applies to an item: whatever its slot has earned. */
       itemUpgradeLevel(itemId: string, identity = dependencies.localIdentity()) {
         const slot = upgradeSlotForItem(itemId);
@@ -1404,6 +1415,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
       prestigeLevelByIdentity.clear();
       localPrestigePerks = null;
       expansionPerks = { bossSlayer: 0, secondWind: 0, longShot: 0, fleetFoot: 0, quickDraw: 0 };
+      cardPerks = { weaponCards: 0, helmetCards: 0, armorCards: 0 };
       bonusOff = new Set();
       activeItemUpgrades.clear();
       balanceApologyGiftAmount = 0n;
@@ -1456,6 +1468,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
       prestigeLevelByIdentity.clear();
       localPrestigePerks = null;
       expansionPerks = { bossSlayer: 0, secondWind: 0, longShot: 0, fleetFoot: 0, quickDraw: 0 };
+      cardPerks = { weaponCards: 0, helmetCards: 0, armorCards: 0 };
       activeItemUpgrades.clear();
       balanceApologyGiftAmount = 0n;
       itemGifts.clear();

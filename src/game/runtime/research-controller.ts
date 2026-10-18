@@ -22,7 +22,7 @@ type ResearchControllerOptions = {
   guildQuestBonus?: () => number;
   /** Prestige perk ranks. Keen Edge grants criticals outside the tech tree. */
   prestigePerks?: () => Partial<PrestigePerkRanks> | null | undefined;
-  /** What the worn cards do to stats (card-effects.ts cardStatFactors); none without. */
+  /** What the active cards do to stats (card-effects.ts cardStatFactors); none without. */
   cards?: () => CardStatFactors | null | undefined;
 };
 

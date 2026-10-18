@@ -4,12 +4,12 @@ import { NO_CARDS, cardStatFactors } from "../../shared/card-effects";
 import { attackIntervalUnderNewCap } from "../../shared/stat-rating";
 import { attackCapInPlay } from "./prestige";
 import { readPlayerProgress } from "./wide-stats";
-import { wornCardTotalsFor } from "./worn-cards";
+import { activeCardTotalsFor } from "./active-cards";
 import { updateSnapshotRow } from "./snapshot-row-writes";
 
 /**
  * The Quick Draw card raise (attacks a second) the saved attack interval was last placed under. No row is
- * none. Worn cards move the cap with every slot or swap; this lets the run keep its rating across them.
+ * none. Active cards move the cap as they change; this lets the run keep its rating across them.
  */
 export const playerCardAttackCap = table({ name: "player_card_attack_cap", public: false }, {
   identity: t.identity().primaryKey(),
@@ -19,13 +19,13 @@ export const playerCardAttackCap = table({ name: "player_card_attack_cap", publi
 type Ctx = any;
 
 /**
- * Moves the saved attack speed onto the curve the worn cards set now, as a Quick Draw perk change does. Returns
- * the worn cards it read, for a kill report to use throughout: nothing it does changes them.
+ * Moves the saved attack speed onto the curve the active cards set now, as a Quick Draw perk change does. Returns
+ * the active cards it read, for a kill report to use throughout: nothing it does changes them.
  */
 export function syncCardAttackCap(ctx: Ctx, identity: Identity) {
   const progress = readPlayerProgress(ctx, identity);
   if (!progress) return NO_CARDS;
-  const worn = wornCardTotalsFor(ctx, identity, progress);
+  const worn = activeCardTotalsFor(ctx, identity);
   const current = cardStatFactors(worn).attackCapRaise;
   const row = ctx.db.playerCardAttackCap.identity.find(identity);
   const basis = row?.raise ?? 0;

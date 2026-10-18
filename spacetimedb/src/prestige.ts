@@ -9,7 +9,7 @@ import { playerPowerForStats } from "../../shared/player-power";
 import { PRESTIGE_CAP_HINT, PRESTIGE_PERK_POINTS_PER_LEVEL, prestigeCapped, prestigeCampaignTarget, prestigeCampaignComplete, prestigeEndlessRequirement, prestigeStatMultiplier, prestigeUnlocked } from "../../shared/prestige";
 import { PRESTIGE_PERK_IDS, isPrestigePerkId, playerAttackCap, prestigePerkMaxRank, type PrestigePerkRanks } from "../../shared/prestige-perks";
 import { readPlayerProgress } from "./wide-stats";
-import { wornCardTotalsFor } from "./worn-cards";
+import { activeCardTotalsFor } from "./active-cards";
 import { cardStatFactors, cardStatGainFactor, type CardTotals } from "../../shared/card-effects";
 import { aggroChallengeActive } from "./aggro-challenge";
 import { bonusOffFor, researchInPlay } from "./bonus-toggles";
@@ -34,8 +34,8 @@ export function statRewardMultiplier(ctx: any, identity: any) {
     * guildQuestBonusFor(ctx, identity);
 }
 
-/** The stat gain for each type of reward: statRewardMultiplier, and the worn Bounty cards on top. `cards` saves the read when the caller has them. */
-export function statRewardMultiplierFor(ctx: any, identity: any, cards: CardTotals = wornCardTotalsFor(ctx, identity)) {
+/** The stat gain for each type of reward: statRewardMultiplier, and the active Bounty cards on top. `cards` saves the read when the caller has them. */
+export function statRewardMultiplierFor(ctx: any, identity: any, cards: CardTotals = activeCardTotalsFor(ctx, identity)) {
   const base = statRewardMultiplier(ctx, identity);
   return (type: string) => base * cardStatGainFactor(cards, type);
 }
@@ -58,7 +58,7 @@ export function attackCapInPlay(ctx: any, identity: any, worn?: CardTotals) {
   const cap = playerAttackCap(reflectRewardsOn(off) ? ctx.db.playerPrestigeChallenge.identity.find(identity) : null,
     perksInPlayFor(storedPrestigePerkRanks(ctx, identity), off));
   // Quick Draw cards raise the cap as the perk does.
-  const cards = cardStatFactors(worn ?? wornCardTotalsFor(ctx, identity)).attackCapRaise;
+  const cards = cardStatFactors(worn ?? activeCardTotalsFor(ctx, identity)).attackCapRaise;
   return cards > 0 ? { ...cap, raise: cap.raise + cards } : cap;
 }
 
@@ -66,9 +66,11 @@ export function attackCapInPlay(ctx: any, identity: any, worn?: CardTotals) {
 export function storedPrestigePerkRanks(ctx: any, identity: any): PrestigePerkRanks {
   const row = ctx.db.playerPrestigePerk.identity.find(identity);
   const expansion = ctx.db.playerPrestigeExpansionPerk.identity.find(identity);
+  const cards = ctx.db.playerPrestigeCardPerk?.identity.find(identity);
   return { keenEdge: row?.keenEdge ?? 0, doubleStrike: row?.doubleStrike ?? 0, splitShot: row?.splitShot ?? 0, riposte: row?.riposte ?? 0,
     bossSlayer: expansion?.bossSlayer ?? 0, secondWind: expansion?.secondWind ?? 0, longShot: expansion?.longShot ?? 0, fleetFoot: expansion?.fleetFoot ?? 0,
-    quickDraw: expansion?.quickDraw ?? 0 };
+    quickDraw: expansion?.quickDraw ?? 0,
+    weaponCards: cards?.weaponCards ?? 0, helmetCards: cards?.helmetCards ?? 0, armorCards: cards?.armorCards ?? 0 };
 }
 
 /** Preserve the original public row's wire shape; expansion ranks live beside it. */
@@ -78,6 +80,11 @@ export function writePrestigePerkRanks(ctx: any, identity: any, ranks: PrestigeP
   for (const [table, row] of [[ctx.db.playerPrestigePerk, original], [ctx.db.playerPrestigeExpansionPerk, expanded]]) {
     if (table.identity.find(identity)) table.identity.update(row); else table.insert(row);
   }
+  const cards = { identity, weaponCards: ranks.weaponCards ?? 0, helmetCards: ranks.helmetCards ?? 0, armorCards: ranks.armorCards ?? 0 };
+  const cardRow = ctx.db.playerPrestigeCardPerk.identity.find(identity);
+  if (!cards.weaponCards && !cards.helmetCards && !cards.armorCards) { if (cardRow) ctx.db.playerPrestigeCardPerk.identity.delete(identity); }
+  else if (cardRow) ctx.db.playerPrestigeCardPerk.identity.update(cards);
+  else ctx.db.playerPrestigeCardPerk.insert(cards);
 }
 
 /**

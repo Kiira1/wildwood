@@ -3,8 +3,8 @@
 // out of index.ts unchanged.
 import { syncPlayerJoinDate } from "./mailbox";
 import { syncWornSkill } from "./worn-skill";
-import { cardStatFactors, cardTotalsForLevels } from "../../shared/card-effects";
-import { wornCardTotalsFor } from "./worn-cards";
+import { cardStatFactors } from "../../shared/card-effects";
+import { activeCardTotalsFor } from "./active-cards";
 import { ATTACK_BALANCE_VERSION, MIN_ATTACK_INTERVAL, DEFAULT_ATTACK_INTERVAL } from "../../shared/rules";
 import { compressLegacyProgressionOutlier, rebalanceLegacyDamageHealth, compressLegacyTopFiveProgression, correctLegacyTopFiveV5Progression } from "../../shared/progression-balance";
 import { compressLegacyMapPower } from "../../shared/map-power-rescale";
@@ -85,6 +85,7 @@ export function effectivePowerStatsForProgress(ctx: any, progress: any) {
     { ...withSoulStats(progress, soulStatsFor(ctx, progress.identity), soulAttackCapFor(ctx, progress.identity)), ...critPowerFields(ctx, progress.identity, progress.critRating) },
     researchInPlay(ctx, progress.identity),
     (itemId) => itemLevelFor(ctx, progress.identity, itemId),
+    activeCardTotalsFor(ctx, progress.identity),
   );
 }
 
@@ -93,6 +94,7 @@ export function effectivePowerForProgress(ctx: any, progress: any) {
     { ...withSoulStats(progress, soulStatsFor(ctx, progress.identity), soulAttackCapFor(ctx, progress.identity)), ...critPowerFields(ctx, progress.identity, progress.critRating) },
     researchInPlay(ctx, progress.identity),
     (itemId) => itemLevelFor(ctx, progress.identity, itemId),
+    activeCardTotalsFor(ctx, progress.identity),
   );
 }
 
@@ -108,19 +110,19 @@ export function researchedDamage(ctx: any, identity: any, damage: number, knownP
   const headItem = progress ? equippedHeadForProgress(progress) : "";
   const chestItem = progress ? equippedChestForProgress(progress) : "";
   const levels = [itemLevelFor(ctx, identity, weaponItem), itemLevelFor(ctx, identity, headItem), itemLevelFor(ctx, identity, chestItem)] as const;
-  // Attack cards multiply it as they multiply power (player-power.ts).
+  // Active attack cards multiply it as they multiply power (player-power.ts).
   return equipmentDamage(damage + (soulStatsFor(ctx, identity)?.damage ?? 0),
     weaponItem,
     headItem,
     chestItem,
     1 + rank * .02,
     ...levels,
-  ) * cardStatFactors(cardTotalsForLevels(...levels)).damage;
+  ) * cardStatFactors(activeCardTotalsFor(ctx, identity)).damage;
 }
 
 export function researchedArmor(ctx: any, identity: any, armor: number) {
   const rank = researchInPlay(ctx, identity)?.precision ?? 0;
-  return (armor + (soulStatsFor(ctx, identity)?.armor ?? 0)) * (1 + rank * .02) * cardStatFactors(wornCardTotalsFor(ctx, identity)).armor;
+  return (armor + (soulStatsFor(ctx, identity)?.armor ?? 0)) * (1 + rank * .02) * cardStatFactors(activeCardTotalsFor(ctx, identity)).armor;
 }
 
 export function researchedRegen(ctx: any, identity: any, regen: number) {
@@ -134,7 +136,7 @@ export function researchedRegen(ctx: any, identity: any, regen: number) {
     1 + rank * .02,
     itemLevelFor(ctx, identity, headItem),
     itemLevelFor(ctx, identity, chestItem),
-  ) * cardStatFactors(wornCardTotalsFor(ctx, identity, progress)).regen;
+  ) * cardStatFactors(activeCardTotalsFor(ctx, identity)).regen;
 }
 
 export function writeProgressAndPresentation(ctx: any, progress: any) {

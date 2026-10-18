@@ -1,7 +1,7 @@
 import { countRewardKills, soulAttackCapFor } from "./soul-dimension";
 import { table, t } from "spacetimedb/server";
 import { cardStatFactors, respawnSecondsWithCards } from "../../shared/card-effects";
-import { wornCardTotalsFor } from "./worn-cards";
+import { activeCardTotalsFor } from "./active-cards";
 import type { StatRewardMultiplier } from "../../shared/enemy-defeats";
 import { offlineProgressEnabled } from "./offline-preference";
 import {
@@ -219,7 +219,7 @@ export function grantOfflineProgress(ctx: any, progress: any, ports: OfflineGran
     offlineWindowRank: ctx.db.playerResearch.identity.find(ctx.sender)?.offlineWindow ?? 0,
     // Respawn research farms faster only while Research is in play (bonus-toggles.ts); the window is a timer and stays.
     enemyRespawnRank: researchInPlay(ctx, ctx.sender)?.enemyRespawn ?? 0,
-    cardRespawn: cardStatFactors(wornCardTotalsFor(ctx, ctx.sender)).respawn,
+    cardRespawn: cardStatFactors(activeCardTotalsFor(ctx, ctx.sender)).respawn,
     stats: ports.effectiveStats(ctx, progress),
     progress,
     endless: {

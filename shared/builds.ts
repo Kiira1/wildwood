@@ -1,11 +1,12 @@
 import { cardDefinition } from "./cards";
+import { MAX_ACTIVE_CARD_SLOTS, type ActiveCards } from "./active-cards";
 
 /** How many Builds a player can save. */
 export const BUILD_SLOTS = 3;
 
 export type BuildGear = { HEAD: string; CHEST: string; FEET: string; HAND: string };
-/** A saved build as the client reads it: the gear in each slot and the cards in each item. */
-export type SavedBuild = { slot: number; gear: BuildGear; cards: Record<string, string[]> };
+/** A saved build as the client reads it: the gear in each slot and the active cards by type. */
+export type SavedBuild = { slot: number; gear: BuildGear; cards: ActiveCards };
 export const BUILD_GEAR_SLOTS = ["HAND", "HEAD", "CHEST", "FEET"] as const;
 const EMPTY_GEAR: BuildGear = { HEAD: "", CHEST: "", FEET: "", HAND: "" };
 
@@ -18,13 +19,23 @@ export function parseBuildGear(text: string): BuildGear {
   } catch { return { ...EMPTY_GEAR }; }
 }
 
-/** A saved build's cards by item, real cards only. */
-export function parseBuildCards(text: string): Record<string, string[]> {
+/**
+ * A saved build's active cards by type, real cards only. Builds saved before 0.912 listed cards by item; each
+ * of those cards goes to its own type, in the order saved.
+ */
+export function parseBuildCards(text: string): ActiveCards {
+  const cards: Record<"HAND" | "HEAD" | "CHEST", string[]> = { HAND: [], HEAD: [], CHEST: [] };
   try {
     const value = JSON.parse(text);
-    if (!value || typeof value !== "object") return {};
-    return Object.fromEntries(Object.entries(value)
-      .filter(([, cards]) => Array.isArray(cards))
-      .map(([itemId, cards]) => [itemId, (cards as unknown[]).filter((cardId): cardId is string => typeof cardId === "string" && Boolean(cardDefinition(cardId)))]));
-  } catch { return {}; }
+    if (value && typeof value === "object") {
+      for (const list of Object.values(value)) {
+        if (!Array.isArray(list)) continue;
+        for (const cardId of list) {
+          const card = cardDefinition(cardId);
+          if (card && cards[card.slot].length < MAX_ACTIVE_CARD_SLOTS) cards[card.slot].push(card.id);
+        }
+      }
+    }
+  } catch { /* an unreadable build has no cards */ }
+  return cards;
 }

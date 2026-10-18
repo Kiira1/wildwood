@@ -155,7 +155,7 @@ const PLAYER_STATE_TABLES: ReadonlySet<string> = new Set([
   "playerMining", "playerMinedNode", "playerMiningLevel", "playerLuckResearch", "playerCardShopPurchase",
   "playerDailyQuest", "playerEndlessRebaseBackup", "playerFreeRespec",
   "playerOfflinePreference", "playerPrestige", "playerPrestigeChallenge",
-  "playerPrestigeChallengeParked", "playerPrestigeExpansionPerk", "playerPrestigePerk", "playerQuestWeekTotal",
+  "playerPrestigeChallengeParked", "playerPrestigeExpansionPerk", "playerPrestigeCardPerk", "playerPrestigePerk", "playerQuestWeekTotal",
   "presenceChatCooldown", "prestigeChallengeBackup", "prestigeChallengeRun",
   "proceduralContribution", "proceduralInstanceContribution", "proceduralProgress",
   "releaseAcknowledgement", "soloQuestWeek", "startupTelemetryRateLimit", "virtualPlayerLoad", "virtualPlayerRun",

@@ -1,8 +1,7 @@
 import { cardDefinition, type CardEffect, type CardEffectId } from "./cards";
 import type { RewardType } from "./enemy-definitions";
-import type { ItemLevel } from "./items";
 
-/** The cards in worn gear, added up for server, client and duels, with caps: chances 50%, dodge 30%, guards 60%. */
+/** The active cards (active-cards.ts), added up for server, client and duels, with caps: chances 50%, dodge 30%, guards 60%. */
 export const CARD_CHANCE_CAP = 50;
 export const CARD_DODGE_CAP = 30;
 export const CARD_GUARD_CAP = 60;
@@ -43,20 +42,12 @@ export type CardTotals = {
   raceGuard: Readonly<Record<string, number>>;
   statGain: Partial<Record<RewardType, number>>;
   procs: readonly CardProc[];
-  /** Seconds: the quickest shield refill and the longest web among the cards worn. */
+  /** Seconds: the quickest shield refill and the longest web among the active cards. */
   timing: { shield: number; web: number };
 };
 
 const DEFAULT_TIMING = Object.freeze({ shield: CARD_EFFECT_DEFAULTS.shield.seconds, web: CARD_EFFECT_DEFAULTS.web.seconds });
 export const NO_CARDS: CardTotals = Object.freeze({ sum: {}, raceSlayer: {}, raceGuard: {}, statGain: {}, procs: [], timing: DEFAULT_TIMING });
-
-type CardLoadout = { equippedHead?: string; equippedChest?: string; equippedRightHand?: string; equippedLeftHand?: string };
-
-/** Cards in the worn weapon, helmet and armor. */
-export function equippedCardIds(loadout: CardLoadout, itemCards: (itemId: string) => readonly string[]) {
-  const worn = [loadout.equippedRightHand || loadout.equippedLeftHand || "", loadout.equippedHead || "", loadout.equippedChest || ""];
-  return worn.filter(Boolean).flatMap(itemId => itemCards(itemId));
-}
 
 const add = <K extends string>(record: Partial<Record<K, number>>, key: K, value: number) => { record[key] = (record[key] ?? 0) + value; };
 
@@ -127,13 +118,8 @@ export function cardDamageDealtMultiplier(totals: CardTotals, target: { boss?: b
   return 1 + Math.max(0, bonus) / 100;
 }
 
-/** The cards the worn items' levels carry (items.ts ItemLevel). */
-export function cardTotalsForLevels(...levels: readonly ItemLevel[]) {
-  return cardTotals(levels.flatMap(level => level !== null && typeof level === "object" ? level.cards ?? [] : []));
-}
-
 /**
- * What the worn cards do to a player's stats: multipliers on damage, max health, armor and regen, crit chance
+ * What the active cards do to a player's stats: multipliers on damage, max health, armor and regen, crit chance
  * and crit damage as fractions, and the attack speed cap, move speed and range they add.
  */
 export function cardStatFactors(totals: CardTotals) {
@@ -161,6 +147,6 @@ export function cardStatGainFactor(totals: CardTotals, type: string) {
   return 1 + Math.max(0, (totals.statGain[type as RewardType] ?? 0) + cardValue(totals, "allStatGain")) / 100;
 }
 
-/** A respawn sped up by the worn cards: they add a share to how often enemies come back. */
+/** A respawn sped up by the active cards: they add a share to how often enemies come back. */
 export const respawnSecondsWithCards = (seconds: number, respawn: number) => seconds / (1 + Math.max(0, respawn));
 export type CardStatFactors = ReturnType<typeof cardStatFactors>;

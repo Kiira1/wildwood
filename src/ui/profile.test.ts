@@ -5,7 +5,7 @@ import { createEmptyResearchRanks } from "../../shared/research";
 import { FIRE_METAL_HELMET, FROST_ARMOR, FROST_BOW, STARTER_BOW, WOOD_FULL_HELM, WOODEN_ARMOR } from "../../shared/items";
 import { MIN_ATTACK_INTERVAL } from "../../shared/rules";
 import type { PlayerProgress } from "../wildstat-coop";
-import { effectiveProfileStats, profileAttackCap, profilePower, profilePresenceText, profileSoulInPlay, profileStatDisplayRows } from "./profile";
+import { effectiveProfileStats, profileActiveCardIds, profileAttackCap, profilePower, profilePresenceText, profileSoulInPlay, profileStatDisplayRows } from "./profile";
 
 const progress = (equippedRightHand = "", equippedChest = ""): PlayerProgress => ({
   maxHp: 100,
@@ -334,7 +334,7 @@ describe("stat gain multiplication", () => {
   it("multiplies in the worn cards' stat gain, and names single-stat ones", () => {
     const row = (cards: string[]) => profileStatDisplayRows({
       progress: { ...progress(), equippedHead: "basic_paper_hat" }, research: createEmptyResearchRanks(), itemUpgradeLevels: {},
-      itemCardSlots: { basic_paper_hat: { cards } },
+      activeCards: { HAND: [], HEAD: cards, CHEST: [] },
     } as unknown as Parameters<typeof profileStatDisplayRows>[0], () => "0%", MIN_ATTACK_INTERVAL, undefined, 1).find(r => r.kind === "stat-gain")!;
     expect(row(["gravebloom_card"])).toMatchObject({ total: "+21%", hideEquation: true,
       sources: [{ label: "Prestige", value: "1.10×" }, { label: "Cards", value: "1.10×" }] });
@@ -439,9 +439,9 @@ describe("another player's soul stats", () => {
   });
 });
 
-it("adds worn cards' reflect, double strike and split shot chances to their rows, as combat does", () => {
+it("adds active cards' reflect, double strike and split shot chances to their rows, as combat does", () => {
   const profile = { progress: progress(FROST_BOW, WOODEN_ARMOR), research: createEmptyResearchRanks(), itemUpgradeLevels: {},
-    itemCardSlots: { [WOODEN_ARMOR]: { slots: 1, cards: ["prismshell_card"] } } } as unknown as Parameters<typeof profileStatDisplayRows>[0];
+    activeCards: { HAND: [], HEAD: [], CHEST: ["prismshell_card"] } } as unknown as Parameters<typeof profileStatDisplayRows>[0];
   const rows = profileStatDisplayRows(profile, () => "0%", MIN_ATTACK_INTERVAL, undefined, 0, null);
   // No Riposte point, yet Prismshell's 8% reflect shows.
   expect(rows.find(row => row.kind === "riposte")).toMatchObject({ total: "8%", sources: [{ label: "Cards", value: "+8%" }] });
@@ -449,9 +449,12 @@ it("adds worn cards' reflect, double strike and split shot chances to their rows
   expect(both.find(row => row.kind === "riposte")!.sources.map(source => source.label)).toEqual(["Prestige", "Cards"]);
 });
 
-it("counts another player's Quick Draw cards in their attack speed cap", () => {
-  const profile = { progress: progress(FROST_BOW), research: createEmptyResearchRanks(), itemUpgradeLevels: {},
-    itemCardSlots: { [FROST_BOW]: { slots: 2, cards: ["ion_needle_card", "ion_needle_card"] } } } as unknown as Parameters<typeof profileAttackCap>[0];
-  const bare = profileAttackCap({ ...profile, itemCardSlots: {} });
-  expect(profileAttackCap(profile).raise).toBeGreaterThan(bare.raise);
+it("counts another player's active Quick Draw cards in their attack speed cap, as many as their slots in play", () => {
+  const profile = { progress: progress(FROST_BOW), research: createEmptyResearchRanks(), itemUpgradeLevels: {}, prestigePerks: { weaponCards: 1 },
+    activeCards: { HAND: ["ion_needle_card", "ion_needle_card"], HEAD: [], CHEST: [] } } as unknown as Parameters<typeof profileAttackCap>[0];
+  const bare = profileAttackCap({ ...profile, activeCards: undefined });
+  expect(profileAttackCap(profile).raise - bare.raise).toBeCloseTo(.2, 9);
+  // One slot in play during an Aggro run: the second card waits.
+  expect(profileAttackCap({ ...profile, aggroChallenge: { active: true, completed: 0 } }).raise - bare.raise).toBeCloseTo(.1, 9);
+  expect(profileActiveCardIds({ ...profile, prestigePerks: {} })).toEqual(["ion_needle_card"]);
 });

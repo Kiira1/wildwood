@@ -4,7 +4,7 @@ import { CARD_DROP_OUTCOMES, CARD_METER_MULTIPLE, cardDropChance, cardForBoss, c
 import { cardStatFactors, type CardTotals } from "../../shared/card-effects";
 import { personalBossDefinition } from "../../shared/personal-bosses";
 import { bossRespawnSecondsWithResearch } from "../../shared/utility-research";
-import { wornCardTotalsFor } from "./worn-cards";
+import { activeCardTotalsFor } from "./active-cards";
 import { addCard } from "./gear-cards";
 import { pinnedMapBalance } from "./map-balance";
 import { luckInPlay } from "./luck-research";
@@ -46,13 +46,13 @@ function bossCardRollReady(ctx: Ctx, identity: Identity, mapId: string) {
 export function awardCardDrops(ctx: Ctx, identity: Identity, mapId: string, kills: readonly { enemy: string; count: number }[],
   bossKills: number, chanceMultiplier = 1, worn?: CardTotals) {
   const found: string[] = [];
-  // Card Hunter cards in the worn gear raise every roll, and Card Luck the chance but not the meter;
+  // Active Card Hunter cards raise every roll, and Card Luck the chance but not the meter;
   // read only once a kill has a card to roll for.
   let odds = 0, cardLuck = 0, oddsRead = false;
   const roll = (cardId: string, outcomes: number, times: number) => {
     if (times < 1) return;
     if (!oddsRead) {
-      odds = chanceMultiplier * (1 + cardStatFactors(worn ?? wornCardTotalsFor(ctx, identity)).cardHunter);
+      odds = chanceMultiplier * (1 + cardStatFactors(worn ?? activeCardTotalsFor(ctx, identity)).cardHunter);
       cardLuck = luckInPlay(ctx, identity).cardLuck;
       oddsRead = true;
     }

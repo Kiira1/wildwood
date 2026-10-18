@@ -21,6 +21,7 @@ export function createStatTrackerSource(deps: {
     accountState?: () => unknown;
     itemUpgradeLevel?: (itemId: string) => number;
     itemLevel?: (itemId: string) => ItemLevel;
+    activeCardIds?: () => readonly string[];
   } | null | undefined;
   hasStarted: () => boolean;
   isLoadedFor: (identity: string) => boolean;
@@ -44,7 +45,7 @@ export function createStatTrackerSource(deps: {
     const base = { maxHp: deps.player.baseMaxHp, damage: deps.player.damage,
       attackRate: deps.player.attackRate, armor: deps.player.armor, regen: deps.player.regen };
     const progress = deps.displayedProgress(base, deps.inventory);
-    const stats = effectivePlayerPowerStats(progress, deps.researchRanks(),
+    const stats = effectivePlayerPowerStats({ ...progress, activeCards: coop.activeCardIds?.() ?? [] }, deps.researchRanks(),
       itemId => coop?.itemLevel?.(itemId) ?? coop?.itemUpgradeLevel?.(itemId) ?? 0);
     // Attack speed and crit damage read like armor: their number, and what it gives beside it.
     const cap = deps.attackCap(), crit = criticalDamage(deps.critParts());

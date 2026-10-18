@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   CARD_CHANCE_CAP, CARD_DODGE_CAP, CARD_GUARD_CAP, NO_CARDS, cardChance, cardDamageDealtMultiplier, cardDamageTakenMultiplier,
-  cardStatFactors, cardTotals, cardTotalsForLevels, cardValue, equippedCardIds,
+  cardStatFactors, cardTotals, cardValue,
 } from "./card-effects";
 import { criticalDamage } from "./critical-damage";
 import { cardStatGainFactor, respawnSecondsWithCards } from "./card-effects";
@@ -75,17 +75,6 @@ describe("guards and slayers", () => {
   });
 });
 
-describe("worn cards", () => {
-  it("reads the weapon in either hand, the helmet and the armor, never boots", () => {
-    const cards: Record<string, string[]> = { ion_bow: ["needle_card"], ion_helmet: ["brood_card"], ion_armor: ["mossback_card"], black_boots: ["x"] };
-    const of = (itemId: string) => cards[itemId] ?? [];
-    expect(equippedCardIds({ equippedRightHand: "ion_bow", equippedHead: "ion_helmet", equippedChest: "ion_armor" }, of))
-      .toEqual(["needle_card", "brood_card", "mossback_card"]);
-    expect(equippedCardIds({ equippedLeftHand: "ion_bow" }, of)).toEqual(["needle_card"]);
-    expect(equippedCardIds({}, of)).toEqual([]);
-  });
-});
-
 describe("card stats", () => {
   it("turns stat cards into multipliers, crit and the caps, and leaves everything at one without cards", () => {
     expect(cardStatFactors(NO_CARDS)).toEqual({ damage: 1, maxHp: 1, armor: 1, regen: 1, critChance: 0, critDamage: 0, attackCapRaise: 0, moveSpeed: 0, range: 0,
@@ -102,17 +91,12 @@ describe("card stats", () => {
     expect(stats.range).toBe(2);
   });
 
-  it("reads the cards each worn item's level carries", () => {
-    expect(cardTotalsForLevels({ tier: 2, cards: ["spitter_card"] }, 3, null, { refine: 1, cards: ["mossback_card", "not_a_card"] }).sum).toEqual({ atk: 2, armor: 3 });
-    expect(cardTotalsForLevels(1, undefined, { tier: 0 })).toBe(NO_CARDS);
-  });
-
-  it("multiplies power's stats, and changes nothing without cards", () => {
+  it("multiplies power's stats by the active cards, once, whatever is worn, and changes nothing without cards", () => {
     const progress = { maxHp: 200, damage: 50, attackRate: .8, armor: 10, regen: 2, equippedRightHand: "starter_bow", equippedChest: "wooden_armor" };
     const plain = effectivePlayerPowerStats(progress, null, () => ({ tier: 1 }));
-    expect(effectivePlayerPowerStats(progress, null, () => ({ tier: 1, cards: [] }))).toEqual(plain);
-    const cards: Record<string, string[]> = { starter_bow: ["ember_raider_card"], wooden_armor: ["mossback_card"] };
-    const carded = effectivePlayerPowerStats(progress, null, itemId => ({ tier: 1, cards: cards[itemId] ?? [] }));
+    expect(effectivePlayerPowerStats({ ...progress, activeCards: [] }, null, () => ({ tier: 1 }))).toEqual(plain);
+    const carded = effectivePlayerPowerStats({ ...progress, activeCards: ["ember_raider_card", "mossback_card"] }, null, () => ({ tier: 1 }));
+    expect(effectivePlayerPowerStats(progress, null, () => ({ tier: 1 }), cardTotals(["ember_raider_card", "mossback_card"]))).toEqual(carded);
     expect(carded.damage).toBeCloseTo(plain.damage * 1.049, 9);
     expect(carded.maxHp).toBeCloseTo(plain.maxHp * .964, 9);
     expect(carded.armor).toBeCloseTo(plain.armor * 1.03, 9);
@@ -140,9 +124,9 @@ describe("cards outside a fight", () => {
     expect(next.damage).toBeCloseTo(10 + 2 * 1.017, 9);
   });
 
-  it("shows a Bounty card's share in a reward's popup, from the worn levels", () => {
-    const equipment = { weapon: "", head: "forest_cap", chest: "", weaponLevel: 0, headLevel: { cards: ["seed_spitter_card"] }, chestLevel: 0 };
-    const plain = effectiveRewardAmount("health", 10, 1, {}, { ...equipment, headLevel: 0 });
+  it("shows an active Bounty card's share in a reward's popup", () => {
+    const equipment = { weapon: "", head: "forest_cap", chest: "", weaponLevel: 0, headLevel: 0, chestLevel: 0, activeCards: ["seed_spitter_card"] };
+    const plain = effectiveRewardAmount("health", 10, 1, {}, { ...equipment, activeCards: [] });
     expect(effectiveRewardAmount("health", 10, 1, {}, equipment)).toBeCloseTo(plain * 1.036, 9);
     expect(effectiveRewardAmount("speed", 10, 1, {}, equipment)).toBe(10);
   });

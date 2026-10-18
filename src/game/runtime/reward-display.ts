@@ -11,6 +11,7 @@ type EquippedStats = {
 export function createRewardDisplay(
   statGain: () => number, ranks: () => ResearchRanks, showBase: () => boolean,
   equipped: () => EquippedStats, upgradeLevel: (itemId: string) => ItemLevel,
+  activeCards: () => readonly string[] = () => [],
 ) {
   const totalAmount = (type: RewardType, amount: number) => {
     const items = equipped();
@@ -18,7 +19,7 @@ export function createRewardDisplay(
     const head = items.equippedHead, chest = items.equippedChest;
     return effectiveRewardAmount(type, amount, statGain(), ranks(), {
       weapon, head, chest,
-      weaponLevel: upgradeLevel(weapon), headLevel: upgradeLevel(head), chestLevel: upgradeLevel(chest),
+      weaponLevel: upgradeLevel(weapon), headLevel: upgradeLevel(head), chestLevel: upgradeLevel(chest), activeCards: activeCards(),
     });
   };
   return {

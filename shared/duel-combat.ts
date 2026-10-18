@@ -191,7 +191,7 @@ export function initialDuelCombatState(duel: DuelCombat): DuelCombatState {
   return { challengerHp: duel.challengerMaxHp, opponentHp: duel.opponentMaxHp,
     challengerAttacks: 0, opponentAttacks: 0, challengerDamageDealt: 0, opponentDamageDealt: 0,
     challengerRegened: 0, opponentRegened: 0, challengerBlocked: 0, opponentBlocked: 0,
-    // Only a fight with cards worn carries card state; one without plays exactly as version 8 did.
+    // Only a fight with active cards carries card state; one without plays exactly as version 8 did.
     ...((duel.combatVersion ?? 0) >= DUEL_CARDS_VERSION && (duel.challengerCards?.length || duel.opponentCards?.length)
       ? { cards: initialDuelCardState(duel) } : {}) };
 }

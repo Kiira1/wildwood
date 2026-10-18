@@ -11,6 +11,11 @@ export const playerPrestigeExpansionPerk = table({ name: "player_prestige_expans
   quickDraw: t.u32().default(0),
 });
 
+/** The Card Slots perks (0.912), in a table of their own so no subscribed row changes shape. No row is all zero. */
+export const playerPrestigeCardPerk = table({ name: "player_prestige_card_perk", public: true }, {
+  identity: t.identity().primaryKey(), weaponCards: t.u32(), helmetCards: t.u32(), armorCards: t.u32(),
+});
+
 /** Every account gets one respec that refunds perk points but keeps the run's stats. A row means it is spent. */
 export const playerFreeRespec = table({ name: "player_free_respec", public: true }, {
   identity: t.identity().primaryKey(), usedAt: t.timestamp(),

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  ALPHA_CARD_DROP_BOOST, CARDS, CARD_DROP_OUTCOMES, DESIGNED_CARD_DROP_OUTCOMES, cardDropChance, cardMeterFull, MAX_CARD_SLOTS, OWNED_GEAR_SLOTS, SLOT_ROLL_PER_THOUSAND, canHoldCards, cardDefinition,
-  cardFitsItem, cardForBoss, cardForEnemy, rollGearSlots, type CardEffectId,
+  ALPHA_CARD_DROP_BOOST, CARDS, CARD_DROP_OUTCOMES, DESIGNED_CARD_DROP_OUTCOMES, cardDropChance, cardMeterFull, cardDefinition,
+  cardForBoss, cardForEnemy, cardKillChance, cardSureByKills, type CardEffectId,
 } from "./cards";
 import { CAMPAIGN_MAPS } from "./campaign-registry";
 import { ENEMY_TYPES } from "./enemy-definitions";
@@ -63,7 +63,7 @@ describe("the cards", () => {
   });
 });
 
-describe("drops and slots", () => {
+describe("drops", () => {
   it("drops a card once in 10,000 kills, an elite's in 20,000, a boss's in 1,000 boss kills, as designed", () => {
     expect(DESIGNED_CARD_DROP_OUTCOMES).toEqual({ regular: 10_000, elite: 20_000, boss: 1_000 });
   });
@@ -78,27 +78,14 @@ describe("drops and slots", () => {
     expect(cardDropChance(CARD_DROP_OUTCOMES.boss, 1)).toBeCloseTo(1 / 100, 12);
   });
 
-  it("rolls 0 to 4 slots: 940, 30, 18, 9 and 3 in 1,000", () => {
-    expect(SLOT_ROLL_PER_THOUSAND.reduce((sum, chance) => sum + chance, 0)).toBe(1_000);
-    const counts = [0, 0, 0, 0, 0];
-    for (let roll = 0; roll < 1_000; roll++) counts[rollGearSlots(roll)]++;
-    expect(counts).toEqual([940, 30, 18, 9, 3]);
-    expect(rollGearSlots(939.999)).toBe(0);
-    expect(rollGearSlots(940)).toBe(1);
-    expect(rollGearSlots(999.999)).toBe(MAX_CARD_SLOTS);
-    expect(OWNED_GEAR_SLOTS).toBe(1);
-  });
-
-  it("puts a card only in gear of its kind that takes cards", () => {
-    expect(cardFitsItem("needle_card", "iron_bow")).toBe(true);
-    expect(cardFitsItem("needle_card", "iron_sword")).toBe(true);
-    expect(cardFitsItem("needle_card", "snow_helmet")).toBe(false);
-    expect(cardFitsItem("mossback_card", "desert_armor")).toBe(true);
-    expect(cardFitsItem("brood_card", "forest_cap")).toBe(true);
-    expect(cardFitsItem("brood_card", "desert_armor")).toBe(false);
-    // No stat, no slots: the stone, looks and boots take no cards.
-    for (const itemId of ["starter_stone", "galaxy_bow", "basic_paper_hat", "black_boots"]) expect(canHoldCards(itemId), itemId).toBe(false);
-    expect(cardFitsItem("needle_card", "starter_stone")).toBe(false);
-    expect(cardFitsItem("not_a_card", "iron_bow")).toBe(false);
+  it("gives this player's chance a kill: Card Hunter raises the odds and the meter, Card Luck only the chance", () => {
+    const needle = cardDefinition("needle_card")!, dragon = cardDefinition("dragon_card")!;
+    expect(cardKillChance(needle)).toBeCloseTo(1 / 1_000, 12);
+    expect(cardKillChance(needle, .14)).toBeCloseTo(1.14 / 1_000, 12);
+    expect(cardKillChance(needle, .14, 4)).toBeCloseTo(cardDropChance(1_000, 1.14, 4), 12);
+    expect(cardKillChance(dragon, 0, 10)).toBeGreaterThan(cardKillChance(dragon));
+    expect(cardSureByKills(needle)).toBe(2_000);
+    expect(cardSureByKills(needle, .14)).toBe(1_755);
+    expect(cardSureByKills(dragon, 1)).toBe(100);
   });
 });

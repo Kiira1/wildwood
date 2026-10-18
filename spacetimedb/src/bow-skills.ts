@@ -2,7 +2,7 @@ import { table, t } from "spacetimedb/server";
 import type { Identity } from "spacetimedb";
 import { NO_BOW_SKILLS, isSkillBow, rollBowSkills, type BowSkillRoll } from "../../shared/bow-skills";
 import { bowSkillsWithCards } from "../../shared/card-bounds";
-import { wornCardTotalsFor } from "./worn-cards";
+import { activeCardTotalsFor } from "./active-cards";
 
 /**
  * Each player's bow skill rolls, one row per bow id obtained since skills were
@@ -90,7 +90,7 @@ export function mergeBowSkills(ctx: Ctx, guest: Identity, account: Identity) {
 export function duelBowSkillFields(ctx: Ctx, duel: { challenger: Identity; opponent: Identity; challengerWeaponItem?: string; opponentWeaponItem?: string }) {
   // Bow skill cards add to a bow's own roll, as in the world.
   const withCards = (identity: Identity, weapon: string) =>
-    isSkillBow(weapon) ? bowSkillsWithCards(bowSkillRollFor(ctx, identity, weapon), wornCardTotalsFor(ctx, identity)) : bowSkillRollFor(ctx, identity, weapon);
+    isSkillBow(weapon) ? bowSkillsWithCards(bowSkillRollFor(ctx, identity, weapon), activeCardTotalsFor(ctx, identity)) : bowSkillRollFor(ctx, identity, weapon);
   const challenger = withCards(duel.challenger, duel.challengerWeaponItem ?? "");
   const opponent = withCards(duel.opponent, duel.opponentWeaponItem ?? "");
   return {

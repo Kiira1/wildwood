@@ -3,10 +3,12 @@ import { Timestamp } from "spacetimedb";
 import { crystalFixture } from "../../tests/helpers/crystal-hollows-fixture";
 import { fillDefeatBudget, reportEnemy } from "../../tests/helpers/enemy-defeat";
 import { awardCardDrops } from "./card-drops";
-import { cardCount, gearSlotsFor } from "./gear-cards";
+import { cardCount } from "./gear-cards";
 import { publishItemDrop } from "./equipment-copies";
-import { setGearSlots } from "./gear-cards";
-import { CARD_DROP_OUTCOMES, cardMeterFull } from "../../shared/cards";
+import { CARD_DROP_OUTCOMES, cardDefinition, cardKillChance, cardMeterFull, cardSureByKills } from "../../shared/cards";
+import { cardStatFactors } from "../../shared/card-effects";
+import { setActiveCards } from "../../tests/helpers/active-cards";
+import { activeCardTotalsFor } from "./active-cards";
 import { BLACK_BOOTS, IRON_BOW } from "../../shared/items";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
@@ -114,64 +116,42 @@ describe("card drops", () => {
   });
 });
 
-describe("slots from drops", () => {
+describe("gear drops", () => {
   const drop = (f: Fixture, itemId: string, alreadyOwned: boolean, quantity = 1) =>
     f.transaction(() => publishItemDrop(f.ctx, f.ctx.sender, itemId, alreadyOwned, quantity));
 
-  it("rolls 0 to 4 slots for gear entering the bag", () => {
+  it("roll no card slots: cards are switched on in the Cards tab", () => {
     const f = crystalFixture();
-    always(f, .99); // 990 of 1,000: 3 slots (940 + 30 + 18 = 988 are 0 to 2)
+    always(f, .998);
     drop(f, IRON_BOW, false);
-    expect(gearSlotsFor(f.ctx, f.ctx.sender, IRON_BOW)).toEqual({ slots: 3, cards: [] });
-    always(f, .1);
+    drop(f, IRON_BOW, true, 3);
     drop(f, "snow_helmet", false);
-    expect(gearSlotsFor(f.ctx, f.ctx.sender, "snow_helmet")).toEqual({ slots: 0, cards: [] });
-  });
-
-  it("raises your item's slots with a duplicate that rolls more, keeping its cards, and never lowers them", () => {
-    const f = crystalFixture();
-    f.transaction(() => setGearSlots(f.ctx, f.ctx.sender, IRON_BOW, 0n, { slots: 2, cards: ["needle_card"] }));
-    always(f, .1); // 0 slots: no change
-    drop(f, IRON_BOW, true);
-    expect(gearSlotsFor(f.ctx, f.ctx.sender, IRON_BOW)).toEqual({ slots: 2, cards: ["needle_card"] });
-    always(f, .998); // 4 slots
-    drop(f, IRON_BOW, true);
-    expect(gearSlotsFor(f.ctx, f.ctx.sender, IRON_BOW)).toEqual({ slots: 4, cards: ["needle_card"] });
-    // Gear owned before cards (no row) has one slot to raise from.
-    always(f, .5);
-    drop(f, "snow_helmet", true);
-    expect(gearSlotsFor(f.ctx, f.ctx.sender, "snow_helmet")).toEqual({ slots: 1, cards: [] });
-    always(f, .975); // 2 slots
-    drop(f, "snow_helmet", true, 2);
-    expect(gearSlotsFor(f.ctx, f.ctx.sender, "snow_helmet")).toEqual({ slots: 2, cards: [] });
-  });
-
-  it("raises the kept copy with the fewest slots once your item has all four", () => {
-    const f = crystalFixture();
-    f.transaction(() => setGearSlots(f.ctx, f.ctx.sender, IRON_BOW, 0n, { slots: 4, cards: ["needle_card"] }));
-    const keep = () => f.transaction(() => f.ctx.db.playerEquipmentCopy.insert({ id: 0n, identity: f.ctx.sender, itemId: IRON_BOW,
-      arrowStorm: 0, ricochet: 0, piercingShot: 0, whirlwind: 0, deflect: 0, shockwave: 0, acquiredAt: f.ctx.timestamp }).id as bigint);
-    const older = keep(), newer = keep();
-    f.transaction(() => setGearSlots(f.ctx, f.ctx.sender, IRON_BOW, older, { slots: 2, cards: ["needle_card"] }));
-    const slots = (copyId = 0n) => gearSlotsFor(f.ctx, f.ctx.sender, IRON_BOW, copyId);
-    always(f, .99); // 3 slots: the newer copy has only the default one
-    drop(f, IRON_BOW, true);
-    expect([slots(), slots(older), slots(newer)]).toEqual([
-      { slots: 4, cards: ["needle_card"] }, { slots: 2, cards: ["needle_card"] }, { slots: 3, cards: [] }]);
-    // Now the older copy has the fewest; it keeps its card.
-    drop(f, IRON_BOW, true);
-    expect(slots(older)).toEqual({ slots: 3, cards: ["needle_card"] });
-    // A roll that beats neither changes nothing.
-    always(f, .5);
-    drop(f, IRON_BOW, true);
-    expect([slots(older).slots, slots(newer).slots]).toEqual([3, 3]);
-  });
-
-  it("gives no slots to gear that takes no cards", () => {
-    const f = crystalFixture();
-    always(f, .995);
     drop(f, BLACK_BOOTS, false);
-    drop(f, "basic_paper_hat", false);
     expect(f.db.playerGearSlots.count()).toBe(0n);
+    expect(f.db.playerCopySlots.count()).toBe(0n);
   });
+});
+
+describe("the odds the Cards tab shows", () => {
+  // Regular, elite and boss, with Signal Oracle's Card Hunter active and Card Luck at rank 4.
+  for (const [cardId, enemy, boss] of [["needle_card", "Needle", 0], ["king_slime_card", "King Slime", 0], ["dragon_card", "", 1]] as const) {
+    it(`match the server's roll for ${cardId}`, () => {
+      const f = crystalFixture();
+      f.transaction(() => setActiveCards(f.ctx, f.ctx.sender, ["signal_oracle_card"]));
+      f.seed("playerLuckResearch", { identity: f.ctx.sender, cardLuck: 4, gearLuck: 0, miningLuck: 0, skillLuck: 0, refineLuck: 0 });
+      const hunter = cardStatFactors(activeCardTotalsFor(f.ctx, f.ctx.sender)).cardHunter;
+      expect(hunter).toBeCloseTo(.14, 9);
+      const chance = cardKillChance(cardDefinition(cardId)!, hunter, 4);
+      const kills = boss ? [] : [{ enemy, count: 1 }];
+      always(f, chance * 1.0001);
+      award(f, "tutorial_forest", kills, boss);
+      expect(cards(f, cardId)).toBe(0);
+      f.ctx.timestamp = new Timestamp(f.ctx.timestamp.microsSinceUnixEpoch + 10_000_000_000n);
+      always(f, chance * .9999);
+      award(f, "tutorial_forest", kills, boss);
+      expect(cards(f, cardId)).toBe(1);
+      // The meter guarantees it by the kills the detail shows: Card Hunter fills it, Card Luck does not.
+      expect(cardSureByKills(cardDefinition(cardId)!, hunter)).toBe(Math.ceil(cardMeterFull(cardDefinition(cardId)!.rarity) / 1.14 - 1e-9));
+    });
+  }
 });

@@ -1,6 +1,6 @@
 import { CHALLENGE_ABSOLUTE_MIN_INTERVAL } from "./prestige-challenge";
 import { DEFAULT_ATTACK_INTERVAL, PLAYER_BASE_DAMAGE, PLAYER_BASE_HP, PLAYER_BASE_REGEN } from "./rules";
-import { cardStatFactors, cardTotalsForLevels } from "./card-effects";
+import { cardStatFactors, cardTotals, type CardTotals } from "./card-effects";
 import {
   equipmentDamageMultiplierBonus,
   equipmentMaxHealthMultiplierBonus,
@@ -47,6 +47,8 @@ export type PlayerPowerProgress = PlayerPowerStats & {
   equippedChest?: string;
   equippedRightHand?: string;
   equippedLeftHand?: string;
+  /** The active cards in play (active-cards.ts); none is no card factor. */
+  activeCards?: readonly string[];
 };
 
 export type PlayerPowerResearch = {
@@ -68,8 +70,9 @@ export function effectivePlayerPowerStats(
   progress: PlayerPowerProgress,
   research: PlayerPowerResearch | null | undefined = null,
   itemUpgradeLevel: ItemUpgradeLevel = () => 0,
+  cards?: CardTotals,
 ): PlayerPowerStats {
-  return preparePlayerPowerStats(progress, research, itemUpgradeLevel)(progress);
+  return preparePlayerPowerStats(progress, research, itemUpgradeLevel, cards)(progress);
 }
 
 /** Resolve fixed gear/research once; reuse while only the earned base stats change.
@@ -79,6 +82,8 @@ export function preparePlayerPowerStats(
   loadout: PlayerPowerProgress,
   research: PlayerPowerResearch | null | undefined = null,
   itemUpgradeLevel: ItemUpgradeLevel = () => 0,
+  /** The active cards added up, when the caller has them; otherwise the loadout's activeCards. */
+  activeCardTotals?: CardTotals,
 ): (progress: PlayerPowerStats) => PlayerPowerStats {
   const weaponItem = loadout.equippedRightHand || loadout.equippedLeftHand || "";
   const headItem = loadout.equippedHead || "";
@@ -96,8 +101,8 @@ export function preparePlayerPowerStats(
   const warcraft = 1 + researchRank(research?.warcraft) * .02;
   const precision = 1 + researchRank(research?.precision) * .02;
   const regeneration = 1 + researchRank(research?.regeneration) * .02;
-  // The cards slotted in the worn items, as their levels carry them; a factor of one without any.
-  const cards = cardStatFactors(cardTotalsForLevels(weaponLevel, headLevel, chestLevel));
+  // The active cards; a factor of one without any.
+  const cards = cardStatFactors(activeCardTotals ?? cardTotals(loadout.activeCards ?? []));
   return progress => ({
     maxHp: progress.maxHp * health * vitality * cards.maxHp,
     damage: progress.damage * damage * warcraft * cards.damage,
@@ -114,8 +119,9 @@ export function effectivePlayerPower(
   progress: PlayerPowerProgress,
   research?: PlayerPowerResearch | null,
   itemUpgradeLevel?: ItemUpgradeLevel,
+  cards?: CardTotals,
 ) {
-  return playerPowerForStats(effectivePlayerPowerStats(progress, research, itemUpgradeLevel));
+  return playerPowerForStats(effectivePlayerPowerStats(progress, research, itemUpgradeLevel, cards));
 }
 
 export function playerPowerForStats(stats: PlayerPowerStats) {

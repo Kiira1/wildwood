@@ -41,6 +41,7 @@ import AcceptTermsReducer from "./accept_terms_reducer";
 import AcknowledgeBalanceApologyGiftReducer from "./acknowledge_balance_apology_gift_reducer";
 import AcknowledgeOfflineSummaryReducer from "./acknowledge_offline_summary_reducer";
 import AcknowledgeReleaseReducer from "./acknowledge_release_reducer";
+import ActivateCardReducer from "./activate_card_reducer";
 import AnnounceClientUpdateReducer from "./announce_client_update_reducer";
 import ApplyBuildCardsReducer from "./apply_build_cards_reducer";
 import BeginAccountLinkReducer from "./begin_account_link_reducer";
@@ -65,6 +66,7 @@ import ConfigureGemCommerceReducer from "./configure_gem_commerce_reducer";
 import ConfigurePatreonReducer from "./configure_patreon_reducer";
 import ConvertItemToCosmeticReducer from "./convert_item_to_cosmetic_reducer";
 import CreateGuildReducer from "./create_guild_reducer";
+import DeactivateCardReducer from "./deactivate_card_reducer";
 import DestroyEquipmentReducer from "./destroy_equipment_reducer";
 import DestroyEquipmentCopyReducer from "./destroy_equipment_copy_reducer";
 import DestroyOreReducer from "./destroy_ore_reducer";
@@ -278,6 +280,7 @@ import GuildQuestWeekRow from "./guild_quest_week_table";
 import LatestChatMessagesRow from "./latest_chat_messages_table";
 import LatestChatMessagesWithReactionsRow from "./latest_chat_messages_with_reactions_table";
 import LeaderboardEntryRow from "./leaderboard_entry_table";
+import MyActiveCardsRow from "./my_active_cards_table";
 import MyAdGemRewardRow from "./my_ad_gem_reward_table";
 import MyAudioSettingsRow from "./my_audio_settings_table";
 import MyBalanceApologyNoticeRow from "./my_balance_apology_notice_table";
@@ -330,6 +333,7 @@ import PatreonTickerSupportersRow from "./patreon_ticker_supporters_table";
 import PausedResearchRow from "./paused_research_table";
 import PlayerRow from "./player_table";
 import PlayerAccountStatusRow from "./player_account_status_table";
+import PlayerActiveCardRow from "./player_active_card_table";
 import PlayerAggroChallengeRow from "./player_aggro_challenge_table";
 import PlayerAggroChallengeParkedRow from "./player_aggro_challenge_parked_table";
 import PlayerAutoFarmPuppetRow from "./player_auto_farm_puppet_table";
@@ -355,6 +359,7 @@ import PlayerMotionIdentityRow from "./player_motion_identity_table";
 import PlayerNameColorRow from "./player_name_color_table";
 import PlayerNameTagRow from "./player_name_tag_table";
 import PlayerPrestigeRow from "./player_prestige_table";
+import PlayerPrestigeCardPerkRow from "./player_prestige_card_perk_table";
 import PlayerPrestigeChallengeRow from "./player_prestige_challenge_table";
 import PlayerPrestigeChallengeParkedRow from "./player_prestige_challenge_parked_table";
 import PlayerPrestigeExpansionPerkRow from "./player_prestige_expansion_perk_table";
@@ -573,6 +578,17 @@ const tablesSchema = __schema({
       { name: 'player_account_status_identity_key', constraint: 'unique', columns: ['identity'] },
     ],
   }, PlayerAccountStatusRow),
+  playerActiveCard: __table({
+    name: 'player_active_card',
+    indexes: [
+      { accessor: 'identity', name: 'player_active_card_identity_idx_btree', algorithm: 'btree', columns: [
+        'identity',
+      ] },
+    ],
+    constraints: [
+      { name: 'player_active_card_identity_key', constraint: 'unique', columns: ['identity'] },
+    ],
+  }, PlayerActiveCardRow),
   playerAggroChallenge: __table({
     name: 'player_aggro_challenge',
     indexes: [
@@ -875,6 +891,17 @@ const tablesSchema = __schema({
       { name: 'player_prestige_identity_key', constraint: 'unique', columns: ['identity'] },
     ],
   }, PlayerPrestigeRow),
+  playerPrestigeCardPerk: __table({
+    name: 'player_prestige_card_perk',
+    indexes: [
+      { accessor: 'identity', name: 'player_prestige_card_perk_identity_idx_btree', algorithm: 'btree', columns: [
+        'identity',
+      ] },
+    ],
+    constraints: [
+      { name: 'player_prestige_card_perk_identity_key', constraint: 'unique', columns: ['identity'] },
+    ],
+  }, PlayerPrestigeCardPerkRow),
   playerPrestigeChallenge: __table({
     name: 'player_prestige_challenge',
     indexes: [
@@ -1114,6 +1141,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, LatestChatMessagesWithReactionsRow),
+  myActiveCards: __table({
+    name: 'my_active_cards',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MyActiveCardsRow),
   myAdGemReward: __table({
     name: 'my_ad_gem_reward',
     indexes: [
@@ -1475,6 +1509,7 @@ const reducersSchema = __reducers(
   __reducerSchema("acknowledge_balance_apology_gift", AcknowledgeBalanceApologyGiftReducer),
   __reducerSchema("acknowledge_offline_summary", AcknowledgeOfflineSummaryReducer),
   __reducerSchema("acknowledge_release", AcknowledgeReleaseReducer),
+  __reducerSchema("activate_card", ActivateCardReducer),
   __reducerSchema("announce_client_update", AnnounceClientUpdateReducer),
   __reducerSchema("apply_build_cards", ApplyBuildCardsReducer),
   __reducerSchema("begin_account_link", BeginAccountLinkReducer),
@@ -1499,6 +1534,7 @@ const reducersSchema = __reducers(
   __reducerSchema("configure_patreon", ConfigurePatreonReducer),
   __reducerSchema("convert_item_to_cosmetic", ConvertItemToCosmeticReducer),
   __reducerSchema("create_guild", CreateGuildReducer),
+  __reducerSchema("deactivate_card", DeactivateCardReducer),
   __reducerSchema("destroy_equipment", DestroyEquipmentReducer),
   __reducerSchema("destroy_equipment_copy", DestroyEquipmentCopyReducer),
   __reducerSchema("destroy_ore", DestroyOreReducer),

@@ -2,7 +2,7 @@ import { CARD_EFFECT_DEFAULTS, cardChance, cardValue, cardTotals, type CardTotal
 import { regularEnemySeededUnit } from "./regular-enemy-simulation";
 import { itemDefinition } from "./items";
 
-/** Duels since this combat version play the worn cards (duel-combat.ts). */
+/** Duels since this combat version play the active cards (duel-combat.ts). */
 export const DUEL_CARDS_VERSION = 9;
 
 export type DuelSide = "challenger" | "opponent";

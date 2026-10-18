@@ -4,7 +4,7 @@ import { prestigePerkValue } from "../../shared/prestige-perks";
 import { attackRangeWithResearch } from "../../shared/utility-research";
 import { updateSnapshotRow } from "./snapshot-row-writes";
 import { readPlayerProgress } from "./wide-stats";
-import { wornCardTotalsFor } from "./worn-cards";
+import { activeCardTotalsFor } from "./active-cards";
 import { cardStatFactors } from "../../shared/card-effects";
 import { aggroChallengeActive } from "./aggro-challenge";
 import { bonusOffFor, researchInPlay } from "./bonus-toggles";
@@ -18,7 +18,7 @@ export function effectiveMovementSpeedForProgress(ctx: any, progress: any, resea
     ranks?.moveSpeed ?? 0,
     progress.speedOverride ?? 0,
     ranks?.utilityMoveSpeed ?? 0,
-  ) * (1 + prestigePerkValue(perksInPlay(ctx, progress.identity), "fleetFoot") + cardStatFactors(wornCardTotalsFor(ctx, progress.identity, progress)).moveSpeed);
+  ) * (1 + prestigePerkValue(perksInPlay(ctx, progress.identity), "fleetFoot") + cardStatFactors(activeCardTotalsFor(ctx, progress.identity)).moveSpeed);
 }
 
 /** Saved range includes research and Long Shot, while base stat totals stay unchanged. */

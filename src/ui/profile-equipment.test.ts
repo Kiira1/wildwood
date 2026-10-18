@@ -8,7 +8,7 @@ import {
   STARTER_STONE,
   WOODEN_ARMOR,
 } from "../../shared/items";
-import { PROFILE_EQUIPMENT_SLOTS, profileEquipmentCardSlots, profileEquipmentPresentation, renderProfileEquipmentSlot, type ProfileEquipmentProgress } from "./profile-equipment";
+import { PROFILE_EQUIPMENT_SLOTS, profileEquipmentActiveCards, profileEquipmentPresentation, renderProfileEquipmentSlot, type ProfileEquipmentProgress } from "./profile-equipment";
 
 function equipment(overrides: Partial<ProfileEquipmentProgress> = {}): ProfileEquipmentProgress {
   return {
@@ -26,17 +26,15 @@ function equipment(overrides: Partial<ProfileEquipmentProgress> = {}): ProfileEq
   };
 }
 
-describe("profile card slots", () => {
-  it("shows a worn item's slots, one empty slot with no row yet, and none for a look or gear without card slots", () => {
+describe("profile active cards", () => {
+  it("shows a worn weapon's, helmet's or armor's type of active cards, and none for a look alone or boots", () => {
+    const active = ["needle_card", "mossback_card", "bramble_card"];
     const chest = profileEquipmentPresentation(equipment(), "CHEST");
-    expect(profileEquipmentCardSlots(chest, { [WOODEN_ARMOR]: { slots: 2, cards: ["mossback_card"] } })).toEqual({ slots: 2, cards: ["mossback_card"] });
-    expect(profileEquipmentCardSlots(chest, undefined)).toEqual({ slots: 1, cards: [] });
-    // A look over the armor keeps the armor's cards: the look changes appearance only.
-    expect(profileEquipmentCardSlots(profileEquipmentPresentation(equipment({ cosmeticChest: FROST_ARMOR }), "CHEST"), { [WOODEN_ARMOR]: { slots: 2, cards: ["mossback_card"] } }))
-      .toEqual({ slots: 2, cards: ["mossback_card"] });
-    // A look with no gear under it has none.
-    expect(profileEquipmentCardSlots(profileEquipmentPresentation(equipment({ cosmeticChest: FROST_ARMOR, equippedChest: "" }), "CHEST"), {})).toBeUndefined();
-    expect(profileEquipmentCardSlots(profileEquipmentPresentation(equipment(), "FEET"), {})).toBeUndefined();
+    expect(profileEquipmentActiveCards(chest, active)).toEqual({ title: "Active Armor Cards", cards: ["mossback_card", "bramble_card"] });
+    expect(profileEquipmentActiveCards(profileEquipmentPresentation(equipment({ cosmeticChest: FROST_ARMOR }), "CHEST"), active)?.cards)
+      .toEqual(["mossback_card", "bramble_card"]);
+    expect(profileEquipmentActiveCards(profileEquipmentPresentation(equipment({ cosmeticChest: FROST_ARMOR, equippedChest: "" }), "CHEST"), active)).toBeUndefined();
+    expect(profileEquipmentActiveCards(profileEquipmentPresentation(equipment(), "FEET"), active)).toBeUndefined();
   });
 });
 

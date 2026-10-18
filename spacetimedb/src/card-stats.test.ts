@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import { crystalFixture } from "../../tests/helpers/crystal-hollows-fixture";
-import { setGearSlots } from "./gear-cards";
+import { setActiveCards } from "../../tests/helpers/active-cards";
 import { effectivePowerForProgress, effectivePowerStatsForProgress, researchedArmor, researchedDamage, researchedRegen } from "./player-power";
 import { itemLevelFor, maxHealthForProgress } from "./progress-helpers";
 import { critPowerFields } from "./crit-power";
 import { attackCapInPlay } from "./prestige";
 import { effectiveMovementSpeedForProgress } from "./player-speed";
-import { wornCardTotalsFor } from "./worn-cards";
+import { activeCardTotalsFor } from "./active-cards";
 import { readPlayerProgress } from "./wide-stats";
 import { createCombatReport } from "./boss-combat";
 import { cardTotals } from "../../shared/card-effects";
@@ -18,13 +18,14 @@ import { cardCount } from "./gear-cards";
 import { rollRegularEnemyLoot } from "./regular-enemy-loot";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
-// Tier 1 gear, worn: a bow, a cap and armor that each hold cards.
+// Tier 1 gear, worn: a bow, a cap and armor; `slot` switches cards on as if each item had them.
 function wearing() {
   const f = crystalFixture();
   f.patch("playerProgress", { inventoryJson: JSON.stringify(["starter_bow", "forest_cap", "wooden_armor"]),
     equippedRightHand: "starter_bow", equippedHead: "forest_cap", equippedChest: "wooden_armor" });
   const progress = () => readPlayerProgress(f.ctx, f.ctx.sender);
-  const slot = (itemId: string, cards: string[]) => setGearSlots(f.ctx, f.ctx.sender, itemId, 0n, { slots: cards.length, cards });
+  const chosen = new Map<string, string[]>();
+  const slot = (itemId: string, cards: string[]) => { chosen.set(itemId, cards); setActiveCards(f.ctx, f.ctx.sender, [...chosen.values()].flat()); };
   const snapshot = () => ({
     damage: researchedDamage(f.ctx, f.ctx.sender, 100), armor: researchedArmor(f.ctx, f.ctx.sender, 50), regen: researchedRegen(f.ctx, f.ctx.sender, 5),
     health: maxHealthForProgress(f.ctx, f.ctx.sender, progress()), stats: effectivePowerStatsForProgress(f.ctx, progress()),
@@ -35,13 +36,13 @@ function wearing() {
 }
 
 describe("cards on the server", () => {
-  it("carries a worn copy's cards on its level, and only the worn ones count", () => {
+  it("counts the active cards whatever is worn, and no item level carries cards", () => {
     const view = wearing();
     view.slot("starter_bow", ["spitter_card", "dune_needle_card"]);
-    expect(itemLevelFor(view.f.ctx, view.f.ctx.sender, "starter_bow")).toEqual({ tier: 0, refine: 0, cards: ["spitter_card", "dune_needle_card"] });
-    expect(wornCardTotalsFor(view.f.ctx, view.f.ctx.sender).sum).toEqual({ atk: 2, quickDraw: .05 });
+    expect(itemLevelFor(view.f.ctx, view.f.ctx.sender, "starter_bow")).toEqual({ tier: 0, refine: 0 });
+    expect(activeCardTotalsFor(view.f.ctx, view.f.ctx.sender).sum).toEqual({ atk: 2, quickDraw: .05 });
     view.f.patch("playerProgress", { equippedRightHand: "" });
-    expect(wornCardTotalsFor(view.f.ctx, view.f.ctx.sender).sum).toEqual({});
+    expect(activeCardTotalsFor(view.f.ctx, view.f.ctx.sender).sum).toEqual({ atk: 2, quickDraw: .05 });
   });
 
   it("puts stat cards into damage, health, armor, regen and power, as the client and power count them", () => {
@@ -78,8 +79,9 @@ describe("cards in the kill bound", () => {
     const f = crystalFixture();
     f.patch("playerProgress", { inventoryJson: JSON.stringify(["starter_bow", "wooden_armor"]), equippedRightHand: "starter_bow", equippedChest: "wooden_armor",
       damage: 10, maxHp: 100, regen: 1, armor: 0 });
+    setActiveCards(f.ctx, f.ctx.sender, Object.values(cards).flat());
     const { combatBoundForReport } = createCombatReport({ attackIntervalForProgress: progress => progress.attackRate,
-      itemUpgradeLevelFor: (_ctx, _identity, itemId) => ({ tier: 0, cards: cards[String(itemId)] ?? [] }),
+      itemUpgradeLevelFor: () => ({ tier: 0 }),
       inventoryForProgress: progress => JSON.parse(progress.inventoryJson),
       equippedRightHandForProgress: progress => progress.equippedRightHand, equippedLeftHandForProgress: progress => progress.equippedLeftHand,
       equippedHeadForProgress: progress => progress.equippedHead, equippedChestForProgress: progress => progress.equippedChest });

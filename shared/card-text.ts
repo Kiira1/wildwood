@@ -84,3 +84,16 @@ export const cardName = (card: CardDefinition) => `${card.enemy} Card`;
 /** "Elite · Tutorial Forest". */
 export const cardOrigin = (card: CardDefinition) =>
   `${card.rarity === "boss" ? "Boss" : card.rarity === "elite" ? "Elite" : "Regular"} · ${mapName(card.mapId)}`;
+
+const killWord = (card: CardDefinition, many: boolean) => `${card.rarity === "boss" ? "boss " : ""}kill${many ? "s" : ""}`;
+
+/** Where a card drops and one kill's chance at it: "Tutorial Forest · 1 in 877 kills" (boss cards per boss kill). */
+export function cardOddsText(card: CardDefinition, chance: number) {
+  const where = mapName(card.mapId);
+  if (!(chance > 0)) return `${where} · No drop`;
+  if (chance >= 1) return `${where} · Every ${killWord(card, false)}`;
+  return `${where} · 1 in ${Math.max(1, Math.round(1 / chance)).toLocaleString("en-US")} ${killWord(card, true)}`;
+}
+
+/** "Sure by 2,000 kills": a full card meter guarantees the card. */
+export const cardSureText = (card: CardDefinition, kills: number) => `Sure by ${kills.toLocaleString("en-US")} ${killWord(card, kills !== 1)}`;

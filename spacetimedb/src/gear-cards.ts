@@ -1,14 +1,11 @@
 import { SenderError, table, t } from "spacetimedb/server";
 import type { Identity } from "spacetimedb";
 import type spacetimedbType from "./index";
-import { MAX_CARD_SLOTS, OWNED_GEAR_SLOTS, canHoldCards, cardDefinition, cardFitsItem, gearSlotsKey, rollGearSlots, type CardSlot } from "../../shared/cards";
-import { canonicalItemId } from "../../shared/items";
-import { standsAtTheSmith } from "./item-refine";
-import { readPlayerProgress } from "./wide-stats";
+import { cardDefinition } from "../../shared/cards";
 
 /**
- * A player's cards, and each copy's slots with their cards. Slots follow their copy, as refines do; no row means
- * one empty slot. player_gear_slots is public so profiles can show another player's cards.
+ * A player's cards: every copy owned, active or not (active-cards.ts). Gear held cards until 0.912; its slot
+ * tables stay for clients that still read them, empty since migration 59.
  */
 export const playerCard = table({ name: "player_card", public: false }, {
   key: t.string().primaryKey(),
@@ -42,103 +39,8 @@ export const playerCardDrop = table({ name: "player_card_drop", public: false },
 });
 
 type Ctx = any;
-export type GearSlots = { slots: number; cards: readonly string[] };
 
 export const cardKey = (identity: { toHexString(): string }, cardId: string) => `${identity.toHexString()}:${cardId}`;
-export { gearSlotsKey };
-
-/** 0 to 4 slots, real cards only, no more cards than slots. */
-export function normalizeGearSlots(value: { slots?: unknown; cards?: unknown } | null | undefined): GearSlots {
-  const raw = Number(value?.slots);
-  const slots = Number.isFinite(raw) ? Math.max(0, Math.min(MAX_CARD_SLOTS, Math.floor(raw))) : OWNED_GEAR_SLOTS;
-  const cards = (Array.isArray(value?.cards) ? value.cards : []).filter((cardId): cardId is string => Boolean(cardDefinition(cardId)));
-  return { slots, cards: cards.slice(0, slots) };
-}
-
-const isOwnedGearDefault = (value: GearSlots) => value.slots === OWNED_GEAR_SLOTS && value.cards.length === 0;
-
-/** `copyId` 0 is the first copy. */
-export function gearSlotsFor(ctx: Ctx, identity: Identity, itemId: string, copyId = 0n): GearSlots {
-  const row = copyId === 0n ? ctx.db.playerGearSlots.key.find(gearSlotsKey(identity, itemId)) : ctx.db.playerCopySlots.copyId.find(copyId);
-  return row ? normalizeGearSlots(row) : { slots: OWNED_GEAR_SLOTS, cards: [] };
-}
-
-/** One empty slot is the default, so it removes the row. */
-export function setGearSlots(ctx: Ctx, identity: Identity, itemId: string, copyId: bigint, value: GearSlots) {
-  const next = normalizeGearSlots(value);
-  const same = (row: { slots: number; cards: readonly string[] }) =>
-    row.slots === next.slots && row.cards.length === next.cards.length && row.cards.every((cardId, index) => cardId === next.cards[index]);
-  if (copyId === 0n) {
-    const key = gearSlotsKey(identity, itemId);
-    const current = ctx.db.playerGearSlots.key.find(key);
-    if (isOwnedGearDefault(next)) { if (current) ctx.db.playerGearSlots.key.delete(key); return; }
-    if (current) { if (!same(current)) ctx.db.playerGearSlots.key.update({ ...current, slots: next.slots, cards: [...next.cards] }); }
-    else ctx.db.playerGearSlots.insert({ key, identity, itemId, slots: next.slots, cards: [...next.cards] });
-    return;
-  }
-  const current = ctx.db.playerCopySlots.copyId.find(copyId);
-  if (isOwnedGearDefault(next)) { if (current) ctx.db.playerCopySlots.copyId.delete(copyId); return; }
-  if (current) { if (!same(current)) ctx.db.playerCopySlots.copyId.update({ ...current, slots: next.slots, cards: [...next.cards] }); }
-  else ctx.db.playerCopySlots.insert({ copyId, identity, itemId, slots: next.slots, cards: [...next.cards] });
-}
-
-/**
- * A new item rolls its slots; each duplicate rolls too and raises them if higher, keeping the cards. Once the
- * first copy has every slot, a duplicate's roll raises the kept copy with the fewest instead.
- */
-export function rollDropSlots(ctx: Ctx, identity: Identity, itemId: string, alreadyOwned: boolean, quantity = 1) {
-  if (!canHoldCards(itemId) || Math.floor(quantity) < 1) return;
-  let next: GearSlots | null = alreadyOwned ? gearSlotsFor(ctx, identity, itemId) : null;
-  for (let drop = 0; drop < Math.floor(quantity); drop++) {
-    const slots = rollGearSlots(ctx.random() * 1000);
-    if (next && next.slots >= MAX_CARD_SLOTS) raiseSpareCopySlots(ctx, identity, itemId, slots);
-    else next = next ? { ...next, slots: Math.max(next.slots, slots) } : { slots, cards: [] };
-  }
-  if (next) setGearSlots(ctx, identity, itemId, 0n, next);
-}
-
-/** Raises the kept copy of `itemId` with the fewest slots, oldest first on a tie, when `slots` beats it. */
-function raiseSpareCopySlots(ctx: Ctx, identity: Identity, itemId: string, slots: number) {
-  let lowest: { copyId: bigint; value: GearSlots } | null = null;
-  for (const copy of rowsOf(ctx.db.playerEquipmentCopy, identity)) {
-    if (copy.itemId !== itemId) continue;
-    const value = gearSlotsFor(ctx, identity, itemId, copy.id);
-    if (!lowest || value.slots < lowest.value.slots || (value.slots === lowest.value.slots && copy.id < lowest.copyId)) lowest = { copyId: copy.id, value };
-  }
-  if (lowest && slots > lowest.value.slots) setGearSlots(ctx, identity, itemId, lowest.copyId, { ...lowest.value, slots });
-}
-
-/** A copy kept from an offer rolls its own slots, as a drop does. */
-export function rollCopySlots(ctx: Ctx, identity: Identity, itemId: string, copyId: bigint) {
-  if (canHoldCards(itemId)) setGearSlots(ctx, identity, itemId, copyId, { slots: rollGearSlots(ctx.random() * 1000), cards: [] });
-}
-
-/** A destroyed copy's cards go back to the player's cards: taking one out is free, so destroying never costs one. */
-export function returnSlottedCards(ctx: Ctx, identity: Identity, itemId: string, copyId = 0n) {
-  for (const cardId of gearSlotsFor(ctx, identity, itemId, copyId).cards) addCard(ctx, identity, cardId);
-}
-
-/** A destroyed copy takes its slots with it; the caller returns its cards first. */
-export function clearGearSlots(ctx: Ctx, identity: Identity, itemId: string, copyId = 0n) {
-  if (copyId === 0n) {
-    const key = gearSlotsKey(identity, itemId);
-    if (ctx.db.playerGearSlots.key.find(key)) ctx.db.playerGearSlots.key.delete(key);
-  } else if (ctx.db.playerCopySlots.copyId.find(copyId)) ctx.db.playerCopySlots.copyId.delete(copyId);
-}
-
-/** Choosing a kept copy swaps its slots and cards with the first copy's. */
-export function swapFirstCopySlots(ctx: Ctx, identity: Identity, itemId: string, copyId: bigint) {
-  const first = gearSlotsFor(ctx, identity, itemId), copy = gearSlotsFor(ctx, identity, itemId, copyId);
-  setGearSlots(ctx, identity, itemId, 0n, copy);
-  setGearSlots(ctx, identity, itemId, copyId, first);
-}
-
-/** The kept copy replacing a destroyed first copy brings its own slots and cards. */
-export function promoteCopySlots(ctx: Ctx, identity: Identity, itemId: string, copyId: bigint) {
-  setGearSlots(ctx, identity, itemId, 0n, gearSlotsFor(ctx, identity, itemId, copyId));
-  clearGearSlots(ctx, identity, itemId, copyId);
-}
-
 const CARD_COUNT_MAX = 4_294_967_295;
 
 export function cardCount(ctx: Ctx, identity: Identity, cardId: string) {
@@ -154,21 +56,13 @@ export function addCard(ctx: Ctx, identity: Identity, cardId: string, count = 1)
   else ctx.db.playerCard.insert({ key, identity, cardId, count: amount });
 }
 
-/** Returns false when the player has none. */
-export function takeCard(ctx: Ctx, identity: Identity, cardId: string) {
-  const key = cardKey(identity, cardId), current = ctx.db.playerCard.key.find(key);
-  if (!current || current.count < 1) return false;
-  if (current.count === 1) ctx.db.playerCard.key.delete(key);
-  else ctx.db.playerCard.key.update({ ...current, count: current.count - 1 });
-  return true;
-}
-
 function rowsOf(handle: any, identity: Identity): any[] {
   return [...handle.identity.filter(identity)];
 }
 
-/** Reset Save and account deletion clear cards and slots; prestige keeps them. */
+/** Reset Save and account deletion clear cards and the active ones; prestige keeps them. */
 export function removeCardData(ctx: Ctx, identity: Identity) {
+  if (ctx.db.playerActiveCard?.identity.find(identity)) ctx.db.playerActiveCard.identity.delete(identity);
   for (const row of rowsOf(ctx.db.playerCard, identity)) ctx.db.playerCard.key.delete(row.key);
   for (const row of rowsOf(ctx.db.playerGearSlots, identity)) ctx.db.playerGearSlots.key.delete(row.key);
   for (const row of rowsOf(ctx.db.playerCopySlots, identity)) ctx.db.playerCopySlots.copyId.delete(row.copyId);
@@ -179,14 +73,16 @@ export function removeCardData(ctx: Ctx, identity: Identity) {
   for (const row of ctx.db.playerCardMeter ? rowsOf(ctx.db.playerCardMeter, identity) : []) ctx.db.playerCardMeter.key.delete(row.key);
 }
 
-/** On link the guest's cards and slots replace the account's, as the bag does. */
+/** On link the guest's cards and active cards replace the account's, as the bag does. */
 export function mergeCardData(ctx: Ctx, guest: Identity, account: Identity) {
   removeCardData(ctx, account);
+  const active = ctx.db.playerActiveCard?.identity.find(guest);
+  if (active) { ctx.db.playerActiveCard.identity.delete(guest); ctx.db.playerActiveCard.insert({ ...active, identity: account }); }
   for (const row of ctx.db.playerCardMeter ? rowsOf(ctx.db.playerCardMeter, guest) : []) {
     ctx.db.playerCardMeter.key.delete(row.key);
     ctx.db.playerCardMeter.insert({ ...row, key: `${account.toHexString()}:${row.cardId}`, identity: account });
   }
-  // The guest's builds come across with the cards they hold.
+  // The guest's builds come across with the cards they name.
   for (const row of ctx.db.playerBuild ? rowsOf(ctx.db.playerBuild, guest) : []) {
     ctx.db.playerBuild.key.delete(row.key);
     ctx.db.playerBuild.insert({ ...row, key: `${account.toHexString()}:${row.slot}`, identity: account });
@@ -195,11 +91,8 @@ export function mergeCardData(ctx: Ctx, guest: Identity, account: Identity) {
     ctx.db.playerCard.key.delete(row.key);
     ctx.db.playerCard.insert({ ...row, key: cardKey(account, row.cardId), identity: account });
   }
-  for (const row of rowsOf(ctx.db.playerGearSlots, guest)) {
-    ctx.db.playerGearSlots.key.delete(row.key);
-    ctx.db.playerGearSlots.insert({ ...row, key: gearSlotsKey(account, row.itemId), identity: account });
-  }
-  for (const row of rowsOf(ctx.db.playerCopySlots, guest)) ctx.db.playerCopySlots.copyId.update({ ...row, identity: account });
+  for (const row of rowsOf(ctx.db.playerGearSlots, guest)) ctx.db.playerGearSlots.key.delete(row.key);
+  for (const row of rowsOf(ctx.db.playerCopySlots, guest)) ctx.db.playerCopySlots.copyId.delete(row.copyId);
   if (ctx.db.playerCardDrop.identity.find(guest)) ctx.db.playerCardDrop.identity.delete(guest);
   for (const row of ctx.db.playerBossCardRoll ? rowsOf(ctx.db.playerBossCardRoll, guest) : []) ctx.db.playerBossCardRoll.key.delete(row.key);
   // The guest's saved attack speed comes across with its cards, so the cap it sits under does too.
@@ -207,81 +100,14 @@ export function mergeCardData(ctx: Ctx, guest: Identity, account: Identity) {
   if (basis) { ctx.db.playerCardAttackCap.identity.delete(guest); ctx.db.playerCardAttackCap.insert({ ...basis, identity: account }); }
 }
 
-export type GearCardDeps = {
-  requireControllingPlayer: (ctx: Ctx) => any;
-  activeDuelFor: (ctx: Ctx, identity: Identity) => unknown;
-  inventoryForProgress: (progress: any) => string[];
-  writeProgressAndPresentation: (ctx: Ctx, progress: any) => void;
-  /** Quick Draw cards move the attack speed cap: the saved speed follows (card-attack-cap.ts). */
-  syncAttackCap?: (ctx: Ctx, identity: Identity) => void;
-};
+const MOVED = "Cards are switched on in the Cards tab now.";
 
-const GEAR_NAMES: Readonly<Record<CardSlot, string>> = { HAND: "a weapon", HEAD: "a helmet", CHEST: "armor" };
-const equippedFields = (progress: any): string[] =>
-  [progress.equippedHead, progress.equippedChest, progress.equippedFeet, progress.equippedRightHand, progress.equippedLeftHand];
-
-/** Slots a card into a free slot for good, at the Smith. `expectedCards` stops a double tap spending two cards. */
-export function slotCardFor(ctx: Ctx, args: { itemId: string; copyId: bigint; cardId: string; expectedCards: number }, deps: GearCardDeps) {
-  const player = deps.requireControllingPlayer(ctx);
-  if (!standsAtTheSmith(ctx, player)) throw new SenderError("Talk to the Smith first.");
-  if (deps.activeDuelFor(ctx, ctx.sender)) throw new SenderError("Finish your duel first.");
-  const itemId = canonicalItemId(args.itemId);
-  const card = cardDefinition(args.cardId);
-  if (!itemId || !canHoldCards(itemId)) throw new SenderError("That item takes no cards.");
-  if (!card) throw new SenderError("That card does not exist.");
-  if (!cardFitsItem(card.id, itemId)) throw new SenderError(`A ${card.enemy} Card goes in ${GEAR_NAMES[card.slot]}.`);
-  const progress = readPlayerProgress(ctx, ctx.sender);
-  if (!progress || !deps.inventoryForProgress(progress).includes(itemId)) throw new SenderError("That item is not in your inventory.");
-  const copyId = args.copyId;
-  if (copyId !== 0n) {
-    const copy = ctx.db.playerEquipmentCopy.id.find(copyId);
-    if (!copy || !copy.identity.isEqual(ctx.sender) || copy.itemId !== itemId) throw new SenderError("That copy is not in your inventory.");
-  }
-  const current = gearSlotsFor(ctx, ctx.sender, itemId, copyId);
-  if (current.cards.length !== args.expectedCards) throw new SenderError("That item's cards changed. Try again.");
-  if (current.cards.length >= current.slots) throw new SenderError(current.slots ? "Every slot in that item is full." : "That item has no slots.");
-  if (!takeCard(ctx, ctx.sender, card.id)) throw new SenderError(`You have no ${card.enemy} Card.`);
-  setGearSlots(ctx, ctx.sender, itemId, copyId, { slots: current.slots, cards: [...current.cards, card.id] });
-  // A worn item's new card changes the player's stats now.
-  if (copyId === 0n && equippedFields(progress).includes(itemId)) {
-    deps.syncAttackCap?.(ctx, ctx.sender);
-    deps.writeProgressAndPresentation(ctx, readPlayerProgress(ctx, ctx.sender) ?? progress);
-  }
-}
-
-/** Lifts the card at `index` back out of a copy at the Smith, free; the card returns to the player's cards. */
-export function removeCardFor(ctx: Ctx, args: { itemId: string; copyId: bigint; index: number; expectedCards: number }, deps: GearCardDeps) {
-  const player = deps.requireControllingPlayer(ctx);
-  if (!standsAtTheSmith(ctx, player)) throw new SenderError("Talk to the Smith first.");
-  if (deps.activeDuelFor(ctx, ctx.sender)) throw new SenderError("Finish your duel first.");
-  const itemId = canonicalItemId(args.itemId);
-  if (!itemId || !canHoldCards(itemId)) throw new SenderError("That item takes no cards.");
-  const progress = readPlayerProgress(ctx, ctx.sender);
-  if (!progress || !deps.inventoryForProgress(progress).includes(itemId)) throw new SenderError("That item is not in your inventory.");
-  const copyId = args.copyId;
-  if (copyId !== 0n) {
-    const copy = ctx.db.playerEquipmentCopy.id.find(copyId);
-    if (!copy || !copy.identity.isEqual(ctx.sender) || copy.itemId !== itemId) throw new SenderError("That copy is not in your inventory.");
-  }
-  const current = gearSlotsFor(ctx, ctx.sender, itemId, copyId);
-  if (current.cards.length !== args.expectedCards) throw new SenderError("That item's cards changed. Try again.");
-  const cardId = current.cards[args.index];
-  if (cardId === undefined) throw new SenderError("That slot is empty.");
-  setGearSlots(ctx, ctx.sender, itemId, copyId, { slots: current.slots, cards: current.cards.filter((_, index) => index !== args.index) });
-  addCard(ctx, ctx.sender, cardId);
-  // A worn item losing a card changes the player's stats now, attack speed cap included.
-  if (copyId === 0n && equippedFields(progress).includes(itemId)) {
-    deps.syncAttackCap?.(ctx, ctx.sender);
-    deps.writeProgressAndPresentation(ctx, readPlayerProgress(ctx, ctx.sender) ?? progress);
-  }
-}
-
-/** The slot_card and remove_card reducers and the caller's own card views. */
-export function registerGearCards(spacetimedb: typeof spacetimedbType, deps: GearCardDeps) {
+/** The caller's own card views, and the old slot_card and remove_card, which only refuse now. */
+export function registerGearCards(spacetimedb: typeof spacetimedbType) {
   const slotCard = spacetimedb.reducer({ itemId: t.string(), copyId: t.u64(), cardId: t.string(), expectedCards: t.u8() },
-    (ctx: any, args: { itemId: string; copyId: bigint; cardId: string; expectedCards: number }) => slotCardFor(ctx, args, deps));
+    () => { throw new SenderError(MOVED); });
   const removeCard = spacetimedb.reducer({ itemId: t.string(), copyId: t.u64(), index: t.u8(), expectedCards: t.u8() },
-    (ctx: any, args: { itemId: string; copyId: bigint; index: number; expectedCards: number }) => removeCardFor(ctx, args, deps));
+    () => { throw new SenderError(MOVED); });
   const myCards = spacetimedb.view({ name: "my_cards", public: true }, t.array(playerCard.rowType),
     (ctx: any) => [...ctx.db.playerCard.identity.filter(ctx.sender)]);
   const myGearSlots = spacetimedb.view({ name: "my_gear_slots", public: true }, t.array(playerGearSlots.rowType),

@@ -28,9 +28,11 @@ export function mergeLinkedPrestige(ctx: any, guest: any, account: any) {
 
   const guestOriginal = ctx.db.playerPrestigePerk.identity.find(guest);
   const guestExpansion = ctx.db.playerPrestigeExpansionPerk.identity.find(guest);
-  if (!guestOriginal && !guestExpansion) return;
-  const guestPerks = { ...guestOriginal, ...guestExpansion };
-  const accountPerks = { ...ctx.db.playerPrestigePerk.identity.find(account), ...ctx.db.playerPrestigeExpansionPerk.identity.find(account) };
+  const guestCards = ctx.db.playerPrestigeCardPerk?.identity.find(guest);
+  if (!guestOriginal && !guestExpansion && !guestCards) return;
+  const guestPerks = { ...guestOriginal, ...guestExpansion, ...guestCards };
+  const accountPerks = { ...ctx.db.playerPrestigePerk.identity.find(account), ...ctx.db.playerPrestigeExpansionPerk.identity.find(account),
+    ...ctx.db.playerPrestigeCardPerk?.identity.find(account) };
   const mergedPerks = {} as PrestigePerkRanks;
   let refundedPoints = 0;
   // Challenges merged first, so Reflect's cap reflects the wins of both saves.
@@ -43,6 +45,7 @@ export function mergeLinkedPrestige(ctx: any, guest: any, account: any) {
   writePrestigePerkRanks(ctx, account, mergedPerks);
   if (guestOriginal) ctx.db.playerPrestigePerk.identity.delete(guest);
   if (guestExpansion) ctx.db.playerPrestigeExpansionPerk.identity.delete(guest);
+  if (guestCards) ctx.db.playerPrestigeCardPerk.identity.delete(guest);
   if (refundedPoints) {
     const prestige = ctx.db.playerPrestige.identity.find(account);
     if (prestige) ctx.db.playerPrestige.identity.update({ ...prestige, perkPoints: prestige.perkPoints + refundedPoints });

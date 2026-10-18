@@ -119,6 +119,9 @@ export type PlayerPrestigePerks = {
   longShot?: number;
   fleetFoot?: number;
   quickDraw?: number;
+  weaponCards?: number;
+  helmetCards?: number;
+  armorCards?: number;
 };
 
 export type UpgradeBenchSlot = 1 | 2 | 3;
@@ -158,8 +161,8 @@ export type PlayerProfileData = {
   itemUpgradeLevels: Record<string, number>;
   /** Each first copy's refine by item id (player_item_refine); the worn items' are what stats read. +0 is missing. */
   itemRefines?: Record<string, number>;
-  /** Each first copy's card slots by item id (player_gear_slots); gear with no row has one empty slot. */
-  itemCardSlots?: Record<string, { slots: number; cards: readonly string[] }>;
+  /** The active cards they chose by type (player_active_card), waiting ones included; profileActiveCardIds keeps those in play. */
+  activeCards?: import("../../shared/active-cards").ActiveCards;
   /** The equipped weapon's skill roll (player_worn_skill), for showing it on the profile. */
   wornSkill?: { itemId: string; roll: Record<string, number> } | null;
   /** The Mining stat (my_mining for your own, player_mining_level for anyone else's); null before the Smith's pickaxe. */

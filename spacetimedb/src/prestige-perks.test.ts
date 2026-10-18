@@ -1,11 +1,12 @@
 import { expect, it } from "vitest";
 import {
   PRESTIGE_PERK_IDS, PRESTIGE_PERK_MAX_RANK, PRESTIGE_PERKS, isPrestigePerkId,
-  prestigePerkRank, prestigePerkValue, prestigeReachMultiplier, prestigeSwingMultiplier,
+  prestigePerkMaxRank, prestigePerkRank, prestigePerkValue, prestigeReachMultiplier, prestigeSwingMultiplier,
 } from "../../shared/prestige-perks";
 
-it("names all nine perks and rejects anything else", () => {
-  expect(PRESTIGE_PERK_IDS).toEqual(["keenEdge", "doubleStrike", "splitShot", "riposte", "bossSlayer", "secondWind", "longShot", "fleetFoot", "quickDraw"]);
+it("names all twelve perks and rejects anything else", () => {
+  expect(PRESTIGE_PERK_IDS).toEqual(["keenEdge", "doubleStrike", "splitShot", "riposte", "bossSlayer", "secondWind", "longShot", "fleetFoot", "quickDraw",
+    "weaponCards", "helmetCards", "armorCards"]);
   expect(isPrestigePerkId("keenEdge")).toBe(true);
   expect(isPrestigePerkId("constructor")).toBe(false);
   expect(isPrestigePerkId("nope")).toBe(false);
@@ -20,7 +21,7 @@ it("clamps ranks to the band and ignores nonsense", () => {
 
 it("scales each perk by its own rate", () => {
   for (const id of PRESTIGE_PERK_IDS) {
-    expect(prestigePerkValue({ [id]: 5 }, id)).toBeCloseTo(PRESTIGE_PERKS[id].perRank * 5);
+    expect(prestigePerkValue({ [id]: 5 }, id)).toBeCloseTo(PRESTIGE_PERKS[id].perRank * Math.min(5, prestigePerkMaxRank(id)));
     expect(prestigePerkValue({}, id)).toBe(0);
   }
 });

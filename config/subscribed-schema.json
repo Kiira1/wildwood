@@ -269,6 +269,12 @@
       "rightHandItem:string",
       "leftHandItem:string"
     ],
+    "my_active_cards": [
+      "identity:identity",
+      "hand:array(string)",
+      "head:array(string)",
+      "chest:array(string)"
+    ],
     "my_ad_gem_reward": [
       "identity:identity",
       "lastClaimAt:timestamp",
@@ -649,6 +655,12 @@
       "identity:identity",
       "isGuest:bool"
     ],
+    "player_active_card": [
+      "identity:identity",
+      "hand:array(string)",
+      "head:array(string)",
+      "chest:array(string)"
+    ],
     "player_aggro_challenge_parked": [
       "identity:identity",
       "parkedAt:timestamp"
@@ -808,6 +820,12 @@
       "identity:identity",
       "guildTag:string",
       "showDevTag:bool"
+    ],
+    "player_prestige_card_perk": [
+      "identity:identity",
+      "weaponCards:u32",
+      "helmetCards:u32",
+      "armorCards:u32"
     ],
     "player_prestige_challenge_parked": [
       "identity:identity",

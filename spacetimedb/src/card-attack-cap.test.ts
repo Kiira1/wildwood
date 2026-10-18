@@ -1,7 +1,7 @@
 import { expect, it, vi } from "vitest";
 import { crystalFixture } from "../../tests/helpers/crystal-hollows-fixture";
 import { fillDefeatBudget, reportEnemy } from "../../tests/helpers/enemy-defeat";
-import { setGearSlots } from "./gear-cards";
+import { setActiveCards } from "../../tests/helpers/active-cards";
 import { attackCapInPlay } from "./prestige";
 import { syncCardAttackCap } from "./card-attack-cap";
 import { readPlayerProgress } from "./wide-stats";
@@ -9,7 +9,7 @@ import { attackIntervalForRating, attackIntervalUnderNewCap, ratingForLevels } f
 import { IRON_BOW } from "../../shared/items";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
-/** An archer twenty levels into attack speed, with a slot free in the bow. */
+/** An archer twenty levels into attack speed. */
 function archer() {
   const f = crystalFixture();
   const baseCap = attackCapInPlay(f.ctx, f.ctx.sender);
@@ -17,9 +17,9 @@ function archer() {
     attackRate: attackIntervalForRating(ratingForLevels(20), baseCap) });
   return { f, baseCap, rate: () => readPlayerProgress(f.ctx, f.ctx.sender).attackRate as number };
 }
-const slot = (f: any, cards: string[]) => f.transaction(() => setGearSlots(f.ctx, f.ctx.sender, IRON_BOW, 0n, { slots: 2, cards }));
+const slot = (f: any, cards: string[]) => f.transaction(() => setActiveCards(f.ctx, f.ctx.sender, cards));
 
-it("keeps the run's attack speed rating when a Quick Draw card raises the cap, and when it comes out", () => {
+it("keeps the run's attack speed rating when a Quick Draw card raises the cap, and when it goes off", () => {
   const { f, baseCap, rate } = archer();
   const before = rate();
   slot(f, ["ion_needle_card"]);
@@ -40,7 +40,7 @@ it("keeps the run's attack speed rating when a Quick Draw card raises the cap, a
   expect(rate()).toBeCloseTo(before, 12);
 });
 
-it("catches up on the next kill report after a card goes in", () => {
+it("catches up on the next kill report after a card is switched on", () => {
   const { f, rate } = archer();
   const before = rate();
   slot(f, ["ion_needle_card"]);

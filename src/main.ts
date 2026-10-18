@@ -133,9 +133,9 @@ import type { LeaderboardEntry } from "./wildstat-coop";
 import type { ResearchId } from "../shared/research";
 import { PLAYER_GENDER_FEMALE, PLAYER_GENDER_MALE } from "../shared/player-gender";
 import { regularEnemySimulationTick } from "../shared/regular-enemy-simulation";
-import { equipComparisonPower, gearOnlyLevel } from "../shared/equip-best";
+import { equipComparisonPower } from "../shared/equip-best";
 import { equipmentMaxHealthMultiplierBonus, isWeaponItem, itemDisplayName } from "../shared/items";
-import { createRewardDisplay, playerRegenerationPerSecond } from "./game/runtime/reward-display";
+import { createRewardDisplay, playerRegenerationPerSecond } from "./game/runtime/reward-display"; import { cardsPort } from "./ui/cards-tab";
 import { createInventoryCommerceActions } from "./game/runtime/inventory-commerce";
 import {
   DEFAULT_ATTACK_INTERVAL as STARTING_ATTACK_INTERVAL,
@@ -239,7 +239,7 @@ import {
   // Gear, Vitality and health cards together, as one bonus on saved health (Vitality is live since 0.883, like other research).
   const healthMultiplierBonus = () => (1 + equipmentMaxHealthMultiplierBonus(inventory.equippedHead, inventory.equippedChest,
     coop?.itemLevel?.(inventory.equippedHead) ?? 0, coop?.itemLevel?.(inventory.equippedChest) ?? 0))
-    * (1 + Math.max(0, coop?.researchInPlay?.()?.vitality ?? 0) * .02) * (coop?.wornCardStats?.().maxHp ?? 1) - 1;
+    * (1 + Math.max(0, coop?.researchInPlay?.()?.vitality ?? 0) * .02) * (coop?.activeCardStats?.().maxHp ?? 1) - 1;
   const LEGACY_SAVE_KEY = "wildwood-player-progress-v1";
   const respawnMemory = createRespawnMemory(localStorage, () => coop?.localIdentity?.() ?? '');
   const bossFightMemory = createBossFightMemory(localStorage, () => coop?.localIdentity?.() ?? '');
@@ -321,7 +321,7 @@ import {
     () => session.gameTime(),
     localTestMultiplier,
     () => runtimeMapBalance(currentMapId)?.regularRespawnSeconds ?? REGULAR_ENEMY_RESPAWN_SECONDS,
-    () => coop?.researchInPlay?.()?.enemyRespawn ?? 0, () => coop?.wornCardStats?.().respawn ?? 0,
+    () => coop?.researchInPlay?.()?.enemyRespawn ?? 0, () => coop?.activeCardStats?.().respawn ?? 0,
   );
 
   const duelSession = createDuelSessionController({
@@ -434,8 +434,8 @@ import {
       showMessage("BEST EQUIPMENT EQUIPPED", "#72ef58");
       return true;
     },
-    upgradeLevel: (itemId) => coop?.itemUpgradeLevel?.(itemId) ?? 0, refineLevel: (itemId, copyId) => coop?.itemRefine?.(itemId, copyId) ?? 0, ores: () => coop?.ores?.() ?? {}, cards: () => coop?.cards?.() ?? {}, slottedCards: () => coop?.slottedCards?.() ?? new Set<string>(),
-    slotTier: slot => coop?.slotUpgradeTier?.(slot) ?? 0, gearSlots: (itemId, copyId) => coop?.gearSlots?.(itemId, copyId) ?? { slots: 0, cards: [] },
+    upgradeLevel: (itemId) => coop?.itemUpgradeLevel?.(itemId) ?? 0, refineLevel: (itemId, copyId) => coop?.itemRefine?.(itemId, copyId) ?? 0, ores: () => coop?.ores?.() ?? {}, cards: cardsPort(() => coop, () => currentMapId),
+    slotTier: slot => coop?.slotUpgradeTier?.(slot) ?? 0,
     inventorySlotsUnlocked: () => coop?.inventorySlotsUnlocked?.() ?? 0, researchBagSlots: () => coop?.research?.().inventorySlots ?? 0, hasPickaxe: () => coop?.hasPickaxe?.() ?? false,
     gemBalance: () => coop?.gemBalance?.() ?? 0n, builds: createBuildActions({ coop: () => coop, inventory, requirement: itemId => equipmentMapRequirement(itemId, coop?.savedProgress?.()), blocked: () => isDueling() ? "Finish Your Duel First" : null, afterGearChange: () => { player.speed = progress.movementSpeedForEquipment(false) * localTestMultiplier; applyPlayerMaxHealthMultiplierBonus(player, healthMultiplierBonus()); saveProgress(true); } }),
     unlockInventorySlot: async () => coop?.unlockInventorySlot?.(),
@@ -594,7 +594,7 @@ import {
   const research = createResearchController({
     prestigeLevel: () => coop?.prestigeStatGainInPlay?.() === false ? 0 : coop?.prestige?.()?.level ?? 0,
     guildQuestBonus: () => coop?.dailyQuests?.()?.bonus ?? 1,
-    prestigePerks: () => coop?.prestigePerks?.(), cards: () => coop?.wornCardStats?.(),
+    prestigePerks: () => coop?.prestigePerks?.(), cards: () => coop?.activeCardStats?.(),
     player,
     getRanks: () => coop?.researchInPlay?.(),
     isDueling,
@@ -614,7 +614,7 @@ import {
     applyVitality: applyVitalityResearch,
   } = research;
   const rewardDisplay = createRewardDisplay(researchRewardMultiplier, researchRanks, appShell.showBaseStatRewards,
-    () => inventory, itemId => coop?.itemLevel?.(itemId) ?? 0);
+    () => inventory, itemId => coop?.itemLevel?.(itemId) ?? 0, () => coop?.activeCardIds?.() ?? []);
   const travelSpeed = createOutOfCombatSpeed();
   const movementMultiplier = () => researchMovementSpeedMultiplier()
     + travelSpeed.bonus(inventory.equippedFeet, isDueling()) / Math.max(1, player.speed);
@@ -633,7 +633,7 @@ import {
     getTotalKills: () => totalKills,
     setTotalKills: (kills) => { totalKills = kills; },
     researchVitalityRank: () => researchRanks().vitality,
-    healthMultiplierBonus, cardRange: () => coop?.wornCardStats?.().range ?? 0,
+    healthMultiplierBonus, cardRange: () => coop?.activeCardStats?.().range ?? 0,
     setAppliedVitalityRank: research.setAppliedVitalityRank,
     renderInventory,
     onLoaded: finishStartup,
@@ -659,7 +659,7 @@ import {
     prestigeSecondWind: () => prestigePerkValue(coop?.prestigePerks?.(), "secondWind"),
     prestigeDoubleStrike: () => prestigePerkValue(coop?.prestigePerks?.(), "doubleStrike"),
     prestigeSplitShot: () => prestigePerkValue(coop?.prestigePerks?.(), "splitShot"), prestigeReflect: () => prestigePerkValue(coop?.prestigePerks?.(), "riposte"),
-    weaponSkills: () => coop?.weaponSkills?.(inventory.equippedRightHand || inventory.equippedLeftHand), cards: () => coop?.wornCardTotals?.(),
+    weaponSkills: () => coop?.weaponSkills?.(inventory.equippedRightHand || inventory.equippedLeftHand), cards: () => coop?.activeCardTotals?.(),
     equippedWeapon: () => inventory.equippedRightHand || inventory.equippedLeftHand,
     equippedWeaponUpgradeLevel: () => coop?.itemLevel?.(inventory.equippedRightHand || inventory.equippedLeftHand) ?? 0,
     equippedHead: () => inventory.equippedHead,
@@ -745,10 +745,10 @@ import {
         equippedHead: equipment.equippedHead,
         equippedChest: equipment.equippedChest,
         equippedRightHand: equipment.equippedRightHand,
-        equippedLeftHand: equipment.equippedLeftHand,
+        equippedLeftHand: equipment.equippedLeftHand, ...(compare ? {} : { activeCards: coop?.activeCardIds?.() }),
       }),
       researchRanks(),
-      compare ? gearOnlyLevel((itemId) => coop?.itemLevel?.(itemId) ?? 0) : (itemId) => coop?.itemLevel?.(itemId) ?? 0,
+      (itemId) => coop?.itemLevel?.(itemId) ?? 0,
       compare ? (itemId) => coop?.weaponSkills?.(itemId) : undefined,
     );
     return compare ? power : Math.round(power);

@@ -1,4 +1,12 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.912.0": [
+    "Cards are switched on in the Cards tab: one active weapon, helmet and armor card each",
+    "New prestige perks Weapon, Helmet and Armor Card Slots: one more active card of that type a rank, up to 4",
+    "Your strongest card in each worn item is active; every other slotted card is back in your cards",
+    "Gear no longer has card slots, and the Smith only refines",
+    "The Cards tab shows where each card drops and your chance a kill, with zones that open and close",
+    "Builds save your active cards",
+  ],
   "0.911.0": [
     "Wizard Staffs: a staff on every map that casts exploding bolts, with Meteor, Chain and Frost Nova skills",
     "The Smith hands out a free Starter Staff in the Town",
@@ -3504,6 +3512,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.912.0": "2026-10-17",
   "0.911.0": "2026-10-17",
   "0.910.8": "2026-10-17",
   "0.910.7": "2026-10-17",

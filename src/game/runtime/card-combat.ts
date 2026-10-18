@@ -25,7 +25,7 @@ export function enemyCardControl(enemy: EnemyState) {
 }
 
 /**
- * The worn cards in a fight (shared/card-effects.ts): what a weapon hit is multiplied by and what it sets off,
+ * The active cards in a fight (shared/card-effects.ts): what a weapon hit is multiplied by and what it sets off,
  * what a hit taken comes to, and the statuses, damage over time, shield and momentum they leave running.
  * Card damage (burn, splash, chain lightning) neither crits nor sets off more cards.
  */

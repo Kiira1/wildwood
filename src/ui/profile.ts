@@ -13,10 +13,10 @@ import { upgradeSlotForItem } from "../../shared/slot-upgrades";
 import { cleanSoulStats, soulAttackSpeedBonus, withSoulStats, type SoulStats } from "../../shared/soul-dimension";
 import { challengeMinimumInterval } from "../../shared/prestige-challenge";
 import { weaponAttackRange } from "../game/weapon-combat";
-import { cardChance, cardStatFactors, cardTotalsForLevels, cardValue } from "../../shared/card-effects";
+import { cardChance, cardStatFactors, cardTotals, cardValue } from "../../shared/card-effects";
+import { BASE_CARD_SLOTS, NO_ACTIVE_CARDS, activeCardSlots, activeCardsInPlay } from "../../shared/active-cards";
 import { STAT_NAMES } from "../../shared/card-text";
 
-type ItemCardSlots = Readonly<Record<string, { cards: readonly string[] }>>;
 
 export function formatPlayedTime(seconds: number) {
   const wholeMinutes = Math.max(0, Math.floor(seconds / 60));
@@ -43,7 +43,7 @@ export function effectiveProfileStats(
   research: PlayerResearch = createEmptyResearchRanks(),
   itemUpgradeLevels: Record<string, number> = {},
   itemRefines: Record<string, number> = {},
-  itemCards: ItemCardSlots = {},
+  activeCards: readonly string[] = [],
 ) {
   const multiplier = (rank = 0, percentPerRank = 0) => 1 + rank * percentPerRank / 100;
   const weaponItem = progress.equippedRightHand || progress.equippedLeftHand;
@@ -52,8 +52,8 @@ export function effectiveProfileStats(
   // whatever is in it inherits the tier. Looking one up by item id missed
   // every time, so the panel showed the gear with no upgrades behind it.
   const slotUpgradeLevel = (itemId: string) => slotUpgradeLevelFor(itemUpgradeLevels, itemId);
-  // What stats read: the slot's tier, the worn item's own refine and its cards (items.ts ItemLevel).
-  const itemLevel = (itemId: string) => ({ tier: slotUpgradeLevel(itemId), refine: itemRefines[itemId] ?? 0, cards: itemCards[itemId]?.cards ?? [] });
+  // What stats read: the slot's tier and the worn item's own refine (items.ts ItemLevel).
+  const itemLevel = (itemId: string) => ({ tier: slotUpgradeLevel(itemId), refine: itemRefines[itemId] ?? 0 });
   const headUpgradeLevel = itemLevel(progress.equippedHead);
   const chestUpgradeLevel = itemLevel(progress.equippedChest);
   const weaponUpgradeLevel = itemLevel(weaponItem);
@@ -76,11 +76,11 @@ export function effectiveProfileStats(
   const speedMultiplier = multiplier(research.moveSpeed, 2);
   const baseSpeed = progress.speedOverride > 0 ? progress.speedOverride : progress.speed;
   const utilitySpeed = utilityMovementSpeedBonus(research.utilityMoveSpeed);
-  const powerStats = effectivePlayerPowerStats(progress, research, itemLevel);
-  const cards = cardStatFactors(cardTotalsForLevels(weaponUpgradeLevel, headUpgradeLevel, chestUpgradeLevel));
+  const powerStats = effectivePlayerPowerStats({ ...progress, activeCards }, research, itemLevel);
+  const cards = cardStatFactors(cardTotals(activeCards));
   return {
     ...powerStats,
-    /** What the worn cards multiply each stat by, and the crit and move speed they add (card-effects.ts). */
+    /** What the active cards multiply each stat by, and the crit and move speed they add (card-effects.ts). */
     cards,
     speed: baseSpeed * speedMultiplier + utilitySpeed,
     equipment: { health: healthEquipmentBonus, damage: damageEquipmentBonus, regen: regenEquipmentBonus },
@@ -119,11 +119,14 @@ export function profileSoulInPlay(profile: PlayerProfileData): SoulStats | null 
   return profile.prestigeChallenge?.active || profile.aggroChallenge?.active ? null : profile.soulStats ?? null;
 }
 
-/** The cards in the gear a profile wears, totalled as combat totals them. */
+/** A profile's active cards in play: one of each type during an Aggro run, more with Card Slots perks. */
+export function profileActiveCardIds(profile: Pick<PlayerProfileData, "activeCards" | "prestigePerks" | "aggroChallenge">) {
+  return activeCardsInPlay(profile.activeCards ?? NO_ACTIVE_CARDS, profile.aggroChallenge?.active ? BASE_CARD_SLOTS : activeCardSlots(profile.prestigePerks));
+}
+
+/** A profile's active cards, totalled as combat totals them. */
 function profileCardTotals(profile: PlayerProfileData) {
-  const cardsOf = (itemId: string) => ({ tier: 0, refine: 0, cards: profile.itemCardSlots?.[itemId]?.cards ?? [] });
-  const { equippedRightHand, equippedLeftHand, equippedHead, equippedChest } = profile.progress;
-  return cardTotalsForLevels(cardsOf(equippedRightHand || equippedLeftHand || ""), cardsOf(equippedHead), cardsOf(equippedChest));
+  return cardTotals(profileActiveCardIds(profile));
 }
 
 /** Another player's attack speed cap: their Reflect Only wins and Quick Draw, and the Quick Draw cards they wear. */
@@ -136,15 +139,14 @@ export function profileAttackCap(profile: PlayerProfileData) {
 /** The profile's power, with the soul stats in play added as combat adds them, and crits counted (critPowerFactor). */
 export function profilePower(profile: PlayerProfileData, soul: Partial<SoulStats> | null = null) {
   const clean = cleanSoulStats(soul);
-  const level = (itemId: string) => ({ tier: slotUpgradeLevelFor(profile.itemUpgradeLevels, itemId), refine: profile.itemRefines?.[itemId] ?? 0,
-    cards: profile.itemCardSlots?.[itemId]?.cards ?? [] });
-  const { equippedRightHand, equippedLeftHand, equippedHead, equippedChest } = profile.progress;
-  const cards = cardStatFactors(cardTotalsForLevels(level(equippedRightHand || equippedLeftHand || ""), level(equippedHead), level(equippedChest)));
+  const level = (itemId: string) => ({ tier: slotUpgradeLevelFor(profile.itemUpgradeLevels, itemId), refine: profile.itemRefines?.[itemId] ?? 0 });
+  const activeCards = profileActiveCardIds(profile);
+  const cards = cardStatFactors(cardTotals(activeCards));
   const critChance = (profile.research?.criticalChance ?? 0) * .01 + prestigePerkValue(profile.prestigePerks, "keenEdge") + cards.critChance;
   const critMultiplier = criticalDamageMultiplier({ researchRank: profile.research?.criticalDamage, perks: profile.prestigePerks,
     soul: clean.critDamage, rating: profile.progress.critRating, capRank: profile.research?.critCap, card: cards.critDamage });
   return effectivePlayerPower(
-    { ...withSoulStats(profile.progress, clean, challengeMinimumInterval(profile.prestigeChallenge)), critChance, critMultiplier },
+    { ...withSoulStats(profile.progress, clean, challengeMinimumInterval(profile.prestigeChallenge)), critChance, critMultiplier, activeCards },
     profile.research,
     level,
   );
@@ -190,8 +192,8 @@ export function profileStatDisplayRows(
   const ranks = research ?? profile.research ?? createEmptyResearchRanks();
   const statValue = (value: number) => Math.abs(value) >= 1_000_000 ? formatCompactNumber(value) : Math.round(value).toLocaleString();
   const effective = effectiveProfileStats({ ...progress, attackRate: Math.max(minAttackInterval, progress.attackRate) }, ranks, profile.itemUpgradeLevels, profile.itemRefines,
-    profile.itemCardSlots);
-  // A card source: what the worn cards multiply a stat by, as a percent, a cost included.
+    profileActiveCardIds(profile));
+  // A card source: what the active cards multiply a stat by, as a percent, a cost included.
   const cardSource = (factor: number): ProfileStatDisplaySource[] => {
     const percent = Math.round((factor - 1) * 10000) / 100;
     return percent ? [{ label: "Cards", value: `${percent > 0 ? "+" : ""}${percent}%` }] : [];
@@ -305,7 +307,7 @@ export function profileStatDisplayRows(
   const techGain = researchStatRewardMultiplier(ranks), prestigeGain = prestigeStatMultiplier(prestigeLevel);
   // The guild's daily quest bonus multiplies in last, as the server pays it.
   const guildGain = Math.max(1, Number.isFinite(guildBonus) ? guildBonus : 1);
-  // Worn cards multiply on top: all-stat ones (Gravebloom) every reward, Bounty ones a single stat's.
+  // Active cards multiply on top: all-stat ones (Gravebloom) every reward, Bounty ones a single stat's.
   const cardTotals = profileCardTotals(profile);
   const cardGain = 1 + Math.max(0, cardValue(cardTotals, "allStatGain")) / 100;
   const singleStatCards = (Object.entries(cardTotals.statGain) as [keyof typeof STAT_NAMES, number][]).filter(([, value]) => value > 0);

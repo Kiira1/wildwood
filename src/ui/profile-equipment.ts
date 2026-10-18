@@ -5,7 +5,8 @@ import type { PlayerProgress } from "../coop/services/progress";
 import { itemArtMarkup } from "../game/item-presentation";
 import { isHiddenCosmeticItem } from "../../shared/equipment-appearance";
 import { weaponKind } from "../../shared/equip-best";
-import { OWNED_GEAR_SLOTS, canHoldCards } from "../../shared/cards";
+import { cardDefinition, type CardSlot } from "../../shared/cards";
+import { CARD_TYPE_NAMES } from "../../shared/active-cards";
 import {
   itemDefinition,
   itemDisplayName,
@@ -123,10 +124,13 @@ export function profileEquipmentRefine(presentation: ProfileEquipmentPresentatio
 const wearsGear = (presentation: ProfileEquipmentPresentation) =>
   presentation.kind !== "COSMETIC" || presentation.inspectionItemId !== presentation.displayItemId;
 
-/** A worn item's card slots: one empty slot with no row yet, none for a look or for gear that holds no cards. */
-export function profileEquipmentCardSlots(presentation: ProfileEquipmentPresentation, itemCardSlots: Readonly<Record<string, { slots: number; cards: readonly string[] }>> | undefined) {
-  if (!wearsGear(presentation) || !canHoldCards(presentation.inspectionItemId)) return undefined;
-  return itemCardSlots?.[presentation.inspectionItemId] ?? { slots: OWNED_GEAR_SLOTS, cards: [] };
+const CARD_TYPE_OF: Partial<Record<ProfileEquipmentSlot, CardSlot>> = { WEAPON: "HAND", HEAD: "HEAD", CHEST: "CHEST" };
+
+/** The profile's active cards of a worn weapon's, helmet's or armor's type; none for a look or boots. */
+export function profileEquipmentActiveCards(presentation: ProfileEquipmentPresentation, activeCardIds: readonly string[]) {
+  const type = CARD_TYPE_OF[presentation.slot];
+  if (!type || !wearsGear(presentation)) return undefined;
+  return { title: `Active ${CARD_TYPE_NAMES[type]} Cards`, cards: activeCardIds.filter(cardId => cardDefinition(cardId)?.slot === type) };
 }
 
 export function renderProfileEquipmentSlot(

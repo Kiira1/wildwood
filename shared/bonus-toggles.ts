@@ -26,6 +26,8 @@ const PERKS: readonly [keyof PrestigePerkRanks, string, string][] = [
   ["splitShot", "Split Shot", "Hits that reach a second enemy"], ["riposte", "Reflect", "Damage thrown back"],
   ["bossSlayer", "Boss Slayer", "Damage to bosses"], ["secondWind", "Second Wind", "Heal on kills"],
   ["longShot", "Long Shot", "Attack range"], ["fleetFoot", "Fleet Foot", "Move speed"], ["quickDraw", "Quick Draw", "Attack speed cap"],
+  ["weaponCards", "Weapon Card Slots", "More active weapon cards"], ["helmetCards", "Helmet Card Slots", "More active helmet cards"],
+  ["armorCards", "Armor Card Slots", "More active armor cards"],
 ];
 /** The research that changes combat, farming or luck, by its research column (player_research or player_luck_research). */
 const RESEARCH: readonly [string, string, string][] = [

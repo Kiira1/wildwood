@@ -44,7 +44,7 @@ import { ensureWeaponSkillRoll } from "./weapon-skills";
 import { playerEquipmentCopy, pendingEquipmentOffer, createEquipmentCopies, publishItemDrop, offerDuplicateEquipment, expireEquipmentOffers, playerItemCollection, registerItemCollection } from "./equipment-copies";
 import { playerItemRefine, playerCopyRefine, playerOre, playerRefineResult, registerItemRefine } from "./item-refine";
 import { playerMining, playerMinedNode, playerMiningLevel, registerMining } from "./mining";
-import { playerCard, playerGearSlots, playerCopySlots, playerCardDrop, registerGearCards } from "./gear-cards"; import { playerCardAttackCap, syncCardAttackCap } from "./card-attack-cap"; import { playerBuild, registerBuilds } from "./builds"; import { playerWornSkill, syncWornSkill } from "./worn-skill";
+import { playerCard, playerGearSlots, playerCopySlots, playerCardDrop, registerGearCards } from "./gear-cards"; import { playerActiveCard, registerActiveCards } from "./active-cards"; import { playerCardAttackCap, syncCardAttackCap } from "./card-attack-cap"; import { playerBuild, registerBuilds } from "./builds"; import { playerWornSkill, syncWornSkill } from "./worn-skill";
 import { awardCardDrops, playerBossCardRoll, playerCardMeter } from "./card-drops"; import { playerCardShopPurchase, registerCardShop } from "./card-shop";
 import { awardRegularEnemyLoot } from "./enemy-loot-award";
 import { moderateReportedMessage } from "./chat-report-moderation";
@@ -55,7 +55,7 @@ import { playerBonusToggle } from "./bonus-toggles";
 import { playerLuckResearch } from "./luck-research";
 import { registerBonusToggleReducers } from "./bonus-toggles-reducer";
 import { playerNameColor, registerProfileLookReducers } from "./profile-look";
-import { playerPrestige, playerPrestigePerk, prestigeExpansion, playerPrestigeExpansionPerk, playerFreeRespec } from "./prestige-expansion";
+import { playerPrestige, playerPrestigePerk, prestigeExpansion, playerPrestigeExpansionPerk, playerPrestigeCardPerk, playerFreeRespec } from "./prestige-expansion";
 import { earlierTimestamp } from "./timestamp-utils";
 import { createCosmeticConversion } from "./cosmetic-conversion";
 import { publicChatCursor, readPublicChatPage } from "./public-chat-history";
@@ -1444,7 +1444,7 @@ const spacetimedb = schema({
   playerPrestige,
   playerPrestigePerk,
   playerPrestigeChallenge, prestigeChallengeBackup, prestigeChallengeRun, playerPrestigeChallengeParked, playerAggroChallenge, aggroChallengeRun, playerAggroChallengeParked, playerAutoFarmPuppet, playerFreeRespec, playerDailyQuest, guildQuestWeek, guildMemberQuestWeek, soloQuestWeek, playerQuestWeekTotal, playerInventory, playerWideStats, playerCombatRating, duelWideStats, duelReplayWideStats, prestigeExpansion,
-  playerPrestigeExpansionPerk,
+  playerPrestigeExpansionPerk, playerPrestigeCardPerk, playerActiveCard,
   playerBonusToggle, playerNameColor,
   duelRiposte, duelCombatSnapshot, duelStaffSkill,
   playerSessionAnalytics,
@@ -3828,7 +3828,11 @@ export const { refineItem, destroyOre, myItemRefines, myCopyRefines, myOres, myR
 // Mining in the Copper Hills (mining.ts, shared/mining.ts).
 export const { claimPickaxe, mineNode, myMining, myMinedNodes } = registerMining(spacetimedb, { requireControllingPlayer, activeDuelFor, inventoryForProgress });
 export const { claimStarterStaff, myStaffSkills } = registerStaffs(spacetimedb, { requireControllingPlayer, activeDuelFor, inventoryForProgress, restoreItemToProgress, writeProgressAndPresentation });
-export const { slotCard, removeCard, myCards, myGearSlots, myCopySlots, myCardDrop } = registerGearCards(spacetimedb, { requireControllingPlayer, activeDuelFor, inventoryForProgress, writeProgressAndPresentation, syncAttackCap: syncCardAttackCap }); export const myItemCollection = registerItemCollection(spacetimedb); export const { saveBuild, applyBuildCards, myBuilds } = registerBuilds(spacetimedb, { requireControllingPlayer, activeDuelFor, inventoryForProgress, writeProgressAndPresentation, syncAttackCap: syncCardAttackCap });
+export const { slotCard, removeCard, myCards, myGearSlots, myCopySlots, myCardDrop } = registerGearCards(spacetimedb); export const myItemCollection = registerItemCollection(spacetimedb);
+// Stats, power and the attack speed cap follow the active cards.
+const afterCardsChanged = (ctx: any, identity: any) => { syncCardAttackCap(ctx, identity); const progress = readPlayerProgress(ctx, identity); if (progress) writeProgressAndPresentation(ctx, progress); };
+export const { activateCard, deactivateCard, myActiveCards } = registerActiveCards(spacetimedb, { requireControllingPlayer, activeDuelFor, afterCardsChanged });
+export const { saveBuild, applyBuildCards, myBuilds } = registerBuilds(spacetimedb, { requireControllingPlayer, activeDuelFor, afterCardsChanged });
 export const { buyShopCard, myCardShopPurchases } = registerCardShop(spacetimedb, { requireControllingPlayer, activeDuelFor });
 export const { myGuildHall, upgradeGuildHall, useGuildHallDoor } = registerGuildHall(spacetimedb, { requireGuildPlayer, requireControllingPlayer, playerWithMotion, transitionPlayerMap, persistWorldLocation });
 export const getGuildHub = spacetimedb.procedure({ afterId: t.u64() }, t.string(), (ctx, { afterId }) => ctx.withTx(tx => {

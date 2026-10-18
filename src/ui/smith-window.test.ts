@@ -155,3 +155,12 @@ it("filters the gear as the bag does and sorts it by tier, worn first", () => {
   expect(label()[0]).toBe("Bow ★7, worn");
   expect(view.q(".smith-filter-empty").hidden).toBe(true);
 });
+
+it("refines only: no Cards tab, no card slots on gear", () => {
+  const view = smith();
+  view.controller.open();
+  expect(view.dialog.querySelector(".smith-tabs")).toBeNull();
+  expect(view.dialog.querySelector(".smith-cards, .smith-slot, .smith-slot-pips")).toBeNull();
+  expect(view.dialog.textContent).not.toMatch(/slot/i);
+  expect(view.q(".smith-intro").textContent).toContain("Refine gear with ore");
+});

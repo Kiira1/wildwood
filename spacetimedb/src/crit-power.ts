@@ -4,7 +4,7 @@ import { researchInPlay } from "./bonus-toggles";
 import { prestigePerkRanks } from "./prestige";
 import { soulStatsFor } from "./soul-dimension";
 import { readCritRating } from "./wide-stats";
-import { wornCardTotalsFor } from "./worn-cards";
+import { activeCardTotalsFor } from "./active-cards";
 import { cardStatFactors } from "../../shared/card-effects";
 
 /**
@@ -15,7 +15,7 @@ import { cardStatFactors } from "../../shared/card-effects";
 export function critPowerFields(ctx: any, identity: any, rating?: number) {
   const research = researchInPlay(ctx, identity);
   const ranks = prestigePerkRanks(ctx, identity);
-  const cards = cardStatFactors(wornCardTotalsFor(ctx, identity));
+  const cards = cardStatFactors(activeCardTotalsFor(ctx, identity));
   return {
     critChance: (research?.criticalChance ?? 0) * .01 + prestigePerkValue(ranks, "keenEdge") + cards.critChance,
     critMultiplier: criticalDamageMultiplier({ researchRank: research?.criticalDamage, perks: ranks,

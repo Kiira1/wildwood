@@ -33,10 +33,10 @@ describe("cards on the profile", () => {
     progress: { maxHp: 100, damage: 20, attackRate: 1, armor: 10, regen: 2, speed: 190, speedOverride: 0, attackRange: 260, critRating: 0,
       equippedRightHand: STARTER_BOW, equippedChest: WOODEN_ARMOR, equippedHead: "", equippedLeftHand: "" },
     research: createEmptyResearchRanks(), itemUpgradeLevels: {}, itemRefines: {},
-    itemCardSlots: cards ? { [STARTER_BOW]: { slots: 1, cards: ["ember_raider_card"] }, [WOODEN_ARMOR]: { slots: 1, cards: ["mossback_card"] } } : {},
+    activeCards: cards ? { HAND: ["ember_raider_card"], HEAD: [], CHEST: ["mossback_card"] } : undefined,
   }) as unknown as Parameters<typeof profileStatDisplayRows>[0];
 
-  it("lists what the worn cards add, a cost included, and counts them in each total", () => {
+  it("lists what the active cards add, a cost included, and counts them in each total", () => {
     const rows = (withCards: boolean) => profileStatDisplayRows(profile(withCards), () => "0%", MIN_ATTACK_INTERVAL);
     const row = (withCards: boolean, kind: string) => rows(withCards).find(entry => entry.kind === kind)!;
     expect(row(true, "damage").sources).toContainEqual({ label: "Cards", value: "+4.9%" });

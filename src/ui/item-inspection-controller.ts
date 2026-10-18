@@ -39,8 +39,8 @@ export type ItemInspectionRequest = {
   ownItem?: boolean;
   /** A kept copy's own roll, shown instead of the item's first copy's. */
   skills?: WeaponSkillRoll | null;
-  /** This copy's card slots: each slotted card and what it does, then the open ones. */
-  cardSlots?: { slots: number; cards: readonly string[] };
+  /** A player's active cards of this item's type, shown on their profile's gear: each card and what it does. */
+  activeCards?: { title: string; cards: readonly string[] };
 };
 
 export type ItemInspectionController = ReturnType<typeof createItemInspectionController>;
@@ -116,11 +116,11 @@ function skillSection(itemId: string, roll: Parameters<typeof itemSkillDetails>[
   return block;
 }
 
-/** A gear copy's card slots: each slotted card's portrait, name and effects, then the open slots. */
-function cardSection({ slots, cards }: { slots: number; cards: readonly string[] }) {
-  const block = section("Cards", `${Math.min(cards.length, slots)} / ${slots}`);
+/** Active cards of one type: each card's portrait, name and effects. */
+function cardSection({ title, cards }: { title: string; cards: readonly string[] }) {
+  const block = section(title, String(cards.length));
   block.classList.add("item-inspection-cards");
-  for (let index = 0; index < slots; index++) {
+  for (let index = 0; index < Math.max(1, cards.length); index++) {
     const card = cardDefinition(cards[index]);
     const row = document.createElement("div");
     row.className = card ? `item-card-slot is-${card.rarity}` : "item-card-slot is-empty";
@@ -136,9 +136,9 @@ function cardSection({ slots, cards }: { slots: number; cards: readonly string[]
     const text = document.createElement("div");
     text.className = "item-card-text";
     const name = document.createElement("strong");
-    name.textContent = card ? cardName(card) : "Empty Slot";
+    name.textContent = card ? cardName(card) : "None Active";
     text.append(name);
-    for (const line of card ? card.effects.map(effect => cardEffectText(effect)) : ["Slot a card at the Smith"]) {
+    for (const line of card ? card.effects.map(effect => cardEffectText(effect)) : ["Cards are switched on in the Cards tab"]) {
       const effect = document.createElement("span");
       effect.textContent = line;
       text.append(effect);
@@ -247,7 +247,7 @@ export function createItemInspectionController(elements: ItemInspectionElements)
     const roll = request.skills !== undefined ? request.skills : (elements.weaponSkills ?? elements.bowSkills)?.(item.id);
     const skills = request.ownItem || request.skills ? skillSection(item.id, roll) : null;
     if (skills) copy.append(skills);
-    if (request.cardSlots && request.cardSlots.slots > 0) copy.append(cardSection(request.cardSlots));
+    if (request.activeCards) copy.append(cardSection(request.activeCards));
 
     const actionRow = renderActions(request.actions);
 
@@ -327,9 +327,12 @@ export function createItemInspectionController(elements: ItemInspectionElements)
     return true;
   }
 
-  /** A card's window: its portrait, where it drops, how many are held, what gear it goes in and each effect. */
-  /** `found` false is a card the player has never had: its shadow, and no count. */
-  function openCard(request: { cardId: string; count: number; found?: boolean }) {
+  /**
+   * A card's window: its portrait, rarity and zone, what is owned and active, each effect, the player's odds at
+   * it and Activate or Deactivate. `found` false is a card never had: its shadow, and no count.
+   */
+  function openCard(request: { cardId: string; count: number; found?: boolean; context?: string; odds?: string; note?: string;
+    actions?: readonly ItemInspectionAction[] }) {
     const card = cardDefinition(request.cardId);
     if (!card) return false;
     if (elements.panel.hidden) {
@@ -356,7 +359,7 @@ export function createItemInspectionController(elements: ItemInspectionElements)
     copy.className = "item-inspection-copy";
     const context = document.createElement("div");
     context.className = "item-inspection-context";
-    context.textContent = `Goes In: ${CARD_SLOT_NAMES[card.slot]} · ${request.found === false ? "Not Found Yet" : `${request.count.toLocaleString()} held`}`;
+    context.textContent = request.context ?? `${CARD_SLOT_NAMES[card.slot]} Card · ${request.found === false ? "Not Found Yet" : `${request.count.toLocaleString()} Owned`}`;
     const stats = document.createElement("div");
     stats.className = "item-inspection-stats";
     for (const effect of card.effects) {
@@ -365,15 +368,20 @@ export function createItemInspectionController(elements: ItemInspectionElements)
       value.dataset.statKind = effect.value < 0 ? "cost" : "card";
       stats.append(value);
     }
-    const description = document.createElement("p");
-    description.textContent = "Slot it into gear at the Smith.";
-    copy.append(context, stats, description);
-    tools.replaceChildren();
+    copy.append(context, stats);
+    for (const [text, className] of [[request.odds, "item-inspection-card-odds"], [request.note ?? "Switch it on in the Cards tab.", "item-inspection-card-note"]] as const) {
+      if (!text) continue;
+      const line = document.createElement("p");
+      line.className = className;
+      line.textContent = text;
+      copy.append(line);
+    }
+    const actionRow = renderActions(request.actions);
     const summary = document.createElement("div");
     summary.className = "item-inspection-summary";
     summary.append(preview, copy);
     elements.content.replaceChildren(summary);
-    actionsHost.replaceChildren();
+    actionsHost.replaceChildren(actionRow);
     elements.panel.hidden = false;
     elements.back.focus({ preventScroll: true });
     return true;

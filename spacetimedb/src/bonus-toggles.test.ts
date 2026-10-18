@@ -17,7 +17,7 @@ const EVERYTHING_OFF = { off: BONUS_ITEM_IDS.join(",") };
 function fixture() {
   const f = crystalFixture();
   f.seed("playerPrestige", { identity: f.ctx.sender, level: 3, perkPoints: 0, peakPower: 0, prestigedAt: f.ctx.timestamp });
-  writePrestigePerkRanks(f.ctx, f.ctx.sender, { keenEdge: 2, doubleStrike: 1, splitShot: 0, riposte: 1, bossSlayer: 0, secondWind: 0, longShot: 4, fleetFoot: 3, quickDraw: 5 });
+  writePrestigePerkRanks(f.ctx, f.ctx.sender, { keenEdge: 2, doubleStrike: 1, splitShot: 0, riposte: 1, bossSlayer: 0, secondWind: 0, longShot: 4, fleetFoot: 3, quickDraw: 5, weaponCards: 0, helmetCards: 0, armorCards: 0 });
   f.seed("playerPrestigeChallenge", { identity: f.ctx.sender, active: false, completed: 2 });
   f.seed("playerSoulStats", { identity: f.ctx.sender, damage: 50, maxHp: 80, armor: 10, regen: 1, attackSpeed: 0, critDamage: 0 });
   const research = f.db.playerResearch.identity.find(f.ctx.sender);

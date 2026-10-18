@@ -11,7 +11,7 @@ import { recordModerationAction } from "./moderation-history";
 import { advanceStreamCursor, streamCursor } from "./regular-enemy-loot";
 import type { GameReducerContext } from "./index";
 import { cardStatFactors, respawnSecondsWithCards, type CardTotals } from "../../shared/card-effects";
-import { wornCardTotalsFor } from "./worn-cards";
+import { activeCardTotalsFor } from "./active-cards";
 
 type DefeatContext = Pick<GameReducerContext, "db" | "sender" | "timestamp">;
 
@@ -381,7 +381,7 @@ export function acceptEnemyDefeats(ctx: DefeatContext, batch: EnemyDefeatBatch, 
   combat: {
     preview: (reward: EnemyStatReward) => { dps: number; attackInterval: number; projectiles?: number; reach?: number; reflectDps?: number; reflectTick?: number };
     commit: (reward: EnemyStatReward) => void;
-    /** The worn cards, when the caller already read them for this report. */
+    /** The active cards, when the caller already read them for this report. */
     wornCards?: () => CardTotals | undefined;
   },
   /** The account's clocks as throttleKillReports left them; read here when not given. */
@@ -426,7 +426,7 @@ export function acceptEnemyDefeats(ctx: DefeatContext, batch: EnemyDefeatBatch, 
   const utility = ctx.db.playerResearch.identity.find(ctx.sender);
   // Respawn cards bring the map back sooner, so the spawn wall below comes down with them.
   const regularRespawn = respawnSecondsWithCards(enemyRespawnSecondsWithResearch(balance?.regularRespawnSeconds ?? REGULAR_ENEMY_RESPAWN_SECONDS, utility?.enemyRespawn ?? 0),
-    cardStatFactors(combat.wornCards?.() ?? wornCardTotalsFor(ctx, ctx.sender)).respawn);
+    cardStatFactors(combat.wornCards?.() ?? activeCardTotalsFor(ctx, ctx.sender)).respawn);
   const mapPopulation = mapEnemyPopulation(batch.mapId);
   // The least combat time one kill on this map can cost: the whole map comes
   // back once per respawn, so no player can sustain more than population /

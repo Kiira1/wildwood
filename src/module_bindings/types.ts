@@ -966,6 +966,9 @@ export const MotionDetailFrameSchedule = __t.object("MotionDetailFrameSchedule",
 });
 export type MotionDetailFrameSchedule = __Infer<typeof MotionDetailFrameSchedule>;
 
+export const MyActiveCards = __t.object("MyActiveCards", {});
+export type MyActiveCards = __Infer<typeof MyActiveCards>;
+
 export const MyAdGemReward = __t.object("MyAdGemReward", {});
 export type MyAdGemReward = __Infer<typeof MyAdGemReward>;
 
@@ -1286,6 +1289,14 @@ export const PlayerAccountStatus = __t.object("PlayerAccountStatus", {
   isGuest: __t.bool(),
 });
 export type PlayerAccountStatus = __Infer<typeof PlayerAccountStatus>;
+
+export const PlayerActiveCard = __t.object("PlayerActiveCard", {
+  identity: __t.identity(),
+  hand: __t.array(__t.string()),
+  head: __t.array(__t.string()),
+  chest: __t.array(__t.string()),
+});
+export type PlayerActiveCard = __Infer<typeof PlayerActiveCard>;
 
 export const PlayerAdReward = __t.object("PlayerAdReward", {
   identity: __t.identity(),
@@ -1873,6 +1884,14 @@ export const PlayerPrestige = __t.object("PlayerPrestige", {
   prestigedAt: __t.timestamp(),
 });
 export type PlayerPrestige = __Infer<typeof PlayerPrestige>;
+
+export const PlayerPrestigeCardPerk = __t.object("PlayerPrestigeCardPerk", {
+  identity: __t.identity(),
+  weaponCards: __t.u32(),
+  helmetCards: __t.u32(),
+  armorCards: __t.u32(),
+});
+export type PlayerPrestigeCardPerk = __Infer<typeof PlayerPrestigeCardPerk>;
 
 export const PlayerPrestigeChallenge = __t.object("PlayerPrestigeChallenge", {
   identity: __t.identity(),

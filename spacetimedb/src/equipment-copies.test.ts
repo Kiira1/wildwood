@@ -5,7 +5,6 @@ import { fillDefeatBudget, reportEnemy } from "../../tests/helpers/enemy-defeat"
 import { eraseIdentityRows } from "./account-erasure";
 import { bowSkillKey, bowSkillRollFor, duelBowSkillFields } from "./bow-skills";
 import { offerDuplicateEquipment, offerItemForFullBag, publishItemDrop } from "./equipment-copies";
-import { gearSlotsFor, setGearSlots } from "./gear-cards";
 import { oreCount, refineLevelFor, setRefineLevel } from "./item-refine";
 import { salvageOre } from "../../shared/refine";
 import { inventoryForProgress } from "./progress-helpers";
@@ -83,20 +82,16 @@ it("raises the held weapon's skills in place, each to the higher of the two roll
   const f = archer();
   const weak = { arrowStorm: .1, ricochet: 0, piercingShot: 0 };
   f.db.playerBowSkill.key.update({ key: bowSkillKey(f.ctx.sender, IRON_BOW), identity: f.ctx.sender, itemId: IRON_BOW, ...weak });
-  f.transaction(() => {
-    setRefineLevel(f.ctx as any, f.ctx.sender, IRON_BOW, 0n, 4);
-    setGearSlots(f.ctx as any, f.ctx.sender, IRON_BOW, 0n, { slots: 2, cards: ["needle_card"] });
-  });
+  f.transaction(() => setRefineLevel(f.ctx as any, f.ctx.sender, IRON_BOW, 0n, 4));
   f.seed("playerEquipmentLock", { key: `${f.ctx.sender.toHexString()}:${IRON_BOW}`, identity: f.ctx.sender, itemId: IRON_BOW, copyId: 0n });
   luckyRandom(f, .05);
   f.run((ctx: any) => publishItemDrop(ctx, ctx.sender, IRON_BOW, true));
   const upgraded = firstRoll(f);
-  // Every skill rolled, so every skill is at least A's; the refine, cards, slots and lock stay with the weapon.
+  // Every skill rolled, so every skill is at least A's; the refine and lock stay with the weapon.
   expect(upgraded.arrowStorm).toBeGreaterThanOrEqual(weak.arrowStorm);
   expect(upgraded.ricochet).toBeGreaterThan(0);
   expect(upgraded.piercingShot).toBeGreaterThan(0);
   expect(refineLevelFor(f.ctx as any, f.ctx.sender, IRON_BOW)).toBe(4);
-  expect(gearSlotsFor(f.ctx as any, f.ctx.sender, IRON_BOW).cards).toEqual(["needle_card"]);
   expect([offers(f), copies(f)]).toEqual([[], []]);
   // A high skill stays high; the drop's low ones are added beside it.
   const strong = { arrowStorm: 99, ricochet: 0, piercingShot: 0 };
@@ -217,8 +212,7 @@ it("offers every new drop when the bag is full, and Keep makes one the first cop
   f.seed("playerInventoryCapacity", { identity: f.ctx.sender, slotsUnlocked: 1, updatedAt: f.ctx.timestamp });
   f.run(server.resolveEquipmentOffer, { id: bow.id, keep: true });
   expect(inventory(f)).toContain("crystal_bow");
-  // It rolls its slots as a drop does: 100 of 1,000 is no slot.
-  expect(gearSlotsFor(f.ctx, f.ctx.sender, "crystal_bow")).toEqual({ slots: 0, cards: [] });
+  expect(f.db.playerGearSlots.count()).toBe(0n);
 });
 
 it("counts Bag Slots research as room for a new drop", () => {
@@ -238,13 +232,13 @@ it("waits once for gear without skills, but offers each weapon roll, when the ba
   expect(offers(f).map(offer => offer.itemId)).toEqual(["crystal_helmet", "crystal_bow", "crystal_bow", "crystal_bow"]);
 });
 
-it("rolls a kept copy's own slots instead of handing it a free one", () => {
+it("rolls no card slots for a kept copy", () => {
   const f = archer();
   const offer = seedOffer(f, B);
-  luckyRandom(f, .998); // 998 of 1,000: four slots
+  luckyRandom(f, .998);
   f.run(server.resolveEquipmentOffer, { id: offer.id, keep: true });
-  const [copy] = copies(f);
-  expect(gearSlotsFor(f.ctx, f.ctx.sender, IRON_BOW, copy.id)).toEqual({ slots: 4, cards: [] });
+  expect(copies(f)).toHaveLength(1);
+  expect(f.db.playerCopySlots.count()).toBe(0n);
 });
 
 it("ignores unanswered offers after five minutes, and an ignored offer cannot be kept", () => {

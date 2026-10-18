@@ -19,9 +19,9 @@ import {
 } from "./presence-runtime";
 import { advanceDuelCombat, duelOutcome, initialDuelCombatState, DUEL_COMBAT_VERSION } from "../../shared/duel-combat";
 import { DUEL_CARDS_VERSION } from "../../shared/duel-cards";
-import { cardChance, cardStatFactors, cardValue, equippedCardIds } from "../../shared/card-effects";
+import { cardChance, cardStatFactors, cardValue } from "../../shared/card-effects";
 import { itemDefinition } from "../../shared/items";
-import { itemCardsFor, wornCardTotalsFor } from "./worn-cards";
+import { activeCardIdsFor, activeCardTotalsFor } from "./active-cards";
 import { duelAnnouncementText } from "../../shared/duel-announcement";
 import { prestigePerkRanks } from "./prestige";
 import { researchInPlay } from "./bonus-toggles";
@@ -118,7 +118,7 @@ export function createDuelRuntime(deps: DuelRuntimeDeps) {
   function duelCrit(ctx: any, identity: any) {
     const research = researchInPlay(ctx, identity);
     const ranks = prestigePerkRanks(ctx, identity);
-    const cards = cardStatFactors(wornCardTotalsFor(ctx, identity));
+    const cards = cardStatFactors(activeCardTotalsFor(ctx, identity));
     return {
       chance: Math.min(1, (research?.criticalChance ?? 0) * .01 + prestigePerkValue(ranks, "keenEdge") + cards.critChance),
       multiplier: criticalDamageMultiplier({ researchRank: research?.criticalDamage, perks: ranks,
@@ -128,7 +128,7 @@ export function createDuelRuntime(deps: DuelRuntimeDeps) {
 
   function duelDamage(ctx: any, identity: any, damage: number, opponentWeapon = "") {
     const ranks = prestigePerkRanks(ctx, identity);
-    const totals = wornCardTotalsFor(ctx, identity);
+    const totals = activeCardTotalsFor(ctx, identity);
     const baseDamage = researchedDamage(ctx, identity, damage);
     const crit = duelCrit(ctx, identity);
     // Duel simulation is deterministic and both sides replay it, so random
@@ -142,7 +142,7 @@ export function createDuelRuntime(deps: DuelRuntimeDeps) {
 
   /** Iaido's first hit is a full critical: its damage over the averaged hit. */
   function duelFirstHit(ctx: any, identity: any) {
-    if (cardValue(wornCardTotalsFor(ctx, identity), "iaido") <= 0) return 1;
+    if (cardValue(activeCardTotalsFor(ctx, identity), "iaido") <= 0) return 1;
     const crit = duelCrit(ctx, identity);
     return crit.multiplier / (1 + crit.chance * (crit.multiplier - 1));
   }
@@ -401,13 +401,13 @@ export function createDuelRuntime(deps: DuelRuntimeDeps) {
     ctx.db.duelRiposte.insert({
       duelId: insertedDuel.id,
       // Reflect cards add to the perk.
-      challengerRiposte: prestigeRiposteChance(prestigePerkRanks(ctx, ctx.sender)) + cardChance(wornCardTotalsFor(ctx, ctx.sender), "reflect") / 100,
-      opponentRiposte: prestigeRiposteChance(prestigePerkRanks(ctx, opponent)) + cardChance(wornCardTotalsFor(ctx, opponent), "reflect") / 100,
+      challengerRiposte: prestigeRiposteChance(prestigePerkRanks(ctx, ctx.sender)) + cardChance(activeCardTotalsFor(ctx, ctx.sender), "reflect") / 100,
+      opponentRiposte: prestigeRiposteChance(prestigePerkRanks(ctx, opponent)) + cardChance(activeCardTotalsFor(ctx, opponent), "reflect") / 100,
       riposteSeed: ctx.timestamp.microsSinceUnixEpoch,
     });
     ctx.db.duelCombatSnapshot.insert({ ...ctx.db.duelRiposte.duelId.find(insertedDuel.id), ...duelBowSkillFields(ctx, insertedDuel), ...duelSwordSkillFields(ctx, insertedDuel),
-      challengerCards: [...equippedCardIds(challengerProgress, itemId => itemCardsFor(ctx, ctx.sender, itemId))],
-      opponentCards: [...equippedCardIds(opponentProgress, itemId => itemCardsFor(ctx, opponent, itemId))],
+      challengerCards: activeCardIdsFor(ctx, ctx.sender),
+      opponentCards: activeCardIdsFor(ctx, opponent),
       challengerFirstHit: duelFirstHit(ctx, ctx.sender), opponentFirstHit: duelFirstHit(ctx, opponent) });
     insertDuelStaffSkills(ctx, insertedDuel.id, duelStaffSkillFields(ctx, insertedDuel));
     ctx.db.duelResolutionSchedule.insert({

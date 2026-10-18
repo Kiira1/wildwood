@@ -34,7 +34,7 @@ export type CriticalDamageParts = {
   rating?: number;
   /** Crit Cap research rank. */
   capRank?: number;
-  /** What worn cards add, a fraction of the whole multiplier (card-effects.ts cardStatFactors critDamage). */
+  /** What active cards add, a fraction of the whole multiplier (card-effects.ts cardStatFactors critDamage). */
   card?: number;
 };
 

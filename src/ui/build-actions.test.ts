@@ -18,8 +18,8 @@ function setup(build: SavedBuild | null, options: { requirement?: (itemId: strin
 const gear = (HAND: string, HEAD = "") => ({ HAND, HEAD, CHEST: "", FEET: "" });
 
 describe("equipping a build", () => {
-  it("puts the saved gear on, saves once, then moves the cards", async () => {
-    const view = setup({ slot: 0, gear: gear(IRON_BOW, SAMURAI_HAT), cards: { [IRON_BOW]: ["needle_card"] } });
+  it("puts the saved gear on, saves once, then puts the active cards back", async () => {
+    const view = setup({ slot: 0, gear: gear(IRON_BOW, SAMURAI_HAT), cards: { HAND: ["needle_card"], HEAD: [], CHEST: [] } });
     const result = await view.actions.equip(0);
     expect(result).toMatchObject({ ok: true, missingGear: 0 });
     expect([view.inventory.equippedRightHand, view.inventory.equippedHead]).toEqual([IRON_BOW, SAMURAI_HAT]);
@@ -27,8 +27,8 @@ describe("equipping a build", () => {
     expect(view.applyBuildCards).toHaveBeenCalledWith(0);
   });
 
-  it("counts gear it could not put on, and still moves the cards", async () => {
-    const view = setup({ slot: 0, gear: gear("ion_bow", SAMURAI_HAT), cards: {} }, { requirement: itemId => itemId === SAMURAI_HAT ? "Samurai Garden" : null });
+  it("counts gear it could not put on, and still puts the cards back", async () => {
+    const view = setup({ slot: 0, gear: gear("ion_bow", SAMURAI_HAT), cards: { HAND: [], HEAD: [], CHEST: [] } }, { requirement: itemId => itemId === SAMURAI_HAT ? "Samurai Garden" : null });
     const result = await view.actions.equip(0);
     expect(result.missingGear).toBe(2);
     expect(view.afterGearChange).not.toHaveBeenCalled();
@@ -37,7 +37,7 @@ describe("equipping a build", () => {
 
   it("refuses an empty build or one blocked by a duel", async () => {
     expect(await setup(null).actions.equip(0)).toEqual({ ok: false, error: "Save this build first." });
-    const blocked = setup({ slot: 0, gear: gear(IRON_BOW), cards: {} }, { blocked: "Finish Your Duel First" });
+    const blocked = setup({ slot: 0, gear: gear(IRON_BOW), cards: { HAND: [], HEAD: [], CHEST: [] } }, { blocked: "Finish Your Duel First" });
     expect(await blocked.actions.equip(0)).toEqual({ ok: false, error: "Finish Your Duel First" });
     expect(blocked.applyBuildCards).not.toHaveBeenCalled();
   });

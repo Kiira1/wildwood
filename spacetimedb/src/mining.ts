@@ -1,7 +1,7 @@
 import { SenderError, table, t } from "spacetimedb/server";
 import type { Identity } from "spacetimedb";
 import { cardStatFactors } from "../../shared/card-effects";
-import { wornCardTotalsFor } from "./worn-cards";
+import { activeCardTotalsFor } from "./active-cards";
 import type spacetimedbType from "./index";
 import {
   MINING_NODE_KINDS, MINING_RATE_SLACK, MINING_SERVER_REACH, MINING_VEINS, miningBreakSeconds, miningGain, miningNode, miningVeinMap,
@@ -175,7 +175,7 @@ export function mineNodeFor(ctx: Ctx, args: { nodeId: number }, deps: MiningDeps
   pruneMinedNodes(ctx, ctx.sender);
   if (nodeBareFor(ctx, ctx.sender, node)) throw new SenderError("That rock is still growing back.");
   // Mining Speed, Ore Find and Starshard cards in the worn gear.
-  const cards = cardStatFactors(wornCardTotalsFor(ctx, ctx.sender, progress));
+  const cards = cardStatFactors(activeCardTotalsFor(ctx, ctx.sender));
   if (microsSince(ctx, mining.lastBreakAt) < miningBreakSeconds(node, mining.mining, cards.miningSpeed) * MINING_RATE_SLACK * 1_000_000) {
     throw new SenderError("Still mining.");
   }

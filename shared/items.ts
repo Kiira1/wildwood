@@ -523,9 +523,8 @@ export function isUpgradeableItem(itemId: unknown) {
 /**
  * What an item's stat stands on: its slot's tier and, since refining (shared/refine.ts), its own refine. A bare
  * number is the slot tier alone, as every caller passed before refining, so those keep working unchanged.
- * A worn copy's level also carries the cards slotted in it, which power reads (card-effects.ts cardStatFactors).
  */
-export type ItemLevel = number | { tier?: number; refine?: number; cards?: readonly string[] } | null | undefined;
+export type ItemLevel = number | { tier?: number; refine?: number } | null | undefined;
 export function itemLevelParts(level: ItemLevel) {
   if (level === null || level === undefined) return { tier: 0, refine: 0 };
   if (typeof level === "object") return { tier: normalizeItemUpgradeLevel(level.tier ?? 0), refine: level.refine ?? 0 };

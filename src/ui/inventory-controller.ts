@@ -23,8 +23,10 @@ import { type WeaponSkillRoll } from "../../shared/weapon-skills";
 import { createInventoryDeleteMode } from "./inventory-delete-mode";
 import { withRefineStars } from "./refine-badge";
 import { REFINE_ORES, salvageOre, type OreId } from "../../shared/refine";
-import { createCardsTab } from "./cards-tab";
-import { canHoldCards } from "../../shared/cards";
+import { cardDetailRequest, createCardsTab, type CardsPort } from "./cards-tab";
+import { cardDefinition } from "../../shared/cards";
+import { cardName } from "../../shared/card-text";
+import { CARD_TYPE_NAMES } from "../../shared/active-cards";
 import type { BuildActions } from "./build-actions";
 import { createBuildsTab } from "./builds-tab";
 import { itemInspectionButtonLabel } from "./item-inspection-controller";
@@ -56,14 +58,10 @@ type InventoryDependencies = {
   refineLevel?: (itemId: string, copyId?: bigint) => number;
   /** Ores held, by kind (mined in the Copper Hills, spent at the Smith): a stack in one bag slot each. */
   ores?: () => Readonly<Partial<Record<OreId, number>>>;
-  /** Cards held, by card id: the Cards tab. */
-  cards?: () => Readonly<Record<string, number>>;
-  /** Cards in any gear's slots: they count as found in the Cards tab. */
-  slottedCards?: () => ReadonlySet<string>;
+  /** The Cards tab: cards owned and active, the odds at each, and switching them on and off. */
+  cards?: CardsPort;
   /** Saved loadouts for the Builds tab; without them the tab is not shown. */
   builds?: BuildActions;
-  /** One copy's card slots and the cards in them; `copyId` 0n is the first copy. */
-  gearSlots?: (itemId: string, copyId?: bigint) => { slots: number; cards: readonly string[] };
   destroyOre?: (oreId: OreId, expectedCount: number) => Promise<Result>;
   equipBest?: () => boolean;
   equipmentLocked?: (itemId: string, copyId?: bigint) => boolean;
@@ -278,10 +276,21 @@ export function createInventoryController(dependencies: InventoryDependencies) {
     }] : [] });
   }
 
-  const cardsView = cardsTab && dependencies.cards ? createCardsTab({
-    cards: dependencies.cards,
-    slotted: dependencies.slottedCards,
-    onInspect: (cardId, found) => dependencies.itemInspection.openCard?.({ cardId, count: dependencies.cards?.()[cardId] ?? 0, found }),
+  const cardPort = dependencies.cards;
+  /** A card's window; after Activate or Deactivate it shows the new state. */
+  const inspectCard = (cardId: string) => {
+    if (!cardPort) return;
+    dependencies.itemInspection.openCard?.(cardDetailRequest(cardPort, cardId, (result, verb) => {
+      if (result?.ok) dependencies.showMessage(`${verb} · ${cardName(cardDefinition(cardId)!)}`, "#ffd75e");
+      else dependencies.showMessage(result?.error ?? "Not Connected", "#ff9b91");
+      cardsView?.render();
+      if (dependencies.itemInspection.isOpen?.()) inspectCard(cardId);
+    }));
+  };
+  const cardsView = cardsTab && cardPort ? createCardsTab({
+    port: cardPort,
+    onInspect: inspectCard,
+    onEmptySlot: type => dependencies.showMessage(`Tap a ${CARD_TYPE_NAMES[type]} card below to switch it on`, "#ffd75e"),
   }) : null;
   if (cardsView) content.append(cardsView.element);
   else cardsTab?.remove();
@@ -329,7 +338,6 @@ export function createInventoryController(dependencies: InventoryDependencies) {
       ...(mode === "COSMETICS" ? { context: `Cosmetic · ${cosmeticReach(itemId)}` } : {}),
       ...(requiredMap ? { context: `Reach ${requiredMap} to equip` } : {}),
       ...(copy ? { skills: copy.roll } : {}),
-      ...(mode === "EQUIPMENT" && canHoldCards(itemId) && dependencies.gearSlots ? { cardSlots: dependencies.gearSlots(itemId, copyId) } : {}),
       actions: [...(copy ? copyEquipActions(copy, Boolean(requiredMap)) : moves),
         ...conversionActions(itemId), ...destructionActions(itemId, copyId)],
     });

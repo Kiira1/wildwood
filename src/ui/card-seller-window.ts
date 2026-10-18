@@ -145,7 +145,7 @@ export function createCardSellerController(deps: {
       const result = await deps.buy(rotation, card.id);
       if (result?.ok) {
         if (rotation === shownRotation) justBought.add(card.id);
-        lastResult = { text: `${cardName(card)} is in your cards. Slot it into gear at the Smith.`, good: true };
+        lastResult = { text: `${cardName(card)} is in your cards. Switch it on in the Cards tab.`, good: true };
         deps.showMessage(`Card Bought · ${cardName(card)}`, "#ffd75e");
       } else {
         lastResult = { text: result?.error ?? "Not connected", good: false };

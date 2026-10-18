@@ -49,6 +49,8 @@ type DisplayedPlayerPowerEquipment = {
   equippedChest: string;
   equippedRightHand: string;
   equippedLeftHand: string;
+  /** The active cards in play; equip comparisons leave them out. */
+  activeCards?: readonly string[];
 };
 
 /** Requires every power-bearing equipment slot for the local world and HUD labels. */

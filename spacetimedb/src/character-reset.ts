@@ -91,7 +91,7 @@ export function resetProgressToDefaults(ctx: any, activePlayer: any, keep: { res
  * prestige 6 and 21 with an empty save (ZeII, Yumi, 2026-10-11). Gems, purchases, cosmetics and mail stay.
  */
 const RESET_SAVE_TABLES = [
-  "playerPrestige", "playerPrestigePerk", "playerPrestigeExpansionPerk", "playerFreeRespec",
+  "playerPrestige", "playerPrestigePerk", "playerPrestigeExpansionPerk", "playerPrestigeCardPerk", "playerFreeRespec",
   "playerPrestigeChallenge", "prestigeChallengeBackup", "prestigeChallengeRun", "playerPrestigeChallengeParked",
   "playerAggroChallenge", "aggroChallengeRun", "playerAggroChallengeParked",
   "playerSoulStats", "playerRewardKills", "playerBonusToggle",

@@ -8,7 +8,7 @@ export const duelCombatSnapshot = table({ name: "duel_combat_snapshot", public: 
   opponentArrowStorm: t.f64(), opponentRicochet: t.f64(), opponentPiercingShot: t.f64(),
   challengerWhirlwind: t.f64().default(0), challengerDeflect: t.f64().default(0), challengerShockwave: t.f64().default(0),
   opponentWhirlwind: t.f64().default(0), opponentDeflect: t.f64().default(0), opponentShockwave: t.f64().default(0),
-  // Each side's worn cards, and a first hit's factor for Iaido (shared/duel-cards.ts).
+  // Each side's active cards, and a first hit's factor for Iaido (shared/duel-cards.ts).
   challengerCards: t.array(t.string()).default([]), opponentCards: t.array(t.string()).default([]),
   challengerFirstHit: t.f64().default(1), opponentFirstHit: t.f64().default(1),
 });
