@@ -5,11 +5,8 @@ import type { MapId, SpawnSite } from "../../world";
 import type { EnemyState, PlayerState } from "../types";
 
 export const DPS_DUMMY_NAME = "Training Dummy";
-/**
- * In the west square, between the well and the campfire: out of reach of where the Town is arrived in, so only a
- * player who walks over to it shoots it (auto attack takes any enemy in range).
- */
-export const DPS_DUMMY_POSITION = Object.freeze({ x: TOWN_CENTER.x - 790, y: TOWN_CENTER.y + 150 });
+/** Just outside the village's west fence, by the hay bales off the road to the west bridge: far from where the Town is arrived in. */
+export const DPS_DUMMY_POSITION = Object.freeze({ x: TOWN_CENTER.x - 1_247, y: TOWN_CENTER.y + 243 });
 /** Its own site id, apart from the Soul Defense Force's (-7,000) and the generated bosses' (-1). */
 const SITE_ID = -7_100;
 /** A fight ends this long after its last hit; the next hit starts a new one. */
