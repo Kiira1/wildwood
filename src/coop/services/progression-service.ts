@@ -198,6 +198,11 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
   let challengeParked = false;
   let aggroChallenge: AggroChallenge = { active: false, completed: 0 };
   let aggroParked = false;
+  // Combat reads these many times a frame; each is rebuilt only when what it is made from is replaced.
+  let keptResearch: { from: PlayerResearch | null; off: ReadonlySet<string> | null; value: PlayerResearch } = { from: null, off: null, value: createEmptyResearchRanks() };
+  let keptBonusOff: { from: ReadonlySet<string> | null; value: string[] } = { from: null, value: [] };
+  let keptAggro: { from: AggroChallenge | null; value: AggroChallenge & { parked: boolean } } = { from: null, value: { active: false, completed: 0, parked: false } };
+  let keptPerks: { aggro: AggroChallenge; perks: PlayerPrestigePerks | null; expansion: typeof expansionPerks; cards: typeof cardPerks; off: ReadonlySet<string>; value: PlayerPrestigePerks } | null = null;
   let freeRespecUsed = false;
   let dailyQuest: DailyQuestState | null = null;
   const guildQuestWeeks = new Map<string, { week: number; guildId: string; guildName: string; points: number }>();
@@ -1029,9 +1034,17 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
       },
       research: () => ({ ...localResearch }),
       /** The research combat and farming read: each switched-off research at rank zero (bonus-toggles.ts). */
-      researchInPlay: () => researchInPlayFor({ ...localResearch }, bonusOff) ?? createEmptyResearchRanks(),
+      researchInPlay: () => {
+        if (keptResearch.from !== localResearch || keptResearch.off !== bonusOff) {
+          keptResearch = { from: localResearch, off: bonusOff, value: researchInPlayFor({ ...localResearch }, bonusOff) ?? createEmptyResearchRanks() };
+        }
+        return keptResearch.value;
+      },
       /** The bonus item ids switched off. */
-      bonusOff: (): string[] => [...bonusOff],
+      bonusOff: (): string[] => {
+        if (keptBonusOff.from !== bonusOff) keptBonusOff = { from: bonusOff, value: [...bonusOff] };
+        return keptBonusOff.value;
+      },
       /** The Reflect Only row whose wins count now: none during an Aggro run, or with Reflect Only switched off. */
       reflectRewardsInPlay: () => aggroChallenge.active || !reflectRewardsOn(bonusOff) ? null : { ...prestigeChallenge },
       /**
@@ -1051,7 +1064,10 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
       prestige: () => localPrestige ? { ...localPrestige } : null,
       prestigeLevelFor: (identity: string) => prestigeLevelByIdentity.get(identity) ?? 0,
       prestigeChallenge: () => ({ ...prestigeChallenge, parked: challengeParked }),
-      aggroChallenge: () => ({ ...aggroChallenge, parked: aggroParked }),
+      aggroChallenge: () => {
+        if (keptAggro.from !== aggroChallenge || keptAggro.value.parked !== aggroParked) keptAggro = { from: aggroChallenge, value: { ...aggroChallenge, parked: aggroParked } };
+        return keptAggro.value;
+      },
       /** Every account has one respec that keeps its stats; false once it is spent. */
       freeRespecAvailable: () => !freeRespecUsed,
       /** Today's quests and the guild's standing; null until the server has drawn them. */
@@ -1062,9 +1078,15 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
         return reducerResult("daily quests", (active) => active.reducers.refreshDailyQuests({}))();
       },
       /** The ranks in play: none during an Aggro run, which plays without prestige bonuses, and each switched-off perk zero. */
-      prestigePerks: (): PlayerPrestigePerks => prestigeBonusesOff(aggroChallenge)
-        ? { keenEdge: 0, doubleStrike: 0, splitShot: 0, riposte: 0, bossSlayer: 0, secondWind: 0, longShot: 0, fleetFoot: 0, quickDraw: 0, weaponCards: 0, helmetCards: 0, armorCards: 0 }
-        : perksInPlayFor({ keenEdge: 0, doubleStrike: 0, splitShot: 0, riposte: 0, ...localPrestigePerks, ...expansionPerks, ...cardPerks }, bonusOff),
+      prestigePerks: (): PlayerPrestigePerks => {
+        const kept = keptPerks;
+        if (kept && kept.aggro === aggroChallenge && kept.perks === localPrestigePerks && kept.expansion === expansionPerks && kept.cards === cardPerks && kept.off === bonusOff) return kept.value;
+        const value = prestigeBonusesOff(aggroChallenge)
+          ? { keenEdge: 0, doubleStrike: 0, splitShot: 0, riposte: 0, bossSlayer: 0, secondWind: 0, longShot: 0, fleetFoot: 0, quickDraw: 0, weaponCards: 0, helmetCards: 0, armorCards: 0 }
+          : perksInPlayFor({ keenEdge: 0, doubleStrike: 0, splitShot: 0, riposte: 0, ...localPrestigePerks, ...expansionPerks, ...cardPerks }, bonusOff);
+        keptPerks = { aggro: aggroChallenge, perks: localPrestigePerks, expansion: expansionPerks, cards: cardPerks, off: bonusOff, value };
+        return value;
+      },
       /** The ranks the player owns, for the Prestige window. */
       storedPrestigePerks: (): PlayerPrestigePerks => ({ keenEdge: 0, doubleStrike: 0, splitShot: 0, riposte: 0, ...localPrestigePerks, ...expansionPerks, ...cardPerks }),
       /** The tier that applies to an item: whatever its slot has earned. */

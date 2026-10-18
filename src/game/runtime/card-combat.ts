@@ -16,9 +16,11 @@ const isRegular = (target: Target): target is EnemyState => !target.isBoss && !(
 const baseOf = (enemy: EnemyState) => enemy.definition ?? ENEMY_TYPES[enemy.type];
 
 /** How a stunned, slowed or weakened enemy moves, attacks and hits: 1 is untouched. */
-export function enemyCardControl(enemy: EnemyState) {
+// Shared by every enemy without a status: asked for each enemy every step.
+const UNTOUCHED = Object.freeze({ move: 1, attack: 1, damage: 1 });
+export function enemyCardControl(enemy: EnemyState): { readonly move: number; readonly attack: number; readonly damage: number } {
   const status = enemy.cardStatus;
-  if (!status) return { move: 1, attack: 1, damage: 1 };
+  if (!status) return UNTOUCHED;
   if ((status.stun ?? 0) > 0) return { move: 0, attack: 0, damage: 1 - (status.weaken?.share ?? 0) };
   const slow = 1 - (status.slow?.share ?? 0);
   return { move: slow, attack: slow, damage: 1 - (status.weaken?.share ?? 0) };

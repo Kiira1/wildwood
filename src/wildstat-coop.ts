@@ -114,7 +114,14 @@ let worldEntryPromise: Promise<boolean> | null = null;
 let worldEntryGeneration = 0;
 let worldEntryBlocked = false;
 let protocolReadyGeneration = 0;
-const accountRows = createAccountRowServices(() => connection, onChange, itemId => progressionService.api.itemUpgradeLevel(itemId), () => activeCardSlots(progressionService.api.prestigePerks()));
+// The slots follow the perks in play, which are kept until they change; so are the slots.
+let cardSlotsFor: ReturnType<typeof progressionService.api.prestigePerks> | null = null, cardSlots = activeCardSlots(null);
+function keptCardSlots() {
+  const perks = progressionService.api.prestigePerks();
+  if (perks !== cardSlotsFor) { cardSlotsFor = perks; cardSlots = activeCardSlots(perks); }
+  return cardSlots;
+}
+const accountRows = createAccountRowServices(() => connection, onChange, itemId => progressionService.api.itemUpgradeLevel(itemId), keptCardSlots);
 const accountAudio = createAccountAudioSettings();
 let accountService!: AccountService;
 const startupTelemetryRuntime = createStartupTelemetryRuntime({

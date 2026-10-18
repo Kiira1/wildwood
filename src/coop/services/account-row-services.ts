@@ -13,7 +13,7 @@ import { createBuildRows } from "./build-service";
 import { createItemCollectionRows } from "./item-collection-service";
 import { itemLevelParts, type ItemLevel } from "../../../shared/items";
 import { NO_CARDS, cardStatFactors, cardTotals, type CardTotals } from "../../../shared/card-effects";
-import { BASE_CARD_SLOTS, activeCardsInPlay, type ActiveCardSlots } from "../../../shared/active-cards";
+import { BASE_CARD_SLOTS, activeCardsInPlay, type ActiveCardSlots, type ActiveCards } from "../../../shared/active-cards";
 
 /**
  * The account's own small rows, each read through a caller-scoped view and
@@ -40,14 +40,16 @@ export function createAccountRowServices(connection: () => DbConnection | null, 
   const cardShop = createCardShopRows(notify);
   const builds = createBuildRows(notify);
   const collection = createItemCollectionRows(notify);
-  // The active cards in play, added up again only when they change.
-  let activeKey = "", active: { ids: readonly string[]; totals: CardTotals; stats: ReturnType<typeof cardStatFactors> } = { ids: [], totals: NO_CARDS, stats: cardStatFactors(NO_CARDS) };
+  // The active cards in play, added up again only when the cards or the slots are replaced (read many times a frame).
+  let activeFrom: ActiveCards | null = null, activeSlots: ActiveCardSlots | null = null;
+  let active: { ids: readonly string[]; totals: CardTotals; stats: ReturnType<typeof cardStatFactors> } = { ids: [], totals: NO_CARDS, stats: cardStatFactors(NO_CARDS) };
   const activeCards = () => {
-    const ids = activeCardsInPlay(cards.api.activeCards(), cardSlots());
-    const key = ids.join(",");
-    if (key !== activeKey) {
+    const from = cards.api.activeCards(), slots = cardSlots();
+    if (from === activeFrom && slots === activeSlots) return active;
+    activeFrom = from; activeSlots = slots;
+    const ids = activeCardsInPlay(from, slots);
+    if (ids.join(",") !== active.ids.join(",")) {
       const totals = cardTotals(ids);
-      activeKey = key;
       active = { ids, totals, stats: cardStatFactors(totals) };
     }
     return active;

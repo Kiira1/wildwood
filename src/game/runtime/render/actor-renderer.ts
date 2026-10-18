@@ -619,8 +619,9 @@ export function createActorRenderer(options: {
     const y = screenY(renderY);
     if (x < -65 || y < -70 || x > width + 65 || y > height + 70) return;
 
-    const equipment = options.equipmentForIdentity(other.id);
-    if (death && drawDeadPlayer({ ...other, ...equipment }, death, 1)) return;
+    // A drawn player carries its own gear: looking it up rebuilt every player on the map, once per player drawn.
+    const equipment = other;
+    if (death && drawDeadPlayer(other, death, 1)) return;
 
     const regularEnemyCombat = other.regularEnemyCombat;
     const attack = regularEnemyCombat;
@@ -666,7 +667,7 @@ export function createActorRenderer(options: {
       ? Math.atan2(attack.targetY - other.y, attack.targetX - other.x)
       : weaponItem ? clientCombatFacing(other) : null;
     options.drawShadow(x, y + 29, 34, .16);
-    drawPlayerSprite({ ...other, ...equipment, x, y, facing: combatFacing ?? other.facing, combatFacing }, 1);
+    drawPlayerSprite({ ...other, x, y, facing: combatFacing ?? other.facing, combatFacing }, 1);
     if (regularEnemyCombat) {
       options.drawStatus({
         x,

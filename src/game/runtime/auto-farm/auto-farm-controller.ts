@@ -296,18 +296,26 @@ export function createAutoFarmController(options: {
   // Pull's groups. Any number can be switched to Aggro; it pulls as many at once as
   // the limit, one more per Aggro win, taking the one being farmed first, then the next largest sliders.
   // Before any switch is touched, Pull Whole Group's own picks: the farmed group, then the largest sliders.
-  let pulled = new Set<string>(), pulledKey = '';
+  let pulled = new Set<string>();
+  // What the pull was picked from; asked once per enemy each frame, so compared as values rather than a built key.
+  let pulledMap = '', pulledSites = -1, pulledSelected: string | null = null, pulledCount = -1, pulledOrder: readonly string[] | null = null,
+    pulledPicks: typeof pullPicks | undefined = undefined, pulledTurn = -1;
   const pullLimit = () => Math.max(0, options.pullCamps?.() ?? 1);
   /** This map's groups switched to Aggro (all of them, past the limit too). */
+  let aggroKept: string[] = [], aggroMap = '', aggroSites = -1, aggroPicks: typeof pullPicks | undefined = undefined;
   function aggroGroups(): string[] {
     if (!pullPicks) return [];
+    const mapId = options.mapId();
+    if (mapId === aggroMap && spawnSites.length === aggroSites && pullPicks === aggroPicks) return aggroKept;
     const here = new Set(spawnSites.map(site => choiceKey(site)));
-    return [...new Set(pullPicks.map(normalizeKey))].filter(group => here.has(group as AutoFarmGroup));
+    aggroMap = mapId; aggroSites = spawnSites.length; aggroPicks = pullPicks;
+    return aggroKept = [...new Set(pullPicks.map(normalizeKey))].filter(group => here.has(group as AutoFarmGroup));
   }
   function pulledGroups() {
     // Zero during an Aggro run: its own chasing groups are the run's pull.
-    const count = pullLimit(), key = `${options.mapId()}|${spawnSites.length}|${selected}|${count}|${order.join()}|${pullPicks?.join() ?? '-'}|${pullTurn}`;
-    if (key === pulledKey) return pulled;
+    const count = pullLimit(), mapId = options.mapId();
+    if (mapId === pulledMap && spawnSites.length === pulledSites && selected === pulledSelected && count === pulledCount
+      && order === pulledOrder && pullPicks === pulledPicks && pullTurn === pulledTurn) return pulled;
     const preferred = [selected, ...order].filter((group): group is string => Boolean(group));
     if (pullPicks) {
       const switched = aggroGroups();
@@ -318,7 +326,8 @@ export function createAutoFarmController(options: {
         : [...new Set([...preferred.filter(group => switched.includes(group)), ...switched])];
       pulled = new Set(turns.slice(0, count));
     } else pulled = new Set([...new Set(preferred)].slice(0, count));
-    pulledKey = key;
+    pulledMap = mapId; pulledSites = spawnSites.length; pulledSelected = selected; pulledCount = count;
+    pulledOrder = order; pulledPicks = pullPicks; pulledTurn = pullTurn;
     return pulled;
   }
   /** Seconds each Aggro group has been pulled on this map, and the turn counter that moves the pull on. */
@@ -958,7 +967,7 @@ export function createAutoFarmController(options: {
     /** This map's groups Aggro is pulling now, as the sliders name them: at most the limit. */
     pulledGroupKeys: (): string[] => pulling() ? [...pulledGroups()] : [],
     /** This map's groups switched to Aggro, however many; before any switch is touched, what Pull Whole Group brings. */
-    aggroGroupKeys: (): string[] => pullPicks ? aggroGroups() : pulling() ? [...pulledGroups()] : [],
+    aggroGroupKeys: (): string[] => pullPicks ? [...aggroGroups()] : pulling() ? [...pulledGroups()] : [],
     /** Switches Aggro on or off for one of this map's groups. The first switch keeps what Pull was already bringing. */
     /** This map's groups on Aggro, all at once (the window's Go); picks for groups this map lacks are kept. */
     setAggroGroups(keys: readonly string[]) {
@@ -966,7 +975,7 @@ export function createAutoFarmController(options: {
       const elsewhere = (pullPicks ?? []).filter(pick => !here.includes(normalizeKey(pick) as AutoFarmGroup));
       pullPicks = [...elsewhere, ...keys.filter(key => here.includes(key as AutoFarmGroup))];
       writeAutoFarmPullGroups(pullPicks, options.priorityStorage);
-      pulledKey = '';
+      pulledMap = '';
     },
     setGroupPulled(group: string, on: boolean) {
       const current = pullPicks ? aggroGroups() : pulling() ? [...pulledGroups()] : [];
@@ -975,7 +984,7 @@ export function createAutoFarmController(options: {
       const here = on ? [...new Set([...current, group])] : current.filter(key => key !== group);
       pullPicks = [...elsewhere, ...here];
       writeAutoFarmPullGroups(pullPicks, options.priorityStorage);
-      pulledKey = '';
+      pulledMap = '';
       if ((active && followsPull) || zeroWaiting) startZero();
       return true;
     },
