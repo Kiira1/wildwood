@@ -1,9 +1,11 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.914.2": [
+    "Auto Farm has one Move At slider: Fight Bosses fights the boss once you're ready for the map it unlocks, then moves on",
+  ],
   "0.914.1": [
     "Cards tab: Equip, first, works like the Smith did: pick Weapon, Helmet or Armor and equip from your cards of that type",
     "Cards tab: Cards shows every card as a tile again, by zone, every zone open to start",
     "Soul Level goes up to 20, and each level needs twice the Soul XP of the one before instead of three times",
-    "Auto Farm has one Move At slider: Fight Bosses fights the boss once you're ready for the map it unlocks, then moves on",
   ],
   "0.914.0": [
     "A Training Dummy stands just outside the Town's west fence: hit it to see your DPS",
@@ -3558,6 +3560,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.914.2": "2026-10-18",
   "0.914.1": "2026-10-18",
   "0.914.0": "2026-10-18",
   "0.913.6": "2026-10-17",
