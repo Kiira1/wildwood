@@ -49,6 +49,7 @@ type ExpectedApiKey =
   | "analyticsDashboard"
   | "accessAuditEntries"
   | "accountState"
+  | "sessionConflict"
   | "acknowledgeBalanceApologyGift"
   | "activeItemUpgrade"
   | "activeItemUpgrades"

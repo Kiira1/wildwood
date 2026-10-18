@@ -69,7 +69,24 @@ function decodeJsonPart(value: string) {
   }
 }
 
+/**
+ * The game loop asks whether the account is in conflict every frame and step, which read the stored token
+ * each time: a signed-in player decoded it hundreds of times a second. A token's parse never changes, so the
+ * last few are kept; every check on the claims still runs on each call.
+ */
+const PARSED_TOKENS_KEPT = 4;
+const parsedTokens = new Map<string, ParsedIdToken>();
+
 function parseIdToken(token: string): ParsedIdToken {
+  const kept = parsedTokens.get(token);
+  if (kept) return kept;
+  const parsed = parseIdTokenText(token);
+  if (parsedTokens.size >= PARSED_TOKENS_KEPT) parsedTokens.delete(parsedTokens.keys().next().value!);
+  parsedTokens.set(token, parsed);
+  return parsed;
+}
+
+function parseIdTokenText(token: string): ParsedIdToken {
   if (!token || token.length > MAX_TOKEN_LENGTH) throw new OidcIdTokenError("format");
   const parts = token.split(".");
   if (parts.length !== 3) throw new OidcIdTokenError("format");

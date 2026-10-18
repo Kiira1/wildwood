@@ -889,6 +889,8 @@ export const wildstatCoop = {
     return virtualPlayerLoadTest.stop(Boolean(connection?.isActive && isDeveloperIdentity(localIdentity)));
   },
   ...accountService.api,
+  /** Whether another tab holds the world: the one flag the game loop reads each frame, without the whole account state. */
+  sessionConflict: () => worldEntryBlocked,
   accountState() {
     const diagnostics = connectionLifecycle.snapshot();
     return {

@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.912.1": [
+    "Smoother play for signed-in players: the game no longer re-reads your sign-in every frame",
+  ],
   "0.912.0": [
     "Cards are switched on in the Cards tab: one active weapon, helmet and armor card each",
     "New prestige perks Weapon, Helmet and Armor Card Slots: one more active card of that type a rank, up to 4",
@@ -3512,6 +3515,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.912.1": "2026-10-17",
   "0.912.0": "2026-10-17",
   "0.911.0": "2026-10-17",
   "0.910.8": "2026-10-17",

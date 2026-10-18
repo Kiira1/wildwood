@@ -1501,7 +1501,7 @@ import {
     serverMapId: () => inTutorial() ? ONBOARDING_MAP_ID : coop?.localState?.()?.mapId,
     serverPlayerState: () => inTutorial() ? undefined : coop?.localState?.() ?? undefined,
     connected: () => Boolean(coop?.isConnected?.()),
-    accountInConflict: () => Boolean(coop?.accountState?.().sessionConflict),
+    accountInConflict: () => Boolean(coop?.sessionConflict?.()),
     lowPerformanceMode: appShell.lowPerformanceMode,
     presentationInputActive: () => playerInput.movement().source !== "none", autoFarmActive: () => autoFarm.state().active,
     presentationUiActive: () => chatRuntime.isInteracting() || profileWindow.isOpen(),
@@ -1577,7 +1577,7 @@ import {
     () => session.hasStarted() && !inTutorial());
 
   const developerItemGift = createItemGiftController({
-    canShow: () => session.hasStarted() && !inTutorial() && Boolean(coop?.isConnected?.()) && !coop?.accountState?.().sessionConflict,
+    canShow: () => session.hasStarted() && !inTutorial() && Boolean(coop?.isConnected?.()) && !coop?.sessionConflict?.(),
     identity: () => coop?.localIdentity?.() ?? "",
     gift: () => coop?.pendingItemGift?.() ?? null,
     claim: async key => coop?.claimItemGift?.(key),
