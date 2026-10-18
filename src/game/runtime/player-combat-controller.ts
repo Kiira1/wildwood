@@ -703,7 +703,7 @@ export function createPlayerCombatController(options: {
     player.hp -= dealt;
     // Reflect throws the hit back at whoever dealt it, bosses included, as it
     // arrived (before armor, which spares only the player), but never more
-    // than the player's max health; a Reflect Only run has no cap.
+    // than half the player's max health; a Reflect Only run has no cap.
     // The server's bounds allow it. A hit the shield soaks still landed, so it reflects as well.
     const reflectChance = reflectChanceInPlay();
     if (source && !source.dead && throughArmor > 0 && reflectChance > 0 && reflectBag.draw(reflectChance)) {

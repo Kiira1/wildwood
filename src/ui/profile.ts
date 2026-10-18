@@ -375,7 +375,7 @@ export function profileStatDisplayRows(
   };
   perkRow("doubleStrike", "double-strike", "(Chance a hit lands twice)", "doubleStrike");
   perkRow("splitShot", "split-shot", "(Chance to strike a second enemy)", "splitShot");
-  perkRow("riposte", "riposte", "(Reflects 100% of each hit before armor, up to your max health; no cap in Reflect Only; half in duels)", "reflect");
+  perkRow("riposte", "riposte", "(Reflects 100% of each hit before armor, up to half your max health; no cap in Reflect Only; half in duels)", "reflect");
   // Mining, once the Smith has handed over a pickaxe: every rock raises it, and it breaks rocks faster.
   if (profile.mining != null) {
     stats.push({

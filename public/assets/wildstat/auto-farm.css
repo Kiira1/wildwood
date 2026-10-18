@@ -1032,7 +1032,7 @@ html.text-outline-shadow .inventory-stack-count { text-shadow: 1px 0 0 #080b08, 
 .guild-hall-sheet .guild-hall-enter[hidden] { display: none; }
 
 /* A card found: rays, a burst and sparks in its rarity's colour behind the card, until tapped. */
-.card-found { --card-found-color: #b9c3cc; position: fixed; inset: 0; z-index: 38; display: grid; place-items: center; overflow: hidden; background: radial-gradient(circle at 50% 40%, rgba(0,0,0,.3), rgba(0,0,0,.78)); cursor: pointer; animation: card-found-in .25s ease-out both; }
+.card-found { --card-found-color: #b9c3cc; position: fixed; inset: 0; z-index: 38; pointer-events: none; display: grid; place-items: center; overflow: hidden; background: radial-gradient(circle at 50% 40%, rgba(0,0,0,.3), rgba(0,0,0,.78)); cursor: pointer; animation: card-found-in .25s ease-out both; }
 .card-found[hidden] { display: none; }
 .card-found-rays, .card-found-burst, .card-found-sparks { position: absolute; top: 40%; left: 50%; pointer-events: none; }
 /* Sized to the circle the mask leaves visible (a 40vmax radius): it was 190vmax, five times the pixels to turn. */
@@ -1049,7 +1049,6 @@ html.text-outline-shadow .inventory-stack-count { text-shadow: 1px 0 0 #080b08, 
 .card-found-origin { margin: 0; color: var(--card-found-color); font: 800 13px/1.2 var(--font-rounded); animation: card-found-rise .45s ease-out .45s both; }
 .card-found-effects { display: grid; gap: 3px; margin-top: 2px; font: 900 15px/1.25 var(--font-rounded); animation: card-found-rise .45s ease-out .55s both; }
 .card-found-effects [data-stat-kind="cost"] { color: #ff9b91; }
-.card-found-hint { margin: 12px 0 0; color: rgba(255,255,255,.78); font: 800 13px/1 var(--font-rounded); letter-spacing: .04em; animation: card-found-rise .45s ease-out .9s both, card-found-blink 1.4s ease-in-out 1.4s 6 alternate; }
 @keyframes card-found-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes card-found-rays-in { to { opacity: .42; } }
 @keyframes card-found-spin { from { transform: translate(-50%, -50%) rotate(0deg); } to { transform: translate(-50%, -50%) rotate(360deg); } }

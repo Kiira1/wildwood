@@ -6,27 +6,28 @@ export type CardFound = { cardId: string; artSource: string };
 
 const KICKERS: Readonly<Record<CardRarity, string>> = { regular: "Card Found", elite: "Elite Card Found", boss: "Boss Card Found" };
 const SPARKS = 14;
-/** A tap this soon after the card appears is a stray combat tap, not a dismissal. */
-export const CARD_FOUND_TAP_GUARD_MS = 700;
+/** How long each card found stays on screen. */
+export const CARD_FOUND_SHOW_MS = 3_500;
 
 /**
- * A card found takes the middle of the screen until tapped: light rays, a burst and sparks in its rarity's
- * colour, the card popping in with a shine, then its name and effects. The game keeps running behind it.
- * Cards found together wait their turn. Escape also closes it.
+ * A card found is shown in the middle of the screen for a few seconds: light rays, a burst and sparks in its
+ * rarity's colour, the card popping in with a shine, then its name and effects. It never takes input: taps and
+ * keys go to the game behind it (it used to wait for a tap, and a player held still by it died). Cards found
+ * together take turns. Escape moves it on sooner.
  */
-export function createCardFoundOverlay(options: { root?: Document; now?: () => number } = {}) {
+export function createCardFoundOverlay(options: { root?: Document; wait?: (ms: number, done: () => void) => () => void } = {}) {
   const doc = options.root ?? document;
-  const now = options.now ?? (() => performance.now());
+  const wait = options.wait ?? ((ms: number, done: () => void) => { const timer = setTimeout(done, ms); return () => clearTimeout(timer); });
   const overlay = doc.createElement("div");
   overlay.className = "card-found";
   overlay.hidden = true;
-  overlay.setAttribute("role", "dialog");
+  overlay.setAttribute("role", "status");
   overlay.setAttribute("aria-live", "polite");
   overlay.setAttribute("aria-labelledby", "cardFoundName");
   doc.body.append(overlay);
   const queue: CardFound[] = [];
   let showing = false;
-  let readyAt = 0;
+  let cancel: (() => void) | null = null;
 
   const part = (tag: string, className: string, text?: string) => {
     const element = doc.createElement(tag);
@@ -65,11 +66,13 @@ export function createCardFoundOverlay(options: { root?: Document; now?: () => n
     }
     const body = part("div", "card-found-body");
     body.append(part("p", "card-found-kicker", KICKERS[card.rarity]), art, name,
-      part("p", "card-found-origin", cardOrigin(card)), effects, part("p", "card-found-hint", "Tap to Continue"));
+      part("p", "card-found-origin", cardOrigin(card)), effects);
     overlay.replaceChildren(part("div", "card-found-rays"), part("div", "card-found-burst"), sparks, body);
   }
 
   function next() {
+    cancel?.();
+    cancel = null;
     const found = queue.shift();
     if (!found) {
       showing = false;
@@ -78,16 +81,11 @@ export function createCardFoundOverlay(options: { root?: Document; now?: () => n
       return;
     }
     showing = true;
-    readyAt = now() + CARD_FOUND_TAP_GUARD_MS;
     render(found);
     overlay.hidden = false;
+    cancel = wait(CARD_FOUND_SHOW_MS, next);
   }
 
-  function dismiss() {
-    if (showing && now() >= readyAt) next();
-  }
-
-  overlay.addEventListener("click", dismiss);
   doc.addEventListener("keydown", (event) => {
     if (overlay.hidden || event.key !== "Escape") return;
     // Escape belongs to a text field that has focus.
@@ -95,7 +93,7 @@ export function createCardFoundOverlay(options: { root?: Document; now?: () => n
     if (focused && /^(INPUT|TEXTAREA|SELECT)$/.test(focused.tagName)) return;
     // One Escape closes one layer: the card, not the window beneath it too.
     event.stopImmediatePropagation();
-    dismiss();
+    next();
   }, true);
 
   return {

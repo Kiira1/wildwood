@@ -171,11 +171,11 @@ describe("player attack timing", () => {
     expect(reflecting.player.hp).toBe(960);
     expect(attacker.hp).toBe(960);
 
-    // Never more than the player's max health, whatever their damage: a hit bigger than that is cut to it.
+    // Never more than half the player's max health, whatever their damage: a hit bigger than that is cut to it.
     const fragile = createCombatHarness({ prestigeReflect: () => 1 });
     const bruiser = spawn(fragile, 30);
     fragile.controller.damagePlayer(40, bruiser);
-    expect(bruiser.hp).toBe(970);
+    expect(bruiser.hp).toBe(985);
     // A Reflect Only run has no cap: Reflect is all the damage it has.
     const challenge = createCombatHarness({ prestigeReflect: () => 1, reflectOnly: () => true });
     const challenger = spawn(challenge, 30);

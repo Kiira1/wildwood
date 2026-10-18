@@ -17,7 +17,7 @@ export const PRESTIGE_PERKS = {
     detail: "Chance for a shot to also hit a second nearby enemy. Not against bosses." },
   // Shown as Reflect; the id stays riposte because it names a database column.
   riposte: { title: "Reflect", perRank: .06,
-    detail: "Chance to send an enemy's hit back at it, up to your max health. No limit in Reflect Only. Half in duels." },
+    detail: "Chance to send an enemy's hit back at it, up to half your max health. No limit in Reflect Only. Half in duels." },
   bossSlayer: { title: "Boss Slayer", perRank: .10, detail: "More weapon damage to bosses. Reflected damage is not boosted." },
   secondWind: { title: "Second Wind", perRank: .01, detail: "Heal part of your max health each time you kill a regular enemy." },
   longShot: { title: "Long Shot", perRank: 5, detail: "Longer attack range, for bows and melee weapons." },
@@ -54,13 +54,15 @@ export const RIPOSTE_REFLECT_SHARE = .5;
  * the enemy, so deep Endless was easier with Reflect than anything else.
  */
 export const WORLD_REFLECT_SHARE = 1;
+/** A reflected hit outside Reflect Only deals at most this share of the player's max health (was all of it). */
+export const WORLD_REFLECT_MAX_HEALTH_SHARE = .5;
 /**
- * What one reflected hit deals: the whole hit, up to the player's max health.
+ * What one reflected hit deals: the whole hit, up to half the player's max health.
  * A Reflect Only run is uncapped: Reflect is the only damage it has.
  */
 export function worldReflectDamage(hit: number, maxHealth: number, reflectOnly = false) {
   const whole = Math.max(0, hit) * WORLD_REFLECT_SHARE;
-  return reflectOnly ? whole : Math.max(0, Math.min(whole, Number.isFinite(maxHealth) ? maxHealth : 0));
+  return reflectOnly ? whole : Math.max(0, Math.min(whole, (Number.isFinite(maxHealth) ? maxHealth : 0) * WORLD_REFLECT_MAX_HEALTH_SHARE));
 }
 
 /** The chance a hit taken is thrown back, at this player's rank. */

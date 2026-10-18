@@ -1,4 +1,8 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.914.5": [
+    "A Card Found moment is only for a card new to you, and never stops you moving; another copy is a small line in its rarity's colour",
+    "Reflect throws back up to half your max health instead of all of it; still no cap in Reflect Only",
+  ],
   "0.914.4": [
     "Auto Farm with only Aggro on stands where you left it, by a boss too, instead of walking off to a clear spot first",
     "Cards tab: tighter at the top, no drop note, and zone counts without the word Owned",
@@ -3568,6 +3572,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.914.5": "2026-10-18",
   "0.914.4": "2026-10-18",
   "0.914.3": "2026-10-18",
   "0.914.2": "2026-10-18",

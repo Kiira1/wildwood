@@ -1897,7 +1897,7 @@ import {
     readyToShow: () => !inTutorial() && Boolean(session?.isRunning()),
   });
   if (coop?.setOnChange) coop.setOnChange(coopSession.onChange);
-  coop?.setOnGemDrop?.(({ amount }) => runtimeHud.showGemDrop(amount)); watchCardDrops(coop);
+  coop?.setOnGemDrop?.(({ amount }) => runtimeHud.showGemDrop(amount)); watchCardDrops(coop, { duplicate: copy => runtimeHud.showCardCopy(copy) });
   // A duplicate of held equipment is not revealed here: it can only upgrade the held weapon's skills.
   createEquipmentOfferPrompt({ coop, inventory, renderInventory, showMessage, ready: () => Boolean(session?.isRunning()) });
   coop?.setOnItemDrop?.(({ itemId, alreadyOwned }) => {

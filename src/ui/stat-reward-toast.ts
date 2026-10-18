@@ -149,6 +149,29 @@ export function createStatRewardToast(text: string, color: string, attackSpeedCa
   return entry;
 }
 
+export type CardCopy = { name: string; count: number; color: string; artSource: string };
+/** Another copy of a card already owned: its portrait, name and how many are owned now, in its rarity's colour. */
+export function createCardCopyToast(copy: CardCopy) {
+  const entry = document.createElement("div");
+  entry.className = "pickup stat-reward-toast progress-completion-toast card-copy-toast";
+  entry.style.setProperty("--stat-reward-accent", copy.color);
+  entry.setAttribute("role", "status");
+  const amount = `×${copy.count.toLocaleString("en-US")}`;
+  entry.setAttribute("aria-label", `${copy.name} ${amount}`);
+  const icon = document.createElement("span");
+  icon.className = "stat-reward-icon card-copy-art";
+  icon.setAttribute("aria-hidden", "true");
+  if (copy.artSource) icon.style.backgroundImage = `url(${copy.artSource})`;
+  const label = document.createElement("span");
+  label.className = "stat-reward-label";
+  label.textContent = copy.name;
+  const value = document.createElement("strong");
+  value.className = "stat-reward-value";
+  value.textContent = amount;
+  entry.append(icon, label, value);
+  return entry;
+}
+
 export type ProgressCompletionKind = "Research" | "Upgrade" | "Soul Level";
 /** Uses the enemy reward card for completed account progression, and a Soul Level reached. */
 export function createProgressCompletionToast(kind: ProgressCompletionKind, detail: string, iconText: string, color: string) {

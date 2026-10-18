@@ -8,6 +8,7 @@ import { IRON_BOW, STARTER_BOW, STARTER_STONE } from "../game/inventory";
 import { watchCardDrops } from "./card-drop-feedback";
 import { setCardFoundPopupsEnabled } from "./card-found-setting";
 import { CARDS } from "../../shared/cards";
+import { CARD_FRAME_COLORS } from "./card-portrait";
 afterEach(() => vi.unstubAllGlobals());
 
 function page(body = "") {
@@ -316,15 +317,22 @@ it("shows a profile's active cards of an item's type in its window: each card's 
   expect(content.querySelector(".item-inspection-cards")).toBeNull();
 });
 
-it("hands each card found to the card moment, in the order found, with its portrait", async () => {
+it("gives a card found for the first time the moment, in the order found, and another copy a line in its rarity's colour", async () => {
   page();
   let listener = null as ((drop: { cardIds: readonly string[] }) => void) | null;
+  // The counts as they stand once the find has landed: one Needle (new), three Dragons (two before), two Spitters (both new).
+  const owned: Record<string, number> = { needle_card: 1, dragon_card: 3, spitter_card: 2 };
   const shown: Array<{ cardId: string; artSource: string }> = [];
-  watchCardDrops({ setOnCardDrop: callback => { listener = callback; } }, found => shown.push(found));
-  listener?.({ cardIds: ["needle_card", "not_a_card", "dragon_card"] });
+  const copies: Array<{ name: string; count: number; color: string; artSource: string }> = [];
+  watchCardDrops({ setOnCardDrop: callback => { listener = callback; }, cards: () => owned },
+    { show: found => shown.push(found), duplicate: copy => copies.push(copy) });
+  listener?.({ cardIds: ["needle_card", "not_a_card", "dragon_card", "spitter_card", "spitter_card"] });
   await vi.waitFor(() => expect(shown).toHaveLength(2));
-  expect(shown.map(found => found.cardId)).toEqual(["needle_card", "dragon_card"]);
+  await vi.waitFor(() => expect(copies).toHaveLength(2));
+  expect(shown.map(found => found.cardId)).toEqual(["needle_card", "spitter_card"]);
   expect(shown.every(found => typeof found.artSource === "string")).toBe(true);
+  expect(copies.map(copy => [copy.name, copy.count, copy.color]).sort()).toEqual([
+    ["Dragon Card", 3, CARD_FRAME_COLORS.boss.rim], ["Spitter Card", 2, CARD_FRAME_COLORS.regular.rim]].sort());
 });
 
 it("shows the pickaxe in the loadout's Tool slot, never to be equipped, and says what it does", () => {
@@ -355,7 +363,7 @@ it("shows no card moment with Card Found Popups switched off", async () => {
   page();
   let listener = null as ((drop: { cardIds: readonly string[] }) => void) | null;
   const shown: unknown[] = [];
-  watchCardDrops({ setOnCardDrop: callback => { listener = callback; } }, found => shown.push(found));
+  watchCardDrops({ setOnCardDrop: callback => { listener = callback; } }, { show: found => shown.push(found) });
   setCardFoundPopupsEnabled(false);
   listener?.({ cardIds: ["needle_card"] });
   await new Promise(resolve => setTimeout(resolve, 20));

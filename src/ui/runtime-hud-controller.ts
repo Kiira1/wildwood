@@ -12,6 +12,8 @@ import {
 } from "./item-drop-reveal";
 import {
   createProgressCompletionToast,
+  createCardCopyToast,
+  type CardCopy,
   type ProgressCompletionKind,
   createQuestProgressToast,
   updateQuestProgressToast,
@@ -191,6 +193,16 @@ export function createRuntimeHudController(dependencies: RuntimeHudDependencies)
 
   function showProgressCompletion(kind: ProgressCompletionKind, detail: string, icon: string, color: string) {
     const entry = createProgressCompletionToast(kind, detail, icon, color);
+    elements.pickupLog.appendChild(entry);
+    const key = `completion:${++completionToastId}`;
+    const reward = { entry, total: 0, fadeTimer: 0, removeTimer: 0 };
+    activeStatRewards.set(key, reward);
+    refreshStatRewardLifetime(key, reward);
+  }
+
+  /** Another copy of a card already owned: a line in the pickup log, as a stat reward shows. */
+  function showCardCopy(copy: CardCopy) {
+    const entry = createCardCopyToast(copy);
     elements.pickupLog.appendChild(entry);
     const key = `completion:${++completionToastId}`;
     const reward = { entry, total: 0, fadeTimer: 0, removeTimer: 0 };
@@ -427,6 +439,7 @@ export function createRuntimeHudController(dependencies: RuntimeHudDependencies)
     clearTransientUi,
     logPickup,
     showProgressCompletion,
+    showCardCopy,
     showQuestProgress,
     showItemDrop,
     showGemDrop,
