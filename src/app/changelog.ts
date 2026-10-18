@@ -1,6 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
   "0.914.4": [
     "Auto Farm with only Aggro on stands where you left it, by a boss too, instead of walking off to a clear spot first",
+    "Cards tab: tighter at the top, no drop note, and zone counts without the word Owned",
   ],
   "0.914.3": [
     "Auto Farm's Fight Bosses switch is gone: Move On fights the boss that locks the next map, then moves on",

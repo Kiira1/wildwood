@@ -125,7 +125,7 @@ it("opens every zone at first, remembers each one closed and the view on this de
   expect(tiles(zone(tab.element, "tutorial_forest"))).toHaveLength(0);
   expect(header("tutorial_forest").querySelector(".cards-zone-name")!.textContent).toBe("Tutorial Forest");
   expect(header("tutorial_forest").querySelector(".cards-zone-count")!.textContent)
-    .toBe(`1 / ${CARDS.filter(card => card.mapId === "tutorial_forest").length} Owned · 1 Equipped`);
+    .toBe(`1 / ${CARDS.filter(card => card.mapId === "tutorial_forest").length} · 1 Equipped`);
   header("tutorial_forest").click();
   header("beginner_desert").click();
   expect([isOpen("tutorial_forest"), isOpen("beginner_desert")]).toEqual([true, false]);

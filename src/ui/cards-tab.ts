@@ -203,9 +203,6 @@ export function createCardsTab(options: {
   views.className = "cards-views-bar";
   const collection = document.createElement("section");
   collection.className = "cards-collection";
-  const note = document.createElement("p");
-  note.className = "inventory-cosmetics-note cards-tab-note";
-  note.textContent = "Cards drop rarely from enemies and bosses. Tap one to see its odds and what it does.";
   const count = document.createElement("span");
   count.className = "inventory-capacity cards-tab-count";
   const progress = document.createElement("span");
@@ -215,7 +212,7 @@ export function createCardsTab(options: {
   progress.append(progressFill);
   const zones = document.createElement("div");
   zones.className = "cards-zones";
-  collection.append(count, progress, note, zones);
+  collection.append(count, progress, zones);
   const equip = document.createElement("section");
   equip.className = "cards-equip";
   element.append(views, collection, equip);
@@ -434,7 +431,7 @@ export function createCardsTab(options: {
       const tally = document.createElement("span");
       tally.className = "cards-zone-count";
       const activeHere = cards.reduce((sum, card) => sum + activeCopies(active, card.id), 0);
-      tally.textContent = `${cards.filter(found).length} / ${cards.length} Owned${activeHere ? ` · ${activeHere} Equipped` : ""}`;
+      tally.textContent = `${cards.filter(found).length} / ${cards.length}${activeHere ? ` · ${activeHere} Equipped` : ""}`;
       const chevron = document.createElement("span");
       chevron.className = "cards-zone-chevron";
       chevron.setAttribute("aria-hidden", "true");
