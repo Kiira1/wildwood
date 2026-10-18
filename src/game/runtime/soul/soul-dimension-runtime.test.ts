@@ -164,7 +164,7 @@ describe("the Soul Level on the client", () => {
     expect(soulAttackSpeedBonus(c.runtime.inPlay().attackSpeed)).toBeCloseTo(.004, 9);
     expect(c.logged).toEqual(["+4 Soul Damage", "+0.4 Soul Regen", "+0.004/s Soul Attack Speed"]);
     expect(soulRewardText("critDamage", 4)).toBe("+0.008×");
-    expect(c.runtime.soulLevel()).toEqual({ level: 3, xp: 13, needed: 2_700, multiplier: 4, max: false });
+    expect(c.runtime.soulLevel()).toEqual({ level: 3, xp: 13, needed: 1_200, multiplier: 4, max: false });
   });
 
   it("predicts what the server pays for the report, and counts it once when the row comes back", () => {
@@ -192,7 +192,7 @@ describe("the Soul Level on the client", () => {
     expect(c.runtime.soulLevel()).toEqual({ level: 1, xp: 300, needed: 300, multiplier: 1, max: false });
     expect(c.levelUps).toEqual([]);
     c.server(addSoulKills(null, "damage", 10), { level: 2, xp: 5 });
-    expect(c.runtime.soulLevel()).toEqual({ level: 2, xp: 5, needed: 900, multiplier: 2, max: false });
+    expect(c.runtime.soulLevel()).toEqual({ level: 2, xp: 5, needed: 600, multiplier: 2, max: false });
     expect(c.levelUps).toEqual([[2, 2]]);
     expect(c.runtime.rewardMultiplier()).toBe(2);
   });
@@ -201,7 +201,7 @@ describe("the Soul Level on the client", () => {
     const c = leveled(null);
     expect(c.runtime.soulLevel()).toMatchObject({ level: 1, xp: 0, multiplier: 1 });
     c.server(null, { level: SOUL_LEVEL_CAP, xp: 0 });
-    expect(c.runtime.soulLevel()).toEqual({ level: SOUL_LEVEL_CAP, xp: 0, needed: 0, multiplier: 512, max: true });
+    expect(c.runtime.soulLevel()).toEqual({ level: SOUL_LEVEL_CAP, xp: 0, needed: 0, multiplier: 524_288, max: true });
     expect(c.levelUps).toEqual([]);
   });
 });

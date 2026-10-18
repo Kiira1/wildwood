@@ -166,26 +166,27 @@ describe("soul attack speed at the old pace (0.901.55)", () => {
 });
 
 describe("the Soul Level", () => {
-  it("needs 300 Soul XP for level 2 and three times more for each level after, up to level 10", () => {
-    expect([SOUL_LEVEL_BASE_XP, SOUL_LEVEL_GROWTH, SOUL_LEVEL_CAP]).toEqual([300, 3, 10]);
-    expect([1, 2, 3, 4, 5, 9].map(soulLevelXpNeeded)).toEqual([300, 900, 2_700, 8_100, 24_300, 1_968_300]);
+  it("needs 300 Soul XP for level 2 and twice as much for each level after, up to level 20", () => {
+    expect([SOUL_LEVEL_BASE_XP, SOUL_LEVEL_GROWTH, SOUL_LEVEL_CAP]).toEqual([300, 2, 20]);
+    expect([1, 2, 3, 4, 5, 9, 19].map(soulLevelXpNeeded)).toEqual([300, 600, 1_200, 2_400, 4_800, 76_800, 78_643_200]);
     expect(soulLevelXpNeeded(SOUL_LEVEL_CAP)).toBe(0);
-    expect(soulLevelTotalXp({ level: SOUL_LEVEL_CAP, xp: 0 })).toBe(2_952_300);
+    expect(soulLevelTotalXp({ level: 10, xp: 0 })).toBe(153_300);
+    expect(soulLevelTotalXp({ level: SOUL_LEVEL_CAP, xp: 0 })).toBe(157_286_100);
   });
 
   it("levels up as Soul XP comes in, carrying the rest, and stops at the cap", () => {
     expect(addSoulXp(null, 299)).toEqual({ level: 1, xp: 299 });
     expect(addSoulXp(null, 300)).toEqual({ level: 2, xp: 0 });
     expect(addSoulXp({ level: 1, xp: 290 }, 30)).toEqual({ level: 2, xp: 20 });
-    expect(addSoulXp(null, 1_200 + 5)).toEqual({ level: 3, xp: 5 });
+    expect(addSoulXp(null, 900 + 5)).toEqual({ level: 3, xp: 5 });
     expect(addSoulXp(null, 1e12)).toEqual({ level: SOUL_LEVEL_CAP, xp: 0 });
     expect(addSoulXp({ level: SOUL_LEVEL_CAP, xp: 0 }, 50)).toEqual({ level: SOUL_LEVEL_CAP, xp: 0 });
     expect(cleanSoulLevel({ level: 99, xp: 5 })).toEqual({ level: SOUL_LEVEL_CAP, xp: 0 });
     expect(cleanSoulLevel({ level: 0, xp: -3 })).toEqual({ level: 1, xp: 0 });
   });
 
-  it("doubles the reward multiplier every level: 1×, 2×, 4× … 512× at the cap", () => {
-    expect([1, 2, 3, 4, 10, 11].map(soulRewardMultiplier)).toEqual([1, 2, 4, 8, 512, 512]);
+  it("doubles the reward multiplier every level: 1×, 2×, 4× … 524,288× at the cap", () => {
+    expect([1, 2, 3, 4, 10, 20, 21].map(soulRewardMultiplier)).toEqual([1, 2, 4, 8, 512, 524_288, 524_288]);
   });
 
   it("pays each soul stat its reward times the multiplier, rating stats included", () => {

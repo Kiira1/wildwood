@@ -2,6 +2,7 @@ export const RELEASE_NOTES: Record<string, string[]> = {
   "0.914.1": [
     "Cards tab: Equip, first, works like the Smith did: pick Weapon, Helmet or Armor and equip from your cards of that type",
     "Cards tab: Cards shows every card as a tile again, by zone, every zone open to start",
+    "Soul Level goes up to 20, and each level needs twice the Soul XP of the one before instead of three times",
   ],
   "0.914.0": [
     "A Training Dummy stands just outside the Town's west fence: hit it to see your DPS",

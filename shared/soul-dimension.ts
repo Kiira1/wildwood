@@ -135,8 +135,8 @@ export function soulAttackSpeedRatingAfterKills(rating: number, kills: number) {
 
 /** The Soul Level's tuning: Soul XP for level 2, how much more each later level needs, and the top level. */
 export const SOUL_LEVEL_BASE_XP = 300;
-export const SOUL_LEVEL_GROWTH = 3;
-export const SOUL_LEVEL_CAP = 10;
+export const SOUL_LEVEL_GROWTH = 2;
+export const SOUL_LEVEL_CAP = 20;
 /** Soul XP one soul kill gives; nothing else gives any. */
 export const SOUL_XP_PER_KILL = 1;
 
