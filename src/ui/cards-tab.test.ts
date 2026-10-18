@@ -28,7 +28,7 @@ const INVENTORY_PANEL = `<div id="inventoryPanel">
 type Port = CardsPort & { calls: unknown[] };
 /** A Cards tab port: cards owned, the active ones, slots in play and the odds inputs, recording each call. */
 function fakePort(options: { held?: Record<string, number>; active?: Partial<ActiveCards>; slots?: Partial<ActiveCardSlots>; ranks?: Record<string, number>;
-  hunter?: number; luck?: number; mapId?: string } = {}): Port {
+  hunter?: number; luck?: number } = {}): Port {
   const calls: unknown[] = [];
   const state = { held: options.held ?? {}, active: { HAND: [], HEAD: [], CHEST: [], ...options.active } as ActiveCards };
   return {
@@ -39,7 +39,6 @@ function fakePort(options: { held?: Record<string, number>; active?: Partial<Act
     storedRanks: () => options.ranks ?? {},
     cardHunter: () => options.hunter ?? 0,
     cardLuck: () => options.luck ?? 0,
-    mapId: () => options.mapId ?? "tutorial_forest",
     activate: async (cardId, expectedActive) => {
       calls.push(["activate", cardId, expectedActive]);
       const card = CARDS.find(candidate => candidate.id === cardId)!;
@@ -89,7 +88,10 @@ it("shows every card as a tile, by zone: the count owned, shadows for the rest, 
   const port = fakePort({ held: { spitter_card: 3, king_slime_card: 2, dragon_card: 1, not_a_card: 4 }, active: { HAND: ["spitter_card"] } });
   const tab = createCardsTab({ port, onInspect: cardId => inspected.push(cardId) });
   tab.show(true);
-  expect(tab.element.querySelector('.cards-views [data-choice="cards"]')!.getAttribute("aria-pressed")).toBe("true");
+  // Equip comes first and opens first; Cards is the second view.
+  expect([...tab.element.querySelectorAll<HTMLElement>(".cards-views .inventory-filter")].map(button => button.textContent)).toEqual(["Equip", "Cards"]);
+  expect(tab.element.querySelector('.cards-views [data-choice="equip"]')!.getAttribute("aria-pressed")).toBe("true");
+  choose(tab.element, "cards-views", "cards");
   expect(tab.element.querySelector<HTMLElement>(".cards-equip")!.hidden).toBe(true);
   expect(tab.element.querySelector(".cards-tab-count")!.textContent).toBe(`3 / ${CARDS.length} Found`);
   const forest = tiles(zone(tab.element, "tutorial_forest"));
@@ -108,16 +110,18 @@ it("shows every card as a tile, by zone: the count owned, shadows for the rest, 
   expect(tab.element.textContent).not.toContain("kills");
 });
 
-it("opens the current map's zone and closes the rest, remembers each zone and the view on this device", () => {
+it("opens every zone at first, remembers each one closed and the view on this device", () => {
   page();
   const storage = memoryStorage();
   vi.stubGlobal("localStorage", storage);
-  const port = fakePort({ held: { needle_card: 1, dune_raider_card: 1 }, active: { HAND: ["needle_card"] }, mapId: "beginner_desert" });
+  const port = fakePort({ held: { needle_card: 1, dune_raider_card: 1 }, active: { HAND: ["needle_card"] } });
   const tab = createCardsTab({ port, onInspect: () => undefined });
   tab.show(true);
+  choose(tab.element, "cards-views", "cards");
   const header = (mapId: string) => zone(tab.element, mapId).querySelector<HTMLButtonElement>(".cards-zone-header")!;
   const isOpen = (mapId: string) => header(mapId).getAttribute("aria-expanded") === "true";
-  expect([isOpen("tutorial_forest"), isOpen("beginner_desert"), isOpen("ion_citadel")]).toEqual([false, true, false]);
+  expect([isOpen("tutorial_forest"), isOpen("beginner_desert"), isOpen("ion_citadel")]).toEqual([true, true, true]);
+  header("tutorial_forest").click();
   expect(tiles(zone(tab.element, "tutorial_forest"))).toHaveLength(0);
   expect(header("tutorial_forest").querySelector(".cards-zone-name")!.textContent).toBe("Tutorial Forest");
   expect(header("tutorial_forest").querySelector(".cards-zone-count")!.textContent)
@@ -126,22 +130,22 @@ it("opens the current map's zone and closes the rest, remembers each zone and th
   header("beginner_desert").click();
   expect([isOpen("tutorial_forest"), isOpen("beginner_desert")]).toEqual([true, false]);
   expect(tiles(zone(tab.element, "tutorial_forest")).length).toBeGreaterThan(0);
-  expect(JSON.parse(storage.values.get("wildstat.cardZonesOpen")!)).toMatchObject({ tutorial_forest: true, beginner_desert: false });
-  choose(tab.element, "cards-views", "equip");
-  expect(storage.values.get("wildstat.cardsView")).toBe("equip");
+  expect(JSON.parse(storage.values.get("wildstat.cardZonesOpen.v2")!)).toMatchObject({ tutorial_forest: true, beginner_desert: false });
+  expect(storage.values.get("wildstat.cardsView")).toBe("cards");
   // A new tab on the same device starts as it was left.
   const again = createCardsTab({ port, onInspect: () => undefined });
   again.show(true);
-  expect(again.element.querySelector<HTMLElement>(".cards-equip")!.hidden).toBe(false);
-  choose(again.element, "cards-views", "cards");
+  expect(again.element.querySelector<HTMLElement>(".cards-collection")!.hidden).toBe(false);
   expect(zone(again.element, "tutorial_forest").querySelector(".cards-zone-header")!.getAttribute("aria-expanded")).toBe("true");
   expect(zone(again.element, "beginner_desert").querySelector(".cards-zone-header")!.getAttribute("aria-expanded")).toBe("false");
   // Storage that throws (a private window) still works for the visit.
   vi.stubGlobal("localStorage", { getItem() { throw new Error("blocked"); }, setItem() { throw new Error("blocked"); } });
   const blocked = createCardsTab({ port, onInspect: () => undefined });
   blocked.show(true);
+  expect(blocked.element.querySelector<HTMLElement>(".cards-equip")!.hidden).toBe(false);
+  choose(blocked.element, "cards-views", "cards");
   zone(blocked.element, "ion_citadel").querySelector<HTMLButtonElement>(".cards-zone-header")!.click();
-  expect(zone(blocked.element, "ion_citadel").querySelector(".cards-zone-header")!.getAttribute("aria-expanded")).toBe("true");
+  expect(zone(blocked.element, "ion_citadel").querySelector(".cards-zone-header")!.getAttribute("aria-expanded")).toBe("false");
 });
 
 it("equips as the Smith slotted: pick a type, see its slots and the cards of it owned, pick one, Equip or Remove", async () => {
@@ -154,8 +158,10 @@ it("equips as the Smith slotted: pick a type, see its slots and the cards of it 
   tab.show(true);
   choose(tab.element, "cards-views", "equip");
   const equip = tab.element.querySelector<HTMLElement>(".cards-equip")!;
-  const types = () => [...equip.querySelectorAll<HTMLElement>(".cards-types .inventory-filter")].map(button => button.textContent);
-  expect(types()).toEqual(["Weapon 2/2", "Helmet 1/1", "Armor 0/1"]);
+  const types = () => [...equip.querySelectorAll<HTMLElement>(".cards-type")].map(box => [box.querySelector(".cards-type-name")!.textContent,
+    box.querySelector(".cards-type-used")!.textContent, box.querySelectorAll(".cards-type-mini:not(.is-empty)").length]);
+  expect(types()).toEqual([["Weapon", "2 / 2", 2], ["Helmet", "1 / 1", 1], ["Armor", "0 / 1", 0]]);
+  expect(equip.querySelector(".cards-active-row .cards-section-head")!.textContent).toBe("Weapon Slots");
   const slots = () => [...equip.querySelectorAll<HTMLElement>(".cards-slot")].map(slot => slot.className.replace("cards-slot ", "") + ":" + slot.textContent);
   expect(slots()).toEqual(["is-filled is-regular:Needle", "is-filled is-regular:Needle", "is-filled is-regular is-waiting:Waiting", "is-locked:Locked"]);
   expect(equip.querySelector(".cards-lock-note")!.textContent).toBe("Locked: the Weapon Card Slots perk opens 2 more");
@@ -182,6 +188,7 @@ it("equips as the Smith slotted: pick a type, see its slots and the cards of it 
   choose(equip, "cards-types", "CHEST");
   expect(slots()).toEqual(["is-empty:Empty", "is-locked:Locked", "is-locked:Locked", "is-locked:Locked"]);
   expect(equip.querySelector(".cards-equip-note")!.textContent).toBe("No Armor cards yet. Cards drop rarely from enemies and bosses.");
+  expect(equip.querySelector(".cards-equip-grid")).toBeNull();
   choose(equip, "cards-types", "HEAD");
   tiles(equip).find(tile => tile.dataset.cardId === "brood_card")!.click();
   expect(buttons()).toEqual(["Remove"]);
@@ -234,9 +241,10 @@ it("puts a Cards tab beside Equipment and Cosmetics that swaps the loadout and b
 
 it("opens a card's window with its effects, what is owned and equipped, its odds and Equip, then shows it equipped", async () => {
   vi.stubGlobal("localStorage", memoryStorage());
-  const port = fakePort({ held: { ember_raider_card: 2, needle_card: 1 }, active: { HAND: [] }, mapId: "advanced_lava_wastes", slots: { HAND: 2 } });
+  const port = fakePort({ held: { ember_raider_card: 2, needle_card: 1 }, active: { HAND: [] }, slots: { HAND: 2 } });
   const view = inventoryWithCards(port);
   view.document.getElementById("inventoryCardsTab")!.click();
+  choose(view.document, "cards-views", "cards");
   view.document.querySelector<HTMLElement>('.inventory-item.is-card[data-card-id="ember_raider_card"]')!.click();
   expect(view.panel.hidden).toBe(false);
   expect(view.content.querySelector(".card-origin")!.textContent).toBe("Regular · Advanced Lava Lake");
@@ -253,7 +261,6 @@ it("opens a card's window with its effects, what is owned and equipped, its odds
   // Both slots taken: no more Equip for the Needle card, and the window says why.
   button("Equip")!.click();
   await vi.waitFor(() => expect(port.calls).toHaveLength(2));
-  (view.document.querySelector('.cards-zone[data-map-id="tutorial_forest"] .cards-zone-header') as HTMLElement).click();
   view.document.querySelector<HTMLElement>('.inventory-item.is-card[data-card-id="needle_card"]')!.click();
   expect(button("Equip")).toBeUndefined();
   expect(view.content.querySelector(".item-inspection-card-note")!.textContent).toBe("Every Weapon card slot is full. Remove one first.");

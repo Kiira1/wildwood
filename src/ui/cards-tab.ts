@@ -53,8 +53,6 @@ export type CardsPort = {
   /** Card Hunter from the active cards (a fraction) and Card Luck's rank in play: the odds the server rolls at. */
   cardHunter: () => number;
   cardLuck: () => number;
-  /** The map the player is on: its zone opens first. */
-  mapId: () => string;
   activate: (cardId: string, expectedActive: number) => Promise<Result>;
   deactivate: (type: CardSlot, index: number, cardId: string) => Promise<Result>;
 };
@@ -71,7 +69,7 @@ type CardsCoop = {
 };
 
 /** The Cards tab's port onto the coop session as main.ts holds it. */
-export function cardsPort(coop: () => CardsCoop | null | undefined, mapId: () => string): CardsPort {
+export function cardsPort(coop: () => CardsCoop | null | undefined): CardsPort {
   return {
     cards: () => coop()?.cards?.() ?? {},
     activeCards: () => coop()?.activeCards?.() ?? NO_ACTIVE_CARDS,
@@ -79,7 +77,6 @@ export function cardsPort(coop: () => CardsCoop | null | undefined, mapId: () =>
     storedRanks: () => coop()?.storedPrestigePerks?.() ?? {},
     cardHunter: () => coop()?.activeCardStats?.().cardHunter ?? 0,
     cardLuck: () => coop()?.researchInPlay?.()?.cardLuck ?? 0,
-    mapId,
     activate: async (cardId, expectedActive) => coop()?.activateCard?.(cardId, expectedActive) ?? { ok: false, error: "Not Connected" },
     deactivate: async (type, index, cardId) => coop()?.deactivateCard?.(type, index, cardId) ?? { ok: false, error: "Not Connected" },
   };
@@ -130,7 +127,8 @@ export function cardDetailRequest(port: CardsPort, cardId: string, after: (resul
   };
 }
 
-const ZONE_STORE = "wildstat.cardZonesOpen";
+// v2: zones start open now; the first key kept every zone but the map then played closed once one was tapped.
+const ZONE_STORE = "wildstat.cardZonesOpen.v2";
 const VIEW_STORE = "wildstat.cardsView";
 function storedZones(): Record<string, boolean> {
   try {
@@ -143,7 +141,7 @@ function storeZones(zones: Record<string, boolean>) {
 }
 type CardsView = "cards" | "equip";
 function storedView(): CardsView {
-  try { return localStorage.getItem(VIEW_STORE) === "equip" ? "equip" : "cards"; } catch { return "cards"; }
+  try { return localStorage.getItem(VIEW_STORE) === "cards" ? "cards" : "equip"; } catch { return "equip"; }
 }
 
 function cardArt(card: CardDefinition, shadow: boolean, className: string) {
@@ -173,10 +171,22 @@ function choiceBar(className: string, label: string, choices: readonly { id: str
   return bar;
 }
 
+/** A section's heading: its name, and a count or state on the right. */
+function sectionHead(title: string, meta: string) {
+  const head = document.createElement("div");
+  head.className = "cards-section-head";
+  const name = document.createElement("strong");
+  name.textContent = title;
+  const side = document.createElement("span");
+  side.textContent = meta;
+  head.append(name, side);
+  return head;
+}
+
 /**
- * The Cards tab, in two views. Cards: every card as a tile, by zone in sections that open and close; a tile opens
- * the card's window (its effects, odds, and switching it on). Equip: as the Smith's card slots were, pick Weapon,
- * Helmet or Armor to see its slots and the cards of that type owned; pick one to see what it does and Equip or Remove it.
+ * The Cards tab, in two views. Equip (first, and where it opens): as the Smith's card slots were, pick Weapon, Helmet
+ * or Armor to see its slots and the cards of that type owned; pick one to see what it does and Equip or Remove it.
+ * Cards: every card as a tile, by zone in sections that start open and can be closed; a tile opens the card's window.
  */
 export function createCardsTab(options: {
   port: CardsPort;
@@ -198,9 +208,14 @@ export function createCardsTab(options: {
   note.textContent = "Cards drop rarely from enemies and bosses. Tap one to see its odds and what it does.";
   const count = document.createElement("span");
   count.className = "inventory-capacity cards-tab-count";
+  const progress = document.createElement("span");
+  progress.className = "cards-progress";
+  progress.setAttribute("aria-hidden", "true");
+  const progressFill = document.createElement("span");
+  progress.append(progressFill);
   const zones = document.createElement("div");
   zones.className = "cards-zones";
-  collection.append(note, count, zones);
+  collection.append(count, progress, note, zones);
   const equip = document.createElement("section");
   equip.className = "cards-equip";
   element.append(views, collection, equip);
@@ -271,6 +286,7 @@ export function createCardsTab(options: {
       const hint = document.createElement("p");
       hint.className = "cards-equip-hint";
       hint.textContent = `Pick a ${CARD_TYPE_NAMES[type]} card below to see what it does and equip it.`;
+      panel.classList.add("is-empty");
       panel.append(hint);
       return panel;
     }
@@ -281,7 +297,10 @@ export function createCardsTab(options: {
     title.textContent = cardName(card);
     const status = document.createElement("span");
     status.textContent = `${owned.toLocaleString("en-US")} Owned · ${copies} Equipped`;
-    head.append(cardArt(card, false, "cards-equip-art"), title, status);
+    const origin = document.createElement("span");
+    origin.className = "cards-equip-origin";
+    origin.textContent = `${card.rarity === "boss" ? "Boss" : card.rarity === "elite" ? "Elite" : "Regular"} · ${mapName(card.mapId)}`;
+    head.append(cardArt(card, false, "cards-equip-art"), title, origin, status);
     const effects = document.createElement("ul");
     effects.className = "cards-equip-effects";
     for (const effect of card.effects) {
@@ -323,15 +342,41 @@ export function createCardsTab(options: {
   }
 
   function renderEquip(held: Readonly<Record<string, number>>, active: ActiveCards, slots: ActiveCardSlots) {
-    const types = choiceBar("cards-types", "Card type", CARD_TYPES.map(id => ({ id, text: `${CARD_SLOT_NAMES[id]} ${Math.min(active[id].length, slots[id])}/${slots[id]}` })),
-      type, id => { type = id as CardSlot; picked = null; redraw(); });
-    const row = document.createElement("div");
+    // Weapon, Helmet and Armor as a loadout: each with its slots used and the cards in them, the picked one outlined.
+    const types = document.createElement("div");
+    types.className = "cards-types";
+    types.setAttribute("role", "group");
+    types.setAttribute("aria-label", "Card type");
+    types.append(...CARD_TYPES.map(id => {
+      const box = document.createElement("button");
+      box.type = "button";
+      box.className = "cards-type";
+      box.dataset.choice = id;
+      box.setAttribute("aria-pressed", String(id === type));
+      const name = document.createElement("span");
+      name.className = "cards-type-name";
+      name.textContent = CARD_SLOT_NAMES[id];
+      const used = document.createElement("span");
+      used.className = "cards-type-used";
+      used.textContent = `${Math.min(active[id].length, slots[id])} / ${slots[id]}`;
+      const strip = document.createElement("span");
+      strip.className = "cards-type-strip";
+      strip.setAttribute("aria-hidden", "true");
+      for (let index = 0; index < slots[id]; index++) {
+        const card = cardDefinition(active[id][index]);
+        strip.append(card ? cardArt(card, false, `cards-type-mini is-${card.rarity}`) : Object.assign(document.createElement("span"), { className: "cards-type-mini is-empty" }));
+      }
+      box.append(name, strip, used);
+      box.addEventListener("click", () => { type = id; picked = null; redraw(); });
+      return box;
+    }));
+    const row = document.createElement("section");
     row.className = "cards-active-row";
     row.dataset.type = type;
     const grid = document.createElement("div");
     grid.className = "cards-slot-row";
     for (let index = 0; index < MAX_ACTIVE_CARD_SLOTS; index++) grid.append(slotButton(index, active, slots));
-    row.append(grid);
+    row.append(sectionHead(`${CARD_SLOT_NAMES[type]} Slots`, ""), grid);
     const locks = lockedSlotsText(type, slots[type], Number(port.storedRanks()[CARD_SLOT_PERKS[type]] ?? 0));
     if (locks) {
       const lock = document.createElement("p");
@@ -341,9 +386,15 @@ export function createCardsTab(options: {
     }
     const owned = ordered.filter(card => card.slot === type && (held[card.id] ?? 0) > 0);
     if (picked && !owned.some(card => card.id === picked) && !active[type].includes(picked)) picked = null;
-    const heading = document.createElement("p");
-    heading.className = "inventory-cosmetics-note cards-equip-note";
-    heading.textContent = owned.length ? `Your ${CARD_SLOT_NAMES[type]} Cards` : `No ${CARD_SLOT_NAMES[type]} cards yet. Cards drop rarely from enemies and bosses.`;
+    const yours = document.createElement("section");
+    yours.className = "cards-equip-yours";
+    yours.append(sectionHead(`Your ${CARD_SLOT_NAMES[type]} Cards`, owned.length ? String(owned.length) : ""));
+    if (!owned.length) {
+      const none = document.createElement("p");
+      none.className = "cards-equip-note";
+      none.textContent = `No ${CARD_SLOT_NAMES[type]} cards yet. Cards drop rarely from enemies and bosses.`;
+      yours.append(none);
+    }
     const tiles = document.createElement("div");
     tiles.className = "inventory-items cards-equip-grid";
     tiles.append(...owned.map(card => {
@@ -352,7 +403,8 @@ export function createCardsTab(options: {
       if (activeCopies(active, card.id)) tile.classList.add("is-equipped");
       return tile;
     }));
-    equip.replaceChildren(types, row, focus(held, active, slots), heading, tiles);
+    if (owned.length) yours.append(tiles);
+    equip.replaceChildren(types, row, focus(held, active, slots), yours);
   }
 
   function setOpen(mapId: string, value: boolean) {
@@ -363,7 +415,9 @@ export function createCardsTab(options: {
 
   function renderCollection(held: Readonly<Record<string, number>>, active: ActiveCards) {
     const found = (card: CardDefinition) => (held[card.id] ?? 0) > 0;
-    count.textContent = `${ordered.filter(found).length} / ${ordered.length} Found`;
+    const foundCount = ordered.filter(found).length;
+    count.textContent = `${foundCount} / ${ordered.length} Found`;
+    progressFill.style.width = `${(100 * foundCount / Math.max(1, ordered.length)).toFixed(1)}%`;
     zones.replaceChildren(...mapIds.map(mapId => {
       const cards = ordered.filter(card => card.mapId === mapId);
       const isOpen = Boolean(open![mapId]);
@@ -401,11 +455,12 @@ export function createCardsTab(options: {
 
   function render() {
     const held = port.cards(), active = port.activeCards(), slots = port.slots();
-    open ??= { ...Object.fromEntries(mapIds.map(mapId => [mapId, mapId === port.mapId()])), ...storedZones() };
+    // Every zone open until the player closes it.
+    open ??= { ...Object.fromEntries(mapIds.map(mapId => [mapId, true])), ...storedZones() };
     const state = JSON.stringify([view, type, picked, busy, held, active, slots, port.storedRanks(), open]);
     if (state === rendered) return;
     rendered = state;
-    views.replaceChildren(choiceBar("cards-views", "Cards view", [{ id: "cards", text: "Cards" }, { id: "equip", text: "Equip" }], view,
+    views.replaceChildren(choiceBar("cards-views", "Cards view", [{ id: "equip", text: "Equip" }, { id: "cards", text: "Cards" }], view,
       id => setView(id as CardsView)));
     collection.hidden = view !== "cards";
     equip.hidden = view !== "equip";

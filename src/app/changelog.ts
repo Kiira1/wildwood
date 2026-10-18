@@ -1,7 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
   "0.914.1": [
-    "Cards tab: the Cards view shows every card as a tile again, by zone",
-    "Cards tab: the Equip view works like the Smith did: pick Weapon, Helmet or Armor and equip from your cards of that type",
+    "Cards tab: Equip, first, works like the Smith did: pick Weapon, Helmet or Armor and equip from your cards of that type",
+    "Cards tab: Cards shows every card as a tile again, by zone, every zone open to start",
   ],
   "0.914.0": [
     "A Training Dummy stands just outside the Town's west fence: hit it to see your DPS",
