@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.913.3": [
+    "Auto Farm keeps fighting a boss you walk up to and hit, instead of walking you out of its range",
+  ],
   "0.913.2": [
     "Smoother play with lots of players around, in the Town most of all",
     "Less memory churn in fights and Auto Farm, for fewer stutters",
@@ -3533,6 +3536,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.913.3": "2026-10-17",
   "0.913.2": "2026-10-17",
   "0.913.1": "2026-10-17",
   "0.913.0": "2026-10-17",
