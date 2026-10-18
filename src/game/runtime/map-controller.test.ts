@@ -229,6 +229,37 @@ describe("portal arrival activation", () => {
 });
 
 describe("loaded standing in a portal", () => {
+  // The desert's portal back has its middle at (300, 268) and takes the player within 48 of it.
+  it("takes a player loaded in it through when they walk deeper in, not when they walk about or out", async () => {
+    const { changeMap, controller, player, currentMapId } = portalArrivalHarness({ x: 300, y: 400 });
+    // A reload: the saved spot is inside the portal.
+    controller.loadMap("beginner_desert", 300, 298);
+    controller.updatePortal(1 / 60);
+    player.y = 308;
+    controller.updatePortal(1 / 60);
+    expect(changeMap).not.toHaveBeenCalled();
+    player.y = 290;
+    controller.updatePortal(1 / 60);
+    await vi.waitFor(() => expect(currentMapId()).toBe("tutorial_forest"));
+    expect(changeMap).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps a portal just come through until stepped off, though the walk crosses its middle", async () => {
+    const { changeMap, controller, player, currentMapId, desertMapId } = portalArrivalHarness({ x: 300, y: 400 });
+    // Into the forest's portal 40 below its middle, out of the desert's 40 below its.
+    player.y = 108;
+    controller.updatePortal(1 / 60);
+    await vi.waitFor(() => expect(currentMapId()).toBe(desertMapId));
+    expect(player).toMatchObject({ x: 300, y: 308 });
+    for (const y of [290, 268, 250, 230]) { player.y = y; controller.updatePortal(1 / 60); }
+    expect(changeMap).toHaveBeenCalledTimes(1);
+    player.y = 200;
+    controller.updatePortal(1 / 60);
+    player.y = 250;
+    controller.updatePortal(1 / 60);
+    await vi.waitFor(() => expect(changeMap).toHaveBeenCalledTimes(2));
+  });
+
   it("waits for a step out, unless Auto Farm is taking the player through it", async () => {
     let wanted = false;
     const { changeMap, controller, desertMapId, currentMapId } = portalArrivalHarness({ x: 300, y: 400 }, { travelWanted: destination => wanted && destination === "beginner_desert" });
