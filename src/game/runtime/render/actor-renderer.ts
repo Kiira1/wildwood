@@ -26,6 +26,7 @@ import { finishedEquipmentSprite } from "../../player-appearance";
 import type { StaticWorldSpriteFrame } from "./webgl-static-world-layer";
 import { drawScreenSpaceAt, snapWorldRenderCoordinate } from "./render-space";
 import { createTintedImageCanvas } from "./image-tint";
+import { drawTrainingDummy } from "./training-dummy-art";
 import { boltSprite, drawBolt, staffBoltColor } from "../../staff-look";
 import { createEnemyAnimationSampler } from "../enemies/enemy-animation";
 import { ENEMY_HP_LOSS_FLASH_SECONDS } from "../../constants";
@@ -724,6 +725,11 @@ export function createActorRenderer(options: {
     const height = viewport.height / camera.zoom;
     const x = screenX(enemy.x);
     const y = screenY(enemy.y);
+    if (enemy.trainingDummy) {
+      if (x < -120 || y < -40 || x > width + 120 || y > height + 160) return;
+      drawTrainingDummy(ctx, { x, y, zoom: camera.zoom, now: performance.now() / 1_000, dummy: enemy.trainingDummy, drawShadow: options.drawShadow, outlinedText: options.outlinedText });
+      return;
+    }
     const base = enemy.definition ?? ENEMY_TYPES[enemy.type];
     const sourceSprite = options.enemySprites[enemy.type];
     // An Endless boss borrows a map enemy's art: drawn to fit its own body, as a campaign boss's art does.

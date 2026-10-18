@@ -2,8 +2,10 @@ import { isSoulMap, SOUL_MAP_ID } from "../../../../shared/soul-dimension";
 import { isDeveloperIdentity } from "../../../app/developer";
 import { createSoulDimensionWindow } from "../../../ui/soul-dimension-window";
 import type { MapId } from "../../world";
+import type { EnemyState } from "../types";
 import { createSoulDimensionRuntime } from "./soul-dimension-runtime";
 import { createTownRuntime } from "../town/town-runtime";
+import { createDpsDummy } from "../town/dps-dummy";
 import { createSoulLevelHud } from "../../../ui/soul-level-hud";
 
 /**
@@ -17,6 +19,7 @@ export function createSoulDimension(deps: Parameters<typeof createSoulDimensionR
 }) {
   const runtime = createSoulDimensionRuntime(deps);
   const town = createTownRuntime(deps);
+  const dummy = createDpsDummy(deps);
   const window = createSoulDimensionWindow({
     state: () => {
       const source = deps.source();
@@ -36,5 +39,6 @@ export function createSoulDimension(deps: Parameters<typeof createSoulDimensionR
     clearInput: deps.clearInput,
   });
   const levelHud = createSoulLevelHud();
-  return { ...runtime, update: (dt: number) => { runtime.update(dt); town.update(dt); const level = runtime.soulLevel(); levelHud.render(isSoulMap(deps.currentMapId()) ? level : null); }, refreshTown: town.refresh, openWindow: () => window.open(), closeWindow: () => window.close() };
+  return { ...runtime, defeated: (enemy: EnemyState) => dummy.defeated(enemy) || runtime.defeated(enemy),
+    update: (dt: number) => { runtime.update(dt); town.update(dt); dummy.update(); const level = runtime.soulLevel(); levelHud.render(isSoulMap(deps.currentMapId()) ? level : null); }, refreshTown: town.refresh, openWindow: () => window.open(), closeWindow: () => window.close() };
 }

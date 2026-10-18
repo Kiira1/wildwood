@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.914.0": [
+    "A Training Dummy stands in the Town's west square: hit it to see your DPS",
+  ],
   "0.913.6": [
     "Firefox: the minimap, Town water and range ring no longer slow down after the window is made smaller",
     "Standing in a portal after an update, walking into it takes you through instead of doing nothing",
@@ -3548,6 +3551,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.914.0": "2026-10-18",
   "0.913.6": "2026-10-17",
   "0.913.5": "2026-10-17",
   "0.913.4": "2026-10-17",

@@ -224,7 +224,8 @@ export function createEnemySimulation(
     for (const enemy of enemies) {
       enemy.combatTargetX = undefined;
       enemy.combatTargetY = undefined;
-      if (enemy.dead || enemy.generatedBoss) continue;
+      // The Town's training dummy stands where it is put (town/dps-dummy.ts).
+      if (enemy.dead || enemy.generatedBoss || enemy.trainingDummy) continue;
 
       const base = (enemy.definition ?? ENEMY_TYPES[enemy.type]);
       const pulled = shared.pullAggro?.(enemy) === true;

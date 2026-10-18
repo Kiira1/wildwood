@@ -80,6 +80,8 @@ export type EnemyCardStatus = {
 
 export type EnemyState = Circle & {
   displayName?: string;
+  /** The Town's training dummy (town/dps-dummy.ts): stands still, never fights back, never a kill; drawn with its DPS. */
+  trainingDummy?: { readout: string; detail: string; hitAt: number };
   /** Stun, slow and weaken from the player's cards; the enemy simulation obeys them. */
   cardStatus?: EnemyCardStatus;
   hideStatus?: boolean;
