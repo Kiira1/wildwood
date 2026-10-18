@@ -1,4 +1,8 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.914.1": [
+    "Cards tab: the Cards view shows every card as a tile again, by zone",
+    "Cards tab: the Equip view works like the Smith did: pick Weapon, Helmet or Armor and equip from your cards of that type",
+  ],
   "0.914.0": [
     "A Training Dummy stands just outside the Town's west fence: hit it to see your DPS",
     "Dreadreaper's Reap works whatever brought the enemy low (Reflect, splash, burn), at 10% a card, up to 40%",
@@ -3552,6 +3556,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.914.1": "2026-10-18",
   "0.914.0": "2026-10-18",
   "0.913.6": "2026-10-17",
   "0.913.5": "2026-10-17",

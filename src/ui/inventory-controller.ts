@@ -26,7 +26,6 @@ import { REFINE_ORES, salvageOre, type OreId } from "../../shared/refine";
 import { cardDetailRequest, createCardsTab, type CardsPort } from "./cards-tab";
 import { cardDefinition } from "../../shared/cards";
 import { cardName } from "../../shared/card-text";
-import { CARD_TYPE_NAMES } from "../../shared/active-cards";
 import type { BuildActions } from "./build-actions";
 import { createBuildsTab } from "./builds-tab";
 import { itemInspectionButtonLabel } from "./item-inspection-controller";
@@ -277,7 +276,7 @@ export function createInventoryController(dependencies: InventoryDependencies) {
   }
 
   const cardPort = dependencies.cards;
-  /** A card's window; after Activate or Deactivate it shows the new state. */
+  /** A card's window; after Equip or Remove it shows the new state. */
   const inspectCard = (cardId: string) => {
     if (!cardPort) return;
     dependencies.itemInspection.openCard?.(cardDetailRequest(cardPort, cardId, (result, verb) => {
@@ -290,7 +289,10 @@ export function createInventoryController(dependencies: InventoryDependencies) {
   const cardsView = cardsTab && cardPort ? createCardsTab({
     port: cardPort,
     onInspect: inspectCard,
-    onEmptySlot: type => dependencies.showMessage(`Tap a ${CARD_TYPE_NAMES[type]} card below to switch it on`, "#ffd75e"),
+    onResult: (result, verb, cardId) => {
+      if (result?.ok) dependencies.showMessage(`${verb} · ${cardName(cardDefinition(cardId)!)}`, "#ffd75e");
+      else dependencies.showMessage(result?.error ?? "Not Connected", "#ff9b91");
+    },
   }) : null;
   if (cardsView) content.append(cardsView.element);
   else cardsTab?.remove();

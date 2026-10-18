@@ -329,7 +329,7 @@ export function createItemInspectionController(elements: ItemInspectionElements)
 
   /**
    * A card's window: its portrait, rarity and zone, what is owned and active, each effect, the player's odds at
-   * it and Activate or Deactivate. `found` false is a card never had: its shadow, and no count.
+   * it and Equip or Remove. `found` false is a card never had: its shadow, and no count.
    */
   function openCard(request: { cardId: string; count: number; found?: boolean; context?: string; odds?: string; note?: string;
     actions?: readonly ItemInspectionAction[] }) {

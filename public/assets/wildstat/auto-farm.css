@@ -908,6 +908,32 @@
 .cards-row-side { display: grid; justify-items: end; gap: 2px; }
 .cards-row-count { color: #fff; font: 900 14px/17px var(--font-rounded); }
 .cards-row-active { padding: 1px 6px; border: 1px solid rgba(255,255,255,.6); border-radius: 999px; color: #fff; font: 800 13px/16px var(--font-rounded); white-space: nowrap; }
+/* The Cards tab's two views: Cards (tiles by zone) and Equip (pick a type, its slots, the cards of that type). */
+.cards-views-bar .inventory-filters, .cards-equip .cards-types { justify-content: center; gap: 18px; margin: 0 0 4px; }
+.cards-tab .inventory-filter { min-height: 32px; font-size: 13px; }
+.cards-zone-grid { padding: 6px; }
+.cards-zone-grid[hidden] { display: none; }
+.inventory-item.is-card.is-equipped { border-color: #fff; box-shadow: inset 0 0 0 1px rgba(255,255,255,.5); }
+.cards-equip { display: grid; gap: 8px; }
+.cards-equip[hidden], .cards-collection[hidden] { display: none; }
+.cards-collection { display: grid; gap: 6px; }
+.cards-slot[aria-pressed="true"] { box-shadow: inset 0 0 0 2px #fff; }
+.cards-equip-focus { display: grid; gap: 6px; min-height: 64px; padding: 8px; border: 1px solid rgba(255,255,255,.1); border-radius: 10px; background: #111; }
+.cards-equip-hint { margin: 0; color: #b3b3b3; font: 800 13px/16px var(--font-rounded); text-align: center; align-self: center; }
+.cards-equip-head { display: grid; grid-template-columns: 36px minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 10px; align-items: center; }
+.cards-equip-art { grid-row: 1 / span 2; width: 36px; height: 45px; border-radius: 4px; background: center / cover no-repeat #0d0d0d; }
+.cards-equip-head strong { color: #fff; font: 900 15px/18px var(--font-rounded); }
+.cards-equip-head.is-elite strong { color: #c9adff; }
+.cards-equip-head.is-boss strong { color: #f2c14e; }
+.cards-equip-head span { color: #b3b3b3; font: 800 13px/16px var(--font-rounded); }
+.cards-equip-effects { display: grid; gap: 3px; margin: 0; padding: 0; list-style: none; color: #fff; font: 800 13px/16px var(--font-rounded); }
+.cards-equip-effects .is-cost { color: #ff9b91; }
+.cards-equip-actions { display: flex; gap: 8px; }
+.cards-equip-button { flex: 1 1 0; min-height: 40px; margin: 0; border: 1px solid rgba(255,255,255,.7); border-radius: 8px; background: #fff; color: #111; font: 900 14px/1 var(--font-rounded); }
+.cards-equip-button.is-secondary { background: #1b1b1b; color: #fff; border-color: rgba(255,255,255,.35); }
+.cards-equip-button:disabled { opacity: .6; }
+.cards-equip-note { margin: 0 8px; }
+.cards-equip-grid > .inventory-item[aria-pressed="true"] { box-shadow: inset 0 0 0 2px #fff; }
 .item-inspection-card-odds { margin: 0; color: #fff; font: 800 13px/17px var(--font-rounded); }
 .item-inspection-card-note { margin: 0; color: #b3b3b3; font: 800 13px/17px var(--font-rounded); }
 .inventory-item.is-card.is-unfound { border-color: rgba(255,255,255,.08); opacity: .78; }
