@@ -12,7 +12,7 @@ const groundRing = (ctx: CanvasRenderingContext2D, x: number, y: number, radius:
 
 /**
  * Staff effects, from the same bounded pool as the bow and sword ones: a few arcs, ellipses and lines each,
- * never particles. `width` carries the radius; a meteor's `warning` is the time before its fireball lands.
+ * never particles, in plain blending (additive blending was slow to draw in Firefox). `width` carries the radius; a meteor's `warning` is the time before its fireball lands.
  */
 export function drawStaffSkillEffect(ctx: CanvasRenderingContext2D, effect: SkillEffect, camera: { x: number; y: number }) {
   const x = effect.x - camera.x, y = effect.y - camera.y, radius = effect.width;
@@ -21,14 +21,12 @@ export function drawStaffSkillEffect(ctx: CanvasRenderingContext2D, effect: Skil
   if (effect.kind === "burst") {
     // A bright flash at the impact and a ring that runs out to the splash radius.
     const progress = Math.min(1, elapsed / STAFF_BURST_SECONDS), fade = 1 - progress;
-    ctx.globalCompositeOperation = "lighter";
     ctx.globalAlpha = .45 * fade;
     ctx.fillStyle = effect.color;
     ctx.beginPath(); ctx.arc(x, y - 8, 10 + radius * .3 * progress, 0, Math.PI * 2); ctx.fill();
     ctx.globalAlpha = .9 * fade * fade;
     ctx.fillStyle = "#ffffff";
     ctx.beginPath(); ctx.arc(x, y - 8, 7 * fade + 2, 0, Math.PI * 2); ctx.fill();
-    ctx.globalCompositeOperation = "source-over";
     ctx.globalAlpha = .8 * fade;
     ctx.strokeStyle = effect.color;
     ctx.lineWidth = 2.5 * fade + 1;
@@ -64,15 +62,13 @@ export function drawStaffSkillEffect(ctx: CanvasRenderingContext2D, effect: Skil
     } else {
       // The blast: a flash and a wide ring running out past the warning.
       const progress = Math.min(1, (elapsed - warning) / METEOR_BLAST_SECONDS), fade = 1 - progress;
-      ctx.globalCompositeOperation = "lighter";
-      ctx.globalAlpha = .5 * fade;
+        ctx.globalAlpha = .5 * fade;
       ctx.fillStyle = FIRE_COLOR;
       groundRing(ctx, x, y + 6, radius * (.5 + .5 * progress)); ctx.fill();
       ctx.globalAlpha = .9 * fade * fade;
       ctx.fillStyle = "#fff2c4";
       ctx.beginPath(); ctx.arc(x, y - 6, 26 * fade + 4, 0, Math.PI * 2); ctx.fill();
-      ctx.globalCompositeOperation = "source-over";
-      ctx.globalAlpha = fade;
+        ctx.globalAlpha = fade;
       ctx.strokeStyle = "#ffd28a";
       ctx.lineWidth = 4 * fade + 1;
       groundRing(ctx, x, y + 6, radius * (.6 + .55 * progress)); ctx.stroke();

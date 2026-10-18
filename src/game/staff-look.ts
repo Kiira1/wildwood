@@ -46,8 +46,7 @@ export const STAFF_RUNE_SECONDS = .3;
 export function drawStaffTipGlow(ctx: CanvasRenderingContext2D, x: number, y: number, glow: number, color: string) {
   if (glow <= 0) return;
   ctx.save();
-  ctx.globalCompositeOperation = "lighter";
-  ctx.globalAlpha *= .35 * glow;
+  ctx.globalAlpha *= .3 * glow;
   ctx.fillStyle = color;
   ctx.beginPath(); ctx.arc(x, y, 6 + 8 * glow, 0, Math.PI * 2); ctx.fill();
   ctx.globalAlpha /= .35;

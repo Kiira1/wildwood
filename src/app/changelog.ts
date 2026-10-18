@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.913.1": [
+    "Staff glows and frozen enemies are cheaper to draw, for smoother play in Firefox",
+  ],
   "0.913.0": [
     "Soul Level: each soul kill gives 1 Soul XP, and every level doubles soul rewards, up to level 10",
   ],
@@ -3526,6 +3529,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.913.1": "2026-10-17",
   "0.913.0": "2026-10-17",
   "0.912.2": "2026-10-17",
   "0.912.1": "2026-10-17",
