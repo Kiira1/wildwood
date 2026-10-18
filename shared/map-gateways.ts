@@ -81,10 +81,8 @@ export function campaignLanding(mapId: string) {
   return mapId === TUTORIAL_FOREST_MAP_ID ? { ...PLAYER_SPAWN } : CAMPAIGN_GATEWAYS[mapId] && { ...CAMPAIGN_GATEWAYS[mapId].arrival };
 }
 
-/** How far from a portal's middle a traveller comes out of it: inside its trigger (48), so they walk out of it. */
-export const STEP_THROUGH_REACH = 44;
-/** How far to the side of the middle: clear of the arch's pillars. */
-export const STEP_THROUGH_SIDEWAYS = 22;
+/** How far in front of a portal's feet a traveller steps out of it: clear of its trigger, so they are on the map, not in the portal. */
+export const PORTAL_EXIT_DROP = 24;
 
 /**
  * The portal a traveller from `from` comes out of: the one leading back there. From the Town, a campaign map's
@@ -96,15 +94,12 @@ export function exitPortalFor<P extends { destination: string }>(mapId: string, 
 }
 
 /**
- * Where a traveller comes out of `exit`: as far from its middle as they stood from the middle of the portal they
- * walked into (`offset`), so the arch stays where it was on screen and only the world around it changes.
+ * Where a traveller comes out of `exit`: a step in front of it, outside its trigger. 0.905.1 to 0.914.4 brought
+ * them out inside it, where they stood in the one they walked into; standing in a portal on arrival, walking
+ * into it did nothing until they had stepped out, and players thought it broken.
  */
-export function stepThrough(exit: { x: number; y: number; height: number }, offset: { x: number; y: number }) {
-  let dx = Math.max(-STEP_THROUGH_SIDEWAYS, Math.min(STEP_THROUGH_SIDEWAYS, Number.isFinite(offset.x) ? offset.x : 0));
-  let dy = Number.isFinite(offset.y) ? offset.y : 0;
-  const length = Math.hypot(dx, dy);
-  if (length > STEP_THROUGH_REACH) { dx *= STEP_THROUGH_REACH / length; dy *= STEP_THROUGH_REACH / length; }
-  return { x: exit.x + dx, y: exit.y - exit.height * .32 + dy };
+export function portalExitPoint(exit: { x: number; y: number }) {
+  return { x: exit.x, y: exit.y + PORTAL_EXIT_DROP };
 }
 
 /** The last campaign map's portal into Endless (`destination`, its first map): where a next portal would stand. */

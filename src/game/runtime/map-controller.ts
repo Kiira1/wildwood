@@ -5,7 +5,7 @@ import type { EnemyState, PlayerState } from "./types";
 import { BOSS_KINDS, clearBossAttack, type BossHazards, type BossStates } from "./boss/boss-registry";
 import type { MapId, SpawnSite } from "../world";
 import { portalTravelScene } from "./render/portal-glimpse";
-import { exitPortalFor, stepThrough } from "../../../shared/map-gateways";
+import { exitPortalFor, portalExitPoint } from "../../../shared/map-gateways";
 import { MAP_IDS } from "../../../shared/rules";
 import { isProceduralMap } from "../../../shared/procedural-maps";
 
@@ -169,16 +169,16 @@ export function createMapController(options: {
   const initialPortal = mapConfig[tutorialMapId].portal;
   if (!initialPortal) throw new Error("Tutorial map requires an introductory portal.");
   let portalCutscenePortal: MapPortal = initialPortal;
-  // A glimpse is painted before anyone walks in: centred where a player coming up from below steps out.
-  portalTravelScene.arrival = (mapId, from) => mapId in mapConfig ? arrivalFrom(mapId as MapId, from as MapId, { x: 0, y: 40 }) : null;
+  // A glimpse is painted before anyone walks in: centred where the player steps out.
+  portalTravelScene.arrival = (mapId, from) => mapId in mapConfig ? arrivalFrom(mapId as MapId, from as MapId) : null;
 
   /**
-   * Where the server lands a traveller from `from` (map-travel.ts): a campaign or Endless map brings them out of
-   * its portal back, `offset` from its middle as they stood in the one they walked into; anywhere else, its arrival.
+   * Where the server lands a traveller from `from` (map-travel.ts): a campaign or Endless map a step in front of its
+   * portal back, outside it; anywhere else, its arrival.
    */
-  function arrivalFrom(destination: MapId, from: MapId, offset: { x: number; y: number }) {
+  function arrivalFrom(destination: MapId, from: MapId) {
     const exit = exitFor(destination, from);
-    return exit ? stepThrough(exit, offset) : mapConfig[destination].arrival;
+    return exit ? portalExitPoint(exit) : mapConfig[destination].arrival;
   }
   function exitFor(destination: MapId, from: MapId) {
     const entry = mapConfig[destination];
@@ -187,9 +187,6 @@ export function createMapController(options: {
     return exitPortalFor(destination, portals, from, from === "town");
   }
 
-
-  /** Where the player stands relative to a portal's middle (its use point, as the server measures it). */
-  const offsetIn = (portal: MapPortal) => ({ x: player.x - portal.x, y: player.y - (portal.y - portal.height * .32) });
 
   /**
    * The map loads on the fade's dark, and loading is what ends the travel lock.
@@ -376,7 +373,6 @@ export function createMapController(options: {
     keys.clear();
     stopTouchMove();
     player.moving = false;
-    const offset = offsetIn(portal);
     const attempt = mapLoadGeneration;
     void prepareMapTransition(
       () => changeMap(destination, player.x, player.y),
@@ -389,7 +385,7 @@ export function createMapController(options: {
         portalCooldown = 1;
         return;
       }
-      const arrival = arrivalFrom(destination, departure, offset);
+      const arrival = arrivalFrom(destination, departure);
       fadeToMap(() => {
         if (attempt !== mapLoadGeneration) return;
         loadMap(destination, arrival.x, arrival.y, player.facing);
@@ -414,7 +410,7 @@ export function createMapController(options: {
    */
   function travelThroughPortal(portal: MapPortal | null, destination: MapId): Promise<boolean> {
     const departure = { mapId: getCurrentMapId(), x: player.x, y: player.y, facing: player.facing };
-    const arrival = arrivalFrom(destination, departure.mapId, portal ? offsetIn(portal) : { x: 0, y: 0 });
+    const arrival = arrivalFrom(destination, departure.mapId);
     const move = Promise.resolve(changeMap(destination, departure.x, departure.y));
     loadMap(destination, arrival.x, arrival.y, departure.facing);
     guardUntilStepOff = true;

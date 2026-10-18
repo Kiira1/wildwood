@@ -2,6 +2,7 @@ export const RELEASE_NOTES: Record<string, string[]> = {
   "0.914.5": [
     "A Card Found moment is only for a card new to you, and never stops you moving; another copy is a small line in its rarity's colour",
     "Reflect throws back up to half your max health instead of all of it; still no cap in Reflect Only",
+    "Coming through a portal puts you a step in front of the next map's portal again, not inside it",
   ],
   "0.914.4": [
     "Auto Farm with only Aggro on stands where you left it, by a boss too, instead of walking off to a clear spot first",

@@ -7,7 +7,7 @@ import { createGameBootstrap } from "./game-bootstrap";
 import { createGameSessionController } from "./game-session-controller";
 import { parseHTML } from "linkedom";
 import { CRYSTAL_HOLLOWS_MAP_ID, MOONFEN_MAP_ID, type MapId } from "../world";
-import { stepThrough } from "../../../shared/map-gateways";
+import { portalExitPoint } from "../../../shared/map-gateways";
 
 type MapControllerOptions = Parameters<typeof createMapController>[0];
 
@@ -161,7 +161,7 @@ describe("portal arrival activation", () => {
     const useOf = (portal: { x: number; y: number; height: number } | null | undefined) => ({ x: portal!.x, y: portal!.y - portal!.height * .32 });
     const onward = useOf(bootstrap.mapConfig[MOONFEN_MAP_ID].secondaryPortal), back = useOf(bootstrap.mapConfig[CRYSTAL_HOLLOWS_MAP_ID].portal);
     // Out of Crystal Hollows' portal back to Moonfen, where they stood in Moonfen's, as the server lands them (map-travel.ts).
-    const arrival = stepThrough(bootstrap.mapConfig[CRYSTAL_HOLLOWS_MAP_ID].portal!, { x: 0, y: 0 });
+    const arrival = portalExitPoint(bootstrap.mapConfig[CRYSTAL_HOLLOWS_MAP_ID].portal!);
     controller.loadMap(MOONFEN_MAP_ID, bootstrap.mapConfig[MOONFEN_MAP_ID].arrival.x, bootstrap.mapConfig[MOONFEN_MAP_ID].arrival.y);
     harness.setUnlocked(false);
     player.x = onward.x;
@@ -198,16 +198,14 @@ describe("portal arrival activation", () => {
     expect(harness.prepareMapAssets).toHaveBeenCalledWith(CRYSTAL_HOLLOWS_MAP_ID);
   });
 
-  it("arrives inside the portal back, which takes the player home once they have stepped out of it", async () => {
+  it("arrives a step in front of the portal back, which takes the player home when walked into", async () => {
     const { changeMap, controller, currentMapId, desertMapId, player } = portalArrivalHarness({ x: 300, y: 400 });
     controller.updatePortal(1 / 60);
     await vi.waitFor(() => expect(currentMapId()).toBe(desertMapId));
-    expect(player).toMatchObject({ x: 300, y: 268 });
+    expect(player).toMatchObject({ x: 300, y: 324 });
     controller.updatePortal(1 / 60);
     expect(changeMap).toHaveBeenCalledTimes(1);
 
-    player.y = 400;
-    controller.updatePortal(1 / 60);
     player.y = 268;
     controller.updatePortal(1 / 60);
     await vi.waitFor(() => expect(changeMap).toHaveBeenCalledTimes(2));
@@ -244,20 +242,15 @@ describe("loaded standing in a portal", () => {
     expect(changeMap).toHaveBeenCalledTimes(1);
   });
 
-  it("keeps a portal just come through until stepped off, though the walk crosses its middle", async () => {
+  it("comes out at the same step in front of the portal wherever the way in was taken", async () => {
     const { changeMap, controller, player, currentMapId, desertMapId } = portalArrivalHarness({ x: 300, y: 400 });
-    // Into the forest's portal 40 below its middle, out of the desert's 40 below its.
+    // Into the forest's portal 40 below its middle, still out a step in front of the desert's.
     player.y = 108;
     controller.updatePortal(1 / 60);
     await vi.waitFor(() => expect(currentMapId()).toBe(desertMapId));
-    expect(player).toMatchObject({ x: 300, y: 308 });
-    for (const y of [290, 268, 250, 230]) { player.y = y; controller.updatePortal(1 / 60); }
+    expect(player).toMatchObject({ x: 300, y: 324 });
+    controller.updatePortal(1 / 60);
     expect(changeMap).toHaveBeenCalledTimes(1);
-    player.y = 200;
-    controller.updatePortal(1 / 60);
-    player.y = 250;
-    controller.updatePortal(1 / 60);
-    await vi.waitFor(() => expect(changeMap).toHaveBeenCalledTimes(2));
   });
 
   it("waits for a step out, unless Auto Farm is taking the player through it", async () => {
@@ -287,8 +280,8 @@ describe("walking straight through a portal", () => {
     const f = confirmable();
     f.controller.updatePortal(1 / 60);
     expect(f.currentMapId()).toBe(f.desertMapId);
-    // Out of the desert's portal back to the forest, standing in it as they stood in the forest's (its middle).
-    expect(f.player).toMatchObject({ x: 300, y: 268 });
+    // A step in front of the desert's portal back to the forest.
+    expect(f.player).toMatchObject({ x: 300, y: 324 });
     expect(f.changeMap).toHaveBeenCalledWith(f.desertMapId, 100, 68);
     expect(f.prepareMapAssets).toHaveBeenCalledWith(f.desertMapId);
     // Free to walk, but no other travel until the server answers.
@@ -348,7 +341,7 @@ describe("walking straight through a portal", () => {
     expect(keys.clear).not.toHaveBeenCalled();
     expect(stopTouchMove).not.toHaveBeenCalled();
     // The arch holds its place on screen: the camera moved exactly as far as the player.
-    expect(camera).toEqual({ x: 240, y: 210, zoom: 1 });
+    expect(camera).toEqual({ x: 240, y: 266, zoom: 1 });
   });
 
   it("still stops the player for a crossing that waits on the server behind the fade", () => {
