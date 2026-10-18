@@ -20,8 +20,7 @@ const onOff = (name: string, label: string) => `<div class="farm-setting aggro-p
 export function createAggroPickPrompt(doc: Document, deps: {
   picks: () => RewardType[]; setPicks: (picks: RewardType[]) => void;
   priority?: () => AutoFarmPriority; setPriority?: (priority: AutoFarmPriority) => void;
-  /** Autofarm's Fight Bosses and Move On switches: during a run this is the only window, so they live here too. */
-  fightBosses?: () => boolean; setFightBosses?: (on: boolean) => void;
+  /** Autofarm's Move On switch: during a run this is the only window, so it lives here too. */
   advance?: () => boolean; setAdvance?: (on: boolean) => void;
 }) {
   let overlay: HTMLElement | null = null, needed = 1, available: readonly RewardType[] = AGGRO_GROUPS;
@@ -31,7 +30,7 @@ export function createAggroPickPrompt(doc: Document, deps: {
   const chips = new Map<RewardType, HTMLButtonElement>();
   let targets: HTMLButtonElement[] = [];
   let switches: HTMLButtonElement[] = [];
-  const switchValue = (name: string) => name === "bosses" ? deps.fightBosses?.() : deps.advance?.();
+  const switchValue = (_name: string) => deps.advance?.();
 
   // The picks this map can honour: those it has, in pick order.
   const here = () => draft.filter(pick => available.includes(pick)).slice(0, needed);
@@ -62,7 +61,6 @@ export function createAggroPickPrompt(doc: Document, deps: {
           + `<div class="farm-segment farm-target" role="radiogroup" aria-labelledby="aggroPickTargetLabel">`
           + AUTO_FARM_PRIORITIES.map(entry => `<button type="button" role="radio" data-priority="${entry.id}">${entry.label}</button>`).join("")
           + `</div></div>` : ""}
-        ${deps.setFightBosses ? onOff("bosses", "Fight Bosses") : ""}
         ${deps.setAdvance ? onOff("advance", "Move On") : ""}
         <button type="button" class="aggro-pick-done">Done</button>
       </section>`;
@@ -84,7 +82,7 @@ export function createAggroPickPrompt(doc: Document, deps: {
     switches = [...overlay.querySelectorAll<HTMLButtonElement>("[data-switch]")];
     for (const button of switches) button.addEventListener("click", () => {
       const on = button.dataset.on === "1";
-      if (button.dataset.switch === "bosses") deps.setFightBosses?.(on); else deps.setAdvance?.(on);
+      deps.setAdvance?.(on);
       render();
     });
     for (const button of targets) button.addEventListener("click", () => {

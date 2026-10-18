@@ -689,7 +689,7 @@ describe('autofarm plans: sliders, the boss and the next map', () => {
       const s = planned({ power: () => 2_000, mapPower: () => 1_000, bossPower: () => 1_000, mapBoss: () => boss as never,
         bossUnlocksNext: () => true, nextPortal: () => boss.dead ? portal : null });
       s.farm.setAdvance(true);
-      s.farm.setFightBosses(true);
+      s.farm.setAdvance(true);
       s.add('Bramble', 500, 1_500);
       s.farm.start([health]);
       s.advance(1_000); s.tick();
@@ -729,7 +729,7 @@ describe('autofarm plans: sliders, the boss and the next map', () => {
       const s = planned({ bossReady: () => ready, mapBoss: () => ({ x: 900, y: 900, r: 40, hp: 10, maxHp: 10 }) as never,
         bossPower: () => 1_200, power: () => 100, bossUnlocksNext: () => true });
       s.add('Bramble', 900, 500);
-      s.farm.setFightBosses(true);
+      s.farm.setAdvance(true);
       s.farm.start([health]);
       s.tick();
       expect(s.farm.bossStatus()).toBe('Boss: Need More Health');
@@ -771,14 +771,14 @@ describe('autofarm plans: sliders, the boss and the next map', () => {
       power = 1e9; s.advance(1_000); s.tick();
       expect(s.farm.state().phase).toBe('farm');
       power = 1_500; s.advance(1_000);
-      s.farm.setFightBosses(true);
+      s.farm.setAdvance(true);
       s.tick();
       expect(s.farm.state().phase).toBe('farm');
       expect(s.farm.bossStatus()).toBe(`Boss At ${at(2_000)}`);
       power = 2_000; s.advance(1_000); s.tick();
       expect(s.farm.state().phase).toBe('boss');
       expect(s.farm.bossStatus()).toBe('Fighting Boss');
-      expect(s.farm.bossReady()).toBe(true);
+      expect(s.farm.moveReady()).toBe(true);
       // Low on health it fights on: nothing walks it away.
       s.player.hp = s.player.maxHp * .05;
       s.tick();
@@ -793,23 +793,27 @@ describe('autofarm plans: sliders, the boss and the next map', () => {
       expect(s.farm.bossStatus()).toBe('Fighting Boss');
     });
 
-    it("fights the boss once Move At says it is ready for the map the boss opens: one setting for both, kept", () => {
+    it("fights the boss once Move At says it is ready for both the map the boss opens and the boss itself; the choice is kept", () => {
       let power = 1_000;
       const boss = { x: 900, y: 500, r: 60, hp: 1_000, maxHp: 1_000 };
-      const s = planned({ power: () => power, mapPower: (mapId: string) => mapId === 'beginner_desert' ? 2_000 : 500, bossPower: () => 100,
+      const s = planned({ power: () => power, mapPower: (mapId: string) => mapId === 'beginner_desert' ? 2_000 : 500, bossPower: () => 3_000,
         mapBoss: () => boss, bossUnlocksNext: () => true, lockedNextMap: () => 'beginner_desert' });
       s.add('Bramble', 500, 1_500);
       s.farm.start([health]);
-      s.farm.setFightBosses(true);
-      // Move At 2x (the default) of the desert's 2,000: not the boss's own 100.
+      s.farm.setAdvance(true);
       expect(s.farm.movePower()).toBe(2);
+      // Move At 2x: the desert's 2,000 first...
       s.advance(1_000); s.tick();
       expect(s.farm.state().phase).toBe('farm');
-      expect(s.farm.bossStatus()).toBe(`Boss At ${at(4_000)}`);
+      expect(s.farm.moveStatus()).toBe(`Next Map At ${at(4_000)}`);
+      // ...then the boss's own 3,000: ready for the next map is not enough to take it on.
       power = 4_000; s.advance(1_000); s.tick();
+      expect(s.farm.state().phase).toBe('farm');
+      expect(s.farm.moveStatus()).toBe(`Boss At ${at(6_000)}`);
+      power = 6_000; s.advance(1_000); s.tick();
       expect(s.farm.state().phase).toBe('boss');
-      // Move At moves it: at 0.5x the boss goes at 1,000, and the choice is kept.
-      s.farm.stop(); power = 1_000;
+      // Move At moves both: at 0.5x the boss goes at 1,500, and the choice is kept.
+      s.farm.stop(); power = 1_500;
       s.farm.setMovePower(.5);
       s.farm.start([health]);
       s.advance(1_000); s.tick();
@@ -817,19 +821,19 @@ describe('autofarm plans: sliders, the boss and the next map', () => {
       expect(s.values.get(AUTO_FARM_MOVE_POWER_KEY)).toBe('0.5');
     });
 
-    it("leaves a beaten boss alone (the way on open, or a win that opened nothing); Move On says when it needs the boss", () => {
+    it("Move On fights the boss that shuts the way, says so, and leaves a beaten one alone (the way open, or a win that opened nothing)", () => {
       let locked = true, standing: { x: number; y: number; r: number } | null = { x: 2_500, y: 500, r: 80 };
       const s = planned({ power: () => 1e9, mapBoss: () => standing, bossUnlocksNext: () => locked });
       s.add('Bramble', 900, 500);
-      s.farm.setAdvance(true);
       s.farm.start([health]);
-      // The way on is shut until the boss is beaten, and Fight Bosses is off.
+      // Move On off: the boss is left alone.
       s.tick();
-      expect(s.farm.moveStatus()).toBe('Boss Needed');
       expect(s.farm.state().phase).toBe('farm');
-      s.farm.setFightBosses(true);
+      s.farm.setAdvance(true);
       s.tick();
       expect(s.farm.state().phase).toBe('boss');
+      expect(s.farm.moveStatus()).toBe('Fighting Boss');
+      expect(s.farm.moveReady()).toBe(true);
       // Beaten, and the way on opened.
       locked = false;
       s.tick();
@@ -895,7 +899,7 @@ describe('autofarm plans: sliders, the boss and the next map', () => {
         const boss = { x: 2_000, y: 2_000, r, ry, hitboxOffsetY, isBoss: true };
         const s = planned({ mapBoss: () => boss, equippedWeapon: () => 'starter_bow' });
         s.add('Bramble', 200, 200);
-        s.farm.setFightBosses(true);
+        s.farm.setAdvance(true);
         s.farm.start([]);
         const angle = side * Math.PI / 4;
         Object.assign(s.player, { x: boss.x + Math.cos(angle) * 1_200, y: boss.y + Math.sin(angle) * 1_200 });
@@ -1181,7 +1185,7 @@ describe('autofarm plans: sliders, the boss and the next map', () => {
       { x: 2500, y: 500, r: 60 },
     ]) {
       const s = planned({ mapBoss: () => ({ ...boss }) });
-      s.farm.setFightBosses(true);
+      s.farm.setAdvance(true);
       s.add('Bramble', 600, 900);
       s.farm.setAdvance(true);
       s.farm.start([]);

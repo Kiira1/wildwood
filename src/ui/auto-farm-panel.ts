@@ -21,8 +21,7 @@ const defaultStorage = (): PanelStorage | undefined => { try { return window.loc
 /** The "?" page: what each control does, a line each, in the words a player would use. */
 const HELP_LINES: readonly [term: string, line: string][] = [
   ['Stats', 'Tap Off, Farm or Aggro for each stat. Farm walks to its camps and picks whichever raises your power fastest right now.'],
-  ['Move On', "Goes to the next map once you'd kill its enemies fast and survive their hits, with them Move At times as strong (1x is just enough)."],
-  ['Fight Bosses', "Fights the boss that locks the next map once Move At says you're ready for that map, until it or you go down."],
+  ['Move On', "Goes to the next map once you'd kill its enemies fast and survive their hits, with them Move At times as strong (1x is just enough). A boss that locks the way is fought first, until it or you go down."],
   ['Deaths', 'It respawns and carries on with the same settings.'],
   ['Aggro', 'Pulls its camps to you: one at a time, one more for each Aggro win, taking turns when more are on Aggro. With nothing on Farm it stands still and fights only what it pulls.'],
   ['Target', 'Which enemy it hits first.'],
@@ -73,7 +72,6 @@ export function createAutoFarmPanel(options: {
   const aggroRun = () => Boolean(options.aggro?.()?.active);
   const picker = createAggroPickPrompt(document, { picks: () => readAggroPicks(options.identity?.()), setPicks: picks => writeAggroPicks(options.identity?.(), picks),
     priority: () => options.farm.priority(), setPriority: priority => options.farm.setPriority(priority),
-    fightBosses: () => options.farm.fightBosses(), setFightBosses: on => options.farm.setFightBosses(on),
     advance: () => options.farm.advance(), setAdvance: on => options.farm.setAdvance(on) });
   /** This map's stat groups, as autofarm offers them (a soul group as its run stat); empty while it loads. */
   const mapGroups = () => [...new Set(options.farm.choices().flatMap(choice => farmGroupRewardType(choice.key) ?? []))] as RewardType[];
@@ -92,9 +90,7 @@ export function createAutoFarmPanel(options: {
     + `<p class="farm-empty" hidden>No Enemies Here</p>`
     + `<button type="button" class="farm-switch farm-move" role="switch" data-switch="advance" aria-checked="false" aria-describedby="autoFarmBossStatus">`
     + `<span class="farm-switch-copy"><span class="farm-switch-label">Move On</span><small id="autoFarmBossStatus" class="farm-boss-status"></small></span><span class="farm-knob" aria-hidden="true"></span></button>`
-    + `<button type="button" class="farm-switch farm-bosses" role="switch" data-switch="bosses" aria-checked="false" aria-describedby="autoFarmBossLine">`
-    + `<span class="farm-switch-copy"><span class="farm-switch-label">Fight Bosses</span><small id="autoFarmBossLine" class="farm-boss-status"></small></span><span class="farm-knob" aria-hidden="true"></span></button>`
-    + powerSlider('farm-move-power', 'Move At', 'Enemy Strength', 'Move On And Fight The Boss Once Ready For Next Map Enemies This Many Times As Strong')
+    + powerSlider('farm-move-power', 'Move At', 'Enemy Strength', 'Move On, Boss First, Once Ready For Next Map Enemies This Many Times As Strong')
     + `<div class="farm-more">`
     + `<div class="farm-setting farm-aggro-row" hidden><span class="farm-setting-label">Chasing Groups</span><div class="farm-segment"><button type="button" class="farm-aggro-pick">Choose</button></div></div>`
     + segment('Target', 'autoFarmTargetLabel', 'farm-target', AUTO_FARM_PRIORITIES.map(entry => `<button type="button" role="radio" data-priority="${entry.id}">${entry.label}</button>`).join(''))
@@ -169,10 +165,9 @@ export function createAutoFarmPanel(options: {
   const priorityButtons = [...sheet.querySelectorAll<HTMLButtonElement>('[data-priority]')];
   const aggroCount = element('.farm-aggro-count');
   const advanceSwitch = element<HTMLButtonElement>('[data-switch="advance"]');
-  const bossSwitch = element<HTMLButtonElement>('[data-switch="bosses"]');
-  /** Move At: one slider for Move On and the boss that holds the way, resting with both switches off. */
+  /** Move At: the slider under Move On, resting with it off. */
   const powerRows = [
-    { row: element('.farm-move-power'), on: () => options.farm.advance() || options.farm.fightBosses(), value: () => options.farm.movePower(), set: (step: number) => options.farm.setMovePower(step) },
+    { row: element('.farm-move-power'), on: () => options.farm.advance(), value: () => options.farm.movePower(), set: (step: number) => options.farm.setMovePower(step) },
   ];
   /** A switch and its status line: the line lit when the controller says it is going now, quiet with the switch off. */
   function showSwitch(button: HTMLButtonElement, on: boolean, line: string, ready: boolean) {
@@ -245,7 +240,6 @@ export function createAutoFarmPanel(options: {
     const priority = options.farm.priority();
     for (const button of priorityButtons) button.setAttribute('aria-checked', String(button.dataset.priority === priority));
     showSwitch(advanceSwitch, options.farm.advance(), options.farm.moveStatus(), options.farm.moveReady());
-    showSwitch(bossSwitch, options.farm.fightBosses(), options.farm.bossStatus(), options.farm.bossReady());
     for (const power of powerRows) {
       const value = power.value(), step = String(POWER_STEPS.indexOf(value as typeof POWER_STEPS[number])), slider = power.row.querySelector('input')!;
       if (slider.value !== step) slider.value = step;
@@ -444,7 +438,6 @@ export function createAutoFarmPanel(options: {
     updateSelection();
   });
   advanceSwitch.addEventListener('click', () => { options.farm.setAdvance(!options.farm.advance()); updateSelection(); });
-  bossSwitch.addEventListener('click', () => { options.farm.setFightBosses(!options.farm.fightBosses()); updateSelection(); });
   for (const power of powerRows) {
     const slider = power.row.querySelector('input')!;
     slider.addEventListener('input', () => {

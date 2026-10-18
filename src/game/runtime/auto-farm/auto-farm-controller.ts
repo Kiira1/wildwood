@@ -13,8 +13,8 @@ import { bossSurfaceDistance, bossVerticalRadius } from '../../../../shared/boss
 import { carryFarmGroup, compareAutoFarmTargets, farmGroupMatches, farmGroupOf, farmStatGroup, readAutoFarmPriority, soulFarmReward, readAutoFarmPull, readAutoFarmPullGroups, writeAutoFarmPriority, writeAutoFarmPull, writeAutoFarmPullGroups, type AutoFarmGroup, type AutoFarmPriority } from './auto-farm-priority';
 import type { createAutoFarmResumeStore } from '../../../app/auto-farm-resume';
 import {
-  SHARE_REPLAN_SECONDS, decodeFarmPlan, encodeFarmPlan, legacyShares, readMovePower, writeMovePower, powerStep, readFarmAdvance, readFightBosses, readSavedShares, sharesForGroups, shareFarmKey,
-  writeFarmAdvance, writeFightBosses, writeSavedShares, type FarmReward, type FarmShares,
+  SHARE_REPLAN_SECONDS, decodeFarmPlan, encodeFarmPlan, legacyShares, readMovePower, writeMovePower, powerStep, readFarmAdvance, readSavedShares, sharesForGroups, shareFarmKey,
+  writeFarmAdvance, writeSavedShares, type FarmReward, type FarmShares,
 } from './auto-farm-plan';
 import { formatCompactNumber } from '../../../../shared/compact-number';
 import { isSoulMap, SOUL_STAT_DETAILS, type SoulStatId } from '../../../../shared/soul-dimension';
@@ -99,9 +99,9 @@ export function autoFarmStandoff(options: {
  *   sliders adding up to 100%, 0% never farmed.
  * - Move On: to the next map once power reaches Move At times its
  *   recommended power.
- * - Fight Bosses: the boss that holds the way forward, once Move On would be ready for the map it opens (Move At,
- *   one setting for both), fought until it or the player is down. A boss already beaten is left alone. Both set
- *   off at COMMIT_HEALTH, or after a minute at half health; straight after a boss win at once.
+ * - The boss holding the way forward: Move On fights it once it would be ready for the map it opens (Move At), until
+ *   it or the player is down. A boss already beaten is left alone. Both set off at COMMIT_HEALTH, or after a
+ *   minute at half health; straight after a boss win at once.
  * - Boss range: while not fighting it, targets, stand points and routes keep out of its attack range.
  * - Deaths: it respawns and goes on with the same settings. Nothing is
  *   remembered, nothing is retried later, it never steps back a map.
@@ -170,7 +170,6 @@ export function createAutoFarmController(options: {
   /** The groups switched to Aggro beside their sliders; null until one is touched, when Pull Whole Group's own picks apply. */
   let pullPicks = readAutoFarmPullGroups(options.priorityStorage);
   let advance = readFarmAdvance(options.priorityStorage);
-  let fightBosses = readFightBosses(options.priorityStorage);
   /** Move At: the share of the next map's power to have before going (1 is even); the boss holding that map waits for it too. */
   let movePower = readMovePower(options.priorityStorage);
   /** This map's sliders, and its groups above 0%, the largest first. */
@@ -455,7 +454,8 @@ export function createAutoFarmController(options: {
       if (options.bossUnlocksNext?.() === true) opensNothing.add(mapId);
       bossWin = null;
     }
-    if (!fightBosses || options.reflectOnly?.() || !boss || boss.dead || bossBeaten()) return false;
+    // Move On takes the boss in its way: there is no going on without it.
+    if (!advance || options.reflectOnly?.() || !boss || boss.dead || bossBeaten()) return false;
     // A fight under way goes on until the boss or the player is down.
     if (phase === 'boss') return true;
     return currentPower() >= (bossRetryPower.get(mapId) ?? 0) && readyForBoss().ready && healthyToSetOff();
@@ -479,13 +479,16 @@ export function createAutoFarmController(options: {
   /** Each map's boss after a death to it: the power to reach before trying again. */
   const bossRetryPower = new Map<string, number>();
   /**
-   * Whether to fight this map's boss, and the status line when not: once Move On would be ready for the map it opens.
-   * One setting for both: a boss fought at its own margin first, then a separate wait for the map, was two of them.
+   * Whether to fight this map's boss, and the status line when not. One setting, Move At, for both: Move On would be
+   * ready for the map it opens, and the boss itself would be beaten, each at Move At's margin. The map's check alone
+   * (8 s a kill) sent players who did not yet one-shot this map's enemies into a boss they could not beat.
    */
   function readyForBoss(): { ready: boolean; line: string } {
     const opens = options.lockedNextMap?.();
-    if (opens) return readyForMap(opens, 'Boss');
-    // Nothing locked behind it to judge by: the boss itself, at Move At's margin.
+    if (opens) {
+      const map = readyForMap(opens);
+      if (!map.ready) return map;
+    }
     const readiness = options.bossReady ? cachedReady(`boss:${options.mapId()}:${movePower}`, () => options.bossReady!(movePower)) : null;
     if (readiness === undefined) return { ready: false, line: 'Reading Boss' };
     if (readiness) return { ready: readiness.ready, line: readiness.ready ? '' : `Boss: ${needsLine(readiness)}` };
@@ -952,10 +955,11 @@ export function createAutoFarmController(options: {
   }
 
   const atPower = (power: number) => formatCompactNumber(Math.ceil(power));
-  /** Move On's line: going, the power the next map asks, or the boss it waits for. */
+  /** Move On's line: going, the power the next map asks, or the boss in the way (its fight, or what it waits for). */
   function moveStatus() {
     if (options.reflectOnly?.()) return 'Off In Reflect Only';
     if (phase === 'portal') return 'Moving On';
+    if (phase === 'boss') return 'Fighting Boss';
     const portal = options.nextPortal?.();
     if (portal) {
       const check = readyForMap(portal.destination);
@@ -963,11 +967,11 @@ export function createAutoFarmController(options: {
       if (fightHeldSince !== null && active) return 'Moving On After This Fight';
       return waitsForHealth() && bossBeatenOn !== options.mapId() ? 'Moving On Once Healed' : 'Moving On';
     }
-    // The way forward is shut until this map's boss is beaten.
-    if (options.bossUnlocksNext?.() === true && !opensNothing.has(options.mapId())) return 'Boss Needed';
+    // The way forward is shut until this map's boss is beaten: what that fight waits for.
+    if (options.bossUnlocksNext?.() === true && !opensNothing.has(options.mapId())) return bossLine() || 'Boss Needed';
     return '';
   }
-  /** Fight Bosses' line: fighting, beaten, or the power the boss asks (told quietly with the switch off). */
+  /** The boss's line: fighting, beaten, or what its fight waits for. */
   function bossLine() {
     if (options.reflectOnly?.()) return 'Off In Reflect Only';
     if (phase === 'boss') return 'Fighting Boss';
@@ -986,7 +990,7 @@ export function createAutoFarmController(options: {
     /** Whether it is walking to the portal for this map now (Move On). */
     headingTo: (destination: string) => active && phase === 'portal' && travellingTo === destination,
     /** `waiting`: stopped for travel, and starting again on the next map with enemies. The player can still Stop it. */
-    state: () => ({ active, waiting: !active && Boolean(pendingResume), selected, selectedLabel, shares: { ...shares }, phase, advance, fightBosses,
+    state: () => ({ active, waiting: !active && Boolean(pendingResume), selected, selectedLabel, shares: { ...shares }, phase, advance,
       status: active && !recovering && options.paused() ? 'Paused' : status }),
     /** The camp being farmed; null at the boss or on the way out, so the boss and anything in the way are fair game. */
     targetType: () => active && !manualControl && phase === 'farm' && !playerBossFight() ? selectedType : null,
@@ -997,16 +1001,13 @@ export function createAutoFarmController(options: {
     holdsGround: () => pullCoversFarm(),
     advance: () => advance,
     setAdvance(next: boolean) { advance = next; writeFarmAdvance(next, options.priorityStorage); },
-    fightBosses: () => fightBosses,
-    setFightBosses(next: boolean) { fightBosses = next; writeFightBosses(next, options.priorityStorage); },
     /** Move At, 0.1x to 10x the next map's power: Move On goes, and the boss holding the way is fought, once it is reached. */
     movePower: () => movePower,
     setMovePower(next: number) { movePower = powerStep(next); writeMovePower(movePower, options.priorityStorage); },
     moveStatus,
-    /** Whether Move On is going now: the panel shows it lit. */
-    moveReady: () => moveStatus() === 'Moving On',
+    /** Whether Move On is going now, to the next map or the boss in the way: the panel shows it lit. */
+    moveReady: () => ['Moving On', 'Fighting Boss', 'Boss Next'].includes(moveStatus()),
     bossStatus: bossLine,
-    bossReady: () => ['Boss Next', 'Fighting Boss'].includes(bossLine()),
     /** Sliders all at 0%: farms what is pulled, or what chases in an Aggro run, standing still, and follows the Aggro switches. */
     startZero,
     /** The sliders saved for this map, for the panel to show, and saving them without starting. */

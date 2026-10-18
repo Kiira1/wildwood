@@ -17,7 +17,7 @@ import { AGGRO_GROUPS, writeAggroPicks } from '../game/runtime/auto-farm/aggro-p
 let destroy: (() => void) | undefined;
 afterEach(() => { destroy?.(); destroy = undefined; vi.unstubAllGlobals(); });
 /** The panel's view of a controller; tests swap in the members they steer. */
-type FarmOverrides = Partial<{ moveStatus: () => string; moveReady: () => boolean; bossStatus: () => string; bossReady: () => boolean; pullLimit: () => number; chasingGroupKeys: () => string[] }>;
+type FarmOverrides = Partial<{ moveStatus: () => string; moveReady: () => boolean; pullLimit: () => number; chasingGroupKeys: () => string[] }>;
 function memoryStorage(values = new Map<string, string>()) {
   return { values, getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => { values.set(key, value); } };
 }
@@ -235,32 +235,25 @@ it('leaves the map name and the long hint out, and names Move On', () => {
   expect(s.document.querySelector('.farm-pull')).toBeNull();
   expect(s.document.querySelector('.farm-aggro-count')!.textContent).toBe('Aggro 0/1');
 });
-it('shows each switch with its own status, lit only when the controller says it is going and the switch is on', () => {
-  let move = 'Next Map At 1.20K', moveReady = false, boss = 'Boss At 1.20K', bossReady = false;
-  const s = setup(false, 'forest', { moveStatus: () => move, moveReady: () => moveReady, bossStatus: () => boss, bossReady: () => bossReady });
+it('shows Move On with its status, the boss in the way included, lit only when the controller says it is going and the switch is on', () => {
+  let move = 'Next Map At 1.20K', moveReady = false;
+  const s = setup(false, 'forest', { moveStatus: () => move, moveReady: () => moveReady });
   s.farm.setAdvance(true);
   s.click('.farm-toggle');
-  const line = (name: string) => s.document.querySelector(`[data-switch="${name}"] .farm-boss-status`)!;
-  expect(s.document.querySelector('[data-switch="advance"]')!.getAttribute('aria-describedby')).toBe(line('advance').id);
-  expect(s.document.querySelector('[data-switch="bosses"]')!.getAttribute('aria-describedby')).toBe(line('bosses').id);
-  expect(line('advance').textContent).toBe('Next Map At 1.20K');
-  expect(line('bosses').textContent).toBe('Boss At 1.20K');
-  expect(line('advance').classList.contains('is-ready')).toBe(false);
-  move = 'Moving On'; moveReady = true; s.panel.refresh();
-  expect(line('advance').textContent).toBe('Moving On');
-  expect(line('advance').classList.contains('is-ready')).toBe(true);
-  // Fight Bosses off: its line is what it would do, told quietly; on, lit when it goes.
-  expect(line('bosses').classList.contains('is-idle')).toBe(true);
-  s.click('[data-switch="bosses"]');
-  expect(s.farm.fightBosses()).toBe(true);
-  expect(s.document.querySelector('[data-switch="bosses"]')!.getAttribute('aria-checked')).toBe('true');
-  boss = 'Fighting Boss'; bossReady = true; s.panel.refresh();
-  expect(line('bosses').textContent).toBe('Fighting Boss');
-  expect(line('bosses').classList.contains('is-ready')).toBe(true);
+  expect(s.document.querySelector('[data-switch="bosses"]')).toBeNull();
+  const line = s.document.querySelector('[data-switch="advance"] .farm-boss-status')!;
+  expect(s.document.querySelector('[data-switch="advance"]')!.getAttribute('aria-describedby')).toBe(line.id);
+  expect(line.textContent).toBe('Next Map At 1.20K');
+  expect(line.classList.contains('is-ready')).toBe(false);
+  move = 'Fighting Boss'; moveReady = true; s.panel.refresh();
+  expect(line.textContent).toBe('Fighting Boss');
+  expect(line.classList.contains('is-ready')).toBe(true);
+  move = 'Moving On'; s.panel.refresh();
+  expect(line.textContent).toBe('Moving On');
   s.click('[data-switch="advance"]');
   expect(s.farm.advance()).toBe(false);
-  expect(line('advance').classList.contains('is-ready')).toBe(false);
-  expect(line('advance').classList.contains('is-idle')).toBe(true);
+  expect(line.classList.contains('is-ready')).toBe(false);
+  expect(line.classList.contains('is-idle')).toBe(true);
 });
 it('shows the Aggro buttons and Target in the window with no More to open, even when storage throws', () => {
   const broken = { getItem: () => { throw new Error('blocked'); }, setItem: () => { throw new Error('blocked'); } };
@@ -307,7 +300,7 @@ it('has no Push setting, and keeps Target under More', () => {
   expect(s.document.querySelector('[data-push]')).toBeNull();
   const more = s.document.querySelector('.farm-more')!;
   expect(more.querySelector('.farm-target')).not.toBeNull();
-  expect([...s.document.querySelectorAll('.farm-body > [data-switch]')].map(entry => entry.getAttribute('data-switch'))).toEqual(['advance', 'bosses']);
+  expect([...s.document.querySelectorAll('.farm-body > [data-switch]')].map(entry => entry.getAttribute('data-switch'))).toEqual(['advance']);
 });
 it('outside a run, with nothing on Farm and some on Aggro, it pulls those and stands still (Vis)', () => {
   const s = setup(true, 'endless_1', { pullLimit: () => 1 });
@@ -434,7 +427,7 @@ it('the ? opens a page saying what each control does in place of the settings; B
   expect(toggle.getAttribute('aria-expanded')).toBe('true');
   // Every control in the window is explained.
   const terms = [...help.querySelectorAll('dt')].map(term => term.textContent);
-  expect(terms).toEqual(['Stats', 'Move On', 'Fight Bosses', 'Deaths', 'Aggro', 'Target']);
+  expect(terms).toEqual(['Stats', 'Move On', 'Deaths', 'Aggro', 'Target']);
   expect([...help.querySelectorAll('dd')].every(line => (line.textContent ?? '').length > 10)).toBe(true);
   s.click('.farm-close');
   expect(!s.content.hidden).toBe(true);
@@ -451,21 +444,17 @@ it('the ? opens a page saying what each control does in place of the settings; B
   expect(body.hidden).toBe(false);
 });
 
-it('Move At, the one slider, sits under Move On and Fight Bosses: 0.1x to 10x, 2x until set, lit with either switch on', () => {
+it('Move At, the one slider, sits under Move On: 0.1x to 10x, 2x until set, lit with it on', () => {
   const s = setup();
   s.click('.farm-toggle');
   expect(s.document.querySelector('.farm-boss-power')).toBeNull();
   const row = s.document.querySelector<HTMLElement>('.farm-move-power')!, slider = row.querySelector('input')!;
-  // Below both switches.
-  expect(row.previousElementSibling!.getAttribute('data-switch')).toBe('bosses');
+  expect(row.previousElementSibling!.getAttribute('data-switch')).toBe('advance');
   expect(row.querySelector('output')!.textContent).toBe('2x');
   expect(slider.getAttribute('min')).toBe('0');
   expect(slider.getAttribute('max')).toBe('10');
   expect(slider.disabled).toBe(false);
   expect(row.classList.contains('is-off')).toBe(true);
-  s.click('[data-switch="bosses"]');
-  expect(row.classList.contains('is-off')).toBe(false);
-  s.click('[data-switch="bosses"]');
   s.click('[data-switch="advance"]');
   expect(row.classList.contains('is-off')).toBe(false);
   slider.value = '8';

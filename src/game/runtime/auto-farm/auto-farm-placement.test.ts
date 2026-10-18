@@ -59,7 +59,7 @@ describe('autofarm placement', () => {
     const boss = { x: 2_000, y: 500, r: 60, hp: 1_000, maxHp: 1_000 };
     const s = farmWith({ power: () => 1e9, bossPower: () => 1, mapBoss: () => boss, bossUnlocksNext: () => true });
     s.add('Bramble', 500, 1_500);
-    s.farm.setFightBosses(true);
+    s.farm.setAdvance(true);
     s.farm.start([health]);
     s.player.hp = s.player.maxHp * .2;
     s.tick();
@@ -71,7 +71,7 @@ describe('autofarm placement', () => {
     // Healed, it goes at once.
     const t = farmWith({ power: () => 1e9, bossPower: () => 1, mapBoss: () => boss, bossUnlocksNext: () => true });
     t.add('Bramble', 500, 1_500);
-    t.farm.setFightBosses(true);
+    t.farm.setAdvance(true);
     t.farm.start([health]);
     t.player.hp = t.player.maxHp * .95;
     t.tick();
@@ -95,7 +95,7 @@ describe('autofarm placement', () => {
     const t = farmWith({ power: () => 1e9, mapPower: () => 1, bossPower: () => 1, mapBoss: () => boss as never,
       bossUnlocksNext: () => !boss.dead, nextPortal: () => boss.dead ? portal : null });
     t.add('Bramble', 500, 1_500);
-    t.farm.setAdvance(true); t.farm.setFightBosses(true);
+    t.farm.setAdvance(true); t.farm.setAdvance(true);
     t.farm.start([health]);
     t.tick();
     expect(t.farm.state().phase).toBe('boss');
