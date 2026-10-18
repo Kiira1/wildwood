@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.914.4": [
+    "Auto Farm with only Aggro on stands where you left it, by a boss too, instead of walking off to a clear spot first",
+  ],
   "0.914.3": [
     "Auto Farm's Fight Bosses switch is gone: Move On fights the boss that locks the next map, then moves on",
     "Auto Farm waits until it would beat the boss too, not just the next map's enemies, before fighting it",
@@ -3564,6 +3567,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.914.4": "2026-10-18",
   "0.914.3": "2026-10-18",
   "0.914.2": "2026-10-18",
   "0.914.1": "2026-10-18",

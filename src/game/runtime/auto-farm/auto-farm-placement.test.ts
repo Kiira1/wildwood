@@ -149,23 +149,18 @@ describe('autofarm placement', () => {
       expect(t.tick().x).not.toBe(0);
     });
 
-    it('walks out of the pit after a boss win when Pull brings everything, and stands clear of it', () => {
-      let boss: { x: number; y: number; r: number; hp: number; maxHp: number } | null = { ...pit, r: 80, hp: 100, maxHp: 100 };
+    it('stands where the player left it when only Aggro is on: in the pit, by the boss or among other camps', () => {
+      const boss = { ...pit, r: 80, hp: 100, maxHp: 100 };
       const s = farmWith({ mapBoss: () => boss }, map);
       s.add('Bramble', 600, 600);
+      s.add('Needle', pit.x + 120, pit.y);
       s.farm.setGroupPulled(health, true);
       s.farm.startZero();
-      s.tick();
-      // The fight is over; it stands where the boss fell.
-      boss = null;
       s.player.x = pit.x + 50; s.player.y = pit.y;
-      s.advance(1_000); s.tick();
-      expect(s.farm.state().status).toBe('Moving To A Clear Spot');
-      for (let frame = 0; frame < 60 * 8; frame++) s.tick();
-      expect(near(s)).toBeGreaterThanOrEqual(zone);
-      const x = s.player.x;
-      for (let frame = 0; frame < 60; frame++) s.tick();
-      expect(s.player.x).toBeCloseTo(x);
+      const at = { x: s.player.x, y: s.player.y };
+      for (let frame = 0; frame < 60 * 8; frame++) expect(s.tick()).toMatchObject({ x: 0, y: 0 });
+      expect(s.player).toMatchObject(at);
+      expect(['Pulling', 'Farming', 'Waiting for respawn']).toContain(s.farm.state().status);
     });
   });
 

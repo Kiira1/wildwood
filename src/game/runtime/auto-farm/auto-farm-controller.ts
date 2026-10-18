@@ -21,7 +21,6 @@ import { isSoulMap, SOUL_STAT_DETAILS, type SoulStatId } from '../../../../share
 import { soulStatOfCampName } from '../../soul-world';
 import { createAutoMine, type AutoMineSource } from './auto-mine';
 import { bossAggroRange, BOSS_ZONE_PAD } from './boss-zone';
-import { regularEnemyAggroRadius } from '../enemies/enemy-simulation';
 
 /** An attacker of another kind is fought off on the way only if it dies within this many seconds. */
 const QUICK_DEFENCE_SECONDS = 3;
@@ -521,33 +520,6 @@ export function createAutoFarmController(options: {
     else if (playerBossFightOn !== mapId || !inside) playerBossFightOn = null;
   }
   const playerBossFight = () => active && playerBossFightOn === options.mapId();
-  /** A camp it is not fighting would wake if it stood here. */
-  const wakesCamp = (point: Position) => enemies.some(enemy => !enemy.dead && !enemy.engaged && !enemy.remoteCombatGhost && !enemy.generatedBoss
-    && !pulledEnemy(enemy) && Math.hypot(enemy.x - point.x, enemy.y - point.y) < regularEnemyAggroRadius(enemy) + enemy.r + player.r + 20);
-  /**
-   * Pull brings everything to where it stands. Inside the boss's range, or where an Aggro-free camp wakes, it walks to the
-   * nearest spot clear of both first, leaning towards the pulled camps; null when where it stands will do.
-   */
-  let spot: { goal: Position | null; at: number } | null = null;
-  function pullSpot(zone: Circle | null): Position | null {
-    const bad = (point: Position) => inZone(zone, point) || wakesCamp(point);
-    if (spot && now() - spot.at < 1_000 && now() >= spot.at) return spot.goal && Math.hypot(spot.goal.x - player.x, spot.goal.y - player.y) > WAYPOINT_REACHED ? spot.goal : null;
-    let goal: Position | null = null;
-    if (bad(player)) {
-      const sites = spawnSites.filter(site => pulledGroups().has(choiceKey(site)));
-      const centre = sites.length ? { x: sites.reduce((sum, site) => sum + site.x, 0) / sites.length, y: sites.reduce((sum, site) => sum + site.y, 0) / sites.length } : player;
-      const edge = player.r + 40;
-      let best = Infinity;
-      for (let ring = 1; ring <= 8; ring++) for (let turn = 0; turn < 12; turn++) {
-        const angle = turn * Math.PI / 6, point = { x: player.x + Math.cos(angle) * ring * 120, y: player.y + Math.sin(angle) * ring * 120 };
-        if (point.x < edge || point.y < edge || point.x > WORLD.w - edge || point.y > WORLD.h - edge || bad(point)) continue;
-        const cost = Math.hypot(point.x - player.x, point.y - player.y) + Math.hypot(point.x - centre.x, point.y - centre.y) / 2;
-        if (cost < best) { best = cost; goal = point; }
-      }
-    }
-    spot = { goal, at: now() };
-    return goal;
-  }
 
   /**
    * Death does not end a farm: the session stops running while the player is
@@ -834,9 +806,9 @@ export function createAutoFarmController(options: {
     if (phase === 'farm' && !pulling()) for (const enemy of enemies) {
       if (!enemy.generatedBoss && farmedGroup(enemy) && worthDefending(enemy) && isEnemyAttackingPlayer(enemy, options.localIdentity?.()) && (!threat || distance(enemy) < distance(threat))) threat = enemy;
     }
-    // Everything it farms comes to it: it stands its ground.
-    const relocate = phase === 'farm' && pullCoversFarm() ? pullSpot(zone) : null;
-    if (phase === 'farm' && pullCoversFarm() && !relocate) {
+    // Everything it farms comes to it: it stands its ground, where the player left it. It used to walk first to a spot
+    // clear of the boss's range and of camps not pulled, which read as wandering off, and away from a boss being farmed.
+    if (phase === 'farm' && pullCoversFarm()) {
       const reachAll = weaponAttackRange(options.equippedWeapon?.(), player.attackRange);
       const inReach = enemies.some(enemy => pulledEnemy(enemy) && distance(enemy) <= reachAll + enemy.r);
       holding = true; route = []; status = inReach ? 'Farming' : enemies.some(pulledEnemy) ? 'Pulling' : 'Waiting for respawn';
@@ -845,7 +817,7 @@ export function createAutoFarmController(options: {
     // With the group on its way (pulled, or already chasing), stand and let it come; walk out only if nothing has reached range for a few seconds.
     // A melee weapon waits only for what is pulled: it walks into its own reach of the rest instead of stopping where they woke.
     const reach = weaponAttackRange(options.equippedWeapon?.(), player.attackRange), melee = isMeleeWeapon(options.equippedWeapon?.());
-    if (phase === 'farm' && !threat && !relocate && !inZone(zone, player)) {
+    if (phase === 'farm' && !threat && !inZone(zone, player)) {
       const coming = enemies.some(enemy => validEnemy(enemy) && ((enemy.engaged && !melee) || pullsEnemy(enemy)));
       const inReach = enemies.some(enemy => validEnemy(enemy) && distance(enemy) <= reach + enemy.r);
       pullWait = coming && !inReach ? pullWait + dt : 0;
@@ -853,17 +825,17 @@ export function createAutoFarmController(options: {
     }
     // A boss is aimed at its hitbox, not its sprite's foot.
     const bossPoint = boss ? { x: boss.x, y: boss.y + (boss.hitboxOffsetY ?? 0) } : null;
-    let destination: Position | null = relocate ?? threat ?? target ?? portal ?? bossPoint;
+    let destination: Position | null = threat ?? target ?? portal ?? bossPoint;
     if (!destination) {
       for (const site of spawnSites) if (choiceKey(site) === selected && (!destination || (inZone(zone, site) === inZone(zone, destination) ? distance(site) < distance(destination) : !inZone(zone, site)))) destination = site;
     }
     if (!destination) { stop('No matching enemies in this map'); return idle(); }
     const weapon = options.equippedWeapon?.();
-    const enemy = relocate ? null : threat ?? target;
+    const enemy = threat ?? target;
     // A campaign boss is hit at the surface of its hitbox, an oval off its feet; an Endless boss is a regular enemy, hit at its centre unless melee.
     const hitbox = !enemy && boss?.isBoss ? boss : null;
     const bossReach = !enemy && boss && !hitbox && isMeleeWeapon(weapon) ? boss.r : 0;
-    let standoff = !enemy && (portal || relocate) ? { stop: 0, resume: 0 } : autoFarmStandoff({
+    let standoff = !enemy && portal ? { stop: 0, resume: 0 } : autoFarmStandoff({
       weaponRange: hitbox ? Math.min(weaponAttackRange(weapon, player.attackRange), BOSS_STAND_GAP + AUTO_FARM_REACH_MARGIN) : weaponAttackRange(weapon, player.attackRange) + bossReach,
       playerAttackRange: player.attackRange,
       melee: isMeleeWeapon(weapon),
@@ -894,13 +866,13 @@ export function createAutoFarmController(options: {
     const away = Math.atan2(player.y - destination.y, player.x - destination.x);
     let goal = distance(destination) > 0 ? standAt(away) : { x: destination.x, y: destination.y };
     // Out of the boss's range: the same reach from another side, if one is clear of it.
-    if (zone && !portal && !relocate && inZone(zone, goal)) {
+    if (zone && !portal && inZone(zone, goal)) {
       for (const turn of [1, -1, 2, -2, 3, -3, 4]) { const other = standAt(away + turn * Math.PI / 4); if (!inZone(zone, other)) { goal = other; break; } }
     }
     const clearOfZone = !inZone(zone, player) || inZone(zone, goal);
     holding = remaining <= (holding ? standoff.resume : standoff.stop) + slack && clearOfZone;
     if (holding && !portal) {
-      status = relocate ? 'Pulling' : threat ? 'Defending' : boss ? 'Fighting the boss' : target ? 'Farming' : 'Waiting for respawn';
+      status = threat ? 'Defending' : boss ? 'Fighting the boss' : target ? 'Farming' : 'Waiting for respawn';
       route = [];
       routeClock = 0;
       return idle();
@@ -927,7 +899,7 @@ export function createAutoFarmController(options: {
     while (route.length && distance(route[0]) < WAYPOINT_REACHED) route.shift();
     const waypoint = route[0];
     if (!waypoint) { status = 'Waiting for a clear route'; return idle(); }
-    status = relocate ? 'Moving To A Clear Spot' : threat ? 'Moving to attacker' : portal ? 'Heading to the next map' : boss ? 'Moving to the boss' : target ? 'Moving to enemy' : 'Moving to spawn';
+    status = threat ? 'Moving to attacker' : portal ? 'Heading to the next map' : boss ? 'Moving to the boss' : target ? 'Moving to enemy' : 'Moving to spawn';
     const length = distance(waypoint), magnitude = Math.min(1, length / Math.max(1, options.speed() * dt));
     return { x: (waypoint.x - player.x) / length * magnitude, y: (waypoint.y - player.y) / length * magnitude, source: 'steer' };
   }
