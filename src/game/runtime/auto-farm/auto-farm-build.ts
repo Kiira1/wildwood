@@ -119,6 +119,11 @@ export function createAutoFarmProgress(deps: Parameters<typeof createFarmEvaluat
       const here = farmMapRank(deps.mapId());
       return deps.portals().some(portal => Boolean(portal) && farmMapRank(portal!.destination) > here && !deps.portalUnlocked(portal!));
     },
+    /** That locked way forward's map: the boss is fought once Move On would be ready for it. */
+    lockedNextMap: () => {
+      const here = farmMapRank(deps.mapId());
+      return deps.portals().find(portal => Boolean(portal) && farmMapRank(portal!.destination) > here && !deps.portalUnlocked(portal!))?.destination ?? null;
+    },
     reflectOnly: deps.reflectOnly,
     /** A map's recommended power (auto-farm-power.ts), and this map's boss's: used only without live balance. */
     mapPower: recommendedMapPower,

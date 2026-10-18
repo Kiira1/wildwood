@@ -207,7 +207,6 @@ export const writeFightBosses = (on: boolean, storage: () => Storage | undefined
 export const POWER_STEPS = [.1, .2, .3, .5, .75, 1, 1.5, 2, 3, 5, 10] as const;
 export const DEFAULT_POWER_STEP = 1;
 export const AUTO_FARM_MOVE_POWER_KEY = 'wildstat:autofarm-move-power:v1';
-export const AUTO_FARM_BOSS_POWER_KEY = 'wildstat:autofarm-boss-power:v1';
 /** The step nearest `value` (by ratio), so anything saved or passed lands on the slider. */
 export function powerStep(value: number) {
   if (!Number.isFinite(value) || value <= 0) return DEFAULT_POWER_STEP;
@@ -228,5 +227,3 @@ function writeStep(key: string, value: number, storage: () => Storage | undefine
 }
 export const readMovePower = (storage: () => Storage | undefined = () => localStorage) => readStep(AUTO_FARM_MOVE_POWER_KEY, storage, DEFAULT_MOVE_STEP);
 export const writeMovePower = (value: number, storage: () => Storage | undefined = () => localStorage) => writeStep(AUTO_FARM_MOVE_POWER_KEY, value, storage);
-export const readBossPower = (storage: () => Storage | undefined = () => localStorage) => readStep(AUTO_FARM_BOSS_POWER_KEY, storage);
-export const writeBossPower = (value: number, storage: () => Storage | undefined = () => localStorage) => writeStep(AUTO_FARM_BOSS_POWER_KEY, value, storage);

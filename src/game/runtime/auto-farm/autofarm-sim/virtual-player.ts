@@ -58,7 +58,7 @@ import { challengeMinimumInterval } from '../../../../../shared/prestige-challen
 import { createEmptyResearchRanks, type ResearchRanks } from '../../../../../shared/research';
 import type { BowSkillRoll } from '../../../../../shared/bow-skills';
 import type { PlayerPowerStats } from '../../../../../shared/player-power';
-import { AUTO_FARM_ADVANCE_KEY, AUTO_FARM_BOSSES_KEY, writeBossPower, writeMovePower } from '../auto-farm-plan';
+import { AUTO_FARM_ADVANCE_KEY, AUTO_FARM_BOSSES_KEY, writeMovePower } from '../auto-farm-plan';
 
 export const SIM_STEP_SECONDS = 1 / 60;
 const STEP_MS = 1000 / 60;
@@ -102,10 +102,8 @@ export type VirtualPlayerProfile = {
   push: FarmPush;
   /** "Boss & Next Map". */
   advance: boolean;
-  /** Move At: the margin Move On asks for (the game's default unless set). */
+  /** Move At: the margin Move On, and the boss holding the way, ask for (the game's default unless set). */
   moveAt?: number;
-  /** Fight At: the margin Fight Bosses asks for (the game's default unless set). */
-  fightAt?: number;
   /** Move On and Fight Bosses by readiness from the live balance (map-readiness.ts), as the game does; off, by the old power table. */
   readiness?: boolean;
   /** The Reflect Only prestige challenge. */
@@ -251,7 +249,6 @@ export function createVirtualPlayer(profile: VirtualPlayerProfile, options: { du
   // Fight Bosses with Move On: the profiles that move on fight what holds the way.
   storage.setItem(AUTO_FARM_BOSSES_KEY, profile.advance ? '1' : '0');
   if (profile.moveAt) writeMovePower(profile.moveAt, () => storage as Storage);
-  if (profile.fightAt) writeBossPower(profile.fightAt, () => storage as Storage);
   storage.setItem(AUTO_FARM_PULL_KEY, profile.pull ? '1' : '0');
   if (profile.aggroGroups) writeAutoFarmPullGroups(profile.aggroGroups, () => storage as Storage);
 
@@ -801,8 +798,8 @@ export function createVirtualPlayer(profile: VirtualPlayerProfile, options: { du
  * fight, so it never walks away.
  */
 export async function bossDuel(profile: VirtualPlayerProfile, setup: BossDuelSetup, seconds = 300) {
-  // The lowest Fight At: a duel fights whatever readiness says.
-  const duel = createVirtualPlayer({ ...profile, advance: true, fightAt: .1 }, { duel: setup });
+  // The lowest Move At: a duel fights whatever readiness says.
+  const duel = createVirtualPlayer({ ...profile, advance: true, moveAt: .1 }, { duel: setup });
   try {
     duel.prepareDuel(setup);
     const report = await duel.run(seconds);

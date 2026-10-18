@@ -22,12 +22,12 @@ const defaultStorage = (): PanelStorage | undefined => { try { return window.loc
 const HELP_LINES: readonly [term: string, line: string][] = [
   ['Stats', 'Tap Off, Farm or Aggro for each stat. Farm walks to its camps and picks whichever raises your power fastest right now.'],
   ['Move On', "Goes to the next map once you'd kill its enemies fast and survive their hits, with them Move At times as strong (1x is just enough)."],
-  ['Fight Bosses', "Fights the boss once you'd beat it, with it Fight At times as strong (1x is just enough), until it or you go down."],
+  ['Fight Bosses', "Fights the boss that locks the next map once Move At says you're ready for that map, until it or you go down."],
   ['Deaths', 'It respawns and carries on with the same settings.'],
   ['Aggro', 'Pulls its camps to you: one at a time, one more for each Aggro win, taking turns when more are on Aggro. With nothing on Farm it stands still and fights only what it pulls.'],
   ['Target', 'Which enemy it hits first.'],
 ]
-/** The slider under a switch: how much of the map's or boss's power to have before it goes, 0.1x to 10x. */
+/** The slider under the switches: how much of the next map's power to have before it goes, 0.1x to 10x. */
 const powerSlider = (className: string, label: string, sub: string, aria: string) =>
   `<label class="farm-weight farm-power ${className}"><span class="farm-weight-name"><span class="farm-weight-label">${label}</span><span class="farm-weight-sub">${sub}</span></span>`
   + `<input type="range" min="0" max="${POWER_STEPS.length - 1}" step="1" aria-label="${aria}"><output aria-hidden="true"></output></label>`;
@@ -92,10 +92,9 @@ export function createAutoFarmPanel(options: {
     + `<p class="farm-empty" hidden>No Enemies Here</p>`
     + `<button type="button" class="farm-switch farm-move" role="switch" data-switch="advance" aria-checked="false" aria-describedby="autoFarmBossStatus">`
     + `<span class="farm-switch-copy"><span class="farm-switch-label">Move On</span><small id="autoFarmBossStatus" class="farm-boss-status"></small></span><span class="farm-knob" aria-hidden="true"></span></button>`
-    + powerSlider('farm-move-power', 'Move At', 'Enemy Strength', 'Move On Once Ready For Next Map Enemies This Many Times As Strong')
     + `<button type="button" class="farm-switch farm-bosses" role="switch" data-switch="bosses" aria-checked="false" aria-describedby="autoFarmBossLine">`
     + `<span class="farm-switch-copy"><span class="farm-switch-label">Fight Bosses</span><small id="autoFarmBossLine" class="farm-boss-status"></small></span><span class="farm-knob" aria-hidden="true"></span></button>`
-    + powerSlider('farm-boss-power', 'Fight At', 'Boss Strength', 'Fight Bosses Once Ready For Them This Many Times As Strong')
+    + powerSlider('farm-move-power', 'Move At', 'Enemy Strength', 'Move On And Fight The Boss Once Ready For Next Map Enemies This Many Times As Strong')
     + `<div class="farm-more">`
     + `<div class="farm-setting farm-aggro-row" hidden><span class="farm-setting-label">Chasing Groups</span><div class="farm-segment"><button type="button" class="farm-aggro-pick">Choose</button></div></div>`
     + segment('Target', 'autoFarmTargetLabel', 'farm-target', AUTO_FARM_PRIORITIES.map(entry => `<button type="button" role="radio" data-priority="${entry.id}">${entry.label}</button>`).join(''))
@@ -171,10 +170,9 @@ export function createAutoFarmPanel(options: {
   const aggroCount = element('.farm-aggro-count');
   const advanceSwitch = element<HTMLButtonElement>('[data-switch="advance"]');
   const bossSwitch = element<HTMLButtonElement>('[data-switch="bosses"]');
-  /** The two power sliders, each resting with its switch off. */
+  /** Move At: one slider for Move On and the boss that holds the way, resting with both switches off. */
   const powerRows = [
-    { row: element('.farm-move-power'), on: () => options.farm.advance(), value: () => options.farm.movePower(), set: (step: number) => options.farm.setMovePower(step) },
-    { row: element('.farm-boss-power'), on: () => options.farm.fightBosses(), value: () => options.farm.bossPower(), set: (step: number) => options.farm.setBossPower(step) },
+    { row: element('.farm-move-power'), on: () => options.farm.advance() || options.farm.fightBosses(), value: () => options.farm.movePower(), set: (step: number) => options.farm.setMovePower(step) },
   ];
   /** A switch and its status line: the line lit when the controller says it is going now, quiet with the switch off. */
   function showSwitch(button: HTMLButtonElement, on: boolean, line: string, ready: boolean) {

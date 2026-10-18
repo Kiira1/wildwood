@@ -451,50 +451,31 @@ it('the ? opens a page saying what each control does in place of the settings; B
   expect(body.hidden).toBe(false);
 });
 
-it('Fight At sets how much of the boss power to wait for, 0.1x to 10x with 1x in the middle, and can be set while Fight Bosses is off', () => {
+it('Move At, the one slider, sits under Move On and Fight Bosses: 0.1x to 10x, 2x until set, lit with either switch on', () => {
   const s = setup();
   s.click('.farm-toggle');
-  const row = s.document.querySelector<HTMLElement>('.farm-boss-power')!, slider = row.querySelector('input')!;
-  expect(row.querySelector('output')!.textContent).toBe('1x');
+  expect(s.document.querySelector('.farm-boss-power')).toBeNull();
+  const row = s.document.querySelector<HTMLElement>('.farm-move-power')!, slider = row.querySelector('input')!;
+  // Below both switches.
+  expect(row.previousElementSibling!.getAttribute('data-switch')).toBe('bosses');
+  expect(row.querySelector('output')!.textContent).toBe('2x');
   expect(slider.getAttribute('min')).toBe('0');
   expect(slider.getAttribute('max')).toBe('10');
-  expect(slider.value).toBe('5');
-  // Off by default for a new player: the slider is dimmed but still moves.
-  expect(s.farm.fightBosses()).toBe(false);
   expect(slider.disabled).toBe(false);
   expect(row.classList.contains('is-off')).toBe(true);
-  slider.value = '3';
-  slider.dispatchEvent(new s.window.Event('input', { bubbles: true }));
-  expect(s.farm.bossPower()).not.toBe(1);
-  expect(s.farm.fightBosses()).toBe(false);
   s.click('[data-switch="bosses"]');
   expect(row.classList.contains('is-off')).toBe(false);
-  slider.value = '0';
-  slider.dispatchEvent(new s.window.Event('input', { bubbles: true }));
-  expect(s.farm.bossPower()).toBe(.1);
-  expect(row.querySelector('output')!.textContent).toBe('0.1x');
-  slider.value = '10';
-  slider.dispatchEvent(new s.window.Event('input', { bubbles: true }));
-  expect(s.farm.bossPower()).toBe(10);
-  expect(row.querySelector('output')!.textContent).toBe('10x');
-  expect(slider.getAttribute('aria-valuetext')).toBe('10x');
-});
-
-it('Move At sits under Move On, 0.1x to 10x of the enemies\' strength, 2x until set, and can be set while Move On is off', () => {
-  const s = setup();
-  s.click('.farm-toggle');
-  const row = s.document.querySelector<HTMLElement>('.farm-move-power')!, slider = row.querySelector('input')!;
-  expect(row.querySelector('output')!.textContent).toBe('2x');
-  expect(slider.disabled).toBe(false);
-  expect(row.classList.contains('is-off')).toBe(true);
+  s.click('[data-switch="bosses"]');
   s.click('[data-switch="advance"]');
   expect(row.classList.contains('is-off')).toBe(false);
   slider.value = '8';
   slider.dispatchEvent(new s.window.Event('input', { bubbles: true }));
   expect(s.farm.movePower()).toBe(3);
   expect(row.querySelector('output')!.textContent).toBe('3x');
-  // Its own setting: Fight At is untouched.
-  expect(s.farm.bossPower()).toBe(1);
+  slider.value = '0';
+  slider.dispatchEvent(new s.window.Event('input', { bubbles: true }));
+  expect(s.farm.movePower()).toBe(.1);
+  expect(slider.getAttribute('aria-valuetext')).toBe('0.1x');
 });
 
 

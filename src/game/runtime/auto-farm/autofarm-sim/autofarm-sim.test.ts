@@ -9,8 +9,8 @@
  * turns off the boss and next map for every profile, AUTOFARM_SIM_PULL=1 turns
  * on Pull Whole Group, AUTOFARM_SIM_AGGRO=n runs an Aggro run with n groups
  * chasing, AUTOFARM_SIM_SEED shifts every profile's seed for another sample,
- * AUTOFARM_SIM_GROWTH=0 runs autofarm without its growth planner, AUTOFARM_SIM_MOVE_AT and
- * AUTOFARM_SIM_FIGHT_AT set the two sliders, AUTOFARM_SIM_SCALE multiplies every profile's stats (attack speed aside), and AUTOFARM_SIM_READINESS=0 goes by the old power
+ * AUTOFARM_SIM_GROWTH=0 runs autofarm without its growth planner, AUTOFARM_SIM_MOVE_AT sets
+ * Move At (Move On and the boss holding the way), AUTOFARM_SIM_SCALE multiplies every profile's stats (attack speed aside), and AUTOFARM_SIM_READINESS=0 goes by the old power
  * table instead of readiness from the live balance (what the game does).
  *
  * Reports go to AUTOFARM_SIM_OUT (default: the system temp directory), one JSON
@@ -46,7 +46,6 @@ const scale = Number(process.env.AUTOFARM_SIM_SCALE ?? 1);
 /** AUTOFARM_SIM_WEAPON: every profile wields this weapon instead (a sword or a staff). */
 const weapon = process.env.AUTOFARM_SIM_WEAPON;
 const moveAt = process.env.AUTOFARM_SIM_MOVE_AT ? Number(process.env.AUTOFARM_SIM_MOVE_AT) : undefined;
-const fightAt = process.env.AUTOFARM_SIM_FIGHT_AT ? Number(process.env.AUTOFARM_SIM_FIGHT_AT) : undefined;
 
 describe.skipIf(!enabled)('autofarm virtual players', () => {
   it('runs every profile and writes its report', async () => {
@@ -56,7 +55,7 @@ describe.skipIf(!enabled)('autofarm virtual players', () => {
     for (const listed of virtualPlayers(references, labArrivalBuilds(out)).filter(entry => !only.length || only.includes(entry.name))) {
       const base = { ...listed.base, damage: listed.base.damage * scale, maxHp: listed.base.maxHp * scale, armor: listed.base.armor * scale, regen: listed.base.regen * scale };
       const profile = { ...listed, base, ...weapon ? { weapon } : {}, seed: listed.seed + seedShift, kite, pull, aggroGroups, aggro, growth, growthTuning, readiness,
-        ...moveAt ? { moveAt } : {}, ...fightAt ? { fightAt } : {}, ...farmOnly ? { advance: false } : {} };
+        ...moveAt ? { moveAt } : {}, ...farmOnly ? { advance: false } : {} };
       const player = createVirtualPlayer(profile);
       try {
         const report = await player.run(hours * 3600, progress => {
