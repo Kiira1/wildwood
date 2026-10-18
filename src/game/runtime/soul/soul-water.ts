@@ -163,12 +163,14 @@ export function createSoulWater(options: {
       // The light is worked on in a layer just big enough for the water near the view, a pixel per world unit
       // (the glints' and the mask's own detail), and only then laid over the world: a screen-sized layer cost a
       // full-screen clear, two fills, a mask and a copy of the whole layer every frame, water in view or not.
-      layer ??= document.createElement("canvas");
       const fitWidth = Math.ceil(width / LAYER_STEP) * LAYER_STEP, fitHeight = Math.ceil(height / LAYER_STEP) * LAYER_STEP;
-      // Grown when the water near the view outgrows it, shrunk when it is far bigger than it needs to be.
-      if (layer.width < width || layer.height < height || layer.width * layer.height > 4 * fitWidth * fitHeight) {
+      // Grown when the water near the view outgrows it, shrunk when it is far bigger than it needs to be. A new layer
+      // each time, never a resized one: Firefox's GPU canvas copied one made smaller hundreds of times slower, for good.
+      if (!layer || layer.width < width || layer.height < height || layer.width * layer.height > 4 * fitWidth * fitHeight) {
+        layer = document.createElement("canvas");
         layer.width = fitWidth;
         layer.height = fitHeight;
+        target = null; patterns = null;
       }
       target ??= layer.getContext("2d");
       if (!target) return;

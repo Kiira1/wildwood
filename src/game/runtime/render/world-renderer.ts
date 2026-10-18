@@ -216,8 +216,9 @@ export function createWorldRenderer(options: WorldRendererOptions) {
   const queuedStaticTileRequests: StaticTileWorkerRequest[] = [];
   const activeStaticTileRequests = new Set<string>();
   const staticTileWaiters = new Set<() => void>();
-  const minimapCanvas = document.createElement("canvas");
-  const minimapCtx = minimapCanvas.getContext("2d");
+  // Replaced, never resized: Firefox's GPU canvas copied a canvas that had been made smaller hundreds of times slower, for good.
+  let minimapCanvas = document.createElement("canvas");
+  let minimapCtx = minimapCanvas.getContext("2d");
   const staticTileWorker = (() => {
     if (typeof Worker === "undefined") return null;
     try {
@@ -1182,8 +1183,11 @@ if (options.getMapId() === ION_CITADEL_MAP_ID) { drawIonRoads(ctx, options.paths
     const cacheKey = `${options.getMapId()}:${size}:${dpr}`;
     const pixelSize = Math.round(size * dpr);
     if (minimapCanvas.width !== pixelSize || minimapCanvas.height !== pixelSize) {
+      minimapCanvas = document.createElement("canvas");
       minimapCanvas.width = pixelSize;
       minimapCanvas.height = pixelSize;
+      minimapCtx = minimapCanvas.getContext("2d");
+      if (!minimapCtx) return;
     } else {
       minimapCtx.setTransform(1, 0, 0, 1, 0, 0);
       minimapCtx.clearRect(0, 0, pixelSize, pixelSize);

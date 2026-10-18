@@ -120,7 +120,8 @@ export function createRenderController(options: {
   }
   // Two dashed strokes a frame were slow in Firefox's software canvas: the ring is drawn once and copied,
   // and drawn again only when the range, zoom or pixel ratio changes.
-  const rangeCanvas = typeof document === "undefined" ? null : document.createElement("canvas");
+  // A new canvas for each new ring, never a resized one (see world-renderer.ts's minimap).
+  let rangeCanvas = typeof document === "undefined" ? null : document.createElement("canvas");
   let rangeKey = "", rangeHalf = 0;
   function drawAttackRange() {
     if (attackRangeVisible() && !isDueling()) {
@@ -128,9 +129,10 @@ export function createRenderController(options: {
       const x = snapWorldRenderCoordinate(player.x - camera.x, camera.zoom, dpr);
       const y = snapWorldRenderCoordinate(player.y - camera.y, camera.zoom, dpr);
       const radius = options.weaponAttackRange?.() ?? player.attackRange;
+      const scale = camera.zoom * dpr, key = `${radius}|${scale}`;
+      if (rangeCanvas && key !== rangeKey && rangeKey) rangeCanvas = document.createElement("canvas");
       const cache = rangeCanvas?.getContext("2d");
       if (!rangeCanvas || !cache) { strokeAttackRange(ctx, x, y, radius); return; }
-      const scale = camera.zoom * dpr, key = `${radius}|${scale}`;
       if (key !== rangeKey) {
         rangeKey = key;
         const halfPixels = Math.ceil((radius + 3) * scale);
