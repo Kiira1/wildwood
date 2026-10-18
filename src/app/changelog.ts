@@ -1,6 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
   "0.914.0": [
     "A Training Dummy stands just outside the Town's west fence: hit it to see your DPS",
+    "Dreadreaper's Reap works whatever brought the enemy low (Reflect, splash, burn), at 10% a card, up to 40%",
   ],
   "0.913.6": [
     "Firefox: the minimap, Town water and range ring no longer slow down after the window is made smaller",

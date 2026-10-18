@@ -118,19 +118,28 @@ export function createCardCombat(deps: {
     }
   }
 
-  /** After a weapon hit lands (reflected hits are not weapon hits): lifesteal, reap, splash and each proc's roll. */
+  /**
+   * Reap finishes a regular enemy, not an elite, left under its threshold: after any hit, whatever dealt it (weapon,
+   * skill, splash, chain, damage over time, Reflect). It was checked after weapon hits only, so an enemy brought under
+   * it by anything else lived on until the next one.
+   */
+  function reap(target: Target) {
+    const worn = cards();
+    if (worn === NO_CARDS || !isRegular(target) || target.dead || baseOf(target).elite || !(target.hp > 0)) return false;
+    const threshold = cardValue(worn, "reap");
+    if (!(threshold > 0) || target.hp >= target.maxHp * threshold / 100) return false;
+    deps.spawnBurst(target.x, target.y, "#d7b8ff", 14, 140);
+    deps.strike(target, target.hp);
+    return true;
+  }
+
+  /** After a weapon hit lands (reflected hits are not weapon hits): lifesteal, splash and each proc's roll. */
   function afterHit(target: Target, damage: number, angle: number) {
     const worn = cards();
     if (worn === NO_CARDS || !(damage > 0)) return;
     const steal = cardValue(worn, "lifesteal");
     if (steal > 0 && player.hp > 0) player.hp = Math.min(player.maxHp, player.hp + damage * steal / 100);
     const regular = isRegular(target) ? target : null;
-    // Reap finishes a regular enemy, not an elite, left under its threshold.
-    const reap = cardValue(worn, "reap");
-    if (regular && !regular.dead && reap > 0 && !baseOf(regular).elite && regular.hp > 0 && regular.hp < regular.maxHp * reap / 100) {
-      deps.spawnBurst(regular.x, regular.y, "#d7b8ff", 14, 140);
-      deps.strike(regular, regular.hp);
-    }
     splashAround(target, damage * cardValue(worn, "splash") / 100);
     const defaults = CARD_EFFECT_DEFAULTS;
     for (const proc of worn.procs) {
@@ -269,7 +278,7 @@ export function createCardCombat(deps: {
   }
 
   return {
-    hitMultiplier, firstHitCrit, afterHit, onKill, secondWind, incoming, absorb, afterHurt, afterReflect, update,
+    hitMultiplier, firstHitCrit, afterHit, reap, onKill, secondWind, incoming, absorb, afterHurt, afterReflect, update,
     /** The shield in play and its most, for the health bar. */
     shield: () => ({ amount: shield, max: player.maxHp * Math.max(0, cardValue(cards(), "shield")) / 100 }),
   };

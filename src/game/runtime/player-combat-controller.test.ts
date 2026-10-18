@@ -206,6 +206,17 @@ describe("player attack timing", () => {
     expect(attacker.hp).toBe(960);
   });
 
+  it("reaps an enemy that Reflect, not a weapon, leaves under Dreadreaper's threshold", () => {
+    const state = createCombatHarness({ prestigeReflect: () => 1, cards: () => cardTotals(["dreadreaper_card"]) });
+    state.enemies.length = 0;
+    createEnemyLifecycle(state.enemies, state.spawnSites, () => {}).spawnFromSite({ id: 0, type: "Spitter", x: 520, y: 500,
+      campName: "Test", leashRange: 500, alive: false, respawnAt: 0 });
+    const mob = state.enemies[0]; mob.maxHp = 1000; mob.hp = 120;
+    Object.assign(state.player, { x: 500, y: 500, hp: 1000, maxHp: 1000, hurtClock: 0 });
+    state.controller.damagePlayer(40, mob);   // reflected 40 leaves it at 80, under 10%
+    expect(mob.dead).toBe(true);
+  });
+
   it("reflects the hit before armor, so armor spares the player and not the attacker", () => {
     const state = createCombatHarness({ prestigeReflect: () => 1, effectiveArmor: () => 1_000 });   // armor halves damage
     state.enemies.length = 0;

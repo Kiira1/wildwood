@@ -78,14 +78,16 @@ describe("card hits", () => {
 });
 
 describe("what a hit sets off", () => {
-  it("heals with lifesteal and reaps a regular enemy under its threshold, never an elite", () => {
+  it("heals with lifesteal; reaps a regular enemy under 10% a card, never an elite", () => {
     const view = fight(["abyss_archer_card", "dreadreaper_card"]);
     view.player.hp = 50;
-    const low = view.enemy({ hp: 10 }), elite = view.enemy({ hp: 10, definition: { elite: true } });
-    view.combat.afterHit(low as any, 100, 0);
+    view.combat.afterHit(view.enemy({ hp: 9 }) as any, 100, 0);
     expect(view.player.hp).toBeCloseTo(50.64, 9);
+    const low = view.enemy({ hp: 9 }), edge = view.enemy({ hp: 10 }), elite = view.enemy({ hp: 9, definition: { elite: true } });
+    expect(view.combat.reap(edge as any)).toBe(false);
+    expect(view.combat.reap(low as any)).toBe(true);
     expect(low.dead).toBe(true);
-    view.combat.afterHit(elite as any, 100, 0);
+    expect(view.combat.reap(elite as any)).toBe(false);
     expect(elite.dead).toBe(false);
   });
 

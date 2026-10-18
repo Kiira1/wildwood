@@ -289,7 +289,7 @@ export const CARDS: readonly CardDefinition[] = Object.freeze([
   { id: "gourd_striker_card", enemy: "Gourd Striker", mapId: "duskfall_orchard", tier: 12, rarity: "regular", slot: "HAND",
     effects: [{ effect: "critDamage", value: 11 }] },
   { id: "dreadreaper_card", enemy: "Dreadreaper", mapId: "duskfall_orchard", tier: 12, rarity: "boss", slot: "HAND",
-    effects: [{ effect: "reap", value: 15 }, { effect: "bossSlayer", value: 10 }] },
+    effects: [{ effect: "reap", value: 10 }, { effect: "bossSlayer", value: 10 }] },
   { id: "circuit_prowler_card", enemy: "Circuit Prowler", mapId: "neon_bastion", tier: 13, rarity: "regular", slot: "HAND",
     effects: [{ effect: "chainLightning", value: 3.7 }] },
   { id: "pulse_spitter_card", enemy: "Pulse Spitter", mapId: "neon_bastion", tier: 13, rarity: "regular", slot: "HAND",

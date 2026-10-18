@@ -808,6 +808,8 @@ export function createPlayerCombatController(options: {
         target.vy += Math.sin(angle) * force;
       }
       if (target.hp <= 0) killEnemy(target);
+      // Any hit can leave it under Reap's threshold, not only a weapon's.
+      else cardCombat.reap(target);
     }
     if (weaponHit) cardCombat.afterHit(target, damage, angle);
   }
