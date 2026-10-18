@@ -973,6 +973,8 @@ export function createAutoFarmController(options: {
   return { start, stop: (reason?: string) => { zeroWaiting = false; stop(reason); }, defeated, refresh,
     // Copies for the window: the kept ones are recounted every frame.
     choices: () => choices().map(choice => ({ ...choice, kinds: [...choice.kinds], reward: { ...choice.reward } })), movement, travelStarted, mine,
+    /** Whether it is walking to the portal for this map now (Move On). */
+    headingTo: (destination: string) => active && phase === 'portal' && travellingTo === destination,
     /** `waiting`: stopped for travel, and starting again on the next map with enemies. The player can still Stop it. */
     state: () => ({ active, waiting: !active && Boolean(pendingResume), selected, selectedLabel, shares: { ...shares }, phase, advance, fightBosses,
       status: active && !recovering && options.paused() ? 'Paused' : status }),

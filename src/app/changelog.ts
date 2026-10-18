@@ -1,6 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
   "0.913.6": [
     "Firefox: the minimap, Town water and range ring no longer slow down after the window is made smaller",
+    "Auto Farm no longer gets stuck in a portal after an update reloads the game mid Move On",
   ],
   "0.913.5": [
     "Smoother play in Firefox: the screen's dark edges, your range ring, portals and the Town's buildings are cheaper to draw",

@@ -87,6 +87,8 @@ export function createMapController(options: {
   /** Closes those windows: walking off the portal leaves it, as the server only sends a player on from beside it. */
   closeHomeTravel?: () => void;
   onTravelStarted?: () => void;
+  /** Whether Auto Farm is taking the player through a portal to this map: the arrival guard does not hold it back. */
+  travelWanted?: (destination: string) => boolean;
   mapConfig: MapConfig;
   tutorialMapId: MapId;
   desertMapId: MapId;
@@ -317,7 +319,8 @@ export function createMapController(options: {
     portalCooldown = Math.max(0, portalCooldown - dt);
     if (mapTransitioning || arrivalPending || portalCutscene.active || portalCooldown > 0 || isDueling()) return;
     if (portalExitGuard) {
-      if (playerIsInsidePortal(portalExitGuard)) return;
+      // A reload mid Move On lands the player in the portal, where Auto Farm stood for good waiting for a step out.
+      if (playerIsInsidePortal(portalExitGuard) && !options.travelWanted?.(portalExitGuard.destination)) return;
       portalExitGuard = null;
       if (getCurrentMapId() === "town") options.closeHomeTravel?.();
     }

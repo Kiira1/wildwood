@@ -757,7 +757,7 @@ import {
   let playerController: PlayerController;
   const mapController = createMapController({
     openHomeTravel: portal => isSoulMap(portal.destination) ? soulDimension.openWindow() : homeTravel.open(), closeHomeTravel: () => { homeTravel.close(); soulDimension.closeWindow(); },
-    onTravelStarted: () => autoFarm.travelStarted(),
+    onTravelStarted: () => autoFarm.travelStarted(), travelWanted: destination => autoFarm.headingTo(destination),
     markPortalCutsceneSeen: (cutscene) => coop?.markPortalCutsceneSeen?.(cutscene),
     mapConfig: MAP_CONFIG,
     tutorialMapId: TUTORIAL_FOREST_MAP_ID,

@@ -228,6 +228,21 @@ describe("portal arrival activation", () => {
   });
 });
 
+describe("loaded standing in a portal", () => {
+  it("waits for a step out, unless Auto Farm is taking the player through it", async () => {
+    let wanted = false;
+    const { changeMap, controller, desertMapId, currentMapId } = portalArrivalHarness({ x: 300, y: 400 }, { travelWanted: destination => wanted && destination === "beginner_desert" });
+    // A reload mid Move On: back in the portal it was walking into.
+    controller.loadMap("tutorial_forest", 100, 68);
+    controller.updatePortal(1 / 60);
+    expect(changeMap).not.toHaveBeenCalled();
+    wanted = true;
+    controller.updatePortal(1 / 60);
+    await vi.waitFor(() => expect(currentMapId()).toBe(desertMapId));
+    expect(changeMap).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("walking straight through a portal", () => {
   function confirmable() {
     let answer!: (changed: boolean) => void;
