@@ -3570,7 +3570,7 @@ export const { startAggroRun, abandonAggroRun } = registerAggroReducers(spacetim
 export const { setBonusToggleState } = registerBonusToggleReducers(spacetimedb, { requireControllingPlayer, activeDuelFor,
   refreshPerkEffects: (ctx, player) => refreshPrestigeMovement(ctx, player, updated => syncPlayerMotionIdentity(ctx, playerWithMotion(ctx, updated))) });
 export const { setAutoFarmPuppet } = registerAutoFarmPuppetReducers(spacetimedb, { blockedSession, requireControllingPlayer, playerWithMotion });
-export const { mySoulStats, myRewardKills, profileSoulStats, setSoulDimensionOpen } = registerSoulDimension(spacetimedb, { requireDeveloper });
+export const { mySoulStats, mySoulLevel, myRewardKills, profileSoulStats, setSoulDimensionOpen } = registerSoulDimension(spacetimedb, { requireDeveloper });
 export const { fallIntoWell, useTownDoor } = registerTown(spacetimedb, { requireControllingPlayer, playerWithMotion, transitionPlayerMap });
 export const prestigeAccount = spacetimedb.reducer({}, (ctx) => { prestige.prestigeAccount(ctx); });
 export const spendPrestigePerkPoint = spacetimedb.reducer({ perk: t.string() },

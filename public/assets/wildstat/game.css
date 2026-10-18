@@ -1218,6 +1218,13 @@
   .hud-progress-timer[hidden] { display: none; }
   .hud-progress-timer-tech { color: #77caff; }
   .hud-progress-timer-slot { color: #ffd367; }
+  .hud-progress-timer.hud-soul-level { display: grid; gap: 3px; padding: 4px 5px; color: #e4ccff; font-size: 13px; white-space: normal; }
+  .hud-progress-timer.hud-soul-level[hidden] { display: none; }
+  .hud-soul-level-head { display: flex; flex-wrap: wrap; justify-content: space-between; column-gap: 4px; }
+  .hud-soul-level-head strong { color: #fff; }
+  .hud-soul-level-xp { color: #fff; }
+  .hud-soul-level .soul-level-bar { display: block; height: 4px; overflow: hidden; border-radius: 2px; background: rgba(255,255,255,.18); }
+  .hud-soul-level .soul-level-bar > span { display: block; height: 100%; background: #c48cff; transition: width .2s; }
 
   .respawn-ad-button {
     display: grid;

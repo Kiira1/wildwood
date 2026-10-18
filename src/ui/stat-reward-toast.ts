@@ -149,13 +149,15 @@ export function createStatRewardToast(text: string, color: string, attackSpeedCa
   return entry;
 }
 
-/** Uses the enemy reward card for completed account progression. */
-export function createProgressCompletionToast(kind: "Research" | "Upgrade", detail: string, iconText: string, color: string) {
+export type ProgressCompletionKind = "Research" | "Upgrade" | "Soul Level";
+/** Uses the enemy reward card for completed account progression, and a Soul Level reached. */
+export function createProgressCompletionToast(kind: ProgressCompletionKind, detail: string, iconText: string, color: string) {
+  const title = kind === "Soul Level" ? "Soul Level Up" : `${kind} complete`;
   const entry = document.createElement("div");
   entry.className = "pickup stat-reward-toast progress-completion-toast";
   entry.style.setProperty("--stat-reward-accent", color);
   entry.setAttribute("role", "status");
-  entry.setAttribute("aria-label", `${kind} complete: ${detail}`);
+  entry.setAttribute("aria-label", `${title}: ${detail}`);
 
   const icon = document.createElement("span");
   icon.className = "stat-reward-icon";
@@ -163,7 +165,7 @@ export function createProgressCompletionToast(kind: "Research" | "Upgrade", deta
   icon.textContent = iconText;
   const label = document.createElement("span");
   label.className = "stat-reward-label";
-  label.textContent = `${kind} complete`;
+  label.textContent = title;
   const value = document.createElement("strong");
   value.className = "stat-reward-value";
   value.textContent = detail;

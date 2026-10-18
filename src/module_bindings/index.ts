@@ -324,6 +324,7 @@ import MyRewardKillsRow from "./my_reward_kills_table";
 import MySocialHubRow from "./my_social_hub_table";
 import MySocialMessagesRow from "./my_social_messages_table";
 import MySocialMessagesWithReactionsRow from "./my_social_messages_with_reactions_table";
+import MySoulLevelRow from "./my_soul_level_table";
 import MySoulStatsRow from "./my_soul_stats_table";
 import MyStaffSkillsRow from "./my_staff_skills_table";
 import MySwordSkillsRow from "./my_sword_skills_table";
@@ -1449,6 +1450,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, MySocialMessagesWithReactionsRow),
+  mySoulLevel: __table({
+    name: 'my_soul_level',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MySoulLevelRow),
   mySoulStats: __table({
     name: 'my_soul_stats',
     indexes: [

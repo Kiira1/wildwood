@@ -59,6 +59,8 @@ export function createAutoFarmPanel(options: {
   setPaused: (paused: boolean) => void;
   clearInput: () => void;
   rewardMultiplier: () => number;
+  /** What each soul kill pays now, the Soul Level's doubling. */
+  soulRewardMultiplier?: () => number;
   showBaseStatRewards: () => boolean;
   rewardAmount?: (type: EnemyDefinition["reward"]["type"], amount: number) => number;
   /** The Aggro challenge and whose picks to read: during a run this button opens the group picker (with Target) instead. */
@@ -280,11 +282,12 @@ export function createAutoFarmPanel(options: {
     if (mining()) { updateMining(); return; }
     const choices = options.farm.choices();
     const multiplier = options.showBaseStatRewards() ? 1 : options.rewardMultiplier();
+    const soulMultiplier = options.soulRewardMultiplier?.() ?? 1;
     const displayAmount = (reward: EnemyDefinition["reward"], amount = reward.amount) =>
       options.rewardAmount?.(reward.type, amount) ?? amount * multiplier;
     const rewardText = (choice: typeof choices[number]) => {
       const reward = choice.reward ?? ENEMY_TYPES[choice.type].reward;
-      if (choice.soul) return soulRewardText(choice.soul);
+      if (choice.soul) return soulRewardText(choice.soul, soulMultiplier);
       const displayedReward = { ...reward, amount: displayAmount(reward) };
       return choice.maxReward && choice.maxReward > reward.amount
         ? `${rewardAmountLabel(displayedReward)}–${rewardAmountLabel({ ...displayedReward, amount: displayAmount(reward, choice.maxReward) }).slice(1)}`

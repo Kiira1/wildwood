@@ -15,6 +15,8 @@ export type RewardLabelContext = {
   /** The soul's attack speed rating in play (soulAttackSpeedBonus reads it). */
   soulAttackSpeed: number;
   critParts: CriticalDamageParts;
+  /** What each soul kill pays now, the Soul Level's doubling. */
+  soulRewardMultiplier?: number;
 };
 
 /** A kill's amount as shown now: attacks a second or the crit multiplier; null for the other stats. */
@@ -36,7 +38,7 @@ export function soulRewardCapped(stat: SoulStatId, context: RewardLabelContext |
 type LabelSource = {
   coop: () => { attackCapInPlay?: () => AttackCap; savedProgress?: () => { attackRate: number } | null } | null | undefined;
   player: { attackRate: number; critRating?: number };
-  soul: { inPlay: () => { attackSpeed: number }; critDamage: () => number };
+  soul: { inPlay: () => { attackSpeed: number }; critDamage: () => number; rewardMultiplier?: () => number };
   critParts: () => CriticalDamageParts;
 };
 
@@ -49,6 +51,7 @@ export function rewardLabelContextFrom(source: LabelSource): () => RewardLabelCo
       runAttackInterval: coop?.savedProgress?.()?.attackRate ?? source.player.attackRate,
       soulAttackSpeed: source.soul.inPlay().attackSpeed,
       critParts: { ...source.critParts(), soul: source.soul.critDamage(), rating: source.player.critRating },
+      soulRewardMultiplier: source.soul.rewardMultiplier?.() ?? 1,
     };
   };
 }

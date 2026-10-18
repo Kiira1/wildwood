@@ -601,6 +601,11 @@
       "replyToMessage:string",
       "reactionCountsJson:string"
     ],
+    "my_soul_level": [
+      "identity:identity",
+      "level:u32",
+      "xp:u64"
+    ],
     "my_soul_stats": [
       "identity:identity",
       "damage:f64",

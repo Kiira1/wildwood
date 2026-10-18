@@ -1,15 +1,16 @@
-import { SOUL_MAP_ID } from "../../../../shared/soul-dimension";
+import { isSoulMap, SOUL_MAP_ID } from "../../../../shared/soul-dimension";
 import { isDeveloperIdentity } from "../../../app/developer";
 import { createSoulDimensionWindow } from "../../../ui/soul-dimension-window";
 import type { MapId } from "../../world";
 import { createSoulDimensionRuntime } from "./soul-dimension-runtime";
 import { createTownRuntime } from "../town/town-runtime";
+import { createSoulLevelHud } from "../../../ui/soul-level-hud";
 
 /**
  * The Town and the Soul Dimension its bottom road leads to, as the
  * composition root sees them: the Town's runtime (doors, wells, walls), the
- * Soul Dimension's (its camps and the soul stats combat adds), and the
- * window at the Town's portal that leads in.
+ * Soul Dimension's (its camps and the soul stats combat adds), the
+ * window at the Town's portal that leads in, and the Soul Level on the HUD.
  */
 export function createSoulDimension(deps: Parameters<typeof createSoulDimensionRuntime>[0] & Parameters<typeof createTownRuntime>[0] & {
   travel: (mapId: MapId) => Promise<boolean>;
@@ -26,6 +27,7 @@ export function createSoulDimension(deps: Parameters<typeof createSoulDimensionR
         tier: runtime.tier(),
         kills: runtime.rewardKills(),
         soul: runtime.soulStats(),
+        soulLevel: runtime.soulLevel(),
       };
     },
     enter: () => deps.travel(SOUL_MAP_ID),
@@ -33,5 +35,6 @@ export function createSoulDimension(deps: Parameters<typeof createSoulDimensionR
     pause: () => {},
     clearInput: deps.clearInput,
   });
-  return { ...runtime, update: (dt: number) => { runtime.update(dt); town.update(dt); }, refreshTown: town.refresh, openWindow: () => window.open(), closeWindow: () => window.close() };
+  const levelHud = createSoulLevelHud();
+  return { ...runtime, update: (dt: number) => { runtime.update(dt); town.update(dt); const level = runtime.soulLevel(); levelHud.render(isSoulMap(deps.currentMapId()) ? level : null); }, refreshTown: town.refresh, openWindow: () => window.open(), closeWindow: () => window.close() };
 }

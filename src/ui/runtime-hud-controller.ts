@@ -12,6 +12,7 @@ import {
 } from "./item-drop-reveal";
 import {
   createProgressCompletionToast,
+  type ProgressCompletionKind,
   createQuestProgressToast,
   updateQuestProgressToast,
   createStatRewardToast,
@@ -188,7 +189,7 @@ export function createRuntimeHudController(dependencies: RuntimeHudDependencies)
     refreshStatRewardLifetime(key, reward);
   }
 
-  function showProgressCompletion(kind: "Research" | "Upgrade", detail: string, icon: string, color: string) {
+  function showProgressCompletion(kind: ProgressCompletionKind, detail: string, icon: string, color: string) {
     const entry = createProgressCompletionToast(kind, detail, icon, color);
     elements.pickupLog.appendChild(entry);
     const key = `completion:${++completionToastId}`;

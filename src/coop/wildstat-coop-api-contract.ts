@@ -74,6 +74,7 @@ type ExpectedApiKey =
   | "claimAdGems"
   | "chatMute"
   | "soulStats"
+  | "soulLevel"
   | "rewardKills"
   | "soulDimensionOpen"
   | "setSoulDimensionOpen"

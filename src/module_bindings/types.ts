@@ -1098,6 +1098,9 @@ export type MySocialMessages = __Infer<typeof MySocialMessages>;
 export const MySocialMessagesWithReactions = __t.object("MySocialMessagesWithReactions", {});
 export type MySocialMessagesWithReactions = __Infer<typeof MySocialMessagesWithReactions>;
 
+export const MySoulLevel = __t.object("MySoulLevel", {});
+export type MySoulLevel = __Infer<typeof MySoulLevel>;
+
 export const MySoulStats = __t.object("MySoulStats", {});
 export type MySoulStats = __Infer<typeof MySoulStats>;
 
@@ -2092,6 +2095,13 @@ export const PlayerSoloQuestWeek = __t.object("PlayerSoloQuestWeek", {
   lastPoints: __t.u32(),
 });
 export type PlayerSoloQuestWeek = __Infer<typeof PlayerSoloQuestWeek>;
+
+export const PlayerSoulLevel = __t.object("PlayerSoulLevel", {
+  identity: __t.identity(),
+  level: __t.u32(),
+  xp: __t.u64(),
+});
+export type PlayerSoulLevel = __Infer<typeof PlayerSoulLevel>;
 
 export const PlayerSoulStats = __t.object("PlayerSoulStats", {
   identity: __t.identity(),

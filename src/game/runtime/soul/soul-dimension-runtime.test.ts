@@ -8,6 +8,8 @@ import { createSoulDimensionRuntime } from "./soul-dimension-runtime";
 import type { EnemyState, PlayerState } from "../types";
 import { critDamageForLevels, ratingLevels } from "../../../../shared/stat-rating";
 import { SOUL_STAT_DETAILS, soulAttackSpeedBonus, soulAttackSpeedRatingAfterKills } from "../../../../shared/soul-dimension";
+import { addSoulKills, addSoulXp, cleanSoulStats, soulRewardMultiplier, SOUL_LEVEL_CAP, type SoulLevel, type SoulStatId, type SoulStats } from "../../../../shared/soul-dimension";
+import { soulRewardText } from "../../soul-world";
 
 function dimension(options: { kills?: number; prestige?: number; map?: MapId } = {}) {
   const player = { x: 0, y: 0, r: 16, hp: 100, maxHp: 100, moving: false, facing: 0 } as unknown as PlayerState;
@@ -137,5 +139,69 @@ describe("soul kills the server has not counted yet", () => {
       vi.advanceTimersByTime(16_000);
       expect(soulAttackSpeedBonus(c.runtime.inPlay().attackSpeed)).toBe(0);
     } finally { vi.useRealTimers(); }
+  });
+});
+
+describe("the Soul Level on the client", () => {
+  function leveled(start: SoulLevel | null) {
+    let soul: SoulStats | null = null, level = start;
+    const logged: string[] = [], levelUps: [number, number][] = [];
+    const runtime = createSoulDimensionRuntime({
+      source: () => ({ soulDimensionOpen: () => true, prestige: () => ({ level: 1 }), soulStats: () => soul, soulLevel: () => level,
+        rewardKills: () => ({ damage: 0, health: 0, armor: 0, regen: 0, speed: 0 }) }),
+      player: { x: 0, y: 0 } as never, enemies: [], spawnSites: [], currentMapId: () => SOUL_MAP_ID, spawnFromSite: () => {}, townMap: {} as never,
+      strength: () => ({ dps: 10, maxHp: 100, armor: 0, regen: 0 }), logPickup: text => logged.push(text),
+      levelUp: (next, multiplier) => levelUps.push([next, multiplier]),
+    });
+    return { runtime, logged, levelUps, server: (nextSoul: SoulStats | null, nextLevel: SoulLevel | null) => { soul = nextSoul; level = nextLevel; } };
+  }
+
+  it("pays and shows each kill at the server's multiplier", () => {
+    const c = leveled({ level: 3, xp: 10 });
+    expect(c.runtime.rewardMultiplier()).toBe(4);
+    c.runtime.soulKill("damage"); c.runtime.soulKill("regen"); c.runtime.soulKill("attackSpeed");
+    expect(c.runtime.inPlay()).toMatchObject({ damage: 4, regen: .4 });
+    expect(soulAttackSpeedBonus(c.runtime.inPlay().attackSpeed)).toBeCloseTo(.004, 9);
+    expect(c.logged).toEqual(["+4 Soul Damage", "+0.4 Soul Regen", "+0.004/s Soul Attack Speed"]);
+    expect(soulRewardText("critDamage", 4)).toBe("+0.008×");
+    expect(c.runtime.soulLevel()).toEqual({ level: 3, xp: 13, needed: 2_700, multiplier: 4, max: false });
+  });
+
+  it("predicts what the server pays for the report, and counts it once when the row comes back", () => {
+    const start = cleanSoulStats({ damage: 10, critDamage: 50, attackSpeed: 2 });
+    const c = leveled({ level: 2, xp: 290 });
+    c.server(start, { level: 2, xp: 290 });
+    const kills: SoulStatId[] = ["damage", "damage", "health", "armor", "regen", "attackSpeed", "critDamage", "critDamage"];
+    for (const stat of kills) c.runtime.soulKill(stat);
+    const predicted = c.runtime.soulStats();
+    // The server pays the report by stat, each at the level the report started at (noteEnemyDefeats).
+    let paid = start;
+    for (const stat of new Set(kills)) paid = addSoulKills(paid, stat, kills.filter(kill => kill === stat).length, soulRewardMultiplier(2));
+    for (const key of Object.keys(paid) as (keyof SoulStats)[]) expect(predicted[key], key).toBeCloseTo(paid[key], 9);
+    c.server(paid, addSoulXp({ level: 2, xp: 290 }, kills.length));
+    const after = c.runtime.soulStats();
+    for (const key of Object.keys(paid) as (keyof SoulStats)[]) expect(after[key], key).toBeCloseTo(paid[key], 9);
+    expect(c.runtime.soulLevel()).toMatchObject({ level: 2, xp: 298 });
+  });
+
+  it("fills the bar with kills on their way, and levels up when the server says so", () => {
+    const c = leveled({ level: 1, xp: 295 });
+    c.server(null, { level: 1, xp: 295 });
+    c.runtime.soulLevel();
+    for (let kill = 0; kill < 10; kill++) c.runtime.soulKill("damage");
+    expect(c.runtime.soulLevel()).toEqual({ level: 1, xp: 300, needed: 300, multiplier: 1, max: false });
+    expect(c.levelUps).toEqual([]);
+    c.server(addSoulKills(null, "damage", 10), { level: 2, xp: 5 });
+    expect(c.runtime.soulLevel()).toEqual({ level: 2, xp: 5, needed: 900, multiplier: 2, max: false });
+    expect(c.levelUps).toEqual([[2, 2]]);
+    expect(c.runtime.rewardMultiplier()).toBe(2);
+  });
+
+  it("announces nothing when the account's row loads in, and shows the cap as Max", () => {
+    const c = leveled(null);
+    expect(c.runtime.soulLevel()).toMatchObject({ level: 1, xp: 0, multiplier: 1 });
+    c.server(null, { level: SOUL_LEVEL_CAP, xp: 0 });
+    expect(c.runtime.soulLevel()).toEqual({ level: SOUL_LEVEL_CAP, xp: 0, needed: 0, multiplier: 512, max: true });
+    expect(c.levelUps).toEqual([]);
   });
 });

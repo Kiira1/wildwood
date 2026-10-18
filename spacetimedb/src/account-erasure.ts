@@ -183,6 +183,7 @@ export const ERASURE_TARGETS: readonly ErasureTarget[] = [
   { table: "playerLuckResearch", columns: ["identity"], pk: "identity", mode: "key" },
   { table: "playerRewardKills", columns: ["identity"], pk: "identity", mode: "key" },
   { table: "playerSession", columns: ["identity"], pk: "connection_id", mode: "index", index: "byIdentity" },
+  { table: "playerSoulLevel", columns: ["identity"], pk: "identity", mode: "key" },
   { table: "playerSoulStats", columns: ["identity"], pk: "identity", mode: "key" },
   { table: "playerUpgradeBench", columns: ["identity"], pk: "identity", mode: "key" },
   { table: "playerUpgradeBenchThirdSlot", columns: ["identity"], pk: "identity", mode: "key" },

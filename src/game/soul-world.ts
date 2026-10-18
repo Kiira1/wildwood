@@ -23,9 +23,9 @@ export function soulStatOfCampName(campName: string | undefined): SoulStatId | n
   return stat in SOUL_ENEMY_SPECIES ? stat : null;
 }
 
-/** What one soul kill pays, as its popup and the autofarm window show it: "+1", "+0.1" (rating points for attack speed and crit). */
-export function soulRewardText(stat: SoulStatId) {
-  const reward = SOUL_STAT_DETAILS[stat].reward;
+/** What one soul kill pays at this Soul Level multiplier, as its popup and the autofarm window show it: "+1", "+0.1". */
+export function soulRewardText(stat: SoulStatId, multiplier = 1) {
+  const reward = SOUL_STAT_DETAILS[stat].reward * Math.max(1, multiplier);
   // Soul crit damage is paid as the multiplier it adds (soulCritRatingAfterKills), attack speed as attacks a second.
   return stat === "critDamage" ? `+${reward}×` : stat === "attackSpeed" ? `+${reward}/s` : `+${reward}`;
 }

@@ -2,6 +2,7 @@ import { challengeMinimumInterval } from "./prestige-challenge";
 import { RATING_MAX, attackIntervalForRating, attackSpeedRatingForInterval } from "./stat-rating";
 import { describe, expect, it } from "vitest";
 import {
+  addSoulXp, cleanSoulLevel, mergeSoulLevels, soulLevelTotalXp, soulLevelXpNeeded, soulRewardMultiplier, SOUL_LEVEL_BASE_XP, SOUL_LEVEL_CAP, SOUL_LEVEL_GROWTH,
   addSoulKills, cleanSoulStats, EMPTY_SOUL_STATS, soulAttackSpeedBonus, soulAttackSpeedRatingAfterKills, soulCritRatingAfterKills, soulDimensionAccess, soulEnemyStats, soulStatsUnlocked, soulTier, soulTierKillsNeeded, withSoulStats, withoutSoulStats, SOUL_CAMPS, SOUL_POPULATION, SOUL_TIER_KILL_TYPES,
 } from "./soul-dimension";
 import { MIN_ATTACK_INTERVAL } from "./rules";
@@ -161,5 +162,52 @@ describe("soul attack speed at the old pace (0.901.55)", () => {
     expect(soulAttackSpeedRatingAfterKills(RATING_MAX, 5)).toBe(RATING_MAX);
     const fresh = { damage: 1, maxHp: 1, armor: 0, regen: 0, attackRate: 1 / .641 };
     expect(withSoulStats(fresh, { attackSpeed: RATING_MAX }).attackRate).toBeCloseTo(MIN_ATTACK_INTERVAL, 9);
+  });
+});
+
+describe("the Soul Level", () => {
+  it("needs 300 Soul XP for level 2 and three times more for each level after, up to level 10", () => {
+    expect([SOUL_LEVEL_BASE_XP, SOUL_LEVEL_GROWTH, SOUL_LEVEL_CAP]).toEqual([300, 3, 10]);
+    expect([1, 2, 3, 4, 5, 9].map(soulLevelXpNeeded)).toEqual([300, 900, 2_700, 8_100, 24_300, 1_968_300]);
+    expect(soulLevelXpNeeded(SOUL_LEVEL_CAP)).toBe(0);
+    expect(soulLevelTotalXp({ level: SOUL_LEVEL_CAP, xp: 0 })).toBe(2_952_300);
+  });
+
+  it("levels up as Soul XP comes in, carrying the rest, and stops at the cap", () => {
+    expect(addSoulXp(null, 299)).toEqual({ level: 1, xp: 299 });
+    expect(addSoulXp(null, 300)).toEqual({ level: 2, xp: 0 });
+    expect(addSoulXp({ level: 1, xp: 290 }, 30)).toEqual({ level: 2, xp: 20 });
+    expect(addSoulXp(null, 1_200 + 5)).toEqual({ level: 3, xp: 5 });
+    expect(addSoulXp(null, 1e12)).toEqual({ level: SOUL_LEVEL_CAP, xp: 0 });
+    expect(addSoulXp({ level: SOUL_LEVEL_CAP, xp: 0 }, 50)).toEqual({ level: SOUL_LEVEL_CAP, xp: 0 });
+    expect(cleanSoulLevel({ level: 99, xp: 5 })).toEqual({ level: SOUL_LEVEL_CAP, xp: 0 });
+    expect(cleanSoulLevel({ level: 0, xp: -3 })).toEqual({ level: 1, xp: 0 });
+  });
+
+  it("doubles the reward multiplier every level: 1×, 2×, 4× … 512× at the cap", () => {
+    expect([1, 2, 3, 4, 10, 11].map(soulRewardMultiplier)).toEqual([1, 2, 4, 8, 512, 512]);
+  });
+
+  it("pays each soul stat its reward times the multiplier, rating stats included", () => {
+    for (const multiplier of [2, 4, 512]) {
+      const doubled = (stat: Parameters<typeof addSoulKills>[1]) => addSoulKills(EMPTY_SOUL_STATS, stat, 3, multiplier);
+      const plain = (stat: Parameters<typeof addSoulKills>[1]) => addSoulKills(EMPTY_SOUL_STATS, stat, 3 * multiplier);
+      expect(doubled("damage").damage).toBe(3 * multiplier);
+      expect(doubled("health").maxHp).toBe(3 * multiplier);
+      expect(doubled("armor").armor).toBe(3 * multiplier);
+      expect(doubled("regen").regen).toBeCloseTo(.3 * multiplier, 9);
+      expect(doubled("attackSpeed").attackSpeed).toBe(plain("attackSpeed").attackSpeed);
+      expect(doubled("critDamage").critDamage).toBe(plain("critDamage").critDamage);
+    }
+    // Two kills at level 2 add what four kills at level 1 do.
+    expect(soulAttackSpeedBonus(addSoulKills(EMPTY_SOUL_STATS, "attackSpeed", 2, 2).attackSpeed)).toBeCloseTo(.004, 9);
+    const crit = (rating: number) => critDamageForLevels(ratingLevels(rating));
+    expect(crit(addSoulKills(EMPTY_SOUL_STATS, "critDamage", 1, 4).critDamage) - crit(0)).toBeCloseTo(.008, 3);
+  });
+
+  it("adds a guest's level onto an account's by their Soul XP, never below the higher level", () => {
+    expect(mergeSoulLevels({ level: 2, xp: 100 }, { level: 1, xp: 250 })).toEqual({ level: 2, xp: 350 });
+    expect(mergeSoulLevels({ level: 1, xp: 200 }, { level: 1, xp: 200 })).toEqual({ level: 2, xp: 100 });
+    expect(mergeSoulLevels(null, { level: 4, xp: 9 })).toEqual({ level: 4, xp: 9 });
   });
 });

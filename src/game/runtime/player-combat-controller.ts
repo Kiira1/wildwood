@@ -173,6 +173,8 @@ export function createPlayerCombatController(options: {
   /** The Soul Dimension: the soul stat an enemy pays (its kill pays no run stats), and what to do with one. */
   soulStatOf?: (enemy: EnemyState) => SoulStatId | null;
   onSoulKill?: (stat: SoulStatId) => void;
+  /** What each soul kill pays now, the Soul Level's doubling: 1 at level 1. */
+  soulRewardMultiplier?: () => number;
   onCombat?: () => void;
   /**
    * Whether to keep the target until it dies or leaves range (autofarm while it
@@ -596,12 +598,12 @@ export function createPlayerCombatController(options: {
   }
 
   /**
-   * A soul enemy's reward: flat (no research or prestige multiplier), straight
+   * A soul enemy's reward: flat (no research or prestige multiplier, only the Soul Level's), straight
    * onto the player like a run stat so the fight feels it now; the server's
    * soul row is what keeps it.
    */
   function applySoulReward(stat: SoulStatId, x: number, y: number) {
-    const amount = SOUL_STAT_DETAILS[stat].reward;
+    const amount = SOUL_STAT_DETAILS[stat].reward * Math.max(1, options.soulRewardMultiplier?.() ?? 1);
     switch (stat) {
       case "damage": player.damage += amount; break;
       case "health": addPlayerBaseMaxHealth(player, amount, options.healthMultiplierBonus()); break;

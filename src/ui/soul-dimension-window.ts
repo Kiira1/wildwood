@@ -1,10 +1,11 @@
 import {
-  soulAttackSpeedBonus, SOUL_STAT_DETAILS, SOUL_STAT_ORDER, SOUL_TIER_COUNT, SOUL_TIER_KILL_TYPES, soulStatsUnlocked, soulStatValue, soulTierKillsNeeded,
+  soulAttackSpeedBonus, SOUL_LEVEL_CAP, SOUL_STAT_DETAILS, SOUL_STAT_ORDER, SOUL_TIER_COUNT, SOUL_TIER_KILL_TYPES, soulStatsUnlocked, soulStatValue, soulTierKillsNeeded,
   type RewardKillCounts, type SoulStats, type SoulTierKillType,
 } from "../../shared/soul-dimension";
 import { formatCompactNumber as compactNumber } from "../../shared/compact-number";
 import { CRIT_DAMAGE_START, CRIT_DAMAGE_TARGET, RATING_MAX } from "../../shared/stat-rating";
 import { soulCritDamageBonus } from "../../shared/critical-damage";
+import { soulLevelBar, soulLevelText, type SoulLevelProgress } from "./soul-level-hud";
 
 const KILL_LABELS: Readonly<Record<SoulTierKillType, string>> = {
   damage: "Damage Enemies", health: "Health Enemies", armor: "Armor Enemies", regen: "Regen Enemies",
@@ -17,6 +18,7 @@ export type SoulWindowState = {
   tier: number;
   kills: RewardKillCounts;
   soul: SoulStats;
+  soulLevel: SoulLevelProgress;
 };
 
 // Attack speed is a rating since 0.901.47, shown as the profile shows it; crit damage is the multiplier it adds.
@@ -31,7 +33,7 @@ export function soulValue(soul: SoulStats, stat: (typeof SOUL_STAT_ORDER)[number
 }
 
 /**
- * The Soul Dimension portal's window: what the soul has gathered, how far
+ * The Soul Dimension portal's window: the Soul Level, what the soul has gathered, how far
  * the tiers have come and what the next one needs, and the way in. The
  * developer also gets the switch that opens it to everyone.
  */
@@ -84,6 +86,17 @@ export function createSoulDimensionWindow(deps: {
   function render() {
     const state = deps.state();
     body.replaceChildren();
+    const progress = state.soulLevel, text = soulLevelText(progress);
+    const level = section(progress.max ? `Soul Level ${progress.level}: Max` : `Soul Level ${progress.level} of ${SOUL_LEVEL_CAP}`);
+    row(level, "Rewards", text.rewards);
+    const xp = document.createElement("p");
+    xp.className = "soul-level-xp";
+    xp.textContent = text.xp;
+    level.append(soulLevelBar(text.fill), xp);
+    const levelNote = document.createElement("p");
+    levelNote.className = "soul-note";
+    levelNote.textContent = progress.max ? "Every soul reward is at its highest." : `Each soul kill gives 1 Soul XP. Level ${progress.level + 1} doubles every soul reward.`;
+    level.append(levelNote);
     const stats = section("Soul Stats");
     for (const stat of SOUL_STAT_ORDER) row(stats, SOUL_STAT_DETAILS[stat].label, soulValue(state.soul, stat), SOUL_STAT_DETAILS[stat].color);
     const unlocked = soulStatsUnlocked(state.tier);

@@ -1,9 +1,15 @@
-import { expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { Identity, Timestamp } from "spacetimedb";
-import { crystalFixture, server } from "../../tests/helpers/crystal-hollows-fixture";
+import { crystalFixture, identity, server } from "../../tests/helpers/crystal-hollows-fixture";
 import { fillDefeatBudget, reportKills, seedDefeatClock } from "../../tests/helpers/enemy-defeat";
 import { STARTER_BOW } from "../../shared/items";
-import { SOUL_ARRIVAL, SOUL_MAP_ID, SOUL_TOWN_PORTAL } from "../../shared/soul-dimension";
+import {
+  addSoulKills, cleanSoulStats, soulAttackSpeedBonus, soulRewardMultiplier, soulTierKillsNeeded,
+  SOUL_ARRIVAL, SOUL_LEVEL_BASE_XP, SOUL_LEVEL_CAP, SOUL_MAP_ID, SOUL_STAT_DETAILS, SOUL_STAT_ORDER, SOUL_TOWN_PORTAL,
+} from "../../shared/soul-dimension";
+import { BOSS_REWARD_CLAIM_BITS } from "../../shared/rules";
+import { mergeSoulDimensionRows, removeSoulDimensionRows } from "./soul-dimension";
+import { ERASURE_TARGETS } from "./account-erasure";
 import { TOWN_ARRIVAL, TOWN_SOUL_PORTAL } from "../../shared/town";
 import { HOME_TRAVEL_PORTAL } from "../../shared/home";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
@@ -141,4 +147,121 @@ it("shows every player's soul stats to profiles, through an anonymous view that 
   expect(rows.find(row => row.identity.isEqual(other))).toMatchObject({ maxHp: 12, armor: 3, critDamage: .2, kills: 13n });
   // The owner's own view is unchanged: one row, theirs.
   expect(server.mySoulStats(f.ctx)).toEqual([f.db.playerSoulStats.identity.find(f.ctx.sender)]);
+});
+
+describe("the Soul Level", () => {
+  const levelOf = (f: any) => f.db.playerSoulLevel.identity.find(f.ctx.sender);
+  const seedLevel = (f: any, level: number, xp = 0) => f.seed("playerSoulLevel", { identity: f.ctx.sender, level, xp: BigInt(xp) });
+
+  it("gives 1 Soul XP a soul kill, and none for campaign kills", () => {
+    const f = soulReady({ kills: 125 });
+    f.patch("player", { mapId: "tutorial_forest" });
+    fillDefeatBudget(f, "tutorial_forest", "Spitter");
+    reportKills(f, { streamId: "forest-stream-00001", sequence: 1n, mapId: "tutorial_forest", enemies: [{ enemy: "Spitter", count: 4 }] });
+    expect(levelOf(f)).toBeFalsy();
+    soulKills(f, [{ enemy: "soul:damage", count: 5 }, { enemy: "soul:health", count: 3 }], 1n);
+    expect(levelOf(f)).toMatchObject({ level: 1, xp: 8n });
+  });
+
+  it("gives no Soul XP for soul enemies the tier has not woken", () => {
+    const f = soulReady({ kills: 25 });
+    soulKills(f, [{ enemy: "soul:health", count: 5 }]);
+    expect(levelOf(f)).toBeFalsy();
+  });
+
+  it("doubles every soul reward each level, the rating ones too", () => {
+    const run = (level: number) => {
+      const f = soulReady({ kills: soulTierKillsNeeded(6) });
+      if (level > 1) seedLevel(f, level);
+      soulKills(f, SOUL_STAT_ORDER.map(stat => ({ enemy: `soul:${stat}`, count: 2 })));
+      return f.db.playerSoulStats.identity.find(f.ctx.sender);
+    };
+    for (const level of [1, 2, 3, 5]) {
+      const multiplier = soulRewardMultiplier(level);
+      expect(multiplier).toBe(2 ** (level - 1));
+      const expected = SOUL_STAT_ORDER.reduce((soul, stat) => addSoulKills(soul, stat, 2 * multiplier), cleanSoulStats(null));
+      const row = run(level);
+      for (const key of ["damage", "maxHp", "armor", "regen", "attackSpeed", "critDamage"] as const) expect(row[key], `${key} at ${level}`).toBeCloseTo(expected[key], 9);
+      expect(row.damage).toBe(2 * multiplier);
+      expect(soulAttackSpeedBonus(row.attackSpeed)).toBeCloseTo(2 * multiplier * SOUL_STAT_DETAILS.attackSpeed.reward, 9);
+      expect(row.kills).toBe(12n);
+    }
+  });
+
+  it("pays a whole report at the level it started at, and levels up after it", () => {
+    const f = soulReady({ kills: 25 });
+    seedLevel(f, 1, SOUL_LEVEL_BASE_XP - 10);
+    soulKills(f, [{ enemy: "soul:damage", count: 30 }]);
+    expect(f.db.playerSoulStats.identity.find(f.ctx.sender).damage).toBe(30);
+    expect(levelOf(f)).toMatchObject({ level: 2, xp: 20n });
+    soulKills(f, [{ enemy: "soul:damage", count: 10 }], 2n);
+    expect(f.db.playerSoulStats.identity.find(f.ctx.sender).damage).toBe(30 + 20);
+    expect(levelOf(f)).toMatchObject({ level: 2, xp: 30n });
+  });
+
+  it("stops at the cap: rewards stay at its multiplier and the row is no longer written", () => {
+    const f = soulReady({ kills: 25 });
+    seedLevel(f, SOUL_LEVEL_CAP);
+    const update = vi.spyOn(f.db.playerSoulLevel.identity, "update");
+    soulKills(f, [{ enemy: "soul:damage", count: 3 }]);
+    expect(f.db.playerSoulStats.identity.find(f.ctx.sender).damage).toBe(3 * 2 ** (SOUL_LEVEL_CAP - 1));
+    expect(levelOf(f)).toMatchObject({ level: SOUL_LEVEL_CAP, xp: 0n });
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("reads and writes its row at most once a soul report, and never on a campaign report", () => {
+    const count = (f: any, run: () => void) => {
+      const table = f.db.playerSoulLevel;
+      const find = vi.spyOn(table.identity, "find"), update = vi.spyOn(table.identity, "update"), insert = vi.spyOn(table, "insert");
+      run();
+      const calls = { reads: find.mock.calls.length, writes: update.mock.calls.length + insert.mock.calls.length };
+      find.mockRestore(); update.mockRestore(); insert.mockRestore();
+      return calls;
+    };
+    const soul = soulReady({ kills: 125 });
+    expect(count(soul, () => soulKills(soul, [{ enemy: "soul:damage", count: 5 }, { enemy: "soul:health", count: 5 }]))).toEqual({ reads: 1, writes: 1 });
+    expect(count(soul, () => soulKills(soul, [{ enemy: "soul:damage", count: 5 }], 2n))).toEqual({ reads: 1, writes: 1 });
+    const forest = soulReady({ kills: 125 });
+    forest.patch("player", { mapId: "tutorial_forest" });
+    fillDefeatBudget(forest, "tutorial_forest", "Spitter");
+    expect(count(forest, () => reportKills(forest, { streamId: "forest-stream-00001", sequence: 1n, mapId: "tutorial_forest", enemies: [{ enemy: "Spitter", count: 4 }] })))
+      .toEqual({ reads: 0, writes: 0 });
+  });
+
+  it("is kept through a prestige, like the soul stats", () => {
+    const f = soulReady();
+    seedLevel(f, 4, 123);
+    f.patch("playerProgress", { bossRewardClaims: BOSS_REWARD_CLAIM_BITS.aegisPrime });
+    f.seed("proceduralProgress", { identity: f.ctx.sender, completed: 4 });
+    f.run(server.prestigeAccount, {});
+    expect(f.db.playerPrestige.identity.find(f.ctx.sender).level).toBe(2);
+    expect(levelOf(f)).toMatchObject({ level: 4, xp: 123n });
+  });
+
+  it("goes with the rest of the soul on Reset Save and on erasure", () => {
+    const f = soulReady();
+    seedLevel(f, 3, 5);
+    f.run(server.resetPlayerProgress, {});
+    expect(levelOf(f)).toBeFalsy();
+    const g = soulReady();
+    seedLevel(g, 3, 5);
+    g.run((ctx: any) => removeSoulDimensionRows(ctx, ctx.sender), {});
+    expect(levelOf(g)).toBeFalsy();
+    expect(ERASURE_TARGETS.some(entry => entry.table === "playerSoulLevel")).toBe(true);
+  });
+
+  it("adds a guest's Soul XP onto the account it links to", () => {
+    const f = soulReady();
+    const guest = identity("7");
+    seedLevel(f, 2, 100);
+    f.seed("playerSoulLevel", { identity: guest, level: 1, xp: 250n });
+    f.run((ctx: any) => mergeSoulDimensionRows(ctx, guest, ctx.sender), {});
+    // 300 + 100 + 250 Soul XP: level 2 with 350 toward level 3.
+    expect(levelOf(f)).toMatchObject({ level: 2, xp: 350n });
+    expect(f.db.playerSoulLevel.identity.find(guest)).toBeFalsy();
+    const fresh = soulReady();
+    fresh.seed("playerSoulLevel", { identity: guest, level: 3, xp: 7n });
+    fresh.run((ctx: any) => mergeSoulDimensionRows(ctx, guest, ctx.sender), {});
+    expect(levelOf(fresh)).toMatchObject({ level: 3, xp: 7n });
+  });
 });

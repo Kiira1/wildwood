@@ -2,7 +2,8 @@ import { soulInPlayFor } from "../../../../shared/bonus-toggles";
 import {
   addSoulKills, cleanSoulStats, EMPTY_REWARD_KILLS, isSoulMap, soulDimensionAccess, soulEnemyStats, soulTier,
   withSoulStats, withoutSoulStats, EMPTY_SOUL_STATS, SOUL_CAMPS, SOUL_STAT_DETAILS, soulCritRatingAfterKills, soulAttackSpeedRatingAfterKills, soulAttackSpeedBonus,
-  type RewardKillCounts, type SoulStatId, type SoulStats, type SoulStrength,
+  cleanSoulLevel, soulLevelTotalXp, soulLevelXpNeeded, soulRewardMultiplier, SOUL_LEVEL_CAP, SOUL_XP_PER_KILL,
+  type RewardKillCounts, type SoulLevel, type SoulStatId, type SoulStats, type SoulStrength,
 } from "../../../../shared/soul-dimension";
 import { TOWN_SOUL_PORTAL } from "../../../../shared/town";
 import { isDeveloperIdentity } from "../../../app/developer";
@@ -23,6 +24,7 @@ export type SoulDimensionSource = {
   localIdentity?: () => string | undefined;
   prestige?: () => { level: number } | null;
   soulStats?: () => SoulStats | null;
+  soulLevel?: () => SoulLevel | null;
   rewardKills?: () => RewardKillCounts;
   soulDimensionOpen?: () => boolean;
   setSoulDimensionOpen?: (open: boolean) => Promise<boolean>;
@@ -68,6 +70,8 @@ export function createSoulDimensionRuntime(deps: {
   sendToTown?: () => Promise<boolean>;
   /** The capped critical damage multiplier with this much soul crit damage rating in it, as combat rolls it. */
   researchCritMultiplier?: (soulCritDamage: number) => number;
+  /** The server has raised the Soul Level. */
+  levelUp?: (level: number, multiplier: number) => void;
 }) {
   let filledTier = -1;
   const defenseForce = createSoulDefenseForce({ identity: () => deps.source()?.localIdentity?.(), player: deps.player, enemies: deps.enemies,
@@ -83,6 +87,9 @@ export function createSoulDimensionRuntime(deps: {
   /** Soul attack speed kills likewise: each adds its 0.001 a second from where the soul stands (soulAttackSpeedRatingAfterKills). */
   let pendingSpeedKills = 0;
   let lastSoulKillAt = 0;
+  /** Soul XP from kills the server has not counted yet, and the level row they are counted against. */
+  let pendingXp = 0;
+  let lastServerLevel: SoulLevel | null = null;
 
   const source = () => deps.source();
   const serverSoul = () => source()?.soulStats?.() ?? null;
@@ -98,15 +105,45 @@ export function createSoulDimensionRuntime(deps: {
     for (const key of ["damage", "maxHp", "armor", "regen"] as const) pending[key] = Math.max(0, pending[key] - Math.max(0, after[key] - before[key]));
     const speedCounted = (soulAttackSpeedBonus(after.attackSpeed) - soulAttackSpeedBonus(before.attackSpeed)) / SOUL_STAT_DETAILS.attackSpeed.reward;
     pendingSpeedKills = Number.isFinite(speedCounted) ? Math.max(0, pendingSpeedKills - Math.max(0, Math.round(speedCounted))) : 0;
-    let critCounted = 0;
-    while (critCounted < pendingCritKills && soulCritRatingAfterKills(before.critDamage, critCounted) < after.critDamage - 1e-9) critCounted += 1;
-    pendingCritKills -= critCounted;
+    // The fewest kills that reach the server's rating: each kill at a higher Soul Level counts as several.
+    let low = 0, high = pendingCritKills;
+    while (low < high) {
+      const mid = Math.floor((low + high) / 2);
+      if (soulCritRatingAfterKills(before.critDamage, mid) < after.critDamage - 1e-9) low = mid + 1; else high = mid;
+    }
+    pendingCritKills -= low;
+  }
+  /** A new level row takes off the Soul XP it counts, and a higher level is announced. */
+  function settleLevel(server: SoulLevel | null) {
+    const before = lastServerLevel;
+    lastServerLevel = server;
+    if (!server) return;
+    // No row before: a first soul kill made it, or it is the account's row loading in.
+    const from = before ?? (pendingXp > 0 ? cleanSoulLevel(null) : null);
+    if (!from) return;
+    pendingXp = Math.max(0, pendingXp - Math.max(0, soulLevelTotalXp(server) - soulLevelTotalXp(from)));
+    if (server.level > from.level) deps.levelUp?.(server.level, soulRewardMultiplier(server.level));
+  }
+  const serverLevel = () => {
+    const server = source()?.soulLevel?.() ?? null;
+    if (server !== lastServerLevel) settleLevel(server);
+    return cleanSoulLevel(server);
+  };
+  /** What each soul kill pays now: the server's level, which pays the whole of the next report. */
+  const rewardMultiplier = () => soulRewardMultiplier(serverLevel().level);
+  /** The Soul Level as shown: the server's level, its XP with kills on their way added up to the next level. */
+  function soulLevel() {
+    soulStats();
+    const server = serverLevel();
+    const needed = soulLevelXpNeeded(server.level);
+    const xp = server.level >= SOUL_LEVEL_CAP ? 0 : Math.min(needed, server.xp + pendingXp);
+    return { level: server.level, xp, needed, multiplier: soulRewardMultiplier(server.level), max: server.level >= SOUL_LEVEL_CAP };
   }
   function soulStats(): SoulStats {
     const server = serverSoul();
     if (server !== lastServerSoul) settle(server);
     if (Date.now() - lastSoulKillAt > PENDING_SOUL_KILL_MS && (pendingSpeedKills || pendingCritKills || pending.damage || pending.maxHp || pending.armor || pending.regen)) {
-      pending = cleanSoulStats(null); pendingCritKills = 0; pendingSpeedKills = 0;
+      pending = cleanSoulStats(null); pendingCritKills = 0; pendingSpeedKills = 0; pendingXp = 0;
     }
     const base = cleanSoulStats(server);
     return {
@@ -185,11 +222,13 @@ export function createSoulDimensionRuntime(deps: {
     /** A soul kill: counted and shown at once, until the server's row catches up (combat adds it to the player itself). */
     soulKill(stat: SoulStatId) {
       soulStats();
+      const multiplier = rewardMultiplier();
       lastSoulKillAt = Date.now();
       defenseForce.countKill();
-      if (stat === "critDamage") pendingCritKills += 1; else if (stat === "attackSpeed") pendingSpeedKills += 1; else pending = addSoulKills(pending, stat, 1);
+      pendingXp += SOUL_XP_PER_KILL;
+      if (stat === "critDamage") pendingCritKills += multiplier; else if (stat === "attackSpeed") pendingSpeedKills += multiplier; else pending = addSoulKills(pending, stat, 1, multiplier);
       const detail = SOUL_STAT_DETAILS[stat];
-      deps.logPickup?.(`${soulRewardText(stat)} Soul ${detail.label}`, detail.color);
+      deps.logPickup?.(`${soulRewardText(stat, multiplier)} Soul ${detail.label}`, detail.color);
     },
     /** Saved progress with the soul stats added: what the player's stats load from. Nothing is added in a challenge. */
     withSoul<T extends { damage: number; maxHp: number; armor: number; regen: number; attackRate: number }>(progress: T | null): T | null {
@@ -209,6 +248,8 @@ export function createSoulDimensionRuntime(deps: {
     afterRespawn: defenseForce.afterRespawn,
     inPlay,
     soulStats,
+    soulLevel,
+    rewardMultiplier,
     rewardKills,
     tier,
     access,

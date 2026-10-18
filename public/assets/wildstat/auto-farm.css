@@ -962,6 +962,9 @@ html.text-outline-shadow .inventory-stack-count { text-shadow: 1px 0 0 #080b08, 
 .soul-row strong { color: #fff; font-variant-numeric: tabular-nums; }
 .soul-row.is-done strong { color: #7ee08a; }
 .soul-note { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.35; }
+.soul-level-bar { display: block; height: 8px; overflow: hidden; border-radius: 4px; background: rgba(255,255,255,.14); }
+.soul-level-bar > span { display: block; height: 100%; border-radius: inherit; background: #c48cff; transition: width .2s; }
+.soul-level-xp { margin: 0; color: #fff; font-size: 14px; font-weight: 700; text-align: center; font-variant-numeric: tabular-nums; }
 .farm-sheet .soul-toggle { justify-content: center; font-weight: 700; }
 .guild-hall-sheet .soul-section { border-color: rgba(255,207,107,.28); }
 .guild-hall-sheet .soul-section h3 { color: #ffd98a; }

@@ -640,7 +640,7 @@ import {
   });
 
   playerCombat = createPlayerCombatController({
-    onEnemyDefeated: enemy => soulDimension.defeated(enemy) || (onboarding?.enemyDefeated() ?? false), soulStatOf: enemy => soulDimension.soulStatOf(enemy), onSoulKill: stat => soulDimension.soulKill(stat),
+    onEnemyDefeated: enemy => soulDimension.defeated(enemy) || (onboarding?.enemyDefeated() ?? false), soulStatOf: enemy => soulDimension.soulStatOf(enemy), onSoulKill: stat => soulDimension.soulKill(stat), soulRewardMultiplier: () => soulDimension.rewardMultiplier(),
     player, enemies, spawnSites, projectileStore, bosses,
     nowSeconds: () => session?.gameTime() ?? 0,
     serverNowMs: () => coop?.serverNowMs?.() ?? Date.now(),
@@ -812,7 +812,7 @@ import {
   const homeTravel = createHomeTravelController({ source: () => coop, travel: mapController.travelFromHome, departure: mapController.homeDeparture, atHome: () => currentMapId === "town", pause: () => {}, clearInput: playerInput.clear, mapName: id => MAP_CONFIG[id].name, guildHall: () => guildHall.hallMap() });
   const soulDimension = createSoulDimension({ source: () => coop, player, inventory, enemies, spawnSites, decor, currentMapId: () => currentMapId, spawnFromSite, invalidateDepthOrder: () => worldRenderRuntime.invalidateDepthOrder(), townMap: MAP_CONFIG.town,
     strength: () => ({ dps: playerCombat.expectedDps(), maxHp: player.maxHp, armor: effectiveArmor(), regen: regenerationPerSecond() }), fullDps: () => playerCombat.expectedFullDps(), logPickup, damagePlayer: (damage, source) => playerCombat.damagePlayer(damage, source), message: showMessage, burst: spawnBurst, sendToTown: () => mapController.teleportHome(), researchCritMultiplier: researchCriticalDamageMultiplier,
-    attackCap: () => coop?.attackCapInPlay?.(), travel: mapController.travelFromHome, clearInput: playerInput.clear, fadeToWorld: (action, ms) => session.fadeToWorld(action, ms) });
+    levelUp: (level, multiplier) => runtimeHud.showProgressCompletion("Soul Level", `Lv ${level} · Rewards ${multiplier}×`, "✦", "#d9b8ff"), attackCap: () => coop?.attackCapInPlay?.(), travel: mapController.travelFromHome, clearInput: playerInput.clear, fadeToWorld: (action, ms) => session.fadeToWorld(action, ms) });
   const guildHall = createGuildHall({ source: () => coop, player, decor, currentMapId: () => currentMapId, invalidateDepthOrder: () => worldRenderRuntime.invalidateDepthOrder(), clearInput: playerInput.clear, fadeToWorld: (action, ms) => session.fadeToWorld(action, ms),
     travel: mapId => { autoFarm.stop("Autofarm stopped for the Guild Hall"); return mapController.teleportToMap(mapId, async () => Boolean(await coop?.changeMap?.(mapId, player.x, player.y))); } });
   const { activePortal, secondaryPortal, portalIsUnlocked, startDragonPortalCutscene, startSnowlandsPortalCutscene, startLavaPortalCutscene, startInfernalPortalCutscene, startWaterPortalCutscene, startSamuraiPortalCutscene } = mapController;
@@ -1813,7 +1813,7 @@ import {
 
   createAutoFarmPanel({
     farm: autoFarm, mapName: () => MAP_CONFIG[currentMapId].name, aggro: () => coop?.aggroChallenge?.(), identity: () => coop?.localIdentity?.(),
-    rewardMultiplier: researchRewardMultiplier,
+    rewardMultiplier: researchRewardMultiplier, soulRewardMultiplier: () => soulDimension.rewardMultiplier(),
     showBaseStatRewards: appShell.showBaseStatRewards,
     rewardAmount: rewardDisplay.displayedAmount,
     visible: () => (farmUnlocked() || Boolean(coop?.aggroChallenge?.()?.active)) && currentMapId !== "home_exterior" && !guildHall.guildId() && Boolean(session?.isRunning()) && player.hp > 0 && !isDueling() && !mapController.isMapTransitioning() && !mapController.isCutsceneActive(),

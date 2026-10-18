@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.913.0": [
+    "Soul Level: each soul kill gives 1 Soul XP, and every level doubles soul rewards, up to level 10",
+  ],
   "0.912.2": [
     "Auto Farm stays at a camp while it has enemies nearby instead of crossing the map every 20 seconds",
     "Auto Farm keeps out of a boss's range while it isn't fighting it, and leaves the pit after a win",
@@ -3523,6 +3526,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.913.0": "2026-10-17",
   "0.912.2": "2026-10-17",
   "0.912.1": "2026-10-17",
   "0.912.0": "2026-10-17",

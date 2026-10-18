@@ -12,7 +12,9 @@
  *   depends on the player's tier and a roll fixed per camp, the same on every
  *   client.
  * - Soul enemies are each player's own, built at that player's strength when
- *   they spawn, and pay a flat reward that never grows.
+ *   they spawn, and pay a flat reward that only the Soul Level doubles.
+ * - The Soul Level comes from Soul XP, one a soul kill, and never resets; each
+ *   level doubles every soul reward and needs SOUL_LEVEL_GROWTH times the XP.
  */
 import { armorDamageReduction } from "./combat";
 import { MIN_ATTACK_INTERVAL, TUTORIAL_FOREST_MAP_ID } from "./rules";
@@ -85,10 +87,10 @@ export function soulStatValue(soul: Partial<SoulStats> | null | undefined, stat:
   const value = Number(soul?.[SOUL_STAT_FIELD[stat]] ?? 0);
   return Number.isFinite(value) ? Math.max(0, value) : 0;
 }
-/** Soul stats after `count` kills of one soul enemy. Flat: the reward never grows. */
-export function addSoulKills(soul: Partial<SoulStats> | null | undefined, stat: SoulStatId, count: number): SoulStats {
+/** Soul stats after `count` kills of one soul enemy, each paying `multiplier` times its reward (the Soul Level's). */
+export function addSoulKills(soul: Partial<SoulStats> | null | undefined, stat: SoulStatId, count: number, multiplier = 1): SoulStats {
   const next = { ...EMPTY_SOUL_STATS, ...cleanSoulStats(soul) };
-  const field = SOUL_STAT_FIELD[stat], kills = Math.max(0, Math.floor(count));
+  const field = SOUL_STAT_FIELD[stat], kills = Math.max(0, Math.floor(count)) * Math.max(1, Number(multiplier) || 1);
   next[field] = stat === "critDamage" ? soulCritRatingAfterKills(next[field], kills)
     : stat === "attackSpeed" ? soulAttackSpeedRatingAfterKills(next[field], kills)
     : Math.min(RATING_MAX, next[field] + SOUL_STAT_DETAILS[stat].reward * kills);
@@ -127,6 +129,54 @@ export function soulAttackSpeedRatingAfterKills(rating: number, kills: number) {
   const current = cleanRating(rating), step = SOUL_STAT_DETAILS.attackSpeed.reward * Math.max(0, kills);
   if (!(step > 0) || current >= RATING_MAX) return current;
   return Math.max(current, attackSpeedRatingFor(ATTACK_SPEED_START + soulAttackSpeedBonus(current) + step));
+}
+
+// ---- Soul Level ----
+
+/** The Soul Level's tuning: Soul XP for level 2, how much more each later level needs, and the top level. */
+export const SOUL_LEVEL_BASE_XP = 300;
+export const SOUL_LEVEL_GROWTH = 3;
+export const SOUL_LEVEL_CAP = 10;
+/** Soul XP one soul kill gives; nothing else gives any. */
+export const SOUL_XP_PER_KILL = 1;
+
+export type SoulLevel = { level: number; xp: number };
+export const FIRST_SOUL_LEVEL: Readonly<SoulLevel> = Object.freeze({ level: 1, xp: 0 });
+
+export function cleanSoulLevel(row: { level?: unknown; xp?: unknown } | null | undefined): SoulLevel {
+  const level = Math.min(SOUL_LEVEL_CAP, Math.max(1, Math.floor(Number(row?.level ?? 1)) || 1));
+  const xp = Math.max(0, Math.floor(Number(row?.xp ?? 0)) || 0);
+  return { level, xp: level >= SOUL_LEVEL_CAP ? 0 : xp };
+}
+/** Soul XP from `level` to the next one; 0 at the cap. */
+export function soulLevelXpNeeded(level: number) {
+  const clean = Math.max(1, Math.floor(level));
+  return clean >= SOUL_LEVEL_CAP ? 0 : Math.round(SOUL_LEVEL_BASE_XP * Math.pow(SOUL_LEVEL_GROWTH, clean - 1));
+}
+/** What each soul kill pays at this level: level 1 the reward, each level after twice the one before. */
+export function soulRewardMultiplier(level: number) {
+  return Math.pow(2, cleanSoulLevel({ level }).level - 1);
+}
+/** Every Soul XP a level and its progress stand for, from level 1. */
+export function soulLevelTotalXp(soulLevel: SoulLevel) {
+  const clean = cleanSoulLevel(soulLevel);
+  let total = clean.xp;
+  for (let level = 1; level < clean.level; level++) total += soulLevelXpNeeded(level);
+  return total;
+}
+/** The level and progress after `xp` more Soul XP. At the cap, nothing more is kept. */
+export function addSoulXp(soulLevel: SoulLevel | null | undefined, xp: number): SoulLevel {
+  let { level, xp: progress } = cleanSoulLevel(soulLevel);
+  if (level >= SOUL_LEVEL_CAP) return { level, xp: 0 };
+  progress += Math.max(0, Math.floor(xp) || 0);
+  while (level < SOUL_LEVEL_CAP && progress >= soulLevelXpNeeded(level)) { progress -= soulLevelXpNeeded(level); level++; }
+  return { level, xp: level >= SOUL_LEVEL_CAP ? 0 : progress };
+}
+/** Two Soul Levels as one (a guest's onto their account): their XP added, never below the higher of the two. */
+export function mergeSoulLevels(a: SoulLevel | null | undefined, b: SoulLevel | null | undefined): SoulLevel {
+  const summed = addSoulXp(FIRST_SOUL_LEVEL, soulLevelTotalXp(cleanSoulLevel(a)) + soulLevelTotalXp(cleanSoulLevel(b)));
+  const higher = Math.max(cleanSoulLevel(a).level, cleanSoulLevel(b).level);
+  return summed.level >= higher ? summed : { level: higher, xp: 0 };
 }
 
 export function cleanSoulStats(soul: Partial<SoulStats> | null | undefined): SoulStats {

@@ -9,8 +9,8 @@ import { soulInPlayFor } from "../../shared/bonus-toggles";
 import { attackCapInPlay } from "./prestige";
 import { cleanRating } from "../../shared/stat-rating";
 import {
-  addSoulKills, cleanSoulStats, isSoulMap, soulDimensionAccess, soulStatsUnlocked, soulTier,
-  SOUL_STAT_ORDER, SOUL_REWARD_KILL_TYPES, type RewardKillCounts, type SoulStatId, type SoulStats,
+  addSoulKills, addSoulXp, cleanSoulLevel, cleanSoulStats, isSoulMap, mergeSoulLevels, soulDimensionAccess, soulRewardMultiplier, soulStatsUnlocked, soulTier,
+  SOUL_STAT_ORDER, SOUL_REWARD_KILL_TYPES, SOUL_XP_PER_KILL, type RewardKillCounts, type SoulStatId, type SoulStats,
 } from "../../shared/soul-dimension";
 
 /**
@@ -21,6 +21,8 @@ import {
  *   fills while the dimension is still closed, so it is ready when it opens.
  * - player_soul_stats holds what soul enemies paid. Nothing resets it. Private: the
  *   owner reads it through my_soul_stats, profiles through profile_soul_stats.
+ * - player_soul_level holds the Soul Level and the Soul XP toward the next one. Nothing
+ *   resets it either. Private: the owner reads it through my_soul_level.
  * - soul_dimension_config is the switch: closed, only the developer can
  *   travel there; open, anyone who has prestiged can.
  */
@@ -44,11 +46,17 @@ export const playerSoulStats = table({ name: "player_soul_stats", public: false 
   critDamage: t.f64(),
   kills: t.u64(),
 });
+export const playerSoulLevel = table({ name: "player_soul_level", public: false }, {
+  identity: t.identity().primaryKey(),
+  level: t.u32(),
+  /** Soul XP toward the next level. */
+  xp: t.u64(),
+});
 export const soulDimensionConfig = table({ name: "soul_dimension_config", public: true }, {
   id: t.u8().primaryKey(),
   open: t.bool(),
 });
-export const soulDimensionTables = { playerRewardKills, playerSoulStats, soulDimensionConfig };
+export const soulDimensionTables = { playerRewardKills, playerSoulStats, playerSoulLevel, soulDimensionConfig };
 
 const identityHex = (identity: any) => identity?.toHexString?.() ?? "";
 
@@ -123,8 +131,9 @@ export function countRewardKills(ctx: any, identity: any, rewards: readonly { ty
 
 /**
  * After a kill report is paid: soul kills add soul stats (only for soul
- * enemies this player's tier spawns), and campaign or Endless kills count
- * towards the tiers.
+ * enemies this player's tier spawns) and Soul XP, and campaign or Endless
+ * kills count towards the tiers. The whole report pays at the Soul Level it
+ * started at; a level it reaches pays from the next report.
  */
 export function noteEnemyDefeats(ctx: any, mapId: string, rewards: readonly { type: string; amount: number; count: number }[]) {
   if (!isSoulMap(mapId)) {
@@ -134,25 +143,33 @@ export function noteEnemyDefeats(ctx: any, mapId: string, rewards: readonly { ty
   if (!soulDimensionOpenFor(ctx, ctx.sender)) return;
   const unlocked = soulStatsUnlocked(soulTier(rewardKillsFor(ctx, ctx.sender)));
   const row = ctx.db.playerSoulStats.identity.find(ctx.sender);
+  const levelRow = ctx.db.playerSoulLevel.identity.find(ctx.sender);
+  const level = cleanSoulLevel(levelRow), multiplier = soulRewardMultiplier(level.level);
   let soul = cleanSoulStats(row);
   let kills = row?.kills ?? 0n;
   for (const reward of rewards) {
     const stat = reward.type.startsWith("soul:") ? reward.type.slice(5) as SoulStatId : null;
     if (!stat || !SOUL_STAT_ORDER.includes(stat) || !unlocked.includes(stat) || !(reward.count > 0)) continue;
-    soul = addSoulKills(soul, stat, reward.count);
+    soul = addSoulKills(soul, stat, reward.count, multiplier);
     kills += BigInt(Math.floor(reward.count));
   }
-  if (kills === (row?.kills ?? 0n)) return;
+  const counted = kills - (row?.kills ?? 0n);
+  if (!counted) return;
   const next = { identity: ctx.sender, ...soul, kills };
   if (row) ctx.db.playerSoulStats.identity.update(next); else ctx.db.playerSoulStats.insert(next);
+  const after = addSoulXp(level, Number(counted) * SOUL_XP_PER_KILL);
+  if (levelRow && after.level === level.level && after.xp === level.xp) return;
+  const nextLevel = { identity: ctx.sender, level: after.level, xp: BigInt(after.xp) };
+  if (levelRow) ctx.db.playerSoulLevel.identity.update(nextLevel); else ctx.db.playerSoulLevel.insert(nextLevel);
 }
 
 export function removeSoulDimensionRows(ctx: any, identity: any) {
   if (ctx.db.playerRewardKills.identity.find(identity)) ctx.db.playerRewardKills.identity.delete(identity);
   if (ctx.db.playerSoulStats.identity.find(identity)) ctx.db.playerSoulStats.identity.delete(identity);
+  if (ctx.db.playerSoulLevel.identity.find(identity)) ctx.db.playerSoulLevel.identity.delete(identity);
 }
 
-/** A guest's progress moving onto their account: kills and soul stats add up. */
+/** A guest's progress moving onto their account: kills, soul stats and Soul XP add up. */
 export function mergeSoulDimensionRows(ctx: any, from: any, into: any) {
   const kills = ctx.db.playerRewardKills.identity.find(from);
   if (kills) {
@@ -170,6 +187,13 @@ export function mergeSoulDimensionRows(ctx: any, from: any, into: any) {
       kills: soul.kills + (target?.kills ?? 0n) };
     if (target) ctx.db.playerSoulStats.identity.update(next); else ctx.db.playerSoulStats.insert(next);
   }
+  const level = ctx.db.playerSoulLevel.identity.find(from);
+  if (level) {
+    const target = ctx.db.playerSoulLevel.identity.find(into);
+    const merged = mergeSoulLevels(cleanSoulLevel(level), target ? cleanSoulLevel(target) : null);
+    const next = { identity: into, level: merged.level, xp: BigInt(merged.xp) };
+    if (target) ctx.db.playerSoulLevel.identity.update(next); else ctx.db.playerSoulLevel.insert(next);
+  }
   removeSoulDimensionRows(ctx, from);
 }
 
@@ -180,6 +204,10 @@ type SoulDeps = {
 export function registerSoulDimension(spacetimedb: typeof spacetimedbType, deps: SoulDeps) {
   const mySoulStats = spacetimedb.view({ name: "my_soul_stats", public: true }, t.array(playerSoulStats.rowType), (ctx: any) => {
     const row = ctx.db.playerSoulStats.identity.find(ctx.sender);
+    return row ? [row] : [];
+  });
+  const mySoulLevel = spacetimedb.view({ name: "my_soul_level", public: true }, t.array(playerSoulLevel.rowType), (ctx: any) => {
+    const row = ctx.db.playerSoulLevel.identity.find(ctx.sender);
     return row ? [row] : [];
   });
   const myRewardKills = spacetimedb.view({ name: "my_reward_kills", public: true }, t.array(playerRewardKills.rowType), (ctx: any) => {
@@ -200,7 +228,7 @@ export function registerSoulDimension(spacetimedb: typeof spacetimedbType, deps:
     if (row) ctx.db.soulDimensionConfig.id.update({ id: 0, open });
     else ctx.db.soulDimensionConfig.insert({ id: 0, open });
   });
-  return { mySoulStats, myRewardKills, profileSoulStats, setSoulDimensionOpen };
+  return { mySoulStats, mySoulLevel, myRewardKills, profileSoulStats, setSoulDimensionOpen };
 }
 
 export function requireSoulDimensionOpen(ctx: any) {
