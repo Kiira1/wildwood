@@ -52,588 +52,588 @@ export const SMOOTH_ENEMIES: Readonly<Record<string, Readonly<Record<string, { h
   "beginner_desert": {
     "Dune Raider": {
       "hp": 210.435,
-      "damage": 51.3391,
+      "damage": 313.739,
       "reward": 3.47143
     },
     "Dune Archer": {
       "hp": 258.995,
-      "damage": 35.5723,
+      "damage": 217.386,
       "reward": 171.631
     },
     "Dune Regent": {
       "hp": 882.961,
-      "damage": 108.455,
+      "damage": 662.78,
       "reward": 398.751
     },
     "Venom Guard": {
       "hp": 391.68,
-      "damage": 42.7548,
+      "damage": 261.28,
       "reward": 29.1526
     },
     "Wastes Reaper": {
       "hp": 529.629,
-      "damage": 83.9598,
+      "damage": 513.088,
       "reward": 12.2122
     },
     "Blight Oracle": {
       "hp": 358.15,
-      "damage": 50.2098,
+      "damage": 306.838,
       "reward": 14.935
     },
     "Dune Needle": {
       "hp": 210.435,
-      "damage": 51.3391,
+      "damage": 313.739,
       "reward": 3.47143
     },
     "Dune Striker": {
       "hp": 210.435,
-      "damage": 51.3391,
+      "damage": 313.739,
       "reward": 3.47143
     }
   },
   "intermediate_snowlands": {
     "Frost Raider": {
       "hp": 462.957,
-      "damage": 92.4104,
+      "damage": 690.226,
       "reward": 6.24857
     },
     "Glacier Archer": {
       "hp": 569.788,
-      "damage": 64.0301,
+      "damage": 478.249,
       "reward": 308.936
     },
     "Glacier Regent": {
       "hp": 1942.51,
-      "damage": 195.219,
+      "damage": 1458.12,
       "reward": 717.752
     },
     "Rime Guard": {
       "hp": 861.696,
-      "damage": 76.9587,
+      "damage": 574.815,
       "reward": 52.4746
     },
     "Whiteout Reaper": {
       "hp": 1165.18,
-      "damage": 151.128,
+      "damage": 1128.79,
       "reward": 21.9819
     },
     "Aurora Oracle": {
       "hp": 787.93,
-      "damage": 90.3776,
+      "damage": 675.043,
       "reward": 26.883
     },
     "Frost Needle": {
       "hp": 462.957,
-      "damage": 92.4104,
+      "damage": 690.226,
       "reward": 6.24857
     },
     "Frost Striker": {
       "hp": 462.957,
-      "damage": 92.4104,
+      "damage": 690.226,
       "reward": 6.24857
     }
   },
   "advanced_lava_wastes": {
     "Ember Raider": {
       "hp": 1018.5,
-      "damage": 166.339,
+      "damage": 1518.5,
       "reward": 11.2474
     },
     "Cinder Archer": {
       "hp": 1253.53,
-      "damage": 115.254,
+      "damage": 1052.15,
       "reward": 556.086
     },
     "Cinder Regent": {
       "hp": 4273.53,
-      "damage": 351.394,
+      "damage": 3207.86,
       "reward": 1291.95
     },
     "Magma Guard": {
       "hp": 1895.73,
-      "damage": 138.526,
+      "damage": 1264.59,
       "reward": 94.4543
     },
     "Ash Reaper": {
       "hp": 2563.41,
-      "damage": 272.03,
+      "damage": 2483.34,
       "reward": 39.5675
     },
     "Inferno Oracle": {
       "hp": 1733.45,
-      "damage": 162.68,
+      "damage": 1485.09,
       "reward": 48.3894
     },
     "Cinder Needle": {
       "hp": 1018.5,
-      "damage": 166.339,
+      "damage": 1518.5,
       "reward": 11.2474
     },
     "Cinder Striker": {
       "hp": 1018.5,
-      "damage": 166.339,
+      "damage": 1518.5,
       "reward": 11.2474
     }
   },
   "infernal_depths": {
     "Depth Raider": {
       "hp": 2240.71,
-      "damage": 299.41,
+      "damage": 3340.69,
       "reward": 20.2454
     },
     "Abyss Archer": {
       "hp": 2757.78,
-      "damage": 207.457,
+      "damage": 2314.73,
       "reward": 1000.95
     },
     "Abyss Regent": {
       "hp": 9401.77,
-      "damage": 632.509,
+      "damage": 7057.29,
       "reward": 2325.52
     },
     "Obsidian Colossus": {
       "hp": 4170.61,
-      "damage": 249.346,
+      "damage": 2782.11,
       "reward": 170.018
     },
     "Doom Reaper": {
       "hp": 5639.49,
-      "damage": 489.654,
+      "damage": 5463.36,
       "reward": 71.2214
     },
     "Nether Oracle": {
       "hp": 3813.58,
-      "damage": 292.824,
+      "damage": 3267.21,
       "reward": 87.1009
     },
     "Abyss Needle": {
       "hp": 2240.71,
-      "damage": 299.41,
+      "damage": 3340.69,
       "reward": 20.2454
     },
     "Abyss Striker": {
       "hp": 2240.71,
-      "damage": 299.41,
+      "damage": 3340.69,
       "reward": 20.2454
     }
   },
   "water_reach": {
     "Tide Raider": {
       "hp": 4929.56,
-      "damage": 538.938,
+      "damage": 7349.53,
       "reward": 36.4417
     },
     "Reef Archer": {
       "hp": 6067.11,
-      "damage": 373.423,
+      "damage": 5092.4,
       "reward": 1801.72
     },
     "Reef Regent": {
       "hp": 20683.9,
-      "damage": 1138.52,
+      "damage": 15526,
       "reward": 4185.93
     },
     "Coral Colossus": {
       "hp": 9175.34,
-      "damage": 448.823,
+      "damage": 6120.63,
       "reward": 306.032
     },
     "Drowned Reaper": {
       "hp": 12406.9,
-      "damage": 881.377,
+      "damage": 12019.4,
       "reward": 128.199
     },
     "Tidal Oracle": {
       "hp": 8389.88,
-      "damage": 527.082,
+      "damage": 7187.86,
       "reward": 156.782
     },
     "Reef Needle": {
       "hp": 4929.56,
-      "damage": 538.938,
+      "damage": 7349.53,
       "reward": 36.4417
     },
     "Reef Striker": {
       "hp": 4929.56,
-      "damage": 538.938,
+      "damage": 7349.53,
       "reward": 36.4417
     }
   },
   "samurai_garden": {
     "Sakura Ronin": {
       "hp": 10845,
-      "damage": 970.088,
+      "damage": 16169,
       "reward": 65.595
     },
     "Petal Archer": {
       "hp": 13347.6,
-      "damage": 672.162,
+      "damage": 11203.3,
       "reward": 3243.09
     },
     "Petal Regent": {
       "hp": 45504.6,
-      "damage": 2049.33,
+      "damage": 34157.3,
       "reward": 7534.68
     },
     "Bamboo Guardian": {
       "hp": 20185.7,
-      "damage": 807.882,
+      "damage": 13465.4,
       "reward": 550.857
     },
     "Moonblade Reaper": {
       "hp": 27295.1,
-      "damage": 1586.48,
+      "damage": 26442.7,
       "reward": 230.757
     },
     "Shrine Oracle": {
       "hp": 18457.7,
-      "damage": 948.748,
+      "damage": 15813.3,
       "reward": 282.207
     },
     "Petal Needle": {
       "hp": 10845,
-      "damage": 970.088,
+      "damage": 16169,
       "reward": 65.595
     },
     "Petal Striker": {
       "hp": 10845,
-      "damage": 970.088,
+      "damage": 16169,
       "reward": 65.595
     }
   },
   "cloudspire": {
     "Gale Prowler": {
       "hp": 23859.1,
-      "damage": 1746.16,
+      "damage": 35571.7,
       "reward": 118.071
     },
     "Nimbus Archer": {
       "hp": 29364.8,
-      "damage": 1209.89,
+      "damage": 24647.2,
       "reward": 5837.56
     },
     "Nimbus Regent": {
       "hp": 100110,
-      "damage": 3688.79,
+      "damage": 75146,
       "reward": 13562.4
     },
     "Skyguard Colossus": {
       "hp": 44408.6,
-      "damage": 1454.19,
+      "damage": 29623.9,
       "reward": 991.543
     },
     "Thunder Reaper": {
       "hp": 60049.3,
-      "damage": 2855.66,
+      "damage": 58173.8,
       "reward": 415.363
     },
     "Tempest Oracle": {
       "hp": 40607,
-      "damage": 1707.75,
+      "damage": 34789.2,
       "reward": 507.973
     },
     "Gale Needle": {
       "hp": 23859.1,
-      "damage": 1746.16,
+      "damage": 35571.7,
       "reward": 118.071
     },
     "Gale Striker": {
       "hp": 23859.1,
-      "damage": 1746.16,
+      "damage": 35571.7,
       "reward": 118.071
     }
   },
   "moonfen": {
     "Fen Prowler": {
       "hp": 52490,
-      "damage": 3143.08,
+      "damage": 78257.8,
       "reward": 212.528
     },
     "Glowcap Archer": {
       "hp": 64602.6,
-      "damage": 2177.8,
+      "damage": 54223.8,
       "reward": 10507.6
     },
     "Glowcap Regent": {
       "hp": 220242,
-      "damage": 6639.83,
+      "damage": 165321,
       "reward": 24412.4
     },
     "Bog Colossus": {
       "hp": 97699,
-      "damage": 2617.54,
+      "damage": 65172.5,
       "reward": 1784.78
     },
     "Moonmire Reaper": {
       "hp": 132109,
-      "damage": 5140.19,
+      "damage": 127982,
       "reward": 747.654
     },
     "Wisp Oracle": {
       "hp": 89335.4,
-      "damage": 3073.94,
+      "damage": 76536.3,
       "reward": 914.351
     },
     "Fen Needle": {
       "hp": 52490,
-      "damage": 3143.08,
+      "damage": 78257.8,
       "reward": 212.528
     },
     "Fen Striker": {
       "hp": 52490,
-      "damage": 3143.08,
+      "damage": 78257.8,
       "reward": 212.528
     }
   },
   "crystal_hollows": {
     "Shard Hopper": {
       "hp": 115478,
-      "damage": 5657.55,
+      "damage": 172167,
       "reward": 382.55
     },
     "Crystal Spitter": {
       "hp": 142126,
-      "damage": 3920.05,
+      "damage": 119292,
       "reward": 18913.7
     },
     "Crystal Regent": {
       "hp": 484533,
-      "damage": 11951.7,
+      "damage": 363707,
       "reward": 43942.2
     },
     "Geode Guardian": {
       "hp": 214938,
-      "damage": 4711.57,
+      "damage": 143379,
       "reward": 3212.6
     },
     "Prism Reaver": {
       "hp": 290639,
-      "damage": 9252.34,
+      "damage": 281561,
       "reward": 1345.78
     },
     "Hollow Oracle": {
       "hp": 196538,
-      "damage": 5533.1,
+      "damage": 168380,
       "reward": 1645.83
     },
     "Shard Needle": {
       "hp": 115478,
-      "damage": 5657.55,
+      "damage": 172167,
       "reward": 382.55
     },
     "Shard Striker": {
       "hp": 115478,
-      "damage": 5657.55,
+      "damage": 172167,
       "reward": 382.55
     }
   },
   "clockwork_ruins": {
     "Gear Prowler": {
       "hp": 254051,
-      "damage": 10183.6,
+      "damage": 378768,
       "reward": 688.59
     },
     "Rivet Spitter": {
       "hp": 312676,
-      "damage": 7056.09,
+      "damage": 262443,
       "reward": 34044.7
     },
     "Gear Regent": {
       "hp": 1065970,
-      "damage": 21513.1,
+      "damage": 800154,
       "reward": 79096
     },
     "Iron Guardian": {
       "hp": 472863,
-      "damage": 8480.82,
+      "damage": 315435,
       "reward": 5782.68
     },
     "Scrap Reaver": {
       "hp": 639405,
-      "damage": 16654.2,
+      "damage": 619435,
       "reward": 2422.4
     },
     "Spark Oracle": {
       "hp": 432383,
-      "damage": 9959.58,
+      "damage": 370436,
       "reward": 2962.5
     },
     "Gear Needle": {
       "hp": 254051,
-      "damage": 10183.6,
+      "damage": 378768,
       "reward": 688.59
     },
     "Gear Striker": {
       "hp": 254051,
-      "damage": 10183.6,
+      "damage": 378768,
       "reward": 688.59
     }
   },
   "duskfall_orchard": {
     "Gourd Prowler": {
       "hp": 558913,
-      "damage": 18330.5,
+      "damage": 833289,
       "reward": 1239.46
     },
     "Seed Spitter": {
       "hp": 687888,
-      "damage": 12701,
+      "damage": 577376,
       "reward": 61280.4
     },
     "Harvest Regent": {
       "hp": 2345140,
-      "damage": 38723.5,
+      "damage": 1760340,
       "reward": 142373
     },
     "Husk Guardian": {
       "hp": 1040300,
-      "damage": 15265.5,
+      "damage": 693957,
       "reward": 10408.8
     },
     "Thorn Reaver": {
       "hp": 1406690,
-      "damage": 29977.6,
+      "damage": 1362760,
       "reward": 4360.32
     },
     "Harvest Oracle": {
       "hp": 951243,
-      "damage": 17927.2,
+      "damage": 814958,
       "reward": 5332.49
     },
     "Gourd Needle": {
       "hp": 558913,
-      "damage": 18330.5,
+      "damage": 833289,
       "reward": 1239.46
     },
     "Gourd Striker": {
       "hp": 558913,
-      "damage": 18330.5,
+      "damage": 833289,
       "reward": 1239.46
     }
   },
   "neon_bastion": {
     "Circuit Prowler": {
       "hp": 1229610,
-      "damage": 32994.8,
+      "damage": 1833240,
       "reward": 2231.03
     },
     "Pulse Spitter": {
       "hp": 1513350,
-      "damage": 22861.7,
+      "damage": 1270230,
       "reward": 110305
     },
     "Voltage Regent": {
       "hp": 5159300,
-      "damage": 69702.3,
+      "damage": 3872750,
       "reward": 256271
     },
     "Relay Guardian": {
       "hp": 2288660,
-      "damage": 27477.9,
+      "damage": 1526700,
       "reward": 18735.9
     },
     "Arc Reaver": {
       "hp": 3094720,
-      "damage": 53959.6,
+      "damage": 2998070,
       "reward": 7848.58
     },
     "Signal Oracle": {
       "hp": 2092740,
-      "damage": 32269,
+      "damage": 1792910,
       "reward": 9598.49
     },
     "Circuit Needle": {
       "hp": 1229610,
-      "damage": 32994.8,
+      "damage": 1833240,
       "reward": 2231.03
     },
     "Circuit Striker": {
       "hp": 1229610,
-      "damage": 32994.8,
+      "damage": 1833240,
       "reward": 2231.03
     }
   },
   "verdant_catacombs": {
     "Mossbound Stalker": {
       "hp": 2705140,
-      "damage": 59390.7,
+      "damage": 4033120,
       "reward": 4015.86
     },
     "Spore Slinger": {
       "hp": 3329380,
-      "damage": 41151.1,
+      "damage": 2794500,
       "reward": 198549
     },
     "Mycelial Regent": {
       "hp": 11350500,
-      "damage": 125464,
+      "damage": 8520040,
       "reward": 461288
     },
     "Ossuary Guardian": {
       "hp": 5035050,
-      "damage": 49460.2,
+      "damage": 3358750,
       "reward": 33724.6
     },
     "Briar Reaver": {
       "hp": 6808390,
-      "damage": 97127.4,
+      "damage": 6595740,
       "reward": 14127.4
     },
     "Crypt Oracle": {
       "hp": 4604020,
-      "damage": 58084.3,
+      "damage": 3944400,
       "reward": 17277.3
     },
     "Moss Needle": {
       "hp": 2705140,
-      "damage": 59390.7,
+      "damage": 4033120,
       "reward": 4015.86
     },
     "Moss Striker": {
       "hp": 2705140,
-      "damage": 59390.7,
+      "damage": 4033120,
       "reward": 4015.86
     }
   },
   "ion_citadel": {
     "Ion Patrol": {
       "hp": 5951310,
-      "damage": 106903,
+      "damage": 8872860,
       "reward": 7228.54
     },
     "Capacitor Gunner": {
       "hp": 7324630,
-      "damage": 74072,
+      "damage": 6147890,
       "reward": 357387
     },
     "Citadel Marshal": {
       "hp": 24971000,
-      "damage": 225835,
+      "damage": 18744100,
       "reward": 830319
     },
     "Bastion Defender": {
       "hp": 11077100,
-      "damage": 89028.3,
+      "damage": 7389250,
       "reward": 60704.3
     },
     "Flux Enforcer": {
       "hp": 14978500,
-      "damage": 174829,
+      "damage": 14510600,
       "reward": 25429.4
     },
     "Reactor Warden": {
       "hp": 10128800,
-      "damage": 104552,
+      "damage": 8677680,
       "reward": 31099.1
     },
     "Ion Needle": {
       "hp": 5951310,
-      "damage": 106903,
+      "damage": 8872860,
       "reward": 7228.54
     },
     "Ion Striker": {
       "hp": 5951310,
-      "damage": 106903,
+      "damage": 8872860,
       "reward": 7228.54
     }
   }
@@ -650,114 +650,114 @@ export const SMOOTH_BOSSES: Readonly<Record<string, { hp: number; attacks: Reado
   "beginner_desert": {
     "hp": 15511.8,
     "attacks": {
-      "web": 170.428,
-      "venom": 238.599,
-      "contact": 136.342
+      "web": 1041.5,
+      "venom": 1458.11,
+      "contact": 833.204
     }
   },
   "intermediate_snowlands": {
     "hp": 34125.9,
     "attacks": {
-      "roar": 262.575,
-      "icefall": 367.605,
-      "rift": 525.15,
-      "contact": 236.318
+      "roar": 1961.21,
+      "icefall": 2745.69,
+      "rift": 3922.42,
+      "contact": 1765.09
     }
   },
   "advanced_lava_wastes": {
     "hp": 75077,
     "attacks": {
-      "bite": 1128.29,
-      "eruption": 752.194,
-      "contact": 451.317
+      "bite": 10300.1,
+      "eruption": 6866.74,
+      "contact": 4120.04
     }
   },
   "infernal_depths": {
     "hp": 165169,
     "attacks": {
-      "sweep": 2365.55,
-      "bloom": 1655.89,
-      "contact": 1182.78
+      "sweep": 26393.9,
+      "bloom": 18475.7,
+      "contact": 13196.9
     }
   },
   "water_reach": {
     "hp": 363373,
     "attacks": {
-      "surge": 4844.56,
-      "whirlpool": 3391.19,
-      "contact": 2422.28
+      "surge": 66065.6,
+      "whirlpool": 46245.9,
+      "contact": 33032.8
     }
   },
   "samurai_garden": {
     "hp": 799420,
     "attacks": {
-      "slash": 9675.8,
-      "whirlpool": 6773.06,
-      "contact": 4837.9
+      "slash": 161272,
+      "whirlpool": 112890,
+      "contact": 80635.8
     }
   },
   "cloudspire": {
     "hp": 1758720,
     "attacks": {
-      "charge": 18877.2,
-      "thunder": 13214,
-      "contact": 9438.6
+      "charge": 384555,
+      "thunder": 269189,
+      "contact": 192278
     }
   },
   "moonfen": {
     "hp": 3869190,
     "attacks": {
-      "tongue": 34575.8,
-      "bogBurst": 24203,
-      "contact": 17287.9
+      "tongue": 860881,
+      "bogBurst": 602617,
+      "contact": 430441
     }
   },
   "crystal_hollows": {
     "hp": 8512220,
     "attacks": {
-      "shatter": 64717.4,
-      "crystalBurst": 45302.2,
-      "contact": 32358.7
+      "shatter": 1969440,
+      "crystalBurst": 1378610,
+      "contact": 984720
     }
   },
   "clockwork_ruins": {
     "hp": 18726900,
     "attacks": {
-      "shatter": 117945,
-      "crystalBurst": 82561.6,
-      "contact": 58972.6
+      "shatter": 4386840,
+      "crystalBurst": 3070790,
+      "contact": 2193420
     }
   },
   "duskfall_orchard": {
     "hp": 41199100,
     "attacks": {
-      "shatter": 206712,
-      "crystalBurst": 144698,
-      "contact": 103356
+      "shatter": 9396970,
+      "crystalBurst": 6577880,
+      "contact": 4698480
     }
   },
   "neon_bastion": {
     "hp": 90638100,
     "attacks": {
-      "shatter": 362975,
-      "crystalBurst": 254083,
-      "contact": 181488
+      "shatter": 20167400,
+      "crystalBurst": 14117200,
+      "contact": 10083700
     }
   },
   "verdant_catacombs": {
     "hp": 199404000,
     "attacks": {
-      "shatter": 625011,
-      "crystalBurst": 437508,
-      "contact": 312505
+      "shatter": 42443400,
+      "crystalBurst": 29710400,
+      "contact": 21221700
     }
   },
   "ion_citadel": {
     "hp": 438689000,
     "attacks": {
-      "shatter": 1028950,
-      "crystalBurst": 720263,
-      "contact": 514474
+      "shatter": 85401500,
+      "crystalBurst": 59781100,
+      "contact": 42700800
     }
   }
 };

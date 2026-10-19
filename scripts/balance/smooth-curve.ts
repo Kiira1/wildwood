@@ -1,13 +1,14 @@
 import { readFileSync } from 'node:fs';
 import { CAMPAIGN_MAPS } from '../../shared/campaign-registry';
-import { CURVE_STEPS } from '../../shared/curve-steps';
+import { CURVE_HIT_LEVEL, CURVE_STEPS } from '../../shared/curve-steps';
 import { enemyDefeatDefinition } from '../../shared/enemy-defeats';
 import { resolveMapBalance } from '../../shared/map-balance';
 
 /**
  * Builds shared/smooth-curve.ts: every campaign map's enemies and boss on CURVE_STEPS. Each role (regular or elite,
  * by what it pays) is a fixed multiple of its map's damage camp, its average over the source revision's maps 2-15,
- * and the damage camp grows by the steps from Tutorial Forest's: every role grows by the same step every map. The
+ * and the damage camp grows by the steps from Tutorial Forest's (hits CURVE_HIT_LEVEL above it from map 2 on): every
+ * role grows by the same step every map. The
  * Forest's Spitter keeps its own numbers. Each boss is a fixed multiple of its damage camp's health and keeps its
  * attacks' size against the camp's hit. scripts/generated-balance-files.test.ts regenerates it and fails on any drift.
  */
@@ -50,7 +51,7 @@ export function buildSmoothCurve(root = '.') {
   const enemies: Record<string, Record<string, Stats>> = {};
   const bosses: Record<string, { hp: number; attacks: Record<string, number> }> = {};
   CAMPAIGN_MAPS.forEach((map, index) => {
-    const camp = { hp: forest.hp * CURVE_STEPS.health ** index, damage: forest.damage * CURVE_STEPS.damage ** index,
+    const camp = { hp: forest.hp * CURVE_STEPS.health ** index, damage: forest.damage * CURVE_STEPS.damage ** index * (index ? CURVE_HIT_LEVEL : 1),
       reward: forest.reward * CURVE_STEPS.reward ** index };
     enemies[map.id] = Object.fromEntries(Object.entries(snapshots[index].enemies).map(([kind, row]) => {
       if (kind === 'Spitter') return [kind, { hp: row.hp, damage: row.damage, reward: row.reward.amount }];

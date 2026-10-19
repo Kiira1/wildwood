@@ -2,7 +2,9 @@
  * The Balance Lab scorecard: the per-map balance checks
  * against the Lab's representative run, on the build it arrives at each map with.
  *
- *   npm run balance:scorecard -- [--trials 5] [--endless 0] [--json]
+ *   npm run balance:scorecard -- [--trials 5] [--endless 0] [--json] [--curve]
+ *
+ * --curve scores the code's balance (defaultBalanceSettings) instead of the live snapshot.
  *
  * Columns: map time and its growth over the last map; whether farming the new map pays
  * more per minute than staying on the last one (same arrival build); a regular's hit as
@@ -12,7 +14,7 @@
  */
 import { LIVE_BALANCE } from "../src/balance/live-balance";
 import { arrivalChecks, defaultBalanceSimulationConfig, runBalanceSimulation, type BalanceMapId } from "../src/balance/simulator";
-import { resolveMapBalance } from "../shared/map-balance";
+import { defaultBalanceSettings, resolveMapBalance } from "../shared/map-balance";
 import { criticalDamageMultiplier } from "../shared/critical-damage";
 
 const args = process.argv.slice(2);
@@ -20,7 +22,8 @@ const option = (flag: string, fallback: number) => {
   const index = args.indexOf(flag);
   return index >= 0 ? Number(args[index + 1]) : fallback;
 };
-const config = { ...defaultBalanceSimulationConfig(), balanceSettings: structuredClone(LIVE_BALANCE.settings),
+const settings = args.includes("--curve") ? defaultBalanceSettings() : LIVE_BALANCE.settings;
+const config = { ...defaultBalanceSimulationConfig(), balanceSettings: structuredClone(settings),
   trials: option("--trials", 5), endlessMaps: option("--endless", 0) };
 const result = runBalanceSimulation(config);
 const median = (values: number[]) => {
@@ -36,7 +39,7 @@ const rows = result.maps.map((map, index) => {
   // Regulars of the original five roles: the attack speed and crit camps (0.901.47) copy the damage camp's hit.
   const original = (type: string) => type !== "speed" && type !== "crit";
   const regularHits = (here?.enemies ?? []).filter(enemy => !enemy.elite && original(enemy.rewardType)).map(enemy => enemy.hitPercentOfHealth);
-  const balance = resolveMapBalance(map.mapId, structuredClone(LIVE_BALANCE.settings), 1);
+  const balance = resolveMapBalance(map.mapId, structuredClone(settings), 1);
   // Endless enemies are its lanes (Dread Warden the elite); campaign maps list their kinds.
   const regularRows = Object.keys(balance.lanes).length
     ? Object.entries(balance.lanes).filter(([lane]) => lane !== "Dread Warden").map(([, lane]) => lane)
