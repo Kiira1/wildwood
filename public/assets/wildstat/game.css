@@ -71,11 +71,14 @@
   .stat-tracker-settings label:not(.stat-tracker-opacity) { display: flex; align-items: center; gap: 6px; min-height: 28px; cursor: pointer; }
   .stat-tracker-settings input[type="checkbox"] { width: 16px; height: 16px; margin: 0; accent-color: var(--green); cursor: pointer; }
   .stat-tracker-prestige-reset { margin: 0 10px; padding-top: 6px; border-top: 1px solid var(--border); }
-  @media (any-pointer: coarse) { .stat-tracker button, .stat-tracker.is-collapsed .stat-tracker-handle { min-height: 44px; } }
+  @media (any-pointer: coarse) { .stat-tracker:not(.is-collapsed) button { min-height: 44px; } }
   /* Folded, it is one row the size of the folded quest tracker, not a tall touch block. */
   .stat-tracker.is-collapsed { min-width: 0; border-radius: var(--hud-radius-small); font: 700 11px/1.25 "Wildstat Chat", sans-serif; }
   .stat-tracker.is-collapsed header { padding: 0; }
-  .stat-tracker.is-collapsed .stat-tracker-handle { min-height: 30px; padding: 4px 8px; }
+  /* Minimized, it stands as tall as the gem and mail row beside it, border and all. */
+  .stat-tracker.is-collapsed { box-sizing: border-box; height: 30px; }
+  .stat-tracker.is-collapsed header { height: 100%; }
+  .stat-tracker.is-collapsed .stat-tracker-handle { box-sizing: border-box; height: 100%; min-height: 0; padding: 0 8px; border: 0; }
   @media (max-width: 380px) { .stat-tracker { font-size: 11px; } .stat-tracker th, .stat-tracker td { padding: 3px 5px; } }
 
   @font-face {

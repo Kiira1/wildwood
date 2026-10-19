@@ -337,7 +337,10 @@
 #autoFarmSheet.farm-card .farm-help-list dd { font-size: 13px; }
 /* Collapsed: the quest tracker's header size and type, a single label. */
 #autoFarmSheet.farm-card.is-collapsed { width: max-content; min-width: 0; font: 700 11px/1.25 "Wildstat Chat", sans-serif; }
-#autoFarmSheet.farm-card.is-collapsed .farm-card-handle { min-height: 30px; padding: 4px 8px; font-weight: 700; }
+/* Minimized, it stands as tall as the gem and mail row, border and all. */
+#autoFarmSheet.farm-card.is-collapsed { box-sizing: border-box; height: 30px; }
+#autoFarmSheet.farm-card.is-collapsed .farm-header { height: 100%; }
+#autoFarmSheet.farm-card.is-collapsed .farm-card-handle { box-sizing: border-box; height: 100%; min-height: 0; padding: 0 8px; font-weight: 700; }
 #autoFarmSheet.farm-card.is-collapsed .farm-badge { color: #fff; font-size: 11px; }
 #autoFarmSheet.farm-card.is-collapsed.is-farming .farm-badge { color: #98efaa; }
 #autoFarmSheet.farm-card.is-collapsed .farm-card-caret { font-size: 11px; }
