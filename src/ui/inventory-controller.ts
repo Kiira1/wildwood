@@ -28,6 +28,7 @@ import { cardDefinition } from "../../shared/cards";
 import { cardName } from "../../shared/card-text";
 import type { BuildActions } from "./build-actions";
 import { createBuildsTab } from "./builds-tab";
+import { installBuildHotkeys } from "./build-hotkeys";
 import { itemInspectionButtonLabel } from "./item-inspection-controller";
 import { oreKindsHeld } from "../../shared/ore-bag";
 import { createPickaxeSprite } from "../game/runtime/town/pickaxe-sprite";
@@ -299,7 +300,7 @@ export function createInventoryController(dependencies: InventoryDependencies) {
   const buildsView = buildsTab && dependencies.builds ? createBuildsTab({
     actions: dependencies.builds, itemName: itemId => itemInspectionButtonLabel(itemDisplayName(itemId)), showMessage: dependencies.showMessage,
   }) : null;
-  if (buildsView) content.append(buildsView.element);
+  if (buildsView) { content.append(buildsView.element); installBuildHotkeys(document, slot => buildsView.equip(slot)); }
   else buildsTab?.remove();
   // Cards and Builds each replace the loadout and bag with their own view.
   let cardsShown = false, buildsShown = false;

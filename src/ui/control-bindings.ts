@@ -3,7 +3,7 @@
  * arrow keys, and a controller always moves with its left stick and D-pad; those stay fixed.
  */
 export type ControlAction = "moveUp" | "moveLeft" | "moveDown" | "moveRight"
-  | "autoFarm" | "inventory" | "map" | "profile" | "guild" | "leaderboard" | "settings";
+  | "autoFarm" | "inventory" | "map" | "profile" | "guild" | "leaderboard" | "settings" | "build1" | "build2" | "build3";
 
 export type ControlBindings = { keys: Record<ControlAction, string>; pad: Record<ControlAction, number | null> };
 
@@ -21,6 +21,9 @@ export const CONTROL_ACTIONS: readonly ActionDefinition[] = Object.freeze([
   { id: "guild", label: "Guild", key: "KeyG", pad: 7 },
   { id: "leaderboard", label: "Leaderboard", key: "KeyL", pad: null },
   { id: "settings", label: "Settings", key: "", pad: 9 },
+  { id: "build1", label: "Build 1", key: "Digit1", pad: null },
+  { id: "build2", label: "Build 2", key: "Digit2", pad: null },
+  { id: "build3", label: "Build 3", key: "Digit3", pad: null },
 ]);
 
 /** Standard-mapping button names, as an Xbox pad or a Steam Deck labels them. */

@@ -84,6 +84,12 @@ export function createBuildsTab(options: {
 
   return {
     element,
+    /** Equips a saved build as its Equip button does (the Build 1-3 hotkeys); an empty slot says so. */
+    equip(slot: number) {
+      if (busy >= 0) return;
+      if (!options.actions.builds()[slot]) { options.showMessage(`Build ${slot + 1} Is Empty`, "#ff9b91"); return; }
+      void run(slot, "equip");
+    },
     render: () => render(),
     show(visible: boolean) { element.hidden = !visible; if (visible) render(); else if (armed >= 0) { armed = -1; render(true); } },
   };
