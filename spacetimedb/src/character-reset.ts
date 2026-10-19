@@ -24,6 +24,7 @@ import { pinMapBalance } from "./map-balance";
 import { recordAnalyticsMapVisit } from "./analytics";
 import { noteMapDeparture } from "./enemy-defeats";
 import { removeMiningData } from "./mining";
+import { removeWeaponMastery } from "./weapon-mastery";
 
 export function publishPlayerDeathFrame(ctx: any, activePlayer: any) {
   if (boundedMapPopulation(ctx, activePlayer.mapId) < 2) return;
@@ -105,6 +106,7 @@ export function resetWholeSave(ctx: any, activePlayer: any) {
     if (handle?.identity.find(ctx.sender)) handle.identity.delete(ctx.sender);
   }
   removeMiningData(ctx, ctx.sender); // Mining is earned across runs too: the pickaxe goes back to the Smith.
+  removeWeaponMastery(ctx, ctx.sender);
   resetProgressToDefaults(ctx, activePlayer);
 }
 

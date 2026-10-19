@@ -2168,6 +2168,14 @@ export const PlayerUpgradeBenchThirdSlot = __t.object("PlayerUpgradeBenchThirdSl
 });
 export type PlayerUpgradeBenchThirdSlot = __Infer<typeof PlayerUpgradeBenchThirdSlot>;
 
+export const PlayerWeaponMastery = __t.object("PlayerWeaponMastery", {
+  key: __t.string(),
+  identity: __t.identity(),
+  school: __t.string(),
+  points: __t.u64(),
+});
+export type PlayerWeaponMastery = __Infer<typeof PlayerWeaponMastery>;
+
 export const PlayerWideStats = __t.object("PlayerWideStats", {
   identity: __t.identity(),
   maxHp: __t.f64(),
