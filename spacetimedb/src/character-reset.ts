@@ -116,6 +116,8 @@ export function respawnWithProgress(ctx: any, activePlayer: any, next: any, dest
     const nextPlayer = { ...activePlayer, hp: next.maxHp, maxHp: next.maxHp, ...powerFieldsForProgress(ctx, next),
       speed: effectiveMovementSpeedForProgress(ctx, next), ...equipmentPresentationForProgress(ctx, next) };
     persistWorldLocation(ctx, transitionPlayerMap(ctx, nextPlayer, destination.mapId, destination, 0));
+    // Kills still arriving for the map just left belong to the run that left it, never the one arriving.
+    ctx.db.playerMapDeparture.identity.delete(activePlayer.identity);
     // The board is built from saved stats on a timer, so without this the
     // player keeps their old rank until the next sweep, which reads to
     // everyone else as a reset player still sitting at the top. Throttled

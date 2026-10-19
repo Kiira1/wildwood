@@ -1,6 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
   "0.915.3": [
     "Use Another Account on the start screen when the wrong character keeps signing in",
+      "Kills from before a prestige or reset no longer pay into the new run",
   ],
   "0.915.2": [
     "Small balancing",
