@@ -1,0 +1,40 @@
+/**
+ * The shape the balance curve (shared/curve-steps.ts) is laid over, taken once from live revision 79 (0.915):
+ * - CURVE_FOREST: Tutorial Forest's damage camp (its regular damage, attack speed and crit enemies); every map's
+ *   damage camp grows from it by the curve's steps.
+ * - CURVE_ROLES: each role (regular or elite, by what it pays) against its map's damage camp, its average over
+ *   maps 2-15 (the Forest's regular regen camp, a role no other map has, its own).
+ * - CURVE_BOSS_HEALTH: every boss against its damage camp's health.
+ * - CURVE_BOSS_ATTACKS: each boss's attacks against its damage camp's hit.
+ * The Forest's Spitter keeps its authored numbers.
+ */
+export type CurveStats = { readonly hp: number; readonly damage: number; readonly reward: number };
+
+export const CURVE_FOREST: CurveStats = Object.freeze({ hp: 95.6522, damage: 28.5217, reward: 1.92857 });
+export const CURVE_ROLES: Readonly<Record<string, CurveStats>> = Object.freeze({
+  "regular:damage": { hp: 1.0, damage: 1.0, reward: 1.0 },
+  "regular:health": { hp: 1.23076, damage: 0.692888, reward: 49.4411 },
+  "elite:health": { hp: 4.19589, damage: 2.11252, reward: 114.867 },
+  "regular:armor": { hp: 1.86129, damage: 0.832793, reward: 8.39786 },
+  "elite:damage": { hp: 2.51683, damage: 1.6354, reward: 3.51791 },
+  "elite:regen": { hp: 1.70195, damage: 0.978002, reward: 4.30226 },
+  "regular:regen": { hp: 2.3, damage: 1.96341, reward: 1.55556 },
+});
+export const CURVE_BOSS_HEALTH = 73.713;
+export const CURVE_BOSS_ATTACKS: Readonly<Record<string, Readonly<Record<string, number>>>> = Object.freeze({
+  tutorial_forest: { rain: 1.00976, cone: 5.04878, contact: 2.01951 },
+  beginner_desert: { web: 3.31965, venom: 4.64751, contact: 2.65572 },
+  intermediate_snowlands: { roar: 2.8414, icefall: 3.97796, rift: 5.6828, contact: 2.55726 },
+  advanced_lava_wastes: { bite: 6.78309, eruption: 4.52206, contact: 2.71324 },
+  infernal_depths: { sweep: 7.90072, bloom: 5.53051, contact: 3.95036 },
+  water_reach: { surge: 8.98909, whirlpool: 6.29237, contact: 4.49455 },
+  samurai_garden: { slash: 9.97415, whirlpool: 6.98191, contact: 4.98708 },
+  cloudspire: { charge: 10.8107, thunder: 7.5675, contact: 5.40535 },
+  moonfen: { tongue: 11.0006, bogBurst: 7.70041, contact: 5.50029 },
+  crystal_hollows: { shatter: 11.4391, crystalBurst: 8.00739, contact: 5.71956 },
+  clockwork_ruins: { shatter: 11.5819, crystalBurst: 8.10731, contact: 5.79094 },
+  duskfall_orchard: { shatter: 11.277, crystalBurst: 7.89387, contact: 5.63848 },
+  neon_bastion: { shatter: 11.001, crystalBurst: 7.70068, contact: 5.50049 },
+  verdant_catacombs: { shatter: 10.5237, crystalBurst: 7.3666, contact: 5.26186 },
+  ion_citadel: { shatter: 9.62503, crystalBurst: 6.73752, contact: 4.81252 },
+});

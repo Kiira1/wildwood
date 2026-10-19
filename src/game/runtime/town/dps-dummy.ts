@@ -51,7 +51,7 @@ export function createDpsDummy(deps: {
     deps.spawnFromSite({
       id: SITE_ID, type: "Bramble", campName: DPS_DUMMY_NAME, x: DPS_DUMMY_POSITION.x, y: DPS_DUMMY_POSITION.y,
       leashRange: 0, alive: false, respawnAt: 0,
-      definition: { ...ENEMY_TYPES.Bramble, hp: health, damage: 0, speed: 0, r: 24, aggro: 0, ranged: false, regen: 0, armor: 0, reward: { type: "damage", amount: 0 } },
+      definition: { ...ENEMY_TYPES.Bramble, hp: health, damage: 0, speed: 0, r: 24, aggro: 0, ranged: false, regen: 0, reward: { type: "damage", amount: 0 } },
     });
     if (deps.enemies.length === before) return;
     dummy = deps.enemies[deps.enemies.length - 1];

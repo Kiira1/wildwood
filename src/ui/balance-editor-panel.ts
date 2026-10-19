@@ -13,7 +13,7 @@ export function createBalanceEditorPanel(root: HTMLElement, api: BalanceEditorDe
   root.classList.add('balance-editor');
   root.innerHTML = `<div class="balance-heading"><div><h2>Map balancing</h2><p>Changes apply on the next map visit.</p></div><span class="balance-version">Loading…</span></div>
     <div class="balance-map-row"><label>Map<select class="balance-map" aria-label="Balance map"></select></label><label class="balance-depth" hidden>Endless map<input type="number" min="1" max="1001" step="1" value="1" aria-label="Endless preview map"></label></div>
-    <p class="balance-hint">1× is the base value · 0.5× is half · 2× is double</p><div class="balance-groups"></div><details class="balance-curve" hidden><summary>Endless progression</summary><p>Rewards grow slowly. Endurance increases enemy and boss health each map.</p><div class="balance-curve-inputs"></div></details>
+    <p class="balance-hint">1× is the base value · 0.5× is half · 2× is double</p><div class="balance-groups"></div>
     <div class="balance-preview-title"><h3>Resulting stats</h3><span class="balance-preview-state"></span></div><div class="balance-preview" aria-live="polite"></div>
     <p class="balance-status" role="status"></p><div class="balance-actions"><button class="balance-reset" type="button">Reset this map</button><button class="balance-apply" type="button" disabled>Apply changes</button></div><button class="balance-restore" type="button" disabled>Restore previous balance</button>`;
   const el = <T extends HTMLElement>(selector: string) => root.querySelector<T>(selector)!;
@@ -35,20 +35,12 @@ export function createBalanceEditorPanel(root: HTMLElement, api: BalanceEditorDe
     }
     el('.balance-groups').append(section);
   }
-  const curveInputs = new Map<keyof BalanceSettings['endless'], HTMLInputElement>();
-  for (const [key, labelText, max] of [['rewardPerHealth', 'Reward per health', 10], ['rewardMultiplier', 'Reward multiplier', 10], ['statStep', 'Stat growth', 1], ['enduranceStep', 'Health growth', 1], ['enduranceExponent', 'Slowdown strength', 6]] as const) {
-    const label = document.createElement('label'); label.append(labelText);
-    const input = document.createElement('input'); input.type = 'number'; input.min = '.001'; input.max = String(max); input.step = 'any'; input.setAttribute('aria-label', labelText); label.append(input);
-    el('.balance-curve-inputs').append(label); curveInputs.set(key, input);
-    input.addEventListener('input', () => { if (draft) { draft.endless[key] = input.valueAsNumber; schedulePreview(); } });
-  }
   function changed() { return !!state && JSON.stringify(state.settings) !== JSON.stringify(draft); }
-  function valid() { return [...inputs.values(), ...(select.value === 'endless' ? curveInputs.values() : [])].every(input => input.value !== '' && input.checkValidity()); }
+  function valid() { return [...inputs.values()].every(input => input.value !== '' && input.checkValidity()); }
   function fill() {
     if (!draft) return;
     for (const [key, input] of inputs) input.value = String(draft.maps[select.value][key]);
-    for (const [key, input] of curveInputs) input.value = String(draft.endless[key]);
-    el('.balance-depth').hidden = el('.balance-curve').hidden = select.value !== 'endless';
+    el('.balance-depth').hidden = select.value !== 'endless';
     restore.disabled = busy || state?.previousRevision == null;
     schedulePreview();
   }

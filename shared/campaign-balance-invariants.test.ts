@@ -11,7 +11,7 @@ import * as rules from "./rules";
 // tests that pinned individual table values (Bramble speed 205, Dune Raider
 // reward 6, ...), which had to be rewritten on every retune without checking
 // anything a retune could break. Deliberate baselines stay pinned where they
-// live (map 1 Spitters: shared/map-balance.test.ts, shared/balance-curve.test.ts).
+// live (map 1 Spitters: shared/map-balance.test.ts).
 
 const settings = defaultBalanceSettings();
 const maps = CAMPAIGN_MAPS.map(map => resolveMapBalance(map.id, settings, 0));

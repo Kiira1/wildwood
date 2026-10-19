@@ -60,13 +60,15 @@ export function repinMapBalances(ctx: Pick<Context, 'db'>) {
 }
 
 /**
- * Migration 60 (0.915): the balance curve (shared/smooth-curve.ts), every factor at 1, as the next revision, and
+ * Migration 60 (0.915): the balance curve (shared/curve-shape.ts), every factor at 1, as the next revision, and
  * every pinned visit moved onto it. Pins re-resolved at their own revision would keep the old curve until each
  * player travelled; this moves them all at once. Once the head is on the curve it does nothing.
  */
 export function installBalanceCurve(ctx: Context) {
   const head = ctx.db.mapBalanceHead.id.find(0);
-  if (head && storedSettings(ctx, head.revision)?.curveVersion === 2) return;
+  // Read raw: the settings before the curve no longer validate.
+  const headRow = head && ctx.db.mapBalanceVersion.revision.find(head.revision);
+  if (headRow && JSON.parse(headRow.settingsJson).curveVersion === 2) return;
   if (head) {
     let revision = head.revision + 1;
     while (ctx.db.mapBalanceVersion.revision.find(revision)) revision += 1;

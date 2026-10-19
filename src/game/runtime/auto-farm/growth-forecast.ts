@@ -33,7 +33,6 @@ import { contactCapacity, kitedHitInterval, perkFightLoss, tankableCount, TANK_R
 import { worldReflectDamage } from '../../../../shared/prestige-perks';
 import type { EnemyDefinition } from '../../enemies';
 import { ATTACK_WINDUP_SECONDS, ATTACK_ANIMATION_SECONDS } from '../../attack-timeline';
-import { curveArmorReduction } from '../../../../shared/balance-curve';
 import { unroundedPlayerPower, type PlayerPowerStats } from '../../../../shared/player-power';
 import { PLAYER_RADIUS } from '../../../../shared/rules';
 import {
@@ -406,8 +405,7 @@ export function forecastOption(map: ForecastMap, build: ForecastBuild, option: F
     if (build.reflectOnly) return { primary: 0, splash: 0 };
     const near = foes.filter(foe => foe !== target && foe.hp > 0 && foe.closeAt <= at).length;
     const enemy = target.site.definition;
-    const armorFactor = enemy.armor ? 1 - curveArmorReduction(enemy.armor) : 1;
-    const perArrow = stats.damage * critAverage * (1 + Math.max(0, build.doubleStrike)) * damageCalibration * armorFactor;
+    const perArrow = stats.damage * critAverage * (1 + Math.max(0, build.doubleStrike)) * damageCalibration;
     const distance = target.closeAt <= at ? (target.melee ? contactDistance(target.site) : reachFor(target.site)) : reachFor(target.site);
     const onTarget = build.melee ? 1 : fanArrowsOnTarget(arrows, distance, enemy.r);
     // Arrow Storm's arrows land on the target and anyone within its radius: an even share each.

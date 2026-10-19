@@ -1,4 +1,3 @@
-import { BOSS_DAMAGE_REBALANCE, ENDLESS_EASE, activateCampaignPacing, activateCampaignProgression, applyCampaignRebalance, activateCampaignRewardFloor } from './campaign-pacing-migration';
 // One-time data migrations: the version-gated steps runPendingModuleMigrations
 // walks once per module version and the legacy balance rebases they call.
 // The moduleMigrationState table, the schema
@@ -25,8 +24,6 @@ import {
 import { MAGMALISK_ID, TEMPEST_KIRIN_ID, MIREMAW_ID, DREADREAPER_ID, VOLTWARDEN_ID, GRAVEBLOOM_ID } from "./boss-combat";
 import { NAME_CHANGE_COOLDOWN_MS } from "../../shared/name-change";
 import { publishRebalanceMail, publishSlotUpgradeMail } from "./mailbox";
-import { forgetBalanceCaches } from "./map-balance";
-import { defaultBalanceSettings, validateBalanceSettings } from "../../shared/map-balance";
 import { migrateGuildTags } from "./player-name-tags";
 import { compressLegacyMapPower } from "../../shared/map-power-rescale";
 import { rescaleEndgameProgress, rescaleRankingConflict, rescaleRankingStats } from "../../shared/endgame-power-rescale";
@@ -507,15 +504,6 @@ export function createModuleMigrations(deps: ModuleMigrationDeps) {
     // shipped. The rebase archive contains the last complete research row for
     // those players, so restore it without reducing any progress earned since.
     if (currentVersion < 35) restorePrestigeResearch(ctx);
-    // 36: the balance panel's own multipliers are now base values, so a stored
-    // revision still holding them would apply each one a second time. Land a
-    // fresh all-defaults revision with the publish that bakes them, not after.
-    if (currentVersion < 36) resetBalanceToBakedDefaults(ctx);
-    // 37 repairs 36. The map factors were the multipliers that needed folding
-    // in; the Endless block is a curve the panel is resolved against, not a set
-    // of multipliers, and 36 reset it to the authored reference along with
-    // them. That changed Endless for everyone, so put the live curve back.
-    if (currentVersion < 37) restoreLiveEndlessCurve(ctx);
     if (currentVersion < 38) convertItemUpgradesToSlotTiers(ctx);
     // 39: a make-good for the slot upgrades a prestige wiped, and for the
     // ones a sweep threw away while they were still running.
@@ -536,20 +524,11 @@ export function createModuleMigrations(deps: ModuleMigrationDeps) {
     if (currentVersion < 42) {
       for (const lifetime of ctx.db.playerLifetime.iter() as Iterable<any>) syncPlayerJoinDate(ctx, lifetime.identity, lifetime.joinedAt);
     }
-    // 43: adopt the verified HP/reward curves as a new balance revision.
-    if (currentVersion < 43) activateCampaignPacing(ctx);
-    if (currentVersion < 44) activateCampaignRewardFloor(ctx);
-    // 45: switch on the unified campaign progression curve shipped inactive in 0.821.
-    if (currentVersion < 45) activateCampaignProgression(ctx);
-    // 46: the campaign and Endless rebalance (campaign-pacing-migration.ts), as a new balance revision.
-    if (currentVersion < 46) applyCampaignRebalance(ctx);
     // 47: Phoe was playing a Reflect Only challenge by hand before it existed;
     // put that run into the challenge where it stands instead of restarting it.
     if (currentVersion < 47) enrollPlayerByName(ctx, REFLECT_CHALLENGE_ENROLLEE);
-    // 48: bosses hit 11x their map's regular again (campaign-pacing-migration.ts).
-    if (currentVersion < 48) applyCampaignRebalance(ctx, BOSS_DAMAGE_REBALANCE);
-    // 49: Endless eased to campaign-level hits and ~8% more time a map.
-    if (currentVersion < 49) applyCampaignRebalance(ctx, ENDLESS_EASE);
+    // 36, 37, 43-46, 48 and 49 reshaped the balance before the curve (0.915); every database that ran them is past
+    // them, and one with no balance yet has nothing for them to change.
     if (currentVersion < 50) moveToWideTables(ctx);
     // 51 (0.863): quests count for a guild from the moment of joining, and a
     // new member's guildless quests from this week move to it. Members who
@@ -581,21 +560,6 @@ export function createModuleMigrations(deps: ModuleMigrationDeps) {
   }
 
   /**
-   * Every tuned multiplier the panel carried has been folded into the base
-   * numbers, so the live configuration has to go back to 1 in the same publish.
-   * Saved revisions are kept: they are the record of what was live when, and
-   * rolling back to one would knowingly re-apply its factors.
-   */
-  /**
-   * The Endless curve that was live at revision 58, before migration 36 reset
-   * it. Held literally because it is a one-time repair of a specific mistake,
-   * not a value anyone should tune from here.
-   */
-  const ENDLESS_LIVE_CURVE = {
-    rewardMultiplier: 2, statStep: .6, enduranceStep: .06, enduranceExponent: 1, rewardPerHealth: 1,
-  } as const;
-
-  /**
    * Upgrades moved from the item to the slot it goes in.
    *
    * Every account keeps what it earned: each slot starts at the highest level
@@ -624,33 +588,6 @@ export function createModuleMigrations(deps: ModuleMigrationDeps) {
       if (tier <= 0) continue;
       insertSnapshotRow(ctx, "playerItemUpgrade", { key, identity, itemId: slot, level: tier });
     }
-  }
-
-  function restoreLiveEndlessCurve(ctx: any) {
-    const head = ctx.db.mapBalanceHead.id.find(0);
-    if (!head) return;
-    const current = ctx.db.mapBalanceVersion.revision.find(head.revision);
-    if (!current) return;
-    const settings = validateBalanceSettings(JSON.parse(current.settingsJson));
-    settings.endless = { ...ENDLESS_LIVE_CURVE };
-    const revision = head.revision + 1;
-    ctx.db.mapBalanceVersion.insert({
-      revision, settingsJson: JSON.stringify(settings), editor: ctx.sender, createdAt: ctx.timestamp,
-    });
-    ctx.db.mapBalanceHead.id.update({ id: 0, revision });
-    forgetBalanceCaches();
-  }
-
-  function resetBalanceToBakedDefaults(ctx: any) {
-    const head = ctx.db.mapBalanceHead.id.find(0);
-    if (!head) return;
-    const revision = head.revision + 1;
-    ctx.db.mapBalanceVersion.insert({
-      revision, settingsJson: JSON.stringify(defaultBalanceSettings()),
-      editor: ctx.sender, createdAt: ctx.timestamp,
-    });
-    ctx.db.mapBalanceHead.id.update({ id: 0, revision });
-    forgetBalanceCaches();
   }
 
   function restorePrestigeResearch(ctx: any) {

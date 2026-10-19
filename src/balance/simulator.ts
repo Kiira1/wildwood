@@ -20,7 +20,6 @@ import { ATTACK_WINDUP_SECONDS } from "../game/attack-timeline";
 import { BOSS_DAMAGE_PROFILES } from "../game/boss-damage";
 import { damageAfterArmor } from "../game/combat";
 import { addAttackSpeedRating, cleanRating } from "../../shared/stat-rating";
-import { curveArmorReduction } from "../../shared/balance-curve";
 import { ENEMY_TYPES, type EnemyKind, type EnemyDefinition, type RewardType } from "../game/enemies";
 import { createGameBootstrap } from "../game/runtime/game-bootstrap";
 import { formatCompactNumber } from "../ui/number-format";
@@ -1169,15 +1168,14 @@ function combatStats(state: EffectiveStatsState) {
 const UNWINNABLE_FIGHT_SECONDS = 1e9;
 
 /**
- * Seconds to kill an enemy. On a curve map, as in the game, an armor camp
- * blocks the player's hits on the curve's armor rule and a regen camp heals
- * `regen` a second between them (enemy-simulation.ts, player-combat-controller.ts).
+ * Seconds to kill an enemy. As in the game, a regen camp heals `regen` a
+ * second between hits (enemy-simulation.ts, player-combat-controller.ts).
  */
-function timeToKill(hitPoints: number, hitDamage: number, attackInterval: number, enemy?: { regen?: number; armor?: number }) {
+function timeToKill(hitPoints: number, hitDamage: number, attackInterval: number, enemy?: { regen?: number }) {
   const interval = Math.max(MIN_ATTACK_INTERVAL, attackInterval);
-  const hit = hitDamage * (enemy?.armor ? 1 - curveArmorReduction(enemy.armor) : 1);
+  const hit = hitDamage;
   const healed = (enemy?.regen ?? 0) * interval;
-  if (!enemy?.regen && !enemy?.armor) {
+  if (!enemy?.regen) {
     const hits = Math.max(1, Math.ceil(Math.max(1, hitPoints) / Math.max(1, hitDamage)));
     return FIRST_HIT_SECONDS + (hits - 1) * interval;
   }

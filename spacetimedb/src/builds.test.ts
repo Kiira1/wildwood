@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { crystalFixture, server } from "../../tests/helpers/crystal-hollows-fixture";
-import { addCard } from "./gear-cards";
+import { crystalFixture, identity, server } from "../../tests/helpers/crystal-hollows-fixture";
+import { addCard, mergeCardData } from "./gear-cards";
 import { activeCardsFor } from "./active-cards";
 import { buildLabel, cleanBuildName, parseBuildCards, parseBuildGear } from "../../shared/builds";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
@@ -67,6 +67,15 @@ describe("build names", () => {
     f.run(server.renameBuild, { slot: 2, name: "   " });
     expect(f.db.playerBuildName.key.find(key)).toBeFalsy();
     expect(() => f.run(server.renameBuild, { slot: 3, name: "Nope" })).toThrow("That build does not exist.");
+  });
+
+  it("moves a guest's build names to the account on link, replacing the account's", () => {
+    const f = builder(), account = identity("5");
+    f.run(server.renameBuild, { slot: 2, name: "Reflect" });
+    f.transaction(() => f.db.playerBuildName.insert({ key: `${account.toHexString()}:0`, identity: account, slot: 0, name: "Old" }));
+    f.transaction(() => mergeCardData(f.ctx, f.ctx.sender, account));
+    expect([...f.db.playerBuildName.identity.filter(account)].map(row => [row.slot, row.name])).toEqual([[2, "Reflect"]]);
+    expect([...f.db.playerBuildName.identity.filter(f.ctx.sender)]).toEqual([]);
   });
 
   it("calls a build by its name, or its number", () => {

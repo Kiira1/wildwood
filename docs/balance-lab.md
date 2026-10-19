@@ -4,7 +4,7 @@ Double-click `tools/run-balance-lab.command`, run `npm run balance:lab`, or foll
 
 Start with five seeded trials, balanced research, and mixed farming. The browser defaults to a 30-day window with Endless 1–15 available after Ion. It waits for **Run simulation**, so reopening the page does not launch expensive work. Strategy comparisons are optional; **Cancel run** stops the worker immediately. **Stop after last selected map’s boss** avoids post-completion farming. If selected maps finish early, the remaining timeline holds the final power; that flat tail is a stopped run, not measured farming. Increase the Endless count to inspect a continuing late-game curve. Unreached maps remain marked as such.
 
-The browser and CLI default to the captured maincloud balance settings, resolved against the current checkout’s game rules. The source selector shows the captured revision and date; choose **Authored defaults** to compare without server overrides. Temporary sliders apply on top of the selected source. The captured revision is a snapshot, not an automatic live subscription. A 90% payout reduction starts at Endless 1 for regular enemies and bosses, and sixth-power endurance increases later health requirements. Duration and kill-budget controls are sandbox comparisons only.
+The browser and CLI default to the game's balance, the curve in code (`src/balance/game-balance.ts`). The source selector can switch to the database copy captured by `balance:sync` to compare; it is a snapshot, not a live subscription. Temporary sliders apply on top of the selected source. Duration and kill-budget controls are sandbox comparisons only.
 
 ## Refresh from the game
 

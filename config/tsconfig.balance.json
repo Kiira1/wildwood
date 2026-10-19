@@ -17,10 +17,8 @@
     "../tools/reward-health-graph.ts",
     "../src/balance/stat-graph.ts",
     "../scripts/balance-report.ts",
-    "../scripts/balance-pacing.ts",
     "../src/balance/**/*.ts",
     "vite.balance.config.ts",
-    "vite.stat-graph.config.ts",
-    "../scripts/smooth-campaign-health.ts"
+    "vite.stat-graph.config.ts"
   ]
 }

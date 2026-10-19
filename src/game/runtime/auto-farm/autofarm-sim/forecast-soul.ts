@@ -43,7 +43,7 @@ export function soulSites(profile: VirtualPlayerProfile, tier: number): SpawnSit
     for (const point of regionSpawnPoints(camp).slice(0, camp.count)) {
       sites.push({ id: sites.length, x: point.x, y: point.y, type: SOUL_ENEMY_SPECIES[stat], campName: soulCampName(stat, soulCamp),
         groupAggro: false, leashRange: Math.max(420, camp.radius * .9), alive: false, respawnAt: 0,
-        definition: { ...species, hp: built.hp, damage: built.damage, attackSpeed: built.attackSpeed, regen: 0, armor: 0,
+        definition: { ...species, hp: built.hp, damage: built.damage, attackSpeed: built.attackSpeed, regen: 0,
           reward: { type: RUN_STAT[stat], amount: SOUL_STAT_DETAILS[stat].reward } } });
     }
   }

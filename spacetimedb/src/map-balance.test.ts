@@ -1,8 +1,4 @@
-import revision75 from '../../tests/fixtures/balance-revision-75.json';
-import { BOSS_DAMAGE_REBALANCE, CAMPAIGN_REBALANCE, ENDLESS_EASE, activateCampaignPacing, activateCampaignProgression, activateCampaignRewardFloor, applyCampaignRebalance } from './campaign-pacing-migration';
-import { defaultBalanceSettings, resolveMapBalance, validateBalanceSettings } from '../../shared/map-balance';
-import { LIVE_BALANCE } from '../../src/balance/live-balance';
-import bakeFixture from '../../tests/fixtures/balance-revision-73.json';
+import { defaultBalanceSettings, resolveMapBalance } from '../../shared/map-balance';
 import { it, expect, vi } from 'vitest';
 import { balanceEditorState, forgetBalanceCaches, installBalanceCurve, saveMapBalance, pinMapBalance, pinnedMapBalance, liveMapBalance } from './map-balance';
 function fixture() {
@@ -50,7 +46,6 @@ it('gives offline farming the balance a kill pays right now, on maps the player 
 import { crystalFixture, server } from '../../tests/helpers/crystal-hollows-fixture';
 import { reportKills } from '../../tests/helpers/enemy-defeat';
 import { progressOf } from "../../tests/helpers/progress";
-import { legacyBalanceSettings } from "../../tests/helpers/legacy-balance";
 import revision79 from "../../tests/fixtures/balance-revision-79.json";
 it('rejects non-developer changes and previews; rejects balance queries for a different map', () => {
   const f = crystalFixture();
@@ -127,7 +122,6 @@ it('serves byte-identical snapshots whether or not the caches are warm', () => {
     pinMapBalance(ctx, 'tutorial_forest', true);
     const settings = balanceEditorState(ctx).settings;
     settings.maps.endless.bossHealth = 3;
-    settings.endless.statStep = .2;
     saveMapBalance(ctx, 0, JSON.stringify(settings));
     const collected: Record<string, unknown> = {};
     for (const mapId of maps) {
@@ -158,64 +152,15 @@ it('serves byte-identical snapshots whether or not the caches are warm', () => {
   expect(pinnedMapBalance(ctx, ctx.sender, mapId)).toEqual(original);
 });
 
-it('loads and saves pre-bake revisions without applying rewards twice or rewriting history', () => {
-  const ctx = fixture();
-  const json = JSON.stringify(bakeFixture.settings);
-  ctx.db.mapBalanceVersion.insert({ revision: 73, settingsJson: json, editor: ctx.sender, createdAt: ctx.timestamp });
-  ctx.db.mapBalanceHead.insert({ id: 0, revision: 73 });
-  const editor = balanceEditorState(ctx);
-  expect(editor.settings.baselineVersion).toBe(2);
-  expect(editor.settings.maps.ion_citadel.enemyRewards).toBe(1);
-  pinMapBalance(ctx, 'ion_citadel', true, 2);
-  const before = pinnedMapBalance(ctx, ctx.sender, 'ion_citadel')!;
-  saveMapBalance(ctx, 73, JSON.stringify(editor.settings));
-  expect(balanceEditorState(ctx).settings).toEqual(editor.settings);
-  expect(ctx.db.mapBalanceVersion.revision.find(73).settingsJson).toBe(json);
-  pinMapBalance(ctx, 'home_exterior');
-  pinMapBalance(ctx, 'ion_citadel');
-  expect(pinnedMapBalance(ctx, ctx.sender, 'ion_citadel')).toEqual({ ...before, revision: 74 });
-});
-
-it('activates the exact tested campaign settings once, retaining archived revisions and pinned visits', () => {
-  const ctx = fixture();
-  const archived = { revision: 73, settingsJson: JSON.stringify(bakeFixture.settings), editor: ctx.sender, createdAt: ctx.timestamp };
-  ctx.db.mapBalanceVersion.insert(archived);
-  ctx.db.mapBalanceHead.insert({ id: 0, revision: 73 });
-  pinMapBalance(ctx, 'ion_citadel', true, 2);
-  const pinned = ctx.db.playerMapBalance.identity.find(ctx.sender).snapshotJson;
-  activateCampaignPacing(ctx);
-  const expected = JSON.parse(JSON.stringify(revision75)); delete expected.campaignRewardVersion;
-  // The saved revision still carries bossRewards, a factor that paid nothing and is no longer read.
-  for (const factors of Object.values(expected.maps) as Record<string, unknown>[]) delete factors.bossRewards;
-  expect(balanceEditorState(ctx).settings).toEqual(expected);
-  expect(balanceEditorState(ctx).revision).toBe(74);
-  expect(ctx.db.mapBalanceVersion.revision.find(73)).toEqual(archived);
-  expect(ctx.db.playerMapBalance.identity.find(ctx.sender).snapshotJson).toBe(pinned);
-  activateCampaignPacing(ctx);
-  expect(balanceEditorState(ctx).revision).toBe(74);
-  pinMapBalance(ctx, 'home_exterior');
-  pinMapBalance(ctx, 'ion_citadel');
-  expect(pinnedMapBalance(ctx, ctx.sender, 'ion_citadel')!.revision).toBe(74);
-});
-/** The curve's settings, allowing the Endless reward factor its round-off from being multiplied back to 1. */
-function expectProgressionCurve(settings: ReturnType<typeof defaultBalanceSettings>) {
-  expect(settings.maps.endless.enemyRewards).toBeCloseTo(1, 12);
-  // Migration 45's curve is the defaults as they were before the curve (0.915).
-  expect({ ...settings, maps: { ...settings.maps, endless: { ...settings.maps.endless, enemyRewards: 1 } } }).toEqual(legacyBalanceSettings());
-}
-
-it('runs pending campaign migrations from the connection path only once', () => {
+it('runs pending migrations from the connection path only once', () => {
   const f = crystalFixture();
   forgetBalanceCaches();
-  f.seed('moduleMigrationState', { id: 0, version: 42 });
-  f.seed('mapBalanceHead', { id: 0, revision: 73 });
-  f.seed('mapBalanceVersion', { revision: 73, settingsJson: JSON.stringify(bakeFixture.settings), editor: f.ctx.sender, createdAt: f.ctx.timestamp });
+  f.seed('moduleMigrationState', { id: 0, version: 59 });
+  f.seed('mapBalanceHead', { id: 0, revision: 79 });
+  f.seed('mapBalanceVersion', { revision: 79, settingsJson: JSON.stringify(revision79), editor: f.ctx.sender, createdAt: f.ctx.timestamp });
   f.ctx.connectionId = null;
   f.run(server.onConnect);
   expect(f.db.moduleMigrationState.id.find(0).version).toBe(60);
-  expect(f.db.mapBalanceVersion.revision.find(75).settingsJson).toBe(JSON.stringify(validateBalanceSettings(revision75)));
-  // 45 made revision 76, 46 raised its enemy hits as revision 77, 48 its boss hits as 78, and 49 eased Endless as 79.
-  expectProgressionCurve(JSON.parse(f.db.mapBalanceVersion.revision.find(76).settingsJson));
   // 60 put the balance curve on as revision 80.
   expect(balanceEditorState(f.ctx as any).revision).toBe(80);
   expect(balanceEditorState(f.ctx as any).settings).toEqual(defaultBalanceSettings());
@@ -223,109 +168,15 @@ it('runs pending campaign migrations from the connection path only once', () => 
   expect(balanceEditorState(f.ctx as any).revision).toBe(80);
 });
 
-it('migration 45 turns the live revision into the tested progression curve, once, keeping Endless and dev tuning', () => {
-  const ctx = fixture();
-  const live = validateBalanceSettings(revision75);
-  ctx.db.mapBalanceVersion.insert({ revision: 75, settingsJson: JSON.stringify(live), editor: ctx.sender, createdAt: ctx.timestamp });
-  ctx.db.mapBalanceHead.insert({ id: 0, revision: 75 });
-  activateCampaignProgression(ctx);
-  expect(balanceEditorState(ctx).revision).toBe(76);
-  expectProgressionCurve(balanceEditorState(ctx).settings);
-  // Endless now carries on from map 15 (shared/map-balance.ts), so a campaign
-  // change moves it by design; the migration's old "Endless unchanged" promise
-  // held when it ran and is not re-checked here.
-  activateCampaignProgression(ctx);
-  expect(balanceEditorState(ctx).revision).toBe(76);
-
-  const tuned = fixture();
-  const tweaked = structuredClone(live); tweaked.maps.moonfen.enemyDamage = 1.2; tweaked.maps.water_reach.enemyRespawn = .8;
-  tuned.db.mapBalanceVersion.insert({ revision: 75, settingsJson: JSON.stringify(tweaked), editor: tuned.sender, createdAt: tuned.timestamp });
-  tuned.db.mapBalanceHead.insert({ id: 0, revision: 75 });
-  activateCampaignProgression(tuned);
-  expect(balanceEditorState(tuned).settings.maps.moonfen.enemyDamage).toBe(1.2);
-  expect(balanceEditorState(tuned).settings.maps.water_reach.enemyRespawn).toBe(.8);
-});
-
-it('migration 44 changes only the reward-floor flag and remains idempotent', () => {
-  const ctx = fixture();
-  const before = defaultBalanceSettings(); delete before.campaignRewardVersion;
-  before.maps.beginner_desert.enemyRewards = 1.25;
-  ctx.db.mapBalanceVersion.insert({ revision: 74, settingsJson: JSON.stringify(before), editor: ctx.sender, createdAt: ctx.timestamp });
-  ctx.db.mapBalanceHead.insert({ id: 0, revision: 74 });
-  activateCampaignRewardFloor(ctx);
-  expect(balanceEditorState(ctx)).toMatchObject({ revision: 75, settings: { ...before, campaignRewardVersion: 1 } });
-  expect(JSON.parse(ctx.db.mapBalanceVersion.revision.find(74).settingsJson)).toEqual(before);
-  activateCampaignRewardFloor(ctx);
-  expect(balanceEditorState(ctx).revision).toBe(75);
-});
-
-it('migration 46 sets the rebalanced factors as a new revision, leaving every other setting', () => {
-  const ctx = fixture();
-  const live = validateBalanceSettings(revision75);
-  live.maps.moonfen.enemySpeed = 1.2;   // a developer's other tuning stays
-  ctx.db.mapBalanceVersion.insert({ revision: 75, settingsJson: JSON.stringify(live), editor: ctx.sender, createdAt: ctx.timestamp });
-  ctx.db.mapBalanceHead.insert({ id: 0, revision: 75 });
-  applyCampaignRebalance(ctx);
-  const { revision, settings } = balanceEditorState(ctx);
-  expect(revision).toBe(76);
-  for (const [id, factors] of Object.entries(CAMPAIGN_REBALANCE)) {
-    for (const [field, value] of Object.entries(factors)) expect(settings.maps[id][field as keyof typeof factors]).toBeCloseTo(value, 6);
-    expect({ ...settings.maps[id], ...Object.fromEntries(Object.keys(factors).map(k => [k, 0])) })
-      .toEqual({ ...live.maps[id], ...Object.fromEntries(Object.keys(factors).map(k => [k, 0])) });
-  }
-  expect(settings.maps.moonfen.enemySpeed).toBe(1.2);
-  expect(settings.endless).toEqual(live.endless);
-});
-
 it('a save never reuses a revision number when the head was moved back', () => {
-  const ctx = fixture();
-  const live = validateBalanceSettings(revision75);
-  for (const revision of [75, 76]) ctx.db.mapBalanceVersion.insert({ revision, settingsJson: JSON.stringify(live), editor: ctx.sender, createdAt: ctx.timestamp });
-  ctx.db.mapBalanceHead.insert({ id: 0, revision: 75 });
-  applyCampaignRebalance(ctx);
-  expect(balanceEditorState(ctx).revision).toBe(77);
-  expect(JSON.parse(ctx.db.mapBalanceVersion.revision.find(76).settingsJson)).toEqual(live);
-});
-
-it('migration 48 has every boss from the desert on hit 11x its map regular, Endless included', () => {
-  const ctx = fixture();
-  ctx.db.mapBalanceVersion.insert({ revision: 76, settingsJson: JSON.stringify(LIVE_BALANCE.settings), editor: ctx.sender, createdAt: ctx.timestamp });
-  ctx.db.mapBalanceHead.insert({ id: 0, revision: 76 });
-  applyCampaignRebalance(ctx);
-  applyCampaignRebalance(ctx, BOSS_DAMAGE_REBALANCE);
-  const { revision, settings } = balanceEditorState(ctx);
-  expect(revision).toBe(78);
-  const median = (values: number[]) => values.sort((a, b) => a - b)[Math.floor(values.length / 2)];
-  for (const id of [...Object.keys(BOSS_DAMAGE_REBALANCE).filter(id => id !== 'endless'), 'endless_1', 'endless_4']) {
-    const balance: any = resolveMapBalance(id, settings, revision);
-    // The attack speed and crit camps (0.901.47) copy the damage camp's hit; the ratio is to the original roles.
-    const rating = (type: string) => type === 'speed' || type === 'crit';
-    const rows: any[] = (id.startsWith('endless_') ? Object.entries(balance.lanes).map(([kind, lane]: any) => ({ elite: /Warden|King/.test(kind), ...lane })) : Object.values(balance.enemies))
-      .filter((row: any) => !rating(row.reward.type));
-    const heaviest = Math.max(balance.boss.damage ?? 0, ...Object.values(balance.boss.attacks ?? {}) as number[]);
-    expect(heaviest / median(rows.filter(row => !row.elite).map(row => row.damage)), id).toBeCloseTo(11, 1);
-  }
-  expect(settings.maps.tutorial_forest.bossDamage).toBe(0.3);
-});
-
-it('migration 49 eases Endless and keeps its boss at 11x a regular hit', () => {
-  const ctx = fixture();
-  ctx.db.mapBalanceVersion.insert({ revision: 76, settingsJson: JSON.stringify(LIVE_BALANCE.settings), editor: ctx.sender, createdAt: ctx.timestamp });
-  ctx.db.mapBalanceHead.insert({ id: 0, revision: 76 });
-  applyCampaignRebalance(ctx);
-  applyCampaignRebalance(ctx, BOSS_DAMAGE_REBALANCE);
-  const before = balanceEditorState(ctx).settings;
-  applyCampaignRebalance(ctx, ENDLESS_EASE);
-  const { revision, settings } = balanceEditorState(ctx);
-  expect(revision).toBe(79);
-  expect(settings.maps.endless).toMatchObject({ ...before.maps.endless, ...ENDLESS_EASE.endless });
-  for (const [id, map] of Object.entries(settings.maps)) if (id !== 'endless') expect(map).toEqual(before.maps[id]);
-  const median = (values: number[]) => values.sort((a, b) => a - b)[Math.floor(values.length / 2)];
-  for (const id of ['endless_1', 'endless_5']) {
-    const balance: any = resolveMapBalance(id, settings, revision);
-    const regular = median(Object.entries(balance.lanes).filter(([kind, lane]: any) => !/Warden|King/.test(kind) && !['speed', 'crit'].includes(lane.reward.type)).map(([, lane]: any) => lane.damage));
-    expect(balance.boss.damage / regular, id).toBeCloseTo(11, 1);
-  }
+  const f = crystalFixture();
+  forgetBalanceCaches();
+  const old = JSON.stringify(revision79);
+  for (const revision of [79, 80]) f.seed("mapBalanceVersion", { revision, settingsJson: old, editor: f.ctx.sender, createdAt: f.ctx.timestamp });
+  f.seed("mapBalanceHead", { id: 0, revision: 79 });
+  installBalanceCurve(f.ctx as any);
+  expect(balanceEditorState(f.ctx as any).revision).toBe(81);
+  expect(f.db.mapBalanceVersion.revision.find(80).settingsJson).toBe(old);
 });
 
 it("migration 60 puts the balance curve on as the next revision and moves every pinned visit onto it, once", () => {
@@ -335,9 +186,10 @@ it("migration 60 puts the balance curve on as the next revision and moves every 
   const live = JSON.stringify(revision79);
   f.seed("mapBalanceVersion", { revision: 79, settingsJson: live, editor: f.ctx.sender, createdAt: f.ctx.timestamp });
   f.seed("mapBalanceHead", { id: 0, revision: 79 });
-  pinMapBalance(ctx, "ion_citadel", true, 2);
-  const before = JSON.parse(f.db.playerMapBalance.identity.find(f.ctx.sender).snapshotJson);
-  expect(before.revision).toBe(79);
+  // A visit pinned under revision 79, when Ion Patrols had more health.
+  const before = JSON.parse(JSON.stringify(resolveMapBalance("ion_citadel", defaultBalanceSettings(), 79, 2)));
+  before.enemies["Ion Patrol"].hp *= 10;
+  f.seed("playerMapBalance", { identity: f.ctx.sender, mapId: "ion_citadel", snapshotJson: JSON.stringify(before) });
   installBalanceCurve(ctx);
   expect(balanceEditorState(ctx)).toMatchObject({ revision: 80, settings: defaultBalanceSettings() });
   expect(f.db.mapBalanceVersion.revision.find(79).settingsJson).toBe(live);

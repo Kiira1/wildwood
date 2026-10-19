@@ -172,7 +172,7 @@ export function createSoulDimensionRuntime(deps: {
   function definitionFor(stat: SoulStatId): EnemyDefinition {
     const species = ENEMY_TYPES[SOUL_ENEMY_SPECIES[stat]];
     const built = soulEnemyStats(deps.strength());
-    return { ...species, hp: built.hp, damage: built.damage, attackSpeed: built.attackSpeed, regen: 0, armor: 0,
+    return { ...species, hp: built.hp, damage: built.damage, attackSpeed: built.attackSpeed, regen: 0,
       // A soul kill pays soul stats (enemyDefeated below), never the run's own.
       reward: { type: "damage", amount: 0 } };
   }

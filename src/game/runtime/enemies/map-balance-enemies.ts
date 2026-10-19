@@ -14,7 +14,7 @@ export function balancedSiteDefinition(snapshot: MapBalanceSnapshot, site: Pick<
   camps = isProceduralMap(snapshot.mapId) ? generateMap(snapshot.mapId).camps : null): EnemyDefinition | null {
   const base = snapshot.enemies[site.type];
   if (!base) return null;
-  if (!camps) return { ...ENEMY_TYPES[site.type], regen: 0, armor: 0, ...base };
+  if (!camps) return { ...ENEMY_TYPES[site.type], regen: 0, ...base };
   let index = site.id;
   for (const camp of camps) {
     if (index < camp.count) {

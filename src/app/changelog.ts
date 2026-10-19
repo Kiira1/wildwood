@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.915.1": [
+    "Builds can be renamed: tap Rename on the Builds tab",
+  ],
   "0.915.0": [
     "Every map is on one smooth balance curve: each map's enemies have 2.2x the health and hits of the last and pay 1.8x as much, from the Forest through Endless",
     "Numbers are much smaller from the Desert on; your stats stay as they are, so you'll race ahead until the curve catches up",
@@ -3606,6 +3609,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.915.1": "2026-10-18",
   "0.915.0": "2026-10-18",
   "0.914.11": "2026-10-18",
   "0.914.10": "2026-10-18",
