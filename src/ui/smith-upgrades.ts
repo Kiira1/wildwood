@@ -64,6 +64,8 @@ export function gearComparison(offerId: GradeItemId, worn: WornLoadout, levels: 
   const style = bootStyleOf(offerId), bootStat = style ? BOOT_STYLE_STAT[style] : undefined;
   const offer = slotStat(offerId, { tier: levels.tier, refine: 0 }, bootStat);
   const current = wornInSlot(worn, offerId);
+  // Boots of another style, or Black Boots, raise a different stat: no number compares them, so Upgrade All leaves them on.
+  if (style && current && bootStyleOf(current) !== style) return { delta: 0, label: offer.label, text: "Different Stat from Now" };
   const now = current ? slotStat(current, { tier: levels.tier, refine: levels.wornRefine }, bootStat).value : 0;
   const delta = Math.round((offer.value - now) * 10) / 10;
   const text = delta === 0 ? "Same as Now" : `${delta > 0 ? "+" : "-"}${Math.abs(delta)}% ${offer.label} vs Now`;

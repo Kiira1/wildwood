@@ -28,6 +28,12 @@ it("skips a line whose affordable grades are no better than what is worn, or tha
   expect(result.picks.map(pick => pick.itemId)).toEqual(["exquisite_light_helmet", "exquisite_light_armor"]);
 });
 
+it("leaves Black Boots on: Upgrade All buys no boots over them", () => {
+  const beats = (itemId: string) => gearComparison(itemId as never, { equippedFeet: "black_boots" }, { tier: 0, wornRefine: 0 }).delta > 0;
+  const result = upgradeAllPlan({ lines: schoolLines("swordplay"), held: new Set(), levels: { swordplay: 7 }, gold: 100_000, beats });
+  expect(result.picks.some(pick => pick.itemId.endsWith("_boots"))).toBe(false);
+});
+
 it("says what comes soonest when nothing is affordable: the cheapest upgrade's price, else the Mastery it needs", () => {
   expect(plan({ levels: { archery: 6 }, gold: 50 })).toEqual({ picks: [], total: 0, next: `Next: Crude Bow at ${GRADE_GOLD_PRICE.crude} Gold` });
   const held = ["crude_bow", "crude_light_helmet", "crude_light_armor", "crude_ranger_boots"];
@@ -40,8 +46,9 @@ it("compares an offer with the worn piece's stat at the slot's tier, and the wor
   expect(gearComparison("rare_bow", { equippedRightHand: "common_bow" }, { tier: 0, wornRefine: 0 })).toEqual({ delta: 24, label: "Damage", text: "+24% Damage vs Now" });
   expect(gearComparison("rare_light_helmet", {}, { tier: 0, wornRefine: 0 }).text).toBe("+28.8% Regen vs Now");
   expect(gearComparison("crude_warrior_boots", { equippedFeet: "rare_warrior_boots" }, { tier: 0, wornRefine: 0 }).delta).toBeLessThan(0);
-  // Boots of another style give nothing of this one's stat.
-  expect(gearComparison("crude_ranger_boots", { equippedFeet: "epic_warrior_boots" }, { tier: 0, wornRefine: 0 }).text).toBe("+2% Move Speed vs Now");
+  // Boots of another style, or Black Boots, raise a different stat: never counted as an upgrade.
+  expect(gearComparison("crude_ranger_boots", { equippedFeet: "epic_warrior_boots" }, { tier: 0, wornRefine: 0 })).toEqual({ delta: 0, label: "Move Speed", text: "Different Stat from Now" });
+  expect(gearComparison("epic_warrior_boots", { equippedFeet: "black_boots" }, { tier: 0, wornRefine: 0 }).delta).toBe(0);
   expect(gearComparison("common_bow", { equippedRightHand: "common_bow" }, { tier: 0, wornRefine: 0 }).text).toBe("Same as Now");
   const tiered = gearComparison("rare_bow", { equippedRightHand: "common_bow" }, { tier: 10, wornRefine: 0 }).delta;
   expect(tiered).toBeGreaterThan(24);

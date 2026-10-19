@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.916.3": [
+    "Upgrade All no longer swaps out Black Boots or boots of another style",
+  ],
   "0.916.2": [
     "Small balancing",
     "The profile has a Skills tab with every skill's level and progress",
@@ -3662,6 +3665,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.916.3": "2026-10-19",
   "0.916.2": "2026-10-19",
   "0.916.1": "2026-10-19",
   "0.916.0": "2026-10-19",
