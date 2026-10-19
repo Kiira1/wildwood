@@ -18,7 +18,8 @@ import { enemyDefeatDefinition, combatMap } from './enemy-defeats';
 import { personalBossDefinition } from './personal-bosses';
 import { generateMap, isProceduralMap } from './procedural-maps';
 import { BOSS_DAMAGE_PROFILES } from './boss-damage';
-import { DEFAULT_BALANCE_FACTORS, type BalanceSettings, type MapBalanceSnapshot } from './map-balance-types';
+import { DEFAULT_BALANCE_FACTORS, type BalanceFactors, type BalanceSettings, type MapBalanceSnapshot } from './map-balance-types';
+import BALANCE_TWEAKS from './balance-tweaks.json';
 import { ratingRewardPerKill } from './stat-rating';
 /**
  * Attack speed and crit camps (0.901.47) fight like their map's damage camp of the same rarity, and pay rating
@@ -33,9 +34,14 @@ export const BALANCE_MAPS: readonly (readonly [string, string, string])[] = [
   ...CAMPAIGN_MAPS.map((map, index) => [map.id, `${index + 1} · ${map.name}`, map.bossArt] as const),
   ['endless', 'Endless', ''],
 ];
-/** The curve (shared/smooth-curve.ts) with every factor at 1: a factor is only ever a deliberate tweak on top. */
+/**
+ * The game's balance: the curve (shared/smooth-curve.ts) with every factor at 1, but for deliberate tweaks kept in
+ * shared/balance-tweaks.json (npm run balance:adopt copies the live ones there).
+ */
 export function defaultBalanceSettings(): BalanceSettings {
-  return { baselineVersion: BALANCE_BASELINE_VERSION, curveVersion: 2, maps: Object.fromEntries(BALANCE_MAPS.map(([id]) => [id, { ...DEFAULT_BALANCE_FACTORS }])),
+  const tweaks = BALANCE_TWEAKS as Readonly<Record<string, Partial<BalanceFactors>>>;
+  return { baselineVersion: BALANCE_BASELINE_VERSION, curveVersion: 2,
+    maps: Object.fromEntries(BALANCE_MAPS.map(([id]) => [id, { ...DEFAULT_BALANCE_FACTORS, ...tweaks[id] }])),
     endless: { ...BAKED_ENDLESS_DEFAULTS } };
 }
 export function validateBalanceSettings(value: unknown): BalanceSettings {

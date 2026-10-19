@@ -25,6 +25,10 @@
  * Nothing ships until the checks pass: check:release (the 0.907.0 deploy
  * failed on it), both typechecks, the server bindings against a fresh
  * generate, and the unit tests (--quick leaves those to GitHub Actions).
+ *
+ * Nor while the live balance is not the repo's (balanceVerdict): there is one
+ * balance, the one in code, and a control changed live in the Balance Lab is
+ * copied into the repo (npm run balance:adopt) before anything else ships.
  */
 import { spawn, spawnSync } from "node:child_process";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
@@ -55,6 +59,17 @@ export function planShip({ clientAhead, server, allowClientBreak, announce = tru
   if (clientAhead && announce) steps.push("announce");
   if (!steps.length) return { refuse: "Nothing to ship: origin/main has every commit and the server is published from this one." };
   return { steps };
+}
+
+/**
+ * Whether the live balance lets this ship go ahead: it is the repo's, or it is from before the balance curve and
+ * this ship publishes the server, whose migration puts the repo's on. Otherwise the refusal says how to fix it.
+ */
+export function balanceVerdict({ revision, onCurve, matches, differences = [] }, server) {
+  if (matches) return { ok: `live balance (revision ${revision}) is the repo's` };
+  if (!onCurve && server !== "none") return { ok: `live balance (revision ${revision}) is replaced by the repo's on publish` };
+  return { refuse: `The live balance (revision ${revision}) is not the repo's: ${differences.slice(0, 4).join(", ")}${differences.length > 4 ? ", …" : ""}. `
+    + "If that was a change in the Balance Lab, copy it into the repo with npm run balance:adopt and commit it; otherwise set the Lab back to the repo's balance." };
 }
 
 function run(command, args, { capture = false, allowFailure = false } = {}) {
@@ -181,6 +196,12 @@ async function main() {
   console.log("  ✓ server bindings");
 
   const server = await serverChange(head, offMain);
+  // The CLI's own warnings come out beside it; the check's answer is its one JSON line.
+  const checked = run("npx", ["tsx", "scripts/balance-check.ts"], { capture: true }).output.split("\n").find(line => line.startsWith("{"));
+  if (!checked) throw new Error("The live balance check gave no answer.");
+  const verdict = balanceVerdict(JSON.parse(checked), server);
+  if (verdict.refuse) throw new Error(verdict.refuse);
+  console.log(`  ✓ ${verdict.ok}`);
   const plan = planShip({ clientAhead: ahead > 0, server, allowClientBreak, announce });
   if (plan.refuse) throw new Error(plan.refuse);
   console.log(`Plan: ${plan.steps.join(" → ")} (client ${ahead ? `${ahead} commit(s) ahead` : "already pushed"}, server ${server})`);

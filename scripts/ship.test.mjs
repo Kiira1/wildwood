@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { planShip } from "./ship.mjs";
+import { balanceVerdict, planShip } from "./ship.mjs";
 
 describe("npm run ship order", () => {
   it("ships a client-only release by pushing and waiting for the deploy", () => {
@@ -21,5 +21,18 @@ describe("npm run ship order", () => {
   it("refuses a client-breaking server without the flag, and refuses when nothing is new", () => {
     expect(planShip({ clientAhead: true, server: "breaking" }).refuse).toMatch(/--allow-client-break/);
     expect(planShip({ clientAhead: false, server: "none" }).refuse).toMatch(/Nothing to ship/);
+  });
+});
+
+describe("balanceVerdict", () => {
+  it("ships while the live balance is the repo's, or is from before the curve and this ship publishes its migration", () => {
+    expect(balanceVerdict({ revision: 80, onCurve: true, matches: true }, "none").ok).toMatch(/is the repo's/);
+    expect(balanceVerdict({ revision: 79, onCurve: false, matches: false, differences: ["curve old → 2"] }, "compatible").ok).toMatch(/replaced/);
+  });
+  it("refuses a live balance changed in the Balance Lab, and says how to adopt it", () => {
+    const tweaked = { revision: 81, onCurve: true, matches: false, differences: ["cloudspire.enemyHealth 1 → 1.2"] };
+    expect(balanceVerdict(tweaked, "none").refuse).toMatch(/cloudspire\.enemyHealth 1 → 1\.2.*npm run balance:adopt/);
+    expect(balanceVerdict(tweaked, "compatible").refuse).toBeDefined();
+    expect(balanceVerdict({ revision: 79, onCurve: false, matches: false, differences: [] }, "none").refuse).toBeDefined();
   });
 });

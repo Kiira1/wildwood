@@ -1,4 +1,11 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.915.0": [
+    "Every map is on one smooth balance curve: each map's enemies have 2.2x the health and hits of the last and pay 1.8x as much, from the Forest through Endless",
+    "Numbers are much smaller from the Desert on; your stats stay as they are, so you'll race ahead until the curve catches up",
+    "Guilds can be created from 2.50m power",
+    "Camera zoom goes from 50% to 150%",
+    "The minimized stat tracker and Auto Farm card are as tall as the gem and mail buttons",
+  ],
   "0.914.11": [
     "World chat shows power past 300ud instead of stopping there",
     "Auto Farm keeps Aggro pulling at a boss only for a Reflect or Second Wind build; any other fights the boss alone",
@@ -3599,6 +3606,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.915.0": "2026-10-18",
   "0.914.11": "2026-10-18",
   "0.914.10": "2026-10-18",
   "0.914.9": "2026-10-18",
