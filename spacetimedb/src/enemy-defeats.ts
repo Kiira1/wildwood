@@ -19,6 +19,20 @@ export const enemyDefeatBudget = table({ name: "enemy_defeat_budget" }, {
   key: t.string().primaryKey(), identity: t.identity().index("btree"), tokens: t.f64(), updatedAtMicros: t.u64().index("btree"),
 });
 
+/** The map each player last left, and when: its kills may still be reported for a while (permittedDefeatMaps). */
+export const playerMapDeparture = table({ name: "player_map_departure", public: false }, {
+  identity: t.identity().primaryKey(), mapId: t.string(), leftAtMicros: t.u64(),
+});
+/** How long after leaving a map its kills are still taken: the next report and a slow reply's wait. */
+export const MAP_DEPARTURE_GRACE_MICROS = 120_000_000n;
+
+/** Notes the map a player just left, so a report still on its way for it is paid, not thrown away. */
+export function noteMapDeparture(ctx: Pick<GameReducerContext, "db" | "timestamp">, identity: GameReducerContext["sender"], mapId: string) {
+  const row = { identity, mapId, leftAtMicros: ctx.timestamp.microsSinceUnixEpoch };
+  if (ctx.db.playerMapDeparture.identity.find(identity)) ctx.db.playerMapDeparture.identity.update(row);
+  else ctx.db.playerMapDeparture.insert(row);
+}
+
 /**
  * The account-wide clocks a kill report spends, one row per player: the report
  * limiter, the simulation clock, the combat clock and the kill-rate watch. They
@@ -95,8 +109,9 @@ export function plausibleKillsPerSecond(hp: number, dps: number, attackInterval:
 }
 
 /**
- * The maps a report may be for: where the player stands, and, while they stand
- * at Home, the combat map they left to get there. A report is sealed on the
+ * The maps a report may be for: where the player stands, the map they left in
+ * the last two minutes (a portal no longer waits for its reports to land), and,
+ * while they stand at Home, the combat map they left to get there. A report is sealed on the
  * map it was earned on; a portal drains it first, but a drain that times out or
  * a tab hidden mid-trip leaves it queued while the player is already Home.
  * Rejecting it there threw those kills away. Every budget below is keyed by
@@ -104,9 +119,12 @@ export function plausibleKillsPerSecond(hp: number, dps: number, attackInterval:
  * staying on it would have.
  */
 export function permittedDefeatMaps(ctx: DefeatContext, player: { mapId: string }, homeMapId: string): string[] {
-  if (player.mapId !== homeMapId) return [player.mapId];
+  const maps = [player.mapId];
+  const departed = ctx.db.playerMapDeparture.identity.find(ctx.sender);
+  if (departed && ctx.timestamp.microsSinceUnixEpoch - departed.leftAtMicros <= MAP_DEPARTURE_GRACE_MICROS && !maps.includes(departed.mapId)) maps.push(departed.mapId);
+  if (player.mapId !== homeMapId) return maps;
   const left = ctx.db.homeReturnLocation.identity.find(ctx.sender)?.mapId;
-  return left && left !== homeMapId ? [player.mapId, left] : [player.mapId];
+  return left && left !== homeMapId && !maps.includes(left) ? [...maps, left] : maps;
 }
 
 /**

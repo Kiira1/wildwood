@@ -1723,6 +1723,13 @@ export const PlayerMapBalance = __t.object("PlayerMapBalance", {
 });
 export type PlayerMapBalance = __Infer<typeof PlayerMapBalance>;
 
+export const PlayerMapDeparture = __t.object("PlayerMapDeparture", {
+  identity: __t.identity(),
+  mapId: __t.string(),
+  leftAtMicros: __t.u64(),
+});
+export type PlayerMapDeparture = __Infer<typeof PlayerMapDeparture>;
+
 export const PlayerMapFrame = __t.object("PlayerMapFrame", {
   mapId: __t.string(),
   emittedAt: __t.timestamp(),

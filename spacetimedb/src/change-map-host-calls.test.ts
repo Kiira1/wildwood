@@ -7,8 +7,9 @@ vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module
 // Reducer compute on the host is paid per database call, not per line of
 // JavaScript: change_map ran ~24 ms with 45-50 calls while movement updates
 // with a handful ran in half a millisecond. These budgets hold the count.
-const HOME_TOGGLE_BUDGET = 37;
-const PORTAL_TRAVEL_BUDGET = 35;
+// One more each for player_map_departure, so a portal need not wait on its kill reports.
+const HOME_TOGGLE_BUDGET = 38;
+const PORTAL_TRAVEL_BUDGET = 36;
 
 function countHostCalls(db: Record<string, any>) {
   let calls = 0;

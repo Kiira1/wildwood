@@ -142,7 +142,7 @@ const PLAYER_STATE_TABLES: ReadonlySet<string> = new Set([
   "activeResearch", "balanceApologyNotice", "chatCooldown",
   "chatReactionUnlock", "defeatSessionRestriction", "duelRequestCooldown", "leaderboardEntry", "playerAccessAudit",
   "playerBalanceVersion", "playerController", "playerCutsceneHistory", "playerGemWallet", "playerInventoryCapacity",
-  "playerDefeatClock", "playerLastLocation", "playerLegalConsent", "playerLifetime", "playerMapBalance", "playerMapMarker",
+  "playerDefeatClock", "playerMapDeparture", "playerLastLocation", "playerLegalConsent", "playerLifetime", "playerMapBalance", "playerMapMarker",
   "playerMultiplayerPreference", "playerNameCooldown", "playerOnboarding",
   "playerUpgradeBench", "playerUpgradeBenchThirdSlot",
   // Added after the removal functions were first written.
@@ -618,6 +618,7 @@ export function createAccountLifecycle(deps: AccountLifecycleDeps) {
     unlinkPatreon(ctx, identity);
     for (const budget of ctx.db.enemyDefeatBudget.identity.filter(identity)) ctx.db.enemyDefeatBudget.key.delete(budget.key);
     ctx.db.playerDefeatClock.identity.delete(identity);
+    ctx.db.playerMapDeparture.identity.delete(identity);
     removeAudioSettings(ctx, identity);
     removeLootSettings(ctx, identity);
     removeProfileSnapshot(ctx, identity);
@@ -682,6 +683,7 @@ export function createAccountLifecycle(deps: AccountLifecycleDeps) {
     unlinkPatreon(ctx, identity);
     for (const budget of ctx.db.enemyDefeatBudget.identity.filter(identity)) ctx.db.enemyDefeatBudget.key.delete(budget.key);
     ctx.db.playerDefeatClock.identity.delete(identity);
+    ctx.db.playerMapDeparture.identity.delete(identity);
     removeAudioSettings(ctx, identity);
     removeLootSettings(ctx, identity);
     removeProfileSnapshot(ctx, identity);

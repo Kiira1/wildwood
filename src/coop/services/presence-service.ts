@@ -1270,7 +1270,9 @@ export function createPresenceService(dependencies: PresenceServiceDependencies)
         ) return false;
         movementHeldForMapChange = true;
         try {
-          if (dependencies.drainEnemyLoot && !await dependencies.drainEnemyLoot()) throw new Error("Enemy rewards are still syncing. Try the portal again.");
+          // Kills still queued go out first but are not waited for: the server takes the map just left's for a while.
+          // Waiting held the trip up to fifteen seconds on a slow reply, then refused it.
+          void dependencies.drainEnemyLoot?.().catch(() => false);
           await dependencies.reducers.runWorldReducer(() => connection.reducers.changeMap({ mapId, x, y }));
           recordConnectionDiagnostic("portal-complete", { detail: `destination:${mapId}` });
           return true;

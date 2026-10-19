@@ -22,6 +22,7 @@ import { isTownMap } from "./town";
 import { isGuildHallMap } from "./guild-hall";
 import { pinMapBalance } from "./map-balance";
 import { recordAnalyticsMapVisit } from "./analytics";
+import { noteMapDeparture } from "./enemy-defeats";
 import { removeMiningData } from "./mining";
 
 export function publishPlayerDeathFrame(ctx: any, activePlayer: any) {
@@ -149,6 +150,7 @@ export function transitionPlayerMap(
     lastInputAt: ctx.timestamp,
   };
   updateSnapshotRow(ctx, "player", nextPlayer);
+  if (mapId !== current.mapId) noteMapDeparture(ctx, current.identity, current.mapId);
   // The motion row read above is handed to the presence helpers; each host call is paid for.
   const motion = syncPlayerMotion(ctx, nextPlayer, { motion: currentMotion });
   syncPlayerMotionIdentity(ctx, nextPlayer, { motion });

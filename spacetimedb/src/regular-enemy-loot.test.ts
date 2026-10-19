@@ -6,6 +6,7 @@ import { reportKills } from "../../tests/helpers/enemy-defeat";
 import { enemyDefeatDefinition, defeatBudget } from "../../shared/enemy-defeats";
 import { ENEMY_TYPES } from "../../shared/enemy-definitions";
 import { dropLands, rollRegularEnemyLoot } from "./regular-enemy-loot";
+import { transitionPlayerMap } from "./character-reset";
 import { regularMapLoot } from "../../shared/regular-map-loot";
 import { progressOf } from "../../tests/helpers/progress";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
@@ -61,6 +62,17 @@ it("still rejects a report for a map the player did not come to the Town from, e
   f.db.homeReturnLocation.insert({ identity: f.ctx.sender, mapId: "cloudspire", x: 1, y: 1, facing: 0 });
   expect(() => reportKills(f, batch)).toThrow("another map");
   expect([...f.db.regularEnemyStream.iter()]).toHaveLength(0);
+});
+it("pays a report for the map just left for two minutes, so a portal need not wait for it", () => {
+  const f = fixture(), base = progressOf(f, f.ctx.sender);
+  f.patch("playerProgress", { cloudspireUnlocked: true });
+  transitionPlayerMap(f.ctx, f.db.player.identity.find(f.ctx.sender), "cloudspire", { x: 500, y: 500 });
+  f.ctx.timestamp = new Timestamp(f.ctx.timestamp.microsSinceUnixEpoch + 100_000_000n);
+  reportKills(f, batch);
+  expect(progressOf(f, f.ctx.sender).damage).toBeCloseTo(base.damage + enemyDefeatDefinition(batch.mapId, enemy)!.reward.amount * 15);
+  // Past the two minutes, it is another map's again.
+  f.ctx.timestamp = new Timestamp(f.ctx.timestamp.microsSinceUnixEpoch + 21_000_000n);
+  expect(() => reportKills(f, { ...batch, sequence: 2n })).toThrow("another map");
 });
 it("rolls back reward, budget, receipt and loot if a write fails", () => {
   const f = fixture(), base = progressOf(f, f.ctx.sender);

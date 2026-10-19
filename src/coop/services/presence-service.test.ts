@@ -81,30 +81,26 @@ it("survives pending/disconnected marker cleanup and discards a late subscriptio
   expect(() => presence.clearSession()).not.toThrow();
 });
 
-it("drains regular-enemy loot before a portal changes the authoritative map", async () => {
-  let finish!: (value: boolean) => void;
-  const changeMap = vi.fn(async () => {});
+it("sends queued regular-enemy loot ahead of a portal's move, without waiting on it", async () => {
+  const order: string[] = [];
+  const changeMap = vi.fn(async () => { order.push("move"); });
   const connection = { reducers: { changeMap } };
   const presence = createPresenceService({
-    drainEnemyLoot: () => new Promise(resolve => { finish = resolve; }),
+    // A reply that never comes no longer holds the trip.
+    drainEnemyLoot: () => { order.push("loot"); return new Promise<boolean>(() => {}); },
     reducers: { connection: () => connection, protocolBlocked: () => false, worldEntryBlocked: () => false,
       runWorldReducer: (action: () => unknown) => action(), handleFailure: vi.fn() },
   } as any);
-  const travel = presence.api.changeMap("home_exterior", 100, 100);
-  expect(changeMap).not.toHaveBeenCalled();
-  finish(true); expect(await travel).toBe(true);
-  expect(changeMap).toHaveBeenCalledOnce();
-  const blocked = presence.api.changeMap("tutorial_forest", 100, 100);
-  finish(false); expect(await blocked).toBe(false);
-  expect(changeMap).toHaveBeenCalledOnce();
+  expect(await presence.api.changeMap("home_exterior", 100, 100)).toBe(true);
+  expect(await presence.api.changeMap("tutorial_forest", 100, 100)).toBe(true);
+  expect(order).toEqual(["loot", "move", "loot", "move"]);
 });
 
 it("holds movement back while a map change is on its way, so no step reaches the server before the move", async () => {
-  let finish!: (value: boolean) => void;
+  let finish!: () => void;
   const updateMovementState = vi.fn();
-  const connection = { reducers: { changeMap: vi.fn(async () => {}), updateMovementState } };
+  const connection = { reducers: { changeMap: vi.fn(() => new Promise<void>(resolve => { finish = resolve; })), updateMovementState } };
   const presence = createPresenceService({
-    drainEnemyLoot: () => new Promise(resolve => { finish = resolve; }),
     reducers: { connection: () => connection, protocolBlocked: () => false, worldEntryBlocked: () => false,
       runWorldReducer: (action: () => unknown) => action(), handleFailure: vi.fn(),
       sendReducer: (_name: string, run: (current: typeof connection) => void) => run(connection) },
@@ -112,7 +108,7 @@ it("holds movement back while a map change is on its way, so no step reaches the
   const travel = presence.api.changeMap("beginner_desert", 100, 100);
   presence.api.syncMovementState(300, 340, 0, 200, "keyboard", true);
   expect(updateMovementState).not.toHaveBeenCalled();
-  finish(true); expect(await travel).toBe(true);
+  finish(); expect(await travel).toBe(true);
   presence.api.syncMovementState(300, 360, 0, 200, "keyboard", true);
   expect(updateMovementState).toHaveBeenCalledOnce();
   expect(updateMovementState.mock.calls[0][0]).toMatchObject({ x: 300, y: 360 });

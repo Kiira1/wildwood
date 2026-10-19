@@ -3,6 +3,7 @@ export const RELEASE_NOTES: Record<string, string[]> = {
     "Prism's reflected hit strikes up to 4 enemies near the attacker, dropped from 6 to 4, and each once a second at most",
     "Auto Farm keeps Aggro pulling while it fights a boss, so builds that heal from kills keep healing",
     "The Town's bridges keep you on the deck: no more walking along the rails",
+    "Portals and teleports no longer wait for your last kills to count, so they stop pulling you back or freezing you",
     "The Android app restarts into an update it finds as it opens, and later ones get a Restart button, instead of asking you to close and reopen",
   ],
   "0.914.5": [

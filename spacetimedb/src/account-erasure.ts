@@ -64,6 +64,7 @@ export const ERASURE_TARGETS: readonly ErasureTarget[] = [
   { table: "endlessTravelAccess", columns: ["identity"], pk: "identity", mode: "key" },
   { table: "enemyDefeatBudget", columns: ["identity"], pk: "key", mode: "index", index: "identity" },
   { table: "playerDefeatClock", columns: ["identity"], pk: "identity", mode: "key" },
+  { table: "playerMapDeparture", columns: ["identity"], pk: "identity", mode: "key" },
   { table: "gemCommerceConfig", columns: ["verifier"], pk: "id", mode: "scan" },
   { table: "gemCommerceHold", columns: ["identity"], pk: "reference", mode: "index", index: "byIdentity" },
   { table: "gemKillDaily", columns: ["identity"], pk: "key", mode: "index", index: "byIdentity" },
