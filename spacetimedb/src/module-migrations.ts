@@ -46,10 +46,10 @@ import { moveSoloQuestsToGuild } from "./daily-quests";
 import { rebuildParkedAggroRun } from "./aggro-challenge";
 import { backfillMiningLevels } from "./mining";
 import { convertToStatRatings, trimStoredSoulCritDamage } from "./stat-rating-migration";
-import { repinMapBalances } from "./map-balance";
+import { installBalanceCurve, repinMapBalances } from "./map-balance";
 import { activateCardsFromGear } from "./active-cards";
 
-export const MODULE_MIGRATION_VERSION = 59;
+export const MODULE_MIGRATION_VERSION = 60;
 
 /**
  * Migration 50 (0.856): the ranking snapshot moves to leaderboard_entry_v2,
@@ -573,6 +573,8 @@ export function createModuleMigrations(deps: ModuleMigrationDeps) {
     if (currentVersion < 58) repinMapBalances(ctx);
     // 59 (0.912): gear stops holding cards; slotted cards return and the worn ones' best become active (active-cards.ts).
     if (currentVersion < 59) activateCardsFromGear(ctx);
+    // 60 (0.915): the balance curve, every factor at 1, as the next revision, with every pinned visit moved onto it.
+    if (currentVersion < 60) installBalanceCurve(ctx);
     const next = { id: 0, version: MODULE_MIGRATION_VERSION };
     if (state) ctx.db.moduleMigrationState.id.update(next);
     else ctx.db.moduleMigrationState.insert(next);

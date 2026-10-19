@@ -4,7 +4,7 @@ import { defaultBalanceSettings, resolveMapBalance, validateBalanceSettings } fr
 import { LIVE_BALANCE } from '../../src/balance/live-balance';
 import bakeFixture from '../../tests/fixtures/balance-revision-73.json';
 import { it, expect, vi } from 'vitest';
-import { balanceEditorState, forgetBalanceCaches, saveMapBalance, pinMapBalance, pinnedMapBalance, liveMapBalance } from './map-balance';
+import { balanceEditorState, forgetBalanceCaches, installBalanceCurve, saveMapBalance, pinMapBalance, pinnedMapBalance, liveMapBalance } from './map-balance';
 function fixture() {
   forgetBalanceCaches();
   const sender = { toHexString: () => 'test' };
@@ -51,6 +51,7 @@ import { crystalFixture, server } from '../../tests/helpers/crystal-hollows-fixt
 import { reportKills } from '../../tests/helpers/enemy-defeat';
 import { progressOf } from "../../tests/helpers/progress";
 import { legacyBalanceSettings } from "../../tests/helpers/legacy-balance";
+import revision79 from "../../tests/fixtures/balance-revision-79.json";
 it('rejects non-developer changes and previews; rejects balance queries for a different map', () => {
   const f = crystalFixture();
   const proc = { withTx: (action: any) => f.transaction(() => action(f.ctx)) } as any;
@@ -211,13 +212,15 @@ it('runs pending campaign migrations from the connection path only once', () => 
   f.seed('mapBalanceVersion', { revision: 73, settingsJson: JSON.stringify(bakeFixture.settings), editor: f.ctx.sender, createdAt: f.ctx.timestamp });
   f.ctx.connectionId = null;
   f.run(server.onConnect);
-  expect(f.db.moduleMigrationState.id.find(0).version).toBe(59);
+  expect(f.db.moduleMigrationState.id.find(0).version).toBe(60);
   expect(f.db.mapBalanceVersion.revision.find(75).settingsJson).toBe(JSON.stringify(validateBalanceSettings(revision75)));
   // 45 made revision 76, 46 raised its enemy hits as revision 77, 48 its boss hits as 78, and 49 eased Endless as 79.
   expectProgressionCurve(JSON.parse(f.db.mapBalanceVersion.revision.find(76).settingsJson));
-  expect(balanceEditorState(f.ctx as any).revision).toBe(79);
+  // 60 put the balance curve on as revision 80.
+  expect(balanceEditorState(f.ctx as any).revision).toBe(80);
+  expect(balanceEditorState(f.ctx as any).settings).toEqual(defaultBalanceSettings());
   f.run(server.onConnect);
-  expect(balanceEditorState(f.ctx as any).revision).toBe(79);
+  expect(balanceEditorState(f.ctx as any).revision).toBe(80);
 });
 
 it('migration 45 turns the live revision into the tested progression curve, once, keeping Endless and dev tuning', () => {
@@ -323,4 +326,24 @@ it('migration 49 eases Endless and keeps its boss at 11x a regular hit', () => {
     const regular = median(Object.entries(balance.lanes).filter(([kind, lane]: any) => !/Warden|King/.test(kind) && !['speed', 'crit'].includes(lane.reward.type)).map(([, lane]: any) => lane.damage));
     expect(balance.boss.damage / regular, id).toBeCloseTo(11, 1);
   }
+});
+
+it("migration 60 puts the balance curve on as the next revision and moves every pinned visit onto it, once", () => {
+  const f = crystalFixture();
+  forgetBalanceCaches();
+  const ctx = f.ctx as any;
+  const live = JSON.stringify(revision79);
+  f.seed("mapBalanceVersion", { revision: 79, settingsJson: live, editor: f.ctx.sender, createdAt: f.ctx.timestamp });
+  f.seed("mapBalanceHead", { id: 0, revision: 79 });
+  pinMapBalance(ctx, "ion_citadel", true, 2);
+  const before = JSON.parse(f.db.playerMapBalance.identity.find(f.ctx.sender).snapshotJson);
+  expect(before.revision).toBe(79);
+  installBalanceCurve(ctx);
+  expect(balanceEditorState(ctx)).toMatchObject({ revision: 80, settings: defaultBalanceSettings() });
+  expect(f.db.mapBalanceVersion.revision.find(79).settingsJson).toBe(live);
+  const after = JSON.parse(f.db.playerMapBalance.identity.find(f.ctx.sender).snapshotJson);
+  expect(after).toEqual(resolveMapBalance("ion_citadel", defaultBalanceSettings(), 80, 2));
+  expect(after.enemies["Ion Patrol"].hp).toBeLessThan(before.enemies["Ion Patrol"].hp);
+  installBalanceCurve(ctx);
+  expect(balanceEditorState(ctx).revision).toBe(80);
 });

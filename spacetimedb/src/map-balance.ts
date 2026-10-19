@@ -59,6 +59,31 @@ export function repinMapBalances(ctx: Pick<Context, 'db'>) {
   }
 }
 
+/**
+ * Migration 60 (0.915): the balance curve (shared/smooth-curve.ts), every factor at 1, as the next revision, and
+ * every pinned visit moved onto it. Pins re-resolved at their own revision would keep the old curve until each
+ * player travelled; this moves them all at once. Once the head is on the curve it does nothing.
+ */
+export function installBalanceCurve(ctx: Context) {
+  const head = ctx.db.mapBalanceHead.id.find(0);
+  if (head && storedSettings(ctx, head.revision)?.curveVersion === 2) return;
+  if (head) {
+    let revision = head.revision + 1;
+    while (ctx.db.mapBalanceVersion.revision.find(revision)) revision += 1;
+    ctx.db.mapBalanceVersion.insert({ revision, settingsJson: JSON.stringify(defaultBalanceSettings()), editor: ctx.sender, createdAt: ctx.timestamp });
+    ctx.db.mapBalanceHead.id.update({ id: 0, revision });
+  }
+  forgetBalanceCaches();
+  const state = balanceEditorState(ctx);
+  const fromStore = Boolean(storedSettings(ctx, state.revision));
+  for (const row of [...ctx.db.playerMapBalance.iter()] as any[]) {
+    let old: MapBalanceSnapshot;
+    try { old = JSON.parse(row.snapshotJson); } catch { continue; }
+    const snapshotJson = resolvedSnapshotJson(row.mapId, state, old.configurationVersion ?? 1, fromStore);
+    if (snapshotJson !== row.snapshotJson) ctx.db.playerMapBalance.identity.update({ ...row, snapshotJson });
+  }
+}
+
 export function balanceEditorState(ctx: Pick<Context, 'db'>): BalanceEditorState {
   const revision = ctx.db.mapBalanceHead.id.find(0)?.revision ?? 0;
   return { revision, settings: storedSettings(ctx, revision) ?? defaultBalanceSettings(), previousRevision: revision > 0 ? revision - 1 : null };
