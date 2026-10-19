@@ -538,7 +538,9 @@ export function createPlayerCombatController(options: {
     // Nearest keeps a target within a small distance margin; a ranked
     // priority keeps its target until it dies or leaves range, so two wounded
     // enemies are never alternated between.
-    if (target && retainedTarget && retainedThreat === defending && Number.isFinite(retainedDistance) &&
+    // Strongest goes by max health, which never changes: a tougher one (the boss coming into range) takes over.
+    const outranked = priority === 'strongest' && target && retainedTarget && target.maxHp > retainedTarget.maxHp;
+    if (target && retainedTarget && !outranked && retainedThreat === defending && Number.isFinite(retainedDistance) &&
         (ranked || options.keepTarget?.() || Math.sqrt(retainedDistance) <= Math.sqrt(best) + TARGET_SWITCH_DISTANCE)) target = retainedTarget;
     return target;
   }

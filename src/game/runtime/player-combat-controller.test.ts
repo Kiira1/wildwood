@@ -827,6 +827,19 @@ describe("autofarm target priority", () => {
     expect(aim("strongest")).toBe("boss");
     expect(aim("closest")).toBe("group");
   });
+
+  it("leaves whatever Strongest was shooting for the boss as soon as the boss is in range", () => {
+    let now = 0;
+    const h = harness({ nowSeconds: () => now });
+    h.state.controller.attackNearest(h.near.type, null, "strongest");
+    expect(aimedAt(h.state, h.tough)).toBe(true);
+    const boss = h.state.bosses.dragon;
+    Object.assign(boss, { dead: false, x: h.state.player.x, y: h.state.player.y + 20, hp: 10, maxHp: 5_000 });
+    now += 1;
+    h.state.controller.attackNearest(h.near.type, null, "strongest");
+    // By max health, not what it has left.
+    expect(aimedAt(h.state, { x: boss.x, y: boss.y + (boss.hitboxOffsetY ?? 0) })).toBe(true);
+  });
 });
 
 describe("bow skills", () => {

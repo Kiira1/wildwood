@@ -987,10 +987,10 @@ export function createAutoFarmController(options: {
     rememberShares,
     priority: () => priority,
     /**
-     * The Target rule combat aims by: while farming (a pulled crowd too) and all
-     * through an Aggro run. Steering by hand otherwise aims at the nearest.
+     * The Target rule combat aims by: while farming (a pulled crowd too), at the boss, standing by while the player
+     * fights it, and all through an Aggro run. Steering by hand elsewhere aims at the nearest.
      */
-    attackPriority: (): AutoFarmPriority => (active && !manualControl && phase === 'farm' && !playerBossFight()) || forcedGroups().size ? priority : 'closest',
+    attackPriority: (): AutoFarmPriority => (active && ((!manualControl && phase !== 'portal') || playerBossFight())) || forcedGroups().size ? priority : 'closest',
     pullAll: () => pullAll,
     /** False during an Aggro run, when Pull is off. */
     pullAvailable: () => (options.pullCamps?.() ?? 1) > 0,

@@ -2,6 +2,7 @@ export const RELEASE_NOTES: Record<string, string[]> = {
   "0.914.9": [
     "Boss cards at the Card Seller cost 1 Starshard and half the ore, down from 5 Starshards and 120 ore",
     "Start Research is the same grey button as Pause, not a plain one",
+    "Target Strongest goes for the boss as soon as it is in range, by its max health, including while Auto Farm fights it",
   ],
   "0.914.8": [
     "Guests get the daily gems too, not only registered accounts",

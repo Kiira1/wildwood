@@ -693,6 +693,9 @@ describe('autofarm plans: sliders, the boss and the next map', () => {
       s.advance(1_000); s.tick();
       expect(s.farm.state().phase).toBe('boss');
       expect(s.farm.pulls(mob)).toBe(true);
+      // The Target rule holds at the boss too: Strongest takes the boss over the adds.
+      s.farm.setPriority('strongest');
+      expect(s.farm.attackPriority()).toBe('strongest');
     });
 
     it('Move On goes straight on after beating the boss, without finishing the fight around it', () => {
