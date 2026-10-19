@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { defaultBalanceSimulationConfig, runBalanceSimulation, simulateExistingPlayer, simulationUpgradeLevel } from '../../../../balance/simulator';
-import { LIVE_BALANCE } from '../../../../balance/live-balance';
+import { GAME_BALANCE } from '../../../../balance/game-balance';
 import { createEmptyResearchRanks } from '../../../../../shared/research';
 import { DEFAULT_ATTACK_INTERVAL, PLAYER_BASE_DAMAGE, PLAYER_BASE_HP, PLAYER_BASE_REGEN } from '../../../../../shared/rules';
 import { critPowerFactor, effectivePlayerPowerStats, type PlayerPowerStats } from '../../../../../shared/player-power';
@@ -30,10 +30,10 @@ const stats = (value: { damage: number; maxHp: number; armor: number; regen: num
  * so it is cached per balance revision.
  */
 export function campaignReferenceBuilds(cacheDir: string): ReferenceBuild[] {
-  const file = join(cacheDir, `reference-builds-r${LIVE_BALANCE.revision}.json`);
+  const file = join(cacheDir, `reference-builds-${GAME_BALANCE.key}.json`);
   if (existsSync(file)) return JSON.parse(readFileSync(file, 'utf8'));
   const trial = simulateExistingPlayer({ trials: 1, researchPlan: 'off', steadyEquipmentUpgrades: false, strategy: 'natural',
-    balanceSettings: LIVE_BALANCE.settings, durationSeconds: 400 * 3600 }, {
+    balanceSettings: GAME_BALANCE.settings, durationSeconds: 400 * 3600 }, {
     stats: { damage: PLAYER_BASE_DAMAGE, maxHp: PLAYER_BASE_HP, armor: 0, regen: PLAYER_BASE_REGEN, attackRate: DEFAULT_ATTACK_INTERVAL },
     research: createEmptyResearchRanks(), equipped: { head: '', chest: '', weapon: 'starter_bow' },
     bootsEquipped: false, itemUpgradeLevel: 0, equipmentStrengthMultiplier: 1, mapIndex: 0, ownedItems: ['starter_bow'], bossRewardClaims: 0,
@@ -56,9 +56,9 @@ export type FoldedArrival = { mapId: string; stats: PlayerPowerStats };
  * arrival build as plain stats. For maps the research-free campaign above never reaches. Cached like it.
  */
 export function labArrivalBuilds(cacheDir: string, endlessMaps = 13): FoldedArrival[] {
-  const file = join(cacheDir, `lab-arrivals-r${LIVE_BALANCE.revision}-e${endlessMaps}.json`);
+  const file = join(cacheDir, `lab-arrivals-${GAME_BALANCE.key}-e${endlessMaps}.json`);
   if (existsSync(file)) return JSON.parse(readFileSync(file, 'utf8'));
-  const result = runBalanceSimulation({ ...defaultBalanceSimulationConfig(), balanceSettings: structuredClone(LIVE_BALANCE.settings), trials: 1, endlessMaps });
+  const result = runBalanceSimulation({ ...defaultBalanceSimulationConfig(), balanceSettings: structuredClone(GAME_BALANCE.settings), trials: 1, endlessMaps });
   const builds: FoldedArrival[] = [];
   for (const map of result.maps) {
     const arrival = result.arrivalStates?.[map.mapId];

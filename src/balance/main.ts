@@ -1,4 +1,5 @@
 import { LIVE_BALANCE } from "./live-balance";
+import { GAME_BALANCE } from "./game-balance";
 import { buildStackedLogTargetCurve } from "./simulator";
 import { createKillBudgetPanel } from "./kill-budget-panel";
 import { campaignExperience } from "./experience";
@@ -38,13 +39,13 @@ function requiredElement<T extends Element>(id: string) {
 
 function defaultLabConfig(): BalanceSimulationConfig {
   const defaults = defaultBalanceSimulationConfig();
-  return { ...defaults, balanceSettings: structuredClone(LIVE_BALANCE.settings), stopAfterCampaign: true, endlessMaps: 15, durationSeconds: 30 * 86400 };
+  return { ...defaults, balanceSettings: structuredClone(GAME_BALANCE.settings), stopAfterCampaign: true, endlessMaps: 15, durationSeconds: 30 * 86400 };
 }
 const killBudgetPanel = createKillBudgetPanel();
 const endlessMaps = requiredElement<HTMLInputElement>("endlessMaps");
 const form = requiredElement<HTMLFormElement>("simulationForm");
 const balanceSource = requiredElement<HTMLSelectElement>("balanceSource");
-requiredElement<HTMLElement>("balanceSourceNote").textContent = `Captured maincloud revision ${LIVE_BALANCE.revision} · ${LIVE_BALANCE.capturedAt}. Refresh with npm run balance:sync, then reload. Uses current checkout game rules.`;
+requiredElement<HTMLElement>("balanceSourceNote").textContent = `The game runs the curve in code (${GAME_BALANCE.key}). The database copy is maincloud revision ${LIVE_BALANCE.revision}, captured ${LIVE_BALANCE.capturedAt}; refresh it with npm run balance:sync.`;
 const compareStrategies = requiredElement<HTMLInputElement>("compareStrategies");
 const stopAfterCampaign = requiredElement<HTMLInputElement>("stopAfterCampaign");
 const cancelRunButton = requiredElement<HTMLButtonElement>("cancelRunButton");
@@ -149,7 +150,7 @@ function loadConfig() {
     if (stored.curveBaseline !== "balanced-tech-tree" && loaded.researchPlan === "off") {
       loaded.researchPlan = "balanced";
     }
-    if (loaded.balanceSettings) loaded.balanceSettings = structuredClone(LIVE_BALANCE.settings);
+    if (loaded.balanceSettings) loaded.balanceSettings = structuredClone(GAME_BALANCE.settings);
     return loaded;
   } catch {
     return defaultLabConfig();
@@ -187,7 +188,7 @@ function numberValue(input: HTMLInputElement, fallback: number) {
 }
 
 function syncControlsFromConfig() {
-  balanceSource.value = config.balanceSettings ? "live" : "authored";
+  balanceSource.value = JSON.stringify(config.balanceSettings) === JSON.stringify(LIVE_BALANCE.settings) ? "live" : "game";
   endlessMaps.value = String(config.endlessMaps);
   killBudgetPanel.write(config.killBudget);
   syncMapOptions();
@@ -218,7 +219,7 @@ function syncControlsFromConfig() {
 function syncConfigFromControls() {
   config.killBudget = killBudgetPanel.read();
   config.endlessMaps = Math.round(Math.max(0, Math.min(50, numberValue(endlessMaps, 15))));
-  config.balanceSettings = balanceSource.value === "live" ? structuredClone(LIVE_BALANCE.settings) : undefined;
+  config.balanceSettings = structuredClone(balanceSource.value === "live" ? LIVE_BALANCE.settings : GAME_BALANCE.settings);
   const previousTuningMap = selectedTuningMap;
   syncMapOptions();
   if (selectedTuningMap !== previousTuningMap) syncTuningControls();

@@ -12,7 +12,7 @@
 import { execFileSync } from "node:child_process";
 import { createMapDefinitions, createSites } from "../src/balance/simulator";
 import { personalBossDefinition } from "../shared/personal-bosses";
-import { LIVE_BALANCE } from "../src/balance/live-balance";
+import { GAME_BALANCE } from "../src/balance/game-balance";
 import { researchStatRewardMultiplier, RESEARCH_IDS, RESEARCH_DEFINITIONS } from "../shared/research";
 import { prestigeStatMultiplier } from "../shared/prestige";
 import {
@@ -53,7 +53,7 @@ function resolveIdentity(target: string) {
  */
 function bestRewardPerKill(endlessDepth: number) {
   const best: Record<string, number> = {};
-  for (const map of createMapDefinitions(endlessDepth, LIVE_BALANCE.settings)) {
+  for (const map of createMapDefinitions(endlessDepth, GAME_BALANCE.settings)) {
     for (const site of createSites(map)) {
       const reward = site.definition?.reward;
       if (!reward) continue;
@@ -74,7 +74,7 @@ function bestRewardPerKill(endlessDepth: number) {
  */
 function bestDamagePerSecond(endlessDepth: number) {
   let best = 0;
-  for (const map of createMapDefinitions(endlessDepth, LIVE_BALANCE.settings)) {
+  for (const map of createMapDefinitions(endlessDepth, GAME_BALANCE.settings)) {
     const boss = personalBossDefinition(map.id);
     const damage = map.boss?.rewards.find(reward => reward.type === "damage")?.amount ?? 0;
     if (boss && damage) best = Math.max(best, damage / boss.respawnSeconds);

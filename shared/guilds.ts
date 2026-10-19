@@ -6,7 +6,8 @@ export type { GuildFighter } from "./guild-combat";
 export const GUILD_EMBLEMS = ["wolf", "fox", "bear", "owl", "dragon", "lion", "raven", "stag", "swords", "fire", "serpent", "moon", "sun", "tree", "crystal", "leopard",
   "turtle", "boar", "eagle", "bat", "shark", "octopus", "unicorn", "phoenix", "badger", "ram", "spider", "tiger", "mushroom", "anchor", "hammer", "lightning"] as const;
 export const GUILD_MEMBER_LIMIT = 20;
-export const GUILD_CREATION_MIN_POWER = 1_000_000_000;
+/** About a third of the way to Duskfall Orchard's entry power (map 12) on the balance curve, as 1 billion was before it. */
+export const GUILD_CREATION_MIN_POWER = 2_500_000;
 export const GUILD_DAILY_ATTACKS = 3;
 export const GUILD_DAY_MICROS = 86_400_000_000n;
 export const GUILD_RANKING_LIMIT = 50;

@@ -3,7 +3,7 @@
  * same build, map and option (forecast-calibration.test.ts).
  */
 import { resolveMapBalance } from '../../../../../shared/map-balance';
-import { LIVE_BALANCE } from '../../../../balance/live-balance';
+import { GAME_BALANCE } from '../../../../balance/game-balance';
 import { createEmptyResearchRanks, researchStatRewardMultiplier } from '../../../../../shared/research';
 import { prestigeStatMultiplier } from '../../../../../shared/prestige';
 import { prestigePerkValue } from '../../../../../shared/prestige-perks';
@@ -37,7 +37,7 @@ export type CompareRow = {
 /** The forecast's inputs for a calibration profile on `mapId`, built as the game would build them. */
 export function calibrationInputs(build: CalibrationBuild, profile: VirtualPlayerProfile) {
   const mapId = profile.startMap;
-  const snapshot = resolveMapBalance(mapId, LIVE_BALANCE.settings, LIVE_BALANCE.revision);
+  const snapshot = resolveMapBalance(mapId, GAME_BALANCE.settings, GAME_BALANCE.revision);
   const sites = isSoulMap(mapId)
     ? calibrationSites(mapId, build, profile).map(site => forecastSite(site, site.definition!))
     : balancedForecastSites(mapId, snapshot);

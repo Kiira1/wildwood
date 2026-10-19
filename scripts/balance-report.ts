@@ -1,4 +1,4 @@
-import { LIVE_BALANCE } from "../src/balance/live-balance";
+import { GAME_BALANCE } from "../src/balance/game-balance";
 import { isProceduralMap } from "../shared/procedural-maps";
 import { formatCompactNumber } from "../src/ui/number-format";
 import {
@@ -46,7 +46,7 @@ function parseMapAdjustment(config: BalanceSimulationConfig, specification: stri
 }
 
 function parseArguments(args: string[]) {
-  const config = { ...defaultBalanceSimulationConfig(), balanceSettings: structuredClone(LIVE_BALANCE.settings) };
+  const config = { ...defaultBalanceSimulationConfig(), balanceSettings: structuredClone(GAME_BALANCE.settings) };
   let json = false;
   for (let index = 0; index < args.length; index += 1) {
     const flag = args[index];
@@ -171,7 +171,7 @@ if (parsed.json) {
   process.exit(0);
 }
 
-console.log(`Balance source: captured maincloud revision ${LIVE_BALANCE.revision} (${LIVE_BALANCE.capturedAt}); current checkout rules.`);
+console.log(`Balance source: the game's balance in code (${GAME_BALANCE.key}); current checkout rules.`);
 console.log(`WildStat Balance Lab · ${result.simulatedCampaigns} campaigns · ${formatDuration(result.config.durationSeconds)} · ${result.config.strategy} · research ${result.config.researchPlan}`);
 console.log(`Final power ${formatCompactNumber(result.finalPower.median)} (${formatCompactNumber(result.finalPower.p10)}–${formatCompactNumber(result.finalPower.p90)}) · DPS ${formatCompactNumber(result.finalDps.median)}`);
 const strategyLabels: Record<keyof BalanceSimulationResult["strategyMix"], string> = {

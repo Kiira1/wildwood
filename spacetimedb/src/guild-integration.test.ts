@@ -5,6 +5,7 @@ import { STARTER_BOW } from "../../shared/items";
 import { SPACETIME_AUTH_CLIENT_ID, SPACETIME_AUTH_ISSUER } from "../../shared/rules";
 import type { GuildSnapshot } from "../../shared/guilds";
 import { progressOf } from "../../tests/helpers/progress";
+import { GUILD_CREATION_MIN_POWER } from "../../shared/guilds";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
 function fixture() {
@@ -45,19 +46,19 @@ describe("guild root reducer integration", () => {
     expect(f.db.guild.id.find(guildId).emblem).toBe(31);
     expect(() => f.run(server.setGuildEmblem, { emblem: 32 })).toThrow(/valid guild badge/);
   });
-  it("requires one billion saved power only for creation, including at the boundary", () => {
+  it("requires the guild power minimum in saved power only for creation, including at the boundary", () => {
     const f = fixture(); f.actor("1");
     const saved = progressOf(f, f.ctx.sender);
     const setPower = (maxHp: number) => f.db.playerProgress.identity.update({ ...saved,
       maxHp, damage: 0, armor: 0, regen: 0, equippedHead: "", equippedChest: "",
       equippedRightHand: "", equippedLeftHand: "" });
-    setPower(999_999_999);
+    setPower(GUILD_CREATION_MIN_POWER - 1);
     const player = f.db.player.identity.find(f.ctx.sender);
-    f.db.player.identity.update({ ...player, powerLevel: 2_000_000_000 });
-    expect(() => f.run(server.createGuild, { name: "Rose" })).toThrow("1 billion power");
+    f.db.player.identity.update({ ...player, powerLevel: GUILD_CREATION_MIN_POWER * 2 });
+    expect(() => f.run(server.createGuild, { name: "Rose" })).toThrow("2.50m power");
     expect(f.db.guild.count()).toBe(0n);
     expect(f.db.guildMember.count()).toBe(0n);
-    setPower(1_000_000_000);
+    setPower(GUILD_CREATION_MIN_POWER);
     f.run(server.createGuild, { name: "Rose" });
     const guildId = f.snapshot().guild!.id;
     f.actor("2"); f.run(server.joinGuild, { guildId: BigInt(guildId) });

@@ -3,6 +3,7 @@ import type spacetimedbType from "./index";
 import type { ModuleReducerCtx } from "./index";
 import type { createGuildService } from "./guild-service";
 import { GUILD_CREATION_MIN_POWER } from "../../shared/guilds";
+import { formatCompactNumber } from "../../shared/compact-number";
 import { readPlayerProgress } from "./wide-stats";
 
 export function registerGuildReducers(spacetimedb: typeof spacetimedbType, deps: {
@@ -17,7 +18,7 @@ const createGuild = spacetimedb.reducer({ name: t.string() }, (ctx, { name }) =>
   requireGuildPlayer(ctx);
   const progress = readPlayerProgress(ctx, ctx.sender);
   if (!progress || effectivePowerForProgress(ctx, progress) < GUILD_CREATION_MIN_POWER) {
-    throw new SenderError("Reach 1 billion power to create a guild.");
+    throw new SenderError(`Reach ${formatCompactNumber(GUILD_CREATION_MIN_POWER)} power to create a guild.`);
   }
   if (!isPublicDisplayNameAllowed(name)) throw new SenderError("Choose a different guild name.");
   guildService.create(ctx, name);

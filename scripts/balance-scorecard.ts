@@ -2,9 +2,9 @@
  * The Balance Lab scorecard: the per-map balance checks
  * against the Lab's representative run, on the build it arrives at each map with.
  *
- *   npm run balance:scorecard -- [--trials 5] [--endless 0] [--json] [--curve]
+ *   npm run balance:scorecard -- [--trials 5] [--endless 0] [--json] [--live]
  *
- * --curve scores the code's balance (defaultBalanceSettings) instead of the live snapshot.
+ * Scores the game's balance in code (src/balance/game-balance.ts); --live scores the database's captured copy instead.
  *
  * Columns: map time and its growth over the last map; whether farming the new map pays
  * more per minute than staying on the last one (same arrival build); a regular's hit as
@@ -13,8 +13,9 @@
  * crit multiplier with the attack speed and crit camp kills made on the map (shared/stat-rating.ts).
  */
 import { LIVE_BALANCE } from "../src/balance/live-balance";
+import { GAME_BALANCE } from "../src/balance/game-balance";
 import { arrivalChecks, defaultBalanceSimulationConfig, runBalanceSimulation, type BalanceMapId } from "../src/balance/simulator";
-import { defaultBalanceSettings, resolveMapBalance } from "../shared/map-balance";
+import { resolveMapBalance } from "../shared/map-balance";
 import { criticalDamageMultiplier } from "../shared/critical-damage";
 
 const args = process.argv.slice(2);
@@ -22,7 +23,7 @@ const option = (flag: string, fallback: number) => {
   const index = args.indexOf(flag);
   return index >= 0 ? Number(args[index + 1]) : fallback;
 };
-const settings = args.includes("--curve") ? defaultBalanceSettings() : LIVE_BALANCE.settings;
+const settings = args.includes("--live") ? LIVE_BALANCE.settings : GAME_BALANCE.settings;
 const config = { ...defaultBalanceSimulationConfig(), balanceSettings: structuredClone(settings),
   trials: option("--trials", 5), endlessMaps: option("--endless", 0) };
 const result = runBalanceSimulation(config);

@@ -45,7 +45,7 @@ import { ENEMY_TYPES } from '../../../enemies';
 import { TUTORIAL_FOREST_MAP_ID, type MapId } from '../../../world';
 import { resolveMapBalance } from '../../../../../shared/map-balance';
 import { runtimeMapBalance } from '../../../../../shared/map-balance-runtime';
-import { LIVE_BALANCE } from '../../../../balance/live-balance';
+import { GAME_BALANCE } from '../../../../balance/game-balance';
 import { worldBoundsFor } from '../../../../../shared/world-bounds';
 import { CAMPAIGN_MAPS } from '../../../../../shared/campaign-registry';
 import { MAP_IDS as CAMPAIGN_MAP_IDS } from '../../../../../shared/rules';
@@ -71,10 +71,10 @@ const SIM_EPOCH_MS = Date.UTC(2026, 9, 7, 12);
  * applyMapBalance rewrites the shared enemy and boss definitions, so resolving after it scales them twice.
  */
 const pristineBalances = new Map<string, ReturnType<typeof resolveMapBalance>>();
-for (const mapId of CAMPAIGN_MAP_IDS) pristineBalances.set(mapId, resolveMapBalance(mapId, LIVE_BALANCE.settings, LIVE_BALANCE.revision));
+for (const mapId of CAMPAIGN_MAP_IDS) pristineBalances.set(mapId, resolveMapBalance(mapId, GAME_BALANCE.settings, GAME_BALANCE.revision));
 function pristineBalance(mapId: string) {
   let snapshot = pristineBalances.get(mapId);
-  if (!snapshot) { snapshot = resolveMapBalance(mapId, LIVE_BALANCE.settings, LIVE_BALANCE.revision); pristineBalances.set(mapId, snapshot); }
+  if (!snapshot) { snapshot = resolveMapBalance(mapId, GAME_BALANCE.settings, GAME_BALANCE.revision); pristineBalances.set(mapId, snapshot); }
   return snapshot;
 }
 
@@ -232,7 +232,7 @@ function installSimGlobals(clock: { ms: number }, random: () => number) {
 }
 
 function installBalance(mapId: string) {
-  applyMapBalance(resolveMapBalance(mapId, LIVE_BALANCE.settings, LIVE_BALANCE.revision));
+  applyMapBalance(resolveMapBalance(mapId, GAME_BALANCE.settings, GAME_BALANCE.revision));
 }
 
 /**

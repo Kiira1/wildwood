@@ -6,7 +6,7 @@ import { renderFriends } from "./social-panel-content";
 import type { SocialSnapshot, SocialAction } from "../../shared/social";
 import type { SocialApi } from "../coop/services/social-service";
 import { createGuildEmblem } from './guild-emblems';
-import { GUILD_EMBLEMS, GUILD_MEMBER_LIMIT, type GuildSnapshot, type GuildReport } from "../../shared/guilds";
+import { GUILD_CREATION_MIN_POWER, GUILD_EMBLEMS, GUILD_MEMBER_LIMIT, type GuildSnapshot, type GuildReport } from "../../shared/guilds";
 import type { GuildAction, GuildApi } from "../coop/services/guild-service";
 import { applyProfileIcon } from "../app/profile-icons";
 import { createGuildPreview } from './guild-preview';
@@ -175,7 +175,7 @@ export function createGuildPanel(options: Options) {
     } else close();
   }
   function renderCreate(parent: HTMLElement) {
-    parent.append(element("p", "Requires 1 billion power", "guild-create-requirement"));
+    parent.append(element("p", `Requires ${formatCompactNumber(GUILD_CREATION_MIN_POWER)} Power`, "guild-create-requirement"));
     if (!creating) {
       parent.append(button("Create a guild", () => { creating = true; render(); doc.getElementById("guildName")?.focus(); }, "primary", !canJoin()));
       return;
