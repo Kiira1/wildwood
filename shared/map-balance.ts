@@ -22,6 +22,8 @@ import { ratingRewardPerKill } from './stat-rating';
 const paysRating = (type: string) => type === 'speed' || type === 'crit';
 const combatRole = (row: { elite?: boolean; reward: { type: string } }) =>
   `${row.elite ? 'elite' : 'regular'}:${paysRating(row.reward.type) ? 'damage' : row.reward.type}`;
+/** Forest enemies kept at their authored numbers (enemy-base-values.ts). */
+const OFF_CURVE = new Set<string>(['Spitter', 'Bramble']);
 const AUTHORED_ENEMIES: typeof ENEMY_TYPES = JSON.parse(JSON.stringify(ENEMY_TYPES));
 export const BALANCE_MAPS: readonly (readonly [string, string, string])[] = [
   ...CAMPAIGN_MAPS.map((map, index) => [map.id, `${index + 1} · ${map.name}`, map.bossArt] as const),
@@ -109,12 +111,13 @@ export function resolveMapBalance(mapId: string, settings: BalanceSettings, revi
       respawnSeconds: definition.respawnSeconds, attacks: {},
       rewards: {} };
   } else {
-    // Every enemy is its role's multiple of the map's damage camp on the curve; the Forest's Spitter is as authored.
+    // Every enemy is its role's multiple of the map's damage camp on the curve. The Forest's Spitter and Bramble are as
+    // authored: a fresh Reflect Only run must be able to kill a Bramble on 100 health.
     const index = CAMPAIGN_MAPS.findIndex(map => map.id === mapId), camp = curveCamp(index);
     for (const kind of Object.keys(ENEMY_TYPES) as EnemyKind[]) {
       if (!enemyDefeatDefinition(mapId, kind)) continue;
       const row = AUTHORED_ENEMIES[kind];
-      const shape = kind === 'Spitter' ? { hp: row.hp / camp.hp, damage: row.damage / camp.damage, reward: row.reward.amount / camp.reward } : CURVE_ROLES[combatRole(row)];
+      const shape = OFF_CURVE.has(kind) ? { hp: row.hp / camp.hp, damage: row.damage / camp.damage, reward: row.reward.amount / camp.reward } : CURVE_ROLES[combatRole(row)];
       result.enemies[kind] = { ...row, hp: camp.hp * shape.hp * factors.enemyHealth, damage: camp.damage * shape.damage * factors.enemyDamage,
         speed: row.speed * factors.enemySpeed, reward: { ...row.reward, amount: camp.reward * shape.reward * factors.enemyRewards } };
     }

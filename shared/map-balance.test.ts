@@ -9,7 +9,7 @@ import { personalBossDefinition } from './personal-bosses';
 import { installMapBalance } from './map-balance-runtime';
 import { generatedBossStats, generateMap } from './procedural-maps';
 afterEach(() => installMapBalance(null));
-// The map's damage camp, the curve's reference row (the Forest's Spitter is authored off the curve).
+// The map's damage camp, the curve's reference row (the Forest's Spitter and Bramble are authored off the curve).
 const damageCamp = (snapshot: ReturnType<typeof resolveMapBalance>) =>
   Object.entries(snapshot.enemies).find(([kind, row]) => kind !== 'Spitter' && row.reward.type === 'damage' && !row.elite)![1];
 describe('server map balance snapshots', () => {
@@ -125,6 +125,11 @@ it("holds the baseline: map 1's Spitters have 8 health and pay 1.5 damage a kill
   expect(spitter.reward).toEqual({ type: 'damage', amount: 1.5 });
 });
 
+it("keeps map 1's Brambles at 42 health so a fresh Reflect Only run can kill one", () => {
+  const bramble = resolveMapBalance('tutorial_forest', defaultBalanceSettings(), 0).enemies.Bramble;
+  expect(bramble).toMatchObject({ hp: 42, damage: 14, reward: { type: 'health', amount: 42 } });
+});
+
 it('grows every map by the curve steps, each role a fixed multiple of its damage camp', () => {
   const camps = CAMPAIGN_MAPS.map(({ id }) => damageCamp(resolveMapBalance(id, defaultBalanceSettings(), 0)));
   for (let i = 2; i < camps.length; i++) {
@@ -137,7 +142,7 @@ it('grows every map by the curve steps, each role a fixed multiple of its damage
   for (const { id } of CAMPAIGN_MAPS) {
     const snapshot = resolveMapBalance(id, defaultBalanceSettings(), 0), camp = damageCamp(snapshot);
     for (const [kind, enemy] of Object.entries(snapshot.enemies)) {
-      if (kind === 'Spitter' || enemy.reward.type === 'speed' || enemy.reward.type === 'crit') continue;
+      if (kind === 'Spitter' || kind === 'Bramble' || enemy.reward.type === 'speed' || enemy.reward.type === 'crit') continue;
       const role = CURVE_ROLES[`${enemy.elite ? 'elite' : 'regular'}:${enemy.reward.type}`];
       expect(enemy.hp / camp.hp, `${id} ${kind}`).toBeCloseTo(role.hp, 9);
       expect(enemy.damage / camp.damage, `${id} ${kind}`).toBeCloseTo(role.damage, 9);

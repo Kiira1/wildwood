@@ -16,7 +16,7 @@ Balance Lab factor (1 unless tweaked), resolved on the server.
 | Steps per map (health, damage, reward) and the hit level from map 2 | `shared/curve-steps.ts` | edit; release + publish |
 | The Forest's damage camp, each role's multiple of it, boss health and attack shares | `shared/curve-shape.ts` | edit; release + publish |
 | Deliberate per-map tweaks | `shared/balance-tweaks.json` | `npm run balance:adopt` copies live Lab tweaks here |
-| Enemy speed, attack speed, radius, aggro, reward type; the Forest's Spitter (off the curve) | `shared/enemy-base-values.ts` (Endless-only art rows: `shared/endless-enemies.ts`) | edit the row; release + publish |
+| Enemy speed, attack speed, radius, aggro, reward type; the Forest's Spitter and Bramble (off the curve) | `shared/enemy-base-values.ts` (Endless-only art rows: `shared/endless-enemies.ts`) | edit the row; release + publish |
 | Bosses pay nothing; boss rule names | `shared/rules.ts` (`*_MAX_HP`, `*_REWARD_*`) | the resolver overwrites the values |
 | Boss regeneration | `shared/boss-regeneration.ts` | edit; release + publish |
 | Respawn timers, player base stats, chase-speed cap | `shared/rules.ts` | edit; release + publish |

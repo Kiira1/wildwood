@@ -1,6 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
   "0.915.1": [
     "Builds can be renamed: tap Rename on the Builds tab",
+    "Reflect Only runs can kill the Forest's Brambles again",
   ],
   "0.915.0": [
     "Every map is on one smooth balance curve: each map's enemies have 2.2x the health and hits of the last and pay 1.8x as much, from the Forest through Endless",
