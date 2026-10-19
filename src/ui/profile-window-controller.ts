@@ -6,6 +6,7 @@ import { applyAvatarFrame } from "../app/avatar-frames";
 import type { PlayerProfileData } from "../wildstat-coop";
 import type { PlayerGender } from "../../shared/player-gender";
 import { PRESTIGE_STAT_GAIN_PER_LEVEL } from "../../shared/prestige";
+import { WEAPON_SCHOOL_NAMES, masteryLevel, weaponSchool, type WeaponSchool } from "../../shared/weapon-mastery";
 import type { ItemInspectionController, ItemInspectionAction } from "./item-inspection-controller";
 import { profileActiveCardIds, slotUpgradeLevelFor } from "./profile";
 import { setText } from "./settings";
@@ -23,6 +24,13 @@ export type ProfileTab = "overview" | "stats" | "bonuses";
 const DUEL_BUTTON_TITLE = "Automatic duel using earned stats and equipped gear. Hits grow stronger after 10 seconds. Knockout wins; at 30 seconds, the higher percentage of health remaining wins.";
 type Profile = PlayerProfileData;
 
+/** The Info tab's Mastery line: the right-hand weapon's school and its level, or nothing at level 0. Your own reads live points. */
+export function profileMasteryText(profile: Pick<Profile, "progress" | "mastery">, ownPoints?: Readonly<Record<WeaponSchool, bigint>>) {
+  const school = weaponSchool(profile.progress.equippedRightHand || undefined);
+  const level = ownPoints ? masteryLevel(ownPoints[school] ?? 0n) : profile.mastery?.[school] ?? 0;
+  return level > 0 ? `${WEAPON_SCHOOL_NAMES[school]} Lv ${level}` : "";
+}
+
 export function createProfileWindowController(elements: {
   window: HTMLElement; name: HTMLElement; guest: HTMLElement; presence: HTMLElement; power: HTMLElement; icon: HTMLButtonElement; loading: HTMLElement;
   overviewTab: HTMLElement; statsTab: HTMLElement; overviewPanel: HTMLElement; statsPanel: HTMLElement;
@@ -35,10 +43,14 @@ export function createProfileWindowController(elements: {
   duel: HTMLButtonElement;
   settings?: HTMLElement; safetyActions: HTMLElement; report: HTMLButtonElement; block: HTMLButtonElement;
   prestigeRow: HTMLElement; prestige: HTMLElement;
+  /** The active school's Mastery line on the Info tab. */
+  masteryRow: HTMLElement; mastery: HTMLElement;
 }, api: {
   /** Own-profile actions live outside this controller; prestige is the first. */
   onOwnProfile?: (own: boolean) => void;
   prestigeLevel?: () => number;
+  /** Your own Weapon Mastery points, live (my_weapon_mastery). */
+  weaponMastery?: () => Readonly<Record<WeaponSchool, bigint>> | undefined;
   localIdentity: () => string | undefined; localDisplayName: () => string | undefined; profileIcon: (identity?: string) => number; paintIcon: (element: HTMLElement, index: number, identity?: string) => void;
   renderName: (element: HTMLElement, identity: string, name: string, gender?: PlayerGender) => void; isGuest: (identity: string) => boolean; isOnline: (identity: string) => boolean; presenceText: (profile: Profile, online: boolean) => string;
   renderCharacter: (identity: string, progress: Profile["progress"] | null, visible: boolean) => void; skinTone: (identity?: string) => number; setSkinTone: (value: number) => Promise<{ ok?: boolean; error?: string } | undefined>;
@@ -189,6 +201,9 @@ export function createProfileWindowController(elements: {
     const prestigeLevel = own ? api.prestigeLevel?.() ?? profile.prestigeLevel ?? 0 : profile.prestigeLevel ?? 0;
     elements.prestigeRow.hidden = prestigeLevel <= 0;
     elements.prestige.textContent = `${prestigeLevel} (+${Math.round(prestigeLevel * PRESTIGE_STAT_GAIN_PER_LEVEL * 100)}% stat gain)`;
+    const mastery = profileMasteryText(profile, own ? api.weaponMastery?.() : undefined);
+    elements.masteryRow.hidden = !mastery;
+    elements.mastery.textContent = mastery || "—";
     api.renderStats(profile, elements.statGrid);
     loading.hide();
     showBonusesTab(own);

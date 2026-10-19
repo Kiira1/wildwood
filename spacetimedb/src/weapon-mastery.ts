@@ -1,6 +1,7 @@
 import { table, t } from "spacetimedb/server";
 import type { Identity } from "spacetimedb";
-import { isWeaponSchool, masteryPointsForReport, weaponSchool, type WeaponSchool } from "../../shared/weapon-mastery";
+import type spacetimedbType from "./index";
+import { isWeaponSchool, masteryLevel, masteryPointsForReport, weaponSchool, type WeaponSchool } from "../../shared/weapon-mastery";
 import { challengeActive } from "./prestige-challenge";
 
 /** A school's Mastery points, one row per player and school, so a new school needs no new column. */
@@ -9,6 +10,17 @@ export const playerWeaponMastery = table({ name: "player_weapon_mastery", public
   identity: t.identity().index("btree"),
   school: t.string(),
   points: t.u64(),
+});
+
+/**
+ * Each school's level, public, for profiles (player_weapon_mastery stays private). One row per player and school,
+ * so a new school needs no new column; writeMasteryLevel keeps it in step.
+ */
+export const playerMasteryLevel = table({ name: "player_mastery_level", public: true }, {
+  key: t.string().primaryKey(),
+  identity: t.identity().index("btree"),
+  school: t.string(),
+  level: t.u8(),
 });
 
 type Ctx = any;
@@ -25,11 +37,21 @@ export function weaponMasteryPoints(ctx: Ctx, identity: Identity): Record<Weapon
   return points;
 }
 
+/** Copies a school's level to player_mastery_level, writing only when it changed; none below level 1. */
+function writeMasteryLevel(ctx: Ctx, identity: Identity, school: WeaponSchool, points: bigint) {
+  const key = masteryKey(identity, school), level = masteryLevel(points), row = ctx.db.playerMasteryLevel.key.find(key);
+  if (level < 1) { if (row) ctx.db.playerMasteryLevel.key.delete(key); return; }
+  if (!row) ctx.db.playerMasteryLevel.insert({ key, identity, school, level });
+  else if (row.level !== level) ctx.db.playerMasteryLevel.key.update({ ...row, level });
+}
+
 function addPoints(ctx: Ctx, identity: Identity, school: WeaponSchool, points: number) {
   if (!(points > 0)) return;
   const key = masteryKey(identity, school), row = ctx.db.playerWeaponMastery.key.find(key);
-  if (row) ctx.db.playerWeaponMastery.key.update({ ...row, points: row.points + BigInt(points) });
-  else ctx.db.playerWeaponMastery.insert({ key, identity, school, points: BigInt(points) });
+  const next = (row?.points ?? 0n) + BigInt(points);
+  if (row) ctx.db.playerWeaponMastery.key.update({ ...row, points: next });
+  else ctx.db.playerWeaponMastery.insert({ key, identity, school, points: next });
+  writeMasteryLevel(ctx, identity, school, next);
 }
 
 /**
@@ -47,6 +69,7 @@ export function awardWeaponMastery(ctx: Ctx, identity: Identity, weapon: string 
 /** Reset Save clears every school. Prestige keeps them. */
 export function removeWeaponMastery(ctx: Ctx, identity: Identity) {
   for (const row of rowsOf(ctx, identity)) ctx.db.playerWeaponMastery.key.delete(row.key);
+  for (const row of [...ctx.db.playerMasteryLevel.identity.filter(identity)]) ctx.db.playerMasteryLevel.key.delete(row.key);
 }
 
 /** A guest's save replaces the account's on link, as Mining does, its Mastery with it. */
@@ -55,6 +78,24 @@ export function mergeWeaponMastery(ctx: Ctx, guest: Identity, account: Identity)
   for (const row of rowsOf(ctx, guest)) {
     ctx.db.playerWeaponMastery.key.delete(row.key);
     const school: unknown = row.school;
-    if (isWeaponSchool(school)) ctx.db.playerWeaponMastery.insert({ ...row, key: masteryKey(account, school), identity: account });
+    if (!isWeaponSchool(school)) continue;
+    ctx.db.playerWeaponMastery.insert({ ...row, key: masteryKey(account, school), identity: account });
+    writeMasteryLevel(ctx, account, school, row.points);
   }
+  for (const row of [...ctx.db.playerMasteryLevel.identity.filter(guest)]) ctx.db.playerMasteryLevel.key.delete(row.key);
+}
+
+/** Fills player_mastery_level from the points earned before it existed (module migration 61). */
+export function backfillMasteryLevels(ctx: Ctx) {
+  for (const row of [...ctx.db.playerWeaponMastery.iter()] as any[]) {
+    const school: unknown = row.school;
+    if (isWeaponSchool(school)) writeMasteryLevel(ctx, row.identity, school, row.points);
+  }
+}
+
+/** The player's own points, for the Schools tab. */
+export function registerWeaponMastery(spacetimedb: typeof spacetimedbType) {
+  const myWeaponMastery = spacetimedb.view({ name: "my_weapon_mastery", public: true }, t.array(playerWeaponMastery.rowType),
+    (ctx: any) => [...ctx.db.playerWeaponMastery.identity.filter(ctx.sender)]);
+  return { myWeaponMastery };
 }

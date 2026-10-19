@@ -649,6 +649,12 @@
       "identity:identity",
       "updatedAt:timestamp"
     ],
+    "my_weapon_mastery": [
+      "key:string",
+      "identity:identity",
+      "school:string",
+      "points:u64"
+    ],
     "patreon_ticker_supporters": [
       "identity:identity",
       "name:string",
@@ -791,6 +797,12 @@
       "mapId:string",
       "isVisible:bool",
       "updatedAt:timestamp"
+    ],
+    "player_mastery_level": [
+      "key:string",
+      "identity:identity",
+      "school:string",
+      "level:u8"
     ],
     "player_mining_level": [
       "identity:identity",

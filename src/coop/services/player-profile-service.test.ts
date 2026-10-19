@@ -206,3 +206,17 @@ it("loads the inspected player's active cards and card slot perks, and only thei
   expect(profile?.activeCards).toEqual({ HAND: ["needle_card"], HEAD: [], CHEST: ["bramble_card"] });
   expect(profile?.prestigePerks).toMatchObject({ weaponCards: 2, helmetCards: 0, armorCards: 1 });
 });
+
+it("loads the inspected player's mastery levels, and only theirs, with the profile", async () => {
+  const f = fixture(), identity = new Identity("1".repeat(64)), other = new Identity("2".repeat(64)), hex = identity.toHexString();
+  f.progression.progressFor.mockReturnValue({ damage: 10 });
+  f.progression.lifetimeFor.mockReturnValue({ enemyKills: 5 });
+  const request = f.service.api.loadPlayerProfile(hex);
+  const sql = f.subscriptions[0].queries.map(query => (query as { toSql(): string }).toSql());
+  expect(sql.find(text => text.includes("player_mastery_level"))).toMatch(/WHERE .*identity.* = 0x1{64}/);
+  (f.connection.db as any).playerMasteryLevel = { iter: () => [
+    { identity, school: "archery", level: 23 }, { identity, school: "wrestling", level: 9 }, { identity: other, school: "sorcery", level: 4 },
+  ] };
+  f.subscriptions[0].apply();
+  expect((await request)?.mastery).toEqual({ archery: 23 });
+});

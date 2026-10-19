@@ -1119,6 +1119,9 @@ export type MyUpgradeBench = __Infer<typeof MyUpgradeBench>;
 export const MyUpgradeBenchThirdSlot = __t.object("MyUpgradeBenchThirdSlot", {});
 export type MyUpgradeBenchThirdSlot = __Infer<typeof MyUpgradeBenchThirdSlot>;
 
+export const MyWeaponMastery = __t.object("MyWeaponMastery", {});
+export type MyWeaponMastery = __Infer<typeof MyWeaponMastery>;
+
 export const NameChangeStatus = __t.object("NameChangeStatus", {
   cost: __t.u32(),
   availableAtMs: __t.f64(),
@@ -1758,6 +1761,14 @@ export const PlayerMapMarker = __t.object("PlayerMapMarker", {
   updatedAt: __t.timestamp(),
 });
 export type PlayerMapMarker = __Infer<typeof PlayerMapMarker>;
+
+export const PlayerMasteryLevel = __t.object("PlayerMasteryLevel", {
+  key: __t.string(),
+  identity: __t.identity(),
+  school: __t.string(),
+  level: __t.u8(),
+});
+export type PlayerMasteryLevel = __Infer<typeof PlayerMasteryLevel>;
 
 export const PlayerMinedNode = __t.object("PlayerMinedNode", {
   key: __t.string(),

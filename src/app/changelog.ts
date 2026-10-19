@@ -1,4 +1,8 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.916.0": [
+    "Weapon Mastery: every kill trains the school of the weapon in your hand, shown in the new Schools tab",
+    "Profiles show the Mastery level of the weapon in hand",
+  ],
   "0.915.2": [
     "Small balancing",
   ],
@@ -3613,6 +3617,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.916.0": "2026-10-18",
   "0.915.2": "2026-10-18",
   "0.915.1": "2026-10-18",
   "0.915.0": "2026-10-18",

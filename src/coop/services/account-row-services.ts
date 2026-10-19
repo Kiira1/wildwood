@@ -10,6 +10,7 @@ import { createMiningRows } from "./mining-service";
 import { createCardRows } from "./card-service";
 import { createCardShopRows } from "./card-shop-service";
 import { createBuildRows } from "./build-service";
+import { createWeaponMasteryRows } from "./weapon-mastery-service";
 import { createItemCollectionRows } from "./item-collection-service";
 import { itemLevelParts, type ItemLevel } from "../../../shared/items";
 import { NO_CARDS, cardStatFactors, cardTotals, type CardTotals } from "../../../shared/card-effects";
@@ -21,7 +22,7 @@ import { BASE_CARD_SLOTS, activeCardsInPlay, type ActiveCardSlots, type ActiveCa
  * opt-out, the bow skill rolls with their copies and loot settings, the
  * rewarded ad's Gem claims, the automatic chat mute and the Soul Dimension's
  * rows (soul stats, kills by reward type, whether it is open) and the guild
- * hall's fund and levels, each item's refine with the ores it costs, mining, cards and the Card Seller's buys. They share one
+ * hall's fund and levels, each item's refine with the ores it costs, mining, cards, the Card Seller's buys and Weapon Mastery. They share one
  * lifecycle, so the connection starts them together and the coop API serves
  * them together.
  */
@@ -39,6 +40,7 @@ export function createAccountRowServices(connection: () => DbConnection | null, 
   const cards = createCardRows(notify);
   const cardShop = createCardShopRows(notify);
   const builds = createBuildRows(notify);
+  const weaponMastery = createWeaponMasteryRows(notify);
   const collection = createItemCollectionRows(notify);
   // The active cards in play, added up again only when the cards or the slots are replaced (read many times a frame).
   let activeFrom: ActiveCards | null = null, activeSlots: ActiveCardSlots | null = null;
@@ -67,6 +69,7 @@ export function createAccountRowServices(connection: () => DbConnection | null, 
       cards.watch(current, isCurrent);
       cardShop.watch(current, isCurrent);
       builds.watch(current, isCurrent);
+      weaponMastery.watch(current, isCurrent);
       collection.watch(current, isCurrent);
     },
     api: {
@@ -81,6 +84,7 @@ export function createAccountRowServices(connection: () => DbConnection | null, 
       ...cards.api,
       ...cardShop.api,
       ...builds.api,
+      ...weaponMastery.api,
       ...collection.api,
       /** An item's slot tier and refine (items.ts ItemLevel). */
       itemLevel: (itemId: string): ItemLevel => itemLevelParts(itemRefine.api.itemLevel(itemId)),

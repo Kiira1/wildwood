@@ -42,11 +42,12 @@ import { readPlayerProgress, iterPlayerProgress, moveCombatColumnsOntoProgress }
 import { moveSoloQuestsToGuild } from "./daily-quests";
 import { rebuildParkedAggroRun } from "./aggro-challenge";
 import { backfillMiningLevels } from "./mining";
+import { backfillMasteryLevels } from "./weapon-mastery";
 import { convertToStatRatings, trimStoredSoulCritDamage } from "./stat-rating-migration";
 import { installBalanceCurve, repinMapBalances } from "./map-balance";
 import { activateCardsFromGear } from "./active-cards";
 
-export const MODULE_MIGRATION_VERSION = 60;
+export const MODULE_MIGRATION_VERSION = 61;
 
 /**
  * Migration 50 (0.856): the ranking snapshot moves to leaderboard_entry_v2,
@@ -554,6 +555,8 @@ export function createModuleMigrations(deps: ModuleMigrationDeps) {
     if (currentVersion < 59) activateCardsFromGear(ctx);
     // 60 (0.915): the balance curve, every factor at 1, as the next revision, with every pinned visit moved onto it.
     if (currentVersion < 60) installBalanceCurve(ctx);
+    // 61: profiles show Mastery; player_mastery_level copies it from the points earned since Mastery began.
+    if (currentVersion < 61) backfillMasteryLevels(ctx);
     const next = { id: 0, version: MODULE_MIGRATION_VERSION };
     if (state) ctx.db.moduleMigrationState.id.update(next);
     else ctx.db.moduleMigrationState.insert(next);

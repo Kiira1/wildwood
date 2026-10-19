@@ -332,6 +332,7 @@ import MyStaffSkillsRow from "./my_staff_skills_table";
 import MySwordSkillsRow from "./my_sword_skills_table";
 import MyUpgradeBenchRow from "./my_upgrade_bench_table";
 import MyUpgradeBenchThirdSlotRow from "./my_upgrade_bench_third_slot_table";
+import MyWeaponMasteryRow from "./my_weapon_mastery_table";
 import PatreonTickerSupportersRow from "./patreon_ticker_supporters_table";
 import PausedResearchRow from "./paused_research_table";
 import PlayerRow from "./player_table";
@@ -356,6 +357,7 @@ import PlayerLifetimeRow from "./player_lifetime_table";
 import PlayerLuckResearchRow from "./player_luck_research_table";
 import PlayerMapFrameRow from "./player_map_frame_table";
 import PlayerMapMarkerRow from "./player_map_marker_table";
+import PlayerMasteryLevelRow from "./player_mastery_level_table";
 import PlayerMiningLevelRow from "./player_mining_level_table";
 import PlayerMotionDetailFrameRow from "./player_motion_detail_frame_table";
 import PlayerMotionIdentityRow from "./player_motion_identity_table";
@@ -821,6 +823,20 @@ const tablesSchema = __schema({
       { name: 'player_map_marker_identity_key', constraint: 'unique', columns: ['identity'] },
     ],
   }, PlayerMapMarkerRow),
+  playerMasteryLevel: __table({
+    name: 'player_mastery_level',
+    indexes: [
+      { accessor: 'identity', name: 'player_mastery_level_identity_idx_btree', algorithm: 'btree', columns: [
+        'identity',
+      ] },
+      { accessor: 'key', name: 'player_mastery_level_key_idx_btree', algorithm: 'btree', columns: [
+        'key',
+      ] },
+    ],
+    constraints: [
+      { name: 'player_mastery_level_key_key', constraint: 'unique', columns: ['key'] },
+    ],
+  }, PlayerMasteryLevelRow),
   playerMiningLevel: __table({
     name: 'player_mining_level',
     indexes: [
@@ -1501,6 +1517,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, MyUpgradeBenchThirdSlotRow),
+  myWeaponMastery: __table({
+    name: 'my_weapon_mastery',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MyWeaponMasteryRow),
   patreonTickerSupporters: __table({
     name: 'patreon_ticker_supporters',
     indexes: [

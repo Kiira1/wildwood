@@ -10,6 +10,7 @@ import { normalizePlayerGender } from "../../../shared/player-gender";
 import { resolvePlayerPresenceMap } from "./profile-presence";
 import { withWideProgress } from "./wide-progress";
 import { activeCardsOfRow } from "../../../shared/active-cards";
+import { isWeaponSchool, masteryLevel, type WeaponSchool } from "../../../shared/weapon-mastery";
 import type { LeaderboardEntry, PlayerProfileData } from "../contracts";
 import type { ProfileDirectory } from "./profile-directory";
 import type { ProgressionService } from "./progression-service";
@@ -154,6 +155,16 @@ export function createPlayerProfileService(dependencies: PlayerProfileServiceDep
         const row = identity === dependencies.localIdentity() ? [...(db?.myMining?.iter() ?? [])][0]
           : [...(db?.playerMiningLevel?.iter() ?? [])].find(row => row.identity.toHexString() === identity);
         return row ? row.mining : null;
+      })(),
+      mastery: (() => {
+        const db = dependencies.connection()?.db;
+        const levels: Partial<Record<WeaponSchool, number>> = {};
+        if (identity === dependencies.localIdentity()) {
+          for (const row of db?.myWeaponMastery?.iter() ?? []) if (isWeaponSchool(row.school)) levels[row.school] = masteryLevel(row.points);
+        } else {
+          for (const row of db?.playerMasteryLevel?.iter() ?? []) if (isWeaponSchool(row.school) && row.identity.toHexString() === identity) levels[row.school] = row.level;
+        }
+        return levels;
       })(),
       lifetime: { ...lifetime },
       mapId: activePlayerMap(identity) ?? undefined,
@@ -311,6 +322,7 @@ export function createPlayerProfileService(dependencies: PlayerProfileServiceDep
           tables.playerWornSkill.where(row => row.identity.eq(dbIdentity)),
           tables.playerWornStaffSkill.where(row => row.identity.eq(dbIdentity)),
           tables.playerMiningLevel.where(row => row.identity.eq(dbIdentity)),
+          tables.playerMasteryLevel.where(row => row.identity.eq(dbIdentity)),
           tables.player.where((player) => player.identity.eq(dbIdentity)),
         ]);
       if (generation === profileGeneration) activeSubscription = handle;

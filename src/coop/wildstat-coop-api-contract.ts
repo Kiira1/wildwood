@@ -44,6 +44,7 @@ type ExpectedApiKey =
   | "applyBuildCards"
   | "buildNames"
   | "renameBuild"
+  | "weaponMastery"
   | "verifyAge"
   | "ageVerified"
   | "ageBlocked"

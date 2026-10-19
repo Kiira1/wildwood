@@ -1,3 +1,4 @@
+import { MODULE_MIGRATION_VERSION } from "./module-migrations";
 import { defaultBalanceSettings, resolveMapBalance } from '../../shared/map-balance';
 import { it, expect, vi } from 'vitest';
 import { balanceEditorState, forgetBalanceCaches, installBalanceCurve, saveMapBalance, pinMapBalance, pinnedMapBalance, liveMapBalance } from './map-balance';
@@ -160,7 +161,7 @@ it('runs pending migrations from the connection path only once', () => {
   f.seed('mapBalanceVersion', { revision: 79, settingsJson: JSON.stringify(revision79), editor: f.ctx.sender, createdAt: f.ctx.timestamp });
   f.ctx.connectionId = null;
   f.run(server.onConnect);
-  expect(f.db.moduleMigrationState.id.find(0).version).toBe(60);
+  expect(f.db.moduleMigrationState.id.find(0).version).toBe(MODULE_MIGRATION_VERSION);
   // 60 put the balance curve on as revision 80.
   expect(balanceEditorState(f.ctx as any).revision).toBe(80);
   expect(balanceEditorState(f.ctx as any).settings).toEqual(defaultBalanceSettings());

@@ -857,6 +857,9 @@
 }
 /* The Cards tab: each card held as a bag-style tile, its portrait framed in its rarity's colour. */
 .inventory-tabs { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
+/* Five tabs fit a phone: tighter gaps and padding so Cosmetics still fits its column. */
+.inventory-tabs { gap: 2px; }
+.inventory-tab { padding-inline: 2px; letter-spacing: 0; }
 .inventory-content > [hidden] { display: none; }
 .builds-tab { display: flex; flex-direction: column; gap: 10px; grid-column: 1; grid-row: 1 / span 2; min-width: 0; padding: 7px; }
 .builds-tab[hidden] { display: none; }
@@ -873,6 +876,20 @@
 .builds-tab-actions button { min-height: 44px; border: 1px solid #555; border-radius: 8px; background: linear-gradient(#3a3a3a, #262626); color: #fff; font: inherit; font-size: 13px; font-weight: 700; }
 .builds-tab-actions .builds-tab-equip:not(:disabled) { border-color: var(--green, #5fd35a); }
 .builds-tab-actions button:disabled { opacity: .5; }
+/* The Schools tab: a card per weapon school with its Mastery level and a bar toward the next. */
+.schools-tab { display: flex; flex-direction: column; gap: 10px; grid-column: 1; grid-row: 1 / span 2; min-width: 0; padding: 7px; }
+.schools-tab[hidden] { display: none; }
+.schools-tab-note { margin: 0; color: rgba(255,255,255,.72); font-size: 13px; line-height: 1.4; text-align: center; }
+.schools-tab-list { display: flex; flex-direction: column; gap: 10px; }
+.schools-tab-card { display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1px solid rgba(255,255,255,.14); border-radius: 10px; background: rgba(255,255,255,.04); }
+.schools-tab-card.is-in-hand { border-color: rgba(255,255,255,.5); }
+.schools-tab-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.schools-tab-head strong { min-width: 0; overflow: hidden; color: #fff; font-size: 15px; text-overflow: ellipsis; white-space: nowrap; }
+.schools-tab-in-hand { flex: none; padding: 2px 8px; border: 1px solid rgba(255,255,255,.4); border-radius: 999px; color: #fff; font-size: 13px; font-weight: 700; }
+.schools-tab-level { flex: none; margin-left: auto; color: #fff; font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.schools-tab-bar { display: block; height: 8px; overflow: hidden; border-radius: 4px; background: rgba(255,255,255,.14); }
+.schools-tab-bar > span { display: block; height: 100%; border-radius: inherit; background: #e6e6e6; transition: width .2s; }
+.schools-tab-points { color: rgba(255,255,255,.72); font-size: 13px; font-variant-numeric: tabular-nums; text-align: right; }
 .cards-tab { display: grid; grid-column: 1; grid-row: 1 / span 2; align-content: start; gap: 6px; container-type: inline-size; min-width: 0; padding: 0 7px 7px; }
 .cards-tab-count { display: block; margin: 0 auto 4px; }
 /* Active cards, at the top above the zones: a row per type, four slots each; empty is dashed, locked is dim. */

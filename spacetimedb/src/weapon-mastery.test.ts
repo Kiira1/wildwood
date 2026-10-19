@@ -3,7 +3,7 @@ import { crystalFixture, identity, server } from "../../tests/helpers/crystal-ho
 import { fillDefeatBudget, reportEnemy, reportKills } from "../../tests/helpers/enemy-defeat";
 import { BOSS_REWARD_CLAIM_BITS } from "../../shared/rules";
 import { IRON_BOW, WOODEN_SWORD } from "../../shared/items";
-import { mergeWeaponMastery, weaponMasteryPoints } from "./weapon-mastery";
+import { backfillMasteryLevels, mergeWeaponMastery, weaponMasteryPoints } from "./weapon-mastery";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
 const points = (f: any, who = f.ctx.sender) => weaponMasteryPoints(f.ctx, who);
@@ -68,5 +68,21 @@ describe("weapon mastery points", () => {
     f.transaction(() => mergeWeaponMastery(f.ctx, f.ctx.sender, account));
     expect(points(f, account)).toEqual({ archery: 6n, swordplay: 0n, sorcery: 0n });
     expect([...f.db.playerWeaponMastery.identity.filter(f.ctx.sender)]).toEqual([]);
+  });
+
+  it("copies each school's level to the public table once it reaches level 1, and backfills points earned before", () => {
+    const f = fighter();
+    holding(f, IRON_BOW);
+    const levelRow = () => f.db.playerMasteryLevel.key.find(`${f.ctx.sender.toHexString()}:archery`);
+    f.transaction(() => f.db.playerWeaponMastery.insert({ key: `${f.ctx.sender.toHexString()}:archery`, identity: f.ctx.sender, school: "archery", points: 998n }));
+    kill(f, 1);
+    expect(levelRow()).toBeFalsy();
+    kill(f, 1);
+    expect(levelRow()).toMatchObject({ school: "archery", level: 1 });
+    f.transaction(() => f.db.playerMasteryLevel.key.delete(levelRow().key));
+    f.transaction(() => backfillMasteryLevels(f.ctx));
+    expect(levelRow()).toMatchObject({ level: 1 });
+    f.run(server.resetPlayerProgress, {});
+    expect(levelRow()).toBeFalsy();
   });
 });

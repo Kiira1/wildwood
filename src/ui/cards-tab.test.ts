@@ -19,7 +19,7 @@ function page(body = "") {
 }
 
 const INVENTORY_PANEL = `<div id="inventoryPanel">
-  <div class="inventory-tabs"><button id="inventoryEquipmentTab"></button><button id="inventoryCosmeticsTab"></button><button id="inventoryCardsTab"></button></div>
+  <div class="inventory-tabs"><button id="inventoryEquipmentTab"></button><button id="inventoryCosmeticsTab"></button><button id="inventoryCardsTab"></button><button id="inventorySchoolsTab"></button></div>
   <div id="inventoryContent">
     <section class="inventory-loadout"><button id="equippedHeadSlot"></button><button id="equippedChestSlot"></button><button id="equippedFeetSlot"></button><button id="equippedRightHandSlot"></button></section>
     <section class="bag-section"><div class="inventory-section-title"><span id="inventoryCount"></span></div><div id="inventoryItems"></div></section>
@@ -55,7 +55,7 @@ function memoryStorage() {
   return { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => { values.set(key, value); }, values };
 }
 
-function inventoryWithCards(port?: CardsPort, inspection?: ReturnType<typeof createItemInspectionController>) {
+function inventoryWithCards(port?: CardsPort, inspection?: ReturnType<typeof createItemInspectionController>, extra: Partial<Parameters<typeof createInventoryController>[0]> = {}) {
   const { document, window } = page(INVENTORY_PANEL + INSPECTION_PANEL);
   const inventory = { itemIds: [STARTER_STONE, STARTER_BOW, IRON_BOW], equippedHead: "", equippedChest: "", equippedFeet: "", equippedRightHand: STARTER_STONE, equippedLeftHand: "", cosmeticHead: "", cosmeticChest: "", cosmeticFeet: "", cosmeticRightHand: "", cosmeticLeftHand: "", selectedItemId: "", selectedItemLocation: "" as const };
   const opened: Array<Record<string, unknown>> = [];
@@ -66,7 +66,7 @@ function inventoryWithCards(port?: CardsPort, inspection?: ReturnType<typeof cre
   itemInspection.open = (request: any) => { opened.push(request); return open(request); };
   const controller = createInventoryController({ inventory, move: () => false, moveCosmetic: () => false, toggleCosmeticVisibility: () => false,
     upgradeLevel: () => 0, inventorySlotsUnlocked: () => 0, gemBalance: () => 0n, cards: port, itemInspection,
-    destroyEquipment: async () => undefined, unlockInventorySlot: async () => undefined, showMessage: (message: string) => { messages.push(message); } });
+    destroyEquipment: async () => undefined, unlockInventorySlot: async () => undefined, showMessage: (message: string) => { messages.push(message); } , ...extra });
   controller.render();
   const press = (target: Element, key: string) => {
     const event = new window.Event("keydown");
@@ -288,6 +288,34 @@ it("leaves the Cards tab out where there are no card rows", () => {
   const view = inventoryWithCards();
   expect(view.document.getElementById("inventoryCardsTab")).toBeNull();
   expect(view.document.querySelector(".cards-tab")).toBeNull();
+});
+
+it("puts a Schools tab after Cards that swaps the loadout and bag for Weapon Mastery", () => {
+  vi.stubGlobal("localStorage", memoryStorage());
+  const view = inventoryWithCards(fakePort(), undefined, { schools: { points: () => ({ archery: 1_500n }), activeWeapon: () => STARTER_STONE } });
+  const [equipment, cards, schools] = ["inventoryEquipmentTab", "inventoryCardsTab", "inventorySchoolsTab"].map(id => view.document.getElementById(id)!);
+  const shown = () => [".inventory-loadout", ".bag-section", ".cards-tab", ".schools-tab"].map(selector => !view.document.querySelector<HTMLElement>(selector)!.hidden);
+  expect(shown()).toEqual([true, true, false, false]);
+  schools.click();
+  expect(shown()).toEqual([false, false, false, true]);
+  expect(schools.getAttribute("aria-selected")).toBe("true");
+  expect(view.document.getElementById("inventoryContent")!.getAttribute("aria-labelledby")).toBe("inventorySchoolsTab");
+  expect(view.document.querySelector(".schools-tab-card.is-in-hand .schools-tab-level")!.textContent).toBe("Lv 1");
+  // Schools is the last tab: right wraps to Equipment, left goes back to Cards.
+  view.press(schools, "ArrowRight");
+  expect(equipment.getAttribute("aria-selected")).toBe("true");
+  expect(shown()).toEqual([true, true, false, false]);
+  view.press(equipment, "ArrowLeft");
+  view.press(schools, "ArrowLeft");
+  expect(cards.getAttribute("aria-selected")).toBe("true");
+  expect(shown()).toEqual([false, false, true, false]);
+});
+
+it("leaves the Schools tab out without Weapon Mastery", () => {
+  vi.stubGlobal("localStorage", memoryStorage());
+  const view = inventoryWithCards(fakePort());
+  expect(view.document.getElementById("inventorySchoolsTab")).toBeNull();
+  expect(view.document.querySelector(".schools-tab")).toBeNull();
 });
 
 it("shows no card slots on gear in the bag", () => {
