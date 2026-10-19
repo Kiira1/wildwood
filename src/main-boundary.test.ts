@@ -88,7 +88,7 @@ import { describe, expect, it } from "vitest";
 // balance, and the map config; the planner, its forecasts and the balance
 // cache live in auto-farm-growth.ts and growth-forecast.ts.
 // 1_939 (2026-10-08): the growth planner's inputs gone with autofarm's simple
-// rules (the planner is kept, switched off, in auto-farm-smart-controller.ts).
+// rules (the planner's second controller was removed later; the sims keep the planner).
 // 1_941 (2026-10-09): Ox's Galaxy shop in Town, its import and one line of
 // wiring; the window and its purchase live in ox-shop-controller.ts.
 // 1_943 (2026-10-11): the profile's Bonuses tab, its import and one line

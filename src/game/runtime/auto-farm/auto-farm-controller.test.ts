@@ -683,6 +683,18 @@ describe('autofarm plans: sliders, the boss and the next map', () => {
       expect(t.farm.state().phase).toBe('portal');
     });
 
+    it('keeps Aggro pulling through the boss fight, so a build that heals from kills keeps healing', () => {
+      const boss = { x: 900, y: 500, r: 60, hp: 1_000, maxHp: 1_000, dead: false };
+      const s = planned({ power: () => 2_000, mapPower: () => 1_000, bossPower: () => 1_000, mapBoss: () => boss as never, bossUnlocksNext: () => true });
+      s.farm.setAdvance(true);
+      s.farm.setPullAll(true);
+      const mob = s.add('Bramble', 500, 1_500);
+      s.farm.start([health]);
+      s.advance(1_000); s.tick();
+      expect(s.farm.state().phase).toBe('boss');
+      expect(s.farm.pulls(mob)).toBe(true);
+    });
+
     it('Move On goes straight on after beating the boss, without finishing the fight around it', () => {
       const boss = { x: 900, y: 500, r: 60, hp: 1_000, maxHp: 1_000, dead: false };
       const portal = { x: 200, y: 500, destination: 'beginner_desert' };

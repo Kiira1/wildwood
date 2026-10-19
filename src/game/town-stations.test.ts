@@ -247,6 +247,17 @@ describe("the way out east, to the Copper Hills", () => {
     expect(standingThere).toEqual([]);
   });
 
+  it("keeps the village's own bridges to their decks, off the rails", () => {
+    const west = { x: TOWN_CENTER.x - 1_912, y: TOWN_CENTER.y + 226 - TOWN_FEET_OFFSET };
+    for (let x = west.x - 130; x <= west.x + 130; x += 10) expect(standable(x, west.y), `west deck at ${x}`).toBe(true);
+    for (const dx of [-140, -115, 0, 115, 140]) for (const dy of [-58, 58]) expect(standable(west.x + dx, west.y + dy), `west rail ${dx},${dy}`).toBe(false);
+    const south = { x: TOWN_CENTER.x - 606, y: TOWN_CENTER.y + 1_224.5 - TOWN_FEET_OFFSET };
+    for (let dy = -100; dy <= 100; dy += 10) {
+      expect(standable(south.x, south.y + dy), `south deck at ${dy}`).toBe(true);
+      for (const dx of [-65, 64]) expect(standable(south.x + dx, south.y + dy), `south rail ${dx},${dy}`).toBe(false);
+    }
+  });
+
   it("crosses the river on a bridge north-east of the gap, with the miners' track over its deck", () => {
     const deckY = TOWN_EAST_BRIDGE.y - TOWN_FEET_OFFSET;
     // From just outside the gap to the far bank, within 200 of the two: not the long way round the river's head.

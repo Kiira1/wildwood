@@ -13,7 +13,7 @@ import { activeCardTotalsFor } from "./active-cards";
 import { soulStatsFor, withSoulStats } from "./soul-dimension";
 import { bowSkillRollFor } from "./bow-skills";
 import { bowSkillReachMultiplier, isSkillBow } from "../../shared/bow-skills";
-import { CARD_SPLASH_MAX_TARGETS, bowSkillsWithCards, cardGuardFactor, cardOffenseBound, cardSustainBound } from "../../shared/card-bounds";
+import { PRISM_MAX_TARGETS, bowSkillsWithCards, cardGuardFactor, cardOffenseBound, cardSustainBound } from "../../shared/card-bounds";
 import { cardValue } from "../../shared/card-effects";
 import { swordSkillChance, swordSkillReachMultiplier } from "../../shared/sword-skills";
 import { swordSkillRollFor } from "./sword-skills";
@@ -166,8 +166,8 @@ export function createCombatReport(deps: CombatReportDeps) {
         weapon: loadout.weapon, boltDamage: staff ? STAFF_BOLT_DAMAGE_FACTOR : 1,
         cardDamage: cardBound.damage,
         reflects: prestigePerkValue(ranks, "riposte") > 0 || cardBound.reflect > 0,
-        // Prism: a reflected hit strikes the enemies near its attacker as well.
-        reflectReach: cardBound.prism ? 1 + CARD_SPLASH_MAX_TARGETS : 1,
+        // Prism: a reflected hit strikes up to four enemies near its attacker as well.
+        reflectReach: cardBound.prism ? 1 + PRISM_MAX_TARGETS : 1,
         deflects: swordSkillChance(swordSkills, "deflect") > 0,
         // Second Wind cards add to the perk.
         secondWind: prestigePerkValue(ranks, "secondWind") + Math.max(0, cardValue(loadout.cardTotals, "secondWind")) / 100,

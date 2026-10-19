@@ -48,7 +48,13 @@ const DECK = { left: TOWN_EAST_BRIDGE.x - TOWN_EAST_BRIDGE.halfWidth, right: TOW
 const EAST_BRIDGE_DECK: readonly WorldDecor[] = ([["168", -77], ["169", 77]] as const).map(([frame, dx]): WorldDecor => ({
   type: "soulProp", sheet: "village", frame, s: 1, x: TOWN_EAST_BRIDGE.x + dx, y: TOWN_EAST_BRIDGE.y, dy: 0, ground: true, shadow: false,
 }));
-const railing = (from: number, to: number) => [-104, from, 105, from, 105, to, -104, to].map((value, index) => value + (index % 2 ? TOWN_EAST_BRIDGE.y : TOWN_EAST_BRIDGE.x));
+/** A railing filled from its rail out to the water, end posts and all, so no one walks along on top of it. */
+const railing = (at: { x: number; y: number }, left: number, right: number, from: number, to: number) =>
+  solid([left, from, right, from, right, to, left, to], at.x, at.y);
+/** The village's own stone bridge, west of the square, and its wooden one on the road to the Soul portal. */
+const WEST_BRIDGE = { x: TOWN_CENTER.x - 1_912, y: TOWN_CENTER.y + 226 };
+const SOUTH_BRIDGE = { x: TOWN_CENTER.x - 606, y: TOWN_CENTER.y + 1_224.5 };
+const STONE_RAILINGS = (at: { x: number; y: number }) => [railing(at, -130, 130, -TOWN_EAST_BRIDGE.halfHeight, -34), railing(at, -130, 130, 33, TOWN_EAST_BRIDGE.halfHeight)];
 export const SOUL_VILLAGE_DECOR: readonly WorldDecor[] = [...scene.props.flatMap(([frame, x, y, depth, flags, open, door], index): WorldDecor[] => {
   if ((flags & 3) === 0 && CLEARED.some(area => inside(area, originX + x, originY + depth))) return [];
   if ((flags & 2) === 2 && CLEARINGS.some(area => inside(area, originX + x, originY + depth))) return [];
@@ -78,7 +84,8 @@ function solid(flat: readonly number[], dx: number, dy: number): SoulSolid {
 /** What a player cannot walk through: the pack's own colliders, as drawn (a round fountain stays round). */
 export const SOUL_VILLAGE_SOLIDS: readonly SoulSolid[] = [...scene.solids.map(flat => solid(flat, originX, originY))
   .filter(wall => ![...CLEARED, DECK].some(area => inside(area, wall.left + 1, wall.top + 1) && inside(area, wall.right - 1, wall.bottom - 1))),
-  solid(railing(-TOWN_EAST_BRIDGE.halfHeight, -34), 0, 0), solid(railing(33, TOWN_EAST_BRIDGE.halfHeight), 0, 0)];
+  ...STONE_RAILINGS(TOWN_EAST_BRIDGE), ...STONE_RAILINGS(WEST_BRIDGE),
+  railing(SOUTH_BRIDGE, -77, -50, -105.5, 103.5), railing(SOUTH_BRIDGE, 51, 76, -105.5, 103.5)];
 
 /** Which doors stand open now: the Town's runtime opens one as someone walks up, the renderer draws it so. */
 export const SOUL_DOORS_OPEN = new Set<number>();

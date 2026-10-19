@@ -183,4 +183,27 @@ describe("card defense", () => {
     view.combat.afterReflect(attacker as any, 30);
     expect(view.struck).toEqual([{ target: beside, damage: 30, reflected: true }]);
   });
+
+  it("splashes a reflected hit onto the four nearest of a pack, not all of it", () => {
+    const view = fight(["prismshell_card"]);
+    const attacker = view.enemy({ x: 0 });
+    const pack = Array.from({ length: 10 }, (_, index) => view.enemy({ x: 10 + index * 5 }));
+    view.combat.afterReflect(attacker as any, 30);
+    expect(view.struck.map(hit => hit.target)).toEqual(pack.slice(0, 4));
+  });
+
+  it("passes over an enemy Prism struck in the last second, so a pack's reflects do not stack on its middle", () => {
+    const view = fight(["prismshell_card"]);
+    const attacker = view.enemy({ x: 0 });
+    const pack = Array.from({ length: 6 }, (_, index) => view.enemy({ x: 10 + index * 5 }));
+    view.combat.afterReflect(attacker as any, 30);
+    view.struck.length = 0;
+    view.combat.update(.5);
+    view.combat.afterReflect(attacker as any, 30);
+    expect(view.struck.map(hit => hit.target)).toEqual(pack.slice(4));
+    view.struck.length = 0;
+    view.combat.update(.6);
+    view.combat.afterReflect(attacker as any, 30);
+    expect(view.struck.map(hit => hit.target)).toEqual(pack.slice(0, 4));
+  });
 });

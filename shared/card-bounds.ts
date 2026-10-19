@@ -4,6 +4,10 @@ import type { BowSkillRoll } from "./bow-skills";
 /** How far a splash reaches around the target, and how many enemies the kill bound lets it find. */
 export const CARD_SPLASH_RADIUS = 80;
 export const CARD_SPLASH_MAX_TARGETS = 6;
+/** How many enemies near the attacker a Prism reflect also strikes. */
+export const PRISM_MAX_TARGETS = 4;
+/** How long an enemy struck by a Prism reflect is passed over by the next ones. */
+export const PRISM_REPEAT_SECONDS = 1;
 /** How far Chain Lightning arcs from one enemy to the next. */
 export const CARD_CHAIN_RANGE = 170;
 

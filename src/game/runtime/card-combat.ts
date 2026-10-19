@@ -1,7 +1,7 @@
 import {
   CARD_EFFECT_DEFAULTS, NO_CARDS, cardChance, cardDamageDealtMultiplier, cardDamageTakenMultiplier, cardValue, type CardTotals,
 } from "../../../shared/card-effects";
-import { CARD_CHAIN_RANGE, CARD_SPLASH_RADIUS } from "../../../shared/card-bounds";
+import { CARD_CHAIN_RANGE, CARD_SPLASH_MAX_TARGETS, CARD_SPLASH_RADIUS, PRISM_MAX_TARGETS, PRISM_REPEAT_SECONDS } from "../../../shared/card-bounds";
 import { ENEMY_TYPES } from "../enemies";
 import type { BossTarget, EnemyCardStatus, EnemyState, PlayerState } from "./types";
 
@@ -48,6 +48,9 @@ export function createCardCombat(deps: {
   const dots = new Map<Target, { burn?: DamageOverTime; poison?: DamageOverTime }>();
   const touched = new WeakSet<Target>();
   let momentum: number[] = [];
+  /** Game time, and when Prism last struck each enemy. */
+  let clock = 0;
+  const prismStruckAt = new WeakMap<Target, number>();
   let shield = 0, shieldWait = 0, lastStandReady = true, map = "";
 
   const cards = () => deps.cards();
@@ -99,10 +102,11 @@ export function createCardCombat(deps: {
       .sort((a, b) => Math.hypot(a.x - x, a.y - y) - Math.hypot(b.x - x, b.y - y));
   }
 
-  function splashAround(target: Target, damage: number, reflected = false) {
+  /** Splash and Prism reach the nearest few, as the server bounds them, not a whole pack. */
+  function splashAround(target: Target, damage: number) {
     if (!(damage > 0)) return;
     deps.spawnBurst(target.x, target.y, COLORS.splash, 10, 120);
-    for (const enemy of near(target.x, target.y, CARD_SPLASH_RADIUS, new Set([target]))) deps.strike(enemy, damage, reflected);
+    for (const enemy of near(target.x, target.y, CARD_SPLASH_RADIUS, new Set([target])).slice(0, CARD_SPLASH_MAX_TARGETS)) deps.strike(enemy, damage);
   }
 
   function chainLightning(target: Target, damage: number, targets: number) {
@@ -220,9 +224,16 @@ export function createCardCombat(deps: {
     if (source && isRegular(source) && !source.dead && web > 0) setStatus(source, "slow", Math.min(.9, web / 100), worn.timing.web);
   }
 
-  /** Prism: a reflected hit also strikes the enemies near its attacker. */
+  /**
+   * Prism: a reflected hit also strikes up to four enemies near its attacker, the nearest not struck by one in the
+   * last second, so a pack hitting the player does not stack every reflect on the enemies in its middle.
+   */
   function afterReflect(source: Target, damage: number) {
-    if (cardValue(cards(), "prism") > 0) splashAround(source, damage, true);
+    if (!(cardValue(cards(), "prism") > 0) || !(damage > 0)) return;
+    deps.spawnBurst(source.x, source.y, COLORS.splash, 10, 120);
+    const fresh = near(source.x, source.y, CARD_SPLASH_RADIUS, new Set([source]))
+      .filter(enemy => !(clock - (prismStruckAt.get(enemy) ?? -Infinity) < PRISM_REPEAT_SECONDS)).slice(0, PRISM_MAX_TARGETS);
+    for (const enemy of fresh) { prismStruckAt.set(enemy, clock); deps.strike(enemy, damage, true); }
   }
 
   function tickDamage(target: Target, entry: DamageOverTime, dt: number) {
@@ -241,6 +252,7 @@ export function createCardCombat(deps: {
   }
 
   function update(dt: number) {
+    clock += dt;
     // A new map visit gives Last Stand back and leaves the last map's burns and momentum behind.
     if (map && deps.mapId() !== map) {
       lastStandReady = true;

@@ -1,4 +1,5 @@
 import { CARD_EFFECT_DEFAULTS } from "./card-effects";
+import { PRISM_MAX_TARGETS } from "./card-bounds";
 import { type CardDefinition, type CardEffect, type CardEffectId, type CardSlot } from "./cards";
 import { MAP_DISPLAY_NAMES } from "./rules";
 import type { RewardType } from "./enemy-definitions";
@@ -63,7 +64,7 @@ export function cardEffectText(effect: CardEffect): string {
     panicHeal: () => `Hit under ${percent(CARD_EFFECT_DEFAULTS.panicHeal.below)} health: ${abs}% chance to heal ${percent(CARD_EFFECT_DEFAULTS.panicHeal.heal)}`,
     lastStand: () => `Once per map visit, a killing blow leaves you at ${abs}% health`,
     web: () => `Enemies that hit you are slowed ${abs}% for ${effect.seconds ?? CARD_EFFECT_DEFAULTS.web.seconds}s`,
-    prism: () => "A reflected hit also strikes enemies near the attacker",
+    prism: () => `A reflected hit also strikes up to ${PRISM_MAX_TARGETS} enemies near the attacker, each once a second at most`,
     fleetFoot: () => `Move Speed ${signed(v)}%`,
     longShot: () => `Attack Range ${signed(v)}`,
     statGain: () => `${STAT_NAMES[effect.stat ?? "damage"]} from kills ${signed(v)}%`,

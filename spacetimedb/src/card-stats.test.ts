@@ -103,7 +103,7 @@ describe("cards in the kill bound", () => {
     expect(bounded({}).reflectDps).toBe(0);
     const reflect = bounded({ wooden_armor: ["bramble_card"] }).reflectDps!;
     expect(reflect).toBeGreaterThan(0);
-    expect(bounded({ wooden_armor: ["prismshell_card"] }).reflectDps).toBeCloseTo(reflect * 7, 6);
+    expect(bounded({ wooden_armor: ["prismshell_card"] }).reflectDps).toBeCloseTo(reflect * 5, 6);
     expect(bounded({ wooden_armor: ["bramble_card", "glacier_regent_card"] }).reflectDps).toBeGreaterThan(reflect);
     expect(bounded({ wooden_armor: ["bramble_card", "glacier_archer_card"] }).reflectDps).toBeGreaterThan(reflect);
   });

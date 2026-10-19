@@ -387,8 +387,8 @@ export function createAutoFarmController(options: {
     return order.every(group => pulledNow.has(group) || switched.has(group));
   }
   const pulledEnemy = (enemy: EnemyState) => !enemy.dead && !enemy.remoteCombatGhost && !enemy.generatedBoss && enemy.hp > 0 && pulledGroups().has(choiceKey(enemy));
-  /** Pull Whole Group on: every enemy of the pulled groups comes, while it farms. */
-  const pullsEnemy = (enemy: EnemyState) => pulling() && active && phase === 'farm' && !recovering && !pendingResume && !options.paused() && pulledEnemy(enemy);
+  /** Pull Whole Group on: every enemy of the pulled groups comes, while it farms and at the boss, so kills that heal keep coming. */
+  const pullsEnemy = (enemy: EnemyState) => pulling() && active && phase !== 'portal' && !recovering && !pendingResume && !options.paused() && pulledEnemy(enemy);
 
   // ---- Move On ----
   /** The power Move On waits for: Move At times the map's recommended power. */

@@ -1,14 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { createGrowthPlanner, PLAN_SECONDS, type GrowthContext } from './auto-farm-growth';
-import { createSmartAutoFarmController } from './auto-farm-smart-controller';
-import { createGameBootstrap } from '../game-bootstrap';
-import { createEnemyLifecycle } from '../enemies/enemy-lifecycle';
 import { armorRule } from './forecast-inputs';
 import type { ForecastBuild, ForecastMap, ForecastSite } from './growth-forecast';
 import type { EnemyDefinition } from '../../enemies';
 import type { RewardType } from '../../../../shared/enemy-definitions';
-import type { SpawnSite } from '../../world';
-import type { Movement } from '../player-input-controller';
 import { preparePlayerPowerStats, type PlayerPowerStats } from '../../../../shared/player-power';
 
 const enemy = (overrides: Partial<EnemyDefinition> & { reward: { type: RewardType; amount: number } }): EnemyDefinition =>
@@ -95,71 +90,5 @@ describe('growth planner kill correction', () => {
     for (let second = 1; second <= 120; second++) planner.observe(second * 1_000, 'here', 1, 1, 0);
     for (let frame = 0; frame < 400; frame++) planner.tick(PLAN_SECONDS * 1_000 * 7, 'here', () => live, doing);
     expect(planner.calibration().damage).toBe(1);
-  });
-});
-
-describe('autofarm with the growth planner', () => {
-  const idle: Movement = { x: 0, y: 0, source: 'none' };
-  function setup(next: ForecastMap | null) {
-    const state = createGameBootstrap();
-    state.enemies.length = 0; state.spawnSites.length = 0;
-    Object.assign(state.player, { x: 300, y: 300, attackRange: 200, speed: 200, hp: 800, maxHp: 800 });
-    let now = 0;
-    const lifecycle = createEnemyLifecycle(state.enemies, state.spawnSites, () => {});
-    for (const [index, kind] of (['Bramble', 'Needle'] as const).entries()) {
-      const site: SpawnSite = { id: index, type: kind, x: 1_500 + index * 200, y: 1_500, campName: kind, leashRange: 500, alive: false, respawnAt: 0 };
-      state.spawnSites.push(site); lifecycle.spawnFromSite(site);
-    }
-    const storage = new Map<string, string>();
-    storage.set('wildstat:autofarm-advance:v1', '1');
-    const farm = createSmartAutoFarmController({
-      ...state, mapId: () => 'here', unavailable: () => null, paused: () => false, speed: () => 200, obstacles: () => [],
-      equippedWeapon: () => 'starter_bow', connection: () => 'ready', localIdentity: () => 'me', now: () => now, wallNow: () => now,
-      priorityStorage: () => ({ getItem: key => storage.get(key) ?? null, setItem: (key, value) => { storage.set(key, value); } }),
-      nextPortal: () => next ? { x: 300, y: 250, destination: 'ahead' } : null, previousPortal: () => null, bossUnlocksNext: () => false,
-      power: () => 100,
-      growth: () => context(next),
-    });
-    const run = (seconds: number) => { for (let frame = 0; frame < seconds * 60; frame++) { now += 1_000 / 60; farm.movement(idle, 1 / 60); } };
-    return { farm, run, state };
-  }
-
-  it('moves on when the next map is forecast to grow the build faster, once it has farmed here a while', () => {
-    const s = setup(richer);
-    s.farm.start([]);
-    s.run(10);
-    expect(s.farm.state().phase).toBe('farm');
-    expect(s.farm.bossStatus()).toBe('Weighing Next Map');
-    s.run(120);
-    expect(s.farm.state().phase).toBe('portal');
-  });
-
-  it('leaves the switch to the player with Auto Advance off', () => {
-    const s = setup(richer);
-    s.farm.setAdvance(false);
-    s.farm.start([]);
-    s.run(130);
-    expect(s.farm.state().phase).toBe('farm');
-    expect(s.farm.bossStatus()).toBe('Next Map Open');
-  });
-
-  it('says it stays, and why, when the next map is forecast slower', () => {
-    const poorer = map('ahead', camp('damage', 2_400, 2_400, 3, enemy({ hp: 2_000, reward: { type: 'damage', amount: .1 } })));
-    const s = setup(poorer);
-    s.farm.start([]);
-    s.run(130);
-    expect(s.farm.state().phase).toBe('farm');
-    expect(s.farm.bossStatus()).toMatch(/^Staying · Next Map (\d+% Slower|Too Hard)$/);
-    expect(s.farm.bossStatusReady()).toBe(false);
-  });
-
-  it('stays when nothing ahead is better, deaths aside', () => {
-    const s = setup(null);
-    s.farm.start([]);
-    s.run(30);
-    for (let death = 0; death < 6; death++) s.farm.defeated();
-    s.run(30);
-    expect(s.farm.state().phase).toBe('farm');
-    expect(s.farm.growthPlan()?.plan).not.toBeNull();
   });
 });

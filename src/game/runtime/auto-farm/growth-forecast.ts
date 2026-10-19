@@ -21,7 +21,12 @@ import {
 } from '../../../balance/death-model';
 import { addAttackSpeedRating } from '../../../../shared/stat-rating';
 import { rankFarmCandidates, pickRankedCandidate, AUTO_REPLAN_SECONDS, type FarmReward } from './auto-farm-plan';
-import { AUTO_FARM_DEFEAT_LIMIT, AUTO_FARM_DEFEAT_WINDOW_MS, AUTO_FARM_REACH_MARGIN, BITE_SHARE } from './auto-farm-smart-controller';
+import { AUTO_FARM_REACH_MARGIN } from './auto-farm-controller';
+/** Deaths in a window that end a farm here: what a forecast counts a map's deaths against. */
+export const AUTO_FARM_DEFEAT_LIMIT = 5;
+export const AUTO_FARM_DEFEAT_WINDOW_MS = 180_000;
+/** An enemy hit this big a share of max health is stepped out of even at full health. */
+export const BITE_SHARE = .05;
 import { rangedEnemyHoldBand } from '../enemies/ranged-enemy-range';
 import { AUTO_FARM_EVASION, orbitRadii } from './auto-farm-dodge';
 import { contactCapacity, kitedHitInterval, perkFightLoss, tankableCount, TANK_RESERVE, type ChaserThreat, type TankPerks } from './auto-farm-kite-model';
