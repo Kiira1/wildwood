@@ -72,11 +72,10 @@ describe("buying from the Card Seller", () => {
     const { rotation, cardId } = offerWith("boss");
     const f = atTheStall(rotation);
     f.db.playerOre.key.delete(`${f.ctx.sender.toHexString()}:starshard`);
-    addOres(f.ctx, f.ctx.sender, "starshard", 4);
     const ore = Object.keys(cardShopPrice(cardId)!).find(id => id !== "starshard")!;
-    expect(() => f.buy(cardId)).toThrow(/You need 120 .+ Ore and 5 Starshard\./);
+    expect(() => f.buy(cardId)).toThrow(/You need 60 .+ Ore and 1 Starshard\./);
     expect(oreCount(f.ctx, f.ctx.sender, ore)).toBe(500);
-    expect(oreCount(f.ctx, f.ctx.sender, "starshard")).toBe(4);
+    expect(oreCount(f.ctx, f.ctx.sender, "starshard")).toBe(0);
     expect(cardCount(f.ctx, f.ctx.sender, cardId)).toBe(0);
     expect(f.bought()).toEqual([]);
   });

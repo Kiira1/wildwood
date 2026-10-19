@@ -40,7 +40,7 @@ export function cardShopOffer(rotation: number): string[] {
 const PRICES: Readonly<Record<CardRarity, { ore: number; starshard: number }>> = {
   regular: { ore: 30, starshard: 0 },
   elite: { ore: 60, starshard: 2 },
-  boss: { ore: 120, starshard: 5 },
+  boss: { ore: 60, starshard: 1 },
 };
 
 /** What a card costs at the Card Seller, or null for no such card. */

@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.914.9": [
+    "Boss cards at the Card Seller cost 1 Starshard and half the ore, down from 5 Starshards and 120 ore",
+  ],
   "0.914.8": [
     "Guests get the daily gems too, not only registered accounts",
     "A card shield now takes all of the hit that breaks it, so it can stop a blow that would one-shot you",
@@ -3586,6 +3589,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.914.9": "2026-10-18",
   "0.914.8": "2026-10-18",
   "0.914.7": "2026-10-18",
   "0.914.6": "2026-10-18",

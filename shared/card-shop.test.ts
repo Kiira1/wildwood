@@ -49,14 +49,14 @@ describe("prices", () => {
   it("are the card's map-grade ore by rarity, with Starshards for elite and boss cards", () => {
     expect(cardShopPrice("needle_card")).toEqual({ copper_ore: 30 });
     expect(cardShopPrice("king_slime_card")).toEqual({ copper_ore: 60, starshard: 2 });
-    expect(cardShopPrice("dragon_card")).toEqual({ copper_ore: 120, starshard: 5 });
-    expect(cardShopPrice("magmalisk_card")).toEqual({ copper_ore: 120, starshard: 5 });
+    expect(cardShopPrice("dragon_card")).toEqual({ copper_ore: 60, starshard: 1 });
+    expect(cardShopPrice("magmalisk_card")).toEqual({ copper_ore: 60, starshard: 1 });
     expect(cardShopPrice("depth_raider_card")).toEqual({ iron_ore: 30 });
-    expect(cardShopPrice("tempest_kirin_card")).toEqual({ iron_ore: 120, starshard: 5 });
+    expect(cardShopPrice("tempest_kirin_card")).toEqual({ iron_ore: 60, starshard: 1 });
     expect(cardShopPrice("fen_prowler_card")).toEqual({ mithril_ore: 30 });
     expect(cardShopPrice("harvest_oracle_card")).toEqual({ mithril_ore: 60, starshard: 2 });
     expect(cardShopPrice("circuit_prowler_card")).toEqual({ adamant_ore: 30 });
-    expect(cardShopPrice("aegis_prime_card")).toEqual({ adamant_ore: 120, starshard: 5 });
+    expect(cardShopPrice("aegis_prime_card")).toEqual({ adamant_ore: 60, starshard: 1 });
     expect(cardShopPrice("not_a_card")).toBeNull();
   });
 
