@@ -117,6 +117,7 @@ import RefreshDailyQuestsReducer from "../refresh_daily_quests_reducer";
 import RegisterClientVersionReducer from "../register_client_version_reducer";
 import RegisterProtocolReducer from "../register_protocol_reducer";
 import RemoveCardReducer from "../remove_card_reducer";
+import RenameBuildReducer from "../rename_build_reducer";
 import ReportAutoFarmEnemyDefeatsReducer from "../report_auto_farm_enemy_defeats_reducer";
 import ReportChatMessageReducer from "../report_chat_message_reducer";
 import ReportEnemyDefeatsReducer from "../report_enemy_defeats_reducer";
@@ -302,6 +303,7 @@ export type RefreshDailyQuestsParams = __Infer<typeof RefreshDailyQuestsReducer>
 export type RegisterClientVersionParams = __Infer<typeof RegisterClientVersionReducer>;
 export type RegisterProtocolParams = __Infer<typeof RegisterProtocolReducer>;
 export type RemoveCardParams = __Infer<typeof RemoveCardReducer>;
+export type RenameBuildParams = __Infer<typeof RenameBuildReducer>;
 export type ReportAutoFarmEnemyDefeatsParams = __Infer<typeof ReportAutoFarmEnemyDefeatsReducer>;
 export type ReportChatMessageParams = __Infer<typeof ReportChatMessageReducer>;
 export type ReportEnemyDefeatsParams = __Infer<typeof ReportEnemyDefeatsReducer>;

@@ -300,6 +300,12 @@
       "ricochet:f32",
       "piercingShot:f32"
     ],
+    "my_build_names": [
+      "key:string",
+      "identity:identity",
+      "slot:u8",
+      "name:string"
+    ],
     "my_builds": [
       "key:string",
       "identity:identity",

@@ -3,6 +3,15 @@ import { MAX_ACTIVE_CARD_SLOTS, type ActiveCards } from "./active-cards";
 
 /** How many Builds a player can save. */
 export const BUILD_SLOTS = 3;
+/** The longest name a Build can have. */
+export const BUILD_NAME_MAX = 20;
+
+/** A Build name as kept: printable, single-spaced, trimmed, at most BUILD_NAME_MAX characters ("" is no name). */
+export function cleanBuildName(name: unknown) {
+  return String(name ?? "").replace(/\s+/g, " ").replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, BUILD_NAME_MAX).trim();
+}
+/** What a Build is called: its name, or "Build 1" and so on. */
+export const buildLabel = (slot: number, name?: string | null) => name || `Build ${slot + 1}`;
 
 export type BuildGear = { HEAD: string; CHEST: string; FEET: string; HAND: string };
 /** A saved build as the client reads it: the gear in each slot and the active cards by type. */

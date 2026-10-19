@@ -1,7 +1,7 @@
 import { SenderError, table, t } from "spacetimedb/server";
 import type { Identity } from "spacetimedb";
 import type spacetimedbType from "./index";
-import { BUILD_SLOTS, parseBuildCards, type BuildGear } from "../../shared/builds";
+import { BUILD_SLOTS, cleanBuildName, parseBuildCards, type BuildGear } from "../../shared/builds";
 import { activeCardsFor, restoreActiveCards } from "./active-cards";
 import { readPlayerProgress } from "./wide-stats";
 
@@ -17,6 +17,14 @@ export const playerBuild = table({ name: "player_build", public: false }, {
   gearJson: t.string(),
   cardsJson: t.string(),
   savedAt: t.timestamp(),
+});
+
+/** A Build's name, kept apart so the Builds a client reads keep their shape (no client has to reload for it). */
+export const playerBuildName = table({ name: "player_build_name", public: false }, {
+  key: t.string().primaryKey(),
+  identity: t.identity().index("btree"),
+  slot: t.u8(),
+  name: t.string(),
 });
 
 type Ctx = any;
@@ -61,11 +69,25 @@ export function applyBuildCardsFor(ctx: Ctx, { slot }: { slot: number }, deps: B
   deps.afterCardsChanged(ctx, ctx.sender);
 }
 
+/** Names a build slot; an empty name gives it back its number ("Build 1"). */
+export function renameBuildFor(ctx: Ctx, { slot, name }: { slot: number; name: string }, deps: BuildDeps) {
+  deps.requireControllingPlayer(ctx);
+  validSlot(slot);
+  const clean = cleanBuildName(name), key = buildKey(ctx.sender, slot);
+  const existing = ctx.db.playerBuildName.key.find(key);
+  if (!clean) { if (existing) ctx.db.playerBuildName.key.delete(key); return; }
+  const row = { key, identity: ctx.sender, slot, name: clean };
+  if (existing) ctx.db.playerBuildName.key.update(row); else ctx.db.playerBuildName.insert(row);
+}
+
 export function registerBuilds(spacetimedb: typeof spacetimedbType, deps: BuildDeps) {
   const saveBuild = spacetimedb.reducer({ slot: t.u8() }, (ctx: any, args: { slot: number }) => saveBuildFor(ctx, args, deps));
   const applyBuildCards = spacetimedb.reducer({ slot: t.u8() }, (ctx: any, args: { slot: number }) => applyBuildCardsFor(ctx, args, deps));
+  const renameBuild = spacetimedb.reducer({ slot: t.u8(), name: t.string() }, (ctx: any, args: { slot: number; name: string }) => renameBuildFor(ctx, args, deps));
   const myBuilds = spacetimedb.view({ name: "my_builds", public: true }, t.array(playerBuild.rowType),
     (ctx: any) => [...ctx.db.playerBuild.identity.filter(ctx.sender)]);
-  return { saveBuild, applyBuildCards, myBuilds };
+  const myBuildNames = spacetimedb.view({ name: "my_build_names", public: true }, t.array(playerBuildName.rowType),
+    (ctx: any) => [...ctx.db.playerBuildName.identity.filter(ctx.sender)]);
+  return { saveBuild, applyBuildCards, renameBuild, myBuilds, myBuildNames };
 }
 

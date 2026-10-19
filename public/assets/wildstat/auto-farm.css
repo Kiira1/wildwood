@@ -863,6 +863,11 @@
 .builds-tab-list { display: flex; flex-direction: column; gap: 10px; }
 .builds-tab-card { display: flex; flex-direction: column; gap: 6px; padding: 12px; border: 1px solid rgba(255,255,255,.14); border-radius: 10px; background: rgba(255,255,255,.04); }
 .builds-tab-card strong { font-size: 15px; color: #fff; }
+.builds-tab-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 32px; }
+.builds-tab-head strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.builds-tab-rename { flex: none; min-height: 32px; padding: 0 12px; border: 1px solid #555; border-radius: 8px; background: linear-gradient(#3a3a3a, #262626); color: #fff; font: inherit; font-size: 13px; font-weight: 700; }
+.builds-tab-rename:disabled { opacity: .5; }
+.builds-tab-name { flex: 1; min-width: 0; min-height: 32px; padding: 0 10px; border: 1px solid #8a8a8a; border-radius: 8px; background: #141414; color: #fff; font: inherit; font-size: 15px; font-weight: 700; }
 .builds-tab-detail { font-size: 13px; line-height: 1.4; color: rgba(255,255,255,.72); }
 .builds-tab-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px; }
 .builds-tab-actions button { min-height: 44px; border: 1px solid #555; border-radius: 8px; background: linear-gradient(#3a3a3a, #262626); color: #fff; font: inherit; font-size: 13px; font-weight: 700; }

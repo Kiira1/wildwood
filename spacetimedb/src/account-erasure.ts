@@ -112,6 +112,7 @@ export const ERASURE_TARGETS: readonly ErasureTarget[] = [
   { table: "playerActiveCard", columns: ["identity"], pk: "identity", mode: "key" },
   { table: "playerGearSlots", columns: ["identity"], pk: "key", mode: "index", index: "identity" },
   { table: "playerBuild", columns: ["identity"], pk: "key", mode: "index", index: "identity" },
+  { table: "playerBuildName", columns: ["identity"], pk: "key", mode: "index", index: "identity" },
   { table: "playerCardMeter", columns: ["identity"], pk: "key", mode: "index", index: "identity" },
   { table: "playerCardShopPurchase", columns: ["identity"], pk: "key", mode: "index", index: "identity" },
   { table: "playerBossCardRoll", columns: ["identity"], pk: "key", mode: "index", index: "identity" },

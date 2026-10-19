@@ -145,6 +145,7 @@ import RefreshDailyQuestsReducer from "./refresh_daily_quests_reducer";
 import RegisterClientVersionReducer from "./register_client_version_reducer";
 import RegisterProtocolReducer from "./register_protocol_reducer";
 import RemoveCardReducer from "./remove_card_reducer";
+import RenameBuildReducer from "./rename_build_reducer";
 import ReportAutoFarmEnemyDefeatsReducer from "./report_auto_farm_enemy_defeats_reducer";
 import ReportChatMessageReducer from "./report_chat_message_reducer";
 import ReportEnemyDefeatsReducer from "./report_enemy_defeats_reducer";
@@ -285,6 +286,7 @@ import MyAdGemRewardRow from "./my_ad_gem_reward_table";
 import MyAudioSettingsRow from "./my_audio_settings_table";
 import MyBalanceApologyNoticeRow from "./my_balance_apology_notice_table";
 import MyBowSkillsRow from "./my_bow_skills_table";
+import MyBuildNamesRow from "./my_build_names_table";
 import MyBuildsRow from "./my_builds_table";
 import MyCardDropRow from "./my_card_drop_table";
 import MyCardShopPurchasesRow from "./my_card_shop_purchases_table";
@@ -1177,6 +1179,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, MyBowSkillsRow),
+  myBuildNames: __table({
+    name: 'my_build_names',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MyBuildNamesRow),
   myBuilds: __table({
     name: 'my_builds',
     indexes: [
@@ -1621,6 +1630,7 @@ const reducersSchema = __reducers(
   __reducerSchema("register_client_version", RegisterClientVersionReducer),
   __reducerSchema("register_protocol", RegisterProtocolReducer),
   __reducerSchema("remove_card", RemoveCardReducer),
+  __reducerSchema("rename_build", RenameBuildReducer),
   __reducerSchema("report_auto_farm_enemy_defeats", ReportAutoFarmEnemyDefeatsReducer),
   __reducerSchema("report_chat_message", ReportChatMessageReducer),
   __reducerSchema("report_enemy_defeats", ReportEnemyDefeatsReducer),

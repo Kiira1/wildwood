@@ -1,19 +1,28 @@
 import { tables, type DbConnection } from "../../module_bindings";
-import { BUILD_SLOTS, parseBuildCards, parseBuildGear, type SavedBuild } from "../../../shared/builds";
+import { BUILD_SLOTS, cleanBuildName, parseBuildCards, parseBuildGear, type SavedBuild } from "../../../shared/builds";
 import { reducerErrorMessage } from "./reducer-errors";
 import { withRequestDeadline } from "./request-deadline";
 
 type Result = { ok: boolean; error?: string };
 type Target = { connection: DbConnection; isCurrent: () => boolean };
 
-/** This account's saved Builds, from the my_builds view, and the save_build and apply_build_cards calls. */
+/** This account's saved Builds and their names (my_builds, my_build_names), and the save, apply and rename calls. */
 export function createBuildRows(notify: () => void) {
   let target: Target | null = null;
   let builds: (SavedBuild | null)[] = Array.from({ length: BUILD_SLOTS }, () => null);
+  let names: string[] = Array.from({ length: BUILD_SLOTS }, () => "");
 
   function watch(connection: DbConnection, isCurrent: () => boolean) {
     target = { connection, isCurrent };
     builds = Array.from({ length: BUILD_SLOTS }, () => null);
+    names = Array.from({ length: BUILD_SLOTS }, () => "");
+    const readNames = () => {
+      if (!isCurrent()) return;
+      const next = Array.from({ length: BUILD_SLOTS }, () => "");
+      for (const row of connection.db.myBuildNames.iter()) if (row.slot < BUILD_SLOTS) next[row.slot] = row.name;
+      names = next;
+      notify();
+    };
     const read = () => {
       if (!isCurrent()) return;
       const next: (SavedBuild | null)[] = Array.from({ length: BUILD_SLOTS }, () => null);
@@ -25,6 +34,8 @@ export function createBuildRows(notify: () => void) {
     };
     connection.db.myBuilds.onInsert(read); connection.db.myBuilds.onUpdate(read); connection.db.myBuilds.onDelete(read);
     connection.subscriptionBuilder().onApplied(read).subscribe([tables.myBuilds]);
+    connection.db.myBuildNames.onInsert(readNames); connection.db.myBuildNames.onUpdate(readNames); connection.db.myBuildNames.onDelete(readNames);
+    connection.subscriptionBuilder().onApplied(readNames).subscribe([tables.myBuildNames]);
   }
 
   async function call(send: (connection: DbConnection) => Promise<unknown>): Promise<Result> {
@@ -44,6 +55,8 @@ export function createBuildRows(notify: () => void) {
       builds: (): readonly (SavedBuild | null)[] => builds,
       saveBuild: (slot: number) => call(connection => connection.reducers.saveBuild({ slot })),
       applyBuildCards: (slot: number) => call(connection => connection.reducers.applyBuildCards({ slot })),
+      buildNames: (): readonly string[] => names,
+      renameBuild: (slot: number, name: string) => call(connection => connection.reducers.renameBuild({ slot, name: cleanBuildName(name) })),
     },
   };
 }

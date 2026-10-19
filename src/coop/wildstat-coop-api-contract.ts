@@ -42,6 +42,8 @@ type ExpectedApiKey =
   | "builds"
   | "saveBuild"
   | "applyBuildCards"
+  | "buildNames"
+  | "renameBuild"
   | "verifyAge"
   | "ageVerified"
   | "ageBlocked"

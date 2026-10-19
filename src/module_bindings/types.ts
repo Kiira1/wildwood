@@ -981,6 +981,9 @@ export type MyBalanceApologyNotice = __Infer<typeof MyBalanceApologyNotice>;
 export const MyBowSkills = __t.object("MyBowSkills", {});
 export type MyBowSkills = __Infer<typeof MyBowSkills>;
 
+export const MyBuildNames = __t.object("MyBuildNames", {});
+export type MyBuildNames = __Infer<typeof MyBuildNames>;
+
 export const MyBuilds = __t.object("MyBuilds", {});
 export type MyBuilds = __Infer<typeof MyBuilds>;
 
@@ -1387,6 +1390,14 @@ export const PlayerBuild = __t.object("PlayerBuild", {
   savedAt: __t.timestamp(),
 });
 export type PlayerBuild = __Infer<typeof PlayerBuild>;
+
+export const PlayerBuildName = __t.object("PlayerBuildName", {
+  key: __t.string(),
+  identity: __t.identity(),
+  slot: __t.u8(),
+  name: __t.string(),
+});
+export type PlayerBuildName = __Infer<typeof PlayerBuildName>;
 
 export const PlayerCard = __t.object("PlayerCard", {
   key: __t.string(),

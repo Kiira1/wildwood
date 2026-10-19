@@ -6,6 +6,8 @@ export type BuildPort = {
   builds?: () => readonly (SavedBuild | null)[];
   saveBuild?: (slot: number) => Promise<Result>;
   applyBuildCards?: (slot: number) => Promise<Result>;
+  buildNames?: () => readonly string[];
+  renameBuild?: (slot: number, name: string) => Promise<Result>;
 };
 export type BuildActions = ReturnType<typeof createBuildActions>;
 
@@ -27,6 +29,9 @@ export function createBuildActions(o: {
   return {
     builds: () => o.coop()?.builds?.() ?? [],
     save: async (slot: number): Promise<Result> => o.coop()?.saveBuild?.(slot) ?? { ok: false, error: "Not Connected" },
+    /** Each slot's name, "" for none (shown as Build 1 and so on). */
+    names: (): readonly string[] => o.coop()?.buildNames?.() ?? [],
+    rename: async (slot: number, name: string): Promise<Result> => o.coop()?.renameBuild?.(slot, name) ?? { ok: false, error: "Not Connected" },
     async equip(slot: number): Promise<Result & { missingGear?: number }> {
       const reason = o.blocked();
       if (reason) return { ok: false, error: reason };
