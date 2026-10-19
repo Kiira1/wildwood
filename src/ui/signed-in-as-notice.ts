@@ -11,7 +11,7 @@ export type SignedInAsNoticeDependencies = {
   root?: Document;
 };
 
-const BUTTON_STYLE = "min-height:36px;padding:6px 12px;border:1px solid #6b6b6b;border-radius:8px;"
+const BUTTON_STYLE = "margin:0;min-height:36px;padding:6px 12px;border:1px solid #6b6b6b;border-radius:8px;"
   + "background:#2a2a2a;color:#fff;font:inherit;font-size:13px;font-weight:800;cursor:pointer";
 
 export function createSignedInAsNotice(dependencies: SignedInAsNoticeDependencies) {
@@ -20,8 +20,9 @@ export function createSignedInAsNotice(dependencies: SignedInAsNoticeDependencie
   strip.id = "signedInAsNotice";
   strip.setAttribute("role", "status");
   strip.setAttribute("aria-live", "polite");
-  // Styled inline like #duplicateLoginWarning, so shipping it needs no stylesheet change.
-  strip.setAttribute("style", "position:fixed;z-index:12;top:calc(env(safe-area-inset-top, 0px) + 8px);left:50%;"
+  // Styled inline like #duplicateLoginWarning, so shipping it needs no stylesheet change. Above the chat and nav bars,
+  // so it never hides the health bar.
+  strip.setAttribute("style", "position:fixed;z-index:12;bottom:calc(env(safe-area-inset-bottom, 0px) + 124px);left:50%;"
     + "transform:translateX(-50%);width:max-content;max-width:calc(100vw - 32px);box-sizing:border-box;display:none;"
     + "flex-wrap:wrap;align-items:center;justify-content:center;gap:8px;padding:8px 12px;border:1px solid #4a4a4a;"
     + "border-radius:10px;background:rgba(10,10,10,.92);color:#fff;font-size:13px;font-weight:700;line-height:1.35;text-align:center");
