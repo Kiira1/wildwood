@@ -14,7 +14,7 @@ export function createGameMailbox(button: HTMLButtonElement, versionButton: HTML
     claim: async id => coop?.claimMailboxGift?.(id),
     messages: () => {
       const rows: MailboxCard[] = [...(coop?.mailboxMessages?.() ?? [])];
-      if (coop?.dailyGemBonusClaimable?.() && coop?.accountState?.().signedIn) rows.push({
+      if (coop?.dailyGemBonusClaimable?.()) rows.push({
         id: `daily:${Math.floor(Date.now() / 86_400_000)}`, title: "Your daily gems", gems: 7n,
         body: "Welcome back! Here's your daily gift. Thanks for playing WildStat.",
         read: false, claimed: false, createdAtMs: 0, action: async () => coop.claimDailyGemBonus(),

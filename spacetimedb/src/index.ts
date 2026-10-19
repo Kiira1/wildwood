@@ -1828,7 +1828,7 @@ function enterWorldPresence(ctx: any, tabId: string, forceTakeover = false, supp
     existingProfile = repairModeratedDisplayName(ctx, existingProfile);
   }
   ensureGemWallet(ctx, ctx.sender);
-  if (hasSpacetimeAuthAccount(ctx)) ensureDailyGemBonusState(ctx, ctx.sender);
+  ensureDailyGemBonusState(ctx, ctx.sender);
 
   const lifetime = ensurePlayerLifetime(ctx);
 
@@ -2945,7 +2945,6 @@ export const speedUpResearchWithGems = spacetimedb.reducer((ctx) => {
 
 export const claimDailyGemBonus = spacetimedb.reducer((ctx) => {
   requireControllingPlayer(ctx);
-  if (!hasSpacetimeAuthAccount(ctx)) throw new SenderError("Register an account to claim daily Gems.");
   const dayKey = currentUtcDayKey(ctx);
   const state = ensureDailyGemBonusState(ctx, ctx.sender);
   if (state.claimableDayKey !== dayKey) throw new SenderError("Today's daily Gems are already claimed.");
@@ -2954,7 +2953,7 @@ export const claimDailyGemBonus = spacetimedb.reducer((ctx) => {
     identity: ctx.sender,
     delta: DAILY_LOGIN_GEM_BONUS,
     kind: "daily_login_bonus",
-    note: "Registered-account daily login bonus claimed.",
+    note: "Daily login bonus claimed.",
     externalReference: dailyGemBonusClaimReference(ctx.sender, dayKey, state.claimCycle),
   });
   ctx.db.dailyGemBonus.identity.update({

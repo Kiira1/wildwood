@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.914.8": [
+    "Guests get the daily gems too, not only registered accounts",
+  ],
   "0.914.7": [
     "Portals and teleports no longer wait for your last kills to count, so they stop pulling you back or freezing you",
   ],
@@ -3582,6 +3585,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.914.8": "2026-10-18",
   "0.914.7": "2026-10-18",
   "0.914.6": "2026-10-18",
   "0.914.5": "2026-10-18",
