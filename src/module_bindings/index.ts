@@ -63,6 +63,7 @@ import ClaimHatchetReducer from "./claim_hatchet_reducer";
 import ClaimMailboxGiftReducer from "./claim_mailbox_gift_reducer";
 import ClaimPickaxeReducer from "./claim_pickaxe_reducer";
 import ClaimStarterStaffReducer from "./claim_starter_staff_reducer";
+import ClaimStarterWeaponReducer from "./claim_starter_weapon_reducer";
 import CollectGuildMemberQuestsReducer from "./collect_guild_member_quests_reducer";
 import CompleteOnboardingStepReducer from "./complete_onboarding_step_reducer";
 import ConfigureGemCommerceReducer from "./configure_gem_commerce_reducer";
@@ -169,6 +170,7 @@ import SaveBuildReducer from "./save_build_reducer";
 import SavePlayerProgressReducer from "./save_player_progress_reducer";
 import SeedTemporaryGuildReducer from "./seed_temporary_guild_reducer";
 import SelectEquipmentCopyReducer from "./select_equipment_copy_reducer";
+import SellGradedItemReducer from "./sell_graded_item_reducer";
 import SendChatMessageReducer from "./send_chat_message_reducer";
 import SendChatReplyReducer from "./send_chat_reply_reducer";
 import SendSocialMessageReducer from "./send_social_message_reducer";
@@ -337,6 +339,7 @@ import MySocialMessagesWithReactionsRow from "./my_social_messages_with_reaction
 import MySoulLevelRow from "./my_soul_level_table";
 import MySoulStatsRow from "./my_soul_stats_table";
 import MyStaffSkillsRow from "./my_staff_skills_table";
+import MyStarterWeaponRow from "./my_starter_weapon_table";
 import MySwordSkillsRow from "./my_sword_skills_table";
 import MyToolsRow from "./my_tools_table";
 import MyUpgradeBenchRow from "./my_upgrade_bench_table";
@@ -1554,6 +1557,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, MyStaffSkillsRow),
+  myStarterWeapon: __table({
+    name: 'my_starter_weapon',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MyStarterWeaponRow),
   mySwordSkills: __table({
     name: 'my_sword_skills',
     indexes: [
@@ -1643,6 +1653,7 @@ const reducersSchema = __reducers(
   __reducerSchema("claim_mailbox_gift", ClaimMailboxGiftReducer),
   __reducerSchema("claim_pickaxe", ClaimPickaxeReducer),
   __reducerSchema("claim_starter_staff", ClaimStarterStaffReducer),
+  __reducerSchema("claim_starter_weapon", ClaimStarterWeaponReducer),
   __reducerSchema("collect_guild_member_quests", CollectGuildMemberQuestsReducer),
   __reducerSchema("complete_onboarding_step", CompleteOnboardingStepReducer),
   __reducerSchema("configure_gem_commerce", ConfigureGemCommerceReducer),
@@ -1749,6 +1760,7 @@ const reducersSchema = __reducers(
   __reducerSchema("save_player_progress", SavePlayerProgressReducer),
   __reducerSchema("seed_temporary_guild", SeedTemporaryGuildReducer),
   __reducerSchema("select_equipment_copy", SelectEquipmentCopyReducer),
+  __reducerSchema("sell_graded_item", SellGradedItemReducer),
   __reducerSchema("send_chat_message", SendChatMessageReducer),
   __reducerSchema("send_chat_reply", SendChatReplyReducer),
   __reducerSchema("send_social_message", SendSocialMessageReducer),

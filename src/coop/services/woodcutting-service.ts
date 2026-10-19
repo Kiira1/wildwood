@@ -12,20 +12,19 @@ const toMs = (at: { microsSinceUnixEpoch: bigint }) => Number(at.microsSinceUnix
 
 /**
  * This account's woodcutting, from the caller-scoped my_woodcutting and my_chopped_trees views, as mining's
- * (mining-service.ts): the Woodcutting stat, whether the Smith has given the hatchet, and when each stump was
- * felled. Chops and the hatchet go through the chop_tree and claim_hatchet reducers; the server judges each.
+ * (mining-service.ts): the Woodcutting stat and when each stump was felled. Chops go through the chop_tree reducer;
+ * the server judges each.
  */
 export function createWoodcuttingRows(notify: () => void) {
   let target: Target | null = null;
   let woodcutting = 0;
-  let hatchet = false;
   let last: TreeChop | null = null;
   let felled = new Map<number, number>();
   let chopListener: ((result: TreeChop) => void) | null = null;
 
   function watch(connection: DbConnection, isCurrent: () => boolean) {
     target = { connection, isCurrent };
-    woodcutting = 0; hatchet = false; last = null; felled = new Map();
+    woodcutting = 0; last = null; felled = new Map();
     // The row found on connect is an old chop, not one to announce.
     let hydrated = false;
     const readWoodcutting = () => {
@@ -33,7 +32,6 @@ export function createWoodcuttingRows(notify: () => void) {
       const [row] = [...connection.db.myWoodcutting.iter()];
       const previous = last;
       woodcutting = normalizeWoodcutting(row?.woodcutting);
-      hatchet = Boolean(row);
       last = row && row.treesChopped > 0 ? { treeId: row.lastTreeId, treesChopped: row.treesChopped } : null;
       notify();
       if (hydrated && last && last.treesChopped !== previous?.treesChopped) chopListener?.(last);
@@ -67,15 +65,13 @@ export function createWoodcuttingRows(notify: () => void) {
   return {
     watch,
     api: {
-      /** The Woodcutting stat: 0 before the Smith's hatchet. */
+      /** The Woodcutting stat: 0 before the first tree. */
       woodcutting: () => woodcutting,
-      hasHatchet: () => hatchet,
       /** When the player felled this tree, in epoch ms, while it is still on the server's list; null when they have not. */
       choppedTreeAt: (treeId: number): number | null => felled.get(treeId) ?? null,
       /** Called with each new chop the server takes (not the standing row found on connect). */
       setOnTreeChopped(callback: ((result: TreeChop) => void) | null) { chopListener = callback; },
       chopTree: (treeId: number) => call(connection => connection.reducers.chopTree({ treeId })),
-      claimHatchet: () => call(connection => connection.reducers.claimHatchet({})),
     },
   };
 }

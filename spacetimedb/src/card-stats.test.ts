@@ -70,7 +70,7 @@ describe("cards on the server", () => {
     expect(after.crit.critChance).toBeCloseTo(before.crit.critChance + .01, 9);
     expect(after.crit.critMultiplier).toBeCloseTo(before.crit.critMultiplier * 1.06, 9);
     expect(after.cap.raise).toBeCloseTo(before.cap.raise + .25, 9);
-    expect(after.speed).toBeCloseTo(before.speed * 1.12, 6);
+    expect(after.speed).toBeCloseTo(before.speed * 1.1, 6);
   });
 });
 

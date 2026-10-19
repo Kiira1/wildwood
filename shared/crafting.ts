@@ -34,7 +34,7 @@ const byGrade = <T>(values: readonly T[]) => Object.fromEntries(GEAR_GRADES.map(
 /** The craft skill level a grade needs, spread from 1 to 90. */
 export const CRAFT_LEVEL: Readonly<Record<GearGrade, number>> = byGrade([1, 3, 6, 10, 15, 20, 26, 32, 39, 46, 54, 62, 71, 80, 90]);
 
-/** Each four grades take the next ore and wood, as the veins and stands open with those grades' maps. */
+/** Each four grades take the next ore and wood, the veins and stands deeper in the hills and the grove. */
 const ORES = ["copper_ore", "iron_ore", "mithril_ore", "adamant_ore"] as const;
 /** The recipe's size, about 1.3x a grade; the harder ore of each band makes it slower still. */
 const AMOUNTS = byGrade([10, 13, 17, 22, 28, 36, 46, 60, 80, 100, 130, 170, 220, 290, 380]);

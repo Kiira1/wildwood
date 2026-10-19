@@ -11,21 +11,19 @@ type Target = { connection: DbConnection; isCurrent: () => boolean };
 const toMs = (at: { microsSinceUnixEpoch: bigint }) => Number(at.microsSinceUnixEpoch / 1000n);
 
 /**
- * This account's mining, from the caller-scoped my_mining and my_mined_nodes views: the Mining stat, whether the
- * Smith has given the pickaxe, and when each of the player's bare rocks was broken. Breaks and the pickaxe go
- * through the mine_node and claim_pickaxe reducers; the server judges each and rolls the ore.
+ * This account's mining, from the caller-scoped my_mining and my_mined_nodes views: the Mining stat and when each of
+ * the player's bare rocks was broken. Breaks go through the mine_node reducer; the server judges each and rolls the ore.
  */
 export function createMiningRows(notify: () => void) {
   let target: Target | null = null;
   let mining = 0;
-  let pickaxe = false;
   let last: MiningBreak | null = null;
   let broken = new Map<number, number>();
   let breakListener: ((result: MiningBreak) => void) | null = null;
 
   function watch(connection: DbConnection, isCurrent: () => boolean) {
     target = { connection, isCurrent };
-    mining = 0; pickaxe = false; last = null; broken = new Map();
+    mining = 0; last = null; broken = new Map();
     // The row found on connect is an old break, not one to announce.
     let hydrated = false;
     const readMining = () => {
@@ -33,7 +31,6 @@ export function createMiningRows(notify: () => void) {
       const [row] = [...connection.db.myMining.iter()];
       const previous = last;
       mining = normalizeMining(row?.mining);
-      pickaxe = Boolean(row);
       last = row && row.rocksBroken > 0 ? { nodeId: row.lastNodeId, starshard: row.lastStarshard, rocksBroken: row.rocksBroken } : null;
       notify();
       if (hydrated && last && last.rocksBroken !== previous?.rocksBroken) breakListener?.(last);
@@ -67,17 +64,13 @@ export function createMiningRows(notify: () => void) {
   return {
     watch,
     api: {
-      /** The Mining stat: 0 before the Smith's pickaxe. */
+      /** The Mining stat: 0 before the first rock. */
       mining: () => mining,
-      hasPickaxe: () => pickaxe,
       /** When the player broke this rock, in epoch ms, while it is still on the server's list; null when they have not. */
       minedNodeAt: (nodeId: number): number | null => broken.get(nodeId) ?? null,
       /** Called with each new break the server takes (not the standing row found on connect). */
       setOnMiningBreak(callback: ((result: MiningBreak) => void) | null) { breakListener = callback; },
       mineNode: (nodeId: number) => call(connection => connection.reducers.mineNode({ nodeId })),
-      claimPickaxe: () => call(connection => connection.reducers.claimPickaxe({})),
-      /** The Smith's Starter Staff, handed out like the pickaxe. */
-      claimStarterStaff: () => call(connection => connection.reducers.claimStarterStaff({})),
       /** A graded piece from the Smith for gold, at the price the player saw. */
       buyGradeGear: (itemId: string, expectedPrice: number) =>
         call(connection => connection.reducers.buyGradeGear({ itemId, expectedPrice: BigInt(expectedPrice) })),

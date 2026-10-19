@@ -1,39 +1,30 @@
-import type { CampaignAccess } from '../../../../shared/equipment-access';
+import { ARCANE_CRYSTAL } from '../../../../shared/crafting';
 import {
-  MINING_NODES, MINING_NODE_KINDS, MINING_REACH, MINING_VEINS, miningNodeName, miningVeinMap, miningVeinOpen, type MiningNode, type MiningVein, type RockOreId, type VeinOreId,
+  MINING_NODES, MINING_NODE_KINDS, MINING_REACH, MINING_VEINS, canMineRock, miningNodeName, miningRockNeed, type MiningNode, type RockOreId,
 } from '../../../../shared/mining';
+import { rockOreKinds } from '../../../../shared/ore-bag';
 import { REFINE_ORES } from '../../../../shared/refine';
-import { inTownHills, isTownMap, townRoomAt, TOWN_FEET_OFFSET } from '../../../../shared/town';
-import { monotonicNowMs } from '../../../app/trusted-clock';
-import { isNativePreview } from '../../../app/native-preview';
-import type { Movement } from '../player-input-controller';
+import { inTownHills } from '../../../../shared/town';
 import { miningScene } from '../town/mining-scene';
-import { planTownPath, townFeetClear, type TownPoint } from '../town/town-path';
-import type { PlayerState } from '../types';
+import { townFeetClear, type TownPoint } from '../town/town-path';
+import { createAutoGather, gatherClock, type AutoGatherOptions } from './auto-gather';
 
-/** The ores picked to mine, per device, as Auto Farm's sliders are. */
-export const AUTO_MINE_ORES_KEY = 'wildstat:automine-ores:v1';
+/** The ores picked to mine, per device, as Auto Farm's sliders are. v2 added Arcane Crystal; v1's picks carry over with it on. */
+export const AUTO_MINE_ORES_KEY = 'wildstat:automine-ores:v2';
+const AUTO_MINE_ORES_V1_KEY = 'wildstat:automine-ores:v1';
 /** Whose Auto Mine was on, kept where Auto Farm keeps its own, so an update's reload carries on mining. */
 export const AUTO_MINE_RESUME_KEY = 'wildstat:automine-resume:v1';
 type Store = Pick<Storage, 'getItem' | 'setItem'>;
-type ResumeStore = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
 
-/** What Auto Mine reads of the session: the pickaxe, the player's bare rocks, the server's clock and the unlocks. */
+/** What Auto Mine reads of the session: Mining, the player's bare rocks and the server's clock. */
 export type AutoMineSource = {
-  hasPickaxe?: () => boolean;
+  mining?: () => number;
   minedNodeAt?: (nodeId: number) => number | null;
   serverNowMs?: () => number;
-  savedProgress?: () => CampaignAccess | null | undefined;
 };
 
 /** Where feet stand to mine a rock, from its foot: in front of the stone, else to either side; each within reach. */
 const STAND_SPOTS: readonly (readonly [number, number])[] = [[0, 44], [-44, 34], [44, 34]];
-/** Feet this close to the spot have arrived; a waypoint this close is passed. */
-const ARRIVED = 6, WAYPOINT_REACHED = 8;
-/** Walking that gains less than this in STUCK_MS is stuck, and the way is planned again. */
-const STUCK_GAIN = 4, STUCK_MS = 1_500;
-/** How often the rocks are looked over again, and a failed plan tried again. */
-const CHOOSE_SECONDS = .5, REPLAN_MS = 1_000;
 
 const standSpots = new Map<number, TownPoint | null>();
 /** Where feet stand to mine this rock: the first clear spot by it (null if none is). */
@@ -47,21 +38,22 @@ export function miningStandSpot(node: MiningNode): TownPoint | null {
 }
 
 /**
- * The rock to go to: the nearest of the picked ores, in an open vein, that is not bare; with every one bare, the
- * one that grows back first (`readyAt`). Null when no rock is of a picked ore in an open vein.
+ * The rock to go to: the nearest of the picked ores the player may mine, that is not bare; with every one bare, the
+ * one that grows back first (`readyAt`). Null when no such rock stands anywhere.
  */
 export function chooseMiningRock(options: {
   feet: TownPoint;
-  /** The ores picked; a crystal rock's crystal is never one, so Auto Mine leaves crystal rocks to the player. */
+  /** The ores picked: a vein's ore, or Arcane Crystal for the crystal rocks. */
   ores: ReadonlySet<RockOreId>;
-  open: (vein: MiningVein) => boolean;
+  /** Whether the player may mine this rock now: Mining enough for it, room in the bag. */
+  open: (node: MiningNode) => boolean;
   /** When a rock grows back for the player, or null when it stands now. */
   bareUntil: (node: MiningNode) => number | null;
 }): { node: MiningNode; readyAt: number | null } | null {
   let nearest: MiningNode | null = null, nearestDistance = Infinity;
   let soonest: MiningNode | null = null, soonestAt = Infinity;
   for (const node of MINING_NODES) {
-    if (!options.ores.has(node.ore) || !options.open(MINING_VEINS[node.vein])) continue;
+    if (!options.ores.has(node.ore) || !options.open(node)) continue;
     const spot = miningStandSpot(node);
     if (!spot) continue;
     const until = options.bareUntil(node);
@@ -74,65 +66,41 @@ export function chooseMiningRock(options: {
   return soonest ? { node: soonest, readyAt: soonestAt } : null;
 }
 
-const idle = (): Movement => ({ x: 0, y: 0, source: 'none' });
-const clock = (ms: number) => {
-  const seconds = Math.max(0, Math.ceil(ms / 1_000));
-  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
-};
-
-function readOres(storage: () => Store | undefined): VeinOreId[] {
+/** Every ore it can be set to mine, in the window's order: the veins', then the crystal rocks'. */
+const PICKABLE: readonly RockOreId[] = [...MINING_VEINS.map(vein => vein.ore), ARCANE_CRYSTAL];
+const FIRST_PICKS: RockOreId[] = ['copper_ore', ARCANE_CRYSTAL];
+function readOres(storage: () => Store | undefined): RockOreId[] {
   try {
-    const saved = storage()?.getItem(AUTO_MINE_ORES_KEY);
-    if (saved == null) return ['copper_ore'];
-    const parsed: unknown = JSON.parse(saved);
-    return Array.isArray(parsed) ? MINING_VEINS.map(vein => vein.ore).filter(ore => parsed.includes(ore)) : ['copper_ore'];
-  } catch { return ['copper_ore']; }
+    const saved = storage()?.getItem(AUTO_MINE_ORES_KEY), old = saved == null ? storage()?.getItem(AUTO_MINE_ORES_V1_KEY) : null;
+    if (saved == null && old == null) return FIRST_PICKS;
+    const parsed: unknown = JSON.parse((saved ?? old)!);
+    if (!Array.isArray(parsed)) return FIRST_PICKS;
+    return PICKABLE.filter(ore => parsed.includes(ore) || (saved == null && ore === ARCANE_CRYSTAL));
+  } catch { return FIRST_PICKS; }
 }
 
+/** Whether the player is in the Copper Hills, as far out as the mining runtime works: where Auto Mine's button shows. */
+export const inMiningArea = (x: number, y: number) => inTownHills(x, y, MINING_REACH * 2);
+
 /**
- * Auto Mine: walks out to the Copper Hills and stands by the nearest rock of the picked ores while the mining
- * runtime mines it, then the next. The player's own keys always win; leaving the Town stops it.
+ * Auto Mine: in the Copper Hills, stands by the nearest rock of the picked ores while the mining runtime mines it,
+ * then the next (auto-gather.ts walks it), crystal rocks too once Mining allows. Rocks whose ore finds no bag room
+ * are passed over; with none left it stops. The player's own keys always win; leaving the hills stops it.
  */
-export function createAutoMine(options: {
-  player: PlayerState;
-  mapId: () => string;
+export function createAutoMine(options: AutoGatherOptions & {
   source: () => AutoMineSource | null | undefined;
   storage?: () => Store | undefined;
-  /** Tab-local on the web, as Auto Farm's resume is; kept across an app upgrade on native. */
-  resumeStorage?: () => ResumeStore | undefined;
-  identity?: () => string | undefined;
-  unavailable?: () => string | null;
-  connection?: () => 'ready' | 'recovering' | 'ended';
-  paused?: () => boolean;
-  speed?: () => number;
-  now?: () => number;
-  plan?: (from: TownPoint, to: TownPoint) => TownPoint[] | null;
 }) {
-  const { player } = options;
   const storage = options.storage ?? (() => { try { return window.localStorage; } catch { return undefined; } });
-  const now = options.now ?? monotonicNowMs;
-  const plan = options.plan ?? planTownPath;
   let picked = new Set<RockOreId>(readOres(storage));
-  const resumeStorage = options.resumeStorage ?? (() => { try { return isNativePreview() ? window.localStorage : window.sessionStorage; } catch { return undefined; } });
-  const readResume = () => { try { return resumeStorage()?.getItem(AUTO_MINE_RESUME_KEY) ?? null; } catch { return null; } };
-  const writeResume = () => { try { resumeStorage()?.setItem(AUTO_MINE_RESUME_KEY, options.identity?.() ?? ''); } catch { /* It still runs this session. */ } };
-  const clearResume = () => { try { resumeStorage()?.removeItem(AUTO_MINE_RESUME_KEY); } catch { /* Nothing to carry over. */ } };
-  /** On when the page went away (an update's reload) or the session dropped: it comes back on once it can mine. */
-  let pending = readResume() !== null;
-  let active = false;
-  let status = pending ? 'Resuming Auto Mine' : 'Off';
-  let target: { node: MiningNode; readyAt: number | null } | null = null;
-  let chooseClock = 0;
-  let route: TownPoint[] = [];
-  let goal: TownPoint | null = null;
-  let planFailedAt = -Infinity;
-  /** The headway towards the current waypoint: the closest yet, and when. */
-  let progress: { at: number; distance: number; waypoint: TownPoint | null } = { at: 0, distance: Infinity, waypoint: null };
-
+  /** What a rock gives, for rocks found with no bag room this run: passed over until it is started again. */
+  const full = new Set<string>();
+  const bagKey = (node: MiningNode) => rockOreKinds(node).join('+');
   const serverNow = () => options.source()?.serverNowMs?.() ?? Date.now();
-  const access = () => options.source()?.savedProgress?.();
-  const open = (vein: MiningVein) => miningVeinOpen(vein, access());
-  const feet = (): TownPoint => ({ x: player.x, y: player.y + TOWN_FEET_OFFSET });
+  /** The shared gate, as the mining runtime and the server check it: the rock's Mining. */
+  const allowed = (node: MiningNode) => canMineRock(node, options.source()?.mining?.() ?? 0);
+  const minable = (node: MiningNode) => picked.has(node.ore) && allowed(node);
+  const open = (node: MiningNode) => allowed(node) && !full.has(bagKey(node));
   function bareUntil(node: MiningNode, at = serverNow()) {
     const respawn = MINING_NODE_KINDS[node.kind].respawnSeconds * 1_000;
     const brokenAt = options.source()?.minedNodeAt?.(node.id) ?? null;
@@ -140,135 +108,54 @@ export function createAutoMine(options: {
     // Broken here a moment ago, before the server lists it.
     return miningScene.bare.has(node.id) ? at + respawn : null;
   }
-  const pickedOpen = () => MINING_VEINS.filter(vein => picked.has(vein.ore) && open(vein));
 
-  /** Why it cannot mine now, or null. */
-  function problem() {
-    if (!isTownMap(options.mapId())) return 'Auto Mine Works in the Town';
-    if (!options.source()?.hasPickaxe?.()) return 'Get a Pickaxe from the Smith';
-    if (!pickedOpen().length) return 'Pick an Ore to Mine';
-    return null;
-  }
-
-  function forget() { target = null; route = []; goal = null; chooseClock = 0; progress = { at: 0, distance: Infinity, waypoint: null }; }
-  /** `resume` keeps it to come back on (a dropped session); otherwise it stays off. */
-  function stop(reason = 'Auto Mine Stopped', resume = false) {
-    if (resume && active) pending = true;
-    if (!resume) { pending = false; clearResume(); }
-    active = false;
-    status = reason;
-    forget();
-  }
-  /** Back on after a reload or a dropped session, once in the Town, connected and able to mine, for the same player. */
-  function resumeWhenReady() {
-    if (!pending) return;
-    const saved = readResume(), identity = options.identity?.();
-    if (saved && identity && saved !== identity) { stop('Off'); return; }
-    if (!isTownMap(options.mapId()) || (options.connection && options.connection() !== 'ready') || !options.source()
-      || options.unavailable?.() || options.paused?.() || problem()) return;
-    pending = false;
-    start();
-  }
-  function start() {
-    if (options.connection && options.connection() !== 'ready') { stop('Connect to the Server to Mine'); return false; }
-    const reason = options.unavailable?.() ?? problem();
-    if (reason) { stop(reason); return false; }
-    forget();
-    active = true;
-    pending = false;
-    writeResume();
-    status = 'Starting';
-    return true;
-  }
-
-  /** Steps along the planned walk to `to` (feet); re-plans for a new goal, an empty walk, or no headway. */
-  function walk(to: TownPoint, dt: number): Movement {
-    const at = feet(), clockNow = now();
-    if (!goal || Math.hypot(goal.x - to.x, goal.y - to.y) > 1) { goal = to; route = []; planFailedAt = -Infinity; }
-    if (!route.length) {
-      if (clockNow - planFailedAt < REPLAN_MS) return idle();
-      const planned = plan(at, to);
-      if (!planned) { planFailedAt = clockNow; status = 'No Way There'; return idle(); }
-      route = planned;
-    }
-    while (route.length > 1 && Math.hypot(route[0].x - at.x, route[0].y - at.y) < WAYPOINT_REACHED) route.shift();
-    const waypoint = route[0], distance = Math.hypot(waypoint.x - at.x, waypoint.y - at.y);
-    if (waypoint !== progress.waypoint || distance < progress.distance - STUCK_GAIN) progress = { at: clockNow, distance, waypoint };
-    else if (clockNow - progress.at > STUCK_MS) { route = []; progress.waypoint = null; return idle(); }
-    const step = Math.max(1, (options.speed?.() ?? 300) * dt), magnitude = Math.min(1, distance / step);
-    return { x: (waypoint.x - at.x) / Math.max(distance, 1e-6) * magnitude, y: (waypoint.y - at.y) / Math.max(distance, 1e-6) * magnitude, source: 'steer' };
-  }
-
-  function movement(manual: Movement, dt: number): Movement | null {
-    if (!active) resumeWhenReady();
-    if (!active) return null;
-    if (!isTownMap(options.mapId())) { stop('Auto Mine Stopped: Left the Town'); return null; }
-    const connection = options.connection?.() ?? 'ready';
-    if (connection === 'ended') { stop('Auto Mine Stopped for Sign-In', true); return null; }
-    if (manual.x || manual.y) { status = 'Manual Control'; route = []; goal = null; return manual; }
-    if (connection === 'recovering') { status = 'Reconnecting'; route = []; goal = null; return idle(); }
-    const reason = options.unavailable?.();
-    if (reason) { stop(reason, true); return null; }
-    if (options.paused?.()) { status = 'Paused'; return idle(); }
-    const blocker = problem();
-    if (blocker) { status = blocker; forget(); return idle(); }
-    // In a house: out of its door first.
-    const room = townRoomAt(player.x, player.y);
-    if (room) {
-      target = null;
-      status = 'Leaving the House';
-      const doorway = { x: room.exit.x, y: room.exit.y - 14 }, at = feet();
-      // In the doorway: straight on down and out (the Town's runtime takes them through).
-      if (Math.abs(at.x - doorway.x) < Math.min(12, room.exit.half) && at.y > doorway.y - 12) return { x: 0, y: 1, source: 'steer' };
-      return walk(doorway, dt);
-    }
-    chooseClock -= dt;
-    const stale = target && (!picked.has(target.node.ore) || !open(MINING_VEINS[target.node.vein]) || (target.readyAt === null && bareUntil(target.node) !== null));
-    if (!target || stale || (target.readyAt !== null && chooseClock <= 0)) {
-      target = chooseMiningRock({ feet: feet(), ores: new Set(pickedOpen().map(vein => vein.ore)), open, bareUntil: node => bareUntil(node) });
-      chooseClock = CHOOSE_SECONDS;
-    }
-    if (!target) { status = 'No Rocks of Your Ores'; return idle(); }
-    const spot = miningStandSpot(target.node)!, at = feet();
-    if (Math.hypot(spot.x - at.x, spot.y - at.y) <= ARRIVED) {
-      route = []; goal = null;
-      const name = miningNodeName(target.node);
-      status = target.readyAt !== null ? `Waiting for Rocks to Grow Back · ${clock(target.readyAt - serverNow())}`
-        : miningScene.blocked === 'bag' ? 'Bag Full · Free a Slot for Ore' : `Mining ${name}`;
-      return idle();
-    }
-    const moving = walk(spot, dt);
-    if (moving.source === 'steer') {
-      status = !inTownHills(at.x, at.y) ? 'Walking to the Copper Hills'
-        : target.readyAt !== null ? 'Waiting for Rocks to Grow Back' : `Walking to ${miningNodeName(target.node)}`;
-    }
-    return moving;
-  }
+  const gather = createAutoGather<MiningNode>(options, {
+    name: 'Auto Mine', area: 'the Copper Hills', resumeKey: AUTO_MINE_RESUME_KEY, inArea: inMiningArea,
+    needs() {
+      if (!MINING_NODES.some(minable)) return 'Pick an Ore to Mine';
+      return null;
+    },
+    started: () => full.clear(),
+    choose: feet => chooseMiningRock({ feet, ores: picked, open, bareUntil: node => bareUntil(node) }),
+    stale: target => !picked.has(target.node.ore) || !open(target.node) || (target.readyAt === null && bareUntil(target.node) !== null),
+    spot: node => miningStandSpot(node)!,
+    arrived(target) {
+      if (target.readyAt !== null) return { status: `Waiting for Rocks to Grow Back · ${gatherClock(target.readyAt - serverNow())}` };
+      // The runtime found no room for what this rock gives: other rocks, or stop.
+      if (miningScene.blocked === 'bag') {
+        full.add(bagKey(target.node));
+        return MINING_NODES.some(node => minable(node) && open(node)) ? { status: `Bag Full for ${miningNodeName(target.node)}` }
+          : { status: 'Auto Mine Stopped: Bag Full', stop: true };
+      }
+      return { status: `Mining ${miningNodeName(target.node)}` };
+    },
+    walking: target => target.readyAt !== null ? 'Waiting for Rocks to Grow Back' : `Walking to ${miningNodeName(target.node)}`,
+    noTarget: 'No Rocks of Your Ores',
+  });
 
   return {
-    start,
-    stop,
-    movement,
-    /** Any travel: leaving the Town ends it, and it does not come back on its own. */
-    travelStarted() { if (active || pending) stop('Auto Mine Stopped: Left the Town'); },
-    inTown: () => isTownMap(options.mapId()),
-    problem,
-    state: () => ({ active, waiting: !active && pending, status, target: target?.node ?? null }),
-    picked: (ore: VeinOreId) => picked.has(ore),
-    setPicked(ore: VeinOreId, on: boolean) {
+    ...gather,
+    picked: (ore: RockOreId) => picked.has(ore),
+    setPicked(ore: RockOreId, on: boolean) {
       const next = new Set(picked);
       if (on) next.add(ore); else next.delete(ore);
-      picked = new Set<RockOreId>(MINING_VEINS.map(vein => vein.ore).filter(id => next.has(id)));
+      picked = new Set(PICKABLE.filter(id => next.has(id)));
       try { storage()?.setItem(AUTO_MINE_ORES_KEY, JSON.stringify([...picked])); } catch { /* The picks still apply this session. */ }
-      if (target && !picked.has(target.node.ore)) forget();
+      const target = gather.state().target;
+      if (target && !picked.has(target.ore)) gather.forget();
     },
-    /** Each vein for the window: its ore, whether it is open (or the map that opens it), picked, and its rocks standing now. */
+    /**
+     * Each ore for the window, the veins' then the crystal rocks': whether any of its rocks may be mined (or what opens
+     * them), picked, and how many of those rocks stand now.
+     */
     veins: () => {
       const at = serverNow();
-      return MINING_VEINS.map(vein => {
-        const rocks = MINING_NODES.filter(node => node.ore === vein.ore);
-        return { ore: vein.ore, name: REFINE_ORES[vein.ore].name, open: open(vein), opensWith: miningVeinMap(vein), picked: picked.has(vein.ore),
-          rocks: rocks.length, standing: rocks.filter(node => bareUntil(node, at) === null).length };
+      return PICKABLE.map(ore => {
+        const rocks = MINING_NODES.filter(node => node.ore === ore), mayMine = rocks.filter(allowed);
+        // The lowest Mining that opens any of its rocks: a crystal's first vein.
+        const opensWith = `Mining ${Math.min(...rocks.map(miningRockNeed)).toLocaleString('en-US')}`;
+        return { ore, name: REFINE_ORES[ore].name, open: mayMine.length > 0, opensWith, locked: `Opens at ${opensWith}`, picked: picked.has(ore),
+          rocks: mayMine.length || rocks.length, standing: mayMine.filter(node => bareUntil(node, at) === null).length };
       });
     },
   };

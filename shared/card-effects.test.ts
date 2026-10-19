@@ -92,7 +92,7 @@ describe("card stats", () => {
     expect(stats.critChance).toBeCloseTo(.01, 9);
     expect(stats.critDamage).toBeCloseTo(.06, 9);
     expect(stats.attackCapRaise).toBeCloseTo(.25, 9);
-    expect(stats.moveSpeed).toBeCloseTo(.12, 9);
+    expect(stats.moveSpeed).toBeCloseTo(.1, 9);
     expect(stats.range).toBe(2);
   });
 

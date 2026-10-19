@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { equipmentStatDefinition } from "./equipment-budget";
-import { GEAR_GRADES, GRADE_BONUS_PERCENT, GRADE_GOLD_PRICE, GRADE_MASTERY_LEVEL, armorBonusPercent, armorClassMasteryLevel, gradeForOldBonus, highestGradeFor, oldTierSalePrice } from "./gear-grades";
+import { GEAR_GRADES, GRADE_BONUS_PERCENT, GRADE_GOLD_PRICE, GRADE_MASTERY_LEVEL, armorBonusPercent, armorClassMasteryLevel, gradeForOldBonus, gradeSalePrice, highestGradeFor, oldTierSalePrice } from "./gear-grades";
+import { gradeShopSalePrice } from "./grade-shop";
 
 const oldBonus = (tier: number) => (equipmentStatDefinition(tier, "HEAD").modifiers!.regenerationMultiplierBonus as number) * 100;
 
@@ -43,5 +44,11 @@ describe("gear grades", () => {
   it("buys back an old piece for a quarter of its grade's price", () => {
     expect(oldTierSalePrice(1)).toBe(3);
     expect(oldTierSalePrice(15)).toBe(31);
+  });
+
+  it("sells a graded piece back to the Smith for half its price, rounded down", () => {
+    expect([gradeSalePrice("crude"), gradeSalePrice("epic"), gradeSalePrice("eternal")]).toEqual([60, 135, 620]);
+    for (const grade of GEAR_GRADES) expect(gradeSalePrice(grade)).toBe(Math.floor(GRADE_GOLD_PRICE[grade] / 2));
+    expect([gradeShopSalePrice("rare_bow"), gradeShopSalePrice("eternal_heavy_armor"), gradeShopSalePrice("samurai_hat")]).toEqual([105, 620, undefined]);
   });
 });

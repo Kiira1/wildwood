@@ -67,7 +67,7 @@ describe("the Smith's gear for gold", () => {
 
   it("prices only graded gear", () => {
     expect(gradeShopPrice("eternal_staff")).toBe(GRADE_GOLD_PRICE.eternal);
-    expect(gradeShopPrice("crude_bow")).toBe(12);
+    expect(gradeShopPrice("crude_bow")).toBe(120);
     expect(gradeShopPrice("iron_bow")).toBeUndefined();
     expect(gradeShopPrice(undefined)).toBeUndefined();
   });

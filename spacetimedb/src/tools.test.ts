@@ -21,7 +21,7 @@ const copperTwo = MINING_NODES.filter(node => node.ore === "copper_ore" && node.
 const pine = WOOD_TREE_NODES.find(tree => tree.kind === "pine")!;
 const pineTwo = WOOD_TREE_NODES.filter(tree => tree.kind === "pine")[1]!;
 
-/** At the Smith with both gathering tools claimed, `stock` of every material and `gold`, and skills as given. */
+/** At the Smith with Mining and Woodcutting rows started (by the old claims), `stock` of every material and `gold`, and skills as given. */
 function smithy(options: { stock?: number; gold?: number; mining?: number; woodcutting?: number; crafts?: Partial<Record<CraftSkill, number>>; claim?: boolean } = {}) {
   const f = crystalFixture();
   const later = (seconds: number) => { f.ctx.timestamp = new Timestamp(f.ctx.timestamp.microsSinceUnixEpoch + BigInt(Math.round(seconds * 1_000_000))); };
@@ -76,12 +76,16 @@ describe("upgrading a tool", () => {
     expect(f.level("pickaxe")).toBe(0);
   });
 
-  it("needs the Pickaxe and Hatchet claimed first; the craft tools are always held", () => {
+  it("needs no claim for the Pickaxe or Hatchet: their skill alone gates them, as the craft tools' do", () => {
     const f = smithy({ claim: false, crafts: { smithing: 3 } });
-    expect(() => f.upgrade("pickaxe")).toThrow("You need a pickaxe. The Smith in Town has one.");
-    expect(() => f.upgrade("hatchet")).toThrow("You need a hatchet. The Smith in Town has one.");
+    expect(() => f.upgrade("pickaxe")).toThrow("You need Lv 10 Mining.");
+    expect(() => f.upgrade("hatchet")).toThrow("You need Lv 10 Woodcutting.");
+    // Mining from rocks alone, never claimed.
+    f.transaction(() => f.db.playerMining.insert({ identity: f.ctx.sender, mining: 10, rocksBroken: 10, pickaxeAt: f.ctx.timestamp, lastBreakAt: f.ctx.timestamp,
+      lastNodeId: 0, lastStarshard: false }));
+    f.upgrade("pickaxe");
     f.upgrade("hammer");
-    expect(f.level("hammer")).toBe(1);
+    expect([f.level("pickaxe"), f.level("hammer")]).toEqual([1, 1]);
   });
 
   it("waits for the skill, then the materials, then the gold, and charges nothing when refused", () => {

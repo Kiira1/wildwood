@@ -393,14 +393,14 @@ export function profileStatDisplayRows(
   perkRow("doubleStrike", "double-strike", "(Chance a hit lands twice)", "doubleStrike");
   perkRow("splitShot", "split-shot", "(Chance to strike a second enemy)", "splitShot");
   perkRow("riposte", "riposte", "(Reflects 100% of each hit before armor, up to half your max health; no cap in Reflect Only; half in duels)", "reflect");
-  // Mining, once the Smith has handed over a pickaxe: every rock raises it, and it breaks rocks faster.
+  // Mining, once a first rock is broken: every rock raises it, and it breaks rocks faster.
   if (profile.mining != null) {
     stats.push({
       kind: "mining", label: "Mining:", base: profile.mining.toLocaleString(), multiplier: "", hideEquation: true,
       total: profile.mining.toLocaleString(), expandedDetail: `(Breaks rocks ${miningSpeed(profile.mining).toFixed(2)}× as fast)`, sources: [],
     });
   }
-  // Woodcutting, the same way, once the Smith has handed over a hatchet.
+  // Woodcutting, the same way, once a first tree is felled.
   if (profile.woodcutting != null) {
     stats.push({
       kind: "woodcutting", label: "Woodcutting:", base: profile.woodcutting.toLocaleString(), multiplier: "", hideEquation: true,

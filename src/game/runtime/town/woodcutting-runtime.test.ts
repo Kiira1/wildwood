@@ -12,12 +12,12 @@ afterEach(() => resetWoodcuttingScene());
 const pine = WOOD_TREE_NODES.find(tree => tree.kind === "pine")!, oak = WOOD_TREE_NODES.find(tree => tree.kind === "oak")!;
 const NOW = 1_800_000_000_000;
 
-/** A woodcutter standing with their feet on a tree's foot, and a session that has given them the hatchet. */
+/** A woodcutter standing with their feet on a tree's foot, with the hatchet every player holds. */
 function woodcutter(at: { x: number; y: number } = pine, overrides: Partial<WoodcuttingSource> = {}, bag?: () => BagSpace) {
   const player = { x: at.x, y: at.y - TOWN_FEET_OFFSET, hp: 100, moving: false } as PlayerState;
   let onChop: ((result: { treeId: number; treesChopped: number }) => void) | null = null;
   const source: WoodcuttingSource = {
-    hasHatchet: () => true, woodcutting: () => 0, choppedTreeAt: () => null, serverNowMs: () => NOW, savedProgress: () => ({}),
+    woodcutting: () => 0, choppedTreeAt: () => null, serverNowMs: () => NOW,
     chopTree: vi.fn(async () => ({ ok: true })),
     setOnTreeChopped: callback => { onChop = callback; },
     ...overrides,
@@ -67,20 +67,14 @@ describe("chopping in Timberwood", () => {
     expect(w.source.chopTree).toHaveBeenCalledWith(pine.id);
   });
 
-  it("without the hatchet says where to get one, once", () => {
-    const w = woodcutter(pine, { hasHatchet: () => false });
+  it("at a stand whose Woodcutting is not reached yet says the Woodcutting it needs, once", () => {
+    const w = woodcutter(oak, { woodcutting: () => 49 });
     w.run(3);
-    expect(w.message).toHaveBeenCalledExactlyOnceWith("You need a hatchet. The Smith in Town has one.", "#ffd75e");
+    expect(w.message).toHaveBeenCalledExactlyOnceWith("Reach Woodcutting 50 to chop Oak Trees.", "#ff9b91");
     expect(woodcuttingScene.hatchetOut).toBe(false);
     expect(w.source.chopTree).not.toHaveBeenCalled();
-  });
-
-  it("at a stand not open yet says which map opens it", () => {
-    const w = woodcutter(oak);
-    w.run(1);
-    expect(w.message).toHaveBeenCalledWith("Reach Night Forest - 5 to chop Oak Trees.", "#ff9b91");
-    const open = woodcutter(oak, { savedProgress: () => ({ infernalUnlocked: true }) });
-    open.run(woodcuttingChopSeconds(oak, 0) + .2);
+    const open = woodcutter(oak, { woodcutting: () => 50 });
+    open.run(woodcuttingChopSeconds(oak, 50) + .2);
     expect(open.source.chopTree).toHaveBeenCalledWith(oak.id);
   });
 
@@ -117,15 +111,12 @@ describe("chopping in Timberwood", () => {
     expect(woodcuttingScene.target).toBe(pine.id);
   });
 
-  it("starts afresh after the account changes, and forgets its stumps when Reset Save takes the hatchet back", async () => {
-    let identity = "first", hatchet = true;
-    const w = woodcutter(pine, { localIdentity: () => identity, hasHatchet: () => hatchet });
+  it("starts afresh after the account changes, forgetting its stumps", async () => {
+    let identity = "first";
+    const w = woodcutter(pine, { localIdentity: () => identity });
     w.run(woodcuttingChopSeconds(pine, 0) + .1);
     await flush();
     expect(woodcuttingScene.felled.has(pine.id)).toBe(true);
-    hatchet = false;
-    w.run(.1);
-    hatchet = true;
     identity = "second";
     w.run(woodcuttingChopSeconds(pine, 0) + .1);
     expect(w.source.chopTree).toHaveBeenCalledTimes(2);

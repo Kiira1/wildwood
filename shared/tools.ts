@@ -1,9 +1,8 @@
 import { ARCANE_CRYSTAL, CRAFT_SKILL_NAMES, MATERIAL_NAMES, WOOD_IDS, type CraftSkill, type Materials } from "./crafting";
 
 /**
- * Tools: one for every skill, upgraded at the Smith for gold and materials. The Pickaxe and the Hatchet come free
- * from the Smith (claim_pickaxe, claim_hatchet); the Hammer, Knife and Focus are every player's from the start.
- * Each starts Worn (level 0) and goes up ten levels, each gated by its skill.
+ * Tools: one for every skill, upgraded at the Smith for gold and materials. Every player holds all five from the
+ * start. Each starts Worn (level 0) and goes up ten levels, each gated by its skill.
  *
  * - Gathering tools (Pickaxe, Hatchet): faster breaks and fells, and a chance of one more ore or log.
  * - Craft tools (Hammer for Smithing, Knife for Fletching, Focus for Enchanting): a share of each material saved,

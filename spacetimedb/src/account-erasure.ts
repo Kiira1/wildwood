@@ -117,6 +117,7 @@ export const ERASURE_TARGETS: readonly ErasureTarget[] = [
   { table: "playerMasteryLevel", columns: ["identity"], pk: "key", mode: "index", index: "identity" },
   { table: "playerGold", columns: ["identity"], pk: "identity", mode: "key" },
   { table: "oldGearPayout", columns: ["identity"], pk: "identity", mode: "key" },
+  { table: "playerStarterWeapon", columns: ["identity"], pk: "identity", mode: "key" },
   { table: "playerCraftSkill", columns: ["identity"], pk: "key", mode: "index", index: "identity" },
   { table: "playerCraftLevel", columns: ["identity"], pk: "key", mode: "index", index: "identity" },
   { table: "playerTool", columns: ["identity"], pk: "key", mode: "index", index: "identity" },

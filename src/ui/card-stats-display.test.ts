@@ -24,7 +24,7 @@ describe("cards in the client's stats", () => {
     expect(carded.regenerationMultiplier()).toBeCloseTo(plain.regenerationMultiplier() * 1.04, 9);
     expect(carded.criticalChance()).toBeCloseTo(plain.criticalChance() + .01, 9);
     expect(carded.criticalDamageMultiplier(0, 40)).toBeCloseTo(plain.criticalDamageMultiplier(0, 40) * 1.06, 9);
-    expect(carded.movementSpeedMultiplier()).toBeCloseTo(plain.movementSpeedMultiplier() * 1.12, 9);
+    expect(carded.movementSpeedMultiplier()).toBeCloseTo(plain.movementSpeedMultiplier() * 1.1, 9);
   });
 });
 

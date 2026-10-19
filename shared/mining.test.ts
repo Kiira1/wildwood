@@ -2,9 +2,9 @@ import { describe, expect, it, vi } from "vitest";
 import {
   MINING_NODES, MINING_NODE_KINDS, MINING_OUTCROP_GAP, MINING_OUTCROPS, MINING_PLATE_ROOM, MINING_REACH, MINING_ROCK_EXTENT, MINING_ROCK_ROOM,
   MINING_STARSHARD_CHANCE, MINING_TRACK, MINING_TRACK_HALF_WIDTH, MINING_VEINS, miningBreakSeconds, miningGain, miningNode, miningNodeName,
-  miningSpeed, miningTrackDistanceSquared, miningVeinMap, miningVeinOpen, miningYield, normalizeMining, CRYSTAL_MINING, crystalRockHint, miningRockOpen,
-  miningVeinHint,
+  miningSpeed, miningTrackDistanceSquared, miningYield, normalizeMining, canMineRock, miningRockHint, miningRockNeed,
 } from "./mining";
+import { toolLevelNeed } from "./tools";
 import { GRADE_ORES, refineGrade } from "./refine";
 import { TOWN_EAST_BRIDGE, TOWN_EAST_FENCE_GAP, TOWN_HILLS, TOWN_VILLAGE_WALK_AREA, TOWN_WALK_AREA, TOWN_WALK_AREAS } from "./town";
 import { ITEM_DEFINITIONS } from "./items";
@@ -28,20 +28,27 @@ describe("the Copper Hills' veins", () => {
     expect(TOWN_HILLS.bottom).toBeLessThan(walls.bottom);
   });
 
-  it("open with the map whose gear their ore refines", () => {
+  it("hold the ore of the gear tiers they are named for, and open by Mining alone, as the pickaxe's upgrades do", () => {
     for (const vein of MINING_VEINS) {
-      // The first tier a vein opens with is the first tier whose gear takes its ore.
+      // A vein's first tier is the first tier whose gear takes its ore.
       const firstItem = Object.keys(ITEM_DEFINITIONS).find(id => refineGrade(id) && itemTier(id) === vein.firstTier)!;
       expect(GRADE_ORES[refineGrade(firstItem)!]).toBe(vein.ore);
       const before = Object.keys(ITEM_DEFINITIONS).find(id => refineGrade(id) && itemTier(id) === vein.firstTier - 1);
       if (before) expect(GRADE_ORES[refineGrade(before)!]).not.toBe(vein.ore);
     }
-    expect(MINING_VEINS.map(miningVeinMap)).toEqual(["Tutorial Forest - 1", "Night Forest - 5", "Moonfen - 9", "Neon Bastion - 13"]);
-    const [copper, iron, mithril] = MINING_VEINS;
-    expect(miningVeinOpen(copper, null)).toBe(true);
-    expect(miningVeinOpen(iron, {})).toBe(false);
-    expect(miningVeinOpen(iron, { infernalUnlocked: true })).toBe(true);
-    expect(miningVeinOpen(mithril, { infernalUnlocked: true })).toBe(false);
+    // Copper at once; the deeper veins at the pickaxe's Iron, Silver and Adamant marks.
+    expect(MINING_VEINS.map(vein => vein.mining)).toEqual([0, toolLevelNeed("pickaxe", 2), toolLevelNeed("pickaxe", 4), toolLevelNeed("pickaxe", 7)]);
+    expect(MINING_VEINS.map(vein => vein.mining)).toEqual([0, 50, 250, 900]);
+    // Each vein's crystal rocks a little past its ore, and below the next vein.
+    MINING_VEINS.forEach((vein, index) => {
+      expect(vein.crystalMining).toBeGreaterThan(vein.mining);
+      if (MINING_VEINS[index + 1]) expect(vein.crystalMining).toBeLessThan(MINING_VEINS[index + 1].mining);
+    });
+    const ore = (vein: number) => MINING_NODES.find(node => node.vein === vein && node.kind === "small")!;
+    expect([canMineRock(ore(0), 0), canMineRock(ore(1), 49), canMineRock(ore(1), 50), canMineRock(ore(3), 899), canMineRock(ore(3), 900)])
+      .toEqual([true, false, true, false, true]);
+    expect(miningRockHint(ore(2))).toBe("Reach Mining 250 to mine Mithril Ore.");
+    expect(miningRockHint(ore(3))).toBe("Reach Mining 900 to mine Adamant Ore.");
   });
 });
 
@@ -162,13 +169,12 @@ describe("the rocks", () => {
     expect(miningYield(crystals[0], .5, { oreFind: 1 }, 0)).toEqual({ arcane_crystal: 2 });
   });
 
-  it("open a crystal rock once Mining reaches its mark, and every other rock at once", () => {
-    const crystal = MINING_NODES.find(node => node.kind === "crystal")!, small = MINING_NODES.find(node => node.kind === "small")!;
-    expect([miningRockOpen(crystal, CRYSTAL_MINING - 1), miningRockOpen(crystal, CRYSTAL_MINING), miningRockOpen(small, 0)]).toEqual([false, true, true]);
-    expect(crystalRockHint()).toBe(`Reach Mining ${CRYSTAL_MINING} to mine Arcane Crystal.`);
-    const iron = MINING_NODES.find(node => node.kind === "crystal" && node.vein === 1)!;
-    expect(miningVeinHint(iron)).toBe("Reach Night Forest - 5 to mine Arcane Crystal here.");
-    expect(miningVeinHint(MINING_NODES.find(node => node.kind === "small" && node.vein === 1)!)).toBe("Reach Night Forest - 5 to mine Iron Ore.");
+  it("open a crystal rock once Mining reaches its vein's crystal mark", () => {
+    const crystal = (vein: number) => MINING_NODES.find(node => node.kind === "crystal" && node.vein === vein)!;
+    expect(MINING_VEINS.map((_vein, index) => miningRockNeed(crystal(index)))).toEqual([25, 75, 300, 1_000]);
+    expect([canMineRock(crystal(0), 24), canMineRock(crystal(0), 25), canMineRock(crystal(1), 74), canMineRock(crystal(1), 75)]).toEqual([false, true, false, true]);
+    expect(miningRockHint(crystal(0))).toBe("Reach Mining 25 to mine Arcane Crystal.");
+    expect(miningRockHint(crystal(3))).toBe("Reach Mining 1,000 to mine Arcane Crystal.");
   });
 
   it("are named by size and ore, and looked up by id", () => {

@@ -2,11 +2,11 @@ import { SenderError, table, t } from "spacetimedb/server";
 import type { Identity } from "spacetimedb";
 import type spacetimedbType from "./index";
 import {
-  WOOD_STANDS, WOODCUTTING_RATE_SLACK, WOODCUTTING_RESPAWN_SECONDS, WOODCUTTING_SERVER_REACH, normalizeWoodcutting, woodcuttingChopSeconds,
-  woodcuttingGain, woodcuttingYield, woodStandHint, woodStandOpen, woodTree,
+  WOOD_STANDS, WOODCUTTING_RATE_SLACK, WOODCUTTING_RESPAWN_SECONDS, WOODCUTTING_SERVER_REACH, canChopTree, normalizeWoodcutting, woodcuttingChopSeconds,
+  woodcuttingGain, woodcuttingYield, woodStandHint, woodTree,
 } from "../../shared/woodcutting";
 import type { OreId } from "../../shared/refine";
-import { TOWN_FEET_OFFSET, TOWN_SMITH_POSITION, TOWN_SMITH_SERVER_REACH } from "../../shared/town";
+import { TOWN_FEET_OFFSET } from "../../shared/town";
 import { isTownMap } from "./town";
 import { withinStationReach } from "./door-reach";
 import { readPlayerProgress } from "./wide-stats";
@@ -19,12 +19,13 @@ import { toolBonusYield } from "../../shared/tools";
 import { toolLevelFor } from "./tools";
 
 /**
- * Woodcutting (shared/woodcutting.ts), as mining is (mining.ts): a player's Woodcutting stat, the hatchet the Smith
- * gives them, and the trees they felled that have yet to grow back, for them alone. Private tables, read through
- * the caller's own views; the stat is copied to a public table for profiles.
+ * Woodcutting (shared/woodcutting.ts), as mining is (mining.ts): a player's Woodcutting stat and the trees they
+ * felled that have yet to grow back, for them alone. Private tables, read through the caller's own views; the stat
+ * is copied to a public table for profiles.
  *
- * No player_woodcutting row means no hatchet yet, and Woodcutting 0. `treesChopped` counts up with every fall, so
- * the client can tell a new one from the row it found on connect; `lastTreeId` says which tree that was.
+ * Every player holds a hatchet. No player_woodcutting row means no tree felled yet, and Woodcutting 0. `treesChopped`
+ * counts up with every fall, so the client can tell a new one from the row it found on connect; `lastTreeId` says
+ * which tree that was.
  */
 export const playerWoodcutting = table({ name: "player_woodcutting", public: false }, {
   identity: t.identity().primaryKey(),
@@ -52,7 +53,7 @@ export const playerWoodcuttingLevel = table({ name: "player_woodcutting_level", 
 type Ctx = any;
 const U32_MAX = 4_294_967_295;
 
-/** Copies a player's Woodcutting stat to player_woodcutting_level, or removes it with no hatchet. */
+/** Copies a player's Woodcutting stat to player_woodcutting_level, or removes it with no row. */
 export function writeWoodcuttingLevel(ctx: Ctx, identity: Identity) {
   const row = ctx.db.playerWoodcutting.identity.find(identity), level = ctx.db.playerWoodcuttingLevel.identity.find(identity);
   if (!row) { if (level) ctx.db.playerWoodcuttingLevel.identity.delete(identity); return; }
@@ -66,7 +67,7 @@ export const choppedTreeKey = (identity: { toHexString(): string }, treeId: numb
 const microsSince = (ctx: Ctx, at: { microsSinceUnixEpoch: bigint }) => Number(ctx.timestamp.microsSinceUnixEpoch - at.microsSinceUnixEpoch);
 const grownBack = (ctx: Ctx, row: { choppedAt: { microsSinceUnixEpoch: bigint } }) => microsSince(ctx, row.choppedAt) >= WOODCUTTING_RESPAWN_SECONDS * 1_000_000;
 
-/** The player's Woodcutting stat; 0 before the Smith's hatchet. */
+/** The player's Woodcutting stat; 0 before their first tree. */
 export function woodcuttingFor(ctx: Ctx, identity: Identity) {
   return normalizeWoodcutting(ctx.db.playerWoodcutting.identity.find(identity)?.woodcutting);
 }
@@ -88,14 +89,14 @@ function rowsOf(handle: any, identity: Identity): any[] {
   return [...handle.identity.filter(identity)];
 }
 
-/** Reset Save and a deleted account take Woodcutting, the hatchet and the stumps. Prestige keeps them all. */
+/** Reset Save and a deleted account take Woodcutting and the stumps. Prestige keeps them all. */
 export function removeWoodcuttingData(ctx: Ctx, identity: Identity) {
   if (ctx.db.playerWoodcutting.identity.find(identity)) ctx.db.playerWoodcutting.identity.delete(identity);
   writeWoodcuttingLevel(ctx, identity);
   for (const row of rowsOf(ctx.db.playerChoppedTree, identity)) ctx.db.playerChoppedTree.key.delete(row.key);
 }
 
-/** A guest's save replaces the account's on link (mergeMiningData), Woodcutting and hatchet with it. */
+/** A guest's save replaces the account's on link (mergeMiningData), Woodcutting with it. */
 export function mergeWoodcuttingData(ctx: Ctx, guest: Identity, account: Identity) {
   removeWoodcuttingData(ctx, account);
   const woodcutting = ctx.db.playerWoodcutting.identity.find(guest);
@@ -111,19 +112,13 @@ export function mergeWoodcuttingData(ctx: Ctx, guest: Identity, account: Identit
   }
 }
 
-/** The Smith hands over the hatchet: where a player stands (not their feet) beside him, as for the pickaxe. */
-const SMITH_STAND = { x: TOWN_SMITH_POSITION.x, y: TOWN_SMITH_POSITION.y - TOWN_FEET_OFFSET };
-
 const equippedFields = (progress: any): string[] =>
   [progress.equippedHead, progress.equippedChest, progress.equippedFeet, progress.equippedRightHand, progress.equippedLeftHand];
 
-/** The Smith's free hatchet, handed out as his pickaxe is: what every tree asks for. */
+/** The old Smith's hatchet, still called by clients from before every player held one: only starts the row. */
 export function claimHatchetFor(ctx: Ctx, deps: MiningDeps) {
-  const player = deps.requireControllingPlayer(ctx);
-  if (!isTownMap(player.mapId) || !withinStationReach(ctx, player, SMITH_STAND, TOWN_SMITH_SERVER_REACH)) {
-    throw new SenderError("Talk to the Smith first.");
-  }
-  if (ctx.db.playerWoodcutting.identity.find(ctx.sender)) throw new SenderError("You already have a hatchet.");
+  deps.requireControllingPlayer(ctx);
+  if (ctx.db.playerWoodcutting.identity.find(ctx.sender)) return;
   ctx.db.playerWoodcutting.insert({ identity: ctx.sender, woodcutting: 0, treesChopped: 0, hatchetAt: ctx.timestamp, lastChopAt: ctx.timestamp, lastTreeId: 0 });
   writeWoodcuttingLevel(ctx, ctx.sender);
 }
@@ -137,15 +132,14 @@ export function chopTreeFor(ctx: Ctx, args: { treeId: number }, deps: MiningDeps
   const player = deps.requireControllingPlayer(ctx);
   const tree = woodTree(args.treeId);
   if (!tree) throw new SenderError("There is no tree there.");
-  const woodcutting = ctx.db.playerWoodcutting.identity.find(ctx.sender);
-  if (!woodcutting) throw new SenderError("You need a hatchet. The Smith in Town has one.");
+  // Every player holds a hatchet; the row comes with the first tree.
+  const woodcutting = ctx.db.playerWoodcutting.identity.find(ctx.sender), skill = normalizeWoodcutting(woodcutting?.woodcutting);
   if (!isTownMap(player.mapId) || !withinStationReach(ctx, player, { x: tree.x, y: tree.y - TOWN_FEET_OFFSET }, WOODCUTTING_SERVER_REACH)) {
     throw new SenderError("Walk up to the tree first.");
   }
   if (deps.activeDuelFor(ctx, ctx.sender)) throw new SenderError("Finish your duel first.");
-  const stand = WOOD_STANDS[tree.stand];
+  if (!canChopTree(tree, skill)) throw new SenderError(woodStandHint(WOOD_STANDS[tree.stand]));
   const progress = readPlayerProgress(ctx, ctx.sender);
-  if (!woodStandOpen(stand, progress)) throw new SenderError(woodStandHint(stand));
   // A kind of log not held yet needs a free bag slot before the tree falls.
   const { needed, room } = roomForOres({
     owned: progress && deps.inventoryForProgress ? deps.inventoryForProgress(progress) : [], equipped: progress ? equippedFields(progress) : [],
@@ -156,25 +150,28 @@ export function chopTreeFor(ctx: Ctx, args: { treeId: number }, deps: MiningDeps
   pruneChoppedTrees(ctx, ctx.sender);
   if (treeFelledFor(ctx, ctx.sender, tree.id)) throw new SenderError("That tree is still growing back.");
   const hatchet = toolLevelFor(ctx, ctx.sender, "hatchet");
-  if (microsSince(ctx, woodcutting.lastChopAt) < woodcuttingChopSeconds(tree, woodcutting.woodcutting, hatchet) * WOODCUTTING_RATE_SLACK * 1_000_000) {
+  if (woodcutting && microsSince(ctx, woodcutting.lastChopAt) < woodcuttingChopSeconds(tree, skill, hatchet) * WOODCUTTING_RATE_SLACK * 1_000_000) {
     throw new SenderError("Still chopping.");
   }
   const logs = woodcuttingYield(tree, hatchet > 0 ? toolBonusYield(hatchet, ctx.random()) : 0);
   for (const [logId, count] of Object.entries(logs)) addOres(ctx, ctx.sender, logId as OreId, count ?? 0);
-  ctx.db.playerWoodcutting.identity.update({
-    ...woodcutting,
-    woodcutting: Math.min(U32_MAX, normalizeWoodcutting(woodcutting.woodcutting) + woodcuttingGain(tree)),
-    treesChopped: (woodcutting.treesChopped + 1) % (U32_MAX + 1),
+  const row = {
+    identity: ctx.sender,
+    woodcutting: Math.min(U32_MAX, skill + woodcuttingGain(tree)),
+    treesChopped: ((woodcutting?.treesChopped ?? 0) + 1) % (U32_MAX + 1),
+    hatchetAt: woodcutting?.hatchetAt ?? ctx.timestamp,
     lastChopAt: ctx.timestamp,
     lastTreeId: tree.id,
-  });
+  };
+  if (woodcutting) ctx.db.playerWoodcutting.identity.update(row);
+  else ctx.db.playerWoodcutting.insert(row);
   writeWoodcuttingLevel(ctx, ctx.sender);
   const key = choppedTreeKey(ctx.sender, tree.id), stump = ctx.db.playerChoppedTree.key.find(key);
   if (stump) ctx.db.playerChoppedTree.key.update({ ...stump, choppedAt: ctx.timestamp });
   else ctx.db.playerChoppedTree.insert({ key, identity: ctx.sender, treeId: tree.id, choppedAt: ctx.timestamp });
 }
 
-/** The hatchet, a fall, and the caller's own Woodcutting and stumps. */
+/** A fall, the old hatchet claim, and the caller's own Woodcutting and stumps. */
 export function registerWoodcutting(spacetimedb: typeof spacetimedbType, deps: MiningDeps) {
   const claimHatchet = spacetimedb.reducer({}, (ctx: any) => claimHatchetFor(ctx, deps));
   const chopTree = spacetimedb.reducer({ treeId: t.u32() }, (ctx: any, args: { treeId: number }) => chopTreeFor(ctx, args, deps));

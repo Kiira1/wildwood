@@ -217,7 +217,7 @@ export const CARDS: readonly CardDefinition[] = Object.freeze([
   { id: "gale_striker_card", enemy: "Gale Striker", mapId: "cloudspire", tier: 8, rarity: "regular", slot: "HEAD",
     effects: [{ effect: "critChance", value: 1.5 }] },
   { id: "tempest_kirin_card", enemy: "Tempest Kirin", mapId: "cloudspire", tier: 8, rarity: "boss", slot: "HEAD",
-    effects: [{ effect: "fleetFoot", value: 12 }, { effect: "quickDraw", value: .2 }] },
+    effects: [{ effect: "fleetFoot", value: 10 }, { effect: "quickDraw", value: .2 }] },
   { id: "fen_prowler_card", enemy: "Fen Prowler", mapId: "moonfen", tier: 9, rarity: "regular", slot: "HAND",
     effects: [{ effect: "raceSlayer", value: 13, mapId: "moonfen" }] },
   { id: "glowcap_archer_card", enemy: "Glowcap Archer", mapId: "moonfen", tier: 9, rarity: "regular", slot: "HAND",

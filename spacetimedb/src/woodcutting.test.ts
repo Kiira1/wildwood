@@ -15,38 +15,37 @@ vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module
 const tree = (kind: string, skip = 0) => WOOD_TREE_NODES.filter(node => node.kind === kind)[skip]!;
 const pine = tree("pine"), pineTwo = tree("pine", 1), oak = tree("oak");
 
-/** A player in the Town, given the Smith's hatchet unless told otherwise. */
-function woodcutter(hatchet = true) {
+/** A player in the Town: every player holds a hatchet, with no row until their first tree. */
+function woodcutter() {
   const f = crystalFixture();
   const later = (seconds: number) => { f.ctx.timestamp = new Timestamp(f.ctx.timestamp.microsSinceUnixEpoch + BigInt(Math.round(seconds * 1_000_000))); };
   const standAt = (at: { x: number; y: number }) => f.patch("player", { mapId: "town", x: at.x, y: at.y - TOWN_FEET_OFFSET });
-  if (hatchet) { standAt(TOWN_SMITH_POSITION); f.run(server.claimHatchet, {}); later(60); }
   const chop = (node: WoodTree) => { standAt(node); f.run(server.chopTree, { treeId: node.id }); };
   const row = () => f.db.playerWoodcutting.identity.find(f.ctx.sender);
   const logs = (logId: string) => oreCount(f.ctx, f.ctx.sender, logId);
   return { ...f, later, standAt, chop, row, logs };
 }
 
-describe("the Smith's hatchet", () => {
-  it("is handed over once, and only beside the Smith, alongside the pickaxe", () => {
-    const f = woodcutter(false);
+describe("the old hatchet claim", () => {
+  it("still answers old clients harmlessly: it starts the row once and never takes Woodcutting away", () => {
+    const f = woodcutter();
     f.standAt({ x: TOWN_SMITH_POSITION.x + 400, y: TOWN_SMITH_POSITION.y });
-    expect(() => f.run(server.claimHatchet, {})).toThrow("Talk to the Smith first.");
-    f.standAt(TOWN_SMITH_POSITION);
     f.run(server.claimHatchet, {});
     expect(f.row()).toMatchObject({ woodcutting: 0, treesChopped: 0 });
     expect(f.db.playerWoodcuttingLevel.identity.find(f.ctx.sender)).toMatchObject({ woodcutting: 0 });
-    expect(() => f.run(server.claimHatchet, {})).toThrow("You already have a hatchet.");
-    // The pickaxe is its own claim.
-    f.run(server.claimPickaxe, {});
-    expect(f.db.playerMining.identity.find(f.ctx.sender)).toBeTruthy();
+    f.later(60);
+    f.chop(pine);
+    f.run(server.claimHatchet, {});
+    expect(f.row()).toMatchObject({ woodcutting: WOODCUTTING_LOGS, treesChopped: 1 });
   });
 });
 
 describe("felling a tree", () => {
-  it("needs the hatchet, a tree that exists, and the player beside it in the Town", () => {
-    const bare = woodcutter(false);
-    expect(() => bare.chop(pine)).toThrow("You need a hatchet. The Smith in Town has one.");
+  it("needs no hatchet from the Smith, only a tree that exists and the player beside it in the Town", () => {
+    const fresh = woodcutter();
+    expect(fresh.row()).toBeFalsy();
+    fresh.chop(pine);
+    expect([fresh.logs("pine_log"), fresh.row()?.woodcutting]).toEqual([WOODCUTTING_LOGS, WOODCUTTING_LOGS]);
     const f = woodcutter();
     expect(() => f.run(server.chopTree, { treeId: WOOD_TREE_NODES.length })).toThrow("There is no tree there.");
     f.standAt({ x: pine.x + 300, y: pine.y });
@@ -90,12 +89,15 @@ describe("felling a tree", () => {
     expect(f.logs("pine_log")).toBe(2 * WOODCUTTING_LOGS);
   });
 
-  it("keeps a deeper stand shut until the map whose gear its wood crafts", () => {
+  it("keeps a deeper stand shut until Woodcutting reaches its mark, whatever maps are open", () => {
     const f = woodcutter();
-    expect(() => f.chop(oak)).toThrow("Reach Night Forest - 5 to chop Oak Trees.");
     f.patch("playerProgress", { infernalUnlocked: true });
+    expect(() => f.chop(oak)).toThrow("Reach Woodcutting 50 to chop Oak Trees.");
+    f.chop(pine);
+    f.db.playerWoodcutting.identity.update({ ...f.row(), woodcutting: 50 });
+    f.later(60);
     f.chop(oak);
-    expect([f.logs("oak_log"), f.row().woodcutting]).toEqual([WOODCUTTING_LOGS, 2 * WOODCUTTING_LOGS]);
+    expect([f.logs("oak_log"), f.row().woodcutting]).toEqual([WOODCUTTING_LOGS, 50 + 2 * WOODCUTTING_LOGS]);
   });
 
   it("clears the rows of trees that grew back as the player chops on", () => {

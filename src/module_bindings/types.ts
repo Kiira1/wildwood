@@ -1119,6 +1119,9 @@ export type MySoulStats = __Infer<typeof MySoulStats>;
 export const MyStaffSkills = __t.object("MyStaffSkills", {});
 export type MyStaffSkills = __Infer<typeof MyStaffSkills>;
 
+export const MyStarterWeapon = __t.object("MyStarterWeapon", {});
+export type MyStarterWeapon = __Infer<typeof MyStarterWeapon>;
+
 export const MySwordSkills = __t.object("MySwordSkills", {});
 export type MySwordSkills = __Infer<typeof MySwordSkills>;
 
@@ -2209,6 +2212,13 @@ export const PlayerStaffSkill = __t.object("PlayerStaffSkill", {
   frostNova: __t.f32(),
 });
 export type PlayerStaffSkill = __Infer<typeof PlayerStaffSkill>;
+
+export const PlayerStarterWeapon = __t.object("PlayerStarterWeapon", {
+  identity: __t.identity(),
+  kind: __t.string(),
+  at: __t.timestamp(),
+});
+export type PlayerStarterWeapon = __Infer<typeof PlayerStarterWeapon>;
 
 export const PlayerSwordSkill = __t.object("PlayerSwordSkill", {
   key: __t.string(),

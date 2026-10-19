@@ -1,9 +1,8 @@
 import {
-  WOOD_STANDS, WOOD_TREE_NODES, WOODCUTTING_LOGS, WOODCUTTING_REACH, WOODCUTTING_RESPAWN_SECONDS, woodcuttingChopSeconds, woodStandHint, woodStandOpen,
+  WOOD_STANDS, WOOD_TREE_NODES, WOODCUTTING_LOGS, WOODCUTTING_REACH, WOODCUTTING_RESPAWN_SECONDS, canChopTree, woodcuttingChopSeconds, woodStandHint,
   type WoodTree,
 } from "../../../../shared/woodcutting";
 import { REFINE_ORES } from "../../../../shared/refine";
-import type { CampaignAccess } from "../../../../shared/equipment-access";
 import { inTownGrove, TOWN_FEET_OFFSET } from "../../../../shared/town";
 import { bagFullForOres, roomForOres, type BagSpace } from "../../../../shared/ore-bag";
 import type { ToolId } from "../../../../shared/tools";
@@ -20,7 +19,6 @@ type TreeChop = { treeId: number; treesChopped: number };
 export type WoodcuttingSource = {
   localIdentity?: () => string | undefined;
   sessionGeneration?: () => number;
-  hasHatchet?: () => boolean;
   woodcutting?: () => number;
   /** A tool's upgrades (shared/tools.ts): the hatchet's speed, which the server's rate check uses too. */
   toolLevel?: (tool: ToolId) => number;
@@ -28,12 +26,11 @@ export type WoodcuttingSource = {
   chopTree?: (treeId: number) => Promise<Result>;
   setOnTreeChopped?: (callback: ((result: TreeChop) => void) | null) => void;
   serverNowMs?: () => number;
-  savedProgress?: () => CampaignAccess | null | undefined;
 };
 
 /** How long a felled tree's full bar stays up, so the hit that fells it is seen to fill it. */
 const FELLED_SHOW_SECONDS = .35;
-/** A hint (no hatchet, a shut stand) says itself again only after this long, or for another tree. */
+/** A hint (Woodcutting short of a stand, a full bag) says itself again only after this long, or for another tree. */
 const HINT_SECONDS = 6;
 /** How often the stumps are looked over: they only change as trees grow back and fall. */
 const STUMP_REFRESH_SECONDS = .5;
@@ -42,11 +39,11 @@ const PENDING_LIMIT_MS = WOODCUTTING_RESPAWN_SECONDS * 1_000;
 const CHIPS = "#d9b98a";
 
 /**
- * Woodcutting in play, as mining is (mining-runtime.ts): standing within reach of a tree with the Smith's hatchet,
+ * Woodcutting in play, as mining is (mining-runtime.ts): standing within reach of a tree with their hatchet,
  * the player swings at the nearest one still standing until it falls (shared/woodcutting.ts times it by Woodcutting,
  * its bar stepping once per hit, a swing apart as the pickaxe's), and the server is asked to take the fall. A tree
  * felled here is a stump at once, before the server's word, and stands again if the server refuses. Walking pauses
- * the swing; without the hatchet, at a stand not open yet, or with no bag slot for a new kind of log, it says why.
+ * the swing; at a stand whose Woodcutting mark is not reached yet, or with no bag slot for a new kind of log, it says why.
  */
 export function createWoodcuttingRuntime(deps: {
   source: () => WoodcuttingSource | null | undefined;
@@ -66,15 +63,14 @@ export function createWoodcuttingRuntime(deps: {
   let hint = { text: "", at: -Infinity, tree: -1 };
   let listeningTo: WoodcuttingSource | null = null;
   /** Pending falls and stumps belong to the account and connection that made them. */
-  let session: { source: WoodcuttingSource; identity: string; generation: number; hatchet: boolean } | null = null;
+  let session: { source: WoodcuttingSource; identity: string; generation: number } | null = null;
 
   const now = () => deps.source()?.serverNowMs?.() ?? Date.now();
 
   function sameSession(source: WoodcuttingSource | null | undefined) {
     return Boolean(source && session?.source === source
       && session.identity === (source.localIdentity?.() ?? "")
-      && session.generation === (source.sessionGeneration?.() ?? 0)
-      && session.hatchet === Boolean(source.hasHatchet?.()));
+      && session.generation === (source.sessionGeneration?.() ?? 0));
   }
 
   function isFelled(tree: WoodTree, at: number) {
@@ -164,7 +160,7 @@ export function createWoodcuttingRuntime(deps: {
     if (!sameSession(source)) {
       reset();
       if (!source) return;
-      session = { source, identity: source.localIdentity?.() ?? "", generation: source.sessionGeneration?.() ?? 0, hatchet: Boolean(source.hasHatchet?.()) };
+      session = { source, identity: source.localIdentity?.() ?? "", generation: source.sessionGeneration?.() ?? 0 };
     }
     const at = now();
     if ((stumpCheck -= dt) <= 0) { stumpCheck = STUMP_REFRESH_SECONDS; refreshStumps(at); }
@@ -179,9 +175,7 @@ export function createWoodcuttingRuntime(deps: {
     const tree = sending === null ? treeInReach() : null;
     if (!tree) { stop(); return; }
     if (tree.id !== target?.id) { target = tree; elapsed = 0; swung = 0; landed = 0; }
-    if (!source.hasHatchet?.()) { stop(); woodcuttingScene.blocked = "hatchet"; say("You need a hatchet. The Smith in Town has one.", "#ffd75e", tree.id); return; }
-    const stand = WOOD_STANDS[tree.stand];
-    if (!woodStandOpen(stand, source.savedProgress?.())) { stop(); woodcuttingScene.blocked = "stand"; say(woodStandHint(stand), "#ff9b91", tree.id); return; }
+    if (!canChopTree(tree, source.woodcutting?.() ?? 0)) { stop(); woodcuttingScene.blocked = "stand"; say(woodStandHint(WOOD_STANDS[tree.stand]), "#ff9b91", tree.id); return; }
     // A full bag: told before the swing, not after the tree falls.
     const space = deps.bag?.();
     if (space) {

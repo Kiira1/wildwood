@@ -36,6 +36,7 @@ import { mergeMiningData } from "./mining";
 import { mergeWoodcuttingData } from "./woodcutting";
 import { mergeWeaponMastery } from "./weapon-mastery";
 import { mergeGold } from "./gold";
+import { mergeStarterWeapon } from "./starter-chest";
 import { mergeCraftSkills } from "./crafting";
 import { mergeTools } from "./tools";
 import { mergeMailboxReceipts, removeMailboxReceipts } from "./mailbox";
@@ -159,7 +160,7 @@ const PLAYER_STATE_TABLES: ReadonlySet<string> = new Set([
   "gemKillDaily", "gemKillProgress", "gemTransaction", "guildMemberQuestWeek", "guildRejoin",
   "homeReturnLocation", "leaderboardDirty", "leaderboardPosition", "leaderboardPrestigePosition", "leaderboardStanding", "loginMove",
   "offlineProgress", "patreonPreview", "playerAggroChallenge", "playerAggroChallengeParked", "playerBonusToggle", "playerNameColor",
-  "playerMining", "playerMinedNode", "playerMiningLevel", "playerWoodcutting", "playerChoppedTree", "playerWoodcuttingLevel", "playerLuckResearch", "playerCardShopPurchase", "playerWeaponMastery", "playerMasteryLevel", "playerGold", "oldGearPayout", "playerCraftSkill", "playerCraftLevel", "playerTool",
+  "playerMining", "playerMinedNode", "playerMiningLevel", "playerWoodcutting", "playerChoppedTree", "playerWoodcuttingLevel", "playerLuckResearch", "playerCardShopPurchase", "playerWeaponMastery", "playerMasteryLevel", "playerGold", "oldGearPayout", "playerStarterWeapon", "playerCraftSkill", "playerCraftLevel", "playerTool",
   "playerDailyQuest", "playerEndlessRebaseBackup", "playerFreeRespec",
   "playerOfflinePreference", "playerPrestige", "playerPrestigeChallenge",
   "playerPrestigeChallengeParked", "playerPrestigeExpansionPerk", "playerPrestigeCardPerk", "playerPrestigePerk", "playerQuestWeekTotal",
@@ -276,6 +277,7 @@ export function createAccountLifecycle(deps: AccountLifecycleDeps) {
     mergeWeaponMastery(ctx, link.guest, ctx.sender);
     mergeGold(ctx, link.guest, ctx.sender);
     mergeOldGearPayout(ctx, link.guest, ctx.sender);
+    mergeStarterWeapon(ctx, link.guest, ctx.sender);
     mergeCraftSkills(ctx, link.guest, ctx.sender);
     mergeTools(ctx, link.guest, ctx.sender);
     mergeMailboxReceipts(ctx, link.guest, ctx.sender);

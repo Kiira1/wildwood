@@ -1,4 +1,19 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.916.1": [
+    "Auto Chop in Timberwood, like Auto Mine",
+    "Auto Mine mines Arcane Crystal rocks too",
+    "The Auto Mine and Auto Chop buttons show only in their own areas",
+    "Smith prices are ten times higher; gold now matters",
+    "Sell gear to the Smith for half its price",
+    "New players pick their first weapon from a Starter Chest in the forest",
+    "Everyone has a Crude Bow, Sword and Staff to try each school",
+    "The Mage Tower has a blue stone roof",
+    "Everyone starts with a basic Pickaxe and Hatchet",
+    "Hatchets are real axes now, a new look every upgrade",
+    "Mining and Woodcutting levels open the better rocks and trees, not maps",
+    "Mythic to Eternal gear need more Mastery",
+    "Small balancing",
+  ],
   "0.916.0": [
     "Weapon Mastery: every kill trains the school of the weapon in your hand: Archery, Swordplay or Sorcery",
     "Visit the Archery Range, Sword Hall and Mage Tower in Town for your school's level, passive and techniques",
@@ -3639,6 +3654,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.916.1": "2026-10-19",
   "0.916.0": "2026-10-19",
   "0.915.3": "2026-10-19",
   "0.915.2": "2026-10-18",

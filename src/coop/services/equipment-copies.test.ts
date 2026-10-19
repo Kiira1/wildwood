@@ -20,6 +20,7 @@ function fakeConnection() {
   const reducers = {
     resolveEquipmentOffer: vi.fn(async () => {}),
     destroyEquipmentCopy: vi.fn(async () => {}),
+    sellGradedItem: vi.fn(async () => {}),
     selectEquipmentCopy: vi.fn(async () => { throw new Error("That copy is not in your inventory."); }),
     setIgnoredDrops: vi.fn(async () => {}),
     setLootSettings: vi.fn(async () => {}),
@@ -65,6 +66,8 @@ it("sends answers to the server and reports its refusals", async () => {
   expect(conn.reducers.resolveEquipmentOffer).toHaveBeenCalledWith({ id: 4n, keep: false });
   expect(await service.api.destroyEquipmentCopy("iron_bow", 0n)).toEqual({ ok: true });
   expect(conn.reducers.destroyEquipmentCopy).toHaveBeenCalledWith({ itemId: "iron_bow", copyId: 0n });
+  expect(await service.api.sellGradedItem("rare_bow", 7n)).toEqual({ ok: true });
+  expect(conn.reducers.sellGradedItem).toHaveBeenCalledWith({ itemId: "rare_bow", copyId: 7n });
   expect(await service.api.selectEquipmentCopy(9n)).toEqual({ ok: false, error: "That copy is not in your inventory." });
 });
 

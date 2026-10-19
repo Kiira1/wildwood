@@ -855,6 +855,9 @@
 .smith-sheet .smith-shop-price.is-short { opacity: .6; }
 .smith-sheet .farm-start.smith-refine.smith-shop-buy { flex: none; min-width: 96px; max-width: 132px; height: auto; min-height: 40px; margin: 0; padding: 4px 12px 6px; font-size: 14px; line-height: 1.15; white-space: nowrap; }
 .smith-sheet .farm-start.smith-refine.smith-shop-buy:disabled { border-color: rgba(255,255,255,.18); background: rgba(255,255,255,.08); box-shadow: none; color: var(--muted); }
+/* The Starter Chest's window (starter-chest-window.ts): the Smith's rows, with a plain white Pick in place of his gold buttons. */
+.starter-chest-window .farm-start.smith-refine.starter-chest-pick { border-color: #6b6b6b; background: #fff; box-shadow: 0 3px 0 #6b6b6b; color: #111; text-shadow: none; -webkit-text-stroke: 0; }
+.starter-chest-window .farm-start.smith-refine.starter-chest-pick:active:not(:disabled) { box-shadow: 0 1px 0 #6b6b6b; }
 /* A tool's button can name its skill ("Need Lv 3,000 Woodcutting"): it wraps rather than overflow. */
 .smith-sheet .tool-row .farm-start.smith-refine.smith-shop-buy { white-space: normal; }
 /* A station's Craft section (craft-section.ts): the craft's level and progress in a card like the school's, then the

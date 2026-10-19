@@ -4,6 +4,7 @@ export { attackCapInterval } from "../../shared/stat-rating";
 export { createSmithRuntime } from "./smith-window";
 export { createCardSellerRuntime } from "./card-seller-window";
 export { createSchoolWindowRuntime } from "./school-window";
+export { createStarterChestRuntime } from "./starter-chest-window";
 export { watchCardDrops } from "./card-drop-feedback";
 import { createGemShopController } from "./gem-shop-controller";
 import { installDesktopHotkeys } from "./desktop-hotkeys";

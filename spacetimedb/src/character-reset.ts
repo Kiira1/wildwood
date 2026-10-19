@@ -99,7 +99,7 @@ const RESET_SAVE_TABLES = [
   "playerPrestige", "playerPrestigePerk", "playerPrestigeExpansionPerk", "playerPrestigeCardPerk", "playerFreeRespec",
   "playerPrestigeChallenge", "prestigeChallengeBackup", "prestigeChallengeRun", "playerPrestigeChallengeParked",
   "playerAggroChallenge", "aggroChallengeRun", "playerAggroChallengeParked",
-  "playerSoulStats", "playerSoulLevel", "playerRewardKills", "playerBonusToggle", "playerGold",
+  "playerSoulStats", "playerSoulLevel", "playerRewardKills", "playerBonusToggle", "playerGold", "playerStarterWeapon",
 ] as const;
 
 /** Reset Save: the account's progression first, so the fresh run starts with none of its bonuses, then the run. */

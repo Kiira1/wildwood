@@ -10,6 +10,8 @@ function fixture() {
   const f = crystalFixture();
   f.seed("moduleMigrationState", { id: 0, version: 23 });
   f.ctx.connectionId = null;
+  // 63's Crude weapons have their own tests (starter-chest.test.ts).
+  for (const who of [f.ctx.sender, identity("2"), identity("3")]) f.seed("playerStarterWeapon", { identity: who, kind: "all", at: f.ctx.timestamp });
   return f;
 }
 

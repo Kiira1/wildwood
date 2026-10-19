@@ -14,8 +14,8 @@ export const miningScene = {
   pickaxeOut: false,
   /** The pickaxe swing's clock, counting down like a weapon's attack clock (sword-swing.ts reads it). */
   swingClock: 0,
-  /** Why the rock in reach is not being mined, if it is not: no pickaxe, its vein shut, or no bag room. */
-  blocked: null as "pickaxe" | "vein" | "bag" | null,
+  /** Why the rock in reach is not being mined, if it is not: Mining short of it, or no bag room. */
+  blocked: null as "vein" | "bag" | null,
   /** The pickaxe's level (shared/tools.ts), for its colour in hand. */
   toolLevel: 0,
 };

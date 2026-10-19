@@ -342,13 +342,18 @@ export function createEquipmentCopies(deps: {
     const canonical = canonicalItemId(itemId);
     if (!canonical || !canDestroyEquipment(canonical)) throw new SenderError("This item cannot be destroyed.");
     if (equipmentLocked(ctx, ctx.sender, canonical, copyId)) throw new SenderError("Unlock this equipment before deleting it.");
+    removeCopy(ctx, canonical, copyId);
+    salvage(ctx, canonical);
+  }
+
+  /** Takes one owned copy of `canonical` out of the bag as destroy describes, with nothing given back. */
+  function removeCopy(ctx: Ctx, canonical: string, copyId: bigint) {
     const progress = ownedProgress(ctx, canonical);
     if (copyId !== 0n) {
       const copy = ownCopy(ctx, copyId);
       if (copy.itemId !== canonical) throw new SenderError("That copy is not in your inventory.");
       setRefineLevel(ctx, ctx.sender, canonical, copy.id, 0);
       deleteCopy(ctx, copy);
-      salvage(ctx, canonical);
       return;
     }
     const [replacement] = extraCopiesOf(ctx, ctx.sender, canonical);
@@ -357,13 +362,11 @@ export function createEquipmentCopies(deps: {
       setFirstCopyRoll(ctx, ctx.sender, canonical, copyRollOf(ctx, replacement));
       promoteCopyRefine(ctx, ctx.sender, canonical, replacement.id);
       deleteCopy(ctx, replacement);
-      salvage(ctx, canonical);
       // The worn item may have changed level: its power follows.
       deps.writeProgressAndPresentation(ctx, progress);
       return;
     }
     setRefineLevel(ctx, ctx.sender, canonical, 0n, 0);
-    salvage(ctx, canonical);
     const next = deps.removeItemFromProgress(progress, canonical);
     // The last one gone, its roll goes too: the next to drop rolls fresh instead of bringing this one back.
     if (!deps.inventoryForProgress(next).includes(canonical)) forgetFirstCopyRoll(ctx, ctx.sender, canonical);
@@ -394,7 +397,7 @@ export function createEquipmentCopies(deps: {
     setStaffCopyRoll(ctx, ctx.sender, copy.itemId, copy.id, first as WeaponSkillRoll);
   }
 
-  return { resolveOffer, destroy, select };
+  return { resolveOffer, destroy, removeCopy, select };
 }
 
 /** The caller's Gear Collection. */

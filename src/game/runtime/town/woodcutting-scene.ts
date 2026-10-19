@@ -14,9 +14,9 @@ export const woodcuttingScene = {
   hatchetOut: false,
   /** The hatchet swing's clock, counting down like a weapon's attack clock (sword-swing.ts reads it). */
   swingClock: 0,
-  /** Why the tree in reach is not being chopped, if it is not: no hatchet, its stand shut, or no bag room. */
-  blocked: null as "hatchet" | "stand" | "bag" | null,
-  /** The hatchet's level (shared/tools.ts), for its colour in hand. */
+  /** Why the tree in reach is not being chopped, if it is not: Woodcutting short of its stand, or no bag room. */
+  blocked: null as "stand" | "bag" | null,
+  /** The hatchet's level (shared/tools.ts), for its axe in hand. */
   toolLevel: 0,
 };
 

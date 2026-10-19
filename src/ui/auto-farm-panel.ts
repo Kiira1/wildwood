@@ -11,7 +11,7 @@ import { actionForKey, onControlAction } from './control-bindings';
 import { installMovableHudCard } from './movable-hud-card';
 import type { AggroChallenge } from '../../shared/aggro-challenge';
 import type { RewardType } from '../game/enemies';
-import { AUTO_MINE_HELP_LINES, createAutoMineView } from './auto-mine-view';
+import { AUTO_CHOP_HELP_LINES, AUTO_MINE_HELP_LINES, createAutoChopView, createAutoMineView } from './auto-gather-view';
 
 /** v2: positions saved before 0.901.22 (often under the joystick or skills) are dropped; the card starts centred. */
 export const AUTO_FARM_POSITION_KEY = 'wildstat:autofarm-position:v2';
@@ -47,7 +47,8 @@ const segment = (label: string, labelId: string, className: string, buttons: str
  * camps to the player, and with nothing on Farm it stands still. Move On goes to the next
  * map at its recommended power; Fight Bosses fights the boss at its; Pull and
  * Target sit below them. The movable card header shows what the farm is doing even when collapsed.
- * In the Town the same button and window are Auto Mine's (auto-mine-view.ts): ore switches instead of stats.
+ * In the Copper Hills the same button and window are Auto Mine's, in Timberwood Auto Chop's (auto-gather-view.ts):
+ * a switch per ore or tree instead of stats. Elsewhere in the Town there is no button.
  */
 export function createAutoFarmPanel(options: {
   farm: AutoFarmController;
@@ -113,14 +114,21 @@ export function createAutoFarmPanel(options: {
   const startButton = element<HTMLButtonElement>('.farm-start');
   const backButton = element<HTMLButtonElement>('.farm-close');
   const aggroRow = element('.farm-aggro-row');
-  const mine = options.farm.mine ?? null;
+  const mine = options.farm.mine ?? null, chop = options.farm.chop ?? null;
   const mineView = mine ? createAutoMineView(mine, () => updateSelection()) : null;
+  const chopView = chop ? createAutoChopView(chop, () => updateSelection()) : null;
+  if (chopView) element('.farm-body').after(chopView.body);
   if (mineView) element('.farm-body').after(mineView.body);
-  /** In the Town the window is Auto Mine's. */
-  const mining = () => Boolean(mine?.inTown());
+  /** Auto Mine in the Copper Hills, Auto Chop in Timberwood: the one whose area the player is in, or null. */
+  const gather = () => mine?.here() ? { name: 'Auto Mine', run: mine, view: mineView!, help: AUTO_MINE_HELP_LINES }
+    : chop?.here() ? { name: 'Auto Chop', run: chop, view: chopView!, help: AUTO_CHOP_HELP_LINES } : null;
+  const mining = () => Boolean(gather());
+  /** The rest of the Town has nothing to run: no button there. */
+  const shown = () => options.visible() && (mining() || !(mine?.inTown() ?? chop?.inTown() ?? false));
   // Waiting to carry on after a map change counts: it starts again by itself, so it shows On and Stop cancels it.
   const farming = () => {
-    if (mining()) return mine!.state().active;
+    const here = gather();
+    if (here) return here.run.state().active;
     const state = options.farm.state(); return state.active || Boolean(state.waiting);
   };
   const selection = element('.farm-selection');
@@ -130,20 +138,19 @@ export function createAutoFarmPanel(options: {
   const body = element('.farm-body');
   const helpList = element('.farm-help-list');
   const title = element('#autoFarmTitle');
-  /** Which window it is showing, Auto Farm's or Auto Mine's: its title, its "?" page and its body. */
-  let shownMining: boolean | null = null;
+  /** Which window it is showing, Auto Farm's, Auto Mine's or Auto Chop's: its title, its "?" page and its body. */
+  let shownName: string | null = null;
   function showKind() {
-    const town = mining();
-    if (town === shownMining) return;
+    const here = gather(), name = here?.name ?? 'Auto Farm';
+    if (name === shownName) return;
     // Out of the Town with the window open: the modes as last set, as this map names its stats.
-    if (shownMining && !town) { draft = savedModes(); choiceKey = ''; }
-    shownMining = town;
-    const name = town ? 'Auto Mine' : 'Auto Farm';
+    if (shownName && shownName !== 'Auto Farm' && !here) { draft = savedModes(); choiceKey = ''; }
+    shownName = name;
     title.textContent = name;
     helpToggle.setAttribute('aria-label', `How ${name} Works`);
     helpToggle.title = `How ${name} Works`;
     helpList.replaceChildren();
-    for (const [term, line] of town ? AUTO_MINE_HELP_LINES : HELP_LINES) {
+    for (const [term, line] of here?.help ?? HELP_LINES) {
       const dt = document.createElement('dt'), dd = document.createElement('dd');
       dt.textContent = term; dd.textContent = line;
       helpList.append(dt, dd);
@@ -153,8 +160,10 @@ export function createAutoFarmPanel(options: {
   /** The "?" page takes the settings' place, so the window keeps its size; Back returns to them. */
   function setHelpOpen(open: boolean) {
     help.hidden = !open;
-    body.hidden = open || mining();
-    if (mineView) mineView.body.hidden = open || !mining();
+    const view = gather()?.view;
+    body.hidden = open || Boolean(view);
+    if (mineView) mineView.body.hidden = open || view !== mineView;
+    if (chopView) chopView.body.hidden = open || view !== chopView;
     helpToggle.setAttribute('aria-expanded', String(open));
   }
   /** Each stat's mode in this window, applied by Start or Go and kept when it closes. */
@@ -209,10 +218,11 @@ export function createAutoFarmPanel(options: {
   /** Nothing on Farm, some on Aggro, outside a run: it pulls those and stands still. */
   const pullOnly = () => !aggroRun() && farmedNone() && keysOn(draft, 'aggro').length > 0;
   const nothingSet = () => farmedNone() && !chaseOnly() && !pullOnly();
-  /** Auto Mine's window: its switches and status, Start or Go, and why it cannot start. */
+  /** Auto Mine's or Auto Chop's window: its switches and status, Start or Go, and why it cannot start. */
   function updateMining() {
-    mineView!.render();
-    const live = farming(), reason = live ? null : options.unavailable() ?? mine!.problem();
+    const here = gather()!;
+    here.view.render();
+    const live = farming(), reason = live ? null : options.unavailable() ?? here.run.problem();
     const backLabel = live ? 'Stop' : 'Back';
     if (backButton.textContent !== backLabel) backButton.textContent = backLabel;
     if (startButton.textContent !== (live ? 'Go' : 'Start')) startButton.textContent = live ? 'Go' : 'Start';
@@ -372,7 +382,7 @@ export function createAutoFarmPanel(options: {
   }
 
   function open() {
-    if (!options.visible() || !content.hidden) return;
+    if (!shown() || !content.hidden) return;
     showKind();
     // Reopening shows the modes last farmed with, as this map names its stats.
     if (!mining()) draft = savedModes();
@@ -384,8 +394,8 @@ export function createAutoFarmPanel(options: {
     refresh();
   }
 
-  /** The card's whole label, collapsed or open: "Autofarm: On" or "Autofarm: Off", in the Town "Auto Mine: On". */
-  const badgeText = () => `${mining() ? 'Auto Mine' : 'Autofarm'}: ${farming() ? 'On' : 'Off'}`;
+  /** The card's whole label, collapsed or open: "Autofarm: On" or "Autofarm: Off", in the hills "Auto Mine: On". */
+  const badgeText = () => `${gather()?.name ?? 'Autofarm'}: ${farming() ? 'On' : 'Off'}`;
 
   function refresh() {
     options.farm.refresh();
@@ -394,16 +404,19 @@ export function createAutoFarmPanel(options: {
     if (aggroRun() && options.visible() && groups.length && !picker.isOpen() && picker.lacking(needed, groups)) picker.open(needed, groups);
     helpToggle.hidden = content.hidden;
     aggroRow.hidden = !aggroRun();
-    const visible = options.visible();
+    const visible = shown();
+    // Walked out of its area: the window folds away with the button.
+    if (options.visible() && !visible && !content.hidden) { setHelpOpen(false); setExpanded(false); }
     const wasHidden = sheet.hidden;
     sheet.hidden = !visible;
     if (wasHidden && visible) movable.place();
     showKind();
     const state = options.farm.state();
     sheet.classList.toggle('is-farming', mining() ? farming() : state.active);
-    if (mining()) {
-      const status = mine!.state().status;
-      toggle.setAttribute('aria-label', content.hidden ? `Open Auto Mine. ${farming() ? `${status}. ` : ''}Drag or use arrow keys to move; Home to reset position.` : 'Close Auto Mine');
+    const here = gather();
+    if (here) {
+      const status = here.run.state().status;
+      toggle.setAttribute('aria-label', content.hidden ? `Open ${here.name}. ${farming() ? `${status}. ` : ''}Drag or use arrow keys to move; Home to reset position.` : `Close ${here.name}`);
       toggle.title = `${farming() ? `${status} · ` : ''}Click to ${content.hidden ? 'open' : 'close'} · Drag to move · F to ${farming() ? 'stop' : 'start'}`;
     } else toggle.setAttribute('aria-label', content.hidden
       ? `Open Auto Farm. ${state.active ? `Farming ${state.selectedLabel}. ` : ''}Drag or use arrow keys to move; Home to reset position.`
@@ -419,8 +432,8 @@ export function createAutoFarmPanel(options: {
     // An Aggro run's window is the same one, with Stop; its chasing groups are a button inside it.
     if (content.hidden) open(); else close();
   } });
-  /** Stops whichever is running here: Auto Mine in the Town, Auto Farm elsewhere. */
-  const stopRunning = () => { if (mining()) mine!.stop(); else options.farm.stop(); };
+  /** Stops whichever is running here: Auto Mine or Auto Chop in their areas, Auto Farm elsewhere. */
+  const stopRunning = () => { const here = gather(); if (here) here.run.stop(); else options.farm.stop(); };
   backButton.addEventListener('click', () => {
     if (help.hidden && farming()) { stopRunning(); close(); return; }
     back();
@@ -449,8 +462,9 @@ export function createAutoFarmPanel(options: {
     if (event.key === 'Escape' && !content.hidden) { event.preventDefault(); back(); }
   });
   startButton.addEventListener('click', () => {
-    if (mining()) {
-      if (farming() || mine!.start()) close();
+    const here = gather();
+    if (here) {
+      if (farming() || here.run.start()) close();
       else updateSelection();
       return;
     }
@@ -465,11 +479,11 @@ export function createAutoFarmPanel(options: {
    * here it opens the window, which says why.
    */
   const toggleFarming = () => {
-    if (!options.visible()) return false;
+    if (!shown()) return false;
     const top = topBackButton(document);
     if (top && top !== backButton) return false;
     if (farming()) stopRunning();
-    else if (mining() ? !mine!.start() : !startModes(savedModes())) open();
+    else if (mining() ? !gather()!.run.start() : !startModes(savedModes())) open();
     refresh();
     return true;
   };

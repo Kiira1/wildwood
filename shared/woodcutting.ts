@@ -1,15 +1,13 @@
-import { campaignMapUnlocked, type CampaignAccess } from "./equipment-access";
 import type { WoodId } from "./crafting";
 import { toolSpeed } from "./tools";
-import { MAP_DISPLAY_NAMES, MAP_IDS } from "./rules";
 import { TOWN_GROVE, TOWN_WEST_BRIDGE, townRandom } from "./town";
 
 /**
- * Woodcutting, in Timberwood west of the village (TOWN_GROVE): walk up to a tree with a hatchet and you chop
+ * Woodcutting, in Timberwood west of the village (TOWN_GROVE): walk up to a tree with your hatchet and you chop
  * it, as you mine a rock, and it falls into logs for crafting. Peaceful, as the hills are.
  *
- * - Four stands, east to west: pine nearest the village, then oak, yew and elder, each opening with the map whose
- *   grade of gear its wood crafts (as the ore veins open, shared/mining.ts).
+ * - Four stands, east to west: pine nearest the village, then oak, yew and elder, each opening at a Woodcutting
+ *   level (canChopTree), on the same scale as the ore veins' Mining (shared/mining.ts).
  * - Every tree raises the Woodcutting stat, which makes chopping faster. Prestige never resets it.
  * - Each player has their own trees: a felled tree is a stump for them alone until it grows back.
  *
@@ -25,8 +23,10 @@ export type WoodStand = {
   /** "Pine Tree": what its trees are called. */
   name: string;
   log: WoodId;
-  /** The first gear tier its wood crafts: the stand opens with that tier's map. */
+  /** The first gear tier its wood crafts. */
   firstTier: number;
+  /** The Woodcutting its trees ask for (shared/tools.ts gates the hatchet on the same scale). */
+  woodcutting: number;
   /** How much longer its trees take to fell than pine's: twice as long a grade. */
   hardness: number;
   /** How many trees it holds: the deeper the stand, the scarcer. */
@@ -38,10 +38,10 @@ export type WoodStand = {
 /** A band of the grove, measured west from its east edge (the village's side). */
 const band = (from: number, to: number) => ({ left: TOWN_GROVE.right - to, right: TOWN_GROVE.right - from });
 export const WOOD_STANDS: readonly WoodStand[] = Object.freeze([
-  { kind: "pine", name: "Pine Tree", log: "pine_log", firstTier: 1, hardness: 1, trees: 16, ...band(0, 700) },
-  { kind: "oak", name: "Oak Tree", log: "oak_log", firstTier: 5, hardness: 2, trees: 14, ...band(700, 1_300) },
-  { kind: "yew", name: "Yew Tree", log: "yew_log", firstTier: 9, hardness: 4, trees: 12, ...band(1_300, 1_880) },
-  { kind: "elder", name: "Elder Tree", log: "elder_log", firstTier: 13, hardness: 8, trees: 10, ...band(1_880, 2_550) },
+  { kind: "pine", name: "Pine Tree", log: "pine_log", firstTier: 1, woodcutting: 0, hardness: 1, trees: 16, ...band(0, 700) },
+  { kind: "oak", name: "Oak Tree", log: "oak_log", firstTier: 5, woodcutting: 50, hardness: 2, trees: 14, ...band(700, 1_300) },
+  { kind: "yew", name: "Yew Tree", log: "yew_log", firstTier: 9, woodcutting: 250, hardness: 4, trees: 12, ...band(1_300, 1_880) },
+  { kind: "elder", name: "Elder Tree", log: "elder_log", firstTier: 13, woodcutting: 900, hardness: 8, trees: 10, ...band(1_880, 2_550) },
 ] as const);
 /** Each kind's stand, by kind. */
 export const WOOD_TREES: Readonly<Record<WoodTreeKind, WoodStand>> = Object.freeze(Object.fromEntries(WOOD_STANDS.map(stand => [stand.kind, stand])) as Record<WoodTreeKind, WoodStand>);
@@ -238,16 +238,11 @@ export function woodcuttingYield(tree: WoodTree, bonus = 0): Partial<Record<Wood
   return { [tree.log]: WOODCUTTING_LOGS + bonus };
 }
 
-/** Whether a stand is open: pine always, the rest once the map whose gear their wood crafts is unlocked. */
-export function woodStandOpen(stand: WoodStand, access: CampaignAccess | null | undefined) {
-  return stand.firstTier <= 1 || Boolean(access && campaignMapUnlocked(stand.firstTier - 1, access));
-}
+/** Whether this Woodcutting opens a stand. */
+export const canChopStand = (stand: Pick<WoodStand, "woodcutting">, woodcutting: unknown) => normalizeWoodcutting(woodcutting) >= stand.woodcutting;
 
-/** The map that opens a stand ("Reach Night Forest - 5 to chop Oak Trees"). */
-export function woodStandMap(stand: WoodStand) {
-  const mapId = MAP_IDS[stand.firstTier - 1];
-  return (mapId && MAP_DISPLAY_NAMES[mapId as keyof typeof MAP_DISPLAY_NAMES]) || `Map ${stand.firstTier}`;
-}
+/** Whether this Woodcutting may chop a tree: the one gate the server, the runtime and Auto Chop all check. */
+export const canChopTree = (tree: Pick<WoodTree, "stand">, woodcutting: unknown) => canChopStand(WOOD_STANDS[tree.stand], woodcutting);
 
-/** "Reach Night Forest - 5 to chop Oak Trees." */
-export const woodStandHint = (stand: WoodStand) => `Reach ${woodStandMap(stand)} to chop ${stand.name}s.`;
+/** "Reach Woodcutting 50 to chop Oak Trees." */
+export const woodStandHint = (stand: WoodStand) => `Reach Woodcutting ${stand.woodcutting.toLocaleString("en-US")} to chop ${stand.name}s.`;

@@ -1,5 +1,5 @@
 import {
-  ARMOR_CLASSES, ARMOR_CLASS_DETAILS, BOOT_STYLES, BOOT_STYLE_SCHOOL, GEAR_GRADES, GRADE_GOLD_PRICE, GRADE_MASTERY_LEVEL, armorClassMasteryLevel, gradeIndex,
+  ARMOR_CLASSES, ARMOR_CLASS_DETAILS, BOOT_STYLES, BOOT_STYLE_SCHOOL, GEAR_GRADES, GRADE_GOLD_PRICE, GRADE_MASTERY_LEVEL, armorClassMasteryLevel, gradeIndex, gradeSalePrice,
   type ArmorClass, type BootStyle, type GearGrade,
 } from "./gear-grades";
 import {
@@ -62,6 +62,12 @@ export const gradeShopOpen = (itemId: GradeItemId, levels: MasteryLevels) => gra
 export const gradeShopPrice = (itemId: unknown) => {
   const grade = isGradeItemId(itemId) ? gradeOf(itemId) : undefined;
   return grade ? GRADE_GOLD_PRICE[grade] : undefined;
+};
+
+/** What the Smith pays for a graded piece (sell_graded_item), or undefined for anything he does not buy. */
+export const gradeShopSalePrice = (itemId: unknown) => {
+  const grade = isGradeItemId(itemId) ? gradeOf(itemId) : undefined;
+  return grade ? gradeSalePrice(grade) : undefined;
 };
 
 /** The line a graded piece belongs to. */

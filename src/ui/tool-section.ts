@@ -18,8 +18,6 @@ export type ToolSectionDeps = {
   toolLevels: () => Readonly<Partial<Record<ToolId, number>>>;
   /** The Mining and Woodcutting stats, and each craft's level. */
   skills: () => Readonly<Record<ToolSkill, number>>;
-  /** Whether the player has the tool: the Pickaxe and Hatchet are claimed first, the rest are always held. */
-  owned: (tool: ToolId) => boolean;
   ores: () => Ores;
   gold: () => bigint;
   upgrade: (tool: ToolId, expectedLevel: number) => Promise<Result>;
@@ -38,7 +36,7 @@ export function toolButtonText(tool: ToolId, level: number, skill: number, ores:
 }
 
 /**
- * The Smith's Tools section: a row per tool held, its art in its level's colours, its name and level, what it does
+ * The Smith's Tools section: a row per tool, every player holding all five, its art at its level, its name and level, what it does
  * now and at the next level, and the next upgrade's gold and materials against what is held, with a button that
  * says what it does or why it waits. The server decides (upgrade_tool).
  */
@@ -51,19 +49,15 @@ export function createToolSection(deps: ToolSectionDeps, options: { onChange?: (
   const rows = section.querySelector<HTMLElement>(".smith-shop-rows")!;
   let upgrading: ToolId | null = null, rendered = "";
 
-  const held = () => TOOL_IDS.filter(tool => deps.owned(tool));
-
   function state() {
-    return JSON.stringify([held(), deps.toolLevels(), deps.skills(), deps.ores(), String(deps.gold()), upgrading]);
+    return JSON.stringify([deps.toolLevels(), deps.skills(), deps.ores(), String(deps.gold()), upgrading]);
   }
 
   function render() {
     const now = state();
     if (now === rendered) return;
     rendered = now;
-    const tools = held();
-    section.hidden = tools.length === 0;
-    rows.replaceChildren(...tools.map(row));
+    rows.replaceChildren(...TOOL_IDS.map(row));
   }
 
   function row(tool: ToolId) {
@@ -163,8 +157,6 @@ export function createToolSection(deps: ToolSectionDeps, options: { onChange?: (
 export type ToolCoop = {
   toolLevels?: () => Readonly<Partial<Record<ToolId, number>>>;
   upgradeTool?: (tool: ToolId, expectedLevel: number) => Promise<Result>;
-  hasPickaxe?: () => boolean;
-  hasHatchet?: () => boolean;
   mining?: () => number;
   woodcutting?: () => number;
   craftSkills?: () => Readonly<Partial<Record<CraftSkill, bigint>>>;
@@ -183,7 +175,6 @@ export function toolDepsFor(coop: () => ToolCoop | null | undefined, showMessage
         smithing: craftLevel(crafts.smithing ?? 0n), fletching: craftLevel(crafts.fletching ?? 0n), enchanting: craftLevel(crafts.enchanting ?? 0n),
       };
     },
-    owned: tool => tool === "pickaxe" ? Boolean(coop()?.hasPickaxe?.()) : tool === "hatchet" ? Boolean(coop()?.hasHatchet?.()) : true,
     ores: () => coop()?.ores?.() ?? {},
     gold: () => coop()?.gold?.() ?? 0n,
     upgrade: async (tool, expectedLevel) => coop()?.upgradeTool?.(tool, expectedLevel) ?? { ok: false, error: "Not Connected" },

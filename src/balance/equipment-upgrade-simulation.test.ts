@@ -52,10 +52,10 @@ describe("the Smith's graded gear", () => {
     equipped: { head: BASIC_PAPER_HAT, chest: "", weapon: STARTER_STONE }, ownedItems: new Set([BASIC_PAPER_HAT, STARTER_STONE]) });
 
   it("buys what the Smith offers on each line while gold allows, cheapest first, and wears the set", () => {
-    const state = smith(50, 0), recorded = vi.fn();
+    const state = smith(500, 0), recorded = vi.fn();
     buyGradeGear(state, recorded);
     expect(state.equipped).toEqual({ weapon: "crude_bow", chest: "crude_light_armor", head: "crude_light_helmet", feet: "crude_ranger_boots" });
-    expect(state.gold).toBe(50 - 4 * GRADE_GOLD_PRICE.crude);
+    expect(state.gold).toBe(500 - 4 * GRADE_GOLD_PRICE.crude);
     expect(recorded).toHaveBeenCalledTimes(4);
     expect(gradeShopLinesFor(state.equipped.weapon)).toEqual([
       { kind: "bow" }, { kind: "armor", armorClass: "light" }, { kind: "helmet", armorClass: "light" }, { kind: "boots", bootStyle: "ranger" },

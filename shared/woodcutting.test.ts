@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   GROVE_ROAD, GROVE_ROAD_END, GROVE_ROAD_GATE, GROVE_ROAD_START, GROVE_ROAD_HALF_WIDTH, WOOD_STAND_BLEND, WOOD_STANDS, WOOD_TREE_KINDS, WOOD_TREE_NODES, WOOD_TREES, WOODCUTTING_LOGS,
   WOODCUTTING_REACH, groveRoadDistanceSquared, normalizeWoodcutting, woodcuttingChopSeconds, woodcuttingGain, woodcuttingSpeed, woodcuttingYield,
-  woodStandHint, woodStandMap, woodStandOpen, woodTree,
+  canChopStand, canChopTree, woodStandHint, woodTree,
 } from "./woodcutting";
 import { MINING_VEINS } from "./mining";
 import { WOOD_IDS, craftMaterials } from "./crafting";
@@ -28,15 +28,15 @@ describe("Timberwood's stands", () => {
     expect(WOOD_TREES.oak.name).toBe("Oak Tree");
   });
 
-  it("open with the same maps as the ore veins whose grade their wood crafts with", () => {
+  it("open by Woodcutting alone, at the same marks as the ore veins' Mining", () => {
     expect(WOOD_STANDS.map(stand => stand.firstTier)).toEqual(MINING_VEINS.map(vein => vein.firstTier));
-    expect(WOOD_STANDS.map(woodStandMap)).toEqual(["Tutorial Forest - 1", "Night Forest - 5", "Moonfen - 9", "Neon Bastion - 13"]);
-    const [pine, oak, yew] = WOOD_STANDS;
-    expect(woodStandOpen(pine, null)).toBe(true);
-    expect(woodStandOpen(oak, {})).toBe(false);
-    expect(woodStandOpen(oak, { infernalUnlocked: true })).toBe(true);
-    expect(woodStandOpen(yew, { infernalUnlocked: true })).toBe(false);
-    expect(woodStandHint(oak)).toBe("Reach Night Forest - 5 to chop Oak Trees.");
+    expect(WOOD_STANDS.map(stand => stand.woodcutting)).toEqual(MINING_VEINS.map(vein => vein.mining));
+    const [pine, oak, yew, elder] = WOOD_STANDS;
+    expect([canChopStand(pine, 0), canChopStand(oak, 49), canChopStand(oak, 50), canChopStand(yew, 249), canChopStand(elder, 900)]).toEqual([true, false, true, false, true]);
+    const tree = (stand: number) => WOOD_TREE_NODES.find(node => node.stand === stand)!;
+    expect([canChopTree(tree(0), 0), canChopTree(tree(1), 0), canChopTree(tree(1), 50)]).toEqual([true, false, true]);
+    expect(woodStandHint(oak)).toBe("Reach Woodcutting 50 to chop Oak Trees.");
+    expect(woodStandHint(elder)).toBe("Reach Woodcutting 900 to chop Elder Trees.");
     // Each stand's wood is the wood its grade's crafts take.
     expect(Object.keys(craftMaterials("superior", "bow"))).toContain(oak.log);
   });

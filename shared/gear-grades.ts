@@ -31,13 +31,16 @@ const byGrade = <T>(values: readonly T[]) => Object.fromEntries(GEAR_GRADES.map(
 export const GRADE_BONUS_PERCENT: Readonly<Record<GearGrade, number>> = byGrade([8, 12, 17, 23, 29, 36, 43, 51, 59, 68, 77, 87, 98, 108, 120]);
 
 /** The Mastery level that opens a grade: one a level early, so the campaign reaches about the tenth, slow toward the fifteenth. */
-export const GRADE_MASTERY_LEVEL: Readonly<Record<GearGrade, number>> = byGrade([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 13, 16, 26, 40]);
+export const GRADE_MASTERY_LEVEL: Readonly<Record<GearGrade, number>> = byGrade([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 17, 24, 35, 50]);
 
 /**
- * The Smith's price in gold: about 1.12x a grade to the tenth, so saved gold skips grades, then 1.3x. Kills drop
- * about 0.2 gold each; the Balance Lab's player buys about four pieces a line before Ion Citadel.
+ * The Smith's price in gold: Mastery opens a grade, gold buys it, so gold is meant to matter. About 1.12x a grade to
+ * the tenth, so saved gold skips grades, then 1.3x. Kills drop about 0.2 gold each.
  */
-export const GRADE_GOLD_PRICE: Readonly<Record<GearGrade, number>> = byGrade([12, 13, 15, 17, 19, 21, 24, 27, 30, 33, 43, 56, 73, 95, 124]);
+export const GRADE_GOLD_PRICE: Readonly<Record<GearGrade, number>> = byGrade([120, 130, 150, 170, 190, 210, 240, 270, 300, 330, 430, 560, 730, 950, 1240]);
+
+/** What the Smith pays for a graded piece: half its price, whatever its refine or however it was made. */
+export const gradeSalePrice = (grade: GearGrade) => Math.floor(GRADE_GOLD_PRICE[grade] / 2);
 
 /** The old map tier a grade stands in for where tiers still decide things (weapon skill rolls, refine grade). */
 export const GRADE_ITEM_TIER: Readonly<Record<GearGrade, number>> = byGrade(GEAR_GRADES.map((_grade, index) => index + 1));
@@ -118,6 +121,6 @@ export function gradeForOldBonus(bonusPercent: number) {
   return best;
 }
 
-/** What the Smith pays for an old map-tier piece left in the bag when gear moves to grades. */
+/** What the Smith paid for an old map-tier piece when gear moved to grades: a quarter of the price before it went x10. */
 export const oldTierSalePrice = (tier: number) =>
-  Math.max(1, Math.round(GRADE_GOLD_PRICE[GEAR_GRADES[Math.min(15, Math.max(1, Math.floor(tier))) - 1]] / 4));
+  Math.max(1, Math.round(GRADE_GOLD_PRICE[GEAR_GRADES[Math.min(15, Math.max(1, Math.floor(tier))) - 1]] / 40));

@@ -15,25 +15,25 @@ it("names each school's own lines: its weapon, its class's helmet and armor, its
 });
 
 it("spreads the gold over the lines, raising the one furthest behind a grade at a time, one piece a line", () => {
-  const result = plan({ levels: { archery: 6 }, gold: 60 });
+  const result = plan({ levels: { archery: 6 }, gold: 600 });
   expect(result.picks.map(pick => pick.itemId)).toEqual(["sturdy_bow", "sturdy_light_helmet", "sturdy_light_armor", "sturdy_ranger_boots"]);
   expect(result.total).toBe(GRADE_GOLD_PRICE.sturdy * 4);
   // A line already ahead waits while the others catch up.
-  const behind = plan({ levels: { archery: 6 }, gold: 60, held: ["rare_bow"] });
+  const behind = plan({ levels: { archery: 6 }, gold: 600, held: ["rare_bow"] });
   expect(behind.picks.map(pick => pick.itemId).some(itemId => itemId.endsWith("_bow"))).toBe(false);
 });
 
 it("skips a line whose affordable grades are no better than what is worn, or that is held to the top", () => {
-  const result = plan({ levels: { archery: 6 }, gold: 1_000, held: ["eternal_ranger_boots"], beats: itemId => !itemId.endsWith("_bow") });
+  const result = plan({ levels: { archery: 6 }, gold: 10_000, held: ["eternal_ranger_boots"], beats: itemId => !itemId.endsWith("_bow") });
   expect(result.picks.map(pick => pick.itemId)).toEqual(["exquisite_light_helmet", "exquisite_light_armor"]);
 });
 
 it("says what comes soonest when nothing is affordable: the cheapest upgrade's price, else the Mastery it needs", () => {
-  expect(plan({ levels: { archery: 6 }, gold: 5 })).toEqual({ picks: [], total: 0, next: `Next: Crude Bow at ${GRADE_GOLD_PRICE.crude} Gold` });
+  expect(plan({ levels: { archery: 6 }, gold: 50 })).toEqual({ picks: [], total: 0, next: `Next: Crude Bow at ${GRADE_GOLD_PRICE.crude} Gold` });
   const held = ["crude_bow", "crude_light_helmet", "crude_light_armor", "crude_ranger_boots"];
-  expect(plan({ gold: 1_000, held }).next).toBe("Next: Common Bow at Lv 1 Archery");
+  expect(plan({ gold: 10_000, held }).next).toBe("Next: Common Bow at Lv 1 Archery");
   const top = ["eternal_bow", "eternal_light_helmet", "eternal_light_armor", "eternal_ranger_boots"];
-  expect(plan({ gold: 1_000, held: top }).next).toBe("Top Grade on Every Line");
+  expect(plan({ gold: 10_000, held: top }).next).toBe("Top Grade on Every Line");
 });
 
 it("compares an offer with the worn piece's stat at the slot's tier, and the worn refine", () => {

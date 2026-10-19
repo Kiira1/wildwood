@@ -1,19 +1,17 @@
-import { campaignMapUnlocked, type CampaignAccess } from "./equipment-access";
 import { REFINE_ORES, type GradeOreId, type OreId } from "./refine";
 import { ARCANE_CRYSTAL } from "./crafting";
 import { luckMultiplier } from "./luck-research";
 import { toolSpeed } from "./tools";
-import { MAP_DISPLAY_NAMES, MAP_IDS } from "./rules";
 import { TOWN_EAST_BRIDGE, TOWN_EAST_FENCE_GAP, TOWN_HILLS, townRandom } from "./town";
 
 /**
  * Mining, in the Copper Hills east of the Town (TOWN_HILLS): walk up to an ore rock with a pickaxe and you mine it,
  * as you would attack, and it breaks into ore for the Smith's refines. Peaceful: no monsters, no dying.
  *
- * - Four veins, west to east: copper nearest the village, then iron, mithril and adamant, each opening with the map
- *   whose gear that ore refines (shared/refine.ts grades: tiers 1-4 copper, 5-8 iron, 9-12 mithril, 13-15 adamant).
+ * - Four veins, west to east: copper nearest the village, then iron, mithril and adamant, each opening at a Mining
+ *   level (canMineRock), the ores for the gear tiers shared/refine.ts grades: 1-4 copper, 5-8 iron, 9-12 mithril, 13-15 adamant.
  * - Rocks come Small, Large and, rarely, Mysterious; only a Mysterious rock can hold a Starshard.
- * - A few crystal rocks in every vein hold Arcane Crystal for crafting instead of ore, once Mining reaches CRYSTAL_MINING.
+ * - A few crystal rocks in every vein hold Arcane Crystal for crafting instead of ore, at a little more Mining than the vein.
  * - Every rock raises the Mining stat, which makes mining faster. Prestige never resets it.
  * - Each player has their own rocks: a broken rock is bare for them alone until it grows back.
  *
@@ -30,8 +28,11 @@ export type RockOreId = VeinOreId | typeof ARCANE_CRYSTAL;
 
 export type MiningVein = {
   ore: VeinOreId;
-  /** The first gear tier this ore refines: its vein opens with that tier's map. */
+  /** The first gear tier this ore refines. */
   firstTier: number;
+  /** The Mining its ore rocks ask for, and its crystal rocks (shared/tools.ts gates the pickaxe on the same scale). */
+  mining: number;
+  crystalMining: number;
   /** The band of the hills it fills, west to east. */
   left: number;
   right: number;
@@ -44,10 +45,10 @@ export type MiningVein = {
 };
 const band = (from: number, to: number) => ({ left: TOWN_HILLS.left + from, right: TOWN_HILLS.left + to });
 export const MINING_VEINS: readonly MiningVein[] = Object.freeze([
-  { ore: "copper_ore", firstTier: 1, hardness: 1, rocks: 34, crystals: 3, ...band(0, 1_400) },
-  { ore: "iron_ore", firstTier: 5, hardness: 2, rocks: 26, crystals: 2, ...band(1_400, 2_500) },
-  { ore: "mithril_ore", firstTier: 9, hardness: 4, rocks: 22, crystals: 2, ...band(2_500, 3_500) },
-  { ore: "adamant_ore", firstTier: 13, hardness: 8, rocks: 18, crystals: 2, ...band(3_500, 4_400) },
+  { ore: "copper_ore", firstTier: 1, mining: 0, crystalMining: 25, hardness: 1, rocks: 34, crystals: 3, ...band(0, 1_400) },
+  { ore: "iron_ore", firstTier: 5, mining: 50, crystalMining: 75, hardness: 2, rocks: 26, crystals: 2, ...band(1_400, 2_500) },
+  { ore: "mithril_ore", firstTier: 9, mining: 250, crystalMining: 300, hardness: 4, rocks: 22, crystals: 2, ...band(2_500, 3_500) },
+  { ore: "adamant_ore", firstTier: 13, mining: 900, crystalMining: 1_000, hardness: 8, rocks: 18, crystals: 2, ...band(3_500, 4_400) },
 ] as const);
 
 export type MiningNodeKind = "small" | "large" | "mysterious" | "crystal";
@@ -62,8 +63,6 @@ export const MINING_NODE_KINDS: Readonly<Record<MiningNodeKind, { name: string; 
   mysterious: { name: "Mysterious", breakSeconds: 12, ore: 2, respawnSeconds: 900, share: .04 },
   crystal: { name: "Crystal", breakSeconds: 10, ore: 1, respawnSeconds: 300, share: 0 },
 };
-/** The Mining a crystal rock asks for: a first few rocks of ore before the crystal. */
-export const CRYSTAL_MINING = 25;
 /** A Mysterious rock's chance of a Starshard beside its ore: the ore every refine from ★11 on takes. */
 export const MINING_STARSHARD_CHANCE = .15;
 
@@ -401,27 +400,13 @@ export function miningYield(node: MiningNode, roll: number, cards: { starshardFi
   return ores;
 }
 
-/** Whether a vein is open: copper always, the rest once the map whose gear their ore refines is unlocked. */
-export function miningVeinOpen(vein: MiningVein, access: CampaignAccess | null | undefined) {
-  return vein.firstTier <= 1 || Boolean(access && campaignMapUnlocked(vein.firstTier - 1, access));
-}
+/** The Mining a rock asks for: its vein's, or a crystal rock's a little more. */
+export const miningRockNeed = (node: Pick<MiningNode, "kind" | "vein">) =>
+  node.kind === "crystal" ? MINING_VEINS[node.vein].crystalMining : MINING_VEINS[node.vein].mining;
 
-/** The map that opens a vein ("Reach Lava Lake - 5 to mine Iron Ore"). */
-export function miningVeinMap(vein: MiningVein) {
-  const mapId = MAP_IDS[vein.firstTier - 1];
-  return (mapId && MAP_DISPLAY_NAMES[mapId as keyof typeof MAP_DISPLAY_NAMES]) || `Map ${vein.firstTier}`;
-}
+/** Whether this Mining may mine a rock: the one gate the server, the runtime and Auto Mine all check. */
+export const canMineRock = (node: Pick<MiningNode, "kind" | "vein">, mining: unknown) => normalizeMining(mining) >= miningRockNeed(node);
 
-/** Whether this Mining is enough for a rock: any rock but a crystal one, which asks for CRYSTAL_MINING. */
-export function miningRockOpen(node: Pick<MiningNode, "kind">, mining: unknown) {
-  return node.kind !== "crystal" || normalizeMining(mining) >= CRYSTAL_MINING;
-}
-
-/** Why a shut vein's rock cannot be mined: "Reach Night Forest - 5 to mine Iron Ore." (a crystal rock's crystal "here"). */
-export function miningVeinHint(node: MiningNode) {
-  const vein = MINING_VEINS[node.vein];
-  return node.kind === "crystal" ? `Reach ${miningVeinMap(vein)} to mine ${REFINE_ORES[node.ore].name} here.` : `Reach ${miningVeinMap(vein)} to mine ${REFINE_ORES[vein.ore].name}.`;
-}
-
-/** "Reach Mining 25 to mine Arcane Crystal." */
-export const crystalRockHint = () => `Reach Mining ${CRYSTAL_MINING} to mine ${REFINE_ORES[ARCANE_CRYSTAL].name}.`;
+/** Why a rock cannot be mined yet: "Reach Mining 250 to mine Mithril Ore." */
+export const miningRockHint = (node: Pick<MiningNode, "kind" | "vein" | "ore">) =>
+  `Reach Mining ${miningRockNeed(node).toLocaleString("en-US")} to mine ${REFINE_ORES[node.ore].name}.`;

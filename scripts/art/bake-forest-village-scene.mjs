@@ -277,6 +277,15 @@ for (const [goId] of gameObjects) {
   });
 }
 
+// Pack sprites swapped on one building: the Mage Tower (House_Orange, door 4) gets the pack's blue stone roof.
+const RESKINS = [{ building: "House_Orange", part: "Roof_01_Orange", sprite: "Roof_04_Blue" }];
+for (const { building, part, sprite } of RESKINS) {
+  const swaps = props.filter(prop => gameObjects.get(String(prop.goId))?.m_Name === part && gameObjects.get(String(prop.group))?.m_Name === building);
+  const replacement = spriteNamed(sprite);
+  if (swaps.length !== 1 || !replacement) throw new Error(`reskin ${building} ${part}: ${swaps.length} parts, sprite ${sprite} ${replacement ? "found" : "missing"}`);
+  swaps[0].sprite = replacement;
+}
+
 if (process.env.DEBUG_AT) {
   const [ax, ay] = process.env.DEBUG_AT.split(",").map(Number);
   for (const prop of props) if (Math.hypot(prop.x * UNITS - ax, -prop.y * UNITS - ay) < 80) console.log(JSON.stringify({ name: gameObjects.get(String(prop.goId))?.m_Name, x: Math.round(prop.x * UNITS), y: Math.round(-prop.y * UNITS), depth: Math.round(-prop.depthY * UNITS), order: prop.order, group: prop.group, groupName: gameObjects.get(String(prop.group))?.m_Name }));

@@ -1,11 +1,11 @@
 import { TOOL_MAX_LEVEL, normalizeToolLevel, type ToolId } from "../../../../shared/tools";
-import { paintHatchet } from "./hatchet-sprite";
+import { hatchetArtSource } from "./hatchet-sprite";
 import { PLAIN_STEEL, paintPickaxe, type ToolMetal } from "./pickaxe-sprite";
 
 /**
  * Every tool's look by level (shared/tools.ts): the head recoloured from Worn steel through bronze and the metals
  * to a violet jewel at the top. The Hammer, Knife and Focus are painted here for the Smith's window, in the
- * pickaxe's style and canvas.
+ * pickaxe's style and canvas. The Hatchet is a real axe per level instead (hatchet-sprite.ts).
  */
 export const TOOL_METALS: readonly ToolMetal[] = Object.freeze([
   PLAIN_STEEL,
@@ -77,12 +77,13 @@ export function paintFocus(c: Context, metal: ToolMetal = PLAIN_STEEL) {
   c.fillStyle = "rgba(255,255,255,.85)"; c.fillRect(85, 20, 3, 8);
 }
 
-const PAINTERS: Readonly<Record<ToolId, (c: Context, metal?: ToolMetal) => void>> = {
-  pickaxe: paintPickaxe, hatchet: paintHatchet, hammer: paintHammer, knife: paintKnife, focus: paintFocus,
+type PaintedTool = Exclude<ToolId, "hatchet">;
+const PAINTERS: Readonly<Record<PaintedTool, (c: Context, metal?: ToolMetal) => void>> = {
+  pickaxe: paintPickaxe, hammer: paintHammer, knife: paintKnife, focus: paintFocus,
 };
 
 /** A tool painted at its level onto the wooden sword's 118 × 59 canvas, or nothing where there is no canvas (tests). */
-function paintedCanvas(tool: ToolId, level: number) {
+function paintedCanvas(tool: PaintedTool, level: number) {
   if (typeof document === "undefined") return null;
   const canvas = document.createElement("canvas");
   canvas.width = 118; canvas.height = 59;
@@ -95,6 +96,7 @@ function paintedCanvas(tool: ToolId, level: number) {
 const sources = new Map<string, string>();
 /** A tool's art at a level as an image source for the Smith's window; "" without a canvas. Painted once each. */
 export function toolArtSource(tool: ToolId, level: number) {
+  if (tool === "hatchet") return hatchetArtSource(level);
   const key = `${tool}:${normalizeToolLevel(level)}`;
   let source = sources.get(key);
   if (source === undefined) {
@@ -105,7 +107,7 @@ export function toolArtSource(tool: ToolId, level: number) {
 }
 
 const sprites = new Map<string, HTMLImageElement | undefined>();
-/** The Pickaxe or Hatchet in hand at its level, an image the player's drawing can hold. Painted once each. */
+/** The Pickaxe or Hatchet in hand at its level, an image the player's drawing can hold. Made once each. */
 export function toolSprite(tool: "pickaxe" | "hatchet", level: number) {
   const key = `${tool}:${normalizeToolLevel(level)}`;
   if (!sprites.has(key)) {

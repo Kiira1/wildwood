@@ -648,6 +648,11 @@
       "chain:f32",
       "frostNova:f32"
     ],
+    "my_starter_weapon": [
+      "identity:identity",
+      "kind:string",
+      "at:timestamp"
+    ],
     "my_sword_skills": [
       "key:string",
       "identity:identity",

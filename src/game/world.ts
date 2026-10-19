@@ -47,6 +47,8 @@ export type WorldDecor = WorldDecorPlacement & (
   | { type: "oreRock"; s: number; node: number; frame: string; flip?: boolean }
   /** A tree in Timberwood (shared/woodcutting.ts): the pack's tree `frame`, a stump while felled. */
   | { type: "woodTree"; s: number; node: number; frame: string; flip?: boolean }
+  /** The Starter Chest by the forest spawn (shared/starter-chest.ts), drawn only while the player has not opened it. */
+  | { type: "starterChest"; s: number }
   /** A Soul Dimension sprite from its atlas (soul-village.ts): village pieces and the wilds' props. */
   /** `sheet: "village"` is the baked demo village's; `dy` draws it that far from its depth point (a house's parts share one depth). */
   | { type: "soulProp"; s: number; frame: string; flip?: boolean; sheet?: "village" | "hall"; dy?: number;

@@ -40,6 +40,8 @@ const save = (inventoryJson: string[], extra: Record<string, unknown> = {}) => J
   equippedLeftHand: "", bowCount: 0, woodenArmorCount: 0, ...extra });
 const migrate = (f: Fixture) => {
   f.seed("moduleMigrationState", { id: 0, version: 61 });
+  // 63's Crude weapons have their own tests (starter-chest.test.ts).
+  if (!f.db.playerStarterWeapon.identity.find(f.ctx.sender)) f.seed("playerStarterWeapon", { identity: f.ctx.sender, kind: "all", at: f.ctx.timestamp });
   const connectionId = f.ctx.connectionId;
   f.ctx.connectionId = null;
   f.run(server.onConnect);
@@ -119,7 +121,7 @@ it("migration 62 wipes old gear from everywhere a player holds it and pays each 
   const f = veteran();
   migrate(f);
   expect(f.db.moduleMigrationState.id.find(0).version).toBe(MODULE_MIGRATION_VERSION);
-  expect(MODULE_MIGRATION_VERSION).toBe(62);
+  expect(MODULE_MIGRATION_VERSION).toBeGreaterThanOrEqual(62);
   // Everyone gets the fresh-start letter with its gems.
   expect(f.db.mailboxLetter.id.find("gear-overhaul-2026-10-19")).toMatchObject({ title: "New Gear, Fresh Start", gems: 150n });
 

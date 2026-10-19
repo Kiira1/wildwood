@@ -6,6 +6,7 @@ import { bossForMap, type BossKind, type BossStates } from "../boss/boss-registr
 import { soulPropExtent, type SoulPropDecor } from "../soul/soul-prop-renderer";
 import { oreRockExtent, type OreRockDecor } from "../town/ore-rock-renderer";
 import { woodTreeExtent, type WoodTreeDecor } from "../town/wood-tree-renderer";
+import { starterChestExtent, type StarterChestDecor } from "./starter-chest-renderer";
 
 type Viewport = { width: number; height: number };
 type TreeDecor = Extract<WorldDecor, { type: "tree" }>;
@@ -13,7 +14,7 @@ type CactusDecor = Extract<WorldDecor, { type: "cactus" }>;
 type SnowPineDecor = Extract<WorldDecor, { type: "snowPine" }>;
 type UpgradeBenchDecor = Extract<WorldDecor, { type: "upgradeBench" }>;
 type CharredTreeDecor = Extract<WorldDecor, { type: "charredTree" }>;
-type TallDecor = TreeDecor | CactusDecor | SnowPineDecor | UpgradeBenchDecor | CharredTreeDecor | SoulPropDecor | OreRockDecor | WoodTreeDecor;
+type TallDecor = TreeDecor | CactusDecor | SnowPineDecor | UpgradeBenchDecor | CharredTreeDecor | SoulPropDecor | OreRockDecor | WoodTreeDecor | StarterChestDecor;
 type Portal = { depth: number; x?: number; width?: number; height?: number };
 type BootsPickup = { y: number; r: number; collected: boolean };
 type DepthLayerKind = "enemy" | "boss" | "boots" | "portal" | "secondaryPortal" | "remotePlayer" | "player";
@@ -45,6 +46,8 @@ export function createDepthWorldRenderer(options: {
   /** The Copper Hills' ore rocks (ore-rock-renderer.ts). */
   drawOreRock?: (rock: OreRockDecor) => void;
   drawWoodTree?: (tree: WoodTreeDecor) => void;
+  /** The Starter Chest by the forest spawn (starter-chest-renderer.ts). */
+  drawStarterChest?: (chest: StarterChestDecor) => void;
   drawEnemy: (enemy: EnemyState, opacity?: number) => void;
   enemyOpacity?: (enemy: EnemyState) => number;
   drawBoss: (kind: BossKind) => void;
@@ -72,7 +75,7 @@ export function createDepthWorldRenderer(options: {
   function sortedStaticDecor() {
     if (!staticDepthDirty) return staticDepthDecor;
     staticDepthDecor = options.decor
-      .filter((decor): decor is TallDecor => decor.type === "tree" || decor.type === "cactus" || decor.type === "snowPine" || decor.type === "upgradeBench" || decor.type === "charredTree" || decor.type === "oreRock" || decor.type === "woodTree" || (decor.type === "soulProp" && !decor.ground && !decor.shadow))
+      .filter((decor): decor is TallDecor => decor.type === "tree" || decor.type === "cactus" || decor.type === "snowPine" || decor.type === "upgradeBench" || decor.type === "charredTree" || decor.type === "oreRock" || decor.type === "woodTree" || decor.type === "starterChest" || (decor.type === "soulProp" && !decor.ground && !decor.shadow))
       .sort((a, b) => a.y - b.y);
     staticDepthDirty = false;
     return staticDepthDecor;
@@ -101,8 +104,9 @@ export function createDepthWorldRenderer(options: {
     for (let index = start; index < decor.length; index += 1) {
       const item = decor[index];
       if (item.y > endY + cullPadding + 300) break;
-      if (item.type === "soulProp" || item.type === "oreRock" || item.type === "woodTree") {
-        const extent = item.type === "soulProp" ? soulPropExtent(item) : item.type === "oreRock" ? oreRockExtent(item) : woodTreeExtent(item);
+      if (item.type === "soulProp" || item.type === "oreRock" || item.type === "woodTree" || item.type === "starterChest") {
+        const extent = item.type === "soulProp" ? soulPropExtent(item) : item.type === "oreRock" ? oreRockExtent(item)
+          : item.type === "woodTree" ? woodTreeExtent(item) : starterChestExtent(item);
         if (item.x + extent.right < camera.x - 40 || item.x - extent.left > camera.x + visibleW + 40
           || item.y + extent.down < camera.y - 40 || item.y - extent.up > endY + 40) continue;
       } else if (item.type === "cactus") {
@@ -160,6 +164,7 @@ export function createDepthWorldRenderer(options: {
     else if (item.type === "soulProp") options.drawSoulProp?.(item);
     else if (item.type === "oreRock") options.drawOreRock?.(item);
     else if (item.type === "woodTree") options.drawWoodTree?.(item);
+    else if (item.type === "starterChest") options.drawStarterChest?.(item);
     else options.drawCharredTree(item);
   }
 

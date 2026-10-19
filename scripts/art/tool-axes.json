@@ -1,0 +1,19 @@
+{
+  "about": [
+    "The Hatchet's look at each tool level (shared/tools.ts TOOL_LEVEL_NAMES), one vendor axe each, plain at Worn and ornate at Starshard.",
+    "Written by scripts/art/import-tool-axes.mjs to public/assets/wildstat/tools/hatchet-<level>.webp."
+  ],
+  "hatchet": [
+    { "level": 0, "name": "Worn", "source": "HandRight/Axe/FA_WP_Main_Axe_022_BrownGary.png" },
+    { "level": 1, "name": "Bronze", "source": "HandRight/Axe/FA_WP_Main_Axe_015_BrownDark.png" },
+    { "level": 2, "name": "Iron", "source": "HandRight/Axe/FA_WP_Main_Axe_013_GrayBrown.png" },
+    { "level": 3, "name": "Steel", "source": "HandRight/Axe/FA_WP_Main_Axe_016_BrownGold.png" },
+    { "level": 4, "name": "Silver", "source": "HandRight/Axe/FA_WP_Main_Axe_017_BrownRed.png" },
+    { "level": 5, "name": "Mithril", "source": "HandRight/Axe/FA_WP_Main_Axe_021_DarkGray.png" },
+    { "level": 6, "name": "Cobalt", "source": "HandRight/Axe/FA_WP_Main_Axe_020_BrownGold.png" },
+    { "level": 7, "name": "Adamant", "source": "HandRight/Axe/FA_WP_Main_Axe_014_BrownBlue.png" },
+    { "level": 8, "name": "Obsidian", "source": "HandRight/Axe/FA_WP_Main_Axe_018_Gold.png" },
+    { "level": 9, "name": "Moonsteel", "source": "HandRight/Axe/FA_WP_Main_Axe_026_Blue.png" },
+    { "level": 10, "name": "Starshard", "source": "HandRight/Axe/FA_WP_Main_Axe_025_Gold.png" }
+  ]
+}

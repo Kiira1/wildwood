@@ -471,7 +471,7 @@ it("counts another player's active Quick Draw cards in their attack speed cap, a
   expect(profileActiveCardIds({ ...profile, prestigePerks: {} })).toEqual(["ion_needle_card"]);
 });
 
-it("shows Mining and Woodcutting once the Smith has handed over each tool, and neither before", () => {
+it("shows Mining and Woodcutting once each skill has been used, and neither before", () => {
   const base = { progress: progress(), research: createEmptyResearchRanks(), itemUpgradeLevels: {} } as Parameters<typeof profileStatDisplayRows>[0];
   const kinds = (profile: typeof base) => profileStatDisplayRows(profile, () => "0%", MIN_ATTACK_INTERVAL).map(row => row.kind);
   expect(kinds(base)).not.toContain("woodcutting");

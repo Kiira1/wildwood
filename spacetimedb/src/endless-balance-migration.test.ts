@@ -28,6 +28,8 @@ it("converts online and offline accounts once, backs up stats, gates gear and re
   const original = f.progress(identity("2"), { damage: 1e22, maxHp: 2e22, armor: 1e21, regen: 1e20,
     ...Object.fromEntries(CAMPAIGN_UNLOCK_FIELDS.map(field => [field, true])), bossRewardClaims: 32767, inventoryJson: '["starter_stone","starter_bow","basic_paper_hat"]', equippedRightHand: "starter_bow" });
   f.seed("regularEnemyLootCursor", { key: "receipt", identity: identity("2"), sequence: 12n });
+  // 63's Crude weapons have their own tests (starter-chest.test.ts).
+  for (const who of [f.ctx.sender, identity("2")]) f.seed("playerStarterWeapon", { identity: who, kind: "all", at: f.ctx.timestamp });
   f.run(server.onConnect);
   const next = progressOf(f, identity("2"));
   const expected = rebaseProgressByEffort(original, null, () => 0);

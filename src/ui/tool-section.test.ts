@@ -6,7 +6,7 @@ import type { OreId } from "../../shared/refine";
 afterEach(() => vi.unstubAllGlobals());
 
 function section(options: { levels?: Partial<Record<ToolId, number>>; skills?: Partial<Record<ToolSkill, number>>; ores?: Partial<Record<OreId, number>>;
-  gold?: bigint; claimed?: boolean; upgrade?: ToolSectionDeps["upgrade"] } = {}) {
+  gold?: bigint; upgrade?: ToolSectionDeps["upgrade"] } = {}) {
   const { document } = parseHTML("<html><body></body></html>");
   vi.stubGlobal("document", document);
   const levels = { ...options.levels };
@@ -15,7 +15,6 @@ function section(options: { levels?: Partial<Record<ToolId, number>>; skills?: P
   const deps: ToolSectionDeps = {
     toolLevels: () => levels,
     skills: () => ({ mining: 0, woodcutting: 0, smithing: 1, fletching: 1, enchanting: 1, ...options.skills }),
-    owned: tool => options.claimed !== false || (tool !== "pickaxe" && tool !== "hatchet"),
     ores: () => options.ores ?? {},
     gold: () => options.gold ?? 0n,
     upgrade, showMessage,
@@ -28,7 +27,7 @@ function section(options: { levels?: Partial<Record<ToolId, number>>; skills?: P
   return { tools, row, button, upgrade, showMessage, levels };
 }
 
-it("lists every tool held, Title Case, with its level, what it does now and next, and what it needs", () => {
+it("lists every tool, all held from the start, Title Case, with its level, what it does now and next, and what it needs", () => {
   const view = section({ skills: { mining: 10 } });
   expect(view.tools.element.querySelector("h3")?.textContent).toBe("Tools");
   expect([...view.tools.element.querySelectorAll<HTMLElement>(".tool-row")].map(row => row.dataset.tool)).toEqual(["pickaxe", "hatchet", "hammer", "knife", "focus"]);
@@ -46,11 +45,9 @@ it("lists every tool held, Title Case, with its level, what it does now and next
   expect([pickaxe.querySelector(".smith-shop-price")?.textContent, Boolean(pickaxe.querySelector(".smith-shop-price.is-short"))]).toEqual(["10", true]);
 });
 
-it("leaves out the Pickaxe and Hatchet until the Smith has handed them over", () => {
-  const view = section({ claimed: false });
-  expect(view.row("pickaxe")).toBeNull();
-  expect(view.row("hatchet")).toBeNull();
-  expect(view.row("hammer")).toBeTruthy();
+it("shows the Hatchet as its level's axe", () => {
+  const view = section({ levels: { hatchet: 3 } });
+  expect(view.row("hatchet")!.querySelector<HTMLElement>(".inventory-item-art")!.style.backgroundImage).toContain("assets/wildstat/tools/hatchet-3.webp");
 });
 
 it("says why an upgrade waits: the skill, then materials, then gold", () => {
@@ -93,9 +90,8 @@ it("says Fully Upgraded with no price at the top level", () => {
 it("reads the coop session, and mounts at the foot of the Smith's window", () => {
   const { document } = parseHTML("<html><body><dialog><div class=\"quest-body\"><p>Gear</p></div></dialog></body></html>");
   vi.stubGlobal("document", document);
-  const deps = toolDepsFor(() => ({ toolLevels: () => ({ hatchet: 2 }), hasPickaxe: () => false, hasHatchet: () => true, mining: () => 7, woodcutting: () => 60,
+  const deps = toolDepsFor(() => ({ toolLevels: () => ({ hatchet: 2 }), mining: () => 7, woodcutting: () => 60,
     craftSkills: () => ({ smithing: 0n, fletching: 0n, enchanting: 0n }) }), vi.fn());
-  expect([deps.owned("pickaxe"), deps.owned("hatchet"), deps.owned("knife")]).toEqual([false, true, true]);
   expect(deps.skills()).toEqual({ mining: 7, woodcutting: 60, smithing: 1, fletching: 1, enchanting: 1 });
   const dialog = document.querySelector("dialog") as unknown as HTMLElement;
   const tools = mountToolSection(dialog, deps, vi.fn())!;

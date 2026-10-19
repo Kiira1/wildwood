@@ -125,6 +125,9 @@ export function createEquipmentCopies(notify: () => void, now: () => number = Da
       /** Copy id 0 is the first copy, the one in the bag's item list. */
       destroyEquipmentCopy: (itemId: string, copyId: bigint) =>
         call(connection => connection.reducers.destroyEquipmentCopy({ itemId, copyId }), itemId),
+      /** Sells one copy of a graded piece to the Smith for gold; copy id 0 as above. */
+      sellGradedItem: (itemId: string, copyId: bigint) =>
+        call(connection => connection.reducers.sellGradedItem({ itemId, copyId }), itemId),
       selectEquipmentCopy: (copyId: bigint) =>
         call(connection => connection.reducers.selectEquipmentCopy({ copyId }), copies.find(copy => copy.id === copyId)?.itemId),
       ...ignoredDrops.api,

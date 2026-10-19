@@ -1,4 +1,4 @@
-import { STARTER_STAFF, itemDefinition, itemDisplayName, itemStats, type EquipmentSlot } from "../../shared/items";
+import { itemDefinition, itemDisplayName, itemStats, type EquipmentSlot } from "../../shared/items";
 import {
   REFINE_MAX, REFINE_ORES, isRefinableItem, refineCost, refineSafeLimit, refineSuccessChance, type OreId,
 } from "../../shared/refine";
@@ -71,17 +71,9 @@ export function createSmithController(deps: {
   /** Refine Luck's rank, which raises the odds the server rolls against. */
   refineLuck?: () => number;
   showMessage: (text: string, color: string) => void;
-  /** Mining (shared/mining.ts): the free pickaxe he hands over, and the Mining stat once it is in hand. */
-  hasPickaxe?: () => boolean;
-  claimPickaxe?: () => Promise<Result>;
+  /** The Mining (shared/mining.ts) and Woodcutting (shared/woodcutting.ts) stats, beside where the ore and wood are. */
   mining?: () => number;
-  /** Woodcutting (shared/woodcutting.ts): the free hatchet he hands over as he does the pickaxe, and the stat once it is in hand. */
-  hasHatchet?: () => boolean;
-  claimHatchet?: () => Promise<Result>;
   woodcutting?: () => number;
-  /** The free Starter Staff he hands out, as he does the pickaxe. */
-  hasStarterStaff?: () => boolean;
-  claimStarterStaff?: () => Promise<Result>;
   /** The gear shop: graded gear for gold, opened by Mastery (shared/grade-shop.ts); the server decides (buy_grade_gear). */
   gold?: () => bigint;
   masteryLevels?: () => MasteryLevels;
@@ -112,8 +104,8 @@ export function createSmithController(deps: {
     + `<p class="smith-empty smith-filter-empty" hidden></p>`
     + `<div class="smith-items" role="listbox" aria-label="Your gear"></div></section>`
     + `<section class="smith-view smith-tools-view" data-view="tools">`
-    + `<div class="smith-mining"><span class="smith-mining-text"></span><button type="button" class="farm-start smith-refine smith-pickaxe">Take a Pickaxe</button></div>`
-    + `<div class="smith-mining smith-hatchet-row"><span class="smith-woodcutting-text"></span><button type="button" class="farm-start smith-refine smith-hatchet">Take a Hatchet</button></div>`
+    + `<div class="smith-mining"><span class="smith-mining-text"></span></div>`
+    + `<div class="smith-mining"><span class="smith-woodcutting-text"></span></div>`
     + `</section>`
     + `<section class="smith-view smith-gear-view" data-view="gear">`
     + `<section class="smith-shop" aria-labelledby="smithShopTitle">`
@@ -123,7 +115,6 @@ export function createSmithController(deps: {
     + `<span class="smith-gold" aria-label="Your gold">${GOLD_COIN}<strong></strong></span></div>`
     + `<div class="smith-shop-head"><h3 id="smithShopTitle">Gear</h3></div>`
     + `<div class="smith-shop-rows" role="list" aria-label="Gear to buy or craft"></div></section>`
-    + `<div class="smith-mining smith-staff-row"><span class="smith-mining-text">Starter Staff · Casts bolts that burst on a pack</span><button type="button" class="farm-start smith-refine smith-staff">Take a Staff</button></div>`
     + `</section></div>`
 
     + `<footer class="farm-footer"><div class="farm-actions"><button type="button" class="window-back-button">Back</button></div></footer>`;
@@ -132,13 +123,8 @@ export function createSmithController(deps: {
   const oreLine = dialog.querySelector<HTMLElement>(".smith-ores")!;
   const list = dialog.querySelector<HTMLElement>(".smith-items")!;
   const back = dialog.querySelector<HTMLButtonElement>(".window-back-button")!;
-  const miningText = dialog.querySelector<HTMLElement>(".smith-tools-view .smith-mining-text")!;
-  const pickaxeButton = dialog.querySelector<HTMLButtonElement>(".smith-pickaxe")!;
-  const hatchetRow = dialog.querySelector<HTMLElement>(".smith-hatchet-row")!;
+  const miningText = dialog.querySelector<HTMLElement>(".smith-mining-text")!;
   const woodcuttingText = dialog.querySelector<HTMLElement>(".smith-woodcutting-text")!;
-  const hatchetButton = dialog.querySelector<HTMLButtonElement>(".smith-hatchet")!;
-  const staffRow = dialog.querySelector<HTMLElement>(".smith-staff-row")!;
-  const staffButton = dialog.querySelector<HTMLButtonElement>(".smith-staff")!;
   const filterBar = dialog.querySelector<HTMLElement>(".smith-filters")!;
   const filterEmpty = dialog.querySelector<HTMLElement>(".smith-filter-empty")!;
   const shop = dialog.querySelector<HTMLElement>(".smith-shop")!;
@@ -156,8 +142,8 @@ export function createSmithController(deps: {
   const tools = mountToolSection(dialog, deps.tools, () => { if (dialog.open) render(); });
   // Gear for the casual player first; refining and tools a tap away.
   const views = ([
-    ["gear", Boolean(deps.buyGear || deps.craft || deps.claimStarterStaff)], ["refine", true],
-    ["tools", Boolean(deps.tools || deps.claimPickaxe || deps.claimHatchet || deps.hasPickaxe || deps.hasHatchet)],
+    ["gear", Boolean(deps.buyGear || deps.craft)], ["refine", true],
+    ["tools", Boolean(deps.tools || deps.mining || deps.woodcutting)],
   ] as const).filter(([, shown]) => shown).map(([view]) => view as SmithView);
   let view: SmithView = views.find(each => each === stored(VIEW_STORE)) ?? views[0];
   let gearShown: GearShown = stored(SHOWN_STORE) === "all" ? "all" : "yours";
@@ -190,8 +176,6 @@ export function createSmithController(deps: {
   let refining = false;
   /** Upgrade All on its way: pieces bought so far, of how many. */
   let upgrading: { done: number; of: number } | null = null;
-  /** Taken here and on its way: the button goes before the server's row arrives. */
-  let pickaxeTaken = false, takingPickaxe = false, takingStaff = false, hatchetTaken = false, takingHatchet = false;
   let lastResult: { text: string; good: boolean } | null = null;
   let renderedState = "";
   /** The piece being bought, and the ones bought here before the server's row arrives. */
@@ -307,8 +291,8 @@ export function createSmithController(deps: {
     const chosen = items.find(item => key(item) === selected);
     // Presence updates also refresh open windows. Keep focus and buttons in place until this window changes.
     const state = JSON.stringify([
-      view, gearShown, upgrading, wornNow(), shown, selected, refining, lastResult, pickaxeTaken, takingPickaxe, takingStaff, deps.hasStarterStaff?.(),
-      deps.ores(), deps.hasPickaxe?.(), deps.mining?.(), hatchetTaken, takingHatchet, deps.hasHatchet?.(), deps.woodcutting?.(), shopState(),
+      view, gearShown, upgrading, wornNow(), shown, selected, refining, lastResult,
+      deps.ores(), deps.mining?.(), deps.woodcutting?.(), shopState(),
       items.map(item => [key(item), item.equipped, deps.refineLevel(item.itemId, item.copyId), deps.slotTier(item.itemId)]),
     ]);
     if (state === renderedState) return;
@@ -316,26 +300,15 @@ export function createSmithController(deps: {
     for (const section of dialog.querySelectorAll<HTMLElement>(".smith-view")) section.hidden = section.dataset.view !== view;
     for (const button of viewBar.querySelectorAll<HTMLButtonElement>("[data-view]")) button.setAttribute("aria-pressed", String(button.dataset.view === view));
     itemsCount.textContent = items.length ? String(items.length) : "";
-    // Shown until the bag holds one; a thrown-away staff can be taken again.
-    staffRow.hidden = !deps.claimStarterStaff || Boolean(deps.hasStarterStaff?.());
-    staffButton.disabled = takingStaff;
     for (const button of filterBar.querySelectorAll<HTMLButtonElement>(".inventory-filter")) button.setAttribute("aria-pressed", String(button.dataset.filter === shown));
     filterEmpty.hidden = items.length > 0 || shown === "ALL";
     filterEmpty.textContent = `No ${SMITH_FILTERS.find(([kind]) => kind === shown)?.[1].toLowerCase() ?? "gear"} to bring`;
     renderFocus(chosen);
     const held = deps.ores();
     oreLine.textContent = REFINE_ORE_ORDER.map(oreId => `${REFINE_ORES[oreId].name} ${held[oreId] ?? 0}`).join(" · ");
-    // Where the ore comes from, and the pickaxe to get it with.
-    const pickaxe = pickaxeTaken || Boolean(deps.hasPickaxe?.());
-    miningText.textContent = pickaxe ? `Mining ${deps.mining?.() ?? 0} · Ore is in the Copper Hills, east of Town` : "Ore is in the Copper Hills, east of Town.";
-    pickaxeButton.hidden = pickaxe || !deps.claimPickaxe;
-    pickaxeButton.disabled = takingPickaxe;
-    // Where the wood comes from, and the hatchet to fell it with.
-    const hatchet = hatchetTaken || Boolean(deps.hasHatchet?.());
-    hatchetRow.hidden = !deps.claimHatchet && !deps.hasHatchet;
-    woodcuttingText.textContent = hatchet ? `Woodcutting ${deps.woodcutting?.() ?? 0} · Wood is in Timberwood, north of the Copper Hills` : "Wood is in Timberwood, north of the Copper Hills.";
-    hatchetButton.hidden = hatchet || !deps.claimHatchet;
-    hatchetButton.disabled = takingHatchet;
+    // Where the ore and wood come from: every player holds a pickaxe and a hatchet.
+    miningText.textContent = `Mining ${deps.mining?.() ?? 0} · Ore is in the Copper Hills, east of Town`;
+    woodcuttingText.textContent = `Woodcutting ${deps.woodcutting?.() ?? 0} · Wood is in Timberwood, north of the Copper Hills`;
     renderShop();
     list.replaceChildren(...items.map(item => {
       const option = document.createElement("button");
@@ -538,9 +511,7 @@ export function createSmithController(deps: {
   function open() {
     if (!deps.inTown() || dialog.open) return;
     lastResult = null;
-    // Each visit goes by the server's word on the pickaxe and the bag: a reset save takes them back.
-    pickaxeTaken = false;
-    hatchetTaken = false;
+    // Each visit goes by the server's word on the bag.
     justBought.clear();
     shopPicked.clear();
     crafts?.reset();
@@ -550,49 +521,6 @@ export function createSmithController(deps: {
     back.focus();
   }
 
-  pickaxeButton.addEventListener("click", async () => {
-    if (takingPickaxe || !deps.claimPickaxe) return;
-    takingPickaxe = true;
-    render();
-    try {
-      const result = await deps.claimPickaxe();
-      if (result?.ok) {
-        pickaxeTaken = true;
-        deps.showMessage("The Smith hands you a pickaxe. Walk east to the Copper Hills.", "#ffd75e");
-      } else deps.showMessage(result?.error ?? "Not Connected", "#ff9b91");
-    } finally {
-      takingPickaxe = false;
-      if (dialog.open) render();
-    }
-  });
-  hatchetButton.addEventListener("click", async () => {
-    if (takingHatchet || !deps.claimHatchet) return;
-    takingHatchet = true;
-    render();
-    try {
-      const result = await deps.claimHatchet();
-      if (result?.ok) {
-        hatchetTaken = true;
-        deps.showMessage("The Smith hands you a hatchet. Timberwood is north of the Copper Hills.", "#ffd75e");
-      } else deps.showMessage(result?.error ?? "Not Connected", "#ff9b91");
-    } finally {
-      takingHatchet = false;
-      if (dialog.open) render();
-    }
-  });
-  staffButton.addEventListener("click", async () => {
-    if (takingStaff || !deps.claimStarterStaff) return;
-    takingStaff = true;
-    render();
-    try {
-      const result = await deps.claimStarterStaff();
-      if (result?.ok) deps.showMessage("The Smith hands you a Starter Staff. Equip it from your bag.", "#ffd75e");
-      else deps.showMessage(result?.error ?? "Not Connected", "#ff9b91");
-    } finally {
-      takingStaff = false;
-      if (dialog.open) render();
-    }
-  });
   back.addEventListener("click", close);
   dialog.addEventListener("cancel", event => { event.preventDefault(); close(); });
   return {
@@ -615,12 +543,7 @@ function pillButton(label: string, onClick: () => void) {
 /** The Smith as main.ts uses it: refining through the coop session, the bag's copies, and each try's verdict. */
 export function createSmithRuntime(deps: {
   coop: () => (CraftCoop & {
-    hasPickaxe?: () => boolean;
-    claimPickaxe?: () => Promise<Result>;
-    claimStarterStaff?: () => Promise<Result>;
     mining?: () => number;
-    hasHatchet?: () => boolean;
-    claimHatchet?: () => Promise<Result>;
     woodcutting?: () => number;
     itemRefine?: (itemId: string, copyId?: bigint) => number;
     itemUpgradeLevel?: (itemId: string) => number;
@@ -661,13 +584,7 @@ export function createSmithRuntime(deps: {
     ores: () => deps.coop()?.ores?.() ?? {},
     refine: async (itemId, copyId, expectedLevel) => deps.coop()?.refineItem?.(itemId, copyId, expectedLevel) ?? { ok: false, error: "Not Connected" },
     refineLuck: () => deps.coop()?.researchInPlay?.()?.refineLuck ?? 0,
-    hasPickaxe: () => deps.coop()?.hasPickaxe?.() ?? false,
-    claimPickaxe: async () => deps.coop()?.claimPickaxe?.() ?? { ok: false, error: "Not Connected" },
-    hasStarterStaff: () => inventory.itemIds.includes(STARTER_STAFF),
-    claimStarterStaff: async () => deps.coop()?.claimStarterStaff?.() ?? { ok: false, error: "Not Connected" },
     mining: () => deps.coop()?.mining?.() ?? 0,
-    hasHatchet: () => deps.coop()?.hasHatchet?.() ?? false,
-    claimHatchet: async () => deps.coop()?.claimHatchet?.() ?? { ok: false, error: "Not Connected" },
     woodcutting: () => deps.coop()?.woodcutting?.() ?? 0,
     gold: () => deps.coop()?.gold?.() ?? 0n,
     masteryLevels: () => masteryLevels(deps.coop()?.weaponMastery?.() ?? {}),

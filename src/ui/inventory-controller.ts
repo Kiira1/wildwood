@@ -23,6 +23,7 @@ import { type WeaponSkillRoll } from "../../shared/weapon-skills";
 import { createInventoryDeleteMode } from "./inventory-delete-mode";
 import { withRefineStars } from "./refine-badge";
 import { REFINE_ORES, salvageOre, type OreId } from "../../shared/refine";
+import { gradeShopSalePrice } from "../../shared/grade-shop";
 import { cardDetailRequest, createCardsTab, type CardsPort } from "./cards-tab";
 import { cardDefinition } from "../../shared/cards";
 import { cardName } from "../../shared/card-text";
@@ -31,8 +32,8 @@ import { createBuildsTab } from "./builds-tab";
 import { installBuildHotkeys } from "./build-hotkeys";
 import { itemInspectionButtonLabel } from "./item-inspection-controller";
 import { oreKindsHeld } from "../../shared/ore-bag";
-import { createPickaxeSprite } from "../game/runtime/town/pickaxe-sprite";
-import { createHatchetSprite } from "../game/runtime/town/hatchet-sprite";
+import { toolArtSource } from "../game/runtime/town/tool-sprites";
+import type { ToolId } from "../../shared/tools";
 
 type InventoryLocation = EquipmentSlot | "BAG" | "";
 type SelectableInventory = InventoryState & { selectedItemId: string; selectedItemLocation?: InventoryLocation };
@@ -71,10 +72,8 @@ type InventoryDependencies = {
   inventorySlotsUnlocked: () => number;
   /** Bag Slots research ranks: a slot each, on top of the ones bought. */
   researchBagSlots?: () => number;
-  /** The mining pickaxe, kept from the Smith: shown in the loadout's Tool slot. */
-  hasPickaxe?: () => boolean;
-  /** The woodcutting hatchet, kept from the Smith: shown beside the pickaxe in the Tool slot. */
-  hasHatchet?: () => boolean;
+  /** Each tool's level (shared/tools.ts): the pickaxe and hatchet every player holds show at theirs in the Tool slot. */
+  toolLevels?: () => Readonly<Partial<Record<ToolId, number>>>;
   gemBalance: () => bigint;
   destroyEquipment: (itemId: string) => Promise<{ ok: boolean; error?: string } | undefined>;
   convertItemToCosmetic?: (itemId: string) => Promise<{ ok: boolean; error?: string } | undefined>;
@@ -88,6 +87,8 @@ type InventoryDependencies = {
   destroyEquipmentCopy?: (itemId: string, copyId: bigint) => Promise<Result>;
   /** Makes a kept copy the one its slot equips. */
   selectEquipmentCopy?: (copyId: bigint) => Promise<Result>;
+  /** Sells one copy of a graded piece to the Smith for gold (shared/grade-shop.ts gradeShopSalePrice). */
+  sellGradedItem?: (itemId: string, copyId: bigint) => Promise<Result>;
 };
 
 export function clearInventorySelection(inventory: Pick<SelectableInventory, "selectedItemId" | "selectedItemLocation">) {
@@ -110,40 +111,27 @@ export function createInventoryController(dependencies: InventoryDependencies) {
   const buildsTab = document.getElementById("inventoryBuildsTab") as HTMLButtonElement | null;
   const content = requiredElement("inventoryContent");
   const loadout = panel.querySelector<HTMLElement>(".inventory-loadout");
-  // The pickaxe and hatchet work from the bag, never equipped: their slot only shows they are there and what they do.
+  // The pickaxe and hatchet every player holds work from the bag, never equipped: their slot only shows them and what they do.
   const toolSlot = document.createElement("button");
   toolSlot.type = "button";
-  toolSlot.className = "equipment-slot slot-tool";
+  toolSlot.className = "equipment-slot slot-tool is-equipped";
+  toolSlot.setAttribute("aria-label", "Tool: Pickaxe and Hatchet, always ready");
   loadout?.append(toolSlot);
-  let pickaxeArt = "", hatchetArt = "";
   toolSlot.addEventListener("click", () => {
-    const pickaxe = Boolean(dependencies.hasPickaxe?.()), hatchet = Boolean(dependencies.hasHatchet?.());
-    dependencies.showMessage(pickaxe && hatchet ? "Pickaxe and Hatchet · Mine ore and fell trees. Always ready, no need to equip."
-      : pickaxe ? "Pickaxe · Mines ore in the Copper Hills. Always ready, no need to equip."
-        : hatchet ? "Hatchet · Fells trees in Timberwood. Always ready, no need to equip." : "Get a pickaxe and a hatchet from the Smith in Town.", "#ffd75e");
+    dependencies.showMessage("Pickaxe and Hatchet · Mine ore and fell trees. Always ready, no need to equip.", "#ffd75e");
   });
   function renderToolSlot() {
-    const pickaxe = Boolean(dependencies.hasPickaxe?.()), hatchet = Boolean(dependencies.hasHatchet?.()), owned = pickaxe || hatchet;
     toolSlot.hidden = mode === "COSMETICS";
-    toolSlot.classList.toggle("is-equipped", owned);
-    toolSlot.setAttribute("aria-label", owned ? `Tool: ${[pickaxe ? "Pickaxe" : "", hatchet ? "Hatchet" : ""].filter(Boolean).join(" and ")}, always ready` : "Tool slot, empty");
-    if (owned) {
-      const art = (source: string, className: string) => {
-        const image = document.createElement("span");
-        image.className = `inventory-item-art slot-tool-art${className}`;
-        image.setAttribute("aria-hidden", "true");
-        if (source) image.style.backgroundImage = `url(${source})`;
-        return image;
-      };
-      if (pickaxe) pickaxeArt ||= createPickaxeSprite()?.src ?? "";
-      if (hatchet) hatchetArt ||= createHatchetSprite()?.src ?? "";
-      // Both held: crossed, as a pair of tools.
-      toolSlot.replaceChildren(...(pickaxe ? [art(pickaxeArt, "")] : []), ...(hatchet ? [art(hatchetArt, pickaxe ? " slot-tool-crossed" : "")] : []));
-    } else {
-      const label = document.createElement("span");
-      label.textContent = "TOOL";
-      toolSlot.replaceChildren(label);
-    }
+    const levels = dependencies.toolLevels?.() ?? {};
+    const art = (source: string, className: string) => {
+      const image = document.createElement("span");
+      image.className = `inventory-item-art slot-tool-art${className}`;
+      image.setAttribute("aria-hidden", "true");
+      if (source) image.style.backgroundImage = `url(${source})`;
+      return image;
+    };
+    // Crossed, as a pair of tools, each at its level.
+    toolSlot.replaceChildren(art(toolArtSource("pickaxe", levels.pickaxe ?? 0), ""), art(toolArtSource("hatchet", levels.hatchet ?? 0), " slot-tool-crossed"));
   }
   const bagSection = items.closest<HTMLElement>(".bag-section");
   const tabs = equipmentTab.closest(".inventory-tabs");
@@ -352,7 +340,7 @@ export function createInventoryController(dependencies: InventoryDependencies) {
       ...(mode === "COSMETICS" ? { context: `Cosmetic · ${cosmeticReach(itemId)}` } : {}),
       ...(copy ? { skills: copy.roll } : {}),
       actions: [...(copy ? copyEquipActions(copy) : moves),
-        ...conversionActions(itemId), ...destructionActions(itemId, copyId)],
+        ...conversionActions(itemId), ...saleActions(itemId, copyId), ...destructionActions(itemId, copyId)],
     });
   }
 
@@ -421,6 +409,33 @@ export function createInventoryController(dependencies: InventoryDependencies) {
     }];
   }
 
+  /** Graded gear in the bag sells to the Smith for gold; worn or locked gear does not. */
+  function saleActions(itemId: string, copyId = 0n) {
+    const sell = dependencies.sellGradedItem, price = gradeShopSalePrice(itemId), inventory = dependencies.inventory;
+    const worn = copyId === 0n && [inventory.equippedHead, inventory.equippedChest, inventory.equippedFeet, inventory.equippedRightHand, inventory.equippedLeftHand].includes(itemId);
+    if (mode !== "EQUIPMENT" || !sell || price === undefined || worn || !inventory.itemIds.includes(itemId) ||
+        dependencies.equipmentLocked?.(itemId, copyId)) return [];
+    return [{
+      label: `Sell for ${price} Gold`,
+      kind: "SECONDARY" as const,
+      onActivate: async () => {
+        const refine = dependencies.refineLevel?.(itemId, copyId) ?? 0;
+        if (!await ask(confirmDestroy, {
+          message: `Sell ${withRefineStars(itemDisplayName(itemId, dependencies.upgradeLevel(itemId)), refine)} for ${price} Gold?`,
+          details: [{ label: "The Smith pays", value: `${price} Gold` }, ...(refine ? [{ label: "Refines", value: "Lost with the item" }] : [])],
+          confirmLabel: "Sell",
+        })) return;
+        dependencies.itemInspection.close();
+        const result = await sell(itemId, copyId);
+        if (result?.ok) {
+          clearInventorySelection(inventory);
+          render();
+          dependencies.showMessage(`Sold · +${price} Gold`, "#ffd75e");
+        } else dependencies.showMessage(result?.error ?? "Not Connected", "#ff9b91");
+      },
+    }];
+  }
+
   /**
    * Destroys one copy. With other copies kept, the server keeps the item and
    * only a copy goes (the oldest kept one takes the first copy's place), so
@@ -457,7 +472,7 @@ export function createInventoryController(dependencies: InventoryDependencies) {
     const inventory = dependencies.inventory;
     const copies = dependencies.equipmentCopies?.() ?? [];
     const held = dependencies.ores?.() ?? {};
-    const nextState = JSON.stringify([cardsShown, buildsShown, mode, filter, inventory, held, inventory.itemIds.map(id => dependencies.equipmentLocked?.(id)), dependencies.inventorySlotsUnlocked(), dependencies.researchBagSlots?.() ?? 0, dependencies.hasPickaxe?.() ?? false, dependencies.hasHatchet?.() ?? false, unlockingSlot,
+    const nextState = JSON.stringify([cardsShown, buildsShown, mode, filter, inventory, held, inventory.itemIds.map(id => dependencies.equipmentLocked?.(id)), dependencies.inventorySlotsUnlocked(), dependencies.researchBagSlots?.() ?? 0, dependencies.toolLevels?.() ?? {}, unlockingSlot,
       ["HEAD", "CHEST", "HAND"].map(slot => dependencies.slotTier?.(slot as "HEAD" | "CHEST" | "HAND")), inventory.itemIds.map(itemId => `${dependencies.upgradeLevel(itemId)}:${dependencies.refineLevel?.(itemId, 0n)}`),
       copies.map(copy => `${copy.id}:${copy.itemId}:${dependencies.equipmentLocked?.(copy.itemId, copy.id)}:${dependencies.refineLevel?.(copy.itemId, copy.id)}`)]);
     if (nextState === renderedState) return;

@@ -43,8 +43,8 @@ export type ToolDeps = {
 };
 
 /**
- * One level up for a tool, at the Smith, for its gold and materials once its skill reaches the level's mark. The
- * Pickaxe and the Hatchet must be claimed first. `expectedLevel` is the level the player saw.
+ * One level up for a tool, at the Smith, for its gold and materials once its skill reaches the level's mark. Every
+ * player holds every tool. `expectedLevel` is the level the player saw.
  */
 export function upgradeToolFor(ctx: Ctx, args: { tool: string; expectedLevel: number }, deps: ToolDeps) {
   const player = deps.requireControllingPlayer(ctx);
@@ -52,8 +52,6 @@ export function upgradeToolFor(ctx: Ctx, args: { tool: string; expectedLevel: nu
   if (deps.activeDuelFor(ctx, ctx.sender)) throw new SenderError("Finish your duel first.");
   const tool = args.tool;
   if (!isToolId(tool)) throw new SenderError("There is no such tool.");
-  if (tool === "pickaxe" && !ctx.db.playerMining.identity.find(ctx.sender)) throw new SenderError("You need a pickaxe. The Smith in Town has one.");
-  if (tool === "hatchet" && !ctx.db.playerWoodcutting.identity.find(ctx.sender)) throw new SenderError("You need a hatchet. The Smith in Town has one.");
   const from = toolLevelFor(ctx, ctx.sender, tool);
   if (from !== args.expectedLevel) throw new SenderError("Your tool changed. Take another look.");
   if (from >= TOOL_MAX_LEVEL) throw new SenderError("That tool is fully upgraded.");

@@ -3,10 +3,11 @@ import { drawHomeTeleport } from "../town/home-teleport";
 import { createOreRockRenderer } from "../town/ore-rock-renderer";
 import { createPickaxeSprite, MINING_PICKAXE, PICKAXE_OVERRIDES } from "../town/pickaxe-sprite";
 import { miningScene } from "../town/mining-scene";
-import { createHatchetSprite, HATCHET_OVERRIDES, WOODCUTTING_HATCHET } from "../town/hatchet-sprite";
+import { HATCHET_OVERRIDES, WOODCUTTING_HATCHET } from "../town/hatchet-sprite";
 import { toolSprite } from "../town/tool-sprites";
 import { woodcuttingScene } from "../town/woodcutting-scene";
 import { createWoodTreeRenderer } from "../town/wood-tree-renderer";
+import { createStarterChestRenderer } from "./starter-chest-renderer";
 import { drawSoulWellFall } from "../soul/soul-well-fall";
 import { createActorRenderer, type ActorStatus } from "./actor-renderer";
 import { createBossRenderer } from "../boss/boss-renderer";
@@ -176,12 +177,12 @@ export function createWorldRenderRuntime(options: WorldRenderRuntimeOptions) {
   let invalidateDepthOrder = () => {};
   let soulGround: ReturnType<typeof createSoulGroundRenderer>;
   let hallGround: ReturnType<typeof createSoulGroundRenderer>;
-  // The pickaxe is painted, not loaded: it joins the equipment art under its own name.
+  // The pickaxe is painted and the hatchet is a vendor axe: each joins the equipment art under its own name.
   const pickaxeSprite = createPickaxeSprite();
   if (pickaxeSprite) options.playerAppearanceAssets.equipment[MINING_PICKAXE] = { sprite: pickaxeSprite };
-  const hatchetSprite = createHatchetSprite();
+  const hatchetSprite = toolSprite("hatchet", 0);
   if (hatchetSprite) options.playerAppearanceAssets.equipment[WOODCUTTING_HATCHET] = { sprite: hatchetSprite };
-  // The tool out, if any: the pickaxe in the Copper Hills, the hatchet in Timberwood, coloured by its level.
+  // The tool out, if any: the pickaxe in the Copper Hills coloured by its level, the hatchet in Timberwood its level's axe.
   const inHand = (id: string, tool: "pickaxe" | "hatchet", level: number, plain: HTMLImageElement) => {
     const asset = options.playerAppearanceAssets.equipment[id], sprite = (level > 0 && toolSprite(tool, level)) || plain;
     if (asset && asset.sprite !== sprite) asset.sprite = sprite;
@@ -287,6 +288,7 @@ export function createWorldRenderRuntime(options: WorldRenderRuntimeOptions) {
       ...rendered,
       // Mining in the Copper Hills: the Smith's pickaxe in hand, swinging on the mining's own clock.
       ...(rendered.rightHandItem === MINING_PICKAXE ? { throwClock: miningScene.swingClock, presentationOverrides: PICKAXE_OVERRIDES } : {}),
+      // Chopping in Timberwood: the hatchet's axe, held at its own grip (hatchet-sprite.ts).
       ...(rendered.rightHandItem === WOODCUTTING_HATCHET ? { throwClock: woodcuttingScene.swingClock, presentationOverrides: HATCHET_OVERRIDES } : {}),
       gameTime: rendered.gameTime ?? options.gameTime(),
       skinTone: rendered.skinTone ?? options.skinTone(rendered.identity ?? rendered.id) ?? DEFAULT_SKIN_TONE,
@@ -420,6 +422,7 @@ export function createWorldRenderRuntime(options: WorldRenderRuntimeOptions) {
       drawOreRock: createOreRockRenderer({ ctx: options.ctx, camera: options.camera, devicePixelRatio: options.devicePixelRatio, time: options.gameTime,
         drawSoulProp, outlinedText: options.outlinedText }),
       drawWoodTree: createWoodTreeRenderer({ ctx: options.ctx, camera: options.camera, devicePixelRatio: options.devicePixelRatio, drawSoulProp, outlinedText: options.outlinedText }),
+      drawStarterChest: createStarterChestRenderer({ ctx: options.ctx, camera: options.camera, devicePixelRatio: options.devicePixelRatio, time: options.gameTime, outlinedText: options.outlinedText }),
       drawEnemy: actor.drawEnemy,
       enemyOpacity: (enemy) => options.currentMapId() === options.infernalMapId
         ? nightEnemyOpacity(Math.hypot(enemy.x - options.player.x, enemy.y - options.player.y), options.player.attackRange, enemy.r)

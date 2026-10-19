@@ -19,6 +19,7 @@ export function createInventoryCommerceActions(options: {
     convertItemToCosmetic?: (itemId: string) => Promise<Result>;
     equipmentCopies?: () => readonly KeptCopy[];
     destroyEquipmentCopy?: (itemId: string, copyId: bigint) => Promise<Result>;
+    sellGradedItem?: (itemId: string, copyId: bigint) => Promise<Result>;
     selectEquipmentCopy?: (copyId: bigint) => Promise<Result>;
   } | null;
   healthMultiplierBonus: () => number;
@@ -52,5 +53,16 @@ export function createInventoryCommerceActions(options: {
     equipmentCopies: (): readonly KeptCopy[] => options.coop()?.equipmentCopies?.() ?? [],
     destroyEquipmentCopy: async (itemId: string, copyId: bigint) => options.coop()?.destroyEquipmentCopy?.(itemId, copyId),
     selectEquipmentCopy: async (copyId: bigint) => options.coop()?.selectEquipmentCopy?.(copyId),
+    /** A sale of the last copy drops the item from the local bag, as a destroy does; with copies kept the server moves one up. */
+    async sellGradedItem(itemId: string, copyId: bigint) {
+      const coop = options.coop();
+      const last = copyId === 0n && !(coop?.equipmentCopies?.() ?? []).some(copy => copy.itemId === itemId);
+      const result = await coop?.sellGradedItem?.(itemId, copyId);
+      if (result?.ok && last) {
+        setInventoryItemQuantity(options.inventory, itemId, 0);
+        refreshStats();
+      }
+      return result;
+    },
   };
 }

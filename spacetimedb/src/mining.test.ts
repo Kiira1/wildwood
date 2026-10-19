@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { Timestamp } from "spacetimedb";
 import { crystalFixture, identity, server } from "../../tests/helpers/crystal-hollows-fixture";
 import { TOWN_FEET_OFFSET, TOWN_SMITH_POSITION } from "../../shared/town";
-import { CRYSTAL_MINING, MINING_NODES, MINING_NODE_KINDS, MINING_RATE_SLACK, miningBreakSeconds, type MiningNode } from "../../shared/mining";
+import { MINING_NODES, MINING_NODE_KINDS, MINING_RATE_SLACK, miningBreakSeconds, type MiningNode } from "../../shared/mining";
 import { addOres, oreCount } from "./item-refine";
 import { inventorySlotCapacity } from "../../shared/gems";
 import { bagSlotsUsed } from "../../shared/equipment-copies";
@@ -16,36 +16,38 @@ const rock = (ore: string, kind: string, skip = 0) => MINING_NODES.filter(node =
 const copper = rock("copper_ore", "small"), copperTwo = rock("copper_ore", "small", 1), copperLarge = rock("copper_ore", "large");
 const iron = rock("iron_ore", "small"), mysterious = rock("copper_ore", "mysterious");
 
-/** A player in the Town, given the Smith's pickaxe unless told otherwise. */
-function miner(pickaxe = true) {
+/** A player in the Town: every player holds a pickaxe, with no row until their first rock. */
+function miner() {
   const f = crystalFixture();
   const later = (seconds: number) => { f.ctx.timestamp = new Timestamp(f.ctx.timestamp.microsSinceUnixEpoch + BigInt(Math.round(seconds * 1_000_000))); };
   /** Where a player stands with their feet on this point. */
   const standAt = (at: { x: number; y: number }) => f.patch("player", { mapId: "town", x: at.x, y: at.y - TOWN_FEET_OFFSET });
   const rolls = (value: number) => { f.ctx.random = Object.assign(() => value, { integerInRange: (min: number) => min }) as any; };
-  if (pickaxe) { standAt(TOWN_SMITH_POSITION); f.run(server.claimPickaxe, {}); later(60); }
   const mine = (node: MiningNode) => { standAt(node); f.run(server.mineNode, { nodeId: node.id }); };
   const row = () => f.db.playerMining.identity.find(f.ctx.sender);
   const ore = (oreId: string) => oreCount(f.ctx, f.ctx.sender, oreId);
   return { ...f, later, standAt, rolls, mine, row, ore };
 }
 
-describe("the Smith's pickaxe", () => {
-  it("is handed over once, and only beside the Smith", () => {
-    const f = miner(false);
+describe("the old pickaxe claim", () => {
+  it("still answers old clients harmlessly: it starts the row once and never takes Mining away", () => {
+    const f = miner();
     f.standAt({ x: TOWN_SMITH_POSITION.x + 400, y: TOWN_SMITH_POSITION.y });
-    expect(() => f.run(server.claimPickaxe, {})).toThrow("Talk to the Smith first.");
-    f.standAt(TOWN_SMITH_POSITION);
     f.run(server.claimPickaxe, {});
     expect(f.row()).toMatchObject({ mining: 0, rocksBroken: 0 });
-    expect(() => f.run(server.claimPickaxe, {})).toThrow("You already have a pickaxe.");
+    f.later(60);
+    f.mine(copper);
+    f.run(server.claimPickaxe, {});
+    expect(f.row()).toMatchObject({ mining: 1, rocksBroken: 1 });
   });
 });
 
 describe("breaking a rock", () => {
-  it("needs the pickaxe, a rock that exists, and the player beside it in the Town", () => {
-    const bare = miner(false);
-    expect(() => bare.mine(copper)).toThrow("You need a pickaxe. The Smith in Town has one.");
+  it("needs no pickaxe from the Smith, only a rock that exists and the player beside it in the Town", () => {
+    const fresh = miner();
+    expect(fresh.row()).toBeFalsy();
+    fresh.mine(copper);
+    expect([fresh.ore("copper_ore"), fresh.row()?.mining, fresh.db.playerMiningLevel.identity.find(fresh.ctx.sender)?.mining]).toEqual([1, 1, 1]);
     const f = miner();
     expect(() => f.run(server.mineNode, { nodeId: MINING_NODES.length })).toThrow("There is no rock there.");
     f.standAt({ x: copper.x + 300, y: copper.y });
@@ -94,12 +96,15 @@ describe("breaking a rock", () => {
     expect(f.ore("copper_ore")).toBe(4);
   });
 
-  it("keeps a deeper vein shut until the map whose gear its ore refines", () => {
+  it("keeps a deeper vein shut until Mining reaches its mark, whatever maps are open", () => {
     const f = miner();
-    expect(() => f.mine(iron)).toThrow("Reach Night Forest - 5 to mine Iron Ore.");
     f.patch("playerProgress", { infernalUnlocked: true });
+    expect(() => f.mine(iron)).toThrow("Reach Mining 50 to mine Iron Ore.");
+    f.mine(copper);
+    f.db.playerMining.identity.update({ ...f.row(), mining: 50 });
+    f.later(60);
     f.mine(iron);
-    expect([f.ore("iron_ore"), f.row().mining]).toEqual([1, 2]);
+    expect([f.ore("iron_ore"), f.row().mining]).toEqual([1, 52]);
   });
 
   it("gives a Starshard only from a Mysterious rock, on the server's roll", () => {
@@ -119,14 +124,16 @@ describe("breaking a rock", () => {
   it("gives Arcane Crystal from a crystal rock once Mining reaches its mark, more in a deeper vein", () => {
     const crystal = MINING_NODES.find(node => node.kind === "crystal" && node.vein === 0)!;
     const f = miner();
-    expect(() => f.mine(crystal)).toThrow(`Reach Mining ${CRYSTAL_MINING} to mine Arcane Crystal.`);
-    f.db.playerMining.identity.update({ ...f.row(), mining: CRYSTAL_MINING });
+    expect(() => f.mine(crystal)).toThrow("Reach Mining 25 to mine Arcane Crystal.");
+    f.mine(copper);
+    f.db.playerMining.identity.update({ ...f.row(), mining: 25 });
+    f.later(60);
     f.mine(crystal);
-    expect([f.ore("arcane_crystal"), f.ore("copper_ore"), f.row().mining]).toEqual([1, 0, CRYSTAL_MINING + 1]);
+    expect([f.ore("arcane_crystal"), f.ore("copper_ore"), f.row().mining]).toEqual([1, 1, 26]);
     const deep = MINING_NODES.find(node => node.kind === "crystal" && node.vein === 1)!;
     f.later(60);
-    expect(() => f.mine(deep)).toThrow("Reach Night Forest - 5 to mine Arcane Crystal here.");
-    f.patch("playerProgress", { infernalUnlocked: true });
+    expect(() => f.mine(deep)).toThrow("Reach Mining 75 to mine Arcane Crystal.");
+    f.db.playerMining.identity.update({ ...f.row(), mining: 75 });
     f.mine(deep);
     expect(f.ore("arcane_crystal")).toBe(3);
   });

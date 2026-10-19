@@ -48,6 +48,8 @@ import { playerWoodcutting, playerChoppedTree, playerWoodcuttingLevel, registerW
 import { awardWeaponMastery, playerMasteryLevel, playerWeaponMastery, registerWeaponMastery } from "./weapon-mastery";
 import { awardKillGold, playerGold, registerGold } from "./gold";
 import { registerGradeShop } from "./grade-shop";
+import { registerGradeSale } from "./grade-sale";
+import { playerStarterWeapon, registerStarterChest } from "./starter-chest";
 import { playerCraftSkill, playerCraftLevel, registerCrafting } from "./crafting";
 import { playerTool, registerTools } from "./tools";
 import { mergeOldGearPayout, oldGearPayout, payOutOldGear } from "./old-gear-payout";
@@ -1415,7 +1417,7 @@ const spacetimedb = schema({
   dailyGemBonus,
   playerAdReward, playerChatMute,
   balanceApologyNotice,
-  playerEquipmentLock, playerItemGift, playerBowSkill, playerSwordSkill, playerStaffSkill, playerWornStaffSkill, playerEquipmentCopy, pendingEquipmentOffer, playerIgnoredDrop, playerLootSetting, playerItemRefine, playerCopyRefine, playerOre, playerRefineResult, playerCard, playerGearSlots, playerCopySlots, playerCardDrop, playerCardAttackCap, playerBossCardRoll, playerBuild, playerBuildName, playerWeaponMastery, playerMasteryLevel, playerGold, playerCardMeter, playerCardShopPurchase, playerItemCollection, playerWornSkill, playerMining, playerMinedNode, playerMiningLevel, playerWoodcutting, playerChoppedTree, playerWoodcuttingLevel, playerCraftSkill, playerCraftLevel, playerTool, oldGearPayout, gemKillDaily, gemLedgerTrim,
+  playerEquipmentLock, playerItemGift, playerBowSkill, playerSwordSkill, playerStaffSkill, playerWornStaffSkill, playerEquipmentCopy, pendingEquipmentOffer, playerIgnoredDrop, playerLootSetting, playerItemRefine, playerCopyRefine, playerOre, playerRefineResult, playerCard, playerGearSlots, playerCopySlots, playerCardDrop, playerCardAttackCap, playerBossCardRoll, playerBuild, playerBuildName, playerWeaponMastery, playerMasteryLevel, playerGold, playerCardMeter, playerCardShopPurchase, playerItemCollection, playerWornSkill, playerMining, playerMinedNode, playerMiningLevel, playerWoodcutting, playerChoppedTree, playerWoodcuttingLevel, playerCraftSkill, playerCraftLevel, playerTool, oldGearPayout, playerStarterWeapon, gemKillDaily, gemLedgerTrim,
   mailboxLetter, mailboxReceipt, playerJoinDate, mailboxEquipment, accountDeletionRequest,
   playerOnboarding,
   regularEnemyLootCursor, regularEnemyStream, enemyDefeatBudget, playerDefeatClock, playerMapDeparture,
@@ -3151,6 +3153,7 @@ export const destroyEquipmentCopy = spacetimedb.reducer(
 );
 export const selectEquipmentCopy = spacetimedb.reducer({ copyId: t.u64() }, (ctx, { copyId }) => equipmentCopies.select(ctx, copyId));
 export const resolveEquipmentOffer = spacetimedb.reducer({ id: t.u64(), keep: t.bool() }, (ctx, args) => equipmentCopies.resolveOffer(ctx, args));
+export const { sellGradedItem } = registerGradeSale(spacetimedb, { requireControllingPlayer, activeDuelFor, inventoryForProgress, removeCopy: equipmentCopies.removeCopy });
 
 export const convertItemToCosmetic = spacetimedb.reducer(
   { itemId: t.string() }, (ctx, { itemId }) => cosmeticConversion.convertItemToCosmetic(ctx, itemId),
@@ -3844,6 +3847,8 @@ export const { myWeaponMastery } = registerWeaponMastery(spacetimedb);
 export const { myGold } = registerGold(spacetimedb);
 export const { buyShopCard, myCardShopPurchases } = registerCardShop(spacetimedb, { requireControllingPlayer, activeDuelFor });
 export const { buyGradeGear } = registerGradeShop(spacetimedb, { requireControllingPlayer, activeDuelFor, inventoryForProgress, restoreItemToProgress, writeProgressAndPresentation });
+// The Starter Chest by the forest spawn (starter-chest.ts).
+export const { claimStarterWeapon, myStarterWeapon } = registerStarterChest(spacetimedb, { requireControllingPlayer, activeDuelFor });
 export const { craftGradeGear, myCraftSkills } = registerCrafting(spacetimedb, { requireControllingPlayer, activeDuelFor, inventoryForProgress, restoreItemToProgress, writeProgressAndPresentation });
 export const { upgradeTool, myTools } = registerTools(spacetimedb, { requireControllingPlayer, activeDuelFor });
 export const { myGuildHall, upgradeGuildHall, useGuildHallDoor } = registerGuildHall(spacetimedb, { requireGuildPlayer, requireControllingPlayer, playerWithMotion, transitionPlayerMap, persistWorldLocation });

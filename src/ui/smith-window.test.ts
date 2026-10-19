@@ -10,7 +10,7 @@ import type { WornLoadout } from "./smith-upgrades";
 afterEach(() => vi.unstubAllGlobals());
 
 // The server rolls every try (refine_item); the window shows the odds, sends the level the player saw, and shows the verdict.
-function smith(options: { inTown?: boolean; ores?: Partial<Record<OreId, number>>; pickaxe?: boolean; mining?: number; refineLuck?: number; hatchet?: boolean; woodcutting?: number } = {}) {
+function smith(options: { inTown?: boolean; ores?: Partial<Record<OreId, number>>; mining?: number; refineLuck?: number; woodcutting?: number } = {}) {
   const { document, window } = parseHTML("<html><body></body></html>");
   vi.stubGlobal("document", document); vi.stubGlobal("HTMLElement", window.HTMLElement);
   const levels: Record<string, number> = { [`${STARTER_BOW}:0`]: 7, [`${WOODEN_ARMOR}:0`]: 2 };
@@ -22,14 +22,9 @@ function smith(options: { inTown?: boolean; ores?: Partial<Record<OreId, number>
   ];
   const refine = vi.fn(async () => ({ ok: true }));
   const showMessage = vi.fn();
-  let pickaxe = options.pickaxe ?? false;
-  const claimPickaxe = vi.fn(async () => { pickaxe = true; return { ok: true }; });
-  let hatchet = options.hatchet ?? false;
-  const claimHatchet = vi.fn(async () => { hatchet = true; return { ok: true }; });
   const controller = createSmithController({
     inTown: () => options.inTown ?? true, items: () => items, refine, showMessage,
-    hasPickaxe: () => pickaxe, claimPickaxe, mining: () => options.mining ?? 0,
-    hasHatchet: () => hatchet, claimHatchet, woodcutting: () => options.woodcutting ?? 0,
+    mining: () => options.mining ?? 0, woodcutting: () => options.woodcutting ?? 0,
     refineLevel: (itemId, copyId) => levels[`${itemId}:${copyId}`] ?? 0, slotTier: () => 0,
     ores: () => options.ores ?? { copper_ore: 3 }, refineLuck: () => options.refineLuck ?? 0,
   });
@@ -39,7 +34,7 @@ function smith(options: { inTown?: boolean; ores?: Partial<Record<OreId, number>
   const q = (selector: string) => dialog.querySelector(selector) as unknown as HTMLElement;
   const facts = () => Object.fromEntries([...dialog.querySelectorAll(".smith-facts div")].map(row => [row.querySelector("dt")!.textContent, row.querySelector("dd")!.textContent]));
   const choices = () => [...dialog.querySelectorAll<HTMLElement>(".smith-choice")];
-  return { controller, dialog, q, facts, choices, refine, showMessage, levels, claimPickaxe, claimHatchet, setPickaxe: (value: boolean) => { pickaxe = value; } };
+  return { controller, dialog, q, facts, choices, refine, showMessage, levels };
 }
 
 it("lists only gear the Smith can refine, worn first, and shows a risky try's odds and its cost", () => {
@@ -105,65 +100,23 @@ it("opens only in the Town", () => {
   expect(view.dialog.open).toBe(false);
 });
 
-it("hands over the free pickaxe once, and then shows Mining instead", async () => {
-  const view = smith();
+it("offers no pickaxe, hatchet or staff to take: every player holds the tools, and shows Mining and Woodcutting by where they are", () => {
+  const view = smith({ mining: 40, woodcutting: 12 });
   view.controller.open();
-  const button = view.q(".smith-pickaxe") as HTMLButtonElement;
-  expect([button.hidden, view.q(".smith-mining-text").textContent]).toEqual([false, "Ore is in the Copper Hills, east of Town."]);
-  button.click();
-  await vi.waitFor(() => expect(button.hidden).toBe(true));
-  expect(view.claimPickaxe).toHaveBeenCalledTimes(1);
-  expect(view.showMessage).toHaveBeenCalledWith("The Smith hands you a pickaxe. Walk east to the Copper Hills.", "#ffd75e");
-  expect(view.q(".smith-mining-text").textContent).toBe("Mining 0 · Ore is in the Copper Hills, east of Town");
-  const miner = smith({ pickaxe: true, mining: 40 });
-  miner.controller.open();
-  expect([(miner.q(".smith-pickaxe") as HTMLButtonElement).hidden, miner.q(".smith-mining-text").textContent])
-    .toEqual([true, "Mining 40 · Ore is in the Copper Hills, east of Town"]);
-});
-
-it("hands over the free hatchet once, beside the pickaxe, and then shows Woodcutting instead", async () => {
-  const view = smith();
-  view.controller.open();
-  const button = view.q(".smith-hatchet") as HTMLButtonElement;
-  expect([button.hidden, button.textContent, view.q(".smith-woodcutting-text").textContent])
-    .toEqual([false, "Take a Hatchet", "Wood is in Timberwood, north of the Copper Hills."]);
-  button.click();
-  await vi.waitFor(() => expect(button.hidden).toBe(true));
-  expect(view.claimHatchet).toHaveBeenCalledTimes(1);
-  expect(view.claimPickaxe).not.toHaveBeenCalled();
-  expect(view.showMessage).toHaveBeenCalledWith("The Smith hands you a hatchet. Timberwood is north of the Copper Hills.", "#ffd75e");
-  const woodcutter = smith({ hatchet: true, woodcutting: 12 });
-  woodcutter.controller.open();
-  expect([(woodcutter.q(".smith-hatchet") as HTMLButtonElement).hidden, woodcutter.q(".smith-woodcutting-text").textContent])
-    .toEqual([true, "Woodcutting 12 · Wood is in Timberwood, north of the Copper Hills"]);
+  expect(view.dialog.querySelector(".smith-pickaxe, .smith-hatchet, .smith-staff, .smith-staff-row")).toBeNull();
+  expect([...view.dialog.querySelectorAll("button")].map(button => button.textContent)).not.toContain("Take a Pickaxe");
+  expect(view.dialog.textContent).not.toMatch(/Take a (Pickaxe|Hatchet|Staff)/);
+  expect([view.q(".smith-mining-text").textContent, view.q(".smith-woodcutting-text").textContent])
+    .toEqual(["Mining 40 · Ore is in the Copper Hills, east of Town", "Woodcutting 12 · Wood is in Timberwood, north of the Copper Hills"]);
+  const fresh = smith();
+  fresh.controller.open();
+  expect(fresh.q(".smith-mining-text").textContent).toBe("Mining 0 · Ore is in the Copper Hills, east of Town");
 });
 
 it("lists only the ores a refine takes, not the crafting wood", () => {
   const view = smith({ ores: { copper_ore: 3, pine_log: 40 } });
   view.controller.open();
   expect(view.q(".smith-ores").textContent).toBe("Copper Ore 3 · Iron Ore 0 · Mithril Ore 0 · Adamant Ore 0 · Starshard 0");
-});
-
-it("offers the pickaxe again once the server no longer has it (a reset save takes it back)", async () => {
-  const view = smith();
-  view.controller.open();
-  const button = view.q(".smith-pickaxe") as HTMLButtonElement;
-  button.click();
-  await vi.waitFor(() => expect(button.hidden).toBe(true));
-  view.controller.close();
-  view.setPickaxe(false);
-  view.controller.open();
-  expect([button.hidden, view.q(".smith-mining-text").textContent]).toEqual([false, "Ore is in the Copper Hills, east of Town."]);
-});
-
-it("keeps the pickaxe on offer when the server refuses, and says why", async () => {
-  const view = smith();
-  view.claimPickaxe.mockResolvedValueOnce({ ok: false, error: "Talk to the Smith first." } as never);
-  view.controller.open();
-  const button = view.q(".smith-pickaxe") as HTMLButtonElement;
-  button.click();
-  await vi.waitFor(() => expect(view.showMessage).toHaveBeenCalledWith("Talk to the Smith first.", "#ff9b91"));
-  expect([button.hidden, button.disabled]).toEqual([false, false]);
 });
 
 it("filters the gear as the bag does and sorts it by tier, worn first", () => {
@@ -476,11 +429,11 @@ it("counts the worn piece's refine in the comparison", () => {
 
 it("Upgrade All spreads the gold over the player's lines, puts each new piece on, and says what it did", async () => {
   const equip = vi.fn(async (_itemId: string) => true);
-  const view = shop({ gold: 60n, levels: { archery: 6 }, shown: "yours", held: ["common_bow", "crude_light_helmet", "crude_light_armor"], equip,
+  const view = shop({ gold: 600n, levels: { archery: 6 }, shown: "yours", held: ["common_bow", "crude_light_helmet", "crude_light_armor"], equip,
     worn: { equippedRightHand: "common_bow", equippedHead: "crude_light_helmet", equippedChest: "crude_light_armor" } });
   view.controller.open();
   // The boots line, furthest behind, catches up first; then every line rises together to Sturdy.
-  expect(view.upgrade().textContent).toBe("Upgrade All · 60 GoldBuys and Equips 4 Pieces");
+  expect(view.upgrade().textContent).toBe("Upgrade All · 600 GoldBuys and Equips 4 Pieces");
   expect([...view.dialog.querySelectorAll(".smith-upgrade-all-picks li")].map(item => item.textContent))
     .toEqual(["Sturdy Bow", "Sturdy Light Helmet", "Sturdy Light Armor", "Sturdy Ranger Boots"]);
   expect(view.upgrade().disabled).toBe(false);
@@ -495,7 +448,7 @@ it("Upgrade All spreads the gold over the player's lines, puts each new piece on
 
 it("Upgrade All stops at a refusal and says how far it got", async () => {
   const equip = vi.fn(() => true);
-  const view = shop({ gold: 100n, levels: { archery: 1 }, shown: "yours", equip, worn: { equippedRightHand: "starter_bow" } });
+  const view = shop({ gold: 1_000n, levels: { archery: 1 }, shown: "yours", equip, worn: { equippedRightHand: "starter_bow" } });
   view.buyGear.mockResolvedValueOnce({ ok: true }).mockResolvedValueOnce({ ok: false, error: "Your bag is full. Free a slot first." } as never);
   view.controller.open();
   view.upgrade().click();
@@ -506,14 +459,14 @@ it("Upgrade All stops at a refusal and says how far it got", async () => {
 });
 
 it("Upgrade All tells the player to equip from the bag when a piece could not go on", async () => {
-  const view = shop({ gold: 12n, shown: "yours", worn: { equippedRightHand: "starter_bow" }, equip: () => false });
+  const view = shop({ gold: 120n, shown: "yours", worn: { equippedRightHand: "starter_bow" }, equip: () => false });
   view.controller.open();
   view.upgrade().click();
   await vi.waitFor(() => expect(view.showMessage).toHaveBeenCalledWith("Upgraded · Crude Bow. Equip it from your bag.", "#ffd75e"));
 });
 
 it("Upgrade All waits with a reason: what comes next and its price, the Mastery it needs, or the bag", () => {
-  const poor = shop({ gold: 5n, levels: { archery: 6 }, shown: "yours", worn: { equippedRightHand: "starter_bow" } });
+  const poor = shop({ gold: 50n, levels: { archery: 6 }, shown: "yours", worn: { equippedRightHand: "starter_bow" } });
   poor.controller.open();
   expect(poor.upgrade().disabled).toBe(true);
   expect(poor.dialog.querySelector(".smith-upgrade-all-title")!.textContent).toBe("Nothing To Upgrade Yet");
@@ -523,14 +476,14 @@ it("Upgrade All waits with a reason: what comes next and its price, the Mastery 
     worn: { equippedRightHand: "crude_bow", equippedHead: "crude_light_helmet", equippedChest: "crude_light_armor", equippedFeet: "crude_ranger_boots" } });
   locked.controller.open();
   expect(locked.dialog.querySelector(".smith-upgrade-all-sub")!.textContent).toBe("Next: Common Bow at Lv 1 Archery");
-  const full = shop({ gold: 100n, bagFull: true, shown: "yours", worn: { equippedRightHand: "starter_bow" } });
+  const full = shop({ gold: 1_000n, bagFull: true, shown: "yours", worn: { equippedRightHand: "starter_bow" } });
   full.controller.open();
   expect([full.upgrade().disabled, full.dialog.querySelector(".smith-upgrade-all-title")!.textContent]).toEqual([true, "Bag Full"]);
   expect(full.controller.upgradeReady()).toBe(true);
 });
 
 it("dots the Gear view while Upgrade All has something to buy", () => {
-  const view = shop({ gold: 100n, worn: { equippedRightHand: "starter_bow" }, storage: memoryStorage({ "wildstat.smithView": "refine" }) });
+  const view = shop({ gold: 1_000n, worn: { equippedRightHand: "starter_bow" }, storage: memoryStorage({ "wildstat.smithView": "refine" }) });
   view.controller.open();
   const dot = view.dialog.querySelector<HTMLElement>(".smith-upgrade-dot")!;
   expect(dot.hidden).toBe(false);
@@ -556,7 +509,7 @@ it("shows the Town button's dot only while Upgrade All has something to buy", ()
   const { document, window } = parseHTML("<html><body><button id=\"techTreeBtn\"></button></body></html>");
   vi.stubGlobal("document", document); vi.stubGlobal("HTMLElement", window.HTMLElement);
   vi.stubGlobal("localStorage", memoryStorage());
-  let gold = 100n;
+  let gold = 1_000n;
   const runtime = createSmithRuntime({
     coop: () => ({ gold: () => gold, weaponMastery: () => ({ archery: 0n, swordplay: 0n, sorcery: 0n }), buyGradeGear: async () => ({ ok: true }) }),
     inventory: { itemIds: ["starter_bow"], equippedHead: "", equippedChest: "", equippedFeet: "", equippedRightHand: "starter_bow", equippedLeftHand: "" },
