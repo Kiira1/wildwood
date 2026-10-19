@@ -60,7 +60,7 @@ export function cardEffectText(effect: CardEffect): string {
     bossGuard: () => `Damage from bosses -${abs}%`,
     eliteGuard: () => `Damage from elites -${abs}%`,
     raceGuard: () => `Damage from ${mapName(effect.mapId ?? "")} enemies -${abs}%`,
-    shield: () => `A shield of ${abs}% max health, back ${effect.seconds ?? CARD_EFFECT_DEFAULTS.shield.seconds}s after the last hit`,
+    shield: () => `A shield of ${abs}% max health that takes all of the hit that breaks it, back ${effect.seconds ?? CARD_EFFECT_DEFAULTS.shield.seconds}s after the last hit`,
     panicHeal: () => `Hit under ${percent(CARD_EFFECT_DEFAULTS.panicHeal.below)} health: ${abs}% chance to heal ${percent(CARD_EFFECT_DEFAULTS.panicHeal.heal)}`,
     lastStand: () => `Once per map visit, a killing blow leaves you at ${abs}% health`,
     web: () => `Enemies that hit you are slowed ${abs}% for ${effect.seconds ?? CARD_EFFECT_DEFAULTS.web.seconds}s`,

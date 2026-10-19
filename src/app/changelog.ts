@@ -1,6 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
   "0.914.8": [
     "Guests get the daily gems too, not only registered accounts",
+    "A card shield now takes all of the hit that breaks it, so it can stop a blow that would one-shot you",
   ],
   "0.914.7": [
     "Portals and teleports no longer wait for your last kills to count, so they stop pulling you back or freezing you",

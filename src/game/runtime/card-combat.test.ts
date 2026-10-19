@@ -152,7 +152,10 @@ describe("card defense", () => {
     view.combat.update(.016);
     expect(view.combat.shield()).toEqual({ amount: 5, max: 5 });
     expect(view.combat.absorb(3)).toBe(0);
-    expect(view.combat.absorb(4)).toBe(2);
+    // The hit that breaks it is soaked whole, however big: a one-shot is stopped.
+    expect(view.combat.absorb(1_000)).toBe(0);
+    expect(view.combat.shield().amount).toBe(0);
+    expect(view.combat.absorb(4)).toBe(4);
     view.combat.update(7);
     expect(view.combat.shield().amount).toBe(0);
     view.combat.update(1.1);

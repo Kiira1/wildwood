@@ -199,10 +199,10 @@ export function createCardCombat(deps: {
     if (worn === NO_CARDS || dealt <= 0) return dealt;
     shieldWait = worn.timing.shield;
     if (shield <= 0) return dealt;
-    const taken = Math.min(shield, dealt);
-    shield -= taken;
+    // The hit that breaks the shield is spent on it whole: one blow that would one-shot is stopped once a refill.
+    shield = Math.max(0, shield - dealt);
     deps.spawnBurst(player.x, player.y, COLORS.shield, 6, 70);
-    return dealt - taken;
+    return 0;
   }
 
   /** After a hit: Last Stand catches a killing blow once a map visit, Panic Heal may heal, and Web slows the attacker. */
