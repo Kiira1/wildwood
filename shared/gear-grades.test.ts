@@ -47,8 +47,8 @@ describe("gear grades", () => {
   });
 
   it("sells a graded piece back to the Smith for half its price, rounded down", () => {
-    expect([gradeSalePrice("crude"), gradeSalePrice("epic"), gradeSalePrice("eternal")]).toEqual([60, 135, 620]);
+    expect([gradeSalePrice("crude"), gradeSalePrice("epic"), gradeSalePrice("eternal")]).toEqual([60, 135, 15000]);
     for (const grade of GEAR_GRADES) expect(gradeSalePrice(grade)).toBe(Math.floor(GRADE_GOLD_PRICE[grade] / 2));
-    expect([gradeShopSalePrice("rare_bow"), gradeShopSalePrice("eternal_heavy_armor"), gradeShopSalePrice("samurai_hat")]).toEqual([105, 620, undefined]);
+    expect([gradeShopSalePrice("rare_bow"), gradeShopSalePrice("eternal_heavy_armor"), gradeShopSalePrice("samurai_hat")]).toEqual([105, 15000, undefined]);
   });
 });

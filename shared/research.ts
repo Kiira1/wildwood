@@ -125,7 +125,7 @@ export const RESEARCH_DEFINITIONS: Record<ResearchId, ResearchDefinition> = {
   gearLuck: { id: "gearLuck", title: "GOLD LUCK", icon: "⛨", ranksPerBand: 5, maxRank: 5,
     effect: "GOLD DROP CHANCE", valuePerRank: 5, unit: "%", durationStartMs: 200_000, prerequisites: { inventorySlots: 1 } },
   miningLuck: { id: "miningLuck", title: "MINING LUCK", icon: "⛏", ranksPerBand: 5, maxRank: 5,
-    effect: "STARSHARD CHANCE", valuePerRank: 10, unit: "%", durationStartMs: 220_000, prerequisiteAny: ["cardLuck", "gearLuck"] },
+    effect: "SECOND STARSHARD CHANCE", valuePerRank: 10, unit: "%", durationStartMs: 220_000, prerequisiteAny: ["cardLuck", "gearLuck"] },
   skillLuck: { id: "skillLuck", title: "SKILL LUCK", icon: "✪", ranksPerBand: 5, maxRank: 5,
     effect: "WEAPON SKILL CHANCE", valuePerRank: 5, unit: "%", durationStartMs: 240_000, prerequisites: { miningLuck: 1 } },
   refineLuck: { id: "refineLuck", title: "REFINE LUCK", icon: "⚜", ranksPerBand: 5, maxRank: 5,

@@ -213,8 +213,9 @@ describe("Mining", () => {
     const mysterious = MINING_NODES.find(node => node.kind === "mysterious" && node.ore === "mithril_ore")!;
     expect(miningYield(small, 0)).toEqual({ copper_ore: 1 });
     expect(miningYield(large, .5)).toEqual({ copper_ore: 3 });
-    expect(miningYield(mysterious, MINING_STARSHARD_CHANCE - .01)).toEqual({ mithril_ore: 2, starshard: 1 });
-    expect(miningYield(mysterious, MINING_STARSHARD_CHANCE)).toEqual({ mithril_ore: 2 });
+    expect(MINING_STARSHARD_CHANCE).toBe(1);
+    expect(miningYield(mysterious, 0)).toEqual({ mithril_ore: 2, starshard: 1 });
+    expect(miningYield(mysterious, .999)).toEqual({ mithril_ore: 2, starshard: 1 });
     expect(MINING_NODE_KINDS.mysterious.respawnSeconds).toBeGreaterThan(MINING_NODE_KINDS.large.respawnSeconds);
   });
 });

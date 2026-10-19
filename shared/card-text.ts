@@ -74,7 +74,7 @@ export function cardEffectText(effect: CardEffect): string {
     respawn: () => `Enemies respawn ${abs}% faster`,
     miningSpeed: () => `Mining speed ${signed(v)}%`,
     oreFind: () => `${abs}% chance for an extra ore`,
-    starshardFind: () => `Starshard chance ${signed(v)}%`,
+    starshardFind: () => `${signed(v)}% chance of a second Starshard`,
   };
   return lines[effect.effect]?.() ?? effect.effect;
 }

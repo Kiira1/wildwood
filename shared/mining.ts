@@ -63,8 +63,8 @@ export const MINING_NODE_KINDS: Readonly<Record<MiningNodeKind, { name: string; 
   mysterious: { name: "Mysterious", breakSeconds: 12, ore: 2, respawnSeconds: 900, share: .04 },
   crystal: { name: "Crystal", breakSeconds: 10, ore: 1, respawnSeconds: 300, share: 0 },
 };
-/** A Mysterious rock's chance of a Starshard beside its ore: the ore every refine from ★11 on takes. */
-export const MINING_STARSHARD_CHANCE = .15;
+/** A Mysterious rock always gives a Starshard beside its ore: the ore every refine from ★11 on takes. */
+export const MINING_STARSHARD_CHANCE = 1;
 
 /** How close a player's feet come to a rock's foot to mine it, and the server's allowance on top for lag. */
 export const MINING_REACH = 70;
@@ -387,16 +387,16 @@ export function miningRockOre(node: MiningNode) {
 }
 
 /**
- * What a broken rock gives: its vein's ore, and from a Mysterious rock perhaps a Starshard. `roll` is in [0, 1).
- * Cards: Starshard cards raise its chance, and an Ore Find card's chance (`extraRoll` against it) adds one more ore.
+ * What a broken rock gives: its vein's ore, and from a Mysterious rock a Starshard, perhaps two. `roll` is in [0, 1).
+ * Cards: Starshard cards give a chance of a second, and an Ore Find card's chance (`extraRoll` against it) adds one more ore.
  * `toolBonus` is the pickaxe's extra ore, when its chance came up (shared/tools.ts).
  */
 export function miningYield(node: MiningNode, roll: number, cards: { starshardFind?: number; oreFind?: number } = {}, extraRoll = 1, miningLuckRank = 0,
   toolBonus = 0) {
   const ores: Partial<Record<OreId, number>> = { [node.ore]: miningRockOre(node) + (extraRoll < (cards.oreFind ?? 0) ? 1 : 0) + toolBonus };
-  // Starshard cards and Mining Luck each raise the chance.
+  // One is certain; Starshard cards and Mining Luck give their bonus as the chance of a second.
   const starshard = MINING_STARSHARD_CHANCE * (1 + Math.max(0, cards.starshardFind ?? 0)) * luckMultiplier("miningLuck", miningLuckRank);
-  if (node.kind === "mysterious" && roll < starshard) ores.starshard = 1;
+  if (node.kind === "mysterious") ores.starshard = Math.floor(starshard) + (roll < starshard % 1 ? 1 : 0);
   return ores;
 }
 

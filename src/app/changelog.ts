@@ -1,6 +1,8 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
   "0.916.3": [
     "Upgrade All no longer swaps out Black Boots or boots of another style",
+    "Legendary to Eternal gear costs much more gold; crafting is the cheaper road",
+    "Mysterious rocks always give a Starshard; Starshard cards and Mining Luck give a chance of a second",
   ],
   "0.916.2": [
     "Small balancing",

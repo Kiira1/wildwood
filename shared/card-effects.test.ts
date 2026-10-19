@@ -141,9 +141,9 @@ describe("cards outside a fight", () => {
     expect(respawnSecondsWithCards(10, 0)).toBe(10);
     const rock = MINING_NODES.find(node => node.kind === "mysterious")!;
     expect(miningBreakSeconds(rock, 0, .07)).toBeCloseTo(miningBreakSeconds(rock, 0) / 1.07, 9);
-    const roll = MINING_STARSHARD_CHANCE * 1.1;
-    expect(miningYield(rock, roll).starshard).toBeUndefined();
-    expect(miningYield(rock, roll, { starshardFind: .24 }).starshard).toBe(1);
+    expect(miningYield(rock, .1).starshard).toBe(MINING_STARSHARD_CHANCE);
+    expect(miningYield(rock, .1, { starshardFind: .24 }).starshard).toBe(2);
+    expect(miningYield(rock, .3, { starshardFind: .24 }).starshard).toBe(1);
     const plain = miningYield(rock, .99)[rock.ore]!;
     expect(miningYield(rock, .99, { oreFind: .07 }, .05)[rock.ore]).toBe(plain + 1);
     expect(miningYield(rock, .99, { oreFind: .07 }, .5)[rock.ore]).toBe(plain);

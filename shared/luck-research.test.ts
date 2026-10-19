@@ -89,12 +89,12 @@ describe("luck effects", () => {
     expect(rollRefine(bow, risky - 1, roll, 5).succeeded).toBe(true);
   });
 
-  it("raises a Mysterious rock's Starshard chance by 10% a rank of Mining Luck", () => {
+  it("gives a Mysterious rock a 10% chance a rank of Mining Luck of a second Starshard", () => {
     const mysterious = MINING_NODES.find(node => node.kind === "mysterious")!;
-    const roll = MINING_STARSHARD_CHANCE * 1.4;
-    expect(miningYield(mysterious, roll).starshard).toBeUndefined();
-    expect(miningYield(mysterious, roll, {}, 1, 5).starshard).toBe(1);
-    expect(miningYield(mysterious, roll, {}, 1, 3).starshard).toBeUndefined();
+    const roll = .4 * MINING_STARSHARD_CHANCE;
+    expect(miningYield(mysterious, roll).starshard).toBe(1);
+    expect(miningYield(mysterious, roll, {}, 1, 5).starshard).toBe(2);
+    expect(miningYield(mysterious, roll, {}, 1, 3).starshard).toBe(1);
   });
 
   it("raises each weapon skill's appear chance by 5% a rank of Skill Luck, drawing as before", () => {

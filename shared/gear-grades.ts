@@ -35,9 +35,10 @@ export const GRADE_MASTERY_LEVEL: Readonly<Record<GearGrade, number>> = byGrade(
 
 /**
  * The Smith's price in gold: Mastery opens a grade, gold buys it, so gold is meant to matter. About 1.12x a grade to
- * the tenth, so saved gold skips grades, then 1.3x. Kills drop about 0.2 gold each.
+ * Heroic, so saved gold skips grades, then about 2-2.5x a grade, so the top grades cost days of gold and crafting
+ * them is the cheaper road. Kills drop about 0.2 gold each.
  */
-export const GRADE_GOLD_PRICE: Readonly<Record<GearGrade, number>> = byGrade([120, 130, 150, 170, 190, 210, 240, 270, 300, 330, 430, 560, 730, 950, 1240]);
+export const GRADE_GOLD_PRICE: Readonly<Record<GearGrade, number>> = byGrade([120, 130, 150, 170, 190, 210, 240, 270, 300, 600, 1200, 2500, 5000, 12000, 30000]);
 
 /** What the Smith pays for a graded piece: half its price, whatever its refine or however it was made. */
 export const gradeSalePrice = (grade: GearGrade) => Math.floor(GRADE_GOLD_PRICE[grade] / 2);
@@ -121,6 +122,8 @@ export function gradeForOldBonus(bonusPercent: number) {
   return best;
 }
 
-/** What the Smith paid for an old map-tier piece when gear moved to grades: a quarter of the price before it went x10. */
+/** The grade prices when migration 62 paid for old gear, kept so its payout never moves. */
+const PAYOUT_GRADE_PRICE = [12, 13, 15, 17, 19, 21, 24, 27, 30, 33, 43, 56, 73, 95, 124] as const;
+/** What the Smith paid for an old map-tier piece when gear moved to grades: a quarter of that price. */
 export const oldTierSalePrice = (tier: number) =>
-  Math.max(1, Math.round(GRADE_GOLD_PRICE[GEAR_GRADES[Math.min(15, Math.max(1, Math.floor(tier))) - 1]] / 40));
+  Math.max(1, Math.round(PAYOUT_GRADE_PRICE[Math.min(15, Math.max(1, Math.floor(tier))) - 1] / 4));

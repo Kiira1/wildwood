@@ -107,7 +107,7 @@ describe("breaking a rock", () => {
     expect([f.ore("iron_ore"), f.row().mining]).toEqual([1, 52]);
   });
 
-  it("gives a Starshard only from a Mysterious rock, on the server's roll", () => {
+  it("gives a Starshard from every Mysterious rock and from no other", () => {
     const f = miner();
     f.rolls(0);
     f.mine(copper);
@@ -118,7 +118,7 @@ describe("breaking a rock", () => {
     f.later(MINING_NODE_KINDS.mysterious.respawnSeconds);
     f.rolls(.99);
     f.mine(mysterious);
-    expect([f.ore("starshard"), f.row().lastStarshard]).toEqual([1, false]);
+    expect([f.ore("starshard"), f.row().lastStarshard]).toEqual([2, true]);
   });
 
   it("gives Arcane Crystal from a crystal rock once Mining reaches its mark, more in a deeper vein", () => {
