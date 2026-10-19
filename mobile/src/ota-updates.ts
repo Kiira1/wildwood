@@ -1,12 +1,21 @@
 import { verifyOtaEnvelope } from './ota-signature';
 import { App } from '@capacitor/app';
 import { LiveUpdate } from '@capawesome/capacitor-live-update';
-import { createOtaController } from './ota-controller';
+import { applyAtLaunch, createOtaController } from './ota-controller';
 import { OTA_RUNTIME, OTA_SAVE_FORMAT, type SignedOtaManifest } from '../../shared/ota-update';
 import type { NativeUpdateBridge } from '../../src/app/native-updates';
 import publicKey from '../ota/public-key.json';
+const RESTARTED_FOR = 'wildstat.ota.restartedFor';
 export function installNativeUpdates(platform: 'ios' | 'android') {
   let bootReady = false, gameStarting = false, recovering = false, bootFailed = false;
+  const launchedAt = Date.now();
+  /** Restarts into the downloaded update, remembering which, so a restart that did not take is not repeated. */
+  async function applyNow() {
+    const pending = controller?.snapshot().pending;
+    if (!pending) return;
+    try { localStorage.setItem(RESTARTED_FOR, pending); } catch { /* Still restart. */ }
+    await LiveUpdate.reload();
+  }
   async function recoverFailedBoot() {
     if (!controller || recovering) return;
     recovering = true;
@@ -25,6 +34,10 @@ export function installNativeUpdates(platform: 'ios' | 'android') {
   async function confirmReady() {
     if (!controller || !bootReady) return;
     try { await controller.ready(); await controller.check(); } catch { /* Native timeout retains its rollback protection. */ }
+    // An update found as the app opens restarts into it at once, instead of asking the player to close and reopen.
+    let restartedFor: string | null = null;
+    try { restartedFor = localStorage.getItem(RESTARTED_FOR); } catch { /* Treated as never restarted. */ }
+    if (controller && applyAtLaunch(controller.snapshot(), launchedAt, Date.now(), restartedFor)) void applyNow().catch(() => {});
   }
   void App.getInfo().then(info => {
     controller = createOtaController({ bridge: LiveUpdate, storage: localStorage, platform, build: Number(info.build),
@@ -40,7 +53,7 @@ export function installNativeUpdates(platform: 'ios' | 'android') {
       },
       changed: () => window.dispatchEvent(new Event('wildstat:ota-changed')),
     });
-    (window as unknown as { wildstatUpdates: NativeUpdateBridge }).wildstatUpdates = controller;
+    (window as unknown as { wildstatUpdates: NativeUpdateBridge }).wildstatUpdates = { ...controller, applyNow };
     window.dispatchEvent(new Event('wildstat:ota-available'));
     if (bootFailed) void recoverFailedBoot(); else void confirmReady();
     // No polling while playing, and no reload on resume. Only a throttled check.

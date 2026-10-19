@@ -8,6 +8,16 @@ export type OtaBridge = {
   setNextBundle(options: { bundleId: string | null }): Promise<void>;
 };
 export type OtaState = { channel: OtaChannel; current: string; pending: string | null; message: string; busy: boolean; developer: boolean };
+/** How soon after launch a downloaded update restarts the app by itself: the player has only just opened it. */
+export const OTA_APPLY_AT_LAUNCH_MS = 60_000;
+/**
+ * Whether to restart into a downloaded update now: a production update found within a minute of launch, and not
+ * one this phone already restarted for (a restart that did not take must not loop).
+ */
+export function applyAtLaunch(state: OtaState, launchedAt: number, now: number, restartedFor: string | null) {
+  return state.channel === 'production' && !state.busy && Boolean(state.pending) && state.pending !== 'Installed app'
+    && state.pending !== state.current && state.pending !== restartedFor && now - launchedAt <= OTA_APPLY_AT_LAUNCH_MS;
+}
 export function createOtaController(options: {
   bridge: OtaBridge; storage: Pick<Storage, 'getItem' | 'setItem'>;
   platform: 'ios' | 'android'; build: number; runtime: string; saveFormat: number;

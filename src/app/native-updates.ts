@@ -2,6 +2,8 @@ export type NativeUpdateState = { channel: 'production' | 'developer'; current: 
 export type NativeUpdateBridge = {
   check(force?: boolean): Promise<void>; selectChannel(channel: 'production' | 'developer'): Promise<void>;
   rollback(): Promise<void>; setDeveloperAccess(value: boolean): void; snapshot(): NativeUpdateState;
+  /** Restarts the app into the downloaded update. */
+  applyNow?(): Promise<void>;
 };
 export function nativeUpdates(): NativeUpdateBridge | undefined {
   return (window as unknown as { wildstatUpdates?: NativeUpdateBridge }).wildstatUpdates;

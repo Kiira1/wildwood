@@ -153,3 +153,8 @@
 .account-deletion-dialog .window-back-footer { display: flex; flex-direction: column; gap: 10px; align-items: center; padding-top: 12px; }
 .account-deletion-dialog [hidden] { display: none; }
 .account-deletion-status { color: var(--green); }
+
+/* The developer's unseen bug report dot, as the mailbox's. */
+.has-dev-bug-dot { position: relative; }
+.dev-bug-dot { position: absolute; right: 4px; top: 4px; width: 8px; height: 8px; border-radius: 50%; background: var(--red); box-shadow: 0 0 0 1.5px #131413; pointer-events: none; }
+.dev-bug-dot[hidden] { display: none; }

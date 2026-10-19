@@ -32,12 +32,20 @@ export function installAppUpdateNotice(doc: Document = document) {
       banner.setAttribute("aria-label", "App update ready");
       const message = doc.createElement("span");
       message.setAttribute("role", "status");
-      message.textContent = "Update ready · Close and reopen WildStat";
+      const restart = nativeUpdates()?.applyNow;
+      // One tap restarts into it; an older updater without the restart asks for a close and reopen.
+      message.textContent = restart ? "Update Ready" : "Update ready · Close and reopen WildStat";
       const ok = doc.createElement("button");
       ok.type = "button";
-      ok.textContent = "OK";
+      ok.textContent = restart ? "Later" : "OK";
       ok.addEventListener("click", () => { dismissed = nativeUpdates()?.snapshot().pending ?? ""; render(); });
-      banner.append(message, ok);
+      if (restart) {
+        const now = doc.createElement("button");
+        now.type = "button";
+        now.textContent = "Restart";
+        now.addEventListener("click", () => { void nativeUpdates()?.applyNow?.().catch(() => {}); });
+        banner.append(message, now, ok);
+      } else banner.append(message, ok);
       doc.body.append(banner);
     }
     banner.hidden = false;

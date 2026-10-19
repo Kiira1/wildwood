@@ -1,4 +1,5 @@
 import { createPlayerTravelControl } from "./player-travel-control";
+import { createDevBugDot } from "./dev-bug-dot";
 import { createOfflineProgressTestControl } from "./offline-progress-test-control";
 import { createBossHitboxOverlayControl } from "./boss-hitbox-overlay-control";
 import { createPrestigeUnlockPreviewControl } from "./prestige-unlock-popup";
@@ -21,7 +22,7 @@ import type { AnalyticsDashboard } from "../coop/services/analytics-types";
 
 type DevPanelTab = "reports" | "bugs" | "muted" | "banned" | "deletions" | "players" | "moderation" | "controls" | "balance" | "performance" | "analytics";
 
-type BugReportEntry = { id: bigint };
+type BugReportEntry = { id: bigint; reportedAtMs: number };
 
 type DevPanelMetrics = {
   performance: PerformanceSnapshot;
@@ -136,6 +137,9 @@ export function createDevPanelController(dependencies: DevPanelDependencies) {
     api: dependencies.review, confirm: dependencies.confirm, showMessage: dependencies.showMessage,
     openPlayer, onOverview: showOverview, onAccessDenied: denyAccess,
   });
+  // A new bug report shows a red dot on the way to the Bugs tab until it is looked at.
+  const settingsButton = document.getElementById("settingsBtn");
+  const bugDot = createDevBugDot({ targets: [...(settingsButton ? [settingsButton] : []), button], reports: dependencies.getBugReports, isDeveloper: dependencies.isDeveloper });
   let counts: DevConsoleOverview = { pendingReports: 0, openBugs: 0, muted: 0, banned: 0, deletions: 0 };
   const overviewTabs: [keyof DevConsoleOverview, DevPanelTab, string][] = [
     ["pendingReports", "reports", "Reports"], ["openBugs", "bugs", "Bugs"], ["muted", "muted", "Muted"], ["banned", "banned", "Banned"], ["deletions", "deletions", "Deletions"],
@@ -218,6 +222,7 @@ export function createDevPanelController(dependencies: DevPanelDependencies) {
       if (selected) element.scrollIntoView?.({ block: "nearest", inline: "nearest" });
     }
     if (tab === "controls") renderControls();
+    if (tab === "bugs") bugDot.markSeen();
     if (reloadQueue && (tab === "reports" || tab === "bugs")) void reviews.load().then(result => { if (result.state === "denied") denyAccess(); });
     if (tab === "performance") renderPerformance();
     if (tab === "analytics") void renderAnalytics();
@@ -349,6 +354,7 @@ export function createDevPanelController(dependencies: DevPanelDependencies) {
   }
 
   function setDeveloperAccess(developer: boolean) {
+    bugDot.render();
     ota.setDeveloperAccess(developer);
     playerTravel.render();
     offlineProgressTest.render();
@@ -431,6 +437,8 @@ export function createDevPanelController(dependencies: DevPanelDependencies) {
     bossHitboxesVisible: () => bossHitboxes.visible(),
     isPerformanceVisible: () => !tabPanels.performance.hidden,
     refresh: () => {
+      bugDot.render();
+      if (!tabPanels.bugs.hidden && !panel.hidden) bugDot.markSeen();
       if (panel.hidden) return;
       renderControls();
       // A new /bug report arrives on the live developer view; re-read the queue

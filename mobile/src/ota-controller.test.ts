@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { createOtaController, type OtaBridge } from './ota-controller';
+import { applyAtLaunch, createOtaController, OTA_APPLY_AT_LAUNCH_MS, type OtaBridge, type OtaState } from './ota-controller';
 import type { OtaManifest } from '../../shared/ota-update';
 function fixture() {
   let manifest: OtaManifest = { schema: 1, channel: 'production', platform: 'ios', sequence: 100,
@@ -123,4 +123,22 @@ it('rejects announcements when the installed native build cannot be identified',
   const f = fixture(); const c = createOtaController({ ...f.options, build: NaN });
   await c.ready(); await c.check(true);
   expect(f.bridge.downloadBundle).not.toHaveBeenCalled(); expect(f.bridge.setNextBundle).not.toHaveBeenCalled();
+});
+
+describe('restarting into an update found at launch', () => {
+  const ready: OtaState = { channel: 'production', current: 'android-0.914.4-a', pending: 'android-0.914.5-b', message: 'Ready.', busy: false, developer: false };
+  it('restarts into it within a minute of opening, once', () => {
+    expect(applyAtLaunch(ready, 0, 5_000, null)).toBe(true);
+    expect(applyAtLaunch(ready, 0, OTA_APPLY_AT_LAUNCH_MS + 1, null)).toBe(false);
+    // A restart that did not take is not repeated.
+    expect(applyAtLaunch(ready, 0, 5_000, 'android-0.914.5-b')).toBe(false);
+    expect(applyAtLaunch(ready, 0, 5_000, 'android-0.914.4-a')).toBe(true);
+  });
+  it('never for the installed app, the developer channel, or mid-download', () => {
+    expect(applyAtLaunch({ ...ready, pending: 'Installed app' }, 0, 5_000, null)).toBe(false);
+    expect(applyAtLaunch({ ...ready, pending: null }, 0, 5_000, null)).toBe(false);
+    expect(applyAtLaunch({ ...ready, channel: 'developer' }, 0, 5_000, null)).toBe(false);
+    expect(applyAtLaunch({ ...ready, busy: true }, 0, 5_000, null)).toBe(false);
+    expect(applyAtLaunch({ ...ready, current: 'android-0.914.5-b' }, 0, 5_000, null)).toBe(false);
+  });
 });

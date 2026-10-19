@@ -3,6 +3,7 @@ export const RELEASE_NOTES: Record<string, string[]> = {
     "Prism's reflected hit strikes up to 4 enemies near the attacker, dropped from 6 to 4, and each once a second at most",
     "Auto Farm keeps Aggro pulling while it fights a boss, so builds that heal from kills keep healing",
     "The Town's bridges keep you on the deck: no more walking along the rails",
+    "The Android app restarts into an update it finds as it opens, and later ones get a Restart button, instead of asking you to close and reopen",
   ],
   "0.914.5": [
     "A Card Found moment is only for a card new to you, and never stops you moving; another copy is a small line in its rarity's colour",

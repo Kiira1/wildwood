@@ -12,11 +12,11 @@ const { installAppUpdateNotice, updateWaiting } = await import("./app-update-not
 
 afterEach(() => { vi.unstubAllGlobals(); recorded.length = 0; active = true; });
 
-function phone(initial: Partial<NativeUpdateState>) {
+function phone(initial: Partial<NativeUpdateState>, applyNow?: () => Promise<void>) {
   const { document, window } = parseHTML("<html><body></body></html>");
   let state: NativeUpdateState = { channel: "production", current: "Installed app", pending: null, message: "Updates apply on the next app launch.", busy: false, developer: false, ...initial };
   vi.stubGlobal("window", window);
-  (window as unknown as { wildstatUpdates: unknown }).wildstatUpdates = { snapshot: () => state };
+  (window as unknown as { wildstatUpdates: unknown }).wildstatUpdates = { snapshot: () => state, applyNow };
   vi.stubGlobal("document", document);
   installAppUpdateNotice(document as unknown as Document);
   return {
@@ -55,4 +55,17 @@ it("reports the updater's state to the server once per change, after diagnostics
   // Nothing while the updater is mid-download.
   app.set({ busy: true, message: "Downloading update…" });
   expect(recorded).toHaveLength(1);
+});
+
+it("restarts into the update in one tap where the updater can, instead of asking for a close and reopen", () => {
+  const applyNow = vi.fn(async () => {});
+  const app = phone({}, applyNow);
+  app.set({ pending: "android-0.914.5-b" });
+  expect(app.banner()!.textContent).toContain("Update Ready");
+  const [restart, later] = [...app.banner()!.querySelectorAll("button")] as HTMLButtonElement[];
+  expect([restart.textContent, later.textContent]).toEqual(["Restart", "Later"]);
+  restart.click();
+  expect(applyNow).toHaveBeenCalledOnce();
+  later.click();
+  expect(app.banner()!.hidden).toBe(true);
 });
