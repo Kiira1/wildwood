@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.915.3": [
+    "Use Another Account on the start screen when the wrong character keeps signing in",
+  ],
   "0.915.2": [
     "Small balancing",
   ],
@@ -3613,6 +3616,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.915.3": "2026-10-19",
   "0.915.2": "2026-10-18",
   "0.915.1": "2026-10-18",
   "0.915.0": "2026-10-18",

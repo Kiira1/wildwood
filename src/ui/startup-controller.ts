@@ -41,6 +41,8 @@ type StartupDependencies = {
   onContinueGuest: () => Promise<{ ok?: boolean; error?: string } | undefined> | { ok?: boolean; error?: string } | undefined;
   onBeginAdventure: (name: string) => void;
   signIn: () => Promise<{ ok?: boolean; redirecting?: boolean } | undefined> | undefined;
+  /** Use Another Account: ends the provider session, then asks which account. */
+  switchAccount?: () => Promise<{ ok?: boolean; redirecting?: boolean } | undefined> | undefined;
   takeOverSession: () => Promise<{ ok?: boolean } | undefined> | undefined;
   onAccountActionStarted: (action: "sign-in" | "guest" | "takeover", detail: string) => void;
   onAccountActionCompleted: () => void;
@@ -64,6 +66,7 @@ export function createStartupController(dependencies: StartupDependencies) {
   const accountCharacterName = requiredElement("accountCharacterName");
   const signInButton = requiredElement<HTMLButtonElement>("signInFromStartBtn");
   const guestButton = requiredElement<HTMLButtonElement>("continueGuestBtn");
+  const switchAccountButton = document.getElementById("useAnotherAccountBtn") as HTMLButtonElement | null;
   const legalGatePanel = requiredElement("legalGatePanel");
   const newPlayerPanel = requiredElement("newPlayerPanel");
   const playerNameInput = requiredElement<HTMLInputElement>("newPlayerNameInput");
@@ -133,6 +136,11 @@ export function createStartupController(dependencies: StartupDependencies) {
     signInButton.disabled = actionPending || !accountOptionsReady;
     guestButton.hidden = false;
     guestButton.disabled = actionPending;
+    // Whenever a character is offered: SIGN IN reuses whoever the browser last signed in as.
+    if (switchAccountButton) {
+      switchAccountButton.hidden = !(characterFound || knownAccount) || !dependencies.switchAccount;
+      switchAccountButton.disabled = actionPending || !accountOptionsReady;
+    }
     accountChoiceDetail.textContent = detailOverride || (actionPending
       ? "OPENING SIGN-IN…"
       : !accountOptionsReady
@@ -252,15 +260,14 @@ export function createStartupController(dependencies: StartupDependencies) {
     dependencies.onBeginAdventure(name);
   }
 
-  signInButton.addEventListener("click", () => {
-    const characterFound = Boolean(dependencies.knownCharacter());
+  function beginSignIn(action: () => ReturnType<StartupDependencies["signIn"]>, characterFound: boolean) {
     dependencies.onAccountActionStarted(
       "sign-in",
       characterFound ? "OPENING SIGN-IN…" : "OPENING REGISTRATION…",
     );
     void (async () => {
       try {
-        const result = await dependencies.signIn();
+        const result = await action();
         if (result?.ok === false) {
           dependencies.onAccountActionFailed(characterFound
             ? "SIGN-IN FAILED · TRY AGAIN OR USE GUEST LOGIN"
@@ -272,6 +279,11 @@ export function createStartupController(dependencies: StartupDependencies) {
         dependencies.onAccountActionFailed("SIGN-IN FAILED · TRY AGAIN OR USE GUEST LOGIN");
       }
     })();
+  }
+
+  signInButton.addEventListener("click", () => beginSignIn(dependencies.signIn, Boolean(dependencies.knownCharacter())));
+  switchAccountButton?.addEventListener("click", () => {
+    if (dependencies.switchAccount) beginSignIn(dependencies.switchAccount, true);
   });
   guestButton.addEventListener("click", () => {
     dependencies.onAccountActionStarted("guest", "LOADING GUEST PROFILE…");

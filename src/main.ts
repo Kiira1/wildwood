@@ -394,7 +394,7 @@ import {
       if (name !== (coop?.localDisplayName?.() || "")) coop?.setDisplayName?.(name);
       startGame(true);
     },
-    signIn: () => coop?.signIn?.(),
+    signIn: () => coop?.signIn?.(), switchAccount: () => coop?.switchAccount?.(),
     takeOverSession: () => coop?.takeOverSession?.(),
     onAccountActionStarted: (action, detail) => startupCoordinator.beginAccountAction(action, detail),
     onAccountActionCompleted: () => startupCoordinator.completeAccountAction(),

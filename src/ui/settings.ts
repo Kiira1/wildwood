@@ -62,13 +62,19 @@ export function renderConnectionStatus(element: HTMLElement, connected: boolean)
   if (element.classList.contains("is-offline") !== !connected) element.classList.toggle("is-offline", !connected);
 }
 
+/** What Settings' Account button does: sign out whenever an account is signed in or stored. */
+export function accountButtonAction(account: { signedIn: boolean; hasAccountToken?: boolean } | undefined) {
+  return account?.signedIn || account?.hasAccountToken ? "sign-out" : "sign-in";
+}
+
 export function renderAccountStatus(
   button: HTMLElement,
   status: HTMLElement,
-  account: { signedIn: boolean; notice: string },
+  account: { signedIn: boolean; notice: string; hasAccountToken?: boolean },
 ) {
-  setText(button, account.signedIn ? "Sign Out" : "Sign In / Create");
-  const text = account.notice || (account.signedIn ? "Signed In · Account Save" : "Guest · Device Save");
+  const accountStored = accountButtonAction(account) === "sign-out";
+  setText(button, accountStored ? "Sign Out" : "Sign In / Create");
+  const text = account.notice || (accountStored ? "Signed In · Account Save" : "Guest · Device Save");
   setText(status, text);
   const error = /FAILED|WAIT|CHECK|NOT MOVED|STILL OPEN/.test(text);
   if (status.classList.contains("is-signed-in") !== account.signedIn) status.classList.toggle("is-signed-in", account.signedIn);

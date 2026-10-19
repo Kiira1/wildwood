@@ -265,6 +265,7 @@ type ExpectedApiKey =
   | "setSkinTone"
   | "signIn"
   | "signOut"
+  | "switchAccount"
   | "skinTone"
   | "speedUpItemUpgradeWithGems"
   | "speedUpResearchWithGems"

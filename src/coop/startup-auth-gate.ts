@@ -26,6 +26,8 @@ type StartupAuthGateDependencies = {
   accountState: () => StartupAccountState;
   knownCharacter: () => string;
   signIn: () => Promise<StartupActionResult> | StartupActionResult;
+  /** Use Another Account: ends the provider session, then asks which account. */
+  switchAccount?: () => Promise<StartupActionResult> | StartupActionResult;
   continueAsGuest: () => Promise<StartupActionResult> | StartupActionResult;
   legalConsentAccepted: () => boolean;
   acceptLegalTerms: () => Promise<StartupActionResult> | StartupActionResult;
@@ -48,6 +50,7 @@ type StartupAuthElements = {
   accountChoiceDetail: HTMLElement;
   signInButton: HTMLButtonElement;
   guestButton: HTMLButtonElement;
+  switchAccountButton?: HTMLButtonElement | null;
   loadingDetail: HTMLElement;
   loadingFill: HTMLElement;
   legal: LegalGateElements;
@@ -100,6 +103,7 @@ function startupElements(documentValue: Document): StartupAuthElements {
     accountChoiceDetail: requireElement("accountChoiceDetail"),
     signInButton: requireElement<HTMLButtonElement>("signInFromStartBtn"),
     guestButton: requireElement<HTMLButtonElement>("continueGuestBtn"),
+    switchAccountButton: documentValue.getElementById("useAnotherAccountBtn") as HTMLButtonElement | null,
     loadingDetail: requireElement("loadingDetail"),
     loadingFill: requireElement("loadingFill"),
     legal: legalGateElements(documentValue),
@@ -149,6 +153,11 @@ export function createStartupAuthGate(
     elements.signInButton.textContent = name || knownAccount ? "SIGN IN" : "REGISTER";
     elements.signInButton.disabled = !ready;
     elements.guestButton.disabled = false;
+    // Whenever a character is offered: SIGN IN reuses whoever the browser last signed in as.
+    if (elements.switchAccountButton) {
+      elements.switchAccountButton.hidden = !(name || knownAccount) || !dependencies.switchAccount;
+      elements.switchAccountButton.disabled = false;
+    }
     if (interactive) dependencies.releaseNotes?.show();
     else dependencies.releaseNotes?.hide();
     const callbackFailure = /^(?:SIGN-IN (?:CHECK FAILED|FAILED|NETWORK FAILED|TIMED OUT)|AUTO SIGN-IN UNAVAILABLE)/.test(state.notice || "")
@@ -167,6 +176,7 @@ export function createStartupAuthGate(
     showAccountChoice(preparingDetail, false);
     elements.signInButton.disabled = true;
     elements.guestButton.disabled = true;
+    if (elements.switchAccountButton) elements.switchAccountButton.disabled = true;
   }
 
   function showLegalGate() {
@@ -184,6 +194,7 @@ export function createStartupAuthGate(
     unsubscribe = () => {};
     elements.signInButton.removeEventListener("click", onSignIn);
     elements.guestButton.removeEventListener("click", onGuest);
+    elements.switchAccountButton?.removeEventListener("click", onSwitchAccount);
     legalGate.dispose();
     dependencies.releaseNotes?.dispose();
   }
@@ -260,16 +271,24 @@ export function createStartupAuthGate(
     renderState(transition.state, transition.changed);
   }
 
-  async function onSignIn() {
-    if (machine.state().value !== "account-choice") return;
-    preparingSignIn = true;
+  function onSignIn() {
     const state = dependencies.accountState();
     const name = dependencies.knownCharacter().trim();
-    const detail = name || state.knownAccount ? "Opening Sign-In…" : "Opening Registration…";
+    return beginSignIn(dependencies.signIn, name || state.knownAccount ? "Opening Sign-In…" : "Opening Registration…");
+  }
+
+  function onSwitchAccount() {
+    if (!dependencies.switchAccount) return;
+    return beginSignIn(dependencies.switchAccount, "Opening Sign-In…");
+  }
+
+  async function beginSignIn(action: () => Promise<StartupActionResult> | StartupActionResult, detail: string) {
+    if (machine.state().value !== "account-choice") return;
+    preparingSignIn = true;
     preparingDetail = detail;
     renderState(machine.dispatch({ type: "begin-account-action", action: "sign-in", detail }).state);
     try {
-      const result = await dependencies.signIn();
+      const result = await action();
       if (result?.ok === false) {
         preparingSignIn = false;
         const failure = result.error === "WAIT FOR SERVER"
@@ -313,6 +332,7 @@ export function createStartupAuthGate(
   function start() {
     elements.signInButton.addEventListener("click", onSignIn);
     elements.guestButton.addEventListener("click", onGuest);
+    elements.switchAccountButton?.addEventListener("click", onSwitchAccount);
     unsubscribe = dependencies.subscribe(render);
     render();
   }

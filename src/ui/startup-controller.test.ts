@@ -5,19 +5,25 @@ type FakeElement = {
   hidden: boolean; disabled: boolean; textContent: string; value: string;
   style: { display: string; width: string };
   classList: { add: () => void; remove: () => void; toggle: () => void };
-  addEventListener: () => void;
+  addEventListener: (name: string, listener: () => void) => void;
+  click: () => void;
 };
 
-function harness(initialStages: [string, boolean, number][]) {
+function harness(initialStages: [string, boolean, number][], overrides: Partial<Parameters<typeof createStartupController>[0]> = {}) {
   let stages = initialStages;
   const elements = new Map<string, FakeElement>();
   vi.stubGlobal("document", {
     getElementById(id: string) {
-      if (!elements.has(id)) elements.set(id, {
-        hidden: false, disabled: false, textContent: "", value: "",
-        style: { display: "", width: "" },
-        classList: { add() {}, remove() {}, toggle() {} }, addEventListener() {},
-      });
+      if (!elements.has(id)) {
+        const listeners: (() => void)[] = [];
+        elements.set(id, {
+          hidden: false, disabled: false, textContent: "", value: "",
+          style: { display: "", width: "" },
+          classList: { add() {}, remove() {}, toggle() {} },
+          addEventListener: (name, listener) => { if (name === "click") listeners.push(listener); },
+          click: () => { for (const listener of listeners) listener(); },
+        });
+      }
       return elements.get(id)!;
     },
   });
@@ -32,6 +38,7 @@ function harness(initialStages: [string, boolean, number][]) {
     signIn: () => undefined, takeOverSession: () => undefined,
     onAccountActionStarted() {}, onAccountActionCompleted() {}, onAccountActionFailed() {},
     onRetryConnection() {}, showMessage() {},
+    ...overrides,
   });
   return { startup, completed, elements, setStages: (next: typeof stages) => { stages = next; } };
 }
@@ -115,5 +122,25 @@ describe("startup loading presentation", () => {
     expect(h.completed).not.toHaveBeenCalled();
     vi.advanceTimersByTime(1);
     expect(h.completed).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("startup account choice", () => {
+  it("offers Use Another Account only beside a found character and sends it to the account switch", () => {
+    let name = "";
+    const signIn = vi.fn(async () => ({ ok: true, redirecting: true }));
+    const switchAccount = vi.fn(async () => ({ ok: true, redirecting: true }));
+    const onAccountActionStarted = vi.fn();
+    const h = harness([["Starting", true, 100]], { knownCharacter: () => name, signIn, switchAccount, onAccountActionStarted });
+    h.startup.showAccountChoice();
+    const button = h.elements.get("useAnotherAccountBtn")!;
+    expect(button.hidden).toBe(true);
+    name = "Gehn";
+    h.startup.showAccountChoice();
+    expect(button.hidden).toBe(false);
+    button.click();
+    expect(onAccountActionStarted).toHaveBeenCalledWith("sign-in", "OPENING SIGN-IN…");
+    expect(switchAccount).toHaveBeenCalledOnce();
+    expect(signIn).not.toHaveBeenCalled();
   });
 });

@@ -96,9 +96,14 @@ const AUTH_SCOPE = "openid profile email offline_access";
 const AUTH_MAX_AGE_SECONDS = String(365 * 86_400);
 
 /** Why a player was sent to SpacetimeAuth, reported when they come back. */
-type SignInReason = "known-account" | "register" | "guest-link" | "login-move" | "update-resume"
+type SignInReason = "known-account" | "register" | "guest-link" | "login-move" | "switch-account" | "update-resume"
   | "renewal-no-grant" | "renewal-grant-rejected" | "token-rejected" | "defeat-reauth" | "grant-follow-up";
 const TOKEN_EXCHANGE_TIMEOUT_MS = 15_000;
+/** Trips that pick an account on purpose; every other trip expects the character it left with. */
+const ACCOUNT_CHOICE_REASONS: readonly SignInReason[] = ["register", "guest-link", "login-move", "switch-account"];
+
+/** The character and login a sign-in trip expected to come back as. */
+type ExpectedSignIn = { character: string; sub: string };
 
 /** A short status line for a character move the server refused; it plays on as the login it signed in with. */
 export function loginMoveFailureNotice(message: string) {
@@ -196,6 +201,10 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
   let callbackFailure = "";
   /** The last successful callback on this page came back without a refresh grant. */
   let callbackWithoutGrant = false;
+  /** What the last returning trip expected, checked against the first profile row. */
+  let expectedSignIn: (ExpectedSignIn & { subChanged: boolean }) | null = null;
+  /** The character this page signed in as when it was not the one the player tapped. */
+  let signedInAs = "";
 
   function accountToken() {
     try {
@@ -257,7 +266,7 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
   function finishSignInTrip(outcome: "success" | "failed" | "abandoned", why = "") {
     const saved = readTabValue(keys.authTripKey);
     clearTabValue(keys.authTripKey);
-    let trip: { reason?: unknown; prompt?: unknown; at?: unknown } = {};
+    let trip: { reason?: unknown; prompt?: unknown; at?: unknown; character?: unknown; sub?: unknown } = {};
     try { trip = JSON.parse(saved ?? "{}"); } catch {}
     const failure = outcome === "failed" ? `:why=${why || "unknown"}${accountTag()}` : "";
     if (typeof trip.reason !== "string" || typeof trip.at !== "number") {
@@ -270,7 +279,15 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
     recordCarriedConnectionDiagnostic("session-blocked", {
       detail: `sign-in-return:${outcome}:${trip.reason}:${trip.prompt ? "prompt" : "silent"}:${seconds}s${grant}${failure}`,
     });
-    return { reason: trip.reason, prompt: Boolean(trip.prompt) };
+    const expected = typeof trip.character === "string" || typeof trip.sub === "string"
+      ? { character: typeof trip.character === "string" ? trip.character : "", sub: typeof trip.sub === "string" ? trip.sub : "" }
+      : null;
+    return { reason: trip.reason, prompt: Boolean(trip.prompt), expected };
+  }
+
+  function tokenSubject(token: string | null) {
+    if (!token) return "";
+    try { return inspectSpacetimeIdToken(token, { allowExpired: true }).sub; } catch { return ""; }
   }
 
   // A failing account never connects, so its reports go out with whoever
@@ -342,6 +359,7 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
   }
 
   function rememberConfirmedGender(gender: PlayerGender) {
+    if (signingOut) return;
     if (!(dependencies.connection()?.isActive ? dependencies.connectedSignedIn() : Boolean(accountToken()))) return;
     try {
       if (isSelectedPlayerGender(gender)) localStorage.setItem(keys.knownAccountGenderKey, String(gender));
@@ -356,7 +374,32 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
     } catch { return ""; }
   }
 
+  // A guest name without its guest token is a character this browser can no longer open.
+  function offeredGuestCharacter() {
+    return guestToken() ? rememberedGuestCharacter() : "";
+  }
+
+  function forgetGuestCharacter() {
+    try { localStorage.removeItem(keys.knownGuestCharacterKey); } catch {}
+  }
+
+  // The first profile row after a sign-in trip: say so when it is not the character the player tapped.
+  function checkSignedInCharacter(displayName: string) {
+    const expected = expectedSignIn;
+    if (!expected || !dependencies.connection()?.isActive || !dependencies.connectedSignedIn()) return;
+    expectedSignIn = null;
+    const loaded = isGeneratedDisplayName(displayName) ? "" : displayName.trim();
+    const changed = expected.subChanged || Boolean(expected.character && loaded.toLowerCase() !== expected.character.toLowerCase());
+    if (!changed) return;
+    recordCarriedConnectionDiagnostic("session-blocked", { detail: `sign-in-changed-account:expected=${expected.character || "unknown"};got=${loaded || "new"}` });
+    signedInAs = loaded || "A New Character";
+    notice = `Signed In As ${signedInAs} · Not You? Use Another Account`;
+    dependencies.notify();
+  }
+
   function rememberConfirmedCharacter(displayName: string) {
+    if (signingOut) return;
+    checkSignedInCharacter(displayName);
     if (!displayName || isGeneratedDisplayName(displayName)) return;
     if (dependencies.connection()?.isActive ? dependencies.connectedSignedIn() : Boolean(accountToken())) {
       rememberAccountCharacter(displayName);
@@ -575,8 +618,9 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
    * found"), so the move ends the session first, as Sign out does, and the
    * sign-in page opens on return (restoreKnownAccount).
    */
-  const loginMoveSignInKey = `${keys.loginMoveKey}/sign_in_next`;
-  async function endAccountSession(keepLoginMove = false) {
+  // Which sign-in opens once the session has ended: a character move or Use Another Account.
+  const signInNextKey = `${keys.loginMoveKey}/sign_in_next`;
+  async function endAccountSession(keepSignInNext = false) {
     if (signingOut) return;
     createAutoFarmResumeStore().clear();
     signingOut = true;
@@ -598,9 +642,12 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
       localStorage.removeItem(keys.accountMigrationPendingKey);
       localStorage.removeItem(keys.knownAccountCharacterKey);
       localStorage.removeItem(keys.knownAccountGenderKey);
+      localStorage.removeItem(keys.knownGuestCharacterKey);
     } catch {}
+    expectedSignIn = null;
+    signedInAs = "";
     clearTabValue(keys.accountLinkKey);
-    if (!keepLoginMove) { clearTabValue(keys.loginMoveKey); clearTabValue(loginMoveSignInKey); }
+    if (!keepSignInNext) { clearTabValue(keys.loginMoveKey); clearTabValue(signInNextKey); }
     clearAuthTransaction();
     clearTabValue(keys.authRetryKey);
     clearAccountReturnPending();
@@ -616,7 +663,7 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
     } else window.location.assign(url);
   }
 
-  async function startAccountSignIn(reason: SignInReason, forceLogin = false) {
+  async function startAccountSignIn(reason: SignInReason, forceLogin = false, carried?: ExpectedSignIn | null) {
     // Lock before PKCE hashing yields, so startup and taps share one transaction.
     if (signingOut || outboundAuthNavigationPending || callbackPending) return;
     outboundAuthNavigationPending = true;
@@ -633,7 +680,10 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
       writeTabValue(keys.authStateKey, state);
       writeTabValue(keys.authVerifierKey, verifier);
       writeTabValue(keys.authNonceKey, nonce);
-      writeTabValue(keys.authTripKey, JSON.stringify({ reason, prompt: forceLogin, at: Date.now() }));
+      // Recorded before leaving: the remembered name and token are gone or rewritten by the return.
+      const expected = carried !== undefined ? carried : (ACCOUNT_CHOICE_REASONS.includes(reason) ? null
+        : { character: rememberedAccountCharacter(), sub: tokenSubject(renewal.stored()) });
+      writeTabValue(keys.authTripKey, JSON.stringify({ reason, prompt: forceLogin, at: Date.now(), ...expected }));
       const url = new URL(AUTHORIZATION_ENDPOINT);
       url.search = new URLSearchParams({
         client_id: SPACETIME_AUTH_CLIENT_ID,
@@ -679,13 +729,34 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
     const callbackOutcome = await completeAccountCallback();
     const trip = callbackOutcome !== "none" ? finishSignInTrip(callbackOutcome, callbackFailure) : null;
     if (signingOut) return;
+    if (callbackOutcome === "success" && trip?.expected) {
+      const sub = tokenSubject(renewal.stored());
+      const subChanged = Boolean(trip.expected.sub && sub && trip.expected.sub !== sub);
+      // The same login came back: nothing to check, even if the character was renamed.
+      expectedSignIn = trip.expected.sub && sub && !subChanged ? null : { ...trip.expected, subChanged };
+    }
     // Callback failures and invalid/expired OAuth state must repaint the
     // lightweight sign-in shell instead of leaving it on "Verifying Sign-In".
     dependencies.notify();
     if (callbackOutcome === "failed") return;
-    // Back from ending the old login's session for a character move: now sign in as the new one.
-    if (callbackOutcome === "none" && readTabValue(loginMoveSignInKey)) {
-      clearTabValue(loginMoveSignInKey);
+    // Back from ending the old login's session: now sign in as the account the player picks.
+    const signInNext = callbackOutcome === "none" ? readTabValue(signInNextKey) : null;
+    if (signInNext) clearTabValue(signInNextKey);
+    if (signInNext === "switch-account") {
+      notice = "OPENING SIGN-IN · CHOOSE AN ACCOUNT";
+      dependencies.notify();
+      try {
+        await startAccountSignIn("switch-account", true);
+        return;
+      } catch (error) {
+        notice = "SIGN-IN FAILED · TRY AGAIN";
+        console.warn("WildStat account switch sign-in failed:", error);
+        dependencies.notify();
+        return;
+      }
+    }
+    // "true" is the flag a character move left before switching accounts shared it.
+    if (signInNext === "login-move" || signInNext === "true") {
       if (readTabValue(keys.loginMoveKey)) {
         notice = "OPENING SIGN-IN · CHOOSE GOOGLE";
         dependencies.notify();
@@ -714,7 +785,7 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
       notice = "FINISHING SIGN-IN";
       dependencies.notify();
       try {
-        await startAccountSignIn("grant-follow-up");
+        await startAccountSignIn("grant-follow-up", false, trip.expected ?? null);
         return;
       } catch (error) {
         console.warn("WildStat sign-in grant follow-up failed:", error);
@@ -823,7 +894,7 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
       sessionApproved = false; guestSessionExplicit = false; updateResumePending = false;
       lastPlayableSessionMode = null; takeoverRequested = false;
       clearAccountReturnPending(); clearAuthTransaction();
-      clearTabValue(keys.accountLinkKey); clearTabValue(keys.loginMoveKey); clearTabValue(loginMoveSignInKey); clearAccountMigrationPending();
+      clearTabValue(keys.accountLinkKey); clearTabValue(keys.loginMoveKey); clearTabValue(signInNextKey); clearAccountMigrationPending();
       dependencies.updateResumeStore.clear();
       dependencies.setWorldEntryBlocked(true);
       notice = "KILL REPORT EXCEEDED LIMIT · SIGN IN AGAIN";
@@ -855,6 +926,10 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
         hydrated: dependencies.hydrationReady(),
         updating: dependencies.updating(),
         sessionConflict: dependencies.worldEntryBlocked(),
+        /** Settings signs out, never in, while an account token is stored. */
+        hasAccountToken: !signingOut && Boolean(renewal.stored()),
+        /** The character that loaded when it was not the one the player tapped, or "". */
+        signedInAs,
         notice,
       };
       if (!state.sessionConflict) reportLostSignIn(state);
@@ -887,7 +962,7 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
           return { ok: false, error: dependencies.errorMessage(error) };
         }
         writeTabValue(keys.loginMoveKey, code);
-        writeTabValue(loginMoveSignInKey, "true");
+        writeTabValue(signInNextKey, "login-move");
         await endAccountSession(true);
         return { ok: true };
       } finally {
@@ -908,7 +983,7 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
       const currentCharacter = dependencies.localProfileReady() && dependencies.localProgress()?.introComplete && !isGeneratedDisplayName(currentDisplayName)
         ? currentDisplayName.trim()
         : "";
-      const rememberedCharacter = signedIn ? accountCharacter : rememberedGuestCharacter();
+      const rememberedCharacter = signedIn ? accountCharacter : offeredGuestCharacter();
       return currentCharacter || rememberedCharacter;
     },
     knownCharacterGender() {
@@ -1009,6 +1084,25 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
       return { ok: true };
     },
     async signOut() { await endAccountSession(); },
+    /**
+     * Start screen and the Signed In As notice: sign out of SpacetimeAuth, then
+     * open its sign-in page with a forced login so the player picks the account.
+     * Forcing a login over another user's live session fails there, so it ends first.
+     */
+    async switchAccount() {
+      if (signingOut) return { ok: false, error: "SIGNING OUT" };
+      if (signInPreparing || outboundAuthNavigationPending || callbackPending) return { ok: true, redirecting: true };
+      if (isNativePreview() && !nativeAuth()) {
+        notice = "APP SIGN-IN UNAVAILABLE · USE GUEST LOGIN";
+        dependencies.notify();
+        return { ok: false, error: notice };
+      }
+      // A pending character move must not be claimed by whichever account comes back.
+      clearTabValue(keys.loginMoveKey);
+      writeTabValue(signInNextKey, "switch-account");
+      await endAccountSession(true);
+      return { ok: true, redirecting: true };
+    },
     continueAsGuest() {
       if (signingOut) return { ok: false, error: "SIGNING OUT" };
       takeoverRequested = false; takeoverRevision++;
@@ -1020,7 +1114,7 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
       dependencies.disconnectVirtualPlayers();
       renewal.clear();
       clearStoredToken(keys.accountTokenKey);
-      clearTabValue(keys.accountLinkKey); clearTabValue(keys.loginMoveKey); clearTabValue(loginMoveSignInKey);
+      clearTabValue(keys.accountLinkKey); clearTabValue(keys.loginMoveKey); clearTabValue(signInNextKey);
       clearAuthTransaction();
       clearAccountMigrationPending();
       clearAccountReturnPending();
@@ -1055,7 +1149,7 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
     notice: () => notice,
     setNotice(value: string) { notice = value; },
     setGuestSessionExplicit(value: boolean) { guestSessionExplicit = value; },
-    rememberedCharacter: (signedIn: boolean) => signedIn ? rememberedAccountCharacter() : rememberedGuestCharacter(),
+    rememberedCharacter: (signedIn: boolean) => signedIn ? rememberedAccountCharacter() : offeredGuestCharacter(),
     rememberConfirmedCharacter,
     rememberConfirmedGender,
     completeAccountReturnWhenReady,
@@ -1088,6 +1182,7 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
         clearAccountMigrationPending();
         if (accountLink.guestIdentity) dependencies.clearPendingProgress(accountLink.guestIdentity);
         clearStoredToken(keys.guestTokenKey);
+        forgetGuestCharacter();
         notice = "ACCOUNT SAVE LINKED";
         return true;
       } catch (error) {
