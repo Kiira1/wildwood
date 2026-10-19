@@ -7,6 +7,7 @@ import type { ChatMessage } from "../contracts";
 import type { ReducerPort } from "../ports";
 import { playerReportValidationError } from "../../../shared/player-safety";
 import { withRequestDeadline } from "./request-deadline";
+import { widePower } from "../../../shared/wide-stats";
 
 type ChatServiceDependencies = {
   reducers: ReducerPort;
@@ -78,7 +79,7 @@ export function createChatService(dependencies: ChatServiceDependencies) {
       message: row.message,
       replayId: row.replayId,
       guildReplayKey: row.guildReplayKey ?? "",
-      powerLevel: Number(row.powerLevel) || 0,
+      powerLevel: widePower(Number(row.powerLevel) || 0),
       senderGender: normalizePlayerGender(row.senderGender),
       moderated: row.moderated,
       replyToMessageId: row.replyToMessageId,

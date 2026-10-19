@@ -14,6 +14,19 @@ export function narrowStat(value: number) {
   return Math.max(-F32_STAT_LIMIT, Math.min(F32_STAT_LIMIT, value));
 }
 
+/**
+ * A power for world chat's f32 column: as it is up to F32_STAT_LIMIT, past it as minus its base-10 logarithm, which
+ * f32 holds to about seven digits. It was clamped there, so every power past about 300ud read the same.
+ */
+export function narrowPower(power: number) {
+  if (!Number.isFinite(power)) return power > 0 ? -308 : 0;
+  return power > F32_STAT_LIMIT ? -Math.log10(power) : Math.max(0, power);
+}
+/** A power read back from world chat's f32 column (narrowPower). */
+export function widePower(stored: number) {
+  return stored < 0 ? 10 ** -stored : stored;
+}
+
 /** Whether any stat is past what f32 can hold. */
 export function needsWideStats(row: Stats) {
   return WIDE_STAT_FIELDS.some(field => row[field] > F32_STAT_LIMIT);

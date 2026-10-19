@@ -4,7 +4,7 @@
 // stay there.
 import type { ModuleReducerCtx } from "./index";
 import { readPlayerProgress, deleteReplayWide } from "./wide-stats";
-import { narrowStat } from "../../shared/wide-stats";
+import { narrowPower } from "../../shared/wide-stats";
 import { effectivePowerForProgress } from "./player-power";
 import { PLAYER_GENDER_UNSET } from "../../shared/player-gender";
 import { updatePublicChatCursor } from "./public-chat-history";
@@ -47,7 +47,7 @@ export function insertChatMessage(
     message,
     replayId,
     sentAt: ctx.timestamp,
-    powerLevel: progress ? narrowStat(effectivePowerForProgress(ctx, progress)) : 0,
+    powerLevel: progress ? narrowPower(effectivePowerForProgress(ctx, progress)) : 0,
     senderGender: profile?.gender ?? PLAYER_GENDER_UNSET,
     moderated,
     replyToMessageId: reply?.messageId ?? 0n,
