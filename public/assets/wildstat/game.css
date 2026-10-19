@@ -2739,7 +2739,8 @@
   .account-choice-modal p.account-sign-in-hint[hidden] { display: none; }
 
   /* A text line, not one of the big pill buttons above it. */
-  .account-choice-modal button.account-sign-in-help {
+  .account-choice-modal button.account-sign-in-help,
+  .account-choice-modal button.account-switch-button {
     display: inline-block;
     width: auto;
     min-height: 0;
@@ -2760,6 +2761,16 @@
   }
 
   .account-choice-modal button.account-sign-in-help[aria-expanded="true"] { color: #fff; }
+
+  /* Under the character it offers, so a wrong one is never the only choice. */
+  .account-choice-modal button.account-switch-button {
+    display: block;
+    margin: 6px auto 0;
+    color: #fff;
+    font-size: 13px;
+  }
+
+  .account-choice-modal button.account-switch-button[hidden] { display: none; }
 
   .account-sign-in-hint span {
     display: block;

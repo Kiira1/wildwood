@@ -7,6 +7,7 @@ import { createAccountAudioSync } from "./account-audio-sync";
 import { requiredElement } from "../game/runtime/dom";
 import { setHighResolutionCanvas } from "../game/runtime/render/render-budget";
 import {
+  accountButtonAction,
   renderAccountStatus,
   renderBooleanSetting,
   renderConnectionStatus,
@@ -15,7 +16,7 @@ import {
   renderVolume,
 } from "./settings";
 
-type AccountState = { signedIn: boolean; notice: string };
+type AccountState = { signedIn: boolean; notice: string; hasAccountToken?: boolean };
 
 type AppShellDependencies = {
   mapMusic: MapMusicController;
@@ -222,7 +223,8 @@ export function createAppShellController(dependencies: AppShellDependencies) {
     accountAudio.localChanged("music");
   });
   accountButton.addEventListener("click", () => {
-    if (dependencies.accountState()?.signedIn) dependencies.signOut();
+    // A stored account signs out even while disconnected; signing in there reused whoever the browser had.
+    if (accountButtonAction(dependencies.accountState()) === "sign-out") dependencies.signOut();
     else dependencies.signIn();
   });
   fullscreenToggle.addEventListener("click", () => { void toggleFullscreen(); });

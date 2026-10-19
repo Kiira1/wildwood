@@ -7,11 +7,17 @@ export const RELEASE_NOTES: Record<string, string[]> = {
     "Buy any grade your Mastery has opened: step through them on the Smith's rows",
     "Gear no longer drops from enemies or locks behind maps",
     "Armor comes in Light, Medium, Heavy and Magic, with a set bonus for matching your weapon's school",
+    "Boots in three styles: Ranger for speed, Warrior for armor, Mystic for skill chance",
     "Craft gear with Smithing, Fletching and Enchanting",
+    "Upgrade your Pickaxe, Hatchet, Hammer, Knife and Focus at the Smith",
     "Reforge a weapon you have to roll its skills again, keeping the higher of each",
     "Woodcutting: chop trees in Timberwood, north of the Copper Hills, and mine crystal rocks in the hills",
     "Gear Luck is now Gold Luck",
     "Profiles show Mastery, Woodcutting and crafting levels",
+  ],
+  "0.915.3": [
+    "Use Another Account on the start screen when the wrong character keeps signing in",
+    "Kills from before a prestige or reset no longer pay into the new run",
   ],
   "0.915.2": [
     "Small balancing",
@@ -3627,7 +3633,8 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
-  "0.916.0": "2026-10-18",
+  "0.916.0": "2026-10-19",
+  "0.915.3": "2026-10-19",
   "0.915.2": "2026-10-18",
   "0.915.1": "2026-10-18",
   "0.915.0": "2026-10-18",

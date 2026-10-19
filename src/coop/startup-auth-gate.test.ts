@@ -44,6 +44,7 @@ function elements() {
     accountChoiceDetail: new FakeElement(),
     signInButton: new FakeElement(),
     guestButton: new FakeElement(),
+    switchAccountButton: new FakeElement(),
     loadingDetail: new FakeElement(),
     loadingFill: new FakeElement(),
     legal: {
@@ -58,6 +59,7 @@ function elements() {
   } as unknown as StartupAuthElements & {
     signInButton: FakeElement;
     guestButton: FakeElement;
+    switchAccountButton: FakeElement;
   };
 }
 
@@ -450,6 +452,37 @@ describe("outbound sign-in presentation", () => {
     finish({ ok: true, redirecting: true });
     await Promise.resolve();
     expect(ui.connectionPanel.hidden).toBe(true);
+    gate.dispose();
+  });
+
+  it("offers Use Another Account beside a found character, and it never signs in silently", async () => {
+    const ui = elements();
+    let name = "";
+    const signIn = vi.fn(async () => ({ ok: true, redirecting: true }));
+    const switchAccount = vi.fn(async () => ({ ok: true, redirecting: true }));
+    let notify = () => {};
+    const gate = createStartupAuthGate({
+      accountState: () => ({ signInReady: true }),
+      knownCharacter: () => name,
+      signIn, switchAccount,
+      continueAsGuest: () => ({ ok: true }),
+      legalConsentAccepted: () => true,
+      acceptLegalTerms: async () => ({ ok: true }),
+      subscribe: listener => { notify = listener; return () => {}; },
+      loadGame: async () => {},
+    }, ui);
+    gate.start();
+    expect(ui.switchAccountButton.hidden).toBe(true);
+    name = "Gehn";
+    notify();
+    expect(ui.switchAccountButton.hidden).toBe(false);
+    ui.switchAccountButton.click();
+    await Promise.resolve();
+    expect(switchAccount).toHaveBeenCalledOnce();
+    expect(signIn).not.toHaveBeenCalled();
+    expect(ui.accountChoiceDetail.textContent).toBe("Opening Sign-In…");
+    expect(ui.switchAccountButton.disabled).toBe(true);
+    expect(ui.signInButton.disabled).toBe(true);
     gate.dispose();
   });
 });

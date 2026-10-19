@@ -26,6 +26,7 @@ import { createRuntimeHudController } from "./runtime-hud-controller";
 import { createPrestigeController } from "./prestige-panel";
 import { createPrestigeUnlockPopup } from "./prestige-unlock-popup";
 import { createDuplicateLoginPopup } from "./duplicate-login-popup";
+import { createSignedInAsNotice } from "./signed-in-as-notice";
 import { installLoginMove } from "./login-move-controller";
 import { createTechTreeController } from "./tech-tree-controller";
 import { installCameraZoomControl } from "./camera-zoom-control";
@@ -152,7 +153,12 @@ export function createDuplicateLoginRuntime(d: Record<string, any>) {
     signedIn: () => Boolean(coop?.accountState?.()?.signedIn),
     move: async () => await coop?.moveToGoogleSignIn?.() ?? { ok: false, error: "Connect to your character first." },
   });
-  return createDuplicateLoginPopup({
+  // Not blocking, so it shows straight away rather than waiting for a free screen like the popup.
+  const signedInAs = createSignedInAsNotice({
+    name: () => coop?.accountState?.()?.signedInAs ?? "",
+    switchAccount: () => { void coop?.switchAccount?.(); },
+  });
+  const popup = createDuplicateLoginPopup({
     identity: () => coop?.localIdentity?.() ?? "",
     ready: () => Boolean(d.started() && coop?.isConnected?.() && coop?.accountState?.()?.signedIn
       && !coop?.accountState?.()?.sessionConflict),
@@ -160,6 +166,7 @@ export function createDuplicateLoginRuntime(d: Record<string, any>) {
     signOut: () => { coop?.signOut?.(); },
     pause: d.pause,
   });
+  return { ...popup, poll() { popup.poll(); signedInAs.poll(); } };
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

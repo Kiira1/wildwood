@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { renderAccountStatus, renderConnectionStatus, renderLatencyStatus, renderVolume } from "./settings";
+import { accountButtonAction, renderAccountStatus, renderConnectionStatus, renderLatencyStatus, renderVolume } from "./settings";
 
 describe("settings volume rendering", () => {
   it("keeps the visible fill and accessible value synchronized with the slider", () => {
@@ -76,5 +76,18 @@ describe("app status rendering on the HUD tick", () => {
     expect(ping.writes.count).toBe(before);
     renderLatencyStatus(ping.element, true, 120, true);
     expect(ping.element.dataset.quality).toBe("fair");
+  });
+});
+
+describe("Settings' Account button", () => {
+  it("signs out whenever an account is stored, even while disconnected", () => {
+    expect(accountButtonAction({ signedIn: true })).toBe("sign-out");
+    expect(accountButtonAction({ signedIn: false, hasAccountToken: true })).toBe("sign-out");
+    expect(accountButtonAction({ signedIn: false, hasAccountToken: false })).toBe("sign-in");
+    expect(accountButtonAction(undefined)).toBe("sign-in");
+    const button = countingElement(), status = countingElement();
+    renderAccountStatus(button.element, status.element, { signedIn: false, hasAccountToken: true, notice: "" });
+    expect(button.element.textContent).toBe("Sign Out");
+    expect(status.element.textContent).toBe("Signed In · Account Save");
   });
 });

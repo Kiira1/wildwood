@@ -19,6 +19,7 @@ type StartupBootstrapDependencies = {
   accountState: () => StartupAccountState;
   knownCharacter: () => string;
   signIn: () => Promise<StartupActionResult> | StartupActionResult;
+  switchAccount?: () => Promise<StartupActionResult> | StartupActionResult;
   continueAsGuest: () => Promise<StartupActionResult> | StartupActionResult;
   legalConsentAccepted: () => boolean;
   acceptLegalTerms: () => Promise<StartupActionResult> | StartupActionResult;
