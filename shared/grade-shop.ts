@@ -1,9 +1,9 @@
 import {
-  ARMOR_CLASSES, ARMOR_CLASS_DETAILS, GEAR_GRADES, GRADE_GOLD_PRICE, GRADE_MASTERY_LEVEL, armorClassMasteryLevel, gradeIndex,
-  type ArmorClass, type GearGrade,
+  ARMOR_CLASSES, ARMOR_CLASS_DETAILS, BOOT_STYLES, BOOT_STYLE_SCHOOL, GEAR_GRADES, GRADE_GOLD_PRICE, GRADE_MASTERY_LEVEL, armorClassMasteryLevel, gradeIndex,
+  type ArmorClass, type BootStyle, type GearGrade,
 } from "./gear-grades";
 import {
-  GRADE_ARMOR_KINDS, GRADE_WEAPON_KINDS, armorClassOf, gradeEquipmentKindOf, gradeItemId, gradeOf, isGradeItemId,
+  GRADE_ARMOR_KINDS, GRADE_WEAPON_KINDS, armorClassOf, bootStyleOf, gradeEquipmentKindOf, gradeItemId, gradeOf, isGradeItemId,
   type GradeArmorKind, type GradeItemId, type GradeWeaponKind,
 } from "./grade-equipment";
 import { WEAPON_SCHOOL_NAMES, masteryLevel, type WeaponSchool } from "./weapon-mastery";
@@ -16,24 +16,31 @@ export type MasteryLevels = Readonly<Partial<Record<WeaponSchool, number>>>;
 
 const WEAPON_SCHOOL: Readonly<Record<GradeWeaponKind, WeaponSchool>> = { bow: "archery", sword: "swordplay", staff: "sorcery" };
 
-/** One line of the shop: a weapon, or a class's helmet or armor. */
-export type GradeShopLine = { kind: GradeWeaponKind } | { kind: GradeArmorKind; armorClass: ArmorClass };
+/** One line of the shop: a weapon, a class's helmet or armor, or a style's boots. */
+export type GradeShopLine = { kind: GradeWeaponKind } | { kind: GradeArmorKind; armorClass: ArmorClass } | { kind: "boots"; bootStyle: BootStyle };
 
 export const GRADE_SHOP_LINES: readonly GradeShopLine[] = [
   ...GRADE_WEAPON_KINDS.map(kind => ({ kind })),
   ...ARMOR_CLASSES.flatMap(armorClass => GRADE_ARMOR_KINDS.map(kind => ({ kind, armorClass }))),
+  ...BOOT_STYLES.map(bootStyle => ({ kind: "boots" as const, bootStyle })),
 ];
 
 export const gradeShopItemId = (line: GradeShopLine, grade: GearGrade): GradeItemId =>
-  "armorClass" in line ? gradeItemId(line.kind, grade, line.armorClass) : gradeItemId(line.kind, grade);
+  "armorClass" in line ? gradeItemId(line.kind, grade, line.armorClass)
+    : "bootStyle" in line ? gradeItemId("boots", grade, line.bootStyle) : gradeItemId(line.kind, grade);
+
+/** A line's key for a window's picks: "helmet:light", "boots:ranger" or "bow:". */
+export const gradeShopLineKey = (line: GradeShopLine) =>
+  `${line.kind}:${"armorClass" in line ? line.armorClass : "bootStyle" in line ? line.bootStyle : ""}`;
 
 /** Each school's level from its points. */
 export const masteryLevels = (points: Readonly<Partial<Record<WeaponSchool, number | bigint>>>): MasteryLevels =>
   Object.fromEntries(Object.entries(points).map(([school, value]) => [school, masteryLevel(value ?? 0)]));
 
-/** The school whose level opens a piece's grade; null for Heavy, which any school opens. */
+/** The school whose level opens a piece's grade; null for Heavy, which any school opens. Boots go by their style's. */
 export function gradeShopSchool(itemId: GradeItemId): WeaponSchool | null {
-  const armorClass = armorClassOf(itemId);
+  const armorClass = armorClassOf(itemId), bootStyle = bootStyleOf(itemId);
+  if (bootStyle) return BOOT_STYLE_SCHOOL[bootStyle];
   return armorClass ? ARMOR_CLASS_DETAILS[armorClass].school : WEAPON_SCHOOL[gradeEquipmentKindOf(itemId) as GradeWeaponKind];
 }
 
@@ -59,7 +66,8 @@ export const gradeShopPrice = (itemId: unknown) => {
 
 /** The line a graded piece belongs to. */
 export function gradeShopLineOf(itemId: GradeItemId): GradeShopLine {
-  const kind = gradeEquipmentKindOf(itemId)!, armorClass = armorClassOf(itemId);
+  const kind = gradeEquipmentKindOf(itemId)!, armorClass = armorClassOf(itemId), bootStyle = bootStyleOf(itemId);
+  if (bootStyle) return { kind: "boots", bootStyle };
   return armorClass ? { kind: kind as GradeArmorKind, armorClass } : { kind: kind as GradeWeaponKind };
 }
 

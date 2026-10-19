@@ -99,6 +99,17 @@ describe("mining in the Copper Hills", () => {
     expect(m.source.mineNode).toHaveBeenCalledWith(copper.id);
   });
 
+  it("is quicker with an upgraded pickaxe, timed as the server checks it, and holds it in its level's colours", () => {
+    const m = miner(copper, { toolLevel: tool => (tool === "pickaxe" ? 10 : 0) });
+    const seconds = miningBreakSeconds(copper, 0, 0, 10);
+    expect(seconds).toBeCloseTo(miningBreakSeconds(copper, 0) / 2);
+    m.run(seconds - .2);
+    expect(m.source.mineNode).not.toHaveBeenCalled();
+    expect(miningScene.toolLevel).toBe(10);
+    m.run(.4);
+    expect(m.source.mineNode).toHaveBeenCalledWith(copper.id);
+  });
+
   it("without the pickaxe says where to get one, and does not repeat itself every frame", () => {
     const m = miner(copper, { hasPickaxe: () => false });
     m.run(3);

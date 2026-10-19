@@ -122,6 +122,10 @@ export type ItemDefinition = {
     damageMultiplierBonus?: number;
     maxHealthMultiplierBonus?: number;
     regenerationMultiplierBonus?: number;
+    /** Graded boots carry one of these (grade-equipment.ts): Warrior armor, Ranger move speed, Mystic skill chance. */
+    armorMultiplierBonus?: number;
+    moveSpeedMultiplierBonus?: number;
+    skillChanceMultiplierBonus?: number;
   };
   weapon?: {
     mode: "RANGED" | "MELEE";
@@ -524,6 +528,13 @@ export function isUpgradeableItem(itemId: unknown) {
     item.modifiers?.regenerationMultiplierBonus !== undefined;
 }
 
+/** Boots with a stat (graded boots): no slot tier track, but they refine as other gear does. */
+export function hasBootStat(itemId: unknown) {
+  const modifiers = itemDefinition(canonicalItemId(itemId))?.modifiers;
+  return modifiers?.armorMultiplierBonus !== undefined || modifiers?.moveSpeedMultiplierBonus !== undefined
+    || modifiers?.skillChanceMultiplierBonus !== undefined;
+}
+
 /**
  * What an item's stat stands on: its slot's tier and, since refining (shared/refine.ts), its own refine. A bare
  * number is the slot tier alone, as every caller passed before refining, so those keep working unchanged.
@@ -550,7 +561,7 @@ export function itemDisplayName(itemId: unknown, upgradeLevel: ItemLevel = 0) {
 
 export function itemStats(itemId: unknown, upgradeLevel: ItemLevel = 0): readonly string[] {
   const item = itemDefinition(canonicalItemId(itemId));
-  if (!item || !isUpgradeableItem(item.id)) return item?.stats ?? [];
+  if (!item || (!isUpgradeableItem(item.id) && !hasBootStat(item.id))) return item?.stats ?? [];
   const level = upgradeLevel;
   const stats: string[] = [];
   if (item.weapon?.damageMultiplierBonus !== undefined) {
@@ -565,6 +576,9 @@ export function itemStats(itemId: unknown, upgradeLevel: ItemLevel = 0): readonl
   if (item.modifiers?.regenerationMultiplierBonus !== undefined) {
     stats.push(`REGEN +${upgradedStatBonus(item.modifiers.regenerationMultiplierBonus * 100, level)}%`);
   }
+  if (item.modifiers?.armorMultiplierBonus !== undefined) stats.push(`ARMOR +${upgradedStatBonus(item.modifiers.armorMultiplierBonus * 100, bootLevel(level))}%`);
+  if (item.modifiers?.moveSpeedMultiplierBonus !== undefined) stats.push(`MOVE SPEED +${upgradedStatBonus(item.modifiers.moveSpeedMultiplierBonus * 100, bootLevel(level))}%`);
+  if (item.modifiers?.skillChanceMultiplierBonus !== undefined) stats.push(`SKILL CHANCE +${upgradedStatBonus(item.modifiers.skillChanceMultiplierBonus * 100, bootLevel(level))}%`);
   return stats;
 }
 
@@ -594,6 +608,16 @@ export function itemMaxHealthMultiplierBonus(itemId: unknown, upgradeLevel: Item
 export function itemRegenerationMultiplierBonus(itemId: unknown, upgradeLevel: ItemLevel = 0) {
   return upgradedStatBonus((itemDefinition(canonicalItemId(itemId))?.modifiers?.regenerationMultiplierBonus ?? 0) * 100, upgradeLevel) / 100;
 }
+/** Feet have no slot tier, so boots count only their refine, whatever tier a caller passes. */
+const bootLevel = (level: ItemLevel) => ({ tier: 0, refine: itemLevelParts(level).refine });
+const bootBonus = (itemId: unknown, level: ItemLevel, field: "armorMultiplierBonus" | "moveSpeedMultiplierBonus" | "skillChanceMultiplierBonus") =>
+  upgradedStatBonus((itemDefinition(canonicalItemId(itemId))?.modifiers?.[field] ?? 0) * 100, bootLevel(level)) / 100;
+/** Warrior Boots: armor multiplied by this. */
+export const bootArmorFactor = (feet: unknown, level: ItemLevel = 0) => 1 + bootBonus(feet, level, "armorMultiplierBonus");
+/** Ranger Boots: move speed multiplied by this. */
+export const bootMoveSpeedFactor = (feet: unknown, level: ItemLevel = 0) => 1 + bootBonus(feet, level, "moveSpeedMultiplierBonus");
+/** Mystic Boots: weapon skill chances multiplied by this, as Skill Proficiency and Magic armor raise them. */
+export const bootSkillChanceFactor = (feet: unknown, level: ItemLevel = 0) => 1 + bootBonus(feet, level, "skillChanceMultiplierBonus");
 export function equipmentDamageMultiplierBonus(weapon: unknown, head: unknown, chest: unknown, weaponLevel: ItemLevel = 0, headLevel: ItemLevel = 0, chestLevel: ItemLevel = 0) {
   return itemDamageMultiplierBonus(weapon, weaponLevel) + itemDamageMultiplierBonus(head, headLevel) + itemDamageMultiplierBonus(chest, chestLevel);
 }

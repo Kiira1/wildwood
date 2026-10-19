@@ -16,6 +16,8 @@ export const miningScene = {
   swingClock: 0,
   /** Why the rock in reach is not being mined, if it is not: no pickaxe, its vein shut, or no bag room. */
   blocked: null as "pickaxe" | "vein" | "bag" | null,
+  /** The pickaxe's level (shared/tools.ts), for its colour in hand. */
+  toolLevel: 0,
 };
 
 export function resetMiningScene() {
@@ -25,4 +27,5 @@ export function resetMiningScene() {
   miningScene.pickaxeOut = false;
   miningScene.swingClock = 0;
   miningScene.blocked = null;
+  miningScene.toolLevel = 0;
 }

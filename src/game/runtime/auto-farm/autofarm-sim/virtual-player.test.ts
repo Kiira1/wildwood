@@ -23,9 +23,9 @@ describe('autofarm virtual player', () => {
       push: 'normal', advance: false, base: { damage: PLAYER_BASE_DAMAGE, maxHp: PLAYER_BASE_HP, armor: 0, regen: PLAYER_BASE_REGEN, attackRate: DEFAULT_ATTACK_INTERVAL } });
     try {
       const report = await player.run(90);
-      expect(report.purchases.map(entry => entry.itemId)).toEqual(['crude_bow', 'crude_light_armor', 'crude_light_helmet']);
+      expect(report.purchases.map(entry => entry.itemId)).toEqual(['crude_bow', 'crude_light_armor', 'crude_light_helmet', 'crude_ranger_boots']);
       expect(report.masteryPoints.archery).toBe(10 + report.kills);
-      expect(report.gold).toBeGreaterThanOrEqual(340 - 3 * 12);
+      expect(report.gold).toBeGreaterThanOrEqual(340 - 4 * 12);
     } finally { player.dispose(); }
   }, 30_000);
 });

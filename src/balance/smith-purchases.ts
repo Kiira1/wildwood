@@ -1,4 +1,4 @@
-import { GRADE_GOLD_PRICE, type ArmorClass } from "../../shared/gear-grades";
+import { GRADE_GOLD_PRICE, type ArmorClass, type BootStyle } from "../../shared/gear-grades";
 import type { GradeItemId, GradeWeaponKind } from "../../shared/grade-equipment";
 import { bestHeldGradeIndex, gradeShopOffer, masteryLevels, type GradeShopLine } from "../../shared/grade-shop";
 import { weaponSchool, type WeaponSchool } from "../../shared/weapon-mastery";
@@ -14,17 +14,18 @@ export type MasteryPointsBySchool = Partial<Record<WeaponSchool, number>>;
 
 const SCHOOL_WEAPON_LINE: Readonly<Record<WeaponSchool, GradeWeaponKind>> = { archery: "bow", swordplay: "sword", sorcery: "staff" };
 const SCHOOL_ARMOR_CLASS: Readonly<Record<WeaponSchool, ArmorClass>> = { archery: "light", swordplay: "medium", sorcery: "magic" };
+const SCHOOL_BOOT_STYLE: Readonly<Record<WeaponSchool, BootStyle>> = { archery: "ranger", swordplay: "warrior", sorcery: "mystic" };
 
-/** The Smith's lines a build follows: its weapon's kind, and the helmet and armor of its school's class (the set). */
+/** The Smith's lines a build follows: its weapon's kind, the helmet and armor of its school's class (the set), and its school's boots. */
 export function gradeShopLinesFor(weapon: string): GradeShopLine[] {
   const school = weaponSchool(weapon), armorClass = SCHOOL_ARMOR_CLASS[school];
-  return [{ kind: SCHOOL_WEAPON_LINE[school] }, { kind: "armor", armorClass }, { kind: "helmet", armorClass }];
+  return [{ kind: SCHOOL_WEAPON_LINE[school] }, { kind: "armor", armorClass }, { kind: "helmet", armorClass }, { kind: "boots", bootStyle: SCHOOL_BOOT_STYLE[school] }];
 }
 
 /**
  * What a sim's player buys next: on one of its lines, the best grade Mastery opens that the gold covers, once it
  * beats what that line holds (the grades between skipped). The cheapest first; on a tie the line furthest behind
- * goes first (then weapon, armor, helmet), or the weapon would take every newly opened grade and starve the rest.
+ * goes first (then weapon, armor, helmet, boots), or the weapon would take every newly opened grade and starve the rest.
  * None when nothing open is affordable.
  */
 export function nextSmithPurchase(weapon: string, owned: ReadonlySet<string>, gold: number, points: MasteryPointsBySchool) {

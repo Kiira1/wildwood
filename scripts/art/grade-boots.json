@@ -1,0 +1,571 @@
+{
+  "about": [
+    "Graded boots: the game's own boot legs (player-parts/boots-leg-front.webp and -back.webp) recoloured per piece by scripts/art/import-grade-boots.mjs.",
+    "fill repaints the boot's leather keeping its light and dark; details are painted on in that order as the grade rises:",
+    "cuff (trim colour across the top), sheen (a light edge), sole (strap colour across the bottom), strap and strap2 (bands),",
+    "studs (light dots on the straps), gem (the jewel on the cuff), glow (the outline tinted with the fill).",
+    "r10 is the same pair with gold trim, straps and studs (a gold cuff and strap where the grade has none);",
+    "r20 is the pair in its style's jewel (emerald Ranger, sapphire Warrior, ruby Mystic), shaded by grade, with the gold of r10.",
+    "Each piece also gets a bag icon: both legs side by side, four times the size."
+  ],
+  "pieces": {
+    "crude_ranger_boots": {
+      "look": "dull brown boots",
+      "fill": "#6b5a3a",
+      "trim": "#d2b07a",
+      "strap": "#4a3418",
+      "details": [],
+      "jewel": "#35d07f"
+    },
+    "common_ranger_boots": {
+      "look": "worn brown boots",
+      "fill": "#7a5c34",
+      "trim": "#d2b07a",
+      "strap": "#4a3418",
+      "details": [],
+      "jewel": "#35d07f"
+    },
+    "sturdy_ranger_boots": {
+      "look": "tan boots",
+      "fill": "#8a6a3c",
+      "trim": "#d2b07a",
+      "strap": "#4a3418",
+      "details": [],
+      "jewel": "#35d07f"
+    },
+    "fine_ranger_boots": {
+      "look": "olive boots, cuff",
+      "fill": "#6f6a35",
+      "trim": "#d2b07a",
+      "strap": "#4a3418",
+      "details": [
+        "cuff"
+      ],
+      "jewel": "#35d07f"
+    },
+    "superior_ranger_boots": {
+      "look": "moss boots, cuff, sheen",
+      "fill": "#5f7036",
+      "trim": "#d2b07a",
+      "strap": "#4a3418",
+      "details": [
+        "cuff",
+        "sheen"
+      ],
+      "jewel": "#35d07f"
+    },
+    "rare_ranger_boots": {
+      "look": "fern boots, cuff, sheen, sole",
+      "fill": "#4f7a3a",
+      "trim": "#d2b07a",
+      "strap": "#4a3418",
+      "details": [
+        "cuff",
+        "sheen",
+        "sole"
+      ],
+      "jewel": "#35d07f"
+    },
+    "exquisite_ranger_boots": {
+      "look": "forest boots, cuff, sheen, sole",
+      "fill": "#3f7f40",
+      "trim": "#d2b07a",
+      "strap": "#4a3418",
+      "details": [
+        "cuff",
+        "sheen",
+        "sole"
+      ],
+      "jewel": "#35d07f"
+    },
+    "epic_ranger_boots": {
+      "look": "pine boots, cuff, sheen, sole, strap",
+      "fill": "#3a8a4a",
+      "trim": "#d2b07a",
+      "strap": "#4a3418",
+      "details": [
+        "cuff",
+        "sheen",
+        "sole",
+        "strap"
+      ],
+      "jewel": "#35d07f"
+    },
+    "heroic_ranger_boots": {
+      "look": "deep green boots, cuff, sheen, sole, strap",
+      "fill": "#2f8f52",
+      "trim": "#d2b07a",
+      "strap": "#4a3418",
+      "details": [
+        "cuff",
+        "sheen",
+        "sole",
+        "strap"
+      ],
+      "jewel": "#35d07f"
+    },
+    "legendary_ranger_boots": {
+      "look": "leaf boots, cuff, sheen, sole, strap, studs",
+      "fill": "#4a9a3c",
+      "trim": "#d2b07a",
+      "strap": "#4a3418",
+      "details": [
+        "cuff",
+        "sheen",
+        "sole",
+        "strap",
+        "studs"
+      ],
+      "jewel": "#35d07f"
+    },
+    "mythic_ranger_boots": {
+      "look": "spring boots, cuff, sheen, sole, strap, studs",
+      "fill": "#5aa63a",
+      "trim": "#d2b07a",
+      "strap": "#4a3418",
+      "details": [
+        "cuff",
+        "sheen",
+        "sole",
+        "strap",
+        "studs"
+      ],
+      "jewel": "#35d07f"
+    },
+    "ancient_ranger_boots": {
+      "look": "jade boots, cuff, sheen, sole, strap, studs, strap2",
+      "fill": "#3fae5a",
+      "trim": "#d2b07a",
+      "strap": "#4a3418",
+      "details": [
+        "cuff",
+        "sheen",
+        "sole",
+        "strap",
+        "studs",
+        "strap2"
+      ],
+      "jewel": "#35d07f"
+    },
+    "celestial_ranger_boots": {
+      "look": "bright green boots, cuff, sheen, sole, strap, studs, strap2",
+      "fill": "#36b86e",
+      "trim": "#d2b07a",
+      "strap": "#4a3418",
+      "details": [
+        "cuff",
+        "sheen",
+        "sole",
+        "strap",
+        "studs",
+        "strap2"
+      ],
+      "jewel": "#35d07f"
+    },
+    "divine_ranger_boots": {
+      "look": "sea green boots, cuff, sheen, sole, strap, studs, strap2, gem",
+      "fill": "#2fc283",
+      "trim": "#d2b07a",
+      "strap": "#4a3418",
+      "details": [
+        "cuff",
+        "sheen",
+        "sole",
+        "strap",
+        "studs",
+        "strap2",
+        "gem"
+      ],
+      "jewel": "#35d07f"
+    },
+    "eternal_ranger_boots": {
+      "look": "mint boots, cuff, sheen, sole, strap, studs, strap2, gem, glow",
+      "fill": "#4fd08f",
+      "trim": "#d2b07a",
+      "strap": "#4a3418",
+      "details": [
+        "cuff",
+        "sheen",
+        "sole",
+        "strap",
+        "studs",
+        "strap2",
+        "gem",
+        "glow"
+      ],
+      "jewel": "#35d07f"
+    },
+    "crude_warrior_boots": {
+      "look": "pig iron boots",
+      "fill": "#55585c",
+      "trim": "#2e3238",
+      "strap": "#6b4a2a",
+      "details": [],
+      "jewel": "#3f7fe6"
+    },
+    "common_warrior_boots": {
+      "look": "dark iron boots",
+      "fill": "#5e6266",
+      "trim": "#2e3238",
+      "strap": "#6b4a2a",
+      "details": [],
+      "jewel": "#3f7fe6"
+    },
+    "sturdy_warrior_boots": {
+      "look": "iron boots",
+      "fill": "#686c70",
+      "trim": "#2e3238",
+      "strap": "#6b4a2a",
+      "details": [],
+      "jewel": "#3f7fe6"
+    },
+    "fine_warrior_boots": {
+      "look": "grey steel boots, cuff",
+      "fill": "#6f757b",
+      "trim": "#2e3238",
+      "strap": "#6b4a2a",
+      "details": [
+        "cuff"
+      ],
+      "jewel": "#3f7fe6"
+    },
+    "superior_warrior_boots": {
+      "look": "steel boots, cuff, sheen",
+      "fill": "#788089",
+      "trim": "#2e3238",
+      "strap": "#6b4a2a",
+      "details": [
+        "cuff",
+        "sheen"
+      ],
+      "jewel": "#3f7fe6"
+    },
+    "rare_warrior_boots": {
+      "look": "blue steel boots, cuff, sheen, sole",
+      "fill": "#7f8a96",
+      "trim": "#2e3238",
+      "strap": "#6b4a2a",
+      "details": [
+        "cuff",
+        "sheen",
+        "sole"
+      ],
+      "jewel": "#3f7fe6"
+    },
+    "exquisite_warrior_boots": {
+      "look": "cold steel boots, cuff, sheen, sole",
+      "fill": "#8893a0",
+      "trim": "#2e3238",
+      "strap": "#6b4a2a",
+      "details": [
+        "cuff",
+        "sheen",
+        "sole"
+      ],
+      "jewel": "#3f7fe6"
+    },
+    "epic_warrior_boots": {
+      "look": "polished steel boots, cuff, sheen, sole, strap",
+      "fill": "#8f9cab",
+      "trim": "#2e3238",
+      "strap": "#6b4a2a",
+      "details": [
+        "cuff",
+        "sheen",
+        "sole",
+        "strap"
+      ],
+      "jewel": "#3f7fe6"
+    },
+    "heroic_warrior_boots": {
+      "look": "bright steel boots, cuff, sheen, sole, strap",
+      "fill": "#97a6b6",
+      "trim": "#2e3238",
+      "strap": "#6b4a2a",
+      "details": [
+        "cuff",
+        "sheen",
+        "sole",
+        "strap"
+      ],
+      "jewel": "#3f7fe6"
+    },
+    "legendary_warrior_boots": {
+      "look": "silver steel boots, cuff, sheen, sole, strap, studs",
+      "fill": "#a0b0c0",
+      "trim": "#2e3238",
+      "strap": "#6b4a2a",
+      "details": [
+        "cuff",
+        "sheen",
+        "sole",
+        "strap",
+        "studs"
+      ],
+      "jewel": "#3f7fe6"
+    },
+    "mythic_warrior_boots": {
+      "look": "silver boots, cuff, sheen, sole, strap, studs",
+      "fill": "#a9bacb",
+      "trim": "#2e3238",
+      "strap": "#6b4a2a",
+      "details": [
+        "cuff",
+        "sheen",
+        "sole",
+        "strap",
+        "studs"
+      ],
+      "jewel": "#3f7fe6"
+    },
+    "ancient_warrior_boots": {
+      "look": "white steel boots, cuff, sheen, sole, strap, studs, strap2",
+      "fill": "#b4c4d4",
+      "trim": "#2e3238",
+      "strap": "#6b4a2a",
+      "details": [
+        "cuff",
+        "sheen",
+        "sole",
+        "strap",
+        "studs",
+        "strap2"
+      ],
+      "jewel": "#3f7fe6"
+    },
+    "celestial_warrior_boots": {
+      "look": "mithril boots, cuff, sheen, sole, strap, studs, strap2",
+      "fill": "#bfcfdd",
+      "trim": "#2e3238",
+      "strap": "#6b4a2a",
+      "details": [
+        "cuff",
+        "sheen",
+        "sole",
+        "strap",
+        "studs",
+        "strap2"
+      ],
+      "jewel": "#3f7fe6"
+    },
+    "divine_warrior_boots": {
+      "look": "pale mithril boots, cuff, sheen, sole, strap, studs, strap2, gem",
+      "fill": "#cad9e6",
+      "trim": "#2e3238",
+      "strap": "#6b4a2a",
+      "details": [
+        "cuff",
+        "sheen",
+        "sole",
+        "strap",
+        "studs",
+        "strap2",
+        "gem"
+      ],
+      "jewel": "#3f7fe6"
+    },
+    "eternal_warrior_boots": {
+      "look": "starsteel boots, cuff, sheen, sole, strap, studs, strap2, gem, glow",
+      "fill": "#d8e6f2",
+      "trim": "#2e3238",
+      "strap": "#6b4a2a",
+      "details": [
+        "cuff",
+        "sheen",
+        "sole",
+        "strap",
+        "studs",
+        "strap2",
+        "gem",
+        "glow"
+      ],
+      "jewel": "#3f7fe6"
+    },
+    "crude_mystic_boots": {
+      "look": "dusk boots",
+      "fill": "#4a3f6a",
+      "trim": "#e6d8ff",
+      "strap": "#2a2050",
+      "details": [],
+      "jewel": "#e0407a"
+    },
+    "common_mystic_boots": {
+      "look": "plum boots",
+      "fill": "#4f427a",
+      "trim": "#e6d8ff",
+      "strap": "#2a2050",
+      "details": [],
+      "jewel": "#e0407a"
+    },
+    "sturdy_mystic_boots": {
+      "look": "violet boots",
+      "fill": "#55468a",
+      "trim": "#e6d8ff",
+      "strap": "#2a2050",
+      "details": [],
+      "jewel": "#e0407a"
+    },
+    "fine_mystic_boots": {
+      "look": "deep violet boots, cuff",
+      "fill": "#5b4a99",
+      "trim": "#e6d8ff",
+      "strap": "#2a2050",
+      "details": [
+        "cuff"
+      ],
+      "jewel": "#e0407a"
+    },
+    "superior_mystic_boots": {
+      "look": "amethyst boots, cuff, sheen",
+      "fill": "#6150a8",
+      "trim": "#e6d8ff",
+      "strap": "#2a2050",
+      "details": [
+        "cuff",
+        "sheen"
+      ],
+      "jewel": "#e0407a"
+    },
+    "rare_mystic_boots": {
+      "look": "indigo boots, cuff, sheen, sole",
+      "fill": "#4f55b0",
+      "trim": "#e6d8ff",
+      "strap": "#2a2050",
+      "details": [
+        "cuff",
+        "sheen",
+        "sole"
+      ],
+      "jewel": "#e0407a"
+    },
+    "exquisite_mystic_boots": {
+      "look": "blue indigo boots, cuff, sheen, sole",
+      "fill": "#5560c0",
+      "trim": "#e6d8ff",
+      "strap": "#2a2050",
+      "details": [
+        "cuff",
+        "sheen",
+        "sole"
+      ],
+      "jewel": "#e0407a"
+    },
+    "epic_mystic_boots": {
+      "look": "iris boots, cuff, sheen, sole, strap",
+      "fill": "#6a58c8",
+      "trim": "#e6d8ff",
+      "strap": "#2a2050",
+      "details": [
+        "cuff",
+        "sheen",
+        "sole",
+        "strap"
+      ],
+      "jewel": "#e0407a"
+    },
+    "heroic_mystic_boots": {
+      "look": "orchid boots, cuff, sheen, sole, strap",
+      "fill": "#7a5ad0",
+      "trim": "#e6d8ff",
+      "strap": "#2a2050",
+      "details": [
+        "cuff",
+        "sheen",
+        "sole",
+        "strap"
+      ],
+      "jewel": "#e0407a"
+    },
+    "legendary_mystic_boots": {
+      "look": "periwinkle boots, cuff, sheen, sole, strap, studs",
+      "fill": "#5a6fd8",
+      "trim": "#e6d8ff",
+      "strap": "#2a2050",
+      "details": [
+        "cuff",
+        "sheen",
+        "sole",
+        "strap",
+        "studs"
+      ],
+      "jewel": "#e0407a"
+    },
+    "mythic_mystic_boots": {
+      "look": "sky violet boots, cuff, sheen, sole, strap, studs",
+      "fill": "#6a7ce0",
+      "trim": "#e6d8ff",
+      "strap": "#2a2050",
+      "details": [
+        "cuff",
+        "sheen",
+        "sole",
+        "strap",
+        "studs"
+      ],
+      "jewel": "#e0407a"
+    },
+    "ancient_mystic_boots": {
+      "look": "lilac boots, cuff, sheen, sole, strap, studs, strap2",
+      "fill": "#8a62e0",
+      "trim": "#e6d8ff",
+      "strap": "#2a2050",
+      "details": [
+        "cuff",
+        "sheen",
+        "sole",
+        "strap",
+        "studs",
+        "strap2"
+      ],
+      "jewel": "#e0407a"
+    },
+    "celestial_mystic_boots": {
+      "look": "bright lilac boots, cuff, sheen, sole, strap, studs, strap2",
+      "fill": "#9a6ae8",
+      "trim": "#e6d8ff",
+      "strap": "#2a2050",
+      "details": [
+        "cuff",
+        "sheen",
+        "sole",
+        "strap",
+        "studs",
+        "strap2"
+      ],
+      "jewel": "#e0407a"
+    },
+    "divine_mystic_boots": {
+      "look": "starlight blue boots, cuff, sheen, sole, strap, studs, strap2, gem",
+      "fill": "#7f8cf0",
+      "trim": "#e6d8ff",
+      "strap": "#2a2050",
+      "details": [
+        "cuff",
+        "sheen",
+        "sole",
+        "strap",
+        "studs",
+        "strap2",
+        "gem"
+      ],
+      "jewel": "#e0407a"
+    },
+    "eternal_mystic_boots": {
+      "look": "astral violet boots, cuff, sheen, sole, strap, studs, strap2, gem, glow",
+      "fill": "#a87cf6",
+      "trim": "#e6d8ff",
+      "strap": "#2a2050",
+      "details": [
+        "cuff",
+        "sheen",
+        "sole",
+        "strap",
+        "studs",
+        "strap2",
+        "gem",
+        "glow"
+      ],
+      "jewel": "#e0407a"
+    }
+  }
+}

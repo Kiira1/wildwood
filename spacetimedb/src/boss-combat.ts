@@ -2,7 +2,7 @@
 // only unlock gates (boss-gates.ts); the retained IDs below serve old migrations.
 import { upgradeSlotForItem } from "../../shared/slot-upgrades";
 import { preparePlayerPowerStats, playerPowerForStats, legacyU32Power } from "../../shared/player-power";
-import { equipmentDamageFactor, itemDefinition, type ItemLevel } from "../../shared/items";
+import { bootSkillChanceFactor, equipmentDamageFactor, hasBootStat, itemDefinition, type ItemLevel } from "../../shared/items";
 import { armorSkillChanceFactor } from "../../shared/armor-class-perks";
 import { createEnemyRewardAccumulator, type EnemyStatReward } from "../../shared/enemy-reward-accumulator";
 import { attackCapInPlay, statRewardMultiplierFor, prestigePerkRanks } from "./prestige";
@@ -76,7 +76,8 @@ export function createCombatReport(deps: CombatReportDeps) {
     // Per item: the slot's tier and the item's own refine are both fixed for a report.
     const levels = new Map<string, ItemLevel>();
     const levelFor = (itemId: unknown): ItemLevel => {
-      if (!upgradeSlotForItem(itemId)) return 0;
+      // Boots have no slot tier, but graded ones refine.
+      if (!upgradeSlotForItem(itemId) && !hasBootStat(itemId)) return 0;
       const key = String(itemId);
       let level = levels.get(key);
       if (level === undefined) levels.set(key, level = itemUpgradeLevelFor(ctx, ctx.sender, itemId));
@@ -88,8 +89,10 @@ export function createCombatReport(deps: CombatReportDeps) {
     const equipment = equipmentDamageFactor(weapon, head, chest, weaponLevel, headLevel, chestLevel);
     // The active cards: attack cards multiply damage as they do power.
     const cards = cardStatFactors(cardTotals);
-    // Magic armor raises skill chances as Skill Proficiency does.
-    return { weapon, rightHand, levelFor, cardTotals, cards, skillFactor: armorSkillChanceFactor(head, chest),
+    // Magic armor and Mystic Boots raise skill chances as Skill Proficiency does.
+    const feet = inventory.includes(progress.equippedFeet) ? progress.equippedFeet : "";
+    const skillFactor = armorSkillChanceFactor(head, chest) * (hasBootStat(feet) ? bootSkillChanceFactor(feet, levelFor(feet)) : 1);
+    return { weapon, rightHand, levelFor, cardTotals, cards, skillFactor,
       damage: (base: number) => base * equipment * warcraft * cards.damage };
   }
 

@@ -56,6 +56,17 @@ describe("chopping in Timberwood", () => {
     expect(quick.source.chopTree).toHaveBeenCalledWith(pine.id);
   });
 
+  it("is quicker with an upgraded hatchet, timed as the server checks it", () => {
+    const w = woodcutter(pine, { toolLevel: tool => (tool === "hatchet" ? 5 : 0) });
+    const seconds = woodcuttingChopSeconds(pine, 0, 5);
+    expect(seconds).toBeCloseTo(woodcuttingChopSeconds(pine, 0) / 1.5);
+    w.run(seconds - .2);
+    expect(w.source.chopTree).not.toHaveBeenCalled();
+    expect(woodcuttingScene.toolLevel).toBe(5);
+    w.run(.4);
+    expect(w.source.chopTree).toHaveBeenCalledWith(pine.id);
+  });
+
   it("without the hatchet says where to get one, once", () => {
     const w = woodcutter(pine, { hasHatchet: () => false });
     w.run(3);

@@ -220,6 +220,7 @@ import UnlockSecondUpgradeSlotReducer from "./unlock_second_upgrade_slot_reducer
 import UnlockThirdUpgradeSlotReducer from "./unlock_third_upgrade_slot_reducer";
 import UpdateMovementStateReducer from "./update_movement_state_reducer";
 import UpgradeGuildHallReducer from "./upgrade_guild_hall_reducer";
+import UpgradeToolReducer from "./upgrade_tool_reducer";
 import UseFreePrestigeRespecReducer from "./use_free_prestige_respec_reducer";
 import UseGuildHallDoorReducer from "./use_guild_hall_door_reducer";
 import UseTownDoorReducer from "./use_town_door_reducer";
@@ -337,6 +338,7 @@ import MySoulLevelRow from "./my_soul_level_table";
 import MySoulStatsRow from "./my_soul_stats_table";
 import MyStaffSkillsRow from "./my_staff_skills_table";
 import MySwordSkillsRow from "./my_sword_skills_table";
+import MyToolsRow from "./my_tools_table";
 import MyUpgradeBenchRow from "./my_upgrade_bench_table";
 import MyUpgradeBenchThirdSlotRow from "./my_upgrade_bench_third_slot_table";
 import MyWeaponMasteryRow from "./my_weapon_mastery_table";
@@ -1559,6 +1561,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, MySwordSkillsRow),
+  myTools: __table({
+    name: 'my_tools',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MyToolsRow),
   myUpgradeBench: __table({
     name: 'my_upgrade_bench',
     indexes: [
@@ -1791,6 +1800,7 @@ const reducersSchema = __reducers(
   __reducerSchema("unlock_third_upgrade_slot", UnlockThirdUpgradeSlotReducer),
   __reducerSchema("update_movement_state", UpdateMovementStateReducer),
   __reducerSchema("upgrade_guild_hall", UpgradeGuildHallReducer),
+  __reducerSchema("upgrade_tool", UpgradeToolReducer),
   __reducerSchema("use_free_prestige_respec", UseFreePrestigeRespecReducer),
   __reducerSchema("use_guild_hall_door", UseGuildHallDoorReducer),
   __reducerSchema("use_town_door", UseTownDoorReducer),

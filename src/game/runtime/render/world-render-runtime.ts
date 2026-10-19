@@ -4,6 +4,7 @@ import { createOreRockRenderer } from "../town/ore-rock-renderer";
 import { createPickaxeSprite, MINING_PICKAXE, PICKAXE_OVERRIDES } from "../town/pickaxe-sprite";
 import { miningScene } from "../town/mining-scene";
 import { createHatchetSprite, HATCHET_OVERRIDES, WOODCUTTING_HATCHET } from "../town/hatchet-sprite";
+import { toolSprite } from "../town/tool-sprites";
 import { woodcuttingScene } from "../town/woodcutting-scene";
 import { createWoodTreeRenderer } from "../town/wood-tree-renderer";
 import { drawSoulWellFall } from "../soul/soul-well-fall";
@@ -180,8 +181,14 @@ export function createWorldRenderRuntime(options: WorldRenderRuntimeOptions) {
   if (pickaxeSprite) options.playerAppearanceAssets.equipment[MINING_PICKAXE] = { sprite: pickaxeSprite };
   const hatchetSprite = createHatchetSprite();
   if (hatchetSprite) options.playerAppearanceAssets.equipment[WOODCUTTING_HATCHET] = { sprite: hatchetSprite };
-  // The tool out, if any: the pickaxe in the Copper Hills, the hatchet in Timberwood.
-  const toolInHand = () => miningScene.pickaxeOut && pickaxeSprite ? MINING_PICKAXE : woodcuttingScene.hatchetOut && hatchetSprite ? WOODCUTTING_HATCHET : null;
+  // The tool out, if any: the pickaxe in the Copper Hills, the hatchet in Timberwood, coloured by its level.
+  const inHand = (id: string, tool: "pickaxe" | "hatchet", level: number, plain: HTMLImageElement) => {
+    const asset = options.playerAppearanceAssets.equipment[id], sprite = (level > 0 && toolSprite(tool, level)) || plain;
+    if (asset && asset.sprite !== sprite) asset.sprite = sprite;
+    return id;
+  };
+  const toolInHand = () => miningScene.pickaxeOut && pickaxeSprite ? inHand(MINING_PICKAXE, "pickaxe", miningScene.toolLevel, pickaxeSprite)
+    : woodcuttingScene.hatchetOut && hatchetSprite ? inHand(WOODCUTTING_HATCHET, "hatchet", woodcuttingScene.toolLevel, hatchetSprite) : null;
   const drawEntityShadow: DrawShadow = (x, y, width, alpha) => {
     // Arena scenes are visually separate from the current world map and retain
     // their shadows. Night Forest relies on its vignette to ground world actors.

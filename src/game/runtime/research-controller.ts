@@ -6,6 +6,7 @@ import { prestigeStatMultiplier } from "../../../shared/prestige";
 import { prestigePerkValue, type PrestigePerkRanks } from "../../../shared/prestige-perks";
 import { criticalDamageMultiplier, type CriticalDamageParts } from "../../../shared/critical-damage";
 import type { CardStatFactors } from "../../../shared/card-effects";
+import { bootArmorFactor, type ItemLevel } from "../../../shared/items";
 
 export type { ResearchRanks } from "../../../shared/research";
 
@@ -24,6 +25,9 @@ type ResearchControllerOptions = {
   prestigePerks?: () => Partial<PrestigePerkRanks> | null | undefined;
   /** What the active cards do to stats (card-effects.ts cardStatFactors); none without. */
   cards?: () => CardStatFactors | null | undefined;
+  /** The worn boots and an item's slot tier and refine: Warrior Boots raise armor (items.ts bootArmorFactor). */
+  equippedFeet?: () => string;
+  itemLevel?: (itemId: string) => ItemLevel;
 };
 
 const EMPTY_RANKS = createEmptyResearchRanks();
@@ -33,6 +37,10 @@ export function createResearchController(options: ResearchControllerOptions) {
 
   const ranks = (): ResearchRanks => options.getRanks() ?? EMPTY_RANKS;
   const cards = () => options.cards?.();
+  const bootArmor = () => {
+    const feet = options.equippedFeet?.() ?? "";
+    return feet ? bootArmorFactor(feet, options.itemLevel?.(feet) ?? 0) : 1;
+  };
 
   return {
     ranks,
@@ -42,7 +50,7 @@ export function createResearchController(options: ResearchControllerOptions) {
       * (1 + prestigePerkValue(options.prestigePerks?.(), "fleetFoot") + (cards()?.moveSpeed ?? 0)),
     rewardMultiplier: () => researchStatRewardMultiplier(ranks()) * prestigeStatMultiplier(options.prestigeLevel?.() ?? 0)
       * Math.max(1, options.guildQuestBonus?.() ?? 1),
-    effectiveArmor: () => options.player.armor * (1 + ranks().precision * .02) * (cards()?.armor ?? 1),
+    effectiveArmor: () => options.player.armor * bootArmor() * (1 + ranks().precision * .02) * (cards()?.armor ?? 1),
     regenerationMultiplier: () => (1 + ranks().regeneration * .02) * (cards()?.regen ?? 1),
     criticalChance: () => ranks().criticalChance * .01 + prestigePerkValue(options.prestigePerks?.(), "keenEdge") + (cards()?.critChance ?? 0),
     /** Everything critical damage adds up from but the soul's share, and the cap's rank. */

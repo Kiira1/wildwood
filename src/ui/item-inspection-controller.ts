@@ -18,6 +18,9 @@ import { CARD_SLOT_NAMES, cardEffectText, cardName, cardOrigin } from "../../sha
 import { cardPortrait } from "./card-portrait";
 import { itemSkillDetails } from "./item-skill-details";
 import { armorClassPerkLine, armorClassSetLine } from "../../shared/armor-class-perks";
+import { bootStyleOf } from "../../shared/grade-equipment";
+import { BOOT_STYLE_NAMES, BOOT_STYLE_SCHOOL } from "../../shared/gear-grades";
+import { WEAPON_SCHOOL_NAMES } from "../../shared/weapon-mastery";
 
 export type ItemInspectionAction = {
   label: string;
@@ -48,8 +51,10 @@ export type ItemInspectionRequest = {
 
 export type WornGear = { equippedRightHand?: string; equippedLeftHand?: string; equippedHead?: string; equippedChest?: string };
 
-/** A graded helmet or armor's class lines: its perk, and its set, Active or Inactive when `worn` has it on. */
+/** A graded helmet or armor's class lines: its perk, and its set, Active or Inactive when `worn` has it on. Boots name their style's school. */
 export function armorClassLines(itemId: string, worn?: WornGear) {
+  const style = bootStyleOf(itemId);
+  if (style) return [`${BOOT_STYLE_NAMES[style]} Boots · ${WEAPON_SCHOOL_NAMES[BOOT_STYLE_SCHOOL[style]]}`];
   const wearing = worn && (worn.equippedHead === itemId || worn.equippedChest === itemId);
   const set = armorClassSetLine(itemId, wearing
     ? { weapon: worn.equippedRightHand || worn.equippedLeftHand, head: worn.equippedHead, chest: worn.equippedChest } : undefined);

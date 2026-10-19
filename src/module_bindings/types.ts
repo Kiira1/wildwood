@@ -1122,6 +1122,9 @@ export type MyStaffSkills = __Infer<typeof MyStaffSkills>;
 export const MySwordSkills = __t.object("MySwordSkills", {});
 export type MySwordSkills = __Infer<typeof MySwordSkills>;
 
+export const MyTools = __t.object("MyTools", {});
+export type MyTools = __Infer<typeof MyTools>;
+
 export const MyUpgradeBench = __t.object("MyUpgradeBench", {});
 export type MyUpgradeBench = __Infer<typeof MyUpgradeBench>;
 
@@ -2207,6 +2210,14 @@ export const PlayerSwordSkill = __t.object("PlayerSwordSkill", {
   shockwave: __t.f32(),
 });
 export type PlayerSwordSkill = __Infer<typeof PlayerSwordSkill>;
+
+export const PlayerTool = __t.object("PlayerTool", {
+  key: __t.string(),
+  identity: __t.identity(),
+  tool: __t.string(),
+  level: __t.u8(),
+});
+export type PlayerTool = __Infer<typeof PlayerTool>;
 
 export const PlayerUpgradeBench = __t.object("PlayerUpgradeBench", {
   identity: __t.identity(),

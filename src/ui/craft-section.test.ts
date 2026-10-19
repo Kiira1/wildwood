@@ -55,6 +55,7 @@ it("offers each line's best open grade, steps to any other, and says Craft, Refo
     // Below the best held is open to craft, for the craft's level.
     { itemId: "fine_light_helmet", name: `${nameOf("fine_light_helmet")} ★2`, needs: next, unmet: "", grade: "Fine", button: "Craft", enabled: true },
     { itemId: "fine_light_armor", name: nameOf("fine_light_armor"), needs: next, unmet: "", grade: "Fine", button: "Owned", enabled: false },
+    { itemId: "fine_ranger_boots", name: `${nameOf("fine_ranger_boots")} ★2`, needs: next, unmet: "", grade: "Fine", button: "Craft", enabled: true },
   ]);
   expect(step(section.element, 0, "Higher Grade").disabled).toBe(true);
   // Down to a bow already held: Reforge, which rolls its skills again.
@@ -70,12 +71,12 @@ it("offers each line's best open grade, steps to any other, and says Craft, Refo
   expect(rowsOf(section.element)[1].button).toBe("Need More");
   state.ores = plenty(); state.full = true;
   section.render();
-  expect(rowsOf(section.element).map(row => row.button)).toEqual(["Reforge", "Bag Full", "Owned"]);
+  expect(rowsOf(section.element).map(row => row.button)).toEqual(["Reforge", "Bag Full", "Owned", "Bag Full"]);
   // A grade Mastery no longer opens falls back to the best open.
   state.levels = { archery: 0 };
   state.full = false;
   section.render();
-  expect(rowsOf(section.element).map(row => row.itemId)).toEqual(["crude_bow", "crude_light_helmet", "crude_light_armor"]);
+  expect(rowsOf(section.element).map(row => row.itemId)).toEqual(["crude_bow", "crude_light_helmet", "crude_light_armor", "crude_ranger_boots"]);
   section.reset();
 });
 
@@ -135,19 +136,19 @@ it("puts Smithing on the Smith's rows, and Fletching and Enchanting in their sch
   expect(smithDialog.querySelector(".craft-name")!.textContent).toBe("Smithing");
   expect(smithDialog.querySelector(".craft-rows")).toBeNull();
   const smithRows = [...smithDialog.querySelectorAll<HTMLElement>(".smith-shop-row")];
-  expect(smithRows.map(row => row.dataset.itemId)).toEqual(["crude_sword", "crude_medium_helmet", "crude_medium_armor", "crude_heavy_helmet", "crude_heavy_armor"]);
+  expect(smithRows.map(row => row.dataset.itemId)).toEqual(["crude_sword", "crude_medium_helmet", "crude_medium_armor", "crude_heavy_helmet", "crude_heavy_armor", "crude_warrior_boots"]);
   expect(smithRows.every(row => row.querySelector(".craft-offer .smith-shop-buy")!.textContent === "Craft")).toBe(true);
   const school = createSchoolWindowController({ inTown: () => true, points: () => ({}), craft: craftDeps(state).deps });
   const dialog = document.querySelector(".school-window")! as unknown as HTMLDialogElement;
   Object.assign(dialog, { showModal() { dialog.setAttribute("open", ""); }, close() { dialog.removeAttribute("open"); } });
   Object.defineProperty(dialog, "open", { get: () => dialog.hasAttribute("open") });
   school.open("archery");
-  expect(rowsOf(dialog).map(row => row.itemId)).toEqual(["crude_bow", "crude_light_helmet", "crude_light_armor"]);
+  expect(rowsOf(dialog).map(row => row.itemId)).toEqual(["crude_bow", "crude_light_helmet", "crude_light_armor", "crude_ranger_boots"]);
   school.open("swordplay");
   expect(dialog.querySelector<HTMLElement>(".craft-section")!.hidden).toBe(true);
   school.open("sorcery");
   expect(dialog.querySelector<HTMLElement>(".craft-section")!.hidden).toBe(false);
-  expect(rowsOf(dialog).map(row => row.itemId)).toEqual(["crude_staff", "crude_magic_helmet", "crude_magic_armor"]);
+  expect(rowsOf(dialog).map(row => row.itemId)).toEqual(["crude_staff", "crude_magic_helmet", "crude_magic_armor", "crude_mystic_boots"]);
   school.close();
 });
 

@@ -2,8 +2,8 @@ import {
   CRAFT_LEVEL, CRAFT_MAX_LEVEL, CRAFT_SKILLS, CRAFT_SKILL_NAMES, craftExperienceForLevel, craftLevel, craftMaterials, craftSkillFor,
   type CraftSkill, type Materials,
 } from "./crafting";
-import { armorClassOf, gradeEquipmentKindOf, gradeOf, isGradeItemId, type GradeItemId } from "./grade-equipment";
-import { GEAR_GRADES, gradeIndex, type GearGrade } from "./gear-grades";
+import { armorClassOf, bootStyleOf, gradeEquipmentKindOf, gradeOf, isGradeItemId, type GradeItemId } from "./grade-equipment";
+import { GEAR_GRADES, gradeIndex, type ArmorClass, type BootStyle, type GearGrade } from "./gear-grades";
 import { GRADE_SHOP_LINES, gradeShopItemId, gradeShopOpen, type GradeShopLine, type MasteryLevels } from "./grade-shop";
 import { isSkillWeapon } from "./weapon-skills";
 
@@ -13,23 +13,46 @@ import { isSkillWeapon } from "./weapon-skills";
  */
 export type CraftExperience = Readonly<Partial<Record<CraftSkill, number | bigint>>>;
 
-/** The shop's lines each craft makes: Smithing swords and Medium and Heavy armor, and so on. */
-const linesFor = (skill: CraftSkill) =>
-  GRADE_SHOP_LINES.filter(line => craftSkillFor(line.kind, "armorClass" in line ? line.armorClass : undefined) === skill);
+/**
+ * Boots are made where their school's gear is: Ranger at Fletching, Warrior at Smithing, Mystic at Enchanting. Each
+ * style's recipe is its school's armor's materials in shares of its own: Ranger more ore for the hobnails, Mystic
+ * more crystal for the charm.
+ */
+const BOOT_CRAFT: Readonly<Record<BootStyle, { armorClass: ArmorClass; shares: Readonly<Record<string, number>> }>> = {
+  ranger: { armorClass: "light", shares: { wood: .6, ore: 1.5, starshard: .75 } },
+  warrior: { armorClass: "medium", shares: { ore: .75, starshard: .75 } },
+  mystic: { armorClass: "magic", shares: { wood: .5, arcane_crystal: 1, starshard: .75 } },
+};
+const materialKind = (id: string) => id.endsWith("_log") ? "wood" : id.endsWith("_ore") ? "ore" : id;
+
+/** What a style's boots of a grade take to craft. */
+export function bootsCraftMaterials(grade: GearGrade, style: BootStyle): Materials {
+  const { armorClass, shares } = BOOT_CRAFT[style];
+  return Object.fromEntries(Object.entries(craftMaterials(grade, "armor", armorClass))
+    .map(([id, count]) => [id, Math.max(1, Math.round(count * (shares[materialKind(id)] ?? 1)))]));
+}
+
+const lineCraftSkill = (line: GradeShopLine) => "bootStyle" in line ? craftSkillFor("armor", BOOT_CRAFT[line.bootStyle].armorClass)
+  : craftSkillFor(line.kind, "armorClass" in line ? line.armorClass : undefined);
+
+/** The shop's lines each craft makes: Smithing swords, Medium and Heavy armor and Warrior Boots, and so on. */
+const linesFor = (skill: CraftSkill) => GRADE_SHOP_LINES.filter(line => lineCraftSkill(line) === skill);
 export const CRAFT_LINES: Readonly<Record<CraftSkill, readonly GradeShopLine[]>> = {
   smithing: linesFor("smithing"), fletching: linesFor("fletching"), enchanting: linesFor("enchanting"),
 };
 
 /** The craft that makes a graded piece, or undefined for any other item. */
 export function gradeCraftSkill(itemId: unknown): CraftSkill | undefined {
-  const kind = gradeEquipmentKindOf(itemId);
-  return kind ? craftSkillFor(kind, armorClassOf(itemId)) : undefined;
+  const kind = gradeEquipmentKindOf(itemId), bootStyle = bootStyleOf(itemId);
+  if (bootStyle) return craftSkillFor("armor", BOOT_CRAFT[bootStyle].armorClass);
+  return kind && kind !== "boots" ? craftSkillFor(kind, armorClassOf(itemId)) : undefined;
 }
 
 /** What a graded piece takes to craft, or undefined for any other item. */
 export function gradeCraftMaterials(itemId: unknown): Materials | undefined {
-  const kind = gradeEquipmentKindOf(itemId), grade = gradeOf(itemId);
-  return kind && grade ? craftMaterials(grade, kind, armorClassOf(itemId)) : undefined;
+  const kind = gradeEquipmentKindOf(itemId), grade = gradeOf(itemId), bootStyle = bootStyleOf(itemId);
+  if (bootStyle && grade) return bootsCraftMaterials(grade, bootStyle);
+  return kind && kind !== "boots" && grade ? craftMaterials(grade, kind, armorClassOf(itemId)) : undefined;
 }
 
 /** The craft level a piece's grade needs. */

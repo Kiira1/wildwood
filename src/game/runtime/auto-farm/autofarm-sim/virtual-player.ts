@@ -323,6 +323,7 @@ export function createVirtualPlayer(profile: VirtualPlayerProfile, options: { du
   const researchController = createResearchController({
     prestigeLevel: () => profile.prestigeLevel ?? 0, guildQuestBonus: () => 1, prestigePerks: () => perks,
     player, getRanks: () => research, isDueling: () => false, maxPlayerStat: Number.MAX_VALUE, saveProgress: noop, healthMultiplierBonus,
+    equippedFeet: () => inventory.equippedFeet,
   });
   const minAttackInterval = () => challengeMinimumInterval(challenge);
   // As main.ts: Tailwind and the armor classes worn on top of research.
@@ -340,16 +341,16 @@ export function createVirtualPlayer(profile: VirtualPlayerProfile, options: { du
   const masteryNow = () => masteryPointsInPlay(masteryPoints, masteryOff);
   const baseAttackRange = player.attackRange;
   const applyMasteryRange = () => { player.attackRange = baseAttackRange + masteryAttackRange(masteryInPlay(masteryNow(), inventory.equippedRightHand, weapon())); };
-  const powerWith = (equipped: { head: string; chest: string; right: string }) => unroundedPlayerPower(effectivePlayerPowerStats({
+  const powerWith = (equipped: { head: string; chest: string; feet: string; right: string }) => unroundedPlayerPower(effectivePlayerPowerStats({
     maxHp: player.baseMaxHp, damage: player.damage, attackRate: player.attackRate, armor: player.armor, regen: player.regen,
-    equippedHead: equipped.head, equippedChest: equipped.chest, equippedRightHand: equipped.right }, research));
+    equippedHead: equipped.head, equippedChest: equipped.chest, equippedFeet: equipped.feet, equippedRightHand: equipped.right }, research));
   /** Wears a piece just bought unless it would lower power, as auto-equip does. */
   function wearIfStronger(itemId: string) {
     const slot = ITEM_DEFINITIONS[itemId as ItemId]?.slot;
-    const current = { head: inventory.equippedHead, chest: inventory.equippedChest, right: inventory.equippedRightHand };
-    const next = { ...current, ...(slot === 'HAND' ? { right: itemId } : slot === 'HEAD' ? { head: itemId } : slot === 'CHEST' ? { chest: itemId } : {}) };
+    const current = { head: inventory.equippedHead, chest: inventory.equippedChest, feet: inventory.equippedFeet, right: inventory.equippedRightHand };
+    const next = { ...current, ...(slot === 'HAND' ? { right: itemId } : slot === 'HEAD' ? { head: itemId } : slot === 'CHEST' ? { chest: itemId } : slot === 'FEET' ? { feet: itemId } : {}) };
     if (powerWith(next) + 1e-9 < powerWith(current)) return;
-    inventory.equippedRightHand = next.right; inventory.equippedHead = next.head; inventory.equippedChest = next.chest;
+    inventory.equippedRightHand = next.right; inventory.equippedHead = next.head; inventory.equippedChest = next.chest; inventory.equippedFeet = next.feet;
     setPlayerBaseMaxHealth(player, player.baseMaxHp, healthMultiplierBonus());
     applyMasteryRange();
   }
@@ -460,7 +461,7 @@ export function createVirtualPlayer(profile: VirtualPlayerProfile, options: { du
 
   const farmProgress = createAutoFarmProgress({ mapId: () => currentMapId,
     base: () => ({ maxHp: player.baseMaxHp, damage: player.damage, attackRate: player.attackRate, armor: player.armor, regen: player.regen }),
-    equipment: () => ({ equippedHead: inventory.equippedHead, equippedChest: inventory.equippedChest, equippedRightHand: inventory.equippedRightHand, equippedLeftHand: inventory.equippedLeftHand }),
+    equipment: () => ({ equippedHead: inventory.equippedHead, equippedChest: inventory.equippedChest, equippedFeet: inventory.equippedFeet, equippedRightHand: inventory.equippedRightHand, equippedLeftHand: inventory.equippedLeftHand }),
     research: () => research, upgradeLevel: () => 0, rewardMultiplier: () => researchController.rewardMultiplier(), minAttackInterval,
     criticalChance: () => researchController.criticalChance(), criticalMultiplier: () => researchController.criticalDamageMultiplier(),
     reflectOnly: () => Boolean(profile.reflectOnly),
@@ -543,7 +544,7 @@ export function createVirtualPlayer(profile: VirtualPlayerProfile, options: { du
     prestigeReflect: () => prestigePerkValue(perks, 'riposte'),
     bowSkills: () => profile.bowSkills,
     weaponMastery: masteryNow, equippedRightHand: () => inventory.equippedRightHand,
-    equippedWeapon: weapon, equippedHead: () => inventory.equippedHead, equippedChest: () => inventory.equippedChest,
+    equippedWeapon: weapon, equippedHead: () => inventory.equippedHead, equippedChest: () => inventory.equippedChest, equippedFeet: () => inventory.equippedFeet,
     healthMultiplierBonus, minAttackInterval, reflectOnly: () => Boolean(profile.reflectOnly),
     effectiveArmor: researchController.effectiveArmor, isDueling: () => false,
     hitGeneratedBoss: (enemy, damage) => { if (!enemy.generatedBoss) return false; personalBosses.hit(currentMapId, damage); return true; },

@@ -656,6 +656,12 @@
       "deflect:f32",
       "shockwave:f32"
     ],
+    "my_tools": [
+      "key:string",
+      "identity:identity",
+      "tool:string",
+      "level:u8"
+    ],
     "my_upgrade_bench": [
       "identity:identity",
       "secondSlotUnlocked:bool",

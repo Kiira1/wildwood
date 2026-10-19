@@ -2,6 +2,7 @@ import { campaignMapUnlocked, type CampaignAccess } from "./equipment-access";
 import { REFINE_ORES, type GradeOreId, type OreId } from "./refine";
 import { ARCANE_CRYSTAL } from "./crafting";
 import { luckMultiplier } from "./luck-research";
+import { toolSpeed } from "./tools";
 import { MAP_DISPLAY_NAMES, MAP_IDS } from "./rules";
 import { TOWN_EAST_BRIDGE, TOWN_EAST_FENCE_GAP, TOWN_HILLS, townRandom } from "./town";
 
@@ -370,9 +371,10 @@ export function miningSpeed(mining: unknown) {
 }
 
 /** Seconds to break a rock at this Mining. */
-/** `cardSpeed` is what Mining Speed cards add, a fraction. */
-export function miningBreakSeconds(node: MiningNode, mining: unknown, cardSpeed = 0) {
-  return MINING_NODE_KINDS[node.kind].breakSeconds * MINING_VEINS[node.vein].hardness / (miningSpeed(mining) * (1 + Math.max(0, cardSpeed)));
+/** `cardSpeed` is what Mining Speed cards add, a fraction; `pickaxeLevel` the pickaxe's upgrades (shared/tools.ts). */
+export function miningBreakSeconds(node: MiningNode, mining: unknown, cardSpeed = 0, pickaxeLevel = 0) {
+  return MINING_NODE_KINDS[node.kind].breakSeconds * MINING_VEINS[node.vein].hardness
+    / (miningSpeed(mining) * (1 + Math.max(0, cardSpeed)) * toolSpeed(pickaxeLevel));
 }
 
 /** What breaking a rock adds to Mining: its ore, weighted by its vein's hardness, so deeper veins teach faster. */
@@ -388,9 +390,11 @@ export function miningRockOre(node: MiningNode) {
 /**
  * What a broken rock gives: its vein's ore, and from a Mysterious rock perhaps a Starshard. `roll` is in [0, 1).
  * Cards: Starshard cards raise its chance, and an Ore Find card's chance (`extraRoll` against it) adds one more ore.
+ * `toolBonus` is the pickaxe's extra ore, when its chance came up (shared/tools.ts).
  */
-export function miningYield(node: MiningNode, roll: number, cards: { starshardFind?: number; oreFind?: number } = {}, extraRoll = 1, miningLuckRank = 0) {
-  const ores: Partial<Record<OreId, number>> = { [node.ore]: miningRockOre(node) + (extraRoll < (cards.oreFind ?? 0) ? 1 : 0) };
+export function miningYield(node: MiningNode, roll: number, cards: { starshardFind?: number; oreFind?: number } = {}, extraRoll = 1, miningLuckRank = 0,
+  toolBonus = 0) {
+  const ores: Partial<Record<OreId, number>> = { [node.ore]: miningRockOre(node) + (extraRoll < (cards.oreFind ?? 0) ? 1 : 0) + toolBonus };
   // Starshard cards and Mining Luck each raise the chance.
   const starshard = MINING_STARSHARD_CHANCE * (1 + Math.max(0, cards.starshardFind ?? 0)) * luckMultiplier("miningLuck", miningLuckRank);
   if (node.kind === "mysterious" && roll < starshard) ores.starshard = 1;

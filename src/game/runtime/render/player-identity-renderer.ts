@@ -47,6 +47,8 @@ export const MAX_ACTIVE_SPEECH_BUBBLES_PER_PLAYER = 3;
 type DisplayedPlayerPowerEquipment = {
   equippedHead: string;
   equippedChest: string;
+  /** Warrior Boots raise armor, so boots count toward power. */
+  equippedFeet?: string;
   equippedRightHand: string;
   equippedLeftHand: string;
   /** The active cards in play; equip comparisons leave them out. */

@@ -2,7 +2,7 @@ import { SenderError, table, t } from "spacetimedb/server";
 import type { Identity } from "spacetimedb";
 import type spacetimedbType from "./index";
 import {
-  CRAFTED_REFINE, CRAFTED_SKILL_LUCK_RANKS, CRAFT_SKILLS, MATERIAL_NAMES, craftExperience, craftLevel, type CraftSkill,
+  CRAFTED_REFINE, CRAFTED_SKILL_LUCK_RANKS, CRAFT_SKILLS, MATERIAL_NAMES, craftExperience, craftLevel, type CraftSkill, type Materials,
 } from "../../shared/crafting";
 import {
   craftMaterialsKey, craftMaterialsShort, gradeCraftAction, gradeCraftLevel, gradeCraftMaterials, gradeCraftNeed, gradeCraftSkill, isCraftable,
@@ -21,6 +21,8 @@ import { activeItemUpgradeEntriesFor } from "./upgrade-bench-slots";
 import { weaponMasteryPoints } from "./weapon-mastery";
 import { ensureWeaponSkillRoll } from "./weapon-skills";
 import { luckInPlay } from "./luck-research";
+import { CRAFT_TOOL, toolExperience, toolSavedMaterials } from "../../shared/tools";
+import { toolLevelFor } from "./tools";
 
 /** Each craft's experience (shared/crafting.ts), one row per player and craft. Private; read through my_craft_skills. */
 export const playerCraftSkill = table({ name: "player_craft_skill", public: false }, {
@@ -115,12 +117,13 @@ export function craftGradeGearFor(ctx: Ctx, args: { itemId: string; expectedMate
   const held = Object.fromEntries(Object.keys(materials).map(id => [id, oreCount(ctx, ctx.sender, id)]));
   const short = craftMaterialsShort(materials, held);
   if (short.length) throw new SenderError(`You need ${short.map(id => `${materials[id].toLocaleString("en-US")} ${MATERIAL_NAMES[id] ?? id}`).join(" and ")}.`);
+  const tool = craftTool(ctx, skill, materials);
   // A stack used up frees its slot for the piece; a Reforge needs no room.
-  const emptied = Object.entries(materials).filter(([id, count]) => held[id] === count).length;
+  const emptied = Object.entries(tool.taken).filter(([id, count]) => held[id] === count).length;
   if (action === "craft" && freeBagSlots(ctx, ctx.sender, progress, inventory) + emptied <= 0) throw new SenderError("Your bag is full. Free a slot first.");
-  if (!takeOres(ctx, ctx.sender, materials as Partial<Record<OreId, number>>)) throw new SenderError("Your materials changed. Take another look.");
+  if (!takeOres(ctx, ctx.sender, tool.taken)) throw new SenderError("Your materials changed. Take another look.");
   const skillLuck = isSkillWeapon(itemId) ? luckInPlay(ctx, ctx.sender).skillLuck + CRAFTED_SKILL_LUCK_RANKS : 0;
-  addCraftExperience(ctx, ctx.sender, skill, craftExperience(gradeOf(itemId)!));
+  addCraftExperience(ctx, ctx.sender, skill, craftExperience(gradeOf(itemId)!) * tool.experience);
   if (action === "reforge") {
     // Two fresh rolls merged into the held weapon, each skill keeping the higher; its refine stays.
     receiveDuplicateEquipment(ctx, ctx.sender, itemId, 2, skillLuck);
@@ -132,6 +135,14 @@ export function craftGradeGearFor(ctx: Ctx, args: { itemId: string; expectedMate
   if (skillLuck) receiveDuplicateEquipment(ctx, ctx.sender, itemId, 1, skillLuck);
   setRefineLevel(ctx, ctx.sender, itemId, 0n, CRAFTED_REFINE);
   deps.writeProgressAndPresentation(ctx, deps.restoreItemToProgress(progress, itemId));
+}
+
+/** The craft's tool (shared/tools.ts): the recipe less what it saves, rolled here, and its experience multiplier. */
+function craftTool(ctx: Ctx, skill: CraftSkill, materials: Materials) {
+  const level = toolLevelFor(ctx, ctx.sender, CRAFT_TOOL[skill]), saved = toolSavedMaterials(materials, level, () => ctx.random());
+  const taken: Partial<Record<OreId, number>> = {};
+  for (const [id, count] of Object.entries(materials)) if (count > (saved[id] ?? 0)) taken[id as OreId] = count - (saved[id] ?? 0);
+  return { taken, experience: toolExperience(level) };
 }
 
 /** Reset Save clears every craft. Prestige keeps them. */

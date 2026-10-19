@@ -11,9 +11,9 @@ import { gradeShopOffer } from "./grade-shop";
 describe("crafting graded gear", () => {
   it("gives each craft its lines, every graded piece made by exactly one", () => {
     const ids = (skill: keyof typeof CRAFT_LINES) => CRAFT_LINES[skill].map(line => gradeShopOffer(line, new Set()).itemId);
-    expect(ids("smithing")).toEqual(["crude_sword", "crude_medium_helmet", "crude_medium_armor", "crude_heavy_helmet", "crude_heavy_armor"]);
-    expect(ids("fletching")).toEqual(["crude_bow", "crude_light_helmet", "crude_light_armor"]);
-    expect(ids("enchanting")).toEqual(["crude_staff", "crude_magic_helmet", "crude_magic_armor"]);
+    expect(ids("smithing")).toEqual(["crude_sword", "crude_medium_helmet", "crude_medium_armor", "crude_heavy_helmet", "crude_heavy_armor", "crude_warrior_boots"]);
+    expect(ids("fletching")).toEqual(["crude_bow", "crude_light_helmet", "crude_light_armor", "crude_ranger_boots"]);
+    expect(ids("enchanting")).toEqual(["crude_staff", "crude_magic_helmet", "crude_magic_armor", "crude_mystic_boots"]);
     expect(GRADE_EQUIPMENT_IDS.every(isCraftable)).toBe(true);
     expect(isCraftable("iron_bow")).toBe(false);
   });
@@ -29,6 +29,13 @@ describe("crafting graded gear", () => {
     expect(gradeCraftMaterials("legendary_sword")).toEqual({ mithril_ore: 100, starshard: 1 });
     expect(gradeCraftMaterials("eternal_magic_armor")).toEqual({ elder_log: 190, arcane_crystal: 38, starshard: 12 });
     expect(gradeCraftMaterials("iron_bow")).toBeUndefined();
+    // Boots: their school's armor recipe in shares of their own.
+    expect([gradeCraftSkill("rare_ranger_boots"), gradeCraftSkill("rare_warrior_boots"), gradeCraftSkill("rare_mystic_boots")]).toEqual(["fletching", "smithing", "enchanting"]);
+    expect(gradeCraftMaterials("crude_ranger_boots")).toEqual({ pine_log: 6, copper_ore: 3 });
+    expect(gradeCraftMaterials("crude_warrior_boots")).toEqual({ copper_ore: 8 });
+    expect(gradeCraftMaterials("crude_mystic_boots")).toEqual({ pine_log: 3, arcane_crystal: 1 });
+    expect(gradeCraftMaterials("legendary_ranger_boots")).toEqual({ yew_log: 60, mithril_ore: 30, starshard: 1 });
+    expect(gradeCraftMaterials("eternal_mystic_boots")).toEqual({ elder_log: 95, arcane_crystal: 38, starshard: 9 });
     expect(gradeCraftLevel("crude_bow")).toBe(1);
     expect(gradeCraftLevel("heroic_bow")).toBe(39);
     expect(gradeCraftNeed("rare_magic_armor")).toBe("Lv 20 Enchanting");

@@ -15,6 +15,8 @@ import { extraCopiesOf } from "./equipment-copies";
 import { bagCapacityFor } from "./bag-capacity";
 import { bagFullForOres, roomForOres } from "../../shared/ore-bag";
 import type { MiningDeps } from "./mining";
+import { toolBonusYield } from "../../shared/tools";
+import { toolLevelFor } from "./tools";
 
 /**
  * Woodcutting (shared/woodcutting.ts), as mining is (mining.ts): a player's Woodcutting stat, the hatchet the Smith
@@ -153,10 +155,12 @@ export function chopTreeFor(ctx: Ctx, args: { treeId: number }, deps: MiningDeps
   if (!room) throw new SenderError(bagFullForOres(needed));
   pruneChoppedTrees(ctx, ctx.sender);
   if (treeFelledFor(ctx, ctx.sender, tree.id)) throw new SenderError("That tree is still growing back.");
-  if (microsSince(ctx, woodcutting.lastChopAt) < woodcuttingChopSeconds(tree, woodcutting.woodcutting) * WOODCUTTING_RATE_SLACK * 1_000_000) {
+  const hatchet = toolLevelFor(ctx, ctx.sender, "hatchet");
+  if (microsSince(ctx, woodcutting.lastChopAt) < woodcuttingChopSeconds(tree, woodcutting.woodcutting, hatchet) * WOODCUTTING_RATE_SLACK * 1_000_000) {
     throw new SenderError("Still chopping.");
   }
-  for (const [logId, count] of Object.entries(woodcuttingYield(tree))) addOres(ctx, ctx.sender, logId as OreId, count ?? 0);
+  const logs = woodcuttingYield(tree, hatchet > 0 ? toolBonusYield(hatchet, ctx.random()) : 0);
+  for (const [logId, count] of Object.entries(logs)) addOres(ctx, ctx.sender, logId as OreId, count ?? 0);
   ctx.db.playerWoodcutting.identity.update({
     ...woodcutting,
     woodcutting: Math.min(U32_MAX, normalizeWoodcutting(woodcutting.woodcutting) + woodcuttingGain(tree)),

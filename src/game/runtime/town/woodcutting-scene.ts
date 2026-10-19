@@ -16,6 +16,8 @@ export const woodcuttingScene = {
   swingClock: 0,
   /** Why the tree in reach is not being chopped, if it is not: no hatchet, its stand shut, or no bag room. */
   blocked: null as "hatchet" | "stand" | "bag" | null,
+  /** The hatchet's level (shared/tools.ts), for its colour in hand. */
+  toolLevel: 0,
 };
 
 export function resetWoodcuttingScene() {
@@ -25,4 +27,5 @@ export function resetWoodcuttingScene() {
   woodcuttingScene.hatchetOut = false;
   woodcuttingScene.swingClock = 0;
   woodcuttingScene.blocked = null;
+  woodcuttingScene.toolLevel = 0;
 }

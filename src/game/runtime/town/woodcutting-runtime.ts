@@ -6,6 +6,7 @@ import { REFINE_ORES } from "../../../../shared/refine";
 import type { CampaignAccess } from "../../../../shared/equipment-access";
 import { inTownGrove, TOWN_FEET_OFFSET } from "../../../../shared/town";
 import { bagFullForOres, roomForOres, type BagSpace } from "../../../../shared/ore-bag";
+import type { ToolId } from "../../../../shared/tools";
 import { ATTACK_ANIMATION_SECONDS, ATTACK_WINDUP_SECONDS } from "../../attack-timeline";
 import type { PlayerState } from "../types";
 import { miningHitAt, miningHits } from "./mining-runtime";
@@ -21,6 +22,8 @@ export type WoodcuttingSource = {
   sessionGeneration?: () => number;
   hasHatchet?: () => boolean;
   woodcutting?: () => number;
+  /** A tool's upgrades (shared/tools.ts): the hatchet's speed, which the server's rate check uses too. */
+  toolLevel?: (tool: ToolId) => number;
   choppedTreeAt?: (treeId: number) => number | null;
   chopTree?: (treeId: number) => Promise<Result>;
   setOnTreeChopped?: (callback: ((result: TreeChop) => void) | null) => void;
@@ -185,8 +188,10 @@ export function createWoodcuttingRuntime(deps: {
       const { needed, room } = roomForOres(space, [tree.log]);
       if (!room) { stop(); woodcuttingScene.blocked = "bag"; say(bagFullForOres(needed), "#ff9b91", tree.id); return; }
     }
-    const seconds = woodcuttingChopSeconds(tree, source.woodcutting?.() ?? 0), hits = miningHits(seconds);
+    const hatchet = source.toolLevel?.("hatchet") ?? 0;
+    const seconds = woodcuttingChopSeconds(tree, source.woodcutting?.() ?? 0, hatchet), hits = miningHits(seconds);
     woodcuttingScene.target = tree.id;
+    woodcuttingScene.toolLevel = hatchet;
     woodcuttingScene.hatchetOut = true;
     woodcuttingScene.swingClock = Math.max(0, woodcuttingScene.swingClock - dt);
     // Walking pauses the swing; the hits made on this tree stay.

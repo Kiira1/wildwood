@@ -1,6 +1,7 @@
 import { campaignMapUnlocked, type CampaignAccess } from "./equipment-access";
 import type { WoodId } from "./crafting";
 import { MINING_TRACK } from "./mining";
+import { toolSpeed } from "./tools";
 import { MAP_DISPLAY_NAMES, MAP_IDS } from "./rules";
 import { TOWN_GROVE, TOWN_HILLS, townRandom } from "./town";
 
@@ -216,9 +217,9 @@ export function woodcuttingSpeed(woodcutting: unknown) {
   return 1 + 2 * value / (value + 500);
 }
 
-/** Seconds to fell a tree at this Woodcutting. */
-export function woodcuttingChopSeconds(tree: WoodTree, woodcutting: unknown) {
-  return WOODCUTTING_CHOP_SECONDS * WOOD_STANDS[tree.stand].hardness / woodcuttingSpeed(woodcutting);
+/** Seconds to fell a tree at this Woodcutting, faster with the hatchet's upgrades (shared/tools.ts). */
+export function woodcuttingChopSeconds(tree: WoodTree, woodcutting: unknown, hatchetLevel = 0) {
+  return WOODCUTTING_CHOP_SECONDS * WOOD_STANDS[tree.stand].hardness / (woodcuttingSpeed(woodcutting) * toolSpeed(hatchetLevel));
 }
 
 /** What felling a tree adds to Woodcutting: its logs, weighted by its stand's hardness, so deeper stands teach faster. */
@@ -226,9 +227,9 @@ export function woodcuttingGain(tree: WoodTree) {
   return WOODCUTTING_LOGS * WOOD_STANDS[tree.stand].hardness;
 }
 
-/** What a felled tree gives: its stand's logs. */
-export function woodcuttingYield(tree: WoodTree): Partial<Record<WoodId, number>> {
-  return { [tree.log]: WOODCUTTING_LOGS };
+/** What a felled tree gives: its stand's logs, and one more when the hatchet's `bonus` comes up. */
+export function woodcuttingYield(tree: WoodTree, bonus = 0): Partial<Record<WoodId, number>> {
+  return { [tree.log]: WOODCUTTING_LOGS + bonus };
 }
 
 /** Whether a stand is open: pine always, the rest once the map whose gear their wood crafts is unlocked. */

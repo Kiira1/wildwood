@@ -1,12 +1,13 @@
 import { SWORD_DAMAGE_FACTOR, SWORD_REACH } from "./campaign-equipment";
 import {
-  ARMOR_CLASSES, ARMOR_CLASS_NAMES, GEAR_GRADES, GEAR_GRADE_NAMES, GRADE_BONUS_PERCENT, GRADE_ITEM_TIER,
-  armorBonusPercent, isArmorClass, isGearGrade, type ArmorClass, type GearGrade,
+  ARMOR_CLASSES, ARMOR_CLASS_NAMES, BOOT_STYLES, BOOT_STYLE_NAMES, BOOT_STYLE_STAT, GEAR_GRADES, GEAR_GRADE_NAMES, GRADE_BONUS_PERCENT, GRADE_ITEM_TIER,
+  armorBonusPercent, bootBonusPercent, isArmorClass, isBootStyle, isGearGrade, type ArmorClass, type BootStyle, type GearGrade,
 } from "./gear-grades";
 import type { ItemDefinition } from "./items";
 
 /**
- * The graded gear: a bow, sword and staff per grade, and a helmet and armor per class and grade. Bought from the
+ * The graded gear: a bow, sword and staff per grade, a helmet and armor per class and grade, and boots per style
+ * and grade. Bought from the
  * Smith or crafted, never dropped, so no map's loot lists them. They are kept like the Smith's Starter Staff
  * (TOWN_DROP): in the bag, and can be thrown away.
  */
@@ -14,11 +15,12 @@ export const GRADE_WEAPON_KINDS = ["bow", "sword", "staff"] as const;
 export type GradeWeaponKind = typeof GRADE_WEAPON_KINDS[number];
 export const GRADE_ARMOR_KINDS = ["helmet", "armor"] as const;
 export type GradeArmorKind = typeof GRADE_ARMOR_KINDS[number];
-export type GradeEquipmentKind = GradeWeaponKind | GradeArmorKind;
+export type GradeEquipmentKind = GradeWeaponKind | GradeArmorKind | "boots";
 
 export type GradeWeaponId = `${GearGrade}_${GradeWeaponKind}`;
 export type GradeArmorId = `${GearGrade}_${ArmorClass}_${GradeArmorKind}`;
-export type GradeItemId = GradeWeaponId | GradeArmorId;
+export type GradeBootsId = `${GearGrade}_${BootStyle}_boots`;
+export type GradeItemId = GradeWeaponId | GradeArmorId | GradeBootsId;
 
 /** Each piece's name after its grade, in grade order; each matches its art (scripts/art/grade-equipment.json). */
 const WEAPON_NAMES: Readonly<Record<GradeWeaponKind, readonly string[]>> = {
@@ -78,6 +80,22 @@ const ARMOR_NAMES: Readonly<Record<ArmorClass, Readonly<Record<GradeArmorKind, r
   },
 };
 
+/** Each style's boots after their grade; the art is the game's boot recoloured per piece (scripts/art/import-grade-boots.mjs). */
+const BOOT_NAMES: Readonly<Record<BootStyle, readonly string[]>> = {
+  ranger: [
+    "Trail Shoes", "Moccasins", "Hide Boots", "Tracker Boots", "Scout Boots", "Stalker Boots", "Strider Boots", "Pathfinder Boots",
+    "Wolfpelt Boots", "Fleetfoot Boots", "Windrunner Boots", "Thornstep Boots", "Stagleap Boots", "Galeborn Boots", "Hawkwind Boots",
+  ],
+  warrior: [
+    "Hobnail Boots", "Ironcap Boots", "Studded Boots", "Mail Boots", "Sabatons", "Plated Boots", "Steel Sabatons", "Knight Sabatons",
+    "Vanguard Boots", "Warlord Sabatons", "Bulwark Boots", "Champion Sabatons", "Dragonscale Boots", "Titan Sabatons", "Warmaster Boots",
+  ],
+  mystic: [
+    "Cloth Slippers", "Acolyte Sandals", "Novice Slippers", "Silk Slippers", "Rune Sandals", "Mage Boots", "Moonstep Slippers", "Spellweave Boots",
+    "Starlit Slippers", "Arcane Boots", "Voidstep Boots", "Astral Slippers", "Ethereal Boots", "Sorcerer Boots", "Archmage Boots",
+  ],
+};
+
 const percentText = (percent: number) => Math.round(percent * 100) / 100;
 const gradeName = (grade: GearGrade, names: readonly string[]) => `${GEAR_GRADE_NAMES[grade]} ${names[GEAR_GRADES.indexOf(grade)]}`.toUpperCase();
 
@@ -108,16 +126,31 @@ function gradeArmor(grade: GearGrade, armorClass: ArmorClass, kind: GradeArmorKi
     : { ...base, slot: "CHEST", description: `${ARMOR_CLASS_NAMES[armorClass]} armor that increases maximum health.`, stats: [`MAX HEALTH +${percent}%`], modifiers: { maxHealthMultiplierBonus: percent / 100 } };
 }
 
-/** The id of a graded piece: `rare_bow`, or `epic_light_helmet` with a class. */
+const BOOT_STAT_TEXT = { moveSpeed: "MOVE SPEED", armor: "ARMOR", skillChance: "SKILL CHANCE" } as const;
+const BOOT_MODIFIER = { moveSpeed: "moveSpeedMultiplierBonus", armor: "armorMultiplierBonus", skillChance: "skillChanceMultiplierBonus" } as const;
+const BOOT_DESCRIPTION = { moveSpeed: "move speed", armor: "armor", skillChance: "the chance of weapon skills" } as const;
+
+function gradeBoots(grade: GearGrade, style: BootStyle): ItemDefinition {
+  const stat = BOOT_STYLE_STAT[style], percent = percentText(bootBonusPercent(grade, style));
+  return {
+    id: gradeItemId("boots", grade, style), name: gradeName(grade, BOOT_NAMES[style]), slot: "FEET", acquisition: "TOWN_DROP",
+    description: `${BOOT_STYLE_NAMES[style]} boots that increase ${BOOT_DESCRIPTION[stat]}.`,
+    stats: [`${BOOT_STAT_TEXT[stat]} +${percent}%`], modifiers: { [BOOT_MODIFIER[stat]]: percent / 100 },
+  };
+}
+
+/** The id of a graded piece: `rare_bow`, `epic_light_helmet` with a class, or `epic_ranger_boots` with a style. */
 export function gradeItemId(kind: GradeWeaponKind, grade: GearGrade): GradeWeaponId;
 export function gradeItemId(kind: GradeArmorKind, grade: GearGrade, armorClass: ArmorClass): GradeArmorId;
-export function gradeItemId(kind: GradeEquipmentKind, grade: GearGrade, armorClass?: ArmorClass): GradeItemId {
-  return (armorClass ? `${grade}_${armorClass}_${kind}` : `${grade}_${kind}`) as GradeItemId;
+export function gradeItemId(kind: "boots", grade: GearGrade, style: BootStyle): GradeBootsId;
+export function gradeItemId(kind: GradeEquipmentKind, grade: GearGrade, variant?: ArmorClass | BootStyle): GradeItemId {
+  return (variant ? `${grade}_${variant}_${kind}` : `${grade}_${kind}`) as GradeItemId;
 }
 
 export const GRADE_ITEM_DEFINITIONS = Object.fromEntries([
   ...GEAR_GRADES.flatMap(grade => GRADE_WEAPON_KINDS.map(kind => gradeWeapon(grade, kind))),
   ...GEAR_GRADES.flatMap(grade => ARMOR_CLASSES.flatMap(armorClass => GRADE_ARMOR_KINDS.map(kind => gradeArmor(grade, armorClass, kind)))),
+  ...GEAR_GRADES.flatMap(grade => BOOT_STYLES.map(style => gradeBoots(grade, style))),
 ].map(item => [item.id, item])) as { [Id in GradeItemId]: ItemDefinition & { id: Id } };
 
 export const GRADE_EQUIPMENT_IDS = Object.keys(GRADE_ITEM_DEFINITIONS) as GradeItemId[];
@@ -139,7 +172,14 @@ export function armorClassOf(itemId: unknown): ArmorClass | undefined {
   return isArmorClass(armorClass) ? armorClass : undefined;
 }
 
-/** A graded piece's kind: bow, sword, staff, helmet or armor. */
+/** Graded boots' style, or undefined for any other item. */
+export function bootStyleOf(itemId: unknown): BootStyle | undefined {
+  if (!isGradeItemId(itemId)) return undefined;
+  const style = itemId.split("_")[1];
+  return isBootStyle(style) ? style : undefined;
+}
+
+/** A graded piece's kind: bow, sword, staff, helmet, armor or boots. */
 export function gradeEquipmentKindOf(itemId: unknown): GradeEquipmentKind | undefined {
   return isGradeItemId(itemId) ? itemId.slice(itemId.lastIndexOf("_") + 1) as GradeEquipmentKind : undefined;
 }

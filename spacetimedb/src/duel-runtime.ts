@@ -20,7 +20,7 @@ import {
 import { advanceDuelCombat, duelOutcome, initialDuelCombatState, DUEL_COMBAT_VERSION } from "../../shared/duel-combat";
 import { DUEL_CARDS_VERSION } from "../../shared/duel-cards";
 import { cardChance, cardStatFactors, cardValue } from "../../shared/card-effects";
-import { itemDefinition } from "../../shared/items";
+import { bootSkillChanceFactor, hasBootStat, itemDefinition } from "../../shared/items";
 import { activeCardIdsFor, activeCardTotalsFor } from "./active-cards";
 import { duelAnnouncementText } from "../../shared/duel-announcement";
 import { prestigePerkRanks } from "./prestige";
@@ -35,7 +35,7 @@ import { readCritRating, readPlayerProgress } from "./wide-stats";
 import { masteryInPlayFor } from "./weapon-mastery";
 import { duelSkillsWithProficiency, masteryDamageTaken } from "../../shared/weapon-mastery";
 import { armorSkillChanceFactor } from "../../shared/armor-class-perks";
-import { equippedChestForProgress, equippedHeadForProgress } from "./progress-helpers";
+import { equippedChestForProgress, equippedFeetForProgress, equippedHeadForProgress, itemLevelFor } from "./progress-helpers";
 import { duelMasteryFold, duelSkillsWithTechniques } from "../../shared/mastery-techniques";
 
 export const DUEL_REQUEST_COOLDOWN_MICROS = 120_000_000n;
@@ -349,8 +349,12 @@ export function createDuelRuntime(deps: DuelRuntimeDeps) {
     // side deals, and the techniques folded into damage, speed, regen and skill chances (mastery-techniques.ts).
     const challengerMastery = masteryInPlayFor(ctx, ctx.sender, challengerRightHandItem, challengerWeapon);
     const opponentMastery = masteryInPlayFor(ctx, opponent, opponentRightHandItem, opponentWeapon);
-    // Magic armor raises each side's skill chances as Skill Proficiency does.
-    const skillGear = (progress: any) => armorSkillChanceFactor(equippedHeadForProgress(progress), equippedChestForProgress(progress));
+    // Magic armor and Mystic Boots raise each side's skill chances as Skill Proficiency does.
+    const skillGear = (progress: any) => {
+      const feet = equippedFeetForProgress(progress);
+      return armorSkillChanceFactor(equippedHeadForProgress(progress), equippedChestForProgress(progress))
+        * (hasBootStat(feet) ? bootSkillChanceFactor(feet, itemLevelFor(ctx, progress.identity, feet)) : 1);
+    };
     const challengerSkillGear = skillGear(challengerProgress), opponentSkillGear = skillGear(opponentProgress);
     const withProficiency = <T extends Record<string, number>>(fields: T) => duelSkillsWithTechniques(
       duelSkillsWithProficiency(fields, challengerMastery.level, opponentMastery.level, challengerSkillGear, opponentSkillGear),

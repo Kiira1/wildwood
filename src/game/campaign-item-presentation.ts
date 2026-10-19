@@ -2,7 +2,7 @@ import { CAMPAIGN_ITEM_DEFINITIONS, type CampaignItemId } from "../../shared/cam
 import { GRADE_ITEM_DEFINITIONS, isGradeItemId, type GradeItemId } from "../../shared/grade-equipment";
 import type { ItemDefinition } from "../../shared/items";
 import { normalizeRefineLevel } from "../../shared/refine-multiplier";
-import type { ItemPresentation } from "./item-presentation";
+import type { ItemPresentation, WorldLegPresentation } from "./item-presentation";
 
 /** A staff is held upright and casts (player-appearance.ts); its art is already the in-hand size (import-vendor-staffs.mjs). */
 export const staffPresentation = (source: string): ItemPresentation => ({
@@ -26,9 +26,15 @@ export const gradeSkinForRefine = (refineLevel: unknown): GradeSkin => {
 const vendorPartSource = (id: string, skin: GradeSkin = "base") =>
   `assets/wildstat/player-parts/${id.replace(/_/g, "-")}${skin === "base" ? "" : `-${skin}`}.webp`;
 
-/** The sprite a graded piece is drawn with at a refine level; undefined for any other item. */
+/** The sprite a graded piece is drawn with at a refine level (graded boots: their bag icon); undefined for any other item. */
 export function gradeItemSkin(itemId: string | undefined, refineLevel: unknown = 0) {
   return isGradeItemId(itemId) ? vendorPartSource(itemId, gradeSkinForRefine(refineLevel)) : undefined;
+}
+
+/** Graded boots on the character: the game's boot legs recoloured per pair (scripts/art/import-grade-boots.mjs). */
+export function gradeBootLegs(itemId: string, refineLevel: unknown = 0): WorldLegPresentation {
+  const skin = gradeSkinForRefine(refineLevel), suffix = skin === "base" ? "" : `-${skin}`, base = `assets/wildstat/player-parts/${itemId.replace(/_/g, "-")}`;
+  return { kind: "LEGS", frontSource: `${base}-leg-front${suffix}.webp`, backSource: `${base}-leg-back${suffix}.webp` };
 }
 
 /** Vendor parts use the same anchors and shared alignment controls as existing gear. */
@@ -47,6 +53,7 @@ const vendorPartPresentations = (definitions: Readonly<Record<string, ItemDefini
       world: { kind: "SPRITE", source, layer: "HAND", width: 115, height: 63, top: 106, handAction: "BOW" },
       projectile: "ARROW",
     }];
+    if (item.slot === "FEET") return [id, { inventory: { source, equippedWidth: 32, equippedHeight: 27 }, world: gradeBootLegs(id) }];
     if (item.slot === "CHEST") return [id, {
       inventory: { source, equippedWidth: 34, equippedHeight: 31 },
       world: { kind: "SPRITE", source, layer: "CHEST", width: 76, height: 68, top: 100 },

@@ -14,7 +14,7 @@ import { createSpatialGrid } from "./spatial-grid";
 import type { BossTarget, EnemyState, PlayerState, Projectile, RuntimeReward } from "./types";
 import { bossStateForMap, type BossStates } from "./boss/boss-registry";
 import type { SpawnSite } from "../world";
-import { equipmentDamage, itemDefinition, type ItemLevel } from "../../../shared/items";
+import { bootMoveSpeedFactor, bootSkillChanceFactor, equipmentDamage, itemDefinition, type ItemLevel } from "../../../shared/items";
 import { worldReflectDamage } from "../../../shared/prestige-perks";
 import { createMarbleBag } from "../../../shared/marble-bag";
 import { ARROW_STORM_DAMAGE_SHARE, ARROW_STORM_RADIUS, ARROW_STORM_SCORE_WEIGHT, RICOCHET_DAMAGE_SHARE, bowSkillChance, hasBowSkills, rollArrowSkillProcs, type BowSkillRoll } from "../../../shared/bow-skills";
@@ -160,6 +160,9 @@ export function createPlayerCombatController(options: {
   equippedHeadUpgradeLevel?: () => ItemLevel;
   equippedChest: () => string;
   equippedChestUpgradeLevel?: () => ItemLevel;
+  /** The worn boots and their refine: Ranger Boots' move speed, Mystic Boots' skill chance. */
+  equippedFeet?: () => string;
+  equippedFeetUpgradeLevel?: () => ItemLevel;
   healthMultiplierBonus: () => number;
   /** The attack speed cap: Reflect Only wins and Quick Draw (stat-rating.ts AttackCap). */
   minAttackInterval: AttackCapArg | (() => AttackCapArg);
@@ -233,7 +236,8 @@ export function createPlayerCombatController(options: {
     const roll = options.weaponSkills?.() ?? options.bowSkills?.();
     // Bow skill cards add to a bow's own roll; Skill Proficiency and Magic armor raise the whole chance.
     const carded = wornCards() !== NO_CARDS && isSkillBow(options.equippedWeapon()) ? { ...roll, ...bowSkillsWithCards(roll, wornCards()) } : roll;
-    return rollWithProficiency(carded, mastery().level, armorSkillChanceFactor(options.equippedHead(), options.equippedChest()));
+    return rollWithProficiency(carded, mastery().level, armorSkillChanceFactor(options.equippedHead(), options.equippedChest())
+      * bootSkillChanceFactor(options.equippedFeet?.(), options.equippedFeetUpgradeLevel?.() ?? 0));
   };
   const swordSkills = createSwordSkillRuntime({
     player, enemies, currentMapId: options.currentMapId, equippedWeapon: options.equippedWeapon,
@@ -1000,7 +1004,8 @@ export function createPlayerCombatController(options: {
     expectedBossDps: () => expectedDps() * (1 + bossSlayer()),
     cardShield: () => cardCombat.shield(),
     tailwind: techniques.tailwind,
-    moveSpeedFactor: () => (1 + techniques.tailwind()) * armorMoveSpeedFactor(options.equippedHead(), options.equippedChest()),
+    moveSpeedFactor: () => (1 + techniques.tailwind()) * armorMoveSpeedFactor(options.equippedHead(), options.equippedChest())
+      * bootMoveSpeedFactor(options.equippedFeet?.(), options.equippedFeetUpgradeLevel?.() ?? 0),
     attackNearest,
     updateProjectiles,
     damagePlayer,

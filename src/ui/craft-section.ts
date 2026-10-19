@@ -4,9 +4,9 @@ import {
   CRAFT_LINES, craftMaterialsShort, craftProgress, gradeCraftAction, gradeCraftLevel, gradeCraftMaterials, gradeCraftNeed, gradeCraftOffer, gradeCraftSkill,
   type GradeCraftAction,
 } from "../../shared/grade-craft";
-import { ARMOR_CLASS_DETAILS, ARMOR_CLASS_NAMES, GEAR_GRADE_NAMES, GRADE_MASTERY_LEVEL, type GearGrade } from "../../shared/gear-grades";
-import { armorClassOf, gradeEquipmentKindOf, gradeOf, type GradeItemId } from "../../shared/grade-equipment";
-import { gradeShopItemId, gradeShopNeed, gradeShopOpen, masteryLevels, type GradeShopLine, type MasteryLevels } from "../../shared/grade-shop";
+import { ARMOR_CLASS_DETAILS, ARMOR_CLASS_NAMES, BOOT_STYLE_NAMES, GEAR_GRADE_NAMES, GRADE_MASTERY_LEVEL, type GearGrade } from "../../shared/gear-grades";
+import { armorClassOf, bootStyleOf, gradeEquipmentKindOf, gradeOf, type GradeItemId } from "../../shared/grade-equipment";
+import { gradeShopItemId, gradeShopLineKey, gradeShopNeed, gradeShopOpen, masteryLevels, type GradeShopLine, type MasteryLevels } from "../../shared/grade-shop";
 import { bagSlotsWithOres } from "../../shared/ore-bag";
 import { bagSlotCapacity } from "../../shared/gems";
 import type { OreId } from "../../shared/refine";
@@ -21,7 +21,7 @@ type Result = { ok: boolean; error?: string } | undefined;
 type Ores = Readonly<Partial<Record<OreId, number>>>;
 /** One thing a piece needs, met or not: "Lv 20 Archery". */
 export type GradeNeed = { text: string; met: boolean };
-const KIND_NAMES = { bow: "Bow", sword: "Sword", staff: "Staff", helmet: "Helmet", armor: "Armor" } as const;
+const KIND_NAMES = { bow: "Bow", sword: "Sword", staff: "Staff", helmet: "Helmet", armor: "Armor", boots: "Boots" } as const;
 /** Where each craft is done. */
 const CRAFT_STATIONS: Readonly<Record<CraftSkill, string>> = {
   smithing: "The Smith", fletching: `The ${SCHOOL_DETAILS.archery.building}`, enchanting: `The ${SCHOOL_DETAILS.sorcery.building}`,
@@ -56,12 +56,13 @@ export function gradeItemRow(itemId: GradeItemId, refine = 0, needs: readonly Gr
   row.className = "smith-shop-row";
   row.setAttribute("role", "listitem");
   row.dataset.itemId = itemId;
-  const armorClass = armorClassOf(itemId), kind = KIND_NAMES[gradeEquipmentKindOf(itemId)!];
+  const armorClass = armorClassOf(itemId), bootStyle = bootStyleOf(itemId), kind = KIND_NAMES[gradeEquipmentKindOf(itemId)!];
+  const variant = armorClass ? ARMOR_CLASS_NAMES[armorClass] : bootStyle ? BOOT_STYLE_NAMES[bootStyle] : "";
   row.innerHTML = `<span class="smith-shop-art" aria-hidden="true">${itemArtMarkup(itemId)}</span>`
     + `<span class="smith-shop-copy"><strong></strong><span class="smith-shop-grade"></span><span class="smith-shop-stat"></span></span>`
     + `<div class="smith-shop-deal"></div>`;
   row.querySelector("strong")!.textContent = `${nameOf(itemId)} ${refineStars(refine)}`.trim();
-  row.querySelector(".smith-shop-grade")!.textContent = `${GEAR_GRADE_NAMES[gradeOf(itemId)!]} · ${armorClass ? `${ARMOR_CLASS_NAMES[armorClass]} ${kind}` : kind}`;
+  row.querySelector(".smith-shop-grade")!.textContent = `${GEAR_GRADE_NAMES[gradeOf(itemId)!]} · ${variant ? `${variant} ${kind}` : kind}`;
   const [stat] = itemStats(itemId, refine ? { tier: 0, refine } : 0);
   row.querySelector(".smith-shop-stat")!.textContent = [formatEquipmentStat(itemInspectionButtonLabel(stat ?? "")), armorClass ? ARMOR_CLASS_DETAILS[armorClass].perk : ""]
     .filter(Boolean).join(" · ");
@@ -174,7 +175,6 @@ export function createCraftSection(deps: CraftSectionDeps, options: { rows?: boo
   const justCrafted = new Set<string>();
   /** The grade picked on each line; the best open one until the player steps. */
   const picked = new Map<string, GearGrade>();
-  const lineKey = (line: GradeShopLine) => `${line.kind}:${"armorClass" in line ? line.armorClass : ""}`;
 
   const held = () => new Set([...deps.heldItems(), ...justCrafted]);
 
@@ -221,7 +221,7 @@ export function createCraftSection(deps: CraftSectionDeps, options: { rows?: boo
    */
   function craftLine(line: GradeShopLine, owned = held(), options: { stars?: boolean } = {}) {
     if (!skill || !CRAFT_LINES[skill].includes(line)) return null;
-    const offer = gradeCraftOffer(line, deps.masteryLevels(), skillLevel()), choice = picked.get(lineKey(line));
+    const offer = gradeCraftOffer(line, deps.masteryLevels(), skillLevel()), choice = picked.get(gradeShopLineKey(line));
     const grade = choice && offer.grades.includes(choice) ? choice : offer.grade, itemId = gradeShopItemId(line, grade);
     const action = gradeCraftAction(itemId, owned), ores = deps.ores(), materials = gradeCraftMaterials(itemId)!;
     const text = crafting === itemId ? (action === "reforge" ? "Reforging…" : "Crafting…") : action === "owned" ? "Owned"
@@ -238,7 +238,7 @@ export function createCraftSection(deps: CraftSectionDeps, options: { rows?: boo
   function gradeStepper(line: GradeShopLine, grades: readonly GearGrade[], grade: GearGrade, stars: boolean) {
     return gradeStepperElement(grades, grade, {
       label: "Grade to craft", busy: crafting !== null, name: stars ? `${GEAR_GRADE_NAMES[grade]} ${refineStars(CRAFTED_REFINE)}` : GEAR_GRADE_NAMES[grade],
-      onPick: to => { picked.set(lineKey(line), to); changed(); },
+      onPick: to => { picked.set(gradeShopLineKey(line), to); changed(); },
     });
   }
 

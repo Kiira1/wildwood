@@ -49,6 +49,7 @@ import { awardWeaponMastery, playerMasteryLevel, playerWeaponMastery, registerWe
 import { awardKillGold, playerGold, registerGold } from "./gold";
 import { registerGradeShop } from "./grade-shop";
 import { playerCraftSkill, playerCraftLevel, registerCrafting } from "./crafting";
+import { playerTool, registerTools } from "./tools";
 import { playerCard, playerGearSlots, playerCopySlots, playerCardDrop, registerGearCards } from "./gear-cards"; import { playerActiveCard, registerActiveCards } from "./active-cards"; import { playerCardAttackCap, syncCardAttackCap } from "./card-attack-cap"; import { playerBuild, playerBuildName, registerBuilds } from "./builds"; import { playerWornSkill, syncWornSkill } from "./worn-skill";
 import { awardCardDrops, playerBossCardRoll, playerCardMeter } from "./card-drops"; import { playerCardShopPurchase, registerCardShop } from "./card-shop";
 import { awardRegularEnemyLoot } from "./enemy-loot-award";
@@ -1413,7 +1414,7 @@ const spacetimedb = schema({
   dailyGemBonus,
   playerAdReward, playerChatMute,
   balanceApologyNotice,
-  playerEquipmentLock, playerItemGift, playerBowSkill, playerSwordSkill, playerStaffSkill, playerWornStaffSkill, playerEquipmentCopy, pendingEquipmentOffer, playerIgnoredDrop, playerLootSetting, playerItemRefine, playerCopyRefine, playerOre, playerRefineResult, playerCard, playerGearSlots, playerCopySlots, playerCardDrop, playerCardAttackCap, playerBossCardRoll, playerBuild, playerBuildName, playerWeaponMastery, playerMasteryLevel, playerGold, playerCardMeter, playerCardShopPurchase, playerItemCollection, playerWornSkill, playerMining, playerMinedNode, playerMiningLevel, playerWoodcutting, playerChoppedTree, playerWoodcuttingLevel, playerCraftSkill, playerCraftLevel, gemKillDaily, gemLedgerTrim,
+  playerEquipmentLock, playerItemGift, playerBowSkill, playerSwordSkill, playerStaffSkill, playerWornStaffSkill, playerEquipmentCopy, pendingEquipmentOffer, playerIgnoredDrop, playerLootSetting, playerItemRefine, playerCopyRefine, playerOre, playerRefineResult, playerCard, playerGearSlots, playerCopySlots, playerCardDrop, playerCardAttackCap, playerBossCardRoll, playerBuild, playerBuildName, playerWeaponMastery, playerMasteryLevel, playerGold, playerCardMeter, playerCardShopPurchase, playerItemCollection, playerWornSkill, playerMining, playerMinedNode, playerMiningLevel, playerWoodcutting, playerChoppedTree, playerWoodcuttingLevel, playerCraftSkill, playerCraftLevel, playerTool, gemKillDaily, gemLedgerTrim,
   mailboxLetter, mailboxReceipt, playerJoinDate, mailboxEquipment, accountDeletionRequest,
   playerOnboarding,
   regularEnemyLootCursor, regularEnemyStream, enemyDefeatBudget, playerDefeatClock, playerMapDeparture,
@@ -3843,6 +3844,7 @@ export const { myGold } = registerGold(spacetimedb);
 export const { buyShopCard, myCardShopPurchases } = registerCardShop(spacetimedb, { requireControllingPlayer, activeDuelFor });
 export const { buyGradeGear } = registerGradeShop(spacetimedb, { requireControllingPlayer, activeDuelFor, inventoryForProgress, restoreItemToProgress, writeProgressAndPresentation });
 export const { craftGradeGear, myCraftSkills } = registerCrafting(spacetimedb, { requireControllingPlayer, activeDuelFor, inventoryForProgress, restoreItemToProgress, writeProgressAndPresentation });
+export const { upgradeTool, myTools } = registerTools(spacetimedb, { requireControllingPlayer, activeDuelFor });
 export const { myGuildHall, upgradeGuildHall, useGuildHallDoor } = registerGuildHall(spacetimedb, { requireGuildPlayer, requireControllingPlayer, playerWithMotion, transitionPlayerMap, persistWorldLocation });
 export const getGuildHub = spacetimedb.procedure({ afterId: t.u64() }, t.string(), (ctx, { afterId }) => ctx.withTx(tx => {
   requireGuildConnection(tx);

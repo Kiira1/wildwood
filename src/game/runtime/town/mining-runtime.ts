@@ -10,6 +10,7 @@ import type { PlayerState } from "../types";
 import { miningScene, resetMiningScene } from "./mining-scene";
 import { ORE_COLORS } from "./ore-rock-renderer";
 import { bagFullForOres, rockOreKinds, roomForOres, type BagSpace } from "../../../../shared/ore-bag";
+import type { ToolId } from "../../../../shared/tools";
 
 type Result = { ok: boolean; error?: string } | undefined;
 type MiningBreak = { nodeId: number; starshard: boolean; rocksBroken: number };
@@ -22,6 +23,8 @@ export type MiningSource = {
   mining?: () => number;
   /** What the active cards add to mining speed (card-effects.ts), a fraction. */
   activeCardStats?: () => { miningSpeed: number };
+  /** A tool's upgrades (shared/tools.ts): the pickaxe's speed, which the server's rate check uses too. */
+  toolLevel?: (tool: ToolId) => number;
   minedNodeAt?: (nodeId: number) => number | null;
   mineNode?: (nodeId: number) => Promise<Result>;
   setOnMiningBreak?: (callback: ((result: MiningBreak) => void) | null) => void;
@@ -210,8 +213,10 @@ export function createMiningRuntime(deps: {
       const { needed, room } = roomForOres(space, rockOreKinds(rock));
       if (!room) { stop(); miningScene.blocked = "bag"; say(bagFullForOres(needed), "#ff9b91", rock.id); return; }
     }
-    const seconds = miningBreakSeconds(rock, source.mining?.() ?? 0, source.activeCardStats?.().miningSpeed ?? 0), hits = miningHits(seconds);
+    const pickaxe = source.toolLevel?.("pickaxe") ?? 0;
+    const seconds = miningBreakSeconds(rock, source.mining?.() ?? 0, source.activeCardStats?.().miningSpeed ?? 0, pickaxe), hits = miningHits(seconds);
     miningScene.target = rock.id;
+    miningScene.toolLevel = pickaxe;
     miningScene.pickaxeOut = true;
     miningScene.swingClock = Math.max(0, miningScene.swingClock - dt);
     // Walking pauses the swing; the hits made on this rock stay.

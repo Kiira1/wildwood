@@ -11,6 +11,7 @@ import { rollBossGold, rollKillGold } from "../../shared/gold";
 import { luckMultiplier } from "../../shared/luck-research";
 import { SMITH_VISIT_SECONDS, nextSmithPurchase, type MasteryPointsBySchool } from "./smith-purchases";
 import { armorMoveSpeedFactor } from "../../shared/armor-class-perks";
+import { bootMoveSpeedFactor, hasBootStat } from "../../shared/items";
 import { TAILWIND_SECONDS, TAILWIND_SPEED_BONUS, duelMasteryFold, hasTechnique } from "../../shared/mastery-techniques";
 import {
   masteryAttackRange, masteryInPlay, masteryLevel, masteryPointsForReport, weaponSchool,
@@ -145,6 +146,8 @@ type EquippedItems = {
   head: string;
   chest: string;
   weapon: string;
+  /** Graded boots from the Smith; Black Boots stay the bootsEquipped flag. */
+  feet?: string;
 };
 
 export type SimulationStateSnapshot = {
@@ -1067,6 +1070,7 @@ function effectiveStats(state: EffectiveStatsState) {
     ...state.stats,
     equippedHead: state.equipped.head,
     equippedChest: state.equipped.chest,
+    equippedFeet: state.equipped.feet ?? "",
     equippedRightHand: state.equipped.weapon,
   }, state.research, (itemId) => simulationUpgradeLevel(state, itemId));
   const strength = Math.max(0, Math.min(2, state.equipmentStrengthMultiplier));
@@ -1271,7 +1275,7 @@ function equipmentSlot(itemId: ItemId): keyof EquippedItems | null {
   if (slot === "HEAD") return "head";
   if (slot === "CHEST") return "chest";
   if (slot === "HAND") return weaponKind(itemId) === "RANGED" ? "weapon" : null;
-  return null;
+  return slot === "FEET" && hasBootStat(itemId) ? "feet" : null;
 }
 
 function equipBestAvailableItems(state: MutableSimulationState) {
@@ -1304,7 +1308,7 @@ export function startNextEquipmentUpgrade(state: MutableSimulationState) {
 function equipIfStronger(state: MutableSimulationState, itemId: ItemId) {
   const slot = equipmentSlot(itemId);
   if (!slot) return;
-  const previous = state.equipped[slot];
+  const previous = state.equipped[slot] ?? "";
   const previousPower = powerForState(state);
   state.equipped[slot] = itemId;
   if (powerForState(state) + .0001 < previousPower) state.equipped[slot] = previous;
@@ -1337,10 +1341,10 @@ function travelSeconds(
   pathingMultiplier: number,
 ) {
   const mastery = masteryFor(state);
-  // Archery's range lets it stop shorter; Light and Heavy armor change the pace.
+  // Archery's range lets it stop shorter; Light and Heavy armor and Ranger Boots change the pace.
   const approachDistance = Math.max(0, Math.hypot(to.x - from.x, to.y - from.y) - (DEFAULT_ATTACK_RANGE + masteryAttackRange(mastery)) * .72);
   const seconds = simulationTravelSeconds(approachDistance * pathingMultiplier, state.research.moveSpeed, state.bootsEquipped,
-    armorMoveSpeedFactor(state.equipped.head, state.equipped.chest));
+    armorMoveSpeedFactor(state.equipped.head, state.equipped.chest) * bootMoveSpeedFactor(state.equipped.feet));
   if (!hasTechnique(mastery, "tailwind") || state.lastKillAt === undefined) return seconds;
   // Tailwind: the first seconds after a kill are walked faster.
   const window = Math.max(0, state.lastKillAt + TAILWIND_SECONDS - state.time), boosted = 1 + TAILWIND_SPEED_BONUS;
@@ -2089,7 +2093,7 @@ function simulateTrial(
   let chasing = new Set<SiteState>();
   const recentlyDiedTo = (site: SiteState) => state.time - (diedTo.get(site.campName) ?? -Infinity) < DIED_TO_CAMP_SECONDS;
   const playerSpeed = () => 1 / Math.max(1e-9, simulationTravelSeconds(1, state.research.moveSpeed, state.bootsEquipped,
-    armorMoveSpeedFactor(state.equipped.head, state.equipped.chest)));
+    armorMoveSpeedFactor(state.equipped.head, state.equipped.chest) * bootMoveSpeedFactor(state.equipped.feet)));
   // Auto's defeat limit: too many deaths too quickly and the player farms the
   // map behind until its build has grown and some time has passed. The map
   // ahead keeps its camps (and its clear count) for the return.
@@ -2666,7 +2670,7 @@ function buildDiagnostics(
   finalPower: BalanceSimulationResult["finalPower"],
   enemyMetrics: Record<BalanceMapId, EnemyBalanceMetric[]>,
 ) {
-  const diagnostics: string[] = ["Model scope: clock starts after the completed tutorial; no map drops gear: kills pay gold (10% drop 1-3, a first boss clear 2-4) and Weapon Mastery (1 a kill, 50 a first boss clear), and the archer buys the highest bow, Light helmet and Light armor grade Mastery opens (the grades between skipped) once the gold is there. Mastery's range, Steady Aim and Hunter's Mark (as expected values), Tailwind and Light armor's speed are modeled; weapon skills (so Skill Proficiency, Volley, Rain of Arrows) are not. Boss readiness and initial full clears are strategy assumptions, not unlock requirements. Each fight counts the target and every camp mate it wakes (aggro radius, group camps, chasers from the last fight), hit by hit after armor, and health carries between fights with regeneration. A death costs the fight in progress, the death screen and the walk back from the map's arrival; a camp just died to is skipped for 10 minutes, and 5 deaths in 3 minutes send the player back a map until it has 1.2× the power and 10 minutes have passed (Auto's rules). Bosses are fought from full health with every ability turn landing; a lost boss fight is a death, retried only once the build would win it. Nobody dodges or kites; gold arrives at once, one upgrade bench, no paid skips."];
+  const diagnostics: string[] = ["Model scope: clock starts after the completed tutorial; no map drops gear: kills pay gold (10% drop 1-3, a first boss clear 2-4) and Weapon Mastery (1 a kill, 50 a first boss clear), and the archer buys the highest bow, Light helmet, Light armor and Ranger Boots grade Mastery opens (the grades between skipped) once the gold is there. Mastery's range, Steady Aim and Hunter's Mark (as expected values), Tailwind, Light armor's and Ranger Boots' speed are modeled; weapon skills (so Skill Proficiency, Volley, Rain of Arrows) are not. Boss readiness and initial full clears are strategy assumptions, not unlock requirements. Each fight counts the target and every camp mate it wakes (aggro radius, group camps, chasers from the last fight), hit by hit after armor, and health carries between fights with regeneration. A death costs the fight in progress, the death screen and the walk back from the map's arrival; a camp just died to is skipped for 10 minutes, and 5 deaths in 3 minutes send the player back a map until it has 1.2× the power and 10 minutes have passed (Auto's rules). Bosses are fought from full health with every ability turn landing; a lost boss fight is a death, retried only once the build would win it. Nobody dodges or kites; gold arrives at once, one upgrade bench, no paid skips."];
   let measuredPacingTargets = 0;
   let pacingTargetsOnTrack = 0;
   let measuredPowerTargets = 0;

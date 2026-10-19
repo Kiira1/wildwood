@@ -846,6 +846,8 @@
 .smith-sheet .smith-shop-price { display: inline-flex; align-items: center; gap: 4px; color: #ffd75e; font-size: 14px; font-weight: 900; font-variant-numeric: tabular-nums; }
 .smith-sheet .farm-start.smith-refine.smith-shop-buy { flex: none; min-width: 84px; max-width: 132px; height: auto; min-height: 36px; margin: 0; padding: 4px 12px 6px; font-size: 13px; line-height: 1.15; white-space: nowrap; }
 .smith-sheet .farm-start.smith-refine.smith-shop-buy:disabled { border-color: rgba(255,255,255,.18); background: rgba(255,255,255,.08); box-shadow: none; color: var(--muted); }
+/* A tool's button can name its skill ("Need Lv 3,000 Woodcutting"): it wraps rather than overflow. */
+.smith-sheet .tool-row .farm-start.smith-refine.smith-shop-buy { white-space: normal; }
 /* A station's Craft section (craft-section.ts): the craft's level and progress in a card like the school's, then the
    rows. In the Smith's window the card heads the shop's list and his rows carry the craft lines. */
 .smith-sheet .craft-section[hidden] { display: none; }

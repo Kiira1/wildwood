@@ -5,13 +5,16 @@ import {
 } from "./refine";
 import { ITEM_DEFINITIONS, isUpgradeableItem } from "./items";
 import { itemTier } from "./item-tier";
-import { isGradeItemId } from "./grade-equipment";
+import { bootStyleOf, isGradeItemId } from "./grade-equipment";
 
 const bows = { grade1: "starter_bow", grade2: "sky_bow", grade3: "crystal_bow", grade4: "ion_bow" } as const;
 
 describe("what can be refined", () => {
-  it("is every bow, sword, helmet and armor with a stat, and nothing else", () => {
-    for (const item of Object.values(ITEM_DEFINITIONS)) expect(isRefinableItem(item.id), item.id).toBe(isUpgradeableItem(item.id));
+  it("is every bow, sword, helmet and armor with a stat, and graded boots, and nothing else", () => {
+    for (const item of Object.values(ITEM_DEFINITIONS)) expect(isRefinableItem(item.id), item.id).toBe(isUpgradeableItem(item.id) || bootStyleOf(item.id) !== undefined);
+    // Boots refine on armor's odds, at their grade's stand-in tier, with no slot tier track.
+    expect([isUpgradeableItem("rare_ranger_boots"), refineGrade("rare_ranger_boots"), refineGrade("eternal_mystic_boots")]).toEqual([false, 2, 4]);
+    expect(refineSafeLimit("rare_warrior_boots")).toBe(4);
     // Swords refine as the weapons they are, on a bow's odds.
     expect(["wooden_sword", "sky_sword", "ion_sword"].map(refineGrade)).toEqual([1, 2, 4]);
     expect(refineSafeLimit("ion_sword")).toBe(WEAPON_SAFE_LIMITS[4]);

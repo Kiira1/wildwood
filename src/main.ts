@@ -524,7 +524,7 @@ import {
   };
   let farmConnection: 'ready' | 'recovering' | 'ended' = 'recovering';
   const farmProgress = createAutoFarmProgress({ mapId: () => currentMapId, fetchBalance: mapId => coop?.mapIndexBalance?.(mapId), base: () => ({ maxHp: player.baseMaxHp, damage: player.damage, attackRate: player.attackRate, armor: player.armor, regen: player.regen }),
-    equipment: () => ({ equippedHead: inventory.equippedHead, equippedChest: inventory.equippedChest, equippedRightHand: inventory.equippedRightHand, equippedLeftHand: inventory.equippedLeftHand }),
+    equipment: () => ({ equippedHead: inventory.equippedHead, equippedChest: inventory.equippedChest, equippedFeet: inventory.equippedFeet, equippedRightHand: inventory.equippedRightHand, equippedLeftHand: inventory.equippedLeftHand }),
     weaponSkills: () => coop?.weaponSkills?.(inventory.equippedRightHand || inventory.equippedLeftHand), research: () => researchRanks(), upgradeLevel: itemId => coop?.itemLevel?.(itemId) ?? 0, rewardMultiplier: () => researchRewardMultiplier(), minAttackInterval: () => coop?.attackCapInPlay?.(), criticalChance: () => researchCriticalChance(), criticalMultiplier: (extra = 0) => researchCriticalDamageMultiplier(soulDimension.critDamage(), (player.critRating ?? 0) + extra),
     reflectOnly: () => Boolean(coop?.prestigeChallenge?.()?.active), mapBoss: () => proceduralBoss.boss() ?? bossStateForMap(bosses, currentMapId), portalUnlocked: portal => mapController.portalIsUnlocked(portal as never), portals: () => { const config = MAP_CONFIG[currentMapId]; return [config.portal, "secondaryPortal" in config ? config.secondaryPortal : null]; } });
   const autoFarm = createAutoFarmController({
@@ -590,7 +590,7 @@ import {
   const research = createResearchController({
     prestigeLevel: () => coop?.prestigeStatGainInPlay?.() === false ? 0 : coop?.prestige?.()?.level ?? 0,
     guildQuestBonus: () => coop?.dailyQuests?.()?.bonus ?? 1,
-    prestigePerks: () => coop?.prestigePerks?.(), cards: () => coop?.activeCardStats?.(),
+    prestigePerks: () => coop?.prestigePerks?.(), cards: () => coop?.activeCardStats?.(), equippedFeet: () => inventory.equippedFeet, itemLevel: itemId => coop?.itemLevel?.(itemId) ?? 0,
     player,
     getRanks: () => coop?.researchInPlay?.(),
     isDueling,
@@ -661,7 +661,7 @@ import {
     equippedHead: () => inventory.equippedHead,
     equippedHeadUpgradeLevel: () => coop?.itemLevel?.(inventory.equippedHead) ?? 0,
     equippedChest: () => inventory.equippedChest,
-    equippedChestUpgradeLevel: () => coop?.itemLevel?.(inventory.equippedChest) ?? 0,
+    equippedChestUpgradeLevel: () => coop?.itemLevel?.(inventory.equippedChest) ?? 0, equippedFeet: () => inventory.equippedFeet, equippedFeetUpgradeLevel: () => coop?.itemLevel?.(inventory.equippedFeet) ?? 0,
     healthMultiplierBonus,
     minAttackInterval: () => coop?.attackCapInPlay?.(),
     reflectOnly: () => Boolean(coop?.prestigeChallenge?.()?.active),
@@ -739,7 +739,7 @@ import {
         regen: player.regen, critChance: research.criticalChance(), critMultiplier: research.criticalDamageMultiplier(soulDimension.critDamage()),
       }, {
         equippedHead: equipment.equippedHead,
-        equippedChest: equipment.equippedChest,
+        equippedChest: equipment.equippedChest, equippedFeet: equipment.equippedFeet,
         equippedRightHand: equipment.equippedRightHand,
         equippedLeftHand: equipment.equippedLeftHand, ...(compare ? {} : { activeCards: coop?.activeCardIds?.() }),
       }),

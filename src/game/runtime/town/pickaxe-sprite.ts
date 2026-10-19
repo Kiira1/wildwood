@@ -12,12 +12,15 @@ export const PICKAXE_OVERRIDES: Readonly<Record<string, WorldSpritePresentation>
 const OUTLINE = "#14100c";
 const WOOD = "#9b6a3f", WOOD_LIGHT = "#cf9a62", WRAP = "#5a3b22";
 const STEEL = "#c7d0d6", STEEL_DARK = "#8995a0";
+/** A tool head's metal: its lit face and its shade. The Worn tool's is plain steel; upgrades recolour it (tool-sprites.ts). */
+export type ToolMetal = { light: string; dark: string; edge: string };
+export const PLAIN_STEEL: ToolMetal = { light: STEEL, dark: STEEL_DARK, edge: "#eef2f4" };
 
 /**
  * Paints the pickaxe into a 118 × 59 canvas (the wooden sword's size): the grip on the left, the head at the far end,
  * about as long overall as the sword.
  */
-export function paintPickaxe(c: CanvasRenderingContext2D) {
+export function paintPickaxe(c: CanvasRenderingContext2D, metal: ToolMetal = PLAIN_STEEL) {
   c.lineJoin = "round"; c.lineCap = "round";
   const line = (width: number, color: string, from: [number, number], to: [number, number]) => {
     c.lineWidth = width; c.strokeStyle = color;
@@ -35,22 +38,22 @@ export function paintPickaxe(c: CanvasRenderingContext2D) {
     c.quadraticCurveTo(80, 47, 77, 38); c.lineTo(77, 22); c.quadraticCurveTo(80, 13, 72, 4); c.closePath();
   };
   head(); c.lineWidth = 6; c.strokeStyle = OUTLINE; c.stroke();
-  head(); c.fillStyle = STEEL_DARK; c.fill();
-  c.save(); head(); c.clip(); c.fillStyle = STEEL; c.fillRect(60, 0, 50, 30); c.restore();
+  head(); c.fillStyle = metal.dark; c.fill();
+  c.save(); head(); c.clip(); c.fillStyle = metal.light; c.fillRect(60, 0, 50, 30); c.restore();
   // The eye where the haft goes through, lit on top like the head.
   c.fillStyle = OUTLINE; c.fillRect(74, 20, 17, 20);
-  c.fillStyle = STEEL_DARK; c.fillRect(76, 22, 13, 16);
-  c.fillStyle = STEEL; c.fillRect(76, 22, 13, 7);
+  c.fillStyle = metal.dark; c.fillRect(76, 22, 13, 16);
+  c.fillStyle = metal.light; c.fillRect(76, 22, 13, 7);
 }
 
 /** The pickaxe as an image the player's drawing can hold, or nothing where there is no canvas (tests). */
-export function createPickaxeSprite(): HTMLImageElement | undefined {
+export function createPickaxeSprite(metal: ToolMetal = PLAIN_STEEL): HTMLImageElement | undefined {
   if (typeof document === "undefined" || typeof Image === "undefined") return undefined;
   const canvas = document.createElement("canvas");
   canvas.width = 118; canvas.height = 59;
   const context = canvas.getContext?.("2d");
   if (!context) return undefined;
-  paintPickaxe(context);
+  paintPickaxe(context, metal);
   const image = new Image();
   image.src = canvas.toDataURL("image/png");
   return image;

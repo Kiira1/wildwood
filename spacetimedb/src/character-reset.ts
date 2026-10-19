@@ -27,6 +27,7 @@ import { removeMiningData } from "./mining";
 import { removeWoodcuttingData } from "./woodcutting";
 import { removeWeaponMastery } from "./weapon-mastery";
 import { removeCraftSkills } from "./crafting";
+import { removeTools } from "./tools";
 
 export function publishPlayerDeathFrame(ctx: any, activePlayer: any) {
   if (boundedMapPopulation(ctx, activePlayer.mapId) < 2) return;
@@ -111,6 +112,7 @@ export function resetWholeSave(ctx: any, activePlayer: any) {
   removeWoodcuttingData(ctx, ctx.sender); // So is Woodcutting, and the hatchet with it.
   removeWeaponMastery(ctx, ctx.sender);
   removeCraftSkills(ctx, ctx.sender);
+  removeTools(ctx, ctx.sender);
   resetProgressToDefaults(ctx, activePlayer);
 }
 

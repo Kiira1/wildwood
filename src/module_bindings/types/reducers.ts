@@ -192,6 +192,7 @@ import UnlockSecondUpgradeSlotReducer from "../unlock_second_upgrade_slot_reduce
 import UnlockThirdUpgradeSlotReducer from "../unlock_third_upgrade_slot_reducer";
 import UpdateMovementStateReducer from "../update_movement_state_reducer";
 import UpgradeGuildHallReducer from "../upgrade_guild_hall_reducer";
+import UpgradeToolReducer from "../upgrade_tool_reducer";
 import UseFreePrestigeRespecReducer from "../use_free_prestige_respec_reducer";
 import UseGuildHallDoorReducer from "../use_guild_hall_door_reducer";
 import UseTownDoorReducer from "../use_town_door_reducer";
@@ -382,6 +383,7 @@ export type UnlockSecondUpgradeSlotParams = __Infer<typeof UnlockSecondUpgradeSl
 export type UnlockThirdUpgradeSlotParams = __Infer<typeof UnlockThirdUpgradeSlotReducer>;
 export type UpdateMovementStateParams = __Infer<typeof UpdateMovementStateReducer>;
 export type UpgradeGuildHallParams = __Infer<typeof UpgradeGuildHallReducer>;
+export type UpgradeToolParams = __Infer<typeof UpgradeToolReducer>;
 export type UseFreePrestigeRespecParams = __Infer<typeof UseFreePrestigeRespecReducer>;
 export type UseGuildHallDoorParams = __Infer<typeof UseGuildHallDoorReducer>;
 export type UseTownDoorParams = __Infer<typeof UseTownDoorReducer>;

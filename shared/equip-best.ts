@@ -7,6 +7,8 @@ import {
 import {
   effectivePlayerPowerStats, unroundedPlayerPower, type PlayerPowerProgress, type PlayerPowerResearch,
 } from "./player-power";
+import { bootStyleOf, gradeOf } from "./grade-equipment";
+import { gradeIndex, type BootStyle } from "./gear-grades";
 
 /**
  * Which of two pieces of gear is better in a slot.
@@ -15,7 +17,7 @@ import {
  * auto equip (gear new in the bag), so the
  * two never disagree about what "better" means. Equipment bonuses are
  * additive, so each slot is scored on its own: the player's power with the
- * candidate in that slot. Boots add no power; only Black Boots' speed counts.
+ * candidate in that slot. Boots go by their own score (bootsScore), not power.
  * A weapon's skills count too, multiplied into its damage (see
  * equipComparisonPower), so of two copies of one weapon the better roll wins.
  * Active cards do not: they stay on whatever is worn.
@@ -69,8 +71,21 @@ export function equippedInSlot(loadout: EquipLoadout, slot: ItemSlot) {
 
 /** How good a loadout is for one slot's comparison. */
 export function equipSlotScore<T extends EquipLoadout>(slot: ItemSlot, loadout: T, power: (candidate: T) => number) {
-  if (slot === "FEET") return loadout.equippedFeet === BLACK_BOOTS ? BLACK_BOOTS_SPEED_BONUS : 0;
+  if (slot === "FEET") return bootsScore(loadout);
   return power(loadout);
+}
+
+const STYLE_WEAPON: Readonly<Record<BootStyle, WeaponKind>> = { ranger: "RANGED", warrior: "MELEE", mystic: "MAGIC" };
+
+/**
+ * Boots' score: graded boots above Black Boots' speed, the style of the weapon in hand above the others, then the
+ * higher grade. Their stats differ in kind (speed, armor, skill chance), so power cannot rank them.
+ */
+export function bootsScore(loadout: EquipLoadout) {
+  const feet = loadout.equippedFeet, style = bootStyleOf(feet), grade = gradeOf(feet);
+  if (!style || !grade) return feet === BLACK_BOOTS ? BLACK_BOOTS_SPEED_BONUS : 0;
+  const matches = STYLE_WEAPON[style] === weaponKind(equippedInSlot(loadout, "HAND"));
+  return 100 + (matches ? 100 : 0) + gradeIndex(grade);
 }
 
 /** Keep an equipped item on ties, but fill an empty slot even at zero power. */

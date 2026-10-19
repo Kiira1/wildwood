@@ -11,7 +11,7 @@ import { itemTier } from "../../shared/item-tier";
 import type { GradeItemId } from "../../shared/grade-equipment";
 import type { GearGrade } from "../../shared/gear-grades";
 import {
-  GRADE_SHOP_LINES, gradeShopItemId, gradeShopOffer, gradeShopOpen, gradeShopPrice, masteryLevels, type GradeShopLine, type MasteryLevels,
+  GRADE_SHOP_LINES, gradeShopItemId, gradeShopLineKey, gradeShopOffer, gradeShopOpen, gradeShopPrice, masteryLevels, type MasteryLevels,
 } from "../../shared/grade-shop";
 import { CRAFT_LINES } from "../../shared/grade-craft";
 import type { WeaponSchool } from "../../shared/weapon-mastery";
@@ -20,6 +20,7 @@ import {
   bagFullFor, craftDepsFor, craftStationHint, createCraftSection, gradeItemRow, gradeStepperElement, heldItemsFor, masteryNeed, nextNeed, offerButton, offerLine, ownedRow,
   type CraftCoop, type CraftSectionDeps,
 } from "./craft-section";
+import { mountToolSection, toolDepsFor, type ToolSectionDeps } from "./tool-section";
 
 type Result = { ok: boolean; error?: string } | undefined;
 type RefineResult = { itemId: string; copyId: bigint; fromLevel: number; toLevel: number; succeeded: boolean };
@@ -27,8 +28,8 @@ type RefineResult = { itemId: string; copyId: bigint; fromLevel: number; toLevel
 export type SmithItem = { itemId: string; copyId: bigint; equipped: boolean };
 
 const key = (item: { itemId: string; copyId: bigint }) => `${item.itemId}:${item.copyId}`;
-/** The bag's filters for the gear the Smith works on (boots are not refined). */
-const SMITH_FILTERS = [["ALL", "All"], ["HAND", "Weapons"], ["CHEST", "Armor"], ["HEAD", "Helmets"]] as const;
+/** The bag's filters for the gear the Smith works on. */
+const SMITH_FILTERS = [["ALL", "All"], ["HAND", "Weapons"], ["CHEST", "Armor"], ["HEAD", "Helmets"], ["FEET", "Boots"]] as const;
 const nameOf = (itemId: string) => itemInspectionButtonLabel(itemDisplayName(itemId));
 // The HUD's gold coin, beside every price in gold.
 const GOLD_COIN = `<svg class="smith-coin" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8.5" fill="#e3b23c" stroke="#7a4f12" stroke-width="1.5"/><circle cx="10" cy="10" r="5.5" fill="none" stroke="#a8741d" stroke-width="1.2"/></svg>`;
@@ -75,6 +76,7 @@ export function createSmithController(deps: {
   buyGear?: (itemId: string, expectedPrice: number) => Promise<Result>;
   /** Smithing: swords and Medium and Heavy armor crafted from ore, offered on the shop's rows (craft-section.ts). */
   craft?: CraftSectionDeps;
+  tools?: ToolSectionDeps;
 }) {
   const dialog = document.createElement("dialog");
   dialog.className = "farm-sheet quest-sheet smith-sheet";
@@ -113,6 +115,7 @@ export function createSmithController(deps: {
   // Smithing's level sits at the top of the shop's list; each row it makes takes a Craft line.
   const crafts = deps.craft ? createCraftSection(deps.craft, { rows: false, onChange: () => { if (dialog.open) render(); } }) : null;
   if (crafts) dialog.querySelector(".smith-shop-head")!.after(crafts.element);
+  const tools = mountToolSection(dialog, deps.tools, () => { if (dialog.open) render(); });
   /** The gear shown, as the bag filters it: everything, or one kind. */
   let shown: (typeof SMITH_FILTERS)[number][0] = "ALL";
   for (const [kind, label] of SMITH_FILTERS) {
@@ -135,7 +138,6 @@ export function createSmithController(deps: {
   const justBought = new Set<string>();
   /** The grade picked to buy on each line; the best the gold covers until the player steps. */
   const shopPicked = new Map<string, GearGrade>();
-  const lineKey = (line: GradeShopLine) => `${line.kind}:${"armorClass" in line ? line.armorClass : ""}`;
 
   function choices() {
     return deps.items().filter(item => isRefinableItem(item.itemId) && (shown === "ALL" || itemDefinition(item.itemId)?.slot === shown))
@@ -146,7 +148,7 @@ export function createSmithController(deps: {
 
   function renderFocus(item: SmithItem | undefined) {
     if (!item) {
-      focus.innerHTML = `<p class="smith-empty">Bring the Smith a weapon, helmet or armor to refine.</p>`;
+      focus.innerHTML = `<p class="smith-empty">Bring the Smith a weapon, helmet, armor or boots to refine.</p>`;
       return;
     }
     const level = deps.refineLevel(item.itemId, item.copyId), next = level + 1, tier = deps.slotTier(item.itemId);
@@ -204,6 +206,7 @@ export function createSmithController(deps: {
 
   function render() {
     crafts?.render("smithing");
+    tools?.render();
     const items = choices();
     if (!selected || !items.some(item => key(item) === selected)) selected = items[0] ? key(items[0]) : null;
     const chosen = items.find(item => key(item) === selected);
@@ -282,13 +285,13 @@ export function createSmithController(deps: {
         deal.append(made!.line);
         return row;
       }
-      const offer = gradeShopOffer(line, held, levels, Number(deps.gold?.() ?? 0n)), choice = shopPicked.get(lineKey(line));
+      const offer = gradeShopOffer(line, held, levels, Number(deps.gold?.() ?? 0n)), choice = shopPicked.get(gradeShopLineKey(line));
       const grade = choice && offer.grades.includes(choice) ? choice : offer.grade, itemId = gradeShopItemId(line, grade);
       // An open offer says what comes next; a locked one, the Mastery it waits for.
       const { row, deal } = offer.owned ? ownedRow(itemId)
         : gradeItemRow(itemId, 0, offer.open ? nextNeed(offer.next, next => masteryNeed(next, levels)) : masteryNeed(itemId, levels));
       const stepper = offer.open ? gradeStepperElement(offer.grades, grade, {
-        label: "Grade to buy", busy: buyingGear !== null, onPick: to => { shopPicked.set(lineKey(line), to); render(); },
+        label: "Grade to buy", busy: buyingGear !== null, onPick: to => { shopPicked.set(gradeShopLineKey(line), to); render(); },
       }) : null;
       // What Smithing does not make says where it is crafted, under its price.
       if (!offer.owned) deal.append(buyLine(itemId, levels, made || !crafts ? "" : craftStationHint(itemId), stepper));
@@ -463,7 +466,7 @@ export function createSmithRuntime(deps: {
   inTown: () => boolean;
 }) {
   const { inventory } = deps;
-  const worn = () => new Set([inventory.equippedHead, inventory.equippedChest, inventory.equippedRightHand, inventory.equippedLeftHand]);
+  const worn = () => new Set([inventory.equippedHead, inventory.equippedChest, inventory.equippedFeet ?? "", inventory.equippedRightHand, inventory.equippedLeftHand]);
   const smith = createSmithController({
     inTown: deps.inTown, clearInput: deps.clearInput, showMessage: deps.showMessage,
     items: () => {
@@ -492,6 +495,7 @@ export function createSmithRuntime(deps: {
     bagFull: () => bagFullFor(deps.coop(), inventory),
     buyGear: async (itemId, expectedPrice) => deps.coop()?.buyGradeGear?.(itemId, expectedPrice) ?? { ok: false, error: "Not Connected" },
     craft: craftDepsFor(deps.coop, inventory, deps.showMessage),
+    tools: toolDepsFor(deps.coop, deps.showMessage),
   });
   let listening = false;
   return {

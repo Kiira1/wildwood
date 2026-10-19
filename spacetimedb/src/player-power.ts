@@ -13,9 +13,9 @@ import { playerPowerForStats, effectivePlayerPowerStats, effectivePlayerPower, l
 import { withSoulStats, soulStatsFor, soulAttackCapFor } from "./soul-dimension";
 import { critPowerFields } from "./crit-power";
 import { researchInPlay } from "./bonus-toggles";
-import { itemLevelFor, equippedRightHandForProgress, equippedLeftHandForProgress, equippedHeadForProgress, equippedChestForProgress, equipmentPresentationForProgress } from "./progress-helpers";
+import { itemLevelFor, equippedRightHandForProgress, equippedLeftHandForProgress, equippedHeadForProgress, equippedChestForProgress, equippedFeetForProgress, equipmentPresentationForProgress } from "./progress-helpers";
 import { readPlayerProgress } from "./wide-stats";
-import { equipmentDamage, equipmentRegeneration } from "../../shared/items";
+import { bootArmorFactor, equipmentDamage, equipmentRegeneration, hasBootStat } from "../../shared/items";
 import { updateSnapshotRow, insertSnapshotRow } from "./snapshot-row-writes";
 import { effectiveMovementSpeedForProgress } from "./player-speed";
 import { syncPlayerMotionIdentity, playerWithMotion } from "./presence-runtime";
@@ -122,7 +122,10 @@ export function researchedDamage(ctx: any, identity: any, damage: number, knownP
 
 export function researchedArmor(ctx: any, identity: any, armor: number) {
   const rank = researchInPlay(ctx, identity)?.precision ?? 0;
-  return (armor + (soulStatsFor(ctx, identity)?.armor ?? 0)) * (1 + rank * .02) * cardStatFactors(activeCardTotalsFor(ctx, identity)).armor;
+  // Warrior Boots multiply armor before research, as player-power.ts orders it.
+  const progress = readPlayerProgress(ctx, identity), feet = progress ? equippedFeetForProgress(progress) : "";
+  const boots = hasBootStat(feet) ? bootArmorFactor(feet, itemLevelFor(ctx, identity, feet)) : 1;
+  return (armor + (soulStatsFor(ctx, identity)?.armor ?? 0)) * boots * (1 + rank * .02) * cardStatFactors(activeCardTotalsFor(ctx, identity)).armor;
 }
 
 export function researchedRegen(ctx: any, identity: any, regen: number) {

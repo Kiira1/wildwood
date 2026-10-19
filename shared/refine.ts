@@ -1,4 +1,4 @@
-import { canonicalItemId, isUpgradeableItem, itemDefinition } from "./items";
+import { canonicalItemId, hasBootStat, isUpgradeableItem, itemDefinition } from "./items";
 import { itemTier } from "./item-tier";
 import { gradeOf } from "./grade-equipment";
 import { GRADE_ITEM_TIER } from "./gear-grades";
@@ -65,15 +65,15 @@ const HIGH_ODDS: Readonly<Record<number, number>> = {
   21: .0015, 22: .0012, 23: .001, 24: .0008, 25: .0007, 26: .0006, 27: .0005, 28: .0004, 29: .00035, 30: .0003,
 };
 
-/** Equipment with a stat to refine: every bow, sword, helmet and armor with a bonus. Cosmetics and the starter stone have none. */
 /** The ore a piece of gear gives back when destroyed: one of its refine grade's ore. Null for anything else. */
 export function salvageOre(itemId: unknown): OreId | null {
   const grade = refineGrade(itemId);
   return grade ? GRADE_ORES[grade] : null;
 }
 
+/** Equipment with a stat to refine: every bow, sword, helmet and armor with a bonus, and graded boots. */
 export function isRefinableItem(itemId: unknown) {
-  return isUpgradeableItem(itemId);
+  return isUpgradeableItem(itemId) || hasBootStat(itemId);
 }
 
 export function refineGrade(itemId: unknown): RefineGrade | null {

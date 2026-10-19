@@ -17,6 +17,8 @@ import { extraCopiesOf } from "./equipment-copies";
 import { bagCapacityFor } from "./bag-capacity";
 import { luckInPlay } from "./luck-research";
 import { bagFullForOres, rockOreKinds, roomForOres } from "../../shared/ore-bag";
+import { toolBonusYield } from "../../shared/tools";
+import { toolLevelFor } from "./tools";
 
 /**
  * Mining (shared/mining.ts): a player's Mining stat, the pickaxe the Smith gives them, and the rocks they broke
@@ -176,13 +178,13 @@ export function mineNodeFor(ctx: Ctx, args: { nodeId: number }, deps: MiningDeps
   pruneMinedNodes(ctx, ctx.sender);
   if (nodeBareFor(ctx, ctx.sender, node)) throw new SenderError("That rock is still growing back.");
   // Mining Speed, Ore Find and Starshard cards in the worn gear.
-  const cards = cardStatFactors(activeCardTotalsFor(ctx, ctx.sender));
-  if (microsSince(ctx, mining.lastBreakAt) < miningBreakSeconds(node, mining.mining, cards.miningSpeed) * MINING_RATE_SLACK * 1_000_000) {
+  const cards = cardStatFactors(activeCardTotalsFor(ctx, ctx.sender)), pickaxe = toolLevelFor(ctx, ctx.sender, "pickaxe");
+  if (microsSince(ctx, mining.lastBreakAt) < miningBreakSeconds(node, mining.mining, cards.miningSpeed, pickaxe) * MINING_RATE_SLACK * 1_000_000) {
     throw new SenderError("Still mining.");
   }
   // Mining Luck raises a Mysterious rock's Starshard chance; other rocks hold none, so no read.
   const miningLuck = node.kind === "mysterious" ? luckInPlay(ctx, ctx.sender).miningLuck : 0;
-  const ores = miningYield(node, ctx.random(), cards, cards.oreFind > 0 ? ctx.random() : 1, miningLuck);
+  const ores = miningYield(node, ctx.random(), cards, cards.oreFind > 0 ? ctx.random() : 1, miningLuck, pickaxe > 0 ? toolBonusYield(pickaxe, ctx.random()) : 0);
   for (const [oreId, count] of Object.entries(ores)) addOres(ctx, ctx.sender, oreId as OreId, count ?? 0);
   ctx.db.playerMining.identity.update({
     ...mining,

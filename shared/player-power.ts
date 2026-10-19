@@ -2,6 +2,7 @@ import { CHALLENGE_ABSOLUTE_MIN_INTERVAL } from "./prestige-challenge";
 import { DEFAULT_ATTACK_INTERVAL, PLAYER_BASE_DAMAGE, PLAYER_BASE_HP, PLAYER_BASE_REGEN } from "./rules";
 import { cardStatFactors, cardTotals, type CardTotals } from "./card-effects";
 import {
+  bootArmorFactor,
   equipmentDamageFactor,
   equipmentMaxHealthMultiplierBonus,
   equipmentRegenerationMultiplierBonus,
@@ -45,6 +46,8 @@ export const PLAYER_STARTING_POWER: Readonly<PlayerPowerStats> = Object.freeze({
 export type PlayerPowerProgress = PlayerPowerStats & {
   equippedHead?: string;
   equippedChest?: string;
+  /** Boots: Warrior Boots raise armor (items.ts bootArmorFactor). */
+  equippedFeet?: string;
   equippedRightHand?: string;
   equippedLeftHand?: string;
   /** The active cards in play (active-cards.ts); none is no card factor. */
@@ -91,12 +94,14 @@ export function preparePlayerPowerStats(
   const weaponLevel = itemUpgradeLevel(weaponItem);
   const headLevel = itemUpgradeLevel(headItem);
   const chestLevel = itemUpgradeLevel(chestItem);
+  const feetItem = loadout.equippedFeet || "";
   // Vitality multiplies saved health live, like every other research (0.883).
   // It used to be baked into the saved number by the client at each rank-up,
   // which the server stopped accepting in 0.695, so ranks since did nothing.
   const health = 1 + equipmentMaxHealthMultiplierBonus(headItem, chestItem, headLevel, chestLevel);
   const damage = equipmentDamageFactor(weaponItem, headItem, chestItem, weaponLevel, headLevel, chestLevel);
   const regen = 1 + equipmentRegenerationMultiplierBonus(headItem, chestItem, headLevel, chestLevel);
+  const armorGear = feetItem ? bootArmorFactor(feetItem, itemUpgradeLevel(feetItem)) : 1;
   const vitality = 1 + researchRank(research?.vitality) * .02;
   const warcraft = 1 + researchRank(research?.warcraft) * .02;
   const precision = 1 + researchRank(research?.precision) * .02;
@@ -107,7 +112,7 @@ export function preparePlayerPowerStats(
     maxHp: progress.maxHp * health * vitality * cards.maxHp,
     damage: progress.damage * damage * warcraft * cards.damage,
     attackRate: Math.max(CHALLENGE_ABSOLUTE_MIN_INTERVAL, progress.attackRate),
-    armor: progress.armor * precision * cards.armor,
+    armor: progress.armor * armorGear * precision * cards.armor,
     regen: progress.regen * regen * regeneration * cards.regen,
     // Crit passes through as given (it is worked out from research, perks, the soul and the rating elsewhere).
     ...(progress.critChance !== undefined ? { critChance: progress.critChance } : {}),

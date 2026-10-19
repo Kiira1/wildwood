@@ -1,4 +1,4 @@
-import { CAMPAIGN_ITEM_PRESENTATIONS, GRADE_ITEM_PRESENTATIONS, gradeItemSkin, staffPresentation } from "./campaign-item-presentation";
+import { CAMPAIGN_ITEM_PRESENTATIONS, GRADE_ITEM_PRESENTATIONS, gradeBootLegs, gradeItemSkin, staffPresentation } from "./campaign-item-presentation";
 export { GRADE_SKINS, gradeItemSkin, gradeSkinForRefine, type GradeSkin } from "./campaign-item-presentation";
 import { applyGalaxyArtTexture, galaxyIconOutlineVariable, skyFinishCssFallback, skyFinishCssVariable, type SkyFinish } from "./galaxy-finish";
 import type { WeaponCategory } from "./equipment-alignment";
@@ -308,7 +308,8 @@ export function itemPresentation(itemId: string | undefined, refineLevel: unknow
     skinned = {
       ...presentation,
       inventory: { ...presentation.inventory, source: skin },
-      world: presentation.world?.kind === "SPRITE" ? { ...presentation.world, source: skin } : presentation.world,
+      world: presentation.world?.kind === "SPRITE" ? { ...presentation.world, source: skin }
+        : presentation.world?.kind === "LEGS" ? gradeBootLegs(itemId!, refineLevel) : presentation.world,
     };
     skinnedPresentations.set(skin, skinned);
   }

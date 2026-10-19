@@ -52,29 +52,32 @@ describe("the Smith's graded gear", () => {
     equipped: { head: BASIC_PAPER_HAT, chest: "", weapon: STARTER_STONE }, ownedItems: new Set([BASIC_PAPER_HAT, STARTER_STONE]) });
 
   it("buys what the Smith offers on each line while gold allows, cheapest first, and wears the set", () => {
-    const state = smith(40, 0), recorded = vi.fn();
+    const state = smith(50, 0), recorded = vi.fn();
     buyGradeGear(state, recorded);
-    expect(state.equipped).toEqual({ weapon: "crude_bow", chest: "crude_light_armor", head: "crude_light_helmet" });
-    expect(state.gold).toBe(40 - 3 * GRADE_GOLD_PRICE.crude);
-    expect(recorded).toHaveBeenCalledTimes(3);
-    expect(gradeShopLinesFor(state.equipped.weapon)).toEqual([{ kind: "bow" }, { kind: "armor", armorClass: "light" }, { kind: "helmet", armorClass: "light" }]);
+    expect(state.equipped).toEqual({ weapon: "crude_bow", chest: "crude_light_armor", head: "crude_light_helmet", feet: "crude_ranger_boots" });
+    expect(state.gold).toBe(50 - 4 * GRADE_GOLD_PRICE.crude);
+    expect(recorded).toHaveBeenCalledTimes(4);
+    expect(gradeShopLinesFor(state.equipped.weapon)).toEqual([
+      { kind: "bow" }, { kind: "armor", armorClass: "light" }, { kind: "helmet", armorClass: "light" }, { kind: "boots", bootStyle: "ranger" },
+    ]);
+    expect(gradeShopLinesFor("crude_sword").at(-1)).toEqual({ kind: "boots", bootStyle: "warrior" });
   });
 
   it("waits for Mastery to open a grade, then buys the highest it opens and affords, skipping those between", () => {
     const state = smith(10_000, 0);
     buyGradeGear(state, vi.fn());
     expect(state.equipped.weapon).toBe("crude_bow");
-    expect(state.gold).toBe(10_000 - 3 * GRADE_GOLD_PRICE.crude);
+    expect(state.gold).toBe(10_000 - 4 * GRADE_GOLD_PRICE.crude);
     state.masteryPoints.archery = masteryPointsForLevel(5);
     buyGradeGear(state, vi.fn());
-    expect(state.equipped).toEqual({ weapon: "rare_bow", chest: "rare_light_armor", head: "rare_light_helmet" });
+    expect(state.equipped).toEqual({ weapon: "rare_bow", chest: "rare_light_armor", head: "rare_light_helmet", feet: "rare_ranger_boots" });
     expect([...state.ownedItems].filter(id => id.startsWith("common_"))).toEqual([]);
-    expect(state.gold).toBe(10_000 - 3 * GRADE_GOLD_PRICE.crude - 3 * GRADE_GOLD_PRICE.rare);
+    expect(state.gold).toBe(10_000 - 4 * GRADE_GOLD_PRICE.crude - 4 * GRADE_GOLD_PRICE.rare);
   });
 
   it("on a tie, buys for the line furthest behind first", () => {
     const state = smith(GRADE_GOLD_PRICE.rare, 0);
-    for (const itemId of ["fine_bow", "crude_light_armor", "fine_light_helmet"]) state.ownedItems.add(itemId);
+    for (const itemId of ["fine_bow", "crude_light_armor", "fine_light_helmet", "fine_ranger_boots"]) state.ownedItems.add(itemId);
     state.masteryPoints.archery = masteryPointsForLevel(5);
     buyGradeGear(state, vi.fn());
     expect(state.ownedItems.has("rare_light_armor")).toBe(true);
@@ -85,7 +88,7 @@ describe("the Smith's graded gear", () => {
     const state = smith(GRADE_GOLD_PRICE.rare - 1, 0);
     state.ownedItems.add("crude_bow");
     state.equipped.weapon = "crude_bow";
-    for (const itemId of ["rare_light_armor", "rare_light_helmet"]) state.ownedItems.add(itemId);
+    for (const itemId of ["rare_light_armor", "rare_light_helmet", "rare_ranger_boots"]) state.ownedItems.add(itemId);
     state.masteryPoints.archery = masteryPointsForLevel(5);
     buyGradeGear(state, vi.fn());
     expect(state.equipped.weapon).toBe("superior_bow");

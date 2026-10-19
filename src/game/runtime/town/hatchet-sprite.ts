@@ -1,5 +1,5 @@
 import type { WorldSpritePresentation } from "../../item-presentation";
-import { PICKAXE_PRESENTATION } from "./pickaxe-sprite";
+import { PICKAXE_PRESENTATION, PLAIN_STEEL, type ToolMetal } from "./pickaxe-sprite";
 
 /**
  * The Smith's hatchet, held while chopping in place of the player's weapon, as the pickaxe is held while mining: not
@@ -10,10 +10,9 @@ export const HATCHET_OVERRIDES: Readonly<Record<string, WorldSpritePresentation>
 
 const OUTLINE = "#14100c";
 const WOOD = "#9b6a3f", WOOD_LIGHT = "#cf9a62", WRAP = "#5a3b22";
-const STEEL = "#c7d0d6", STEEL_DARK = "#8995a0", EDGE = "#eef2f4";
 
 /** Paints the hatchet into a 118 × 59 canvas (the wooden sword's size): the grip on the left, a broad bit at the far end. */
-export function paintHatchet(c: CanvasRenderingContext2D) {
+export function paintHatchet(c: CanvasRenderingContext2D, metal: ToolMetal = PLAIN_STEEL) {
   c.lineJoin = "round"; c.lineCap = "round";
   const line = (width: number, color: string, from: [number, number], to: [number, number]) => {
     c.lineWidth = width; c.strokeStyle = color;
@@ -31,21 +30,21 @@ export function paintHatchet(c: CanvasRenderingContext2D) {
     c.lineTo(84, 40); c.lineTo(70, 40); c.closePath();
   };
   head(); c.lineWidth = 6; c.strokeStyle = OUTLINE; c.stroke();
-  head(); c.fillStyle = STEEL_DARK; c.fill();
-  c.save(); head(); c.clip(); c.fillStyle = STEEL; c.fillRect(60, 0, 50, 29); c.restore();
+  head(); c.fillStyle = metal.dark; c.fill();
+  c.save(); head(); c.clip(); c.fillStyle = metal.light; c.fillRect(60, 0, 50, 29); c.restore();
   // The ground edge, bright along the bit.
-  c.lineWidth = 2.5; c.strokeStyle = EDGE;
+  c.lineWidth = 2.5; c.strokeStyle = metal.edge;
   c.beginPath(); c.moveTo(93, 15); c.quadraticCurveTo(102, 27, 93, 50); c.stroke();
 }
 
 /** The hatchet as an image the player's drawing can hold, or nothing where there is no canvas (tests). */
-export function createHatchetSprite(): HTMLImageElement | undefined {
+export function createHatchetSprite(metal: ToolMetal = PLAIN_STEEL): HTMLImageElement | undefined {
   if (typeof document === "undefined" || typeof Image === "undefined") return undefined;
   const canvas = document.createElement("canvas");
   canvas.width = 118; canvas.height = 59;
   const context = canvas.getContext?.("2d");
   if (!context) return undefined;
-  paintHatchet(context);
+  paintHatchet(context, metal);
   const image = new Image();
   image.src = canvas.toDataURL("image/png");
   return image;

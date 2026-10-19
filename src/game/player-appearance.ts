@@ -169,6 +169,20 @@ export function equipmentSprite(assets: PlayerAppearanceAssets, itemId: string |
   return readyImage(sprite) ? sprite : base;
 }
 
+/** Worn boots' legs at their refine: graded boots' ★10 or ★20 look, loaded as equipmentSprite loads one; any other pair's own legs. */
+export function equipmentLegs(assets: PlayerAppearanceAssets, itemId: string | undefined, refineLevel = 0) {
+  const base = itemId ? assets.equipment[itemId] : undefined;
+  const world = refineLevel > 0 && base?.frontLeg ? itemPresentation(itemId, refineLevel)?.world : undefined;
+  if (world?.kind !== "LEGS" || world === itemPresentation(itemId)?.world || typeof Image === "undefined") return base;
+  const load = (source: string) => {
+    let leg = skinSprites.get(source);
+    if (!leg) { leg = image(source, () => {}); skinSprites.set(source, leg); }
+    return leg;
+  };
+  const frontLeg = load(world.frontSource), backLeg = load(world.backSource);
+  return readyImage(frontLeg) && readyImage(backLeg) ? { frontLeg, backLeg } : base;
+}
+
 /**
  * The bare legs, in the player's own skin tone.
  *
@@ -405,7 +419,7 @@ export function drawStartingPlayer(
   });
   heldX += runMotion.x;
   heldY += runMotion.y;
-  const feetAssets = options.feetItem ? assets.equipment[options.feetItem] : undefined;
+  const feetAssets = options.feetItem ? equipmentLegs(assets, options.feetItem, options.itemRefine?.(options.feetItem) ?? 0) : undefined;
   // Worn graded gear shows its refine look; with no refines given, every piece is its base look.
   const sprite = (itemId: string | undefined) => equipmentSprite(assets, itemId, itemId ? options.itemRefine?.(itemId) ?? 0 : 0);
   // Boots are artwork of their own; bare legs take the character's skin tone.
@@ -559,6 +573,7 @@ export function drawStartingPlayer(
     // The look each worn piece is drawn in, so a refine look that finishes loading replaces the base one.
     sprite(headItem)?.src ?? "",
     sprite(options.chestItem)?.src ?? "",
+    feetAssets?.frontLeg?.src ?? "",
     walkFrame,
     idleFrame,
   ].join("|");

@@ -63,6 +63,27 @@ export const ARMOR_CLASS_DETAILS: Readonly<Record<ArmorClass, {
 /** Helmet and armor both of the class that matches the weapon's school: this much more damage. */
 export const CLASS_SET_DAMAGE_PERCENT = 5;
 
+/** Boots come in one style per weapon school rather than the four armor classes, each with its school's stat. */
+export const BOOT_STYLES = ["ranger", "warrior", "mystic"] as const;
+export type BootStyle = typeof BOOT_STYLES[number];
+export const BOOT_STYLE_NAMES: Readonly<Record<BootStyle, string>> = { ranger: "Ranger", warrior: "Warrior", mystic: "Mystic" };
+export const BOOT_STYLE_SCHOOL: Readonly<Record<BootStyle, WeaponSchool>> = { ranger: "archery", warrior: "swordplay", mystic: "sorcery" };
+/** The stat each style raises: Ranger move speed, Warrior armor, Mystic weapon skill chance (relative, as Skill Proficiency). */
+export const BOOT_STYLE_STAT: Readonly<Record<BootStyle, "moveSpeed" | "armor" | "skillChance">> = { ranger: "moveSpeed", warrior: "armor", mystic: "skillChance" };
+
+/** Ranger Boots' move speed in percent: +2% at Crude to +20% at Eternal. */
+export const BOOT_MOVE_SPEED_PERCENT: Readonly<Record<GearGrade, number>> = byGrade([2, 3, 5, 6, 7, 8, 10, 11, 12, 14, 15, 16, 17, 19, 20]);
+/** Mystic Boots' weapon skill chance in percent of itself: +2% at Crude to +30% at Eternal. */
+export const BOOT_SKILL_CHANCE_PERCENT: Readonly<Record<GearGrade, number>> = byGrade([2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30]);
+
+export const isBootStyle = (value: unknown): value is BootStyle => (BOOT_STYLES as readonly unknown[]).includes(value);
+
+/** A pair's stat in percent before refines: Warrior Boots' armor is the grade's own bonus, as other gear's. */
+export function bootBonusPercent(grade: GearGrade, style: BootStyle) {
+  const stat = BOOT_STYLE_STAT[style];
+  return stat === "moveSpeed" ? BOOT_MOVE_SPEED_PERCENT[grade] : stat === "skillChance" ? BOOT_SKILL_CHANCE_PERCENT[grade] : GRADE_BONUS_PERCENT[grade];
+}
+
 export const gradeIndex = (grade: GearGrade) => GEAR_GRADES.indexOf(grade);
 export const isGearGrade = (value: unknown): value is GearGrade => (GEAR_GRADES as readonly unknown[]).includes(value);
 export const isArmorClass = (value: unknown): value is ArmorClass => (ARMOR_CLASSES as readonly unknown[]).includes(value);

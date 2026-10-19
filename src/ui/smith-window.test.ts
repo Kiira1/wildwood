@@ -170,7 +170,7 @@ it("filters the gear as the bag does and sorts it by tier, worn first", () => {
   view.controller.open();
   const label = () => view.choices().map(choice => choice.getAttribute("aria-label"));
   const filter = (name: string) => [...view.dialog.querySelectorAll<HTMLElement>(".smith-filters .inventory-filter")].find(button => button.textContent === name)!;
-  expect([...view.dialog.querySelectorAll(".smith-filters .inventory-filter")].map(button => button.textContent)).toEqual(["All", "Weapons", "Armor", "Helmets"]);
+  expect([...view.dialog.querySelectorAll(".smith-filters .inventory-filter")].map(button => button.textContent)).toEqual(["All", "Weapons", "Armor", "Helmets", "Boots"]);
   expect(filter("All").getAttribute("aria-pressed")).toBe("true");
   filter("Armor").click();
   expect(label()).toEqual(["Wooden Armor ★2"]);
@@ -180,6 +180,8 @@ it("filters the gear as the bag does and sorts it by tier, worn first", () => {
   expect(label()).toEqual([]);
   expect(view.q(".smith-filter-empty").hidden).toBe(false);
   expect(view.q(".smith-filter-empty").textContent).toBe("No helmets to bring");
+  filter("Boots").click();
+  expect(view.q(".smith-filter-empty").textContent).toBe("No boots to bring");
   filter("Weapons").click();
   expect(label()[0]).toBe("Bow ★7, worn");
   expect(view.q(".smith-filter-empty").hidden).toBe(true);
@@ -225,6 +227,7 @@ it("lists a row per line, each offering the highest grade Mastery opens above th
     "rare_bow", "eternal_sword", "crude_staff",
     "exquisite_light_helmet", "rare_light_armor", "crude_medium_helmet", "crude_medium_armor",
     "rare_heavy_helmet", "rare_heavy_armor", "crude_magic_helmet", "crude_magic_armor",
+    "rare_ranger_boots", "crude_warrior_boots", "crude_mystic_boots",
   ]);
   expect(view.dialog.querySelector(".smith-gold strong")!.textContent).toBe("50,000");
   const bow = view.row("rare_bow");
@@ -237,6 +240,11 @@ it("lists a row per line, each offering the highest grade Mastery opens above th
   expect(view.row("rare_light_armor").querySelector(".smith-shop-stat")!.textContent).toBe("Max Health +28.8% · +3% Move Speed");
   expect(view.row("crude_medium_armor").querySelector(".smith-shop-stat")!.textContent).toBe("Max Health +8%");
   expect(view.row("crude_magic_helmet").querySelector(".smith-shop-stat")!.textContent).toBe("Regen +6.4% · +3% Skill Chance");
+  // Boots: a style per school, each with its school's stat.
+  expect(view.row("rare_ranger_boots").querySelector(".smith-shop-grade")!.textContent).toBe("Rare · Ranger Boots");
+  expect(view.row("rare_ranger_boots").querySelector(".smith-shop-stat")!.textContent).toBe("Move Speed +8%");
+  expect(view.row("crude_warrior_boots").querySelector(".smith-shop-stat")!.textContent).toBe("Armor +8%");
+  expect(view.row("crude_mystic_boots").querySelector(".smith-shop-stat")!.textContent).toBe("Skill Chance +2%");
   // An open offer names the next grade and its Mastery, muted; a locked one what it waits for.
   expect(bow.querySelector(".craft-needs")!.textContent).toBe("Next: Exquisite at Lv 6 Archery");
   expect(bow.querySelector(".craft-needs .is-unmet")).toBeNull();
@@ -348,7 +356,9 @@ it("gives the lines Smithing makes a Craft line under Buy, and the rest a hint w
   view.controller.open();
   // Smithing's level heads the list, in one card; there is no second list of rows.
   expect(view.dialog.querySelector(".smith-shop .craft-card .craft-name")!.textContent).toBe("Smithing");
-  expect(view.dialog.querySelectorAll(".smith-shop-row").length).toBe(11);
+  expect(view.dialog.querySelectorAll(".smith-shop-row").length).toBe(14);
+  expect(deals("crude_warrior_boots")).toEqual(["Buy", "Craft"]);
+  expect(view.row("crude_ranger_boots").querySelector(".craft-hint")!.textContent).toBe("Craft At The Archery Range");
   const sword = view.row("crude_sword"), helm = view.row("crude_medium_helmet");
   expect(deals("crude_sword")).toEqual(["Buy", "Need More"]);
   expect(sword.querySelector(".craft-material")!.textContent).toBe("8 / 10 Copper Ore");

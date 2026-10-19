@@ -8,7 +8,7 @@ import { challengeActive } from "./prestige-challenge";
 import { TAILWIND_SPEED_BONUS, hasTechnique } from "../../shared/mastery-techniques";
 import { canonicalSavedHand } from "./loadout";
 import { armorMoveSpeedAllowance } from "../../shared/armor-class-perks";
-import { canonicalItemId } from "../../shared/items";
+import { bootMoveSpeedFactor, canonicalItemId, hasBootStat } from "../../shared/items";
 
 /** A school's Mastery points, one row per player and school, so a new school needs no new column. */
 export const playerWeaponMastery = table({ name: "player_weapon_mastery", public: false }, {
@@ -52,14 +52,18 @@ export function masteryInPlayFor(ctx: Ctx, identity: Identity, rightHand: string
 /**
  * The move speed factor the movement checks allow on top of the saved speed: Tailwind whenever the technique is
  * learned and a bow is in hand, as Black Boots' bonus is allowed (a kill is the client's claim, and a 6% walk pays
- * nothing by itself), and Light armor's speed. Heavy's slowdown is not enforced. The saved gear is read without the
- * bag, which can only loosen an allowance.
+ * nothing by itself), Light armor's speed and Ranger Boots' at their refine. Heavy's slowdown is not enforced. The
+ * saved gear is read without the bag, which can only loosen an allowance.
  */
 export function bonusMoveSpeedFactor(ctx: Ctx, identity: Identity, progress: any) {
   const right = canonicalSavedHand(progress, "equippedRightHand");
   const mastery = masteryInPlayFor(ctx, identity, right, right || canonicalSavedHand(progress, "equippedLeftHand"));
+  const feet = canonicalItemId(progress?.equippedFeet);
+  // The pair's refine, read as item-refine.ts keys it; importing that module here would make a cycle through door-reach.ts.
+  const refine = feet && hasBootStat(feet) ? ctx.db.playerItemRefine.key.find(`${identity.toHexString()}:${feet}`)?.level ?? 0 : 0;
+  const boots = feet ? bootMoveSpeedFactor(feet, { refine }) : 1;
   return (hasTechnique(mastery, "tailwind") ? 1 + TAILWIND_SPEED_BONUS : 1)
-    * armorMoveSpeedAllowance(canonicalItemId(progress?.equippedHead), canonicalItemId(progress?.equippedChest));
+    * armorMoveSpeedAllowance(canonicalItemId(progress?.equippedHead), canonicalItemId(progress?.equippedChest)) * boots;
 }
 
 /** Copies a school's level to player_mastery_level, writing only when it changed; none below level 1. */
