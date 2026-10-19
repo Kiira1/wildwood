@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { CURVE_STEPS } from "./curve-steps";
+import { MAX_PLAYER_STAT } from "./rules";
 import {
   generateMap,
   generatedBossStats,
@@ -90,7 +92,7 @@ describe("procedural campaign definitions", () => {
     expect(
       generatedEnemyStats(second, "Cindermaw").hp /
         generatedEnemyStats(first, "Cindermaw").hp,
-    ).toBeCloseTo(1.2 * 1.1 ** 6);
+    ).toBeCloseTo(CURVE_STEPS.health);
     for (const n of [1, 10, 1000, Number.MAX_SAFE_INTEGER]) {
       const map = generateMap(proceduralMapId(n));
 
@@ -98,7 +100,7 @@ describe("procedural campaign definitions", () => {
       expect(
         Number.isFinite(stats.hp) &&
           Number.isFinite(stats.damage) &&
-          stats.hp < 1e36,
+          stats.hp <= MAX_PLAYER_STAT,
       ).toBe(true);
     }
   });

@@ -1,19 +1,8 @@
-import { finalCampaignEnemy, finalCampaignBoss } from "./campaign-combat-baseline";
-import { CAMPAIGN_ENDPOINT, CAMPAIGN_MAPS } from "./campaign-registry";
+import { CAMPAIGN_ENDPOINT } from "./campaign-registry";
 import { runtimeMapBalance } from "./map-balance-runtime";
-import { ratingRewardPerKill } from "./stat-rating";
-import {
-  campaignEnemyRewardMultiplier,
-  bossHeavyHitAt,
-  desertBossHealthAt,
-  desertLaneCombatValue,
-  desertLaneRewardValue,
-  type ForestProgressionLane,
-  type RewardStat,
-} from "./progression";
-import { armorDamageReduction } from "./combat";
-import { referenceBuildForMap } from "./progression";
-import { endlessScaling } from "./endless-balance";
+import { defaultBalanceSettings, resolveMapBalance } from "./map-balance";
+import type { MapBalanceSnapshot } from "./map-balance-types";
+import type { ForestProgressionLane, RewardStat } from "./progression";
 
 export type ProceduralMapId = `endless_${number}`;
 export const PROCEDURAL_PREFIX = "endless_";
@@ -217,39 +206,26 @@ export function generateMap(id: ProceduralMapId): GeneratedMap {
     ],
   };
 }
-export function generatedEnemyStats(
-  map: Pick<GeneratedMap, "number">,
-  lane: ForestProgressionLane,
-  authored = false,
-) {
-  const remote = !authored && runtimeMapBalance(`endless_${map.number}`)?.lanes[lane];
-  if (remote) return { ...remote, reward: { ...remote.reward } };
-  const scale = endlessScaling(map.number);
-  const previousTier = PROCEDURAL_FIRST_TIER - 1;
-  const previous = finalCampaignEnemy(lane);
-  const expectedPrevious = desertLaneCombatValue(lane, previousTier);
-  const reward = desertLaneRewardValue(lane, PROCEDURAL_FIRST_TIER);
-  reward.amount *= previous.reward.amount / desertLaneRewardValue(lane, previousTier).amount;
-  reward.amount *=
-    campaignEnemyRewardMultiplier(PROCEDURAL_FIRST_TIER - 1) /
-    campaignEnemyRewardMultiplier(PROCEDURAL_FIRST_TIER) * scale.rewards;
-  // Attack speed and crit pay rating points, on their own curve (stat-rating.ts).
-  if (reward.type === "speed" || reward.type === "crit") reward.amount = ratingRewardPerKill(CAMPAIGN_MAPS.length + map.number);
-  const combat = desertLaneCombatValue(lane, PROCEDURAL_FIRST_TIER);
-  const armor = referenceBuildForMap(PROCEDURAL_FIRST_TIER).armor;
-  return { hp: combat.hp * previous.hp / expectedPrevious.hp * scale.combatStats * scale.endurance,
-    damage: combat.damage * previous.damage / expectedPrevious.damage * scale.combatStats * (1 - armorDamageReduction(armor)) / (1 - armorDamageReduction(armor * scale.combatStats)), reward };
+/** An Endless boss returns a minute after it falls. */
+export const PROCEDURAL_BOSS_RESPAWN_SECONDS = 60;
+const curveSnapshots = new Map<number, MapBalanceSnapshot>();
+/** Endless N on the repo's balance: what a map shows before the server's snapshot is installed. */
+function curveSnapshot(number: number) {
+  let snapshot = curveSnapshots.get(number);
+  if (!snapshot) {
+    if (curveSnapshots.size >= 64) curveSnapshots.clear();
+    snapshot = resolveMapBalance(proceduralMapId(number), defaultBalanceSettings(), 0);
+    curveSnapshots.set(number, snapshot);
+  }
+  return snapshot;
 }
+/** A lane's numbers on Endless N: the installed snapshot's, else the curve's. `authored` skips the installed one. */
+export function generatedEnemyStats(map: Pick<GeneratedMap, "number">, lane: ForestProgressionLane, authored = false) {
+  const row = (!authored && runtimeMapBalance(proceduralMapId(map.number))?.lanes[lane]) || curveSnapshot(map.number).lanes[lane];
+  return { ...row, reward: { ...row.reward } };
+}
+/** Endless N's boss: the installed snapshot's, else the curve's. Bosses pay nothing. */
 export function generatedBossStats(map: Pick<GeneratedMap, "number">, authored = false) {
-  const remote = !authored && runtimeMapBalance(`endless_${map.number}`)?.boss;
-  if (remote) return { hp: remote.hp, damage: remote.damage, rewards: [] as { type: RewardStat; amount: number }[] };
-  const scale = endlessScaling(map.number);
-  const armor = referenceBuildForMap(PROCEDURAL_FIRST_TIER).armor * 3;
-  const previous = finalCampaignBoss(), previousTier = PROCEDURAL_FIRST_TIER - 1;
-  return {
-    hp: previous.hp * desertBossHealthAt(PROCEDURAL_FIRST_TIER) / desertBossHealthAt(previousTier) * scale.combatStats * scale.endurance,
-    damage: previous.damage * bossHeavyHitAt(PROCEDURAL_FIRST_TIER) / bossHeavyHitAt(previousTier) * scale.combatStats * (1 - armorDamageReduction(armor)) / (1 - armorDamageReduction(armor * scale.combatStats)),
-    // Bosses are gates, including before a live balance snapshot has loaded.
-    rewards: [] as { type: RewardStat; amount: number }[],
-  };
+  const boss = (!authored && runtimeMapBalance(proceduralMapId(map.number))?.boss) || curveSnapshot(map.number).boss!;
+  return { hp: boss.hp, damage: boss.damage, rewards: [] as { type: RewardStat; amount: number }[] };
 }

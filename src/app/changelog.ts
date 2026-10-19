@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.915.2": [
+    "Small balancing",
+  ],
   "0.915.1": [
     "Builds can be renamed: tap Rename on the Builds tab",
     "Reflect Only runs can kill the Forest's Brambles again",
@@ -3610,6 +3613,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.915.2": "2026-10-18",
   "0.915.1": "2026-10-18",
   "0.915.0": "2026-10-18",
   "0.914.11": "2026-10-18",

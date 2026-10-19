@@ -11,7 +11,7 @@ import { AUTHORED_BOSS_RULES } from './rules';
 import { ENEMY_TYPES, type EnemyKind } from './enemy-definitions';
 import { enemyDefeatDefinition, combatMap } from './enemy-defeats';
 import { personalBossDefinition } from './personal-bosses';
-import { generateMap, isProceduralMap } from './procedural-maps';
+import { generateMap, isProceduralMap, PROCEDURAL_BOSS_RESPAWN_SECONDS } from './procedural-maps';
 import { DEFAULT_BALANCE_FACTORS, type BalanceFactors, type BalanceSettings, type MapBalanceSnapshot } from './map-balance-types';
 import BALANCE_TWEAKS from './balance-tweaks.json';
 import { ratingRewardPerKill } from './stat-rating';
@@ -66,7 +66,8 @@ export function resolveMapBalance(mapId: string, settings: BalanceSettings, revi
   if (!combatMap(mapId)) return result;
   const generated = isProceduralMap(mapId);
   const factors = settings.maps[generated ? 'endless' : mapId];
-  const definition = personalBossDefinition(mapId, true)!;
+  // Endless's boss is defined here; asking personal-bosses would resolve it again.
+  const definition = generated ? { kind: 'procedural', respawnSeconds: PROCEDURAL_BOSS_RESPAWN_SECONDS } : personalBossDefinition(mapId, true)!;
   if (generated) {
     // Endless N carries on from map 15 by the curve's steps, N more of them, the same for every camp.
     const map = generateMap(mapId), depth = Math.min(map.number, 1_000);

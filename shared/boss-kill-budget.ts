@@ -1,4 +1,4 @@
-import { endlessScaling } from "./endless-balance";
+import { CURVE_STEPS } from "./curve-steps";
 
 /** Fixed boss calibration from seeded median entry builds. Actual players retain
  * their earned advantage: live bosses never rescale to the player.
@@ -25,13 +25,13 @@ export const BOSS_KILL_BUDGETS = [
 export function bossBudgetScale(campaignIndex: number) {
   return BOSS_KILL_BUDGETS[campaignIndex] ?? { hpScale: 1, hitScale: 1 };
 }
+/**
+ * Kills to get ready for a boss. Past Endless 1 each map needs its step more of a stat (health 2.2x, so 2.2x the
+ * damage; hits 2.2x, so 2.2x the health) from kills that pay its reward step more, so the counts grow by their ratio.
+ */
 export function calibratedBossKillTarget(mapIndex: number) {
   if (mapIndex < 15) return BOSS_KILL_BUDGETS[Math.max(0, mapIndex)];
-  const first = BOSS_KILL_BUDGETS[15];
-  const number = mapIndex - 14;
-  const scale = endlessScaling(number);
-  const before = number === 1 ? 1 / 9.5 : (() => { const prev = endlessScaling(number - 1); return prev.combatStats * prev.endurance; })();
-  const healthStep = scale.combatStats * scale.endurance - before;
-  return { damage: Math.ceil(first.damage * healthStep / (1 - 1 / 9.5) / scale.rewards),
-    health: Math.ceil(first.health * Math.sqrt(scale.combatStats)) };
+  const first = BOSS_KILL_BUDGETS[15], depth = mapIndex - 15;
+  return { damage: Math.ceil(first.damage * (CURVE_STEPS.health / CURVE_STEPS.reward) ** depth),
+    health: Math.ceil(first.health * (CURVE_STEPS.damage / CURVE_STEPS.reward) ** depth) };
 }

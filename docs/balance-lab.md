@@ -34,7 +34,7 @@ npm run balance:simulate -- --trials 3 --duration 30d --endless 5 --kill-budget 
 npm run balance:reward-health
 ```
 
-`shared/progression.ts` and `shared/endless-balance.ts` generate real game stats. Lab tuning is temporary. Weapons, chests, and helmets grant 5%–40% damage, health, and regeneration at base level, up to 72% at +10. Upgrades add 8% of the item's original bonus per level. Regular drops use the selected configuration and shared loot eligibility; boss drops use the current shared item pools. Loot is delivered immediately in this model rather than waiting for server batching.
+The curve (`shared/curve-steps.ts`, `shared/curve-shape.ts`) generates real game stats. Lab tuning is temporary. Weapons, chests, and helmets grant 5%–40% damage, health, and regeneration at base level, up to 72% at +10. Upgrades add 8% of the item's original bonus per level. Regular drops use the selected configuration and shared loot eligibility; boss drops use the current shared item pools. Loot is delivered immediately in this model rather than waiting for server batching.
 
 The clock begins at Forest arrival with private tutorial rewards. It includes travel, combat, respawn waits, research, and equipment upgrades. Upgrading temporarily removes an item and can reduce effective power. It excludes deaths, dodging, recovery routes, multiplayer contributions, and idle time. Readiness and initial camp clears are player-strategy assumptions. Existing earned stats, inventory, and upgrade levels are retained in the game.
 
