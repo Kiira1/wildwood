@@ -4,7 +4,6 @@ import {
   type EquipmentSlot, type ItemSlot,
   type ItemLevel,
 } from "./items";
-import { equipmentMapRequirement, type CampaignAccess } from "./equipment-access";
 import {
   effectivePlayerPowerStats, unroundedPlayerPower, type PlayerPowerProgress, type PlayerPowerResearch,
 } from "./player-power";
@@ -13,7 +12,7 @@ import {
  * Which of two pieces of gear is better in a slot.
  *
  * One rule, shared by the inventory's Equip best button and by the server's
- * auto equip (a new drop, or gear a newly reached map makes usable), so the
+ * auto equip (gear new in the bag), so the
  * two never disagree about what "better" means. Equipment bonuses are
  * additive, so each slot is scored on its own: the player's power with the
  * candidate in that slot. Boots add no power; only Black Boots' speed counts.
@@ -112,20 +111,19 @@ export function weaponKind(itemId: string | undefined): WeaponKind {
 
 /**
  * What an empty hand means: the strongest weapon of the kind the hand held
- * (weaponKind) that the player owns and may use, by the item's own damage
- * bonus. The starter stone, which every player owns, is ranged, so a ranged
- * hand always has one; a sword hand with no usable sword takes the strongest
- * ranged one, and so does a staff hand with no usable staff. Never "". A blank hand is a normal saved state (older saves,
- * gear whose map is locked again), and a player with no weapon cannot attack,
- * so the server's reading of a saved hand and the client's bag both fill it
- * from here.
+ * (weaponKind) that the player owns, by the item's own damage bonus. The
+ * starter stone, which every player owns, is ranged, so a ranged hand always
+ * has one; a sword or staff hand with none of its kind takes the strongest
+ * ranged one. Never "". A blank hand is a normal saved state (older saves),
+ * and a player with no weapon cannot attack, so the server's reading of a
+ * saved hand and the client's bag both fill it from here.
  */
-export function fallbackWeapon(itemIds: readonly string[], access: CampaignAccess | null | undefined, kind: WeaponKind = "RANGED") {
+export function fallbackWeapon(itemIds: readonly string[], kind: WeaponKind = "RANGED") {
   const strongest = (wanted: WeaponKind) => {
     let best = wanted === "RANGED" ? STARTER_STONE : "";
     let bestBonus = best ? equipmentDamageMultiplierBonus(best, "", "") : -Infinity;
     for (const itemId of itemIds) {
-      if (itemDefinition(itemId)?.slot !== "HAND" || isCosmeticOnlyItem(itemId) || equipmentMapRequirement(itemId, access)) continue;
+      if (itemDefinition(itemId)?.slot !== "HAND" || isCosmeticOnlyItem(itemId)) continue;
       if (weaponKind(itemId) !== wanted) continue;
       const bonus = equipmentDamageMultiplierBonus(itemId, "", "");
       if (bonus > bestBonus) {
@@ -143,8 +141,7 @@ export function fallbackWeapon(itemIds: readonly string[], access: CampaignAcces
  * looks never do, and a weapon only ever replaces one of its own kind: swords
  * hit harder than bows but only up close, so power alone would trade every
  * archer's bow for a sword (or a staff). `kind` is the hand's kind, by default what it
- * holds; callers that read locked gear as an empty hand pass the locked
- * weapon's kind, so locking a sword away does not make its owner an archer.
+ * holds; a caller with an empty hand can pass the kind it should keep.
  */
 export function isEquipUpgrade<T extends EquipLoadout>(loadout: T, itemId: string, power: (candidate: T) => number,
   kind: WeaponKind = weaponKind(equippedInSlot(loadout, "HAND"))) {

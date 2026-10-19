@@ -1,4 +1,4 @@
-import { CAMPAIGN_ITEM_PRESENTATIONS, staffPresentation } from "./campaign-item-presentation";
+import { CAMPAIGN_ITEM_PRESENTATIONS, GRADE_ITEM_PRESENTATIONS, staffPresentation } from "./campaign-item-presentation";
 import { applyGalaxyArtTexture, galaxyIconOutlineVariable, skyFinishCssFallback, skyFinishCssVariable, type SkyFinish } from "./galaxy-finish";
 import type { WeaponCategory } from "./equipment-alignment";
 import type { LayerAdjustment } from "./player-layer-alignment";
@@ -92,6 +92,7 @@ const SKY_BOOTS: ItemPresentation = {
 /** Client-only art registry. New equipment gets one catalog entry and assets. */
 export const ITEM_PRESENTATIONS: Partial<Record<ItemId, ItemPresentation>> = {
   ...CAMPAIGN_ITEM_PRESENTATIONS,
+  ...GRADE_ITEM_PRESENTATIONS,
   [GALAXY_HELMET]: galaxyFinish(CAMPAIGN_ITEM_PRESENTATIONS.ion_helmet),
   [GALAXY_ARMOR]: galaxyFinish(CAMPAIGN_ITEM_PRESENTATIONS.ion_armor),
   [GALAXY_BOW]: galaxyFinish(CAMPAIGN_ITEM_PRESENTATIONS.ion_bow),

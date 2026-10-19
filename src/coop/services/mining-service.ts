@@ -78,6 +78,9 @@ export function createMiningRows(notify: () => void) {
       claimPickaxe: () => call(connection => connection.reducers.claimPickaxe({})),
       /** The Smith's Starter Staff, handed out like the pickaxe. */
       claimStarterStaff: () => call(connection => connection.reducers.claimStarterStaff({})),
+      /** A graded piece from the Smith for gold, at the price the player saw. */
+      buyGradeGear: (itemId: string, expectedPrice: number) =>
+        call(connection => connection.reducers.buyGradeGear({ itemId, expectedPrice: BigInt(expectedPrice) })),
     },
   };
 }

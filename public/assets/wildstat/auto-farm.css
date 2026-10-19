@@ -819,6 +819,25 @@
 /* A card's effects, as the Card Seller lists them. */
 .smith-sheet .smith-card-effects { display: grid; gap: 3px; margin: 0; padding: 0; list-style: none; text-align: center; font-size: 14px; font-weight: 800; }
 .smith-sheet .smith-card-effects .is-cost { color: #ff9b91; }
+/* The Smith's gear for gold: the gold held, then a compact row per line with its next grade, price and Buy. */
+.smith-sheet .smith-shop { display: grid; gap: 8px; margin: 4px 14px 12px; }
+.smith-sheet .smith-shop[hidden] { display: none; }
+.smith-sheet .smith-shop-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.smith-sheet .smith-shop-head h3 { margin: 0; color: #fff; font-size: 16px; font-weight: 900; }
+.smith-sheet .smith-coin { flex: 0 0 auto; width: 16px; height: 16px; }
+.smith-sheet .smith-gold { display: inline-flex; align-items: center; gap: 5px; color: #ffd75e; font-size: 15px; font-weight: 900; }
+.smith-sheet .smith-shop-rows { display: grid; gap: 6px; }
+.smith-sheet .smith-shop-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 6px 8px; border: 2px solid rgba(255,255,255,.1); border-radius: 12px; background: rgba(255,255,255,.05); }
+.smith-sheet .smith-shop-art { display: grid; place-items: center; width: 44px; height: 44px; }
+.smith-sheet .smith-shop-art .inventory-item-art { width: 42px; height: 38px; }
+.smith-sheet .smith-shop-copy { display: grid; gap: 1px; min-width: 0; }
+.smith-sheet .smith-shop-copy strong { overflow: hidden; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+.smith-sheet .smith-shop-grade, .smith-sheet .smith-shop-stat { color: var(--muted); font-size: 13px; }
+.smith-sheet .smith-shop-stat { color: #fff; font-weight: 800; }
+.smith-sheet .smith-shop-deal { display: grid; justify-items: end; gap: 4px; }
+.smith-sheet .smith-shop-price { display: inline-flex; align-items: center; gap: 4px; color: #ffd75e; font-size: 13px; font-weight: 900; }
+.smith-sheet .farm-start.smith-refine.smith-shop-buy { min-width: 0; max-width: 132px; height: auto; min-height: 36px; padding: 4px 12px 6px; font-size: 13px; line-height: 1.15; white-space: normal; }
+.smith-sheet .farm-start.smith-refine.smith-shop-buy:disabled { border-color: rgba(255,255,255,.18); background: rgba(255,255,255,.08); box-shadow: none; color: var(--muted); }
 /* The Card Seller's window (card-seller-window.ts), in the Smith's sheet: the countdown, then a row per card for sale. */
 .card-seller-sheet .card-seller-timer { margin: 0 14px 10px; color: #fff; text-align: center; font-size: 15px; font-weight: 900; }
 .card-seller-sheet .card-seller-offers { display: grid; gap: 10px; margin: 0 14px 10px; }
@@ -857,9 +876,6 @@
 }
 /* The Cards tab: each card held as a bag-style tile, its portrait framed in its rarity's colour. */
 .inventory-tabs { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
-/* Five tabs fit a phone: tighter gaps and padding so Cosmetics still fits its column. */
-.inventory-tabs { gap: 2px; }
-.inventory-tab { padding-inline: 2px; letter-spacing: 0; }
 .inventory-content > [hidden] { display: none; }
 .builds-tab { display: flex; flex-direction: column; gap: 10px; grid-column: 1; grid-row: 1 / span 2; min-width: 0; padding: 7px; }
 .builds-tab[hidden] { display: none; }
@@ -876,20 +892,29 @@
 .builds-tab-actions button { min-height: 44px; border: 1px solid #555; border-radius: 8px; background: linear-gradient(#3a3a3a, #262626); color: #fff; font: inherit; font-size: 13px; font-weight: 700; }
 .builds-tab-actions .builds-tab-equip:not(:disabled) { border-color: var(--green, #5fd35a); }
 .builds-tab-actions button:disabled { opacity: .5; }
-/* The Schools tab: a card per weapon school with its Mastery level and a bar toward the next. */
-.schools-tab { display: flex; flex-direction: column; gap: 10px; grid-column: 1; grid-row: 1 / span 2; min-width: 0; padding: 7px; }
-.schools-tab[hidden] { display: none; }
-.schools-tab-note { margin: 0; color: rgba(255,255,255,.72); font-size: 13px; line-height: 1.4; text-align: center; }
-.schools-tab-list { display: flex; flex-direction: column; gap: 10px; }
-.schools-tab-card { display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1px solid rgba(255,255,255,.14); border-radius: 10px; background: rgba(255,255,255,.04); }
-.schools-tab-card.is-in-hand { border-color: rgba(255,255,255,.5); }
-.schools-tab-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.schools-tab-head strong { min-width: 0; overflow: hidden; color: #fff; font-size: 15px; text-overflow: ellipsis; white-space: nowrap; }
-.schools-tab-in-hand { flex: none; padding: 2px 8px; border: 1px solid rgba(255,255,255,.4); border-radius: 999px; color: #fff; font-size: 13px; font-weight: 700; }
-.schools-tab-level { flex: none; margin-left: auto; color: #fff; font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
-.schools-tab-bar { display: block; height: 8px; overflow: hidden; border-radius: 4px; background: rgba(255,255,255,.14); }
-.schools-tab-bar > span { display: block; height: 100%; border-radius: inherit; background: #e6e6e6; transition: width .2s; }
-.schools-tab-points { color: rgba(255,255,255,.72); font-size: 13px; font-variant-numeric: tabular-nums; text-align: right; }
+/* A school's window, in its Town building: its Mastery level and bar, its passives and its five techniques. */
+.school-window .school-window-card { display: flex; flex-direction: column; gap: 8px; margin: 0 14px 10px; padding: 12px; border: 1px solid rgba(255,255,255,.14); border-radius: 10px; background: rgba(255,255,255,.04); }
+.school-window .school-window-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.school-window .school-window-head strong { min-width: 0; overflow: hidden; color: #fff; font-size: 16px; text-overflow: ellipsis; white-space: nowrap; }
+.school-window .school-window-level { flex: none; margin-left: auto; color: #fff; font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.school-window .school-window-bar { display: block; height: 8px; overflow: hidden; border-radius: 4px; background: rgba(255,255,255,.14); }
+.school-window .school-window-bar > span { display: block; height: 100%; border-radius: inherit; background: #e6e6e6; transition: width .2s; }
+.school-window .school-window-points { color: rgba(255,255,255,.72); font-size: 13px; font-variant-numeric: tabular-nums; text-align: right; }
+.school-window .school-window-passives { display: grid; gap: 8px; margin: 0 14px 12px; }
+.school-window .school-window-passives > div { display: grid; gap: 3px; padding: 10px 12px; border: 1px solid rgba(255,255,255,.14); border-radius: 10px; background: rgba(255,255,255,.04); }
+.school-window .school-window-passives dt { color: #fff; font-size: 14px; font-weight: 800; }
+.school-window .school-window-passives dd { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 10px; margin: 0; color: rgba(255,255,255,.72); font-size: 13px; line-height: 1.35; }
+.school-window .school-window-now { color: #fff; font-size: 14px; font-variant-numeric: tabular-nums; }
+.school-window .school-window-subhead { margin: 0 14px 8px; color: #fff; font-size: 15px; }
+.school-window .school-window-techniques { display: grid; gap: 8px; margin: 0 14px 12px; padding: 0; list-style: none; }
+.school-window .school-window-technique { display: grid; gap: 4px; padding: 10px 12px; border: 1px solid rgba(255,255,255,.3); border-radius: 10px; background: rgba(255,255,255,.06); }
+.school-window .school-window-technique.is-locked { border-color: rgba(255,255,255,.1); background: rgba(255,255,255,.02); opacity: .6; }
+.school-window .school-window-technique-head { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.school-window .school-window-technique-head strong { min-width: 0; color: #fff; font-size: 14px; }
+.school-window .school-window-technique-level { flex: none; margin-left: auto; color: rgba(255,255,255,.72); font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.school-window .school-window-technique p { margin: 0; color: rgba(255,255,255,.82); font-size: 13px; line-height: 1.35; }
+.school-window .school-window-technique-status { color: #fff; font-size: 13px; font-weight: 800; }
+.school-window .is-locked .school-window-technique-status { color: rgba(255,255,255,.72); font-weight: 700; }
 .cards-tab { display: grid; grid-column: 1; grid-row: 1 / span 2; align-content: start; gap: 6px; container-type: inline-size; min-width: 0; padding: 0 7px 7px; }
 .cards-tab-count { display: block; margin: 0 auto 4px; }
 /* Active cards, at the top above the zones: a row per type, four slots each; empty is dashed, locked is dim. */

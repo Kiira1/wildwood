@@ -7,7 +7,6 @@ const loadout = (rightHand: string) => ({
   ...stats, equippedHead: "", equippedChest: "", equippedFeet: "", equippedRightHand: rightHand, equippedLeftHand: "",
 });
 const power = (candidate: ReturnType<typeof loadout>) => equipComparisonPower(candidate);
-const DESERT = { desertUnlocked: true };
 
 describe("weapon kinds", () => {
   it("reads a sword as melee, and bows, the stone and an empty hand as ranged", () => {
@@ -26,24 +25,23 @@ describe("weapon kinds", () => {
     expect(isEquipUpgrade(loadout(STARTER_BOW), IRON_BOW, power)).toBe(true);
     expect(isEquipUpgrade(loadout(WOODEN_SWORD), "iron_sword", power)).toBe(true);
     expect(isEquipUpgrade(loadout("iron_sword"), WOODEN_SWORD, power)).toBe(false);
-    // A hand read as empty, its sword locked away, keeps that sword's kind when the caller says so.
+    // An empty hand keeps the kind the caller says it held.
     expect(isEquipUpgrade(loadout(""), WOODEN_SWORD, power)).toBe(false);
     expect(isEquipUpgrade(loadout(""), WOODEN_SWORD, power, "MELEE")).toBe(true);
     expect(isEquipUpgrade(loadout(""), STARTER_BOW, power, "MELEE")).toBe(false);
   });
 
-  it("fills an empty hand with the strongest usable weapon of the kind it held", () => {
+  it("fills an empty hand with the strongest owned weapon of the kind it held, whatever map it came from", () => {
     const bag = [STARTER_STONE, STARTER_BOW, WOODEN_SWORD, IRON_BOW, "iron_sword"];
     // An archer is never handed a sword, even one that hits harder than every bow they own.
-    expect(fallbackWeapon(bag, {})).toBe(STARTER_BOW);
-    expect(fallbackWeapon(bag, DESERT)).toBe(IRON_BOW);
-    expect(fallbackWeapon([WOODEN_SWORD], {})).toBe(STARTER_STONE);
-    // A swordsman gets the strongest sword their maps allow,
-    expect(fallbackWeapon(bag, {}, "MELEE")).toBe(WOODEN_SWORD);
-    expect(fallbackWeapon(bag, DESERT, "MELEE")).toBe("iron_sword");
-    // and with no usable sword the strongest ranged weapon, the stone at least.
-    expect(fallbackWeapon([STARTER_BOW, "iron_sword"], {}, "MELEE")).toBe(STARTER_BOW);
-    expect(fallbackWeapon(["iron_sword"], {}, "MELEE")).toBe(STARTER_STONE);
+    expect(fallbackWeapon(bag)).toBe(IRON_BOW);
+    expect(fallbackWeapon([WOODEN_SWORD])).toBe(STARTER_STONE);
+    // A swordsman gets the strongest sword owned,
+    expect(fallbackWeapon(bag, "MELEE")).toBe("iron_sword");
+    expect(fallbackWeapon(["cloudspire_bow", STARTER_BOW])).toBe("cloudspire_bow");
+    // and with no sword the strongest ranged weapon, the stone at least.
+    expect(fallbackWeapon([STARTER_BOW, IRON_BOW], "MELEE")).toBe(IRON_BOW);
+    expect(fallbackWeapon([], "MELEE")).toBe(STARTER_STONE);
   });
 });
 
@@ -62,12 +60,11 @@ describe("staffs, a kind of their own", () => {
     expect(isEquipUpgrade(loadout(""), "forest_staff", power, "MAGIC")).toBe(true);
   });
 
-  it("fills a staff hand with the best usable staff, then the best ranged weapon", () => {
+  it("fills a staff hand with the best staff owned, then the best ranged weapon", () => {
     const bag = [STARTER_STONE, STARTER_BOW, IRON_BOW, STARTER_STAFF, "forest_staff", "desert_staff"];
-    expect(fallbackWeapon(bag, {}, "MAGIC")).toBe("forest_staff");
-    expect(fallbackWeapon(bag, DESERT, "MAGIC")).toBe("desert_staff");
-    expect(fallbackWeapon([STARTER_BOW, STARTER_STAFF], {}, "MAGIC")).toBe(STARTER_STAFF);
-    expect(fallbackWeapon([STARTER_BOW, "desert_staff"], {}, "MAGIC")).toBe(STARTER_BOW);
-    expect(fallbackWeapon(bag, DESERT)).toBe(IRON_BOW);
+    expect(fallbackWeapon(bag, "MAGIC")).toBe("desert_staff");
+    expect(fallbackWeapon([STARTER_BOW, STARTER_STAFF], "MAGIC")).toBe(STARTER_STAFF);
+    expect(fallbackWeapon([STARTER_BOW, IRON_BOW], "MAGIC")).toBe(IRON_BOW);
+    expect(fallbackWeapon(bag)).toBe(IRON_BOW);
   });
 });

@@ -16,43 +16,33 @@ function samuraiFixture() {
   return f;
 }
 
-describe("Samurai Gardens helmet drop", () => {
-  it("awards a helmet that survives inventory reload and can occupy the head slot", () => {
+describe("Samurai Gardens helmet", () => {
+  it("keeps an owned helmet through inventory reload, in the head slot", () => {
     const f = samuraiFixture();
-    reportEnemy(f);
-    expect(f.ctx.random.integerInRange).toHaveBeenCalledWith(1, SAMURAI_HAT_ITEM_DROP_DENOMINATOR);
+    f.patch("playerProgress", { inventoryJson: JSON.stringify([SAMURAI_HAT]) });
     const progress = progressOf(f, f.ctx.sender);
     const inventory = inventoryFromSave(progress.inventoryJson, "", SAMURAI_HAT, "", false);
     expect(inventory.equippedHead).toBe(SAMURAI_HAT);
     const reloaded = inventoryFromSave(serialiseInventory(inventory), "", SAMURAI_HAT, "", false);
     expect(inventoryItemQuantity(reloaded, SAMURAI_HAT)).toBe(1);
-    expect([...f.db.playerItemDrop.iter()]).toMatchObject([{ itemId: SAMURAI_HAT, alreadyOwned: false, sequence: 1n }]);
     expect(itemMaxHealthMultiplierBonus(SAMURAI_HAT)).toBe(0);
     expect(itemRegenerationMultiplierBonus(SAMURAI_HAT)).toBeCloseTo(.2857, 4);
   });
 
-  it("reports a repeat drop without duplicating the item", () => {
+  it("no longer drops from kills, not even on what was its winning roll", () => {
     const f = samuraiFixture();
     reportEnemy(f);
     reportEnemy(f);
-    const saved = JSON.parse(progressOf(f, f.ctx.sender).inventoryJson);
-    expect(saved.filter((id: string) => id === SAMURAI_HAT)).toHaveLength(1);
-    expect([...f.db.playerItemDrop.iter()]).toMatchObject([{ itemId: SAMURAI_HAT, alreadyOwned: true, sequence: 2n }]);
-  });
-
-  it("does not award a helmet on a missed roll", () => {
-    const f = samuraiFixture();
-    f.ctx.random.integerInRange = (_min, max) => max;
-    reportEnemy(f);
+    expect(f.ctx.random.integerInRange).not.toHaveBeenCalledWith(1, SAMURAI_HAT_ITEM_DROP_DENOMINATOR);
     expect(progressOf(f, f.ctx.sender).inventoryJson).toBe("[]");
     expect([...f.db.playerItemDrop.iter()]).toHaveLength(0);
   });
 
-  it("does not roll Samurai loot from another map", () => {
+  it("drops no gear on another map either", () => {
     const f = samuraiFixture();
     f.patch("player", { mapId: "crystal_hollows" });
+    f.ctx.random.integerInRange = () => 1;
     reportEnemy(f);
-    expect([...f.db.playerItemDrop.iter()].some(drop => drop.itemId === SAMURAI_HAT)).toBe(false);
-    expect([...f.db.playerItemDrop.iter()]).toMatchObject([{ itemId: "crystal_helmet" }]);
+    expect([...f.db.playerItemDrop.iter()]).toHaveLength(0);
   });
 });

@@ -4,18 +4,17 @@ import { defaultBalanceSettings, resolveMapBalance } from "../../shared/map-bala
 import { MODULE_MIGRATION_VERSION } from "./module-migrations";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
-it("migration 58 puts the map's staff in the loot of a visit pinned before staffs", () => {
+it("migration 58 re-pins a visit pinned before staffs onto the current loot, which lists no gear now", () => {
   const f = crystalFixture();
   f.seed("moduleMigrationState", { id: 0, version: 57 });
   const snapshot = resolveMapBalance("beginner_desert", defaultBalanceSettings(), 0, 2);
-  const staff = snapshot.loot!.find(drop => drop.itemId === "desert_staff")!;
-  expect(staff).toBeDefined();
+  expect(snapshot.loot).toEqual([]);
+  // Pinned long ago: the same visit, its loot still listing the map's old gear.
   f.seed("playerMapBalance", { identity: f.ctx.sender, mapId: "beginner_desert",
-    snapshotJson: JSON.stringify({ ...snapshot, loot: snapshot.loot!.filter(drop => drop !== staff) }) });
+    snapshotJson: JSON.stringify({ ...snapshot, loot: [{ itemId: "iron_bow", wins: 1, outcomes: 50 }] }) });
   f.ctx.connectionId = null;
   f.run(server.onConnect);
   expect(f.db.moduleMigrationState.id.find(0).version).toBe(MODULE_MIGRATION_VERSION);
-  const pinned = JSON.parse(f.db.playerMapBalance.identity.find(f.ctx.sender).snapshotJson);
-  expect(pinned.loot).toContainEqual(staff);
-  expect({ ...pinned, loot: [] }).toEqual({ ...snapshot, loot: [] });
+  // Nothing else of the visit moves: the same revision, enemies and timers.
+  expect(JSON.parse(f.db.playerMapBalance.identity.find(f.ctx.sender).snapshotJson)).toEqual(snapshot);
 });

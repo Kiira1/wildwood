@@ -7,6 +7,7 @@ import { TOWN_FEET_OFFSET, TOWN_SMITH_POSITION } from "../../shared/town";
 import { awardCardDrops } from "./card-drops";
 import { cardCount } from "./gear-cards";
 import { awardRegularEnemyLoot } from "./enemy-loot-award";
+import { awardKillGold, goldChanceMultiplier, goldFor } from "./gold";
 import { publishItemDrop } from "./equipment-copies";
 import { bowSkillRollFor } from "./bow-skills";
 import { addOres, refineLevelFor, setRefineLevel } from "./item-refine";
@@ -61,16 +62,19 @@ describe("luck research on the server", () => {
     expect(cardCount(f.ctx, f.ctx.sender, "needle_card")).toBe(1);
   });
 
-  it("raises equipment drops with Gear Luck", () => {
+  it("raises the gold drop chance with Gold Luck, and drops no gear", () => {
     const f = crystalFixture();
-    // Magma Armor wins 7 outcomes in 1,000: the 8th wins only with more than 8/7 the chance.
-    always(f, .99, 8);
-    const drops = () => [...f.db.playerItemDrop.iter()].filter((row: any) => row.itemId === "magma_armor").length;
-    f.transaction(() => awardRegularEnemyLoot(f.ctx as any, "advanced_lava_wastes", 1, null));
-    expect(drops()).toBe(0);
+    // Gold drops on 10% of kills: a draw of .11 misses, and lands at Gold Luck 5's 12.5%.
+    always(f, .11, 1);
+    const gold = () => { f.transaction(() => awardKillGold(f.ctx, f.ctx.sender, 1, false)); return goldFor(f.ctx, f.ctx.sender); };
+    expect(gold()).toBe(0n);
     luck(f, { gearLuck: 5 });
+    expect(goldChanceMultiplier(f.ctx, f.ctx.sender)).toBeCloseTo(1.25, 9);
+    expect(gold()).toBe(3n);
+    switchedOff(f, "research.gearLuck");
+    expect(goldChanceMultiplier(f.ctx, f.ctx.sender)).toBe(1);
     f.transaction(() => awardRegularEnemyLoot(f.ctx as any, "advanced_lava_wastes", 1, null));
-    expect(drops()).toBe(1);
+    expect([...f.db.playerItemDrop.iter()]).toEqual([]);
   });
 
   it("raises a dropped weapon's skill chance with Skill Luck", () => {

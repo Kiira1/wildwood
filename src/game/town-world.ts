@@ -1,8 +1,9 @@
-import { inTownInteriors, inTownVillage, TOWN_ARRIVAL, TOWN_BENCH_POSITION, TOWN_CARD_SELLER_STALL, TOWN_CHUNK_SIZE, TOWN_HILLS, TOWN_HILLS_SIGNPOST_POSITION, TOWN_INTERIOR_MARGIN, TOWN_OX_POSITION, TOWN_QUEST_BOARD_POSITION, TOWN_RESEARCH_POSITION, TOWN_SMITH_POSITION, townChunkProps, townRandom, townWindowChunks, type TownPropKind, TOWN_SOUL_RUNESTONE } from "../../shared/town";
+import { inTownInteriors, inTownVillage, TOWN_ARRIVAL, TOWN_BENCH_POSITION, TOWN_CARD_SELLER_STALL, TOWN_CHUNK_SIZE, TOWN_DOORS, TOWN_SCHOOL_POSITIONS, TOWN_HILLS, TOWN_HILLS_SIGNPOST_POSITION, TOWN_INTERIOR_MARGIN, TOWN_OX_POSITION, TOWN_QUEST_BOARD_POSITION, TOWN_RESEARCH_POSITION, TOWN_SMITH_POSITION, townChunkProps, townRandom, townWindowChunks, type TownPropKind, TOWN_SOUL_RUNESTONE } from "../../shared/town";
 import { SOUL_ATLAS, SOUL_INTERIOR_DECOR, SOUL_VILLAGE_DECOR, type SoulFrame } from "./soul-village";
 import {
   MINING_NODES, MINING_OUTCROPS, MINING_REACH, MINING_TRACK, MINING_TRACK_HALF_WIDTH, MINING_VEINS, miningTrackDistanceSquared, type MiningNode, type MiningNodeKind,
 } from "../../shared/mining";
+import { SCHOOL_DETAILS, WEAPON_SCHOOLS, type WeaponSchool } from "../../shared/weapon-mastery";
 import type { WorldDecor, WorldPath } from "./world";
 
 /** How each countryside prop is drawn: one of its atlas frames (by the prop's variant) and its size. */
@@ -48,7 +49,11 @@ export const TOWN_OX_DECOR: WorldDecor = { type: "upgradeBench", x: TOWN_OX_POSI
 export const TOWN_SMITH_DECOR: WorldDecor = { type: "upgradeBench", x: TOWN_SMITH_POSITION.x, y: TOWN_SMITH_POSITION.y, s: 1, label: "Smith" };
 /** The Card Seller's name over the village's own market stall: just in front of it, so it draws over the awning. */
 export const TOWN_CARD_SELLER_DECOR: WorldDecor = { type: "upgradeBench", x: TOWN_CARD_SELLER_STALL.x, y: TOWN_CARD_SELLER_STALL.y + 1, s: 1, label: "Card Seller" };
-export const TOWN_INTERIOR_DECOR: readonly WorldDecor[] = [...SOUL_INTERIOR_DECOR.filter(item => !replacedByStation(item)), ...TOWN_STATION_DECOR, TOWN_OX_DECOR];
+/** Each Weapon Mastery school's sign, on its building's back wall over the spot that opens its window. */
+export const TOWN_SCHOOL_DECOR: readonly WorldDecor[] = WEAPON_SCHOOLS.map(school => ({
+  type: "upgradeBench", x: TOWN_SCHOOL_POSITIONS[school].x, y: TOWN_SCHOOL_POSITIONS[school].y, s: 1, label: SCHOOL_DETAILS[school].building,
+}));
+export const TOWN_INTERIOR_DECOR: readonly WorldDecor[] = [...SOUL_INTERIOR_DECOR.filter(item => !replacedByStation(item)), ...TOWN_STATION_DECOR, TOWN_OX_DECOR, ...TOWN_SCHOOL_DECOR];
 
 /**
  * The square's signpost, just east of where every traveller lands (on open cobbles, clear of the fountain,
@@ -59,6 +64,17 @@ export const TOWN_RUNESTONE: WorldDecor = { type: "soulProp", frame: "RuneStone_
 export const TOWN_SIGNPOST: WorldDecor = { type: "soulProp", frame: "", s: 1, x: TOWN_ARRIVAL.x + 230, y: TOWN_ARRIVAL.y - 10, signpost: "Travel" };
 /** Its twin by the Smith's yard, pointing east: the way to the Copper Hills, where his pickaxe is for. */
 export const TOWN_HILLS_SIGNPOST: WorldDecor = { type: "soulProp", frame: "", s: 1, ...TOWN_HILLS_SIGNPOST_POSITION, signpost: "Copper Hills", flip: true };
+/**
+ * A signpost by each school's door, naming its building from the square: on the road beside the door, its
+ * plank pointing at it (from its sill, and whether it points right).
+ */
+const SCHOOL_SIGNPOST_AT: Readonly<Record<WeaponSchool, { dx: number; dy: number; flip: boolean }>> = {
+  archery: { dx: -71, dy: 119, flip: true }, swordplay: { dx: 170, dy: 48, flip: false }, sorcery: { dx: -114, dy: 24, flip: true },
+};
+export const TOWN_SCHOOL_SIGNPOSTS: readonly WorldDecor[] = WEAPON_SCHOOLS.map(school => {
+  const door = TOWN_DOORS[SCHOOL_DETAILS[school].door], at = SCHOOL_SIGNPOST_AT[school];
+  return { type: "soulProp", frame: "", s: 1, x: door.x + at.dx, y: door.y + at.dy, signpost: SCHOOL_DETAILS[school].building, flip: at.flip };
+});
 
 // ---- The Copper Hills ----
 
@@ -334,7 +350,7 @@ function oreRockShadow(rock: Extract<WorldDecor, { type: "oreRock" }>): WorldDec
 
 /** Every prop in the chunk window around a point: the village's and its rooms' when they are near, and the countryside's. */
 export function townWindowDecor(x: number, y: number): WorldDecor[] {
-  const decor: WorldDecor[] = inTownVillage(x, y, TOWN_CHUNK_SIZE * 2.5) ? [...SOUL_VILLAGE_DECOR, TOWN_SIGNPOST, TOWN_RUNESTONE, TOWN_SMITH_DECOR, TOWN_CARD_SELLER_DECOR, TOWN_HILLS_SIGNPOST] : [];
+  const decor: WorldDecor[] = inTownVillage(x, y, TOWN_CHUNK_SIZE * 2.5) ? [...SOUL_VILLAGE_DECOR, TOWN_SIGNPOST, TOWN_RUNESTONE, TOWN_SMITH_DECOR, TOWN_CARD_SELLER_DECOR, TOWN_HILLS_SIGNPOST, ...TOWN_SCHOOL_SIGNPOSTS] : [];
   if (inTownInteriors(x, y, TOWN_INTERIOR_MARGIN)) decor.push(...TOWN_INTERIOR_DECOR);
   for (const { cx, cy } of townWindowChunks(x, y)) decor.push(...townChunkDecor(cx, cy));
   return decor;

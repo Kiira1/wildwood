@@ -15,7 +15,7 @@ import { cardOffenseBound } from "../../shared/card-bounds";
 import { statRewardMultiplierFor, statRewardMultiplier } from "./prestige";
 import { awardCardDrops } from "./card-drops";
 import { cardCount } from "./gear-cards";
-import { rollRegularEnemyLoot } from "./regular-enemy-loot";
+import { awardKillGold, goldChanceMultiplier, goldFor } from "./gold";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
 // Tier 1 gear, worn: a bow, a cap and armor; `slot` switches cards on as if each item had them.
@@ -118,7 +118,7 @@ describe("cards outside a fight, on the server", () => {
     expect(pay("damage")).toBeCloseTo(base, 9);
   });
 
-  it("raises card and gear drop odds with Card Hunter and Treasure cards", () => {
+  it("raises card and gold drop odds with Card Hunter and Treasure cards", () => {
     const view = wearing();
     // A roll that just misses a regular card at its plain odds lands once Card Hunter's +10% is worn.
     Object.assign(view.f.ctx, { random: Object.assign(() => 1.05 / CARD_DROP_OUTCOMES.regular, { integerInRange: (_min: number, max: number) => max }) });
@@ -128,10 +128,12 @@ describe("cards outside a fight, on the server", () => {
     view.slot("forest_cap", ["nether_oracle_card"]);
     award();
     expect(cardCount(view.f.ctx, view.f.ctx.sender, "needle_card")).toBe(1);
-    // A drop at 1 in 100 that rolled 2 lands with Treasure's +6% when the second draw falls in that 6%.
-    const loot = [{ itemId: "forest_cap", wins: 1, outcomes: 100 }] as any;
-    const roll = { random: Object.assign(() => .05, { integerInRange: () => 2 }) } as any;
-    expect(rollRegularEnemyLoot(roll, "tutorial_forest", 1, loot).size).toBe(0);
-    expect(rollRegularEnemyLoot(roll, "tutorial_forest", 1, loot, 1.06).get("forest_cap")).toBe(1);
+    // Gold drops on 10% of kills: a draw of .103 misses, and lands once Treasure's +6% is worn (10.6%).
+    Object.assign(view.f.ctx, { random: Object.assign(() => .103, { integerInRange: (min: number) => min }) });
+    const gold = () => { view.f.transaction(() => awardKillGold(view.f.ctx, view.f.ctx.sender, 1, false)); return goldFor(view.f.ctx, view.f.ctx.sender); };
+    expect(gold()).toBe(0n);
+    view.slot("forest_cap", ["shrine_oracle_card"]);
+    expect(goldChanceMultiplier(view.f.ctx, view.f.ctx.sender)).toBeCloseTo(1.06, 9);
+    expect(gold()).toBe(3n);
   });
 });

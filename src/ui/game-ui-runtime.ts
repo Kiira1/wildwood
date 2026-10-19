@@ -3,10 +3,12 @@ export { challengeMinimumInterval } from "../../shared/prestige-challenge";
 export { attackCapInterval } from "../../shared/stat-rating";
 export { createSmithRuntime } from "./smith-window";
 export { createCardSellerRuntime } from "./card-seller-window";
+export { createSchoolWindowRuntime } from "./school-window";
 export { watchCardDrops } from "./card-drop-feedback";
 import { createGemShopController } from "./gem-shop-controller";
 import { installDesktopHotkeys } from "./desktop-hotkeys";
-import { TOWN_CARD_SELLER_POSITION, TOWN_CARD_SELLER_REACH, TOWN_FEET_OFFSET, TOWN_OX_POSITION, TOWN_OX_REACH, TOWN_QUEST_BOARD_POSITION, TOWN_RESEARCH_POSITION, TOWN_SMITH_POSITION, TOWN_SMITH_REACH } from "../../shared/town";
+import { TOWN_CARD_SELLER_POSITION, TOWN_CARD_SELLER_REACH, TOWN_FEET_OFFSET, TOWN_OX_POSITION, TOWN_OX_REACH, TOWN_QUEST_BOARD_POSITION, TOWN_RESEARCH_POSITION, TOWN_SCHOOL_POSITIONS, TOWN_SCHOOL_REACH, TOWN_SMITH_POSITION, TOWN_SMITH_REACH } from "../../shared/town";
+import { WEAPON_SCHOOLS, type WeaponSchool } from "../../shared/weapon-mastery";
 import { recentReleaseNotes } from "../app/changelog";
 import { installAppUpdateNotice } from "../app/app-update-notice";
 import { isDeveloperIdentity } from "../app/developer";
@@ -28,7 +30,7 @@ import { installLoginMove } from "./login-move-controller";
 import { createTechTreeController } from "./tech-tree-controller";
 import { installCameraZoomControl } from "./camera-zoom-control";
 
-/** Tech Research, the Weekly Quests board and Ox's shop, in the Town's windmill, Inn and bottom-right house, the Smith in the forge house's yard and the Card Seller's stall, open as a player walks up to them. */
+/** Tech Research, the Weekly Quests board and Ox's shop, in the Town's windmill, Inn and bottom-right house, the Smith in the forge house's yard, the Card Seller's stall and each school's building, open as a player walks up to them. */
 export function createHomeStationTouchHandler(
   isHome: () => boolean,
   player: { x: number; y: number },
@@ -38,8 +40,10 @@ export function createHomeStationTouchHandler(
   openOxShop?: () => void,
   openSmith?: () => void,
   openCardSeller?: () => void,
+  openSchool?: (school: WeaponSchool) => void,
 ) {
   let touchingResearch = false, touchingQuestBoard = false, touchingOx = false, touchingSmith = false, touchingCardSeller = false;
+  const touchingSchool: Partial<Record<WeaponSchool, boolean>> = {};
   return () => {
     const touching = isHome() && Math.hypot(player.x - TOWN_RESEARCH_POSITION.x, player.y - (TOWN_RESEARCH_POSITION.y - 36)) < 42.5;
     if (touching && !touchingResearch) openResearch();
@@ -60,6 +64,13 @@ export function createHomeStationTouchHandler(
     const atCardSeller = isHome() && Math.hypot(player.x - TOWN_CARD_SELLER_POSITION.x, player.y + TOWN_FEET_OFFSET - TOWN_CARD_SELLER_POSITION.y) < TOWN_CARD_SELLER_REACH;
     if (atCardSeller && !touchingCardSeller) openCardSeller?.();
     touchingCardSeller = atCardSeller;
+    // Each school from the floor under its sign, feet against its spot.
+    for (const school of WEAPON_SCHOOLS) {
+      const at = TOWN_SCHOOL_POSITIONS[school];
+      const atSchool = isHome() && Math.hypot(player.x - at.x, player.y + TOWN_FEET_OFFSET - at.y) < TOWN_SCHOOL_REACH;
+      if (atSchool && !touchingSchool[school]) openSchool?.(school);
+      touchingSchool[school] = atSchool;
+    }
     updateBench();
   };
 }

@@ -1,5 +1,6 @@
 import { equipmentStatDefinition } from "./equipment-budget";
 import { CAMPAIGN_ITEM_DEFINITIONS } from "./campaign-equipment";
+import { GRADE_ITEM_DEFINITIONS } from "./grade-equipment";
 import { refineMultiplier } from "./refine-multiplier";
 
 // Browser- and server-safe equipment catalog. Add gameplay-facing item data
@@ -413,6 +414,8 @@ export const ITEM_DEFINITIONS = {
     description: "Wooden forest plate that reinforces its wearer with extra health.",
     ...equipmentStatDefinition(1, "CHEST"),
   },
+  // Graded gear from the Smith, last so the older items keep their order.
+  ...GRADE_ITEM_DEFINITIONS,
 } as const satisfies Record<string, ItemDefinition>;
 
 export type ItemId = keyof typeof ITEM_DEFINITIONS;

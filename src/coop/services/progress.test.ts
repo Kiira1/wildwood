@@ -195,11 +195,12 @@ describe("progress persistence rules", () => {
     expect(progressCovers({ ...merged, cosmeticHead: "different" }, pending)).toBe(false);
   });
 
-  it("does not restore locked tier 15 equipment from a pending save", () => {
+  it("restores tier 15 equipment from a pending save before Ion Citadel is reached: gear never locks", () => {
     const old = { ...pending, equippedRightHand: "ion_bow", equippedHead: "ion_helmet", equippedChest: "ion_armor", cosmeticHead: "ion_helmet" };
-    const merged = mergeProgress({ ...saved, ionCitadelUnlocked: false }, old);
-    expect(merged).toMatchObject({ equippedRightHand: saved.equippedRightHand, equippedHead: saved.equippedHead, equippedChest: saved.equippedChest, cosmeticHead: "ion_helmet" });
-    expect(mergeProgress({ ...saved, ionCitadelUnlocked: true }, old).equippedRightHand).toBe("ion_bow");
+    for (const ionCitadelUnlocked of [false, true]) {
+      expect(mergeProgress({ ...saved, ionCitadelUnlocked }, old))
+        .toMatchObject({ equippedRightHand: "ion_bow", equippedHead: "ion_helmet", equippedChest: "ion_armor", cosmeticHead: "ion_helmet" });
+    }
   });
 
   it("uses server ownership despite queued inventory from before a completion or removal", () => {

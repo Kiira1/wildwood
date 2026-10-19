@@ -1,13 +1,11 @@
 import { BASIC_PAPER_HAT, canonicalItemId, itemFitsEquipmentSlot } from "../../shared/items";
 import { fallbackWeapon, type EquipLoadout, type WeaponKind } from "../../shared/equip-best";
-import type { CampaignAccess } from "../../shared/equipment-access";
 
 /**
  * What save_player_progress will actually put on from a requested loadout,
- * given what the player owns. It runs after that reducer has refused
- * equipment the player's maps do not unlock yet (equipmentMapRequirement);
- * auto equip checks the same two rules through the same functions, so
- * nothing goes on automatically that the player could not put on by hand.
+ * given what the player owns. Auto equip checks the same rules through the
+ * same function, so nothing goes on automatically that the player could not
+ * put on by hand.
  *
  * A head item that is not owned falls back to the paper hat (an empty head
  * stays empty). Chest and feet must be owned. A hand must be owned and fit
@@ -35,15 +33,13 @@ export function allowedLoadout(requested: EquipLoadout, inventory: readonly stri
 // equippedLeftHandForProgress, which decide what a saved loadout shows.
 
 /**
- * What a blank or locked right hand reads as when the left hand holds nothing
- * either: the best usable weapon owned of the kind the saved hand held (a
- * blank one reads as ranged), else the starter stone. Never "". A blank hand
- * used to read as "no weapon" whenever the bag held one, and world entry
- * wrote that back, so a player whose weapon's map was locked again was left
- * unable to attack. The client fills an empty hand the same way.
+ * What a blank or unowned right hand reads as when the left hand holds nothing
+ * either: the best weapon owned of the kind the saved hand held (a blank one
+ * reads as ranged), else the starter stone. Never "", so a saved hand never
+ * leaves a player unable to attack. The client fills an empty hand the same way.
  */
-export function blankHandWeapon(inventory: readonly string[], access: CampaignAccess, kind: WeaponKind = "RANGED") {
-  return fallbackWeapon(inventory, access, kind);
+export function blankHandWeapon(inventory: readonly string[], kind: WeaponKind = "RANGED") {
+  return fallbackWeapon(inventory, kind);
 }
 
 export function canonicalSavedHand(progress: any, field: "equippedRightHand" | "equippedLeftHand") {

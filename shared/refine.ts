@@ -1,5 +1,7 @@
 import { canonicalItemId, isUpgradeableItem, itemDefinition } from "./items";
 import { itemTier } from "./item-tier";
+import { gradeOf } from "./grade-equipment";
+import { GRADE_ITEM_TIER } from "./gear-grades";
 import { REFINE_MAX, normalizeRefineLevel } from "./refine-multiplier";
 import { chanceWithLuck } from "./luck-research";
 export { REFINE_MAX, REFINE_STEP_PAST_TEN, REFINE_STEP_TO_TEN, normalizeRefineLevel, refineMultiplier } from "./refine-multiplier";
@@ -67,7 +69,9 @@ export function isRefinableItem(itemId: unknown) {
 export function refineGrade(itemId: unknown): RefineGrade | null {
   const id = canonicalItemId(itemId);
   if (!id || !isRefinableItem(id)) return null;
-  return tierGrade(itemTier(id) ?? itemDefinition(id)?.weapon?.tier ?? 1);
+  const grade = gradeOf(id);
+  // Graded gear refines at its grade's stand-in tier, helmets and armor too.
+  return tierGrade(itemTier(id) ?? (grade ? GRADE_ITEM_TIER[grade] : itemDefinition(id)?.weapon?.tier) ?? 1);
 }
 
 /** A map tier's grade: four tiers to a grade, the last one three. */

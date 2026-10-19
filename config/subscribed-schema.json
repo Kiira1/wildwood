@@ -428,6 +428,10 @@
       "revision:u64",
       "updatedAt:timestamp"
     ],
+    "my_gold": [
+      "identity:identity",
+      "gold:u64"
+    ],
     "my_guild_hall": [
       "guildId:u64",
       "fund:u32",

@@ -5,6 +5,7 @@ import {
   bowSkillReachMultiplier, bowSkillTier, hasBowSkills, isSkillBow, rollArrowSkillProcs, rollBowSkills,
 } from "./bow-skills";
 import { CAMPAIGN_EQUIPMENT } from "./campaign-equipment";
+import { isGradeItemId } from "./grade-equipment";
 import { ITEM_DEFINITIONS, STARTER_BOW, STARTER_STONE, WOODEN_SWORD } from "./items";
 import { itemTier } from "./item-tier";
 
@@ -34,8 +35,8 @@ describe("which bows carry skills", () => {
     expect(isSkillBow("not_an_item")).toBe(false);
   });
 
-  it("agrees with the map tier the item window shows for every bow", () => {
-    const bows = Object.values(ITEM_DEFINITIONS).filter(item => item.slot === "HAND" && item.weapon?.projectile === "ARROW");
+  it("agrees with the map tier the item window shows for every map bow", () => {
+    const bows = Object.values(ITEM_DEFINITIONS).filter(item => item.slot === "HAND" && item.weapon?.projectile === "ARROW" && !isGradeItemId(item.id));
     expect(bows.length).toBeGreaterThanOrEqual(17);
     for (const bow of bows) expect(bowSkillTier(bow.id), bow.id).toBe(itemTier(bow.id));
   });

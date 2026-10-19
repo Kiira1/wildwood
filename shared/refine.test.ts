@@ -5,6 +5,7 @@ import {
 } from "./refine";
 import { ITEM_DEFINITIONS, isUpgradeableItem } from "./items";
 import { itemTier } from "./item-tier";
+import { isGradeItemId } from "./grade-equipment";
 
 const bows = { grade1: "starter_bow", grade2: "sky_bow", grade3: "crystal_bow", grade4: "ion_bow" } as const;
 
@@ -24,7 +25,7 @@ describe("what can be refined", () => {
 
   it("grades items by their Tier, four tiers a grade", () => {
     expect([bows.grade1, bows.grade2, bows.grade3, bows.grade4].map(refineGrade)).toEqual([1, 2, 3, 4]);
-    for (const item of Object.values(ITEM_DEFINITIONS).filter(item => isRefinableItem(item.id))) {
+    for (const item of Object.values(ITEM_DEFINITIONS).filter(item => isRefinableItem(item.id) && !isGradeItemId(item.id))) {
       const tier = itemTier(item.id)!;
       expect(refineGrade(item.id), item.id).toBe(tier <= 4 ? 1 : tier <= 8 ? 2 : tier <= 12 ? 3 : 4);
     }

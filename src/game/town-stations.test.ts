@@ -2,9 +2,10 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("../app/developer", () => ({ isDeveloperIdentity: () => false }));
 import { HOME_BENCH_POSITION, HOME_QUEST_BOARD_POSITION, HOME_RESEARCH_POSITION } from "../../shared/home";
 import { MINING_TRACK, miningTrackDistanceSquared } from "../../shared/mining";
-import { TOWN_ARRIVAL, TOWN_BENCH_POSITION, TOWN_CARD_SELLER_POSITION, TOWN_CARD_SELLER_REACH, TOWN_CARD_SELLER_SERVER_REACH, TOWN_CARD_SELLER_STALL, TOWN_CENTER, TOWN_DOORS, TOWN_EAST_BRIDGE, TOWN_EAST_BRIDGE_APPROACHES, TOWN_EAST_FENCE_GAP, TOWN_EAST_FENCE_GAP_OUTSIDE, TOWN_FEET_OFFSET, TOWN_OX_POSITION, TOWN_QUEST_BOARD_POSITION, TOWN_RESEARCH_POSITION, TOWN_SMITH_POSITION, TOWN_SMITH_REACH, TOWN_SMITH_SERVER_REACH, TOWN_TRAVEL_PORTAL, inTownVillage, townRoomAt } from "../../shared/town";
+import { TOWN_ARRIVAL, TOWN_BENCH_POSITION, TOWN_CARD_SELLER_POSITION, TOWN_CARD_SELLER_REACH, TOWN_CARD_SELLER_SERVER_REACH, TOWN_CARD_SELLER_STALL, TOWN_CENTER, TOWN_DOORS, TOWN_EAST_BRIDGE, TOWN_EAST_BRIDGE_APPROACHES, TOWN_EAST_FENCE_GAP, TOWN_EAST_FENCE_GAP_OUTSIDE, TOWN_FEET_OFFSET, TOWN_OX_POSITION, TOWN_QUEST_BOARD_POSITION, TOWN_RESEARCH_POSITION, TOWN_SCHOOL_POSITIONS, TOWN_SCHOOL_REACH, TOWN_SMITH_POSITION, TOWN_SMITH_REACH, TOWN_SMITH_SERVER_REACH, TOWN_TRAVEL_PORTAL, inTownVillage, townRoomAt } from "../../shared/town";
 import { SOUL_INTERIOR_DECOR, SOUL_INTERIOR_SOLIDS, SOUL_VILLAGE_DECOR, SOUL_VILLAGE_SOLIDS } from "./soul-village";
-import { TOWN_HILLS_SIGNPOST, TOWN_SIGNPOST, townWindowDecor } from "./town-world";
+import { TOWN_HILLS_SIGNPOST, TOWN_SCHOOL_SIGNPOSTS, TOWN_SIGNPOST, townWindowDecor } from "./town-world";
+import { SCHOOL_DETAILS, WEAPON_SCHOOLS } from "../../shared/weapon-mastery";
 import { UPGRADE_BENCH_POSITION } from "./world";
 import { pushOutOf } from "./runtime/town/town-runtime";
 import { createHomeStationTouchHandler } from "../ui/game-ui-runtime";
@@ -136,6 +137,70 @@ describe("Ox in the bottom-right house", () => {
     Object.assign(player, TOWN_DOORS[8].inside); touch();
     Object.assign(player, { x: TOWN_OX_POSITION.x, y: TOWN_OX_POSITION.y - TOWN_FEET_OFFSET }); touch();
     expect(openOx).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("the Weapon Mastery schools' buildings", () => {
+  it("stands each school in its building's room, its sign on the back wall, the room's furniture all kept", () => {
+    for (const school of WEAPON_SCHOOLS) {
+      const at = TOWN_SCHOOL_POSITIONS[school], { door, building } = SCHOOL_DETAILS[school];
+      expect(at.door).toBe(door);
+      expect(townRoomAt(at.x, at.y)).toBe(TOWN_DOORS[door]);
+      expect(townWindowDecor(at.x, at.y)).toContainEqual(expect.objectContaining({ type: "upgradeBench", x: at.x, y: at.y, label: building }));
+      // Against the back wall, out of the way of the doorway.
+      expect(at.y - TOWN_DOORS[door].room.top).toBeLessThan(80);
+    }
+    const interior = townWindowDecor(TOWN_BENCH_POSITION.x, TOWN_BENCH_POSITION.y).filter(item => item.type === "soulProp");
+    expect(SOUL_INTERIOR_DECOR.length - interior.length).toBe(6);
+  });
+  it("lets a player walk in from the door to each school's spot, on open floor", () => {
+    for (const school of WEAPON_SCHOOLS) {
+      const at = TOWN_SCHOOL_POSITIONS[school], stand = { x: at.x, y: at.y - TOWN_FEET_OFFSET };
+      expect(standable(stand.x, stand.y), school).toBe(true);
+      expect(reachable(at.door, stand), school).toBe(true);
+      // The doorway is well out of reach, so coming in opens nothing.
+      const inside = TOWN_DOORS[at.door].inside;
+      expect(Math.hypot(inside.x - at.x, inside.y + TOWN_FEET_OFFSET - at.y)).toBeGreaterThan(TOWN_SCHOOL_REACH * 2);
+    }
+  });
+  it("opens a school's window once as a player walks up, and again only after they step away", () => {
+    const openSchool = vi.fn(), at = TOWN_SCHOOL_POSITIONS.swordplay, inside = TOWN_DOORS[at.door].inside;
+    const player = { x: inside.x, y: inside.y };
+    let inTown = true;
+    const touch = createHomeStationTouchHandler(() => inTown, player, vi.fn(), vi.fn(), vi.fn(), vi.fn(), vi.fn(), vi.fn(), openSchool);
+    touch();
+    expect(openSchool).not.toHaveBeenCalled();
+    Object.assign(player, { x: at.x + 20, y: at.y - TOWN_FEET_OFFSET + 20 });
+    touch(); touch();
+    expect(openSchool).toHaveBeenCalledOnce();
+    expect(openSchool).toHaveBeenCalledWith("swordplay");
+    Object.assign(player, inside); touch();
+    Object.assign(player, { x: at.x, y: at.y - TOWN_FEET_OFFSET }); touch();
+    expect(openSchool).toHaveBeenCalledTimes(2);
+    // Each building opens its own school.
+    for (const school of ["archery", "sorcery"] as const) {
+      Object.assign(player, TOWN_DOORS[TOWN_SCHOOL_POSITIONS[school].door].inside); touch();
+      Object.assign(player, { x: TOWN_SCHOOL_POSITIONS[school].x, y: TOWN_SCHOOL_POSITIONS[school].y - TOWN_FEET_OFFSET }); touch();
+    }
+    expect(openSchool.mock.calls.map(([school]) => school)).toEqual(["swordplay", "swordplay", "archery", "sorcery"]);
+    inTown = false;
+    Object.assign(player, inside); touch();
+    Object.assign(player, { x: at.x, y: at.y - TOWN_FEET_OFFSET }); touch();
+    expect(openSchool).toHaveBeenCalledTimes(4);
+  });
+  it("names each building from the square with a signpost by its door, on open ground, pointing at it", () => {
+    const decor = townWindowDecor(TOWN_ARRIVAL.x, TOWN_ARRIVAL.y);
+    WEAPON_SCHOOLS.forEach((school, index) => {
+      const sign = TOWN_SCHOOL_SIGNPOSTS[index], door = TOWN_DOORS[SCHOOL_DETAILS[school].door];
+      expect(decor).toContain(sign);
+      expect(sign).toMatchObject({ type: "soulProp", signpost: SCHOOL_DETAILS[school].building });
+      expect(inTownVillage(sign.x, sign.y)).toBe(true);
+      expect(standable(sign.x, sign.y - TOWN_FEET_OFFSET), school).toBe(true);
+      // Beside the door, not in front of it, its plank pointing towards it.
+      expect(Math.hypot(sign.x - door.x, sign.y - door.y)).toBeLessThan(200);
+      expect(Math.abs(sign.x - door.x)).toBeGreaterThan(door.half);
+      expect(sign.type === "soulProp" && Boolean(sign.flip)).toBe(door.x > sign.x);
+    });
   });
 });
 

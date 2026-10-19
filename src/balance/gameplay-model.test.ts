@@ -18,12 +18,11 @@ describe("simulator parity with gameplay", () => {
     }
   });
 
-  it("includes late-map gear and keeps fractional bow odds exact", () => {
-    const maps = createMapDefinitions();
-    expect(maps.find(m => m.id === "ion_citadel")!.regularDrops.map(d => d.itemId))
-      .toEqual(["ion_bow", "ion_sword", "ion_staff", "ion_armor", "ion_helmet"]);
-    const bow = maps.find(m => m.id === "samurai_garden")!.regularDrops.find(d => d.itemId === "samurai_bow")!;
-    expect(bow.numerator! / bow.denominator).toBe(.0065);
+  it("expects no gear from any map or boss: gear is bought at the Smith", () => {
+    for (const map of createMapDefinitions()) {
+      expect(map.regularDrops.map(d => d.itemId).filter(id => id !== "basic_paper_hat"), map.id).toEqual([]);
+      expect(map.boss?.drops ?? [], map.id).toEqual([]);
+    }
   });
 
   it("only gives Black Boots' flat speed bonus after five seconds without combat", () => {

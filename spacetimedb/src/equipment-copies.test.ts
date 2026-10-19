@@ -1,10 +1,10 @@
 import { Timestamp } from "spacetimedb";
 import { expect, it, vi } from "vitest";
 import { crystalFixture, identity, server } from "../../tests/helpers/crystal-hollows-fixture";
-import { fillDefeatBudget, reportEnemy } from "../../tests/helpers/enemy-defeat";
 import { eraseIdentityRows } from "./account-erasure";
 import { bowSkillKey, bowSkillRollFor, duelBowSkillFields } from "./bow-skills";
 import { offerDuplicateEquipment, offerItemForFullBag, publishItemDrop } from "./equipment-copies";
+import { awardDrops } from "./enemy-loot-award";
 import { oreCount, refineLevelFor, setRefineLevel } from "./item-refine";
 import { salvageOre } from "../../shared/refine";
 import { inventoryForProgress } from "./progress-helpers";
@@ -43,6 +43,9 @@ const later = (f: Fixture, ms: number) => { f.ctx.timestamp = new Timestamp(f.ct
 const luckyRandom = (f: Fixture, float = .1) => {
   Object.assign(f.ctx, { random: Object.assign(() => float, { integerInRange: (min: number) => min }) });
 };
+/** Rolled drops reaching the bag, as kill loot is awarded. Kills no longer drop gear, so the rolls are given. */
+const dropRolled = (f: Fixture, itemIds: readonly string[]) =>
+  f.transaction(() => awardDrops(f.ctx as any, new Map(itemIds.map(id => [id, 1]))));
 /** A player holding an iron bow with roll A in their hand. */
 function archer(extra: Record<string, unknown> = {}) {
   const f = crystalFixture();
@@ -63,12 +66,11 @@ it("offers equipment only: never cosmetic looks, starter or developer items", ()
   expect(bagSlotsUsed([IRON_BOW, SAMURAI_HAT, BASIC_PAPER_HAT, IRON_BOW], [IRON_BOW], 2)).toBe(3);
 });
 
-it("settles a duplicate enemy drop on the spot: no offer and no spare copy", () => {
+it("settles a duplicate drop on the spot: no offer and no spare copy", () => {
   const f = crystalFixture();
   luckyRandom(f);
   f.patch("playerProgress", { damage: 1e15, inventoryJson: '["crystal_armor"]' });
-  fillDefeatBudget(f, "crystal_hollows", "Shard Hopper");
-  reportEnemy(f, "Shard Hopper", 1);
+  dropRolled(f, ["crystal_bow", "crystal_helmet", "crystal_armor"]);
   // The bow and helmet were new and went into the bag; the armor already held is simply settled.
   expect(inventory(f)).toEqual(expect.arrayContaining(["crystal_bow", "crystal_helmet", "crystal_armor"]));
   expect(inventory(f).filter(id => id === "crystal_armor")).toHaveLength(1);
@@ -187,8 +189,7 @@ it("turns new drops that find the bag full into offers, so the bag never holds m
   const f = archer({ damage: 1e15 });
   luckyRandom(f);
   fillBag(f, 1);
-  fillDefeatBudget(f, "crystal_hollows", "Shard Hopper");
-  reportEnemy(f, "Shard Hopper", 1);
+  dropRolled(f, NEW_CRYSTAL_GEAR);
   // One slot was free: one new item went in, and the rest wait.
   const kept = NEW_CRYSTAL_GEAR.filter(itemId => inventory(f).includes(itemId));
   expect(kept).toHaveLength(1);
@@ -203,8 +204,7 @@ it("offers every new drop when the bag is full, and Keep makes one the first cop
   luckyRandom(f);
   fillBag(f, 0);
   const before = inventory(f);
-  fillDefeatBudget(f, "crystal_hollows", "Shard Hopper");
-  reportEnemy(f, "Shard Hopper", 1);
+  dropRolled(f, NEW_CRYSTAL_GEAR);
   expect(inventory(f)).toEqual(before);
   expect(offers(f).map(offer => offer.itemId).sort()).toEqual([...NEW_CRYSTAL_GEAR].sort());
   const bow = offers(f).find(offer => offer.itemId === "crystal_bow")!;
@@ -220,8 +220,7 @@ it("counts Bag Slots research as room for a new drop", () => {
   luckyRandom(f);
   fillBag(f, 0);
   f.seed("playerResearch", { identity: f.ctx.sender, frontierMastery: 0, ...createEmptyResearchRanks(), inventorySlots: 1 });
-  fillDefeatBudget(f, "crystal_hollows", "Shard Hopper");
-  reportEnemy(f, "Shard Hopper", 1);
+  dropRolled(f, NEW_CRYSTAL_GEAR);
   expect(NEW_CRYSTAL_GEAR.filter(itemId => inventory(f).includes(itemId))).toHaveLength(1);
 });
 

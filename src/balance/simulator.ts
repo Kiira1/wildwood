@@ -36,18 +36,7 @@ import {
   TUTORIAL_FOREST_MAP_ID,
   WATER_REACH_MAP_ID,
 } from "../game/world";
-import {
-  BASIC_PAPER_HAT,
-  FROST_ARMOR,
-  FROST_BOW,
-  ITEM_DEFINITIONS,
-  LAVA_BOSS_ITEM_DROP_DENOMINATOR,
-  LAVA_BOW,
-  SNOW_BOSS_ARMOR_DROP_DENOMINATOR,
-  SNOW_BOSS_ITEM_DROP_DENOMINATOR,
-  STARTER_STONE,
-  type ItemId,
-} from "../../shared/items";
+import { BASIC_PAPER_HAT, ITEM_DEFINITIONS, STARTER_STONE, type ItemId } from "../../shared/items";
 import { effectivePlayerPowerStats, playerPowerForStats, type PlayerPowerStats } from "../../shared/player-power";
 import { AUTO_FARM_DEFEAT_LIMIT, AUTO_FARM_DEFEAT_WINDOW_MS } from "../game/runtime/auto-farm/growth-forecast";
 import { FARM_PUSHES } from "../game/runtime/auto-farm/auto-farm-brain";
@@ -746,10 +735,7 @@ export function createMapDefinitions(endlessMaps = 0, settings: BalanceSettings 
           { type: "health", amount: BOSS_RULES.FROSTCLAW_REWARD_HEALTH },
           { type: "armor", amount: BOSS_RULES.FROSTCLAW_REWARD_ARMOR },
         ],
-        drops: [
-          { itemId: FROST_BOW, denominator: SNOW_BOSS_ITEM_DROP_DENOMINATOR },
-          { itemId: FROST_ARMOR, denominator: SNOW_BOSS_ARMOR_DROP_DENOMINATOR },
-        ],
+        drops: [],
       },
     },
     {
@@ -769,7 +755,7 @@ export function createMapDefinitions(endlessMaps = 0, settings: BalanceSettings 
           { type: "armor", amount: BOSS_RULES.MAGMALISK_REWARD_ARMOR },
           { type: "regen", amount: BOSS_RULES.MAGMALISK_REWARD_REGEN },
         ],
-        drops: [{ itemId: LAVA_BOW, denominator: LAVA_BOSS_ITEM_DROP_DENOMINATOR }],
+        drops: [],
       },
     },
     {

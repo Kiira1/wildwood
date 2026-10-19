@@ -1,9 +1,10 @@
 import { Timestamp } from "spacetimedb";
 import { expect, it, vi } from "vitest";
 import { crystalFixture, identity, server } from "../../tests/helpers/crystal-hollows-fixture";
-import { fillDefeatBudget, reportEnemy } from "../../tests/helpers/enemy-defeat";
+import { reportEnemy } from "../../tests/helpers/enemy-defeat";
 import { eraseIdentityRows } from "./account-erasure";
 import { ignoredDropKey, isDropIgnored, keepWantedDrops } from "./ignored-drops";
+import { awardDrops } from "./enemy-loot-award";
 import { EQUIPMENT_OFFER_LIFETIME_MS } from "../../shared/equipment-copies";
 import { MAX_LOOT_FILTER_BATCH, isDropFiltered, lootFilterId } from "../../shared/loot-filter";
 import { BASIC_PAPER_HAT, FROST_BOW, GALAXY_BOW, IRON_BOW, SAMURAI_BOW, SAMURAI_HAT, STARTER_STONE, WOODEN_SWORD } from "../../shared/items";
@@ -27,12 +28,14 @@ const seedOffer = (f: Fixture, itemId: string, who = f.ctx.sender) =>
 const luckyRandom = (f: Fixture) => {
   Object.assign(f.ctx, { random: Object.assign(() => .1, { integerInRange: (min: number) => min }) });
 };
-/** A player on Crystal Hollows who kills one Shard Hopper with every roll won: its bow, sword, armor and helmet all drop. */
+/**
+ * Crystal Hollows' old gear arriving as rolled drops, the way kill loot is awarded: the filter, then the bag.
+ * Kills no longer drop gear, so the rolls are given; the paper hat test below runs a real kill report.
+ */
 function hunt(f: Fixture) {
   luckyRandom(f);
-  f.patch("playerProgress", { damage: 1e15 });
-  fillDefeatBudget(f, "crystal_hollows", "Shard Hopper");
-  reportEnemy(f, "Shard Hopper", 1);
+  const rolled = new Map(["crystal_bow", "crystal_sword", "crystal_staff", "crystal_armor", "crystal_helmet"].map(id => [id, 1]));
+  f.transaction(() => awardDrops(f.ctx as any, keepWantedDrops(f.ctx, f.ctx.sender, rolled)));
 }
 
 it("accepts the four slot entries and droppable items, and nothing else", () => {
@@ -127,6 +130,19 @@ it("keeps an item filtered by its slot even when the item itself is on, and lets
   filter(f, ["crystal_helmet"]);
   hunt(f);
   expect(drops(f)).toEqual(["crystal_armor", "crystal_bow", "crystal_staff", "crystal_sword"]);
+});
+
+it("filters what kills still drop: the forest's paper hat, by item or by its slot", () => {
+  for (const entry of [BASIC_PAPER_HAT, "slot:HEAD", null]) {
+    const f = crystalFixture();
+    f.patch("player", { mapId: "tutorial_forest" });
+    f.patch("playerProgress", { damage: 1e15, inventoryJson: '["starter_stone"]' });
+    if (entry) filter(f, [entry]);
+    luckyRandom(f);
+    reportEnemy(f);
+    expect(drops(f), String(entry)).toEqual(entry ? [] : [BASIC_PAPER_HAT]);
+    expect(inventory(f).includes(BASIC_PAPER_HAT), String(entry)).toBe(!entry);
+  }
 });
 
 it("never rolls boss equipment, regardless of the loot filter", () => {

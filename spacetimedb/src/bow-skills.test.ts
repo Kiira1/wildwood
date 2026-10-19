@@ -4,6 +4,7 @@ import { crystalFixture, identity, server } from "../../tests/helpers/crystal-ho
 import { fillDefeatBudget, reportEnemy, seedDefeatClock } from "../../tests/helpers/enemy-defeat";
 import { eraseIdentityRows } from "./account-erasure";
 import { bowSkillKey } from "./bow-skills";
+import { publishItemDrop } from "./equipment-copies";
 import { PLAUSIBLE_KILL_TOLERANCE } from "./enemy-defeats";
 import { bowSkillChanceRangeTenths, bowSkillReachMultiplier } from "../../shared/bow-skills";
 import { ATTACK_BALANCE_VERSION, REGULAR_ENEMY_RESPAWN_SECONDS, SPACETIME_AUTH_CLIENT_ID, SPACETIME_AUTH_ISSUER } from "../../shared/rules";
@@ -23,12 +24,14 @@ const luckyRandom = (f: Fixture, float = .1) => {
 const seedRoll = (f: Fixture, itemId: string, roll: { arrowStorm: number; ricochet: number; piercingShot: number }, who = f.ctx.sender) =>
   f.seed("playerBowSkill", { key: bowSkillKey(who, itemId), identity: who, itemId, ...roll });
 
-it("rolls a bow the moment it drops, in its tier's range, and never again", () => {
+/** Gear arriving in the bag (a purchase, a grant): the bow is rolled on arrival. */
+const arrive = (f: Fixture, itemId: string, alreadyOwned = false) =>
+  f.transaction(() => publishItemDrop(f.ctx as any, f.ctx.sender, itemId, alreadyOwned));
+
+it("rolls a bow the moment it arrives, in its tier's range, and never again", () => {
   const f = crystalFixture();
   luckyRandom(f);
-  f.patch("playerProgress", { damage: 1e15 });
-  fillDefeatBudget(f, "crystal_hollows", "Shard Hopper");
-  reportEnemy(f, "Shard Hopper", 1);
+  for (const itemId of ["crystal_bow", "crystal_armor", "crystal_helmet"]) arrive(f, itemId);
   const roll = rowFor(f, "crystal_bow");
   // Crystalwing is a tier 10 bow: 4.9-10.7%. A draw of .1 lands 5 tenths in.
   const { min, max } = bowSkillChanceRangeTenths(10);
@@ -36,18 +39,16 @@ it("rolls a bow the moment it drops, in its tier's range, and never again", () =
   expect(roll).toMatchObject({ itemId: "crystal_bow", arrowStorm: 5.4, ricochet: 5.4, piercingShot: 5.4 });
   // Armor and helmets are not bows and get no row.
   expect(rows(f).map(row => row.itemId)).toEqual(["crystal_bow"]);
-  // Another drop of the same bow keeps the first roll.
+  // Another copy of the same bow keeps the first roll.
   luckyRandom(f, .9);
-  reportEnemy(f, "Shard Hopper", 1);
+  arrive(f, "crystal_bow", true);
   expect(rowFor(f, "crystal_bow")).toEqual(roll);
 });
 
 it("records a bow whose skills all failed to appear, so it is never rolled again", () => {
   const f = crystalFixture();
   luckyRandom(f, .5); // .5 is past the one-in-three appearance chance
-  f.patch("playerProgress", { damage: 1e15 });
-  fillDefeatBudget(f, "crystal_hollows", "Shard Hopper");
-  reportEnemy(f, "Shard Hopper", 1);
+  arrive(f, "crystal_bow");
   expect(rowFor(f, "crystal_bow")).toMatchObject({ arrowStorm: 0, ricochet: 0, piercingShot: 0 });
 });
 

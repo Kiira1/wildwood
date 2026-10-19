@@ -13,6 +13,7 @@
  *   close enough to the village to matter.
  */
 import doorData from "./town-doors.json";
+import type { WeaponSchool } from "./weapon-mastery";
 
 export const TOWN_MAP_ID = "town";
 export type TownMapId = typeof TOWN_MAP_ID;
@@ -130,6 +131,15 @@ const stationIn = (door: number, dx: number, dy: number) => {
 export const TOWN_BENCH_POSITION = stationIn(6, 210, 65);
 export const TOWN_RESEARCH_POSITION = stationIn(1, 210, 50);
 export const TOWN_QUEST_BOARD_POSITION = stationIn(5, 300, 44);
+/**
+ * Each Weapon Mastery school's building (SCHOOL_DETAILS in shared/weapon-mastery.ts names its door): where feet
+ * stand to read it, on open floor against the back wall between its furniture, under the sign on the wall.
+ */
+export const TOWN_SCHOOL_POSITIONS: Readonly<Record<WeaponSchool, { door: number; x: number; y: number }>> = Object.freeze({
+  archery: stationIn(2, 313, 64), swordplay: stationIn(3, 269, 64), sorcery: stationIn(4, 200, 64),
+});
+/** How close a player's feet come to a school's spot before its window opens. */
+export const TOWN_SCHOOL_REACH = 45;
 /**
  * Ox keeps the bottom-right house (door 8) and sells the Galaxy set. Where his feet are: in the open
  * floor between the back wall's furniture and the table, so a player can walk right up to him.

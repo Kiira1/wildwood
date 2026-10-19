@@ -1,7 +1,7 @@
 import { SenderError } from "spacetimedb/server";
 import type { Identity } from "spacetimedb";
 import type { ModuleReducerCtx } from "./index";
-import { CAMPAIGN_UNLOCK_FIELDS, highestCampaignMap, withoutLockedEquipment } from "../../shared/equipment-access";
+import { CAMPAIGN_UNLOCK_FIELDS, highestCampaignMap } from "../../shared/equipment-access";
 import { MAX_PLAYER_STAT, MAX_ARMOR, MIN_ATTACK_INTERVAL } from "../../shared/rules";
 import { recordModerationAction } from "./moderation-history";
 import { readPlayerProgress } from "./wide-stats";
@@ -45,10 +45,8 @@ export function rollbackPlayerProgression(ctx: ModuleReducerCtx, args: Progressi
   const mapIndex = highestCampaignMap(next), claims = (1 << mapIndex) - 1;
   if (baseline.bossRewardClaims !== claims) throw new SenderError("Rollback boss claims must match campaign access.");
   next.bossRewardClaims = claims;
-  const owned: string[] = JSON.parse(current.inventoryJson);
-  const fallback = Object.fromEntries(["equippedHead", "equippedChest", "equippedFeet", "equippedRightHand", "equippedLeftHand"].map(field =>
-    [field, typeof baseline[field] === "string" && owned.includes(baseline[field]) ? baseline[field] : ""]));
-  const restored = withoutLockedEquipment(next, next, fallback);
+  // Gear never locks behind a map, so the loadout stays as it is.
+  const restored = next;
   const json = (value: unknown) => JSON.stringify(value, (_key, value) => typeof value === "bigint" ? value.toString() : value);
   const before = json({ progress: current, procedural: ctx.db.proceduralProgress.identity.find(args.identity),
     location: ctx.db.playerLastLocation.identity.find(args.identity), homeReturn: ctx.db.homeReturnLocation.identity.find(args.identity),

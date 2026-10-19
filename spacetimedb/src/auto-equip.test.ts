@@ -10,6 +10,7 @@ import { BOSS_REWARD_CLAIM_BITS } from "../../shared/rules";
 import { TERMS_VERSION } from "../../shared/legal";
 import { IRON_BOW, SAMURAI_HAT, STARTER_BOW, STARTER_STONE, WOODEN_SWORD } from "../../shared/items";
 import { progressOf } from "../../tests/helpers/progress";
+import { autoEquip } from "./player-power";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
 type Fixture = ReturnType<typeof crystalFixture>;
@@ -136,128 +137,129 @@ it("lets the loot filter win: a filtered bow never drops, so it is never compare
 /** A player on Crystal Hollows who has reached it, with a weaker bow in hand. */
 function looter(extra: Record<string, unknown> = {}) {
   const f = crystalFixture();
-  draws(f, [0]); // every loot roll wins
+  draws(f, [0]); // every roll wins
   f.patch("playerProgress", { damage: 1e15, inventoryJson: JSON.stringify([IRON_BOW]), equippedRightHand: IRON_BOW, ...UP_TO_CRYSTAL, ...extra });
   fillDefeatBudget(f, "crystal_hollows", ENEMY);
   return f;
 }
+/** New gear arriving in the bag, then auto equip, as a kill report runs it. */
+function gain(f: Fixture, ...itemIds: string[]) {
+  const before = progress(f);
+  f.patch("playerProgress", { inventoryJson: JSON.stringify([...inventory(f), ...itemIds]) });
+  f.transaction(() => autoEquip.equipNewUpgrades(f.ctx as any, f.ctx.sender, before));
+}
 
-it("equips a better new drop, with the player row showing it", () => {
+it("drops no gear from kills: gear is bought at the Smith", () => {
   const f = looter();
   reportEnemy(f, ENEMY, 1);
-  expect(inventory(f)).toContain("crystal_bow");
+  expect(kills(f)).toBe(1);
+  expect(inventory(f)).toEqual([IRON_BOW]);
+  expect(progress(f).equippedRightHand).toBe(IRON_BOW);
+});
+
+it("equips better new gear, with the player row showing it", () => {
+  const f = looter();
+  gain(f, "crystal_bow");
   expect(progress(f).equippedRightHand).toBe("crystal_bow");
   expect(f.db.player.identity.find(f.ctx.sender).rightHandItem).toBe("crystal_bow");
 });
 
-it("leaves a new drop in the bag when it is worse, locked, or the player turned Auto equip off", () => {
-  // Skills count: the new crystal bow rolls every skill, so the ion bow in hand needs its own to stay ahead.
+it("leaves new gear in the bag when it is worse or the player turned Auto equip off, but never for its map", () => {
+  // Skills count: the ion bow in hand needs its own to stay ahead of a crystal bow.
   const worse = looter({ inventoryJson: JSON.stringify(["ion_bow"]), equippedRightHand: "ion_bow", ...ALL_MAPS });
   seedFirst(worse, { arrowStorm: 15, ricochet: 15, piercingShot: 15 }, "ion_bow");
-  reportEnemy(worse, ENEMY, 1);
+  gain(worse, "crystal_bow");
   expect(inventory(worse)).toContain("crystal_bow");
   expect(progress(worse).equippedRightHand).toBe("ion_bow");
 
-  const locked = looter({ crystalHollowsUnlocked: false });
-  reportEnemy(locked, ENEMY, 1);
-  expect(inventory(locked)).toContain("crystal_bow");
-  expect(progress(locked).equippedRightHand).toBe(IRON_BOW);
+  // Gear never locks behind a map: a crystal bow goes on before Crystal Hollows is reached.
+  const early = looter({ crystalHollowsUnlocked: false });
+  gain(early, "crystal_bow");
+  expect(progress(early).equippedRightHand).toBe("crystal_bow");
 
   const off = looter();
   settings(off, true, false);
-  reportEnemy(off, ENEMY, 1);
+  gain(off, "crystal_bow");
   expect(inventory(off)).toContain("crystal_bow");
   expect(progress(off).equippedRightHand).toBe(IRON_BOW);
 });
 
 // Swords hit half as hard again as bows but only up close, so power alone would take every archer's bow.
-it("keeps the kind of weapon in hand when new weapons drop: an archer's bow, a swordsman's sword", () => {
+it("keeps the kind of weapon in hand when new weapons arrive: an archer's bow, a swordsman's sword", () => {
   const archer = looter();
-  reportEnemy(archer, ENEMY, 1);
-  expect(inventory(archer)).toEqual(expect.arrayContaining(["crystal_bow", "crystal_sword"]));
+  gain(archer, "crystal_bow", "crystal_sword");
   expect(progress(archer).equippedRightHand).toBe("crystal_bow");
 
   const swordsman = looter({ inventoryJson: JSON.stringify(["iron_sword"]), equippedRightHand: "iron_sword" });
-  reportEnemy(swordsman, ENEMY, 1);
-  expect(inventory(swordsman)).toEqual(expect.arrayContaining(["crystal_bow", "crystal_sword"]));
+  gain(swordsman, "crystal_bow", "crystal_sword");
   expect(progress(swordsman).equippedRightHand).toBe("crystal_sword");
 });
 
-it("equips gear already in the bag when reaching a map unlocks it, only with Auto equip on", () => {
-  for (const autoEquipBest of [true, false]) {
-    const f = crystalFixture();
-    f.patch("playerProgress", { damage: 1e15, inventoryJson: JSON.stringify([IRON_BOW, "clockwork_bow"]), equippedRightHand: IRON_BOW, ...UP_TO_CRYSTAL });
-    settings(f, true, autoEquipBest);
-    // Prismshell's reward opens Clockwork Ruins, the clockwork bow's tier.
-    reportEnemy(f, "boss", 1);
-    expect(progress(f).clockworkRuinsUnlocked).toBe(true);
-    expect(progress(f).equippedRightHand).toBe(autoEquipBest ? "clockwork_bow" : IRON_BOW);
-  }
+it("changes nothing when a map opens: gear in the bag was usable already", () => {
+  const f = crystalFixture();
+  f.patch("playerProgress", { damage: 1e15, inventoryJson: JSON.stringify([IRON_BOW, "clockwork_bow"]), equippedRightHand: IRON_BOW, ...UP_TO_CRYSTAL });
+  settings(f, true, true);
+  // Prismshell's reward opens Clockwork Ruins, the clockwork bow's old map.
+  reportEnemy(f, "boss", 1);
+  expect(progress(f).clockworkRuinsUnlocked).toBe(true);
+  expect(progress(f).equippedRightHand).toBe(IRON_BOW);
 });
 
 it("ranks armor by the armor, not the active cards: a Reflect build with regen cards still takes the higher tier", () => {
   const f = crystalFixture();
   // A Reflect build: health and regen far above its damage, so four Miremaws' regen outscored a higher tier.
   f.patch("playerProgress", { maxHp: 2e9, damage: 5e5, regen: 4e8, armor: 3e4,
-    inventoryJson: JSON.stringify([IRON_BOW, "crystal_armor", "clockwork_armor"]), equippedRightHand: IRON_BOW, equippedChest: "crystal_armor", ...UP_TO_CRYSTAL });
+    inventoryJson: JSON.stringify([IRON_BOW, "crystal_armor"]), equippedRightHand: IRON_BOW, equippedChest: "crystal_armor", ...UP_TO_CRYSTAL });
   settings(f, true, true);
   f.transaction(() => setActiveCards(f.ctx, f.ctx.sender, Array(4).fill("miremaw_card")));
-  // Prismshell's reward opens Clockwork Ruins, the clockwork armor's tier.
-  reportEnemy(f, "boss", 1);
-  expect(progress(f).clockworkRuinsUnlocked).toBe(true);
+  gain(f, "clockwork_armor");
   expect(progress(f).equippedChest).toBe("clockwork_armor");
 });
 
 const consent = (f: Fixture) =>
   f.seed("playerLegalConsent", { identity: f.ctx.sender, termsVersion: TERMS_VERSION, ageBand: 2, acceptedAt: f.ctx.timestamp });
 
-// The blank-hand bug: a map-locked bow in hand read as "no weapon", world entry
-// wrote that "" back, auto equip copied it when another slot changed, and the
-// client took it in. The player could not attack.
+// The blank-hand bug: a hand that read as "no weapon" was written back as "",
+// auto equip copied it when another slot changed, and the client took it in.
+// The player could not attack.
 it("never blanks a hand that held a weapon: world entry, auto equip and dev grants all leave one", () => {
-  // World entry with a locked bow in hand and the stone in the bag.
+  // World entry keeps an owned bow from any map in hand.
   const entry = crystalFixture();
   entry.patch("playerProgress", { inventoryJson: JSON.stringify([STARTER_STONE, IRON_BOW]), equippedRightHand: IRON_BOW });
   consent(entry);
   entry.run(server.enterWorld, { tabId: "blank-hand" });
-  expect(progress(entry).equippedRightHand).toBe(STARTER_STONE);
-  expect(entry.db.player.identity.find(entry.ctx.sender).rightHandItem).toBe(STARTER_STONE);
-  // A usable bow in the bag is the better fallback for a locked one.
-  const usable = crystalFixture();
-  usable.patch("playerProgress", { inventoryJson: JSON.stringify([STARTER_STONE, STARTER_BOW, IRON_BOW]), bowCount: 1, equippedRightHand: IRON_BOW });
-  consent(usable);
-  usable.run(server.enterWorld, { tabId: "blank-hand" });
-  expect(progress(usable).equippedRightHand).toBe(STARTER_BOW);
-  // Of its own kind: a locked bow is never replaced by a sword, nor a locked sword by a bow.
+  expect(progress(entry).equippedRightHand).toBe(IRON_BOW);
+  expect(entry.db.player.identity.find(entry.ctx.sender).rightHandItem).toBe(IRON_BOW);
+  // A weapon no longer owned falls back to the best owned one of its own kind:
+  // a bow is never replaced by a sword, nor a sword by a bow.
   for (const [held, fallback] of [[IRON_BOW, STARTER_BOW], ["iron_sword", WOODEN_SWORD]]) {
     const kind = crystalFixture();
-    kind.patch("playerProgress", { inventoryJson: JSON.stringify([STARTER_STONE, STARTER_BOW, WOODEN_SWORD, held]), bowCount: 1, equippedRightHand: held });
+    kind.patch("playerProgress", { inventoryJson: JSON.stringify([STARTER_STONE, STARTER_BOW, WOODEN_SWORD]), bowCount: 1, equippedRightHand: held });
     consent(kind);
     kind.run(server.enterWorld, { tabId: "blank-hand" });
     expect(progress(kind).equippedRightHand).toBe(fallback);
   }
 
-  // Auto equip putting on a helmet leaves a locked bow in hand as it was, never blank.
+  // Auto equip putting on a helmet leaves the bow in hand as it was, never blank.
   const helmet = looter({ inventoryJson: JSON.stringify([STARTER_STONE, "ion_bow"]), equippedRightHand: "ion_bow" });
-  helmet.run(server.setIgnoredDrops, { itemIds: ["slot:HAND"], ignored: true }); // only armour drops
-  reportEnemy(helmet, ENEMY, 1);
+  gain(helmet, "crystal_helmet");
   expect(progress(helmet).equippedHead).toBe("crystal_helmet");
   expect(progress(helmet).equippedRightHand).toBe("ion_bow");
   expect(helmet.db.player.identity.find(helmet.ctx.sender).rightHandItem).not.toBe("");
 
-  // A developer grant never puts a locked weapon in hand.
+  // A developer grant puts the weapon in hand, whatever map it came from.
   const grant = crystalFixture();
   grant.patch("playerProgress", { inventoryJson: JSON.stringify([STARTER_STONE]), equippedRightHand: STARTER_STONE });
   const player = grant.ctx.sender;
   grant.ctx.sender = Identity.fromString("c200383520521c925f3cf6deafb20cd6a7d6168d1c31cb3c0ddb731c197a2d79"); // the database owner
   grant.run(server.devGrantEquipment, { identity: player, itemId: IRON_BOW, equip: true });
   grant.ctx.sender = player;
-  expect(progress(grant).equippedRightHand).toBe(STARTER_STONE);
+  expect(progress(grant).equippedRightHand).toBe(IRON_BOW);
   expect(inventory(grant)).toContain(IRON_BOW);
 });
 
 // Players empty their hands on purpose, for unarmed Reflect runs.
-it("leaves hands the player emptied empty: at world entry, when a better weapon drops, and through prestige", () => {
+it("leaves hands the player emptied empty: at world entry, when a better weapon arrives, and through prestige", () => {
   const entry = crystalFixture();
   entry.patch("playerProgress", { inventoryJson: JSON.stringify([STARTER_STONE, STARTER_BOW]), bowCount: 1, equippedRightHand: "", equippedLeftHand: "" });
   consent(entry);
@@ -266,7 +268,7 @@ it("leaves hands the player emptied empty: at world entry, when a better weapon 
   expect(entry.db.player.identity.find(entry.ctx.sender).rightHandItem).toBe("");   // and looks it to everyone
 
   const drop = looter({ equippedRightHand: "", equippedLeftHand: "" });
-  reportEnemy(drop, ENEMY, 1);
+  gain(drop, "crystal_bow");
   expect(inventory(drop)).toContain("crystal_bow");
   expect(progress(drop)).toMatchObject({ equippedRightHand: "", equippedLeftHand: "" });
 
@@ -306,44 +308,28 @@ it("keeps the bag, kept copies, bow rolls, loot filter and settings through pres
   expect(CAMPAIGN_UNLOCK_FIELDS.some(field => progress(f)[field])).toBe(false);
 });
 
-it("swaps gear its maps lock away for the best usable gear, never leaving an empty hand", () => {
+it("keeps worn gear on through prestige: nothing locks behind the maps that start over", () => {
   const f = veteran();
   f.run(server.prestigeAccount, {});
-  // The ion bow and helmet are locked until Ion Citadel; the starter bow and forest cap are the best usable.
-  expect(progress(f).equippedRightHand).toBe(STARTER_BOW);
-  expect(progress(f).equippedHead).toBe("forest_cap");
-  expect(f.db.player.identity.find(f.ctx.sender).rightHandItem).toBe(STARTER_BOW);
-  expect(() => f.run(server.savePlayerProgress, { ...progress(f), equippedRightHand: "ion_bow", enemyKills: 0 })).toThrow(/Reach .* to equip/);
-
-  // With nothing usable in the bag, the hand falls back to the starter stone every player owns.
-  const bare = crystalFixture();
-  bare.patch("playerProgress", { ...ALL_MAPS, bossRewardClaims: BOSS_REWARD_CLAIM_BITS.aegisPrime,
-    inventoryJson: JSON.stringify(["ion_bow"]), equippedRightHand: "ion_bow" });
-  bare.seed("proceduralProgress", { identity: bare.ctx.sender, completed: 1 });
-  bare.run(server.prestigeAccount, {});
-  expect(inventory(bare)).toContain("ion_bow");
-  expect(progress(bare).equippedRightHand).toBe(STARTER_STONE);
+  expect(progress(f).equippedRightHand).toBe("ion_bow");
+  expect(progress(f).equippedHead).toBe("ion_helmet");
+  expect(f.db.player.identity.find(f.ctx.sender).rightHandItem).toBe("ion_bow");
+  f.run(server.savePlayerProgress, { ...progress(f), equippedRightHand: IRON_BOW, enemyKills: 0 });
+  f.run(server.savePlayerProgress, { ...progress(f), equippedRightHand: "ion_bow", enemyKills: 0 });
+  expect(progress(f).equippedRightHand).toBe("ion_bow");
 });
 
-it("keeps the kind of weapon through prestige: an archer gets a bow, a swordsman a sword", () => {
+it("keeps the weapon in hand through prestige, of whatever kind", () => {
   const bag = (...weapons: string[]) => JSON.stringify([...weapons, "ion_helmet", "forest_cap", SAMURAI_HAT]);
-  // The Wooden Sword hits harder than the starter bow, but an archer keeps a bow.
-  const archer = veteran();
-  archer.patch("playerProgress", { inventoryJson: bag(STARTER_BOW, WOODEN_SWORD, "ion_bow") });
-  archer.run(server.prestigeAccount, {});
-  expect(progress(archer).equippedRightHand).toBe(STARTER_BOW);
-
   const swordsman = veteran();
   swordsman.patch("playerProgress", { inventoryJson: bag(STARTER_BOW, WOODEN_SWORD, "ion_sword"), equippedRightHand: "ion_sword" });
   swordsman.run(server.prestigeAccount, {});
-  expect(progress(swordsman).equippedRightHand).toBe(WOODEN_SWORD);
-  expect(inventory(swordsman)).toContain("ion_sword");
+  expect(progress(swordsman).equippedRightHand).toBe("ion_sword");
 
-  // With no sword they can use yet, the best ranged weapon instead.
-  const unarmed = veteran();
-  unarmed.patch("playerProgress", { inventoryJson: bag(STARTER_BOW, "ion_sword"), equippedRightHand: "ion_sword" });
-  unarmed.run(server.prestigeAccount, {});
-  expect(progress(unarmed).equippedRightHand).toBe(STARTER_BOW);
+  const mage = veteran();
+  mage.patch("playerProgress", { inventoryJson: bag(STARTER_BOW, "forest_staff", "ion_staff"), equippedRightHand: "ion_staff" });
+  mage.run(server.prestigeAccount, {});
+  expect(progress(mage).equippedRightHand).toBe("ion_staff");
 });
 
 it("still clears the bag and kept copies on a reset", () => {
@@ -355,23 +341,11 @@ it("still clears the bag and kept copies on a reset", () => {
   expect(progress(f).equippedRightHand).toBe(STARTER_STONE);
 });
 
-it("keeps a staff player on staffs: new drops, prestige, and no usable staff falling back to ranged", () => {
+it("keeps a staff player on staffs when new weapons arrive, and never hands one to an archer", () => {
   const mage = looter({ inventoryJson: JSON.stringify(["desert_staff"]), equippedRightHand: "desert_staff" });
-  reportEnemy(mage, ENEMY, 1);
-  expect(inventory(mage)).toEqual(expect.arrayContaining(["crystal_bow", "crystal_sword", "crystal_staff"]));
+  gain(mage, "crystal_bow", "crystal_sword", "crystal_staff");
   expect(progress(mage).equippedRightHand).toBe("crystal_staff");
-  // An archer is never handed a staff, nor a swordsman.
   const archer = looter();
-  reportEnemy(archer, ENEMY, 1);
+  gain(archer, "crystal_bow", "crystal_sword", "crystal_staff");
   expect(progress(archer).equippedRightHand).toBe("crystal_bow");
-
-  const bag = (...weapons: string[]) => JSON.stringify([...weapons, "ion_helmet", "forest_cap", SAMURAI_HAT]);
-  const veteranMage = veteran();
-  veteranMage.patch("playerProgress", { inventoryJson: bag(STARTER_BOW, WOODEN_SWORD, "forest_staff", "ion_staff"), equippedRightHand: "ion_staff" });
-  veteranMage.run(server.prestigeAccount, {});
-  expect(progress(veteranMage).equippedRightHand).toBe("forest_staff");
-  const unarmed = veteran();
-  unarmed.patch("playerProgress", { inventoryJson: bag(STARTER_BOW, "ion_staff"), equippedRightHand: "ion_staff" });
-  unarmed.run(server.prestigeAccount, {});
-  expect(progress(unarmed).equippedRightHand).toBe(STARTER_BOW);
 });

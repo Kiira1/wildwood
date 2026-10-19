@@ -202,3 +202,11 @@ it("pays no offline farming while a Reflect Only challenge runs", () => {
   expect([after.damage, after.maxHp, after.armor, after.regen]).toEqual([before.damage, before.maxHp, before.armor, before.regen]);
   expect(fixture.db.offlineProgress.identity.find(fixture.ctx.sender).kills).toBe(0);
 });
+
+it("pays offline kills gold at half the in-play rate, a gold every 10 kills", () => {
+  const fixture = away(OFFLINE_WINDOW_SECONDS);
+  enter(fixture);
+  const kills = fixture.db.offlineProgress.identity.find(fixture.ctx.sender).kills;
+  expect(kills).toBeGreaterThanOrEqual(10);
+  expect(fixture.db.playerGold.identity.find(fixture.ctx.sender)?.gold).toBe(BigInt(Math.floor(kills / 10)));
+});

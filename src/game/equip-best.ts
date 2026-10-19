@@ -35,7 +35,7 @@ export function bestEquipmentMoves(inventory: InventoryState, power: (candidate:
 
 /** Equip Best is an explicit player action, so it can replace locked equipment. */
 export function equipBestInventory(inventory: InventoryState, power: (candidate: InventoryState) => number,
-  canEquip: (itemId: string) => boolean) {
+  canEquip: (itemId: string) => boolean = () => true) {
   const moves = bestEquipmentMoves(inventory, power, canEquip);
   for (const { itemId, destination } of moves) moveInventoryItem(inventory, itemId, destination);
   return moves.length > 0;

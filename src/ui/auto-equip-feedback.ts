@@ -1,4 +1,3 @@
-import { equipmentMapRequirement, type CampaignAccess } from "../../shared/equipment-access";
 import { itemDisplayName } from "../../shared/items";
 import type { InventoryState } from "../game/inventory";
 import { applyPlayerMaxHealthMultiplierBonus } from "../game/runtime/player-health";
@@ -14,18 +13,16 @@ export type ServerEquipPort = {
 
 /**
  * The toast for gear the server put on by itself, or null when there is
- * nothing to boast about: a slot emptied, or locked gear swapped for usable
- * gear after a prestige, is not an upgrade. The weapon is named first.
+ * nothing to boast about: a slot emptied is not an upgrade. The weapon is named first.
  */
-export function autoEquipMessage(changes: readonly ServerLoadoutChange[], progress: CampaignAccess) {
-  const upgrades = changes.filter(({ itemId, previous }) => itemId && !(previous && equipmentMapRequirement(previous, progress)));
+export function autoEquipMessage(changes: readonly ServerLoadoutChange[]) {
+  const upgrades = changes.filter(({ itemId }) => itemId);
   const shown = upgrades.find(({ field }) => field === "equippedRightHand" || field === "equippedLeftHand") ?? upgrades[0];
   return shown ? `Equipped ${itemInspectionButtonLabel(itemDisplayName(shown.itemId))} (upgrade)` : null;
 }
 
 /**
- * Auto equip happens on the server (a better drop, gear a new map unlocked,
- * prestige). The coop session reports each slot it changed; this puts the
+ * Auto equip happens on the server (better gear new in the bag). The coop session reports each slot it changed; this puts the
  * same gear in the local bag, whose loadout every save sends, refreshes what
  * the gear changes locally and says what went on.
  */
@@ -37,14 +34,14 @@ export function createAutoEquipFeedback(options: {
   renderInventory: () => void;
   showMessage: (message: string, color: string) => void;
 }) {
-  options.coop?.setOnServerEquip?.(({ changes, progress, live }) => {
+  options.coop?.setOnServerEquip?.(({ changes, live }) => {
     const next = applyServerLoadout(options.inventory, changes);
     const changed = EQUIPPED_FIELDS.filter(field => options.inventory[field] !== next[field]);
     if (!changed.length) return;
     for (const field of changed) options.inventory[field] = next[field];
     applyPlayerMaxHealthMultiplierBonus(options.player, options.healthMultiplierBonus());
     options.renderInventory();
-    const message = live ? autoEquipMessage(changes, progress) : null;
+    const message = live ? autoEquipMessage(changes) : null;
     if (message) options.showMessage(message, "#72ef58");
   });
 }

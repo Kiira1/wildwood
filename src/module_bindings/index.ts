@@ -46,6 +46,7 @@ import AnnounceClientUpdateReducer from "./announce_client_update_reducer";
 import ApplyBuildCardsReducer from "./apply_build_cards_reducer";
 import BeginAccountLinkReducer from "./begin_account_link_reducer";
 import BeginAdventureReducer from "./begin_adventure_reducer";
+import BuyGradeGearReducer from "./buy_grade_gear_reducer";
 import BuyOxShopCosmeticReducer from "./buy_ox_shop_cosmetic_reducer";
 import BuyShopCardReducer from "./buy_shop_card_reducer";
 import CancelGemPurchaseReducer from "./cancel_gem_purchase_reducer";
@@ -304,6 +305,7 @@ import MyEquipmentOffersRow from "./my_equipment_offers_table";
 import MyGearSlotsRow from "./my_gear_slots_table";
 import MyGemPurchasesRow from "./my_gem_purchases_table";
 import MyGemWalletRow from "./my_gem_wallet_table";
+import MyGoldRow from "./my_gold_table";
 import MyGuildHallRow from "./my_guild_hall_table";
 import MyIgnoredDropsRow from "./my_ignored_drops_table";
 import MyInventoryCapacityRow from "./my_inventory_capacity_table";
@@ -1321,6 +1323,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, MyGemWalletRow),
+  myGold: __table({
+    name: 'my_gold',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MyGoldRow),
   myGuildHall: __table({
     name: 'my_guild_hall',
     indexes: [
@@ -1554,6 +1563,7 @@ const reducersSchema = __reducers(
   __reducerSchema("apply_build_cards", ApplyBuildCardsReducer),
   __reducerSchema("begin_account_link", BeginAccountLinkReducer),
   __reducerSchema("begin_adventure", BeginAdventureReducer),
+  __reducerSchema("buy_grade_gear", BuyGradeGearReducer),
   __reducerSchema("buy_ox_shop_cosmetic", BuyOxShopCosmeticReducer),
   __reducerSchema("buy_shop_card", BuyShopCardReducer),
   __reducerSchema("cancel_gem_purchase", CancelGemPurchaseReducer),

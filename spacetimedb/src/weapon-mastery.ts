@@ -1,7 +1,9 @@
 import { table, t } from "spacetimedb/server";
 import type { Identity } from "spacetimedb";
 import type spacetimedbType from "./index";
-import { isWeaponSchool, masteryLevel, masteryPointsForReport, weaponSchool, type WeaponSchool } from "../../shared/weapon-mastery";
+import {
+  isWeaponSchool, masteryInPlay, masteryLevel, masteryPointsForReport, weaponSchool, type MasteryInPlay, type WeaponSchool,
+} from "../../shared/weapon-mastery";
 import { challengeActive } from "./prestige-challenge";
 
 /** A school's Mastery points, one row per player and school, so a new school needs no new column. */
@@ -35,6 +37,12 @@ export function weaponMasteryPoints(ctx: Ctx, identity: Identity): Record<Weapon
     if (isWeaponSchool(school)) points[school] = row.points;
   }
   return points;
+}
+
+/** The Mastery a player fights with (shared masteryInPlay): none during Reflect Only or an Aggro run (challengeActive covers both). */
+export function masteryInPlayFor(ctx: Ctx, identity: Identity, rightHand: string | undefined, weaponInUse = rightHand): MasteryInPlay {
+  if (challengeActive(ctx, identity)) return { school: weaponSchool(rightHand), level: 0 };
+  return masteryInPlay(weaponMasteryPoints(ctx, identity), rightHand, weaponInUse);
 }
 
 /** Copies a school's level to player_mastery_level, writing only when it changed; none below level 1. */

@@ -1,4 +1,3 @@
-import { equipmentMapRequirement } from "../../../shared/equipment-access";
 import { fallbackWeapon, weaponKind, type WeaponKind } from "../../../shared/equip-best";
 import { itemDefinition, isCosmeticOnlyItem } from "../../../shared/items";
 import type { PlayerProgress, ProgressSave } from "./progress";
@@ -14,8 +13,7 @@ const HAND_FIELDS: readonly EquippedField[] = ["equippedRightHand", "equippedLef
 
 /**
  * The equipment slots the server changed on its own between two readings of
- * this player's progress row: auto equip putting on new or newly unlocked
- * gear, or prestige swapping locked gear for usable gear.
+ * this player's progress row: auto equip putting on new gear.
  *
  * The client normally owns the loadout and the server follows its saves, so
  * a slot counts only when the local save still held what the server had
@@ -23,7 +21,7 @@ const HAND_FIELDS: readonly EquippedField[] = ["equippedRightHand", "equippedLef
  * save wins. Without taking these in, the next save (every kill queues one)
  * would put the old gear back.
  *
- * Only gear going on counts: an item the player may use, in the slot it fits.
+ * Only gear going on counts: an item, not a look, in the slot it fits.
  * Auto equip and prestige never take anything off, and a blank slot in the
  * row is an ordinary saved state (older saves have blank hands), not an
  * instruction to unequip. Taking in a blank hand left players with no weapon.
@@ -36,13 +34,13 @@ export function serverLoadoutChanges(
   if (!previous) return [];
   return EQUIPPED_FIELDS
     .filter(field => previous[field] !== next[field] && (!pending || pending[field] === previous[field]))
-    .filter(field => puttingOn(field, next[field], next))
+    .filter(field => puttingOn(field, next[field]))
     .map(field => ({ field, itemId: next[field], previous: previous[field] }));
 }
 
-function puttingOn(field: EquippedField, itemId: string, access: PlayerProgress) {
+function puttingOn(field: EquippedField, itemId: string) {
   const slot = itemDefinition(itemId)?.slot;
-  if (!slot || isCosmeticOnlyItem(itemId) || equipmentMapRequirement(itemId, access)) return false;
+  if (!slot || isCosmeticOnlyItem(itemId)) return false;
   return HAND_FIELDS.includes(field) ? slot === "HAND" : field === `equipped${slot[0]}${slot.slice(1).toLowerCase()}`;
 }
 
@@ -65,17 +63,16 @@ export function withServerLoadout(pending: ProgressSave, changes: readonly Serve
 }
 
 /**
- * A loadout that can attack. Both hands blank (a blank saved hand, or gear
- * whose map is locked again) is filled the way the server reads that hand:
- * the best usable weapon owned of the kind the hand held (`kind`, read before
- * the locked or lost weapon was cleared), else the starter stone. Returns the
- * weapon put on, or "" when a hand already held one.
+ * A loadout that can attack. Both hands blank (a blank saved hand, or a weapon
+ * no longer owned) is filled the way the server reads that hand: the best
+ * weapon owned of the kind the hand held (`kind`, read before the lost weapon
+ * was cleared), else the starter stone. Returns the weapon put on, or "" when
+ * a hand already held one.
  */
-export function fillEmptyHand(loadout: Loadout, itemIds: readonly string[], access: Parameters<typeof fallbackWeapon>[1],
+export function fillEmptyHand(loadout: Loadout, itemIds: readonly string[],
   kind: WeaponKind = weaponKind(loadout.equippedRightHand || loadout.equippedLeftHand)) {
-  const usable = (itemId: string) => Boolean(itemId) && !equipmentMapRequirement(itemId, access);
-  if (usable(loadout.equippedRightHand) || usable(loadout.equippedLeftHand)) return "";
+  if (loadout.equippedRightHand || loadout.equippedLeftHand) return "";
   loadout.equippedLeftHand = "";
-  loadout.equippedRightHand = fallbackWeapon(itemIds, access, kind);
+  loadout.equippedRightHand = fallbackWeapon(itemIds, kind);
   return loadout.equippedRightHand;
 }

@@ -9,7 +9,6 @@ import { parseDailyQuests, type DailyQuest } from "../../../shared/daily-quests"
 export type DailyQuestState = { day: number; quests: DailyQuest[]; bonus: number; guildPoints: number; guildName: string };
 import type { MailboxMessage } from "../../../shared/mailbox";
 import { portalCutsceneBit, unlockedPortalCutsceneMask } from "../../../shared/portal-cutscenes";
-import { withoutLockedEquipment } from "../../../shared/equipment-access";
 import { LOADOUT_FIELDS } from "../../../shared/combat-progress";
 import { withRequestDeadline } from "./request-deadline";
 import type { EnemyLootRequest } from "./regular-enemy-loot-queue";
@@ -273,9 +272,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
 
   function persistPending(progress: ProgressSave, immediate: boolean) {
     if (resetPending) return;
-    // A game-frame save can still carry the loadout from before prestige or
-    // reconnect hydration. Never put locked gear back into the retry queue.
-    pendingProgress = copyProgress(localProgress ? withoutLockedEquipment(progress, localProgress, localProgress) : progress);
+    pendingProgress = copyProgress(progress);
     const identity = dependencies.localIdentity();
     if (identity && immediate) pendingProgress = writeStore(identity, pendingProgress);
     else if (identity) deferStoreWrite(identity, pendingProgress);
@@ -306,7 +303,6 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
     // report, but a changed loadout does not wait behind them: while the kills
     // are held back, save it on its own.
     if (!loadoutOnly && enemyLoot.hasPending()) return flushEnemyLoot(force).then(ok => ok ? flushAsync(force) : force ? false : flushAsync(false, true));
-    if (localProgress) pendingProgress = withoutLockedEquipment(pendingProgress, localProgress, localProgress);
     if (localProgress && LOADOUT_FIELDS.every(field => pendingProgress![field] === localProgress![field])) {
       if (!enemyLoot.hasPending()) clearPending();
       return Promise.resolve(true);
@@ -464,7 +460,6 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
     localProgress = progress;
     if (pendingProgress && serverEquips.length) pendingProgress = withServerLoadout(pendingProgress, serverEquips);
     if (serverEquips.length) serverEquipListener?.({ changes: serverEquips, progress, live: dependencies.hydrationReady() });
-    if (pendingProgress) pendingProgress = withoutLockedEquipment(pendingProgress, progress, progress);
     void cutscenes.flush();
     if (restoredSave && pendingProgress) {
       pendingProgress = { ...pendingProgress, maxHp: progress.maxHp, damage: progress.damage,

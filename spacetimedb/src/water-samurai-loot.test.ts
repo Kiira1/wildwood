@@ -1,47 +1,26 @@
 import { reportEnemy } from "../../tests/helpers/enemy-defeat";
 import { expect, it, vi } from "vitest";
-import { CLOUDSPIRE_ARMOR, CLOUDSPIRE_BOW, CLOUDSPIRE_HELMET, MOONFEN_ARMOR, WATER_ARMOR, SKY_BOW, SAMURAI_BOW, SAMURAI_HAT, itemDamageMultiplierBonus, itemMaxHealthMultiplierBonus, itemRegenerationMultiplierBonus } from "../../shared/items";
+import { CLOUDSPIRE_ARMOR, CLOUDSPIRE_BOW, CLOUDSPIRE_HELMET, MOONFEN_ARMOR, WATER_ARMOR, SKY_BOW, SAMURAI_BOW, itemDamageMultiplierBonus, itemMaxHealthMultiplierBonus, itemRegenerationMultiplierBonus } from "../../shared/items";
 import { inventoryFromSave, inventoryItemQuantity, serialiseInventory } from "../../src/game/inventory";
 import { crystalFixture } from "../../tests/helpers/crystal-hollows-fixture";
 import { regularMapLoot } from "../../shared/regular-map-loot";
 import { progressOf } from "../../tests/helpers/progress";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
-// Each map's sword and staff drop on its bow's odds, rolled on their own: the bow's boundary is theirs too.
-it.each([
-  ["water_reach", 1, 7, [WATER_ARMOR, SKY_BOW, "sky_sword", "sky_staff"]],
-  ["water_reach", 2, 7, [SKY_BOW, "sky_sword", "sky_staff"]],
-  ["water_reach", 1, 8, [WATER_ARMOR]],
-  ["water_reach", 2, 8, []],
-  ["samurai_garden", 1, 13, [SAMURAI_HAT, SAMURAI_BOW, "samurai_sword", "samurai_staff"]],
-  ["samurai_garden", 2, 13, [SAMURAI_BOW, "samurai_sword", "samurai_staff"]],
-  ["samurai_garden", 1, 14, [SAMURAI_HAT]],
-  ["samurai_garden", 2, 14, []],
-] as const)("rolls independent loot in %s at boundaries %s / %s", (mapId, armorRoll, bowRoll, expected) => {
-  const f = crystalFixture();
+// Gear is bought at the Smith now: these maps' old drops stay defined but never roll.
+it.each(["water_reach", "samurai_garden", "cloudspire", "moonfen", "crystal_hollows", "endless_1", "home_exterior"])("rolls no gear in %s", mapId => {
+  const f = crystalFixture(); f.patch("player", { mapId });
   f.patch("playerProgress", { equippedRightHand: "starter_stone", damage: 1e15 });
-  f.patch("player", { mapId });
-  const armorMax = mapId === "water_reach" ? 100 : 125;
-  const bowMax = mapId === "water_reach" ? 1000 : 2000;
-  f.ctx.random.integerInRange = vi.fn((_min, max) => max === armorMax ? armorRoll : bowRoll);
-  reportEnemy(f);
-  expect(f.ctx.random.integerInRange).toHaveBeenCalledWith(1, armorMax);
-  expect(f.ctx.random.integerInRange).toHaveBeenCalledWith(1, bowMax);
-  expect([...f.db.playerItemDrop.iter()].map((row: any) => row.itemId)).toEqual(expected);
-  for (const itemId of expected) {
-    const progress = progressOf(f, f.ctx.sender);
-    const saved = inventoryFromSave(progress.inventoryJson, "", "", "", false);
-    expect(inventoryItemQuantity(saved, itemId)).toBe(1);
-  }
+  f.ctx.random.integerInRange = vi.fn(() => 1);
+  if (mapId === "home_exterior") expect(() => reportEnemy(f)).toThrow(); else reportEnemy(f);
+  expect(regularMapLoot(mapId)).toEqual([]);
+  expect(f.ctx.random.integerInRange).not.toHaveBeenCalled();
+  expect([...f.db.playerItemDrop.iter()]).toEqual([]);
 });
 
-it("keeps Water Reach equipment through reloads and repeat drops without duplicates", () => {
+it("keeps owned Water Reach equipment through reloads without duplicates", () => {
   const f = crystalFixture();
-  f.patch("playerProgress", { equippedRightHand: "starter_stone", damage: 1e15 });
-  f.patch("player", { mapId: "water_reach" });
-  f.ctx.random.integerInRange = () => 1;
-  reportEnemy(f);
-  reportEnemy(f);
+  f.patch("playerProgress", { equippedRightHand: "starter_stone", damage: 1e15, inventoryJson: JSON.stringify([WATER_ARMOR, SKY_BOW, WATER_ARMOR]) });
   const progress = progressOf(f, f.ctx.sender);
   const inventory = inventoryFromSave(progress.inventoryJson, "", "", WATER_ARMOR, false, false, SKY_BOW);
   const reloaded = inventoryFromSave(serialiseInventory(inventory), "", "", WATER_ARMOR, false, false, SKY_BOW);
@@ -49,59 +28,25 @@ it("keeps Water Reach equipment through reloads and repeat drops without duplica
   expect(reloaded.equippedRightHand).toBe(SKY_BOW);
   expect(inventoryItemQuantity(reloaded, WATER_ARMOR)).toBe(1);
   expect(inventoryItemQuantity(reloaded, SKY_BOW)).toBe(1);
-  expect([...f.db.playerItemDrop.iter()].every((row: any) => row.alreadyOwned)).toBe(true);
   expect(itemMaxHealthMultiplierBonus(WATER_ARMOR)).toBeCloseTo(.2375, 4);
   expect(itemRegenerationMultiplierBonus(WATER_ARMOR)).toBe(0);
   expect(itemDamageMultiplierBonus(SKY_BOW)).toBeCloseTo(.2375, 4);
   expect(itemDamageMultiplierBonus(SAMURAI_BOW)).toBeCloseTo(.2857, 4);
 });
 
-it.each(["home_exterior", "crystal_hollows", "endless_1"])("does not roll these drops in %s", mapId => {
-  const f = crystalFixture(); f.patch("player", { mapId });
-  f.patch("playerProgress", { equippedRightHand: "starter_stone", damage: 1e15 });
-  f.ctx.random.integerInRange = vi.fn(() => 1);
-  if (mapId === "home_exterior") expect(() => reportEnemy(f)).toThrow(); else reportEnemy(f);
-  if (mapId === "crystal_hollows") {
-    expect([...f.db.playerItemDrop.iter()].map(drop => drop.itemId)).toEqual(["crystal_bow", "crystal_sword", "crystal_staff", "crystal_armor", "crystal_helmet"]);
-  } else expect(f.ctx.random.integerInRange).not.toHaveBeenCalled();
-});
-
 it.each([
-  ["cloudspire", CLOUDSPIRE_HELMET, 125, 1, "HEAD"],
-  ["cloudspire", CLOUDSPIRE_BOW, 200, 1, "HAND"],
-  ["cloudspire", "cloudspire_sword", 200, 1, "HAND"],
-  ["cloudspire", CLOUDSPIRE_ARMOR, 1000, 7, "CHEST"],
-  ["moonfen", MOONFEN_ARMOR, 1000, 7, "CHEST"],
-] as const)("awards and persists %s's %s at its exact drop boundary", (mapId, itemId, outcomes, wins, slot) => {
-  const f = crystalFixture();
-  f.patch("playerProgress", { equippedRightHand: "starter_stone", damage: 1e15 });
-  f.patch("player", { mapId });
-  let roll = wins + 1;
-  f.ctx.random.integerInRange = vi.fn((_min, max) => max === outcomes ? roll : max);
-  reportEnemy(f);
-  expect([...f.db.playerItemDrop.iter()]).toEqual([]);
-  roll = wins;
-  reportEnemy(f);
-  expect(f.ctx.random.integerInRange).toHaveBeenCalledWith(1, outcomes);
-  // Everything on the map with the same odds lands on the same roll: Cloudspire's bow and sword together.
-  const alike = regularMapLoot(mapId).filter(drop => drop.wins === wins && drop.outcomes === outcomes).map(drop => drop.itemId);
-  expect([...f.db.playerItemDrop.iter()].map((row: any) => row.itemId)).toEqual(alike);
-  expect([...f.db.playerItemDrop.iter()].find((row: any) => row.itemId === itemId)).toMatchObject({ alreadyOwned: false });
-  const progress = progressOf(f, f.ctx.sender);
-  const inventory = inventoryFromSave(progress.inventoryJson, "", slot === "HEAD" ? itemId : "", slot === "CHEST" ? itemId : "", false, false, slot === "HAND" ? itemId : "");
+  [CLOUDSPIRE_HELMET, "HEAD"],
+  [CLOUDSPIRE_BOW, "HAND"],
+  ["cloudspire_sword", "HAND"],
+  [CLOUDSPIRE_ARMOR, "CHEST"],
+  [MOONFEN_ARMOR, "CHEST"],
+] as const)("keeps an owned %s in its %s slot", (itemId, slot) => {
+  const inventory = inventoryFromSave(JSON.stringify([itemId]), "", slot === "HEAD" ? itemId : "", slot === "CHEST" ? itemId : "", false, false, slot === "HAND" ? itemId : "");
   expect(inventoryItemQuantity(inventory, itemId)).toBe(1);
   expect(slot === "HEAD" ? inventory.equippedHead : slot === "HAND" ? inventory.equippedRightHand : inventory.equippedChest).toBe(itemId);
-  reportEnemy(f);
-  expect(JSON.parse(progressOf(f, f.ctx.sender).inventoryJson).filter((id: string) => id === itemId)).toHaveLength(1);
 });
 
-it("can grant all four Cloudspire items from independent successful rolls", () => {
-  const f = crystalFixture(); f.patch("player", { mapId: "cloudspire" });
-  f.patch("playerProgress", { equippedRightHand: "starter_stone", damage: 1e15 });
-  f.ctx.random.integerInRange = () => 1;
-  reportEnemy(f);
-  const saved = inventoryFromSave(progressOf(f, f.ctx.sender).inventoryJson, "", "", "", false);
-  for (const id of [CLOUDSPIRE_HELMET, CLOUDSPIRE_BOW, "cloudspire_sword", CLOUDSPIRE_ARMOR]) expect(inventoryItemQuantity(saved, id)).toBe(1);
+it("keeps the Cloudspire and Moonfen items' stats", () => {
   expect(itemDamageMultiplierBonus(CLOUDSPIRE_BOW)).toBeCloseTo(.3375, 4);
   expect(itemMaxHealthMultiplierBonus(CLOUDSPIRE_HELMET)).toBe(0);
   expect(itemRegenerationMultiplierBonus(CLOUDSPIRE_HELMET)).toBeCloseTo(.3375, 4);

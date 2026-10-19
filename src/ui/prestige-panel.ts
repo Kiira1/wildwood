@@ -10,7 +10,7 @@ export type PrestigeResult = { ok: boolean; error?: string } | boolean | undefin
 const LOCKED_HINT = 'Defeat Aegis Prime to unlock Prestige.';
 /** What a prestige takes away and what it leaves, in the words every prestige window uses. */
 export const PRESTIGE_COST = 'Prestige resets your stats and map unlocks. '
-  + 'You keep your equipment; higher-tier items become usable again when you reach their maps. '
+  + 'You keep your equipment, still worn. '
   + 'Tech research, slot upgrade levels, ongoing research and upgrades, lifetime kills, name, gems and bought slots all stay.';
 /** The warning shown once a prestige button is armed and the next press resets. */
 export const PRESTIGE_ARMED_WARNING = 'This cannot be undone.';

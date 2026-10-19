@@ -257,19 +257,18 @@ describe("local progression profile snapshots", () => {
 });
 
 describe("server-calculated defeat batches", () => {
-  it("corrects fresh stale equipment saves against campaign access before persisting or sending", async () => {
+  it("sends a fresh equipment save as chosen: gear from a map not reached is not stripped", async () => {
     const h = setup(); const base = { ...progress(), equippedRightHand: "" };
     h.service.tables.upsertProgress({ ...base, identity: { toHexString: () => identity } } as never);
-    // The game still holds its pre-prestige gear, but another slot is a valid new choice.
     h.service.api.saveProgress(saveFrom(base, { equippedHead: "neon_helmet", equippedRightHand: "starter_stone" }), true);
     expect(await h.service.drainPendingProgress()).toBe(true);
     expect(h.savePlayerProgress).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
-      equippedHead: base.equippedHead, equippedRightHand: "starter_stone",
+      equippedHead: "neon_helmet", equippedRightHand: "starter_stone",
     }));
     h.service.dispose();
   });
 
-  it("holds a restored loadout until hydration can correct newly locked equipment", async () => {
+  it("holds a restored loadout until hydration, then sends it", async () => {
     const h = setup(); const base = progress(); h.entry.hydrated = false;
     h.service.api.saveProgress(saveFrom(base, { equippedRightHand: "neon_bow" }), true);
     expect(await h.service.drainPendingProgress()).toBe(false);
@@ -277,7 +276,7 @@ describe("server-calculated defeat batches", () => {
     h.service.tables.upsertProgress({ ...base, identity: { toHexString: () => identity } } as never);
     h.entry.hydrated = true;
     expect(await h.service.drainPendingProgress()).toBe(true);
-    expect(h.savePlayerProgress).not.toHaveBeenCalled();
+    expect(h.savePlayerProgress).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ equippedRightHand: "neon_bow" }));
     h.service.dispose();
   });
 

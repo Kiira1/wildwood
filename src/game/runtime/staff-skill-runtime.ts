@@ -36,6 +36,8 @@ export function createStaffSkillRuntime(options: {
   roll: () => Partial<StaffSkillRoll> | null | undefined; nowSeconds: () => number;
   random: () => number; isDueling: () => boolean;
   boltColor: () => string;
+  /** The bolt's blast radius, Sorcery's Blast included; STAFF_SPLASH_RADIUS without. */
+  blastRadius?: () => number;
   effects?: StaffSkillEffects;
   hit: (target: Target, damage: number, critical: boolean, angle: number) => void;
 }) {
@@ -56,13 +58,13 @@ export function createStaffSkillRuntime(options: {
    * STAFF_SPLASH_MAX_TARGETS in all), then a Chain on to enemies the burst missed and a Frost Nova around it.
    */
   function burst(primary: Target, x: number, y: number, damage: number, critical: boolean, angle: number, procs: BoltSkillProcs | null | undefined) {
-    const struck = new Set<object>([primary]);
+    const struck = new Set<object>([primary]), radius = options.blastRadius?.() ?? STAFF_SPLASH_RADIUS;
     options.hit(primary, damage, critical, angle);
-    for (const enemy of enemiesAround(enemies, x, y, STAFF_SPLASH_RADIUS, struck).slice(0, STAFF_SPLASH_MAX_TARGETS - 1)) {
+    for (const enemy of enemiesAround(enemies, x, y, radius, struck).slice(0, STAFF_SPLASH_MAX_TARGETS - 1)) {
       struck.add(enemy);
       options.hit(enemy, damage, critical, Math.atan2(enemy.y - y, enemy.x - x));
     }
-    options.effects?.spawnStaffBurst?.(x, y, STAFF_SPLASH_RADIUS, options.boltColor());
+    options.effects?.spawnStaffBurst?.(x, y, radius, options.boltColor());
     if (!ready()) return;
     if (procs?.chain && !primary.isBoss && !primary.generatedBoss) {
       let from: { x: number; y: number } = primary;

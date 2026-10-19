@@ -29,8 +29,6 @@ import { cardName } from "../../shared/card-text";
 import type { BuildActions } from "./build-actions";
 import { createBuildsTab } from "./builds-tab";
 import { installBuildHotkeys } from "./build-hotkeys";
-import { createSchoolsTab } from "./schools-tab";
-import type { WeaponSchool } from "../../shared/weapon-mastery";
 import { itemInspectionButtonLabel } from "./item-inspection-controller";
 import { oreKindsHeld } from "../../shared/ore-bag";
 import { createPickaxeSprite } from "../game/runtime/town/pickaxe-sprite";
@@ -38,8 +36,6 @@ import { createPickaxeSprite } from "../game/runtime/town/pickaxe-sprite";
 type InventoryLocation = EquipmentSlot | "BAG" | "";
 type SelectableInventory = InventoryState & { selectedItemId: string; selectedItemLocation?: InventoryLocation };
 type Result = { ok: boolean; error?: string } | undefined;
-// The tab shown: a bag mode, or a side view that replaces the loadout and bag.
-type InventoryView = InventoryMode | "CARDS" | "BUILDS" | "SCHOOLS";
 /** A copy kept from a duplicate drop, beyond the item's first. */
 
 /** Where a look shows: a hand look only on a weapon of its own kind (shared/equipment-appearance.ts). */
@@ -66,13 +62,10 @@ type InventoryDependencies = {
   cards?: CardsPort;
   /** Saved loadouts for the Builds tab; without them the tab is not shown. */
   builds?: BuildActions;
-  /** Weapon Mastery for the Schools tab: points per school and the weapon in hand; without it the tab is not shown. */
-  schools?: { points: () => Readonly<Partial<Record<WeaponSchool, bigint>>>; activeWeapon: () => string | undefined };
   destroyOre?: (oreId: OreId, expectedCount: number) => Promise<Result>;
   equipBest?: () => boolean;
   equipmentLocked?: (itemId: string, copyId?: bigint) => boolean;
   setEquipmentLocked?: (itemId: string, locked: boolean, copyId?: bigint) => Promise<Result>;
-  equipmentRequirement?: (itemId: string) => string | null;
   itemInspection: ItemInspectionController;
   inventorySlotsUnlocked: () => number;
   /** Bag Slots research ranks: a slot each, on top of the ones bought. */
@@ -112,7 +105,6 @@ export function createInventoryController(dependencies: InventoryDependencies) {
   const cosmeticsTab = requiredElement<HTMLButtonElement>("inventoryCosmeticsTab");
   const cardsTab = document.getElementById("inventoryCardsTab") as HTMLButtonElement | null;
   const buildsTab = document.getElementById("inventoryBuildsTab") as HTMLButtonElement | null;
-  const schoolsTab = document.getElementById("inventorySchoolsTab") as HTMLButtonElement | null;
   const content = requiredElement("inventoryContent");
   const loadout = panel.querySelector<HTMLElement>(".inventory-loadout");
   // The pickaxe works from the bag, never equipped: its slot only shows it is there and what it does.
@@ -309,16 +301,12 @@ export function createInventoryController(dependencies: InventoryDependencies) {
   }) : null;
   if (buildsView) { content.append(buildsView.element); installBuildHotkeys(document, slot => buildsView.equip(slot)); }
   else buildsTab?.remove();
-  const schoolsView = schoolsTab && dependencies.schools ? createSchoolsTab(dependencies.schools) : null;
-  if (schoolsView) content.append(schoolsView.element);
-  else schoolsTab?.remove();
-  // Cards, Builds and Schools each replace the loadout and bag with their own view.
-  let cardsShown = false, buildsShown = false, schoolsShown = false;
-  const sideShown = () => cardsShown || buildsShown || schoolsShown;
-  const tabViews: Array<[HTMLButtonElement, InventoryView]> = [[equipmentTab, "EQUIPMENT"], [cosmeticsTab, "COSMETICS"]];
+  // Cards and Builds each replace the loadout and bag with their own view.
+  let cardsShown = false, buildsShown = false;
+  const sideShown = () => cardsShown || buildsShown;
+  const tabViews: Array<[HTMLButtonElement, InventoryMode | "CARDS" | "BUILDS"]> = [[equipmentTab, "EQUIPMENT"], [cosmeticsTab, "COSMETICS"]];
   if (cardsView && cardsTab) tabViews.push([cardsTab, "CARDS"]);
   if (buildsView && buildsTab) tabViews.push([buildsTab, "BUILDS"]);
-  if (schoolsView && schoolsTab) tabViews.push([schoolsTab, "SCHOOLS"]);
 
   /** `copyId` 0n is the item's first copy: the bag entry, or whatever its slot holds. */
   function inspect(itemId: string, location: Exclude<InventoryLocation, "">, copyId = 0n) {
@@ -334,11 +322,10 @@ export function createInventoryController(dependencies: InventoryDependencies) {
     const kept = mode === "EQUIPMENT" ? keptCopiesOf(itemId) : [];
     const copy = copyId ? kept.find(candidate => candidate.id === copyId) : undefined;
     if (copyId && !copy) return;
-    const requiredMap = mode === "EQUIPMENT" ? dependencies.equipmentRequirement?.(itemId) : null;
     const moves = inventoryMoveActions(dependencies.inventory, itemId, location, mode).map((action) => ({
       label: action.label,
       kind: action.destination === "BAG" ? "SECONDARY" as const : "PRIMARY" as const,
-      disabled: action.disabled || Boolean(requiredMap && action.destination !== "BAG"),
+      disabled: action.disabled,
       onActivate: () => {
         if (move(itemId, action.destination)) dependencies.itemInspection.close();
       },
@@ -350,9 +337,8 @@ export function createInventoryController(dependencies: InventoryDependencies) {
       ownItem: mode === "EQUIPMENT",
       ...(kept.length ? { context: `Copy ${copy ? kept.indexOf(copy) + 2 : 1} of ${kept.length + 1}` } : {}),
       ...(mode === "COSMETICS" ? { context: `Cosmetic · ${cosmeticReach(itemId)}` } : {}),
-      ...(requiredMap ? { context: `Reach ${requiredMap} to equip` } : {}),
       ...(copy ? { skills: copy.roll } : {}),
-      actions: [...(copy ? copyEquipActions(copy, Boolean(requiredMap)) : moves),
+      actions: [...(copy ? copyEquipActions(copy) : moves),
         ...conversionActions(itemId), ...destructionActions(itemId, copyId)],
     });
   }
@@ -361,14 +347,14 @@ export function createInventoryController(dependencies: InventoryDependencies) {
    * Equipping a kept copy. A weapon's copies differ, so the server first makes
    * this copy the one its slot holds. Locks follow the selected copy too.
    */
-  function copyEquipActions(copy: KeptEquipmentCopy, locked: boolean) {
+  function copyEquipActions(copy: KeptEquipmentCopy) {
     const [action] = inventoryMoveActions(dependencies.inventory, copy.itemId, "BAG", "EQUIPMENT");
     if (!action) return [];
     const equipped = action.disabled === true;
     return [{
       label: "EQUIP",
       kind: "PRIMARY" as const,
-      disabled: locked || !dependencies.selectEquipmentCopy,
+      disabled: !dependencies.selectEquipmentCopy,
       onActivate: async () => {
         {
           const result = await dependencies.selectEquipmentCopy?.(copy.id);
@@ -455,11 +441,10 @@ export function createInventoryController(dependencies: InventoryDependencies) {
   function render() {
     if (cardsShown) cardsView?.render();
     if (buildsShown) buildsView?.render();
-    if (schoolsShown) schoolsView?.render();
     const inventory = dependencies.inventory;
     const copies = dependencies.equipmentCopies?.() ?? [];
     const held = dependencies.ores?.() ?? {};
-    const nextState = JSON.stringify([cardsShown, buildsShown, schoolsShown, mode, filter, inventory, held, inventory.itemIds.map(id => dependencies.equipmentLocked?.(id)), dependencies.inventorySlotsUnlocked(), dependencies.researchBagSlots?.() ?? 0, dependencies.hasPickaxe?.() ?? false, unlockingSlot,
+    const nextState = JSON.stringify([cardsShown, buildsShown, mode, filter, inventory, held, inventory.itemIds.map(id => dependencies.equipmentLocked?.(id)), dependencies.inventorySlotsUnlocked(), dependencies.researchBagSlots?.() ?? 0, dependencies.hasPickaxe?.() ?? false, unlockingSlot,
       ["HEAD", "CHEST", "HAND"].map(slot => dependencies.slotTier?.(slot as "HEAD" | "CHEST" | "HAND")), inventory.itemIds.map(itemId => `${dependencies.upgradeLevel(itemId)}:${dependencies.refineLevel?.(itemId, 0n)}`),
       copies.map(copy => `${copy.id}:${copy.itemId}:${dependencies.equipmentLocked?.(copy.itemId, copy.id)}:${dependencies.refineLevel?.(copy.itemId, copy.id)}`)]);
     if (nextState === renderedState) return;
@@ -469,7 +454,7 @@ export function createInventoryController(dependencies: InventoryDependencies) {
     filters.setCosmetics(cosmeticsActive);
     deleteMode.element.hidden = cosmeticsActive;
     if (equipBestButton && deleteMode.active()) equipBestButton.hidden = true;
-    const activeTab = cardsShown && cardsTab ? cardsTab : buildsShown && buildsTab ? buildsTab : schoolsShown && schoolsTab ? schoolsTab : cosmeticsActive ? cosmeticsTab : equipmentTab;
+    const activeTab = cardsShown && cardsTab ? cardsTab : buildsShown && buildsTab ? buildsTab : cosmeticsActive ? cosmeticsTab : equipmentTab;
     for (const [tab] of tabViews) {
       tab.classList.toggle("is-active", tab === activeTab);
       tab.setAttribute("aria-selected", String(tab === activeTab));
@@ -481,7 +466,6 @@ export function createInventoryController(dependencies: InventoryDependencies) {
     if (bagSection) bagSection.hidden = sideShown();
     cardsView?.show(cardsShown);
     buildsView?.show(buildsShown);
-    schoolsView?.show(schoolsShown);
     if (loadout) loadout.setAttribute("aria-label", cosmeticsActive ? "Cosmetic items" : "Equipped items");
     const slotsUnlocked = dependencies.inventorySlotsUnlocked();
     // Gems buy up to the maximum; research slots sit on top of it.
@@ -572,14 +556,13 @@ export function createInventoryController(dependencies: InventoryDependencies) {
     clickEquipment(destination, itemInSlot(destination));
   });
   equippedFeet.addEventListener("click", () => clickEquipment("FEET", itemInSlot("FEET")));
-  const setView = (next: InventoryView) => {
-    if (next === "CARDS" ? cardsShown : next === "BUILDS" ? buildsShown : next === "SCHOOLS" ? schoolsShown : !sideShown() && mode === next) return;
+  const setView = (next: InventoryMode | "CARDS" | "BUILDS") => {
+    if (next === "CARDS" ? cardsShown : next === "BUILDS" ? buildsShown : !sideShown() && mode === next) return;
     deleteMode.exit();
     lockMode.exit();
     cardsShown = next === "CARDS";
     buildsShown = next === "BUILDS";
-    schoolsShown = next === "SCHOOLS";
-    if (next !== "CARDS" && next !== "BUILDS" && next !== "SCHOOLS") mode = next;
+    if (next !== "CARDS" && next !== "BUILDS") mode = next;
     clearInventorySelection(dependencies.inventory);
     render();
   };

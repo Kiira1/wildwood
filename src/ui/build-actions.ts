@@ -15,13 +15,12 @@ const equippedIn = (inventory: InventoryState, slot: keyof BuildGear) =>
   slot === "HAND" ? inventory.equippedRightHand : slot === "HEAD" ? inventory.equippedHead : slot === "CHEST" ? inventory.equippedChest : inventory.equippedFeet;
 
 /**
- * Saving and equipping Builds. Equipping puts each saved item on the ordinary way, map requirements included,
+ * Saving and equipping Builds. Equipping puts each saved item on the ordinary way,
  * then the server moves the saved cards into them. Gear no longer held is left as it is and counted.
  */
 export function createBuildActions(o: {
   coop: () => BuildPort | null | undefined;
   inventory: InventoryState;
-  requirement: (itemId: string) => string | null;
   /** Speed, health and the save that follow any equipment change. */
   afterGearChange: () => void;
   blocked: () => string | null;
@@ -41,7 +40,7 @@ export function createBuildActions(o: {
       for (const slotName of BUILD_GEAR_SLOTS) {
         const itemId = build.gear[slotName];
         if (!itemId || equippedIn(o.inventory, slotName) === itemId) continue;
-        if (o.requirement(itemId) || !moveInventoryItem(o.inventory, itemId, slotName === "HAND" ? "RIGHT_HAND" : slotName)) { missingGear += 1; continue; }
+        if (!moveInventoryItem(o.inventory, itemId, slotName === "HAND" ? "RIGHT_HAND" : slotName)) { missingGear += 1; continue; }
         changed = true;
       }
       if (changed) o.afterGearChange();

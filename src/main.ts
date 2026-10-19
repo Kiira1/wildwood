@@ -115,7 +115,7 @@ import { createItemInspectionController, itemStatsWithWeaponSkills } from "./ui/
 import { createUpgradeBenchController } from "./ui/upgrade-bench-controller";
 import { createProfileWindowController } from "./ui/profile-window-controller";
 import { formatPlayedTime, profileAttackCap, profilePower, profilePresenceText, profileSoulInPlay, renderProfileStats } from "./ui/profile";
-import { campaignMapUnlocked, equipmentMapRequirement } from "../shared/equipment-access";
+import { campaignMapUnlocked } from "../shared/equipment-access";
 import { createAppShellController } from "./ui/app-shell-controller";
 import { createStartupController } from "./ui/startup-controller";
 import { createDeathScreenController } from "./ui/death-screen-controller";
@@ -126,8 +126,8 @@ import { hasApprovedGameSession } from "./coop/startup-state-machine";
 import { createHudTimerColumn } from "./ui/hud-timer-column";
 import { createGameElements } from "./ui/game-elements";
 import { bindGameInteractionListeners } from "./ui/game-interaction-bindings";
-import { createSmithRuntime, createCardSellerRuntime, watchCardDrops, createDevPanel, createDuplicateLoginRuntime, createGameActionsRuntime, createGameOverlays, createGameRuntimeHud, createHomeStationTouchHandler, createLeaderboardPanel, createPrestigeUnlockRuntime, createTechTreePanel } from "./ui/game-ui-runtime";
-import { formatCompactNumber, formatGemAmount } from "./ui/number-format";
+import { createSmithRuntime, createCardSellerRuntime, createSchoolWindowRuntime, watchCardDrops, createDevPanel, createDuplicateLoginRuntime, createGameActionsRuntime, createGameOverlays, createGameRuntimeHud, createHomeStationTouchHandler, createLeaderboardPanel, createPrestigeUnlockRuntime, createTechTreePanel } from "./ui/game-ui-runtime";
+import { formatCompactNumber, formatGemAmount } from "./ui/number-format"; import { refreshGoldCounter } from "./ui/gold-counter";
 import { playerGenderIconPath } from "./ui/player-gender";
 import type { LeaderboardEntry } from "./wildstat-coop";
 import type { ResearchId } from "../shared/research";
@@ -190,7 +190,7 @@ import {
   function refreshGemCounter() {
     const balance = formatGemAmount(coop?.gemBalance?.() ?? 0n);
     hudGemBalance.textContent = balance;
-    hudGemWallet.setAttribute("aria-label", `${balance} Gems`);
+    hudGemWallet.setAttribute("aria-label", `${balance} Gems`); refreshGoldCounter(gameElements, coop?.gold?.() ?? 0n);
   }
   refreshGemCounter();
   const overlays = createGameOverlays({ e: gameElements, coop, version: GAME_VERSION, applyProfileIcon: (element: HTMLElement, index: number, identity?: string) => applyProfileIcon(element, index, identity), showMessage, afterIconSet: () => { applyProfileIcon(playerHudProfileIcon, coop?.profileIcon?.() ?? 0, coop?.localIdentity?.()); if (profileWindow.identity() === coop?.localIdentity?.()) applyProfileIcon(playerProfileIcon, coop?.profileIcon?.() ?? 0, coop?.localIdentity?.()); } });
@@ -424,10 +424,8 @@ import {
   const inventoryController = createInventoryController({
     inventory,
     itemInspection: itemInspectionController,
-    equipmentRequirement: (itemId) => equipmentMapRequirement(itemId, coop?.savedProgress?.()),
     equipBest: () => {
-      if (!equipBestInventory(inventory, candidate => powerForEquipment(candidate, true),
-        itemId => !equipmentMapRequirement(itemId, coop?.savedProgress?.()))) return false;
+      if (!equipBestInventory(inventory, candidate => powerForEquipment(candidate, true))) return false;
       player.speed = progress.movementSpeedForEquipment(false) * localTestMultiplier;
       applyPlayerMaxHealthMultiplierBonus(player, healthMultiplierBonus());
       saveProgress(true);
@@ -437,13 +435,11 @@ import {
     upgradeLevel: (itemId) => coop?.itemUpgradeLevel?.(itemId) ?? 0, refineLevel: (itemId, copyId) => coop?.itemRefine?.(itemId, copyId) ?? 0, ores: () => coop?.ores?.() ?? {}, cards: cardsPort(() => coop),
     slotTier: slot => coop?.slotUpgradeTier?.(slot) ?? 0,
     inventorySlotsUnlocked: () => coop?.inventorySlotsUnlocked?.() ?? 0, researchBagSlots: () => coop?.research?.().inventorySlots ?? 0, hasPickaxe: () => coop?.hasPickaxe?.() ?? false,
-    gemBalance: () => coop?.gemBalance?.() ?? 0n, schools: { points: () => coop?.weaponMastery?.() ?? {}, activeWeapon: () => inventory.equippedRightHand }, builds: createBuildActions({ coop: () => coop, inventory, requirement: itemId => equipmentMapRequirement(itemId, coop?.savedProgress?.()), blocked: () => isDueling() ? "Finish Your Duel First" : null, afterGearChange: () => { player.speed = progress.movementSpeedForEquipment(false) * localTestMultiplier; applyPlayerMaxHealthMultiplierBonus(player, healthMultiplierBonus()); saveProgress(true); } }),
+    gemBalance: () => coop?.gemBalance?.() ?? 0n, builds: createBuildActions({ coop: () => coop, inventory, blocked: () => isDueling() ? "Finish Your Duel First" : null, afterGearChange: () => { player.speed = progress.movementSpeedForEquipment(false) * localTestMultiplier; applyPlayerMaxHealthMultiplierBonus(player, healthMultiplierBonus()); saveProgress(true); } }),
     unlockInventorySlot: async () => coop?.unlockInventorySlot?.(),
     ...inventoryCommerce,
     showMessage,
     move: (itemId, destination) => {
-      const requiredMap = equipmentMapRequirement(itemId, coop?.savedProgress?.());
-      if (destination !== "BAG" && requiredMap) { showMessage(`REACH ${requiredMap.toUpperCase()} TO EQUIP`, "#ff9b91"); return false; }
       if (!moveInventoryItem(inventory, itemId, destination)) return false;
       player.speed = progress.movementSpeedForEquipment(false) * localTestMultiplier;
       applyPlayerMaxHealthMultiplierBonus(player, healthMultiplierBonus());
@@ -633,7 +629,7 @@ import {
     getTotalKills: () => totalKills,
     setTotalKills: (kills) => { totalKills = kills; },
     researchVitalityRank: () => researchRanks().vitality,
-    healthMultiplierBonus, cardRange: () => coop?.activeCardStats?.().range ?? 0,
+    healthMultiplierBonus, cardRange: () => coop?.activeCardStats?.().range ?? 0, weaponMastery: () => coop?.weaponMasteryInPlay?.(),
     setAppliedVitalityRank: research.setAppliedVitalityRank,
     renderInventory,
     onLoaded: finishStartup,
@@ -659,8 +655,8 @@ import {
     prestigeSecondWind: () => prestigePerkValue(coop?.prestigePerks?.(), "secondWind"),
     prestigeDoubleStrike: () => prestigePerkValue(coop?.prestigePerks?.(), "doubleStrike"),
     prestigeSplitShot: () => prestigePerkValue(coop?.prestigePerks?.(), "splitShot"), prestigeReflect: () => prestigePerkValue(coop?.prestigePerks?.(), "riposte"),
-    weaponSkills: () => coop?.weaponSkills?.(inventory.equippedRightHand || inventory.equippedLeftHand), cards: () => coop?.activeCardTotals?.(),
-    equippedWeapon: () => inventory.equippedRightHand || inventory.equippedLeftHand,
+    weaponSkills: () => coop?.weaponSkills?.(inventory.equippedRightHand || inventory.equippedLeftHand), cards: () => coop?.activeCardTotals?.(), weaponMastery: () => coop?.weaponMasteryInPlay?.(),
+    equippedWeapon: () => inventory.equippedRightHand || inventory.equippedLeftHand, equippedRightHand: () => inventory.equippedRightHand,
     equippedWeaponUpgradeLevel: () => coop?.itemLevel?.(inventory.equippedRightHand || inventory.equippedLeftHand) ?? 0,
     equippedHead: () => inventory.equippedHead,
     equippedHeadUpgradeLevel: () => coop?.itemLevel?.(inventory.equippedHead) ?? 0,
@@ -1359,15 +1355,15 @@ import {
   });
 
   bindHomeTeleportButton(gameElements.techTreeBtn, {
-    beforeTeleport: () => { techTree.close(); upgradeBenchController.close(); quests.board.close(); oxShop.close(); smith.close(); cardSeller.close(); },
+    beforeTeleport: () => { techTree.close(); upgradeBenchController.close(); quests.board.close(); oxShop.close(); smith.close(); cardSeller.close(); schools.close(); },
     teleport: () => inTutorial() ? Promise.resolve(false) : mapController.teleportHome(),
     showFailure: failed => showMessage(failed ? "TELEPORT FAILED · TRY AGAIN" : "TELEPORT UNAVAILABLE", "#ffbc91"), showBlocked: text => showMessage(text, "#ffbc91"),
   });
-  const oxShop = createOxShopRuntime({ coop: () => coop, inventory, renderInventory, showMessage, clearInput: playerInput.clear, inTown: () => currentMapId === "town" }), smith = createSmithRuntime({ coop: () => coop, inventory, showMessage, clearInput: playerInput.clear, inTown: () => currentMapId === "town" }), cardSeller = createCardSellerRuntime({ coop: () => coop, showMessage, clearInput: playerInput.clear, inTown: () => currentMapId === "town" });
+  const oxShop = createOxShopRuntime({ coop: () => coop, inventory, renderInventory, showMessage, clearInput: playerInput.clear, inTown: () => currentMapId === "town" }), smith = createSmithRuntime({ coop: () => coop, inventory, showMessage, clearInput: playerInput.clear, inTown: () => currentMapId === "town" }), cardSeller = createCardSellerRuntime({ coop: () => coop, showMessage, clearInput: playerInput.clear, inTown: () => currentMapId === "town" }), schools = createSchoolWindowRuntime({ coop: () => coop, clearInput: playerInput.clear, inTown: () => currentMapId === "town" });
   const updateHomeStations = createHomeStationTouchHandler(
     () => currentMapId === "town" && !mapController.isMapTransitioning(), player,
     () => { playerInput.clear(); techTree.open(); }, () => { upgradeBenchController.updateTouch(); quests.refreshAtHome(); },
-    () => { playerInput.clear(); quests.board.open(); }, () => { playerInput.clear(); oxShop.open(); }, () => { playerInput.clear(); smith.open(); }, () => { playerInput.clear(); cardSeller.open(); },
+    () => { playerInput.clear(); quests.board.open(); }, () => { playerInput.clear(); oxShop.open(); }, () => { playerInput.clear(); smith.open(); }, () => { playerInput.clear(); cardSeller.open(); }, school => { playerInput.clear(); schools.open(school); },
   );
   upgradeBenchController = createUpgradeBenchController({
     panel: gameElements.upgradeBenchPanel,

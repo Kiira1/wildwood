@@ -1,4 +1,6 @@
 import { CAMPAIGN_ITEM_DEFINITIONS, type CampaignItemId } from "../../shared/campaign-equipment";
+import { GRADE_ITEM_DEFINITIONS, type GradeItemId } from "../../shared/grade-equipment";
+import type { ItemDefinition } from "../../shared/items";
 import type { ItemPresentation } from "./item-presentation";
 
 /** A staff is held upright and casts (player-appearance.ts); its art is already the in-hand size (import-vendor-staffs.mjs). */
@@ -11,8 +13,8 @@ export const staffPresentation = (source: string): ItemPresentation => ({
 export const STAFF_HELD_TOP = 64;
 
 /** Vendor parts use the same anchors and shared alignment controls as existing gear. */
-export const CAMPAIGN_ITEM_PRESENTATIONS = Object.fromEntries(
-  Object.entries(CAMPAIGN_ITEM_DEFINITIONS).map(([id, item]): [string, ItemPresentation] => {
+const vendorPartPresentations = (definitions: Readonly<Record<string, ItemDefinition>>) => Object.fromEntries(
+  Object.entries(definitions).map(([id, item]): [string, ItemPresentation] => {
     const source = `assets/wildstat/player-parts/${id.replace(/_/g, "-")}.webp`;
     // A sword swings, held as the Wooden Sword is: every sword is the vendor's Character Parts Pack art at the same
     // size (scripts/art/import-vendor-swords.mjs), so all of them share its alignment.
@@ -35,4 +37,8 @@ export const CAMPAIGN_ITEM_PRESENTATIONS = Object.fromEntries(
       world: { kind: "SPRITE", source, layer: "HEAD", bottom: 144 },
     }];
   }),
-) as Record<CampaignItemId, ItemPresentation>;
+);
+
+export const CAMPAIGN_ITEM_PRESENTATIONS = vendorPartPresentations(CAMPAIGN_ITEM_DEFINITIONS) as Record<CampaignItemId, ItemPresentation>;
+/** Graded gear is the same pack's parts at the same sizes (scripts/art/import-grade-equipment.mjs). */
+export const GRADE_ITEM_PRESENTATIONS = vendorPartPresentations(GRADE_ITEM_DEFINITIONS) as Record<GradeItemId, ItemPresentation>;

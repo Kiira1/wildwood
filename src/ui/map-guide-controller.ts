@@ -8,17 +8,7 @@ import type { EnemyState } from "../game/runtime/types";
 import type { MapBalanceSnapshot } from "../../shared/map-balance-types";
 import { renderEnemyIndexRows } from "./map-enemy-index";
 import { canvasRenderPixelRatio } from "../game/runtime/render/render-budget";
-import {
-  FROST_ARMOR,
-  FROST_BOW,
-  ITEM_DEFINITIONS,
-  LAVA_BOSS_ITEM_DROP_DENOMINATOR,
-  LAVA_BOW,
-  SNOW_BOSS_ARMOR_DROP_DENOMINATOR,
-  SNOW_BOSS_ITEM_DROP_DENOMINATOR,
-  type ItemDefinition,
-  type ItemId,
-} from "../../shared/items";
+import { ITEM_DEFINITIONS, type ItemDefinition, type ItemId } from "../../shared/items";
 import { WORLD_HEIGHT, WORLD_WIDTH } from "../../shared/rules";
 // The guide shows campaign and Endless maps, every one the classic square, wherever the player stands
 // (the Town's or a guild hall's own world is a different size).
@@ -100,31 +90,6 @@ export type MapGuideZone = {
   rewards: { type: RewardType; label: string; color: string }[];
 };
 
-const MAP_GUIDE_DROPS: Record<MapId, readonly MapGuideDrop[]> = {
-  first_steps: [],
-  home_exterior: [],
-  soul_dimension: [],
-  town: [],
-  [TUTORIAL_FOREST_MAP_ID]: [
-  ],
-  [BEGINNER_DESERT_MAP_ID]: [
-  ],
-  [INTERMEDIATE_SNOWLANDS_MAP_ID]: [
-    { itemId: FROST_ARMOR, denominator: SNOW_BOSS_ARMOR_DROP_DENOMINATOR, source: "Boss" },
-    { itemId: FROST_BOW, denominator: SNOW_BOSS_ITEM_DROP_DENOMINATOR, source: "Boss" },
-  ],
-  [ADVANCED_LAVA_WASTES_MAP_ID]: [
-    { itemId: LAVA_BOW, denominator: LAVA_BOSS_ITEM_DROP_DENOMINATOR, source: "Boss" },
-  ],
-  [INFERNAL_DEPTHS_MAP_ID]: [
-  ],
-  [WATER_REACH_MAP_ID]: [],
-  [SAMURAI_GARDEN_MAP_ID]: [],
-  [CLOUDSPIRE_MAP_ID]: [],
-  [MOONFEN_MAP_ID]: [],
-  [CRYSTAL_HOLLOWS_MAP_ID]: [], [CLOCKWORK_RUINS_MAP_ID]: [], [DUSKFALL_ORCHARD_MAP_ID]: [], [NEON_BASTION_MAP_ID]: [], [VERDANT_CATACOMBS_MAP_ID]: [], [ION_CITADEL_MAP_ID]: [],
-};
-
 const MAP_GUIDE_THEMES: Record<MapId, { ground: string; path: string; glow: string }> = {
   first_steps: { ground: "#31945b", path: "#8b6551", glow: "#65e889" },
   home_exterior: { ground: "#488761", path: "#b29a78", glow: "#82e9ff" },
@@ -167,15 +132,15 @@ export function mapGuideBrowseRange(unlocked: (mapId: MapId) => boolean) {
   return { maps, last: Math.min(maps.length - 1, furthest + 1) };
 }
 
+/** What the map's regular enemies drop. Gear is not among it: that is bought at the Smith. */
 export function mapGuideDrops(mapId: MapId): readonly MapGuideDrop[] {
   if (isProceduralMap(mapId)) return [];
-  const regularDrops = regularMapLoot(mapId).map<MapGuideDrop>(({ itemId, wins, outcomes }) => ({
+  return regularMapLoot(mapId).map<MapGuideDrop>(({ itemId, wins, outcomes }) => ({
     itemId,
     numerator: wins,
     denominator: outcomes,
     source: "Any regular enemy",
   }));
-  return [...regularDrops, ...(MAP_GUIDE_DROPS[mapId] ?? [])];
 }
 
 /**
@@ -351,6 +316,15 @@ export function createMapGuideController(elements: MapGuideElements, dependencie
       card.append(art, copy, chance);
       return card;
     });
+    if (!cards.length) {
+      // Regular enemies no longer drop gear; say where it comes from instead of an empty list.
+      const note = document.createElement("p");
+      note.className = "enemy-index-note";
+      note.style.gridColumn = "1 / -1";
+      note.textContent = "No items drop here. Gear is bought at the Smith in Town.";
+      dropItems.replaceChildren(note);
+      return;
+    }
     dropItems.replaceChildren(...cards);
   }
 

@@ -13,7 +13,7 @@ function fakeConnection() {
     onUpdate: (handler: () => void) => handlers.push(handler),
     onDelete: (handler: () => void) => handlers.push(handler),
   });
-  const reducers = { mineNode: vi.fn(async () => {}), claimPickaxe: vi.fn(async () => {}) };
+  const reducers = { mineNode: vi.fn(async () => {}), claimPickaxe: vi.fn(async () => {}), buyGradeGear: vi.fn(async (_args: { itemId: string; expectedPrice: bigint }) => {}) };
   const connection = {
     isActive: true,
     db: { myMining: view(rows.mining), myMinedNodes: view(rows.broken) },
@@ -66,6 +66,8 @@ it("sends a break and the pickaxe claim, and reports the server's refusal", asyn
   await expect(service.api.mineNode(12)).resolves.toEqual({ ok: true });
   expect(fake.reducers.mineNode).toHaveBeenCalledWith({ nodeId: 12 });
   await expect(service.api.claimPickaxe()).resolves.toEqual({ ok: true });
+  await expect(service.api.buyGradeGear("rare_bow", 5_000)).resolves.toEqual({ ok: true });
+  expect(fake.reducers.buyGradeGear).toHaveBeenCalledWith({ itemId: "rare_bow", expectedPrice: 5_000n });
   fake.reducers.mineNode.mockRejectedValueOnce(new Error("That rock is still growing back."));
   await expect(service.api.mineNode(12)).resolves.toMatchObject({ ok: false, error: expect.stringContaining("growing back") });
 });

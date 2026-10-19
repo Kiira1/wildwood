@@ -174,14 +174,11 @@ describe("loaded progress reconciliation", () => {
     expect(state.inventory.equippedChest).toBe("");
     expect(state.inventory.equippedRightHand).toBe(CLOUDSPIRE_BOW);
 
-    // A rebalance can revoke map access without changing bag ownership.
+    // A rebalance can revoke map access without changing bag ownership; gear never locks, so it stays on.
     saved = { ...saved, cloudspireUnlocked: false };
     controller.load();
-    expect(state.inventory.equippedRightHand).toBe(saved.equippedRightHand);
+    expect(state.inventory.equippedRightHand).toBe(CLOUDSPIRE_BOW);
     expect(state.inventory.itemIds).toContain(CLOUDSPIRE_BOW);
-    state.inventory.equippedRightHand = CLOUDSPIRE_BOW;
-    controller.load();
-    expect(state.inventory.equippedRightHand).toBe(saved.equippedRightHand);
   });
 
   function loaded(initial: Partial<PlayerProgress>) {
@@ -207,10 +204,11 @@ describe("loaded progress reconciliation", () => {
     expect(empty.state.inventory.itemIds).toEqual(expect.arrayContaining(["starter_stone", "iron_bow"]));
   });
 
-  it("refills a hand whose saved weapon is locked again: the best usable weapon, else the stone", () => {
-    const locked = loaded({ inventoryJson: '["starter_stone","iron_bow"]', equippedRightHand: "iron_bow" });
-    expect(locked.state.inventory.equippedRightHand).toBe("starter_stone");
-    expect(locked.state.inventory.itemIds).toEqual(expect.arrayContaining(["starter_stone", "iron_bow"]));
+  it("keeps an owned weapon from a map not reached in hand, and refills a hand whose weapon is gone", () => {
+    const early = loaded({ inventoryJson: '["starter_stone","iron_bow"]', equippedRightHand: "iron_bow" });
+    expect(early.state.inventory.equippedRightHand).toBe("iron_bow");
+    const gone = loaded({ inventoryJson: '["starter_stone"]', equippedRightHand: "iron_bow" });
+    expect(gone.state.inventory.equippedRightHand).toBe("starter_stone");
   });
 
   it("keeps the stone and a weapon in hand when the row drops both (the WEAPON EMPTY repro)", () => {
@@ -218,11 +216,10 @@ describe("loaded progress reconciliation", () => {
     view.reload({ inventoryJson: '["iron_bow"]', equippedRightHand: "" });
     expect(view.state.inventory.itemIds).toContain("starter_stone");
     expect(view.state.inventory.equippedRightHand).toBe("starter_stone");
-    // A weapon locked away again falls back to a usable one, never to nothing.
+    // Losing a map leaves its weapon in hand: gear never locks.
     const relocked = loaded({ inventoryJson: '["starter_stone","iron_bow"]', equippedRightHand: "iron_bow", desertUnlocked: true });
-    expect(relocked.state.inventory.equippedRightHand).toBe("iron_bow");
     relocked.reload({ desertUnlocked: false });
-    expect(relocked.state.inventory.equippedRightHand).toBe("starter_stone");
+    expect(relocked.state.inventory.equippedRightHand).toBe("iron_bow");
   });
 
 });

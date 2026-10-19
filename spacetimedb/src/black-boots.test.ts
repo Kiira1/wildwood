@@ -6,18 +6,16 @@ import { inventoryFromSave } from "../../src/game/inventory";
 import { crystalFixture, server } from "../../tests/helpers/crystal-hollows-fixture";
 import { progressOf } from "../../tests/helpers/progress";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
-it("rolls black boots independently at 2% in Night Forest and keeps equipped feet on reload", () => {
+it("no longer drops black boots in Night Forest, and keeps owned ones on the feet on reload", () => {
   const f = crystalFixture(); f.patch("player", { mapId: INFERNAL_DEPTHS_MAP_ID });
   f.patch("playerProgress", { equippedRightHand: "starter_stone", damage: 1e15 });
   f.ctx.random.integerInRange = vi.fn((_min, max) => max === BLACK_BOOTS_DROP_DENOMINATOR ? 1 : max);
   reportEnemy(f);
-  const progress = progressOf(f, f.ctx.sender);
-  expect(JSON.parse(progress.inventoryJson)).toContain(BLACK_BOOTS);
-  const inventory = inventoryFromSave(progress.inventoryJson, BLACK_BOOTS, "", "", false);
+  expect(JSON.parse(progressOf(f, f.ctx.sender).inventoryJson)).not.toContain(BLACK_BOOTS);
+  expect([...f.db.playerItemDrop.iter()]).toEqual([]);
+  f.patch("playerProgress", { inventoryJson: JSON.stringify([BLACK_BOOTS]) });
+  const inventory = inventoryFromSave(progressOf(f, f.ctx.sender).inventoryJson, BLACK_BOOTS, "", "", false);
   expect(inventory.equippedFeet).toBe(BLACK_BOOTS);
-  expect([...f.db.playerItemDrop.iter()]).toMatchObject([{ itemId: BLACK_BOOTS, alreadyOwned: false }]);
-  reportEnemy(f);
-  expect(JSON.parse(progressOf(f, f.ctx.sender).inventoryJson).filter((id: string) => id === BLACK_BOOTS)).toHaveLength(1);
 });
 it("rejects unowned or cosmetic-only speed boosts and accepts the exact equipped bonus", () => {
   const f = crystalFixture();
@@ -25,9 +23,8 @@ it("rejects unowned or cosmetic-only speed boosts and accepts the exact equipped
   expect(() => f.run(server.setSpeed, { speed: 205 })).toThrow("Unsupported player speed");
   f.patch("playerProgress", { inventoryJson: JSON.stringify([BLACK_BOOTS]), cosmeticFeet: BLACK_BOOTS });
   expect(() => f.run(server.setSpeed, { speed: 205 })).toThrow("Unsupported player speed");
+  // Worn, they count before Night Forest is reached: gear never locks behind a map.
   f.patch("playerProgress", { equippedFeet: BLACK_BOOTS });
-  expect(() => f.run(server.setSpeed, { speed: 205 })).toThrow("Unsupported player speed");
-  f.patch("playerProgress", { infernalUnlocked: true });
   const shod = PLAYER_SPEED + 25;
   f.run(server.setSpeed, { speed: shod });
   expect(f.db.player.identity.find(f.ctx.sender).speed).toBe(shod);

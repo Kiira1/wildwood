@@ -4,14 +4,14 @@ import type { InventoryState } from "../game/inventory";
 import { IRON_BOW, SAMURAI_HAT } from "../../shared/items";
 import type { SavedBuild } from "../../shared/builds";
 
-function setup(build: SavedBuild | null, options: { requirement?: (itemId: string) => string | null; blocked?: string } = {}) {
+function setup(build: SavedBuild | null, options: { blocked?: string } = {}) {
   const inventory: InventoryState = { itemIds: [IRON_BOW, SAMURAI_HAT], equippedHead: "", equippedChest: "", equippedFeet: "",
     equippedRightHand: "", equippedLeftHand: "", cosmeticHead: "", cosmeticChest: "", cosmeticFeet: "", cosmeticRightHand: "", cosmeticLeftHand: "" } as InventoryState;
   const applyBuildCards = vi.fn(async () => ({ ok: true }));
   const afterGearChange = vi.fn();
   const actions = createBuildActions({
     coop: () => ({ builds: () => [build, null, null], saveBuild: async () => ({ ok: true }), applyBuildCards }),
-    inventory, requirement: options.requirement ?? (() => null), afterGearChange, blocked: () => options.blocked ?? null,
+    inventory, afterGearChange, blocked: () => options.blocked ?? null,
   });
   return { inventory, actions, applyBuildCards, afterGearChange };
 }
@@ -28,9 +28,9 @@ describe("equipping a build", () => {
   });
 
   it("counts gear it could not put on, and still puts the cards back", async () => {
-    const view = setup({ slot: 0, gear: gear("ion_bow", SAMURAI_HAT), cards: { HAND: [], HEAD: [], CHEST: [] } }, { requirement: itemId => itemId === SAMURAI_HAT ? "Samurai Garden" : null });
+    const view = setup({ slot: 0, gear: gear("ion_bow"), cards: { HAND: [], HEAD: [], CHEST: [] } });
     const result = await view.actions.equip(0);
-    expect(result.missingGear).toBe(2);
+    expect(result.missingGear).toBe(1);
     expect(view.afterGearChange).not.toHaveBeenCalled();
     expect(view.applyBuildCards).toHaveBeenCalledOnce();
   });

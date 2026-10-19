@@ -30,12 +30,13 @@ it("takes a slot the server changed while the local save still held the old gear
     .toMatchObject({ equippedRightHand: "crystal_bow", equippedHead: "wood_full_helm" });
 });
 
-it("never takes in a blank hand, locked gear or gear in the wrong slot: the server only puts gear on", () => {
-  // A blank hand in the row is an ordinary saved state, with or without a locked bow in the bag.
+it("never takes in a blank hand or gear in the wrong slot: the server only puts gear on", () => {
+  // A blank hand in the row is an ordinary saved state, with or without a bow in the bag.
   expect(serverLoadoutChanges(progress("starter_stone"), progress(""), null)).toEqual([]);
   expect(serverLoadoutChanges(progress("starter_stone"), progress("", { desertUnlocked: false, inventoryJson: '["iron_bow"]' }), save("starter_stone"))).toEqual([]);
-  // A bow whose map is not reached, and a bow in the head slot.
-  expect(serverLoadoutChanges(progress("starter_stone"), progress("iron_bow", { desertUnlocked: false }), null)).toEqual([]);
+  // A bow from a map not reached is taken in: gear never locks. A bow in the head slot is not.
+  expect(serverLoadoutChanges(progress("starter_stone"), progress("iron_bow", { desertUnlocked: false }), null))
+    .toEqual([{ field: "equippedRightHand", itemId: "iron_bow", previous: "starter_stone" }]);
   expect(serverLoadoutChanges(progress("starter_stone", { equippedHead: "" }), progress("starter_stone", { equippedHead: "iron_bow" }), null)).toEqual([]);
 });
 
@@ -44,30 +45,26 @@ it("puts a weapon in one hand the way the inventory does, and fills an empty han
   expect(applyServerLoadout(loadout("", { equippedLeftHand: "iron_bow" }), changes))
     .toMatchObject({ equippedRightHand: "crystal_bow", equippedLeftHand: "" });
   const blank = loadout("");
-  expect(fillEmptyHand(blank, ["starter_stone", "iron_bow"], {})).toBe("starter_stone");
-  expect(blank.equippedRightHand).toBe("starter_stone");
-  // With no stone listed at all it is still the stone: every player owns it.
-  expect(fillEmptyHand(loadout(""), ["iron_bow"], {})).toBe("starter_stone");
-  expect(fillEmptyHand(loadout(""), ["starter_stone", "starter_bow", "iron_bow"], { desertUnlocked: true })).toBe("iron_bow");
-  // A locked weapon in hand counts as empty; a usable one is left alone.
-  expect(fillEmptyHand(loadout("iron_bow"), ["starter_stone", "iron_bow"], {})).toBe("starter_stone");
-  expect(fillEmptyHand(loadout("starter_bow"), ["starter_stone", "starter_bow"], {})).toBe("");
-  // A locked weapon gives way to one of its own kind: an archer is never handed a sword, a swordsman gets one.
-  expect(fillEmptyHand(loadout("iron_bow"), ["starter_stone", "wooden_sword", "iron_bow"], {})).toBe("starter_stone");
-  expect(fillEmptyHand(loadout("iron_sword"), ["starter_stone", "starter_bow", "wooden_sword", "iron_sword"], {})).toBe("wooden_sword");
+  expect(fillEmptyHand(blank, ["starter_stone", "iron_bow"])).toBe("iron_bow");
+  expect(blank.equippedRightHand).toBe("iron_bow");
+  // With nothing listed at all it is the stone: every player owns it.
+  expect(fillEmptyHand(loadout(""), [])).toBe("starter_stone");
+  // Gear never locks behind a map: the strongest owned weapon goes in, and a weapon in hand is left alone.
+  expect(fillEmptyHand(loadout(""), ["starter_stone", "starter_bow", "iron_bow"])).toBe("iron_bow");
+  expect(fillEmptyHand(loadout("iron_bow"), ["starter_stone", "iron_bow"])).toBe("");
+  // An archer is never handed a sword; a swordsman gets the strongest one owned.
+  expect(fillEmptyHand(loadout(""), ["starter_stone", "wooden_sword", "iron_bow"], "RANGED")).toBe("iron_bow");
+  expect(fillEmptyHand(loadout(""), ["starter_stone", "starter_bow", "wooden_sword", "iron_sword"], "MELEE")).toBe("iron_sword");
   // A weapon lost from the bag is cleared before the fill, so its kind is passed in.
-  expect(fillEmptyHand(loadout(""), ["starter_stone", "wooden_sword"], {}, "MELEE")).toBe("wooden_sword");
+  expect(fillEmptyHand(loadout(""), ["starter_stone", "wooden_sword"], "MELEE")).toBe("wooden_sword");
 });
 
-it("names the upgrade, the weapon first, and says nothing for a prestige swap or an emptied slot", () => {
-  const unlocked = Object.fromEntries(CAMPAIGN_UNLOCK_FIELDS.map(field => [field, true]));
+it("names the upgrade, the weapon first, and says nothing for an emptied slot", () => {
   expect(autoEquipMessage([
     { field: "equippedHead", itemId: "crystal_helmet", previous: "" },
     { field: "equippedRightHand", itemId: "crystal_bow", previous: "iron_bow" },
-  ], unlocked)).toBe("Equipped Crystalwing Bow (upgrade)");
-  expect(autoEquipMessage([{ field: "equippedRightHand", itemId: "", previous: "iron_bow" }], unlocked)).toBeNull();
-  // After a prestige the crystal bow is locked again; swapping it out is no upgrade.
-  expect(autoEquipMessage([{ field: "equippedRightHand", itemId: "starter_bow", previous: "crystal_bow" }], {})).toBeNull();
+  ])).toBe("Equipped Crystalwing Bow (upgrade)");
+  expect(autoEquipMessage([{ field: "equippedRightHand", itemId: "", previous: "iron_bow" }])).toBeNull();
 });
 
 it("puts the server's gear in the local bag and says so, silently on a reconnect", () => {

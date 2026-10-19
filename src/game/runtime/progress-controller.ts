@@ -4,7 +4,7 @@ import { canonicalItemId, itemDefinition, STARTER_ITEM_IDS } from "../../../shar
 import { fillEmptyHand } from "../../coop/services/server-loadout";
 import { weaponKind } from "../../../shared/equip-best";
 import { cosmeticUnlocks } from "../../../shared/cosmetic-conversion";
-import { equipmentMapRequirement, EQUIPMENT_ACCESS_FIELDS, withoutLockedEquipment } from "../../../shared/equipment-access";
+import { masteryAttackRange, masteryInPlay, type MasteryPoints } from "../../../shared/weapon-mastery";
 import { BASE_ATTACK_RANGE, BASE_PROJECTILE_SPEED } from "../constants";
 import { clamp } from "../math";
 import { inventoryFromSave, serialiseInventory, type EquipmentSlot, type InventoryState } from "../inventory";
@@ -46,11 +46,16 @@ type ProgressDependencies = {
   onLoaded: () => void;
   /** Range the worn Long Shot cards add on top of the saved range, which the server keeps without them. */
   cardRange?: () => number;
+  /** Weapon Mastery points in play (coop weaponMasteryInPlay): Archery adds range while a bow is in hand. */
+  weaponMastery?: () => MasteryPoints | null | undefined;
 };
 
 /** Server progress persistence, legacy migration, bounds checks, and load state. */
 export function createProgressController(dependencies: ProgressDependencies) {
   let hasSavedProgress = false;
+  // Range added on top of the saved one: Long Shot cards, and Archery's while a bow or the stone is in the right hand.
+  const addedRange = (rightHand: string | undefined, leftHand: string | undefined) => (dependencies.cardRange?.() ?? 0)
+    + masteryAttackRange(masteryInPlay(dependencies.weaponMastery?.(), rightHand, rightHand || leftHand));
   /**
    * The crit rating the server last sent. Kills the client has not reported yet
    * are on top of it, so a newer one only replaces the player's when it is
@@ -100,16 +105,9 @@ export function createProgressController(dependencies: ProgressDependencies) {
       inventory.itemIds.every((item, index) => item === ownedItems[index]) &&
       (inventory.cosmeticItemIds ?? []).length === ownedCosmetics.length &&
       (inventory.cosmeticItemIds ?? []).every((item, index) => item === ownedCosmetics[index]);
-    // Whether a weapon was in hand before this reconcile clears locked or lost gear, and its kind.
+    if (sameOwnership) return;
+    // Whether a weapon was in hand before this reconcile clears lost gear, and its kind.
     const heldWeapon = inventory.equippedRightHand || inventory.equippedLeftHand;
-    let removedLocked = false;
-    for (const field of EQUIPMENT_ACCESS_FIELDS) {
-      if (inventory[field] && equipmentMapRequirement(inventory[field], saved)) {
-        inventory[field] = equipmentMapRequirement(saved[field], saved) ? "" : saved[field];
-        removedLocked = true;
-      }
-    }
-    if (sameOwnership && !removedLocked) return;
     inventory.itemIds = [...ownedItems];
     inventory.cosmeticItemIds = [...ownedCosmetics];
     // Keep local loadout choices. Server ownership still determines what can
@@ -119,10 +117,10 @@ export function createProgressController(dependencies: ProgressDependencies) {
     for (const field of ["equippedHead", "equippedChest", "equippedFeet", "equippedRightHand", "equippedLeftHand"] as const) {
       if (itemDefinition(inventory[field]) && !ownedItems.includes(inventory[field])) inventory[field] = "";
     }
-    // Gear taken away or locked again must not leave the player unable to attack.
+    // Gear taken away must not leave the player unable to attack.
     // Hands the player emptied stay empty (unarmed Reflect runs): new loot
     // changing the bag used to put the best weapon, usually a bow, into them.
-    if (heldWeapon) fillEmptyHand(inventory, inventory.itemIds, saved, weaponKind(heldWeapon));
+    if (heldWeapon) fillEmptyHand(inventory, inventory.itemIds, weaponKind(heldWeapon));
     applyPlayerMaxHealthMultiplierBonus(dependencies.player, dependencies.healthMultiplierBonus());
     dependencies.renderInventory();
   }
@@ -179,7 +177,8 @@ export function createProgressController(dependencies: ProgressDependencies) {
         player.regen = boundedProgressValue(saved.regen, player.regen, 0, MAX_PLAYER_STAT);
         applyCritRating(saved.critRating);
         player.projectileCount = saved.projectileCount;
-        player.attackRange = boundedProgressValue(saved.attackRange, BASE_ATTACK_RANGE, BASE_ATTACK_RANGE, BASE_ATTACK_RANGE + 75) + (dependencies.cardRange?.() ?? 0);
+        player.attackRange = boundedProgressValue(saved.attackRange, BASE_ATTACK_RANGE, BASE_ATTACK_RANGE, BASE_ATTACK_RANGE + 75)
+          + addedRange(dependencies.inventory.equippedRightHand, dependencies.inventory.equippedLeftHand);
         if (player.baseMaxHp !== saved.maxHp) setPlayerBaseMaxHealth(player, saved.maxHp, dependencies.healthMultiplierBonus());
         reconcileInventory(saved);
         applyMovementSpeed(saved, false);
@@ -208,9 +207,8 @@ export function createProgressController(dependencies: ProgressDependencies) {
   }
 
   function applyProgress(source: Partial<PlayerProgress>) {
-    // Read before locked gear is stripped: a locked weapon in hand still counts as one, and keeps its kind.
+    // Read before unowned gear is cleared: a lost weapon in hand still counts as one, and keeps its kind.
     const savedWeapon = source.equippedRightHand || source.equippedLeftHand;
-    source = withoutLockedEquipment(source, source);
     const { player, inventory, bootsPickup } = dependencies;
     player.baseMaxHp = boundedProgressValue(source.maxHp, player.baseMaxHp, 1, MAX_PLAYER_STAT);
     player.damage = boundedProgressValue(source.damage, player.damage, 1, MAX_PLAYER_STAT);
@@ -218,7 +216,8 @@ export function createProgressController(dependencies: ProgressDependencies) {
     serverCritRating = player.critRating = cleanRating(source.critRating);
     player.projectileSpeed = BASE_PROJECTILE_SPEED;
     player.projectileCount = Math.floor(boundedProgressValue(source.projectileCount, player.projectileCount, 1, 20));
-    player.attackRange = boundedProgressValue(source.attackRange, BASE_ATTACK_RANGE, BASE_ATTACK_RANGE, BASE_ATTACK_RANGE + 75) + (dependencies.cardRange?.() ?? 0);
+    player.attackRange = boundedProgressValue(source.attackRange, BASE_ATTACK_RANGE, BASE_ATTACK_RANGE, BASE_ATTACK_RANGE + 75)
+      + addedRange(source.equippedRightHand, source.equippedLeftHand);
     player.armor = boundedProgressValue(source.armor, player.armor, 0, MAX_ARMOR);
     player.regen = boundedProgressValue(source.regen, player.regen, 0, MAX_PLAYER_STAT);
     bootsPickup.collected = source.bootsCollected === true;
@@ -253,11 +252,11 @@ export function createProgressController(dependencies: ProgressDependencies) {
     inventory.cosmeticFeet = savedInventory.cosmeticFeet;
     inventory.cosmeticRightHand = savedInventory.cosmeticRightHand;
     inventory.cosmeticLeftHand = savedInventory.cosmeticLeftHand;
-    // A saved weapon that is locked again or no longer owned falls back to the
-    // best usable one. A hand saved empty is the player's choice and stays
-    // empty, as the server has kept it since 0.832; filling it on load equipped
-    // the best weapon, usually a bow, on every login.
-    if (savedWeapon) fillEmptyHand(inventory, inventory.itemIds, source, weaponKind(savedWeapon));
+    // A saved weapon no longer owned falls back to the best owned one. A hand
+    // saved empty is the player's choice and stays empty, as the server has
+    // kept it since 0.832; filling it on load equipped the best weapon, usually
+    // a bow, on every login.
+    if (savedWeapon) fillEmptyHand(inventory, inventory.itemIds, weaponKind(savedWeapon));
     setPlayerBaseMaxHealth(player, player.baseMaxHp, dependencies.healthMultiplierBonus(), true);
     applyMovementSpeed(source, false);
     inventory.selectedItemId = "";

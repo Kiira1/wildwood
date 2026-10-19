@@ -21,6 +21,8 @@ import { STAFF_BOLT_DAMAGE_FACTOR, isStaff, staffSkillReachMultiplier, weaponAtt
 import { staffSkillRollFor } from "./staff-skills";
 import type { ModuleReducerCtx as GameReducerContext } from "./index";
 import { readPlayerProgress } from "./wide-stats";
+import { weaponMasteryPoints } from "./weapon-mastery";
+import { masteryDamageTaken, masteryInPlay, rollWithProficiency } from "../../shared/weapon-mastery";
 
 // Primary key of the single row in each retained shared-boss table. The
 // one-time migrations still read the old result rows by it.
@@ -66,7 +68,8 @@ export function createCombatReport(deps: CombatReportDeps) {
    */
   function damageLoadout(ctx: GameReducerContext, progress: any, research: any, cardTotals: CardTotals) {
     const inventory = inventoryForProgress(progress);
-    const weapon = equippedRightHandForProgress(progress, inventory) || equippedLeftHandForProgress(progress, inventory);
+    const rightHand = equippedRightHandForProgress(progress, inventory);
+    const weapon = rightHand || equippedLeftHandForProgress(progress, inventory);
     const head = equippedHeadForProgress(progress, inventory), chest = equippedChestForProgress(progress, inventory);
     // Per item: the slot's tier and the item's own refine are both fixed for a report.
     const levels = new Map<string, ItemLevel>();
@@ -82,7 +85,7 @@ export function createCombatReport(deps: CombatReportDeps) {
     const equipment = 1 + equipmentDamageMultiplierBonus(weapon, head, chest, weaponLevel, headLevel, chestLevel);
     // The active cards: attack cards multiply damage as they do power.
     const cards = cardStatFactors(cardTotals);
-    return { weapon, levelFor, cardTotals, cards, damage: (base: number) => base * equipment * warcraft * cards.damage };
+    return { weapon, rightHand, levelFor, cardTotals, cards, damage: (base: number) => base * equipment * warcraft * cards.damage };
   }
 
   /**
@@ -148,11 +151,16 @@ export function createCombatReport(deps: CombatReportDeps) {
       // enemy, so they widen reach; the Split Shot arrow rolls the bow's skills
       // too, so the two reaches multiply.
       // Bow skill cards add to a bow's own roll.
-      const bowSkills = isSkillBow(loadout.weapon) ? bowSkillsWithCards(bowSkillRollFor(ctx, ctx.sender, loadout.weapon), loadout.cardTotals) : null;
-      const swordSkills = swordSkillRollFor(ctx, ctx.sender, loadout.weapon);
+      // Weapon Mastery's Skill Proficiency raises every skill chance. Read once a report, and counted during
+      // Reflect Only and Aggro runs too (where the client leaves it off): the looser side.
+      const mastery = masteryInPlay(weaponMasteryPoints(ctx, ctx.sender), loadout.rightHand, loadout.weapon);
+      const bowSkills = isSkillBow(loadout.weapon)
+        ? rollWithProficiency(bowSkillsWithCards(bowSkillRollFor(ctx, ctx.sender, loadout.weapon), loadout.cardTotals), mastery.level) : null;
+      const swordSkills = rollWithProficiency(swordSkillRollFor(ctx, ctx.sender, loadout.weapon), mastery.level);
       // A staff's bolt bursts on every enemy around its impact, and its skills reach further (staff-skills.ts).
+      // Sorcery's bigger blast needs nothing more: the bound counts a burst's most targets, not its size.
       const staff = isStaff(loadout.weapon);
-      const staffReach = staff ? staffSkillReachMultiplier(staffSkillRollFor(ctx, ctx.sender, loadout.weapon)) : 1;
+      const staffReach = staff ? staffSkillReachMultiplier(rollWithProficiency(staffSkillRollFor(ctx, ctx.sender, loadout.weapon), mastery.level)) : 1;
       const armorReduction = armorFor(statsFor(withSoulStats(saved, soul, minInterval)).armor).reduction;
       return { saved, earned, statsFor, armorFor, soul, minInterval, gear: {
         loadout, critical, swing: prestigeSwingMultiplier(ranks),
@@ -172,6 +180,8 @@ export function createCombatReport(deps: CombatReportDeps) {
         // Second Wind cards add to the perk.
         secondWind: prestigePerkValue(ranks, "secondWind") + Math.max(0, cardValue(loadout.cardTotals, "secondWind")) / 100,
         cardTotals: loadout.cardTotals,
+        // Swordplay's Guard, like guard cards, lets less of a hit through than Reflect answers.
+        guardFactor: 1 / masteryDamageTaken(mastery),
         reflectOnly: Boolean(challenge?.active),
       } };
     }
@@ -194,7 +204,7 @@ export function createCombatReport(deps: CombatReportDeps) {
         // the most Reflect can deal, whatever its bag drew.
         const stats = gear.reflects || gear.deflects ? statsFor!(progress) : null;
         // Guard cards let less of a hit through, so a reflected hit is that much bigger than what was lost.
-        const reflect = stats ? { maxHp: stats.maxHp, regen: stats.regen, preArmor: armorFor(stats.armor).preArmor * cardGuardFactor(gear.cardTotals) } : null;
+        const reflect = stats ? { maxHp: stats.maxHp, regen: stats.regen, preArmor: armorFor(stats.armor).preArmor * cardGuardFactor(gear.cardTotals) * gear.guardFactor } : null;
         // Damage taken per second that Reflect can answer: regen, a health bar
         // per life (a life no shorter than REFLECT_ONLY_LIFE_SECONDS), and
         // Second Wind's heal at the most kills a second any map can respawn.

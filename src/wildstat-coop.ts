@@ -60,9 +60,8 @@ import { createBaseSubscriptionHandlers, startBaseSubscription } from "./coop/se
 import { createAccountService, type AccountService } from "./coop/services/account-service";
 import { validateSpacetimeIdToken } from "./coop/security/oidc-id-token";
 import { createStartupTelemetryRuntime } from "./coop/services/startup-telemetry-runtime";
-import { runningAsGameScript, startStartupBootstrap } from "./coop/startup-bootstrap";
-import type { ReducerPort } from "./coop/ports";
-import type { StartupTelemetryStage } from "../shared/startup-telemetry";
+import { runningAsGameScript, startStartupBootstrap } from "./coop/startup-bootstrap"; import type { ReducerPort } from "./coop/ports";
+import type { StartupTelemetryStage } from "../shared/startup-telemetry"; import { masteryPointsInPlay, type MasteryPoints } from "../shared/weapon-mastery";
 export type * from "./coop/contracts";
 
 type WildStatRuntime = Window & {
@@ -913,6 +912,7 @@ export const wildstatCoop = {
   },
   pendingOfflineProgress: () => pendingOfflineProgress,
   ...accountRows.api,
+  weaponMasteryInPlay: (): MasteryPoints => masteryPointsInPlay(accountRows.api.weaponMastery(), progressionService.api.prestigeChallenge().active || progressionService.api.aggroChallenge().active), // None during challenges.
   accountAudio: accountAudio.api,
   async acknowledgeOfflineProgress() {
     pendingOfflineProgress = null;

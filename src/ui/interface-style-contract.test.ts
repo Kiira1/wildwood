@@ -36,8 +36,7 @@ describe("installed interface structure", () => {
     // that row itself landed in the old headroom.
     // The map-name label adds one accessible element below the minimap.
     // Raised by 128 for the Zoom Buttons row, and 256 more for High Resolution.
-    // Raised by 192 for the Schools tab in the inventory.
-    expect(Buffer.byteLength(entryHtml)).toBeLessThan(25_408);
+    expect(Buffer.byteLength(entryHtml)).toBeLessThan(25_216);
     for (const id of ["start", "gameUpdateGate", "dailyGemBonus", "gameOver", "playerProfile", "techTreeOverlay", "guildBtn"]) {
       expect(doc.getElementById(id), id).not.toBeNull();
     }

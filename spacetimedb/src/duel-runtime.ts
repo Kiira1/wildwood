@@ -32,6 +32,8 @@ import { duelSwordSkillFields } from "./sword-skills";
 import { deleteDuelStaffSkills, duelStaffSkillFields, duelStaffSkillRow, insertDuelStaffSkills } from "./staff-skills";
 import { weaponAttackInterval, weaponHitFactor } from "../../shared/staff-skills";
 import { readCritRating, readPlayerProgress } from "./wide-stats";
+import { masteryInPlayFor } from "./weapon-mastery";
+import { duelSkillsWithProficiency, masteryDamageTaken } from "../../shared/weapon-mastery";
 
 export const DUEL_REQUEST_COOLDOWN_MICROS = 120_000_000n;
 export const DUEL_REQUEST_TIMEOUT_MICROS = 30_000_000n;
@@ -339,6 +341,10 @@ export function createDuelRuntime(deps: DuelRuntimeDeps) {
     const challengerMaxHp = maxHealthForProgress(ctx, ctx.sender, challengerProgress);
     const opponentMaxHp = maxHealthForProgress(ctx, opponent, opponentProgress);
     const inactiveAttackRate = Number(DUEL_DURATION_MICROS) / 1_000_000 + 1;
+    // Weapon Mastery, frozen into the duel: Skill Proficiency in the skill chances, Swordplay's Guard in what the other side deals.
+    const challengerMastery = masteryInPlayFor(ctx, ctx.sender, challengerRightHandItem, challengerRightHandItem || challengerLeftHandItem);
+    const opponentMastery = masteryInPlayFor(ctx, opponent, opponentRightHandItem, opponentRightHandItem || opponentLeftHandItem);
+    const withProficiency = <T extends Record<string, number>>(fields: T) => duelSkillsWithProficiency(fields, challengerMastery.level, opponentMastery.level);
     const insertedDuel = insertSnapshotRow(ctx, "duel", {
       id: 0n,
       combatVersion: DUEL_COMBAT_VERSION,
@@ -358,7 +364,7 @@ export function createDuelRuntime(deps: DuelRuntimeDeps) {
       challengerMaxHp,
       // A staff's bolts hit a little harder and come slower (shared/staff-skills.ts).
       challengerDamage: duelDamage(ctx, ctx.sender, challengerProgress.damage, opponentRightHandItem || opponentLeftHandItem)
-        * weaponHitFactor(challengerRightHandItem || challengerLeftHandItem),
+        * weaponHitFactor(challengerRightHandItem || challengerLeftHandItem) * masteryDamageTaken(opponentMastery),
       challengerArmor: researchedArmor(ctx, ctx.sender, challengerProgress.armor),
       challengerAttackRate: challengerRightHandItem || challengerLeftHandItem ? weaponAttackInterval(challengerRightHandItem || challengerLeftHandItem,
         attackIntervalForProgress(withSoulStats(challengerProgress, soulStatsFor(ctx, challengerProgress.identity), soulAttackCapFor(ctx, challengerProgress.identity)))) : inactiveAttackRate,
@@ -370,7 +376,7 @@ export function createDuelRuntime(deps: DuelRuntimeDeps) {
       opponentHp: opponentMaxHp,
       opponentMaxHp,
       opponentDamage: duelDamage(ctx, opponent, opponentProgress.damage, challengerRightHandItem || challengerLeftHandItem)
-        * weaponHitFactor(opponentRightHandItem || opponentLeftHandItem),
+        * weaponHitFactor(opponentRightHandItem || opponentLeftHandItem) * masteryDamageTaken(challengerMastery),
       opponentArmor: researchedArmor(ctx, opponent, opponentProgress.armor),
       opponentAttackRate: opponentRightHandItem || opponentLeftHandItem ? weaponAttackInterval(opponentRightHandItem || opponentLeftHandItem,
         attackIntervalForProgress(withSoulStats(opponentProgress, soulStatsFor(ctx, opponentProgress.identity), soulAttackCapFor(ctx, opponentProgress.identity)))) : inactiveAttackRate,
@@ -405,11 +411,12 @@ export function createDuelRuntime(deps: DuelRuntimeDeps) {
       opponentRiposte: prestigeRiposteChance(prestigePerkRanks(ctx, opponent)) + cardChance(activeCardTotalsFor(ctx, opponent), "reflect") / 100,
       riposteSeed: ctx.timestamp.microsSinceUnixEpoch,
     });
-    ctx.db.duelCombatSnapshot.insert({ ...ctx.db.duelRiposte.duelId.find(insertedDuel.id), ...duelBowSkillFields(ctx, insertedDuel), ...duelSwordSkillFields(ctx, insertedDuel),
+    ctx.db.duelCombatSnapshot.insert({ ...ctx.db.duelRiposte.duelId.find(insertedDuel.id),
+      ...withProficiency({ ...duelBowSkillFields(ctx, insertedDuel), ...duelSwordSkillFields(ctx, insertedDuel) }),
       challengerCards: activeCardIdsFor(ctx, ctx.sender),
       opponentCards: activeCardIdsFor(ctx, opponent),
       challengerFirstHit: duelFirstHit(ctx, ctx.sender), opponentFirstHit: duelFirstHit(ctx, opponent) });
-    insertDuelStaffSkills(ctx, insertedDuel.id, duelStaffSkillFields(ctx, insertedDuel));
+    insertDuelStaffSkills(ctx, insertedDuel.id, withProficiency(duelStaffSkillFields(ctx, insertedDuel)));
     ctx.db.duelResolutionSchedule.insert({
       scheduledId: 0n,
       scheduledAt: ScheduleAt.time(endsAtMicros),

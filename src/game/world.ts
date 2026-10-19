@@ -4,6 +4,7 @@ import { isSoulMap, type SoulMapId } from "../../shared/soul-dimension";
 import { isGuildHallMap, type GuildHallMapId } from "../../shared/guild-hall";
 import { townWorldLayout } from "./town-world";
 import { isTownMap, TOWN_BENCH_POSITION, type TownMapId } from "../../shared/town";
+import type { SchoolBuilding } from "../../shared/weapon-mastery";
 import { generatedMapContent } from "./procedural-maps";
 import { createIonCitadelLayout } from "./ion-layout";
 import { createVerdantCatacombsLayout } from "./verdant-layout";
@@ -30,7 +31,7 @@ export type WorldDecor = WorldDecorPlacement & (
   | { type: "desertGrass"; variant: number }
   | { type: "snowPine"; s: number }
   | { type: "snowTuft"; variant: number }
-  | { type: "upgradeBench"; s: number; label: "Upgrade Bench" | "Tech Research" | "Quest Board" | "Ox" | "Smith" | "Card Seller" }
+  | { type: "upgradeBench"; s: number; label: "Upgrade Bench" | "Tech Research" | "Quest Board" | "Ox" | "Smith" | "Card Seller" | SchoolBuilding }
   | { type: "lavaPool"; s: number; variant: number }
   | { type: "lavaRock"; s: number; variant: number }
   | { type: "charredTree"; s: number; variant: number }

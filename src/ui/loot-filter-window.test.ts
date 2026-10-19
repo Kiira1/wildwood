@@ -2,7 +2,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { parseHTML } from "linkedom";
 import { createLootFilterWindow, filterableDrops, type LootFilterPort } from "./loot-filter-window";
 import { mapGuideDrops } from "./map-guide-controller";
-import { BASIC_PAPER_HAT, IRON_BOW, SAMURAI_BOW, SAMURAI_HAT, STARTER_BOW, WOODEN_ARMOR } from "../../shared/items";
+import { BASIC_PAPER_HAT, IRON_BOW, SAMURAI_BOW, SAMURAI_HAT, type ItemSlot } from "../../shared/items";
 import { SAMURAI_GARDEN_MAP_ID, TUTORIAL_FOREST_MAP_ID } from "../game/world";
 
 const globals = globalThis as unknown as Record<string, unknown>;
@@ -11,7 +11,7 @@ afterEach(() => { Object.assign(globals, saved); vi.useRealTimers(); });
 
 type Call = { ids: readonly string[]; off: boolean; resolve: (result: { ok: boolean; error?: string }) => void };
 
-function harness(initial: string[] = [], options: { withSetter?: boolean } = {}) {
+function harness(initial: string[] = [], options: { withSetter?: boolean; dropping?: ReadonlySet<ItemSlot> } = {}) {
   vi.useFakeTimers();
   const { document, window } = parseHTML(`<html><body><section class="map-guide-drops"><header><h3>Item Drops</h3></header>
     <div id="mapGuideDropItems">
@@ -30,7 +30,7 @@ function harness(initial: string[] = [], options: { withSetter?: boolean } = {})
   const filter = createLootFilterWindow({
     anchor: document.querySelector("header") as unknown as HTMLElement,
     cards: document.querySelector("#mapGuideDropItems") as unknown as HTMLElement,
-    port: () => port, root: document as unknown as Document,
+    port: () => port, root: document as unknown as Document, ...(options.dropping ? { dropping: options.dropping } : {}),
   });
   const dialog = document.querySelector("dialog") as unknown as HTMLDialogElement;
   Object.assign(dialog, { showModal() { dialog.setAttribute("open", ""); }, close() { dialog.removeAttribute("open"); } });
@@ -55,24 +55,37 @@ function harness(initial: string[] = [], options: { withSetter?: boolean } = {})
 it("lists every item that drops on the map once, cosmetic looks included, never starter items", () => {
   expect(filterableDrops([IRON_BOW, BASIC_PAPER_HAT, IRON_BOW, SAMURAI_HAT])).toEqual([IRON_BOW, BASIC_PAPER_HAT, SAMURAI_HAT]);
   expect(filterableDrops(["starter_stone", "galaxy_bow"])).toEqual([]);
-  const forest = filterableDrops(mapGuideDrops(TUTORIAL_FOREST_MAP_ID).map(drop => drop.itemId));
-  // The forest's sword can be turned off like its bow.
-  expect(forest).toEqual(expect.arrayContaining([STARTER_BOW, "wooden_sword", WOODEN_ARMOR, BASIC_PAPER_HAT]));
+  // Gear no longer drops: the forest's paper hat is all that is left to filter.
+  expect(filterableDrops(mapGuideDrops(TUTORIAL_FOREST_MAP_ID).map(drop => drop.itemId))).toEqual([BASIC_PAPER_HAT]);
+  expect(mapGuideDrops(SAMURAI_GARDEN_MAP_ID)).toEqual([]);
 
   const view = harness();
-  view.filter.setMap("Samurai Garden", mapGuideDrops(SAMURAI_GARDEN_MAP_ID).map(drop => drop.itemId));
+  view.filter.setMap("Tutorial Forest", mapGuideDrops(TUTORIAL_FOREST_MAP_ID).map(drop => drop.itemId));
   expect(view.trigger.hidden).toBe(false);
   expect(view.trigger.textContent).toBe("Loot filter");
-  expect(view.q(".loot-filter-map").textContent).toBe("Items on Samurai Garden");
+  expect(view.q(".loot-filter-map").textContent).toBe("Items on Tutorial Forest");
   expect(view.q("#lootFilterTitle").textContent).toBe("Loot Filter");
   expect(view.q(".loot-filter-hint").textContent).toBe("Off = never drops, on every map.");
+  expect(view.row(BASIC_PAPER_HAT).querySelector(".loot-filter-detail")!.textContent).toBe("Cosmetic");
+  expect(view.pickedUp(BASIC_PAPER_HAT)).toBe("true");
+  // Only slots that still drop something have a chip.
+  expect([...view.document.querySelectorAll(".loot-filter-chip")].map(chip => [chip.textContent, chip.getAttribute("aria-pressed")]))
+    .toEqual([["Helmets", "true"]]);
+  view.filter.setMap("Samurai Garden", mapGuideDrops(SAMURAI_GARDEN_MAP_ID).map(drop => drop.itemId));
+  expect(view.q(".loot-filter-list").textContent).toBe("No items drop on this map.");
+  // An old item still shows the tier of the map it came from.
+  view.filter.setMap("Samurai Garden", [SAMURAI_HAT]);
   expect(view.row(SAMURAI_HAT).querySelector("strong")!.textContent).toBe("Samurai Hat");
   expect(view.row(SAMURAI_HAT).querySelector(".loot-filter-detail")!.textContent).toBe("Tier 7");
-  expect(view.pickedUp(SAMURAI_HAT)).toBe("true");
   expect(view.row(SAMURAI_HAT).querySelector(".loot-filter-switch-label")!.textContent).toBe("Pick up");
-  expect([...view.document.querySelectorAll(".loot-filter-chip")].map(chip => [chip.textContent, chip.getAttribute("aria-pressed")]))
-    .toEqual([["Weapons", "true"], ["Armor", "true"], ["Helmets", "true"], ["Boots", "true"]]);
   expect(view.document.body.textContent).not.toContain("New items still drop");
+});
+
+it("has no button when nothing drops on any map", () => {
+  const view = harness([], { dropping: new Set() });
+  view.filter.setMap("Samurai Garden", []);
+  expect(view.trigger.hidden).toBe(true);
+  expect(view.document.querySelectorAll(".loot-filter-chip")).toHaveLength(0);
 });
 
 it("has no button when the session cannot save", () => {

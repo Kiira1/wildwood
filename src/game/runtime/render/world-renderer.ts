@@ -3,6 +3,7 @@ import { WORLD_WIDTH } from "../../../../shared/rules";
 import { isSoulMap, SOUL_STAT_DETAILS } from "../../../../shared/soul-dimension";
 import { inTownInteriors, isTownMap, TOWN_DOORS, TOWN_INTERIOR_MARGIN, TOWN_VILLAGE_WALK_AREA, TOWN_WALK_AREA } from "../../../../shared/town";
 import { MINING_NODES } from "../../../../shared/mining";
+import { SCHOOL_DETAILS } from "../../../../shared/weapon-mastery";
 import { ORE_COLORS } from "../town/ore-rock-renderer";
 import { miningScene } from "../town/mining-scene";
 import { soulStatOfCampName } from "../../soul-world";
@@ -50,6 +51,8 @@ type UpgradeBenchDecor = Extract<WorldDecor, { type: "upgradeBench" }>;
 type LavaRockDecor = Extract<WorldDecor, { type: "lavaRock" }>;
 type CharredTreeDecor = Extract<WorldDecor, { type: "charredTree" }>;
 
+/** The Weapon Mastery schools' buildings, drawn as a sign on the wall. */
+const SCHOOL_BUILDINGS: ReadonlySet<string> = new Set(Object.values(SCHOOL_DETAILS).map(school => school.building));
 const STATIC_TILE_SIZE = 640;
 /** The minimap inside the Town's rooms: a campaign map's 4,800 square, following the player. */
 const TOWN_ROOMS_MINIMAP_SPAN = WORLD_WIDTH;
@@ -993,6 +996,11 @@ if (options.getMapId() === ION_CITADEL_MAP_ID) { drawIonRoads(ctx, options.paths
         ctx.font = '900 13px "Arial Rounded MT Bold", "Arial Rounded MT", Arial, sans-serif';
         options.outlinedText("Cards for Ore", 0, -2 + bob, "#ffd75e", 4);
       });
+      return;
+    }
+    // A school's building has no station, only its plank sign on the back wall.
+    if (SCHOOL_BUILDINGS.has(bench.label)) {
+      drawHomeStationSign(ctx, x, y, bench.label);
       return;
     }
     if (bench.label === "Quest Board") {

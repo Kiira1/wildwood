@@ -36,7 +36,7 @@ const RESEARCH: readonly [string, string, string][] = [
   ["criticalChance", "Critical Chance", "Crit chance"], ["criticalDamage", "Critical Damage", "Crit damage"], ["critCap", "Crit Cap", "Crit damage cap"],
   ["moveSpeed", "Move Speed", "Move speed"], ["utilityMoveSpeed", "Swiftness", "Move speed"], ["utilityAttackRange", "Attack Range", "Attack range"],
   ["enemyRespawn", "Enemy Respawn", "Enemies come back sooner"], ["bossRespawn", "Boss Respawn", "Bosses come back sooner"],
-  ["cardLuck", "Card Luck", "Card drop rate"], ["gearLuck", "Gear Luck", "Equipment drop rate"],
+  ["cardLuck", "Card Luck", "Card drop rate"], ["gearLuck", "Gold Luck", "Gold drop chance"],
   ["miningLuck", "Mining Luck", "Starshard chance"], ["skillLuck", "Skill Luck", "Weapon skill chance"], ["refineLuck", "Refine Luck", "Refine chance"],
 ];
 /** Soul stats, by their player_soul_stats column. */

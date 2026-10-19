@@ -1,6 +1,6 @@
 import {
   TOWN_BENCH_POSITION, TOWN_CARD_SELLER_POSITION, TOWN_CARD_SELLER_REACH, TOWN_DOORS, TOWN_FEET_OFFSET, TOWN_OX_POSITION, TOWN_OX_REACH,
-  TOWN_QUEST_BOARD_POSITION, TOWN_RESEARCH_POSITION, TOWN_SMITH_POSITION, TOWN_SMITH_REACH, TOWN_SOUL_PORTAL, TOWN_TRAVEL_PORTAL, TOWN_WALK_AREA, townRoomAt,
+  TOWN_QUEST_BOARD_POSITION, TOWN_RESEARCH_POSITION, TOWN_SCHOOL_POSITIONS, TOWN_SCHOOL_REACH, TOWN_SMITH_POSITION, TOWN_SMITH_REACH, TOWN_SOUL_PORTAL, TOWN_TRAVEL_PORTAL, TOWN_WALK_AREA, townRoomAt,
 } from "../../../../shared/town";
 import { SOUL_VILLAGE_PITS, type SoulSolid } from "../../soul-village";
 import { TOWN_FEET_RADIUS, TOWN_SOLIDS } from "./town-runtime";
@@ -62,12 +62,13 @@ export function townFeetClear(x: number, feetY: number, r = CLEARANCE) {
 
 /**
  * Places a walk only passes through when there is no other way, as feet: a house's door (walking up into one goes
- * in), the Smith's, Card Seller's and stations' reach (walking by opens their window), and the two portals.
+ * in), the Smith's, Card Seller's, stations' and schools' reach (walking by opens their window), and the two portals.
  */
 const AVOID: readonly { x: number; y: number; r: number }[] = [
   ...TOWN_DOORS.map(door => ({ x: door.x, y: door.enter + 10, r: Math.max(48, door.half + 30) })),
   { ...TOWN_SMITH_POSITION, r: TOWN_SMITH_REACH + 30 }, { ...TOWN_CARD_SELLER_POSITION, r: TOWN_CARD_SELLER_REACH + 30 },
   { ...TOWN_OX_POSITION, r: TOWN_OX_REACH + 30 },
+  ...Object.values(TOWN_SCHOOL_POSITIONS).map(at => ({ x: at.x, y: at.y, r: TOWN_SCHOOL_REACH + 30 })),
   ...[TOWN_BENCH_POSITION, TOWN_RESEARCH_POSITION, TOWN_QUEST_BOARD_POSITION].map(at => ({ x: at.x, y: at.y, r: 110 })),
   ...[TOWN_TRAVEL_PORTAL, TOWN_SOUL_PORTAL].map(portal => ({ x: portal.x, y: portal.y, r: 170 })),
 ];

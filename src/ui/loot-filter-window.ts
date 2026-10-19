@@ -1,6 +1,8 @@
 import { itemTier } from "../../shared/item-tier";
 import { BLACK_BOOTS, IRON_BOW, WOOD_FULL_HELM, WOODEN_ARMOR, isCosmeticOnlyItem, itemDisplayName, type ItemSlot } from "../../shared/items";
 import { LOOT_FILTER_SLOTS, isDropFiltered, isFilterableDrop, itemSlot, slotFilterId } from "../../shared/loot-filter";
+import { regularMapLoot } from "../../shared/regular-map-loot";
+import { MAP_IDS } from "../../shared/rules";
 import { itemArtMarkup } from "../game/item-presentation";
 import { itemDropColor } from "./item-drop-color";
 import { itemInspectionButtonLabel } from "./item-inspection-controller";
@@ -27,11 +29,23 @@ export type LootFilterWindowOptions = {
   cards?: HTMLElement;
   root?: Document;
   tickMs?: number;
+  /** The slots that still drop anything, by default droppingSlots(). */
+  dropping?: ReadonlySet<ItemSlot>;
 };
 
 /** One recognisable piece of gear for each slot chip. */
 const SLOT_ART: Record<ItemSlot, string> = { HAND: IRON_BOW, CHEST: WOODEN_ARMOR, HEAD: WOOD_FULL_HELM, FEET: BLACK_BOOTS };
 const NOTHING = new Set<string>();
+
+/** The slots something still drops in on any map. Gear is bought at the Smith, so most slots have nothing to filter. */
+export function droppingSlots(): ReadonlySet<ItemSlot> {
+  const slots = new Set<ItemSlot>();
+  for (const mapId of MAP_IDS) for (const { itemId } of regularMapLoot(mapId, true)) {
+    const slot = isFilterableDrop(itemId) ? itemSlot(itemId) : undefined;
+    if (slot) slots.add(slot);
+  }
+  return slots;
+}
 
 /** The items a map's drop list shows switches for, once each, in the list's order. */
 export function filterableDrops(itemIds: readonly string[]) {
@@ -43,15 +57,16 @@ export function filterableDrops(itemIds: readonly string[]) {
  *
  * At the very top, the account's Auto equip upgrades switch
  * (loot-settings-switches.ts). Below it the filter itself,
- * phrased as what the player picks up. Four slot chips turn a whole
- * slot off on every map, which is the one-tap way to farm only bows. Below,
+ * phrased as what the player picks up. A chip for each slot that still
+ * drops anything turns that slot off on every map. Below,
  * this map's items each have a Pick up switch; an item whose slot is off
  * shows "Slot off" and cannot be switched until the slot is back on. All on
  * and All off set this map's items at once.
  *
  * The list lives on the account on the server. A switch changes the moment it
  * is pressed and the server is told; if the server refuses or cannot be
- * reached it goes back and the window says why.
+ * reached it goes back and the window says why. When nothing drops on any
+ * map there is nothing to filter, and the button stays hidden.
  */
 export function createLootFilterWindow(options: LootFilterWindowOptions) {
   const doc = options.root ?? document;
@@ -86,9 +101,11 @@ export function createLootFilterWindow(options: LootFilterWindowOptions) {
   const allOff = part<HTMLButtonElement>(".loot-filter-all-off");
   const list = part(".loot-filter-list");
   const status = part(".farm-selection");
+  const dropping = options.dropping ?? droppingSlots();
+  slots.hidden = part(".loot-filter-hint").hidden = !dropping.size;
   const back = part<HTMLButtonElement>(".window-back-button");
 
-  for (const { slot, label } of LOOT_FILTER_SLOTS) {
+  for (const { slot, label } of LOOT_FILTER_SLOTS.filter(({ slot }) => dropping.has(slot))) {
     const chip = doc.createElement("button");
     chip.type = "button";
     chip.className = "loot-filter-chip";
@@ -219,7 +236,7 @@ export function createLootFilterWindow(options: LootFilterWindowOptions) {
   function setMap(mapName: string, dropItemIds: readonly string[]) {
     items = filterableDrops(dropItemIds);
     mapHeading.textContent = `Items on ${mapName}`;
-    trigger.hidden = !options.port()?.setIgnoredDrops;
+    trigger.hidden = !options.port()?.setIgnoredDrops || !dropping.size;
     bulk.hidden = !items.length;
     list.setAttribute("aria-label", `Items on ${mapName}`);
     list.replaceChildren(...items.map(row));

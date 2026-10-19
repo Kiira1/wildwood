@@ -164,3 +164,96 @@ it("refines only: no Cards tab, no card slots on gear", () => {
   expect(view.dialog.textContent).not.toMatch(/slot/i);
   expect(view.q(".smith-intro").textContent).toContain("Refine gear with ore");
 });
+
+// Gear for gold (buy_grade_gear): a row per line with the grade after the best one held.
+function shop(options: { gold?: bigint; levels?: Partial<Record<"archery" | "swordplay" | "sorcery", number>>; held?: string[]; bagFull?: boolean } = {}) {
+  const { document, window } = parseHTML("<html><body></body></html>");
+  vi.stubGlobal("document", document); vi.stubGlobal("HTMLElement", window.HTMLElement);
+  const held = [...(options.held ?? [])];
+  const buyGear = vi.fn(async (_itemId: string, _price: number) => ({ ok: true }));
+  const showMessage = vi.fn();
+  const state = { gold: options.gold ?? 0n, bagFull: options.bagFull ?? false };
+  const controller = createSmithController({
+    inTown: () => true, items: () => [], refine: vi.fn(), showMessage, refineLevel: () => 0, slotTier: () => 0, ores: () => ({}),
+    gold: () => state.gold, masteryLevels: () => options.levels ?? {}, heldItems: () => held, bagFull: () => state.bagFull, buyGear,
+  });
+  const dialog = document.querySelector("dialog") as unknown as HTMLDialogElement;
+  Object.assign(dialog, { showModal() { dialog.setAttribute("open", ""); }, close() { dialog.removeAttribute("open"); } });
+  Object.defineProperty(dialog, "open", { get: () => dialog.hasAttribute("open") });
+  const rows = () => [...dialog.querySelectorAll<HTMLElement>(".smith-shop-row")];
+  const row = (itemId: string) => rows().find(each => each.dataset.itemId === itemId)!;
+  const button = (itemId: string) => row(itemId).querySelector<HTMLButtonElement>(".smith-shop-buy")!;
+  return { controller, dialog, rows, row, button, buyGear, showMessage, held, state };
+}
+
+it("lists a row per line, each offering the grade after the best one held", () => {
+  const view = shop({ gold: 50_000n, levels: { archery: 12 }, held: ["common_bow", "uncommon_bow", "mythic_sword", "rare_light_helmet"] });
+  view.controller.open();
+  expect(view.rows().map(row => row.dataset.itemId)).toEqual([
+    "rare_bow", "mythic_sword", "common_staff",
+    "epic_light_helmet", "common_light_armor", "common_medium_helmet", "common_medium_armor",
+    "common_heavy_helmet", "common_heavy_armor", "common_magic_helmet", "common_magic_armor",
+  ]);
+  expect(view.dialog.querySelector(".smith-gold strong")!.textContent).toBe("50,000");
+  const bow = view.row("rare_bow");
+  expect(bow.querySelector("strong")!.textContent).toBe("Rare Steel Bow");
+  expect(bow.querySelector(".smith-shop-grade")!.textContent).toBe("Rare · Bow");
+  expect(bow.querySelector(".smith-shop-stat")!.textContent).toBe("Damage +30%");
+  expect(bow.querySelector(".smith-shop-price")!.textContent).toBe("5,000");
+  expect(bow.querySelector(".smith-shop-art img, .smith-shop-art .inventory-item-art")).not.toBeNull();
+  expect(view.row("common_light_armor").querySelector(".smith-shop-stat")!.textContent).toBe("Max Health +4.8% · +3% move speed");
+  // The top grade held shows as Owned, with no price.
+  expect([view.button("mythic_sword").textContent, view.button("mythic_sword").disabled]).toEqual(["Owned", true]);
+  expect(view.row("mythic_sword").querySelector(".smith-shop-price")).toBeNull();
+});
+
+it("says what stands in the way: Mastery, then gold, then the bag", () => {
+  const view = shop({ gold: 500n, levels: { archery: 12, sorcery: 3 }, held: ["rare_bow", "common_staff", "common_heavy_helmet"] });
+  view.controller.open();
+  expect(view.button("epic_bow").textContent).toBe("Need Lv 20 Archery");
+  expect(view.button("uncommon_staff").textContent).toBe("Need Lv 5 Sorcery");
+  expect([view.button("uncommon_heavy_helmet").textContent, view.button("uncommon_heavy_helmet").disabled]).toEqual(["Need 1,000 Gold", true]);
+  expect([view.button("common_magic_armor").textContent, view.button("common_magic_armor").disabled]).toEqual(["Buy", false]);
+  view.state.bagFull = true;
+  view.controller.render();
+  expect([view.button("common_magic_armor").textContent, view.button("common_magic_armor").disabled]).toEqual(["Bag Full", true]);
+  expect(view.button("epic_bow").textContent).toBe("Need Lv 20 Archery");
+});
+
+it("Heavy opens at the best school's level", () => {
+  const view = shop({ gold: 1_000_000n, levels: { sorcery: 10 }, held: ["uncommon_heavy_armor"] });
+  view.controller.open();
+  expect(view.button("rare_heavy_armor").textContent).toBe("Buy");
+  const more = shop({ gold: 1_000_000n, levels: { swordplay: 4 }, held: ["common_heavy_armor"] });
+  more.controller.open();
+  expect(more.button("uncommon_heavy_armor").textContent).toBe("Need Lv 5 In Any School");
+});
+
+it("buys at the price shown, and offers the next grade before the server's row arrives", async () => {
+  const view = shop({ gold: 1_000n });
+  view.controller.open();
+  view.button("common_bow").click();
+  expect(view.buyGear).toHaveBeenCalledWith("common_bow", 100);
+  await vi.waitFor(() => expect(view.showMessage).toHaveBeenCalledWith("Bought · Common Shortbow. Equip it from your bag.", "#ffd75e"));
+  expect(view.row("uncommon_bow")).toBeTruthy();
+  expect(view.button("uncommon_bow").textContent).toBe("Need Lv 5 Archery");
+});
+
+it("shows Buying… and holds every row while a buy is on its way, and the refusal after", async () => {
+  const view = shop({ gold: 1_000n });
+  let settle: (value: { ok: boolean; error?: string }) => void = () => {};
+  view.buyGear.mockImplementationOnce(() => new Promise(resolve => { settle = resolve; }));
+  view.controller.open();
+  view.button("common_bow").click();
+  expect([view.button("common_bow").textContent, view.button("common_bow").disabled]).toEqual(["Buying…", true]);
+  expect(view.button("common_sword").disabled).toBe(true);
+  settle({ ok: false, error: "Talk to the Smith first." });
+  await vi.waitFor(() => expect(view.showMessage).toHaveBeenCalledWith("Talk to the Smith first.", "#ff9b91"));
+  expect([view.button("common_bow").textContent, view.button("common_bow").disabled]).toEqual(["Buy", false]);
+});
+
+it("hides the shop when there is no way to buy", () => {
+  const view = smith();
+  view.controller.open();
+  expect(view.q(".smith-shop").hidden).toBe(true);
+});

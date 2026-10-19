@@ -25,9 +25,10 @@ import type { WeaponSkillRoll } from "../../../shared/weapon-skills";
 import { createSwordSkillRuntime, type SwordSkillEffects } from "./sword-skill-runtime";
 import { createStaffSkillRuntime, type StaffSkillEffects } from "./staff-skill-runtime";
 import {
-  STAFF_BOLT_DAMAGE_FACTOR, STAFF_BOLT_SPEED_FACTOR, STAFF_DPS_FACTOR, isStaff, rollBoltSkillProcs, staffSkillBossDamageMultiplier,
+  STAFF_BOLT_DAMAGE_FACTOR, STAFF_BOLT_SPEED_FACTOR, STAFF_DPS_FACTOR, STAFF_SPLASH_RADIUS, isStaff, rollBoltSkillProcs, staffSkillBossDamageMultiplier,
   weaponAttackInterval,
 } from "../../../shared/staff-skills";
+import { masteryBlastScale, masteryDamageTaken, masteryInPlay, rollWithProficiency, type MasteryInPlay, type MasteryPoints } from "../../../shared/weapon-mastery";
 import { staffBoltColor } from "../staff-look";
 import { createCardCombat } from "./card-combat";
 import { NO_CARDS, cardChance, cardStatGainFactor, cardValue, type CardTotals } from "../../../shared/card-effects";
@@ -138,6 +139,10 @@ export function createPlayerCombatController(options: {
   bowSkills?: () => Partial<BowSkillRoll> | null | undefined;
   /** The equipped weapon copy's native skill roll. */
   weaponSkills?: () => WeaponSkillRoll | null | undefined;
+  /** Weapon Mastery points in play (coop weaponMasteryInPlay): none during Reflect Only or an Aggro run. */
+  weaponMastery?: () => MasteryPoints | null | undefined;
+  /** The right hand, whose school Mastery applies; the weapon in use when not given. */
+  equippedRightHand?: () => string;
   /** Random source for weapon skill procs; tests inject a fixed sequence. */
   random?: () => number;
   /** The cards in the worn weapon, helmet and armor (card-effects.ts); none without. */
@@ -208,10 +213,20 @@ export function createPlayerCombatController(options: {
   const splitShotChance = () => (options.prestigeSplitShot?.() ?? 0) + cardChance(wornCards(), "splitShot") / 100;
   const reflectChanceInPlay = () => (options.prestigeReflect?.() ?? 0) + cardChance(wornCards(), "reflect") / 100;
   const bossSlayer = () => (options.prestigeBossSlayer?.() ?? 0) + Math.max(0, cardValue(wornCards(), "bossSlayer")) / 100;
+  // Mastery read again only when the points or the hands change (it is read for every arrow).
+  let masteryKept: { points: MasteryPoints | null | undefined; right: string; weapon: string; value: MasteryInPlay } | null = null;
+  const mastery = (): MasteryInPlay => {
+    const points = options.weaponMastery?.(), weapon = options.equippedWeapon(), right = options.equippedRightHand?.() ?? weapon;
+    if (!masteryKept || masteryKept.points !== points || masteryKept.right !== right || masteryKept.weapon !== weapon) {
+      masteryKept = { points, right, weapon, value: masteryInPlay(points, right, weapon) };
+    }
+    return masteryKept.value;
+  };
   const weaponSkills = (): WeaponSkillRoll | null | undefined => {
     const roll = options.weaponSkills?.() ?? options.bowSkills?.();
-    // Bow skill cards add to a bow's own roll.
-    return wornCards() !== NO_CARDS && isSkillBow(options.equippedWeapon()) ? { ...roll, ...bowSkillsWithCards(roll, wornCards()) } : roll;
+    // Bow skill cards add to a bow's own roll; Skill Proficiency raises the whole chance.
+    const carded = wornCards() !== NO_CARDS && isSkillBow(options.equippedWeapon()) ? { ...roll, ...bowSkillsWithCards(roll, wornCards()) } : roll;
+    return rollWithProficiency(carded, mastery().level);
   };
   const swordSkills = createSwordSkillRuntime({
     player, enemies, currentMapId: options.currentMapId, equippedWeapon: options.equippedWeapon,
@@ -222,6 +237,7 @@ export function createPlayerCombatController(options: {
     player, enemies, currentMapId: options.currentMapId, equippedWeapon: options.equippedWeapon,
     activeBoss: activeMapBoss, roll: weaponSkills, nowSeconds: options.nowSeconds, random, isDueling,
     boltColor: () => staffBoltColor(options.equippedWeapon()), effects: options.skillEffects,
+    blastRadius: () => STAFF_SPLASH_RADIUS * masteryBlastScale(mastery()),
     hit: (target, damage, critical, angle) => applyPlayerHit(target, damage, critical, angle),
   });
   const cardCombat = createCardCombat({
@@ -701,7 +717,8 @@ export function createPlayerCombatController(options: {
     // Cards: a dodge spends the attack and lands nothing; guards lower the hit, and a shield takes what armor lets through.
     const guarded = cardCombat.incoming(amount, source);
     if (guarded === null) return true;
-    const throughArmor = damageAfterArmor(guarded, effectiveArmor());
+    // Swordplay's Guard lowers it as the cards do; Reflect still answers the hit as it arrived.
+    const throughArmor = damageAfterArmor(guarded * masteryDamageTaken(mastery()), effectiveArmor());
     const dealt = cardCombat.absorb(throughArmor);
     if (dealt > 0) options.onCombat?.();
     player.hp -= dealt;

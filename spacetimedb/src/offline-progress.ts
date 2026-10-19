@@ -18,6 +18,7 @@ import type { PlayerPowerStats } from "../../shared/player-power";
 import type { MapBalanceSnapshot } from "../../shared/map-balance-types";
 import { readCritRating, readPlayerProgress } from "./wide-stats";
 import { researchInPlay } from "./bonus-toggles";
+import { awardOfflineGold } from "./gold";
 
 export const offlineProgressTables = {
   /**
@@ -200,8 +201,8 @@ export type OfflineGrantPorts = {
  * and cannot ask for this — it runs once, on the way into the world, and
  * closes the window behind it so the same absence is never paid twice.
  *
- * Only regular-enemy stat rewards are granted. Loot rolls, kill gems and boss
- * clears stay where they are: things an absent player did not do.
+ * Regular-enemy stat rewards are granted, and gold at half the in-play rate. Loot
+ * rolls, kill gems and boss clears stay where they are: things an absent player did not do.
  */
 export function grantOfflineProgress(ctx: any, progress: any, ports: OfflineGrantPorts) {
   const row: OfflineProgressRow | undefined = ctx.db.offlineProgress.identity.find(ctx.sender);
@@ -246,6 +247,7 @@ export function grantOfflineProgress(ctx: any, progress: any, ports: OfflineGran
   ports.writeProgress(ctx, next);
   // Offline farming is campaign or Endless farming: its kills count towards the Soul Dimension's tiers.
   countRewardKills(ctx, ctx.sender, grant.outcome.rewards);
+  awardOfflineGold(ctx, ctx.sender, grant.outcome.kills);
   const lifetime = ctx.db.playerLifetime.identity.find(ctx.sender);
   if (lifetime) {
     ctx.db.playerLifetime.identity.update({ ...lifetime, enemyKills: lifetime.enemyKills + BigInt(grant.outcome.kills) });

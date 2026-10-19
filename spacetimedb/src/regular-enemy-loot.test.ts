@@ -1,4 +1,4 @@
-import { STARTER_BOW } from "../../shared/items";
+import { BASIC_PAPER_HAT, STARTER_BOW } from "../../shared/items";
 import { Timestamp } from "spacetimedb";
 import { describe, expect, it, vi } from "vitest";
 import { crystalFixture, server } from "../../tests/helpers/crystal-hollows-fixture";
@@ -12,31 +12,43 @@ import { progressOf } from "../../tests/helpers/progress";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 const enemy = Object.keys(ENEMY_TYPES).find(kind => enemyDefeatDefinition("water_reach", kind)?.reward.type === "damage")!;
 const batch = { streamId: "test-stream-123456", sequence: 1n, mapId: "water_reach", enemies: [{ enemy, count: 15 }] };
-/** One roll a kill for each item the map drops: Water Reach's armor, bow, sword and helmet. */
-const rolls = 15 * regularMapLoot(batch.mapId).length;
-it("awards Magma Armor for all seven winning outcomes, but not the next outcome", () => {
+/** The forest still drops its paper hat; every other map drops nothing, so it rolls nothing. */
+const forestEnemy = Object.keys(ENEMY_TYPES).find(kind => enemyDefeatDefinition("tutorial_forest", kind)?.reward.type === "damage")!;
+const forestBatch = { ...batch, mapId: "tutorial_forest", enemies: [{ enemy: forestEnemy, count: 15 }] };
+it("awards the paper hat on its winning outcome only, and no gear anywhere, Magma Armor included", () => {
   const f = crystalFixture();
-  for (let roll = 1; roll <= 8; roll++) {
+  for (const roll of [1, 2]) {
     f.ctx.random.integerInRange = () => roll;
-    const drops = rollRegularEnemyLoot(f.ctx as unknown as Parameters<typeof rollRegularEnemyLoot>[0], "advanced_lava_wastes", 1);
-    expect(drops.get("magma_armor") ?? 0).toBe(roll <= 7 ? 1 : 0);
+    const drops = rollRegularEnemyLoot(f.ctx as unknown as Parameters<typeof rollRegularEnemyLoot>[0], "tutorial_forest", 1);
+    expect([...drops]).toEqual(roll === 1 ? [[BASIC_PAPER_HAT, 1]] : []);
   }
+  f.ctx.random.integerInRange = () => 1;
+  expect(rollRegularEnemyLoot(f.ctx as any, "advanced_lava_wastes", 1).size).toBe(0);
 });
 function fixture() { const f = crystalFixture(); f.patch("player", { mapId: batch.mapId }); f.patch("playerProgress", { equippedRightHand: STARTER_BOW, inventoryJson: '["starter_bow"]', damage: 1e15 }); return f; }
 it("calculates stats and independent loot rolls once in one transaction", () => {
-  const f = fixture(), base = progressOf(f, f.ctx.sender);
+  const f = fixture();
+  f.patch("player", { mapId: "tutorial_forest" });
+  const base = progressOf(f, f.ctx.sender);
   f.ctx.random.integerInRange = vi.fn(() => 1);
   const update = vi.spyOn(f.db.playerProgress.identity, "update");
-  reportKills(f, { ...batch, progress: { damage: 1e30 } });
+  reportKills(f, { ...forestBatch, progress: { damage: 1e30 } });
   expect(update).toHaveBeenCalledTimes(1);
-  expect(progressOf(f, f.ctx.sender).damage).toBeCloseTo(base.damage + enemyDefeatDefinition(batch.mapId, enemy)!.reward.amount * 15);
+  expect(progressOf(f, f.ctx.sender).damage).toBeCloseTo(base.damage + enemyDefeatDefinition("tutorial_forest", forestEnemy)!.reward.amount * 15);
   expect(f.db.playerLifetime.identity.find(f.ctx.sender).enemyKills).toBe(15n);
-  expect(rolls).toBe(75);
+  // One roll a kill for the paper hat, the forest's only drop.
+  const rolls = 15 * regularMapLoot("tutorial_forest").length;
+  expect(rolls).toBe(15);
   expect(f.ctx.random.integerInRange).toHaveBeenCalledTimes(rolls);
   f.patch("player", { mapId: "town" });
-  reportKills(f, batch);
+  reportKills(f, forestBatch);
   expect(update).toHaveBeenCalledTimes(1);
   expect(f.ctx.random.integerInRange).toHaveBeenCalledTimes(rolls);
+  // A map that drops nothing rolls nothing.
+  const water = fixture();
+  water.ctx.random.integerInRange = vi.fn(() => 1);
+  reportKills(water, batch);
+  expect(water.ctx.random.integerInRange).not.toHaveBeenCalled();
 });
 it.each([
   { enemies: [{ enemy, count: 0 }] }, { sequence: 2n },
@@ -75,15 +87,17 @@ it("pays a report for the map just left for two minutes, so a portal need not wa
   expect(() => reportKills(f, { ...batch, sequence: 2n })).toThrow("another map");
 });
 it("rolls back reward, budget, receipt and loot if a write fails", () => {
-  const f = fixture(), base = progressOf(f, f.ctx.sender);
+  const f = fixture();
+  f.patch("player", { mapId: "tutorial_forest" });
+  const base = progressOf(f, f.ctx.sender);
   f.ctx.random.integerInRange = () => 1;
   const insert = vi.spyOn(f.db.playerItemDrop, "insert").mockImplementationOnce(() => { throw new Error("write failure"); });
-  expect(() => reportKills(f, batch)).toThrow("write failure");
+  expect(() => reportKills(f, forestBatch)).toThrow("write failure");
   expect([...f.db.regularEnemyStream.iter()]).toHaveLength(0);
   expect([...f.db.enemyDefeatBudget.iter()]).toHaveLength(0);
   expect(progressOf(f, f.ctx.sender)).toEqual(base);
-  insert.mockRestore(); reportKills(f, batch);
-  expect([...f.db.playerItemDrop.iter()]).toHaveLength(regularMapLoot(batch.mapId).length);
+  insert.mockRestore(); reportKills(f, forestBatch);
+  expect([...f.db.playerItemDrop.iter()]).toHaveLength(regularMapLoot("tutorial_forest").length);
 });
 it("allows grouped kills and acknowledges excess without granting rewards across new streams", () => {
   const f = fixture(); f.ctx.random.integerInRange = (_min: number, max: number) => max;
@@ -129,11 +143,14 @@ it("consumes a 100-kill Endless report exceeding the one-site capacity and keeps
   expect(f.db.regularEnemyStream.key.find(`${f.ctx.sender.toHexString()}:${report.streamId}`).sequence).toBe(1n);
 });
 
-it('rolls pinned server drop chances instead of the current compiled table', () => {
+it('rolls pinned server drop chances instead of the current compiled table, but never gear they still list', () => {
   const random = { integerInRange: vi.fn(() => 500_000) };
-  const drop = { itemId: 'starter_bow' as const, outcomes: 1_000_000, wins: 500_000 };
-  expect(rollRegularEnemyLoot({ random } as any, 'tutorial_forest', 2, [drop]).get('starter_bow')).toBe(2);
+  const drop = { itemId: BASIC_PAPER_HAT as typeof BASIC_PAPER_HAT, outcomes: 1_000_000, wins: 500_000 };
+  expect(rollRegularEnemyLoot({ random } as any, 'tutorial_forest', 2, [drop]).get(BASIC_PAPER_HAT)).toBe(2);
   expect(rollRegularEnemyLoot({ random } as any, 'tutorial_forest', 2, [{ ...drop, wins: 0 }]).size).toBe(0);
+  // A balance pinned before gear stopped dropping still lists the forest's bow; it never drops.
+  const pinned = [{ itemId: STARTER_BOW as typeof STARTER_BOW, outcomes: 1_000_000, wins: 1_000_000 }, drop];
+  expect([...rollRegularEnemyLoot({ random } as any, 'tutorial_forest', 2, pinned)]).toEqual([[BASIC_PAPER_HAT, 2]]);
 });
 
 describe("raised drop chances", () => {

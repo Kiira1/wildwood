@@ -3,6 +3,7 @@ import { Identity } from "spacetimedb";
 import { crystalFixture, server } from "../../tests/helpers/crystal-hollows-fixture";
 import { CAMPAIGN_UNLOCK_FIELDS } from "../../shared/equipment-access";
 import { progressOf } from "../../tests/helpers/progress";
+import { itemMaxHealthMultiplierBonus } from "../../shared/items";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 const owner = new Identity("c200383520521c925f3cf6deafb20cd6a7d6168d1c31cb3c0ddb731c197a2d79");
 
@@ -20,7 +21,7 @@ function setup() {
   return { ...f, target, args, current };
 }
 
-it("restores only progression, locks retained gear, moves to the Town and records an atomic before/after", () => {
+it("restores only progression, keeps worn gear on (gear never locks), moves to the Town and records an atomic before/after", () => {
   const f = setup();
   f.seed("playerGemWallet", { identity: f.target, balance: 999n });
   f.seed("regularEnemyLootCursor", { key: "accepted", identity: f.target, sequence: 20n });
@@ -30,8 +31,10 @@ it("restores only progression, locks retained gear, moves to the Town and record
   const next = progressOf(f, f.target);
   expect(next).toMatchObject({ damage: 1000, maxHp: 2000, regen: 10, armor: 10, moonfenUnlocked: true,
     crystalHollowsUnlocked: false, ionCitadelUnlocked: false, bossRewardClaims: 255,
-    equippedRightHand: "starter_bow", equippedChest: "", inventoryJson: f.current.inventoryJson });
-  expect(f.db.player.identity.find(f.target)).toMatchObject({ mapId: "town", maxHp: 2000, hp: 2000 });
+    equippedRightHand: "ion_bow", equippedChest: "ion_armor", inventoryJson: f.current.inventoryJson });
+  // The ion armor still worn adds its health on top of the restored 2000.
+  const maxHp = 2000 * (1 + itemMaxHealthMultiplierBonus("ion_armor"));
+  expect(f.db.player.identity.find(f.target)).toMatchObject({ mapId: "town", maxHp, hp: maxHp });
   expect(f.db.homeReturnLocation.identity.find(f.target).mapId).toBe("moonfen");
   expect(f.db.playerLastLocation.identity.find(f.target).mapId).toBe("town");
   expect(f.db.playerGemWallet.identity.find(f.target).balance).toBe(999n);

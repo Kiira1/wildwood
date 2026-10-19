@@ -1,4 +1,4 @@
-import { CAMPAIGN_UNLOCK_FIELDS, equipmentMapRequirement, highestCampaignMap, type CampaignAccess } from "./equipment-access";
+import { CAMPAIGN_UNLOCK_FIELDS, highestCampaignMap, type CampaignAccess } from "./equipment-access";
 import { LEGACY_EQUIPMENT_BONUSES } from "./legacy-equipment-bonuses";
 import { LEGACY_PROGRESS_CURVE, REBALANCED_PROGRESS_CURVE } from "./progression-rebase-curves";
 import { effectivePlayerPower, playerPowerForStats, type PlayerPowerProgress, type PlayerPowerResearch } from "./player-power";
@@ -72,16 +72,16 @@ export function rebaseProgressByEffort<T extends Progress>(progress: T, research
   next.bossRewardClaims &= (1 << Math.min(mapIndex, 15)) - 1;
   const inventory: string[] = JSON.parse(progress.inventoryJson);
   const owned = [...new Set(inventory)];
-  // Preserve every owned item, including locked equipment. Always leave a usable weapon.
-  if (!owned.some(id => itemDefinition(id)?.slot === "HAND" && !equipmentMapRequirement(id, next))) owned.push(STARTER_BOW);
+  // Preserve every owned item. Always leave a weapon.
+  if (!owned.some(id => itemDefinition(id)?.slot === "HAND")) owned.push(STARTER_BOW);
   next.inventoryJson = JSON.stringify(owned);
   for (const [field, slot] of [["equippedRightHand", "HAND"], ["equippedHead", "HEAD"], ["equippedChest", "CHEST"], ["equippedFeet", "FEET"]] as const) {
     const current = next[field] ?? "";
-    if (current && !equipmentMapRequirement(current, next)) continue;
+    if (current) continue;
     next[field] = "";
     let best = -1;
     for (const id of owned) {
-      if (isCosmeticOnlyItem(id) || itemDefinition(id)?.slot !== slot || equipmentMapRequirement(id, next)) continue;
+      if (isCosmeticOnlyItem(id) || itemDefinition(id)?.slot !== slot) continue;
       const score = effectivePlayerPower({ ...next, [field]: id }, research, level);
       if (score > best) { best = score; next[field] = id; }
     }

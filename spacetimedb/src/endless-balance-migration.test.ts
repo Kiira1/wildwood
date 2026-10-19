@@ -6,15 +6,17 @@ import { CAMPAIGN_UNLOCK_FIELDS } from "../../shared/equipment-access";
 import { progressOf } from "../../tests/helpers/progress";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
-it("acknowledges a cached pre-conversion loadout without re-equipping locked gear", () => {
+it("takes a cached pre-conversion loadout like any other: owned gear goes on, stats stay the server's", () => {
   const f = crystalFixture();
   f.patch("playerProgress", { ionCitadelUnlocked: false, inventoryJson: '["ion_bow","starter_bow"]', equippedRightHand: "starter_bow" });
   const current = progressOf(f, f.ctx.sender);
   f.seed("playerEndlessRebaseBackup", { identity: f.ctx.sender,
     progressJson: JSON.stringify({ equippedRightHand: "ion_bow" }) });
   expect(() => f.run(server.savePlayerProgress, { ...current, equippedRightHand: "ion_bow", damage: 1e25 })).not.toThrow();
-  expect(progressOf(f, f.ctx.sender)).toMatchObject({ equippedRightHand: "starter_bow", damage: current.damage });
-  expect(() => f.run(server.savePlayerProgress, { ...current, equippedHead: "ion_helmet" })).toThrow("Ion Citadel");
+  expect(progressOf(f, f.ctx.sender)).toMatchObject({ equippedRightHand: "ion_bow", damage: current.damage });
+  // Gear not owned is still refused, without an error: the head stays as it was.
+  expect(() => f.run(server.savePlayerProgress, { ...progressOf(f, f.ctx.sender), equippedHead: "ion_helmet" })).not.toThrow();
+  expect(progressOf(f, f.ctx.sender).equippedHead).not.toBe("ion_helmet");
 });
 
 it("converts online and offline accounts once, backs up stats, gates gear and retains loot receipts", () => {

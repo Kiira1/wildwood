@@ -1,6 +1,6 @@
 import { Range, SenderError, table, t, type InferSchema, type ReducerCtx } from "spacetimedb/server";
 import type schema from "./index";
-import { regularMapLoot, REGULAR_ENEMY_LOOT_BATCH_MAX, type MapLootDrop } from "../../shared/regular-map-loot";
+import { droppableLoot, regularMapLoot, REGULAR_ENEMY_LOOT_BATCH_MAX, type MapLootDrop } from "../../shared/regular-map-loot";
 
 // One cursor per account/browser stream, rather than one receipt row per kill.
 // Retired in 0.877 for regular_enemy_stream, which records when a stream was
@@ -78,7 +78,7 @@ export function acceptRegularEnemyLootBatch(ctx: Context, batch: {
   // A lost acknowledgement can be retried after travel without rolling again.
   if (batch.sequence <= (previous?.sequence ?? 0n)) return false;
   if (batch.sequence !== (previous?.sequence ?? 0n) + 1n) throw new SenderError("Enemy loot batches must arrive in order.");
-  if (!regularMapLoot(batch.mapId).length || (batch.mapId !== activeMapId && !canReplayMap?.())) throw new SenderError("Enemy loot belongs to another map.");
+  if (batch.mapId !== activeMapId && !canReplayMap?.()) throw new SenderError("Enemy loot belongs to another map.");
   advanceStreamCursor(ctx, key, batch.sequence, previous);
   return true;
 }
@@ -93,14 +93,17 @@ export function dropLands(ctx: Pick<Context, "random">, wins: number, outcomes: 
   return roll <= whole || (part > 0 && roll === whole + 1 && ctx.random() < part);
 }
 
-/** Keep each item's independent per-kill roll; combine only the resulting writes. */
-/** `chanceMultiplier` raises every drop's chance (Treasure cards, Gear Luck); one leaves the roll exactly as it was. */
-export function rollRegularEnemyLoot(ctx: Pick<Context, "random">, mapId: string, count: number, configuredLoot?: readonly MapLootDrop[], chanceMultiplier = 1) {
+/**
+ * Keep each item's independent per-kill roll; combine only the resulting writes. A pinned list is screened, so
+ * gear listed by a balance pinned before gear stopped dropping never drops.
+ */
+export function rollRegularEnemyLoot(ctx: Pick<Context, "random">, mapId: string, count: number, configuredLoot?: readonly MapLootDrop[]) {
   const rewards = new Map<string, number>();
-  const loot = configuredLoot ?? regularMapLoot(mapId);
+  const loot = configuredLoot ? droppableLoot(configuredLoot) : regularMapLoot(mapId);
+  if (!loot.length) return rewards;
   for (let kill = 0; kill < count; kill++) {
     for (const drop of loot) {
-      if (dropLands(ctx, drop.wins, drop.outcomes, chanceMultiplier)) {
+      if (dropLands(ctx, drop.wins, drop.outcomes, 1)) {
         rewards.set(drop.itemId, (rewards.get(drop.itemId) ?? 0) + 1);
       }
     }

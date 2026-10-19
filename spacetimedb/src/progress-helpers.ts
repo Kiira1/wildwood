@@ -13,7 +13,6 @@ import { isDeveloperIdentity } from "./session-guards";
 import { normalizeSlotTier, upgradeSlotForItem } from "../../shared/slot-upgrades";
 import { readPlayerProgress } from "./wide-stats";
 import { activeItemUpgradeEntriesFor } from "./upgrade-bench-slots";
-import { equipmentMapRequirement } from "../../shared/equipment-access";
 import { weaponKind } from "../../shared/equip-best";
 import { canonicalSavedHand, blankHandWeapon } from "./loadout";
 import { cosmeticUnlocks } from "../../shared/cosmetic-conversion";
@@ -245,31 +244,28 @@ export function restoreItemToProgress(progress: any, itemId: string) {
 }
 
 export function equippedHeadForProgress(progress: any, inventory = inventoryForProgress(progress)) {
-  if (equipmentMapRequirement(progress.equippedHead, progress)) return "";
   if (progress.equippedHead === "") return "";
   return inventory.includes(progress.equippedHead) ? progress.equippedHead : BASIC_PAPER_HAT;
 }
 
 export function equippedChestForProgress(progress: any, inventory = inventoryForProgress(progress)) {
-  if (equipmentMapRequirement(progress.equippedChest, progress)) return "";
   return inventory.includes(progress.equippedChest) ? progress.equippedChest : "";
 }
 
 export function equippedFeetForProgress(progress: any, inventory = inventoryForProgress(progress)) {
-  if (equipmentMapRequirement(progress.equippedFeet, progress)) return "";
   return inventory.includes(progress.equippedFeet) ? progress.equippedFeet : "";
 }
 
 export function equippedRightHandForProgress(progress: any, inventory = inventoryForProgress(progress)) {
   const saved = canonicalSavedHand(progress, "equippedRightHand");
-  if (saved && inventory.includes(saved) && !equipmentMapRequirement(saved, progress)) return saved;
+  if (saved && inventory.includes(saved)) return saved;
   if (equippedLeftHandForProgress(progress, inventory)) return "";
-  return blankHandWeapon(inventory, progress, weaponKind(saved || canonicalSavedHand(progress, "equippedLeftHand")));
+  return blankHandWeapon(inventory, weaponKind(saved || canonicalSavedHand(progress, "equippedLeftHand")));
 }
 
 export function equippedLeftHandForProgress(progress: any, inventory = inventoryForProgress(progress)) {
   const saved = canonicalSavedHand(progress, "equippedLeftHand");
-  return saved && inventory.includes(saved) && !equipmentMapRequirement(saved, progress) ? saved : "";
+  return saved && inventory.includes(saved) ? saved : "";
 }
 
 export function cosmeticEquipmentForProgress(progress: any, lentLooks: readonly string[], inventory = inventoryForProgress(progress)) {

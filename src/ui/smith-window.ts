@@ -8,6 +8,15 @@ import { formatEquipmentStat } from "./equipment-stat-format";
 import { refineStars } from "./refine-badge";
 import { ORE_ORDER } from "../../shared/ore-bag";
 import { itemTier } from "../../shared/item-tier";
+import { ARMOR_CLASS_DETAILS, ARMOR_CLASS_NAMES, GEAR_GRADE_NAMES } from "../../shared/gear-grades";
+import { armorClassOf, gradeEquipmentKindOf, gradeOf, type GradeItemId } from "../../shared/grade-equipment";
+import {
+  GRADE_SHOP_LINES, gradeShopNeed, gradeShopOffer, gradeShopOpen, gradeShopPrice, masteryLevels, type MasteryLevels,
+} from "../../shared/grade-shop";
+import { bagSlotsWithOres } from "../../shared/ore-bag";
+import { bagSlotCapacity } from "../../shared/gems";
+import type { WeaponSchool } from "../../shared/weapon-mastery";
+import { formatGemAmount } from "./number-format";
 
 type Result = { ok: boolean; error?: string } | undefined;
 type RefineResult = { itemId: string; copyId: bigint; fromLevel: number; toLevel: number; succeeded: boolean };
@@ -18,6 +27,9 @@ const key = (item: { itemId: string; copyId: bigint }) => `${item.itemId}:${item
 /** The bag's filters for the gear the Smith works on (boots are not refined). */
 const SMITH_FILTERS = [["ALL", "All"], ["HAND", "Weapons"], ["CHEST", "Armor"], ["HEAD", "Helmets"]] as const;
 const nameOf = (itemId: string) => itemInspectionButtonLabel(itemDisplayName(itemId));
+// The HUD's gold coin, beside every price in gold.
+const GOLD_COIN = `<svg class="smith-coin" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8.5" fill="#e3b23c" stroke="#7a4f12" stroke-width="1.5"/><circle cx="10" cy="10" r="5.5" fill="none" stroke="#a8741d" stroke-width="1.2"/></svg>`;
+const KIND_NAMES = { bow: "Bow", sword: "Sword", staff: "Staff", helmet: "Helmet", armor: "Armor" } as const;
 // Refine Luck moves the odds by fractions of a percent, so they keep their decimals (2.2%, 0.031%).
 const percent = (chance: number) => {
   const value = chance * 100;
@@ -48,6 +60,13 @@ export function createSmithController(deps: {
   /** The free Starter Staff he hands out, as he does the pickaxe. */
   hasStarterStaff?: () => boolean;
   claimStarterStaff?: () => Promise<Result>;
+  /** The gear shop: graded gear for gold, opened by Mastery (shared/grade-shop.ts); the server decides (buy_grade_gear). */
+  gold?: () => bigint;
+  masteryLevels?: () => MasteryLevels;
+  /** Every item held, worn or on the Upgrade Bench; the bag's own items when left out. */
+  heldItems?: () => readonly string[];
+  bagFull?: () => boolean;
+  buyGear?: (itemId: string, expectedPrice: number) => Promise<Result>;
 }) {
   const dialog = document.createElement("dialog");
   dialog.className = "farm-sheet quest-sheet smith-sheet";
@@ -60,7 +79,10 @@ export function createSmithController(deps: {
     + `<div class="smith-mining smith-staff-row"><span class="smith-mining-text">Starter Staff · Casts bolts that burst on a pack</span><button type="button" class="farm-start smith-refine smith-staff">Take a Staff</button></div>`
     + `<div class="inventory-filters smith-filters" role="group" aria-label="Show gear"></div>`
     + `<p class="smith-empty smith-filter-empty" hidden></p>`
-    + `<div class="smith-items" role="listbox" aria-label="Your gear"></div></div>`
+    + `<div class="smith-items" role="listbox" aria-label="Your gear"></div>`
+    + `<section class="smith-shop" aria-labelledby="smithShopTitle"><div class="smith-shop-head"><h3 id="smithShopTitle">Gear for Gold</h3>`
+    + `<span class="smith-gold" aria-label="Your gold">${GOLD_COIN}<strong></strong></span></div>`
+    + `<div class="smith-shop-rows" role="list" aria-label="Gear for sale"></div></section></div>`
     + `<footer class="farm-footer"><div class="farm-actions"><button type="button" class="window-back-button">Back</button></div></footer>`;
   document.body.append(dialog);
   const focus = dialog.querySelector<HTMLElement>(".smith-focus")!;
@@ -73,6 +95,9 @@ export function createSmithController(deps: {
   const staffButton = dialog.querySelector<HTMLButtonElement>(".smith-staff")!;
   const filterBar = dialog.querySelector<HTMLElement>(".smith-filters")!;
   const filterEmpty = dialog.querySelector<HTMLElement>(".smith-filter-empty")!;
+  const shop = dialog.querySelector<HTMLElement>(".smith-shop")!;
+  const goldLine = dialog.querySelector<HTMLElement>(".smith-gold strong")!;
+  const shopRows = dialog.querySelector<HTMLElement>(".smith-shop-rows")!;
   /** The gear shown, as the bag filters it: everything, or one kind. */
   let shown: (typeof SMITH_FILTERS)[number][0] = "ALL";
   for (const [kind, label] of SMITH_FILTERS) {
@@ -90,6 +115,9 @@ export function createSmithController(deps: {
   let pickaxeTaken = false, takingPickaxe = false, takingStaff = false;
   let lastResult: { text: string; good: boolean } | null = null;
   let renderedState = "";
+  /** The piece being bought, and the ones bought here before the server's row arrives. */
+  let buyingGear: string | null = null;
+  const justBought = new Set<string>();
 
   function choices() {
     return deps.items().filter(item => isRefinableItem(item.itemId) && (shown === "ALL" || itemDefinition(item.itemId)?.slot === shown))
@@ -163,7 +191,7 @@ export function createSmithController(deps: {
     // Presence updates also refresh open windows. Keep focus and buttons in place until this window changes.
     const state = JSON.stringify([
       shown, selected, refining, lastResult, pickaxeTaken, takingPickaxe, takingStaff, deps.hasStarterStaff?.(),
-      deps.ores(), deps.hasPickaxe?.(), deps.mining?.(),
+      deps.ores(), deps.hasPickaxe?.(), deps.mining?.(), shopState(),
       items.map(item => [key(item), item.equipped, deps.refineLevel(item.itemId, item.copyId), deps.slotTier(item.itemId)]),
     ]);
     if (state === renderedState) return;
@@ -182,6 +210,7 @@ export function createSmithController(deps: {
     miningText.textContent = pickaxe ? `Mining ${deps.mining?.() ?? 0} · Ore is in the Copper Hills, east of Town` : "Ore is in the Copper Hills, east of Town.";
     pickaxeButton.hidden = pickaxe || !deps.claimPickaxe;
     pickaxeButton.disabled = takingPickaxe;
+    renderShop();
     list.replaceChildren(...items.map(item => {
       const option = document.createElement("button");
       option.type = "button";
@@ -198,6 +227,79 @@ export function createSmithController(deps: {
       });
       return option;
     }));
+  }
+
+  function heldGear() {
+    return new Set([...(deps.heldItems?.() ?? deps.items().map(item => item.itemId)), ...justBought]);
+  }
+
+  function shopState() {
+    if (!deps.buyGear) return null;
+    return [String(deps.gold?.() ?? 0n), deps.masteryLevels?.(), [...heldGear()].filter(gradeShopPrice), deps.bagFull?.(), buyingGear];
+  }
+
+  /** One row per line, offering the grade after the best one held. */
+  function renderShop() {
+    shop.hidden = !deps.buyGear;
+    if (!deps.buyGear) return;
+    const gold = deps.gold?.() ?? 0n, levels = deps.masteryLevels?.() ?? {}, held = heldGear(), full = deps.bagFull?.() ?? false;
+    goldLine.textContent = formatGemAmount(gold);
+    shopRows.replaceChildren(...GRADE_SHOP_LINES.map(line => {
+      const offer = gradeShopOffer(line, held), price = gradeShopPrice(offer.itemId)!;
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "farm-start smith-refine smith-shop-buy";
+      button.textContent = buyingGear === offer.itemId ? "Buying…" : offer.owned ? "Owned"
+        : !gradeShopOpen(offer.itemId, levels) ? `Need ${gradeShopNeed(offer.itemId)}`
+          : gold < BigInt(price) ? `Need ${formatGemAmount(BigInt(price))} Gold` : full ? "Bag Full" : "Buy";
+      button.disabled = button.textContent !== "Buy" || buyingGear !== null;
+      button.addEventListener("click", () => { void buyGear(offer.itemId, price); });
+      return shopRow(offer.itemId, offer.owned ? null : price, button);
+    }));
+  }
+
+  function shopRow(itemId: GradeItemId, price: number | null, button: HTMLButtonElement) {
+    const row = document.createElement("article");
+    row.className = "smith-shop-row";
+    row.setAttribute("role", "listitem");
+    row.dataset.itemId = itemId;
+    const armorClass = armorClassOf(itemId), kind = KIND_NAMES[gradeEquipmentKindOf(itemId)!];
+    const grade = GEAR_GRADE_NAMES[gradeOf(itemId)!];
+    row.innerHTML = `<span class="smith-shop-art" aria-hidden="true">${itemArtMarkup(itemId)}</span>`
+      + `<span class="smith-shop-copy"><strong></strong><span class="smith-shop-grade"></span><span class="smith-shop-stat"></span></span>`
+      + `<span class="smith-shop-deal"></span>`;
+    row.querySelector("strong")!.textContent = nameOf(itemId);
+    row.querySelector(".smith-shop-grade")!.textContent = `${grade} · ${armorClass ? `${ARMOR_CLASS_NAMES[armorClass]} ${kind}` : kind}`;
+    const [stat] = itemStats(itemId);
+    row.querySelector(".smith-shop-stat")!.textContent = [formatEquipmentStat(itemInspectionButtonLabel(stat ?? "")), armorClass ? ARMOR_CLASS_DETAILS[armorClass].perk : ""]
+      .filter(Boolean).join(" · ");
+    const deal = row.querySelector<HTMLElement>(".smith-shop-deal")!;
+    if (price !== null) {
+      const cost = document.createElement("span");
+      cost.className = "smith-shop-price";
+      cost.innerHTML = `${GOLD_COIN}<span></span>`;
+      cost.lastElementChild!.textContent = formatGemAmount(BigInt(price));
+      cost.setAttribute("aria-label", `${formatGemAmount(BigInt(price))} Gold`);
+      deal.append(cost);
+    }
+    deal.append(button);
+    return row;
+  }
+
+  async function buyGear(itemId: GradeItemId, price: number) {
+    if (buyingGear || !deps.buyGear) return;
+    buyingGear = itemId;
+    render();
+    try {
+      const result = await deps.buyGear(itemId, price);
+      if (result?.ok) {
+        justBought.add(itemId);
+        deps.showMessage(`Bought · ${nameOf(itemId)}. Equip it from your bag.`, "#ffd75e");
+      } else deps.showMessage(result?.error ?? "Not Connected", "#ff9b91");
+    } finally {
+      buyingGear = null;
+      if (dialog.open) render();
+    }
   }
 
   async function refine(item: SmithItem, level: number) {
@@ -237,8 +339,9 @@ export function createSmithController(deps: {
   function open() {
     if (!deps.inTown() || dialog.open) return;
     lastResult = null;
-    // Each visit goes by the server's word on the pickaxe: a reset save takes it back.
+    // Each visit goes by the server's word on the pickaxe and the bag: a reset save takes them back.
     pickaxeTaken = false;
+    justBought.clear();
     render();
     deps.clearInput?.();
     dialog.showModal();
@@ -292,8 +395,14 @@ export function createSmithRuntime(deps: {
     researchInPlay?: () => { refineLuck?: number };
     equipmentCopies?: () => readonly { id: bigint; itemId: string }[];
     setOnRefineResult?: (callback: ((result: RefineResult) => void) | null) => void;
+    gold?: () => bigint;
+    weaponMastery?: () => Readonly<Record<WeaponSchool, bigint>>;
+    buyGradeGear?: (itemId: string, expectedPrice: number) => Promise<Result>;
+    activeItemUpgrades?: () => readonly { itemId: string }[];
+    inventorySlotsUnlocked?: () => number;
+    research?: () => { inventorySlots?: number };
   } | null | undefined;
-  inventory: { itemIds: string[]; equippedHead: string; equippedChest: string; equippedRightHand: string; equippedLeftHand: string };
+  inventory: { itemIds: string[]; equippedHead: string; equippedChest: string; equippedFeet?: string; equippedRightHand: string; equippedLeftHand: string };
   showMessage: (text: string, color: string) => void;
   clearInput?: () => void;
   inTown: () => boolean;
@@ -319,6 +428,16 @@ export function createSmithRuntime(deps: {
     hasStarterStaff: () => inventory.itemIds.includes(STARTER_STAFF),
     claimStarterStaff: async () => deps.coop()?.claimStarterStaff?.() ?? { ok: false, error: "Not Connected" },
     mining: () => deps.coop()?.mining?.() ?? 0,
+    gold: () => deps.coop()?.gold?.() ?? 0n,
+    masteryLevels: () => masteryLevels(deps.coop()?.weaponMastery?.() ?? {}),
+    heldItems: () => [...inventory.itemIds, ...(deps.coop()?.activeItemUpgrades?.() ?? []).map(active => active.itemId)],
+    // The bag as the server counts it (freeBagSlots): items, kept copies, ore stacks.
+    bagFull: () => {
+      const coop = deps.coop(), capacity = bagSlotCapacity(coop?.inventorySlotsUnlocked?.() ?? 0, coop?.research?.().inventorySlots ?? 0);
+      const equipped = [inventory.equippedHead, inventory.equippedChest, inventory.equippedFeet ?? "", inventory.equippedRightHand, inventory.equippedLeftHand];
+      return bagSlotsWithOres({ owned: inventory.itemIds, equipped, extraCopies: coop?.equipmentCopies?.().length ?? 0, ores: coop?.ores?.() ?? {}, capacity }) >= capacity;
+    },
+    buyGear: async (itemId, expectedPrice) => deps.coop()?.buyGradeGear?.(itemId, expectedPrice) ?? { ok: false, error: "Not Connected" },
   });
   let listening = false;
   return {

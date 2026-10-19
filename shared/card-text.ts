@@ -70,7 +70,7 @@ export function cardEffectText(effect: CardEffect): string {
     statGain: () => `${STAT_NAMES[effect.stat ?? "damage"]} from kills ${signed(v)}%`,
     allStatGain: () => `All stats from kills ${signed(v)}%`,
     cardHunter: () => `Card drop chance ${signed(v)}%`,
-    treasure: () => `Gear drop chance ${signed(v)}%`,
+    treasure: () => `Gold drop chance ${signed(v)}%`,
     respawn: () => `Enemies respawn ${abs}% faster`,
     miningSpeed: () => `Mining speed ${signed(v)}%`,
     oreFind: () => `${abs}% chance for an extra ore`,
