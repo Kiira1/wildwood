@@ -201,28 +201,30 @@ export function createTechTreeController(elements: TechTreeControllerElements, h
     };
   }
 
+  /** A research's name as the button says it: "SLOT UPGRADE SPEED" reads "Slot Upgrade Speed". */
+  const titleCase = (name: string) => name.toLowerCase().replace(/\b[a-z]/g, letter => letter.toUpperCase());
   function requirementLabel(id: string, rank: unknown) {
     const requiredId = id as ResearchId;
     const ranksPerBand = RESEARCH_DEFINITIONS[requiredId].ranksPerBand;
     const requiredBand = Math.max(0, Math.ceil(Number(rank) / ranksPerBand) - 1);
     const localRank = Number(rank) - researchRankBandStart(requiredId, requiredBand);
-    return `${RESEARCH_DEFINITIONS[requiredId].effect} T${requiredBand + 1} ${localRank}/${ranksPerBand}`;
+    return `${titleCase(RESEARCH_DEFINITIONS[requiredId].effect)} T${requiredBand + 1} ${localRank}/${ranksPerBand}`;
   }
 
   function requirementText(researchId: ResearchId, ranks: ResearchRanks) {
     const any = RESEARCH_DEFINITIONS[researchId].prerequisiteAny;
     if (any?.length && !any.some(id => ranks[id] >= 1)) {
-      return any.map(id => `${RESEARCH_DEFINITIONS[id].effect} 1/${RESEARCH_DEFINITIONS[id].ranksPerBand}`).join(" OR ");
+      return any.map(id => `${titleCase(RESEARCH_DEFINITIONS[id].effect)} 1/${RESEARCH_DEFINITIONS[id].ranksPerBand}`).join(" or ");
     }
     const anyOf = Object.entries(RESEARCH_DEFINITIONS[researchId].prerequisiteAnyOf ?? {});
     if (anyOf.length && !anyOf.some(([id, rank]) => ranks[id as ResearchId] >= Number(rank))) {
-      return anyOf.map(([id, rank]) => requirementLabel(id, rank)).join(" OR ");
+      return anyOf.map(([id, rank]) => requirementLabel(id, rank)).join(" or ");
     }
     const completedRanks = ranks[researchId];
     const requirements = Object.entries(researchPrerequisitesForNextRank(researchId, completedRanks))
       .filter(([id, rank]) => ranks[id as ResearchId] < Number(rank));
-    if (!requirements.length) return "AVAILABLE";
-    if (requirements.length > 3) return "FINISH PREVIOUS LEVELS";
+    if (!requirements.length) return "Available";
+    if (requirements.length > 3) return "Finish Previous Levels";
     return requirements.map(([id, rank]) => requirementLabel(id, rank)).join(" + ");
   }
 
@@ -400,11 +402,11 @@ export function createTechTreeController(elements: TechTreeControllerElements, h
       action.setAttribute("aria-label", `Finish research now for ${speedUpCost} Gems. One Gem is worth ten minutes. Your balance is ${hooks.gemBalance()} Gems.`);
     } else {
       action.textContent = current
-        ? activeRemaining <= 0 ? "FINALIZING RESEARCH" : "RESEARCH IN PROGRESS"
-        : progress.isComplete ? "LEVELS COMPLETE"
-          : progress.isFuture ? "COMPLETE EARLIER LEVELS"
-          : canStart ? selectedPaused ? "RESUME RESEARCH" : "START RESEARCH"
-            : `REQUIRES ${requirementText(selected.researchId, ranks)}`;
+        ? activeRemaining <= 0 ? "Finalizing Research" : "Research In Progress"
+        : progress.isComplete ? "Levels Complete"
+          : progress.isFuture ? "Complete Earlier Levels"
+          : canStart ? selectedPaused ? "Resume Research" : "Start Research"
+            : `Requires ${requirementText(selected.researchId, ranks)}`;
     }
     action.addEventListener("click", () => { void triggerAction(); });
     if (canSpeedUp && hooks.pauseResearch) {
@@ -421,7 +423,11 @@ export function createTechTreeController(elements: TechTreeControllerElements, h
       actions.append(action, pause);
       detailContent.append(actions);
     } else {
-      detailContent.append(action);
+      // In the same row as Finish Now and Pause, so it is the game's button, not a plain one.
+      const actions = document.createElement("div");
+      actions.className = "tech-tree-actions";
+      actions.append(action);
+      detailContent.append(actions);
     }
     drawLinks();
   }

@@ -52,9 +52,9 @@ it("opens Power and Utility from separate nodes and returns to the chooser", asy
   click('[data-tech-node="tech-utility-critCap"]');
   expect(element("content").textContent).toContain("CRITICAL DAMAGE CAP");
   expect(element("content").textContent).toContain("+1× PER RANK");
-  expect(element("content").textContent).toContain("ATTACK RANGE T1 1/5");
+  expect(element("content").textContent).toContain("Attack Range T1 1/5");
   click('[data-tech-node="tech-utility-bossRespawn"]');
-  expect(element("content").textContent).toContain("SLOT UPGRADE SPEED 1/5 OR ENEMY RESPAWN 1/5");
+  expect(element("content").textContent).toContain("Requires Slot Upgrade Speed 1/5 or Enemy Respawn 1/5");
   expect(document.querySelector<HTMLButtonElement>(".tech-tree-action")?.disabled).toBe(true);
   click('[data-tech-node="tech-utility-enemyRespawn"]');
   expect(element("detail").hidden).toBe(false);
@@ -114,7 +114,7 @@ it("pauses running research and offers to resume a paused one", async () => {
   expect(pauseResearch).toHaveBeenCalledOnce();
   expect(document.querySelector(".tech-tree-pause")).toBeNull();
   expect(element("content").textContent).toContain("PAUSED · TIME LEFT00:35");
-  expect(element("content").textContent).toContain("RESUME RESEARCH");
+  expect(element("content").textContent).toContain("Resume Research");
   expect(element("active").textContent).toBe("NO RESEARCH ACTIVE · 1 PAUSED");
   expect(document.querySelector('[data-tech-node="tech-utility-researchSpeed"]')!.classList.contains("is-paused")).toBe(true);
   click(".tech-tree-action");

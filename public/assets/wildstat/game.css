@@ -3154,8 +3154,13 @@
   .tech-tree-actions .tech-tree-action.is-gem-speed-up:hover:not(:disabled), .tech-tree-actions .tech-tree-action.is-gem-speed-up:focus-visible { border-color: #3a1830; background: linear-gradient(#b86c9d, #7b456b); }
   .tech-tree-actions .tech-tree-action.is-gem-speed-up span { color: #fff; font: inherit; letter-spacing: 0; }
   .tech-tree-actions .tech-tree-action.is-gem-speed-up strong { font-size: 13px; -webkit-text-stroke: var(--text-outline-width) #000; paint-order: stroke fill; }
-  .tech-tree-actions .tech-tree-pause { border-color: #1d2227; background: linear-gradient(#6d7782, #444c55); box-shadow: 0 3px 0 #1a1e22; }
-  .tech-tree-actions .tech-tree-pause:hover:not(:disabled), .tech-tree-actions .tech-tree-pause:focus-visible { border-color: #1d2227; background: linear-gradient(#7c8792, #515a64); }
+  .tech-tree-actions .tech-tree-pause, .tech-tree-actions .tech-tree-action:not(.is-gem-speed-up) { border-color: #1d2227; background: linear-gradient(#6d7782, #444c55); box-shadow: 0 3px 0 #1a1e22; }
+  .tech-tree-actions .tech-tree-pause:hover:not(:disabled), .tech-tree-actions .tech-tree-pause:focus-visible,
+  .tech-tree-actions .tech-tree-action:not(.is-gem-speed-up):hover:not(:disabled), .tech-tree-actions .tech-tree-action:not(.is-gem-speed-up):focus-visible { border-color: #1d2227; background: linear-gradient(#7c8792, #515a64); }
+  /* Can't press it yet (a requirement, every level done): the same button, dimmed and flat. */
+  .tech-tree-actions .tech-tree-action:disabled { opacity: .55; box-shadow: none; cursor: default; }
+  /* Alone (Start Research, or what it needs first): wider, and a long requirement wraps instead of spilling out. */
+  .tech-tree-actions .tech-tree-action:only-child { max-width: 260px; height: auto; padding-block: 8px 10px; line-height: 1.15; }
 
   #sceneFade {
     position: fixed;
