@@ -104,7 +104,9 @@ export function createToolSection(deps: ToolSectionDeps, options: { onChange?: (
     const price = document.createElement("span");
     price.className = "smith-shop-price";
     price.innerHTML = `${GOLD_COIN}<span></span>`;
-    price.lastElementChild!.textContent = `${formatGemAmount(gold)} / ${formatGemAmount(BigInt(cost.gold))}`;
+    // The price alone, muted while the gold held is short; the button says Need Gold.
+    price.lastElementChild!.textContent = formatGemAmount(BigInt(cost.gold));
+    if (gold < BigInt(cost.gold)) price.classList.add("is-short");
     price.setAttribute("aria-label", `${formatGemAmount(BigInt(cost.gold))} Gold, ${formatGemAmount(gold)} held`);
     const text = toolButtonText(tool, level, skill, ores, gold, upgrading === tool);
     const button = offerButton(text, text === "Upgrade" && upgrading === null, () => { void upgrade(tool, level); });
@@ -189,10 +191,10 @@ export function toolDepsFor(coop: () => ToolCoop | null | undefined, showMessage
   };
 }
 
-/** Puts the Tools section at the foot of the Smith's window, under the gear, and returns it for the window to render. */
+/** Puts the Tools section in the Smith's Tools view (at the foot of his window without one), and returns it for the window to render. */
 export function mountToolSection(dialog: HTMLElement, deps: ToolSectionDeps | undefined, onChange: () => void) {
   if (!deps) return null;
   const tools = createToolSection(deps, { onChange });
-  (dialog.querySelector(".quest-body") ?? dialog).append(tools.element);
+  (dialog.querySelector(".smith-tools-view") ?? dialog.querySelector(".quest-body") ?? dialog).append(tools.element);
   return tools;
 }

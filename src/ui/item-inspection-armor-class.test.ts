@@ -16,10 +16,10 @@ describe("armor class lines in the item window", () => {
     expect(armorClassLines("epic_light_armor", worn)[1]).toBe("Set: Light Helmet + Armor + Bow · +5% Damage");
   });
 
-  it("names graded boots' style and the school it belongs to", () => {
-    expect(armorClassLines("rare_ranger_boots")).toEqual(["Ranger Boots · Archery"]);
-    expect(armorClassLines("rare_warrior_boots")).toEqual(["Warrior Boots · Swordplay"]);
-    expect(armorClassLines("rare_mystic_boots")).toEqual(["Mystic Boots · Sorcery"]);
+  it("names the school graded boots belong to", () => {
+    expect(armorClassLines("rare_ranger_boots")).toEqual(["Made For Archery"]);
+    expect(armorClassLines("rare_warrior_boots")).toEqual(["Made For Swordplay"]);
+    expect(armorClassLines("rare_mystic_boots")).toEqual(["Made For Sorcery"]);
     expect(armorClassLines("black_boots")).toEqual([]);
   });
 

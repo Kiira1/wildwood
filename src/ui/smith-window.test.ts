@@ -1,11 +1,12 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { parseHTML } from "linkedom";
-import { createSmithController, type SmithItem } from "./smith-window";
+import { createSmithController, createSmithRuntime, equipWhenHeld, type SmithItem } from "./smith-window";
 import { IRON_BOW, STARTER_BOW, STARTER_STONE, WOODEN_ARMOR, itemDisplayName } from "../../shared/items";
 import { GRADE_BONUS_PERCENT, GRADE_GOLD_PRICE } from "../../shared/gear-grades";
 import { itemInspectionButtonLabel } from "./item-inspection-controller";
 import { refineSuccessChance, type OreId } from "../../shared/refine";
 import type { CraftSectionDeps } from "./craft-section";
+import type { WornLoadout } from "./smith-upgrades";
 afterEach(() => vi.unstubAllGlobals());
 
 // The server rolls every try (refine_item); the window shows the odds, sends the level the player saw, and shows the verdict.
@@ -198,17 +199,27 @@ it("refines only: no Cards tab, no card slots on gear", () => {
 
 // Gear for gold (buy_grade_gear): a row per line with the highest grade Mastery opens above the best one held.
 const nameOf = (itemId: string) => itemInspectionButtonLabel(itemDisplayName(itemId));
-function shop(options: { gold?: bigint; levels?: Partial<Record<"archery" | "swordplay" | "sorcery", number>>; held?: string[]; bagFull?: boolean; craft?: CraftSectionDeps } = {}) {
+/** A device's storage, as the window keeps its views. */
+function memoryStorage(values: Record<string, string> = {}) {
+  const map = new Map(Object.entries(values));
+  return { getItem: (key: string) => map.get(key) ?? null, setItem: (key: string, value: string) => { map.set(key, value); }, map };
+}
+
+function shop(options: { gold?: bigint; levels?: Partial<Record<"archery" | "swordplay" | "sorcery", number>>; held?: string[]; bagFull?: boolean; craft?: CraftSectionDeps;
+  shown?: "yours" | "all"; worn?: WornLoadout; refines?: Record<string, number>; equip?: (itemId: string) => boolean | Promise<boolean>; storage?: ReturnType<typeof memoryStorage> } = {}) {
   const { document, window } = parseHTML("<html><body></body></html>");
   vi.stubGlobal("document", document); vi.stubGlobal("HTMLElement", window.HTMLElement);
+  // Every line unless a test looks at the player's own.
+  const storage = options.storage ?? memoryStorage(options.shown === "yours" ? {} : { "wildstat.smithGearShown": "all" });
+  vi.stubGlobal("localStorage", storage);
   const held = [...(options.held ?? [])];
   const buyGear = vi.fn(async (_itemId: string, _price: number) => ({ ok: true }));
   const showMessage = vi.fn();
-  const state = { gold: options.gold ?? 0n, bagFull: options.bagFull ?? false };
+  const state = { gold: options.gold ?? 0n, bagFull: options.bagFull ?? false, worn: options.worn ?? {} };
   const controller = createSmithController({
-    inTown: () => true, items: () => [], refine: vi.fn(), showMessage, refineLevel: () => 0, slotTier: () => 0, ores: () => ({}),
+    inTown: () => true, items: () => [], refine: vi.fn(), showMessage, refineLevel: itemId => options.refines?.[itemId] ?? 0, slotTier: () => 0, ores: () => ({}),
     gold: () => state.gold, masteryLevels: () => options.levels ?? {}, heldItems: () => held, bagFull: () => state.bagFull, buyGear,
-    craft: options.craft,
+    craft: options.craft, worn: () => state.worn, equip: options.equip,
   });
   const dialog = document.querySelector("dialog") as unknown as HTMLDialogElement;
   Object.assign(dialog, { showModal() { dialog.setAttribute("open", ""); }, close() { dialog.removeAttribute("open"); } });
@@ -217,7 +228,9 @@ function shop(options: { gold?: bigint; levels?: Partial<Record<"archery" | "swo
   const row = (itemId: string) => rows().find(each => each.dataset.itemId === itemId)!;
   const button = (itemId: string) => row(itemId).querySelector<HTMLButtonElement>(".smith-shop-buy")!;
   const unmet = (itemId: string) => [...row(itemId).querySelectorAll(".craft-needs .is-unmet")].map(need => need.textContent).join(" · ");
-  return { controller, dialog, rows, row, button, unmet, buyGear, showMessage, held, state };
+  const pill = (label: string) => [...dialog.querySelectorAll<HTMLButtonElement>(".inventory-filter")].find(button => button.textContent === label)!;
+  const upgrade = () => dialog.querySelector<HTMLButtonElement>(".smith-upgrade-all-button")!;
+  return { controller, dialog, rows, row, button, unmet, buyGear, showMessage, held, state, pill, upgrade, storage };
 }
 
 it("lists a row per line, each offering the highest grade Mastery opens above the best one held", () => {
@@ -231,7 +244,7 @@ it("lists a row per line, each offering the highest grade Mastery opens above th
   ]);
   expect(view.dialog.querySelector(".smith-gold strong")!.textContent).toBe("50,000");
   const bow = view.row("rare_bow");
-  expect(view.dialog.querySelector("#smithShopTitle")!.textContent).toBe("Gear");
+  expect(view.dialog.querySelector("#smithShopTitle")!.textContent).toBe("All Gear");
   expect(bow.querySelector("strong")!.textContent).toBe(nameOf("rare_bow"));
   expect(bow.querySelector(".smith-shop-grade")!.textContent).toBe("Rare · Bow");
   expect(bow.querySelector(".smith-shop-stat")!.textContent).toBe(`Damage +${GRADE_BONUS_PERCENT.rare}%`);
@@ -394,4 +407,166 @@ it("crafts any grade Smithing opens on the line, and reforges a sword already he
   expect(sword().querySelector(".craft-offer .craft-grade-name")!.textContent).toBe("Crude");
   expect([...sword().querySelectorAll(".smith-shop-buy")].map(button => button.textContent)).toEqual(["Buy", "Reforge"]);
   expect(sword().querySelector(".craft-offer .craft-hint")!.textContent).toBe("Rolls its skills again, keeping the higher");
+});
+
+it("opens on Gear when the Smith sells, keeps the view picked on the device, and hides the bar with one view", () => {
+  const view = shop({ gold: 100n });
+  view.controller.open();
+  const shownView = () => [...view.dialog.querySelectorAll<HTMLElement>(".smith-view")].filter(section => !section.hidden).map(section => section.dataset.view);
+  expect(shownView()).toEqual(["gear"]);
+  expect([...view.dialog.querySelectorAll(".smith-views .inventory-filter")].map(button => button.textContent)).toEqual(["Gear", "Refine"]);
+  view.pill("Refine").click();
+  expect(shownView()).toEqual(["refine"]);
+  expect(view.storage.map.get("wildstat.smithView")).toBe("refine");
+  const refineAndTools = smith();
+  refineAndTools.controller.open();
+  expect([...refineAndTools.dialog.querySelectorAll(".smith-views .inventory-filter")].map(button => button.textContent)).toEqual(["Refine", "Tools"]);
+  // Refining only: one view, no bar.
+  createSmithController({ inTown: () => true, items: () => [], refine: vi.fn(), showMessage: vi.fn(), refineLevel: () => 0, slotTier: () => 0, ores: () => ({}) });
+  const dialogs = document.querySelectorAll("dialog");
+  expect((dialogs[dialogs.length - 1].querySelector(".smith-views-bar") as unknown as HTMLElement).hidden).toBe(true);
+});
+
+it("lists the weapon in hand's lines under For Your Bow until All Gear is picked, and remembers the pick", () => {
+  const storage = memoryStorage();
+  const view = shop({ gold: 100n, shown: "yours", storage, worn: { equippedRightHand: "crude_bow" }, held: ["crude_bow"] });
+  view.controller.open();
+  expect(view.dialog.querySelector("#smithShopTitle")!.textContent).toBe("For Your Bow");
+  expect(view.rows().map(row => row.dataset.itemId)).toEqual(["common_bow", "crude_light_helmet", "crude_light_armor", "crude_ranger_boots"]);
+  expect(view.pill("Yours").getAttribute("aria-pressed")).toBe("true");
+  view.pill("All Gear").click();
+  expect(view.rows().length).toBe(14);
+  expect(view.dialog.querySelector("#smithShopTitle")!.textContent).toBe("All Gear");
+  expect(storage.map.get("wildstat.smithGearShown")).toBe("all");
+  // A swordsman's own lines: the sword, Medium and Warrior.
+  const sword = shop({ gold: 100n, shown: "yours", storage: memoryStorage(), worn: { equippedRightHand: "crude_sword" } });
+  sword.controller.open();
+  expect(sword.dialog.querySelector("#smithShopTitle")!.textContent).toBe("For Your Sword");
+  expect(sword.rows().map(row => row.dataset.itemId)).toEqual(["crude_sword", "crude_medium_helmet", "crude_medium_armor", "crude_warrior_boots"]);
+  // The pick carries to the next visit on the device.
+  const again = shop({ gold: 100n, storage });
+  again.controller.open();
+  expect(again.rows().length).toBe(14);
+});
+
+it("says what each offer changes against what is worn, from the items' stats", () => {
+  const view = shop({
+    gold: 100n, levels: { archery: 5 }, held: ["common_bow", "crude_ranger_boots", "legendary_heavy_helmet"],
+    worn: { equippedRightHand: "common_bow", equippedFeet: "crude_ranger_boots", equippedHead: "legendary_heavy_helmet" },
+  });
+  view.controller.open();
+  const tag = (itemId: string) => view.row(itemId).querySelector(".smith-compare")!;
+  expect(tag("rare_bow").textContent).toBe(`+${GRADE_BONUS_PERCENT.rare - GRADE_BONUS_PERCENT.common}% Damage vs Now`);
+  expect(tag("rare_bow").className).toContain("is-better");
+  // Nothing worn on the body: the whole stat.
+  expect(tag("rare_light_armor").textContent).toBe("+28.8% Max Health vs Now");
+  expect(tag("rare_ranger_boots").textContent).toBe("+6% Move Speed vs Now");
+  // A stronger helmet worn: the offer is worse, and says so.
+  expect(tag("rare_light_helmet").textContent).toMatch(/^-[\d.]+% Regen vs Now$/);
+  expect(tag("rare_light_helmet").className).toContain("is-worse");
+});
+
+it("counts the worn piece's refine in the comparison", () => {
+  const view = shop({ gold: 100n, held: ["crude_bow"], worn: { equippedRightHand: "crude_bow" }, refines: { crude_bow: 5 } });
+  view.controller.open();
+  const plain = GRADE_BONUS_PERCENT.common - GRADE_BONUS_PERCENT.crude;
+  const shown = Number(/^\+([\d.]+)%/.exec(view.row("common_bow").querySelector(".smith-compare")!.textContent!)![1]);
+  expect(shown).toBeLessThan(plain);
+});
+
+it("Upgrade All spreads the gold over the player's lines, puts each new piece on, and says what it did", async () => {
+  const equip = vi.fn(async (_itemId: string) => true);
+  const view = shop({ gold: 60n, levels: { archery: 6 }, shown: "yours", held: ["common_bow", "crude_light_helmet", "crude_light_armor"], equip,
+    worn: { equippedRightHand: "common_bow", equippedHead: "crude_light_helmet", equippedChest: "crude_light_armor" } });
+  view.controller.open();
+  // The boots line, furthest behind, catches up first; then every line rises together to Sturdy.
+  expect(view.upgrade().textContent).toBe("Upgrade All · 60 GoldBuys and Equips 4 Pieces");
+  expect([...view.dialog.querySelectorAll(".smith-upgrade-all-picks li")].map(item => item.textContent))
+    .toEqual(["Sturdy Bow", "Sturdy Light Helmet", "Sturdy Light Armor", "Sturdy Ranger Boots"]);
+  expect(view.upgrade().disabled).toBe(false);
+  view.upgrade().click();
+  await vi.waitFor(() => expect(view.showMessage).toHaveBeenCalledWith("Upgraded · Sturdy Bow, Sturdy Light Helmet, Sturdy Light Armor, Sturdy Ranger Boots", "#ffd75e"));
+  expect(view.buyGear.mock.calls).toEqual([
+    ["sturdy_bow", GRADE_GOLD_PRICE.sturdy], ["sturdy_light_helmet", GRADE_GOLD_PRICE.sturdy], ["sturdy_light_armor", GRADE_GOLD_PRICE.sturdy],
+    ["sturdy_ranger_boots", GRADE_GOLD_PRICE.sturdy],
+  ]);
+  expect(equip.mock.calls.map(([itemId]) => itemId)).toEqual(["sturdy_bow", "sturdy_light_helmet", "sturdy_light_armor", "sturdy_ranger_boots"]);
+});
+
+it("Upgrade All stops at a refusal and says how far it got", async () => {
+  const equip = vi.fn(() => true);
+  const view = shop({ gold: 100n, levels: { archery: 1 }, shown: "yours", equip, worn: { equippedRightHand: "starter_bow" } });
+  view.buyGear.mockResolvedValueOnce({ ok: true }).mockResolvedValueOnce({ ok: false, error: "Your bag is full. Free a slot first." } as never);
+  view.controller.open();
+  view.upgrade().click();
+  await vi.waitFor(() => expect(view.showMessage).toHaveBeenCalledWith("Bought 1 of 4 · Your bag is full. Free a slot first.", "#ff9b91"));
+  expect(view.buyGear).toHaveBeenCalledTimes(2);
+  expect(equip).toHaveBeenCalledTimes(1);
+  expect(view.upgrade().disabled).toBe(false);
+});
+
+it("Upgrade All tells the player to equip from the bag when a piece could not go on", async () => {
+  const view = shop({ gold: 12n, shown: "yours", worn: { equippedRightHand: "starter_bow" }, equip: () => false });
+  view.controller.open();
+  view.upgrade().click();
+  await vi.waitFor(() => expect(view.showMessage).toHaveBeenCalledWith("Upgraded · Crude Bow. Equip it from your bag.", "#ffd75e"));
+});
+
+it("Upgrade All waits with a reason: what comes next and its price, the Mastery it needs, or the bag", () => {
+  const poor = shop({ gold: 5n, levels: { archery: 6 }, shown: "yours", worn: { equippedRightHand: "starter_bow" } });
+  poor.controller.open();
+  expect(poor.upgrade().disabled).toBe(true);
+  expect(poor.dialog.querySelector(".smith-upgrade-all-title")!.textContent).toBe("Nothing To Upgrade Yet");
+  expect(poor.dialog.querySelector(".smith-upgrade-all-sub")!.textContent).toBe(`Next: Crude Bow at ${GRADE_GOLD_PRICE.crude} Gold`);
+  expect(poor.controller.upgradeReady()).toBe(false);
+  const locked = shop({ gold: 1_000n, shown: "yours", held: ["crude_bow", "crude_light_helmet", "crude_light_armor", "crude_ranger_boots"],
+    worn: { equippedRightHand: "crude_bow", equippedHead: "crude_light_helmet", equippedChest: "crude_light_armor", equippedFeet: "crude_ranger_boots" } });
+  locked.controller.open();
+  expect(locked.dialog.querySelector(".smith-upgrade-all-sub")!.textContent).toBe("Next: Common Bow at Lv 1 Archery");
+  const full = shop({ gold: 100n, bagFull: true, shown: "yours", worn: { equippedRightHand: "starter_bow" } });
+  full.controller.open();
+  expect([full.upgrade().disabled, full.dialog.querySelector(".smith-upgrade-all-title")!.textContent]).toEqual([true, "Bag Full"]);
+  expect(full.controller.upgradeReady()).toBe(true);
+});
+
+it("dots the Gear view while Upgrade All has something to buy", () => {
+  const view = shop({ gold: 100n, worn: { equippedRightHand: "starter_bow" }, storage: memoryStorage({ "wildstat.smithView": "refine" }) });
+  view.controller.open();
+  const dot = view.dialog.querySelector<HTMLElement>(".smith-upgrade-dot")!;
+  expect(dot.hidden).toBe(false);
+  view.state.gold = 0n;
+  view.controller.render();
+  expect(dot.hidden).toBe(true);
+});
+
+it("puts a bought piece on once the server's row has brought it into the bag, and gives up after a while", async () => {
+  const inventory = { itemIds: ["starter_bow"] };
+  const equip = vi.fn(() => true);
+  let waits = 0;
+  const wait = async () => { if (++waits === 3) inventory.itemIds.push("rare_ranger_boots"); };
+  await expect(equipWhenHeld(inventory, "rare_ranger_boots", equip, wait)).resolves.toBe(true);
+  expect(equip).toHaveBeenCalledWith("rare_ranger_boots", "FEET");
+  await expect(equipWhenHeld(inventory, "rare_bow", equip, async () => {})).resolves.toBe(false);
+  inventory.itemIds.push("rare_bow");
+  await equipWhenHeld(inventory, "rare_bow", equip, async () => {});
+  expect(equip).toHaveBeenLastCalledWith("rare_bow", "RIGHT_HAND");
+});
+
+it("shows the Town button's dot only while Upgrade All has something to buy", () => {
+  const { document, window } = parseHTML("<html><body><button id=\"techTreeBtn\"></button></body></html>");
+  vi.stubGlobal("document", document); vi.stubGlobal("HTMLElement", window.HTMLElement);
+  vi.stubGlobal("localStorage", memoryStorage());
+  let gold = 100n;
+  const runtime = createSmithRuntime({
+    coop: () => ({ gold: () => gold, weaponMastery: () => ({ archery: 0n, swordplay: 0n, sorcery: 0n }), buyGradeGear: async () => ({ ok: true }) }),
+    inventory: { itemIds: ["starter_bow"], equippedHead: "", equippedChest: "", equippedFeet: "", equippedRightHand: "starter_bow", equippedLeftHand: "" },
+    showMessage: vi.fn(), inTown: () => true,
+  });
+  const dot = document.querySelector<HTMLElement>("#techTreeBtn .smith-upgrade-notice")!;
+  expect(dot.hidden).toBe(true);
+  runtime.refreshNotice();
+  expect(dot.hidden).toBe(false);
+  gold = 0n;
+  runtime.refreshNotice();
+  expect(dot.hidden).toBe(true);
 });

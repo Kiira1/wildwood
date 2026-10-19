@@ -789,7 +789,7 @@
 .smith-sheet .smith-art .inventory-item-art { width: 52px; height: 48px; }
 .smith-sheet .smith-copy { display: grid; gap: 3px; min-width: 0; }
 .smith-sheet .smith-copy strong { font-size: 16px; }
-.smith-sheet .smith-stat { color: var(--green); font-size: 13px; font-weight: 800; }
+.smith-sheet .smith-stat { color: #fff; font-size: 14px; font-weight: 800; }
 .smith-sheet .smith-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 12px; margin: 0; }
 .smith-sheet .smith-facts div { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; }
 .smith-sheet .smith-facts dt { color: var(--muted); }
@@ -804,65 +804,74 @@
 .smith-sheet .smith-outcome { margin: 0; text-align: center; font-size: 14px; font-weight: 900; }
 .smith-sheet .smith-outcome.is-good { color: #ffd75e; }
 .smith-sheet .smith-outcome.is-bad { color: #ff9b91; }
-.smith-sheet .smith-ores { margin: 0 14px 10px; color: var(--muted); text-align: center; font-size: 12px; line-height: 1.4; }
+.smith-sheet .smith-ores { margin: 0 14px 12px; color: var(--muted); text-align: center; font-size: 13px; line-height: 1.4; }
 /* Where ore comes from: the Copper Hills, and the Smith's free pickaxe until it is taken. */
 .smith-sheet .smith-mining { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 12px; margin: 0 14px 12px; color: var(--muted); font-size: 13px; text-align: center; }
 .smith-sheet .smith-mining .smith-pickaxe, .smith-sheet .smith-mining .smith-hatchet, .smith-sheet .smith-mining .smith-staff { flex: 0 0 auto; height: 38px; min-height: 38px; font-size: 14px; }
-.smith-sheet .smith-filters { gap: 14px; margin: 0 14px 8px; }
-.smith-sheet .smith-filters .inventory-filter { min-height: 32px; font-size: 13px; }
+/* The gear filters as chips: the one shown white. */
+.smith-sheet .smith-filters { display: flex; flex-wrap: nowrap; gap: 4px; margin: 0 14px 10px; }
+.smith-sheet .smith-filters .inventory-filter { flex: 1 1 auto; min-height: 32px; padding: 0 6px; border: 1px solid rgba(255,255,255,.16); border-radius: 999px; background: #141414; color: #c7c7c7; font: 800 13px/1 var(--font-rounded); }
+.smith-sheet .smith-filters .inventory-filter[aria-pressed="true"] { border-color: #fff; background: #fff; color: #111; text-shadow: none; -webkit-text-stroke: 0; }
 .smith-sheet .smith-filter-empty { margin: 0 14px 12px; }
 .smith-sheet .smith-filter-empty[hidden] { display: none; }
 .smith-sheet .smith-items { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin: 0 14px 12px; }
 .smith-sheet .smith-choice { position: relative; display: grid; place-items: center; aspect-ratio: 1; min-width: 0; margin: 0; padding: 4px; border: 2px solid rgba(255,255,255,.12); border-radius: 10px; background: rgba(255,255,255,.04); box-shadow: none; }
-.smith-sheet .smith-choice[aria-selected="true"] { border-color: #ffd75e; background: rgba(255,215,94,.1); }
+.smith-sheet .smith-choice[aria-selected="true"] { border-color: #fff; background: #1f1f1f; box-shadow: inset 0 0 0 1px #fff; }
 .smith-sheet .smith-choice-art .inventory-item-art { width: 40px; height: 36px; }
-.smith-sheet .smith-worn { position: absolute; bottom: 2px; left: 4px; color: var(--muted); font-size: 10px; font-weight: 800; }
-.smith-sheet .smith-mining[hidden] { display: none; }
+/* Worn sits under the art, so neither covers the other. */
+.smith-sheet .smith-choice { grid-template-rows: minmax(0, 1fr) 13px; aspect-ratio: 4 / 5; padding: 4px 2px 5px; }
+.smith-sheet .smith-worn { color: #fff; font-size: 13px; font-weight: 900; line-height: 1; }
+.smith-sheet .smith-mining[hidden], .smith-sheet .farm-start[hidden] { display: none; }
 /* A card's effects, as the Card Seller lists them. */
 .smith-sheet .smith-card-effects { display: grid; gap: 3px; margin: 0; padding: 0; list-style: none; text-align: center; font-size: 14px; font-weight: 800; }
 .smith-sheet .smith-card-effects .is-cost { color: #ff9b91; }
 /* The Smith's gear for gold: the gold held, then a compact row per line with its next grade, price and Buy. */
-.smith-sheet .smith-shop { display: grid; gap: 8px; margin: 4px 14px 12px; }
+.smith-sheet .smith-shop { display: grid; gap: 10px; margin: 0 14px 12px; }
 .smith-sheet .smith-shop[hidden] { display: none; }
 .smith-sheet .smith-shop-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.smith-sheet .smith-shop-head h3 { margin: 0; color: #fff; font-size: 16px; font-weight: 900; }
+.smith-sheet .smith-shop-head h3 { margin: 0 2px; color: #fff; font: 900 16px/20px var(--font-rounded); }
 .smith-sheet .smith-coin { flex: 0 0 auto; width: 16px; height: 16px; }
 .smith-sheet .smith-gold { display: inline-flex; align-items: center; gap: 5px; color: #ffd75e; font-size: 15px; font-weight: 900; }
 .smith-sheet .smith-gold[hidden] { display: none; }
-.smith-sheet .smith-shop-rows { display: grid; gap: 6px; }
+.smith-sheet .smith-shop-rows { display: grid; gap: 8px; }
 /* A row: art beside the name (on its own line, never cut), grade and kind, stat and needs; under them, one line per
    way to get it (Buy for gold, Craft from materials), each with its terms on the left and a short button on the right. */
-.smith-sheet .smith-shop-row { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 4px 10px; align-items: center; padding: 8px 10px; border: 2px solid rgba(255,255,255,.1); border-radius: 12px; background: rgba(255,255,255,.05); }
-.smith-sheet .smith-shop-art { display: grid; place-items: center; width: 44px; height: 44px; }
-.smith-sheet .smith-shop-art .inventory-item-art { width: 42px; height: 38px; }
-.smith-sheet .smith-shop-copy { display: grid; gap: 1px; min-width: 0; }
+.smith-sheet .smith-shop-row { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 6px 12px; align-items: center; padding: 12px; border: 1px solid rgba(255,255,255,.12); border-radius: 12px; background: #141414; }
+.smith-sheet .smith-shop-art { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 10px; background: #0d0d0d; }
+.smith-sheet .smith-shop-art .inventory-item-art { width: 48px; height: 44px; }
+.smith-sheet .smith-shop-copy { display: grid; justify-items: start; gap: 2px; min-width: 0; }
 .smith-sheet .smith-shop-copy strong { font-size: 15px; line-height: 1.2; overflow-wrap: anywhere; }
-.smith-sheet .smith-shop-grade, .smith-sheet .smith-shop-stat { overflow: hidden; color: var(--muted); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
-.smith-sheet .smith-shop-stat { color: #fff; font-weight: 800; }
+.smith-sheet .smith-shop-grade, .smith-sheet .smith-shop-stat { max-width: 100%; overflow: hidden; color: var(--muted); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.smith-sheet .smith-shop-stat { color: #fff; font-size: 14px; font-weight: 800; }
+/* What a piece changes against what is worn, as a pill: better white, worse muted. */
+.smith-sheet .smith-compare { margin: 3px 0 1px; padding: 4px 10px; border: 1px solid rgba(255,255,255,.18); border-radius: 999px; background: #1d1d1d; color: #fff; font: 900 13px/16px var(--font-rounded); }
+.smith-sheet .smith-compare.is-better { border-color: rgba(255,255,255,.6); }
+.smith-sheet .smith-compare.is-worse, .smith-sheet .smith-compare.is-same { color: var(--muted); font-weight: 800; }
 .smith-sheet .smith-shop-deal { grid-column: 1 / -1; display: grid; gap: 4px; }
 .smith-sheet .smith-shop-deal:empty { display: none; }
-.smith-sheet .smith-offer { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-top: 5px; border-top: 1px solid rgba(255,255,255,.08); }
+.smith-sheet .smith-offer { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,.08); }
 .smith-sheet .smith-offer-terms { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 10px; min-width: 0; }
-.smith-sheet .smith-shop-price { display: inline-flex; align-items: center; gap: 4px; color: #ffd75e; font-size: 14px; font-weight: 900; font-variant-numeric: tabular-nums; }
-.smith-sheet .farm-start.smith-refine.smith-shop-buy { flex: none; min-width: 84px; max-width: 132px; height: auto; min-height: 36px; margin: 0; padding: 4px 12px 6px; font-size: 13px; line-height: 1.15; white-space: nowrap; }
+.smith-sheet .smith-shop-price { display: inline-flex; align-items: center; gap: 4px; color: #ffd75e; font-size: 15px; font-weight: 900; font-variant-numeric: tabular-nums; }
+.smith-sheet .smith-shop-price.is-short { opacity: .6; }
+.smith-sheet .farm-start.smith-refine.smith-shop-buy { flex: none; min-width: 96px; max-width: 132px; height: auto; min-height: 40px; margin: 0; padding: 4px 12px 6px; font-size: 14px; line-height: 1.15; white-space: nowrap; }
 .smith-sheet .farm-start.smith-refine.smith-shop-buy:disabled { border-color: rgba(255,255,255,.18); background: rgba(255,255,255,.08); box-shadow: none; color: var(--muted); }
 /* A tool's button can name its skill ("Need Lv 3,000 Woodcutting"): it wraps rather than overflow. */
 .smith-sheet .tool-row .farm-start.smith-refine.smith-shop-buy { white-space: normal; }
 /* A station's Craft section (craft-section.ts): the craft's level and progress in a card like the school's, then the
    rows. In the Smith's window the card heads the shop's list and his rows carry the craft lines. */
 .smith-sheet .craft-section[hidden] { display: none; }
-.smith-sheet .smith-shop .craft-section { margin: 0; }
+.smith-sheet .smith-shop .craft-section { margin: 4px 0 0; }
 .smith-sheet .craft-title { margin: 0; color: #fff; font-size: 15px; }
-.smith-sheet .craft-card { display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1px solid rgba(255,255,255,.14); border-radius: 10px; background: rgba(255,255,255,.04); }
+.smith-sheet .craft-card { display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1px solid rgba(255,255,255,.12); border-radius: 12px; background: #141414; }
 .smith-sheet .craft-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .smith-sheet .craft-name { min-width: 0; color: #fff; font-size: 16px; }
 .smith-sheet .craft-level { flex: none; margin-left: auto; color: #fff; font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
-.smith-sheet .craft-bar { display: block; height: 8px; overflow: hidden; border-radius: 4px; background: rgba(255,255,255,.14); }
-.smith-sheet .craft-bar > span { display: block; height: 100%; border-radius: inherit; background: #e6e6e6; transition: width .2s; }
+.smith-sheet .craft-bar { display: block; height: 6px; overflow: hidden; border-radius: 999px; background: rgba(255,255,255,.1); }
+.smith-sheet .craft-bar > span { display: block; height: 100%; border-radius: inherit; background: #fff; transition: width .2s; }
 .smith-sheet .craft-points { color: rgba(255,255,255,.72); font-size: 13px; font-variant-numeric: tabular-nums; text-align: right; }
 .smith-sheet .craft-note { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.35; }
 /* Needs and materials: what is still short stands out in white; what is met steps back. */
-.smith-sheet .craft-needs { overflow: hidden; color: var(--muted); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.smith-sheet .craft-needs { color: var(--muted); font-size: 13px; line-height: 1.3; }
 .smith-sheet .craft-needs .is-met { color: var(--muted); font-weight: 600; }
 .smith-sheet .craft-needs .is-unmet { color: #fff; font-weight: 900; }
 .smith-sheet .craft-hint { flex-basis: 100%; color: var(--muted); font-size: 13px; }
@@ -878,6 +887,39 @@
 .smith-sheet .craft-material { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .smith-sheet .craft-material.is-short { color: #fff; font-weight: 900; }
 .smith-sheet .craft-material-icon { flex: none; width: 20px; height: 20px; background: center / contain no-repeat; }
+/* The Smith's views as a pill toggle, as the Cards tab's: Gear, Refine, Tools. */
+.smith-sheet .smith-views-bar { display: flex; justify-content: center; margin: 0 14px 12px; }
+.smith-sheet .smith-views-bar[hidden], .smith-sheet .smith-view[hidden] { display: none; }
+.smith-sheet .smith-views, .smith-sheet .smith-shown { display: inline-flex; gap: 0; padding: 3px; border: 1px solid rgba(255,255,255,.12); border-radius: 999px; background: #0d0d0d; overflow: visible; }
+.smith-sheet .smith-views .inventory-filter, .smith-sheet .smith-shown .inventory-filter { position: relative; min-width: 86px; min-height: 34px; padding: 0 14px; border: 0; border-radius: 999px; color: #b3b3b3; font: 900 14px/1 var(--font-rounded); letter-spacing: .02em; }
+.smith-sheet .smith-shown .inventory-filter { min-width: 0; min-height: 30px; padding: 0 12px; font-size: 13px; }
+.smith-sheet .smith-views .inventory-filter[aria-pressed="true"], .smith-sheet .smith-shown .inventory-filter[aria-pressed="true"] { background: #fff; color: #111; border-bottom: 0; text-shadow: none; -webkit-text-stroke: 0; }
+.smith-sheet .smith-upgrade-dot { position: absolute; top: 5px; right: 8px; width: 8px; height: 8px; border: 1px solid #fff; border-radius: 50%; background: #e63d3d; }
+.smith-sheet .smith-upgrade-dot[hidden] { display: none; }
+/* A section's heading in a view: its name, and a count on the right. */
+.smith-sheet .smith-section-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin: 0 16px 8px; }
+.smith-sheet .smith-section-head strong { color: #fff; font: 900 15px/18px var(--font-rounded); }
+.smith-sheet .smith-section-head span { color: #b3b3b3; font: 800 13px/16px var(--font-rounded); }
+/* Upgrade All: the gear view's one big button, and what it buys as pills under it. */
+.smith-sheet .smith-upgrade-all { display: grid; gap: 8px; }
+.smith-sheet .smith-upgrade-all[hidden], .smith-sheet .smith-shop-bar[hidden], .smith-sheet .smith-upgrade-all-picks[hidden], .smith-sheet .smith-upgrade-all-sub[hidden] { display: none; }
+.smith-sheet .farm-start.smith-upgrade-all-button { display: grid; justify-items: center; align-content: center; gap: 3px; width: 100%; height: auto; min-height: 56px; margin: 0; padding: 8px 14px 10px; border-color: #5a3c00; border-radius: 12px; background: linear-gradient(#ffe07a, #e2a628); box-shadow: 0 3px 0 #5a3c00; font-size: 17px; line-height: 1.15; text-transform: none; }
+.smith-sheet .farm-start.smith-upgrade-all-button:active:not(:disabled) { box-shadow: 0 1px 0 #5a3c00; }
+.smith-sheet .farm-start.smith-upgrade-all-button:disabled { opacity: 1; border: 1px dashed rgba(255,255,255,.2); background: transparent; box-shadow: none; color: #fff; }
+.smith-sheet .smith-upgrade-all-sub { color: #fff; font-size: 13px; font-weight: 800; }
+.smith-sheet .smith-upgrade-all-button:disabled .smith-upgrade-all-sub { color: #c7c7c7; -webkit-text-stroke: 0; text-shadow: none; }
+.smith-sheet .smith-upgrade-all-picks { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.smith-sheet .smith-upgrade-all-picks li { padding: 4px 10px; border: 1px solid rgba(255,255,255,.18); border-radius: 999px; background: #1d1d1d; color: #fff; font: 800 13px/16px var(--font-rounded); }
+.smith-sheet .smith-shop-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 4px; }
+.smith-sheet .smith-gear-view .smith-staff-row { margin: 0 14px 12px; }
+.smith-sheet .smith-focus { border: 1px solid rgba(255,255,255,.12); background: #141414; }
+.smith-sheet .tool-section .smith-shop-head h3 { font-size: 15px; }
+/* A school's Craft and Mastery views. */
+.school-window .school-window-mastery[hidden], .school-window .craft-section.is-off-view { display: none; }
+.school-window .craft-title { display: none; }
+.school-window .school-window-card { border-color: rgba(255,255,255,.12); border-radius: 12px; background: #141414; }
+.school-window .school-window-bar { height: 6px; border-radius: 999px; background: rgba(255,255,255,.1); }
+.school-window .school-window-bar > span { background: #fff; }
 /* The Card Seller's window (card-seller-window.ts), in the Smith's sheet: the countdown, then a row per card for sale. */
 .card-seller-sheet .card-seller-timer { margin: 0 14px 10px; color: #fff; text-align: center; font-size: 15px; font-weight: 900; }
 .card-seller-sheet .card-seller-offers { display: grid; gap: 10px; margin: 0 14px 10px; }
@@ -1072,11 +1114,13 @@
 .item-inspection-stats [data-stat-kind="card"] { color: #e8eee9; }
 .item-inspection-stats [data-stat-kind="cost"] { color: #ff9b91; }
 /* A graded helmet or armor's class and set: the perk in white, the set grey until it is on. */
-.item-inspection-stats [data-stat-kind="class"] { color: #fff; }
-.item-inspection-stats [data-stat-kind^="set"] { color: #bdbdbd; font-size: 14px; font-weight: 800; text-wrap: balance; }
-.item-inspection-stats [data-stat-kind="set-active"] { color: #fff; }
-.item-inspection-stats .item-inspection-set-status { display: table; margin: 4px auto 0; padding: 0 8px; border: 1px solid #fff; border-radius: 6px; color: #fff; font-weight: 900; }
-.item-inspection-stats [data-stat-kind="set-inactive"] .item-inspection-set-status { border-color: #6a6a6a; color: #9a9a9a; font-weight: 800; }
+/* A graded piece's class perk or boots' school as a pill; its set in a box with On or Off under it. */
+.item-inspection-stats [data-stat-kind="class"] { padding: 5px 12px; border: 1px solid rgba(255,255,255,.22); border-radius: 999px; background: #1d1d1d; color: #fff; font-size: 14px; line-height: 17px; }
+.item-inspection-stats [data-stat-kind^="set"] { width: min(100%, 300px); box-sizing: border-box; margin-top: 2px; padding: 8px 12px; border: 1px dashed rgba(255,255,255,.2); border-radius: 12px; color: #bdbdbd; font-size: 14px; font-weight: 800; line-height: 18px; text-align: center; text-wrap: balance; }
+.item-inspection-stats [data-stat-kind="set-active"] { border: 1px solid rgba(255,255,255,.6); background: #141414; color: #fff; }
+.item-inspection-stats .item-inspection-set-status { display: table; margin: 6px auto 0; padding: 2px 10px; border: 1px solid #fff; border-radius: 999px; background: #fff; color: #111; font-size: 13px; font-weight: 900; text-shadow: none; -webkit-text-stroke: 0; }
+.item-inspection-stats [data-stat-kind="set-inactive"] .item-inspection-set-status { border-color: #6a6a6a; background: transparent; color: #9a9a9a; font-weight: 800; }
+.item-inspection-metadata > .item-grade-label { padding: 3px 10px; border: 1px solid rgba(255,255,255,.22); border-radius: 999px; color: #e6e6e6; font: 900 13px/16px var(--font-rounded); }
 /* A card shield (card-combat.ts): a light strip along the top of the health bar, and its amount after the health. */
 .bar > .hp-shield { position: absolute; inset: 0 0 auto 0; height: 34%; border-radius: 5px 5px 0 0; background: #9fdcff; transform: scaleX(0); transform-origin: left center; pointer-events: none; }
 #hpText .hp-shield-text { color: #b9e6ff; }

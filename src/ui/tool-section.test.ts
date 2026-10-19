@@ -42,6 +42,8 @@ it("lists every tool held, Title Case, with its level, what it does now and next
   expect(pickaxe.querySelector(".craft-material")?.textContent).toBe("0 / 15 Copper Ore");
   expect(pickaxe.querySelector(".craft-material.is-short")).toBeTruthy();
   expect(pickaxe.querySelector(".smith-shop-price")?.getAttribute("aria-label")).toBe("10 Gold, 0 held");
+  // The price alone, muted while the gold is short.
+  expect([pickaxe.querySelector(".smith-shop-price")?.textContent, Boolean(pickaxe.querySelector(".smith-shop-price.is-short"))]).toEqual(["10", true]);
 });
 
 it("leaves out the Pickaxe and Hatchet until the Smith has handed them over", () => {

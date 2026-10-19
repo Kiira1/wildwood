@@ -14,6 +14,13 @@ const TRAINED_BY: Readonly<Record<WeaponSchool, string>> = { archery: "a bow", s
 /** The craft done in each school's building; swords are the Smith's. */
 const SCHOOL_CRAFT: Readonly<Record<WeaponSchool, CraftSkill | null>> = { archery: "fletching", swordplay: null, sorcery: "enchanting" };
 
+/** A school with a craft opens on Craft or Mastery, as last picked on this device. */
+type SchoolView = "craft" | "mastery";
+const VIEW_STORE = "wildstat.schoolView";
+function storedView(): SchoolView {
+  try { return localStorage.getItem(VIEW_STORE) === "mastery" ? "mastery" : "craft"; } catch { return "craft"; }
+}
+
 /** A school's passive as it stands now: range for Archery, a share for the others. */
 export function schoolPassiveNow(school: WeaponSchool, level: number) {
   const value = schoolPassiveValue(school, level);
@@ -37,12 +44,13 @@ export function createSchoolWindowController(deps: {
   dialog.className = "farm-sheet quest-sheet smith-sheet school-window";
   dialog.setAttribute("aria-labelledby", "schoolWindowTitle");
   dialog.innerHTML = `<header class="farm-header"><h2 id="schoolWindowTitle" class="window-banner"><span></span></h2></header>`
-    + `<div class="quest-body"><p class="farm-map smith-intro school-window-train"></p>`
+    + `<div class="quest-body"><div class="smith-views-bar"><div class="inventory-filters smith-views" role="group" aria-label="School view"></div></div>`
+    + `<section class="school-window-mastery"><p class="farm-map smith-intro school-window-train"></p>`
     + `<section class="school-window-card"><div class="school-window-head"><strong></strong><span class="school-window-level"></span></div>`
     + `<div class="school-window-bar" role="progressbar" aria-valuemin="0"><span></span></div><span class="school-window-points"></span></section>`
     + `<dl class="school-window-passives"><div class="school-window-passive"><dt></dt><dd><span class="school-window-per-level"></span><strong class="school-window-now"></strong></dd></div>`
     + `<div class="school-window-proficiency"><dt>Skill Proficiency</dt><dd></dd></div></dl>`
-    + `<h3 class="school-window-subhead">Techniques</h3><ul class="school-window-techniques" aria-label="Techniques"></ul></div>`
+    + `<h3 class="school-window-subhead">Techniques</h3><ul class="school-window-techniques" aria-label="Techniques"></ul></section></div>`
     + `<footer class="farm-footer"><div class="farm-actions"><button type="button" class="window-back-button">Back</button></div></footer>`;
   document.body.append(dialog);
   const q = <T extends HTMLElement>(selector: string) => dialog.querySelector<T>(selector)!;
@@ -53,13 +61,38 @@ export function createSchoolWindowController(deps: {
   const proficiency = q(".school-window-proficiency dd"), techniques = q(".school-window-techniques");
   const back = q<HTMLButtonElement>(".window-back-button");
   const crafts = deps.craft ? createCraftSection(deps.craft) : null;
-  if (crafts) q(".school-window-passives").after(crafts.element);
+  const mastery = q(".school-window-mastery"), viewBar = q(".smith-views");
+  if (crafts) mastery.after(crafts.element);
+  let view: SchoolView = storedView();
+  for (const [each, label] of [["craft", "Craft"], ["mastery", "Mastery"]] as const) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "inventory-filter";
+    button.dataset.view = each;
+    button.textContent = label;
+    button.addEventListener("click", () => {
+      view = each;
+      try { localStorage.setItem(VIEW_STORE, each); } catch { /* this visit only */ }
+      showView();
+    });
+    viewBar.append(button);
+  }
   let school: WeaponSchool = "archery";
   let renderedKey = "";
   let ticker: ReturnType<typeof setInterval> | null = null;
 
+  /** Mastery and Craft as two views where the school crafts; Mastery alone at the Sword Hall. */
+  function showView() {
+    const crafting = Boolean(crafts && SCHOOL_CRAFT[school]), shown = crafting ? view : "mastery";
+    viewBar.parentElement!.hidden = !crafting;
+    for (const button of viewBar.querySelectorAll<HTMLElement>("[data-view]")) button.setAttribute("aria-pressed", String(button.dataset.view === shown));
+    mastery.hidden = shown !== "mastery";
+    if (crafts) crafts.element.classList.toggle("is-off-view", shown !== "craft");
+  }
+
   function render() {
     crafts?.render(SCHOOL_CRAFT[school]);
+    showView();
     const points = deps.points()[school] ?? 0n;
     const key = `${school}:${points}`;
     if (key === renderedKey) return;
