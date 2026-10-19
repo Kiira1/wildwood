@@ -61,6 +61,12 @@ export function cardTotals(cardIds: readonly string[]): CardTotals {
   const addProc = (proc: CardProc) => {
     const key = `${proc.effect}:${proc.share ?? ""}:${proc.seconds ?? ""}:${proc.targets ?? ""}`;
     const current = procs.get(key);
+    // A burn on every hit stacks per copy: two copies burn twice the share. Others add their chances.
+    if (current && proc.effect === "burn" && current.always && proc.always) {
+      const share = (card: CardProc) => card.share ?? CARD_EFFECT_DEFAULTS.burn.share;
+      procs.set(key, { ...current, share: share(current) + share(proc) });
+      return;
+    }
     procs.set(key, current ? { ...current, chance: current.chance + proc.chance, ...(current.always || proc.always ? { always: true } : {}) } : proc);
   };
   for (const cardId of cardIds) {

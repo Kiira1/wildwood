@@ -3,6 +3,7 @@ export const RELEASE_NOTES: Record<string, string[]> = {
     "World chat shows power past 300ud instead of stopping there",
     "Auto Farm keeps Aggro pulling at a boss only for a Reflect or Second Wind build; any other fights the boss alone",
     "Keys 1, 2 and 3 equip Build 1, 2 and 3; change them in Settings > Controls",
+    "Magmalisk card burns stack: each active copy adds 30% of the hit to the burn",
   ],
   "0.914.10": [
     "Target Strongest goes for the boss as soon as it is in range, by its max health, including while Auto Farm fights it",

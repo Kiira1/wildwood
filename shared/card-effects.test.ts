@@ -32,6 +32,11 @@ describe("card totals", () => {
     expect(burns).toHaveLength(2);
     expect(burns.find(proc => proc.share === undefined)?.chance).toBeCloseTo(6, 5);
     expect(burns.find(proc => proc.share === .3)).toMatchObject({ chance: 100, always: true });
+    // Copies of a burn on every hit stack: three Magmalisk cards burn 90% of the hit.
+    const magmalisks = cardTotals(["magmalisk_card", "magmalisk_card", "magmalisk_card"]).procs.filter(proc => proc.effect === "burn");
+    expect(magmalisks).toHaveLength(1);
+    expect(magmalisks[0]).toMatchObject({ chance: 100, always: true });
+    expect(magmalisks[0].share).toBeCloseTo(.9, 9);
     const stacked = cardTotals(Array.from({ length: 30 }, () => "cindermaw_card")).procs[0];
     expect(stacked.chance).toBe(CARD_CHANCE_CAP);
     expect(stacked.always).toBeUndefined();
