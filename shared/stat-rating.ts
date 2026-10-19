@@ -153,11 +153,13 @@ export function critBonusLevels(bonus: number) {
 /**
  * Kills of a map's attack speed (or crit) camp that make up the map's worth:
  * about what the Balance Lab's typical player kills of that camp on the map
- * (npm run balance:scorecard prints it), held to at most twice the last map's
- * so a kill never pays less than one on the map before. Endless keeps map 15's.
+ * (npm run balance:scorecard prints it, here on the balance curve over 5 runs),
+ * held to at most twice the last map's so a kill never pays less than one on the
+ * map before. Map 15's is carried on from map 14 (the run ends there and keeps
+ * farming); Endless keeps map 15's.
  */
 export const RATING_MAP_WORTH_KILLS: readonly number[] = Object.freeze([
-  12, 18, 36, 72, 110, 100, 115, 95, 125, 135, 185, 230, 270, 260, 300,
+  24, 33, 8, 12, 10, 11, 13, 12, 13, 11, 17, 14, 16, 17, 18,
 ]);
 export function ratingMapWorthKills(mapNumber: number) {
   const index = Math.max(1, Math.min(RATING_MAP_WORTH_KILLS.length, Math.floor(mapNumber))) - 1;
