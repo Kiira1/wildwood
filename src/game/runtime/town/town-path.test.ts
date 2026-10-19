@@ -4,7 +4,7 @@ import {
   TOWN_ARRIVAL, TOWN_CENTER, TOWN_DOORS, TOWN_EAST_BRIDGE, TOWN_EAST_FENCE_GAP, TOWN_FEET_OFFSET, TOWN_GROVE, TOWN_HILLS, TOWN_WALK_AREAS, inTownGrove, townRoomAt,
   townWalkClamp,
 } from "../../../../shared/town";
-import { GROVE_ROAD, GROVE_ROAD_END, WOOD_STANDS, WOOD_TREE_NODES, WOODCUTTING_REACH, groveRoadDistanceSquared, type WoodTree } from "../../../../shared/woodcutting";
+import { GROVE_ROAD, GROVE_ROAD_END, GROVE_ROAD_GATE, WOOD_STANDS, WOOD_TREE_NODES, WOODCUTTING_REACH, groveRoadDistanceSquared, type WoodTree } from "../../../../shared/woodcutting";
 import { miningStandSpot } from "../auto-farm/auto-mine";
 import { planTownPath, townFeetClear, type TownPoint } from "./town-path";
 import { pushOutOf, TOWN_FEET_RADIUS, TOWN_SOLIDS } from "./town-runtime";
@@ -96,11 +96,13 @@ describe("walks planned through the Town", () => {
   });
 
   it("walks up the woodcutters' road from the miners' track into the grove, and from the hills straight up", () => {
-    const fork = GROVE_ROAD[0], path = planTownPath(fork, GROVE_ROAD_END)!;
-    // Up the road, never far off it.
+    const fork = GROVE_ROAD[0], path = planTownPath(fork, GROVE_ROAD_GATE)!;
+    // Up the road to where it comes into the grove, never far off it; then on to its end among the yews.
     for (const point of path) expect(Math.sqrt(groveRoadDistanceSquared(point.x, point.y))).toBeLessThan(160);
     const end = walk(fork, path);
-    expect(Math.hypot(end.x - GROVE_ROAD_END.x, end.y - GROVE_ROAD_END.y)).toBeLessThan(2);
+    expect(Math.hypot(end.x - GROVE_ROAD_GATE.x, end.y - GROVE_ROAD_GATE.y)).toBeLessThan(2);
+    const deeper = walk(end, planTownPath(end, GROVE_ROAD_END)!);
+    expect(Math.hypot(deeper.x - GROVE_ROAD_END.x, deeper.y - GROVE_ROAD_END.y)).toBeLessThan(2);
     // The hills' north edge is open to the grove: no wall between.
     const from = { x: TOWN_HILLS.left + 1_500, y: TOWN_HILLS.top + 200 }, goal = treeStandSpot(WOOD_TREE_NODES.find(tree => tree.stand === 1)!)!;
     expect(walk(from, planTownPath(from, goal)!)).toEqual(expect.objectContaining({ x: expect.closeTo(goal.x, 0), y: expect.closeTo(goal.y, 0) }));

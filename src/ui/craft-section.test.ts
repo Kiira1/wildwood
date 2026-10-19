@@ -28,30 +28,32 @@ const rowsOf = (root: ParentNode) => [...root.querySelectorAll<HTMLElement>(".cr
   itemId: row.dataset.itemId,
   name: row.querySelector("strong")!.textContent,
   needs: row.querySelector(".craft-needs")?.textContent ?? null,
+  unmet: [...row.querySelectorAll(".craft-needs .is-unmet")].map(need => need.textContent).join(" · "),
   button: row.querySelector("button")!.textContent,
   enabled: !row.querySelector("button")!.disabled,
 }));
 
-it("lists the craft's lines at the next grade, with what each needs and a button that says why it waits", () => {
+it("lists the craft's lines at the next grade, with what each needs (the unmet marked) and a short button", () => {
   setup();
   const state: State = { experience: { fletching: BigInt(craftExperienceForLevel(10)) }, ores: plenty(), levels: { archery: 10 }, held: ["common_bow", "uncommon_bow", "common_light_helmet"], full: false };
   const section = createCraftSection(craftDeps(state).deps);
   section.render("fletching");
-  expect(section.element.querySelector(".craft-level")!.textContent).toBe("Fletching Lv 10");
+  expect(section.element.querySelector(".craft-name")!.textContent).toBe("Fletching");
+  expect(section.element.querySelector(".craft-level")!.textContent).toBe("Lv 10");
   expect(rowsOf(section.element)).toEqual([
-    { itemId: "rare_bow", name: "Rare Steel Bow ★2", needs: "Lv 20 Fletching · Lv 10 Archery", button: "Need Lv 20 Fletching", enabled: false },
-    { itemId: "uncommon_light_helmet", name: "Uncommon Ranger Hood ★2", needs: "Lv 10 Fletching · Lv 5 Archery", button: "Craft", enabled: true },
-    { itemId: "common_light_armor", name: "Common Ranger Jerkin ★2", needs: "Lv 1 Fletching", button: "Craft", enabled: true },
+    { itemId: "rare_bow", name: "Rare Steel Bow ★2", needs: "Lv 20 Fletching · Lv 10 Archery", unmet: "Lv 20 Fletching", button: "Locked", enabled: false },
+    { itemId: "uncommon_light_helmet", name: "Uncommon Ranger Hood ★2", needs: "Lv 10 Fletching · Lv 5 Archery", unmet: "", button: "Craft", enabled: true },
+    { itemId: "common_light_armor", name: "Common Ranger Jerkin ★2", needs: "Lv 1 Fletching", unmet: "", button: "Craft", enabled: true },
   ]);
-  // Mastery is checked before the craft level, as the server does.
+  // Short of Mastery locks it too.
   state.levels = { archery: 4 };
   section.render();
-  expect(rowsOf(section.element)[1].button).toBe("Need Lv 5 Archery");
+  expect([rowsOf(section.element)[1].button, rowsOf(section.element)[1].unmet]).toEqual(["Locked", "Lv 5 Archery"]);
   // Short of a material, then a full bag.
   state.levels = { archery: 10 };
   state.ores = { pine_log: 10_000, copper_ore: 1 };
   section.render();
-  expect(rowsOf(section.element)[2].button).toBe("Need Materials");
+  expect(rowsOf(section.element)[2].button).toBe("Need More");
   state.ores = plenty(); state.full = true;
   section.render();
   expect(rowsOf(section.element)[2].button).toBe("Bag Full");
@@ -65,7 +67,9 @@ it("shows each material held against needed, and the craft's progress", () => {
   const staff = section.element.querySelector<HTMLElement>('[data-item-id="common_staff"]')!;
   const materials = [...staff.querySelectorAll<HTMLElement>(".craft-material")].map(item => [item.dataset.material, item.textContent, item.classList.contains("is-short")]);
   expect(materials).toEqual([["pine_log", "4 / 10 Pine Log", true], ["arcane_crystal", "9 / 2 Arcane Crystal", false]]);
-  expect(section.element.querySelector(".craft-level")!.textContent).toBe("Enchanting Lv 9");
+  // The name carries ★2 here; the Smith's rows put it on the craft line.
+  expect(staff.querySelector(".craft-stars")).toBeNull();
+  expect(section.element.querySelector(".craft-level")!.textContent).toBe("Lv 9");
   expect(section.element.querySelector(".craft-points")!.textContent).toBe("23 / 87");
   const bar = section.element.querySelector(".craft-bar")!;
   expect([bar.getAttribute("role"), bar.getAttribute("aria-valuenow"), bar.getAttribute("aria-valuemax")]).toEqual(["progressbar", "23", "87"]);
@@ -91,10 +95,10 @@ it("crafts, shows Crafting… meanwhile, and moves the line on before the server
   sword().click();
   finish({ ok: false, error: "You need Lv 5 Swordplay." });
   await vi.waitFor(() => expect(showMessage).toHaveBeenLastCalledWith("You need Lv 5 Swordplay.", "#ff9b91"));
-  expect(sword().textContent).toBe("Need Lv 5 Swordplay");
+  expect(sword().textContent).toBe("Locked");
 });
 
-it("puts Smithing in the Smith's window, and Fletching and Enchanting in their schools' windows", () => {
+it("puts Smithing on the Smith's rows, and Fletching and Enchanting in their schools' windows", () => {
   const document = setup();
   const state: State = { experience: {}, ores: plenty(), levels: {}, held: [], full: false };
   const smith = createSmithController({
@@ -104,8 +108,11 @@ it("puts Smithing in the Smith's window, and Fletching and Enchanting in their s
   const smithDialog = document.querySelector(".smith-sheet")!;
   Object.assign(smithDialog, { showModal() { smithDialog.setAttribute("open", ""); } });
   smith.open();
-  expect(smithDialog.querySelector(".craft-level")!.textContent).toBe("Smithing Lv 1");
-  expect(rowsOf(smithDialog).map(row => row.itemId)).toEqual(["common_sword", "common_medium_helmet", "common_medium_armor", "common_heavy_helmet", "common_heavy_armor"]);
+  expect(smithDialog.querySelector(".craft-name")!.textContent).toBe("Smithing");
+  expect(smithDialog.querySelector(".craft-rows")).toBeNull();
+  const smithRows = [...smithDialog.querySelectorAll<HTMLElement>(".smith-shop-row")];
+  expect(smithRows.map(row => row.dataset.itemId)).toEqual(["common_sword", "common_medium_helmet", "common_medium_armor", "common_heavy_helmet", "common_heavy_armor"]);
+  expect(smithRows.every(row => row.querySelector(".craft-offer button")!.textContent === "Craft")).toBe(true);
   const school = createSchoolWindowController({ inTown: () => true, points: () => ({}), craft: craftDeps(state).deps });
   const dialog = document.querySelector(".school-window")! as unknown as HTMLDialogElement;
   Object.assign(dialog, { showModal() { dialog.setAttribute("open", ""); }, close() { dialog.removeAttribute("open"); } });

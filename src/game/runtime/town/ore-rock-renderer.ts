@@ -15,7 +15,7 @@ export const ORE_COLORS: Readonly<Record<RockOreId, { light: string; dark: strin
   iron_ore: { light: "#c3d0dc", dark: "#5d6b7a", rim: "#222a33" },
   mithril_ore: { light: "#a6ecff", dark: "#3ba3dd", rim: "#123a52" },
   adamant_ore: { light: "#d1a8ff", dark: "#7d45d8", rim: "#2b1452" },
-  arcane_crystal: { light: "#ffa8e4", dark: "#d23f9f", rim: "#4d1038" },
+  arcane_crystal: { light: "#ffb0ec", dark: "#ec2fa8", rim: "#4d0838" },
 };
 
 /**
@@ -31,6 +31,9 @@ export const CRYSTAL_CLUSTERS: Readonly<Record<string, readonly (readonly [numbe
 };
 /** A Mysterious rock's sparkles, from its foot: they twinkle in turn. */
 const SPARKLES: readonly (readonly [number, number])[] = [[-34, -66], [30, -78], [2, -92]];
+/** A crystal rock's crystals stand this much bigger than ore's, with small shards breaking the ground at its foot (x as a share of its half-width, size). */
+const CRYSTAL_ROCK_SCALE = 1.3;
+const CRYSTAL_FOOT_SHARDS: readonly (readonly [number, number])[] = [[-.78, 13], [.84, 11]];
 
 /** How far a rock reaches from its foot, for culling: its crystals and sparkles above, its plate below (generously: the plate keeps its screen size). */
 export function oreRockExtent(rock: OreRockDecor) {
@@ -82,11 +85,11 @@ function drawCrystalCluster(ctx: CanvasRenderingContext2D, x: number, y: number,
   ctx.restore();
 }
 
-function drawSparkle(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, alpha: number) {
+function drawSparkle(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, alpha: number, color = "#fff6ff") {
   if (alpha <= 0) return;
   ctx.save();
   ctx.globalAlpha *= alpha;
-  ctx.fillStyle = "#fff6ff";
+  ctx.fillStyle = color;
   ctx.beginPath();
   ctx.moveTo(x, y - size); ctx.quadraticCurveTo(x, y, x + size, y); ctx.quadraticCurveTo(x, y, x, y + size);
   ctx.quadraticCurveTo(x, y, x - size, y); ctx.quadraticCurveTo(x, y, x, y - size); ctx.closePath();
@@ -122,29 +125,39 @@ export function createOreRockRenderer(options: {
     const dpr = options.devicePixelRatio();
     const x = snapWorldRenderCoordinate(rock.x - camera.x, camera.zoom, dpr);
     const y = snapWorldRenderCoordinate(rock.y - camera.y, camera.zoom, dpr);
-    const bare = miningScene.bare.has(node.id), mysterious = node.kind === "mysterious";
+    const bare = miningScene.bare.has(node.id), mysterious = node.kind === "mysterious", crystal = node.kind === "crystal";
     const width = frame.w * rock.s, time = options.time();
-    if ((mysterious || node.kind === "crystal") && !bare) {
-      // A slow pulse behind it, violet for a Mysterious rock and rose for crystal: something in this one is not like
-      // the rest. Filled to exactly the gradient's own circle, so it fades out to nothing with no edge anywhere.
-      const cy = y - frame.ay * rock.s * .55, radius = width * .85, tint = mysterious ? "226, 190, 255" : "255, 176, 228";
-      const glow = ctx.createRadialGradient(x, cy, 4, x, cy, radius);
-      const pulse = .32 + .14 * Math.sin(time * 2.4);
-      glow.addColorStop(0, `rgba(${tint}, ${pulse})`);
-      glow.addColorStop(.6, `rgba(${tint}, ${pulse * .35})`);
-      glow.addColorStop(1, `rgba(${tint}, 0)`);
-      ctx.fillStyle = glow;
+    // A glow filled to exactly the gradient's own circle, so it fades out to nothing with no edge anywhere.
+    const glow = (cx: number, cy: number, radius: number, tint: string, alpha: number) => {
+      const gradient = ctx.createRadialGradient(cx, cy, 2, cx, cy, radius);
+      gradient.addColorStop(0, `rgba(${tint}, ${alpha})`);
+      gradient.addColorStop(.55, `rgba(${tint}, ${alpha * .35})`);
+      gradient.addColorStop(1, `rgba(${tint}, 0)`);
+      ctx.fillStyle = gradient;
       ctx.beginPath();
-      ctx.arc(x, cy, radius, 0, Math.PI * 2);
+      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
       ctx.fill();
-    }
+    };
+    // A Mysterious rock glows all over, a slow violet pulse behind it: something in this one is not like the rest.
+    if (mysterious && !bare) glow(x, y - frame.ay * rock.s * .55, width * .85, "205, 180, 255", .32 + .14 * Math.sin(time * 2.4));
     ctx.save();
     if (bare) ctx.globalAlpha *= .5;
     options.drawSoulProp({ type: "soulProp", x: rock.x, y: rock.y, s: rock.s, frame: rock.frame, flip: rock.flip });
     ctx.restore();
     if (!bare) {
-      const colors = ORE_COLORS[node.ore], mirror = rock.flip ? -1 : 1;
-      for (const [dx, dy, size] of CRYSTAL_CLUSTERS[rock.frame] ?? []) drawCrystalCluster(ctx, x + dx * mirror * rock.s, y + dy * rock.s, size * rock.s, mirror, colors);
+      const colors = ORE_COLORS[node.ore], mirror = rock.flip ? -1 : 1, clusters = CRYSTAL_CLUSTERS[rock.frame] ?? [];
+      if (crystal) {
+        // A crystal rock is the crystal's own: its shards bigger, more of them at its foot, each cluster lit from
+        // within and glinting pink, where a Mysterious rock glows as a whole.
+        const pulse = .55 + .2 * Math.sin(time * 3);
+        for (const [dx, dy, size] of clusters) glow(x + dx * mirror * rock.s, y + (dy - size * .5) * rock.s, size * rock.s * 1.9, "255, 70, 190", pulse);
+        for (const [share, size] of CRYSTAL_FOOT_SHARDS) drawCrystalCluster(ctx, x + share * mirror * width / 2, y + 2, size * rock.s, mirror, colors);
+        for (const [dx, dy, size] of clusters) drawCrystalCluster(ctx, x + dx * mirror * rock.s, y + dy * rock.s, size * rock.s * CRYSTAL_ROCK_SCALE, mirror, colors);
+        clusters.forEach(([dx, dy, size], index) => {
+          const sx = x + (dx + (index ? -10 : 14)) * mirror * rock.s, sy = y + (dy - size * CRYSTAL_ROCK_SCALE - 4) * rock.s;
+          drawSparkle(ctx, sx, sy, 5, Math.sin(time * 3.6 + index * 2.4), "#ffd6f4");
+        });
+      } else for (const [dx, dy, size] of clusters) drawCrystalCluster(ctx, x + dx * mirror * rock.s, y + dy * rock.s, size * rock.s, mirror, colors);
       if (mysterious) SPARKLES.forEach(([dx, dy], index) => drawSparkle(ctx, x + dx * rock.s, y + dy * rock.s, 6, Math.sin(time * 3.1 + index * 2.1)));
     }
     if (miningScene.target !== node.id) {

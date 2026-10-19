@@ -84,7 +84,8 @@ describe("class lines", () => {
   it("names each class's perk and its set, in Title Case", () => {
     expect(armorClassPerkLine(helmet("light"))).toBe("Light: +3% Move Speed");
     expect(armorClassPerkLine(armor("heavy"))).toBe("Heavy: -4% Move Speed");
-    expect(armorClassPerkLine(armor("magic"))).toBe("Magic: Weapon Skills Fire 3% More Often");
+    expect(armorClassPerkLine(armor("magic"))).toBe("Magic: +3% Skill Chance");
+    expect(armorClassPerkLine(armor("medium"))).toBeNull();
     expect(armorClassPerkLine("common_bow")).toBeNull();
     expect(armorClassSetLine(helmet("light"))).toBe("Set: Light Helmet + Armor + Bow · +5% Damage");
     expect(armorClassSetLine(armor("heavy"))).toBeNull();

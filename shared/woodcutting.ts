@@ -13,8 +13,8 @@ import { TOWN_GROVE, TOWN_HILLS, townRandom } from "./town";
  * - Every tree raises the Woodcutting stat, which makes chopping faster. Prestige never resets it.
  * - Each player has their own trees: a felled tree is a stump for them alone until it grows back.
  *
- * The trees are laid from their coordinates alone, the same for every client and the server: in staggered rows,
- * so whoever chops one stands in view, with no spot in reach of two.
+ * The trees are laid from their coordinates alone, the same for every client and the server: in loose clumps, so
+ * whoever chops one stands in view, with no spot in reach of two.
  */
 
 export type WoodTreeKind = "pine" | "oak" | "yew" | "elder";
@@ -64,35 +64,52 @@ export type WoodTree = { id: number; x: number; y: number; kind: WoodTreeKind; s
 type Point = { readonly x: number; readonly y: number };
 
 /**
- * The woodcutters' road: off the miners' track at its bend before the hills, north past their west edge, to the
- * pine stand's west side. Its centre line, a point every few units; the trees keep off it.
+ * The woodcutters' road: off the miners' track at its bend before the hills, north past their west edge into the
+ * grove, then winding east through the pines and the oaks to peter out at the yews. Its centre line, a point every
+ * few units, bent smoothly through its waypoints; the trees keep off it.
  */
 const hills = (dx: number, dy: number): Point => ({ x: TOWN_HILLS.left + dx, y: TOWN_HILLS.top + dy });
+const grove = (dx: number, dy: number): Point => ({ x: TOWN_GROVE.left + dx, y: TOWN_GROVE.top + dy });
 /** The track's point nearest its bend before the hills, where the road leaves it. */
 const BEND = hills(-760, 608);
 const ROAD_FORK = MINING_TRACK.reduce((best, point) =>
   (point.x - BEND.x) ** 2 + (point.y - BEND.y) ** 2 < (best.x - BEND.x) ** 2 + (best.y - BEND.y) ** 2 ? point : best);
-const ROAD_WAYPOINTS: readonly Point[] = [ROAD_FORK, hills(-700, 300), hills(-610, -80), hills(-510, -450), hills(-400, -800)];
-function straightLine(points: readonly Point[], step: number): Point[] {
+/** Where the road comes in at the grove's south-west corner. */
+const ROAD_GATE = hills(-400, -800);
+const ROAD_WAYPOINTS: readonly Point[] = [
+  ROAD_FORK, hills(-700, 300), hills(-610, -80), hills(-510, -450), ROAD_GATE,
+  grove(330, 900), grove(700, 780), grove(1_120, 830), grove(1_560, 740), grove(1_980, 800), grove(2_260, 720),
+];
+/** A smooth line through the waypoints (Catmull-Rom), a point about every `step` units. */
+function smoothLine(points: readonly Point[], step: number): Point[] {
   const line: Point[] = [];
   for (let index = 0; index + 1 < points.length; index++) {
-    const a = points[index], b = points[index + 1], steps = Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / step));
-    for (let s = 0; s < steps; s++) line.push({ x: Math.round(a.x + (b.x - a.x) * s / steps), y: Math.round(a.y + (b.y - a.y) * s / steps) });
+    const p0 = points[Math.max(0, index - 1)], p1 = points[index], p2 = points[index + 1], p3 = points[Math.min(points.length - 1, index + 2)];
+    const steps = Math.max(1, Math.ceil(Math.hypot(p2.x - p1.x, p2.y - p1.y) / step));
+    for (let s = 0; s < steps; s++) {
+      const t = s / steps, t2 = t * t, t3 = t2 * t;
+      const at = (a: number, b: number, c: number, d: number) => .5 * (2 * b + (c - a) * t + (2 * a - 5 * b + 4 * c - d) * t2 + (3 * b - a - 3 * c + d) * t3);
+      line.push({ x: Math.round(at(p0.x, p1.x, p2.x, p3.x)), y: Math.round(at(p0.y, p1.y, p2.y, p3.y)) });
+    }
   }
   line.push(points[points.length - 1]);
   return line;
 }
-export const GROVE_ROAD: readonly Point[] = Object.freeze(straightLine(ROAD_WAYPOINTS, 40));
+export const GROVE_ROAD: readonly Point[] = Object.freeze(smoothLine(ROAD_WAYPOINTS, 40));
 /** Half the road's width: a little narrower than the miners' track. */
 export const GROVE_ROAD_HALF_WIDTH = 36;
+/** The road ends in a round landing of bare earth, this far across from its end, where felled logs are stacked. */
+export const GROVE_LANDING_RADIUS = 100;
+const ROAD_BOX = {
+  left: Math.min(...GROVE_ROAD.map(p => p.x)), right: Math.max(...GROVE_ROAD.map(p => p.x)),
+  top: Math.min(...GROVE_ROAD.map(p => p.y)), bottom: Math.max(...GROVE_ROAD.map(p => p.y)),
+};
 /** How far a point is from the road's centre line, squared; anything further than `beyond` from its box is Infinity. */
 export function groveRoadDistanceSquared(x: number, y: number, beyond = Infinity) {
-  const left = Math.min(...ROAD_WAYPOINTS.map(p => p.x)), right = Math.max(...ROAD_WAYPOINTS.map(p => p.x));
-  const top = Math.min(...ROAD_WAYPOINTS.map(p => p.y)), bottom = Math.max(...ROAD_WAYPOINTS.map(p => p.y));
-  if (x < left - beyond || x > right + beyond || y < top - beyond || y > bottom + beyond) return Infinity;
+  if (x < ROAD_BOX.left - beyond || x > ROAD_BOX.right + beyond || y < ROAD_BOX.top - beyond || y > ROAD_BOX.bottom + beyond) return Infinity;
   let best = Infinity;
-  for (let index = 1; index < ROAD_WAYPOINTS.length; index++) {
-    const a = ROAD_WAYPOINTS[index - 1], b = ROAD_WAYPOINTS[index];
+  for (let index = 1; index < GROVE_ROAD.length; index++) {
+    const a = GROVE_ROAD[index - 1], b = GROVE_ROAD[index];
     const dx = b.x - a.x, dy = b.y - a.y, length = dx * dx + dy * dy;
     const t = length > 0 ? Math.max(0, Math.min(1, ((x - a.x) * dx + (y - a.y) * dy) / length)) : 0;
     const px = a.x + t * dx - x, py = a.y + t * dy - y;
@@ -100,40 +117,85 @@ export function groveRoadDistanceSquared(x: number, y: number, beyond = Infinity
   }
   return best;
 }
-/** Where the road ends, just west of the pines: the sign for Timberwood stands at the fork. */
+/** Where the road ends, among the first yews; where it comes into the grove; and where it leaves the track, the sign for Timberwood beside it. */
 export const GROVE_ROAD_END = ROAD_WAYPOINTS[ROAD_WAYPOINTS.length - 1];
+export const GROVE_ROAD_GATE = ROAD_GATE;
 export const GROVE_ROAD_FORK = ROAD_FORK;
 
 /**
- * The rows the trees stand in: a row every ROW units, a tree every COLUMN along it, each next row shifted half a
- * column, so the tree in front of one is never straight in front and whoever stands at a tree's foot stays in view.
- * Trees keep their feet this far in from the grove's edges, the stands' sides and the road.
+ * How far each kind's trees reach round their foot as drawn (town-world.ts picks the pack's trees): at most this
+ * far either side, and this high. The layout keeps whoever chops a tree from standing behind another.
  */
-const ROW = 200, COLUMN = 320, JITTER = { x: 28, y: 20 };
-const GROVE_INSET = { west: 300, top: 300, bottom: 120, east: 200 }, STAND_INSET = 130, ROAD_CLEARANCE = 200;
+export const WOOD_TREE_SPREAD: Readonly<Record<WoodTreeKind, { half: number; up: number }>> = Object.freeze({
+  pine: { half: 64, up: 216 }, oak: { half: 92, up: 230 }, yew: { half: 76, up: 292 }, elder: { half: 130, up: 262 },
+});
+/** Where feet stand to chop a tree, from its foot: either side, or in front. */
+export const WOOD_TREE_SPOTS: readonly Point[] = Object.freeze([{ x: -50, y: 20 }, { x: 50, y: 20 }, { x: 0, y: 44 }]);
+/** How far into its neighbours' bands a stand's trees may stray, so the kinds mingle where two stands meet. */
+export const WOOD_STAND_BLEND = 140;
+/** Trees keep their feet at least this far apart (no spot in reach of two), and this far off the road's centre. */
+const TREE_GAP = 2 * WOODCUTTING_REACH + 40, ROAD_CLEARANCE = 165;
+/** How far in from the grove's edges trees keep their feet: the north and west rows stand back from the walls. */
+const GROVE_INSET = { west: 260, top: 220, bottom: 150, east: 180 };
 
+/** Whether feet at a spot are in reach of this tree alone, and in front of every tree they would stand behind. */
+function spotClear(trees: readonly (Point & { kind: WoodTreeKind })[], own: number, feet: Point) {
+  return trees.every((tree, index) => {
+    if (index !== own && Math.hypot(tree.x - feet.x, tree.y - feet.y) <= WOODCUTTING_REACH) return false;
+    const spread = WOOD_TREE_SPREAD[tree.kind];
+    return !(tree.y > feet.y && tree.y - spread.up < feet.y && Math.abs(tree.x - feet.x) < spread.half + 22);
+  });
+}
+const choppable = (trees: readonly (Point & { kind: WoodTreeKind })[], index: number) =>
+  WOOD_TREE_SPOTS.some(spot => spotClear(trees, index, { x: trees[index].x + spot.x, y: trees[index].y + spot.y }));
+
+/**
+ * The stands, west to east, each in loose clumps of a few trees round seeded centres with a straggler or two
+ * between, never in rows. A stand strays a little into its neighbours' bands, so oaks stand among the last pines.
+ * Each tree is kept only where it leaves every tree near it a spot to chop from, in plain view.
+ */
 function layGrove() {
+  const placed: (Point & { kind: WoodTreeKind; stand: number })[] = [];
+  const top = TOWN_GROVE.top + GROVE_INSET.top, bottom = TOWN_GROVE.bottom - GROVE_INSET.bottom;
+  WOOD_STANDS.forEach((stand, standIndex) => {
+    const first = standIndex === 0, last = standIndex === WOOD_STANDS.length - 1;
+    const left = first ? TOWN_GROVE.left + GROVE_INSET.west : stand.left - WOOD_STAND_BLEND;
+    const right = last ? TOWN_GROVE.right - GROVE_INSET.east : stand.right + WOOD_STAND_BLEND;
+    const random = townRandom(standIndex, 97);
+    const between = (from: number, to: number) => from + random() * (to - from);
+    // The clumps' middles, one in each cell of two rows across the band (north and south of the road), jittered.
+    const count = Math.max(4, Math.round(stand.trees / 3)), columns = Math.ceil(count / 2);
+    const from = Math.max(left, stand.left + 60), width = (Math.min(right, stand.right - 60) - from) / columns, height = (bottom - top) / 2;
+    const clumps = Array.from({ length: count }, (_, index) => ({
+      x: from + (index % columns + between(.15, .85)) * width, y: top + (Math.floor(index / columns) + between(.2, .8)) * height, reach: between(140, 250),
+    }));
+    let laid = 0;
+    for (let attempt = 0; laid < stand.trees && attempt < 6_000; attempt++) {
+      let x: number, y: number;
+      if (random() < .18) { x = between(left, right); y = between(top, bottom); }
+      else {
+        const clump = clumps[Math.floor(random() * clumps.length)], angle = random() * Math.PI * 2, distance = clump.reach * Math.sqrt(random());
+        x = clump.x + Math.cos(angle) * distance; y = clump.y + Math.sin(angle) * distance;
+      }
+      x = Math.round(x); y = Math.round(y);
+      const spread = WOOD_TREE_SPREAD[stand.kind];
+      if (x < left || x > right || y < top || y > bottom) continue;
+      if (x - spread.half <= TOWN_GROVE.left || x + spread.half >= TOWN_GROVE.right) continue;
+      if (placed.some(tree => Math.hypot(tree.x - x, tree.y - y) < TREE_GAP)) continue;
+      if (groveRoadDistanceSquared(x, y, ROAD_CLEARANCE) < ROAD_CLEARANCE * ROAD_CLEARANCE) continue;
+      const trial = [...placed, { x, y, kind: stand.kind, stand: standIndex }];
+      const near = trial.map((_tree, index) => index).filter(index => Math.abs(trial[index].x - x) < 400 && Math.abs(trial[index].y - y) < 400);
+      if (!near.every(index => choppable(trial, index))) continue;
+      placed.push(trial[trial.length - 1]);
+      laid++;
+    }
+  });
+  // By stand, then north to south: a tree's id is its place in that order.
   const trees: WoodTree[] = [];
   WOOD_STANDS.forEach((stand, standIndex) => {
-    const last = standIndex === WOOD_STANDS.length - 1;
-    const box = {
-      left: stand.left + (standIndex === 0 ? GROVE_INSET.west : STAND_INSET), right: stand.right - (last ? GROVE_INSET.east : STAND_INSET),
-      top: TOWN_GROVE.top + GROVE_INSET.top, bottom: TOWN_GROVE.bottom - GROVE_INSET.bottom,
-    };
-    const slots: Point[] = [];
-    for (let row = 0, y = box.top; y <= box.bottom; row++, y += ROW) {
-      for (let x = box.left + (row % 2) * COLUMN / 2, column = 0; x <= box.right; x += COLUMN, column++) {
-        const random = townRandom(standIndex, row, column, 81);
-        const at = { x: Math.round(x + (random() * 2 - 1) * JITTER.x), y: Math.round(y + (random() * 2 - 1) * JITTER.y) };
-        if (groveRoadDistanceSquared(at.x, at.y, ROAD_CLEARANCE) < ROAD_CLEARANCE * ROAD_CLEARANCE) continue;
-        slots.push(at);
-      }
+    for (const at of placed.filter(tree => tree.stand === standIndex).sort((a, b) => a.y - b.y || a.x - b.x)) {
+      trees.push({ id: trees.length, x: at.x, y: at.y, kind: stand.kind, stand: standIndex, log: stand.log });
     }
-    // Which slots stand: a seeded few are left as glades, so the rows read as a wood rather than an orchard.
-    const random = townRandom(standIndex, 83);
-    const order = slots.map(slot => ({ slot, key: random() })).sort((a, b) => a.key - b.key).slice(0, stand.trees).map(({ slot }) => slot);
-    order.sort((a, b) => a.y - b.y || a.x - b.x);
-    for (const at of order) trees.push({ id: trees.length, x: at.x, y: at.y, kind: stand.kind, stand: standIndex, log: stand.log });
   });
   return trees;
 }

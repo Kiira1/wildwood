@@ -163,10 +163,10 @@ export const TOWN_RESEARCH_POSITION = stationIn(1, 210, 50);
 export const TOWN_QUEST_BOARD_POSITION = stationIn(5, 300, 44);
 /**
  * Each Weapon Mastery school's building (SCHOOL_DETAILS in shared/weapon-mastery.ts names its door): where feet
- * stand to read it, on open floor against the back wall between its furniture, under the sign on the wall.
+ * stand to read it, on open floor in front of the back wall, under the sign on the wall between two windows.
  */
 export const TOWN_SCHOOL_POSITIONS: Readonly<Record<WeaponSchool, { door: number; x: number; y: number }>> = Object.freeze({
-  archery: stationIn(2, 313, 64), swordplay: stationIn(3, 269, 64), sorcery: stationIn(4, 200, 64),
+  archery: stationIn(2, 400, 64), swordplay: stationIn(3, 200, 64), sorcery: stationIn(4, 200, 64),
 });
 /** How close a player's feet come to a school's spot before its window opens. */
 export const TOWN_SCHOOL_REACH = 45;

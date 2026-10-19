@@ -3,6 +3,7 @@ import { parseHTML } from "linkedom";
 import { createSmithController, type SmithItem } from "./smith-window";
 import { IRON_BOW, STARTER_BOW, STARTER_STONE, WOODEN_ARMOR } from "../../shared/items";
 import { refineSuccessChance, type OreId } from "../../shared/refine";
+import type { CraftSectionDeps } from "./craft-section";
 afterEach(() => vi.unstubAllGlobals());
 
 // The server rolls every try (refine_item); the window shows the odds, sends the level the player saw, and shows the verdict.
@@ -192,7 +193,7 @@ it("refines only: no Cards tab, no card slots on gear", () => {
 });
 
 // Gear for gold (buy_grade_gear): a row per line with the grade after the best one held.
-function shop(options: { gold?: bigint; levels?: Partial<Record<"archery" | "swordplay" | "sorcery", number>>; held?: string[]; bagFull?: boolean } = {}) {
+function shop(options: { gold?: bigint; levels?: Partial<Record<"archery" | "swordplay" | "sorcery", number>>; held?: string[]; bagFull?: boolean; craft?: CraftSectionDeps } = {}) {
   const { document, window } = parseHTML("<html><body></body></html>");
   vi.stubGlobal("document", document); vi.stubGlobal("HTMLElement", window.HTMLElement);
   const held = [...(options.held ?? [])];
@@ -202,6 +203,7 @@ function shop(options: { gold?: bigint; levels?: Partial<Record<"archery" | "swo
   const controller = createSmithController({
     inTown: () => true, items: () => [], refine: vi.fn(), showMessage, refineLevel: () => 0, slotTier: () => 0, ores: () => ({}),
     gold: () => state.gold, masteryLevels: () => options.levels ?? {}, heldItems: () => held, bagFull: () => state.bagFull, buyGear,
+    craft: options.craft,
   });
   const dialog = document.querySelector("dialog") as unknown as HTMLDialogElement;
   Object.assign(dialog, { showModal() { dialog.setAttribute("open", ""); }, close() { dialog.removeAttribute("open"); } });
@@ -209,7 +211,8 @@ function shop(options: { gold?: bigint; levels?: Partial<Record<"archery" | "swo
   const rows = () => [...dialog.querySelectorAll<HTMLElement>(".smith-shop-row")];
   const row = (itemId: string) => rows().find(each => each.dataset.itemId === itemId)!;
   const button = (itemId: string) => row(itemId).querySelector<HTMLButtonElement>(".smith-shop-buy")!;
-  return { controller, dialog, rows, row, button, buyGear, showMessage, held, state };
+  const unmet = (itemId: string) => [...row(itemId).querySelectorAll(".craft-needs .is-unmet")].map(need => need.textContent).join(" · ");
+  return { controller, dialog, rows, row, button, unmet, buyGear, showMessage, held, state };
 }
 
 it("lists a row per line, each offering the grade after the best one held", () => {
@@ -222,28 +225,36 @@ it("lists a row per line, each offering the grade after the best one held", () =
   ]);
   expect(view.dialog.querySelector(".smith-gold strong")!.textContent).toBe("50,000");
   const bow = view.row("rare_bow");
+  expect(view.dialog.querySelector("#smithShopTitle")!.textContent).toBe("Gear");
   expect(bow.querySelector("strong")!.textContent).toBe("Rare Steel Bow");
   expect(bow.querySelector(".smith-shop-grade")!.textContent).toBe("Rare · Bow");
   expect(bow.querySelector(".smith-shop-stat")!.textContent).toBe("Damage +30%");
   expect(bow.querySelector(".smith-shop-price")!.textContent).toBe("5,000");
   expect(bow.querySelector(".smith-shop-art img, .smith-shop-art .inventory-item-art")).not.toBeNull();
   expect(view.row("common_light_armor").querySelector(".smith-shop-stat")!.textContent).toBe("Max Health +4.8% · +3% Move Speed");
+  expect(view.row("common_medium_armor").querySelector(".smith-shop-stat")!.textContent).toBe("Max Health +6%");
+  expect(view.row("common_magic_helmet").querySelector(".smith-shop-stat")!.textContent).toBe("Regen +4.8% · +3% Skill Chance");
+  // Common needs no Mastery; a later grade names it.
+  expect(view.row("common_staff").querySelector(".craft-needs")).toBeNull();
+  expect(bow.querySelector(".craft-needs")!.textContent).toBe("Lv 10 Archery");
   // The top grade held shows as Owned, with no price.
-  expect([view.button("mythic_sword").textContent, view.button("mythic_sword").disabled]).toEqual(["Owned", true]);
+  expect(view.row("mythic_sword").querySelector(".smith-shop-owned")!.textContent).toBe("Owned");
+  expect(view.row("mythic_sword").querySelector("button")).toBeNull();
   expect(view.row("mythic_sword").querySelector(".smith-shop-price")).toBeNull();
 });
 
 it("says what stands in the way: Mastery, then gold, then the bag", () => {
   const view = shop({ gold: 500n, levels: { archery: 12, sorcery: 3 }, held: ["rare_bow", "common_staff", "common_heavy_helmet"] });
   view.controller.open();
-  expect(view.button("epic_bow").textContent).toBe("Need Lv 20 Archery");
-  expect(view.button("uncommon_staff").textContent).toBe("Need Lv 5 Sorcery");
-  expect([view.button("uncommon_heavy_helmet").textContent, view.button("uncommon_heavy_helmet").disabled]).toEqual(["Need 1,000 Gold", true]);
+  expect([view.button("epic_bow").textContent, view.unmet("epic_bow")]).toEqual(["Locked", "Lv 20 Archery"]);
+  expect([view.button("uncommon_staff").textContent, view.unmet("uncommon_staff")]).toEqual(["Locked", "Lv 5 Sorcery"]);
+  expect([view.button("uncommon_heavy_helmet").textContent, view.button("uncommon_heavy_helmet").disabled]).toEqual(["Need Gold", true]);
+  expect(view.unmet("uncommon_heavy_helmet")).toBe("");
   expect([view.button("common_magic_armor").textContent, view.button("common_magic_armor").disabled]).toEqual(["Buy", false]);
   view.state.bagFull = true;
   view.controller.render();
   expect([view.button("common_magic_armor").textContent, view.button("common_magic_armor").disabled]).toEqual(["Bag Full", true]);
-  expect(view.button("epic_bow").textContent).toBe("Need Lv 20 Archery");
+  expect(view.button("epic_bow").textContent).toBe("Locked");
 });
 
 it("Heavy opens at the best school's level", () => {
@@ -252,7 +263,7 @@ it("Heavy opens at the best school's level", () => {
   expect(view.button("rare_heavy_armor").textContent).toBe("Buy");
   const more = shop({ gold: 1_000_000n, levels: { swordplay: 4 }, held: ["common_heavy_armor"] });
   more.controller.open();
-  expect(more.button("uncommon_heavy_armor").textContent).toBe("Need Lv 5 In Any School");
+  expect([more.button("uncommon_heavy_armor").textContent, more.unmet("uncommon_heavy_armor")]).toEqual(["Locked", "Lv 5 Any School"]);
 });
 
 it("buys at the price shown, and offers the next grade before the server's row arrives", async () => {
@@ -262,7 +273,7 @@ it("buys at the price shown, and offers the next grade before the server's row a
   expect(view.buyGear).toHaveBeenCalledWith("common_bow", 100);
   await vi.waitFor(() => expect(view.showMessage).toHaveBeenCalledWith("Bought · Common Shortbow. Equip it from your bag.", "#ffd75e"));
   expect(view.row("uncommon_bow")).toBeTruthy();
-  expect(view.button("uncommon_bow").textContent).toBe("Need Lv 5 Archery");
+  expect(view.button("uncommon_bow").textContent).toBe("Locked");
 });
 
 it("shows Buying… and holds every row while a buy is on its way, and the refusal after", async () => {
@@ -282,4 +293,32 @@ it("hides the shop when there is no way to buy", () => {
   const view = smith();
   view.controller.open();
   expect(view.q(".smith-shop").hidden).toBe(true);
+});
+
+it("gives the lines Smithing makes a Craft line under Buy, and the rest a hint where they are crafted", async () => {
+  const craft = vi.fn(async (_itemId: string) => ({ ok: true }));
+  const view = shop({
+    gold: 1_000n, levels: {}, held: [],
+    craft: {
+      craftSkills: () => ({ smithing: 0n }), ores: () => ({ copper_ore: 15 }), masteryLevels: () => ({}), heldItems: () => [],
+      bagFull: () => false, craft, showMessage: vi.fn(),
+    },
+  });
+  view.controller.open();
+  // Smithing's level heads the list, in one card; there is no second list of rows.
+  expect(view.dialog.querySelector(".smith-shop .craft-card .craft-name")!.textContent).toBe("Smithing");
+  expect(view.dialog.querySelectorAll(".smith-shop-row").length).toBe(11);
+  const sword = view.row("common_sword"), helm = view.row("common_medium_helmet");
+  expect([...sword.querySelectorAll("button")].map(button => button.textContent)).toEqual(["Buy", "Need More"]);
+  expect(sword.querySelector(".craft-material")!.textContent).toBe("15 / 20 Copper Ore");
+  expect(sword.querySelector(".craft-needs")!.textContent).toBe("Lv 1 Smithing");
+  expect(sword.querySelector(".craft-offer .craft-stars")!.textContent).toBe("★2");
+  expect([...helm.querySelectorAll("button")].map(button => button.textContent)).toEqual(["Buy", "Craft"]);
+  expect(view.row("common_bow").querySelector(".craft-hint")!.textContent).toBe("Craft At The Archery Range");
+  expect(view.row("common_magic_armor").querySelector(".craft-hint")!.textContent).toBe("Craft At The Mage Tower");
+  expect(view.row("common_bow").querySelectorAll("button").length).toBe(1);
+  // A craft moves the line on before the server's row arrives.
+  helm.querySelector<HTMLButtonElement>(".craft-offer button")!.click();
+  expect(craft).toHaveBeenCalledWith("common_medium_helmet");
+  await vi.waitFor(() => expect(view.row("uncommon_medium_helmet")).toBeTruthy());
 });

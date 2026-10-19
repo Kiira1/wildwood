@@ -1,11 +1,11 @@
 import { inTownInteriors, inTownVillage, TOWN_ARRIVAL, TOWN_GROVE, TOWN_BENCH_POSITION, TOWN_CARD_SELLER_STALL, TOWN_CHUNK_SIZE, TOWN_DOORS, TOWN_SCHOOL_POSITIONS, TOWN_HILLS, TOWN_HILLS_SIGNPOST_POSITION, TOWN_INTERIOR_MARGIN, TOWN_OX_POSITION, TOWN_QUEST_BOARD_POSITION, TOWN_RESEARCH_POSITION, TOWN_SMITH_POSITION, townChunkProps, townRandom, townWindowChunks, type TownPropKind, TOWN_SOUL_RUNESTONE } from "../../shared/town";
-import { SOUL_ATLAS, SOUL_INTERIOR_DECOR, SOUL_VILLAGE_DECOR, type SoulFrame } from "./soul-village";
+import { SOUL_ATLAS, SOUL_INTERIOR_DECOR, SOUL_VILLAGE_DECOR, type SoulFrame, type SoulSolid } from "./soul-village";
 import {
   MINING_NODES, MINING_OUTCROPS, MINING_REACH, MINING_TRACK, MINING_TRACK_HALF_WIDTH, MINING_VEINS, miningTrackDistanceSquared, type MiningNode, type MiningNodeKind,
 } from "../../shared/mining";
 import { SCHOOL_DETAILS, WEAPON_SCHOOLS, type WeaponSchool } from "../../shared/weapon-mastery";
 import {
-  GROVE_ROAD, GROVE_ROAD_FORK, GROVE_ROAD_HALF_WIDTH, WOOD_TREE_NODES, groveRoadDistanceSquared, type WoodTree, type WoodTreeKind,
+  GROVE_LANDING_RADIUS, GROVE_ROAD, GROVE_ROAD_END, GROVE_ROAD_FORK, GROVE_ROAD_HALF_WIDTH, WOOD_TREE_NODES, WOOD_TREE_SPOTS, groveRoadDistanceSquared, type WoodTree, type WoodTreeKind,
 } from "../../shared/woodcutting";
 import type { WorldDecor, WorldPath } from "./world";
 
@@ -56,7 +56,72 @@ export const TOWN_CARD_SELLER_DECOR: WorldDecor = { type: "upgradeBench", x: TOW
 export const TOWN_SCHOOL_DECOR: readonly WorldDecor[] = WEAPON_SCHOOLS.map(school => ({
   type: "upgradeBench", x: TOWN_SCHOOL_POSITIONS[school].x, y: TOWN_SCHOOL_POSITIONS[school].y, s: 1, label: SCHOOL_DETAILS[school].building,
 }));
-export const TOWN_INTERIOR_DECOR: readonly WorldDecor[] = [...SOUL_INTERIOR_DECOR.filter(item => !replacedByStation(item)), ...TOWN_STATION_DECOR, TOWN_OX_DECOR, ...TOWN_SCHOOL_DECOR];
+
+type RoomPiece = { frame: string; x: number; y: number; dy?: number; s?: number; atlas?: boolean; shadow?: string; solid?: readonly [number, number, number, number] };
+/**
+ * The school rooms' own furnishing over the pack's, in room units: a piece of furniture at (x, y) moved along the
+ * back wall to `to` or taken out (null), its shadow and collider with it; and a few pieces of the school's own.
+ */
+const SCHOOL_ROOMS: readonly { door: number; moves: readonly { x: number; y: number; to: number | null }[]; adds: readonly RoomPiece[] }[] = [
+  // Archery Range: the chest moves left to clear the floor under the sign; a bow on the wall, arrows in a barrel.
+  { door: 2, moves: [{ x: 380, y: 44, to: 308 }], adds: [
+    { frame: "103", x: 200, y: -40, dy: -45 }, { frame: "104", x: 200, y: -39, dy: -22 },
+    { frame: "105", x: 513, y: 40, dy: -40 }, { frame: "105", x: 521, y: 40, dy: -46 }, { frame: "105", x: 529, y: 40, dy: -39 },
+  ] },
+  // Sword Hall: a weapon rack under the sign, the woodpile moved aside and the gold taken out.
+  { door: 3, moves: [{ x: 160, y: 34, to: 285 }, { x: 196, y: 40, to: null }], adds: [
+    { frame: "267", x: 200, y: 36, shadow: "268", solid: [160, 24, 240, 44] },
+  ] },
+  // Mage Tower: a rune stone and a staff where the wheat stood.
+  { door: 4, moves: [{ x: 50, y: 40, to: null }, { x: 100, y: 46, to: null }], adds: [
+    { frame: "RuneStone_01", atlas: true, x: 70, y: 44, s: .55, solid: [52, 30, 88, 46] },
+    { frame: "46", x: 118, y: 40, solid: [110, 30, 126, 42] },
+  ] },
+];
+const roomOf = (door: number) => TOWN_DOORS[door].room;
+/** Whether a piece of furniture (or its shadow) is the one at (x, y) in this room. */
+const pieceAt = (item: { x: number; y: number }, room: Box, at: { x: number; y: number }) => item.x === room.left + at.x && item.y === room.top + at.y;
+/** Whether a collider is that piece's: centred on it, a little behind its foot. */
+const solidOf = (solid: SoulSolid, room: Box, at: { x: number; y: number }) =>
+  Math.abs((solid.left + solid.right) / 2 - room.left - at.x) <= 2 && Math.abs((solid.top + solid.bottom) / 2 - room.top - at.y) <= 16 && solid.right - solid.left < 100;
+const boxSolid = (left: number, top: number, right: number, bottom: number): SoulSolid =>
+  ({ xs: [left, right, right, left], ys: [top, top, bottom, bottom], left, top, right, bottom });
+
+/** The rooms' furniture as the Town draws it: the pack's, with the school rooms' own furnishing. */
+export const TOWN_FURNISHED_INTERIOR: readonly WorldDecor[] = (() => {
+  let decor = [...SOUL_INTERIOR_DECOR];
+  for (const { door, moves, adds } of SCHOOL_ROOMS) {
+    const room = roomOf(door);
+    for (const move of moves) {
+      decor = decor.flatMap(item => !pieceAt(item, room, move) ? [item] : move.to === null ? [] : [{ ...item, x: room.left + move.to }]);
+    }
+    for (const piece of adds) {
+      const at = { x: room.left + piece.x, y: room.top + piece.y, s: piece.s ?? 1, dy: piece.dy ?? 0 };
+      const sheet = piece.atlas ? {} : { sheet: "village" as const };
+      if (piece.shadow) decor.push({ type: "soulProp", ...sheet, frame: piece.shadow, ...at, shadow: true });
+      decor.push({ type: "soulProp", ...sheet, frame: piece.frame, ...at, shadow: false });
+    }
+  }
+  return decor;
+})();
+/** The rooms' walls and furniture's colliders, moved and added with the school rooms' furnishing. */
+export function furnishedInteriorSolids(solids: readonly SoulSolid[]): SoulSolid[] {
+  let result = [...solids];
+  for (const { door, moves, adds } of SCHOOL_ROOMS) {
+    const room = roomOf(door);
+    for (const move of moves) {
+      result = result.flatMap(solid => {
+        if (!solidOf(solid, room, move)) return [solid];
+        if (move.to === null) return [];
+        const dx = move.to - move.x;
+        return [{ xs: solid.xs.map(x => x + dx), ys: solid.ys, left: solid.left + dx, top: solid.top, right: solid.right + dx, bottom: solid.bottom }];
+      });
+    }
+    for (const { solid } of adds) if (solid) result.push(boxSolid(room.left + solid[0], room.top + solid[1], room.left + solid[2], room.top + solid[3]));
+  }
+  return result;
+}
+export const TOWN_INTERIOR_DECOR: readonly WorldDecor[] = [...TOWN_FURNISHED_INTERIOR.filter(item => !replacedByStation(item)), ...TOWN_STATION_DECOR, TOWN_OX_DECOR, ...TOWN_SCHOOL_DECOR];
 
 /**
  * The square's signpost, just east of where every traveller lands (on open cobbles, clear of the fountain,
@@ -72,7 +137,7 @@ export const TOWN_HILLS_SIGNPOST: WorldDecor = { type: "soulProp", frame: "", s:
  * plank pointing at it (from its sill, and whether it points right).
  */
 const SCHOOL_SIGNPOST_AT: Readonly<Record<WeaponSchool, { dx: number; dy: number; flip: boolean }>> = {
-  archery: { dx: -71, dy: 119, flip: true }, swordplay: { dx: 170, dy: 48, flip: false }, sorcery: { dx: -114, dy: 24, flip: true },
+  archery: { dx: -100, dy: 45, flip: true }, swordplay: { dx: 170, dy: 48, flip: false }, sorcery: { dx: -88, dy: 70, flip: true },
 };
 export const TOWN_SCHOOL_SIGNPOSTS: readonly WorldDecor[] = WEAPON_SCHOOLS.map(school => {
   const door = TOWN_DOORS[SCHOOL_DETAILS[school].door], at = SCHOOL_SIGNPOST_AT[school];
@@ -254,7 +319,15 @@ function onHillsEarth(x: number, y: number, pad: number) {
 }
 
 type Placed = { frame: SoulFrame; x: number; y: number; s: number; flip: boolean };
-/** The trees that frame the hills: big round ones and pines, in a staggered double row. */
+/** Whoever stands at any of Timberwood's chopping spots, as big as a player is drawn. */
+let groveSpotBodies: Box[] | null = null;
+/** Whether a sprite standing at `foot` would hide someone chopping in Timberwood: in front of them, and over them. */
+function hidesWoodcutter(box: Box, foot: number) {
+  if (box.top > TOWN_GROVE.bottom + 100) return false;
+  groveSpotBodies ??= WOOD_TREE_NODES.flatMap(tree => WOOD_TREE_SPOTS.map(spot => ({ left: tree.x + spot.x - 22, right: tree.x + spot.x + 22, top: tree.y + spot.y - 75, bottom: tree.y + spot.y })));
+  return groveSpotBodies.some(body => foot > body.bottom && near(box, body, 0));
+}
+/** The trees that frame the hills: big round ones and pines, in a staggered double row (in clumps along the north). */
 const BORDER_TREES: readonly SoulFrame[] = ["Tree_07_Green", "Tree_08_Green", "Tree_09_Green", "Tree_10_Green", "Tree_03_Green", "Tree_18_Green", "Tree_19_Green", "Tree_17_Green"];
 /** The hedges between the veins: bushes, now and then a small tree. */
 const HEDGE_BUSHES: readonly SoulFrame[] = ["Bush_01_Green", "Bush_02_Green", "Bush_03_Green", "Bush_02_Green", "Bush_01_Green"];
@@ -278,7 +351,8 @@ function layHillsScenery() {
     const look = atlasFrame(frame);
     if (!look) return false;
     x = Math.round(x); y = Math.round(y);
-    if (crowdsHills(spriteBox(look, x, y, s, flip), pad)) return false;
+    const box = spriteBox(look, x, y, s, flip);
+    if (crowdsHills(box, pad) || hidesWoodcutter(box, y)) return false;
     placed.push({ frame, x, y, s, flip });
     return true;
   };
@@ -292,6 +366,23 @@ function layHillsScenery() {
   ];
   sides.forEach((side, sideIndex) => {
     const length = Math.hypot(side.to.x - side.from.x, side.to.y - side.from.y), along = { x: (side.to.x - side.from.x) / length, y: (side.to.y - side.from.y) / length };
+    if (sideIndex === 0) {
+      // The north side, where the hills give onto Timberwood: scattered clumps at every depth, the wood thinning out.
+      const random = townRandom(sideIndex, 63);
+      const clump: Point[] = [];
+      for (let at = random() * 200; at <= length; at += 200 + random() * 300) {
+        const count = 2 + Math.floor(random() * 3), depth = 50 + random() * 250;
+        for (let index = 0; index < count; index++) {
+          const along2 = at + (random() - .5) * 200, out = Math.max(30, Math.min(330, depth + (random() - .5) * 150));
+          const x = side.from.x + along.x * along2, y = side.from.y + side.out.y * out;
+          if (clump.some(other => Math.abs(other.x - x) < 75 && Math.abs(other.y - y) < 50)) continue;
+          const small = random() < .3;
+          if (stand(pick(small ? HEDGE_TREES : BORDER_TREES, random), x, y, .88 + random() * .2, random() < .5, 16)) clump.push({ x, y });
+        }
+        if (random() < .5) stand(pick(HEDGE_BUSHES, random), side.from.x + along.x * (at + 120), side.from.y + side.out.y * Math.max(20, depth - 70), .95 + random() * .1, random() < .5, 12);
+      }
+      return;
+    }
     for (const [row, offset, step] of [[0, 80, 150], [1, 215, 165]] as const) {
       for (let at = row * step / 2, slot = 0; at <= length; at += step, slot++) {
         const random = townRandom(sideIndex, row, slot, 61);
@@ -418,6 +509,7 @@ export function townChunkDecor(cx: number, cy: number): readonly WorldDecor[] {
     made.push(decor);
   }
   if (Math.floor(TOWN_GROVE_SIGNPOST.x / TOWN_CHUNK_SIZE) === cx && Math.floor(TOWN_GROVE_SIGNPOST.y / TOWN_CHUNK_SIZE) === cy) made.push(TOWN_GROVE_SIGNPOST);
+  if (Math.floor(GROVE_ROAD_END.x / TOWN_CHUNK_SIZE) === cx && Math.floor(GROVE_ROAD_END.y / TOWN_CHUNK_SIZE) === cy) made.push(...GROVE_LANDING_DECOR);
   decor = Object.freeze(made);
   chunkDecor.set(key, decor);
   return decor;
@@ -454,31 +546,57 @@ function treesIn(cx: number, cy: number) {
   return treesByChunk.get(`${cx}:${cy}`) ?? [];
 }
 
+/** Felled logs stacked on the landing where the road ends, along its north edge: the village's own log stacks. */
+export const GROVE_LANDING_DECOR: readonly WorldDecor[] = ([[-46, -58, "12", "13"], [-8, -66, "21", "20"], [34, -60, "12", "13"]] as const).flatMap(([dx, dy, frame, shadow]) => {
+  const at = { x: GROVE_ROAD_END.x + dx, y: GROVE_ROAD_END.y + dy, s: 1.2 };
+  return [{ type: "soulProp", sheet: "village", frame: shadow, ...at, shadow: true }, { type: "soulProp", sheet: "village", frame, ...at, shadow: false }] as WorldDecor[];
+});
 const GROVE_COVER: readonly SoulFrame[] = ["Grass_01_Green", "Grass_02_Green", "Grass_03_Green", "Grass_04_Green", "Grass_05_Green", "Grass_06_Green"];
 const GROVE_LITTER: readonly SoulFrame[] = ["Mushroom_01_Pink", "Mushroom_01_White", "Mushroom_05_Blue", "Tree_Log_02", "Flower_01_Yellow", "Flower_01_Blue"];
+/** What grows low round a tree's foot and in the shade between: ferny bushes, toadstools, a fallen branch, a stone. */
+const GROVE_UNDERSTORY: readonly SoulFrame[] = ["Bush_04_Green", "Bush_05_Green", "Bush_04_Green", "Bush_05_Green", "Mushroom_05_Purple", "Mushroom_01_White", "Stone_05_Gray", "Stone_06_Gray", "Tree_Log_02"];
 let groveCover: Map<string, Placed[]> | null = null;
 /**
- * Timberwood's floor (the countryside's props keep out of it, shared/town.ts): grass in clumps, and now and then a
- * mushroom, a fallen branch or a flower, all low enough to lie with the ground, so nothing stands in front of the
- * trees or whoever chops them. None on the road.
+ * Timberwood's floor (the countryside's props keep out of it, shared/town.ts): grass in clumps, low bushes and
+ * toadstools round the trees' feet and in patches between, and now and then a mushroom, a fallen branch or a
+ * flower, all low enough to lie with the ground, so nothing stands in front of the trees or whoever chops them.
+ * None on the road.
  */
 function layGroveCover() {
   const placed: Placed[] = [];
   const { left, right, top, bottom } = TOWN_GROVE;
+  const put = (frame: SoulFrame, x: number, y: number, s: number, flip: boolean) => {
+    x = Math.round(x); y = Math.round(y);
+    if (!lowEnough(frame, s) || groveRoadDistanceSquared(x, y, ROAD_REACH + 10) < (ROAD_REACH + 10) ** 2) return;
+    if (Math.hypot(x - GROVE_ROAD_END.x, y - GROVE_ROAD_END.y) < GROVE_LANDING_RADIUS + 10) return;
+    placed.push({ frame, x, y, s, flip });
+  };
+  // A few loose logs round the landing where the road ends, just off its earth.
+  for (const [angle, flip] of [[-2.7, false], [.5, true]] as const) {
+    const reach = GROVE_LANDING_RADIUS + 16;
+    placed.push({ frame: "Tree_Log_02", x: Math.round(GROVE_ROAD_END.x + Math.cos(angle) * reach), y: Math.round(GROVE_ROAD_END.y + Math.sin(angle) * reach * .8), s: 1, flip });
+  }
   for (let gy = top; gy < bottom; gy += 200) {
     for (let gx = left; gx < right; gx += 200) {
       const random = townRandom(gx, gy, 89);
       const clump = (list: readonly SoulFrame[], count: number, spread: number) => {
         const cx = gx + random() * 200, cy = gy + random() * 200;
         for (let index = 0; index < count; index++) {
-          const frame = pick(list, random), x = Math.round(cx + (random() - .5) * spread), y = Math.round(cy + (random() - .5) * spread * .6);
-          const s = .9 + random() * .2;
-          if (!lowEnough(frame, s) || groveRoadDistanceSquared(x, y, ROAD_REACH + 10) < (ROAD_REACH + 10) ** 2) continue;
-          placed.push({ frame, x, y, s, flip: random() < .5 });
+          put(pick(list, random), cx + (random() - .5) * spread, cy + (random() - .5) * spread * .6, .9 + random() * .2, random() < .5);
         }
       };
       if (random() < .55) clump(GROVE_COVER, 2 + Math.floor(random() * 3), 70);
       if (random() < .2) clump(GROVE_LITTER, 1, 0);
+      if (random() < .22) clump(GROVE_UNDERSTORY, 2 + Math.floor(random() * 3), 90);
+    }
+  }
+  // Round most trees' feet, a little to either side and behind, where the chopper does not stand.
+  for (const tree of WOOD_TREE_NODES) {
+    const random = townRandom(tree.id, 91);
+    const count = Math.floor(random() * 4);
+    for (let index = 0; index < count; index++) {
+      const side = random() < .5 ? -1 : 1;
+      put(pick(index ? GROVE_UNDERSTORY : GROVE_COVER, random), tree.x + side * (34 + random() * 48), tree.y - 4 - random() * 22, .85 + random() * .2, random() < .5);
     }
   }
   const byChunk = new Map<string, Placed[]>();

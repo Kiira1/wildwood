@@ -43,10 +43,10 @@ export function gradeShopLevel(itemId: GradeItemId, levels: MasteryLevels) {
   return armorClass ? armorClassMasteryLevel(armorClass, levels) : levels[gradeShopSchool(itemId)!] ?? 0;
 }
 
-/** The level a piece needs: "Lv 10 Archery", or "Lv 10 In Any School" for Heavy. */
+/** The level a piece needs: "Lv 10 Archery", or "Lv 10 Any School" for Heavy. */
 export function gradeShopNeed(itemId: GradeItemId) {
   const school = gradeShopSchool(itemId), level = GRADE_MASTERY_LEVEL[gradeOf(itemId)!];
-  return `Lv ${level} ${school ? WEAPON_SCHOOL_NAMES[school] : "In Any School"}`;
+  return `Lv ${level} ${school ? WEAPON_SCHOOL_NAMES[school] : "Any School"}`;
 }
 
 export const gradeShopOpen = (itemId: GradeItemId, levels: MasteryLevels) => gradeShopLevel(itemId, levels) >= GRADE_MASTERY_LEVEL[gradeOf(itemId)!];

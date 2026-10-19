@@ -170,18 +170,29 @@ export function drawHomeCourtyard(c: ArtContext) {
   c.restore();
 }
 
-/** Physical wooden signs sit above the stations at the same world-space size. */
-export function drawHomeStationSign(c: CanvasRenderingContext2D, x: number, y: number, label: string, timer = "") {
+const SIGN_FONT = '900 15px "Arial Rounded MT Bold", Arial, sans-serif';
+/** A school's plank on its back wall: only as wide as its name, so it fits the wall between two windows. */
+export function drawSchoolWallSign(c: CanvasRenderingContext2D, x: number, y: number, label: string) {
   c.save();
-  for (const dx of [-79, 79]) box(c, x + dx - 4, y - 151, 8, 28, "#795437", 2);
-  box(c, x - 93, y - 177, 186, 37, "#a47548", 4);
-  line(c, [x - 90, y - 165, x + 90, y - 165], "#835d3c", 1.5);
-  line(c, [x - 90, y - 153, x + 90, y - 153], "#835d3c", 1.5);
-  line(c, [x - 89, y - 174, x + 89, y - 174], "#c39861", 2);
-  c.font = '900 15px "Arial Rounded MT Bold", Arial, sans-serif';
+  c.font = SIGN_FONT;
+  const width = Math.max(100, Math.ceil(c.measureText(label).width) + 26);
+  c.restore();
+  drawHomeStationSign(c, x, y, label, "", width);
+}
+
+/** Physical wooden signs sit above the stations at the same world-space size. */
+export function drawHomeStationSign(c: CanvasRenderingContext2D, x: number, y: number, label: string, timer = "", width = 186) {
+  c.save();
+  const half = width / 2;
+  for (const dx of [-(half - 14), half - 14]) box(c, x + dx - 4, y - 151, 8, 28, "#795437", 2);
+  box(c, x - half, y - 177, width, 37, "#a47548", 4);
+  line(c, [x - half + 3, y - 165, x + half - 3, y - 165], "#835d3c", 1.5);
+  line(c, [x - half + 3, y - 153, x + half - 3, y - 153], "#835d3c", 1.5);
+  line(c, [x - half + 4, y - 174, x + half - 4, y - 174], "#c39861", 2);
+  c.font = SIGN_FONT;
   c.textAlign = "center"; c.textBaseline = "middle"; c.lineJoin = "round";
   c.strokeStyle = "#171810"; c.lineWidth = 4; c.fillStyle = "#fff1d2";
-  c.strokeText(label, x, y - 157, 174); c.fillText(label, x, y - 157, 174);
+  c.strokeText(label, x, y - 157, width - 12); c.fillText(label, x, y - 157, width - 12);
   if (timer) { c.font = '900 12px Arial'; c.strokeText(timer, x, y - 187); c.fillStyle = "#a4edf2"; c.fillText(timer, x, y - 187); }
   c.restore();
 }

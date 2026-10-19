@@ -1,10 +1,11 @@
 import { formatCompactNumber } from "./number-format";
 
-/** Keep small upgrades visible (+5 → +5.4); abbreviate large map-tier amounts. */
+/** At most one decimal, so small upgrades stay visible (+5 → +5.4); abbreviate large map-tier amounts. */
 export function formatEquipmentAmount(value: number) {
-  return Math.abs(value) < 1000 ? `${Number(value.toFixed(2))}` : formatCompactNumber(value);
+  return Math.abs(value) < 1000 ? `${Number(value.toFixed(1))}` : formatCompactNumber(value);
 }
 
+/** A stat line's amount, with or without its percent sign ("Max Health +40.95%" → "Max Health +41%"). */
 export function formatEquipmentStat(stat: string) {
-  return stat.replace(/\+([\d.]+)$/, (_, value: string) => `+${formatEquipmentAmount(Number(value))}`);
+  return stat.replace(/\+([\d.]+)(%?)$/, (_, value: string, sign: string) => `+${formatEquipmentAmount(Number(value))}${sign}`);
 }

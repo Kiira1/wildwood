@@ -1,5 +1,5 @@
 import { MINING_TRACK, MINING_TRACK_HALF_WIDTH } from "../../../../shared/mining";
-import { GROVE_ROAD, GROVE_ROAD_HALF_WIDTH } from "../../../../shared/woodcutting";
+import { GROVE_LANDING_RADIUS, GROVE_ROAD, GROVE_ROAD_END, GROVE_ROAD_HALF_WIDTH } from "../../../../shared/woodcutting";
 import { HILLS_CLEARING_ROUND, HILLS_CLEARINGS, HILLS_EARTH_RIM, HILLS_ROUGH_MARGIN } from "../../town-world";
 
 type Rect = { left: number; top: number; right: number; bottom: number };
@@ -18,9 +18,11 @@ const TRACK_BOX = {
   top: Math.min(...MINING_TRACK.map(point => point.y)) - TRACK_REACH, bottom: Math.max(...MINING_TRACK.map(point => point.y)) + TRACK_REACH,
 };
 const ROAD_REACH = GROVE_ROAD_HALF_WIDTH + HILLS_EARTH_RIM;
+/** The road and its landing, rims and all. */
+const ROAD_PAINT_REACH = Math.max(ROAD_REACH, GROVE_LANDING_RADIUS + HILLS_EARTH_RIM);
 const ROAD_BOX = {
-  left: Math.min(...GROVE_ROAD.map(point => point.x)) - ROAD_REACH, right: Math.max(...GROVE_ROAD.map(point => point.x)) + ROAD_REACH,
-  top: Math.min(...GROVE_ROAD.map(point => point.y)) - ROAD_REACH, bottom: Math.max(...GROVE_ROAD.map(point => point.y)) + ROAD_REACH,
+  left: Math.min(...GROVE_ROAD.map(point => point.x)) - ROAD_PAINT_REACH, right: Math.max(...GROVE_ROAD.map(point => point.x)) + ROAD_PAINT_REACH,
+  top: Math.min(...GROVE_ROAD.map(point => point.y)) - ROAD_PAINT_REACH, bottom: Math.max(...GROVE_ROAD.map(point => point.y)) + ROAD_PAINT_REACH,
 };
 const near = (a: Rect, b: Rect, pad: number) => a.left < b.right + pad && a.right > b.left - pad && a.top < b.bottom + pad && a.bottom > b.top - pad;
 /** All the hills paint, the road to Timberwood's too, in one rectangle. */
@@ -42,7 +44,7 @@ function traceShape(context: CanvasRenderingContext2D, points: readonly Point[],
  * Paints the Copper Hills' ground into one of the Town's baked tiles, over the countryside's green and under its
  * props: each outcrop's clearing, one rounded shape of bare earth rimmed as the village's roads are, with the
  * darker grass worn round it, the miners' track out from the village through every vein, and the woodcutters' road
- * off it north to Timberwood. Every rim is laid before any earth, so where a clearing meets the track (or the road
+ * off it north into Timberwood, to its landing. Every rim is laid before any earth, so where a clearing meets the track (or the road
  * the track) the two read as one piece of ground.
  */
 export function paintHillsGround(context: CanvasRenderingContext2D, rect: Rect, ox: number, oy: number) {
@@ -71,10 +73,15 @@ export function paintHillsGround(context: CanvasRenderingContext2D, rect: Rect, 
   context.fillStyle = context.strokeStyle = EARTH_RIM;
   for (const { core } of clearings) clearing(core, HILLS_CLEARING_ROUND + HILLS_EARTH_RIM);
   if (track) path(MINING_TRACK, TRACK_REACH);
-  if (road) path(GROVE_ROAD, ROAD_REACH);
+  const landing = (radius: number) => {
+    context.beginPath();
+    context.arc(GROVE_ROAD_END.x - ox, GROVE_ROAD_END.y - oy, radius, 0, Math.PI * 2);
+    context.fill();
+  };
+  if (road) { path(GROVE_ROAD, ROAD_REACH); landing(GROVE_LANDING_RADIUS + HILLS_EARTH_RIM); }
   context.fillStyle = context.strokeStyle = EARTH;
   for (const { core } of clearings) clearing(core, HILLS_CLEARING_ROUND);
   if (track) path(MINING_TRACK, MINING_TRACK_HALF_WIDTH);
-  if (road) path(GROVE_ROAD, GROVE_ROAD_HALF_WIDTH);
+  if (road) { path(GROVE_ROAD, GROVE_ROAD_HALF_WIDTH); landing(GROVE_LANDING_RADIUS); }
   context.restore();
 }

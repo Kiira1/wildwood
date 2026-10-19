@@ -9,12 +9,14 @@ import { refineStars } from "./refine-badge";
 import { REFINE_ORE_ORDER } from "../../shared/ore-bag";
 import { itemTier } from "../../shared/item-tier";
 import type { GradeItemId } from "../../shared/grade-equipment";
-import {
-  GRADE_SHOP_LINES, gradeShopNeed, gradeShopOffer, gradeShopOpen, gradeShopPrice, masteryLevels, type MasteryLevels,
-} from "../../shared/grade-shop";
+import { GRADE_SHOP_LINES, gradeShopOffer, gradeShopOpen, gradeShopPrice, masteryLevels, type MasteryLevels } from "../../shared/grade-shop";
+import { CRAFT_LINES } from "../../shared/grade-craft";
 import type { WeaponSchool } from "../../shared/weapon-mastery";
 import { formatGemAmount } from "./number-format";
-import { bagFullFor, craftDepsFor, createCraftSection, gradeItemRow, heldItemsFor, type CraftCoop, type CraftSectionDeps } from "./craft-section";
+import {
+  bagFullFor, craftDepsFor, craftStationHint, createCraftSection, gradeItemRow, heldItemsFor, masteryNeed, offerButton, offerLine, ownedRow,
+  type CraftCoop, type CraftSectionDeps,
+} from "./craft-section";
 
 type Result = { ok: boolean; error?: string } | undefined;
 type RefineResult = { itemId: string; copyId: bigint; fromLevel: number; toLevel: number; succeeded: boolean };
@@ -68,7 +70,7 @@ export function createSmithController(deps: {
   heldItems?: () => readonly string[];
   bagFull?: () => boolean;
   buyGear?: (itemId: string, expectedPrice: number) => Promise<Result>;
-  /** Smithing: swords and Medium and Heavy armor crafted from ore (craft-section.ts). */
+  /** Smithing: swords and Medium and Heavy armor crafted from ore, offered on the shop's rows (craft-section.ts). */
   craft?: CraftSectionDeps;
 }) {
   const dialog = document.createElement("dialog");
@@ -84,9 +86,9 @@ export function createSmithController(deps: {
     + `<div class="inventory-filters smith-filters" role="group" aria-label="Show gear"></div>`
     + `<p class="smith-empty smith-filter-empty" hidden></p>`
     + `<div class="smith-items" role="listbox" aria-label="Your gear"></div>`
-    + `<section class="smith-shop" aria-labelledby="smithShopTitle"><div class="smith-shop-head"><h3 id="smithShopTitle">Gear for Gold</h3>`
+    + `<section class="smith-shop" aria-labelledby="smithShopTitle"><div class="smith-shop-head"><h3 id="smithShopTitle">Gear</h3>`
     + `<span class="smith-gold" aria-label="Your gold">${GOLD_COIN}<strong></strong></span></div>`
-    + `<div class="smith-shop-rows" role="list" aria-label="Gear for sale"></div></section></div>`
+    + `<div class="smith-shop-rows" role="list" aria-label="Gear to buy or craft"></div></section></div>`
     + `<footer class="farm-footer"><div class="farm-actions"><button type="button" class="window-back-button">Back</button></div></footer>`;
   document.body.append(dialog);
   const focus = dialog.querySelector<HTMLElement>(".smith-focus")!;
@@ -105,8 +107,9 @@ export function createSmithController(deps: {
   const shop = dialog.querySelector<HTMLElement>(".smith-shop")!;
   const goldLine = dialog.querySelector<HTMLElement>(".smith-gold strong")!;
   const shopRows = dialog.querySelector<HTMLElement>(".smith-shop-rows")!;
-  const crafts = deps.craft ? createCraftSection(deps.craft) : null;
-  if (crafts) shop.after(crafts.element);
+  // Smithing's level sits at the top of the shop's list; each row it makes takes a Craft line.
+  const crafts = deps.craft ? createCraftSection(deps.craft, { rows: false, onChange: () => { if (dialog.open) render(); } }) : null;
+  if (crafts) dialog.querySelector(".smith-shop-head")!.after(crafts.element);
   /** The gear shown, as the bag filters it: everything, or one kind. */
   let shown: (typeof SMITH_FILTERS)[number][0] = "ALL";
   for (const [kind, label] of SMITH_FILTERS) {
@@ -246,46 +249,54 @@ export function createSmithController(deps: {
   }
 
   function heldGear() {
-    return new Set([...(deps.heldItems?.() ?? deps.items().map(item => item.itemId)), ...justBought]);
+    return new Set([...(deps.heldItems?.() ?? deps.items().map(item => item.itemId)), ...justBought, ...(crafts?.crafted() ?? [])]);
   }
 
   function shopState() {
-    if (!deps.buyGear) return null;
-    return [String(deps.gold?.() ?? 0n), deps.masteryLevels?.(), [...heldGear()].filter(gradeShopPrice), deps.bagFull?.(), buyingGear];
+    if (!deps.buyGear && !crafts) return null;
+    return [String(deps.gold?.() ?? 0n), deps.masteryLevels?.(), [...heldGear()].filter(gradeShopPrice), deps.bagFull?.(), buyingGear, crafts?.state()];
   }
 
-  /** One row per line, offering the grade after the best one held. */
+  /**
+   * One row per line, offering the grade after the best one held: a Buy line for gold, and a Craft line for what
+   * Smithing makes, or where the rest is crafted. Without a shop, only Smithing's lines.
+   */
   function renderShop() {
-    shop.hidden = !deps.buyGear;
-    if (!deps.buyGear) return;
-    const gold = deps.gold?.() ?? 0n, levels = deps.masteryLevels?.() ?? {}, held = heldGear(), full = deps.bagFull?.() ?? false;
-    goldLine.textContent = formatGemAmount(gold);
-    shopRows.replaceChildren(...GRADE_SHOP_LINES.map(line => {
-      const offer = gradeShopOffer(line, held), price = gradeShopPrice(offer.itemId)!;
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "farm-start smith-refine smith-shop-buy";
-      button.textContent = buyingGear === offer.itemId ? "Buying…" : offer.owned ? "Owned"
-        : !gradeShopOpen(offer.itemId, levels) ? `Need ${gradeShopNeed(offer.itemId)}`
-          : gold < BigInt(price) ? `Need ${formatGemAmount(BigInt(price))} Gold` : full ? "Bag Full" : "Buy";
-      button.disabled = button.textContent !== "Buy" || buyingGear !== null;
-      button.addEventListener("click", () => { void buyGear(offer.itemId, price); });
-      return shopRow(offer.itemId, offer.owned ? null : price, button);
+    shop.hidden = !deps.buyGear && !crafts;
+    if (shop.hidden) return;
+    goldLine.parentElement!.hidden = !deps.buyGear;
+    goldLine.textContent = formatGemAmount(deps.gold?.() ?? 0n);
+    const held = heldGear(), levels = deps.masteryLevels?.() ?? deps.craft?.masteryLevels() ?? {};
+    shopRows.replaceChildren(...(deps.buyGear ? GRADE_SHOP_LINES : CRAFT_LINES.smithing).map(line => {
+      const offer = gradeShopOffer(line, held);
+      if (offer.owned) return ownedRow(offer.itemId);
+      const made = crafts?.craftOffer(offer.itemId) ?? null;
+      const { row, deal } = gradeItemRow(offer.itemId, 0, [...(made ? [made.need] : []), ...masteryNeed(offer.itemId, levels)]);
+      // What Smithing does not make says where it is crafted, under its price.
+      if (deps.buyGear) deal.append(buyLine(offer.itemId, levels, made || !crafts ? "" : craftStationHint(offer.itemId)));
+      if (made) deal.append(made.line);
+      return row;
     }));
   }
 
-  function shopRow(itemId: GradeItemId, price: number | null, button: HTMLButtonElement) {
-    const { row, deal } = gradeItemRow(itemId);
-    if (price !== null) {
-      const cost = document.createElement("span");
-      cost.className = "smith-shop-price";
-      cost.innerHTML = `${GOLD_COIN}<span></span>`;
-      cost.lastElementChild!.textContent = formatGemAmount(BigInt(price));
-      cost.setAttribute("aria-label", `${formatGemAmount(BigInt(price))} Gold`);
-      deal.append(cost);
+  /** The price in gold and a Buy button that says why it waits: Mastery, then gold, then the bag. */
+  function buyLine(itemId: GradeItemId, levels: MasteryLevels, hint: string) {
+    const price = gradeShopPrice(itemId)!, gold = deps.gold?.() ?? 0n;
+    const text = buyingGear === itemId ? "Buying…" : !gradeShopOpen(itemId, levels) ? "Locked"
+      : gold < BigInt(price) ? "Need Gold" : deps.bagFull?.() ? "Bag Full" : "Buy";
+    const cost = document.createElement("span");
+    cost.className = "smith-shop-price";
+    cost.innerHTML = `${GOLD_COIN}<span></span>`;
+    cost.lastElementChild!.textContent = formatGemAmount(BigInt(price));
+    cost.setAttribute("aria-label", `${formatGemAmount(BigInt(price))} Gold`);
+    const terms: Node[] = [cost];
+    if (hint) {
+      const where = document.createElement("span");
+      where.className = "craft-hint";
+      where.textContent = hint;
+      terms.push(where);
     }
-    deal.append(button);
-    return row;
+    return offerLine(terms, offerButton(text, text === "Buy" && buyingGear === null, () => { void buyGear(itemId, price); }));
   }
 
   async function buyGear(itemId: GradeItemId, price: number) {

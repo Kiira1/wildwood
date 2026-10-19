@@ -54,7 +54,7 @@ describe("buying graded gear from the Smith", () => {
     f.buy("rare_magic_armor");
     f.buy("rare_heavy_helmet");
     expect(() => f.buy("uncommon_light_helmet")).toThrow("You need Lv 5 Archery.");
-    expect(() => f.buy("epic_heavy_armor")).toThrow("You need Lv 20 In Any School.");
+    expect(() => f.buy("epic_heavy_armor")).toThrow("You need Lv 20 Any School.");
     expect(f.bag()).toEqual(expect.arrayContaining(["rare_magic_armor", "rare_heavy_helmet"]));
   });
 

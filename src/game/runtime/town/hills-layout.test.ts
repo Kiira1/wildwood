@@ -145,7 +145,7 @@ describe("the Copper Hills' baked ground", () => {
     const painted: string[] = [];
     const context = {
       fillStyle: "", strokeStyle: "", lineWidth: 1, lineJoin: "", lineCap: "",
-      save: () => {}, restore: () => {}, beginPath: () => {}, moveTo: () => {}, lineTo: () => {}, closePath: () => {},
+      save: () => {}, restore: () => {}, beginPath: () => {}, moveTo: () => {}, lineTo: () => {}, closePath: () => {}, arc: () => {},
       fill() { painted.push(context.fillStyle as string); }, stroke() { painted.push(context.strokeStyle as string); },
     };
     // A tile on the first quarry, which the track passes.
@@ -191,7 +191,11 @@ describe("the Copper Hills' scenery", () => {
     const { left, right, top, bottom } = TOWN_HILLS;
     const count = (test: (item: Prop) => boolean) => trees.filter(test).length;
     const across = (item: Prop) => item.x > left && item.x < right, down = (item: Prop) => item.y > top && item.y < bottom;
-    expect(count(item => across(item) && item.y < top && item.y > top - 300)).toBeGreaterThan(40);
+    // Along the north, where Timberwood is, the trees stand in scattered clumps at every depth, never a row.
+    const north = trees.filter(item => across(item) && item.y < top && item.y > top - 340);
+    expect(north.length).toBeGreaterThan(15);
+    const depths = north.map(item => top - item.y), mean = depths.reduce((sum, depth) => sum + depth, 0) / depths.length;
+    expect(Math.sqrt(depths.reduce((sum, depth) => sum + (depth - mean) ** 2, 0) / depths.length)).toBeGreaterThan(55);
     expect(count(item => across(item) && item.y > bottom && item.y < bottom + 300)).toBeGreaterThan(40);
     expect(count(item => down(item) && item.x > right && item.x < right + 300)).toBeGreaterThan(25);
     expect(count(item => down(item) && item.x < left && item.x > left - 300)).toBeGreaterThan(20);

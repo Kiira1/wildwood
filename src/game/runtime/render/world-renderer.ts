@@ -11,7 +11,7 @@ import { LOG_COLORS } from "../town/wood-tree-renderer";
 import { woodcuttingScene } from "../town/woodcutting-scene";
 import { soulStatOfCampName } from "../../soul-world";
 import { residentDrawable } from "./resident-image";
-import { drawHomeCourtyard, drawHomeQuestBoard, drawHomeResearchDesk, drawHomeStationSign } from "../town/home-courtyard";
+import { drawHomeCourtyard, drawHomeQuestBoard, drawHomeResearchDesk, drawHomeStationSign, drawSchoolWallSign } from "../town/home-courtyard";
 import { drawIonRoads } from "./ion-ground";
 import { drawVerdantRoads } from "./verdant-ground";
 import { drawNeonRoads } from "./neon-ground";
@@ -1003,7 +1003,7 @@ if (options.getMapId() === ION_CITADEL_MAP_ID) { drawIonRoads(ctx, options.paths
     }
     // A school's building has no station, only its plank sign on the back wall.
     if (SCHOOL_BUILDINGS.has(bench.label)) {
-      drawHomeStationSign(ctx, x, y, bench.label);
+      drawSchoolWallSign(ctx, x, y, bench.label);
       return;
     }
     if (bench.label === "Quest Board") {

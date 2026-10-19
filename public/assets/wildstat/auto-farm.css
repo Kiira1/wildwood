@@ -778,7 +778,9 @@
 .ox-shop-sheet .quest-copy strong { font-size: 15px; }
 .ox-shop-sheet .farm-start.ox-shop-buy { flex: 0 0 96px; height: 40px; min-height: 40px; font-size: 13px; text-transform: none; }
 .ox-shop-sheet .is-owned { border-color: rgba(201,184,255,.5); }
-/* The Smith's window (smith-window.ts): the chosen copy on top, its odds and cost, the gear to pick from below. */
+/* The Smith's window (smith-window.ts): the chosen copy on top, its odds and cost, the gear to pick from below.
+   Its sheets (and the schools' and the Card Seller's) take the neutral grey, as the Auto Farm sheet does. */
+.smith-sheet { --muted: #bdbdbd; }
 .smith-sheet .smith-intro { margin: 0 14px 8px; color: var(--muted); text-align: center; font-size: 13px; line-height: 1.35; }
 .smith-sheet .smith-focus { display: grid; gap: 10px; margin: 0 14px 10px; padding: 12px; border-radius: 12px; background: rgba(255,255,255,.05); }
 .smith-sheet .smith-empty { margin: 6px 0; color: var(--muted); text-align: center; font-size: 13px; }
@@ -826,29 +828,48 @@
 .smith-sheet .smith-shop-head h3 { margin: 0; color: #fff; font-size: 16px; font-weight: 900; }
 .smith-sheet .smith-coin { flex: 0 0 auto; width: 16px; height: 16px; }
 .smith-sheet .smith-gold { display: inline-flex; align-items: center; gap: 5px; color: #ffd75e; font-size: 15px; font-weight: 900; }
+.smith-sheet .smith-gold[hidden] { display: none; }
 .smith-sheet .smith-shop-rows { display: grid; gap: 6px; }
-.smith-sheet .smith-shop-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 6px 8px; border: 2px solid rgba(255,255,255,.1); border-radius: 12px; background: rgba(255,255,255,.05); }
+/* A row: art beside the name (on its own line, never cut), grade and kind, stat and needs; under them, one line per
+   way to get it (Buy for gold, Craft from materials), each with its terms on the left and a short button on the right. */
+.smith-sheet .smith-shop-row { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 4px 10px; align-items: center; padding: 8px 10px; border: 2px solid rgba(255,255,255,.1); border-radius: 12px; background: rgba(255,255,255,.05); }
 .smith-sheet .smith-shop-art { display: grid; place-items: center; width: 44px; height: 44px; }
 .smith-sheet .smith-shop-art .inventory-item-art { width: 42px; height: 38px; }
 .smith-sheet .smith-shop-copy { display: grid; gap: 1px; min-width: 0; }
-.smith-sheet .smith-shop-copy strong { overflow: hidden; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
-.smith-sheet .smith-shop-grade, .smith-sheet .smith-shop-stat { color: var(--muted); font-size: 13px; }
+.smith-sheet .smith-shop-copy strong { font-size: 15px; line-height: 1.2; overflow-wrap: anywhere; }
+.smith-sheet .smith-shop-grade, .smith-sheet .smith-shop-stat { overflow: hidden; color: var(--muted); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
 .smith-sheet .smith-shop-stat { color: #fff; font-weight: 800; }
-.smith-sheet .smith-shop-deal { display: grid; justify-items: end; gap: 4px; }
-.smith-sheet .smith-shop-price { display: inline-flex; align-items: center; gap: 4px; color: #ffd75e; font-size: 13px; font-weight: 900; }
-.smith-sheet .farm-start.smith-refine.smith-shop-buy { min-width: 0; max-width: 132px; height: auto; min-height: 36px; padding: 4px 12px 6px; font-size: 13px; line-height: 1.15; white-space: normal; }
+.smith-sheet .smith-shop-deal { grid-column: 1 / -1; display: grid; gap: 4px; }
+.smith-sheet .smith-shop-deal:empty { display: none; }
+.smith-sheet .smith-offer { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-top: 5px; border-top: 1px solid rgba(255,255,255,.08); }
+.smith-sheet .smith-offer-terms { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 10px; min-width: 0; }
+.smith-sheet .smith-shop-price { display: inline-flex; align-items: center; gap: 4px; color: #ffd75e; font-size: 14px; font-weight: 900; font-variant-numeric: tabular-nums; }
+.smith-sheet .farm-start.smith-refine.smith-shop-buy { flex: none; min-width: 84px; max-width: 132px; height: auto; min-height: 36px; margin: 0; padding: 4px 12px 6px; font-size: 13px; line-height: 1.15; white-space: nowrap; }
 .smith-sheet .farm-start.smith-refine.smith-shop-buy:disabled { border-color: rgba(255,255,255,.18); background: rgba(255,255,255,.08); box-shadow: none; color: var(--muted); }
-/* A station's Craft section (craft-section.ts): the craft's level and progress, then the shop's rows with materials under each. */
+/* A station's Craft section (craft-section.ts): the craft's level and progress in a card like the school's, then the
+   rows. In the Smith's window the card heads the shop's list and his rows carry the craft lines. */
 .smith-sheet .craft-section[hidden] { display: none; }
-.smith-sheet .craft-level { color: #fff; font-size: 15px; font-weight: 900; font-variant-numeric: tabular-nums; }
+.smith-sheet .smith-shop .craft-section { margin: 0; }
+.smith-sheet .craft-title { margin: 0; color: #fff; font-size: 15px; }
+.smith-sheet .craft-card { display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1px solid rgba(255,255,255,.14); border-radius: 10px; background: rgba(255,255,255,.04); }
+.smith-sheet .craft-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.smith-sheet .craft-name { min-width: 0; color: #fff; font-size: 16px; }
+.smith-sheet .craft-level { flex: none; margin-left: auto; color: #fff; font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .smith-sheet .craft-bar { display: block; height: 8px; overflow: hidden; border-radius: 4px; background: rgba(255,255,255,.14); }
 .smith-sheet .craft-bar > span { display: block; height: 100%; border-radius: inherit; background: #e6e6e6; transition: width .2s; }
 .smith-sheet .craft-points { color: rgba(255,255,255,.72); font-size: 13px; font-variant-numeric: tabular-nums; text-align: right; }
 .smith-sheet .craft-note { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.35; }
-.smith-sheet .craft-needs { grid-column: 1 / -1; color: rgba(255,255,255,.72); font-size: 13px; }
-.smith-sheet .craft-materials { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 0; padding: 0; list-style: none; }
-.smith-sheet .craft-material { display: inline-flex; align-items: center; gap: 4px; color: #fff; font-size: 13px; font-weight: 800; font-variant-numeric: tabular-nums; }
-.smith-sheet .craft-material.is-short { color: rgba(255,255,255,.5); font-weight: 700; }
+/* Needs and materials: what is still short stands out in white; what is met steps back. */
+.smith-sheet .craft-needs { overflow: hidden; color: var(--muted); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.smith-sheet .craft-needs .is-met { color: var(--muted); font-weight: 600; }
+.smith-sheet .craft-needs .is-unmet { color: #fff; font-weight: 900; }
+.smith-sheet .craft-hint { flex-basis: 100%; color: var(--muted); font-size: 13px; }
+.smith-sheet .smith-shop-owned { color: var(--muted); font-size: 13px; font-weight: 800; }
+.smith-sheet .craft-offer .smith-offer-terms { flex-wrap: nowrap; align-items: flex-start; }
+.smith-sheet .craft-stars { flex: none; font-size: 14px; font-weight: 900; line-height: 20px; }
+.smith-sheet .craft-materials { display: flex; flex-wrap: wrap; gap: 2px 10px; margin: 0; padding: 0; list-style: none; }
+.smith-sheet .craft-material { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.smith-sheet .craft-material.is-short { color: #fff; font-weight: 900; }
 .smith-sheet .craft-material-icon { flex: none; width: 20px; height: 20px; background: center / contain no-repeat; }
 /* The Card Seller's window (card-seller-window.ts), in the Smith's sheet: the countdown, then a row per card for sale. */
 .card-seller-sheet .card-seller-timer { margin: 0 14px 10px; color: #fff; text-align: center; font-size: 15px; font-weight: 900; }
@@ -1043,6 +1064,12 @@
 .card-origin.is-boss { color: #f2c14e; }
 .item-inspection-stats [data-stat-kind="card"] { color: #e8eee9; }
 .item-inspection-stats [data-stat-kind="cost"] { color: #ff9b91; }
+/* A graded helmet or armor's class and set: the perk in white, the set grey until it is on. */
+.item-inspection-stats [data-stat-kind="class"] { color: #fff; }
+.item-inspection-stats [data-stat-kind^="set"] { color: #bdbdbd; font-size: 14px; font-weight: 800; text-wrap: balance; }
+.item-inspection-stats [data-stat-kind="set-active"] { color: #fff; }
+.item-inspection-stats .item-inspection-set-status { display: table; margin: 4px auto 0; padding: 0 8px; border: 1px solid #fff; border-radius: 6px; color: #fff; font-weight: 900; }
+.item-inspection-stats [data-stat-kind="set-inactive"] .item-inspection-set-status { border-color: #6a6a6a; color: #9a9a9a; font-weight: 800; }
 /* A card shield (card-combat.ts): a light strip along the top of the health bar, and its amount after the health. */
 .bar > .hp-shield { position: absolute; inset: 0 0 auto 0; height: 34%; border-radius: 5px 5px 0 0; background: #9fdcff; transform: scaleX(0); transform-origin: left center; pointer-events: none; }
 #hpText .hp-shield-text { color: #b9e6ff; }

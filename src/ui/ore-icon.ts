@@ -50,13 +50,16 @@ function paintLog(c: CanvasRenderingContext2D, colors: (typeof LOG_COLORS)[WoodI
 /**
  * Paints a stack's bag icon into a 64 × 64 canvas, in the map rocks' style (ore-rock-renderer.ts): a lump of grey
  * rock with its ore's crystals standing out of it, the Starshard a pale four-pointed star, Arcane Crystal its
- * crystals alone, and each wood a log of its own colours.
+ * glowing crystals alone, and each wood a log of its own colours.
  */
 export function paintOreIcon(c: CanvasRenderingContext2D, oreId: OreId) {
   c.clearRect(0, 0, 64, 64);
   if (oreId in LOG_COLORS) { paintLog(c, LOG_COLORS[oreId as WoodId]); return; }
   if (oreId === "arcane_crystal") {
-    const colors = ORE_COLORS.arcane_crystal;
+    // Lit from within, as the crystal rocks' shards are.
+    const colors = ORE_COLORS.arcane_crystal, glow = c.createRadialGradient(32, 36, 2, 32, 36, 30);
+    glow.addColorStop(0, "rgba(255, 70, 190, .55)"); glow.addColorStop(1, "rgba(255, 70, 190, 0)");
+    c.fillStyle = glow; c.fillRect(0, 0, 64, 64);
     gem(c, 21, 42, 18, colors);
     gem(c, 43, 44, 15, colors);
     gem(c, 32, 34, 26, colors);

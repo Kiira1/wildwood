@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
-  GROVE_ROAD, GROVE_ROAD_END, GROVE_ROAD_FORK, GROVE_ROAD_HALF_WIDTH, WOOD_STANDS, WOOD_TREE_KINDS, WOOD_TREE_NODES, WOOD_TREES, WOODCUTTING_LOGS,
+  GROVE_ROAD, GROVE_ROAD_END, GROVE_ROAD_FORK, GROVE_ROAD_GATE, GROVE_ROAD_HALF_WIDTH, WOOD_STAND_BLEND, WOOD_STANDS, WOOD_TREE_KINDS, WOOD_TREE_NODES, WOOD_TREES, WOODCUTTING_LOGS,
   WOODCUTTING_REACH, groveRoadDistanceSquared, normalizeWoodcutting, woodcuttingChopSeconds, woodcuttingGain, woodcuttingSpeed, woodcuttingYield,
   woodStandHint, woodStandMap, woodStandOpen, woodTree,
 } from "./woodcutting";
@@ -36,15 +36,20 @@ describe("Timberwood's stands", () => {
 });
 
 describe("the trees", () => {
-  it("are laid the same every time, in their stand's band inside the grove, the deeper the fewer", async () => {
+  it("are laid the same every time, in their stand's band inside the grove (straying a little past it), the deeper the fewer", async () => {
     WOOD_TREE_NODES.forEach((tree, index) => {
       expect(tree.id).toBe(index);
       const stand = WOOD_STANDS[tree.stand];
       expect([tree.kind, tree.log]).toEqual([stand.kind, stand.log]);
-      expect(tree.x).toBeGreaterThan(stand.left);
-      expect(tree.x).toBeLessThan(stand.right);
+      expect(tree.x).toBeGreaterThan(stand.left - WOOD_STAND_BLEND);
+      expect(tree.x).toBeLessThan(stand.right + WOOD_STAND_BLEND);
       expect(inTownGrove(tree.x, tree.y)).toBe(true);
     });
+    // By stand, then north to south.
+    for (let index = 1; index < WOOD_TREE_NODES.length; index++) {
+      const a = WOOD_TREE_NODES[index - 1], b = WOOD_TREE_NODES[index];
+      expect(a.stand < b.stand || (a.stand === b.stand && (a.y < b.y || (a.y === b.y && a.x < b.x)))).toBe(true);
+    }
     expect(WOOD_STANDS.map((_stand, index) => WOOD_TREE_NODES.filter(tree => tree.stand === index).length)).toEqual(WOOD_STANDS.map(stand => stand.trees));
     vi.resetModules();
     const fresh = await import("./woodcutting");
@@ -65,14 +70,21 @@ describe("the trees", () => {
 });
 
 describe("the woodcutters' road", () => {
-  it("forks off the miners' track and ends just west of the pines, the trees well off it", () => {
+  it("forks off the miners' track, comes into the grove at its south-west and winds through the pines and oaks to the yews, the trees well off it", () => {
     expect(MINING_TRACK).toContainEqual(GROVE_ROAD_FORK);
     expect(GROVE_ROAD[0]).toEqual(GROVE_ROAD_FORK);
+    expect(GROVE_ROAD).toContainEqual(GROVE_ROAD_GATE);
     expect(GROVE_ROAD.at(-1)).toEqual(GROVE_ROAD_END);
-    expect(inTownGrove(GROVE_ROAD_END.x, GROVE_ROAD_END.y)).toBe(true);
-    const pines = WOOD_TREE_NODES.filter(tree => tree.kind === "pine");
-    expect(Math.min(...pines.map(tree => tree.x))).toBeGreaterThan(GROVE_ROAD_END.x + 150);
-    for (const tree of WOOD_TREE_NODES) expect(Math.sqrt(groveRoadDistanceSquared(tree.x, tree.y))).toBeGreaterThan(GROVE_ROAD_HALF_WIDTH + 150);
+    expect(inTownGrove(GROVE_ROAD_GATE.x, GROVE_ROAD_GATE.y)).toBe(true);
+    expect(GROVE_ROAD_END.x).toBeGreaterThan(WOOD_TREES.oak.right - WOOD_STAND_BLEND);
+    expect(GROVE_ROAD_END.x).toBeLessThan(WOOD_TREES.yew.right);
+    // Smooth: no step of it turns sharply.
+    for (let index = 2; index < GROVE_ROAD.length; index++) {
+      const [a, b, c] = [GROVE_ROAD[index - 2], GROVE_ROAD[index - 1], GROVE_ROAD[index]];
+      const turn = Math.abs(Math.atan2(c.y - b.y, c.x - b.x) - Math.atan2(b.y - a.y, b.x - a.x));
+      expect(Math.min(turn, Math.PI * 2 - turn)).toBeLessThan(.6);
+    }
+    for (const tree of WOOD_TREE_NODES) expect(Math.sqrt(groveRoadDistanceSquared(tree.x, tree.y))).toBeGreaterThan(GROVE_ROAD_HALF_WIDTH + 120);
     // Every step of it is inside the walls.
     for (const point of GROVE_ROAD) expect(inTownWalkArea(point.x, point.y)).toBe(true);
   });

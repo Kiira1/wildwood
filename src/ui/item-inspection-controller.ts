@@ -249,10 +249,17 @@ export function createItemInspectionController(elements: ItemInspectionElements)
       stats.append(value);
     }
     // A graded helmet or armor's class: what it does a piece, and its set.
-    for (const [index, line] of armorClassLines(item.id, request.worn).entries()) {
-      const value = document.createElement("span");
-      value.textContent = line;
-      value.dataset.statKind = index === 0 ? "class" : line.endsWith("· Active") ? "set-active" : "set";
+    for (const line of armorClassLines(item.id, request.worn)) {
+      const value = document.createElement("span"), status = /· (Active|Inactive)$/.exec(line)?.[1];
+      value.textContent = status ? line.slice(0, -` · ${status}`.length) : line;
+      value.dataset.statKind = !line.startsWith("Set:") ? "class" : status === "Active" ? "set-active" : status ? "set-inactive" : "set";
+      // On or off sits under the set in a tag of its own, so it reads at a glance.
+      if (status) {
+        const word = document.createElement("strong");
+        word.className = "item-inspection-set-status";
+        word.textContent = status;
+        value.append(word);
+      }
       stats.append(value);
     }
     // A sword strikes up close and a staff's bolts burst, which their art alone does not say.

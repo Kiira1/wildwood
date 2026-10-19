@@ -37,16 +37,16 @@ export type ArmorClass = typeof ARMOR_CLASSES[number];
 export const ARMOR_CLASS_NAMES: Readonly<Record<ArmorClass, string>> = { light: "Light", medium: "Medium", heavy: "Heavy", magic: "Magic" };
 
 /**
- * What each class trades: the share of the grade's bonus it gives, and its perk per piece worn. Heavy belongs to no
- * school: it opens at the wearer's best school and pays for its strength in speed.
+ * What each class trades: the share of the grade's bonus it gives, and its perk per piece worn (Medium has none). Heavy
+ * belongs to no school: it opens at the wearer's best school and pays for its strength in speed.
  */
 export const ARMOR_CLASS_DETAILS: Readonly<Record<ArmorClass, {
   school: WeaponSchool | null; bonusShare: number; moveSpeedPercent: number; skillChancePercent: number; perk: string;
 }>> = {
   light: { school: "archery", bonusShare: .8, moveSpeedPercent: 3, skillChancePercent: 0, perk: "+3% Move Speed" },
-  medium: { school: "swordplay", bonusShare: 1, moveSpeedPercent: 0, skillChancePercent: 0, perk: "Balanced" },
+  medium: { school: "swordplay", bonusShare: 1, moveSpeedPercent: 0, skillChancePercent: 0, perk: "" },
   heavy: { school: null, bonusShare: 1.3, moveSpeedPercent: -4, skillChancePercent: 0, perk: "-4% Move Speed" },
-  magic: { school: "sorcery", bonusShare: .8, moveSpeedPercent: 0, skillChancePercent: 3, perk: "Weapon Skills Fire 3% More Often" },
+  magic: { school: "sorcery", bonusShare: .8, moveSpeedPercent: 0, skillChancePercent: 3, perk: "+3% Skill Chance" },
 };
 
 /** Helmet and armor both of the class that matches the weapon's school: this much more damage. */

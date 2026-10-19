@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { GROVE_ROAD, GROVE_ROAD_FORK, GROVE_ROAD_HALF_WIDTH, WOOD_TREE_NODES, WOODCUTTING_REACH, groveRoadDistanceSquared } from "../../../../shared/woodcutting";
+import { GROVE_LANDING_RADIUS, GROVE_ROAD, GROVE_ROAD_END, GROVE_ROAD_FORK, GROVE_ROAD_HALF_WIDTH, WOOD_TREE_NODES, WOOD_TREE_SPOTS, WOOD_TREE_SPREAD, WOODCUTTING_REACH, groveRoadDistanceSquared } from "../../../../shared/woodcutting";
 import { MINING_NODES, MINING_TRACK_HALF_WIDTH, miningTrackDistanceSquared } from "../../../../shared/mining";
 import { TOWN_FEET_OFFSET, TOWN_GROVE, inTownGrove, inTownWalkArea } from "../../../../shared/town";
 import { SOUL_ATLAS } from "../../soul-village";
-import { TOWN_GROVE_SIGNPOST, WOOD_TREE_BOXES, lowEnough, spriteBox, townWindowDecor, woodTreeDecor } from "../../town-world";
+import { GROVE_LANDING_DECOR, TOWN_GROVE_SIGNPOST, WOOD_TREE_BOXES, lowEnough, spriteBox, townWindowDecor, woodTreeDecor } from "../../town-world";
 import type { WorldDecor } from "../../world";
 import { paintHillsGround, touchesHillsGround } from "./hills-ground";
 import { stumpFrame } from "./wood-tree-renderer";
+import { soulFrame } from "../soul/soul-prop-renderer";
 
 type Box = { left: number; top: number; right: number; bottom: number };
 type Frame = { w: number; h: number; ax: number; ay: number };
@@ -32,6 +33,22 @@ describe("Timberwood as drawn", () => {
     }
   });
 
+  it("draws no tree wider or taller than the layout allows its kind", () => {
+    for (const tree of WOOD_TREE_NODES) {
+      const box = WOOD_TREE_BOXES[tree.id], spread = WOOD_TREE_SPREAD[tree.kind];
+      expect(Math.max(tree.x - box.left, box.right - tree.x), `tree ${tree.id}`).toBeLessThanOrEqual(spread.half);
+      expect(tree.y - box.top, `tree ${tree.id}`).toBeLessThanOrEqual(spread.up);
+    }
+  });
+
+  it("stands its trees in loose clumps, not rows: few share a line, and kinds mingle where stands meet", () => {
+    for (const tree of WOOD_TREE_NODES) {
+      expect(WOOD_TREE_NODES.filter(other => other.stand === tree.stand && Math.abs(other.y - tree.y) < 15).length, `tree ${tree.id}`).toBeLessThanOrEqual(3);
+    }
+    const mingled = WOOD_TREE_NODES.filter(tree => WOOD_TREE_NODES.some(other => other.kind !== tree.kind && Math.hypot(other.x - tree.x, other.y - tree.y) < 300));
+    expect(mingled.length).toBeGreaterThan(4);
+  });
+
   it("lays only low cover on the grove's floor, and nothing at all on the road", () => {
     const inGrove = props.filter(item => inTownGrove(item.x, item.y));
     expect(inGrove.length).toBeGreaterThan(50);
@@ -48,6 +65,20 @@ describe("Timberwood as drawn", () => {
       return road.some(point => overlap(box, { left: point.x, right: point.x, top: point.y, bottom: point.y }, GROVE_ROAD_HALF_WIDTH));
     });
     expect(over.map(where)).toEqual([]);
+  });
+
+  it("ends the road in a landing with logs stacked at its edge, well clear of anyone chopping", () => {
+    for (const item of GROVE_LANDING_DECOR) {
+      expect(decor).toContain(item);
+      expect(Math.hypot(item.x - GROVE_ROAD_END.x, item.y - GROVE_ROAD_END.y)).toBeLessThan(GROVE_LANDING_RADIUS);
+      if (item.type !== "soulProp" || item.shadow) continue;
+      const frame = soulFrame(item.frame, "village")!, box = spriteBox(frame, item.x, item.y, item.s, item.flip);
+      // In front of no one at any tree's chopping spot.
+      for (const tree of WOOD_TREE_NODES) for (const spot of WOOD_TREE_SPOTS) {
+        const feet = { x: tree.x + spot.x, y: tree.y + spot.y };
+        expect(item.y <= feet.y || !overlap(box, { left: feet.x - 22, right: feet.x + 22, top: feet.y - 75, bottom: feet.y })).toBe(true);
+      }
+    }
   });
 
   it("stands its sign at the fork, off the miners' track and the road, with nothing standing in front of it", () => {
@@ -97,7 +128,7 @@ describe("the woodcutters' road as painted", () => {
     const painted: string[] = [];
     const context = {
       fillStyle: "", strokeStyle: "", lineWidth: 1, lineJoin: "", lineCap: "",
-      save: () => {}, restore: () => {}, beginPath: () => {}, moveTo: () => {}, lineTo: () => {}, closePath: () => {},
+      save: () => {}, restore: () => {}, beginPath: () => {}, moveTo: () => {}, lineTo: () => {}, closePath: () => {}, arc: () => {},
       fill() { painted.push(context.fillStyle as string); }, stroke() { painted.push(context.strokeStyle as string); },
     };
     const middle = GROVE_ROAD[Math.floor(GROVE_ROAD.length * .7)];

@@ -23,10 +23,10 @@ export const armorSkillChanceFactor = (head: unknown, chest: unknown) => 1 + per
 
 const SCHOOL_WEAPON = { archery: "Bow", swordplay: "Sword", sorcery: "Staff" } as const;
 
-/** The class perk line of a graded helmet or armor ("Light: +3% Move Speed"), or none for other items. */
+/** The class perk line of a graded helmet or armor ("Light: +3% Move Speed"), or none for Medium and other items. */
 export function armorClassPerkLine(itemId: unknown) {
-  const armorClass = armorClassOf(itemId);
-  return armorClass ? `${ARMOR_CLASS_NAMES[armorClass]}: ${ARMOR_CLASS_DETAILS[armorClass].perk}` : null;
+  const armorClass = armorClassOf(itemId), perk = armorClass ? ARMOR_CLASS_DETAILS[armorClass].perk : "";
+  return perk ? `${ARMOR_CLASS_NAMES[armorClass!]}: ${perk}` : null;
 }
 
 /**

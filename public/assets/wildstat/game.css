@@ -786,7 +786,7 @@
   .item-inspection-summary { display: grid; justify-items: center; gap: 8px; width: 100%; min-width: 0; }
   .item-inspection-preview { display: grid; justify-items: center; align-content: center; gap: 6px; min-width: 0; width: 100%; }
   .item-inspection-tools { position: absolute; top: 8px; left: 8px; z-index: 1; display: flex; align-items: center; }
-  .item-inspection-name { width: calc(100% - 72px); margin: 0; color: #fff; font-size: 18px; font-weight: 900; line-height: 1.2; text-align: center; overflow-wrap: anywhere; text-transform: none; }
+  .item-inspection-name { width: calc(100% - 112px); margin: 0; color: #fff; font-size: 18px; font-weight: 900; line-height: 1.2; text-align: center; overflow-wrap: anywhere; text-transform: none; }
   .item-inspection-content { display: grid; grid-template-columns: minmax(0, 1fr); justify-items: center; align-content: safe center; align-items: center; text-align: center; gap: 12px; width: 100%; min-height: 0; padding: 16px 16px 6px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; color: #c9d3cb; font-size: var(--font-readable-body); line-height: var(--line-height-readable); }
   .item-inspection-content::-webkit-scrollbar { display: none; }
   .item-inspection-icon { display: grid; place-items: center; width: 150px; height: 150px; border: 0; border-radius: 0; background: transparent; box-shadow: none; }

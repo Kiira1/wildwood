@@ -2,7 +2,7 @@ import {
   isTownMap, townChunkOf, townRoomAt, townWalkClamp, TOWN_ARRIVAL, TOWN_DOORS, TOWN_FEET_OFFSET, type TownDoor,
 } from "../../../../shared/town";
 import { SOUL_DOORS_OPEN, SOUL_INTERIOR_SOLIDS, SOUL_VILLAGE_PITS, SOUL_VILLAGE_SOLIDS, type SoulSolid } from "../../soul-village";
-import { townWindowDecor } from "../../town-world";
+import { furnishedInteriorSolids, townWindowDecor } from "../../town-world";
 import type { MapId, WorldDecor } from "../../world";
 import { soulWellFall } from "../soul/soul-well-fall";
 import type { PlayerState } from "../types";
@@ -58,7 +58,7 @@ export function goThroughDoor(options: {
 }
 
 /** The village's water and building footprints, and the rooms' walls and furniture: a player cannot walk through them. */
-export const TOWN_SOLIDS: readonly SoulSolid[] = [...SOUL_VILLAGE_SOLIDS, ...SOUL_INTERIOR_SOLIDS];
+export const TOWN_SOLIDS: readonly SoulSolid[] = [...SOUL_VILLAGE_SOLIDS, ...furnishedInteriorSolids(SOUL_INTERIOR_SOLIDS)];
 /** Where the feet are below the player's position (depth-world-renderer sorts the player there too), and how wide. */
 const FEET_OFFSET = TOWN_FEET_OFFSET;
 export const TOWN_FEET_RADIUS = 12;

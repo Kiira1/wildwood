@@ -28,7 +28,7 @@ describe("the Smith's gear for gold", () => {
     expect(gradeShopOpen("uncommon_medium_helmet", levels)).toBe(false);
     expect(gradeShopNeed("epic_sword")).toBe("Lv 20 Swordplay");
     expect(gradeShopNeed("epic_magic_helmet")).toBe("Lv 20 Sorcery");
-    expect(gradeShopNeed("epic_heavy_armor")).toBe("Lv 20 In Any School");
+    expect(gradeShopNeed("epic_heavy_armor")).toBe("Lv 20 Any School");
   });
 
   it("prices only graded gear", () => {
