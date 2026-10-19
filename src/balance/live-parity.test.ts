@@ -30,7 +30,7 @@ describe("Balance Lab uses the game's resolved balance contract", () => {
   it("applies independent enemy, boss, loot, regeneration, and timer settings", () => {
     const settings = defaultBalanceSettings();
     Object.assign(settings.maps.tutorial_forest, { enemyHealth: 2, enemyRewards: 3, bossHealth: 4,
-      bossRewards: .3, bossDamage: 2, enemyRespawn: 2, bossRespawn: 3, bossRegen: 4, enemyDrops: 2 });
+      bossDamage: 2, enemyRespawn: 2, bossRespawn: 3, bossRegen: 4, enemyDrops: 2 });
     const base = createMapDefinitions()[0];
     const tuned = createMapDefinitions(0, settings)[0];
     expect(tuned.boss!.hp).toBe(base.boss!.hp * 4);

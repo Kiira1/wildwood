@@ -418,4 +418,3 @@ export const CAMPAIGN_PROGRESSION_BOSS_HEALTH: Readonly<Record<string,number>> =
   "verdant_catacombs": 1.1824517547511657,
   "ion_citadel": 1
 };
-export const CAMPAIGN_PROGRESSION_BOSS_REWARDS: Readonly<Record<string,number>> = {};

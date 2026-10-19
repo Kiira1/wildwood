@@ -1,4 +1,4 @@
-import { CAMPAIGN_PROGRESSION_ENEMIES, CAMPAIGN_PROGRESSION_BOSS_HEALTH, CAMPAIGN_PROGRESSION_BOSS_REWARDS } from './campaign-progression';
+import { CAMPAIGN_PROGRESSION_ENEMIES, CAMPAIGN_PROGRESSION_BOSS_HEALTH } from './campaign-progression';
 import { applyCampaignRewardFloor } from './campaign-reward-floor';
 import { CAMPAIGN_HEALTH_FACTORS } from './campaign-health-curve';
 import { LEGACY_ENEMY_REWARDS } from "./legacy-enemy-rewards";
@@ -33,7 +33,7 @@ export const BALANCE_MAPS: readonly (readonly [string, string, string])[] = [
 ];
 export function defaultBalanceSettings(): BalanceSettings {
   return { baselineVersion: BALANCE_BASELINE_VERSION, campaignHealthVersion: 1, campaignRewardVersion: 1, campaignProgressionVersion: 1, maps: Object.fromEntries(BALANCE_MAPS.map(([id]) => [id, { ...DEFAULT_BALANCE_FACTORS,
-      enemyRewards: 1, bossHealth: CAMPAIGN_PROGRESSION_BOSS_HEALTH[id] ?? 1, bossRewards: CAMPAIGN_PROGRESSION_BOSS_REWARDS[id] ?? 1 }])),
+      enemyRewards: 1, bossHealth: CAMPAIGN_PROGRESSION_BOSS_HEALTH[id] ?? 1 }])),
     endless: { ...BAKED_ENDLESS_DEFAULTS } };
 }
 export function validateBalanceSettings(value: unknown): BalanceSettings {

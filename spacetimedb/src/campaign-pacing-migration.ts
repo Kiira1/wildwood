@@ -1,6 +1,6 @@
 import { CAMPAIGN_MAPS, CAMPAIGN_ENDPOINT } from '../../shared/campaign-registry';
 import { CAMPAIGN_PACING_REWARDS } from '../../shared/campaign-pacing-rewards';
-import { CAMPAIGN_PROGRESSION_BOSS_HEALTH, CAMPAIGN_PROGRESSION_BOSS_REWARDS } from '../../shared/campaign-progression';
+import { CAMPAIGN_PROGRESSION_BOSS_HEALTH } from '../../shared/campaign-progression';
 import { balanceEditorState, saveMapBalance } from './map-balance';
 
 /** Migration 43: activate the tested campaign curve without rewriting history or visits. */
@@ -46,7 +46,6 @@ export function activateCampaignProgression(ctx: Parameters<typeof saveMapBalanc
     if (!factors) continue;
     factors.enemyRewards = 1;
     factors.bossHealth = CAMPAIGN_PROGRESSION_BOSS_HEALTH[map.id] ?? 1;
-    factors.bossRewards = CAMPAIGN_PROGRESSION_BOSS_REWARDS[map.id] ?? 1;
   }
   next.maps.endless.enemyRewards *= previousLastReward;
   saveMapBalance(ctx, revision, JSON.stringify(next));

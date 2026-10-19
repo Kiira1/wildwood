@@ -73,7 +73,6 @@ it('carries the final campaign tuning into Endless while earlier map tuning stay
   settings.maps[last].enemyRewards *= 4;
   settings.maps[last].bossHealth = 5;
   settings.maps[last].bossDamage = 6;
-  settings.maps[last].bossRewards = 7;
   const changed = resolveMapBalance('endless_1', settings, 1);
   expect(changed.lanes.Cindermaw.hp).toBeCloseTo(baseline.lanes.Cindermaw.hp * 2, -1);
   expect(changed.lanes.Cindermaw.damage).toBeCloseTo(baseline.lanes.Cindermaw.damage * 3, -1);

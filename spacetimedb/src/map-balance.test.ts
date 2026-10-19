@@ -61,7 +61,7 @@ it('awards the snapshot shown to the client even after an administrator edits re
   const f = crystalFixture();
   const proc = { withTx: (action: any) => f.transaction(() => action(f.ctx)) } as any;
   const snapshot = JSON.parse(server.getMapBalance(proc, { mapId: 'crystal_hollows' }));
-  const settings = balanceEditorState(f.ctx as any).settings; settings.maps.crystal_hollows.bossRewards = 3;
+  const settings = balanceEditorState(f.ctx as any).settings; settings.maps.crystal_hollows.enemyRewards = 3;
   f.transaction(() => saveMapBalance(f.ctx as any, 0, JSON.stringify(settings)));
   f.patch('playerProgress', { damage: 1e15 });
   const before = progressOf(f, f.ctx.sender);
@@ -183,6 +183,8 @@ it('activates the exact tested campaign settings once, retaining archived revisi
   const pinned = ctx.db.playerMapBalance.identity.find(ctx.sender).snapshotJson;
   activateCampaignPacing(ctx);
   const expected = JSON.parse(JSON.stringify(revision75)); delete expected.campaignRewardVersion;
+  // The saved revision still carries bossRewards, a factor that paid nothing and is no longer read.
+  for (const factors of Object.values(expected.maps) as Record<string, unknown>[]) delete factors.bossRewards;
   expect(balanceEditorState(ctx).settings).toEqual(expected);
   expect(balanceEditorState(ctx).revision).toBe(74);
   expect(ctx.db.mapBalanceVersion.revision.find(73)).toEqual(archived);
@@ -242,7 +244,7 @@ it('migration 45 turns the live revision into the tested progression curve, once
 it('migration 44 changes only the reward-floor flag and remains idempotent', () => {
   const ctx = fixture();
   const before = defaultBalanceSettings(); delete before.campaignRewardVersion;
-  before.maps.beginner_desert.bossRewards = 1.25;
+  before.maps.beginner_desert.enemyRewards = 1.25;
   ctx.db.mapBalanceVersion.insert({ revision: 74, settingsJson: JSON.stringify(before), editor: ctx.sender, createdAt: ctx.timestamp });
   ctx.db.mapBalanceHead.insert({ id: 0, revision: 74 });
   activateCampaignRewardFloor(ctx);
