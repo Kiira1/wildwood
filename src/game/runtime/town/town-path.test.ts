@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { MINING_NODES } from "../../../../shared/mining";
-import { TOWN_ARRIVAL, TOWN_CENTER, TOWN_DOORS, TOWN_EAST_BRIDGE, TOWN_EAST_FENCE_GAP, TOWN_FEET_OFFSET, TOWN_WALK_AREA, townRoomAt } from "../../../../shared/town";
+import {
+  TOWN_ARRIVAL, TOWN_CENTER, TOWN_DOORS, TOWN_EAST_BRIDGE, TOWN_EAST_FENCE_GAP, TOWN_FEET_OFFSET, TOWN_GROVE, TOWN_HILLS, TOWN_WALK_AREAS, inTownGrove, townRoomAt,
+  townWalkClamp,
+} from "../../../../shared/town";
+import { GROVE_ROAD, GROVE_ROAD_END, WOOD_STANDS, WOOD_TREE_NODES, WOODCUTTING_REACH, groveRoadDistanceSquared, type WoodTree } from "../../../../shared/woodcutting";
 import { miningStandSpot } from "../auto-farm/auto-mine";
 import { planTownPath, townFeetClear, type TownPoint } from "./town-path";
 import { pushOutOf, TOWN_FEET_RADIUS, TOWN_SOLIDS } from "./town-runtime";
@@ -25,14 +29,14 @@ function walk(from: TownPoint, waypoints: readonly TownPoint[]) {
       const move = Math.min(distance, 5);
       feet.x += dx / distance * move; feet.y += dy / distance * move;
       for (const solid of TOWN_SOLIDS) pushOutOf(feet, solid);
-      if (!townRoomAt(feet.x, feet.y - TOWN_FEET_OFFSET, 400)) {
-        feet.x = Math.max(TOWN_WALK_AREA.left, Math.min(TOWN_WALK_AREA.right, feet.x));
-        feet.y = Math.max(TOWN_WALK_AREA.top, Math.min(TOWN_WALK_AREA.bottom, feet.y));
-      }
+      if (!townRoomAt(feet.x, feet.y - TOWN_FEET_OFFSET, 400)) Object.assign(feet, townWalkClamp(feet.x, feet.y));
     }
   }
   return { x: feet.x, y: feet.y };
 }
+/** Where feet stand to chop a tree: in front of it, else to either side, in its reach, as a rock's (miningStandSpot). */
+const treeStandSpot = (tree: WoodTree) => ([[0, 44], [-44, 34], [44, 34]] as const).map(([dx, dy]) => ({ x: tree.x + dx, y: tree.y + dy }))
+  .find(at => Math.hypot(at.x - tree.x, at.y - tree.y) < WOODCUTTING_REACH - 8 && townFeetClear(at.x, at.y)) ?? null;
 /** Where the walk crosses the line x = `at`, going east. */
 const crossings = (from: TownPoint, waypoints: readonly TownPoint[], at: number) => [from, ...waypoints].slice(1).flatMap((to, index) => {
   const a = [from, ...waypoints][index];
@@ -75,6 +79,38 @@ describe("walks planned through the Town", () => {
       const end = walk(from, path);
       expect(Math.hypot(end.x - goal.x, end.y - goal.y)).toBeLessThan(2);
     }
+  });
+
+  it("goes on to Timberwood, round the river's north end or over the bridge, to a tree in every stand", () => {
+    for (const stand of WOOD_STANDS.map((_stand, index) => index)) {
+      const trees = WOOD_TREE_NODES.filter(tree => tree.stand === stand);
+      for (const tree of [trees[0], trees.at(-1)!]) {
+        const goal = treeStandSpot(tree)!;
+        expect(goal, `tree ${tree.id}`).not.toBeNull();
+        const path = planTownPath(arrival, goal)!;
+        expect(path, `tree ${tree.id}`).not.toBeNull();
+        const end = walk(arrival, path);
+        expect(Math.hypot(end.x - goal.x, end.y - goal.y), `tree ${tree.id}`).toBeLessThan(2);
+      }
+    }
+  });
+
+  it("walks up the woodcutters' road from the miners' track into the grove, and from the hills straight up", () => {
+    const fork = GROVE_ROAD[0], path = planTownPath(fork, GROVE_ROAD_END)!;
+    // Up the road, never far off it.
+    for (const point of path) expect(Math.sqrt(groveRoadDistanceSquared(point.x, point.y))).toBeLessThan(160);
+    const end = walk(fork, path);
+    expect(Math.hypot(end.x - GROVE_ROAD_END.x, end.y - GROVE_ROAD_END.y)).toBeLessThan(2);
+    // The hills' north edge is open to the grove: no wall between.
+    const from = { x: TOWN_HILLS.left + 1_500, y: TOWN_HILLS.top + 200 }, goal = treeStandSpot(WOOD_TREE_NODES.find(tree => tree.stand === 1)!)!;
+    expect(walk(from, planTownPath(from, goal)!)).toEqual(expect.objectContaining({ x: expect.closeTo(goal.x, 0), y: expect.closeTo(goal.y, 0) }));
+  });
+
+  it("keeps the walls round the village where they were, north of it too", () => {
+    const [walls] = TOWN_WALK_AREAS;
+    expect(townFeetClear(TOWN_CENTER.x, walls.top - 200)).toBe(false);
+    expect(townFeetClear(TOWN_GROVE.left + 500, TOWN_GROVE.top + 300)).toBe(true);
+    expect(inTownGrove(GROVE_ROAD_END.x, GROVE_ROAD_END.y)).toBe(true);
   });
 
   it("walks out of a house's room to its doorway", () => {

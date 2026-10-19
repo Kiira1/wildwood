@@ -1,6 +1,6 @@
 import type { ItemSlot } from "../../shared/items";
 
-/** "ORE": the ore stacks alone (shared/ore-bag.ts). */
+/** "ORE": the ore, wood and crystal stacks alone (shared/ore-bag.ts). */
 export type InventoryFilter = ItemSlot | "ALL" | "ORE";
 
 export function createInventoryFilters(onFilter: (filter: InventoryFilter) => void, onEquipBest: () => void) {
@@ -12,7 +12,7 @@ export function createInventoryFilters(onFilter: (filter: InventoryFilter) => vo
   filters.setAttribute("aria-label", "Filter inventory");
   let active: InventoryFilter = "ALL";
   const buttons = new Map<InventoryFilter, HTMLButtonElement>();
-  for (const [filter, label] of [["ALL", "All"], ["HAND", "Weapons"], ["CHEST", "Armor"], ["HEAD", "Helmets"], ["FEET", "Boots"], ["ORE", "Ores"]] as const) {
+  for (const [filter, label] of [["ALL", "All"], ["HAND", "Weapons"], ["CHEST", "Armor"], ["HEAD", "Helmets"], ["FEET", "Boots"], ["ORE", "Materials"]] as const) {
     const button = document.createElement("button");
     button.type = "button";
     button.textContent = label;

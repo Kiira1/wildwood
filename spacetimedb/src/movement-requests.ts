@@ -10,6 +10,7 @@ import { movementSpeedsMatch, effectivePlayerMovementSpeed, MOVEMENT_SPEED_EPSIL
 import { readPlayerProgress } from "./wide-stats";
 import { equippedFeetForProgress } from "./progress-helpers";
 import { effectiveMovementSpeedForProgress } from "./player-speed";
+import { bonusMoveSpeedFactor } from "./weapon-mastery";
 import { BLACK_BOOTS, BLACK_BOOTS_SPEED_BONUS } from "../../shared/items";
 import { updateSnapshotRow } from "./snapshot-row-writes";
 
@@ -73,7 +74,8 @@ export function setPlayerSpeed(ctx: ModuleReducerCtx, { speed }: { speed: number
   // next packet still carries the previous rank's speed, which is lower than
   // the server now expects, and every rejection on live was exactly that.
   // Asking to move slower than you are entitled to is not an exploit.
-  const maximumSpeed = Math.max(expectedSpeed, restingSpeed);
+  // Tailwind (mastery-techniques.ts) and Light armor are allowed whenever learned or worn, as Black Boots are.
+  const maximumSpeed = Math.max(expectedSpeed, restingSpeed) * (progress ? bonusMoveSpeedFactor(ctx, ctx.sender, progress) : 1);
   if (!Number.isFinite(speed) || speed < 0 || speed > maximumSpeed + MOVEMENT_SPEED_EPSILON) {
     // Name the account in the log; the message alone says nothing about who
     // sent it. The player-facing text stays put so the error still groups.

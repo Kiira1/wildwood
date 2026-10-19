@@ -2,7 +2,7 @@ import { CHALLENGE_ABSOLUTE_MIN_INTERVAL } from "./prestige-challenge";
 import { DEFAULT_ATTACK_INTERVAL, PLAYER_BASE_DAMAGE, PLAYER_BASE_HP, PLAYER_BASE_REGEN } from "./rules";
 import { cardStatFactors, cardTotals, type CardTotals } from "./card-effects";
 import {
-  equipmentDamageMultiplierBonus,
+  equipmentDamageFactor,
   equipmentMaxHealthMultiplierBonus,
   equipmentRegenerationMultiplierBonus,
   type ItemLevel,
@@ -95,7 +95,7 @@ export function preparePlayerPowerStats(
   // It used to be baked into the saved number by the client at each rank-up,
   // which the server stopped accepting in 0.695, so ranks since did nothing.
   const health = 1 + equipmentMaxHealthMultiplierBonus(headItem, chestItem, headLevel, chestLevel);
-  const damage = 1 + equipmentDamageMultiplierBonus(weaponItem, headItem, chestItem, weaponLevel, headLevel, chestLevel);
+  const damage = equipmentDamageFactor(weaponItem, headItem, chestItem, weaponLevel, headLevel, chestLevel);
   const regen = 1 + equipmentRegenerationMultiplierBonus(headItem, chestItem, headLevel, chestLevel);
   const vitality = 1 + researchRank(research?.vitality) * .02;
   const warcraft = 1 + researchRank(research?.warcraft) * .02;

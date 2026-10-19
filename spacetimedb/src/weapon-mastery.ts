@@ -5,6 +5,10 @@ import {
   isWeaponSchool, masteryInPlay, masteryLevel, masteryPointsForReport, weaponSchool, type MasteryInPlay, type WeaponSchool,
 } from "../../shared/weapon-mastery";
 import { challengeActive } from "./prestige-challenge";
+import { TAILWIND_SPEED_BONUS, hasTechnique } from "../../shared/mastery-techniques";
+import { canonicalSavedHand } from "./loadout";
+import { armorMoveSpeedAllowance } from "../../shared/armor-class-perks";
+import { canonicalItemId } from "../../shared/items";
 
 /** A school's Mastery points, one row per player and school, so a new school needs no new column. */
 export const playerWeaponMastery = table({ name: "player_weapon_mastery", public: false }, {
@@ -43,6 +47,19 @@ export function weaponMasteryPoints(ctx: Ctx, identity: Identity): Record<Weapon
 export function masteryInPlayFor(ctx: Ctx, identity: Identity, rightHand: string | undefined, weaponInUse = rightHand): MasteryInPlay {
   if (challengeActive(ctx, identity)) return { school: weaponSchool(rightHand), level: 0 };
   return masteryInPlay(weaponMasteryPoints(ctx, identity), rightHand, weaponInUse);
+}
+
+/**
+ * The move speed factor the movement checks allow on top of the saved speed: Tailwind whenever the technique is
+ * learned and a bow is in hand, as Black Boots' bonus is allowed (a kill is the client's claim, and a 6% walk pays
+ * nothing by itself), and Light armor's speed. Heavy's slowdown is not enforced. The saved gear is read without the
+ * bag, which can only loosen an allowance.
+ */
+export function bonusMoveSpeedFactor(ctx: Ctx, identity: Identity, progress: any) {
+  const right = canonicalSavedHand(progress, "equippedRightHand");
+  const mastery = masteryInPlayFor(ctx, identity, right, right || canonicalSavedHand(progress, "equippedLeftHand"));
+  return (hasTechnique(mastery, "tailwind") ? 1 + TAILWIND_SPEED_BONUS : 1)
+    * armorMoveSpeedAllowance(canonicalItemId(progress?.equippedHead), canonicalItemId(progress?.equippedChest));
 }
 
 /** Copies a school's level to player_mastery_level, writing only when it changed; none below level 1. */

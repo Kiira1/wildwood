@@ -83,9 +83,10 @@ export function rollBoltSkillProcs(roll: Partial<StaffSkillRoll> | null | undefi
  * Generous kill bound per cast: the burst can reach STAFF_SPLASH_MAX_TARGETS, every chain jump another enemy, and
  * a meteor every target in its radius, counted once per bolt's worth of its damage.
  */
-export function staffSkillReachMultiplier(roll: Partial<StaffSkillRoll> | null | undefined) {
+export function staffSkillReachMultiplier(roll: Partial<StaffSkillRoll> | null | undefined, extraMeteorFalls = 0) {
+  // Overcharge's jumps stay under a bolt's damage, so each still counts as one; Meteor Shower adds whole falls.
   return STAFF_SPLASH_MAX_TARGETS + staffSkillChance(roll, "chain") * CHAIN_MAX_JUMPS
-    + staffSkillChance(roll, "meteor") * METEOR_MAX_TARGETS * Math.ceil(METEOR_DAMAGE_SHARE);
+    + staffSkillChance(roll, "meteor") * METEOR_MAX_TARGETS * Math.ceil(METEOR_DAMAGE_SHARE) * (1 + extraMeteorFalls);
 }
 
 /** Damage against a lone boss, relative to the bolt alone: only a meteor adds any. */

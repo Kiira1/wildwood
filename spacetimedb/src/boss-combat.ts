@@ -2,7 +2,8 @@
 // only unlock gates (boss-gates.ts); the retained IDs below serve old migrations.
 import { upgradeSlotForItem } from "../../shared/slot-upgrades";
 import { preparePlayerPowerStats, playerPowerForStats, legacyU32Power } from "../../shared/player-power";
-import { equipmentDamageMultiplierBonus, itemDefinition, type ItemLevel } from "../../shared/items";
+import { equipmentDamageFactor, itemDefinition, type ItemLevel } from "../../shared/items";
+import { armorSkillChanceFactor } from "../../shared/armor-class-perks";
 import { createEnemyRewardAccumulator, type EnemyStatReward } from "../../shared/enemy-reward-accumulator";
 import { attackCapInPlay, statRewardMultiplierFor, prestigePerkRanks } from "./prestige";
 import { WORLD_REFLECT_SHARE, preArmorFactor, prestigePerkValue, prestigeReachMultiplier, prestigeSwingMultiplier } from "../../shared/prestige-perks";
@@ -14,7 +15,7 @@ import { soulStatsFor, withSoulStats } from "./soul-dimension";
 import { bowSkillRollFor } from "./bow-skills";
 import { bowSkillReachMultiplier, isSkillBow } from "../../shared/bow-skills";
 import { PRISM_MAX_TARGETS, bowSkillsWithCards, cardGuardFactor, cardOffenseBound, cardSustainBound } from "../../shared/card-bounds";
-import { cardValue } from "../../shared/card-effects";
+import { cardChance, cardValue } from "../../shared/card-effects";
 import { swordSkillChance, swordSkillReachMultiplier } from "../../shared/sword-skills";
 import { swordSkillRollFor } from "./sword-skills";
 import { STAFF_BOLT_DAMAGE_FACTOR, isStaff, staffSkillReachMultiplier, weaponAttackInterval } from "../../shared/staff-skills";
@@ -23,6 +24,7 @@ import type { ModuleReducerCtx as GameReducerContext } from "./index";
 import { readPlayerProgress } from "./wide-stats";
 import { weaponMasteryPoints } from "./weapon-mastery";
 import { masteryDamageTaken, masteryInPlay, rollWithProficiency } from "../../shared/weapon-mastery";
+import { masteryTechniqueBound } from "../../shared/mastery-techniques";
 
 // Primary key of the single row in each retained shared-boss table. The
 // one-time migrations still read the old result rows by it.
@@ -82,10 +84,13 @@ export function createCombatReport(deps: CombatReportDeps) {
     };
     const [weaponLevel, headLevel, chestLevel] = [levelFor(weapon), levelFor(head), levelFor(chest)];
     const warcraft = 1 + (research?.warcraft ?? 0) * .02;
-    const equipment = 1 + equipmentDamageMultiplierBonus(weapon, head, chest, weaponLevel, headLevel, chestLevel);
+    // The gear's bonuses and the class set (items.ts equipmentDamageFactor).
+    const equipment = equipmentDamageFactor(weapon, head, chest, weaponLevel, headLevel, chestLevel);
     // The active cards: attack cards multiply damage as they do power.
     const cards = cardStatFactors(cardTotals);
-    return { weapon, rightHand, levelFor, cardTotals, cards, damage: (base: number) => base * equipment * warcraft * cards.damage };
+    // Magic armor raises skill chances as Skill Proficiency does.
+    return { weapon, rightHand, levelFor, cardTotals, cards, skillFactor: armorSkillChanceFactor(head, chest),
+      damage: (base: number) => base * equipment * warcraft * cards.damage };
   }
 
   /**
@@ -140,7 +145,15 @@ export function createCombatReport(deps: CombatReportDeps) {
       // Crit kills inside the report raise the run's rating, so the multiplier is read per entry.
       // Card effects in combat (card-bounds.ts): more damage a hit and more enemies reached, all counted at once.
       const cardBound = cardOffenseBound(loadout.cardTotals);
-      const crits = (research?.criticalChance ?? 0) > 0 || prestigePerkValue(ranks, "keenEdge") > 0 || loadout.cards.critChance > 0 || cardBound.crits;
+      // Weapon Mastery's Skill Proficiency raises every skill chance, and its techniques add hits, damage and speed
+      // (mastery-techniques.ts), each at its most. Read once a report, and counted during Reflect Only and Aggro runs
+      // too (where the client leaves it off): the looser side.
+      const mastery = masteryInPlay(weaponMasteryPoints(ctx, ctx.sender), loadout.rightHand, loadout.weapon);
+      const technique = masteryTechniqueBound(mastery,
+        prestigePerkValue(ranks, "splitShot") > 0 || cardChance(loadout.cardTotals, "splitShot") > 0);
+      // Steady Aim and Focus crit without any crit chance at all.
+      const crits = (research?.criticalChance ?? 0) > 0 || prestigePerkValue(ranks, "keenEdge") > 0 || loadout.cards.critChance > 0 || cardBound.crits
+        || technique.crits;
       const critical = (rating = 0) => crits
         ? criticalDamageMultiplier({ researchRank: research?.criticalDamage, perks: ranks, soul: soul?.critDamage, rating, capRank: research?.critCap,
           card: loadout.cards.critDamage }) : 1;
@@ -151,16 +164,14 @@ export function createCombatReport(deps: CombatReportDeps) {
       // enemy, so they widen reach; the Split Shot arrow rolls the bow's skills
       // too, so the two reaches multiply.
       // Bow skill cards add to a bow's own roll.
-      // Weapon Mastery's Skill Proficiency raises every skill chance. Read once a report, and counted during
-      // Reflect Only and Aggro runs too (where the client leaves it off): the looser side.
-      const mastery = masteryInPlay(weaponMasteryPoints(ctx, ctx.sender), loadout.rightHand, loadout.weapon);
       const bowSkills = isSkillBow(loadout.weapon)
-        ? rollWithProficiency(bowSkillsWithCards(bowSkillRollFor(ctx, ctx.sender, loadout.weapon), loadout.cardTotals), mastery.level) : null;
-      const swordSkills = rollWithProficiency(swordSkillRollFor(ctx, ctx.sender, loadout.weapon), mastery.level);
+        ? rollWithProficiency(bowSkillsWithCards(bowSkillRollFor(ctx, ctx.sender, loadout.weapon), loadout.cardTotals), mastery.level, loadout.skillFactor) : null;
+      const swordSkills = rollWithProficiency(swordSkillRollFor(ctx, ctx.sender, loadout.weapon), mastery.level, loadout.skillFactor);
       // A staff's bolt bursts on every enemy around its impact, and its skills reach further (staff-skills.ts).
       // Sorcery's bigger blast needs nothing more: the bound counts a burst's most targets, not its size.
       const staff = isStaff(loadout.weapon);
-      const staffReach = staff ? staffSkillReachMultiplier(rollWithProficiency(staffSkillRollFor(ctx, ctx.sender, loadout.weapon), mastery.level)) : 1;
+      const staffReach = staff
+        ? staffSkillReachMultiplier(rollWithProficiency(staffSkillRollFor(ctx, ctx.sender, loadout.weapon), mastery.level, loadout.skillFactor), technique.meteorFalls) : 1;
       const armorReduction = armorFor(statsFor(withSoulStats(saved, soul, minInterval)).armor).reduction;
       return { saved, earned, statsFor, armorFor, soul, minInterval, gear: {
         loadout, critical, swing: prestigeSwingMultiplier(ranks),
@@ -169,10 +180,14 @@ export function createCombatReport(deps: CombatReportDeps) {
         projectiles: !armed || itemDefinition(loadout.weapon)?.weapon?.mode === "MELEE" ? 1 : Math.max(1, saved.projectileCount),
         // Reflect returns the hit before armor, so armor raises what it adds.
         reach: (prestigeReachMultiplier(ranks, armorReduction) + cardBound.reflect * WORLD_REFLECT_SHARE * preArmorFactor(armorReduction))
-          * bowSkillReachMultiplier(bowSkills) * swordSkillReachMultiplier(swordSkills) * staffReach * cardBound.reach,
+          * bowSkillReachMultiplier(bowSkills, technique.stormWaves) * staffReach * cardBound.reach
+          * swordSkillReachMultiplier(swordSkills, technique.whirlwindTicks, technique.cleave),
         // A bolt hits a little harder than an arrow, and casts come slower.
         weapon: loadout.weapon, boltDamage: staff ? STAFF_BOLT_DAMAGE_FACTOR : 1,
         cardDamage: cardBound.damage,
+        // Hunter's Mark, Hex and Volley hit harder; Momentum swings faster; Bloodlust heals each swing.
+        techniqueDamage: technique.damage, attackSpeed: technique.attackSpeed, healPerSwing: technique.healPerSwing,
+        deflectReturn: technique.deflectReturn,
         reflects: prestigePerkValue(ranks, "riposte") > 0 || cardBound.reflect > 0,
         // Prism: a reflected hit strikes up to four enemies near its attacker as well.
         reflectReach: cardBound.prism ? 1 + PRISM_MAX_TARGETS : 1,
@@ -180,8 +195,8 @@ export function createCombatReport(deps: CombatReportDeps) {
         // Second Wind cards add to the perk.
         secondWind: prestigePerkValue(ranks, "secondWind") + Math.max(0, cardValue(loadout.cardTotals, "secondWind")) / 100,
         cardTotals: loadout.cardTotals,
-        // Swordplay's Guard, like guard cards, lets less of a hit through than Reflect answers.
-        guardFactor: 1 / masteryDamageTaken(mastery),
+        // Swordplay's Guard and Mana Shield, like guard cards, let less of a hit through than Reflect answers.
+        guardFactor: technique.guard / masteryDamageTaken(mastery),
         reflectOnly: Boolean(challenge?.active),
       } };
     }
@@ -193,9 +208,9 @@ export function createCombatReport(deps: CombatReportDeps) {
         if (!saved) return { dps: 0, attackInterval: 1 };
         const progress = withSoulStats(earned!.preview(reward), soul, minInterval);
         if (!gear) return { dps: 0, attackInterval: attackIntervalForProgress(progress), projectiles: 1 };
-        const attackInterval = weaponAttackInterval(gear.weapon, attackIntervalForProgress(progress));
-        const dps = gear.armed
-          ? gear.loadout.damage(progress.damage) * gear.boltDamage * gear.critical(progress.critRating) * gear.swing * gear.cardDamage * gear.projectiles / attackInterval : 0;
+        const attackInterval = weaponAttackInterval(gear.weapon, attackIntervalForProgress(progress)) / gear.attackSpeed;
+        const dps = gear.armed ? gear.loadout.damage(progress.damage) * gear.boltDamage * gear.critical(progress.critRating) * gear.swing
+          * gear.cardDamage * gear.techniqueDamage * gear.projectiles / attackInterval : 0;
         // Reflect throws a hit back as it arrived before armor
         // (capped at max health outside Reflect Only). What got through can
         // never total more than the player's health, what regen restores and
@@ -208,13 +223,15 @@ export function createCombatReport(deps: CombatReportDeps) {
         // Damage taken per second that Reflect can answer: regen, a health bar
         // per life (a life no shorter than REFLECT_ONLY_LIFE_SECONDS), and
         // Second Wind's heal at the most kills a second any map can respawn.
+        // Bloodlust heals on every swing, at its fastest.
         const absorbed = reflect ? reflect.regen + reflect.maxHp / REFLECT_ONLY_LIFE_SECONDS + gear.secondWind * reflect.maxHp * SECOND_WIND_KILLS_PER_SECOND
+          + (gear.armed ? gear.healPerSwing * reflect.maxHp / attackInterval : 0)
           + cardSustainBound(gear.cardTotals, reflect.maxHp, dps, 1 / REFLECT_ONLY_TICK_SECONDS, REFLECT_ONLY_LIFE_SECONDS) : 0;
         // The perk's chance is left out, so the bound only ever errs towards paying.
         // Deflect prevents the hit, so health lost cannot bound it. Each return is capped at max health,
         // and shares the player's .1s hurt window. Leave its chance out, as for Reflect's lucky streaks.
         const reflectDps = (reflect && gear.reflects ? WORLD_REFLECT_SHARE * reflect.preArmor * absorbed * gear.reflectReach : 0)
-          + (stats && gear.deflects ? stats.maxHp / REFLECT_ONLY_TICK_SECONDS : 0);
+          + (stats && gear.deflects ? stats.maxHp * gear.deflectReturn / REFLECT_ONLY_TICK_SECONDS : 0);
         // Reflect Only: the weapon counts for nothing, and every kill has to come from hits taken.
         if (gear.reflectOnly) {
           return { attackInterval: REFLECT_ONLY_TICK_SECONDS, projectiles: 1, reach: 1, dps: reflectDps, reflectDps: 0, reflectTick: REFLECT_ONLY_TICK_SECONDS };

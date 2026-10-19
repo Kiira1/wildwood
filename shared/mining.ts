@@ -1,5 +1,6 @@
 import { campaignMapUnlocked, type CampaignAccess } from "./equipment-access";
-import { REFINE_ORES, type OreId } from "./refine";
+import { REFINE_ORES, type GradeOreId, type OreId } from "./refine";
+import { ARCANE_CRYSTAL } from "./crafting";
 import { luckMultiplier } from "./luck-research";
 import { MAP_DISPLAY_NAMES, MAP_IDS } from "./rules";
 import { TOWN_EAST_BRIDGE, TOWN_EAST_FENCE_GAP, TOWN_HILLS, townRandom } from "./town";
@@ -11,6 +12,7 @@ import { TOWN_EAST_BRIDGE, TOWN_EAST_FENCE_GAP, TOWN_HILLS, townRandom } from ".
  * - Four veins, west to east: copper nearest the village, then iron, mithril and adamant, each opening with the map
  *   whose gear that ore refines (shared/refine.ts grades: tiers 1-4 copper, 5-8 iron, 9-12 mithril, 13-15 adamant).
  * - Rocks come Small, Large and, rarely, Mysterious; only a Mysterious rock can hold a Starshard.
+ * - A few crystal rocks in every vein hold Arcane Crystal for crafting instead of ore, once Mining reaches CRYSTAL_MINING.
  * - Every rock raises the Mining stat, which makes mining faster. Prestige never resets it.
  * - Each player has their own rocks: a broken rock is bare for them alone until it grows back.
  *
@@ -21,7 +23,9 @@ import { TOWN_EAST_BRIDGE, TOWN_EAST_FENCE_GAP, TOWN_HILLS, townRandom } from ".
  */
 
 /** The four grade ores: what a vein can hold. A Starshard comes only out of a Mysterious rock. */
-export type VeinOreId = Exclude<OreId, "starshard">;
+export type VeinOreId = GradeOreId;
+/** What a rock breaks into: its vein's ore, or a crystal rock's crystal. */
+export type RockOreId = VeinOreId | typeof ARCANE_CRYSTAL;
 
 export type MiningVein = {
   ore: VeinOreId;
@@ -34,16 +38,18 @@ export type MiningVein = {
   hardness: number;
   /** How many rocks it holds: the deeper the vein, the scarcer. */
   rocks: number;
+  /** How many crystal rocks stand among them. */
+  crystals: number;
 };
 const band = (from: number, to: number) => ({ left: TOWN_HILLS.left + from, right: TOWN_HILLS.left + to });
 export const MINING_VEINS: readonly MiningVein[] = Object.freeze([
-  { ore: "copper_ore", firstTier: 1, hardness: 1, rocks: 34, ...band(0, 1_400) },
-  { ore: "iron_ore", firstTier: 5, hardness: 2, rocks: 26, ...band(1_400, 2_500) },
-  { ore: "mithril_ore", firstTier: 9, hardness: 4, rocks: 22, ...band(2_500, 3_500) },
-  { ore: "adamant_ore", firstTier: 13, hardness: 8, rocks: 18, ...band(3_500, 4_400) },
+  { ore: "copper_ore", firstTier: 1, hardness: 1, rocks: 34, crystals: 3, ...band(0, 1_400) },
+  { ore: "iron_ore", firstTier: 5, hardness: 2, rocks: 26, crystals: 2, ...band(1_400, 2_500) },
+  { ore: "mithril_ore", firstTier: 9, hardness: 4, rocks: 22, crystals: 2, ...band(2_500, 3_500) },
+  { ore: "adamant_ore", firstTier: 13, hardness: 8, rocks: 18, crystals: 2, ...band(3_500, 4_400) },
 ] as const);
 
-export type MiningNodeKind = "small" | "large" | "mysterious";
+export type MiningNodeKind = "small" | "large" | "mysterious" | "crystal";
 /**
  * Each kind of rock: how long a new miner takes to break one of copper (a vein's hardness multiplies it, Mining
  * divides it), the ore it breaks into, how long it stays bare for the player who broke it, and its share of a
@@ -53,7 +59,10 @@ export const MINING_NODE_KINDS: Readonly<Record<MiningNodeKind, { name: string; 
   small: { name: "Small", breakSeconds: 4, ore: 1, respawnSeconds: 60, share: 0 },
   large: { name: "Large", breakSeconds: 12, ore: 3, respawnSeconds: 180, share: .24 },
   mysterious: { name: "Mysterious", breakSeconds: 12, ore: 2, respawnSeconds: 900, share: .04 },
+  crystal: { name: "Crystal", breakSeconds: 10, ore: 1, respawnSeconds: 300, share: 0 },
 };
+/** The Mining a crystal rock asks for: a first few rocks of ore before the crystal. */
+export const CRYSTAL_MINING = 25;
 /** A Mysterious rock's chance of a Starshard beside its ore: the ore every refine from ★11 on takes. */
 export const MINING_STARSHARD_CHANCE = .15;
 
@@ -63,7 +72,7 @@ export const MINING_SERVER_REACH = 120;
 /** The server takes a break this soon at the earliest, as a share of the rock's time: clocks and packets wander. */
 export const MINING_RATE_SLACK = .75;
 
-export type MiningNode = { id: number; x: number; y: number; kind: MiningNodeKind; vein: number; ore: VeinOreId };
+export type MiningNode = { id: number; x: number; y: number; kind: MiningNodeKind; vein: number; ore: RockOreId };
 
 // ---- How the hills are laid ----
 // Everything here is plain arithmetic on whole numbers and townRandom (no trigonometry, whose last digit an engine
@@ -129,13 +138,13 @@ export function miningTrackDistanceSquared(x: number, y: number, beyond = Infini
  * MINING_REACH).
  */
 export type MiningOutcrop = { id: number; vein: number; x: number; y: number; rocks: readonly number[] };
-export const MINING_ROCK_ROOM: Readonly<Record<MiningNodeKind, number>> = { small: 76, large: 92, mysterious: 92 };
+export const MINING_ROCK_ROOM: Readonly<Record<MiningNodeKind, number>> = { small: 76, large: 92, mysterious: 92, crystal: 92 };
 /**
  * How far each kind's stone reaches from its foot, at most, either way round (town-world.ts picks the stone and
  * its size): half its width, its height above its foot and how far below its foot it shows.
  */
 export const MINING_ROCK_EXTENT: Readonly<Record<MiningNodeKind, { half: number; up: number; down: number }>> = {
-  small: { half: 41, up: 52, down: 18 }, large: { half: 64, up: 80, down: 23 }, mysterious: { half: 54, up: 80, down: 23 },
+  small: { half: 41, up: 52, down: 18 }, large: { half: 64, up: 80, down: 23 }, mysterious: { half: 54, up: 80, down: 23 }, crystal: { half: 64, up: 80, down: 23 },
 };
 /**
  * The room below each rock where the plate that names it hangs while it is mined (ore-rock-renderer.ts): just past
@@ -143,7 +152,7 @@ export const MINING_ROCK_EXTENT: Readonly<Record<MiningNodeKind, { half: number;
  * never on one of those either. As big as the plate is at the default zoom on a desktop or a phone (a Mysterious
  * rock's name is the longest), from the rock's foot.
  */
-export const MINING_PLATE_ROOM = Object.freeze({ half: { small: 80, large: 100, mysterious: 100 } as Readonly<Record<MiningNodeKind, number>>, top: MINING_REACH + 4, bottom: MINING_REACH + 66 });
+export const MINING_PLATE_ROOM = Object.freeze({ half: { small: 80, large: 100, mysterious: 100, crystal: 100 } as Readonly<Record<MiningNodeKind, number>>, top: MINING_REACH + 4, bottom: MINING_REACH + 66 });
 /** Whether a rock of kind `kind` at (x, y) would stand in the plate room of a rock of kind `under` at (ux, uy). */
 const inPlateRoom = (ux: number, uy: number, under: MiningNodeKind, x: number, y: number, kind: MiningNodeKind) => {
   const extent = MINING_ROCK_EXTENT[kind];
@@ -199,12 +208,56 @@ function layHills() {
       return dx * dx + dy * dy >= room * room && !inPlateRoom(node.x, node.y, node.kind, x, y, kind) && !inPlateRoom(x, y, kind, node.x, node.y, node.kind);
     });
   };
-  MINING_VEINS.forEach((vein, veinIndex) => {
-    const last = veinIndex === MINING_VEINS.length - 1;
-    const box = {
+  /** Where a vein's rocks keep their feet. */
+  const veinBox = (veinIndex: number) => {
+    const vein = MINING_VEINS[veinIndex], last = veinIndex === MINING_VEINS.length - 1;
+    return {
       left: vein.left + (veinIndex === 0 ? HILLS_INSET.west : VEIN_INSET), right: vein.right - (last ? HILLS_INSET.east : VEIN_INSET),
       top: TOWN_HILLS.top + HILLS_INSET.north, bottom: TOWN_HILLS.bottom - HILLS_INSET.south,
     };
+  };
+  type Outcrop = (typeof outcrops)[number];
+  type Box = ReturnType<typeof veinBox>;
+  // An outcrop's rocks: its heart at (or as near as fits to) its middle, then each next rock beside one already
+  // laid, a room's width on, at the free spot nearest the middle along the outcrop's lie.
+  const placeIn = (outcrop: Outcrop, kind: MiningNodeKind, attempt: number, box: Box, ore: RockOreId) => {
+    const random = townRandom(outcrop.id, attempt, 47);
+    const candidates: Point[] = [];
+    if (!outcrop.rocks.length) {
+      candidates.push(outcrop);
+      for (let ring = 1; ring <= 8; ring++) for (let k = 0; k < 10; k++) {
+        const way = direction(random);
+        candidates.push({ x: outcrop.x + way.x * ring * 24, y: outcrop.y + way.y * ring * 24 });
+      }
+    } else {
+      for (const id of outcrop.rocks) {
+        const rock = nodes[id];
+        for (let k = 0; k < 14; k++) {
+          const way = direction(random), distance = MINING_ROCK_ROOM[rock.kind] + MINING_ROCK_ROOM[kind] + 4 + random() * 30;
+          candidates.push({ x: rock.x + way.x * distance, y: rock.y + way.y * distance });
+        }
+      }
+    }
+    let best: Point | null = null, bestScore = Infinity;
+    for (const candidate of candidates) {
+      const x = Math.round(candidate.x), y = Math.round(candidate.y);
+      if (!fits(x, y, kind, outcrop.id, box)) continue;
+      const dx = x - outcrop.x, dy = y - outcrop.y;
+      const along = (dx * outcrop.axis.x + dy * outcrop.axis.y) / outcrop.stretch, across = dx * outcrop.axis.y - dy * outcrop.axis.x;
+      const score = along * along + across * across;
+      if (score < bestScore) { best = { x, y }; bestScore = score; }
+    }
+    if (!best) return false;
+    outcrop.rocks.push(nodes.length);
+    outcropOf.push(outcrop.id);
+    nodes.push({ id: nodes.length, x: best.x, y: best.y, kind, vein: outcrop.vein, ore });
+    return true;
+  };
+  /** How far an outcrop's middle is from the track, squared. */
+  const quiet = (outcrop: Outcrop) => miningTrackDistanceSquared(outcrop.x, outcrop.y);
+  MINING_VEINS.forEach((vein, veinIndex) => {
+    const last = veinIndex === MINING_VEINS.length - 1;
+    const box = veinBox(veinIndex);
     // Kinds by share rather than by dice, so every vein has its Large rocks and its Mysterious one.
     const mysterious = Math.max(1, Math.round(vein.rocks * MINING_NODE_KINDS.mysterious.share));
     const large = Math.round(vein.rocks * MINING_NODE_KINDS.large.share);
@@ -224,41 +277,7 @@ function layHills() {
     let spare = mysterious + large - count;
     for (let index = count - 1; spare < 0 && index >= 0; index--, spare++) kindsOf[index][0] = "small";
     for (let rank = 1; spare > 0 && rank < 8; rank++) for (const kinds of kindsOf) if (spare > 0 && rank < kinds.length) { kinds[rank] = "large"; spare--; }
-    // An outcrop's rocks: its heart at (or as near as fits to) its middle, then each next rock beside one already
-    // laid, a room's width on, at the free spot nearest the middle along the outcrop's lie.
-    const place = (outcrop: (typeof outcrops)[number], kind: MiningNodeKind, attempt: number) => {
-      const random = townRandom(outcrop.id, attempt, 47);
-      const candidates: Point[] = [];
-      if (!outcrop.rocks.length) {
-        candidates.push(outcrop);
-        for (let ring = 1; ring <= 8; ring++) for (let k = 0; k < 10; k++) {
-          const way = direction(random);
-          candidates.push({ x: outcrop.x + way.x * ring * 24, y: outcrop.y + way.y * ring * 24 });
-        }
-      } else {
-        for (const id of outcrop.rocks) {
-          const rock = nodes[id];
-          for (let k = 0; k < 14; k++) {
-            const way = direction(random), distance = MINING_ROCK_ROOM[rock.kind] + MINING_ROCK_ROOM[kind] + 4 + random() * 30;
-            candidates.push({ x: rock.x + way.x * distance, y: rock.y + way.y * distance });
-          }
-        }
-      }
-      let best: Point | null = null, bestScore = Infinity;
-      for (const candidate of candidates) {
-        const x = Math.round(candidate.x), y = Math.round(candidate.y);
-        if (!fits(x, y, kind, outcrop.id, box)) continue;
-        const dx = x - outcrop.x, dy = y - outcrop.y;
-        const along = (dx * outcrop.axis.x + dy * outcrop.axis.y) / outcrop.stretch, across = dx * outcrop.axis.y - dy * outcrop.axis.x;
-        const score = along * along + across * across;
-        if (score < bestScore) { best = { x, y }; bestScore = score; }
-      }
-      if (!best) return false;
-      outcrop.rocks.push(nodes.length);
-      outcropOf.push(outcrop.id);
-      nodes.push({ id: nodes.length, x: best.x, y: best.y, kind, vein: veinIndex, ore: vein.ore });
-      return true;
-    };
+    const place = (outcrop: Outcrop, kind: MiningNodeKind, attempt: number) => placeIn(outcrop, kind, attempt, box, vein.ore);
     // One outcrop at a time, so each next one's middle is sought among the rocks already standing: a pinned one's
     // where it is set, any other's at the first of the best few seeded tries (as far as can be from those rocks
     // and the vein's sides, and off the track) where all its rocks fit. Failing that, where most of them do, and
@@ -306,10 +325,20 @@ function layHills() {
     });
     for (const [index, kind] of carried.entries()) veinOutcrops.some(outcrop => outcrop.rocks.length > 0 && place(outcrop, kind, 100 + index));
     // The Mysterious rocks: the hearts of the outcrops furthest off the track.
-    const quiet = (outcrop: (typeof outcrops)[number]) => miningTrackDistanceSquared(outcrop.x, outcrop.y);
     veinOutcrops.filter(outcrop => outcrop.rocks.length && nodes[outcrop.rocks[0]].kind === "large")
       .sort((a, b) => quiet(b) - quiet(a)).slice(0, mysterious)
       .forEach(outcrop => { nodes[outcrop.rocks[0]].kind = "mysterious"; });
+  });
+  // The crystal rocks, laid after every other so those keep their ids and places (the server keeps broken rocks by
+  // id): each at the edge of one of its vein's quietest outcrops that has room for it.
+  MINING_VEINS.forEach((vein, veinIndex) => {
+    const box = veinBox(veinIndex);
+    let laid = 0;
+    const hosts = outcrops.filter(outcrop => outcrop.vein === veinIndex && outcrop.rocks.length > 0 && outcrop.rocks.length < 8)
+      .sort((a, b) => quiet(b) - quiet(a));
+    for (const outcrop of hosts) {
+      for (let attempt = 200; laid < vein.crystals && attempt < 260; attempt++) if (placeIn(outcrop, "crystal", attempt, box, ARCANE_CRYSTAL)) { laid++; break; }
+    }
   });
   return {
     nodes,
@@ -325,8 +354,9 @@ export const MINING_OUTCROPS: readonly MiningOutcrop[] = Object.freeze(LAID.outc
 export const miningNode = (id: unknown): MiningNode | null =>
   typeof id === "number" && Number.isInteger(id) && id >= 0 ? MINING_NODES[id] ?? null : null;
 
-/** "Large Iron Ore": a rock's name. */
-export const miningNodeName = (node: MiningNode) => `${MINING_NODE_KINDS[node.kind].name} ${REFINE_ORES[node.ore].name}`;
+/** "Large Iron Ore": a rock's name. A crystal rock is named for its crystal alone. */
+export const miningNodeName = (node: MiningNode) =>
+  node.kind === "crystal" ? REFINE_ORES[node.ore].name : `${MINING_NODE_KINDS[node.kind].name} ${REFINE_ORES[node.ore].name}`;
 
 export function normalizeMining(mining: unknown) {
   const value = Number(mining);
@@ -350,12 +380,17 @@ export function miningGain(node: MiningNode) {
   return MINING_NODE_KINDS[node.kind].ore * MINING_VEINS[node.vein].hardness;
 }
 
+/** How much a rock breaks into before cards: a crystal rock's crystal grows with its vein's hardness, as its time does. */
+export function miningRockOre(node: MiningNode) {
+  return MINING_NODE_KINDS[node.kind].ore * (node.kind === "crystal" ? MINING_VEINS[node.vein].hardness : 1);
+}
+
 /**
  * What a broken rock gives: its vein's ore, and from a Mysterious rock perhaps a Starshard. `roll` is in [0, 1).
  * Cards: Starshard cards raise its chance, and an Ore Find card's chance (`extraRoll` against it) adds one more ore.
  */
 export function miningYield(node: MiningNode, roll: number, cards: { starshardFind?: number; oreFind?: number } = {}, extraRoll = 1, miningLuckRank = 0) {
-  const ores: Partial<Record<OreId, number>> = { [node.ore]: MINING_NODE_KINDS[node.kind].ore + (extraRoll < (cards.oreFind ?? 0) ? 1 : 0) };
+  const ores: Partial<Record<OreId, number>> = { [node.ore]: miningRockOre(node) + (extraRoll < (cards.oreFind ?? 0) ? 1 : 0) };
   // Starshard cards and Mining Luck each raise the chance.
   const starshard = MINING_STARSHARD_CHANCE * (1 + Math.max(0, cards.starshardFind ?? 0)) * luckMultiplier("miningLuck", miningLuckRank);
   if (node.kind === "mysterious" && roll < starshard) ores.starshard = 1;
@@ -372,3 +407,17 @@ export function miningVeinMap(vein: MiningVein) {
   const mapId = MAP_IDS[vein.firstTier - 1];
   return (mapId && MAP_DISPLAY_NAMES[mapId as keyof typeof MAP_DISPLAY_NAMES]) || `Map ${vein.firstTier}`;
 }
+
+/** Whether this Mining is enough for a rock: any rock but a crystal one, which asks for CRYSTAL_MINING. */
+export function miningRockOpen(node: Pick<MiningNode, "kind">, mining: unknown) {
+  return node.kind !== "crystal" || normalizeMining(mining) >= CRYSTAL_MINING;
+}
+
+/** Why a shut vein's rock cannot be mined: "Reach Night Forest - 5 to mine Iron Ore." (a crystal rock's crystal "here"). */
+export function miningVeinHint(node: MiningNode) {
+  const vein = MINING_VEINS[node.vein];
+  return node.kind === "crystal" ? `Reach ${miningVeinMap(vein)} to mine ${REFINE_ORES[node.ore].name} here.` : `Reach ${miningVeinMap(vein)} to mine ${REFINE_ORES[vein.ore].name}.`;
+}
+
+/** "Reach Mining 25 to mine Arcane Crystal." */
+export const crystalRockHint = () => `Reach Mining ${CRYSTAL_MINING} to mine ${REFINE_ORES[ARCANE_CRYSTAL].name}.`;

@@ -2,10 +2,11 @@ import { describe, expect, it, vi } from "vitest";
 import {
   MINING_NODES, MINING_NODE_KINDS, MINING_OUTCROP_GAP, MINING_OUTCROPS, MINING_PLATE_ROOM, MINING_REACH, MINING_ROCK_EXTENT, MINING_ROCK_ROOM,
   MINING_STARSHARD_CHANCE, MINING_TRACK, MINING_TRACK_HALF_WIDTH, MINING_VEINS, miningBreakSeconds, miningGain, miningNode, miningNodeName,
-  miningSpeed, miningTrackDistanceSquared, miningVeinMap, miningVeinOpen, miningYield, normalizeMining,
+  miningSpeed, miningTrackDistanceSquared, miningVeinMap, miningVeinOpen, miningYield, normalizeMining, CRYSTAL_MINING, crystalRockHint, miningRockOpen,
+  miningVeinHint,
 } from "./mining";
 import { GRADE_ORES, refineGrade } from "./refine";
-import { TOWN_EAST_BRIDGE, TOWN_EAST_FENCE_GAP, TOWN_HILLS, TOWN_VILLAGE_WALK_AREA, TOWN_WALK_AREA } from "./town";
+import { TOWN_EAST_BRIDGE, TOWN_EAST_FENCE_GAP, TOWN_HILLS, TOWN_VILLAGE_WALK_AREA, TOWN_WALK_AREA, TOWN_WALK_AREAS } from "./town";
 import { ITEM_DEFINITIONS } from "./items";
 import { itemTier } from "./item-tier";
 
@@ -20,9 +21,11 @@ describe("the Copper Hills' veins", () => {
     // East of the village's own countryside, and inside the walls, which reach past them.
     expect(TOWN_HILLS.left).toBeGreaterThan(TOWN_VILLAGE_WALK_AREA.right);
     expect(TOWN_WALK_AREA.right).toBeGreaterThan(TOWN_HILLS.right);
-    expect([TOWN_WALK_AREA.top, TOWN_WALK_AREA.bottom]).toEqual([TOWN_VILLAGE_WALK_AREA.top, TOWN_VILLAGE_WALK_AREA.bottom]);
-    expect(TOWN_HILLS.top).toBeGreaterThan(TOWN_WALK_AREA.top);
-    expect(TOWN_HILLS.bottom).toBeLessThan(TOWN_WALK_AREA.bottom);
+    const [walls] = TOWN_WALK_AREAS;
+    expect([walls.top, walls.bottom]).toEqual([TOWN_VILLAGE_WALK_AREA.top, TOWN_VILLAGE_WALK_AREA.bottom]);
+    expect(walls.right).toBeGreaterThan(TOWN_HILLS.right);
+    expect(TOWN_HILLS.top).toBeGreaterThan(walls.top);
+    expect(TOWN_HILLS.bottom).toBeLessThan(walls.bottom);
   });
 
   it("open with the map whose gear their ore refines", () => {
@@ -48,7 +51,7 @@ describe("the rocks", () => {
     MINING_NODES.forEach((node, index) => {
       expect(node.id).toBe(index);
       const vein = MINING_VEINS[node.vein];
-      expect(node.ore).toBe(vein.ore);
+      expect(node.ore).toBe(node.kind === "crystal" ? "arcane_crystal" : vein.ore);
       expect(node.x).toBeGreaterThanOrEqual(vein.left);
       expect(node.x).toBeLessThanOrEqual(vein.right);
       expect(node.y).toBeGreaterThanOrEqual(TOWN_HILLS.top);
@@ -66,14 +69,14 @@ describe("the rocks", () => {
 
   it("come in every kind in every vein: mostly Small, some Large, at least one Mysterious", () => {
     MINING_VEINS.forEach((_vein, veinIndex) => {
-      const rocks = MINING_NODES.filter(node => node.vein === veinIndex);
+      const rocks = MINING_NODES.filter(node => node.vein === veinIndex && node.kind !== "crystal");
       const count = (kind: string) => rocks.filter(node => node.kind === kind).length;
       expect(count("mysterious")).toBeGreaterThanOrEqual(1);
       expect(count("large")).toBeGreaterThanOrEqual(Math.floor(rocks.length * .2));
       expect(count("small")).toBeGreaterThan(rocks.length / 2);
     });
     // Copper is the biggest vein and adamant the smallest: the deeper, the scarcer.
-    const sizes = MINING_VEINS.map((_vein, index) => MINING_NODES.filter(node => node.vein === index).length);
+    const sizes = MINING_VEINS.map((_vein, index) => MINING_NODES.filter(node => node.vein === index && node.kind !== "crystal").length);
     expect([...sizes].sort((a, b) => b - a)).toEqual(sizes);
   });
 
@@ -144,6 +147,28 @@ describe("the rocks", () => {
       const distance = Math.sqrt(miningTrackDistanceSquared(node.x, node.y));
       expect(distance).toBeGreaterThan(last.rocks.includes(node.id) ? MINING_TRACK_HALF_WIDTH + 60 : 200);
     }
+  });
+
+  it("hold a few crystal rocks in every vein, laid after the rest so every older rock keeps its id", () => {
+    const crystals = MINING_NODES.filter(node => node.kind === "crystal");
+    MINING_VEINS.forEach((vein, index) => expect(crystals.filter(node => node.vein === index).length).toBe(vein.crystals));
+    const first = MINING_NODES.findIndex(node => node.kind === "crystal");
+    expect(MINING_NODES.slice(first).every(node => node.kind === "crystal")).toBe(true);
+    expect(crystals.every(node => node.ore === "arcane_crystal")).toBe(true);
+    expect(miningNodeName(crystals[0])).toBe("Arcane Crystal");
+    // They give crystal, not ore, and a deeper vein's give more.
+    expect(miningYield(crystals[0], .5)).toEqual({ arcane_crystal: 1 });
+    expect(miningYield(crystals.find(node => node.vein === 3)!, .5)).toEqual({ arcane_crystal: 8 });
+    expect(miningYield(crystals[0], .5, { oreFind: 1 }, 0)).toEqual({ arcane_crystal: 2 });
+  });
+
+  it("open a crystal rock once Mining reaches its mark, and every other rock at once", () => {
+    const crystal = MINING_NODES.find(node => node.kind === "crystal")!, small = MINING_NODES.find(node => node.kind === "small")!;
+    expect([miningRockOpen(crystal, CRYSTAL_MINING - 1), miningRockOpen(crystal, CRYSTAL_MINING), miningRockOpen(small, 0)]).toEqual([false, true, true]);
+    expect(crystalRockHint()).toBe(`Reach Mining ${CRYSTAL_MINING} to mine Arcane Crystal.`);
+    const iron = MINING_NODES.find(node => node.kind === "crystal" && node.vein === 1)!;
+    expect(miningVeinHint(iron)).toBe("Reach Night Forest - 5 to mine Arcane Crystal here.");
+    expect(miningVeinHint(MINING_NODES.find(node => node.kind === "small" && node.vein === 1)!)).toBe("Reach Night Forest - 5 to mine Iron Ore.");
   });
 
   it("are named by size and ore, and looked up by id", () => {

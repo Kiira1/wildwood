@@ -156,6 +156,12 @@ export function createPlayerProfileService(dependencies: PlayerProfileServiceDep
           : [...(db?.playerMiningLevel?.iter() ?? [])].find(row => row.identity.toHexString() === identity);
         return row ? row.mining : null;
       })(),
+      woodcutting: (() => {
+        const db = dependencies.connection()?.db;
+        const row = identity === dependencies.localIdentity() ? [...(db?.myWoodcutting?.iter() ?? [])][0]
+          : [...(db?.playerWoodcuttingLevel?.iter() ?? [])].find(row => row.identity.toHexString() === identity);
+        return row ? row.woodcutting : null;
+      })(),
       mastery: (() => {
         const db = dependencies.connection()?.db;
         const levels: Partial<Record<WeaponSchool, number>> = {};
@@ -322,6 +328,7 @@ export function createPlayerProfileService(dependencies: PlayerProfileServiceDep
           tables.playerWornSkill.where(row => row.identity.eq(dbIdentity)),
           tables.playerWornStaffSkill.where(row => row.identity.eq(dbIdentity)),
           tables.playerMiningLevel.where(row => row.identity.eq(dbIdentity)),
+          tables.playerWoodcuttingLevel.where(row => row.identity.eq(dbIdentity)),
           tables.playerMasteryLevel.where(row => row.identity.eq(dbIdentity)),
           tables.player.where((player) => player.identity.eq(dbIdentity)),
         ]);

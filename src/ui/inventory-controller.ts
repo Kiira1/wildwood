@@ -32,6 +32,7 @@ import { installBuildHotkeys } from "./build-hotkeys";
 import { itemInspectionButtonLabel } from "./item-inspection-controller";
 import { oreKindsHeld } from "../../shared/ore-bag";
 import { createPickaxeSprite } from "../game/runtime/town/pickaxe-sprite";
+import { createHatchetSprite } from "../game/runtime/town/hatchet-sprite";
 
 type InventoryLocation = EquipmentSlot | "BAG" | "";
 type SelectableInventory = InventoryState & { selectedItemId: string; selectedItemLocation?: InventoryLocation };
@@ -72,6 +73,8 @@ type InventoryDependencies = {
   researchBagSlots?: () => number;
   /** The mining pickaxe, kept from the Smith: shown in the loadout's Tool slot. */
   hasPickaxe?: () => boolean;
+  /** The woodcutting hatchet, kept from the Smith: shown beside the pickaxe in the Tool slot. */
+  hasHatchet?: () => boolean;
   gemBalance: () => bigint;
   destroyEquipment: (itemId: string) => Promise<{ ok: boolean; error?: string } | undefined>;
   convertItemToCosmetic?: (itemId: string) => Promise<{ ok: boolean; error?: string } | undefined>;
@@ -107,26 +110,35 @@ export function createInventoryController(dependencies: InventoryDependencies) {
   const buildsTab = document.getElementById("inventoryBuildsTab") as HTMLButtonElement | null;
   const content = requiredElement("inventoryContent");
   const loadout = panel.querySelector<HTMLElement>(".inventory-loadout");
-  // The pickaxe works from the bag, never equipped: its slot only shows it is there and what it does.
+  // The pickaxe and hatchet work from the bag, never equipped: their slot only shows they are there and what they do.
   const toolSlot = document.createElement("button");
   toolSlot.type = "button";
   toolSlot.className = "equipment-slot slot-tool";
   loadout?.append(toolSlot);
-  let pickaxeArt = "";
-  toolSlot.addEventListener("click", () => dependencies.showMessage(dependencies.hasPickaxe?.()
-    ? "Pickaxe · Mines ore in the Copper Hills. Always ready, no need to equip." : "Get a pickaxe from the Smith in Town.", "#ffd75e"));
+  let pickaxeArt = "", hatchetArt = "";
+  toolSlot.addEventListener("click", () => {
+    const pickaxe = Boolean(dependencies.hasPickaxe?.()), hatchet = Boolean(dependencies.hasHatchet?.());
+    dependencies.showMessage(pickaxe && hatchet ? "Pickaxe and Hatchet · Mine ore and fell trees. Always ready, no need to equip."
+      : pickaxe ? "Pickaxe · Mines ore in the Copper Hills. Always ready, no need to equip."
+        : hatchet ? "Hatchet · Fells trees in Timberwood. Always ready, no need to equip." : "Get a pickaxe and a hatchet from the Smith in Town.", "#ffd75e");
+  });
   function renderToolSlot() {
-    const owned = Boolean(dependencies.hasPickaxe?.());
+    const pickaxe = Boolean(dependencies.hasPickaxe?.()), hatchet = Boolean(dependencies.hasHatchet?.()), owned = pickaxe || hatchet;
     toolSlot.hidden = mode === "COSMETICS";
     toolSlot.classList.toggle("is-equipped", owned);
-    toolSlot.setAttribute("aria-label", owned ? "Tool: Pickaxe, always ready" : "Tool slot, empty");
+    toolSlot.setAttribute("aria-label", owned ? `Tool: ${[pickaxe ? "Pickaxe" : "", hatchet ? "Hatchet" : ""].filter(Boolean).join(" and ")}, always ready` : "Tool slot, empty");
     if (owned) {
-      pickaxeArt ||= createPickaxeSprite()?.src ?? "";
-      const image = document.createElement("span");
-      image.className = "inventory-item-art slot-tool-art";
-      image.setAttribute("aria-hidden", "true");
-      if (pickaxeArt) image.style.backgroundImage = `url(${pickaxeArt})`;
-      toolSlot.replaceChildren(image);
+      const art = (source: string, className: string) => {
+        const image = document.createElement("span");
+        image.className = `inventory-item-art slot-tool-art${className}`;
+        image.setAttribute("aria-hidden", "true");
+        if (source) image.style.backgroundImage = `url(${source})`;
+        return image;
+      };
+      if (pickaxe) pickaxeArt ||= createPickaxeSprite()?.src ?? "";
+      if (hatchet) hatchetArt ||= createHatchetSprite()?.src ?? "";
+      // Both held: crossed, as a pair of tools.
+      toolSlot.replaceChildren(...(pickaxe ? [art(pickaxeArt, "")] : []), ...(hatchet ? [art(hatchetArt, pickaxe ? " slot-tool-crossed" : "")] : []));
     } else {
       const label = document.createElement("span");
       label.textContent = "TOOL";
@@ -335,6 +347,7 @@ export function createInventoryController(dependencies: InventoryDependencies) {
       upgradeLevel: dependencies.upgradeLevel(itemId),
       ...(mode === "EQUIPMENT" ? { refine: dependencies.refineLevel?.(itemId, copyId) ?? 0 } : {}),
       ownItem: mode === "EQUIPMENT",
+      ...(mode === "EQUIPMENT" ? { worn: dependencies.inventory } : {}),
       ...(kept.length ? { context: `Copy ${copy ? kept.indexOf(copy) + 2 : 1} of ${kept.length + 1}` } : {}),
       ...(mode === "COSMETICS" ? { context: `Cosmetic · ${cosmeticReach(itemId)}` } : {}),
       ...(copy ? { skills: copy.roll } : {}),
@@ -444,7 +457,7 @@ export function createInventoryController(dependencies: InventoryDependencies) {
     const inventory = dependencies.inventory;
     const copies = dependencies.equipmentCopies?.() ?? [];
     const held = dependencies.ores?.() ?? {};
-    const nextState = JSON.stringify([cardsShown, buildsShown, mode, filter, inventory, held, inventory.itemIds.map(id => dependencies.equipmentLocked?.(id)), dependencies.inventorySlotsUnlocked(), dependencies.researchBagSlots?.() ?? 0, dependencies.hasPickaxe?.() ?? false, unlockingSlot,
+    const nextState = JSON.stringify([cardsShown, buildsShown, mode, filter, inventory, held, inventory.itemIds.map(id => dependencies.equipmentLocked?.(id)), dependencies.inventorySlotsUnlocked(), dependencies.researchBagSlots?.() ?? 0, dependencies.hasPickaxe?.() ?? false, dependencies.hasHatchet?.() ?? false, unlockingSlot,
       ["HEAD", "CHEST", "HAND"].map(slot => dependencies.slotTier?.(slot as "HEAD" | "CHEST" | "HAND")), inventory.itemIds.map(itemId => `${dependencies.upgradeLevel(itemId)}:${dependencies.refineLevel?.(itemId, 0n)}`),
       copies.map(copy => `${copy.id}:${copy.itemId}:${dependencies.equipmentLocked?.(copy.itemId, copy.id)}:${dependencies.refineLevel?.(copy.itemId, copy.id)}`)]);
     if (nextState === renderedState) return;

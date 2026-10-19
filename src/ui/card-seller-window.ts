@@ -2,7 +2,7 @@ import { cardDefinition, type CardDefinition } from "../../shared/cards";
 import { cardShopOffer, cardShopPrice, cardShopRotation, cardShopRotationEndsAt } from "../../shared/card-shop";
 import { CARD_SLOT_NAMES, cardEffectText, cardName, cardOrigin } from "../../shared/card-text";
 import { REFINE_ORES, type OreId } from "../../shared/refine";
-import { ORE_ORDER } from "../../shared/ore-bag";
+import { REFINE_ORE_ORDER } from "../../shared/ore-bag";
 import { cardTile } from "./cards-tab";
 
 type Result = { ok: boolean; error?: string } | undefined;
@@ -133,7 +133,7 @@ export function createCardSellerController(deps: {
     outcome.hidden = !lastResult;
     outcome.textContent = lastResult?.text ?? "";
     outcome.className = `smith-outcome ${lastResult?.good ? "is-good" : "is-bad"}`;
-    oreLine.textContent = ORE_ORDER.map(oreId => `${REFINE_ORES[oreId].name} ${held[oreId] ?? 0}`).join(" · ");
+    oreLine.textContent = REFINE_ORE_ORDER.map(oreId => `${REFINE_ORES[oreId].name} ${held[oreId] ?? 0}`).join(" · ");
   }
 
   async function buy(rotation: number, card: CardDefinition) {

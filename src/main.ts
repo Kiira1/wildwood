@@ -434,7 +434,7 @@ import {
     },
     upgradeLevel: (itemId) => coop?.itemUpgradeLevel?.(itemId) ?? 0, refineLevel: (itemId, copyId) => coop?.itemRefine?.(itemId, copyId) ?? 0, ores: () => coop?.ores?.() ?? {}, cards: cardsPort(() => coop),
     slotTier: slot => coop?.slotUpgradeTier?.(slot) ?? 0,
-    inventorySlotsUnlocked: () => coop?.inventorySlotsUnlocked?.() ?? 0, researchBagSlots: () => coop?.research?.().inventorySlots ?? 0, hasPickaxe: () => coop?.hasPickaxe?.() ?? false,
+    inventorySlotsUnlocked: () => coop?.inventorySlotsUnlocked?.() ?? 0, researchBagSlots: () => coop?.research?.().inventorySlots ?? 0, hasPickaxe: () => coop?.hasPickaxe?.() ?? false, hasHatchet: () => coop?.hasHatchet?.() ?? false,
     gemBalance: () => coop?.gemBalance?.() ?? 0n, builds: createBuildActions({ coop: () => coop, inventory, blocked: () => isDueling() ? "Finish Your Duel First" : null, afterGearChange: () => { player.speed = progress.movementSpeedForEquipment(false) * localTestMultiplier; applyPlayerMaxHealthMultiplierBonus(player, healthMultiplierBonus()); saveProgress(true); } }),
     unlockInventorySlot: async () => coop?.unlockInventorySlot?.(),
     ...inventoryCommerce,
@@ -612,8 +612,8 @@ import {
   const rewardDisplay = createRewardDisplay(researchRewardMultiplier, researchRanks, appShell.showBaseStatRewards,
     () => inventory, itemId => coop?.itemLevel?.(itemId) ?? 0, () => coop?.activeCardIds?.() ?? []);
   const travelSpeed = createOutOfCombatSpeed();
-  const movementMultiplier = () => researchMovementSpeedMultiplier()
-    + travelSpeed.bonus(inventory.equippedFeet, isDueling()) / Math.max(1, player.speed);
+  const movementMultiplier = () => (playerCombat?.moveSpeedFactor() ?? 1) * (researchMovementSpeedMultiplier()
+    + travelSpeed.bonus(inventory.equippedFeet, isDueling()) / Math.max(1, player.speed));
   const regenerationPerSecond = () => playerRegenerationPerSecond(player.regen, inventory, researchRegenerationMultiplier(),
     itemId => coop?.itemLevel?.(itemId) ?? 0);
   progress = createProgressController({

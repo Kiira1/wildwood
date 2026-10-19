@@ -39,6 +39,13 @@ export const inTownVillage = (x: number, y: number, margin = 0) =>
 export const TOWN_HILLS = Object.freeze({ left: TOWN_CENTER.x + 3_000, right: TOWN_CENTER.x + 7_400, top: TOWN_CENTER.y - 1_400, bottom: TOWN_CENTER.y + 1_900 });
 export const inTownHills = (x: number, y: number, margin = 0) =>
   x > TOWN_HILLS.left - margin && x < TOWN_HILLS.right + margin && y > TOWN_HILLS.top - margin && y < TOWN_HILLS.bottom + margin;
+/**
+ * Timberwood: the woodcutting grove north of the Copper Hills, up a woodcutters' road from the miners' track. Trees
+ * in four stands, pine nearest the village and elder furthest out; shared/woodcutting.ts lays them.
+ */
+export const TOWN_GROVE = Object.freeze({ left: TOWN_CENTER.x + 2_500, right: TOWN_CENTER.x + 6_700, top: TOWN_CENTER.y - 3_350, bottom: TOWN_CENTER.y - 1_750 });
+export const inTownGrove = (x: number, y: number, margin = 0) =>
+  x > TOWN_GROVE.left - margin && x < TOWN_GROVE.right + margin && y > TOWN_GROVE.top - margin && y < TOWN_GROVE.bottom + margin;
 /** How far past the village's ground anyone may walk: the countryside's edge, walled. */
 export const TOWN_WALK_MARGIN = 320;
 /** The village and the countryside round it, as walled before the hills: what the minimap shows from the village. */
@@ -46,8 +53,31 @@ export const TOWN_VILLAGE_WALK_AREA = Object.freeze({
   left: TOWN_CENTER.x + TOWN_VILLAGE_BOUNDS.left - TOWN_WALK_MARGIN, right: TOWN_CENTER.x + TOWN_VILLAGE_BOUNDS.right + TOWN_WALK_MARGIN,
   top: TOWN_CENTER.y + TOWN_VILLAGE_BOUNDS.top - TOWN_WALK_MARGIN, bottom: TOWN_CENTER.y + TOWN_VILLAGE_BOUNDS.bottom + TOWN_WALK_MARGIN,
 });
-/** Where anyone may walk: the village's countryside, and east of it as far as the hills reach. */
-export const TOWN_WALK_AREA = Object.freeze({ ...TOWN_VILLAGE_WALK_AREA, right: Math.max(TOWN_VILLAGE_WALK_AREA.right, TOWN_HILLS.right + TOWN_WALK_MARGIN) });
+/**
+ * Where anyone may walk, walled: the village's countryside and east of it as far as the hills reach, and north of
+ * the hills round Timberwood. The two overlap along the hills' north edge.
+ */
+export const TOWN_WALK_AREAS = Object.freeze([
+  Object.freeze({ ...TOWN_VILLAGE_WALK_AREA, right: Math.max(TOWN_VILLAGE_WALK_AREA.right, TOWN_HILLS.right + TOWN_WALK_MARGIN) }),
+  Object.freeze({ left: TOWN_GROVE.left - TOWN_WALK_MARGIN, right: TOWN_GROVE.right + TOWN_WALK_MARGIN, top: TOWN_GROVE.top - TOWN_WALK_MARGIN, bottom: TOWN_GROVE.bottom + TOWN_WALK_MARGIN }),
+]);
+/** All the walls hold, in one rectangle (for grids and the minimap); inTownWalkArea says where inside it is open. */
+export const TOWN_WALK_AREA = Object.freeze({
+  left: Math.min(...TOWN_WALK_AREAS.map(area => area.left)), right: Math.max(...TOWN_WALK_AREAS.map(area => area.right)),
+  top: Math.min(...TOWN_WALK_AREAS.map(area => area.top)), bottom: Math.max(...TOWN_WALK_AREAS.map(area => area.bottom)),
+});
+export const inTownWalkArea = (x: number, y: number) =>
+  TOWN_WALK_AREAS.some(area => x >= area.left && x <= area.right && y >= area.top && y <= area.bottom);
+/** The nearest point inside the walls: the point itself when it is inside them. */
+export function townWalkClamp(x: number, y: number) {
+  let best = { x, y }, bestDistance = Infinity;
+  for (const area of TOWN_WALK_AREAS) {
+    const cx = Math.max(area.left, Math.min(area.right, x)), cy = Math.max(area.top, Math.min(area.bottom, y));
+    const distance = (cx - x) ** 2 + (cy - y) ** 2;
+    if (distance < bestDistance) { best = { x: cx, y: cy }; bestDistance = distance; }
+  }
+  return best;
+}
 
 type Pad = { x: number; y: number; width: number; height: number; depth: number };
 const pad = (dx: number, dy: number): Pad => Object.freeze({ x: TOWN_CENTER.x + dx, y: TOWN_CENTER.y + dy, width: 150, height: 150, depth: TOWN_CENTER.y + dy });
@@ -259,9 +289,11 @@ const WILD_WEIGHT = WILD_PROPS.reduce((sum, [, weight]) => sum + weight, 0);
 export const TOWN_HILLS_BORDER = 330;
 /** Nor any loose stones this near them: beside the ore rocks, a plain stone reads as a rock with nothing in it. */
 export const TOWN_HILLS_STONE_FREE = 1_200;
+/** How far round Timberwood its own ground reaches (town-world.ts lays its cover): the countryside's props keep out of it. */
+export const TOWN_GROVE_BORDER = 150;
 /** Where the portals stand: the countryside keeps clear of them. */
 const PORTAL_CLEARINGS = [TOWN_TRAVEL_PORTAL, TOWN_SOUL_PORTAL];
-/** A chunk's scattered props, clear of the village, its portals, the rooms and the Copper Hills. */
+/** A chunk's scattered props, clear of the village, its portals, the rooms, the Copper Hills and Timberwood. */
 export function townChunkProps(cx: number, cy: number): TownProp[] {
   if (!townChunkInWorld(cx, cy)) return [];
   const random = townRandom(cx, cy, 2);
@@ -275,7 +307,7 @@ export function townChunkProps(cx: number, cy: number): TownProp[] {
     const s = .9 + random() * .2;
     const flip = random() < .5;
     const variant = Math.floor(random() * 1_000);
-    if (inTownVillage(x, y, 60) || inTownInteriors(x, y, TOWN_INTERIOR_MARGIN) || inTownHills(x, y, TOWN_HILLS_BORDER)) continue;
+    if (inTownVillage(x, y, 60) || inTownInteriors(x, y, TOWN_INTERIOR_MARGIN) || inTownHills(x, y, TOWN_HILLS_BORDER) || inTownGrove(x, y, TOWN_GROVE_BORDER)) continue;
     if ((kind === "stone" || kind === "stoneSmall") && inTownHills(x, y, TOWN_HILLS_STONE_FREE)) continue;
     if (kind !== "grass" && PORTAL_CLEARINGS.some(portal => Math.hypot(portal.x - x, portal.y - y) < 260)) continue;
     props.push({ kind, x: Math.round(x), y: Math.round(y), s, flip, variant });

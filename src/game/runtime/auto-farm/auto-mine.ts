@@ -1,6 +1,6 @@
 import type { CampaignAccess } from '../../../../shared/equipment-access';
 import {
-  MINING_NODES, MINING_NODE_KINDS, MINING_REACH, MINING_VEINS, miningNodeName, miningVeinMap, miningVeinOpen, type MiningNode, type MiningVein, type VeinOreId,
+  MINING_NODES, MINING_NODE_KINDS, MINING_REACH, MINING_VEINS, miningNodeName, miningVeinMap, miningVeinOpen, type MiningNode, type MiningVein, type RockOreId, type VeinOreId,
 } from '../../../../shared/mining';
 import { REFINE_ORES } from '../../../../shared/refine';
 import { inTownHills, isTownMap, townRoomAt, TOWN_FEET_OFFSET } from '../../../../shared/town';
@@ -52,7 +52,8 @@ export function miningStandSpot(node: MiningNode): TownPoint | null {
  */
 export function chooseMiningRock(options: {
   feet: TownPoint;
-  ores: ReadonlySet<VeinOreId>;
+  /** The ores picked; a crystal rock's crystal is never one, so Auto Mine leaves crystal rocks to the player. */
+  ores: ReadonlySet<RockOreId>;
   open: (vein: MiningVein) => boolean;
   /** When a rock grows back for the player, or null when it stands now. */
   bareUntil: (node: MiningNode) => number | null;
@@ -111,7 +112,7 @@ export function createAutoMine(options: {
   const storage = options.storage ?? (() => { try { return window.localStorage; } catch { return undefined; } });
   const now = options.now ?? monotonicNowMs;
   const plan = options.plan ?? planTownPath;
-  let picked = new Set(readOres(storage));
+  let picked = new Set<RockOreId>(readOres(storage));
   const resumeStorage = options.resumeStorage ?? (() => { try { return isNativePreview() ? window.localStorage : window.sessionStorage; } catch { return undefined; } });
   const readResume = () => { try { return resumeStorage()?.getItem(AUTO_MINE_RESUME_KEY) ?? null; } catch { return null; } };
   const writeResume = () => { try { resumeStorage()?.setItem(AUTO_MINE_RESUME_KEY, options.identity?.() ?? ''); } catch { /* It still runs this session. */ } };
@@ -257,7 +258,7 @@ export function createAutoMine(options: {
     setPicked(ore: VeinOreId, on: boolean) {
       const next = new Set(picked);
       if (on) next.add(ore); else next.delete(ore);
-      picked = new Set(MINING_VEINS.map(vein => vein.ore).filter(id => next.has(id)));
+      picked = new Set<RockOreId>(MINING_VEINS.map(vein => vein.ore).filter(id => next.has(id)));
       try { storage()?.setItem(AUTO_MINE_ORES_KEY, JSON.stringify([...picked])); } catch { /* The picks still apply this session. */ }
       if (target && !picked.has(target.node.ore)) forget();
     },

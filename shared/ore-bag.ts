@@ -1,6 +1,8 @@
 import { bagSlotsUsed } from "./equipment-copies";
 import type { MiningNode } from "./mining";
 import { REFINE_ORES, type OreId } from "./refine";
+import { ARCANE_CRYSTAL, WOOD_IDS } from "./crafting";
+import { WOOD_TREE_KINDS, WOOD_TREES } from "./woodcutting";
 
 /**
  * Ores in the bag: every kind held takes one bag slot,
@@ -8,15 +10,17 @@ import { REFINE_ORES, type OreId } from "./refine";
  * of needs a free slot before it can come in, so a full bag stops a new kind from being mined.
  */
 
-/** The ores in the order the bag and the Smith list them: the grade ores, then the Starshard. */
-export const ORE_ORDER: readonly OreId[] = Object.freeze(["copper_ore", "iron_ore", "mithril_ore", "adamant_ore", "starshard"]);
+/** The ores the Smith and the Card Seller list: the grade ores, then the Starshard. */
+export const REFINE_ORE_ORDER: readonly OreId[] = Object.freeze(["copper_ore", "iron_ore", "mithril_ore", "adamant_ore", "starshard"]);
+/** Every stack in the order the bag lists them: the ores, then the crafting wood and crystal. */
+export const ORE_ORDER: readonly OreId[] = Object.freeze([...REFINE_ORE_ORDER, ...WOOD_IDS, ARCANE_CRYSTAL]);
 
 export type OreCounts = Readonly<Partial<Record<OreId, number>>>;
 
 /** The kinds held, in bag order. */
 export const oreKindsHeld = (ores: OreCounts) => ORE_ORDER.filter(oreId => (ores[oreId] ?? 0) > 0);
 
-/** What a rock can give: its vein's ore, and from a Mysterious rock a Starshard too. */
+/** What a rock can give: its ore (a crystal rock's is crystal), and from a Mysterious rock a Starshard too. */
 export const rockOreKinds = (node: Pick<MiningNode, "ore" | "kind">): OreId[] => node.kind === "mysterious" ? [node.ore, "starshard"] : [node.ore];
 
 export type BagSpace = {
@@ -44,10 +48,13 @@ export function bagFullForOres(needed: readonly OreId[]) {
   return `Your bag is full. Free ${needed.length === 1 ? "a slot" : `${needed.length} slots`} for ${names}.`;
 }
 
-/** The ore's own lines in the item window: what it refines, and where it comes from. */
+/** The stack's own lines in the item window: what it is for, and where it comes from. */
 export function oreDescription(oreId: OreId) {
   if (oreId === "starshard") return { use: "Refining from ★11 up takes one a try, with the gear's ore.", from: "Rarely found in Mysterious rocks in the Copper Hills." };
-  const grade = REFINE_ORES[oreId].grade;
+  if (oreId === ARCANE_CRYSTAL) return { use: "Crafting staffs and Magic armor takes it.", from: "Mined from crystal rocks in the Copper Hills, east of Town." };
+  const tree = WOOD_TREE_KINDS.find(kind => WOOD_TREES[kind].log === oreId);
+  if (tree) return { use: "Crafting bows, staffs and Light or Magic armor takes it.", from: `Chopped from ${WOOD_TREES[tree].name}s in Timberwood, north of the Copper Hills.` };
+  const grade = REFINE_ORES[oreId].grade as 1 | 2 | 3 | 4;
   const tiers = { 1: "1–4", 2: "5–8", 3: "9–12", 4: "13–15" }[grade];
   return { use: `The Smith refines Tier ${tiers} gear with it, one a try.`, from: "Mined in the Copper Hills, east of Town." };
 }

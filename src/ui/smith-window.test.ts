@@ -6,7 +6,7 @@ import { refineSuccessChance, type OreId } from "../../shared/refine";
 afterEach(() => vi.unstubAllGlobals());
 
 // The server rolls every try (refine_item); the window shows the odds, sends the level the player saw, and shows the verdict.
-function smith(options: { inTown?: boolean; ores?: Partial<Record<OreId, number>>; pickaxe?: boolean; mining?: number; refineLuck?: number } = {}) {
+function smith(options: { inTown?: boolean; ores?: Partial<Record<OreId, number>>; pickaxe?: boolean; mining?: number; refineLuck?: number; hatchet?: boolean; woodcutting?: number } = {}) {
   const { document, window } = parseHTML("<html><body></body></html>");
   vi.stubGlobal("document", document); vi.stubGlobal("HTMLElement", window.HTMLElement);
   const levels: Record<string, number> = { [`${STARTER_BOW}:0`]: 7, [`${WOODEN_ARMOR}:0`]: 2 };
@@ -20,9 +20,12 @@ function smith(options: { inTown?: boolean; ores?: Partial<Record<OreId, number>
   const showMessage = vi.fn();
   let pickaxe = options.pickaxe ?? false;
   const claimPickaxe = vi.fn(async () => { pickaxe = true; return { ok: true }; });
+  let hatchet = options.hatchet ?? false;
+  const claimHatchet = vi.fn(async () => { hatchet = true; return { ok: true }; });
   const controller = createSmithController({
     inTown: () => options.inTown ?? true, items: () => items, refine, showMessage,
     hasPickaxe: () => pickaxe, claimPickaxe, mining: () => options.mining ?? 0,
+    hasHatchet: () => hatchet, claimHatchet, woodcutting: () => options.woodcutting ?? 0,
     refineLevel: (itemId, copyId) => levels[`${itemId}:${copyId}`] ?? 0, slotTier: () => 0,
     ores: () => options.ores ?? { copper_ore: 3 }, refineLuck: () => options.refineLuck ?? 0,
   });
@@ -32,7 +35,7 @@ function smith(options: { inTown?: boolean; ores?: Partial<Record<OreId, number>
   const q = (selector: string) => dialog.querySelector(selector) as unknown as HTMLElement;
   const facts = () => Object.fromEntries([...dialog.querySelectorAll(".smith-facts div")].map(row => [row.querySelector("dt")!.textContent, row.querySelector("dd")!.textContent]));
   const choices = () => [...dialog.querySelectorAll<HTMLElement>(".smith-choice")];
-  return { controller, dialog, q, facts, choices, refine, showMessage, levels, claimPickaxe, setPickaxe: (value: boolean) => { pickaxe = value; } };
+  return { controller, dialog, q, facts, choices, refine, showMessage, levels, claimPickaxe, claimHatchet, setPickaxe: (value: boolean) => { pickaxe = value; } };
 }
 
 it("lists only gear the Smith can refine, worn first, and shows a risky try's odds and its cost", () => {
@@ -112,6 +115,29 @@ it("hands over the free pickaxe once, and then shows Mining instead", async () =
   miner.controller.open();
   expect([(miner.q(".smith-pickaxe") as HTMLButtonElement).hidden, miner.q(".smith-mining-text").textContent])
     .toEqual([true, "Mining 40 · Ore is in the Copper Hills, east of Town"]);
+});
+
+it("hands over the free hatchet once, beside the pickaxe, and then shows Woodcutting instead", async () => {
+  const view = smith();
+  view.controller.open();
+  const button = view.q(".smith-hatchet") as HTMLButtonElement;
+  expect([button.hidden, button.textContent, view.q(".smith-woodcutting-text").textContent])
+    .toEqual([false, "Take a Hatchet", "Wood is in Timberwood, north of the Copper Hills."]);
+  button.click();
+  await vi.waitFor(() => expect(button.hidden).toBe(true));
+  expect(view.claimHatchet).toHaveBeenCalledTimes(1);
+  expect(view.claimPickaxe).not.toHaveBeenCalled();
+  expect(view.showMessage).toHaveBeenCalledWith("The Smith hands you a hatchet. Timberwood is north of the Copper Hills.", "#ffd75e");
+  const woodcutter = smith({ hatchet: true, woodcutting: 12 });
+  woodcutter.controller.open();
+  expect([(woodcutter.q(".smith-hatchet") as HTMLButtonElement).hidden, woodcutter.q(".smith-woodcutting-text").textContent])
+    .toEqual([true, "Woodcutting 12 · Wood is in Timberwood, north of the Copper Hills"]);
+});
+
+it("lists only the ores a refine takes, not the crafting wood", () => {
+  const view = smith({ ores: { copper_ore: 3, pine_log: 40 } });
+  view.controller.open();
+  expect(view.q(".smith-ores").textContent).toBe("Copper Ore 3 · Iron Ore 0 · Mithril Ore 0 · Adamant Ore 0 · Starshard 0");
 });
 
 it("offers the pickaxe again once the server no longer has it (a reset save takes it back)", async () => {
@@ -201,7 +227,7 @@ it("lists a row per line, each offering the grade after the best one held", () =
   expect(bow.querySelector(".smith-shop-stat")!.textContent).toBe("Damage +30%");
   expect(bow.querySelector(".smith-shop-price")!.textContent).toBe("5,000");
   expect(bow.querySelector(".smith-shop-art img, .smith-shop-art .inventory-item-art")).not.toBeNull();
-  expect(view.row("common_light_armor").querySelector(".smith-shop-stat")!.textContent).toBe("Max Health +4.8% · +3% move speed");
+  expect(view.row("common_light_armor").querySelector(".smith-shop-stat")!.textContent).toBe("Max Health +4.8% · +3% Move Speed");
   // The top grade held shows as Owned, with no price.
   expect([view.button("mythic_sword").textContent, view.button("mythic_sword").disabled]).toEqual(["Owned", true]);
   expect(view.row("mythic_sword").querySelector(".smith-shop-price")).toBeNull();

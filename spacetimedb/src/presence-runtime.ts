@@ -37,6 +37,7 @@ import {
 import { accessibleCampaignMap } from "../../shared/equipment-access";
 import { readPlayerProgress } from "./wide-stats";
 import { clearAutoFarmPuppet } from "./autofarm-puppet";
+import { bonusMoveSpeedFactor } from "./weapon-mastery";
 
 const MAX_PACKED_PLAYER_VELOCITY = 0x7fff / PLAYER_VELOCITY_SCALE;
 // Movement packets are floats, so allow a tiny wire-format margin while
@@ -571,7 +572,8 @@ export function createPresenceRuntime(deps: PresenceRuntimeDeps) {
       const expectedSpeed = progress ? effectiveMovementSpeedForProgress(ctx, progress) : compatibilitySpeed;
       const bootedSpeed = progress && equippedFeetForProgress(progress) === BLACK_BOOTS
         ? expectedSpeed + BLACK_BOOTS_SPEED_BONUS : expectedSpeed;
-      return allowedSpeed = Math.max(compatibilitySpeed, expectedSpeed, bootedSpeed);
+      // Tailwind runs a little faster for a moment after a kill; Light armor a little faster always.
+      return allowedSpeed = Math.max(compatibilitySpeed, bootedSpeed * (progress ? bonusMoveSpeedFactor(ctx, ctx.sender, progress) : 1));
     };
     // Movement is not where cheating pays. What a speed hack buys is farming
     // throughput, and that is capped where it is earned: no account can be paid

@@ -1,5 +1,6 @@
 import {
-  MINING_NODES, MINING_NODE_KINDS, MINING_REACH, MINING_VEINS, miningBreakSeconds, miningVeinMap, miningVeinOpen, type MiningNode,
+  MINING_NODES, MINING_NODE_KINDS, MINING_REACH, MINING_VEINS, crystalRockHint, miningBreakSeconds, miningRockOpen, miningRockOre, miningVeinHint,
+  miningVeinOpen, type MiningNode,
 } from "../../../../shared/mining";
 import { REFINE_ORES } from "../../../../shared/refine";
 import type { CampaignAccess } from "../../../../shared/equipment-access";
@@ -56,8 +57,8 @@ const PENDING_LIMIT_MS = MINING_NODE_KINDS.mysterious.respawnSeconds * 1_000;
  * that is not bare until it breaks (shared/mining.ts times it by Mining; its bar steps once per hit), and the
  * server is asked to take the break; what it gave shows when the server's row says so. A rock broken here is bare at once, before the
  * server's word, and comes back if the server refuses. Walking pauses the swing; walking away, or to another
- * rock, starts the next one afresh. Without the pickaxe, at a vein not open yet, or with no bag slot for a kind
- * of ore not held yet, it says why instead.
+ * rock, starts the next one afresh. Without the pickaxe, at a vein not open yet, at a crystal rock before Mining
+ * reaches its mark, or with no bag slot for a kind of ore not held yet, it says why instead.
  */
 export function createMiningRuntime(deps: {
   source: () => MiningSource | null | undefined;
@@ -141,7 +142,7 @@ export function createMiningRuntime(deps: {
       const node = MINING_NODES[result.nodeId];
       if (!node) return;
       const color = ORE_COLORS[node.ore].light;
-      deps.logPickup?.(`+${MINING_NODE_KINDS[node.kind].ore} ${REFINE_ORES[node.ore].name}`, color);
+      deps.logPickup?.(`+${miningRockOre(node)} ${REFINE_ORES[node.ore].name}`, color);
       if (result.starshard) deps.logPickup?.("+1 Starshard", "#f6dcff");
       deps.burst?.(node.x, node.y - 24, color, 12, 95);
     });
@@ -198,9 +199,11 @@ export function createMiningRuntime(deps: {
     if (!miningVeinOpen(vein, source.savedProgress?.())) {
       stop();
       miningScene.blocked = "vein";
-      say(`Reach ${miningVeinMap(vein)} to mine ${REFINE_ORES[vein.ore].name}.`, "#ff9b91", rock.id);
+      say(miningVeinHint(rock), "#ff9b91", rock.id);
       return;
     }
+    // A crystal rock asks for some Mining first.
+    if (!miningRockOpen(rock, source.mining?.() ?? 0)) { stop(); miningScene.blocked = "vein"; say(crystalRockHint(), "#ff9b91", rock.id); return; }
     // A full bag: told before the swing, not after the rock is broken.
     const space = deps.bag?.();
     if (space) {

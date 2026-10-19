@@ -54,10 +54,12 @@ import CancelItemUpgradeReducer from "./cancel_item_upgrade_reducer";
 import ChallengeGuildReducer from "./challenge_guild_reducer";
 import ChangeDisplayNameReducer from "./change_display_name_reducer";
 import ChangeMapReducer from "./change_map_reducer";
+import ChopTreeReducer from "./chop_tree_reducer";
 import ClaimAdGemsReducer from "./claim_ad_gems_reducer";
 import ClaimDailyGemBonusReducer from "./claim_daily_gem_bonus_reducer";
 import ClaimDeveloperItemGiftReducer from "./claim_developer_item_gift_reducer";
 import ClaimGuestAccountReducer from "./claim_guest_account_reducer";
+import ClaimHatchetReducer from "./claim_hatchet_reducer";
 import ClaimMailboxGiftReducer from "./claim_mailbox_gift_reducer";
 import ClaimPickaxeReducer from "./claim_pickaxe_reducer";
 import ClaimStarterStaffReducer from "./claim_starter_staff_reducer";
@@ -293,6 +295,7 @@ import MyCardDropRow from "./my_card_drop_table";
 import MyCardShopPurchasesRow from "./my_card_shop_purchases_table";
 import MyCardsRow from "./my_cards_table";
 import MyChatMuteRow from "./my_chat_mute_table";
+import MyChoppedTreesRow from "./my_chopped_trees_table";
 import MyCopyRefinesRow from "./my_copy_refines_table";
 import MyCopySlotsRow from "./my_copy_slots_table";
 import MyCutsceneHistoryRow from "./my_cutscene_history_table";
@@ -335,6 +338,7 @@ import MySwordSkillsRow from "./my_sword_skills_table";
 import MyUpgradeBenchRow from "./my_upgrade_bench_table";
 import MyUpgradeBenchThirdSlotRow from "./my_upgrade_bench_third_slot_table";
 import MyWeaponMasteryRow from "./my_weapon_mastery_table";
+import MyWoodcuttingRow from "./my_woodcutting_table";
 import PatreonTickerSupportersRow from "./patreon_ticker_supporters_table";
 import PausedResearchRow from "./paused_research_table";
 import PlayerRow from "./player_table";
@@ -376,6 +380,7 @@ import PlayerProfileSnapshotRow from "./player_profile_snapshot_table";
 import PlayerProgressRow from "./player_progress_table";
 import PlayerResearchRow from "./player_research_table";
 import PlayerWideStatsRow from "./player_wide_stats_table";
+import PlayerWoodcuttingLevelRow from "./player_woodcutting_level_table";
 import PlayerWornSkillRow from "./player_worn_skill_table";
 import PlayerWornStaffSkillRow from "./player_worn_staff_skill_table";
 import PrestigeExpansionRow from "./prestige_expansion_table";
@@ -1022,6 +1027,17 @@ const tablesSchema = __schema({
       { name: 'player_wide_stats_identity_key', constraint: 'unique', columns: ['identity'] },
     ],
   }, PlayerWideStatsRow),
+  playerWoodcuttingLevel: __table({
+    name: 'player_woodcutting_level',
+    indexes: [
+      { accessor: 'identity', name: 'player_woodcutting_level_identity_idx_btree', algorithm: 'btree', columns: [
+        'identity',
+      ] },
+    ],
+    constraints: [
+      { name: 'player_woodcutting_level_identity_key', constraint: 'unique', columns: ['identity'] },
+    ],
+  }, PlayerWoodcuttingLevelRow),
   playerWornSkill: __table({
     name: 'player_worn_skill',
     indexes: [
@@ -1239,6 +1255,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, MyChatMuteRow),
+  myChoppedTrees: __table({
+    name: 'my_chopped_trees',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MyChoppedTreesRow),
   myCopyRefines: __table({
     name: 'my_copy_refines',
     indexes: [
@@ -1533,6 +1556,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, MyWeaponMasteryRow),
+  myWoodcutting: __table({
+    name: 'my_woodcutting',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MyWoodcuttingRow),
   patreonTickerSupporters: __table({
     name: 'patreon_ticker_supporters',
     indexes: [
@@ -1571,10 +1601,12 @@ const reducersSchema = __reducers(
   __reducerSchema("challenge_guild", ChallengeGuildReducer),
   __reducerSchema("change_display_name", ChangeDisplayNameReducer),
   __reducerSchema("change_map", ChangeMapReducer),
+  __reducerSchema("chop_tree", ChopTreeReducer),
   __reducerSchema("claim_ad_gems", ClaimAdGemsReducer),
   __reducerSchema("claim_daily_gem_bonus", ClaimDailyGemBonusReducer),
   __reducerSchema("claim_developer_item_gift", ClaimDeveloperItemGiftReducer),
   __reducerSchema("claim_guest_account", ClaimGuestAccountReducer),
+  __reducerSchema("claim_hatchet", ClaimHatchetReducer),
   __reducerSchema("claim_mailbox_gift", ClaimMailboxGiftReducer),
   __reducerSchema("claim_pickaxe", ClaimPickaxeReducer),
   __reducerSchema("claim_starter_staff", ClaimStarterStaffReducer),

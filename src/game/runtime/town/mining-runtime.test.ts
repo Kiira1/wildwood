@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { MINING_NODES, MINING_NODE_KINDS, miningBreakSeconds } from "../../../../shared/mining";
+import { CRYSTAL_MINING, MINING_NODES, MINING_NODE_KINDS, miningBreakSeconds } from "../../../../shared/mining";
 import { TOWN_ARRIVAL, TOWN_FEET_OFFSET } from "../../../../shared/town";
 import { createMiningRuntime, miningHitAt, miningHits, type MiningSource } from "./mining-runtime";
 import { miningScene, resetMiningScene } from "./mining-scene";
@@ -115,6 +115,19 @@ describe("mining in the Copper Hills", () => {
     const open = miner(iron, { savedProgress: () => ({ infernalUnlocked: true }) });
     open.run(miningBreakSeconds(iron, 0) + .2);
     expect(open.source.mineNode).toHaveBeenCalledWith(iron.id);
+  });
+
+  it("at a crystal rock asks for Mining first, then mines it into crystal", () => {
+    const crystal = MINING_NODES.find(node => node.kind === "crystal" && node.vein === 0)!;
+    const m = miner(crystal, { mining: () => CRYSTAL_MINING - 1 });
+    m.run(1);
+    expect(m.message).toHaveBeenCalledWith(`Reach Mining ${CRYSTAL_MINING} to mine Arcane Crystal.`, "#ff9b91");
+    expect(miningScene.pickaxeOut).toBe(false);
+    const ready = miner(crystal, { mining: () => CRYSTAL_MINING });
+    ready.run(miningBreakSeconds(crystal, CRYSTAL_MINING) + .2);
+    expect(ready.source.mineNode).toHaveBeenCalledWith(crystal.id);
+    ready.broke({ nodeId: crystal.id, starshard: false, rocksBroken: 1 });
+    expect(ready.logPickup).toHaveBeenCalledWith("+1 Arcane Crystal", expect.any(String));
   });
 
   it("with no bag slot for a kind of ore not held yet, says so before a single swing", () => {

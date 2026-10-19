@@ -335,26 +335,33 @@ it("gives a card found for the first time the moment, in the order found, and an
     ["Dragon Card", 3, CARD_FRAME_COLORS.boss.rim], ["Spitter Card", 2, CARD_FRAME_COLORS.regular.rim]].sort());
 });
 
-it("shows the pickaxe in the loadout's Tool slot, never to be equipped, and says what it does", () => {
+it("shows the pickaxe and hatchet in the loadout's Tool slot, never to be equipped, and says what they do", () => {
   const { document } = page(INVENTORY_PANEL);
   const inventory = { itemIds: [STARTER_STONE], equippedHead: "", equippedChest: "", equippedFeet: "", equippedRightHand: STARTER_STONE, equippedLeftHand: "", cosmeticHead: "", cosmeticChest: "", cosmeticFeet: "", cosmeticRightHand: "", cosmeticLeftHand: "", selectedItemId: "", selectedItemLocation: "" as const };
-  let owned = false;
+  let owned = false, hatchet = false;
   const messages: string[] = [];
   const controller = createInventoryController({ inventory, move: () => false, moveCosmetic: () => false, toggleCosmeticVisibility: () => false,
-    upgradeLevel: () => 0, inventorySlotsUnlocked: () => 0, gemBalance: () => 0n, hasPickaxe: () => owned,
+    upgradeLevel: () => 0, inventorySlotsUnlocked: () => 0, gemBalance: () => 0n, hasPickaxe: () => owned, hasHatchet: () => hatchet,
     itemInspection: { close() {}, open() { return true; } } as any,
     destroyEquipment: async () => undefined, unlockInventorySlot: async () => undefined, showMessage: (message: string) => { messages.push(message); } });
   controller.render();
   const tool = document.querySelector<HTMLButtonElement>(".inventory-loadout .slot-tool")!;
   expect(tool.textContent).toBe("TOOL");
   tool.click();
-  expect(messages.at(-1)).toBe("Get a pickaxe from the Smith in Town.");
+  expect(messages.at(-1)).toBe("Get a pickaxe and a hatchet from the Smith in Town.");
   owned = true;
   controller.render();
   expect(tool.classList.contains("is-equipped")).toBe(true);
   expect(tool.getAttribute("aria-label")).toBe("Tool: Pickaxe, always ready");
   tool.click();
   expect(messages.at(-1)).toContain("no need to equip");
+  // The hatchet shares the slot, the two crossed.
+  hatchet = true;
+  controller.render();
+  expect(tool.getAttribute("aria-label")).toBe("Tool: Pickaxe and Hatchet, always ready");
+  expect(tool.querySelectorAll(".slot-tool-art").length).toBe(2);
+  tool.click();
+  expect(messages.at(-1)).toBe("Pickaxe and Hatchet · Mine ore and fell trees. Always ready, no need to equip.");
   document.getElementById("inventoryCosmeticsTab")!.click();
   expect(tool.hidden).toBe(true);
 });

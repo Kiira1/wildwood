@@ -339,6 +339,12 @@
       "lastMuteAtMicros:u64",
       "muteCount:u32"
     ],
+    "my_chopped_trees": [
+      "key:string",
+      "identity:identity",
+      "treeId:u32",
+      "choppedAt:timestamp"
+    ],
     "my_copy_refines": [
       "copyId:u64",
       "identity:identity",
@@ -658,6 +664,14 @@
       "identity:identity",
       "school:string",
       "points:u64"
+    ],
+    "my_woodcutting": [
+      "identity:identity",
+      "woodcutting:u32",
+      "treesChopped:u32",
+      "hatchetAt:timestamp",
+      "lastChopAt:timestamp",
+      "lastTreeId:u32"
     ],
     "patreon_ticker_supporters": [
       "identity:identity",
@@ -1011,6 +1025,10 @@
       "damage:f64",
       "armor:f64",
       "regen:f64"
+    ],
+    "player_woodcutting_level": [
+      "identity:identity",
+      "woodcutting:u32"
     ],
     "player_worn_skill": [
       "identity:identity",

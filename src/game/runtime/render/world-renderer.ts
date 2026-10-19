@@ -6,6 +6,9 @@ import { MINING_NODES } from "../../../../shared/mining";
 import { SCHOOL_DETAILS } from "../../../../shared/weapon-mastery";
 import { ORE_COLORS } from "../town/ore-rock-renderer";
 import { miningScene } from "../town/mining-scene";
+import { WOOD_TREE_NODES } from "../../../../shared/woodcutting";
+import { LOG_COLORS } from "../town/wood-tree-renderer";
+import { woodcuttingScene } from "../town/woodcutting-scene";
 import { soulStatOfCampName } from "../../soul-world";
 import { residentDrawable } from "./resident-image";
 import { drawHomeCourtyard, drawHomeQuestBoard, drawHomeResearchDesk, drawHomeStationSign } from "../town/home-courtyard";
@@ -1154,7 +1157,7 @@ if (options.getMapId() === ION_CITADEL_MAP_ID) { drawIonRoads(ctx, options.paths
 
   /**
    * Where the minimap looks on the Town, or null on any other map (it shows the whole world): the walled village,
-   * or once the player is out past it, the Copper Hills and the walk out to them.
+   * or once the player is out past it, the Copper Hills, Timberwood and the walk out to them.
    */
   function townMinimapFrame() {
     if (!isTownMap(options.getMapId())) return null;
@@ -1174,6 +1177,17 @@ if (options.getMapId() === ION_CITADEL_MAP_ID) { drawIonRoads(ctx, options.paths
       draw.globalAlpha = miningScene.bare.has(node.id) ? .35 : 1;
       draw.fillStyle = "#101010"; draw.fillRect(px - 2, py - 2, 4, 4);
       draw.fillStyle = ORE_COLORS[node.ore].light; draw.fillRect(px - 1, py - 1, 2, 2);
+    }
+    draw.globalAlpha = 1;
+  }
+
+  /** Timberwood's trees on the minimap: a dot each in its wood's colour, faded while it is a stump. */
+  function drawWoodTreesOnMinimap(draw: CanvasRenderingContext2D, ox: number, oy: number, sx: number, sy: number) {
+    for (const tree of WOOD_TREE_NODES) {
+      const px = (tree.x - ox) * sx, py = (tree.y - oy) * sy;
+      draw.globalAlpha = woodcuttingScene.felled.has(tree.id) ? .35 : 1;
+      draw.fillStyle = "#101010"; draw.fillRect(px - 2, py - 2, 4, 4);
+      draw.fillStyle = LOG_COLORS[tree.log].face; draw.fillRect(px - 1, py - 1, 2, 2);
     }
     draw.globalAlpha = 1;
   }
@@ -1213,7 +1227,7 @@ if (options.getMapId() === ION_CITADEL_MAP_ID) { drawIonRoads(ctx, options.paths
     const colors = mapColors();
     draw.fillStyle = colors.ground; draw.fillRect(innerX, innerY, innerSize, innerSize);
     if (frame && !frame.rooms) drawSoulVillageOnMinimap(draw, ox, oy, sx, sy);
-    if (frame?.hills) drawOreRocksOnMinimap(draw, ox, oy, sx, sy);
+    if (frame?.hills) { drawOreRocksOnMinimap(draw, ox, oy, sx, sy); drawWoodTreesOnMinimap(draw, ox, oy, sx, sy); }
     if (frame?.rooms) drawSoulRoomsOnMinimap(draw, innerSize, ox, oy, sx, sy);
     draw.fillStyle = colors.path; for (const path of options.paths) draw.fillRect(innerX + (path.x - ox) * sx, innerY + (path.y - oy) * sy, path.w * sx, path.h * sy);
     draw.save();

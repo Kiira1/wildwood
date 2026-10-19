@@ -138,6 +138,7 @@ export function createProfileWindowController(elements: {
       skills: profileData.wornSkill?.itemId === presentation.inspectionItemId ? profileData.wornSkill.roll : undefined,
       context: presentation.context,
       ownItem: identity === api.localIdentity(),
+      worn: profileData.progress,
       actions: identity === api.localIdentity() ? api.destructionActions?.(presentation.inspectionItemId) : undefined,
     });
   }

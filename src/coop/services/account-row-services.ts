@@ -7,6 +7,7 @@ import { createSoulDimensionRows } from "./soul-dimension-service";
 import { createGuildHallRows } from "./guild-hall-service";
 import { createItemRefineRows } from "./item-refine-service";
 import { createMiningRows } from "./mining-service";
+import { createWoodcuttingRows } from "./woodcutting-service";
 import { createCardRows } from "./card-service";
 import { createCardShopRows } from "./card-shop-service";
 import { createBuildRows } from "./build-service";
@@ -23,7 +24,7 @@ import { BASE_CARD_SLOTS, activeCardsInPlay, type ActiveCardSlots, type ActiveCa
  * opt-out, the bow skill rolls with their copies and loot settings, the
  * rewarded ad's Gem claims, the automatic chat mute and the Soul Dimension's
  * rows (soul stats, kills by reward type, whether it is open) and the guild
- * hall's fund and levels, each item's refine with the ores it costs, mining, cards, the Card Seller's buys, Weapon Mastery and gold. They share one
+ * hall's fund and levels, each item's refine with the ores it costs, mining, woodcutting, cards, the Card Seller's buys, Weapon Mastery and gold. They share one
  * lifecycle, so the connection starts them together and the coop API serves
  * them together.
  */
@@ -38,6 +39,7 @@ export function createAccountRowServices(connection: () => DbConnection | null, 
   const guildHall = createGuildHallRows(connection, notify);
   const itemRefine = createItemRefineRows(notify, slotTierFor);
   const mining = createMiningRows(notify);
+  const woodcutting = createWoodcuttingRows(notify);
   const cards = createCardRows(notify);
   const cardShop = createCardShopRows(notify);
   const builds = createBuildRows(notify);
@@ -68,6 +70,7 @@ export function createAccountRowServices(connection: () => DbConnection | null, 
       guildHall.watch(current, isCurrent);
       itemRefine.watch(current, isCurrent);
       mining.watch(current, isCurrent);
+      woodcutting.watch(current, isCurrent);
       cards.watch(current, isCurrent);
       cardShop.watch(current, isCurrent);
       builds.watch(current, isCurrent);
@@ -84,6 +87,7 @@ export function createAccountRowServices(connection: () => DbConnection | null, 
       ...guildHall.api,
       ...itemRefine.api,
       ...mining.api,
+      ...woodcutting.api,
       ...cards.api,
       ...cardShop.api,
       ...builds.api,

@@ -71,8 +71,10 @@ const where = (item: Prop) => `${item.frame} at ${item.x},${item.y}`;
 
 describe("the Copper Hills' rocks as laid", () => {
   it("stand where they always have: the server keeps each player's broken rocks by id", () => {
-    const fingerprint = MINING_NODES.reduce((hash, node) => Math.imul(hash ^ (node.x * 7_919 + node.y * 104_729 + node.kind.length), 0x9e3779b1) >>> 0, 17);
-    expect([MINING_NODES.length, MINING_OUTCROPS.length, fingerprint]).toEqual([100, 18, 67_313_776]);
+    const fingerprint = (nodes: typeof MINING_NODES) => nodes.reduce((hash, node) => Math.imul(hash ^ (node.x * 7_919 + node.y * 104_729 + node.kind.length), 0x9e3779b1) >>> 0, 17);
+    // The ore rocks as first laid, then the crystal rocks after them.
+    expect([MINING_NODES.length, MINING_OUTCROPS.length, fingerprint(MINING_NODES.slice(0, 100))]).toEqual([109, 18, 67_313_776]);
+    expect(fingerprint(MINING_NODES.slice(100))).toBe(3_958_712_620);
   });
 });
 

@@ -17,16 +17,26 @@ export { REFINE_MAX, REFINE_STEP_PAST_TEN, REFINE_STEP_TO_TEN, normalizeRefineLe
 /** Ragnarok's weapon levels: an item's grade follows its Tier, four tiers to a grade (the last one three). */
 export type RefineGrade = 1 | 2 | 3 | 4;
 
-/** The ore a try costs: one grade ore, plus a Starshard from +11 on. */
+/**
+ * Every material the bag stacks, one slot a kind: the ore a try costs (one grade ore, plus a Starshard from +11 on),
+ * and the crafting wood and crystal, which refining never takes.
+ */
 export const REFINE_ORES = {
   copper_ore: { name: "Copper Ore", grade: 1 },
   iron_ore: { name: "Iron Ore", grade: 2 },
   mithril_ore: { name: "Mithril Ore", grade: 3 },
   adamant_ore: { name: "Adamant Ore", grade: 4 },
   starshard: { name: "Starshard", grade: null },
+  pine_log: { name: "Pine Log", grade: null },
+  oak_log: { name: "Oak Log", grade: null },
+  yew_log: { name: "Yew Log", grade: null },
+  elder_log: { name: "Elder Log", grade: null },
+  arcane_crystal: { name: "Arcane Crystal", grade: null },
 } as const;
 export type OreId = keyof typeof REFINE_ORES;
-export const GRADE_ORES: Readonly<Record<RefineGrade, OreId>> = { 1: "copper_ore", 2: "iron_ore", 3: "mithril_ore", 4: "adamant_ore" };
+/** The four ores a grade refines with. */
+export type GradeOreId = "copper_ore" | "iron_ore" | "mithril_ore" | "adamant_ore";
+export const GRADE_ORES: Readonly<Record<RefineGrade, GradeOreId>> = { 1: "copper_ore", 2: "iron_ore", 3: "mithril_ore", 4: "adamant_ore" };
 /** From this level on, a try also takes a Starshard. */
 export const STARSHARD_FROM_LEVEL = 11;
 

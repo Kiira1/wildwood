@@ -121,9 +121,10 @@ export function bowSkillLines(roll: Partial<BowSkillRoll> | null | undefined): s
  * server's kill bound can therefore count them as extra arrows. It assumes
  * every storm arrow, bounce and pierce finds a fresh enemy, which is generous.
  */
-export function bowSkillReachMultiplier(roll: Partial<BowSkillRoll> | null | undefined) {
+export function bowSkillReachMultiplier(roll: Partial<BowSkillRoll> | null | undefined, extraStormWaves = 0) {
+  // Rain of Arrows (mastery-techniques.ts) adds whole waves to a storm.
   return 1
-    + bowSkillChance(roll, "arrowStorm") * ARROW_STORM_ARROWS
+    + bowSkillChance(roll, "arrowStorm") * ARROW_STORM_ARROWS * (1 + extraStormWaves)
     + bowSkillChance(roll, "ricochet") * RICOCHET_MAX_BOUNCES
     + bowSkillChance(roll, "piercingShot") * PIERCING_SHOT_MAX_EXTRA_TARGETS;
 }

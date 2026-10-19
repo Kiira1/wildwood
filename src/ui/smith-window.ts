@@ -6,7 +6,7 @@ import { itemArtMarkup } from "../game/item-presentation";
 import { itemInspectionButtonLabel } from "./item-inspection-controller";
 import { formatEquipmentStat } from "./equipment-stat-format";
 import { refineStars } from "./refine-badge";
-import { ORE_ORDER } from "../../shared/ore-bag";
+import { REFINE_ORE_ORDER } from "../../shared/ore-bag";
 import { itemTier } from "../../shared/item-tier";
 import { ARMOR_CLASS_DETAILS, ARMOR_CLASS_NAMES, GEAR_GRADE_NAMES } from "../../shared/gear-grades";
 import { armorClassOf, gradeEquipmentKindOf, gradeOf, type GradeItemId } from "../../shared/grade-equipment";
@@ -57,6 +57,10 @@ export function createSmithController(deps: {
   hasPickaxe?: () => boolean;
   claimPickaxe?: () => Promise<Result>;
   mining?: () => number;
+  /** Woodcutting (shared/woodcutting.ts): the free hatchet he hands over as he does the pickaxe, and the stat once it is in hand. */
+  hasHatchet?: () => boolean;
+  claimHatchet?: () => Promise<Result>;
+  woodcutting?: () => number;
   /** The free Starter Staff he hands out, as he does the pickaxe. */
   hasStarterStaff?: () => boolean;
   claimStarterStaff?: () => Promise<Result>;
@@ -76,6 +80,7 @@ export function createSmithController(deps: {
     + `<section class="smith-focus" aria-live="polite"></section>`
     + `<p class="smith-ores" aria-label="Your ores"></p>`
     + `<div class="smith-mining"><span class="smith-mining-text"></span><button type="button" class="farm-start smith-refine smith-pickaxe">Take a Pickaxe</button></div>`
+    + `<div class="smith-mining smith-hatchet-row"><span class="smith-woodcutting-text"></span><button type="button" class="farm-start smith-refine smith-hatchet">Take a Hatchet</button></div>`
     + `<div class="smith-mining smith-staff-row"><span class="smith-mining-text">Starter Staff · Casts bolts that burst on a pack</span><button type="button" class="farm-start smith-refine smith-staff">Take a Staff</button></div>`
     + `<div class="inventory-filters smith-filters" role="group" aria-label="Show gear"></div>`
     + `<p class="smith-empty smith-filter-empty" hidden></p>`
@@ -91,6 +96,9 @@ export function createSmithController(deps: {
   const back = dialog.querySelector<HTMLButtonElement>(".window-back-button")!;
   const miningText = dialog.querySelector<HTMLElement>(".smith-mining-text")!;
   const pickaxeButton = dialog.querySelector<HTMLButtonElement>(".smith-pickaxe")!;
+  const hatchetRow = dialog.querySelector<HTMLElement>(".smith-hatchet-row")!;
+  const woodcuttingText = dialog.querySelector<HTMLElement>(".smith-woodcutting-text")!;
+  const hatchetButton = dialog.querySelector<HTMLButtonElement>(".smith-hatchet")!;
   const staffRow = dialog.querySelector<HTMLElement>(".smith-staff-row")!;
   const staffButton = dialog.querySelector<HTMLButtonElement>(".smith-staff")!;
   const filterBar = dialog.querySelector<HTMLElement>(".smith-filters")!;
@@ -112,7 +120,7 @@ export function createSmithController(deps: {
   let selected: string | null = null;
   let refining = false;
   /** Taken here and on its way: the button goes before the server's row arrives. */
-  let pickaxeTaken = false, takingPickaxe = false, takingStaff = false;
+  let pickaxeTaken = false, takingPickaxe = false, takingStaff = false, hatchetTaken = false, takingHatchet = false;
   let lastResult: { text: string; good: boolean } | null = null;
   let renderedState = "";
   /** The piece being bought, and the ones bought here before the server's row arrives. */
@@ -191,7 +199,7 @@ export function createSmithController(deps: {
     // Presence updates also refresh open windows. Keep focus and buttons in place until this window changes.
     const state = JSON.stringify([
       shown, selected, refining, lastResult, pickaxeTaken, takingPickaxe, takingStaff, deps.hasStarterStaff?.(),
-      deps.ores(), deps.hasPickaxe?.(), deps.mining?.(), shopState(),
+      deps.ores(), deps.hasPickaxe?.(), deps.mining?.(), hatchetTaken, takingHatchet, deps.hasHatchet?.(), deps.woodcutting?.(), shopState(),
       items.map(item => [key(item), item.equipped, deps.refineLevel(item.itemId, item.copyId), deps.slotTier(item.itemId)]),
     ]);
     if (state === renderedState) return;
@@ -204,12 +212,18 @@ export function createSmithController(deps: {
     filterEmpty.textContent = `No ${SMITH_FILTERS.find(([kind]) => kind === shown)?.[1].toLowerCase() ?? "gear"} to bring`;
     renderFocus(chosen);
     const held = deps.ores();
-    oreLine.textContent = ORE_ORDER.map(oreId => `${REFINE_ORES[oreId].name} ${held[oreId] ?? 0}`).join(" · ");
+    oreLine.textContent = REFINE_ORE_ORDER.map(oreId => `${REFINE_ORES[oreId].name} ${held[oreId] ?? 0}`).join(" · ");
     // Where the ore comes from, and the pickaxe to get it with.
     const pickaxe = pickaxeTaken || Boolean(deps.hasPickaxe?.());
     miningText.textContent = pickaxe ? `Mining ${deps.mining?.() ?? 0} · Ore is in the Copper Hills, east of Town` : "Ore is in the Copper Hills, east of Town.";
     pickaxeButton.hidden = pickaxe || !deps.claimPickaxe;
     pickaxeButton.disabled = takingPickaxe;
+    // Where the wood comes from, and the hatchet to fell it with.
+    const hatchet = hatchetTaken || Boolean(deps.hasHatchet?.());
+    hatchetRow.hidden = !deps.claimHatchet && !deps.hasHatchet;
+    woodcuttingText.textContent = hatchet ? `Woodcutting ${deps.woodcutting?.() ?? 0} · Wood is in Timberwood, north of the Copper Hills` : "Wood is in Timberwood, north of the Copper Hills.";
+    hatchetButton.hidden = hatchet || !deps.claimHatchet;
+    hatchetButton.disabled = takingHatchet;
     renderShop();
     list.replaceChildren(...items.map(item => {
       const option = document.createElement("button");
@@ -341,6 +355,7 @@ export function createSmithController(deps: {
     lastResult = null;
     // Each visit goes by the server's word on the pickaxe and the bag: a reset save takes them back.
     pickaxeTaken = false;
+    hatchetTaken = false;
     justBought.clear();
     render();
     deps.clearInput?.();
@@ -360,6 +375,21 @@ export function createSmithController(deps: {
       } else deps.showMessage(result?.error ?? "Not Connected", "#ff9b91");
     } finally {
       takingPickaxe = false;
+      if (dialog.open) render();
+    }
+  });
+  hatchetButton.addEventListener("click", async () => {
+    if (takingHatchet || !deps.claimHatchet) return;
+    takingHatchet = true;
+    render();
+    try {
+      const result = await deps.claimHatchet();
+      if (result?.ok) {
+        hatchetTaken = true;
+        deps.showMessage("The Smith hands you a hatchet. Timberwood is north of the Copper Hills.", "#ffd75e");
+      } else deps.showMessage(result?.error ?? "Not Connected", "#ff9b91");
+    } finally {
+      takingHatchet = false;
       if (dialog.open) render();
     }
   });
@@ -388,6 +418,9 @@ export function createSmithRuntime(deps: {
     claimPickaxe?: () => Promise<Result>;
     claimStarterStaff?: () => Promise<Result>;
     mining?: () => number;
+    hasHatchet?: () => boolean;
+    claimHatchet?: () => Promise<Result>;
+    woodcutting?: () => number;
     itemRefine?: (itemId: string, copyId?: bigint) => number;
     itemUpgradeLevel?: (itemId: string) => number;
     ores?: () => Readonly<Partial<Record<OreId, number>>>;
@@ -428,6 +461,9 @@ export function createSmithRuntime(deps: {
     hasStarterStaff: () => inventory.itemIds.includes(STARTER_STAFF),
     claimStarterStaff: async () => deps.coop()?.claimStarterStaff?.() ?? { ok: false, error: "Not Connected" },
     mining: () => deps.coop()?.mining?.() ?? 0,
+    hasHatchet: () => deps.coop()?.hasHatchet?.() ?? false,
+    claimHatchet: async () => deps.coop()?.claimHatchet?.() ?? { ok: false, error: "Not Connected" },
+    woodcutting: () => deps.coop()?.woodcutting?.() ?? 0,
     gold: () => deps.coop()?.gold?.() ?? 0n,
     masteryLevels: () => masteryLevels(deps.coop()?.weaponMastery?.() ?? {}),
     heldItems: () => [...inventory.itemIds, ...(deps.coop()?.activeItemUpgrades?.() ?? []).map(active => active.itemId)],

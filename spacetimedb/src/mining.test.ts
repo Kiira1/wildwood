@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { Timestamp } from "spacetimedb";
 import { crystalFixture, identity, server } from "../../tests/helpers/crystal-hollows-fixture";
 import { TOWN_FEET_OFFSET, TOWN_SMITH_POSITION } from "../../shared/town";
-import { MINING_NODES, MINING_NODE_KINDS, MINING_RATE_SLACK, miningBreakSeconds, type MiningNode } from "../../shared/mining";
+import { CRYSTAL_MINING, MINING_NODES, MINING_NODE_KINDS, MINING_RATE_SLACK, miningBreakSeconds, type MiningNode } from "../../shared/mining";
 import { addOres, oreCount } from "./item-refine";
 import { inventorySlotCapacity } from "../../shared/gems";
 import { bagSlotsUsed } from "../../shared/equipment-copies";
@@ -114,6 +114,21 @@ describe("breaking a rock", () => {
     f.rolls(.99);
     f.mine(mysterious);
     expect([f.ore("starshard"), f.row().lastStarshard]).toEqual([1, false]);
+  });
+
+  it("gives Arcane Crystal from a crystal rock once Mining reaches its mark, more in a deeper vein", () => {
+    const crystal = MINING_NODES.find(node => node.kind === "crystal" && node.vein === 0)!;
+    const f = miner();
+    expect(() => f.mine(crystal)).toThrow(`Reach Mining ${CRYSTAL_MINING} to mine Arcane Crystal.`);
+    f.db.playerMining.identity.update({ ...f.row(), mining: CRYSTAL_MINING });
+    f.mine(crystal);
+    expect([f.ore("arcane_crystal"), f.ore("copper_ore"), f.row().mining]).toEqual([1, 0, CRYSTAL_MINING + 1]);
+    const deep = MINING_NODES.find(node => node.kind === "crystal" && node.vein === 1)!;
+    f.later(60);
+    expect(() => f.mine(deep)).toThrow("Reach Night Forest - 5 to mine Arcane Crystal here.");
+    f.patch("playerProgress", { infernalUnlocked: true });
+    f.mine(deep);
+    expect(f.ore("arcane_crystal")).toBe(3);
   });
 
   it("clears the rows of rocks that grew back as the player mines on", () => {

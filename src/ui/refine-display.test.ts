@@ -93,10 +93,10 @@ describe("refines in the inventory", () => {
     expect(bag().items.querySelector(".is-ore")).toBeNull();
   });
 
-  it("shows the ores alone under the Ores filter, and no ores under a gear filter", () => {
+  it("shows the ores alone under the Materials filter, and no ores under a gear filter", () => {
     const view = bag(undefined, { iron_ore: 3 });
     const filter = (label: string) => [...view.document.querySelectorAll<HTMLElement>(".inventory-filter")].find(button => button.textContent === label)!;
-    filter("Ores").click();
+    filter("Materials").click();
     expect([...view.items.querySelectorAll<HTMLElement>(".inventory-item.is-filled")].map(tile => tile.dataset.oreId ?? tile.dataset.itemId)).toEqual(["iron_ore"]);
     filter("Helmets").click();
     expect(view.items.querySelector(".is-ore")).toBeNull();

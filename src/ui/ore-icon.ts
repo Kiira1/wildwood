@@ -1,4 +1,6 @@
 import type { OreId } from "../../shared/refine";
+import type { WoodId } from "../../shared/crafting";
+import { LOG_COLORS } from "../game/runtime/town/wood-tree-renderer";
 import { ORE_COLORS } from "../game/runtime/town/ore-rock-renderer";
 
 const ROCK = "#aab5bc", ROCK_DARK = "#8796a0", ROCK_LIGHT = "#c9d2d8", OUTLINE = "#23292e";
@@ -18,12 +20,48 @@ function gem(c: CanvasRenderingContext2D, x: number, y: number, size: number, co
   c.fillStyle = "rgba(255,255,255,.85)"; c.fillRect(x - w * .3, y - h * .62, Math.max(2, w * .14), h * .3);
 }
 
+/** A log lying across the icon, its cut end towards the viewer, outlined as the pack's art is. */
+function paintLog(c: CanvasRenderingContext2D, colors: (typeof LOG_COLORS)[WoodId]) {
+  c.save();
+  c.translate(31, 34);
+  c.rotate(-.38);
+  c.scale(1.22, 1.22);
+  c.lineJoin = "round";
+  const body = () => {
+    c.beginPath();
+    c.moveTo(16, -12); c.lineTo(-20, -12); c.quadraticCurveTo(-27, -12, -27, 0); c.quadraticCurveTo(-27, 12, -20, 12); c.lineTo(16, 12); c.closePath();
+  };
+  body(); c.fillStyle = colors.bark; c.fill();
+  c.save(); body(); c.clip();
+  c.fillStyle = colors.barkDark; c.fillRect(-30, 4, 50, 10);
+  c.strokeStyle = colors.barkDark; c.lineWidth = 2;
+  for (const [x, y, w] of [[-18, -6, 12], [-4, -2, 14], [-14, 2, 8]] as const) { c.beginPath(); c.moveTo(x, y); c.lineTo(x + w, y); c.stroke(); }
+  c.restore();
+  body(); c.lineWidth = 3; c.strokeStyle = OUTLINE; c.stroke();
+  // The cut end: its face, two rings, and the heart.
+  c.beginPath(); c.ellipse(16, 0, 8, 12, 0, 0, Math.PI * 2); c.fillStyle = colors.face; c.fill();
+  c.lineWidth = 3; c.strokeStyle = OUTLINE; c.stroke();
+  c.lineWidth = 1.5; c.strokeStyle = colors.ring;
+  c.beginPath(); c.ellipse(16, 0, 5, 8, 0, 0, Math.PI * 2); c.stroke();
+  c.beginPath(); c.ellipse(16, 0, 2.2, 3.6, 0, 0, Math.PI * 2); c.stroke();
+  c.restore();
+}
+
 /**
- * Paints an ore's bag icon into a 64 × 64 canvas, in the map rocks' style (ore-rock-renderer.ts): a lump of grey
- * rock with its ore's crystals standing out of it, and the Starshard a pale four-pointed star.
+ * Paints a stack's bag icon into a 64 × 64 canvas, in the map rocks' style (ore-rock-renderer.ts): a lump of grey
+ * rock with its ore's crystals standing out of it, the Starshard a pale four-pointed star, Arcane Crystal its
+ * crystals alone, and each wood a log of its own colours.
  */
 export function paintOreIcon(c: CanvasRenderingContext2D, oreId: OreId) {
   c.clearRect(0, 0, 64, 64);
+  if (oreId in LOG_COLORS) { paintLog(c, LOG_COLORS[oreId as WoodId]); return; }
+  if (oreId === "arcane_crystal") {
+    const colors = ORE_COLORS.arcane_crystal;
+    gem(c, 21, 42, 18, colors);
+    gem(c, 43, 44, 15, colors);
+    gem(c, 32, 34, 26, colors);
+    return;
+  }
   if (oreId === "starshard") {
     const glow = c.createRadialGradient(32, 32, 2, 32, 32, 30);
     glow.addColorStop(0, "rgba(240, 214, 255, .9)"); glow.addColorStop(1, "rgba(240, 214, 255, 0)");
@@ -46,7 +84,7 @@ export function paintOreIcon(c: CanvasRenderingContext2D, oreId: OreId) {
   c.fillStyle = ROCK_LIGHT; c.beginPath(); c.moveTo(0, 30); c.lineTo(30, 0); c.lineTo(40, 0); c.lineTo(0, 40); c.closePath(); c.fill();
   c.restore();
   lump(); c.lineJoin = "round"; c.lineWidth = 3; c.strokeStyle = OUTLINE; c.stroke();
-  const colors = ORE_COLORS[oreId];
+  const colors = ORE_COLORS[oreId as keyof typeof ORE_COLORS];
   gem(c, 24, 38, 15, colors);
   gem(c, 38, 32, 19, colors);
   gem(c, 46, 46, 12, colors);

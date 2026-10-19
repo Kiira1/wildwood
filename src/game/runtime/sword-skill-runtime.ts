@@ -1,7 +1,7 @@
 import { bossSurfaceDistance, bossVerticalRadius } from "../../../shared/boss-hitbox";
 import {
   DEFLECT_RETURN_SPEED, SHOCKWAVE_DAMAGE_SHARE, SHOCKWAVE_MAX_TARGETS, SHOCKWAVE_RADIUS, SHOCKWAVE_RANGE,
-  SHOCKWAVE_SPEED, WHIRLWIND_DAMAGE_SHARE, WHIRLWIND_MAX_TARGETS, WHIRLWIND_RADIUS, WHIRLWIND_SECONDS,
+  SHOCKWAVE_SPEED, WHIRLWIND_DAMAGE_SHARE, WHIRLWIND_MAX_TARGETS, WHIRLWIND_RADIUS,
   WHIRLWIND_TICKS, WHIRLWIND_TICK_SECONDS, isSkillSword, swordSkillChance, type SwordSkillRoll,
 } from "../../../shared/sword-skills";
 import { segmentCircleHit, segmentEllipseHit } from "../weapon-combat";
@@ -15,7 +15,7 @@ export type SwordSkillEffects = {
   spawnDeflectedShot?: (x: number, y: number, toX: number, toY: number, life: number) => void;
 };
 type Swing = { primary: Target; damage: number; critical: boolean };
-type Spin = Swing & { startedAt: number; tick: number };
+type Spin = Swing & { startedAt: number; tick: number; ticks: number };
 type Wave = Swing & { x: number; y: number; angle: number; startedAt: number; traveled: number; struck: Set<Target> };
 
 /** Timed sword hits use the controller's ordinary hit/reward path. They never trigger more skills. */
@@ -25,6 +25,9 @@ export function createSwordSkillRuntime(options: {
   roll: () => Partial<SwordSkillRoll> | null | undefined; nowSeconds: () => number;
   random: () => number; isDueling: () => boolean; onCombat?: () => void;
   effects?: SwordSkillEffects;
+  /** Blade Storm's extra Whirlwind ticks and Parry's bigger Deflect return (mastery-techniques.ts); none without. */
+  extraWhirlwindTicks?: () => number;
+  deflectReturn?: () => number;
   hit: (target: Target, damage: number, critical: boolean, angle: number, reflected?: boolean) => void;
 }) {
   const { player, enemies } = options;
@@ -57,9 +60,10 @@ export function createSwordSkillRuntime(options: {
     const roll = options.roll(), startedAt = options.nowSeconds();
     const whirlwind = swordSkillChance(roll, "whirlwind"), shockwave = swordSkillChance(roll, "shockwave");
     if (whirlwind > 0 && options.random() < whirlwind) {
-      spins.push({ primary, damage, critical, startedAt, tick: 0 });
-      player.swordSpinClock = WHIRLWIND_SECONDS;
-      options.effects?.spawnSwordSpin?.(player.x, player.y, WHIRLWIND_RADIUS, WHIRLWIND_SECONDS, player);
+      const ticks = WHIRLWIND_TICKS + Math.max(0, options.extraWhirlwindTicks?.() ?? 0), seconds = ticks * WHIRLWIND_TICK_SECONDS;
+      spins.push({ primary, damage, critical, startedAt, tick: 0, ticks });
+      player.swordSpinClock = seconds;
+      options.effects?.spawnSwordSpin?.(player.x, player.y, WHIRLWIND_RADIUS, seconds, player);
     }
     if (shockwave > 0 && options.random() < shockwave) {
       waves.push({ primary, damage, critical, angle, startedAt, x: player.x, y: player.y, traveled: 0, struck: new Set() });
@@ -75,7 +79,7 @@ export function createSwordSkillRuntime(options: {
     if (chance <= 0 || options.random() >= chance) return false;
     const target = shot.source, flight = Math.max(.04, Math.hypot(target.x - player.x, target.y - player.y) / DEFLECT_RETURN_SPEED);
     // The cap also applies in Reflect Only; the server bounds a parry without assuming lost health.
-    returns.push({ target, damage: Math.max(0, Math.min(shot.damage, player.maxHp)), landAt: options.nowSeconds() + flight });
+    returns.push({ target, damage: Math.max(0, Math.min(shot.damage, player.maxHp)) * (options.deflectReturn?.() ?? 1), landAt: options.nowSeconds() + flight });
     options.effects?.spawnDeflectedShot?.(player.x, player.y, target.x, target.y, flight);
     player.hurtClock = .1;
     options.onCombat?.();
@@ -89,15 +93,15 @@ export function createSwordSkillRuntime(options: {
     player.swordSpinClock = 0;
     for (let index = spins.length - 1; index >= 0; index--) {
       const spin = spins[index];
-      while (spin.tick < WHIRLWIND_TICKS && now + 1e-8 >= spin.startedAt + (spin.tick + 1) * WHIRLWIND_TICK_SECONDS) {
+      while (spin.tick < spin.ticks && now + 1e-8 >= spin.startedAt + (spin.tick + 1) * WHIRLWIND_TICK_SECONDS) {
         spin.tick++;
         const targets = candidates(spin.primary).filter(target => distance(target) <= WHIRLWIND_RADIUS)
           .sort((a, b) => distance(a) - distance(b)).slice(0, WHIRLWIND_MAX_TARGETS);
         for (const target of targets) options.hit(target, spin.damage * WHIRLWIND_DAMAGE_SHARE, spin.critical,
           Math.atan2(target.y - player.y, target.x - player.x));
       }
-      player.swordSpinClock = Math.max(player.swordSpinClock, spin.startedAt + WHIRLWIND_SECONDS - now);
-      if (spin.tick >= WHIRLWIND_TICKS) spins.splice(index, 1);
+      player.swordSpinClock = Math.max(player.swordSpinClock, spin.startedAt + spin.ticks * WHIRLWIND_TICK_SECONDS - now);
+      if (spin.tick >= spin.ticks) spins.splice(index, 1);
     }
     for (let index = waves.length - 1; index >= 0; index--) {
       const wave = waves[index];

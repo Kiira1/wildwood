@@ -805,7 +805,7 @@
 .smith-sheet .smith-ores { margin: 0 14px 10px; color: var(--muted); text-align: center; font-size: 12px; line-height: 1.4; }
 /* Where ore comes from: the Copper Hills, and the Smith's free pickaxe until it is taken. */
 .smith-sheet .smith-mining { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 12px; margin: 0 14px 12px; color: var(--muted); font-size: 13px; text-align: center; }
-.smith-sheet .smith-mining .smith-pickaxe, .smith-sheet .smith-mining .smith-staff { flex: 0 0 auto; height: 38px; min-height: 38px; font-size: 14px; }
+.smith-sheet .smith-mining .smith-pickaxe, .smith-sheet .smith-mining .smith-hatchet, .smith-sheet .smith-mining .smith-staff { flex: 0 0 auto; height: 38px; min-height: 38px; font-size: 14px; }
 .smith-sheet .smith-filters { gap: 14px; margin: 0 14px 8px; }
 .smith-sheet .smith-filters .inventory-filter { min-height: 32px; font-size: 13px; }
 .smith-sheet .smith-filter-empty { margin: 0 14px 12px; }

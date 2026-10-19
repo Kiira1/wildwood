@@ -167,6 +167,8 @@ export type PlayerProfileData = {
   wornSkill?: { itemId: string; roll: Record<string, number> } | null;
   /** The Mining stat (my_mining for your own, player_mining_level for anyone else's); null before the Smith's pickaxe. */
   mining?: number | null;
+  /** The Woodcutting stat (my_woodcutting for your own, player_woodcutting_level for anyone else's); null before the Smith's hatchet. */
+  woodcutting?: number | null;
   /** Weapon Mastery levels by school (my_weapon_mastery for your own, player_mastery_level for anyone else's); a missing school is level 0. */
   mastery?: Partial<Record<import("../../shared/weapon-mastery").WeaponSchool, number>> | null;
   lifetime: PlayerLifetime;

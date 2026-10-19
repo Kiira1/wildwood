@@ -17,6 +17,7 @@ import { cardDefinition } from "../../shared/cards";
 import { CARD_SLOT_NAMES, cardEffectText, cardName, cardOrigin } from "../../shared/card-text";
 import { cardPortrait } from "./card-portrait";
 import { itemSkillDetails } from "./item-skill-details";
+import { armorClassPerkLine, armorClassSetLine } from "../../shared/armor-class-perks";
 
 export type ItemInspectionAction = {
   label: string;
@@ -41,7 +42,19 @@ export type ItemInspectionRequest = {
   skills?: WeaponSkillRoll | null;
   /** A player's active cards of this item's type, shown on their profile's gear: each card and what it does. */
   activeCards?: { title: string; cards: readonly string[] };
+  /** The wearer's gear: a helmet or armor they wear says whether its class set is on. */
+  worn?: WornGear;
 };
+
+export type WornGear = { equippedRightHand?: string; equippedLeftHand?: string; equippedHead?: string; equippedChest?: string };
+
+/** A graded helmet or armor's class lines: its perk, and its set, Active or Inactive when `worn` has it on. */
+export function armorClassLines(itemId: string, worn?: WornGear) {
+  const wearing = worn && (worn.equippedHead === itemId || worn.equippedChest === itemId);
+  const set = armorClassSetLine(itemId, wearing
+    ? { weapon: worn.equippedRightHand || worn.equippedLeftHand, head: worn.equippedHead, chest: worn.equippedChest } : undefined);
+  return [armorClassPerkLine(itemId), set].filter((line): line is string => Boolean(line));
+}
 
 export type ItemInspectionController = ReturnType<typeof createItemInspectionController>;
 
@@ -233,6 +246,13 @@ export function createItemInspectionController(elements: ItemInspectionElements)
       if (/^MAX HEALTH\b/.test(stat)) value.dataset.statKind = "health";
       if (/^REGEN\b/.test(stat)) value.dataset.statKind = "regen";
       if (/^ARMOR\b/.test(stat)) value.dataset.statKind = "armor";
+      stats.append(value);
+    }
+    // A graded helmet or armor's class: what it does a piece, and its set.
+    for (const [index, line] of armorClassLines(item.id, request.worn).entries()) {
+      const value = document.createElement("span");
+      value.textContent = line;
+      value.dataset.statKind = index === 0 ? "class" : line.endsWith("· Active") ? "set-active" : "set";
       stats.append(value);
     }
     // A sword strikes up close and a staff's bolts burst, which their art alone does not say.

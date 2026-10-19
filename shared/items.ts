@@ -1,6 +1,7 @@
 import { equipmentStatDefinition } from "./equipment-budget";
 import { CAMPAIGN_ITEM_DEFINITIONS } from "./campaign-equipment";
-import { GRADE_ITEM_DEFINITIONS } from "./grade-equipment";
+import { GRADE_ITEM_DEFINITIONS, armorClassOf } from "./grade-equipment";
+import { ARMOR_CLASS_DETAILS, CLASS_SET_DAMAGE_PERCENT } from "./gear-grades";
 import { refineMultiplier } from "./refine-multiplier";
 
 // Browser- and server-safe equipment catalog. Add gameplay-facing item data
@@ -602,8 +603,25 @@ export function equipmentMaxHealthMultiplierBonus(head: unknown, chest: unknown,
 export function equipmentRegenerationMultiplierBonus(head: unknown, chest: unknown, headLevel: ItemLevel = 0, chestLevel: ItemLevel = 0) {
   return itemRegenerationMultiplierBonus(head, headLevel) + itemRegenerationMultiplierBonus(chest, chestLevel);
 }
+/** The school a weapon trains, as weapon-mastery.ts weaponSchool has it; that file imports this one through equip-best.ts. */
+function weaponSchoolOf(weapon: unknown) {
+  const stats = itemDefinition(weapon)?.weapon;
+  return stats?.mode === "MELEE" ? "swordplay" : stats?.projectile === "BOLT" ? "sorcery" : "archery";
+}
+/** Helmet and armor both of the class whose school is the weapon's (gear-grades.ts); Heavy has no school. */
+export function classSetActive(weapon: unknown, head: unknown, chest: unknown) {
+  const headClass = armorClassOf(head);
+  return Boolean(headClass) && headClass === armorClassOf(chest) && ARMOR_CLASS_DETAILS[headClass!].school === weaponSchoolOf(weapon);
+}
+/** The class set's damage factor: CLASS_SET_DAMAGE_PERCENT more while it is on, multiplying the gear's own bonus. */
+export const classSetDamageMultiplier = (weapon: unknown, head: unknown, chest: unknown) =>
+  classSetActive(weapon, head, chest) ? 1 + CLASS_SET_DAMAGE_PERCENT / 100 : 1;
+/** What gear multiplies damage by: the pieces' bonuses added up, times the class set. */
+export function equipmentDamageFactor(weapon: unknown, head: unknown, chest: unknown, weaponLevel: ItemLevel = 0, headLevel: ItemLevel = 0, chestLevel: ItemLevel = 0) {
+  return (1 + equipmentDamageMultiplierBonus(weapon, head, chest, weaponLevel, headLevel, chestLevel)) * classSetDamageMultiplier(weapon, head, chest);
+}
 export function equipmentDamage(base: number, weapon: unknown, head: unknown, chest: unknown, researchMultiplier = 1, weaponLevel: ItemLevel = 0, headLevel: ItemLevel = 0, chestLevel: ItemLevel = 0) {
-  return base * (1 + equipmentDamageMultiplierBonus(weapon, head, chest, weaponLevel, headLevel, chestLevel)) * researchMultiplier;
+  return base * equipmentDamageFactor(weapon, head, chest, weaponLevel, headLevel, chestLevel) * researchMultiplier;
 }
 export function equipmentMaxHealth(base: number, head: unknown, chest: unknown, researchMultiplier = 1, headLevel: ItemLevel = 0, chestLevel: ItemLevel = 0) {
   return base * (1 + equipmentMaxHealthMultiplierBonus(head, chest, headLevel, chestLevel)) * researchMultiplier;

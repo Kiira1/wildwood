@@ -1,4 +1,4 @@
-import { MINING_NODES, miningNodeName, type VeinOreId } from "../../../../shared/mining";
+import { MINING_NODES, miningNodeName, type RockOreId } from "../../../../shared/mining";
 import { MINING_PLATE } from "../../town-world";
 import type { WorldDecor } from "../../world";
 import type { Camera } from "../render/camera";
@@ -10,11 +10,12 @@ import { miningScene } from "./mining-scene";
 export type OreRockDecor = Extract<WorldDecor, { type: "oreRock" }>;
 
 /** Each ore's crystals: a lit face, a shaded face and a dark rim, flat like the pack's own art. */
-export const ORE_COLORS: Readonly<Record<VeinOreId, { light: string; dark: string; rim: string }>> = {
+export const ORE_COLORS: Readonly<Record<RockOreId, { light: string; dark: string; rim: string }>> = {
   copper_ore: { light: "#ffb36b", dark: "#d06f2f", rim: "#4a2410" },
   iron_ore: { light: "#c3d0dc", dark: "#5d6b7a", rim: "#222a33" },
   mithril_ore: { light: "#a6ecff", dark: "#3ba3dd", rim: "#123a52" },
   adamant_ore: { light: "#d1a8ff", dark: "#7d45d8", rim: "#2b1452" },
+  arcane_crystal: { light: "#ffa8e4", dark: "#d23f9f", rim: "#4d1038" },
 };
 
 /**
@@ -123,15 +124,15 @@ export function createOreRockRenderer(options: {
     const y = snapWorldRenderCoordinate(rock.y - camera.y, camera.zoom, dpr);
     const bare = miningScene.bare.has(node.id), mysterious = node.kind === "mysterious";
     const width = frame.w * rock.s, time = options.time();
-    if (mysterious && !bare) {
-      // A slow violet pulse behind it: something in this one is not like the rest. Filled to exactly the gradient's
-      // own circle, so it fades out to nothing with no edge anywhere.
-      const cy = y - frame.ay * rock.s * .55, radius = width * .85;
+    if ((mysterious || node.kind === "crystal") && !bare) {
+      // A slow pulse behind it, violet for a Mysterious rock and rose for crystal: something in this one is not like
+      // the rest. Filled to exactly the gradient's own circle, so it fades out to nothing with no edge anywhere.
+      const cy = y - frame.ay * rock.s * .55, radius = width * .85, tint = mysterious ? "226, 190, 255" : "255, 176, 228";
       const glow = ctx.createRadialGradient(x, cy, 4, x, cy, radius);
       const pulse = .32 + .14 * Math.sin(time * 2.4);
-      glow.addColorStop(0, `rgba(226, 190, 255, ${pulse})`);
-      glow.addColorStop(.6, `rgba(226, 190, 255, ${pulse * .35})`);
-      glow.addColorStop(1, "rgba(226, 190, 255, 0)");
+      glow.addColorStop(0, `rgba(${tint}, ${pulse})`);
+      glow.addColorStop(.6, `rgba(${tint}, ${pulse * .35})`);
+      glow.addColorStop(1, `rgba(${tint}, 0)`);
       ctx.fillStyle = glow;
       ctx.beginPath();
       ctx.arc(x, cy, radius, 0, Math.PI * 2);
@@ -174,9 +175,10 @@ export function createOreRockRenderer(options: {
   };
 }
 
-const MINING_PLATE_FONT = '900 11px "Arial Rounded MT Bold", "Arial Rounded MT", Arial, sans-serif';
+export const MINING_PLATE_FONT = '900 11px "Arial Rounded MT Bold", "Arial Rounded MT", Arial, sans-serif';
 
-function drawMiningPlate(ctx: CanvasRenderingContext2D, name: string, width: number, colors: OreColors, progress: number,
+/** The plate under a rock or tree being worked: its name, and how far along in `colors.light`. */
+export function drawMiningPlate(ctx: CanvasRenderingContext2D, name: string, width: number, colors: Pick<OreColors, "light">, progress: number,
   outlinedText: (text: string, x: number, y: number, color: string, strokeWidth?: number) => void) {
   ctx.font = MINING_PLATE_FONT;
   const half = width / 2, top = 6;

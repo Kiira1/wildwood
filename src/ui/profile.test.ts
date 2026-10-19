@@ -458,3 +458,12 @@ it("counts another player's active Quick Draw cards in their attack speed cap, a
   expect(profileAttackCap({ ...profile, aggroChallenge: { active: true, completed: 0 } }).raise - bare.raise).toBeCloseTo(.1, 9);
   expect(profileActiveCardIds({ ...profile, prestigePerks: {} })).toEqual(["ion_needle_card"]);
 });
+
+it("shows Mining and Woodcutting once the Smith has handed over each tool, and neither before", () => {
+  const base = { progress: progress(), research: createEmptyResearchRanks(), itemUpgradeLevels: {} } as Parameters<typeof profileStatDisplayRows>[0];
+  const kinds = (profile: typeof base) => profileStatDisplayRows(profile, () => "0%", MIN_ATTACK_INTERVAL).map(row => row.kind);
+  expect(kinds(base)).not.toContain("woodcutting");
+  const rows = profileStatDisplayRows({ ...base, mining: 40, woodcutting: 500 }, () => "0%", MIN_ATTACK_INTERVAL);
+  expect(rows.find(row => row.kind === "mining")).toMatchObject({ label: "Mining:", total: "40" });
+  expect(rows.find(row => row.kind === "woodcutting")).toMatchObject({ label: "Woodcutting:", total: "500", expandedDetail: "(Fells trees 2.00× as fast)" });
+});

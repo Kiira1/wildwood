@@ -1,11 +1,13 @@
 import type { PlayerProfileData, PlayerResearch } from "../wildstat-coop";
 import { miningSpeed } from "../../shared/mining";
+import { woodcuttingSpeed } from "../../shared/woodcutting";
 import { createEmptyResearchRanks, researchStatRewardMultiplier, utilityMovementSpeedBonus } from "../../shared/research";
 import { prestigeStatMultiplier } from "../../shared/prestige";
 import { PRESTIGE_PERKS, playerAttackCap, prestigePerkValue, type PrestigePerkRanks } from "../../shared/prestige-perks";
 import { CRITICAL_DAMAGE_BASE, criticalDamage, criticalDamageMultiplier } from "../../shared/critical-damage";
 import { effectivePlayerPower, effectivePlayerPowerStats } from "../../shared/player-power";
-import { equipmentDamageMultiplierBonus, equipmentMaxHealthMultiplierBonus, equipmentRegenerationMultiplierBonus } from "../../shared/items";
+import { armorMoveSpeedFactor } from "../../shared/armor-class-perks";
+import { classSetDamageMultiplier, equipmentDamageMultiplierBonus, equipmentMaxHealthMultiplierBonus, equipmentRegenerationMultiplierBonus } from "../../shared/items";
 import { formatCompactNumber, formatRate } from "./number-format";
 import { attackCapInterval, attackSpeedLabel, attackSpeedRatingForInterval, critDamageLabel, type AttackCapArg } from "../../shared/stat-rating";
 import { formatRating } from "./rating-text";
@@ -84,6 +86,8 @@ export function effectiveProfileStats(
     cards,
     speed: baseSpeed * speedMultiplier + utilitySpeed,
     equipment: { health: healthEquipmentBonus, damage: damageEquipmentBonus, regen: regenEquipmentBonus },
+    /** The class set's damage factor (items.ts classSetDamageMultiplier), 1 when it is off. */
+    classSet: classSetDamageMultiplier(weaponItem, progress.equippedHead, progress.equippedChest),
     gear: { health: bareHealthBonus, damage: bareDamageBonus, regen: bareRegenBonus },
     slotTiers: {
       health: Math.max(0, tieredHealthBonus - bareHealthBonus),
@@ -153,7 +157,7 @@ export function profilePower(profile: PlayerProfileData, soul: Partial<SoulStats
 }
 
 export type ProfileStatDisplaySource = {
-  label: "Tech" | "Equipment" | "Slot Upgrade" | "Refine" | "Cards" | "Prestige" | "Guild" | "Soul";
+  label: "Tech" | "Equipment" | "Slot Upgrade" | "Refine" | "Cards" | "Prestige" | "Guild" | "Soul" | "Class Set" | "Armor";
   value: string;
 };
 
@@ -241,6 +245,8 @@ export function profileStatDisplayRows(
   // A sword reaches its own range, with the same Tech and Long Shot on top (weaponAttackRange).
   const reach = weaponAttackRange(progress.equippedRightHand || progress.equippedLeftHand, progress.attackRange);
   const baseRange = Math.max(1, reach - rangeResearchBonus - rangePerkBonus);
+  // Light armor walks faster and Heavy slower, a piece at a time (armor-class-perks.ts).
+  const armorSpeed = armorMoveSpeedFactor(progress.equippedHead, progress.equippedChest);
   const stats: ProfileStatDisplayRow[] = [
     {
       kind: "health", label: "Max Hp:",
@@ -255,9 +261,9 @@ export function profileStatDisplayRows(
     {
       kind: "damage", label: "Damage:", base: statValue(progress.damage),
       equationOperator: "×",
-      multiplier: multiplierValue(effective.multipliers.damageResearch * (1 + effective.equipment.damage) * effective.cards.damage), total: statValue(effective.damage),
+      multiplier: multiplierValue(effective.multipliers.damageResearch * (1 + effective.equipment.damage) * effective.classSet * effective.cards.damage), total: statValue(effective.damage),
       sources: [...soulSource(soul.damage, statValue), ...multiplierSources(damageResearchBonus, effective.gear.damage, effective.slotTiers.damage, effective.refines.damage),
-        ...cardSource(effective.cards.damage)],
+        ...(effective.classSet > 1 ? [{ label: "Class Set" as const, value: `+${Math.round((effective.classSet - 1) * 100)}%` }] : []), ...cardSource(effective.cards.damage)],
     },
     {
       kind: "armor", label: "Armor:", base: statValue(progress.armor),
@@ -295,11 +301,12 @@ export function profileStatDisplayRows(
     {
       kind: "speed", label: "Move Speed:", base: statValue(progress.speedOverride > 0 ? progress.speedOverride : progress.speed),
       equationOperator: "×",
-      multiplier: multiplierValue(effective.multipliers.speed * (1 + speedPerkBonus + effective.cards.moveSpeed)),
-      total: statValue(effective.speed * (1 + speedPerkBonus + effective.cards.moveSpeed)),
+      multiplier: multiplierValue(effective.multipliers.speed * (1 + speedPerkBonus + effective.cards.moveSpeed) * armorSpeed),
+      total: statValue(effective.speed * (1 + speedPerkBonus + effective.cards.moveSpeed) * armorSpeed),
       sources: [...multiplierSources(speedResearchBonus), ...(ranks.utilityMoveSpeed > 0 ? [{ label: "Tech" as const, value: `+${utilityMovementSpeedBonus(ranks.utilityMoveSpeed)} speed` }] : []),
         ...(speedPerkBonus ? [{ label: "Prestige" as const, value: `+${Math.round(speedPerkBonus * 1000) / 10}%` }] : []),
-        ...(effective.cards.moveSpeed ? [{ label: "Cards" as const, value: `+${Math.round(effective.cards.moveSpeed * 1000) / 10}%` }] : [])],
+        ...(effective.cards.moveSpeed ? [{ label: "Cards" as const, value: `+${Math.round(effective.cards.moveSpeed * 1000) / 10}%` }] : []),
+        ...(armorSpeed !== 1 ? [{ label: "Armor" as const, value: `${armorSpeed > 1 ? "+" : ""}${Math.round((armorSpeed - 1) * 1000) / 10}%` }] : [])],
     },
   ];
   // Tech and prestige multiply each other, exactly as the server pays them, so
@@ -381,6 +388,13 @@ export function profileStatDisplayRows(
     stats.push({
       kind: "mining", label: "Mining:", base: profile.mining.toLocaleString(), multiplier: "", hideEquation: true,
       total: profile.mining.toLocaleString(), expandedDetail: `(Breaks rocks ${miningSpeed(profile.mining).toFixed(2)}× as fast)`, sources: [],
+    });
+  }
+  // Woodcutting, the same way, once the Smith has handed over a hatchet.
+  if (profile.woodcutting != null) {
+    stats.push({
+      kind: "woodcutting", label: "Woodcutting:", base: profile.woodcutting.toLocaleString(), multiplier: "", hideEquation: true,
+      total: profile.woodcutting.toLocaleString(), expandedDetail: `(Fells trees ${woodcuttingSpeed(profile.woodcutting).toFixed(2)}× as fast)`, sources: [],
     });
   }
   return stats;

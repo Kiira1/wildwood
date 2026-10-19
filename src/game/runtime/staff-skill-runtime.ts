@@ -4,6 +4,7 @@ import {
   METEOR_DAMAGE_SHARE, METEOR_DELAY_SECONDS, METEOR_MAX_TARGETS, METEOR_RADIUS, STAFF_SPLASH_MAX_TARGETS, STAFF_SPLASH_RADIUS,
   isStaff, staffSkillChance, type BoltSkillProcs, type StaffSkillRoll,
 } from "../../../shared/staff-skills";
+import { METEOR_SHOWER_GAP_SECONDS } from "../../../shared/mastery-techniques";
 import { isSkillSecondaryTarget } from "./bow-skill-procs";
 import type { BossTarget, EnemyState, PlayerState } from "./types";
 
@@ -38,6 +39,9 @@ export function createStaffSkillRuntime(options: {
   boltColor: () => string;
   /** The bolt's blast radius, Sorcery's Blast included; STAFF_SPLASH_RADIUS without. */
   blastRadius?: () => number;
+  /** Overcharge's Chain damage factor and Meteor Shower's extra falls (mastery-techniques.ts); none without. */
+  chainScale?: () => number;
+  extraMeteorFalls?: () => number;
   effects?: StaffSkillEffects;
   hit: (target: Target, damage: number, critical: boolean, angle: number) => void;
 }) {
@@ -68,12 +72,13 @@ export function createStaffSkillRuntime(options: {
     if (!ready()) return;
     if (procs?.chain && !primary.isBoss && !primary.generatedBoss) {
       let from: { x: number; y: number } = primary;
+      const share = CHAIN_DAMAGE_SHARE * (options.chainScale?.() ?? 1);
       for (let jump = 0; jump < CHAIN_MAX_JUMPS; jump++) {
         const [next] = enemiesAround(enemies, from.x, from.y, CHAIN_RANGE, struck);
         if (!next) break;
         struck.add(next);
         options.effects?.spawnSkillStreak?.(from.x, from.y - 10, next.x, next.y - 10, "#bfe6ff", 3, .3, true);
-        options.hit(next, damage * CHAIN_DAMAGE_SHARE, critical, Math.atan2(next.y - from.y, next.x - from.x));
+        options.hit(next, damage * share, critical, Math.atan2(next.y - from.y, next.x - from.x));
         from = next;
       }
     }
@@ -87,13 +92,20 @@ export function createStaffSkillRuntime(options: {
     }
   }
 
-  /** On each cast: a chance to call a meteor down on the target, which lands METEOR_DELAY_SECONDS later. */
+  /**
+   * On each cast: a chance to call a meteor down on the target, which lands METEOR_DELAY_SECONDS later. Meteor
+   * Shower drops more on the same spot, METEOR_SHOWER_GAP_SECONDS apart.
+   */
   function cast(target: { x: number; y: number }, damage: number, critical: boolean) {
     if (!ready()) return;
     const chance = staffSkillChance(options.roll(), "meteor");
     if (chance <= 0 || options.random() >= chance) return;
-    meteors.push({ x: target.x, y: target.y, damage: damage * METEOR_DAMAGE_SHARE, critical, landAt: options.nowSeconds() + METEOR_DELAY_SECONDS });
-    options.effects?.spawnMeteor?.(target.x, target.y, METEOR_RADIUS, METEOR_DELAY_SECONDS);
+    const falls = 1 + Math.max(0, options.extraMeteorFalls?.() ?? 0);
+    for (let fall = 0; fall < falls; fall++) {
+      const delay = METEOR_DELAY_SECONDS + fall * METEOR_SHOWER_GAP_SECONDS;
+      meteors.push({ x: target.x, y: target.y, damage: damage * METEOR_DAMAGE_SHARE, critical, landAt: options.nowSeconds() + delay });
+      options.effects?.spawnMeteor?.(target.x, target.y, METEOR_RADIUS, delay);
+    }
   }
 
   function update() {

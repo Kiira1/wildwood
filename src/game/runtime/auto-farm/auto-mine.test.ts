@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MINING_NODES, MINING_NODE_KINDS, MINING_REACH, MINING_VEINS, miningNodeName, miningVeinMap, type MiningNode } from '../../../../shared/mining';
-import { TOWN_ARRIVAL, TOWN_DOORS, TOWN_FEET_OFFSET, TOWN_WALK_AREA, townRoomAt } from '../../../../shared/town';
+import { TOWN_ARRIVAL, TOWN_DOORS, TOWN_FEET_OFFSET, townRoomAt, townWalkClamp } from '../../../../shared/town';
 import { createGameBootstrap } from '../game-bootstrap';
 import type { Movement } from '../player-input-controller';
 import { miningScene, resetMiningScene } from '../town/mining-scene';
@@ -36,10 +36,7 @@ function setup(options: { access?: Record<string, boolean>; pickaxe?: boolean; a
     player.x += movement.x * SPEED * DT; player.y += movement.y * SPEED * DT;
     const feet = { x: player.x, y: player.y + TOWN_FEET_OFFSET, r: TOWN_FEET_RADIUS };
     for (const solid of TOWN_SOLIDS) pushOutOf(feet, solid);
-    if (!townRoomAt(player.x, player.y, 400)) {
-      feet.x = Math.max(TOWN_WALK_AREA.left, Math.min(TOWN_WALK_AREA.right, feet.x));
-      feet.y = Math.max(TOWN_WALK_AREA.top, Math.min(TOWN_WALK_AREA.bottom, feet.y));
-    }
+    if (!townRoomAt(player.x, player.y, 400)) Object.assign(feet, townWalkClamp(feet.x, feet.y));
     player.x = feet.x; player.y = feet.y - TOWN_FEET_OFFSET;
   }
   function step(manual: Movement = none) {

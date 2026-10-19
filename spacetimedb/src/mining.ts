@@ -4,10 +4,10 @@ import { cardStatFactors } from "../../shared/card-effects";
 import { activeCardTotalsFor } from "./active-cards";
 import type spacetimedbType from "./index";
 import {
-  MINING_NODE_KINDS, MINING_RATE_SLACK, MINING_SERVER_REACH, MINING_VEINS, miningBreakSeconds, miningGain, miningNode, miningVeinMap,
-  miningVeinOpen, miningYield, normalizeMining, type MiningNode,
+  MINING_NODE_KINDS, MINING_RATE_SLACK, MINING_SERVER_REACH, MINING_VEINS, crystalRockHint, miningBreakSeconds, miningGain, miningNode, miningRockOpen,
+  miningVeinHint, miningVeinOpen, miningYield, normalizeMining, type MiningNode,
 } from "../../shared/mining";
-import { REFINE_ORES, type OreId } from "../../shared/refine";
+import type { OreId } from "../../shared/refine";
 import { TOWN_FEET_OFFSET, TOWN_SMITH_POSITION, TOWN_SMITH_SERVER_REACH } from "../../shared/town";
 import { isTownMap } from "./town";
 import { withinStationReach } from "./door-reach";
@@ -163,8 +163,9 @@ export function mineNodeFor(ctx: Ctx, args: { nodeId: number }, deps: MiningDeps
   const vein = MINING_VEINS[node.vein];
   const progress = readPlayerProgress(ctx, ctx.sender);
   if (!miningVeinOpen(vein, progress)) {
-    throw new SenderError(`Reach ${miningVeinMap(vein)} to mine ${REFINE_ORES[vein.ore].name}.`);
+    throw new SenderError(miningVeinHint(node));
   }
+  if (!miningRockOpen(node, mining.mining)) throw new SenderError(crystalRockHint());
   // A kind of ore not held yet needs a free bag slot, for everything the rock could give, before it is broken.
   const { needed, room } = roomForOres({
     owned: progress && deps.inventoryForProgress ? deps.inventoryForProgress(progress) : [], equipped: progress ? equippedFields(progress) : [],

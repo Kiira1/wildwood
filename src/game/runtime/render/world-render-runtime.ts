@@ -3,6 +3,9 @@ import { drawHomeTeleport } from "../town/home-teleport";
 import { createOreRockRenderer } from "../town/ore-rock-renderer";
 import { createPickaxeSprite, MINING_PICKAXE, PICKAXE_OVERRIDES } from "../town/pickaxe-sprite";
 import { miningScene } from "../town/mining-scene";
+import { createHatchetSprite, HATCHET_OVERRIDES, WOODCUTTING_HATCHET } from "../town/hatchet-sprite";
+import { woodcuttingScene } from "../town/woodcutting-scene";
+import { createWoodTreeRenderer } from "../town/wood-tree-renderer";
 import { drawSoulWellFall } from "../soul/soul-well-fall";
 import { createActorRenderer, type ActorStatus } from "./actor-renderer";
 import { createBossRenderer } from "../boss/boss-renderer";
@@ -174,6 +177,10 @@ export function createWorldRenderRuntime(options: WorldRenderRuntimeOptions) {
   // The pickaxe is painted, not loaded: it joins the equipment art under its own name.
   const pickaxeSprite = createPickaxeSprite();
   if (pickaxeSprite) options.playerAppearanceAssets.equipment[MINING_PICKAXE] = { sprite: pickaxeSprite };
+  const hatchetSprite = createHatchetSprite();
+  if (hatchetSprite) options.playerAppearanceAssets.equipment[WOODCUTTING_HATCHET] = { sprite: hatchetSprite };
+  // The tool out, if any: the pickaxe in the Copper Hills, the hatchet in Timberwood.
+  const toolInHand = () => miningScene.pickaxeOut && pickaxeSprite ? MINING_PICKAXE : woodcuttingScene.hatchetOut && hatchetSprite ? WOODCUTTING_HATCHET : null;
   const drawEntityShadow: DrawShadow = (x, y, width, alpha) => {
     // Arena scenes are visually separate from the current world map and retain
     // their shadows. Night Forest relies on its vignette to ground world actors.
@@ -272,6 +279,7 @@ export function createWorldRenderRuntime(options: WorldRenderRuntimeOptions) {
       ...rendered,
       // Mining in the Copper Hills: the Smith's pickaxe in hand, swinging on the mining's own clock.
       ...(rendered.rightHandItem === MINING_PICKAXE ? { throwClock: miningScene.swingClock, presentationOverrides: PICKAXE_OVERRIDES } : {}),
+      ...(rendered.rightHandItem === WOODCUTTING_HATCHET ? { throwClock: woodcuttingScene.swingClock, presentationOverrides: HATCHET_OVERRIDES } : {}),
       gameTime: rendered.gameTime ?? options.gameTime(),
       skinTone: rendered.skinTone ?? options.skinTone(rendered.identity ?? rendered.id) ?? DEFAULT_SKIN_TONE,
       alpha,
@@ -279,8 +287,8 @@ export function createWorldRenderRuntime(options: WorldRenderRuntimeOptions) {
     localHeadItem: () => options.equippedItems().head,
     localChestItem: () => options.equippedItems().chest,
     localFeetItem: () => options.equippedItems().feet,
-    localRightHandItem: () => miningScene.pickaxeOut && pickaxeSprite ? MINING_PICKAXE : options.equippedItems().rightHand,
-    localLeftHandItem: () => miningScene.pickaxeOut && pickaxeSprite ? "" : options.equippedItems().leftHand,
+    localRightHandItem: () => toolInHand() ?? options.equippedItems().rightHand,
+    localLeftHandItem: () => toolInHand() ? "" : options.equippedItems().leftHand,
     equipmentForIdentity: options.equipmentForIdentity,
     itemSprite: (itemId) => itemId ? options.playerAppearanceAssets.equipment[itemId]?.sprite : undefined,
     enemySprites: options.enemySprites,
@@ -403,6 +411,7 @@ export function createWorldRenderRuntime(options: WorldRenderRuntimeOptions) {
       drawSoulProp,
       drawOreRock: createOreRockRenderer({ ctx: options.ctx, camera: options.camera, devicePixelRatio: options.devicePixelRatio, time: options.gameTime,
         drawSoulProp, outlinedText: options.outlinedText }),
+      drawWoodTree: createWoodTreeRenderer({ ctx: options.ctx, camera: options.camera, devicePixelRatio: options.devicePixelRatio, drawSoulProp, outlinedText: options.outlinedText }),
       drawEnemy: actor.drawEnemy,
       enemyOpacity: (enemy) => options.currentMapId() === options.infernalMapId
         ? nightEnemyOpacity(Math.hypot(enemy.x - options.player.x, enemy.y - options.player.y), options.player.attackRange, enemy.r)

@@ -57,9 +57,12 @@ export function swordSkillLines(roll: Partial<SwordSkillRoll> | null | undefined
     .map(skill => `${SWORD_SKILL_LABELS[skill]} ${(swordSkillChance(roll, skill) * 100).toFixed(1)}%`);
 }
 
-/** Generous kill bound: every spin tick or wave hit may find another enemy. Deflect is bounded separately. */
-export function swordSkillReachMultiplier(roll: Partial<SwordSkillRoll> | null | undefined) {
-  return 1 + swordSkillChance(roll, "whirlwind") * WHIRLWIND_TICKS * WHIRLWIND_MAX_TARGETS
+/**
+ * Generous kill bound: every spin tick or wave hit may find another enemy. Deflect is bounded separately.
+ * Blade Storm's extra ticks and Cleave's extra enemies (mastery-techniques.ts) count as whole swings.
+ */
+export function swordSkillReachMultiplier(roll: Partial<SwordSkillRoll> | null | undefined, extraTicks = 0, cleave = 0) {
+  return 1 + cleave + swordSkillChance(roll, "whirlwind") * (WHIRLWIND_TICKS + extraTicks) * WHIRLWIND_MAX_TARGETS
     + swordSkillChance(roll, "shockwave") * SHOCKWAVE_MAX_TARGETS;
 }
 

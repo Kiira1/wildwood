@@ -44,6 +44,7 @@ import { ensureWeaponSkillRoll } from "./weapon-skills";
 import { playerEquipmentCopy, pendingEquipmentOffer, createEquipmentCopies, publishItemDrop, offerDuplicateEquipment, expireEquipmentOffers, playerItemCollection, registerItemCollection } from "./equipment-copies";
 import { playerItemRefine, playerCopyRefine, playerOre, playerRefineResult, registerItemRefine } from "./item-refine";
 import { playerMining, playerMinedNode, playerMiningLevel, registerMining } from "./mining";
+import { playerWoodcutting, playerChoppedTree, playerWoodcuttingLevel, registerWoodcutting } from "./woodcutting";
 import { awardWeaponMastery, playerMasteryLevel, playerWeaponMastery, registerWeaponMastery } from "./weapon-mastery";
 import { awardKillGold, playerGold, registerGold } from "./gold";
 import { registerGradeShop } from "./grade-shop";
@@ -1411,7 +1412,7 @@ const spacetimedb = schema({
   dailyGemBonus,
   playerAdReward, playerChatMute,
   balanceApologyNotice,
-  playerEquipmentLock, playerItemGift, playerBowSkill, playerSwordSkill, playerStaffSkill, playerWornStaffSkill, playerEquipmentCopy, pendingEquipmentOffer, playerIgnoredDrop, playerLootSetting, playerItemRefine, playerCopyRefine, playerOre, playerRefineResult, playerCard, playerGearSlots, playerCopySlots, playerCardDrop, playerCardAttackCap, playerBossCardRoll, playerBuild, playerBuildName, playerWeaponMastery, playerMasteryLevel, playerGold, playerCardMeter, playerCardShopPurchase, playerItemCollection, playerWornSkill, playerMining, playerMinedNode, playerMiningLevel, gemKillDaily, gemLedgerTrim,
+  playerEquipmentLock, playerItemGift, playerBowSkill, playerSwordSkill, playerStaffSkill, playerWornStaffSkill, playerEquipmentCopy, pendingEquipmentOffer, playerIgnoredDrop, playerLootSetting, playerItemRefine, playerCopyRefine, playerOre, playerRefineResult, playerCard, playerGearSlots, playerCopySlots, playerCardDrop, playerCardAttackCap, playerBossCardRoll, playerBuild, playerBuildName, playerWeaponMastery, playerMasteryLevel, playerGold, playerCardMeter, playerCardShopPurchase, playerItemCollection, playerWornSkill, playerMining, playerMinedNode, playerMiningLevel, playerWoodcutting, playerChoppedTree, playerWoodcuttingLevel, gemKillDaily, gemLedgerTrim,
   mailboxLetter, mailboxReceipt, playerJoinDate, mailboxEquipment, accountDeletionRequest,
   playerOnboarding,
   regularEnemyLootCursor, regularEnemyStream, enemyDefeatBudget, playerDefeatClock, playerMapDeparture,
@@ -3829,6 +3830,7 @@ export const { createGuild, joinGuild, leaveGuild, transferGuildLeadership, setG
 export const { refineItem, destroyOre, myItemRefines, myCopyRefines, myOres, myRefineResult } = registerItemRefine(spacetimedb, { requireControllingPlayer, activeDuelFor, inventoryForProgress, writeProgressAndPresentation });
 // Mining in the Copper Hills (mining.ts, shared/mining.ts).
 export const { claimPickaxe, mineNode, myMining, myMinedNodes } = registerMining(spacetimedb, { requireControllingPlayer, activeDuelFor, inventoryForProgress });
+export const { claimHatchet, chopTree, myWoodcutting, myChoppedTrees } = registerWoodcutting(spacetimedb, { requireControllingPlayer, activeDuelFor, inventoryForProgress });
 export const { claimStarterStaff, myStaffSkills } = registerStaffs(spacetimedb, { requireControllingPlayer, activeDuelFor, inventoryForProgress, restoreItemToProgress, writeProgressAndPresentation });
 export const { slotCard, removeCard, myCards, myGearSlots, myCopySlots, myCardDrop } = registerGearCards(spacetimedb); export const myItemCollection = registerItemCollection(spacetimedb);
 // Stats, power and the attack speed cap follow the active cards.

@@ -28,7 +28,9 @@ import {
   STAFF_BOLT_DAMAGE_FACTOR, STAFF_BOLT_SPEED_FACTOR, STAFF_DPS_FACTOR, STAFF_SPLASH_RADIUS, isStaff, rollBoltSkillProcs, staffSkillBossDamageMultiplier,
   weaponAttackInterval,
 } from "../../../shared/staff-skills";
-import { masteryBlastScale, masteryDamageTaken, masteryInPlay, rollWithProficiency, type MasteryInPlay, type MasteryPoints } from "../../../shared/weapon-mastery";
+import { masteryBlastScale, masteryInPlay, rollWithProficiency, type MasteryInPlay, type MasteryPoints } from "../../../shared/weapon-mastery";
+import { createMasteryTechniqueRuntime } from "./mastery-technique-runtime";
+import { armorMoveSpeedFactor, armorSkillChanceFactor } from "../../../shared/armor-class-perks";
 import { staffBoltColor } from "../staff-look";
 import { createCardCombat } from "./card-combat";
 import { NO_CARDS, cardChance, cardStatGainFactor, cardValue, type CardTotals } from "../../../shared/card-effects";
@@ -107,6 +109,10 @@ export type PlayerCombatController = {
   clearPendingThrow: () => void;
   /** The card shield in play and its most (card-combat.ts), for the health bar. */
   cardShield: () => { amount: number; max: number };
+  /** Tailwind's move speed share after a kill (mastery-techniques.ts), 0 otherwise. */
+  tailwind: () => number;
+  /** What move speed is multiplied by beyond research: Tailwind and the armor classes worn (armor-class-perks.ts). */
+  moveSpeedFactor: () => number;
 };
 
 /** Owns player attacks, projectile hits, enemy rewards, and incoming damage. */
@@ -222,22 +228,25 @@ export function createPlayerCombatController(options: {
     }
     return masteryKept.value;
   };
+  const techniques = createMasteryTechniqueRuntime({ mastery, player, enemies, nowSeconds: options.nowSeconds });
   const weaponSkills = (): WeaponSkillRoll | null | undefined => {
     const roll = options.weaponSkills?.() ?? options.bowSkills?.();
-    // Bow skill cards add to a bow's own roll; Skill Proficiency raises the whole chance.
+    // Bow skill cards add to a bow's own roll; Skill Proficiency and Magic armor raise the whole chance.
     const carded = wornCards() !== NO_CARDS && isSkillBow(options.equippedWeapon()) ? { ...roll, ...bowSkillsWithCards(roll, wornCards()) } : roll;
-    return rollWithProficiency(carded, mastery().level);
+    return rollWithProficiency(carded, mastery().level, armorSkillChanceFactor(options.equippedHead(), options.equippedChest()));
   };
   const swordSkills = createSwordSkillRuntime({
     player, enemies, currentMapId: options.currentMapId, equippedWeapon: options.equippedWeapon,
     activeBoss: activeMapBoss, roll: weaponSkills, nowSeconds: options.nowSeconds, random,
     isDueling, onCombat: options.onCombat, effects: options.skillEffects, hit: applyPlayerHit,
+    extraWhirlwindTicks: techniques.whirlwindTicks, deflectReturn: techniques.deflectReturn,
   });
   const staffSkills = createStaffSkillRuntime({
     player, enemies, currentMapId: options.currentMapId, equippedWeapon: options.equippedWeapon,
     activeBoss: activeMapBoss, roll: weaponSkills, nowSeconds: options.nowSeconds, random, isDueling,
     boltColor: () => staffBoltColor(options.equippedWeapon()), effects: options.skillEffects,
     blastRadius: () => STAFF_SPLASH_RADIUS * masteryBlastScale(mastery()),
+    chainScale: techniques.chainScale, extraMeteorFalls: techniques.meteorFalls,
     hit: (target, damage, critical, angle) => applyPlayerHit(target, damage, critical, angle),
   });
   const cardCombat = createCardCombat({
@@ -400,7 +409,7 @@ export function createPlayerCombatController(options: {
     rebuildTargetGrid();
     const angle = Math.atan2(targetAimY(target) - player.y, target.x - player.x);
     const hit = raycastProjectile(player.x, player.y, player.x + Math.cos(angle) * attackRange(), player.y + Math.sin(angle) * attackRange(), 0);
-    if (!hit) return;
+    if (!hit) { techniques.swingMissed(); return; }
     const critical = (!hit.enemy.isBoss || Boolean(options.hitPersonalBoss)) && Math.random() < researchCriticalChance();
     // Double Strike lands the same blow twice rather than hitting harder, so a
     // second kill can come out of one swing.
@@ -408,6 +417,11 @@ export function createPlayerCombatController(options: {
     const strikes = Math.random() < doubleStrikeChance() ? 2 : 1;
     for (let strike = 0; strike < strikes; strike++) applyPlayerHit(hit.enemy, damage, critical, angle);
     swordSkills.swing(hit.enemy, damage, critical, angle);
+    // Cleave, Bloodlust and Momentum (mastery-techniques.ts).
+    for (const cleaved of techniques.cleaveTargets(hit.enemy, attackRange())) {
+      applyPlayerHit(cleaved, damage * techniques.cleaveShare, critical, Math.atan2(cleaved.y - player.y, cleaved.x - player.x));
+    }
+    techniques.swingLanded();
     const second = splitShotTarget(hit.enemy);
     if (second) applyPlayerHit(second, weaponDamage(critical), critical, Math.atan2(second.y - player.y, second.x - player.x));
   }
@@ -423,11 +437,13 @@ export function createPlayerCombatController(options: {
     // A staff casts slower, heavier bolts that burst where they land (staff-skill-runtime.ts).
     const staff = isStaff(weaponItem);
     const speed = player.projectileSpeed * (staff ? STAFF_BOLT_SPEED_FACTOR : 1);
-    const fire = (angle: number) => {
+    const fire = (angle: number, splitShot = false) => {
       const projectileLifeBonus = 1.25;
       // Personal bosses use the same crit roll as ordinary enemies. Only the
       // legacy shared-boss path waits for server-confirmed critical damage.
-      const critical = (!target.isBoss || Boolean(options.hitPersonalBoss)) && Math.random() < researchCriticalChance();
+      // Steady Aim and Focus make every sixth arrow or bolt a critical.
+      const forced = techniques.shotCrits();
+      const critical = (!target.isBoss || Boolean(options.hitPersonalBoss)) && (forced || Math.random() < researchCriticalChance());
       const projectile = projectileStore.acquirePlayerProjectile();
       projectile.x = player.x + Math.cos(angle) * 20;
       projectile.y = player.y + Math.sin(angle) * 20;
@@ -437,7 +453,9 @@ export function createPlayerCombatController(options: {
       projectile.vy = Math.sin(angle) * speed;
       projectile.r = 6;
       // Each arrow rolls its own second hit, landing as one heavier impact.
-      projectile.damage = weaponDamage(critical) * (staff ? STAFF_BOLT_DAMAGE_FACTOR : 1) * (Math.random() < doubleStrikeChance() ? 2 : 1);
+      // Volley raises a Split Shot arrow.
+      projectile.damage = weaponDamage(critical) * (staff ? STAFF_BOLT_DAMAGE_FACTOR : 1) * (Math.random() < doubleStrikeChance() ? 2 : 1)
+        * (splitShot ? techniques.splitShotFactor() : 1);
       projectile.critical = critical;
       projectile.hitLife = player.attackRange / speed * projectileLifeBonus;
       projectile.life = (player.attackRange + PLAYER_PROJECTILE_VISUAL_TAIL) / speed * projectileLifeBonus;
@@ -457,7 +475,7 @@ export function createPlayerCombatController(options: {
     }
     // Split Shot sends one more arrow at whoever else is in range.
     const second = splitShotTarget(target.isBoss ? null : target as EnemyState);
-    if (second) fire(Math.atan2(second.y - player.y, second.x - player.x));
+    if (second) fire(Math.atan2(second.y - player.y, second.x - player.x), true);
     const projectileKind = itemDefinition(weaponItem)?.weapon?.projectile;
     if (projectileKind === "ARROW" || projectileKind === "ROCK") options.playBowAttackSound?.();
     if (staff) {
@@ -593,9 +611,11 @@ export function createPlayerCombatController(options: {
       return;
     }
     const attackInterval = weaponAttackInterval(options.equippedWeapon(), player.attackRate);
+    // The shared boss cadence stays on the plain interval, so observers and the server count the same slots.
     if (target.isBoss && fireAtSharedBossCycle(target, attackInterval, nowSeconds)) return;
     if (nowSeconds < nextAttackAtSeconds) return;
-    fireAt(target, attackInterval, nowSeconds);
+    // Momentum swings faster after hits in a row.
+    fireAt(target, attackInterval / techniques.attackSpeed(), nowSeconds);
   }
 
   function applyReward(reward: RuntimeReward, x: number, y: number) {
@@ -647,6 +667,7 @@ export function createPlayerCombatController(options: {
       return;
     }
     incrementKills();
+    techniques.kill();
     // Regular enemy kills only; bosses and duel opponents do not trigger healing. Second Wind cards add to the perk.
     if (player.hp > 0) player.hp = Math.min(player.maxHp, player.hp + player.maxHp * ((options.prestigeSecondWind?.() ?? 0) + cardCombat.secondWind()));
     cardCombat.onKill();
@@ -717,8 +738,8 @@ export function createPlayerCombatController(options: {
     // Cards: a dodge spends the attack and lands nothing; guards lower the hit, and a shield takes what armor lets through.
     const guarded = cardCombat.incoming(amount, source);
     if (guarded === null) return true;
-    // Swordplay's Guard lowers it as the cards do; Reflect still answers the hit as it arrived.
-    const throughArmor = damageAfterArmor(guarded * masteryDamageTaken(mastery()), effectiveArmor());
+    // Swordplay's Guard and Mana Shield lower it as the cards do; Reflect still answers the hit as it arrived.
+    const throughArmor = damageAfterArmor(guarded * techniques.damageTaken(), effectiveArmor());
     const dealt = cardCombat.absorb(throughArmor);
     if (dealt > 0) options.onCombat?.();
     player.hp -= dealt;
@@ -802,7 +823,8 @@ export function createPlayerCombatController(options: {
     if (weaponHit) {
       // Iaido lands a first hit as a critical; the slayer and conditional cards multiply the rest.
       if (cardCombat.firstHitCrit(target) && !critical) { damage *= researchCriticalDamageMultiplier(); critical = true; }
-      damage *= cardCombat.hitMultiplier(target);
+      // Hunter's Mark and Hex raise hits on a target a critical marked.
+      damage *= cardCombat.hitMultiplier(target) * techniques.hitFactor(target, critical);
     }
     if ((target.isBoss || target.generatedBoss) && weaponHit) damage *= 1 + bossSlayer();
     // A reflected hit shows blue, so the player can see Reflect fire.
@@ -864,13 +886,16 @@ export function createPlayerCombatController(options: {
       // right in turn, and curves in on each landing point: a teardrop.
       let volley = 0;
       const firedAt = options.nowSeconds();
-      rainArrowStorm({ x, y }, target, enemies as Array<EnemyState | BossTarget>, random, (struck, landX, landY) => {
-        const index = volley++;
-        if (options.skillEffects) options.skillEffects.spawnArcingArrow(player.x, player.y, landX, landY, index, "#ffd957");
-        else spawnParticle(landX, landY - 70, 0, 420, .16, .16, 3, "#ffd957");
-        if (struck) stormHits.push({ target: struck, damage: projectile.damage * ARROW_STORM_DAMAGE_SHARE, critical, x: landX, y: landY,
-          landAt: firedAt + index * ARROW_STORM_STAGGER_SECONDS + ARROW_STORM_FLIGHT_SECONDS });
-      });
+      // Rain of Arrows sends further waves after the first, on the same stagger.
+      for (let wave = 0; wave <= techniques.stormWaves(); wave++) {
+        rainArrowStorm({ x, y }, target, enemies as Array<EnemyState | BossTarget>, random, (struck, landX, landY) => {
+          const index = volley++;
+          if (options.skillEffects) options.skillEffects.spawnArcingArrow(player.x, player.y, landX, landY, index, "#ffd957");
+          else spawnParticle(landX, landY - 70, 0, 420, .16, .16, 3, "#ffd957");
+          if (struck) stormHits.push({ target: struck, damage: projectile.damage * ARROW_STORM_DAMAGE_SHARE, critical, x: landX, y: landY,
+            landAt: firedAt + index * ARROW_STORM_STAGGER_SECONDS + ARROW_STORM_FLIGHT_SECONDS });
+        });
+      }
     }
     if (procs.ricochet) {
       let from: { x: number; y: number } = target;
@@ -974,6 +999,8 @@ export function createPlayerCombatController(options: {
     /** The same against a boss, Boss Slayer included: how long a boss fight would take. */
     expectedBossDps: () => expectedDps() * (1 + bossSlayer()),
     cardShield: () => cardCombat.shield(),
+    tailwind: techniques.tailwind,
+    moveSpeedFactor: () => (1 + techniques.tailwind()) * armorMoveSpeedFactor(options.equippedHead(), options.equippedChest()),
     attackNearest,
     updateProjectiles,
     damagePlayer,
@@ -983,6 +1010,7 @@ export function createPlayerCombatController(options: {
     clearPendingThrow: () => {
       swordSkills.clear();
       staffSkills.clear();
+      techniques.clear();
       stormHits.length = 0;
       retainedTarget = null;
       nextTargetSearchAt = 0;

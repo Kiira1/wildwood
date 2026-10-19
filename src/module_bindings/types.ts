@@ -999,6 +999,9 @@ export type MyCards = __Infer<typeof MyCards>;
 export const MyChatMute = __t.object("MyChatMute", {});
 export type MyChatMute = __Infer<typeof MyChatMute>;
 
+export const MyChoppedTrees = __t.object("MyChoppedTrees", {});
+export type MyChoppedTrees = __Infer<typeof MyChoppedTrees>;
+
 export const MyCopyRefines = __t.object("MyCopyRefines", {});
 export type MyCopyRefines = __Infer<typeof MyCopyRefines>;
 
@@ -1124,6 +1127,9 @@ export type MyUpgradeBenchThirdSlot = __Infer<typeof MyUpgradeBenchThirdSlot>;
 
 export const MyWeaponMastery = __t.object("MyWeaponMastery", {});
 export type MyWeaponMastery = __Infer<typeof MyWeaponMastery>;
+
+export const MyWoodcutting = __t.object("MyWoodcutting", {});
+export type MyWoodcutting = __Infer<typeof MyWoodcutting>;
 
 export const NameChangeStatus = __t.object("NameChangeStatus", {
   cost: __t.u32(),
@@ -1457,6 +1463,14 @@ export const PlayerChatMute = __t.object("PlayerChatMute", {
   muteCount: __t.u32(),
 });
 export type PlayerChatMute = __Infer<typeof PlayerChatMute>;
+
+export const PlayerChoppedTree = __t.object("PlayerChoppedTree", {
+  key: __t.string(),
+  identity: __t.identity(),
+  treeId: __t.u32(),
+  choppedAt: __t.timestamp(),
+});
+export type PlayerChoppedTree = __Infer<typeof PlayerChoppedTree>;
 
 export const PlayerCombatRating = __t.object("PlayerCombatRating", {
   identity: __t.identity(),
@@ -2204,6 +2218,22 @@ export const PlayerWideStats = __t.object("PlayerWideStats", {
   regen: __t.f64(),
 });
 export type PlayerWideStats = __Infer<typeof PlayerWideStats>;
+
+export const PlayerWoodcutting = __t.object("PlayerWoodcutting", {
+  identity: __t.identity(),
+  woodcutting: __t.u32(),
+  treesChopped: __t.u32(),
+  hatchetAt: __t.timestamp(),
+  lastChopAt: __t.timestamp(),
+  lastTreeId: __t.u32(),
+});
+export type PlayerWoodcutting = __Infer<typeof PlayerWoodcutting>;
+
+export const PlayerWoodcuttingLevel = __t.object("PlayerWoodcuttingLevel", {
+  identity: __t.identity(),
+  woodcutting: __t.u32(),
+});
+export type PlayerWoodcuttingLevel = __Infer<typeof PlayerWoodcuttingLevel>;
 
 export const PlayerWornSkill = __t.object("PlayerWornSkill", {
   identity: __t.identity(),

@@ -84,8 +84,8 @@ export const SCHOOL_DETAILS: Readonly<Record<WeaponSchool, {
     techniques: [
       { id: "cleave", level: 10, name: "Cleave", text: "Each swing also hits one more enemy for 30%." },
       { id: "parry", level: 20, name: "Parry", text: "Deflect returns 20% more damage." },
-      { id: "bloodlust", level: 30, name: "Bloodlust", text: "Heal 0.5% of max health per hit." },
-      { id: "momentum", level: 40, name: "Momentum", text: "+2% attack speed per hit in a row, up to +10%." },
+      { id: "bloodlust", level: 30, name: "Bloodlust", text: "Each swing that lands heals 0.5% of max health." },
+      { id: "momentum", level: 40, name: "Momentum", text: "+2% attack speed per hit in a row, up to +10%. A miss starts over." },
       { id: "bladeStorm", level: 50, name: "Blade Storm", text: "Whirlwind spins one extra tick." },
     ],
   },
@@ -132,11 +132,14 @@ export function masteryInPlay(points: MasteryPoints | null | undefined, rightHan
   return { school, level: weaponSchool(weaponInUse) === school ? masteryLevel(points?.[school] ?? 0) : 0 };
 }
 
-/** A skill roll (stored percentages) with Skill Proficiency: each chance times 1 + skillProficiency(level). */
-export function rollWithProficiency<T extends object>(roll: T, level: number): T;
-export function rollWithProficiency<T extends object>(roll: T | null | undefined, level: number): T | null | undefined;
-export function rollWithProficiency<T extends object>(roll: T | null | undefined, level: number) {
-  const factor = 1 + skillProficiency(level);
+/**
+ * A skill roll (stored percentages) with Skill Proficiency: each chance times 1 + skillProficiency(level), and times
+ * `gearFactor` (Magic armor's, armor-class-perks.ts armorSkillChanceFactor).
+ */
+export function rollWithProficiency<T extends object>(roll: T, level: number, gearFactor?: number): T;
+export function rollWithProficiency<T extends object>(roll: T | null | undefined, level: number, gearFactor?: number): T | null | undefined;
+export function rollWithProficiency<T extends object>(roll: T | null | undefined, level: number, gearFactor = 1) {
+  const factor = (1 + skillProficiency(level)) * gearFactor;
   if (!roll || factor === 1) return roll;
   return Object.fromEntries(Object.entries(roll).map(([skill, percent]) => [skill, typeof percent === "number" ? percent * factor : percent])) as T;
 }
@@ -151,9 +154,10 @@ export const masteryDamageTaken = (mastery: MasteryInPlay | null | undefined) =>
 export const masteryBlastScale = (mastery: MasteryInPlay | null | undefined) =>
   mastery?.school === "sorcery" ? 1 + schoolPassiveValue("sorcery", mastery.level) : 1;
 
-/** Duel skill fields (challengerArrowStorm, opponentMeteor ...) with each side's Skill Proficiency. */
-export function duelSkillsWithProficiency<T extends Record<string, number>>(fields: T, challengerLevel: number, opponentLevel: number): T {
-  const challenger = 1 + skillProficiency(challengerLevel), opponent = 1 + skillProficiency(opponentLevel);
+/** Duel skill fields (challengerArrowStorm, opponentMeteor ...) with each side's Skill Proficiency and Magic armor factor. */
+export function duelSkillsWithProficiency<T extends Record<string, number>>(fields: T, challengerLevel: number, opponentLevel: number,
+  challengerGear = 1, opponentGear = 1): T {
+  const challenger = (1 + skillProficiency(challengerLevel)) * challengerGear, opponent = (1 + skillProficiency(opponentLevel)) * opponentGear;
   return Object.fromEntries(Object.entries(fields).map(([field, percent]) =>
     [field, percent * (field.startsWith("challenger") ? challenger : field.startsWith("opponent") ? opponent : 1)])) as T;
 }

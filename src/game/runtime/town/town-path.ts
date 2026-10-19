@@ -1,6 +1,6 @@
 import {
   TOWN_BENCH_POSITION, TOWN_CARD_SELLER_POSITION, TOWN_CARD_SELLER_REACH, TOWN_DOORS, TOWN_FEET_OFFSET, TOWN_OX_POSITION, TOWN_OX_REACH,
-  TOWN_QUEST_BOARD_POSITION, TOWN_RESEARCH_POSITION, TOWN_SCHOOL_POSITIONS, TOWN_SCHOOL_REACH, TOWN_SMITH_POSITION, TOWN_SMITH_REACH, TOWN_SOUL_PORTAL, TOWN_TRAVEL_PORTAL, TOWN_WALK_AREA, townRoomAt,
+  TOWN_QUEST_BOARD_POSITION, TOWN_RESEARCH_POSITION, TOWN_SCHOOL_POSITIONS, TOWN_SCHOOL_REACH, TOWN_SMITH_POSITION, TOWN_SMITH_REACH, TOWN_SOUL_PORTAL, TOWN_TRAVEL_PORTAL, TOWN_WALK_AREA, inTownWalkArea, townRoomAt,
 } from "../../../../shared/town";
 import { SOUL_VILLAGE_PITS, type SoulSolid } from "../../soul-village";
 import { TOWN_FEET_RADIUS, TOWN_SOLIDS } from "./town-runtime";
@@ -53,8 +53,7 @@ function overlaps(x: number, y: number, r: number, solid: SoulSolid) {
  * river, railing and piece of furniture, inside the walls outside the rooms, and out of the wells.
  */
 export function townFeetClear(x: number, feetY: number, r = CLEARANCE) {
-  if (!townRoomAt(x, feetY - TOWN_FEET_OFFSET, 400)
-    && (x < TOWN_WALK_AREA.left || x > TOWN_WALK_AREA.right || feetY < TOWN_WALK_AREA.top || feetY > TOWN_WALK_AREA.bottom)) return false;
+  if (!townRoomAt(x, feetY - TOWN_FEET_OFFSET, 400) && !inTownWalkArea(x, feetY)) return false;
   for (const well of SOUL_VILLAGE_PITS) if (overlaps(x, feetY, r + 16, well)) return false;
   const near = buckets.get(bucketKey(Math.floor(x / BUCKET), Math.floor(feetY / BUCKET)));
   return !near || !near.some(solid => overlaps(x, feetY, r, solid));

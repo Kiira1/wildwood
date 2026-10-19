@@ -43,10 +43,10 @@ export const ARMOR_CLASS_NAMES: Readonly<Record<ArmorClass, string>> = { light: 
 export const ARMOR_CLASS_DETAILS: Readonly<Record<ArmorClass, {
   school: WeaponSchool | null; bonusShare: number; moveSpeedPercent: number; skillChancePercent: number; perk: string;
 }>> = {
-  light: { school: "archery", bonusShare: .8, moveSpeedPercent: 3, skillChancePercent: 0, perk: "+3% move speed" },
+  light: { school: "archery", bonusShare: .8, moveSpeedPercent: 3, skillChancePercent: 0, perk: "+3% Move Speed" },
   medium: { school: "swordplay", bonusShare: 1, moveSpeedPercent: 0, skillChancePercent: 0, perk: "Balanced" },
-  heavy: { school: null, bonusShare: 1.3, moveSpeedPercent: -4, skillChancePercent: 0, perk: "-4% move speed" },
-  magic: { school: "sorcery", bonusShare: .8, moveSpeedPercent: 0, skillChancePercent: 3, perk: "Weapon skills fire 3% more often" },
+  heavy: { school: null, bonusShare: 1.3, moveSpeedPercent: -4, skillChancePercent: 0, perk: "-4% Move Speed" },
+  magic: { school: "sorcery", bonusShare: .8, moveSpeedPercent: 0, skillChancePercent: 3, perk: "Weapon Skills Fire 3% More Often" },
 };
 
 /** Helmet and armor both of the class that matches the weapon's school: this much more damage. */

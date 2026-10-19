@@ -45,6 +45,8 @@ export type WorldDecor = WorldDecorPlacement & (
   | { type: "lilyPad"; s: number; variant: number }
   /** An ore rock in the Copper Hills (shared/mining.ts): the pack's stone `frame` with its vein's ore in it. */
   | { type: "oreRock"; s: number; node: number; frame: string; flip?: boolean }
+  /** A tree in Timberwood (shared/woodcutting.ts): the pack's tree `frame`, a stump while felled. */
+  | { type: "woodTree"; s: number; node: number; frame: string; flip?: boolean }
   /** A Soul Dimension sprite from its atlas (soul-village.ts): village pieces and the wilds' props. */
   /** `sheet: "village"` is the baked demo village's; `dy` draws it that far from its depth point (a house's parts share one depth). */
   | { type: "soulProp"; s: number; frame: string; flip?: boolean; sheet?: "village" | "hall"; dy?: number;
