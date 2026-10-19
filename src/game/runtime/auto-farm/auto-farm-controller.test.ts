@@ -683,9 +683,10 @@ describe('autofarm plans: sliders, the boss and the next map', () => {
       expect(t.farm.state().phase).toBe('portal');
     });
 
-    it('keeps Aggro pulling through the boss fight, so a build that heals from kills keeps healing', () => {
+    it('keeps Aggro pulling through the boss fight for a Reflect or Second Wind build, and only for one', () => {
+      let feeds = true;
       const boss = { x: 900, y: 500, r: 60, hp: 1_000, maxHp: 1_000, dead: false };
-      const s = planned({ power: () => 2_000, mapPower: () => 1_000, bossPower: () => 1_000, mapBoss: () => boss as never, bossUnlocksNext: () => true });
+      const s = planned({ power: () => 2_000, mapPower: () => 1_000, bossPower: () => 1_000, mapBoss: () => boss as never, bossUnlocksNext: () => true, feedsOnAdds: () => feeds });
       s.farm.setAdvance(true);
       s.farm.setPullAll(true);
       const mob = s.add('Bramble', 500, 1_500);
@@ -693,6 +694,9 @@ describe('autofarm plans: sliders, the boss and the next map', () => {
       s.advance(1_000); s.tick();
       expect(s.farm.state().phase).toBe('boss');
       expect(s.farm.pulls(mob)).toBe(true);
+      // Any other build fights the boss alone.
+      feeds = false;
+      expect(s.farm.pulls(mob)).toBe(false);
       // The Target rule holds at the boss too: Strongest takes the boss over the adds.
       s.farm.setPriority('strongest');
       expect(s.farm.attackPriority()).toBe('strongest');

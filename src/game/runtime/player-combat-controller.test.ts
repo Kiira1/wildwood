@@ -737,6 +737,12 @@ it('passes Endless critical damage and the critical flag to its hit display', ()
   expect(hit).toHaveBeenCalledWith(state.enemies[0], 20, true, false);   // a swing, not a reflect
 });
 
+it("tells Auto Farm whether the build feeds on adds: Reflect or Second Wind", () => {
+  expect(createCombatHarness().controller.feedsOnAdds()).toBe(false);
+  expect(createCombatHarness({ prestigeReflect: () => .1 }).controller.feedsOnAdds()).toBe(true);
+  expect(createCombatHarness({ prestigeSecondWind: () => .05 }).controller.feedsOnAdds()).toBe(true);
+});
+
 describe("autofarm target priority", () => {
   // Three of one type in range: nearest at full health, a wounded one further
   // out, and a tougher one furthest away.

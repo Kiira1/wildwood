@@ -540,7 +540,7 @@ import {
     connection: () => farmConnection === 'ready' && (!coop?.isConnected?.() || !session?.isRunning()
       || mapController.isMapTransitioning() || mapController.isCutsceneActive()) ? 'recovering' : farmConnection,
     unavailable: farmUnavailable,
-    paused: () => Boolean(session?.isPaused()) || isArenaScene(),
+    paused: () => Boolean(session?.isPaused()) || isArenaScene(), feedsOnAdds: () => playerCombat.feedsOnAdds(),
     speed: () => player.speed * movementMultiplier(),
     obstacles: () => {
       const config = MAP_CONFIG[currentMapId];

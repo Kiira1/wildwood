@@ -140,6 +140,8 @@ export function createAutoFarmController(options: {
   mapBoss?: () => (Fight & { dead?: boolean }) | null;
   /** Reflect Only: the bow does nothing, so enemies must be stood among to be hit and hit back. */
   reflectOnly?: () => boolean;
+  /** Whether the build gains from adds (Reflect, Second Wind): only then does the pull go on at the boss. */
+  feedsOnAdds?: () => boolean;
   /** The unlocked portal forward to the next map, at its trigger point. */
   nextPortal?: () => (Position & { destination: string }) | null;
   /** The portal back to the previous map. */
@@ -387,8 +389,8 @@ export function createAutoFarmController(options: {
     return order.every(group => pulledNow.has(group) || switched.has(group));
   }
   const pulledEnemy = (enemy: EnemyState) => !enemy.dead && !enemy.remoteCombatGhost && !enemy.generatedBoss && enemy.hp > 0 && pulledGroups().has(choiceKey(enemy));
-  /** Pull Whole Group on: every enemy of the pulled groups comes, while it farms and at the boss, so kills that heal keep coming. */
-  const pullsEnemy = (enemy: EnemyState) => pulling() && active && phase !== 'portal' && !recovering && !pendingResume && !options.paused() && pulledEnemy(enemy);
+  /** Pull Whole Group on: every enemy of the pulled groups comes while it farms, and at the boss for a build that feeds on them. */
+  const pullsEnemy = (enemy: EnemyState) => pulling() && active && (phase === 'farm' || (phase === 'boss' && Boolean(options.feedsOnAdds?.()))) && !recovering && !pendingResume && !options.paused() && pulledEnemy(enemy);
 
   // ---- Move On ----
   /** The power Move On waits for: Move At times the map's recommended power. */

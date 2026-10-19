@@ -89,6 +89,8 @@ export function attackReadyAtWithoutTarget(nextAttackAtSeconds: number, nowSecon
 
 export type PlayerCombatController = {
   expectedDps: () => number;
+  /** Whether the build gains from enemies around it: Reflect hits them back, Second Wind heals on their deaths. */
+  feedsOnAdds: () => boolean;
   expectedBossDps: () => number;
   expectedFullDps: () => number;
   attackNearest: (enemyType?: AutoFarmGroup | null, campName?: string | null, priority?: AutoFarmPriority) => void;
@@ -950,6 +952,7 @@ export function createPlayerCombatController(options: {
 
   return {
     expectedDps,
+    feedsOnAdds: () => reflectChanceInPlay() > 0 || (options.prestigeSecondWind?.() ?? 0) + cardCombat.secondWind() > 0,
     expectedFullDps,
     /** The same against a boss, Boss Slayer included: how long a boss fight would take. */
     expectedBossDps: () => expectedDps() * (1 + bossSlayer()),
