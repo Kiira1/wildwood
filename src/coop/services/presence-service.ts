@@ -118,6 +118,8 @@ type FigureTarget = { pose: { x: number; y: number; facing: number; moving: bool
 type PresenceServiceDependencies = {
   multiplayerEnabled?: () => boolean;
   drainEnemyLoot?: () => Promise<boolean>;
+  /** Sends what must reach the server while the player is still on this map (rocks and trees broken here). */
+  beforeMapChange?: () => void;
   reducers: ReducerPort;
   changes: ChangePort;
   localIdentity: () => string;
@@ -1272,6 +1274,7 @@ export function createPresenceService(dependencies: PresenceServiceDependencies)
         try {
           // Kills still queued go out first but are not waited for: the server takes the map just left's for a while.
           // Waiting held the trip up to fifteen seconds on a slow reply, then refused it.
+          dependencies.beforeMapChange?.();
           void dependencies.drainEnemyLoot?.().catch(() => false);
           await dependencies.reducers.runWorldReducer(() => connection.reducers.changeMap({ mapId, x, y }));
           recordConnectionDiagnostic("portal-complete", { detail: `destination:${mapId}` });

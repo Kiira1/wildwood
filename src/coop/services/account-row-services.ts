@@ -20,6 +20,16 @@ import { createStarterChestRows } from "./starter-chest-service";
 import { itemLevelParts, type ItemLevel } from "../../../shared/items";
 import { NO_CARDS, cardStatFactors, cardTotals, type CardTotals } from "../../../shared/card-effects";
 import { BASE_CARD_SLOTS, activeCardsInPlay, type ActiveCardSlots, type ActiveCards } from "../../../shared/active-cards";
+import type { OreId } from "../../../shared/refine";
+
+type Ores = Readonly<Partial<Record<OreId, number>>>;
+/** The server's ores with the ones from breaks it has not answered yet; the server's own object while there are none. */
+function oresWithPending(server: Ores, ...pending: Ores[]): Ores {
+  if (pending.every(part => !Object.keys(part).length)) return server;
+  const sum: Partial<Record<OreId, number>> = { ...server };
+  for (const part of pending) for (const [oreId, count] of Object.entries(part)) sum[oreId as OreId] = (sum[oreId as OreId] ?? 0) + (count ?? 0);
+  return sum;
+}
 
 /**
  * The account's own small rows, each read through a caller-scoped view and
@@ -27,7 +37,7 @@ import { BASE_CARD_SLOTS, activeCardsInPlay, type ActiveCardSlots, type ActiveCa
  * opt-out, the bow skill rolls with their copies and loot settings, the
  * rewarded ad's Gem claims, the automatic chat mute and the Soul Dimension's
  * rows (soul stats, kills by reward type, whether it is open) and the guild
- * hall's fund and levels, each item's refine with the ores it costs, mining, woodcutting, cards, the Card Seller's buys, Weapon Mastery, gold, crafting, tools and the Starter Chest. They share one
+ * hall's fund and levels, each item's refine with the ores it costs, mining, woodcutting (with breaks not yet sent), cards, the Card Seller's buys, Weapon Mastery, gold, crafting, tools and the Starter Chest. They share one
  * lifecycle, so the connection starts them together and the coop API serves
  * them together.
  */
@@ -65,6 +75,19 @@ export function createAccountRowServices(connection: () => DbConnection | null, 
       active = { ids, totals, stats: cardStatFactors(totals) };
     }
     return active;
+  };
+  // Breaks made here go out ahead of any call whose server check reads ores or bag room, so it counts them.
+  const flushGathering = () => { mining.api.flushMining(); woodcutting.api.flushWoodcutting(); };
+  const afterGathering = <A extends unknown[], R>(call: (...args: A) => R) => (...args: A): R => { flushGathering(); return call(...args); };
+  if (typeof window !== "undefined" && typeof document !== "undefined") {
+    window.addEventListener("pagehide", flushGathering);
+    document.addEventListener("visibilitychange", () => { if (document.hidden) flushGathering(); });
+  }
+  let oreParts: Ores[] = [], ores: Ores = {};
+  const oresHeld = () => {
+    const parts = [itemRefine.api.ores(), mining.pendingOres(), woodcutting.pendingOres()];
+    if (parts.some((part, index) => part !== oreParts[index])) { oreParts = parts; ores = oresWithPending(parts[0], parts[1], parts[2]); }
+    return ores;
   };
   return {
     watch(current: DbConnection, isCurrent: () => boolean) {
@@ -106,6 +129,17 @@ export function createAccountRowServices(connection: () => DbConnection | null, 
       ...tools.api,
       ...collection.api,
       ...starterChest.api,
+      /** Ores held, by kind, with those from breaks the server has not answered yet. */
+      ores: oresHeld,
+      flushGathering,
+      refineItem: afterGathering(itemRefine.api.refineItem),
+      destroyOre: afterGathering(itemRefine.api.destroyOre),
+      buyGradeGear: afterGathering(mining.api.buyGradeGear),
+      craftGradeGear: afterGathering(crafting.api.craftGradeGear),
+      upgradeTool: afterGathering(tools.api.upgradeTool),
+      buyShopCard: afterGathering(cardShop.api.buyShopCard),
+      claimStarterWeapon: afterGathering(starterChest.api.claimStarterWeapon),
+      fallIntoWell: afterGathering(soulDimension.api.fallIntoWell),
       /** An item's slot tier and refine (items.ts ItemLevel). */
       itemLevel: (itemId: string): ItemLevel => itemLevelParts(itemRefine.api.itemLevel(itemId)),
       /** The active card slots of each type in play. */

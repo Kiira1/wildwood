@@ -261,7 +261,7 @@ function renderEquipmentSlot(
   // A slot holds the item's first copy, so its refine is the first copy's. Cosmetics only change the look.
   const refine = item && mode === "EQUIPMENT" ? refineLevel?.(itemId) ?? 0 : 0;
   element.setAttribute("aria-label", item
-    ? `${label}: ${withRefineStars(itemDisplayName(itemId, level), refine)}. Tap to inspect.`
+    ? `${label}${track ? `, Lvl +${level}` : ""}: ${withRefineStars(itemDisplayName(itemId), refine)}. Tap to inspect.`
     : cosmeticHidden
       ? `${label}: wearing nothing over equipped item. Tap to show equipment.`
       : inheritedItem
@@ -406,7 +406,7 @@ export function renderInventoryView(
       const level = normalizeItemUpgradeLevel(actions.upgradeLevel(itemId));
       // Each copy carries its own refine, so two copies of one bow can read ★7 and ★0.
       const refine = cosmetics ? 0 : actions.refineLevel?.(itemId, copyId) ?? 0;
-      button.setAttribute("aria-label", `${withRefineStars(itemDisplayName(itemId, level), refine)}${copyId ? ", another copy" : ""}. Tap to inspect and equip.`);
+      button.setAttribute("aria-label", `${withRefineStars(itemDisplayName(itemId), refine)}${copyId ? ", another copy" : ""}. Tap to inspect and equip.`);
       button.dataset.itemId = itemId;
       if (copyId) button.dataset.copyId = String(copyId);
       const art = document.createElement("span");

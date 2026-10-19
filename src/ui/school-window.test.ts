@@ -105,25 +105,11 @@ it("opens only in the Town and follows Mastery that arrives while open", () => {
   expect(view.controller.isOpen()).toBe(false);
 });
 
-it("splits a crafting school into Craft and Mastery, opening on Craft and keeping the pick on the device; the Sword Hall has no bar", () => {
-  const { document } = parseHTML("<html><body></body></html>");
-  vi.stubGlobal("document", document);
-  const values = new Map<string, string>();
-  vi.stubGlobal("localStorage", { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => { values.set(key, value); } });
-  const craft = { craftSkills: () => ({}), ores: () => ({}), masteryLevels: () => ({}), heldItems: () => [], bagFull: () => false, craft: vi.fn(), showMessage: vi.fn() };
-  const controller = createSchoolWindowController({ inTown: () => true, points: () => ({}), craft });
-  const dialog = document.querySelector("dialog") as unknown as HTMLDialogElement;
-  Object.assign(dialog, { showModal() { dialog.setAttribute("open", ""); }, close() { dialog.removeAttribute("open"); } });
-  Object.defineProperty(dialog, "open", { get: () => dialog.hasAttribute("open") });
-  const q = (selector: string) => dialog.querySelector(selector) as unknown as HTMLElement;
-  const pill = (label: string) => [...dialog.querySelectorAll<HTMLElement>(".smith-views .inventory-filter")].find(button => button.textContent === label)!;
-  controller.open("archery");
-  expect([q(".smith-views-bar").hidden, pill("Craft").getAttribute("aria-pressed")]).toEqual([false, "true"]);
-  expect([q(".school-window-mastery").hidden, q(".craft-section").classList.contains("is-off-view")]).toEqual([true, false]);
-  pill("Mastery").click();
-  expect([q(".school-window-mastery").hidden, q(".craft-section").classList.contains("is-off-view")]).toEqual([false, true]);
-  expect(values.get("wildstat.schoolView")).toBe("mastery");
-  controller.close();
-  controller.open("swordplay");
-  expect([q(".smith-views-bar").hidden, q(".school-window-mastery").hidden]).toEqual([true, false]);
+it("shows Mastery alone in every school: no Craft section and no view bar, crafting is at the Smith", () => {
+  const view = schoolWindow({});
+  for (const school of ["archery", "swordplay", "sorcery"] as const) {
+    view.controller.open(school);
+    expect([view.dialog.querySelector(".craft-section"), view.dialog.querySelector(".smith-views"), view.dialog.querySelector(".craft-offer")]).toEqual([null, null, null]);
+    expect((view.dialog.querySelector(".school-window-mastery") as HTMLElement).hidden).toBe(false);
+  }
 });

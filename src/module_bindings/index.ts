@@ -153,7 +153,9 @@ import RemoveCardReducer from "./remove_card_reducer";
 import RenameBuildReducer from "./rename_build_reducer";
 import ReportAutoFarmEnemyDefeatsReducer from "./report_auto_farm_enemy_defeats_reducer";
 import ReportChatMessageReducer from "./report_chat_message_reducer";
+import ReportChoppingReducer from "./report_chopping_reducer";
 import ReportEnemyDefeatsReducer from "./report_enemy_defeats_reducer";
+import ReportMiningReducer from "./report_mining_reducer";
 import ReportPlayerReducer from "./report_player_reducer";
 import ReportSocialMessageReducer from "./report_social_message_reducer";
 import RequestAccountDeletionReducer from "./request_account_deletion_reducer";
@@ -1743,7 +1745,9 @@ const reducersSchema = __reducers(
   __reducerSchema("rename_build", RenameBuildReducer),
   __reducerSchema("report_auto_farm_enemy_defeats", ReportAutoFarmEnemyDefeatsReducer),
   __reducerSchema("report_chat_message", ReportChatMessageReducer),
+  __reducerSchema("report_chopping", ReportChoppingReducer),
   __reducerSchema("report_enemy_defeats", ReportEnemyDefeatsReducer),
+  __reducerSchema("report_mining", ReportMiningReducer),
   __reducerSchema("report_player", ReportPlayerReducer),
   __reducerSchema("report_social_message", ReportSocialMessageReducer),
   __reducerSchema("request_account_deletion", RequestAccountDeletionReducer),

@@ -67,26 +67,28 @@ describe("crafting graded gear", () => {
     expect(f.experience()).toEqual({ smithing: BigInt(crude), fletching: 0n, enchanting: 0n });
   });
 
-  it("is done at each craft's own station", () => {
+  it("does every craft at the Smith, and still at a craft's old school spot for clients from before the move", () => {
     const f = crafter("smith");
-    expect(() => f.craft("crude_bow")).toThrow("Go to the Archery Range first.");
-    expect(() => f.craft("crude_magic_helmet")).toThrow("Go to the Mage Tower first.");
     f.craft("crude_heavy_armor");
-    f.stand("archery");
     f.craft("crude_bow");
     f.craft("crude_light_helmet");
-    expect(() => f.craft("crude_staff")).toThrow("Go to the Mage Tower first.");
-    expect(() => f.craft("crude_medium_helmet")).toThrow("Talk to the Smith first.");
-    f.stand("sorcery");
     f.craft("crude_staff");
     f.craft("crude_magic_armor");
-    // The Sword Hall crafts nothing: swords are the Smith's.
+    f.stand("archery");
+    f.craft("crude_light_armor");
+    expect(() => f.craft("crude_magic_helmet")).toThrow("Talk to the Smith first.");
+    expect(() => f.craft("crude_medium_helmet")).toThrow("Talk to the Smith first.");
+    f.stand("sorcery");
+    f.craft("crude_magic_helmet");
+    expect(() => f.craft("crude_light_armor")).toThrow("Talk to the Smith first.");
+    // The Sword Hall never crafted anything.
     f.stand("swordplay");
     expect(() => f.craft("crude_sword")).toThrow("Talk to the Smith first.");
+    expect(() => f.craft("crude_ranger_boots")).toThrow("Talk to the Smith first.");
     f.stand("smith", "crystal_hollows");
-    expect(() => f.craft("crude_sword")).toThrow("Talk to the Smith first.");
-    expect(f.bag()).toEqual(expect.arrayContaining(["crude_heavy_armor", "crude_bow", "crude_light_helmet", "crude_staff", "crude_magic_armor"]));
-    expect(f.experience()).toEqual({ smithing: BigInt(crude), fletching: BigInt(2 * crude), enchanting: BigInt(2 * crude) });
+    expect(() => f.craft("crude_bow")).toThrow("Talk to the Smith first.");
+    expect(f.bag()).toEqual(expect.arrayContaining(["crude_heavy_armor", "crude_bow", "crude_light_helmet", "crude_staff", "crude_magic_armor", "crude_light_armor", "crude_magic_helmet"]));
+    expect(f.experience()).toEqual({ smithing: BigInt(crude), fletching: BigInt(3 * crude), enchanting: BigInt(3 * crude) });
   });
 
   it("needs the grade open by Mastery, then the craft's level, and crafts any open grade, below the best held too", () => {

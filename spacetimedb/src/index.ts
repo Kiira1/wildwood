@@ -3835,8 +3835,8 @@ export const { createGuild, joinGuild, leaveGuild, transferGuildLeadership, setG
 // Refining (item-refine.ts, shared/refine.ts).
 export const { refineItem, destroyOre, myItemRefines, myCopyRefines, myOres, myRefineResult } = registerItemRefine(spacetimedb, { requireControllingPlayer, activeDuelFor, inventoryForProgress, writeProgressAndPresentation });
 // Mining in the Copper Hills (mining.ts, shared/mining.ts).
-export const { claimPickaxe, mineNode, myMining, myMinedNodes } = registerMining(spacetimedb, { requireControllingPlayer, activeDuelFor, inventoryForProgress });
-export const { claimHatchet, chopTree, myWoodcutting, myChoppedTrees } = registerWoodcutting(spacetimedb, { requireControllingPlayer, activeDuelFor, inventoryForProgress });
+export const { claimPickaxe, mineNode, reportMining, myMining, myMinedNodes } = registerMining(spacetimedb, { requireControllingPlayer, activeDuelFor, inventoryForProgress });
+export const { claimHatchet, chopTree, reportChopping, myWoodcutting, myChoppedTrees } = registerWoodcutting(spacetimedb, { requireControllingPlayer, activeDuelFor, inventoryForProgress });
 export const { claimStarterStaff, myStaffSkills } = registerStaffs(spacetimedb, { requireControllingPlayer, activeDuelFor, inventoryForProgress, restoreItemToProgress, writeProgressAndPresentation });
 export const { slotCard, removeCard, myCards, myGearSlots, myCopySlots, myCardDrop } = registerGearCards(spacetimedb); export const myItemCollection = registerItemCollection(spacetimedb);
 // Stats, power and the attack speed cap follow the active cards.

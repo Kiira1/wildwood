@@ -447,7 +447,7 @@ const remoteCombatStatsService = createRemoteCombatStatsService({
 
 presenceService = createPresenceService({
   multiplayerEnabled: multiplayerSync.enabled,
-  drainEnemyLoot: progressionService.drainEnemyLoot,
+  drainEnemyLoot: progressionService.drainEnemyLoot, beforeMapChange: accountRows.api.flushGathering,
   reducers: reducerPort,
   changes: { notify: onChange, batch: batchChanges },
   localIdentity: () => localIdentity,

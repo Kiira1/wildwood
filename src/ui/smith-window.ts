@@ -13,11 +13,10 @@ import type { GearGrade } from "../../shared/gear-grades";
 import {
   GRADE_SHOP_LINES, gradeShopItemId, gradeShopLineKey, gradeShopOffer, gradeShopOpen, gradeShopPrice, masteryLevels, type MasteryLevels,
 } from "../../shared/grade-shop";
-import { CRAFT_LINES } from "../../shared/grade-craft";
 import { weaponSchool as schoolOfWeapon, type WeaponSchool } from "../../shared/weapon-mastery";
 import { formatGemAmount } from "./number-format";
 import {
-  bagFullFor, craftDepsFor, craftStationHint, createCraftSection, gradeItemRow, gradeStepperElement, heldItemsFor, masteryNeed, nextNeed, offerButton, offerLine, ownedRow,
+  bagFullFor, craftDepsFor, createCraftSection, gradeItemRow, gradeStepperElement, heldItemsFor, masteryNeed, nextNeed, offerButton, offerLine, ownedRow,
   type CraftCoop, type CraftSectionDeps,
 } from "./craft-section";
 import { mountToolSection, toolDepsFor, type ToolSectionDeps } from "./tool-section";
@@ -77,11 +76,11 @@ export function createSmithController(deps: {
   /** The gear shop: graded gear for gold, opened by Mastery (shared/grade-shop.ts); the server decides (buy_grade_gear). */
   gold?: () => bigint;
   masteryLevels?: () => MasteryLevels;
-  /** Every item held, worn or on the Upgrade Bench; the bag's own items when left out. */
+  /** Every item held, worn or on the Upgrade Bench; crafting's or the bag's own when left out. */
   heldItems?: () => readonly string[];
   bagFull?: () => boolean;
   buyGear?: (itemId: string, expectedPrice: number) => Promise<Result>;
-  /** Smithing: swords and Medium and Heavy armor crafted from ore, offered on the shop's rows (craft-section.ts). */
+  /** Smithing, Fletching and Enchanting: every line crafted here, offered on the shop's rows (craft-section.ts). */
   craft?: CraftSectionDeps;
   tools?: ToolSectionDeps;
   /** What the player wears, for "vs Now" and Upgrade All; read from the worn items when left out. */
@@ -136,9 +135,9 @@ export function createSmithController(deps: {
   const upgradeButton = dialog.querySelector<HTMLButtonElement>(".smith-upgrade-all-button")!;
   const upgradeTitle = dialog.querySelector<HTMLElement>(".smith-upgrade-all-title")!, upgradeSub = dialog.querySelector<HTMLElement>(".smith-upgrade-all-sub")!;
   const upgradePicks = dialog.querySelector<HTMLElement>(".smith-upgrade-all-picks")!;
-  // Smithing's level sits under the shop's list; each row it makes takes a Craft line.
-  const crafts = deps.craft ? createCraftSection(deps.craft, { rows: false, onChange: () => { if (dialog.open) render(); } }) : null;
-  if (crafts) shopRows.after(crafts.element);
+  // The three crafts' levels head the list; every row takes a Craft line by the craft that makes it.
+  const crafts = deps.craft ? createCraftSection(deps.craft, { onChange: () => { if (dialog.open) render(); } }) : null;
+  if (crafts) shopTitle.parentElement!.before(crafts.element);
   const tools = mountToolSection(dialog, deps.tools, () => { if (dialog.open) render(); });
   // Gear for the casual player first; refining and tools a tap away.
   const views = ([
@@ -284,7 +283,7 @@ export function createSmithController(deps: {
   }
 
   function render() {
-    crafts?.render("smithing");
+    crafts?.render();
     tools?.render();
     const items = choices();
     if (!selected || !items.some(item => key(item) === selected)) selected = items[0] ? key(items[0]) : null;
@@ -329,7 +328,7 @@ export function createSmithController(deps: {
   }
 
   function heldGear() {
-    return new Set([...(deps.heldItems?.() ?? deps.items().map(item => item.itemId)), ...justBought, ...(crafts?.crafted() ?? [])]);
+    return new Set([...(deps.heldItems?.() ?? deps.craft?.heldItems() ?? deps.items().map(item => item.itemId)), ...justBought, ...(crafts?.crafted() ?? [])]);
   }
 
   function shopState() {
@@ -355,9 +354,8 @@ export function createSmithController(deps: {
 
   /**
    * One row per line, offering any grade Mastery opens above the best one held: a Buy line for gold with a grade
-   * stepper (the best the gold covers to start, else the highest open), and a Craft line for what Smithing makes
-   * (any open grade, picked on the line), or where the rest is crafted. Without a shop, only Smithing's lines, each
-   * row showing the grade picked.
+   * stepper (the best the gold covers to start, else the highest open), and a Craft line by the craft that makes it
+   * (any open grade, picked on the line). Without a shop, every line's Craft line, each row showing the grade picked.
    */
   function renderShop() {
     shop.hidden = !deps.buyGear && !crafts;
@@ -370,7 +368,7 @@ export function createSmithController(deps: {
     for (const button of shownBar.querySelectorAll<HTMLButtonElement>("[data-shown]")) button.setAttribute("aria-pressed", String(button.dataset.shown === gearShown));
     // Yours: the weapon in hand's lines, as Upgrade All buys them. All Gear: every line.
     const yours = schoolLines(school(worn)).map(gradeShopLineKey);
-    const lines = !deps.buyGear ? CRAFT_LINES.smithing : gearShown === "all" ? GRADE_SHOP_LINES : GRADE_SHOP_LINES.filter(line => yours.includes(gradeShopLineKey(line)));
+    const lines = !deps.buyGear || gearShown === "all" ? GRADE_SHOP_LINES : GRADE_SHOP_LINES.filter(line => yours.includes(gradeShopLineKey(line)));
     shopTitle.textContent = !deps.buyGear ? "Gear" : gearShown === "all" ? "All Gear" : `For Your ${schoolWeaponName(school(worn))}`;
     shopRows.replaceChildren(...lines.map(line => {
       const made = crafts?.craftLine(line, held) ?? null;
@@ -388,8 +386,7 @@ export function createSmithController(deps: {
       const stepper = offer.open ? gradeStepperElement(offer.grades, grade, {
         label: "Grade to buy", busy: buyingGear !== null, onPick: to => { shopPicked.set(gradeShopLineKey(line), to); render(); },
       }) : null;
-      // What Smithing does not make says where it is crafted, under its price.
-      if (!offer.owned) deal.append(buyLine(itemId, levels, made || !crafts ? "" : craftStationHint(itemId), stepper));
+      if (!offer.owned) deal.append(buyLine(itemId, levels, stepper));
       if (made) deal.append(made.line);
       return row;
     }));
@@ -405,7 +402,7 @@ export function createSmithController(deps: {
   }
 
   /** The price in gold and a Buy button that says why it waits: Mastery, then gold, then the bag. */
-  function buyLine(itemId: GradeItemId, levels: MasteryLevels, hint: string, stepper: HTMLElement | null) {
+  function buyLine(itemId: GradeItemId, levels: MasteryLevels, stepper: HTMLElement | null) {
     const price = gradeShopPrice(itemId)!, gold = deps.gold?.() ?? 0n;
     const text = buyingGear === itemId ? "Buying…" : !gradeShopOpen(itemId, levels) ? "Locked"
       : gold < BigInt(price) ? "Need Gold" : deps.bagFull?.() ? "Bag Full" : "Buy";
@@ -415,12 +412,6 @@ export function createSmithController(deps: {
     cost.lastElementChild!.textContent = formatGemAmount(BigInt(price));
     cost.setAttribute("aria-label", `${formatGemAmount(BigInt(price))} Gold`);
     const terms: Node[] = stepper ? [stepper, cost] : [cost];
-    if (hint) {
-      const where = document.createElement("span");
-      where.className = "craft-hint";
-      where.textContent = hint;
-      terms.push(where);
-    }
     const line = offerLine(terms, offerButton(text, text === "Buy" && buyingGear === null && upgrading === null, () => { void buyGear(itemId, price); }));
     // Stacked like a craft line: the grade, then its price.
     if (stepper) line.classList.add("buy-offer");

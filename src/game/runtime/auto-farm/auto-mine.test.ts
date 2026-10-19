@@ -46,7 +46,8 @@ function setup(options: { at?: { x: number; y: number }; storage?: ReturnType<ty
   const storage = options.storage ?? memoryStorage();
   const source = {
     minedNodeAt: (id: number) => world.broken.get(id) ?? null, mining: () => options.mining ?? 0, serverNowMs: () => world.server,
-    mineNode: vi.fn(async (id: number) => { world.broken.set(id, world.server); return { ok: true }; }),
+    // Breaks queue for the next report and count at once, as the session's do.
+    queueMiningBreak: vi.fn((id: number, atMs: number) => { world.broken.set(id, atMs); }), flushMining: vi.fn(),
   };
   // The runtime that mines what they stand by, only with a bag to judge: the walking tests leave it out.
   const runtime = options.bag ? createMiningRuntime({ source: () => source, player, bag: () => options.bag }) : null;
@@ -299,8 +300,8 @@ describe('crystal rocks', () => {
     s.step();
     expect(s.mine.state().status).toBe(`Mining ${miningNodeName(first)}`);
     // Broken by the runtime: on to another crystal, and the broken one counted bare.
-    s.runUntil(() => s.source.mineNode.mock.calls.length > 0, 30);
-    expect(s.source.mineNode).toHaveBeenCalledExactlyOnceWith(first.id);
+    s.runUntil(() => s.source.queueMiningBreak.mock.calls.length > 0, 30);
+    expect(s.source.queueMiningBreak).toHaveBeenCalledExactlyOnceWith(first.id, expect.any(Number));
     s.step();
     expect(s.mine.state().target).not.toBe(first);
     expect(s.mine.state().target!.kind).toBe('crystal');
@@ -324,7 +325,7 @@ describe('crystal rocks', () => {
     full.mine.start();
     full.runUntil(() => !full.mine.state().active);
     expect(full.mine.state()).toMatchObject({ active: false, status: 'Auto Mine Stopped: Bag Full' });
-    expect(full.source.mineNode).not.toHaveBeenCalled();
+    expect(full.source.queueMiningBreak).not.toHaveBeenCalled();
   });
 });
 
@@ -417,5 +418,18 @@ describe('after an update reload', () => {
     tab(moved).mine.start();
     const village = tab(moved, { at: TOWN_ARRIVAL }); village.mine.movement(none, DT);
     expect(village.mine.state()).toMatchObject({ active: false, waiting: false });
+  });
+});
+
+describe('Auto Mine with breaks sent in batches', () => {
+  it('mines rock after rock while the breaks only wait in the queue, each counted bare at once', () => {
+    const bag = { owned: [], equipped: [], extraCopies: 0, ores: { copper_ore: 1 }, capacity: 30 };
+    const s = setup({ bag });
+    s.mine.start();
+    expect(s.runUntil(() => s.source.queueMiningBreak.mock.calls.length >= 3, 120)).toBeLessThan(120 / DT);
+    const broken = s.source.queueMiningBreak.mock.calls.map(([id]) => id);
+    expect(new Set(broken).size).toBe(3);
+    expect(s.mine.state()).toMatchObject({ active: true });
+    expect(s.source.flushMining).not.toHaveBeenCalled();
   });
 });

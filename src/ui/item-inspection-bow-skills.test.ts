@@ -1,7 +1,7 @@
 import { afterEach, expect, it } from "vitest";
 import { parseHTML } from "linkedom";
 import { readFileSync } from "node:fs";
-import { createItemInspectionController, itemInspectionButtonLabel, itemStatsWithWeaponSkills } from "./item-inspection-controller";
+import { createItemInspectionController, itemInspectionButtonLabel, itemInspectionTitle, itemStatsWithWeaponSkills } from "./item-inspection-controller";
 import { itemStats } from "../../shared/items";
 import { formatEquipmentStat } from "./equipment-stat-format";
 
@@ -73,12 +73,23 @@ it("appends the skills to a dropped bow's stat lines", () => {
 });
 
 
-it.each([true, false])("shows the profile's + rating when inspecting equipment (own: %s)", ownItem => {
+it.each([true, false])("keeps the slot's +N off the item's title but counts it in its stats (own: %s)", ownItem => {
   const view = inspection();
   view.controller.open({ itemId: "iron_bow", upgradeLevel: 12, ownItem });
-  expect(view.document.getElementById("title")?.textContent).toBe("Stone Bow +12");
-  view.controller.open({ itemId: "iron_bow", upgradeLevel: 0, ownItem });
   expect(view.document.getElementById("title")?.textContent).toBe("Stone Bow");
+  expect(view.lines()[0]).toBe(formatEquipmentStat(itemInspectionButtonLabel(itemStats("iron_bow", 12)[0])));
+  expect(view.lines()[0]).not.toBe(DAMAGE);
+});
+
+it("names a graded piece once: the title without its grade, the grade alone in the pill under it", () => {
+  const view = inspection();
+  view.controller.open({ itemId: "ancient_bow", upgradeLevel: 37, ownItem: true });
+  expect(view.document.getElementById("title")?.textContent).toBe("Bonewing Bow");
+  expect(view.document.querySelector(".item-grade-label")?.textContent).toBe("Ancient");
+  view.controller.open({ itemId: "rare_light_helmet" });
+  expect(view.document.querySelector(".item-grade-label")?.textContent).toBe("Rare");
+  expect(view.document.getElementById("title")?.textContent).not.toMatch(/^Rare /);
+  expect(itemInspectionTitle("iron_bow")).toBe("Stone Bow");
 });
 
 it("shows a sword copy's three native skills in its inspection", () => {

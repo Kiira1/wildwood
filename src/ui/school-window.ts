@@ -2,8 +2,6 @@ import {
   MASTERY_MAX_LEVEL, SCHOOL_DETAILS, WEAPON_SCHOOL_NAMES, masteryProgress, schoolPassiveValue, skillProficiency, type WeaponSchool,
 } from "../../shared/weapon-mastery";
 import { formatCompactNumber } from "./number-format";
-import type { CraftSkill } from "../../shared/crafting";
-import { craftDepsFor, createCraftSection, type CraftCoop, type CraftInventory, type CraftSectionDeps } from "./craft-section";
 
 type Points = Readonly<Partial<Record<WeaponSchool, bigint>>>;
 
@@ -11,15 +9,6 @@ type Points = Readonly<Partial<Record<WeaponSchool, bigint>>>;
 const amount = (value: number) => value < 10_000 ? Math.floor(value).toLocaleString("en-US") : formatCompactNumber(value);
 
 const TRAINED_BY: Readonly<Record<WeaponSchool, string>> = { archery: "a bow", swordplay: "a sword", sorcery: "a staff" };
-/** The craft done in each school's building; swords are the Smith's. */
-const SCHOOL_CRAFT: Readonly<Record<WeaponSchool, CraftSkill | null>> = { archery: "fletching", swordplay: null, sorcery: "enchanting" };
-
-/** A school with a craft opens on Craft or Mastery, as last picked on this device. */
-type SchoolView = "craft" | "mastery";
-const VIEW_STORE = "wildstat.schoolView";
-function storedView(): SchoolView {
-  try { return localStorage.getItem(VIEW_STORE) === "mastery" ? "mastery" : "craft"; } catch { return "craft"; }
-}
 
 /** A school's passive as it stands now: range for Archery, a share for the others. */
 export function schoolPassiveNow(school: WeaponSchool, level: number) {
@@ -31,20 +20,19 @@ export function schoolPassiveNow(school: WeaponSchool, level: number) {
 
 /**
  * A Weapon Mastery school's window, in its Town building: the school's level and progress, what fighting trains
- * it, its passive and Skill Proficiency as they stand, and its five techniques, learned or still locked.
+ * it, its passive and Skill Proficiency as they stand, and its five techniques, learned or still locked. Crafting is
+ * all at the Smith.
  */
 export function createSchoolWindowController(deps: {
   inTown: () => boolean;
   clearInput?: () => void;
   points: () => Points;
-  /** Fletching at the Archery Range and Enchanting at the Mage Tower (craft-section.ts). */
-  craft?: CraftSectionDeps;
 }) {
   const dialog = document.createElement("dialog");
   dialog.className = "farm-sheet quest-sheet smith-sheet school-window";
   dialog.setAttribute("aria-labelledby", "schoolWindowTitle");
   dialog.innerHTML = `<header class="farm-header"><h2 id="schoolWindowTitle" class="window-banner"><span></span></h2></header>`
-    + `<div class="quest-body"><div class="smith-views-bar"><div class="inventory-filters smith-views" role="group" aria-label="School view"></div></div>`
+    + `<div class="quest-body">`
     + `<section class="school-window-mastery"><p class="farm-map smith-intro school-window-train"></p>`
     + `<section class="school-window-card"><div class="school-window-head"><strong></strong><span class="school-window-level"></span></div>`
     + `<div class="school-window-bar" role="progressbar" aria-valuemin="0"><span></span></div><span class="school-window-points"></span></section>`
@@ -60,39 +48,11 @@ export function createSchoolWindowController(deps: {
   const passiveName = q(".school-window-passive dt"), perLevel = q(".school-window-per-level"), now = q(".school-window-now");
   const proficiency = q(".school-window-proficiency dd"), techniques = q(".school-window-techniques");
   const back = q<HTMLButtonElement>(".window-back-button");
-  const crafts = deps.craft ? createCraftSection(deps.craft) : null;
-  const mastery = q(".school-window-mastery"), viewBar = q(".smith-views");
-  if (crafts) mastery.after(crafts.element);
-  let view: SchoolView = storedView();
-  for (const [each, label] of [["craft", "Craft"], ["mastery", "Mastery"]] as const) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "inventory-filter";
-    button.dataset.view = each;
-    button.textContent = label;
-    button.addEventListener("click", () => {
-      view = each;
-      try { localStorage.setItem(VIEW_STORE, each); } catch { /* this visit only */ }
-      showView();
-    });
-    viewBar.append(button);
-  }
   let school: WeaponSchool = "archery";
   let renderedKey = "";
   let ticker: ReturnType<typeof setInterval> | null = null;
 
-  /** Mastery and Craft as two views where the school crafts; Mastery alone at the Sword Hall. */
-  function showView() {
-    const crafting = Boolean(crafts && SCHOOL_CRAFT[school]), shown = crafting ? view : "mastery";
-    viewBar.parentElement!.hidden = !crafting;
-    for (const button of viewBar.querySelectorAll<HTMLElement>("[data-view]")) button.setAttribute("aria-pressed", String(button.dataset.view === shown));
-    mastery.hidden = shown !== "mastery";
-    if (crafts) crafts.element.classList.toggle("is-off-view", shown !== "craft");
-  }
-
   function render() {
-    crafts?.render(SCHOOL_CRAFT[school]);
-    showView();
     const points = deps.points()[school] ?? 0n;
     const key = `${school}:${points}`;
     if (key === renderedKey) return;
@@ -146,7 +106,6 @@ export function createSchoolWindowController(deps: {
 
   function open(which: WeaponSchool) {
     if (!deps.inTown()) return;
-    if (!dialog.open) crafts?.reset();
     school = which;
     render();
     if (dialog.open) return;
@@ -162,14 +121,11 @@ export function createSchoolWindowController(deps: {
   return { open, close, isOpen: () => dialog.open, school: () => school, render, destroy() { close(); dialog.remove(); } };
 }
 
-/** The schools' window as main.ts uses it: Mastery points from the coop session, and crafting once handed the bag. */
+/** The schools' window as main.ts uses it: Mastery points from the coop session. */
 export function createSchoolWindowRuntime(deps: {
-  coop: () => (CraftCoop & { weaponMastery?: () => Readonly<Record<WeaponSchool, bigint>> }) | null | undefined;
+  coop: () => { weaponMastery?: () => Readonly<Record<WeaponSchool, bigint>> } | null | undefined;
   clearInput?: () => void;
   inTown: () => boolean;
-  inventory?: CraftInventory;
-  showMessage?: (text: string, color: string) => void;
 }) {
-  const craft = deps.inventory && deps.showMessage ? craftDepsFor(deps.coop, deps.inventory, deps.showMessage) : undefined;
-  return createSchoolWindowController({ inTown: deps.inTown, clearInput: deps.clearInput, points: () => deps.coop()?.weaponMastery?.() ?? {}, craft });
+  return createSchoolWindowController({ inTown: deps.inTown, clearInput: deps.clearInput, points: () => deps.coop()?.weaponMastery?.() ?? {} });
 }

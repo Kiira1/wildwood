@@ -9,7 +9,7 @@ import {
 } from "../../shared/grade-craft";
 import { gradeOf } from "../../shared/grade-equipment";
 import { gradeShopNeed, gradeShopOpen, masteryLevels } from "../../shared/grade-shop";
-import { SCHOOL_DETAILS, type WeaponSchool } from "../../shared/weapon-mastery";
+import type { WeaponSchool } from "../../shared/weapon-mastery";
 import { TOWN_FEET_OFFSET, TOWN_SCHOOL_POSITIONS, TOWN_SCHOOL_SERVER_REACH, isTownMap } from "../../shared/town";
 import type { OreId } from "../../shared/refine";
 import { isSkillWeapon } from "../../shared/weapon-skills";
@@ -70,12 +70,14 @@ export function addCraftExperience(ctx: Ctx, identity: Identity, skill: CraftSki
   writeCraftLevel(ctx, identity, skill, next);
 }
 
-/** Each craft's station: the Smith for Smithing, a school's spot under its sign for the others. */
-const CRAFT_SCHOOL: Readonly<Partial<Record<CraftSkill, WeaponSchool>>> = { fletching: "archery", enchanting: "sorcery" };
+/** Fletching and Enchanting were crafted at these schools' spots; clients from before the move still craft there. */
+const OLD_CRAFT_SCHOOL: Readonly<Partial<Record<CraftSkill, WeaponSchool>>> = { fletching: "archery", enchanting: "sorcery" };
 
+/** Every craft is done at the Smith; a craft's old school spot still counts until every client has reloaded. */
 export function standsAtCraftStation(ctx: Ctx, player: Parameters<typeof withinStationReach>[1], skill: CraftSkill) {
-  const school = CRAFT_SCHOOL[skill];
-  if (!school) return standsAtTheSmith(ctx, player);
+  if (standsAtTheSmith(ctx, player)) return true;
+  const school = OLD_CRAFT_SCHOOL[skill];
+  if (!school) return false;
   const at = TOWN_SCHOOL_POSITIONS[school];
   return isTownMap(player.mapId) && withinStationReach(ctx, player, { x: at.x, y: at.y - TOWN_FEET_OFFSET }, TOWN_SCHOOL_SERVER_REACH);
 }
@@ -89,7 +91,7 @@ export type CraftingDeps = {
 };
 
 /**
- * One graded piece crafted at its station, into a free bag slot as a bought one arrives (grade-shop.ts), but at
+ * One graded piece crafted at the Smith, into a free bag slot as a bought one arrives (grade-shop.ts), but at
  * +2 and with better luck on a weapon's skills. Any grade Mastery and the craft's level open can be crafted, below
  * the best held too; a weapon already held is reforged instead (its skills rolled again, keeping the higher), which
  * needs no bag room. `expectedMaterials` is the recipe the player saw.
@@ -99,10 +101,7 @@ export function craftGradeGearFor(ctx: Ctx, args: { itemId: string; expectedMate
   const { itemId } = args;
   if (!isCraftable(itemId)) throw new SenderError("That cannot be crafted.");
   const skill = gradeCraftSkill(itemId)!, materials = gradeCraftMaterials(itemId)!;
-  if (!standsAtCraftStation(ctx, player, skill)) {
-    const school = CRAFT_SCHOOL[skill];
-    throw new SenderError(school ? `Go to the ${SCHOOL_DETAILS[school].building} first.` : "Talk to the Smith first.");
-  }
+  if (!standsAtCraftStation(ctx, player, skill)) throw new SenderError("Talk to the Smith first.");
   if (deps.activeDuelFor(ctx, ctx.sender)) throw new SenderError("Finish your duel first.");
   if (craftMaterialsKey(materials) !== args.expectedMaterials) throw new SenderError("That recipe changed. Take another look.");
   const progress = readPlayerProgress(ctx, ctx.sender);

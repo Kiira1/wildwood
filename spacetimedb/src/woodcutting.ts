@@ -1,5 +1,5 @@
 import { SenderError, table, t } from "spacetimedb/server";
-import type { Identity } from "spacetimedb";
+import { Timestamp, type Identity } from "spacetimedb";
 import type spacetimedbType from "./index";
 import {
   WOOD_STANDS, WOODCUTTING_RATE_SLACK, WOODCUTTING_RESPAWN_SECONDS, WOODCUTTING_SERVER_REACH, canChopTree, normalizeWoodcutting, woodcuttingChopSeconds,
@@ -17,6 +17,9 @@ import { bagFullForOres, roomForOres } from "../../shared/ore-bag";
 import type { MiningDeps } from "./mining";
 import { toolBonusYield } from "../../shared/tools";
 import { toolLevelFor } from "./tools";
+import {
+  equippedFields, gatherClaims, gatherFreeSlots, gatherReach, judgeGatherBatch, logOddGatherRejections, millisOf, progressOnce,
+} from "./gather-batch";
 
 /**
  * Woodcutting (shared/woodcutting.ts), as mining is (mining.ts): a player's Woodcutting stat and the trees they
@@ -112,9 +115,6 @@ export function mergeWoodcuttingData(ctx: Ctx, guest: Identity, account: Identit
   }
 }
 
-const equippedFields = (progress: any): string[] =>
-  [progress.equippedHead, progress.equippedChest, progress.equippedFeet, progress.equippedRightHand, progress.equippedLeftHand];
-
 /** The old Smith's hatchet, still called by clients from before every player held one: only starts the row. */
 export function claimHatchetFor(ctx: Ctx, deps: MiningDeps) {
   deps.requireControllingPlayer(ctx);
@@ -139,14 +139,16 @@ export function chopTreeFor(ctx: Ctx, args: { treeId: number }, deps: MiningDeps
   }
   if (deps.activeDuelFor(ctx, ctx.sender)) throw new SenderError("Finish your duel first.");
   if (!canChopTree(tree, skill)) throw new SenderError(woodStandHint(WOOD_STANDS[tree.stand]));
-  const progress = readPlayerProgress(ctx, ctx.sender);
-  // A kind of log not held yet needs a free bag slot before the tree falls.
-  const { needed, room } = roomForOres({
-    owned: progress && deps.inventoryForProgress ? deps.inventoryForProgress(progress) : [], equipped: progress ? equippedFields(progress) : [],
-    extraCopies: extraCopiesOf(ctx, ctx.sender).length, ores: oreCountsFor(ctx, ctx.sender),
-    capacity: bagCapacityFor(ctx, ctx.sender),
-  }, [tree.log]);
-  if (!room) throw new SenderError(bagFullForOres(needed));
+  // A kind of log not held yet needs a free bag slot before the tree falls; with it held, the bag is not read.
+  const ores = oreCountsFor(ctx, ctx.sender);
+  if (!((ores[tree.log] ?? 0) > 0)) {
+    const progress = readPlayerProgress(ctx, ctx.sender);
+    const { needed, room } = roomForOres({
+      owned: progress && deps.inventoryForProgress ? deps.inventoryForProgress(progress) : [], equipped: progress ? equippedFields(progress) : [],
+      extraCopies: extraCopiesOf(ctx, ctx.sender).length, ores, capacity: bagCapacityFor(ctx, ctx.sender),
+    }, [tree.log]);
+    if (!room) throw new SenderError(bagFullForOres(needed));
+  }
   pruneChoppedTrees(ctx, ctx.sender);
   if (treeFelledFor(ctx, ctx.sender, tree.id)) throw new SenderError("That tree is still growing back.");
   const hatchet = toolLevelFor(ctx, ctx.sender, "hatchet");
@@ -171,15 +173,69 @@ export function chopTreeFor(ctx: Ctx, args: { treeId: number }, deps: MiningDeps
   else ctx.db.playerChoppedTree.insert({ key, identity: ctx.sender, treeId: tree.id, choppedAt: ctx.timestamp });
 }
 
-/** A fall, the old hatchet claim, and the caller's own Woodcutting and stumps. */
+/** Every tree felled since the last report, judged and written as a mining report is (reportMiningFor). */
+export function reportChoppingFor(ctx: Ctx, args: { chops: readonly { treeId: number; atMs: bigint | number }[] }, deps: MiningDeps) {
+  const claims = gatherClaims(args.chops, "treeId");
+  const player = deps.requireControllingPlayer(ctx);
+  if (!claims.length) return;
+  if (!isTownMap(player.mapId)) throw new SenderError("Walk up to the tree first.");
+  if (deps.activeDuelFor(ctx, ctx.sender)) throw new SenderError("Finish your duel first.");
+  const woodcutting = ctx.db.playerWoodcutting.identity.find(ctx.sender), skill = normalizeWoodcutting(woodcutting?.woodcutting);
+  const rows = new Map<number, any>();
+  for (const row of ctx.db.playerChoppedTree.identity.filter(ctx.sender) as Iterable<any>) rows.set(row.treeId, row);
+  const hatchet = toolLevelFor(ctx, ctx.sender, "hatchet");
+  const ores = oreCountsFor(ctx, ctx.sender), progress = progressOnce(ctx, ctx.sender);
+  const { accepted, rejected, skill: reached } = judgeGatherBatch(claims, {
+    node: woodTree, canWork: canChopTree, gain: woodcuttingGain, slack: WOODCUTTING_RATE_SLACK, reach: WOODCUTTING_SERVER_REACH,
+    seconds: (tree, at) => woodcuttingChopSeconds(tree, at, hatchet), respawnMs: () => WOODCUTTING_RESPAWN_SECONDS * 1_000, kinds: tree => [tree.log],
+  }, {
+    nowMs: millisOf(ctx.timestamp), lastAtMs: woodcutting ? millisOf(woodcutting.lastChopAt) : null, skill,
+    brokenAtMs: new Map([...rows.values()].map(row => [row.treeId, millisOf(row.choppedAt)])),
+    within: gatherReach(ctx, player, progress), held: new Set(Object.keys(ores) as OreId[]),
+    freeSlots: gatherFreeSlots(ctx, ctx.sender, ores, progress, deps.inventoryForProgress),
+  });
+  logOddGatherRejections("Woodcutting", ctx.sender, rejected);
+  const last = new Map<number, number>();
+  for (const { node, atMs } of accepted) last.set(node.id, atMs);
+  for (const row of rows.values()) if (!last.has(row.treeId) && grownBack(ctx, row)) ctx.db.playerChoppedTree.key.delete(row.key);
+  if (!accepted.length) return;
+  const gained: Partial<Record<OreId, number>> = {};
+  for (const { node } of accepted) {
+    const logs = woodcuttingYield(node, hatchet > 0 ? toolBonusYield(hatchet, ctx.random()) : 0);
+    for (const [logId, count] of Object.entries(logs)) gained[logId as OreId] = (gained[logId as OreId] ?? 0) + (count ?? 0);
+  }
+  for (const [logId, count] of Object.entries(gained)) addOres(ctx, ctx.sender, logId as OreId, count ?? 0);
+  const final = accepted[accepted.length - 1], at = (ms: number) => new Timestamp(BigInt(Math.round(ms)) * 1_000n);
+  const row = {
+    identity: ctx.sender,
+    woodcutting: Math.min(U32_MAX, reached),
+    treesChopped: ((woodcutting?.treesChopped ?? 0) + accepted.length) % (U32_MAX + 1),
+    hatchetAt: woodcutting?.hatchetAt ?? ctx.timestamp,
+    lastChopAt: at(final.atMs),
+    lastTreeId: final.node.id,
+  };
+  if (woodcutting) ctx.db.playerWoodcutting.identity.update(row);
+  else ctx.db.playerWoodcutting.insert(row);
+  writeWoodcuttingLevel(ctx, ctx.sender);
+  for (const [treeId, atMs] of last) {
+    const stump = rows.get(treeId);
+    if (stump) ctx.db.playerChoppedTree.key.update({ ...stump, choppedAt: at(atMs) });
+    else ctx.db.playerChoppedTree.insert({ key: choppedTreeKey(ctx.sender, treeId), identity: ctx.sender, treeId, choppedAt: at(atMs) });
+  }
+}
+
+const TreeChopEntry = t.object("TreeChopEntry", { treeId: t.u32(), atMs: t.u64() });
+
+/** A fall, a batch of them, the old hatchet claim, and the caller's own Woodcutting and stumps. */
 export function registerWoodcutting(spacetimedb: typeof spacetimedbType, deps: MiningDeps) {
   const claimHatchet = spacetimedb.reducer({}, (ctx: any) => claimHatchetFor(ctx, deps));
   const chopTree = spacetimedb.reducer({ treeId: t.u32() }, (ctx: any, args: { treeId: number }) => chopTreeFor(ctx, args, deps));
+  const reportChopping = spacetimedb.reducer({ chops: t.array(TreeChopEntry) }, (ctx: any, args: any) => reportChoppingFor(ctx, args, deps));
   const myWoodcutting = spacetimedb.view({ name: "my_woodcutting", public: true }, t.array(playerWoodcutting.rowType), (ctx: any) => {
     const row = ctx.db.playerWoodcutting.identity.find(ctx.sender);
     return row ? [row] : [];
   });
   const myChoppedTrees = spacetimedb.view({ name: "my_chopped_trees", public: true }, t.array(playerChoppedTree.rowType),
     (ctx: any) => [...ctx.db.playerChoppedTree.identity.filter(ctx.sender)]);
-  return { claimHatchet, chopTree, myWoodcutting, myChoppedTrees };
+  return { claimHatchet, chopTree, reportChopping, myWoodcutting, myChoppedTrees };
 }

@@ -46,7 +46,7 @@ export function createCraftingRows(notify: () => void) {
     watch,
     api: {
       craftSkills: (): Readonly<Record<CraftSkill, bigint>> => experience,
-      /** A graded piece crafted at its station from the recipe this client shows. */
+      /** A graded piece crafted at the Smith from the recipe this client shows. */
       craftGradeGear,
     },
   };

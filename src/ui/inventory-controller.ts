@@ -421,7 +421,7 @@ export function createInventoryController(dependencies: InventoryDependencies) {
       onActivate: async () => {
         const refine = dependencies.refineLevel?.(itemId, copyId) ?? 0;
         if (!await ask(confirmDestroy, {
-          message: `Sell ${withRefineStars(itemDisplayName(itemId, dependencies.upgradeLevel(itemId)), refine)} for ${price} Gold?`,
+          message: `Sell ${withRefineStars(itemDisplayName(itemId), refine)} for ${price} Gold?`,
           details: [{ label: "The Smith pays", value: `${price} Gold` }, ...(refine ? [{ label: "Refines", value: "Lost with the item" }] : [])],
           confirmLabel: "Sell",
         })) return;
@@ -451,7 +451,7 @@ export function createInventoryController(dependencies: InventoryDependencies) {
       kind: "DESTROY" as const,
       onActivate: async () => {
         if (!await ask(confirmDestroy, {
-          message: `Destroy ${oneOfSeveral ? "this copy of " : ""}${withRefineStars(itemDisplayName(itemId, dependencies.upgradeLevel(itemId)), dependencies.refineLevel?.(itemId, copyId) ?? 0)} permanently?`,
+          message: `Destroy ${oneOfSeveral ? "this copy of " : ""}${withRefineStars(itemDisplayName(itemId), dependencies.refineLevel?.(itemId, copyId) ?? 0)} permanently?`,
           details: [{ label: "This cannot be undone", value: ore ? `Gives back 1 ${REFINE_ORES[ore].name}` : "No refund" }],
           confirmLabel: "Salvage", danger: true,
         })) return;

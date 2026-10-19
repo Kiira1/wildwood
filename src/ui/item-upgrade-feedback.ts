@@ -1,4 +1,4 @@
-import { itemDisplayName } from "../../shared/items";
+import { isUpgradeSlot, UPGRADE_SLOT_LABELS } from "../../shared/slot-upgrades";
 import { setInventoryItemQuantity, type InventoryState } from "../game/inventory";
 import { applyPlayerMaxHealthMultiplierBonus } from "../game/runtime/player-health";
 import type { PlayerState } from "../game/runtime/types";
@@ -17,6 +17,8 @@ export function createItemUpgradeFeedback(options: {
     applyPlayerMaxHealthMultiplierBonus(options.player, options.healthMultiplierBonus());
     options.renderInventory();
     options.saveProgress(true);
-    options.showMessage(`${itemDisplayName(itemId, level)} COMPLETE`, "#72ef58");
+    // The tier is the slot's (itemId is "HAND", "HEAD" or "CHEST"), so the message names the slot.
+    const slot = isUpgradeSlot(itemId) ? `${UPGRADE_SLOT_LABELS[itemId]} SLOT` : "SLOT";
+    options.showMessage(`${slot} +${level} COMPLETE`, "#72ef58");
   };
 }

@@ -44,10 +44,11 @@ function setup(options: { woodcutting?: number; at?: { x: number; y: number }; s
   const player = { ...(options.at ?? GROVE_ENTRY), moving: false, hp: 100 } as PlayerState;
   const world = { map: 'town', time: 0, server: 5_000_000, felled: new Map<number, number>() };
   const storage = options.storage ?? memoryStorage();
-  const chopTree = vi.fn(async (treeId: number) => { world.felled.set(treeId, world.server); return { ok: true }; });
+  // Falls queue for the next report and count at once, as the session's do.
+  const chopTree = vi.fn((treeId: number, atMs: number) => { world.felled.set(treeId, atMs); });
   const source = {
     choppedTreeAt: (id: number) => world.felled.get(id) ?? null,
-    serverNowMs: () => world.server, woodcutting: () => options.woodcutting ?? 0, chopTree,
+    serverNowMs: () => world.server, woodcutting: () => options.woodcutting ?? 0, queueTreeChop: chopTree, flushWoodcutting: vi.fn(),
   };
   const chop = createAutoChop({ player, mapId: () => world.map, source: () => source, storage: () => storage, speed: () => SPEED, now: () => world.time });
   const runtime = createWoodcuttingRuntime({ source: () => source, player, bag: options.bag ? () => options.bag : undefined });
@@ -127,7 +128,7 @@ describe('Auto Chop', () => {
     expect(woodcuttingScene.target).toBe(first.id);
     // Felled by the runtime standing there: the server is asked, and it walks on to another pine.
     s.runUntil(() => s.chopTree.mock.calls.length > 0, 20);
-    expect(s.chopTree).toHaveBeenCalledExactlyOnceWith(first.id);
+    expect(s.chopTree).toHaveBeenCalledExactlyOnceWith(first.id, expect.any(Number));
     s.step();
     const next = s.chop.state().target!;
     expect(next).not.toBe(first);

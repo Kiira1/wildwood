@@ -1,5 +1,5 @@
 import { SenderError, table, t } from "spacetimedb/server";
-import type { Identity } from "spacetimedb";
+import { Timestamp, type Identity } from "spacetimedb";
 import { cardStatFactors } from "../../shared/card-effects";
 import { activeCardTotalsFor } from "./active-cards";
 import type spacetimedbType from "./index";
@@ -19,6 +19,9 @@ import { luckInPlay } from "./luck-research";
 import { bagFullForOres, rockOreKinds, roomForOres } from "../../shared/ore-bag";
 import { toolBonusYield } from "../../shared/tools";
 import { toolLevelFor } from "./tools";
+import {
+  equippedFields, gatherClaims, gatherFreeSlots, gatherReach, judgeGatherBatch, logOddGatherRejections, millisOf, progressOnce,
+} from "./gather-batch";
 
 /**
  * Mining (shared/mining.ts): a player's Mining stat and the rocks they broke that have yet to grow back. Each player
@@ -130,9 +133,6 @@ export type MiningDeps = {
   inventoryForProgress?: (progress: any) => string[];
 };
 
-const equippedFields = (progress: any): string[] =>
-  [progress.equippedHead, progress.equippedChest, progress.equippedFeet, progress.equippedRightHand, progress.equippedLeftHand];
-
 /** The old Smith's pickaxe, still called by clients from before every player held one: only starts the row. */
 export function claimPickaxeFor(ctx: Ctx, deps: MiningDeps) {
   deps.requireControllingPlayer(ctx);
@@ -158,14 +158,17 @@ export function mineNodeFor(ctx: Ctx, args: { nodeId: number }, deps: MiningDeps
   }
   if (deps.activeDuelFor(ctx, ctx.sender)) throw new SenderError("Finish your duel first.");
   if (!canMineRock(node, skill)) throw new SenderError(miningRockHint(node));
-  const progress = readPlayerProgress(ctx, ctx.sender);
   // A kind of ore not held yet needs a free bag slot, for everything the rock could give, before it is broken.
-  const { needed, room } = roomForOres({
-    owned: progress && deps.inventoryForProgress ? deps.inventoryForProgress(progress) : [], equipped: progress ? equippedFields(progress) : [],
-    extraCopies: extraCopiesOf(ctx, ctx.sender).length, ores: oreCountsFor(ctx, ctx.sender),
-    capacity: bagCapacityFor(ctx, ctx.sender),
-  }, rockOreKinds(node));
-  if (!room) throw new SenderError(bagFullForOres(needed));
+  // With every kind held already, the bag is not read.
+  const held = oreCountsFor(ctx, ctx.sender);
+  if (rockOreKinds(node).some(oreId => !((held[oreId] ?? 0) > 0))) {
+    const progress = readPlayerProgress(ctx, ctx.sender);
+    const { needed, room } = roomForOres({
+      owned: progress && deps.inventoryForProgress ? deps.inventoryForProgress(progress) : [], equipped: progress ? equippedFields(progress) : [],
+      extraCopies: extraCopiesOf(ctx, ctx.sender).length, ores: held, capacity: bagCapacityFor(ctx, ctx.sender),
+    }, rockOreKinds(node));
+    if (!room) throw new SenderError(bagFullForOres(needed));
+  }
   pruneMinedNodes(ctx, ctx.sender);
   if (nodeBareFor(ctx, ctx.sender, node)) throw new SenderError("That rock is still growing back.");
   // Mining Speed, Ore Find and Starshard cards in the worn gear.
@@ -194,15 +197,79 @@ export function mineNodeFor(ctx: Ctx, args: { nodeId: number }, deps: MiningDeps
   else ctx.db.playerMinedNode.insert({ key, identity: ctx.sender, nodeId: node.id, brokenAt: ctx.timestamp });
 }
 
-/** A break, the old pickaxe claim, and the caller's own Mining and bare rocks. */
+/**
+ * Every rock broken since the last report (gather-batch.ts judges them), for clients that mine locally and report
+ * in batches. The reads are made once for the whole batch, each ore is rolled as mine_node rolls it, and every row
+ * is written once. A rock the server does not take is left out; the client reads the rows again and it stands.
+ */
+export function reportMiningFor(ctx: Ctx, args: { breaks: readonly { nodeId: number; atMs: bigint | number }[] }, deps: MiningDeps) {
+  const claims = gatherClaims(args.breaks, "nodeId");
+  const player = deps.requireControllingPlayer(ctx);
+  if (!claims.length) return;
+  if (!isTownMap(player.mapId)) throw new SenderError("Walk up to the rock first.");
+  if (deps.activeDuelFor(ctx, ctx.sender)) throw new SenderError("Finish your duel first.");
+  const mining = ctx.db.playerMining.identity.find(ctx.sender), skill = normalizeMining(mining?.mining);
+  const rows = new Map<number, any>();
+  for (const row of ctx.db.playerMinedNode.identity.filter(ctx.sender) as Iterable<any>) rows.set(row.nodeId, row);
+  const cards = cardStatFactors(activeCardTotalsFor(ctx, ctx.sender)), pickaxe = toolLevelFor(ctx, ctx.sender, "pickaxe");
+  const ores = oreCountsFor(ctx, ctx.sender), progress = progressOnce(ctx, ctx.sender);
+  const { accepted, rejected, skill: reached } = judgeGatherBatch(claims, {
+    node: miningNode, canWork: canMineRock, gain: miningGain, slack: MINING_RATE_SLACK, reach: MINING_SERVER_REACH,
+    seconds: (node, at) => miningBreakSeconds(node, at, cards.miningSpeed, pickaxe),
+    respawnMs: node => MINING_NODE_KINDS[node.kind].respawnSeconds * 1_000, kinds: rockOreKinds,
+  }, {
+    nowMs: millisOf(ctx.timestamp), lastAtMs: mining ? millisOf(mining.lastBreakAt) : null, skill,
+    brokenAtMs: new Map([...rows.values()].map(row => [row.nodeId, millisOf(row.brokenAt)])),
+    within: gatherReach(ctx, player, progress), held: new Set(Object.keys(ores) as OreId[]),
+    freeSlots: gatherFreeSlots(ctx, ctx.sender, ores, progress, deps.inventoryForProgress),
+  });
+  logOddGatherRejections("Mining", ctx.sender, rejected);
+  // Grown-back rows go as before; the rocks broken now are written once each, at their last break.
+  const last = new Map<number, number>();
+  for (const { node, atMs } of accepted) last.set(node.id, atMs);
+  for (const row of rows.values()) if (!last.has(row.nodeId) && grownBack(ctx, row)) ctx.db.playerMinedNode.key.delete(row.key);
+  if (!accepted.length) return;
+  const miningLuck = accepted.some(({ node }) => node.kind === "mysterious") ? luckInPlay(ctx, ctx.sender).miningLuck : 0;
+  const gained: Partial<Record<OreId, number>> = {};
+  let starshard = false;
+  for (const { node } of accepted) {
+    const rolled = miningYield(node, ctx.random(), cards, cards.oreFind > 0 ? ctx.random() : 1, miningLuck, pickaxe > 0 ? toolBonusYield(pickaxe, ctx.random()) : 0);
+    for (const [oreId, count] of Object.entries(rolled)) gained[oreId as OreId] = (gained[oreId as OreId] ?? 0) + (count ?? 0);
+    starshard = Boolean(rolled.starshard);
+  }
+  for (const [oreId, count] of Object.entries(gained)) addOres(ctx, ctx.sender, oreId as OreId, count ?? 0);
+  const final = accepted[accepted.length - 1], at = (ms: number) => new Timestamp(BigInt(Math.round(ms)) * 1_000n);
+  const row = {
+    identity: ctx.sender,
+    mining: Math.min(U32_MAX, reached),
+    rocksBroken: ((mining?.rocksBroken ?? 0) + accepted.length) % (U32_MAX + 1),
+    pickaxeAt: mining?.pickaxeAt ?? ctx.timestamp,
+    lastBreakAt: at(final.atMs),
+    lastNodeId: final.node.id,
+    lastStarshard: starshard,
+  };
+  if (mining) ctx.db.playerMining.identity.update(row);
+  else ctx.db.playerMining.insert(row);
+  writeMiningLevel(ctx, ctx.sender);
+  for (const [nodeId, atMs] of last) {
+    const bare = rows.get(nodeId);
+    if (bare) ctx.db.playerMinedNode.key.update({ ...bare, brokenAt: at(atMs) });
+    else ctx.db.playerMinedNode.insert({ key: minedNodeKey(ctx.sender, nodeId), identity: ctx.sender, nodeId, brokenAt: at(atMs) });
+  }
+}
+
+const MiningBreakEntry = t.object("MiningBreakEntry", { nodeId: t.u32(), atMs: t.u64() });
+
+/** A break, a batch of them, the old pickaxe claim, and the caller's own Mining and bare rocks. */
 export function registerMining(spacetimedb: typeof spacetimedbType, deps: MiningDeps) {
   const claimPickaxe = spacetimedb.reducer({}, (ctx: any) => claimPickaxeFor(ctx, deps));
   const mineNode = spacetimedb.reducer({ nodeId: t.u32() }, (ctx: any, args: { nodeId: number }) => mineNodeFor(ctx, args, deps));
+  const reportMining = spacetimedb.reducer({ breaks: t.array(MiningBreakEntry) }, (ctx: any, args: any) => reportMiningFor(ctx, args, deps));
   const myMining = spacetimedb.view({ name: "my_mining", public: true }, t.array(playerMining.rowType), (ctx: any) => {
     const row = ctx.db.playerMining.identity.find(ctx.sender);
     return row ? [row] : [];
   });
   const myMinedNodes = spacetimedb.view({ name: "my_mined_nodes", public: true }, t.array(playerMinedNode.rowType),
     (ctx: any) => [...ctx.db.playerMinedNode.identity.filter(ctx.sender)]);
-  return { claimPickaxe, mineNode, myMining, myMinedNodes };
+  return { claimPickaxe, mineNode, reportMining, myMining, myMinedNodes };
 }

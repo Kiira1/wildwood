@@ -20,7 +20,6 @@ import { itemSkillDetails } from "./item-skill-details";
 import { armorClassPerkLine, armorClassSetLine } from "../../shared/armor-class-perks";
 import { bootStyleOf, gradeOf, isGradeItemId } from "../../shared/grade-equipment";
 import { BOOT_STYLE_SCHOOL, GEAR_GRADE_NAMES } from "../../shared/gear-grades";
-import { gradeKindName } from "./smith-upgrades";
 import { WEAPON_SCHOOL_NAMES } from "../../shared/weapon-mastery";
 
 export type ItemInspectionAction = {
@@ -52,7 +51,7 @@ export type ItemInspectionRequest = {
 
 export type WornGear = { equippedRightHand?: string; equippedLeftHand?: string; equippedHead?: string; equippedChest?: string };
 
-/** A graded helmet or armor's class lines: its perk, and its set, Active or Inactive when `worn` has it on. Boots name their school (the grade label names the style). */
+/** A graded helmet or armor's class lines: its perk, and its set, Active or Inactive when `worn` has it on. Boots name their school. */
 export function armorClassLines(itemId: string, worn?: WornGear) {
   const style = bootStyleOf(itemId);
   if (style) return [`Made For ${WEAPON_SCHOOL_NAMES[BOOT_STYLE_SCHOOL[style]]}`];
@@ -77,6 +76,12 @@ type ItemInspectionElements = {
 /** A weapon's stat lines followed by its skills, title case ("Arrow Storm 2.4%"). */
 export function itemStatsWithWeaponSkills(itemId: string, level: number, roll: WeaponSkillRoll | null | undefined) {
   return [...itemStats(itemId, level), ...weaponSkillLines(itemId, roll)];
+}
+
+/** The window's title: the name without the slot's +N, and a graded piece's without its grade (the pill under it shows that). */
+export function itemInspectionTitle(itemId: string) {
+  const name = itemInspectionButtonLabel(itemDisplayName(itemId)), grade = isGradeItemId(itemId) ? GEAR_GRADE_NAMES[gradeOf(itemId)!] : "";
+  return grade && name.startsWith(`${grade} `) ? name.slice(grade.length + 1) : name;
 }
 
 export function itemInspectionButtonLabel(label: string) {
@@ -197,7 +202,7 @@ export function createItemInspectionController(elements: ItemInspectionElements)
       returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     }
 
-    elements.title.textContent = itemInspectionButtonLabel(itemDisplayName(item.id, level));
+    elements.title.textContent = itemInspectionTitle(item.id);
     // "Ion Bow ★7": the refine after the name, in gold.
     if (refine > 0) {
       const stars = document.createElement("span");
@@ -227,11 +232,11 @@ export function createItemInspectionController(elements: ItemInspectionElements)
     const metadata = document.createElement("div");
     metadata.className = "item-inspection-metadata";
     appendItemTierLabel(metadata, item.id);
-    // A graded piece's grade and kind, as a card shows its rarity: "Rare · Ranger Boots".
+    // A graded piece's grade, once, as a card shows its rarity; the title holds the rest of the name.
     if (isGradeItemId(item.id)) {
       const grade = document.createElement("span");
       grade.className = "item-grade-label";
-      grade.textContent = `${GEAR_GRADE_NAMES[gradeOf(item.id)!]} · ${gradeKindName(item.id)}`;
+      grade.textContent = GEAR_GRADE_NAMES[gradeOf(item.id)!];
       metadata.append(grade);
     }
     if (metadata.childElementCount) preview.append(metadata);

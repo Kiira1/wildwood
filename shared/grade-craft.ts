@@ -9,12 +9,13 @@ import { isSkillWeapon } from "./weapon-skills";
 
 /**
  * Graded gear by crafting (craft_grade_gear): which craft makes each piece, what it takes, and the craft level its
- * grade needs. Any open grade can be crafted, and a weapon already held can be reforged for better skills. Shared so the station windows and the server judge a craft the same way.
+ * grade needs. Any open grade can be crafted, and a weapon already held can be reforged for better skills. Shared so the
+ * Smith's window and the server judge a craft the same way.
  */
 export type CraftExperience = Readonly<Partial<Record<CraftSkill, number | bigint>>>;
 
 /**
- * Boots are made where their school's gear is: Ranger at Fletching, Warrior at Smithing, Mystic at Enchanting. Each
+ * Boots are made by their school's gear's craft: Ranger by Fletching, Warrior by Smithing, Mystic by Enchanting. Each
  * style's recipe is its school's armor's materials in shares of its own: Ranger more ore for the hobnails, Mystic
  * more crystal for the charm.
  */
@@ -32,7 +33,8 @@ export function bootsCraftMaterials(grade: GearGrade, style: BootStyle): Materia
     .map(([id, count]) => [id, Math.max(1, Math.round(count * (shares[materialKind(id)] ?? 1)))]));
 }
 
-const lineCraftSkill = (line: GradeShopLine) => "bootStyle" in line ? craftSkillFor("armor", BOOT_CRAFT[line.bootStyle].armorClass)
+/** The craft that makes a shop line. */
+export const lineCraftSkill = (line: GradeShopLine) => "bootStyle" in line ? craftSkillFor("armor", BOOT_CRAFT[line.bootStyle].armorClass)
   : craftSkillFor(line.kind, "armorClass" in line ? line.armorClass : undefined);
 
 /** The shop's lines each craft makes: Smithing swords, Medium and Heavy armor and Warrior Boots, and so on. */
@@ -62,7 +64,7 @@ export const gradeCraftLevel = (itemId: GradeItemId) => CRAFT_LEVEL[gradeOf(item
 export const gradeCraftNeed = (itemId: GradeItemId) => `Lv ${gradeCraftLevel(itemId)} ${CRAFT_SKILL_NAMES[gradeCraftSkill(itemId)!]}`;
 
 export type GradeCraftOffer = {
-  /** The best grade open, the one a station offers first. */
+  /** The best grade open, the one the Smith offers first. */
   itemId: GradeItemId; grade: GearGrade;
   /** Every grade open, lowest first: any can be crafted, below the best held too. */
   grades: readonly GearGrade[];
@@ -74,7 +76,7 @@ export type GradeCraftOffer = {
 export const gradeCraftOpen = (itemId: GradeItemId, levels: MasteryLevels, level: number) =>
   gradeShopOpen(itemId, levels) && level >= gradeCraftLevel(itemId);
 
-/** What a station offers on a line: every grade Mastery and the craft's level open, the best first. Crude always is. */
+/** What the Smith offers to craft on a line: every grade Mastery and the craft's level open, the best first. Crude always is. */
 export function gradeCraftOffer(line: GradeShopLine, levels: MasteryLevels, level: number): GradeCraftOffer {
   const grades = GEAR_GRADES.filter(grade => gradeCraftOpen(gradeShopItemId(line, grade), levels, level));
   const grade = grades.at(-1) ?? GEAR_GRADES[0], next = GEAR_GRADES[gradeIndex(grade) + 1];

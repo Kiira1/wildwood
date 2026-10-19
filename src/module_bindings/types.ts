@@ -928,6 +928,12 @@ export const MapFrameSchedule = __t.object("MapFrameSchedule", {
 });
 export type MapFrameSchedule = __Infer<typeof MapFrameSchedule>;
 
+export const MiningBreakEntry = __t.object("MiningBreakEntry", {
+  nodeId: __t.u32(),
+  atMs: __t.u64(),
+});
+export type MiningBreakEntry = __Infer<typeof MiningBreakEntry>;
+
 export const ModerationAction = __t.object("ModerationAction", {
   id: __t.u64(),
   targetIdentity: __t.string(),
@@ -2649,6 +2655,12 @@ export const StartupTelemetrySample = __t.object("StartupTelemetrySample", {
   connectivity: __t.string(),
 });
 export type StartupTelemetrySample = __Infer<typeof StartupTelemetrySample>;
+
+export const TreeChopEntry = __t.object("TreeChopEntry", {
+  treeId: __t.u32(),
+  atMs: __t.u64(),
+});
+export type TreeChopEntry = __Infer<typeof TreeChopEntry>;
 
 export const VirtualPlayer = __t.object("VirtualPlayer", {
   identity: __t.identity(),

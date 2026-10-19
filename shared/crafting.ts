@@ -1,9 +1,9 @@
 import { GEAR_GRADES, type ArmorClass, type GearGrade } from "./gear-grades";
 
 /**
- * Crafting: the other way to graded gear. Each craft has its own skill, levelled by crafting, and its own station:
- * Smithing at the Smith (swords, Medium and Heavy armor), Fletching at the Archery Range (bows, Light armor),
- * Enchanting at the Mage Tower (staffs, Magic armor). The grade must still be open by Mastery, as for buying.
+ * Crafting: the other way to graded gear, all of it done at the Smith. Each craft has its own skill, levelled by
+ * crafting: Smithing (swords, Medium and Heavy armor), Fletching (bows, Light armor), Enchanting (staffs, Magic
+ * armor). The grade must still be open by Mastery, as for buying.
  */
 export const CRAFT_SKILLS = ["smithing", "fletching", "enchanting"] as const;
 export type CraftSkill = typeof CRAFT_SKILLS[number];

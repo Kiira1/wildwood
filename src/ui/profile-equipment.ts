@@ -152,9 +152,11 @@ export function renderProfileEquipmentSlot(
   element.disabled = !inspectionItem;
   if (inspectionItem) element.dataset.itemId = inspectionItem.id;
   else delete element.dataset.itemId;
-  const name = inspectionItem ? withRefineStars(itemDisplayName(inspectionItem.id, level), refine) : "";
+  // The +N is the slot's, so it rides on the slot label, not the item's name.
+  const name = inspectionItem ? withRefineStars(itemDisplayName(inspectionItem.id), refine) : "";
+  const slotLevel = presentation.slot !== "FEET" ? `, Lvl +${level}` : "";
   element.setAttribute("aria-label", inspectionItem
-    ? `${presentation.label}: ${name}. ${cosmetic ? "Cosmetic active. " : hidden ? "Equipped but hidden by cosmetic. " : "Equipped. "}Tap to inspect.`
+    ? `${presentation.label}${slotLevel}: ${name}. ${cosmetic ? "Cosmetic active. " : hidden ? "Equipped but hidden by cosmetic. " : "Equipped. "}Tap to inspect.`
     : `${presentation.label}: ${hidden ? "hidden by cosmetic" : "empty"}`);
   element.title = inspectionItem ? `Inspect ${name}` : "";
 

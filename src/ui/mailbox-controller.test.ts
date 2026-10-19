@@ -50,7 +50,8 @@ it("shows equipment above the message and retains the claim after a full-bag rej
   f.claim.mockResolvedValueOnce({ ok: false, error: "Free 2 inventory slots, then claim your gear." } as never);
   f.ui.open(); f.document.querySelector<HTMLButtonElement>(".mailbox-row")!.click();
   expect(f.document.querySelectorAll(".mailbox-equipment-item")).toHaveLength(3);
-  expect(f.document.querySelectorAll(".mailbox-equipment-level")[0].textContent).toBe("+9");
+  // The gift raises slots, so no +N sits on its items.
+  expect(f.document.querySelector(".mailbox-equipment-level")).toBeNull();
   f.document.querySelector<HTMLButtonElement>(".mailbox-claim-button")!.click();
   await Promise.resolve(); await Promise.resolve();
   expect(f.document.querySelector(".mailbox-status")!.textContent).toContain("Free 2");

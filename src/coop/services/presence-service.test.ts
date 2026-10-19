@@ -96,6 +96,18 @@ it("sends queued regular-enemy loot ahead of a portal's move, without waiting on
   expect(order).toEqual(["loot", "move", "loot", "move"]);
 });
 
+it("sends rocks and trees broken on this map before the move, while the server still has the player here", async () => {
+  const order: string[] = [];
+  const connection = { reducers: { changeMap: vi.fn(async () => { order.push("move"); }) } };
+  const presence = createPresenceService({
+    beforeMapChange: () => { order.push("gathering"); },
+    reducers: { connection: () => connection, protocolBlocked: () => false, worldEntryBlocked: () => false,
+      runWorldReducer: (action: () => unknown) => action(), handleFailure: vi.fn() },
+  } as any);
+  expect(await presence.api.changeMap("tutorial_forest", 100, 100)).toBe(true);
+  expect(order).toEqual(["gathering", "move"]);
+});
+
 it("holds movement back while a map change is on its way, so no step reaches the server before the move", async () => {
   let finish!: () => void;
   const updateMovementState = vi.fn();

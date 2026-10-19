@@ -6,6 +6,7 @@ import { GRADE_BONUS_PERCENT, GRADE_GOLD_PRICE } from "../../shared/gear-grades"
 import { itemInspectionButtonLabel } from "./item-inspection-controller";
 import { refineSuccessChance, type OreId } from "../../shared/refine";
 import type { CraftSectionDeps } from "./craft-section";
+import { craftExperienceForLevel } from "../../shared/crafting";
 import type { WornLoadout } from "./smith-upgrades";
 afterEach(() => vi.unstubAllGlobals());
 
@@ -198,7 +199,7 @@ it("lists a row per line, each offering the highest grade Mastery opens above th
   expect(view.dialog.querySelector(".smith-gold strong")!.textContent).toBe("50,000");
   const bow = view.row("rare_bow");
   expect(view.dialog.querySelector("#smithShopTitle")!.textContent).toBe("All Gear");
-  expect(bow.querySelector("strong")!.textContent).toBe(nameOf("rare_bow"));
+  expect(bow.querySelector("strong")!.textContent).toBe("Forked Bow");
   expect(bow.querySelector(".smith-shop-grade")!.textContent).toBe("Rare · Bow");
   expect(bow.querySelector(".smith-shop-stat")!.textContent).toBe(`Damage +${GRADE_BONUS_PERCENT.rare}%`);
   expect(bow.querySelector(".smith-shop-price")!.textContent).toBe(String(GRADE_GOLD_PRICE.rare));
@@ -309,31 +310,39 @@ it("hides the shop when there is no way to buy", () => {
   expect(view.q(".smith-shop").hidden).toBe(true);
 });
 
-it("gives the lines Smithing makes a Craft line under Buy, and the rest a hint where they are crafted", async () => {
+it("gives every line a Craft line under Buy, by the craft that makes it, with the three crafts' levels above the list", async () => {
   const craft = vi.fn(async (_itemId: string) => ({ ok: true }));
   const view = shop({
     gold: 1_000n, levels: {}, held: [],
     craft: {
-      craftSkills: () => ({ smithing: 0n }), ores: () => ({ copper_ore: 8 }), masteryLevels: () => ({}), heldItems: () => [],
-      bagFull: () => false, craft, showMessage: vi.fn(),
+      craftSkills: () => ({ smithing: 0n, fletching: BigInt(craftExperienceForLevel(4)) }), ores: () => ({ copper_ore: 8, pine_log: 100 }), masteryLevels: () => ({}),
+      heldItems: () => [], bagFull: () => false, craft, showMessage: vi.fn(),
     },
   });
   const deals = (itemId: string) => [...view.row(itemId).querySelectorAll(".smith-shop-buy")].map(button => button.textContent);
   view.controller.open();
-  // Smithing's level heads the list, in one card; there is no second list of rows.
-  expect(view.dialog.querySelector(".smith-shop .craft-card .craft-name")!.textContent).toBe("Smithing");
+  // The three crafts head the list, in one card; there is no second list of rows.
+  const card = view.dialog.querySelector(".smith-shop .craft-card")!;
+  expect([...card.querySelectorAll(".craft-skill")].map(skill => `${skill.querySelector(".craft-name")!.textContent} ${skill.querySelector(".craft-level")!.textContent}`))
+    .toEqual(["Smithing Lv 1", "Fletching Lv 4", "Enchanting Lv 1"]);
+  expect(view.dialog.querySelector(".craft-section")!.nextElementSibling!.className).toBe("smith-shop-head");
   expect(view.dialog.querySelectorAll(".smith-shop-row").length).toBe(14);
+  expect(view.dialog.querySelector(".craft-hint")).toBeNull();
+  // Every line has Buy and Craft: bows, staffs, swords and armor of every class.
+  for (const itemId of ["crude_bow", "crude_staff", "crude_light_armor", "crude_magic_armor", "crude_heavy_helmet", "crude_ranger_boots", "crude_mystic_boots"]) {
+    expect(deals(itemId)[0]).toBe("Buy");
+    expect(view.row(itemId).querySelector(".craft-offer .smith-shop-buy")).toBeTruthy();
+  }
   expect(deals("crude_warrior_boots")).toEqual(["Buy", "Craft"]);
-  expect(view.row("crude_ranger_boots").querySelector(".craft-hint")!.textContent).toBe("Craft At The Archery Range");
+  expect(deals("crude_bow")).toEqual(["Buy", "Craft"]);
+  expect([...view.row("crude_bow").querySelectorAll(".craft-material")].map(item => item.textContent)).toEqual(["100 / 10 Pine Log", "8 / 2 Copper Ore"]);
+  expect(deals("crude_staff")).toEqual(["Buy", "Need More"]);
   const sword = view.row("crude_sword"), helm = view.row("crude_medium_helmet");
   expect(deals("crude_sword")).toEqual(["Buy", "Need More"]);
   expect(sword.querySelector(".craft-material")!.textContent).toBe("8 / 10 Copper Ore");
   expect(sword.querySelector(".craft-needs")!.textContent).toBe("Next: Common at Lv 1 Swordplay");
   expect(sword.querySelector(".craft-offer .craft-grade-name")!.textContent).toBe("Crude ★2");
   expect(deals("crude_medium_helmet")).toEqual(["Buy", "Craft"]);
-  expect(view.row("crude_bow").querySelector(".craft-hint")!.textContent).toBe("Craft At The Archery Range");
-  expect(view.row("crude_magic_armor").querySelector(".craft-hint")!.textContent).toBe("Craft At The Mage Tower");
-  expect(view.row("crude_bow").querySelectorAll(".smith-shop-buy").length).toBe(1);
   // A craft moves the line on before the server's row arrives: the next grade to buy, the crafted helmet Owned.
   helm.querySelector<HTMLButtonElement>(".craft-offer .smith-shop-buy")!.click();
   expect(craft).toHaveBeenCalledWith("crude_medium_helmet");

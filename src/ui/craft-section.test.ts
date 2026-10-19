@@ -1,6 +1,6 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { parseHTML } from "linkedom";
-import { bagFullFor, craftDepsFor, createCraftSection, type CraftSectionDeps } from "./craft-section";
+import { bagFullFor, craftDepsFor, type CraftSectionDeps } from "./craft-section";
 import { createSchoolWindowController } from "./school-window";
 import { createSmithController } from "./smith-window";
 import { craftExperienceForLevel, type CraftSkill } from "../../shared/crafting";
@@ -27,88 +27,98 @@ function craftDeps(state: State, craft = vi.fn(async (_itemId: string) => ({ ok:
 }
 const nameOf = (itemId: string) => itemInspectionButtonLabel(itemDisplayName(itemId));
 const plenty = () => Object.fromEntries(["copper_ore", "iron_ore", "mithril_ore", "pine_log", "oak_log", "arcane_crystal"].map(id => [id, 10_000]));
-const rowsOf = (root: ParentNode) => [...root.querySelectorAll<HTMLElement>(".craft-rows .smith-shop-row")].map(row => ({
-  itemId: row.dataset.itemId,
-  name: row.querySelector("strong")!.textContent,
-  needs: row.querySelector(".craft-needs")?.textContent ?? null,
-  unmet: [...row.querySelectorAll(".craft-needs .is-unmet")].map(need => need.textContent).join(" · "),
-  grade: row.querySelector(".craft-grade-name")!.textContent,
-  button: row.querySelector(".smith-shop-buy")!.textContent,
-  enabled: !row.querySelector<HTMLButtonElement>(".smith-shop-buy")!.disabled,
-}));
-const step = (root: ParentNode, index: number, which: "Lower Grade" | "Higher Grade") =>
-  root.querySelectorAll(".craft-rows .smith-shop-row")[index].querySelector<HTMLButtonElement>(`.craft-grade-step[aria-label="${which}"]`)!;
+/** The Smith with crafting and no shop: a row per line, each its craft line. */
+function crafts(deps: CraftSectionDeps) {
+  const document = setup();
+  const smith = createSmithController({ inTown: () => true, items: () => [], refine: vi.fn(), showMessage: vi.fn(), refineLevel: () => 0, slotTier: () => 0, ores: () => ({}), craft: deps });
+  const dialog = document.querySelector(".smith-sheet")! as unknown as HTMLDialogElement;
+  Object.assign(dialog, { showModal() { dialog.setAttribute("open", ""); }, close() { dialog.removeAttribute("open"); } });
+  Object.defineProperty(dialog, "open", { get: () => dialog.hasAttribute("open") });
+  smith.open();
+  const row = (line: string) => dialog.querySelector<HTMLElement>(`.smith-shop-row[data-item-id$="_${line}"]`)!;
+  const view = (line: string) => {
+    const each = row(line);
+    return {
+      itemId: each.dataset.itemId,
+      needs: each.querySelector(".craft-needs")?.textContent ?? null,
+      unmet: [...each.querySelectorAll(".craft-needs .is-unmet")].map(need => need.textContent).join(" · "),
+      grade: each.querySelector(".craft-grade-name")!.textContent,
+      button: each.querySelector(".smith-shop-buy")!.textContent,
+      enabled: !each.querySelector<HTMLButtonElement>(".smith-shop-buy")!.disabled,
+    };
+  };
+  const step = (line: string, which: "Lower Grade" | "Higher Grade") => row(line).querySelector<HTMLButtonElement>(`.craft-grade-step[aria-label="${which}"]`)!;
+  const skill = (name: CraftSkill) => {
+    const item = dialog.querySelector<HTMLElement>(`.craft-skill[data-skill="${name}"]`)!;
+    return [item.querySelector(".craft-name")!.textContent, item.querySelector(".craft-level")!.textContent, item.querySelector(".craft-points")!.textContent];
+  };
+  return { smith, dialog, row, view, step, skill, rows: () => [...dialog.querySelectorAll<HTMLElement>(".smith-shop-row")] };
+}
 
-it("offers each line's best open grade, steps to any other, and says Craft, Reforge or Owned", () => {
-  setup();
+it("offers each line's best open grade by its craft's level, steps to any other, and says Craft, Reforge or Owned", () => {
   const state: State = {
     experience: { fletching: BigInt(craftExperienceForLevel(10)) }, ores: plenty(), levels: { archery: 5 },
     held: ["crude_bow", "common_bow", "superior_light_helmet", "fine_light_armor"], full: false,
   };
-  const section = createCraftSection(craftDeps(state).deps);
-  section.render("fletching");
-  expect(section.element.querySelector(".craft-name")!.textContent).toBe("Fletching");
-  expect(section.element.querySelector(".craft-level")!.textContent).toBe("Lv 10");
+  const view = crafts(craftDeps(state).deps);
   const next = "Next: Superior at Lv 15 Fletching";
-  expect(rowsOf(section.element)).toEqual([
-    { itemId: "fine_bow", name: `${nameOf("fine_bow")} ★2`, needs: next, unmet: "", grade: "Fine", button: "Craft", enabled: true },
+  expect(["bow", "light_helmet", "light_armor", "ranger_boots"].map(view.view)).toEqual([
+    { itemId: "fine_bow", needs: next, unmet: "", grade: "Fine ★2", button: "Craft", enabled: true },
     // Below the best held is open to craft, for the craft's level.
-    { itemId: "fine_light_helmet", name: `${nameOf("fine_light_helmet")} ★2`, needs: next, unmet: "", grade: "Fine", button: "Craft", enabled: true },
-    { itemId: "fine_light_armor", name: nameOf("fine_light_armor"), needs: next, unmet: "", grade: "Fine", button: "Owned", enabled: false },
-    { itemId: "fine_ranger_boots", name: `${nameOf("fine_ranger_boots")} ★2`, needs: next, unmet: "", grade: "Fine", button: "Craft", enabled: true },
+    { itemId: "fine_light_helmet", needs: next, unmet: "", grade: "Fine ★2", button: "Craft", enabled: true },
+    { itemId: "fine_light_armor", needs: next, unmet: "", grade: "Fine", button: "Owned", enabled: false },
+    { itemId: "fine_ranger_boots", needs: next, unmet: "", grade: "Fine ★2", button: "Craft", enabled: true },
   ]);
-  expect(step(section.element, 0, "Higher Grade").disabled).toBe(true);
+  // Each line goes by its own craft: Smithing at level 1 opens only Crude.
+  expect(view.view("sword")).toMatchObject({ itemId: "crude_sword", needs: "Next: Common at Lv 3 Smithing · Lv 1 Swordplay" });
+  expect(view.step("bow", "Higher Grade").disabled).toBe(true);
   // Down to a bow already held: Reforge, which rolls its skills again.
-  step(section.element, 0, "Lower Grade").click();
-  step(section.element, 0, "Lower Grade").click();
-  expect(rowsOf(section.element)[0]).toMatchObject({ itemId: "common_bow", name: nameOf("common_bow"), grade: "Common", button: "Reforge", enabled: true });
-  expect(section.element.querySelector(".craft-rows .smith-shop-row .craft-hint")!.textContent).toBe("Rolls its skills again, keeping the higher");
-  step(section.element, 0, "Lower Grade").click();
-  expect([rowsOf(section.element)[0].itemId, step(section.element, 0, "Lower Grade").disabled]).toEqual(["crude_bow", true]);
+  view.step("bow", "Lower Grade").click();
+  view.step("bow", "Lower Grade").click();
+  expect(view.view("bow")).toMatchObject({ itemId: "common_bow", grade: "Common", button: "Reforge", enabled: true });
+  expect(view.row("bow").querySelector(".craft-hint")!.textContent).toBe("Rolls its skills again, keeping the higher");
+  view.step("bow", "Lower Grade").click();
+  expect([view.view("bow").itemId, view.step("bow", "Lower Grade").disabled]).toEqual(["crude_bow", true]);
   // Short of a material, then a full bag: a Reforge needs no room.
   state.ores = { pine_log: 10_000, copper_ore: 1 };
-  section.render();
-  expect(rowsOf(section.element)[1].button).toBe("Need More");
+  view.smith.render();
+  expect(view.view("light_helmet").button).toBe("Need More");
   state.ores = plenty(); state.full = true;
-  section.render();
-  expect(rowsOf(section.element).map(row => row.button)).toEqual(["Reforge", "Bag Full", "Owned", "Bag Full"]);
+  view.smith.render();
+  expect(["bow", "light_helmet", "light_armor", "ranger_boots"].map(line => view.view(line).button)).toEqual(["Reforge", "Bag Full", "Owned", "Bag Full"]);
   // A grade Mastery no longer opens falls back to the best open.
   state.levels = { archery: 0 };
   state.full = false;
-  section.render();
-  expect(rowsOf(section.element).map(row => row.itemId)).toEqual(["crude_bow", "crude_light_helmet", "crude_light_armor", "crude_ranger_boots"]);
-  section.reset();
+  view.smith.render();
+  expect(["bow", "light_helmet", "light_armor", "ranger_boots"].map(line => view.view(line).itemId))
+    .toEqual(["crude_bow", "crude_light_helmet", "crude_light_armor", "crude_ranger_boots"]);
 });
 
-it("shows each material held against needed, and the craft's progress", () => {
-  setup();
-  const state: State = { experience: { enchanting: 200n }, ores: { pine_log: 4, arcane_crystal: 9 }, levels: {}, held: [], full: false };
-  const section = createCraftSection(craftDeps(state).deps);
-  section.render("enchanting");
-  const staff = section.element.querySelector<HTMLElement>('[data-item-id="crude_staff"]')!;
+it("shows each material held against needed, and every craft's level and progress side by side", () => {
+  const state: State = { experience: { enchanting: 200n, smithing: BigInt(craftExperienceForLevel(99)) }, ores: { pine_log: 4, arcane_crystal: 9 }, levels: {}, held: [], full: false };
+  const view = crafts(craftDeps(state).deps);
+  const staff = view.row("staff");
   const materials = [...staff.querySelectorAll<HTMLElement>(".craft-material")].map(item => [item.dataset.material, item.textContent, item.classList.contains("is-short")]);
   expect(materials).toEqual([["pine_log", "4 / 5 Pine Log", true], ["arcane_crystal", "9 / 1 Arcane Crystal", false]]);
-  // The name carries ★2 here; the Smith's rows put it on the craft line.
-  expect(staff.querySelector(".craft-stars")).toBeNull();
-  expect(section.element.querySelector(".craft-level")!.textContent).toBe("Lv 9");
-  expect(section.element.querySelector(".craft-points")!.textContent).toBe("23 / 87");
-  const bar = section.element.querySelector(".craft-bar")!;
-  expect([bar.getAttribute("role"), bar.getAttribute("aria-valuenow"), bar.getAttribute("aria-valuemax")]).toEqual(["progressbar", "23", "87"]);
+  expect(view.skill("smithing")).toEqual(["Smithing", "Lv 99 · Max", "Max Level"]);
+  expect(view.skill("fletching")).toEqual(["Fletching", "Lv 1", `0 / ${craftExperienceForLevel(2)}`]);
+  expect(view.skill("enchanting")).toEqual(["Enchanting", "Lv 9", "23 / 87"]);
+  const bar = view.dialog.querySelector('.craft-skill[data-skill="enchanting"] .craft-bar')!;
+  expect([bar.getAttribute("role"), bar.getAttribute("aria-valuenow"), bar.getAttribute("aria-valuemax"), bar.getAttribute("aria-label")])
+    .toEqual(["progressbar", "23", "87", "Enchanting progress"]);
 });
 
 it("crafts, shows Crafting… meanwhile, and turns the line to Reforge before the server's row arrives", async () => {
-  setup();
   const state: State = { experience: {}, ores: plenty(), levels: {}, held: [], full: false };
   let finish: (value: { ok: boolean; error?: string }) => void = () => undefined;
   const craft = vi.fn((_itemId: string) => new Promise<{ ok: boolean; error?: string }>(resolve => { finish = resolve; }));
   const { deps, showMessage } = craftDeps(state, craft);
-  const section = createCraftSection(deps);
-  section.render("smithing");
-  const sword = () => section.element.querySelector<HTMLButtonElement>('[data-item-id$="_sword"] .smith-shop-buy')!;
+  const view = crafts(deps);
+  const sword = () => view.row("sword").querySelector<HTMLButtonElement>(".smith-shop-buy")!;
   sword().click();
   expect(craft).toHaveBeenCalledWith("crude_sword");
   expect(sword().textContent).toBe("Crafting…");
-  expect(rowsOf(section.element).every(row => !row.enabled)).toBe(true);
+  expect(view.rows().every(row => row.querySelector<HTMLButtonElement>(".smith-shop-buy")!.disabled)).toBe(true);
   finish({ ok: true });
   await vi.waitFor(() => expect(showMessage).toHaveBeenCalledWith(`Crafted · ${nameOf("crude_sword")} ★2. Equip it from your bag.`, "#ffd75e"));
   expect(sword().textContent).toBe("Reforge");
@@ -123,36 +133,29 @@ it("crafts, shows Crafting… meanwhile, and turns the line to Reforge before th
   expect(sword().textContent).toBe("Reforge");
 });
 
-it("puts Smithing on the Smith's rows, and Fletching and Enchanting in their schools' windows", () => {
-  const document = setup();
+it("crafts every line at the Smith, and nothing at the schools: they keep Mastery only", () => {
   const state: State = { experience: {}, ores: plenty(), levels: {}, held: [], full: false };
-  const smith = createSmithController({
-    inTown: () => true, items: () => [], refine: vi.fn(), showMessage: vi.fn(), refineLevel: () => 0, slotTier: () => 0, ores: () => ({}),
-    craft: craftDeps(state).deps,
-  });
-  const smithDialog = document.querySelector(".smith-sheet")!;
-  Object.assign(smithDialog, { showModal() { smithDialog.setAttribute("open", ""); } });
-  smith.open();
-  expect(smithDialog.querySelector(".craft-name")!.textContent).toBe("Smithing");
-  expect(smithDialog.querySelector(".craft-rows")).toBeNull();
-  const smithRows = [...smithDialog.querySelectorAll<HTMLElement>(".smith-shop-row")];
-  expect(smithRows.map(row => row.dataset.itemId)).toEqual(["crude_sword", "crude_medium_helmet", "crude_medium_armor", "crude_heavy_helmet", "crude_heavy_armor", "crude_warrior_boots"]);
-  expect(smithRows.every(row => row.querySelector(".craft-offer .smith-shop-buy")!.textContent === "Craft")).toBe(true);
-  const school = createSchoolWindowController({ inTown: () => true, points: () => ({}), craft: craftDeps(state).deps });
+  const view = crafts(craftDeps(state).deps);
+  expect(view.rows().map(row => row.dataset.itemId)).toEqual([
+    "crude_bow", "crude_sword", "crude_staff", "crude_light_helmet", "crude_light_armor", "crude_medium_helmet", "crude_medium_armor",
+    "crude_heavy_helmet", "crude_heavy_armor", "crude_magic_helmet", "crude_magic_armor", "crude_ranger_boots", "crude_warrior_boots", "crude_mystic_boots",
+  ]);
+  expect(view.rows().every(row => row.querySelector(".craft-offer .smith-shop-buy")!.textContent === "Craft")).toBe(true);
+  expect(view.dialog.querySelector(".craft-hint")).toBeNull();
+  const document = view.dialog.ownerDocument;
+  const school = createSchoolWindowController({ inTown: () => true, points: () => ({}) });
   const dialog = document.querySelector(".school-window")! as unknown as HTMLDialogElement;
   Object.assign(dialog, { showModal() { dialog.setAttribute("open", ""); }, close() { dialog.removeAttribute("open"); } });
   Object.defineProperty(dialog, "open", { get: () => dialog.hasAttribute("open") });
-  school.open("archery");
-  expect(rowsOf(dialog).map(row => row.itemId)).toEqual(["crude_bow", "crude_light_helmet", "crude_light_armor", "crude_ranger_boots"]);
-  school.open("swordplay");
-  expect(dialog.querySelector<HTMLElement>(".craft-section")!.hidden).toBe(true);
-  school.open("sorcery");
-  expect(dialog.querySelector<HTMLElement>(".craft-section")!.hidden).toBe(false);
-  expect(rowsOf(dialog).map(row => row.itemId)).toEqual(["crude_staff", "crude_magic_helmet", "crude_magic_armor", "crude_mystic_boots"]);
+  for (const each of ["archery", "swordplay", "sorcery"] as const) {
+    school.open(each);
+    expect([dialog.querySelector(".craft-section"), dialog.querySelector(".smith-views"), dialog.querySelector(".smith-shop-row")]).toEqual([null, null, null]);
+    expect(dialog.querySelector(".school-window-techniques")).toBeTruthy();
+  }
   school.close();
 });
 
-it("reads the coop session for a station: skills, Mastery, the bench's pieces and the bag as the server counts it", async () => {
+it("reads the coop session for the Smith's crafting: skills, Mastery, the bench's pieces and the bag as the server counts it", async () => {
   setup();
   const craftGradeGear = vi.fn(async () => ({ ok: true }));
   const coop = {

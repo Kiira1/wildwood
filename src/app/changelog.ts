@@ -1,4 +1,10 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.916.4": [
+    "Mining and chopping send far fewer server calls",
+    "Slot upgrade levels show on your equipment slots only, not on every item",
+    "Item windows and Smith rows show the grade once, under the name",
+    "All crafting is at the Smith; the Archery Range, Sword Hall and Mage Tower keep your Mastery",
+  ],
   "0.916.3": [
     "Upgrade All no longer swaps out Black Boots or boots of another style",
     "Legendary to Eternal gear costs much more gold; crafting is the cheaper road",
@@ -3667,6 +3673,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.916.4": "2026-10-19",
   "0.916.3": "2026-10-19",
   "0.916.2": "2026-10-19",
   "0.916.1": "2026-10-19",

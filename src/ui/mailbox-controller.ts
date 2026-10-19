@@ -96,7 +96,7 @@ export function createMailboxController(button: HTMLButtonElement, versionButton
             const image = itemArtImage(id);
             if (image.tagName === "IMG") image.setAttribute("alt", name);
             image.style.transform = `rotate(${itemInventoryRotation(id)}deg)`;
-            icon.append(image, make("span", `+${entry.upgradeLevel ?? 9}`, "mailbox-equipment-level"));
+            icon.append(image);
             item.append(icon, make("figcaption", name)); gear.append(item);
           }
           reward.append(gear);
@@ -126,7 +126,7 @@ export function createMailboxController(button: HTMLButtonElement, versionButton
           const gem = document.createElement("img"); gem.src = "assets/wildstat/gems/gem-icon-v2.webp"; gem.alt = "gems";
           reward.append(gem, make("span", entry.gems.toString())); row.append(reward);
         }
-        if (entry.itemIds?.length && !entry.claimed) row.append(make("span", `+${entry.upgradeLevel ?? 9} Gear`, "mailbox-row-reward"));
+        if (entry.itemIds?.length && !entry.claimed) row.append(make("span", "Gear", "mailbox-row-reward"));
         if (!entry.read) row.append(make("span", "", "mailbox-row-dot"));
         row.addEventListener("click", () => { selected = entry.id; status.textContent = ""; scroll.scrollTop = 0; rendered = ""; refresh(); void markRead(entry); });
         scroll.append(row);
