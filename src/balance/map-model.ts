@@ -9,13 +9,9 @@ export function resolveSimulationMap(map: BalanceMapDefinition, settings: Balanc
   const balance = resolveMapBalance(map.id, settings, 0);
   const boss = balance.boss;
   return { ...map, balance,
-    regularDrops: map.regularDrops.map(drop => {
-      const resolved = balance.loot?.find(row => row.itemId === drop.itemId);
-      return resolved ? { ...drop, numerator: resolved.wins, denominator: resolved.outcomes } : drop;
-    }),
     boss: map.boss && boss ? { ...map.boss, hp: boss.hp,
       strongestHit: Math.max(boss.damage, ...Object.values(boss.attacks)),
-      rewards: [], drops: [],
+      rewards: [],
     } : map.boss,
   };
 }

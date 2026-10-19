@@ -1,6 +1,7 @@
 import { formatCompactNumber } from '../../../../../shared/compact-number';
 import type { VirtualPlayerReport } from './virtual-player';
 import type { ReferenceBuild } from './reference-builds';
+import { masteryLevel } from '../../../../../shared/weapon-mastery';
 
 const minutes = (seconds: number) => `${(seconds / 60).toFixed(1)}m`;
 const share = (part: number, whole: number) => whole > 0 ? `${Math.round(part / whole * 100)}%` : '-';
@@ -14,6 +15,10 @@ export function summarize(reports: readonly VirtualPlayerReport[], references: r
     const total = report.simSeconds;
     lines.push(`=== ${report.name}: ${minutes(total)} simulated in ${(report.wallMs / 1000).toFixed(1)}s (${(total / Math.max(1e-3, report.wallMs / 1000)).toFixed(0)}x)`);
     lines.push(`power ${power(report.startPower)} -> ${power(report.endPower)}  kills ${report.kills}  end ${report.endMap}`);
+    if (report.purchases) {
+      const mastery = Object.entries(report.masteryPoints ?? {}).map(([school, points]) => `${school} Lv ${masteryLevel(points ?? 0)}`).join(', ') || 'none';
+      lines.push(`smith: gold ${report.gold}, mastery ${mastery}; bought ${report.purchases.map(entry => `${entry.itemId} at ${minutes(entry.t)}`).join(', ') || 'nothing'}`);
+    }
     lines.push(`maps: ${report.visits.map(visit => `${visit.map}[${minutes((visit.to ?? total) - visit.from)}${lab(visit.map) != null ? ` (lab ${lab(visit.map)!.toFixed(0)}m)` : ''} ${visit.deaths}d ${power(visit.entryPower)}->${power(visit.exitPower ?? report.endPower)}${visit.reason && visit.reason !== 'start' ? ` via ${visit.reason}` : ''}]`).join(' > ')}`);
     const deaths = report.deaths;
     lines.push(`deaths ${deaths.length}: farm ${deaths.filter(death => death.phase === 'farm' && !death.probation && !death.afterBossLeave).length}, boss ${deaths.filter(death => death.phase === 'boss' || death.afterBossLeave).length}, probation ${deaths.filter(death => death.probation && death.phase !== 'boss').length}, portal ${deaths.filter(death => death.phase === 'portal').length}`);

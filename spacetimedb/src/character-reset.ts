@@ -26,6 +26,7 @@ import { noteMapDeparture } from "./enemy-defeats";
 import { removeMiningData } from "./mining";
 import { removeWoodcuttingData } from "./woodcutting";
 import { removeWeaponMastery } from "./weapon-mastery";
+import { removeCraftSkills } from "./crafting";
 
 export function publishPlayerDeathFrame(ctx: any, activePlayer: any) {
   if (boundedMapPopulation(ctx, activePlayer.mapId) < 2) return;
@@ -109,6 +110,7 @@ export function resetWholeSave(ctx: any, activePlayer: any) {
   removeMiningData(ctx, ctx.sender); // Mining is earned across runs too: the pickaxe goes back to the Smith.
   removeWoodcuttingData(ctx, ctx.sender); // So is Woodcutting, and the hatchet with it.
   removeWeaponMastery(ctx, ctx.sender);
+  removeCraftSkills(ctx, ctx.sender);
   resetProgressToDefaults(ctx, activePlayer);
 }
 

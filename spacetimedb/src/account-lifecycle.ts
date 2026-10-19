@@ -36,6 +36,7 @@ import { mergeMiningData } from "./mining";
 import { mergeWoodcuttingData } from "./woodcutting";
 import { mergeWeaponMastery } from "./weapon-mastery";
 import { mergeGold } from "./gold";
+import { mergeCraftSkills } from "./crafting";
 import { mergeMailboxReceipts, removeMailboxReceipts } from "./mailbox";
 import { mergeOnboarding } from "./onboarding";
 import { mergeAudioSettings, removeAudioSettings } from "./audio-settings";
@@ -155,7 +156,7 @@ const PLAYER_STATE_TABLES: ReadonlySet<string> = new Set([
   "gemKillDaily", "gemKillProgress", "gemTransaction", "guildMemberQuestWeek", "guildRejoin",
   "homeReturnLocation", "leaderboardDirty", "leaderboardPosition", "leaderboardPrestigePosition", "leaderboardStanding", "loginMove",
   "offlineProgress", "patreonPreview", "playerAggroChallenge", "playerAggroChallengeParked", "playerBonusToggle", "playerNameColor",
-  "playerMining", "playerMinedNode", "playerMiningLevel", "playerWoodcutting", "playerChoppedTree", "playerWoodcuttingLevel", "playerLuckResearch", "playerCardShopPurchase", "playerWeaponMastery", "playerMasteryLevel", "playerGold",
+  "playerMining", "playerMinedNode", "playerMiningLevel", "playerWoodcutting", "playerChoppedTree", "playerWoodcuttingLevel", "playerLuckResearch", "playerCardShopPurchase", "playerWeaponMastery", "playerMasteryLevel", "playerGold", "playerCraftSkill", "playerCraftLevel",
   "playerDailyQuest", "playerEndlessRebaseBackup", "playerFreeRespec",
   "playerOfflinePreference", "playerPrestige", "playerPrestigeChallenge",
   "playerPrestigeChallengeParked", "playerPrestigeExpansionPerk", "playerPrestigeCardPerk", "playerPrestigePerk", "playerQuestWeekTotal",
@@ -271,6 +272,7 @@ export function createAccountLifecycle(deps: AccountLifecycleDeps) {
     mergeWoodcuttingData(ctx, link.guest, ctx.sender);
     mergeWeaponMastery(ctx, link.guest, ctx.sender);
     mergeGold(ctx, link.guest, ctx.sender);
+    mergeCraftSkills(ctx, link.guest, ctx.sender);
     mergeMailboxReceipts(ctx, link.guest, ctx.sender);
     mergeOnboarding(ctx, link.guest, ctx.sender);
     mergeAudioSettings(ctx, link.guest, ctx.sender);

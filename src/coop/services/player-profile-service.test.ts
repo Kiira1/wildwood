@@ -220,3 +220,17 @@ it("loads the inspected player's mastery levels, and only theirs, with the profi
   f.subscriptions[0].apply();
   expect((await request)?.mastery).toEqual({ archery: 23 });
 });
+
+it("loads the inspected player's craft levels, and only theirs, with the profile", async () => {
+  const f = fixture(), identity = new Identity("1".repeat(64)), other = new Identity("2".repeat(64)), hex = identity.toHexString();
+  f.progression.progressFor.mockReturnValue({ damage: 10 });
+  f.progression.lifetimeFor.mockReturnValue({ enemyKills: 5 });
+  const request = f.service.api.loadPlayerProfile(hex);
+  const sql = f.subscriptions[0].queries.map(query => (query as { toSql(): string }).toSql());
+  expect(sql.find(text => text.includes("player_craft_level"))).toMatch(/WHERE .*identity.* = 0x1{64}/);
+  (f.connection.db as any).playerCraftLevel = { iter: () => [
+    { identity, skill: "fletching", level: 12 }, { identity, skill: "cooking", level: 9 }, { identity: other, skill: "smithing", level: 4 },
+  ] };
+  f.subscriptions[0].apply();
+  expect((await request)?.crafts).toEqual({ fletching: 12 });
+});

@@ -1,6 +1,7 @@
 import type { PlayerProfileData, PlayerResearch } from "../wildstat-coop";
 import { miningSpeed } from "../../shared/mining";
 import { woodcuttingSpeed } from "../../shared/woodcutting";
+import { CRAFT_SKILLS, CRAFT_SKILL_NAMES, type CraftSkill } from "../../shared/crafting";
 import { createEmptyResearchRanks, researchStatRewardMultiplier, utilityMovementSpeedBonus } from "../../shared/research";
 import { prestigeStatMultiplier } from "../../shared/prestige";
 import { PRESTIGE_PERKS, playerAttackCap, prestigePerkValue, type PrestigePerkRanks } from "../../shared/prestige-perks";
@@ -19,6 +20,11 @@ import { cardChance, cardStatFactors, cardTotals, cardValue } from "../../shared
 import { BASE_CARD_SLOTS, NO_ACTIVE_CARDS, activeCardSlots, activeCardsInPlay } from "../../shared/active-cards";
 import { STAT_NAMES } from "../../shared/card-text";
 
+const CRAFT_DETAILS: Readonly<Record<CraftSkill, string>> = {
+  smithing: "(Crafts swords and Medium and Heavy armor at the Smith)",
+  fletching: "(Crafts bows and Light armor at the Archery Range)",
+  enchanting: "(Crafts staffs and Magic armor at the Mage Tower)",
+};
 
 export function formatPlayedTime(seconds: number) {
   const wholeMinutes = Math.max(0, Math.floor(seconds / 60));
@@ -395,6 +401,15 @@ export function profileStatDisplayRows(
     stats.push({
       kind: "woodcutting", label: "Woodcutting:", base: profile.woodcutting.toLocaleString(), multiplier: "", hideEquation: true,
       total: profile.woodcutting.toLocaleString(), expandedDetail: `(Fells trees ${woodcuttingSpeed(profile.woodcutting).toFixed(2)}× as fast)`, sources: [],
+    });
+  }
+  // Each craft once practised: its level, and what it makes.
+  for (const skill of CRAFT_SKILLS) {
+    const level = profile.crafts?.[skill];
+    if (level == null) continue;
+    stats.push({
+      kind: skill, label: `${CRAFT_SKILL_NAMES[skill]}:`, base: `Lv ${level}`, multiplier: "", hideEquation: true,
+      total: `Lv ${level}`, expandedDetail: CRAFT_DETAILS[skill], sources: [],
     });
   }
   return stats;

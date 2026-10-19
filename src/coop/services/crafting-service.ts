@@ -1,0 +1,53 @@
+import { tables, type DbConnection } from "../../module_bindings";
+import { CRAFT_SKILLS, type CraftSkill } from "../../../shared/crafting";
+import { craftMaterialsKey, gradeCraftMaterials } from "../../../shared/grade-craft";
+import { reducerErrorMessage } from "./reducer-errors";
+import { withRequestDeadline } from "./request-deadline";
+
+export type CraftResult = { ok: boolean; error?: string };
+type Target = { connection: DbConnection; isCurrent: () => boolean };
+
+const noExperience = (): Record<CraftSkill, bigint> => Object.fromEntries(CRAFT_SKILLS.map(skill => [skill, 0n])) as Record<CraftSkill, bigint>;
+const isCraftSkill = (value: unknown): value is CraftSkill => (CRAFT_SKILLS as readonly unknown[]).includes(value);
+
+/** This account's craft experience by craft (my_craft_skills), and crafting through craft_grade_gear; the server judges each. */
+export function createCraftingRows(notify: () => void) {
+  let target: Target | null = null;
+  let experience = noExperience();
+
+  function watch(connection: DbConnection, isCurrent: () => boolean) {
+    target = { connection, isCurrent };
+    experience = noExperience();
+    const read = () => {
+      if (!isCurrent()) return;
+      const next = noExperience();
+      for (const row of connection.db.myCraftSkills.iter()) if (isCraftSkill(row.skill)) next[row.skill] = row.experience;
+      experience = next;
+      notify();
+    };
+    connection.db.myCraftSkills.onInsert(read); connection.db.myCraftSkills.onUpdate(read); connection.db.myCraftSkills.onDelete(read);
+    connection.subscriptionBuilder().onApplied(read).subscribe([tables.myCraftSkills]);
+  }
+
+  async function craftGradeGear(itemId: string): Promise<CraftResult> {
+    const current = target, materials = gradeCraftMaterials(itemId);
+    if (!current || !current.isCurrent() || !current.connection.isActive) return { ok: false, error: "NOT CONNECTED" };
+    if (!materials) return { ok: false, error: "That cannot be crafted." };
+    try {
+      // The recipe this client shows goes with the craft, so a changed one is refused rather than charged.
+      await withRequestDeadline(current.connection.reducers.craftGradeGear({ itemId, expectedMaterials: craftMaterialsKey(materials) }));
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, error: reducerErrorMessage(error) };
+    }
+  }
+
+  return {
+    watch,
+    api: {
+      craftSkills: (): Readonly<Record<CraftSkill, bigint>> => experience,
+      /** A graded piece crafted at its station from the recipe this client shows. */
+      craftGradeGear,
+    },
+  };
+}

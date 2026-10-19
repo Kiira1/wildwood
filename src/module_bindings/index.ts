@@ -68,6 +68,7 @@ import CompleteOnboardingStepReducer from "./complete_onboarding_step_reducer";
 import ConfigureGemCommerceReducer from "./configure_gem_commerce_reducer";
 import ConfigurePatreonReducer from "./configure_patreon_reducer";
 import ConvertItemToCosmeticReducer from "./convert_item_to_cosmetic_reducer";
+import CraftGradeGearReducer from "./craft_grade_gear_reducer";
 import CreateGuildReducer from "./create_guild_reducer";
 import DeactivateCardReducer from "./deactivate_card_reducer";
 import DestroyEquipmentReducer from "./destroy_equipment_reducer";
@@ -298,6 +299,7 @@ import MyChatMuteRow from "./my_chat_mute_table";
 import MyChoppedTreesRow from "./my_chopped_trees_table";
 import MyCopyRefinesRow from "./my_copy_refines_table";
 import MyCopySlotsRow from "./my_copy_slots_table";
+import MyCraftSkillsRow from "./my_craft_skills_table";
 import MyCutsceneHistoryRow from "./my_cutscene_history_table";
 import MyDailyGemBonusRow from "./my_daily_gem_bonus_table";
 import MyDefeatSessionRestrictionRow from "./my_defeat_session_restriction_table";
@@ -350,6 +352,7 @@ import PlayerAutoFarmPuppetRow from "./player_auto_farm_puppet_table";
 import PlayerBonusToggleRow from "./player_bonus_toggle_table";
 import PlayerChatHeartsRow from "./player_chat_hearts_table";
 import PlayerCombatRatingRow from "./player_combat_rating_table";
+import PlayerCraftLevelRow from "./player_craft_level_table";
 import PlayerDailyQuestRow from "./player_daily_quest_table";
 import PlayerDeathFrameRow from "./player_death_frame_table";
 import PlayerFreeRespecRow from "./player_free_respec_table";
@@ -670,6 +673,20 @@ const tablesSchema = __schema({
       { name: 'player_combat_rating_identity_key', constraint: 'unique', columns: ['identity'] },
     ],
   }, PlayerCombatRatingRow),
+  playerCraftLevel: __table({
+    name: 'player_craft_level',
+    indexes: [
+      { accessor: 'identity', name: 'player_craft_level_identity_idx_btree', algorithm: 'btree', columns: [
+        'identity',
+      ] },
+      { accessor: 'key', name: 'player_craft_level_key_idx_btree', algorithm: 'btree', columns: [
+        'key',
+      ] },
+    ],
+    constraints: [
+      { name: 'player_craft_level_key_key', constraint: 'unique', columns: ['key'] },
+    ],
+  }, PlayerCraftLevelRow),
   playerDailyQuest: __table({
     name: 'player_daily_quest',
     indexes: [
@@ -1276,6 +1293,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, MyCopySlotsRow),
+  myCraftSkills: __table({
+    name: 'my_craft_skills',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MyCraftSkillsRow),
   myCutsceneHistory: __table({
     name: 'my_cutscene_history',
     indexes: [
@@ -1615,6 +1639,7 @@ const reducersSchema = __reducers(
   __reducerSchema("configure_gem_commerce", ConfigureGemCommerceReducer),
   __reducerSchema("configure_patreon", ConfigurePatreonReducer),
   __reducerSchema("convert_item_to_cosmetic", ConvertItemToCosmeticReducer),
+  __reducerSchema("craft_grade_gear", CraftGradeGearReducer),
   __reducerSchema("create_guild", CreateGuildReducer),
   __reducerSchema("deactivate_card", DeactivateCardReducer),
   __reducerSchema("destroy_equipment", DestroyEquipmentReducer),

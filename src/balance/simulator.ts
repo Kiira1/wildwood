@@ -6,11 +6,17 @@ import { campaignMapTargetSeconds, CAMPAIGN_ENTRY_TARGET_SECONDS } from "../../s
 import { compareKillBudget, killTargets, normalizeKillBudget, DEFAULT_KILL_BUDGET, type KillBudgetConfig, type BossReadinessComparison } from "./kill-budget";
 import { generateMap, generatedBossStats, proceduralMapId, proceduralMapNumber, type ProceduralMapId } from "../../shared/procedural-maps";
 import { BOSS_REGEN_FRACTION_PER_SECOND, bossHitsToDefeat } from "../../shared/boss-regeneration";
-import { simulationRegularDrops, simulationTravelSeconds } from "./gameplay-model";
-import { itemTier } from "../../shared/item-tier";
+import { simulationTravelSeconds } from "./gameplay-model";
+import { rollBossGold, rollKillGold } from "../../shared/gold";
+import { luckMultiplier } from "../../shared/luck-research";
+import { nextSmithPurchase, type MasteryPointsBySchool } from "./smith-purchases";
+import { armorMoveSpeedFactor } from "../../shared/armor-class-perks";
+import { TAILWIND_SECONDS, TAILWIND_SPEED_BONUS, duelMasteryFold, hasTechnique } from "../../shared/mastery-techniques";
+import {
+  masteryAttackRange, masteryInPlay, masteryLevel, masteryPointsForReport, weaponSchool,
+} from "../../shared/weapon-mastery";
 import { REGULAR_ENEMY_RESPAWN_SECONDS } from "../game/runtime/enemies/regular-enemy-respawn";
 import { ONBOARDING_DAMAGE_REWARD, ONBOARDING_REGEN_REWARD } from "../../shared/onboarding";
-import { BLACK_BOOTS } from "../../shared/items";
 import { weaponKind } from "../../shared/equip-best";
 import { criticalDamageMultiplier } from "../../shared/critical-damage";
 import { BALANCE_TARGET_MAP_DURATION_STEP_SECONDS } from "../../shared/rules";
@@ -75,6 +81,9 @@ export const BALANCE_MAP_IDS = [
   CRYSTAL_HOLLOWS_MAP_ID, CLOCKWORK_RUINS_MAP_ID, DUSKFALL_ORCHARD_MAP_ID, NEON_BASTION_MAP_ID, VERDANT_CATACOMBS_MAP_ID, ION_CITADEL_MAP_ID,
 ] as const;
 
+export type { MasteryPointsBySchool } from "./smith-purchases";
+/** The Lab's player model: bump it when what the simulated player does changes, so cached Lab results are rebuilt. */
+export const LAB_PLAYER_MODEL = "smith-1";
 export type BalanceMapId = typeof BALANCE_MAP_IDS[number] | ProceduralMapId;
 export function balanceMapIds(endlessMaps = 0): BalanceMapId[] {
   return [...BALANCE_MAP_IDS, ...Array.from({ length: Math.max(0, Math.min(50, Math.floor(endlessMaps))) }, (_, i) => proceduralMapId(i + 1))];
@@ -155,6 +164,9 @@ export type SimulationStateSnapshot = {
   activeResearch?: { id: ResearchId; remainingSeconds: number } | null;
   activeUpgrade?: { itemId: string; level: number; remainingSeconds: number } | null;
   bossRewardClaims?: number;
+  /** Gold held, and each school's Mastery points: what buys and opens the Smith's grades. */
+  gold?: number;
+  masteryPoints?: MasteryPointsBySchool;
 };
 
 /** Offline audit input; never accepts or changes a live player save. */
@@ -168,13 +180,6 @@ export type ExistingPlayerSimulation = SimulationStateSnapshot & {
   farmBossMapIndex?: number;
 };
 
-type DropDefinition = {
-  itemId: ItemId;
-  denominator: number;
-  numerator?: number;
-  eligible?: (enemy: EnemyKind) => boolean;
-};
-
 type BossReward = { type: Exclude<RewardType, "speed" | "crit">; amount: number };
 
 export type BossDefinition = {
@@ -185,7 +190,6 @@ export type BossDefinition = {
   x: number;
   y: number;
   rewards: BossReward[];
-  drops: DropDefinition[];
 };
 
 export type BalanceMapDefinition = {
@@ -193,7 +197,6 @@ export type BalanceMapDefinition = {
   id: BalanceMapId;
   name: string;
   arrival: { x: number; y: number };
-  regularDrops: DropDefinition[];
   boss: BossDefinition | null;
 };
 
@@ -220,6 +223,10 @@ type MutableSimulationState = {
   steadyEquipmentUpgrades: boolean;
   activeUpgrade: { itemId: string; completesAt: number; level: number } | null;
   bossRewardClaims: number;
+  gold: number;
+  masteryPoints: MasteryPointsBySchool;
+  /** When the last regular kill landed: Tailwind's window. */
+  lastKillAt?: number;
 };
 
 type SiteState = ReturnType<typeof createSpawnSites>[number] & {
@@ -379,6 +386,9 @@ export type MapSummary = {
   durationP90Seconds: number | null;
   entryPowerMedian: number | null;
   exitPowerMedian: number | null;
+  /** Gold held, and the weapon's school's Mastery level, on arrival. */
+  entryGoldMedian: number | null;
+  entryMasteryLevelMedian: number | null;
   exitStatsMedian: Omit<PersistentStats, "attackRate"> | null;
   exitStatsP90: Omit<PersistentStats, "attackRate"> | null;
   exitEffectiveStatsMedian: PlayerPowerStats | null;
@@ -690,7 +700,6 @@ export function createMapDefinitions(endlessMaps = 0, settings: BalanceSettings 
       id: TUTORIAL_FOREST_MAP_ID,
       name: MAP_DISPLAY_NAMES[TUTORIAL_FOREST_MAP_ID],
       arrival: bootstrap.startSpawn,
-      regularDrops: simulationRegularDrops(TUTORIAL_FOREST_MAP_ID),
       boss: {
         kind: "dragon",
         name: "Dragon",
@@ -698,14 +707,12 @@ export function createMapDefinitions(endlessMaps = 0, settings: BalanceSettings 
         x: bootstrap.bosses.dragon.x,
         y: bootstrap.bosses.dragon.y,
         rewards: [{ type: "damage", amount: BOSS_RULES.DRAGON_REWARD_DAMAGE }],
-        drops: [],
       },
     },
     {
       id: BEGINNER_DESERT_MAP_ID,
       name: MAP_DISPLAY_NAMES[BEGINNER_DESERT_MAP_ID],
       arrival: bootstrap.mapConfig[BEGINNER_DESERT_MAP_ID].arrival,
-      regularDrops: simulationRegularDrops(BEGINNER_DESERT_MAP_ID),
       boss: {
         kind: "spider",
         name: "Desert Scorpion",
@@ -716,14 +723,12 @@ export function createMapDefinitions(endlessMaps = 0, settings: BalanceSettings 
           { type: "damage", amount: BOSS_RULES.SPIDER_REWARD_DAMAGE },
           { type: "health", amount: BOSS_RULES.SPIDER_REWARD_HEALTH },
         ],
-        drops: [],
       },
     },
     {
       id: INTERMEDIATE_SNOWLANDS_MAP_ID,
       name: MAP_DISPLAY_NAMES[INTERMEDIATE_SNOWLANDS_MAP_ID],
       arrival: bootstrap.mapConfig[INTERMEDIATE_SNOWLANDS_MAP_ID].arrival,
-      regularDrops: simulationRegularDrops(INTERMEDIATE_SNOWLANDS_MAP_ID),
       boss: {
         kind: "frostclaw",
         name: "Frostclaw",
@@ -735,14 +740,12 @@ export function createMapDefinitions(endlessMaps = 0, settings: BalanceSettings 
           { type: "health", amount: BOSS_RULES.FROSTCLAW_REWARD_HEALTH },
           { type: "armor", amount: BOSS_RULES.FROSTCLAW_REWARD_ARMOR },
         ],
-        drops: [],
       },
     },
     {
       id: ADVANCED_LAVA_WASTES_MAP_ID,
       name: MAP_DISPLAY_NAMES[ADVANCED_LAVA_WASTES_MAP_ID],
       arrival: bootstrap.mapConfig[ADVANCED_LAVA_WASTES_MAP_ID].arrival,
-      regularDrops: simulationRegularDrops(ADVANCED_LAVA_WASTES_MAP_ID),
       boss: {
         kind: "magmalisk",
         name: "Magmalisk",
@@ -755,14 +758,12 @@ export function createMapDefinitions(endlessMaps = 0, settings: BalanceSettings 
           { type: "armor", amount: BOSS_RULES.MAGMALISK_REWARD_ARMOR },
           { type: "regen", amount: BOSS_RULES.MAGMALISK_REWARD_REGEN },
         ],
-        drops: [],
       },
     },
     {
       id: INFERNAL_DEPTHS_MAP_ID,
       name: MAP_DISPLAY_NAMES[INFERNAL_DEPTHS_MAP_ID],
       arrival: bootstrap.mapConfig[INFERNAL_DEPTHS_MAP_ID].arrival,
-      regularDrops: simulationRegularDrops(INFERNAL_DEPTHS_MAP_ID),
       boss: {
         kind: "gloomroot",
         name: "Gloomroot",
@@ -775,14 +776,12 @@ export function createMapDefinitions(endlessMaps = 0, settings: BalanceSettings 
           { type: "armor", amount: BOSS_RULES.GLOOMROOT_REWARD_ARMOR },
           { type: "regen", amount: BOSS_RULES.GLOOMROOT_REWARD_REGEN },
         ],
-        drops: [],
       },
     },
     {
       id: WATER_REACH_MAP_ID,
       name: MAP_DISPLAY_NAMES[WATER_REACH_MAP_ID],
       arrival: bootstrap.mapConfig[WATER_REACH_MAP_ID].arrival,
-      regularDrops: simulationRegularDrops(WATER_REACH_MAP_ID),
       boss: {
         kind: "tidewyrm",
         name: "Tidewyrm",
@@ -795,14 +794,12 @@ export function createMapDefinitions(endlessMaps = 0, settings: BalanceSettings 
           { type: "armor", amount: BOSS_RULES.TIDEWYRM_REWARD_ARMOR },
           { type: "regen", amount: BOSS_RULES.TIDEWYRM_REWARD_REGEN },
         ],
-        drops: [],
       },
     },
     {
       id: SAMURAI_GARDEN_MAP_ID,
       name: MAP_DISPLAY_NAMES[SAMURAI_GARDEN_MAP_ID],
       arrival: bootstrap.mapConfig[SAMURAI_GARDEN_MAP_ID].arrival,
-      regularDrops: simulationRegularDrops(SAMURAI_GARDEN_MAP_ID),
       boss: {
         kind: "koiShogun",
         name: "Koi Shogun",
@@ -815,14 +812,12 @@ export function createMapDefinitions(endlessMaps = 0, settings: BalanceSettings 
           { type: "armor", amount: BOSS_RULES.KOI_SHOGUN_REWARD_ARMOR },
           { type: "regen", amount: BOSS_RULES.KOI_SHOGUN_REWARD_REGEN },
         ],
-        drops: [],
       },
     },
     {
       id: CLOUDSPIRE_MAP_ID,
       name: MAP_DISPLAY_NAMES[CLOUDSPIRE_MAP_ID],
       arrival: bootstrap.mapConfig[CLOUDSPIRE_MAP_ID].arrival,
-      regularDrops: simulationRegularDrops(CLOUDSPIRE_MAP_ID),
       boss: {
         kind: "tempestKirin",
         name: "Tempest Kirin",
@@ -835,14 +830,12 @@ export function createMapDefinitions(endlessMaps = 0, settings: BalanceSettings 
           { type: "armor", amount: BOSS_RULES.TEMPEST_KIRIN_REWARD_ARMOR },
           { type: "regen", amount: BOSS_RULES.TEMPEST_KIRIN_REWARD_REGEN },
         ],
-        drops: [],
       },
     },
     {
       id: MOONFEN_MAP_ID,
       name: MAP_DISPLAY_NAMES[MOONFEN_MAP_ID],
       arrival: bootstrap.mapConfig[MOONFEN_MAP_ID].arrival,
-      regularDrops: simulationRegularDrops(MOONFEN_MAP_ID),
       boss: {
         kind: "miremaw",
         name: "Miremaw",
@@ -855,14 +848,12 @@ export function createMapDefinitions(endlessMaps = 0, settings: BalanceSettings 
           { type: "armor", amount: BOSS_RULES.MIREMAW_REWARD_ARMOR },
           { type: "regen", amount: BOSS_RULES.MIREMAW_REWARD_REGEN },
         ],
-        drops: [],
       },
     },
     {
       id: CRYSTAL_HOLLOWS_MAP_ID,
       name: MAP_DISPLAY_NAMES[CRYSTAL_HOLLOWS_MAP_ID],
       arrival: bootstrap.mapConfig[CRYSTAL_HOLLOWS_MAP_ID].arrival,
-      regularDrops: simulationRegularDrops(CRYSTAL_HOLLOWS_MAP_ID),
       boss: {
         kind: "prismshell",
         name: "Prismshell",
@@ -875,13 +866,11 @@ export function createMapDefinitions(endlessMaps = 0, settings: BalanceSettings 
           { type: "armor", amount: BOSS_RULES.PRISMSHELL_REWARD_ARMOR },
           { type: "regen", amount: BOSS_RULES.PRISMSHELL_REWARD_REGEN },
         ],
-        drops: [],
       },
     }, {
       id: CLOCKWORK_RUINS_MAP_ID,
       name: MAP_DISPLAY_NAMES[CLOCKWORK_RUINS_MAP_ID],
       arrival: bootstrap.mapConfig[CLOCKWORK_RUINS_MAP_ID].arrival,
-      regularDrops: simulationRegularDrops(CLOCKWORK_RUINS_MAP_ID),
       boss: {
         kind: "ironhorn",
         name: "Ironhorn",
@@ -894,13 +883,11 @@ export function createMapDefinitions(endlessMaps = 0, settings: BalanceSettings 
           { type: "armor", amount: BOSS_RULES.IRONHORN_REWARD_ARMOR },
           { type: "regen", amount: BOSS_RULES.IRONHORN_REWARD_REGEN },
         ],
-        drops: [],
       },
     }, {
       id: DUSKFALL_ORCHARD_MAP_ID,
       name: MAP_DISPLAY_NAMES[DUSKFALL_ORCHARD_MAP_ID],
       arrival: bootstrap.mapConfig[DUSKFALL_ORCHARD_MAP_ID].arrival,
-      regularDrops: simulationRegularDrops(DUSKFALL_ORCHARD_MAP_ID),
       boss: {
         kind: "dreadreaper",
         name: "Dreadreaper",
@@ -913,13 +900,11 @@ export function createMapDefinitions(endlessMaps = 0, settings: BalanceSettings 
           { type: "armor", amount: BOSS_RULES.DREADREAPER_REWARD_ARMOR },
           { type: "regen", amount: BOSS_RULES.DREADREAPER_REWARD_REGEN },
         ],
-        drops: [],
       },
     }, {
       id: NEON_BASTION_MAP_ID,
       name: MAP_DISPLAY_NAMES[NEON_BASTION_MAP_ID],
       arrival: bootstrap.mapConfig[NEON_BASTION_MAP_ID].arrival,
-      regularDrops: simulationRegularDrops(NEON_BASTION_MAP_ID),
       boss: {
         kind: "voltwarden",
         name: "Voltwarden",
@@ -932,13 +917,11 @@ export function createMapDefinitions(endlessMaps = 0, settings: BalanceSettings 
           { type: "armor", amount: BOSS_RULES.VOLTWARDEN_REWARD_ARMOR },
           { type: "regen", amount: BOSS_RULES.VOLTWARDEN_REWARD_REGEN },
         ],
-        drops: [],
       },
     }, {
       id: VERDANT_CATACOMBS_MAP_ID,
       name: MAP_DISPLAY_NAMES[VERDANT_CATACOMBS_MAP_ID],
       arrival: bootstrap.mapConfig[VERDANT_CATACOMBS_MAP_ID].arrival,
-      regularDrops: simulationRegularDrops(VERDANT_CATACOMBS_MAP_ID),
       boss: {
         kind: "gravebloom",
         name: "Gravebloom",
@@ -951,13 +934,11 @@ export function createMapDefinitions(endlessMaps = 0, settings: BalanceSettings 
           { type: "armor", amount: BOSS_RULES.GRAVEBLOOM_REWARD_ARMOR },
           { type: "regen", amount: BOSS_RULES.GRAVEBLOOM_REWARD_REGEN },
         ],
-        drops: [],
       },
     }, {
       id: ION_CITADEL_MAP_ID,
       name: MAP_DISPLAY_NAMES[ION_CITADEL_MAP_ID],
       arrival: bootstrap.mapConfig[ION_CITADEL_MAP_ID].arrival,
-      regularDrops: simulationRegularDrops(ION_CITADEL_MAP_ID),
       boss: {
         kind: "aegisPrime",
         name: "Aegis Prime",
@@ -970,16 +951,15 @@ export function createMapDefinitions(endlessMaps = 0, settings: BalanceSettings 
           { type: "armor", amount: BOSS_RULES.AEGIS_PRIME_REWARD_ARMOR },
           { type: "regen", amount: BOSS_RULES.AEGIS_PRIME_REWARD_REGEN },
         ],
-        drops: [],
       },
     },
   ];
   for (const id of balanceMapIds(endlessMaps).slice(BALANCE_MAP_IDS.length)) {
     const generated = generateMap(id as ProceduralMapId);
     const boss = generatedBossStats(generated);
-    maps.push({ id, name: balanceMapName(id), arrival: generated.arrival, regularDrops: [],
+    maps.push({ id, name: balanceMapName(id), arrival: generated.arrival,
       boss: { kind: "aegisPrime", name: `Endless ${generated.number} Warden`, hp: boss.hp,
-        strongestHit: boss.damage, ...generated.boss, rewards: boss.rewards.filter((reward): reward is BossReward => reward.type !== "speed" && reward.type !== "crit"), drops: [] } });
+        strongestHit: boss.damage, ...generated.boss, rewards: boss.rewards.filter((reward): reward is BossReward => reward.type !== "speed" && reward.type !== "crit") } });
   }
   return maps.map(map => resolveSimulationMap(map, settings));
 }
@@ -1066,12 +1046,14 @@ function stateSnapshot(state: MutableSimulationState): SimulationStateSnapshot {
     activeResearch: state.activeResearch && { id: state.activeResearch.id, remainingSeconds: Math.max(0, state.activeResearch.completesAt - state.time) },
     activeUpgrade: state.activeUpgrade && { itemId: state.activeUpgrade.itemId, level: state.activeUpgrade.level, remainingSeconds: Math.max(0, state.activeUpgrade.completesAt - state.time) },
     bossRewardClaims: state.bossRewardClaims,
+    gold: state.gold,
+    masteryPoints: { ...state.masteryPoints },
   };
 }
 
 type EffectiveStatsState = Pick<
   SimulationStateSnapshot,
-  "stats" | "research" | "equipped" | "itemUpgradeLevel" | "itemUpgradeLevels" | "equipmentStrengthMultiplier"
+  "stats" | "research" | "equipped" | "itemUpgradeLevel" | "itemUpgradeLevels" | "equipmentStrengthMultiplier" | "masteryPoints"
 >;
 
 /** Slot tiers persist through equipment swaps; accept legacy per-item audit inputs. */
@@ -1138,15 +1120,33 @@ function criticalMultiplierFor(state: EffectiveStatsState) {
   return criticalDamageMultiplier({ researchRank: state.research.criticalDamage, rating: state.stats.critRating, capRank: state.research.critCap });
 }
 
+/** The Mastery the build fights with: the school of the weapon in hand, at its level. */
+function masteryFor(state: Pick<EffectiveStatsState, "masteryPoints" | "equipped">) {
+  return masteryInPlay(state.masteryPoints, state.equipped.weapon);
+}
+
 function combatStats(state: EffectiveStatsState) {
   const effective = effectiveStats(state);
   const criticalChance = Math.min(1, Math.max(0, state.research.criticalChance * .01));
   const criticalMultiplier = criticalMultiplierFor(state);
-  const averageHit = effective.damage * (1 + criticalChance * (criticalMultiplier - 1));
+  let averageHit = effective.damage * (1 + criticalChance * (criticalMultiplier - 1));
+  let attackRate = effective.attackRate, regen = effective.regen;
+  const mastery = masteryFor(state);
+  if (mastery.level > 0) {
+    // Techniques as expected values, the way duels fold them: forced crits, marks, Momentum, Bloodlust.
+    const fold = duelMasteryFold({ mastery, crit: { chance: criticalChance, multiplier: criticalMultiplier }, damage: effective.damage,
+      attackInterval: Math.max(MIN_ATTACK_INTERVAL, attackRate), maxHp: effective.maxHp, deflect: 0,
+      opponent: { damage: 0, attackInterval: 1, ranged: false } });
+    averageHit *= fold.damage;
+    attackRate = fold.attackInterval;
+    regen += fold.regen;
+  }
   return {
     ...effective,
+    attackRate,
+    regen,
     averageHit,
-    dps: averageHit / Math.max(MIN_ATTACK_INTERVAL, effective.attackRate),
+    dps: averageHit / Math.max(MIN_ATTACK_INTERVAL, attackRate),
   };
 }
 
@@ -1264,8 +1264,7 @@ export function advanceTime(
 
 /**
  * Where the Lab's player wears an item. It plays an archer, fighting from bow range as most players do, and
- * a weapon only replaces one of its own kind (shared/equip-best.ts), so a sword has no place on it: its loot
- * still rolls, as in the game, and stays in the bag.
+ * a weapon only replaces one of its own kind (shared/equip-best.ts), so a sword or staff has no place on it.
  */
 function equipmentSlot(itemId: ItemId): keyof EquippedItems | null {
   const slot = ITEM_DEFINITIONS[itemId].slot;
@@ -1279,7 +1278,7 @@ function equipBestAvailableItems(state: MutableSimulationState) {
   for (const slot of ["weapon", "head", "chest"] as const) {
     state.equipped[slot] = "";
     for (const itemId of state.ownedItems) {
-      if ((itemTier(itemId) ?? 1) > state.mapIndex + 1 || equipmentSlot(itemId as ItemId) !== slot) continue;
+      if (!ITEM_DEFINITIONS[itemId as ItemId] || equipmentSlot(itemId as ItemId) !== slot) continue;
       const previous = state.equipped[slot];
       const before = powerForState(state);
       state.equipped[slot] = itemId;
@@ -1301,35 +1300,35 @@ export function startNextEquipmentUpgrade(state: MutableSimulationState) {
   equipBestAvailableItems(state);
 }
 
-function acquireAndAutoEquip(state: MutableSimulationState, itemId: ItemId, recordHistory: () => void) {
-  if (state.ownedItems.has(itemId)) return;
-  state.ownedItems.add(itemId);
-  if (itemId === BLACK_BOOTS) state.bootsEquipped = true;
+/** Wears a newly owned piece unless it would lower power. */
+function equipIfStronger(state: MutableSimulationState, itemId: ItemId) {
   const slot = equipmentSlot(itemId);
   if (!slot) return;
   const previous = state.equipped[slot];
   const previousPower = powerForState(state);
   state.equipped[slot] = itemId;
-  if (powerForState(state) + .0001 < previousPower) {
-    state.equipped[slot] = previous;
-    return;
-  }
-  recordHistory();
+  if (powerForState(state) + .0001 < previousPower) state.equipped[slot] = previous;
 }
 
-function rollDrops(
-  state: MutableSimulationState,
-  drops: readonly DropDefinition[],
-  enemy: EnemyKind | null,
-  random: () => number,
-  recordHistory: () => void,
-) {
-  for (const drop of drops) {
-    if (enemy && drop.eligible && !drop.eligible(enemy)) continue;
-    if (random() >= (drop.numerator ?? 1) / drop.denominator) continue;
-    acquireAndAutoEquip(state, drop.itemId, recordHistory);
+/** Gear comes only from the Smith: each next grade bought as soon as Mastery opens it and the gold is there, and worn. */
+export function buyGradeGear(state: MutableSimulationState, recordHistory: () => void) {
+  for (let buy = nextSmithPurchase(state.equipped.weapon, state.ownedItems, state.gold, state.masteryPoints); buy;
+    buy = nextSmithPurchase(state.equipped.weapon, state.ownedItems, state.gold, state.masteryPoints)) {
+    state.gold -= buy.price;
+    state.ownedItems.add(buy.itemId);
+    equipIfStronger(state, buy.itemId as ItemId);
+    recordHistory();
   }
 }
+
+/** Points to the school of the weapon in hand. */
+function addMastery(state: MutableSimulationState, points: number) {
+  const school = weaponSchool(state.equipped.weapon);
+  state.masteryPoints[school] = (state.masteryPoints[school] ?? 0) + points;
+}
+
+/** Gold Luck's factor on the gold drop chance (the Lab wears no Treasure cards). */
+const goldChanceMultiplier = (state: MutableSimulationState) => luckMultiplier("gearLuck", state.research.gearLuck);
 
 function travelSeconds(
   from: { x: number; y: number },
@@ -1337,8 +1336,15 @@ function travelSeconds(
   state: MutableSimulationState,
   pathingMultiplier: number,
 ) {
-  const approachDistance = Math.max(0, Math.hypot(to.x - from.x, to.y - from.y) - DEFAULT_ATTACK_RANGE * .72);
-  return simulationTravelSeconds(approachDistance * pathingMultiplier, state.research.moveSpeed, state.bootsEquipped);
+  const mastery = masteryFor(state);
+  // Archery's range lets it stop shorter; Light and Heavy armor change the pace.
+  const approachDistance = Math.max(0, Math.hypot(to.x - from.x, to.y - from.y) - (DEFAULT_ATTACK_RANGE + masteryAttackRange(mastery)) * .72);
+  const seconds = simulationTravelSeconds(approachDistance * pathingMultiplier, state.research.moveSpeed, state.bootsEquipped,
+    armorMoveSpeedFactor(state.equipped.head, state.equipped.chest));
+  if (!hasTechnique(mastery, "tailwind") || state.lastKillAt === undefined) return seconds;
+  // Tailwind: the first seconds after a kill are walked faster.
+  const window = Math.max(0, state.lastKillAt + TAILWIND_SECONDS - state.time), boosted = 1 + TAILWIND_SPEED_BONUS;
+  return seconds <= window * boosted ? seconds / boosted : seconds - window * TAILWIND_SPEED_BONUS;
 }
 
 function projectedRewardPowerGain(
@@ -1832,6 +1838,8 @@ function simulateTrial(
 ): TrialResult {
   const MAP_DEFINITIONS = createMapDefinitions(config.endlessMaps, config.balanceSettings);
   const random = seededRandom(config.seed + trialIndex * 104_729);
+  // Gold rolls on a stream of their own, so the farming choices draw the same numbers with or without them.
+  const goldRandom = seededRandom((config.seed ^ 0x5bd1e995) + trialIndex * 104_729);
   const behavior = trialBehavior(config.strategy, random);
   const state: MutableSimulationState = {
     time: 0,
@@ -1850,6 +1858,8 @@ function simulateTrial(
     equipmentStrengthMultiplier: config.equipmentStrengthMultiplier,
     activeResearch: null,
     bossRewardClaims: 0,
+    gold: 0,
+    masteryPoints: {},
   };
   const history: HistoryPoint[] = [];
   const records: TrialMapRecord[] = [];
@@ -1867,7 +1877,10 @@ function simulateTrial(
     // A snapshot taken mid-run carries its research and upgrade timers on.
     if (existing.activeResearch) state.activeResearch = { id: existing.activeResearch.id, completesAt: existing.activeResearch.remainingSeconds };
     if (existing.activeUpgrade) state.activeUpgrade = { itemId: existing.activeUpgrade.itemId, level: existing.activeUpgrade.level, completesAt: existing.activeUpgrade.remainingSeconds };
+    state.gold = Math.max(0, existing.gold ?? 0);
+    state.masteryPoints = { ...existing.masteryPoints };
     equipBestAvailableItems(state);
+    buyGradeGear(state, () => {});
   }
   let position = { ...MAP_DEFINITIONS[state.mapIndex].arrival };
   let sites = createSites(MAP_DEFINITIONS[state.mapIndex]);
@@ -1999,7 +2012,6 @@ function simulateTrial(
       const powerBeforeRepeat = powerForState(state);
       state.lastCombatAt = state.time;
       applyBossReward(record, map, config.mapAdjustments[map.id], false);
-      rollDrops(state, map.boss.drops, null, random, recordHistory);
       // What the kill paid, read before the loot pause: research finishing in
       // that pause (Vitality is live since 0.883) is not the boss's doing.
       const repeatGain = Math.max(0, powerForState(state) - powerBeforeRepeat);
@@ -2070,7 +2082,8 @@ function simulateTrial(
   const diedTo = new Map<string, number>();
   let chasing = new Set<SiteState>();
   const recentlyDiedTo = (site: SiteState) => state.time - (diedTo.get(site.campName) ?? -Infinity) < DIED_TO_CAMP_SECONDS;
-  const playerSpeed = () => 1 / Math.max(1e-9, simulationTravelSeconds(1, state.research.moveSpeed, state.bootsEquipped));
+  const playerSpeed = () => 1 / Math.max(1e-9, simulationTravelSeconds(1, state.research.moveSpeed, state.bootsEquipped,
+    armorMoveSpeedFactor(state.equipped.head, state.equipped.chest)));
   // Auto's defeat limit: too many deaths too quickly and the player farms the
   // map behind until its build has grown and some time has passed. The map
   // ahead keeps its camps (and its clear count) for the return.
@@ -2131,7 +2144,10 @@ function simulateTrial(
       if (bossOutcome) state.missingHealth = Math.max(0, combatStats(state).maxHp - bossOutcome.health);
       state.lastCombatAt = state.time;
       const bossRewardPowerGain = applyBossReward(mapRecord, map, adjustment);
-      rollDrops(state, map.boss.drops, null, random, recordHistory);
+      // A first clear pays gold and Mastery; repeats pay neither.
+      state.gold += rollBossGold(goldRandom);
+      addMastery(state, masteryPointsForReport(0, true));
+      buyGradeGear(state, recordHistory);
       recordHistory();
       mapRecord.exitedAtSeconds = state.time;
       mapRecord.exitPower = powerForState(state);
@@ -2169,7 +2185,6 @@ function simulateTrial(
       advanceTime(state, Math.min(config.durationSeconds, state.time + MAP_TRANSITION_SECONDS), config.researchPlan, recordHistory);
       if (state.time >= config.durationSeconds) break;
       state.mapIndex += 1;
-      if (existing) equipBestAvailableItems(state);
       const nextMap = MAP_DEFINITIONS[state.mapIndex];
       position = { ...nextMap.arrival };
       sites = createSites(nextMap);
@@ -2245,7 +2260,10 @@ function simulateTrial(
     mapRecord.statInvestments[stat].rewardEvents += 1;
     mapRecord.regularKills += 1;
     if (!fallback) mapRecord.fullClears = Math.min(...sites.map((site) => site.kills));
-    rollDrops(state, farmMap.regularDrops, selected.site.type, random, recordHistory);
+    state.lastKillAt = state.time - LOOT_AND_RETARGET_SECONDS;
+    state.gold += rollKillGold(1, goldRandom, goldChanceMultiplier(state));
+    addMastery(state, masteryPointsForReport(1, false));
+    buyGradeGear(state, recordHistory);
     recordHistory();
   }
 
@@ -2295,6 +2313,11 @@ function quantile(values: number[], probability: number) {
 
 function numericQuantile(values: number[], probability: number) {
   return quantile(values, probability) ?? 0;
+}
+
+/** A snapshot's Mastery level in the school of the weapon it holds. */
+export function snapshotMasteryLevel(snapshot: Pick<SimulationStateSnapshot, "masteryPoints" | "equipped">) {
+  return masteryLevel(snapshot.masteryPoints?.[weaponSchool(snapshot.equipped.weapon)] ?? 0);
 }
 
 function mapRecordFor(trial: TrialResult, mapId: BalanceMapId) {
@@ -2465,6 +2488,8 @@ function mapSummary(
     durationP90Seconds: quantile(durations, .9),
     entryPowerMedian: quantile(records.map((record) => record.entryPower), .5),
     exitPowerMedian: quantile(records.map((record) => record.exitPower), .5),
+    entryGoldMedian: quantile(records.map((record) => record.entryState.gold ?? 0), .5),
+    entryMasteryLevelMedian: quantile(records.map((record) => snapshotMasteryLevel(record.entryState)), .5),
     exitStatsMedian: exitStatsAt(.5),
     exitStatsP90: exitStatsAt(.9),
     exitEffectiveStatsMedian: exitEffectiveStatsAt(.5),
@@ -2633,7 +2658,7 @@ function buildDiagnostics(
   finalPower: BalanceSimulationResult["finalPower"],
   enemyMetrics: Record<BalanceMapId, EnemyBalanceMetric[]>,
 ) {
-  const diagnostics: string[] = ["Model scope: clock starts after the completed tutorial; loot uses the live catalog. Boss readiness and initial full clears are strategy assumptions, not unlock requirements. Each fight counts the target and every camp mate it wakes (aggro radius, group camps, chasers from the last fight), hit by hit after armor, and health carries between fights with regeneration. A death costs the fight in progress, the death screen and the walk back from the map's arrival; a camp just died to is skipped for 10 minutes, and 5 deaths in 3 minutes send the player back a map until it has 1.2× the power and 10 minutes have passed (Auto's rules). Bosses are fought from full health with every ability turn landing; a lost boss fight is a death, retried only once the build would win it. Nobody dodges or kites; loot arrives at once, one upgrade bench, no paid skips."];
+  const diagnostics: string[] = ["Model scope: clock starts after the completed tutorial; no map drops gear: kills pay gold (10% drop 1-3, a first boss clear 2-4) and Weapon Mastery (1 a kill, 50 a first boss clear), and the archer buys the Smith's next bow, Light helmet and Light armor grade as soon as Mastery opens it and the gold is there. Mastery's range, Steady Aim and Hunter's Mark (as expected values), Tailwind and Light armor's speed are modeled; weapon skills (so Skill Proficiency, Volley, Rain of Arrows) are not. Boss readiness and initial full clears are strategy assumptions, not unlock requirements. Each fight counts the target and every camp mate it wakes (aggro radius, group camps, chasers from the last fight), hit by hit after armor, and health carries between fights with regeneration. A death costs the fight in progress, the death screen and the walk back from the map's arrival; a camp just died to is skipped for 10 minutes, and 5 deaths in 3 minutes send the player back a map until it has 1.2× the power and 10 minutes have passed (Auto's rules). Bosses are fought from full health with every ability turn landing; a lost boss fight is a death, retried only once the build would win it. Nobody dodges or kites; gold arrives at once, one upgrade bench, no paid skips."];
   let measuredPacingTargets = 0;
   let pacingTargetsOnTrack = 0;
   let measuredPowerTargets = 0;
@@ -2863,9 +2888,9 @@ function buildDiagnostics(
   }
   const spread = finalPower.p10 > 0 ? finalPower.p90 / finalPower.p10 : 1;
   if (spread > 3) {
-    diagnostics.push(`Random equipment drops create a ${spread.toFixed(1)}× P90-to-P10 final-power spread, above the current 3× hard band; inspect loot timing before changing base rewards.`);
+    diagnostics.push(`Runs end ${spread.toFixed(1)}× apart in final power (P90 to P10), above the current 3× hard band; inspect strategy mix and Smith purchase timing before changing base rewards.`);
   } else if (spread > 1.75) {
-    diagnostics.push(`Random equipment drops create a ${spread.toFixed(1)}× P90-to-P10 final-power spread; this is playable but remains above the 1.75× long-term ideal.`);
+    diagnostics.push(`Runs end ${spread.toFixed(1)}× apart in final power (P90 to P10); this is playable but remains above the 1.75× long-term ideal.`);
   }
   for (const map of maps.filter((entry) => entry.reachedPercent >= 50)) {
     const metrics = enemyMetrics[map.mapId];

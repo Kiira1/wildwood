@@ -358,6 +358,12 @@
       "slots:u8",
       "cards:array(string)"
     ],
+    "my_craft_skills": [
+      "key:string",
+      "identity:identity",
+      "skill:string",
+      "experience:u64"
+    ],
     "my_cutscene_history": [
       "identity:identity",
       "seenMask:u32",
@@ -725,6 +731,12 @@
     "player_combat_rating": [
       "identity:identity",
       "critDamage:f64"
+    ],
+    "player_craft_level": [
+      "key:string",
+      "identity:identity",
+      "skill:string",
+      "level:u8"
     ],
     "player_daily_quest": [
       "identity:identity",

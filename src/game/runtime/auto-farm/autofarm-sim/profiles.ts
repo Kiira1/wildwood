@@ -1,4 +1,5 @@
 import { MAP_IDS as CAMPAIGN_MAP_IDS, DEFAULT_ATTACK_INTERVAL, PLAYER_BASE_DAMAGE, PLAYER_BASE_HP, PLAYER_BASE_REGEN } from '../../../../../shared/rules';
+import { BASIC_PAPER_HAT, STARTER_STONE } from '../../../../../shared/items';
 import type { FoldedArrival, ReferenceBuild } from './reference-builds';
 import type { VirtualPlayerProfile } from './virtual-player';
 
@@ -7,7 +8,7 @@ type Scale = { damage?: number; maxHp?: number; armor?: number; regen?: number }
 /**
  * The virtual players. Campaign players start from the Balance Lab's build on
  * arrival at their map (reference-builds.ts), each stat scaled, wearing the
- * gear the Lab had found by then. "Map n" counts from 1 = Forest.
+ * Smith's gear the Lab had bought by then, with its gold and Mastery to buy on. "Map n" counts from 1 = Forest.
  */
 export function virtualPlayers(references: readonly ReferenceBuild[], arrivals: readonly FoldedArrival[] = []): VirtualPlayerProfile[] {
   const map = (number: number) => CAMPAIGN_MAP_IDS[number - 1];
@@ -20,7 +21,8 @@ export function virtualPlayers(references: readonly ReferenceBuild[], arrivals: 
       name, seed, startMap: map(mapNumber), highestUnlocked: mapNumber - 1, push: 'normal', advance: true,
       base: { damage: build.stats.damage * (scale.damage ?? 1), maxHp: build.stats.maxHp * (scale.maxHp ?? 1),
         armor: build.stats.armor * (scale.armor ?? 1), regen: build.stats.regen * (scale.regen ?? 1), attackRate: build.stats.attackRate },
-      weapon: build.equipped.weapon || 'starter_bow', head: build.equipped.head, chest: build.equipped.chest, ...extra,
+      weapon: build.equipped.weapon || STARTER_STONE, head: build.equipped.head, chest: build.equipped.chest,
+      gold: build.gold, masteryPoints: { ...build.masteryPoints }, ...extra,
     };
   }
   const glass = { damage: 1.5, maxHp: .6, armor: .6 };
@@ -28,11 +30,12 @@ export function virtualPlayers(references: readonly ReferenceBuild[], arrivals: 
   const endless: VirtualPlayerProfile = {
     ...campaignPlayer('endless-entrant', 7, 15, {}), bossBeaten: true,
     // Map 15 cleared: the Lab's build leaving it, or three times its entry where the Lab never left.
-    ...(last.exit ? { base: last.exit.stats, weapon: last.exit.equipped.weapon, head: last.exit.equipped.head, chest: last.exit.equipped.chest }
+    ...(last.exit ? { base: last.exit.stats, weapon: last.exit.equipped.weapon, head: last.exit.equipped.head, chest: last.exit.equipped.chest,
+      gold: last.exit.gold, masteryPoints: { ...last.exit.masteryPoints } }
       : { base: { ...last.stats, damage: last.stats.damage * 3, maxHp: last.stats.maxHp * 3, armor: last.stats.armor * 3, regen: last.stats.regen * 3 } }),
   };
   const players: VirtualPlayerProfile[] = [
-    { name: 'fresh', seed: 1, startMap: map(1), highestUnlocked: 0, weapon: 'starter_bow', push: 'normal', advance: true,
+    { name: 'fresh', seed: 1, startMap: map(1), highestUnlocked: 0, weapon: STARTER_STONE, head: BASIC_PAPER_HAT, push: 'normal', advance: true,
       base: { damage: PLAYER_BASE_DAMAGE, maxHp: PLAYER_BASE_HP, armor: 0, regen: PLAYER_BASE_REGEN, attackRate: DEFAULT_ATTACK_INTERVAL } },
     campaignPlayer('glass-cannon', 2, 5, glass),
     campaignPlayer('tank', 3, 5, { damage: .6, maxHp: 1.5, armor: 1.5, regen: 1.5 }),
@@ -57,7 +60,8 @@ export function virtualPlayers(references: readonly ReferenceBuild[], arrivals: 
     if (!build) return [];
     const endless = mapId.startsWith('endless_') ? Number(mapId.slice('endless_'.length)) : 0;
     return [{ name, seed, startMap: mapId, highestUnlocked: endless ? CAMPAIGN_MAP_IDS.length : CAMPAIGN_MAP_IDS.indexOf(mapId), endlessCompleted: endless ? endless - 1 : 0,
-      weapon: 'starter_bow', push: 'normal', advance: true, base: { ...build.stats }, ...extra }];
+      weapon: build.equipped.weapon || STARTER_STONE, head: build.equipped.head, chest: build.equipped.chest, gold: build.gold, masteryPoints: { ...build.masteryPoints },
+      push: 'normal', advance: true, base: { ...build.stats }, ...extra }];
   };
   return [...players.filter(player => !missing.has(player.startMap)),
     ...arrival('lab-cloudspire', 13, 'cloudspire'), ...arrival('lab-endless-3', 14, 'endless_3'), ...arrival('lab-endless-10', 15, 'endless_10')];

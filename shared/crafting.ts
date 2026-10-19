@@ -57,7 +57,7 @@ export function craftMaterials(grade: GearGrade, kind: CraftKind, armorClass?: A
   return materials;
 }
 
-/** What a craft gives: a refine to start, and better luck on a weapon's skill roll. */
+/** What a craft gives: a refine to start, and a weapon's skills rolled twice with better luck, keeping the higher. */
 export const CRAFTED_REFINE = 2;
 export const CRAFTED_SKILL_LUCK_RANKS = 3;
 
@@ -71,7 +71,8 @@ export const CRAFT_MAX_LEVEL = 99;
  */
 export function craftExperienceForLevel(level: number) {
   const clamped = Math.max(1, Math.min(CRAFT_MAX_LEVEL, Math.floor(Number.isFinite(level) ? level : 1)));
-  return Math.round(.15 * (clamped - 1) ** 3.4);
+  // Rounded up, so level 2 takes a craft rather than none.
+  return Math.ceil(.15 * (clamped - 1) ** 3.4);
 }
 export function craftLevel(experience: number | bigint) {
   const value = Math.max(0, Number(experience) || 0);

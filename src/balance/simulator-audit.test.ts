@@ -13,7 +13,7 @@ function snapshot(): ExistingPlayerSimulation {
   };
 }
 
-it("audits an existing save without changing the input or granting access to higher maps", () => {
+it("audits an existing save without changing the input or granting access to higher maps; old gear stays usable", () => {
   const input = snapshot(), original = structuredClone(input);
   const result = simulateExistingPlayer({ durationSeconds: 60, trials: 1, steadyEquipmentUpgrades: false }, input);
   expect(input).toEqual(original);
@@ -21,7 +21,8 @@ it("audits an existing save without changing the input or granting access to hig
   expect(result.maps[0].mapId).toBe("tutorial_forest");
   expect(result.maps[0].entryPower).toBeGreaterThan(100);
   expect(result.finalState.stats.damage).toBeGreaterThanOrEqual(input.stats.damage);
-  expect(result.finalState.equipped.weapon).toBe("starter_bow");
+  // Nothing locks behind maps: an old map piece owned is worn anywhere.
+  expect(result.finalState.equipped.weapon).toBe("ion_bow");
 });
 
 it("starts from the supplied campaign map and exposes the actual final stats", () => {
@@ -51,6 +52,7 @@ it("counts deaths, their time, and the fall back a map when a build cannot hold 
 it("loses a boss fight the build cannot outlast, then farms until it can", () => {
   const input = snapshot();
   input.highestUnlockedMapIndex = 1;
+  input.ownedItems = ["starter_bow"];
   // Fast enough for the 90 s readiness target, but 1,200 health and no regeneration fall to the Dragon, even with what the Forest pays on the way.
   input.stats = { damage: createMapDefinitions()[0].boss!.hp / 75, maxHp: 1_200, armor: 0, regen: 0, attackRate: 1 };
   const forest = simulateExistingPlayer({ durationSeconds: 3600, trials: 1, requiredClears: 0, researchPlan: "off", steadyEquipmentUpgrades: false, strategy: "natural" }, input).maps[0];

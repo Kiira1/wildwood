@@ -7,6 +7,7 @@
 import { MAP_IDS as CAMPAIGN_MAP_IDS, DEFAULT_ATTACK_INTERVAL, PLAYER_BASE_DAMAGE, PLAYER_BASE_HP, PLAYER_BASE_REGEN } from '../../../../../shared/rules';
 import { proceduralMapId } from '../../../../../shared/procedural-maps';
 import { SOUL_MAP_ID } from '../../../../../shared/soul-dimension';
+import { BASIC_PAPER_HAT, STARTER_STONE } from '../../../../../shared/items';
 import type { ReferenceBuild } from './reference-builds';
 import type { VirtualPlayerProfile } from './virtual-player';
 
@@ -34,12 +35,14 @@ export function calibrationBuilds(references: readonly ReferenceBuild[]): Calibr
         name, seed, startMap: map(mapNumber), highestUnlocked: mapNumber - 1, bossBeaten: true, push: 'normal', advance: false,
         base: { damage: build.stats.damage * (scale.damage ?? 1), maxHp: build.stats.maxHp * (scale.maxHp ?? 1),
           armor: build.stats.armor * (scale.armor ?? 1), regen: build.stats.regen * (scale.regen ?? 1), attackRate: build.stats.attackRate },
-        weapon: build.equipped.weapon || 'starter_bow', head: build.equipped.head, chest: build.equipped.chest, ...extra,
+        weapon: build.equipped.weapon || STARTER_STONE, head: build.equipped.head, chest: build.equipped.chest,
+        gold: build.gold, masteryPoints: { ...build.masteryPoints }, ...extra,
       },
     };
   }
   const last = reference(map(15));
-  const endlessBase = last.exit ? { base: last.exit.stats, weapon: last.exit.equipped.weapon, head: last.exit.equipped.head, chest: last.exit.equipped.chest }
+  const endlessBase = last.exit ? { base: last.exit.stats, weapon: last.exit.equipped.weapon, head: last.exit.equipped.head, chest: last.exit.equipped.chest,
+    gold: last.exit.gold, masteryPoints: { ...last.exit.masteryPoints } }
     : { base: { ...last.stats, damage: last.stats.damage * 3, maxHp: last.stats.maxHp * 3, armor: last.stats.armor * 3, regen: last.stats.regen * 3 } };
   const endless: CalibrationBuild = {
     name: 'endless-entrant', note: 'Endless 1, map 15 cleared', nextMap: proceduralMapId(2),
@@ -49,12 +52,13 @@ export function calibrationBuilds(references: readonly ReferenceBuild[]): Calibr
   const soul: CalibrationBuild = {
     name: 'soul', note: 'Soul Dimension, tier 5, map 8 build', nextMap: null, soulTier: 5,
     profile: { name: 'soul', seed: 13, startMap: SOUL_MAP_ID, highestUnlocked: 15, push: 'normal', advance: false,
-      base: { ...soulReference.stats }, weapon: soulReference.equipped.weapon || 'starter_bow', head: soulReference.equipped.head, chest: soulReference.equipped.chest },
+      base: { ...soulReference.stats }, weapon: soulReference.equipped.weapon || STARTER_STONE, head: soulReference.equipped.head, chest: soulReference.equipped.chest,
+      gold: soulReference.gold, masteryPoints: { ...soulReference.masteryPoints } },
   };
   const glass = { damage: 1.5, maxHp: .6, armor: .6 };
   return [
     { name: 'fresh', note: 'map 1, starting stats', nextMap: map(2),
-      profile: { name: 'fresh', seed: 1, startMap: map(1), highestUnlocked: 0, bossBeaten: true, weapon: 'starter_bow', push: 'normal', advance: false,
+      profile: { name: 'fresh', seed: 1, startMap: map(1), highestUnlocked: 0, bossBeaten: true, weapon: STARTER_STONE, head: BASIC_PAPER_HAT, push: 'normal', advance: false,
         base: { damage: PLAYER_BASE_DAMAGE, maxHp: PLAYER_BASE_HP, armor: 0, regen: PLAYER_BASE_REGEN, attackRate: DEFAULT_ATTACK_INTERVAL } } },
     campaign('early', 'map 3, Lab entry build', 14, 3, {}),
     campaign('glass-cannon', 'map 5, damage 1.5x, defence 0.6x', 2, 5, glass),
@@ -89,6 +93,7 @@ export function nextMapProfile(build: CalibrationBuild): VirtualPlayerProfile | 
  * One build with one thing changed at a time, for what each adds to the damage
  * it deals: map 8's Lab build, defence six times over so nothing dies and the
  * kills alone say how fast it kills (single targets and pulled crowds alike).
+ * Its gear and Mastery stay as they start, so nothing else changes.
  */
 export function ablationBuilds(references: readonly ReferenceBuild[]): CalibrationBuild[] {
   const reference = references.find(entry => entry.mapId === CAMPAIGN_MAP_IDS[7])!;
@@ -96,7 +101,8 @@ export function ablationBuilds(references: readonly ReferenceBuild[]): Calibrati
   const variant = (name: string, seed: number, extra: Partial<VirtualPlayerProfile>): CalibrationBuild => ({
     name: `ablation-${name}`, note: `map 8, defence 6x: ${name}`, nextMap: null,
     profile: { name: `ablation-${name}`, seed, startMap: CAMPAIGN_MAP_IDS[7], highestUnlocked: 7, bossBeaten: true, push: 'normal', advance: false,
-      base, weapon: reference.equipped.weapon || 'starter_bow', head: reference.equipped.head, chest: reference.equipped.chest, ...extra },
+      base, weapon: reference.equipped.weapon || STARTER_STONE, head: reference.equipped.head, chest: reference.equipped.chest,
+      masteryPoints: { ...reference.masteryPoints }, economy: false, ...extra },
   });
   return [
     variant('plain', 21, {}),

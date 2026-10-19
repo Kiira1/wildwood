@@ -228,6 +228,10 @@ console.log(`Deaths · median run ${Math.round(result.deaths.totalMedian)} (farm
 for (const map of result.maps.filter((entry) => entry.reachedPercent > 0 && (entry.deathsMedian ?? 0) > 0)) {
   console.log(`- ${map.name}: ${Math.round(map.deathsMedian ?? 0)} deaths (farm ${Math.round(map.farmDeathsMedian ?? 0)}, boss ${Math.round(map.bossDeathsMedian ?? 0)}) · ${((map.deathSecondsMedian ?? 0) / 60).toFixed(1)}m lost · ${(map.deathsPerHourMedian ?? 0).toFixed(1)}/h${(map.fallbacksMedian ?? 0) > 0 ? ` · fell back ${Math.round(map.fallbacksMedian ?? 0)}× for ${((map.fallbackSecondsMedian ?? 0) / 60).toFixed(0)}m` : ""}`);
 }
+console.log("");
+console.log("Smith gear · gold held and the weapon's Mastery level on arrival (medians); gear is bought, never dropped");
+console.log(result.maps.filter((entry) => entry.reachedPercent > 0)
+  .map((map) => `${map.name}: ${Math.round(map.entryGoldMedian ?? 0)}g Lv ${Math.round(map.entryMasteryLevelMedian ?? 0)}`).join(" · "));
 const repeatMaps = result.maps.filter((map) => {
   const budget = map.repeatTimeBudgetMedian;
   return budget && Object.values(budget).some((seconds) => seconds > 0);

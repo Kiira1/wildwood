@@ -54,6 +54,8 @@ type ExpectedApiKey =
   | "weaponMastery"
   | "weaponMasteryInPlay"
   | "gold"
+  | "craftSkills"
+  | "craftGradeGear"
   | "verifyAge"
   | "ageVerified"
   | "ageBlocked"

@@ -11,6 +11,7 @@ import { resolvePlayerPresenceMap } from "./profile-presence";
 import { withWideProgress } from "./wide-progress";
 import { activeCardsOfRow } from "../../../shared/active-cards";
 import { isWeaponSchool, masteryLevel, type WeaponSchool } from "../../../shared/weapon-mastery";
+import { CRAFT_SKILLS, craftLevel, type CraftSkill } from "../../../shared/crafting";
 import type { LeaderboardEntry, PlayerProfileData } from "../contracts";
 import type { ProfileDirectory } from "./profile-directory";
 import type { ProgressionService } from "./progression-service";
@@ -172,6 +173,16 @@ export function createPlayerProfileService(dependencies: PlayerProfileServiceDep
         }
         return levels;
       })(),
+      crafts: (() => {
+        const db = dependencies.connection()?.db, own = identity === dependencies.localIdentity();
+        const levels: Partial<Record<CraftSkill, number>> = {};
+        const rows = own ? db?.myCraftSkills?.iter() ?? [] : [...(db?.playerCraftLevel?.iter() ?? [])].filter(row => row.identity.toHexString() === identity);
+        for (const row of rows as Iterable<{ skill: string; experience?: bigint; level?: number }>) {
+          const skill = row.skill as CraftSkill;
+          if (CRAFT_SKILLS.includes(skill)) levels[skill] = own ? craftLevel(row.experience ?? 0n) : row.level ?? 1;
+        }
+        return levels;
+      })(),
       lifetime: { ...lifetime },
       mapId: activePlayerMap(identity) ?? undefined,
     };
@@ -330,6 +341,7 @@ export function createPlayerProfileService(dependencies: PlayerProfileServiceDep
           tables.playerMiningLevel.where(row => row.identity.eq(dbIdentity)),
           tables.playerWoodcuttingLevel.where(row => row.identity.eq(dbIdentity)),
           tables.playerMasteryLevel.where(row => row.identity.eq(dbIdentity)),
+          tables.playerCraftLevel.where(row => row.identity.eq(dbIdentity)),
           tables.player.where((player) => player.identity.eq(dbIdentity)),
         ]);
       if (generation === profileGeneration) activeSubscription = handle;

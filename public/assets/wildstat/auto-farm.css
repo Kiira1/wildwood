@@ -838,6 +838,18 @@
 .smith-sheet .smith-shop-price { display: inline-flex; align-items: center; gap: 4px; color: #ffd75e; font-size: 13px; font-weight: 900; }
 .smith-sheet .farm-start.smith-refine.smith-shop-buy { min-width: 0; max-width: 132px; height: auto; min-height: 36px; padding: 4px 12px 6px; font-size: 13px; line-height: 1.15; white-space: normal; }
 .smith-sheet .farm-start.smith-refine.smith-shop-buy:disabled { border-color: rgba(255,255,255,.18); background: rgba(255,255,255,.08); box-shadow: none; color: var(--muted); }
+/* A station's Craft section (craft-section.ts): the craft's level and progress, then the shop's rows with materials under each. */
+.smith-sheet .craft-section[hidden] { display: none; }
+.smith-sheet .craft-level { color: #fff; font-size: 15px; font-weight: 900; font-variant-numeric: tabular-nums; }
+.smith-sheet .craft-bar { display: block; height: 8px; overflow: hidden; border-radius: 4px; background: rgba(255,255,255,.14); }
+.smith-sheet .craft-bar > span { display: block; height: 100%; border-radius: inherit; background: #e6e6e6; transition: width .2s; }
+.smith-sheet .craft-points { color: rgba(255,255,255,.72); font-size: 13px; font-variant-numeric: tabular-nums; text-align: right; }
+.smith-sheet .craft-note { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.35; }
+.smith-sheet .craft-needs { grid-column: 1 / -1; color: rgba(255,255,255,.72); font-size: 13px; }
+.smith-sheet .craft-materials { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 0; padding: 0; list-style: none; }
+.smith-sheet .craft-material { display: inline-flex; align-items: center; gap: 4px; color: #fff; font-size: 13px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.smith-sheet .craft-material.is-short { color: rgba(255,255,255,.5); font-weight: 700; }
+.smith-sheet .craft-material-icon { flex: none; width: 20px; height: 20px; background: center / contain no-repeat; }
 /* The Card Seller's window (card-seller-window.ts), in the Smith's sheet: the countdown, then a row per card for sale. */
 .card-seller-sheet .card-seller-timer { margin: 0 14px 10px; color: #fff; text-align: center; font-size: 15px; font-weight: 900; }
 .card-seller-sheet .card-seller-offers { display: grid; gap: 10px; margin: 0 14px 10px; }

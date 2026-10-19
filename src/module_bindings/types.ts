@@ -1008,6 +1008,9 @@ export type MyCopyRefines = __Infer<typeof MyCopyRefines>;
 export const MyCopySlots = __t.object("MyCopySlots", {});
 export type MyCopySlots = __Infer<typeof MyCopySlots>;
 
+export const MyCraftSkills = __t.object("MyCraftSkills", {});
+export type MyCraftSkills = __Infer<typeof MyCraftSkills>;
+
 export const MyCutsceneHistory = __t.object("MyCutsceneHistory", {});
 export type MyCutsceneHistory = __Infer<typeof MyCutsceneHistory>;
 
@@ -1500,6 +1503,22 @@ export const PlayerCopySlots = __t.object("PlayerCopySlots", {
   cards: __t.array(__t.string()),
 });
 export type PlayerCopySlots = __Infer<typeof PlayerCopySlots>;
+
+export const PlayerCraftLevel = __t.object("PlayerCraftLevel", {
+  key: __t.string(),
+  identity: __t.identity(),
+  skill: __t.string(),
+  level: __t.u8(),
+});
+export type PlayerCraftLevel = __Infer<typeof PlayerCraftLevel>;
+
+export const PlayerCraftSkill = __t.object("PlayerCraftSkill", {
+  key: __t.string(),
+  identity: __t.identity(),
+  skill: __t.string(),
+  experience: __t.u64(),
+});
+export type PlayerCraftSkill = __Infer<typeof PlayerCraftSkill>;
 
 export const PlayerCutsceneHistory = __t.object("PlayerCutsceneHistory", {
   identity: __t.identity(),

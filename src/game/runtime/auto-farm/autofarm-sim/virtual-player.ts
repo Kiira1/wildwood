@@ -4,7 +4,8 @@
  * renderer, the network and the DOM. Player combat, enemy AI, respawns, bosses
  * (campaign and Endless), map travel and autofarm are the real modules; what
  * the server owns (map unlocks on a boss kill, the death screen's respawn) is
- * stood in for here. Gear is fixed: loot, research and upgrades never change.
+ * stood in for here. Research and upgrades never change; kills pay gold and Weapon Mastery, and the Smith's
+ * next grades are bought from them as the game's Smith sells them (src/balance/smith-purchases.ts).
  *
  * Every clock the game reads (performance.now, Date.now) and Math.random are
  * replaced by a simulated, seeded copy for the run, so a run is repeatable and
@@ -59,6 +60,12 @@ import { createEmptyResearchRanks, type ResearchRanks } from '../../../../../sha
 import type { BowSkillRoll } from '../../../../../shared/bow-skills';
 import type { PlayerPowerStats } from '../../../../../shared/player-power';
 import { AUTO_FARM_ADVANCE_KEY, writeMovePower } from '../auto-farm-plan';
+import { ITEM_DEFINITIONS, type ItemId } from '../../../../../shared/items';
+import { effectivePlayerPowerStats, unroundedPlayerPower } from '../../../../../shared/player-power';
+import { rollBossGold, rollKillGold } from '../../../../../shared/gold';
+import { luckMultiplier } from '../../../../../shared/luck-research';
+import { masteryAttackRange, masteryInPlay, masteryPointsForReport, masteryPointsInPlay, weaponSchool } from '../../../../../shared/weapon-mastery';
+import { nextSmithPurchase, type MasteryPointsBySchool } from '../../../../balance/smith-purchases';
 
 export const SIM_STEP_SECONDS = 1 / 60;
 const STEP_MS = 1000 / 60;
@@ -94,6 +101,11 @@ export type VirtualPlayerProfile = {
   weapon: string;
   head?: string;
   chest?: string;
+  /** Gold held and Mastery points at the start: kills add to both, and the Smith's next grades are bought from them. */
+  gold?: number;
+  masteryPoints?: MasteryPointsBySchool;
+  /** False: gear, gold and Mastery stay as they start, to compare one thing at a time. */
+  economy?: boolean;
   projectileCount?: number;
   bowSkills?: Partial<BowSkillRoll>;
   perks?: Partial<PrestigePerkRanks>;
@@ -200,6 +212,10 @@ export type VirtualPlayerReport = {
   combat: Combat;
   wakes: Wakes;
   placement: Placement;
+  /** Gold and Mastery points at the end, and each piece bought from the Smith. */
+  gold: number;
+  masteryPoints: MasteryPointsBySchool;
+  purchases: { t: number; itemId: string; price: number }[];
 };
 
 function mulberry32(seed: number) {
@@ -309,8 +325,54 @@ export function createVirtualPlayer(profile: VirtualPlayerProfile, options: { du
     player, getRanks: () => research, isDueling: () => false, maxPlayerStat: Number.MAX_VALUE, saveProgress: noop, healthMultiplierBonus,
   });
   const minAttackInterval = () => challengeMinimumInterval(challenge);
-  const movementMultiplier = () => researchController.movementSpeedMultiplier();
+  // As main.ts: Tailwind and the armor classes worn on top of research.
+  const movementMultiplier = () => (playerCombat?.moveSpeedFactor() ?? 1) * researchController.movementSpeedMultiplier();
   const weapon = () => inventory.equippedRightHand || inventory.equippedLeftHand;
+
+  // Gold and Mastery, as the server keeps them. Gold rolls on a stream of its own, so combat draws the same numbers.
+  const economy = profile.economy !== false;
+  let gold = Math.max(0, profile.gold ?? 0);
+  let masteryPoints: MasteryPointsBySchool = { ...profile.masteryPoints };
+  const purchases: VirtualPlayerReport['purchases'] = [];
+  const goldRandom = mulberry32(profile.seed ^ 0x5bd1e995);
+  // Reflect Only and Aggro runs play without Mastery and train none.
+  const masteryOff = Boolean(profile.reflectOnly || profile.aggro);
+  const masteryNow = () => masteryPointsInPlay(masteryPoints, masteryOff);
+  const baseAttackRange = player.attackRange;
+  const applyMasteryRange = () => { player.attackRange = baseAttackRange + masteryAttackRange(masteryInPlay(masteryNow(), inventory.equippedRightHand, weapon())); };
+  const powerWith = (equipped: { head: string; chest: string; right: string }) => unroundedPlayerPower(effectivePlayerPowerStats({
+    maxHp: player.baseMaxHp, damage: player.damage, attackRate: player.attackRate, armor: player.armor, regen: player.regen,
+    equippedHead: equipped.head, equippedChest: equipped.chest, equippedRightHand: equipped.right }, research));
+  /** Wears a piece just bought unless it would lower power, as auto-equip does. */
+  function wearIfStronger(itemId: string) {
+    const slot = ITEM_DEFINITIONS[itemId as ItemId]?.slot;
+    const current = { head: inventory.equippedHead, chest: inventory.equippedChest, right: inventory.equippedRightHand };
+    const next = { ...current, ...(slot === 'HAND' ? { right: itemId } : slot === 'HEAD' ? { head: itemId } : slot === 'CHEST' ? { chest: itemId } : {}) };
+    if (powerWith(next) + 1e-9 < powerWith(current)) return;
+    inventory.equippedRightHand = next.right; inventory.equippedHead = next.head; inventory.equippedChest = next.chest;
+    setPlayerBaseMaxHealth(player, player.baseMaxHp, healthMultiplierBonus());
+    applyMasteryRange();
+  }
+  function shop() {
+    for (let buy = nextSmithPurchase(weapon(), new Set(inventory.itemIds), gold, masteryPoints); buy;
+      buy = nextSmithPurchase(weapon(), new Set(inventory.itemIds), gold, masteryPoints)) {
+      gold -= buy.price;
+      inventory.itemIds.push(buy.itemId);
+      purchases.push({ t: (clock.ms - SIM_EPOCH_MS) / 1000, itemId: buy.itemId, price: buy.price });
+      wearIfStronger(buy.itemId);
+    }
+  }
+  /** An accepted kill report: gold rolls (Gold Luck in; no cards), Mastery to the right hand's school, then the Smith. */
+  function earn(killCount: number, firstBossClear: boolean) {
+    if (!economy) return;
+    gold += rollKillGold(killCount, goldRandom, luckMultiplier('gearLuck', research.gearLuck)) + (firstBossClear ? rollBossGold(goldRandom) : 0);
+    if (!masteryOff) {
+      const school = weaponSchool(inventory.equippedRightHand);
+      masteryPoints = { ...masteryPoints, [school]: (masteryPoints[school] ?? 0) + masteryPointsForReport(killCount, firstBossClear) };
+      applyMasteryRange();
+    }
+    shop();
+  }
 
   let autoFarm!: AutoFarmController;
   let lastCommand = { x: 0, y: 0 };
@@ -325,8 +387,11 @@ export function createVirtualPlayer(profile: VirtualPlayerProfile, options: { du
     mapId: () => currentMapId, identity: () => identity, bossRespawnRank: () => research.bossRespawn ?? 0,
     alive: () => player.hp > 0, now: () => clock.ms,
     defeated: mapId => {
-      // The server's unlock, at once: no reducer round trip.
+      // The server's unlock, at once: no reducer round trip. A boss pays gold and Mastery on its first clear in the run.
       const index = CAMPAIGN_MAP_IDS.indexOf(mapId);
+      const first = index >= 0 ? !((access.bossRewardClaims ?? 0) & 2 ** CAMPAIGN_MAPS[index].claimIndex)
+        : isProceduralMap(mapId) && (proceduralMapNumber(mapId) ?? 0) > endlessCompleted;
+      if (first) earn(0, true);
       if (index >= 0) unlockAfterBoss(index);
       else if (isProceduralMap(mapId)) endlessCompleted = Math.max(endlessCompleted, proceduralMapNumber(mapId) ?? 0);
       for (const listener of onBossDefeated) listener(mapId);
@@ -473,6 +538,7 @@ export function createVirtualPlayer(profile: VirtualPlayerProfile, options: { du
     prestigeSplitShot: () => prestigePerkValue(perks, 'splitShot'),
     prestigeReflect: () => prestigePerkValue(perks, 'riposte'),
     bowSkills: () => profile.bowSkills,
+    weaponMastery: masteryNow, equippedRightHand: () => inventory.equippedRightHand,
     equippedWeapon: weapon, equippedHead: () => inventory.equippedHead, equippedChest: () => inventory.equippedChest,
     healthMultiplierBonus, minAttackInterval, reflectOnly: () => Boolean(profile.reflectOnly),
     effectiveArmor: researchController.effectiveArmor, isDueling: () => false,
@@ -482,7 +548,7 @@ export function createVirtualPlayer(profile: VirtualPlayerProfile, options: { du
       regularEnemyRespawn.schedule(site);
       respawnMemory.remember(enemyRespawnKey(site), (site.respawnAt - gameTime) * 1000);
     },
-    recordRegularEnemyDefeat: () => { kills += 1; }, incrementKills: noop,
+    recordRegularEnemyDefeat: () => { kills += 1; earn(1, false); }, incrementKills: noop,
     currentMapId: () => currentMapId, spawnBurst: noop, spawnParticle: noop,
     spawnDamageNumber: (x, y, _amount, _critical, damageTaken, reflected) => {
       if (damageTaken || reflected) return;
@@ -540,6 +606,9 @@ export function createVirtualPlayer(profile: VirtualPlayerProfile, options: { du
   // The build.
   Object.assign(player, { damage: profile.base.damage, attackRate: profile.base.attackRate, armor: profile.base.armor, regen: profile.base.regen,
     projectileCount: profile.projectileCount ?? 1 });
+  player.baseMaxHp = profile.base.maxHp;
+  if (economy) shop();
+  applyMasteryRange();
   setPlayerBaseMaxHealth(player, profile.base.maxHp, healthMultiplierBonus(), true);
 
   /** session.start(): respawn at the map's arrival with full health, every enemy reset. */
@@ -563,7 +632,7 @@ export function createVirtualPlayer(profile: VirtualPlayerProfile, options: { du
   const report: VirtualPlayerReport = {
     name: profile.name, simSeconds: 0, wallMs: 0, samples: [], visits: [], deaths: [], bossAttempts: [], travels: [],
     activity: {}, groups: {}, statuses: {}, bossStatuses: {}, kills: 0, stuck: [], startPower, endPower: startPower, endMap: currentMapId,
-    autofarmStopped: [], combat, wakes, placement,
+    autofarmStopped: [], combat, wakes, placement, gold, masteryPoints, purchases,
   };
   const t = () => (clock.ms - SIM_EPOCH_MS) / 1000;
   let visit: MapVisit = { map: currentMapId, from: 0, to: null, entryPower: startPower, exitPower: null, deaths: 0, reason: 'start' };
@@ -760,6 +829,8 @@ export function createVirtualPlayer(profile: VirtualPlayerProfile, options: { du
     report.simSeconds = t();
     report.wallMs += Number(process.hrtime.bigint() - wallStart) / 1e6;
     report.kills = kills;
+    report.gold = gold;
+    report.masteryPoints = { ...masteryPoints };
     report.endPower = power();
     report.endMap = currentMapId;
     return report;

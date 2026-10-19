@@ -1,7 +1,14 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
   "0.916.0": [
-    "Weapon Mastery: every kill trains the school of the weapon in your hand, shown in the new Schools tab",
-    "Profiles show the Mastery level of the weapon in hand",
+    "Weapon Mastery: every kill trains the school of the weapon in your hand: Archery, Swordplay or Sorcery",
+    "Visit the Archery Range, Sword Hall and Mage Tower in Town for your school's level, passive and techniques",
+    "Gold drops from enemies, and the Smith sells graded weapons, helmets and armor for it",
+    "Gear no longer drops from enemies or locks behind maps",
+    "Armor comes in Light, Medium, Heavy and Magic, with a set bonus for matching your weapon's school",
+    "Craft gear with Smithing, Fletching and Enchanting",
+    "Woodcutting: chop trees in Timberwood, north of the Copper Hills, and mine crystal rocks in the hills",
+    "Gear Luck is now Gold Luck",
+    "Profiles show Mastery, Woodcutting and crafting levels",
   ],
   "0.915.2": [
     "Small balancing",

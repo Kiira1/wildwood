@@ -170,6 +170,8 @@ export const TOWN_SCHOOL_POSITIONS: Readonly<Record<WeaponSchool, { door: number
 });
 /** How close a player's feet come to a school's spot before its window opens. */
 export const TOWN_SCHOOL_REACH = 45;
+/** The server's allowance for lag when crafting at a school's spot, as the Smith's. */
+export const TOWN_SCHOOL_SERVER_REACH = 85;
 /**
  * Ox keeps the bottom-right house (door 8) and sells the Galaxy set. Where his feet are: in the open
  * floor between the back wall's furniture and the table, so a player can walk right up to him.

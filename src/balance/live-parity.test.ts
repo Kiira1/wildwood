@@ -36,12 +36,11 @@ describe("Balance Lab uses the game's resolved balance contract", () => {
     expect(tuned.boss!.hp).toBe(base.boss!.hp * 4);
     expect(tuned.boss!.strongestHit).toBe(base.boss!.strongestHit! * 2);
     expect(tuned.boss!.rewards).toEqual([]);
-    expect(tuned.boss!.drops).toEqual([]);
     expect(tuned.balance!.regularRespawnSeconds).toBe(20);
     expect(tuned.balance!.boss!.respawnSeconds).toBe(base.balance!.boss!.respawnSeconds * 3);
     expect(tuned.balance!.boss!.regenFraction).toBe(bossRegenFractionFor("tutorial_forest") * 4);
-    const drop = tuned.regularDrops[0], original = base.regularDrops[0];
-    expect(drop.numerator! / drop.denominator).toBeCloseTo(original.numerator! / original.denominator * 2);
+    const drop = tuned.balance!.loot![0], original = base.balance!.loot![0];
+    expect(drop.wins / drop.outcomes).toBeCloseTo(original.wins / original.outcomes * 2);
     expect(createSites(tuned)[0].definition!.hp).toBe(createSites(base)[0].definition!.hp * 2);
     expect(createSites(tuned)[0].definition!.reward.amount).toBe(createSites(base)[0].definition!.reward.amount * 3);
   });

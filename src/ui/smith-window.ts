@@ -8,15 +8,13 @@ import { formatEquipmentStat } from "./equipment-stat-format";
 import { refineStars } from "./refine-badge";
 import { REFINE_ORE_ORDER } from "../../shared/ore-bag";
 import { itemTier } from "../../shared/item-tier";
-import { ARMOR_CLASS_DETAILS, ARMOR_CLASS_NAMES, GEAR_GRADE_NAMES } from "../../shared/gear-grades";
-import { armorClassOf, gradeEquipmentKindOf, gradeOf, type GradeItemId } from "../../shared/grade-equipment";
+import type { GradeItemId } from "../../shared/grade-equipment";
 import {
   GRADE_SHOP_LINES, gradeShopNeed, gradeShopOffer, gradeShopOpen, gradeShopPrice, masteryLevels, type MasteryLevels,
 } from "../../shared/grade-shop";
-import { bagSlotsWithOres } from "../../shared/ore-bag";
-import { bagSlotCapacity } from "../../shared/gems";
 import type { WeaponSchool } from "../../shared/weapon-mastery";
 import { formatGemAmount } from "./number-format";
+import { bagFullFor, craftDepsFor, createCraftSection, gradeItemRow, heldItemsFor, type CraftCoop, type CraftSectionDeps } from "./craft-section";
 
 type Result = { ok: boolean; error?: string } | undefined;
 type RefineResult = { itemId: string; copyId: bigint; fromLevel: number; toLevel: number; succeeded: boolean };
@@ -29,7 +27,6 @@ const SMITH_FILTERS = [["ALL", "All"], ["HAND", "Weapons"], ["CHEST", "Armor"], 
 const nameOf = (itemId: string) => itemInspectionButtonLabel(itemDisplayName(itemId));
 // The HUD's gold coin, beside every price in gold.
 const GOLD_COIN = `<svg class="smith-coin" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8.5" fill="#e3b23c" stroke="#7a4f12" stroke-width="1.5"/><circle cx="10" cy="10" r="5.5" fill="none" stroke="#a8741d" stroke-width="1.2"/></svg>`;
-const KIND_NAMES = { bow: "Bow", sword: "Sword", staff: "Staff", helmet: "Helmet", armor: "Armor" } as const;
 // Refine Luck moves the odds by fractions of a percent, so they keep their decimals (2.2%, 0.031%).
 const percent = (chance: number) => {
   const value = chance * 100;
@@ -71,6 +68,8 @@ export function createSmithController(deps: {
   heldItems?: () => readonly string[];
   bagFull?: () => boolean;
   buyGear?: (itemId: string, expectedPrice: number) => Promise<Result>;
+  /** Smithing: swords and Medium and Heavy armor crafted from ore (craft-section.ts). */
+  craft?: CraftSectionDeps;
 }) {
   const dialog = document.createElement("dialog");
   dialog.className = "farm-sheet quest-sheet smith-sheet";
@@ -106,6 +105,8 @@ export function createSmithController(deps: {
   const shop = dialog.querySelector<HTMLElement>(".smith-shop")!;
   const goldLine = dialog.querySelector<HTMLElement>(".smith-gold strong")!;
   const shopRows = dialog.querySelector<HTMLElement>(".smith-shop-rows")!;
+  const crafts = deps.craft ? createCraftSection(deps.craft) : null;
+  if (crafts) shop.after(crafts.element);
   /** The gear shown, as the bag filters it: everything, or one kind. */
   let shown: (typeof SMITH_FILTERS)[number][0] = "ALL";
   for (const [kind, label] of SMITH_FILTERS) {
@@ -193,6 +194,7 @@ export function createSmithController(deps: {
   }
 
   function render() {
+    crafts?.render("smithing");
     const items = choices();
     if (!selected || !items.some(item => key(item) === selected)) selected = items[0] ? key(items[0]) : null;
     const chosen = items.find(item => key(item) === selected);
@@ -273,21 +275,7 @@ export function createSmithController(deps: {
   }
 
   function shopRow(itemId: GradeItemId, price: number | null, button: HTMLButtonElement) {
-    const row = document.createElement("article");
-    row.className = "smith-shop-row";
-    row.setAttribute("role", "listitem");
-    row.dataset.itemId = itemId;
-    const armorClass = armorClassOf(itemId), kind = KIND_NAMES[gradeEquipmentKindOf(itemId)!];
-    const grade = GEAR_GRADE_NAMES[gradeOf(itemId)!];
-    row.innerHTML = `<span class="smith-shop-art" aria-hidden="true">${itemArtMarkup(itemId)}</span>`
-      + `<span class="smith-shop-copy"><strong></strong><span class="smith-shop-grade"></span><span class="smith-shop-stat"></span></span>`
-      + `<span class="smith-shop-deal"></span>`;
-    row.querySelector("strong")!.textContent = nameOf(itemId);
-    row.querySelector(".smith-shop-grade")!.textContent = `${grade} · ${armorClass ? `${ARMOR_CLASS_NAMES[armorClass]} ${kind}` : kind}`;
-    const [stat] = itemStats(itemId);
-    row.querySelector(".smith-shop-stat")!.textContent = [formatEquipmentStat(itemInspectionButtonLabel(stat ?? "")), armorClass ? ARMOR_CLASS_DETAILS[armorClass].perk : ""]
-      .filter(Boolean).join(" · ");
-    const deal = row.querySelector<HTMLElement>(".smith-shop-deal")!;
+    const { row, deal } = gradeItemRow(itemId);
     if (price !== null) {
       const cost = document.createElement("span");
       cost.className = "smith-shop-price";
@@ -357,6 +345,7 @@ export function createSmithController(deps: {
     pickaxeTaken = false;
     hatchetTaken = false;
     justBought.clear();
+    crafts?.reset();
     render();
     deps.clearInput?.();
     dialog.showModal();
@@ -413,7 +402,7 @@ export function createSmithController(deps: {
 
 /** The Smith as main.ts uses it: refining through the coop session, the bag's copies, and each try's verdict. */
 export function createSmithRuntime(deps: {
-  coop: () => {
+  coop: () => (CraftCoop & {
     hasPickaxe?: () => boolean;
     claimPickaxe?: () => Promise<Result>;
     claimStarterStaff?: () => Promise<Result>;
@@ -434,7 +423,7 @@ export function createSmithRuntime(deps: {
     activeItemUpgrades?: () => readonly { itemId: string }[];
     inventorySlotsUnlocked?: () => number;
     research?: () => { inventorySlots?: number };
-  } | null | undefined;
+  }) | null | undefined;
   inventory: { itemIds: string[]; equippedHead: string; equippedChest: string; equippedFeet?: string; equippedRightHand: string; equippedLeftHand: string };
   showMessage: (text: string, color: string) => void;
   clearInput?: () => void;
@@ -466,14 +455,10 @@ export function createSmithRuntime(deps: {
     woodcutting: () => deps.coop()?.woodcutting?.() ?? 0,
     gold: () => deps.coop()?.gold?.() ?? 0n,
     masteryLevels: () => masteryLevels(deps.coop()?.weaponMastery?.() ?? {}),
-    heldItems: () => [...inventory.itemIds, ...(deps.coop()?.activeItemUpgrades?.() ?? []).map(active => active.itemId)],
-    // The bag as the server counts it (freeBagSlots): items, kept copies, ore stacks.
-    bagFull: () => {
-      const coop = deps.coop(), capacity = bagSlotCapacity(coop?.inventorySlotsUnlocked?.() ?? 0, coop?.research?.().inventorySlots ?? 0);
-      const equipped = [inventory.equippedHead, inventory.equippedChest, inventory.equippedFeet ?? "", inventory.equippedRightHand, inventory.equippedLeftHand];
-      return bagSlotsWithOres({ owned: inventory.itemIds, equipped, extraCopies: coop?.equipmentCopies?.().length ?? 0, ores: coop?.ores?.() ?? {}, capacity }) >= capacity;
-    },
+    heldItems: () => heldItemsFor(deps.coop(), inventory),
+    bagFull: () => bagFullFor(deps.coop(), inventory),
     buyGear: async (itemId, expectedPrice) => deps.coop()?.buyGradeGear?.(itemId, expectedPrice) ?? { ok: false, error: "Not Connected" },
+    craft: craftDepsFor(deps.coop, inventory, deps.showMessage),
   });
   let listening = false;
   return {
