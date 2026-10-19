@@ -1,3 +1,4 @@
+import { decodedImage } from "../render/decoded-image";
 import { townInteriorArea as soulInteriorArea, TOWN_INTERIOR_MARGIN as SOUL_INTERIOR_MARGIN } from "../../../../shared/town";
 import { SOUL_ATLAS, SOUL_DOORS_OPEN, SOUL_INTERIOR_ROOMS, SOUL_VILLAGE_GROUND, SOUL_VILLAGE_SCENE } from "../../soul-village";
 import { guildHallDoorState, guildHallFrame } from "../../guild-hall";
@@ -56,7 +57,7 @@ export function createSoulPropRenderer(options: {
 }) {
   // Live draws copy each frame cut at its size on screen (shrunk-image.ts); baking into tiles (a target) draws from the sheet.
   const shrunkImages = createShrunkImages();
-  const sheetFrame = (ctx: CanvasRenderingContext2D, image: HTMLImageElement, frame: { x: number; y: number; w: number; h: number }, w: number, h: number, live: boolean) => {
+  const sheetFrame = (ctx: CanvasRenderingContext2D, image: HTMLImageElement | ImageBitmap, frame: { x: number; y: number; w: number; h: number }, w: number, h: number, live: boolean) => {
     if (!live) return null;
     const scale = deviceScale(ctx);
     return shrunkImages(image, w * scale, h * scale, ctx.imageSmoothingEnabled, frame);
@@ -84,14 +85,15 @@ export function createSoulPropRenderer(options: {
     const x = snapWorldRenderCoordinate(item.x - camera.x, camera.zoom, options.devicePixelRatio());
     const y = snapWorldRenderCoordinate(item.y + (item.dy ?? 0) - camera.y, camera.zoom, options.devicePixelRatio());
     const w = frame.w * item.s, h = frame.h * item.s;
-    const cut = sheetFrame(ctx, image, frame, w, h, !target);
+    const sheet = decodedImage(image);
+    const cut = sheetFrame(ctx, sheet, frame, w, h, !target);
     if (item.spin) {
       // Unity turns counter-clockwise for a positive angle; the canvas, with y down, the other way.
       ctx.save();
       ctx.translate(x, y);
       ctx.rotate(-item.spin * options.time() * Math.PI / 180);
       if (cut) ctx.drawImage(cut, -frame.ax * item.s, -frame.ay * item.s, w, h);
-      else ctx.drawImage(image, frame.x, frame.y, frame.w, frame.h, -frame.ax * item.s, -frame.ay * item.s, w, h);
+      else ctx.drawImage(sheet, frame.x, frame.y, frame.w, frame.h, -frame.ax * item.s, -frame.ay * item.s, w, h);
       ctx.restore();
       return;
     }
@@ -100,12 +102,12 @@ export function createSoulPropRenderer(options: {
       ctx.translate(x, y);
       ctx.scale(-1, 1);
       if (cut) ctx.drawImage(cut, -frame.ax * item.s, -frame.ay * item.s, w, h);
-      else ctx.drawImage(image, frame.x, frame.y, frame.w, frame.h, -frame.ax * item.s, -frame.ay * item.s, w, h);
+      else ctx.drawImage(sheet, frame.x, frame.y, frame.w, frame.h, -frame.ax * item.s, -frame.ay * item.s, w, h);
       ctx.restore();
       return;
     }
     if (cut) ctx.drawImage(cut, x - frame.ax * item.s, y - frame.ay * item.s, w, h);
-    else ctx.drawImage(image, frame.x, frame.y, frame.w, frame.h, x - frame.ax * item.s, y - frame.ay * item.s, w, h);
+    else ctx.drawImage(sheet, frame.x, frame.y, frame.w, frame.h, x - frame.ax * item.s, y - frame.ay * item.s, w, h);
   };
 }
 
@@ -198,7 +200,7 @@ export function createSoulGroundRenderer(options: {
     const snap = (value: number) => snapWorldRenderCoordinate(value, camera.zoom, options.devicePixelRatio());
     for (const room of SOUL_INTERIOR_ROOMS) {
       if (room.x > viewRight || room.y > viewBottom || room.x + room.w < camera.x || room.y + room.h < camera.y) continue;
-      ctx.drawImage(image, room.sx, room.sy, room.w, room.h, snap(room.x - camera.x), snap(room.y - camera.y), room.w, room.h);
+      ctx.drawImage(decodedImage(image), room.sx, room.sy, room.w, room.h, snap(room.x - camera.x), snap(room.y - camera.y), room.w, room.h);
     }
   }
   return {
@@ -217,7 +219,7 @@ export function createSoulGroundRenderer(options: {
       if (image?.complete && image.naturalWidth > 0 && left < right && top < bottom) {
         const scaleX = image.naturalWidth / area.w, scaleY = image.naturalHeight / area.h;
         const snap = (value: number) => snapWorldRenderCoordinate(value, camera.zoom, options.devicePixelRatio());
-        ctx.drawImage(image, (left - area.x) * scaleX, (top - area.y) * scaleY, (right - left) * scaleX, (bottom - top) * scaleY,
+        ctx.drawImage(decodedImage(image), (left - area.x) * scaleX, (top - area.y) * scaleY, (right - left) * scaleX, (bottom - top) * scaleY,
           snap(left - camera.x), snap(top - camera.y), right - left, bottom - top);
       }
       options.drawWater?.();

@@ -1,3 +1,4 @@
+import { decodedImage } from "../render/decoded-image";
 import { townChunkOf, townInteriorArea, TOWN_INTERIOR_MARGIN, TOWN_WORLD } from "../../../../shared/town";
 import { SOUL_ATLAS, SOUL_INTERIOR_ROOMS, SOUL_VILLAGE_DECOR, SOUL_VILLAGE_GROUND } from "../../soul-village";
 import { townChunkDecor, TOWN_INTERIOR_DECOR } from "../../town-world";
@@ -83,11 +84,11 @@ export function createSoulGroundPropPainter(images: Pick<Images, "villageProps" 
       context.save();
       context.translate(x, y);
       context.scale(-1, 1);
-      context.drawImage(image, frame.x, frame.y, frame.w, frame.h, -frame.ax * item.s, -frame.ay * item.s, w, h);
+      context.drawImage(decodedImage(image), frame.x, frame.y, frame.w, frame.h, -frame.ax * item.s, -frame.ay * item.s, w, h);
       context.restore();
       return;
     }
-    context.drawImage(image, frame.x, frame.y, frame.w, frame.h, x - frame.ax * item.s, y - frame.ay * item.s, w, h);
+    context.drawImage(decodedImage(image), frame.x, frame.y, frame.w, frame.h, x - frame.ax * item.s, y - frame.ay * item.s, w, h);
   }
   return function paintGroundProps(context: CanvasRenderingContext2D, flat: readonly SoulPropDecor[], shadows: readonly SoulPropDecor[], ox: number, oy: number, tileSize: number) {
     for (const item of flat) drawProp(context, item, ox, oy);
@@ -133,7 +134,7 @@ export function createTownGroundTilePainter(images: Images) {
     const right = Math.min(area.x + area.w, rect.right), bottom = Math.min(area.y + area.h, rect.bottom);
     if (usable(ground) && left < right && top < bottom) {
       const scaleX = ground.naturalWidth / area.w, scaleY = ground.naturalHeight / area.h;
-      context.drawImage(ground, (left - area.x) * scaleX, (top - area.y) * scaleY, (right - left) * scaleX, (bottom - top) * scaleY,
+      context.drawImage(decodedImage(ground), (left - area.x) * scaleX, (top - area.y) * scaleY, (right - left) * scaleX, (bottom - top) * scaleY,
         left - ox, top - oy, right - left, bottom - top);
     }
     const darkLeft = Math.max(dark.left, rect.left), darkTop = Math.max(dark.top, rect.top);
@@ -145,7 +146,7 @@ export function createTownGroundTilePainter(images: Images) {
       if (usable(rooms)) {
         for (const room of SOUL_INTERIOR_ROOMS) {
           if (room.x > rect.right || room.y > rect.bottom || room.x + room.w < rect.left || room.y + room.h < rect.top) continue;
-          context.drawImage(rooms, room.sx, room.sy, room.w, room.h, room.x - ox, room.y - oy, room.w, room.h);
+          context.drawImage(decodedImage(rooms), room.sx, room.sy, room.w, room.h, room.x - ox, room.y - oy, room.w, room.h);
         }
       }
     }

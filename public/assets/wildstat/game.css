@@ -3328,6 +3328,26 @@
   #profileOverviewPanel .profile-grid > div { background: transparent; border-color: transparent; }
   .profile-grid dt { color: var(--muted); font-size: 8px; letter-spacing: .07em; }
   .profile-grid dd { margin: 5px 0 0; color: #fff; font-size: 12px; overflow-wrap: anywhere; }
+  /* The profile's Skills tab (profile-skills.ts): a heading a group, a card a skill, a thin bar on your own. */
+  .profile-skills-panel { display: grid; gap: 12px; padding: 8px 2px 4px; }
+  .profile-skill-group { display: grid; gap: 6px; }
+  .profile-skill-heading { margin: 0; color: #a9b0ba; font-size: 13px; font-weight: 800; }
+  .profile-skill { display: grid; gap: 5px; padding: 8px 10px; border: 1px solid rgba(255,255,255,.1); border-radius: 8px; background: rgba(0,0,0,.28); }
+  .profile-skill-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  .profile-skill-name, .profile-skill-level { color: #fff; font-size: 14px; }
+  .profile-skill-name { font-weight: 700; }
+  .profile-skill-bar { display: block; height: 4px; overflow: hidden; border-radius: 2px; background: rgba(255,255,255,.14); }
+  .profile-skill-bar > span { display: block; height: 100%; background: #e6e6e6; }
+  .profile-skill-detail { display: flex; justify-content: space-between; gap: 8px; color: #a9b0ba; font-size: 13px; }
+  .profile-skill-detail > span:last-child { text-align: right; }
+  /* Your own soul tier kills under Info, as the Soul Portal lists them. */
+  .profile-soul-tier { display: grid; gap: 6px; margin-top: 12px; }
+  .profile-soul-tier[hidden] { display: none; }
+  .profile-soul-tier-note { margin: 0; color: #a9b0ba; font-size: 13px; line-height: 1.35; }
+  #profileSoulTier .profile-grid > div { padding: 6px 8px; border-color: rgba(255,255,255,.1); background: rgba(0,0,0,.28); }
+  #profileSoulTier .profile-grid dt { color: #a9b0ba; font-size: 13px; letter-spacing: 0; }
+  #profileSoulTier .profile-grid dd { margin-top: 3px; font-size: 14px; }
+  #profileSoulTier .profile-grid > .is-done dd::before { content: "\2713  "; }
   .profile-stat-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 0; overflow: hidden; border: 0; border-radius: 6px; background: transparent; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
   .profile-stat-column { display: block; min-width: 0; margin: 0; }
   .profile-stat-column:first-child { border-right: 0; }

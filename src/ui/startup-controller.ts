@@ -8,6 +8,8 @@ type AccountState = {
   authInProgress?: boolean;
   returningFromSignIn?: boolean;
   signInRequired?: boolean;
+  /** Registration needs no connection; only a saved guest waits for the server (account-service). */
+  signInReady?: boolean;
   knownAccount?: boolean;
   notice?: string;
   connectionIssue?: { message: string } | null;
@@ -124,7 +126,8 @@ export function createStartupController(dependencies: StartupDependencies) {
     pauseLoading();
     const account = dependencies.accountState();
     accountChoicePanel.classList.remove("is-signing-in");
-    const accountOptionsReady = dependencies.connected() || Boolean(account?.signInRequired);
+    // Without a guest save no connection is ever made, so REGISTER must not wait for one.
+    const accountOptionsReady = dependencies.connected() || Boolean(account?.signInRequired) || account?.signInReady === true;
     const knownAccount = Boolean(account?.knownAccount);
     const name = dependencies.knownCharacter().trim();
     const characterFound = Boolean(name);

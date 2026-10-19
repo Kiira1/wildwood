@@ -94,7 +94,7 @@ it("migration 63 gives everyone already here the Crude Bow, Sword and Staff they
   f.seed("playerStarterWeapon", { identity: picked, kind: "sword", at: f.ctx.timestamp });
   migrate(f);
   expect(f.db.moduleMigrationState.id.find(0).version).toBe(MODULE_MIGRATION_VERSION);
-  expect(MODULE_MIGRATION_VERSION).toBe(63);
+  expect(MODULE_MIGRATION_VERSION).toBeGreaterThanOrEqual(63);
 
   for (const who of [archer, swordsman, unarmed]) {
     expect(bag(f, who), who.toHexString()).toEqual(expect.arrayContaining([BOW, SWORD, STAFF]));

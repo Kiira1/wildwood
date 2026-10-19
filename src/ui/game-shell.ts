@@ -131,6 +131,7 @@ const afterUpdateGateShell = String.raw`
     <div class="profile-tabs profile-tabs-with-action">
       <div class="profile-tab-list" role="tablist" aria-label="Player profile sections">
         <button id="profileStatsTab" class="profile-tab is-active" type="button" role="tab" aria-selected="true" aria-controls="profileStatsPanel">Stats</button>
+        <button id="profileSkillsTab" class="profile-tab" type="button" role="tab" aria-selected="false" aria-controls="profileSkillsPanel">Skills</button>
         <button id="profileOverviewTab" class="profile-tab" type="button" role="tab" aria-selected="false" aria-controls="profileOverviewPanel">Info</button>
         <button id="profileBonusesTab" class="profile-tab" type="button" role="tab" aria-selected="false" aria-controls="profileBonusesPanel" hidden>Bonuses</button>
       </div>
@@ -146,9 +147,9 @@ const afterUpdateGateShell = String.raw`
           <div><dt>TIME PLAYED</dt><dd id="profileTimePlayed">—</dd></div>
           <div><dt>ENEMIES DEFEATED</dt><dd id="profileKills">—</dd></div>
           <div id="profilePrestigeRow" hidden><dt>PRESTIGE</dt><dd id="profilePrestige">—</dd></div>
-          <div id="profileMasteryRow" hidden><dt>MASTERY</dt><dd id="profileMastery">—</dd></div>
           <div><dt>STATUS</dt><dd id="profileOnline">—</dd></div>
         </dl>
+        <section id="profileSoulTier" class="profile-soul-tier" hidden></section>
         <div id="profileSafetyActions" class="profile-safety-actions" hidden>
           <button id="profileReportBtn" type="button">Report</button>
           <button id="profileBlockBtn" type="button">Block</button>
@@ -157,6 +158,7 @@ const afterUpdateGateShell = String.raw`
       <section id="profileStatsPanel" class="profile-panel" role="tabpanel" aria-labelledby="profileStatsTab">
         <div id="profileStatGrid" class="profile-stat-grid"></div>
       </section>
+      <section id="profileSkillsPanel" class="profile-panel profile-skills-panel" role="tabpanel" aria-labelledby="profileSkillsTab" hidden></section>
       <section id="profileBonusesPanel" class="profile-panel profile-bonuses-panel" role="tabpanel" aria-labelledby="profileBonusesTab" hidden></section>
     </div>
     </div>

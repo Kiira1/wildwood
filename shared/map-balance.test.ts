@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach } from 'vitest';
 import { defaultBalanceSettings, resolveMapBalance, validateBalanceSettings, BALANCE_MAPS } from './map-balance';
 import { CAMPAIGN_MAPS } from './campaign-registry';
 import { CURVE_BOSS_HEALTH, CURVE_ROLES } from './curve-shape';
-import { CURVE_HIT_LEVEL, CURVE_STEPS } from './curve-steps';
+import { CURVE_FLOOR, CURVE_HIT_LEVEL, CURVE_STEPS } from './curve-steps';
 import { bossRegenFractionFor } from './boss-regeneration';
 import { enemyDefeatDefinition } from './enemy-defeats';
 import { personalBossDefinition } from './personal-bosses';
@@ -137,8 +137,10 @@ it('grows every map by the curve steps, each role a fixed multiple of its damage
     expect(camps[i].damage / camps[i - 1].damage).toBeCloseTo(CURVE_STEPS.damage, 9);
     expect(camps[i].reward.amount / camps[i - 1].reward.amount).toBeCloseTo(CURVE_STEPS.reward, 9);
   }
-  // Hits step up CURVE_HIT_LEVEL from map 2 on, on top of the map's step.
-  expect(camps[1].damage / camps[0].damage).toBeCloseTo(CURVE_STEPS.damage * CURVE_HIT_LEVEL, 9);
+  // From map 2 on, on top of the map's step: hits CURVE_HIT_LEVEL up, and the floor raises health and hits and lowers pay.
+  expect(camps[1].hp / camps[0].hp).toBeCloseTo(CURVE_STEPS.health * CURVE_FLOOR.health, 9);
+  expect(camps[1].damage / camps[0].damage).toBeCloseTo(CURVE_STEPS.damage * CURVE_HIT_LEVEL * CURVE_FLOOR.health, 9);
+  expect(camps[1].reward.amount / camps[0].reward.amount).toBeCloseTo(CURVE_STEPS.reward / CURVE_FLOOR.pay, 9);
   for (const { id } of CAMPAIGN_MAPS) {
     const snapshot = resolveMapBalance(id, defaultBalanceSettings(), 0), camp = damageCamp(snapshot);
     for (const [kind, enemy] of Object.entries(snapshot.enemies)) {

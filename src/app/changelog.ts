@@ -1,4 +1,12 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.916.2": [
+    "Small balancing",
+    "The profile has a Skills tab with every skill's level and progress",
+    "The profile shows your Soul Tier unlock kills under Info",
+    "Fixed Sign In and Register sometimes doing nothing",
+    "Use Another Account is back on the start screen",
+    "The Town loads faster and runs smoother on phones",
+  ],
   "0.916.1": [
     "Auto Chop in Timberwood, like Auto Mine",
     "Auto Mine mines Arcane Crystal rocks too",
@@ -3654,6 +3662,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.916.2": "2026-10-19",
   "0.916.1": "2026-10-19",
   "0.916.0": "2026-10-19",
   "0.915.3": "2026-10-19",

@@ -1,4 +1,4 @@
-type Source = HTMLImageElement | HTMLCanvasElement;
+type Source = HTMLImageElement | HTMLCanvasElement | ImageBitmap;
 type Rect = { x: number; y: number; w: number; h: number };
 
 /**

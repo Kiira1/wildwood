@@ -471,21 +471,8 @@ it("counts another player's active Quick Draw cards in their attack speed cap, a
   expect(profileActiveCardIds({ ...profile, prestigePerks: {} })).toEqual(["ion_needle_card"]);
 });
 
-it("shows Mining and Woodcutting once each skill has been used, and neither before", () => {
+it("leaves Mining, Woodcutting and the crafts to the Skills tab", () => {
   const base = { progress: progress(), research: createEmptyResearchRanks(), itemUpgradeLevels: {} } as Parameters<typeof profileStatDisplayRows>[0];
-  const kinds = (profile: typeof base) => profileStatDisplayRows(profile, () => "0%", MIN_ATTACK_INTERVAL).map(row => row.kind);
-  expect(kinds(base)).not.toContain("woodcutting");
-  const rows = profileStatDisplayRows({ ...base, mining: 40, woodcutting: 500 }, () => "0%", MIN_ATTACK_INTERVAL);
-  expect(rows.find(row => row.kind === "mining")).toMatchObject({ label: "Mining:", total: "40" });
-  expect(rows.find(row => row.kind === "woodcutting")).toMatchObject({ label: "Woodcutting:", total: "500", expandedDetail: "(Fells trees 2.00× as fast)" });
-});
-
-it("shows each craft once practised, by level", () => {
-  const base = { progress: progress(), research: createEmptyResearchRanks(), itemUpgradeLevels: {} } as Parameters<typeof profileStatDisplayRows>[0];
-  const rows = (crafts: Parameters<typeof profileStatDisplayRows>[0]["crafts"]) => profileStatDisplayRows({ ...base, crafts }, () => "0%", MIN_ATTACK_INTERVAL);
-  expect(rows(undefined).map(row => row.kind)).not.toContain("smithing");
-  const shown = rows({ fletching: 12, enchanting: 1 });
-  expect(shown.map(row => row.kind)).not.toContain("smithing");
-  expect(shown.find(row => row.kind === "fletching")).toMatchObject({ label: "Fletching:", total: "Lv 12", expandedDetail: "(Crafts bows and Light armor at the Archery Range)" });
-  expect(shown.find(row => row.kind === "enchanting")).toMatchObject({ label: "Enchanting:", total: "Lv 1" });
+  const kinds = profileStatDisplayRows({ ...base, mining: 40, woodcutting: 500, crafts: { smithing: 3, fletching: 12, enchanting: 1 } }, () => "0%", MIN_ATTACK_INTERVAL).map(row => row.kind);
+  for (const kind of ["mining", "woodcutting", "smithing", "fletching", "enchanting"]) expect(kinds).not.toContain(kind);
 });

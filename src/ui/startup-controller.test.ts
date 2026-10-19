@@ -143,4 +143,28 @@ describe("startup account choice", () => {
     expect(switchAccount).toHaveBeenCalledOnce();
     expect(signIn).not.toHaveBeenCalled();
   });
+
+  it("lets a browser with no account and no server connection press REGISTER", () => {
+    const signIn = vi.fn(async () => ({ ok: true, redirecting: true }));
+    const h = harness([["Starting", true, 100]], {
+      connected: () => false, signIn,
+      accountState: () => ({ knownAccount: false, signInRequired: false, signInReady: true }),
+    });
+    h.startup.showAccountChoice();
+    const button = h.elements.get("signInFromStartBtn")!;
+    expect(button.textContent).toBe("REGISTER");
+    expect(button.disabled).toBe(false);
+    button.click();
+    expect(signIn).toHaveBeenCalledOnce();
+  });
+
+  it("still waits for the server before linking a saved guest", () => {
+    const h = harness([["Starting", true, 100]], {
+      connected: () => false,
+      accountState: () => ({ knownAccount: false, signInRequired: false, signInReady: false }),
+    });
+    h.startup.showAccountChoice();
+    expect(h.elements.get("signInFromStartBtn")!.disabled).toBe(true);
+    expect(h.elements.get("accountChoiceDetail")!.textContent).toBe("CONNECTING ACCOUNT OPTIONS…");
+  });
 });

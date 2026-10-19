@@ -1,4 +1,5 @@
 import { SOUL_SHORE_SOURCE, SOUL_WATER_SOURCE } from "../soul/soul-water";
+import { decodeOffThread, releaseDecoded } from "./decoded-image";
 import { FOREST_ROAD_SOURCE } from "./forest-road";
 import { SOUL_ATLAS_SOURCE, SOUL_INTERIORS_SOURCE, SOUL_VILLAGE_GROUND_SOURCE, SOUL_VILLAGE_PROPS_SOURCE } from "../soul/soul-prop-renderer";
 import { isProceduralMap } from "../../../../shared/procedural-maps";
@@ -280,13 +281,18 @@ export function createAssetPreprocessor(onWorldAssetReady: () => void) {
     "assets/wildstat/lava/charred-tree-2.webp",
   ];
   const lavaAssets = lavaAssetSources.map((source) => createLazyImageAsset(source));
-  const soulAtlasAsset = createLazyImageAsset(SOUL_ATLAS_SOURCE);
-  const soulVillagePropsAsset = createLazyImageAsset(SOUL_VILLAGE_PROPS_SOURCE);
-  const soulVillageGroundAsset = createLazyImageAsset(SOUL_VILLAGE_GROUND_SOURCE);
-  const soulWaterAsset = createLazyImageAsset(SOUL_WATER_SOURCE);
-  const soulShoreAsset = createLazyImageAsset(SOUL_SHORE_SOURCE);
+  // The Town's sheets are decoded off the main thread as they load (decoded-image.ts), and ready only then.
+  const decodedSheet = (source: string) => {
+    const asset: LazyImageAsset = createLazyImageAsset(source, (image, settle) => { void decodeOffThread(image).then(settle); }, () => releaseDecoded(asset.image));
+    return asset;
+  };
+  const soulAtlasAsset = decodedSheet(SOUL_ATLAS_SOURCE);
+  const soulVillagePropsAsset = decodedSheet(SOUL_VILLAGE_PROPS_SOURCE);
+  const soulVillageGroundAsset = decodedSheet(SOUL_VILLAGE_GROUND_SOURCE);
+  const soulWaterAsset = decodedSheet(SOUL_WATER_SOURCE);
+  const soulShoreAsset = decodedSheet(SOUL_SHORE_SOURCE);
   const forestRoadAsset = createLazyImageAsset(FOREST_ROAD_SOURCE);
-  const soulInteriorsAsset = createLazyImageAsset(SOUL_INTERIORS_SOURCE);
+  const soulInteriorsAsset = decodedSheet(SOUL_INTERIORS_SOURCE);
   const guildHallAssets = [GUILD_HALL_PROPS_SOURCE, GUILD_HALL_GROUND_SOURCE, GUILD_HALL_ROOMS_SOURCE, ...GUILD_EMBLEM_SHEET_SOURCES].map(source => createLazyImageAsset(source));
   const assetGroups = {
     forestDecor: [treeAsset],

@@ -26,8 +26,8 @@ export function bossBudgetScale(campaignIndex: number) {
   return BOSS_KILL_BUDGETS[campaignIndex] ?? { hpScale: 1, hitScale: 1 };
 }
 /**
- * Kills to get ready for a boss. Past Endless 1 each map needs its step more of a stat (health 2.2x, so 2.2x the
- * damage; hits 2.2x, so 2.2x the health) from kills that pay its reward step more, so the counts grow by their ratio.
+ * Kills to get ready for a boss. Past Endless 1 each map needs its step more of a stat (health 2.15x, so 2.15x the
+ * damage; hits 2.15x, so 2.15x the health) from kills that pay its reward step more, so the counts grow by their ratio.
  */
 export function calibratedBossKillTarget(mapIndex: number) {
   if (mapIndex < 15) return BOSS_KILL_BUDGETS[Math.max(0, mapIndex)];

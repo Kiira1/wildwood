@@ -11,6 +11,7 @@ import { LOG_COLORS } from "../town/wood-tree-renderer";
 import { woodcuttingScene } from "../town/woodcutting-scene";
 import { soulStatOfCampName } from "../../soul-world";
 import { residentDrawable } from "./resident-image";
+import { decodedImage } from "./decoded-image";
 import { drawHomeCourtyard, drawHomeQuestBoard, drawHomeResearchDesk, drawHomeStationSign, drawSchoolWallSign } from "../town/home-courtyard";
 import { drawIonRoads } from "./ion-ground";
 import { drawVerdantRoads } from "./verdant-ground";
@@ -1148,7 +1149,7 @@ if (options.getMapId() === ION_CITADEL_MAP_ID) { drawIonRoads(ctx, options.paths
       soulVillageThumbnail = document.createElement("canvas");
       soulVillageThumbnail.width = 256;
       soulVillageThumbnail.height = Math.max(1, Math.round(256 * image.naturalHeight / image.naturalWidth));
-      soulVillageThumbnail.getContext("2d")?.drawImage(image, 0, 0, soulVillageThumbnail.width, soulVillageThumbnail.height);
+      soulVillageThumbnail.getContext("2d")?.drawImage(decodedImage(image), 0, 0, soulVillageThumbnail.width, soulVillageThumbnail.height);
     }
     if (!soulVillageThumbnail) return;
     const area = SOUL_VILLAGE_GROUND;

@@ -84,6 +84,7 @@ function setup(options: {
   signedIn?: boolean;
   protocolBlocked?: boolean;
   authCallback?: boolean;
+  updateResumeMode?: "account" | "guest" | null;
   validateAccountIdToken?: (token: string, expectedNonce: string) => Promise<ReturnType<typeof inspectSpacetimeIdToken>>;
 } = {}) {
   const local = new MemoryStorage();
@@ -126,7 +127,7 @@ function setup(options: {
   const clearPendingProgress = vi.fn();
   const service = createAccountService({
     keys,
-    updateResumeMode: null,
+    updateResumeMode: options.updateResumeMode ?? null,
     updateResumeStore: createUpdateResumeStore(session, "update-resume"),
     notify,
     connection: () => connection as never,
@@ -1086,4 +1087,75 @@ it("tells Settings an account is stored even while disconnected", () => {
   const { service } = setup({ accountToken: accountToken(), knownAccount: true });
   expect(service.api.accountState()).toMatchObject({ signedIn: false, hasAccountToken: true });
   expect(setup({ guestToken: "guest" }).service.api.accountState().hasAccountToken).toBe(false);
+});
+
+describe("Sign In and Register never do nothing", () => {
+  afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
+
+  it.each([null, "account"] as const)("a signed-in account reloaded (update resume: %s) comes back to its character", async mode => {
+    const f = setup({ accountToken: accountToken(), knownAccount: true, updateResumeMode: mode });
+    f.local.setItem(keys.knownAccountCharacterKey, "Pilidria");
+    await f.service.restoreKnownAccount();
+    expect(f.service.api.accountState()).toMatchObject({ knownAccount: true });
+    expect(f.service.api.knownCharacter()).toBe("Pilidria");
+    if (mode) expect(f.connect).toHaveBeenCalledOnce();
+    else expect(f.service.api.accountState()).toMatchObject({ signInRequired: true, notice: "SIGN-IN REQUIRED" });
+  });
+
+  it("a reload after the server refused the token still offers SIGN IN to the character", async () => {
+    const f = setup({ knownAccount: true });
+    f.local.setItem(keys.knownAccountCharacterKey, "Pilidria");
+    await f.service.restoreKnownAccount();
+    expect(f.service.api.accountState()).toMatchObject({ knownAccount: true, signInRequired: true, signInReady: true });
+    expect(f.service.api.knownCharacter()).toBe("Pilidria");
+    expect(await f.service.api.signIn()).toMatchObject({ ok: true, redirecting: true });
+    expect(f.assign).toHaveBeenCalledOnce();
+  });
+
+  it("reports a sign-in that was cancelled before it left, instead of waiting forever", async () => {
+    const f = setup();
+    // Anything that drops the trip mid-start (a back-forward restore, Guest) leaves this page here.
+    f.notify.mockImplementation(() => {
+      if (f.service.api.accountState().returningFromSignIn) f.service.cancelAbandonedSignIn();
+    });
+    const result = await f.service.api.signIn();
+    expect(f.assign).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ ok: false });
+    f.notify.mockReset();
+    expect(await f.service.api.signIn()).toMatchObject({ ok: true, redirecting: true });
+    expect(f.assign).toHaveBeenCalledOnce();
+  });
+
+  it("does not keep a guest link pending when its sign-in never left", async () => {
+    const f = setup({ guestToken: "existing-guest" });
+    f.setConnection({ isActive: true, disconnect: vi.fn(), reducers: { beginAccountLink: vi.fn(async () => {}) } } as never);
+    f.notify.mockImplementation(() => {
+      if (f.service.api.accountState().returningFromSignIn) f.service.cancelAbandonedSignIn();
+    });
+    expect(await f.service.api.signIn()).toMatchObject({ ok: false });
+    expect(f.session.getItem(keys.accountLinkKey)).toBeNull();
+    expect(f.service.accountMigrationPending()).toBe(false);
+  });
+
+  it("reloads a sign-out page brought back from the back-forward cache", async () => {
+    const f = setup({ accountToken: accountToken(), knownAccount: true, signedIn: true });
+    const listeners: Record<string, ((event: { persisted?: boolean }) => void)[]> = {};
+    Object.assign(window, { addEventListener: (type: string, listener: (event: { persisted?: boolean }) => void) => { (listeners[type] ??= []).push(listener); } });
+    await f.service.api.signOut();
+    expect(await f.service.api.signIn()).toMatchObject({ ok: false, error: "SIGNING OUT" });
+    for (const listener of listeners.pageshow ?? []) listener({ persisted: false });
+    expect(window.location.reload).not.toHaveBeenCalled();
+    for (const listener of listeners.pageshow ?? []) listener({ persisted: true });
+    expect(window.location.reload).toHaveBeenCalledOnce();
+  });
+
+  it("reloads a sign-out whose page never left", async () => {
+    vi.useFakeTimers();
+    const f = setup({ accountToken: accountToken(), knownAccount: true, signedIn: true });
+    await f.service.api.signOut();
+    vi.advanceTimersByTime(14_000);
+    expect(window.location.reload).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1_000);
+    expect(window.location.reload).toHaveBeenCalledOnce();
+  });
 });

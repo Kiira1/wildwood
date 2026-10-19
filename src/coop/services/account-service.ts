@@ -99,6 +99,8 @@ const AUTH_MAX_AGE_SECONDS = String(365 * 86_400);
 type SignInReason = "known-account" | "register" | "guest-link" | "login-move" | "switch-account" | "update-resume"
   | "renewal-no-grant" | "renewal-grant-rejected" | "token-rejected" | "defeat-reauth" | "grant-follow-up";
 const TOKEN_EXCHANGE_TIMEOUT_MS = 15_000;
+/** A page still here this long after leaving for SpacetimeAuth's sign-out never left. */
+const SIGN_OUT_STALL_MS = 15_000;
 /** Trips that pick an account on purpose; every other trip expects the character it left with. */
 const ACCOUNT_CHOICE_REASONS: readonly SignInReason[] = ["register", "guest-link", "login-move", "switch-account"];
 
@@ -660,12 +662,19 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
       try { await nativeAuth()?.signOut?.(url); }
       catch { /* Local credentials are already cleared; explicit login prompts again. */ }
       window.location.reload();
-    } else window.location.assign(url);
+    } else {
+      // A sign-out page brought back by Back, or one that never left, is reloaded: here nothing could start again.
+      const page = window.location;
+      window.addEventListener?.("pageshow", (event) => { if ((event as PageTransitionEvent).persisted) page.reload(); });
+      setTimeout(() => { try { page.reload(); } catch {} }, SIGN_OUT_STALL_MS);
+      page.assign(url);
+    }
   }
 
+  /** False when the trip was dropped before leaving, so a tap never waits on a page that stays. */
   async function startAccountSignIn(reason: SignInReason, forceLogin = false, carried?: ExpectedSignIn | null) {
     // Lock before PKCE hashing yields, so startup and taps share one transaction.
-    if (signingOut || outboundAuthNavigationPending || callbackPending) return;
+    if (signingOut || outboundAuthNavigationPending || callbackPending) return false;
     outboundAuthNavigationPending = true;
     try {
       try {
@@ -676,7 +685,7 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
       const state = randomUrlSafe(24);
       const nonce = randomUrlSafe(24);
       const challenge = await sha256UrlSafe(verifier);
-      if (signingOut) return;
+      if (signingOut) return false;
       writeTabValue(keys.authStateKey, state);
       writeTabValue(keys.authVerifierKey, verifier);
       writeTabValue(keys.authNonceKey, nonce);
@@ -705,7 +714,7 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
       dependencies.notify();
       // Leaving mid-renewal would lose the refresh token SpacetimeAuth just issued.
       await whenAccountRenewalSettled();
-      if (signingOut || !outboundAuthNavigationPending) return;
+      if (signingOut || !outboundAuthNavigationPending) return false;
       if (isNativePreview()) {
         try {
           const bridge = nativeAuth();
@@ -717,6 +726,7 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
           throw error;
         }
       } else window.location.assign(url.toString());
+      return true;
     } catch (error) {
       clearAccountReturnPending();
       throw error;
@@ -911,6 +921,11 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
     return true;
   }
 
+  // The trip was dropped before the page left: the tap shows a failure it can retry.
+  function notStarted() {
+    return { ok: false as const, error: signingOut ? "SIGNING OUT" : "SIGN-IN NOT STARTED" };
+  }
+
   const api = {
     accountState() {
       const signedIn = !signingOut && Boolean(dependencies.connection()?.isActive && dependencies.connectedSignedIn());
@@ -1020,14 +1035,14 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
           notice = "OPENING SIGN-IN";
           dependencies.notify();
           // Same account continuing: only the kill-report re-auth must log in.
-          await startAccountSignIn(defeatSignInBlocked ? "defeat-reauth" : "known-account", defeatSignInBlocked);
+          if (!await startAccountSignIn(defeatSignInBlocked ? "defeat-reauth" : "known-account", defeatSignInBlocked)) return notStarted();
           return { ok: true, redirecting: true };
         }
         if (!connection) {
           if (!guestToken()) {
             notice = "OPENING REGISTRATION";
             dependencies.notify();
-            await startAccountSignIn("register", true);
+            if (!await startAccountSignIn("register", true)) return notStarted();
             return { ok: true, redirecting: true };
           }
           notice = "WAIT FOR SERVER";
@@ -1060,7 +1075,11 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
         markAccountMigrationPending();
         notice = "PREPARING SIGN-IN";
         dependencies.notify();
-        await startAccountSignIn("guest-link", true);
+        if (!await startAccountSignIn("guest-link", true)) {
+          clearTabValue(keys.accountLinkKey);
+          clearAccountMigrationPending();
+          return notStarted();
+        }
         return { ok: true, redirecting: true };
       } finally {
         signInPreparing = false;

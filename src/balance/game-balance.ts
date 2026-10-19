@@ -1,4 +1,4 @@
-import { CURVE_HIT_LEVEL, CURVE_STEPS } from "../../shared/curve-steps";
+import { CURVE_FLOOR, CURVE_HIT_LEVEL, CURVE_STEPS } from "../../shared/curve-steps";
 import { defaultBalanceSettings } from "../../shared/map-balance";
 
 /**
@@ -8,6 +8,6 @@ import { defaultBalanceSettings } from "../../shared/map-balance";
  */
 export const GAME_BALANCE = Object.freeze({
   revision: 0,
-  key: `curve-${CURVE_STEPS.health}-${CURVE_STEPS.damage}-${CURVE_STEPS.reward}-${CURVE_HIT_LEVEL}`,
+  key: `curve-${CURVE_STEPS.health}-${CURVE_STEPS.damage}-${CURVE_STEPS.reward}-${CURVE_HIT_LEVEL}-${CURVE_FLOOR.health}-${CURVE_FLOOR.pay}`,
   settings: defaultBalanceSettings(),
 });

@@ -49,7 +49,7 @@ import { activateCardsFromGear } from "./active-cards";
 import { payOutAllOldGear } from "./old-gear-payout";
 import { giveEveryoneStarterWeapons } from "./starter-chest";
 
-export const MODULE_MIGRATION_VERSION = 63;
+export const MODULE_MIGRATION_VERSION = 64;
 
 /**
  * Migration 50 (0.856): the ranking snapshot moves to leaderboard_entry_v2,
@@ -563,6 +563,8 @@ export function createModuleMigrations(deps: ModuleMigrationDeps) {
     if (currentVersion < 62) { payOutAllOldGear(ctx); publishGearOverhaulMail(ctx); }
     // 63 (0.916.1): new players pick a weapon from the Starter Chest; everyone already here gets all three Crude ones (starter-chest.ts).
     if (currentVersion < 63) giveEveryoneStarterWeapons(ctx);
+    // 64 (0.916.2): the curve steps 2.15 a map over a raised floor (curve-steps.ts); every pinned visit moves onto it now, not at travel.
+    if (currentVersion < 64) repinMapBalances(ctx);
     const next = { id: 0, version: MODULE_MIGRATION_VERSION };
     if (state) ctx.db.moduleMigrationState.id.update(next);
     else ctx.db.moduleMigrationState.insert(next);

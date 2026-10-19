@@ -13,7 +13,7 @@ Balance Lab factor (1 unless tweaked), resolved on the server.
 
 | Numbers | Owner (edit here) | How to change it |
 |---|---|---|
-| Steps per map (health, damage, reward) and the hit level from map 2 | `shared/curve-steps.ts` | edit; release + publish |
+| Steps per map (health, damage, reward), the hit level and the floor from map 2 | `shared/curve-steps.ts` | edit; release + publish |
 | The Forest's damage camp, each role's multiple of it, boss health and attack shares | `shared/curve-shape.ts` | edit; release + publish |
 | Deliberate per-map tweaks | `shared/balance-tweaks.json` | `npm run balance:adopt` copies live Lab tweaks here |
 | Enemy speed, attack speed, radius, aggro, reward type; the Forest's Spitter and Bramble (off the curve) | `shared/enemy-base-values.ts` (Endless-only art rows: `shared/endless-enemies.ts`) | edit the row; release + publish |

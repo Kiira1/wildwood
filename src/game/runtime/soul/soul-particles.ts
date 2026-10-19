@@ -1,3 +1,4 @@
+import { decodedImage } from "../render/decoded-image";
 import { SOUL_VILLAGE_EMITTERS, type SoulEmitter } from "../../soul-village";
 import type { Camera } from "../render/camera";
 import { soulFrame } from "./soul-prop-renderer";
@@ -62,14 +63,14 @@ export function createSoulParticles(options: {
     canvas.width = frame?.w ?? 1; canvas.height = frame?.h ?? 1;
     const context = canvas.getContext("2d");
     if (context && frame) {
-      context.drawImage(image, frame.x, frame.y, frame.w, frame.h, 0, 0, frame.w, frame.h);
+      context.drawImage(decodedImage(image), frame.x, frame.y, frame.w, frame.h, 0, 0, frame.w, frame.h);
       const [r, g, b] = sample(emitter.color?.colors ?? [[0, 1, 1, 1]], step / (TINT_STEPS - 1), 3);
       const [sr, sg, sb] = sample(emitter.startColor.colors, 0, 3);
       context.globalCompositeOperation = "multiply";
       context.fillStyle = `rgb(${Math.round(r * sr * 255)},${Math.round(g * sg * 255)},${Math.round(b * sb * 255)})`;
       context.fillRect(0, 0, frame.w, frame.h);
       context.globalCompositeOperation = "destination-in";
-      context.drawImage(image, frame.x, frame.y, frame.w, frame.h, 0, 0, frame.w, frame.h);
+      context.drawImage(decodedImage(image), frame.x, frame.y, frame.w, frame.h, 0, 0, frame.w, frame.h);
     }
     tinted.set(key, canvas);
     return canvas;

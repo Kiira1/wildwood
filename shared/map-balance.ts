@@ -1,5 +1,5 @@
 import { CURVE_BOSS_ATTACKS, CURVE_BOSS_HEALTH, CURVE_FOREST, CURVE_ROLES } from './curve-shape';
-import { CURVE_HIT_LEVEL, CURVE_STEPS } from './curve-steps';
+import { CURVE_FLOOR, CURVE_HIT_LEVEL, CURVE_STEPS } from './curve-steps';
 import { LEGACY_ENEMY_REWARDS } from "./legacy-enemy-rewards";
 import { CAMPAIGN_MAPS, CAMPAIGN_ENDPOINT } from "./campaign-registry";
 import { regularMapLoot } from './regular-map-loot';
@@ -51,10 +51,11 @@ export function validateBalanceSettings(value: unknown): BalanceSettings {
   }
   return result;
 }
-/** A campaign map's damage camp on the curve: the Forest's, grown by the steps, hits CURVE_HIT_LEVEL higher from map 2 on. */
+/** A campaign map's damage camp on the curve: the Forest's, grown by the steps, raised by CURVE_FLOOR from map 2 on, hits CURVE_HIT_LEVEL more. */
 function curveCamp(index: number) {
-  return { hp: CURVE_FOREST.hp * CURVE_STEPS.health ** index, damage: CURVE_FOREST.damage * CURVE_STEPS.damage ** index * (index ? CURVE_HIT_LEVEL : 1),
-    reward: CURVE_FOREST.reward * CURVE_STEPS.reward ** index };
+  const tough = index ? CURVE_FLOOR.health : 1;
+  return { hp: CURVE_FOREST.hp * CURVE_STEPS.health ** index * tough, damage: CURVE_FOREST.damage * CURVE_STEPS.damage ** index * (index ? CURVE_HIT_LEVEL : 1) * tough,
+    reward: CURVE_FOREST.reward * CURVE_STEPS.reward ** index / (index ? CURVE_FLOOR.pay : 1) };
 }
 
 /** Resolved numbers cross the wire; apps do not need the current scaling formula. */

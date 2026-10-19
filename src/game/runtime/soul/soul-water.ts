@@ -1,5 +1,7 @@
+import { decodedImage } from "../render/decoded-image";
 import { TOWN_EAST_BRIDGE } from "../../../../shared/town";
 import { SOUL_VILLAGE_GROUND } from "../../soul-village";
+import { SOUL_WATER_CELLS } from "./soul-water-cells";
 import type { Camera } from "../render/camera";
 
 export const SOUL_WATER_SOURCE = "assets/wildstat/soul-dimension/village-water.webp";
@@ -22,6 +24,9 @@ export type WaterCells = {
   /** One per cell, row by row: 1 where there is water or foam. */
   wet: Uint8Array;
   area: { x: number; y: number; w: number; h: number };
+  /** A cell's size in world units: the masks' last column and row of cells run past their edge. */
+  cellW: number;
+  cellH: number;
 };
 
 /** Marks the cells with any coverage in the masks' alpha (RGBA rows, `width` pixels across). */
@@ -32,7 +37,7 @@ export function waterCellsFromAlpha(alpha: Uint8ClampedArray, width: number, hei
     const row = Math.floor(y / cellPixels) * columns;
     for (let x = 0; x < width; x++) if (alpha[(y * width + x) * 4 + 3] > 0) wet[row + Math.floor(x / cellPixels)] = 1;
   }
-  return { columns, rows, wet, area };
+  return { columns, rows, wet, area, cellW: area.w / width * cellPixels, cellH: area.h / height * cellPixels };
 }
 
 /**
@@ -40,8 +45,7 @@ export function waterCellsFromAlpha(alpha: Uint8ClampedArray, width: number, hei
  * none is in view (on the square, most of the time), so the water costs nothing there.
  */
 export function waterRectInView(cells: WaterCells, view: { left: number; top: number; right: number; bottom: number }) {
-  const { area, columns, rows, wet } = cells;
-  const cellW = area.w / columns, cellH = area.h / rows;
+  const { area, columns, rows, wet, cellW, cellH } = cells;
   const c0 = Math.max(0, Math.floor((view.left - area.x) / cellW)), c1 = Math.min(columns - 1, Math.floor((view.right - area.x) / cellW));
   const r0 = Math.max(0, Math.floor((view.top - area.y) / cellH)), r1 = Math.min(rows - 1, Math.floor((view.bottom - area.y) / cellH));
   let minC = Infinity, maxC = -1, minR = Infinity, maxR = -1;
@@ -58,6 +62,32 @@ export function waterRectInView(cells: WaterCells, view: { left: number; top: nu
   const left = Math.max(view.left, area.x + minC * cellW), right = Math.min(view.right, area.x + (maxC + 1) * cellW);
   const top = Math.max(view.top, area.y + minR * cellH), bottom = Math.min(view.bottom, area.y + (maxR + 1) * cellH);
   return left < right && top < bottom ? { left, top, right, bottom } : null;
+}
+
+/**
+ * The water in view row by row: for each row of cells, the span from its first wet cell to its last, clipped to
+ * the view. The river curls round the village, so its bounding box is most of the screen while the water in it is
+ * a band; only these rows' spans are lit and laid. Nothing outside them has any water or foam to show.
+ */
+export function waterRowsInView(cells: WaterCells, view: { left: number; top: number; right: number; bottom: number }) {
+  const { area, columns, rows, wet, cellW, cellH } = cells;
+  const c0 = Math.max(0, Math.floor((view.left - area.x) / cellW)), c1 = Math.min(columns - 1, Math.floor((view.right - area.x) / cellW));
+  const r0 = Math.max(0, Math.floor((view.top - area.y) / cellH)), r1 = Math.min(rows - 1, Math.floor((view.bottom - area.y) / cellH));
+  const spans: { left: number; top: number; right: number; bottom: number }[] = [];
+  for (let r = r0; r <= r1; r++) {
+    let minC = -1, maxC = -1;
+    for (let c = c0; c <= c1; c++) if (wet[r * columns + c]) { if (minC < 0) minC = c; maxC = c; }
+    if (minC < 0) continue;
+    // Whole units, so a span's edge never cuts a pixel of the light's layer in two.
+    const left = Math.floor(Math.max(view.left, area.x + minC * cellW)), right = Math.ceil(Math.min(view.right, area.x + (maxC + 1) * cellW));
+    const top = Math.floor(Math.max(view.top, area.y + r * cellH)), bottom = Math.ceil(Math.min(view.bottom, area.y + (r + 1) * cellH));
+    if (left >= right || top >= bottom) continue;
+    // A row with the same span as the one above joins it.
+    const last = spans[spans.length - 1];
+    if (last && last.left === left && last.right === right && last.bottom === top) last.bottom = bottom;
+    else spans.push({ left, top, right, bottom });
+  }
+  return spans;
 }
 
 /** Short soft strokes, like light catching ripples: tiled, they read as a moving surface. */
@@ -82,21 +112,13 @@ function glintTile(seed: number) {
   return canvas;
 }
 
-/** Reads the masks once, to know where the water is; null if the browser will not let it. */
-function measureWater(water: HTMLImageElement, shore: HTMLImageElement | undefined): WaterCells | null {
-  try {
-    const canvas = document.createElement("canvas");
-    canvas.width = water.naturalWidth; canvas.height = water.naturalHeight;
-    const context = canvas.getContext("2d", { willReadFrequently: true });
-    if (!context) return null;
-    context.drawImage(water, 0, 0);
-    if (shore?.complete && shore.naturalWidth > 0) context.drawImage(shore, 0, 0, canvas.width, canvas.height);
-    const cells = waterCellsFromAlpha(context.getImageData(0, 0, canvas.width, canvas.height).data, canvas.width, canvas.height, SOUL_VILLAGE_GROUND);
-    canvas.width = canvas.height = 0;
-    return cells;
-  } catch {
-    return null;
-  }
+/** The baked table of where the water is (bake-water-cells.mjs), as cells over the village's ground. */
+export function waterCellsFromBits(table: { width: number; height: number; cellPixels: number; bits: string }, area: WaterCells["area"]): WaterCells {
+  const columns = Math.ceil(table.width / table.cellPixels), rows = Math.ceil(table.height / table.cellPixels);
+  const bytes = Uint8Array.from(atob(table.bits), character => character.charCodeAt(0));
+  const wet = new Uint8Array(columns * rows);
+  for (let cell = 0; cell < wet.length; cell++) wet[cell] = (bytes[cell >> 3] >> (cell & 7)) & 1;
+  return { columns, rows, wet, area, cellW: area.w / table.width * table.cellPixels, cellH: area.h / table.height * table.cellPixels };
 }
 
 /**
@@ -120,8 +142,7 @@ export function createSoulWater(options: {
   let layer: HTMLCanvasElement | null = null;
   let target: CanvasRenderingContext2D | null = null;
   let patterns: CanvasPattern[] | null = null;
-  let cells: WaterCells | null | undefined;
-  let measuredShore = false;
+  let cells: WaterCells | null = null;
   const matrix = typeof DOMMatrix === "undefined" ? null : new DOMMatrix();
   /** Which stretch of water the layer was last lit for, and when. */
   let litKey = "", litAt = Number.NaN;
@@ -138,17 +159,25 @@ export function createSoulWater(options: {
       right: Math.min(area.x + area.w, camera.x + view.width / camera.zoom), bottom: Math.min(area.y + area.h, camera.y + view.height / camera.zoom),
     };
     if (inView.left >= inView.right || inView.top >= inView.bottom) return;
-    // Measured once both masks are in (the shore's foam reaches past the open water).
-    const shoreReady = Boolean(shore?.complete);
-    if (cells === undefined || (!measuredShore && shoreReady)) { cells = measureWater(water, shore); measuredShore = shoreReady; }
+    cells ??= waterCellsFromBits(SOUL_WATER_CELLS, SOUL_VILLAGE_GROUND);
     // The layer covers the water near the view on a coarse grid, so it holds still while the camera drifts and
     // only needs relighting when the glints have moved: a few times a second is smooth for light this slow.
     const reach = {
       left: Math.max(area.x, Math.floor(inView.left / LAYER_GRID) * LAYER_GRID), top: Math.max(area.y, Math.floor(inView.top / LAYER_GRID) * LAYER_GRID),
       right: Math.min(area.x + area.w, Math.ceil(inView.right / LAYER_GRID) * LAYER_GRID), bottom: Math.min(area.y + area.h, Math.ceil(inView.bottom / LAYER_GRID) * LAYER_GRID),
     };
-    const wet = cells ? waterRectInView(cells, reach) : reach;
+    const wet = waterRectInView(cells, reach);
     if (!wet) return;
+    let spans: ReturnType<typeof waterRowsInView> | null = waterRowsInView(cells, reach);
+    // Clipping costs a little itself: worth it only where the spans leave much of the box dry.
+    if (spans && spans.reduce((sum, span) => sum + (span.right - span.left) * (span.bottom - span.top), 0) > .6 * (wet.right - wet.left) * (wet.bottom - wet.top)) spans = null;
+    const clipTo = (target: CanvasRenderingContext2D, ox: number, oy: number) => {
+      if (!spans) return;
+      target.beginPath();
+      // A couple of units past each span: the light is scaled up smoothly, and its edge blends into the next pixel.
+      for (const span of spans) target.rect(span.left - ox - 2, span.top - oy - 2, span.right - span.left + 4, span.bottom - span.top + 4);
+      target.clip();
+    };
     // Whole world units, so the layer's pixels line up with the world's.
     const left = Math.floor(wet.left), top = Math.floor(wet.top), right = Math.ceil(wet.right), bottom = Math.ceil(wet.bottom);
     const width = right - left, height = bottom - top;
@@ -180,6 +209,8 @@ export function createSoulWater(options: {
       glints.globalCompositeOperation = "source-over";
       glints.globalAlpha = 1;
       glints.clearRect(0, 0, width, height);
+      glints.save();
+      clipTo(glints, left, top);
       // Glints are pinned to the world, then slide with time, so the water moves rather than the camera.
       const drift = [[t * 9, t * 3], [-t * 6, t * 5]] as const;
       for (const [index, pattern] of patterns.entries()) {
@@ -191,14 +222,16 @@ export function createSoulWater(options: {
       // Keep only the open water, away from its shore.
       glints.globalAlpha = 1;
       glints.globalCompositeOperation = "destination-in";
-      glints.drawImage(water, (left - area.x) * scaleX, (top - area.y) * scaleY, width * scaleX, height * scaleY, 0, 0, width, height);
+      glints.drawImage(decodedImage(water), (left - area.x) * scaleX, (top - area.y) * scaleY, width * scaleX, height * scaleY, 0, 0, width, height);
       glints.globalCompositeOperation = "source-over";
+      glints.restore();
       litKey = key;
       litAt = t;
     }
     if (!layer) return;
     const showWidth = showRight - showLeft, showHeight = showBottom - showTop;
     ctx.save();
+    clipTo(ctx, camera.x, camera.y);
     // The east bridge's deck was laid after the masks were baked: neither light nor foam shows on it.
     const deck = EAST_BRIDGE_DECK;
     if (deck.left < showRight && deck.right > showLeft && deck.top < showBottom && deck.bottom > showTop) {
@@ -216,7 +249,7 @@ export function createSoulWater(options: {
     // Foam along the shore, breathing.
     if (shore?.complete && shore.naturalWidth > 0) {
       ctx.globalAlpha = .35 + .2 * Math.sin(t * 1.4);
-      ctx.drawImage(shore, (showLeft - area.x) * scaleX, (showTop - area.y) * scaleY, showWidth * scaleX, showHeight * scaleY,
+      ctx.drawImage(decodedImage(shore), (showLeft - area.x) * scaleX, (showTop - area.y) * scaleY, showWidth * scaleX, showHeight * scaleY,
         showLeft - camera.x, showTop - camera.y, showWidth, showHeight);
     }
     ctx.restore();
