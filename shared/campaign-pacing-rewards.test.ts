@@ -4,6 +4,7 @@ import fixture from '../tests/fixtures/balance-revision-73.json';
 import { ENDLESS_STEPS, defaultBalanceSettings, resolveMapBalance, validateBalanceSettings } from './map-balance';
 import { CAMPAIGN_MAPS } from './campaign-registry';
 import { CAMPAIGN_PACING_REWARDS } from './campaign-pacing-rewards';
+import { legacyBalanceSettings } from "../tests/helpers/legacy-balance";
 
 it('applies campaign pacing once and changes no combat, boss, drop or timer values', () => {
   const settings = validateBalanceSettings(revision75);
@@ -24,7 +25,7 @@ it('applies campaign pacing once and changes no combat, boss, drop or timer valu
 
 it('carries final-map pacing into Endless, which carries on from map 15', () => {
   const damageCamp = (snapshot: ReturnType<typeof resolveMapBalance>) => Object.values(snapshot.enemies).find(row => row.reward.type === 'damage' && !row.elite)!;
-  for (const settings of [fixture.settings, defaultBalanceSettings()]) {
+  for (const settings of [fixture.settings, legacyBalanceSettings()]) {
     const map15 = damageCamp(resolveMapBalance('ion_citadel', settings, 0)).reward.amount;
     for (const depth of [1, 2, 10, 40]) {
       const lane = resolveMapBalance(`endless_${depth}`, settings, 0).lanes.Cindermaw.reward.amount;

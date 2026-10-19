@@ -51,8 +51,8 @@ it("counts deaths, their time, and the fall back a map when a build cannot hold 
 it("loses a boss fight the build cannot outlast, then farms until it can", () => {
   const input = snapshot();
   input.highestUnlockedMapIndex = 1;
-  // Fast enough for the 90 s readiness target, but 1,650 health and no regeneration fall to the Dragon in about 26 s.
-  input.stats = { damage: createMapDefinitions()[0].boss!.hp / 75, maxHp: 1_650, armor: 0, regen: 0, attackRate: 1 };
+  // Fast enough for the 90 s readiness target, but 1,200 health and no regeneration fall to the Dragon, even with what the Forest pays on the way.
+  input.stats = { damage: createMapDefinitions()[0].boss!.hp / 75, maxHp: 1_200, armor: 0, regen: 0, attackRate: 1 };
   const forest = simulateExistingPlayer({ durationSeconds: 3600, trials: 1, requiredClears: 0, researchPlan: "off", steadyEquipmentUpgrades: false, strategy: "natural" }, input).maps[0];
   expect(forest.bossDeaths).toBe(1);
   expect(forest.exitedAtSeconds).not.toBeNull();

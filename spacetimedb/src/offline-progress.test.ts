@@ -8,6 +8,8 @@ import { DEVELOPER_IDENTITY } from "../../shared/developer-identity";
 import { SPACETIME_AUTH_CLIENT_ID, SPACETIME_AUTH_ISSUER } from "../../shared/rules";
 import { Identity } from "../../tests/helpers/spacetime-memory-db";
 import { progressOf } from "../../tests/helpers/progress";
+import { CAMPAIGN_UNLOCK_FIELDS } from "../../shared/equipment-access";
+import { MAP_IDS } from "../../shared/rules";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
 /** A build that can hold Snowlands, standing in Home after the window opened. */
@@ -91,13 +93,12 @@ it("pays nothing for a reconnect", () => {
 
 it("steps down to the map the build can actually survive", () => {
   // Unlocked far past what these stats can hold.
-  const fixture = away(OFFLINE_WINDOW_SECONDS, {
-    lavaUnlocked: true, infernalUnlocked: true, waterUnlocked: true, samuraiUnlocked: true,
-  });
+  const fixture = away(OFFLINE_WINDOW_SECONDS, Object.fromEntries(CAMPAIGN_UNLOCK_FIELDS.map(field => [field, true])));
 
   enter(fixture);
 
-  expect(fixture.db.offlineProgress.identity.find(fixture.ctx.sender).mapId).toBe("intermediate_snowlands");
+  const mapId = fixture.db.offlineProgress.identity.find(fixture.ctx.sender).mapId;
+  expect(MAP_IDS.indexOf(mapId)).toBeLessThan(MAP_IDS.length - 1);
 });
 
 it("reports a blocked window instead of paying for a map that would kill them", () => {

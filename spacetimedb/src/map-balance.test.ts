@@ -50,6 +50,7 @@ it('gives offline farming the balance a kill pays right now, on maps the player 
 import { crystalFixture, server } from '../../tests/helpers/crystal-hollows-fixture';
 import { reportKills } from '../../tests/helpers/enemy-defeat';
 import { progressOf } from "../../tests/helpers/progress";
+import { legacyBalanceSettings } from "../../tests/helpers/legacy-balance";
 it('rejects non-developer changes and previews; rejects balance queries for a different map', () => {
   const f = crystalFixture();
   const proc = { withTx: (action: any) => f.transaction(() => action(f.ctx)) } as any;
@@ -198,7 +199,8 @@ it('activates the exact tested campaign settings once, retaining archived revisi
 /** The curve's settings, allowing the Endless reward factor its round-off from being multiplied back to 1. */
 function expectProgressionCurve(settings: ReturnType<typeof defaultBalanceSettings>) {
   expect(settings.maps.endless.enemyRewards).toBeCloseTo(1, 12);
-  expect({ ...settings, maps: { ...settings.maps, endless: { ...settings.maps.endless, enemyRewards: 1 } } }).toEqual(defaultBalanceSettings());
+  // Migration 45's curve is the defaults as they were before the curve (0.915).
+  expect({ ...settings, maps: { ...settings.maps, endless: { ...settings.maps.endless, enemyRewards: 1 } } }).toEqual(legacyBalanceSettings());
 }
 
 it('runs pending campaign migrations from the connection path only once', () => {

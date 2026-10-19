@@ -1,10 +1,11 @@
 import { expect, it } from 'vitest';
 import { CAMPAIGN_MAPS } from './campaign-registry';
 import { defaultBalanceSettings, resolveMapBalance, validateBalanceSettings } from './map-balance';
+import { legacyBalanceSettings } from "../tests/helpers/legacy-balance";
 
 it('never lowers matching regular/elite rewards on later maps, including after tuning', () => {
   for (const retune of [false, true]) {
-    const settings = defaultBalanceSettings();
+    const settings = legacyBalanceSettings();
     if (retune) settings.maps.intermediate_snowlands.enemyRewards *= 10;
     const previous = new Map<string, number>();
     for (const map of CAMPAIGN_MAPS) {
@@ -20,7 +21,7 @@ it('never lowers matching regular/elite rewards on later maps, including after t
 });
 
 it('only raises deficient enemy rewards: bosses, HP, damage and loot stay identical', () => {
-  const afterSettings = defaultBalanceSettings();
+  const afterSettings = legacyBalanceSettings();
   const beforeSettings = { ...afterSettings }; delete beforeSettings.campaignRewardVersion;
   // Endless carries on from map 15, so it follows whatever the floor does there (map-balance.test.ts).
   for (const map of CAMPAIGN_MAPS.map(m => m.id)) {
@@ -37,7 +38,7 @@ it('only raises deficient enemy rewards: bosses, HP, damage and loot stay identi
 });
 
 it('preserves saved revisions without the rule and round-trips enabled settings', () => {
-  const settings = defaultBalanceSettings();
+  const settings = legacyBalanceSettings();
   expect(validateBalanceSettings(settings)).toEqual(settings);
   delete settings.campaignRewardVersion;
   expect(validateBalanceSettings(settings).campaignRewardVersion).toBeUndefined();

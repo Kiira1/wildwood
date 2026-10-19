@@ -1,4 +1,6 @@
-import { CAMPAIGN_PROGRESSION_ENEMIES, CAMPAIGN_PROGRESSION_BOSS_HEALTH } from './campaign-progression';
+import { CAMPAIGN_PROGRESSION_ENEMIES } from './campaign-progression';
+import { SMOOTH_BOSSES, SMOOTH_ENEMIES } from './smooth-curve';
+import { CURVE_STEPS } from './curve-steps';
 import { applyCampaignRewardFloor } from './campaign-reward-floor';
 import { CAMPAIGN_HEALTH_FACTORS } from './campaign-health-curve';
 import { LEGACY_ENEMY_REWARDS } from "./legacy-enemy-rewards";
@@ -31,14 +33,16 @@ export const BALANCE_MAPS: readonly (readonly [string, string, string])[] = [
   ...CAMPAIGN_MAPS.map((map, index) => [map.id, `${index + 1} · ${map.name}`, map.bossArt] as const),
   ['endless', 'Endless', ''],
 ];
+/** The curve (shared/smooth-curve.ts) with every factor at 1: a factor is only ever a deliberate tweak on top. */
 export function defaultBalanceSettings(): BalanceSettings {
-  return { baselineVersion: BALANCE_BASELINE_VERSION, campaignHealthVersion: 1, campaignRewardVersion: 1, campaignProgressionVersion: 1, maps: Object.fromEntries(BALANCE_MAPS.map(([id]) => [id, { ...DEFAULT_BALANCE_FACTORS,
-      enemyRewards: 1, bossHealth: CAMPAIGN_PROGRESSION_BOSS_HEALTH[id] ?? 1 }])),
+  return { baselineVersion: BALANCE_BASELINE_VERSION, curveVersion: 2, maps: Object.fromEntries(BALANCE_MAPS.map(([id]) => [id, { ...DEFAULT_BALANCE_FACTORS }])),
     endless: { ...BAKED_ENDLESS_DEFAULTS } };
 }
 export function validateBalanceSettings(value: unknown): BalanceSettings {
   const input = value as BalanceSettings;
   const result = defaultBalanceSettings();
+  if (input?.curveVersion !== undefined && input.curveVersion !== 2) throw new Error('Unsupported balance curve.');
+  if (input?.curveVersion !== 2) delete result.curveVersion; // Archived settings keep the curves they were made with.
   if (input?.campaignProgressionVersion !== undefined && input.campaignProgressionVersion !== 1) throw new Error('Unsupported campaign progression curve.');
   if (input?.campaignProgressionVersion === 1) result.campaignProgressionVersion = 1;
   else delete result.campaignProgressionVersion;
@@ -105,7 +109,10 @@ export function resolveMapBalance(mapId: string, settings: BalanceSettings, revi
     // 15's tuning), times the Endless factors, grown N - 1 times by
     // ENDLESS_STEPS, the same for every camp.
     // Endless 1 is map 15 times the Endless factors; each map after grows by the steps.
-    const map = generateMap(mapId), depth = Math.min(map.number - 1, 1_000);
+    // On the curve (curveVersion 2) Endless 1 is one more step on from map 15, as every map is from the one before.
+    const curve = settings.curveVersion === 2;
+    const map = generateMap(mapId), depth = Math.min(curve ? map.number : map.number - 1, 1_000);
+    const steps = curve ? { health: CURVE_STEPS.health, hit: CURVE_STEPS.damage, reward: CURVE_STEPS.reward, bossHealth: CURVE_STEPS.health } : ENDLESS_STEPS;
     const last = resolveMapBalance(CAMPAIGN_ENDPOINT.mapId, settings, revision, configurationVersion);
     const cap = (n: number) => Math.min(rules.MAX_PLAYER_STAT, Number.isFinite(n) ? n : rules.MAX_PLAYER_STAT);
     const grow = (n: number, step: number) => cap(n * step ** depth);
@@ -128,10 +135,10 @@ export function resolveMapBalance(mapId: string, settings: BalanceSettings, revi
       const authored = AUTHORED_ENEMIES[lane], elite = lane === 'Dread Warden' || lane === 'King Slime';
       const now = camp(authored.reward.type, elite);
       result.lanes[lane] = {
-        hp: grow(now.hp * factors.enemyHealth, ENDLESS_STEPS.health),
-        damage: grow(now.damage * factors.enemyDamage, ENDLESS_STEPS.hit),
+        hp: grow(now.hp * factors.enemyHealth, steps.health),
+        damage: grow(now.damage * factors.enemyDamage, steps.hit),
         reward: { ...now.reward, amount: paysRating(now.reward.type) ? ratingRewardPerKill(CAMPAIGN_MAPS.length + map.number)
-          : grow(now.reward.amount * factors.enemyRewards, ENDLESS_STEPS.reward) },
+          : grow(now.reward.amount * factors.enemyRewards, steps.reward) },
       };
     }
     // Generated camps reuse art, but receive these resolved combat values at spawn.
@@ -141,23 +148,31 @@ export function resolveMapBalance(mapId: string, settings: BalanceSettings, revi
       speed: 275 * factors.enemySpeed };
     const heaviest = Math.max(...Object.values(last.boss!.attacks), last.boss!.damage);
     result.boss = { kind: definition.kind,
-      hp: grow(last.boss!.hp * factors.bossHealth, ENDLESS_STEPS.bossHealth),
-      damage: grow(heaviest * factors.bossDamage, ENDLESS_STEPS.hit),
+      hp: grow(last.boss!.hp * factors.bossHealth, steps.bossHealth),
+      damage: grow(heaviest * factors.bossDamage, steps.hit),
       respawnSeconds: definition.respawnSeconds, attacks: {},
       rewards: {} };
   } else {
+    const smooth = settings.curveVersion === 2 ? SMOOTH_ENEMIES[mapId] : undefined;
     for (const kind of Object.keys(ENEMY_TYPES) as EnemyKind[]) {
       if (!enemyDefeatDefinition(mapId, kind)) continue;
       const row = AUTHORED_ENEMIES[kind];
+      // On the curve, the baked values are final (regen boost and all): only the factors go on top.
+      const baked = smooth?.[kind];
+      if (baked) {
+        result.enemies[kind] = { ...row, hp: baked.hp * factors.enemyHealth, damage: baked.damage * factors.enemyDamage,
+          speed: row.speed * factors.enemySpeed, reward: { ...row.reward, amount: baked.reward * factors.enemyRewards } };
+        continue;
+      }
       const curve = settings.campaignProgressionVersion === 1 && mapId !== CAMPAIGN_MAPS[0].id
         ? CAMPAIGN_PROGRESSION_ENEMIES[mapId]?.[combatRole(row)] : undefined;
       result.enemies[kind] = { ...row, hp: row.hp * (settings.campaignHealthVersion === 1
           ? CAMPAIGN_HEALTH_FACTORS[mapId]?.[combatRole(row)] ?? 1 : 1) * (curve?.hp ?? 1) * factors.enemyHealth, damage: (curve?.damage ?? row.damage) * factors.enemyDamage,
         speed: row.speed * factors.enemySpeed, reward: { ...row.reward, amount: (curve?.reward ?? row.reward.amount) * factors.enemyRewards } };
     }
-    if (settings.campaignRewardVersion === 1) applyCampaignRewardFloor(mapId, settings, result.enemies);
-    // Regen camps pay half again (0.845); Endless inherits it from map 15.
-    for (const enemy of Object.values(result.enemies)) if (enemy.reward.type === 'regen') enemy.reward = { ...enemy.reward, amount: enemy.reward.amount * REGEN_REWARD_BOOST };
+    if (!smooth && settings.campaignRewardVersion === 1) applyCampaignRewardFloor(mapId, settings, result.enemies);
+    // Regen camps pay half again (0.845); Endless inherits it from map 15. The curve has it baked in.
+    if (!smooth) for (const enemy of Object.values(result.enemies)) if (enemy.reward.type === 'regen') enemy.reward = { ...enemy.reward, amount: enemy.reward.amount * REGEN_REWARD_BOOST };
     const mapNumber = CAMPAIGN_MAPS.findIndex(map => map.id === mapId) + 1;
     for (const enemy of Object.values(result.enemies)) {
       if (paysRating(enemy.reward.type)) enemy.reward = { ...enemy.reward, amount: ratingRewardPerKill(mapNumber) };
@@ -166,7 +181,7 @@ export function resolveMapBalance(mapId: string, settings: BalanceSettings, revi
     const rewardValues: Record<string, number> = {};
     // Sorted, as the module namespace this once read was, so a snapshot's keys keep their order.
     for (const [key, value] of Object.entries(AUTHORED_BOSS_RULES).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) {
-      if (key === `${prefix}_MAX_HP`) result.rules[key] = value * factors.bossHealth;
+      if (key === `${prefix}_MAX_HP`) result.rules[key] = (smooth ? SMOOTH_BOSSES[mapId].hp : value) * factors.bossHealth;
       // Bosses pay nothing: beating one opens the next map.
       if (key.startsWith(`${prefix}_REWARD_`)) {
         result.rules[key] = 0;
@@ -174,12 +189,12 @@ export function resolveMapBalance(mapId: string, settings: BalanceSettings, revi
       }
     }
     const campaignIndex = CAMPAIGN_MAPS.findIndex(map => map.id === mapId);
-    const attacks = BOSS_DAMAGE_PROFILES[definition.kind as keyof typeof BOSS_DAMAGE_PROFILES]
+    const attacks = smooth ? SMOOTH_BOSSES[mapId].attacks : BOSS_DAMAGE_PROFILES[definition.kind as keyof typeof BOSS_DAMAGE_PROFILES]
       ?? { heavy: bossHeavyHitAt(Math.max(0, campaignIndex - 1)) };
     if (!Object.keys(rewardValues).length) {
       for (const stat of ['damage', 'health', 'armor', 'regen'] as const) rewardValues[stat] = 0;
     }
-    result.boss = { ...definition, hp: definition.hp * factors.bossHealth, damage: 0,
+    result.boss = { ...definition, hp: (smooth ? SMOOTH_BOSSES[mapId].hp : definition.hp) * factors.bossHealth, damage: 0,
       attacks: Object.fromEntries(Object.entries(attacks).map(([key, value]) => [key, value * factors.bossDamage])), rewards: rewardValues };
   }
   if (configurationVersion === 2) {

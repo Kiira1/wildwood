@@ -6,11 +6,12 @@ import { enemyDefeatDefinition } from './enemy-defeats';
 import { personalBossDefinition } from './personal-bosses';
 import { installMapBalance } from './map-balance-runtime';
 import { generatedBossStats, generateMap } from './procedural-maps';
+import { legacyBalanceSettings } from "../tests/helpers/legacy-balance";
 afterEach(() => installMapBalance(null));
 describe('server map balance snapshots', () => {
   it('preserves campaign bases and the explicit procedural reference curve', () => {
     for (const [map] of BALANCE_MAPS.slice(0, -1) as string[][]) {
-      const settings = defaultBalanceSettings();
+      const settings = legacyBalanceSettings();
       for (const factors of Object.values(settings.maps)) factors.bossHealth = 1;
       settings.endless = { rewardMultiplier: .1, statStep: .2, enduranceStep: .1, enduranceExponent: 6, rewardPerHealth: 1 };
       const snapshot = resolveMapBalance(map, settings, 2, 2);
@@ -87,7 +88,7 @@ it('carries the final campaign tuning into Endless while earlier map tuning stay
 describe('Endless carries on from map 15', () => {
   const damageCamp = (snapshot: ReturnType<typeof resolveMapBalance>) => Object.values(snapshot.enemies).find(row => row.reward.type === 'damage' && !row.elite)!;
   it('grows every Endless map after the first by ENDLESS_STEPS, the same for every camp', () => {
-    const settings = defaultBalanceSettings();
+    const settings = legacyBalanceSettings();
     const map15 = damageCamp(resolveMapBalance('ion_citadel', settings, 0));
     for (const depth of [1, 2, 3, 10]) {
       const lane = resolveMapBalance(`endless_${depth}`, settings, 0).lanes.Cindermaw;
@@ -122,7 +123,7 @@ it("holds the baseline: map 1's Spitters have 8 health and pay 1.5 damage a kill
 
 it('pays every regen camp half again, on the campaign and in Endless', () => {
   // Against each camp's authored reward, regen camps come out 1.5x what every other camp does.
-  const settings = defaultBalanceSettings();
+  const settings = legacyBalanceSettings();
   delete settings.campaignProgressionVersion; delete settings.campaignHealthVersion; delete settings.campaignRewardVersion;
   for (const id of ['beginner_desert', 'water_reach', 'ion_citadel']) {
     const scale = Object.entries(resolveMapBalance(id, settings, 1).enemies)

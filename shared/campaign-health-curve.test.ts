@@ -3,6 +3,7 @@ import fixture from '../tests/fixtures/balance-revision-73.json';
 import { CAMPAIGN_MAPS } from './campaign-registry';
 import { CAMPAIGN_HEALTH_FACTORS } from './campaign-health-curve';
 import { defaultBalanceSettings, resolveMapBalance, validateBalanceSettings } from './map-balance';
+import { legacyBalanceSettings } from "../tests/helpers/legacy-balance";
 
 it('changes only campaign HP and preserves both endpoints exactly', () => {
   const settings = validateBalanceSettings(fixture.settings);
@@ -23,7 +24,7 @@ it('changes only campaign HP and preserves both endpoints exactly', () => {
 });
 
 it('has growing HP with gradually decreasing growth ratios in all six tracks', () => {
-  const settings = defaultBalanceSettings();
+  const settings = legacyBalanceSettings();
   const roles = Object.keys(CAMPAIGN_HEALTH_FACTORS[CAMPAIGN_MAPS[0].id]);
   for (const role of roles) {
     const [rank, type] = role.split(':');
@@ -44,7 +45,7 @@ it('has growing HP with gradually decreasing growth ratios in all six tracks', (
 });
 
 it('round-trips the new settings and preserves archived settings without the curve', () => {
-  const defaults = defaultBalanceSettings();
+  const defaults = legacyBalanceSettings();
   expect(validateBalanceSettings(JSON.parse(JSON.stringify(defaults)))).toEqual(defaults);
   expect(validateBalanceSettings(fixture.settings).campaignHealthVersion).toBeUndefined();
   expect(() => validateBalanceSettings({ ...defaults, campaignHealthVersion: 2 })).toThrow('health curve');
