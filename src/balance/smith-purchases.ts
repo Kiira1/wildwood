@@ -1,7 +1,13 @@
 import { GRADE_GOLD_PRICE, type ArmorClass } from "../../shared/gear-grades";
 import type { GradeItemId, GradeWeaponKind } from "../../shared/grade-equipment";
-import { gradeShopOffer, gradeShopOpen, masteryLevels, type GradeShopLine } from "../../shared/grade-shop";
+import { bestHeldGradeIndex, gradeShopOffer, masteryLevels, type GradeShopLine } from "../../shared/grade-shop";
 import { weaponSchool, type WeaponSchool } from "../../shared/weapon-mastery";
+
+/**
+ * How often a sim's player stops at the Smith while farming, besides after a boss: gold saves up between visits, so a
+ * visit can skip grades. Shopping after every kill would buy each grade the moment it is affordable.
+ */
+export const SMITH_VISIT_SECONDS = 30 * 60;
 
 /** Each school's Mastery points, as the sims keep them. */
 export type MasteryPointsBySchool = Partial<Record<WeaponSchool, number>>;
@@ -16,16 +22,18 @@ export function gradeShopLinesFor(weapon: string): GradeShopLine[] {
 }
 
 /**
- * What a sim's player buys next: the next grade on one of its lines that Mastery opens and the gold covers, the
- * cheapest first (weapon, armor, then helmet on a tie). None when nothing is open and affordable.
+ * What a sim's player buys next: on one of its lines, the best grade Mastery opens that the gold covers, once it
+ * beats what that line holds (the grades between skipped). The cheapest first; on a tie the line furthest behind
+ * goes first (then weapon, armor, helmet), or the weapon would take every newly opened grade and starve the rest.
+ * None when nothing open is affordable.
  */
 export function nextSmithPurchase(weapon: string, owned: ReadonlySet<string>, gold: number, points: MasteryPointsBySchool) {
   const levels = masteryLevels(points);
-  let best: { itemId: GradeItemId; price: number } | null = null;
+  let best: { itemId: GradeItemId; price: number; held: number } | null = null;
   for (const line of gradeShopLinesFor(weapon)) {
-    const offer = gradeShopOffer(line, owned), price = GRADE_GOLD_PRICE[offer.grade];
-    if (offer.owned || price > gold || !gradeShopOpen(offer.itemId, levels)) continue;
-    if (!best || price < best.price) best = { itemId: offer.itemId, price };
+    const offer = gradeShopOffer(line, owned, levels, gold), price = GRADE_GOLD_PRICE[offer.grade], held = bestHeldGradeIndex(line, owned);
+    if (!offer.open || price > gold) continue;
+    if (!best || price < best.price || (price === best.price && held < best.held)) best = { itemId: offer.itemId, price, held };
   }
-  return best;
+  return best && { itemId: best.itemId, price: best.price };
 }

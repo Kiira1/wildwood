@@ -1,4 +1,5 @@
-import { CAMPAIGN_ITEM_PRESENTATIONS, GRADE_ITEM_PRESENTATIONS, staffPresentation } from "./campaign-item-presentation";
+import { CAMPAIGN_ITEM_PRESENTATIONS, GRADE_ITEM_PRESENTATIONS, gradeItemSkin, staffPresentation } from "./campaign-item-presentation";
+export { GRADE_SKINS, gradeItemSkin, gradeSkinForRefine, type GradeSkin } from "./campaign-item-presentation";
 import { applyGalaxyArtTexture, galaxyIconOutlineVariable, skyFinishCssFallback, skyFinishCssVariable, type SkyFinish } from "./galaxy-finish";
 import type { WeaponCategory } from "./equipment-alignment";
 import type { LayerAdjustment } from "./player-layer-alignment";
@@ -295,8 +296,23 @@ export const ITEM_PRESENTATIONS: Partial<Record<ItemId, ItemPresentation>> = {
   },
 };
 
-export function itemPresentation(itemId: string | undefined) {
-  return ITEM_PRESENTATIONS[itemId as ItemId];
+const skinnedPresentations = new Map<string, ItemPresentation>();
+
+/** The item's art; a graded piece at ★10 or ★20 in that refine's look (gradeItemSkin), drawn and held the same way. */
+export function itemPresentation(itemId: string | undefined, refineLevel: unknown = 0) {
+  const presentation = ITEM_PRESENTATIONS[itemId as ItemId];
+  const skin = presentation && gradeItemSkin(itemId, refineLevel);
+  if (!presentation || !skin || skin === presentation.inventory.source) return presentation;
+  let skinned = skinnedPresentations.get(skin);
+  if (!skinned) {
+    skinned = {
+      ...presentation,
+      inventory: { ...presentation.inventory, source: skin },
+      world: presentation.world?.kind === "SPRITE" ? { ...presentation.world, source: skin } : presentation.world,
+    };
+    skinnedPresentations.set(skin, skinned);
+  }
+  return skinned;
 }
 
 /** The item's sky finish, Galaxy or Diamond Galaxy, if it has one. */
@@ -321,8 +337,9 @@ export function itemInventoryRotation(itemId: string) {
   return world?.kind === "SPRITE" && world.handAction === "BOW" ? -45 : world?.kind === "SPRITE" && world.handAction === "CAST" ? 40 : 0;
 }
 
-export function itemArtMarkup(itemId: string, hidden = true) {
-  const presentation = itemPresentation(itemId)?.inventory;
+/** The item's icon markup; `refineLevel` picks a graded piece's refine look. */
+export function itemArtMarkup(itemId: string, hidden = true, refineLevel: unknown = 0) {
+  const presentation = itemPresentation(itemId, refineLevel)?.inventory;
   const aria = hidden ? ' aria-hidden="true"' : "";
   if (presentation?.source && itemHasGalaxyFinish(itemId)) {
     const style = [
@@ -369,8 +386,8 @@ export function galaxyArtStyle(source: string, finish: SkyFinish = "GALAXY") {
  * or for a galaxy piece a masked span whose sky moves. `className` goes on it
  * either way, so the place's own sizing applies to both.
  */
-export function itemArtImage(itemId: string, className = "") {
-  const source = itemPresentation(itemId)?.inventory.source ?? "";
+export function itemArtImage(itemId: string, className = "", refineLevel: unknown = 0) {
+  const source = itemPresentation(itemId, refineLevel)?.inventory.source ?? "";
   if (itemHasGalaxyFinish(itemId) && source) {
     const span = document.createElement("span");
     span.className = `${className} item-art-image has-galaxy-finish`.trim();

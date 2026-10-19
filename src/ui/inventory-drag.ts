@@ -161,7 +161,9 @@ export function bindInventoryDrag(options: {
     ghost = document.createElement("div");
     ghost.className = "inventory-drag-ghost";
     ghost.setAttribute("aria-hidden", "true");
-    ghost.innerHTML = itemArtMarkup(gesture.itemId);
+    // The tile's own art, so a graded piece keeps its refine look; the item's art for a tile without one.
+    const art = gesture.element.querySelector(".inventory-item-art");
+    ghost.innerHTML = art?.outerHTML ?? itemArtMarkup(gesture.itemId);
     document.body.append(ghost);
     positionGhost(x, y);
     highlightDestinations(gesture);

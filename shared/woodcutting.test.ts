@@ -31,7 +31,7 @@ describe("Timberwood's stands", () => {
     expect(woodStandOpen(yew, { infernalUnlocked: true })).toBe(false);
     expect(woodStandHint(oak)).toBe("Reach Night Forest - 5 to chop Oak Trees.");
     // Each stand's wood is the wood its grade's crafts take.
-    expect(Object.keys(craftMaterials("uncommon", "bow"))).toContain(oak.log);
+    expect(Object.keys(craftMaterials("superior", "bow"))).toContain(oak.log);
   });
 });
 

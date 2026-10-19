@@ -154,6 +154,21 @@ export function loadPlayerAppearanceAssets(settled: () => void): PlayerAppearanc
   };
 }
 
+const skinSprites = new Map<string, HTMLImageElement>();
+
+/**
+ * A worn piece's sprite at its refine: a graded piece's ★10 or ★20 look (gradeItemSkin), loaded the first time it is
+ * worn and drawn as the base look until then; any other piece's own sprite.
+ */
+export function equipmentSprite(assets: PlayerAppearanceAssets, itemId: string | undefined, refineLevel = 0) {
+  const base = itemId ? assets.equipment[itemId]?.sprite : undefined;
+  const world = refineLevel > 0 && base ? itemPresentation(itemId, refineLevel)?.world : undefined;
+  if (world?.kind !== "SPRITE" || world === itemPresentation(itemId)?.world || typeof Image === "undefined") return base;
+  let sprite = skinSprites.get(world.source);
+  if (!sprite) { sprite = image(world.source, () => {}); skinSprites.set(world.source, sprite); }
+  return readyImage(sprite) ? sprite : base;
+}
+
 /**
  * The bare legs, in the player's own skin tone.
  *
@@ -321,7 +336,7 @@ function drawEgg(ctx: CanvasRenderingContext2D, width: number, height: number, i
 export function drawStartingPlayer(
   ctx: CanvasRenderingContext2D,
   assets: PlayerAppearanceAssets,
-  options: { x: number; y: number; facing: number; combatFacing?: number | null; moving?: boolean; gameTime: number; throwClock?: number; swordSpinClock?: number; skinTone?: number; headItem?: string; chestItem?: string; feetItem?: string; rightHandItem?: string; leftHandItem?: string; alpha?: number; scale?: number; smooth?: boolean; alignment?: PlayerLayerAlignment; helmetOpacity?: number; presentationOverrides?: Record<string, WorldSpritePresentation>; onLayerBounds?: (layer: PlayerLayer, bounds: LayerBounds) => void },
+  options: { x: number; y: number; facing: number; combatFacing?: number | null; moving?: boolean; gameTime: number; throwClock?: number; swordSpinClock?: number; skinTone?: number; headItem?: string; chestItem?: string; feetItem?: string; rightHandItem?: string; leftHandItem?: string; itemRefine?: (itemId: string) => number; alpha?: number; scale?: number; smooth?: boolean; alignment?: PlayerLayerAlignment; helmetOpacity?: number; presentationOverrides?: Record<string, WorldSpritePresentation>; onLayerBounds?: (layer: PlayerLayer, bounds: LayerBounds) => void },
 ) {
   const scale = options.scale ?? PLAYER_WORLD_SCALE;
   const walkFrame = options.moving ? Math.floor(options.gameTime * 10) % 3 + 1 : 0;
@@ -391,6 +406,8 @@ export function drawStartingPlayer(
   heldX += runMotion.x;
   heldY += runMotion.y;
   const feetAssets = options.feetItem ? assets.equipment[options.feetItem] : undefined;
+  // Worn graded gear shows its refine look; with no refines given, every piece is its base look.
+  const sprite = (itemId: string | undefined) => equipmentSprite(assets, itemId, itemId ? options.itemRefine?.(itemId) ?? 0 : 0);
   // Boots are artwork of their own; bare legs take the character's skin tone.
   const skin = skinToneColor(options.skinTone);
   const backLeg = feetAssets?.backLeg ?? skinTonedLeg(assets.basicBackLeg, skin);
@@ -416,7 +433,7 @@ export function drawStartingPlayer(
     const live = itemHasGalaxyFinish(itemId);
     if ((pieces === "STATIC" && live) || (pieces === "LIVE" && !live)) return;
     const presentation = options.presentationOverrides?.[itemId] ?? itemPresentation(itemId)?.world;
-    const asset = assets.equipment[itemId]?.sprite;
+    const asset = sprite(itemId);
     if (!asset || presentation?.kind !== "SPRITE" || presentation.layer !== layer) return;
     const width = presentation.width ?? asset.naturalWidth;
     const height = presentation.height ?? asset.naturalHeight;
@@ -439,7 +456,7 @@ export function drawStartingPlayer(
     if (!itemId) return true;
     const presentation = options.presentationOverrides?.[itemId] ?? itemPresentation(itemId)?.world;
     if (presentation?.kind !== "SPRITE" || presentation.layer !== layer) return true;
-    return readyImage(assets.equipment[itemId]?.sprite);
+    return readyImage(sprite(itemId));
   });
   const drawBody = (target: CanvasRenderingContext2D, report = false, part: BodyPart = "ALL", pieces: BodyPieces = "ALL") => {
     if (part !== "HEAD") drawTorso(target, report, pieces);
@@ -489,11 +506,11 @@ export function drawStartingPlayer(
   if (staffHeld) drawStaffRune(ctx, 90, 168, staffCastPose(options.throwClock ?? 0).rune, staffBoltColor(heldItem));
   const drawHeldItem = () => {
     if (!heldItem || !heldSpritePresentation || !heldVisible) return;
-    const sprite = assets.equipment[heldItem]?.sprite;
-    if (!sprite) return;
-    const asset = readyImage(sprite) ? finishedEquipmentSprite(heldItem, sprite) : sprite;
-    const width = heldSpritePresentation.width ?? sprite.naturalWidth;
-    const height = heldSpritePresentation.height ?? sprite.naturalHeight;
+    const held = sprite(heldItem);
+    if (!held) return;
+    const asset = readyImage(held) ? finishedEquipmentSprite(heldItem, held) : held;
+    const width = heldSpritePresentation.width ?? held.naturalWidth;
+    const height = heldSpritePresentation.height ?? held.naturalHeight;
     const left = 90 - width / 2 + heldX;
     if (staffHeld) {
       // Held upright at its grip, leaning a little forward; the cast lifts, leans and thrusts it, and its head glows.
@@ -501,7 +518,7 @@ export function drawStartingPlayer(
       ctx.save();
       ctx.translate(left + width / 2 + pose.forward, heldY + height * STAFF_GRIP - pose.lift);
       ctx.rotate(STAFF_REST_TILT + pose.tilt + runMotion.rotation);
-      drawLayer(ctx, asset, -width / 2, -height * STAFF_GRIP, width, height, "weapon", true, asset !== sprite);
+      drawLayer(ctx, asset, -width / 2, -height * STAFF_GRIP, width, height, "weapon", true, asset !== held);
       drawStaffTipGlow(ctx, 0, -height * STAFF_GRIP + 9, pose.glow, staffBoltColor(heldItem));
       ctx.restore();
       return;
@@ -525,7 +542,7 @@ export function drawStartingPlayer(
       drawAlignedPlayerLayer(ctx, "weapon", { x: -width / 2, y: -height / 2, width, height },
         { ...alignment, angle }, () => ctx.drawImage(residentDrawable(asset), -width / 2, -height / 2, width, height), options.onLayerBounds);
     } else {
-      drawLayer(ctx, asset, -width / 2, -height / 2, width, height, "weapon", true, asset !== sprite);
+      drawLayer(ctx, asset, -width / 2, -height / 2, width, height, "weapon", true, asset !== held);
     }
     ctx.restore();
   };
@@ -539,6 +556,9 @@ export function drawStartingPlayer(
     headItem,
     options.chestItem ?? "",
     options.feetItem ?? "",
+    // The look each worn piece is drawn in, so a refine look that finishes loading replaces the base one.
+    sprite(headItem)?.src ?? "",
+    sprite(options.chestItem)?.src ?? "",
     walkFrame,
     idleFrame,
   ].join("|");

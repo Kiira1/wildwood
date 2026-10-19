@@ -163,7 +163,8 @@ export function renderProfileEquipmentSlot(
   label.textContent = presentation.label;
   const art = document.createElement("span");
   art.className = "equipment-slot-art";
-  if (item) art.innerHTML = itemArtMarkup(item.id, false);
+  // Worn graded gear in its refine look; a look shows its base.
+  if (item) art.innerHTML = itemArtMarkup(item.id, false, refine);
   else if (hidden) {
     const hiddenIcon = document.createElement("span");
     hiddenIcon.className = "cosmetic-hidden-icon";

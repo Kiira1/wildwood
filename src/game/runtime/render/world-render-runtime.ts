@@ -13,7 +13,8 @@ import type { Camera } from "./camera";
 import { createDepthWorldRenderer } from "./depth-world-renderer";
 import { createRenderController, type RenderController } from "./render-controller";
 import { createWorldRenderer, type MinimapBounds } from "./world-renderer";
-import { DEFAULT_SKIN_TONE, drawStartingPlayer, type PlayerAppearanceAssets } from "../../player-appearance";
+import { DEFAULT_SKIN_TONE, drawStartingPlayer, equipmentSprite, type PlayerAppearanceAssets } from "../../player-appearance";
+import { localItemRefine } from "../../local-item-refines";
 import type { LoadedEnemySprite, RewardType } from "../../enemies";
 import { TUTORIAL_FOREST_MAP_ID, type MapId, type WorldDecor, type WorldPath } from "../../world";
 import type { MapPlayerMarker, RemotePlayer } from "../../../wildstat-coop";
@@ -238,7 +239,7 @@ export function createWorldRenderRuntime(options: WorldRenderRuntimeOptions) {
     outlinedText: options.outlinedText,
     upgradeBenchStatus: () => {
       const status = options.upgradeBenchStatus();
-      return status ? { itemSprite: options.playerAppearanceAssets.equipment[status.itemId]?.sprite, timer: status.timer } : null;
+      return status ? { itemSprite: equipmentSprite(options.playerAppearanceAssets, status.itemId, localItemRefine(status.itemId)), timer: status.timer } : null;
     },
     researchStatus: options.researchStatus,
     questBoardStatus: options.questBoardStatus,
@@ -290,7 +291,7 @@ export function createWorldRenderRuntime(options: WorldRenderRuntimeOptions) {
     localRightHandItem: () => toolInHand() ?? options.equippedItems().rightHand,
     localLeftHandItem: () => toolInHand() ? "" : options.equippedItems().leftHand,
     equipmentForIdentity: options.equipmentForIdentity,
-    itemSprite: (itemId) => itemId ? options.playerAppearanceAssets.equipment[itemId]?.sprite : undefined,
+    itemSprite: (itemId, refineLevel) => equipmentSprite(options.playerAppearanceAssets, itemId, refineLevel),
     enemySprites: options.enemySprites,
     enemies: options.enemies,
     activeBossTarget: () => bossStateForMap(options.bosses, options.currentMapId()),

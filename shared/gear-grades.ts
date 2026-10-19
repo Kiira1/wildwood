@@ -1,35 +1,46 @@
 import type { WeaponSchool } from "./weapon-mastery";
 
 /**
- * Long-term gear: a few grades that last days, bought from the Smith with gold or crafted, instead of a new piece
- * every map. A school's Mastery level opens a grade for buying and crafting; gear already owned is never locked.
+ * Long-term gear: fifteen grades that each last a few maps, bought from the Smith with gold or crafted, instead of
+ * a new piece every map. A school's Mastery level opens a grade for buying and crafting; gear owned never locks.
  */
-export const GEAR_GRADES = ["common", "uncommon", "rare", "epic", "legendary", "mythic"] as const;
+export const GEAR_GRADES = ["crude", "common", "sturdy", "fine", "superior", "rare", "exquisite", "epic", "heroic", "legendary", "mythic", "ancient", "celestial", "divine", "eternal"] as const;
 export type GearGrade = typeof GEAR_GRADES[number];
 
 export const GEAR_GRADE_NAMES: Readonly<Record<GearGrade, string>> = {
-  common: "Common", uncommon: "Uncommon", rare: "Rare", epic: "Epic", legendary: "Legendary", mythic: "Mythic",
+  crude: "Crude",
+  common: "Common",
+  sturdy: "Sturdy",
+  fine: "Fine",
+  superior: "Superior",
+  rare: "Rare",
+  exquisite: "Exquisite",
+  epic: "Epic",
+  heroic: "Heroic",
+  legendary: "Legendary",
+  mythic: "Mythic",
+  ancient: "Ancient",
+  celestial: "Celestial",
+  divine: "Divine",
+  eternal: "Eternal",
 };
 
-/** The grade's base bonus in percent: damage on a weapon, regen on a helmet, max health on armor. */
-export const GRADE_BONUS_PERCENT: Readonly<Record<GearGrade, number>> = {
-  common: 6, uncommon: 15, rare: 30, epic: 50, legendary: 80, mythic: 120,
-};
+const byGrade = <T>(values: readonly T[]) => Object.fromEntries(GEAR_GRADES.map((grade, index) => [grade, values[index]])) as Record<GearGrade, T>;
 
-/** The Mastery level that opens a grade for buying and crafting. */
-export const GRADE_MASTERY_LEVEL: Readonly<Record<GearGrade, number>> = {
-  common: 0, uncommon: 5, rare: 10, epic: 20, legendary: 30, mythic: 40,
-};
+/** The grade's base bonus in percent (damage on a weapon, regen on a helmet, max health on armor): 1.5x the old map tier of the same number. */
+export const GRADE_BONUS_PERCENT: Readonly<Record<GearGrade, number>> = byGrade([8, 12, 17, 23, 29, 36, 43, 51, 59, 68, 77, 87, 98, 108, 120]);
 
-/** The Smith's price in gold. Gold drops at about 180 an hour of active play. */
-export const GRADE_GOLD_PRICE: Readonly<Record<GearGrade, number>> = {
-  common: 100, uncommon: 1_000, rare: 5_000, epic: 20_000, legendary: 60_000, mythic: 150_000,
-};
+/** The Mastery level that opens a grade: one a level early, so the campaign reaches about the tenth, slow toward the fifteenth. */
+export const GRADE_MASTERY_LEVEL: Readonly<Record<GearGrade, number>> = byGrade([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 13, 16, 26, 40]);
+
+/**
+ * The Smith's price in gold: about 1.12x a grade to the tenth, so saved gold skips grades, then 1.3x. Kills drop
+ * about 0.2 gold each; the Balance Lab's player buys about four pieces a line before Ion Citadel.
+ */
+export const GRADE_GOLD_PRICE: Readonly<Record<GearGrade, number>> = byGrade([12, 13, 15, 17, 19, 21, 24, 27, 30, 33, 43, 56, 73, 95, 124]);
 
 /** The old map tier a grade stands in for where tiers still decide things (weapon skill rolls, refine grade). */
-export const GRADE_ITEM_TIER: Readonly<Record<GearGrade, number>> = {
-  common: 1, uncommon: 4, rare: 7, epic: 10, legendary: 13, mythic: 15,
-};
+export const GRADE_ITEM_TIER: Readonly<Record<GearGrade, number>> = byGrade(GEAR_GRADES.map((_grade, index) => index + 1));
 
 export const ARMOR_CLASSES = ["light", "medium", "heavy", "magic"] as const;
 export type ArmorClass = typeof ARMOR_CLASSES[number];
@@ -87,4 +98,5 @@ export function gradeForOldBonus(bonusPercent: number) {
 }
 
 /** What the Smith pays for an old map-tier piece left in the bag when gear moves to grades. */
-export const oldTierSalePrice = (tier: number) => Math.max(1, Math.round(10 * Math.max(1, tier) ** 2));
+export const oldTierSalePrice = (tier: number) =>
+  Math.max(1, Math.round(GRADE_GOLD_PRICE[GEAR_GRADES[Math.min(15, Math.max(1, Math.floor(tier))) - 1]] / 4));

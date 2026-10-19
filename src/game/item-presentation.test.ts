@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { CLOUDSPIRE_ARMOR, CLOUDSPIRE_BOW, CLOUDSPIRE_HELMET, MOONFEN_ARMOR, WATER_ARMOR, SKY_BOW, SAMURAI_BOW, DARK_METAL_HELMET, FIRE_METAL_BOW, FIRE_METAL_HELMET, FROST_ARMOR, FROST_BOW, IRON_BOW, LAVA_BOW, MAGMA_ARMOR, NIGHT_BOW, SNOW_BOW, STARTER_BOW, STARTER_STONE, WOOD_FULL_HELM, WOODEN_ARMOR } from "../../shared/items";
-import { ITEM_PRESENTATIONS, itemArtMarkup, itemInventoryRotation, itemPresentation, projectileKindForWeapon } from "./item-presentation";
+import { ITEM_PRESENTATIONS, gradeItemSkin, gradeSkinForRefine, itemArtMarkup, itemInventoryRotation, itemPresentation, projectileKindForWeapon } from "./item-presentation";
 
 describe("item presentation", () => {
   it("uses the same display angle for every bow, including later campaign gear", () => {
@@ -150,4 +150,31 @@ it.each([
   expect(itemArtMarkup(id)).toContain(`${file}.webp`);
   expect(itemPresentation(id)?.world).toMatchObject({ kind: "SPRITE", layer });
   if (layer === "HAND") expect(projectileKindForWeapon(id)).toBe("ARROW");
+});
+
+describe("graded gear refine looks", () => {
+  it("shows the base look below ★10, the ★10 look to ★19, and the ★20 look from ★20", () => {
+    expect([0, 9, 10, 19, 20, 30].map(gradeSkinForRefine)).toEqual(["base", "base", "r10", "r10", "r20", "r20"]);
+    expect(gradeSkinForRefine(undefined)).toBe("base");
+    expect(gradeItemSkin("rare_bow", 0)).toBe("assets/wildstat/player-parts/rare-bow.webp");
+    expect(gradeItemSkin("epic_light_helmet", 14)).toBe("assets/wildstat/player-parts/epic-light-helmet-r10.webp");
+    expect(gradeItemSkin("eternal_heavy_armor", 25)).toBe("assets/wildstat/player-parts/eternal-heavy-armor-r20.webp");
+    expect(gradeItemSkin(FROST_BOW, 20)).toBeUndefined();
+  });
+
+  it("swaps only the art: a refined piece is held, sized and fired as its base is", () => {
+    const base = itemPresentation("rare_staff")!, refined = itemPresentation("rare_staff", 22)!;
+    expect(refined.inventory).toEqual({ ...base.inventory, source: "assets/wildstat/player-parts/rare-staff-r20.webp" });
+    expect(refined.world).toEqual({ ...base.world, source: "assets/wildstat/player-parts/rare-staff-r20.webp" });
+    expect(refined.projectile).toBe(base.projectile);
+    expect(itemPresentation("rare_staff", 5)).toBe(base);
+    expect(itemPresentation("rare_staff", 22)).toBe(refined);
+    expect(itemPresentation(FROST_BOW, 25)).toBe(itemPresentation(FROST_BOW));
+  });
+
+  it("draws icons in the refine look asked for", () => {
+    expect(itemArtMarkup("mythic_sword", true, 12)).toContain("player-parts/mythic-sword-r10.webp");
+    expect(itemArtMarkup("mythic_sword")).toContain("player-parts/mythic-sword.webp)");
+    expect(itemArtMarkup(FROST_BOW, true, 20)).toContain("player-parts/frost-bow.webp");
+  });
 });

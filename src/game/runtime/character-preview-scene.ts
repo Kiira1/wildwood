@@ -9,6 +9,8 @@ type CharacterPreviewSceneOptions = {
   scale: number;
   characterOffsetY?: number;
   now?: number;
+  /** The worn pieces' refines, for graded gear's refine looks; without it every piece shows its base look. */
+  itemRefine?: (itemId: string) => number;
 };
 
 /** Shared animated grass portrait used by the inventory and profile paper dolls. */
@@ -50,6 +52,7 @@ export function drawCharacterPreviewScene(
     feetItem: appearance?.feetItem,
     rightHandItem: appearance?.rightHandItem,
     leftHandItem: appearance?.leftHandItem,
+    itemRefine: options.itemRefine,
     scale,
   });
 

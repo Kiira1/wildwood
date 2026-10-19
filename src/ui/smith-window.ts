@@ -9,12 +9,15 @@ import { refineStars } from "./refine-badge";
 import { REFINE_ORE_ORDER } from "../../shared/ore-bag";
 import { itemTier } from "../../shared/item-tier";
 import type { GradeItemId } from "../../shared/grade-equipment";
-import { GRADE_SHOP_LINES, gradeShopOffer, gradeShopOpen, gradeShopPrice, masteryLevels, type MasteryLevels } from "../../shared/grade-shop";
+import type { GearGrade } from "../../shared/gear-grades";
+import {
+  GRADE_SHOP_LINES, gradeShopItemId, gradeShopOffer, gradeShopOpen, gradeShopPrice, masteryLevels, type GradeShopLine, type MasteryLevels,
+} from "../../shared/grade-shop";
 import { CRAFT_LINES } from "../../shared/grade-craft";
 import type { WeaponSchool } from "../../shared/weapon-mastery";
 import { formatGemAmount } from "./number-format";
 import {
-  bagFullFor, craftDepsFor, craftStationHint, createCraftSection, gradeItemRow, heldItemsFor, masteryNeed, offerButton, offerLine, ownedRow,
+  bagFullFor, craftDepsFor, craftStationHint, createCraftSection, gradeItemRow, gradeStepperElement, heldItemsFor, masteryNeed, nextNeed, offerButton, offerLine, ownedRow,
   type CraftCoop, type CraftSectionDeps,
 } from "./craft-section";
 
@@ -130,6 +133,9 @@ export function createSmithController(deps: {
   /** The piece being bought, and the ones bought here before the server's row arrives. */
   let buyingGear: string | null = null;
   const justBought = new Set<string>();
+  /** The grade picked to buy on each line; the best the gold covers until the player steps. */
+  const shopPicked = new Map<string, GearGrade>();
+  const lineKey = (line: GradeShopLine) => `${line.kind}:${"armorClass" in line ? line.armorClass : ""}`;
 
   function choices() {
     return deps.items().filter(item => isRefinableItem(item.itemId) && (shown === "ALL" || itemDefinition(item.itemId)?.slot === shown))
@@ -254,12 +260,14 @@ export function createSmithController(deps: {
 
   function shopState() {
     if (!deps.buyGear && !crafts) return null;
-    return [String(deps.gold?.() ?? 0n), deps.masteryLevels?.(), [...heldGear()].filter(gradeShopPrice), deps.bagFull?.(), buyingGear, crafts?.state()];
+    return [String(deps.gold?.() ?? 0n), deps.masteryLevels?.(), [...heldGear()].filter(gradeShopPrice), deps.bagFull?.(), buyingGear, [...shopPicked], crafts?.state()];
   }
 
   /**
-   * One row per line, offering the grade after the best one held: a Buy line for gold, and a Craft line for what
-   * Smithing makes, or where the rest is crafted. Without a shop, only Smithing's lines.
+   * One row per line, offering any grade Mastery opens above the best one held: a Buy line for gold with a grade
+   * stepper (the best the gold covers to start, else the highest open), and a Craft line for what Smithing makes
+   * (any open grade, picked on the line), or where the rest is crafted. Without a shop, only Smithing's lines, each
+   * row showing the grade picked.
    */
   function renderShop() {
     shop.hidden = !deps.buyGear && !crafts;
@@ -268,19 +276,29 @@ export function createSmithController(deps: {
     goldLine.textContent = formatGemAmount(deps.gold?.() ?? 0n);
     const held = heldGear(), levels = deps.masteryLevels?.() ?? deps.craft?.masteryLevels() ?? {};
     shopRows.replaceChildren(...(deps.buyGear ? GRADE_SHOP_LINES : CRAFT_LINES.smithing).map(line => {
-      const offer = gradeShopOffer(line, held);
-      if (offer.owned) return ownedRow(offer.itemId);
-      const made = crafts?.craftOffer(offer.itemId) ?? null;
-      const { row, deal } = gradeItemRow(offer.itemId, 0, [...(made ? [made.need] : []), ...masteryNeed(offer.itemId, levels)]);
+      const made = crafts?.craftLine(line, held) ?? null;
+      if (!deps.buyGear) {
+        const { row, deal } = gradeItemRow(made!.itemId, 0, nextNeed(made!.next, crafts!.needsOf));
+        deal.append(made!.line);
+        return row;
+      }
+      const offer = gradeShopOffer(line, held, levels, Number(deps.gold?.() ?? 0n)), choice = shopPicked.get(lineKey(line));
+      const grade = choice && offer.grades.includes(choice) ? choice : offer.grade, itemId = gradeShopItemId(line, grade);
+      // An open offer says what comes next; a locked one, the Mastery it waits for.
+      const { row, deal } = offer.owned ? ownedRow(itemId)
+        : gradeItemRow(itemId, 0, offer.open ? nextNeed(offer.next, next => masteryNeed(next, levels)) : masteryNeed(itemId, levels));
+      const stepper = offer.open ? gradeStepperElement(offer.grades, grade, {
+        label: "Grade to buy", busy: buyingGear !== null, onPick: to => { shopPicked.set(lineKey(line), to); render(); },
+      }) : null;
       // What Smithing does not make says where it is crafted, under its price.
-      if (deps.buyGear) deal.append(buyLine(offer.itemId, levels, made || !crafts ? "" : craftStationHint(offer.itemId)));
+      if (!offer.owned) deal.append(buyLine(itemId, levels, made || !crafts ? "" : craftStationHint(itemId), stepper));
       if (made) deal.append(made.line);
       return row;
     }));
   }
 
   /** The price in gold and a Buy button that says why it waits: Mastery, then gold, then the bag. */
-  function buyLine(itemId: GradeItemId, levels: MasteryLevels, hint: string) {
+  function buyLine(itemId: GradeItemId, levels: MasteryLevels, hint: string, stepper: HTMLElement | null) {
     const price = gradeShopPrice(itemId)!, gold = deps.gold?.() ?? 0n;
     const text = buyingGear === itemId ? "Buying…" : !gradeShopOpen(itemId, levels) ? "Locked"
       : gold < BigInt(price) ? "Need Gold" : deps.bagFull?.() ? "Bag Full" : "Buy";
@@ -289,14 +307,17 @@ export function createSmithController(deps: {
     cost.innerHTML = `${GOLD_COIN}<span></span>`;
     cost.lastElementChild!.textContent = formatGemAmount(BigInt(price));
     cost.setAttribute("aria-label", `${formatGemAmount(BigInt(price))} Gold`);
-    const terms: Node[] = [cost];
+    const terms: Node[] = stepper ? [stepper, cost] : [cost];
     if (hint) {
       const where = document.createElement("span");
       where.className = "craft-hint";
       where.textContent = hint;
       terms.push(where);
     }
-    return offerLine(terms, offerButton(text, text === "Buy" && buyingGear === null, () => { void buyGear(itemId, price); }));
+    const line = offerLine(terms, offerButton(text, text === "Buy" && buyingGear === null, () => { void buyGear(itemId, price); }));
+    // Stacked like a craft line: the grade, then its price.
+    if (stepper) line.classList.add("buy-offer");
+    return line;
   }
 
   async function buyGear(itemId: GradeItemId, price: number) {
@@ -356,6 +377,7 @@ export function createSmithController(deps: {
     pickaxeTaken = false;
     hatchetTaken = false;
     justBought.clear();
+    shopPicked.clear();
     crafts?.reset();
     render();
     deps.clearInput?.();

@@ -17,15 +17,15 @@ describe('autofarm virtual player', () => {
     expect(Math.abs(Date.now() - before)).toBeLessThan(60_000);
   }, 30_000);
 
-  it('earns Mastery and gold from its kills and buys the Smith\'s next grades with them', async () => {
+  it('earns Mastery and gold from its kills and buys the Smith\'s grades with them', async () => {
     const player = createVirtualPlayer({ name: 'smith', seed: 2, startMap: 'tutorial_forest', highestUnlocked: 0, weapon: STARTER_STONE, head: BASIC_PAPER_HAT,
       gold: 340, masteryPoints: { archery: 10 },
       push: 'normal', advance: false, base: { damage: PLAYER_BASE_DAMAGE, maxHp: PLAYER_BASE_HP, armor: 0, regen: PLAYER_BASE_REGEN, attackRate: DEFAULT_ATTACK_INTERVAL } });
     try {
       const report = await player.run(90);
-      expect(report.purchases.map(entry => entry.itemId)).toEqual(['common_bow', 'common_light_armor', 'common_light_helmet']);
+      expect(report.purchases.map(entry => entry.itemId)).toEqual(['crude_bow', 'crude_light_armor', 'crude_light_helmet']);
       expect(report.masteryPoints.archery).toBe(10 + report.kills);
-      expect(report.gold).toBeGreaterThanOrEqual(40);
+      expect(report.gold).toBeGreaterThanOrEqual(340 - 3 * 12);
     } finally { player.dispose(); }
   }, 30_000);
 });

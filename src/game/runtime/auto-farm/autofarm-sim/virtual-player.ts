@@ -65,7 +65,7 @@ import { effectivePlayerPowerStats, unroundedPlayerPower } from '../../../../../
 import { rollBossGold, rollKillGold } from '../../../../../shared/gold';
 import { luckMultiplier } from '../../../../../shared/luck-research';
 import { masteryAttackRange, masteryInPlay, masteryPointsForReport, masteryPointsInPlay, weaponSchool } from '../../../../../shared/weapon-mastery';
-import { nextSmithPurchase, type MasteryPointsBySchool } from '../../../../balance/smith-purchases';
+import { SMITH_VISIT_SECONDS, nextSmithPurchase, type MasteryPointsBySchool } from '../../../../balance/smith-purchases';
 
 export const SIM_STEP_SECONDS = 1 / 60;
 const STEP_MS = 1000 / 60;
@@ -353,7 +353,10 @@ export function createVirtualPlayer(profile: VirtualPlayerProfile, options: { du
     setPlayerBaseMaxHealth(player, player.baseMaxHp, healthMultiplierBonus());
     applyMasteryRange();
   }
+  /** When the Smith is next visited while farming; a boss's first clear sends the player to him too. */
+  let smithVisitAt = 0;
   function shop() {
+    smithVisitAt = clock.ms + SMITH_VISIT_SECONDS * 1000;
     for (let buy = nextSmithPurchase(weapon(), new Set(inventory.itemIds), gold, masteryPoints); buy;
       buy = nextSmithPurchase(weapon(), new Set(inventory.itemIds), gold, masteryPoints)) {
       gold -= buy.price;
@@ -362,7 +365,7 @@ export function createVirtualPlayer(profile: VirtualPlayerProfile, options: { du
       wearIfStronger(buy.itemId);
     }
   }
-  /** An accepted kill report: gold rolls (Gold Luck in; no cards), Mastery to the right hand's school, then the Smith. */
+  /** An accepted kill report: gold rolls (Gold Luck in; no cards), Mastery to the right hand's school, then the Smith when a visit is due. */
   function earn(killCount: number, firstBossClear: boolean) {
     if (!economy) return;
     gold += rollKillGold(killCount, goldRandom, luckMultiplier('gearLuck', research.gearLuck)) + (firstBossClear ? rollBossGold(goldRandom) : 0);
@@ -371,7 +374,8 @@ export function createVirtualPlayer(profile: VirtualPlayerProfile, options: { du
       masteryPoints = { ...masteryPoints, [school]: (masteryPoints[school] ?? 0) + masteryPointsForReport(killCount, firstBossClear) };
       applyMasteryRange();
     }
-    shop();
+    // Not after every kill: gold saves up between visits, so a visit can skip grades.
+    if (firstBossClear || clock.ms >= smithVisitAt) shop();
   }
 
   let autoFarm!: AutoFarmController;

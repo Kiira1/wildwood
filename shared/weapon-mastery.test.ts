@@ -16,19 +16,19 @@ describe("weapon mastery", () => {
     expect(weaponSchool(STARTER_STAFF)).toBe("sorcery");
   });
 
-  it("costs 1,000 points for level 1 and 11% more each level after", () => {
-    expect(masteryPointsForLevel(1)).toBe(1_000);
-    expect(masteryPointsForLevel(2)).toBe(2_110);
-    expect(masteryPointsForLevel(10)).toBeCloseTo(16_720, -2);
-    expect(masteryPointsForLevel(50)).toBeCloseTo(1_670_000, -4);
+  it("costs 70 points for level 1 and 17.8% more each level after", () => {
+    expect(masteryPointsForLevel(1)).toBe(70);
+    expect(masteryPointsForLevel(2)).toBe(152);
+    expect(masteryPointsForLevel(10)).toBeCloseTo(1_630, -1);
+    expect(masteryPointsForLevel(50)).toBeCloseTo(1_418_477, -1);
     expect(masteryPointsForLevel(99)).toBe(masteryPointsForLevel(MASTERY_MAX_LEVEL));
   });
 
   it("reads a level and the progress into it from points, stopping at the top", () => {
     expect(masteryLevel(0)).toBe(0);
-    expect(masteryLevel(999)).toBe(0);
-    expect(masteryLevel(1_000)).toBe(1);
-    expect(masteryProgress(1_500)).toEqual({ level: 1, into: 500, needed: 1_110 });
+    expect(masteryLevel(69)).toBe(0);
+    expect(masteryLevel(70)).toBe(1);
+    expect(masteryProgress(100)).toEqual({ level: 1, into: 30, needed: 82 });
     expect(masteryLevel(10n ** 12n)).toBe(MASTERY_MAX_LEVEL);
     expect(masteryProgress(10n ** 12n)).toEqual({ level: MASTERY_MAX_LEVEL, into: 0, needed: 0 });
     expect(masteryLevel(-5)).toBe(0);

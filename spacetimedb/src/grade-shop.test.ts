@@ -33,50 +33,63 @@ function atTheSmith(held = 1_000_000, levels: Partial<Record<WeaponSchool, numbe
 describe("buying graded gear from the Smith", () => {
   it("takes the price in gold and puts the piece in the bag, collected and not worn", () => {
     const f = atTheSmith(250);
-    f.buy("common_bow");
-    expect(f.bag()).toContain("common_bow");
-    expect(f.gold()).toBe(150n);
-    expect(progressOf(f).equippedRightHand).not.toBe("common_bow");
-    expect(f.db.playerItemCollection.key.find(`${f.ctx.sender.toHexString()}:common_bow`)).toBeTruthy();
+    f.buy("crude_bow");
+    expect(f.bag()).toContain("crude_bow");
+    expect(f.gold()).toBe(BigInt(250 - GRADE_GOLD_PRICE.crude));
+    expect(progressOf(f).equippedRightHand).not.toBe("crude_bow");
+    expect(f.db.playerItemCollection.key.find(`${f.ctx.sender.toHexString()}:crude_bow`)).toBeTruthy();
   });
 
   it("opens a weapon's grade by its school's level", () => {
-    const f = atTheSmith(1_000_000, { archery: 10, swordplay: 4 });
+    const f = atTheSmith(1_000_000, { archery: 5, swordplay: 1 });
     f.buy("rare_bow");
-    expect(() => f.buy("uncommon_sword")).toThrow("You need Lv 5 Swordplay.");
-    expect(() => f.buy("epic_bow")).toThrow("You need Lv 20 Archery.");
+    expect(() => f.buy("sturdy_sword")).toThrow("You need Lv 2 Swordplay.");
+    expect(() => f.buy("exquisite_bow")).toThrow("You need Lv 6 Archery.");
     expect(f.bag()).toContain("rare_bow");
     expect(f.gold()).toBe(BigInt(1_000_000 - GRADE_GOLD_PRICE.rare));
   });
 
   it("opens armor by its class's school, and Heavy by the best school", () => {
-    const f = atTheSmith(1_000_000, { sorcery: 10 });
+    const f = atTheSmith(1_000_000, { sorcery: 5 });
     f.buy("rare_magic_armor");
     f.buy("rare_heavy_helmet");
-    expect(() => f.buy("uncommon_light_helmet")).toThrow("You need Lv 5 Archery.");
-    expect(() => f.buy("epic_heavy_armor")).toThrow("You need Lv 20 Any School.");
+    expect(() => f.buy("common_light_helmet")).toThrow("You need Lv 1 Archery.");
+    expect(() => f.buy("exquisite_heavy_armor")).toThrow("You need Lv 6 Any School.");
     expect(f.bag()).toEqual(expect.arrayContaining(["rare_magic_armor", "rare_heavy_helmet"]));
+  });
+
+  it("skips the grades between, and refuses any at or below the best held on the line", () => {
+    const f = atTheSmith(1_000_000, { archery: 8 });
+    f.buy("crude_bow");
+    f.buy("superior_bow");
+    expect(() => f.buy("fine_bow")).toThrow("You already have a better one.");
+    f.buy("heroic_bow");
+    expect(() => f.buy("epic_bow")).toThrow("You already have a better one.");
+    // Another line keeps its own best.
+    f.buy("fine_light_helmet");
+    expect(f.bag()).toEqual(expect.arrayContaining(["crude_bow", "superior_bow", "heroic_bow", "fine_light_helmet"]));
+    expect(f.gold()).toBe(BigInt(1_000_000 - GRADE_GOLD_PRICE.crude - GRADE_GOLD_PRICE.superior - GRADE_GOLD_PRICE.heroic - GRADE_GOLD_PRICE.fine));
   });
 
   it("refuses a piece already held, worn or in the bag", () => {
     const f = atTheSmith();
-    f.buy("common_staff");
-    expect(() => f.buy("common_staff")).toThrow("You already have that.");
-    f.patch("playerProgress", { inventoryJson: JSON.stringify(["common_sword"]), equippedRightHand: "common_sword" });
-    expect(() => f.buy("common_sword")).toThrow("You already have that.");
-    expect(f.gold()).toBe(BigInt(1_000_000 - GRADE_GOLD_PRICE.common));
+    f.buy("crude_staff");
+    expect(() => f.buy("crude_staff")).toThrow("You already have that.");
+    f.patch("playerProgress", { inventoryJson: JSON.stringify(["crude_sword"]), equippedRightHand: "crude_sword" });
+    expect(() => f.buy("crude_sword")).toThrow("You already have that.");
+    expect(f.gold()).toBe(BigInt(1_000_000 - GRADE_GOLD_PRICE.crude));
   });
 
   it("refuses when the gold is short, and takes none", () => {
-    const f = atTheSmith(99);
-    expect(() => f.buy("common_bow")).toThrow("You need 100 Gold.");
-    expect(f.gold()).toBe(99n);
-    expect(f.bag()).not.toContain("common_bow");
+    const f = atTheSmith(GRADE_GOLD_PRICE.crude - 1);
+    expect(() => f.buy("crude_bow")).toThrow(`You need ${GRADE_GOLD_PRICE.crude} Gold.`);
+    expect(f.gold()).toBe(BigInt(GRADE_GOLD_PRICE.crude - 1));
+    expect(f.bag()).not.toContain("crude_bow");
   });
 
   it("refuses a stale price, and anything he does not sell", () => {
     const f = atTheSmith();
-    expect(() => f.buy("common_bow", 90)).toThrow("The Smith's price changed.");
+    expect(() => f.buy("crude_bow", 90)).toThrow("The Smith's price changed.");
     expect(() => f.buy(IRON_BOW, 100)).toThrow("The Smith does not sell that.");
     expect(f.gold()).toBe(1_000_000n);
   });
@@ -88,16 +101,16 @@ describe("buying graded gear from the Smith", () => {
     for (let index = used; index < inventorySlotCapacity(0); index++) {
       f.seed("playerEquipmentCopy", { id: 0n, identity: f.ctx.sender, itemId: IRON_BOW, arrowStorm: 0, ricochet: 0, piercingShot: 0, acquiredAt: f.ctx.timestamp });
     }
-    expect(() => f.buy("common_bow")).toThrow("Your bag is full. Free a slot first.");
+    expect(() => f.buy("crude_bow")).toThrow("Your bag is full. Free a slot first.");
     expect(f.gold()).toBe(1_000_000n);
   });
 
   it("is only done beside the Smith in the Town", () => {
     const f = atTheSmith();
     f.patch("player", { mapId: "town", x: TOWN_SMITH_POSITION.x + 400, y: TOWN_SMITH_POSITION.y - TOWN_FEET_OFFSET });
-    expect(() => f.buy("common_bow")).toThrow("Talk to the Smith first.");
+    expect(() => f.buy("crude_bow")).toThrow("Talk to the Smith first.");
     f.patch("player", { mapId: "crystal_hollows", x: TOWN_SMITH_POSITION.x, y: TOWN_SMITH_POSITION.y - TOWN_FEET_OFFSET });
-    expect(() => f.buy("common_bow")).toThrow("Talk to the Smith first.");
+    expect(() => f.buy("crude_bow")).toThrow("Talk to the Smith first.");
     expect(f.gold()).toBe(1_000_000n);
   });
 });

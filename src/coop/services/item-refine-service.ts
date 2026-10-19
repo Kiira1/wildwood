@@ -3,6 +3,7 @@ import { REFINE_ORES, normalizeRefineLevel, type OreId } from "../../../shared/r
 import type { ItemLevel } from "../../../shared/items";
 import { reducerErrorMessage } from "./reducer-errors";
 import { withRequestDeadline } from "./request-deadline";
+import { setLocalItemRefineSource } from "../../game/local-item-refines";
 
 /** What the last refine try did, as the server recorded it (player_refine_result). */
 export type RefineResult = {
@@ -25,6 +26,8 @@ export function createItemRefineRows(notify: () => void, slotTierFor: (itemId: s
   let ores: Partial<Record<OreId, number>> = {};
   let result: RefineResult | null = null;
   let resultListener: ((result: RefineResult) => void) | null = null;
+  // The world and the paper doll draw worn graded gear in its refine look from these levels.
+  setLocalItemRefineSource(itemId => levels.get(copyKey(itemId, 0n)) ?? 0);
 
   function watch(connection: DbConnection, isCurrent: () => boolean) {
     target = { connection, isCurrent };

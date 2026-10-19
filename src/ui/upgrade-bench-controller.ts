@@ -456,7 +456,7 @@ export function createUpgradeBenchController(elements: UpgradeBenchElements, dep
       button.className = "upgrade-bench-picker-item";
       const art = document.createElement("span");
       // The gear the tier will scale, so the row is not three words on a slab.
-      art.innerHTML = preview.equippedItemId ? itemArtMarkup(preview.equippedItemId) : "";
+      art.innerHTML = preview.equippedItemId ? itemArtMarkup(preview.equippedItemId, true, dependencies.refineLevel?.(preview.equippedItemId) ?? 0) : "";
       const copy = document.createElement("span");
       copy.className = "upgrade-bench-picker-copy";
       const title = document.createElement("span");

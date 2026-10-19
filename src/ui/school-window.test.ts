@@ -25,14 +25,14 @@ function schoolWindow(points: Partial<Record<WeaponSchool, bigint>>, inTown = ()
 
 it("names the building and shows the school's level, progress and what trains it", () => {
   vi.useFakeTimers();
-  const view = schoolWindow({ archery: 1_500n });
+  const view = schoolWindow({ archery: 100n });
   view.controller.open("archery");
   expect(view.controller.isOpen()).toBe(true);
   expect(view.text(".window-banner")).toBe("Archery Range");
   expect(view.text(".school-window-head strong")).toBe("Archery");
   expect(view.text(".school-window-level")).toBe("Lv 1");
-  expect(view.text(".school-window-points")).toBe("500 / 1,110");
-  expect(view.bar()).toEqual(["500", "0", "1110"]);
+  expect(view.text(".school-window-points")).toBe("30 / 82");
+  expect(view.bar()).toEqual(["30", "0", "82"]);
   expect(view.dialog.querySelector(".school-window-bar")!.getAttribute("role")).toBe("progressbar");
   expect(view.text(".school-window-train")).toBe("Every kill with a bow trains Archery. Prestige keeps Mastery.");
   view.controller.close();
@@ -84,7 +84,7 @@ it("tops out at Max, every technique learned, and starts from nothing with none"
   view.controller.close();
   view.controller.open("archery");
   expect(view.text(".school-window-level")).toBe("Lv 0");
-  expect(view.text(".school-window-points")).toBe("0 / 1,000");
+  expect(view.text(".school-window-points")).toBe("0 / 70");
   expect(view.techniques().every(row => row.locked)).toBe(true);
 });
 

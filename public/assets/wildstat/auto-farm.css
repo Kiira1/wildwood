@@ -865,7 +865,12 @@
 .smith-sheet .craft-needs .is-unmet { color: #fff; font-weight: 900; }
 .smith-sheet .craft-hint { flex-basis: 100%; color: var(--muted); font-size: 13px; }
 .smith-sheet .smith-shop-owned { color: var(--muted); font-size: 13px; font-weight: 800; }
-.smith-sheet .craft-offer .smith-offer-terms { flex-wrap: nowrap; align-items: flex-start; }
+.smith-sheet .craft-offer .smith-offer-terms, .smith-sheet .buy-offer .smith-offer-terms { flex-direction: column; flex-wrap: nowrap; align-items: flex-start; gap: 4px; }
+/* The grade stepper on a craft line: any open grade, thumb-sized steps. */
+.smith-sheet .craft-grade { display: inline-flex; align-items: center; gap: 6px; }
+.smith-sheet .craft-grade-step { flex: none; width: 34px; height: 34px; padding: 0; border: 1px solid rgba(255,255,255,.18); border-radius: 8px; background: rgba(255,255,255,.06); color: #fff; font-size: 18px; font-weight: 900; line-height: 1; }
+.smith-sheet .craft-grade-step:disabled { opacity: .35; }
+.smith-sheet .craft-grade-name { min-width: 64px; color: #fff; font-size: 14px; font-weight: 900; text-align: center; white-space: nowrap; }
 .smith-sheet .craft-stars { flex: none; font-size: 14px; font-weight: 900; line-height: 20px; }
 .smith-sheet .craft-materials { display: flex; flex-wrap: wrap; gap: 2px 10px; margin: 0; padding: 0; list-style: none; }
 .smith-sheet .craft-material { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }

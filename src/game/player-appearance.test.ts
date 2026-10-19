@@ -5,6 +5,7 @@ import {
   bowHeldAnchorX,
   bowHeldRotationRadians,
   drawStartingPlayer,
+  equipmentSprite,
   loadPlayerAppearanceAssets,
   PLAYER_PART_RETRY_DELAYS_MS,
   heldWeaponRunMotion,
@@ -122,5 +123,42 @@ describe("body-part sprites that fail to load", () => {
     expect(leg.src).toContain(`?asset-retry=${PLAYER_PART_RETRY_DELAYS_MS.length + 2}`); // the last delay repeats
     leg.dispatchEvent(new Event("load"));
     expect(settled).toHaveBeenCalledTimes(2);           // a late arrival redraws
+  });
+});
+
+describe("graded gear refine looks on the character", () => {
+  afterEach(() => vi.unstubAllGlobals());
+  it("draws worn graded gear in its refine look, and in its base look when no refines are known", () => {
+    class FakeImage { src = ""; complete = true; naturalWidth = 40; naturalHeight = 40; addEventListener() {} }
+    vi.stubGlobal("Image", FakeImage);
+    const image = (src: string) => ({ complete: true, naturalWidth: 40, naturalHeight: 40, src }) as unknown as HTMLImageElement;
+    const parts = "assets/wildstat/player-parts";
+    const assets: PlayerAppearanceAssets = {
+      basicFrontLeg: image("front-leg"),
+      basicBackLeg: image("back-leg"),
+      equipment: {
+        rare_light_armor: { sprite: image(`${parts}/rare-light-armor.webp`) },
+        rare_light_helmet: { sprite: image(`${parts}/rare-light-helmet.webp`) },
+        rare_bow: { sprite: image(`${parts}/rare-bow.webp`) },
+      },
+    };
+    const drawn = (itemRefine?: (itemId: string) => number) => {
+      const draws: string[] = [];
+      const context = {
+        save() {}, restore() {}, translate() {}, scale() {}, rotate() {},
+        stroke() {}, beginPath() {}, moveTo() {}, lineTo() {}, arc() {}, bezierCurveTo() {}, closePath() {}, fill() {},
+        drawImage(asset: HTMLImageElement) { draws.push(asset.src); },
+      } as unknown as CanvasRenderingContext2D;
+      drawStartingPlayer(context, assets, {
+        x: 0, y: 0, facing: 0, gameTime: 0, itemRefine,
+        headItem: "rare_light_helmet", chestItem: "rare_light_armor", rightHandItem: "rare_bow", leftHandItem: "",
+      });
+      return draws.filter(source => source.startsWith(parts)).sort();
+    };
+    expect(drawn()).toEqual([`${parts}/rare-bow.webp`, `${parts}/rare-light-armor.webp`, `${parts}/rare-light-helmet.webp`]);
+    const refines: Record<string, number> = { rare_bow: 21, rare_light_armor: 12, rare_light_helmet: 3 };
+    expect(drawn(itemId => refines[itemId] ?? 0))
+      .toEqual([`${parts}/rare-bow-r20.webp`, `${parts}/rare-light-armor-r10.webp`, `${parts}/rare-light-helmet.webp`]);
+    expect(equipmentSprite(assets, "rare_bow", 10)?.src).toBe(`${parts}/rare-bow-r10.webp`);
   });
 });

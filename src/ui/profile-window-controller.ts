@@ -53,7 +53,8 @@ export function createProfileWindowController(elements: {
   weaponMastery?: () => Readonly<Record<WeaponSchool, bigint>> | undefined;
   localIdentity: () => string | undefined; localDisplayName: () => string | undefined; profileIcon: (identity?: string) => number; paintIcon: (element: HTMLElement, index: number, identity?: string) => void;
   renderName: (element: HTMLElement, identity: string, name: string, gender?: PlayerGender) => void; isGuest: (identity: string) => boolean; isOnline: (identity: string) => boolean; presenceText: (profile: Profile, online: boolean) => string;
-  renderCharacter: (identity: string, progress: Profile["progress"] | null, visible: boolean) => void; skinTone: (identity?: string) => number; setSkinTone: (value: number) => Promise<{ ok?: boolean; error?: string } | undefined>;
+  /** `progress` carries the profile's refines too, so the preview draws worn graded gear in its refine look. */
+  renderCharacter: (identity: string, progress: (Profile["progress"] & { itemRefines?: Readonly<Record<string, number>> }) | null, visible: boolean) => void; skinTone: (identity?: string) => number; setSkinTone: (value: number) => Promise<{ ok?: boolean; error?: string } | undefined>;
   playerGender: (identity?: string) => PlayerGender; setGender: (value: PlayerGender) => Promise<{ ok?: boolean; error?: string } | undefined>;
   nameColor: (identity?: string) => number; setNameColor: (value: number) => Promise<{ ok?: boolean; error?: string } | undefined>; openIconPicker: () => void;
   renderStats: (profile: Profile, element: HTMLElement) => void; formatPower: (profile: Profile) => string; formatPlayedTime: (seconds: number) => string;
@@ -110,7 +111,7 @@ export function createProfileWindowController(elements: {
 
   function drawPreview() {
     const profile = profileData;
-    const progress = profile && profile.identity === elements.preview.dataset.identity ? profile.progress : null;
+    const progress = profile && profile.identity === elements.preview.dataset.identity ? { ...profile.progress, itemRefines: profile.itemRefines } : null;
     api.renderCharacter(elements.preview.dataset.identity || "", progress, !elements.window.hidden);
   }
 

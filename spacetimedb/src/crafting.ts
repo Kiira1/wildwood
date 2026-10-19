@@ -4,7 +4,9 @@ import type spacetimedbType from "./index";
 import {
   CRAFTED_REFINE, CRAFTED_SKILL_LUCK_RANKS, CRAFT_SKILLS, MATERIAL_NAMES, craftExperience, craftLevel, type CraftSkill,
 } from "../../shared/crafting";
-import { craftMaterialsKey, craftMaterialsShort, gradeCraftLevel, gradeCraftMaterials, gradeCraftNeed, gradeCraftSkill, isCraftable } from "../../shared/grade-craft";
+import {
+  craftMaterialsKey, craftMaterialsShort, gradeCraftAction, gradeCraftLevel, gradeCraftMaterials, gradeCraftNeed, gradeCraftSkill, isCraftable,
+} from "../../shared/grade-craft";
 import { gradeOf } from "../../shared/grade-equipment";
 import { gradeShopNeed, gradeShopOpen, masteryLevels } from "../../shared/grade-shop";
 import { SCHOOL_DETAILS, type WeaponSchool } from "../../shared/weapon-mastery";
@@ -86,7 +88,9 @@ export type CraftingDeps = {
 
 /**
  * One graded piece crafted at its station, into a free bag slot as a bought one arrives (grade-shop.ts), but at
- * +2 and with better luck on a weapon's skills. `expectedMaterials` is the recipe the player saw.
+ * +2 and with better luck on a weapon's skills. Any grade Mastery and the craft's level open can be crafted, below
+ * the best held too; a weapon already held is reforged instead (its skills rolled again, keeping the higher), which
+ * needs no bag room. `expectedMaterials` is the recipe the player saw.
  */
 export function craftGradeGearFor(ctx: Ctx, args: { itemId: string; expectedMaterials: string }, deps: CraftingDeps) {
   const player = deps.requireControllingPlayer(ctx);
@@ -103,25 +107,30 @@ export function craftGradeGearFor(ctx: Ctx, args: { itemId: string; expectedMate
   if (!progress) throw new SenderError("Player unavailable.");
   const inventory = deps.inventoryForProgress(progress);
   // A piece on the Upgrade Bench is still the player's.
-  if (inventory.includes(itemId) || activeItemUpgradeEntriesFor(ctx, ctx.sender).some(({ active }) => active.itemId === itemId)) {
-    throw new SenderError("You already have that.");
-  }
+  const owned = new Set([...inventory, ...activeItemUpgradeEntriesFor(ctx, ctx.sender).map(({ active }) => active.itemId)]);
+  const action = gradeCraftAction(itemId, owned);
+  if (action === "owned") throw new SenderError("You already have that.");
   if (!gradeShopOpen(itemId, masteryLevels(weaponMasteryPoints(ctx, ctx.sender)))) throw new SenderError(`You need ${gradeShopNeed(itemId)}.`);
   if (craftLevel(craftSkillExperience(ctx, ctx.sender)[skill]) < gradeCraftLevel(itemId)) throw new SenderError(`You need ${gradeCraftNeed(itemId)}.`);
   const held = Object.fromEntries(Object.keys(materials).map(id => [id, oreCount(ctx, ctx.sender, id)]));
   const short = craftMaterialsShort(materials, held);
   if (short.length) throw new SenderError(`You need ${short.map(id => `${materials[id].toLocaleString("en-US")} ${MATERIAL_NAMES[id] ?? id}`).join(" and ")}.`);
-  // A stack used up frees its slot for the piece.
+  // A stack used up frees its slot for the piece; a Reforge needs no room.
   const emptied = Object.entries(materials).filter(([id, count]) => held[id] === count).length;
-  if (freeBagSlots(ctx, ctx.sender, progress, inventory) + emptied <= 0) throw new SenderError("Your bag is full. Free a slot first.");
+  if (action === "craft" && freeBagSlots(ctx, ctx.sender, progress, inventory) + emptied <= 0) throw new SenderError("Your bag is full. Free a slot first.");
   if (!takeOres(ctx, ctx.sender, materials as Partial<Record<OreId, number>>)) throw new SenderError("Your materials changed. Take another look.");
-  collectItem(ctx, ctx.sender, itemId);
   const skillLuck = isSkillWeapon(itemId) ? luckInPlay(ctx, ctx.sender).skillLuck + CRAFTED_SKILL_LUCK_RANKS : 0;
+  addCraftExperience(ctx, ctx.sender, skill, craftExperience(gradeOf(itemId)!));
+  if (action === "reforge") {
+    // Two fresh rolls merged into the held weapon, each skill keeping the higher; its refine stays.
+    receiveDuplicateEquipment(ctx, ctx.sender, itemId, 2, skillLuck);
+    return;
+  }
+  collectItem(ctx, ctx.sender, itemId);
   ensureWeaponSkillRoll(ctx, ctx.sender, itemId, skillLuck);
   // A second roll merged in, each skill keeping the higher, so crafting helps even at the Skill Luck cap.
   if (skillLuck) receiveDuplicateEquipment(ctx, ctx.sender, itemId, 1, skillLuck);
   setRefineLevel(ctx, ctx.sender, itemId, 0n, CRAFTED_REFINE);
-  addCraftExperience(ctx, ctx.sender, skill, craftExperience(gradeOf(itemId)!));
   deps.writeProgressAndPresentation(ctx, deps.restoreItemToProgress(progress, itemId));
 }
 

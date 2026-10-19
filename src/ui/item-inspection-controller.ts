@@ -201,7 +201,8 @@ export function createItemInspectionController(elements: ItemInspectionElements)
     }
     const icon = document.createElement("div");
     icon.className = "item-inspection-icon";
-    const source = itemPresentation(item.id)?.inventory.source;
+    // A graded piece in the inspected copy's refine look.
+    const source = itemPresentation(item.id, refine)?.inventory.source;
     // A finished piece is a masked CSS layer stack, not a plain image.
     if (source && !itemHasGalaxyFinish(item.id)) {
       const image = document.createElement("img");
@@ -212,7 +213,7 @@ export function createItemInspectionController(elements: ItemInspectionElements)
       icon.append(image);
     } else {
       if (!source) icon.classList.add("has-fallback-art");
-      icon.innerHTML = itemArtMarkup(item.id, false);
+      icon.innerHTML = itemArtMarkup(item.id, false, refine);
     }
     const preview = document.createElement("div");
     preview.className = "item-inspection-preview";

@@ -2,7 +2,7 @@ import { SenderError, t } from "spacetimedb/server";
 import type { Identity } from "spacetimedb";
 import type spacetimedbType from "./index";
 import { isGradeItemId } from "../../shared/grade-equipment";
-import { gradeShopNeed, gradeShopOpen, gradeShopPrice, masteryLevels } from "../../shared/grade-shop";
+import { gradeLineRefusal, gradeShopPrice, masteryLevels } from "../../shared/grade-shop";
 import { isSkillWeapon } from "../../shared/weapon-skills";
 import { standsAtTheSmith } from "./item-refine";
 import { readPlayerProgress } from "./wide-stats";
@@ -25,7 +25,7 @@ export type GradeShopDeps = {
 
 /**
  * One graded piece from the Smith for gold, into a free bag slot, as a new drop arrives: collected, its weapon
- * skills rolled, not worn. `expectedPrice` is the price the player saw, so a stale window cannot pay another.
+ * skills rolled, not worn. Any open grade above the best held on its line can be bought. `expectedPrice` is the price the player saw, so a stale window cannot pay another.
  */
 export function buyGradeGearFor(ctx: Ctx, args: { itemId: string; expectedPrice: bigint }, deps: GradeShopDeps) {
   const player = deps.requireControllingPlayer(ctx);
@@ -38,10 +38,9 @@ export function buyGradeGearFor(ctx: Ctx, args: { itemId: string; expectedPrice:
   if (!progress) throw new SenderError("Player unavailable.");
   const inventory = deps.inventoryForProgress(progress);
   // A piece on the Upgrade Bench is still the player's.
-  if (inventory.includes(itemId) || activeItemUpgradeEntriesFor(ctx, ctx.sender).some(({ active }) => active.itemId === itemId)) {
-    throw new SenderError("You already have that.");
-  }
-  if (!gradeShopOpen(itemId, masteryLevels(weaponMasteryPoints(ctx, ctx.sender)))) throw new SenderError(`You need ${gradeShopNeed(itemId)}.`);
+  const held = new Set([...inventory, ...activeItemUpgradeEntriesFor(ctx, ctx.sender).map(({ active }) => active.itemId)]);
+  const refusal = gradeLineRefusal(itemId, held, masteryLevels(weaponMasteryPoints(ctx, ctx.sender)));
+  if (refusal) throw new SenderError(refusal);
   if (freeBagSlots(ctx, ctx.sender, progress, inventory) <= 0) throw new SenderError("Your bag is full. Free a slot first.");
   if (!takeGold(ctx, ctx.sender, price)) throw new SenderError(`You need ${price.toLocaleString("en-US")} Gold.`);
   collectItem(ctx, ctx.sender, itemId);

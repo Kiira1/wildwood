@@ -1,11 +1,12 @@
 import { itemDisplayName, itemStats } from "../../shared/items";
 import { CRAFTED_REFINE, CRAFT_MAX_LEVEL, CRAFT_SKILL_NAMES, MATERIAL_NAMES, type CraftSkill } from "../../shared/crafting";
 import {
-  CRAFT_LINES, craftMaterialsShort, craftProgress, gradeCraftLevel, gradeCraftMaterials, gradeCraftNeed, gradeCraftSkill,
+  CRAFT_LINES, craftMaterialsShort, craftProgress, gradeCraftAction, gradeCraftLevel, gradeCraftMaterials, gradeCraftNeed, gradeCraftOffer, gradeCraftSkill,
+  type GradeCraftAction,
 } from "../../shared/grade-craft";
-import { ARMOR_CLASS_DETAILS, ARMOR_CLASS_NAMES, GEAR_GRADE_NAMES, GRADE_MASTERY_LEVEL } from "../../shared/gear-grades";
+import { ARMOR_CLASS_DETAILS, ARMOR_CLASS_NAMES, GEAR_GRADE_NAMES, GRADE_MASTERY_LEVEL, type GearGrade } from "../../shared/gear-grades";
 import { armorClassOf, gradeEquipmentKindOf, gradeOf, type GradeItemId } from "../../shared/grade-equipment";
-import { gradeShopNeed, gradeShopOffer, gradeShopOpen, masteryLevels, type MasteryLevels } from "../../shared/grade-shop";
+import { gradeShopItemId, gradeShopNeed, gradeShopOpen, masteryLevels, type GradeShopLine, type MasteryLevels } from "../../shared/grade-shop";
 import { bagSlotsWithOres } from "../../shared/ore-bag";
 import { bagSlotCapacity } from "../../shared/gems";
 import type { OreId } from "../../shared/refine";
@@ -37,6 +38,13 @@ export function craftStationHint(itemId: GradeItemId) {
 /** The Mastery a piece's grade needs, or none at Common. */
 export function masteryNeed(itemId: GradeItemId, levels: MasteryLevels): GradeNeed[] {
   return GRADE_MASTERY_LEVEL[gradeOf(itemId)!] > 0 ? [{ text: gradeShopNeed(itemId), met: gradeShopOpen(itemId, levels) }] : [];
+}
+
+/** What an offer works toward, muted: "Next: Heroic at Lv 8 Archery". None past the top grade. */
+export function nextNeed(next: GradeItemId | undefined, needs: (itemId: GradeItemId) => readonly GradeNeed[]): GradeNeed[] {
+  if (!next) return [];
+  const unmet = needs(next).filter(need => !need.met).map(need => need.text);
+  return unmet.length ? [{ text: `Next: ${GEAR_GRADE_NAMES[gradeOf(next)!]} at ${unmet.join(" · ")}`, met: true }] : [];
 }
 
 /**
@@ -73,14 +81,40 @@ export function gradeItemRow(itemId: GradeItemId, refine = 0, needs: readonly Gr
   return { row, deal: row.querySelector<HTMLElement>(".smith-shop-deal")! };
 }
 
-/** The top grade, already held: its row says Owned in place of a deal. */
+/** Steps through the open grades, lowest to best; two buttons big enough for a thumb. Shared by craft and shop rows. */
+export function gradeStepperElement(grades: readonly GearGrade[], grade: GearGrade,
+  options: { label: string; busy: boolean; name?: string; onPick: (grade: GearGrade) => void }) {
+  const group = document.createElement("span");
+  group.className = "craft-grade";
+  group.setAttribute("role", "group");
+  group.setAttribute("aria-label", options.label);
+  const at = grades.indexOf(grade);
+  const step = (by: number, symbol: string, label: string) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "craft-grade-step";
+    button.textContent = symbol;
+    button.setAttribute("aria-label", label);
+    const to = grades[at + by];
+    button.disabled = !to || options.busy;
+    button.addEventListener("click", () => { if (to) options.onPick(to); });
+    return button;
+  };
+  const name = document.createElement("span");
+  name.className = "craft-grade-name";
+  name.textContent = options.name ?? GEAR_GRADE_NAMES[grade];
+  group.append(step(-1, "‹", "Lower Grade"), name, step(1, "›", "Higher Grade"));
+  return group;
+}
+
+/** The top grade, already held: its row says Owned in place of a price. */
 export function ownedRow(itemId: GradeItemId) {
-  const { row } = gradeItemRow(itemId);
+  const made = gradeItemRow(itemId);
   const owned = document.createElement("span");
   owned.className = "smith-shop-owned";
   owned.textContent = "Owned";
-  row.querySelector(".smith-shop-copy")!.append(owned);
-  return row;
+  made.row.querySelector(".smith-shop-copy")!.append(owned);
+  return made;
 }
 
 /** One way to get a piece: its terms (a price, materials) on the left, its button on the right. */
@@ -117,8 +151,9 @@ export type CraftSectionDeps = {
 
 /**
  * A station's Craft section: the craft's level and progress in a card, then a row per line it makes, offering the
- * grade after the best one held (as the Smith's shop does) with its materials, needs and a Craft button. The Smith
- * lists no rows of its own: his shop rows take each piece's craft line (craftOffer). The server decides
+ * best grade Mastery and the craft's level open, with a stepper to pick any other open grade (gradeCraftOffer), its
+ * materials and a button: Craft for a new piece, Reforge for a weapon already held, Owned for armor already held.
+ * The Smith lists no rows of its own: his shop rows take each line's craft line (craftLine). The server decides
  * (craft_grade_gear).
  */
 export function createCraftSection(deps: CraftSectionDeps, options: { rows?: boolean; onChange?: () => void } = {}) {
@@ -129,7 +164,7 @@ export function createCraftSection(deps: CraftSectionDeps, options: { rows?: boo
   section.innerHTML = (listsRows ? `<h3 class="craft-title">Craft</h3>` : "")
     + `<div class="craft-card"><div class="craft-head"><strong class="craft-name"></strong><span class="craft-level"></span></div>`
     + `<div class="craft-bar" role="progressbar" aria-valuemin="0"><span></span></div><span class="craft-points"></span>`
-    + `<p class="craft-note">Crafted gear starts at ${refineStars(CRAFTED_REFINE)}, and a crafted weapon rolls its skills with more luck.</p></div>`
+    + `<p class="craft-note">Crafted gear starts at ${refineStars(CRAFTED_REFINE)}, and a crafted weapon rolls its skills with more luck. Reforge a weapon you have to roll its skills again.</p></div>`
     + (listsRows ? `<div class="smith-shop-rows craft-rows" role="list" aria-label="Gear to craft"></div>` : "");
   const nameText = section.querySelector<HTMLElement>(".craft-name")!, levelText = section.querySelector<HTMLElement>(".craft-level")!;
   const bar = section.querySelector<HTMLElement>(".craft-bar")!, fill = section.querySelector<HTMLElement>(".craft-bar span")!;
@@ -137,12 +172,15 @@ export function createCraftSection(deps: CraftSectionDeps, options: { rows?: boo
   let skill: CraftSkill | null = null, crafting: string | null = null, rendered = "";
   /** Crafted here before the server's row arrives. */
   const justCrafted = new Set<string>();
+  /** The grade picked on each line; the best open one until the player steps. */
+  const picked = new Map<string, GearGrade>();
+  const lineKey = (line: GradeShopLine) => `${line.kind}:${"armorClass" in line ? line.armorClass : ""}`;
 
   const held = () => new Set([...deps.heldItems(), ...justCrafted]);
 
   function state() {
     return JSON.stringify([skill, String(skill ? deps.craftSkills()[skill] ?? 0n : 0n), deps.ores(), deps.masteryLevels(),
-      [...held()].filter(id => gradeOf(id)), deps.bagFull(), crafting]);
+      [...held()].filter(id => gradeOf(id)), deps.bagFull(), crafting, [...picked]]);
   }
 
   function render(which: CraftSkill | null = skill) {
@@ -161,33 +199,50 @@ export function createCraftSection(deps: CraftSectionDeps, options: { rows?: boo
     fill.style.width = `${Math.round((max ? 1 : needed > 0 ? Math.min(1, into / needed) : 0) * 1000) / 10}%`;
     points.textContent = max ? "Max Level" : `${count(into)} / ${count(needed)}`;
     if (!rows) return;
-    const owned = held(), levels = deps.masteryLevels();
+    const owned = held();
     rows.replaceChildren(...CRAFT_LINES[skill].map(line => {
-      const offer = gradeShopOffer(line, owned);
-      if (offer.owned) return ownedRow(offer.itemId);
-      const made = craftOffer(offer.itemId, false)!;
-      const { row, deal } = gradeItemRow(offer.itemId, CRAFTED_REFINE, [made.need, ...masteryNeed(offer.itemId, levels)]);
+      const made = craftLine(line, owned, { stars: false })!;
+      // A new piece shows at the refine it arrives with.
+      const { row, deal } = gradeItemRow(made.itemId, made.action === "craft" ? CRAFTED_REFINE : 0, nextNeed(made.next, needsOf));
       deal.append(made.line);
       return row;
     }));
   }
 
+  const skillLevel = () => skill ? craftProgress(deps.craftSkills()[skill] ?? 0n).level : 1;
+  /** What a piece needs of this craft and of Mastery, met or not. */
+  const needsOf = (itemId: GradeItemId): GradeNeed[] =>
+    [{ text: gradeCraftNeed(itemId), met: skillLevel() >= gradeCraftLevel(itemId) }, ...masteryNeed(itemId, deps.masteryLevels())];
+
   /**
-   * A piece's craft line: the materials held against needed and a Craft button that says why it waits, and the
-   * craft level it needs; ★2 leads it where the name does not say so. None when this station does not make it.
+   * A line's craft line, at the grade picked (or the best open): a grade stepper, the materials held against
+   * needed, and a button that says what it does or why it waits. ★2 follows the grade where the row's name does
+   * not say so. None for a line this station does not make.
    */
-  function craftOffer(itemId: GradeItemId, stars = true) {
-    if (!skill || gradeCraftSkill(itemId) !== skill) return null;
-    const level = craftProgress(deps.craftSkills()[skill] ?? 0n).level, ores = deps.ores(), materials = gradeCraftMaterials(itemId)!;
-    const need: GradeNeed = { text: gradeCraftNeed(itemId), met: level >= gradeCraftLevel(itemId) };
-    const open = gradeShopOpen(itemId, deps.masteryLevels()) && need.met;
-    // Mastery and the craft level first, as the server checks them.
-    const text = crafting === itemId ? "Crafting…" : !open ? "Locked"
-      : craftMaterialsShort(materials, ores).length ? "Need More" : deps.bagFull() ? "Bag Full" : "Craft";
-    const button = offerButton(text, text === "Craft" && crafting === null, () => { void craft(itemId); });
-    const mark = document.createElement("span");
-    mark.className = "refine-stars craft-stars";
-    mark.textContent = refineStars(CRAFTED_REFINE);
+  function craftLine(line: GradeShopLine, owned = held(), options: { stars?: boolean } = {}) {
+    if (!skill || !CRAFT_LINES[skill].includes(line)) return null;
+    const offer = gradeCraftOffer(line, deps.masteryLevels(), skillLevel()), choice = picked.get(lineKey(line));
+    const grade = choice && offer.grades.includes(choice) ? choice : offer.grade, itemId = gradeShopItemId(line, grade);
+    const action = gradeCraftAction(itemId, owned), ores = deps.ores(), materials = gradeCraftMaterials(itemId)!;
+    const text = crafting === itemId ? (action === "reforge" ? "Reforging…" : "Crafting…") : action === "owned" ? "Owned"
+      : craftMaterialsShort(materials, ores).length ? "Need More" : action === "craft" && deps.bagFull() ? "Bag Full"
+        : action === "reforge" ? "Reforge" : "Craft";
+    const button = offerButton(text, (text === "Craft" || text === "Reforge") && crafting === null, () => { void craft(itemId, action); });
+    const terms: Node[] = [gradeStepper(line, offer.grades, grade, options.stars !== false && action === "craft"), materialList(materials, ores)];
+    if (action === "reforge") terms.push(hint("Rolls its skills again, keeping the higher"));
+    const element = offerLine(terms, button);
+    element.classList.add("craft-offer");
+    return { itemId, action, next: offer.next, line: element };
+  }
+
+  function gradeStepper(line: GradeShopLine, grades: readonly GearGrade[], grade: GearGrade, stars: boolean) {
+    return gradeStepperElement(grades, grade, {
+      label: "Grade to craft", busy: crafting !== null, name: stars ? `${GEAR_GRADE_NAMES[grade]} ${refineStars(CRAFTED_REFINE)}` : GEAR_GRADE_NAMES[grade],
+      onPick: to => { picked.set(lineKey(line), to); changed(); },
+    });
+  }
+
+  function materialList(materials: Readonly<Record<string, number>>, ores: Ores) {
     const list = document.createElement("ul");
     list.className = "craft-materials";
     list.setAttribute("aria-label", "Materials");
@@ -205,12 +260,10 @@ export function createCraftSection(deps: CraftSectionDeps, options: { rows?: boo
       item.append(icon, label);
       return item;
     }));
-    const line = offerLine(stars ? [mark, list] : [list], button);
-    line.classList.add("craft-offer");
-    return { need, line };
+    return list;
   }
 
-  async function craft(itemId: GradeItemId) {
+  async function craft(itemId: GradeItemId, action: GradeCraftAction) {
     if (crafting) return;
     crafting = itemId;
     changed();
@@ -218,7 +271,8 @@ export function createCraftSection(deps: CraftSectionDeps, options: { rows?: boo
       const result = await deps.craft(itemId);
       if (result?.ok) {
         justCrafted.add(itemId);
-        deps.showMessage(`Crafted · ${nameOf(itemId)} ${refineStars(CRAFTED_REFINE)}. Equip it from your bag.`, "#ffd75e");
+        deps.showMessage(action === "reforge" ? `Reforged · ${nameOf(itemId)}. Each skill kept the higher roll.`
+          : `Crafted · ${nameOf(itemId)} ${refineStars(CRAFTED_REFINE)}. Equip it from your bag.`, "#ffd75e");
       } else deps.showMessage(result?.error ?? "Not Connected", "#ff9b91");
     } finally {
       crafting = null;
@@ -234,14 +288,23 @@ export function createCraftSection(deps: CraftSectionDeps, options: { rows?: boo
   return {
     element: section,
     render,
-    craftOffer,
+    craftLine,
+    needsOf,
     /** What the rows show, for a window that lists them itself. */
     state,
     /** Pieces crafted here whose rows have not arrived yet. */
     crafted: () => [...justCrafted],
-    /** Each visit goes by the server's word on the bag. */
-    reset() { justCrafted.clear(); rendered = ""; },
+    /** Each visit goes by the server's word on the bag, and starts at each line's best grade. */
+    reset() { justCrafted.clear(); picked.clear(); rendered = ""; },
   };
+}
+
+/** A short muted line of its own under an offer's terms. */
+function hint(text: string) {
+  const line = document.createElement("span");
+  line.className = "craft-hint";
+  line.textContent = text;
+  return line;
 }
 
 /** What a craft section reads from the coop session. */

@@ -9,7 +9,7 @@ import { BOSS_REGEN_FRACTION_PER_SECOND, bossHitsToDefeat } from "../../shared/b
 import { simulationTravelSeconds } from "./gameplay-model";
 import { rollBossGold, rollKillGold } from "../../shared/gold";
 import { luckMultiplier } from "../../shared/luck-research";
-import { nextSmithPurchase, type MasteryPointsBySchool } from "./smith-purchases";
+import { SMITH_VISIT_SECONDS, nextSmithPurchase, type MasteryPointsBySchool } from "./smith-purchases";
 import { armorMoveSpeedFactor } from "../../shared/armor-class-perks";
 import { TAILWIND_SECONDS, TAILWIND_SPEED_BONUS, duelMasteryFold, hasTechnique } from "../../shared/mastery-techniques";
 import {
@@ -83,7 +83,7 @@ export const BALANCE_MAP_IDS = [
 
 export type { MasteryPointsBySchool } from "./smith-purchases";
 /** The Lab's player model: bump it when what the simulated player does changes, so cached Lab results are rebuilt. */
-export const LAB_PLAYER_MODEL = "smith-1";
+export const LAB_PLAYER_MODEL = "smith-4";
 export type BalanceMapId = typeof BALANCE_MAP_IDS[number] | ProceduralMapId;
 export function balanceMapIds(endlessMaps = 0): BalanceMapId[] {
   return [...BALANCE_MAP_IDS, ...Array.from({ length: Math.max(0, Math.min(50, Math.floor(endlessMaps))) }, (_, i) => proceduralMapId(i + 1))];
@@ -1310,7 +1310,7 @@ function equipIfStronger(state: MutableSimulationState, itemId: ItemId) {
   if (powerForState(state) + .0001 < previousPower) state.equipped[slot] = previous;
 }
 
-/** Gear comes only from the Smith: each next grade bought as soon as Mastery opens it and the gold is there, and worn. */
+/** Gear comes only from the Smith: on each line the best grade Mastery opens that the gold covers, bought and worn. */
 export function buyGradeGear(state: MutableSimulationState, recordHistory: () => void) {
   for (let buy = nextSmithPurchase(state.equipped.weapon, state.ownedItems, state.gold, state.masteryPoints); buy;
     buy = nextSmithPurchase(state.equipped.weapon, state.ownedItems, state.gold, state.masteryPoints)) {
@@ -1892,6 +1892,12 @@ function simulateTrial(
     if (previous && Math.abs(previous.timeSeconds - point.timeSeconds) < 1e-7) history[history.length - 1] = point;
     else history.push(point);
   };
+  /** The Smith: after each boss, win or lose, and every SMITH_VISIT_SECONDS of farming between, so gold saves up. */
+  let smithVisitAt = state.time + SMITH_VISIT_SECONDS;
+  const visitSmith = () => {
+    buyGradeGear(state, recordHistory);
+    smithVisitAt = state.time + SMITH_VISIT_SECONDS;
+  };
 
   const spendTime = (
     record: TrialMapRecord,
@@ -2136,6 +2142,8 @@ function simulateTrial(
         mapRecord.bossDeaths += 1;
         if (!spendTime(mapRecord, "deathSeconds", bossOutcome.diedAt)) break;
         if (!spendTime(mapRecord, "deathSeconds", DEATH_SCREEN_SECONDS)) break;
+        // Beaten, the player goes to the Smith before trying again.
+        visitSmith();
         state.missingHealth = 0;
         position = { ...map.arrival };
         continue;
@@ -2147,7 +2155,7 @@ function simulateTrial(
       // A first clear pays gold and Mastery; repeats pay neither.
       state.gold += rollBossGold(goldRandom);
       addMastery(state, masteryPointsForReport(0, true));
-      buyGradeGear(state, recordHistory);
+      visitSmith();
       recordHistory();
       mapRecord.exitedAtSeconds = state.time;
       mapRecord.exitPower = powerForState(state);
@@ -2263,7 +2271,7 @@ function simulateTrial(
     state.lastKillAt = state.time - LOOT_AND_RETARGET_SECONDS;
     state.gold += rollKillGold(1, goldRandom, goldChanceMultiplier(state));
     addMastery(state, masteryPointsForReport(1, false));
-    buyGradeGear(state, recordHistory);
+    if (state.time >= smithVisitAt) visitSmith();
     recordHistory();
   }
 
@@ -2658,7 +2666,7 @@ function buildDiagnostics(
   finalPower: BalanceSimulationResult["finalPower"],
   enemyMetrics: Record<BalanceMapId, EnemyBalanceMetric[]>,
 ) {
-  const diagnostics: string[] = ["Model scope: clock starts after the completed tutorial; no map drops gear: kills pay gold (10% drop 1-3, a first boss clear 2-4) and Weapon Mastery (1 a kill, 50 a first boss clear), and the archer buys the Smith's next bow, Light helmet and Light armor grade as soon as Mastery opens it and the gold is there. Mastery's range, Steady Aim and Hunter's Mark (as expected values), Tailwind and Light armor's speed are modeled; weapon skills (so Skill Proficiency, Volley, Rain of Arrows) are not. Boss readiness and initial full clears are strategy assumptions, not unlock requirements. Each fight counts the target and every camp mate it wakes (aggro radius, group camps, chasers from the last fight), hit by hit after armor, and health carries between fights with regeneration. A death costs the fight in progress, the death screen and the walk back from the map's arrival; a camp just died to is skipped for 10 minutes, and 5 deaths in 3 minutes send the player back a map until it has 1.2× the power and 10 minutes have passed (Auto's rules). Bosses are fought from full health with every ability turn landing; a lost boss fight is a death, retried only once the build would win it. Nobody dodges or kites; gold arrives at once, one upgrade bench, no paid skips."];
+  const diagnostics: string[] = ["Model scope: clock starts after the completed tutorial; no map drops gear: kills pay gold (10% drop 1-3, a first boss clear 2-4) and Weapon Mastery (1 a kill, 50 a first boss clear), and the archer buys the highest bow, Light helmet and Light armor grade Mastery opens (the grades between skipped) once the gold is there. Mastery's range, Steady Aim and Hunter's Mark (as expected values), Tailwind and Light armor's speed are modeled; weapon skills (so Skill Proficiency, Volley, Rain of Arrows) are not. Boss readiness and initial full clears are strategy assumptions, not unlock requirements. Each fight counts the target and every camp mate it wakes (aggro radius, group camps, chasers from the last fight), hit by hit after armor, and health carries between fights with regeneration. A death costs the fight in progress, the death screen and the walk back from the map's arrival; a camp just died to is skipped for 10 minutes, and 5 deaths in 3 minutes send the player back a map until it has 1.2× the power and 10 minutes have passed (Auto's rules). Bosses are fought from full health with every ability turn landing; a lost boss fight is a death, retried only once the build would win it. Nobody dodges or kites; gold arrives at once, one upgrade bench, no paid skips."];
   let measuredPacingTargets = 0;
   let pacingTargetsOnTrack = 0;
   let measuredPowerTargets = 0;

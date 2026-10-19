@@ -11,12 +11,14 @@
  * a share of the arriving player's health; whether the boss beats the arriving build;
  * the boss's heaviest attack over the map's regular hit; and the arriving build's attack speed and
  * crit multiplier with the attack speed and crit camp kills made on the map (shared/stat-rating.ts); deaths on the
- * map (median) and an hour; and the arriving build's Smith gear (weapon/helmet/armor grade), gold and Mastery level.
+ * map (median) and an hour; and the arriving build's Smith gear (weapon/helmet/armor grade), its share of power,
+ * gold and Mastery level.
  */
 import { LIVE_BALANCE } from "../src/balance/live-balance";
 import { GAME_BALANCE } from "../src/balance/game-balance";
 import { arrivalChecks, defaultBalanceSimulationConfig, runBalanceSimulation, snapshotMasteryLevel, type BalanceMapId } from "../src/balance/simulator";
 import { gradeOf } from "../shared/grade-equipment";
+import { gradeIndex } from "../shared/gear-grades";
 import { resolveMapBalance } from "../shared/map-balance";
 import { criticalDamageMultiplier } from "../shared/critical-damage";
 
@@ -67,9 +69,10 @@ const rows = result.maps.map((map, index) => {
     regularKills: map.regularKillsMedian,
     deaths: map.deathsMedian,
     deathsPerHour: map.deathsPerHourMedian,
-    // Weapon, helmet and armor grade on arrival, as initials (C U R E L M; - for none).
+    // Weapon, helmet and armor grade on arrival, as grade numbers (1 Crude to 15 Eternal; - for none).
     gear: arrival ? [arrival.equipped.weapon, arrival.equipped.head, arrival.equipped.chest]
-      .map(itemId => gradeOf(itemId)?.[0].toUpperCase() ?? "-").join("") : null,
+      .map(itemId => { const grade = gradeOf(itemId); return grade ? String(gradeIndex(grade) + 1) : "-"; }).join("/") : null,
+    gearSharePercent: map.entryPowerComponentsMedian?.equipmentSharePercent ?? null,
     gold: arrival?.gold ?? null,
     masteryLevel: arrival ? snapshotMasteryLevel(arrival) : null,
   };
@@ -79,13 +82,13 @@ if (args.includes("--json")) {
 } else {
   const cell = (value: number | null, digits = 2) => value === null || !Number.isFinite(value) ? "—" : value.toFixed(digits);
   console.log(["Map".padEnd(26), "Hours".padStart(7), "Growth".padStart(7), "Pay/prev".padStart(9), "Reg hit%".padStart(9), "Boss wins".padStart(10), "Boss min".padStart(9), "Heavy×".padStart(7), "Atk/s".padStart(6), "Crit×".padStart(6), "Spd k".padStart(6), "Crit k".padStart(6), "Kills".padStart(7),
-    "Deaths".padStart(7), "D/h".padStart(5), "Gear".padStart(5), "Gold".padStart(7), "Mst".padStart(4)].join(" "));
+    "Deaths".padStart(7), "D/h".padStart(5), "Gear".padStart(8), "Gear%".padStart(6), "Gold".padStart(7), "Mst".padStart(4)].join(" "));
   for (const row of rows) {
     console.log([row.map.padEnd(26), cell(row.hours).padStart(7), cell(row.growth).padStart(7), cell(row.payVsPrevious).padStart(9),
       cell(row.regularHitPercent, 1).padStart(9), String(row.bossBeatsArrival ?? "—").padStart(10), cell(row.bossFightMinutes, 1).padStart(9),
       cell(row.heavyOverRegular, 1).padStart(7), cell(row.attacksPerSecond).padStart(6), cell(row.critMultiplier, 1).padStart(6),
       cell(row.speedKills, 0).padStart(6), cell(row.critKills, 0).padStart(6), cell(row.regularKills, 0).padStart(7),
-      cell(row.deaths, 0).padStart(7), cell(row.deathsPerHour, 1).padStart(5), (row.gear ?? "—").padStart(5), cell(row.gold, 0).padStart(7),
+      cell(row.deaths, 0).padStart(7), cell(row.deathsPerHour, 1).padStart(5), (row.gear ?? "—").padStart(8), cell(row.gearSharePercent, 0).padStart(6), cell(row.gold, 0).padStart(7),
       cell(row.masteryLevel, 0).padStart(4)].join(" "));
   }
 }

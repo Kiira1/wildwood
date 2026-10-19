@@ -22,10 +22,10 @@ export const MASTERY_POINTS_PER_BOSS = 50;
 
 export const MASTERY_MAX_LEVEL = 50;
 /** Level 1 costs this many points; each level after costs MASTERY_LEVEL_GROWTH times the last. */
-export const MASTERY_FIRST_LEVEL_POINTS = 1_000;
-export const MASTERY_LEVEL_GROWTH = 1.11;
+export const MASTERY_FIRST_LEVEL_POINTS = 70;
+export const MASTERY_LEVEL_GROWTH = 1.178;
 
-/** Total points to reach `level` (0 at level 0): about 16,700 for 10 and 1.67 million for 50. */
+/** Total points to reach `level` (0 at level 0): about 1,630 for 10, 53,191 for 30 and 1.42 million for 50. */
 export function masteryPointsForLevel(level: number) {
   const clamped = Math.max(0, Math.min(MASTERY_MAX_LEVEL, Math.floor(Number.isFinite(level) ? level : 0)));
   let total = 0;

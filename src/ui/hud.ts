@@ -158,8 +158,8 @@ export type InventoryMoveAction = {
 
 const itemsById = ITEM_DEFINITIONS as Record<string, ItemDefinition>;
 
-function itemArt(itemId: string, hidden = true) {
-  return itemArtMarkup(itemId, hidden);
+function itemArt(itemId: string, hidden = true, refine = 0) {
+  return itemArtMarkup(itemId, hidden, refine);
 }
 
 function equipmentItemId(inventory: InventoryViewState, slot: EquipmentSlot, mode: InventoryMode) {
@@ -273,13 +273,14 @@ function renderEquipmentSlot(
   slotLabel.textContent = label;
   const art = document.createElement("span");
   art.className = "equipment-slot-art";
-  if (item) art.innerHTML = itemArt(itemId, false);
+  // Graded gear shows its refine look: the worn piece's, or the gear under an empty look's.
+  if (item) art.innerHTML = itemArt(itemId, false, refine);
   else if (cosmeticHidden) {
     const hidden = document.createElement("span");
     hidden.className = "cosmetic-hidden-icon";
     hidden.setAttribute("aria-hidden", "true");
     art.append(hidden);
-  } else if (inheritedItem) art.innerHTML = itemArt(inheritedItemId, false);
+  } else if (inheritedItem) art.innerHTML = itemArt(inheritedItemId, false, refineLevel?.(inheritedItemId) ?? 0);
   else {
     const empty = document.createElement("span");
     empty.className = "equipment-slot-empty";
@@ -410,7 +411,7 @@ export function renderInventoryView(
       if (copyId) button.dataset.copyId = String(copyId);
       const art = document.createElement("span");
       art.className = "inventory-item-art-wrap";
-      art.innerHTML = itemArt(itemId);
+      art.innerHTML = itemArt(itemId, true, refine);
       button.append(art);
       if (!cosmetics) appendItemTierLabel(button, itemId, "above");
       if (!cosmetics) {

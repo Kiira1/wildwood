@@ -1,74 +1,1913 @@
 {
-  "common_bow": { "source": "HandRight/Bow/FA_WP_Main_Bow_011_Brown.png", "look": "plain wooden bow" },
-  "uncommon_bow": { "source": "HandRight/Bow/FA_WP_Main_Bow_013_Brown.png", "look": "red-brown hunting bow, gold tips" },
-  "rare_bow": { "source": "HandRight/Bow/FA_WP_Main_Bow_016_Gray.png", "look": "steel recurve" },
-  "epic_bow": { "source": "HandRight/Bow/FA_WP_Main_Bow_019_Gold.png", "look": "white and gold wings" },
-  "legendary_bow": { "source": "HandRight/Bow/FA_WP_Main_Bow_022_Blue.png", "look": "blue crystal" },
-  "mythic_bow": { "source": "HandRight/Bow/FA_WP_Main_Bow_021_Gold.png", "look": "great golden wings" },
-
-  "common_sword": { "source": "HandRight/Sword/FA_WP_Main_Sword_029_DarkGray.png", "look": "plain iron blade" },
-  "uncommon_sword": { "source": "HandRight/Sword/FA_WP_Main_Sword_027_BrownGray.png", "look": "broad steel blade" },
-  "rare_sword": { "source": "HandRight/Sword/FA_WP_Main_Sword_032_BrownGray.png", "look": "pointed bright steel" },
-  "epic_sword": { "source": "HandRight/Sword/FA_WP_Main_Sword_031_DarkSilver.png", "look": "serrated silver" },
-  "legendary_sword": { "source": "HandRight/Sword/FA_WP_Main_Sword_022_BrownYellow.png", "look": "ivory blade, gold hilt" },
-  "mythic_sword": { "source": "HandRight/Sword/FA_WP_Main_Sword_020_Red.png", "look": "ruby crystal" },
-
-  "common_staff": { "source": "HandRight/Staff/FA_WP_Main_Staff_013_Wood.png", "look": "gnarled stick" },
-  "uncommon_staff": { "source": "HandRight/Staff/FA_WP_Main_Staff_014_Wood.png", "look": "orange eye in a wooden crook" },
-  "rare_staff": { "source": "HandRight/Staff/FA_WP_Main_Staff_016_GoldRed.png", "look": "red orb on gold" },
-  "epic_staff": { "source": "HandRight/Staff/FA_WP_Main_Staff_017_DarkBlue.png", "look": "blue crystal" },
-  "legendary_staff": { "source": "HandRight/Staff/FA_WP_Main_Staff_021_Silver.png", "look": "silver star, blue gem" },
-  "mythic_staff": { "source": "HandRight/Staff/FA_WP_Main_Staff_025_DarkRed.png", "look": "red-horned skull" },
-
-  "common_light_helmet": { "source": "Helmet/FA_Helmet_043_Green.png", "look": "felt cap" },
-  "uncommon_light_helmet": { "source": "Helmet/FA_Helmet_64_Green.png", "look": "green hood" },
-  "rare_light_helmet": { "source": "Helmet/FA_Helmet_048_Peacock.png", "look": "plumed cap, gold badge" },
-  "epic_light_helmet": { "source": "Helmet/FA_Helmet_057_Brown.png", "look": "antlered hood" },
-  "legendary_light_helmet": { "source": "Helmet/FA_Helmet_063_Gray.png", "look": "grey wolf pelt" },
-  "mythic_light_helmet": { "source": "Helmet/FA_Helmet_044_White.png", "look": "white eagle crest" },
-  "common_light_armor": { "source": "Chest/FA_Chest_051_Brown.png", "look": "leather jerkin" },
-  "uncommon_light_armor": { "source": "Chest/FA_Chest_039_Brown.png", "look": "fur-collared leather" },
-  "rare_light_armor": { "source": "Chest/FA_Chest_030_Green.png", "look": "green tunic, fur collar" },
-  "epic_light_armor": { "source": "Chest/FA_Chest_031_Mint.png", "look": "teal ranger cloak, gold clasp" },
-  "legendary_light_armor": { "source": "Chest/FA_Chest_047_Brown.png", "look": "beast pelt, green gem" },
-  "mythic_light_armor": { "source": "Chest/FA_Chest_050_Gold.png", "look": "golden feathered mantle" },
-
-  "common_medium_helmet": { "source": "Helmet/FA_Helmet_062_Gray.png", "look": "kettle helm" },
-  "uncommon_medium_helmet": { "source": "Helmet/FA_Helmet_056_Gray.png", "look": "brimmed helm, gold visor" },
-  "rare_medium_helmet": { "source": "Helmet/FA_Helmet_069_Gray.png", "look": "nasal helm, gold bands" },
-  "epic_medium_helmet": { "source": "Helmet/FA_Helmet_052_Gray.png", "look": "visored helm, red plume" },
-  "legendary_medium_helmet": { "source": "Helmet/FA_Helmet_047_White.png", "look": "white and gold crested helm" },
-  "mythic_medium_helmet": { "source": "Helmet/FA_Helmet_066_White.png", "look": "white and gold winged helm" },
-  "common_medium_armor": { "source": "Chest/FA_Chest_037_Grey.png", "look": "chainmail" },
-  "uncommon_medium_armor": { "source": "Chest/FA_Chest_038_Gray.png", "look": "mail with a pauldron" },
-  "rare_medium_armor": { "source": "Chest/FA_Chest_046_Gray.png", "look": "steel cuirass" },
-  "epic_medium_armor": { "source": "Chest/FA_Chest_043_Blue.png", "look": "pauldron over a blue tabard" },
-  "legendary_medium_armor": { "source": "Chest/FA_Chest_046_BlueGold.png", "look": "blue and gold cuirass" },
-  "mythic_medium_armor": { "source": "Chest/FA_Chest_058_Blue.png", "look": "white, blue and gold" },
-
-  "common_heavy_helmet": { "source": "Helmet/FA_Helmet_051_Silver.png", "look": "round steel helm" },
-  "uncommon_heavy_helmet": { "source": "Helmet/FA_Helmet_075_Gray.png", "look": "great helm, gold cross" },
-  "rare_heavy_helmet": { "source": "Helmet/FA_Helmet_058_Silver.png", "look": "horned grille helm" },
-  "epic_heavy_helmet": { "source": "Helmet/FA_Helmet_041_Gray.png", "look": "horned great helm" },
-  "legendary_heavy_helmet": { "source": "Helmet/FA_Helmet_041_Dark.png", "look": "black horned great helm" },
-  "mythic_heavy_helmet": { "source": "Helmet/FA_Helmet_041_Gold.png", "look": "golden horned great helm" },
-  "common_heavy_armor": { "source": "Chest/FA_Chest_045_Gray.png", "look": "plain plate" },
-  "uncommon_heavy_armor": { "source": "Chest/FA_Chest_036_DarkGray.png", "look": "strapped plate" },
-  "rare_heavy_armor": { "source": "Chest/FA_Chest_056_Brown.png", "look": "dark plate, steel pauldron" },
-  "epic_heavy_armor": { "source": "Chest/FA_Chest_048_Brown.png", "look": "horned pauldron" },
-  "legendary_heavy_armor": { "source": "Chest/FA_Chest_048_Dark.png", "look": "dark plate, violet horn" },
-  "mythic_heavy_armor": { "source": "Chest/FA_Chest_059_Yellow.png", "look": "golden plate" },
-
-  "common_magic_helmet": { "source": "Helmet/FA_Helmet_074_Brown.png", "look": "pointed brown hat" },
-  "uncommon_magic_helmet": { "source": "Helmet/FA_Helmet_077_Blue.png", "look": "blue wizard hat" },
-  "rare_magic_helmet": { "source": "Helmet/FA_Helmet_059_Silver.png", "look": "silver circlet, blue gem" },
-  "epic_magic_helmet": { "source": "Helmet/FA_Helmet_060_Purple.png", "look": "violet flame cowl" },
-  "legendary_magic_helmet": { "source": "Helmet/FA_Helmet_059_Gold.png", "look": "gold circlet, red gem" },
-  "mythic_magic_helmet": { "source": "Helmet/FA_Helmet_045_Purple.png", "look": "violet crown" },
-  "common_magic_armor": { "source": "Chest/FA_Chest_033_Brown.png", "look": "plain brown robe" },
-  "uncommon_magic_armor": { "source": "Chest/FA_Chest_034_Purple.png", "look": "magenta robe, gem clasp" },
-  "rare_magic_armor": { "source": "Chest/FA_Chest_032_Purple.png", "look": "violet robe" },
-  "epic_magic_armor": { "source": "Chest/FA_Chest_042_Blue.png", "look": "layered blue robe" },
-  "legendary_magic_armor": { "source": "Chest/FA_Chest_052_Purple.png", "look": "starry robe" },
-  "mythic_magic_armor": { "source": "Chest/FA_Chest_057_Purple.png", "look": "violet and gold vestments" }
+  "about": [
+    "Each graded piece: one vendor design, three looks of it. base is worn below ★10, r10 from ★10, r20 from ★20.",
+    "A string is one of the design's own colours. An object recolours a colour where the design has no fitting one,",
+    "or where another piece already wears it, so no two looks in the catalog are the same picture:",
+    "tint keeps the part's light and dark and gives it that colour (sharp tint). Gold for ★10, and for ★20 the class's jewel:",
+    "emerald for Light, sapphire for Medium, ruby for Heavy, amethyst for Magic (another jewel where the part is already that colour).",
+    "hue turns the part's colours by that many degrees (sharp modulate); keepGold leaves its gold trim as it is."
+  ],
+  "pieces": {
+    "crude_bow": {
+      "base": {
+        "source": "HandRight/Bow/FA_WP_Main_Bow_010_Gray.png",
+        "look": "plain grey shortbow"
+      },
+      "r10": {
+        "source": "HandRight/Bow/FA_WP_Main_Bow_010_Gray.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "HandRight/Bow/FA_WP_Main_Bow_010_Gray.png",
+        "tint": "#3f7fe6"
+      }
+    },
+    "common_bow": {
+      "base": {
+        "source": "HandRight/Bow/FA_WP_Main_Bow_012_Green.png",
+        "look": "green hunting bow"
+      },
+      "r10": "HandRight/Bow/FA_WP_Main_Bow_012_Blue.png",
+      "r20": "HandRight/Bow/FA_WP_Main_Bow_012_Pink.png"
+    },
+    "sturdy_bow": {
+      "base": {
+        "source": "HandRight/Bow/FA_WP_Main_Bow_014_Brown.png",
+        "look": "brown recurve"
+      },
+      "r10": "HandRight/Bow/FA_WP_Main_Bow_014_GrayYellow.png",
+      "r20": {
+        "source": "HandRight/Bow/FA_WP_Main_Bow_014_Brown.png",
+        "hue": 200
+      }
+    },
+    "fine_bow": {
+      "base": {
+        "source": "HandRight/Bow/FA_WP_Main_Bow_013_Brown.png",
+        "look": "brown longbow, cream tips"
+      },
+      "r10": "HandRight/Bow/FA_WP_Main_Bow_013_DarkGreen.png",
+      "r20": "HandRight/Bow/FA_WP_Main_Bow_013_Purple.png"
+    },
+    "superior_bow": {
+      "base": {
+        "source": "HandRight/Bow/FA_WP_Main_Bow_015_Green.png",
+        "look": "olive composite bow"
+      },
+      "r10": "HandRight/Bow/FA_WP_Main_Bow_015_Yellow.png",
+      "r20": "HandRight/Bow/FA_WP_Main_Bow_015_Blue.png"
+    },
+    "rare_bow": {
+      "base": {
+        "source": "HandRight/Bow/FA_WP_Main_Bow_016_Gray.png",
+        "look": "grey forked bow"
+      },
+      "r10": "HandRight/Bow/FA_WP_Main_Bow_016_Brown.png",
+      "r20": "HandRight/Bow/FA_WP_Main_Bow_016_Green.png"
+    },
+    "exquisite_bow": {
+      "base": {
+        "source": "HandRight/Bow/FA_WP_Main_Bow_020_Gray.png",
+        "look": "grey talon bow, red grip"
+      },
+      "r10": "HandRight/Bow/FA_WP_Main_Bow_020.png",
+      "r20": "HandRight/Bow/FA_WP_Main_Bow_020_Purple.png"
+    },
+    "epic_bow": {
+      "base": {
+        "source": "HandRight/Bow/FA_WP_Main_Bow_018_Gray.png",
+        "look": "grey coiled bow"
+      },
+      "r10": "HandRight/Bow/FA_WP_Main_Bow_018_Green.png",
+      "r20": "HandRight/Bow/FA_WP_Main_Bow_018.png"
+    },
+    "heroic_bow": {
+      "base": {
+        "source": "HandRight/Bow/FA_WP_Main_Bow_017_Green.png",
+        "look": "green finned bow"
+      },
+      "r10": "HandRight/Bow/FA_WP_Main_Bow_017_Sky.png",
+      "r20": "HandRight/Bow/FA_WP_Main_Bow_017_Red.png"
+    },
+    "legendary_bow": {
+      "base": {
+        "source": "HandRight/Bow/FA_WP_Main_Bow_023_Blue.png",
+        "look": "blue striped ram horns"
+      },
+      "r10": "HandRight/Bow/FA_WP_Main_Bow_023_Sky.png",
+      "r20": "HandRight/Bow/FA_WP_Main_Bow_023.png"
+    },
+    "mythic_bow": {
+      "base": {
+        "source": "HandRight/Bow/FA_WP_Main_Bow_022_Green.png",
+        "look": "green leaf wings"
+      },
+      "r10": "HandRight/Bow/FA_WP_Main_Bow_022_Orange.png",
+      "r20": "HandRight/Bow/FA_WP_Main_Bow_022_Blue.png"
+    },
+    "ancient_bow": {
+      "base": {
+        "source": "HandRight/Bow/FA_WP_Main_Bow_024_White.png",
+        "look": "white bone wings"
+      },
+      "r10": "HandRight/Bow/FA_WP_Main_Bow_024_Yellow.png",
+      "r20": {
+        "source": "HandRight/Bow/FA_WP_Main_Bow_024_Yellow.png",
+        "hue": 240
+      }
+    },
+    "celestial_bow": {
+      "base": {
+        "source": "HandRight/Bow/FA_WP_Main_Bow_019_White.png",
+        "look": "white feathered wings"
+      },
+      "r10": "HandRight/Bow/FA_WP_Main_Bow_019_Gold.png",
+      "r20": "HandRight/Bow/FA_WP_Main_Bow_019_Blue.png"
+    },
+    "divine_bow": {
+      "base": {
+        "source": "HandRight/Bow/FA_WP_Main_Bow_025_Purple.png",
+        "look": "violet antlers"
+      },
+      "r10": "HandRight/Bow/FA_WP_Main_Bow_025_Gold.png",
+      "r20": {
+        "source": "HandRight/Bow/FA_WP_Main_Bow_025_Gold.png",
+        "hue": 150
+      }
+    },
+    "eternal_bow": {
+      "base": {
+        "source": "HandRight/Bow/FA_WP_Main_Bow_021_Blue.png",
+        "look": "great white and blue wings"
+      },
+      "r10": "HandRight/Bow/FA_WP_Main_Bow_021_Gold.png",
+      "r20": "HandRight/Bow/FA_WP_Main_Bow_021_DarkPurple.png"
+    },
+    "crude_sword": {
+      "base": {
+        "source": "HandRight/Sword/FA_WP_Main_Sword_025_Dark.png",
+        "look": "dark iron blade"
+      },
+      "r10": "HandRight/Sword/FA_WP_Main_Sword_025_Gold.png",
+      "r20": {
+        "source": "HandRight/Sword/FA_WP_Main_Sword_025_Gold.png",
+        "hue": 190
+      }
+    },
+    "common_sword": {
+      "base": {
+        "source": "HandRight/Sword/FA_WP_Main_Sword_029_DarkGray.png",
+        "look": "dark grey cleaver"
+      },
+      "r10": {
+        "source": "HandRight/Sword/FA_WP_Main_Sword_029_BrownGray.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "HandRight/Sword/FA_WP_Main_Sword_029_DarkGray.png",
+        "tint": "#3f7fe6"
+      }
+    },
+    "sturdy_sword": {
+      "base": {
+        "source": "HandRight/Sword/FA_WP_Main_Sword_027_BrownGray.png",
+        "look": "steel broadsword"
+      },
+      "r10": {
+        "source": "HandRight/Sword/FA_WP_Main_Sword_027_BrownGray.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "HandRight/Sword/FA_WP_Main_Sword_027_DarkGray.png",
+        "tint": "#34b874"
+      }
+    },
+    "fine_sword": {
+      "base": {
+        "source": "HandRight/Sword/FA_WP_Main_Sword_032_BrownGray.png",
+        "look": "pointed bright steel"
+      },
+      "r10": {
+        "source": "HandRight/Sword/FA_WP_Main_Sword_032_BrownGray.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "HandRight/Sword/FA_WP_Main_Sword_032_PurpleGray.png",
+        "tint": "#a35ee8"
+      }
+    },
+    "superior_sword": {
+      "base": {
+        "source": "HandRight/Sword/FA_WP_Main_Sword_022_DarkGary.png",
+        "look": "long grey blade"
+      },
+      "r10": "HandRight/Sword/FA_WP_Main_Sword_022_BrownYellow.png",
+      "r20": {
+        "source": "HandRight/Sword/FA_WP_Main_Sword_022_BrownYellow.png",
+        "hue": 200
+      }
+    },
+    "rare_sword": {
+      "base": {
+        "source": "HandRight/Sword/FA_WP_Main_Sword_028_DarkWood.png",
+        "look": "saw-backed blade"
+      },
+      "r10": "HandRight/Sword/FA_WP_Main_Sword_028_SteelRed.png",
+      "r20": "HandRight/Sword/FA_WP_Main_Sword_028_DarkGreen.png"
+    },
+    "exquisite_sword": {
+      "base": {
+        "source": "HandRight/Sword/FA_WP_Main_Sword_024_Dark.png",
+        "look": "dark hooked blade"
+      },
+      "r10": "HandRight/Sword/FA_WP_Main_Sword_024_Gold.png",
+      "r20": "HandRight/Sword/FA_WP_Main_Sword_024_Purple.png"
+    },
+    "epic_sword": {
+      "base": {
+        "source": "HandRight/Sword/FA_WP_Main_Sword_026_Gray.png",
+        "look": "grey coiled blade, red gem"
+      },
+      "r10": "HandRight/Sword/FA_WP_Main_Sword_026_Gold.png",
+      "r20": {
+        "source": "HandRight/Sword/FA_WP_Main_Sword_026_Gold.png",
+        "hue": 180
+      }
+    },
+    "heroic_sword": {
+      "base": {
+        "source": "HandRight/Sword/FA_WP_Main_Sword_034_Silver.png",
+        "look": "silver twin blade"
+      },
+      "r10": "HandRight/Sword/FA_WP_Main_Sword_034_Gold.png",
+      "r20": "HandRight/Sword/FA_WP_Main_Sword_034_Blue.png"
+    },
+    "legendary_sword": {
+      "base": {
+        "source": "HandRight/Sword/FA_WP_Main_Sword_031_DarkSilver.png",
+        "look": "serrated silver fangs"
+      },
+      "r10": "HandRight/Sword/FA_WP_Main_Sword_031_Gold.png",
+      "r20": "HandRight/Sword/FA_WP_Main_Sword_031_Red.png"
+    },
+    "mythic_sword": {
+      "base": {
+        "source": "HandRight/Sword/FA_WP_Main_Sword_023_Green.png",
+        "look": "long green crescent"
+      },
+      "r10": "HandRight/Sword/FA_WP_Main_Sword_023_Red.png",
+      "r20": "HandRight/Sword/FA_WP_Main_Sword_023_Purple.png"
+    },
+    "ancient_sword": {
+      "base": {
+        "source": "HandRight/Sword/FA_WP_Main_Sword_033_Green.png",
+        "look": "green leaf blade"
+      },
+      "r10": "HandRight/Sword/FA_WP_Main_Sword_033_Blue.png",
+      "r20": "HandRight/Sword/FA_WP_Main_Sword_033_Purple.png"
+    },
+    "celestial_sword": {
+      "base": {
+        "source": "HandRight/Sword/FA_WP_Main_Sword_021_YellowGray.png",
+        "look": "pale arrowhead blade"
+      },
+      "r10": "HandRight/Sword/FA_WP_Main_Sword_021_Gold.png",
+      "r20": "HandRight/Sword/FA_WP_Main_Sword_021_Blue.png"
+    },
+    "divine_sword": {
+      "base": {
+        "source": "HandRight/Sword/FA_WP_Main_Sword_030_Green.png",
+        "look": "green forked blade"
+      },
+      "r10": "HandRight/Sword/FA_WP_Main_Sword_030_Yellow.png",
+      "r20": "HandRight/Sword/FA_WP_Main_Sword_030_PurplePink.png"
+    },
+    "eternal_sword": {
+      "base": {
+        "source": "HandRight/Sword/FA_WP_Main_Sword_020_Blue.png",
+        "look": "cyan crystal blade"
+      },
+      "r10": "HandRight/Sword/FA_WP_Main_Sword_020_Red.png",
+      "r20": "HandRight/Sword/FA_WP_Main_Sword_020_Black.png"
+    },
+    "crude_staff": {
+      "base": {
+        "source": "HandRight/Staff/FA_WP_Main_Staff_012_Wood.png",
+        "look": "sprouting branch"
+      },
+      "r10": "HandRight/Staff/FA_WP_Main_Staff_012_Dark.png",
+      "r20": {
+        "source": "HandRight/Staff/FA_WP_Main_Staff_012_Wood.png",
+        "hue": -40
+      }
+    },
+    "common_staff": {
+      "base": {
+        "source": "HandRight/Staff/FA_WP_Main_Staff_019_Brown.png",
+        "look": "crooked brown staff"
+      },
+      "r10": "HandRight/Staff/FA_WP_Main_Staff_019_Orange.png",
+      "r20": "HandRight/Staff/FA_WP_Main_Staff_019_White.png"
+    },
+    "sturdy_staff": {
+      "base": {
+        "source": "HandRight/Staff/FA_WP_Main_Staff_013_Wood.png",
+        "look": "banded twisted stick"
+      },
+      "r10": "HandRight/Staff/FA_WP_Main_Staff_013_Brown.png",
+      "r20": "HandRight/Staff/FA_WP_Main_Staff_013_Green.png"
+    },
+    "fine_staff": {
+      "base": {
+        "source": "HandRight/Staff/FA_WP_Main_Staff_011_Brown.png",
+        "look": "walking stick, teal bands"
+      },
+      "r10": {
+        "source": "HandRight/Staff/FA_WP_Main_Staff_011_Wood.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "HandRight/Staff/FA_WP_Main_Staff_011_Wood.png",
+        "tint": "#a35ee8"
+      }
+    },
+    "superior_staff": {
+      "base": {
+        "source": "HandRight/Staff/FA_WP_Main_Staff_016_BrownGreen.png",
+        "look": "green orb on a pole"
+      },
+      "r10": "HandRight/Staff/FA_WP_Main_Staff_016_GoldRed.png",
+      "r20": "HandRight/Staff/FA_WP_Main_Staff_016_DarkBlue.png"
+    },
+    "rare_staff": {
+      "base": {
+        "source": "HandRight/Staff/FA_WP_Main_Staff_014_Wood.png",
+        "look": "red eye in a wooden crook"
+      },
+      "r10": "HandRight/Staff/FA_WP_Main_Staff_014_Gold.png",
+      "r20": "HandRight/Staff/FA_WP_Main_Staff_014_DarkGreen.png"
+    },
+    "exquisite_staff": {
+      "base": {
+        "source": "HandRight/Staff/FA_WP_Main_Staff_017_BrownGreen.png",
+        "look": "green crystal"
+      },
+      "r10": "HandRight/Staff/FA_WP_Main_Staff_017_DarkRed.png",
+      "r20": "HandRight/Staff/FA_WP_Main_Staff_017_DarkBlue.png"
+    },
+    "epic_staff": {
+      "base": {
+        "source": "HandRight/Staff/FA_WP_Main_Staff_024_Gray.png",
+        "look": "grey claw"
+      },
+      "r10": "HandRight/Staff/FA_WP_Main_Staff_024_Red.png",
+      "r20": {
+        "source": "HandRight/Staff/FA_WP_Main_Staff_024_Red.png",
+        "hue": 200
+      }
+    },
+    "heroic_staff": {
+      "base": {
+        "source": "HandRight/Staff/FA_WP_Main_Staff_020_BrownGreen.png",
+        "look": "green orb in a claw"
+      },
+      "r10": "HandRight/Staff/FA_WP_Main_Staff_020_Gold.png",
+      "r20": "HandRight/Staff/FA_WP_Main_Staff_020_Purple.png"
+    },
+    "legendary_staff": {
+      "base": {
+        "source": "HandRight/Staff/FA_WP_Main_Staff_018_DarkGray.png",
+        "look": "pale crescent"
+      },
+      "r10": "HandRight/Staff/FA_WP_Main_Staff_018_DarkGold.png",
+      "r20": "HandRight/Staff/FA_WP_Main_Staff_018_DarkSky.png"
+    },
+    "mythic_staff": {
+      "base": {
+        "source": "HandRight/Staff/FA_WP_Main_Staff_025_DarkBrown.png",
+        "look": "ram skull"
+      },
+      "r10": "HandRight/Staff/FA_WP_Main_Staff_025_DarkRed.png",
+      "r20": "HandRight/Staff/FA_WP_Main_Staff_025_DarPurple.png"
+    },
+    "ancient_staff": {
+      "base": {
+        "source": "HandRight/Staff/FA_WP_Main_Staff_023_DarkMint.png",
+        "look": "mint orb in dark horns"
+      },
+      "r10": "HandRight/Staff/FA_WP_Main_Staff_023_GoldDark.png",
+      "r20": "HandRight/Staff/FA_WP_Main_Staff_023_DarkRed.png"
+    },
+    "celestial_staff": {
+      "base": {
+        "source": "HandRight/Staff/FA_WP_Main_Staff_022_Green.png",
+        "look": "green star bloom"
+      },
+      "r10": "HandRight/Staff/FA_WP_Main_Staff_022_WhiteGold.png",
+      "r20": "HandRight/Staff/FA_WP_Main_Staff_022_WhitePink.png"
+    },
+    "divine_staff": {
+      "base": {
+        "source": "HandRight/Staff/FA_WP_Main_Staff_021_Silver.png",
+        "look": "silver sunburst, blue gem"
+      },
+      "r10": "HandRight/Staff/FA_WP_Main_Staff_021_Gold.png",
+      "r20": {
+        "source": "HandRight/Staff/FA_WP_Main_Staff_021_Silver.png",
+        "tint": "#a35ee8"
+      }
+    },
+    "eternal_staff": {
+      "base": {
+        "source": "HandRight/Staff/FA_WP_Main_Staff_015_Green.png",
+        "look": "green serpent coil"
+      },
+      "r10": "HandRight/Staff/FA_WP_Main_Staff_015_Red.png",
+      "r20": "HandRight/Staff/FA_WP_Main_Staff_015_Purple.png"
+    },
+    "crude_light_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_043_Green.png",
+        "look": "green felt cap"
+      },
+      "r10": {
+        "source": "Helmet/FA_Helmet_043_Brown.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Helmet/FA_Helmet_043_Brown.png",
+        "tint": "#34b874"
+      }
+    },
+    "common_light_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_076_Brown.png",
+        "look": "brown field cap"
+      },
+      "r10": {
+        "source": "Helmet/FA_Helmet_076_Brown.png",
+        "tint": "#e3b24a"
+      },
+      "r20": "Helmet/FA_Helmet_076_Green.png"
+    },
+    "sturdy_light_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_068_Brown.png",
+        "look": "brown bobble hat"
+      },
+      "r10": "Helmet/FA_Helmet_068_Orange.png",
+      "r20": "Helmet/FA_Helmet_068_Blue.png"
+    },
+    "fine_light_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_053_DarkGreen.png",
+        "look": "green bandana"
+      },
+      "r10": "Helmet/FA_Helmet_053_Dark.png",
+      "r20": "Helmet/FA_Helmet_053_Purple.png"
+    },
+    "superior_light_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_64_Green.png",
+        "look": "green ranger hood"
+      },
+      "r10": {
+        "source": "Helmet/FA_Helmet_64_Green.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Helmet/FA_Helmet_64_Green.png",
+        "tint": "#3f7fe6"
+      }
+    },
+    "rare_light_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_078_Gray.png",
+        "look": "grey scout hood"
+      },
+      "r10": "Helmet/FA_Helmet_078_Gold.png",
+      "r20": {
+        "source": "Helmet/FA_Helmet_078_Gray.png",
+        "tint": "#34b874"
+      }
+    },
+    "exquisite_light_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_048_Peacock.png",
+        "look": "teal beret, gold badge"
+      },
+      "r10": {
+        "source": "Helmet/FA_Helmet_048_Peacock.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Helmet/FA_Helmet_048_Peacock.png",
+        "tint": "#34b874"
+      }
+    },
+    "epic_light_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_042_Brown.png",
+        "look": "brown ram-horn hood"
+      },
+      "r10": "Helmet/FA_Helmet_042_Gray.png",
+      "r20": {
+        "source": "Helmet/FA_Helmet_042_Brown.png",
+        "tint": "#e3b24a"
+      }
+    },
+    "heroic_light_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_063_Brown.png",
+        "look": "brown wolf pelt"
+      },
+      "r10": {
+        "source": "Helmet/FA_Helmet_063_Gray.png",
+        "tint": "#e3b24a"
+      },
+      "r20": "Helmet/FA_Helmet_063_Gray.png"
+    },
+    "legendary_light_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_055_Brown.png",
+        "look": "horned fur hat"
+      },
+      "r10": {
+        "source": "Helmet/FA_Helmet_055_Brown.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Helmet/FA_Helmet_055_Brown.png",
+        "tint": "#34b874"
+      }
+    },
+    "mythic_light_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_057_Brown.png",
+        "look": "antlered hood"
+      },
+      "r10": "Helmet/FA_Helmet_057_DarkYellow.png",
+      "r20": {
+        "source": "Helmet/FA_Helmet_057_Brown.png",
+        "hue": 180
+      }
+    },
+    "ancient_light_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_061_Brown.png",
+        "look": "horned beast hood"
+      },
+      "r10": {
+        "source": "Helmet/FA_Helmet_061_Brown.png",
+        "tint": "#e3b24a"
+      },
+      "r20": "Helmet/FA_Helmet_061_Blue.png"
+    },
+    "celestial_light_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_050_Green.png",
+        "look": "green leaf crown"
+      },
+      "r10": {
+        "source": "Helmet/FA_Helmet_050_Green.png",
+        "tint": "#e3b24a"
+      },
+      "r20": "Helmet/FA_Helmet_050_Red.png"
+    },
+    "divine_light_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_049_Bronze.png",
+        "look": "bronze feathered helm"
+      },
+      "r10": "Helmet/FA_Helmet_049_Gold.png",
+      "r20": {
+        "source": "Helmet/FA_Helmet_049_Bronze.png",
+        "tint": "#34b874"
+      }
+    },
+    "eternal_light_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_044_Brown.png",
+        "look": "eagle hood"
+      },
+      "r10": "Helmet/FA_Helmet_044_Dark.png",
+      "r20": "Helmet/FA_Helmet_044_White.png"
+    },
+    "crude_light_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_040_Blue.png",
+        "look": "blue linen shirt"
+      },
+      "r10": {
+        "source": "Chest/FA_Chest_040_Blue.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Chest/FA_Chest_040_Blue.png",
+        "tint": "#34b874"
+      }
+    },
+    "common_light_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_051_Brown.png",
+        "look": "striped vest"
+      },
+      "r10": {
+        "source": "Chest/FA_Chest_051_Brown.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Chest/FA_Chest_051_Brown.png",
+        "tint": "#34b874"
+      }
+    },
+    "sturdy_light_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_035_Brown.png",
+        "look": "leather jerkin"
+      },
+      "r10": "Chest/FA_Chest_035_Green.png",
+      "r20": {
+        "source": "Chest/FA_Chest_035_Brown.png",
+        "tint": "#e3b24a"
+      }
+    },
+    "fine_light_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_044_Brown.png",
+        "look": "brown sash tunic"
+      },
+      "r10": {
+        "source": "Chest/FA_Chest_044_Brown.png",
+        "tint": "#e3b24a"
+      },
+      "r20": "Chest/FA_Chest_044_Red.png"
+    },
+    "superior_light_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_041_Blue.png",
+        "look": "blue collared tunic"
+      },
+      "r10": "Chest/FA_Chest_041_Red.png",
+      "r20": {
+        "source": "Chest/FA_Chest_041_Blue.png",
+        "tint": "#e3b24a"
+      }
+    },
+    "rare_light_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_039_Green.png",
+        "look": "fur-collared green jerkin"
+      },
+      "r10": {
+        "source": "Chest/FA_Chest_039_Green.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Chest/FA_Chest_039_Green.png",
+        "hue": 150
+      }
+    },
+    "exquisite_light_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_033_Brown.png",
+        "look": "brown traveller's cloak"
+      },
+      "r10": {
+        "source": "Chest/FA_Chest_033_Brown.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Chest/FA_Chest_033_Brown.png",
+        "tint": "#34b874"
+      }
+    },
+    "epic_light_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_049_Green.png",
+        "look": "green hunter's capelet"
+      },
+      "r10": "Chest/FA_Chest_049_DarkGold.png",
+      "r20": {
+        "source": "Chest/FA_Chest_049_Green.png",
+        "hue": 120
+      }
+    },
+    "heroic_light_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_031_Green.png",
+        "look": "green ranger cloak, gold clasp"
+      },
+      "r10": {
+        "source": "Chest/FA_Chest_031_Green.png",
+        "tint": "#e3b24a"
+      },
+      "r20": "Chest/FA_Chest_031_Red.png"
+    },
+    "legendary_light_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_030_Green.png",
+        "look": "green hooded cloak"
+      },
+      "r10": "Chest/FA_Chest_030_Orange.png",
+      "r20": {
+        "source": "Chest/FA_Chest_030_Green.png",
+        "hue": -120
+      }
+    },
+    "mythic_light_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_034_Brown.png",
+        "look": "brown warden cloak, green gem"
+      },
+      "r10": {
+        "source": "Chest/FA_Chest_034_Brown.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Chest/FA_Chest_034_Brown.png",
+        "tint": "#34b874"
+      }
+    },
+    "ancient_light_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_047_Brown.png",
+        "look": "beast pelt, green gem"
+      },
+      "r10": {
+        "source": "Chest/FA_Chest_047_Brown.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Chest/FA_Chest_047_Brown.png",
+        "tint": "#34b874"
+      }
+    },
+    "celestial_light_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_052_Orange.png",
+        "look": "orange maned mantle"
+      },
+      "r10": "Chest/FA_Chest_052_Red.png",
+      "r20": {
+        "source": "Chest/FA_Chest_052_Orange.png",
+        "tint": "#34b874"
+      }
+    },
+    "divine_light_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_057_Green.png",
+        "look": "green wild mantle"
+      },
+      "r10": "Chest/FA_Chest_057_Yellow.png",
+      "r20": {
+        "source": "Chest/FA_Chest_057_Green.png",
+        "hue": 150
+      }
+    },
+    "eternal_light_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_050_Gold.png",
+        "look": "golden feathered mantle"
+      },
+      "r10": "Chest/FA_Chest_050_Light.png",
+      "r20": {
+        "source": "Chest/FA_Chest_050_Gold.png",
+        "tint": "#34b874"
+      }
+    },
+    "crude_magic_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_074_Brown.png",
+        "look": "pointed brown hat"
+      },
+      "r10": {
+        "source": "Helmet/FA_Helmet_074_Brown.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Helmet/FA_Helmet_074_Gray.png",
+        "tint": "#a35ee8"
+      }
+    },
+    "common_magic_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_043_Red.png",
+        "look": "red novice cap"
+      },
+      "r10": {
+        "source": "Helmet/FA_Helmet_043_Red.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Helmet/FA_Helmet_043_Red.png",
+        "tint": "#a35ee8"
+      }
+    },
+    "sturdy_magic_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_64_Blue.png",
+        "look": "blue mage hood"
+      },
+      "r10": {
+        "source": "Helmet/FA_Helmet_64_Blue.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Helmet/FA_Helmet_64_Blue.png",
+        "tint": "#a35ee8"
+      }
+    },
+    "fine_magic_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_078_Blue.png",
+        "look": "blue cowl"
+      },
+      "r10": {
+        "source": "Helmet/FA_Helmet_078_Blue.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Helmet/FA_Helmet_078_Blue.png",
+        "tint": "#a35ee8"
+      }
+    },
+    "superior_magic_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_077_Blue.png",
+        "look": "blue wizard hat"
+      },
+      "r10": {
+        "source": "Helmet/FA_Helmet_077_Brown.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Helmet/FA_Helmet_077_Blue.png",
+        "tint": "#a35ee8"
+      }
+    },
+    "rare_magic_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_070_Green.png",
+        "look": "green turban"
+      },
+      "r10": "Helmet/FA_Helmet_070_Yellow.png",
+      "r20": {
+        "source": "Helmet/FA_Helmet_070_Green.png",
+        "tint": "#a35ee8"
+      }
+    },
+    "exquisite_magic_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_048_Purple.png",
+        "look": "violet scholar beret"
+      },
+      "r10": {
+        "source": "Helmet/FA_Helmet_048_Purple.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Helmet/FA_Helmet_048_Purple.png",
+        "tint": "#3f7fe6"
+      }
+    },
+    "epic_magic_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_042_Purple.png",
+        "look": "violet mystic hood"
+      },
+      "r10": {
+        "source": "Helmet/FA_Helmet_042_Purple.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Helmet/FA_Helmet_042_Purple.png",
+        "tint": "#3f7fe6"
+      }
+    },
+    "heroic_magic_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_060_Purple.png",
+        "look": "violet flame cowl"
+      },
+      "r10": "Helmet/FA_Helmet_060_Green.png",
+      "r20": "Helmet/FA_Helmet_060_Red.png"
+    },
+    "legendary_magic_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_050_Purple.png",
+        "look": "violet fae crown"
+      },
+      "r10": {
+        "source": "Helmet/FA_Helmet_050_Purple.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Helmet/FA_Helmet_050_Purple.png",
+        "tint": "#3f7fe6"
+      }
+    },
+    "mythic_magic_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_059_Silver.png",
+        "look": "silver circlet, blue gem"
+      },
+      "r10": "Helmet/FA_Helmet_059_Gold.png",
+      "r20": {
+        "source": "Helmet/FA_Helmet_059_Silver.png",
+        "tint": "#a35ee8"
+      }
+    },
+    "ancient_magic_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_066_Pink.png",
+        "look": "winged visor, pink wings"
+      },
+      "r10": {
+        "source": "Helmet/FA_Helmet_066_Pink.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Helmet/FA_Helmet_066_Pink.png",
+        "tint": "#3f7fe6"
+      }
+    },
+    "celestial_magic_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_073_Whte.png",
+        "look": "white seraph helm"
+      },
+      "r10": "Helmet/FA_Helmet_073_Gold.png",
+      "r20": {
+        "source": "Helmet/FA_Helmet_073_Whte.png",
+        "tint": "#a35ee8"
+      }
+    },
+    "divine_magic_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_045_Purple.png",
+        "look": "violet crown"
+      },
+      "r10": "Helmet/FA_Helmet_045_GoldBlue.png",
+      "r20": "Helmet/FA_Helmet_045_GoldRed.png"
+    },
+    "eternal_magic_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_067_GoldPurple.png",
+        "look": "grand gold crown, violet"
+      },
+      "r10": "Helmet/FA_Helmet_067_GoldBlue.png",
+      "r20": "Helmet/FA_Helmet_067_GoldRed.png"
+    },
+    "crude_magic_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_040_White.png",
+        "look": "white acolyte shirt"
+      },
+      "r10": {
+        "source": "Chest/FA_Chest_040_Brown.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Chest/FA_Chest_040_Brown.png",
+        "tint": "#a35ee8"
+      }
+    },
+    "common_magic_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_044_White.png",
+        "look": "white initiate tunic"
+      },
+      "r10": {
+        "source": "Chest/FA_Chest_044_Red.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Chest/FA_Chest_044_Red.png",
+        "tint": "#a35ee8"
+      }
+    },
+    "sturdy_magic_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_041_White.png",
+        "look": "white apprentice tunic"
+      },
+      "r10": {
+        "source": "Chest/FA_Chest_041_Red.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Chest/FA_Chest_041_Blue.png",
+        "tint": "#a35ee8"
+      }
+    },
+    "fine_magic_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_033_Blue.png",
+        "look": "blue mage cloak"
+      },
+      "r10": "Chest/FA_Chest_033_Dark.png",
+      "r20": {
+        "source": "Chest/FA_Chest_033_Blue.png",
+        "tint": "#a35ee8"
+      }
+    },
+    "superior_magic_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_049_PuppleGold.png",
+        "look": "violet scholar capelet"
+      },
+      "r10": {
+        "source": "Chest/FA_Chest_049_PuppleGold.png",
+        "hue": -60,
+        "keepGold": true
+      },
+      "r20": {
+        "source": "Chest/FA_Chest_049_PuppleGold.png",
+        "hue": 60,
+        "keepGold": true
+      }
+    },
+    "rare_magic_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_031_Mint.png",
+        "look": "teal mystic cloak"
+      },
+      "r10": {
+        "source": "Chest/FA_Chest_031_Mint.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Chest/FA_Chest_031_Mint.png",
+        "tint": "#a35ee8"
+      }
+    },
+    "exquisite_magic_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_030_Gray.png",
+        "look": "grey seer cloak"
+      },
+      "r10": {
+        "source": "Chest/FA_Chest_030_Gray.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Chest/FA_Chest_030_Gray.png",
+        "tint": "#a35ee8"
+      }
+    },
+    "epic_magic_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_034_Purple.png",
+        "look": "magenta enchanter cloak"
+      },
+      "r10": {
+        "source": "Chest/FA_Chest_034_Purple.png",
+        "tint": "#e3b24a"
+      },
+      "r20": "Chest/FA_Chest_034_Dark.png"
+    },
+    "heroic_magic_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_032_Purple.png",
+        "look": "violet arcane robe"
+      },
+      "r10": "Chest/FA_Chest_032_Red.png",
+      "r20": {
+        "source": "Chest/FA_Chest_032_Purple.png",
+        "tint": "#e3b24a"
+      }
+    },
+    "legendary_magic_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_052_Purple.png",
+        "look": "violet spirit mantle"
+      },
+      "r10": {
+        "source": "Chest/FA_Chest_052_Purple.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Chest/FA_Chest_052_Purple.png",
+        "tint": "#3f7fe6"
+      }
+    },
+    "mythic_magic_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_042_Purple.png",
+        "look": "layered violet robe"
+      },
+      "r10": "Chest/FA_Chest_042_Green.png",
+      "r20": {
+        "source": "Chest/FA_Chest_042_Purple.png",
+        "tint": "#e3b24a"
+      }
+    },
+    "ancient_magic_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_057_Purple.png",
+        "look": "violet shadow mantle"
+      },
+      "r10": {
+        "source": "Chest/FA_Chest_057_Purple.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Chest/FA_Chest_057_Purple.png",
+        "tint": "#3f7fe6"
+      }
+    },
+    "celestial_magic_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_050_Red.png",
+        "look": "red phoenix mantle"
+      },
+      "r10": {
+        "source": "Chest/FA_Chest_050_Red.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Chest/FA_Chest_050_Red.png",
+        "tint": "#a35ee8"
+      }
+    },
+    "divine_magic_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_058_Purple.png",
+        "look": "violet astral vestment"
+      },
+      "r10": "Chest/FA_Chest_058_Blue.png",
+      "r20": {
+        "source": "Chest/FA_Chest_058_Purple.png",
+        "tint": "#e3b24a"
+      }
+    },
+    "eternal_magic_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_059_Purple.png",
+        "look": "violet and gold vestments"
+      },
+      "r10": {
+        "source": "Chest/FA_Chest_059_Purple.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Chest/FA_Chest_059_Purple.png",
+        "tint": "#3f7fe6"
+      }
+    },
+    "crude_medium_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_062_Gray.png",
+        "look": "grey kettle hat"
+      },
+      "r10": {
+        "source": "Helmet/FA_Helmet_062_Gray.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Helmet/FA_Helmet_062_Gray.png",
+        "tint": "#3f7fe6"
+      }
+    },
+    "common_medium_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_056_Gray.png",
+        "look": "grey morion"
+      },
+      "r10": {
+        "source": "Helmet/FA_Helmet_056_Gray.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Helmet/FA_Helmet_056_Gray.png",
+        "tint": "#3f7fe6"
+      }
+    },
+    "sturdy_medium_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_065_Gray.png",
+        "look": "grey skullcap"
+      },
+      "r10": "Helmet/FA_Helmet_065_Gold.png",
+      "r20": {
+        "source": "Helmet/FA_Helmet_065_Gray.png",
+        "tint": "#3f7fe6"
+      }
+    },
+    "fine_medium_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_069_Gray.png",
+        "look": "grey nasal helm"
+      },
+      "r10": {
+        "source": "Helmet/FA_Helmet_069_Gray.png",
+        "tint": "#e3b24a"
+      },
+      "r20": "Helmet/FA_Helmet_069_White.png"
+    },
+    "superior_medium_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_054_SilverWhite.png",
+        "look": "brimmed helm, white plume"
+      },
+      "r10": "Helmet/FA_Helmet_054_GoldRed.png",
+      "r20": {
+        "source": "Helmet/FA_Helmet_054_SilverWhite.png",
+        "tint": "#3f7fe6"
+      }
+    },
+    "rare_medium_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_079_Gray.png",
+        "look": "grey barred helm"
+      },
+      "r10": "Helmet/FA_Helmet_079_Yellow.png",
+      "r20": {
+        "source": "Helmet/FA_Helmet_079_Gray.png",
+        "tint": "#3f7fe6"
+      }
+    },
+    "exquisite_medium_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_047_Silver.png",
+        "look": "silver crested helm"
+      },
+      "r10": "Helmet/FA_Helmet_047_White.png",
+      "r20": {
+        "source": "Helmet/FA_Helmet_047_Silver.png",
+        "tint": "#3f7fe6"
+      }
+    },
+    "epic_medium_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_052_Gray.png",
+        "look": "visored helm, red plume"
+      },
+      "r10": "Helmet/FA_Helmet_052_Gold.png",
+      "r20": {
+        "source": "Helmet/FA_Helmet_052_Gray.png",
+        "tint": "#3f7fe6"
+      }
+    },
+    "heroic_medium_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_072_Gray.png",
+        "look": "grey crested sallet"
+      },
+      "r10": "Helmet/FA_Helmet_072_Yellow.png",
+      "r20": {
+        "source": "Helmet/FA_Helmet_072_Gray.png",
+        "tint": "#3f7fe6"
+      }
+    },
+    "legendary_medium_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_058_Silver.png",
+        "look": "silver viking helm"
+      },
+      "r10": {
+        "source": "Helmet/FA_Helmet_058_Silver.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Helmet/FA_Helmet_058_Silver.png",
+        "tint": "#3f7fe6"
+      }
+    },
+    "mythic_medium_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_041_Gray.png",
+        "look": "grey horned warden helm"
+      },
+      "r10": {
+        "source": "Helmet/FA_Helmet_041_Gray.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Helmet/FA_Helmet_041_Gray.png",
+        "tint": "#3f7fe6"
+      }
+    },
+    "ancient_medium_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_049_Silver.png",
+        "look": "silver winged helm"
+      },
+      "r10": {
+        "source": "Helmet/FA_Helmet_049_Silver.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Helmet/FA_Helmet_049_Silver.png",
+        "tint": "#3f7fe6"
+      }
+    },
+    "celestial_medium_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_046_Mint.png",
+        "look": "teal hawk helm, gold wings"
+      },
+      "r10": {
+        "source": "Helmet/FA_Helmet_046_Mint.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Helmet/FA_Helmet_046_Mint.png",
+        "tint": "#3f7fe6"
+      }
+    },
+    "divine_medium_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_066_Gray.png",
+        "look": "grey paladin helm, blue wings"
+      },
+      "r10": "Helmet/FA_Helmet_066_White.png",
+      "r20": {
+        "source": "Helmet/FA_Helmet_066_Gray.png",
+        "tint": "#3f7fe6"
+      }
+    },
+    "eternal_medium_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_073_GrayGold.png",
+        "look": "grey and gold valkyrie helm"
+      },
+      "r10": {
+        "source": "Helmet/FA_Helmet_073_GrayGold.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Helmet/FA_Helmet_073_GrayGold.png",
+        "tint": "#3f7fe6"
+      }
+    },
+    "crude_medium_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_035_Dark.png",
+        "look": "dark padded jerkin"
+      },
+      "r10": {
+        "source": "Chest/FA_Chest_035_Dark.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Chest/FA_Chest_035_Dark.png",
+        "tint": "#3f7fe6"
+      }
+    },
+    "common_medium_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_039_Brown.png",
+        "look": "brown fur gambeson"
+      },
+      "r10": {
+        "source": "Chest/FA_Chest_039_Brown.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Chest/FA_Chest_039_Brown.png",
+        "tint": "#3f7fe6"
+      }
+    },
+    "sturdy_medium_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_037_Grey.png",
+        "look": "chainmail"
+      },
+      "r10": {
+        "source": "Chest/FA_Chest_037_Grey.png",
+        "tint": "#e3b24a"
+      },
+      "r20": "Chest/FA_Chest_037_Wine.png"
+    },
+    "fine_medium_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_045_Gray.png",
+        "look": "grey breastplate"
+      },
+      "r10": {
+        "source": "Chest/FA_Chest_045_Gray.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Chest/FA_Chest_045_Gray.png",
+        "tint": "#3f7fe6"
+      }
+    },
+    "superior_medium_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_038_Gray.png",
+        "look": "mail with a pauldron"
+      },
+      "r10": {
+        "source": "Chest/FA_Chest_038_Gray.png",
+        "tint": "#e3b24a"
+      },
+      "r20": "Chest/FA_Chest_038_Blue.png"
+    },
+    "rare_medium_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_043_Blue.png",
+        "look": "blue checked mail"
+      },
+      "r10": {
+        "source": "Chest/FA_Chest_043_Blue.png",
+        "tint": "#e3b24a"
+      },
+      "r20": "Chest/FA_Chest_043_Green.png"
+    },
+    "exquisite_medium_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_036_BlueGray.png",
+        "look": "blue and steel cuirass"
+      },
+      "r10": {
+        "source": "Chest/FA_Chest_036_BlueGray.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Chest/FA_Chest_036_BlueGray.png",
+        "tint": "#3f7fe6"
+      }
+    },
+    "epic_medium_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_054_Gray.png",
+        "look": "grey banded mail"
+      },
+      "r10": "Chest/FA_Chest_054_Whte.png",
+      "r20": {
+        "source": "Chest/FA_Chest_054_Gray.png",
+        "tint": "#3f7fe6"
+      }
+    },
+    "heroic_medium_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_032_Blue.png",
+        "look": "blue tabard mail"
+      },
+      "r10": {
+        "source": "Chest/FA_Chest_032_Blue.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Chest/FA_Chest_032_Blue.png",
+        "tint": "#c92a3e"
+      }
+    },
+    "legendary_medium_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_046_BlueGold.png",
+        "look": "blue and gold cuirass"
+      },
+      "r10": {
+        "source": "Chest/FA_Chest_046_BlueGold.png",
+        "tint": "#e3b24a"
+      },
+      "r20": "Chest/FA_Chest_046_GreenGold.png"
+    },
+    "mythic_medium_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_055_GrayBlue.png",
+        "look": "steel plate, blue pauldron"
+      },
+      "r10": "Chest/FA_Chest_055_GrayYellow.png",
+      "r20": {
+        "source": "Chest/FA_Chest_055_GrayYellow.png",
+        "tint": "#3f7fe6"
+      }
+    },
+    "ancient_medium_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_042_Blue.png",
+        "look": "layered blue captain's tabard"
+      },
+      "r10": {
+        "source": "Chest/FA_Chest_042_Blue.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Chest/FA_Chest_042_Blue.png",
+        "tint": "#c92a3e"
+      }
+    },
+    "celestial_medium_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_053_Blue.png",
+        "look": "blue moon cuirass"
+      },
+      "r10": {
+        "source": "Chest/FA_Chest_053_Blue.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Chest/FA_Chest_053_Blue.png",
+        "tint": "#c92a3e"
+      }
+    },
+    "divine_medium_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_048_Gray.png",
+        "look": "grey horned mail"
+      },
+      "r10": {
+        "source": "Chest/FA_Chest_048_Gray.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Chest/FA_Chest_048_Gray.png",
+        "tint": "#3f7fe6"
+      }
+    },
+    "eternal_medium_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_056_White.png",
+        "look": "white paladin mail"
+      },
+      "r10": "Chest/FA_Chest_056_Yellow.png",
+      "r20": {
+        "source": "Chest/FA_Chest_056_Yellow.png",
+        "tint": "#3f7fe6"
+      }
+    },
+    "crude_heavy_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_051_Dark.png",
+        "look": "dark pot helm"
+      },
+      "r10": "Helmet/FA_Helmet_051_Silver.png",
+      "r20": "Helmet/FA_Helmet_051_Gold.png"
+    },
+    "common_heavy_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_056_Dark.png",
+        "look": "dark brimmed helm"
+      },
+      "r10": {
+        "source": "Helmet/FA_Helmet_056_Dark.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Helmet/FA_Helmet_056_Dark.png",
+        "tint": "#c92a3e"
+      }
+    },
+    "sturdy_heavy_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_065_Dark.png",
+        "look": "dark coif helm"
+      },
+      "r10": {
+        "source": "Helmet/FA_Helmet_065_Dark.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Helmet/FA_Helmet_065_Dark.png",
+        "tint": "#c92a3e"
+      }
+    },
+    "fine_heavy_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_079_Green.png",
+        "look": "olive grille helm"
+      },
+      "r10": {
+        "source": "Helmet/FA_Helmet_079_Green.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Helmet/FA_Helmet_079_Green.png",
+        "tint": "#c92a3e"
+      }
+    },
+    "superior_heavy_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_069_Blue.png",
+        "look": "blue bascinet"
+      },
+      "r10": {
+        "source": "Helmet/FA_Helmet_069_Blue.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Helmet/FA_Helmet_069_Blue.png",
+        "tint": "#c92a3e"
+      }
+    },
+    "rare_heavy_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_052_Dark.png",
+        "look": "dark knight helm, red plume"
+      },
+      "r10": {
+        "source": "Helmet/FA_Helmet_052_Dark.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Helmet/FA_Helmet_052_Dark.png",
+        "tint": "#c92a3e"
+      }
+    },
+    "exquisite_heavy_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_075_Gray.png",
+        "look": "great helm, gold cross"
+      },
+      "r10": "Helmet/FA_Helmet_075_DarkYellow.png",
+      "r20": "Helmet/FA_Helmet_075_DarkRed.png"
+    },
+    "epic_heavy_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_058_Gold.png",
+        "look": "gold raider helm"
+      },
+      "r10": {
+        "source": "Helmet/FA_Helmet_058_Gold.png",
+        "tint": "#c92a3e"
+      },
+      "r20": {
+        "source": "Helmet/FA_Helmet_058_Gold.png",
+        "tint": "#3f7fe6"
+      }
+    },
+    "heroic_heavy_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_055_Dark.png",
+        "look": "dark barbarian fur helm"
+      },
+      "r10": {
+        "source": "Helmet/FA_Helmet_055_Dark.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Helmet/FA_Helmet_055_Dark.png",
+        "tint": "#c92a3e"
+      }
+    },
+    "legendary_heavy_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_061_Gray.png",
+        "look": "grey bull helm"
+      },
+      "r10": {
+        "source": "Helmet/FA_Helmet_061_Gray.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Helmet/FA_Helmet_061_Gray.png",
+        "tint": "#c92a3e"
+      }
+    },
+    "mythic_heavy_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_072_Red.png",
+        "look": "red crested greathelm"
+      },
+      "r10": {
+        "source": "Helmet/FA_Helmet_072_Red.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Helmet/FA_Helmet_072_Red.png",
+        "tint": "#a35ee8"
+      }
+    },
+    "ancient_heavy_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_046_Gray.png",
+        "look": "grey dragon helm, gold horns"
+      },
+      "r10": {
+        "source": "Helmet/FA_Helmet_046_Gray.png",
+        "tint": "#e3b24a"
+      },
+      "r20": "Helmet/FA_Helmet_046_Red.png"
+    },
+    "celestial_heavy_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_071_Gray.png",
+        "look": "horned skull helm"
+      },
+      "r10": "Helmet/FA_Helmet_071_Brown.png",
+      "r20": "Helmet/FA_Helmet_071_Red.png"
+    },
+    "divine_heavy_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_080_Black.png",
+        "look": "black demon helm"
+      },
+      "r10": "Helmet/FA_Helmet_080_Red.png",
+      "r20": {
+        "source": "Helmet/FA_Helmet_080_Black.png",
+        "hue": 200
+      }
+    },
+    "eternal_heavy_helmet": {
+      "base": {
+        "source": "Helmet/FA_Helmet_041_Dark.png",
+        "look": "black horned greathelm"
+      },
+      "r10": "Helmet/FA_Helmet_041_Gold.png",
+      "r20": "Helmet/FA_Helmet_041_Green.png"
+    },
+    "crude_heavy_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_051_Green.png",
+        "look": "green barrel plate"
+      },
+      "r10": {
+        "source": "Chest/FA_Chest_051_Green.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Chest/FA_Chest_051_Green.png",
+        "tint": "#c92a3e"
+      }
+    },
+    "common_heavy_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_045_BrownDark.png",
+        "look": "dark iron plate"
+      },
+      "r10": {
+        "source": "Chest/FA_Chest_045_BrownDark.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Chest/FA_Chest_045_BrownDark.png",
+        "tint": "#c92a3e"
+      }
+    },
+    "sturdy_heavy_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_037_DarkGray.png",
+        "look": "heavy dark mail"
+      },
+      "r10": {
+        "source": "Chest/FA_Chest_037_DarkGray.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Chest/FA_Chest_037_DarkGray.png",
+        "tint": "#c92a3e"
+      }
+    },
+    "fine_heavy_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_036_DarkGray.png",
+        "look": "strapped plate"
+      },
+      "r10": "Chest/FA_Chest_036_Brown.png",
+      "r20": {
+        "source": "Chest/FA_Chest_036_DarkGray.png",
+        "tint": "#c92a3e"
+      }
+    },
+    "superior_heavy_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_038_Brown.png",
+        "look": "brown pauldron plate"
+      },
+      "r10": {
+        "source": "Chest/FA_Chest_038_Brown.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Chest/FA_Chest_038_Brown.png",
+        "tint": "#c92a3e"
+      }
+    },
+    "rare_heavy_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_043_Red.png",
+        "look": "red bulwark plate"
+      },
+      "r10": {
+        "source": "Chest/FA_Chest_043_Red.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Chest/FA_Chest_043_Red.png",
+        "tint": "#a35ee8"
+      }
+    },
+    "exquisite_heavy_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_047_Light.png",
+        "look": "pale pelt plate, red gem"
+      },
+      "r10": {
+        "source": "Chest/FA_Chest_047_Light.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Chest/FA_Chest_047_Light.png",
+        "tint": "#c92a3e"
+      }
+    },
+    "epic_heavy_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_054_Green.png",
+        "look": "green layered plate"
+      },
+      "r10": {
+        "source": "Chest/FA_Chest_054_Green.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Chest/FA_Chest_054_Green.png",
+        "tint": "#c92a3e"
+      }
+    },
+    "heroic_heavy_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_046_Gray.png",
+        "look": "steel gilded plate"
+      },
+      "r10": {
+        "source": "Chest/FA_Chest_046_Gray.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Chest/FA_Chest_046_Gray.png",
+        "tint": "#c92a3e"
+      }
+    },
+    "legendary_heavy_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_055_GrayRed.png",
+        "look": "warplate, red pauldron"
+      },
+      "r10": {
+        "source": "Chest/FA_Chest_055_GrayRed.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Chest/FA_Chest_055_GrayRed.png",
+        "tint": "#a35ee8"
+      }
+    },
+    "mythic_heavy_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_053_Dark.png",
+        "look": "dark crescent plate"
+      },
+      "r10": "Chest/FA_Chest_053_Brown.png",
+      "r20": {
+        "source": "Chest/FA_Chest_053_Dark.png",
+        "tint": "#c92a3e"
+      }
+    },
+    "ancient_heavy_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_056_Brown.png",
+        "look": "dark vanguard plate"
+      },
+      "r10": {
+        "source": "Chest/FA_Chest_056_Brown.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Chest/FA_Chest_056_Brown.png",
+        "tint": "#c92a3e"
+      }
+    },
+    "celestial_heavy_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_048_Dark.png",
+        "look": "dark plate, violet horn"
+      },
+      "r10": "Chest/FA_Chest_048_Brown.png",
+      "r20": {
+        "source": "Chest/FA_Chest_048_Dark.png",
+        "tint": "#c92a3e"
+      }
+    },
+    "divine_heavy_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_058_Gray.png",
+        "look": "grey and gold dread plate"
+      },
+      "r10": {
+        "source": "Chest/FA_Chest_058_Gray.png",
+        "tint": "#e3b24a"
+      },
+      "r20": {
+        "source": "Chest/FA_Chest_058_Gray.png",
+        "tint": "#c92a3e"
+      }
+    },
+    "eternal_heavy_armor": {
+      "base": {
+        "source": "Chest/FA_Chest_059_Yellow.png",
+        "look": "golden titan plate"
+      },
+      "r10": "Chest/FA_Chest_059_WhiteGold.png",
+      "r20": {
+        "source": "Chest/FA_Chest_059_Yellow.png",
+        "tint": "#c92a3e"
+      }
+    }
+  }
 }

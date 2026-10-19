@@ -22,26 +22,59 @@ export type GradeItemId = GradeWeaponId | GradeArmorId;
 
 /** Each piece's name after its grade, in grade order; each matches its art (scripts/art/grade-equipment.json). */
 const WEAPON_NAMES: Readonly<Record<GradeWeaponKind, readonly string[]>> = {
-  bow: ["Shortbow", "Hunting Bow", "Steel Bow", "Wingbow", "Crystal Bow", "Sunwing Bow"],
-  sword: ["Iron Blade", "Broadsword", "Steel Sword", "Sawtooth Sword", "Ivory Sword", "Ruby Sword"],
-  staff: ["Gnarled Staff", "Seer Staff", "Orb Staff", "Crystal Staff", "Star Staff", "Ramskull Staff"],
+  bow: [
+    "Shortbow", "Hunting Bow", "Recurve Bow", "Longbow", "Composite Bow", "Forked Bow", "Talon Bow", "Coiled Bow",
+    "Finned Bow", "Ramhorn Bow", "Leafwing Bow", "Bonewing Bow", "Angelwing Bow", "Antler Bow", "Stormwing Bow",
+  ],
+  sword: [
+    "Iron Blade", "Cleaver", "Broadsword", "Arming Sword", "Longsword", "Sawtooth Blade", "Hook Blade", "Coil Blade",
+    "Twin Blade", "Fang Blade", "Crescent Blade", "Leaf Blade", "Arrow Blade", "Fork Blade", "Crystal Blade",
+  ],
+  staff: [
+    "Sprouting Staff", "Crooked Staff", "Banded Staff", "Walking Stick", "Orb Staff", "Seer Staff", "Crystal Staff", "Claw Staff",
+    "Orbclaw Staff", "Crescent Staff", "Ramskull Staff", "Horned Staff", "Starbloom Staff", "Sunburst Staff", "Serpent Staff",
+  ],
 };
 const ARMOR_NAMES: Readonly<Record<ArmorClass, Readonly<Record<GradeArmorKind, readonly string[]>>>> = {
   light: {
-    helmet: ["Ranger Cap", "Ranger Hood", "Ranger Plume", "Antler Hood", "Wolf Hood", "Eagle Hood"],
-    armor: ["Ranger Jerkin", "Fur Jerkin", "Ranger Tunic", "Ranger Cloak", "Beast Pelt", "Feather Mantle"],
+    helmet: [
+      "Felt Cap", "Field Cap", "Bobble Hat", "Bandana", "Ranger Hood", "Scout Hood", "Badge Beret", "Ramshorn Hood",
+      "Wolf Hood", "Horned Fur Hat", "Antler Hood", "Beast Hood", "Leaf Crown", "Feather Helm", "Eagle Hood",
+    ],
+    armor: [
+      "Linen Shirt", "Striped Vest", "Leather Jerkin", "Sash Tunic", "Collared Tunic", "Fur Jerkin", "Traveler Cloak", "Hunter Capelet",
+      "Ranger Cloak", "Hooded Cloak", "Warden Cloak", "Beast Pelt", "Mane Mantle", "Wild Mantle", "Feather Mantle",
+    ],
   },
   medium: {
-    helmet: ["Kettle Helm", "Sallet", "Nasal Helm", "Visored Helm", "Crested Helm", "Winged Helm"],
-    armor: ["Chainmail", "Soldier Mail", "Steel Cuirass", "Tabard Mail", "Knight Cuirass", "Paladin Mail"],
+    helmet: [
+      "Kettle Hat", "Morion", "Skullcap", "Nasal Helm", "Plumed Helm", "Barred Helm", "Crested Helm", "Visored Helm",
+      "Sallet", "Viking Helm", "Warden Helm", "Winged Helm", "Hawk Helm", "Paladin Helm", "Valkyrie Helm",
+    ],
+    armor: [
+      "Padded Jerkin", "Fur Gambeson", "Chainmail", "Breastplate", "Pauldron Mail", "Checked Mail", "Steel Cuirass", "Banded Mail",
+      "Tabard Mail", "Knight Cuirass", "Soldier Plate", "Captain Tabard", "Moon Cuirass", "Horned Mail", "Paladin Mail",
+    ],
   },
   heavy: {
-    helmet: ["Pot Helm", "Great Helm", "Horned Helm", "Warden Helm", "Dread Helm", "Golden Helm"],
-    armor: ["Iron Plate", "Strapped Plate", "Pauldron Plate", "Horned Plate", "Dread Plate", "Golden Plate"],
+    helmet: [
+      "Pot Helm", "Brimmed Helm", "Coif Helm", "Grille Helm", "Bascinet", "Knight Helm", "Great Helm", "Raider Helm",
+      "Barbarian Helm", "Bull Helm", "Crested Greathelm", "Dragon Helm", "Skull Helm", "Demon Helm", "Horned Greathelm",
+    ],
+    armor: [
+      "Barrel Plate", "Iron Plate", "Heavy Mail", "Strapped Plate", "Pauldron Plate", "Bulwark Plate", "Pelt Plate", "Layered Plate",
+      "Gilded Plate", "Warplate", "Crescent Plate", "Vanguard Plate", "Horned Plate", "Dread Plate", "Titan Plate",
+    ],
   },
   magic: {
-    helmet: ["Pointed Hat", "Wizard Hat", "Silver Circlet", "Arcane Cowl", "Gold Circlet", "Violet Crown"],
-    armor: ["Novice Robe", "Mystic Robe", "Arcane Robe", "Sorcerer Robe", "Starry Robe", "Archmage Robe"],
+    helmet: [
+      "Pointed Hat", "Novice Cap", "Mage Hood", "Cowl", "Wizard Hat", "Turban", "Scholar Beret", "Mystic Hood",
+      "Flame Cowl", "Fae Crown", "Circlet", "Wing Visor", "Seraph Helm", "Sorcerer Crown", "Archmage Crown",
+    ],
+    armor: [
+      "Acolyte Shirt", "Initiate Tunic", "Apprentice Tunic", "Mage Cloak", "Scholar Capelet", "Mystic Cloak", "Seer Cloak", "Enchanter Cloak",
+      "Arcane Robe", "Spirit Mantle", "Sorcerer Robe", "Shadow Mantle", "Phoenix Mantle", "Astral Vestment", "Archmage Vestments",
+    ],
   },
 };
 

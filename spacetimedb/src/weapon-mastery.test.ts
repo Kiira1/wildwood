@@ -4,6 +4,7 @@ import { fillDefeatBudget, reportEnemy, reportKills } from "../../tests/helpers/
 import { BOSS_REWARD_CLAIM_BITS } from "../../shared/rules";
 import { IRON_BOW, WOODEN_SWORD } from "../../shared/items";
 import { backfillMasteryLevels, mergeWeaponMastery, weaponMasteryPoints } from "./weapon-mastery";
+import { MASTERY_FIRST_LEVEL_POINTS } from "../../shared/weapon-mastery";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
 const points = (f: any, who = f.ctx.sender) => weaponMasteryPoints(f.ctx, who);
@@ -74,7 +75,7 @@ describe("weapon mastery points", () => {
     const f = fighter();
     holding(f, IRON_BOW);
     const levelRow = () => f.db.playerMasteryLevel.key.find(`${f.ctx.sender.toHexString()}:archery`);
-    f.transaction(() => f.db.playerWeaponMastery.insert({ key: `${f.ctx.sender.toHexString()}:archery`, identity: f.ctx.sender, school: "archery", points: 998n }));
+    f.transaction(() => f.db.playerWeaponMastery.insert({ key: `${f.ctx.sender.toHexString()}:archery`, identity: f.ctx.sender, school: "archery", points: BigInt(MASTERY_FIRST_LEVEL_POINTS - 2) }));
     kill(f, 1);
     expect(levelRow()).toBeFalsy();
     kill(f, 1);
