@@ -63,7 +63,7 @@ export type ForecastMap = {
   arrival: Point;
   /** A regular enemy's respawn, research included. */
   respawnSeconds: number;
-  /** The map's armor rule for hits the player takes (its balance's ARMOR_CURVE, or the authored rule). */
+  /** Armor on hits the player takes (shared/combat.ts damageAfterArmor, the one rule). */
   hitAfterArmor: (damage: number, armor: number) => number;
 };
 

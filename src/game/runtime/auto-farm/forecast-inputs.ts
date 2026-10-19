@@ -6,8 +6,7 @@ import type { ItemLevel } from "../../../../shared/items";
  * against (auto-farm-build.ts). Pure: callers pass everything in.
  */
 import type { MapBalanceSnapshot } from '../../../../shared/map-balance-types';
-import { armorDamageReduction as authoredArmorReduction } from '../../../../shared/combat';
-import { curveArmorReduction } from '../../../../shared/balance-curve';
+import { damageAfterArmor } from '../../../../shared/combat';
 import { CAMPAIGN_GATEWAYS } from '../../../../shared/map-gateways';
 import { generateMap, isProceduralMap, type ProceduralMapId } from '../../../../shared/procedural-maps';
 import { isSoulMap, SOUL_ARRIVAL } from '../../../../shared/soul-dimension';
@@ -22,14 +21,6 @@ import { soulStatOfCampName } from '../../soul-world';
 import { farmGroupOf, soulFarmReward } from './auto-farm-priority';
 import { balancedSiteDefinition } from '../enemies/map-balance-enemies';
 import type { ForecastBuild, ForecastMap, ForecastSite } from './growth-forecast';
-
-/** A hit after armor on a map's rule: the curve's, or the authored one (rounded, at least 1). */
-export function armorRule(curve: boolean) {
-  return (damage: number, armor: number) => {
-    const incoming = Math.max(0, Number.isFinite(damage) ? damage : 0);
-    return curve ? incoming * (1 - curveArmorReduction(armor)) : Math.max(1, Math.round(incoming * (1 - authoredArmorReduction(armor))));
-  };
-}
 
 /** Where a map's travellers (and the dead) arrive. */
 export function mapArrival(mapId: string): { x: number; y: number } | null {
@@ -87,7 +78,7 @@ export function forecastMap(mapId: string, sites: readonly ForecastSite[], optio
     mapId, sites,
     arrival: options.arrival ?? mapArrival(mapId) ?? { x: 0, y: 0 },
     respawnSeconds: enemyRespawnSecondsWithResearch(base, options.enemyRespawnRank ?? 0),
-    hitAfterArmor: options.hitAfterArmor ?? armorRule(options.snapshot?.rules?.ARMOR_CURVE === 1),
+    hitAfterArmor: options.hitAfterArmor ?? damageAfterArmor,
   };
 }
 

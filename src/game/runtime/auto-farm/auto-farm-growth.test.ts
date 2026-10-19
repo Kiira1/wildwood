@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createGrowthPlanner, PLAN_SECONDS, type GrowthContext } from './auto-farm-growth';
-import { armorRule } from './forecast-inputs';
+import { damageAfterArmor } from '../../../../shared/combat';
 import type { ForecastBuild, ForecastMap, ForecastSite } from './growth-forecast';
 import type { EnemyDefinition } from '../../enemies';
 import type { RewardType } from '../../../../shared/enemy-definitions';
@@ -11,7 +11,7 @@ const enemy = (overrides: Partial<EnemyDefinition> & { reward: { type: RewardTyp
 const camp = (group: RewardType, x: number, y: number, count: number, definition: EnemyDefinition, firstId = 0): ForecastSite[] =>
   Array.from({ length: count }, (_, index) => ({ id: firstId + index, x: x + index * 150, y, campName: `${group}`, leashRange: 420,
     definition, group: `stat:${group}`, reward: definition.reward, respawnIn: 0 }));
-const map = (mapId: string, sites: ForecastSite[]): ForecastMap => ({ mapId, sites, arrival: { x: 300, y: 300 }, respawnSeconds: 10, hitAfterArmor: armorRule(false) });
+const map = (mapId: string, sites: ForecastSite[]): ForecastMap => ({ mapId, sites, arrival: { x: 300, y: 300 }, respawnSeconds: 10, hitAfterArmor: damageAfterArmor });
 function build(stats: Partial<PlayerPowerStats> = {}): ForecastBuild {
   const base: PlayerPowerStats = { damage: 50, maxHp: 800, attackRate: .5, armor: 0, regen: 10, ...stats };
   return { base, effective: preparePlayerPowerStats({ ...base }, null), rewardMultiplier: 1, minAttackInterval: .1, criticalChance: 0, criticalMultiplier: 1.05,

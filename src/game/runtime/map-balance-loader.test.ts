@@ -55,12 +55,3 @@ it('ignores a late reply once the player has left that map', async () => {
   expect(loader.ready('home_exterior')).toBe(false);
   expect(runtimeMapBalance('home_exterior')).toBeNull();
 });
-it('blocks hits on the curve armor rule, keeping small hits fractional', async () => {
-  const { applyMapBalance } = await import('./map-balance-loader');
-  const { damageAfterArmor } = await import('../combat');
-  // The live balance does not carry the rule; a snapshot that does switches it on.
-  const live = resolveMapBalance('beginner_desert', defaultBalanceSettings(), 1);
-  applyMapBalance({ ...live, rules: { ...live.rules, ARMOR_CURVE: 1 } });
-  expect(damageAfterArmor(1_000, 1_000)).toBeCloseTo(729);   // 1,000 armor: .9³ gets through
-  expect(damageAfterArmor(.5, 10)).toBeCloseTo(.45);
-});

@@ -3,7 +3,7 @@ import {
   chooseGrowthOption, fanArrowsOnTarget, forecastGrowth, growthStatChoice, meleeBlowsPerMinute, forecastOption, orbitHolds, pullTankCheck, FORECAST_TUNING,
   type ForecastBuild, type ForecastMap, type ForecastSite,
 } from './growth-forecast';
-import { armorRule } from './forecast-inputs';
+import { damageAfterArmor } from '../../../../shared/combat';
 import { participantAttackers, resolveFight } from '../../../balance/death-model';
 import { preparePlayerPowerStats, type PlayerPowerStats } from '../../../../shared/player-power';
 import type { EnemyDefinition } from '../../enemies';
@@ -21,7 +21,7 @@ function camp(group: RewardType, x: number, y: number, count: number, definition
 }
 
 function map(sites: ForecastSite[], respawnSeconds = 10): ForecastMap {
-  return { mapId: 'test', sites, arrival: { x: 200, y: 200 }, respawnSeconds, hitAfterArmor: armorRule(false) };
+  return { mapId: 'test', sites, arrival: { x: 200, y: 200 }, respawnSeconds, hitAfterArmor: damageAfterArmor };
 }
 
 function build(stats: Partial<PlayerPowerStats> = {}, extra: Partial<ForecastBuild> = {}): ForecastBuild {
