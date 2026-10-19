@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { GROVE_LANDING_RADIUS, GROVE_ROAD, GROVE_ROAD_END, GROVE_ROAD_FORK, GROVE_ROAD_HALF_WIDTH, WOOD_TREE_NODES, WOOD_TREE_SPOTS, WOOD_TREE_SPREAD, WOODCUTTING_REACH, groveRoadDistanceSquared } from "../../../../shared/woodcutting";
-import { MINING_NODES, MINING_TRACK_HALF_WIDTH, miningTrackDistanceSquared } from "../../../../shared/mining";
-import { TOWN_FEET_OFFSET, TOWN_GROVE, inTownGrove, inTownWalkArea } from "../../../../shared/town";
+import { GROVE_LANDING_RADIUS, GROVE_ROAD, GROVE_ROAD_END, GROVE_ROAD_HALF_WIDTH, GROVE_ROAD_START, WOOD_TREE_NODES, WOOD_TREE_SPOTS, WOOD_TREE_SPREAD, WOODCUTTING_REACH, groveRoadDistanceSquared } from "../../../../shared/woodcutting";
+import { MINING_NODES } from "../../../../shared/mining";
+import { TOWN_FEET_OFFSET, TOWN_GROVE, TOWN_WEST_BRIDGE, inTownGrove, inTownWalkArea } from "../../../../shared/town";
 import { SOUL_ATLAS } from "../../soul-village";
 import { GROVE_LANDING_DECOR, TOWN_GROVE_SIGNPOST, WOOD_TREE_BOXES, lowEnough, spriteBox, townWindowDecor, woodTreeDecor } from "../../town-world";
 import type { WorldDecor } from "../../world";
 import { paintHillsGround, touchesHillsGround } from "./hills-ground";
+import { townFeetClear } from "./town-path";
 import { stumpFrame } from "./wood-tree-renderer";
 import { soulFrame } from "../soul/soul-prop-renderer";
 
@@ -14,11 +15,14 @@ type Frame = { w: number; h: number; ax: number; ay: number };
 const frameOf = (name: string) => (SOUL_ATLAS.frames as Record<string, Frame | undefined>)[name];
 const overlap = (a: Box, b: Box, pad = 0) => a.left < b.right + pad && a.right > b.left - pad && a.top < b.bottom + pad && a.bottom > b.top - pad;
 
-/** Everything the Town draws in and round Timberwood and up the road to it. */
-const decor = [...new Set([...townWindowDecor(10_600, 2_400), ...townWindowDecor(8_400, 3_600)])];
+/** Everything the Town draws in and round Timberwood and along the road out to it from the village. */
+const decor = [...new Set([...townWindowDecor((TOWN_GROVE.left + TOWN_GROVE.right) / 2, (TOWN_GROVE.top + TOWN_GROVE.bottom) / 2), ...townWindowDecor(TOWN_WEST_BRIDGE.x, TOWN_WEST_BRIDGE.y)])];
 type Prop = Extract<WorldDecor, { type: "soulProp" }>;
 const props = decor.filter((item): item is Prop => item.type === "soulProp" && !item.shadow && !item.sheet && !item.signpost);
 const standing = props.filter(item => !item.ground);
+/** The village's own standing props too (its trees by the river): where each is drawn. */
+const villageStanding = decor.filter((item): item is Prop => item.type === "soulProp" && item.sheet === "village" && !item.shadow && !item.ground && !GROVE_LANDING_DECOR.includes(item))
+  .map(item => ({ item, box: spriteBox(soulFrame(item.frame, "village")!, item.x, item.y + (item.dy ?? 0), item.s, item.flip) }));
 const trees = decor.filter((item): item is Extract<WorldDecor, { type: "woodTree" }> => item.type === "woodTree");
 const where = (item: Prop) => `${item.frame} at ${item.x},${item.y}`;
 
@@ -65,6 +69,8 @@ describe("Timberwood as drawn", () => {
       return road.some(point => overlap(box, { left: point.x, right: point.x, top: point.y, bottom: point.y }, GROVE_ROAD_HALF_WIDTH));
     });
     expect(over.map(where)).toEqual([]);
+    const villageOver = villageStanding.filter(({ box }) => road.some(point => overlap(box, { left: point.x, right: point.x, top: point.y, bottom: point.y }, GROVE_ROAD_HALF_WIDTH)));
+    expect(villageOver.map(({ item }) => where(item))).toEqual([]);
   });
 
   it("ends the road in a landing with logs stacked at its edge, well clear of anyone chopping", () => {
@@ -81,14 +87,18 @@ describe("Timberwood as drawn", () => {
     }
   });
 
-  it("stands its sign at the fork, off the miners' track and the road, with nothing standing in front of it", () => {
+  it("stands its sign at the village's edge, where the road comes off the west bridge, pointing west along it with nothing in front of it", () => {
     expect(decor).toContain(TOWN_GROVE_SIGNPOST);
     const sign = TOWN_GROVE_SIGNPOST;
-    expect(Math.hypot(sign.x - GROVE_ROAD_FORK.x, sign.y - GROVE_ROAD_FORK.y)).toBeLessThan(200);
-    expect(Math.sqrt(miningTrackDistanceSquared(sign.x, sign.y))).toBeGreaterThan(MINING_TRACK_HALF_WIDTH + 20);
+    expect(sign).toMatchObject({ signpost: "Timberwood" });
+    expect(sign.type === "soulProp" && sign.flip).toBeFalsy();
+    expect(sign.x).toBeLessThan(TOWN_WEST_BRIDGE.x - 154);
+    expect(Math.hypot(sign.x - GROVE_ROAD_START.x, sign.y - GROVE_ROAD_START.y)).toBeLessThan(300);
     expect(Math.sqrt(groveRoadDistanceSquared(sign.x, sign.y))).toBeGreaterThan(GROVE_ROAD_HALF_WIDTH + 20);
-    const plank = { left: sign.x - 56, right: sign.x + 80, top: sign.y - 128, bottom: sign.y + 10 };
+    expect(townFeetClear(sign.x, sign.y)).toBe(true);
+    const plank = { left: sign.x - 80, right: sign.x + 56, top: sign.y - 128, bottom: sign.y + 10 };
     expect(standing.filter(item => item.y > sign.y && overlap(spriteBox(frameOf(item.frame)!, item.x, item.y, item.s, item.flip), plank)).map(where)).toEqual([]);
+    expect(villageStanding.filter(({ item, box }) => item.y > sign.y && overlap(box, plank)).map(({ item }) => where(item))).toEqual([]);
   });
 });
 
@@ -113,7 +123,7 @@ describe("chopping in Timberwood", () => {
     }
   });
 
-  it("keeps the grove's trees inside it, clear of the Copper Hills' rocks and their walk", () => {
+  it("keeps the grove's trees inside it and inside the walls", () => {
     for (const box of WOOD_TREE_BOXES) {
       expect(box.left).toBeGreaterThan(TOWN_GROVE.left);
       expect(box.right).toBeLessThan(TOWN_GROVE.right);

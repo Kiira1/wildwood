@@ -25,14 +25,14 @@ const ROAD_BOX = {
   top: Math.min(...GROVE_ROAD.map(point => point.y)) - ROAD_PAINT_REACH, bottom: Math.max(...GROVE_ROAD.map(point => point.y)) + ROAD_PAINT_REACH,
 };
 const near = (a: Rect, b: Rect, pad: number) => a.left < b.right + pad && a.right > b.left - pad && a.top < b.bottom + pad && a.bottom > b.top - pad;
-/** All the hills paint, the road to Timberwood's too, in one rectangle. */
+/** All the hills paint, in one rectangle. */
 const PAINTED = HILLS_CLEARINGS.reduce((area, { box }) => ({
   left: Math.min(area.left, box.left - CLEARING_REACH), right: Math.max(area.right, box.right + CLEARING_REACH),
   top: Math.min(area.top, box.top - CLEARING_REACH), bottom: Math.max(area.bottom, box.bottom + CLEARING_REACH),
-}), { left: Math.min(TRACK_BOX.left, ROAD_BOX.left), right: Math.max(TRACK_BOX.right, ROAD_BOX.right), top: Math.min(TRACK_BOX.top, ROAD_BOX.top), bottom: Math.max(TRACK_BOX.bottom, ROAD_BOX.bottom) });
+}), TRACK_BOX);
 
-/** Whether a rectangle of the world reaches the hills' ground at all. */
-export const touchesHillsGround = (rect: Rect) => near(rect, PAINTED, 0);
+/** Whether a rectangle of the world reaches the hills' ground, or the road to Timberwood west of the village, at all. */
+export const touchesHillsGround = (rect: Rect) => near(rect, PAINTED, 0) || near(rect, ROAD_BOX, 0);
 
 function traceShape(context: CanvasRenderingContext2D, points: readonly Point[], ox: number, oy: number, closed: boolean) {
   context.beginPath();
@@ -43,9 +43,9 @@ function traceShape(context: CanvasRenderingContext2D, points: readonly Point[],
 /**
  * Paints the Copper Hills' ground into one of the Town's baked tiles, over the countryside's green and under its
  * props: each outcrop's clearing, one rounded shape of bare earth rimmed as the village's roads are, with the
- * darker grass worn round it, the miners' track out from the village through every vein, and the woodcutters' road
- * off it north into Timberwood, to its landing. Every rim is laid before any earth, so where a clearing meets the track (or the road
- * the track) the two read as one piece of ground.
+ * darker grass worn round it, and the miners' track out from the village through every vein; and west of the
+ * village, the woodcutters' road from the west bridge into Timberwood, to its landing. Every rim is laid before any
+ * earth, so where a clearing meets the track the two read as one piece of ground.
  */
 export function paintHillsGround(context: CanvasRenderingContext2D, rect: Rect, ox: number, oy: number) {
   if (!touchesHillsGround(rect)) return;

@@ -129,8 +129,8 @@ export type WorldRenderRuntimeOptions = {
   showBossHitboxes?: () => boolean;
   enemyTextVisible: (enemy: EnemyState) => boolean;
   drawStatus: (status: ActorStatus) => void;
-  drawIdentity: (identity: string | undefined, name: string, power: number | null, centerX: number, bottom: number, color: string, gender?: PlayerGender) => void;
-  drawSpeechBubble: (identity: string | undefined, x: number, y: number) => void;
+  drawIdentity: (identity: string | undefined, name: string, power: number | null, centerX: number, headTop: number, color: string, gender?: PlayerGender) => void;
+  drawSpeechBubble: (identity: string | undefined, x: number, headTop: number) => void;
   publicPlayerName: (identity: string | undefined, name: string | undefined) => string;
   playerPower: (player: PlayerState) => number;
   worldHealthBarHeight: number;

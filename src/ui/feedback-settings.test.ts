@@ -113,3 +113,23 @@ it("shows enemy HP numbers and damage numbers until the player turns them off, a
   expect([enemyHpNumbersEnabled(), damageNumbersEnabled()]).toEqual([false, false]);
   setEnemyHpNumbersEnabled(true); setDamageNumbersEnabled(true);
 });
+
+it("shows your own name plate until the player turns it off, and remembers it", async () => {
+  const { parseHTML } = await import("linkedom");
+  const { ownNamePlateEnabled, setOwnNamePlateEnabled } = await import("./name-plate-setting");
+  const values = new Map<string, string>();
+  const make = () => {
+    const { document, Event } = parseHTML(`<html><body><div id="toolbar"></div><section><button id="toolbarHapticsToggle"></button><button id="selfProfileTapToggle"></button><button id="scientificNotationToggle"></button><button id="ownNamePlateToggle"></button></section></body></html>`);
+    installFeedbackSettings(document, { getItem: key => values.get(key) ?? null, setItem: (key, value) => { values.set(key, value); } }, () => {});
+    return { button: document.getElementById("ownNamePlateToggle")!, click: () => document.getElementById("ownNamePlateToggle")!.dispatchEvent(new Event("click", { bubbles: true })) };
+  };
+  const first = make();
+  expect(ownNamePlateEnabled()).toBe(true);
+  first.click();
+  expect(ownNamePlateEnabled()).toBe(false);
+  setOwnNamePlateEnabled(true);
+  const second = make();
+  expect(ownNamePlateEnabled()).toBe(false);
+  expect(second.button.getAttribute("aria-pressed")).toBe("false");
+  setOwnNamePlateEnabled(true);
+});

@@ -40,12 +40,14 @@ export const TOWN_HILLS = Object.freeze({ left: TOWN_CENTER.x + 3_000, right: TO
 export const inTownHills = (x: number, y: number, margin = 0) =>
   x > TOWN_HILLS.left - margin && x < TOWN_HILLS.right + margin && y > TOWN_HILLS.top - margin && y < TOWN_HILLS.bottom + margin;
 /**
- * Timberwood: the woodcutting grove north of the Copper Hills, up a woodcutters' road from the miners' track. Trees
+ * Timberwood: the woodcutting grove west of the village, out over its west bridge along a woodcutters' road. Trees
  * in four stands, pine nearest the village and elder furthest out; shared/woodcutting.ts lays them.
  */
-export const TOWN_GROVE = Object.freeze({ left: TOWN_CENTER.x + 2_500, right: TOWN_CENTER.x + 6_700, top: TOWN_CENTER.y - 3_350, bottom: TOWN_CENTER.y - 1_750 });
+export const TOWN_GROVE = Object.freeze({ left: TOWN_CENTER.x - 5_450, right: TOWN_CENTER.x - 2_900, top: TOWN_CENTER.y - 850, bottom: TOWN_CENTER.y + 1_250 });
 export const inTownGrove = (x: number, y: number, margin = 0) =>
   x > TOWN_GROVE.left - margin && x < TOWN_GROVE.right + margin && y > TOWN_GROVE.top - margin && y < TOWN_GROVE.bottom + margin;
+/** The village's own stone bridge west of the square: the woodcutters' road leaves the village over it. Its middle. */
+export const TOWN_WEST_BRIDGE = Object.freeze({ x: TOWN_CENTER.x - 1_912, y: TOWN_CENTER.y + 226 });
 /** How far past the village's ground anyone may walk: the countryside's edge, walled. */
 export const TOWN_WALK_MARGIN = 320;
 /** The village and the countryside round it, as walled before the hills: what the minimap shows from the village. */
@@ -53,13 +55,14 @@ export const TOWN_VILLAGE_WALK_AREA = Object.freeze({
   left: TOWN_CENTER.x + TOWN_VILLAGE_BOUNDS.left - TOWN_WALK_MARGIN, right: TOWN_CENTER.x + TOWN_VILLAGE_BOUNDS.right + TOWN_WALK_MARGIN,
   top: TOWN_CENTER.y + TOWN_VILLAGE_BOUNDS.top - TOWN_WALK_MARGIN, bottom: TOWN_CENTER.y + TOWN_VILLAGE_BOUNDS.bottom + TOWN_WALK_MARGIN,
 });
-/**
- * Where anyone may walk, walled: the village's countryside and east of it as far as the hills reach, and north of
- * the hills round Timberwood. The two overlap along the hills' north edge.
- */
+/** Timberwood and the countryside round it, walled: it meets the village's walls west of the village. */
+export const TOWN_GROVE_WALK_AREA = Object.freeze({
+  left: TOWN_GROVE.left - TOWN_WALK_MARGIN, right: TOWN_GROVE.right + TOWN_WALK_MARGIN, top: TOWN_GROVE.top - TOWN_WALK_MARGIN, bottom: TOWN_GROVE.bottom + TOWN_WALK_MARGIN,
+});
+/** Where anyone may walk, walled: the village's countryside and east of it as far as the hills reach, and Timberwood west of it. */
 export const TOWN_WALK_AREAS = Object.freeze([
   Object.freeze({ ...TOWN_VILLAGE_WALK_AREA, right: Math.max(TOWN_VILLAGE_WALK_AREA.right, TOWN_HILLS.right + TOWN_WALK_MARGIN) }),
-  Object.freeze({ left: TOWN_GROVE.left - TOWN_WALK_MARGIN, right: TOWN_GROVE.right + TOWN_WALK_MARGIN, top: TOWN_GROVE.top - TOWN_WALK_MARGIN, bottom: TOWN_GROVE.bottom + TOWN_WALK_MARGIN }),
+  TOWN_GROVE_WALK_AREA,
 ]);
 /** All the walls hold, in one rectangle (for grids and the minimap); inTownWalkArea says where inside it is open. */
 export const TOWN_WALK_AREA = Object.freeze({

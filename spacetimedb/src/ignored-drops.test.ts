@@ -200,8 +200,9 @@ it("is erased with the account and leaves other accounts alone", () => {
 it("joins a guest's list to the account's on link and leaves no guest rows", () => {
   const f = crystalFixture();
   const guest = identity("2");
-  seedListed(f, IRON_BOW);
-  seedListed(f, IRON_BOW, guest);
+  // The paper hat: entries naming old map gear are cleared on a link (old-gear-payout.ts).
+  seedListed(f, BASIC_PAPER_HAT);
+  seedListed(f, BASIC_PAPER_HAT, guest);
   seedListed(f, "slot:FEET", guest);
   f.db.playerProgress.identity.delete(f.ctx.sender);
   f.progress(guest);
@@ -209,6 +210,6 @@ it("joins a guest's list to the account's on link and leaves no guest rows", () 
   f.seed("accountLink", { code: "ignore-link", guest, createdAt: f.ctx.timestamp });
   f.ctx.senderAuth = { jwt: { issuer: SPACETIME_AUTH_ISSUER, audience: [SPACETIME_AUTH_CLIENT_ID] } };
   f.run(server.claimGuestAccount, { code: "ignore-link" });
-  expect(listed(f)).toEqual([IRON_BOW, "slot:FEET"]);
+  expect(listed(f)).toEqual([BASIC_PAPER_HAT, "slot:FEET"]);
   expect(listed(f, guest)).toEqual([]);
 });

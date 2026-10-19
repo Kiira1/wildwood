@@ -1,7 +1,7 @@
 import { SOUL_VILLAGE_GROUND } from "../../soul-village";
 import { WORLD_WIDTH } from "../../../../shared/rules";
 import { isSoulMap, SOUL_STAT_DETAILS } from "../../../../shared/soul-dimension";
-import { inTownInteriors, isTownMap, TOWN_DOORS, TOWN_INTERIOR_MARGIN, TOWN_VILLAGE_WALK_AREA, TOWN_WALK_AREA } from "../../../../shared/town";
+import { inTownInteriors, isTownMap, TOWN_DOORS, TOWN_GROVE_WALK_AREA, TOWN_INTERIOR_MARGIN, TOWN_VILLAGE_WALK_AREA, TOWN_WALK_AREAS } from "../../../../shared/town";
 import { MINING_NODES } from "../../../../shared/mining";
 import { SCHOOL_DETAILS } from "../../../../shared/weapon-mastery";
 import { ORE_COLORS } from "../town/ore-rock-renderer";
@@ -1157,17 +1157,18 @@ if (options.getMapId() === ION_CITADEL_MAP_ID) { drawIonRoads(ctx, options.paths
 
   /**
    * Where the minimap looks on the Town, or null on any other map (it shows the whole world): the walled village,
-   * or once the player is out past it, the Copper Hills, Timberwood and the walk out to them.
+   * or once the player is out past it, the Copper Hills east of it or Timberwood west of it, and the walk out.
    */
   function townMinimapFrame() {
     if (!isTownMap(options.getMapId())) return null;
     if (inTownInteriors(options.player.x, options.player.y, TOWN_INTERIOR_MARGIN)) {
-      return { x: options.player.x - TOWN_ROOMS_MINIMAP_SPAN / 2, y: options.player.y - TOWN_ROOMS_MINIMAP_SPAN / 2, span: TOWN_ROOMS_MINIMAP_SPAN, rooms: true, hills: false };
+      return { x: options.player.x - TOWN_ROOMS_MINIMAP_SPAN / 2, y: options.player.y - TOWN_ROOMS_MINIMAP_SPAN / 2, span: TOWN_ROOMS_MINIMAP_SPAN, rooms: true, hills: false, grove: false };
     }
-    const hills = options.player.x > TOWN_VILLAGE_WALK_AREA.right;
-    const area = hills ? { ...TOWN_WALK_AREA, left: TOWN_VILLAGE_WALK_AREA.right - 300 } : TOWN_VILLAGE_WALK_AREA;
+    const hills = options.player.x > TOWN_VILLAGE_WALK_AREA.right, grove = options.player.x < TOWN_VILLAGE_WALK_AREA.left;
+    const area = hills ? { ...TOWN_WALK_AREAS[0], left: TOWN_VILLAGE_WALK_AREA.right - 300 }
+      : grove ? { ...TOWN_GROVE_WALK_AREA, right: TOWN_VILLAGE_WALK_AREA.left + 300 } : TOWN_VILLAGE_WALK_AREA;
     const span = Math.max(area.right - area.left, area.bottom - area.top);
-    return { x: (area.left + area.right - span) / 2, y: (area.top + area.bottom - span) / 2, span, rooms: false, hills };
+    return { x: (area.left + area.right - span) / 2, y: (area.top + area.bottom - span) / 2, span, rooms: false, hills, grove };
   }
 
   /** The hills' ore rocks on the minimap: a dot each in its ore's colour, faded while it is bare. */
@@ -1227,7 +1228,8 @@ if (options.getMapId() === ION_CITADEL_MAP_ID) { drawIonRoads(ctx, options.paths
     const colors = mapColors();
     draw.fillStyle = colors.ground; draw.fillRect(innerX, innerY, innerSize, innerSize);
     if (frame && !frame.rooms) drawSoulVillageOnMinimap(draw, ox, oy, sx, sy);
-    if (frame?.hills) { drawOreRocksOnMinimap(draw, ox, oy, sx, sy); drawWoodTreesOnMinimap(draw, ox, oy, sx, sy); }
+    if (frame?.hills) drawOreRocksOnMinimap(draw, ox, oy, sx, sy);
+    if (frame?.grove) drawWoodTreesOnMinimap(draw, ox, oy, sx, sy);
     if (frame?.rooms) drawSoulRoomsOnMinimap(draw, innerSize, ox, oy, sx, sy);
     draw.fillStyle = colors.path; for (const path of options.paths) draw.fillRect(innerX + (path.x - ox) * sx, innerY + (path.y - oy) * sy, path.w * sx, path.h * sy);
     draw.save();

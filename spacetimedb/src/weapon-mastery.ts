@@ -74,6 +74,11 @@ function writeMasteryLevel(ctx: Ctx, identity: Identity, school: WeaponSchool, p
   else if (row.level !== level) ctx.db.playerMasteryLevel.key.update({ ...row, level });
 }
 
+/** Points granted outside a kill report (the old gear's refines, paid once at the graded-gear release). */
+export function grantMasteryPoints(ctx: Ctx, identity: Identity, school: WeaponSchool, points: number) {
+  addPoints(ctx, identity, school, Math.floor(points));
+}
+
 function addPoints(ctx: Ctx, identity: Identity, school: WeaponSchool, points: number) {
   if (!(points > 0)) return;
   const key = masteryKey(identity, school), row = ctx.db.playerWeaponMastery.key.find(key);

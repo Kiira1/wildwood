@@ -31,3 +31,15 @@ export type MailboxMessage = {
   read: boolean;
   claimed: boolean;
 };
+
+/** The graded-gear release (0.916): old gear melted into gold, and gems for the fresh start. */
+export const GEAR_OVERHAUL_MAIL_ID = "gear-overhaul-2026-10-19";
+export const GEAR_OVERHAUL_MAIL_GEMS = 150n;
+export const GEAR_OVERHAUL_MAIL_TITLE = "New Gear, Fresh Start";
+export const GEAR_OVERHAUL_MAIL_BODY = [
+  "Gear now comes in 15 grades that last, from Crude to Eternal. Your old gear was melted down into gold.",
+  "",
+  "Visit the Smith in Town to buy new gear, or try Upgrade All. Your weapon school's Mastery opens higher grades as you fight, and the Archery Range, Sword Hall and Mage Tower show your progress.",
+  "",
+  "Here are 150 gems to say thanks for playing.",
+].join("\n");

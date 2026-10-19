@@ -1,23 +1,30 @@
 import { describe, expect, it, vi } from "vitest";
 import {
-  GROVE_ROAD, GROVE_ROAD_END, GROVE_ROAD_FORK, GROVE_ROAD_GATE, GROVE_ROAD_HALF_WIDTH, WOOD_STAND_BLEND, WOOD_STANDS, WOOD_TREE_KINDS, WOOD_TREE_NODES, WOOD_TREES, WOODCUTTING_LOGS,
+  GROVE_ROAD, GROVE_ROAD_END, GROVE_ROAD_GATE, GROVE_ROAD_START, GROVE_ROAD_HALF_WIDTH, WOOD_STAND_BLEND, WOOD_STANDS, WOOD_TREE_KINDS, WOOD_TREE_NODES, WOOD_TREES, WOODCUTTING_LOGS,
   WOODCUTTING_REACH, groveRoadDistanceSquared, normalizeWoodcutting, woodcuttingChopSeconds, woodcuttingGain, woodcuttingSpeed, woodcuttingYield,
   woodStandHint, woodStandMap, woodStandOpen, woodTree,
 } from "./woodcutting";
-import { MINING_TRACK, MINING_VEINS } from "./mining";
+import { MINING_VEINS } from "./mining";
 import { WOOD_IDS, craftMaterials } from "./crafting";
-import { TOWN_GROVE, TOWN_HILLS, TOWN_WALK_AREAS, inTownWalkArea, townChunkProps, townWalkClamp, TOWN_CHUNK_SIZE, inTownGrove } from "./town";
+import {
+  TOWN_CENTER, TOWN_GROVE, TOWN_HILLS, TOWN_VILLAGE_BOUNDS, TOWN_VILLAGE_WALK_AREA, TOWN_WALK_AREAS, TOWN_WALK_MARGIN, TOWN_WEST_BRIDGE, inTownWalkArea, townChunkProps,
+  townWalkClamp, TOWN_CHUNK_SIZE, inTownGrove,
+} from "./town";
 
 describe("Timberwood's stands", () => {
-  it("run west to east from pine to elder, edge to edge across the grove, north of the Copper Hills", () => {
+  it("run east to west from pine to elder, edge to edge across the grove, west of the village", () => {
     expect(WOOD_STANDS.map(stand => stand.kind)).toEqual([...WOOD_TREE_KINDS]);
     expect(WOOD_STANDS.map(stand => stand.log)).toEqual([...WOOD_IDS]);
-    expect(WOOD_STANDS[0].left).toBe(TOWN_GROVE.left);
-    expect(WOOD_STANDS.at(-1)!.right).toBe(TOWN_GROVE.right);
-    WOOD_STANDS.slice(1).forEach((stand, index) => expect(stand.left).toBe(WOOD_STANDS[index].right));
+    expect(WOOD_STANDS[0].right).toBe(TOWN_GROVE.right);
+    expect(WOOD_STANDS.at(-1)!.left).toBe(TOWN_GROVE.left);
+    WOOD_STANDS.slice(1).forEach((stand, index) => expect(stand.right).toBe(WOOD_STANDS[index].left));
     expect(WOOD_STANDS.map(stand => stand.hardness)).toEqual([1, 2, 4, 8]);
-    expect(TOWN_GROVE.bottom).toBeLessThan(TOWN_HILLS.top);
-    expect(TOWN_GROVE.left).toBeLessThan(TOWN_HILLS.left);
+    // Left of the village on the map, level with it, inside the world; nowhere near the Copper Hills.
+    expect(TOWN_GROVE.right).toBeLessThan(TOWN_CENTER.x + TOWN_VILLAGE_BOUNDS.left);
+    expect(TOWN_GROVE.top).toBeGreaterThan(TOWN_VILLAGE_WALK_AREA.top);
+    expect(TOWN_GROVE.bottom).toBeLessThan(TOWN_VILLAGE_WALK_AREA.bottom);
+    expect(TOWN_GROVE.left - TOWN_WALK_MARGIN).toBeGreaterThan(0);
+    expect(TOWN_GROVE.right).toBeLessThan(TOWN_HILLS.left - 5_000);
     expect(WOOD_TREES.oak.name).toBe("Oak Tree");
   });
 
@@ -70,14 +77,20 @@ describe("the trees", () => {
 });
 
 describe("the woodcutters' road", () => {
-  it("forks off the miners' track, comes into the grove at its south-west and winds through the pines and oaks to the yews, the trees well off it", () => {
-    expect(MINING_TRACK).toContainEqual(GROVE_ROAD_FORK);
-    expect(GROVE_ROAD[0]).toEqual(GROVE_ROAD_FORK);
+  it("leaves the village over its west bridge, comes into the grove at its east edge and winds through the pines and oaks to the yews, the trees well off it", () => {
+    expect(GROVE_ROAD[0]).toEqual(GROVE_ROAD_START);
+    // It starts on the bridge's deck, so its earth runs on from under the deck's west end.
+    expect(GROVE_ROAD_START.y).toBe(TOWN_WEST_BRIDGE.y);
+    expect(Math.abs(GROVE_ROAD_START.x - TOWN_WEST_BRIDGE.x)).toBeLessThan(154 - GROVE_ROAD_HALF_WIDTH);
+    expect(GROVE_ROAD_START.x).toBeLessThan(TOWN_WEST_BRIDGE.x);
     expect(GROVE_ROAD).toContainEqual(GROVE_ROAD_GATE);
     expect(GROVE_ROAD.at(-1)).toEqual(GROVE_ROAD_END);
     expect(inTownGrove(GROVE_ROAD_GATE.x, GROVE_ROAD_GATE.y)).toBe(true);
-    expect(GROVE_ROAD_END.x).toBeGreaterThan(WOOD_TREES.oak.right - WOOD_STAND_BLEND);
-    expect(GROVE_ROAD_END.x).toBeLessThan(WOOD_TREES.yew.right);
+    expect(GROVE_ROAD_GATE.x).toBeGreaterThan(WOOD_TREES.pine.right - 200);
+    expect(GROVE_ROAD_END.x).toBeLessThan(WOOD_TREES.oak.left + WOOD_STAND_BLEND);
+    expect(GROVE_ROAD_END.x).toBeGreaterThan(WOOD_TREES.yew.left);
+    // West all the way, never doubling back.
+    for (let index = 1; index < GROVE_ROAD.length; index++) expect(GROVE_ROAD[index].x).toBeLessThanOrEqual(GROVE_ROAD[index - 1].x);
     // Smooth: no step of it turns sharply.
     for (let index = 2; index < GROVE_ROAD.length; index++) {
       const [a, b, c] = [GROVE_ROAD[index - 2], GROVE_ROAD[index - 1], GROVE_ROAD[index]];
@@ -91,16 +104,21 @@ describe("the woodcutters' road", () => {
 });
 
 describe("the walls round Timberwood", () => {
-  it("hold the grove and join the hills' walls along their north edge", () => {
+  it("hold the grove and meet the village's walls west of it", () => {
     const [east, grove] = TOWN_WALK_AREAS;
     expect(grove.left).toBeLessThan(TOWN_GROVE.left);
     expect(grove.top).toBeLessThan(TOWN_GROVE.top);
-    expect(grove.bottom).toBeGreaterThan(east.top);
+    expect(grove.bottom).toBeGreaterThan(TOWN_GROVE.bottom);
+    expect(grove.right).toBeGreaterThan(east.left);
     for (const tree of WOOD_TREE_NODES) expect(inTownWalkArea(tree.x, tree.y + 44)).toBe(true);
-    // North of the village stays walled.
+    // North of the village and of the Copper Hills stays walled, as it was before Timberwood.
     expect(inTownWalkArea(east.left + 100, east.top - 100)).toBe(false);
+    expect(inTownWalkArea(TOWN_HILLS.left + 1_000, TOWN_HILLS.top - 600)).toBe(false);
+    expect(east.top).toBe(TOWN_VILLAGE_WALK_AREA.top);
     expect(townWalkClamp(east.left + 100, east.top - 100)).toEqual({ x: east.left + 100, y: east.top });
+    expect(townWalkClamp(TOWN_HILLS.left + 1_000, TOWN_HILLS.top - 600)).toEqual({ x: TOWN_HILLS.left + 1_000, y: east.top });
     expect(townWalkClamp(TOWN_GROVE.left + 10, TOWN_GROVE.top + 10)).toEqual({ x: TOWN_GROVE.left + 10, y: TOWN_GROVE.top + 10 });
+    expect(townWalkClamp(TOWN_GROVE.left - 1_000, TOWN_GROVE.top + 10)).toEqual({ x: grove.left, y: TOWN_GROVE.top + 10 });
   });
 
   it("keep the countryside's own props out of the grove", () => {

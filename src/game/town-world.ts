@@ -1,11 +1,11 @@
-import { inTownInteriors, inTownVillage, TOWN_ARRIVAL, TOWN_GROVE, TOWN_BENCH_POSITION, TOWN_CARD_SELLER_STALL, TOWN_CHUNK_SIZE, TOWN_DOORS, TOWN_SCHOOL_POSITIONS, TOWN_HILLS, TOWN_HILLS_SIGNPOST_POSITION, TOWN_INTERIOR_MARGIN, TOWN_OX_POSITION, TOWN_QUEST_BOARD_POSITION, TOWN_RESEARCH_POSITION, TOWN_SMITH_POSITION, townChunkProps, townRandom, townWindowChunks, type TownPropKind, TOWN_SOUL_RUNESTONE } from "../../shared/town";
+import { inTownInteriors, inTownVillage, TOWN_ARRIVAL, TOWN_GROVE, TOWN_BENCH_POSITION, TOWN_CARD_SELLER_STALL, TOWN_CHUNK_SIZE, TOWN_DOORS, TOWN_SCHOOL_POSITIONS, TOWN_HILLS, TOWN_HILLS_SIGNPOST_POSITION, TOWN_INTERIOR_MARGIN, TOWN_OX_POSITION, TOWN_QUEST_BOARD_POSITION, TOWN_RESEARCH_POSITION, TOWN_SMITH_POSITION, TOWN_WEST_BRIDGE, townChunkProps, townRandom, townWindowChunks, type TownPropKind, TOWN_SOUL_RUNESTONE } from "../../shared/town";
 import { SOUL_ATLAS, SOUL_INTERIOR_DECOR, SOUL_VILLAGE_DECOR, type SoulFrame, type SoulSolid } from "./soul-village";
 import {
   MINING_NODES, MINING_OUTCROPS, MINING_REACH, MINING_TRACK, MINING_TRACK_HALF_WIDTH, MINING_VEINS, miningTrackDistanceSquared, type MiningNode, type MiningNodeKind,
 } from "../../shared/mining";
 import { SCHOOL_DETAILS, WEAPON_SCHOOLS, type WeaponSchool } from "../../shared/weapon-mastery";
 import {
-  GROVE_LANDING_RADIUS, GROVE_ROAD, GROVE_ROAD_END, GROVE_ROAD_FORK, GROVE_ROAD_HALF_WIDTH, WOOD_TREE_NODES, WOOD_TREE_SPOTS, groveRoadDistanceSquared, type WoodTree, type WoodTreeKind,
+  GROVE_LANDING_RADIUS, GROVE_ROAD, GROVE_ROAD_END, GROVE_ROAD_HALF_WIDTH, WOOD_TREE_NODES, WOOD_TREE_SPOTS, groveRoadDistanceSquared, type WoodTree, type WoodTreeKind,
 } from "../../shared/woodcutting";
 import type { WorldDecor, WorldPath } from "./world";
 
@@ -290,11 +290,11 @@ const ROAD_SEGMENTS = GROVE_ROAD.slice(1).map((to, index) => {
 });
 const ROAD_REACH = GROVE_ROAD_HALF_WIDTH + HILLS_EARTH_RIM;
 /**
- * The sign to Timberwood, where the woodcutters' road leaves the miners' track: just west of the road, its plank
- * pointing up it to the north-east, clear of the track. Nothing standing grows round it.
+ * The sign to Timberwood, at the village's edge where the woodcutters' road comes off the west bridge: just north
+ * of the road, its plank pointing west along it. Nothing standing grows round it.
  */
-export const TOWN_GROVE_SIGNPOST: WorldDecor = { type: "soulProp", frame: "", s: 1, x: GROVE_ROAD_FORK.x - 110, y: GROVE_ROAD_FORK.y - 90, signpost: "Timberwood", flip: true };
-const GROVE_SIGNPOST_BOX: Box = { left: TOWN_GROVE_SIGNPOST.x - 56, right: TOWN_GROVE_SIGNPOST.x + 80, top: TOWN_GROVE_SIGNPOST.y - 128, bottom: TOWN_GROVE_SIGNPOST.y + 10 };
+export const TOWN_GROVE_SIGNPOST: WorldDecor = { type: "soulProp", frame: "", s: 1, x: TOWN_WEST_BRIDGE.x - 175, y: TOWN_WEST_BRIDGE.y - 84, signpost: "Timberwood" };
+const GROVE_SIGNPOST_BOX: Box = { left: TOWN_GROVE_SIGNPOST.x - 80, right: TOWN_GROVE_SIGNPOST.x + 56, top: TOWN_GROVE_SIGNPOST.y - 128, bottom: TOWN_GROVE_SIGNPOST.y + 10 };
 
 /** Whether a standing sprite comes within `pad` of what the hills keep clear: a clearing, an ore rock or its plate, the track. */
 function crowdsHills(box: Box, pad: number) {
@@ -303,8 +303,6 @@ function crowdsHills(box: Box, pad: number) {
     if (near(box, clearing.box, HILLS_CLEARING_ROUND + pad) && convexDistance(shape, clearing.core) < HILLS_CLEARING_ROUND + pad) return true;
   }
   if (ORE_ROCK_BOXES.some(rock => near(box, rock, pad)) || PLATE_SLOTS.some(slot => near(box, slot, pad))) return true;
-  if (near(box, GROVE_SIGNPOST_BOX, pad)) return true;
-  if (ROAD_SEGMENTS.some(segment => near(box, segment.box, ROAD_REACH + pad) && convexDistance(shape, segment.ends) < ROAD_REACH + pad)) return true;
   return TRACK_SEGMENTS.some(segment => near(box, segment.box, TRACK_REACH + pad) && convexDistance(shape, segment.ends) < TRACK_REACH + pad);
 }
 /** Whether a point is on the hills' bare earth (or within `pad` of it): a clearing, under an ore rock, the track. */
@@ -314,20 +312,26 @@ function onHillsEarth(x: number, y: number, pad: number) {
     if (near({ left: x, right: x, top: y, bottom: y }, clearing.box, HILLS_CLEARING_ROUND + pad) && convexDistance(point, clearing.core) < HILLS_CLEARING_ROUND + pad) return true;
   }
   if (ORE_ROCK_BOXES.some(rock => x > rock.left - pad && x < rock.right + pad && y > rock.top - pad && y < rock.bottom + pad)) return true;
-  if (groveRoadDistanceSquared(x, y, ROAD_REACH + pad) < (ROAD_REACH + pad) ** 2) return true;
   return miningTrackDistanceSquared(x, y, TRACK_REACH + pad) < (TRACK_REACH + pad) ** 2;
 }
+/** Whether a standing sprite comes within `pad` of the woodcutters' road or its sign. */
+function crowdsGroveRoad(box: Box, pad: number) {
+  if (near(box, GROVE_SIGNPOST_BOX, pad)) return true;
+  const shape = corners(box);
+  return ROAD_SEGMENTS.some(segment => near(box, segment.box, ROAD_REACH + pad) && convexDistance(shape, segment.ends) < ROAD_REACH + pad);
+}
+const onGroveRoad = (x: number, y: number, pad: number) => groveRoadDistanceSquared(x, y, ROAD_REACH + pad) < (ROAD_REACH + pad) ** 2;
 
 type Placed = { frame: SoulFrame; x: number; y: number; s: number; flip: boolean };
 /** Whoever stands at any of Timberwood's chopping spots, as big as a player is drawn. */
 let groveSpotBodies: Box[] | null = null;
 /** Whether a sprite standing at `foot` would hide someone chopping in Timberwood: in front of them, and over them. */
 function hidesWoodcutter(box: Box, foot: number) {
-  if (box.top > TOWN_GROVE.bottom + 100) return false;
+  if (!near(box, TOWN_GROVE, 100)) return false;
   groveSpotBodies ??= WOOD_TREE_NODES.flatMap(tree => WOOD_TREE_SPOTS.map(spot => ({ left: tree.x + spot.x - 22, right: tree.x + spot.x + 22, top: tree.y + spot.y - 75, bottom: tree.y + spot.y })));
   return groveSpotBodies.some(body => foot > body.bottom && near(box, body, 0));
 }
-/** The trees that frame the hills: big round ones and pines, in a staggered double row (in clumps along the north). */
+/** The trees that frame the hills: big round ones and pines, in a staggered double row. */
 const BORDER_TREES: readonly SoulFrame[] = ["Tree_07_Green", "Tree_08_Green", "Tree_09_Green", "Tree_10_Green", "Tree_03_Green", "Tree_18_Green", "Tree_19_Green", "Tree_17_Green"];
 /** The hedges between the veins: bushes, now and then a small tree. */
 const HEDGE_BUSHES: readonly SoulFrame[] = ["Bush_01_Green", "Bush_02_Green", "Bush_03_Green", "Bush_02_Green", "Bush_01_Green"];
@@ -351,8 +355,7 @@ function layHillsScenery() {
     const look = atlasFrame(frame);
     if (!look) return false;
     x = Math.round(x); y = Math.round(y);
-    const box = spriteBox(look, x, y, s, flip);
-    if (crowdsHills(box, pad) || hidesWoodcutter(box, y)) return false;
+    if (crowdsHills(spriteBox(look, x, y, s, flip), pad)) return false;
     placed.push({ frame, x, y, s, flip });
     return true;
   };
@@ -366,23 +369,6 @@ function layHillsScenery() {
   ];
   sides.forEach((side, sideIndex) => {
     const length = Math.hypot(side.to.x - side.from.x, side.to.y - side.from.y), along = { x: (side.to.x - side.from.x) / length, y: (side.to.y - side.from.y) / length };
-    if (sideIndex === 0) {
-      // The north side, where the hills give onto Timberwood: scattered clumps at every depth, the wood thinning out.
-      const random = townRandom(sideIndex, 63);
-      const clump: Point[] = [];
-      for (let at = random() * 200; at <= length; at += 200 + random() * 300) {
-        const count = 2 + Math.floor(random() * 3), depth = 50 + random() * 250;
-        for (let index = 0; index < count; index++) {
-          const along2 = at + (random() - .5) * 200, out = Math.max(30, Math.min(330, depth + (random() - .5) * 150));
-          const x = side.from.x + along.x * along2, y = side.from.y + side.out.y * out;
-          if (clump.some(other => Math.abs(other.x - x) < 75 && Math.abs(other.y - y) < 50)) continue;
-          const small = random() < .3;
-          if (stand(pick(small ? HEDGE_TREES : BORDER_TREES, random), x, y, .88 + random() * .2, random() < .5, 16)) clump.push({ x, y });
-        }
-        if (random() < .5) stand(pick(HEDGE_BUSHES, random), side.from.x + along.x * (at + 120), side.from.y + side.out.y * Math.max(20, depth - 70), .95 + random() * .1, random() < .5, 12);
-      }
-      return;
-    }
     for (const [row, offset, step] of [[0, 80, 150], [1, 215, 165]] as const) {
       for (let at = row * step / 2, slot = 0; at <= length; at += step, slot++) {
         const random = townRandom(sideIndex, row, slot, 61);
@@ -466,19 +452,24 @@ export function townWindowDecor(x: number, y: number): WorldDecor[] {
   return decor;
 }
 
-/** Everything the hills (and the road to Timberwood) keep clear lies in here: past it, a countryside prop need not be looked at twice. */
+/** Everything the hills keep clear lies in here: past it, a countryside prop need not be looked at twice. */
 const HILLS_CLEAR_AREA = {
   left: Math.min(TOWN_HILLS.left, ...MINING_TRACK.map(point => point.x)) - 200, right: TOWN_HILLS.right + 200,
-  top: Math.min(TOWN_HILLS.top, ...MINING_TRACK.map(point => point.y), ...GROVE_ROAD.map(point => point.y)) - 200,
-  bottom: Math.max(TOWN_HILLS.bottom, ...MINING_TRACK.map(point => point.y)) + 200,
+  top: Math.min(TOWN_HILLS.top, ...MINING_TRACK.map(point => point.y)) - 200, bottom: Math.max(TOWN_HILLS.bottom, ...MINING_TRACK.map(point => point.y)) + 200,
+};
+/** As much for the woodcutters' road, its sign and Timberwood's chopping spots. */
+const GROVE_CLEAR_AREA = {
+  left: Math.min(TOWN_GROVE.left, ...GROVE_ROAD.map(point => point.x)) - 200, right: Math.max(GROVE_SIGNPOST_BOX.right, ...GROVE_ROAD.map(point => point.x)) + 200,
+  top: Math.min(TOWN_GROVE.top, GROVE_SIGNPOST_BOX.top) - 200, bottom: TOWN_GROVE.bottom + 500,
 };
 
 const chunkDecor = new Map<string, readonly WorldDecor[]>();
 /**
  * One countryside chunk's props as decor, each tree's or stone's shadow just before it, then the Copper Hills'
  * own scenery and ore rocks (each rock's shadow under it). The countryside never changes, so each chunk is made
- * once and shared by every window (and the ground's baked tiles) that holds it. Where the miners' track runs
- * through the countryside, nothing grows on it and nothing stands over it.
+ * once and shared by every window (and the ground's baked tiles) that holds it. Where the miners' track or the
+ * woodcutters' road runs through the countryside, nothing grows on it and nothing stands over it, nor in front of
+ * anyone chopping in Timberwood.
  */
 export function townChunkDecor(cx: number, cy: number): readonly WorldDecor[] {
   const key = `${cx}:${cy}`;
@@ -493,8 +484,9 @@ export function townChunkDecor(cx: number, cy: number): readonly WorldDecor[] {
   for (const prop of townChunkProps(cx, cy)) {
     const look = PROP_FRAMES[prop.kind];
     const frame = look.frames[prop.variant % look.frames.length], s = look.s * prop.s;
-    const box = spriteBox(atlasFrame(frame)!, prop.x, prop.y, s, prop.flip);
-    if (near(box, HILLS_CLEAR_AREA, 0) && (lowEnough(frame, s) ? onHillsEarth(prop.x, prop.y, 10) : crowdsHills(box, 14))) continue;
+    const box = spriteBox(atlasFrame(frame)!, prop.x, prop.y, s, prop.flip), low = lowEnough(frame, s);
+    if (near(box, HILLS_CLEAR_AREA, 0) && (low ? onHillsEarth(prop.x, prop.y, 10) : crowdsHills(box, 14))) continue;
+    if (near(box, GROVE_CLEAR_AREA, 0) && (low ? onGroveRoad(prop.x, prop.y, 10) : crowdsGroveRoad(box, 14) || hidesWoodcutter(box, prop.y))) continue;
     add(frame, prop.x, prop.y, s, prop.flip);
   }
   hillsScenery ??= layHillsScenery();

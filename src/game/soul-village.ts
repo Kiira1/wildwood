@@ -1,4 +1,4 @@
-import { TOWN_CENTER, TOWN_EAST_BRIDGE, TOWN_EAST_BRIDGE_APPROACHES, TOWN_EAST_FENCE_GAP, TOWN_EAST_FENCE_GAP_OUTSIDE, TOWN_INTERIORS } from "../../shared/town";
+import { TOWN_CENTER, TOWN_EAST_BRIDGE, TOWN_EAST_BRIDGE_APPROACHES, TOWN_EAST_FENCE_GAP, TOWN_EAST_FENCE_GAP_OUTSIDE, TOWN_INTERIORS, TOWN_WEST_BRIDGE } from "../../shared/town";
 import { MINING_TRACK_HALF_WIDTH, miningTrackDistanceSquared } from "../../shared/mining";
 import atlas from "./soul-atlas.json";
 import scene from "./soul-village-scene.json";
@@ -52,7 +52,7 @@ const EAST_BRIDGE_DECK: readonly WorldDecor[] = ([["168", -77], ["169", 77]] as 
 const railing = (at: { x: number; y: number }, left: number, right: number, from: number, to: number) =>
   solid([left, from, right, from, right, to, left, to], at.x, at.y);
 /** The village's own stone bridge, west of the square, and its wooden one on the road to the Soul portal. */
-const WEST_BRIDGE = { x: TOWN_CENTER.x - 1_912, y: TOWN_CENTER.y + 226 };
+const WEST_BRIDGE = TOWN_WEST_BRIDGE;
 const SOUTH_BRIDGE = { x: TOWN_CENTER.x - 606, y: TOWN_CENTER.y + 1_224.5 };
 const STONE_RAILINGS = (at: { x: number; y: number }) => [railing(at, -130, 130, -TOWN_EAST_BRIDGE.halfHeight, -34), railing(at, -130, 130, 33, TOWN_EAST_BRIDGE.halfHeight)];
 export const SOUL_VILLAGE_DECOR: readonly WorldDecor[] = [...scene.props.flatMap(([frame, x, y, depth, flags, open, door], index): WorldDecor[] => {

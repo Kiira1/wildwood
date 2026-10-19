@@ -1162,6 +1162,15 @@ export const OfflineProgress = __t.object("OfflineProgress", {
 });
 export type OfflineProgress = __Infer<typeof OfflineProgress>;
 
+export const OldGearPayout = __t.object("OldGearPayout", {
+  identity: __t.identity(),
+  itemsJson: __t.string(),
+  gold: __t.u64(),
+  masteryJson: __t.string(),
+  at: __t.timestamp(),
+});
+export type OldGearPayout = __Infer<typeof OldGearPayout>;
+
 export const PatreonAnnouncement = __t.object("PatreonAnnouncement", {
   userId: __t.string(),
   identity: __t.identity(),

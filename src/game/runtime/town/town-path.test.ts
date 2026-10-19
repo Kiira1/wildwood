@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { MINING_NODES } from "../../../../shared/mining";
 import {
-  TOWN_ARRIVAL, TOWN_CENTER, TOWN_DOORS, TOWN_EAST_BRIDGE, TOWN_EAST_FENCE_GAP, TOWN_FEET_OFFSET, TOWN_GROVE, TOWN_HILLS, TOWN_WALK_AREAS, inTownGrove, townRoomAt,
-  townWalkClamp,
+  TOWN_ARRIVAL, TOWN_CENTER, TOWN_DOORS, TOWN_EAST_BRIDGE, TOWN_EAST_FENCE_GAP, TOWN_FEET_OFFSET, TOWN_GROVE, TOWN_HILLS, TOWN_WALK_AREAS, TOWN_WEST_BRIDGE, inTownGrove,
+  townRoomAt, townWalkClamp,
 } from "../../../../shared/town";
-import { GROVE_ROAD, GROVE_ROAD_END, GROVE_ROAD_GATE, WOOD_STANDS, WOOD_TREE_NODES, WOODCUTTING_REACH, groveRoadDistanceSquared, type WoodTree } from "../../../../shared/woodcutting";
+import { GROVE_ROAD_END, GROVE_ROAD_GATE, GROVE_ROAD_START, WOOD_STANDS, WOOD_TREE_NODES, WOODCUTTING_REACH, groveRoadDistanceSquared, type WoodTree } from "../../../../shared/woodcutting";
 import { miningStandSpot } from "../auto-farm/auto-mine";
 import { planTownPath, townFeetClear, type TownPoint } from "./town-path";
 import { pushOutOf, TOWN_FEET_RADIUS, TOWN_SOLIDS } from "./town-runtime";
@@ -81,7 +81,7 @@ describe("walks planned through the Town", () => {
     }
   });
 
-  it("goes on to Timberwood, round the river's north end or over the bridge, to a tree in every stand", () => {
+  it("goes out west over the village's west bridge to Timberwood, to a tree in every stand", () => {
     for (const stand of WOOD_STANDS.map((_stand, index) => index)) {
       const trees = WOOD_TREE_NODES.filter(tree => tree.stand === stand);
       for (const tree of [trees[0], trees.at(-1)!]) {
@@ -89,28 +89,30 @@ describe("walks planned through the Town", () => {
         expect(goal, `tree ${tree.id}`).not.toBeNull();
         const path = planTownPath(arrival, goal)!;
         expect(path, `tree ${tree.id}`).not.toBeNull();
+        // Over the river on the west bridge's deck, between its railings.
+        const overRiver = crossings(goal, [...path].reverse().slice(1).concat(arrival), TOWN_WEST_BRIDGE.x);
+        expect(overRiver, `tree ${tree.id}`).toHaveLength(1);
+        expect(Math.abs(overRiver[0] - TOWN_WEST_BRIDGE.y), `tree ${tree.id}`).toBeLessThan(34);
         const end = walk(arrival, path);
         expect(Math.hypot(end.x - goal.x, end.y - goal.y), `tree ${tree.id}`).toBeLessThan(2);
       }
     }
   });
 
-  it("walks up the woodcutters' road from the miners' track into the grove, and from the hills straight up", () => {
-    const fork = GROVE_ROAD[0], path = planTownPath(fork, GROVE_ROAD_GATE)!;
-    // Up the road to where it comes into the grove, never far off it; then on to its end among the yews.
+  it("walks the woodcutters' road from the west bridge into the grove and on to its end", () => {
+    const path = planTownPath(GROVE_ROAD_START, GROVE_ROAD_GATE)!;
+    // Along the road to where it comes into the grove, never far off it; then on to its end among the yews.
     for (const point of path) expect(Math.sqrt(groveRoadDistanceSquared(point.x, point.y))).toBeLessThan(160);
-    const end = walk(fork, path);
+    const end = walk(GROVE_ROAD_START, path);
     expect(Math.hypot(end.x - GROVE_ROAD_GATE.x, end.y - GROVE_ROAD_GATE.y)).toBeLessThan(2);
     const deeper = walk(end, planTownPath(end, GROVE_ROAD_END)!);
     expect(Math.hypot(deeper.x - GROVE_ROAD_END.x, deeper.y - GROVE_ROAD_END.y)).toBeLessThan(2);
-    // The hills' north edge is open to the grove: no wall between.
-    const from = { x: TOWN_HILLS.left + 1_500, y: TOWN_HILLS.top + 200 }, goal = treeStandSpot(WOOD_TREE_NODES.find(tree => tree.stand === 1)!)!;
-    expect(walk(from, planTownPath(from, goal)!)).toEqual(expect.objectContaining({ x: expect.closeTo(goal.x, 0), y: expect.closeTo(goal.y, 0) }));
   });
 
-  it("keeps the walls round the village where they were, north of it too", () => {
+  it("keeps the walls round the village and the hills where they were, north of them too", () => {
     const [walls] = TOWN_WALK_AREAS;
     expect(townFeetClear(TOWN_CENTER.x, walls.top - 200)).toBe(false);
+    expect(townFeetClear(TOWN_HILLS.left + 1_500, TOWN_HILLS.top - 600)).toBe(false);
     expect(townFeetClear(TOWN_GROVE.left + 500, TOWN_GROVE.top + 300)).toBe(true);
     expect(inTownGrove(GROVE_ROAD_END.x, GROVE_ROAD_END.y)).toBe(true);
   });

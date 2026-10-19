@@ -17,6 +17,7 @@ import { BASE_INVENTORY_SLOT_CAPACITY } from "../../shared/gems";
 import { ATTACK_BALANCE_VERSION, BOSS_REWARD_CLAIM_BITS, SPACETIME_AUTH_CLIENT_ID, SPACETIME_AUTH_ISSUER } from "../../shared/rules";
 import { cosmeticUnlocks } from "../../shared/cosmetic-conversion";
 import { progressOf } from "../../tests/helpers/progress";
+import { MODULE_MIGRATION_VERSION } from "./module-migrations";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
 type Fixture = ReturnType<typeof crystalFixture>;
@@ -242,6 +243,8 @@ it("rolls no card slots for a kept copy", () => {
 
 it("ignores unanswered offers after five minutes, and an ignored offer cannot be kept", () => {
   const f = archer();
+  // Migrated already, so maintenance does not pay the old bow out (migration 62).
+  f.seed("moduleMigrationState", { id: 0, version: MODULE_MIGRATION_VERSION });
   const offer = seedOffer(f, B);
   later(f, EQUIPMENT_OFFER_LIFETIME_MS - 1);
   f.run(server.runMaintenance, {});
@@ -349,16 +352,17 @@ it("moves a guest's copies and offers to the account it links to, replacing the 
   const guest = identity("2");
   seedCopy(f, NONE, SAMURAI_HAT); // the account's own, from a bag the guest's replaces
   f.db.playerProgress.identity.delete(f.ctx.sender);
-  f.progress(guest, { inventoryJson: JSON.stringify([IRON_BOW]) });
+  // Graded gear: old map gear arriving on a link is paid out instead (old-gear-payout.ts).
+  f.progress(guest, { inventoryJson: JSON.stringify(["rare_bow"]) });
   f.seed("playerBalanceVersion", { identity: guest, version: ATTACK_BALANCE_VERSION });
-  seedCopy(f, B, IRON_BOW, guest);
-  seedOffer(f, C, IRON_BOW, guest);
+  seedCopy(f, B, "rare_bow", guest);
+  seedOffer(f, C, "rare_bow", guest);
   f.seed("accountLink", { code: "copy-link", guest, createdAt: f.ctx.timestamp });
   f.ctx.senderAuth = { jwt: { issuer: SPACETIME_AUTH_ISSUER, audience: [SPACETIME_AUTH_CLIENT_ID] } };
   f.run(server.claimGuestAccount, { code: "copy-link" });
   expect(copies(f, guest)).toEqual([]);
   expect(offers(f, guest)).toEqual([]);
-  expect(copies(f).map(row => [row.itemId, rollOf(row)])).toEqual([[IRON_BOW, B]]);
+  expect(copies(f).map(row => [row.itemId, rollOf(row)])).toEqual([["rare_bow", B]]);
   expect(offers(f).map(rollOf)).toEqual([C]);
 });
 

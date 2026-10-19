@@ -25,6 +25,7 @@ import type { Camera } from "./camera";
 import type { ActorStatus } from "./actor-renderer";
 import { healthBarTextY } from "./health-bar-layout";
 import { drawScreenSpaceAt } from "./render-space";
+import { OVERHEAD_IDENTITY_LIFT, OVERHEAD_PLATE_GAP, headArtTopOffsetY } from "./overhead-plate";
 import type { PlayerState } from "../types";
 
 type OutlinedText = (text: string, x: number, y: number, color: string, strokeWidth?: number) => void;
@@ -37,6 +38,11 @@ const DEVELOPER_BADGE = "[dev]";
 const SPEECH_BUBBLE_DURATION_MS = 8_000;
 const SPEECH_BUBBLE_FADE_MS = 1_250;
 const SPEECH_BUBBLE_STACK_GAP = 5;
+/** Label pixels from the top of the head or helmet to the lowest bubble; guests' plates carry an extra line. */
+const SPEECH_BUBBLE_LIFT = 76;
+const GUEST_SPEECH_BUBBLE_LIFT = 92;
+/** A bareheaded player's head top, for callers that do not give one. */
+const BARE_HEAD_TOP = headArtTopOffsetY(undefined, undefined);
 /** The same size chat, the HUD and the profile give it. */
 const OVERHEAD_PRESTIGE_BADGE_SIZE = PRESTIGE_BADGE_PX;
 const OVERHEAD_GENDER_ICON_OFFSET_Y = 0;
@@ -212,7 +218,8 @@ export function createPlayerIdentityRenderer(options: {
     return lines;
   }
 
-  function drawSpeechBubble(identity: string | undefined, x: number, y: number) {
+  /** `headTop` is the top of the head or helmet in world space (overhead-plate.ts). */
+  function drawSpeechBubble(identity: string | undefined, x: number, headTop: number) {
     if (!identity) return;
     const stack = bubbles.get(identity);
     if (!stack?.length) return;
@@ -222,6 +229,7 @@ export function createPlayerIdentityRenderer(options: {
     const ctx = options.ctx;
     const visibleWidth = options.viewport().width;
     const anchorScreenX = x * options.camera.zoom;
+    const y = headTop;
     const anchorScreenY = y * options.camera.zoom;
     const totalHeight = stack.reduce((height, bubble) => height + bubble.height, 0)
       + SPEECH_BUBBLE_STACK_GAP * (stack.length - 1);
@@ -229,7 +237,7 @@ export function createPlayerIdentityRenderer(options: {
       ctx.font = '900 12px "Arial Rounded MT Bold", "Arial Rounded MT", Arial, sans-serif';
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      let bottom = Math.max(totalHeight + 4, anchorScreenY - (options.isGuest(identity) ? 124 : 108)) - anchorScreenY;
+      let bottom = Math.max(totalHeight + 4, anchorScreenY - (options.isGuest(identity) ? GUEST_SPEECH_BUBBLE_LIFT : SPEECH_BUBBLE_LIFT)) - anchorScreenY;
       for (const bubble of stack) {
         const age = speechBubbleNow - bubble.sentAtMs;
         const opacity = age <= fadeStart ? 1 : clamp(1 - (age - fadeStart) / SPEECH_BUBBLE_FADE_MS, 0, 1);
@@ -261,22 +269,22 @@ export function createPlayerIdentityRenderer(options: {
     });
   }
 
-  function drawActorStatus({ x, y, identity, name, gender, nameColor, hp, maxHp, power, fillColor }: ActorStatus) {
+  function drawActorStatus({ x, y, headTop = y + BARE_HEAD_TOP, identity, name, gender, nameColor, hp, maxHp, power, fillColor }: ActorStatus) {
     const ctx = options.ctx;
-    drawScreenSpaceAt(ctx, options.camera.zoom, x, y, () => {
+    // Anchored on the head or helmet in world space, so it clears tall helmets at every camera framing.
+    drawScreenSpaceAt(ctx, options.camera.zoom, x, headTop, () => {
       const centerX = 0;
       const barW = 80;
       const barH = options.healthBarHeight;
       const barX = centerX - Math.floor(barW / 2);
-      // Clear of the character's head without floating away from it.
-      const barY = -47;
-      const fillWidth = Math.round(barW * clamp(hp / maxHp, 0, 1));
       // A pill: the frame, the empty channel and the fill all share the same
       // corner radius, so the bar reads as one rounded shape rather than a
       // rectangle with a border painted round it.
       // A slimmer frame than the old square one: at two pixels the rounded
       // outline alone made the whole bar look twice the size.
       const framePad = 1.5;
+      const barY = -OVERHEAD_PLATE_GAP - framePad - barH;
+      const fillWidth = Math.round(barW * clamp(hp / maxHp, 0, 1));
       const frameRadius = options.healthBarRadius + framePad;
       ctx.fillStyle = "rgba(0,0,0,.88)";
       options.roundRect(barX - framePad, barY - framePad, barW + framePad * 2, barH + framePad * 2, frameRadius);
@@ -392,10 +400,11 @@ export function createPlayerIdentityRenderer(options: {
     ctx.restore();
   }
 
-  function drawPlayerIdentity(identity: string | undefined, name: string, power: number | null, centerX: number, bottom: number, color: string, explicitGender?: PlayerGender) {
+  /** A name and power with no bar, about where they sit over one; `headTop` as drawSpeechBubble's. */
+  function drawPlayerIdentity(identity: string | undefined, name: string, power: number | null, centerX: number, headTop: number, color: string, explicitGender?: PlayerGender) {
     if (!name) return;
-    drawScreenSpaceAt(options.ctx, options.camera.zoom, centerX, bottom, () => {
-      paintPlayerIdentity(identity, name, power, 0, 0, color, explicitGender);
+    drawScreenSpaceAt(options.ctx, options.camera.zoom, centerX, headTop, () => {
+      paintPlayerIdentity(identity, name, power, 0, -OVERHEAD_IDENTITY_LIFT, color, explicitGender);
     });
   }
 

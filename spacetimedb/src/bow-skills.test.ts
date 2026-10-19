@@ -88,13 +88,14 @@ function linkGuest(f: Fixture, guest: ReturnType<typeof identity>) {
 it("moves a guest's rolls to the account, keeping the account's own roll for a bow it already had", () => {
   const f = crystalFixture();
   const guest = identity("2");
-  seedRoll(f, "iron_bow", { arrowStorm: 9, ricochet: 9, piercingShot: 9 }, guest);
-  seedRoll(f, "night_bow", { arrowStorm: 4, ricochet: 0, piercingShot: 3 }, guest);
-  seedRoll(f, "iron_bow", { arrowStorm: 1, ricochet: 0, piercingShot: 0 });
+  // Graded bows: an old map bow's roll is cleared on a link (old-gear-payout.ts).
+  seedRoll(f, "rare_bow", { arrowStorm: 9, ricochet: 9, piercingShot: 9 }, guest);
+  seedRoll(f, "epic_bow", { arrowStorm: 4, ricochet: 0, piercingShot: 3 }, guest);
+  seedRoll(f, "rare_bow", { arrowStorm: 1, ricochet: 0, piercingShot: 0 });
   linkGuest(f, guest);
   expect(rows(f, guest)).toEqual([]);
-  expect(rowFor(f, "iron_bow")).toMatchObject({ arrowStorm: 1, ricochet: 0, piercingShot: 0 });
-  expect(rowFor(f, "night_bow")).toMatchObject({ arrowStorm: 4, ricochet: 0, piercingShot: 3, identity: f.ctx.sender });
+  expect(rowFor(f, "rare_bow")).toMatchObject({ arrowStorm: 1, ricochet: 0, piercingShot: 0 });
+  expect(rowFor(f, "epic_bow")).toMatchObject({ arrowStorm: 4, ricochet: 0, piercingShot: 3, identity: f.ctx.sender });
 });
 
 it("is erased with the account and leaves other accounts alone", () => {

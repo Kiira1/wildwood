@@ -5,7 +5,8 @@ import { table, t, SenderError } from "spacetimedb/server";
 import type { Identity, Timestamp } from "spacetimedb";
 import type { ModuleReducerCtx, ModuleViewCtx } from "./index";
 import { REBALANCE_MAIL_ID, REBALANCE_MAIL_GEMS, REBALANCE_MAIL_TITLE, REBALANCE_MAIL_BODY,
-  SLOT_UPGRADE_MAIL_ID, SLOT_UPGRADE_MAIL_GEMS, SLOT_UPGRADE_MAIL_TITLE, SLOT_UPGRADE_MAIL_BODY } from "../../shared/mailbox";
+  SLOT_UPGRADE_MAIL_ID, SLOT_UPGRADE_MAIL_GEMS, SLOT_UPGRADE_MAIL_TITLE, SLOT_UPGRADE_MAIL_BODY,
+  GEAR_OVERHAUL_MAIL_ID, GEAR_OVERHAUL_MAIL_GEMS, GEAR_OVERHAUL_MAIL_TITLE, GEAR_OVERHAUL_MAIL_BODY } from "../../shared/mailbox";
 
 // One shared letter; per-account state is written only on read or claim.
 export const mailboxLetter = table({ name: "mailbox_letter", public: false }, {
@@ -85,6 +86,10 @@ export function publishMailboxLetter(ctx: ModuleReducerCtx, letter: { id: string
 
 export function publishRebalanceMail(ctx: ModuleReducerCtx) {
   publishMailboxLetter(ctx, { id: REBALANCE_MAIL_ID, title: REBALANCE_MAIL_TITLE, body: REBALANCE_MAIL_BODY, gems: REBALANCE_MAIL_GEMS });
+}
+
+export function publishGearOverhaulMail(ctx: ModuleReducerCtx) {
+  publishMailboxLetter(ctx, { id: GEAR_OVERHAUL_MAIL_ID, title: GEAR_OVERHAUL_MAIL_TITLE, body: GEAR_OVERHAUL_MAIL_BODY, gems: GEAR_OVERHAUL_MAIL_GEMS });
 }
 
 export function publishSlotUpgradeMail(ctx: ModuleReducerCtx) {

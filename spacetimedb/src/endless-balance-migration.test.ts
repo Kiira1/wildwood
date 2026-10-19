@@ -4,6 +4,7 @@ import { crystalFixture, identity, server } from "../../tests/helpers/crystal-ho
 import { rebaseProgressByEffort } from "../../shared/progression-rebase";
 import { CAMPAIGN_UNLOCK_FIELDS } from "../../shared/equipment-access";
 import { progressOf } from "../../tests/helpers/progress";
+import { progressWithoutOldGear } from "./old-gear-payout";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
 it("takes a cached pre-conversion loadout like any other: owned gear goes on, stats stay the server's", () => {
@@ -30,9 +31,10 @@ it("converts online and offline accounts once, backs up stats, gates gear and re
   f.run(server.onConnect);
   const next = progressOf(f, identity("2"));
   const expected = rebaseProgressByEffort(original, null, () => 0);
-  expect(next).toMatchObject(expected.progress);
+  // 62 then pays the old Forest bow out; the rest of the bag stays.
+  expect(next).toMatchObject(progressWithoutOldGear(expected.progress).progress);
   expect(next.ionCitadelUnlocked).toBe(false);
-  expect(next.inventoryJson).toContain("starter_bow");
+  expect(next.inventoryJson).toContain("basic_paper_hat");
   expect(f.db.playerEndlessRebaseBackup.identity.find(identity("2"))).toMatchObject({ damage: original.damage, maxHp: original.maxHp });
   expect(f.db.regularEnemyLootCursor.key.find("receipt")).toBeTruthy();
   expect(f.db.playerBalanceVersion.identity.find(identity("2")).version).toBe(9);
