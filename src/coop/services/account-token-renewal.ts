@@ -45,16 +45,19 @@ export function createAccountTokenRenewal(storage: Storage, key: string, tabStor
     return null;
   }
   function clear() { storage.removeItem(refreshKey); }
-  type Grant = { subject?: string; token?: string; nonce?: string; savedAt?: number };
+  /** chainAt: when the sign-in that started this run of refresh tokens came back. */
+  type Grant = { subject?: string; token?: string; nonce?: string; savedAt?: number; chainAt?: number };
   function grantFor(subject: string): Grant | null {
     let grant: Grant = {};
     try { grant = JSON.parse(storage.getItem(refreshKey) || "{}"); } catch {}
     return grant.subject === subject && grant.token ? grant : null;
   }
-  function save(token: string, refresh: unknown, originalNonce?: string) {
+  /** A sign-in starts a new chain (chainAt now); a renewal passes the chain's start on, or null when unknown. */
+  function save(token: string, refresh: unknown, originalNonce?: string, chainAt: number | null = Date.now()) {
     const claims = inspectSpacetimeIdToken(token);
     // Write the refresh grant before exposing the new ID token to other tabs.
-    if (typeof refresh === "string" && refresh) storage.setItem(refreshKey, JSON.stringify({ subject: claims.sub, token: refresh, nonce: claims.nonce ?? originalNonce, savedAt: Date.now() }));
+    if (typeof refresh === "string" && refresh) storage.setItem(refreshKey, JSON.stringify({ subject: claims.sub, token: refresh,
+      nonce: claims.nonce ?? originalNonce, savedAt: Date.now(), ...(chainAt === null ? {} : { chainAt }) }));
     else clear();
     storage.setItem(key, token);
   }
@@ -93,6 +96,8 @@ export function createAccountTokenRenewal(storage: Storage, key: string, tabStor
             // last signed in at SpacetimeAuth) is what shows a cap on the whole grant.
             throw new AccountRenewalRequired("grant-rejected", [
               `grant-age=${typeof grant.savedAt === "number" ? hours(Date.now() - grant.savedAt) : "unknown"}`,
+              // Time since the sign-in this chain of refresh tokens came from.
+              `chain-age=${typeof grant.chainAt === "number" ? hours(Date.now() - grant.chainAt) : "unknown"}`,
               `token-age=${hours(Date.now() - iat * 1000)}`,
               `auth-age=${typeof authTime === "number" ? hours(Date.now() - authTime * 1000) : "unknown"}`,
               `interrupted=${interruptedBefore ? "yes" : "no"}`,
@@ -114,7 +119,7 @@ export function createAccountTokenRenewal(storage: Storage, key: string, tabStor
         const expectedNonce = grant.nonce ?? previousClaims.nonce;
         if (claims.sub !== subject || (claims.nonce !== undefined && claims.nonce !== expectedNonce)) throw new Error("Account changed during renewal");
         if (storage.getItem(key) !== before) throw new Error("Account changed during renewal");
-        save(result.id_token, result.refresh_token ?? grant.token, expectedNonce);
+        save(result.id_token, result.refresh_token ?? grant.token, expectedNonce, grant.chainAt ?? null);
         interruptedBefore = false;
         return result.id_token;
       } finally { clearTimeout(timeout); markAccountRenewal(false, tabStorage); }

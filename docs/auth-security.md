@@ -70,6 +70,14 @@ PKCE authorization request, and a deliberately invalid refresh grant returns
 was required. Actual authenticated renewal is covered by local regression tests;
 it still needs confirmation from player diagnostics after release.
 
+Player diagnostics, 2026-10-20: SpacetimeAuth refuses every refresh from 24 hours
+after sign-in (`auth_time`) on (`invalid_grant`, "grant request is invalid"),
+however often it was rotated in between. None was refused earlier.
+The game then sends the player back through SpacetimeAuth. A tab in the
+background waits until it is shown, and uses the sign-in another tab restored
+if there is one. Forced logins now return a refresh grant, so the old
+follow-up trip for a missing one is gone.
+
 ## Static-hosting policy limits
 
 GitHub Pages does not provide project-controlled response headers. WildStat
