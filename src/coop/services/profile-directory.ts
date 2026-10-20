@@ -15,7 +15,6 @@ import { createPatreonService } from "./patreon-service";
 import { clearAvatarFrames } from "../../app/avatar-frames";
 import { PROFILE_ICON_SNAPSHOT, encodeProfileIcon, isSnapshotProfileIcon, normalizeProfileIcon, profileIconBackground } from "../../../shared/profile-icons";
 import { createProfileSnapshots } from "./profile-snapshots";
-import { preloadProfileIcons } from "../../app/profile-icon-preload";
 import { NAME_COLOR_AUTO, isValidNameColor } from "../../../shared/name-colors";
 
 export type ProfilePresentation = {
@@ -223,10 +222,6 @@ export function createProfileDirectory(dependencies: ProfileDirectoryDependencie
         const sender = identities.get(identity);
         if (sender && identity !== dependencies.localIdentity()) chatPortraits.request(sender);
         return chatPortraits.icon(identity) ?? icons.get(identity) ?? 0;
-      },
-      async prepareChatPortraits(senders: readonly string[]) {
-        await chatPortraits.ready(senders);
-        await preloadProfileIcons(senders.map(sender => chatPortraits.icon(sender) ?? icons.get(sender) ?? 0));
       },
       playerSprite(identity = dependencies.localIdentity()) {
         return sprites.get(identity) ?? 0;

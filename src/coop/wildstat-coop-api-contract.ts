@@ -171,7 +171,6 @@ type ExpectedApiKey =
   | "profileSnapshot"
   | "profileSnapshotsRevision"
   | "snapshotProfileCharacter"
-  | "prepareChatPortraits"
   | "pulseDuel"
   | "pendingOfflineProgress"
   | "acknowledgeOfflineProgress"

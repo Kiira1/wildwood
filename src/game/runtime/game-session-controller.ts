@@ -1,4 +1,5 @@
 import { isProceduralMap } from "../../../shared/procedural-maps";
+import { markEntered } from "../../app/after-entry";
 import { isGuildHallMap } from "../../../shared/guild-hall";
 import { DUEL_ARENA } from "../duel";
 import { snapCameraToPlayer, updateCamera } from "./render/camera";
@@ -356,6 +357,8 @@ export function createGameSessionController(dependencies: SessionDependencies) {
     dependencies.resolvePortalCollision();
     hasStarted = true;
     running = true;
+    // In the world: what the loading screen held back (portraits, other gear, sounds) may load now.
+    markEntered();
     if (markIntro) dependencies.beginAdventure();
     if (dependencies.connected() && !awaitingServerPosition) dependencies.syncStoppedPosition();
     refreshFrameClock();

@@ -298,7 +298,7 @@ import { MAX_PLAYER_STAT, PLAYER_SPAWN } from "../shared/rules";
   });
 
   const startupScreen = createStartupScreen({
-    coop: coopAccess, progressLoaded: () => progress.isLoaded(), playerSpriteReady: () => playerSpriteReady,
+    coop: coopAccess, progressLoaded: () => progress.isLoaded(), playerSpriteReady: () => playerSpriteReady(),
     worldArtReady: () => assets.worldArtReady(), currentMapReady: startupMapAssetsReady, finishStartup,
     showUpdateNotice: showCurrentUpdateNotice, startGame, coordinator: () => startupCoordinator, showMessage,
   });
@@ -542,9 +542,7 @@ import { MAX_PLAYER_STAT, PLAYER_SPAWN } from "../shared/rules";
     collideEnemies: boss => playerCombat.pushEnemiesFromBoss(boss),
   });
 
-  let playerSpriteReady = false;
   const markPlayerSpriteReady = () => {
-    playerSpriteReady = true;
     startup.refreshLoading();
     finishStartup();
   };
@@ -556,7 +554,9 @@ import { MAX_PLAYER_STAT, PLAYER_SPAWN } from "../shared/rules";
       finishStartup();
     },
     onPlayerAppearanceAssetReady: markPlayerSpriteReady,
+    localOutfit: () => Object.values(equipmentAppearance(inventory)),
   });
+  const playerSpriteReady = bootstrapAssets.localPlayerArtReady;
   const { assets, inventoryCharacterPreview, leaderboardPodiumPreview, playerAppearanceAssets, profileCharacterPreview } = bootstrapAssets;
   const mapAssets = createMapAssetLoading({
     coop: coopAccess, assets, mapBalance, mapConfig: MAP_CONFIG, performanceMonitor,
@@ -667,7 +667,7 @@ import { MAX_PLAYER_STAT, PLAYER_SPAWN } from "../shared/rules";
     showProgressCompletion: (kind, detail, icon, color) => runtimeHud.showProgressCompletion(kind, detail, icon, color),
     profileWindow, closeIconPicker: closeProfileIconPicker, clearInput: playerInput.clear,
     lowPerformanceMode: appShell.lowPerformanceMode, openGuildHall: () => guildHall.openWindow(),
-    assets, playerAppearanceAssets, leaderboardPodiumPreview, playerSpriteReady: () => playerSpriteReady,
+    assets, playerAppearanceAssets, leaderboardPodiumPreview,
     paintProfileIconCanvas, previewPrestigeUnlock: prestigeUnlock.preview,
     stopAutoFarm: reason => autoFarm.stop(reason), teleportToMap: mapController.teleportToMap,
     metrics: { performance: performanceMonitor, enemies, projectiles, enemyShots, particles, canvasRuntime, canvas },
@@ -769,7 +769,7 @@ import { MAX_PLAYER_STAT, PLAYER_SPAWN } from "../shared/rules";
 
   startupCoordinator = createStartupCoordination({
     coop: coopAccess, version: GAME_VERSION, gameUpdateGate: gameUpdateGateEl, canvas, screen: startupScreen, session, progress,
-    playerSpriteReady: () => playerSpriteReady, worldArtReady: assets.worldArtReady, setGameplayPause,
+    playerSpriteReady, worldArtReady: assets.worldArtReady, setGameplayPause,
     saveBeforeUpdate: () => { saveProgress(true); coop?.syncMovementState?.(player.x, player.y, 0, 0, "keyboard", true); },
     suspendPlayerVisibility: () => playerVisibility.suspend(),
     showNewPlayerIntro: () => beginNewPlayer({ recordGameplayReady, settings: appShell, onboarding, startGame, intro: startup }),
