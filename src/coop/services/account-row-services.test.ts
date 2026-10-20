@@ -1,5 +1,5 @@
 import { expect, it, vi } from "vitest";
-import { createAccountRowServices } from "./account-row-services";
+import { createAccountRowServices, keptCardSlots } from "./account-row-services";
 import { MINING_NODES } from "../../../shared/mining";
 import { WOOD_TREE_NODES } from "../../../shared/woodcutting";
 
@@ -31,4 +31,15 @@ it("sends the waiting breaks before any call whose server check reads ores or ba
     expect(told).toHaveBeenCalledWith("Not Connected");
     expect(rows.api.minedNodeAt(copper.id)).toBeNull();
   }
+});
+
+it("keeps the card slots until the perks in play change", () => {
+  let perks: { weaponCards: number } | null = null;
+  const slots = keptCardSlots(() => perks);
+  const base = slots();
+  expect(slots()).toBe(base);
+  perks = { weaponCards: 1 };
+  const more = slots();
+  expect(more.HAND).toBe(base.HAND + 1);
+  expect(slots()).toBe(more);
 });

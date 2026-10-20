@@ -21,7 +21,7 @@ import { createItemCollectionRows } from "./item-collection-service";
 import { createStarterChestRows } from "./starter-chest-service";
 import { itemLevelParts, type ItemLevel } from "../../../shared/items";
 import { NO_CARDS, cardStatFactors, cardTotals, type CardTotals } from "../../../shared/card-effects";
-import { BASE_CARD_SLOTS, activeCardsInPlay, type ActiveCardSlots, type ActiveCards } from "../../../shared/active-cards";
+import { BASE_CARD_SLOTS, activeCardSlots, activeCardsInPlay, type ActiveCardSlots, type ActiveCards } from "../../../shared/active-cards";
 import type { OreId } from "../../../shared/refine";
 
 type Ores = Readonly<Partial<Record<OreId, number>>>;
@@ -40,6 +40,16 @@ export function presenceGatherClock(presence: () => ServerClockSource | undefine
     serverNowMs: () => presence()?.api.serverNowMs() ?? wallClockNowMs(),
     monotonicNowMs,
     observeServerTime: serverAtMs => presence()?.tables.observeServerTime(serverAtMs),
+  };
+}
+
+/** The active card slots for the perks in play, worked out again only when the perks change. */
+export function keptCardSlots(perks: () => Parameters<typeof activeCardSlots>[0]): () => ActiveCardSlots {
+  let slotsFor: Parameters<typeof activeCardSlots>[0] = null, slots = activeCardSlots(null);
+  return () => {
+    const ranks = perks();
+    if (ranks !== slotsFor) { slotsFor = ranks; slots = activeCardSlots(ranks); }
+    return slots;
   };
 }
 

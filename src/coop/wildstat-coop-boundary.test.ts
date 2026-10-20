@@ -4,7 +4,7 @@ import { measureSource } from "../../tests/helpers/source-readability";
 // Lower the long-line and byte numbers as extractions land; never raise them.
 const MAX_LINES_OVER_160 = 14;
 const MAX_LINES_OVER_300 = 0;
-const MAX_BYTES = 44_852;
+const MAX_BYTES = 44_510;
 
 const coopSource = new URL("../wildstat-coop.ts", import.meta.url);
 
