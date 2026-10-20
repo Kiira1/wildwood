@@ -172,6 +172,25 @@ describe('Auto Mine', () => {
     expect(s.mine.state()).toMatchObject({ status: `Mining ${miningNodeName(soonest)}`, target: soonest });
   });
 
+  it('stays by the bare rock it waits on as it grows back, and mines it at once', () => {
+    const spot = miningStandSpot(copper[0])!;
+    const s = setup({ at: { x: spot.x, y: spot.y - TOWN_FEET_OFFSET }, bag: { owned: [], equipped: [], extraCopies: 0, ores: {}, capacity: 30 } });
+    // Every copper rock bare; the first grows back between two of the runtime's looks at its rocks, the rest after.
+    const respawn = (node: MiningNode) => MINING_NODE_KINDS[node.kind].respawnSeconds * 1_000;
+    copper.forEach((node, index) => s.world.broken.set(node.id, s.world.server - respawn(node) + (index ? 3_250 + index * 1_000 : 2_250)));
+    s.mine.start();
+    let farthest = 0;
+    const targets = new Set<number | undefined>();
+    for (let frame = 0; frame < 20 / DT && !s.source.queueMiningBreak.mock.calls.length; frame++) {
+      s.step();
+      farthest = Math.max(farthest, distance(s.feet(), spot));
+      targets.add(s.mine.state().target?.id);
+    }
+    expect(s.source.queueMiningBreak).toHaveBeenCalledExactlyOnceWith(copper[0].id, expect.any(Number));
+    expect([...targets]).toEqual([copper[0].id]);
+    expect(farthest).toBe(0);
+  });
+
   it('counts rocks grown back sooner with Resource Respawn research', () => {
     for (const [rank, waiting] of [[0, true], [5, false]] as const) {
       resetMiningScene();

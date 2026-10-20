@@ -161,6 +161,25 @@ describe('Auto Chop', () => {
     expect(s.chop.state().status).toMatch(/^Waiting for Trees to Grow Back · \d+:\d\d$/);
   });
 
+  it('stays by the stump it waits on as it grows back, and chops it at once', () => {
+    const spot = choppingStandSpot(pines[0])!;
+    const s = setup({ at: { x: spot.x, y: spot.y - TOWN_FEET_OFFSET } });
+    // Every pine a stump; the first grows back between two of the runtime's looks at its stumps, the rest after.
+    const respawn = WOODCUTTING_RESPAWN_SECONDS * 1_000;
+    pines.forEach((tree, index) => s.world.felled.set(tree.id, s.world.server - respawn + (index ? 3_250 + index * 1_000 : 2_250)));
+    s.chop.start();
+    let farthest = 0;
+    const targets = new Set<number | undefined>();
+    for (let frame = 0; frame < 20 / DT && !s.chopTree.mock.calls.length; frame++) {
+      s.step();
+      farthest = Math.max(farthest, distance(s.feet(), spot));
+      targets.add(s.chop.state().target?.id);
+    }
+    expect(s.chopTree).toHaveBeenCalledExactlyOnceWith(pines[0].id, expect.any(Number));
+    expect([...targets]).toEqual([pines[0].id]);
+    expect(farthest).toBe(0);
+  });
+
   it('gives way to the player\'s own keys, and carries on when they let go', () => {
     const s = setup();
     s.chop.start();

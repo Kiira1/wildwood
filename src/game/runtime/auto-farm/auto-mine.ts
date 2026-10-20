@@ -8,7 +8,7 @@ import { REFINE_ORES } from '../../../../shared/refine';
 import { inTownHills } from '../../../../shared/town';
 import { miningScene } from '../town/mining-scene';
 import { townFeetClear, type TownPoint } from '../town/town-path';
-import { createAutoGather, gatherClock, type AutoGatherOptions } from './auto-gather';
+import { createAutoGather, gatherClock, regrowsAt, type AutoGatherOptions } from './auto-gather';
 
 /** The ores picked to mine, per device, as Auto Farm's sliders are. v2 added Arcane Crystal; v1's picks carry over with it on. */
 export const AUTO_MINE_ORES_KEY = 'wildstat:automine-ores:v2';
@@ -106,10 +106,7 @@ export function createAutoMine(options: AutoGatherOptions & {
   const open = (node: MiningNode) => allowed(node) && !full.has(bagKey(node));
   function bareUntil(node: MiningNode, at = serverNow()) {
     const respawn = gatherRespawnMs(MINING_NODE_KINDS[node.kind].respawnSeconds, options.source()?.research?.().resourceRespawn ?? 0);
-    const brokenAt = options.source()?.minedNodeAt?.(node.id) ?? null;
-    if (brokenAt !== null && at - brokenAt < respawn) return brokenAt + respawn;
-    // Broken here a moment ago, before the server lists it.
-    return miningScene.bare.has(node.id) ? at + respawn : null;
+    return regrowsAt(options.source()?.minedNodeAt?.(node.id) ?? null, respawn, at, miningScene.bare.has(node.id));
   }
 
   const gather = createAutoGather<MiningNode>(options, {

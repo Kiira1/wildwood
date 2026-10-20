@@ -6,7 +6,7 @@ import {
 import { gatherRespawnMs } from '../../../../shared/gather-respawn';
 import { townFeetClear, type TownPoint } from '../town/town-path';
 import { woodcuttingScene } from '../town/woodcutting-scene';
-import { createAutoGather, gatherClock, type AutoGatherOptions } from './auto-gather';
+import { createAutoGather, gatherClock, regrowsAt, type AutoGatherOptions } from './auto-gather';
 
 /** The trees picked to chop, per device, as Auto Mine's ores are. */
 export const AUTO_CHOP_TREES_KEY = 'wildstat:autochop-trees:v1';
@@ -93,10 +93,7 @@ export function createAutoChop(options: AutoGatherOptions & {
   const open = (stand: WoodStand) => canChopStand(stand, options.source()?.woodcutting?.() ?? 0);
   function felledUntil(tree: WoodTree, at = serverNow()) {
     const respawn = gatherRespawnMs(WOODCUTTING_RESPAWN_SECONDS, options.source()?.research?.().resourceRespawn ?? 0);
-    const choppedAt = options.source()?.choppedTreeAt?.(tree.id) ?? null;
-    if (choppedAt !== null && at - choppedAt < respawn) return choppedAt + respawn;
-    // Felled here a moment ago, before the server lists it.
-    return woodcuttingScene.felled.has(tree.id) ? at + respawn : null;
+    return regrowsAt(options.source()?.choppedTreeAt?.(tree.id) ?? null, respawn, at, woodcuttingScene.felled.has(tree.id));
   }
   const pickedOpen = () => WOOD_STANDS.filter(stand => picked.has(stand.kind) && open(stand));
   const choppable = () => pickedOpen().filter(stand => !full.has(stand.kind));
