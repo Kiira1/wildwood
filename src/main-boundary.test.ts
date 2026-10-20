@@ -8,11 +8,11 @@ import { measureSource } from "../tests/helpers/source-readability";
 //
 // Lower the numbers as extractions land. Never satisfy them by packing code onto
 // longer lines or deleting useful comments: extract a named module instead.
-const MAX_LINES = 1_938;
+const MAX_LINES = 1_931;
 const TARGET_LINES = 1_000;
 const MAX_LINES_OVER_160 = 86;
 const MAX_LINES_OVER_300 = 17;
-const MAX_BYTES = 113_669;
+const MAX_BYTES = 112_952;
 
 const mainSource = new URL("./main.ts", import.meta.url);
 
