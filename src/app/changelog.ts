@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.916.10": [
+    "Behind-the-scenes code cleanup; no gameplay changes",
+  ],
   "0.916.9": [
     "Fixed a weapon that looked equipped but was not, so kills trained the wrong Mastery",
     "Equipping something the server refuses now says so",
@@ -3702,6 +3705,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.916.10": "2026-10-20",
   "0.916.9": "2026-10-19",
   "0.916.8": "2026-10-19",
   "0.916.7": "2026-10-19",
