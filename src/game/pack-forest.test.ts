@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 import { withPackForest } from "./pack-forest";
-import { SOUL_ATLAS } from "./soul-village";
+import { SOUL_ATLAS } from "./town-village";
 import { TUTORIAL_FOREST_MAP_ID, type WorldDecor } from "./world";
 
 const decor: WorldDecor[] = [

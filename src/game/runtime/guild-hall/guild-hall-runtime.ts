@@ -2,7 +2,7 @@ import {
   EMPTY_GUILD_HALL_LEVELS, GUILD_HALL_DOOR, GUILD_HALL_FEET_OFFSET, guildHallGuildId, guildHallRoom, isGuildHallMap, type GuildHallLevels,
 } from "../../../../shared/guild-hall";
 import { guildHallBoard, guildHallDecor, guildHallDoorState, guildHallSeatAt, guildHallSeats, guildHallShown, guildHallSolids } from "../../guild-hall";
-import type { SoulSolid } from "../../soul-village";
+import type { SoulSolid } from "../../town-village";
 import type { MapId, WorldDecor } from "../../world";
 import { goThroughDoor, pushOutOf, type TownSource } from "../town/town-runtime";
 import type { PlayerState } from "../types";

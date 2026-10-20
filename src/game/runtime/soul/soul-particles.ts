@@ -1,6 +1,6 @@
 import { decodedImage } from "../render/decoded-image";
 import { freezeEntry, type FrozenImage } from "../render/frozen-canvas";
-import { SOUL_VILLAGE_EMITTERS, type SoulEmitter } from "../../soul-village";
+import { TOWN_VILLAGE_EMITTERS, type SoulEmitter } from "../../town-village";
 import type { Camera } from "../render/camera";
 import { soulFrame } from "./soul-prop-renderer";
 
@@ -50,7 +50,7 @@ export function createSoulParticles(options: {
   time: () => number;
   active: () => boolean;
 }) {
-  const running = SOUL_VILLAGE_EMITTERS.map(emitter => ({ emitter, particles: [], owed: 0 } as Running));
+  const running = TOWN_VILLAGE_EMITTERS.map(emitter => ({ emitter, particles: [], owed: 0 } as Running));
   const tinted = new Map<string, FrozenImage>();
   let lastTime = Number.NaN;
 

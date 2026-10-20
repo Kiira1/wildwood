@@ -37,7 +37,7 @@ describe("computePlayerStats", () => {
   });
 
   it("keeps attacks under the cap and raises the gold chance with Gold Luck", () => {
-    const stats = computePlayerStats(inputs({ base: { ...inputs().base, attackInterval: .01 }, gearLuckRank: 3 }));
+    const stats = computePlayerStats(inputs({ base: { ...inputs().base, attackInterval: .01 }, goldLuckRank: 3 }));
     expect(stats.attackInterval).toBe(stats.capInterval);
     expect(stats.goldChanceMultiplier).toBeCloseTo(luckMultiplier("gearLuck", 3));
   });

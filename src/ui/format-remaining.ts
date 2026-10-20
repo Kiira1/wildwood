@@ -1,4 +1,4 @@
-/** Shared by the upgrade bench and the research desk so both signs read alike. */
+/** A countdown as h:mm:ss, or m:ss under an hour: the time left on an equipment offer. */
 export function formatRemaining(milliseconds: number) {
   const totalSeconds = Math.max(0, Math.ceil(milliseconds / 1_000));
   const hours = Math.floor(totalSeconds / 3_600);

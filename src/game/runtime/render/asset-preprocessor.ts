@@ -1,7 +1,7 @@
 import { SOUL_SHORE_SOURCE, SOUL_WATER_SOURCE } from "../soul/soul-water";
 import { decodeOffThread, releaseDecoded } from "./decoded-image";
 import { FOREST_ROAD_SOURCE } from "./forest-road";
-import { SOUL_ATLAS_SOURCE, SOUL_INTERIORS_SOURCE, SOUL_VILLAGE_GROUND_SOURCE, SOUL_VILLAGE_PROPS_SOURCE } from "../soul/soul-prop-renderer";
+import { SOUL_ATLAS_SOURCE, SOUL_INTERIORS_SOURCE, TOWN_VILLAGE_GROUND_SOURCE, TOWN_VILLAGE_PROPS_SOURCE } from "../soul/soul-prop-renderer";
 import { isProceduralMap } from "../../../../shared/procedural-maps";
 import { isGuildHallMap } from "../../../../shared/guild-hall";
 import { GUILD_HALL_GROUND_SOURCE, GUILD_HALL_PROPS_SOURCE, GUILD_HALL_ROOMS_SOURCE } from "../../guild-hall";
@@ -253,7 +253,7 @@ export function createAssetPreprocessor(onWorldAssetReady: () => void) {
   const duelSpaceAsset = createLazyImageAsset(DUEL_SPACE_BACKGROUND_SOURCE);
   const duelPlatformAsset = createLazyImageAsset(DUEL_PLATFORM_ART_SOURCE);
   const snowPineAsset = createLazyImageAsset("assets/wildstat/snow-pine-tree-v1.webp");
-  const upgradeBenchAsset = createLazyImageAsset("assets/wildstat/workbench-upgrade-station-v1.webp");
+  const workbenchAsset = createLazyImageAsset("assets/wildstat/workbench-upgrade-station-v1.webp");
   const lavaAssetSources = [
     "assets/wildstat/lava/lava-pool-1.webp",
     "assets/wildstat/lava/lava-pool-2.webp",
@@ -271,8 +271,8 @@ export function createAssetPreprocessor(onWorldAssetReady: () => void) {
     return asset;
   };
   const soulAtlasAsset = decodedSheet(SOUL_ATLAS_SOURCE);
-  const soulVillagePropsAsset = decodedSheet(SOUL_VILLAGE_PROPS_SOURCE);
-  const soulVillageGroundAsset = decodedSheet(SOUL_VILLAGE_GROUND_SOURCE);
+  const townVillagePropsAsset = decodedSheet(TOWN_VILLAGE_PROPS_SOURCE);
+  const townVillageGroundAsset = decodedSheet(TOWN_VILLAGE_GROUND_SOURCE);
   const soulWaterAsset = decodedSheet(SOUL_WATER_SOURCE);
   const soulShoreAsset = decodedSheet(SOUL_SHORE_SOURCE);
   const forestRoadAsset = createLazyImageAsset(FOREST_ROAD_SOURCE);
@@ -281,11 +281,11 @@ export function createAssetPreprocessor(onWorldAssetReady: () => void) {
   const assetGroups = {
     forestDecor: [treeAsset],
     orchardDecor: lavaAssets.slice(6),
-    snowDecor: [snowPineAsset, upgradeBenchAsset],
+    snowDecor: [snowPineAsset, workbenchAsset],
     lavaDecor: lavaAssets,
     nightDecor: [nightTreeAsset],
     cherryDecor: [cherryTreeAsset],
-    soulVillage: [soulAtlasAsset, soulVillagePropsAsset, soulVillageGroundAsset, soulWaterAsset, soulShoreAsset, soulInteriorsAsset],
+    townVillage: [soulAtlasAsset, townVillagePropsAsset, townVillageGroundAsset, soulWaterAsset, soulShoreAsset, soulInteriorsAsset],
     packNature: [soulAtlasAsset],
     forestRoad: [forestRoadAsset],
     guildHall: guildHallAssets,
@@ -296,7 +296,7 @@ export function createAssetPreprocessor(onWorldAssetReady: () => void) {
     const groups = new Set<MapArtAssetGroup>(MAP_ASSET_GROUPS[mapId].art);
     const editedDecor = new Set(savedMapDesign(mapId)?.decor.map((item) => item.type) ?? []);
     if (editedDecor.has("tree") && mapId !== "samurai_garden" && mapId !== "tutorial_forest") groups.add(mapId === "infernal_depths" ? "nightDecor" : "forestDecor");
-    if (editedDecor.has("snowPine") || editedDecor.has("upgradeBench")) groups.add("snowDecor");
+    if (editedDecor.has("snowPine") || editedDecor.has("station")) groups.add("snowDecor");
     if (editedDecor.has("lavaPool") || editedDecor.has("lavaRock") || editedDecor.has("charredTree")) groups.add("lavaDecor");
     if (editedDecor.has("glowMushroom") || mapId === "moonfen" || mapId === "verdant_catacombs") groups.add("packNature");
     mapAssets[mapId] = [...groups].flatMap((group) => assetGroups[group]);
@@ -340,8 +340,8 @@ export function createAssetPreprocessor(onWorldAssetReady: () => void) {
     portalSwirl: portalSwirlAsset.image,
     charredTrees: lavaAssets.slice(6).map((asset) => asset.image),
     soulAtlas: soulAtlasAsset.image,
-    soulVillageProps: soulVillagePropsAsset.image,
-    soulVillageGround: soulVillageGroundAsset.image,
+    townVillageProps: townVillagePropsAsset.image,
+    townVillageGround: townVillageGroundAsset.image,
     soulInteriors: soulInteriorsAsset.image,
     guildHallProps: guildHallAssets[0].image,
     guildHallGround: guildHallAssets[1].image,
@@ -357,7 +357,7 @@ export function createAssetPreprocessor(onWorldAssetReady: () => void) {
     cherryTreeSpriteBounds: () => cherryTreeBounds,
     cherryTreeSpritesheet: cherryTreeAsset.image,
     snowPine: snowPineAsset.image,
-    upgradeBench: upgradeBenchAsset.image,
+    workbench: workbenchAsset.image,
     treeSpriteBounds: () => treeBounds,
     treeSpritesheet: treeAsset.image,
     ensureDuelAssets,

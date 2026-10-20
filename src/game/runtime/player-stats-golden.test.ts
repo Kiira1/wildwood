@@ -49,7 +49,7 @@ function worldPlayer(fixture: StatFixture) {
 const sourceOf = (fixture: StatFixture): PlayerStatsSource => ({
   itemLevel: fixtureItemLevel(fixture), researchInPlay: () => fixture.research, prestigePerks: () => fixture.perks,
   activeCardTotals: () => cardTotals(fixtureCardIds(fixture)), attackCapInPlay: () => fixtureAttackCap(fixture),
-  prestige: () => ({ level: fixture.prestigeLevel }), dailyQuests: () => ({ bonus: fixture.guildBonus }),
+  prestige: () => ({ level: fixture.prestigeLevel }), weeklyQuests: () => ({ bonus: fixture.guildBonus }),
 });
 
 /** The world's numbers, wired as main.ts and player-combat-controller.ts wire them. */

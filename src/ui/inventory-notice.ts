@@ -1,6 +1,6 @@
 /**
  * The badge is built here rather than in the startup HTML, which has a byte
- * budget covering first paint. Mirrors the home teleport cooldown element.
+ * budget covering first paint. Mirrors the Town teleport cooldown element.
  */
 export function createInventoryNotice(button: HTMLElement) {
   const dot = button.ownerDocument.createElement("span");

@@ -32,7 +32,7 @@ export type MapArtAssetGroup =
   | "cloudspireBoss"
   | "moonfenBoss"
   | "orchardDecor"
-  | "soulVillage"
+  | "townVillage"
   /** A guild hall: its baked courtyard, rooms and props, and the guild badges its crests are cut from. */
   | "guildHall"
   /** The Soul Dimension's nature atlas alone: the pack mushrooms the glowing campaign maps draw. */
@@ -52,8 +52,8 @@ export type MapAssetGroup = {
 const AUTHORED_MAP_ASSET_GROUPS = {
   [ONBOARDING_MAP_ID]: { art: ["forestDecor"], enemies: ["Spitter", "Brood"] },
   home_exterior: { art: ["forestDecor", "snowDecor"], enemies: [] },
-  // The Town's Slot Upgrades bench is the snow set's workbench sprite, as Home's was.
-  town: { art: ["soulVillage", "snowDecor"], enemies: [] },
+  // The Town's Slot Upgrades station is the snow set's workbench sprite, as Home's was.
+  town: { art: ["townVillage", "snowDecor"], enemies: [] },
   // The soul camps, and the Soul Defense Force that comes every thousand of them.
   soul_dimension: { art: ["nightDecor"], enemies: [...SOUL_ENEMY_KINDS, SOUL_DEFENSE_FORCE_KIND] },
   [TUTORIAL_FOREST_MAP_ID]: {

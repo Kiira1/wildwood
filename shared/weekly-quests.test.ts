@@ -1,15 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { WEEKLY_QUEST_COUNT, activeQuestIndices, applyQuestKills, dailyQuestCandidates, weeklyQuestsFor, guildQuestBonus, soloQuestBonus, parseDailyQuests, questDay, questWeek, questWeekEndsAtMs } from "./daily-quests";
+import { WEEKLY_QUEST_COUNT, activeQuestIndices, applyQuestKills, weeklyQuestCandidates, weeklyQuestsFor, guildQuestBonus, soloQuestBonus, parseWeeklyQuests, questDay, questWeek, questWeekEndsAtMs } from "./weekly-quests";
 import { ENEMY_TYPES } from "./enemy-definitions";
 
-describe("daily quests", () => {
+describe("weekly quests", () => {
   const id = "c200aa";
   it("draws fifteen regular enemies a week, 50 to 100 kills each, the same all week", () => {
     const progress = { desertUnlocked: true, snowlandsUnlocked: true };
     const quests = weeklyQuestsFor(id, 2_857, progress);
     expect(quests).toHaveLength(WEEKLY_QUEST_COUNT);
     // Every enemy comes up once before any repeats.
-    const pool = dailyQuestCandidates(progress).length;
+    const pool = weeklyQuestCandidates(progress).length;
     expect(new Set(quests.map(q => `${q.mapId}:${q.enemy}`)).size).toBe(Math.min(pool, WEEKLY_QUEST_COUNT));
     for (const quest of quests) {
       expect(quest.target).toBeGreaterThanOrEqual(50);
@@ -34,8 +34,8 @@ describe("daily quests", () => {
   });
 
   it("only offers maps the player can reach", () => {
-    expect(new Set(dailyQuestCandidates({}).map(c => c.mapId))).toEqual(new Set(["tutorial_forest"]));
-    expect(dailyQuestCandidates({ ionCitadelUnlocked: true }).some(c => c.mapId === "ion_citadel")).toBe(true);
+    expect(new Set(weeklyQuestCandidates({}).map(c => c.mapId))).toEqual(new Set(["tutorial_forest"]));
+    expect(weeklyQuestCandidates({ ionCitadelUnlocked: true }).some(c => c.mapId === "ion_citadel")).toBe(true);
   });
 
   it("counts only matching kills on the quest's map, finishing each quest once", () => {
@@ -58,7 +58,7 @@ describe("daily quests", () => {
     const result = applyQuestKills(quests, "tutorial_forest", [{ enemy: "Spitter", count: 8 }, { enemy: "Bramble", count: 60 }]);
     expect(result.quests.map(quest => quest.progress)).toEqual([50, 3, 0]);
     expect(result.completed).toBe(1);
-    expect(parseDailyQuests(JSON.stringify(quests)).map(quest => quest.from ?? quest.takenBy)).toEqual(["Ann", "Bo", "Cy"]);
+    expect(parseWeeklyQuests(JSON.stringify(quests)).map(quest => quest.from ?? quest.takenBy)).toEqual(["Ann", "Bo", "Cy"]);
   });
 
   it("turns weeks on Monday, and pays 0.1% a guild point or 1% a solo quest, up to 15%", () => {
@@ -75,7 +75,7 @@ describe("daily quests", () => {
   });
 
   it("drops malformed stored quests", () => {
-    expect(parseDailyQuests("nope")).toEqual([]);
-    expect(parseDailyQuests('[{"mapId":"a","enemy":"b","target":50,"progress":3},{"x":1}]')).toEqual([{ mapId: "a", enemy: "b", target: 50, progress: 3 }]);
+    expect(parseWeeklyQuests("nope")).toEqual([]);
+    expect(parseWeeklyQuests('[{"mapId":"a","enemy":"b","target":50,"progress":3},{"x":1}]')).toEqual([{ mapId: "a", enemy: "b", target: 50, progress: 3 }]);
   });
 });

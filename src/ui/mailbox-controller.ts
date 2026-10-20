@@ -101,12 +101,12 @@ export function createMailboxController(button: HTMLButtonElement, versionButton
           }
           reward.append(gear);
         } else {
-        const art = make("div", "", "daily-gem-bonus-art");
+        const art = make("div", "", "claim-art");
         const gems = document.createElement("img"); gems.src = "assets/wildstat/gems/gem-icon-v2.webp"; gems.alt = "";
         art.append(gems);
         reward.append(art, make("strong", entry.rewardLabel ?? `${entry.gems} Gems`, "mailbox-gem-amount"));
         }
-        const action = make("button", entry.claimed ? "Claimed" : pending ? "Claiming…" : entry.actionLabel ?? "Claim", "daily-gem-claim-button mailbox-claim-button");
+        const action = make("button", entry.claimed ? "Claimed" : pending ? "Claiming…" : entry.actionLabel ?? "Claim", "claim-button mailbox-claim-button");
         action.type = "button"; action.disabled = entry.claimed || pending || !hooks.connected();
         action.addEventListener("click", () => { void claim(entry); }); reward.append(action);
         article.append(reward);

@@ -1,5 +1,5 @@
 /** The windows that close each other: opening one closes every other. */
-export type CompetingPanel = "techTree" | "guild" | "leaderboard" | "devPanel" | "upgradeBench" | "mapGuide";
+export type CompetingPanel = "techTree" | "guild" | "leaderboard" | "devPanel" | "slotUpgrades" | "mapGuide";
 
 /**
  * Panels are constructed across a wide span of the composition root and several
@@ -9,7 +9,7 @@ export type CompetingPanel = "techTree" | "guild" | "leaderboard" | "devPanel" |
 export function createPanelCoordinator(deps: {
   guild: () => { close: () => void } | undefined;
   mapGuide: () => { close: () => void } | undefined;
-  upgradeBench: () => { close: () => void } | undefined;
+  slotUpgrades: () => { close: () => void } | undefined;
   techTree: () => { close: () => void };
   devPanel: () => { close: () => void };
   closeLeaderboard: () => void;
@@ -31,7 +31,7 @@ export function createPanelCoordinator(deps: {
       if (opening !== "mapGuide") deps.mapGuide()?.close();
       deps.minimizeMaximizedChat();
       deps.itemInspection.close();
-      if (opening !== "upgradeBench") deps.upgradeBench()?.close();
+      if (opening !== "slotUpgrades") deps.slotUpgrades()?.close();
       deps.settingsPanel.hidden = true;
       deps.inventoryPanel.hidden = true;
       deps.settingsBtn.setAttribute("aria-expanded", "false");

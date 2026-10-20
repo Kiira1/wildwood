@@ -1,4 +1,4 @@
-import { SOUL_ATLAS } from "./soul-village";
+import { SOUL_ATLAS } from "./town-village";
 import { lowEnough, PROP_FRAMES } from "./town-world";
 import { TUTORIAL_FOREST_MAP_ID, type MapId, type WorldDecor } from "./world";
 

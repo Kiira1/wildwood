@@ -29,7 +29,7 @@ export type GameActionsDeps = {
     profile: ClosableWindow & { isNameEditorOpen: () => boolean; closeNameEditor: () => void };
     guild: { close: () => void };
     mapGuide: ClosableWindow;
-    upgradeBench: ClosableWindow;
+    slotUpgrades: ClosableWindow;
     leaderboard: ClosableWindow;
     devPanel: ClosableWindow;
     techTree: { close: () => void };
@@ -65,7 +65,7 @@ export function createGameActions(deps: GameActionsDeps) {
       profile.close();
       windows.guild.close();
       windows.mapGuide.close();
-      windows.upgradeBench.close();
+      windows.slotUpgrades.close();
       leaderboard.close();
       devPanel.close();
       windows.techTree.close();
@@ -82,6 +82,6 @@ export function createGameActions(deps: GameActionsDeps) {
     refreshFrameClock: deps.session.refreshFrameClock, closeProfileIconPicker: deps.closeIconPicker,
     inventoryController: deps.inventoryController,
     leaderboard, closeLeaderboard: () => leaderboard.close(), devPanel, profileWindow: profile,
-    upgradeBenchController: windows.upgradeBench, mapGuide: windows.mapGuide, rewardedRespawnAd: windows.rewardedRespawnAd,
+    slotUpgradesController: windows.slotUpgrades, mapGuide: windows.mapGuide, rewardedRespawnAd: windows.rewardedRespawnAd,
   }).handleInputEscape;
 }

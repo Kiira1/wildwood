@@ -23,13 +23,13 @@ import {
   type ProfileEquipmentSlot,
 } from "./profile-equipment";
 
-export type ProfileTab = "overview" | "stats" | "skills" | "bonuses";
+export type ProfileTab = "info" | "stats" | "skills" | "bonuses";
 const DUEL_BUTTON_TITLE = "Automatic duel using earned stats and equipped gear. Hits grow stronger after 10 seconds. Knockout wins; at 30 seconds, the higher percentage of health remaining wins.";
 type Profile = PlayerProfileData;
 
 export function createProfileWindowController(elements: {
   window: HTMLElement; name: HTMLElement; guest: HTMLElement; presence: HTMLElement; power: HTMLElement; icon: HTMLButtonElement; loading: HTMLElement;
-  overviewTab: HTMLElement; statsTab: HTMLElement; overviewPanel: HTMLElement; statsPanel: HTMLElement;
+  infoTab: HTMLElement; statsTab: HTMLElement; infoPanel: HTMLElement; statsPanel: HTMLElement;
   /** Your own profile's bonus switches (profile-bonus-toggles.ts); hidden on anyone else's. */
   bonusesTab?: HTMLElement; bonusesPanel?: HTMLElement; bonuses?: ProfileBonusDeps;
   joined: HTMLElement; timePlayed: HTMLElement; kills: HTMLElement; online: HTMLElement; statGrid: HTMLElement;
@@ -84,7 +84,7 @@ export function createProfileWindowController(elements: {
     drawPreview();
   } });
 
-  const tabs = () => ([["overview", elements.overviewTab, elements.overviewPanel], ["stats", elements.statsTab, elements.statsPanel],
+  const tabs = () => ([["info", elements.infoTab, elements.infoPanel], ["stats", elements.statsTab, elements.statsPanel],
     ["skills", elements.skillsTab, elements.skillsPanel], ["bonuses", elements.bonusesTab, elements.bonusesPanel]] as const).filter((entry): entry is readonly [ProfileTab, HTMLElement, HTMLElement] => Boolean(entry[1] && entry[2]));
   function selectTab(tab: ProfileTab) {
     for (const [name, button, panel] of tabs()) {
@@ -240,7 +240,7 @@ export function createProfileWindowController(elements: {
   }
   function closeNameEditor() { editor.close(); }
 
-  elements.overviewTab.addEventListener("click", () => selectTab("overview")); elements.statsTab.addEventListener("click", () => selectTab("stats"));
+  elements.infoTab.addEventListener("click", () => selectTab("info")); elements.statsTab.addEventListener("click", () => selectTab("stats"));
   elements.skillsTab?.addEventListener("click", () => selectTab("skills"));
   elements.bonusesTab?.addEventListener("click", () => selectTab("bonuses"));
   elements.report.addEventListener("click", () => api.openSafety(identity, profileData?.name || elements.name.textContent || "PLAYER", "report"));

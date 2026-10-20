@@ -1,36 +1,36 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { parseHTML } from "linkedom";
 import { FROST_BOW, MAX_SLOT_UPGRADE_TIER, itemUpgradeStatChanges } from "../../shared/items";
-import { UPGRADE_BENCH_TOUCH_OFFSET_Y, UPGRADE_CANCEL_CONFIRMATION, createUpgradeBenchController, playerTouchesUpgradeBench, upgradeBenchCanStart, upgradeBenchTouchTransition, upgradePickerPreview, upgradeSlotAfterPickerDismiss, upgradesFinishedSinceLastPoll } from "./upgrade-bench-controller";
+import { SLOT_UPGRADES_TOUCH_OFFSET_Y, UPGRADE_CANCEL_CONFIRMATION, createSlotUpgradesController, playerTouchesSlotUpgrades, slotUpgradeCanStart, slotUpgradesTouchTransition, upgradePickerPreview, queueAfterPickerDismiss, upgradesFinishedSinceLastPoll } from "./slot-upgrades-controller";
 import type { ActiveItemUpgrade } from "../wildstat-coop";
 import { createInventoryNotice } from "./inventory-notice";
 
 afterEach(() => vi.unstubAllGlobals());
 
-describe("upgrade bench touch latch", () => {
-  it("requires leaving before a closed bench can open again", () => {
-    const entered = upgradeBenchTouchTransition(false, true);
+describe("Slot Upgrades touch latch", () => {
+  it("requires leaving before a closed station can open again", () => {
+    const entered = slotUpgradesTouchTransition(false, true);
     expect(entered).toEqual({ touching: true, shouldOpen: true });
 
-    // Closing the window does not change contact with the bench.
-    const stillTouching = upgradeBenchTouchTransition(entered.touching, true);
+    // Closing the window does not change contact with the station.
+    const stillTouching = slotUpgradesTouchTransition(entered.touching, true);
     expect(stillTouching).toEqual({ touching: true, shouldOpen: false });
 
-    const left = upgradeBenchTouchTransition(stillTouching.touching, false);
+    const left = slotUpgradesTouchTransition(stillTouching.touching, false);
     expect(left).toEqual({ touching: false, shouldOpen: false });
-    expect(upgradeBenchTouchTransition(left.touching, true)).toEqual({ touching: true, shouldOpen: true });
+    expect(slotUpgradesTouchTransition(left.touching, true)).toEqual({ touching: true, shouldOpen: true });
   });
 
   it("centers the interaction collision above the decor depth point", () => {
-    const bench = { x: 800, y: 710 };
-    expect(UPGRADE_BENCH_TOUCH_OFFSET_Y).toBe(-36);
-    expect(playerTouchesUpgradeBench({ x: 800, y: 674 }, bench)).toBe(true);
-    expect(playerTouchesUpgradeBench({ x: 854, y: 674 }, bench)).toBe(true);
-    expect(playerTouchesUpgradeBench({ x: 855, y: 674 }, bench)).toBe(false);
-    expect(playerTouchesUpgradeBench({ x: 800, y: 713 }, bench)).toBe(true);
-    expect(playerTouchesUpgradeBench({ x: 800, y: 714 }, bench)).toBe(false);
-    expect(playerTouchesUpgradeBench({ x: 800, y: 595 }, bench)).toBe(false);
-    expect(playerTouchesUpgradeBench({ x: 800, y: 753 }, bench)).toBe(false);
+    const station = { x: 800, y: 710 };
+    expect(SLOT_UPGRADES_TOUCH_OFFSET_Y).toBe(-36);
+    expect(playerTouchesSlotUpgrades({ x: 800, y: 674 }, station)).toBe(true);
+    expect(playerTouchesSlotUpgrades({ x: 854, y: 674 }, station)).toBe(true);
+    expect(playerTouchesSlotUpgrades({ x: 855, y: 674 }, station)).toBe(false);
+    expect(playerTouchesSlotUpgrades({ x: 800, y: 713 }, station)).toBe(true);
+    expect(playerTouchesSlotUpgrades({ x: 800, y: 714 }, station)).toBe(false);
+    expect(playerTouchesSlotUpgrades({ x: 800, y: 595 }, station)).toBe(false);
+    expect(playerTouchesSlotUpgrades({ x: 800, y: 753 }, station)).toBe(false);
   });
 
   it("warns that cancellation forfeits progress toward the next level", () => {
@@ -39,8 +39,8 @@ describe("upgrade bench touch latch", () => {
     );
   });
 
-  it("previews the tier a track is about to gain, measured on the gear in it", () => {
-    // Upgrades belong to the slot now, so the preview names the track and its
+  it("previews the tier a slot is about to gain, measured on the gear in it", () => {
+    // Upgrades belong to the slot now, so the preview names the slot and its
     // next tier, and reads the numbers off whatever is equipped there.
     expect(upgradePickerPreview("HAND", 0, FROST_BOW)).toEqual({
       name: "Weapon \u00b7 +0 \u2192 +1",
@@ -60,9 +60,9 @@ describe("upgrade bench touch latch", () => {
   });
 
   it("restores a slotted item's actions when item choices are dismissed", () => {
-    expect(upgradeSlotAfterPickerDismiss(1, FROST_BOW)).toBe(1);
-    expect(upgradeSlotAfterPickerDismiss(1, "")).toBeNull();
-    expect(upgradeSlotAfterPickerDismiss(null, FROST_BOW)).toBeNull();
+    expect(queueAfterPickerDismiss(1, FROST_BOW)).toBe(1);
+    expect(queueAfterPickerDismiss(1, "")).toBeNull();
+    expect(queueAfterPickerDismiss(null, FROST_BOW)).toBeNull();
   });
 });
 
@@ -95,7 +95,7 @@ describe("finished upgrade notification", () => {
     expect(upgradesFinishedSinceLastPoll(jobs(first, second, third), new Map(), 600)).toEqual([first, second, third]);
   });
 
-  it("notices a completed job when its bench slot immediately starts another", () => {
+  it("notices a completed job when its queue immediately starts another", () => {
     const first = job(1, 500);
     const next = { ...first, startedAtMs: 550, targetLevel: 2 };
     expect(upgradesFinishedSinceLastPoll(jobs(first), jobs(next), 600)).toEqual([first]);
@@ -107,8 +107,8 @@ describe("finished upgrade notification", () => {
     expect(upgradesFinishedSinceLastPoll(new Map(), jobs(job(1, 500)), 600)).toEqual([]);
   });
 
-  it("keeps the inventory red dot when the inventory opens after any bench slot finishes", () => {
-    const names = ["inventory", "slot", "slotTwo", "slotThree", "action", "speedUp", "back", "closePicker"];
+  it("keeps the inventory red dot when the inventory opens after any queue finishes", () => {
+    const names = ["inventory", "queueOne", "queueTwo", "queueThree", "action", "speedUp", "back", "closePicker"];
     const others = ["panel", "prompt", "statGain", "timer", "picker", "pickerItems"];
     const { document } = parseHTML(`<html><body>${names.map((name) => `<button id="${name}"></button>`).join("")}${others.map((name) => `<div id="${name}"></div>`).join("")}</body></html>`);
     vi.stubGlobal("document", document);
@@ -119,7 +119,7 @@ describe("finished upgrade notification", () => {
     let active = [first, second, third];
     let now = 100;
     const finished = vi.fn();
-    const controller = createUpgradeBenchController(Object.fromEntries([...names, ...others].map((name) => [name, element(name)])) as never, {
+    const controller = createSlotUpgradesController(Object.fromEntries([...names, ...others].map((name) => [name, element(name)])) as never, {
       activeUpgrades: () => active, nowMs: () => now, onUpgradeFinished: finished,
       storage: { getItem: () => null, setItem: vi.fn() },
     } as never);
@@ -149,7 +149,7 @@ describe("finished upgrade notification", () => {
   });
 
   it("restores a finished job after the game was closed and scopes the dot to its player", () => {
-    const names = ["inventory", "slot", "slotTwo", "slotThree", "action", "speedUp", "back", "closePicker"];
+    const names = ["inventory", "queueOne", "queueTwo", "queueThree", "action", "speedUp", "back", "closePicker"];
     const others = ["panel", "prompt", "statGain", "timer", "picker", "pickerItems"];
     const { document } = parseHTML(`<html><body>${names.map((name) => `<button id="${name}"></button>`).join("")}${others.map((name) => `<div id="${name}"></div>`).join("")}</body></html>`);
     vi.stubGlobal("document", document);
@@ -165,13 +165,13 @@ describe("finished upgrade notification", () => {
       activeUpgrades: () => active, slotTier: () => tier, nowMs: () => 100,
       localIdentity: () => identity, storage, onUpgradeFinished: finished,
     } as never;
-    const firstSession = createUpgradeBenchController(elements, dependencies);
+    const firstSession = createSlotUpgradesController(elements, dependencies);
     expect(firstSession.finishedUpgradeWaiting()).toBe(false);
     expect(firstSession.finishedUpgradeWaiting(false)).toBe(false);
 
     active = [];
     tier = 1;
-    const nextSession = createUpgradeBenchController(elements, dependencies);
+    const nextSession = createSlotUpgradesController(elements, dependencies);
     expect(nextSession.finishedUpgradeWaiting()).toBe(true);
     expect(finished).toHaveBeenCalledWith(job(2, 500, "HEAD"));
     identity = "player-b";
@@ -179,12 +179,12 @@ describe("finished upgrade notification", () => {
   });
 
   it("marks a server-confirmed tier even if its active job was never observed", () => {
-    const names = ["slot", "slotTwo", "slotThree", "action", "speedUp", "back", "closePicker"];
+    const names = ["queueOne", "queueTwo", "queueThree", "action", "speedUp", "back", "closePicker"];
     const others = ["panel", "prompt", "statGain", "timer", "picker", "pickerItems"];
     const { document } = parseHTML(`<html><body>${names.map((name) => `<button id="${name}"></button>`).join("")}${others.map((name) => `<div id="${name}"></div>`).join("")}</body></html>`);
     vi.stubGlobal("document", document);
     const finished = vi.fn();
-    const controller = createUpgradeBenchController(Object.fromEntries([...names, ...others].map((name) => [name, document.getElementById(name)!])) as never, {
+    const controller = createSlotUpgradesController(Object.fromEntries([...names, ...others].map((name) => [name, document.getElementById(name)!])) as never, {
       activeUpgrades: () => [], localIdentity: () => "player", onUpgradeFinished: finished,
     } as never);
     controller.observeUpgradeTier("CHEST", 4);
@@ -192,8 +192,8 @@ describe("finished upgrade notification", () => {
     expect(finished).toHaveBeenCalledWith(expect.objectContaining({ itemId: "CHEST", targetLevel: 4 }));
   });
 
-  it("clears the red dot only after another upgrade fills every bench slot", async () => {
-    const names = ["inventory", "slot", "slotTwo", "slotThree", "action", "speedUp", "back", "closePicker"];
+  it("clears the red dot only after another upgrade fills every queue", async () => {
+    const names = ["inventory", "queueOne", "queueTwo", "queueThree", "action", "speedUp", "back", "closePicker"];
     const others = ["panel", "prompt", "statGain", "timer", "picker", "pickerItems"];
     const { document } = parseHTML(`<html><body>${names.map((name) => `<button id="${name}"></button>`).join("")}${others.map((name) => `<div id="${name}"></div>`).join("")}</body></html>`);
     vi.stubGlobal("document", document);
@@ -206,8 +206,8 @@ describe("finished upgrade notification", () => {
       active = [...active, { ...job(slot, 1000, itemId), currentLevel: 1, targetLevel: 2 }];
       return { ok: true };
     });
-    const controller = createUpgradeBenchController(Object.fromEntries([...names, ...others].map((name) => [name, element(name)])) as never, {
-      activeUpgrades: () => active, slotTier: () => 1, secondSlotUnlocked: () => true, thirdSlotUnlocked: () => false,
+    const controller = createSlotUpgradesController(Object.fromEntries([...names, ...others].map((name) => [name, element(name)])) as never, {
+      activeUpgrades: () => active, slotTier: () => 1, secondQueueUnlocked: () => true, thirdQueueUnlocked: () => false,
       gemBalance: () => 0n, equippedIn: () => "", localIdentity: () => "player",
       playerPosition: () => ({ x: 0, y: 0 }), startUpgrade,
       beforeOpen: vi.fn(), clearPlayerInput: vi.fn(), setPaused: vi.fn(), showMessage: vi.fn(),
@@ -215,7 +215,7 @@ describe("finished upgrade notification", () => {
     controller.observeUpgradeTier("HAND", 1);
     expect(controller.finishedUpgradeWaiting()).toBe(true);
     controller.open();
-    element("slot").click();
+    element("queueOne").click();
     (element("pickerItems").querySelector("button") as HTMLElement).click();
     element("action").click();
     await vi.waitFor(() => expect(startUpgrade).toHaveBeenCalledTimes(1));
@@ -223,7 +223,7 @@ describe("finished upgrade notification", () => {
     element("action").click();
     await vi.waitFor(() => expect(startUpgrade).toHaveBeenCalledTimes(2));
     expect(controller.finishedUpgradeWaiting()).toBe(true);
-    element("slotTwo").click();
+    element("queueTwo").click();
     (element("pickerItems").querySelector("button") as HTMLElement).click();
     element("action").click();
     await vi.waitFor(() => expect(startUpgrade).toHaveBeenCalledTimes(3));
@@ -231,7 +231,7 @@ describe("finished upgrade notification", () => {
   });
 
   it("offers slot three for 200 Gems only after slot two, and shows no dot while every unlocked slot runs", async () => {
-    const names = ["inventory", "slot", "slotTwo", "slotThree", "action", "speedUp", "back", "closePicker"];
+    const names = ["inventory", "queueOne", "queueTwo", "queueThree", "action", "speedUp", "back", "closePicker"];
     const others = ["panel", "prompt", "statGain", "timer", "picker", "pickerItems"];
     const { document } = parseHTML(`<html><body>${names.map((name) => `<button id="${name}"></button>`).join("")}${others.map((name) => `<div id="${name}"></div>`).join("")}</body></html>`);
     vi.stubGlobal("document", document);
@@ -241,29 +241,29 @@ describe("finished upgrade notification", () => {
     let thirdUnlocked = false;
     let active: ActiveItemUpgrade[] = [job(1, 1_000, "HAND"), job(2, 1_000, "HEAD")];
     const confirmUnlock = vi.fn(async () => true);
-    const unlockThirdSlot = vi.fn(async () => { thirdUnlocked = true; return { ok: true }; });
+    const unlockThirdQueue = vi.fn(async () => { thirdUnlocked = true; return { ok: true }; });
     const startUpgrade = vi.fn(async (slot: 1 | 2 | 3, itemId: string) => {
       active = [...active, job(slot, 1_000, itemId)];
       return { ok: true };
     });
-    const controller = createUpgradeBenchController(Object.fromEntries([...names, ...others].map((name) => [name, element(name)])) as never, {
+    const controller = createSlotUpgradesController(Object.fromEntries([...names, ...others].map((name) => [name, element(name)])) as never, {
       activeUpgrades: () => active, slotTier: () => 0,
-      secondSlotUnlocked: () => secondUnlocked, thirdSlotUnlocked: () => thirdUnlocked,
+      secondQueueUnlocked: () => secondUnlocked, thirdQueueUnlocked: () => thirdUnlocked,
       gemBalance: () => 200n, equippedIn: () => "", localIdentity: () => "player",
-      playerPosition: () => ({ x: 0, y: 0 }), startUpgrade, unlockThirdSlot,
+      playerPosition: () => ({ x: 0, y: 0 }), startUpgrade, unlockThirdQueue,
       confirmUnlock, beforeOpen: vi.fn(), clearPlayerInput: vi.fn(), setPaused: vi.fn(), showMessage: vi.fn(),
     } as never);
     controller.open();
-    expect(element("slotThree").hidden).toBe(true);
+    expect(element("queueThree").hidden).toBe(true);
     secondUnlocked = true;
     controller.render();
-    expect(element("slotThree").hidden).toBe(false);
-    expect(element("slotThree").getAttribute("aria-label")).toContain("200 Gems");
+    expect(element("queueThree").hidden).toBe(false);
+    expect(element("queueThree").getAttribute("aria-label")).toContain("200 Gems");
     controller.observeUpgradeTier("CHEST", 1);
     // Both unlocked slots are running and slot three is not bought: nothing to start, so no dot.
     expect(controller.finishedUpgradeWaiting()).toBe(false);
-    element("slotThree").click();
-    await vi.waitFor(() => expect(unlockThirdSlot).toHaveBeenCalledOnce());
+    element("queueThree").click();
+    await vi.waitFor(() => expect(unlockThirdQueue).toHaveBeenCalledOnce());
     expect(confirmUnlock).toHaveBeenCalledWith(expect.objectContaining({ message: expect.stringContaining("200 Gems") }));
     expect(element("picker").hidden).toBe(false);
     (element("pickerItems").querySelector("button") as HTMLElement).click();
@@ -272,8 +272,8 @@ describe("finished upgrade notification", () => {
     expect(controller.finishedUpgradeWaiting()).toBe(false);
   });
 
-  it("drops a remembered dot once the player's only bench is busy again, however it was started", () => {
-    const names = ["inventory", "slot", "slotTwo", "slotThree", "action", "speedUp", "back", "closePicker"];
+  it("drops a remembered dot once the player's only queue is busy again, however it was started", () => {
+    const names = ["inventory", "queueOne", "queueTwo", "queueThree", "action", "speedUp", "back", "closePicker"];
     const others = ["panel", "prompt", "statGain", "timer", "picker", "pickerItems"];
     const { document } = parseHTML(`<html><body>${names.map((name) => `<button id="${name}"></button>`).join("")}${others.map((name) => `<div id="${name}"></div>`).join("")}</body></html>`);
     vi.stubGlobal("document", document);
@@ -281,47 +281,47 @@ describe("finished upgrade notification", () => {
     const storage = { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => { values.set(key, value); } };
     let active: ActiveItemUpgrade[] = [];
     let secondUnlocked = false;
-    const controller = createUpgradeBenchController(Object.fromEntries([...names, ...others].map((name) => [name, document.getElementById(name)!])) as never, {
+    const controller = createSlotUpgradesController(Object.fromEntries([...names, ...others].map((name) => [name, document.getElementById(name)!])) as never, {
       activeUpgrades: () => active, slotTier: () => 0, nowMs: () => 100, localIdentity: () => "player", storage,
-      secondSlotUnlocked: () => secondUnlocked, thirdSlotUnlocked: () => false,
+      secondQueueUnlocked: () => secondUnlocked, thirdQueueUnlocked: () => false,
     } as never);
-    // A finish from an earlier session is still waiting and the bench is free.
+    // A finish from an earlier session is still waiting and the queue is free.
     expect(controller.finishedUpgradeWaiting()).toBe(true);
-    // The next tier was started from another tab: the one bench is busy, so the dot goes, for good.
+    // The next tier was started from another tab: the one queue is busy, so the dot goes, for good.
     active = [job(1, 5_000, "HEAD")];
     expect(controller.finishedUpgradeWaiting()).toBe(false);
     expect(JSON.parse(values.get("wildstat-upgrade-finished:player")!).waiting).toBe(false);
     active = [];
     expect(controller.finishedUpgradeWaiting()).toBe(false);
-    // With a second bench bought, one running job leaves a bench free.
-    const other = createUpgradeBenchController(Object.fromEntries([...names, ...others].map((name) => [name, document.getElementById(name)!])) as never, {
+    // With a second queue bought, one running job leaves a queue free.
+    const other = createSlotUpgradesController(Object.fromEntries([...names, ...others].map((name) => [name, document.getElementById(name)!])) as never, {
       activeUpgrades: () => active, slotTier: () => 0, nowMs: () => 100, localIdentity: () => "other", storage,
-      secondSlotUnlocked: () => secondUnlocked, thirdSlotUnlocked: () => false,
+      secondQueueUnlocked: () => secondUnlocked, thirdQueueUnlocked: () => false,
     } as never);
     values.set("wildstat-upgrade-finished:other", JSON.stringify({ waiting: true, jobs: [] }));
     secondUnlocked = true;
     active = [job(1, 5_000, "HEAD")];
     expect(other.finishedUpgradeWaiting()).toBe(true);
   });
-  it("can start an upgrade only with a free bench and a track below its last tier", () => {
+  it("can start an upgrade only with a free queue and a slot below its last tier", () => {
     const one = (slot: 1 | 2 | 3) => slot === 1;
     const two = (slot: 1 | 2 | 3) => slot !== 3;
-    const tiers = (tier: Partial<Record<string, number>>) => (track: string) => tier[track] ?? 0;
+    const tiers = (tier: Partial<Record<string, number>>) => (slot: string) => tier[slot] ?? 0;
     const maxed = tiers({ HAND: MAX_SLOT_UPGRADE_TIER, HEAD: MAX_SLOT_UPGRADE_TIER, CHEST: MAX_SLOT_UPGRADE_TIER });
-    // Every track at its last tier: nothing to put on the bench.
-    expect(upgradeBenchCanStart([], one, maxed)).toBe(false);
-    expect(upgradeBenchCanStart([], two, maxed)).toBe(false);
-    // One track below max and a free bench.
-    expect(upgradeBenchCanStart([], one, tiers({ HAND: MAX_SLOT_UPGRADE_TIER, HEAD: MAX_SLOT_UPGRADE_TIER, CHEST: 34 }))).toBe(true);
-    // The only bench is busy.
-    expect(upgradeBenchCanStart([job(1, 500, "CHEST")], one, tiers({}))).toBe(false);
-    // A second bench is free, but the only unfinished track is already on the first one.
-    expect(upgradeBenchCanStart([job(1, 500, "CHEST")], two, tiers({ HAND: MAX_SLOT_UPGRADE_TIER, HEAD: MAX_SLOT_UPGRADE_TIER }))).toBe(false);
-    expect(upgradeBenchCanStart([job(1, 500, "CHEST")], two, tiers({ HAND: MAX_SLOT_UPGRADE_TIER }))).toBe(true);
+    // Every slot at its last tier: nothing to put in a queue.
+    expect(slotUpgradeCanStart([], one, maxed)).toBe(false);
+    expect(slotUpgradeCanStart([], two, maxed)).toBe(false);
+    // One slot below max and a free queue.
+    expect(slotUpgradeCanStart([], one, tiers({ HAND: MAX_SLOT_UPGRADE_TIER, HEAD: MAX_SLOT_UPGRADE_TIER, CHEST: 34 }))).toBe(true);
+    // The only queue is busy.
+    expect(slotUpgradeCanStart([job(1, 500, "CHEST")], one, tiers({}))).toBe(false);
+    // A second queue is free, but the only unfinished slot is already in the first one.
+    expect(slotUpgradeCanStart([job(1, 500, "CHEST")], two, tiers({ HAND: MAX_SLOT_UPGRADE_TIER, HEAD: MAX_SLOT_UPGRADE_TIER }))).toBe(false);
+    expect(slotUpgradeCanStart([job(1, 500, "CHEST")], two, tiers({ HAND: MAX_SLOT_UPGRADE_TIER }))).toBe(true);
   });
 
-  it("drops the red dot when the last tier finishes and every track is maxed", () => {
-    const names = ["inventory", "slot", "slotTwo", "slotThree", "action", "speedUp", "back", "closePicker"];
+  it("drops the red dot when the last tier finishes and every slot is maxed", () => {
+    const names = ["inventory", "queueOne", "queueTwo", "queueThree", "action", "speedUp", "back", "closePicker"];
     const others = ["panel", "prompt", "statGain", "timer", "picker", "pickerItems"];
     const { document } = parseHTML(`<html><body>${names.map((name) => `<button id="${name}"></button>`).join("")}${others.map((name) => `<div id="${name}"></div>`).join("")}</body></html>`);
     vi.stubGlobal("document", document);
@@ -329,9 +329,9 @@ describe("finished upgrade notification", () => {
     const storage = { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => { values.set(key, value); } };
     const tier: Record<string, number> = { HAND: MAX_SLOT_UPGRADE_TIER, HEAD: MAX_SLOT_UPGRADE_TIER, CHEST: MAX_SLOT_UPGRADE_TIER - 1 };
     const finished = vi.fn();
-    const controller = createUpgradeBenchController(Object.fromEntries([...names, ...others].map((name) => [name, document.getElementById(name)!])) as never, {
-      activeUpgrades: () => [], slotTier: (track: string) => tier[track], nowMs: () => 100, localIdentity: () => "player", storage,
-      secondSlotUnlocked: () => true, thirdSlotUnlocked: () => true, onUpgradeFinished: finished,
+    const controller = createSlotUpgradesController(Object.fromEntries([...names, ...others].map((name) => [name, document.getElementById(name)!])) as never, {
+      activeUpgrades: () => [], slotTier: (slot: string) => tier[slot], nowMs: () => 100, localIdentity: () => "player", storage,
+      secondQueueUnlocked: () => true, thirdQueueUnlocked: () => true, onUpgradeFinished: finished,
     } as never);
     // A remembered finish with CHEST still one tier short: the dot stays.
     expect(controller.finishedUpgradeWaiting()).toBe(true);
@@ -348,26 +348,26 @@ describe("finished upgrade notification", () => {
 
 describe("Slot Upgrades inside a host window", () => {
   it("opens and closes through the host, and leaves Back to it", () => {
-    const names = ["slot", "slotTwo", "slotThree", "action", "speedUp", "back", "closePicker"];
+    const names = ["queueOne", "queueTwo", "queueThree", "action", "speedUp", "back", "closePicker"];
     const others = ["panel", "prompt", "statGain", "timer", "picker", "pickerItems"];
     const { document } = parseHTML(`<html><body>${names.map((name) => `<button id="${name}"></button>`).join("")}${others.map((name) => `<div id="${name}" ${name === "panel" ? "hidden" : ""}></div>`).join("")}</body></html>`);
     vi.stubGlobal("document", document);
     const element = (name: string) => document.getElementById(name)!;
     const host = { open: vi.fn(), close: vi.fn() };
-    const controller = createUpgradeBenchController({
-      panel: element("panel"), prompt: element("prompt"), slot: element("slot") as HTMLButtonElement,
-      slotTwo: element("slotTwo") as HTMLButtonElement, slotThree: element("slotThree") as HTMLButtonElement,
+    const controller = createSlotUpgradesController({
+      panel: element("panel"), prompt: element("prompt"), queueOne: element("queueOne") as HTMLButtonElement,
+      queueTwo: element("queueTwo") as HTMLButtonElement, queueThree: element("queueThree") as HTMLButtonElement,
       statGain: element("statGain"), timer: element("timer"), action: element("action") as HTMLButtonElement,
       speedUp: element("speedUp") as HTMLButtonElement, back: element("back") as HTMLButtonElement,
       picker: element("picker"), pickerItems: element("pickerItems"), closePicker: element("closePicker") as HTMLButtonElement,
     }, {
-      playerPosition: () => ({ x: 0, y: 0 }), currentMapId: () => "town", benchMapId: "town", benchPosition: { x: 0, y: 0 },
-      activeUpgrades: () => [], secondSlotUnlocked: () => false, thirdSlotUnlocked: () => false, gemBalance: () => 0n,
+      playerPosition: () => ({ x: 0, y: 0 }), currentMapId: () => "town", stationMapId: "town", stationPosition: { x: 0, y: 0 },
+      activeUpgrades: () => [], secondQueueUnlocked: () => false, thirdQueueUnlocked: () => false, gemBalance: () => 0n,
       upgradeLevel: () => 0, slotTier: () => 0, equippedIn: () => "",
-      startUpgrade: vi.fn(), cancelUpgrade: vi.fn(), speedUpUpgrade: vi.fn(), unlockSecondSlot: vi.fn(), unlockThirdSlot: vi.fn(),
+      startUpgrade: vi.fn(), cancelUpgrade: vi.fn(), speedUpUpgrade: vi.fn(), unlockSecondQueue: vi.fn(), unlockThirdQueue: vi.fn(),
       beforeOpen: vi.fn(), clearPlayerInput: vi.fn(), setPaused: vi.fn(), onInventoryChanged: vi.fn(), showMessage: vi.fn(), host,
     });
-    // The bench asks the host; the view shows once the host puts it on screen.
+    // The station asks the host; the view shows once the host puts it on screen.
     controller.open();
     expect(host.open).toHaveBeenCalledTimes(1);
     expect(controller.isOpen()).toBe(false);
@@ -375,7 +375,7 @@ describe("Slot Upgrades inside a host window", () => {
     expect(controller.isOpen()).toBe(true);
     expect(element("prompt").textContent).toBe("Pick A Queue");
     expect(element("back").hidden).toBe(true);
-    expect(element("slotTwo").getAttribute("aria-label")).toBe("Unlock A Second Queue For 150 Gems");
+    expect(element("queueTwo").getAttribute("aria-label")).toBe("Unlock A Second Queue For 150 Gems");
     controller.close();
     expect(host.close).toHaveBeenCalledTimes(1);
     expect(controller.isOpen()).toBe(false);

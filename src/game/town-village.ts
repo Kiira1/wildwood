@@ -1,7 +1,7 @@
 import { TOWN_CENTER, TOWN_EAST_BRIDGE, TOWN_EAST_BRIDGE_APPROACHES, TOWN_EAST_FENCE_GAP, TOWN_EAST_FENCE_GAP_OUTSIDE, TOWN_INTERIORS, TOWN_WEST_BRIDGE } from "../../shared/town";
 import { MINING_TRACK_HALF_WIDTH, miningTrackDistanceSquared } from "../../shared/mining";
 import atlas from "./soul-atlas.json";
-import scene from "./soul-village-scene.json";
+import scene from "./town-village-scene.json";
 import type { WorldDecor } from "./world";
 
 /**
@@ -13,16 +13,16 @@ import type { WorldDecor } from "./world";
  */
 export type SoulFrame = keyof typeof atlas.frames;
 export const SOUL_ATLAS = atlas;
-export const SOUL_VILLAGE_SCENE = scene;
-export const SOUL_VILLAGE_PROPS_SOURCE = "assets/wildstat/soul-dimension/village-props.webp";
-export const SOUL_VILLAGE_GROUND_SOURCE = "assets/wildstat/soul-dimension/village-ground.webp";
+export const TOWN_VILLAGE_SCENE = scene;
+export const TOWN_VILLAGE_PROPS_SOURCE = "assets/wildstat/soul-dimension/village-props.webp";
+export const TOWN_VILLAGE_GROUND_SOURCE = "assets/wildstat/soul-dimension/village-ground.webp";
 export const SOUL_INTERIORS_SOURCE = "assets/wildstat/soul-dimension/village-interiors.webp";
 
 /** Where the scene's own origin lands in the world: the fountain on the Town's centre. */
 const originX = TOWN_CENTER.x - scene.fountain[0], originY = TOWN_CENTER.y - scene.fountain[1];
 
 /** The ground image's rectangle in world units. */
-export const SOUL_VILLAGE_GROUND = Object.freeze({
+export const TOWN_VILLAGE_GROUND = Object.freeze({
   x: originX + scene.ground.left, y: originY + scene.ground.top, w: scene.ground.width, h: scene.ground.height,
 });
 
@@ -55,7 +55,7 @@ const railing = (at: { x: number; y: number }, left: number, right: number, from
 const WEST_BRIDGE = TOWN_WEST_BRIDGE;
 const SOUTH_BRIDGE = { x: TOWN_CENTER.x - 606, y: TOWN_CENTER.y + 1_224.5 };
 const STONE_RAILINGS = (at: { x: number; y: number }) => [railing(at, -130, 130, -TOWN_EAST_BRIDGE.halfHeight, -34), railing(at, -130, 130, 33, TOWN_EAST_BRIDGE.halfHeight)];
-export const SOUL_VILLAGE_DECOR: readonly WorldDecor[] = [...scene.props.flatMap(([frame, x, y, depth, flags, open, door], index): WorldDecor[] => {
+export const TOWN_VILLAGE_DECOR: readonly WorldDecor[] = [...scene.props.flatMap(([frame, x, y, depth, flags, open, door], index): WorldDecor[] => {
   if ((flags & 3) === 0 && CLEARED.some(area => inside(area, originX + x, originY + depth))) return [];
   if ((flags & 2) === 2 && CLEARINGS.some(area => inside(area, originX + x, originY + depth))) return [];
   if ((flags & 1) === 1 && onTrack(originX + x, originY + depth)) return [];
@@ -71,10 +71,10 @@ export const SOUL_VILLAGE_DECOR: readonly WorldDecor[] = [...scene.props.flatMap
 
 export type SoulEmitter = (typeof scene.emitters)[number];
 /** The village's particle emitters (chimney smoke, campfire smoke and sparks), in world units. */
-export const SOUL_VILLAGE_EMITTERS: readonly SoulEmitter[] = scene.emitters.map(emitter => ({ ...emitter, x: originX + emitter.x, y: originY + emitter.y }));
+export const TOWN_VILLAGE_EMITTERS: readonly SoulEmitter[] = scene.emitters.map(emitter => ({ ...emitter, x: originX + emitter.x, y: originY + emitter.y }));
 
 /** The wells, as polygons: walk into one and you fall in. */
-export const SOUL_VILLAGE_PITS: readonly SoulSolid[] = (scene.pits ?? []).map(flat => solid(flat, originX, originY));
+export const TOWN_VILLAGE_PITS: readonly SoulSolid[] = (scene.pits ?? []).map(flat => solid(flat, originX, originY));
 export type SoulSolid = { xs: number[]; ys: number[]; left: number; top: number; right: number; bottom: number };
 function solid(flat: readonly number[], dx: number, dy: number): SoulSolid {
   const xs: number[] = [], ys: number[] = [];
@@ -82,7 +82,7 @@ function solid(flat: readonly number[], dx: number, dy: number): SoulSolid {
   return { xs, ys, left: Math.min(...xs), top: Math.min(...ys), right: Math.max(...xs), bottom: Math.max(...ys) };
 }
 /** What a player cannot walk through: the pack's own colliders, as drawn (a round fountain stays round). */
-export const SOUL_VILLAGE_SOLIDS: readonly SoulSolid[] = [...scene.solids.map(flat => solid(flat, originX, originY))
+export const TOWN_VILLAGE_SOLIDS: readonly SoulSolid[] = [...scene.solids.map(flat => solid(flat, originX, originY))
   .filter(wall => ![...CLEARED, DECK].some(area => inside(area, wall.left + 1, wall.top + 1) && inside(area, wall.right - 1, wall.bottom - 1))),
   ...STONE_RAILINGS(TOWN_EAST_BRIDGE), ...STONE_RAILINGS(WEST_BRIDGE),
   railing(SOUTH_BRIDGE, -77, -50, -105.5, 103.5), railing(SOUTH_BRIDGE, 51, 76, -105.5, 103.5)];

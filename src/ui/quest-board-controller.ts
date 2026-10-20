@@ -1,15 +1,15 @@
 import { renderBooleanSetting } from "./settings";
 import { ENEMY_TYPES, type EnemyKind, type RewardType } from "../game/enemies";
-import { GUILD_QUEST_BONUS_PER_POINT, SOLO_QUEST_BONUS_PER_QUEST, WEEKLY_QUEST_COUNT, activeQuestIndices, ownQuest, questDay, questDone, questOpen, questWeek, questWeekEndsAtMs, type DailyQuest } from "../../shared/daily-quests";
+import { GUILD_QUEST_BONUS_PER_POINT, SOLO_QUEST_BONUS_PER_QUEST, WEEKLY_QUEST_COUNT, activeQuestIndices, ownQuest, questDay, questDone, questOpen, questWeek, questWeekEndsAtMs, type WeeklyQuest } from "../../shared/weekly-quests";
 
-type QuestState = { day: number; quests: DailyQuest[]; bonus: number; guildPoints: number; guildName: string };
+type QuestState = { day: number; quests: WeeklyQuest[]; bonus: number; guildPoints: number; guildName: string };
 type RankingRow = { guildId: string; guildName: string; points: number };
 
 /** Only what the board reads from the coop session. */
 export type QuestBoardSource = {
-  dailyQuests?: () => QuestState | null;
+  weeklyQuests?: () => QuestState | null;
   guildQuestRanking?: (week: number) => RankingRow[];
-  refreshDailyQuests?: () => Promise<unknown>;
+  refreshWeeklyQuests?: () => Promise<unknown>;
   isConnected?: () => boolean;
   serverNowMs?: () => number;
 } | null | undefined;
@@ -46,7 +46,7 @@ export type GuildQuestStanding = ReturnType<typeof guildQuestStanding>;
 
 /** The standing from the coop session, for this week. */
 export function guildQuestStandingFrom(source: QuestBoardSource) {
-  const state = source?.dailyQuests?.() ?? null;
+  const state = source?.weeklyQuests?.() ?? null;
   return guildQuestStanding(state, state ? source?.guildQuestRanking?.(questWeek(state.day)) ?? [] : []);
 }
 
@@ -140,7 +140,7 @@ export function createQuestBoardController(deps: {
   let ticker = 0;
 
   function render() {
-    const state = deps.source()?.dailyQuests?.() ?? null;
+    const state = deps.source()?.weeklyQuests?.() ?? null;
     const view = questBoardView(state, now(), deps.mapName);
     // The week's count, then when the next fifteen come on a line of its own.
     if (state) reset.replaceChildren(`${view.done}/${view.total} done this week${view.collected ? ` · ${view.collected}` : ""}`, document.createElement("br"), `New quests in ${view.resetsIn}`);
@@ -184,7 +184,7 @@ export function createQuestBoardController(deps: {
   function open() {
     if (!deps.atHome() || dialog.open) return;
     // Draws today's quests on the server the first time anyone looks.
-    void deps.source()?.refreshDailyQuests?.()?.catch?.(() => {});
+    void deps.source()?.refreshWeeklyQuests?.()?.catch?.(() => {});
     render(); paintTracker();
     deps.clearInput?.();
     deps.pause(true);
@@ -213,11 +213,11 @@ export function createQuestBoardRuntime(deps: Parameters<typeof createQuestBoard
   function refresh() {
     const source = deps.source();
     if (!source?.isConnected?.()) return;
-    const state = source.dailyQuests?.();
+    const state = source.weeklyQuests?.();
     const today = questDay(BigInt(Math.floor(source.serverNowMs?.() ?? Date.now())) * 1000n);
     if ((state && questWeek(state.day) === questWeek(today)) || performance.now() < refreshAt) return;
     refreshAt = performance.now() + 60_000;
-    void source.refreshDailyQuests?.()?.catch?.(() => {});
+    void source.refreshWeeklyQuests?.()?.catch?.(() => {});
   }
   // Each quest's count as last shown: never below the server's, never backwards.
   const shown = new Map<string, number>();
@@ -225,7 +225,7 @@ export function createQuestBoardRuntime(deps: Parameters<typeof createQuestBoard
   return {
     /** A regular enemy died: count it against the quests in play at once, ahead of the server's report. */
     noteKill(mapId: string, enemy: string) {
-      const state = deps.source()?.dailyQuests?.();
+      const state = deps.source()?.weeklyQuests?.();
       if (!state) return;
       if (state.day !== shownDay) { shown.clear(); shownDay = state.day; }
       // Kills fill the first quest in play for the enemy, the same order the server counts them.
@@ -245,11 +245,11 @@ export function createQuestBoardRuntime(deps: Parameters<typeof createQuestBoard
      * pop-ups have shown, so the two never disagree.
      */
     trackerView(mapId: string) {
-      const state = deps.source()?.dailyQuests?.() ?? null;
+      const state = deps.source()?.weeklyQuests?.() ?? null;
       if (state && state.day !== shownDay) { shown.clear(); shownDay = state.day; }
       return questTrackerView(state, mapId, deps.mapName, (key) => shown.get(key));
     },
-    worldStatus: () => questBoardWorldStatus(deps.source()?.dailyQuests?.() ?? null),
+    worldStatus: () => questBoardWorldStatus(deps.source()?.weeklyQuests?.() ?? null),
     refreshAtHome() { if (deps.atHome()) refresh(); },
     refresh,
   };

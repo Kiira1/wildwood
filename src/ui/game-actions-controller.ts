@@ -31,8 +31,8 @@ type EscapeWindows = {
   closeMapGuide: () => void;
   isItemInspectionOpen: () => boolean;
   closeItemInspection: () => void;
-  isUpgradeBenchOpen: () => boolean;
-  closeUpgradeBench: () => void;
+  isSlotUpgradesOpen: () => boolean;
+  closeSlotUpgrades: () => void;
   isProfileIconPickerOpen: () => boolean;
   closeProfileIconPicker: () => void;
   isLeaderboardOpen: () => boolean;
@@ -173,7 +173,7 @@ export function createGameActionsController(dependencies: GameActionsDependencie
     if (windows.isRespawnAdPromptOpen()) { windows.closeRespawnAdPrompt(); return true; }
     if (windows.isMapGuideOpen()) { windows.closeMapGuide(); return true; }
     if (windows.isItemInspectionOpen()) { windows.closeItemInspection(); return true; }
-    if (windows.isUpgradeBenchOpen()) { windows.closeUpgradeBench(); return true; }
+    if (windows.isSlotUpgradesOpen()) { windows.closeSlotUpgrades(); return true; }
     if (windows.isProfileIconPickerOpen()) { windows.closeProfileIconPicker(); return true; }
     if (windows.isProfileNameEditorOpen()) { windows.closeProfileNameEditor(); return true; }
     if (windows.isPlayerProfileOpen()) { windows.closePlayerProfile(); return true; }

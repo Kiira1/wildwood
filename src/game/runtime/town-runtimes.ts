@@ -3,11 +3,11 @@ import {
   createCardSellerRuntime, createHomeStationTouchHandler, createSchoolWindowRuntime, createSmithRuntime, createStarterChestRuntime,
 } from "../../ui/game-ui-runtime";
 import type { createGameElements } from "../../ui/game-elements";
-import { bindHomeTeleportButton } from "../../ui/home-teleport-button";
+import { bindTownTeleportButton } from "../../ui/town-teleport-button";
 import type { createInventoryController } from "../../ui/inventory-controller";
 import { createOxShopRuntime } from "../../ui/ox-shop-controller";
-import { createUpgradeBenchController } from "../../ui/upgrade-bench-controller";
-import { TUTORIAL_FOREST_MAP_ID, UPGRADE_BENCH_POSITION, type MapId } from "../world";
+import { createSlotUpgradesController } from "../../ui/slot-upgrades-controller";
+import { TUTORIAL_FOREST_MAP_ID, SLOT_UPGRADES_POSITION, type MapId } from "../world";
 import type { CoopAccess } from "./coop-access";
 import type { createGameBootstrap } from "./game-bootstrap";
 import type { PlayerState } from "./types";
@@ -27,10 +27,10 @@ export type TownRuntimeDeps = {
   showMessage: (text: string, color?: string) => void;
   techTree: { open: () => void; close: () => void };
   quests: { board: { open: () => void; close: () => void }; refreshAtHome: () => void };
-  /** Closes every window that competes with the bench before it opens. */
-  beforeBenchOpen: () => void;
-  onUpgradeFinished: Parameters<typeof createUpgradeBenchController>[1]["onUpgradeFinished"];
-  /** Reapplies speed and max health after the bench changed what is equipped. */
+  /** Closes every window that competes with Slot Upgrades before it opens. */
+  beforeUpgradesOpen: () => void;
+  onUpgradeFinished: Parameters<typeof createSlotUpgradesController>[1]["onUpgradeFinished"];
+  /** Reapplies speed and max health after Slot Upgrades changed what is equipped. */
   applyEquipmentStats: () => void;
   saveProgress: (immediate?: boolean) => void;
 };
@@ -44,10 +44,10 @@ export function createTownRuntimes(deps: TownRuntimeDeps) {
   const client = () => coop.client;
   const inTown = () => deps.currentMapId() === "town";
 
-  bindHomeTeleportButton(e.techTreeBtn, {
+  bindTownTeleportButton(e.townButton, {
     beforeTeleport: () => {
       deps.techTree.close();
-      upgradeBench.close();
+      slotUpgrades.close();
       deps.quests.board.close();
       oxShop.close();
       smith.close();
@@ -60,7 +60,7 @@ export function createTownRuntimes(deps: TownRuntimeDeps) {
   });
 
   const oxShop = createOxShopRuntime({ coop: client, inventory, renderInventory: deps.renderInventory, showMessage, clearInput, inTown });
-  const smith = createSmithRuntime({ coop: client, inventory, showMessage, clearInput, inTown, equip: deps.equip, slots: () => upgradeBench });
+  const smith = createSmithRuntime({ coop: client, inventory, showMessage, clearInput, inTown, equip: deps.equip, slots: () => slotUpgrades });
   const cardSeller = createCardSellerRuntime({ coop: client, showMessage, clearInput, inTown });
   const schools = createSchoolWindowRuntime({ coop: client, clearInput, inTown });
   const starterChest = createStarterChestRuntime({
@@ -72,7 +72,7 @@ export function createTownRuntimes(deps: TownRuntimeDeps) {
   const updateHomeStations = createHomeStationTouchHandler(
     () => inTown() && !deps.isMapTransitioning(), player,
     openAfterClearingInput(() => deps.techTree.open()),
-    () => { upgradeBench.updateTouch(); deps.quests.refreshAtHome(); },
+    () => { slotUpgrades.updateTouch(); deps.quests.refreshAtHome(); },
     openAfterClearingInput(() => deps.quests.board.open()),
     openAfterClearingInput(() => oxShop.open()),
     openAfterClearingInput(() => smith.open()),
@@ -80,43 +80,43 @@ export function createTownRuntimes(deps: TownRuntimeDeps) {
     (school: WeaponSchool) => { clearInput(); schools.open(school); },
   );
 
-  const upgradeBench = createUpgradeBenchController({
-    panel: e.upgradeBenchPanel,
-    prompt: e.upgradeBenchPrompt,
-    slot: e.upgradeBenchSlot,
-    slotTwo: e.upgradeBenchSlotTwo,
-    slotThree: e.upgradeBenchSlotThree,
-    statGain: e.upgradeBenchStatGain,
-    timer: e.upgradeBenchTimer,
-    action: e.upgradeBenchAction,
-    speedUp: e.upgradeBenchSpeedUp,
-    back: e.upgradeBenchBack,
-    picker: e.upgradeBenchPicker,
-    pickerItems: e.upgradeBenchPickerItems,
-    closePicker: e.closeUpgradeBenchPickerBtn,
+  const slotUpgrades = createSlotUpgradesController({
+    panel: e.slotUpgradesPanel,
+    prompt: e.slotUpgradesPrompt,
+    queueOne: e.slotUpgradesQueueOne,
+    queueTwo: e.slotUpgradesQueueTwo,
+    queueThree: e.slotUpgradesQueueThree,
+    statGain: e.slotUpgradesStatGain,
+    timer: e.slotUpgradesTimer,
+    action: e.slotUpgradesAction,
+    speedUp: e.slotUpgradesSpeedUp,
+    back: e.slotUpgradesBack,
+    picker: e.slotUpgradesPicker,
+    pickerItems: e.slotUpgradesPickerItems,
+    closePicker: e.closeSlotUpgradesPickerBtn,
   }, {
     playerPosition: () => player,
     currentMapId: deps.currentMapId,
-    benchMapId: "town",
-    benchPosition: UPGRADE_BENCH_POSITION,
+    stationMapId: "town",
+    stationPosition: SLOT_UPGRADES_POSITION,
     activeUpgrades: () => coop.client?.activeItemUpgrades?.() ?? [],
-    secondSlotUnlocked: () => coop.client?.secondUpgradeSlotUnlocked?.() ?? false,
-    thirdSlotUnlocked: () => coop.client?.thirdUpgradeSlotUnlocked?.() ?? false,
+    secondQueueUnlocked: () => coop.client?.secondUpgradeSlotUnlocked?.() ?? false,
+    thirdQueueUnlocked: () => coop.client?.thirdUpgradeSlotUnlocked?.() ?? false,
     gemBalance: coop.gemBalance,
     upgradeLevel: itemId => coop.client?.itemUpgradeLevel?.(itemId) ?? 0,
     refineLevel: itemId => coop.client?.itemRefine?.(itemId) ?? 0,
-    slotTier: track => coop.client?.slotUpgradeTier?.(track) ?? 0,
+    slotTier: slot => coop.client?.slotUpgradeTier?.(slot) ?? 0,
     slotUpgradeSpeedRank: () => coop.client?.research?.()?.slotUpgradeSpeed ?? 0,
-    equippedIn: track => track === "HAND" ? (inventory.equippedRightHand || inventory.equippedLeftHand)
-      : track === "HEAD" ? inventory.equippedHead : inventory.equippedChest,
+    equippedIn: slot => slot === "HAND" ? (inventory.equippedRightHand || inventory.equippedLeftHand)
+      : slot === "HEAD" ? inventory.equippedHead : inventory.equippedChest,
     storage: localStorage,
-    startUpgrade: async (slot, itemId, position) => coop.client?.startItemUpgrade?.(slot, itemId, position),
+    startUpgrade: async (queue, itemId, position) => coop.client?.startItemUpgrade?.(queue, itemId, position),
     localIdentity: coop.identity,
-    cancelUpgrade: async slot => coop.client?.cancelItemUpgrade?.(slot),
-    speedUpUpgrade: async slot => coop.client?.speedUpItemUpgradeWithGems?.(slot),
-    unlockSecondSlot: async () => coop.client?.unlockSecondUpgradeSlot?.(),
-    unlockThirdSlot: async () => coop.client?.unlockThirdUpgradeSlot?.(),
-    beforeOpen: deps.beforeBenchOpen,
+    cancelUpgrade: async queue => coop.client?.cancelItemUpgrade?.(queue),
+    speedUpUpgrade: async queue => coop.client?.speedUpItemUpgradeWithGems?.(queue),
+    unlockSecondQueue: async () => coop.client?.unlockSecondUpgradeSlot?.(),
+    unlockThirdQueue: async () => coop.client?.unlockThirdUpgradeSlot?.(),
+    beforeOpen: deps.beforeUpgradesOpen,
     host: { open: () => smith.open("upgrade"), close: () => smith.close() },
     setPaused: () => {},
     clearPlayerInput: clearInput,
@@ -134,7 +134,7 @@ export function createTownRuntimes(deps: TownRuntimeDeps) {
   });
 
   return {
-    oxShop, smith, cardSeller, schools, starterChest, upgradeBench,
+    oxShop, smith, cardSeller, schools, starterChest, slotUpgrades,
     /** Opens a station the player walked up to, and moves the Starter Chest's prompt. */
     update() {
       updateHomeStations();

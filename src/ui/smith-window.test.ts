@@ -7,7 +7,7 @@ import { itemInspectionButtonLabel } from "./item-inspection-controller";
 import { refineSuccessChance, type OreId } from "../../shared/refine";
 import type { CraftSectionDeps } from "./craft-section";
 import { craftExperienceForLevel } from "../../shared/crafting";
-import type { WornLoadout } from "./smith-upgrades";
+import type { WornLoadout } from "./smith-buy-plan";
 import { hudReminderMarkup } from "./hud-reminders";
 afterEach(() => vi.unstubAllGlobals());
 
@@ -492,7 +492,7 @@ it("Upgrade All waits with a reason: what comes next and its price, the Mastery 
   expect(poor.upgrade().disabled).toBe(true);
   expect(poor.dialog.querySelector(".smith-upgrade-all-title")!.textContent).toBe("Nothing To Upgrade Yet");
   expect(poor.dialog.querySelector(".smith-upgrade-all-sub")!.textContent).toBe(`Next: Crude Bow at ${GRADE_GOLD_PRICE.crude} Gold`);
-  expect(poor.controller.upgradeReady()).toBe(false);
+  expect(poor.controller.buyReady()).toBe(false);
   const locked = shop({ gold: 1_000n, shown: "yours", held: ["crude_bow", "crude_light_helmet", "crude_light_armor", "crude_ranger_boots"],
     worn: { equippedRightHand: "crude_bow", equippedHead: "crude_light_helmet", equippedChest: "crude_light_armor", equippedFeet: "crude_ranger_boots" } });
   locked.controller.open();
@@ -500,13 +500,13 @@ it("Upgrade All waits with a reason: what comes next and its price, the Mastery 
   const full = shop({ gold: 1_000n, bagFull: true, shown: "yours", worn: { equippedRightHand: "starter_bow" } });
   full.controller.open();
   expect([full.upgrade().disabled, full.dialog.querySelector(".smith-upgrade-all-title")!.textContent]).toEqual([true, "Bag Full"]);
-  expect(full.controller.upgradeReady()).toBe(true);
+  expect(full.controller.buyReady()).toBe(true);
 });
 
 it("dots the Buy tab while Upgrade All has something to buy", () => {
   const view = shop({ gold: 1_000n, worn: { equippedRightHand: "starter_bow" }, storage: memoryStorage({ "wildstat.smithView": "refine" }) });
   view.controller.open();
-  const dot = view.dialog.querySelector<HTMLElement>(".smith-upgrade-dot")!;
+  const dot = view.dialog.querySelector<HTMLElement>(".smith-buy-dot")!;
   expect(dot.parentElement!.textContent).toBe("Buy");
   expect(dot.hidden).toBe(false);
   view.state.gold = 0n;
@@ -528,7 +528,7 @@ it("puts a bought piece on once the server's row has brought it into the bag, an
 });
 
 it("shows the HUD's Upgrades At The Smith chip only while Upgrade All has something to buy, and no dot on the Town button", () => {
-  const { document, window } = parseHTML(`<html><body><button id="techTreeBtn"></button>${hudReminderMarkup()}</body></html>`);
+  const { document, window } = parseHTML(`<html><body><button id="townBtn"></button>${hudReminderMarkup()}</body></html>`);
   vi.stubGlobal("document", document); vi.stubGlobal("HTMLElement", window.HTMLElement);
   vi.stubGlobal("localStorage", memoryStorage());
   let gold = 1_000n;
@@ -537,9 +537,9 @@ it("shows the HUD's Upgrades At The Smith chip only while Upgrade All has someth
     inventory: { itemIds: ["starter_bow"], equippedHead: "", equippedChest: "", equippedFeet: "", equippedRightHand: "starter_bow", equippedLeftHand: "" },
     showMessage: vi.fn(), inTown: () => true,
   });
-  const dot = document.getElementById("smithUpgradeNotice")!;
+  const dot = document.getElementById("smithBuyNotice")!;
   expect(dot.textContent).toBe("Upgrades At The Smith");
-  expect(document.getElementById("techTreeBtn")!.children).toHaveLength(0);
+  expect(document.getElementById("townBtn")!.children).toHaveLength(0);
   expect(dot.hidden).toBe(true);
   runtime.refreshNotice();
   expect(dot.hidden).toBe(false);
@@ -548,12 +548,12 @@ it("shows the HUD's Upgrades At The Smith chip only while Upgrade All has someth
   expect(dot.hidden).toBe(true);
 });
 
-// Slot Upgrades (upgrade-bench-controller.ts) lives in the Smith's Upgrade tab, over the Tools; the bench opens it there.
+// Slot Upgrades (slot-upgrades-controller.ts) lives in the Smith's Upgrade tab, over the Tools; its station opens it there.
 it("mounts Slot Upgrades on the Upgrade tab above the Tools, and shows it only while that tab is on screen", () => {
-  const { document, window } = parseHTML("<html><body><div id=\"bench\" hidden></div></body></html>");
+  const { document, window } = parseHTML("<html><body><div id=\"slotUpgrades\" hidden></div></body></html>");
   vi.stubGlobal("document", document); vi.stubGlobal("HTMLElement", window.HTMLElement);
   vi.stubGlobal("localStorage", memoryStorage());
-  const element = document.getElementById("bench") as unknown as HTMLElement;
+  const element = document.getElementById("slotUpgrades") as unknown as HTMLElement;
   const setShown = vi.fn((shown: boolean) => { element.hidden = !shown; });
   const controller = createSmithController({
     inTown: () => true, items: () => [], refine: vi.fn(), showMessage: vi.fn(), refineLevel: () => 0, slotTier: () => 0, ores: () => ({}),
@@ -567,7 +567,7 @@ it("mounts Slot Upgrades on the Upgrade tab above the Tools, and shows it only w
   Object.defineProperty(dialog, "open", { get: () => dialog.hasAttribute("open") });
   const pill = (label: string) => [...dialog.querySelectorAll<HTMLButtonElement>(".smith-views .inventory-filter")].find(button => button.textContent === label)!;
   expect([...dialog.querySelectorAll(".smith-views .inventory-filter")].map(button => button.textContent)).toEqual(["Refine", "Upgrade"]);
-  // The bench asks for Upgrade: the window mounts under Slot Upgrades and shows, the Tools under it.
+  // The station asks for Upgrade: the window mounts under Slot Upgrades and shows, the Tools under it.
   controller.open("upgrade");
   const upgrade = dialog.querySelector(".smith-upgrade-view")!;
   expect(dialog.querySelector(".smith-slots")!.contains(element as never)).toBe(true);

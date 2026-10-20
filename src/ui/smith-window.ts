@@ -22,7 +22,7 @@ import {
 import { mountToolSection, toolDepsFor, type ToolSectionDeps } from "./tool-section";
 import {
   gearComparison, gradeShortName, schoolLines, schoolWeaponName, upgradeAllPlan, wornInSlot, type UpgradePlan, type WornLoadout,
-} from "./smith-upgrades";
+} from "./smith-buy-plan";
 
 type Result = { ok: boolean; error?: string } | undefined;
 type RefineResult = { itemId: string; copyId: bigint; fromLevel: number; toLevel: number; succeeded: boolean };
@@ -43,7 +43,7 @@ const percent = (chance: number) => {
 
 /** The Smith's tabs, one job each, and which lines Buy and Craft list; both kept on the device. */
 export type SmithView = "buy" | "craft" | "refine" | "upgrade";
-/** Slot Upgrades' window and its switch (upgrade-bench-controller.ts), for the Upgrade tab. */
+/** Slot Upgrades' window and its switch (slot-upgrades-controller.ts), for the Upgrade tab. */
 type SmithSlots = { element: HTMLElement; setShown: (shown: boolean) => void };
 type GearShown = "yours" | "all";
 const VIEW_STORE = "wildstat.smithView", SHOWN_STORE = "wildstat.smithGearShown";
@@ -164,7 +164,7 @@ export function createSmithController(deps: {
     const button = pillButton(VIEW_NAMES[each], () => { if (view !== each) { view = each; store(VIEW_STORE, each); render(); } });
     button.dataset.view = each;
     // A dot on Buy while Upgrade All has something to buy.
-    if (each === "buy") button.append(Object.assign(document.createElement("span"), { className: "smith-upgrade-dot", hidden: true }));
+    if (each === "buy") button.append(Object.assign(document.createElement("span"), { className: "smith-buy-dot", hidden: true }));
     viewBar.append(button);
   }
   for (const bar of dialog.querySelectorAll<HTMLElement>(".smith-shown")) {
@@ -375,7 +375,7 @@ export function createSmithController(deps: {
     upgradeSub.hidden = !upgradeSub.textContent;
     upgradePicks.replaceChildren(...next.picks.map(pick => Object.assign(document.createElement("li"), { textContent: gradeShortName(pick.itemId) })));
     upgradePicks.hidden = !next.picks.length || upgrading !== null;
-    const dot = viewBar.querySelector<HTMLElement>(".smith-upgrade-dot");
+    const dot = viewBar.querySelector<HTMLElement>(".smith-buy-dot");
     if (dot) dot.hidden = !next.picks.length || view === "buy";
   }
 
@@ -526,7 +526,7 @@ export function createSmithController(deps: {
     return true;
   }
 
-  /** Opens on the tab asked for (the bench asks for Upgrade), else the one last picked. */
+  /** Opens on the tab asked for (the Slot Upgrades station asks for Upgrade), else the one last picked. */
   function open(on?: SmithView) {
     if (!deps.inTown() || dialog.open) return;
     view = on && views.includes(on) ? on : storedView() ?? views[0];
@@ -547,7 +547,7 @@ export function createSmithController(deps: {
   return {
     open, close, isOpen: () => dialog.open, render, showResult, destroy() { close(); dialog.remove(); },
     /** Whether Upgrade All has something to buy: the dot on the way to the Smith. */
-    upgradeReady: () => Boolean(deps.buyGear) && plan().picks.length > 0,
+    buyReady: () => Boolean(deps.buyGear) && plan().picks.length > 0,
   };
 }
 
@@ -620,12 +620,12 @@ export function createSmithRuntime(deps: {
     equip: deps.equip ? itemId => equipWhenHeld(inventory, itemId, deps.equip!) : undefined,
     slots: deps.slots,
   });
-  const notice = deps.notice === undefined ? document.getElementById("smithUpgradeNotice") : deps.notice;
+  const notice = deps.notice === undefined ? document.getElementById("smithBuyNotice") : deps.notice;
   let listening = false;
   return {
     ...smith,
     /** Shows or hides the HUD chip; the session's refresh calls it as rows change. */
-    refreshNotice() { if (notice) notice.hidden = !smith.upgradeReady(); },
+    refreshNotice() { if (notice) notice.hidden = !smith.buyReady(); },
     open(view?: SmithView) {
       // Each try's verdict arrives as a row; listen from the first visit the session is up for.
       const coop = deps.coop();

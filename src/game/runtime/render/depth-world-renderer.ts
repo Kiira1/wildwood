@@ -12,9 +12,9 @@ type Viewport = { width: number; height: number };
 type TreeDecor = Extract<WorldDecor, { type: "tree" }>;
 type CactusDecor = Extract<WorldDecor, { type: "cactus" }>;
 type SnowPineDecor = Extract<WorldDecor, { type: "snowPine" }>;
-type UpgradeBenchDecor = Extract<WorldDecor, { type: "upgradeBench" }>;
+type StationDecor = Extract<WorldDecor, { type: "station" }>;
 type CharredTreeDecor = Extract<WorldDecor, { type: "charredTree" }>;
-type TallDecor = TreeDecor | CactusDecor | SnowPineDecor | UpgradeBenchDecor | CharredTreeDecor | SoulPropDecor | OreRockDecor | WoodTreeDecor | StarterChestDecor;
+type TallDecor = TreeDecor | CactusDecor | SnowPineDecor | StationDecor | CharredTreeDecor | SoulPropDecor | OreRockDecor | WoodTreeDecor | StarterChestDecor;
 type Portal = { depth: number; x?: number; width?: number; height?: number };
 type BootsPickup = { y: number; r: number; collected: boolean };
 type DepthLayerKind = "enemy" | "boss" | "boots" | "portal" | "secondaryPortal" | "remotePlayer" | "player";
@@ -40,7 +40,7 @@ export function createDepthWorldRenderer(options: {
   drawTree: (tree: TreeDecor) => void;
   drawCactus: (cactus: CactusDecor) => void;
   drawSnowPine: (tree: SnowPineDecor) => void;
-  drawUpgradeBench: (bench: UpgradeBenchDecor) => void;
+  drawStation: (station: StationDecor) => void;
   drawCharredTree: (tree: CharredTreeDecor) => void;
   drawSoulProp?: (prop: SoulPropDecor) => void;
   /** The Copper Hills' ore rocks (ore-rock-renderer.ts). */
@@ -75,7 +75,7 @@ export function createDepthWorldRenderer(options: {
   function sortedStaticDecor() {
     if (!staticDepthDirty) return staticDepthDecor;
     staticDepthDecor = options.decor
-      .filter((decor): decor is TallDecor => decor.type === "tree" || decor.type === "cactus" || decor.type === "snowPine" || decor.type === "upgradeBench" || decor.type === "charredTree" || decor.type === "oreRock" || decor.type === "woodTree" || decor.type === "starterChest" || (decor.type === "soulProp" && !decor.ground && !decor.shadow))
+      .filter((decor): decor is TallDecor => decor.type === "tree" || decor.type === "cactus" || decor.type === "snowPine" || decor.type === "station" || decor.type === "charredTree" || decor.type === "oreRock" || decor.type === "woodTree" || decor.type === "starterChest" || (decor.type === "soulProp" && !decor.ground && !decor.shadow))
       .sort((a, b) => a.y - b.y);
     staticDepthDirty = false;
     return staticDepthDecor;
@@ -125,7 +125,7 @@ export function createDepthWorldRenderer(options: {
           item.y < camera.y - cullPadding ||
           item.y - height > endY + cullPadding
         ) continue;
-      } else if (item.type === "upgradeBench") {
+      } else if (item.type === "station") {
         const width = Math.round(210 * item.s);
         const height = Math.round(210 * item.s);
         if (
@@ -160,7 +160,7 @@ export function createDepthWorldRenderer(options: {
     if (item.type === "tree") options.drawTree(item);
     else if (item.type === "cactus") options.drawCactus(item);
     else if (item.type === "snowPine") options.drawSnowPine(item);
-    else if (item.type === "upgradeBench") options.drawUpgradeBench(item);
+    else if (item.type === "station") options.drawStation(item);
     else if (item.type === "soulProp") options.drawSoulProp?.(item);
     else if (item.type === "oreRock") options.drawOreRock?.(item);
     else if (item.type === "woodTree") options.drawWoodTree?.(item);

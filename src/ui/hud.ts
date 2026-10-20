@@ -256,12 +256,12 @@ function renderEquipmentSlot(
   element.classList.toggle("is-cosmetic", mode === "COSMETICS" && Boolean(item));
   element.classList.toggle("is-cosmetic-inherited", Boolean(inheritedItem));
   element.classList.toggle("is-cosmetic-hidden", cosmeticHidden);
-  const track = destination === "HEAD" || destination === "CHEST" ? destination : destination === "FEET" ? null : "HAND";
-  const level = (track && slotTier ? slotTier(track) : item ? upgradeLevel(itemId) : 0);
+  const tierSlot = destination === "HEAD" || destination === "CHEST" ? destination : destination === "FEET" ? null : "HAND";
+  const level = (tierSlot && slotTier ? slotTier(tierSlot) : item ? upgradeLevel(itemId) : 0);
   // A slot holds the item's first copy, so its refine is the first copy's. Cosmetics only change the look.
   const refine = item && mode === "EQUIPMENT" ? refineLevel?.(itemId) ?? 0 : 0;
   element.setAttribute("aria-label", item
-    ? `${label}${track ? `, Lvl +${level}` : ""}: ${withRefineStars(itemDisplayName(itemId), refine)}. Tap to inspect.`
+    ? `${label}${tierSlot ? `, Lvl +${level}` : ""}: ${withRefineStars(itemDisplayName(itemId), refine)}. Tap to inspect.`
     : cosmeticHidden
       ? `${label}: wearing nothing over equipped item. Tap to show equipment.`
       : inheritedItem
@@ -293,7 +293,7 @@ function renderEquipmentSlot(
   // name: the name is on the artwork, and the level is the thing this panel is
   // for. Cosmetic slots have no level, so they keep saying what is in them.
   const equipped = item && mode === "EQUIPMENT";
-  name.textContent = track
+  name.textContent = tierSlot
     ? `Lvl: +${level}`
     : item?.name ?? (cosmeticHidden ? "NOTHING" : inheritedItem ? "GEAR VISIBLE" : mode === "COSMETICS" ? "NOTHING" : "EMPTY");
   element.replaceChildren(slotLabel, art, name);

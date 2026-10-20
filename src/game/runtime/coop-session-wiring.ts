@@ -29,7 +29,7 @@ export type CoopSessionWiringDeps = {
   windows: Omit<SessionWindows, "coop">;
   leaderboard: { setUnlocked: (unlocked: boolean) => void };
   runtimeHud: Pick<ReturnType<typeof createGameRuntimeHud>, "showGemDrop" | "showCardCopy" | "showItemDrop">;
-  upgradeBench: { observeUpgradeTier: (itemId: string, level: number) => void };
+  slotUpgrades: { observeUpgradeTier: (itemId: string, level: number) => void };
   inTutorial: () => boolean;
   isRunning: () => boolean;
   moveSpeed: () => number;
@@ -115,7 +115,7 @@ export function createCoopSessionWiring(deps: CoopSessionWiringDeps) {
   });
   createAutoEquipFeedback({ coop: client, inventory, player, healthMultiplierBonus, renderInventory, showMessage });
   client?.setOnItemUpgrade?.(upgrade => {
-    deps.upgradeBench.observeUpgradeTier(upgrade.itemId, upgrade.level);
+    deps.slotUpgrades.observeUpgradeTier(upgrade.itemId, upgrade.level);
     showItemUpgrade(upgrade);
   });
 

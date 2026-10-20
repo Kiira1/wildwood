@@ -8,7 +8,7 @@ export type MapEditorGameplayOverride = {
   arrival: { x: number; y: number };
   boss: { x: number; y: number };
   bootsPickup?: { x: number; y: number };
-  upgradeBench?: { x: number; y: number };
+  station?: { x: number; y: number };
   portals: {
     x: number;
     y: number;

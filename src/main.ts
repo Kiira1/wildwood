@@ -24,7 +24,7 @@ import { bindPlayerNameTags } from "./app/player-name-tags";
 import { bindAvatarFrames } from "./app/avatar-frames";
 import { isSoulMap } from "../shared/soul-dimension";
 import { worldBoundsFor } from "../shared/world-bounds";
-import { paintHomeTeleportButton } from "./ui/home-teleport-button";
+import { paintTownTeleportButton } from "./ui/town-teleport-button";
 import { isDeveloperIdentity } from "./app/developer";
 import { WORLD } from "./game/constants";
 import { equipmentAppearance, patreonLooks } from "./game/inventory";
@@ -224,7 +224,7 @@ import { MAX_PLAYER_STAT, PLAYER_SPAWN } from "../shared/rules";
     void mapAssets.prepare(mapId).catch(() => {});
     mapAssets.preloadAdjacent(mapId);
     // The button always leaves the current map, so it names the destination: Town, or Fight in the Town.
-    paintHomeTeleportButton(gameElements.techTreeBtn, mapId);
+    paintTownTeleportButton(gameElements.townButton, mapId);
   }
 
   function mapNameForPresence(mapId: string | undefined) {
@@ -408,7 +408,7 @@ import { MAX_PLAYER_STAT, PLAYER_SPAWN } from "../shared/rules";
   );
   const research = createResearchController({
     prestigeLevel: () => coop?.prestigeStatGainInPlay?.() === false ? 0 : coopAccess.prestigeLevel(),
-    guildQuestBonus: () => coop?.dailyQuests?.()?.bonus ?? 1,
+    guildQuestBonus: () => coop?.weeklyQuests?.()?.bonus ?? 1,
     prestigePerks: () => coop?.prestigePerks?.(), cards: () => coop?.activeCardStats?.(), equippedFeet: () => inventory.equippedFeet,
     itemLevel: coopAccess.itemLevel,
     player,
@@ -459,8 +459,8 @@ import { MAX_PLAYER_STAT, PLAYER_SPAWN } from "../shared/rules";
 
   let playerController: ReturnType<typeof createLocalPlayer>;
   const mapController = createMapController({
-    openHomeTravel: portal => isSoulMap(portal.destination) ? soulDimension.openWindow() : homeTravel.open(),
-    closeHomeTravel: () => { homeTravel.close(); soulDimension.closeWindow(); },
+    openTravel: portal => isSoulMap(portal.destination) ? soulDimension.openWindow() : travel.open(),
+    closeTravel: () => { travel.close(); soulDimension.closeWindow(); },
     onTravelStarted: () => autoFarm.travelStarted(), travelWanted: destination => autoFarm.headingTo(destination),
     markPortalCutsceneSeen: (cutscene) => coop?.markPortalCutsceneSeen?.(cutscene),
     mapConfig: MAP_CONFIG,
@@ -506,7 +506,7 @@ import { MAX_PLAYER_STAT, PLAYER_SPAWN } from "../shared/rules";
     bossHazards,
     onCutsceneFinished: () => bossController.onPortalCutsceneFinished(),
   });
-  const { questTracker, quests, homeTravel, soulDimension, guildHall } = createWorldPlaces({
+  const { questTracker, quests, travel, soulDimension, guildHall } = createWorldPlaces({
     coop: coopAccess, world: bootstrap, currentMapId: () => currentMapId, spawnFromSite, mapController, playerInput, playerCombat,
     research, regenerationPerSecond, autoFarm, logPickup, showMessage, spawnBurst,
     later: {
@@ -571,7 +571,7 @@ import { MAX_PLAYER_STAT, PLAYER_SPAWN } from "../shared/rules";
     currentMapId: () => currentMapId, gameTime: () => session.gameTime(), localDeath: () => localPlayerDeath, localCorpses,
     isArenaScene, remoteEnemies: enemySimulation.remoteCombatGhosts, mapController, proceduralBoss, bootstrapAssets,
     stationStatus: {
-      upgradeBench: () => upgradeBench.worldStatus() ?? null, research: () => techTree.worldStatus() ?? null, questBoard: quests.worldStatus,
+      slotUpgrades: () => slotUpgrades.worldStatus() ?? null, research: () => techTree.worldStatus() ?? null, questBoard: quests.worldStatus,
     },
     rewardDisplay, rewardContext: rewardLabelContext, bossHitboxesVisible: () => devPanel.bossHitboxesVisible(),
     identityRenderer: playerIdentityRenderer, playerPower, lowPerformanceMode: appShell.lowPerformanceMode,
@@ -663,7 +663,7 @@ import { MAX_PLAYER_STAT, PLAYER_SPAWN } from "../shared/rules";
 
   const { panels, progressNotices, techTree, guildPanel, leaderboard, devPanel } = createGamePanels({
     coop: coopAccess, e: gameElements, itemInspection: itemInspectionController, minimizeChat: () => chatRuntime.minimize(),
-    mapGuide: () => mapGuide, upgradeBench: () => upgradeBench, researchRanks,
+    mapGuide: () => mapGuide, slotUpgrades: () => slotUpgrades, researchRanks,
     showProgressCompletion: (kind, detail, icon, color) => runtimeHud.showProgressCompletion(kind, detail, icon, color),
     profileWindow, closeIconPicker: closeProfileIconPicker, clearInput: playerInput.clear,
     lowPerformanceMode: appShell.lowPerformanceMode, openGuildHall: () => guildHall.openWindow(),
@@ -678,16 +678,16 @@ import { MAX_PLAYER_STAT, PLAYER_SPAWN } from "../shared/rules";
     coop: coopAccess, e: gameElements, player, inventory, currentMapId: () => currentMapId, inTutorial,
     isMapTransitioning: () => mapController.isMapTransitioning(), teleportHome: () => mapController.teleportHome(),
     clearInput: playerInput.clear, renderInventory, equip: inventoryController.equip, showMessage, techTree, quests,
-    beforeBenchOpen: () => panels.closeAllExcept("upgradeBench"), onUpgradeFinished: progressNotices.onUpgradeFinished,
+    beforeUpgradesOpen: () => panels.closeAllExcept("slotUpgrades"), onUpgradeFinished: progressNotices.onUpgradeFinished,
     applyEquipmentStats, saveProgress,
   });
-  const { smith, cardSeller, upgradeBench } = town;
+  const { smith, cardSeller, slotUpgrades } = town;
 
   const mapGuide = createMapGuidePanel({
     coop: coopAccess, e: gameElements, currentMapId: () => currentMapId, mapName: mapId => MAP_CONFIG[mapId].name, inventory,
     world: bootstrap, player, rewardDisplay, rewardContext: rewardLabelContext, mapController, proceduralBoss, profileWindow,
     closeCompetingWindows: () => panels.closeAllExcept("mapGuide"), clearInput: playerInput.clear, power: () => playerPower(player),
-    prestigeExpanded: expansionNotice.unlocked, preferTravel: homeTravel.prefer,
+    prestigeExpanded: expansionNotice.unlocked, preferTravel: travel.prefer,
   });
 
   const { runtimeHud, rewardedRespawnAd } = createHudRuntime({
@@ -728,8 +728,8 @@ import { MAX_PLAYER_STAT, PLAYER_SPAWN } from "../shared/rules";
     places: [soulDimension, guildHall], enemySystems: [personalBosses, proceduralBoss, enemySimulation], playerCombat, updateRespawns,
     effects, updateHud, runtimeHud, presentation,
     beforeRender: () => {
-      progressNotices.poll(techTree, upgradeBench);
-      upgradeBench.tick();
+      progressNotices.poll(techTree, slotUpgrades);
+      slotUpgrades.tick();
       guildPanel.tick();
     },
     guildPanel, assets, renderWorld: () => renderController.render(), performanceMonitor, devPanel,
@@ -895,7 +895,7 @@ import { MAX_PLAYER_STAT, PLAYER_SPAWN } from "../shared/rules";
     closeIconPicker: closeProfileIconPicker, leaveDuelResult, closeDuelReplay: duelRuntime.closeReplayWindow,
     closeBootUpgrade: worldProgression.closeBootUpgrade,
     windows: {
-      profile: profileWindow, guild: guildPanel, mapGuide, upgradeBench, leaderboard, devPanel, techTree, rewardedRespawnAd,
+      profile: profileWindow, guild: guildPanel, mapGuide, slotUpgrades, leaderboard, devPanel, techTree, rewardedRespawnAd,
     },
     setGameplayPause, clearProgressState: progress.resetState, setTotalKills: kills => { totalKills = kills; }, bootsPickup,
     resetGame: async () => {
@@ -912,7 +912,7 @@ import { MAX_PLAYER_STAT, PLAYER_SPAWN } from "../shared/rules";
 
   offlineProgressSummary = createCoopSessionWiring({
     coop: coopAccess, player, inventory, renderInventory, saveProgress, healthMultiplierBonus, showMessage,
-    windows: { playerSafety, profileWindow, inventory: inventoryController, smith, cardSeller }, leaderboard, runtimeHud, upgradeBench,
+    windows: { playerSafety, profileWindow, inventory: inventoryController, smith, cardSeller }, leaderboard, runtimeHud, slotUpgrades,
     inTutorial, isRunning: session.isRunning, moveSpeed: () => playerStats.moveSpeed(), playerInput,
     reconcileMap: () => { if (!inTutorial()) mapController.reconcileMapFromServer(); },
     syncLifetimeKills: progress.syncLifetimeKills, refreshGemCounter, refreshMailbox: mailbox.refresh, refreshGiftsAndMail: giftsAndMail.refresh,

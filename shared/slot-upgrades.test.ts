@@ -28,7 +28,7 @@ describe("slot upgrade tracks", () => {
     expect(normalizeSlotTier(7.9)).toBe(7);
   });
 
-  it("labels the tracks the way the bench does", () => {
+  it("labels the slots the way Slot Upgrades does", () => {
     expect(UPGRADE_SLOT_LABELS).toEqual({ HAND: "Weapon", HEAD: "Helmet", CHEST: "Armor" });
   });
 });

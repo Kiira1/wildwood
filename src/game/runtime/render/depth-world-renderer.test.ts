@@ -41,7 +41,7 @@ function renderer(
     drawTree: (tree) => calls.push(`tree:${tree.y}`),
     drawCactus: (cactus) => calls.push(`cactus:${cactus.y}`),
     drawSnowPine: (tree) => calls.push(`pine:${tree.y}`),
-    drawUpgradeBench: (bench) => calls.push(`bench:${bench.y}`),
+    drawStation: (station) => calls.push(`station:${station.y}`),
     drawCharredTree: (tree) => calls.push(`charred-tree:${tree.y}`),
     drawEnemy: (_enemy, opacity = 1) => { calls.push("enemy"); enemyOpacities.push(opacity); },
     drawBoss: (kind) => calls.push(({ dragon: "boss", koiShogun: "koi-shogun", tempestKirin: "tempest-kirin" } as Partial<Record<BossKind, string>>)[kind] ?? kind),
@@ -59,12 +59,12 @@ describe("depth world renderer", () => {
     const depth = renderer([
       { type: "tree", x: 100, y: 300, s: 1, variant: 0 },
       { type: "cactus", x: 100, y: 100, s: 1, variant: 0 },
-      { type: "upgradeBench", x: 100, y: 220, s: 1, label: "Slot Upgrades" },
+      { type: "station", x: 100, y: 220, s: 1, label: "Slot Upgrades" },
     ], calls);
 
     depth.drawDepthSortedWorld([], false);
 
-    expect(calls).toEqual(["cactus:100", "player", "bench:220", "tree:300"]);
+    expect(calls).toEqual(["cactus:100", "player", "station:220", "tree:300"]);
   });
 
   it("pre-culls offscreen static decor and remote players", () => {
@@ -186,7 +186,7 @@ it("draws a player standing in a portal's gateway over its swirl, and one behind
       player: { moving: false, ...player } as PlayerState, bosses: {} as BossStates, bootsPickup: { y: 0, r: 0, collected: true },
       currentMapId: () => "town" as MapId,
       activePortal: () => ({ x: 200, y: 300, width: 198, height: 198, depth: 300 }), secondaryPortal: () => null,
-      drawTree: () => {}, drawCactus: () => {}, drawSnowPine: () => {}, drawUpgradeBench: () => {}, drawCharredTree: () => {},
+      drawTree: () => {}, drawCactus: () => {}, drawSnowPine: () => {}, drawStation: () => {}, drawCharredTree: () => {},
       drawEnemy: () => {}, drawBoss: () => {}, drawBootPickup: () => {},
       drawPortal: () => calls.push("portal"), drawSecondaryPortal: () => {},
       drawRemotePlayer: () => calls.push("remote"), drawPlayer: () => calls.push("player"),

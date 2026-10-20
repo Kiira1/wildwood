@@ -116,7 +116,7 @@ type SessionDependencies = {
   worldCombatReady?: () => boolean;
   updateCutscene: (dt: number) => void;
   updatePlayer: (dt: number) => void;
-  updateUpgradeBench: () => void;
+  updateStations: () => void;
   updatePortal: (dt: number) => void;
   updateEnemies: (dt: number) => void;
   /** Runs the current map's world boss for one step. */
@@ -187,7 +187,7 @@ export function createGameSessionController(dependencies: SessionDependencies) {
     if (dependencies.worldCombatReady?.() === false) return;
 
     dependencies.updatePlayer(dt);
-    dependencies.updateUpgradeBench();
+    dependencies.updateStations();
     if (!dependencies.isDueling()) {
       dependencies.updatePortal(dt);
       // A portal can start its asynchronous handoff during this very step.

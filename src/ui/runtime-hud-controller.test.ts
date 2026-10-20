@@ -108,7 +108,7 @@ it("keeps the account-wide online count through a regional handoff, then clears 
 });
 
 describe("runtime reward notifications", () => {
-  it("shows research and both bench-slot completions as separate reward-style cards", () => {
+  it("shows research and both Slot Upgrades queue completions as separate reward-style cards", () => {
     const { controller, pickupLog } = setupHud();
     controller.showProgressCompletion("Research", "WARCRAFT Lv 6", "⚔", "#f3a6ce");
     controller.showProgressCompletion("Slot Upgrade", "Weapon +1", "◆", "#f3cf70");

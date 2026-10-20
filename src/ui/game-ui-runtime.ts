@@ -37,7 +37,7 @@ export function createHomeStationTouchHandler(
   isHome: () => boolean,
   player: { x: number; y: number },
   openResearch: () => void,
-  updateBench: () => void,
+  updateSlotUpgrades: () => void,
   openQuestBoard?: () => void,
   openOxShop?: () => void,
   openSmith?: () => void,
@@ -73,7 +73,7 @@ export function createHomeStationTouchHandler(
       if (atSchool && !touchingSchool[school]) openSchool?.(school);
       touchingSchool[school] = atSchool;
     }
-    updateBench();
+    updateSlotUpgrades();
   };
 }
 
@@ -173,7 +173,7 @@ export function createDuplicateLoginRuntime(d: Record<string, any>) {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function createTechTreePanel(d: Record<string, any>) {
   const e = d.e;
-  return createTechTreeController({ notice: e.techTreeNotice, overlay: e.techTreeOverlay, title: e.techTreeTitle, categories: e.techTreeCategories, viewport: e.techTreeViewport, closeButton: e.closeTechTreeBtn, active: e.techTreeActive, canvas: e.techTreeCanvas, map: e.techTreeMap, detail: e.techTreeDetail, detailContent: e.techTreeDetailContent, closeDetailButton: e.closeTechTreeDetailBtn }, {
+  return createTechTreeController({ notice: e.researchReadyHint, overlay: e.techTreeOverlay, title: e.techTreeTitle, categories: e.techTreeCategories, viewport: e.techTreeViewport, closeButton: e.closeTechTreeBtn, active: e.techTreeActive, canvas: e.techTreeCanvas, map: e.techTreeMap, detail: e.techTreeDetail, detailContent: e.techTreeDetailContent, closeDetailButton: e.closeTechTreeDetailBtn }, {
     researchRanks: d.researchRanks, activeResearch: d.activeResearch, startResearch: d.startResearch, gemBalance: d.gemBalance, speedUpResearch: d.speedUpResearch, pausedResearch: d.pausedResearch, pauseResearch: d.pauseResearch, showMessage: d.showMessage, localIdentity: d.localIdentity, isConnected: d.isConnected, onResearchFinished: d.onResearchFinished, beforeOpen: d.beforeOpen, nowMs: () => Date.now(),
   });
 }
@@ -271,8 +271,8 @@ export function createGameActionsRuntime(d: Record<string, any>) {
       closeMapGuide: d.mapGuide.close,
       isItemInspectionOpen: d.itemInspectionController.isOpen,
       closeItemInspection: d.itemInspectionController.close,
-      isUpgradeBenchOpen: d.upgradeBenchController.isOpen,
-      closeUpgradeBench: d.upgradeBenchController.close,
+      isSlotUpgradesOpen: d.slotUpgradesController.isOpen,
+      closeSlotUpgrades: d.slotUpgradesController.close,
       isProfileIconPickerOpen: () => !e.profileIconPickerEl.hidden,
       closeProfileIconPicker: d.closeProfileIconPicker,
       isLeaderboardOpen: d.leaderboard.isOpen,

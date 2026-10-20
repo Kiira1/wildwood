@@ -13,7 +13,7 @@ export const MAP_DECOR_TYPES = [
   "desertGrass",
   "snowPine",
   "snowTuft",
-  "upgradeBench",
+  "station",
   "lavaPool",
   "lavaRock",
   "charredTree",

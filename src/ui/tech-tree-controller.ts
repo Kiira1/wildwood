@@ -525,7 +525,7 @@ export function createTechTreeController(elements: TechTreeControllerElements, h
       render();
     },
     updateNotice,
-    /** Timer for the research desk sign, formatted like the upgrade bench. */
+    /** Timer for the research desk sign, formatted like the Slot Upgrades sign. */
     worldStatus: () => {
       const current = hooks.activeResearch();
       return current ? { timer: formatTimerMs(current.completesAtMs - Date.now()) } : null;

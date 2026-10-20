@@ -1,5 +1,5 @@
 import { Range, table, t, SenderError } from "spacetimedb/server";
-import { WEEKLY_QUEST_COUNT, GUILD_QUEST_COLLECT_LIMIT, GUILD_WEEK_QUEST_CAP, applyQuestKills, weeklyQuestsFor, guildQuestBonus, ownQuest, parseDailyQuests, questDay, questDone, questOpen, questWeek, soloQuestBonus, type DailyQuest } from "../../shared/daily-quests";
+import { WEEKLY_QUEST_COUNT, GUILD_QUEST_COLLECT_LIMIT, GUILD_WEEK_QUEST_CAP, applyQuestKills, weeklyQuestsFor, guildQuestBonus, ownQuest, parseWeeklyQuests, questDay, questDone, questOpen, questWeek, soloQuestBonus, type WeeklyQuest } from "../../shared/weekly-quests";
 import { readPlayerProgress } from "./wide-stats";
 import { creditGuildHall } from "./guild-hall";
 
@@ -70,10 +70,10 @@ function soloPoints(ctx: Ctx, identity: any, week: number) {
 const weekKey = (week: number, guildId: bigint) => `${week}:${guildId}`;
 
 /** What the player's list for `week` shows done: their own quests and the ones they collected. Null once the week's list is gone. */
-function listDone(ctx: Ctx, identity: any, week: number, quests?: DailyQuest[]) {
+function listDone(ctx: Ctx, identity: any, week: number, quests?: WeeklyQuest[]) {
   const row = quests ? null : ctx.db.playerDailyQuest.identity.find(identity);
   if (!quests && (!row || questWeek(row.day) !== week)) return null;
-  const done = (quests ?? parseDailyQuests(row.questsJson)).filter(questDone);
+  const done = (quests ?? parseWeeklyQuests(row.questsJson)).filter(questDone);
   return { own: done.filter(ownQuest).length, collected: done.filter(quest => !ownQuest(quest)).length };
 }
 
@@ -89,7 +89,7 @@ function guildTally(ctx: Ctx, identity: any, week: number, guildId?: bigint) {
  * credited with. The count began in 0.853, so quests finished earlier that
  * week sit in the list but not in it.
  */
-function soloQuestsFor(ctx: Ctx, identity: any, week: number, quests?: DailyQuest[]) {
+function soloQuestsFor(ctx: Ctx, identity: any, week: number, quests?: WeeklyQuest[]) {
   const stored = soloPoints(ctx, identity, week);
   const done = listDone(ctx, identity, week, quests);
   return done ? Math.max(stored, done.own + done.collected - guildTally(ctx, identity, week)) : stored;
@@ -209,7 +209,7 @@ export function ensureDailyQuests(ctx: Ctx, identity: any) {
   }
   const guildFields = { bonus: guildQuestBonusFor(ctx, identity), guildPoints: guild ? weekPoints(ctx, week, guild.id) : soloQuestsFor(ctx, identity, week), guildName: guild?.name ?? "" };
   let questsJson = existing?.questsJson ?? "[]";
-  const current = existing && questWeek(existing.day) === week ? parseDailyQuests(existing.questsJson) : null;
+  const current = existing && questWeek(existing.day) === week ? parseWeeklyQuests(existing.questsJson) : null;
   const own = current?.filter(ownQuest).length ?? 0;
   if (!current || own < WEEKLY_QUEST_COUNT) {
     const progress = readPlayerProgress(ctx, identity) ?? {};
@@ -233,7 +233,7 @@ export function ensureDailyQuests(ctx: Ctx, identity: any) {
 export function recordDailyQuestKills(ctx: Ctx, identity: any, mapId: string, kills: { enemy: string; count: number }[]) {
   if (!kills.some(kill => kill.count > 0)) return 0;
   const row = ensureDailyQuests(ctx, identity);
-  const { quests, completed } = applyQuestKills(parseDailyQuests(row.questsJson), mapId, kills);
+  const { quests, completed } = applyQuestKills(parseWeeklyQuests(row.questsJson), mapId, kills);
   if (completed) noteQuestsDone(ctx, identity, questWeek(row.day), completed);
   let guildPoints = row.guildPoints;
   // A member's quests count for their guild from the moment they join (0.863;
@@ -269,9 +269,9 @@ export function recordDailyQuestKills(ctx: Ctx, identity: any, mapId: string, ki
 }
 
 /** This week's quests for a player, or none when this week's have not been drawn yet. */
-function weeksQuests(ctx: Ctx, identity: any): DailyQuest[] | null {
+function weeksQuests(ctx: Ctx, identity: any): WeeklyQuest[] | null {
   const row = ctx.db.playerDailyQuest.identity.find(identity);
-  return row && questWeek(row.day) === questWeek(questDay(ctx.timestamp.microsSinceUnixEpoch)) ? parseDailyQuests(row.questsJson) : null;
+  return row && questWeek(row.day) === questWeek(questDay(ctx.timestamp.microsSinceUnixEpoch)) ? parseWeeklyQuests(row.questsJson) : null;
 }
 
 /**
@@ -350,7 +350,7 @@ export function collectGuildQuests(ctx: Ctx, collector: any) {
   const pool = guildQuestPool(ctx, seat.guildId);
   const count = Math.min(standing.left, pool.left);
   if (!count) fail(`Your guild has finished its ${GUILD_WEEK_QUEST_CAP} quests this week.`);
-  const quests = parseDailyQuests(mine.questsJson);
+  const quests = parseWeeklyQuests(mine.questsJson);
   const taken = quests.filter(quest => quest.from).length;
   const drawn = weeklyQuestsFor(`${collector.toHexString()}:pool:${taken}`, questWeek(day), readPlayerProgress(ctx, collector) ?? {})
     .slice(0, count).map(quest => ({ ...quest, from: GUILD_POOL_FROM }));

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { TOWN_ARRIVAL, TOWN_CENTER } from "../../../../shared/town";
-import { SOUL_VILLAGE_GROUND } from "../../soul-village";
+import { TOWN_VILLAGE_GROUND } from "../../town-village";
 import { townWindowDecor } from "../../town-world";
 import type { WorldDecor } from "../../world";
 import { createSoulGroundRenderer, SOUL_SHADOW_STRENGTH, soulPropExtent, type SoulPropDecor } from "../soul/soul-prop-renderer";
@@ -82,7 +82,7 @@ describe("painting a Town ground tile", () => {
     expect(painter.ready()).toBe(true);
     expect(painter.paint(fakeContext(draws) as unknown as CanvasRenderingContext2D, tileX, tileY, TILE)).toBe(true);
     // The square lies on the village's ground image, which comes first, under everything.
-    expect(SOUL_VILLAGE_GROUND.x).toBeLessThan(TOWN_ARRIVAL.x);
+    expect(TOWN_VILLAGE_GROUND.x).toBeLessThan(TOWN_ARRIVAL.x);
     expect(draws[0].image).toBe(images.ground);
     expect(draws.slice(1, 1 + flat.length).every(draw => draw.image === images.props || draw.image === images.atlas)).toBe(true);
     expect(draws).toHaveLength(1 + flat.length + 1);

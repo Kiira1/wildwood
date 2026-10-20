@@ -66,13 +66,13 @@ describe("installed interface structure", () => {
   });
 
   it("keeps the Town button free of dots: research and Smith upgrades are HUD chips by the ad button", () => {
-    expect(doc.getElementById("techTreeBtn")!.querySelector("#techTreeNotice, .smith-upgrade-notice")).toBeNull();
-    for (const id of ["techTreeNotice", "smithUpgradeNotice"]) {
+    expect(doc.getElementById("townBtn")!.querySelector("#researchReadyHint, .smith-buy-notice")).toBeNull();
+    for (const id of ["researchReadyHint", "smithBuyNotice"]) {
       const chip = doc.getElementById(id)!;
       expect(chip.classList.contains("hud-reminder"), id).toBe(true);
       expect(chip.hidden, id).toBe(true);
     }
-    expect(doc.getElementById("smithUpgradeNotice")!.nextElementSibling?.id).toBe("enemyRespawnAdBtn");
+    expect(doc.getElementById("smithBuyNotice")!.nextElementSibling?.id).toBe("enemyRespawnAdBtn");
   });
 
   it("lists the Quest Tracker switch in Settings → Game → Display, beside the stat tracker", () => {
@@ -140,7 +140,7 @@ describe("installed interface structure", () => {
     const exits = {
       settingsPanel: "closeSettingsBtn", inventoryPanel: "closeInventoryBtn",
       playerProfile: "closePlayerProfileBtn", leaderboard: "closeLeaderboardBtn",
-      techTreeOverlay: "closeTechTreeBtn", mapGuide: "mapGuideBack", upgradeBenchPanel: "upgradeBenchBack",
+      techTreeOverlay: "closeTechTreeBtn", mapGuide: "mapGuideBack", slotUpgradesPanel: "slotUpgradesBack",
     };
     for (const [windowId, buttonId] of Object.entries(exits)) {
       const button = doc.getElementById(buttonId)!;

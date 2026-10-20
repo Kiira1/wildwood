@@ -29,7 +29,7 @@ export function installLoginMove(doc: Document, hooks: Hooks) {
     <p>Use a Google account that hasn't played WildStat, and close WildStat in your other tabs and devices first.</p>
     <p>Nothing is deleted. Your old sign-in keeps an empty character.</p>
     <p class="account-deletion-status login-move-status" role="status" aria-live="polite"></p></div>
-    <footer class="window-back-footer"><button type="button" class="daily-gem-claim-button" data-move-confirm>Continue to Sign-In</button>
+    <footer class="window-back-footer"><button type="button" class="claim-button" data-move-confirm>Continue to Sign-In</button>
     <button type="button" class="window-back-button" data-move-cancel>Cancel</button></footer>`;
   doc.body.append(dialog);
   const confirm = dialog.querySelector<HTMLButtonElement>("[data-move-confirm]")!;

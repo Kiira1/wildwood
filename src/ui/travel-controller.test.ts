@@ -1,6 +1,6 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { parseHTML } from "linkedom";
-import { createHomeTravelController, homeTravelEntries, type HomeTravelSource } from "./home-travel-controller";
+import { createTravelController, travelEntries, type TravelSource } from "./travel-controller";
 import type { CampaignAccess } from "../../shared/equipment-access";
 import type { MapId } from "../game/world";
 
@@ -10,7 +10,7 @@ afterEach(() => { destroy?.(); destroy = undefined; vi.unstubAllGlobals(); });
 function setup(progress: CampaignAccess = {}, endless = { unlocked: false, completed: 0 }, departure: MapId | null = null, guildHall: MapId | null = null) {
   const { document, window } = parseHTML("<html><body></body></html>");
   vi.stubGlobal("window", window); vi.stubGlobal("document", document); vi.stubGlobal("HTMLElement", window.HTMLElement);
-  const source: HomeTravelSource = {
+  const source: TravelSource = {
     savedProgress: () => progress,
     proceduralMapUnlocked: mapId => endless.unlocked && Number(mapId.split("_")[1]) <= endless.completed + 1,
     proceduralCompleted: () => endless.completed,
@@ -18,7 +18,7 @@ function setup(progress: CampaignAccess = {}, endless = { unlocked: false, compl
   let atHome = true;
   const travel = vi.fn(async (_mapId: MapId) => true);
   const pause = vi.fn(), clearInput = vi.fn();
-  const picker = createHomeTravelController({ source: () => source, travel, departure: () => departure, atHome: () => atHome, pause, clearInput, guildHall: () => guildHall });
+  const picker = createTravelController({ source: () => source, travel, departure: () => departure, atHome: () => atHome, pause, clearInput, guildHall: () => guildHall });
   destroy = picker.destroy;
   const dialog = document.querySelector<HTMLDialogElement>("dialog")!;
   Object.assign(dialog, { showModal() { dialog.open = true; }, close() { dialog.open = false; } });
@@ -45,7 +45,7 @@ it("lists unlocked maps in campaign order with their zone numbers, then the next
 });
 
 it("offers a new player the first map and the Dragon as the next goal", () => {
-  const { entries, endlessHighest } = homeTravelEntries({ savedProgress: () => ({}) });
+  const { entries, endlessHighest } = travelEntries({ savedProgress: () => ({}) });
   expect(entries.map(entry => [entry.key, entry.locked])).toEqual([
     ["tutorial_forest", null], ["beginner_desert", "Defeat the Dragon in Tutorial Forest to unlock"]]);
   expect(endlessHighest).toBe(0);

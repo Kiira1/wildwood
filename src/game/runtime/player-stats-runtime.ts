@@ -16,7 +16,7 @@ export type PlayerStatsSource = {
   attackCapInPlay?: () => AttackCapArg;
   prestige?: () => { level: number } | null | undefined;
   prestigeStatGainInPlay?: () => boolean;
-  dailyQuests?: () => { bonus: number } | null | undefined;
+  weeklyQuests?: () => { bonus: number } | null | undefined;
 };
 
 type WornGear = { equippedHead: string; equippedChest: string; equippedFeet: string; equippedRightHand: string; equippedLeftHand: string };
@@ -48,7 +48,7 @@ export function createPlayerStatsRuntime(deps: {
       research: source?.researchInPlay?.(), perks: source?.prestigePerks?.(), cards: source?.activeCardTotals?.(),
       attackCap: source?.attackCapInPlay?.(),
       prestigeLevel: source?.prestigeStatGainInPlay?.() === false ? 0 : source?.prestige?.()?.level ?? 0,
-      guildBonus: source?.dailyQuests?.()?.bonus ?? 1,
+      guildBonus: source?.weeklyQuests?.()?.bonus ?? 1,
     };
   };
   const inputs = (): PlayerStatInputs => ({ ...coreInputs(), soul: deps.soul?.(), tailwind: deps.tailwind?.() ?? 0, dueling: deps.isDueling?.() ?? false });

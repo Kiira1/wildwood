@@ -54,7 +54,7 @@ export function movementUpdateReason(options: {
   if (force) return "forced";
   if (!lastSent) return velocity.moving ? "start" : null;
   // Invisible autofarm needs location checkpoints, not live steering updates.
-  // Forced travel, reconnect, profile/bench and duel positions remain immediate.
+  // Forced travel, reconnect, profile/station and duel positions remain immediate.
   //
   // Coming to a halt is the exception. It is one packet per walk, and it is the
   // only one that says where the player actually ended up: without it the

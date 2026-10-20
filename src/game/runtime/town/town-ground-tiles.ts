@@ -1,6 +1,6 @@
 import { decodedImage } from "../render/decoded-image";
 import { townChunkOf, townInteriorArea, TOWN_INTERIOR_MARGIN, TOWN_WORLD } from "../../../../shared/town";
-import { SOUL_ATLAS, SOUL_INTERIOR_ROOMS, SOUL_VILLAGE_DECOR, SOUL_VILLAGE_GROUND } from "../../soul-village";
+import { SOUL_ATLAS, SOUL_INTERIOR_ROOMS, TOWN_VILLAGE_DECOR, TOWN_VILLAGE_GROUND } from "../../town-village";
 import { townChunkDecor, TOWN_INTERIOR_DECOR } from "../../town-world";
 import type { WorldDecor } from "../../world";
 import { paintHillsGround } from "./hills-ground";
@@ -28,7 +28,7 @@ let countrysideReach = 0;
  * whenever it is asked: it does not depend on where the player is or which chunks are loaded.
  */
 export function townGroundPropsIn(rect: Rect) {
-  fixedGroundProps ??= [...SOUL_VILLAGE_DECOR, ...TOWN_INTERIOR_DECOR].filter(isGroundProp);
+  fixedGroundProps ??= [...TOWN_VILLAGE_DECOR, ...TOWN_INTERIOR_DECOR].filter(isGroundProp);
   if (!countrysideReach) {
     for (const frame of Object.values(SOUL_ATLAS.frames) as { w: number; h: number }[]) countrysideReach = Math.max(countrysideReach, frame.w, frame.h);
     countrysideReach = Math.ceil(countrysideReach * 1.1);
@@ -129,7 +129,7 @@ export function createTownGroundTilePainter(images: Images) {
     const rect = { left: tileX * tileSize, top: tileY * tileSize, right: (tileX + 1) * tileSize, bottom: (tileY + 1) * tileSize };
     const ox = rect.left, oy = rect.top;
     context.imageSmoothingEnabled = false;
-    const ground = images.ground(), area = SOUL_VILLAGE_GROUND;
+    const ground = images.ground(), area = TOWN_VILLAGE_GROUND;
     const left = Math.max(area.x, rect.left), top = Math.max(area.y, rect.top);
     const right = Math.min(area.x + area.w, rect.right), bottom = Math.min(area.y + area.h, rect.bottom);
     if (usable(ground) && left < right && top < bottom) {

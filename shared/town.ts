@@ -155,7 +155,7 @@ export const TOWN_DOORS: readonly TownDoor[] = doorData.doors.map((door, index) 
  * room's own furniture stood (the client draws the station in its place and keeps its collider as the
  * station's): Slot Upgrades in the smithy (door 6) for its tool table, Tech Research in the windmill
  * (door 1) for its roped-off display, Weekly Quests in the Inn (door 5) for its notice board. Each is
- * (door, offset from the room's top-left corner). The server checks the bench's reach from the same point.
+ * (door, offset from the room's top-left corner). The server checks the station's reach from the same point.
  */
 const stationIn = (door: number, dx: number, dy: number) => {
   const { room } = TOWN_DOORS[door];
@@ -184,7 +184,7 @@ export const TOWN_OX_POSITION = stationIn(8, 120, 100);
 export const TOWN_OX_REACH = 60;
 /**
  * The Smith refines gear (shared/refine.ts), after Ragnarok's refiner. He
- * works outdoors at the blue forge house right of the Slot Upgrades bench's building (door 6), the one with crossed
+ * works outdoors at the blue forge house right of the Slot Upgrades station's building (door 6), the one with crossed
  * swords on its sign: in its yard, between the weapon rack and the forge, behind the anvil. Players walk in
  * from the road on the left. Where his feet are.
  */
@@ -205,11 +205,11 @@ export const TOWN_CARD_SELLER_SERVER_REACH = 100;
 /**
  * A gap in the log fence east of the Inn: the square's way out east,
  * to the river's crossing in the north-east and the Copper Hills past it. The fence's middle log section on that
- * side, and its collider, are left out (soul-village.ts).
+ * side, and its collider, are left out (town-village.ts).
  */
 export const TOWN_EAST_FENCE_GAP = Object.freeze({ left: TOWN_CENTER.x + 900, right: TOWN_CENTER.x + 960, top: TOWN_CENTER.y + 140, bottom: TOWN_CENTER.y + 310 });
 /**
- * Just outside the gap, where the village's tall tree stood in the way out (soul-village.ts leaves it out, its
+ * Just outside the gap, where the village's tall tree stood in the way out (town-village.ts leaves it out, its
  * shadow and its trunk with it): open grass, so whoever walks through the gap stays in view.
  */
 export const TOWN_EAST_FENCE_GAP_OUTSIDE = Object.freeze({
@@ -227,7 +227,7 @@ export const TOWN_HILLS_SIGNPOST_POSITION = Object.freeze({ x: TOWN_EAST_FENCE_G
 export const TOWN_EAST_BRIDGE = Object.freeze({ x: TOWN_CENTER.x + 1_314, y: TOWN_CENTER.y - 234, halfWidth: 154, halfHeight: 77 });
 /**
  * The way up from the gap to the bridge, and off its far end: the trees that stood there hid whoever walked the
- * track, so they are gone (soul-village.ts), as the one outside the gap is.
+ * track, so they are gone (town-village.ts), as the one outside the gap is.
  */
 export const TOWN_EAST_BRIDGE_APPROACHES = Object.freeze([
   Object.freeze({ left: TOWN_EAST_BRIDGE.x - 334, right: TOWN_EAST_BRIDGE.x - 114, top: TOWN_EAST_BRIDGE.y - 66, bottom: TOWN_EAST_BRIDGE.y + 334 }),

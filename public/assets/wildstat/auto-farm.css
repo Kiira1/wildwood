@@ -901,33 +901,33 @@
 .smith-sheet .smith-views .inventory-filter, .smith-sheet .smith-shown .inventory-filter { position: relative; min-width: 86px; min-height: 34px; padding: 0 14px; border: 0; border-radius: 999px; color: #b3b3b3; font: 900 14px/1 var(--font-rounded); letter-spacing: .02em; }
 .smith-sheet .smith-shown .inventory-filter { min-width: 0; min-height: 30px; padding: 0 12px; font-size: 13px; }
 .smith-sheet .smith-views .inventory-filter[aria-pressed="true"], .smith-sheet .smith-shown .inventory-filter[aria-pressed="true"] { background: #fff; color: #111; border-bottom: 0; text-shadow: none; -webkit-text-stroke: 0; }
-.smith-sheet .smith-upgrade-dot { position: absolute; top: 5px; right: 8px; width: 8px; height: 8px; border: 1px solid #fff; border-radius: 50%; background: #e63d3d; }
-.smith-sheet .smith-upgrade-dot[hidden] { display: none; }
+.smith-sheet .smith-buy-dot { position: absolute; top: 5px; right: 8px; width: 8px; height: 8px; border: 1px solid #fff; border-radius: 50%; background: #e63d3d; }
+.smith-sheet .smith-buy-dot[hidden] { display: none; }
 /* Four tabs share the bar at phone width. */
 .smith-sheet .smith-views .inventory-filter { min-width: 70px; padding: 0 12px; }
-/* Slot Upgrades (upgrade-bench-controller.ts) on the Upgrade tab, under its heading: the bench window laid flat in the sheet, in its colors. */
-.smith-sheet .upgrade-bench-panel { position: static; inset: auto; z-index: auto; display: block; margin: 0; padding: 14px 12px; overflow: visible; border-radius: 12px; background: rgba(255,255,255,.05); }
-.smith-sheet .upgrade-bench-panel[hidden] { display: none; }
-.smith-sheet .upgrade-bench-content { width: 100%; margin: 0 auto; }
-.smith-sheet .upgrade-bench-prompt { font-size: 15px; }
-.smith-sheet .inventory-item.upgrade-bench-slot { border-color: rgba(255,255,255,.16); background: #141414; }
-.smith-sheet .inventory-item.upgrade-bench-slot.is-active { background: #1f1f1f; }
-.smith-sheet .inventory-item.upgrade-bench-slot.is-selected { border-color: #fff; box-shadow: inset 0 0 0 1px #fff; }
-.smith-sheet .upgrade-bench-slot .inventory-item-empty-mark { color: #bdbdbd; }
-.smith-sheet .upgrade-bench-track-name, .smith-sheet .upgrade-bench-stat-gain, .smith-sheet .upgrade-bench-stat-row strong,
-.smith-sheet .upgrade-bench-slot-cost, .smith-sheet .upgrade-bench-picker-stat, .smith-sheet .upgrade-bench-picker-title strong { font-size: 13px; }
-.smith-sheet .upgrade-bench-slot > .inventory-upgrade-level { font-size: 13px; line-height: 15px; }
-.smith-sheet .upgrade-bench-stat-row span, .smith-sheet .upgrade-bench-picker-stat span:last-child { color: #fff; }
-.smith-sheet .upgrade-bench-timer { color: #fff; font-size: 14px; }
-.smith-sheet .upgrade-bench-action { width: min(220px, 100%); border-color: #5a3c00; background: linear-gradient(#ffe07a, #e2a628); box-shadow: 0 3px 0 #5a3c00; font-size: 15px; }
-.smith-sheet .upgrade-bench-action.is-cancel { border-color: #492020; background: linear-gradient(#cf6868, #953c3c); box-shadow: 0 3px 0 #431d1d; }
-.smith-sheet .upgrade-bench-action.upgrade-bench-speed-up { border-color: #65354f; background: linear-gradient(#d86f9f, #a84573); box-shadow: 0 3px 0 #53243d; }
-.smith-sheet .upgrade-bench-action:disabled { border-color: rgba(255,255,255,.18); background: rgba(255,255,255,.08); box-shadow: none; color: var(--muted); }
-/* The slot list covers the whole window, as it did the bench's. */
-.smith-sheet .upgrade-bench-picker { position: fixed; z-index: 5; }
-.smith-sheet .upgrade-bench-picker-sheet { background: var(--window-surface); }
-.smith-sheet .upgrade-bench-picker-heading { font-size: 15px; letter-spacing: 0; }
-.smith-sheet .upgrade-bench-picker-item { height: auto; min-height: 72px; border-color: rgba(255,255,255,.12); background: #141414; }
+/* Slot Upgrades (slot-upgrades-controller.ts) on the Upgrade tab, under its heading: the old standalone window laid flat in the sheet, in its colors. */
+.smith-sheet .slot-upgrades-panel { position: static; inset: auto; z-index: auto; display: block; margin: 0; padding: 14px 12px; overflow: visible; border-radius: 12px; background: rgba(255,255,255,.05); }
+.smith-sheet .slot-upgrades-panel[hidden] { display: none; }
+.smith-sheet .slot-upgrades-content { width: 100%; margin: 0 auto; }
+.smith-sheet .slot-upgrades-prompt { font-size: 15px; }
+.smith-sheet .inventory-item.slot-upgrades-queue { border-color: rgba(255,255,255,.16); background: #141414; }
+.smith-sheet .inventory-item.slot-upgrades-queue.is-active { background: #1f1f1f; }
+.smith-sheet .inventory-item.slot-upgrades-queue.is-selected { border-color: #fff; box-shadow: inset 0 0 0 1px #fff; }
+.smith-sheet .slot-upgrades-queue .inventory-item-empty-mark { color: #bdbdbd; }
+.smith-sheet .slot-upgrades-slot-name, .smith-sheet .slot-upgrades-stat-gain, .smith-sheet .slot-upgrades-stat-row strong,
+.smith-sheet .slot-upgrades-queue-cost, .smith-sheet .slot-upgrades-picker-stat, .smith-sheet .slot-upgrades-picker-title strong { font-size: 13px; }
+.smith-sheet .slot-upgrades-queue > .inventory-upgrade-level { font-size: 13px; line-height: 15px; }
+.smith-sheet .slot-upgrades-stat-row span, .smith-sheet .slot-upgrades-picker-stat span:last-child { color: #fff; }
+.smith-sheet .slot-upgrades-timer { color: #fff; font-size: 14px; }
+.smith-sheet .slot-upgrades-action { width: min(220px, 100%); border-color: #5a3c00; background: linear-gradient(#ffe07a, #e2a628); box-shadow: 0 3px 0 #5a3c00; font-size: 15px; }
+.smith-sheet .slot-upgrades-action.is-cancel { border-color: #492020; background: linear-gradient(#cf6868, #953c3c); box-shadow: 0 3px 0 #431d1d; }
+.smith-sheet .slot-upgrades-action.slot-upgrades-speed-up { border-color: #65354f; background: linear-gradient(#d86f9f, #a84573); box-shadow: 0 3px 0 #53243d; }
+.smith-sheet .slot-upgrades-action:disabled { border-color: rgba(255,255,255,.18); background: rgba(255,255,255,.08); box-shadow: none; color: var(--muted); }
+/* The slot list covers the whole window, as it did the old standalone window's. */
+.smith-sheet .slot-upgrades-picker { position: fixed; z-index: 5; }
+.smith-sheet .slot-upgrades-picker-sheet { background: var(--window-surface); }
+.smith-sheet .slot-upgrades-picker-heading { font-size: 15px; letter-spacing: 0; }
+.smith-sheet .slot-upgrades-picker-item { height: auto; min-height: 72px; border-color: rgba(255,255,255,.12); background: #141414; }
 /* A section's heading in a view: its name, and a count on the right. */
 .smith-sheet .smith-section-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin: 0 16px 8px; }
 .smith-sheet .smith-section-head strong { color: #fff; font: 900 15px/18px var(--font-rounded); }

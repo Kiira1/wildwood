@@ -19,7 +19,7 @@ import type { LeaderboardEntry } from "../wildstat-coop";
 import type { createGameElements } from "./game-elements";
 import { createDevPanel, createLeaderboardPanel, createTechTreePanel } from "./game-ui-runtime";
 import { createGuildPanel } from "./guild-panel";
-import type { createHomeTravelController } from "./home-travel-controller";
+import type { createTravelController } from "./travel-controller";
 import type { createItemInspectionController } from "./item-inspection-controller";
 import { createMapGuideController } from "./map-guide-controller";
 import { createPanelCoordinator } from "./panel-coordinator";
@@ -39,7 +39,7 @@ export type GamePanelsDeps = {
   itemInspection: ReturnType<typeof createItemInspectionController>;
   minimizeChat: () => void;
   mapGuide: () => Closable | undefined;
-  upgradeBench: () => Closable | undefined;
+  slotUpgrades: () => Closable | undefined;
   researchRanks: () => ResearchRanks;
   showProgressCompletion: Parameters<typeof createProgressCompletionNotices>[2];
   profileWindow: ProfileOpener;
@@ -79,7 +79,7 @@ export function createGamePanels(deps: GamePanelsDeps) {
   const panels = createPanelCoordinator({
     guild: () => guildPanel,
     mapGuide: deps.mapGuide,
-    upgradeBench: deps.upgradeBench,
+    slotUpgrades: deps.slotUpgrades,
     techTree: () => techTree,
     devPanel: () => devPanel,
     closeLeaderboard,
@@ -215,7 +215,7 @@ export type MapGuidePanelDeps = {
   clearInput: () => void;
   power: () => number;
   prestigeExpanded: ReturnType<typeof createPrestigeExpansionRuntime>["unlocked"];
-  preferTravel: ReturnType<typeof createHomeTravelController>["prefer"];
+  preferTravel: ReturnType<typeof createTravelController>["prefer"];
 };
 
 /** The map guide behind the minimap: the map's zones, drops and Enemy Index, its boss and portals, and travel. */
@@ -264,7 +264,7 @@ export function createMapGuidePanel(deps: MapGuidePanelDeps) {
     travel: {
       inTown: () => deps.currentMapId() === "town",
       prefer: deps.preferTravel,
-      teleportToTown: () => !e.techTreeBtn.disabled && (e.techTreeBtn.click(), true),
+      teleportToTown: () => !e.townButton.disabled && (e.townButton.click(), true),
     },
   });
 }

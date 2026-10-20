@@ -1,6 +1,6 @@
 import { decodedImage } from "../render/decoded-image";
 import { townInteriorArea as soulInteriorArea, TOWN_INTERIOR_MARGIN as SOUL_INTERIOR_MARGIN } from "../../../../shared/town";
-import { SOUL_ATLAS, SOUL_DOORS_OPEN, SOUL_INTERIOR_ROOMS, SOUL_VILLAGE_GROUND, SOUL_VILLAGE_SCENE } from "../../soul-village";
+import { SOUL_ATLAS, SOUL_DOORS_OPEN, SOUL_INTERIOR_ROOMS, TOWN_VILLAGE_GROUND, TOWN_VILLAGE_SCENE } from "../../town-village";
 import { guildHallDoorState, guildHallFrame } from "../../guild-hall";
 import type { WorldDecor } from "../../world";
 import type { Camera } from "../render/camera";
@@ -10,10 +10,10 @@ import { drawTownSignpost, TOWN_SIGNPOST_EXTENT, TOWN_SIGNPOST_EXTENT_MIRRORED }
 
 export type SoulPropDecor = Extract<WorldDecor, { type: "soulProp" }>;
 export const SOUL_ATLAS_SOURCE = "assets/wildstat/soul-dimension/soul-atlas.webp";
-export { SOUL_INTERIORS_SOURCE, SOUL_VILLAGE_GROUND_SOURCE, SOUL_VILLAGE_PROPS_SOURCE } from "../../soul-village";
+export { SOUL_INTERIORS_SOURCE, TOWN_VILLAGE_GROUND_SOURCE, TOWN_VILLAGE_PROPS_SOURCE } from "../../town-village";
 
 type Frame = { x: number; y: number; w: number; h: number; ax: number; ay: number };
-const villageFrames = new Map<string, Frame>(Object.entries(SOUL_VILLAGE_SCENE.frames)
+const villageFrames = new Map<string, Frame>(Object.entries(TOWN_VILLAGE_SCENE.frames)
   .map(([id, [x, y, w, h, ax, ay]]) => [id, { x, y, w, h, ax, ay }]));
 
 /** A prop's frame (the village's sheet, a guild hall's, or the wilds' atlas), or null for one none has. */
@@ -123,7 +123,7 @@ export function createSoulGroundRenderer(options: {
   ctx: CanvasRenderingContext2D;
   camera: Camera;
   ground: () => HTMLImageElement | undefined;
-  /** Where the ground image lies in the world: the Soul village's unless given (a guild hall's courtyard). */
+  /** Where the ground image lies in the world: the Town village's unless given (a guild hall's courtyard). */
   area?: { x: number; y: number; w: number; h: number };
   /** The rooms behind the village's doors: dark all round, each room's floor and walls under its furniture. */
   interiors: () => HTMLImageElement | undefined;
@@ -213,7 +213,7 @@ export function createSoulGroundRenderer(options: {
       const view = options.viewport();
       const viewRight = camera.x + view.width / camera.zoom, viewBottom = camera.y + view.height / camera.zoom;
       const image = options.ground();
-      const area = options.area ?? SOUL_VILLAGE_GROUND;
+      const area = options.area ?? TOWN_VILLAGE_GROUND;
       const left = Math.max(area.x, camera.x), top = Math.max(area.y, camera.y);
       const right = Math.min(area.x + area.w, viewRight), bottom = Math.min(area.y + area.h, viewBottom);
       if (image?.complete && image.naturalWidth > 0 && left < right && top < bottom) {

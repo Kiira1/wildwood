@@ -25,7 +25,7 @@ import { activeCardIdsFor, activeCardTotalsFor } from "./active-cards";
 import { duelAnnouncementText } from "../../shared/duel-announcement";
 import { prestigePerkRanks } from "./prestige";
 import { researchInPlay } from "./bonus-toggles";
-import { prestigePerkValue, prestigeRiposteChance, prestigeSwingMultiplier } from "../../shared/prestige-perks";
+import { prestigePerkValue, prestigeReflectChance, prestigeSwingMultiplier } from "../../shared/prestige-perks";
 import { criticalDamageMultiplier } from "../../shared/critical-damage";
 import { duelBowSkillFields } from "./bow-skills";
 import { duelSwordSkillFields } from "./sword-skills";
@@ -432,8 +432,8 @@ export function createDuelRuntime(deps: DuelRuntimeDeps) {
     ctx.db.duelRiposte.insert({
       duelId: insertedDuel.id,
       // Reflect cards add to the perk.
-      challengerRiposte: prestigeRiposteChance(prestigePerkRanks(ctx, ctx.sender)) + cardChance(activeCardTotalsFor(ctx, ctx.sender), "reflect") / 100,
-      opponentRiposte: prestigeRiposteChance(prestigePerkRanks(ctx, opponent)) + cardChance(activeCardTotalsFor(ctx, opponent), "reflect") / 100,
+      challengerRiposte: prestigeReflectChance(prestigePerkRanks(ctx, ctx.sender)) + cardChance(activeCardTotalsFor(ctx, ctx.sender), "reflect") / 100,
+      opponentRiposte: prestigeReflectChance(prestigePerkRanks(ctx, opponent)) + cardChance(activeCardTotalsFor(ctx, opponent), "reflect") / 100,
       riposteSeed: ctx.timestamp.microsSinceUnixEpoch,
     });
     ctx.db.duelCombatSnapshot.insert({ ...ctx.db.duelRiposte.duelId.find(insertedDuel.id),

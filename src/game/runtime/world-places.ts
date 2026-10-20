@@ -1,5 +1,5 @@
 import type { createGameRuntimeHud } from "../../ui/game-ui-runtime";
-import { createHomeTravelController } from "../../ui/home-travel-controller";
+import { createTravelController } from "../../ui/travel-controller";
 import { createQuestBoardRuntime } from "../../ui/quest-board-controller";
 import { createQuestTrackerSetting } from "../../ui/quest-tracker";
 import type { MapId, SpawnSite } from "../world";
@@ -55,7 +55,7 @@ export function createWorldPlaces(deps: WorldPlacesDeps) {
     mapName: id => mapConfig[id as MapId]?.name ?? id,
     showProgress: (enemy, count, target) => later.showQuestProgress(enemy, count, target),
   });
-  const homeTravel = createHomeTravelController({
+  const travel = createTravelController({
     source, travel: mapController.travelFromHome, departure: mapController.homeDeparture, atHome, pause: () => {}, clearInput,
     mapName: id => mapConfig[id].name, guildHall: () => guildHall.hallMap(),
   });
@@ -81,5 +81,5 @@ export function createWorldPlaces(deps: WorldPlacesDeps) {
     },
   });
 
-  return { questTracker, quests, homeTravel, soulDimension, guildHall };
+  return { questTracker, quests, travel, soulDimension, guildHall };
 }

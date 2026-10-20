@@ -109,7 +109,7 @@ const afterUpdateGateShell = String.raw`
       <div class="profile-tab-list" role="tablist" aria-label="Player profile sections">
         <button id="profileStatsTab" class="profile-tab is-active" type="button" role="tab" aria-selected="true" aria-controls="profileStatsPanel">Stats</button>
         <button id="profileSkillsTab" class="profile-tab" type="button" role="tab" aria-selected="false" aria-controls="profileSkillsPanel">Skills</button>
-        <button id="profileOverviewTab" class="profile-tab" type="button" role="tab" aria-selected="false" aria-controls="profileOverviewPanel">Info</button>
+        <button id="profileInfoTab" class="profile-tab" type="button" role="tab" aria-selected="false" aria-controls="profileInfoPanel">Info</button>
         <button id="profileBonusesTab" class="profile-tab" type="button" role="tab" aria-selected="false" aria-controls="profileBonusesPanel" hidden>Bonuses</button>
       </div>
       <div id="profileOwnActions" class="profile-own-actions" hidden>
@@ -118,7 +118,7 @@ const afterUpdateGateShell = String.raw`
     </div>
     <div class="profile-tab-panels">
       <div id="playerProfileLoading" class="profile-loading" role="status" hidden></div>
-      <section id="profileOverviewPanel" class="profile-panel" role="tabpanel" aria-labelledby="profileOverviewTab" hidden>
+      <section id="profileInfoPanel" class="profile-panel" role="tabpanel" aria-labelledby="profileInfoTab" hidden>
         <dl class="profile-grid">
           <div><dt>DATE JOINED</dt><dd id="profileJoined">—</dd></div>
           <div><dt>TIME PLAYED</dt><dd id="profileTimePlayed">—</dd></div>
@@ -454,7 +454,7 @@ export function installGameShell(doc: Document = document) {
     doc.getElementById("playerPower")?.insertAdjacentHTML("afterend", `<button id="playerHudProfileGear" class="hud-settings-button" type="button" aria-label="Open settings" title="Settings"><img src="assets/wildstat/icons/Icon_Settings.webp" alt="" aria-hidden="true"></button>`);
   }
   // Research Ready and Smith upgrades; the timer column takes them in once it is built.
-  if (!doc.getElementById("techTreeNotice")) doc.getElementById("enemyRespawnAdBtn")?.insertAdjacentHTML("beforebegin", hudReminderMarkup());
+  if (!doc.getElementById("researchReadyHint")) doc.getElementById("enemyRespawnAdBtn")?.insertAdjacentHTML("beforebegin", hudReminderMarkup());
   if (!doc.getElementById("playerVisibilityToggle")) {
     doc.getElementById("hudGemWallet")?.insertAdjacentHTML("afterend", `<button id="playerVisibilityToggle" class="player-visibility-toggle" type="button" aria-label="Show other players" aria-pressed="false"></button>`);
   }
@@ -512,9 +512,9 @@ export function installGameShell(doc: Document = document) {
       <div class="setting-row"><span>Base Stat Rewards</span>
       <button id="baseStatRewardsToggle" class="setting-toggle" type="button" aria-label="Show base stat rewards under enemies, in autofarm and reward popups" aria-pressed="false">OFF</button></div>`);
   }
-  if (!doc.getElementById("upgradeBenchSlotThree")) {
-    doc.getElementById("upgradeBenchSlotTwo")?.insertAdjacentHTML("afterend", `
-      <button id="upgradeBenchSlotThree" class="inventory-item upgrade-bench-slot is-locked" type="button" aria-label="Unlock A Third Queue For 200 Gems" aria-pressed="false" hidden></button>`);
+  if (!doc.getElementById("slotUpgradesQueueThree")) {
+    doc.getElementById("slotUpgradesQueueTwo")?.insertAdjacentHTML("afterend", `
+      <button id="slotUpgradesQueueThree" class="inventory-item slot-upgrades-queue is-locked" type="button" aria-label="Unlock A Third Queue For 200 Gems" aria-pressed="false" hidden></button>`);
   }
   installSettingsTabs(doc);
   // From the title screen on, so a controller can sign in too.

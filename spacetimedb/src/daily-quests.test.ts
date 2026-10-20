@@ -3,7 +3,7 @@ import { Timestamp } from "spacetimedb";
 import { crystalFixture } from "../../tests/helpers/crystal-hollows-fixture";
 import { fillDefeatBudget, reportKills } from "../../tests/helpers/enemy-defeat";
 import { STARTER_BOW } from "../../shared/items";
-import { WEEKLY_QUEST_COUNT, questDay, questWeek } from "../../shared/daily-quests";
+import { WEEKLY_QUEST_COUNT, questDay, questWeek } from "../../shared/weekly-quests";
 import { GUILD_POOL_FROM, collectGuildQuests, collectMemberQuests, ensureDailyQuests, guildQuestBonusFor, memberQuestStanding, moveSoloQuestsToGuild, pruneOldGuildQuestWeeks, questCollectStanding, refreshQuestBonus } from "./daily-quests";
 import { Identity } from "spacetimedb";
 import { statRewardMultiplier } from "./prestige";

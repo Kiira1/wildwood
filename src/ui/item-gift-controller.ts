@@ -16,13 +16,13 @@ type Hooks = {
 export function createItemGiftController(hooks: Hooks) {
   const overlay = document.createElement("div");
   overlay.id = "developerItemGift";
-  overlay.className = "daily-gem-bonus developer-item-gift";
+  overlay.className = "claim-overlay developer-item-gift";
   overlay.hidden = true;
-  overlay.innerHTML = `<section class="daily-gem-bonus-card" role="dialog" aria-modal="true" aria-labelledby="developerItemGiftTitle">
-    <div class="daily-gem-bonus-kicker">GIFT FROM DEVELOPER</div>
-    <div class="daily-gem-bonus-art" aria-hidden="true"><img alt="" draggable="false" /></div>
+  overlay.innerHTML = `<section class="claim-card" role="dialog" aria-modal="true" aria-labelledby="developerItemGiftTitle">
+    <div class="claim-kicker">GIFT FROM DEVELOPER</div>
+    <div class="claim-art" aria-hidden="true"><img alt="" draggable="false" /></div>
     <h2 id="developerItemGiftTitle"></h2>
-    <button class="daily-gem-claim-button" type="button">CLAIM</button>
+    <button class="claim-button" type="button">CLAIM</button>
   </section>`;
   document.body.append(overlay);
   const title = overlay.querySelector<HTMLElement>("h2")!;

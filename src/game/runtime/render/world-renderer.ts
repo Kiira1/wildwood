@@ -1,4 +1,4 @@
-import { SOUL_VILLAGE_GROUND } from "../../soul-village";
+import { TOWN_VILLAGE_GROUND } from "../../town-village";
 import { WORLD_WIDTH } from "../../../../shared/rules";
 import { isSoulMap, SOUL_STAT_DETAILS } from "../../../../shared/soul-dimension";
 import { inTownInteriors, isTownMap, TOWN_DOORS, TOWN_GROVE_WALK_AREA, TOWN_INTERIOR_MARGIN, TOWN_VILLAGE_WALK_AREA, TOWN_WALK_AREAS } from "../../../../shared/town";
@@ -53,7 +53,7 @@ type DrawShadow = (x: number, y: number, width: number, alpha?: number) => void;
 type TreeDecor = Extract<WorldDecor, { type: "tree" }>;
 type CactusDecor = Extract<WorldDecor, { type: "cactus" }>;
 type SnowPineDecor = Extract<WorldDecor, { type: "snowPine" }>;
-type UpgradeBenchDecor = Extract<WorldDecor, { type: "upgradeBench" }>;
+type StationDecor = Extract<WorldDecor, { type: "station" }>;
 type LavaRockDecor = Extract<WorldDecor, { type: "lavaRock" }>;
 type CharredTreeDecor = Extract<WorldDecor, { type: "charredTree" }>;
 
@@ -158,8 +158,8 @@ export type WorldRendererOptions = {
   portalArch: HTMLImageElement;
   portalSwirl: HTMLImageElement;
   snowPine: HTMLImageElement;
-  upgradeBench: HTMLImageElement;
-  upgradeBenchStatus: () => { itemSprite?: HTMLImageElement; timer: string } | null;
+  workbench: HTMLImageElement;
+  slotUpgradesStatus: () => { itemSprite?: HTMLImageElement; timer: string } | null;
   researchStatus?: () => { timer: string } | null;
   /** Today's quests, finished or not, and the line under the board's sign. */
   questBoardStatus?: () => { finished: boolean[]; timer: string } | null;
@@ -875,7 +875,7 @@ if (options.getMapId() === ION_CITADEL_MAP_ID) { drawIonRoads(ctx, options.paths
   }
 
   const shrunkImages = createShrunkImages();
-  const benchItemGlow = createGlowCache();
+  const workbenchItemGlow = createGlowCache();
   function drawPortalAt(portal: Portal, cutscene = false) {
     if (!options.portalArch.complete || options.portalArch.naturalWidth <= 0) return;
     const x = snapToWorldPixel(portal.x - camera.x);
@@ -961,17 +961,17 @@ if (options.getMapId() === ION_CITADEL_MAP_ID) { drawIonRoads(ctx, options.paths
     ctx.drawImage(residentDrawable(options.snowPine), x - width / 2, y - height, width, height);
   }
 
-  function drawUpgradeBench(bench: UpgradeBenchDecor) {
+  function drawStation(station: StationDecor) {
     const visible = visibleSize();
-    const x = snapToWorldPixel(bench.x - camera.x);
-    const y = snapToWorldPixel(bench.y - camera.y);
+    const x = snapToWorldPixel(station.x - camera.x);
+    const y = snapToWorldPixel(station.y - camera.y);
     if (x < -120 || y < -210 || x > visible.width + 120 || y > visible.height + 210) return;
-    if (bench.label === "Tech Research") {
+    if (station.label === "Tech Research") {
       drawHomeResearchDesk(ctx, x, y - 8, options.getGameTime());
       drawHomeStationSign(ctx, x, y, "Tech Research", options.researchStatus?.()?.timer);
       return;
     }
-    if (bench.label === "Ox") {
+    if (station.label === "Ox") {
       options.drawOx?.(x, y);
       drawScreenSpaceAt(ctx, camera.zoom, x, y - 70, () => {
         ctx.textAlign = "center";
@@ -984,7 +984,7 @@ if (options.getMapId() === ION_CITADEL_MAP_ID) { drawIonRoads(ctx, options.paths
       });
       return;
     }
-    if (bench.label === "Smith") {
+    if (station.label === "Smith") {
       options.drawSmith?.(x, y);
       drawScreenSpaceAt(ctx, camera.zoom, x, y - 70, () => {
         ctx.textAlign = "center";
@@ -998,7 +998,7 @@ if (options.getMapId() === ION_CITADEL_MAP_ID) { drawIonRoads(ctx, options.paths
       return;
     }
     // The stall is the village's own art; only its name hangs over the awning.
-    if (bench.label === "Card Seller") {
+    if (station.label === "Card Seller") {
       drawScreenSpaceAt(ctx, camera.zoom, x, y - 128, () => {
         ctx.textAlign = "center";
         ctx.textBaseline = "bottom";
@@ -1011,43 +1011,43 @@ if (options.getMapId() === ION_CITADEL_MAP_ID) { drawIonRoads(ctx, options.paths
       return;
     }
     // A school's building has no station, only its plank sign on the back wall.
-    if (SCHOOL_BUILDINGS.has(bench.label)) {
-      drawSchoolWallSign(ctx, x, y, bench.label);
+    if (SCHOOL_BUILDINGS.has(station.label)) {
+      drawSchoolWallSign(ctx, x, y, station.label);
       return;
     }
-    if (bench.label === "Quest Board") {
+    if (station.label === "Quest Board") {
       const quests = options.questBoardStatus?.();
       drawHomeQuestBoard(ctx, x, y, options.getGameTime(), quests?.finished ?? []);
       drawHomeStationSign(ctx, x, y + 2, "Weekly Quests", quests?.timer);
       return;
     }
-    if (!options.upgradeBench.complete || options.upgradeBench.naturalWidth <= 0) return;
-    const width = Math.round(180 * bench.s);
-    const height = Math.round(width * options.upgradeBench.naturalHeight / options.upgradeBench.naturalWidth);
+    if (!options.workbench.complete || options.workbench.naturalWidth <= 0) return;
+    const width = Math.round(180 * station.s);
+    const height = Math.round(width * options.workbench.naturalHeight / options.workbench.naturalWidth);
     // The generated sprite has generous transparent padding below its feet;
-    // Lift the shadow into the sprite's padded feet so the bench stays planted.
+    // Lift the shadow into the sprite's padded feet so the workbench stays planted.
     options.drawShadow(x, y - 27, Math.round(width * .75), .2);
     // Drawn mirrored: the sprite faces left as generated.
     ctx.save();
     ctx.translate(x, 0);
     ctx.scale(-1, 1);
-    ctx.drawImage(residentDrawable(options.upgradeBench), -width / 2, y - height, width, height);
+    ctx.drawImage(residentDrawable(options.workbench), -width / 2, y - height, width, height);
     ctx.restore();
-    const upgrade = options.upgradeBenchStatus();
+    const upgrade = options.slotUpgradesStatus();
     if (upgrade?.itemSprite?.complete && upgrade.itemSprite.naturalWidth > 0) {
       const maxWidth = 88;
       const maxHeight = 68;
       const scale = Math.min(maxWidth / upgrade.itemSprite.naturalWidth, maxHeight / upgrade.itemSprite.naturalHeight);
       const itemWidth = Math.max(1, Math.round(upgrade.itemSprite.naturalWidth * scale));
       const itemHeight = Math.max(1, Math.round(upgrade.itemSprite.naturalHeight * scale));
-      // Center the active item over the bench sprite's flat gray work plate,
-      // which the mirrored bench puts right of center.
+      // Center the active item over the workbench sprite's flat gray work plate,
+      // which the mirrored workbench puts right of center.
       const itemCenterX = x + Math.round(width * .18);
       const itemCenterY = y - height + height * .32 - 6;
       const itemX = itemCenterX - itemWidth / 2, itemY = itemCenterY - itemHeight / 2;
       const item = residentDrawable(upgrade.itemSprite);
       // The glow is baked once; a live shadowBlur made Firefox draw every frame on the CPU.
-      benchItemGlow(ctx, upgrade.itemSprite, item, itemX, itemY, itemWidth, itemHeight, "rgba(116,225,255,.8)", 8);
+      workbenchItemGlow(ctx, upgrade.itemSprite, item, itemX, itemY, itemWidth, itemHeight, "rgba(116,225,255,.8)", 8);
       ctx.drawImage(item, itemX, itemY, itemWidth, itemHeight);
     }
     if (options.getMapId() === "town" || options.getMapId() === "home_exterior") {
@@ -1058,7 +1058,7 @@ if (options.getMapId() === ION_CITADEL_MAP_ID) { drawIonRoads(ctx, options.paths
       ctx.textBaseline = "bottom";
       ctx.font = '900 13px "Arial Rounded MT Bold", "Arial Rounded MT", Arial, sans-serif';
       const labelY = -(upgrade ? 21 : 7) + Math.sin(options.getGameTime() * 2.2) * 2;
-      options.outlinedText(bench.label, 0, labelY, "#f5e9c4", 4);
+      options.outlinedText(station.label, 0, labelY, "#f5e9c4", 4);
       if (upgrade) {
         ctx.font = '900 11px "Arial Rounded MT Bold", "Arial Rounded MT", Arial, sans-serif';
         options.outlinedText(upgrade.timer, 0, labelY + 16, "#8fe7ff", 4);
@@ -1150,18 +1150,18 @@ if (options.getMapId() === ION_CITADEL_MAP_ID) { drawIonRoads(ctx, options.paths
   }
 
   // A small copy of the village's ground for the minimap, made once: the full image is far too big to scale every frame.
-  let soulVillageThumbnail: HTMLCanvasElement | null = null;
-  function drawSoulVillageOnMinimap(draw: CanvasRenderingContext2D, ox: number, oy: number, sx: number, sy: number) {
+  let townVillageThumbnail: HTMLCanvasElement | null = null;
+  function drawTownVillageOnMinimap(draw: CanvasRenderingContext2D, ox: number, oy: number, sx: number, sy: number) {
     const image = options.minimapVillageGround?.();
-    if (!soulVillageThumbnail && image?.complete && image.naturalWidth > 0) {
-      soulVillageThumbnail = document.createElement("canvas");
-      soulVillageThumbnail.width = 256;
-      soulVillageThumbnail.height = Math.max(1, Math.round(256 * image.naturalHeight / image.naturalWidth));
-      soulVillageThumbnail.getContext("2d")?.drawImage(decodedImage(image), 0, 0, soulVillageThumbnail.width, soulVillageThumbnail.height);
+    if (!townVillageThumbnail && image?.complete && image.naturalWidth > 0) {
+      townVillageThumbnail = document.createElement("canvas");
+      townVillageThumbnail.width = 256;
+      townVillageThumbnail.height = Math.max(1, Math.round(256 * image.naturalHeight / image.naturalWidth));
+      townVillageThumbnail.getContext("2d")?.drawImage(decodedImage(image), 0, 0, townVillageThumbnail.width, townVillageThumbnail.height);
     }
-    if (!soulVillageThumbnail) return;
-    const area = SOUL_VILLAGE_GROUND;
-    draw.drawImage(soulVillageThumbnail, (area.x - ox) * sx, (area.y - oy) * sy, area.w * sx, area.h * sy);
+    if (!townVillageThumbnail) return;
+    const area = TOWN_VILLAGE_GROUND;
+    draw.drawImage(townVillageThumbnail, (area.x - ox) * sx, (area.y - oy) * sy, area.w * sx, area.h * sy);
   }
 
   /**
@@ -1236,7 +1236,7 @@ if (options.getMapId() === ION_CITADEL_MAP_ID) { drawIonRoads(ctx, options.paths
     const sx = innerSize / (frame?.span ?? WORLD.w); const sy = innerSize / (frame?.span ?? WORLD.h);
     const colors = mapColors();
     draw.fillStyle = colors.ground; draw.fillRect(innerX, innerY, innerSize, innerSize);
-    if (frame && !frame.rooms) drawSoulVillageOnMinimap(draw, ox, oy, sx, sy);
+    if (frame && !frame.rooms) drawTownVillageOnMinimap(draw, ox, oy, sx, sy);
     if (frame?.hills) drawOreRocksOnMinimap(draw, ox, oy, sx, sy);
     if (frame?.grove) drawWoodTreesOnMinimap(draw, ox, oy, sx, sy);
     if (frame?.rooms) drawSoulRoomsOnMinimap(draw, innerSize, ox, oy, sx, sy);
@@ -1305,5 +1305,5 @@ if (options.getMapId() === ION_CITADEL_MAP_ID) { drawIonRoads(ctx, options.paths
     if (minimapCanvas.width > 0 && minimapCanvas.height > 0) ctx.drawImage(minimapCanvas, layout.x, layout.y, size, size);
   }
 
-  return { drawGround, drawStaticWorld, warmStaticWorld, invalidateStaticWorld, drawTree, drawCactus, drawSnowPine, drawUpgradeBench, drawCharredTree, drawPortal, drawCutscenePortal, drawSecondaryPortal, drawDecor, drawMinimap };
+  return { drawGround, drawStaticWorld, warmStaticWorld, invalidateStaticWorld, drawTree, drawCactus, drawSnowPine, drawStation, drawCharredTree, drawPortal, drawCutscenePortal, drawSecondaryPortal, drawDecor, drawMinimap };
 }

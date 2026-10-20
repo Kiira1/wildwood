@@ -89,7 +89,7 @@ export type WorldRenderingDeps = {
   bootstrapAssets: BootstrapAssets;
   /** The Town stations' timers drawn over them in the world; those created later are read when drawn. */
   stationStatus: {
-    upgradeBench: WorldRenderRuntimeOptions["upgradeBenchStatus"];
+    slotUpgrades: WorldRenderRuntimeOptions["slotUpgradesStatus"];
     research: NonNullable<WorldRenderRuntimeOptions["researchStatus"]>;
     questBoard: NonNullable<WorldRenderRuntimeOptions["questBoardStatus"]>;
   };
@@ -139,7 +139,7 @@ export function createWorldRendering(deps: WorldRenderingDeps) {
     portalDestinationOpacity: () => mapController.portalDestinationOpacity(),
     assets,
     actorShadowSprite,
-    upgradeBenchStatus: deps.stationStatus.upgradeBench,
+    slotUpgradesStatus: deps.stationStatus.slotUpgrades,
     researchStatus: deps.stationStatus.research,
     questBoardStatus: deps.stationStatus.questBoard,
     drawShadow: canvasRuntime.drawActorShadow,

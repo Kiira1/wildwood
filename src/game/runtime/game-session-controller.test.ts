@@ -82,7 +82,7 @@ describe("game session frame scheduling", () => {
       const session = createGameSessionController({
         getMapId: () => "test", cutsceneActive: () => false, worldCombatReady: () => ready, syncBoss: vi.fn(), updateBoss: vi.fn(),
         capturePresentationState: vi.fn(), updateVisuals: vi.fn(), updateMessage: vi.fn(), updateHud: vi.fn(),
-        updatePlayer, updateEnemies, updateProjectiles, updatePortal, updateUpgradeBench: vi.fn(), isDueling: () => false,
+        updatePlayer, updateEnemies, updateProjectiles, updatePortal, updateStations: vi.fn(), isDueling: () => false,
       } as any);
       session.update(1 / 60);
       expect(updatePlayer).toHaveBeenCalledTimes(beginsDuringStep ? 1 : 0);

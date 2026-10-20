@@ -17,7 +17,7 @@
  *   node scripts/art/bake-forest-village-scene.mjs <pkg>
  *
  * Writes public/assets/wildstat/soul-dimension/village-ground.webp,
- * village-props.webp and src/game/soul-village-scene.json. Game units are
+ * village-props.webp and src/game/town-village-scene.json. Game units are
  * Unity units × UNITS (60: the pack's 100 pixels a unit at the atlas's .6).
  */
 import { writeFileSync, mkdirSync } from "node:fs";
@@ -639,6 +639,6 @@ const doorData = doorways.map(({ item, prop, image }, index) => {
     enter: Math.round(Math.max(bottom, front) - scene.fountain[1]), room: interiors.rooms[index].floor };
 });
 writeFileSync(join(root, "shared/town-doors.json"), `${JSON.stringify({ gap: interiors.gap, doors: doorData }, null, 1)}\n`);
-writeFileSync(join(root, "src/game/soul-village-scene.json"), JSON.stringify(scene));
+writeFileSync(join(root, "src/game/town-village-scene.json"), JSON.stringify(scene));
 console.log(`${doorData.length} doors, rooms sheet 2048x${roomSheetHeight}`);
 console.log(`ground ${maxX - minX}x${maxY - minY}px, ${frameList.length} frames for ${placed.length} props, ${solidShapes.length} solids, ${emitters.length} particle emitters, fountain ${scene.fountain}`);
