@@ -78,6 +78,31 @@ background waits until it is shown, and uses the sign-in another tab restored
 if there is one. Forced logins now return a refresh grant, so the old
 follow-up trip for a missing one is gone.
 
+## DPoP-bound refresh tokens (off by default)
+
+The 24-hour cap looks like node-oidc-provider's rule for public clients: a
+rotated refresh token keeps only the remaining lifetime unless it is
+sender-constrained. `account-dpop.ts` binds it with DPoP (RFC 9449): one
+non-extractable ES256 key per browser profile in IndexedDB (`wildstat-dpop`),
+shared by tabs, and a signed proof on every token-endpoint request (code
+exchange and refresh), retried once with the provider's `DPoP-Nonce`.
+
+- The switch is `localStorage["wildstat-dpop-v1"] = "on"`; the default is one
+  constant in `account-dpop.ts`.
+- A sign-in is bound when the exchange sent a proof and the answer's
+  `token_type` is `DPoP`; the grant then stores the key's thumbprint (`jkt`).
+  A bound grant is always refreshed with a proof from that key, whatever the
+  switch says. A missing or different key means sign in again. Unbound grants
+  keep refreshing without DPoP until the next sign-in.
+- DPoP never keeps a player out: a refused proof, no WebCrypto/IndexedDB, or a
+  request that fails only with the header, falls back to a plain exchange and
+  pauses DPoP on that browser for a week (`dpop-fallback:exchange:*`).
+- Only the ID token is used (for SpacetimeDB); nothing sends the access token,
+  so no resource request needs a proof.
+- Diagnostics: `dpop=bound|unbound|off` on sign-in returns and refusals, and
+  `renewal-chain:days=N;...;dpop=...` once per day a chain keeps renewing.
+  A `renewal-chain:days=1;...;dpop=bound` row is the proof it works.
+
 ## Static-hosting policy limits
 
 GitHub Pages does not provide project-controlled response headers. WildStat

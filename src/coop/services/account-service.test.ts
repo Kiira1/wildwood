@@ -5,6 +5,8 @@ vi.mock("./connection-diagnostic-runtime", () => ({ recordConnectionDiagnostic: 
 import { createUpdateResumeStore } from "./update-resume-store";
 import { inspectSpacetimeIdToken, OidcIdTokenError } from "../security/oidc-id-token";
 import { SPACETIME_AUTH_CLIENT_ID, SPACETIME_AUTH_ISSUER } from "../../../shared/rules";
+import { createDpop, DPOP_SWITCH_KEY, type DeviceDpop } from "./account-dpop";
+import { fakeIndexedDB } from "../../../tests/helpers/fake-indexeddb";
 
 class MemoryStorage implements Storage {
   private values = new Map<string, string>();
@@ -86,6 +88,7 @@ function setup(options: {
   authCallback?: boolean;
   updateResumeMode?: "account" | "guest" | null;
   validateAccountIdToken?: (token: string, expectedNonce: string) => Promise<ReturnType<typeof inspectSpacetimeIdToken>>;
+  dpop?: DeviceDpop;
 } = {}) {
   const local = new MemoryStorage();
   const session = new MemoryStorage();
@@ -156,6 +159,7 @@ function setup(options: {
     validateAccountIdToken: options.validateAccountIdToken ?? (async (token, expectedNonce) => (
       inspectSpacetimeIdToken(token, { expectedNonce })
     )),
+    ...(options.dpop ? { dpop: () => options.dpop! } : {}),
   });
   return { assign, connect, disconnect, local, session, notify, replaceState, requestWorldEntry, restartConnectionForIdentityChange, service,
     connection, setConnection: (value: typeof connection) => { connection = value; }, setWorldEntryBlocked, handleFailure,
@@ -771,7 +775,7 @@ describe("sign-in round trips", () => {
     stubTokenRequest(new FakeTokenRequest(200, { id_token: accountToken(), refresh_token: "grant" }));
     window.location.href = `https://wildstat.example/game?code=one&state=${state}`;
     await f.service.restoreKnownAccount();
-    expect(recordCarriedConnectionDiagnostic).toHaveBeenCalledWith("session-blocked", { detail: "sign-in-return:success:known-account:silent:42s" });
+    expect(recordCarriedConnectionDiagnostic).toHaveBeenCalledWith("session-blocked", { detail: "sign-in-return:success:known-account:silent:42s:dpop=off" });
     expect(f.session.getItem(keys.authTripKey)).toBeNull();
   });
   it("connects a forced login straight away, noting a missing refresh grant or offline_access scope", async () => {
@@ -786,7 +790,7 @@ describe("sign-in round trips", () => {
     expect(f.assign).toHaveBeenCalledOnce();
     expect(f.connect).toHaveBeenCalledOnce();
     expect(recordCarriedConnectionDiagnostic).toHaveBeenCalledWith("session-blocked", {
-      detail: expect.stringMatching(/^sign-in-return:success:register:prompt:\d+s:no-grant:no-offline$/),
+      detail: expect.stringMatching(/^sign-in-return:success:register:prompt:\d+s:no-grant:no-offline:dpop=off$/),
     });
   });
   it("plays on without a grant rather than repeating the follow-up", async () => {
@@ -1105,6 +1109,53 @@ describe("using another account", () => {
     f.service.rememberConfirmedCharacter("Gehn");
     await f.service.api.switchAccount();
     expect(f.service.api.accountState().signedInAs).toBe("");
+  });
+});
+
+describe("DPoP at the code exchange", () => {
+  afterEach(() => { vi.unstubAllGlobals(); vi.mocked(recordCarriedConnectionDiagnostic).mockClear(); });
+  function stubTokenRequests(...requests: FakeTokenRequest[]) {
+    const queue = [...requests];
+    vi.stubGlobal("XMLHttpRequest", vi.fn(function XMLHttpRequestMock() { return queue.shift(); }));
+  }
+  const dpopHeader = (request: FakeTokenRequest) => request.setRequestHeader.mock.calls.find(([name]) => name === "DPoP")?.[1];
+  it("binds the refresh token to this device when the switch is on, and says so on return", async () => {
+    const dpop = createDpop({ indexedDB: fakeIndexedDB().indexedDB, subtle: crypto.subtle });
+    const request = new FakeTokenRequest(200, { id_token: accountToken(), refresh_token: "bound-grant", token_type: "DPoP" });
+    stubTokenRequests(request);
+    const f = setup({ knownAccount: true, dpop });
+    f.local.setItem(DPOP_SWITCH_KEY, "on");
+    await f.service.api.signIn();
+    const state = f.session.getItem(keys.authStateKey)!;
+    f.session.setItem(keys.authNonceKey, "expected-nonce");
+    window.location.href = `https://wildstat.example/game?code=one&state=${state}`;
+    await f.service.restoreKnownAccount();
+    expect(dpopHeader(request)).toMatch(/^[\w-]+\.[\w-]+\.[\w-]+$/);
+    expect(JSON.parse(f.local.getItem(`${keys.accountTokenKey}:refresh`)!)).toMatchObject({ token: "bound-grant", jkt: (await dpop.key(false))!.jkt });
+    expect(recordCarriedConnectionDiagnostic).toHaveBeenCalledWith("session-blocked", { detail: expect.stringMatching(/^sign-in-return:success:known-account:silent:\d+s:dpop=bound$/) });
+  });
+  it("signs in without DPoP when the provider refuses the proof, noting the fallback", async () => {
+    const dpop = createDpop({ indexedDB: fakeIndexedDB().indexedDB, subtle: crypto.subtle });
+    const refused = new FakeTokenRequest(400, { error: "invalid_dpop_proof" });
+    const plain = new FakeTokenRequest(200, { id_token: accountToken(), refresh_token: "plain-grant", token_type: "Bearer" });
+    stubTokenRequests(refused, plain);
+    const f = setup({ authCallback: true, dpop });
+    f.local.setItem(DPOP_SWITCH_KEY, "on");
+    await f.service.restoreKnownAccount();
+    expect(dpopHeader(refused)).toBeDefined();
+    expect(dpopHeader(plain)).toBeUndefined();
+    expect(f.service.api.accountState().notice).toBe("SIGNED IN");
+    expect(JSON.parse(f.local.getItem(`${keys.accountTokenKey}:refresh`)!).jkt).toBeUndefined();
+    expect(recordCarriedConnectionDiagnostic).toHaveBeenCalledWith("session-blocked", { detail: "dpop-fallback:exchange:invalid_dpop_proof" });
+  });
+  it("sends no DPoP header while the switch is off", async () => {
+    const dpop = createDpop({ indexedDB: fakeIndexedDB().indexedDB, subtle: crypto.subtle });
+    const request = new FakeTokenRequest(200, { id_token: accountToken(), refresh_token: "grant" });
+    stubTokenRequests(request);
+    const f = setup({ authCallback: true, dpop });
+    await f.service.restoreKnownAccount();
+    expect(dpopHeader(request)).toBeUndefined();
+    expect(f.local.getItem(`${keys.accountTokenKey}:refresh`)).not.toContain("jkt");
   });
 });
 

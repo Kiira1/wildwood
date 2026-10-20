@@ -1,5 +1,6 @@
 import { DEFEAT_REAUTH } from "../../../shared/defeat-session";
 import { AccountRenewalRequired, createAccountTokenRenewal } from "./account-token-renewal";
+import { deviceDpop, exchangeCodeWithDpop, type DeviceDpop } from "./account-dpop";
 import { accountLogoutUrl } from "./account-logout";
 import { createAutoFarmResumeStore } from '../../app/auto-farm-resume';
 import { recordCarriedConnectionDiagnostic, recordConnectionDiagnostic } from "./connection-diagnostic-runtime";
@@ -83,6 +84,8 @@ type AccountServiceDependencies = {
   clearPendingProgress: (identity: string) => void;
   disconnectVirtualPlayers: () => void;
   validateAccountIdToken: (token: string, expectedNonce: string) => Promise<ValidatedIdTokenClaims>;
+  /** This browser's DPoP key (tests replace it). */
+  dpop?: () => DeviceDpop;
 };
 
 type AccountLinkTransaction = { code: string; guestIdentity: string };
@@ -118,6 +121,7 @@ export function loginMoveFailureNotice(message: string) {
 type TokenResponse = {
   id_token?: unknown;
   refresh_token?: unknown;
+  token_type?: unknown;
   scope?: unknown;
   error?: unknown;
   error_description?: unknown;
@@ -145,8 +149,8 @@ function authValuesMatch(left: string, right: string) {
  * other startup resources are being decoded; XMLHttpRequest has an independent
  * native timeout and preserves the same CORS + PKCE security properties.
  */
-function exchangeAuthorizationCode(body: URLSearchParams) {
-  return new Promise<{ ok: boolean; result: TokenResponse }>((resolve, reject) => {
+function exchangeAuthorizationCode(body: URLSearchParams, dpopProof?: string) {
+  return new Promise<{ ok: boolean; result: TokenResponse; nonce: string | null }>((resolve, reject) => {
     const request = new XMLHttpRequest();
     let settled = false;
     const rejectOnce = (reason: TokenExchangeRequestError["reason"]) => {
@@ -158,6 +162,7 @@ function exchangeAuthorizationCode(body: URLSearchParams) {
       request.open("POST", TOKEN_ENDPOINT, true);
       request.timeout = TOKEN_EXCHANGE_TIMEOUT_MS;
       request.setRequestHeader("content-type", "application/x-www-form-urlencoded");
+      if (dpopProof) request.setRequestHeader("DPoP", dpopProof);
       request.onload = () => {
         if (settled) return;
         let result: TokenResponse;
@@ -168,7 +173,9 @@ function exchangeAuthorizationCode(body: URLSearchParams) {
           return;
         }
         settled = true;
-        resolve({ ok: request.status >= 200 && request.status < 300, result });
+        // Null when the provider does not expose the header to this origin.
+        const nonce = typeof request.getResponseHeader === "function" ? request.getResponseHeader("DPoP-Nonce") : null;
+        resolve({ ok: request.status >= 200 && request.status < 300, result, nonce });
       };
       request.onerror = () => rejectOnce("network");
       request.ontimeout = () => rejectOnce("timeout");
@@ -197,7 +204,10 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
   let lastPlayableSessionMode: UpdateResumeMode | null = dependencies.updateResumeMode;
   let takeoverRequested = false;
   let takeoverRevision = 0;
-  const renewal = createAccountTokenRenewal(localStorage, keys.accountTokenKey);
+  const dpop = dependencies.dpop ?? deviceDpop;
+  const renewal = createAccountTokenRenewal(localStorage, keys.accountTokenKey, undefined, {
+    dpop, report: detail => recordConnectionDiagnostic("session-blocked", { detail: `${detail}${accountTag()}` }),
+  });
   /** When this page's player last got past sign-in, until a lost sign-in is reported. */
   let approvedAt: number | null = null;
   /** Why the last callback on this page failed, for the trip report. */
@@ -206,6 +216,8 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
   let callbackWithoutGrant = false;
   /** ...or with a granted scope that left out offline_access. */
   let callbackWithoutOffline = false;
+  /** Whether the last callback's refresh token is bound to this device (DPoP). */
+  let callbackDpop = "off";
   /** A background tab whose sign-in ran out waits to be shown before leaving for SpacetimeAuth. */
   let renewalDeferred = false;
   /** What the last returning trip expected, checked against the first profile row. */
@@ -286,7 +298,8 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
       return null;
     }
     const seconds = Math.max(0, Math.round((Date.now() - trip.at) / 1000));
-    const grant = outcome !== "success" ? "" : `${callbackWithoutGrant ? ":no-grant" : ""}${callbackWithoutOffline ? ":no-offline" : ""}`;
+    const grant = outcome !== "success" ? ""
+      : `${callbackWithoutGrant ? ":no-grant" : ""}${callbackWithoutOffline ? ":no-offline" : ""}:dpop=${callbackDpop}`;
     recordCarriedConnectionDiagnostic("session-blocked", {
       detail: `sign-in-return:${outcome}:${trip.reason}:${trip.prompt ? "prompt" : "silent"}:${seconds}s${grant}${failure}`,
     });
@@ -564,13 +577,19 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
 
     let outcome: "success" | "failed" = "failed";
     try {
-      const { ok, result } = await exchangeAuthorizationCode(new URLSearchParams({
-        grant_type: "authorization_code",
-        client_id: SPACETIME_AUTH_CLIENT_ID,
-        code,
-        redirect_uri: redirectUri(),
-        code_verifier: verifier,
-      }));
+      const exchange = await exchangeCodeWithDpop({
+        dpop: dpop(), storage: localStorage, endpoint: TOKEN_ENDPOINT,
+        send: proof => exchangeAuthorizationCode(new URLSearchParams({
+          grant_type: "authorization_code",
+          client_id: SPACETIME_AUTH_CLIENT_ID,
+          code,
+          redirect_uri: redirectUri(),
+          code_verifier: verifier,
+        }), proof),
+        networkFailure: error => error instanceof TokenExchangeRequestError && error.reason === "network",
+      });
+      if (exchange.fallback) recordCarriedConnectionDiagnostic("session-blocked", { detail: `dpop-fallback:exchange:${exchange.fallback}` });
+      const { ok, result } = exchange.attempt;
       if (!ok || typeof result.id_token !== "string") {
         const detail = typeof result.error_description === "string"
           ? result.error_description
@@ -582,7 +601,8 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
       await dependencies.validateAccountIdToken(result.id_token, expectedNonce);
       // A late OAuth response must not restore credentials after Sign Out.
       if (signingOut) { callbackFailure = "signed-out"; return "failed"; }
-      renewal.save(result.id_token, result.refresh_token);
+      renewal.save(result.id_token, result.refresh_token, { jkt: exchange.jkt });
+      callbackDpop = exchange.label;
       callbackWithoutGrant = typeof result.refresh_token !== "string" || !result.refresh_token;
       callbackWithoutOffline = typeof result.scope === "string" && !result.scope.split(" ").includes("offline_access");
       defeatSignInBlocked = false;
