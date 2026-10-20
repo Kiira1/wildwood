@@ -73,10 +73,11 @@ it("pays a Reflect build's soul kills, whose enemies are built from its weapon d
 
 it("adds up across reports: the reward is flat and never grows", () => {
   const f = soulReady({ kills: 125 });
+  // Ten health a kill.
   soulKills(f, [{ enemy: "soul:health", count: 10 }]);
-  expect(f.db.playerSoulStats.identity.find(f.ctx.sender).maxHp).toBe(10);
+  expect(f.db.playerSoulStats.identity.find(f.ctx.sender).maxHp).toBe(100);
   soulKills(f, [{ enemy: "soul:health", count: 10 }], 2n);
-  expect(f.db.playerSoulStats.identity.find(f.ctx.sender).maxHp).toBe(20);
+  expect(f.db.playerSoulStats.identity.find(f.ctx.sender).maxHp).toBe(200);
 });
 
 it("pays nothing in a Soul Dimension that is closed to the player", () => {

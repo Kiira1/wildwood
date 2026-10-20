@@ -138,8 +138,9 @@ describe('soul farm groups', () => {
       equipment: () => ({ equippedHead: '', equippedChest: '', equippedRightHand: '', equippedLeftHand: '' }) as never,
       minAttackInterval: () => .2, criticalChance: () => 0, criticalMultiplier: () => 1 });
     const now = evaluator.evaluate().power;
-    expect(evaluator.evaluate(soulFarmReward('health')).power).toBeCloseTo(now + 1);
-    expect(evaluator.evaluate({ type: 'health', amount: 1 }).power).toBeCloseTo(now + 10);
+    // Soul health pays ten a kill, flat; the same ten as a run reward grows tenfold.
+    expect(evaluator.evaluate(soulFarmReward('health')).power).toBeCloseTo(now + 10);
+    expect(evaluator.evaluate({ type: 'health', amount: 10 }).power).toBeCloseTo(now + 100);
     expect(evaluator.evaluate(soulFarmReward('critDamage')).power).toBeCloseTo(now);
     expect(evaluator.evaluate(soulFarmReward('attackSpeed')).stats!.attackRate).toBeCloseTo(addAttackSpeedRating(1, 1, .2));
   });

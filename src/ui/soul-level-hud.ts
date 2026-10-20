@@ -7,7 +7,7 @@ export function soulLevelText(progress: SoulLevelProgress) {
   const exact = (value: number) => Math.floor(value).toLocaleString("en-US");
   return {
     level: `Soul Lv ${progress.level}`,
-    rewards: `${progress.multiplier}×`,
+    rewards: `${progress.multiplier < 1_000 ? progress.multiplier : compactNumber(progress.multiplier)}×`,
     xp: progress.max ? "Max Level" : `${exact(progress.xp)} / ${exact(progress.needed)} Soul XP`,
     shortXp: progress.max ? "Max Level" : `${compactNumber(progress.xp)} / ${compactNumber(progress.needed)}`,
     fill: progress.max ? 1 : progress.needed > 0 ? Math.max(0, Math.min(1, progress.xp / progress.needed)) : 0,

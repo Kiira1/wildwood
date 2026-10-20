@@ -39,7 +39,8 @@ export type SoulStatId = "damage" | "health" | "armor" | "regen" | "attackSpeed"
 export const SOUL_STAT_ORDER: readonly SoulStatId[] = ["damage", "health", "armor", "regen", "attackSpeed", "critDamage"];
 export const SOUL_STAT_DETAILS: Readonly<Record<SoulStatId, { label: string; short: string; reward: number; color: string }>> = {
   damage: { label: "Damage", short: "Dmg", reward: 1, color: "#ff8a7a" },
-  health: { label: "Health", short: "HP", reward: 1, color: "#7ee08a" },
+  // Ten times Damage's: one point of health is worth far less than one of damage (0.916.13).
+  health: { label: "Health", short: "HP", reward: 10, color: "#7ee08a" },
   armor: { label: "Armor", short: "Armor", reward: 1, color: "#9cc3ff" },
   regen: { label: "Regen", short: "Regen", reward: .1, color: "#7fe8d8" },
   // Attacks a second a kill, flat, as before 0.901.47, turned into rating (soulAttackSpeedRatingAfterKills).
@@ -135,8 +136,8 @@ export function soulAttackSpeedRatingAfterKills(rating: number, kills: number) {
 
 /** The Soul Level's tuning: Soul XP for level 2, how much more each later level needs, and the top level. */
 export const SOUL_LEVEL_BASE_XP = 300;
-export const SOUL_LEVEL_GROWTH = 2;
-export const SOUL_LEVEL_CAP = 20;
+export const SOUL_LEVEL_GROWTH = 1.5;
+export const SOUL_LEVEL_CAP = 50;
 /** Soul XP one soul kill gives; nothing else gives any. */
 export const SOUL_XP_PER_KILL = 1;
 
