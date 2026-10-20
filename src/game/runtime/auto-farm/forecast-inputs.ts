@@ -30,15 +30,6 @@ export function mapArrival(mapId: string): { x: number; y: number } | null {
   return gateways ? { ...gateways.arrival } : null;
 }
 
-/** The portal on `mapId` that leads to `destination`, at its trigger point (auto-farm-build.ts). */
-export function mapPortalTo(mapId: string, destination: string): { x: number; y: number } | null {
-  const portals: readonly { x: number; y: number; height: number; destination: string }[] = isProceduralMap(mapId)
-    ? generateMap(mapId as ProceduralMapId).portals
-    : CAMPAIGN_GATEWAYS[mapId]?.portals ?? [];
-  const portal = portals.find(entry => entry.destination === destination);
-  return portal ? { x: portal.x, y: portal.y - portal.height * .32 } : null;
-}
-
 /** One site as the forecast prices it: its group, and its reward (a soul kill's flat soul stat). */
 export function forecastSite(site: SpawnSite, definition: EnemyDefinition, respawnIn = 0): ForecastSite {
   const soul = soulStatOfCampName(site.campName);

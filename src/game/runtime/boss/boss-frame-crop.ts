@@ -7,7 +7,6 @@ const TABLE = crops as Record<string, Record<string, BossFrameCrop>>;
 export function bossFrameCrop(bossId: string, frame: number): BossFrameCrop {
   return TABLE[bossId]?.[String(frame)] ?? EMPTY;
 }
-export function hasBossFrameCrops(bossId: string) { return Boolean(TABLE[bossId]); }
 export function bossSheetFrameGeometry(options: BossSheetFrameOptions) {
   return geometry(options, bossFrameCrop(options.bossId, options.frame));
 }

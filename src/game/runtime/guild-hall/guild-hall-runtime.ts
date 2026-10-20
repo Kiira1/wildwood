@@ -172,4 +172,3 @@ export function createGuildHallRuntime(deps: {
     guildId: () => guildHallGuildId(deps.currentMapId()),
   };
 }
-export type GuildHallRuntime = ReturnType<typeof createGuildHallRuntime>;

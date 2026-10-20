@@ -68,4 +68,3 @@ export function createPlayerStatsRuntime(deps: {
     movementMultiplier: () => moveSpeed() / Math.max(1, player.speed),
   };
 }
-export type PlayerStatsRuntime = ReturnType<typeof createPlayerStatsRuntime>;

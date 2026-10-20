@@ -1,6 +1,6 @@
-import { Range, SenderError, table, t, type InferSchema, type ReducerCtx } from "spacetimedb/server";
+import { Range, table, t, type InferSchema, type ReducerCtx } from "spacetimedb/server";
 import type schema from "./index";
-import { droppableLoot, regularMapLoot, REGULAR_ENEMY_LOOT_BATCH_MAX, type MapLootDrop } from "../../shared/regular-map-loot";
+import { droppableLoot, regularMapLoot, type MapLootDrop } from "../../shared/regular-map-loot";
 
 // One cursor per account/browser stream, rather than one receipt row per kill.
 // Retired in 0.877 for regular_enemy_stream, which records when a stream was
@@ -65,22 +65,6 @@ export function pruneIdleStreams(ctx: Pick<Context, "db" | "timestamp">) {
   }
   for (const key of legacy) ctx.db.regularEnemyLootCursor.key.delete(key);
   return idle.length + legacy.length;
-}
-export function acceptRegularEnemyLootBatch(ctx: Context, batch: {
-  streamId: string; sequence: bigint; mapId: string; count: number;
-}, activeMapId: string, canReplayMap?: () => boolean) {
-  if (!/^[a-zA-Z0-9-]{16,80}$/.test(batch.streamId) || batch.sequence < 1n ||
-      !Number.isInteger(batch.count) || batch.count < 1 || batch.count > REGULAR_ENEMY_LOOT_BATCH_MAX) {
-    throw new SenderError("Invalid enemy loot batch.");
-  }
-  const key = `${ctx.sender.toHexString()}:${batch.streamId}`;
-  const previous = streamCursor(ctx, key);
-  // A lost acknowledgement can be retried after travel without rolling again.
-  if (batch.sequence <= (previous?.sequence ?? 0n)) return false;
-  if (batch.sequence !== (previous?.sequence ?? 0n) + 1n) throw new SenderError("Enemy loot batches must arrive in order.");
-  if (batch.mapId !== activeMapId && !canReplayMap?.()) throw new SenderError("Enemy loot belongs to another map.");
-  advanceStreamCursor(ctx, key, batch.sequence, previous);
-  return true;
 }
 
 /**

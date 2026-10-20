@@ -255,4 +255,3 @@ export function createSoulDimensionRuntime(deps: {
     access,
   };
 }
-export type SoulDimensionRuntime = ReturnType<typeof createSoulDimensionRuntime>;

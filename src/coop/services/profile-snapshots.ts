@@ -134,5 +134,3 @@ export function createProfileSnapshots(options: {
     },
   };
 }
-
-export type ProfileSnapshots = ReturnType<typeof createProfileSnapshots>;

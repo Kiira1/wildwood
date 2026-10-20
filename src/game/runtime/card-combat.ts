@@ -295,5 +295,3 @@ export function createCardCombat(deps: {
     shield: () => ({ amount: shield, max: player.maxHp * Math.max(0, cardValue(cards(), "shield")) / 100 }),
   };
 }
-
-export type CardCombat = ReturnType<typeof createCardCombat>;

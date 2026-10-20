@@ -59,7 +59,7 @@ import { awardCardDrops, playerBossCardRoll, playerCardMeter } from "./card-drop
 import { awardRegularEnemyLoot } from "./enemy-loot-award";
 import { moderateReportedMessage } from "./chat-report-moderation";
 import { PLAYER_SKIN_TONES } from "../../shared/player-skin-tones";
-import { leaderboardPageTables, readLeaderboardWindow, readLeaderboardPage, readLeaderboardRanks, readPrestigeLeaderboardPage, findLeaderboardSpot } from "./leaderboard-pages";
+import { leaderboardPageTables, readLeaderboardWindow, readLeaderboardRanks, findLeaderboardSpot } from "./leaderboard-pages";
 import { effectiveMovementSpeedForProgress, refreshPrestigeMovement, attackIntervalForProgress, savedAttackRange } from "./player-speed";
 import { playerBonusToggle } from "./bonus-toggles";
 import { playerLuckResearch } from "./luck-research";
@@ -3225,7 +3225,6 @@ export const recordPlayerDeath = spacetimedb.reducer(
 
 /** Only enemy identities/counts cross the wire; all reward values are server-owned. */
 const EnemyDefeatEntry = t.object("EnemyDefeat", { enemy: t.string(), count: t.u16() });
-const enemyDefeatArgs = { streamId: t.string(), sequence: t.u64(), mapId: t.string(), enemies: t.array(EnemyDefeatEntry) };
 // Plus the milliseconds the client simulated since its previous report (0 when it cannot say); see simulationClock.
 const enemyDefeatReportArgs = { streamId: t.string(), sequence: t.u64(), mapId: t.string(), simulatedMillis: t.u32(), enemies: t.array(EnemyDefeatEntry) };
 function recordEnemyDefeatsFor(ctx: any, batch: EnemyDefeatBatch, clocks?: DefeatClocks) {
@@ -3291,41 +3290,6 @@ const killReport = (ctx: any, batch: any) => {
 export const reportEnemyDefeats = spacetimedb.reducer(enemyDefeatReportArgs, killReport);
 // Same reward as reportEnemyDefeats: which reducer a client calls is its own claim.
 export const reportAutoFarmEnemyDefeats = spacetimedb.reducer(enemyDefeatReportArgs, killReport);
-// Tabs from before report_enemy_defeats, which cannot say how long they played:
-// they reload, and the new page sends their unsent kills. Their payout skipped
-// the simulation clock and refilled the combat clock at real time.
-export const recordEnemyDefeats = spacetimedb.reducer(enemyDefeatArgs, (ctx, _batch) => { requireControllingPlayer(ctx); throw new SenderError("WildStat updated. Refresh to continue."); });
-export const recordAutoFarmEnemyDefeats = spacetimedb.reducer(enemyDefeatArgs, (ctx, _batch) => { requireControllingPlayer(ctx); throw new SenderError("WildStat updated. Refresh to continue."); });
-
-/** Retained wire shape: obsolete clients must update before submitting rewards. */
-export const recordRegularEnemyDefeats = spacetimedb.reducer(
-  { streamId: t.string(), sequence: t.u64(), mapId: t.string(), count: t.u16() },
-  (ctx, _batch) => { requireControllingPlayer(ctx); throw new SenderError("WildStat updated. Refresh to continue.");
-  },
-);
-
-/** Retired client-stat checkpoint. Never accept its supplied totals. */
-export const recordCombatCheckpoint = spacetimedb.reducer(
-  { streamId: t.string(), sequence: t.u64(), mapId: t.string(), count: t.u16(),
-    progress: t.option(t.object("CombatProgressCheckpoint", {
-      maxHp: t.f64(), damage: t.f64(), attackRate: t.f64(), projectileCount: t.u32(),
-      armor: t.f64(), regen: t.f64(), enemyKills: t.u32(),
-    })),
-  },
-  (ctx, _batch) => { requireControllingPlayer(ctx); throw new SenderError("WildStat updated. Refresh to continue.");
-  },
-);
-
-// Keep historical wire names to return an explicit update error. All new reward
-// traffic uses report_enemy_defeats, including maps without item drops.
-export const recordForestEnemyDefeat = spacetimedb.reducer({}, ctx => { requireControllingPlayer(ctx); throw new SenderError("WildStat updated. Refresh to continue.");
-});
-export const recordDesertEnemyDefeat = spacetimedb.reducer({}, ctx => { requireControllingPlayer(ctx); throw new SenderError("WildStat updated. Refresh to continue.");
-});
-export const recordSnowEnemyDefeat = spacetimedb.reducer({}, ctx => { requireControllingPlayer(ctx); throw new SenderError("WildStat updated. Refresh to continue.");
-});
-export const recordLavaEnemyDefeat = spacetimedb.reducer({}, ctx => { requireControllingPlayer(ctx); throw new SenderError("WildStat updated. Refresh to continue.");
-});
 
 export const myDefeatSessionRestriction = spacetimedb.view(
   { name: "my_defeat_session_restriction", public: true }, t.array(defeatSessionRestriction.rowType),
@@ -3681,34 +3645,13 @@ export const updateMovementState = spacetimedb.reducer(
   },
   (ctx, { x, y, vx, vy, simulationTick, motionEpoch, sequence }) => {
     if (blockedSession(ctx)) return;
-    applyMovementState(ctx, x, y, vx, vy, simulationTick, motionEpoch, sequence, true);
+    applyMovementState(ctx, x, y, vx, vy, simulationTick, motionEpoch, sequence);
   },
 );
 
 export const setPlayerMotionInterest = spacetimedb.reducer(
   { networkIds: t.array(t.u32()) },
   (ctx, args) => setMotionInterest(ctx, args),
-);
-
-// Rollout bridge for pre-0.424 clients. Current clients never call this path.
-export const syncPosition = spacetimedb.reducer(
-  { x: t.f64(), y: t.f64(), facing: t.f64(), moving: t.bool(), sequence: t.u32() },
-  (ctx, { x, y, facing, moving, sequence }) => {
-    if (!Number.isFinite(facing)) throw new SenderError("Movement state values must be finite");
-    const currentMotion = ctx.db.playerMotion.identity.find(ctx.sender);
-    const speed = Math.max(0, ctx.db.player.identity.find(ctx.sender)?.speed ?? PLAYER_SPEED);
-    const horizontal = Math.cos(facing);
-    applyMovementState(
-      ctx,
-      x,
-      y,
-      moving && Math.abs(horizontal) >= 1e-6 ? horizontal * speed : 0,
-      moving ? Math.sin(facing) * speed : 0,
-      (currentMotion?.simulationTick ?? 0) + 1 >>> 0,
-      currentMotion?.motionEpoch ?? 0,
-      sequence,
-    );
-  },
 );
 
 export const changeMap = spacetimedb.reducer(
@@ -3833,7 +3776,7 @@ export const { refineItem, destroyOre, myItemRefines, myCopyRefines, myOres, myR
 export const { claimPickaxe, mineNode, reportMining, myMining, myMinedNodes } = registerMining(spacetimedb, { requireControllingPlayer, activeDuelFor, inventoryForProgress });
 export const { claimHatchet, chopTree, reportChopping, myWoodcutting, myChoppedTrees } = registerWoodcutting(spacetimedb, { requireControllingPlayer, activeDuelFor, inventoryForProgress });
 export const { claimStarterStaff, myStaffSkills } = registerStaffs(spacetimedb, { requireControllingPlayer, activeDuelFor, inventoryForProgress, restoreItemToProgress, writeProgressAndPresentation });
-export const { slotCard, removeCard, myCards, myGearSlots, myCopySlots, myCardDrop } = registerGearCards(spacetimedb); export const myItemCollection = registerItemCollection(spacetimedb);
+export const { myCards, myGearSlots, myCopySlots, myCardDrop } = registerGearCards(spacetimedb); export const myItemCollection = registerItemCollection(spacetimedb);
 // Stats, power and the attack speed cap follow the active cards.
 const afterCardsChanged = (ctx: any, identity: any) => { syncCardAttackCap(ctx, identity); const progress = readPlayerProgress(ctx, identity); if (progress) writeProgressAndPresentation(ctx, progress); };
 export const { activateCard, deactivateCard, myActiveCards } = registerActiveCards(spacetimedb, { requireControllingPlayer, activeDuelFor, afterCardsChanged });
@@ -3941,14 +3884,6 @@ export const getSocialHub = spacetimedb.procedure({}, t.string(), ctx => ctx.wit
 export const getPlayerDirectory = spacetimedb.procedure({}, t.string(), ctx => ctx.withTx(tx => {
   requireSocialPlayer(tx); return playerDirectoryJson(tx, isVirtualPlayer);
 }));
-export const getSocialChatHistory = spacetimedb.procedure(
-  { channel: t.string(), peer: t.string(), beforeId: t.u64() },
-  t.object("SocialChatPage", { messages: t.array(socialTables.socialMessage.rowType), hasMore: t.bool() }),
-  (ctx, { channel, peer, beforeId }) => ctx.withTx(tx => {
-    requireSocialPlayer(tx);
-    return socialHistoryPage(tx, channel, peer, beforeId);
-  }),
-);
 export const friendAction = spacetimedb.reducer({ action: t.string(), target: t.string() }, (ctx, { action, target }) => {
   requireSocialPlayer(ctx); socialService.friendAction(ctx, action, target);
 });
@@ -4169,19 +4104,10 @@ export const myProceduralBoss = spacetimedb.view(
   },
 );
 
-// Retired shared Endless boss endpoint. Endless bosses are personal and settle
-// through report_enemy_defeats; preparing was already a silent no-op for current clients.
-export const prepareProceduralBoss = spacetimedb.reducer({ mapId:t.string() }, () => {});
-
 const rankedLeaderboardPlayer = t.object("RankedLeaderboardPlayer", { rank: t.u32(), entry: leaderboardEntry.rowType });
 export const getLeaderboardWindow = spacetimedb.procedure(
   { stat: t.string() }, t.array(rankedLeaderboardPlayer),
   (ctx, { stat }) => ctx.withTx(tx => readLeaderboardWindow(tx, stat)),
-);
-export const getLeaderboardPage = spacetimedb.procedure(
-  { stat: t.string(), startRank: t.u32(), count: t.u32() },
-  t.object("LeaderboardPage", { entries: t.array(rankedLeaderboardPlayer), startRank: t.u32(), endRank: t.u32(), localRank: t.u32(), total: t.u32() }),
-  (ctx, { stat, startRank, count }) => ctx.withTx(tx => readLeaderboardPage(tx, stat, startRank, count)),
 );
 // The board's ranks with each account's start, and which prestige level Rivals is (0.908.2).
 export const getLeaderboardRanks = spacetimedb.procedure(
@@ -4190,27 +4116,12 @@ export const getLeaderboardRanks = spacetimedb.procedure(
     startRank: t.u32(), endRank: t.u32(), localRank: t.u32(), total: t.u32(), prestige: t.u32() }),
   (ctx, { board, startRank, count }) => ctx.withTx(tx => readLeaderboardRanks(tx, board, startRank, count)),
 );
-// One prestige level's board; the page shape above plus the level and the list
-// of levels anyone is on. The body lives in leaderboard-pages.ts.
-export const getPrestigeLeaderboardPage = spacetimedb.procedure(
-  { stat: t.string(), prestige: t.u32(), startRank: t.u32(), count: t.u32() },
-  t.object("PrestigeLeaderboardPage", { entries: t.array(rankedLeaderboardPlayer), startRank: t.u32(), endRank: t.u32(), localRank: t.u32(),
-    total: t.u32(), prestige: t.u32(), levels: t.array(t.u32()) }),
-  (ctx, { stat, prestige, startRank, count }) => ctx.withTx(tx => readPrestigeLeaderboardPage(tx, stat, prestige, startRank, count)),
-);
 export const findLeaderboardPlayer = spacetimedb.procedure({ stat: t.string(), prestige: t.i32(), identity: t.identity() },
   t.object("LeaderboardSpot", { rank: t.u32(), prestige: t.i32() }), (ctx, { stat, prestige, identity }) => ctx.withTx(tx => findLeaderboardSpot(tx, stat, prestige, identity)));
 
 export const latestChatMessages = spacetimedb.anonymousView(
   { public: true }, t.array(chatMessage.rowType),
   ctx => readPublicChatPage(ctx).messages,
-);
-export const getChatHistory = spacetimedb.procedure(
-  { beforeId: t.u64() }, t.object("PublicChatPage", { messages: t.array(chatMessage.rowType), hasMore: t.bool() }),
-  (ctx, { beforeId }) => ctx.withTx(tx => {
-    requireControllingPlayer(tx);
-    return readPublicChatPage(tx, beforeId);
-  }),
 );
 
 // Private evidence is fetched only on demand, never through a public view.

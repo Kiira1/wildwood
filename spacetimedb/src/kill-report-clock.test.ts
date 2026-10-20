@@ -161,15 +161,6 @@ describe("simulation clock on report_enemy_defeats", () => {
     expect(f.db.defeatSessionRestriction.identity.find(f.ctx.sender)).toBeNull();
     expect(f.db.player.identity.find(f.ctx.sender)).not.toBeNull();
   });
-
-  it("answers the retired reducers, which cannot say how long a tab played, with a refresh", () => {
-    const f = fixture();
-    for (const reducer of [server.recordEnemyDefeats, server.recordAutoFarmEnemyDefeats])
-      expect(() => f.run(reducer, { streamId: "clock-test-legacy-01", sequence: 1n, mapId: MAP, enemies: [{ enemy: ENEMY, count: 5 }] }))
-        .toThrow("WildStat updated. Refresh to continue.");
-    expect(f.kills()).toBe(0);
-    expect(f.clock()).toBeUndefined();
-  });
 });
 
 describe("kill report throttle", () => {

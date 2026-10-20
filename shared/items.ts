@@ -18,13 +18,8 @@ export const MOONFEN_ARMOR = "moonfen_armor";
 export const CLOUDSPIRE_BOW = "cloudspire_bow";
 export const CLOUDSPIRE_HELMET = "cloudspire_helmet";
 export const SKY_BOW = "sky_bow";
-export const SKY_BOW_DROP_NUMERATOR = 7;
-export const SKY_BOW_DROP_DENOMINATOR = 1_000; // Exactly 0.7%, independently of armor.
 export const WATER_ARMOR = "water_armor";
-export const WATER_ARMOR_DROP_DENOMINATOR = 100; // 1% per regular Water Reach enemy.
 export const SAMURAI_BOW = "samurai_bow";
-export const SAMURAI_BOW_DROP_NUMERATOR = 13;
-export const SAMURAI_BOW_DROP_DENOMINATOR = 2_000; // Exactly 0.65%, independently of the helmet.
 export const SAMURAI_HAT = "samurai_hat";
 export const LEGENDARY_WHITE_GOLD_ARMOR = "legendary_white_gold_armor";
 /** The Galaxy set: Ion Sovereign silhouettes filled with drifting galaxies (client-side finish). */
@@ -40,7 +35,6 @@ export const DIAMOND_GALAXY_BOW = "diamond_galaxy_bow";
 export const BLACK_BOOTS = "black_boots";
 export const BLACK_BOOTS_DROP_DENOMINATOR = 50;
 export const BLACK_BOOTS_SPEED_BONUS = 25;
-export const BLACK_BOOTS_COMBAT_DELAY_MS = 5_000;
 export const STARTER_STONE = "starter_stone";
 export const STARTER_BOW = "starter_bow";
 /** The Smith hands it out in Town: a staff with no stats, as the stone is to bows. */
@@ -454,18 +448,6 @@ export const LAVA_DROP_ITEM_IDS = Object.values(ITEM_DEFINITIONS)
 export const LAVA_BOSS_DROP_ITEM_IDS = Object.values(ITEM_DEFINITIONS)
   .filter((item) => item.acquisition === "LAVA_BOSS_DROP")
   .map((item) => item.id) as ItemId[];
-export const MOONFEN_DROP_ITEM_IDS = Object.values(ITEM_DEFINITIONS)
-  .filter((item) => item.acquisition === "MOONFEN_DROP")
-  .map((item) => item.id);
-export const CLOUDSPIRE_DROP_ITEM_IDS = Object.values(ITEM_DEFINITIONS)
-  .filter((item) => item.acquisition === "CLOUDSPIRE_DROP")
-  .map((item) => item.id);
-export const WATER_DROP_ITEM_IDS = Object.values(ITEM_DEFINITIONS)
-  .filter((item) => item.acquisition === "WATER_DROP")
-  .map((item) => item.id);
-export const SAMURAI_DROP_ITEM_IDS = Object.values(ITEM_DEFINITIONS)
-  .filter((item) => item.acquisition === "SAMURAI_DROP")
-  .map((item) => item.id);
 export const INFERNAL_DROP_ITEM_IDS = Object.values(ITEM_DEFINITIONS)
   .filter((item) => item.acquisition === "INFERNAL_DROP")
   .map((item) => item.id) as ItemId[];

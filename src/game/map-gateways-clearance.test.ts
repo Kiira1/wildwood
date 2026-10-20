@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { CAMPAIGN_MAPS } from "../../shared/campaign-registry";
 import {
   CAMPAIGN_GATEWAYS, endlessEntryPortal, GATEWAY_ARRIVAL_DROP, GATEWAY_POINT_NUDGES, GATEWAY_PORTAL_SPACING, gatewayPoint,
-  LEGACY_CORNER_GATEWAYS, MAP_MIDDLE, middleGateways, portalUsePoint, type MapGatewayPortal,
+  MAP_MIDDLE, middleGateways, portalUsePoint, type MapGatewayPortal,
 } from "../../shared/map-gateways";
 import { SOUL_ARRIVAL, SOUL_TOWN_PORTAL } from "../../shared/soul-dimension";
 import { MAP_EDITOR_GAMEPLAY_OVERRIDES } from "../../shared/map-editor-overrides";
@@ -105,15 +105,5 @@ describe("campaign portals stand in the middle of their maps (0.901.15)", () => 
     expect({ x: SOUL_TOWN_PORTAL.x, y: SOUL_TOWN_PORTAL.y }).toEqual({ x: CAMPAIGN_GATEWAYS[TUTORIAL_FOREST_MAP_ID].portals[0].x, y: CAMPAIGN_GATEWAYS[TUTORIAL_FOREST_MAP_ID].portals[0].y });
     // Soul enemies stand where the forest's do, and may be any forest species, a 300-aggro elite included.
     expect(clearOfEnemies(TUTORIAL_FOREST_MAP_ID, { arrival: SOUL_ARRIVAL, portals: [{ ...SOUL_TOWN_PORTAL }] }, () => 300)).toBe(true);
-  });
-
-  it("keeps the old corner portals (still taken by older tabs) well apart from the new ones, so the server never mistakes one for the other", () => {
-    for (const mapId of MAPS) {
-      const legacy = LEGACY_CORNER_GATEWAYS[mapId];
-      expect(legacy.portals.map(portal => portal.destination).sort()).toEqual(CAMPAIGN_GATEWAYS[mapId].portals.map(portal => portal.destination).sort());
-      for (const old of legacy.portals.map(portalUsePoint)) for (const now of portalsOf(mapId).map(portalUsePoint)) {
-        expect(Math.hypot(old.x - now.x, old.y - now.y)).toBeGreaterThan(125 * 2);
-      }
-    }
   });
 });

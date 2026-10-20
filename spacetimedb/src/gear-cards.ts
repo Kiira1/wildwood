@@ -1,4 +1,4 @@
-import { SenderError, table, t } from "spacetimedb/server";
+import { table, t } from "spacetimedb/server";
 import type { Identity } from "spacetimedb";
 import type spacetimedbType from "./index";
 import { cardDefinition } from "../../shared/cards";
@@ -105,14 +105,8 @@ export function mergeCardData(ctx: Ctx, guest: Identity, account: Identity) {
   if (basis) { ctx.db.playerCardAttackCap.identity.delete(guest); ctx.db.playerCardAttackCap.insert({ ...basis, identity: account }); }
 }
 
-const MOVED = "Cards are switched on in the Cards tab now.";
-
-/** The caller's own card views, and the old slot_card and remove_card, which only refuse now. */
+/** The caller's own card views. */
 export function registerGearCards(spacetimedb: typeof spacetimedbType) {
-  const slotCard = spacetimedb.reducer({ itemId: t.string(), copyId: t.u64(), cardId: t.string(), expectedCards: t.u8() },
-    () => { throw new SenderError(MOVED); });
-  const removeCard = spacetimedb.reducer({ itemId: t.string(), copyId: t.u64(), index: t.u8(), expectedCards: t.u8() },
-    () => { throw new SenderError(MOVED); });
   const myCards = spacetimedb.view({ name: "my_cards", public: true }, t.array(playerCard.rowType),
     (ctx: any) => [...ctx.db.playerCard.identity.filter(ctx.sender)]);
   const myGearSlots = spacetimedb.view({ name: "my_gear_slots", public: true }, t.array(playerGearSlots.rowType),
@@ -123,5 +117,5 @@ export function registerGearCards(spacetimedb: typeof spacetimedbType) {
     const row = ctx.db.playerCardDrop.identity.find(ctx.sender);
     return row ? [row] : [];
   });
-  return { slotCard, removeCard, myCards, myGearSlots, myCopySlots, myCardDrop };
+  return { myCards, myGearSlots, myCopySlots, myCardDrop };
 }

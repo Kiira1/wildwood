@@ -15,7 +15,7 @@ import {
 } from "../../shared/items";
 import { itemArtMarkup } from "../game/item-presentation";
 import type { ActiveItemUpgrade, SlotUpgradeQueue } from "../wildstat-coop";
-import { gemSpendConfirmation, gemSpendConfirmationText } from "./gem-spend-confirmation";
+import { gemSpendConfirmation } from "./gem-spend-confirmation";
 import { gameConfirm, type ConfirmPrompt, type ConfirmRequest } from "./confirm-dialog";
 import { slotUpgradeDurationWithResearch } from "../../shared/utility-research";
 
@@ -77,10 +77,6 @@ type SlotUpgradesDependencies = {
 
 export const UPGRADE_CANCEL_CONFIRMATION = "Are you sure you want to cancel? You will lose this Slot Upgrade's progress.";
 export const UPGRADE_SLOT_UNLOCK_ACTION = "permanently unlock a second Slot Upgrades queue, so two slots can upgrade at once";
-export const UPGRADE_SLOT_UNLOCK_CONFIRMATION = gemSpendConfirmationText(
-  UPGRADE_SLOT_UNLOCK_ACTION,
-  UPGRADE_BENCH_SECOND_SLOT_GEM_COST,
-);
 export const SLOT_UPGRADES_TOUCH_OFFSET_Y = -36;
 const SLOT_UPGRADES_TOUCH_RADIUS_X = 54;
 const SLOT_UPGRADES_TOUCH_RADIUS_Y = 39;

@@ -9,7 +9,6 @@ export type ReleaseWindow = {
   updatedAt: number;
   reload: boolean;
 };
-export const RELEASE_DRAIN_MS = 30_000;
 export const RELEASE_LEASE_MS = 90_000;
 export function parseReleaseWindow(value: unknown): ReleaseWindow | null {
   try {

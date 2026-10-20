@@ -59,10 +59,6 @@ export function ensureBowSkillRoll(ctx: Ctx, identity: Identity, itemId: string,
   ctx.db.playerBowSkill.insert({ key, identity, itemId, ...roll });
 }
 
-export function ensureBowSkillRolls(ctx: Ctx, identity: Identity, itemIds: Iterable<string>) {
-  for (const itemId of new Set(itemIds)) ensureBowSkillRoll(ctx, identity, itemId);
-}
-
 export function removeBowSkills(ctx: Ctx, identity: Identity) {
   for (const row of [...ctx.db.playerBowSkill.identity.filter(identity)] as any[]) ctx.db.playerBowSkill.key.delete(row.key);
   // The public copy of the weapon in hand goes with the rolls (worn-skill.ts).

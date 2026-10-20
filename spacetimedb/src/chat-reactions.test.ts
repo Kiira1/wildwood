@@ -98,7 +98,6 @@ it("preserves legacy message and lifetime records while new views carry reaction
   expect((server.latestChatMessages as any)(f.ctx)[0]).not.toHaveProperty("reactionCountsJson");
   expect(JSON.parse((server.latestChatMessagesWithReactions as any)(f.ctx)[0].reactionCountsJson)).toEqual({ heart: 1 });
   const proc = { withTx: (fn: Function) => fn(f.ctx) };
-  expect((server.getChatHistory as any)(proc, { beforeId: 0n }).messages[0]).not.toHaveProperty("reactionCountsJson");
   expect(JSON.parse((server.getChatHistoryWithReactions as any)(proc, { beforeId: 0n }).messages[0].reactionCountsJson)).toEqual({ heart: 1 });
 });
 it("only exposes social reaction totals through authorized message views", () => {

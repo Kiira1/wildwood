@@ -591,8 +591,6 @@
   .cosmetic-hidden-icon::before { position: absolute; inset: 4px 5px; border: 2px solid #aeb6b1; border-radius: 70% 12%; content: ""; transform: rotate(45deg); }
   .cosmetic-hidden-icon::after { position: absolute; top: 9px; left: 0; width: 28px; height: 2px; border-radius: 999px; background: #e49a9f; box-shadow: 0 1px 0 #111; content: ""; transform: rotate(-36deg); }
   .equipment-slot.is-selected { z-index: 2; border-color: rgba(255,255,255,.7); box-shadow: none; }
-  .equipment-slot.is-compatible { z-index: 1; border-color: rgba(255,255,255,.5); animation: inventory-compatible-pulse 1.15s ease-in-out infinite; }
-  .equipment-slot.is-incompatible { opacity: .48; filter: saturate(.55); }
   .equipment-slot.is-equipped-now { animation: inventory-equipped-pop .34s cubic-bezier(.2, .85, .25, 1.35); }
   .equipment-slot:hover, .equipment-slot:focus-visible { border-color: rgba(255,255,255,.5); outline: 2px solid rgba(255,255,255,.2); outline-offset: 1px; }
   .equipment-slot:active, .inventory-item:active { transform: scale(.97); }
@@ -729,17 +727,6 @@
 
   .inventory-item-empty-mark { color: #a17932; font: 900 20px/1 Arial, sans-serif; }
 
-  body.inventory-dragging, body.inventory-dragging * { cursor: grabbing !important; }
-  .inventory-panel.is-dragging .is-drag-source { opacity: .38; transform: scale(.94); }
-  .inventory-panel.is-dragging .is-drag-valid { border-color: #86e78e; box-shadow: 0 0 0 2px rgba(134,231,142,.42), inset 0 0 0 1px rgba(9,32,14,.35); }
-  .inventory-panel.is-dragging .is-drag-invalid { opacity: .42; filter: saturate(.45); }
-  .inventory-panel.is-dragging .is-drag-over { z-index: 4; border-color: #d8ffab; box-shadow: 0 0 0 3px rgba(145,240,111,.72), 0 0 18px rgba(117,231,105,.45); }
-  .inventory-panel.is-dragging .equipment-slot.is-drag-over { transform: scale(1.035); }
-  .inventory-panel.is-dragging .bag-section.is-drag-over { box-shadow: inset 0 0 0 3px rgba(145,240,111,.72), inset 0 0 18px rgba(117,231,105,.32); transform: none; }
-  .inventory-drag-ghost { position: fixed; z-index: 1000; display: grid; width: 62px; height: 62px; place-items: center; overflow: hidden; border: 2px solid #d8ffab; border-radius: 10px; background: rgba(30,30,30,.92); box-shadow: 0 8px 18px rgba(0,0,0,.48), 0 0 14px rgba(117,231,105,.38); pointer-events: none; transform: translate(-50%, -50%) rotate(2deg); }
-  .inventory-drag-ghost .inventory-item-art { width: 50px; height: 46px; }
-  .inventory-drag-ghost .boot-pixel-icon { transform: scale(1.6); }
-
   .visually-hidden { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border: 0 !important; }
   .slot-upgrades-panel { grid-template-rows: auto minmax(0, 1fr); position: fixed; inset: 0 0 var(--window-bottom-inset); z-index: 11; display: grid; place-items: center; padding: max(12px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) 14px max(14px, env(safe-area-inset-left)); overflow: hidden; background: var(--window-surface-brown); color: #f4f3e8; pointer-events: auto; }
   .slot-upgrades-panel[hidden] { display: none; }
@@ -789,8 +776,6 @@
   /* The tier badge is absolutely positioned over artwork everywhere else; in
      this row it is a word beside the name. */
   /* The sheet's own gap spaces this; a margin here would double it. */
-  .slot-upgrades-picker-filters { gap: 2px; margin: 0; }
-  .slot-upgrades-picker-filters .profile-tab { flex: 1 1 0; min-width: 0; height: 34px; min-height: 34px; padding: 6px 4px; font-size: 9px; }
   .slot-upgrades-picker-stats { display: grid; gap: 0; min-width: 0; }
   .slot-upgrades-picker-stat { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px; color: #d7dfd8; font-size: var(--font-readable-min); line-height: 1.05; }
   .slot-upgrades-picker-stat span:last-child { color: #8deb94; font-weight: 900; white-space: nowrap; }
@@ -836,10 +821,6 @@
   .item-inspection-action-secondary { background: linear-gradient(#918473, #655b4e); }
   .item-inspection-actions button:disabled { border-color: #a39786; background: #d4cab9; box-shadow: none; color: #827766; cursor: default; }
 
-  @keyframes inventory-compatible-pulse {
-    0%, 100% { box-shadow: 0 0 0 1px rgba(255,255,255,.12); }
-    50% { box-shadow: 0 0 0 3px rgba(255,255,255,.25); }
-  }
   @keyframes inventory-equipped-pop {
     0% { transform: scale(.94); }
     55% { transform: scale(1.07); }
@@ -873,8 +854,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .equipment-slot.is-compatible, .equipment-slot.is-equipped-now { animation: none; }
-    .inventory-panel.is-dragging .equipment-slot.is-drag-over, .inventory-panel.is-dragging .is-drag-source { transform: none; }
+    .equipment-slot.is-equipped-now { animation: none; }
   }
 
   .settings-title {
@@ -2711,8 +2691,6 @@
     line-height: 1.3;
   }
 
-  html.wildstat-legacy-host .account-choice-modal p.account-move-note { display: block; }
-
   .account-choice-modal .account-beta-note a,
   .account-choice-modal .account-move-note a {
     color: #baff91;
@@ -3058,7 +3036,6 @@
   .prestige-respec-btn.is-armed { border-color: #8a3a1e; background: linear-gradient(#e08a3c, #a04f1c); color: #fff; }
   .prestige-respec-btn:disabled { filter: grayscale(.8); opacity: .5; }
   /* The free respec costs nothing, so it reads as a safe green beside the costly one. */
-  .prestige-respec-free { border-color: #2f5f2c; background: linear-gradient(#5aa04f, #346f2f); color: #fff; }
   /* Reflect Only: one card, amber while a run is under way. */
   .prestige-challenge { display: grid; gap: 10px; padding: 12px; background: rgba(0,0,0,.25); border: 1px solid #2b3a52; border-radius: 8px; }
   .prestige-challenge.is-active { border-color: #a8742a; box-shadow: inset 0 0 0 1px rgba(240,198,116,.25); }
@@ -3259,7 +3236,6 @@
   #playerProfilePower { position: absolute; z-index: 2; top: 2px; left: 62px; right: 62px; display: flex; align-items: center; justify-content: center; gap: 3px; color: #fff; font: 900 18px/1 var(--player-name-font); white-space: nowrap; -webkit-text-stroke: var(--text-outline-width) #000; paint-order: stroke fill; text-shadow: var(--text-shadow); pointer-events: none; }
   #playerProfilePower .power-icon { width: 18px; height: 18px; }
   #playerProfileName { --prestige-badge-size: 18px; }
-  .power-label { color: var(--gold); }
   .power-value { color: #fff; }
   .profile-character-preview { --inventory-line: rgba(255,255,255,.17); --inventory-muted: #aebcaf; position: relative; display: grid; grid-template-columns: 54px minmax(0, 1fr) 54px; grid-template-rows: repeat(2, 54px); justify-content: center; align-content: center; align-items: stretch; gap: 2px 4px; height: 132px; min-height: 132px; margin: 5px 0 2px; padding: 4px; overflow: visible; }
   .profile-character-stage { position: relative; z-index: 1; grid-column: 2; grid-row: 1 / span 2; min-width: 0; min-height: 0; overflow: visible; border-radius: 3px; background: transparent; pointer-events: none; }
@@ -3670,8 +3646,6 @@
   }
   .leaderboard-prestige .leaderboard-prestige-chip:focus-visible { outline: 1px solid rgba(255,255,255,.7); outline-offset: 1px; }
   /* The viewer's own level: a gold dot and the word, gold like first place. */
-  .leaderboard-prestige-you { display: inline-flex; align-items: center; gap: 3px; color: #ffe05d; font-size: 9px; letter-spacing: .06em; text-transform: uppercase; }
-  .leaderboard-prestige-you::before { content: ""; flex: 0 0 6px; width: 6px; height: 6px; border-radius: 50%; background: #ffe05d; box-shadow: 0 0 0 1px #222; }
   /*
    * Landscape phones: stacked, the podium alone is taller than what is left
    * under the banner, and the list got no height at all. The podium, with the
@@ -4482,7 +4456,6 @@
   .leaderboard-modal > .window-banner { grid-row: 1; }
 
   .window-banner.window-banner--blue { --banner-filter: hue-rotate(90deg) saturate(.85); }
-  .window-banner--long > span { font-size: 5.5cqw; }
 
 /* Native Android only: a dismissible prompt, safely above the bottom toolbar. */
 #androidUpdateBanner, #appUpdateReadyBanner { position: fixed; z-index: 30; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 108px); transform: translateX(-50%); display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px; width: max-content; max-width: calc(100vw - 32px); box-sizing: border-box; padding: 12px 14px; border: 2px solid #090e13; border-radius: 12px; background: #121b24; box-shadow: 0 4px 16px #0008; color: #fff; font-size: 15px; font-weight: 900; }
@@ -4908,7 +4881,6 @@
 .dev-player-card[hidden] { display: none; }
 .dev-player-card h3 { margin: 0; color: #fff; font-size: 16px; overflow-wrap: anywhere; }
 .dev-player-card h4 { margin: 4px 0 0; color: var(--muted); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; }
-.dev-player-id { margin: 0; color: var(--muted); font-size: 11px; overflow-wrap: anywhere; }
 .dev-player-state { margin: 0; font-weight: 900; }
 .dev-player-state[data-tone="warn"] { color: #ff9b91; }
 .dev-player-state[data-tone="ok"] { color: #9ff29b; }

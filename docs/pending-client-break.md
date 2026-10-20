@@ -17,9 +17,8 @@ remove their declarations, in the next release that breaks clients:
 - `player_wide_stats`, `player_combat_rating`: copied onto `player_progress` by migration 57.
   `deleteProgressExtras` (`wide-stats.ts`) still clears them on account removal.
 - `leaderboard_position`, `leaderboard_prestige_position`, `leaderboard_prestige_rank_page` (0.908.0):
-  the per-prestige-level boards. The first full snapshot empties them; also drop the
-  `getPrestigeLeaderboardPage`, `getLeaderboardPage` and `getLeaderboardWindow` procedures older tabs
-  still call (0.908.2 clients use `getLeaderboardRanks`).
+  the per-prestige-level boards. The first full snapshot empties them. (`getPrestigeLeaderboardPage`
+  and `getLeaderboardPage` are already gone; `getLeaderboardWindow` stays, the profile still calls it.)
 
     spacetime sql -s maincloud wildwood-coop "DELETE FROM player_balance_version"
 

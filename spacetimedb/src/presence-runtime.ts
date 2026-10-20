@@ -15,7 +15,6 @@ import { ScheduleAt } from "spacetimedb";
 import { SenderError } from "spacetimedb/server";
 import { generatedMapUnlocked } from "./procedural-maps";
 import { updateSnapshotRow } from "./snapshot-row-writes";
-import { requireAllowedDefeatSession } from "./defeat-session";
 import { generateMap, isProceduralMap, PROCEDURAL_ENTRY_BOSS } from "../../shared/procedural-maps";
 import { HOME_EXTERIOR_MAP_ID } from "../../shared/home";
 import { worldBoundsFor } from "../../shared/world-bounds";
@@ -501,11 +500,10 @@ export function createPresenceRuntime(deps: PresenceRuntimeDeps) {
    * index.ts's requireControllingPlayer for the movement packet alone: the same
    * checks, errors and order, but it returns the raw player and motion rows so
    * the packet reads the motion row once instead of three times, and it skips
-   * the restriction lookup when the caller has just made it. Every other
-   * reducer keeps requireControllingPlayer.
+   * the restriction lookup, which updateMovementState has just made. Every
+   * other reducer keeps requireControllingPlayer.
    */
-  function requireControllingMovementPlayer(ctx: any, restrictionChecked: boolean) {
-    if (!restrictionChecked) requireAllowedDefeatSession(ctx);
+  function requireControllingMovementPlayer(ctx: any) {
     const session = sessionForContext(ctx);
     if (!session || !sameIdentity(session.identity, ctx.sender) || !isSupportedProtocol(session.protocolVersion)) {
       throw new SenderError(LEGACY_CLIENT_ERRORS.protocolUpdate);
@@ -527,10 +525,8 @@ export function createPresenceRuntime(deps: PresenceRuntimeDeps) {
   // owned speed. Now a heartbeat makes 7 and a start or stop 8, and every
   // accepted position, velocity, facing and row write is what it was
   // (movement-state-equivalence.test.ts replays the old code against this).
-  // `restrictionChecked` is true only when the caller has just made the same
-  // restriction lookup itself, as updateMovementState does through
-  // blockedSession to drop a blocked tab's queued packets quietly. The legacy
-  // syncPosition bridge passes false and keeps the throwing check.
+  // The caller has just made the restriction lookup itself, through
+  // blockedSession, to drop a blocked tab's queued packets quietly.
   function applyMovementState(
     ctx: any,
     x: number,
@@ -540,11 +536,10 @@ export function createPresenceRuntime(deps: PresenceRuntimeDeps) {
     simulationTick: number,
     motionEpoch: number,
     sequence: number,
-    restrictionChecked = false,
   ) {
     // The same checks, errors and order as requireControllingPlayer, but it
     // hands back the motion row it sampled so it is read once, not three times.
-    const { player, motion } = requireControllingMovementPlayer(ctx, restrictionChecked);
+    const { player, motion } = requireControllingMovementPlayer(ctx);
     const current = playerWithKnownMotion(ctx, player, motion);
     if (sequence <= current.lastInputSequence || ["countdown", "active", "finishing"].includes(activeDuelFor(ctx, ctx.sender)?.status)) return;
     if (![x, y, vx, vy, simulationTick, motionEpoch].every(Number.isFinite)) throw new SenderError("Movement state values must be finite");

@@ -174,22 +174,6 @@ const legacyUpdateMovementState = (ctx: any, { x, y, vx, vy, simulationTick, mot
   if (blockedSession(ctx)) return;
   legacyApplyMovementState(ctx, x, y, vx, vy, simulationTick, motionEpoch, sequence);
 };
-const legacySyncPosition = (ctx: any, { x, y, facing, moving, sequence }: any) => {
-  if (!Number.isFinite(facing)) throw new SenderError("Movement state values must be finite");
-  const currentMotion = ctx.db.playerMotion.identity.find(ctx.sender);
-  const speed = Math.max(0, ctx.db.player.identity.find(ctx.sender)?.speed ?? PLAYER_SPEED);
-  const horizontal = Math.cos(facing);
-  legacyApplyMovementState(
-    ctx,
-    x,
-    y,
-    moving && Math.abs(horizontal) >= 1e-6 ? horizontal * speed : 0,
-    moving ? Math.sin(facing) * speed : 0,
-    (currentMotion?.simulationTick ?? 0) + 1 >>> 0,
-    currentMotion?.motionEpoch ?? 0,
-    sequence,
-  );
-};
 
 // ---------------------------------------------------------------------------
 
@@ -315,12 +299,7 @@ function runScenario(seed: number, steps: number) {
         motionEpoch: pick([1, 1, 2, 0, 1e12]),
         sequence,
       };
-      if (rand() < 0.12) {
-        const legacy = { x: packet.x, y: packet.y, facing: rand() < 0.03 ? NaN : angle, moving: speed > 0, sequence };
-        outcome = [attempt(next, server.syncPosition as any, legacy), attempt(prev, legacySyncPosition, legacy)];
-      } else {
-        outcome = [attempt(next, server.updateMovementState as any, packet), attempt(prev, legacyUpdateMovementState, packet)];
-      }
+      outcome = [attempt(next, server.updateMovementState as any, packet), attempt(prev, legacyUpdateMovementState, packet)];
       tally.packets++;
       const stored = next.db.playerMotion.identity.find(next.ctx.sender);
       if (outcome[0].error) tally.errors++;

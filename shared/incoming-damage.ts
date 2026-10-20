@@ -9,10 +9,7 @@ export const LATE_MAP_DAMAGE_TIER = {
 } as const;
 export type LateDamageMap = keyof typeof LATE_MAP_DAMAGE_TIER;
 
-// Samurai is campaign tier 5 (Desert is tier 0).
-export const LATE_DAMAGE_REFERENCE = { tier: 3, ...referenceBuildForMap(8) } as const;
 export const LATE_REGULAR_MIN_HIT_SHARE = .08;
-export const LATE_BOSS_HIT_MULTIPLIERS = { heavy: 4, area: 2.8, contact: 2 } as const;
 
 export function lateMapReferenceBuild(tier: number) {
   if (!Number.isInteger(tier) || tier < 0) throw new RangeError("Invalid late-map tier");

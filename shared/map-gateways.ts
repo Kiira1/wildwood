@@ -1,6 +1,6 @@
 import { CAMPAIGN_MAPS } from "./campaign-registry";
 import { MAP_EDITOR_GAMEPLAY_OVERRIDES } from "./map-editor-overrides";
-import { TUTORIAL_FOREST_MAP_ID, BEGINNER_DESERT_MAP_ID, PLAYER_SPAWN, WORLD_HEIGHT, WORLD_WIDTH } from "./rules";
+import { TUTORIAL_FOREST_MAP_ID, PLAYER_SPAWN, WORLD_HEIGHT, WORLD_WIDTH } from "./rules";
 
 /**
  * Where each campaign map's portals stand and where a player arriving lands.
@@ -105,39 +105,6 @@ export function portalExitPoint(exit: { x: number; y: number }) {
 /** The last campaign map's portal into Endless (`destination`, its first map): where a next portal would stand. */
 export function endlessEntryPortal(destination: string): MapGatewayPortal {
   return middleGateways(gatewayPoint(LAST_CAMPAIGN_MAP.id), CAMPAIGN_MAPS[CAMPAIGN_MAPS.length - 2].id, destination).portals[1];
-}
-
-/**
- * LEGACY: where the portals stood until 0.901.15, in each map's top-left
- * corner (the forest's and the desert's where the map editor had them).
- * Tabs on 0.901.14 and older still draw them there and walk into them, so
- * the server still takes portal use here, and lands such a tab at the old
- * arrival, where the tab puts itself.
- * Remove after a release or two (0.901.17 or later, once no older tab is
- * left): this table, LEGACY_ENDLESS_ENTRY_PORTAL, legacyPortalUsePoints and
- * their use in change_map (spacetimedb/src/index.ts).
- */
-export const LEGACY_CORNER_GATEWAYS: Readonly<Record<string, MapGateways>> = Object.fromEntries(CAMPAIGN_MAPS.map((map, index) => {
-  const previous = CAMPAIGN_MAPS[index - 1], next = CAMPAIGN_MAPS[index + 1];
-  if (map.id === TUTORIAL_FOREST_MAP_ID) return [map.id, { arrival: { x: 1025, y: 850 }, portals: [portalAt(875, 850, next.id)] }];
-  if (map.id === BEGINNER_DESERT_MAP_ID) return [map.id, { arrival: { x: 625, y: 800 }, portals: [portalAt(500, 725, previous.id), portalAt(750, 725, next.id)] }];
-  return [map.id, {
-    arrival: { x: 580, y: 770 },
-    portals: [...(previous ? [portalAt(360, 680, previous.id)] : []), ...(next ? [portalAt(580, 680, next.id)] : [])],
-  }];
-}));
-/** LEGACY (see LEGACY_CORNER_GATEWAYS): the last campaign map's old way into Endless. */
-export const LEGACY_ENDLESS_ENTRY_PORTAL: Readonly<MapGatewayPortal> = Object.freeze(portalAt(580, 680, ""));
-
-/**
- * LEGACY (see LEGACY_CORNER_GATEWAYS): the old portals' use points on a
- * campaign map, each with the arrival an old tab puts itself at on the far
- * side (null where that did not move: Endless).
- */
-export function legacyPortalUsePoints(mapId: string, endlessDestination: string) {
-  const portals = [...(LEGACY_CORNER_GATEWAYS[mapId]?.portals ?? []),
-    ...(mapId === LAST_CAMPAIGN_MAP.id ? [{ ...LEGACY_ENDLESS_ENTRY_PORTAL, destination: endlessDestination }] : [])];
-  return portals.map(portal => ({ ...portalUsePoint(portal), legacyArrival: LEGACY_CORNER_GATEWAYS[portal.destination]?.arrival ?? null }));
 }
 
 /** The spots on a campaign map that stand clear of decor: each portal's gate (the Endless one too) and the arrival. */

@@ -129,27 +129,17 @@ import LeaveGuildReducer from "./leave_guild_reducer";
 import MarkPortalCutsceneSeenReducer from "./mark_portal_cutscene_seen_reducer";
 import MineNodeReducer from "./mine_node_reducer";
 import PauseResearchReducer from "./pause_research_reducer";
-import PrepareProceduralBossReducer from "./prepare_procedural_boss_reducer";
 import PrepareWorldActionPositionReducer from "./prepare_world_action_position_reducer";
 import PrestigeAccountReducer from "./prestige_account_reducer";
 import PulseDuelReducer from "./pulse_duel_reducer";
 import ReadMailboxLetterReducer from "./read_mailbox_letter_reducer";
-import RecordAutoFarmEnemyDefeatsReducer from "./record_auto_farm_enemy_defeats_reducer";
-import RecordCombatCheckpointReducer from "./record_combat_checkpoint_reducer";
 import RecordConnectionDiagnosticReducer from "./record_connection_diagnostic_reducer";
-import RecordDesertEnemyDefeatReducer from "./record_desert_enemy_defeat_reducer";
-import RecordEnemyDefeatsReducer from "./record_enemy_defeats_reducer";
-import RecordForestEnemyDefeatReducer from "./record_forest_enemy_defeat_reducer";
-import RecordLavaEnemyDefeatReducer from "./record_lava_enemy_defeat_reducer";
 import RecordPlayerDeathReducer from "./record_player_death_reducer";
-import RecordRegularEnemyDefeatsReducer from "./record_regular_enemy_defeats_reducer";
-import RecordSnowEnemyDefeatReducer from "./record_snow_enemy_defeat_reducer";
 import RecordStartupTelemetryReducer from "./record_startup_telemetry_reducer";
 import RefineItemReducer from "./refine_item_reducer";
 import RefreshDailyQuestsReducer from "./refresh_daily_quests_reducer";
 import RegisterClientVersionReducer from "./register_client_version_reducer";
 import RegisterProtocolReducer from "./register_protocol_reducer";
-import RemoveCardReducer from "./remove_card_reducer";
 import RenameBuildReducer from "./rename_build_reducer";
 import ReportAutoFarmEnemyDefeatsReducer from "./report_auto_farm_enemy_defeats_reducer";
 import ReportChatMessageReducer from "./report_chat_message_reducer";
@@ -206,7 +196,6 @@ import SetSpeedReducer from "./set_speed_reducer";
 import ShareDuelReplayReducer from "./share_duel_replay_reducer";
 import ShareGuildBattleReducer from "./share_guild_battle_reducer";
 import SimulateTimeAwayReducer from "./simulate_time_away_reducer";
-import SlotCardReducer from "./slot_card_reducer";
 import SnapshotProfileCharacterReducer from "./snapshot_profile_character_reducer";
 import SpeedUpItemUpgradeWithGemsReducer from "./speed_up_item_upgrade_with_gems_reducer";
 import SpeedUpResearchWithGemsReducer from "./speed_up_research_with_gems_reducer";
@@ -216,7 +205,6 @@ import StartItemUpgradeReducer from "./start_item_upgrade_reducer";
 import StartLoginMoveReducer from "./start_login_move_reducer";
 import StartPrestigeChallengeReducer from "./start_prestige_challenge_reducer";
 import StartResearchReducer from "./start_research_reducer";
-import SyncPositionReducer from "./sync_position_reducer";
 import TakeOverSessionReducer from "./take_over_session_reducer";
 import TransferGuildLeadershipReducer from "./transfer_guild_leadership_reducer";
 import UnlockInventorySlotReducer from "./unlock_inventory_slot_reducer";
@@ -237,7 +225,6 @@ import * as FindLeaderboardPlayerProcedure from "./find_leaderboard_player_proce
 import * as GetAnalyticsDashboardProcedure from "./get_analytics_dashboard_procedure";
 import * as GetAvatarFramesProcedure from "./get_avatar_frames_procedure";
 import * as GetBalanceEditorProcedure from "./get_balance_editor_procedure";
-import * as GetChatHistoryProcedure from "./get_chat_history_procedure";
 import * as GetChatHistoryWithReactionsProcedure from "./get_chat_history_with_reactions_procedure";
 import * as GetChatMessageReactionsProcedure from "./get_chat_message_reactions_procedure";
 import * as GetChatRoleProcedure from "./get_chat_role_procedure";
@@ -250,7 +237,6 @@ import * as GetGuildBattleHubProcedure from "./get_guild_battle_hub_procedure";
 import * as GetGuildHubProcedure from "./get_guild_hub_procedure";
 import * as GetGuildPreviewProcedure from "./get_guild_preview_procedure";
 import * as GetGuildReplayProcedure from "./get_guild_replay_procedure";
-import * as GetLeaderboardPageProcedure from "./get_leaderboard_page_procedure";
 import * as GetLeaderboardRanksProcedure from "./get_leaderboard_ranks_procedure";
 import * as GetLeaderboardWindowProcedure from "./get_leaderboard_window_procedure";
 import * as GetMapBalanceProcedure from "./get_map_balance_procedure";
@@ -264,8 +250,6 @@ import * as GetPatreonStatusProcedure from "./get_patreon_status_procedure";
 import * as GetPlayerDirectoryProcedure from "./get_player_directory_procedure";
 import * as GetPlayerModerationHistoryProcedure from "./get_player_moderation_history_procedure";
 import * as GetPlayerPresenceProcedure from "./get_player_presence_procedure";
-import * as GetPrestigeLeaderboardPageProcedure from "./get_prestige_leaderboard_page_procedure";
-import * as GetSocialChatHistoryProcedure from "./get_social_chat_history_procedure";
 import * as GetSocialChatHistoryWithReactionsProcedure from "./get_social_chat_history_with_reactions_procedure";
 import * as GetSocialHubProcedure from "./get_social_hub_procedure";
 import * as PreviewMapBalanceProcedure from "./preview_map_balance_procedure";
@@ -1721,27 +1705,17 @@ const reducersSchema = __reducers(
   __reducerSchema("mark_portal_cutscene_seen", MarkPortalCutsceneSeenReducer),
   __reducerSchema("mine_node", MineNodeReducer),
   __reducerSchema("pause_research", PauseResearchReducer),
-  __reducerSchema("prepare_procedural_boss", PrepareProceduralBossReducer),
   __reducerSchema("prepare_world_action_position", PrepareWorldActionPositionReducer),
   __reducerSchema("prestige_account", PrestigeAccountReducer),
   __reducerSchema("pulse_duel", PulseDuelReducer),
   __reducerSchema("read_mailbox_letter", ReadMailboxLetterReducer),
-  __reducerSchema("record_auto_farm_enemy_defeats", RecordAutoFarmEnemyDefeatsReducer),
-  __reducerSchema("record_combat_checkpoint", RecordCombatCheckpointReducer),
   __reducerSchema("record_connection_diagnostic", RecordConnectionDiagnosticReducer),
-  __reducerSchema("record_desert_enemy_defeat", RecordDesertEnemyDefeatReducer),
-  __reducerSchema("record_enemy_defeats", RecordEnemyDefeatsReducer),
-  __reducerSchema("record_forest_enemy_defeat", RecordForestEnemyDefeatReducer),
-  __reducerSchema("record_lava_enemy_defeat", RecordLavaEnemyDefeatReducer),
   __reducerSchema("record_player_death", RecordPlayerDeathReducer),
-  __reducerSchema("record_regular_enemy_defeats", RecordRegularEnemyDefeatsReducer),
-  __reducerSchema("record_snow_enemy_defeat", RecordSnowEnemyDefeatReducer),
   __reducerSchema("record_startup_telemetry", RecordStartupTelemetryReducer),
   __reducerSchema("refine_item", RefineItemReducer),
   __reducerSchema("refresh_daily_quests", RefreshDailyQuestsReducer),
   __reducerSchema("register_client_version", RegisterClientVersionReducer),
   __reducerSchema("register_protocol", RegisterProtocolReducer),
-  __reducerSchema("remove_card", RemoveCardReducer),
   __reducerSchema("rename_build", RenameBuildReducer),
   __reducerSchema("report_auto_farm_enemy_defeats", ReportAutoFarmEnemyDefeatsReducer),
   __reducerSchema("report_chat_message", ReportChatMessageReducer),
@@ -1798,7 +1772,6 @@ const reducersSchema = __reducers(
   __reducerSchema("share_duel_replay", ShareDuelReplayReducer),
   __reducerSchema("share_guild_battle", ShareGuildBattleReducer),
   __reducerSchema("simulate_time_away", SimulateTimeAwayReducer),
-  __reducerSchema("slot_card", SlotCardReducer),
   __reducerSchema("snapshot_profile_character", SnapshotProfileCharacterReducer),
   __reducerSchema("speed_up_item_upgrade_with_gems", SpeedUpItemUpgradeWithGemsReducer),
   __reducerSchema("speed_up_research_with_gems", SpeedUpResearchWithGemsReducer),
@@ -1808,7 +1781,6 @@ const reducersSchema = __reducers(
   __reducerSchema("start_login_move", StartLoginMoveReducer),
   __reducerSchema("start_prestige_challenge", StartPrestigeChallengeReducer),
   __reducerSchema("start_research", StartResearchReducer),
-  __reducerSchema("sync_position", SyncPositionReducer),
   __reducerSchema("take_over_session", TakeOverSessionReducer),
   __reducerSchema("transfer_guild_leadership", TransferGuildLeadershipReducer),
   __reducerSchema("unlock_inventory_slot", UnlockInventorySlotReducer),
@@ -1831,7 +1803,6 @@ const proceduresSchema = __procedures(
   __procedureSchema("get_analytics_dashboard", GetAnalyticsDashboardProcedure.params, GetAnalyticsDashboardProcedure.returnType),
   __procedureSchema("get_avatar_frames", GetAvatarFramesProcedure.params, GetAvatarFramesProcedure.returnType),
   __procedureSchema("get_balance_editor", GetBalanceEditorProcedure.params, GetBalanceEditorProcedure.returnType),
-  __procedureSchema("get_chat_history", GetChatHistoryProcedure.params, GetChatHistoryProcedure.returnType),
   __procedureSchema("get_chat_history_with_reactions", GetChatHistoryWithReactionsProcedure.params, GetChatHistoryWithReactionsProcedure.returnType),
   __procedureSchema("get_chat_message_reactions", GetChatMessageReactionsProcedure.params, GetChatMessageReactionsProcedure.returnType),
   __procedureSchema("get_chat_role", GetChatRoleProcedure.params, GetChatRoleProcedure.returnType),
@@ -1844,7 +1815,6 @@ const proceduresSchema = __procedures(
   __procedureSchema("get_guild_hub", GetGuildHubProcedure.params, GetGuildHubProcedure.returnType),
   __procedureSchema("get_guild_preview", GetGuildPreviewProcedure.params, GetGuildPreviewProcedure.returnType),
   __procedureSchema("get_guild_replay", GetGuildReplayProcedure.params, GetGuildReplayProcedure.returnType),
-  __procedureSchema("get_leaderboard_page", GetLeaderboardPageProcedure.params, GetLeaderboardPageProcedure.returnType),
   __procedureSchema("get_leaderboard_ranks", GetLeaderboardRanksProcedure.params, GetLeaderboardRanksProcedure.returnType),
   __procedureSchema("get_leaderboard_window", GetLeaderboardWindowProcedure.params, GetLeaderboardWindowProcedure.returnType),
   __procedureSchema("get_map_balance", GetMapBalanceProcedure.params, GetMapBalanceProcedure.returnType),
@@ -1858,8 +1828,6 @@ const proceduresSchema = __procedures(
   __procedureSchema("get_player_directory", GetPlayerDirectoryProcedure.params, GetPlayerDirectoryProcedure.returnType),
   __procedureSchema("get_player_moderation_history", GetPlayerModerationHistoryProcedure.params, GetPlayerModerationHistoryProcedure.returnType),
   __procedureSchema("get_player_presence", GetPlayerPresenceProcedure.params, GetPlayerPresenceProcedure.returnType),
-  __procedureSchema("get_prestige_leaderboard_page", GetPrestigeLeaderboardPageProcedure.params, GetPrestigeLeaderboardPageProcedure.returnType),
-  __procedureSchema("get_social_chat_history", GetSocialChatHistoryProcedure.params, GetSocialChatHistoryProcedure.returnType),
   __procedureSchema("get_social_chat_history_with_reactions", GetSocialChatHistoryWithReactionsProcedure.params, GetSocialChatHistoryWithReactionsProcedure.returnType),
   __procedureSchema("get_social_hub", GetSocialHubProcedure.params, GetSocialHubProcedure.returnType),
   __procedureSchema("preview_map_balance", PreviewMapBalanceProcedure.params, PreviewMapBalanceProcedure.returnType),

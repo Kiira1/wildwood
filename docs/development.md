@@ -337,10 +337,6 @@ that function, not the version list, is what keeps an old decoder out.
 - `report_auto_farm_enemy_defeats` is the same handler under another name,
   so the dashboard shows Auto Farm traffic apart; which one a client calls is
   its own claim, and both pay alike.
-- `record_enemy_defeats` / `record_auto_farm_enemy_defeats` (tabs from 0.826
-  and before, which send no game time) are retired: they answer
-  `WildStat updated. Refresh to continue.`, the tab reloads, and the new page
-  sends its unsent kills.
 - **Report throttle.** Both kill reducers first take one report from a
   per-account bucket (`KILL_REPORT_BURST` 16, one more every
   `KILL_REPORT_REFILL_SECONDS` 3). Past it they answer

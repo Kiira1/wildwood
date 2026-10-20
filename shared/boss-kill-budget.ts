@@ -22,9 +22,6 @@ export const BOSS_KILL_BUDGETS = [
   { damage: 2200, health: 560, hpScale: 0.990678825547, hitScale: 1.00065977419 }, // ion_citadel
   { damage: 2200, health: 1150, hpScale: 1.0095916754, hitScale: 1.01450412054 }, // endless_1
  ] as const;
-export function bossBudgetScale(campaignIndex: number) {
-  return BOSS_KILL_BUDGETS[campaignIndex] ?? { hpScale: 1, hitScale: 1 };
-}
 /**
  * Kills to get ready for a boss. Past Endless 1 each map needs its step more of a stat (health 2.15x, so 2.15x the
  * damage; hits 2.15x, so 2.15x the health) from kills that pay its reward step more, so the counts grow by their ratio.

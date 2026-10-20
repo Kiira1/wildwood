@@ -1,7 +1,7 @@
 import { BASIC_PAPER_HAT, STARTER_BOW } from "../../shared/items";
 import { Timestamp } from "spacetimedb";
 import { describe, expect, it, vi } from "vitest";
-import { crystalFixture, server } from "../../tests/helpers/crystal-hollows-fixture";
+import { crystalFixture } from "../../tests/helpers/crystal-hollows-fixture";
 import { reportKills } from "../../tests/helpers/enemy-defeat";
 import { enemyDefeatDefinition, defeatBudget } from "../../shared/enemy-defeats";
 import { ENEMY_TYPES } from "../../shared/enemy-definitions";
@@ -119,10 +119,6 @@ it("allows grouped kills and acknowledges excess without granting rewards across
   // kicked honest players whose map round-trip outran the refilling bucket.
   expect(f.db.defeatSessionRestriction.identity.find(f.ctx.sender)).toBeNull();
   expect(f.db.playerController.identity.find(f.ctx.sender)).not.toBeNull();
-});
-it.each(["recordCombatCheckpoint", "recordRegularEnemyDefeats", "recordForestEnemyDefeat", "recordDesertEnemyDefeat", "recordSnowEnemyDefeat", "recordLavaEnemyDefeat"])("closes obsolete reward endpoint %s", reducer => {
-  const f = fixture();
-  expect(() => f.run((server as any)[reducer], { ...batch, count: 1, progress: { damage: 1e25 } })).toThrow("updated");
 });
 
 it("consumes a 100-kill Endless report exceeding the one-site capacity and keeps the session with its receipt committed", () => {

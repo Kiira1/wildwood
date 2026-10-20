@@ -243,9 +243,7 @@ function watchKillRate(ctx: DefeatContext, clocks: DefeatClocks, mapId: string, 
  *
  * An honest client never gets near it. It reports every 60 seconds, plus a
  * drain before a portal, a boss reward, a hidden tab and an update screen,
- * each a single report. (Clients up to 0.826 reported on every
- * acknowledgement, through record_enemy_defeats, which now only tells them to
- * refresh.) After a dropped socket the backlog goes out back to back, but a
+ * each a single report. After a dropped socket the backlog goes out back to back, but a
  * tab keeps adding to its unsent batch until it holds a thousand kills, so
  * even five minutes offline is a handful of reports, and orphaned tabs add a
  * few more. Sixteen covers all of that at once, and a minute later it is full

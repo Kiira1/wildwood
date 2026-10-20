@@ -119,5 +119,3 @@ export function createDevModerationService(dependencies: DevModerationDependenci
     },
   };
 }
-
-export type DevModerationApi = ReturnType<typeof createDevModerationService>["api"];

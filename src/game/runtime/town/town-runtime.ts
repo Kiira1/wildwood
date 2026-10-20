@@ -305,4 +305,3 @@ export function createTownRuntime(deps: {
     refresh: () => refreshWindow(true),
   };
 }
-export type TownRuntime = ReturnType<typeof createTownRuntime>;

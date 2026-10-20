@@ -70,4 +70,3 @@ export function createMasteryTechniqueRuntime(options: {
     clear() { shots = 0; streak = 0; lastKillAt = -Infinity; marks = new WeakMap(); },
   };
 }
-export type MasteryTechniqueRuntime = ReturnType<typeof createMasteryTechniqueRuntime>;

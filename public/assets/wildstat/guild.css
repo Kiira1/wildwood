@@ -43,8 +43,6 @@
 .guild-preview-identity p { font-size: 12px; margin-top: 3px; }
 .guild-identity.guild-preview-identity h3 { font-size: clamp(32px, 10.5vw, 44px); line-height: 1.1; }
 .guild-identity.guild-preview-identity .guild-mark { width: 100px; height: 100px; flex: 0 0 100px; margin: 0; }
-.guild-preview-president { width: 100%; margin: 18px 0; }
-.guild-preview-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 18px 0 8px; }
 .guild-leadership { padding: 22px 0 20px; border-bottom: 1px solid var(--guild-line); }
 .guild-row.guild-officer { position: relative; display: flex; align-items: center; gap: 8px; border: 0; padding: 0; min-width: 0; min-height: 44px; }
 .guild-officer .guild-member-profile { flex-direction: row; gap: 12px; text-align: left; width: 100%; }
@@ -206,7 +204,6 @@ body:has(.guild-overlay:not([hidden])) #profileIconPicker { z-index: 14; }
 .guild-request-row { flex-wrap: wrap; gap: 8px; }
 .guild-request-row > .guild-member-profile { flex-basis: 100%; }
 .guild-request-actions { display: flex; gap: 8px; margin-left: 48px; }
-.guild-mail summary { color: var(--text, #fff); }
 
 /* Quests tab: this guild's daily quest week, above every guild's ranking. */
 .guild-quest-week { display: grid; gap: 3px; margin: 0 0 12px; padding: 10px 12px; border: 2px solid rgba(255,214,107,.3); border-radius: 10px; background: rgba(255,214,107,.07); }

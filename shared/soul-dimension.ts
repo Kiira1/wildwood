@@ -83,7 +83,6 @@ export const EMPTY_SOUL_STATS: Readonly<SoulStats> = Object.freeze({ damage: 0, 
 const SOUL_STAT_FIELD: Readonly<Record<SoulStatId, keyof SoulStats>> = {
   damage: "damage", health: "maxHp", armor: "armor", regen: "regen", attackSpeed: "attackSpeed", critDamage: "critDamage",
 };
-export const soulStatField = (stat: SoulStatId) => SOUL_STAT_FIELD[stat];
 export function soulStatValue(soul: Partial<SoulStats> | null | undefined, stat: SoulStatId) {
   const value = Number(soul?.[SOUL_STAT_FIELD[stat]] ?? 0);
   return Number.isFinite(value) ? Math.max(0, value) : 0;

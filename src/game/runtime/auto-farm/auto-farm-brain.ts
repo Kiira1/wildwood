@@ -134,7 +134,6 @@ export function createRetryMemory(storage: () => Storage | undefined = () => loc
     },
   };
 }
-export const bossRetryKey = (mapId: string) => `boss:${mapId}`;
 
 /** A boss fight so far: seconds since it began, and the share of health each side had then and has now. */
 export type BossFightProgress = { seconds: number; bossStart: number; boss: number; playerStart: number; player: number };
@@ -163,8 +162,6 @@ export function bossFightLosing(fight: BossFightProgress) {
 export const BOSS_FIGHT_SECONDS = 10 * 60;
 /** How long a fight is watched at the boss before its pace alone can send the player away. */
 export const BOSS_PACE_SECONDS = 30;
-/** A boss is gone to with at least this share of health, as a player heals up first. */
-export const BOSS_READY_HEALTH = .9;
 
 /**
  * How ready a boss fight is: the seconds the player would last (counted up to

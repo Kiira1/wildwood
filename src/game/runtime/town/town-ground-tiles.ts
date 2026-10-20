@@ -157,4 +157,3 @@ export function createTownGroundTilePainter(images: Images) {
   }
   return { ready, paint };
 }
-export type TownGroundTilePainter = ReturnType<typeof createTownGroundTilePainter>;

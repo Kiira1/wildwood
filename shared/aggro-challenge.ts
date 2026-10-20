@@ -27,7 +27,6 @@ export function aggroGoal() {
 export function aggroGoalMet(bossRewardClaims: number) {
   return prestigeCampaignComplete(bossRewardClaims, 1);
 }
-export const AGGRO_MAX_PULL_CAMPS = 1 + AGGRO_CHALLENGE_LIMIT;
 
 /** `parked`: a run the player dropped out of, waiting for them to drop back in. */
 export type AggroChallenge = { active: boolean; completed: number; parked?: boolean };

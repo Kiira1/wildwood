@@ -29,14 +29,6 @@ describe("the card collection", () => {
     expect((server.myActiveCards as any)(f.ctx).map((row: any) => row.hand)).toEqual([["needle_card"]]);
     expect((server.myGearSlots as any)(f.ctx)).toEqual([]);
   });
-
-  it("refuses the old slotting reducers, changing nothing", () => {
-    const f = archer();
-    f.transaction(() => addCard(f.ctx, f.ctx.sender, "needle_card"));
-    expect(() => f.run(server.slotCard, { itemId: IRON_BOW, copyId: 0n, cardId: "needle_card", expectedCards: 0 })).toThrow("Cards tab");
-    expect(() => f.run(server.removeCard, { itemId: IRON_BOW, copyId: 0n, index: 0, expectedCards: 1 })).toThrow("Cards tab");
-    expect(cardCount(f.ctx, f.ctx.sender, "needle_card")).toBe(1);
-  });
 });
 
 describe("cards through a reset, a prestige and a link", () => {

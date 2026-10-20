@@ -69,7 +69,6 @@ export function serializeBonusOff(off: Iterable<string>): string {
 }
 
 export type BonusOff = ReadonlySet<string>;
-export const bonusOn = (off: BonusOff, id: string) => !off.has(id);
 /** A group's switch: on with every item on, off with every item off, mixed between. */
 export function bonusGroupState(off: BonusOff, group: BonusGroupId): "on" | "off" | "mixed" {
   const items = BONUS_GROUPS[group].items, count = items.filter(item => off.has(item.id)).length;
@@ -87,7 +86,6 @@ export const bonusGroupIds = (group: BonusGroupId) => BONUS_GROUPS[group].items.
 /** Prestige stat gain counts. */
 export const prestigeStatGainOn = (off: BonusOff) => !off.has("prestige.statGain");
 export const reflectRewardsOn = (off: BonusOff) => !off.has("challenge.reflect");
-export const aggroPullOn = (off: BonusOff) => !off.has("challenge.aggro");
 
 /** Perk ranks with every switched-off perk at zero. */
 export function perksInPlayFor<T extends Partial<PrestigePerkRanks>>(ranks: T, off: BonusOff): T {

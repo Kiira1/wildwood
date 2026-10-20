@@ -31,7 +31,6 @@ const TREE_SHEET_COLUMNS = 4;
 /** Samurai Garden's cherries are four larger trees in a 2x2 grid. */
 export const CHERRY_TREE_SHEET_COLUMNS = 2;
 export const CHERRY_TREE_SHEET_SOURCE = "assets/wildstat/cherry-tree-spritesheet-v1.webp";
-export const CHERRY_TREE_VARIANTS = CHERRY_TREE_SHEET_COLUMNS * CHERRY_TREE_SHEET_COLUMNS;
 
 type PreprocessResult =
   | { type: "removeGreen"; requestId: number; pixels: ArrayBuffer }

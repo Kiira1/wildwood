@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { crystalFixture, identity, server } from "../../tests/helpers/crystal-hollows-fixture";
 import { Identity, Timestamp } from "../../tests/helpers/spacetime-memory-db";
-import { findLeaderboardSpot, moveLeaderboardStanding, readLeaderboardPage, readLeaderboardRanks, readLeaderboardWindow, readPrestigeLeaderboardPage, writeLeaderboardPages, type Standing } from "./leaderboard-pages";
+import { findLeaderboardSpot, moveLeaderboardStanding, readLeaderboardRanks, readLeaderboardWindow, writeLeaderboardPages, type Standing } from "./leaderboard-pages";
 import { markLeaderboardDirty, refreshLeaderboard } from "./leaderboard-refresh";
 import { eraseIdentityRows } from "./account-erasure";
 import { ATTACK_BALANCE_VERSION, SPACETIME_AUTH_CLIENT_ID, SPACETIME_AUTH_ISSUER } from "../../shared/rules";
@@ -33,13 +33,13 @@ describe("leaderboard boards", () => {
     const f = crystalFixture();
     const [a, b, c] = [numbered(1), numbered(2), numbered(3)];
     writeBoards(f, [standing(a, 10, { prestige: 0, hours: 5 }), standing(b, 30, { prestige: 1, hours: 1 }), standing(c, 20, { prestige: 1, hours: 9 })]);
-    expect(names(readLeaderboardPage(as(f, a), "power", 0, 100).entries)).toEqual(["1:P30", "2:P20", "3:P10"]);
-    expect(names(readLeaderboardPage(as(f, a), "prestige", 0, 100).entries)).toEqual(["1:P30", "2:P20", "3:P10"]);
-    expect(names(readLeaderboardPage(as(f, a), "time", 0, 100).entries)).toEqual(["1:P20", "2:P10", "3:P30"]);
+    expect(names(readLeaderboardRanks(as(f, a), "power", 0, 100).entries)).toEqual(["1:P30", "2:P20", "3:P10"]);
+    expect(names(readLeaderboardRanks(as(f, a), "prestige", 0, 100).entries)).toEqual(["1:P30", "2:P20", "3:P10"]);
+    expect(names(readLeaderboardRanks(as(f, a), "time", 0, 100).entries)).toEqual(["1:P20", "2:P10", "3:P30"]);
     // The strongest player without a prestige tops Power but stays under every prestiged player on Prestige.
     writeBoards(f, [standing(a, 99), standing(b, 30, { prestige: 1 }), standing(c, 20, { prestige: 1 })]);
-    expect(names(readLeaderboardPage(as(f, a), "power", 0, 100).entries)[0]).toBe("1:P10");
-    expect(names(readLeaderboardPage(as(f, a), "prestige", 0, 100).entries)[2]).toBe("3:P10");
+    expect(names(readLeaderboardRanks(as(f, a), "power", 0, 100).entries)[0]).toBe("1:P10");
+    expect(names(readLeaderboardRanks(as(f, a), "prestige", 0, 100).entries)[2]).toBe("3:P10");
   });
 
   it("ranks Account Created oldest first, and Rivals by power within the viewer's own prestige", () => {
@@ -61,7 +61,7 @@ describe("leaderboard boards", () => {
     const f = crystalFixture();
     const rows = Array.from({ length: 250 }, (_, n) => standing(numbered(n + 1), 1_000 - n, { hours: 1_000 - n }));
     writeBoards(f, rows);
-    expect(readLeaderboardPage(as(f, numbered(150)), "power", 0, 100).localRank).toBe(150);
+    expect(readLeaderboardRanks(as(f, numbered(150)), "power", 0, 100).localRank).toBe(150);
     const updates = vi.spyOn(f.db.leaderboardRankPage.key, "update");
     // The last player overtakes the one above them: only the third page of each board changes.
     rows[249] = { ...rows[249], power: 752.5, playedMicros: 752n * 3_600_000_000n + 1n };
@@ -79,12 +79,11 @@ describe("leaderboard boards", () => {
     expect(findLeaderboardSpot(f.ctx as never, "power", -1, numbered(300))).toEqual({ rank: 300, prestige: -1 });
   });
 
-  it("answers older tabs: their stat boards read Power, and a prestige level reads the whole board", () => {
+  it("reads older stat board names as Power", () => {
     const f = crystalFixture();
     writeBoards(f, [standing(numbered(1), 5, { prestige: 2 }), standing(numbered(2), 9)]);
-    expect(names(readLeaderboardPage(f.ctx as never, "damage", 1, 100).entries)).toEqual(["1:P9", "2:P5"]);
-    expect(readPrestigeLeaderboardPage(f.ctx as never, "regen", 2, 1, 100)).toMatchObject({ total: 2, levels: [], prestige: -1 });
-    expect(() => readLeaderboardPage(f.ctx as never, "injected", 1, 100)).toThrow(/Unknown/);
+    expect(names(readLeaderboardRanks(f.ctx as never, "damage", 1, 100).entries)).toEqual(["1:P9", "2:P5"]);
+    expect(() => readLeaderboardRanks(f.ctx as never, "injected", 1, 100)).toThrow(/Unknown/);
   });
 });
 
@@ -132,7 +131,7 @@ describe("leaderboard snapshots", () => {
     refreshLeaderboard(f.ctx);
     expect(f.db.leaderboardStanding.identity.find(gone)).toBeNull();
     expect(f.db.leaderboardEntry.identity.find(gone)).toBeNull();
-    expect(readLeaderboardPage(f.ctx as never, "power", 0, 100).total).toBe(1);
+    expect(readLeaderboardRanks(f.ctx as never, "power", 0, 100).total).toBe(1);
   });
 
   it("starts with a full snapshot after an update, then the cheap one on the timer", async () => {
@@ -158,8 +157,8 @@ describe("leaderboard accounts", () => {
     f.seed("leaderboardEntry", { identity: account, displayName: "Linked", isGuest: false });
     moveLeaderboardStanding(f.ctx as never, guest, account);
     expect(f.db.leaderboardStanding.identity.find(guest)).toBeNull();
-    expect(names(readLeaderboardPage(f.ctx as never, "power", 0, 100).entries)).toEqual(["1:Linked", "2:P5"]);
-    expect(readLeaderboardPage(f.ctx as never, "power", 0, 100).localRank).toBe(1);
+    expect(names(readLeaderboardRanks(f.ctx as never, "power", 0, 100).entries)).toEqual(["1:Linked", "2:P5"]);
+    expect(readLeaderboardRanks(f.ctx as never, "power", 0, 100).localRank).toBe(1);
   });
 
   it("links a guest through the claim reducer", () => {

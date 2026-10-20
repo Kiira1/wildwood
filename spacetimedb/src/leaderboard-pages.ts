@@ -162,7 +162,7 @@ const boardTotal = (ctx: Viewer, board: LeaderboardBoard, level: number) => boar
   ? ctx.db.leaderboardPrestigeSize.prestige.find(level)?.total ?? 0
   : ctx.db.leaderboardSize.id.find(LEADERBOARD_BOARDS.indexOf(board))?.total ?? 0;
 
-/** Ranks and entries only, as procedures from before 0.908.2 return them. */
+/** Ranks and entries only, the shape get_leaderboard_window returns. */
 const legacyRows = (rows: ReturnType<typeof readRanks>) => rows.map(({ rank, entry }) => ({ rank, entry }));
 
 /** The top three and the hundred around the viewer: at most 104 entry lookups and four pages. */
@@ -191,19 +191,6 @@ export function readLeaderboardRanks(ctx: Viewer, requested: string, requestedSt
   const localRank = leaderboardRank(ctx, board, ctx.sender), total = boardTotal(ctx, board, prestige);
   const { ranks, startRank, endRank } = pageRanks(localRank, total, requestedStart, requestedCount);
   return { entries: readRanks(ctx, board, prestige, ranks), startRank, endRank, localRank, total, prestige };
-}
-
-export function readLeaderboardPage(ctx: Viewer, requested: string, requestedStart: number, requestedCount: number) {
-  const { entries, startRank, endRank, localRank, total } = readLeaderboardRanks(ctx, requested, requestedStart, requestedCount);
-  return { entries: legacyRows(entries), startRank, endRank, localRank, total };
-}
-
-/**
- * Tabs from before 0.908 ask for one prestige level's board; they get the
- * whole board until they reload.
- */
-export function readPrestigeLeaderboardPage(ctx: Viewer, requested: string, _level: number, requestedStart: number, requestedCount: number) {
-  return { ...readLeaderboardPage(ctx, requested, requestedStart, requestedCount), prestige: -1, levels: [] as number[] };
 }
 
 /** Where one player stands on a board, for the leaderboard's search. Rank 0 is unranked, and so is another level's rival. */

@@ -17,10 +17,6 @@ export const mailboxReceipt = table({ name: "mailbox_receipt", public: false }, 
   key: t.string().primaryKey(), identity: t.identity().index("btree"), letterId: t.string(),
   read: t.bool(), claimed: t.bool(), updatedAt: t.timestamp(),
 });
-export const mailboxEntry = t.row("MailboxEntry", {
-  id: t.string().primaryKey(), title: t.string(), body: t.string(), gems: t.u64(),
-  createdAt: t.timestamp(), read: t.bool(), claimed: t.bool(),
-});
 // Keep v1 intact so installed 0.734 clients remain compatible during rollout.
 export const mailboxEntryV2 = t.row("MailboxEntryV2", {
   id: t.string().primaryKey(), title: t.string(), body: t.string(), gems: t.u64(),

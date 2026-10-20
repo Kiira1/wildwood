@@ -807,7 +807,6 @@
 .smith-sheet .smith-ores { margin: 0 14px 12px; color: var(--muted); text-align: center; font-size: 13px; line-height: 1.4; }
 /* Where ore comes from: the Copper Hills, and the Smith's free pickaxe until it is taken. */
 .smith-sheet .smith-mining { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 12px; margin: 0 14px 12px; color: var(--muted); font-size: 13px; text-align: center; }
-.smith-sheet .smith-mining .smith-pickaxe, .smith-sheet .smith-mining .smith-hatchet, .smith-sheet .smith-mining .smith-staff { flex: 0 0 auto; height: 38px; min-height: 38px; font-size: 14px; }
 /* The gear filters as chips: the one shown white. */
 .smith-sheet .smith-filters { display: flex; flex-wrap: nowrap; gap: 4px; margin: 0 14px 10px; }
 .smith-sheet .smith-filters .inventory-filter { flex: 1 1 auto; min-height: 32px; padding: 0 6px; border: 1px solid rgba(255,255,255,.16); border-radius: 999px; background: #141414; color: #c7c7c7; font: 800 13px/1 var(--font-rounded); }
@@ -884,7 +883,6 @@
 .smith-sheet .craft-grade-step { flex: none; width: 34px; height: 34px; padding: 0; border: 1px solid rgba(255,255,255,.18); border-radius: 8px; background: rgba(255,255,255,.06); color: #fff; font-size: 18px; font-weight: 900; line-height: 1; }
 .smith-sheet .craft-grade-step:disabled { opacity: .35; }
 .smith-sheet .craft-grade-name { min-width: 64px; color: #fff; font-size: 14px; font-weight: 900; text-align: center; white-space: nowrap; }
-.smith-sheet .craft-stars { flex: none; font-size: 14px; font-weight: 900; line-height: 20px; }
 .smith-sheet .craft-materials { display: flex; flex-wrap: wrap; gap: 2px 10px; margin: 0; padding: 0; list-style: none; }
 .smith-sheet .craft-material { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .smith-sheet .craft-material.is-short { color: #fff; font-weight: 900; }
@@ -1028,11 +1026,7 @@
 .cards-tab { display: grid; grid-column: 1; grid-row: 1 / span 2; align-content: start; gap: 6px; container-type: inline-size; min-width: 0; padding: 0 7px 7px; }
 .cards-tab-count { display: block; margin: 0 auto 4px; }
 /* Active cards, at the top above the zones: a row per type, four slots each; empty is dashed, locked is dim. */
-.cards-active { display: grid; gap: 6px; margin: -7px -7px 2px; padding: 6px 8px 8px; border-bottom: 1px solid rgba(255,255,255,.12); background: #0c0c0c; }
-.cards-active-title { margin: 0; color: #fff; font: 900 15px/18px var(--font-rounded); text-align: center; }
 .cards-active-row { display: grid; gap: 3px; }
-.cards-active-head { display: flex; justify-content: space-between; align-items: baseline; color: #fff; font: 900 14px/17px var(--font-rounded); }
-.cards-active-head span { color: #b3b3b3; font-size: 13px; }
 .cards-slot-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
 .cards-slot { display: grid; grid-template-rows: minmax(0, 1fr) auto; justify-items: center; align-items: center; min-height: 48px; padding: 3px 2px; border: 2px dashed rgba(255,255,255,.25); border-radius: 8px; background: #161616; color: #b3b3b3; font: 800 13px/15px var(--font-rounded); cursor: pointer; }
 .cards-slot.is-filled { border-style: solid; border-color: #8f9aa3; color: #fff; }
@@ -1051,22 +1045,6 @@
 .cards-zone-count { color: #b3b3b3; font: 800 13px/16px var(--font-rounded); white-space: nowrap; }
 .cards-zone-chevron::before { content: "▸"; display: inline-block; color: #d0d0d0; transition: transform .15s; }
 .cards-zone.is-open .cards-zone-chevron::before { transform: rotate(90deg); }
-.cards-zone-list { display: grid; gap: 4px; padding: 6px; }
-.cards-zone-list[hidden] { display: none; }
-.cards-row { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 56px; padding: 6px 8px; border: 1px solid rgba(255,255,255,.1); border-radius: 8px; background: #121212; color: #fff; text-align: left; cursor: pointer; }
-.cards-row.is-elite { border-color: rgba(180,140,255,.45); }
-.cards-row.is-boss { border-color: rgba(242,193,78,.55); }
-.cards-row.is-active { border-color: rgba(255,255,255,.6); background: rgba(255,255,255,.08); }
-.cards-row.is-unfound { opacity: .72; }
-.cards-row-art { width: 36px; height: 45px; border-radius: 4px; background: center / cover no-repeat #0d0d0d; }
-.cards-row-text { display: grid; gap: 2px; min-width: 0; }
-.cards-row-text strong { font: 900 14px/17px var(--font-rounded); }
-.cards-row.is-elite .cards-row-text strong { color: #c9adff; }
-.cards-row.is-boss .cards-row-text strong { color: #f2c14e; }
-.cards-row-odds { color: #d5d5d5; font: 800 13px/16px var(--font-rounded); overflow-wrap: anywhere; }
-.cards-row-side { display: grid; justify-items: end; gap: 2px; }
-.cards-row-count { color: #fff; font: 900 14px/17px var(--font-rounded); }
-.cards-row-active { padding: 1px 6px; border: 1px solid rgba(255,255,255,.6); border-radius: 999px; color: #fff; font: 800 13px/16px var(--font-rounded); white-space: nowrap; }
 /* The Cards tab's two views: Equip (pick a type, its slots, a card, the cards of that type) and Cards (tiles by zone). */
 .cards-views-bar { display: flex; justify-content: center; margin: -4px 0 6px; }
 .cards-views-bar .cards-views { display: inline-flex; gap: 0; padding: 3px; border: 1px solid rgba(255,255,255,.12); border-radius: 999px; background: #0d0d0d; overflow: visible; }
@@ -1225,7 +1203,6 @@ html.text-outline-shadow .inventory-stack-count { text-shadow: 1px 0 0 #080b08, 
 @keyframes card-found-pop { 0% { opacity: 0; transform: scale(.2) rotate(-10deg); } 55% { opacity: 1; transform: scale(1.12) rotate(2deg); } 100% { opacity: 1; transform: scale(1) rotate(0); } }
 @keyframes card-found-shine { 0% { transform: translateX(-170%) skewX(-18deg); } 40%, 100% { transform: translateX(400%) skewX(-18deg); } }
 @keyframes card-found-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
-@keyframes card-found-blink { to { opacity: .45; } }
 @media (prefers-reduced-motion: reduce) {
   .card-found, .card-found * { animation-duration: .01ms !important; animation-delay: 0s !important; animation-iteration-count: 1 !important; }
 }

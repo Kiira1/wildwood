@@ -8,7 +8,6 @@ export type NumberNotation = "suffix" | "scientific";
 // compactNumberChanged below always compares the suffix form.
 let notation: NumberNotation = "suffix";
 export function setNumberNotation(next: NumberNotation) { notation = next === "scientific" ? "scientific" : "suffix"; }
-export function numberNotation() { return notation; }
 
 /** Formats compact values as three significant digits: 841, 5.00m, 28.1k; or 5.00e6 in scientific notation. */
 export function formatCompactNumber(value: number): string {

@@ -162,7 +162,6 @@ export function computePlayerStats(inputs: PlayerStatInputs) {
     sources: statSources(inputs, ranks, soul, factors, critDamage),
   };
 }
-export type PlayerStats = ReturnType<typeof computePlayerStats>;
 
 const guildGain = (bonus: number | undefined) => Math.max(1, Number.isFinite(bonus) ? Number(bonus) : 1);
 

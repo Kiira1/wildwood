@@ -74,12 +74,6 @@ export function removeStaffSkills(ctx: Ctx, identity: Identity) {
   for (const row of [...ctx.db.playerStaffSkill.identity.filter(identity)] as any[]) ctx.db.playerStaffSkill.key.delete(row.key);
   if (ctx.db.playerWornStaffSkill.identity.find(identity)) ctx.db.playerWornStaffSkill.identity.delete(identity);
 }
-/** Only the first copies' rolls; kept copies and offers follow their rows (equipment-copies.ts). */
-export function removeFirstCopyStaffSkills(ctx: Ctx, identity: Identity) {
-  for (const row of [...ctx.db.playerStaffSkill.identity.filter(identity)] as any[]) {
-    if (row.copyId === 0n && row.offerId === 0n) ctx.db.playerStaffSkill.key.delete(row.key);
-  }
-}
 
 /** A guest's first-copy rolls join the account's where it has none; copies and offers move with their rows. */
 export function mergeStaffSkills(ctx: Ctx, guest: Identity, account: Identity) {

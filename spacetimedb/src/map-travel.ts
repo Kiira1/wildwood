@@ -8,7 +8,7 @@ import { isProceduralMap, PROCEDURAL_ENTRY_BOSS, generateMap, PROCEDURAL_ENTRY_M
 import { isSoulMap, soulReturnOpenFor, worldBoundsFor, requireSoulDimensionOpen, SOUL_TOWN_PORTAL, SOUL_ARRIVAL } from "./soul-dimension";
 import { isGuildHallMap, guildHallMember, enterGuildHall } from "./guild-hall";
 import { isTownMap, TOWN_MAP_ID, TOWN_ARRIVAL, townPortalUsePoints } from "./town";
-import { CAMPAIGN_GATEWAYS, portalUsePoint, campaignLanding, LEGACY_CORNER_GATEWAYS, endlessEntryPortal, legacyPortalUsePoints, exitPortalFor, portalExitPoint } from "../../shared/map-gateways";
+import { CAMPAIGN_GATEWAYS, portalUsePoint, campaignLanding, endlessEntryPortal, exitPortalFor, portalExitPoint } from "../../shared/map-gateways";
 import { blockedSession, requireControllingPlayer, isDeveloperIdentity } from "./session-guards";
 import { activeDuelFor } from "./duel-runtime";
 import { SenderError } from "spacetimedb/server";
@@ -93,13 +93,11 @@ export function changePlayerMap(ctx: ModuleReducerCtx, { mapId, x, y }: { mapId:
   const usePoint = (portal: { x: number; y: number; height: number }, destination: string) => ({ x: portal.x, y: portal.y - portal.height * .32, destination });
   const sourcePortals = current.mapId === HOME_EXTERIOR_MAP_ID ? [usePoint(HOME_TRAVEL_PORTAL, isSoulMap(mapId) ? "" : mapId)]
     : isTownMap(current.mapId) ? townPortalUsePoints(mapId)
-    // LEGACY: the forest's old portal spot, where tabs older than 0.901.15 draw the Soul Dimension's (shared/map-gateways.ts).
-    : isSoulMap(current.mapId) ? [usePoint(SOUL_TOWN_PORTAL, SOUL_TOWN_PORTAL.destination), usePoint(LEGACY_CORNER_GATEWAYS[TUTORIAL_FOREST_MAP_ID].portals[0], SOUL_TOWN_PORTAL.destination)]
+    : isSoulMap(current.mapId) ? [usePoint(SOUL_TOWN_PORTAL, SOUL_TOWN_PORTAL.destination)]
     : isProceduralMap(current.mapId)
     ? generateMap(current.mapId).portals.map(portal => ({ ...portal, y:portal.y-portal.height*.32 }))
     : [...(MAP_PORTALS[current.mapId as keyof typeof MAP_PORTALS] ?? []),
-      ...(current.mapId === PROCEDURAL_ENTRY_MAP ? [portalUsePoint(endlessEntryPortal(proceduralMapId(1)))] : []),
-      ...legacyPortalUsePoints(current.mapId, proceduralMapId(1))];
+      ...(current.mapId === PROCEDURAL_ENTRY_MAP ? [portalUsePoint(endlessEntryPortal(proceduralMapId(1)))] : [])];
   const sourcePortal = sourcePortals.filter((portal) => portal.destination === mapId).sort((a, b) => Math.hypot(x - a.x, y - a.y) - Math.hypot(x - b.x, y - b.y))[0];
   if (!sourcePortal) throw new SenderError("Maps are not connected.");
   // Movement is client-authoritative. Validate the coordinate from this
@@ -108,11 +106,9 @@ export function changePlayerMap(ctx: ModuleReducerCtx, { mapId, x, y }: { mapId:
   const portalDistance = Math.hypot(x - sourcePortal.x, y - sourcePortal.y);
   if (portalDistance > MAP_PORTAL_USE_RANGE) throw new SenderError("Move closer to the portal.");
 
-  // An old tab that took an old portal puts itself at the old arrival; land it there so the two agree.
-  // Otherwise a campaign or Endless map lands them a step in front of its portal back (the client does the same).
+  // A campaign or Endless map lands them a step in front of its portal back (the client does the same).
   const exit = exitPortalFor(mapId, destinationPortals(mapId), current.mapId, isTownMap(current.mapId));
-  const arrival = (sourcePortal as { legacyArrival?: { x: number; y: number } | null }).legacyArrival
-    ?? (exit ? portalExitPoint(exit) : null) ?? (isProceduralMap(mapId) ? generateMap(mapId).arrival : isSoulMap(mapId) ? SOUL_ARRIVAL : isTownMap(mapId) ? TOWN_ARRIVAL : MAP_ARRIVALS[mapId as keyof typeof MAP_ARRIVALS]);
+  const arrival = (exit ? portalExitPoint(exit) : null) ?? (isProceduralMap(mapId) ? generateMap(mapId).arrival : isSoulMap(mapId) ? SOUL_ARRIVAL : isTownMap(mapId) ? TOWN_ARRIVAL : MAP_ARRIVALS[mapId as keyof typeof MAP_ARRIVALS]);
   transitionPlayerMap(ctx, current, mapId, arrival);
 }
 

@@ -15,8 +15,7 @@ function harness() {
   let completed = 0,
     throws = false,
     blocked = false;
-  const prepare = vi.fn(async () => {}),
-    failure = vi.fn();
+  const failure = vi.fn();
   const conn = {
     isActive: true,
     identity: Identity.fromString("1".padStart(64, "0")),
@@ -29,7 +28,7 @@ function harness() {
       },
       myEndlessTravelAccess: { iter: () => [] },
     },
-    reducers: { prepareProceduralBoss: prepare },
+    reducers: {},
     subscriptionBuilder: () => {
       let applied = () => {},
         error = (_ctx: any) => {};
@@ -86,7 +85,6 @@ function harness() {
   return {
     api: createProceduralMapService(port),
     subscriptions,
-    prepare,
     failure,
     conn,
     setCompleted: (value: number) => (completed = value),
@@ -107,14 +105,12 @@ describe("generated map subscription lifecycle", () => {
     expect(h.api.proceduralMapState().ready).toBe(true);
     expect(h.subscriptions).toHaveLength(1);
   });
-  it("waits for unlock hydration without creating shared bosses", () => {
+  it("waits for unlock hydration", () => {
     const h = harness();
     h.api.proceduralMapState();
-    expect(h.prepare).not.toHaveBeenCalled();
     h.subscriptions[0].applied();
     h.api.proceduralMapState();
     h.api.proceduralMapState();
-    expect(h.prepare).not.toHaveBeenCalled();
     h.disconnect();
     expect(h.api.proceduralMapState().ready).toBe(false);
   });
@@ -159,6 +155,5 @@ describe("generated map subscription lifecycle", () => {
     h.api.proceduralMapState(); h.subscriptions[0].applied();
     for (let call = 0; call < 40; call++) h.api.proceduralMapState();
     expect(h.subscriptions).toHaveLength(1);
-    expect(h.prepare).not.toHaveBeenCalled();
   });
 });

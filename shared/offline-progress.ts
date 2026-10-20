@@ -1,5 +1,5 @@
 import { CHALLENGE_ABSOLUTE_MIN_INTERVAL } from "./prestige-challenge";
-import { armorDamageReduction, damageAfterArmor } from "./combat";
+import { damageAfterArmor } from "./combat";
 import { enemyDefeatDefinition } from "./enemy-defeats";
 import { ENEMY_TYPES, type EnemyKind } from "./enemy-definitions";
 import type { MapBalanceSnapshot } from "./map-balance-types";
@@ -243,9 +243,4 @@ export function resolveOfflineFarming(
     if (!best) best = outcome;
   }
   return best;
-}
-
-/** Armor's share of the incoming hit, for the summary's own explanation. */
-export function offlineDamageReduction(armor: number) {
-  return armorDamageReduction(armor);
 }

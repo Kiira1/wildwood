@@ -54,8 +54,6 @@ const DAY_MICROS = 86_400_000_000n;
 export function questDay(micros: bigint) { return Number(micros / DAY_MICROS); }
 /** Day 0 (1970-01-01) was a Thursday, so weeks counted from Monday are offset by three days. */
 export function questWeek(day: number) { return Math.floor((day + 3) / 7); }
-/** When the given quest day ends, in milliseconds since the epoch. */
-export function questDayEndsAtMs(day: number) { return (day + 1) * 86_400_000; }
 /** When the quest week holding this day ends (Monday 00:00 UTC), in milliseconds since the epoch. */
 export function questWeekEndsAtMs(day: number) { return ((questWeek(day) + 1) * 7 - 3) * 86_400_000; }
 

@@ -8,13 +8,13 @@ it("serves exactly 50 public messages and pages older IDs despite interleaved ne
   for (let i = 1; i <= 200; i++) f.seed("chatMessage", { id: BigInt(i), sender: f.ctx.sender, senderName: "Player", message: String(i) });
   const proc = { withTx: (callback: (ctx: unknown) => unknown) => callback(f.ctx) };
   expect(server.latestChatMessages(f.ctx as never)).toHaveLength(50);
-  const first = server.getChatHistory(proc as never, { beforeId: 0n });
+  const first = server.getChatHistoryWithReactions(proc as never, { beforeId: 0n });
   expect(first.messages[0].id).toBe(151n);
   f.seed("chatMessage", { id: 201n, sender: f.ctx.sender, senderName: "Player", message: "new" });
-  const older = server.getChatHistory(proc as never, { beforeId: 151n });
+  const older = server.getChatHistoryWithReactions(proc as never, { beforeId: 151n });
   expect(older.messages.map(row => row.id)).toEqual(Array.from({ length: 50 }, (_, i) => BigInt(101 + i)));
   expect(first.hasMore).toBe(true);
-  expect(server.getChatHistory(proc as never, { beforeId: 2n }).hasMore).toBe(false);
+  expect(server.getChatHistoryWithReactions(proc as never, { beforeId: 2n }).hasMore).toBe(false);
 });
 it("never returns another conversation's messages and revokes history after leaving a guild", () => {
   const f = crystalFixture();

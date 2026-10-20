@@ -10,7 +10,6 @@ const STAFF_BOLT_COLORS: Readonly<Record<string, string>> = {
 };
 export const staffBoltColor = (itemId: string | undefined) => STAFF_BOLT_COLORS[itemId ?? ""] ?? "#d9c6ff";
 export const FIRE_COLOR = "#ff8a2b";
-export const LIGHTNING_COLOR = "#dff3ff";
 export const FROST_COLOR = "#a8ecff";
 
 /** Low Performance Mode drops the decorative parts: the rune circle and the frost shards. */

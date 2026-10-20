@@ -95,11 +95,6 @@ export function referenceBuildForMap(mapIndex: number) {
 }
 export function combatMultiplierForMap(mapIndex: number) { return MAP_STAT_GROWTH ** tier(mapIndex); }
 export function rewardMultiplierForMaps(mapCount: number) { return combatMultiplierForMap(mapCount); }
-export function laneCombatValue(lane: ForestProgressionLane, mapIndex: number) {
-  const base = FOREST_LANE_BASES[lane];
-  const scale = combatMultiplierForMap(mapIndex);
-  return { hp: base.hp * scale, damage: base.damage * scale };
-}
 /** Existing health and armor rewards tripled, regeneration doubled.
  * Includes the earlier regular-enemy health (2x) and armor (3x) boosts. */
 export const REGULAR_REWARD_STAT_SCALE: Partial<Record<RewardStat, number>> = { armor: 9, health: 6, regen: 2 };
@@ -107,10 +102,6 @@ export function regularRewardStatScale(stat: RewardStat) {
   return REGULAR_REWARD_STAT_SCALE[stat] ?? 1;
 }
 
-export function laneRewardValue(lane: ForestProgressionLane, mapIndex: number) {
-  const base = FOREST_LANE_BASES[lane].reward;
-  return { ...base, amount: base.amount * (base.type === "speed" ? 1 : rewardMultiplierForMaps(mapIndex)) * regularRewardStatScale(base.type) };
-}
 export function desertLaneCombatValue(lane: ForestProgressionLane, mapIndex: number) {
   const build = referenceBuildForMap(mapIndex);
   const profile = ENCOUNTER_PROFILES[lane];
@@ -131,13 +122,8 @@ export function desertLaneRewardValue(lane: ForestProgressionLane, mapIndex: num
   const density = profile.stat === "damage" ? damageBudget / damageSitesBudget : 1;
   return { type: profile.stat, amount: base * profile.rewardShare * REGULAR_REWARD_CYCLE_SCALE * density * campaignEnemyRewardMultiplier(mapIndex) * regularRewardStatScale(profile.stat) };
 }
-export const DESERT_LANE_BASES = Object.fromEntries(Object.keys(ENCOUNTER_PROFILES).map(key => {
-  const lane = key as ForestProgressionLane;
-  return [lane, { ...desertLaneCombatValue(lane, 0), reward: desertLaneRewardValue(lane, 0) }];
-})) as Record<ForestProgressionLane, ForestLaneBase>;
 
 export const BOSS_BASE_MAX_HP = 35_000;
-export const BOSS_BASE_HEAVY_HIT = 480;
 export const DRAGON_REWARD_DAMAGE = 20;
 export function desertBossHealthAt(mapIndex: number) {
   const build = referenceBuildForMap(mapIndex);
@@ -150,8 +136,6 @@ export function bossHeavyHitAt(mapIndex: number) {
   return build.maxHp * MAP_STAT_GROWTH * .25 /
     (1 - armorDamageReduction(build.armor * MAP_STAT_GROWTH));
 }
-export const DESERT_BOSS_BASE_MAX_HP = desertBossHealthAt(0);
-export const DESERT_BOSS_BASE_HEAVY_HIT = bossHeavyHitAt(0);
 export const BOSS_REWARD_TRACK_BASES: Record<RewardStat, { amount: number; unlockMapIndex: number }> = {
   damage: { amount: 50, unlockMapIndex: 0 }, health: { amount: 1500, unlockMapIndex: 0 },
   speed: { amount: 0, unlockMapIndex: 0 }, armor: { amount: 28.125, unlockMapIndex: 1 },

@@ -9,8 +9,6 @@ import type { Circle, EnemyShot, Position } from '../types';
  * all the while: attacks never wait for standing still.
  */
 
-/** Every attack is taken this much wider, so a step out stops clear of the edge rather than on it. */
-export const DODGE_PAD = 12;
 /** A melee enemy this close to the player's edge is backed away from... */
 export const KITE_GAP = 60;
 /**

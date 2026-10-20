@@ -11,8 +11,6 @@
  */
 export const GEM_KILL_CREDIT_PER_GEM = 6_000n;
 export const GEM_KILL_CREDIT = 5n;
-/** Credit for a pre-migration kill valued at the previous hidden rate. */
-export const GEM_KILL_CREDIT_LEGACY_IDLE = 3n;
 
 export function gemKillCredit(acceptedDefeats: number): bigint {
   if (!Number.isInteger(acceptedDefeats) || acceptedDefeats < 1) return 0n;
