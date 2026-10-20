@@ -98,6 +98,33 @@ describe("startup screen coordination", () => {
     expect(showLoading).toHaveBeenCalledTimes(1);
   });
 
+  it("opens the Terms window only after loading finishes, and enters only once the map is ready too", () => {
+    const base = dependencies(false).values;
+    const showLegalGate = vi.fn(), showLoading = vi.fn(), showNewPlayerIntro = vi.fn();
+    let loaded = false, accepted = false, mapReady = false;
+    const coordinator = createStartupCoordinator({
+      ...base,
+      accountState: () => ({ guestSessionApproved: true, newVisitor: !accepted }),
+      legalConsentAccepted: () => accepted,
+      isLoadingSequenceComplete: () => loaded,
+      currentMapReady: () => mapReady,
+      connected: () => true, progressLoaded: () => accepted, hasLocalState: () => accepted,
+      startupKind: () => accepted ? "new" as const : null,
+      showLegalGate, showLoading, showNewPlayerIntro,
+    });
+    coordinator.finishStartup();
+    expect([showLoading.mock.calls.length, showLegalGate.mock.calls.length]).toEqual([1, 0]);
+    loaded = true;
+    coordinator.finishStartup();
+    expect(showLegalGate).toHaveBeenCalledOnce();
+    accepted = true;
+    coordinator.finishStartup();
+    expect(showNewPlayerIntro).not.toHaveBeenCalled();
+    mapReady = true;
+    coordinator.finishStartup();
+    expect(showNewPlayerIntro).toHaveBeenCalledOnce();
+  });
+
   it("enters a fully ready returning session once", () => {
     const base = dependencies(false).values;
     const beginAdventure = vi.fn();

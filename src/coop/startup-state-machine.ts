@@ -11,6 +11,8 @@ export type StartupAccountSnapshot = {
   restoring?: boolean;
   /** A visitor with no account, no sign-in under way and no sign-out just now: starts as a guest. */
   guestByDefault?: boolean;
+  /** That guest, started on this page from nothing and not yet past the Terms: they may sign in instead. */
+  newVisitor?: boolean;
 };
 
 export type StartupSnapshot = {
@@ -19,6 +21,8 @@ export type StartupSnapshot = {
   legalAccepted: boolean;
   shellReady: boolean;
   runtimeReady?: boolean;
+  /** Everything that loads without a character has loaded: the Terms window may open over it. */
+  consentReady?: boolean;
   started?: boolean;
   startupKind?: "new" | "returning" | null;
 };
@@ -82,28 +86,26 @@ export function deriveStartupState(mode: StartupMachineMode, snapshot: StartupSn
   if (!hasApprovedGameSession(account)) {
     if (account?.authInProgress || account?.returningFromSignIn) return { value: "verifying-sign-in" };
     if (!snapshot.shellReady) return { value: "loading-shell" };
-    // Only the shell starts a guest by itself: consent first, then the guest is created.
+    // Only the shell starts a guest by itself. The Terms come once the game has loaded.
     if (mode === "auth-shell" && account?.restoring) return { value: "loading-shell" };
-    if (mode === "auth-shell" && account?.guestByDefault) {
-      return snapshot.legalAccepted ? { value: "guest-start" } : { value: "legal-consent" };
-    }
+    if (mode === "auth-shell" && account?.guestByDefault) return { value: "guest-start" };
     return { value: "account-choice", detail: "" };
   }
   if (snapshot.started) return { value: "running" };
-  if (!snapshot.legalAccepted) {
-    return snapshot.shellReady ? { value: "legal-consent" } : { value: "loading-shell" };
-  }
+  // The shell never stops for the Terms: the game loads first, then asks.
   if (mode === "auth-shell") return { value: "loading-game", status: "ready" };
   if (snapshot.connectionIssue) {
     return { value: "connection-failed", message: snapshot.connectionIssue.message };
   }
+  // Nothing playable before the Terms: world entry waits for them (the server requires it too).
+  if (!snapshot.legalAccepted) return snapshot.consentReady ? { value: "legal-consent" } : { value: "loading-runtime" };
   if (!snapshot.runtimeReady) return { value: "loading-runtime" };
   if (snapshot.startupKind === "new") return { value: "new-player" };
   if (snapshot.startupKind === "returning") return { value: "entering-game" };
   return { value: "loading-runtime" };
 }
 
-/** Guest from the choice or the automatic guest start; Sign In from the choice or the consent step. */
+/** Guest from the choice or the automatic guest start; Sign In from the choice or the Terms window. */
 function actionAllowed(state: StartupState, action: "sign-in" | "guest" | "takeover") {
   if (action === "takeover") return state.value === "session-conflict";
   if (state.value === "account-choice") return true;

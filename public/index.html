@@ -287,16 +287,18 @@
     <p id="sessionTakeoverNote" class="session-takeover-note" hidden>This signs out the other tab.</p>
     </div>
     </div>
-    <div id="legalGatePanel" class="legal-gate" role="group" aria-label="Terms" hidden>
-    <p id="legalGateIntro" hidden>Sorry</p>
-    <div class="legal-age-control" hidden>
-      <output id="legalAgeOutput" class="legal-age-output" for="legalAgeSlider"></output>
-      <input id="legalAgeSlider" class="is-unset" type="range" min="1" max="100" step="1" value="50" aria-label="Your age" />
-    </div>
-    <p id="legalAgreementNotice" class="legal-agreement">By pressing Play, you agree to the <a id="legalTermsLink" href="terms.html">Terms and Conditions</a> and acknowledge the <a id="legalPrivacyLink" href="privacy.html">Privacy Policy</a>.</p>
-    <button id="legalContinueBtn" type="button" aria-describedby="legalAgreementNotice">Play</button>
-    <p id="legalGateStatus" class="legal-gate-status" role="status"></p>
-    <button id="consentSignInBtn" class="consent-sign-in" type="button" hidden>Have an Account? Sign In</button>
+  </div>
+  <div id="legalGatePanel" class="legal-gate-overlay" hidden>
+    <div class="modal legal-gate" role="dialog" aria-modal="true" aria-labelledby="legalGateIntro">
+      <h2 id="legalGateIntro" class="window-title">Welcome to WildStat</h2>
+      <div class="legal-age-control" hidden>
+        <output id="legalAgeOutput" class="legal-age-output" for="legalAgeSlider"></output>
+        <input id="legalAgeSlider" class="is-unset" type="range" min="1" max="100" step="1" value="50" aria-label="Your age" />
+      </div>
+      <p id="legalAgreementNotice" class="legal-agreement">By pressing Play, you agree to the <a id="legalTermsLink" href="terms.html">Terms and Conditions</a> and acknowledge the <a id="legalPrivacyLink" href="privacy.html">Privacy Policy</a>.</p>
+      <button id="legalContinueBtn" type="button" aria-describedby="legalAgreementNotice">Play</button>
+      <p id="legalGateStatus" class="legal-gate-status" role="status"></p>
+      <button id="consentSignInBtn" class="consent-sign-in" type="button" hidden>Have an Account? Sign In</button>
     </div>
   </div>
   <div id="accountChoicePanel" class="modal account-choice-modal" role="dialog" aria-modal="true" aria-labelledby="accountChoiceTitle">
@@ -311,8 +313,8 @@
     <p id="accountCharacter" class="account-character" aria-live="polite">Character found: <strong id="accountCharacterName">none</strong></p>
     <button id="useAnotherAccountBtn" class="account-switch-button" type="button" hidden>Use Another Account</button>
     </div>
-    <button id="signInFromStartBtn" type="button">REGISTER</button>
-    <button id="continueGuestBtn" class="secondary-button" type="button">PLAY AS GUEST</button>
+    <button id="signInFromStartBtn" type="button">Register</button>
+    <button id="continueGuestBtn" class="secondary-button" type="button">Play as Guest</button>
     <p id="accountChoiceDetail" class="loading-detail" hidden></p>
   </div>
   <button id="installAppBtn" class="signin-install-button" type="button" aria-describedby="installAppHint" hidden>ADD TO HOME SCREEN</button>

@@ -22,18 +22,15 @@ type StartupBootstrapDependencies = {
   signIn: () => Promise<StartupActionResult> | StartupActionResult;
   switchAccount?: () => Promise<StartupActionResult> | StartupActionResult;
   continueAsGuest: () => Promise<StartupActionResult> | StartupActionResult;
-  legalConsentAccepted: () => boolean;
-  acceptLegalTerms: () => Promise<StartupActionResult> | StartupActionResult;
-  ageBlocked?: () => boolean;
   subscribe: (listener: () => void) => () => void;
   beginTelemetryStage?: (stage: "game-bundle") => StartupStageTimer;
 };
 
-/** Keeps the account/consent shell independent from the deferred game bundle. */
+/** Keeps the account shell independent from the deferred game bundle. The game asks for the Terms once loaded. */
 /** Whether game.js, as the bootstrap loaded it, is the script running: see game-script-gate.ts. */
 export { runningAsGameScript } from "./game-script-gate";
 export function startStartupBootstrap(dependencies: StartupBootstrapDependencies) {
-  // First, before any account work: game.js and the game's first artwork download beside the Terms step.
+  // First, before any account work: game.js and the game's first artwork start downloading.
   const gameDownload = preloadDeferredGameBundle();
   if (gameDownload) requestDeferredGameAssets();
   const artworkReveal = startStartupArtworkReveal();

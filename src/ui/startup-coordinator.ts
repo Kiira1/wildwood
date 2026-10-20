@@ -18,6 +18,8 @@ type StartupCoordinatorDependencies = {
   gameUpdateGate: HTMLElement;
   accountState: () => AccountState | undefined;
   pageLoadComplete: () => boolean;
+  /** The character's map: loaded before play even when the Terms ended the loading screen first. */
+  currentMapReady?: () => boolean;
   playerSpriteReady: () => boolean;
   worldArtReady: () => boolean;
   refreshLoading: () => void;
@@ -128,6 +130,7 @@ export function createStartupCoordinator(dependencies: StartupCoordinatorDepende
       && dependencies.connected()
       && dependencies.progressLoaded()
       && dependencies.hasLocalState()
+      && (dependencies.currentMapReady?.() ?? true)
       && (!account?.signedIn || dependencies.localProfileReady());
     const transition = machine.sync({
       account,
@@ -135,6 +138,8 @@ export function createStartupCoordinator(dependencies: StartupCoordinatorDepende
       legalAccepted: dependencies.legalConsentAccepted(),
       shellReady: isSignInScreenReady(),
       runtimeReady,
+      // The loading before the Terms (connection and artwork, no character yet) has run to the end.
+      consentReady: dependencies.pageLoadComplete() && dependencies.isLoadingSequenceComplete(),
       started: dependencies.hasStarted() || dependencies.isRunning(),
       startupKind: dependencies.startupKind(),
     });

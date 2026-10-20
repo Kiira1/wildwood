@@ -231,6 +231,10 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
   let restoring = true;
   /** Restore found a plain visitor: no sign-in return, no sign-in queued, not just signed out. */
   let guestByDefaultAllowed = false;
+  /** A stored sign-in continued by itself on load; until it plays, a refusal shows Sign In instead of leaving. */
+  let automaticApproval = false;
+  /** This page started a guest with no saved one before: Sign In from the Terms leaves it behind unlinked. */
+  let freshGuest = false;
 
   function accountToken() {
     try {
@@ -847,7 +851,12 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
       dependencies.notify();
       return;
     }
-    if (token && hasKnownAccount() && !sessionApproved) {
+    if (token && hasKnownAccount() && !sessionApproved && !guestSessionExplicit) {
+      // A stored sign-in continues as the Sign In tap would, with no screen.
+      sessionApproved = true;
+      automaticApproval = true;
+      notice = "OPENING CHARACTER";
+    } else if (token && hasKnownAccount() && !sessionApproved) {
       notice = "SIGN-IN REQUIRED";
       dependencies.notify();
       return;
@@ -869,6 +878,12 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
       renewalDeferred = false;
       return resolved;
     } catch (error) {
+      if (error instanceof AccountRenewalRequired && automaticApproval) {
+        // The sign-in ran out before this page played: the Sign In screen, never an unasked trip.
+        recordCarriedConnectionDiagnostic("session-blocked", { detail: `auto-sign-in-refused:${error.reason}:${error.detail}` });
+        requireSignIn();
+        throw error;
+      }
       if (error instanceof AccountRenewalRequired && sessionApproved && !outboundAuthNavigationPending) {
         // A background tab waits to be shown: by then the tab the player is
         // looking at may have signed in again for every tab (resolve reads it).
@@ -896,6 +911,13 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
   // Only from a visible, connected tab on the minute: never on a wake or a
   // network change, which reach every tab at once on a still-shaky network.
   let renewAheadTimer: ReturnType<typeof setInterval> | null = null;
+  function requireSignIn() {
+    automaticApproval = false;
+    sessionApproved = false;
+    notice = "SIGN-IN REQUIRED";
+    dependencies.notify();
+  }
+
   function renewAhead() {
     if (signingOut || outboundAuthNavigationPending || callbackPending || !accountToken()) return;
     if (document.hidden || navigator.onLine === false || !dependencies.connection()?.isActive) return;
@@ -984,6 +1006,8 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
         /** No account and nothing under way: the start screen plays as a guest without asking. */
         guestByDefault: guestByDefaultAllowed && !signingOut && !hasKnownAccount() && !renewal.stored()
           && !callbackPending && !returnPending && !outboundAuthNavigationPending && !signInPreparing,
+        /** A guest this page started from nothing, before the Terms: the Terms window offers Sign In. */
+        newVisitor: freshGuest && guestSessionExplicit && !legalConsent.accepted(),
         /** Settings signs out, never in, while an account token is stored. */
         hasAccountToken: !signingOut && Boolean(renewal.stored()),
         /** The character that loaded when it was not the one the player tapped, or "". */
@@ -1068,6 +1092,7 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
         clearTabValue(keys.authRetryKey);
         if (renewal.stored() && hasKnownAccount()) {
           sessionApproved = true;
+          automaticApproval = false;
           approvedAt = Date.now();
           notice = "OPENING CHARACTER";
           dependencies.notify();
@@ -1091,6 +1116,13 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
           notice = "WAIT FOR SERVER";
           dependencies.notify();
           return { ok: false, error: "WAIT FOR SERVER" };
+        }
+        if (freshGuest && !legalConsent.accepted()) {
+          // A new visitor's guest never entered the world: nothing to link, so sign in as for a new device.
+          notice = "OPENING SIGN-IN";
+          dependencies.notify();
+          if (!await startAccountSignIn("register", true)) return notStarted();
+          return { ok: true, redirecting: true };
         }
         if (!await dependencies.requestWorldEntry()) {
           notice = "PLAYER START FAILED · TRY AGAIN";
@@ -1173,6 +1205,7 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
       const mustChangeIdentity = Boolean(
         dependencies.connection()?.isActive && dependencies.connectedSignedIn(),
       ) || Boolean(accountToken());
+      freshGuest ||= !guestToken() && !hasKnownAccount() && !renewal.stored();
       dependencies.disconnectVirtualPlayers();
       renewal.clear();
       clearStoredToken(keys.accountTokenKey);
@@ -1182,6 +1215,7 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
       clearAccountReturnPending();
       callbackPending = false;
       sessionApproved = false;
+      automaticApproval = false;
       updateResumePending = false;
       guestSessionExplicit = true;
       notice = "GUEST SESSION";
@@ -1226,6 +1260,7 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
       // Keep an already admitted account in the game while transport recovers.
       // Otherwise a restored-token login falls back to sign-in on retry.
       if (signedIn) { sessionApproved = true; startRenewingAhead(); }
+      if (signedIn && automaticApproval) { automaticApproval = false; approvedAt ??= Date.now(); }
     },
     prepareUpdateReload(version: string) {
       recordConnectionDiagnostic("update-reload", { intentional: true, detail: `version:${version}` });
@@ -1362,7 +1397,7 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
       clearStoredToken(signedIn ? keys.accountTokenKey : keys.guestTokenKey);
       if (signedIn && hasKnownAccount()) {
         const alreadyRetried = readTabValue(keys.authRetryKey) === "true";
-        if (sessionApproved && !alreadyRetried) {
+        if (sessionApproved && !alreadyRetried && !automaticApproval) {
           writeTabValue(keys.authRetryKey, "true");
           notice = "REOPENING SIGN-IN";
           void startAccountSignIn("token-rejected").catch((signInError) => {
@@ -1376,6 +1411,7 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
           return true;
         }
         sessionApproved = false;
+        automaticApproval = false;
         notice = "SIGN-IN REQUIRED";
         clearAccountReturnPending();
         dependencies.notify();
