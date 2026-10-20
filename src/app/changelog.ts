@@ -1,4 +1,10 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.916.14": [
+    "New players start right away: agree and press Play, and sign in or save your progress any time from Settings",
+    "The game starts downloading as soon as the page opens, and loading is faster",
+    "Background tabs no longer jump to the sign-in page when your sign-in needs renewing",
+    "The attack range ring is light only, and starts off for new players",
+  ],
   "0.916.13": [
     "Soul Health enemies give 10 Health a kill",
     "Soul Levels need less XP each, and the cap is now 50",
@@ -3729,6 +3735,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.916.14": "2026-10-20",
   "0.916.13": "2026-10-20",
   "0.916.12": "2026-10-20",
   "0.916.11": "2026-10-20",
