@@ -1,5 +1,5 @@
 import { fallbackWeapon, weaponKind, type WeaponKind } from "../../../shared/equip-best";
-import { itemDefinition, isCosmeticOnlyItem } from "../../../shared/items";
+import { canonicalItemId, itemDefinition, isCosmeticOnlyItem } from "../../../shared/items";
 import type { PlayerProgress, ProgressSave } from "./progress";
 
 export const EQUIPPED_FIELDS = ["equippedHead", "equippedChest", "equippedFeet", "equippedRightHand", "equippedLeftHand"] as const;
@@ -13,18 +13,14 @@ const HAND_FIELDS: readonly EquippedField[] = ["equippedRightHand", "equippedLef
 
 /**
  * The equipment slots the server changed on its own between two readings of
- * this player's progress row: auto equip putting on new gear.
+ * this player's progress row: auto equip putting on new gear, or a slot
+ * emptied (a destroyed weapon, a restored run). The bag follows them, so it
+ * never shows gear the server does not have.
  *
- * The client normally owns the loadout and the server follows its saves, so
- * a slot counts only when the local save still held what the server had
- * before. A slot the player changed here since then is theirs, and their
- * save wins. Without taking these in, the next save (every kill queues one)
- * would put the old gear back.
- *
- * Only gear going on counts: an item, not a look, in the slot it fits.
- * Auto equip and prestige never take anything off, and a blank slot in the
- * row is an ordinary saved state (older saves have blank hands), not an
- * instruction to unequip. Taking in a blank hand left players with no weapon.
+ * A slot counts only when the local save still held what the server had
+ * before: a slot the player changed here since is on its way, and their save
+ * wins. Gear going on must be an item, not a look, in the slot it fits; an
+ * empty slot is a real state, since the server keeps emptied hands empty.
  */
 export function serverLoadoutChanges(
   previous: PlayerProgress | null,
@@ -34,8 +30,15 @@ export function serverLoadoutChanges(
   if (!previous) return [];
   return EQUIPPED_FIELDS
     .filter(field => previous[field] !== next[field] && (!pending || pending[field] === previous[field]))
-    .filter(field => puttingOn(field, next[field]))
+    .filter(field => !next[field] || puttingOn(field, next[field]))
     .map(field => ({ field, itemId: next[field], previous: previous[field] }));
+}
+
+/** Slots a save asked for that the row does not hold after it (save_player_progress left them off); `previous` is the ask. */
+export function refusedLoadout(sent: ProgressSave, row: PlayerProgress): ServerLoadoutChange[] {
+  return EQUIPPED_FIELDS
+    .filter(field => (canonicalItemId(sent[field]) ?? sent[field] ?? "") !== (row[field] ?? ""))
+    .map(field => ({ field, itemId: row[field] ?? "", previous: sent[field] }));
 }
 
 function puttingOn(field: EquippedField, itemId: string) {

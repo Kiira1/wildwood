@@ -4,7 +4,7 @@ import { mergeProgress } from "../../coop/services/progress";
 import { describe, expect, it, vi } from "vitest";
 import { createGameBootstrap } from "./game-bootstrap";
 import { createProgressController } from "./progress-controller";
-import type { PlayerProgress } from "../../coop/services/progress";
+import type { PlayerProgress, ProgressSave } from "../../coop/services/progress";
 
 function savedProgress(): PlayerProgress {
   const { inventory } = createGameBootstrap();
@@ -152,8 +152,9 @@ describe("loaded progress reconciliation", () => {
       setAppliedVitalityRank: vi.fn(), renderInventory, onLoaded: vi.fn(),
     });
     controller.load();
+    // An equip here is queued as a save, so the merged progress holds it.
     state.inventory.equippedRightHand = CLOUDSPIRE_BOW;
-    const pending = { ...saved, enemyKills: 0 };
+    const pending = { ...saved, equippedRightHand: CLOUDSPIRE_BOW, enemyKills: 0 };
     saved = mergeProgress({ ...saved, inventoryJson: JSON.stringify([...state.inventory.itemIds, MOONFEN_ARMOR]) }, pending);
     controller.load();
     expect(state.inventory.itemIds).toContain(MOONFEN_ARMOR);
@@ -184,15 +185,17 @@ describe("loaded progress reconciliation", () => {
   function loaded(initial: Partial<PlayerProgress>) {
     const state = createGameBootstrap();
     let saved: PlayerProgress = { ...savedProgress(), ...initial };
+    // A save is queued as the coop session queues it: the merged progress shows it.
+    const saveRemoteProgress = vi.fn((save: ProgressSave) => { saved = mergeProgress(saved, save); });
     const controller = createProgressController({
       player: state.player, inventory: state.inventory, bootsPickup: state.bootsPickup,
-      legacyStorageKey: "unused-legacy-save", getSavedProgress: () => saved, saveRemoteProgress: vi.fn(),
+      legacyStorageKey: "unused-legacy-save", getSavedProgress: () => saved, saveRemoteProgress,
       localIdentity: () => "guest-identity", lifetimeEnemyKills: () => 0, isDeveloper: () => false,
       getTotalKills: () => 0, setTotalKills: vi.fn(), researchVitalityRank: () => 0, healthMultiplierBonus: () => 0,
       setAppliedVitalityRank: vi.fn(), renderInventory: vi.fn(), onLoaded: vi.fn(),
     });
     controller.load();
-    return { state, reload: (next: Partial<PlayerProgress>) => { saved = { ...saved, ...next }; controller.load(); } };
+    return { state, saveRemoteProgress, reload: (next: Partial<PlayerProgress>) => { saved = { ...saved, ...next }; controller.load(); } };
   }
 
   it("leaves hands the player emptied empty on login, and when loot changes the bag", () => {
@@ -211,15 +214,33 @@ describe("loaded progress reconciliation", () => {
     expect(gone.state.inventory.equippedRightHand).toBe("starter_stone");
   });
 
-  it("keeps the stone and a weapon in hand when the row drops both (the WEAPON EMPTY repro)", () => {
+  it("keeps the stone when the row drops it, and an empty hand in the row empties the hand", () => {
     const view = loaded({ inventoryJson: '["starter_stone","iron_bow"]', equippedRightHand: "starter_stone" });
     view.reload({ inventoryJson: '["iron_bow"]', equippedRightHand: "" });
     expect(view.state.inventory.itemIds).toContain("starter_stone");
-    expect(view.state.inventory.equippedRightHand).toBe("starter_stone");
+    // Empty hands are a state the server keeps (Reflect runs); the bag shows it rather than a weapon the server lacks.
+    expect(view.state.inventory.equippedRightHand).toBe("");
     // Losing a map leaves its weapon in hand: gear never locks.
     const relocked = loaded({ inventoryJson: '["starter_stone","iron_bow"]', equippedRightHand: "iron_bow", desertUnlocked: true });
     relocked.reload({ desertUnlocked: false });
     expect(relocked.state.inventory.equippedRightHand).toBe("iron_bow");
   });
 
+  it("shows the server's hand after a reconnect instead of the weapon it held before", () => {
+    // The bag showed a sword while the row held an empty hand, so kills trained Archery.
+    const view = loaded({ inventoryJson: '["starter_stone","eternal_sword"]', equippedRightHand: "eternal_sword" });
+    expect(view.state.inventory.equippedRightHand).toBe("eternal_sword");
+    view.reload({ equippedRightHand: "" });
+    expect(view.state.inventory.equippedRightHand).toBe("");
+    view.reload({ equippedRightHand: "eternal_sword" });
+    expect(view.state.inventory.equippedRightHand).toBe("eternal_sword");
+  });
+
+  it("saves the weapon it puts in a hand whose weapon left the bag", () => {
+    const view = loaded({ inventoryJson: '["starter_stone","wooden_sword","eternal_sword"]', equippedRightHand: "eternal_sword" });
+    view.saveRemoteProgress.mockClear();
+    view.reload({ inventoryJson: '["starter_stone","wooden_sword"]' });
+    expect(view.state.inventory.equippedRightHand).toBe("wooden_sword");
+    expect(view.saveRemoteProgress).toHaveBeenCalledWith(expect.objectContaining({ equippedRightHand: "wooden_sword" }), true);
+  });
 });

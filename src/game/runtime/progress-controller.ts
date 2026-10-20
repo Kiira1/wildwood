@@ -1,6 +1,6 @@
 import { cleanRating } from "../../../shared/stat-rating";
 import { CHALLENGE_ABSOLUTE_MIN_INTERVAL } from "../../../shared/prestige-challenge";
-import { canonicalItemId, itemDefinition, STARTER_ITEM_IDS } from "../../../shared/items";
+import { canonicalItemId, isCosmeticOnlyItem, itemDefinition, STARTER_ITEM_IDS } from "../../../shared/items";
 import { fillEmptyHand } from "../../coop/services/server-loadout";
 import { weaponKind } from "../../../shared/equip-best";
 import { cosmeticUnlocks } from "../../../shared/cosmetic-conversion";
@@ -120,7 +120,26 @@ export function createProgressController(dependencies: ProgressDependencies) {
     // Gear taken away must not leave the player unable to attack.
     // Hands the player emptied stay empty (unarmed Reflect runs): new loot
     // changing the bag used to put the best weapon, usually a bow, into them.
-    if (heldWeapon) fillEmptyHand(inventory, inventory.itemIds, weaponKind(heldWeapon));
+    // The weapon put in goes to the server, or it would fight with one the server does not have.
+    if (heldWeapon && fillEmptyHand(inventory, inventory.itemIds, weaponKind(heldWeapon))) save(true);
+    applyPlayerMaxHealthMultiplierBonus(dependencies.player, dependencies.healthMultiplierBonus());
+    dependencies.renderInventory();
+  }
+
+  /**
+   * The bag wears what the server has, or the save queued for it. A slot only differs when
+   * something changed it without a save; showing it would fight with gear the server does not have.
+   */
+  function followSavedLoadout(saved: PlayerProgress) {
+    const inventory = dependencies.inventory;
+    let changed = false;
+    for (const field of ["equippedHead", "equippedChest", "equippedFeet", "equippedRightHand", "equippedLeftHand"] as const) {
+      const itemId = saved[field] ?? "";
+      if (inventory[field] === itemId || (itemId && (!inventory.itemIds.includes(itemId) || isCosmeticOnlyItem(itemId)))) continue;
+      inventory[field] = itemId;
+      changed = true;
+    }
+    if (!changed) return;
     applyPlayerMaxHealthMultiplierBonus(dependencies.player, dependencies.healthMultiplierBonus());
     dependencies.renderInventory();
   }
@@ -177,10 +196,12 @@ export function createProgressController(dependencies: ProgressDependencies) {
         player.regen = boundedProgressValue(saved.regen, player.regen, 0, MAX_PLAYER_STAT);
         applyCritRating(saved.critRating);
         player.projectileCount = saved.projectileCount;
-        player.attackRange = boundedProgressValue(saved.attackRange, BASE_ATTACK_RANGE, BASE_ATTACK_RANGE, BASE_ATTACK_RANGE + 75)
-          + addedRange(dependencies.inventory.equippedRightHand, dependencies.inventory.equippedLeftHand);
         if (player.baseMaxHp !== saved.maxHp) setPlayerBaseMaxHealth(player, saved.maxHp, dependencies.healthMultiplierBonus());
         reconcileInventory(saved);
+        // Read again: a hand filled above has just been queued.
+        followSavedLoadout(dependencies.getSavedProgress() ?? saved);
+        player.attackRange = boundedProgressValue(saved.attackRange, BASE_ATTACK_RANGE, BASE_ATTACK_RANGE, BASE_ATTACK_RANGE + 75)
+          + addedRange(dependencies.inventory.equippedRightHand, dependencies.inventory.equippedLeftHand);
         applyMovementSpeed(saved, false);
         // A refine of worn gear changes the health bonus with nothing else changing: max health follows it.
         const healthBonus = dependencies.healthMultiplierBonus();
@@ -256,12 +277,14 @@ export function createProgressController(dependencies: ProgressDependencies) {
     // saved empty is the player's choice and stays empty, as the server has
     // kept it since 0.832; filling it on load equipped the best weapon, usually
     // a bow, on every login.
-    if (savedWeapon) fillEmptyHand(inventory, inventory.itemIds, weaponKind(savedWeapon));
+    // The weapon put in is saved, so the server's hand matches the one shown.
+    const filled = savedWeapon ? fillEmptyHand(inventory, inventory.itemIds, weaponKind(savedWeapon)) : "";
     setPlayerBaseMaxHealth(player, player.baseMaxHp, dependencies.healthMultiplierBonus(), true);
     applyMovementSpeed(source, false);
     inventory.selectedItemId = "";
     inventory.selectedItemLocation = "";
     dependencies.renderInventory();
+    if (filled) save(true);
   }
 
   function applyMovementSpeed(source: Partial<PlayerProgress>, bootsEquipped: boolean) {

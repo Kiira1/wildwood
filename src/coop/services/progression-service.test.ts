@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createGameBootstrap } from "../../game/runtime/game-bootstrap";
 import type { ReducerPort } from "../ports";
 import type { PlayerProgress, ProgressSave } from "./progress";
-import { createProgressionService, KILL_REPORT_CADENCE_SLACK_MS, PROGRESS_SAVE_INTERVAL_MS, PROGRESS_STORE_WRITE_DELAY_MS } from "./progression-service";
+import { createProgressionService, KILL_REPORT_CADENCE_SLACK_MS, PROGRESS_SAVE_INTERVAL_MS, PROGRESS_STORE_WRITE_DELAY_MS, type ServerEquip } from "./progression-service";
 import { bindProgressFlushOnHide } from "./flush-on-hide";
 
 class MemoryStorage implements Storage {
@@ -665,4 +665,46 @@ it.each([true, false])("uses reset stats only after prestige succeeds: %s", asyn
   if (success) expect(h.storage.length).toBe(0);
   h.service.dispose();
   vi.unstubAllGlobals();
+});
+
+describe("the server's loadout is the one shown", () => {
+  const row = (p: PlayerProgress) => ({ ...p, identity: { toHexString: () => identity } } as never);
+  const swordsman = (rightHand: string) => ({ ...progress(), inventoryJson: '["starter_stone","eternal_sword"]', equippedRightHand: rightHand });
+
+  it("takes a hand the server emptied while nothing local is queued", () => {
+    const h = setup(); const equips: ServerEquip[] = [];
+    h.service.api.setOnServerEquip(equip => equips.push(equip));
+    h.service.tables.upsertProgress(row(swordsman("eternal_sword")));
+    h.service.tables.upsertProgress(row(swordsman("")));
+    expect(equips.at(-1)?.changes).toEqual([{ field: "equippedRightHand", itemId: "", previous: "eternal_sword" }]);
+    expect(h.service.api.savedProgress()?.equippedRightHand).toBe("");
+    h.service.dispose();
+  });
+
+  it("takes the server's answer when it does not put a saved weapon on, and does not send it again", async () => {
+    const h = setup(); const equips: ServerEquip[] = [];
+    h.service.api.setOnServerEquip(equip => equips.push(equip));
+    const base = swordsman("");
+    h.service.tables.upsertProgress(row(base));
+    // The server's row comes back unchanged: the hand stayed empty.
+    h.service.api.saveProgress(saveFrom(base, { equippedRightHand: "eternal_sword" }), true);
+    expect(await h.service.drainPendingProgress()).toBe(true);
+    expect(h.savePlayerProgress).toHaveBeenCalledOnce();
+    expect(equips.at(-1)).toMatchObject({ refused: true, changes: [{ field: "equippedRightHand", itemId: "", previous: "eternal_sword" }] });
+    expect(h.service.api.savedProgress()?.equippedRightHand).toBe("");
+    h.service.dispose();
+  });
+
+  it("says nothing when the server puts the weapon on", async () => {
+    const h = setup(); const equips: ServerEquip[] = [];
+    h.service.api.setOnServerEquip(equip => equips.push(equip));
+    const base = swordsman("");
+    h.service.tables.upsertProgress(row(base));
+    h.savePlayerProgress.mockImplementation(async () => { h.service.tables.upsertProgress(row(swordsman("eternal_sword"))); });
+    h.service.api.saveProgress(saveFrom(base, { equippedRightHand: "eternal_sword" }), true);
+    expect(await h.service.drainPendingProgress()).toBe(true);
+    expect(equips).toEqual([]);
+    expect(h.service.api.savedProgress()?.equippedRightHand).toBe("eternal_sword");
+    h.service.dispose();
+  });
 });

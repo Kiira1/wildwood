@@ -16,7 +16,7 @@ import { createRegularEnemyLootQueue, ENEMY_DEFEAT_ACK_TIMEOUT_MS } from "./regu
 import { REGULAR_ENEMY_LOOT_DELAY_MS } from "../../../shared/regular-map-loot";
 import { ONBOARDING_DAMAGE_REWARD, ONBOARDING_REGEN_REWARD, ONBOARDING_STEP } from "../../../shared/onboarding";
 import { withoutDestroyedEquipment } from "./destroyed-equipment";
-import { serverLoadoutChanges, withServerLoadout, type ServerLoadoutChange } from "./server-loadout";
+import { refusedLoadout, serverLoadoutChanges, withServerLoadout, type ServerLoadoutChange } from "./server-loadout";
 import { cosmeticUnlocks } from "../../../shared/cosmetic-conversion";
 import type { PendingItemGift } from "../../../shared/item-gifts";
 import { createProceduralMapService } from "./procedural-map-service";
@@ -53,7 +53,8 @@ import { createCutsceneHistory } from "./cutscene-history";
 import { monotonicNowMs, nativeTimers } from "../../app/trusted-clock";
 
 /** Slots the server changed by itself, the row they came in, and whether it is live rather than a reconnect's replay. */
-export type ServerEquip = { changes: readonly ServerLoadoutChange[]; progress: PlayerProgress; live: boolean };
+/** Slots the server changed; `refused` when they are a save's equip it did not put on. */
+export type ServerEquip = { changes: readonly ServerLoadoutChange[]; progress: PlayerProgress; live: boolean; refused?: boolean };
 
 type ProgressionServiceDependencies = {
   reducers: ReducerPort;
@@ -313,10 +314,11 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
     nextPeriodicSaveAt = monotonicNowMs() + PROGRESS_SAVE_INTERVAL_MS;
     savePromise = dependencies.reducers.runWorldReducer(() => connection.reducers.savePlayerProgress(snapshot))
       .then(() => {
+        const answered = identity === dependencies.localIdentity() ? takeRefusedLoadout(snapshot) : snapshot;
         if (
           identity === dependencies.localIdentity() &&
           pendingProgress &&
-          sameProgressSave(pendingProgress, snapshot) && !enemyLoot.hasPending()
+          sameProgressSave(pendingProgress, answered) && !enemyLoot.hasPending()
         ) {
           clearPending(identity);
           dependencies.notify();
@@ -341,6 +343,31 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
         }
       });
     return savePromise;
+  }
+
+  /**
+   * The row arrives before the save's answer, so it shows what the server put on. A slot it left off
+   * goes back to the server's in the queued save and the bag, unless changed again since. Returns the save as answered.
+   */
+  function takeRefusedLoadout(sent: ProgressSave) {
+    if (!localProgress || !dependencies.hydrationReady()) return sent;
+    const row = localProgress;
+    const refused = refusedLoadout(sent, row);
+    if (!refused.length) return sent;
+    const answered = { ...sent };
+    for (const { field, itemId } of refused) answered[field] = itemId;
+    const current = pendingProgress;
+    const untouched = current ? refused.filter(({ field }) => current[field] === sent[field]) : refused;
+    if (current) {
+      const next = { ...current };
+      for (const { field, itemId } of untouched) next[field] = itemId;
+      pendingProgress = next;
+      const identity = dependencies.localIdentity();
+      if (identity) deferStoreWrite(identity, next);
+    }
+    if (untouched.length) serverEquipListener?.({ changes: untouched, progress: row, live: dependencies.hydrationReady(), refused: true });
+    dependencies.notify();
+    return answered;
   }
 
   /**

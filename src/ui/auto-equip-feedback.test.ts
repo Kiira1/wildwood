@@ -1,6 +1,6 @@
 import { expect, it, vi } from "vitest";
 import { autoEquipMessage, createAutoEquipFeedback } from "./auto-equip-feedback";
-import { applyServerLoadout, fillEmptyHand, serverLoadoutChanges, withServerLoadout } from "../coop/services/server-loadout";
+import { applyServerLoadout, fillEmptyHand, refusedLoadout, serverLoadoutChanges, withServerLoadout } from "../coop/services/server-loadout";
 import type { ServerEquip } from "../coop/services/progression-service";
 import type { PlayerProgress, ProgressSave } from "../coop/services/progress";
 import type { InventoryState } from "../game/inventory";
@@ -14,6 +14,7 @@ const ALL_MAPS = Object.fromEntries(CAMPAIGN_UNLOCK_FIELDS.map(field => [field, 
 const progress = (rightHand: string, extra: Record<string, unknown> = {}) =>
   ({ ...loadout(rightHand), ...ALL_MAPS, ...extra }) as unknown as PlayerProgress;
 const save = (rightHand: string, extra: Record<string, string> = {}) => loadout(rightHand, extra) as unknown as ProgressSave;
+const emptiedBySave = [{ field: "equippedRightHand", itemId: "", previous: "eternal_sword" }];
 
 it("takes a slot the server changed while the local save still held the old gear", () => {
   expect(serverLoadoutChanges(progress("iron_bow"), progress("crystal_bow"), null))
@@ -30,14 +31,25 @@ it("takes a slot the server changed while the local save still held the old gear
     .toMatchObject({ equippedRightHand: "crystal_bow", equippedHead: "wood_full_helm" });
 });
 
-it("never takes in a blank hand or gear in the wrong slot: the server only puts gear on", () => {
-  // A blank hand in the row is an ordinary saved state, with or without a bow in the bag.
-  expect(serverLoadoutChanges(progress("starter_stone"), progress(""), null)).toEqual([]);
-  expect(serverLoadoutChanges(progress("starter_stone"), progress("", { desertUnlocked: false, inventoryJson: '["iron_bow"]' }), save("starter_stone"))).toEqual([]);
+it("takes a slot the server emptied unless this tab changed it since, and never gear in the wrong slot", () => {
+  // An empty hand in the row is the server's: a destroyed weapon, a restored run, a refused save.
+  const emptied = [{ field: "equippedRightHand", itemId: "", previous: "eternal_sword" }];
+  expect(serverLoadoutChanges(progress("eternal_sword"), progress(""), null)).toEqual(emptied);
+  expect(serverLoadoutChanges(progress("eternal_sword"), progress(""), save("eternal_sword"))).toEqual(emptied);
+  // A hand this tab changed since is its own choice, still on its way to the server.
+  expect(serverLoadoutChanges(progress("eternal_sword"), progress(""), save("crude_bow"))).toEqual([]);
   // A bow from a map not reached is taken in: gear never locks. A bow in the head slot is not.
   expect(serverLoadoutChanges(progress("starter_stone"), progress("iron_bow", { desertUnlocked: false }), null))
     .toEqual([{ field: "equippedRightHand", itemId: "iron_bow", previous: "starter_stone" }]);
   expect(serverLoadoutChanges(progress("starter_stone", { equippedHead: "" }), progress("starter_stone", { equippedHead: "iron_bow" }), null)).toEqual([]);
+});
+
+it("lists the slots a save asked for that the server did not put on", () => {
+  expect(refusedLoadout(save("eternal_sword"), progress(""))).toEqual(emptiedBySave);
+  expect(refusedLoadout(save("eternal_sword"), progress("eternal_sword"))).toEqual([]);
+  // An unowned helmet reads as the paper hat on the server: refused too.
+  expect(refusedLoadout(save("eternal_sword", { equippedHead: "eternal_medium_helmet" }), progress("eternal_sword", { equippedHead: "basic_paper_hat" })))
+    .toEqual([{ field: "equippedHead", itemId: "basic_paper_hat", previous: "eternal_medium_helmet" }]);
 });
 
 it("puts a weapon in one hand the way the inventory does, and fills an empty hand from the bag", () => {
@@ -88,4 +100,18 @@ it("puts the server's gear in the local bag and says so, silently on a reconnect
   listener!({ changes: [{ field: "equippedRightHand", itemId: "iron_bow", previous: "crystal_bow" }], progress: unlocked, live: false });
   expect(inventory.equippedRightHand).toBe("iron_bow");
   expect(messages).toHaveLength(1);
+});
+
+it("puts the server's loadout back and says so when it did not take an equip", () => {
+  let listener: ((equip: ServerEquip) => void) | null = null;
+  const inventory = { itemIds: ["eternal_sword"], ...loadout("eternal_sword") } as unknown as InventoryState;
+  const player = { maxHp: 100, hp: 100, baseMaxHp: 100 } as unknown as PlayerState;
+  const messages: string[] = [];
+  createAutoEquipFeedback({
+    coop: { setOnServerEquip: callback => { listener = callback; } },
+    inventory, player, healthMultiplierBonus: () => 0, renderInventory: vi.fn(), showMessage: message => messages.push(message),
+  });
+  listener!({ changes: emptiedBySave as never, progress: progress(""), live: true, refused: true });
+  expect(inventory.equippedRightHand).toBe("");
+  expect(messages).toEqual(["Could Not Equip Eternal Crystal Blade"]);
 });
