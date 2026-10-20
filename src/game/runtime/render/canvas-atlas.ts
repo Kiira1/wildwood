@@ -9,7 +9,8 @@ import { freezeCopy, frozenCopyOf, thawCopy } from "./frozen-canvas";
  * Images are packed in rows ("shelves"). Pages are made only when needed, up to a cap. When every page
  * is full, the next allocation fails (the caller then makes its own canvas, as before) and the atlas
  * starts over at the next resetIfFull(): every page is cleared and every onReset listener drops what
- * it cached, so call resetIfFull() only where nothing from the atlas is held across the call.
+ * it cached, so call resetIfFull() only where nothing from the atlas is held across the call. release()
+ * does the same and also lets the pages go, so pages filled on earlier maps are not kept all session.
  * A page left unchanged for PAGE_SETTLE_MS is drawn from a frozen bitmap copy (frozen-canvas.ts) until it changes.
  */
 export type AtlasImage = {
@@ -109,12 +110,28 @@ export function createCanvasAtlas(options: { pageSize?: number; maxPages?: numbe
     return true;
   }
 
-  return { allocate, drawInto, resetIfFull, onReset: (listener: () => void) => { resetListeners.push(listener); }, pageCount: () => pages.length };
+  /**
+   * Gives every page back (a new map needs few of the last one's images): pages emptied and dropped, listeners
+   * told to drop what they cached. Same rule as resetIfFull(): nothing from the atlas may be held across it.
+   */
+  function release() {
+    full = false;
+    for (const page of pages.splice(0)) {
+      thaw(page);
+      page.canvas.width = 0;
+      page.canvas.height = 0;
+    }
+    for (const listener of resetListeners) listener();
+  }
+
+  return { allocate, drawInto, resetIfFull, release, onReset: (listener: () => void) => { resetListeners.push(listener); }, pageCount: () => pages.length };
 }
 export type CanvasAtlas = ReturnType<typeof createCanvasAtlas>;
 
 /** Draws an atlas image (or a canvas of its own) at dx, dy, dw × dh. */
 export function drawAtlasImage(ctx: Pick<CanvasRenderingContext2D, "drawImage">, image: AtlasImage, dx: number, dy: number, dw: number, dh: number) {
+  // A released page is zero-sized, and drawing one would throw.
+  if (!image.canvas.width || !image.canvas.height) return;
   const source = frozenCopyOf(image.canvas);
   if (image.sw === undefined || image.sh === undefined) ctx.drawImage(source, dx, dy, dw, dh);
   else ctx.drawImage(source, image.sx ?? 0, image.sy ?? 0, image.sw, image.sh, dx, dy, dw, dh);

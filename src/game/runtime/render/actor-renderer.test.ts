@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { ENEMY_BOW_AIM_OFFSET_RADIANS, type LoadedEnemySprite, type LoadedSpriteLayer } from "../../enemies";
 import { drawableEnemyLayers, enemyShadowOffsetY, enemySpriteVerticalBounds, enemyWeaponAimRotation, enemyWeaponLayerRotation } from "./actor-renderer";
-import { createActorRenderer, rockProjectileSize } from "./actor-renderer";
+import { createActorRenderer, rockProjectileSize, scaledEnemySprite } from "./actor-renderer";
 import { ENEMY_SPRITE_LAYOUTS } from "../../enemy-sprite-layouts.mjs";
 import type { EnemyState } from "../types";
 import { PLAYER_WORLD_SCALE } from "../../player-render-scale";
@@ -119,6 +119,78 @@ describe("layered enemy rendering", () => {
     renderer.drawEnemy({ type: kind, x: 100, y: 100, vx: 0, vy: 0, r: 20, phase: 0,
       facingX: 1, engaged: false, hurt: 0 } as EnemyState);
     expect(drawShadow).toHaveBeenCalledTimes(layout.animation ? 0 : 1);
+  });
+
+  it("keeps one scaled copy of a sprite per scale", () => {
+    const sprite = { size: 54, layers: [layer(true, 0, 10)] } as LoadedEnemySprite;
+    expect(scaledEnemySprite(sprite, 1)).toBe(sprite);
+    const big = scaledEnemySprite(sprite, 2.4);
+    expect(big).toMatchObject({ size: 54 * 2.4, layers: sprite.layers });
+    expect(scaledEnemySprite(sprite, 2.4)).toBe(big);
+    expect(scaledEnemySprite(sprite, 3)).not.toBe(big);
+  });
+
+  it("builds an Endless boss's layer canvas once, not on every frame", () => {
+    const layout = ENEMY_SPRITE_LAYOUTS["Dune Striker"];
+    const loaded = { complete: true, naturalWidth: 32, naturalHeight: 32 } as HTMLImageElement;
+    const sprite = { ...layout, layers: layout.layers.map((part) => ({ ...part, image: loaded })) } as LoadedEnemySprite;
+    const createElement = vi.fn(() => ({ width: 0, height: 0, getContext: () => ({ drawImage: vi.fn() }) }));
+    vi.stubGlobal("document", { createElement });
+    try {
+      const renderer = createActorRenderer({
+        ctx: { save: vi.fn(), restore: vi.fn(), translate: vi.fn(), rotate: vi.fn(), scale: vi.fn(), drawImage: vi.fn(), globalAlpha: 1 },
+        camera: { x: 0, y: 0, zoom: 1 }, viewport: () => ({ width: 800, height: 800 }),
+        devicePixelRatio: () => 1, gameTime: () => 0, player: { x: 200, y: 100 },
+        enemySprites: { "Dune Striker": sprite }, drawShadow: vi.fn(), enemyTextVisible: () => false,
+      } as unknown as Parameters<typeof createActorRenderer>[0]);
+      const boss = { type: "Dune Striker", x: 300, y: 300, vx: 0, vy: 0, r: 60, phase: 0,
+        facingX: 1, engaged: false, hurt: 0, generatedBoss: true } as unknown as EnemyState;
+      renderer.drawEnemy(boss);
+      const built = createElement.mock.calls.length;
+      expect(built).toBeGreaterThan(0);
+      for (let frame = 0; frame < 5; frame++) renderer.drawEnemy(boss);
+      expect(createElement).toHaveBeenCalledTimes(built);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("draws an enemy's name once while its reward text changes, and starts the label pages over on a new map", () => {
+    const texts: string[] = [];
+    const context = () => new Proxy({} as Record<string, unknown>, {
+      get(target, key: string) {
+        if (key in target) return target[key];
+        if (key === "measureText") return (text: string) => ({ width: text.length * 6 });
+        if (key === "fillText") return (text: string) => { texts.push(text); };
+        return () => {};
+      },
+      set(target, key: string, value) { target[key] = value; return true; },
+    });
+    const pages: { width: number; height: number }[] = [];
+    vi.stubGlobal("document", { createElement: () => { const page = { width: 0, height: 0, getContext: context }; pages.push(page); return page; } });
+    try {
+      let multiplier = 1;
+      let mapId = "moonfen";
+      const renderer = createActorRenderer({
+        ctx: context(), camera: { x: 0, y: 0, zoom: 1 }, viewport: () => ({ width: 800, height: 800 }),
+        devicePixelRatio: () => 1, gameTime: () => 0, player: { x: 200, y: 100 }, enemySprites: {},
+        drawShadow: vi.fn(), pixelCircle: vi.fn(), outlinedText: vi.fn(), enemyTextVisible: () => true, rewardMultiplier: () => multiplier, mapId: () => mapId,
+      } as unknown as Parameters<typeof createActorRenderer>[0]);
+      const enemy = { type: "Spitter", x: 100, y: 100, vx: 0, vy: 0, r: 20, phase: 0, facingX: 1, engaged: false, hurt: 0,
+        hp: 10, maxHp: 10, reward: { type: "damage", amount: 3 } } as unknown as EnemyState;
+      for (multiplier = 1; multiplier <= 5; multiplier++) renderer.drawEnemy(enemy);
+      expect(texts.filter(text => text === "Spitter")).toHaveLength(1);
+      expect(texts.filter(text => text.startsWith("+"))).toHaveLength(5);
+      const firstPages = pages.filter(page => page.width === 1024);
+      mapId = "verdant_catacombs";
+      renderer.drawEnemy(enemy);
+      // The last map's pages are let go; the name is drawn onto a fresh one.
+      expect(firstPages.length).toBeGreaterThan(0);
+      expect(firstPages.every(page => page.width === 0)).toBe(true);
+      expect(texts.filter(text => text === "Spitter")).toHaveLength(2);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it("crops an atlas frame without a bow overlay while preserving hit/death transforms", () => {

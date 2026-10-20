@@ -1,4 +1,5 @@
 import { formatCompactNumber } from "../../shared/compact-number";
+import { decodeOffThread, releaseDecoded } from "./runtime/render/decoded-image";
 import { ENEMY_BOW_AIM_OFFSET_RADIANS, ENEMY_SPRITE_LAYOUTS, type EnemySpriteAnimationLayout } from "./enemy-sprite-layouts.mjs";
 
 export { ENEMY_BOW_AIM_OFFSET_RADIANS };
@@ -118,12 +119,15 @@ function createLazyEnemyImage(source: string, onSettled: () => void): LazyEnemyI
     retry += 1;
     retryEnemyImage(image, source, retry);
   });
+  // Ready once decoded off the main thread (decoded-image.ts): drawn straight from the <img>, a sheet was decoded on
+  // the main thread when its enemies first came into view, most of a second on a phone for Verdant Catacombs' six.
+  const onLoad = () => { if (typeof createImageBitmap === "function") void decodeOffThread(image).then(settle); else settle(); };
   return {
     image,
     load: () => {
       if (!started) {
         started = true;
-        image.addEventListener("load", settle, { once: true });
+        image.addEventListener("load", onLoad, { once: true });
         image.src = source;
       } else if (didFail) {
         // Asked for again after giving up (the player came back to this map):
@@ -139,7 +143,8 @@ function createLazyEnemyImage(source: string, onSettled: () => void): LazyEnemyI
     release: () => {
       // Nothing loaded yet, or still loading: leave it to finish.
       if (!started || !didSettle) return false;
-      image.removeEventListener("load", settle);
+      image.removeEventListener("load", onLoad);
+      releaseDecoded(image);
       image.removeAttribute("src");
       started = false; didSettle = false; didFail = false; retry = 0;
       promise = new Promise<void>((complete) => { resolve = complete; });

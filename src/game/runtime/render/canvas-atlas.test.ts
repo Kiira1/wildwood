@@ -61,7 +61,7 @@ it("puts every enemy kind's plate on the same shared page rather than a canvas e
   const create = () => { const canvas = fakeCanvas(); made.push(canvas); return canvas.canvas; };
   const atlas = createCanvasAtlas({ createCanvas: create });
   const plates = createEnemyStatusPlates({ pixelRatio: () => 2, createCanvas: create, atlas });
-  const label = (): StatusPlateLabel => ({ canvas: fakeCanvas().canvas, sx: 0, sy: 0, sw: 180, sh: 57, width: 60, height: 19, anchorY: 16 });
+  const label = (): StatusPlateLabel => ({ canvas: Object.assign(fakeCanvas().canvas, { width: 1024, height: 1024 }), sx: 0, sy: 0, sw: 180, sh: 57, width: 60, height: 19, anchorY: 16 });
   const first = plates.plate(label(), 80, 5, true);
   for (let kind = 0; kind < 40; kind++) plates.plate(label(), 80, 5, kind % 2 === 0);
   expect(made).toHaveLength(1);
@@ -69,4 +69,24 @@ it("puts every enemy kind's plate on the same shared page rather than a canvas e
   expect(first.sw).toBe(Math.ceil(first.width * 2));
   // The plate's name is copied from its label's own rectangle.
   expect(made[0].calls.some(call => call.startsWith("drawImage(canvas,0,0,180,57,"))).toBe(true);
+});
+
+it("lets every page go on release, and tells whoever cached a region to drop it", () => {
+  const made: ReturnType<typeof fakeCanvas>[] = [];
+  const atlas = createCanvasAtlas({ pageSize: 100, maxPages: 4, createCanvas: () => { const canvas = fakeCanvas(); made.push(canvas); return canvas.canvas; } });
+  for (let i = 0; i < 3; i++) atlas.allocate(100, 100);
+  expect(atlas.pageCount()).toBe(3);
+  const dropped = vi.fn();
+  atlas.onReset(dropped);
+  atlas.release();
+  expect(dropped).toHaveBeenCalledTimes(1);
+  expect(atlas.pageCount()).toBe(0);
+  expect(made.every(page => page.canvas.width === 0 && page.canvas.height === 0)).toBe(true);
+  // A region still held by mistake draws nothing rather than throwing on a zero-sized canvas.
+  const target = fakeCanvas();
+  drawAtlasImage(target.canvas.getContext("2d")!, { canvas: made[0].canvas, sx: 0, sy: 0, sw: 10, sh: 10 }, 0, 0, 10, 10);
+  expect(target.calls).toEqual([]);
+  // The next image starts a fresh page.
+  expect(atlas.allocate(10, 10)).toMatchObject({ x: 0, y: 0 });
+  expect(atlas.pageCount()).toBe(1);
 });

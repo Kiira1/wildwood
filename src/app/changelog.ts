@@ -1,6 +1,9 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
   "0.916.10": [
     "Behind-the-scenes code cleanup; no gameplay changes",
+    "Verdant Catacombs runs smoother, and later maps no longer freeze for a moment when their monsters first appear",
+    "Long sessions no longer pile up enemy name labels from every map you visited",
+    "Some Endless bosses no longer slow the game down while on screen",
   ],
   "0.916.9": [
     "Fixed a weapon that looked equipped but was not, so kills trained the wrong Mastery",
