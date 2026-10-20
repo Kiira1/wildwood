@@ -182,10 +182,10 @@ export function toolDepsFor(coop: () => ToolCoop | null | undefined, showMessage
   };
 }
 
-/** Puts the Tools section in the Smith's Tools view (at the foot of his window without one), and returns it for the window to render. */
+/** Puts the Tools section in the Smith's Upgrade tab (at the foot of his window without one), and returns it for the window to render. */
 export function mountToolSection(dialog: HTMLElement, deps: ToolSectionDeps | undefined, onChange: () => void) {
   if (!deps) return null;
   const tools = createToolSection(deps, { onChange });
-  (dialog.querySelector(".smith-tools-view") ?? dialog.querySelector(".quest-body") ?? dialog).append(tools.element);
+  (dialog.querySelector(".smith-tools") ?? dialog.querySelector(".quest-body") ?? dialog).append(tools.element);
   return tools;
 }

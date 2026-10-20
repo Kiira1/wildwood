@@ -1400,7 +1400,7 @@ import {
     speedUpUpgrade: async (slot) => coop?.speedUpItemUpgradeWithGems?.(slot),
     unlockSecondSlot: async () => coop?.unlockSecondUpgradeSlot?.(),
     unlockThirdSlot: async () => coop?.unlockThirdUpgradeSlot?.(),
-    beforeOpen: () => panels.closeAllExcept("upgradeBench"), host: { open: () => smith.open("slots"), close: () => smith.close() },
+    beforeOpen: () => panels.closeAllExcept("upgradeBench"), host: { open: () => smith.open("upgrade"), close: () => smith.close() },
     setPaused: () => {},
     clearPlayerInput: playerInput.clear,
     onInventoryChanged: () => {

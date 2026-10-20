@@ -87,7 +87,7 @@ it("says Fully Upgraded with no price at the top level", () => {
   expect(focus.querySelector("button")).toBeNull();
 });
 
-it("reads the coop session, and mounts at the foot of the Smith's window", () => {
+it("reads the coop session, and mounts at the foot of a window with no Upgrade tab", () => {
   const { document } = parseHTML("<html><body><dialog><div class=\"quest-body\"><p>Gear</p></div></dialog></body></html>");
   vi.stubGlobal("document", document);
   const deps = toolDepsFor(() => ({ toolLevels: () => ({ hatchet: 2 }), mining: () => 7, woodcutting: () => 60,

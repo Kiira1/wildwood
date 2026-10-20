@@ -4,9 +4,9 @@ import {
   craftMaterialsShort, craftProgress, gradeCraftAction, gradeCraftLevel, gradeCraftMaterials, gradeCraftOffer, lineCraftSkill,
   type GradeCraftAction,
 } from "../../shared/grade-craft";
-import { ARMOR_CLASS_DETAILS, ARMOR_CLASS_NAMES, BOOT_STYLE_NAMES, GEAR_GRADE_NAMES, GRADE_MASTERY_LEVEL, type GearGrade } from "../../shared/gear-grades";
+import { ARMOR_CLASS_DETAILS, ARMOR_CLASS_NAMES, BOOT_STYLE_NAMES, GEAR_GRADE_NAMES, type GearGrade } from "../../shared/gear-grades";
 import { armorClassOf, bootStyleOf, gradeEquipmentKindOf, gradeOf, type GradeItemId } from "../../shared/grade-equipment";
-import { gradeShopItemId, gradeShopLineKey, gradeShopNeed, gradeShopOpen, masteryLevels, type GradeShopLine, type MasteryLevels } from "../../shared/grade-shop";
+import { gradeShopItemId, gradeShopLineKey, masteryLevels, type GradeShopLine, type MasteryLevels } from "../../shared/grade-shop";
 import { bagSlotsWithOres } from "../../shared/ore-bag";
 import { bagSlotCapacity } from "../../shared/gems";
 import type { OreId } from "../../shared/refine";
@@ -27,18 +27,6 @@ const nameOf = (itemId: string) => itemInspectionButtonLabel(itemDisplayName(ite
 const count = (value: number) => Math.floor(value).toLocaleString("en-US");
 // Exact below 10,000, compact above, so three fit side by side on a phone.
 const short = (value: number) => value < 10_000 ? count(value) : formatCompactNumber(value);
-
-/** The Mastery a piece's grade needs, or none at Common. */
-export function masteryNeed(itemId: GradeItemId, levels: MasteryLevels): GradeNeed[] {
-  return GRADE_MASTERY_LEVEL[gradeOf(itemId)!] > 0 ? [{ text: gradeShopNeed(itemId), met: gradeShopOpen(itemId, levels) }] : [];
-}
-
-/** What an offer works toward, muted: "Next: Heroic at Lv 8 Archery". None past the top grade. */
-export function nextNeed(next: GradeItemId | undefined, needs: (itemId: GradeItemId) => readonly GradeNeed[]): GradeNeed[] {
-  if (!next) return [];
-  const unmet = needs(next).filter(need => !need.met).map(need => need.text);
-  return unmet.length ? [{ text: `Next: ${GEAR_GRADE_NAMES[gradeOf(next)!]} at ${unmet.join(" · ")}`, met: true }] : [];
-}
 
 /**
  * A graded piece's row as the Smith lists it: art, then its name on a line of its own, grade and
@@ -76,7 +64,7 @@ export function gradeItemRow(itemId: GradeItemId, refine = 0, needs: readonly Gr
   return { row, deal: row.querySelector<HTMLElement>(".smith-shop-deal")! };
 }
 
-/** Steps through the open grades, lowest to best; two buttons big enough for a thumb. Shared by craft and shop rows. */
+/** Steps through the open grades, lowest to best; two buttons big enough for a thumb. Shared by Buy and Craft rows. */
 export function gradeStepperElement(grades: readonly GearGrade[], grade: GearGrade,
   options: { label: string; busy: boolean; name?: string; onPick: (grade: GearGrade) => void }) {
   const group = document.createElement("span");
@@ -146,7 +134,7 @@ export type CraftSectionDeps = {
 
 /**
  * The Smith's crafting card: Smithing, Fletching and Enchanting side by side, each with its level and progress. His
- * shop rows take each line's craft line (craftLine), offering the best grade that craft's level opens, with
+ * Craft tab's rows take each line's craft line (craftLine), offering the best grade that craft's level opens, with
  * a stepper to pick any other open grade (gradeCraftOffer), its materials and a button naming what it makes:
  * "Craft Common Sword ★2", "Reforge Your Common Sword" for a weapon already held, Owned for armor already held.
  * The server decides (craft_grade_gear).
@@ -210,8 +198,7 @@ export function createCraftSection(deps: CraftSectionDeps, options: { onChange?:
     button.classList.add("craft-action");
     const head = document.createElement("span");
     head.className = "craft-head";
-    head.append(Object.assign(document.createElement("span"), { className: "craft-label", textContent: "Craft" }),
-      gradeStepper(line, offer.grades, grade));
+    head.append(gradeStepper(line, offer.grades, grade));
     // The grade past the best open one, and the craft level it waits for.
     if (offer.next) head.append(hint(`${GEAR_GRADE_NAMES[gradeOf(offer.next)!]} needs ${CRAFT_SKILL_NAMES[skill]} Lv ${gradeCraftLevel(offer.next)}`, "craft-next"));
     const terms: Node[] = [head, materialList(materials, ores)];

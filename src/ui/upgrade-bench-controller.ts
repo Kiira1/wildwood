@@ -68,7 +68,7 @@ type UpgradeBenchDependencies = {
   onInventoryChanged: () => void;
   onUpgradeFinished?: (job: ActiveItemUpgrade) => void;
   showMessage: (message: string, color?: string) => void;
-  /** The window this lives in (the Smith's Slots view): the bench opens and closes it there. */
+  /** The window this lives in (the Smith's Upgrade tab): the bench opens and closes it there. */
   host?: { open: () => void; close: () => void };
   nowMs?: () => number;
   storage?: Pick<Storage, "getItem" | "setItem">;

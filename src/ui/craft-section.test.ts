@@ -27,9 +27,10 @@ function craftDeps(state: State, craft = vi.fn(async (_itemId: string) => ({ ok:
 }
 const nameOf = (itemId: string) => itemInspectionButtonLabel(itemDisplayName(itemId));
 const plenty = () => Object.fromEntries(["copper_ore", "iron_ore", "mithril_ore", "pine_log", "oak_log", "arcane_crystal"].map(id => [id, 10_000]));
-/** The Smith with crafting and no shop: a row per line, each its craft line. */
+/** The Smith with crafting and no shop: the Craft tab, a row per line, each its craft line, every line shown. */
 function crafts(deps: CraftSectionDeps) {
   const document = setup();
+  vi.stubGlobal("localStorage", { getItem: (key: string) => key === "wildstat.smithGearShown" ? "all" : null, setItem: () => {} });
   const smith = createSmithController({ inTown: () => true, items: () => [], refine: vi.fn(), showMessage: vi.fn(), refineLevel: () => 0, slotTier: () => 0, ores: () => ({}), craft: deps });
   const dialog = document.querySelector(".smith-sheet")! as unknown as HTMLDialogElement;
   Object.assign(dialog, { showModal() { dialog.setAttribute("open", ""); }, close() { dialog.removeAttribute("open"); } });
@@ -41,7 +42,6 @@ function crafts(deps: CraftSectionDeps) {
     return {
       itemId: each.dataset.itemId,
       next: each.querySelector(".craft-next")?.textContent ?? null,
-      label: each.querySelector(".craft-label")!.textContent,
       grade: each.querySelector(".craft-grade-name")!.textContent,
       button: each.querySelector(".smith-shop-buy")!.textContent,
       enabled: !each.querySelector<HTMLButtonElement>(".smith-shop-buy")!.disabled,
@@ -63,11 +63,11 @@ it("offers each line's best open grade by its craft's level, steps to any other,
   const view = crafts(craftDeps(state).deps);
   const next = "Superior needs Fletching Lv 15";
   expect(["bow", "light_helmet", "light_armor", "ranger_boots"].map(view.view)).toEqual([
-    { itemId: "fine_bow", next, label: "Craft", grade: "Fine", button: "Craft Fine Bow ★2", enabled: true },
+    { itemId: "fine_bow", next, grade: "Fine", button: "Craft Fine Bow ★2", enabled: true },
     // Below the best held is open to craft, for the craft's level.
-    { itemId: "fine_light_helmet", next, label: "Craft", grade: "Fine", button: "Craft Fine Helmet ★2", enabled: true },
-    { itemId: "fine_light_armor", next, label: "Craft", grade: "Fine", button: "Owned", enabled: false },
-    { itemId: "fine_ranger_boots", next, label: "Craft", grade: "Fine", button: "Craft Fine Boots ★2", enabled: true },
+    { itemId: "fine_light_helmet", next, grade: "Fine", button: "Craft Fine Helmet ★2", enabled: true },
+    { itemId: "fine_light_armor", next, grade: "Fine", button: "Owned", enabled: false },
+    { itemId: "fine_ranger_boots", next, grade: "Fine", button: "Craft Fine Boots ★2", enabled: true },
   ]);
   // The row names nothing the craft line already says.
   expect(view.row("bow").querySelector(".craft-needs")).toBeNull();

@@ -11,12 +11,12 @@ import { itemTier } from "../../shared/item-tier";
 import type { GradeItemId } from "../../shared/grade-equipment";
 import type { GearGrade } from "../../shared/gear-grades";
 import {
-  GRADE_SHOP_LINES, gradeShopItemId, gradeShopLineKey, gradeShopOffer, gradeShopOpen, gradeShopPrice, masteryLevels, type MasteryLevels,
+  GRADE_SHOP_LINES, gradeShopItemId, gradeShopLineKey, gradeShopNeed, gradeShopOffer, gradeShopOpen, gradeShopPrice, masteryLevels, type MasteryLevels,
 } from "../../shared/grade-shop";
 import { weaponSchool as schoolOfWeapon, type WeaponSchool } from "../../shared/weapon-mastery";
 import { formatGemAmount } from "./number-format";
 import {
-  bagFullFor, craftDepsFor, createCraftSection, gradeItemRow, gradeStepperElement, heldItemsFor, masteryNeed, nextNeed, offerButton, offerLine, ownedRow,
+  bagFullFor, craftDepsFor, createCraftSection, gradeItemRow, gradeStepperElement, heldItemsFor, offerButton, offerLine, ownedRow,
   type CraftCoop, type CraftSectionDeps,
 } from "./craft-section";
 import { mountToolSection, toolDepsFor, type ToolSectionDeps } from "./tool-section";
@@ -41,13 +41,17 @@ const percent = (chance: number) => {
   return `${Number(value.toFixed(value >= 10 ? 1 : value >= 1 ? 2 : 3))}%`;
 };
 
-/** The Smith's views, and which lines the gear view lists; both kept on the device. */
-export type SmithView = "gear" | "refine" | "tools" | "slots";
-/** Slot Upgrades' window and its switch (upgrade-bench-controller.ts), for the Slots view. */
+/** The Smith's tabs, one job each, and which lines Buy and Craft list; both kept on the device. */
+export type SmithView = "buy" | "craft" | "refine" | "upgrade";
+/** Slot Upgrades' window and its switch (upgrade-bench-controller.ts), for the Upgrade tab. */
 type SmithSlots = { element: HTMLElement; setShown: (shown: boolean) => void };
 type GearShown = "yours" | "all";
 const VIEW_STORE = "wildstat.smithView", SHOWN_STORE = "wildstat.smithGearShown";
-const VIEW_NAMES: Readonly<Record<SmithView, string>> = { gear: "Gear", refine: "Refine", tools: "Tools", slots: "Slots" };
+const VIEW_NAMES: Readonly<Record<SmithView, string>> = { buy: "Buy", craft: "Craft", refine: "Refine", upgrade: "Upgrade" };
+// Tabs a device kept before the four.
+const OLD_VIEWS: Readonly<Record<string, SmithView>> = { gear: "buy", tools: "upgrade", slots: "upgrade" };
+// Yours / All Gear, on both Buy and Craft.
+const SHOWN_BAR = `<div class="inventory-filters smith-shown" role="group" aria-label="Lines shown"></div>`;
 function stored(key: string) {
   try { return localStorage.getItem(key); } catch { return null; }
 }
@@ -82,14 +86,14 @@ export function createSmithController(deps: {
   heldItems?: () => readonly string[];
   bagFull?: () => boolean;
   buyGear?: (itemId: string, expectedPrice: number) => Promise<Result>;
-  /** Smithing, Fletching and Enchanting: every line crafted here, offered on the shop's rows (craft-section.ts). */
+  /** Smithing, Fletching and Enchanting: every line crafted here, on the Craft tab (craft-section.ts). */
   craft?: CraftSectionDeps;
   tools?: ToolSectionDeps;
   /** What the player wears, for "vs Now" and Upgrade All; read from the worn items when left out. */
   worn?: () => WornLoadout;
   /** Puts on a piece just bought, as the bag does; false when it could not. */
   equip?: (itemId: string) => boolean | Promise<boolean>;
-  /** Slot Upgrades, mounted and shown as the Slots view. */
+  /** Slot Upgrades, mounted and shown on the Upgrade tab. */
   slots?: () => SmithSlots | undefined;
 }) {
   const dialog = document.createElement("dialog");
@@ -106,19 +110,22 @@ export function createSmithController(deps: {
     + `<div class="inventory-filters smith-filters" role="group" aria-label="Show gear"></div>`
     + `<p class="smith-empty smith-filter-empty" hidden></p>`
     + `<div class="smith-items" role="listbox" aria-label="Your gear"></div></section>`
-    + `<section class="smith-view smith-slots-view" data-view="slots"></section>`
-    + `<section class="smith-view smith-tools-view" data-view="tools">`
-    + `<div class="smith-mining"><span class="smith-mining-text"></span></div>`
-    + `<div class="smith-mining"><span class="smith-woodcutting-text"></span></div>`
-    + `</section>`
-    + `<section class="smith-view smith-gear-view" data-view="gear">`
-    + `<section class="smith-shop" aria-labelledby="smithShopTitle">`
+    + `<section class="smith-view smith-buy-view" data-view="buy"><section class="smith-shop" aria-labelledby="smithBuyTitle">`
     + `<div class="smith-upgrade-all"><button type="button" class="farm-start smith-upgrade-all-button"><span class="smith-upgrade-all-title"></span><span class="smith-upgrade-all-sub"></span></button>`
     + `<ul class="smith-upgrade-all-picks" aria-label="Upgrade All buys"></ul></div>`
-    + `<div class="smith-shop-bar"><div class="inventory-filters smith-shown" role="group" aria-label="Lines shown"></div>`
-    + `<span class="smith-gold" aria-label="Your gold">${GOLD_COIN}<strong></strong></span></div>`
-    + `<div class="smith-shop-head"><h3 id="smithShopTitle">Gear</h3></div>`
-    + `<div class="smith-shop-rows" role="list" aria-label="Gear to buy or craft"></div></section>`
+    + `<div class="smith-shop-bar">${SHOWN_BAR}<span class="smith-gold" aria-label="Your gold">${GOLD_COIN}<strong></strong></span></div>`
+    + `<div class="smith-shop-head"><h3 id="smithBuyTitle" class="smith-list-title"></h3></div>`
+    + `<div class="smith-shop-rows smith-buy-rows" role="list" aria-label="Gear to buy"></div></section></section>`
+    + `<section class="smith-view smith-craft-view" data-view="craft"><section class="smith-shop" aria-labelledby="smithCraftTitle">`
+    + `<div class="smith-shop-bar">${SHOWN_BAR}</div>`
+    + `<div class="smith-shop-head"><h3 id="smithCraftTitle" class="smith-list-title"></h3></div>`
+    + `<div class="smith-shop-rows smith-craft-rows" role="list" aria-label="Gear to craft"></div></section></section>`
+    // Upgrade: what the player already has, raised over time: Slot Upgrades, then the tools.
+    + `<section class="smith-view smith-upgrade-view" data-view="upgrade">`
+    + `<section class="smith-shop smith-slots" aria-labelledby="smithSlotsTitle"><div class="smith-shop-head"><h3 id="smithSlotsTitle">Slot Upgrades</h3></div></section>`
+    + `<div class="smith-tools"></div>`
+    + `<div class="smith-mining"><span class="smith-mining-text"></span></div>`
+    + `<div class="smith-mining"><span class="smith-woodcutting-text"></span></div>`
     + `</section></div>`
 
     + `<footer class="farm-footer"><div class="farm-actions"><button type="button" class="window-back-button">Back</button></div></footer>`;
@@ -131,39 +138,41 @@ export function createSmithController(deps: {
   const woodcuttingText = dialog.querySelector<HTMLElement>(".smith-woodcutting-text")!;
   const filterBar = dialog.querySelector<HTMLElement>(".smith-filters")!;
   const filterEmpty = dialog.querySelector<HTMLElement>(".smith-filter-empty")!;
-  const shop = dialog.querySelector<HTMLElement>(".smith-shop")!;
   const goldLine = dialog.querySelector<HTMLElement>(".smith-gold strong")!;
-  const shopRows = dialog.querySelector<HTMLElement>(".smith-shop-rows")!;
-  const shopTitle = dialog.querySelector<HTMLElement>("#smithShopTitle")!;
-  const viewBar = dialog.querySelector<HTMLElement>(".smith-views")!, shownBar = dialog.querySelector<HTMLElement>(".smith-shown")!;
+  const buyRows = dialog.querySelector<HTMLElement>(".smith-buy-rows")!, craftRows = dialog.querySelector<HTMLElement>(".smith-craft-rows")!;
+  const viewBar = dialog.querySelector<HTMLElement>(".smith-views")!;
   const itemsCount = dialog.querySelector<HTMLElement>(".smith-items-count")!;
-  const slotsView = dialog.querySelector<HTMLElement>(".smith-slots-view")!;
+  const slotsSection = dialog.querySelector<HTMLElement>(".smith-slots")!;
   const upgradeButton = dialog.querySelector<HTMLButtonElement>(".smith-upgrade-all-button")!;
   const upgradeTitle = dialog.querySelector<HTMLElement>(".smith-upgrade-all-title")!, upgradeSub = dialog.querySelector<HTMLElement>(".smith-upgrade-all-sub")!;
   const upgradePicks = dialog.querySelector<HTMLElement>(".smith-upgrade-all-picks")!;
-  // The three crafts' levels head the list; every row takes a Craft line by the craft that makes it.
+  // The three crafts' levels head the Craft tab; each row there is its line's craft line.
   const crafts = deps.craft ? createCraftSection(deps.craft, { onChange: () => { if (dialog.open) render(); } }) : null;
-  if (crafts) shopTitle.parentElement!.before(crafts.element);
+  if (crafts) dialog.querySelector(".smith-craft-view .smith-shop-bar")!.before(crafts.element);
   const tools = mountToolSection(dialog, deps.tools, () => { if (dialog.open) render(); });
-  // Gear for the casual player first; refining and tools a tap away.
+  slotsSection.hidden = !deps.slots;
+  // Buying for the casual player first; crafting, refining and upgrades a tap away.
   const views = ([
-    ["gear", Boolean(deps.buyGear || deps.craft)], ["refine", true],
-    ["tools", Boolean(deps.tools || deps.mining || deps.woodcutting)], ["slots", Boolean(deps.slots)],
+    ["buy", Boolean(deps.buyGear)], ["craft", Boolean(deps.craft)], ["refine", true],
+    ["upgrade", Boolean(deps.slots || deps.tools || deps.mining || deps.woodcutting)],
   ] as const).filter(([, shown]) => shown).map(([view]) => view as SmithView);
-  let view: SmithView = views.find(each => each === stored(VIEW_STORE)) ?? views[0];
+  const storedView = () => { const value = stored(VIEW_STORE) ?? ""; return views.find(each => each === (OLD_VIEWS[value] ?? value)); };
+  let view: SmithView = storedView() ?? views[0];
   let gearShown: GearShown = stored(SHOWN_STORE) === "all" ? "all" : "yours";
   viewBar.parentElement!.hidden = views.length < 2;
   for (const each of views) {
     const button = pillButton(VIEW_NAMES[each], () => { if (view !== each) { view = each; store(VIEW_STORE, each); render(); } });
     button.dataset.view = each;
-    // A dot on Gear while Upgrade All has something to buy.
-    if (each === "gear") button.append(Object.assign(document.createElement("span"), { className: "smith-upgrade-dot", hidden: true }));
+    // A dot on Buy while Upgrade All has something to buy.
+    if (each === "buy") button.append(Object.assign(document.createElement("span"), { className: "smith-upgrade-dot", hidden: true }));
     viewBar.append(button);
   }
-  for (const [each, label] of [["yours", "Yours"], ["all", "All Gear"]] as const) {
-    const button = pillButton(label, () => { if (gearShown !== each) { gearShown = each; store(SHOWN_STORE, each); render(); } });
-    button.dataset.shown = each;
-    shownBar.append(button);
+  for (const bar of dialog.querySelectorAll<HTMLElement>(".smith-shown")) {
+    for (const [each, label] of [["yours", "Yours"], ["all", "All Gear"]] as const) {
+      const button = pillButton(label, () => { if (gearShown !== each) { gearShown = each; store(SHOWN_STORE, each); render(); } });
+      button.dataset.shown = each;
+      bar.append(button);
+    }
   }
   upgradeButton.addEventListener("click", () => { void upgradeAll(); });
   /** The gear shown, as the bag filters it: everything, or one kind. */
@@ -288,12 +297,12 @@ export function createSmithController(deps: {
     focus.append(outcome);
   }
 
-  /** Mounts Slot Upgrades in its view on first use, and shows it only while the Slots view is on screen. */
+  /** Mounts Slot Upgrades in the Upgrade tab on first use, and shows it only while that tab is on screen. */
   function syncSlots() {
     const slots = deps.slots?.();
     if (!slots) return;
-    if (slots.element.parentElement !== slotsView) slotsView.append(slots.element);
-    slots.setShown(dialog.open && view === "slots");
+    if (slots.element.parentElement !== slotsSection) slotsSection.append(slots.element);
+    slots.setShown(dialog.open && view === "upgrade");
   }
 
   function render() {
@@ -323,7 +332,10 @@ export function createSmithController(deps: {
     // Where the ore and wood come from: every player holds a pickaxe and a hatchet.
     miningText.textContent = `Mining ${deps.mining?.() ?? 0} · Ore is in the Copper Hills, east of Town`;
     woodcuttingText.textContent = `Woodcutting ${deps.woodcutting?.() ?? 0} · Wood is in Timberwood, north of the Copper Hills`;
-    renderShop();
+    if (deps.buyGear) renderUpgradeAll(plan());
+    // Only the tab on screen lists its rows; picking another tab renders it.
+    if (view === "buy") renderBuy(heldGear(), wornNow());
+    else if (view === "craft") renderCraft(heldGear(), wornNow());
     list.replaceChildren(...items.map(item => {
       const option = document.createElement("button");
       option.type = "button";
@@ -364,46 +376,44 @@ export function createSmithController(deps: {
     upgradePicks.replaceChildren(...next.picks.map(pick => Object.assign(document.createElement("li"), { textContent: gradeShortName(pick.itemId) })));
     upgradePicks.hidden = !next.picks.length || upgrading !== null;
     const dot = viewBar.querySelector<HTMLElement>(".smith-upgrade-dot");
-    if (dot) dot.hidden = !next.picks.length || view === "gear";
+    if (dot) dot.hidden = !next.picks.length || view === "buy";
+  }
+
+  /** The lines Buy and Craft list: the weapon in hand's (Yours), as Upgrade All buys them, or every line. */
+  function shownLines(worn: WornLoadout) {
+    for (const button of dialog.querySelectorAll<HTMLButtonElement>("[data-shown]")) button.setAttribute("aria-pressed", String(button.dataset.shown === gearShown));
+    for (const title of dialog.querySelectorAll(".smith-list-title")) title.textContent = gearShown === "all" ? "All Gear" : `For Your ${schoolWeaponName(school(worn))}`;
+    const yours = schoolLines(school(worn)).map(gradeShopLineKey);
+    return gearShown === "all" ? GRADE_SHOP_LINES : GRADE_SHOP_LINES.filter(line => yours.includes(gradeShopLineKey(line)));
   }
 
   /**
-   * One row per line, offering any grade Mastery opens above the best one held: a Buy line for gold with a grade
-   * stepper (the best the gold covers to start, else the highest open), and a Craft line by the craft that makes it
-   * (any open grade, picked on the line). Without a shop, every line's Craft line, each row showing the grade picked.
+   * Buy: gold only. One row per line, offering any grade Mastery opens above the best one held, with a grade stepper
+   * (the best the gold covers to start, else the highest open), its price and a Buy button.
    */
-  function renderShop() {
-    shop.hidden = !deps.buyGear && !crafts;
-    if (shop.hidden) return;
-    goldLine.parentElement!.parentElement!.hidden = !deps.buyGear;
-    upgradeButton.parentElement!.hidden = !deps.buyGear;
+  function renderBuy(held: Set<string>, worn: WornLoadout) {
     goldLine.textContent = formatGemAmount(deps.gold?.() ?? 0n);
-    const held = heldGear(), levels = deps.masteryLevels?.() ?? deps.craft?.masteryLevels() ?? {}, worn = wornNow();
-    if (deps.buyGear) renderUpgradeAll(plan());
-    for (const button of shownBar.querySelectorAll<HTMLButtonElement>("[data-shown]")) button.setAttribute("aria-pressed", String(button.dataset.shown === gearShown));
-    // Yours: the weapon in hand's lines, as Upgrade All buys them. All Gear: every line.
-    const yours = schoolLines(school(worn)).map(gradeShopLineKey);
-    const lines = !deps.buyGear || gearShown === "all" ? GRADE_SHOP_LINES : GRADE_SHOP_LINES.filter(line => yours.includes(gradeShopLineKey(line)));
-    shopTitle.textContent = !deps.buyGear ? "Gear" : gearShown === "all" ? "All Gear" : `For Your ${schoolWeaponName(school(worn))}`;
-    shopRows.replaceChildren(...lines.map(line => {
-      const made = crafts?.craftLine(line, held) ?? null;
-      if (!deps.buyGear) {
-        // The craft line says what the next grade needs.
-        const { row, deal } = gradeItemRow(made!.itemId);
-        deal.append(made!.line);
-        return row;
-      }
+    const levels = deps.masteryLevels?.() ?? {};
+    buyRows.replaceChildren(...shownLines(worn).map(line => {
       const offer = gradeShopOffer(line, held, levels, Number(deps.gold?.() ?? 0n)), choice = shopPicked.get(gradeShopLineKey(line));
       const grade = choice && offer.grades.includes(choice) ? choice : offer.grade, itemId = gradeShopItemId(line, grade);
-      // An open offer says what comes next; a locked one, the Mastery it waits for.
-      const { row, deal } = offer.owned ? ownedRow(itemId)
-        : gradeItemRow(itemId, 0, offer.open ? nextNeed(offer.next, next => masteryNeed(next, levels)) : masteryNeed(itemId, levels));
-      if (!offer.owned) row.querySelector(".smith-shop-stat")!.after(comparisonTag(itemId, worn));
+      if (offer.owned) return ownedRow(itemId).row;
+      // Only a locked line names what it waits for.
+      const { row, deal } = gradeItemRow(itemId, 0, offer.open ? [] : [{ text: `Needs ${gradeShopNeed(itemId)}`, met: false }]);
+      row.querySelector(".smith-shop-stat")!.after(comparisonTag(itemId, worn));
       const stepper = offer.open ? gradeStepperElement(offer.grades, grade, {
         label: "Grade to buy", busy: buyingGear !== null, onPick: to => { shopPicked.set(gradeShopLineKey(line), to); render(); },
       }) : null;
-      if (!offer.owned) deal.append(buyLine(itemId, levels, stepper));
-      if (made) deal.append(made.line);
+      deal.append(buyLine(itemId, levels, stepper));
+      return row;
+    }));
+  }
+
+  /** Craft: materials only. One row per line, its craft line at the grade the craft's level opens (craft-section.ts). */
+  function renderCraft(held: Set<string>, worn: WornLoadout) {
+    craftRows.replaceChildren(...shownLines(worn).map(line => {
+      const made = crafts!.craftLine(line, held), { row, deal } = gradeItemRow(made.itemId);
+      deal.append(made.line);
       return row;
     }));
   }
@@ -417,7 +427,7 @@ export function createSmithController(deps: {
     return tag;
   }
 
-  /** The price in gold and a Buy button that says why it waits: Mastery, then gold, then the bag. */
+  /** The grade, its price in gold and a Buy button that says why it waits: Mastery, then gold, then the bag. */
   function buyLine(itemId: GradeItemId, levels: MasteryLevels, stepper: HTMLElement | null) {
     const price = gradeShopPrice(itemId)!, gold = deps.gold?.() ?? 0n;
     const text = buyingGear === itemId ? "Buying…" : !gradeShopOpen(itemId, levels) ? "Locked"
@@ -429,7 +439,7 @@ export function createSmithController(deps: {
     cost.setAttribute("aria-label", `${formatGemAmount(BigInt(price))} Gold`);
     const terms: Node[] = stepper ? [stepper, cost] : [cost];
     const line = offerLine(terms, offerButton(text, text === "Buy" && buyingGear === null && upgrading === null, () => { void buyGear(itemId, price); }));
-    // Stacked like a craft line: the grade, then its price.
+    // Stacked: the grade, then its price.
     if (stepper) line.classList.add("buy-offer");
     return line;
   }
@@ -516,10 +526,10 @@ export function createSmithController(deps: {
     return true;
   }
 
-  /** Opens on the view asked for (the bench asks for Slots), else the one last picked. */
+  /** Opens on the tab asked for (the bench asks for Upgrade), else the one last picked. */
   function open(on?: SmithView) {
     if (!deps.inTown() || dialog.open) return;
-    view = on && views.includes(on) ? on : views.find(each => each === stored(VIEW_STORE)) ?? views[0];
+    view = on && views.includes(on) ? on : storedView() ?? views[0];
     lastResult = null;
     // Each visit goes by the server's word on the bag.
     justBought.clear();

@@ -4,7 +4,7 @@ export const RELEASE_NOTES: Record<string, string[]> = {
     "Research Ready and Smith upgrades show as their own HUD hints, not dots on the Town button",
     "Hide the quest tracker from the tracker itself, and turn it back on in Settings",
     "Slot Upgrades has one name everywhere",
-    "Slot Upgrades is also a tab at the Smith",
+    "The Smith has four tabs: Buy, Craft, Refine and Upgrade",
     "The Map Guide shows your next goal and has a Travel button",
     "New Town signposts for the Smith, Inn, Windmill and Ox",
   ],
