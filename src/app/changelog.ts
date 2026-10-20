@@ -1,9 +1,11 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
   "0.916.13": [
+    "Soul Health enemies give 10 Health a kill",
+    "Soul Levels need less XP each, and the cap is now 50",
+    "Refined gear shows its ★10 and ★20 look on your character, not just its icon",
     "Auto Farm counts your cards when judging bosses and when to move on",
     "Guild battles use the same staff, sword and Mastery rules as duels",
-    "Your profile's power, Move Speed and Range match what you really have",
-    "Other players' profiles count only the bonuses they have switched on",
+    "Profiles show power, Move Speed and Range as they really are",
     "Other players fight monsters on your screen with their refines, cards and soul",
     "Armor popups count Warrior Boots",
     "Power over your head no longer drops after kills when you have crits",
