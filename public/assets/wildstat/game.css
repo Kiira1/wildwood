@@ -2408,30 +2408,26 @@
     text-align: center;
   }
 
-  /* The Terms step sits under the loading bar while the game downloads: the panel flows top to bottom instead. */
-  .connection-modal.is-consent { overflow-y: auto; }
-  .connection-modal.is-consent .loading-content { position: relative; top: auto; left: auto; right: auto; height: auto; margin: auto 0 0; transform: none; }
-  .connection-modal.is-consent .loading-content .loading-heading { position: static; margin: 0 0 12px; }
-  /* A landscape phone: a smaller logo, so Play is on screen without scrolling. */
-  @media (max-height: 520px) {
-    #connectionPanel.is-consent .wildstat-wordmark-title { width: 210px; }
-    .modal.connection-modal.is-consent { padding-top: 96px; }
-    .connection-modal.is-consent .loading-content .loading-heading { display: none; }
-    .legal-gate { margin-top: 10px; }
-    .connection-modal.is-consent #legalContinueBtn { min-height: 52px; margin-top: 8px; }
-  }
-  .legal-gate { margin: 18px 0 auto; text-align: center; }
-  .legal-gate #legalGateIntro { margin: 0 0 6px; color: #fff; font-size: 18px; font-weight: 800; }
-  .legal-gate :is(.legal-agreement, .legal-gate-status) { margin-top: 0; color: #d6d6d6; font-size: 13px; font-weight: 700; letter-spacing: 0; line-height: 1.4; text-align: center; }
-  .legal-gate .legal-gate-status { margin-top: 8px; }
+  /* The Terms window: once loading has finished, over the start screen, in the game's window look (as chat's age check). */
+  #legalGatePanel { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom)); overflow-y: auto; background: rgba(0, 0, 0, .55); }
+  .modal.legal-gate { display: grid; justify-items: center; gap: 12px; width: var(--game-window-width); margin: 0; padding: 20px 16px 10px; border-color: #080808; background: var(--window-surface); text-align: center; }
+  .legal-gate #legalGateIntro { margin: 0; color: #fff; font-size: 22px; font-weight: 900; line-height: 1.15; }
+  .legal-gate :is(.legal-agreement, .legal-gate-status) { width: auto; max-width: 340px; margin: 0; color: #d6d6d6; font-size: 13px; font-weight: 700; letter-spacing: 0; line-height: 1.4; text-align: center; }
   .legal-gate .legal-gate-status:empty { display: none; }
   .legal-gate .legal-gate-status.is-blocked { color: #ff9b91; }
-  .connection-modal .consent-sign-in {
-    display: block; min-height: 44px; margin: 4px auto 0; padding: 8px 14px;
+  .legal-gate #legalContinueBtn { width: min(300px, 100%); margin: 0; transform: none; }
+  .legal-gate #legalContinueBtn:active:not(:disabled) { transform: translateY(2px); }
+  .legal-gate .consent-sign-in {
+    display: block; min-height: 44px; margin: 0 auto; padding: 8px 14px;
     border: 0; background: none; box-shadow: none; color: #d6d6d6;
     font-size: 13px; font-weight: 800; letter-spacing: 0; text-decoration: underline; text-underline-offset: 3px; text-shadow: none;
   }
-  .connection-modal .consent-sign-in:disabled { opacity: .5; }
+  .legal-gate .consent-sign-in:disabled { opacity: .5; }
+  /* A landscape phone: a shorter Play, so the whole window fits without scrolling. */
+  @media (max-height: 520px) {
+    .modal.legal-gate { gap: 8px; padding-top: 14px; }
+    .legal-gate #legalContinueBtn { min-height: 52px; }
+  }
 
   .legal-age-output {
     position: absolute;
@@ -2769,6 +2765,28 @@
   }
 
   .account-choice-modal button.account-switch-button[hidden] { display: none; }
+
+  /* A known character: Sign In is the one choice, Play as Guest the small way out. */
+  .account-choice-modal.is-sign-in #continueGuestBtn {
+    display: block;
+    width: auto;
+    min-height: 44px;
+    margin: 8px auto 0;
+    padding: 8px 14px;
+    border: 0;
+    background: none;
+    box-shadow: none;
+    color: #d6d6d6;
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1.3;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-shadow: none;
+    transform: none;
+  }
+
+  .account-choice-modal.is-sign-in #continueGuestBtn:active:not(:disabled) { box-shadow: none; transform: translateY(1px); }
 
   .account-sign-in-hint span {
     display: block;

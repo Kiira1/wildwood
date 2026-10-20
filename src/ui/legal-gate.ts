@@ -9,6 +9,7 @@ type LegalGateElements = {
   /** Hidden or reworded on the start screen, which no longer asks the age. */
   intro?: HTMLElement | null; ageControl?: HTMLElement | null; notice?: HTMLElement | null;
 };
+const WELCOME = "Welcome to WildStat";
 
 type LegalGateDependencies = {
   accept: (age: number) => Promise<{ ok?: boolean; error?: string } | undefined> | { ok?: boolean; error?: string } | undefined;
@@ -20,6 +21,8 @@ type LegalGateDependencies = {
   askAge?: boolean;
   /** An under-13 answer given in chat: the start screen says so and offers no Continue. */
   blocked?: () => boolean;
+  /** The Terms window stays up, Play reading Starting…, until the game takes over and hides it. */
+  keepOpen?: boolean;
 };
 const UNDER_AGE = `WildStat is currently available to players age ${MINIMUM_PLAYER_AGE} and older.`;
 
@@ -47,6 +50,7 @@ export function createLegalGateController(
 ) {
   let ageSelected = false;
   let pending = false;
+  let starting = false;
   let statusOverride = "";
 
   const askAge = dependencies.askAge ?? true;
@@ -71,15 +75,15 @@ export function createLegalGateController(
         : "");
   }
 
-  /** The loading screen: the Terms line and Play, or the under-13 notice in their place. */
+  /** The Terms window: the Terms line and Play, or the under-13 notice in their place. */
   function renderTerms() {
     const blocked = dependencies.blocked?.() === true;
     if (elements.ageControl) elements.ageControl.hidden = true;
-    if (elements.intro) { elements.intro.textContent = "Sorry"; elements.intro.hidden = !blocked; }
+    if (elements.intro) { elements.intro.textContent = blocked ? "Sorry" : WELCOME; elements.intro.hidden = false; }
     if (elements.notice) elements.notice.hidden = blocked;
     elements.continueButton.hidden = blocked;
-    elements.continueButton.disabled = pending || blocked;
-    elements.continueButton.textContent = pending ? "Starting…" : "Play";
+    elements.continueButton.disabled = pending || starting || blocked;
+    elements.continueButton.textContent = pending || starting ? "Starting…" : "Play";
     elements.status.classList.toggle("is-blocked", blocked);
     elements.status.textContent = statusOverride || (blocked ? UNDER_AGE : "");
   }
@@ -96,7 +100,10 @@ export function createLegalGateController(
       render();
       return;
     }
-    elements.panel.hidden = true;
+    if (dependencies.keepOpen) {
+      starting = true;
+      render();
+    } else elements.panel.hidden = true;
     dependencies.onAccepted();
   }
 
@@ -120,11 +127,20 @@ export function createLegalGateController(
       elements.ageSlider.removeEventListener("click", onAgeInput);
       elements.continueButton.removeEventListener("click", onContinue);
     },
-    hide() { elements.panel.hidden = true; },
+    hide() {
+      elements.panel.hidden = true;
+      starting = false;
+    },
     show() {
       elements.panel.hidden = false;
       render();
     },
+    /** A line under Play, such as a sign-in on its way or failing; "" clears it. */
+    notice(text: string) {
+      statusOverride = text;
+      render();
+    },
+    isOpen: () => !elements.panel.hidden,
   };
 }
 

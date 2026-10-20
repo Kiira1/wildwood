@@ -161,7 +161,7 @@ describe("startup account choice", () => {
     expect(signIn).not.toHaveBeenCalled();
   });
 
-  it("lets a browser with no account and no server connection press REGISTER", () => {
+  it("lets a browser with no account and no server connection press Register", () => {
     const signIn = vi.fn(async () => ({ ok: true, redirecting: true }));
     const h = harness([["Starting", true, 100]], {
       connected: () => false, signIn,
@@ -169,7 +169,7 @@ describe("startup account choice", () => {
     });
     h.startup.showAccountChoice();
     const button = h.elements.get("signInFromStartBtn")!;
-    expect(button.textContent).toBe("REGISTER");
+    expect(button.textContent).toBe("Register");
     expect(button.disabled).toBe(false);
     button.click();
     expect(signIn).toHaveBeenCalledOnce();
@@ -183,5 +183,76 @@ describe("startup account choice", () => {
     h.startup.showAccountChoice();
     expect(h.elements.get("signInFromStartBtn")!.disabled).toBe(true);
     expect(h.elements.get("accountChoiceDetail")!.textContent).toBe("CONNECTING ACCOUNT OPTIONS…");
+  });
+});
+
+describe("the Terms window", () => {
+  function terms(account: Record<string, unknown>, accept = async () => ({ ok: true })) {
+    const onLegalAccepted = vi.fn(), onAccountActionStarted = vi.fn(), onAccountActionFailed = vi.fn();
+    const signIn = vi.fn(async () => ({ ok: true, redirecting: true }));
+    const h = harness([["Ready to Play", true, 100]], {
+      accountState: () => account, acceptLegalTerms: accept, onLegalAccepted, onAccountActionStarted, onAccountActionFailed, signIn,
+    });
+    const get = (id: string) => h.elements.get(id)!;
+    return { ...h, get, onLegalAccepted, onAccountActionStarted, onAccountActionFailed, signIn };
+  }
+
+  it("opens over the finished loading screen with Play, and Sign In for a new visitor", () => {
+    const t = terms({ newVisitor: true });
+    t.startup.showLegalGate();
+    expect(t.get("legalGatePanel").hidden).toBe(false);
+    expect(t.get("connectionPanel").hidden).toBe(false);
+    expect(t.get("loadingDetail").textContent).toBe("Ready to Play");
+    expect(t.get("legalContinueBtn").textContent).toBe("Play");
+    expect(t.get("legalGateIntro").textContent).toBe("Welcome to WildStat");
+    expect(t.get("consentSignInBtn").hidden).toBe(false);
+  });
+
+  it("offers no Sign In to a player who already chose an account or a saved guest", () => {
+    const t = terms({ signedIn: true });
+    t.startup.showLegalGate();
+    expect(t.get("consentSignInBtn").hidden).toBe(true);
+  });
+
+  it("stays up reading Starting… after Play until the game replaces it", async () => {
+    const t = terms({ newVisitor: true });
+    t.startup.showLegalGate();
+    t.get("legalContinueBtn").click();
+    await vi.waitFor(() => expect(t.onLegalAccepted).toHaveBeenCalledOnce());
+    expect(t.get("legalContinueBtn").textContent).toBe("Starting…");
+    expect(t.get("legalContinueBtn").disabled).toBe(true);
+    expect(t.get("consentSignInBtn").hidden).toBe(true);
+    t.startup.showLoading();
+    expect(t.get("legalGatePanel").hidden).toBe(false);
+    t.startup.hideStart();
+    expect(t.get("legalGatePanel").hidden).toBe(true);
+  });
+
+  it("keeps Play to retry when entering the world fails", async () => {
+    const t = terms({}, async () => ({ ok: false, error: "Could not enter WildStat. Try again." }) as never);
+    t.startup.showLegalGate();
+    t.get("legalContinueBtn").click();
+    await vi.waitFor(() => expect(t.get("legalGateStatus").textContent).toBe("Could not enter WildStat. Try again."));
+    t.startup.showLoading();
+    expect(t.get("legalGatePanel").hidden).toBe(false);
+    expect(t.get("legalContinueBtn").textContent).toBe("Play");
+    expect(t.onLegalAccepted).not.toHaveBeenCalled();
+  });
+
+  it("shows Sign In's progress and failure in the window itself", async () => {
+    const t = terms({ newVisitor: true });
+    t.signIn.mockResolvedValueOnce({ ok: false } as never);
+    t.startup.showLegalGate();
+    t.get("consentSignInBtn").click();
+    expect(t.onAccountActionStarted).toHaveBeenCalledWith("sign-in", "OPENING SIGN-IN…");
+    t.startup.showAccountAction("sign-in", "OPENING SIGN-IN…");
+    expect(t.get("legalGatePanel").hidden).toBe(false);
+    expect(t.get("accountChoicePanel").hidden).toBe(true);
+    expect(t.get("legalGateStatus").textContent).toBe("Opening Sign-In…");
+    expect(t.get("consentSignInBtn").disabled).toBe(true);
+    await vi.waitFor(() => expect(t.onAccountActionFailed).toHaveBeenCalledOnce());
+    t.startup.showLegalGate();
+    expect(t.get("legalGateStatus").textContent).toBe("Sign-In Failed · Try Again");
+    expect(t.get("consentSignInBtn").disabled).toBe(false);
   });
 });

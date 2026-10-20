@@ -1173,8 +1173,9 @@ describe("Sign In and Register never do nothing", () => {
     await f.service.restoreKnownAccount();
     expect(f.service.api.accountState()).toMatchObject({ knownAccount: true });
     expect(f.service.api.knownCharacter()).toBe("Pilidria");
-    if (mode) expect(f.connect).toHaveBeenCalledOnce();
-    else expect(f.service.api.accountState()).toMatchObject({ signInRequired: true, notice: "SIGN-IN REQUIRED" });
+    // Either way it continues by itself, as the Sign In tap would.
+    expect(f.connect).toHaveBeenCalledOnce();
+    expect(f.service.api.accountState()).toMatchObject({ gameSessionApproved: true });
   });
 
   it("a reload after the server refused the token still offers SIGN IN to the character", async () => {
@@ -1232,5 +1233,93 @@ describe("Sign In and Register never do nothing", () => {
     expect(window.location.reload).not.toHaveBeenCalled();
     vi.advanceTimersByTime(1_000);
     expect(window.location.reload).toHaveBeenCalledOnce();
+  });
+});
+
+describe("a stored sign-in continues by itself", () => {
+  afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); vi.mocked(recordCarriedConnectionDiagnostic).mockClear(); });
+  const expiredToken = () => accountToken({ iat: Math.floor(Date.now() / 1000) - 7_200, exp: Math.floor(Date.now() / 1000) - 60 });
+
+  it("connects a returning account on load with no Sign In tap and no trip", async () => {
+    const f = setup({ accountToken: accountToken(), knownAccount: true });
+    await f.service.restoreKnownAccount();
+    expect(f.connect).toHaveBeenCalledOnce();
+    expect(f.assign).not.toHaveBeenCalled();
+    expect(f.service.api.accountState()).toMatchObject({ gameSessionApproved: true, guestByDefault: false, notice: "OPENING CHARACTER" });
+    expect(f.service.canConnect()).toBe(true);
+  });
+
+  it.each([
+    ["no grant", null],
+    ["a refused grant", { ok: false, status: 400, json: async () => ({ error: "invalid_grant" }) }],
+  ])("shows the Sign In screen, without leaving for SpacetimeAuth, when %s is left", async (_, response) => {
+    vi.stubGlobal("document", { hidden: false });
+    const old = expiredToken();
+    const f = setup({ accountToken: old, knownAccount: true });
+    if (response) {
+      f.local.setItem(`${keys.accountTokenKey}:refresh`, JSON.stringify({ subject: "account-subject", token: "spent", savedAt: Date.now() }));
+      vi.stubGlobal("fetch", vi.fn(async () => response));
+    }
+    await f.service.restoreKnownAccount();
+    expect(f.service.api.accountState().gameSessionApproved).toBe(true);
+    await expect(f.service.connectionToken(old)).rejects.toMatchObject({ reason: response ? "grant-rejected" : "no-grant" });
+    expect(f.assign).not.toHaveBeenCalled();
+    expect(f.service.api.accountState()).toMatchObject({ gameSessionApproved: false, signInRequired: true, knownAccount: true, notice: "SIGN-IN REQUIRED" });
+    expect(f.service.canConnect()).toBe(false);
+    expect(recordCarriedConnectionDiagnostic).toHaveBeenCalledWith("session-blocked", { detail: expect.stringMatching(/^auto-sign-in-refused:/) });
+    // The Sign In tap then goes to SpacetimeAuth as before.
+    expect(await f.service.api.signIn()).toMatchObject({ ok: true });
+    await expect(f.service.connectionToken(old)).rejects.toMatchObject({ reason: "no-grant" });
+    expect(f.assign).toHaveBeenCalledOnce();
+  });
+
+  it("shows the Sign In screen when the server refuses the stored token, instead of reopening sign-in by itself", async () => {
+    const f = setup({ accountToken: accountToken(), knownAccount: true });
+    await f.service.restoreKnownAccount();
+    expect(f.service.onConnectError(true, new Error("Failed to verify token: HTTP 401 Unauthorized"))).toBe(true);
+    expect(f.assign).not.toHaveBeenCalled();
+    expect(f.service.api.accountState()).toMatchObject({ gameSessionApproved: false, signInRequired: true, notice: "SIGN-IN REQUIRED" });
+  });
+
+  it("goes back to signing in again by itself once the character has played", async () => {
+    vi.stubGlobal("document", { hidden: false });
+    const old = expiredToken();
+    const f = setup({ accountToken: old, knownAccount: true });
+    await f.service.restoreKnownAccount();
+    f.service.markPlayable(true);
+    await expect(f.service.connectionToken(old)).rejects.toMatchObject({ reason: "no-grant" });
+    expect(f.assign).toHaveBeenCalledOnce();
+  });
+});
+
+describe("a new visitor before the Terms", () => {
+  afterEach(() => { vi.unstubAllGlobals(); });
+
+  it("is a guest started from nothing, until they agree", async () => {
+    const f = setup();
+    await f.service.restoreKnownAccount();
+    expect(f.service.api.accountState().newVisitor).toBe(false);
+    f.service.api.continueAsGuest();
+    expect(f.service.api.accountState()).toMatchObject({ guestSessionApproved: true, newVisitor: true });
+    expect(await f.service.api.acceptLegalTerms()).toMatchObject({ ok: true });
+    expect(f.service.api.accountState().newVisitor).toBe(false);
+    const returning = setup({ guestToken: "saved-guest" });
+    returning.service.api.continueAsGuest();
+    expect(returning.service.api.accountState().newVisitor).toBe(false);
+  });
+
+  it("signs in from the Terms window without entering the world or linking the empty guest", async () => {
+    const f = setup();
+    await f.service.restoreKnownAccount();
+    f.service.api.continueAsGuest();
+    const beginAccountLink = vi.fn(async () => {});
+    f.local.setItem(keys.guestTokenKey, "fresh-guest");
+    f.setConnection({ isActive: true, disconnect: vi.fn(), reducers: { beginAccountLink } } as never);
+    expect(await f.service.api.signIn()).toMatchObject({ ok: true, redirecting: true });
+    expect(f.requestWorldEntry).not.toHaveBeenCalled();
+    expect(beginAccountLink).not.toHaveBeenCalled();
+    expect(f.session.getItem(keys.accountLinkKey)).toBeNull();
+    const url = new URL(f.assign.mock.calls[0][0]);
+    expect(url.searchParams.get("prompt")).toBe("login");
   });
 });

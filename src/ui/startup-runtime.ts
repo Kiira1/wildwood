@@ -34,7 +34,7 @@ export function createStartupScreen(deps: StartupScreenDeps) {
     knownCharacter: () => client?.knownCharacter?.() ?? "",
     knownCharacterGender: () => client?.knownCharacterGender?.() ?? 0,
     defaultPlayerName: () => coop.localDisplayName() ?? "WANDERER",
-    getLoadingStages: () => [
+    getLoadingStages: () => client?.legalConsentAccepted?.() === true ? [
       // The shell's bar covers game.js up to about 38%; these carry it on from there.
       ["Loading Connection", coop.connected(), 50],
       ["Loading Player Profile", Boolean(coop.localState()), 60],
@@ -44,6 +44,12 @@ export function createStartupScreen(deps: StartupScreenDeps) {
       ["Loading Current Map", deps.currentMapReady(), 93],
       ["Loading Page Artwork", pageLoadComplete, 98],
       ["Starting WildStat", true, 100],
+    ] : [
+      // Before the Terms there is no character yet: what loads without one, then the Terms window.
+      ["Loading Connection", coop.connected(), 50],
+      ["Loading Core Artwork", deps.worldArtReady(), 80],
+      ["Loading Page Artwork", pageLoadComplete, 95],
+      ["Ready to Play", true, 100],
     ],
     onLoadingComplete: deps.finishStartup,
     onShowAccountChoice: deps.showUpdateNotice,
@@ -71,7 +77,7 @@ export function createStartupScreen(deps: StartupScreenDeps) {
     }, { once: true });
   }
 
-  return { startup, pageLoaded: () => pageLoadComplete };
+  return { startup, pageLoaded: () => pageLoadComplete, currentMapReady: deps.currentMapReady };
 }
 
 export type StartupCoordinationDeps = {
@@ -148,6 +154,7 @@ export function createStartupCoordination(deps: StartupCoordinationDeps) {
     gameUpdateGate: deps.gameUpdateGate,
     accountState: coop.accountState,
     pageLoadComplete: deps.screen.pageLoaded,
+    currentMapReady: deps.screen.currentMapReady,
     playerSpriteReady: deps.playerSpriteReady,
     worldArtReady: deps.worldArtReady,
     refreshLoading: startup.refreshLoading,

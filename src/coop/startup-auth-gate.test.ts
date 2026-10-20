@@ -45,30 +45,19 @@ function elements() {
     signInButton: new FakeElement(),
     guestButton: new FakeElement(),
     switchAccountButton: new FakeElement(),
-    consentSignInButton: new FakeElement(),
     loadingDetail: new FakeElement(),
     loadingFill: new FakeElement(),
-    legal: {
-      panel: new FakeElement(),
-      ageSlider: new FakeElement(),
-      ageOutput: new FakeElement(),
-      agreement: new FakeElement(),
-      termsLink: new FakeElement(),
-      continueButton: new FakeElement(),
-      status: new FakeElement(),
-    },
   } as unknown as StartupAuthElements & {
     signInButton: FakeElement;
     guestButton: FakeElement;
     switchAccountButton: FakeElement;
-    consentSignInButton: FakeElement;
     connectionPanel: FakeElement;
-    legal: { panel: FakeElement; continueButton: FakeElement; status: FakeElement };
+    accountChoicePanel: FakeElement;
   };
 }
 
 describe("startup auth gate", () => {
-  it("shows age and Terms immediately after Guest Login", async () => {
+  it("loads the game straight after Guest Login: the Terms come once it has loaded", async () => {
     const ui = elements();
     const loadGame = vi.fn(async () => {});
     let state = { signInReady: true, guestSessionApproved: false };
@@ -80,8 +69,6 @@ describe("startup auth gate", () => {
         state = { ...state, guestSessionApproved: true };
         return { ok: true };
       },
-      legalConsentAccepted: () => false,
-      acceptLegalTerms: async () => ({ ok: true }),
       subscribe: () => () => {},
       loadGame,
     }, ui);
@@ -92,12 +79,12 @@ describe("startup auth gate", () => {
     ui.guestButton.click();
     await Promise.resolve();
 
-    expect(ui.legal.panel.hidden).toBe(false);
+    expect(ui.connectionPanel.hidden).toBe(false);
     expect(ui.accountChoicePanel.hidden).toBe(true);
-    expect(loadGame).not.toHaveBeenCalled();
+    expect(loadGame).toHaveBeenCalledOnce();
   });
 
-  it("shows age and Terms immediately after registration returns", async () => {
+  it("loads the game straight after a sign-in that needs no trip", async () => {
     const ui = elements();
     const loadGame = vi.fn(async () => {});
     let state = { signInReady: true, gameSessionApproved: false };
@@ -109,8 +96,6 @@ describe("startup auth gate", () => {
         return { ok: true, redirecting: false };
       },
       continueAsGuest: () => ({ ok: true }),
-      legalConsentAccepted: () => false,
-      acceptLegalTerms: async () => ({ ok: true }),
       subscribe: () => () => {},
       loadGame,
     }, ui);
@@ -119,9 +104,9 @@ describe("startup auth gate", () => {
     ui.signInButton.click();
     await Promise.resolve();
 
-    expect(ui.legal.panel.hidden).toBe(false);
+    expect(ui.connectionPanel.hidden).toBe(false);
     expect(ui.accountChoicePanel.hidden).toBe(true);
-    expect(loadGame).not.toHaveBeenCalled();
+    expect(loadGame).toHaveBeenCalledOnce();
   });
 
   it("keeps the game unloaded while the player is choosing an identity", () => {
@@ -132,8 +117,6 @@ describe("startup auth gate", () => {
       knownCharacter: () => "",
       signIn: async () => ({ ok: true, redirecting: true }),
       continueAsGuest: () => ({ ok: true }),
-      legalConsentAccepted: () => true,
-      acceptLegalTerms: async () => ({ ok: true }),
       subscribe: () => () => {},
       loadGame,
     }, ui);
@@ -153,8 +136,6 @@ describe("startup auth gate", () => {
       knownCharacter: () => "WANDERER",
       signIn: async () => ({ ok: true, redirecting: true }),
       continueAsGuest: () => ({ ok: true }),
-      legalConsentAccepted: () => true,
-      acceptLegalTerms: async () => ({ ok: true }),
       subscribe: () => () => {},
       loadGame,
     }, ui);
@@ -181,8 +162,6 @@ describe("startup auth gate", () => {
         return { ok: true, redirecting: true };
       },
       continueAsGuest: () => ({ ok: true }),
-      legalConsentAccepted: () => true,
-      acceptLegalTerms: async () => ({ ok: true }),
       subscribe: (listener) => { notify = listener; return () => {}; },
       loadGame: async () => {},
     }, ui);
@@ -208,8 +187,6 @@ describe("startup auth gate", () => {
       knownCharacter: () => "",
       signIn: async () => ({ ok: true, redirecting: true }),
       continueAsGuest: () => ({ ok: true }),
-      legalConsentAccepted: () => true,
-      acceptLegalTerms: async () => ({ ok: true }),
       subscribe: () => () => {},
       loadGame: async () => {},
     }, ui);
@@ -233,8 +210,6 @@ describe("startup auth gate", () => {
       knownCharacter: () => "WANDERER",
       signIn: () => ({ ok: true }),
       continueAsGuest: () => ({ ok: true }),
-      legalConsentAccepted: () => true,
-      acceptLegalTerms: async () => ({ ok: true }),
       subscribe: (listener) => { notify = listener; return () => {}; },
       loadGame,
     }, ui);
@@ -258,8 +233,6 @@ describe("startup auth gate", () => {
       knownCharacter: () => "WANDERER",
       signIn: () => ({ ok: true, redirecting: true }),
       continueAsGuest: () => ({ ok: true }),
-      legalConsentAccepted: () => true,
-      acceptLegalTerms: async () => ({ ok: true }),
       subscribe: () => () => {},
       loadGame: async () => {},
       releaseNotes,
@@ -282,8 +255,6 @@ describe("startup auth gate", () => {
       knownCharacter: () => "WANDERER",
       signIn: () => ({ ok: true, redirecting: true }),
       continueAsGuest: () => ({ ok: true }),
-      legalConsentAccepted: () => true,
-      acceptLegalTerms: async () => ({ ok: true }),
       subscribe: () => () => {},
       loadGame: async () => {},
       releaseNotes,
@@ -305,8 +276,6 @@ describe("startup auth gate", () => {
       knownCharacter: () => "WANDERER",
       signIn: async () => ({ ok: false, error: "SIGN-IN FAILED" }),
       continueAsGuest: () => ({ ok: true }),
-      legalConsentAccepted: () => true,
-      acceptLegalTerms: async () => ({ ok: true }),
       subscribe: () => () => {},
       loadGame: async () => {},
       releaseNotes,
@@ -334,8 +303,6 @@ describe("startup auth gate", () => {
       knownCharacter: () => "TACOMEL",
       signIn: () => ({ ok: true, redirecting: true }),
       continueAsGuest: () => ({ ok: true }),
-      legalConsentAccepted: () => true,
-      acceptLegalTerms: async () => ({ ok: true }),
       subscribe: () => () => {},
       loadGame: async () => {},
     }, ui);
@@ -358,8 +325,6 @@ describe("startup auth gate", () => {
         state = { ...state, guestSessionApproved: true };
         return { ok: true };
       },
-      legalConsentAccepted: () => true,
-      acceptLegalTerms: async () => ({ ok: true }),
       subscribe: () => () => {},
       loadGame: async () => { order.push("game"); },
     }, ui);
@@ -443,8 +408,6 @@ describe("outbound sign-in presentation", () => {
       knownCharacter: () => "Player",
       signIn: () => new Promise(resolve => { finish = resolve; }),
       continueAsGuest: () => ({ ok: true }),
-      legalConsentAccepted: () => true,
-      acceptLegalTerms: async () => ({ ok: true }),
       subscribe: listener => { notify = listener; return () => {}; },
       loadGame: async () => {},
     }, ui);
@@ -474,8 +437,6 @@ describe("outbound sign-in presentation", () => {
       knownCharacter: () => name,
       signIn, switchAccount,
       continueAsGuest: () => ({ ok: true }),
-      legalConsentAccepted: () => true,
-      acceptLegalTerms: async () => ({ ok: true }),
       subscribe: listener => { notify = listener; return () => {}; },
       loadGame: async () => {},
     }, ui);
@@ -498,14 +459,11 @@ describe("outbound sign-in presentation", () => {
 describe("guest by default", () => {
   function gate(options: {
     state: Record<string, unknown>;
-    legalAccepted?: boolean;
-    signIn?: () => Promise<{ ok: boolean; error?: string; redirecting?: boolean }>;
     gameDownload?: Promise<void> | null;
   }) {
     const ui = elements();
     const order: string[] = [];
     let state = options.state;
-    let accepted = options.legalAccepted ?? false;
     let notify = () => {};
     const loadGame = vi.fn(async () => { order.push("game"); });
     const continueAsGuest = vi.fn(() => {
@@ -513,53 +471,31 @@ describe("guest by default", () => {
       state = { ...state, guestSessionApproved: true };
       return { ok: true };
     });
-    const signIn = vi.fn(options.signIn ?? (async () => ({ ok: true, redirecting: true })));
     const startup = createStartupAuthGate({
       accountState: () => state,
       knownCharacter: () => "",
-      signIn,
+      signIn: vi.fn(async () => ({ ok: true, redirecting: true })),
       continueAsGuest,
-      legalConsentAccepted: () => accepted,
-      acceptLegalTerms: async () => { order.push("terms"); accepted = true; return { ok: true }; },
       subscribe: listener => { notify = listener; return () => {}; },
       loadGame,
       gameDownload: options.gameDownload,
     }, ui);
-    return { ui, order, loadGame, continueAsGuest, signIn, startup, setState: (next: Record<string, unknown>) => { state = next; notify(); } };
+    return { ui, order, loadGame, continueAsGuest, startup, setState: (next: Record<string, unknown>) => { state = next; notify(); } };
   }
 
-  it("shows a new visitor the Terms and Play on the loading screen, with Sign In, and no account choice", () => {
-    const { ui, startup, continueAsGuest } = gate({ state: { signInReady: true, guestByDefault: true } });
-    startup.start();
-    expect(ui.accountChoicePanel.hidden).toBe(true);
-    expect(ui.connectionPanel.hidden).toBe(false);
-    expect(ui.connectionPanel.classes.has("is-consent")).toBe(true);
-    expect(ui.legal.panel.hidden).toBe(false);
-    expect(ui.legal.continueButton.textContent).toBe("Play");
-    expect(ui.consentSignInButton.hidden).toBe(false);
-    expect(continueAsGuest).not.toHaveBeenCalled();
-  });
-
-  it("records the agreement first, then starts the guest, then runs the game: one tap", async () => {
+  it("starts a new visitor as a guest and runs the game with no tap and no account choice", async () => {
     const { ui, startup, order } = gate({ state: { signInReady: true, guestByDefault: true } });
     startup.start();
-    ui.legal.continueButton.click();
-    await vi.waitFor(() => expect(order).toEqual(["terms", "guest", "game"]));
-    expect(ui.loadingDetail.textContent).toBe("Loading Guest Profile");
-    expect(ui.connectionPanel.classes.has("is-consent")).toBe(false);
-  });
-
-  it("starts a visitor who already agreed as a guest without any tap", async () => {
-    const { startup, order } = gate({ state: { signInReady: true, guestByDefault: true }, legalAccepted: true });
-    startup.start();
     await vi.waitFor(() => expect(order).toEqual(["guest", "game"]));
+    expect(ui.accountChoicePanel.hidden).toBe(true);
+    expect(ui.connectionPanel.hidden).toBe(false);
+    expect(ui.loadingDetail.textContent).toBe("Loading Guest Profile");
   });
 
   it("waits on loading, choosing nothing, until the account restore has finished", () => {
-    const { ui, startup, setState, continueAsGuest } = gate({ state: { signInReady: true, restoring: true }, legalAccepted: true });
+    const { ui, startup, setState, continueAsGuest } = gate({ state: { signInReady: true, restoring: true } });
     startup.start();
     expect(ui.accountChoicePanel.hidden).toBe(true);
-    expect(ui.legal.panel.hidden).toBe(true);
     expect(ui.loadingDetail.textContent).toBe("Starting WildStat");
     expect(continueAsGuest).not.toHaveBeenCalled();
     setState({ signInReady: true, restoring: false, guestByDefault: false, knownAccount: true });
@@ -567,39 +503,31 @@ describe("guest by default", () => {
     expect(continueAsGuest).not.toHaveBeenCalled();
   });
 
-  it("lets Sign In under Play leave before any guest exists, and stays on that screen if it fails", async () => {
-    const { ui, startup, signIn, continueAsGuest } = gate({
-      state: { signInReady: true, guestByDefault: true },
-      signIn: async () => ({ ok: false, error: "SIGN-IN NOT STARTED" }),
-    });
+  it("loads a stored sign-in that continued by itself, with no screen", () => {
+    const { ui, startup, loadGame } = gate({ state: { signInReady: true, knownAccount: true, gameSessionApproved: true } });
     startup.start();
-    ui.consentSignInButton.click();
-    expect(ui.loadingDetail.textContent).toBe("Opening Sign-In…");
-    expect(ui.consentSignInButton.disabled).toBe(true);
-    await vi.waitFor(() => expect(ui.loadingDetail.textContent).toBe("Sign-In Failed · Try Again"));
-    expect(signIn).toHaveBeenCalledOnce();
-    expect(continueAsGuest).not.toHaveBeenCalled();
     expect(ui.accountChoicePanel.hidden).toBe(true);
-    expect(ui.legal.panel.hidden).toBe(false);
-    expect(ui.consentSignInButton.disabled).toBe(false);
+    expect(ui.loadingDetail.textContent).toBe("Loading Your Character");
+    expect(loadGame).toHaveBeenCalledOnce();
   });
 
-  it("hides Sign In once an account is signed in and only the Terms remain", () => {
-    const { ui, startup } = gate({ state: { signInReady: true, gameSessionApproved: true } });
+  it("asks a known account whose sign-in ran out for one Sign In, with Play as Guest the small way out", () => {
+    const { ui, startup, loadGame } = gate({ state: { signInReady: true, knownAccount: true, signInRequired: true } });
     startup.start();
-    expect(ui.legal.panel.hidden).toBe(false);
-    expect(ui.consentSignInButton.hidden).toBe(true);
+    expect(ui.accountChoicePanel.hidden).toBe(false);
+    expect(ui.accountChoicePanel.classes.has("is-sign-in")).toBe(true);
+    expect(ui.signInButton.textContent).toBe("Sign In");
+    expect(loadGame).not.toHaveBeenCalled();
   });
 
-  it("moves the bar while game.js downloads, and holds at the download until Play", async () => {
+  it("moves the bar while game.js downloads, on into its run", async () => {
     vi.useFakeTimers();
     try {
       let finish!: () => void;
       const gameDownload = new Promise<void>(resolve => { finish = resolve; });
-      const { ui, startup } = gate({ state: { signInReady: true, guestByDefault: true }, gameDownload });
+      const { ui, startup } = gate({ state: { signInReady: true, restoring: true }, gameDownload });
       startup.start();
       expect(ui.loadingFill.style.width).toBe("3%");
-      expect(ui.loadingDetail.textContent).toBe("Downloading Game");
       vi.advanceTimersByTime(5_000);
       const crept = Number.parseFloat(ui.loadingFill.style.width);
       expect(crept).toBeGreaterThan(3);
@@ -607,9 +535,8 @@ describe("guest by default", () => {
       finish();
       await vi.advanceTimersByTimeAsync(0);
       expect(ui.loadingFill.style.width).toBe("30%");
-      expect(ui.loadingDetail.textContent).toBe("Game Downloaded");
       vi.advanceTimersByTime(5_000);
-      expect(ui.loadingFill.style.width).toBe("30%");
+      expect(Number.parseFloat(ui.loadingFill.style.width)).toBeGreaterThan(30);
     } finally {
       vi.useRealTimers();
     }
@@ -624,8 +551,6 @@ describe("guest by default", () => {
       knownCharacter: () => "",
       signIn: async () => ({ ok: true, redirecting: true }),
       continueAsGuest,
-      legalConsentAccepted: () => true,
-      acceptLegalTerms: async () => ({ ok: true }),
       subscribe: listener => { notify = listener; return () => {}; },
       loadGame: async () => {},
     }, ui).start();

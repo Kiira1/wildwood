@@ -978,8 +978,6 @@ startStartupBootstrap({
   knownCharacter: wildstatCoop.knownCharacter,
   signIn: () => startupTelemetryRuntime.signIn(accountService.api.signIn),
   continueAsGuest: wildstatCoop.continueAsGuest, switchAccount: wildstatCoop.switchAccount,
-  legalConsentAccepted: wildstatCoop.legalConsentAccepted,
-  acceptLegalTerms: wildstatCoop.acceptLegalTerms, ageBlocked: wildstatCoop.ageBlocked,
   subscribe(listener) {
     startupChangeListener = listener;
     return () => {

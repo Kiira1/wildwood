@@ -1,4 +1,3 @@
-import { createLegalGateController, legalGateElements, type LegalGateElements } from "../ui/legal-gate";
 import { markGameScript } from "./game-script-gate";
 import { enforceLatestVersion } from "../app/version";
 import { GAME_VERSION } from "../game/runtime/game-settings";
@@ -6,7 +5,6 @@ import { createDiscordLink } from "../ui/discord-link";
 import { createLoadingProgress } from "../ui/loading-progress";
 import {
   createStartupStateMachine,
-  hasApprovedGameSession,
   type StartupAccountSnapshot,
   type StartupState,
 } from "./startup-state-machine";
@@ -31,9 +29,6 @@ type StartupAuthGateDependencies = {
   /** Use Another Account: ends the provider session, then asks which account. */
   switchAccount?: () => Promise<StartupActionResult> | StartupActionResult;
   continueAsGuest: () => Promise<StartupActionResult> | StartupActionResult;
-  legalConsentAccepted: () => boolean;
-  acceptLegalTerms: () => Promise<StartupActionResult> | StartupActionResult;
-  ageBlocked?: () => boolean;
   subscribe: (listener: () => void) => () => void;
   loadGame: () => Promise<void>;
   /** game.js downloading from the first frame (preloadDeferredGameBundle), or null under Data Saver. */
@@ -55,11 +50,8 @@ type StartupAuthElements = {
   signInButton: HTMLButtonElement;
   guestButton: HTMLButtonElement;
   switchAccountButton?: HTMLButtonElement | null;
-  /** Sign In under Play, for a player with an account on a new device: before any guest exists. */
-  consentSignInButton?: HTMLButtonElement | null;
   loadingDetail: HTMLElement;
   loadingFill: HTMLElement;
-  legal: LegalGateElements;
 };
 
 function startupElements(documentValue: Document): StartupAuthElements {
@@ -110,10 +102,8 @@ function startupElements(documentValue: Document): StartupAuthElements {
     signInButton: requireElement<HTMLButtonElement>("signInFromStartBtn"),
     guestButton: requireElement<HTMLButtonElement>("continueGuestBtn"),
     switchAccountButton: documentValue.getElementById("useAnotherAccountBtn") as HTMLButtonElement | null,
-    consentSignInButton: documentValue.getElementById("consentSignInBtn") as HTMLButtonElement | null,
     loadingDetail: requireElement("loadingDetail"),
     loadingFill: requireElement("loadingFill"),
-    legal: legalGateElements(documentValue),
   };
 }
 
@@ -127,12 +117,8 @@ export function createStartupAuthGate(
   let detached = false;
   let preparingSignIn = false;
   let preparingDetail = "Opening Sign-In…";
-  /** Sign In was tapped under Play, so its progress and failure stay on that screen. */
-  let signInFromConsent = false;
-  let consentNotice = "";
   // The shell's share of the one loading bar is game.js: 0 to 30%. The game's own stages carry on from there.
   const progress = createLoadingProgress(elements.loadingFill);
-  const preloading = Boolean(dependencies.gameDownload);
   let gameDownloaded = false;
   dependencies.gameDownload?.then(() => {
     gameDownloaded = true;
@@ -140,17 +126,10 @@ export function createStartupAuthGate(
   }, () => {
     // The script tag fetches it again on Play and reports a real failure there.
   });
-  const legalGate = createLegalGateController({
-    accept: () => dependencies.acceptLegalTerms(),
-    askAge: false,
-    blocked: () => dependencies.ageBlocked?.() === true,
-    onAccepted: render,
-  }, elements.legal);
-
-  /** `starting`: past the Terms, so game.js is about to run, not only downloading. */
-  function showBundleProgress(starting: boolean) {
-    if (gameDownloaded) progress.advance(30, starting ? 38 : 30);
-    else progress.advance(3, preloading || starting ? 30 : 3);
+  /** game.js is downloading, then about to run: the shell's part of the bar. */
+  function showBundleProgress() {
+    if (gameDownloaded) progress.advance(30, 38);
+    else progress.advance(3, 30);
   }
 
   function showLoading(detail = "Loading Your Character") {
@@ -158,31 +137,9 @@ export function createStartupAuthGate(
     elements.start.style.display = "grid";
     elements.accountChoicePanel.classList.remove("is-signing-in");
     elements.accountChoicePanel.hidden = true;
-    legalGate.hide();
-    elements.connectionPanel.classList.remove("is-consent");
     elements.connectionPanel.hidden = false;
     elements.loadingDetail.textContent = detail;
-    showBundleProgress(true);
-  }
-
-  /** The Terms and Play under the loading bar, while game.js downloads. */
-  function showConsent(detail = "") {
-    dependencies.releaseNotes?.hide();
-    const account = dependencies.accountState();
-    elements.start.style.display = "grid";
-    elements.accountChoicePanel.hidden = true;
-    elements.connectionPanel.classList.add("is-consent");
-    elements.connectionPanel.hidden = false;
-    legalGate.show();
-    const signIn = elements.consentSignInButton;
-    if (signIn) {
-      // Only before an identity is chosen: a signed-in player has nothing to sign in to.
-      signIn.hidden = hasApprovedGameSession(account) || dependencies.ageBlocked?.() === true;
-      signIn.disabled = preparingSignIn || account.signInReady === false;
-    }
-    elements.loadingDetail.textContent = detail || consentNotice
-      || (!preloading ? "Ready to Play" : gameDownloaded ? "Game Downloaded" : "Downloading Game");
-    showBundleProgress(false);
+    showBundleProgress();
   }
 
   function showAccountChoice(detailOverride = "", interactive = true) {
@@ -191,17 +148,17 @@ export function createStartupAuthGate(
     const knownAccount = Boolean(state.knownAccount);
     const ready = state.signInReady !== false;
     elements.start.style.display = "grid";
-    elements.connectionPanel.classList.remove("is-consent");
     elements.connectionPanel.hidden = true;
-    legalGate.hide();
     elements.accountChoicePanel.hidden = false;
     elements.accountChoicePanel.classList.remove("is-signing-in");
     elements.accountCharacterName.textContent = name || "none";
     elements.accountCharacter.classList.toggle("is-empty", !name);
-    elements.signInButton.textContent = name || knownAccount ? "SIGN IN" : "REGISTER";
+    // A known character: one Sign In, with Play as Guest as the small way out.
+    elements.accountChoicePanel.classList.toggle("is-sign-in", Boolean(name || knownAccount));
+    elements.signInButton.textContent = name || knownAccount ? "Sign In" : "Register";
     elements.signInButton.disabled = !ready;
     elements.guestButton.disabled = false;
-    // Whenever a character is offered: SIGN IN reuses whoever the browser last signed in as.
+    // Whenever a character is offered: Sign In reuses whoever the browser last signed in as.
     if (elements.switchAccountButton) {
       elements.switchAccountButton.hidden = !(name || knownAccount) || !dependencies.switchAccount;
       elements.switchAccountButton.disabled = false;
@@ -235,8 +192,6 @@ export function createStartupAuthGate(
     elements.signInButton.removeEventListener("click", onSignIn);
     elements.guestButton.removeEventListener("click", onGuest);
     elements.switchAccountButton?.removeEventListener("click", onSwitchAccount);
-    elements.consentSignInButton?.removeEventListener("click", onSignIn);
-    legalGate.dispose();
     dependencies.releaseNotes?.dispose();
   }
 
@@ -265,9 +220,6 @@ export function createStartupAuthGate(
 
   function renderState(state: StartupState, changed = true) {
     switch (state.value) {
-      case "legal-consent":
-        showConsent();
-        return;
       case "guest-start":
         // A new or returning guest who has agreed: the same path as the Guest button, without the tap.
         void onGuest();
@@ -279,13 +231,11 @@ export function createStartupAuthGate(
         beginGameLoading("Opening Session Recovery");
         return;
       case "verifying-sign-in":
-        if (preparingSignIn && signInFromConsent) showConsent(preparingDetail);
-        else if (preparingSignIn) showSignInPreparation();
+        if (preparingSignIn) showSignInPreparation();
         else showLoading("Verifying Sign-In");
         return;
       case "account-action":
-        if (state.action === "sign-in" && signInFromConsent) showConsent(state.detail);
-        else if (state.action === "sign-in") showSignInPreparation();
+        if (state.action === "sign-in") showSignInPreparation();
         else showLoading(state.detail);
         return;
       case "account-choice":
@@ -299,6 +249,7 @@ export function createStartupAuthGate(
         showLoading("Starting WildStat");
         return;
       case "loading-runtime":
+      case "legal-consent":
         showLoading();
         return;
       case "connection-failed":
@@ -315,9 +266,10 @@ export function createStartupAuthGate(
   }
 
   function render() {
+    // The shell never asks for the Terms (the game does, once loaded), so it reports none.
     const transition = machine.sync({
       account: dependencies.accountState(),
-      legalAccepted: dependencies.legalConsentAccepted(),
+      legalAccepted: false,
       shellReady: true,
     });
     renderState(transition.state, transition.changed);
@@ -326,7 +278,7 @@ export function createStartupAuthGate(
   function onSignIn() {
     const state = dependencies.accountState();
     const name = dependencies.knownCharacter().trim();
-    const signingIn = name || state.knownAccount || machine.state().value === "legal-consent";
+    const signingIn = name || state.knownAccount;
     return beginSignIn(dependencies.signIn, signingIn ? "Opening Sign-In…" : "Opening Registration…");
   }
 
@@ -336,10 +288,7 @@ export function createStartupAuthGate(
   }
 
   async function beginSignIn(action: () => Promise<StartupActionResult> | StartupActionResult, detail: string) {
-    const from = machine.state().value;
-    if (from !== "account-choice" && from !== "legal-consent") return;
-    signInFromConsent = from === "legal-consent";
-    consentNotice = "";
+    if (machine.state().value !== "account-choice") return;
     preparingSignIn = true;
     preparingDetail = detail;
     renderState(machine.dispatch({ type: "begin-account-action", action: "sign-in", detail }).state);
@@ -350,7 +299,6 @@ export function createStartupAuthGate(
         const failure = result.error === "WAIT FOR SERVER"
           ? "PREPARING YOUR SAVED GUEST…"
           : "SIGN-IN FAILED · TRY AGAIN OR USE GUEST LOGIN";
-        consentNotice = result.error === "WAIT FOR SERVER" ? "Preparing Your Saved Guest…" : "Sign-In Failed · Try Again";
         renderState(machine.dispatch({ type: "fail-account-action", detail: failure }).state);
         return;
       }
@@ -359,7 +307,6 @@ export function createStartupAuthGate(
       if (!result?.redirecting) render();
     } catch {
       preparingSignIn = false;
-      consentNotice = "Sign-In Failed · Try Again";
       renderState(machine.dispatch({
         type: "fail-account-action",
         detail: "SIGN-IN FAILED · TRY AGAIN OR USE GUEST LOGIN",
@@ -392,7 +339,6 @@ export function createStartupAuthGate(
     elements.signInButton.addEventListener("click", onSignIn);
     elements.guestButton.addEventListener("click", onGuest);
     elements.switchAccountButton?.addEventListener("click", onSwitchAccount);
-    elements.consentSignInButton?.addEventListener("click", onSignIn);
     unsubscribe = dependencies.subscribe(render);
     render();
   }
