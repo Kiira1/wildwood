@@ -33,7 +33,9 @@ function setup(map: { id: string }, options: { mining?: number; woodcutting?: nu
     mining: () => source, priorityStorage: () => storage as unknown as Storage });
   const panel = createAutoFarmPanel({ farm, mapName: () => map.id, visible: () => true, unavailable: () => null, setPaused: () => {}, clearInput: () => {},
     rewardMultiplier: () => 1, showBaseStatRewards: () => false, storage: () => storage });
-  destroy = panel.destroy;
+  // A test may set up twice; every panel is torn down, or its refresh timer outlives the stubbed document.
+  const previous = destroy;
+  destroy = () => { previous?.(); panel.destroy(); };
   const click = (selector: string) => document.querySelector(selector)!.dispatchEvent(new window.Event('click', { bubbles: true }));
   const text = (selector: string) => document.querySelector(selector)!.textContent;
   const ore = (id: string) => document.querySelector<HTMLButtonElement>(`[data-ore="${id}"]`)!;
