@@ -3,6 +3,8 @@ export const RELEASE_NOTES: Record<string, string[]> = {
     "Soul Health enemies give 10 Health a kill",
     "Soul Levels need less XP each, and the cap is now 50",
     "Refined gear shows its ★10 and ★20 look on your character, not just its icon",
+    "New Utility research: Resource Respawn, so rocks and trees grow back faster",
+    "Auto Chop and Auto Mine no longer step away from a tree or rock as it grows back",
     "Auto Farm counts your cards when judging bosses and when to move on",
     "Guild battles use the same staff, sword and Mastery rules as duels",
     "Profiles show power, Move Speed and Range as they really are",
@@ -3727,6 +3729,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.916.13": "2026-10-20",
   "0.916.12": "2026-10-20",
   "0.916.11": "2026-10-20",
   "0.916.10": "2026-10-20",
