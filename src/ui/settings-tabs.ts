@@ -55,7 +55,6 @@ export function installSettingsTabs(doc: Document) {
   privacy.id = "privacySettings";
   for (const [label, path] of [
     ["Privacy policy", "privacy.html"],
-    ["Account and data deletion", "delete-account.html"],
   ]) {
     const link = doc.createElement("a");
     link.textContent = label;

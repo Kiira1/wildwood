@@ -41,8 +41,6 @@ type RuntimeHudElements = {
   playerIcon: HTMLElement;
   duelControls: HTMLElement;
   duelStatus: HTMLElement;
-  duelRequest: HTMLElement;
-  duelAccept: HTMLElement;
   duelCountdown: HTMLElement;
   duelResult: HTMLElement;
   duelResultTitle: HTMLElement;
@@ -360,8 +358,6 @@ export function createRuntimeHudController(dependencies: RuntimeHudDependencies)
     const duel = dependencies.activeDuel();
     document.body.classList.toggle("is-dueling", Boolean(duel && ["countdown", "active", "finishing"].includes(duel.status)));
     elements.duelStatus.hidden = false;
-    elements.duelRequest.hidden = true;
-    elements.duelAccept.hidden = true;
     dependencies.updateProfileDuelButton();
 
     if ((duel?.status === "active" || duel?.status === "finishing") && Date.now() >= duel.endsAtMs) dependencies.pulseDuel();

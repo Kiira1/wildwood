@@ -4,6 +4,7 @@ import { LEADERBOARD_TABS, type LeaderboardBoard, type LeaderboardStat } from ".
 import { formatCompactNumber } from "./number-format";
 import type { LeaderboardEntry } from "../wildstat-coop";
 import { appendPlayerGenderIcon } from "./player-gender";
+import { formatPlayedTime } from "./profile";
 
 export type { LeaderboardStat };
 /** What a list shows: a tab's board, or Time Played's Account Created. */
@@ -22,16 +23,6 @@ type LeaderboardElements = {
   valueHeading: HTMLElement;
   tabs: Record<LeaderboardStat, HTMLElement>;
 };
-
-export function formatPlayedTime(seconds: number) {
-  const wholeMinutes = Math.max(0, Math.floor(seconds / 60));
-  const days = Math.floor(wholeMinutes / 1440);
-  const hours = Math.floor(wholeMinutes % 1440 / 60);
-  const minutes = wholeMinutes % 60;
-  if (days > 0) return `${days}d ${hours}h`;
-  if (hours > 0) return `${hours}h ${minutes}m`;
-  return `${minutes}m`;
-}
 
 /** What orders a list without ranks; Rivals and Prestige rank by power within a level, so power stands in for them. */
 export function leaderboardValueKey(view: LeaderboardView): "power" | "playedSeconds" {

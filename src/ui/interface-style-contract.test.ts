@@ -37,7 +37,7 @@ describe("installed interface structure", () => {
     // The map-name label adds one accessible element below the minimap.
     // Raised by 128 for the Zoom Buttons row, and 256 more for High Resolution.
     expect(Buffer.byteLength(entryHtml)).toBeLessThan(25_216);
-    for (const id of ["start", "gameUpdateGate", "dailyGemBonus", "gameOver", "playerProfile", "techTreeOverlay", "guildBtn"]) {
+    for (const id of ["start", "gameUpdateGate", "chatMessageActions", "gameOver", "playerProfile", "techTreeOverlay", "guildBtn"]) {
       expect(doc.getElementById(id), id).not.toBeNull();
     }
     expect(doc.getElementById("journeyBtn")).toBeNull();

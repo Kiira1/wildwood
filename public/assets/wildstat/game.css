@@ -1432,15 +1432,6 @@
     white-space: nowrap;
   }
 
-  #duelControls button {
-    margin: 0;
-    padding: 7px 11px;
-    border-width: 2px;
-    border-radius: 7px;
-    font-size: 11px;
-    max-width: calc(100vw - 160px);
-  }
-
   #duelCountdown {
     position: fixed;
     top: 42%;
@@ -1452,8 +1443,6 @@
     text-shadow: var(--text-shadow-large);
     pointer-events: none;
   }
-
-  #duelAcceptBtn { background: linear-gradient(#83cdf2, #3f83bd); }
 
   #pickupLog {
     position: fixed;
@@ -1710,8 +1699,6 @@
   .daily-gem-claim-button:hover:not(:disabled), .daily-gem-claim-button:focus-visible { border-color: #fff; background: linear-gradient(#f58abd, #bd4a8b); outline: 0; }
   .daily-gem-claim-button:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 1px 0 #55233f; }
   .daily-gem-bonus.is-claimed .daily-gem-bonus-art img { animation: daily-gem-claimed .72s cubic-bezier(.2,.9,.24,1.3); }
-  .balance-apology-gift { z-index: 19; }
-  .daily-gem-bonus-card .balance-apology-gift-copy { max-width: 265px; font-size: 10px; line-height: 1.55; letter-spacing: .08em; }
 
   @keyframes daily-gem-card-enter { from { opacity: 0; transform: scale(.76) translateY(18px); } to { opacity: 1; transform: scale(1) translateY(0); } }
   @keyframes daily-gem-rays { to { transform: rotate(360deg); } }
@@ -3918,10 +3905,6 @@
     text-align: left;
     transform: translate(-50%, -50%);
   }
-  .game-release-notes { top: 50%; max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 32px); color: #fff; pointer-events: auto; }
-  .game-release-notes:not([open]) { display: none; }
-  .game-release-notes::backdrop { background: rgba(0,0,0,.5); }
-  .game-release-notes .window-back-footer { padding: 16px 0 0; }
   .signin-update-notice[hidden] { display: none; }
   .signin-update-notice header { padding: 0 1px 11px; border-bottom: 1px solid rgba(220, 230, 222, .2); }
   .signin-update-notice header strong { color: #fff; font-size: 11px; font-weight: 900; letter-spacing: .12em; }

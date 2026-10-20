@@ -5,30 +5,6 @@ import { installGamepadControls } from "./gamepad-controls";
 import { applyTextOutlineMode } from "./text-outline-mode";
 
 const beforeStartShell = String.raw`
-<div id="dailyGemBonus" class="daily-gem-bonus" hidden>
-  <section class="daily-gem-bonus-card" role="dialog" aria-modal="true" aria-labelledby="dailyGemBonusTitle" aria-describedby="dailyGemBonusCopy">
-    <div class="daily-gem-bonus-kicker">DAILY BONUS</div>
-    <div class="daily-gem-bonus-art" aria-hidden="true">
-      <img src="assets/wildstat/gems/gem-icon-v2.webp" alt="" draggable="false" />
-    </div>
-    <h2 id="dailyGemBonusTitle">+7 GEMS</h2>
-    <p id="dailyGemBonusCopy">WELCOME BACK</p>
-    <button id="dailyGemClaimBtn" class="daily-gem-claim-button" type="button">CLAIM</button>
-  </section>
-</div>
-
-<div id="balanceApologyGift" class="daily-gem-bonus balance-apology-gift" hidden>
-  <section class="daily-gem-bonus-card" role="dialog" aria-modal="true" aria-labelledby="balanceApologyGiftTitle" aria-describedby="balanceApologyGiftCopy">
-    <div class="daily-gem-bonus-kicker">A NOTE FROM WILDSTAT</div>
-    <div class="daily-gem-bonus-art" aria-hidden="true">
-      <img src="assets/wildstat/gems/gem-icon-v2.webp" alt="" draggable="false" />
-    </div>
-    <h2 id="balanceApologyGiftTitle">+10 GEMS</h2>
-    <p id="balanceApologyGiftCopy" class="balance-apology-gift-copy">A GIFT FROM THE DEVELOPER.<br />THANK YOU FOR TESTING WILDSTAT.</p>
-    <button id="balanceApologyContinueBtn" class="daily-gem-claim-button" type="button">CONTINUE</button>
-  </section>
-</div>
-
 <div id="chatMessageActions" class="chat-message-actions" hidden>
   <button id="chatMessageActionsBackdrop" class="chat-message-actions-backdrop" type="button" aria-label="Close message actions" tabindex="-1"></button>
   <section id="chatMessageActionSheet" class="chat-message-action-sheet" role="dialog" aria-modal="true" aria-labelledby="chatMessageActionTitle" aria-describedby="chatMessageActionPreview">
@@ -545,7 +521,7 @@ export function installGameShell(doc: Document = document) {
   installGamepadControls(doc);
   const start = doc.getElementById("start");
   if (!start) throw new Error("WildStat startup shell is missing #start");
-  if (!doc.getElementById("dailyGemBonus")) {
+  if (!doc.getElementById("chatMessageActions")) {
     start.insertAdjacentHTML("beforebegin", beforeStartShell);
   }
 

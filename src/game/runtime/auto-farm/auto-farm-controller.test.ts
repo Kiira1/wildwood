@@ -1,7 +1,5 @@
 import type { Readiness } from '../../../../shared/map-readiness';
-import { describe, expect, it, vi } from 'vitest';
-import { parseHTML } from 'linkedom';
-import { createBalanceApologyGiftController } from '../../../ui/balance-apology-gift-controller';
+import { describe, expect, it } from 'vitest';
 import { createGameBootstrap } from '../game-bootstrap';
 import { createEnemyLifecycle } from '../enemies/enemy-lifecycle';
 import { createAutoFarmController, autoFarmStandoff, AUTO_FARM_REACH_MARGIN, BOSS_RETRY_GROWTH, MOVE_ON_FIGHT_MS, PULL_TURN_SECONDS, PULL_WAIT_SECONDS } from './auto-farm-controller';
@@ -68,34 +66,6 @@ describe('autofarm', () => {
     expect(s.farm.pulls(mob)).toBe(true);
     s.farm.setPullAll(false);
     expect(s.farm.pulls(mob)).toBe(false);
-  });
-
-  it('keeps moving while a 15-gem gift is visible, acknowledging, and dismissed', async () => {
-    const s = setup();
-    s.add('Bramble', 1500, 500);
-    s.farm.start('Bramble');
-    const { document } = parseHTML('<div id="gift"><h1></h1><button>Continue</button></div>');
-    const overlay = document.querySelector('div')!;
-    const button = document.querySelector('button')!;
-    let finish!: (value: { ok: boolean }) => void;
-    vi.stubGlobal('requestAnimationFrame', (callback: () => void) => callback());
-    try {
-      const gift = createBalanceApologyGiftController({ overlay, title: document.querySelector('h1')!, continueButton: button }, {
-        canShow: () => true, amount: () => 15n,
-        acknowledge: () => new Promise(resolve => { finish = resolve; }),
-        showMessage: () => {}, afterDismiss: () => {},
-      });
-      expect(gift.isOpen()).toBe(true);
-      expect(s.tick().x).toBeGreaterThan(0);
-      button.click();
-      expect(button.disabled).toBe(true);
-      expect(s.tick().x).toBeGreaterThan(0);
-      finish({ ok: true });
-      await Promise.resolve(); await Promise.resolve();
-      expect(gift.isOpen()).toBe(false);
-      expect(s.tick().x).toBeGreaterThan(0);
-      expect(s.farm.targetType()).toBe('stat:health');
-    } finally { vi.unstubAllGlobals(); }
   });
 
   it('keeps same-species generated camps apart by the stat they pay', () => {
