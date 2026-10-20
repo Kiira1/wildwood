@@ -3,6 +3,7 @@ import { isDeveloperIdentity } from "../../../app/developer";
 import { playerGenderIconPath } from "../../../ui/player-gender";
 import type { CoopAccess } from "../coop-access";
 import { WORLD_HEALTH_BAR_HEIGHT, WORLD_HEALTH_BAR_RADIUS } from "../game-settings";
+import { platePixels, plateSize } from "./nameplate-scale";
 import type { createCamera } from "./camera";
 import type { createCanvasRuntime } from "./canvas-runtime";
 import { createPlayerIdentityRenderer } from "./player-identity-renderer";
@@ -49,7 +50,8 @@ export function createPlayerIdentityRendering(deps: {
     outlinedText: canvasRuntime.outlinedWorldText,
     fillText: canvasRuntime.fillWorldText,
     roundRect: canvasRuntime.roundRect,
-    healthBarHeight: WORLD_HEALTH_BAR_HEIGHT,
-    healthBarRadius: WORLD_HEALTH_BAR_RADIUS,
+    // Overhead bars are drawn at plate scale (nameplate-scale.ts).
+    healthBarHeight: platePixels(WORLD_HEALTH_BAR_HEIGHT),
+    healthBarRadius: plateSize(WORLD_HEALTH_BAR_RADIUS),
   });
 }
