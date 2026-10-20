@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.916.6": [
+    "The Dragon hits five times harder, so Reflect Only can beat it",
+  ],
   "0.916.5": [
     "The quest tracker, stat tracker and FPS readout line up at the same height",
     "Bosses no longer get cut off in their animations",
@@ -3683,6 +3686,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.916.6": "2026-10-19",
   "0.916.5": "2026-10-19",
   "0.916.4": "2026-10-19",
   "0.916.3": "2026-10-19",

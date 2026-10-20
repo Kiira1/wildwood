@@ -15,12 +15,12 @@ describe('boss readiness', () => {
   });
 
   it('says which would win it: a sturdy build that hits softly needs damage, a hard hitter that dies needs health', () => {
-    expect(bossReadiness('tutorial_forest', dragon, { ...fresh, damage: 30, maxHp: 7_500 })?.needs).toBe('damage');
-    expect(bossReadiness('tutorial_forest', dragon, { ...fresh, damage: 4_000, maxHp: 60 })?.needs).toBe('health');
+    expect(bossReadiness('tutorial_forest', dragon, { ...fresh, damage: 30, maxHp: 37_500 })?.needs).toBe('damage');
+    expect(bossReadiness('tutorial_forest', dragon, { ...fresh, damage: 4_000, maxHp: 300 })?.needs).toBe('health');
   });
 
   it('asks Fight At times as much: a build that just wins loses to a boss ten times as strong', () => {
-    const strong = { ...fresh, damage: 250, maxHp: 5_000 };
+    const strong = { ...fresh, damage: 250, maxHp: 25_000 };
     expect(bossReadiness('tutorial_forest', dragon, strong)?.ready).toBe(true);
     expect(bossReadiness('tutorial_forest', dragon, strong, 10)?.ready).toBe(false);
   });

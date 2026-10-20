@@ -22,7 +22,8 @@ export const CURVE_ROLES: Readonly<Record<string, CurveStats>> = Object.freeze({
 });
 export const CURVE_BOSS_HEALTH = 73.713;
 export const CURVE_BOSS_ATTACKS: Readonly<Record<string, Readonly<Record<string, number>>>> = Object.freeze({
-  tutorial_forest: { rain: 1.00976, cone: 5.04878, contact: 2.01951 },
+  // The Dragon hits 5x its old shares (0.916.6): Reflect Only had too little to throw back at it.
+  tutorial_forest: { rain: 5.0488, cone: 25.2439, contact: 10.09755 },
   beginner_desert: { web: 3.31965, venom: 4.64751, contact: 2.65572 },
   intermediate_snowlands: { roar: 2.8414, icefall: 3.97796, rift: 5.6828, contact: 2.55726 },
   advanced_lava_wastes: { bite: 6.78309, eruption: 4.52206, contact: 2.71324 },
