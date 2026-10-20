@@ -9,6 +9,10 @@ Realtime ownership and sequencing are diagrammed in `docs/realtime-data-flow.md`
 | Module | Responsibility |
 | --- | --- |
 | `src/main.ts` | Composition root only. It wires controllers; new behavior belongs in a typed runtime or UI module. Its size is held by the ratchets in `src/main-boundary.test.ts` (see below). |
+| `src/game/runtime/coop-access.ts` | Null-safe reads of the coop client with the defaults the game shows before it connects; the wiring modules below take it as `coop`. |
+| `src/game/runtime/`: `player-combat-wiring.ts`, `player-controller-wiring.ts`, `game-session-wiring.ts`, `coop-session-wiring.ts`, `auto-farm/auto-farm-wiring.ts`, `duel/duel-wiring.ts`, `town-runtimes.ts`, `world-places.ts`, `displayed-power.ts` | The bands `main.ts` composes, one factory each taking one typed deps object: player combat, the local player, the game session's update order, the coop client's notifications, Auto Farm, duels, the Town's stations, the quest board, travel, Soul Dimension and guild halls, and displayed power. Objects created after a factory runs are passed as `later` getters, read only once play needs them. |
+| `src/game/runtime/render/world-render-wiring.ts`, `map-asset-loading.ts`, `player-identity-wiring.ts` | The world and frame renderers' wiring, the minimap's canvas box, map art and balance loading with neighbouring-map preloads, and players' name plates. |
+| `src/ui/`: `startup-runtime.ts`, `profile-runtime.ts`, `game-panels.ts`, `hud-runtime.ts`, `inventory-runtime.ts`, `onboarding-runtime.ts`, `game-actions-wiring.ts`, `reconnect-overlay.ts` | UI bands wired from `main.ts`: the start screen and startup coordinator, profiles, the competing windows (research, guild, leaderboard, developer panel, map guide), the HUD, gifts and mail, the bag, the tutorial, toolbar actions and Escape, and the reconnect overlay. |
 | `src/game/constants.ts` | Shared gameplay and world constants. |
 | `src/game/enemies.ts` | Enemy definitions, camp definitions, reward labels, and enemy sprite loading. |
 | `src/game/world.ts` | World decoration, road layout, and enemy spawn-site generation. |
@@ -28,15 +32,17 @@ Keep static definitions and pure calculations outside `main.ts`. `main.ts` is a 
 
 ### Size guards on the composition roots
 
-`main.ts` is about 1,940 lines today; the 1,000-line figure is the target, not a rule it meets. The tests hold three things, and every number may only go down:
+`main.ts` is about 940 lines today and, like `wildstat-coop.ts`, must stay below 1,000. The tests hold these, and every recorded number may only go down:
 
-- **Line ratchet:** the line count never exceeds its last recorded value.
+- **Line ratchet:** the line count stays below 1,000 and never exceeds its last recorded value.
 - **No long lines:** the count of lines over 160 characters, and over 300, never grows. New code stays under 160 characters per line.
 - **Byte budget:** the file size never grows, so code cannot be packed to dodge the line count.
 
 When wiring does not fit, extract a named module (a factory that takes its dependencies as one typed object) and wire it in one call. Do not lengthen lines, chain statements onto one line, or delete useful comments to make room. Lower the recorded numbers in the same change whenever an extraction frees space.
 
 `src/ui/game-elements-markup.test.ts` loads `public/index.html`, runs `installGameShell`, and checks every `requiredElement` and `requiredSelector` the game uses. Removing markup without removing its lookup fails there instead of on players' startup.
+
+`src/main-boot.test.ts` imports `main.ts` on that same page in linkedom, once with no coop client and once with one that never connects, and runs a few frames. A missing element, or a dependency used during construction before it is created, fails there. It does not see layout, art, or anything after a server connects.
 
 ## Required change rules
 
