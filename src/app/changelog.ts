@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.916.10": [
+    "Fixed boots and other gear unequipping on their own",
+  ],
   "0.916.9": [
     "Fixed a weapon that looked equipped but was not, so kills trained the wrong Mastery",
     "Equipping something the server refuses now says so",

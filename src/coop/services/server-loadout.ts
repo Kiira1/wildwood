@@ -21,15 +21,21 @@ const HAND_FIELDS: readonly EquippedField[] = ["equippedRightHand", "equippedLef
  * before: a slot the player changed here since is on its way, and their save
  * wins. Gear going on must be an item, not a look, in the slot it fits; an
  * empty slot is a real state, since the server keeps emptied hands empty.
+ *
+ * A slot now holding what the save on its way (`sent`) asked for is that
+ * save landing, not the server's own change, even when the slot has since
+ * been changed back.
  */
 export function serverLoadoutChanges(
   previous: PlayerProgress | null,
   next: PlayerProgress,
   pending: ProgressSave | null,
+  sent: ProgressSave | null = null,
 ): ServerLoadoutChange[] {
   if (!previous) return [];
   return EQUIPPED_FIELDS
     .filter(field => previous[field] !== next[field] && (!pending || pending[field] === previous[field]))
+    .filter(field => !sent || next[field] !== (canonicalItemId(sent[field]) ?? sent[field] ?? ""))
     .filter(field => !next[field] || puttingOn(field, next[field]))
     .map(field => ({ field, itemId: next[field], previous: previous[field] }));
 }

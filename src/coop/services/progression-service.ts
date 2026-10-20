@@ -223,6 +223,8 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
   // and no sooner; see flushEnemyLoot.
   let lastKillReportAt = monotonicNowMs();
   let savePromise: Promise<boolean> | null = null;
+  /** The save savePromise is sending, so its own row is not taken for the server's change. */
+  let sentSave: ProgressSave | null = null;
   let resetPending = false;
   let restoredSave = false;
   let itemDropListener: ((drop: { itemId: string; alreadyOwned: boolean }) => void) | null = null;
@@ -312,6 +314,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
     const snapshot = copyProgress(pendingProgress);
     saveInFlightUntil = monotonicNowMs() + 30_000;
     nextPeriodicSaveAt = monotonicNowMs() + PROGRESS_SAVE_INTERVAL_MS;
+    sentSave = snapshot;
     savePromise = dependencies.reducers.runWorldReducer(() => connection.reducers.savePlayerProgress(snapshot))
       .then(() => {
         const answered = identity === dependencies.localIdentity() ? takeRefusedLoadout(snapshot) : snapshot;
@@ -332,6 +335,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
       })
       .finally(() => {
         savePromise = null;
+        if (sentSave === snapshot) sentSave = null;
         if (
           force &&
           identity === dependencies.localIdentity() &&
@@ -483,9 +487,13 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
     }
     // Gear the server put on by itself (auto equip, prestige) is taken into the
     // queued save and the bag here, before anything saves the old loadout back.
-    const serverEquips = serverLoadoutChanges(localProgress, progress, pendingProgress);
+    const serverEquips = serverLoadoutChanges(localProgress, progress, pendingProgress, sentSave);
     localProgress = progress;
-    if (pendingProgress && serverEquips.length) pendingProgress = withServerLoadout(pendingProgress, serverEquips);
+    if (pendingProgress && serverEquips.length) {
+      pendingProgress = withServerLoadout(pendingProgress, serverEquips);
+      // Stored as well: a reconnect restores the stored save, which put the old gear back on.
+      deferStoreWrite(identity, pendingProgress);
+    }
     if (serverEquips.length) serverEquipListener?.({ changes: serverEquips, progress, live: dependencies.hydrationReady() });
     void cutscenes.flush();
     if (restoredSave && pendingProgress) {

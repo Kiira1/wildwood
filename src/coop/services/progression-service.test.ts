@@ -707,4 +707,46 @@ describe("the server's loadout is the one shown", () => {
     expect(h.service.api.savedProgress()?.equippedRightHand).toBe("eternal_sword");
     h.service.dispose();
   });
+
+  const ranger = (feet: string) => ({ ...progress(), inventoryJson: '["starter_stone","ancient_bow","ancient_ranger_boots"]',
+    equippedRightHand: "ancient_bow", equippedFeet: feet });
+
+  it("keeps boots put on from another device through a reconnect while a save is queued", () => {
+    const h = setup();
+    h.service.tables.upsertProgress(row(ranger("")));
+    // Unreported kills keep a save queued, ahead of the row.
+    h.service.api.saveProgress(saveFrom(ranger(""), { damage: 9 }));
+    h.service.tables.upsertProgress(row(ranger("ancient_ranger_boots")));
+    expect(h.service.api.savedProgress()?.equippedFeet).toBe("ancient_ranger_boots");
+    // The reconnect restores the stored save; it used to be the one from before the boots went on.
+    h.service.beginSession(false);
+    h.service.tables.upsertProgress(row(ranger("ancient_ranger_boots")));
+    expect(h.service.api.savedProgress()?.equippedFeet).toBe("ancient_ranger_boots");
+    h.service.dispose();
+  });
+
+  it("keeps boots put back on while the save that took them off is on its way", async () => {
+    const h = setup(); const equips: ServerEquip[] = [];
+    h.service.api.setOnServerEquip(equip => equips.push(equip));
+    h.service.tables.upsertProgress(row(ranger("ancient_ranger_boots")));
+    let land!: () => void;
+    // The server takes each save as sent; the first is slow to come back.
+    h.savePlayerProgress.mockImplementation(async (...args: unknown[]) => {
+      h.service.tables.upsertProgress(row(ranger((args[0] as ProgressSave).equippedFeet)));
+    });
+    h.savePlayerProgress.mockImplementationOnce(async () => {
+      await new Promise<void>(resolve => { land = resolve; });
+      h.service.tables.upsertProgress(row(ranger("")));
+    });
+    h.service.api.saveProgress(saveFrom(ranger(""), { damage: 9 }), true);
+    await vi.waitFor(() => expect(land).toBeDefined());
+    // Boots back on before the first save lands: its row is that save, not the server taking them off.
+    h.service.api.saveProgress(saveFrom(ranger("ancient_ranger_boots"), { damage: 9 }), true);
+    land();
+    expect(await h.service.drainPendingProgress()).toBe(true);
+    expect(equips).toEqual([]);
+    expect(h.savePlayerProgress).toHaveBeenLastCalledWith(expect.objectContaining({ equippedFeet: "ancient_ranger_boots" }));
+    expect(h.service.api.savedProgress()?.equippedFeet).toBe("ancient_ranger_boots");
+    h.service.dispose();
+  });
 });
