@@ -3,9 +3,10 @@ import {
   WOOD_STANDS, WOOD_TREE_KINDS, WOOD_TREE_NODES, WOOD_TREE_SPOTS, WOODCUTTING_REACH, WOODCUTTING_RESPAWN_SECONDS, canChopStand,
   type WoodStand, type WoodTree, type WoodTreeKind,
 } from '../../../../shared/woodcutting';
+import { gatherRespawnMs } from '../../../../shared/gather-respawn';
 import { townFeetClear, type TownPoint } from '../town/town-path';
 import { woodcuttingScene } from '../town/woodcutting-scene';
-import { createAutoGather, gatherClock, type AutoGatherOptions } from './auto-gather';
+import { createAutoGather, gatherClock, regrowsAt, type AutoGatherOptions } from './auto-gather';
 
 /** The trees picked to chop, per device, as Auto Mine's ores are. */
 export const AUTO_CHOP_TREES_KEY = 'wildstat:autochop-trees:v1';
@@ -18,6 +19,8 @@ export type AutoChopSource = {
   woodcutting?: () => number;
   choppedTreeAt?: (treeId: number) => number | null;
   serverNowMs?: () => number;
+  /** The player's research: Resource Respawn shortens how long rocks and trees take to grow back (shared/gather-respawn.ts). */
+  research?: () => { resourceRespawn?: number };
 };
 
 /** Whether the player is in Timberwood, as far out as the woodcutting runtime works: where Auto Chop's button shows. */
@@ -88,12 +91,9 @@ export function createAutoChop(options: AutoGatherOptions & {
   const serverNow = () => options.source()?.serverNowMs?.() ?? Date.now();
   /** The shared gate, as the woodcutting runtime and the server check it: the stand's Woodcutting. */
   const open = (stand: WoodStand) => canChopStand(stand, options.source()?.woodcutting?.() ?? 0);
-  const respawn = WOODCUTTING_RESPAWN_SECONDS * 1_000;
   function felledUntil(tree: WoodTree, at = serverNow()) {
-    const choppedAt = options.source()?.choppedTreeAt?.(tree.id) ?? null;
-    if (choppedAt !== null && at - choppedAt < respawn) return choppedAt + respawn;
-    // Felled here a moment ago, before the server lists it.
-    return woodcuttingScene.felled.has(tree.id) ? at + respawn : null;
+    const respawn = gatherRespawnMs(WOODCUTTING_RESPAWN_SECONDS, options.source()?.research?.().resourceRespawn ?? 0);
+    return regrowsAt(options.source()?.choppedTreeAt?.(tree.id) ?? null, respawn, at, woodcuttingScene.felled.has(tree.id));
   }
   const pickedOpen = () => WOOD_STANDS.filter(stand => picked.has(stand.kind) && open(stand));
   const choppable = () => pickedOpen().filter(stand => !full.has(stand.kind));

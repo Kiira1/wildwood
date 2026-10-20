@@ -3,6 +3,7 @@ import {
   type WoodTree,
 } from "../../../../shared/woodcutting";
 import { REFINE_ORES, type OreId } from "../../../../shared/refine";
+import { gatherRespawnMs } from "../../../../shared/gather-respawn";
 import { inTownGrove, TOWN_FEET_OFFSET } from "../../../../shared/town";
 import { bagFullForOres, roomForOres, type BagSpace } from "../../../../shared/ore-bag";
 import type { ToolId } from "../../../../shared/tools";
@@ -28,6 +29,8 @@ export type WoodcuttingSource = {
   /** Told what a report gave beyond what its falls showed (the hatchet's bonus logs). */
   setOnWoodcuttingExtra?: (callback: ((ores: Partial<Record<OreId, number>>) => void) | null) => void;
   serverNowMs?: () => number;
+  /** The player's research: Resource Respawn shortens how long rocks and trees take to grow back (shared/gather-respawn.ts). */
+  research?: () => { resourceRespawn?: number };
 };
 
 /** How long a felled tree's full bar stays up, so the hit that fells it is seen to fill it. */
@@ -72,14 +75,16 @@ export function createWoodcuttingRuntime(deps: {
       && session.generation === (source.sessionGeneration?.() ?? 0));
   }
 
-  function isFelled(tree: WoodTree, at: number) {
-    const choppedAt = deps.source()?.choppedTreeAt?.(tree.id) ?? null;
-    return choppedAt !== null && at - choppedAt < WOODCUTTING_RESPAWN_SECONDS * 1_000;
+  /** Whether a tree is a stump: felled less than its regrowth ago, shortened by the player's Resource Respawn rank. */
+  function isFelled(tree: WoodTree, at: number, source: WoodcuttingSource | null | undefined, respawnMs: number) {
+    const choppedAt = source?.choppedTreeAt?.(tree.id) ?? null;
+    return choppedAt !== null && at - choppedAt < respawnMs;
   }
 
   function refreshStumps(at: number) {
     woodcuttingScene.felled.clear();
-    for (const tree of WOOD_TREE_NODES) if (isFelled(tree, at)) woodcuttingScene.felled.add(tree.id);
+    const source = deps.source(), respawnMs = gatherRespawnMs(WOODCUTTING_RESPAWN_SECONDS, source?.research?.().resourceRespawn ?? 0);
+    for (const tree of WOOD_TREE_NODES) if (isFelled(tree, at, source, respawnMs)) woodcuttingScene.felled.add(tree.id);
   }
 
   /** The nearest standing tree in reach of the player's feet. */

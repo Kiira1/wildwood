@@ -318,6 +318,7 @@ import MyOresRow from "./my_ores_table";
 import MyPlayerBlocksRow from "./my_player_blocks_table";
 import MyProceduralBossRow from "./my_procedural_boss_table";
 import MyRefineResultRow from "./my_refine_result_table";
+import MyResearchRanksRow from "./my_research_ranks_table";
 import MyRewardKillsRow from "./my_reward_kills_table";
 import MySocialHubRow from "./my_social_hub_table";
 import MySocialMessagesRow from "./my_social_messages_table";
@@ -1494,6 +1495,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, MyRefineResultRow),
+  myResearchRanks: __table({
+    name: 'my_research_ranks',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MyResearchRanksRow),
   myRewardKills: __table({
     name: 'my_reward_kills',
     indexes: [

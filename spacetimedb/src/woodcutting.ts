@@ -17,6 +17,8 @@ import { bagFullForOres, roomForOres } from "../../shared/ore-bag";
 import type { MiningDeps } from "./mining";
 import { toolBonusYield } from "../../shared/tools";
 import { toolLevelFor } from "./tools";
+import { researchRankFor } from "./research-rank";
+import { gatherRespawnMs } from "../../shared/gather-respawn";
 import {
   equippedFields, gatherClaims, gatherFreeSlots, gatherReach, judgeGatherBatch, logOddGatherRejections, millisOf, progressOnce,
 } from "./gather-batch";
@@ -68,7 +70,10 @@ export function writeWoodcuttingLevel(ctx: Ctx, identity: Identity) {
 export const choppedTreeKey = (identity: { toHexString(): string }, treeId: number) => `${identity.toHexString()}:${treeId}`;
 
 const microsSince = (ctx: Ctx, at: { microsSinceUnixEpoch: bigint }) => Number(ctx.timestamp.microsSinceUnixEpoch - at.microsSinceUnixEpoch);
-const grownBack = (ctx: Ctx, row: { choppedAt: { microsSinceUnixEpoch: bigint } }) => microsSince(ctx, row.choppedAt) >= WOODCUTTING_RESPAWN_SECONDS * 1_000_000;
+/** How long a tree takes to grow back for a player with this Resource Respawn rank (shared/gather-respawn.ts). */
+const treeRespawnMs = (rank: number) => gatherRespawnMs(WOODCUTTING_RESPAWN_SECONDS, rank);
+const respawnRankFor = (ctx: Ctx, identity: Identity) => researchRankFor(ctx, identity, "resourceRespawn");
+const grownBack = (ctx: Ctx, row: { choppedAt: { microsSinceUnixEpoch: bigint } }, rank: number) => microsSince(ctx, row.choppedAt) >= treeRespawnMs(rank) * 1_000;
 
 /** The player's Woodcutting stat; 0 before their first tree. */
 export function woodcuttingFor(ctx: Ctx, identity: Identity) {
@@ -78,13 +83,14 @@ export function woodcuttingFor(ctx: Ctx, identity: Identity) {
 /** Whether a tree is a stump for this player: felled by them less than its regrowth ago. */
 export function treeFelledFor(ctx: Ctx, identity: Identity, treeId: number) {
   const row = ctx.db.playerChoppedTree.key.find(choppedTreeKey(identity, treeId));
-  return Boolean(row && !grownBack(ctx, row));
+  return Boolean(row && !grownBack(ctx, row, respawnRankFor(ctx, identity)));
 }
 
 /** Clears the player's rows for trees that have grown back: only the stumps are kept. */
 function pruneChoppedTrees(ctx: Ctx, identity: Identity) {
+  const rank = respawnRankFor(ctx, identity);
   for (const row of [...ctx.db.playerChoppedTree.identity.filter(identity)]) {
-    if (grownBack(ctx, row)) ctx.db.playerChoppedTree.key.delete(row.key);
+    if (grownBack(ctx, row, rank)) ctx.db.playerChoppedTree.key.delete(row.key);
   }
 }
 
@@ -184,10 +190,10 @@ export function reportChoppingFor(ctx: Ctx, args: { chops: readonly { treeId: nu
   const rows = new Map<number, any>();
   for (const row of ctx.db.playerChoppedTree.identity.filter(ctx.sender) as Iterable<any>) rows.set(row.treeId, row);
   const hatchet = toolLevelFor(ctx, ctx.sender, "hatchet");
-  const ores = oreCountsFor(ctx, ctx.sender), progress = progressOnce(ctx, ctx.sender);
+  const ores = oreCountsFor(ctx, ctx.sender), progress = progressOnce(ctx, ctx.sender), rank = respawnRankFor(ctx, ctx.sender);
   const { accepted, rejected, skill: reached } = judgeGatherBatch(claims, {
     node: woodTree, canWork: canChopTree, gain: woodcuttingGain, slack: WOODCUTTING_RATE_SLACK, reach: WOODCUTTING_SERVER_REACH,
-    seconds: (tree, at) => woodcuttingChopSeconds(tree, at, hatchet), respawnMs: () => WOODCUTTING_RESPAWN_SECONDS * 1_000, kinds: tree => [tree.log],
+    seconds: (tree, at) => woodcuttingChopSeconds(tree, at, hatchet), respawnMs: () => treeRespawnMs(rank), kinds: tree => [tree.log],
   }, {
     nowMs: millisOf(ctx.timestamp), lastAtMs: woodcutting ? millisOf(woodcutting.lastChopAt) : null, skill,
     brokenAtMs: new Map([...rows.values()].map(row => [row.treeId, millisOf(row.choppedAt)])),
@@ -197,7 +203,7 @@ export function reportChoppingFor(ctx: Ctx, args: { chops: readonly { treeId: nu
   logOddGatherRejections("Woodcutting", ctx.sender, rejected);
   const last = new Map<number, number>();
   for (const { node, atMs } of accepted) last.set(node.id, atMs);
-  for (const row of rows.values()) if (!last.has(row.treeId) && grownBack(ctx, row)) ctx.db.playerChoppedTree.key.delete(row.key);
+  for (const row of rows.values()) if (!last.has(row.treeId) && grownBack(ctx, row, rank)) ctx.db.playerChoppedTree.key.delete(row.key);
   if (!accepted.length) return;
   const gained: Partial<Record<OreId, number>> = {};
   for (const { node } of accepted) {

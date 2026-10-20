@@ -246,6 +246,16 @@ describe("mining in the Copper Hills", () => {
     expect(miningScene.target).toBe(copper.id);
   });
 
+  it("lets a rock grow back sooner with Resource Respawn research, 25% at rank 5", () => {
+    for (const [rank, bare] of [[0, true], [5, false]] as const) {
+      resetMiningScene();
+      const brokenAt = NOW - MINING_NODE_KINDS.small.respawnSeconds * 800;
+      const m = miner(copper, { minedNodeAt: id => (id === copper.id ? brokenAt : null), research: () => ({ resourceRespawn: rank }) });
+      m.run(1);
+      expect(miningScene.bare.has(copper.id)).toBe(bare);
+    }
+  });
+
   it("does nothing away from the hills, or while the player is not free to act", () => {
     const away = miner(TOWN_ARRIVAL);
     away.run(10);

@@ -51,7 +51,8 @@ export function createTechTreeLayout(tree: ResearchTree = "power"): TechTreeLayo
       startRank: researchRankBandStart(researchId, rankBandIndex),
       endRank: Math.min(RESEARCH_DEFINITIONS[researchId].maxRank, researchRankBandEnd(researchId, rankBandIndex)),
     });
-    // One node, then two, all the way down; each single node opens from the pair above it.
+    // One node, then two, down to the luck rows; each single node opens from the pair above it. Resource Respawn
+    // sits beside Mining Luck, opening from the same pair, and leads nowhere further.
     const rows: TechTreeNode[][] = [
       [node("researchSpeed")],
       [node("slotUpgradeSpeed"), node("enemyRespawn")],
@@ -61,7 +62,7 @@ export function createTechTreeLayout(tree: ResearchTree = "power"): TechTreeLayo
       [node("enemyRespawn", 1), node("critCap")],
       [node("inventorySlots")],
       [node("cardLuck"), node("gearLuck")],
-      [node("miningLuck")],
+      [node("miningLuck"), node("resourceRespawn")],
       [node("cardLuck", 1), node("skillLuck")],
       [node("refineLuck")],
     ];

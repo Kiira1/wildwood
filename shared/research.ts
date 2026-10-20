@@ -26,10 +26,18 @@ export const UTILITY_RESEARCH_IDS = [
   "miningLuck",
   "skillLuck",
   "refineLuck",
+  "resourceRespawn",
 ] as const;
 /** The luck research, stored in player_luck_research rather than player_research. */
 export const LUCK_RESEARCH_IDS = ["cardLuck", "gearLuck", "miningLuck", "skillLuck", "refineLuck"] as const;
 export type LuckResearchId = typeof LUCK_RESEARCH_IDS[number];
+/**
+ * Research stored as one player_research_rank row per node (spacetimedb/src/research-rank.ts), not a column.
+ * A new node goes here: no table gains a column, so its release needs no client break.
+ */
+export const RANK_TABLE_RESEARCH_IDS = ["resourceRespawn"] as const;
+export type RankTableResearchId = typeof RANK_TABLE_RESEARCH_IDS[number];
+export type RankTableRanks = Record<RankTableResearchId, number>;
 export const RESEARCH_IDS = [...POWER_RESEARCH_IDS, ...UTILITY_RESEARCH_IDS] as const;
 export type ResearchId = typeof RESEARCH_IDS[number];
 export type ResearchRanks = Record<ResearchId, number>;
@@ -51,6 +59,8 @@ export type ResearchDefinition = {
   prerequisiteAny?: ResearchId[];
   /** Any one listed technology at its stored rank unlocks this node. */
   prerequisiteAnyOf?: Partial<Record<ResearchId, number>>;
+  /** The value comes off (a shorter time), shown with a minus. */
+  lowers?: boolean;
   /** Stored ranks that open every band past the first, for a node the tree shows again further down. */
   laterBandPrerequisites?: Partial<Record<ResearchId, number>>;
 };
@@ -130,7 +140,25 @@ export const RESEARCH_DEFINITIONS: Record<ResearchId, ResearchDefinition> = {
     effect: "WEAPON SKILL CHANCE", valuePerRank: 5, unit: "%", durationStartMs: 240_000, prerequisites: { miningLuck: 1 } },
   refineLuck: { id: "refineLuck", title: "REFINE LUCK", icon: "⚜", ranksPerBand: 5, maxRank: 5,
     effect: "REFINE CHANCE", valuePerRank: 2, unit: "%", durationStartMs: 300_000, prerequisiteAnyOf: { cardLuck: 6, skillLuck: 1 } },
+  // Beside Mining Luck: rocks and trees grow back sooner (shared/gather-respawn.ts).
+  resourceRespawn: { id: "resourceRespawn", title: "RESOURCE RESPAWN", icon: "↺", ranksPerBand: 5, maxRank: 5,
+    effect: "ROCK AND TREE RESPAWN", valuePerRank: 5, unit: "%", lowers: true, durationStartMs: 220_000,
+    prerequisiteAny: ["cardLuck", "gearLuck"] },
 };
+
+export function emptyRankTableRanks(): RankTableRanks {
+  return Object.fromEntries(RANK_TABLE_RESEARCH_IDS.map(id => [id, 0])) as RankTableRanks;
+}
+
+export const isRankTableResearchId = (id: string): id is RankTableResearchId =>
+  (RANK_TABLE_RESEARCH_IDS as readonly string[]).includes(id);
+
+/** A player's player_research_rank rows as ranks, every other node at zero. */
+export function rankTableRanksOf(rows: Iterable<{ researchId: string; rank: unknown }>): RankTableRanks {
+  const ranks = emptyRankTableRanks();
+  for (const row of rows) if (isRankTableResearchId(row.researchId)) ranks[row.researchId] = normalizedResearchRank(row.rank);
+  return ranks;
+}
 
 export function researchTreeFor(researchId: ResearchId): ResearchTree {
   return (UTILITY_RESEARCH_IDS as readonly string[]).includes(researchId) ? "utility" : "power";

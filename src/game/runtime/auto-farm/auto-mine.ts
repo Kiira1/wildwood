@@ -2,12 +2,13 @@ import { ARCANE_CRYSTAL } from '../../../../shared/crafting';
 import {
   MINING_NODES, MINING_NODE_KINDS, MINING_REACH, MINING_VEINS, canMineRock, miningNodeName, miningRockNeed, type MiningNode, type RockOreId,
 } from '../../../../shared/mining';
+import { gatherRespawnMs } from '../../../../shared/gather-respawn';
 import { rockOreKinds } from '../../../../shared/ore-bag';
 import { REFINE_ORES } from '../../../../shared/refine';
 import { inTownHills } from '../../../../shared/town';
 import { miningScene } from '../town/mining-scene';
 import { townFeetClear, type TownPoint } from '../town/town-path';
-import { createAutoGather, gatherClock, type AutoGatherOptions } from './auto-gather';
+import { createAutoGather, gatherClock, regrowsAt, type AutoGatherOptions } from './auto-gather';
 
 /** The ores picked to mine, per device, as Auto Farm's sliders are. v2 added Arcane Crystal; v1's picks carry over with it on. */
 export const AUTO_MINE_ORES_KEY = 'wildstat:automine-ores:v2';
@@ -21,6 +22,8 @@ export type AutoMineSource = {
   mining?: () => number;
   minedNodeAt?: (nodeId: number) => number | null;
   serverNowMs?: () => number;
+  /** The player's research: Resource Respawn shortens how long rocks and trees take to grow back (shared/gather-respawn.ts). */
+  research?: () => { resourceRespawn?: number };
 };
 
 /** Where feet stand to mine a rock, from its foot: in front of the stone, else to either side; each within reach. */
@@ -102,11 +105,8 @@ export function createAutoMine(options: AutoGatherOptions & {
   const minable = (node: MiningNode) => picked.has(node.ore) && allowed(node);
   const open = (node: MiningNode) => allowed(node) && !full.has(bagKey(node));
   function bareUntil(node: MiningNode, at = serverNow()) {
-    const respawn = MINING_NODE_KINDS[node.kind].respawnSeconds * 1_000;
-    const brokenAt = options.source()?.minedNodeAt?.(node.id) ?? null;
-    if (brokenAt !== null && at - brokenAt < respawn) return brokenAt + respawn;
-    // Broken here a moment ago, before the server lists it.
-    return miningScene.bare.has(node.id) ? at + respawn : null;
+    const respawn = gatherRespawnMs(MINING_NODE_KINDS[node.kind].respawnSeconds, options.source()?.research?.().resourceRespawn ?? 0);
+    return regrowsAt(options.source()?.minedNodeAt?.(node.id) ?? null, respawn, at, miningScene.bare.has(node.id));
   }
 
   const gather = createAutoGather<MiningNode>(options, {

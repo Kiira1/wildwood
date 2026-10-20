@@ -63,6 +63,15 @@ export const gatherClock = (ms: number) => {
 };
 
 /**
+ * When a rock or tree taken at `takenAt` grows back, or null while it stands. The session's time decides; the scene's
+ * mark lags up to half a second, so it counts only for one the session does not list yet.
+ */
+export function regrowsAt(takenAt: number | null, respawnMs: number, at: number, markedGone: boolean) {
+  if (takenAt !== null) return at - takenAt < respawnMs ? takenAt + respawnMs : null;
+  return markedGone ? at + respawnMs : null;
+}
+
+/**
  * Auto Mine and Auto Chop's walking: in its own area of the Town, it stands at the nearest node it can work while
  * the Town's runtime works it, then the next. The player's own keys always win; leaving the area stops it.
  */

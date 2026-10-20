@@ -570,6 +570,12 @@
       "attempt:u32",
       "triedAt:timestamp"
     ],
+    "my_research_ranks": [
+      "key:string",
+      "identity:identity",
+      "researchId:string",
+      "rank:u32"
+    ],
     "my_reward_kills": [
       "identity:identity",
       "damage:u64",

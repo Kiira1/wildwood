@@ -1082,6 +1082,9 @@ export type MyProceduralBoss = __Infer<typeof MyProceduralBoss>;
 export const MyRefineResult = __t.object("MyRefineResult", {});
 export type MyRefineResult = __Infer<typeof MyRefineResult>;
 
+export const MyResearchRanks = __t.object("MyResearchRanks", {});
+export type MyResearchRanks = __Infer<typeof MyResearchRanks>;
+
 export const MyRewardKills = __t.object("MyRewardKills", {});
 export type MyRewardKills = __Infer<typeof MyRewardKills>;
 
@@ -2128,6 +2131,14 @@ export const PlayerResearch = __t.object("PlayerResearch", {
   inventorySlots: __t.u32(),
 });
 export type PlayerResearch = __Infer<typeof PlayerResearch>;
+
+export const PlayerResearchRank = __t.object("PlayerResearchRank", {
+  key: __t.string(),
+  identity: __t.identity(),
+  researchId: __t.string(),
+  rank: __t.u32(),
+});
+export type PlayerResearchRank = __Infer<typeof PlayerResearchRank>;
 
 export const PlayerRewardKills = __t.object("PlayerRewardKills", {
   identity: __t.identity(),
