@@ -1,4 +1,5 @@
 import { drawAtlasImage, type AtlasImage, type CanvasAtlas } from "../render/canvas-atlas";
+import { platePixels, plateSize } from "../render/nameplate-scale";
 
 /** A label already drawn (an enemy's name): on a canvas of its own, or on a shared atlas page (canvas-atlas.ts). */
 export type StatusPlateLabel = AtlasImage & { width: number; height: number; anchorY: number };
@@ -10,8 +11,10 @@ export type StatusPlateLabel = AtlasImage & { width: number; height: number; anc
  */
 export type EnemyStatusPlate = AtlasImage & { left: number; top: number; width: number; height: number };
 
-/** An enemy's health bar: a long, thin pill with no numbers on it. */
-export const ENEMY_HEALTH_BAR_HEIGHT = 5;
+/** An enemy's health bar: a long, thin pill with no numbers on it, at plate scale. */
+export const ENEMY_HEALTH_BAR_HEIGHT = platePixels(5);
+/** Pixels between the top of the bar and the bottom of the name. */
+const NAME_GAP = plateSize(4);
 export const ENEMY_HEALTH_FILL = "#55d568";
 const PLATE_CACHE_LIMIT = 512;
 const OUTLINE = 1;
@@ -55,7 +58,7 @@ export function createEnemyStatusPlates(options: {
   options.atlas?.onReset(() => { plates.clear(); size = 0; });
 
   function build(name: StatusPlateLabel, barW: number, barH: number, full: boolean, scale: number): EnemyStatusPlate {
-    const nameTop = -4 - name.anchorY;
+    const nameTop = -NAME_GAP - name.anchorY;
     const barLeft = -barW / 2;
     const left = Math.floor(Math.min(-name.width / 2, barLeft - OUTLINE)) - 1;
     const right = Math.ceil(Math.max(name.width / 2, barLeft + barW + OUTLINE)) + 1;

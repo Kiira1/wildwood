@@ -26,6 +26,7 @@ import type { ActorStatus } from "./actor-renderer";
 import { healthBarTextY } from "./health-bar-layout";
 import { drawScreenSpaceAt } from "./render-space";
 import { OVERHEAD_IDENTITY_LIFT, OVERHEAD_PLATE_GAP, headArtTopOffsetY } from "./overhead-plate";
+import { NAMEPLATE_SCALE, plateFont, platePixels, plateSize } from "./nameplate-scale";
 import type { PlayerState } from "../types";
 
 type OutlinedText = (text: string, x: number, y: number, color: string, strokeWidth?: number) => void;
@@ -39,15 +40,35 @@ const SPEECH_BUBBLE_DURATION_MS = 8_000;
 const SPEECH_BUBBLE_FADE_MS = 1_250;
 const SPEECH_BUBBLE_STACK_GAP = 5;
 /** Label pixels from the top of the head or helmet to the lowest bubble; guests' plates carry an extra line. */
-const SPEECH_BUBBLE_LIFT = 76;
-const GUEST_SPEECH_BUBBLE_LIFT = 92;
+const SPEECH_BUBBLE_LIFT = plateSize(76);
+const GUEST_SPEECH_BUBBLE_LIFT = plateSize(92);
 /** A bareheaded player's head top, for callers that do not give one. */
 const BARE_HEAD_TOP = headArtTopOffsetY(undefined, undefined);
-/** The same size chat, the HUD and the profile give it. */
-const OVERHEAD_PRESTIGE_BADGE_SIZE = PRESTIGE_BADGE_PX;
+/** The size chat, the HUD and the profile give it, at plate scale. */
+const OVERHEAD_PRESTIGE_BADGE_SIZE = plateSize(PRESTIGE_BADGE_PX);
+const OVERHEAD_PRESTIGE_DIGIT_FONT = plateFont(Math.round(PRESTIGE_BADGE_PX * .64));
+/** The badge sits this far below the name's bottom edge. */
+const OVERHEAD_BADGE_DROP = plateSize(1);
 const OVERHEAD_GENDER_ICON_OFFSET_Y = 0;
 /** Tucked back towards the name, which reads tighter than a full gap. */
-const OVERHEAD_GENDER_ICON_OFFSET_X = -1;
+const OVERHEAD_GENDER_ICON_OFFSET_X = plateSize(-1);
+const OVERHEAD_GENDER_ICON_HEIGHT = plateSize(15);
+const OVERHEAD_GENDER_ICON_GAP = plateSize(3);
+const OVERHEAD_BADGE_GAP = plateSize(1);
+/** Names, power and the health bar's numbers share one size (10px before plate scale). */
+const PLATE_TEXT_FONT = plateFont(10);
+const INVISIBLE_FONT = plateFont(11);
+/** Bottom of the name and power block above the bar's frame, and one text line's height. */
+const PLATE_IDENTITY_GAP = plateSize(7);
+const PLATE_LINE_HEIGHT = plateSize(16);
+const PLATE_BAR_WIDTH = platePixels(80);
+/** A slim frame round the bar; a hairline does not shrink further. */
+const PLATE_FRAME_PAD = Math.max(1, platePixels(1.5));
+const HEALTH_TEXT_STROKE = plateSize(2);
+const NAME_STROKE = plateSize(4);
+const SUBLINE_STROKE = plateSize(3);
+const INVISIBLE_LIFT = plateSize(39);
+const GUEST_INVISIBLE_LIFT = plateSize(55);
 export const MAX_ACTIVE_SPEECH_BUBBLES_PER_PLAYER = 3;
 
 type DisplayedPlayerPowerEquipment = {
@@ -274,7 +295,7 @@ export function createPlayerIdentityRenderer(options: {
     // Anchored on the head or helmet in world space, so it clears tall helmets at every camera framing.
     drawScreenSpaceAt(ctx, options.camera.zoom, x, headTop, () => {
       const centerX = 0;
-      const barW = 80;
+      const barW = PLATE_BAR_WIDTH;
       const barH = options.healthBarHeight;
       const barX = centerX - Math.floor(barW / 2);
       // A pill: the frame, the empty channel and the fill all share the same
@@ -282,7 +303,7 @@ export function createPlayerIdentityRenderer(options: {
       // rectangle with a border painted round it.
       // A slimmer frame than the old square one: at two pixels the rounded
       // outline alone made the whole bar look twice the size.
-      const framePad = 1.5;
+      const framePad = PLATE_FRAME_PAD;
       const barY = -OVERHEAD_PLATE_GAP - framePad - barH;
       const fillWidth = Math.round(barW * clamp(hp / maxHp, 0, 1));
       const frameRadius = options.healthBarRadius + framePad;
@@ -305,20 +326,20 @@ export function createPlayerIdentityRenderer(options: {
         ctx.restore();
       }
       ctx.save();
-      ctx.font = '900 10px "Arial Rounded MT Bold", "Arial Rounded MT", Arial, sans-serif';
+      ctx.font = PLATE_TEXT_FONT;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      options.outlinedText(`${formatCompactNumber(Math.max(0, Math.ceil(hp)))} / ${formatCompactNumber(Math.ceil(maxHp))}`, centerX, healthBarTextY(barY, barH), "#ffffff", 2);
+      options.outlinedText(`${formatCompactNumber(Math.max(0, Math.ceil(hp)))} / ${formatCompactNumber(Math.ceil(maxHp))}`, centerX, healthBarTextY(barY, barH), "#ffffff", HEALTH_TEXT_STROKE);
       ctx.restore();
       if (options.isLocallyInvisible(identity)) {
         ctx.save();
-        ctx.font = '900 11px "Arial Rounded MT Bold", "Arial Rounded MT", Arial, sans-serif';
+        ctx.font = INVISIBLE_FONT;
         ctx.textAlign = "center";
         ctx.textBaseline = "bottom";
-        options.outlinedText("Invisible", centerX, barY - (options.isGuest(identity) ? 55 : 39), "#c9a6ff", 4);
+        options.outlinedText("Invisible", centerX, barY - (options.isGuest(identity) ? GUEST_INVISIBLE_LIFT : INVISIBLE_LIFT), "#c9a6ff", NAME_STROKE);
         ctx.restore();
       }
-      paintPlayerIdentity(identity, name, power, centerX, barY - 7, nameColor, gender);
+      paintPlayerIdentity(identity, name, power, centerX, barY - PLATE_IDENTITY_GAP, nameColor, gender);
     });
   }
 
@@ -329,8 +350,7 @@ export function createPlayerIdentityRenderer(options: {
     const displayName = guest ? name.replace(/\s*\(guest\)$/i, "") : name;
     const powerValue = power === null ? "" : formatCompactNumber(power);
     ctx.save();
-    // Names, power and the health bar's numbers are all 10px.
-    ctx.font = '900 10px "Arial Rounded MT Bold", "Arial Rounded MT", Arial, sans-serif';
+    ctx.font = PLATE_TEXT_FONT;
     ctx.textBaseline = "bottom";
     const nameWidth = ctx.measureText(displayName).width;
     const gender = explicitGender ?? options.playerGender(identity);
@@ -338,46 +358,46 @@ export function createPlayerIdentityRenderer(options: {
       ? residentGender[gender]()
       : null;
     const hasGenderIcon = Boolean(genderIcon);
-    const genderIconHeight = hasGenderIcon ? 15 : 0;
+    const genderIconHeight = hasGenderIcon ? OVERHEAD_GENDER_ICON_HEIGHT : 0;
     const genderIconWidth = genderIcon ? genderIconHeight * genderIcon.width / genderIcon.height : 0;
-    const genderIconGap = hasGenderIcon ? 3 : 0;
+    const genderIconGap = hasGenderIcon ? OVERHEAD_GENDER_ICON_GAP : 0;
     // After the name, before the gender icon, at the same size as the power
     // sword below it. Its width joins the label so the whole stays centred.
     const prestige = playerPrestigeLevel(identity);
     const badge = prestige > 0 ? residentBadge() : null;
     const showBadge = Boolean(badge);
     const badgeSize = showBadge ? OVERHEAD_PRESTIGE_BADGE_SIZE : 0;
-    const badgeGap = showBadge ? 1 : 0;
+    const badgeGap = showBadge ? OVERHEAD_BADGE_GAP : 0;
     const labelWidth = nameWidth + badgeGap + badgeSize + genderIconGap + genderIconWidth;
     const textLeft = centerX - labelWidth / 2;
     const badgeLeft = textLeft + nameWidth + badgeGap;
-    const nameBottom = powerValue ? bottom - 16 : bottom;
+    const nameBottom = powerValue ? bottom - PLATE_LINE_HEIGHT : bottom;
     const developerPrefix = DEVELOPER_BADGE;
     if (displayName.startsWith(developerPrefix)) {
       const playerName = displayName.slice(developerPrefix.length);
       const prefixWidth = ctx.measureText(developerPrefix).width;
       ctx.textAlign = "left";
-      options.outlinedText(developerPrefix, textLeft, nameBottom, "#ffd85b", 4);
-      options.outlinedText(playerName, textLeft + prefixWidth, nameBottom, color, 4);
+      options.outlinedText(developerPrefix, textLeft, nameBottom, "#ffd85b", NAME_STROKE);
+      options.outlinedText(playerName, textLeft + prefixWidth, nameBottom, color, NAME_STROKE);
     } else {
       ctx.textAlign = "left";
-      options.outlinedText(displayName, textLeft, nameBottom, color, 4);
+      options.outlinedText(displayName, textLeft, nameBottom, color, NAME_STROKE);
     }
     if (showBadge) {
       ctx.imageSmoothingEnabled = true;
-      const badgeTop = nameBottom - badgeSize + 1;
+      const badgeTop = nameBottom - badgeSize + OVERHEAD_BADGE_DROP;
       ctx.drawImage(badge!, badgeLeft, badgeTop, badgeSize, badgeSize);
       // White with the same outline every other overhead label carries. The
       // digit is drawn at .515 rather than the middle because "middle" centres
       // the font's em box, not the ink, and the shield's own centre is above
       // the middle of its square; measured, the two land together there.
-      ctx.font = `900 ${Math.round(badgeSize * .64)}px "Arial Rounded MT Bold", "Arial Rounded MT", Arial, sans-serif`;
+      ctx.font = OVERHEAD_PRESTIGE_DIGIT_FONT;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      options.outlinedText(String(prestige), badgeLeft + badgeSize / 2, badgeTop + badgeSize * .515, "#ffffff", 3);
+      options.outlinedText(String(prestige), badgeLeft + badgeSize / 2, badgeTop + badgeSize * .515, "#ffffff", SUBLINE_STROKE);
       ctx.textBaseline = "bottom";
       ctx.textAlign = "left";
-      ctx.font = '900 10px "Arial Rounded MT Bold", "Arial Rounded MT", Arial, sans-serif';
+      ctx.font = PLATE_TEXT_FONT;
     }
     if (hasGenderIcon && genderIcon) {
       ctx.imageSmoothingEnabled = true;
@@ -390,12 +410,12 @@ export function createPlayerIdentityRenderer(options: {
       );
     }
     if (guest) {
-      ctx.font = '900 10px "Arial Rounded MT Bold", "Arial Rounded MT", Arial, sans-serif';
+      ctx.font = PLATE_TEXT_FONT;
       ctx.textAlign = "center";
-      options.outlinedText("(guest)", centerX, nameBottom - 16, "#a9b1ad", 3);
+      options.outlinedText("(guest)", centerX, nameBottom - PLATE_LINE_HEIGHT, "#a9b1ad", SUBLINE_STROKE);
     }
     if (powerValue) {
-      drawPlayerPowerLabel(ctx, options.outlinedText, residentPower(), powerValue, centerX, bottom);
+      drawPlayerPowerLabel(ctx, options.outlinedText, residentPower(), powerValue, centerX, bottom, NAMEPLATE_SCALE);
     }
     ctx.restore();
   }

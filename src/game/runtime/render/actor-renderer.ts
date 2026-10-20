@@ -18,10 +18,14 @@ import { ownNamePlateEnabled } from "../../../ui/name-plate-setting";
 import { headArtTopOffsetY } from "./overhead-plate";
 import { formatCompactNumber } from "../../../../shared/compact-number";
 import { healthBarTextY } from "./health-bar-layout";
+import { NAMEPLATE_SCALE, plateFont, platePixels, plateSize } from "./nameplate-scale";
 
 /** The health numbers on a bar, when Settings asks for them. */
-const ENEMY_HP_FONT = '900 10px "Arial Rounded MT Bold", "Arial Rounded MT", Arial, sans-serif';
-const ENEMY_HP_BAR_HEIGHT = 11;
+const ENEMY_HP_FONT = plateFont(10);
+const ENEMY_HP_BAR_HEIGHT = platePixels(11);
+const ENEMY_HP_TEXT_STROKE = plateSize(2);
+/** Pixels between the top of an enemy's sprite and the bottom of its bar. */
+const ENEMY_BAR_GAP = plateSize(4);
 import type { BossTarget, DuelCombatant, DuelScene, EnemyShot, EnemyState, PlayerState, Projectile } from "../types";
 import { itemPresentation, projectileKindForWeapon } from "../../item-presentation";
 import { localItemRefine } from "../../local-item-refines";
@@ -283,7 +287,9 @@ export function createActorRenderer(options: {
     hpLabels.set(enemy, { hp: shownHp, maxHp: shownMax, label });
     return label;
   }
-  const enemyLabelFont = '900 11px "Arial Rounded MT Bold", "Arial Rounded MT", Arial, sans-serif';
+  // Rewards under an enemy at full size; names over its bar at plate scale (nameplate-scale.ts).
+  const rewardLabelFont = '900 11px "Arial Rounded MT Bold", "Arial Rounded MT", Arial, sans-serif';
+  const nameLabelFont = plateFont(11);
   const projectileCircleSprites = new Map<string, HTMLCanvasElement>();
   let arrowProjectileSprite: HTMLCanvasElement | null | undefined;
 
@@ -361,17 +367,20 @@ export function createActorRenderer(options: {
     return { source, left: x - width / 2, top: y - height / 2, width, height, rotation };
   }
 
-  function createLabelBitmap(segments: LabelSegment[], baseline: CanvasTextBaseline): LabelBitmap {
+  /** `plate`: a name over the bar, drawn at plate scale. */
+  function createLabelBitmap(segments: LabelSegment[], baseline: CanvasTextBaseline, plate = false): LabelBitmap {
     const scale = 3;
-    const paddingX = 5;
-    const paddingY = 3;
+    const size = plate ? NAMEPLATE_SCALE : 1;
+    const enemyLabelFont = plate ? nameLabelFont : rewardLabelFont;
+    const paddingX = 5 * size;
+    const paddingY = 3 * size;
     if (labelMeasure === undefined) labelMeasure = document.createElement("canvas").getContext("2d");
     const measure = labelMeasure;
     if (!measure) return { canvas: document.createElement("canvas"), width: 0, height: 0, anchorY: 0 };
     measure.font = enemyLabelFont;
     const textWidth = segments.reduce((width, segment) => width + measure.measureText(segment.text).width, 0);
     const width = Math.ceil(textWidth + paddingX * 2);
-    const height = 19;
+    const height = Math.ceil(19 * size);
     const y = baseline === "top" ? paddingY : height - paddingY;
     const paint = (labelCtx: CanvasRenderingContext2D) => {
       labelCtx.transform(scale, 0, 0, scale, 0, 0);
@@ -379,7 +388,7 @@ export function createActorRenderer(options: {
       labelCtx.textAlign = "left";
       labelCtx.textBaseline = baseline;
       labelCtx.lineJoin = "round";
-      labelCtx.lineWidth = 4;
+      labelCtx.lineWidth = 4 * size;
       let x = paddingX;
       for (const segment of segments) {
         labelCtx.strokeStyle = "#000";
@@ -434,7 +443,7 @@ export function createActorRenderer(options: {
   }
 
   function nameLabel(text: string) {
-    return cachedLabel(`name:${text}`, () => createLabelBitmap([{ text, color: "#f5e9c4" }], "bottom"));
+    return cachedLabel(`name:${text}`, () => createLabelBitmap([{ text, color: "#f5e9c4" }], "bottom", true));
   }
 
   function enemyLabels(type: string, reward: EnemyDefinition["reward"]) {
@@ -911,13 +920,13 @@ export function createActorRenderer(options: {
     const spriteBottom = spriteBounds.bottom;
     const rewardY = spriteBottom * camera.zoom + 13;
     // A long, thin pill with no numbers: one plate image at full health, one fill when wounded.
-    const barW = Math.max(60, Math.min(100, (sprite?.size ?? enemy.r * 2) * 1.35));
+    const barW = platePixels(Math.max(60, Math.min(100, (sprite?.size ?? enemy.r * 2) * 1.35)));
     // Taller with the numbers on it (Settings > Enemy HP Numbers), keeping its bottom edge where it was.
     const showNumbers = enemyHpNumbersEnabled();
     const barH = showNumbers ? ENEMY_HP_BAR_HEIGHT : ENEMY_HEALTH_BAR_HEIGHT;
     const barX = -barW / 2;
     const barCenterX = barX + barW / 2;
-    const barY = spriteTop * camera.zoom - 4 - barH;
+    const barY = spriteTop * camera.zoom - ENEMY_BAR_GAP - barH;
     const displayedHp = enemy.remoteCombatHp ?? enemy.hp;
     const hpRatio = clamp(displayedHp / enemy.maxHp, 0, 1);
 
@@ -962,7 +971,7 @@ export function createActorRenderer(options: {
         ctx.textAlign = "center";
         ctx.font = ENEMY_HP_FONT;
         ctx.textBaseline = "middle";
-        options.outlinedText(enemyHpLabel(enemy, displayedHp), barCenterX, healthBarTextY(barY, barH), "#ffffff", 2);
+        options.outlinedText(enemyHpLabel(enemy, displayedHp), barCenterX, healthBarTextY(barY, barH), "#ffffff", ENEMY_HP_TEXT_STROKE);
       }
 
       if (!enemy.remoteCombatGhost && !enemy.generatedBoss) {
