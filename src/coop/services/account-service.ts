@@ -97,7 +97,7 @@ const AUTH_MAX_AGE_SECONDS = String(365 * 86_400);
 
 /** Why a player was sent to SpacetimeAuth, reported when they come back. */
 type SignInReason = "known-account" | "register" | "guest-link" | "login-move" | "switch-account" | "update-resume"
-  | "renewal-no-grant" | "renewal-grant-rejected" | "token-rejected" | "defeat-reauth" | "grant-follow-up";
+  | "renewal-no-grant" | "renewal-grant-rejected" | "token-rejected" | "defeat-reauth";
 const TOKEN_EXCHANGE_TIMEOUT_MS = 15_000;
 /** A page still here this long after leaving for SpacetimeAuth's sign-out never left. */
 const SIGN_OUT_STALL_MS = 15_000;
@@ -118,6 +118,7 @@ export function loginMoveFailureNotice(message: string) {
 type TokenResponse = {
   id_token?: unknown;
   refresh_token?: unknown;
+  scope?: unknown;
   error?: unknown;
   error_description?: unknown;
 };
@@ -203,6 +204,10 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
   let callbackFailure = "";
   /** The last successful callback on this page came back without a refresh grant. */
   let callbackWithoutGrant = false;
+  /** ...or with a granted scope that left out offline_access. */
+  let callbackWithoutOffline = false;
+  /** A background tab whose sign-in ran out waits to be shown before leaving for SpacetimeAuth. */
+  let renewalDeferred = false;
   /** What the last returning trip expected, checked against the first profile row. */
   let expectedSignIn: (ExpectedSignIn & { subChanged: boolean }) | null = null;
   /** The character this page signed in as when it was not the one the player tapped. */
@@ -277,14 +282,14 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
       return null;
     }
     const seconds = Math.max(0, Math.round((Date.now() - trip.at) / 1000));
-    const grant = outcome === "success" && callbackWithoutGrant ? ":no-grant" : "";
+    const grant = outcome !== "success" ? "" : `${callbackWithoutGrant ? ":no-grant" : ""}${callbackWithoutOffline ? ":no-offline" : ""}`;
     recordCarriedConnectionDiagnostic("session-blocked", {
       detail: `sign-in-return:${outcome}:${trip.reason}:${trip.prompt ? "prompt" : "silent"}:${seconds}s${grant}${failure}`,
     });
     const expected = typeof trip.character === "string" || typeof trip.sub === "string"
       ? { character: typeof trip.character === "string" ? trip.character : "", sub: typeof trip.sub === "string" ? trip.sub : "" }
       : null;
-    return { reason: trip.reason, prompt: Boolean(trip.prompt), expected };
+    return { reason: trip.reason, expected };
   }
 
   function tokenSubject(token: string | null) {
@@ -575,6 +580,7 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
       if (signingOut) { callbackFailure = "signed-out"; return "failed"; }
       renewal.save(result.id_token, result.refresh_token);
       callbackWithoutGrant = typeof result.refresh_token !== "string" || !result.refresh_token;
+      callbackWithoutOffline = typeof result.scope === "string" && !result.scope.split(" ").includes("offline_access");
       defeatSignInBlocked = false;
       rememberAccount();
       // Successful state/PKCE/nonce/token verification approves this session.
@@ -706,10 +712,9 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
         max_age: AUTH_MAX_AGE_SECONDS,
       }).toString();
       // A new account or guest link lets the player choose email or Google;
-      // the kill-report re-auth needs a login newer than the revocation. Any
-      // prompt also makes SpacetimeAuth drop offline_access, so a forced login
-      // returns no refresh token. Everything else reuses the provider session,
-      // which for an email account is the difference from a magic link.
+      // the kill-report re-auth needs a login newer than the revocation.
+      // Everything else reuses the provider session, which for an email
+      // account is the difference from a magic link.
       if (forceLogin) { url.searchParams.set("prompt", "login"); url.searchParams.set("max_age", "0"); }
       dependencies.notify();
       // Leaving mid-renewal would lose the refresh token SpacetimeAuth just issued.
@@ -782,25 +787,6 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
         }
       }
     }
-    // A forced login (registration, guest link, sign-in after signing out, the
-    // kill-report re-auth) comes back without a refresh grant: SpacetimeAuth
-    // drops offline_access whenever a prompt is sent. That sign-in then dies
-    // with its ID token, and the next reconnect throws the player out to
-    // SpacetimeAuth mid-session, which is where Vis landed on a second login.
-    // One silent trip straight away, while SpacetimeAuth's session is seconds
-    // old, brings the grant back. Once only: a follow-up that also returns
-    // without one plays on as before. Not in the app, where each trip opens
-    // the system browser sheet.
-    if (callbackOutcome === "success" && callbackWithoutGrant && trip?.prompt && !isNativePreview()) {
-      notice = "FINISHING SIGN-IN";
-      dependencies.notify();
-      try {
-        await startAccountSignIn("grant-follow-up", false, trip.expected ?? null);
-        return;
-      } catch (error) {
-        console.warn("WildStat sign-in grant follow-up failed:", error);
-      }
-    }
     const token = renewal.stored();
     if (!token && hasKnownAccount() && !guestSessionExplicit) {
       if (dependencies.updateResumeMode === "account") {
@@ -836,9 +822,20 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
   async function connectionToken(token: string, force = false) {
     if (signingOut) throw new Error("Signed out");
     if (token === guestToken()) return token;
-    try { return await renewal.resolve(token, force); }
-    catch (error) {
+    try {
+      const resolved = await renewal.resolve(token, force);
+      renewalDeferred = false;
+      return resolved;
+    } catch (error) {
       if (error instanceof AccountRenewalRequired && sessionApproved && !outboundAuthNavigationPending) {
+        // A background tab waits to be shown: by then the tab the player is
+        // looking at may have signed in again for every tab (resolve reads it).
+        if (typeof document !== "undefined" && document.hidden) {
+          if (!renewalDeferred) recordCarriedConnectionDiagnostic("session-blocked", { detail: `renewal-deferred:${error.reason}:${error.detail}` });
+          renewalDeferred = true;
+          throw error;
+        }
+        renewalDeferred = false;
         recordCarriedConnectionDiagnostic("session-blocked", { detail: `renewal-refused:${error.reason}:${error.detail}` });
         notice = "RESTORING SIGN-IN";
         await startAccountSignIn(`renewal-${error.reason}`);
@@ -1295,6 +1292,8 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
       }
       if (signingOut) return false;
       if (outboundAuthNavigationPending || callbackPending) return false;
+      // No retries in the background; the reconnect on showing the tab resolves it.
+      if (renewalDeferred && typeof document !== "undefined" && document.hidden) return false;
       if (!renewal.stored() && !guestToken() && !guestSessionExplicit) return false;
       if (renewal.stored() && hasKnownAccount() && !sessionApproved) {
         notice = "SIGN-IN REQUIRED";

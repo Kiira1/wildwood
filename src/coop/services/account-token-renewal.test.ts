@@ -164,7 +164,63 @@ describe("account credential renewal", () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, status: 400, json: async () => ({ error: "invalid_grant", error_description: "grant request is invalid" }) })));
     const refused = await renewal.resolve(s.old).catch(error => error);
     expect(refused).toBeInstanceOf(AccountRenewalRequired);
-    expect(refused.detail).toMatch(/^grant-age=2\.0h;token-age=\d+\.\dh;auth-age=unknown;interrupted=yes;desc=grant request is invalid$/);
+    expect(refused.detail).toMatch(/^grant-age=2\.0h;chain-age=unknown;token-age=\d+\.\dh;auth-age=unknown;interrupted=yes;desc=grant request is invalid$/);
+  });
+  it("says how long ago the sign-in that started the refresh chain was, across rotations", async () => {
+    const s = setup(); const nowMs = Date.now();
+    s.storage.setItem("account:refresh", JSON.stringify({ subject: "player-a", token: "refresh-original", savedAt: nowMs - 3_600_000, chainAt: nowMs - 23 * 3_600_000 }));
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ id_token: fresh(), refresh_token: "refresh-rotated" }) })));
+    await s.renewal.resolve(s.old);
+    expect(JSON.parse(s.storage.getItem("account:refresh")!)).toMatchObject({ token: "refresh-rotated", chainAt: nowMs - 23 * 3_600_000 });
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, status: 400, json: async () => ({ error: "invalid_grant" }) })));
+    const refused = await s.renewal.resolve(s.storage.getItem("account")!, true).catch(error => error);
+    expect(refused.detail).toMatch(/;chain-age=23\.0h;/);
+    // A new sign-in starts a new chain.
+    s.renewal.save(fresh(), "refresh-new");
+    expect(JSON.parse(s.storage.getItem("account:refresh")!).chainAt).toBeGreaterThanOrEqual(nowMs);
+  });
+  it("keeps the login through a network failure or a non-JSON error page, and renews with it next time", async () => {
+    const s = setup(); const updated = fresh();
+    vi.stubGlobal("fetch", vi.fn(async () => { throw new TypeError("Failed to fetch"); }));
+    await expect(s.renewal.resolve(s.old)).rejects.toThrow("Failed to fetch");
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, status: 502, json: async () => { throw new SyntaxError("Unexpected token <"); } })));
+    await expect(s.renewal.resolve(s.old)).rejects.toThrow(SyntaxError);
+    expect(s.renewal.stored()).toBe(s.old);
+    expect(s.storage.getItem("account:refresh")).toContain("refresh-original");
+    const fetch = vi.fn(async (_url: string, _options: RequestInit) => ({ ok: true, json: async () => ({ id_token: updated, refresh_token: "refresh-rotated" }) }));
+    vi.stubGlobal("fetch", fetch);
+    expect(await s.renewal.resolve(s.old)).toBe(updated);
+    expect((fetch.mock.calls[0][1].body as URLSearchParams).get("refresh_token")).toBe("refresh-original");
+  });
+  it("clears only the refresh grant on invalid_grant, keeping the account for the next sign-in", async () => {
+    const s = setup();
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, status: 400, json: async () => ({ error: "invalid_grant" }) })));
+    await expect(s.renewal.resolve(s.old)).rejects.toMatchObject({ reason: "grant-rejected" });
+    expect(s.storage.getItem("account:refresh")).toBeNull();
+    expect(s.renewal.stored()).toBe(s.old);
+    // Nothing left to spend: the next attempt asks for a sign-in without calling the provider.
+    const fetch = vi.fn(); vi.stubGlobal("fetch", fetch);
+    await expect(s.renewal.resolve(s.old)).rejects.toMatchObject({ reason: "no-grant" });
+    expect(fetch).not.toHaveBeenCalled();
+  });
+  it("spends the refresh token once across tabs: the tab that waited on the lock uses the other tab's result", async () => {
+    // One Web Lock queue per name, shared by both "tabs" as the browser shares it per origin.
+    const queues = new Map<string, Promise<unknown>>();
+    vi.stubGlobal("navigator", { locks: { request: (name: string, run: () => Promise<unknown>) => {
+      const result = (queues.get(name) ?? Promise.resolve()).catch(() => {}).then(run);
+      queues.set(name, result);
+      return result;
+    } } });
+    const s = setup(); const tabB = createAccountTokenRenewal(s.storage, "account");
+    const updated = fresh(); let answer!: (v: unknown) => void;
+    const fetch = vi.fn(() => new Promise(resolve => { answer = resolve; }));
+    vi.stubGlobal("fetch", fetch);
+    const a = s.renewal.resolve(s.old), b = tabB.resolve(s.old);
+    await vi.waitFor(() => expect(answer).toBeTypeOf("function"));
+    answer({ ok: true, json: async () => ({ id_token: updated, refresh_token: "refresh-rotated" }) });
+    expect(await Promise.all([a, b])).toEqual([updated, updated]);
+    expect(fetch).toHaveBeenCalledOnce();
+    expect(JSON.parse(s.storage.getItem("account:refresh")!)).toMatchObject({ token: "refresh-rotated" });
   });
   it("never permits expired tokens through the normal ID token validator", () => {
     expect(() => inspectSpacetimeIdToken(expired())).toThrow();
