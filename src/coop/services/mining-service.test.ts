@@ -16,6 +16,15 @@ function fakeConnection() {
   const handlers: Array<(ctx?: unknown) => void> = [];
   const applied: Array<() => void> = [];
   const rows = { mining: [] as any[], broken: [] as any[] };
+  const oreHandlers = { insert: [] as Function[], update: [] as Function[] };
+  const ores = new Map<string, number>();
+  /** Adds ore as a transaction does: the rows change, with the event that changed them. */
+  const addOre = (ctx: unknown, oreId: string, count: number) => {
+    const old = ores.get(oreId), row = { oreId, count: (old ?? 0) + count };
+    ores.set(oreId, row.count);
+    if (old === undefined) oreHandlers.insert.forEach(handler => handler(ctx, row));
+    else oreHandlers.update.forEach(handler => handler(ctx, { oreId, count: old }, row));
+  };
   const view = (list: unknown[]) => ({
     iter: () => list[Symbol.iterator](),
     onInsert: (handler: (ctx?: unknown) => void) => handlers.push(handler),
@@ -25,8 +34,10 @@ function fakeConnection() {
   /** Row callbacks, with the reply's event when it is one to our own call. */
   const fire = (ctx?: unknown) => handlers.forEach(handler => handler(ctx));
   /** The server's side of a report: takes the breaks `take` keeps, writes their rows, then answers, as a transaction does. */
-  const serve = (take: (nodeId: number) => boolean = () => true) => async (report: Report) => {
+  const serve = (take: (nodeId: number) => boolean = () => true, gives: (nodeId: number) => Record<string, number> = () => ({})) => async (report: Report) => {
     const kept = report.breaks.filter(entry => take(entry.nodeId));
+    const ctx = { event: { tag: "Reducer", value: { reducer: { name: "report_mining", args: report } } } };
+    for (const entry of kept) for (const [oreId, count] of Object.entries(gives(entry.nodeId))) addOre(ctx, oreId, count);
     if (kept.length) {
       const row = rows.mining[0] ?? (rows.mining[0] = miningRow({ mining: 0, rocksBroken: 0 }));
       rows.mining[0] = { ...row, rocksBroken: row.rocksBroken + kept.length, mining: row.mining + kept.length };
@@ -40,11 +51,17 @@ function fakeConnection() {
   };
   const connection = {
     isActive: true,
-    db: { myMining: view(rows.mining), myMinedNodes: view(rows.broken) },
+    db: {
+      myMining: view(rows.mining), myMinedNodes: view(rows.broken),
+      myOres: {
+        onInsert: (handler: Function) => oreHandlers.insert.push(handler), onUpdate: (handler: Function) => oreHandlers.update.push(handler),
+        onDelete: () => {},
+      },
+    },
     reducers,
     subscriptionBuilder: () => ({ onApplied(callback: () => void) { applied.push(callback); return this; }, subscribe: vi.fn() }),
   };
-  return { connection: connection as never, rows, reducers, serve, settle: () => applied.forEach(callback => callback()), fire };
+  return { connection: connection as never, rows, reducers, serve, addOre, settle: () => applied.forEach(callback => callback()), fire };
 }
 const miningRow = (overrides: Record<string, unknown> = {}) => ({
   mining: 40, rocksBroken: 3, lastNodeId: 7, lastStarshard: false, pickaxeAt: at(1), lastBreakAt: at(2), ...overrides,
@@ -54,7 +71,9 @@ function connected(clock?: GatherClock) {
   service.watch(fake.connection, () => true);
   fake.settle();
   service.api.setOnMiningRejected(rejected);
-  return { fake, service, rejected, notify };
+  const extra = vi.fn();
+  service.api.setOnMiningExtra(extra);
+  return { fake, service, rejected, notify, extra };
 }
 
 it("serves Mining and each bare rock's break time, Mining 0 before the first rock", () => {
@@ -203,4 +222,37 @@ it("buys from the Smith and reports the server's refusal", async () => {
   await expect(service.api.buyGradeGear("rare_bow", 5_000)).resolves.toMatchObject({ ok: false, error: expect.stringContaining("gold") });
   const offline = createMiningRows(vi.fn());
   await expect(offline.api.buyGradeGear("rare_bow", 5_000)).resolves.toEqual({ ok: false, error: "NOT CONNECTED" });
+});
+
+it("tells what a report gave beyond what its breaks showed: the Starshards and ore the server rolled", async () => {
+  // With a clock, as the session runs: each report is sent with its times read again.
+  const { fake, service, extra } = connected({ serverNowMs: () => 0, monotonicNowMs: () => 0 });
+  // A Mysterious rock shows its ore and one Starshard at the break; the server rolled two more and an extra ore.
+  fake.reducers.reportMining.mockImplementation(fake.serve(() => true, (nodeId): Record<string, number> =>
+    nodeId === mysterious.id ? { copper_ore: 3, starshard: 3 } : { copper_ore: 1 }));
+  service.api.queueMiningBreak(mysterious.id, 9_000);
+  service.api.queueMiningBreak(copper.id, 21_000);
+  expect(service.pendingOres()).toEqual({ copper_ore: 3, starshard: 1 });
+  service.api.flushMining();
+  await vi.advanceTimersByTimeAsync(0);
+  expect(extra).toHaveBeenCalledExactlyOnceWith({ copper_ore: 1, starshard: 2 });
+  // A report that gave just what it showed says nothing more.
+  fake.reducers.reportMining.mockImplementation(fake.serve(() => true, () => ({ copper_ore: 1 })));
+  service.api.queueMiningBreak(copperTwo.id, 30_000);
+  service.api.flushMining();
+  await vi.advanceTimersByTimeAsync(0);
+  expect(extra).toHaveBeenCalledTimes(1);
+});
+
+it("counts only the ore a report's own reply carried, not other changes to the bag", async () => {
+  const { fake, service, extra } = connected();
+  fake.reducers.reportMining.mockImplementation(async (report: Report) => {
+    fake.addOre({ event: { tag: "Transaction" } }, "starshard", 5);
+    fake.addOre({ event: { tag: "Reducer", value: { reducer: { args: { breaks: [] } } } } }, "starshard", 4);
+    await fake.serve(() => true, () => ({ copper_ore: 2, starshard: 1 }))(report);
+  });
+  service.api.queueMiningBreak(mysterious.id, 9_000);
+  service.api.flushMining();
+  await vi.advanceTimersByTimeAsync(0);
+  expect(extra).not.toHaveBeenCalled();
 });

@@ -1,4 +1,5 @@
 import { GATHER_FLUSH_MS, GATHER_QUEUE_CAP, type GatherClaim } from "../../../shared/gather-batch";
+import { REFINE_ORES, type OreId } from "../../../shared/refine";
 import { reducerErrorMessage } from "./reducer-errors";
 import { withRequestDeadline } from "./request-deadline";
 
@@ -51,16 +52,18 @@ export function createGatherQueue(options: {
     if (!queued.length) return;
     const batch = queued;
     queued = [];
+    // Settled with the very claims sent, so a service can match its reply to what it sent.
+    const sent = batch.map(timedNow);
     let work: Promise<unknown> | null;
-    try { work = options.send(batch.map(timedNow)); } catch (error) { work = Promise.reject(error); }
-    if (!work) { options.settled(batch, "Not Connected"); options.changed(); return; }
+    try { work = options.send(sent); } catch (error) { work = Promise.reject(error); }
+    if (!work) { options.settled(sent, "Not Connected"); options.changed(); return; }
     sending.push(batch);
     const started = generation;
     // A report cut off by a dropped connection never settles; the deadline lets its rocks stand again.
     void withRequestDeadline(Promise.resolve(work)).then(() => null, (error: unknown) => reducerErrorMessage(error)).then(error => {
       if (started !== generation) return;
       sending = sending.filter(entry => entry !== batch);
-      options.settled(batch, error);
+      options.settled(sent, error);
       options.changed();
     });
     options.changed();
@@ -94,3 +97,49 @@ export function createGatherQueue(options: {
   };
 }
 export type GatherQueue = ReturnType<typeof createGatherQueue>;
+
+type Gains = Partial<Record<OreId, number>>;
+const isOreId = (value: string): value is OreId => Object.prototype.hasOwnProperty.call(REFINE_ORES, value);
+type OreRow = { oreId: string; count: number };
+type OreRowEvent = { event?: { tag: string; value?: unknown } };
+type OreRows = {
+  onInsert: (callback: (ctx: OreRowEvent, row: OreRow) => void) => void;
+  onUpdate: (callback: (ctx: OreRowEvent, old: OreRow, row: OreRow) => void) => void;
+  onDelete: (callback: (ctx: OreRowEvent, row: OreRow) => void) => void;
+};
+
+/**
+ * What each report really added to the bag: the ore rows its own reply changed, which arrive ahead of the answer.
+ * A report's arguments are tracked when it is sent and its gains taken when it settles.
+ */
+export function createReportGains() {
+  const gains = new WeakMap<object, Gains>();
+  const count = (ctx: OreRowEvent, row: OreRow, sign: number) => {
+    const args = ctx.event?.tag === "Reducer" ? (ctx.event.value as { reducer?: { args?: unknown } } | undefined)?.reducer?.args : null;
+    const into = args && typeof args === "object" ? gains.get(args) : undefined;
+    if (into && isOreId(row.oreId)) into[row.oreId] = (into[row.oreId] ?? 0) + sign * row.count;
+  };
+  return {
+    watch(rows: OreRows) {
+      rows.onInsert((ctx, row) => count(ctx, row, 1));
+      rows.onDelete((ctx, row) => count(ctx, row, -1));
+      rows.onUpdate((ctx, old, row) => { count(ctx, old, -1); count(ctx, row, 1); });
+    },
+    track<T extends object>(args: T): T { gains.set(args, {}); return args; },
+    take(args: object | undefined): Gains | null {
+      const gained = args ? gains.get(args) : undefined;
+      if (args) gains.delete(args);
+      return gained ?? null;
+    },
+  };
+}
+
+/** What a report gave beyond what was shown at each break: the server's own rolls (cards, luck, the tool's bonus). */
+export function gatherExtras(gained: Gains, shown: Gains): Gains {
+  const extra: Gains = {};
+  for (const [oreId, count] of Object.entries(gained)) {
+    const more = (count ?? 0) - (shown[oreId as OreId] ?? 0);
+    if (more > 0) extra[oreId as OreId] = more;
+  }
+  return extra;
+}

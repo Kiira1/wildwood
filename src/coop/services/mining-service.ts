@@ -3,7 +3,7 @@ import { miningGain, miningNode, miningYield, normalizeMining } from "../../../s
 import type { OreId } from "../../../shared/refine";
 import { reducerErrorMessage } from "./reducer-errors";
 import { withRequestDeadline } from "./request-deadline";
-import { createGatherQueue, type GatherClock } from "./gather-queue";
+import { createGatherQueue, createReportGains, gatherExtras, type GatherClock } from "./gather-queue";
 import { reducerEventMs } from "./reducer-event-time";
 
 export type MiningResult = { ok: boolean; error?: string };
@@ -15,6 +15,20 @@ const U32 = 4_294_967_296;
 /** "2 rocks stand again: those breaks were not counted.": breaks the server did not take. */
 export const miningRejectedText = (count: number) =>
   count === 1 ? "A rock stands again: that break was not counted." : `${count} rocks stand again: those breaks were not counted.`;
+
+/**
+ * What breaks show at once, before cards, luck and the pickaxe's bonus, which the server rolls: each rock's ore,
+ * and a Mysterious rock's Starshard.
+ */
+function shownOres(claims: readonly { id: number }[]) {
+  const ores: Ores = {};
+  for (const claim of claims) {
+    const node = miningNode(claim.id);
+    if (!node) continue;
+    for (const [oreId, count] of Object.entries(miningYield(node, 1))) ores[oreId as OreId] = (ores[oreId as OreId] ?? 0) + (count ?? 0);
+  }
+  return ores;
+}
 
 /**
  * This account's mining, from the caller-scoped my_mining and my_mined_nodes views: the Mining stat and when each of
@@ -31,16 +45,25 @@ export function createMiningRows(notify: () => void, clock?: GatherClock) {
   /** Breaks the server answered since connecting, and how many of them it was told did not count. */
   let counted = { base: 0, sent: 0, reported: 0 };
   let rejectedListener: ((text: string) => void) | null = null;
+  let extraListener: ((ores: Ores) => void) | null = null;
+  /** What each report really gave, against what was shown at its breaks. */
+  const gains = createReportGains(), reports = new WeakMap<readonly unknown[], object>();
 
   const queue = createGatherQueue({
     clock,
     send(claims) {
       const current = target;
       if (!current || !current.isCurrent() || !current.connection.isActive) return null;
-      return current.connection.reducers.reportMining({ breaks: claims.map(claim => ({ nodeId: claim.id, atMs: BigInt(Math.round(claim.atMs)) })) });
+      const args = gains.track({ breaks: claims.map(claim => ({ nodeId: claim.id, atMs: BigInt(Math.round(claim.atMs)) })) });
+      reports.set(claims, args);
+      return current.connection.reducers.reportMining(args);
     },
     settled(claims, error) {
+      const gained = gains.take(reports.get(claims));
       if (error) { rejectedListener?.(error); return; }
+      // The server's own rolls beyond what each break showed: bonus Starshards, Ore Find, the pickaxe's extra ore.
+      const extra = gained ? gatherExtras(gained, shownOres(claims)) : {};
+      if (Object.keys(extra).length) extraListener?.(extra);
       // Each break taken counts up rocksBroken, and its row arrives before the reply.
       counted.sent += claims.length;
       const rejected = counted.sent - (rocksBroken - counted.base + U32) % U32;
@@ -48,14 +71,12 @@ export function createMiningRows(notify: () => void, clock?: GatherClock) {
       counted.reported = Math.max(counted.reported, rejected);
     },
     changed() {
-      const next = { broken: new Map<number, number>(), gain: 0, ores: {} as Ores };
-      for (const claim of queue.pending()) {
+      const pending = queue.pending(), next = { broken: new Map<number, number>(), gain: 0, ores: shownOres(pending) };
+      for (const claim of pending) {
         const node = miningNode(claim.id);
         if (!node) continue;
         next.broken.set(node.id, Math.max(next.broken.get(node.id) ?? -Infinity, claim.atMs));
         next.gain += miningGain(node);
-        // Before cards and the pickaxe's bonus, which the server rolls: the rock's ore, and a Mysterious rock's Starshard.
-        for (const [oreId, count] of Object.entries(miningYield(node, 1))) next.ores[oreId as OreId] = (next.ores[oreId as OreId] ?? 0) + (count ?? 0);
       }
       local = next;
       notify();
@@ -84,6 +105,7 @@ export function createMiningRows(notify: () => void, clock?: GatherClock) {
       notify();
     };
     connection.db.myMining.onInsert(readMining); connection.db.myMining.onUpdate(readMining); connection.db.myMining.onDelete(readMining);
+    gains.watch(connection.db.myOres);
     connection.db.myMinedNodes.onInsert(readBroken); connection.db.myMinedNodes.onUpdate(readBroken); connection.db.myMinedNodes.onDelete(readBroken);
     connection.subscriptionBuilder()
       .onApplied(() => { readMining(); readBroken(); counted = { base: rocksBroken, sent: 0, reported: 0 }; })
@@ -119,6 +141,8 @@ export function createMiningRows(notify: () => void, clock?: GatherClock) {
       flushMining: () => queue.flush(),
       /** Told when breaks did not count, or a report failed. */
       setOnMiningRejected(callback: ((text: string) => void) | null) { rejectedListener = callback; },
+      /** Told what a report gave beyond what its breaks showed. */
+      setOnMiningExtra(callback: ((ores: Ores) => void) | null) { extraListener = callback; },
       /** A graded piece from the Smith for gold, at the price the player saw. */
       buyGradeGear: (itemId: string, expectedPrice: number) =>
         call(connection => connection.reducers.buyGradeGear({ itemId, expectedPrice: BigInt(expectedPrice) })),

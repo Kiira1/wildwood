@@ -1,4 +1,9 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.916.12": [
+    "The Starshard and ore messages show the full amount you got",
+    "Quests finish as soon as you get the last kill",
+    "Behind-the-scenes code cleanup",
+  ],
   "0.916.11": [
     "Mining and chopping no longer lose breaks to timing and reach checks",
   ],

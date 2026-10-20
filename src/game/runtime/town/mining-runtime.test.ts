@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { MINING_NODES, MINING_NODE_KINDS, miningBreakSeconds } from "../../../../shared/mining";
 import { TOWN_ARRIVAL, TOWN_FEET_OFFSET } from "../../../../shared/town";
-import { REJECTED_COLOR, createMiningRuntime, miningHitAt, miningHits, type MiningSource } from "./mining-runtime";
+import { REJECTED_COLOR, createMiningRuntime, miningHitAt, miningHits, moreGatheredText, type MiningSource } from "./mining-runtime";
 import { miningScene, resetMiningScene } from "./mining-scene";
 import type { PlayerState } from "../types";
 import type { BagSpace } from "../../../../shared/ore-bag";
@@ -17,11 +17,13 @@ function miner(at: { x: number; y: number } = copper, overrides: Partial<MiningS
   const player = { x: at.x, y: at.y - TOWN_FEET_OFFSET, hp: 100, moving: false } as PlayerState;
   const queued = new Map<number, number>();
   let onRejected: ((text: string) => void) | null = null;
+  let onExtra: ((ores: Record<string, number>) => void) | null = null;
   const source: MiningSource = {
     mining: () => 0, minedNodeAt: id => queued.get(id) ?? null, serverNowMs: () => NOW,
     queueMiningBreak: vi.fn((id: number, atMs: number) => { queued.set(id, atMs); }),
     flushMining: vi.fn(),
     setOnMiningRejected: callback => { onRejected = callback; },
+    setOnMiningExtra: callback => { onExtra = callback as typeof onExtra; },
     ...overrides,
   };
   const message = vi.fn(), logPickup = vi.fn(), burst = vi.fn();
@@ -30,7 +32,9 @@ function miner(at: { x: number; y: number } = copper, overrides: Partial<MiningS
   const run = (seconds: number, active = true) => { for (let t = 0; t < seconds - 1e-9; t += .1) runtime.update(.1, active); };
   /** The session's report came back without this break. */
   const refuse = (id: number, text: string) => { queued.delete(id); onRejected?.(text); };
-  return { player, source, runtime, run, message, logPickup, burst, refuse };
+  /** The session's report came back with more than the breaks showed. */
+  const extra = (ores: Record<string, number>) => onExtra?.(ores);
+  return { player, source, runtime, run, message, logPickup, burst, refuse, extra };
 }
 const queuedBreaks = (m: { source: MiningSource }) => (m.source.queueMiningBreak as ReturnType<typeof vi.fn>).mock.calls;
 
@@ -147,6 +151,18 @@ describe("mining in the Copper Hills", () => {
     m.run(miningBreakSeconds(mysterious, 0) + .2);
     expect(m.logPickup).toHaveBeenCalledWith("+2 Copper Ore", expect.any(String));
     expect(m.logPickup).toHaveBeenCalledWith("+1 Starshard", expect.any(String));
+  });
+
+  it("reports a Mysterious rock at once and shows the Starshards and ore the server rolled beyond it", () => {
+    const mysterious = rock("copper_ore", "mysterious");
+    const m = miner(mysterious);
+    m.run(miningBreakSeconds(mysterious, 0) + .2);
+    expect(m.source.flushMining).toHaveBeenCalledTimes(1);
+    m.logPickup.mockClear();
+    m.extra({ starshard: 2, copper_ore: 1 });
+    expect(m.logPickup.mock.calls.map(call => call[0])).toEqual(["+2 More Starshards", "+1 More Copper Ore"]);
+    expect([moreGatheredText("starshard", 1), moreGatheredText("iron_ore", 3), moreGatheredText("pine_log", 2)])
+      .toEqual(["+1 More Starshard", "+3 More Iron Ore", "+2 More Pine Logs"]);
   });
 
   it("with no bag slot for a kind of ore not held yet, says so before a single swing", () => {
