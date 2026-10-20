@@ -17,3 +17,16 @@ export function platePixels(px: number) {
 export function plateFont(px: number) {
   return `900 ${+plateSize(px).toFixed(2)}px ${PLATE_FONT_FAMILY}`;
 }
+
+/** Outlines under this would stop reading as an outline: a 2px stroke shows 1px outside the glyph. */
+export const PLATE_MIN_STROKE = 2;
+
+/**
+ * A plate text outline: the scaled stroke, its visible outline one pixel
+ * thinner (canvas strokes half outside the glyph, so 2 off the width), never
+ * thinner than PLATE_MIN_STROKE; one already under that keeps its width.
+ */
+export function plateStroke(px: number) {
+  const scaled = plateSize(px);
+  return scaled <= PLATE_MIN_STROKE ? scaled : Math.max(PLATE_MIN_STROKE, scaled - 2);
+}

@@ -18,12 +18,12 @@ import { ownNamePlateEnabled } from "../../../ui/name-plate-setting";
 import { headArtTopOffsetY } from "./overhead-plate";
 import { formatCompactNumber } from "../../../../shared/compact-number";
 import { healthBarTextY } from "./health-bar-layout";
-import { NAMEPLATE_SCALE, plateFont, platePixels, plateSize } from "./nameplate-scale";
+import { NAMEPLATE_SCALE, plateFont, platePixels, plateSize, plateStroke } from "./nameplate-scale";
 
 /** The health numbers on a bar, when Settings asks for them. */
 const ENEMY_HP_FONT = plateFont(10);
 const ENEMY_HP_BAR_HEIGHT = platePixels(11);
-const ENEMY_HP_TEXT_STROKE = plateSize(2);
+const ENEMY_HP_TEXT_STROKE = plateStroke(2);
 /** Pixels between the top of an enemy's sprite and the bottom of its bar. */
 const ENEMY_BAR_GAP = plateSize(4);
 import type { BossTarget, DuelCombatant, DuelScene, EnemyShot, EnemyState, PlayerState, Projectile } from "../types";
@@ -388,7 +388,7 @@ export function createActorRenderer(options: {
       labelCtx.textAlign = "left";
       labelCtx.textBaseline = baseline;
       labelCtx.lineJoin = "round";
-      labelCtx.lineWidth = 4 * size;
+      labelCtx.lineWidth = plate ? plateStroke(4) : 4;
       let x = paddingX;
       for (const segment of segments) {
         labelCtx.strokeStyle = "#000";
