@@ -1,7 +1,7 @@
 import { table, t, SenderError } from "spacetimedb/server";
 import type { Identity } from "spacetimedb";
 import type { ModuleReducerCtx } from "./index";
-import { ONBOARDING_DAMAGE_REWARD, ONBOARDING_REGEN_REWARD, ONBOARDING_STEP, onboardingPending } from "../../shared/onboarding";
+import { ONBOARDING_DAMAGE_REWARD, ONBOARDING_REGEN_REWARD, ONBOARDING_STEP, nextOnboardingStep, onboardingLessonAt, onboardingPending } from "../../shared/onboarding";
 import { readPlayerProgress } from "./wide-stats";
 
 export const playerOnboarding = table({ name: "player_onboarding", public: false }, {
@@ -20,8 +20,14 @@ export function advanceOnboarding(ctx: ModuleReducerCtx, step: number, writeProg
     return;
   }
   if (step <= state.step) return;
+  // A retired step resumes at the lesson after it; recording that lesson or finishing it both count.
+  const lesson = onboardingLessonAt(state.step);
+  // Remove in the next client-break release: a 0.916.14 tab still reports the retired portrait lesson (2) after Move.
+  const oldClientPortrait = step === 2 && state.step === ONBOARDING_STEP.move;
   // The final step can also be reached through Skip tutorial. It grants no unearned rewards.
-  if (step !== ONBOARDING_STEP.complete && step !== state.step + 1) throw new SenderError("Finish the current tutorial step first.");
+  if (step !== ONBOARDING_STEP.complete && step !== lesson && step !== nextOnboardingStep(lesson) && !oldClientPortrait) {
+    throw new SenderError("Finish the current tutorial step first.");
+  }
   const progress = readPlayerProgress(ctx, ctx.sender);
   if (!progress) throw new SenderError("Character unavailable.");
   writeProgress({ ...progress,

@@ -19,7 +19,8 @@ describe("new character tutorial", () => {
     const initial = progressOf(f, f.ctx.sender);
     expect(initial.damage).toBe(3);
     expect(() => f.run(server.completeOnboardingStep, { step: 4 })).toThrow("current tutorial step");
-    for (const step of [2, 3, 4, 4, 5, 5]) f.run(server.completeOnboardingStep, { step });
+    // Move leads straight to the first enemy; the portrait lesson (2) is retired.
+    for (const step of [3, 4, 4, 5, 5]) f.run(server.completeOnboardingStep, { step });
     expect(f.db.player.identity.find(f.ctx.sender).isVisible).toBe(false);
     const rewarded = progressOf(f, f.ctx.sender);
     expect(rewarded.damage).toBe(initial.damage + 1);
@@ -34,13 +35,39 @@ describe("new character tutorial", () => {
     f.db.playerProfile.identity.delete(f.ctx.sender);
     f.run(server.acceptTerms, { termsVersion: TERMS_VERSION, ageBand: AGE_BAND_ADULT });
     f.run(server.enterWorldWithTutorial, { forceTakeover: false, tabId: "skip-test" });
-    for (let next = 2; next <= step; next++) f.run(server.completeOnboardingStep, { step: next });
+    for (let next = 3; next <= step; next++) f.run(server.completeOnboardingStep, { step: next });
     const earned = progressOf(f, f.ctx.sender);
     f.run(server.completeOnboardingStep, { step: 6 });
     f.run(server.completeOnboardingStep, { step: 6 });
     expect(progressOf(f, f.ctx.sender)).toMatchObject({ damage: earned.damage, regen: earned.regen, introComplete: true });
     expect(f.db.player.identity.find(f.ctx.sender).isVisible).toBe(false);
     expect(f.db.playerOnboarding.identity.find(f.ctx.sender).step).toBe(6);
+  });
+  it("accepts the retired portrait step from an old tab after Move, then the first enemy", () => {
+    const f = crystalFixture();
+    f.seed("playerOnboarding", { identity: f.ctx.sender, step: 1 });
+    const before = progressOf(f, f.ctx.sender);
+    f.run(server.completeOnboardingStep, { step: 2 });
+    expect(f.db.playerOnboarding.identity.find(f.ctx.sender)?.step).toBe(2);
+    f.run(server.completeOnboardingStep, { step: 3 });
+    expect(f.db.playerOnboarding.identity.find(f.ctx.sender)?.step).toBe(3);
+    expect(progressOf(f, f.ctx.sender)).toMatchObject({ damage: before.damage, regen: before.regen });
+  });
+  it("lets a character saved on the retired step finish the first enemy, and refuses skipping past it", () => {
+    const f = crystalFixture();
+    f.seed("playerOnboarding", { identity: f.ctx.sender, step: 2 });
+    const before = progressOf(f, f.ctx.sender);
+    expect(() => f.run(server.completeOnboardingStep, { step: 5 })).toThrow("current tutorial step");
+    f.run(server.completeOnboardingStep, { step: 4 });
+    expect(f.db.playerOnboarding.identity.find(f.ctx.sender)?.step).toBe(4);
+    expect(progressOf(f, f.ctx.sender).damage).toBe(before.damage + 1);
+  });
+  it("refuses the retired step once past Move", () => {
+    const f = crystalFixture();
+    f.seed("playerOnboarding", { identity: f.ctx.sender, step: 3 });
+    f.run(server.completeOnboardingStep, { step: 2 });
+    expect(f.db.playerOnboarding.identity.find(f.ctx.sender)?.step).toBe(3);
+    expect(() => f.run(server.completeOnboardingStep, { step: 5 })).toThrow("current tutorial step");
   });
   it("starts a brand-new character in the Tutorial Forest, not the Town", () => {
     const f = crystalFixture();
