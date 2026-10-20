@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createStartupAuthGate, loadDeferredGameBundle, prefetchDeferredGameBundle, requestDeferredGameAssets, type StartupAuthElements } from "./startup-auth-gate";
+import { createStartupAuthGate, loadDeferredGameBundle, preloadDeferredGameBundle, requestDeferredGameAssets, type StartupAuthElements } from "./startup-auth-gate";
 
 class FakeElement {
   hidden = false;
@@ -8,7 +8,7 @@ class FakeElement {
   textContent = "";
   value = "50";
   style = { display: "", width: "" };
-  private classes = new Set<string>();
+  classes = new Set<string>();
   private listeners = new Map<string, Set<(event: Event) => void>>();
   classList = {
     add: (name: string) => this.classes.add(name),
@@ -45,6 +45,7 @@ function elements() {
     signInButton: new FakeElement(),
     guestButton: new FakeElement(),
     switchAccountButton: new FakeElement(),
+    consentSignInButton: new FakeElement(),
     loadingDetail: new FakeElement(),
     loadingFill: new FakeElement(),
     legal: {
@@ -60,6 +61,9 @@ function elements() {
     signInButton: FakeElement;
     guestButton: FakeElement;
     switchAccountButton: FakeElement;
+    consentSignInButton: FakeElement;
+    connectionPanel: FakeElement;
+    legal: { panel: FakeElement; continueButton: FakeElement; status: FakeElement };
   };
 }
 
@@ -370,24 +374,28 @@ describe("startup auth gate", () => {
 });
 
 describe("deferred game assets", () => {
-  function prefetchDocument(present: string[] = []) {
-    const appended: Record<string, string>[] = [];
+  function preloadDocument(present: string[] = []) {
+    const appended: Record<string, unknown>[] = [];
+    const listeners = new Map<string, () => void>();
     const doc = {
-      head: { append: (link: Record<string, string>) => { appended.push(link); present.push(link.id); } },
+      head: { append: (link: Record<string, unknown>) => { appended.push(link); present.push(link.id as string); } },
       getElementById: (id: string) => id === "wildstatCoopScript" ? { dataset: { gameSrc: "assets/wildstat/game.abc.js" } } : present.includes(id) ? {} : null,
-      createElement: () => ({}),
+      createElement: () => ({ addEventListener: (event: string, listener: () => void) => listeners.set(event, listener) }),
     } as unknown as Document;
-    return { doc, appended };
+    return { doc, appended, listeners };
   }
-  it("prefetches game.js once from the sign-in screen", () => {
-    const { doc, appended } = prefetchDocument();
-    expect(prefetchDeferredGameBundle(doc, false)).toBe(true);
-    expect(prefetchDeferredGameBundle(doc, false)).toBe(false);
-    expect(appended).toEqual([{ id: "wildstatGamePrefetch", rel: "prefetch", as: "script", href: "assets/wildstat/game.abc.js" }]);
+  it("fetches game.js once, on the first frame, and says when it has downloaded", async () => {
+    const { doc, appended, listeners } = preloadDocument();
+    const downloaded = preloadDeferredGameBundle(doc, false);
+    expect(downloaded).toBeInstanceOf(Promise);
+    expect(preloadDeferredGameBundle(doc, false)).toBeNull();
+    expect(appended).toEqual([expect.objectContaining({ id: "wildstatGamePreload", rel: "preload", as: "script", href: "assets/wildstat/game.abc.js" })]);
+    listeners.get("load")!();
+    await expect(downloaded).resolves.toBeUndefined();
   });
-  it("does not prefetch under Data Saver or once game.js is loading", () => {
-    expect(prefetchDeferredGameBundle(prefetchDocument().doc, true)).toBe(false);
-    expect(prefetchDeferredGameBundle(prefetchDocument(["wildstatGameScript"]).doc, false)).toBe(false);
+  it("does not preload under Data Saver or once game.js is loading", () => {
+    expect(preloadDeferredGameBundle(preloadDocument().doc, true)).toBeNull();
+    expect(preloadDeferredGameBundle(preloadDocument(["wildstatGameScript"]).doc, false)).toBeNull();
   });
   it("checks the deployed version when an old hashed game bundle fails", async () => {
     const listeners = new Map<string, () => void>();
@@ -484,5 +492,148 @@ describe("outbound sign-in presentation", () => {
     expect(ui.switchAccountButton.disabled).toBe(true);
     expect(ui.signInButton.disabled).toBe(true);
     gate.dispose();
+  });
+});
+
+describe("guest by default", () => {
+  function gate(options: {
+    state: Record<string, unknown>;
+    legalAccepted?: boolean;
+    signIn?: () => Promise<{ ok: boolean; error?: string; redirecting?: boolean }>;
+    gameDownload?: Promise<void> | null;
+  }) {
+    const ui = elements();
+    const order: string[] = [];
+    let state = options.state;
+    let accepted = options.legalAccepted ?? false;
+    let notify = () => {};
+    const loadGame = vi.fn(async () => { order.push("game"); });
+    const continueAsGuest = vi.fn(() => {
+      order.push("guest");
+      state = { ...state, guestSessionApproved: true };
+      return { ok: true };
+    });
+    const signIn = vi.fn(options.signIn ?? (async () => ({ ok: true, redirecting: true })));
+    const startup = createStartupAuthGate({
+      accountState: () => state,
+      knownCharacter: () => "",
+      signIn,
+      continueAsGuest,
+      legalConsentAccepted: () => accepted,
+      acceptLegalTerms: async () => { order.push("terms"); accepted = true; return { ok: true }; },
+      subscribe: listener => { notify = listener; return () => {}; },
+      loadGame,
+      gameDownload: options.gameDownload,
+    }, ui);
+    return { ui, order, loadGame, continueAsGuest, signIn, startup, setState: (next: Record<string, unknown>) => { state = next; notify(); } };
+  }
+
+  it("shows a new visitor the Terms and Play on the loading screen, with Sign In, and no account choice", () => {
+    const { ui, startup, continueAsGuest } = gate({ state: { signInReady: true, guestByDefault: true } });
+    startup.start();
+    expect(ui.accountChoicePanel.hidden).toBe(true);
+    expect(ui.connectionPanel.hidden).toBe(false);
+    expect(ui.connectionPanel.classes.has("is-consent")).toBe(true);
+    expect(ui.legal.panel.hidden).toBe(false);
+    expect(ui.legal.continueButton.textContent).toBe("Play");
+    expect(ui.consentSignInButton.hidden).toBe(false);
+    expect(continueAsGuest).not.toHaveBeenCalled();
+  });
+
+  it("records the agreement first, then starts the guest, then runs the game: one tap", async () => {
+    const { ui, startup, order } = gate({ state: { signInReady: true, guestByDefault: true } });
+    startup.start();
+    ui.legal.continueButton.click();
+    await vi.waitFor(() => expect(order).toEqual(["terms", "guest", "game"]));
+    expect(ui.loadingDetail.textContent).toBe("Loading Guest Profile");
+    expect(ui.connectionPanel.classes.has("is-consent")).toBe(false);
+  });
+
+  it("starts a visitor who already agreed as a guest without any tap", async () => {
+    const { startup, order } = gate({ state: { signInReady: true, guestByDefault: true }, legalAccepted: true });
+    startup.start();
+    await vi.waitFor(() => expect(order).toEqual(["guest", "game"]));
+  });
+
+  it("waits on loading, choosing nothing, until the account restore has finished", () => {
+    const { ui, startup, setState, continueAsGuest } = gate({ state: { signInReady: true, restoring: true }, legalAccepted: true });
+    startup.start();
+    expect(ui.accountChoicePanel.hidden).toBe(true);
+    expect(ui.legal.panel.hidden).toBe(true);
+    expect(ui.loadingDetail.textContent).toBe("Starting WildStat");
+    expect(continueAsGuest).not.toHaveBeenCalled();
+    setState({ signInReady: true, restoring: false, guestByDefault: false, knownAccount: true });
+    expect(ui.accountChoicePanel.hidden).toBe(false);
+    expect(continueAsGuest).not.toHaveBeenCalled();
+  });
+
+  it("lets Sign In under Play leave before any guest exists, and stays on that screen if it fails", async () => {
+    const { ui, startup, signIn, continueAsGuest } = gate({
+      state: { signInReady: true, guestByDefault: true },
+      signIn: async () => ({ ok: false, error: "SIGN-IN NOT STARTED" }),
+    });
+    startup.start();
+    ui.consentSignInButton.click();
+    expect(ui.loadingDetail.textContent).toBe("Opening Sign-In…");
+    expect(ui.consentSignInButton.disabled).toBe(true);
+    await vi.waitFor(() => expect(ui.loadingDetail.textContent).toBe("Sign-In Failed · Try Again"));
+    expect(signIn).toHaveBeenCalledOnce();
+    expect(continueAsGuest).not.toHaveBeenCalled();
+    expect(ui.accountChoicePanel.hidden).toBe(true);
+    expect(ui.legal.panel.hidden).toBe(false);
+    expect(ui.consentSignInButton.disabled).toBe(false);
+  });
+
+  it("hides Sign In once an account is signed in and only the Terms remain", () => {
+    const { ui, startup } = gate({ state: { signInReady: true, gameSessionApproved: true } });
+    startup.start();
+    expect(ui.legal.panel.hidden).toBe(false);
+    expect(ui.consentSignInButton.hidden).toBe(true);
+  });
+
+  it("moves the bar while game.js downloads, and holds at the download until Play", async () => {
+    vi.useFakeTimers();
+    try {
+      let finish!: () => void;
+      const gameDownload = new Promise<void>(resolve => { finish = resolve; });
+      const { ui, startup } = gate({ state: { signInReady: true, guestByDefault: true }, gameDownload });
+      startup.start();
+      expect(ui.loadingFill.style.width).toBe("3%");
+      expect(ui.loadingDetail.textContent).toBe("Downloading Game");
+      vi.advanceTimersByTime(5_000);
+      const crept = Number.parseFloat(ui.loadingFill.style.width);
+      expect(crept).toBeGreaterThan(3);
+      expect(crept).toBeLessThan(30);
+      finish();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(ui.loadingFill.style.width).toBe("30%");
+      expect(ui.loadingDetail.textContent).toBe("Game Downloaded");
+      vi.advanceTimersByTime(5_000);
+      expect(ui.loadingFill.style.width).toBe("30%");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("offers the choice again, instead of retrying, when the automatic guest start fails", async () => {
+    const ui = elements();
+    const continueAsGuest = vi.fn(() => ({ ok: false, error: "SIGNING OUT" }));
+    let notify = () => {};
+    createStartupAuthGate({
+      accountState: () => ({ signInReady: true, guestByDefault: true }),
+      knownCharacter: () => "",
+      signIn: async () => ({ ok: true, redirecting: true }),
+      continueAsGuest,
+      legalConsentAccepted: () => true,
+      acceptLegalTerms: async () => ({ ok: true }),
+      subscribe: listener => { notify = listener; return () => {}; },
+      loadGame: async () => {},
+    }, ui).start();
+    await vi.waitFor(() => expect(ui.accountChoicePanel.hidden).toBe(false));
+    expect(ui.accountChoiceDetail.textContent).toBe("GUEST LOGIN FAILED · TRY AGAIN");
+    notify(); notify();
+    await Promise.resolve();
+    expect(continueAsGuest).toHaveBeenCalledOnce();
+    expect(ui.accountChoicePanel.hidden).toBe(false);
   });
 });

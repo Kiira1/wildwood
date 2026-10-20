@@ -2362,8 +2362,7 @@
 
   .modal.connection-modal,
   .modal.account-choice-modal,
-  .modal.game-update-modal,
-  .modal.legal-gate-modal {
+  .modal.game-update-modal {
     position: fixed;
     top: 50vh;
     top: 50lvh;
@@ -2382,13 +2381,13 @@
 
   /* A large landscape screen grows the startup panels with its height, so the logo and loading bar keep their size against it. */
   @media (min-aspect-ratio: 4/3) and (min-height: 900px) {
-    .modal.connection-modal, .modal.account-choice-modal, .modal.game-update-modal, .modal.legal-gate-modal { transform: translate(-50%, -50%) scale(1.25); }
+    .modal.connection-modal, .modal.account-choice-modal, .modal.game-update-modal { transform: translate(-50%, -50%) scale(1.25); }
   }
   @media (min-aspect-ratio: 4/3) and (min-height: 1200px) {
-    .modal.connection-modal, .modal.account-choice-modal, .modal.game-update-modal, .modal.legal-gate-modal { transform: translate(-50%, -50%) scale(1.6); }
+    .modal.connection-modal, .modal.account-choice-modal, .modal.game-update-modal { transform: translate(-50%, -50%) scale(1.6); }
   }
   @media (min-aspect-ratio: 4/3) and (min-height: 1600px) {
-    .modal.connection-modal, .modal.account-choice-modal, .modal.game-update-modal, .modal.legal-gate-modal { transform: translate(-50%, -50%) scale(2.1); }
+    .modal.connection-modal, .modal.account-choice-modal, .modal.game-update-modal { transform: translate(-50%, -50%) scale(2.1); }
   }
 
 
@@ -2409,23 +2408,30 @@
     text-align: center;
   }
 
-  .modal.legal-gate-modal {
-    border: 0;
-    display: grid;
-    grid-template-rows: minmax(90px, 1fr) auto minmax(150px, 1fr);
-    justify-items: center;
-    padding: 24px clamp(18px, 6vw, 34px);
-    overflow-y: auto;
-    text-align: center;
+  /* The Terms step sits under the loading bar while the game downloads: the panel flows top to bottom instead. */
+  .connection-modal.is-consent { overflow-y: auto; }
+  .connection-modal.is-consent .loading-content { position: relative; top: auto; left: auto; right: auto; height: auto; margin: auto 0 0; transform: none; }
+  .connection-modal.is-consent .loading-content .loading-heading { position: static; margin: 0 0 12px; }
+  /* A landscape phone: a smaller logo, so Play is on screen without scrolling. */
+  @media (max-height: 520px) {
+    #connectionPanel.is-consent .wildstat-wordmark-title { width: 210px; }
+    .modal.connection-modal.is-consent { padding-top: 96px; }
+    .connection-modal.is-consent .loading-content .loading-heading { display: none; }
+    .legal-gate { margin-top: 10px; }
+    .connection-modal.is-consent #legalContinueBtn { min-height: 52px; margin-top: 8px; }
   }
-
-  .legal-gate-modal #legalGateIntro {
-    align-self: start;
-    margin: 16px 0 0;
-    color: #fff;
-    font-size: 20px;
-    font-weight: 800;
+  .legal-gate { margin: 18px 0 auto; text-align: center; }
+  .legal-gate #legalGateIntro { margin: 0 0 6px; color: #fff; font-size: 18px; font-weight: 800; }
+  .legal-gate :is(.legal-agreement, .legal-gate-status) { margin-top: 0; color: #d6d6d6; font-size: 13px; font-weight: 700; letter-spacing: 0; line-height: 1.4; text-align: center; }
+  .legal-gate .legal-gate-status { margin-top: 8px; }
+  .legal-gate .legal-gate-status:empty { display: none; }
+  .legal-gate .legal-gate-status.is-blocked { color: #ff9b91; }
+  .connection-modal .consent-sign-in {
+    display: block; min-height: 44px; margin: 4px auto 0; padding: 8px 14px;
+    border: 0; background: none; box-shadow: none; color: #d6d6d6;
+    font-size: 13px; font-weight: 800; letter-spacing: 0; text-decoration: underline; text-underline-offset: 3px; text-shadow: none;
   }
+  .connection-modal .consent-sign-in:disabled { opacity: .5; }
 
   .legal-age-output {
     position: absolute;
@@ -2508,21 +2514,21 @@
     display: block;
     width: min(330px, 100%);
     margin: 22px auto 0;
-    color: #c9d1ca;
-    font-size: 11px;
+    color: #d6d6d6;
+    font-size: 13px;
     font-weight: 700;
     line-height: 1.4;
     text-align: left;
   }
 
-  .legal-agreement a { color: #9af080; text-underline-offset: 2px; }
+  .legal-agreement a { color: #fff; text-underline-offset: 2px; }
 
 
   .legal-gate-status {
     min-height: 1.4em;
     margin: 9px 0 0;
-    color: #89958c;
-    font-size: 9px;
+    color: #a0a0a0;
+    font-size: 13px;
     font-weight: 800;
     line-height: 1.4;
   }
@@ -2885,8 +2891,8 @@
     width: 8%;
     height: 100%;
     border-radius: inherit;
-    background: linear-gradient(90deg, #34be39, #86f45d, #34be39);
-    transition: width .2s cubic-bezier(.22, 1, .36, 1);
+    background: linear-gradient(90deg, #bdbdbd, #fff, #bdbdbd);
+    transition: width .25s linear;
   }
 
   .loading-detail {

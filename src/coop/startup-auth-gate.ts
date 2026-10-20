@@ -3,8 +3,10 @@ import { markGameScript } from "./game-script-gate";
 import { enforceLatestVersion } from "../app/version";
 import { GAME_VERSION } from "../game/runtime/game-settings";
 import { createDiscordLink } from "../ui/discord-link";
+import { createLoadingProgress } from "../ui/loading-progress";
 import {
   createStartupStateMachine,
+  hasApprovedGameSession,
   type StartupAccountSnapshot,
   type StartupState,
 } from "./startup-state-machine";
@@ -34,6 +36,8 @@ type StartupAuthGateDependencies = {
   ageBlocked?: () => boolean;
   subscribe: (listener: () => void) => () => void;
   loadGame: () => Promise<void>;
+  /** game.js downloading from the first frame (preloadDeferredGameBundle), or null under Data Saver. */
+  gameDownload?: Promise<void> | null;
   releaseNotes?: {
     show: () => void;
     hide: () => void;
@@ -51,6 +55,8 @@ type StartupAuthElements = {
   signInButton: HTMLButtonElement;
   guestButton: HTMLButtonElement;
   switchAccountButton?: HTMLButtonElement | null;
+  /** Sign In under Play, for a player with an account on a new device: before any guest exists. */
+  consentSignInButton?: HTMLButtonElement | null;
   loadingDetail: HTMLElement;
   loadingFill: HTMLElement;
   legal: LegalGateElements;
@@ -104,6 +110,7 @@ function startupElements(documentValue: Document): StartupAuthElements {
     signInButton: requireElement<HTMLButtonElement>("signInFromStartBtn"),
     guestButton: requireElement<HTMLButtonElement>("continueGuestBtn"),
     switchAccountButton: documentValue.getElementById("useAnotherAccountBtn") as HTMLButtonElement | null,
+    consentSignInButton: documentValue.getElementById("consentSignInBtn") as HTMLButtonElement | null,
     loadingDetail: requireElement("loadingDetail"),
     loadingFill: requireElement("loadingFill"),
     legal: legalGateElements(documentValue),
@@ -120,6 +127,19 @@ export function createStartupAuthGate(
   let detached = false;
   let preparingSignIn = false;
   let preparingDetail = "Opening Sign-In…";
+  /** Sign In was tapped under Play, so its progress and failure stay on that screen. */
+  let signInFromConsent = false;
+  let consentNotice = "";
+  // The shell's share of the one loading bar is game.js: 0 to 30%. The game's own stages carry on from there.
+  const progress = createLoadingProgress(elements.loadingFill);
+  const preloading = Boolean(dependencies.gameDownload);
+  let gameDownloaded = false;
+  dependencies.gameDownload?.then(() => {
+    gameDownloaded = true;
+    if (!detached) render();
+  }, () => {
+    // The script tag fetches it again on Play and reports a real failure there.
+  });
   const legalGate = createLegalGateController({
     accept: () => dependencies.acceptLegalTerms(),
     askAge: false,
@@ -127,15 +147,42 @@ export function createStartupAuthGate(
     onAccepted: render,
   }, elements.legal);
 
+  /** `starting`: past the Terms, so game.js is about to run, not only downloading. */
+  function showBundleProgress(starting: boolean) {
+    if (gameDownloaded) progress.advance(30, starting ? 38 : 30);
+    else progress.advance(3, preloading || starting ? 30 : 3);
+  }
+
   function showLoading(detail = "Loading Your Character") {
     dependencies.releaseNotes?.hide();
     elements.start.style.display = "grid";
     elements.accountChoicePanel.classList.remove("is-signing-in");
     elements.accountChoicePanel.hidden = true;
     legalGate.hide();
+    elements.connectionPanel.classList.remove("is-consent");
     elements.connectionPanel.hidden = false;
     elements.loadingDetail.textContent = detail;
-    elements.loadingFill.style.width = "8%";
+    showBundleProgress(true);
+  }
+
+  /** The Terms and Play under the loading bar, while game.js downloads. */
+  function showConsent(detail = "") {
+    dependencies.releaseNotes?.hide();
+    const account = dependencies.accountState();
+    elements.start.style.display = "grid";
+    elements.accountChoicePanel.hidden = true;
+    elements.connectionPanel.classList.add("is-consent");
+    elements.connectionPanel.hidden = false;
+    legalGate.show();
+    const signIn = elements.consentSignInButton;
+    if (signIn) {
+      // Only before an identity is chosen: a signed-in player has nothing to sign in to.
+      signIn.hidden = hasApprovedGameSession(account) || dependencies.ageBlocked?.() === true;
+      signIn.disabled = preparingSignIn || account.signInReady === false;
+    }
+    elements.loadingDetail.textContent = detail || consentNotice
+      || (!preloading ? "Ready to Play" : gameDownloaded ? "Game Downloaded" : "Downloading Game");
+    showBundleProgress(false);
   }
 
   function showAccountChoice(detailOverride = "", interactive = true) {
@@ -144,6 +191,7 @@ export function createStartupAuthGate(
     const knownAccount = Boolean(state.knownAccount);
     const ready = state.signInReady !== false;
     elements.start.style.display = "grid";
+    elements.connectionPanel.classList.remove("is-consent");
     elements.connectionPanel.hidden = true;
     legalGate.hide();
     elements.accountChoicePanel.hidden = false;
@@ -179,14 +227,6 @@ export function createStartupAuthGate(
     if (elements.switchAccountButton) elements.switchAccountButton.disabled = true;
   }
 
-  function showLegalGate() {
-    dependencies.releaseNotes?.hide();
-    elements.start.style.display = "grid";
-    elements.connectionPanel.hidden = true;
-    elements.accountChoicePanel.hidden = true;
-    legalGate.show();
-  }
-
   function detach() {
     if (detached) return;
     detached = true;
@@ -195,6 +235,7 @@ export function createStartupAuthGate(
     elements.signInButton.removeEventListener("click", onSignIn);
     elements.guestButton.removeEventListener("click", onGuest);
     elements.switchAccountButton?.removeEventListener("click", onSwitchAccount);
+    elements.consentSignInButton?.removeEventListener("click", onSignIn);
     legalGate.dispose();
     dependencies.releaseNotes?.dispose();
   }
@@ -211,8 +252,11 @@ export function createStartupAuthGate(
     showLoading(detail);
     detach();
     void dependencies.loadGame().then(() => {
+      // game.js now owns the bar and carries it on from here.
+      progress.stop();
       machine.dispatch({ type: "dispose" });
     }).catch((error) => {
+      progress.stop();
       console.error("WildStat game bundle failed to load:", error);
       const transition = machine.dispatch({ type: "fail-game-load", message: "Game Load Failed · Refresh to Try Again" });
       renderState(transition.state, transition.changed);
@@ -222,7 +266,11 @@ export function createStartupAuthGate(
   function renderState(state: StartupState, changed = true) {
     switch (state.value) {
       case "legal-consent":
-        showLegalGate();
+        showConsent();
+        return;
+      case "guest-start":
+        // A new or returning guest who has agreed: the same path as the Guest button, without the tap.
+        void onGuest();
         return;
       case "loading-game":
         if (state.status === "ready") beginGameLoading(dependencies.accountState().guestSessionApproved ? "Loading Guest Profile" : "Loading Your Character");
@@ -231,11 +279,13 @@ export function createStartupAuthGate(
         beginGameLoading("Opening Session Recovery");
         return;
       case "verifying-sign-in":
-        if (preparingSignIn) showSignInPreparation();
+        if (preparingSignIn && signInFromConsent) showConsent(preparingDetail);
+        else if (preparingSignIn) showSignInPreparation();
         else showLoading("Verifying Sign-In");
         return;
       case "account-action":
-        if (state.action === "sign-in") showSignInPreparation();
+        if (state.action === "sign-in" && signInFromConsent) showConsent(state.detail);
+        else if (state.action === "sign-in") showSignInPreparation();
         else showLoading(state.detail);
         return;
       case "account-choice":
@@ -243,9 +293,11 @@ export function createStartupAuthGate(
         return;
       case "failed":
         showLoading(state.message);
-        elements.loadingFill.style.width = "100%";
+        progress.set(100);
         return;
       case "loading-shell":
+        showLoading("Starting WildStat");
+        return;
       case "loading-runtime":
         showLoading();
         return;
@@ -274,7 +326,8 @@ export function createStartupAuthGate(
   function onSignIn() {
     const state = dependencies.accountState();
     const name = dependencies.knownCharacter().trim();
-    return beginSignIn(dependencies.signIn, name || state.knownAccount ? "Opening Sign-In…" : "Opening Registration…");
+    const signingIn = name || state.knownAccount || machine.state().value === "legal-consent";
+    return beginSignIn(dependencies.signIn, signingIn ? "Opening Sign-In…" : "Opening Registration…");
   }
 
   function onSwitchAccount() {
@@ -283,7 +336,10 @@ export function createStartupAuthGate(
   }
 
   async function beginSignIn(action: () => Promise<StartupActionResult> | StartupActionResult, detail: string) {
-    if (machine.state().value !== "account-choice") return;
+    const from = machine.state().value;
+    if (from !== "account-choice" && from !== "legal-consent") return;
+    signInFromConsent = from === "legal-consent";
+    consentNotice = "";
     preparingSignIn = true;
     preparingDetail = detail;
     renderState(machine.dispatch({ type: "begin-account-action", action: "sign-in", detail }).state);
@@ -294,6 +350,7 @@ export function createStartupAuthGate(
         const failure = result.error === "WAIT FOR SERVER"
           ? "PREPARING YOUR SAVED GUEST…"
           : "SIGN-IN FAILED · TRY AGAIN OR USE GUEST LOGIN";
+        consentNotice = result.error === "WAIT FOR SERVER" ? "Preparing Your Saved Guest…" : "Sign-In Failed · Try Again";
         renderState(machine.dispatch({ type: "fail-account-action", detail: failure }).state);
         return;
       }
@@ -302,6 +359,7 @@ export function createStartupAuthGate(
       if (!result?.redirecting) render();
     } catch {
       preparingSignIn = false;
+      consentNotice = "Sign-In Failed · Try Again";
       renderState(machine.dispatch({
         type: "fail-account-action",
         detail: "SIGN-IN FAILED · TRY AGAIN OR USE GUEST LOGIN",
@@ -310,7 +368,8 @@ export function createStartupAuthGate(
   }
 
   async function onGuest() {
-    if (machine.state().value !== "account-choice") return;
+    const from = machine.state().value;
+    if (from !== "account-choice" && from !== "guest-start") return;
     renderState(machine.dispatch({
       type: "begin-account-action",
       action: "guest",
@@ -333,6 +392,7 @@ export function createStartupAuthGate(
     elements.signInButton.addEventListener("click", onSignIn);
     elements.guestButton.addEventListener("click", onGuest);
     elements.switchAccountButton?.addEventListener("click", onSwitchAccount);
+    elements.consentSignInButton?.addEventListener("click", onSignIn);
     unsubscribe = dependencies.subscribe(render);
     render();
   }
@@ -352,21 +412,25 @@ export function requestDeferredGameAssets(documentValue = document) {
 }
 
 /**
- * Starts downloading game.js while the player is still on the sign-in screen,
- * so pressing Play waits only for it to run. A hint the browser may ignore;
- * skipped under Data Saver, and once the bundle is already loading.
+ * Starts downloading game.js on the first frame, beside the Terms and Play,
+ * so Play waits only for it to run. A real fetch the script tag then reuses.
+ * Skipped under Data Saver, where game.js loads after Play, and once it is loading.
  */
-export function prefetchDeferredGameBundle(documentValue = document, saveData = Boolean((navigator as { connection?: { saveData?: boolean } }).connection?.saveData)) {
-  if (saveData || documentValue.getElementById("wildstatGameScript") || documentValue.getElementById("wildstatGamePrefetch")) return false;
+export function preloadDeferredGameBundle(documentValue = document, saveData = Boolean((navigator as { connection?: { saveData?: boolean } }).connection?.saveData)) {
+  if (saveData || documentValue.getElementById("wildstatGameScript") || documentValue.getElementById("wildstatGamePreload")) return null;
   const source = (documentValue.getElementById("wildstatCoopScript") as HTMLScriptElement | null)?.dataset.gameSrc;
-  if (!source) return false;
+  if (!source) return null;
   const link = documentValue.createElement("link");
-  link.id = "wildstatGamePrefetch";
-  link.rel = "prefetch";
+  const downloaded = new Promise<void>((resolve, reject) => {
+    link.addEventListener("load", () => resolve(), { once: true });
+    link.addEventListener("error", () => reject(new Error(`Failed to preload ${source}`)), { once: true });
+  });
+  link.id = "wildstatGamePreload";
+  link.rel = "preload";
   link.as = "script";
   link.href = source;
   documentValue.head.append(link);
-  return true;
+  return downloaded;
 }
 
 export function loadDeferredGameBundle(documentValue = document, checkForUpdate = () => enforceLatestVersion(GAME_VERSION)) {

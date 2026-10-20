@@ -53,23 +53,40 @@ describe("loading description case", () => {
 });
 
 describe("startup loading presentation", () => {
-  it("shows every ready stage for 200ms, including the final fill, and completes once", () => {
+  it("shows every ready stage for 80ms, with the bar at what the stages before it finished, and completes once", () => {
     vi.useFakeTimers();
     const h = harness([["Connection", true, 12], ["Profile", true, 56], ["Starting", true, 100]]);
     h.startup.refreshLoading();
-    for (const [label, percent] of [["Connection", 12], ["Profile", 56], ["Starting", 100]]) {
+    for (const [label, finished] of [["Connection", 0], ["Profile", 12], ["Starting", 56]] as const) {
       expect(h.elements.get("loadingDetail")!.textContent).toBe(label);
-      expect(h.elements.get("loadingFill")!.style.width).toBe(`${percent}%`);
-      vi.advanceTimersByTime(199);
+      expect(h.elements.get("loadingFill")!.style.width).toBe(`${finished}%`);
+      vi.advanceTimersByTime(79);
       h.startup.refreshLoading();
       expect(h.completed).not.toHaveBeenCalled();
       expect(h.elements.get("loadingDetail")!.textContent).toBe(label);
       vi.advanceTimersByTime(1);
     }
     expect(h.startup.isLoadingSequenceComplete()).toBe(true);
+    expect(h.elements.get("loadingFill")!.style.width).toBe("100%");
     h.startup.refreshLoading(); vi.runOnlyPendingTimers();
     expect(h.completed).toHaveBeenCalledTimes(1);
     expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("creeps toward a slow stage without reaching it, and never moves the bar back", () => {
+    vi.useFakeTimers();
+    const h = harness([["Connection", false, 50], ["Starting", true, 100]]);
+    const fill = h.elements.get("loadingFill")!;
+    fill.style.width = "37%";
+    h.startup.refreshLoading();
+    expect(fill.style.width).toBe("37%");
+    vi.advanceTimersByTime(60_000);
+    const crept = Number.parseFloat(fill.style.width);
+    expect(crept).toBeGreaterThan(40);
+    expect(crept).toBeLessThan(50);
+    h.startup.showConnectionFailure("World sync timed out");
+    vi.advanceTimersByTime(1_000);
+    expect(fill.style.width).toBe(`${crept}%`);
   });
 
   it("waits for real readiness without adding another delay after a slow stage", () => {
@@ -100,13 +117,13 @@ describe("startup loading presentation", () => {
   it("cancels completion on failure and starts a fresh paced sequence on retry", () => {
     vi.useFakeTimers();
     const h = harness([["Starting", true, 100]]);
-    h.startup.refreshLoading(); vi.advanceTimersByTime(100);
+    h.startup.refreshLoading(); vi.advanceTimersByTime(40);
     h.startup.showConnectionFailure("World sync timed out");
     vi.advanceTimersByTime(500);
     expect(h.completed).not.toHaveBeenCalled();
     expect(h.elements.get("loadingDetail")!.textContent).toBe("World sync timed out");
     expect(h.elements.get("connectionRetryBtn")!.hidden).toBe(false);
-    h.startup.showConnecting(); vi.advanceTimersByTime(199);
+    h.startup.showConnecting(); vi.advanceTimersByTime(79);
     expect(h.completed).not.toHaveBeenCalled();
     vi.advanceTimersByTime(1);
     expect(h.completed).toHaveBeenCalledTimes(1);
@@ -115,10 +132,10 @@ describe("startup loading presentation", () => {
   it("does not spend visible stage time behind account choice", () => {
     vi.useFakeTimers();
     const h = harness([["Starting", true, 100]]);
-    h.startup.refreshLoading(); vi.advanceTimersByTime(100);
+    h.startup.refreshLoading(); vi.advanceTimersByTime(40);
     h.startup.showAccountChoice(); h.startup.refreshLoading(); vi.advanceTimersByTime(1000);
     expect(h.completed).not.toHaveBeenCalled();
-    h.startup.showLoading(); vi.advanceTimersByTime(199);
+    h.startup.showLoading(); vi.advanceTimersByTime(79);
     expect(h.completed).not.toHaveBeenCalled();
     vi.advanceTimersByTime(1);
     expect(h.completed).toHaveBeenCalledTimes(1);

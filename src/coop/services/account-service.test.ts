@@ -451,6 +451,42 @@ describe("account service startup identity selection", () => {
     expect(service.canConnect()).toBe(false);
   });
 
+  it("starts a fresh visitor as a guest by default, but only once the restore has finished", async () => {
+    const { service } = setup();
+    expect(service.api.accountState()).toMatchObject({ restoring: true, guestByDefault: false });
+
+    await service.restoreKnownAccount();
+
+    expect(service.api.accountState()).toMatchObject({ restoring: false, guestByDefault: true });
+  });
+
+  it("does not start a guest by default for a known account, a stored token or a sign-in return", async () => {
+    const known = setup({ knownAccount: true });
+    await known.service.restoreKnownAccount();
+    expect(known.service.api.accountState().guestByDefault).toBe(false);
+
+    const token = setup({ accountToken: accountToken(), knownAccount: true });
+    await token.service.restoreKnownAccount();
+    expect(token.service.api.accountState().guestByDefault).toBe(false);
+
+    const returning = setup({ authCallback: true });
+    expect(returning.service.api.accountState().guestByDefault).toBe(false);
+  });
+
+  it("offers the choice on the page after Sign Out instead of starting a guest", async () => {
+    const before = setup({ accountToken: accountToken(), knownAccount: true });
+    await before.service.api.signOut();
+    const marker = before.session.getItem(`${keys.loginMoveKey}/signed_out`);
+    expect(marker).toBe("true");
+
+    const after = setup();
+    after.session.setItem(`${keys.loginMoveKey}/signed_out`, marker!);
+    await after.service.restoreKnownAccount();
+    expect(after.service.api.accountState().guestByDefault).toBe(false);
+    // Only that page: a later visit starts as a guest again.
+    expect(after.session.getItem(`${keys.loginMoveKey}/signed_out`)).toBeNull();
+  });
+
   it("keeps overlapping native sign-ins on one PKCE transaction", async () => {
     const { service, session } = setup();
     const open = vi.fn(async () => {});

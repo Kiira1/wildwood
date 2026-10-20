@@ -207,6 +207,10 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
   let expectedSignIn: (ExpectedSignIn & { subChanged: boolean }) | null = null;
   /** The character this page signed in as when it was not the one the player tapped. */
   let signedInAs = "";
+  /** Until restoreKnownAccount returns, the start screen cannot know whether to start a guest. */
+  let restoring = true;
+  /** Restore found a plain visitor: no sign-in return, no sign-in queued, not just signed out. */
+  let guestByDefaultAllowed = false;
 
   function accountToken() {
     try {
@@ -622,6 +626,8 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
    */
   // Which sign-in opens once the session has ended: a character move or Use Another Account.
   const signInNextKey = `${keys.loginMoveKey}/sign_in_next`;
+  // The page after Sign Out offers the choice again instead of starting a guest.
+  const signedOutKey = `${keys.loginMoveKey}/signed_out`;
   async function endAccountSession(keepSignInNext = false) {
     if (signingOut) return;
     createAutoFarmResumeStore().clear();
@@ -650,6 +656,7 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
     signedInAs = "";
     clearTabValue(keys.accountLinkKey);
     if (!keepSignInNext) { clearTabValue(keys.loginMoveKey); clearTabValue(signInNextKey); }
+    if (!keepSignInNext) { try { writeTabValue(signedOutKey, "true"); } catch {} }
     clearAuthTransaction();
     clearTabValue(keys.authRetryKey);
     clearAccountReturnPending();
@@ -734,6 +741,14 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
   }
 
   async function restoreKnownAccount() {
+    try { await restoreAccountSession(); }
+    finally {
+      restoring = false;
+      dependencies.notify();
+    }
+  }
+
+  async function restoreAccountSession() {
     const bridge = nativeAuth();
     if (bridge && await bridge.ready) return;
     const callbackOutcome = await completeAccountCallback();
@@ -827,9 +842,12 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
       dependencies.notify();
       return;
     }
-    // A brand-new visitor should be able to choose OAuth before we create even
-    // a temporary guest connection. Returning guests still connect here so an
-    // eventual account registration can safely link their existing save.
+    // A brand-new visitor agrees to the Terms (or signs in) before even a
+    // temporary guest connection exists. Returning guests still connect here
+    // so an eventual account registration can safely link their existing save.
+    const signedOut = readTabValue(signedOutKey) === "true";
+    clearTabValue(signedOutKey);
+    guestByDefaultAllowed = callbackOutcome === "none" && !signedOut;
     if (token || guestSessionExplicit || guestToken()) dependencies.connect();
   }
 
@@ -941,6 +959,10 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
         hydrated: dependencies.hydrationReady(),
         updating: dependencies.updating(),
         sessionConflict: dependencies.worldEntryBlocked(),
+        restoring,
+        /** No account and nothing under way: the start screen plays as a guest without asking. */
+        guestByDefault: guestByDefaultAllowed && !signingOut && !hasKnownAccount() && !renewal.stored()
+          && !callbackPending && !returnPending && !outboundAuthNavigationPending && !signInPreparing,
         /** Settings signs out, never in, while an account token is stored. */
         hasAccountToken: !signingOut && Boolean(renewal.stored()),
         /** The character that loaded when it was not the one the player tapped, or "". */

@@ -15,7 +15,7 @@ type LegalGateDependencies = {
   onAccepted: () => void;
   /**
    * False on the start screen: it only agrees to the Terms, and chat asks the age later.
-   * Then the slider is hidden and Continue needs no age.
+   * Then the slider is hidden and Play needs no age.
    */
   askAge?: boolean;
   /** An under-13 answer given in chat: the start screen says so and offers no Continue. */
@@ -71,15 +71,15 @@ export function createLegalGateController(
         : "");
   }
 
-  /** The start screen: the Terms and Continue, or the under-13 notice in their place. */
+  /** The loading screen: the Terms line and Play, or the under-13 notice in their place. */
   function renderTerms() {
     const blocked = dependencies.blocked?.() === true;
     if (elements.ageControl) elements.ageControl.hidden = true;
-    if (elements.intro) elements.intro.textContent = blocked ? "Sorry" : "Welcome to WildStat";
+    if (elements.intro) { elements.intro.textContent = "Sorry"; elements.intro.hidden = !blocked; }
     if (elements.notice) elements.notice.hidden = blocked;
     elements.continueButton.hidden = blocked;
     elements.continueButton.disabled = pending || blocked;
-    elements.continueButton.textContent = pending ? "Saving…" : "Continue";
+    elements.continueButton.textContent = pending ? "Starting…" : "Play";
     elements.status.classList.toggle("is-blocked", blocked);
     elements.status.textContent = statusOverride || (blocked ? UNDER_AGE : "");
   }

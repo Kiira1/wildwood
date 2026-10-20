@@ -75,6 +75,47 @@ describe("startup state derivation", () => {
   });
 });
 
+describe("guest by default", () => {
+  const shell = { legalAccepted: false, shellReady: true };
+
+  it("puts the Terms first for a new visitor, then starts the guest, with no account choice", () => {
+    expect(deriveStartupState("auth-shell", { ...shell, account: { guestByDefault: true } })).toEqual({ value: "legal-consent" });
+    expect(deriveStartupState("auth-shell", { ...shell, legalAccepted: true, account: { guestByDefault: true } })).toEqual({ value: "guest-start" });
+  });
+
+  it("chooses nothing until the account restore has finished", () => {
+    expect(deriveStartupState("auth-shell", { ...shell, account: { restoring: true } })).toEqual({ value: "loading-shell" });
+  });
+
+  it("keeps sign-in returns, conflicts and known accounts on their own paths", () => {
+    expect(deriveStartupState("auth-shell", { ...shell, account: { guestByDefault: true, returningFromSignIn: true } })).toEqual({ value: "verifying-sign-in" });
+    expect(deriveStartupState("auth-shell", { ...shell, account: { guestByDefault: true, sessionConflict: true } })).toEqual({ value: "session-conflict" });
+    // A known account, a stored token or a sign-out just now: the account service reports no guest default.
+    expect(deriveStartupState("auth-shell", { ...shell, account: { guestByDefault: false } })).toEqual({ value: "account-choice", detail: "" });
+  });
+
+  it("leaves the running game's own account recovery alone", () => {
+    expect(deriveStartupState("game-runtime", { ...runtimeBase, account: { guestByDefault: true } })).toEqual({ value: "account-choice", detail: "" });
+  });
+
+  it("allows Sign In from the Terms step and the guest start only from guest-start", () => {
+    const machine = createStartupStateMachine("auth-shell");
+    machine.sync({ ...shell, account: { guestByDefault: true } });
+    expect(machine.dispatch({ type: "begin-account-action", action: "guest", detail: "" }).changed).toBe(false);
+    expect(machine.dispatch({ type: "begin-account-action", action: "sign-in", detail: "Opening Sign-In…" }).state).toEqual({ value: "account-action", action: "sign-in", detail: "Opening Sign-In…" });
+    expect(machine.dispatch({ type: "fail-account-action", detail: "SIGN-IN FAILED" }).state).toEqual({ value: "legal-consent" });
+  });
+
+  it("falls back to the account choice after a failed guest start instead of retrying it", () => {
+    const machine = createStartupStateMachine("auth-shell");
+    const snapshot = { ...shell, legalAccepted: true, account: { guestByDefault: true } };
+    expect(machine.sync(snapshot).state).toEqual({ value: "guest-start" });
+    machine.dispatch({ type: "begin-account-action", action: "guest", detail: "Loading Guest Profile" });
+    expect(machine.dispatch({ type: "fail-account-action", detail: "GUEST LOGIN FAILED" }).state).toEqual({ value: "account-choice", detail: "GUEST LOGIN FAILED" });
+    expect(machine.sync(snapshot).state).toEqual({ value: "account-choice", detail: "" });
+  });
+});
+
 describe("startup state machine", () => {
   it("keeps an account action explicit until it completes", () => {
     const machine = createStartupStateMachine("auth-shell");

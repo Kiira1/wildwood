@@ -138,9 +138,9 @@
         </div>
         <div class="setting-row account-row">
           <span>Account</span>
-          <button id="accountButton" class="setting-toggle account-button" type="button">Sign In</button>
+          <button id="accountButton" class="setting-toggle account-button" type="button">Save Your Progress</button>
         </div>
-        <div id="accountStatus" class="account-status">Guest · Device Save</div>
+        <div id="accountStatus" class="account-status">Guest · Saved on This Device Only</div>
       <div class="setting-legal"><a href="terms.html">Terms of Service</a></div>
         <div class="setting-reset">
           <button id="resetProgressBtn" class="setting-toggle danger" type="button">Reset Save</button>
@@ -271,7 +271,7 @@
       <path class="signin-sound-muted" d="M15.5 9.5l5 5m0-5l-5 5" />
     </svg>
   </button>
-  <div id="connectionPanel" class="modal connection-modal" role="status" aria-live="polite" hidden>
+  <div id="connectionPanel" class="modal connection-modal" hidden>
     <h1 class="wildstat-wordmark-title" aria-label="WildStat">
       <span class="wildstat-wordmark-frame" aria-hidden="true">
         <img src="assets/wildstat/wildstat-wordmark.webp" width="2046" height="682" alt="" fetchpriority="high" decoding="sync" />
@@ -280,12 +280,23 @@
     <div class="loading-content">
     <p class="loading-heading">CONNECTING TO WILDSTAT</p>
     <div class="loading-track" aria-hidden="true"><div id="loadingFill" class="loading-fill"></div></div>
-    <div class="loading-status">
+    <div class="loading-status" role="status" aria-live="polite">
     <p id="loadingDetail" class="loading-detail">Loading Connection</p>
     <button id="connectionRetryBtn" class="secondary-button connection-retry-button" type="button" hidden>RETRY NOW</button>
     <button id="sessionTakeoverBtn" type="button" hidden>SIGN IN ANYWAY</button>
     <p id="sessionTakeoverNote" class="session-takeover-note" hidden>This signs out the other tab.</p>
     </div>
+    </div>
+    <div id="legalGatePanel" class="legal-gate" role="group" aria-label="Terms" hidden>
+    <p id="legalGateIntro" hidden>Sorry</p>
+    <div class="legal-age-control" hidden>
+      <output id="legalAgeOutput" class="legal-age-output" for="legalAgeSlider"></output>
+      <input id="legalAgeSlider" class="is-unset" type="range" min="1" max="100" step="1" value="50" aria-label="Your age" />
+    </div>
+    <p id="legalAgreementNotice" class="legal-agreement">By pressing Play, you agree to the <a id="legalTermsLink" href="terms.html">Terms and Conditions</a> and acknowledge the <a id="legalPrivacyLink" href="privacy.html">Privacy Policy</a>.</p>
+    <button id="legalContinueBtn" type="button" aria-describedby="legalAgreementNotice">Play</button>
+    <p id="legalGateStatus" class="legal-gate-status" role="status"></p>
+    <button id="consentSignInBtn" class="consent-sign-in" type="button" hidden>Have an Account? Sign In</button>
     </div>
   </div>
   <div id="accountChoicePanel" class="modal account-choice-modal" role="dialog" aria-modal="true" aria-labelledby="accountChoiceTitle">
@@ -313,19 +324,6 @@
     </div>
   </aside>
   <button id="signinVersion" class="signin-version" type="button" aria-expanded="false" aria-controls="updateNotice" aria-label="WildStat alpha version v0.916.13. Toggle release notes">alpha v0.916.13</button>
-  <div id="legalGatePanel" class="modal legal-gate-modal" role="dialog" aria-modal="true" aria-labelledby="legalGateIntro" hidden>
-    <p id="legalGateIntro">Choose your age</p>
-    <div class="legal-age-control">
-      <output id="legalAgeOutput" class="legal-age-output" for="legalAgeSlider" aria-live="polite"></output>
-      <input id="legalAgeSlider" class="is-unset" type="range" min="1" max="100" step="1" value="50" aria-label="Your age" aria-valuetext="Not selected" />
-      <div class="legal-age-limits" aria-hidden="true"><span>1</span><span>100+</span></div>
-    </div>
-    <div class="legal-gate-footer">
-    <p id="legalAgreementNotice" class="legal-agreement">By clicking Continue, you agree to the <a id="legalTermsLink" href="terms.html">Terms and Conditions</a> and acknowledge the <a id="legalPrivacyLink" href="privacy.html">Privacy Policy</a>.</p>
-    <button id="legalContinueBtn" type="button" aria-describedby="legalAgreementNotice" disabled>Continue</button>
-    <p id="legalGateStatus" class="legal-gate-status" role="status">Select your age to continue.</p>
-    </div>
-  </div>
   <div id="newPlayerPanel" class="modal onboarding-modal" hidden>
     <h1 class="wildstat-wordmark-title welcome-wordmark-title" aria-label="Welcome to WildStat">
       <span class="welcome-wordmark-prefix" aria-hidden="true">WELCOME TO</span>

@@ -2,6 +2,7 @@ import { requiredElement } from "../game/runtime/dom";
 import { appendPlayerGenderIcon } from "./player-gender";
 import type { PlayerGender } from "../../shared/player-gender";
 import { createLegalGateController } from "./legal-gate";
+import { createLoadingProgress } from "./loading-progress";
 
 type AccountState = {
   signedIn?: boolean;
@@ -73,14 +74,18 @@ export function createStartupController(dependencies: StartupDependencies) {
   const newPlayerPanel = requiredElement("newPlayerPanel");
   const playerNameInput = requiredElement<HTMLInputElement>("newPlayerNameInput");
   const beginAdventureButton = requiredElement("beginAdventureBtn");
+  const consentSignInButton = document.getElementById("consentSignInBtn");
+  const progress = createLoadingProgress(loadingFill);
 
-  const stageDurationMs = 200;
+  // Long enough to read a label that flashes past, short enough not to be the wait itself.
+  const stageDurationMs = 80;
   let loadingSequence: LoadingSequenceState = { value: "loading", stage: 0, shownAt: null };
   let stageTimer: number | null = null;
 
   function pauseLoading() {
     if (stageTimer !== null) window.clearTimeout(stageTimer);
     stageTimer = null;
+    progress.stop();
     if (loadingSequence.value === "loading") loadingSequence.shownAt = null;
   }
   const legalGate = createLegalGateController({
@@ -92,12 +97,14 @@ export function createStartupController(dependencies: StartupDependencies) {
 
   function showConnecting() {
     pauseLoading();
+    progress.set(0);
     loadingSequence = { value: "loading", stage: 0, shownAt: null };
     accountChoicePanel.classList.remove("is-signing-in");
     start.style.display = "grid";
     connectionPanel.hidden = false;
     accountChoicePanel.hidden = true;
     legalGatePanel.hidden = true;
+    connectionPanel.classList.remove("is-consent");
     newPlayerPanel.hidden = true;
     sessionTakeoverButton.hidden = true;
     sessionTakeoverButton.disabled = false;
@@ -114,9 +121,10 @@ export function createStartupController(dependencies: StartupDependencies) {
     connectionPanel.hidden = false;
     accountChoicePanel.hidden = true;
     legalGatePanel.hidden = true;
+    connectionPanel.classList.remove("is-consent");
     newPlayerPanel.hidden = true;
     loadingDetail.textContent = loadingDescriptionCase(dependencies.accountState()?.notice || "Logged In on Another Tab");
-    loadingFill.style.width = "100%";
+    progress.set(100);
     sessionTakeoverButton.hidden = false;
     sessionTakeoverNote.hidden = false;
     connectionRetryButton.hidden = true;
@@ -157,6 +165,7 @@ export function createStartupController(dependencies: StartupDependencies) {
     connectionPanel.hidden = true;
     accountChoicePanel.hidden = false;
     legalGatePanel.hidden = true;
+    connectionPanel.classList.remove("is-consent");
     newPlayerPanel.hidden = true;
     connectionRetryButton.hidden = true;
     dependencies.onShowAccountChoice();
@@ -178,6 +187,7 @@ export function createStartupController(dependencies: StartupDependencies) {
     connectionPanel.hidden = false;
     accountChoicePanel.hidden = true;
     legalGatePanel.hidden = true;
+    connectionPanel.classList.remove("is-consent");
     newPlayerPanel.hidden = true;
     sessionTakeoverButton.hidden = true;
     sessionTakeoverNote.hidden = true;
@@ -193,7 +203,8 @@ export function createStartupController(dependencies: StartupDependencies) {
     state.shownAt ??= performance.now();
     const [label, ready, percent] = stages[state.stage] ?? ["Starting WildStat", true, 100];
     loadingDetail.textContent = label;
-    loadingFill.style.width = `${percent}%`;
+    // What the earlier stages finished is shown; this one creeps until it is done too.
+    progress.advance(stages[state.stage - 1]?.[2] ?? 0, percent);
     if (!ready || stageTimer !== null) return;
     // Real work proceeds normally; only the visible presentation is paced.
     const timer = window.setTimeout(() => {
@@ -206,6 +217,7 @@ export function createStartupController(dependencies: StartupDependencies) {
         refreshLoading();
       } else {
         loadingSequence = { value: "complete" };
+        progress.set(100);
         dependencies.onLoadingComplete();
       }
     }, Math.max(0, stageDurationMs - (performance.now() - state.shownAt)));
@@ -219,11 +231,11 @@ export function createStartupController(dependencies: StartupDependencies) {
     connectionPanel.hidden = false;
     accountChoicePanel.hidden = true;
     legalGatePanel.hidden = true;
+    connectionPanel.classList.remove("is-consent");
     newPlayerPanel.hidden = true;
     sessionTakeoverButton.hidden = true;
     sessionTakeoverNote.hidden = true;
     loadingDetail.textContent = loadingDescriptionCase(message);
-    loadingFill.style.width = "12%";
     connectionRetryButton.hidden = false;
     connectionRetryButton.disabled = false;
   }
@@ -236,18 +248,24 @@ export function createStartupController(dependencies: StartupDependencies) {
     connectionPanel.hidden = true;
     accountChoicePanel.hidden = true;
     legalGatePanel.hidden = true;
+    connectionPanel.classList.remove("is-consent");
     newPlayerPanel.hidden = false;
     connectionRetryButton.hidden = true;
     requestAnimationFrame(() => playerNameInput.focus());
   }
 
+  /** The Terms and Play under the loading bar, as the shell shows them. */
   function showLegalGate() {
     pauseLoading();
     accountChoicePanel.classList.remove("is-signing-in");
     start.style.display = "grid";
-    connectionPanel.hidden = true;
+    connectionPanel.classList.add("is-consent");
+    connectionPanel.hidden = false;
     accountChoicePanel.hidden = true;
     legalGate.show();
+    // This screen only follows a chosen account or guest, so there is nothing to sign in to.
+    if (consentSignInButton) consentSignInButton.hidden = true;
+    loadingDetail.textContent = "Ready to Play";
     newPlayerPanel.hidden = true;
     sessionTakeoverButton.hidden = true;
     sessionTakeoverNote.hidden = true;
