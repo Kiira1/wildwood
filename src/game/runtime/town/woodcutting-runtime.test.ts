@@ -123,6 +123,15 @@ describe("chopping in Timberwood", () => {
     expect(woodcuttingScene.target).toBe(pine.id);
   });
 
+  it("lets a tree grow back sooner with Resource Respawn research, 90s at rank 5", () => {
+    for (const [rank, felled] of [[0, true], [5, false]] as const) {
+      resetWoodcuttingScene();
+      const w = woodcutter(pine, { choppedTreeAt: id => (id === pine.id ? NOW - 100_000 : null), research: () => ({ resourceRespawn: rank }) });
+      w.run(1);
+      expect(woodcuttingScene.felled.has(pine.id)).toBe(felled);
+    }
+  });
+
   it("starts afresh after the account changes, forgetting its stumps", () => {
     let identity = "first";
     const w = woodcutter(pine, { localIdentity: () => identity, choppedTreeAt: () => null });

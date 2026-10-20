@@ -40,7 +40,7 @@ function memoryStorage(values = new Map<string, string>()) {
 }
 
 /** A player in the Town, Auto Mine, and a frame step that moves them as the game does (collision included). */
-function setup(options: { at?: { x: number; y: number }; storage?: ReturnType<typeof memoryStorage>; mining?: number; bag?: BagSpace } = {}) {
+function setup(options: { at?: { x: number; y: number }; storage?: ReturnType<typeof memoryStorage>; mining?: number; bag?: BagSpace; respawnRank?: number } = {}) {
   const player = { ...(options.at ?? HILLS_ENTRY), moving: false, hp: 100 } as PlayerState;
   const world = { map: 'town', time: 0, server: 5_000_000, broken: new Map<number, number>() };
   const storage = options.storage ?? memoryStorage();
@@ -48,6 +48,7 @@ function setup(options: { at?: { x: number; y: number }; storage?: ReturnType<ty
     minedNodeAt: (id: number) => world.broken.get(id) ?? null, mining: () => options.mining ?? 0, serverNowMs: () => world.server,
     // Breaks queue for the next report and count at once, as the session's do.
     queueMiningBreak: vi.fn((id: number, atMs: number) => { world.broken.set(id, atMs); }), flushMining: vi.fn(),
+    research: () => ({ resourceRespawn: options.respawnRank ?? 0 }),
   };
   // The runtime that mines what they stand by, only with a bag to judge: the walking tests leave it out.
   const runtime = options.bag ? createMiningRuntime({ source: () => source, player, bag: () => options.bag }) : null;
@@ -169,6 +170,19 @@ describe('Auto Mine', () => {
     s.world.broken.delete(soonest.id);
     s.runUntil(() => s.mine.state().status.startsWith('Mining'), 2);
     expect(s.mine.state()).toMatchObject({ status: `Mining ${miningNodeName(soonest)}`, target: soonest });
+  });
+
+  it('counts rocks grown back sooner with Resource Respawn research', () => {
+    for (const [rank, waiting] of [[0, true], [5, false]] as const) {
+      resetMiningScene();
+      const s = setup({ respawnRank: rank });
+      // Every rock broken 80% of its regrowth ago: still bare, unless rank 5 took 25% off.
+      for (const node of MINING_NODES) s.world.broken.set(node.id, s.world.server - MINING_NODE_KINDS[node.kind].respawnSeconds * 800);
+      s.mine.start();
+      s.runUntil(() => s.mine.state().target !== null, 2);
+      s.step();
+      expect(s.mine.state().status.startsWith('Waiting for Rocks to Grow Back')).toBe(waiting);
+    }
   });
 
   it('gives way to the player\'s own keys, and carries on when they let go', () => {

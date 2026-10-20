@@ -55,6 +55,8 @@ export type BaseSubscriptionHandlers = {
   removeResearch: RowHandler;
   luckResearch: RowHandler;
   removeLuckResearch: RowHandler;
+  researchRank: RowHandler;
+  removeResearchRank: RowHandler;
   activeResearch: RowHandler;
   removeActiveResearch: RowHandler;
   pausedResearch: RowHandler;
@@ -126,6 +128,8 @@ type BaseSubscriptionHandlerSources = {
     removeResearch: BaseSubscriptionHandlers["removeResearch"];
     upsertLuckResearch: BaseSubscriptionHandlers["luckResearch"];
     removeLuckResearch: BaseSubscriptionHandlers["removeLuckResearch"];
+    upsertResearchRank: BaseSubscriptionHandlers["researchRank"];
+    removeResearchRank: BaseSubscriptionHandlers["removeResearchRank"];
     upsertActiveResearch: BaseSubscriptionHandlers["activeResearch"];
     removeActiveResearch: BaseSubscriptionHandlers["removeActiveResearch"];
     upsertPausedResearch: BaseSubscriptionHandlers["pausedResearch"];
@@ -234,6 +238,8 @@ export function createBaseSubscriptionHandlers(sources: BaseSubscriptionHandlerS
     removeResearch: progression.removeResearch,
     luckResearch: progression.upsertLuckResearch,
     removeLuckResearch: progression.removeLuckResearch,
+    researchRank: progression.upsertResearchRank,
+    removeResearchRank: progression.removeResearchRank,
     activeResearch: progression.upsertActiveResearch,
     removeActiveResearch: progression.removeActiveResearch,
     pausedResearch: progression.upsertPausedResearch,
@@ -390,6 +396,9 @@ export function startBaseSubscription(dependencies: BaseSubscriptionDependencies
   connection.db.playerLuckResearch.onInsert((_ctx, row) => { if (shouldHandle()) handlers.luckResearch(row); });
   connection.db.playerLuckResearch.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.luckResearch(row); });
   connection.db.playerLuckResearch.onDelete((_ctx, row) => { if (shouldHandle()) handlers.removeLuckResearch(row); });
+  connection.db.myResearchRanks.onInsert((_ctx, row) => { if (shouldHandle()) handlers.researchRank(row); });
+  connection.db.myResearchRanks.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.researchRank(row); });
+  connection.db.myResearchRanks.onDelete((_ctx, row) => { if (shouldHandle()) handlers.removeResearchRank(row); });
   connection.db.activeResearch.onInsert((_ctx, row) => { if (shouldHandle()) handlers.activeResearch(row); });
   connection.db.activeResearch.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.activeResearch(row); });
   connection.db.activeResearch.onDelete((_ctx, row) => { if (shouldHandle()) handlers.removeActiveResearch(row); });
@@ -514,6 +523,7 @@ export function startBaseSubscription(dependencies: BaseSubscriptionDependencies
       tables.playerInventory.where((bag) => bag.identity.eq(dependencies.identity)),
       tables.playerResearch.where((research) => research.identity.eq(dependencies.identity)),
       tables.playerLuckResearch.where((research) => research.identity.eq(dependencies.identity)),
+      tables.myResearchRanks,
       tables.activeResearch.where((research) => research.identity.eq(dependencies.identity)),
       tables.pausedResearch.where((research) => research.identity.eq(dependencies.identity)),
       // Whole table, not only our row: the level badge beside every name needs
@@ -577,6 +587,7 @@ export function startBaseSubscription(dependencies: BaseSubscriptionDependencies
         for (const row of connection.db.playerProgress.iter()) handlers.progress(withWideProgress(connection, row));
         for (const row of connection.db.playerResearch.iter()) handlers.research(row);
         for (const row of connection.db.playerLuckResearch.iter()) handlers.luckResearch(row);
+        for (const row of connection.db.myResearchRanks.iter()) handlers.researchRank(row);
         for (const row of connection.db.activeResearch.iter()) handlers.activeResearch(row);
         if (![...connection.db.activeResearch.iter()].some(row => row.identity.toHexString() === dependencies.identity.toHexString())) handlers.removeActiveResearch({ identity: dependencies.identity });
         for (const row of connection.db.pausedResearch.iter()) handlers.pausedResearch(row);

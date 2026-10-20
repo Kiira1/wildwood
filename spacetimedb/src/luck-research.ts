@@ -6,7 +6,8 @@ import { bonusOffFor } from "./bonus-toggles";
 
 /**
  * The luck research ranks (shared/luck-research.ts), kept beside player_research in a table of their own so
- * player_research never gains a column. No row is every luck at zero.
+ * player_research never gains a column. No row is every luck at zero. A new research node does not go here either:
+ * it goes in player_research_rank (research-rank.ts), one row per node, which needs no column at all.
  */
 export const playerLuckResearch = table({ name: "player_luck_research", public: true }, {
   identity: t.identity().primaryKey(),

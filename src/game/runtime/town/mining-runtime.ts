@@ -2,6 +2,7 @@ import {
   MINING_NODES, MINING_NODE_KINDS, MINING_REACH, canMineRock, miningBreakSeconds, miningRockHint, miningYield, type MiningNode,
 } from "../../../../shared/mining";
 import { REFINE_ORES, type OreId } from "../../../../shared/refine";
+import { gatherRespawnMs } from "../../../../shared/gather-respawn";
 import { inTownHills, TOWN_FEET_OFFSET } from "../../../../shared/town";
 import { ATTACK_ANIMATION_SECONDS, ATTACK_WINDUP_SECONDS } from "../../attack-timeline";
 import type { PlayerState } from "../types";
@@ -28,6 +29,8 @@ export type MiningSource = {
   /** Told what a report gave beyond what its breaks showed (the server's rolls). */
   setOnMiningExtra?: (callback: ((ores: Partial<Record<OreId, number>>) => void) | null) => void;
   serverNowMs?: () => number;
+  /** The player's research: Resource Respawn shortens how long rocks and trees take to grow back (shared/gather-respawn.ts). */
+  research?: () => { resourceRespawn?: number };
 };
 
 /** "+2 More Starshards": what a report gave beyond what the breaks showed. */
@@ -95,14 +98,16 @@ export function createMiningRuntime(deps: {
       && session.generation === (source.sessionGeneration?.() ?? 0));
   }
 
-  function isBare(node: MiningNode, at: number) {
-    const brokenAt = deps.source()?.minedNodeAt?.(node.id) ?? null;
-    return brokenAt !== null && at - brokenAt < MINING_NODE_KINDS[node.kind].respawnSeconds * 1_000;
+  /** Whether a rock is bare: broken less than its regrowth ago, shortened by the player's Resource Respawn rank. */
+  function isBare(node: MiningNode, at: number, source: MiningSource | null | undefined, rank: number) {
+    const brokenAt = source?.minedNodeAt?.(node.id) ?? null;
+    return brokenAt !== null && at - brokenAt < gatherRespawnMs(MINING_NODE_KINDS[node.kind].respawnSeconds, rank);
   }
 
   function refreshBare(at: number) {
     miningScene.bare.clear();
-    for (const node of MINING_NODES) if (isBare(node, at)) miningScene.bare.add(node.id);
+    const source = deps.source(), rank = source?.research?.().resourceRespawn ?? 0;
+    for (const node of MINING_NODES) if (isBare(node, at, source, rank)) miningScene.bare.add(node.id);
   }
 
   /** The nearest rock in reach of the player's feet that is not bare. */

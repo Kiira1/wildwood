@@ -15,6 +15,7 @@ import { updateSnapshotRow, insertSnapshotRow, deleteSnapshotRow } from "./snaps
 import { removeResearchCompletionSchedules } from "./research-runtime";
 import { removePausedResearch } from "./research-pause";
 import { deleteLuckResearch } from "./luck-research";
+import { deleteRankTableResearch } from "./research-rank";
 import { removePlayerItemDrops, removePlayerItemUpgradeData } from "./item-upgrade-runtime";
 import { TUTORIAL_FOREST_MAP_ID, PLAYER_SPAWN } from "../../shared/rules";
 import { HOME_EXTERIOR_MAP_ID } from "../../shared/home";
@@ -73,6 +74,7 @@ export function resetProgressToDefaults(ctx: any, activePlayer: any, keep: { res
       const research = ctx.db.playerResearch.identity.find(ctx.sender);
       if (research) deleteSnapshotRow(ctx, "playerResearch", ctx.sender);
       deleteLuckResearch(ctx, ctx.sender);
+      deleteRankTableResearch(ctx, ctx.sender);
       const activeResearchRow = ctx.db.activeResearch.identity.find(ctx.sender);
       if (activeResearchRow) ctx.db.activeResearch.identity.delete(ctx.sender);
       removeResearchCompletionSchedules(ctx, ctx.sender);

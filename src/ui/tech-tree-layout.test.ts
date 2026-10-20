@@ -25,11 +25,11 @@ describe("tech tree layout", () => {
       ["enemyRespawn-2", "critCap"],
       ["inventorySlots"],
       ["cardLuck", "gearLuck"],
-      ["miningLuck"],
+      ["miningLuck", "resourceRespawn"],
       ["cardLuck-2", "skillLuck"],
       ["refineLuck"],
     ]);
-    expect(layout.rows.map(row => row.length)).toEqual([1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1]);
+    expect(layout.rows.map(row => row.length)).toEqual([1, 2, 1, 2, 1, 2, 1, 2, 2, 2, 1]);
     // Every utility technology appears, Enemy Respawn and Card Luck twice.
     expect(new Set(layout.nodes.map(node => node.researchId))).toEqual(new Set(UTILITY_RESEARCH_IDS));
     expect(layout.nodes.find(node => node.id === "tech-utility-enemyRespawn-2")).toMatchObject({ startRank: 5, endRank: 10 });
@@ -55,6 +55,8 @@ describe("tech tree layout", () => {
       ["tech-utility-inventorySlots", "tech-utility-gearLuck"],
       ["tech-utility-cardLuck", "tech-utility-miningLuck"],
       ["tech-utility-gearLuck", "tech-utility-miningLuck"],
+      ["tech-utility-cardLuck", "tech-utility-resourceRespawn"],
+      ["tech-utility-gearLuck", "tech-utility-resourceRespawn"],
       ["tech-utility-miningLuck", "tech-utility-cardLuck-2"],
       ["tech-utility-miningLuck", "tech-utility-skillLuck"],
       ["tech-utility-cardLuck-2", "tech-utility-refineLuck"],

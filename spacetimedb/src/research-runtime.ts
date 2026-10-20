@@ -13,15 +13,20 @@ import { ScheduleAt, Timestamp } from "spacetimedb";
 import { reconcileActiveItemUpgrade } from "./item-upgrade-runtime";
 import { powerFieldsForProgress } from "./player-power";
 import { isLuckResearchId, writeLuckRanks } from "./luck-research";
-import { LUCK_RESEARCH_IDS } from "../../shared/research";
+import { LUCK_RESEARCH_IDS, RANK_TABLE_RESEARCH_IDS, isRankTableResearchId } from "../../shared/research";
+import { writeRankTableRanks } from "./research-rank";
 
 export const researchForPlayer = createResearchState({ updateSnapshotRow, insertSnapshotRow });
 
-/** Stores ranks from researchForPlayer: luck to player_luck_research, the rest to player_research. */
+/**
+ * Stores ranks from researchForPlayer: luck to player_luck_research, the rank-table research to player_research_rank,
+ * the rest to player_research.
+ */
 export function writeResearchRanks(ctx: any, identity: any, research: Record<string, any>, changed: ResearchId) {
   if (isLuckResearchId(changed)) { writeLuckRanks(ctx, identity, research); return; }
+  if (isRankTableResearchId(changed)) { writeRankTableRanks(ctx, identity, research); return; }
   const row: Record<string, any> = { ...research, identity };
-  for (const id of LUCK_RESEARCH_IDS) delete row[id];
+  for (const id of [...LUCK_RESEARCH_IDS, ...RANK_TABLE_RESEARCH_IDS]) delete row[id];
   updateSnapshotRow(ctx, "playerResearch", row as any);
 }
 

@@ -143,6 +143,19 @@ describe("local progression profile snapshots", () => {
   });
   afterEach(() => vi.unstubAllGlobals());
 
+  it("merges rank-table research into the research, through a player_research row arriving later and the row's removal", () => {
+    const h = setup();
+    const local = { toHexString: () => identity } as never;
+    h.service.tables.upsertResearchRank({ identity: local, researchId: "resourceRespawn", rank: 3 });
+    expect(h.service.api.research().resourceRespawn).toBe(3);
+    h.service.tables.upsertResearch({ identity: local, warcraft: 2 });
+    expect(h.service.api.research()).toMatchObject({ warcraft: 2, resourceRespawn: 3 });
+    h.service.tables.upsertResearchRank({ identity: local, researchId: "notANode", rank: 9 });
+    expect(h.service.api.research()).not.toHaveProperty("notANode");
+    h.service.tables.removeResearchRank({ identity: local, researchId: "resourceRespawn" });
+    expect(h.service.api.research()).toMatchObject({ warcraft: 2, resourceRespawn: 0 });
+  });
+
   it("removes confirmed destruction from cached and pending inventory without losing earned stats", async () => {
     const h = setup();
     const saved = { ...progress(), inventoryJson: '["samurai_hat"]', equippedHead: "samurai_hat", cosmeticHead: "samurai_hat" };

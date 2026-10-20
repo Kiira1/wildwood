@@ -12,12 +12,13 @@ import type { InventoryState } from "../../inventory";
 import type { OreCounts } from "../../../../shared/ore-bag";
 import { bagSlotCapacity } from "../../../../shared/gems";
 
-export type TownSource = MiningSource & WoodcuttingSource & {
+export type TownSource = Omit<MiningSource & WoodcuttingSource, "research"> & {
   /** What the bag holds besides its items: kept copies, ore stacks, and how many slots are bought. */
   equipmentCopies?: () => readonly unknown[];
   ores?: () => OreCounts;
   inventorySlotsUnlocked?: () => number;
-  research?: () => { inventorySlots?: number };
+  /** Bag slots, and Resource Respawn for the rocks and trees. */
+  research?: () => { inventorySlots?: number; resourceRespawn?: number };
   fallIntoWell?: () => Promise<boolean>;
   useTownDoor?: (door: number) => Promise<boolean>;
   /** A movement packet; forced, it is sent whatever the sparse-movement rules would hold back. */

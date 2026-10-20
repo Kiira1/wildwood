@@ -1,8 +1,9 @@
 import { luckRanksOf } from "../../shared/luck-research";
+import { rankTableRanksFor } from "./research-rank";
 
 /**
  * Server-owned research row creation and legacy-rank repair. A player's ranks are their player_research row
- * with the luck ranks from player_luck_research on top.
+ * with the luck ranks from player_luck_research and the rank-table ranks from player_research_rank on top.
  */
 export function createResearchState(deps: {
   updateSnapshotRow: (ctx: any, table: "playerResearch", row: any) => void;
@@ -29,6 +30,7 @@ export function createResearchState(deps: {
   }
 
   return function researchForPlayer(ctx: any, identity: any) {
-    return { ...storedResearch(ctx, identity), ...luckRanksOf(ctx.db.playerLuckResearch?.identity.find(identity)) };
+    return { ...storedResearch(ctx, identity), ...luckRanksOf(ctx.db.playerLuckResearch?.identity.find(identity)),
+      ...rankTableRanksFor(ctx, identity) };
   };
 }

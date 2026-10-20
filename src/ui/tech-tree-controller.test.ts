@@ -48,7 +48,11 @@ it("opens Power and Utility from separate nodes and returns to the chooser", asy
   expect(element("categories").hidden).toBe(false);
   click('[data-research-tree="utility"]');
   expect(element("viewport").hidden).toBe(false);
-  expect(map.querySelectorAll("[data-tech-node]")).toHaveLength(16);
+  expect(map.querySelectorAll("[data-tech-node]")).toHaveLength(17);
+  click('[data-tech-node="tech-utility-resourceRespawn"]');
+  expect(element("content").textContent).toContain("ROCK AND TREE RESPAWN");
+  expect(element("content").textContent).toContain("-5% PER RANK");
+  expect(element("content").textContent).toContain("Requires Card Drop Rate 1/5 or Gold Drop Chance 1/5");
   click('[data-tech-node="tech-utility-critCap"]');
   expect(element("content").textContent).toContain("CRITICAL DAMAGE CAP");
   expect(element("content").textContent).toContain("+1× PER RANK");

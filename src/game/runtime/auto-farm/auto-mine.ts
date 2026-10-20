@@ -2,6 +2,7 @@ import { ARCANE_CRYSTAL } from '../../../../shared/crafting';
 import {
   MINING_NODES, MINING_NODE_KINDS, MINING_REACH, MINING_VEINS, canMineRock, miningNodeName, miningRockNeed, type MiningNode, type RockOreId,
 } from '../../../../shared/mining';
+import { gatherRespawnMs } from '../../../../shared/gather-respawn';
 import { rockOreKinds } from '../../../../shared/ore-bag';
 import { REFINE_ORES } from '../../../../shared/refine';
 import { inTownHills } from '../../../../shared/town';
@@ -21,6 +22,8 @@ export type AutoMineSource = {
   mining?: () => number;
   minedNodeAt?: (nodeId: number) => number | null;
   serverNowMs?: () => number;
+  /** The player's research: Resource Respawn shortens how long rocks and trees take to grow back (shared/gather-respawn.ts). */
+  research?: () => { resourceRespawn?: number };
 };
 
 /** Where feet stand to mine a rock, from its foot: in front of the stone, else to either side; each within reach. */
@@ -102,7 +105,7 @@ export function createAutoMine(options: AutoGatherOptions & {
   const minable = (node: MiningNode) => picked.has(node.ore) && allowed(node);
   const open = (node: MiningNode) => allowed(node) && !full.has(bagKey(node));
   function bareUntil(node: MiningNode, at = serverNow()) {
-    const respawn = MINING_NODE_KINDS[node.kind].respawnSeconds * 1_000;
+    const respawn = gatherRespawnMs(MINING_NODE_KINDS[node.kind].respawnSeconds, options.source()?.research?.().resourceRespawn ?? 0);
     const brokenAt = options.source()?.minedNodeAt?.(node.id) ?? null;
     if (brokenAt !== null && at - brokenAt < respawn) return brokenAt + respawn;
     // Broken here a moment ago, before the server lists it.

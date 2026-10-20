@@ -16,6 +16,8 @@ import { addOres, oreCountsFor } from "./item-refine";
 import { extraCopiesOf } from "./equipment-copies";
 import { bagCapacityFor } from "./bag-capacity";
 import { luckInPlay } from "./luck-research";
+import { researchRankFor } from "./research-rank";
+import { gatherRespawnMs } from "../../shared/gather-respawn";
 import { bagFullForOres, rockOreKinds, roomForOres } from "../../shared/ore-bag";
 import { toolBonusYield } from "../../shared/tools";
 import { toolLevelFor } from "./tools";
@@ -76,9 +78,12 @@ export function backfillMiningLevels(ctx: Ctx) {
 export const minedNodeKey = (identity: { toHexString(): string }, nodeId: number) => `${identity.toHexString()}:${nodeId}`;
 
 const microsSince = (ctx: Ctx, at: { microsSinceUnixEpoch: bigint }) => Number(ctx.timestamp.microsSinceUnixEpoch - at.microsSinceUnixEpoch);
-const grownBack = (ctx: Ctx, row: { nodeId: number; brokenAt: { microsSinceUnixEpoch: bigint } }) => {
+/** The player's Resource Respawn rank: rocks grow back sooner for them (shared/gather-respawn.ts). */
+const respawnRankFor = (ctx: Ctx, identity: Identity) => researchRankFor(ctx, identity, "resourceRespawn");
+const rockRespawnMs = (node: MiningNode, rank: number) => gatherRespawnMs(MINING_NODE_KINDS[node.kind].respawnSeconds, rank);
+const grownBack = (ctx: Ctx, row: { nodeId: number; brokenAt: { microsSinceUnixEpoch: bigint } }, rank: number) => {
   const node = miningNode(row.nodeId);
-  return !node || microsSince(ctx, row.brokenAt) >= MINING_NODE_KINDS[node.kind].respawnSeconds * 1_000_000;
+  return !node || microsSince(ctx, row.brokenAt) >= rockRespawnMs(node, rank) * 1_000;
 };
 
 /** The player's Mining stat; 0 before their first rock. */
@@ -89,13 +94,14 @@ export function miningFor(ctx: Ctx, identity: Identity) {
 /** Whether a rock is bare for this player: broken by them less than its regrowth ago. */
 export function nodeBareFor(ctx: Ctx, identity: Identity, node: MiningNode) {
   const row = ctx.db.playerMinedNode.key.find(minedNodeKey(identity, node.id));
-  return Boolean(row && !grownBack(ctx, row));
+  return Boolean(row && !grownBack(ctx, row, respawnRankFor(ctx, identity)));
 }
 
 /** Clears the player's rows for rocks that have grown back: only the bare ones are kept. */
 function pruneMinedNodes(ctx: Ctx, identity: Identity) {
+  const rank = respawnRankFor(ctx, identity);
   for (const row of [...ctx.db.playerMinedNode.identity.filter(identity)]) {
-    if (grownBack(ctx, row)) ctx.db.playerMinedNode.key.delete(row.key);
+    if (grownBack(ctx, row, rank)) ctx.db.playerMinedNode.key.delete(row.key);
   }
 }
 
@@ -212,11 +218,11 @@ export function reportMiningFor(ctx: Ctx, args: { breaks: readonly { nodeId: num
   const rows = new Map<number, any>();
   for (const row of ctx.db.playerMinedNode.identity.filter(ctx.sender) as Iterable<any>) rows.set(row.nodeId, row);
   const cards = cardStatFactors(activeCardTotalsFor(ctx, ctx.sender)), pickaxe = toolLevelFor(ctx, ctx.sender, "pickaxe");
-  const ores = oreCountsFor(ctx, ctx.sender), progress = progressOnce(ctx, ctx.sender);
+  const ores = oreCountsFor(ctx, ctx.sender), progress = progressOnce(ctx, ctx.sender), rank = respawnRankFor(ctx, ctx.sender);
   const { accepted, rejected, skill: reached } = judgeGatherBatch(claims, {
     node: miningNode, canWork: canMineRock, gain: miningGain, slack: MINING_RATE_SLACK, reach: MINING_SERVER_REACH,
     seconds: (node, at) => miningBreakSeconds(node, at, cards.miningSpeed, pickaxe),
-    respawnMs: node => MINING_NODE_KINDS[node.kind].respawnSeconds * 1_000, kinds: rockOreKinds,
+    respawnMs: node => rockRespawnMs(node, rank), kinds: rockOreKinds,
   }, {
     nowMs: millisOf(ctx.timestamp), lastAtMs: mining ? millisOf(mining.lastBreakAt) : null, skill,
     brokenAtMs: new Map([...rows.values()].map(row => [row.nodeId, millisOf(row.brokenAt)])),
@@ -227,7 +233,7 @@ export function reportMiningFor(ctx: Ctx, args: { breaks: readonly { nodeId: num
   // Grown-back rows go as before; the rocks broken now are written once each, at their last break.
   const last = new Map<number, number>();
   for (const { node, atMs } of accepted) last.set(node.id, atMs);
-  for (const row of rows.values()) if (!last.has(row.nodeId) && grownBack(ctx, row)) ctx.db.playerMinedNode.key.delete(row.key);
+  for (const row of rows.values()) if (!last.has(row.nodeId) && grownBack(ctx, row, rank)) ctx.db.playerMinedNode.key.delete(row.key);
   if (!accepted.length) return;
   const miningLuck = accepted.some(({ node }) => node.kind === "mysterious") ? luckInPlay(ctx, ctx.sender).miningLuck : 0;
   const gained: Partial<Record<OreId, number>> = {};

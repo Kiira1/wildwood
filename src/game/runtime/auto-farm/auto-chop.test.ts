@@ -40,7 +40,7 @@ const GROVE_ENTRY = (() => {
  * A player in Timberwood, Auto Chop, the woodcutting runtime that fells what they stand by, and a frame step that
  * moves them as the game does (collision included).
  */
-function setup(options: { woodcutting?: number; at?: { x: number; y: number }; storage?: ReturnType<typeof memoryStorage>; bag?: BagSpace } = {}) {
+function setup(options: { woodcutting?: number; at?: { x: number; y: number }; storage?: ReturnType<typeof memoryStorage>; bag?: BagSpace; respawnRank?: number } = {}) {
   const player = { ...(options.at ?? GROVE_ENTRY), moving: false, hp: 100 } as PlayerState;
   const world = { map: 'town', time: 0, server: 5_000_000, felled: new Map<number, number>() };
   const storage = options.storage ?? memoryStorage();
@@ -49,6 +49,7 @@ function setup(options: { woodcutting?: number; at?: { x: number; y: number }; s
   const source = {
     choppedTreeAt: (id: number) => world.felled.get(id) ?? null,
     serverNowMs: () => world.server, woodcutting: () => options.woodcutting ?? 0, queueTreeChop: chopTree, flushWoodcutting: vi.fn(),
+    research: () => ({ resourceRespawn: options.respawnRank ?? 0 }),
   };
   const chop = createAutoChop({ player, mapId: () => world.map, source: () => source, storage: () => storage, speed: () => SPEED, now: () => world.time });
   const runtime = createWoodcuttingRuntime({ source: () => source, player, bag: options.bag ? () => options.bag : undefined });
@@ -134,6 +135,18 @@ describe('Auto Chop', () => {
     expect(next).not.toBe(first);
     expect(next.kind).toBe('pine');
     expect(s.runUntil(() => s.at(next), 30)).toBeLessThan(30 / DT);
+  });
+
+  it('counts trees grown back sooner with Resource Respawn research', () => {
+    for (const [rank, waiting] of [[0, true], [5, false]] as const) {
+      resetWoodcuttingScene();
+      const s = setup({ respawnRank: rank });
+      // Every pine felled 100s ago: a stump at 120s, grown back at rank 5's 90s.
+      for (const tree of pines) s.world.felled.set(tree.id, s.world.server - 100_000);
+      s.chop.start();
+      s.step();
+      expect(s.chop.state().status.startsWith('Waiting for Trees to Grow Back')).toBe(waiting);
+    }
   });
 
   it('waits by the first tree to grow back when every pine is a stump', () => {

@@ -340,7 +340,7 @@ export function createTechTreeController(elements: TechTreeControllerElements, h
           : definition.unit === "range" ? `+${definition.valuePerRank} RANGE`
           : definition.unit === "x" ? `+${definition.valuePerRank}×`
           : definition.unit === "slot" ? `+${definition.valuePerRank} SLOT`
-          : `+${definition.valuePerRank}%`;
+          : `${definition.lowers ? "-" : "+"}${definition.valuePerRank}%`;
     description.textContent = `${value} PER RANK`;
     detailContent.append(title, description);
     const effectValue = document.createElement("div");
