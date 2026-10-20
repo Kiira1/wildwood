@@ -11,7 +11,7 @@ import type { GuildAction, GuildApi } from "../coop/services/guild-service";
 import { applyProfileIcon } from "../app/profile-icons";
 import { createGuildPreview } from './guild-preview';
 import type { GuildQuestStanding } from "./quest-board-controller";
-import { GUILD_QUEST_BONUS_PER_POINT, GUILD_QUEST_COLLECT_LIMIT, SOLO_QUEST_BONUS_PER_QUEST, WEEKLY_QUEST_COUNT, questDay } from "../../shared/daily-quests";
+import { GUILD_QUEST_BONUS_PER_POINT, GUILD_QUEST_COLLECT_LIMIT, SOLO_QUEST_BONUS_PER_QUEST, WEEKLY_QUEST_COUNT, questDay } from "../../shared/weekly-quests";
 
 type Section = "guild" | "battles" | "rankings" | "quests" | "friends";
 type Member = NonNullable<GuildSnapshot["guild"]>["members"][number];
@@ -415,7 +415,7 @@ export function createGuildPanel(options: Options) {
       element("p", "Every member joins one simultaneous battle using their latest saved stats and gear. Eliminate the opposing guild to win. At 60 seconds, remaining team health percentage breaks the tie."),
       element("p", "Your guild gets 3 attacks a day, once per opponent. Attacking earns 3 weekly points for a victory, 1 for a draw. Defense costs no attacks and awards no points.")); body.append(rules);
   }
-  /** Daily quest points: what this guild has this week, what it pays, and how every guild stands. */
+  /** Weekly quest points: what this guild has this week, what it pays, and how every guild stands. */
   function hint(parent: HTMLElement, text: string) { parent.append(element("p", text, "guild-quest-hint")); }
   function renderQuests(body: HTMLElement) {
     const standing = options.questStanding?.();

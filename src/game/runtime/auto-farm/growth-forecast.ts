@@ -123,7 +123,7 @@ export type ForecastOption = {
   kite?: boolean;
   /**
    * Pull brings only as many of the pulled groups at once as the build can stand
-   * through (auto-farm-kite-model.ts tankableCount, as the controller pulls);
+   * through (auto-farm-kite-model.ts tankableCount);
    * false brings the whole of them (pullTankCheck). Default true.
    */
   tankLimit?: boolean;
@@ -340,7 +340,7 @@ export function forecastOption(map: ForecastMap, build: ForecastBuild, option: F
   const chase = chaseSpeedFor(build.moveSpeed);
   const speed = Math.max(1, build.moveSpeed);
   const evades = build.evades ?? (AUTO_FARM_EVASION && !build.melee && !build.reflectOnly);
-  /** Reflect and Second Wind, as the kite model weighs them; a Reflect build takes the hits it can stand (auto-farm-controller.ts worthAvoiding). */
+  /** Reflect and Second Wind, as the kite model weighs them (auto-farm-kite-model.ts perkFightLoss); a Reflect build takes the hits it can stand. */
   const perks: TankPerks = { reflect: Math.max(0, build.reflect), reflectOnly: Boolean(build.reflectOnly), secondWind: Math.max(0, build.secondWind) };
   const reflects = perks.reflect > 0;
   const kites = (option.kite ?? evades) && !build.melee && !build.reflectOnly;
@@ -458,7 +458,7 @@ export function forecastOption(map: ForecastMap, build: ForecastBuild, option: F
 
   /**
    * What autofarm's kite does about the melee enemies on the player now
-   * (auto-farm-controller.ts kiteWorth, on the kite model): 'hold' on a circle
+   * (on the kite model, auto-farm-kite-model.ts): 'hold' on a circle
    * that holds them all, when standing would cost health regeneration does not
    * put back (no blows land); past what a circle holds, 'kite' (each lands one
    * blow per kite cycle) only when standing the fight out would take the
@@ -479,7 +479,7 @@ export function forecastOption(map: ForecastMap, build: ForecastBuild, option: F
       const cycle = kitedHitInterval(speed, chase) * tuning.kiteScale / incomingRate;
       const kitedRate = chasing.reduce((sum, foe) => sum + foe.hit / Math.max(cycle, foe.interval), 0);
       const regen = Math.max(0, stats.regen);
-      // As the controller weighs it (auto-farm-controller.ts kiteWorth): what a fight costs, Reflect and Second Wind counted.
+      // What a fight costs on the kite model (perkFightLoss), Reflect and Second Wind counted.
       const dps = Math.max(1e-9, stats.damage * critAverage / Math.max(build.minAttackInterval, stats.attackRate));
       const threats: ChaserThreat[] = chasing.map(foe => ({ damage: foe.hit, raw: foe.raw, attackSpeed: 1 / Math.max(1e-9, foe.interval), hp: Math.max(0, foe.hp), r: foe.site.definition.r }));
       const standingHits = chasing.map(foe => 1 / Math.max(1e-9, foe.interval)).sort((a, b) => b - a).slice(0, room).reduce((sum, rate) => sum + rate, 0);
@@ -563,7 +563,7 @@ export function forecastOption(map: ForecastMap, build: ForecastBuild, option: F
       if (next === hitAt && hitter) {
         if (!hitter.melee) {
           hitter.nextHit = Math.max(t, hitter.nextHit) + hitter.interval;
-          // A shot is stepped out of when it is worth it (auto-farm-controller.ts worthAvoiding): the player hurt at
+          // A shot is stepped out of when it is worth it: the player hurt at
           // all, or the shot a real bite; at full health a small one is left to land, regeneration keeping up.
           const worth = evades && (reflects ? hp - hitter.hit < stats.maxHp * TANK_RESERVE : hp < stats.maxHp - 1e-9 || hitter.raw >= stats.maxHp * BITE_SHARE);
           if (worth) {
@@ -698,7 +698,7 @@ export function forecastOption(map: ForecastMap, build: ForecastBuild, option: F
     };
     repick();
     const engagedSites = new Set<ForecastSite>();
-    // As many pulled at once as the build can stand through (auto-farm-controller.ts pullable): looked at again every 10 seconds.
+    // As many pulled at once as the build can stand through (auto-farm-kite-model.ts tankableCount): looked at again every 10 seconds.
     let limit = Infinity, limitAt = -Infinity;
     const pulledLiving = () => { let count = 0; for (const foe of foes) if (foe.hp > 0 && pulled.has(foe.site.group)) count++; return count; };
     const room = (at: number) => {

@@ -1,5 +1,5 @@
 import { createChatGuildRequests } from "./chat-guild-requests";
-import { CHAT_CLOSED_EVENT } from "./home-teleport-button";
+import { CHAT_CLOSED_EVENT } from "./town-teleport-button";
 import type { GuildApi } from "../coop/services/guild-service";
 import { createChatViewport } from "./chat-viewport";
 import { createChatScrollIdle } from "./chat-scroll-idle";

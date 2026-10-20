@@ -19,7 +19,7 @@ function fixture() {
 }
 it("shows the helmet reward and celebrates one claim even when the server removes the pending row first", async () => {
   const h = fixture();
-  expect(h.overlay.classList.contains("daily-gem-bonus")).toBe(true);
+  expect(h.overlay.classList.contains("claim-overlay")).toBe(true);
   expect(h.overlay.textContent).toContain("GIFT FROM DEVELOPER");
   expect(h.overlay.textContent).toContain("ALPHA TESTER HELMET");
   expect(h.document.querySelector("img")!.getAttribute("src")).toContain("superior-golden-helmet.webp");

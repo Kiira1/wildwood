@@ -13,7 +13,7 @@ const fighters = (over: Partial<DuelCombat> = {}): DuelCombat => ({
 const run = (duel: DuelCombat, seconds: number) => advanceDuelCombat(duel, initialDuelCombatState(duel), 0, seconds * 1_000_000);
 /** When the challenger's first attack lands, the approach included. */
 const firstHitAt = (duel: DuelCombat) => duelAttackDelays(duel).challenger + duel.challengerAttackRate;
-/** A riposte seed whose roll for this side, attack and card key lands under `chance`. */
+/** A duel seed whose roll for this side, attack and card key lands under `chance`. */
 const seedFor = (side: "challenger" | "opponent", attack: number, key: string, chance: number) =>
   [...Array(5000).keys()].find(seed => regularEnemySeededUnit("duel-card", String(seed), side, attack, key) < chance)!;
 

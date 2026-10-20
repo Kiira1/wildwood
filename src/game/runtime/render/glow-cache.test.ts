@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createGlowCache } from "./glow-cache";
 import { drawBrightened } from "./brighten";
-import { beginHomeTeleport, drawHomeTeleport, endHomeTeleport } from "../town/home-teleport";
+import { beginTownTeleport, drawTownTeleport, endTownTeleport } from "../town/town-teleport";
 import { drawGravebloomArt } from "../boss/verdant-boss-art";
 
 /** A 2D context that records every property set and call, with a fixed device scale. */
@@ -51,14 +51,14 @@ describe("baked glows", () => {
 });
 
 describe("frame draws without Firefox fallbacks", () => {
-  afterEach(() => { endHomeTeleport(); vi.restoreAllMocks(); });
-  it("the home teleport sets no shadow or filter", () => {
+  afterEach(() => { endTownTeleport(); vi.restoreAllMocks(); });
+  it("the Town teleport sets no shadow or filter", () => {
     let now = 0;
     vi.spyOn(performance, "now").mockImplementation(() => now);
-    beginHomeTeleport();
+    beginTownTeleport();
     const frame = recordingContext();
     const player = vi.fn();
-    for (now = 0; now < 640; now += 16) drawHomeTeleport(frame.ctx, 100, 100, player);
+    for (now = 0; now < 640; now += 16) drawTownTeleport(frame.ctx, 100, 100, player);
     expect(player).toHaveBeenCalled();
     expect(frame.sets.filter(key => FRAME_FALLBACKS.includes(key))).toEqual([]);
   });

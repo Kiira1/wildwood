@@ -4,9 +4,9 @@ import { prestigeBonusesOff, type AggroChallenge } from "../../../shared/aggro-c
 import { parseBonusOff, perksInPlayFor, prestigeStatGainOn, reflectRewardsOn, researchInPlayFor, serializeBonusOff } from "../../../shared/bonus-toggles";
 import { playerAttackCap } from "../../../shared/prestige-perks";
 import type { AttackCap } from "../../../shared/stat-rating";
-import { applyQuestKills, parseDailyQuests, type DailyQuest } from "../../../shared/daily-quests";
+import { applyQuestKills, parseWeeklyQuests, type WeeklyQuest } from "../../../shared/weekly-quests";
 
-export type DailyQuestState = { day: number; quests: DailyQuest[]; bonus: number; guildPoints: number; guildName: string };
+export type WeeklyQuestState = { day: number; quests: WeeklyQuest[]; bonus: number; guildPoints: number; guildName: string };
 import type { MailboxMessage } from "../../../shared/mailbox";
 import { portalCutsceneBit, unlockedPortalCutsceneMask } from "../../../shared/portal-cutscenes";
 import { LOADOUT_FIELDS } from "../../../shared/combat-progress";
@@ -36,7 +36,7 @@ import type {
   PlayerPrestige,
   PlayerPrestigePerks,
   PlayerResearch,
-  UpgradeBenchSlot,
+  SlotUpgradeQueue,
 } from "../contracts";
 import type { ReducerPort } from "../ports";
 import {
@@ -182,7 +182,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
   const upgradeLevelsByIdentity = new Map<string, Map<string, number>>();
   const heartsByIdentity = new Map<string, number>();
   const lifetimeByIdentity = new Map<string, PlayerLifetime>();
-  const activeItemUpgrades = new Map<UpgradeBenchSlot, ActiveItemUpgrade>();
+  const activeItemUpgrades = new Map<SlotUpgradeQueue, ActiveItemUpgrade>();
   let localProgress: PlayerProgress | null = null;
   let localResearch: PlayerResearch = createEmptyResearchRanks();
   let activeResearch: ActiveResearch | null = null;
@@ -204,7 +204,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
   let keptAggro: { from: AggroChallenge | null; value: AggroChallenge & { parked: boolean } } = { from: null, value: { active: false, completed: 0, parked: false } };
   let keptPerks: { aggro: AggroChallenge; perks: PlayerPrestigePerks | null; expansion: typeof expansionPerks; cards: typeof cardPerks; off: ReadonlySet<string>; value: PlayerPrestigePerks } | null = null;
   let freeRespecUsed = false;
-  let dailyQuest: DailyQuestState | null = null;
+  let weeklyQuest: WeeklyQuestState | null = null;
   const guildQuestWeeks = new Map<string, { week: number; guildId: string; guildName: string; points: number }>();
   let gemBalance = 0n;
   let dailyGemBonusClaimable = false;
@@ -682,12 +682,12 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
   }
   function upsertDailyQuest(row: { identity: Identity; day: number; questsJson: string; bonus: number; guildPoints: number; guildName: string }) {
     if (row.identity.toHexString() !== dependencies.localIdentity()) return;
-    dailyQuest = { day: row.day, quests: parseDailyQuests(row.questsJson), bonus: row.bonus, guildPoints: row.guildPoints, guildName: row.guildName };
+    weeklyQuest = { day: row.day, quests: parseWeeklyQuests(row.questsJson), bonus: row.bonus, guildPoints: row.guildPoints, guildName: row.guildName };
     dependencies.notify();
   }
   function removeDailyQuest(row: { identity: Identity }) {
     if (row.identity.toHexString() !== dependencies.localIdentity()) return;
-    dailyQuest = null;
+    weeklyQuest = null;
     dependencies.notify();
   }
   function upsertGuildQuestWeek(row: { key: string; week: number; guildId: bigint; guildName: string; points: number }) {
@@ -795,7 +795,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
     completesAt: { microsSinceUnixEpoch: bigint };
     paused: boolean;
     remainingMicros: bigint;
-  }, slot: UpgradeBenchSlot) {
+  }, slot: SlotUpgradeQueue) {
     if (row.identity.toHexString() !== dependencies.localIdentity()) return;
     activeItemUpgrades.set(slot, {
       slot,
@@ -810,7 +810,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
     dependencies.notify();
   }
 
-  function removeActiveItemUpgrade(row: { identity: Identity }, slot: UpgradeBenchSlot) {
+  function removeActiveItemUpgrade(row: { identity: Identity }, slot: SlotUpgradeQueue) {
     if (row.identity.toHexString() !== dependencies.localIdentity()) return;
     activeItemUpgrades.delete(slot);
     dependencies.notify();
@@ -877,7 +877,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
   // A kill that finishes a quest goes out at once, so the quest is done and the next one up now, not at the next report.
   let questReport: Promise<boolean> | null = null;
   function reportFinishedQuest(mapId: string) {
-    if (questReport || !dailyQuest || !applyQuestKills(dailyQuest.quests, mapId, enemyLoot.pendingKills(mapId)).completed) return;
+    if (questReport || !weeklyQuest || !applyQuestKills(weeklyQuest.quests, mapId, enemyLoot.pendingKills(mapId)).completed) return;
     questReport = flushEnemyLoot(true).finally(() => { questReport = null; });
   }
 
@@ -1109,10 +1109,10 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
       /** Every account has one respec that keeps its stats; false once it is spent. */
       freeRespecAvailable: () => !freeRespecUsed,
       /** Today's quests and the guild's standing; null until the server has drawn them. */
-      dailyQuests: (): DailyQuestState | null => dailyQuest ? { ...dailyQuest, quests: dailyQuest.quests.map(quest => ({ ...quest })) } : null,
+      weeklyQuests: (): WeeklyQuestState | null => weeklyQuest ? { ...weeklyQuest, quests: weeklyQuest.quests.map(quest => ({ ...quest })) } : null,
       /** Every guild's quest points in one week, best first. */
       guildQuestRanking: (week: number) => [...guildQuestWeeks.values()].filter(row => row.week === week).sort((a, b) => b.points - a.points || a.guildName.localeCompare(b.guildName)),
-      refreshDailyQuests() {
+      refreshWeeklyQuests() {
         return reducerResult("daily quests", (active) => active.reducers.refreshDailyQuests({}))();
       },
       /** The ranks in play: none during an Aggro run, which plays without prestige bonuses, and each switched-off perk zero. */
@@ -1138,7 +1138,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
       itemUpgradeLevels(identity = dependencies.localIdentity()) {
         return upgradeLevelsFor(identity);
       },
-      activeItemUpgrade(slot: UpgradeBenchSlot = 1) {
+      activeItemUpgrade(slot: SlotUpgradeQueue = 1) {
         const active = activeItemUpgrades.get(slot);
         return active ? { ...active } : null;
       },
@@ -1282,7 +1282,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
       useFreePrestigeRespec() {
         return reducerResult("free prestige respec", (active) => active.reducers.useFreePrestigeRespec({}))();
       },
-      async startItemUpgrade(slot: UpgradeBenchSlot, itemId: string, position?: { x: number; y: number }) {
+      async startItemUpgrade(slot: SlotUpgradeQueue, itemId: string, position?: { x: number; y: number }) {
         if (dependencies.reducers.protocolBlocked()) return { ok: false, error: "UPDATE REQUIRED" };
         const connection = dependencies.reducers.connection();
         if (!connection) return { ok: false, error: "NOT CONNECTED" };
@@ -1324,7 +1324,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
           return { ok: false, error: message };
         }
       },
-      async cancelItemUpgrade(slot: UpgradeBenchSlot = 1) {
+      async cancelItemUpgrade(slot: SlotUpgradeQueue = 1) {
         const result = await reducerResult("item upgrade cancel", (connection) => connection.reducers.cancelItemUpgrade({ slot }))();
         if (result.ok) {
           activeItemUpgrades.delete(slot);
@@ -1332,7 +1332,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
         }
         return result;
       },
-      async speedUpItemUpgradeWithGems(slot: UpgradeBenchSlot) {
+      async speedUpItemUpgradeWithGems(slot: SlotUpgradeQueue) {
         const result = await reducerResult("item upgrade speed-up", (connection) => connection.reducers.speedUpItemUpgradeWithGems({ slot }))();
         if (result.ok) {
           activeItemUpgrades.delete(slot);
@@ -1469,7 +1469,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
       aggroChallenge = { active: false, completed: 0 };
       aggroParked = false;
       freeRespecUsed = false;
-      dailyQuest = null;
+      weeklyQuest = null;
       guildQuestWeeks.clear();
       localPrestige = null;
       prestigeLevelByIdentity.clear();
@@ -1522,7 +1522,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
       aggroChallenge = { active: false, completed: 0 };
       aggroParked = false;
       freeRespecUsed = false;
-      dailyQuest = null;
+      weeklyQuest = null;
       guildQuestWeeks.clear();
       localPrestige = null;
       prestigeLevelByIdentity.clear();

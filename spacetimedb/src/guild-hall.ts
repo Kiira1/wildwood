@@ -5,7 +5,7 @@ import {
   isGuildHallMap, parseGuildHallLevels, type GuildHallPart,
 } from "../../shared/guild-hall";
 import { HOME_EXTERIOR_MAP_ID } from "../../shared/home";
-import { questDay, questWeek } from "../../shared/daily-quests";
+import { questDay, questWeek } from "../../shared/weekly-quests";
 import { isTownMap, TOWN_ARRIVAL, TOWN_MAP_ID } from "../../shared/town";
 import { doorDestinationFor } from "./door-reach";
 

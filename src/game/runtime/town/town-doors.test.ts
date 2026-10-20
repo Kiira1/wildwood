@@ -1,7 +1,7 @@
 import { expect, it, vi } from "vitest";
 vi.mock("../../../app/developer", () => ({ isDeveloperIdentity: () => true }));
 import { TOWN_DOORS, TOWN_MAP_ID } from "../../../../shared/town";
-import { SOUL_DOORS_OPEN } from "../../soul-village";
+import { SOUL_DOORS_OPEN } from "../../town-village";
 import { createTownRuntime, TOWN_LOCKED_DOORS } from "./town-runtime";
 import type { PlayerState } from "../types";
 

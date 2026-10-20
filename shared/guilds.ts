@@ -33,7 +33,7 @@ export type GuildSnapshot = {
   guild: null | { id: string; name: string; emblem?: number; leader: string; vicePresident?: string | null; attacksRemaining: number; score: number; totalPower?: number; requestOnly?: boolean;
     requests?: { identity: string; name: string; power: number; prestige: number; profileIcon: number; requestedAt: string; online?: boolean; lastSeenAtMs?: number }[];
     members: { identity: string; name: string; profileIcon?: number; power?: number; prestige?: number; online?: boolean; lastSeenAtMs?: number; eligibleAt: string;
-      /** Today's daily quests done and drawn, and quest points earned for this guild this week. */
+      /** This week's quests done and drawn, and quest points earned for this guild this week. */
       questsDone?: number; questsTotal?: number; questPoints?: number;
       /** Today's quests still unfinished and not yet collected by a leader. */
       questsOpen?: number;

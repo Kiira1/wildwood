@@ -1,7 +1,7 @@
 import { expect, it, vi } from "vitest";
 import { parseHTML } from "linkedom";
 import { formatQuestReset, guildQuestStanding, questBoardView, questBoardWorldStatus } from "./quest-board-controller";
-import { questWeekEndsAtMs } from "../../shared/daily-quests";
+import { questWeekEndsAtMs } from "../../shared/weekly-quests";
 
 const state = { day: 20_000, bonus: 1.1, guildPoints: 37, guildName: "Oaks", quests: [
   { mapId: "beginner_desert", enemy: "Venom Guard", target: 73, progress: 73 },
@@ -40,7 +40,7 @@ it("counts a quest enemy at once, never backwards, catching up to the server and
   const { createQuestBoardRuntime } = await import("./quest-board-controller");
   const shownCounts: [string, number, number][] = [];
   let current: any = { ...state, quests: [{ mapId: "beginner_desert", enemy: "Dune Raider", target: 3, progress: 0 }] };
-  const runtime = createQuestBoardRuntime({ source: () => ({ dailyQuests: () => current }), atHome: () => false, pause: () => {},
+  const runtime = createQuestBoardRuntime({ source: () => ({ weeklyQuests: () => current }), atHome: () => false, pause: () => {},
     mapName: id => id, showProgress: (enemy, count, target) => shownCounts.push([enemy, count, target]) });
   runtime.noteKill("beginner_desert", "Dune Raider");
   runtime.noteKill("beginner_desert", "Venom Guard");   // not a quest: no pop-up
@@ -85,7 +85,7 @@ it("shows the tracker switch as it is now each time the board opens, after the t
   vi.stubGlobal("window", Object.assign(window, { setInterval: () => 0, clearInterval: () => {} }));
   const { createQuestBoardController } = await import("./quest-board-controller");
   let enabled = false;
-  const board = createQuestBoardController({ source: () => ({ dailyQuests: () => state }), atHome: () => true, pause: () => {}, mapName: id => id,
+  const board = createQuestBoardController({ source: () => ({ weeklyQuests: () => state }), atHome: () => true, pause: () => {}, mapName: id => id,
     tracker: { enabled: () => enabled, set: next => { enabled = next; } } });
   const toggle = document.querySelector(".quest-tracker-switch")!;
   expect(toggle.textContent).toBe("OFF");

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SOUL_VILLAGE_GROUND } from "../../soul-village";
+import { TOWN_VILLAGE_GROUND } from "../../town-village";
 import { SOUL_WATER_CELLS } from "./soul-water-cells";
 import { waterCellsFromAlpha, waterCellsFromBits } from "./soul-water";
 
@@ -12,8 +12,8 @@ describe("the baked table of the village's water", () => {
     const { width, height } = water.info;
     const alpha = new Uint8ClampedArray(width * height * 4);
     for (let index = 3; index < alpha.length; index += 4) alpha[index] = Math.max(water.data[index], shore.data[index]);
-    const measured = waterCellsFromAlpha(alpha, width, height, SOUL_VILLAGE_GROUND, SOUL_WATER_CELLS.cellPixels);
-    const baked = waterCellsFromBits(SOUL_WATER_CELLS, SOUL_VILLAGE_GROUND);
+    const measured = waterCellsFromAlpha(alpha, width, height, TOWN_VILLAGE_GROUND, SOUL_WATER_CELLS.cellPixels);
+    const baked = waterCellsFromBits(SOUL_WATER_CELLS, TOWN_VILLAGE_GROUND);
     expect([baked.columns, baked.rows, baked.cellW, baked.cellH]).toEqual([measured.columns, measured.rows, measured.cellW, measured.cellH]);
     expect([...baked.wet]).toEqual([...measured.wet]);
   });

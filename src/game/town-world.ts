@@ -1,5 +1,5 @@
 import { inTownInteriors, inTownVillage, TOWN_ARRIVAL, TOWN_GROVE, TOWN_BENCH_POSITION, TOWN_CARD_SELLER_STALL, TOWN_CHUNK_SIZE, TOWN_DOORS, TOWN_SCHOOL_POSITIONS, TOWN_HILLS, TOWN_HILLS_SIGNPOST_POSITION, TOWN_INTERIOR_MARGIN, TOWN_OX_POSITION, TOWN_QUEST_BOARD_POSITION, TOWN_RESEARCH_POSITION, TOWN_SMITH_POSITION, TOWN_WEST_BRIDGE, townChunkProps, townRandom, townWindowChunks, type TownPropKind, TOWN_SOUL_RUNESTONE } from "../../shared/town";
-import { SOUL_ATLAS, SOUL_INTERIOR_DECOR, SOUL_VILLAGE_DECOR, type SoulFrame, type SoulSolid } from "./soul-village";
+import { SOUL_ATLAS, SOUL_INTERIOR_DECOR, TOWN_VILLAGE_DECOR, type SoulFrame, type SoulSolid } from "./town-village";
 import {
   MINING_NODES, MINING_OUTCROPS, MINING_REACH, MINING_TRACK, MINING_TRACK_HALF_WIDTH, MINING_VEINS, miningTrackDistanceSquared, type MiningNode, type MiningNodeKind,
 } from "../../shared/mining";
@@ -41,20 +41,20 @@ export const lowEnough = (frame: SoulFrame, s: number) => SOUL_ATLAS.frames[fram
  * its room's furniture did, so that piece is not drawn (its collider stays, as the station's).
  */
 export const TOWN_STATION_DECOR: readonly WorldDecor[] = [
-  { type: "upgradeBench", x: TOWN_BENCH_POSITION.x, y: TOWN_BENCH_POSITION.y, s: 1, label: "Slot Upgrades" },
-  { type: "upgradeBench", x: TOWN_RESEARCH_POSITION.x, y: TOWN_RESEARCH_POSITION.y, s: 1, label: "Tech Research" },
-  { type: "upgradeBench", x: TOWN_QUEST_BOARD_POSITION.x, y: TOWN_QUEST_BOARD_POSITION.y, s: 1, label: "Quest Board" },
+  { type: "station", x: TOWN_BENCH_POSITION.x, y: TOWN_BENCH_POSITION.y, s: 1, label: "Slot Upgrades" },
+  { type: "station", x: TOWN_RESEARCH_POSITION.x, y: TOWN_RESEARCH_POSITION.y, s: 1, label: "Tech Research" },
+  { type: "station", x: TOWN_QUEST_BOARD_POSITION.x, y: TOWN_QUEST_BOARD_POSITION.y, s: 1, label: "Quest Board" },
 ];
 const replacedByStation = (item: WorldDecor) => TOWN_STATION_DECOR.some(station => item.x === station.x && Math.abs(item.y - station.y) < 40);
 /** Ox, the Galaxy set's seller, drawn from the original player sprite and depth-sorted with the room's furniture. */
-export const TOWN_OX_DECOR: WorldDecor = { type: "upgradeBench", x: TOWN_OX_POSITION.x, y: TOWN_OX_POSITION.y, s: 1, label: "Ox" };
+export const TOWN_OX_DECOR: WorldDecor = { type: "station", x: TOWN_OX_POSITION.x, y: TOWN_OX_POSITION.y, s: 1, label: "Ox" };
 /** The Smith, who refines gear, in the forge house's yard on the square: a villager drawn in smith's gear. */
-export const TOWN_SMITH_DECOR: WorldDecor = { type: "upgradeBench", x: TOWN_SMITH_POSITION.x, y: TOWN_SMITH_POSITION.y, s: 1, label: "Smith" };
+export const TOWN_SMITH_DECOR: WorldDecor = { type: "station", x: TOWN_SMITH_POSITION.x, y: TOWN_SMITH_POSITION.y, s: 1, label: "Smith" };
 /** The Card Seller's name over the village's own market stall: just in front of it, so it draws over the awning. */
-export const TOWN_CARD_SELLER_DECOR: WorldDecor = { type: "upgradeBench", x: TOWN_CARD_SELLER_STALL.x, y: TOWN_CARD_SELLER_STALL.y + 1, s: 1, label: "Card Seller" };
+export const TOWN_CARD_SELLER_DECOR: WorldDecor = { type: "station", x: TOWN_CARD_SELLER_STALL.x, y: TOWN_CARD_SELLER_STALL.y + 1, s: 1, label: "Card Seller" };
 /** Each Weapon Mastery school's sign, on its building's back wall over the spot that opens its window. */
 export const TOWN_SCHOOL_DECOR: readonly WorldDecor[] = WEAPON_SCHOOLS.map(school => ({
-  type: "upgradeBench", x: TOWN_SCHOOL_POSITIONS[school].x, y: TOWN_SCHOOL_POSITIONS[school].y, s: 1, label: SCHOOL_DETAILS[school].building,
+  type: "station", x: TOWN_SCHOOL_POSITIONS[school].x, y: TOWN_SCHOOL_POSITIONS[school].y, s: 1, label: SCHOOL_DETAILS[school].building,
 }));
 
 type RoomPiece = { frame: string; x: number; y: number; dy?: number; s?: number; atlas?: boolean; shadow?: string; solid?: readonly [number, number, number, number] };
@@ -453,7 +453,7 @@ function oreRockShadow(rock: Extract<WorldDecor, { type: "oreRock" }>): WorldDec
 
 /** Every prop in the chunk window around a point: the village's and its rooms' when they are near, and the countryside's. */
 export function townWindowDecor(x: number, y: number): WorldDecor[] {
-  const decor: WorldDecor[] = inTownVillage(x, y, TOWN_CHUNK_SIZE * 2.5) ? [...SOUL_VILLAGE_DECOR, TOWN_SIGNPOST, TOWN_RUNESTONE, TOWN_SMITH_DECOR, TOWN_CARD_SELLER_DECOR, TOWN_HILLS_SIGNPOST, ...TOWN_SCHOOL_SIGNPOSTS, ...TOWN_STOP_SIGNPOSTS] : [];
+  const decor: WorldDecor[] = inTownVillage(x, y, TOWN_CHUNK_SIZE * 2.5) ? [...TOWN_VILLAGE_DECOR, TOWN_SIGNPOST, TOWN_RUNESTONE, TOWN_SMITH_DECOR, TOWN_CARD_SELLER_DECOR, TOWN_HILLS_SIGNPOST, ...TOWN_SCHOOL_SIGNPOSTS, ...TOWN_STOP_SIGNPOSTS] : [];
   if (inTownInteriors(x, y, TOWN_INTERIOR_MARGIN)) decor.push(...TOWN_INTERIOR_DECOR);
   for (const { cx, cy } of townWindowChunks(x, y)) decor.push(...townChunkDecor(cx, cy));
   return decor;

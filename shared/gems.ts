@@ -54,7 +54,7 @@ export function researchSpeedUpGemCost(remainingMs: number) {
   return BigInt(Math.max(1, Math.ceil(Math.max(0, remainingMs) / RESEARCH_SPEED_UP_MS_PER_GEM)));
 }
 
-/** Item upgrades use the same one-Gem-per-started-ten-minute timer rate. */
+/** Slot Upgrades use the same one-Gem-per-started-ten-minute timer rate. */
 export function itemUpgradeSpeedUpGemCost(remainingMs: number) {
   if (!Number.isFinite(remainingMs)) throw new RangeError("Upgrade time must be finite.");
   return BigInt(Math.max(1, Math.ceil(Math.max(0, remainingMs) / RESEARCH_SPEED_UP_MS_PER_GEM)));

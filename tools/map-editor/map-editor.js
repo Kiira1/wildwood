@@ -4,7 +4,7 @@ const LIVE_MAP_IDS = new Set([
   "infernal_depths", "water_reach", "samurai_garden", "cloudspire", "moonfen",
 ]);
 const SCALABLE_DECOR = new Set([
-  "tree", "cactus", "rock", "snowPine", "upgradeBench", "lavaPool", "lavaRock",
+  "tree", "cactus", "rock", "snowPine", "station", "lavaPool", "lavaRock",
   "charredTree", "coral", "shell", "cloud", "skyShard", "gear", "pumpkin", "glowMushroom", "lilyPad",
 ]);
 const VARIANT_DECOR = new Set([
@@ -29,7 +29,7 @@ const ADD_ITEMS = [
   { kind: "decor", type: "desertGrass", label: "Desert grass", icon: "⌇" },
   { kind: "decor", type: "snowPine", label: "Snow pine", icon: "▲" },
   { kind: "decor", type: "snowTuft", label: "Snow tuft", icon: "✦" },
-  { kind: "decor", type: "upgradeBench", label: "Upgrade bench", icon: "▰" },
+  { kind: "decor", type: "station", label: "Upgrade bench", icon: "▰" },
   { kind: "decor", type: "lavaPool", label: "Lava pool", icon: "⬭" },
   { kind: "decor", type: "lavaRock", label: "Lava rock", icon: "◈" },
   { kind: "decor", type: "charredTree", label: "Charred tree", icon: "Y" },
@@ -256,7 +256,7 @@ function renderAssets() {
   elements.assetList.innerHTML = ADD_ITEMS.filter((item) => item.label.toLowerCase().includes(query)).map((item) => {
     const active = addMode?.kind === item.kind && addMode?.type === item.type;
     const portalDisabled = item.kind === "portal" && (currentMap?.status === "live" || currentMap?.gameplay.portals.length >= 2);
-    const benchDisabled = item.type === "upgradeBench" && (currentMap?.templateId !== "intermediate_snowlands" || currentMap?.decor.some((decor) => decor.type === "upgradeBench"));
+    const benchDisabled = item.type === "station" && (currentMap?.templateId !== "intermediate_snowlands" || currentMap?.decor.some((decor) => decor.type === "station"));
     const disabled = portalDisabled || benchDisabled;
     const disabledTitle = portalDisabled ? "Live-map portal connections are protected." : benchDisabled ? "A Snowlands-based map can have one Upgrade Bench." : "";
     return `<button class="asset-button${item.wide ? " is-wide" : ""}${active ? " is-active" : ""}" type="button" data-add-kind="${item.kind}"${item.type ? ` data-add-type="${item.type}"` : ""}${disabled ? ` disabled title="${disabledTitle}"` : ""}>
@@ -363,8 +363,8 @@ function selectionInspectorHtml() {
     } else {
       fields += `<p class="hint">This item uses image art, so its original asset colors are preserved.</p>`;
     }
-    canDuplicate = entity.type !== "upgradeBench";
-    canDelete = entity.type !== "upgradeBench" || currentMap.status === "draft";
+    canDuplicate = entity.type !== "station";
+    canDelete = entity.type !== "station" || currentMap.status === "draft";
   } else if (selection.kind === "camp") {
     const enemyKinds = catalog.enemyKinds.map((kind) => typeof kind === "string" ? kind : kind.id);
     const enemyOptions = (selected) => enemyKinds.map((kind) => `<option${selected === kind ? " selected" : ""}>${escapeHtml(kind)}</option>`).join("");
@@ -475,7 +475,7 @@ function deleteSelection() {
     showToast("Live-map portals can be moved and resized, but not removed.", true);
     return;
   }
-  if (selection.kind === "decor" && entity?.type === "upgradeBench" && currentMap.status === "live") {
+  if (selection.kind === "decor" && entity?.type === "station" && currentMap.status === "live") {
     showToast("Snowlands must keep its functional Upgrade Bench.", true);
     return;
   }
@@ -500,7 +500,7 @@ function duplicateSelection() {
     showToast("Live-map portal connections are protected.", true);
     return;
   }
-  if (selection.kind === "decor" && entity.type === "upgradeBench") {
+  if (selection.kind === "decor" && entity.type === "station") {
     showToast("A Snowlands-based map can have one Upgrade Bench.", true);
     return;
   }
@@ -738,7 +738,7 @@ function addAt(worldPoint) {
       const item = { type: addMode.type, x, y };
       if (SCALABLE_DECOR.has(item.type)) item.s = 1;
       if (VARIANT_DECOR.has(item.type)) item.variant = 0;
-      if (item.type === "upgradeBench") item.label = "Upgrade Bench";
+      if (item.type === "station") item.label = "Upgrade Bench";
       currentMap.decor.push(item);
       selection = { kind: "decor", index: currentMap.decor.length - 1 };
     } else if (addMode.kind === "camp") {
@@ -910,7 +910,7 @@ function drawDecoration(item) {
     context.fillStyle = paletteColor(item, item.type === "rock" ? ["#79543d", "#b77b4b"] : ["#4b302b", "#7b4331"]); context.beginPath(); context.moveTo(x - 36 * scale, y); context.lineTo(x - 24 * scale, y - 35 * scale); context.lineTo(x + 8 * scale, y - 52 * scale); context.lineTo(x + 38 * scale, y - 10 * scale); context.closePath(); context.fill();
   } else if (item.type === "snowPine") {
     context.fillStyle = "#6b5744"; context.fillRect(x - 6 * scale, y - 45 * scale, 12 * scale, 45 * scale); context.fillStyle = "#e7f5fb"; for (const [dy, width] of [[-145, 44], [-112, 62], [-75, 78]]) { context.beginPath(); context.moveTo(x, y + dy * scale); context.lineTo(x - width * scale, y + (dy + 72) * scale); context.lineTo(x + width * scale, y + (dy + 72) * scale); context.closePath(); context.fill(); }
-  } else if (item.type === "upgradeBench") {
+  } else if (item.type === "station") {
     context.fillStyle = "#73513c"; context.fillRect(x - 62 * scale, y - 62 * scale, 124 * scale, 45 * scale); context.fillStyle = "#92979b"; context.fillRect(x - 55 * scale, y - 70 * scale, 110 * scale, 15 * scale); context.fillStyle = "#4a3329"; context.fillRect(x - 45 * scale, y - 18 * scale, 12 * scale, 18 * scale); context.fillRect(x + 33 * scale, y - 18 * scale, 12 * scale, 18 * scale);
   } else if (item.type === "lavaPool") {
     context.fillStyle = "#b93824"; context.beginPath(); context.ellipse(x, y, 145 * scale, 64 * scale, 0, 0, Math.PI * 2); context.fill(); context.fillStyle = "#ffb238"; context.beginPath(); context.ellipse(x, y - 3 * scale, 110 * scale, 42 * scale, 0, 0, Math.PI * 2); context.fill();
@@ -1128,9 +1128,9 @@ function pasteClipboard() {
     showToast("Live-map portal connections are protected.", true);
     return;
   }
-  if (clipboard.kind === "decor" && clipboard.value.type === "upgradeBench" && (
+  if (clipboard.kind === "decor" && clipboard.value.type === "station" && (
     currentMap.templateId !== "intermediate_snowlands" ||
-    currentMap.decor.some((decor) => decor.type === "upgradeBench")
+    currentMap.decor.some((decor) => decor.type === "station")
   )) {
     showToast("A Snowlands-based map can have one Upgrade Bench.", true);
     return;

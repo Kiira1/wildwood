@@ -18,7 +18,7 @@ export function installAccountDeletion(doc: Document, hooks: Hooks) {
     <p>You have 10 seconds to cancel before the request is sent. Full deletion is processed within 30 days. Limited records may be retained for legal or unresolved safety reasons, as described in our privacy policy.</p>
     <p>Patreon subscriptions must be canceled separately on Patreon. This does not delete your Google account.</p>
     <p class="account-deletion-status" role="status" aria-live="polite"></p></div>
-    <footer class="window-back-footer"><button type="button" class="daily-gem-claim-button" data-delete-confirm>Request Deletion</button>
+    <footer class="window-back-footer"><button type="button" class="claim-button" data-delete-confirm>Request Deletion</button>
     <button type="button" class="window-back-button" data-delete-cancel>Cancel</button></footer>`;
   doc.body.append(dialog);
   const confirm = dialog.querySelector<HTMLButtonElement>("[data-delete-confirm]")!;

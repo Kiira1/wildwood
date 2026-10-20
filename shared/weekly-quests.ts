@@ -14,8 +14,8 @@ import { ENEMY_TYPES } from "./enemy-definitions";
 export const WEEKLY_QUEST_COUNT = 15;
 /** Quests on the board at once; kills count toward these only. */
 export const QUEST_ACTIVE_COUNT = 3;
-export const DAILY_QUEST_MIN_KILLS = 50;
-export const DAILY_QUEST_MAX_KILLS = 100;
+export const WEEKLY_QUEST_MIN_KILLS = 50;
+export const WEEKLY_QUEST_MAX_KILLS = 100;
 export const GUILD_QUEST_BONUS_PER_POINT = .001;
 /**
  * Without a guild, each quest a player finishes is +1% stat gains next week:
@@ -23,7 +23,7 @@ export const GUILD_QUEST_BONUS_PER_POINT = .001;
  */
 export const SOLO_QUEST_BONUS_PER_QUEST = .01;
 
-export type DailyQuest = {
+export type WeeklyQuest = {
   mapId: string; enemy: string; target: number; progress: number;
   /** On a leader's board: the member this quest was collected from. */
   from?: string;
@@ -45,10 +45,10 @@ export const GUILD_QUEST_COLLECT_LIMIT = 15;
 export const GUILD_WEEK_QUEST_CAP = 20 * WEEKLY_QUEST_COUNT;
 
 /** A quest of the player's own draw, not one they collected; a collected-away one still counts as theirs. */
-export const ownQuest = (quest: DailyQuest) => !quest.from;
-export const questDone = (quest: DailyQuest) => quest.progress >= quest.target;
+export const ownQuest = (quest: WeeklyQuest) => !quest.from;
+export const questDone = (quest: WeeklyQuest) => quest.progress >= quest.target;
 /** Unfinished and still the player's to finish. */
-export const questOpen = (quest: DailyQuest) => !questDone(quest) && !quest.takenBy;
+export const questOpen = (quest: WeeklyQuest) => !questDone(quest) && !quest.takenBy;
 
 const DAY_MICROS = 86_400_000_000n;
 export function questDay(micros: bigint) { return Number(micros / DAY_MICROS); }
@@ -71,7 +71,7 @@ export function guildQuestBonus(lastWeekPoints: number) {
 
 type UnlockSource = Record<string, unknown>;
 /** Every regular (non-elite) enemy on the campaign maps this player can reach. */
-export function dailyQuestCandidates(progress: UnlockSource) {
+export function weeklyQuestCandidates(progress: UnlockSource) {
   const candidates: { mapId: string; enemy: string }[] = [];
   for (const map of CAMPAIGN_MAPS) {
     if (map.unlockField && progress[map.unlockField] !== true) continue;
@@ -101,15 +101,15 @@ function seededRandom(seed: string) {
  * enemy comes up once before any repeats, so a new player with one map open
  * still gets a full week.
  */
-export function weeklyQuestsFor(identityHex: string, week: number, progress: UnlockSource): DailyQuest[] {
-  const candidates = dailyQuestCandidates(progress);
+export function weeklyQuestsFor(identityHex: string, week: number, progress: UnlockSource): WeeklyQuest[] {
+  const candidates = weeklyQuestCandidates(progress);
   let pool = [...candidates];
   const random = seededRandom(`${identityHex.replace(/^0x/i, "").toLowerCase()}:week:${week}`);
-  const quests: DailyQuest[] = [];
+  const quests: WeeklyQuest[] = [];
   while (quests.length < WEEKLY_QUEST_COUNT && candidates.length) {
     if (!pool.length) pool = [...candidates];
     const [pick] = pool.splice(Math.floor(random() * pool.length), 1);
-    const target = DAILY_QUEST_MIN_KILLS + Math.floor(random() * (DAILY_QUEST_MAX_KILLS - DAILY_QUEST_MIN_KILLS + 1));
+    const target = WEEKLY_QUEST_MIN_KILLS + Math.floor(random() * (WEEKLY_QUEST_MAX_KILLS - WEEKLY_QUEST_MIN_KILLS + 1));
     quests.push({ ...pick, target, progress: 0 });
   }
   return quests;
@@ -120,14 +120,14 @@ export function weeklyQuestsFor(identityHex: string, week: number, progress: Unl
  * player's own come first and collected ones follow, since collecting waits
  * until a player's own fifteen are done.
  */
-export function activeQuestIndices(quests: readonly DailyQuest[]) {
+export function activeQuestIndices(quests: readonly WeeklyQuest[]) {
   const active: number[] = [];
   for (let index = 0; index < quests.length && active.length < QUEST_ACTIVE_COUNT; index++) if (questOpen(quests[index])) active.push(index);
   return active;
 }
 
 /** Reads a stored quest list, dropping anything malformed. */
-export function parseDailyQuests(json: string): DailyQuest[] {
+export function parseWeeklyQuests(json: string): WeeklyQuest[] {
   try {
     const list = JSON.parse(json);
     if (!Array.isArray(list)) return [];
@@ -145,7 +145,7 @@ export function parseDailyQuests(json: string): DailyQuest[] {
  * two collected quests for the same enemy kills for both. Returns the new list
  * and how many quests this report finished, each of which is a guild point.
  */
-export function applyQuestKills(quests: DailyQuest[], mapId: string, kills: { enemy: string; count: number }[]) {
+export function applyQuestKills(quests: WeeklyQuest[], mapId: string, kills: { enemy: string; count: number }[]) {
   let completed = 0;
   const left = new Map<string, number>();
   for (const kill of kills) left.set(kill.enemy, (left.get(kill.enemy) ?? 0) + Math.max(0, Math.floor(kill.count)));

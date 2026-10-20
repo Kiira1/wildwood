@@ -3,11 +3,11 @@ import { createGlowCache } from "../render/glow-cache";
 /** Shared presentation clock for the local player's departure and arrival. */
 let startedAt: number | null = null;
 let arriving = false;
-export function beginHomeTeleport(arrival = false) {
+export function beginTownTeleport(arrival = false) {
   startedAt = performance.now();
   arriving = arrival;
 }
-export function endHomeTeleport() { startedAt = null; }
+export function endTownTeleport() { startedAt = null; }
 
 // Glows are baked or layered: a live shadowBlur made Firefox draw every frame on the CPU.
 const GLOW = "#96eeff";
@@ -44,10 +44,10 @@ function bakedHalo() {
   return halo = canvas;
 }
 
-export function drawHomeTeleport(ctx: CanvasRenderingContext2D, x: number, y: number, drawPlayer: () => void) {
+export function drawTownTeleport(ctx: CanvasRenderingContext2D, x: number, y: number, drawPlayer: () => void) {
   const elapsed = startedAt === null ? 0 : performance.now() - startedAt;
   // Presentation must recover even if its owning transition is interrupted.
-  if (startedAt !== null && elapsed >= (arriving ? 650 : 30_000)) endHomeTeleport();
+  if (startedAt !== null && elapsed >= (arriving ? 650 : 30_000)) endTownTeleport();
   const progress = startedAt === null ? 1 : Math.min(1, elapsed / 650);
   if (progress >= 1) { if (startedAt === null || arriving) drawPlayer(); return; }
   const strength = Math.sin(progress * Math.PI);

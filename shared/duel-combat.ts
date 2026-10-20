@@ -1,7 +1,7 @@
 import { damageAfterArmor } from "./combat";
 import { duelAttackDelays, type DuelWeapons } from "./duel-approach";
 import { regularEnemySeededUnit } from "./regular-enemy-simulation";
-import { RIPOSTE_REFLECT_SHARE } from "./prestige-perks";
+import { DUEL_REFLECT_SHARE } from "./prestige-perks";
 import { marbleBagHit } from "./marble-bag";
 import { ARROW_STORM_ARROWS, ARROW_STORM_DAMAGE_SHARE, DUEL_RICOCHET_REHITS, RICOCHET_DAMAGE_SHARE, type BowSkillId } from "./bow-skills";
 import { SHOCKWAVE_DAMAGE_SHARE, WHIRLWIND_DAMAGE_SHARE, WHIRLWIND_TICKS, type SwordSkillId } from "./sword-skills";
@@ -15,8 +15,8 @@ import {
 export type DuelFighter = { maxHp: number; damage: number; armor: number; regen: number; attackRate: number };
 /**
  * 4: bow skills (Arrow Storm, Ricochet, Piercing Shot) roll in the fight.
- * 5: Riposte (Reflect) draws from a marble bag instead of a coin per hit.
- * 6: Riposte throws back half the hit before the defender's armor, not after.
+ * 5: Reflect draws from a marble bag instead of a coin per hit.
+ * 6: Reflect throws back half the hit before the defender's armor, not after.
  * 7: a thrown-back hit is capped at the reflecting player's max health (0.867).
  * 8: sword skills; projectile Deflect blocks and returns the ranged attack through its sender's armor.
  * 9: cards (duel-cards.ts).
@@ -28,17 +28,17 @@ export const DUEL_STAFF_SKILLS_VERSION = 10;
 export const DUEL_CHAIN_REHITS = 1;
 export const DUEL_SWORD_SKILLS_VERSION = 8;
 export const DUEL_BOW_SKILLS_VERSION = 4;
-export const DUEL_RIPOSTE_BAG_VERSION = 5;
-export const DUEL_RIPOSTE_PRE_ARMOR_VERSION = 6;
-export const DUEL_RIPOSTE_MAX_HP_VERSION = 7;
+export const DUEL_REFLECT_BAG_VERSION = 5;
+export const DUEL_REFLECT_PRE_ARMOR_VERSION = 6;
+export const DUEL_REFLECT_MAX_HP_VERSION = 7;
 /** Half the hit, and since version 7 never more than the reflecting player's own max health. */
-function riposteThrown(duel: DuelCombat, base: number, reflectorMaxHp: number) {
-  const half = base * RIPOSTE_REFLECT_SHARE;
-  return (duel.combatVersion ?? 0) >= DUEL_RIPOSTE_MAX_HP_VERSION ? Math.min(half, Math.max(0, reflectorMaxHp)) : half;
+function reflectThrown(duel: DuelCombat, base: number, reflectorMaxHp: number) {
+  const half = base * DUEL_REFLECT_SHARE;
+  return (duel.combatVersion ?? 0) >= DUEL_REFLECT_MAX_HP_VERSION ? Math.min(half, Math.max(0, reflectorMaxHp)) : half;
 }
-/** What Riposte throws back from one attack: the hit as it arrived since version 6, what got through before. */
-function riposteBase(duel: DuelCombat, hit: { dealt: number; blocked: number }, taken: number) {
-  return (duel.combatVersion ?? 0) >= DUEL_RIPOSTE_PRE_ARMOR_VERSION ? hit.dealt + hit.blocked : taken;
+/** What Reflect throws back from one attack: the hit as it arrived since version 6, what got through before. */
+function reflectBase(duel: DuelCombat, hit: { dealt: number; blocked: number }, taken: number) {
+  return (duel.combatVersion ?? 0) >= DUEL_REFLECT_PRE_ARMOR_VERSION ? hit.dealt + hit.blocked : taken;
 }
 export function duelHitMultiplier(seconds: number, version = 0) {
   return version >= 1 ? 1 + Math.min(4, Math.max(0, seconds - 10) / 5) : 1;
@@ -48,11 +48,11 @@ export type DuelCombat = DuelWeapons & DuelCardFields & {
   combatVersion?: number;
   challengerMaxHp: number; challengerDamage: number; challengerArmor: number; challengerRegen: number; challengerAttackRate: number;
   opponentMaxHp: number; opponentDamage: number; opponentArmor: number; opponentRegen: number; opponentAttackRate: number;
-  // Riposte chances and the seed their rolls come from. The seed is stored with
+  // Reflect chances (the riposte columns) and the seed their rolls come from. The seed is stored with
   // the duel so a replay rolls exactly what the server rolled.
   challengerRiposte?: number; opponentRiposte?: number; riposteSeed?: number | bigint;
   // Each duellist's equipped bow skills, as stored percentages (0 = none).
-  // They roll from the same stored seed as Riposte, under their own salt.
+  // They roll from the same stored seed as Reflect, under their own salt.
   challengerArrowStorm?: number; challengerRicochet?: number; challengerPiercingShot?: number;
   opponentArrowStorm?: number; opponentRicochet?: number; opponentPiercingShot?: number;
   challengerWhirlwind?: number; challengerDeflect?: number; challengerShockwave?: number;
@@ -110,7 +110,7 @@ export function duelDeflected(duel: DuelCombat, defender: "challenger" | "oppone
 
 /**
  * Whether a duellist's bow skill fires on one of their attacks. Deterministic
- * like Riposte: the same duel, side, attack and skill always answer the same.
+ * like Reflect: the same duel, side, attack and skill always answer the same.
  * Fights recorded before bow skills existed never roll them.
  */
 export function duelBowSkillProc(duel: DuelCombat, side: "challenger" | "opponent", attack: number, skill: BowSkillId) {
@@ -168,11 +168,11 @@ function duelAttackDamage(duel: DuelCombat, side: "challenger" | "opponent", att
  * rate over any twenty hits rather than whenever a coin allows; fights
  * recorded earlier keep the coin, so their replays still agree.
  */
-export function duelRiposted(duel: DuelCombat, side: "challenger" | "opponent", attack: number) {
+export function duelReflected(duel: DuelCombat, side: "challenger" | "opponent", attack: number) {
   const chance = Math.max(0, Math.min(1, (side === "challenger" ? duel.challengerRiposte : duel.opponentRiposte) ?? 0));
   if (chance <= 0) return false;
   const seed = String(duel.riposteSeed ?? 0);
-  if ((duel.combatVersion ?? 0) >= DUEL_RIPOSTE_BAG_VERSION) {
+  if ((duel.combatVersion ?? 0) >= DUEL_REFLECT_BAG_VERSION) {
     // Attacks count from 1; the first one draws the first marble.
     return marbleBagHit(chance, attack - 1, (bag, slot) => regularEnemySeededUnit("duel-riposte-bag", seed, side, bag, slot));
   }
@@ -199,7 +199,7 @@ export function initialDuelCombatState(duel: DuelCombat): DuelCombatState {
 const cloneSide = (side: DuelCardState["challenger"]) => ({ ...side, dots: { ...side.dots }, slow: { ...side.slow }, weaken: { ...side.weaken } });
 const cloneCards = (cards: DuelCardState): DuelCardState => ({ challenger: cloneSide(cards.challenger), opponent: cloneSide(cards.opponent) });
 
-/** One side's attack: its hit, the defender's Deflect, cards and Riposte, and what each side ends on. */
+/** One side's attack: its hit, the defender's Deflect, cards and Reflect, and what each side ends on. */
 function resolveAttack(duel: DuelCombat, state: DuelCombatState, attacker: DuelSide, multiplier: number, now: number) {
   const defender: DuelSide = attacker === "challenger" ? "opponent" : "challenger";
   const attackKey = attacker === "challenger" ? "challengerAttacks" : "opponentAttacks";
@@ -232,8 +232,8 @@ function resolveAttack(duel: DuelCombat, state: DuelCombatState, attacker: DuelS
     setHp(attacker, after.attackerHp);
     setHp(defender, after.defenderHp);
   }
-  if (taken > 0 && duelRiposted(duel, defender, attack)) {
-    const thrown = Math.min(hp(attacker), riposteThrown(duel, riposteBase(duel, hit, taken), maxHp(defender)));
+  if (taken > 0 && duelReflected(duel, defender, attack)) {
+    const thrown = Math.min(hp(attacker), reflectThrown(duel, reflectBase(duel, hit, taken), maxHp(defender)));
     setHp(attacker, hp(attacker) - thrown);
     state[dealtKey(defender)] += thrown;
   }
@@ -296,8 +296,8 @@ export function advanceDuelCombat(
         const returned = Math.min(state.challengerHp, damageAfterArmor(Math.min(challengerHit.dealt + challengerHit.blocked, duel.opponentMaxHp), duel.challengerArmor));
         state.challengerHp -= returned; state.opponentDamageDealt += returned;
       }
-      if (taken > 0 && duelRiposted(duel, "opponent", state.challengerAttacks)) {
-        const thrown = Math.min(state.challengerHp, riposteThrown(duel, riposteBase(duel, challengerHit, taken), duel.opponentMaxHp));
+      if (taken > 0 && duelReflected(duel, "opponent", state.challengerAttacks)) {
+        const thrown = Math.min(state.challengerHp, reflectThrown(duel, reflectBase(duel, challengerHit, taken), duel.opponentMaxHp));
         state.challengerHp -= thrown; state.opponentDamageDealt += thrown;
       }
       chillOnNova(duel, state, "challenger", state.challengerAttacks, next / 1_000_000);
@@ -314,8 +314,8 @@ export function advanceDuelCombat(
         const returned = Math.min(state.opponentHp, damageAfterArmor(Math.min(opponentHit.dealt + opponentHit.blocked, duel.challengerMaxHp), duel.opponentArmor));
         state.opponentHp -= returned; state.challengerDamageDealt += returned;
       }
-      if (taken > 0 && duelRiposted(duel, "challenger", state.opponentAttacks)) {
-        const thrown = Math.min(state.opponentHp, riposteThrown(duel, riposteBase(duel, opponentHit, taken), duel.challengerMaxHp));
+      if (taken > 0 && duelReflected(duel, "challenger", state.opponentAttacks)) {
+        const thrown = Math.min(state.opponentHp, reflectThrown(duel, reflectBase(duel, opponentHit, taken), duel.challengerMaxHp));
         state.opponentHp -= thrown; state.challengerDamageDealt += thrown;
       }
       chillOnNova(duel, state, "opponent", state.opponentAttacks, next / 1_000_000);

@@ -1,5 +1,5 @@
 import { decodedImage } from "../render/decoded-image";
-import { SOUL_VILLAGE_GROUND } from "../../soul-village";
+import { TOWN_VILLAGE_GROUND } from "../../town-village";
 import { SOUL_WATER_CELLS } from "./soul-water-cells";
 import { EAST_BRIDGE_DECK, foamStrength, GLINT_DRIFT, GLINT_STRENGTH, GLINT_TILE, glintStrength, glintTile, waterCellsFromBits, waterRectInView, type WaterCells } from "./soul-water";
 import type { Camera } from "../render/camera";
@@ -157,13 +157,13 @@ export function createSoulWaterGL(options: {
       programs = setUp(gl, water, shore);
       if (!programs) return false;
     }
-    const { camera } = options, area = SOUL_VILLAGE_GROUND;
+    const { camera } = options, area = TOWN_VILLAGE_GROUND;
     const view = {
       left: Math.max(area.x, camera.x), top: Math.max(area.y, camera.y),
       right: Math.min(area.x + area.w, camera.x + frame.width / frame.zoom), bottom: Math.min(area.y + area.h, camera.y + frame.height / frame.zoom),
     };
     if (view.left >= view.right || view.top >= view.bottom) return true;
-    cells ??= waterCellsFromBits(SOUL_WATER_CELLS, SOUL_VILLAGE_GROUND);
+    cells ??= waterCellsFromBits(SOUL_WATER_CELLS, TOWN_VILLAGE_GROUND);
     const wet = waterRectInView(cells, view);
     if (!wet) return true;
     // Measured from the tile corner nearest the view's, so the shader's numbers stay small.

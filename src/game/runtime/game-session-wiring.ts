@@ -123,7 +123,7 @@ export function createGameSession(deps: GameSessionWiringDeps) {
     updatePlayer: dt => {
       if (!mapController.isMapTransitioning() && !(inTutorial() && player.hp <= 0)) deps.playerController.update(dt);
     },
-    updateUpgradeBench: () => deps.stations.update(),
+    updateStations: () => deps.stations.update(),
     updatePortal: dt => { mapController.updatePortal(dt); for (const place of deps.places) place.update(dt); },
     updateEnemies: dt => { for (const system of deps.enemySystems) system.update(dt); },
     updateBoss: dt => bossController.forMap(currentMapId())?.update(dt),

@@ -1,6 +1,6 @@
 import { TOWN_ARRIVAL } from "../../../shared/town";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { drawHomeTeleport, endHomeTeleport } from "./town/home-teleport";
+import { drawTownTeleport, endTownTeleport } from "./town/town-teleport";
 import { createMapController, prepareMapTransition } from "./map-controller";
 import type { PlayerState } from "./types";
 import { createGameBootstrap } from "./game-bootstrap";
@@ -28,10 +28,10 @@ function portalArrivalHarness(destinationArrival: { x: number; y: number }, over
   const changeMap = vi.fn(async () => true);
   const markPortalCutsceneSeen = vi.fn();
   const onTravelStarted = vi.fn();
-  const openHomeTravel = vi.fn();
-  const closeHomeTravel = vi.fn();
+  const openTravel = vi.fn();
+  const closeTravel = vi.fn();
   const controller = createMapController({
-    openHomeTravel, closeHomeTravel,
+    openTravel, closeTravel,
     onTravelStarted,
     mapConfig: {
       ...bootstrap.mapConfig,
@@ -88,7 +88,7 @@ function portalArrivalHarness(destinationArrival: { x: number; y: number }, over
     ...overrides,
   } as unknown as MapControllerOptions);
   return {
-    onTravelStarted, openHomeTravel, closeHomeTravel, changeMap, controller, currentMapId: () => currentMapId, desertMapId, player, markPortalCutsceneSeen,
+    onTravelStarted, openTravel, closeTravel, changeMap, controller, currentMapId: () => currentMapId, desertMapId, player, markPortalCutsceneSeen,
     bootstrap, prepareMapAssets,
     setMap: (value: MapId) => { currentMapId = value; },
     setUnlocked: (value: boolean) => { unlocked = value; },
@@ -96,7 +96,7 @@ function portalArrivalHarness(destinationArrival: { x: number; y: number }, over
   };
 }
 
-afterEach(() => { vi.unstubAllGlobals(); endHomeTeleport(); vi.useRealTimers(); });
+afterEach(() => { vi.unstubAllGlobals(); endTownTeleport(); vi.useRealTimers(); });
 
 describe("developer direct travel", () => {
   it("teleports within the same map using the confirmed position even while the local table is stale", async () => {
@@ -411,7 +411,7 @@ describe("reset map presentation", () => {
   });
 });
 
-describe("Home teleport", () => {
+describe("Town teleport", () => {
   it("has the Town's travel portal without triggering it from the arrival", () => {
     const h = portalArrivalHarness({ x: 300, y: 400 });
     h.controller.loadMap("town", TOWN_ARRIVAL.x, TOWN_ARRIVAL.y);
@@ -420,7 +420,7 @@ describe("Home teleport", () => {
     h.controller.updatePortal(1);
     expect(h.player).toMatchObject({ x: TOWN_ARRIVAL.x, y: TOWN_ARRIVAL.y });
     expect(h.changeMap).not.toHaveBeenCalled();
-    expect(h.openHomeTravel).not.toHaveBeenCalled();
+    expect(h.openTravel).not.toHaveBeenCalled();
   });
   it("opens the picker on the Town's portal instead of travelling, and only again after walking off it", () => {
     const h = portalArrivalHarness({ x: 300, y: 400 });
@@ -428,17 +428,17 @@ describe("Home teleport", () => {
     const portal = h.controller.activePortal()!;
     const onPad = () => { h.player.x = portal.x; h.player.y = portal.y - portal.height * .32; };
     onPad(); h.controller.updatePortal(1);
-    expect(h.openHomeTravel).toHaveBeenCalledOnce();
+    expect(h.openTravel).toHaveBeenCalledOnce();
     expect(h.changeMap).not.toHaveBeenCalled();
     expect(h.onTravelStarted).not.toHaveBeenCalled();
     for (let frame = 0; frame < 5; frame++) h.controller.updatePortal(1);
-    expect(h.openHomeTravel).toHaveBeenCalledOnce();
-    expect(h.closeHomeTravel).not.toHaveBeenCalled();
+    expect(h.openTravel).toHaveBeenCalledOnce();
+    expect(h.closeTravel).not.toHaveBeenCalled();
     // Walking off the pad with the picker open closes it: the server would refuse a trip sent from there.
     h.player.y += 200; h.controller.updatePortal(1);
-    expect(h.closeHomeTravel).toHaveBeenCalledOnce();
+    expect(h.closeTravel).toHaveBeenCalledOnce();
     onPad(); h.controller.updatePortal(1);
-    expect(h.openHomeTravel).toHaveBeenCalledTimes(2);
+    expect(h.openTravel).toHaveBeenCalledTimes(2);
   });
   it("takes Home's pad straight to the Town, with no picker", () => {
     const h = portalArrivalHarness({ x: 300, y: 400 });
@@ -447,7 +447,7 @@ describe("Home teleport", () => {
     expect(portal).toMatchObject({ destination: "town", label: "Town" });
     h.player.x = portal.x; h.player.y = portal.y - portal.height * .32;
     h.controller.updatePortal(1);
-    expect(h.openHomeTravel).not.toHaveBeenCalled();
+    expect(h.openTravel).not.toHaveBeenCalled();
     expect(h.changeMap).toHaveBeenCalledWith("town", h.player.x, h.player.y);
   });
   it("travels from the Town to the picked map through the server and stops autofarm first", async () => {
@@ -562,7 +562,7 @@ it("requires leaving a failed portal before attempting it again", async () => {
 
 function expectPlayerVisible() {
   const draw = vi.fn();
-  drawHomeTeleport({} as CanvasRenderingContext2D, 0, 0, draw);
+  drawTownTeleport({} as CanvasRenderingContext2D, 0, 0, draw);
   expect(draw).toHaveBeenCalledOnce();
 }
 

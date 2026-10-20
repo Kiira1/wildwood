@@ -475,7 +475,7 @@ describe("server-calculated defeat batches", () => {
       expect(h.reportEnemyDefeats).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
         mapId: "water_reach", enemies: [{ enemy: "Coral Colossus", count: 1 }, { enemy: "Tide Raider", count: 2 }],
       }));
-      expect(h.service.api.dailyQuests()?.quests[0].progress).toBe(3);
+      expect(h.service.api.weeklyQuests()?.quests[0].progress).toBe(3);
       // The quest is done: later kills wait for the usual report.
       h.service.recordRegularEnemyDefeat("water_reach", "Tide Raider");
       h.service.recordRegularEnemyDefeat("water_reach", "Coral Colossus");

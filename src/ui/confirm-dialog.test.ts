@@ -95,7 +95,7 @@ describe("confirmation stacking", () => {
     // It was behind the item inspector and the gift window at first, because
     // it inherited the ordinary window layer.
     const confirm = layer("#gameConfirm")!;
-    for (const selector of [".item-inspection-panel", "#prestigeOverlay", ".daily-gem-bonus", ".onboarding-tutorial", "#techTreeOverlay", "#profileNameEditor"]) {
+    for (const selector of [".item-inspection-panel", "#prestigeOverlay", ".claim-overlay", ".onboarding-tutorial", "#techTreeOverlay", "#profileNameEditor"]) {
       expect(layer(selector), selector).toBeLessThan(confirm);
     }
   });

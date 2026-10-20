@@ -74,7 +74,7 @@ export function createProfileRuntime(deps: ProfileRuntimeDeps) {
   const profileWindow = createProfileWindowController({
     window: e.playerProfileEl, name: e.playerProfileNameEl, guest: e.playerProfileGuestLabel, presence: e.playerProfilePresenceEl,
     power: e.playerProfilePowerEl, icon: e.playerProfileIcon, loading: e.playerProfileLoadingEl,
-    overviewTab: e.profileOverviewTab, statsTab: e.profileStatsTab, overviewPanel: e.profileOverviewPanel, statsPanel: e.profileStatsPanel,
+    infoTab: e.profileInfoTab, statsTab: e.profileStatsTab, infoPanel: e.profileInfoPanel, statsPanel: e.profileStatsPanel,
     bonusesTab: e.profileBonusesTab, bonusesPanel: e.profileBonusesPanel, bonuses: profileBonusDeps(() => client, deps.isDueling),
     joined: e.profileJoinedEl, timePlayed: e.profileTimePlayedEl, kills: e.profileKillsEl, online: e.profileOnlineEl, statGrid: e.profileStatGrid,
     close: e.closePlayerProfileBtn, editName: e.editPlayerNameBtn, editor: e.profileEditor,
@@ -114,7 +114,7 @@ export function createProfileRuntime(deps: ProfileRuntimeDeps) {
         own ? client?.researchInPlay?.() ?? profile.research : theirs?.research ?? profile.research,
         own ? (client?.prestigeStatGainInPlay?.() === false ? 0 : coop.prestigeLevel()) : profile.prestigeLevel ?? 0,
         own ? client?.prestigePerks?.() : theirs?.perks,
-        own ? client?.dailyQuests?.()?.bonus ?? 1 : 1,
+        own ? client?.weeklyQuests?.()?.bonus ?? 1 : 1,
         ownSoulInPlay(profile));
     },
     formatPower: profile => formatCompactNumber(profilePower(profile, ownSoulInPlay(profile))),

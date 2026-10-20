@@ -3,7 +3,7 @@ import { spawnSync } from "node:child_process";
 import { mkdir, readFile, rename, stat, writeFile } from "node:fs/promises";
 import { extname, join, normalize, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { generatedGameplaySource, upgradeBenchPosition } from "./map-editor-gameplay-source.mjs";
+import { generatedGameplaySource, stationPosition } from "./map-editor-gameplay-source.mjs";
 
 const projectRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const editorDirectory = join(projectRoot, "tools/map-editor");
@@ -44,11 +44,11 @@ const liveMapConnections = {
 };
 const decorTypes = new Set([
   "tree", "grass", "petal", "cherryPetal", "cactus", "rock", "desertGrass",
-  "snowPine", "snowTuft", "upgradeBench", "lavaPool", "lavaRock", "charredTree",
+  "snowPine", "snowTuft", "station", "lavaPool", "lavaRock", "charredTree",
   "coral", "shell", "cloud", "skyShard", "gear", "pumpkin", "glowMushroom", "lilyPad",
 ]);
 const scalableDecor = new Set([
-  "tree", "cactus", "rock", "snowPine", "upgradeBench", "lavaPool", "lavaRock",
+  "tree", "cactus", "rock", "snowPine", "station", "lavaPool", "lavaRock",
   "charredTree", "coral", "shell", "cloud", "skyShard", "gear", "pumpkin", "glowMushroom", "lilyPad",
 ]);
 const variantDecor = new Set([
@@ -152,15 +152,15 @@ function normalizeDesign(value, enemyKinds, enemyRewards) {
     if (scalableDecor.has(item.type)) normalized.s = number(item.s ?? 1, `Decoration ${index + 1} scale`, .1, 5);
     if (variantDecor.has(item.type)) normalized.variant = Math.round(number(item.variant ?? 0, `Decoration ${index + 1} variant`, 0, 999));
     if (item.color) normalized.color = color(item.color, `Decoration ${index + 1} color`);
-    if (item.type === "upgradeBench") normalized.label = "Slot Upgrades";
+    if (item.type === "station") normalized.label = "Slot Upgrades";
     return normalized;
   });
   if (knownMapIds.has(id)) {
-    const upgradeBenchCount = decor.filter((item) => item.type === "upgradeBench").length;
-    if (id === "intermediate_snowlands" && upgradeBenchCount !== 1) {
+    const stationCount = decor.filter((item) => item.type === "station").length;
+    if (id === "intermediate_snowlands" && stationCount !== 1) {
       throw new Error("Intermediate Snowlands must keep exactly one functional Upgrade Bench.");
     }
-    if (id !== "intermediate_snowlands" && upgradeBenchCount > 0) {
+    if (id !== "intermediate_snowlands" && stationCount > 0) {
       throw new Error("The functional Upgrade Bench can only be placed in Intermediate Snowlands.");
     }
   }
@@ -288,7 +288,7 @@ async function saveMap(request, response) {
     prior?.gameplayEdited ||
     (effectiveBeforeSave && (
       JSON.stringify(effectiveBeforeSave.gameplay) !== JSON.stringify(design.gameplay) ||
-      JSON.stringify(upgradeBenchPosition(effectiveBeforeSave)) !== JSON.stringify(upgradeBenchPosition(design))
+      JSON.stringify(stationPosition(effectiveBeforeSave)) !== JSON.stringify(stationPosition(design))
     )),
   );
   await backUpDesignDocument(document, design.id);

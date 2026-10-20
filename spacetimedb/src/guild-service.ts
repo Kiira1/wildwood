@@ -2,7 +2,7 @@ import { guildAdmissionAction, guildRequestOnly } from "./guild-admissions";
 import { removeMessageReactions } from "./chat-reactions";
 import { guildNameModerationReason } from "./chat-moderation";
 import { syncGuildTag } from "./player-name-tags";
-import { questDay, questWeek } from "../../shared/daily-quests";
+import { questDay, questWeek } from "../../shared/weekly-quests";
 import type { Identity } from "spacetimedb";
 import { Range, SenderError } from "spacetimedb/server";
 import type { ModuleReducerCtx } from "./index";

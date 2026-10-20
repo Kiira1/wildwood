@@ -20,7 +20,7 @@ type ResearchControllerOptions = {
   healthMultiplierBonus?: () => number;
   /** Prestige levels banked. Stat rewards carry it exactly as the server does. */
   prestigeLevel?: () => number;
-  /** This week's guild quest bonus on stat rewards (daily quests), as the server pays it. */
+  /** This week's guild quest bonus on stat rewards (weekly quests), as the server pays it. */
   guildQuestBonus?: () => number;
   /** Prestige perk ranks. Keen Edge grants criticals outside the tech tree. */
   prestigePerks?: () => Partial<PrestigePerkRanks> | null | undefined;

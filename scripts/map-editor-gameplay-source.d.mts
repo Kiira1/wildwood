@@ -3,4 +3,4 @@ type MapDesignDocument = { maps?: Record<string, { name: string; gameplayEdited?
 
 /** The text of shared/map-editor-overrides.ts for a map-designs.json document. */
 export function generatedGameplaySource(document: MapDesignDocument): string;
-export function upgradeBenchPosition(map: { decor: { type: string; x: number; y: number }[] } | null | undefined): Point | null;
+export function stationPosition(map: { decor: { type: string; x: number; y: number }[] } | null | undefined): Point | null;

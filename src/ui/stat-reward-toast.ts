@@ -196,7 +196,7 @@ export function createProgressCompletionToast(kind: ProgressCompletionKind, deta
   return entry;
 }
 
-/** A daily quest enemy defeated: its name and the quest's count, "Quest done" on the last one. */
+/** A weekly quest enemy defeated: its name and the quest's count, "Quest done" on the last one. */
 export function createQuestProgressToast(enemy: string, count: number, target: number) {
   const entry = document.createElement("div");
   entry.className = "pickup stat-reward-toast quest-progress-toast";

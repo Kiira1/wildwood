@@ -97,6 +97,6 @@ it("puts Skills beside Stats in the profile and keeps Mastery out of Info", () =
   expect([...doc.querySelectorAll("#playerProfile .profile-tab")].map(tab => tab.textContent)).toEqual(["Stats", "Skills", "Info", "Bonuses"]);
   expect(doc.getElementById("profileSkillsPanel")?.getAttribute("aria-labelledby")).toBe("profileSkillsTab");
   expect(doc.getElementById("profileMasteryRow")).toBeNull();
-  expect(doc.querySelector("#profileOverviewPanel")?.textContent).not.toMatch(/mastery/i);
-  expect(doc.querySelector("#profileOverviewPanel #profileSoulTier")).not.toBeNull();
+  expect(doc.querySelector("#profileInfoPanel")?.textContent).not.toMatch(/mastery/i);
+  expect(doc.querySelector("#profileInfoPanel #profileSoulTier")).not.toBeNull();
 });

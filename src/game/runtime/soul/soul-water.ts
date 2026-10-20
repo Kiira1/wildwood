@@ -1,6 +1,6 @@
 import { decodedImage } from "../render/decoded-image";
 import { TOWN_EAST_BRIDGE } from "../../../../shared/town";
-import { SOUL_VILLAGE_GROUND } from "../../soul-village";
+import { TOWN_VILLAGE_GROUND } from "../../town-village";
 import { SOUL_WATER_CELLS } from "./soul-water-cells";
 import type { Camera } from "../render/camera";
 
@@ -177,7 +177,7 @@ export function createSoulWater(options: {
   function cut(into: HTMLCanvasElement, sheet: HTMLImageElement, left: number, top: number, width: number, height: number) {
     const context = into.getContext("2d");
     if (!context) return false;
-    const area = SOUL_VILLAGE_GROUND, scaleX = sheet.naturalWidth / area.w, scaleY = sheet.naturalHeight / area.h;
+    const area = TOWN_VILLAGE_GROUND, scaleX = sheet.naturalWidth / area.w, scaleY = sheet.naturalHeight / area.h;
     context.clearRect(0, 0, into.width, into.height);
     context.imageSmoothingEnabled = true;
     context.drawImage(decodedImage(sheet), (left - area.x) * scaleX, (top - area.y) * scaleY, width * scaleX, height * scaleY, 0, 0, width, height);
@@ -193,13 +193,13 @@ export function createSoulWater(options: {
     if (!water?.complete || water.naturalWidth <= 0) return;
     const { ctx, camera } = options;
     const view = options.viewport();
-    const area = SOUL_VILLAGE_GROUND;
+    const area = TOWN_VILLAGE_GROUND;
     const inView = {
       left: Math.max(area.x, camera.x), top: Math.max(area.y, camera.y),
       right: Math.min(area.x + area.w, camera.x + view.width / camera.zoom), bottom: Math.min(area.y + area.h, camera.y + view.height / camera.zoom),
     };
     if (inView.left >= inView.right || inView.top >= inView.bottom) return;
-    cells ??= waterCellsFromBits(SOUL_WATER_CELLS, SOUL_VILLAGE_GROUND);
+    cells ??= waterCellsFromBits(SOUL_WATER_CELLS, TOWN_VILLAGE_GROUND);
     // The layer covers the water near the view on a coarse grid, so it holds still while the camera drifts and
     // only needs relighting when the glints have moved: a few times a second is smooth for light this slow.
     const reach = {

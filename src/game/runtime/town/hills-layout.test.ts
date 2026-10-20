@@ -3,7 +3,7 @@ import {
   MINING_NODES, MINING_OUTCROPS, MINING_REACH, MINING_ROCK_EXTENT, MINING_TRACK, MINING_TRACK_HALF_WIDTH, MINING_VEINS, miningTrackDistanceSquared,
 } from "../../../../shared/mining";
 import { TOWN_ARRIVAL, TOWN_FEET_OFFSET, TOWN_HILLS, TOWN_HILLS_STONE_FREE, TOWN_WALK_AREA, inTownHills } from "../../../../shared/town";
-import { SOUL_ATLAS } from "../../soul-village";
+import { SOUL_ATLAS } from "../../town-village";
 import {
   HILLS_CLEARING_ROUND, HILLS_CLEARINGS, HILLS_EARTH_RIM, MINING_PLATE, ORE_ROCK_BOXES, oreRockDecor, spriteBox, townWindowDecor,
 } from "../../town-world";

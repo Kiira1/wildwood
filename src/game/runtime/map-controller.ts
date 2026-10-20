@@ -1,4 +1,4 @@
-import { beginHomeTeleport, endHomeTeleport } from "./town/home-teleport";
+import { beginTownTeleport, endTownTeleport } from "./town/town-teleport";
 import { createPortalCutscene } from "./cutscene";
 import { snapCameraToPlayer, type Camera } from "./render/camera";
 import type { EnemyState, PlayerState } from "./types";
@@ -84,10 +84,10 @@ export type MapController = {
 
 /** Owns map travel, portal collisions, and cinematic portal state. */
 export function createMapController(options: {
-  /** Home's portals open windows rather than travel: the destination picker, or the Soul Dimension's. */
-  openHomeTravel?: (portal: MapPortal) => void;
+  /** The Town's portals open windows rather than travel: the destination picker, or the Soul Dimension's. */
+  openTravel?: (portal: MapPortal) => void;
   /** Closes those windows: walking off the portal leaves it, as the server only sends a player on from beside it. */
-  closeHomeTravel?: () => void;
+  closeTravel?: () => void;
   onTravelStarted?: () => void;
   /** Whether Auto Farm is taking the player through a portal to this map: the arrival guard does not hold it back. */
   travelWanted?: (destination: string) => boolean;
@@ -213,7 +213,7 @@ export function createMapController(options: {
     try {
       keys.clear(); stopTouchMove(); player.moving = false;
       syncStoppedPosition();
-      beginHomeTeleport();
+      beginTownTeleport();
       // Bound the whole operation, including reducer acknowledgement and art.
       // A late completion may update server state, but must never revive this
       // presentation; normal reconciliation handles the authoritative map.
@@ -240,7 +240,7 @@ export function createMapController(options: {
           guardPortalContainingPlayer();
         } else loadMap(latest.mapId as MapId, latest.x, latest.y, latest.facing);
         snapCameraToPlayer(camera, player, viewport()); resetPresentationState();
-        beginHomeTeleport(true);
+        beginTownTeleport(true);
         if (!destination && !returning) homeDeparture = departure;
         return true;
       };
@@ -250,7 +250,7 @@ export function createMapController(options: {
     } finally {
       finished = true;
       if (attempt === mapLoadGeneration) {
-        endHomeTeleport();
+        endTownTeleport();
         mapTransitioning = false;
       }
     }
@@ -311,7 +311,7 @@ export function createMapController(options: {
   function loadMap(mapId: MapId, x: number, y: number, facing = 0) {
     if (pendingPortalReveal?.mapId !== mapId) pendingPortalReveal = null;
     mapLoadGeneration++;
-    endHomeTeleport();
+    endTownTeleport();
     mapTransitioning = false;
     // Any other map load supersedes a portal arrival still awaiting the server.
     arrivalPending = false;
@@ -349,19 +349,19 @@ export function createMapController(options: {
       // A reload mid Move On lands the player in the portal, where Auto Farm stood for good waiting for a step out.
       if (guardHolds(portalExitGuard) && !options.travelWanted?.(portalExitGuard.destination)) return;
       guardPortal(null);
-      if (getCurrentMapId() === "town") options.closeHomeTravel?.();
+      if (getCurrentMapId() === "town") options.closeTravel?.();
     }
     const portal = [activePortal(), secondaryPortal()].filter((candidate): candidate is MapPortal => candidate !== null).find((candidate) =>
       playerIsInsidePortal(candidate),
     );
     if (!portal || !portalIsUnlocked(portal)) return;
     // The Town's portals open a window (the map picker, the Soul Dimension's) that does the travelling.
-    if (getCurrentMapId() === "town" && options.openHomeTravel) {
+    if (getCurrentMapId() === "town" && options.openTravel) {
       // The picker chooses the destination. Guarding the pad means standing
       // on it after Back never reopens the window; walking off and on does.
       guardPortal(portal, true);
       keys.clear(); stopTouchMove(); player.moving = false;
-      options.openHomeTravel(portal);
+      options.openTravel(portal);
       return;
     }
     options.onTravelStarted?.();

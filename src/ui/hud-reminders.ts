@@ -1,10 +1,10 @@
 import { renderBooleanSetting } from "./settings";
 
 export type HudReminderKind = "research" | "smith";
-/** The chips' ids: the Tech Tree and the Smith runtime show and hide them as their dots used to. */
+/** The chips: the Tech Tree shows Research Ready, the Smith runtime shows when Upgrade All has gear to buy. */
 export const HUD_REMINDERS: readonly { kind: HudReminderKind; id: string; text: string; label: string; key: string }[] = [
-  { kind: "research", id: "techTreeNotice", text: "Research Ready", label: "Research Ready Hint", key: "wildstat-hud-research-ready-visible" },
-  { kind: "smith", id: "smithUpgradeNotice", text: "Upgrades At The Smith", label: "Smith Upgrades Hint", key: "wildstat-hud-smith-upgrades-visible" },
+  { kind: "research", id: "researchReadyHint", text: "Research Ready", label: "Research Ready Hint", key: "wildstat-hud-research-ready-visible" },
+  { kind: "smith", id: "smithBuyNotice", text: "Upgrades At The Smith", label: "Smith Upgrades Hint", key: "wildstat-hud-smith-upgrades-visible" },
 ];
 
 /** The chips' markup, hidden until their owner says there is something to do. */

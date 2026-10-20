@@ -124,10 +124,10 @@ export type PlayerPrestigePerks = {
   armorCards?: number;
 };
 
-export type UpgradeBenchSlot = 1 | 2 | 3;
+export type SlotUpgradeQueue = 1 | 2 | 3;
 
 export type ActiveItemUpgrade = {
-  slot: UpgradeBenchSlot;
+  slot: SlotUpgradeQueue;
   itemId: string;
   currentLevel: number;
   targetLevel: number;

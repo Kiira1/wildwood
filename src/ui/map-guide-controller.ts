@@ -22,7 +22,7 @@ import { liveRewardText, type RewardLabelContext } from "../game/runtime/reward-
 import { recommendedMapPower } from "../game/runtime/auto-farm/auto-farm-power";
 import { prestigeRequirementHint } from "../../shared/prestige";
 import { formatCompactNumber } from "../../shared/compact-number";
-import { baseName, unlockedBy } from "./home-travel-controller";
+import { baseName, unlockedBy } from "./travel-controller";
 import {
   ADVANCED_LAVA_WASTES_MAP_ID,
   BEGINNER_DESERT_MAP_ID,

@@ -1,6 +1,6 @@
 import type { GuildHallLevels, GuildHallPart } from "../../shared/guild-hall";
 import scene from "./guild-hall-scene.json";
-import type { SoulSolid } from "./soul-village";
+import type { SoulSolid } from "./town-village";
 import type { WorldDecor } from "./world";
 
 /**
@@ -55,7 +55,7 @@ type Prop = (typeof scene.props)[number] & { open?: number; door?: number; groun
   anim?: { frames: number[]; times: number[]; length: number }; when?: Condition };
 type Crest = (typeof scene.crests)[number] & { when?: Condition };
 
-/** The hall's props and crests at these levels, as world decor that sorts by depth like the Soul village's. */
+/** The hall's props and crests at these levels, as world decor that sorts by depth like the Town village's. */
 export function guildHallDecor(levels: GuildHallLevels): WorldDecor[] {
   const decor: WorldDecor[] = [];
   for (const prop of scene.props as Prop[]) {

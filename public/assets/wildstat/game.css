@@ -364,12 +364,12 @@
     object-fit: contain;
     pointer-events: none;
   }
-  .tech-tree-button { position: relative; }
-  .home-teleport-cooldown { position: absolute; top: calc((100% - env(safe-area-inset-bottom, 0px) - 44px) / 2); left: 50%; display: grid; place-items: center; width: 31px; height: 31px; transform: translateX(-50%); border-radius: 50%; background: #152c3e; color: #fff; font: 900 17px/1 var(--font-rounded); text-shadow: 0 1px 2px #000; pointer-events: none; }
-  .home-teleport-cooldown::before { position: absolute; inset: -2px; border-radius: 50%; background: conic-gradient(#8bd6ff var(--cooldown-progress, 100%), rgba(139,214,255,.16) 0); -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 0); mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 0); content: ""; }
-  .home-teleport-cooldown[hidden] { display: none; }
-  #techTreeBtn.is-home-cooldown { opacity: 1; }
-  #techTreeBtn.is-home-cooldown .toolbar-icon { visibility: hidden; }
+  .town-button { position: relative; }
+  .town-teleport-cooldown { position: absolute; top: calc((100% - env(safe-area-inset-bottom, 0px) - 44px) / 2); left: 50%; display: grid; place-items: center; width: 31px; height: 31px; transform: translateX(-50%); border-radius: 50%; background: #152c3e; color: #fff; font: 900 17px/1 var(--font-rounded); text-shadow: 0 1px 2px #000; pointer-events: none; }
+  .town-teleport-cooldown::before { position: absolute; inset: -2px; border-radius: 50%; background: conic-gradient(#8bd6ff var(--cooldown-progress, 100%), rgba(139,214,255,.16) 0); -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 0); mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 0); content: ""; }
+  .town-teleport-cooldown[hidden] { display: none; }
+  #townBtn.is-town-cooldown { opacity: 1; }
+  #townBtn.is-town-cooldown .toolbar-icon { visibility: hidden; }
   .inventory-notice { position: absolute; top: 12%; left: calc(50% + 8px); width: 8px; height: 8px; border: 1px solid #fff; border-radius: 50%; background: #e63d3d; box-shadow: 0 1px 0 #000; pointer-events: none; }
   .inventory-notice[hidden] { display: none; }
 
@@ -384,12 +384,12 @@
     box-shadow: inset 0 3px 0 var(--green), inset 0 0 0 2px rgba(105,229,111,.18);
   }
   #leaderboardBtn { background: var(--window-surface); }
-  #techTreeBtn { background: var(--window-surface); }
+  #townBtn { background: var(--window-surface); }
   #inventoryBtn { background: var(--window-surface); }
   #shopBtn { background: var(--window-surface); }
   #settingsBtn { background: transparent; box-shadow: none; }
   #leaderboardBtn[aria-expanded="true"] { background: #1b1c1b; box-shadow: inset 0 3px 0 #d5bd73, inset 0 0 0 2px rgba(213,189,115,.21); }
-  #techTreeBtn[aria-expanded="true"] { background: #1b1c1b; box-shadow: inset 0 3px 0 #74c7ef, inset 0 0 0 2px rgba(116,199,239,.18); }
+  #townBtn[aria-expanded="true"] { background: #1b1c1b; box-shadow: inset 0 3px 0 #74c7ef, inset 0 0 0 2px rgba(116,199,239,.18); }
   #inventoryBtn[aria-expanded="true"] { background: #1b1c1b; box-shadow: inset 0 3px 0 #bf875c, inset 0 0 0 2px rgba(191,135,92,.18); }
   #settingsBtn[aria-expanded="true"] { background: transparent; box-shadow: none; }
   .settings-button:active { filter: brightness(1.16); transform: none; }
@@ -703,7 +703,7 @@
   /* Where a plain image of the item stood, its galaxy span takes the image's place and size. */
   .item-art-image.has-galaxy-finish { display: grid; }
   .map-guide-drop-art .item-art-image { width: 50px; height: 50px; }
-  .developer-item-gift .daily-gem-bonus-art .item-art-image { width: 96px; height: 96px; margin: 0 auto; }
+  .developer-item-gift .claim-art .item-art-image { width: 96px; height: 96px; margin: 0 auto; }
   /* The map an item came from. In an equipped slot it takes the corner, where
      the slot's own name is not; on a loose item it sits centred over the art. */
   .item-tier-label { position: absolute; top: 5px; left: 5px; right: auto; z-index: 1; color: #fff; font: 800 9px/11px var(--font-rounded); text-align: left; -webkit-text-stroke: 2px #080b08; paint-order: stroke fill; text-shadow: none; pointer-events: none; }
@@ -711,7 +711,7 @@
   .profile-equipment-slot > .item-tier-label { top: 3px; left: 2px; font-size: 7px; line-height: 9px; }
   .item-inspection-metadata > .item-tier-label { position: static; font-size: 13px; line-height: 16px; }
   .inventory-upgrade-level { position: absolute; top: 5px; right: 5px; z-index: 2; min-width: 0; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; color: #fff; font: 800 9px/11px var(--font-rounded); text-align: center; -webkit-text-stroke: 2px #080b08; paint-order: stroke fill; text-shadow: none; pointer-events: none; }
-  .inventory-item > .inventory-upgrade-level, .upgrade-bench-slot > .inventory-upgrade-level { top: 5px; right: 5px; }
+  .inventory-item > .inventory-upgrade-level, .slot-upgrades-queue > .inventory-upgrade-level { top: 5px; right: 5px; }
   .inventory-loadout .equipment-slot-art { width: 100%; height: 100%; place-self: stretch; }
   .inventory-loadout .equipment-slot .inventory-item-art { width: 96%; height: 96%; max-width: none; max-height: none; margin-top: 5%; }
   .inventory-loadout .equipment-slot[data-item-id="starter_stone"] .inventory-item-art { width: min(30px, 48%); height: min(30px, 48%); }
@@ -741,62 +741,62 @@
   .inventory-drag-ghost .boot-pixel-icon { transform: scale(1.6); }
 
   .visually-hidden { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border: 0 !important; }
-  .upgrade-bench-panel { grid-template-rows: auto minmax(0, 1fr); position: fixed; inset: 0 0 var(--window-bottom-inset); z-index: 11; display: grid; place-items: center; padding: max(12px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) 14px max(14px, env(safe-area-inset-left)); overflow: hidden; background: var(--window-surface-brown); color: #f4f3e8; pointer-events: auto; }
-  .upgrade-bench-panel[hidden] { display: none; }
-  .upgrade-bench-content { display: grid; place-items: center; align-content: center; gap: 13px; width: min(100%, 390px); min-height: 0; text-align: center; }
-  .upgrade-bench-prompt { margin: 0; color: #f6f3e7; font-size: var(--font-readable-body); font-weight: 900; line-height: var(--line-height-readable); letter-spacing: .03em; }
-  .upgrade-bench-slots { display: flex; align-items: center; justify-content: center; gap: 16px; }
-  .inventory-item.upgrade-bench-slot { display: grid; grid-template-rows: 1fr; place-items: center; width: clamp(60px, 18.75vw, 76px); min-width: clamp(60px, 18.75vw, 76px); height: clamp(60px, 18.75vw, 76px); min-height: clamp(60px, 18.75vw, 76px); aspect-ratio: 1; padding: 5px; }
-  .inventory-item.upgrade-bench-slot[hidden] { display: none; }
-  .inventory-item.upgrade-bench-slot.is-selected { border-color: #b8f29d; box-shadow: 0 0 0 2px rgba(126,220,119,.42), inset 0 -3px 0 rgba(0,0,0,.32); }
-  .inventory-item.upgrade-bench-slot.is-active { background: linear-gradient(#3c321f, #211a10); }
-  .inventory-item.upgrade-bench-slot.is-locked { grid-template-rows: 1fr auto; gap: 1px; border-color: #70536a; background: linear-gradient(#332832, #1b161b); color: #f0d8e6; }
-  .upgrade-bench-lock-symbol { align-self: end; font: 900 22px/1 Arial, sans-serif; filter: grayscale(.2); }
-  .upgrade-bench-slot-cost { display: flex; align-items: center; justify-content: center; gap: 2px; min-width: 0; color: #fff; font: 900 var(--font-readable-min)/1 var(--font-rounded); }
-  .upgrade-bench-slot-cost img { display: block; width: 15px; height: 15px; object-fit: contain; }
-  .upgrade-bench-slot .inventory-item-art-wrap { display: grid; width: 100%; height: 100%; place-items: center; }
-  .upgrade-bench-slot .inventory-item-art { width: 82%; height: 82%; }
-  .upgrade-bench-stat-gain { display: grid; gap: 5px; min-height: 20px; color: #d7dfd8; font-size: var(--font-readable-label); line-height: var(--line-height-readable); }
-  .upgrade-bench-stat-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 14px; text-align: left; }
-  .upgrade-bench-stat-row strong { color: #f5f2e8; font-size: var(--font-readable-label); }
-  .upgrade-bench-stat-row span { color: #8deb94; font-weight: 900; white-space: nowrap; }
-  .upgrade-bench-stat-row[data-stat-kind="armor"] strong, .upgrade-bench-stat-row[data-stat-kind="armor"] span,
-  .upgrade-bench-picker-stat[data-stat-kind="armor"], .upgrade-bench-picker-stat[data-stat-kind="armor"] span { color: var(--stat-armor); }
-  .upgrade-bench-stat-row[data-stat-kind="regen"] strong, .upgrade-bench-stat-row[data-stat-kind="regen"] span,
-  .upgrade-bench-picker-stat[data-stat-kind="regen"], .upgrade-bench-picker-stat[data-stat-kind="regen"] span { color: var(--stat-regen); }
-  .upgrade-bench-timer { min-height: 20px; color: #f3cf70; font-size: var(--font-readable-body); font-weight: 900; letter-spacing: .04em; }
-  .upgrade-bench-action { display: flex; align-items: center; justify-content: center; width: min(220px, 80vw); height: 44px; min-height: 44px; margin: 0; padding: 0 8px 2px; border-color: #15371b; border-radius: 8px; background: linear-gradient(#72d977, #3e9f48); box-shadow: 0 3px 0 #17361c; color: #fff; font-size: var(--font-readable-body); line-height: 1; }
-  .upgrade-bench-action[hidden] { display: none; }
-  .upgrade-bench-action.is-cancel { border-color: #492020; background: linear-gradient(#cf6868, #953c3c); box-shadow: 0 3px 0 #431d1d; }
-  .upgrade-bench-speed-up { display: flex; align-items: center; justify-content: center; gap: 6px; border-color: #65354f; background: linear-gradient(#d86f9f, #a84573); box-shadow: 0 3px 0 #53243d; }
-  .upgrade-bench-speed-up img { display: block; width: 20px; height: 20px; object-fit: contain; }
-  .upgrade-bench-speed-up strong { font: inherit; }
-  .upgrade-bench-action:disabled { border-color: #373737; background: #4b554f; box-shadow: none; color: #9ba49e; }
-  .upgrade-bench-back { position: absolute; right: 0; bottom: var(--window-back-bottom-gap); left: 0; display: flex; align-items: center; justify-content: center; width: min(220px, 80vw); height: 44px; min-height: 44px; margin: 0 auto; padding: 0 8px 2px; border-color: #351010; border-radius: 8px; background: linear-gradient(#c85050, #842f34); box-shadow: 0 3px 0 #351519; color: #fff; font-size: var(--font-readable-body); line-height: 1; }
-  .upgrade-bench-back[hidden] { display: none; }
-  .upgrade-bench-picker { position: absolute; inset: 0; z-index: 4; display: grid; place-items: center; padding: 16px; background: rgba(4,8,6,.76); }
-  .upgrade-bench-picker[hidden] { display: none; }
-  .upgrade-bench-picker-sheet { display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; min-height: 0; gap: 10px; width: min(100%, 360px); height: min(calc(100dvh - var(--window-bottom-inset) - 32px), 520px); max-height: min(calc(100dvh - var(--window-bottom-inset) - 32px), 520px); padding: 12px; overflow: hidden; border: 2px solid rgba(255,255,255,.22); border-radius: 10px; background: var(--window-surface-brown); box-shadow: 0 10px 30px rgba(0,0,0,.55); }
-  .upgrade-bench-picker-heading { color: #f4f3e8; font-size: var(--font-readable-label); font-weight: 900; letter-spacing: .05em; text-align: center; }
-  .upgrade-bench-picker-items { display: grid; align-content: start; gap: 7px; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; touch-action: pan-y; -webkit-overflow-scrolling: touch; }
-  .upgrade-bench-picker-items::-webkit-scrollbar { display: none; }
-  .upgrade-bench-picker-item { display: grid; grid-template-columns: 48px minmax(0, 1fr); align-items: center; gap: 9px; height: 72px; min-height: 72px; margin: 0; padding: 5px 9px; overflow: hidden; border: 2px solid #54462f; border-radius: 8px; background: linear-gradient(#302719, #17130d); color: #f4f3e8; text-align: left; }
-  .upgrade-bench-picker-item .inventory-item-art { width: 44px; height: 44px; }
-  .upgrade-bench-picker-copy { display: grid; gap: 1px; min-width: 0; pointer-events: none; }
-  .upgrade-bench-picker-title { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; min-width: 0; }
-  .upgrade-bench-picker-title strong { overflow: hidden; font-size: var(--font-readable-label); text-overflow: ellipsis; white-space: nowrap; }
-  .upgrade-bench-picker-title small { flex: none; color: #f3cf70; font-size: var(--font-readable-min); }
+  .slot-upgrades-panel { grid-template-rows: auto minmax(0, 1fr); position: fixed; inset: 0 0 var(--window-bottom-inset); z-index: 11; display: grid; place-items: center; padding: max(12px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) 14px max(14px, env(safe-area-inset-left)); overflow: hidden; background: var(--window-surface-brown); color: #f4f3e8; pointer-events: auto; }
+  .slot-upgrades-panel[hidden] { display: none; }
+  .slot-upgrades-content { display: grid; place-items: center; align-content: center; gap: 13px; width: min(100%, 390px); min-height: 0; text-align: center; }
+  .slot-upgrades-prompt { margin: 0; color: #f6f3e7; font-size: var(--font-readable-body); font-weight: 900; line-height: var(--line-height-readable); letter-spacing: .03em; }
+  .slot-upgrades-queues { display: flex; align-items: center; justify-content: center; gap: 16px; }
+  .inventory-item.slot-upgrades-queue { display: grid; grid-template-rows: 1fr; place-items: center; width: clamp(60px, 18.75vw, 76px); min-width: clamp(60px, 18.75vw, 76px); height: clamp(60px, 18.75vw, 76px); min-height: clamp(60px, 18.75vw, 76px); aspect-ratio: 1; padding: 5px; }
+  .inventory-item.slot-upgrades-queue[hidden] { display: none; }
+  .inventory-item.slot-upgrades-queue.is-selected { border-color: #b8f29d; box-shadow: 0 0 0 2px rgba(126,220,119,.42), inset 0 -3px 0 rgba(0,0,0,.32); }
+  .inventory-item.slot-upgrades-queue.is-active { background: linear-gradient(#3c321f, #211a10); }
+  .inventory-item.slot-upgrades-queue.is-locked { grid-template-rows: 1fr auto; gap: 1px; border-color: #70536a; background: linear-gradient(#332832, #1b161b); color: #f0d8e6; }
+  .slot-upgrades-lock-symbol { align-self: end; font: 900 22px/1 Arial, sans-serif; filter: grayscale(.2); }
+  .slot-upgrades-queue-cost { display: flex; align-items: center; justify-content: center; gap: 2px; min-width: 0; color: #fff; font: 900 var(--font-readable-min)/1 var(--font-rounded); }
+  .slot-upgrades-queue-cost img { display: block; width: 15px; height: 15px; object-fit: contain; }
+  .slot-upgrades-queue .inventory-item-art-wrap { display: grid; width: 100%; height: 100%; place-items: center; }
+  .slot-upgrades-queue .inventory-item-art { width: 82%; height: 82%; }
+  .slot-upgrades-stat-gain { display: grid; gap: 5px; min-height: 20px; color: #d7dfd8; font-size: var(--font-readable-label); line-height: var(--line-height-readable); }
+  .slot-upgrades-stat-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 14px; text-align: left; }
+  .slot-upgrades-stat-row strong { color: #f5f2e8; font-size: var(--font-readable-label); }
+  .slot-upgrades-stat-row span { color: #8deb94; font-weight: 900; white-space: nowrap; }
+  .slot-upgrades-stat-row[data-stat-kind="armor"] strong, .slot-upgrades-stat-row[data-stat-kind="armor"] span,
+  .slot-upgrades-picker-stat[data-stat-kind="armor"], .slot-upgrades-picker-stat[data-stat-kind="armor"] span { color: var(--stat-armor); }
+  .slot-upgrades-stat-row[data-stat-kind="regen"] strong, .slot-upgrades-stat-row[data-stat-kind="regen"] span,
+  .slot-upgrades-picker-stat[data-stat-kind="regen"], .slot-upgrades-picker-stat[data-stat-kind="regen"] span { color: var(--stat-regen); }
+  .slot-upgrades-timer { min-height: 20px; color: #f3cf70; font-size: var(--font-readable-body); font-weight: 900; letter-spacing: .04em; }
+  .slot-upgrades-action { display: flex; align-items: center; justify-content: center; width: min(220px, 80vw); height: 44px; min-height: 44px; margin: 0; padding: 0 8px 2px; border-color: #15371b; border-radius: 8px; background: linear-gradient(#72d977, #3e9f48); box-shadow: 0 3px 0 #17361c; color: #fff; font-size: var(--font-readable-body); line-height: 1; }
+  .slot-upgrades-action[hidden] { display: none; }
+  .slot-upgrades-action.is-cancel { border-color: #492020; background: linear-gradient(#cf6868, #953c3c); box-shadow: 0 3px 0 #431d1d; }
+  .slot-upgrades-speed-up { display: flex; align-items: center; justify-content: center; gap: 6px; border-color: #65354f; background: linear-gradient(#d86f9f, #a84573); box-shadow: 0 3px 0 #53243d; }
+  .slot-upgrades-speed-up img { display: block; width: 20px; height: 20px; object-fit: contain; }
+  .slot-upgrades-speed-up strong { font: inherit; }
+  .slot-upgrades-action:disabled { border-color: #373737; background: #4b554f; box-shadow: none; color: #9ba49e; }
+  .slot-upgrades-back { position: absolute; right: 0; bottom: var(--window-back-bottom-gap); left: 0; display: flex; align-items: center; justify-content: center; width: min(220px, 80vw); height: 44px; min-height: 44px; margin: 0 auto; padding: 0 8px 2px; border-color: #351010; border-radius: 8px; background: linear-gradient(#c85050, #842f34); box-shadow: 0 3px 0 #351519; color: #fff; font-size: var(--font-readable-body); line-height: 1; }
+  .slot-upgrades-back[hidden] { display: none; }
+  .slot-upgrades-picker { position: absolute; inset: 0; z-index: 4; display: grid; place-items: center; padding: 16px; background: rgba(4,8,6,.76); }
+  .slot-upgrades-picker[hidden] { display: none; }
+  .slot-upgrades-picker-sheet { display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; min-height: 0; gap: 10px; width: min(100%, 360px); height: min(calc(100dvh - var(--window-bottom-inset) - 32px), 520px); max-height: min(calc(100dvh - var(--window-bottom-inset) - 32px), 520px); padding: 12px; overflow: hidden; border: 2px solid rgba(255,255,255,.22); border-radius: 10px; background: var(--window-surface-brown); box-shadow: 0 10px 30px rgba(0,0,0,.55); }
+  .slot-upgrades-picker-heading { color: #f4f3e8; font-size: var(--font-readable-label); font-weight: 900; letter-spacing: .05em; text-align: center; }
+  .slot-upgrades-picker-items { display: grid; align-content: start; gap: 7px; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; touch-action: pan-y; -webkit-overflow-scrolling: touch; }
+  .slot-upgrades-picker-items::-webkit-scrollbar { display: none; }
+  .slot-upgrades-picker-item { display: grid; grid-template-columns: 48px minmax(0, 1fr); align-items: center; gap: 9px; height: 72px; min-height: 72px; margin: 0; padding: 5px 9px; overflow: hidden; border: 2px solid #54462f; border-radius: 8px; background: linear-gradient(#302719, #17130d); color: #f4f3e8; text-align: left; }
+  .slot-upgrades-picker-item .inventory-item-art { width: 44px; height: 44px; }
+  .slot-upgrades-picker-copy { display: grid; gap: 1px; min-width: 0; pointer-events: none; }
+  .slot-upgrades-picker-title { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; min-width: 0; }
+  .slot-upgrades-picker-title strong { overflow: hidden; font-size: var(--font-readable-label); text-overflow: ellipsis; white-space: nowrap; }
+  .slot-upgrades-picker-title small { flex: none; color: #f3cf70; font-size: var(--font-readable-min); }
   /* The tier badge is absolutely positioned over artwork everywhere else; in
      this row it is a word beside the name. */
   /* The sheet's own gap spaces this; a margin here would double it. */
-  .upgrade-bench-picker-filters { gap: 2px; margin: 0; }
-  .upgrade-bench-picker-filters .profile-tab { flex: 1 1 0; min-width: 0; height: 34px; min-height: 34px; padding: 6px 4px; font-size: 9px; }
-  .upgrade-bench-picker-stats { display: grid; gap: 0; min-width: 0; }
-  .upgrade-bench-picker-stat { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px; color: #d7dfd8; font-size: var(--font-readable-min); line-height: 1.05; }
-  .upgrade-bench-picker-stat span:last-child { color: #8deb94; font-weight: 900; white-space: nowrap; }
-  .upgrade-bench-picker-stat[data-stat-kind="armor"] span:last-child { color: var(--stat-armor); }
-  .upgrade-bench-picker-stat[data-stat-kind="regen"] span:last-child { color: var(--stat-regen); }
-  .upgrade-bench-picker-close { min-height: 44px; margin: 0; }
+  .slot-upgrades-picker-filters { gap: 2px; margin: 0; }
+  .slot-upgrades-picker-filters .profile-tab { flex: 1 1 0; min-width: 0; height: 34px; min-height: 34px; padding: 6px 4px; font-size: 9px; }
+  .slot-upgrades-picker-stats { display: grid; gap: 0; min-width: 0; }
+  .slot-upgrades-picker-stat { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px; color: #d7dfd8; font-size: var(--font-readable-min); line-height: 1.05; }
+  .slot-upgrades-picker-stat span:last-child { color: #8deb94; font-weight: 900; white-space: nowrap; }
+  .slot-upgrades-picker-stat[data-stat-kind="armor"] span:last-child { color: var(--stat-armor); }
+  .slot-upgrades-picker-stat[data-stat-kind="regen"] span:last-child { color: var(--stat-regen); }
+  .slot-upgrades-picker-close { min-height: 44px; margin: 0; }
 
   .boot-pixel-icon { display: flex; justify-content: center; gap: 3px; align-items: end; height: 22px; }
   .boot-pixel-icon i { position: relative; display: block; width: 8px; height: 15px; border: 2px solid #32190d; border-radius: 2px 2px 3px 3px; background: #d58b32; box-shadow: -2px 3px 0 #ffe47b; }
@@ -1686,24 +1686,24 @@
   .hud-secondary-controls .player-visibility-toggle[aria-pressed="false"]:not(:disabled) { opacity: 1; }
   .hud-secondary-controls .player-visibility-toggle[aria-pressed="false"]:not(:disabled) svg { opacity: .65; }
 
-  .daily-gem-bonus { position: fixed; inset: 0 0 var(--window-bottom-inset); z-index: 18; display: grid; place-items: center; padding: 18px; background: rgba(8, 7, 10, .78); pointer-events: auto; }
-  .daily-gem-bonus[hidden] { display: none; }
-  .daily-gem-bonus-card { position: relative; display: grid; justify-items: center; gap: 7px; width: min(330px, calc(100vw - 36px)); padding: 19px 22px 22px; overflow: hidden; border: 2px solid #e89abd; border-radius: 13px; background: var(--window-surface-purple); box-shadow: 0 12px 0 rgba(0,0,0,.42), 0 0 30px rgba(241,130,187,.2); color: #fff; text-align: center; animation: daily-gem-card-enter .34s cubic-bezier(.2,.9,.24,1.24); }
-  .daily-gem-bonus-kicker { color: #ffc2df; font-size: 10px; font-weight: 900; letter-spacing: .18em; }
-  .daily-gem-bonus-art { position: relative; display: grid; width: 112px; height: 112px; place-items: center; }
-  .daily-gem-bonus-art::before { position: absolute; inset: 0; border-radius: 50%; background: repeating-conic-gradient(from 0deg, rgba(255,190,223,.24) 0 7deg, transparent 7deg 22deg); content: ""; animation: daily-gem-rays 12s linear infinite; }
-  .daily-gem-bonus-art img { position: relative; display: block; width: 70px; height: 70px; object-fit: contain; animation: daily-gem-float 1.6s ease-in-out infinite alternate; }
-  .daily-gem-bonus-card h2 { margin: -3px 0 0; color: #fff; font-size: 29px; line-height: 1; letter-spacing: .04em; }
-  .daily-gem-bonus-card p { margin: 0 0 6px; color: #d9cbd2; font-size: 9px; letter-spacing: .12em; }
-  .daily-gem-claim-button { justify-self: center; min-width: 164px; min-height: 44px; margin: 0; border: 2px solid #ffd1e7; border-radius: 8px; background: linear-gradient(#e971aa, #a33f78); box-shadow: 0 4px 0 #55233f; color: #fff; font-size: 13px; letter-spacing: .08em; }
-  .daily-gem-claim-button:hover:not(:disabled), .daily-gem-claim-button:focus-visible { border-color: #fff; background: linear-gradient(#f58abd, #bd4a8b); outline: 0; }
-  .daily-gem-claim-button:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 1px 0 #55233f; }
-  .daily-gem-bonus.is-claimed .daily-gem-bonus-art img { animation: daily-gem-claimed .72s cubic-bezier(.2,.9,.24,1.3); }
+  .claim-overlay { position: fixed; inset: 0 0 var(--window-bottom-inset); z-index: 18; display: grid; place-items: center; padding: 18px; background: rgba(8, 7, 10, .78); pointer-events: auto; }
+  .claim-overlay[hidden] { display: none; }
+  .claim-card { position: relative; display: grid; justify-items: center; gap: 7px; width: min(330px, calc(100vw - 36px)); padding: 19px 22px 22px; overflow: hidden; border: 2px solid #e89abd; border-radius: 13px; background: var(--window-surface-purple); box-shadow: 0 12px 0 rgba(0,0,0,.42), 0 0 30px rgba(241,130,187,.2); color: #fff; text-align: center; animation: claim-card-enter .34s cubic-bezier(.2,.9,.24,1.24); }
+  .claim-kicker { color: #ffc2df; font-size: 10px; font-weight: 900; letter-spacing: .18em; }
+  .claim-art { position: relative; display: grid; width: 112px; height: 112px; place-items: center; }
+  .claim-art::before { position: absolute; inset: 0; border-radius: 50%; background: repeating-conic-gradient(from 0deg, rgba(255,190,223,.24) 0 7deg, transparent 7deg 22deg); content: ""; animation: claim-rays 12s linear infinite; }
+  .claim-art img { position: relative; display: block; width: 70px; height: 70px; object-fit: contain; animation: claim-float 1.6s ease-in-out infinite alternate; }
+  .claim-card h2 { margin: -3px 0 0; color: #fff; font-size: 29px; line-height: 1; letter-spacing: .04em; }
+  .claim-card p { margin: 0 0 6px; color: #d9cbd2; font-size: 9px; letter-spacing: .12em; }
+  .claim-button { justify-self: center; min-width: 164px; min-height: 44px; margin: 0; border: 2px solid #ffd1e7; border-radius: 8px; background: linear-gradient(#e971aa, #a33f78); box-shadow: 0 4px 0 #55233f; color: #fff; font-size: 13px; letter-spacing: .08em; }
+  .claim-button:hover:not(:disabled), .claim-button:focus-visible { border-color: #fff; background: linear-gradient(#f58abd, #bd4a8b); outline: 0; }
+  .claim-button:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 1px 0 #55233f; }
+  .claim-overlay.is-claimed .claim-art img { animation: claim-pop .72s cubic-bezier(.2,.9,.24,1.3); }
 
-  @keyframes daily-gem-card-enter { from { opacity: 0; transform: scale(.76) translateY(18px); } to { opacity: 1; transform: scale(1) translateY(0); } }
-  @keyframes daily-gem-rays { to { transform: rotate(360deg); } }
-  @keyframes daily-gem-float { to { transform: translateY(-6px) scale(1.04); } }
-  @keyframes daily-gem-claimed { 45% { transform: scale(1.42) rotate(-8deg); } 100% { transform: scale(1) rotate(0); } }
+  @keyframes claim-card-enter { from { opacity: 0; transform: scale(.76) translateY(18px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+  @keyframes claim-rays { to { transform: rotate(360deg); } }
+  @keyframes claim-float { to { transform: translateY(-6px) scale(1.04); } }
+  @keyframes claim-pop { 45% { transform: scale(1.42) rotate(-8deg); } 100% { transform: scale(1) rotate(0); } }
 
   .chat-message-actions {
     --chat-sheet-drag-y: 0px;
@@ -2309,10 +2309,10 @@
     #connectionPanel .wildstat-wordmark-title,
     #gameUpdateGate .wildstat-wordmark-title,
     #accountChoicePanel .wildstat-wordmark-title,
-    .daily-gem-bonus-card,
-    .daily-gem-bonus-art::before,
-    .daily-gem-bonus-art img,
-    .daily-gem-bonus.is-claimed .daily-gem-bonus-art img { animation: none; }
+    .claim-card,
+    .claim-art::before,
+    .claim-art img,
+    .claim-overlay.is-claimed .claim-art img { animation: none; }
     .chat-message-actions-backdrop,
     .chat-message-action-sheet { transition: none; }
   }
@@ -3339,7 +3339,7 @@
   #profileStatsPanel { height: auto; max-height: none; overflow: visible; }
   .profile-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 0; }
   .profile-grid > div { min-width: 0; padding: 8px; border: 1px solid rgba(255,255,255,.14); border-radius: 7px; background: rgba(0,0,0,.2); }
-  #profileOverviewPanel .profile-grid > div { background: transparent; border-color: transparent; }
+  #profileInfoPanel .profile-grid > div { background: transparent; border-color: transparent; }
   .profile-grid dt { color: var(--muted); font-size: 8px; letter-spacing: .07em; }
   .profile-grid dd { margin: 5px 0 0; color: #fff; font-size: 12px; overflow-wrap: anywhere; }
   /* The profile's Skills tab (profile-skills.ts): a heading a group, a card a skill, a thin bar on your own. */
@@ -4492,11 +4492,11 @@
 #androidUpdateBanner button:disabled { opacity: .6; }
 
 /* Developer item gifts share the gem reward animation and layout. */
-.developer-item-gift .daily-gem-bonus-card { border-color: #d9b86a; background: var(--window-surface-gold); box-shadow: 0 12px 0 rgba(0,0,0,.42), 0 0 30px rgba(219,177,79,.2); }
-.developer-item-gift .daily-gem-bonus-kicker { color: #f4d895; }
-.developer-item-gift .daily-gem-bonus-art::before { background: repeating-conic-gradient(from 0deg, rgba(255,217,130,.24) 0 7deg, transparent 7deg 22deg); }
-.developer-item-gift .daily-gem-bonus-art img { width: 96px; height: 96px; image-rendering: pixelated; }
-.developer-item-gift .daily-gem-bonus-card h2 { max-width: 270px; font-size: 23px; line-height: 1.15; margin-bottom: 8px; }
+.developer-item-gift .claim-card { border-color: #d9b86a; background: var(--window-surface-gold); box-shadow: 0 12px 0 rgba(0,0,0,.42), 0 0 30px rgba(219,177,79,.2); }
+.developer-item-gift .claim-kicker { color: #f4d895; }
+.developer-item-gift .claim-art::before { background: repeating-conic-gradient(from 0deg, rgba(255,217,130,.24) 0 7deg, transparent 7deg 22deg); }
+.developer-item-gift .claim-art img { width: 96px; height: 96px; image-rendering: pixelated; }
+.developer-item-gift .claim-card h2 { max-width: 270px; font-size: 23px; line-height: 1.15; margin-bottom: 8px; }
 
 /* Private developer history: simple rows with expandable evidence. */
 .dev-audit-tabs { overflow-x: auto; }

@@ -46,7 +46,7 @@ export type PlayerStatInputs = {
   prestigeLevel?: number;
   guildBonus?: number;
   /** The Gold Luck research rank (stored as gearLuck). */
-  gearLuckRank?: number;
+  goldLuckRank?: number;
   /** Live combat only: Swordplay's Tailwind share now. */
   tailwind?: number;
   /** Duels keep their own footing: Black Boots do not count. */
@@ -148,7 +148,7 @@ export function computePlayerStats(inputs: PlayerStatInputs) {
     doubleStrikeChance: procChance(prestigePerkValue(perks, "doubleStrike"), cardTotals, "doubleStrike"),
     splitShotChance: procChance(prestigePerkValue(perks, "splitShot"), cardTotals, "splitShot"),
     skillChanceFactor: skillChanceFactor(loadout.head, loadout.chest, loadout.feet, itemLevel(loadout.feet)),
-    goldChanceMultiplier: (1 + cards.treasure) * luckMultiplier("gearLuck", inputs.gearLuckRank ?? 0),
+    goldChanceMultiplier: (1 + cards.treasure) * luckMultiplier("gearLuck", inputs.goldLuckRank ?? 0),
     /** What a kill's stat reward is multiplied by: Tech × Prestige × Guild (cards add per stat: card-effects.ts cardStatGainFactor). */
     statGain,
     /** What each base stat ends up multiplied by. */

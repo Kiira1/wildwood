@@ -3,13 +3,13 @@ vi.mock("../app/developer", () => ({ isDeveloperIdentity: () => false }));
 import { HOME_BENCH_POSITION, HOME_QUEST_BOARD_POSITION, HOME_RESEARCH_POSITION } from "../../shared/home";
 import { MINING_TRACK, miningTrackDistanceSquared } from "../../shared/mining";
 import { TOWN_ARRIVAL, TOWN_BENCH_POSITION, TOWN_CARD_SELLER_POSITION, TOWN_CARD_SELLER_REACH, TOWN_CARD_SELLER_SERVER_REACH, TOWN_CARD_SELLER_STALL, TOWN_CENTER, TOWN_DOORS, TOWN_EAST_BRIDGE, TOWN_EAST_BRIDGE_APPROACHES, TOWN_EAST_FENCE_GAP, TOWN_EAST_FENCE_GAP_OUTSIDE, TOWN_FEET_OFFSET, TOWN_OX_POSITION, TOWN_QUEST_BOARD_POSITION, TOWN_RESEARCH_POSITION, TOWN_SCHOOL_POSITIONS, TOWN_SCHOOL_REACH, TOWN_SMITH_POSITION, TOWN_SMITH_REACH, TOWN_SMITH_SERVER_REACH, TOWN_TRAVEL_PORTAL, inTownVillage, townRoomAt } from "../../shared/town";
-import { SOUL_VILLAGE_DECOR } from "./soul-village";
+import { TOWN_VILLAGE_DECOR } from "./town-village";
 import { TOWN_FURNISHED_INTERIOR, TOWN_HILLS_SIGNPOST, TOWN_SCHOOL_SIGNPOSTS, TOWN_SIGNPOST, townWindowDecor } from "./town-world";
 import { SCHOOL_DETAILS, WEAPON_SCHOOLS } from "../../shared/weapon-mastery";
-import { UPGRADE_BENCH_POSITION } from "./world";
+import { SLOT_UPGRADES_POSITION } from "./world";
 import { pushOutOf, TOWN_SOLIDS } from "./runtime/town/town-runtime";
 import { createHomeStationTouchHandler } from "../ui/game-ui-runtime";
-import { playerTouchesUpgradeBench } from "../ui/upgrade-bench-controller";
+import { playerTouchesSlotUpgrades } from "../ui/slot-upgrades-controller";
 import { MAP_ASSET_GROUPS } from "./runtime/render/map-asset-groups";
 import { soulFrame } from "./runtime/soul/soul-prop-renderer";
 
@@ -25,7 +25,7 @@ const STATIONS = [
 const SPOTS = { "Slot Upgrades": { dx: 0, dy: -35 }, "Tech Research": { dx: 0, dy: -25 }, "Quest Board": { dx: 0, dy: -14 } } as const;
 
 /** The stations and people drawn in the decor window around a point, by label. */
-const stationLabels = (at: { x: number; y: number }) => townWindowDecor(at.x, at.y).flatMap(item => (item.type === "upgradeBench" ? [item.label] : []));
+const stationLabels = (at: { x: number; y: number }) => townWindowDecor(at.x, at.y).flatMap(item => (item.type === "station" ? [item.label] : []));
 
 const FEET_RADIUS = 12;
 /** Whether a player standing here is clear of every wall and piece of furniture (as the Town furnishes its rooms). */
@@ -60,7 +60,7 @@ describe("Home's stations in the Town's buildings", () => {
     for (const { label, at, door } of STATIONS) {
       expect(townRoomAt(at.x, at.y)).toBe(TOWN_DOORS[door]);
       const decor = townWindowDecor(at.x, at.y);
-      expect(decor).toContainEqual(expect.objectContaining({ type: "upgradeBench", x: at.x, y: at.y, label }));
+      expect(decor).toContainEqual(expect.objectContaining({ type: "station", x: at.x, y: at.y, label }));
     }
     // Out in the village, the rooms' stations are not in the window: only the Smith and the Card Seller, outdoors.
     expect(stationLabels(TOWN_ARRIVAL)).toEqual(["Smith", "Card Seller"]);
@@ -76,10 +76,10 @@ describe("Home's stations in the Town's buildings", () => {
     }
   });
   it("lets a player walk in from the door and open each station from in front of it", () => {
-    const openResearch = vi.fn(), openBoard = vi.fn(), updateBench = vi.fn();
+    const openResearch = vi.fn(), openBoard = vi.fn(), updateSlotUpgrades = vi.fn();
     const player = { x: 0, y: 0 };
     let inTown = true;
-    const touch = createHomeStationTouchHandler(() => inTown, player, openResearch, updateBench, openBoard);
+    const touch = createHomeStationTouchHandler(() => inTown, player, openResearch, updateSlotUpgrades, openBoard);
     for (const { label, at, door } of STATIONS) {
       const spot = { x: at.x + SPOTS[label].dx, y: at.y + SPOTS[label].dy };
       expect(standable(spot.x, spot.y)).toBe(true);
@@ -87,27 +87,27 @@ describe("Home's stations in the Town's buildings", () => {
       Object.assign(player, spot);
       touch();
       if (label === "Slot Upgrades") {
-        expect(playerTouchesUpgradeBench(player, UPGRADE_BENCH_POSITION)).toBe(true);
-        // Inside the server's reach check (75 from the bench's point).
+        expect(playerTouchesSlotUpgrades(player, SLOT_UPGRADES_POSITION)).toBe(true);
+        // Inside the server's reach check (75 from the station's point).
         expect(Math.hypot(player.x - TOWN_BENCH_POSITION.x, player.y - TOWN_BENCH_POSITION.y)).toBeLessThan(75);
       }
       player.x = TOWN_DOORS[door].inside.x; player.y = TOWN_DOORS[door].inside.y; touch();
     }
     expect(openResearch).toHaveBeenCalledOnce();
     expect(openBoard).toHaveBeenCalledOnce();
-    // The furniture each station replaced keeps its collider, as the station's: no walking through the bench.
+    // The furniture each station replaced keeps its collider, as the station's: no walking through the workbench.
     expect(standable(TOWN_BENCH_POSITION.x, TOWN_BENCH_POSITION.y - 25 - TOWN_FEET_OFFSET)).toBe(false);
     expect(reachable(6, { x: TOWN_BENCH_POSITION.x, y: TOWN_BENCH_POSITION.y - 25 - TOWN_FEET_OFFSET })).toBe(false);
-    expect(UPGRADE_BENCH_POSITION).toBe(TOWN_BENCH_POSITION);
+    expect(SLOT_UPGRADES_POSITION).toBe(TOWN_BENCH_POSITION);
     // Home's old spots open nothing, in the Town or anywhere else.
     for (const at of [HOME_RESEARCH_POSITION, HOME_QUEST_BOARD_POSITION]) { player.x = at.x; player.y = at.y - 30; touch(); }
     inTown = false;
     player.x = TOWN_RESEARCH_POSITION.x; player.y = TOWN_RESEARCH_POSITION.y - 25; touch();
     expect(openResearch).toHaveBeenCalledOnce();
     expect(openBoard).toHaveBeenCalledOnce();
-    expect(playerTouchesUpgradeBench({ x: HOME_BENCH_POSITION.x, y: HOME_BENCH_POSITION.y - 36 }, UPGRADE_BENCH_POSITION)).toBe(false);
+    expect(playerTouchesSlotUpgrades({ x: HOME_BENCH_POSITION.x, y: HOME_BENCH_POSITION.y - 36 }, SLOT_UPGRADES_POSITION)).toBe(false);
   });
-  it("loads the bench's sprite with the Town's art", () => {
+  it("loads the workbench sprite with the Town's art", () => {
     expect(MAP_ASSET_GROUPS.town.art).toContain("snowDecor");
   });
 });
@@ -117,7 +117,7 @@ describe("Ox in the bottom-right house", () => {
     const southEast = [...TOWN_DOORS].sort((a, b) => (b.x + b.y) - (a.x + a.y))[0];
     expect(southEast.index).toBe(8);
     expect(townRoomAt(TOWN_OX_POSITION.x, TOWN_OX_POSITION.y)).toBe(TOWN_DOORS[8]);
-    expect(townWindowDecor(TOWN_OX_POSITION.x, TOWN_OX_POSITION.y)).toContainEqual(expect.objectContaining({ type: "upgradeBench", label: "Ox" }));
+    expect(townWindowDecor(TOWN_OX_POSITION.x, TOWN_OX_POSITION.y)).toContainEqual(expect.objectContaining({ type: "station", label: "Ox" }));
     // His feet are on the floor itself, clear of the furniture.
     expect(standable(TOWN_OX_POSITION.x, TOWN_OX_POSITION.y - TOWN_FEET_OFFSET)).toBe(true);
     expect(reachable(8, { x: TOWN_OX_POSITION.x, y: TOWN_OX_POSITION.y - TOWN_FEET_OFFSET })).toBe(true);
@@ -147,7 +147,7 @@ describe("the Weapon Mastery schools' buildings", () => {
       const at = TOWN_SCHOOL_POSITIONS[school], { door, building } = SCHOOL_DETAILS[school];
       expect(at.door).toBe(door);
       expect(townRoomAt(at.x, at.y)).toBe(TOWN_DOORS[door]);
-      expect(townWindowDecor(at.x, at.y)).toContainEqual(expect.objectContaining({ type: "upgradeBench", x: at.x, y: at.y, label: building }));
+      expect(townWindowDecor(at.x, at.y)).toContainEqual(expect.objectContaining({ type: "station", x: at.x, y: at.y, label: building }));
       // Against the back wall, out of the way of the doorway.
       expect(at.y - TOWN_DOORS[door].room.top).toBeLessThan(80);
     }
@@ -248,13 +248,13 @@ function walkable(from: { x: number; y: number }, to: { x: number; y: number }, 
 describe("the Smith at the forge house", () => {
   // Where a player stands when he is in reach: his own spot, the way the player's position is measured.
   const stand = { x: TOWN_SMITH_POSITION.x, y: TOWN_SMITH_POSITION.y - TOWN_FEET_OFFSET };
-  it("works outdoors in the village, right of the Slot Upgrades bench's building, drawn with the village", () => {
+  it("works outdoors in the village, right of the Slot Upgrades station's building, drawn with the village", () => {
     expect(inTownVillage(TOWN_SMITH_POSITION.x, TOWN_SMITH_POSITION.y)).toBe(true);
     expect(townRoomAt(TOWN_SMITH_POSITION.x, TOWN_SMITH_POSITION.y)).toBeNull();
     // The forge house is the next building right of door 6, a little further down the square.
     expect(TOWN_SMITH_POSITION.x - TOWN_DOORS[6].x).toBeGreaterThan(100);
     expect(TOWN_SMITH_POSITION.x - TOWN_DOORS[6].x).toBeLessThan(260);
-    expect(townWindowDecor(TOWN_SMITH_POSITION.x, TOWN_SMITH_POSITION.y)).toContainEqual(expect.objectContaining({ type: "upgradeBench", label: "Smith" }));
+    expect(townWindowDecor(TOWN_SMITH_POSITION.x, TOWN_SMITH_POSITION.y)).toContainEqual(expect.objectContaining({ type: "station", label: "Smith" }));
     expect(stationLabels(TOWN_BENCH_POSITION)).not.toContain("Smith");
   });
   it("stands on open ground a player can walk to from where everyone lands", () => {
@@ -285,11 +285,11 @@ describe("the Smith at the forge house", () => {
 describe("the Card Seller at the market stall", () => {
   const stand = { x: TOWN_CARD_SELLER_POSITION.x, y: TOWN_CARD_SELLER_POSITION.y - TOWN_FEET_OFFSET };
   it("keeps one of the square's own stalls, its name drawn over it", () => {
-    const stall = SOUL_VILLAGE_DECOR.find(item => item.type === "soulProp" && item.x === TOWN_CARD_SELLER_STALL.x && Math.abs(item.y - TOWN_CARD_SELLER_STALL.y) < 1);
+    const stall = TOWN_VILLAGE_DECOR.find(item => item.type === "soulProp" && item.x === TOWN_CARD_SELLER_STALL.x && Math.abs(item.y - TOWN_CARD_SELLER_STALL.y) < 1);
     expect(stall).toBeTruthy();
     expect(inTownVillage(TOWN_CARD_SELLER_STALL.x, TOWN_CARD_SELLER_STALL.y)).toBe(true);
     expect(townRoomAt(TOWN_CARD_SELLER_STALL.x, TOWN_CARD_SELLER_STALL.y)).toBeNull();
-    expect(townWindowDecor(TOWN_ARRIVAL.x, TOWN_ARRIVAL.y)).toContainEqual(expect.objectContaining({ type: "upgradeBench", label: "Card Seller", x: TOWN_CARD_SELLER_STALL.x }));
+    expect(townWindowDecor(TOWN_ARRIVAL.x, TOWN_ARRIVAL.y)).toContainEqual(expect.objectContaining({ type: "station", label: "Card Seller", x: TOWN_CARD_SELLER_STALL.x }));
   });
   it("is served from open ground in front of the counter, a walk from where everyone lands", () => {
     expect(standable(stand.x, stand.y)).toBe(true);
@@ -330,7 +330,7 @@ describe("the way out east, to the Copper Hills", () => {
     // Open all the way across, fence line and all.
     for (let x = TOWN_EAST_FENCE_GAP.left - 40; x <= TOWN_EAST_FENCE_GAP.right + 60; x += 10) expect(standable(x, gapMiddle - TOWN_FEET_OFFSET), `at ${x}`).toBe(true);
     // The tall tree that stood in the way out, hiding whoever walked through, is gone with its shadow.
-    const standingThere = SOUL_VILLAGE_DECOR.filter(item => item.type === "soulProp" && !item.ground
+    const standingThere = TOWN_VILLAGE_DECOR.filter(item => item.type === "soulProp" && !item.ground
       && (within(TOWN_EAST_FENCE_GAP, item.x, item.y) || within(TOWN_EAST_FENCE_GAP_OUTSIDE, item.x, item.y)));
     expect(standingThere).toEqual([]);
   });
@@ -358,13 +358,13 @@ describe("the way out east, to the Copper Hills", () => {
     expect(crossing.length).toBeGreaterThan(5);
     for (const point of crossing) expect(Math.abs(point.y - TOWN_EAST_BRIDGE.y), `${point.x},${point.y}`).toBeLessThanOrEqual(2);
     // The deck is drawn with the village, and the trees that hid the way up to it and off it are gone, shadows and all.
-    expect(SOUL_VILLAGE_DECOR.filter(item => item.type === "soulProp" && item.ground && Math.abs(item.y - TOWN_EAST_BRIDGE.y) < 1 && Math.abs(item.x - TOWN_EAST_BRIDGE.x) < 80))
+    expect(TOWN_VILLAGE_DECOR.filter(item => item.type === "soulProp" && item.ground && Math.abs(item.y - TOWN_EAST_BRIDGE.y) < 1 && Math.abs(item.x - TOWN_EAST_BRIDGE.x) < 80))
       .toHaveLength(2);
-    const approaches = SOUL_VILLAGE_DECOR.filter(item => item.type === "soulProp" && !item.ground
+    const approaches = TOWN_VILLAGE_DECOR.filter(item => item.type === "soulProp" && !item.ground
       && TOWN_EAST_BRIDGE_APPROACHES.some(area => within(area, item.x, item.y)));
     expect(approaches).toEqual([]);
     // Nothing of the village's grows on the track.
-    const onTrack = SOUL_VILLAGE_DECOR.filter(item => item.type === "soulProp" && item.ground && !(Math.abs(item.y - TOWN_EAST_BRIDGE.y) < 1)
+    const onTrack = TOWN_VILLAGE_DECOR.filter(item => item.type === "soulProp" && item.ground && !(Math.abs(item.y - TOWN_EAST_BRIDGE.y) < 1)
       && miningTrackDistanceSquared(item.x, item.y, 60) < 54 ** 2);
     expect(onTrack).toEqual([]);
   });

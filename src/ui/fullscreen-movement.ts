@@ -1,5 +1,5 @@
 export const FULLSCREEN_MOVEMENT_DELAY_MS = 700;
-const FULLSCREEN_IDS = ["inventoryPanel", "settingsPanel", "leaderboard", "guildOverlay", "gemShop", "mapGuide", "techTreeOverlay", "upgradeBenchPanel", "duelReplay"];
+const FULLSCREEN_IDS = ["inventoryPanel", "settingsPanel", "leaderboard", "guildOverlay", "gemShop", "mapGuide", "techTreeOverlay", "slotUpgradesPanel", "duelReplay"];
 
 /** Temporary subscription suspension, independent of the saved eye preference. */
 export function createFullscreenMovementGate(setVisible: (visible: boolean) => void) {

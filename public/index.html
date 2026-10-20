@@ -68,7 +68,7 @@
     </div>
     <div id="toolbar" class="settings-wrap">
       <button id="leaderboardBtn" class="settings-button leaderboard-button" type="button" aria-label="Open leaderboard" aria-expanded="false"><img class="toolbar-icon" src="assets/wildstat/icons/Icon_Hero.webp" alt="" aria-hidden="true"><span class="toolbar-label">Leaderboard</span></button>
-      <button id="techTreeBtn" class="settings-button tech-tree-button" type="button" aria-label="Teleport to Town"><img class="toolbar-icon" src="assets/wildstat/icons/Icon_Home.svg" alt="" aria-hidden="true"><span class="toolbar-label">Town</span></button>
+      <button id="townBtn" class="settings-button town-button" type="button" aria-label="Teleport to Town"><img class="toolbar-icon" src="assets/wildstat/icons/Icon_Home.svg" alt="" aria-hidden="true"><span class="toolbar-label">Town</span></button>
       <button id="inventoryBtn" class="settings-button inventory-button" type="button" aria-label="Open inventory" aria-expanded="false"><img class="toolbar-icon" src="assets/wildstat/icons/Icon_Inventory.webp" alt="" aria-hidden="true"><span class="toolbar-label">Inventory</span></button>
       <button id="shopBtn" class="settings-button shop-button" type="button" aria-label="Open gem offers"><img class="toolbar-icon" src="assets/wildstat/gems/gem-icon-v2.webp" alt="" aria-hidden="true"><span class="toolbar-label">Shop</span></button>
       <div id="fpsStatus" class="fps-status" aria-live="off" hidden><span id="gameFpsStatus">FPS: --</span><span id="latencyStatus" hidden>PING: --</span></div>
@@ -175,29 +175,29 @@
           <button id="closeInventoryBtn" class="window-back-button" type="button" aria-label="Back from inventory">Back</button>
         </footer>
       </div>
-      <div id="upgradeBenchPanel" class="upgrade-bench-panel" role="group" aria-label="Slot Upgrades" hidden>
-        <div class="upgrade-bench-content">
-          <p id="upgradeBenchPrompt" class="upgrade-bench-prompt">Pick A Queue</p>
-          <div class="upgrade-bench-slots" role="group" aria-label="Upgrade Queues">
-            <button id="upgradeBenchSlot" class="inventory-item upgrade-bench-slot is-empty" type="button" aria-label="Pick A Slot For Queue 1" aria-pressed="false">
+      <div id="slotUpgradesPanel" class="slot-upgrades-panel" role="group" aria-label="Slot Upgrades" hidden>
+        <div class="slot-upgrades-content">
+          <p id="slotUpgradesPrompt" class="slot-upgrades-prompt">Pick A Queue</p>
+          <div class="slot-upgrades-queues" role="group" aria-label="Upgrade Queues">
+            <button id="slotUpgradesQueueOne" class="inventory-item slot-upgrades-queue is-empty" type="button" aria-label="Pick A Slot For Queue 1" aria-pressed="false">
               <span class="inventory-item-empty-mark">+</span>
             </button>
-            <button id="upgradeBenchSlotTwo" class="inventory-item upgrade-bench-slot is-locked" type="button" aria-label="Unlock A Second Queue For 150 Gems" aria-pressed="false">
-              <span class="upgrade-bench-lock-symbol" aria-hidden="true">🔒</span>
-              <span class="upgrade-bench-slot-cost"><img src="assets/wildstat/gems/gem-icon-v2.webp" alt="" aria-hidden="true" draggable="false" /><strong>150</strong></span>
+            <button id="slotUpgradesQueueTwo" class="inventory-item slot-upgrades-queue is-locked" type="button" aria-label="Unlock A Second Queue For 150 Gems" aria-pressed="false">
+              <span class="slot-upgrades-lock-symbol" aria-hidden="true">🔒</span>
+              <span class="slot-upgrades-queue-cost"><img src="assets/wildstat/gems/gem-icon-v2.webp" alt="" aria-hidden="true" draggable="false" /><strong>150</strong></span>
             </button>
           </div>
-          <div id="upgradeBenchStatGain" class="upgrade-bench-stat-gain" aria-live="polite"></div>
-          <div id="upgradeBenchTimer" class="upgrade-bench-timer" role="timer" hidden></div>
-          <button id="upgradeBenchAction" class="upgrade-bench-action" type="button" disabled hidden>Upgrade</button>
-          <button id="upgradeBenchSpeedUp" class="upgrade-bench-action upgrade-bench-speed-up" type="button" disabled hidden>Finish Now</button>
-          <button id="upgradeBenchBack" class="upgrade-bench-back window-back-button" type="button">Back</button>
+          <div id="slotUpgradesStatGain" class="slot-upgrades-stat-gain" aria-live="polite"></div>
+          <div id="slotUpgradesTimer" class="slot-upgrades-timer" role="timer" hidden></div>
+          <button id="slotUpgradesAction" class="slot-upgrades-action" type="button" disabled hidden>Upgrade</button>
+          <button id="slotUpgradesSpeedUp" class="slot-upgrades-action slot-upgrades-speed-up" type="button" disabled hidden>Finish Now</button>
+          <button id="slotUpgradesBack" class="slot-upgrades-back window-back-button" type="button">Back</button>
         </div>
-        <div id="upgradeBenchPicker" class="upgrade-bench-picker" hidden>
-          <div class="upgrade-bench-picker-sheet" role="dialog" aria-modal="true" aria-label="Choose A Slot To Upgrade">
-            <div class="upgrade-bench-picker-heading">Choose A Slot To Upgrade</div>
-            <div id="upgradeBenchPickerItems" class="upgrade-bench-picker-items"></div>
-            <button id="closeUpgradeBenchPickerBtn" class="upgrade-bench-picker-close window-back-button" type="button">Back</button>
+        <div id="slotUpgradesPicker" class="slot-upgrades-picker" hidden>
+          <div class="slot-upgrades-picker-sheet" role="dialog" aria-modal="true" aria-label="Choose A Slot To Upgrade">
+            <div class="slot-upgrades-picker-heading">Choose A Slot To Upgrade</div>
+            <div id="slotUpgradesPickerItems" class="slot-upgrades-picker-items"></div>
+            <button id="closeSlotUpgradesPickerBtn" class="slot-upgrades-picker-close window-back-button" type="button">Back</button>
           </div>
         </div>
       </div>

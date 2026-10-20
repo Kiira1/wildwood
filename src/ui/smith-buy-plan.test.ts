@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 import { GRADE_GOLD_PRICE } from "../../shared/gear-grades";
 import type { GradeItemId } from "../../shared/grade-equipment";
-import { gearComparison, gradeShortName, schoolLines, upgradeAllPlan } from "./smith-upgrades";
+import { gearComparison, gradeShortName, schoolLines, upgradeAllPlan } from "./smith-buy-plan";
 
 const plan = (options: { school?: "archery" | "swordplay" | "sorcery"; held?: string[]; levels?: Record<string, number>; gold: number; beats?: (itemId: GradeItemId) => boolean }) =>
   upgradeAllPlan({ lines: schoolLines(options.school ?? "archery"), held: new Set(options.held ?? []), levels: options.levels ?? {}, gold: options.gold, beats: options.beats ?? (() => true) });

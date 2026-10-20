@@ -27,15 +27,15 @@ export function createProgressCompletionNotices(
       },
     },
     onUpgradeFinished: (job: ActiveItemUpgrade) => {
-      const track = isUpgradeSlot(job.itemId) ? UPGRADE_SLOT_LABELS[job.itemId] : "Slot";
-      showCompletion("Slot Upgrade", `${track} +${job.targetLevel}`, "◆", "#f3cf70");
+      const slotName = isUpgradeSlot(job.itemId) ? UPGRADE_SLOT_LABELS[job.itemId] : "Slot";
+      showCompletion("Slot Upgrade", `${slotName} +${job.targetLevel}`, "◆", "#f3cf70");
     },
     poll(
       techTree: { updateNotice: () => void },
-      upgradeBench: { finishedUpgradeWaiting: (connected: boolean) => boolean },
+      slotUpgrades: { finishedUpgradeWaiting: (connected: boolean) => boolean },
     ) {
       techTree.updateNotice();
-      inventoryNotice.set(upgradeBench.finishedUpgradeWaiting(Boolean(session()?.isConnected?.())));
+      inventoryNotice.set(slotUpgrades.finishedUpgradeWaiting(Boolean(session()?.isConnected?.())));
     },
   };
 }

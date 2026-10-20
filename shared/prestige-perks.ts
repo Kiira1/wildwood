@@ -43,11 +43,11 @@ const CARD_SLOT_PERK_IDS: ReadonlySet<string> = new Set(["weaponCards", "helmetC
 export const KEEN_EDGE_CRITICAL_DAMAGE_PER_RANK = .12;
 
 /**
- * Riposte is a chance to reflect, not a constant share, so a duel can turn on
+ * Reflect in a duel is a chance, not a constant share, so a duel can turn on
  * one of them. Half the hit is thrown back at the attacker, as it arrived,
  * before the defender's armor: armor spares the defender, not the attacker.
  */
-export const RIPOSTE_REFLECT_SHARE = .5;
+export const DUEL_REFLECT_SHARE = .5;
 /**
  * Against enemies and bosses (0.866), Reflect throws back the whole hit before
  * armor, but never more than the player's max health. Uncapped, it grew with
@@ -66,7 +66,7 @@ export function worldReflectDamage(hit: number, maxHealth: number, reflectOnly =
 }
 
 /** The chance a hit taken is thrown back, at this player's rank. */
-export function prestigeRiposteChance(ranks: Partial<PrestigePerkRanks> | null | undefined) {
+export function prestigeReflectChance(ranks: Partial<PrestigePerkRanks> | null | undefined) {
   return prestigePerkValue(ranks, "riposte");
 }
 
@@ -146,10 +146,10 @@ export function prestigeSwingMultiplier(ranks: Partial<PrestigePerkRanks> | null
  * so the more armor takes off, the more Reflect returns per hit that lands.
  */
 export function prestigeReachMultiplier(ranks: Partial<PrestigePerkRanks> | null | undefined, armorReduction = 0) {
-  // Riposte only reflects part of a hit, and only sometimes, so the claim bound
+  // Reflect only throws back part of a hit, and only sometimes, so the claim bound
   // widens by what it is worth on average rather than by its full chance.
   return 1 + prestigePerkValue(ranks, "splitShot")
-    + prestigeRiposteChance(ranks) * WORLD_REFLECT_SHARE * preArmorFactor(armorReduction);
+    + prestigeReflectChance(ranks) * WORLD_REFLECT_SHARE * preArmorFactor(armorReduction);
 }
 
 /** How much bigger a hit was before armor than what got through: 2 at half reduction. */

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { GROVE_LANDING_RADIUS, GROVE_ROAD, GROVE_ROAD_END, GROVE_ROAD_HALF_WIDTH, GROVE_ROAD_START, WOOD_TREE_NODES, WOOD_TREE_SPOTS, WOOD_TREE_SPREAD, WOODCUTTING_REACH, groveRoadDistanceSquared } from "../../../../shared/woodcutting";
 import { MINING_NODES } from "../../../../shared/mining";
 import { TOWN_FEET_OFFSET, TOWN_GROVE, TOWN_WEST_BRIDGE, inTownGrove, inTownWalkArea } from "../../../../shared/town";
-import { SOUL_ATLAS } from "../../soul-village";
+import { SOUL_ATLAS } from "../../town-village";
 import { GROVE_LANDING_DECOR, TOWN_GROVE_SIGNPOST, WOOD_TREE_BOXES, lowEnough, spriteBox, townWindowDecor, woodTreeDecor } from "../../town-world";
 import type { WorldDecor } from "../../world";
 import { paintHillsGround, touchesHillsGround } from "./hills-ground";

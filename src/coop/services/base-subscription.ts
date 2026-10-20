@@ -1,6 +1,6 @@
 import { createSessionSubscriptions } from "./session-subscriptions";
 import { PATREON_TICKER_CHANGED } from "../../../shared/patreon-ticker";
-import { questDay, questWeek } from "../../../shared/daily-quests";
+import { questDay, questWeek } from "../../../shared/weekly-quests";
 import type { Identity } from "spacetimedb";
 import { tables, type DbConnection } from "../../module_bindings";
 import { withWideDuel, withWideProgress } from "./wide-progress";

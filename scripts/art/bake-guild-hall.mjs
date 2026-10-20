@@ -231,7 +231,7 @@ putPrefab(fountain, HALL_X, fountainY, { when: when(["courtyard", 2, 9]) });
   for (let i = 0; i < 16; i++) points.push(HALL_X + Math.cos(i / 16 * Math.PI * 2) * r, fountainY - 22 + Math.sin(i / 16 * Math.PI * 2) * r * .55);
   solids.push({ points: points.map(Math.round), when: when(["courtyard", 2, 9]) });
 }
-// The yard's ground, in the Soul village's own colours (sampled from village-ground.webp): its field and lighter
+// The yard's ground, in the Town village's own colours (sampled from village-ground.webp): its field and lighter
 // patches of grass, one soft-edged dirt yard in front of the hall and down to the portal, pebbles laid at its heart.
 const GRASS = "#54783c", GRASS_LIGHT = "#60844c", DIRT = "#b89474", DIRT_MARK = "#a8845f", DIRT_EDGE = "#7c6044";
 const PEBBLE = ["#a9a59c", "#9d998f", "#b3afa5"], PEBBLE_EDGE = "#7c776e";

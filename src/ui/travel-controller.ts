@@ -10,7 +10,7 @@ const ENDLESS = "endless";
 const FAILED = "Travel unavailable. Try again.";
 
 /** Only what the picker reads from the coop session. */
-export type HomeTravelSource = {
+export type TravelSource = {
   savedProgress?: () => CampaignAccess | null | undefined;
   proceduralMapUnlocked?: (mapId: string) => boolean;
   proceduralCompleted?: () => number;
@@ -25,12 +25,12 @@ export const unlockedBy = (index: number, mapName: (mapId: MapId) => string = ()
   `Defeat ${CAMPAIGN_BOSSES[index]} in ${baseName(MAP_IDS[index], mapName)}`;
 
 /**
- * The destinations Home's portal offers: every unlocked campaign map in order,
+ * The destinations the Town's travel portal offers: every unlocked campaign map in order,
  * then the next locked one with how to open it, then Endless as a single row
  * whose stage is chosen with a stepper. Further locked maps stay hidden so a
  * new player sees one goal rather than a wall of padlocks.
  */
-export function homeTravelEntries(source: HomeTravelSource, mapName: (mapId: MapId) => string = () => "") {
+export function travelEntries(source: TravelSource, mapName: (mapId: MapId) => string = () => "") {
   const progress = source?.savedProgress?.() ?? {};
   const entries: Entry[] = [];
   for (const [index, mapId] of MAP_IDS.entries()) {
@@ -47,8 +47,8 @@ export function homeTravelEntries(source: HomeTravelSource, mapName: (mapId: Map
 }
 
 /** Home's travel portal: a centered game window that picks where to go. */
-export function createHomeTravelController(deps: {
-  source: () => HomeTravelSource;
+export function createTravelController(deps: {
+  source: () => TravelSource;
   travel: (mapId: MapId) => Promise<boolean>;
   departure: () => MapId | null;
   atHome: () => boolean;
@@ -60,8 +60,8 @@ export function createHomeTravelController(deps: {
 }) {
   const dialog = document.createElement("dialog");
   dialog.className = "farm-sheet travel-sheet";
-  dialog.setAttribute("aria-labelledby", "homeTravelTitle");
-  dialog.innerHTML = `<header class="farm-header"><h2 id="homeTravelTitle" class="window-banner"><span>Travel</span></h2></header>`
+  dialog.setAttribute("aria-labelledby", "travelTitle");
+  dialog.innerHTML = `<header class="farm-header"><h2 id="travelTitle" class="window-banner"><span>Travel</span></h2></header>`
     + `<p class="farm-map">Choose a map</p><div class="farm-choices" role="group" aria-label="Destinations"></div>`
     + `<footer class="farm-footer"><p class="farm-selection" aria-live="polite" hidden></p>`
     + `<div class="farm-actions"><button type="button" class="window-back-button">Back</button>`
@@ -104,7 +104,7 @@ export function createHomeTravelController(deps: {
   function render() {
     const departed = deps.departure();
     const departedKey = departed && isProceduralMap(departed) ? ENDLESS : departed;
-    const result = homeTravelEntries(deps.source(), deps.mapName);
+    const result = travelEntries(deps.source(), deps.mapName);
     const hall = deps.guildHall?.();
     if (hall) result.entries.unshift({ key: hall, mark: "⚑", name: "Guild Hall", locked: null });
     endlessHighest = result.endlessHighest;

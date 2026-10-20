@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { createChatRuntimeController } from "./chat-runtime-controller";
 import { installGameShell } from "./game-shell";
 import { createChatChannelPicker, mergeChatConversations } from "./chat-channels";
-import { CHAT_CLOSED_EVENT } from "./home-teleport-button";
+import { CHAT_CLOSED_EVENT } from "./town-teleport-button";
 
 const settle = async () => { for (let i = 0; i < 8; i++) await Promise.resolve(); };
 

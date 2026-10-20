@@ -1,5 +1,5 @@
 import { TOWN_FEET_OFFSET } from "../../../../shared/town";
-import { drawHomeTeleport } from "../town/home-teleport";
+import { drawTownTeleport } from "../town/town-teleport";
 import { createOreRockRenderer } from "../town/ore-rock-renderer";
 import { createPickaxeSprite, MINING_PICKAXE, PICKAXE_OVERRIDES } from "../town/pickaxe-sprite";
 import { miningScene } from "../town/mining-scene";
@@ -88,14 +88,14 @@ export type WorldRenderRuntimeOptions = {
     portalArch: HTMLImageElement;
     portalSwirl: HTMLImageElement;
     snowPine: HTMLImageElement;
-    upgradeBench: HTMLImageElement;
+    workbench: HTMLImageElement;
     lavaPools: HTMLImageElement[];
     lavaRocks: HTMLImageElement[];
     charredTrees: HTMLImageElement[];
-    /** The Soul Dimension's one atlas (soul-village.ts). */
+    /** The Soul Dimension's one atlas (town-village.ts). */
     soulAtlas?: HTMLImageElement;
-    soulVillageProps?: HTMLImageElement;
-    soulVillageGround?: HTMLImageElement;
+    townVillageProps?: HTMLImageElement;
+    townVillageGround?: HTMLImageElement;
     soulInteriors?: HTMLImageElement;
     soulWater?: HTMLImageElement;
     soulShore?: HTMLImageElement;
@@ -109,7 +109,7 @@ export type WorldRenderRuntimeOptions = {
     duelPlatformArt: HTMLImageElement;
   };
   actorShadowSprite: HTMLImageElement;
-  upgradeBenchStatus: () => { itemId: string; timer: string } | null;
+  slotUpgradesStatus: () => { itemId: string; timer: string } | null;
   researchStatus?: () => { timer: string } | null;
   questBoardStatus?: () => { finished: boolean[]; timer: string } | null;
   drawShadow: DrawShadow;
@@ -198,8 +198,8 @@ export function createWorldRenderRuntime(options: WorldRenderRuntimeOptions) {
       options.drawShadow(x, y, width, alpha);
     }
   };
-  const townGround = createTownGroundTilePainter({ ground: () => options.assets.soulVillageGround, interiors: () => options.assets.soulInteriors,
-    villageProps: () => options.assets.soulVillageProps, atlas: () => options.assets.soulAtlas });
+  const townGround = createTownGroundTilePainter({ ground: () => options.assets.townVillageGround, interiors: () => options.assets.soulInteriors,
+    villageProps: () => options.assets.townVillageProps, atlas: () => options.assets.soulAtlas });
   const townStaticTiles = { world: TOWN_GROUND_WORLD, ...townGround };
   // The tutorial forest's own tile, then the Town's road tiles over its paths, its pack grass and tree shadows (pack-forest.ts).
   const forestProps = createSoulGroundPropPainter({ villageProps: () => undefined, atlas: () => options.assets.soulAtlas });
@@ -225,7 +225,7 @@ export function createWorldRenderRuntime(options: WorldRenderRuntimeOptions) {
     camera: options.camera,
     getViewport: () => options.viewport(),
     getMinimapBounds: options.minimapBounds,
-    minimapVillageGround: () => options.assets.soulVillageGround,
+    minimapVillageGround: () => options.assets.townVillageGround,
     getDevicePixelRatio: options.devicePixelRatio,
     getMapId: options.currentMapId,
     getGameTime: options.gameTime,
@@ -246,8 +246,8 @@ export function createWorldRenderRuntime(options: WorldRenderRuntimeOptions) {
     actorShadowSprite: options.actorShadowSprite,
     drawShadow: options.drawShadow,
     outlinedText: options.outlinedText,
-    upgradeBenchStatus: () => {
-      const status = options.upgradeBenchStatus();
+    slotUpgradesStatus: () => {
+      const status = options.slotUpgradesStatus();
       return status ? { itemSprite: equipmentSprite(options.playerAppearanceAssets, status.itemId, localItemRefine(status.itemId)), timer: status.timer } : null;
     },
     researchStatus: options.researchStatus,
@@ -391,7 +391,7 @@ export function createWorldRenderRuntime(options: WorldRenderRuntimeOptions) {
       return webGLParticleBatchState;
     };
     const drawSoulProp = createSoulPropRenderer({ ctx: options.ctx, camera: options.camera, atlas: () => options.assets.soulAtlas,
-      villageProps: () => options.assets.soulVillageProps, devicePixelRatio: options.devicePixelRatio, time: options.gameTime,
+      villageProps: () => options.assets.townVillageProps, devicePixelRatio: options.devicePixelRatio, time: options.gameTime,
       hallProps: () => options.assets.guildHallProps, drawCrest: createGuildCrestDrawer(() => options.assets.guildEmblemSheets) });
     hallGround = createSoulGroundRenderer({ ctx: options.ctx, camera: options.camera, ground: () => options.assets.guildHallGround, area: GUILD_HALL_GROUND,
       interiors: () => undefined, drawRooms: createGuildHallRoomsDrawer({ ctx: options.ctx, camera: options.camera, rooms: () => options.assets.guildHallRooms,
@@ -404,7 +404,7 @@ export function createWorldRenderRuntime(options: WorldRenderRuntimeOptions) {
         time: options.gameTime, active: () => isTownMap(options.currentMapId()) && !lowPerformance() }),
       createSoulWater({ ctx: options.ctx, camera: options.camera, water: () => options.assets.soulWater, shore: () => options.assets.soulShore,
         viewport: options.viewport, time: options.gameTime, active: () => !lowPerformance() }));
-    soulGround = createSoulGroundRenderer({ ctx: options.ctx, camera: options.camera, ground: () => options.assets.soulVillageGround, interiors: () => options.assets.soulInteriors,
+    soulGround = createSoulGroundRenderer({ ctx: options.ctx, camera: options.camera, ground: () => options.assets.townVillageGround, interiors: () => options.assets.soulInteriors,
       decor: options.decor, drawProp: drawSoulProp, baked: true,
       drawWater: drawRiver,
       viewport: options.viewport, devicePixelRatio: options.devicePixelRatio, active: () => isTownMap(options.currentMapId()) });
@@ -423,7 +423,7 @@ export function createWorldRenderRuntime(options: WorldRenderRuntimeOptions) {
       drawTree: world.drawTree,
       drawCactus: world.drawCactus,
       drawSnowPine: world.drawSnowPine,
-      drawUpgradeBench: world.drawUpgradeBench,
+      drawStation: world.drawStation,
       drawCharredTree: world.drawCharredTree,
       drawSoulProp,
       drawOreRock: createOreRockRenderer({ ctx: options.ctx, camera: options.camera, devicePixelRatio: options.devicePixelRatio, time: options.gameTime,
@@ -436,7 +436,7 @@ export function createWorldRenderRuntime(options: WorldRenderRuntimeOptions) {
         : 1,
       drawBoss: (kind) => boss.drawBoss[kind](),
       drawBossHitboxes: boss.drawBossHitboxes,
-      drawOverWorld: createSoulParticles({ ctx: options.ctx, camera: options.camera, image: () => options.assets.soulVillageProps,
+      drawOverWorld: createSoulParticles({ ctx: options.ctx, camera: options.camera, image: () => options.assets.townVillageProps,
         viewport: options.viewport, time: options.gameTime, active: () => isTownMap(options.currentMapId()) && !lowPerformance() }),
       drawBootPickup: () => renderer.drawBootPickup(),
       drawPortal: world.drawPortal,
@@ -447,7 +447,7 @@ export function createWorldRenderRuntime(options: WorldRenderRuntimeOptions) {
         drawSeated(options.ctx, remote.x, remote.y, remote.y - options.camera.y, seat, () => actor.drawRemotePlayer(seat ? { ...remote, facing: GUILD_HALL_SEAT_FACING[seat.side] } : remote));
       },
       drawPlayer: () => drawSeated(options.ctx, options.player.x, options.player.y, options.player.y - options.camera.y, options.player.moving ? null : seatedAt(options.player.x, options.player.y), () => drawSoulWellFall(options.ctx, options.player.x - options.camera.x, options.player.y - options.camera.y, options.player.y,
-        () => drawHomeTeleport(options.ctx, options.player.x - options.camera.x, options.player.y - options.camera.y, () => actor.drawPlayer(
+        () => drawTownTeleport(options.ctx, options.player.x - options.camera.x, options.player.y - options.camera.y, () => actor.drawPlayer(
           frame.localIdentity(),
           options.publicPlayerName(frame.localIdentity(), frame.localDisplayName()),
           options.playerPower(options.player),
