@@ -8,7 +8,7 @@ Realtime ownership and sequencing are diagrammed in `docs/realtime-data-flow.md`
 
 | Module | Responsibility |
 | --- | --- |
-| `src/main.ts` | Composition root only. It wires controllers and must stay under 1,000 lines; new behavior belongs in a typed runtime or UI module. |
+| `src/main.ts` | Composition root only. It wires controllers; new behavior belongs in a typed runtime or UI module. Its size is held by the ratchets in `src/main-boundary.test.ts` (see below). |
 | `src/game/constants.ts` | Shared gameplay and world constants. |
 | `src/game/enemies.ts` | Enemy definitions, camp definitions, reward labels, and enemy sprite loading. |
 | `src/game/world.ts` | World decoration, road layout, and enemy spawn-site generation. |
@@ -21,10 +21,22 @@ Realtime ownership and sequencing are diagrammed in `docs/realtime-data-flow.md`
 | `src/ui/` | UI controllers and views for HUD, inventory, profiles, leaderboard, developer tools, overlays, startup, chat, and interaction bindings. |
 | `src/ui/hud.ts` | HUD and inventory DOM rendering. |
 | `src/ui/chat.ts` | Chat UI behavior. |
-| `src/wildstat-coop.ts` | Browser-facing multiplayer composition root and connection/reconnect policy; kept below 1,000 lines by a test guard. |
+| `src/wildstat-coop.ts` | Browser-facing multiplayer composition root and connection/reconnect policy; kept below 1,000 lines, with the same long-line and byte ratchets, by `src/coop/wildstat-coop-boundary.test.ts`. |
 | `src/coop/services/` | Account, base-subscription, presence, profile, progression, chat, duel, boss, and developer service ownership. See `docs/wildstat-coop-modularization.md`. |
 
 Keep static definitions and pure calculations outside `main.ts`. `main.ts` is a composition root, not a feature destination. Add a runtime/UI controller with an explicit input/output boundary, then wire it from `main.ts`. Keep mutable combat state together until it has that boundary; splitting individual functions that share hidden state creates harder coupling, not useful modularity.
+
+### Size guards on the composition roots
+
+`main.ts` is about 1,940 lines today; the 1,000-line figure is the target, not a rule it meets. The tests hold three things, and every number may only go down:
+
+- **Line ratchet:** the line count never exceeds its last recorded value.
+- **No long lines:** the count of lines over 160 characters, and over 300, never grows. New code stays under 160 characters per line.
+- **Byte budget:** the file size never grows, so code cannot be packed to dodge the line count.
+
+When wiring does not fit, extract a named module (a factory that takes its dependencies as one typed object) and wire it in one call. Do not lengthen lines, chain statements onto one line, or delete useful comments to make room. Lower the recorded numbers in the same change whenever an extraction frees space.
+
+`src/ui/game-elements-markup.test.ts` loads `public/index.html`, runs `installGameShell`, and checks every `requiredElement` and `requiredSelector` the game uses. Removing markup without removing its lookup fails there instead of on players' startup.
 
 ## Required change rules
 
