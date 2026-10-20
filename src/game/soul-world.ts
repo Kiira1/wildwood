@@ -1,3 +1,4 @@
+import { formatCompactNumber } from "../../shared/compact-number";
 import { SOUL_STAT_DETAILS, soulStatsUnlocked, type SoulCamp, type SoulStatId } from "../../shared/soul-dimension";
 import type { EnemyKind } from "./enemies";
 
@@ -25,7 +26,9 @@ export function soulStatOfCampName(campName: string | undefined): SoulStatId | n
 
 /** What one soul kill pays at this Soul Level multiplier, as its popup and the autofarm window show it: "+1", "+0.1". */
 export function soulRewardText(stat: SoulStatId, multiplier = 1) {
-  const reward = SOUL_STAT_DETAILS[stat].reward * Math.max(1, multiplier);
+  const value = SOUL_STAT_DETAILS[stat].reward * Math.max(1, multiplier);
+  // Small rewards keep their decimals (+0.1); big ones shorten (+5.63qd).
+  const reward = value < 1_000 ? value : formatCompactNumber(value);
   // Soul crit damage is paid as the multiplier it adds (soulCritRatingAfterKills), attack speed as attacks a second.
   return stat === "critDamage" ? `+${reward}×` : stat === "attackSpeed" ? `+${reward}/s` : `+${reward}`;
 }

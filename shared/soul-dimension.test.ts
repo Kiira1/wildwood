@@ -44,7 +44,8 @@ describe("soul stats", () => {
     soul = addSoulKills(soul, "health", 3);
     soul = addSoulKills(soul, "critDamage", 5);
     expect(soul.damage).toBe(10);
-    expect(soul.maxHp).toBe(3);
+    // Health pays ten a kill, ten times Damage's one.
+    expect(soul.maxHp).toBe(30);
     // Crit damage is a rating, paid at 0.002x a kill: five kills from nothing is 1.06x.
     expect(critDamageForLevels(ratingLevels(soul.critDamage))).toBeCloseTo(1.06, 9);
   });
@@ -166,27 +167,27 @@ describe("soul attack speed at the old pace (0.901.55)", () => {
 });
 
 describe("the Soul Level", () => {
-  it("needs 300 Soul XP for level 2 and twice as much for each level after, up to level 20", () => {
-    expect([SOUL_LEVEL_BASE_XP, SOUL_LEVEL_GROWTH, SOUL_LEVEL_CAP]).toEqual([300, 2, 20]);
-    expect([1, 2, 3, 4, 5, 9, 19].map(soulLevelXpNeeded)).toEqual([300, 600, 1_200, 2_400, 4_800, 76_800, 78_643_200]);
+  it("needs 300 Soul XP for level 2 and 1.3 times as much for each level after, rounded, up to level 50", () => {
+    expect([SOUL_LEVEL_BASE_XP, SOUL_LEVEL_GROWTH, SOUL_LEVEL_CAP]).toEqual([300, 1.3, 50]);
+    expect([1, 2, 3, 4, 5, 9, 49].map(soulLevelXpNeeded)).toEqual([300, 390, 507, 659, 857, 2_447, 88_389_803]);
     expect(soulLevelXpNeeded(SOUL_LEVEL_CAP)).toBe(0);
-    expect(soulLevelTotalXp({ level: 10, xp: 0 })).toBe(153_300);
-    expect(soulLevelTotalXp({ level: SOUL_LEVEL_CAP, xp: 0 })).toBe(157_286_100);
+    expect(soulLevelTotalXp({ level: 10, xp: 0 })).toBe(9_604);
+    expect(soulLevelTotalXp({ level: SOUL_LEVEL_CAP, xp: 0 })).toBe(383_021_477);
   });
 
   it("levels up as Soul XP comes in, carrying the rest, and stops at the cap", () => {
     expect(addSoulXp(null, 299)).toEqual({ level: 1, xp: 299 });
     expect(addSoulXp(null, 300)).toEqual({ level: 2, xp: 0 });
     expect(addSoulXp({ level: 1, xp: 290 }, 30)).toEqual({ level: 2, xp: 20 });
-    expect(addSoulXp(null, 900 + 5)).toEqual({ level: 3, xp: 5 });
+    expect(addSoulXp(null, 690 + 5)).toEqual({ level: 3, xp: 5 });
     expect(addSoulXp(null, 1e12)).toEqual({ level: SOUL_LEVEL_CAP, xp: 0 });
     expect(addSoulXp({ level: SOUL_LEVEL_CAP, xp: 0 }, 50)).toEqual({ level: SOUL_LEVEL_CAP, xp: 0 });
     expect(cleanSoulLevel({ level: 99, xp: 5 })).toEqual({ level: SOUL_LEVEL_CAP, xp: 0 });
     expect(cleanSoulLevel({ level: 0, xp: -3 })).toEqual({ level: 1, xp: 0 });
   });
 
-  it("doubles the reward multiplier every level: 1×, 2×, 4× … 524,288× at the cap", () => {
-    expect([1, 2, 3, 4, 10, 20, 21].map(soulRewardMultiplier)).toEqual([1, 2, 4, 8, 512, 524_288, 524_288]);
+  it("doubles the reward multiplier every level: 1×, 2×, 4× … 2^49× at the cap", () => {
+    expect([1, 2, 3, 4, 10, 20, 50, 51].map(soulRewardMultiplier)).toEqual([1, 2, 4, 8, 512, 524_288, 2 ** 49, 2 ** 49]);
   });
 
   it("pays each soul stat its reward times the multiplier, rating stats included", () => {
@@ -194,7 +195,7 @@ describe("the Soul Level", () => {
       const doubled = (stat: Parameters<typeof addSoulKills>[1]) => addSoulKills(EMPTY_SOUL_STATS, stat, 3, multiplier);
       const plain = (stat: Parameters<typeof addSoulKills>[1]) => addSoulKills(EMPTY_SOUL_STATS, stat, 3 * multiplier);
       expect(doubled("damage").damage).toBe(3 * multiplier);
-      expect(doubled("health").maxHp).toBe(3 * multiplier);
+      expect(doubled("health").maxHp).toBe(30 * multiplier);
       expect(doubled("armor").armor).toBe(3 * multiplier);
       expect(doubled("regen").regen).toBeCloseTo(.3 * multiplier, 9);
       expect(doubled("attackSpeed").attackSpeed).toBe(plain("attackSpeed").attackSpeed);
