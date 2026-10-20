@@ -13,8 +13,8 @@ const INK_ALPHA = 24;
 
 /** Label pixels between the top of the head or helmet and the bottom of the health bar's frame. */
 export const OVERHEAD_PLATE_GAP = plateSize(3);
-/** Label pixels from the top of the head or helmet to the bottom of a name and power shown without a bar. */
-export const OVERHEAD_IDENTITY_LIFT = plateSize(17);
+/** Label pixels from the top of the head or helmet to the lowest ink of a name and power shown without a bar. */
+export const OVERHEAD_IDENTITY_LIFT = plateSize(13);
 
 type HeadSprite = { naturalWidth: number; naturalHeight: number; complete?: boolean };
 export type BlankRowsAbove = (sprite: HeadSprite) => number;
