@@ -78,28 +78,46 @@ describe("a mining report", () => {
     expect([f.ore("copper_ore"), f.mining()?.rocksBroken]).toEqual([2, 2]);
   });
 
-  it("takes no break sooner after the one before than the rock takes, with the usual slack", () => {
-    const f = gatherer(), t = f.nowS() - 30, seconds = miningBreakSeconds(copperTwo, 1);
-    f.reportMining([[copper, t], [copperTwo, t + seconds * MINING_RATE_SLACK - .05], [copperLarge, t + 20]]);
-    expect([f.ore("copper_ore"), f.mining()?.rocksBroken]).toEqual([4, 2]);
-    expect(f.bareAt(copperTwo)).toBeUndefined();
+  it("counts a break claimed too soon after the one before at the earliest it could have been, and only that", () => {
+    const f = gatherer(), t = f.nowS() - 2, gap = miningBreakSeconds(copperTwo, miningGain(copper)) * MINING_RATE_SLACK;
+    f.reportMining([[copper, t], [copperTwo, t + .5], [copperLarge, t + 1]]);
+    // The second fits by now, a break's time after the first; the large rock after it would be later still.
+    expect([f.ore("copper_ore"), f.mining()?.rocksBroken]).toEqual([2, 2]);
+    expect(f.bareAt(copperTwo)).toBe(BigInt(Math.round((t + gap) * 1_000)) * 1_000n);
+    expect(f.bareAt(copperLarge)).toBeUndefined();
   });
 
-  it("holds claimed times between the last break taken and now, so bunched or banked breaks count once", () => {
-    const f = gatherer();
-    // From the future: all held a moment past now, so only the first counts.
-    f.reportMining([[copper, f.nowS() + 50], [copperTwo, f.nowS() + 60], [copperLarge, f.nowS() + 70]]);
-    expect(f.mining()?.rocksBroken).toBe(1);
-    expect(f.bareAt(copper)).toBe(f.ctx.timestamp.microsSinceUnixEpoch + BigInt(GATHER_CLAIM_AHEAD_MS) * 1_000n);
-    // Earlier than the last break taken: held at it, so too soon.
+  it("moves a batch claimed on a clock running ahead back as a whole, its gaps kept", () => {
+    const f = gatherer(), now = f.nowS();
+    f.reportMining([[copper, now + 50], [copperTwo, now + 60], [copperLarge, now + 70]]);
+    expect(f.mining()?.rocksBroken).toBe(3);
+    const ahead = BigInt(GATHER_CLAIM_AHEAD_MS) * 1_000n;
+    expect([f.bareAt(copper), f.bareAt(copperTwo), f.bareAt(copperLarge)])
+      .toEqual([20_000_000n, 10_000_000n, 0n].map(back => f.ctx.timestamp.microsSinceUnixEpoch + ahead - back));
+    // Earlier than the last break taken, with no time since for another: too soon.
     f.later(2);
     f.reportMining([[copperTwo, f.nowS() - 100]]);
-    expect(f.mining()?.rocksBroken).toBe(1);
-    // A whole hour claimed back counts as at most the last stretch.
-    const g = gatherer(), hour = g.nowS() - 3_600;
-    g.reportMining(Array.from({ length: 6 }, (_, index) => [[copper, copperTwo, copperLarge][index % 3], hour + index * 600] as [MiningNode, number]));
-    expect(g.mining()?.rocksBroken).toBe(1);
-    expect(g.bareAt(copper)).toBe((g.ctx.timestamp.microsSinceUnixEpoch / 1_000n - BigInt(GATHER_CLAIM_MAX_AGE_MS)) * 1_000n);
+    expect(f.mining()?.rocksBroken).toBe(3);
+  });
+
+  it("loses no breaks to a device clock two minutes ahead, report after report", () => {
+    const f = gatherer(), rocks = MINING_NODES.filter(node => node.ore === "copper_ore" && node.kind === "small");
+    let real = f.nowS();
+    for (let report = 0; report < 4; report++) {
+      // Three rocks five seconds apart, sent twenty seconds after the first, every time claimed 125 seconds ahead.
+      const breaks = [0, 1, 2].map(index => [rocks[report * 3 + index], real + index * 5 + 125] as [MiningNode, number]);
+      f.later(20);
+      f.reportMining(breaks);
+      f.later(1);
+      real = f.nowS();
+    }
+    expect(f.mining()?.rocksBroken).toBe(12);
+  });
+
+  it("loses no breaks to a device clock a day behind", () => {
+    const f = gatherer(), t = f.nowS() - 86_400 - 15;
+    f.reportMining([[copper, t], [copperTwo, t + 5], [copperLarge, t + 14]]);
+    expect(f.mining()?.rocksBroken).toBe(3);
   });
 
   it("never claims more breaks than the time since the last report holds", () => {
@@ -140,6 +158,17 @@ describe("a mining report", () => {
     g.later(60);
     g.reportMining([[copper, g.nowS() - 1]]);
     expect(g.mining()?.rocksBroken).toBe(1);
+  });
+
+  it("takes a break claimed a little off the server's clock just before walking on to the next rock", () => {
+    // Auto Mine broke one rock, walked three seconds to another and stopped there; the client's clock ran two seconds ahead.
+    const f = gatherer(), next = MINING_NODES.filter(node => node.ore === "copper_ore" && node.kind === "small")[15];
+    expect(Math.hypot(next.x - copper.x, next.y - copper.y)).toBeGreaterThan(550);
+    f.later(5);
+    f.patch("player", { mapId: "town", x: next.x, y: next.y - TOWN_FEET_OFFSET, lastInputAt: f.ctx.timestamp });
+    f.later(1);
+    f.reportMining([[copper, f.nowS() - 1 - 3.35 + 2]]);
+    expect(f.mining()?.rocksBroken).toBe(1);
   });
 
   it("is refused off the Town map and mid-duel", () => {
@@ -226,5 +255,16 @@ describe("judging a batch", () => {
     expect([judged.accepted.length, judged.skill, freeSlots.mock.calls.length]).toEqual([1, 1, 0]);
     const far = judgeGatherBatch([{ id: 1, atMs: 991_000 }], rules, { ...state, within: () => false });
     expect(far.rejected.map(entry => entry.reason)).toEqual(["reach"]);
+  });
+
+  it("never takes more breaks than the window of claimable times holds, however they are claimed", () => {
+    const many = { ...rules, node: (id: number) => ({ id, x: 0, y: TOWN_FEET_OFFSET }) };
+    const window = GATHER_CLAIM_MAX_AGE_MS + GATHER_CLAIM_AHEAD_MS, gap = 4 * .75 * 1_000;
+    for (const [from, spacing] of [[-3_600_000, 0], [-3_600_000, 1_000], [-60_000, 60_000], [600_000, 100]]) {
+      const claims = Array.from({ length: 64 }, (_, index) => ({ id: index, atMs: state.nowMs + from + index * spacing }));
+      const judged = judgeGatherBatch(claims, many, state);
+      expect(judged.accepted.length).toBeLessThanOrEqual(Math.floor(window / gap) + 1);
+      expect(judged.accepted.every(({ atMs }) => atMs >= state.nowMs - GATHER_CLAIM_MAX_AGE_MS && atMs <= state.nowMs + GATHER_CLAIM_AHEAD_MS)).toBe(true);
+    }
   });
 });

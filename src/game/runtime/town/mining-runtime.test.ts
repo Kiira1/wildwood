@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { MINING_NODES, MINING_NODE_KINDS, miningBreakSeconds } from "../../../../shared/mining";
 import { TOWN_ARRIVAL, TOWN_FEET_OFFSET } from "../../../../shared/town";
-import { createMiningRuntime, miningHitAt, miningHits, type MiningSource } from "./mining-runtime";
+import { REJECTED_COLOR, createMiningRuntime, miningHitAt, miningHits, type MiningSource } from "./mining-runtime";
 import { miningScene, resetMiningScene } from "./mining-scene";
 import type { PlayerState } from "../types";
 import type { BagSpace } from "../../../../shared/ore-bag";
@@ -166,10 +166,10 @@ describe("mining in the Copper Hills", () => {
     const m = miner();
     m.run(miningBreakSeconds(copper, 0) + .2);
     expect(miningScene.bare.has(copper.id)).toBe(true);
-    m.refuse(copper.id, "A broken rock did not count.");
+    m.refuse(copper.id, "A rock stands again: that break was not counted.");
     m.run(.1);
     expect(miningScene.bare.has(copper.id)).toBe(false);
-    expect(m.message).toHaveBeenCalledWith("A broken rock did not count.", "#ff9b91");
+    expect(m.message).toHaveBeenCalledWith("A rock stands again: that break was not counted.", REJECTED_COLOR);
   });
 
   it("sends the queued breaks as the player leaves the hills, and not before", () => {

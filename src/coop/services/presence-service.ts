@@ -317,6 +317,14 @@ export function createPresenceService(dependencies: PresenceServiceDependencies)
     serverClockAnchor = { serverAtMs, receivedAt };
   }
 
+  /**
+   * A server time from a reply to one of our own calls. With other players hidden no frames arrive, and the
+   * estimate would fall back to the device's own clock, which can be seconds or minutes off.
+   */
+  function observeServerTime(serverAtMs: number) {
+    observeServerClock(serverAtMs, monotonicNowMs());
+  }
+
   // Every clock read in this service is the one captured at boot, so a faster
   // performance.now or Date.now cannot run the server-time estimate (boss attack
   // slots, the player's boss attack cycle) or the movement throttles ahead.
@@ -1221,6 +1229,7 @@ export function createPresenceService(dependencies: PresenceServiceDependencies)
       upsertPlayerDeathFrame,
       upsertWorldStatus,
       upsertReleaseNotice,
+      observeServerTime,
     },
     api: {
       setRemotePlayersVisible(visible: boolean) {

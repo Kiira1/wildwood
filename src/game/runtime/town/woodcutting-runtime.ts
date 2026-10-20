@@ -8,7 +8,7 @@ import { bagFullForOres, roomForOres, type BagSpace } from "../../../../shared/o
 import type { ToolId } from "../../../../shared/tools";
 import { ATTACK_ANIMATION_SECONDS, ATTACK_WINDUP_SECONDS } from "../../attack-timeline";
 import type { PlayerState } from "../types";
-import { miningHitAt, miningHits } from "./mining-runtime";
+import { REJECTED_COLOR, miningHitAt, miningHits } from "./mining-runtime";
 import { resetWoodcuttingScene, woodcuttingScene } from "./woodcutting-scene";
 import { LOG_COLORS } from "./wood-tree-renderer";
 
@@ -118,7 +118,7 @@ export function createWoodcuttingRuntime(deps: {
     source.setOnWoodcuttingRejected(text => {
       if (session !== started || !sameSession(deps.source())) return;
       stumpCheck = 0;
-      deps.message?.(text, "#ff9b91");
+      deps.message?.(text, REJECTED_COLOR);
     });
   }
 

@@ -1,7 +1,7 @@
 import { watchDefeatSession } from "./coop/services/defeat-session-watch";
 import { watchOfflineProgress, type OfflineProgressSummary } from "./coop/services/offline-progress-watch";
 import { createAccountAudioSettings } from "./coop/services/account-audio-settings";
-import { createAccountRowServices } from "./coop/services/account-row-services";
+import { createAccountRowServices, presenceGatherClock } from "./coop/services/account-row-services";
 import { activeCardSlots } from "../shared/active-cards";
 import { createFramePlayers } from "./coop/services/frame-players";
 import { consumeUpdateResumeMode, reloadWithUpdateResume } from "./coop/services/update-resume-browser";
@@ -121,7 +121,7 @@ function keptCardSlots() {
   if (perks !== cardSlotsFor) { cardSlotsFor = perks; cardSlots = activeCardSlots(perks); }
   return cardSlots;
 }
-const accountRows = createAccountRowServices(() => connection, onChange, itemId => progressionService.api.itemUpgradeLevel(itemId), keptCardSlots);
+const accountRows = createAccountRowServices(() => connection, onChange, itemId => progressionService.api.itemUpgradeLevel(itemId), keptCardSlots, presenceGatherClock(() => presenceService));
 const accountAudio = createAccountAudioSettings();
 let accountService!: AccountService;
 const startupTelemetryRuntime = createStartupTelemetryRuntime({

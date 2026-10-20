@@ -324,3 +324,17 @@ it("never subscribes to world state without a map or recipient filter", () => {
     expect(sql).toMatch(new RegExp(`WHERE .*("map_id" = 'tutorial_forest'|"recipient" = 0x${"2".repeat(64)})`));
   }
 });
+
+it("knows the server's time from a reply to its own call while other players are hidden, not the device's clock", () => {
+  const presence = createPresenceService({ changes: { notify() {} }, latencyMs: () => 80 } as any);
+  presence.beginSession(false);
+  // No frames arrive with other players hidden: until a reply, the device's own clock is all there is.
+  vi.spyOn(Date, "now").mockReturnValue(9_000_000);
+  expect(presence.api.serverNowMs()).toBe(9_000_000);
+  clockNow = 1_000;
+  presence.tables.observeServerTime(5_000_000);
+  clockNow = 3_500;
+  expect(presence.api.serverNowMs()).toBe(5_002_540);
+  vi.restoreAllMocks();
+  clockNow = null;
+});

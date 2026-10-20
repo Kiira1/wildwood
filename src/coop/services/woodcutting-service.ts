@@ -1,22 +1,24 @@
 import { tables, type DbConnection } from "../../module_bindings";
 import { normalizeWoodcutting, woodcuttingGain, woodcuttingYield, woodTree } from "../../../shared/woodcutting";
 import type { OreId } from "../../../shared/refine";
-import { createGatherQueue } from "./gather-queue";
+import { createGatherQueue, type GatherClock } from "./gather-queue";
+import { reducerEventMs } from "./reducer-event-time";
 
 type Target = { connection: DbConnection; isCurrent: () => boolean };
 type Ores = Partial<Record<OreId, number>>;
 const toMs = (at: { microsSinceUnixEpoch: bigint }) => Number(at.microsSinceUnixEpoch / 1000n);
 const U32 = 4_294_967_296;
 
-/** "2 felled trees did not count.": falls the server did not take, whose trees stand again. */
-export const woodcuttingRejectedText = (count: number) => `${count === 1 ? "A felled tree" : `${count} felled trees`} did not count.`;
+/** "2 trees stand again: those falls were not counted.": falls the server did not take. */
+export const woodcuttingRejectedText = (count: number) =>
+  count === 1 ? "A tree stands again: that fall was not counted." : `${count} trees stand again: those falls were not counted.`;
 
 /**
  * This account's woodcutting, from the caller-scoped my_woodcutting and my_chopped_trees views, as mining's
  * (mining-service.ts): the Woodcutting stat and when each stump was felled. Trees fall here at once and go to the
  * server in batches (report_chopping); until it answers, the stat, the stumps and the logs read here include them.
  */
-export function createWoodcuttingRows(notify: () => void) {
+export function createWoodcuttingRows(notify: () => void, clock?: GatherClock) {
   let target: Target | null = null;
   let woodcutting = 0, treesChopped = 0;
   let felled = new Map<number, number>();
@@ -26,6 +28,7 @@ export function createWoodcuttingRows(notify: () => void) {
   let rejectedListener: ((text: string) => void) | null = null;
 
   const queue = createGatherQueue({
+    clock,
     send(claims) {
       const current = target;
       if (!current || !current.isCurrent() || !current.connection.isActive) return null;
@@ -57,8 +60,11 @@ export function createWoodcuttingRows(notify: () => void) {
     queue.clear();
     target = { connection, isCurrent };
     woodcutting = 0; treesChopped = 0; felled = new Map();
-    const readWoodcutting = () => {
+    // A report's reply carries the server's time, which the next report's times are read against.
+    const readWoodcutting = (ctx?: unknown) => {
       if (!isCurrent()) return;
+      const serverAt = reducerEventMs(ctx);
+      if (serverAt !== null) clock?.observeServerTime?.(serverAt);
       const [row] = [...connection.db.myWoodcutting.iter()];
       woodcutting = normalizeWoodcutting(row?.woodcutting);
       treesChopped = row?.treesChopped ?? 0;

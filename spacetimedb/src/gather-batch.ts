@@ -1,6 +1,6 @@
 import { SenderError } from "spacetimedb/server";
 import type { Identity } from "spacetimedb";
-import { GATHER_CLAIM_AHEAD_MS, GATHER_CLAIM_MAX_AGE_MS, GATHER_REPORT_MAX, type GatherClaim } from "../../shared/gather-batch";
+import { GATHER_CLAIM_AHEAD_MS, GATHER_CLAIM_MAX_AGE_MS, GATHER_CLOCK_SLACK_MS, GATHER_REPORT_MAX, type GatherClaim } from "../../shared/gather-batch";
 import { bagSlotsWithOres, type OreCounts } from "../../shared/ore-bag";
 import type { OreId } from "../../shared/refine";
 import { TOWN_FEET_OFFSET } from "../../shared/town";
@@ -10,11 +10,13 @@ import { extraCopiesOf } from "./equipment-copies";
 import { readPlayerProgress } from "./wide-stats";
 
 /**
- * A batch of rock or tree breaks (report_mining, report_chopping), judged in the order the client made them. Each
- * claimed time is held between the last break the server took and now (a little past it for clock drift), so the
- * breaks never claim more time than really passed; then each break must be open at the skill so far, grown back since its last break, a full break's
- * time (with the usual slack) after the one before, within walking reach of where the server last heard the player,
- * and have bag room for a new kind. A break that fails is skipped and the rest are still judged.
+ * A batch of rock or tree breaks (report_mining, report_chopping), judged in the order the client made them. A client
+ * clock off the server's moves the claimed times, so a batch with a time outside the window (GATHER_CLAIM_MAX_AGE_MS
+ * ago up to a little past now) is moved as a whole, its gaps kept, to end at the window's end. Then each
+ * break must be open at the skill so far and within walking reach of where the server last heard the player. It counts
+ * at the earliest it could have: no sooner than claimed, a full break's time (with the usual slack) after the one
+ * before, and once its node grew back. One that could only count past the window is skipped, as is one with no bag
+ * room for a new kind, and the rest are still judged. So no batch takes more breaks than real time holds.
  */
 
 export type GatherRejection = "unknown" | "skill" | "growing" | "too-soon" | "reach" | "bag";
@@ -49,18 +51,21 @@ export type GatherState = {
 export function judgeGatherBatch<Node extends GatherNode>(claims: readonly GatherClaim[], rules: GatherRules<Node>, state: GatherState) {
   const accepted: { node: Node; atMs: number }[] = [], rejected: { id: number; atMs: number; reason: GatherRejection }[] = [];
   const broken = new Map(state.brokenAtMs), held = new Set(state.held);
-  let previous = state.lastAtMs, earliest = Math.max(state.lastAtMs ?? -Infinity, state.nowMs - GATHER_CLAIM_MAX_AGE_MS);
-  let skill = state.skill, free: number | null = null;
+  const oldestMs = state.nowMs - GATHER_CLAIM_MAX_AGE_MS, latestMs = state.nowMs + GATHER_CLAIM_AHEAD_MS;
+  const shift = batchShift(claims, oldestMs, latestMs);
+  let previous = state.lastAtMs, skill = state.skill, free: number | null = null;
   for (const claim of claims) {
-    const atMs = Math.min(state.nowMs + GATHER_CLAIM_AHEAD_MS, Math.max(earliest, claim.atMs));
-    const reject = (reason: GatherRejection) => { rejected.push({ id: claim.id, atMs, reason }); };
+    const claimedMs = Math.min(latestMs, Math.max(oldestMs, claim.atMs + shift));
+    const reject = (reason: GatherRejection) => { rejected.push({ id: claim.id, atMs: claimedMs, reason }); };
     const node = rules.node(claim.id);
     if (!node) { reject("unknown"); continue; }
     if (!rules.canWork(node, skill)) { reject("skill"); continue; }
     const brokenAt = broken.get(node.id);
-    if (brokenAt !== undefined && atMs - brokenAt < rules.respawnMs(node)) { reject("growing"); continue; }
-    if (previous !== null && atMs - previous < rules.seconds(node, skill) * rules.slack * 1_000) { reject("too-soon"); continue; }
-    if (!state.within({ x: node.x, y: node.y - TOWN_FEET_OFFSET }, atMs, rules.reach)) { reject("reach"); continue; }
+    const grownAt = brokenAt === undefined ? -Infinity : brokenAt + rules.respawnMs(node);
+    const dueAt = previous === null ? -Infinity : previous + rules.seconds(node, skill) * rules.slack * 1_000;
+    if (grownAt > latestMs) { reject("growing"); continue; }
+    if (dueAt > latestMs) { reject("too-soon"); continue; }
+    if (!state.within({ x: node.x, y: node.y - TOWN_FEET_OFFSET }, claimedMs, rules.reach)) { reject("reach"); continue; }
     const needed = [...new Set(rules.kinds(node))].filter(kind => !held.has(kind));
     if (needed.length) {
       free ??= state.freeSlots();
@@ -68,12 +73,21 @@ export function judgeGatherBatch<Node extends GatherNode>(claims: readonly Gathe
       free -= needed.length;
       for (const kind of needed) held.add(kind);
     }
+    const atMs = Math.max(claimedMs, grownAt, dueAt);
     accepted.push({ node, atMs });
     broken.set(node.id, atMs);
-    previous = earliest = atMs;
+    previous = atMs;
     skill += rules.gain(node);
   }
   return { accepted, rejected, skill };
+}
+
+/** How far the whole batch moves: none while every claimed time is in the window, else so its last falls at the end. */
+function batchShift(claims: readonly GatherClaim[], oldestMs: number, latestMs: number) {
+  const times = claims.map(claim => claim.atMs).filter(Number.isFinite);
+  if (!times.length) return 0;
+  const first = Math.min(...times), last = Math.max(...times);
+  return first < oldestMs || last > latestMs ? latestMs - last : 0;
 }
 
 /** A report's breaks as claims, or a refusal when it is malformed. */
@@ -87,8 +101,8 @@ export const millisOf = (at: { microsSinceUnixEpoch: bigint }) => Number(at.micr
 
 /**
  * Where the player could have been at a time: within a walk of where their last movement packet put them, at the
- * fastest speed the server accepts, as a door is judged (door-reach.ts). Speed is read only when a break is not
- * within plain reach of that point.
+ * fastest speed the server accepts, as a door is judged (door-reach.ts), with the walk in GATHER_CLOCK_SLACK_MS more
+ * for a claimed time a little off. Speed is read only when a break is not within plain reach of that point.
  */
 export function gatherReach(ctx: any, player: { x: number; y: number; speed?: number; identity: Identity; mapId: string; lastInputAt?: { microsSinceUnixEpoch: bigint } },
   progress: () => any) {
@@ -101,7 +115,7 @@ export function gatherReach(ctx: any, player: { x: number; y: number; speed?: nu
     const distance = Math.hypot(point.x - anchor.x, point.y - anchor.y);
     if (distance <= range) return true;
     speed ??= walkSpeedFor(ctx, player, progress());
-    return distance <= range + DOOR_POSITION_TOLERANCE + speed * Math.abs(atMs - anchor.atMs) / 1_000;
+    return distance <= range + DOOR_POSITION_TOLERANCE + speed * (Math.abs(atMs - anchor.atMs) + GATHER_CLOCK_SLACK_MS) / 1_000;
   };
 }
 

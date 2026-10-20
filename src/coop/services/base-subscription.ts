@@ -4,6 +4,7 @@ import { questDay, questWeek } from "../../../shared/daily-quests";
 import type { Identity } from "spacetimedb";
 import { tables, type DbConnection } from "../../module_bindings";
 import { withWideDuel, withWideProgress } from "./wide-progress";
+import { reducerEventMs } from "./reducer-event-time";
 
 type RowHandler = (row: any) => void;
 
@@ -92,6 +93,8 @@ export type BaseSubscriptionHandlers = {
   removePlayerBlock: RowHandler;
   duel: RowHandler;
   removeDuel: RowHandler;
+  /** The server's time from a reply to one of our own calls (reducer-event-time.ts). */
+  serverTime?: (serverAtMs: number) => void;
 };
 
 type BaseSubscriptionHandlerSources = {
@@ -105,6 +108,7 @@ type BaseSubscriptionHandlerSources = {
     removeMotionIdentity: BaseSubscriptionHandlers["removeMotionIdentity"];
     upsertWorldStatus: BaseSubscriptionHandlers["worldStatus"];
     upsertReleaseNotice: BaseSubscriptionHandlers["releaseNotice"];
+    observeServerTime?: (serverAtMs: number) => void;
   };
   profile: {
     upsertNameTag: RowHandler;
@@ -188,6 +192,7 @@ export function createBaseSubscriptionHandlers(sources: BaseSubscriptionHandlerS
     motionFrame: presence.upsertPlayerMotionFrame,
     mapFrame: presence.upsertPlayerMapFrame,
     deathFrame: presence.upsertPlayerDeathFrame,
+    serverTime: presence.observeServerTime,
     motionIdentity: presence.upsertMotionIdentity,
     removeMotionIdentity: presence.removeMotionIdentity,
     nameTag: profile.upsertNameTag,
@@ -296,8 +301,13 @@ export function startBaseSubscription(dependencies: BaseSubscriptionDependencies
   connection.db.patreonTickerSupporters.onInsert(supporterChanged);
   connection.db.patreonTickerSupporters.onUpdate(supporterChanged);
   connection.db.patreonTickerSupporters.onDelete(supporterChanged);
-  connection.db.player.onInsert((_ctx, row) => { if (shouldHandle()) handlers.player(row); });
-  connection.db.player.onUpdate((_ctx, _oldRow, row) => { if (shouldHandle()) handlers.player(row); });
+  // Our own calls that touch the player row (entering the world, stopping) carry the server's time.
+  const serverTime = (ctx: unknown) => {
+    const at = reducerEventMs(ctx);
+    if (at !== null && dependencies.isCurrent()) handlers.serverTime?.(at);
+  };
+  connection.db.player.onInsert((ctx, row) => { serverTime(ctx); if (shouldHandle()) handlers.player(row); });
+  connection.db.player.onUpdate((ctx, _oldRow, row) => { serverTime(ctx); if (shouldHandle()) handlers.player(row); });
   connection.db.player.onDelete((_ctx, row) => {
     if (shouldHandle() && !dependencies.isPresenceSubscriptionTransitioning()) handlers.removePlayer(row);
   });

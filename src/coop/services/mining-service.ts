@@ -3,7 +3,8 @@ import { miningGain, miningNode, miningYield, normalizeMining } from "../../../s
 import type { OreId } from "../../../shared/refine";
 import { reducerErrorMessage } from "./reducer-errors";
 import { withRequestDeadline } from "./request-deadline";
-import { createGatherQueue } from "./gather-queue";
+import { createGatherQueue, type GatherClock } from "./gather-queue";
+import { reducerEventMs } from "./reducer-event-time";
 
 export type MiningResult = { ok: boolean; error?: string };
 type Target = { connection: DbConnection; isCurrent: () => boolean };
@@ -11,8 +12,9 @@ type Ores = Partial<Record<OreId, number>>;
 const toMs = (at: { microsSinceUnixEpoch: bigint }) => Number(at.microsSinceUnixEpoch / 1000n);
 const U32 = 4_294_967_296;
 
-/** "2 broken rocks did not count.": breaks the server did not take, whose rocks stand again. */
-export const miningRejectedText = (count: number) => `${count === 1 ? "A broken rock" : `${count} broken rocks`} did not count.`;
+/** "2 rocks stand again: those breaks were not counted.": breaks the server did not take. */
+export const miningRejectedText = (count: number) =>
+  count === 1 ? "A rock stands again: that break was not counted." : `${count} rocks stand again: those breaks were not counted.`;
 
 /**
  * This account's mining, from the caller-scoped my_mining and my_mined_nodes views: the Mining stat and when each of
@@ -20,7 +22,7 @@ export const miningRejectedText = (count: number) => `${count === 1 ? "A broken 
  * gather-queue.ts); until it answers, the Mining, the bare rocks and the ores read here include them, as the shared
  * rules give them. A break the server does not take drops out, and its rock stands again.
  */
-export function createMiningRows(notify: () => void) {
+export function createMiningRows(notify: () => void, clock?: GatherClock) {
   let target: Target | null = null;
   let mining = 0, rocksBroken = 0;
   let broken = new Map<number, number>();
@@ -31,6 +33,7 @@ export function createMiningRows(notify: () => void) {
   let rejectedListener: ((text: string) => void) | null = null;
 
   const queue = createGatherQueue({
+    clock,
     send(claims) {
       const current = target;
       if (!current || !current.isCurrent() || !current.connection.isActive) return null;
@@ -63,8 +66,11 @@ export function createMiningRows(notify: () => void) {
     queue.clear();
     target = { connection, isCurrent };
     mining = 0; rocksBroken = 0; broken = new Map();
-    const readMining = () => {
+    // A report's reply carries the server's time, which the next report's times are read against.
+    const readMining = (ctx?: unknown) => {
       if (!isCurrent()) return;
+      const serverAt = reducerEventMs(ctx);
+      if (serverAt !== null) clock?.observeServerTime?.(serverAt);
       const [row] = [...connection.db.myMining.iter()];
       mining = normalizeMining(row?.mining);
       rocksBroken = row?.rocksBroken ?? 0;

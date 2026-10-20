@@ -2,6 +2,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { createMiningRows } from "./mining-service";
 import { MINING_NODES, miningGain } from "../../../shared/mining";
 import { GATHER_FLUSH_MS, GATHER_QUEUE_CAP } from "../../../shared/gather-batch";
+import type { GatherClock } from "./gather-queue";
 
 const at = (ms: number) => ({ microsSinceUnixEpoch: BigInt(ms) * 1000n });
 const rock = (ore: string, kind: string, skip = 0) => MINING_NODES.filter(node => node.ore === ore && node.kind === kind)[skip]!;
@@ -12,16 +13,17 @@ beforeEach(() => { vi.useFakeTimers(); });
 afterEach(() => { vi.useRealTimers(); });
 
 function fakeConnection() {
-  const handlers: Array<() => void> = [];
+  const handlers: Array<(ctx?: unknown) => void> = [];
   const applied: Array<() => void> = [];
   const rows = { mining: [] as any[], broken: [] as any[] };
   const view = (list: unknown[]) => ({
     iter: () => list[Symbol.iterator](),
-    onInsert: (handler: () => void) => handlers.push(handler),
-    onUpdate: (handler: () => void) => handlers.push(handler),
-    onDelete: (handler: () => void) => handlers.push(handler),
+    onInsert: (handler: (ctx?: unknown) => void) => handlers.push(handler),
+    onUpdate: (handler: (ctx?: unknown) => void) => handlers.push(handler),
+    onDelete: (handler: (ctx?: unknown) => void) => handlers.push(handler),
   });
-  const fire = () => handlers.forEach(handler => handler());
+  /** Row callbacks, with the reply's event when it is one to our own call. */
+  const fire = (ctx?: unknown) => handlers.forEach(handler => handler(ctx));
   /** The server's side of a report: takes the breaks `take` keeps, writes their rows, then answers, as a transaction does. */
   const serve = (take: (nodeId: number) => boolean = () => true) => async (report: Report) => {
     const kept = report.breaks.filter(entry => take(entry.nodeId));
@@ -47,8 +49,8 @@ function fakeConnection() {
 const miningRow = (overrides: Record<string, unknown> = {}) => ({
   mining: 40, rocksBroken: 3, lastNodeId: 7, lastStarshard: false, pickaxeAt: at(1), lastBreakAt: at(2), ...overrides,
 });
-function connected() {
-  const fake = fakeConnection(), notify = vi.fn(), service = createMiningRows(notify), rejected = vi.fn();
+function connected(clock?: GatherClock) {
+  const fake = fakeConnection(), notify = vi.fn(), service = createMiningRows(notify, clock), rejected = vi.fn();
   service.watch(fake.connection, () => true);
   fake.settle();
   service.api.setOnMiningRejected(rejected);
@@ -115,7 +117,7 @@ it("stands a rock the server left out of its report again, and says how many did
   await vi.advanceTimersByTimeAsync(0);
   expect([service.api.minedNodeAt(copper.id), service.api.minedNodeAt(copperTwo.id)]).toEqual([9_000, null]);
   expect(service.api.mining()).toBe(1);
-  expect(rejected).toHaveBeenCalledExactlyOnceWith("A broken rock did not count.");
+  expect(rejected).toHaveBeenCalledExactlyOnceWith("A rock stands again: that break was not counted.");
   // A later report that is taken whole says nothing.
   fake.reducers.reportMining.mockImplementation(fake.serve());
   service.api.queueMiningBreak(copperTwo.id, 30_000);
@@ -166,6 +168,30 @@ it("says so when there is no connection to report to", () => {
   service.api.flushMining();
   expect(rejected).toHaveBeenCalledWith("Not Connected");
   expect(service.api.minedNodeAt(copper.id)).toBeNull();
+});
+
+it("sends each break on the server's clock as known when the report goes, its gaps kept by the steady clock", async () => {
+  // No server time is known yet, so the estimate is the device's own, which runs 100 seconds ahead.
+  let steady = 0, offset = 100_000;
+  const clock = { serverNowMs: () => 1_000_000 + offset + steady, monotonicNowMs: () => steady };
+  const { fake, service } = connected(clock);
+  service.api.queueMiningBreak(copper.id, clock.serverNowMs());
+  steady += 5_000;
+  service.api.queueMiningBreak(copperTwo.id, clock.serverNowMs());
+  // A reply tells the session the server's time before the report goes.
+  steady += 10_000;
+  offset = 0;
+  service.api.flushMining();
+  expect(fake.reducers.reportMining).toHaveBeenCalledExactlyOnceWith({ breaks: [{ nodeId: copper.id, atMs: 1_000_000n }, { nodeId: copperTwo.id, atMs: 1_005_000n }] });
+});
+
+it("tells the session the server's time from the reply to its own report", async () => {
+  const observeServerTime = vi.fn();
+  const { fake } = connected({ serverNowMs: () => 0, monotonicNowMs: () => 0, observeServerTime });
+  fake.fire({ event: { tag: "Transaction" } });
+  expect(observeServerTime).not.toHaveBeenCalled();
+  fake.fire({ event: { tag: "Reducer", value: { timestamp: at(1_234_567) } } });
+  expect(observeServerTime).toHaveBeenCalledWith(1_234_567);
 });
 
 it("buys from the Smith and reports the server's refusal", async () => {

@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { WOOD_TREE_NODES, WOODCUTTING_RESPAWN_SECONDS, woodcuttingChopSeconds } from "../../../../shared/woodcutting";
 import { TOWN_ARRIVAL, TOWN_FEET_OFFSET } from "../../../../shared/town";
 import { createWoodcuttingRuntime, type WoodcuttingSource } from "./woodcutting-runtime";
-import { miningHits } from "./mining-runtime";
+import { REJECTED_COLOR, miningHits } from "./mining-runtime";
 import { resetWoodcuttingScene, woodcuttingScene } from "./woodcutting-scene";
 import type { PlayerState } from "../types";
 import type { BagSpace } from "../../../../shared/ore-bag";
@@ -96,10 +96,10 @@ describe("chopping in Timberwood", () => {
   it("stands the tree back up when the server's report leaves the fall out, and says so", () => {
     const w = woodcutter();
     w.run(woodcuttingChopSeconds(pine, 0) + .2);
-    w.refuse(pine.id, "A felled tree did not count.");
+    w.refuse(pine.id, "A tree stands again: that fall was not counted.");
     w.run(.1);
     expect(woodcuttingScene.felled.has(pine.id)).toBe(false);
-    expect(w.message).toHaveBeenCalledWith("A felled tree did not count.", "#ff9b91");
+    expect(w.message).toHaveBeenCalledWith("A tree stands again: that fall was not counted.", REJECTED_COLOR);
   });
 
   it("sends the queued falls as the player leaves the grove", () => {

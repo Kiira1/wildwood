@@ -70,7 +70,7 @@ it("counts a queued fall at once and sends every fall in one report after a whil
     expect(fake.reducers.reportChopping).toHaveBeenCalledExactlyOnceWith({ chops: [{ treeId: pines[0].id, atMs: 4_000n }, { treeId: pines[1].id, atMs: 12_000n }] });
     // The fall the server left out stands again; the other is the server's stump now.
     expect([service.api.choppedTreeAt(pines[0].id), service.api.choppedTreeAt(pines[1].id), service.pendingOres()]).toEqual([4_000, null, {}]);
-    expect(rejected).toHaveBeenCalledExactlyOnceWith("A felled tree did not count.");
+    expect(rejected).toHaveBeenCalledExactlyOnceWith("A tree stands again: that fall was not counted.");
     service.api.queueTreeChop(pines[2].id, 20_000);
     service.api.flushWoodcutting();
     expect(fake.reducers.reportChopping).toHaveBeenCalledTimes(2);

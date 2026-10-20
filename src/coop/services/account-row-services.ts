@@ -8,6 +8,8 @@ import { createGuildHallRows } from "./guild-hall-service";
 import { createItemRefineRows } from "./item-refine-service";
 import { createMiningRows } from "./mining-service";
 import { createWoodcuttingRows } from "./woodcutting-service";
+import type { GatherClock } from "./gather-queue";
+import { monotonicNowMs, wallClockNowMs } from "../../app/trusted-clock";
 import { createCardRows } from "./card-service";
 import { createCardShopRows } from "./card-shop-service";
 import { createBuildRows } from "./build-service";
@@ -31,6 +33,16 @@ function oresWithPending(server: Ores, ...pending: Ores[]): Ores {
   return sum;
 }
 
+type ServerClockSource = { api: { serverNowMs: () => number }; tables: { observeServerTime: (serverAtMs: number) => void } };
+/** The gathering reports' clock on the session's presence (presence-service.ts), read when used: presence is made later. */
+export function presenceGatherClock(presence: () => ServerClockSource | undefined): GatherClock {
+  return {
+    serverNowMs: () => presence()?.api.serverNowMs() ?? wallClockNowMs(),
+    monotonicNowMs,
+    observeServerTime: serverAtMs => presence()?.tables.observeServerTime(serverAtMs),
+  };
+}
+
 /**
  * The account's own small rows, each read through a caller-scoped view and
  * followed for as long as the connection is current: the offline-progress
@@ -43,7 +55,9 @@ function oresWithPending(server: Ores, ...pending: Ores[]): Ores {
  */
 export function createAccountRowServices(connection: () => DbConnection | null, notify: () => void, slotTierFor: (itemId: string) => number = () => 0,
   /** Active card slots of each type in play (Card Slots perks). */
-  cardSlots: () => ActiveCardSlots = () => BASE_CARD_SLOTS) {
+  cardSlots: () => ActiveCardSlots = () => BASE_CARD_SLOTS,
+  /** The server clock the gathering reports' times are read against. */
+  gatherClock?: GatherClock) {
   const offlinePreference = createOfflineProgressPreference(connection, notify);
   const bowSkills = createBowSkills(notify);
   const adGemReward = createAdGemReward(notify);
@@ -51,8 +65,8 @@ export function createAccountRowServices(connection: () => DbConnection | null, 
   const soulDimension = createSoulDimensionRows(connection, notify);
   const guildHall = createGuildHallRows(connection, notify);
   const itemRefine = createItemRefineRows(notify, slotTierFor);
-  const mining = createMiningRows(notify);
-  const woodcutting = createWoodcuttingRows(notify);
+  const mining = createMiningRows(notify, gatherClock);
+  const woodcutting = createWoodcuttingRows(notify, gatherClock);
   const cards = createCardRows(notify);
   const cardShop = createCardShopRows(notify);
   const builds = createBuildRows(notify);

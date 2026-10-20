@@ -44,6 +44,8 @@ export function miningHits(seconds: number) {
 export function miningHitAt(seconds: number, index: number) {
   return Math.max(ATTACK_WINDUP_SECONDS, seconds - (miningHits(seconds) - 1 - index) * SWING_SECONDS);
 }
+/** A break the server did not take is told in plain grey: the rock is simply back to mine. */
+export const REJECTED_COLOR = "#c7ced3";
 /** A hint (Mining short of a rock, a full bag) says itself again only after this long, or for another rock. */
 const HINT_SECONDS = 6;
 /** How often the bare rocks are looked over: they only change as rocks grow back and break. */
@@ -132,7 +134,7 @@ export function createMiningRuntime(deps: {
     source.setOnMiningRejected(text => {
       if (session !== started || !sameSession(deps.source())) return;
       bareCheck = 0;
-      deps.message?.(text, "#ff9b91");
+      deps.message?.(text, REJECTED_COLOR);
     });
   }
 

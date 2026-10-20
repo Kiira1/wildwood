@@ -16,3 +16,5 @@ export const GATHER_REPORT_MAX = 64;
 export const GATHER_CLAIM_MAX_AGE_MS = 90_000;
 /** How far past the server's now a claimed time may run: the client's estimate of the server clock wanders a little. */
 export const GATHER_CLAIM_AHEAD_MS = 2_000;
+/** How far a claimed time may be off the server's clock either way when reach is judged: the walk in it is allowed too. */
+export const GATHER_CLOCK_SLACK_MS = 2_000;
