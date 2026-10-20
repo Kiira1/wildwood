@@ -97,6 +97,20 @@ export type StartupCoordinationDeps = {
  * Scheduled updates, the canvas-purge reload, and the coordinator that moves
  * startup from connecting through the account choice into the game.
  */
+/** A new character's first moments: new-player settings, then the tutorial when it is needed, else the intro. */
+export function beginNewPlayer(steps: {
+  recordGameplayReady: () => void;
+  settings: { useNewPlayerDefaults: () => void };
+  onboarding: { required: () => boolean } | undefined;
+  startGame: (resume: false) => void;
+  intro: { showNewPlayerIntro: () => void };
+}) {
+  steps.recordGameplayReady();
+  steps.settings.useNewPlayerDefaults();
+  if (steps.onboarding?.required()) steps.startGame(false);
+  else steps.intro.showNewPlayerIntro();
+}
+
 export function createStartupCoordination(deps: StartupCoordinationDeps) {
   const { coop, version, session } = deps;
   const { startup } = deps.screen;

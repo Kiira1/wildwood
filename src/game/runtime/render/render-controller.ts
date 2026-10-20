@@ -113,13 +113,9 @@ export function createRenderController(options: {
     target.strokeStyle = "rgba(215,239,250,.55)";
     target.lineWidth = 2;
     target.stroke();
-    // Put dark dashes in the light dashes' gaps, with a little breathing room.
-    target.lineDashOffset = 11;
-    target.strokeStyle = "rgba(20,40,50,.45)";
-    target.stroke();
     target.restore();
   }
-  // Two dashed strokes a frame were slow in Firefox's software canvas: the ring is drawn once and copied,
+  // A dashed stroke a frame was slow in Firefox's software canvas: the ring is drawn once and copied,
   // and drawn again only when the range, zoom or pixel ratio changes.
   // A new canvas for each new ring, never a resized one (see world-renderer.ts's minimap).
   let rangeCanvas = typeof document === "undefined" ? null : document.createElement("canvas");

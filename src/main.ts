@@ -55,7 +55,7 @@ import { createGamePanels, createMapGuidePanel } from "./ui/game-panels";
 import { createGiftsAndMail, createHudRuntime } from "./ui/hud-runtime";
 import { createReconnectOverlay, type FarmConnection } from "./ui/reconnect-overlay";
 import { createOnboardingRuntime } from "./ui/onboarding-runtime";
-import { createStartupCoordination, createStartupScreen, type StartupCoordinator } from "./ui/startup-runtime";
+import { beginNewPlayer, createStartupCoordination, createStartupScreen, type StartupCoordinator } from "./ui/startup-runtime";
 import { createPerformanceMonitor } from "./game/runtime/performance-monitor";
 import { createPresentationInterpolator } from "./game/runtime/render/presentation-interpolator";
 import { createGameBootstrap, createGameBootstrapAssets, startGameRuntime } from "./game/runtime/game-bootstrap";
@@ -772,11 +772,7 @@ import { MAX_PLAYER_STAT, PLAYER_SPAWN } from "../shared/rules";
     playerSpriteReady: () => playerSpriteReady, worldArtReady: assets.worldArtReady, setGameplayPause,
     saveBeforeUpdate: () => { saveProgress(true); coop?.syncMovementState?.(player.x, player.y, 0, 0, "keyboard", true); },
     suspendPlayerVisibility: () => playerVisibility.suspend(),
-    showNewPlayerIntro: () => {
-      recordGameplayReady();
-      if (onboarding?.required()) startGame(false);
-      else startup.showNewPlayerIntro();
-    },
+    showNewPlayerIntro: () => beginNewPlayer({ recordGameplayReady, settings: appShell, onboarding, startGame, intro: startup }),
     startGame: () => startGame(false),
   });
   finishStartup();
