@@ -9,9 +9,8 @@ import { generatedEnemyArt } from "./procedural-enemy-art";
 import * as rules from './rules';
 import { AUTHORED_BOSS_RULES } from './rules';
 import { ENEMY_TYPES, type EnemyKind } from './enemy-definitions';
-import { enemyDefeatDefinition, combatMap } from './enemy-defeats';
-import { personalBossDefinition } from './personal-bosses';
-import { generateMap, isProceduralMap, PROCEDURAL_BOSS_RESPAWN_SECONDS } from './procedural-maps';
+import { campaignBossDefinition, campaignPopulation, combatMap } from './campaign-combat';
+import { generateMap, isProceduralMap, PROCEDURAL_BOSS_RESPAWN_SECONDS } from './procedural-map-core';
 import { DEFAULT_BALANCE_FACTORS, type BalanceFactors, type BalanceSettings, type MapBalanceSnapshot } from './map-balance-types';
 import BALANCE_TWEAKS from './balance-tweaks.json';
 import { ratingRewardPerKill } from './stat-rating';
@@ -68,7 +67,7 @@ export function resolveMapBalance(mapId: string, settings: BalanceSettings, revi
   const generated = isProceduralMap(mapId);
   const factors = settings.maps[generated ? 'endless' : mapId];
   // Endless's boss is defined here; asking personal-bosses would resolve it again.
-  const definition = generated ? { kind: 'procedural', respawnSeconds: PROCEDURAL_BOSS_RESPAWN_SECONDS } : personalBossDefinition(mapId, true)!;
+  const definition = generated ? { kind: 'procedural', respawnSeconds: PROCEDURAL_BOSS_RESPAWN_SECONDS } : campaignBossDefinition(mapId)!;
   if (generated) {
     // Endless N carries on from map 15 by the curve's steps, N more of them, the same for every camp.
     const map = generateMap(mapId), depth = Math.min(map.number, 1_000);
@@ -117,7 +116,7 @@ export function resolveMapBalance(mapId: string, settings: BalanceSettings, revi
     // authored: a fresh Reflect Only run must be able to kill a Bramble on 100 health.
     const index = CAMPAIGN_MAPS.findIndex(map => map.id === mapId), camp = curveCamp(index);
     for (const kind of Object.keys(ENEMY_TYPES) as EnemyKind[]) {
-      if (!enemyDefeatDefinition(mapId, kind)) continue;
+      if (!campaignPopulation(mapId)?.get(kind)) continue;
       const row = AUTHORED_ENEMIES[kind];
       const shape = OFF_CURVE.has(kind) ? { hp: row.hp / camp.hp, damage: row.damage / camp.damage, reward: row.reward.amount / camp.reward } : CURVE_ROLES[combatRole(row)];
       result.enemies[kind] = { ...row, hp: camp.hp * shape.hp * factors.enemyHealth, damage: camp.damage * shape.damage * factors.enemyDamage,
