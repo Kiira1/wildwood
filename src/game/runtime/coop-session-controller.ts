@@ -43,8 +43,8 @@ type CoopSessionDependencies = {
   coop: CoopClient | null;
   syncLifetimeKills: (identity: string) => void;
   refreshGemCounter: () => void;
-  refreshBalanceApologyGift: () => void;
-  refreshDailyGemBonus: () => void;
+  refreshMailbox: () => void;
+  refreshGiftsAndMail: () => void;
   refreshWindows: () => void;
   refreshLeaderboard: () => void;
   refreshDevPanel: () => void;
@@ -115,8 +115,8 @@ export function createCoopSessionController(dependencies: CoopSessionDependencie
     dependencies.reconcileMap();
     dependencies.syncBossState();
     dependencies.finishStartup();
-    dependencies.refreshBalanceApologyGift();
-    dependencies.refreshDailyGemBonus();
+    dependencies.refreshMailbox();
+    dependencies.refreshGiftsAndMail();
     const account = coop.accountState?.();
     dependencies.updateProtocolGate(account);
     dependencies.refreshChat();

@@ -1,7 +1,7 @@
 import { SenderError, table, t } from "spacetimedb/server";
 import { Identity } from "spacetimedb";
 import { ERASURE_TARGETS, type ErasureTarget } from "./account-erasure";
-import { hasSpacetimeAuthAccount } from "./account-lifecycle";
+import { hasSpacetimeAuthAccount } from "./session-guards";
 import { activeDuelFor } from "./duel-runtime";
 import { recordModerationAction } from "./moderation-history";
 

@@ -1,4 +1,4 @@
-import { generateMap, mapRandom, type ProceduralMapId } from "./procedural-maps";
+import { generateMap, mapRandom, type ProceduralMapId } from "./procedural-map-core";
 import type { EnemyKind } from "./enemy-definitions";
 import { ENDLESS_ENEMY_ART } from "./endless-enemies";
 /**

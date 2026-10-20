@@ -1,7 +1,7 @@
 // Lifetime session rows and the power numbers derived from progress: balance
 // version stamping, effective power, and researched damage/armor/regen. Moved
 // out of index.ts unchanged.
-import { syncPlayerJoinDate } from "./mailbox";
+import { syncPlayerJoinDate } from "./player-join-date";
 import { syncWornSkill } from "./worn-skill";
 import { cardStatFactors } from "../../shared/card-effects";
 import { activeCardTotalsFor } from "./active-cards";

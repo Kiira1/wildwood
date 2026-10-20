@@ -1,119 +1,38 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { measureSource } from "../tests/helpers/source-readability";
 
-// src/main.ts has no exports and nothing imports it, so no behavioural test can
-// cover its wiring. This ratchet is the only automated pressure on its size.
+// src/main.ts has no exports. src/main-boot.test.ts runs its composition, but
+// nothing else can see its wiring, so these ratchets hold its size down.
+// Every past raise and its reason is in `git log -p src/main-boundary.test.ts`.
 //
-// ENGINEERING.md and AGENTS.md set the real target at 1,000 lines. The file
-// reached 2,224 before anything watched it, and the remaining distance runs
-// through the combat, render and coop-sync wiring, where a mistake is only
-// visible in play. So this guard enforces the one property that can be checked
-// mechanically: the facade never grows again.
-//
-// Lower MAX_LINES as extractions land. Raising it means a feature's wiring
-// genuinely belongs here after its own module took everything it could, and
-// the raise is the wiring alone. Growth without an extraction first is the
-// drift this guard exists to stop.
-// Do not satisfy it by minifying or removing useful comments/whitespace.
-// 2_173: one line wiring the gem-drop pop-up, the same shape as the item-drop
-// wiring beside it. Its logic lives in the HUD controller and the coop service.
-// 2_193: the prestige badge's level lookup, which only the composition root can
-// answer because it reads the coop session. The badge image, its measurement
-// and both draw paths live in the identity renderer, which loads the asset
-// itself rather than being handed it.
-// 2_197: the offline-progress summary's construction, which only the
-// composition root can supply with the coop session, the pause registry and
-// whether the world is playable yet. Its formatting, its dialog and its
-// show-once rule live in offline-progress-summary.ts.
-// 2_201: the offline-progress setting's wiring. It is an account preference,
-// so only the composition root can hand it the coop session, and only the HUD
-// tick knows when a subscription has changed it. The button, its busy state
-// and its rendering live in offline-progress-setting.ts.
-// 2_202: the leaderboard's locked state. Only the composition root knows both
-// the toolbar controller and whether this save has the Dragon's credit.
-// 2_204: the upgrade bench's two slot-tier lookups. Tiers belong to equipment
-// slots now, and only the composition root can say which coop session holds
-// them and what is equipped in each slot. The bench's own logic is unchanged.
-// 2_205: one line asking the developer panel whether to draw boss hitboxes.
-// The toggle, its storage and its row live in boss-hitbox-overlay-control.ts
-// and the drawing lives in the boss renderer; only the composition root holds
-// both the panel and the render runtime.
-// 2_205, not raised: the prestige unlock popup's wiring took the four lines of
-// slack below it. Its construction, the HUD-tick poll and the developer
-// preview hook need the coop session, the pause registry and the dev panel,
-// which only the composition root holds; the logic is prestige-unlock-popup.ts.
-// 2_195: the boss-defeated banner and its wiring were removed.
-// 2_187: the item-drop reveal's colour table moved to item-drop-color.ts, which
-// the duplicate-equipment offer window shares. That window's construction takes
-// one line of the room, with its note: only the composition root holds the coop
-// session, the local bag and whether the world is running.
-// 2_188: one line handing the map window the coop session for its Loot
-// filter window. The chips, the switches and their saving live in
-// loot-filter-window.ts; only the composition root holds the session.
-// 2_193: auto equip. Two lines construct and import the feedback that takes
-// gear the server put on into the local bag (auto-equip-feedback.ts holds the
-// logic); only the composition root holds the coop session, the bag and the
-// player. Three more let Equip best rank bows by their skills: the local
-// power function takes the coop session's rolls when comparing, and says so.
-// The comparison itself lives in shared/equip-best.ts.
-// 2_169: the rewarded respawn boost went (0.807). Its bank, its drain, its
-// save-on-hide and the pending-timer rewrite for the switch left with it; the
-// ad's Gem claim is three dependency lines handed to the HUD timer column.
-// 2_167: the shared-boss client code went: the boss hit-result drain and the
-// no-op clearPendingBossHits calls. Personal bosses were already wired apart.
-// 2_134: the developer cutscene buttons went, with their three map-gated
-// handlers, the preview flag they threaded through and their element wiring.
-// 2_140: runPrestige, shared by the prestige panel and the unlock popup, reloads
-// progress only after the prestige reducer succeeds, so a failed prestige keeps
-// the player's unsaved stats.
-// 2_142: the existing-character warning's construction and its HUD-tick poll,
-// the same shape as the prestige window's. Its lookup, window and show-once
-// rule live in game-ui-runtime.ts and duplicate-login-popup.ts.
-// 2_149: the Daily Quest board's construction, courtyard status and walk-up
-// hook, and its guild bonus in the reward and profile multipliers. Its window,
-// view and refresh live in quest-board-controller.ts.
-// 2_150: the leaderboard's player search hook. The search lives in
-// player-search.ts and the directory in the social service.
-// 1_943: the world boss registry (boss-registry.ts). Main no longer hands every
-// runtime module fifteen boss states, fifteen hazard lists, and a sync, update,
-// reset, collision and map check per boss: it passes the two boss records and
-// one hook per concern, and the registry says which boss a map has.
-// 1_946 (2026-10-05): the Soul Dimension's construction (two lines) and its
-// import. Only the composition root holds the coop session, the player, the
-// world's lists, combat's strength and the map controller's travel; the world
-// streaming, enemies, portal and window live in soul-dimension*.ts.
-// 1_951 (2026-10-07): autofarm's growth planner's inputs (createGrowthContextSource,
-// nine lines, and its import). Only the composition root holds the player, the
-// inventory, research, the coop session's perks, bow skills and other maps'
-// balance, and the map config; the planner, its forecasts and the balance
-// cache live in auto-farm-growth.ts and growth-forecast.ts.
-// 1_939 (2026-10-08): the growth planner's inputs gone with autofarm's simple
-// rules (the planner's second controller was removed later; the sims keep the planner).
-// 1_941 (2026-10-09): Ox's Galaxy shop in Town, its import and one line of
-// wiring; the window and its purchase live in ox-shop-controller.ts.
-// 1_943 (2026-10-11): the profile's Bonuses tab, its import and one line
-// handing the window its deps; the switches, their deps from the coop session
-// and the in-play profile live in profile-bonus-toggles.ts.
-// 1_945 (2026-10-12): live reward labels, its import and one line building
-// the context both the world renderer and the map's Enemy Index read; the
-// context and the labels live in reward-labels.ts.
-// 1_939: refreshing row-backed windows moved into coop-session-controller.ts;
-// card counts and open Smith slots now refresh even when gear ownership is unchanged.
-const MAX_LINES = 1_939;
-const TARGET_LINES = 1_000;
+// Lower the numbers as extractions land. Never satisfy them by packing code onto
+// longer lines or deleting useful comments: extract a named module instead.
+const MAX_LINES = 940;
+const MAX_LINES_OVER_160 = 2;
+const MAX_LINES_OVER_300 = 0;
+const MAX_BYTES = 51_502;
+
+const mainSource = new URL("./main.ts", import.meta.url);
 
 describe("game composition boundary", () => {
-  it("never grows past its last recorded size", () => {
-    const source = readFileSync(new URL("./main.ts", import.meta.url), "utf8");
-    const lineCount = source.split(/\r?\n/).length - Number(source.endsWith("\n"));
-
-    expect(lineCount).toBeLessThanOrEqual(MAX_LINES);
+  // Intentional agent-context budget, as for wildstat-coop.ts: extract focused modules when this grows.
+  it("keeps the composition root below 1,000 lines", () => {
+    expect(measureSource(mainSource).lines).toBeLessThan(1_000);
   });
 
-  it("records how far the facade still is from the documented target", () => {
-    // Fails once the facade reaches 1,000 lines, as a prompt to replace this
-    // ratchet with the strict sub-1,000 assertion that wildstat-coop.ts uses.
-    expect(MAX_LINES).toBeGreaterThan(TARGET_LINES);
+  it("never grows past its last recorded size", () => {
+    expect(measureSource(mainSource).lines).toBeLessThanOrEqual(MAX_LINES);
+  });
+
+  it("adds no long lines, so the line ratchet cannot be dodged by packing", () => {
+    const measure = measureSource(mainSource);
+    expect(measure.linesOver160).toBeLessThanOrEqual(MAX_LINES_OVER_160);
+    expect(measure.linesOver300).toBeLessThanOrEqual(MAX_LINES_OVER_300);
+  });
+
+  it("never grows past its byte budget", () => {
+    expect(measureSource(mainSource).bytes).toBeLessThanOrEqual(MAX_BYTES);
   });
 });
 
@@ -122,7 +41,7 @@ describe("game composition wiring", () => {
   // still type-checks. Dropping the attacker here left Reflect dead against
   // every melee enemy from 0.823 to 0.829 while its own tests passed.
   it("hands the enemy that struck to the player's damage, so Reflect can answer it", () => {
-    const source = readFileSync(new URL("./main.ts", import.meta.url), "utf8");
+    const source = readFileSync(mainSource, "utf8");
     expect(source).toMatch(/\(amount, source\) => playerCombat\.damagePlayer\(amount, source\)/);
   });
 });

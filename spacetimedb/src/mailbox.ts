@@ -2,7 +2,7 @@ import { equipmentForMail, mergeEquipmentMail, removeEquipmentMail, removeEquipm
 import { mergePersonalMail, personalMailFor, readPersonalMail, removePersonalMail, removePersonalMailSentBy } from "./dev-review-mail";
 import { GEAR_MAIL_ID } from "../../shared/mailbox-equipment";
 import { table, t, SenderError } from "spacetimedb/server";
-import type { Identity, Timestamp } from "spacetimedb";
+import type { Identity } from "spacetimedb";
 import type { ModuleReducerCtx, ModuleViewCtx } from "./index";
 import { REBALANCE_MAIL_ID, REBALANCE_MAIL_GEMS, REBALANCE_MAIL_TITLE, REBALANCE_MAIL_BODY,
   SLOT_UPGRADE_MAIL_ID, SLOT_UPGRADE_MAIL_GEMS, SLOT_UPGRADE_MAIL_TITLE, SLOT_UPGRADE_MAIL_BODY,
@@ -17,21 +17,6 @@ export const mailboxReceipt = table({ name: "mailbox_receipt", public: false }, 
   key: t.string().primaryKey(), identity: t.identity().index("btree"), letterId: t.string(),
   read: t.bool(), claimed: t.bool(), updatedAt: t.timestamp(),
 });
-// The join date copied out of player_lifetime, which every kill report
-// rewrites. my_mailbox_v2 needs only this date, and a view re-runs whenever a
-// table it read changes, so reading the lifetime row re-ran it on every kill.
-export const playerJoinDate = table({ name: "player_join_date", public: false }, {
-  identity: t.identity().primaryKey(), joinedAt: t.timestamp(),
-});
-export function syncPlayerJoinDate(ctx: ModuleReducerCtx, identity: Identity, joinedAt: Timestamp) {
-  const current = ctx.db.playerJoinDate.identity.find(identity);
-  if (current?.joinedAt.microsSinceUnixEpoch === joinedAt.microsSinceUnixEpoch) return;
-  const next = { identity, joinedAt };
-  if (current) ctx.db.playerJoinDate.identity.update(next); else ctx.db.playerJoinDate.insert(next);
-}
-export function removePlayerJoinDate(ctx: ModuleReducerCtx, identity: Identity) {
-  if (ctx.db.playerJoinDate.identity.find(identity)) ctx.db.playerJoinDate.identity.delete(identity);
-}
 export const mailboxEntry = t.row("MailboxEntry", {
   id: t.string().primaryKey(), title: t.string(), body: t.string(), gems: t.u64(),
   createdAt: t.timestamp(), read: t.bool(), claimed: t.bool(),

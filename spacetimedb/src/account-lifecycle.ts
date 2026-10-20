@@ -9,14 +9,10 @@ import { mergeEquipmentLocks, removeEquipmentLocks } from "./equipment-locks";
 // Helpers that still live in index.ts arrive through createAccountLifecycle's
 // deps so the moved code reads exactly as it did.
 import { SenderError } from "spacetimedb/server";
-import { removePlayerJoinDate, syncPlayerJoinDate } from "./mailbox";
+import { removePlayerJoinDate, syncPlayerJoinDate } from "./player-join-date";
 import { movePausedResearch, removePausedResearch } from "./research-pause";
 import { removeStreamCursors } from "./regular-enemy-loot";
-import {
-  DEFAULT_ATTACK_INTERVAL,
-  SPACETIME_AUTH_CLIENT_ID,
-  SPACETIME_AUTH_ISSUER,
-} from "../../shared/rules";
+import { DEFAULT_ATTACK_INTERVAL } from "../../shared/rules";
 import { HOME_EXTERIOR_MAP_ID } from "../../shared/home";
 import { isTownMap } from "../../shared/town";
 import { cosmeticUnlocks } from "../../shared/cosmetic-conversion";
@@ -59,21 +55,12 @@ import { readPlayerProgress, deleteReplayWide } from "./wide-stats";
 import { eraseIdentityRows } from "./account-erasure";
 import { deleteLuckResearch, luckRanksFor, writeLuckRanks } from "./luck-research";
 import { carryNameColor } from "./profile-look";
+import { hasSpacetimeAuthAccount } from "./session-guards";
 
 export const ACCOUNT_LINK_LIFETIME_MICROS = 600_000_000n;
 
 export function dailyGemBonusClaimReference(identity: any, dayKey: string, cycle: bigint) {
   return `daily-claim:${identity.toHexString()}:${dayKey}:${cycle}`;
-}
-
-export function hasSpacetimeAuthAccount(ctx: any) {
-  const jwt = ctx.senderAuth?.jwt;
-  return Boolean(
-    jwt &&
-    jwt.issuer === SPACETIME_AUTH_ISSUER &&
-    Array.isArray(jwt.audience) &&
-    jwt.audience.includes(SPACETIME_AUTH_CLIENT_ID),
-  );
 }
 
 export function clearExpiredAccountLinks(ctx: any) {

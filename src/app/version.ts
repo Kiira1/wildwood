@@ -101,5 +101,12 @@ export function reloadStaleSession(blockedForMs: number, storage: Pick<Storage, 
   return reloadScheduled;
 }
 
+/** Reloads this page at `version`, once any account renewal in flight has kept its new token. */
+export function reloadAtVersion(version: string) {
+  const url = new URL(window.location.href);
+  url.searchParams.set("v", version);
+  afterAccountRenewal(() => window.location.replace(url.href));
+}
+
 /** True once an update or stale-session reload has been started on this page. */
 export const updateReloadPending = () => reloadScheduled;
