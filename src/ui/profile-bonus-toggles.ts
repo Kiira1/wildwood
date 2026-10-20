@@ -17,7 +17,6 @@ export type ProfileBonusDeps = {
 type BonusSource = {
   bonusOff?: () => readonly string[]; setBonusOff?: (ids: readonly string[]) => Promise<{ ok?: boolean; error?: string }>;
   prestigeChallenge?: () => { active?: boolean } | null; aggroChallenge?: () => { active?: boolean } | null;
-  localIdentity?: () => string | undefined; researchInPlay?: () => object;
 };
 
 /** The tab's deps from the coop session, so the composition root wires it in one line. */
@@ -30,10 +29,6 @@ export function profileBonusDeps(coop: () => BonusSource | null | undefined, isD
   };
 }
 
-/** Your own profile with the research you switched off left out, as your stats and power read it; anyone else's as it is. */
-export function ownProfileInPlay<T extends { identity: string; research: unknown }>(profile: T, coop: BonusSource | null | undefined): T {
-  return coop && profile.identity === coop.localIdentity?.() ? { ...profile, research: coop.researchInPlay?.() ?? profile.research } : profile;
-}
 
 type SwitchState = "on" | "off" | "mixed";
 const allState = (off: BonusOff): SwitchState => off.size === 0 ? "on" : BONUS_ITEM_IDS.every(id => off.has(id)) ? "off" : "mixed";

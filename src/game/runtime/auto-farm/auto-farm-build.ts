@@ -1,4 +1,5 @@
 import type { ItemLevel } from "../../../../shared/items";
+import type { CardTotals } from "../../../../shared/card-effects";
 import { critPowerFactor, effectivePlayerPowerStats, unroundedPlayerPower, type PlayerPowerProgress, type PlayerPowerResearch, type PlayerPowerStats } from '../../../../shared/player-power';
 import { addAttackSpeedRating, attackCapInterval, type AttackCapArg } from '../../../../shared/stat-rating';
 import type { FarmEvaluation, FarmReward } from './auto-farm-plan';
@@ -28,6 +29,8 @@ export function createFarmEvaluator(deps: {
   research: () => PlayerPowerResearch | null | undefined;
   /** An item's slot tier and refine (coop itemLevel). */
   upgradeLevel: (itemId: string) => ItemLevel;
+  /** The active cards in play (coop activeCardTotals), as the shown power counts them. */
+  cards?: () => CardTotals | null | undefined;
   rewardMultiplier: () => number;
   /** The attack speed cap (stat-rating.ts AttackCap). */
   minAttackInterval: () => AttackCapArg;
@@ -49,7 +52,7 @@ export function createFarmEvaluator(deps: {
       else if (reward.type === 'speed') stats.attackRate = addAttackSpeedRating(stats.attackRate, amount, deps.minAttackInterval());
       else if (reward.type === 'crit') stats.critMultiplier = deps.criticalMultiplier(amount);
     }
-    return effectivePlayerPowerStats({ ...stats, ...deps.equipment() }, deps.research(), deps.upgradeLevel);
+    return effectivePlayerPowerStats({ ...stats, ...deps.equipment() }, deps.research(), deps.upgradeLevel, deps.cards?.() ?? undefined);
   }
   return {
     evaluate: (reward?: FarmReward): FarmEvaluation => { const stats = build(reward); return { power: unroundedPlayerPower(stats), stats }; },

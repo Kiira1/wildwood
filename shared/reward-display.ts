@@ -8,6 +8,8 @@ type RewardEquipment = {
   weapon: string; head: string; chest: string;
   /** Each worn item's slot tier and refine (items.ts ItemLevel). */
   weaponLevel: ItemLevel; headLevel: ItemLevel; chestLevel: ItemLevel;
+  /** Boots and their refine: Warrior Boots multiply armor. */
+  feet?: string; feetLevel?: ItemLevel;
   /** The active cards in play (active-cards.ts). */
   activeCards?: readonly string[];
 };
@@ -29,14 +31,16 @@ export function effectiveRewardAmount(
   type: RewardType, baseAmount: number, statGainMultiplier: number,
   research: Partial<ResearchRanks>, equipment: RewardEquipment,
 ) {
-  const { weapon, head, chest, weaponLevel, headLevel, chestLevel, activeCards = [] } = equipment;
+  const { weapon, head, chest, weaponLevel, headLevel, chestLevel, feet = "", feetLevel = 0, activeCards = [] } = equipment;
   // Active Bounty cards add to this type's stat gain.
   const cards = cardTotals(activeCards);
   const amount = baseAmount * statGainMultiplier * cardStatGainFactor(cards, type);
   const field = SCALED_STAT[type as keyof typeof SCALED_STAT];
   // Attack speed has no gear or research factor.
   if (!field) return amount;
-  const levelOf = (itemId: string): ItemLevel => itemId === weapon ? weaponLevel : itemId === head ? headLevel : itemId === chest ? chestLevel : 0;
-  const scale = preparePlayerPowerStats({ ...ZERO_STATS, equippedRightHand: weapon, equippedHead: head, equippedChest: chest }, research, levelOf, cards);
+  const levelOf = (itemId: string): ItemLevel => itemId === weapon ? weaponLevel : itemId === head ? headLevel : itemId === chest ? chestLevel
+    : itemId === feet ? feetLevel : 0;
+  const scale = preparePlayerPowerStats({ ...ZERO_STATS, equippedRightHand: weapon, equippedHead: head, equippedChest: chest, equippedFeet: feet },
+    research, levelOf, cards);
   return scale({ ...ZERO_STATS, [field]: amount })[field];
 }

@@ -10,6 +10,7 @@ import { normalizePlayerGender } from "../../../shared/player-gender";
 import { resolvePlayerPresenceMap } from "./profile-presence";
 import { withWideProgress } from "./wide-progress";
 import { activeCardsOfRow } from "../../../shared/active-cards";
+import { parseBonusOff } from "../../../shared/bonus-toggles";
 import { isWeaponSchool, masteryLevel, type WeaponSchool } from "../../../shared/weapon-mastery";
 import { CRAFT_SKILLS, craftLevel, type CraftSkill } from "../../../shared/crafting";
 import type { LeaderboardEntry, PlayerProfileData } from "../contracts";
@@ -114,6 +115,7 @@ export function createPlayerProfileService(dependencies: PlayerProfileServiceDep
           quickDraw: expansion?.quickDraw ?? 0, weaponCards: cards?.weaponCards ?? 0, helmetCards: cards?.helmetCards ?? 0, armorCards: cards?.armorCards ?? 0 };
       })(),
       soulStats: (() => { const row = [...(dependencies.connection()?.db.profileSoulStats?.iter() ?? [])].find(row => row.identity.toHexString() === identity); return row ? cleanSoulStats(row) : null; })(),
+      bonusOff: (() => { const row = [...(dependencies.connection()?.db.playerBonusToggle?.iter() ?? [])].find(row => row.identity.toHexString() === identity); return [...parseBonusOff(row?.off)]; })(),
       name: dependencies.directory.nameFor(identity) ?? "PLAYER",
       gender: dependencies.directory.genderFor(identity),
       progress: { ...progress },
@@ -336,6 +338,7 @@ export function createPlayerProfileService(dependencies: PlayerProfileServiceDep
           tables.playerItemRefine.where(row => row.identity.eq(dbIdentity)),
           tables.playerActiveCard.where(row => row.identity.eq(dbIdentity)),
           tables.playerPrestigeCardPerk.where(row => row.identity.eq(dbIdentity)),
+          tables.playerBonusToggle.where(row => row.identity.eq(dbIdentity)),
           tables.playerWornSkill.where(row => row.identity.eq(dbIdentity)),
           tables.playerWornStaffSkill.where(row => row.identity.eq(dbIdentity)),
           tables.playerMiningLevel.where(row => row.identity.eq(dbIdentity)),

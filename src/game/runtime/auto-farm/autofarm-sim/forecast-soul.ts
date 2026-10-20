@@ -16,8 +16,8 @@ import { isSoulMap, SOUL_CAMPS, SOUL_STAT_DETAILS, soulEnemyStats, type SoulStat
 import { effectivePlayerPowerStats } from '../../../../../shared/player-power';
 import { isProceduralMap, type ProceduralMapId } from '../../../../../shared/procedural-maps';
 import { createEmptyResearchRanks } from '../../../../../shared/research';
-import { prestigePerkValue } from '../../../../../shared/prestige-perks';
 import { criticalDamageMultiplier } from '../../../../../shared/critical-damage';
+import { critChanceFor } from '../../../../../shared/player-stats';
 import { generatedMapContent } from '../../../procedural-maps';
 import type { CalibrationBuild } from './forecast-builds';
 import type { VirtualPlayerProfile } from './virtual-player';
@@ -30,8 +30,9 @@ const RUN_STAT: Record<SoulStatId, 'damage' | 'health' | 'armor' | 'regen' | 'sp
 export function soulSites(profile: VirtualPlayerProfile, tier: number): SpawnSite[] {
   const research = { ...createEmptyResearchRanks(), ...profile.research };
   const stats = effectivePlayerPowerStats({ ...profile.base, equippedHead: profile.head ?? '', equippedChest: profile.chest ?? '', equippedRightHand: profile.weapon }, research);
-  const critChance = research.criticalChance * .01 + prestigePerkValue(profile.perks, 'keenEdge');
-  const critMultiplier = criticalDamageMultiplier({ researchRank: research.criticalDamage, capRank: research.critCap });
+  // Keen Edge raises both, as the game's own soul strength counts it (player-combat-controller.ts expectedDps).
+  const critChance = critChanceFor(research, profile.perks);
+  const critMultiplier = criticalDamageMultiplier({ researchRank: research.criticalDamage, perks: profile.perks, capRank: research.critCap });
   const dps = stats.damage * (1 + Math.min(1, critChance) * (critMultiplier - 1)) * Math.max(1, profile.projectileCount ?? 1) / Math.max(.05, stats.attackRate);
   const built = soulEnemyStats({ dps, maxHp: stats.maxHp, armor: stats.armor, regen: stats.regen });
   const sites: SpawnSite[] = [];

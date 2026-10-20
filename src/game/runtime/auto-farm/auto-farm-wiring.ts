@@ -70,7 +70,7 @@ export function createAutoFarm(deps: AutoFarmWiringDeps) {
     }),
     weaponSkills: () => coop.weaponSkills(equippedWeapon()),
     research: () => later.research().ranks(),
-    upgradeLevel: coop.itemLevel,
+    upgradeLevel: coop.itemLevel, cards: () => client?.activeCardTotals?.(),
     rewardMultiplier: () => later.research().rewardMultiplier(),
     minAttackInterval: coop.attackCap,
     criticalChance: () => later.research().criticalChance(),

@@ -18,11 +18,10 @@ describe("Black Boots", () => {
     expect(blackBootsSpeed(BLACK_BOOTS, true)).toBe(0);
   });
 
-  it("count in move speed unless a view leaves them out", () => {
+  it("count in move speed outside duels", () => {
     const loadout = { head: "", chest: "", feet: BLACK_BOOTS, rightHand: "", leftHand: "" };
     expect(computePlayerStats(inputs({ loadout })).moveSpeed).toBe(PLAYER_SPEED + 25);
     expect(computePlayerStats(inputs({ loadout, dueling: true })).moveSpeed).toBe(PLAYER_SPEED);
-    expect(computePlayerStats(inputs({ loadout, countBlackBoots: false })).moveSpeed).toBe(PLAYER_SPEED);
   });
 });
 

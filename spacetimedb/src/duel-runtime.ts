@@ -34,6 +34,7 @@ import { weaponAttackInterval, weaponHitFactor } from "../../shared/staff-skills
 import { readCritRating, readPlayerProgress } from "./wide-stats";
 import { masteryInPlayFor } from "./weapon-mastery";
 import { duelSkillsWithProficiency, masteryDamageTaken } from "../../shared/weapon-mastery";
+import type { DuelFighter } from "../../shared/duel-combat";
 import { armorSkillChanceFactor } from "../../shared/armor-class-perks";
 import { equippedChestForProgress, equippedFeetForProgress, equippedHeadForProgress, itemLevelFor } from "./progress-helpers";
 import { duelMasteryFold, duelSkillsWithTechniques } from "../../shared/mastery-techniques";
@@ -143,6 +144,36 @@ export function createDuelRuntime(deps: DuelRuntimeDeps) {
     const cards = (1 + cardChance(totals, "doubleStrike") / 100) * (1 + Math.max(0, cardValue(totals, "steady")) / 100)
       * (itemDefinition(opponentWeapon)?.weapon?.mode === "RANGED" ? 1 + Math.max(0, cardValue(totals, "rangedSlayer")) / 100 : 1);
     return baseDamage * (1 + crit.chance * (crit.multiplier - 1)) * prestigeSwingMultiplier(ranks) * cards;
+  }
+
+  /**
+   * One side's fighter before the matchup: its health, its averaged hit (a staff's bolt factor in), the weapon's
+   * attack interval (a staff casts slower), armor, regen, crits and the Mastery in play. Duels and guild fights share it.
+   */
+  function duelSide(ctx: any, identity: any, progress: any, opponentWeapon = "") {
+    const rightHand = equippedRightHandForProgress(progress), weapon = rightHand || equippedLeftHandForProgress(progress);
+    const runInterval = attackIntervalForProgress(withSoulStats(progress, soulStatsFor(ctx, identity), soulAttackCapFor(ctx, identity)));
+    return {
+      weapon, mastery: masteryInPlayFor(ctx, identity, rightHand, weapon), crit: duelCrit(ctx, identity),
+      maxHp: maxHealthForProgress(ctx, identity, progress),
+      hit: duelDamage(ctx, identity, progress.damage, opponentWeapon) * weaponHitFactor(weapon),
+      attackInterval: weapon ? weaponAttackInterval(weapon, runInterval) : Number(DUEL_DURATION_MICROS) / 1_000_000 + 1,
+      armor: researchedArmor(ctx, identity, progress.armor), regen: researchedRegen(ctx, identity, progress.regen),
+    };
+  }
+
+  /**
+   * A guild battle fighter: the duel's side with its Mastery folded in. A crowd has no one opponent, so Parry and
+   * Ranged Slayer stay out, and Guard and Mana Shield count as the extra health they make a knockout take.
+   */
+  function guildFighter(ctx: any, identity: any, progress: any): DuelFighter {
+    const side = duelSide(ctx, identity, progress);
+    if (!side.weapon) return { maxHp: side.maxHp, damage: 0, armor: side.armor, regen: side.regen, attackRate: 31 };
+    const fold = duelMasteryFold({ mastery: side.mastery, crit: side.crit, damage: side.hit, attackInterval: side.attackInterval,
+      maxHp: side.maxHp, deflect: 0, opponent: { damage: 0, attackInterval: side.attackInterval, ranged: false } });
+    const taken = masteryDamageTaken(side.mastery) * fold.damageTaken;
+    return { maxHp: side.maxHp / taken, damage: side.hit * fold.damage, armor: side.armor, regen: (side.regen + fold.regen) / taken,
+      attackRate: fold.attackInterval };
   }
 
   /** Iaido's first hit is a full critical: its damage over the averaged hit. */
@@ -335,20 +366,18 @@ export function createDuelRuntime(deps: DuelRuntimeDeps) {
 
     const startsAtMicros = ctx.timestamp.microsSinceUnixEpoch + DUEL_COUNTDOWN_MICROS;
     const endsAtMicros = startsAtMicros + DUEL_DURATION_MICROS;
-    const challengerRightHandItem = equippedRightHandForProgress(challengerProgress);
-    const opponentRightHandItem = equippedRightHandForProgress(opponentProgress);
-    const challengerLeftHandItem = challengerRightHandItem ? "" : equippedLeftHandForProgress(challengerProgress);
-    const opponentLeftHandItem = opponentRightHandItem ? "" : equippedLeftHandForProgress(opponentProgress);
     const challengerAppearance = equipmentPresentationForProgress(ctx, challengerProgress);
     const opponentAppearance = equipmentPresentationForProgress(ctx, opponentProgress);
-    const challengerMaxHp = maxHealthForProgress(ctx, ctx.sender, challengerProgress);
-    const opponentMaxHp = maxHealthForProgress(ctx, opponent, opponentProgress);
     const inactiveAttackRate = Number(DUEL_DURATION_MICROS) / 1_000_000 + 1;
-    const challengerWeapon = challengerRightHandItem || challengerLeftHandItem, opponentWeapon = opponentRightHandItem || opponentLeftHandItem;
+    const challengerWeapon = equippedRightHandForProgress(challengerProgress) || equippedLeftHandForProgress(challengerProgress);
+    const opponentWeapon = equippedRightHandForProgress(opponentProgress) || equippedLeftHandForProgress(opponentProgress);
+    // Each side's fighter (duelSide); a staff's bolts hit a little harder and come slower (shared/staff-skills.ts).
+    const challengerSide = duelSide(ctx, ctx.sender, challengerProgress, opponentWeapon);
+    const opponentSide = duelSide(ctx, opponent, opponentProgress, challengerWeapon);
+    const challengerMaxHp = challengerSide.maxHp, opponentMaxHp = opponentSide.maxHp;
     // Weapon Mastery, frozen into the duel: Skill Proficiency in the skill chances, Swordplay's Guard in what the other
     // side deals, and the techniques folded into damage, speed, regen and skill chances (mastery-techniques.ts).
-    const challengerMastery = masteryInPlayFor(ctx, ctx.sender, challengerRightHandItem, challengerWeapon);
-    const opponentMastery = masteryInPlayFor(ctx, opponent, opponentRightHandItem, opponentWeapon);
+    const challengerMastery = challengerSide.mastery, opponentMastery = opponentSide.mastery;
     // Magic armor and Mystic Boots raise each side's skill chances as Skill Proficiency does.
     const skillGear = (progress: any) => {
       const feet = equippedFeetForProgress(progress);
@@ -361,18 +390,13 @@ export function createDuelRuntime(deps: DuelRuntimeDeps) {
       challengerMastery, opponentMastery);
     const sides = { challenger: ctx.sender, opponent, challengerWeaponItem: challengerWeapon, opponentWeaponItem: opponentWeapon };
     const swordFields = withProficiency(duelSwordSkillFields(ctx, sides));
-    // A staff's bolts hit a little harder and come slower (shared/staff-skills.ts).
-    const challengerHit = duelDamage(ctx, ctx.sender, challengerProgress.damage, opponentWeapon) * weaponHitFactor(challengerWeapon);
-    const opponentHit = duelDamage(ctx, opponent, opponentProgress.damage, challengerWeapon) * weaponHitFactor(opponentWeapon);
-    const challengerInterval = challengerWeapon ? weaponAttackInterval(challengerWeapon,
-      attackIntervalForProgress(withSoulStats(challengerProgress, soulStatsFor(ctx, challengerProgress.identity), soulAttackCapFor(ctx, challengerProgress.identity)))) : inactiveAttackRate;
-    const opponentInterval = opponentWeapon ? weaponAttackInterval(opponentWeapon,
-      attackIntervalForProgress(withSoulStats(opponentProgress, soulStatsFor(ctx, opponentProgress.identity), soulAttackCapFor(ctx, opponentProgress.identity)))) : inactiveAttackRate;
+    const challengerHit = challengerSide.hit, opponentHit = opponentSide.hit;
+    const challengerInterval = challengerSide.attackInterval, opponentInterval = opponentSide.attackInterval;
     const ranged = (weapon: string) => itemDefinition(weapon)?.weapon?.mode === "RANGED";
-    const challengerFold = duelMasteryFold({ mastery: challengerMastery, crit: duelCrit(ctx, ctx.sender), damage: challengerHit,
+    const challengerFold = duelMasteryFold({ mastery: challengerMastery, crit: challengerSide.crit, damage: challengerHit,
       attackInterval: challengerInterval, maxHp: challengerMaxHp, deflect: swordFields.challengerDeflect,
       opponent: { damage: opponentHit, attackInterval: opponentInterval, ranged: ranged(opponentWeapon) } });
-    const opponentFold = duelMasteryFold({ mastery: opponentMastery, crit: duelCrit(ctx, opponent), damage: opponentHit,
+    const opponentFold = duelMasteryFold({ mastery: opponentMastery, crit: opponentSide.crit, damage: opponentHit,
       attackInterval: opponentInterval, maxHp: opponentMaxHp, deflect: swordFields.opponentDeflect,
       opponent: { damage: challengerHit, attackInterval: challengerInterval, ranged: ranged(challengerWeapon) } });
     const insertedDuel = insertSnapshotRow(ctx, "duel", {
@@ -393,9 +417,9 @@ export function createDuelRuntime(deps: DuelRuntimeDeps) {
       challengerHp: challengerMaxHp,
       challengerMaxHp,
       challengerDamage: challengerHit * challengerFold.damage * masteryDamageTaken(opponentMastery) * opponentFold.damageTaken,
-      challengerArmor: researchedArmor(ctx, ctx.sender, challengerProgress.armor),
+      challengerArmor: challengerSide.armor,
       challengerAttackRate: challengerWeapon ? challengerFold.attackInterval : inactiveAttackRate,
-      challengerRegen: researchedRegen(ctx, ctx.sender, challengerProgress.regen) + (challengerWeapon ? challengerFold.regen : 0),
+      challengerRegen: challengerSide.regen + (challengerWeapon ? challengerFold.regen : 0),
       challengerAttacks: 0,
       challengerDamageDealt: 0,
       challengerRegened: 0,
@@ -403,9 +427,9 @@ export function createDuelRuntime(deps: DuelRuntimeDeps) {
       opponentHp: opponentMaxHp,
       opponentMaxHp,
       opponentDamage: opponentHit * opponentFold.damage * masteryDamageTaken(challengerMastery) * challengerFold.damageTaken,
-      opponentArmor: researchedArmor(ctx, opponent, opponentProgress.armor),
+      opponentArmor: opponentSide.armor,
       opponentAttackRate: opponentWeapon ? opponentFold.attackInterval : inactiveAttackRate,
-      opponentRegen: researchedRegen(ctx, opponent, opponentProgress.regen) + (opponentWeapon ? opponentFold.regen : 0),
+      opponentRegen: opponentSide.regen + (opponentWeapon ? opponentFold.regen : 0),
       opponentAttacks: 0,
       opponentDamageDealt: 0,
       opponentRegened: 0,
@@ -431,9 +455,9 @@ export function createDuelRuntime(deps: DuelRuntimeDeps) {
     // resolves the same way however many times it is replayed.
     ctx.db.duelRiposte.insert({
       duelId: insertedDuel.id,
-      // Reflect cards add to the perk.
-      challengerRiposte: prestigeRiposteChance(prestigePerkRanks(ctx, ctx.sender)) + cardChance(activeCardTotalsFor(ctx, ctx.sender), "reflect") / 100,
-      opponentRiposte: prestigeRiposteChance(prestigePerkRanks(ctx, opponent)) + cardChance(activeCardTotalsFor(ctx, opponent), "reflect") / 100,
+      // Reflect cards add to the perk; a chance never passes 1.
+      challengerRiposte: Math.min(1, prestigeRiposteChance(prestigePerkRanks(ctx, ctx.sender)) + cardChance(activeCardTotalsFor(ctx, ctx.sender), "reflect") / 100),
+      opponentRiposte: Math.min(1, prestigeRiposteChance(prestigePerkRanks(ctx, opponent)) + cardChance(activeCardTotalsFor(ctx, opponent), "reflect") / 100),
       riposteSeed: ctx.timestamp.microsSinceUnixEpoch,
     });
     ctx.db.duelCombatSnapshot.insert({ ...ctx.db.duelRiposte.duelId.find(insertedDuel.id),
@@ -462,5 +486,5 @@ export function createDuelRuntime(deps: DuelRuntimeDeps) {
     ensureRealtimeFrameSchedules(ctx);
   }
 
-  return { duelDamage, finishDuel, resolveDuel, startDuel, publishDuelReplay };
+  return { duelDamage, guildFighter, finishDuel, resolveDuel, startDuel, publishDuelReplay };
 }

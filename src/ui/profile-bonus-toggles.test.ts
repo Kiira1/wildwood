@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 import { parseHTML } from "linkedom";
-import { createProfileBonusToggles, ownProfileInPlay } from "./profile-bonus-toggles";
+import { createProfileBonusToggles } from "./profile-bonus-toggles";
 import { BONUS_GROUPS, BONUS_ITEM_IDS } from "../../shared/bonus-toggles";
 
 function setup(locked: string | null = null) {
@@ -71,10 +71,4 @@ it("can't be switched during a challenge, and says why", () => {
   s.setLock(null); s.panel.render();
   expect(s.byLabel("bonusToggle-all").disabled).toBe(false);
   expect(s.status()).toBe("");
-});
-
-it("reads your own profile with the research you switched off left out, anyone else's as it is", () => {
-  const coop = { localIdentity: () => "me", researchInPlay: () => ({ warcraft: 0 }) };
-  expect(ownProfileInPlay({ identity: "me", research: { warcraft: 9 } }, coop).research).toEqual({ warcraft: 0 });
-  expect(ownProfileInPlay({ identity: "them", research: { warcraft: 9 } }, coop).research).toEqual({ warcraft: 9 });
 });

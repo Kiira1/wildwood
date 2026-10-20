@@ -1,18 +1,17 @@
 import type { PlayerProfileData, PlayerResearch } from "../wildstat-coop";
 import { createEmptyResearchRanks } from "../../shared/research";
-import { PRESTIGE_PERKS, playerAttackCap, prestigePerkValue, type PrestigePerkRanks } from "../../shared/prestige-perks";
-import { CRITICAL_DAMAGE_BASE, criticalDamageMultiplier } from "../../shared/critical-damage";
-import { effectivePlayerPower } from "../../shared/player-power";
-import { computePlayerStats, type PlayerStatInputs } from "../../shared/player-stats";
+import { PRESTIGE_PERKS, type PrestigePerkRanks } from "../../shared/prestige-perks";
+import { CRITICAL_DAMAGE_BASE } from "../../shared/critical-damage";
+import { computePlayerStats, playerStatPower, type PlayerStatInputs } from "../../shared/player-stats";
 import { itemLevelFor, slotTierFor } from "../../shared/item-level";
 import { formatCompactNumber, formatRate } from "./number-format";
 import { attackSpeedLabel, attackSpeedRatingForInterval, critDamageLabel, type AttackCapArg } from "../../shared/stat-rating";
 import { formatRating } from "./rating-text";
 import { cleanSoulStats, withSoulStats, type SoulStats } from "../../shared/soul-dimension";
-import { challengeMinimumInterval } from "../../shared/prestige-challenge";
 import { cardStatFactors, cardTotals } from "../../shared/card-effects";
-import { BASE_CARD_SLOTS, NO_ACTIVE_CARDS, activeCardSlots, activeCardsInPlay } from "../../shared/active-cards";
 import { STAT_NAMES } from "../../shared/card-text";
+import { bonusesInPlay, masteryInPlayAtLevels } from "../../shared/bonuses-in-play";
+import { masteryAttackRange } from "../../shared/weapon-mastery";
 
 export function formatPlayedTime(seconds: number) {
   const wholeMinutes = Math.max(0, Math.floor(seconds / 60));
@@ -54,8 +53,6 @@ export function profileStatInputs(
     // Tiers are keyed by slot, not by item: a lookup by item id missed every time and the panel showed bare gear.
     itemLevel: itemId => itemLevelFor(itemUpgradeLevels, itemRefines, itemId),
     research, cards: cardTotals(activeCards),
-    // The profile has never counted Black Boots' flat speed (docs/player-stats.md, known disagreements).
-    countBlackBoots: false,
     ...extra,
   };
 }
@@ -63,49 +60,43 @@ export function profileStatInputs(
 /** A tier is the slot's, so resolve the item to its slot before looking up. */
 export const slotUpgradeLevelFor = (itemUpgradeLevels: Record<string, number>, itemId: string) => slotTierFor(itemUpgradeLevels, itemId);
 
+type ProfileStatRows = Partial<Pick<PlayerProfileData, "research" | "prestigePerks" | "soulStats" | "activeCards" | "bonusOff"
+  | "prestigeChallenge" | "aggroChallenge" | "mastery">>;
+
+/** A profile's research, perks, soul, cards, cap and Mastery in play, as the server reads that player's own. */
+export function profileInPlay(profile: ProfileStatRows) {
+  return bonusesInPlay({ research: profile.research, perks: profile.prestigePerks, soul: profile.soulStats, activeCards: profile.activeCards,
+    bonusOff: profile.bonusOff, prestigeChallenge: profile.prestigeChallenge, aggroChallenge: profile.aggroChallenge, mastery: profile.mastery });
+}
+
 /**
- * Another player's soul stats in play, as combat counts them: all of them in a normal run, none while
- * their challenge (Reflect Only or Aggro) is active. The local player uses the Soul Dimension runtime's own.
+ * Another player's soul stats in play, as combat counts them: each one not switched off in a normal run, none
+ * while their challenge (Reflect Only or Aggro) is active. The local player uses the Soul Dimension runtime's own.
  */
-export function profileSoulInPlay(profile: PlayerProfileData): SoulStats | null {
-  return profile.prestigeChallenge?.active || profile.aggroChallenge?.active ? null : profile.soulStats ?? null;
+export function profileSoulInPlay(profile: ProfileStatRows): SoulStats | null {
+  return profileInPlay(profile).soul;
 }
 
-/** A profile's active cards in play: one of each type during an Aggro run, more with Card Slots perks. */
-export function profileActiveCardIds(profile: Pick<PlayerProfileData, "activeCards" | "prestigePerks" | "aggroChallenge">) {
-  return activeCardsInPlay(profile.activeCards ?? NO_ACTIVE_CARDS, profile.aggroChallenge?.active ? BASE_CARD_SLOTS : activeCardSlots(profile.prestigePerks));
-}
-
-/** A profile's active cards, totalled as combat totals them. */
-function profileCardTotals(profile: PlayerProfileData) {
-  return cardTotals(profileActiveCardIds(profile));
+/** A profile's active cards in play: one of each type during an Aggro run, more with Card Slots perks in play. */
+export function profileActiveCardIds(profile: ProfileStatRows) {
+  return profileInPlay(profile).cardIds;
 }
 
 /** Another player's attack speed cap: their Reflect Only wins and Quick Draw, and the Quick Draw cards they wear. */
-export function profileAttackCap(profile: PlayerProfileData) {
-  const cap = playerAttackCap(profile.prestigeChallenge, profile.prestigePerks);
-  const cards = cardStatFactors(profileCardTotals(profile)).attackCapRaise;
-  return cards > 0 ? { ...cap, raise: cap.raise + cards } : cap;
+export function profileAttackCap(profile: ProfileStatRows) {
+  return profileInPlay(profile).attackCap;
 }
 
-/** The profile's power, with the soul stats in play added as combat adds them, and crits counted (critPowerFactor). */
+/** The profile's power as the server counts it: research, perks and cards in play, the soul stats in play added, crits counted. */
 export function profilePower(profile: PlayerProfileData, soul: Partial<SoulStats> | null = null) {
-  const clean = cleanSoulStats(soul);
-  const level = (itemId: string) => itemLevelFor(profile.itemUpgradeLevels, profile.itemRefines, itemId);
-  const activeCards = profileActiveCardIds(profile);
-  const cards = cardStatFactors(cardTotals(activeCards));
-  const critChance = (profile.research?.criticalChance ?? 0) * .01 + prestigePerkValue(profile.prestigePerks, "keenEdge") + cards.critChance;
-  const critMultiplier = criticalDamageMultiplier({ researchRank: profile.research?.criticalDamage, perks: profile.prestigePerks,
-    soul: clean.critDamage, rating: profile.progress.critRating, capRank: profile.research?.critCap, card: cards.critDamage });
-  return effectivePlayerPower(
-    { ...withSoulStats(profile.progress, clean, challengeMinimumInterval(profile.prestigeChallenge)), critChance, critMultiplier, activeCards },
-    profile.research,
-    level,
-  );
+  const inPlay = profileInPlay(profile), clean = cleanSoulStats(soul);
+  const progress = withSoulStats(profile.progress, clean, inPlay.attackCap);
+  return Math.round(playerStatPower(profileStatInputs(progress, inPlay.research ?? undefined, profile.itemUpgradeLevels, profile.itemRefines,
+    inPlay.cardIds, { perks: inPlay.perks, soul: clean })));
 }
 
 export type ProfileStatDisplaySource = {
-  label: "Tech" | "Equipment" | "Slot Upgrade" | "Refine" | "Cards" | "Prestige" | "Guild" | "Soul" | "Class Set" | "Armor" | "Boots";
+  label: "Tech" | "Equipment" | "Slot Upgrade" | "Refine" | "Cards" | "Prestige" | "Guild" | "Soul" | "Class Set" | "Armor" | "Boots" | "Mastery";
   value: string;
 };
 
@@ -142,7 +133,12 @@ export function profileStatDisplayRows(
   const progress = withSoulStats(profile.progress, soul, attackCap);
   const ranks = research ?? profile.research ?? createEmptyResearchRanks();
   const statValue = (value: number) => Math.abs(value) >= 1_000_000 ? formatCompactNumber(value) : Math.round(value).toLocaleString();
-  const inputs = profileStatInputs(progress, ranks, profile.itemUpgradeLevels, profile.itemRefines, profileActiveCardIds(profile), {
+  const inPlay = profileInPlay(profile);
+  // Long Shot cards and Archery's range on top of the saved range, as the world adds them (progress-controller.ts addedRange).
+  const addedRange = { cards: cardStatFactors(inPlay.cards).range, mastery: masteryAttackRange(masteryInPlayAtLevels(inPlay.mastery,
+    progress.equippedRightHand, progress.equippedRightHand || progress.equippedLeftHand)) };
+  const ranged = { ...progress, attackRange: progress.attackRange + addedRange.cards + addedRange.mastery };
+  const inputs = profileStatInputs(ranged, ranks, profile.itemUpgradeLevels, profile.itemRefines, inPlay.cardIds, {
     soul, attackCap, prestigeLevel, guildBonus,
     // Long Shot and Fleet Foot pay outside an Aggro run, as the server pays them; the other perks show as given.
     perks: profile.aggroChallenge?.active ? { ...perks, longShot: 0, fleetFoot: 0 } : perks,
@@ -177,8 +173,9 @@ export function profileStatDisplayRows(
   const bracket = (label: string) => `(${label.replace(" (Max)", " Max")})`;
   const baseAttackSpeed = attackSpeedLabel(1 / baseAttackInterval, 1 / minAttackInterval);
   const attackSpeed = `${stats.attackRate.toFixed(2)}/s`;
-  // A sword reaches its own range, with the same Tech and Long Shot on top (weaponAttackRange); both are in the saved range.
-  const reach = stats.range, baseRange = Math.max(1, reach - from.range.tech - from.range.prestige);
+  // A sword reaches its own range, with the same Tech, Long Shot, cards and Archery on top (weaponAttackRange).
+  const reach = stats.range, baseRange = Math.max(1, reach - from.range.tech - from.range.prestige - addedRange.cards - addedRange.mastery);
+  const rangeValue = (value: number) => `+${Math.round(value * 10) / 10} range`;
   const speed = from.moveSpeed;
   // Light armor walks faster and Heavy slower, a piece at a time (armor-class-perks.ts).
   const armorSource = (factor: number) =>
@@ -224,7 +221,9 @@ export function profileStatDisplayRows(
       equationOperator: "×",
       multiplier: multiplierValue(reach / baseRange), total: statValue(reach),
       sources: [...(from.range.tech ? [{ label: "Tech" as const, value: `+${from.range.tech} range` }] : []),
-        ...(from.range.prestige ? [{ label: "Prestige" as const, value: `+${from.range.prestige} range` }] : [])],
+        ...(from.range.prestige ? [{ label: "Prestige" as const, value: `+${from.range.prestige} range` }] : []),
+        ...(addedRange.cards ? [{ label: "Cards" as const, value: rangeValue(addedRange.cards) }] : []),
+        ...(addedRange.mastery ? [{ label: "Mastery" as const, value: rangeValue(addedRange.mastery) }] : [])],
     },
     {
       kind: "regen", label: "Regen:",
@@ -242,7 +241,8 @@ export function profileStatDisplayRows(
       sources: [...multiplierSources(speed.techPercent), ...(speed.techFlat > 0 ? [{ label: "Tech" as const, value: `+${speed.techFlat} speed` }] : []),
         ...(speed.prestige ? [{ label: "Prestige" as const, value: `+${Math.round(speed.prestige * 1000) / 10}%` }] : []),
         ...(speed.cards ? [{ label: "Cards" as const, value: `+${Math.round(speed.cards * 1000) / 10}%` }] : []),
-        ...armorSource(speed.armor), ...bootsSource(speed.boots)],
+        ...armorSource(speed.armor), ...bootsSource(speed.boots),
+        ...(speed.blackBoots ? [{ label: "Boots" as const, value: `+${speed.blackBoots} speed` }] : [])],
     },
   ];
   // Tech and prestige multiply each other, exactly as the server pays them, so

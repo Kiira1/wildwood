@@ -5,7 +5,7 @@ import { effectiveRewardAmount } from "../../../shared/reward-display";
 
 type EquippedStats = {
   equippedRightHand: string; equippedLeftHand: string;
-  equippedHead: string; equippedChest: string;
+  equippedHead: string; equippedChest: string; equippedFeet?: string;
 };
 
 export function createRewardDisplay(
@@ -16,10 +16,10 @@ export function createRewardDisplay(
   const totalAmount = (type: RewardType, amount: number) => {
     const items = equipped();
     const weapon = items.equippedRightHand || items.equippedLeftHand;
-    const head = items.equippedHead, chest = items.equippedChest;
+    const head = items.equippedHead, chest = items.equippedChest, feet = items.equippedFeet ?? "";
     return effectiveRewardAmount(type, amount, statGain(), ranks(), {
-      weapon, head, chest,
-      weaponLevel: upgradeLevel(weapon), headLevel: upgradeLevel(head), chestLevel: upgradeLevel(chest), activeCards: activeCards(),
+      weapon, head, chest, feet,
+      weaponLevel: upgradeLevel(weapon), headLevel: upgradeLevel(head), chestLevel: upgradeLevel(chest), feetLevel: upgradeLevel(feet), activeCards: activeCards(),
     });
   };
   return {

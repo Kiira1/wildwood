@@ -12,7 +12,7 @@ import {
   equipmentDamageMultiplierBonus, equipmentMaxHealthMultiplierBonus, equipmentRegenerationMultiplierBonus, itemDefinition, itemLevelParts, type ItemLevel,
 } from "./items";
 import { luckMultiplier } from "./luck-research";
-import { applyPlayerStatFactors, playerStatFactors } from "./player-power";
+import { applyPlayerStatFactors, playerStatFactors, unroundedPlayerPower } from "./player-power";
 import { prestigeStatMultiplier } from "./prestige";
 import { CHALLENGE_ABSOLUTE_MIN_INTERVAL } from "./prestige-challenge";
 import { prestigePerkValue, type PrestigePerkRanks } from "./prestige-perks";
@@ -51,8 +51,6 @@ export type PlayerStatInputs = {
   tailwind?: number;
   /** Duels keep their own footing: Black Boots do not count. */
   dueling?: boolean;
-  /** False where a view has never counted Black Boots' flat speed (the profile; docs/player-stats.md). */
-  countBlackBoots?: boolean;
 };
 
 const EMPTY_RANKS = createEmptyResearchRanks();
@@ -93,12 +91,23 @@ export function playerCoreStats(inputs: PlayerStatInputs) {
   return { factors, stats: applyPlayerStatFactors(factors, { ...base, attackRate: base.attackInterval }) };
 }
 
+/**
+ * Power as the server writes it (spacetimedb/src/player-power.ts powerFieldsForProgress), unrounded: the core
+ * stats at the run's own attack speed, with crits counted (critPowerFactor).
+ */
+export function playerStatPower(inputs: PlayerStatInputs) {
+  const { factors, stats } = playerCoreStats(inputs), ranks = ranksOf(inputs), perks = inputs.perks ?? null;
+  const critMultiplier = criticalDamage({ researchRank: ranks.criticalDamage, perks, soul: cleanSoulStats(inputs.soul).critDamage,
+    rating: inputs.base.critRating, capRank: ranks.critCap, card: factors.cards.critDamage }).multiplier;
+  return unroundedPlayerPower({ ...stats, critChance: critChanceFor(ranks, perks, factors.cards.critChance), critMultiplier });
+}
+
 /** Move speed: (base × research + Utility) × (Fleet Foot + cards), plus Black Boots, × armor class × boots × Tailwind. */
 export function playerMoveSpeed(inputs: PlayerStatInputs) {
   const { base, loadout } = inputs, ranks = ranksOf(inputs);
   const research = base.moveSpeed * movementSpeedMultiplier(ranks.moveSpeed) + utilityMovementSpeedBonus(ranks.utilityMoveSpeed);
   const bonus = 1 + prestigePerkValue(inputs.perks, "fleetFoot") + Math.max(0, cardValue(inputs.cards ?? NO_CARDS, "fleetFoot")) / 100;
-  const flat = inputs.countBlackBoots === false ? 0 : blackBootsSpeed(loadout.feet, inputs.dueling);
+  const flat = blackBootsSpeed(loadout.feet, inputs.dueling);
   const gear = gearMoveSpeedFactor(loadout.head, loadout.chest, loadout.feet, levelOf(inputs)(loadout.feet));
   return (research * bonus + flat) * gear * (1 + (inputs.tailwind ?? 0));
 }
@@ -189,7 +198,7 @@ function statSources(inputs: PlayerStatInputs, ranks: ResearchRanks, soul: SoulS
       research: inputs.base.moveSpeed * movementSpeedMultiplier(ranks.moveSpeed) + utilityMovementSpeedBonus(ranks.utilityMoveSpeed),
       prestige: prestigePerkValue(perks, "fleetFoot"), cards: cards.moveSpeed,
       armor: armorMoveSpeedFactor(head, chest), boots: bootMoveSpeedFactor(feet, itemLevel(feet)),
-      blackBoots: inputs.countBlackBoots === false ? 0 : blackBootsSpeed(feet, inputs.dueling), tailwind: inputs.tailwind ?? 0,
+      blackBoots: blackBootsSpeed(feet, inputs.dueling), tailwind: inputs.tailwind ?? 0,
     },
     statGain: {
       tech: researchStatRewardMultiplier(ranks), prestige: prestigeStatMultiplier(inputs.prestigeLevel ?? 0), guild: guildGain(inputs.guildBonus),

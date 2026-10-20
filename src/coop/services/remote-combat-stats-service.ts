@@ -1,11 +1,15 @@
 import type { Identity } from "spacetimedb";
-import { weaponAttackInterval, weaponHitFactor } from "../../../shared/staff-skills";
+import { weaponHitFactor } from "../../../shared/staff-skills";
 import { tables, type DbConnection } from "../../module_bindings";
-import { effectivePlayerPowerStats } from "../../../shared/player-power";
 import { itemDefinition } from "../../../shared/items";
-import { itemSlotTier, type SlotTiers } from "../../../shared/slot-upgrades";
-import { guildWeaponRange } from "../../../shared/guild-combat";
-import { criticalDamageMultiplier } from "../../../shared/critical-damage";
+import { itemLevelFor } from "../../../shared/item-level";
+import { computePlayerStats } from "../../../shared/player-stats";
+import { bonusesInPlay, masteryInPlayAtLevels, type PublicStatRows } from "../../../shared/bonuses-in-play";
+import { cardStatFactors } from "../../../shared/card-effects";
+import { activeCardsOfRow } from "../../../shared/active-cards";
+import { parseBonusOff } from "../../../shared/bonus-toggles";
+import { cleanSoulStats, withSoulStats } from "../../../shared/soul-dimension";
+import { isWeaponSchool, masteryAttackRange, type WeaponSchool } from "../../../shared/weapon-mastery";
 import type { RemoteCombatStats } from "../contracts";
 import { withWideProgress } from "./wide-progress";
 
@@ -38,8 +42,10 @@ type ProgressRow = {
   regen: number;
   equippedHead: string;
   equippedChest: string;
+  equippedFeet?: string;
   equippedRightHand: string;
   equippedLeftHand: string;
+  critRating?: number;
 };
 
 type ResearchRow = {
@@ -73,43 +79,71 @@ function finitePositive(value: number, fallback: number) {
   return Number.isFinite(value) && value > 0 ? value : fallback;
 }
 
-function normalizedRank(value: number) {
-  return Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0;
-}
+/**
+ * The rest of a player's public rows, as profiles read them: refines, active cards, perks, soul, Mastery levels,
+ * switched-off bonuses and challenges. Not public, so left out: Tailwind's live share and the Mastery techniques.
+ */
+export type RemoteStatRows = Omit<PublicStatRows<ResearchRow>, "research"> & { refines?: readonly { itemId: string; level: number }[] };
 
-/** Converts the same persisted rows used by profiles into local-combat values. */
+/** Converts the same persisted rows used by profiles into local-combat values, through shared/player-stats.ts as local combat does. */
 export function remoteCombatStatsFromRows(
   progress: ProgressRow,
   research: ResearchRow | null | undefined,
   upgrades: readonly UpgradeRow[],
+  rows: RemoteStatRows = {},
 ): RemoteCombatStats {
   // A tier belongs to the slot and whatever is worn there inherits it. Looking
   // one up by item id missed every time, so other players fought here untiered.
-  const slotTiers: SlotTiers = Object.fromEntries(upgrades.map((upgrade) => [upgrade.itemId, upgrade.level]));
-  const effective = effectivePlayerPowerStats(
-    progress,
-    research,
-    (itemId) => itemSlotTier(slotTiers, itemId),
-  );
-  const weapon = itemDefinition(progress.equippedRightHand || progress.equippedLeftHand)?.weapon;
-  const melee = weapon?.mode === "MELEE";
-  const criticalChanceRank = normalizedRank(research?.criticalChance ?? 0);
-  const criticalDamageRank = normalizedRank(research?.criticalDamage ?? 0);
+  const slotTiers = Object.fromEntries(upgrades.map((upgrade) => [upgrade.itemId, upgrade.level]));
+  const refines = Object.fromEntries((rows.refines ?? []).map((row) => [row.itemId, row.level]));
+  const inPlay = bonusesInPlay({ ...rows, research });
+  const rightHand = progress.equippedRightHand, weaponItem = rightHand || progress.equippedLeftHand;
+  // Long Shot cards and Archery on top of the saved range, as progress-controller.ts addedRange adds them.
+  const addedRange = cardStatFactors(inPlay.cards).range + masteryAttackRange(masteryInPlayAtLevels(inPlay.mastery, rightHand, weaponItem));
+  const run = withSoulStats(progress, inPlay.soul, inPlay.attackCap);
+  const stats = computePlayerStats({
+    base: { maxHp: run.maxHp, damage: run.damage, armor: run.armor, regen: run.regen, attackInterval: run.attackRate,
+      attackRange: finitePositive(progress.attackRange, 200) + addedRange, moveSpeed: 0, critRating: progress.critRating },
+    loadout: { head: progress.equippedHead, chest: progress.equippedChest, feet: progress.equippedFeet ?? "", rightHand, leftHand: progress.equippedLeftHand },
+    itemLevel: (itemId) => itemLevelFor(slotTiers, refines, itemId),
+    research: inPlay.research, perks: inPlay.perks, cards: inPlay.cards, soul: inPlay.soul, attackCap: inPlay.attackCap,
+  });
+  const melee = itemDefinition(weaponItem)?.weapon?.mode === "MELEE";
   return {
     melee,
     // A staff's bolts hit a little harder and come slower (shared/staff-skills.ts).
-    damage: finitePositive(effective.damage * weaponHitFactor(progress.equippedRightHand || progress.equippedLeftHand), 1),
-    maxHp: finitePositive(effective.maxHp, 100),
-    armor: Math.max(0, Number.isFinite(effective.armor) ? effective.armor : 0),
-    regen: Math.max(0, Number.isFinite(effective.regen) ? effective.regen : 0),
-    attackInterval: finitePositive(weaponAttackInterval(progress.equippedRightHand || progress.equippedLeftHand, effective.attackRate), 1),
+    damage: finitePositive(stats.damage * weaponHitFactor(weaponItem), 1),
+    maxHp: finitePositive(stats.maxHp, 100),
+    armor: Math.max(0, Number.isFinite(stats.armor) ? stats.armor : 0),
+    regen: Math.max(0, Number.isFinite(stats.regenPerSecond) ? stats.regenPerSecond : 0),
+    attackInterval: finitePositive(stats.weaponInterval, 1),
     projectileSpeed: finitePositive(progress.projectileSpeed, 390),
     projectileCount: melee ? 1 : Number.isInteger(progress.projectileCount)
       ? Math.max(1, Math.min(20, progress.projectileCount))
       : 1,
-    attackRange: guildWeaponRange(progress.equippedRightHand || progress.equippedLeftHand, finitePositive(progress.attackRange, 200)),
-    criticalChance: Math.max(0, Math.min(1, criticalChanceRank * .01)),
-    criticalDamageMultiplier: criticalDamageMultiplier({ researchRank: criticalDamageRank, rating: (progress as { critRating?: number }).critRating, capRank: normalizedRank(research?.critCap ?? 0) }),
+    attackRange: stats.range,
+    criticalChance: Math.max(0, Math.min(1, stats.critChance)),
+    criticalDamageMultiplier: stats.critMultiplier,
+  };
+}
+
+/** The public rows a remote load subscribes to beside progress, research and slot tiers. */
+function publicStatRows(connection: DbConnection, identity: string): RemoteStatRows {
+  // A table missing from the cache (an older binding) reads as no rows.
+  const db = connection.db, mine = <T extends { identity: { toHexString(): string } }>(table: { iter(): Iterable<T> } | undefined) =>
+    [...table?.iter() ?? []].filter((row) => row.identity.toHexString() === identity);
+  const [perk] = mine(db.playerPrestigePerk), [expansion] = mine(db.playerPrestigeExpansionPerk);
+  const [cardPerk] = mine(db.playerPrestigeCardPerk), [soul] = mine(db.profileSoulStats);
+  const [toggle] = mine(db.playerBonusToggle), [reflect] = mine(db.playerPrestigeChallenge);
+  const [aggro] = mine(db.playerAggroChallenge);
+  const mastery: Partial<Record<WeaponSchool, number>> = {};
+  for (const row of mine(db.playerMasteryLevel)) if (isWeaponSchool(row.school)) mastery[row.school] = row.level;
+  return {
+    refines: mine(db.playerItemRefine),
+    activeCards: activeCardsOfRow(mine(db.playerActiveCard)[0]),
+    perks: { ...perk, ...expansion, ...cardPerk },
+    soul: soul ? cleanSoulStats(soul) : null,
+    bonusOff: parseBonusOff(toggle?.off), prestigeChallenge: reflect ?? null, aggroChallenge: aggro ?? null, mastery,
   };
 }
 
@@ -199,7 +233,7 @@ export function createRemoteCombatStatsService(dependencies: {
               .find((row) => row.identity.toHexString() === identity);
             const upgrades = [...connection.db.playerItemUpgrade.iter()]
               .filter((row) => row.identity.toHexString() === identity);
-            finish(remoteCombatStatsFromRows(progress, research, upgrades));
+            finish(remoteCombatStatsFromRows(progress, research, upgrades, publicStatRows(connection, identity)));
           } catch {
             finish(null);
           }
@@ -210,6 +244,16 @@ export function createRemoteCombatStatsService(dependencies: {
           tables.playerInventory.where((row) => row.identity.eq(dbIdentity)),
           tables.playerResearch.where((row) => row.identity.eq(dbIdentity)),
           tables.playerItemUpgrade.where((row) => row.identity.eq(dbIdentity)),
+          tables.playerItemRefine.where((row) => row.identity.eq(dbIdentity)),
+          tables.playerActiveCard.where((row) => row.identity.eq(dbIdentity)),
+          tables.playerPrestigePerk.where((row) => row.identity.eq(dbIdentity)),
+          tables.playerPrestigeExpansionPerk.where((row) => row.identity.eq(dbIdentity)),
+          tables.playerPrestigeCardPerk.where((row) => row.identity.eq(dbIdentity)),
+          tables.playerPrestigeChallenge.where((row) => row.identity.eq(dbIdentity)),
+          tables.playerAggroChallenge.where((row) => row.identity.eq(dbIdentity)),
+          tables.profileSoulStats.where((row) => row.identity.eq(dbIdentity)),
+          tables.playerMasteryLevel.where((row) => row.identity.eq(dbIdentity)),
+          tables.playerBonusToggle.where((row) => row.identity.eq(dbIdentity)),
         ]);
     } catch {
       finish(null);

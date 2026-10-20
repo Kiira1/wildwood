@@ -1,4 +1,13 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.916.13": [
+    "Auto Farm counts your cards when judging bosses and when to move on",
+    "Guild battles use the same staff, sword and Mastery rules as duels",
+    "Your profile's power, Move Speed and Range match what you really have",
+    "Other players' profiles count only the bonuses they have switched on",
+    "Other players fight monsters on your screen with their refines, cards and soul",
+    "Armor popups count Warrior Boots",
+    "Power over your head no longer drops after kills when you have crits",
+  ],
   "0.916.12": [
     "The Starshard and ore messages show the full amount you got",
     "Quests finish as soon as you get the last kill",

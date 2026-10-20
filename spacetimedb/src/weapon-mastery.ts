@@ -9,6 +9,7 @@ import { TAILWIND_SPEED_BONUS, hasTechnique } from "../../shared/mastery-techniq
 import { canonicalSavedHand } from "./loadout";
 import { armorMoveSpeedAllowance } from "../../shared/armor-class-perks";
 import { bootMoveSpeedFactor, canonicalItemId, hasBootStat } from "../../shared/items";
+import { normalizeRefineLevel } from "../../shared/refine-multiplier";
 
 /** A school's Mastery points, one row per player and school, so a new school needs no new column. */
 export const playerWeaponMastery = table({ name: "player_weapon_mastery", public: false }, {
@@ -60,7 +61,7 @@ export function bonusMoveSpeedFactor(ctx: Ctx, identity: Identity, progress: any
   const mastery = masteryInPlayFor(ctx, identity, right, right || canonicalSavedHand(progress, "equippedLeftHand"));
   const feet = canonicalItemId(progress?.equippedFeet);
   // The pair's refine, read as item-refine.ts keys it; importing that module here would make a cycle through door-reach.ts.
-  const refine = feet && hasBootStat(feet) ? ctx.db.playerItemRefine.key.find(`${identity.toHexString()}:${feet}`)?.level ?? 0 : 0;
+  const refine = feet && hasBootStat(feet) ? normalizeRefineLevel(ctx.db.playerItemRefine.key.find(`${identity.toHexString()}:${feet}`)?.level) : 0;
   const boots = feet ? bootMoveSpeedFactor(feet, { refine }) : 1;
   return (hasTechnique(mastery, "tailwind") ? 1 + TAILWIND_SPEED_BONUS : 1)
     * armorMoveSpeedAllowance(canonicalItemId(progress?.equippedHead), canonicalItemId(progress?.equippedChest)) * boots;

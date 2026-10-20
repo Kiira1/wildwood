@@ -1,7 +1,10 @@
 // Regular-enemy report validation. Boss combat runs on the client and clears
 // only unlock gates (boss-gates.ts); the retained IDs below serve old migrations.
 import { upgradeSlotForItem } from "../../shared/slot-upgrades";
-import { preparePlayerPowerStats, playerPowerForStats, legacyU32Power } from "../../shared/player-power";
+import { preparePlayerPowerStats } from "../../shared/player-power";
+import { powerFieldsFromStats, powerStatsFrom } from "./power-stats";
+import { bonusOffFor } from "./bonus-toggles";
+import { researchInPlayFor } from "../../shared/bonus-toggles";
 import { bootSkillChanceFactor, equipmentDamageFactor, hasBootStat, itemDefinition, type ItemLevel } from "../../shared/items";
 import { armorSkillChanceFactor } from "../../shared/armor-class-perks";
 import { createEnemyRewardAccumulator, type EnemyStatReward } from "../../shared/enemy-reward-accumulator";
@@ -21,7 +24,7 @@ import { swordSkillRollFor } from "./sword-skills";
 import { STAFF_BOLT_DAMAGE_FACTOR, isStaff, staffSkillReachMultiplier, weaponAttackInterval } from "../../shared/staff-skills";
 import { staffSkillRollFor } from "./staff-skills";
 import type { ModuleReducerCtx as GameReducerContext } from "./index";
-import { readPlayerProgress } from "./wide-stats";
+import { readCritRating, readPlayerProgress } from "./wide-stats";
 import { weaponMasteryPoints } from "./weapon-mastery";
 import { masteryDamageTaken, masteryInPlay, rollWithProficiency } from "../../shared/weapon-mastery";
 import { masteryTechniqueBound } from "../../shared/mastery-techniques";
@@ -109,6 +112,7 @@ export function createCombatReport(deps: CombatReportDeps) {
    */
   function combatBoundForReport(ctx: GameReducerContext, worn?: CardTotals) {
     let loaded: ReturnType<typeof load> | undefined;
+    let power: ReturnType<typeof powerStatsFrom> | undefined;
     function load() {
       const saved = readPlayerProgress(ctx, ctx.sender);
       const research = ctx.db.playerResearch.identity.find(ctx.sender);
@@ -137,7 +141,7 @@ export function createCombatReport(deps: CombatReportDeps) {
         }
         return factors;
       };
-      if (!saved || !loadout || !statsFor) return { saved, earned, statsFor, armorFor, soul, gear: null };
+      if (!saved || !loadout || !statsFor) return { saved, earned, statsFor, armorFor, soul, minInterval, research, ranks, cards, gear: null };
       // Empty hands still earn through Reflect (an unarmed Reflect run): the
       // bound must not read no weapon as no combat, which paid them nothing.
       const armed = Boolean(loadout.weapon);
@@ -176,7 +180,7 @@ export function createCombatReport(deps: CombatReportDeps) {
       const staffReach = staff
         ? staffSkillReachMultiplier(rollWithProficiency(staffSkillRollFor(ctx, ctx.sender, loadout.weapon), mastery.level, loadout.skillFactor), technique.meteorFalls) : 1;
       const armorReduction = armorFor(statsFor(withSoulStats(saved, soul, minInterval)).armor).reduction;
-      return { saved, earned, statsFor, armorFor, soul, minInterval, gear: {
+      return { saved, earned, statsFor, armorFor, soul, minInterval, research, ranks, cards, gear: {
         loadout, critical, swing: prestigeSwingMultiplier(ranks),
         // Projectile count is not a kill reward, so the saved row holds for the whole report.
         armed,
@@ -250,14 +254,19 @@ export function createCombatReport(deps: CombatReportDeps) {
       /** The saved progress row as the report found it; nothing in validation writes it. */
       savedProgress: () => report().saved,
       /**
-       * powerFieldsForProgress for the rewarded row, from the research row and
-       * slot levels this report already read. Loot adds to the bag but equips
-       * nothing, and the levels are memoised by slot, so this is exact.
+       * powerFieldsForProgress for the rewarded row, through the same powerStatsFrom with the rows this report
+       * already read. Loot adds to the bag but equips nothing, so this is exact.
        */
       powerFields(progress: any) {
-        const { statsFor, soul, minInterval } = report();
-        const powerLevel = statsFor ? playerPowerForStats(statsFor(withSoulStats(progress, soul, minInterval))) : 0;
-        return { power: legacyU32Power(powerLevel), powerLevel };
+        const { saved, statsFor, soul, minInterval, research, ranks, cards, gear } = report();
+        if (!saved || !statsFor || !gear) return { power: 0, powerLevel: 0 };
+        if (!power) {
+          // Research as it plays: the bound keeps the stored row, so its gear factors serve only while nothing is switched off.
+          const inPlay = researchInPlayFor(research, bonusOffFor(ctx, ctx.sender));
+          power = powerStatsFrom({ soul, cap: minInterval, research: inPlay, perks: ranks, cards, itemLevel: gear.loadout.levelFor,
+            critRating: () => readCritRating(ctx, ctx.sender) }, inPlay === research ? statsFor : undefined);
+        }
+        return powerFieldsFromStats(power(progress));
       },
     };
   }

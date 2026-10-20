@@ -83,7 +83,7 @@ import { createGemPurchaseService } from "./gem-purchase-service";
 import { HOME_EXTERIOR_MAP_ID } from "../../shared/home";
 import { registerTown, TOWN_ARRIVAL, TOWN_MAP_ID } from "./town";
 import { guildHallMember, memberEnteredWorld, guildHallMemberLeft, guildHallTables, isGuildHallMap, registerGuildHall } from "./guild-hall";
-import { isSoulMap, noteEnemyDefeats, registerSoulDimension, soulDimensionOpenFor, soulDimensionTables, soulAttackCapFor, soulStatsFor, wideMotionMap, withSoulStats, worldBoundsFor } from "./soul-dimension";
+import { isSoulMap, noteEnemyDefeats, registerSoulDimension, soulDimensionOpenFor, soulDimensionTables, wideMotionMap, worldBoundsFor } from "./soul-dimension";
 import { insertSnapshotRow, updateSnapshotRow } from "./snapshot-row-writes";
 import { createPlayerMotionFrameSampler } from "../../shared/player-motion-sample";
 import { schema, SenderError, Router, table, t, type InferSchema, type ReducerCtx, type ViewCtx } from "spacetimedb/server";
@@ -196,7 +196,7 @@ const { combatBoundForReport } = createCombatReport({
 // Duel bodies live in duel-runtime.ts; the duel reducers and the equipment
 // snapshot below keep calling the same names. Every dep is a hoisted function,
 // so this only has to precede the lifecycle factory that borrows finishDuel.
-const { duelDamage, finishDuel, resolveDuel, startDuel, publishDuelReplay } = createDuelRuntime({
+const { guildFighter, finishDuel, resolveDuel, startDuel, publishDuelReplay } = createDuelRuntime({
   requireControllingPlayer, isSupportedProtocol, sameIdentity, playersBlocked, isVirtualPlayer,
   insertChatMessage, researchedDamage, researchedArmor, researchedRegen, maxHealthForProgress,
   attackIntervalForProgress, equippedRightHandForProgress, equippedLeftHandForProgress,
@@ -3747,17 +3747,11 @@ function requireGuildPlayer(ctx: ModuleReducerCtx) {
   requireGuildConnection(ctx);
 }
 
+/** A guild battle fighter, built as a duel builds its sides (duel-runtime.ts guildFighter). */
 function guildFighterFor(ctx: ModuleReducerCtx, identity: Identity): DuelFighter {
   const progress = readPlayerProgress(ctx, identity);
   if (!progress) throw new SenderError("Player progress is unavailable.");
-  const weapon = equippedRightHandForProgress(progress) || equippedLeftHandForProgress(progress);
-  return {
-    maxHp: maxHealthForProgress(ctx, identity, progress),
-    damage: weapon ? duelDamage(ctx, identity, progress.damage) : 0,
-    armor: researchedArmor(ctx, identity, progress.armor),
-    regen: researchedRegen(ctx, identity, progress.regen),
-    attackRate: weapon ? attackIntervalForProgress(withSoulStats(progress, soulStatsFor(ctx, identity), soulAttackCapFor(ctx, identity))) : 31,
-  };
+  return guildFighter(ctx, identity, progress);
 }
 
 /** Online and where, for profiles and guilds: survives eye-off and autofarming; an invisible developer is offline. */

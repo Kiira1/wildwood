@@ -9,12 +9,13 @@ import { ATTACK_BALANCE_VERSION, MIN_ATTACK_INTERVAL, DEFAULT_ATTACK_INTERVAL } 
 import { compressLegacyProgressionOutlier, rebalanceLegacyDamageHealth, compressLegacyTopFiveProgression, correctLegacyTopFiveV5Progression } from "../../shared/progression-balance";
 import { compressLegacyMapPower } from "../../shared/map-power-rescale";
 import { rescaleEndgameProgress } from "../../shared/endgame-power-rescale";
-import { playerPowerForStats, effectivePlayerPowerStats, effectivePlayerPower, legacyU32Power } from "../../shared/player-power";
-import { withSoulStats, soulStatsFor, soulAttackCapFor } from "./soul-dimension";
-import { critPowerFields } from "./crit-power";
+import { playerPowerForStats } from "../../shared/player-power";
+import { prestigePerkRanks } from "./prestige";
+import { soulStatsFor, soulAttackCapFor } from "./soul-dimension";
+import { powerFieldsFromStats, powerStatsFrom, type PowerParts } from "./power-stats";
 import { researchInPlay } from "./bonus-toggles";
 import { itemLevelFor, equippedRightHandForProgress, equippedLeftHandForProgress, equippedHeadForProgress, equippedChestForProgress, equippedFeetForProgress, equipmentPresentationForProgress } from "./progress-helpers";
-import { readPlayerProgress } from "./wide-stats";
+import { readCritRating, readPlayerProgress } from "./wide-stats";
 import { bootArmorFactor, equipmentDamage, equipmentRegeneration, hasBootStat } from "../../shared/items";
 import { updateSnapshotRow, insertSnapshotRow } from "./snapshot-row-writes";
 import { effectiveMovementSpeedForProgress } from "./player-speed";
@@ -80,27 +81,23 @@ export function powerForProgress(progress: { maxHp: number; damage: number; atta
   return playerPowerForStats(progress);
 }
 
+/** What power reads besides the run's own stats (power-stats.ts PowerParts), from this player's rows. */
+export function powerPartsFor(ctx: any, identity: any): PowerParts {
+  return { soul: soulStatsFor(ctx, identity), cap: soulAttackCapFor(ctx, identity), research: researchInPlay(ctx, identity),
+    perks: prestigePerkRanks(ctx, identity), cards: activeCardTotalsFor(ctx, identity), itemLevel: itemId => itemLevelFor(ctx, identity, itemId),
+    critRating: () => readCritRating(ctx, identity) };
+}
+
 export function effectivePowerStatsForProgress(ctx: any, progress: any) {
-  return effectivePlayerPowerStats(
-    { ...withSoulStats(progress, soulStatsFor(ctx, progress.identity), soulAttackCapFor(ctx, progress.identity)), ...critPowerFields(ctx, progress.identity, progress.critRating) },
-    researchInPlay(ctx, progress.identity),
-    (itemId) => itemLevelFor(ctx, progress.identity, itemId),
-    activeCardTotalsFor(ctx, progress.identity),
-  );
+  return powerStatsFrom(powerPartsFor(ctx, progress.identity))(progress);
 }
 
 export function effectivePowerForProgress(ctx: any, progress: any) {
-  return effectivePlayerPower(
-    { ...withSoulStats(progress, soulStatsFor(ctx, progress.identity), soulAttackCapFor(ctx, progress.identity)), ...critPowerFields(ctx, progress.identity, progress.critRating) },
-    researchInPlay(ctx, progress.identity),
-    (itemId) => itemLevelFor(ctx, progress.identity, itemId),
-    activeCardTotalsFor(ctx, progress.identity),
-  );
+  return playerPowerForStats(effectivePowerStatsForProgress(ctx, progress));
 }
 
 export function powerFieldsForProgress(ctx: any, progress: any) {
-  const powerLevel = effectivePowerForProgress(ctx, progress);
-  return { power: legacyU32Power(powerLevel), powerLevel };
+  return powerFieldsFromStats(effectivePowerStatsForProgress(ctx, progress));
 }
 
 export function researchedDamage(ctx: any, identity: any, damage: number, knownProgress?: any, knownResearch?: any) {

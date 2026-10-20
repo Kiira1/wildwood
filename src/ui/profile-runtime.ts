@@ -11,8 +11,8 @@ import type { createItemInspectionController } from "./item-inspection-controlle
 import { formatCompactNumber } from "./number-format";
 import { createPlayerSafetyController } from "./player-safety-controller";
 import type { createPrestigeExpansionRuntime } from "./prestige-expansion-runtime";
-import { formatPlayedTime, profileAttackCap, profilePower, profilePresenceText, profileSoulInPlay, renderProfileStats } from "./profile";
-import { ownProfileInPlay, profileBonusDeps } from "./profile-bonus-toggles";
+import { formatPlayedTime, profileAttackCap, profileInPlay, profilePower, profilePresenceText, profileSoulInPlay, renderProfileStats } from "./profile";
+import { profileBonusDeps } from "./profile-bonus-toggles";
 import { createProfileWindowController } from "./profile-window-controller";
 
 type BootstrapAssets = ReturnType<typeof createGameBootstrapAssets>;
@@ -107,17 +107,17 @@ export function createProfileRuntime(deps: ProfileRuntimeDeps) {
     playerGender: coop.playerGender, setGender: async value => client?.setGender?.(value), openIconPicker: deps.openIconPicker,
     nameColor: identity => client?.nameColor?.(identity) ?? 0, setNameColor: async value => client?.setNameColor?.(value),
     renderStats: (profile, element) => {
-      // Your own profile shows the stats in play now; anyone else's, the ones their profile row recorded.
-      const own = coop.isLocal(profile.identity);
+      // Your own profile shows the stats in play now; anyone else's, theirs in play as the server counts them.
+      const own = coop.isLocal(profile.identity), theirs = own ? null : profileInPlay(profile);
       return renderProfileStats(profile, element, formatArmorReduction,
         own ? coop.attackCap() : profileAttackCap(profile),
-        own ? client?.researchInPlay?.() ?? profile.research : profile.research,
+        own ? client?.researchInPlay?.() ?? profile.research : theirs?.research ?? profile.research,
         own ? (client?.prestigeStatGainInPlay?.() === false ? 0 : coop.prestigeLevel()) : profile.prestigeLevel ?? 0,
-        own ? client?.prestigePerks?.() : profile.prestigePerks,
+        own ? client?.prestigePerks?.() : theirs?.perks,
         own ? client?.dailyQuests?.()?.bonus ?? 1 : 1,
         ownSoulInPlay(profile));
     },
-    formatPower: profile => formatCompactNumber(profilePower(ownProfileInPlay(profile, client), ownSoulInPlay(profile))),
+    formatPower: profile => formatCompactNumber(profilePower(profile, ownSoulInPlay(profile))),
     formatPlayedTime,
     profile: identity => client?.playerProfile?.(identity),
     loadProfile: async identity => client?.loadPlayerProfile?.(identity),

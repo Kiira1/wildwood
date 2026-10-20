@@ -1,11 +1,12 @@
 import { criticalDamageMultiplier } from "../../shared/critical-damage";
-import { prestigePerkValue } from "../../shared/prestige-perks";
+import { prestigePerkValue, type PrestigePerkRanks } from "../../shared/prestige-perks";
 import { researchInPlay } from "./bonus-toggles";
 import { prestigePerkRanks } from "./prestige";
 import { soulStatsFor } from "./soul-dimension";
 import { readCritRating } from "./wide-stats";
 import { activeCardTotalsFor } from "./active-cards";
-import { cardStatFactors } from "../../shared/card-effects";
+import { cardStatFactors, type CardTotals } from "../../shared/card-effects";
+import type { SoulStats } from "../../shared/soul-dimension";
 
 /**
  * A player's crit chance and multiplier in play, for power (critPowerFactor, shared/player-power.ts):
@@ -13,12 +14,17 @@ import { cardStatFactors } from "../../shared/card-effects";
  * the multiplier, under the Crit Cap. As duelDamage counts them (duel-runtime.ts).
  */
 export function critPowerFields(ctx: any, identity: any, rating?: number) {
-  const research = researchInPlay(ctx, identity);
-  const ranks = prestigePerkRanks(ctx, identity);
-  const cards = cardStatFactors(activeCardTotalsFor(ctx, identity));
-  return {
-    critChance: (research?.criticalChance ?? 0) * .01 + prestigePerkValue(ranks, "keenEdge") + cards.critChance,
-    critMultiplier: criticalDamageMultiplier({ researchRank: research?.criticalDamage, perks: ranks,
-      soul: soulStatsFor(ctx, identity)?.critDamage, rating: rating ?? readCritRating(ctx, identity), capRank: research?.critCap, card: cards.critDamage }),
-  };
+  return critPowerFrom({ research: researchInPlay(ctx, identity), perks: prestigePerkRanks(ctx, identity), cards: activeCardTotalsFor(ctx, identity),
+    soul: soulStatsFor(ctx, identity) })(rating ?? readCritRating(ctx, identity));
+}
+
+/** The same from rows a caller already read, priced at any crit rating (a kill report's rewarded row moves it). */
+export function critPowerFrom(parts: { research: any; perks: PrestigePerkRanks; cards: CardTotals; soul: SoulStats | null }) {
+  const { research, perks } = parts, cards = cardStatFactors(parts.cards);
+  const critChance = (research?.criticalChance ?? 0) * .01 + prestigePerkValue(perks, "keenEdge") + cards.critChance;
+  return (rating: number) => ({
+    critChance,
+    critMultiplier: criticalDamageMultiplier({ researchRank: research?.criticalDamage, perks,
+      soul: parts.soul?.critDamage, rating, capRank: research?.critCap, card: cards.critDamage }),
+  });
 }

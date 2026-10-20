@@ -6,7 +6,10 @@ import { prestigePerkValue } from "../../../shared/prestige-perks";
 import { playerBaseMovementSpeed } from "../../../shared/rules";
 import { withSoulStats } from "../../../shared/soul-dimension";
 import { weaponAttackInterval } from "../../../shared/staff-skills";
-import { masteryAttackRange, masteryInPlay } from "../../../shared/weapon-mastery";
+import type { Identity } from "spacetimedb";
+import { masteryAttackRange, masteryInPlay, masteryLevel, type WeaponSchool } from "../../../shared/weapon-mastery";
+import { weaponHitFactor } from "../../../shared/staff-skills";
+import { remoteCombatStatsFromRows } from "../../coop/services/remote-combat-stats-service";
 import type { PlayerProfileData, PlayerProgress } from "../../coop/contracts";
 import { profilePower, profileStatDisplayRows } from "../../ui/profile";
 import { formatArmorReduction } from "../combat";
@@ -83,14 +86,19 @@ function worldStats(fixture: StatFixture) {
   });
 }
 
+/** Mastery levels by school, as profiles and player_mastery_level hold them. */
+const masteryLevels = (fixture: StatFixture) => Object.fromEntries(Object.entries(fixture.mastery)
+  .map(([school, points]) => [school, masteryLevel(points ?? 0)])) as Partial<Record<WeaponSchool, number>>;
+
 /** The fixture as the server sends the player's own profile. */
 function profileOf(fixture: StatFixture): PlayerProfileData {
   const { head, chest, feet, rightHand, leftHand } = fixture.loadout;
   return {
     identity: "golden", name: "Golden", gender: 0, research: fixture.research, itemUpgradeLevels: { ...fixture.slotTiers }, itemRefines: fixture.refines,
     activeCards: fixture.cards, prestigePerks: fixture.perks, prestigeLevel: fixture.prestigeLevel, soulStats: fixture.soul,
+    mastery: masteryLevels(fixture), bonusOff: [],
     progress: { ...fixture.saved, equippedHead: head, equippedChest: chest, equippedFeet: feet, equippedRightHand: rightHand, equippedLeftHand: leftHand } as unknown as PlayerProgress,
-  } as PlayerProfileData;
+  } satisfies Partial<PlayerProfileData> as unknown as PlayerProfileData;
 }
 
 /** The profile Stats tab's rows for one's own profile, as main.ts renderStats passes them. */
@@ -109,11 +117,24 @@ function autoFarmStats(fixture: StatFixture) {
   const evaluator = createFarmEvaluator({
     base: () => ({ maxHp: player.baseMaxHp, damage: player.damage, attackRate: player.attackRate, armor: player.armor, regen: player.regen }),
     equipment: () => inventoryOf(fixture), research: () => fixture.research, upgradeLevel: itemLevel, rewardMultiplier: () => 1,
+    cards: () => cardTotals(fixtureCardIds(fixture)),
     minAttackInterval: () => fixtureAttackCap(fixture), criticalChance: research.criticalChance,
     criticalMultiplier: (extra = 0) => research.criticalDamageMultiplier(fixture.soul?.critDamage ?? 0, (player.critRating ?? 0) + extra),
   });
   const { stats, power } = evaluator.evaluate() as { stats: PlayerPowerStats; power: number };
   return pinAll({ maxHp: stats.maxHp, damage: stats.damage, armor: stats.armor, regen: stats.regen, attackRate: stats.attackRate, power, dps: evaluator.dps() });
+}
+
+/** Another player fighting on your screen, from their public rows (remote-combat-stats-service.ts). */
+function remoteStats(fixture: StatFixture) {
+  const who = {} as Identity, { head, chest, feet, rightHand, leftHand } = fixture.loadout;
+  const progress = { ...fixture.saved, identity: who, projectileSpeed: 390, projectileCount: 1, equippedHead: head, equippedChest: chest,
+    equippedFeet: feet, equippedRightHand: rightHand, equippedLeftHand: leftHand };
+  const upgrades = Object.entries(fixture.slotTiers).map(([itemId, level]) => ({ identity: who, itemId, level: level ?? 0 }));
+  return remoteCombatStatsFromRows(progress, { identity: who, ...fixture.research }, upgrades, {
+    refines: Object.entries(fixture.refines).map(([itemId, level]) => ({ itemId, level })), activeCards: fixture.cards, perks: fixture.perks,
+    soul: fixture.soul, mastery: masteryLevels(fixture), bonusOff: [],
+  });
 }
 
 /** The HUD stat tracker and shown power (stat-tracker-source.ts): the core with the cards in play. */
@@ -233,7 +254,7 @@ describe("player stat golden fixtures", () => {
         "damage | 380 2.18 = 827 | Tech +20%, Equipment +36%, Slot Upgrade +17.28%, Refine +15.98%, Class Set +5%, Cards +2%",
         "armor | 45 1.67 = 75 (23.4% Block) | Tech +12%, Boots +45%, Cards +3%",
         "attack | 1.43/s 1.00 = 24.1k (1.43/s) (1.43/s) · 3.00/s Cap | ",
-        "range | 200 1.10 = 220 | Tech +20 range",
+        "range | 200 1.12 = 224 | Tech +20 range, Mastery +4 range",
         "regen | 9.00/s 1.58 = 14.2/s | Tech +10%, Equipment +28.8%, Slot Upgrade +9.22%, Refine +5.7%",
         "speed | 200 1.21 = 243 | Tech +10%, Tech +9 speed, Armor +6%",
         "stat-gain | 1.10 1.00 = +10% (1.10×) | Tech 1.10×",
@@ -245,12 +266,12 @@ describe("player stat golden fixtures", () => {
     expect(profilePower(profileOf(fixture), fixture.soul)).toMatchInlineSnapshot(`9069`);
     expect(autoFarmStats(fixture)).toMatchInlineSnapshot(`
       {
-        "armor": 73.08,
+        "armor": 75.2724,
         "attackRate": 0.7,
-        "damage": 810.41688,
-        "dps": 1171.671737,
+        "damage": 826.6252176,
+        "dps": 1195.105171,
         "maxHp": 6836.3904,
-        "power": 9025.721109,
+        "power": 9068.854467,
         "regen": 14.22828,
       }
     `);
@@ -264,7 +285,7 @@ describe("player stat golden fixtures", () => {
     `);
     expect(rewardPopups(fixture)).toMatchInlineSnapshot(`
       {
-        "armor": 1.26896,
+        "armor": 1.839992,
         "damage": 2.392862472,
         "health": 1.7904832,
         "regen": 1.739012,
@@ -300,9 +321,9 @@ describe("player stat golden fixtures", () => {
         "damage | 180,400 41.76 = 7.53m | Soul +400, Tech +120%, Equipment +180%, Slot Upgrade +432%, Refine +918%, Class Set +5%, Cards +10.9%",
         "armor | 2,460 2.14 = 5,259 (57.7% Block) | Soul +60, Tech +100%, Cards +6.9%",
         "attack | 2.22/s 1.00 = 9.94m (2.22/s) (2.22/s) · 3.40/s Cap | Soul +0.000/s",
-        "range | 75 1.80 = 135 | Tech +50 range, Prestige +10 range",
+        "range | 75 1.84 = 138 | Tech +50 range, Prestige +10 range, Cards +3 range",
         "regen | 912/s 15.67 = 14.3k/s | Soul +12.0/s, Tech +90%, Equipment +120%, Slot Upgrade +264%, Refine +384%, Cards -5%",
-        "speed | 200 1.68 = 337 | Tech +50%, Tech +15 speed, Prestige +6%, Cards +0.9%",
+        "speed | 200 1.81 = 362 | Tech +50%, Tech +15 speed, Prestige +6%, Cards +0.9%, Boots +25 speed",
         "stat-gain | 1.40 1.84 = +158% (2.58×) | Tech 1.40×, Prestige 1.60×, Guild 1.15×",
         "critical | 0% 47% = 47% | Tech +20%, Prestige +25%, Cards +2%",
         "critical-damage | 1.05× 2.19× = 425 (3.24×) (3.24×) · 8× Cap | Tech +0.93×, Prestige +0.56×, Soul +0.09×",
@@ -314,13 +335,13 @@ describe("player stat golden fixtures", () => {
     expect(profilePower(profileOf(fixture), fixture.soul)).toMatchInlineSnapshot(`105231650`);
     expect(autoFarmStats(fixture)).toMatchInlineSnapshot(`
       {
-        "armor": 4920,
+        "armor": 5259.48,
         "attackRate": 0.4499293879,
-        "damage": 6792601.2,
-        "dps": 30985508.09,
-        "maxHp": 53388814.08,
-        "power": 101891373.7,
-        "regen": 15040.704,
+        "damage": 7532994.731,
+        "dps": 34362928.47,
+        "maxHp": 51466816.77,
+        "power": 105231650.3,
+        "regen": 14288.6688,
       }
     `);
     expect(trackerStats(fixture)).toMatchInlineSnapshot(`
@@ -359,27 +380,53 @@ describe("shared/player-stats.ts against the golden numbers", () => {
   });
 });
 
-// Where today's client paths disagree with the world (docs/player-stats.md, Known disagreements).
-// These pin the bugs as they are; fixing one means changing its line here on purpose.
-describe("known disagreements between client paths", () => {
+// The paths that used to disagree with the world (docs/player-stats.md, fixed in 0.916.13) now agree with it.
+describe("every path agrees with the world", () => {
   const [, mid, endgame] = STAT_FIXTURES;
-  it("1: auto-farm prices kills without the active cards' stat factors", () => {
-    expect(autoFarmStats(mid).armor).toBeLessThan(worldStats(mid).armor);
-    expect(autoFarmStats(endgame).damage).toBeLessThan(worldStats(endgame).damage);
+  const rowsOf = (fixture: StatFixture) => profileStatDisplayRows(profileOf(fixture), formatArmorReduction, fixtureAttackCap(fixture), fixture.research,
+    fixture.prestigeLevel, fixture.perks, fixture.guildBonus, fixture.soul);
+  const rowTotal = (fixture: StatFixture, kind: string) => Number(rowsOf(fixture).find(row => row.kind === kind)!.total.replace(/,/g, ""));
+
+  it("1: Auto Farm prices kills with the active cards, as the shown power does", () => {
+    for (const fixture of STAT_FIXTURES) {
+      const farm = autoFarmStats(fixture), tracker = trackerStats(fixture);
+      expect({ maxHp: farm.maxHp, damage: farm.damage, armor: farm.armor, regen: farm.regen }, fixture.name).toEqual(tracker);
+      expect(farm.armor, fixture.name).toBe(worldStats(fixture).armor);
+    }
   });
 
-  it("5: armor reward popups leave Warrior Boots out", () => {
+  it("2: profile power is the power Auto Farm and the server count", () => {
+    for (const fixture of STAT_FIXTURES) expect(profilePower(profileOf(fixture), fixture.soul), fixture.name).toBe(Math.round(autoFarmStats(fixture).power));
+  });
+
+  it("2: another player's profile counts their research and perks in play", () => {
+    const profile = { ...profileOf(endgame), bonusOff: ["research.warcraft", "prestige.keenEdge"] };
+    const off = { ...profileOf(endgame), research: { ...endgame.research, warcraft: 0 }, prestigePerks: { ...endgame.perks, keenEdge: 0 } };
+    expect(profilePower(profile, endgame.soul)).toBe(profilePower(off, endgame.soul));
+    expect(profilePower(profile, endgame.soul)).toBeLessThan(profilePower(profileOf(endgame), endgame.soul));
+  });
+
+  it("3: other players fight on your screen with the world's numbers", () => {
+    for (const fixture of STAT_FIXTURES) {
+      const world = worldStats(fixture), remote = remoteStats(fixture);
+      expect(pinAll({ damage: remote.damage, maxHp: remote.maxHp, armor: remote.armor, regen: remote.regen, attackInterval: remote.attackInterval,
+        attackRange: remote.attackRange, criticalChance: remote.criticalChance, criticalDamageMultiplier: remote.criticalDamageMultiplier }), fixture.name).toEqual({
+        damage: pin(world.damage * weaponHitFactor(fixture.loadout.rightHand)), maxHp: world.maxHp, armor: world.armor, regen: world.regen,
+        attackInterval: world.weaponInterval, attackRange: world.range, criticalChance: world.critChance, criticalDamageMultiplier: world.critMultiplier,
+      });
+    }
+  });
+
+  it("5: armor reward popups count Warrior Boots", () => {
     const world = worldStats(mid);
-    expect(trackerStats(mid).armor).toBeCloseTo(world.armor);
     // What one base armor adds in the world, against what the popup says it adds.
-    expect(rewardPopups(mid).armor / world.statGain).toBeLessThan(world.armor / worldPlayer(mid).armor - .01);
+    expect(rewardPopups(mid).armor / world.statGain).toBeCloseTo(world.armor / worldPlayer(mid).armor, 9);
   });
 
-  it("6: the profile's Move Speed leaves Black Boots out, and its Range leaves Long Shot cards and Archery out", () => {
-    const speed = profileStatDisplayRows(profileOf(endgame), formatArmorReduction, fixtureAttackCap(endgame), endgame.research, endgame.prestigeLevel,
-      endgame.perks, endgame.guildBonus, endgame.soul).find(row => row.kind === "speed")!;
-    expect(Number(speed.total.replace(/,/g, ""))).toBeLessThan(worldStats(endgame).moveSpeed - 20);
-    const range = profileStatDisplayRows(profileOf(mid), formatArmorReduction, fixtureAttackCap(mid), mid.research).find(row => row.kind === "range")!;
-    expect(Number(range.total)).toBeLessThan(worldStats(mid).range);
+  it("6: the profile's Move Speed counts Black Boots, and its Range Long Shot cards and Archery", () => {
+    for (const fixture of STAT_FIXTURES) {
+      expect(rowTotal(fixture, "speed"), fixture.name).toBe(Math.round(worldStats(fixture).moveSpeed));
+      expect(rowTotal(fixture, "range"), fixture.name).toBe(Math.round(worldStats(fixture).range));
+    }
   });
 });
