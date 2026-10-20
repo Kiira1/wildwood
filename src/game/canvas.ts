@@ -1,6 +1,8 @@
 import { canvasRenderPixelRatio } from "./runtime/render/render-budget";
+import { freezeCanvas, releaseFrozen, type FrozenImage } from "./runtime/render/frozen-canvas";
 type TextSprite = {
-  canvas: HTMLCanvasElement;
+  /** The text's canvas, then its frozen bitmap. */
+  image: FrozenImage;
   logicalWidth: number;
   logicalHeight: number;
   textWidth: number;
@@ -90,15 +92,21 @@ export function createCanvasPrimitives(ctx: CanvasRenderingContext2D) {
       target.fillStyle = fillColor;
       target.fillText(text, padding, padding + ascent);
     }
-    const sprite = { canvas, logicalWidth, logicalHeight, textWidth, ascent, padding, pixels: canvas.width * canvas.height };
+    const sprite: TextSprite = { image: canvas, logicalWidth, logicalHeight, textWidth, ascent, padding, pixels: canvas.width * canvas.height };
     textSprites.set(key, sprite);
+    // Most labels stay on screen for many frames, so even one-off numbers are worth a bitmap.
+    freezeCanvas(canvas, bitmap => {
+      if (textSprites.get(key) !== sprite) return false;
+      sprite.image = bitmap;
+      return true;
+    });
     cachedTextPixels += sprite.pixels;
     while (textSprites.size > TEXT_CACHE_LIMIT || cachedTextPixels > TEXT_CACHE_PIXEL_LIMIT) {
       const oldestKey = textSprites.keys().next().value;
       if (oldestKey === undefined) break;
       const oldest = textSprites.get(oldestKey);
       textSprites.delete(oldestKey);
-      if (oldest) cachedTextPixels -= oldest.pixels;
+      if (oldest) { cachedTextPixels -= oldest.pixels; releaseFrozen(oldest.image); }
     }
     return sprite;
   }
@@ -125,7 +133,7 @@ export function createCanvasPrimitives(ctx: CanvasRenderingContext2D) {
     const smoothing = ctx.imageSmoothingEnabled;
     ctx.imageSmoothingEnabled = true;
     ctx.drawImage(
-      sprite.canvas,
+      sprite.image,
       x - anchorX,
       y - anchorY,
       sprite.logicalWidth,

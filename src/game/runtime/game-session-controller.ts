@@ -162,6 +162,7 @@ export function createGameSessionController(dependencies: SessionDependencies) {
   // origin; reading the captured copy keeps a hooked global out of that too.
   let lastRenderedAt = monotonicNowMs();
   let nextFrameAt = lastRenderedAt;
+  let fullFrameRate = true;
   let lastPresentationActivityAt = lastRenderedAt;
   let simulationAccumulatorSeconds = 0;
   let backgroundTimer: number | undefined;
@@ -297,6 +298,7 @@ export function createGameSessionController(dependencies: SessionDependencies) {
     const idleThrottled = !lowPerformanceMode
       && idlePresentationThrottleActive(activityActive, now, lastPresentationActivityAt);
     const reducedFrameRate = lowPerformanceMode || (!replayActive && !uiActive && (idleThrottled || paused || !running));
+    fullFrameRate = !reducedFrameRate;
     if (!presentationFrameDue(reducedFrameRate, now, nextFrameAt)) {
       return;
     }
@@ -409,6 +411,8 @@ export function createGameSessionController(dependencies: SessionDependencies) {
   return {
     end,
     fadeToWorld,
+    /** Whether the last frame aimed for 60 FPS rather than the idle or Low Performance 30. */
+    fullFrameRate: () => fullFrameRate,
     gameTime: () => gameTime,
     hasStarted: () => hasStarted,
     isPaused: () => paused,

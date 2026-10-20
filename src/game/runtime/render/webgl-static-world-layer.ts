@@ -38,7 +38,12 @@ export type StaticWorldLayerFrame = {
   colorQuads?: readonly StaticWorldColorQuadFrame[];
 };
 
+/** Drawn right after the ground's tiles, under everything else; false when it could not draw, so the canvas does. */
+export type StaticWorldGroundOverlay = (gl: WebGLRenderingContext, frame: StaticWorldLayerFrame) => boolean;
+
 export type StaticWorldLayer = {
+  /** Sets what is drawn over the ground's tiles each frame; kept across a lost context's rebuild. */
+  setGroundOverlay?: (overlay: StaticWorldGroundOverlay | null) => void;
   prepare: () => boolean;
   active: () => boolean;
   hide: () => void;
@@ -48,7 +53,7 @@ export type StaticWorldLayer = {
   /** Rebuilds a layer whose GPU context was lost, on a fresh canvas; true when WebGL is drawing again. */
   recover?: () => boolean;
 };
-type WebGLWorldLayer = StaticWorldLayer & { lost: () => boolean; destroy: () => void };
+type WebGLWorldLayer = StaticWorldLayer & { lost: () => boolean; destroy: () => void; overlay: { draw: StaticWorldGroundOverlay | null } };
 
 /**
  * Sent on window when the world layer's GPU context is lost ("lost") or comes
@@ -248,12 +253,14 @@ export function createWebGLStaticWorldLayer(overlayCanvas: HTMLCanvasElement): S
   if (!webGLWorldRequested(window.location.search)) return null;
   let layer: WebGLWorldLayer | null | undefined;
   let prepared = false;
+  const overlay: WebGLWorldLayer["overlay"] = { draw: null };
   const prepare = () => {
     prepared = true;
-    if (layer === undefined) layer = initializeWebGLStaticWorldLayer(overlayCanvas);
+    if (layer === undefined) layer = initializeWebGLStaticWorldLayer(overlayCanvas, overlay);
     return Boolean(layer?.active());
   };
   return {
+    setGroundOverlay: (draw) => { overlay.draw = draw; },
     prepare,
     active: () => Boolean(layer?.active()),
     hide: () => layer?.hide(),
@@ -313,7 +320,7 @@ function createProgram(gl: WebGLRenderingContext, vertexSource = VERTEX_SHADER, 
  * upload, or context failure immediately returns the whole world layer to
  * Canvas2D.
  */
-function initializeWebGLStaticWorldLayer(overlayCanvas: HTMLCanvasElement): WebGLWorldLayer | null {
+function initializeWebGLStaticWorldLayer(overlayCanvas: HTMLCanvasElement, overlay: WebGLWorldLayer["overlay"] = { draw: null }): WebGLWorldLayer | null {
   const canvas = document.createElement("canvas");
   canvas.id = "gameGpu";
   canvas.setAttribute("aria-hidden", "true");
@@ -622,6 +629,7 @@ function initializeWebGLStaticWorldLayer(overlayCanvas: HTMLCanvasElement): WebG
         gl.uniform4f(rect, left, top, width, height);
         gl.drawArrays(gl.TRIANGLES, 0, 6);
       }
+      overlay.draw?.(gl, frame);
       drawSpriteBatches(frame);
       drawColorQuads(frame);
       // WebGL allocation errors set an error flag instead of throwing. Check
@@ -656,5 +664,6 @@ function initializeWebGLStaticWorldLayer(overlayCanvas: HTMLCanvasElement): WebG
     renderer: "webgl",
     lost: () => lost,
     destroy: () => canvas.remove(),
+    overlay,
   };
 }

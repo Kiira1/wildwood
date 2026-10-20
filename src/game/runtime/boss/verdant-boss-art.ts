@@ -1,6 +1,7 @@
 import { GRAVEBLOOM_SPRITE_GROUND_OFFSET } from "../../constants";
 export { GRAVEBLOOM_ART_TOP } from "../../constants";
 import { drawBossSheetFrame } from "./boss-frame-crop";
+import { drawBrightened } from "../render/brighten";
 export const GRAVEBLOOM_ART_SOURCE = 'assets/wildstat/gravebloom-boss-v1.webp';
 
 /** Authored transparent boss art with subtle breathing and ability charge motion. */
@@ -16,7 +17,7 @@ export function drawGravebloomArt(ctx: CanvasRenderingContext2D, x: number, y: n
   ctx.scale(1 + breath, 1 - breath);
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = 'high';
-  if (hurt > 0) ctx.filter = 'brightness(1.65)';
-  drawBossSheetFrame(ctx, sprite, { bossId: "GRAVEBLOOM", frame: 0, cellWidth: sprite.naturalWidth, cellHeight: sprite.naturalHeight, drawWidth: 420, drawHeight: 420, top: -240 - 140 });
+  // The hurt flash is brightness(1.65), drawn without a canvas filter.
+  drawBrightened(ctx, hurt > 0 ? .65 : 0, () => drawBossSheetFrame(ctx, sprite, { bossId: "GRAVEBLOOM", frame: 0, cellWidth: sprite.naturalWidth, cellHeight: sprite.naturalHeight, drawWidth: 420, drawHeight: 420, top: -240 - 140 }));
   ctx.restore();
 }

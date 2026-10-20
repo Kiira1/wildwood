@@ -1,0 +1,106 @@
+{
+  "about": [
+    "Campaign boss sheets baked by scripts/art/bake-boss-sheets.mjs from the lossless PNGs at ref, with the green keyed out.",
+    "shift moves each pose inside its own cell, in source pixels, so it lands where the game drew it before cells were padded; pad is the transparent room added on every side of every cell."
+  ],
+  "ref": "a6a5f6c0^",
+  "folder": "public/assets/wildstat",
+  "margin": 4,
+  "bosses": {
+    "SPIDER": {
+      "source": "desert-scorpion-boss-spritesheet-v1.png",
+      "output": "desert-scorpion-boss-spritesheet-v2.webp",
+      "chroma": [135, 1.35],
+      "columns": 4,
+      "rows": 1,
+      "pad": [0, 0],
+      "shift": [
+        [-5, 0],
+        [6, 0],
+        [20, 0],
+        [19, 0]
+      ]
+    },
+    "FROSTCLAW": {
+      "source": "frostclaw-boss-spritesheet.png",
+      "output": "frostclaw-boss-spritesheet-v2.webp",
+      "chroma": [145, 1.45],
+      "columns": 4,
+      "rows": 1,
+      "pad": [4, 0],
+      "shift": [
+        [-12, 0],
+        [-34, 0],
+        [-40, 0],
+        [-1, 0]
+      ]
+    },
+    "MAGMALISK": {
+      "source": "magmalisk-boss-spritesheet.png",
+      "output": "magmalisk-boss-spritesheet-v2.webp",
+      "chroma": [145, 1.45],
+      "columns": 4,
+      "rows": 1,
+      "pad": [26, 0],
+      "shift": [
+        [-3, 0],
+        [43, 58],
+        [36, 60],
+        [42, 0]
+      ]
+    },
+    "GLOOMROOT": {
+      "source": "gloomroot-boss-spritesheet-v1.png",
+      "output": "gloomroot-boss-spritesheet-v2.webp",
+      "chroma": [145, 1.45],
+      "columns": 2,
+      "rows": 2,
+      "pad": [14, 0],
+      "shift": [
+        [0, 0],
+        [0, 0],
+        [0, 0],
+        [22, 0]
+      ]
+    },
+    "KOI_SHOGUN": {
+      "source": "koi-shogun-boss-spritesheet-v1.png",
+      "output": "koi-shogun-boss-spritesheet-v2.webp",
+      "chroma": [145, 1.45],
+      "columns": 4,
+      "rows": 1,
+      "pad": [52, 0],
+      "shift": [
+        [6, 0],
+        [-60, 0],
+        [23, 0],
+        [9, 0]
+      ]
+    },
+    "TEMPEST_KIRIN": {
+      "source": "tempest-kirin-boss-spritesheet-v1.png",
+      "output": "tempest-kirin-boss-spritesheet-v2.webp",
+      "columns": 4,
+      "rows": 1,
+      "pad": [72, 4],
+      "shift": [
+        [26, 0],
+        [11, 0],
+        [25, 0],
+        [18, 0]
+      ]
+    },
+    "VOLTWARDEN": {
+      "source": "voltwarden-boss-spritesheet-v1.png",
+      "output": "voltwarden-boss-spritesheet-v2.webp",
+      "columns": 3,
+      "rows": 1,
+      "pad": [8, 0],
+      "shift": [
+        [0, 0],
+        [0, 0],
+        [0, 0]
+      ]
+    }
+  }
+}

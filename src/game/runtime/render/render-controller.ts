@@ -5,6 +5,7 @@ import type { Camera } from "./camera";
 import type { DuelScene, EnemyShot, PlayerState, Projectile } from "../types";
 import type { StaticWorldColorQuadFrame, StaticWorldSpriteFrame } from "./webgl-static-world-layer";
 import { snapWorldRenderCoordinate } from "./render-space";
+import { freezeCanvas, releaseFrozen, type FrozenImage } from "./frozen-canvas";
 
 type BootsPickup = { x: number; y: number; r: number; collected: boolean };
 
@@ -123,6 +124,8 @@ export function createRenderController(options: {
   // A new canvas for each new ring, never a resized one (see world-renderer.ts's minimap).
   let rangeCanvas = typeof document === "undefined" ? null : document.createElement("canvas");
   let rangeKey = "", rangeHalf = 0;
+  /** The ring as drawn: its canvas, then that canvas frozen into a bitmap. */
+  let rangeImage: FrozenImage | null = null;
   function drawAttackRange() {
     if (attackRangeVisible() && !isDueling()) {
       const { dpr } = viewport();
@@ -140,8 +143,18 @@ export function createRenderController(options: {
         rangeCanvas.width = rangeCanvas.height = Math.max(1, halfPixels * 2);
         cache.setTransform(scale, 0, 0, scale, halfPixels, halfPixels);
         strokeAttackRange(cache, 0, 0, radius);
+        releaseFrozen(rangeImage);
+        const ring = rangeCanvas;
+        rangeImage = ring;
+        freezeCanvas(ring, bitmap => {
+          if (rangeImage !== ring) return false;
+          rangeImage = bitmap;
+          // The next ring gets a new canvas, so this one's pixels can go now.
+          ring.width = ring.height = 0;
+          return true;
+        });
       }
-      ctx.drawImage(rangeCanvas, x - rangeHalf, y - rangeHalf, rangeHalf * 2, rangeHalf * 2);
+      ctx.drawImage(rangeImage ?? rangeCanvas, x - rangeHalf, y - rangeHalf, rangeHalf * 2, rangeHalf * 2);
     }
   }
 

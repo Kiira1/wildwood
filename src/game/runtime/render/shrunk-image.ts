@@ -1,13 +1,15 @@
+import { freezeEntry, releaseFrozen, type FrozenImage } from "./frozen-canvas";
+
 type Source = HTMLImageElement | HTMLCanvasElement | ImageBitmap;
 type Rect = { x: number; y: number; w: number; h: number };
 
 /**
  * An image, or a frame of a sheet, cut and sized once to what it lands at on screen: Firefox's software canvas
  * re-samples the source on every draw, and a large sheet scaled down was most of a frame there.
- * Kept per image up to a pixel budget (frames at a few zoom levels); the oldest go first.
+ * Kept per image up to a pixel budget (frames at a few zoom levels); the oldest go first. Each is frozen once made.
  */
 export function createShrunkImages(pixelsPerImage = 6_000_000) {
-  const kept = new WeakMap<Source, { canvases: Map<string, HTMLCanvasElement>; pixels: number }>();
+  const kept = new WeakMap<Source, { canvases: Map<string, FrozenImage>; pixels: number }>();
   return function shrunk(image: Source, width: number, height: number, smoothing: boolean, frame?: Rect): Source | null {
     const sourceWidth = frame ? frame.w : image instanceof HTMLImageElement ? image.naturalWidth : image.width;
     const sourceHeight = frame ? frame.h : image instanceof HTMLImageElement ? image.naturalHeight : image.height;
@@ -27,11 +29,13 @@ export function createShrunkImages(pixelsPerImage = 6_000_000) {
     if (frame) target.drawImage(image, frame.x, frame.y, frame.w, frame.h, 0, 0, w, h);
     else target.drawImage(image, 0, 0, w, h);
     entry.canvases.set(key, canvas);
+    freezeEntry(entry.canvases, key, canvas);
     entry.pixels += w * h;
     for (const [oldKey, old] of entry.canvases) {
       if (entry.pixels <= pixelsPerImage || old === canvas) break;
       entry.canvases.delete(oldKey);
       entry.pixels -= old.width * old.height;
+      releaseFrozen(old);
     }
     return canvas;
   };

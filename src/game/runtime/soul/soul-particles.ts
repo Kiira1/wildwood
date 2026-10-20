@@ -1,4 +1,5 @@
 import { decodedImage } from "../render/decoded-image";
+import { freezeEntry, type FrozenImage } from "../render/frozen-canvas";
 import { SOUL_VILLAGE_EMITTERS, type SoulEmitter } from "../../soul-village";
 import type { Camera } from "../render/camera";
 import { soulFrame } from "./soul-prop-renderer";
@@ -50,16 +51,16 @@ export function createSoulParticles(options: {
   active: () => boolean;
 }) {
   const running = SOUL_VILLAGE_EMITTERS.map(emitter => ({ emitter, particles: [], owed: 0 } as Running));
-  const tinted = new Map<string, HTMLCanvasElement>();
+  const tinted = new Map<string, FrozenImage>();
   let lastTime = Number.NaN;
 
   /** The emitter's sprite in one of a few steps of its colour, made once: a canvas cannot tint per draw. */
   function tintedSprite(emitter: SoulEmitter, image: HTMLImageElement, step: number) {
     const key = `${emitter.frame}:${step}:${emitter.color ? JSON.stringify(emitter.color.colors) : ""}`;
-    let canvas = tinted.get(key);
-    if (canvas) return canvas;
+    const cached = tinted.get(key);
+    if (cached) return cached;
     const frame = soulFrame(String(emitter.frame), "village");
-    canvas = document.createElement("canvas");
+    const canvas = document.createElement("canvas");
     canvas.width = frame?.w ?? 1; canvas.height = frame?.h ?? 1;
     const context = canvas.getContext("2d");
     if (context && frame) {
@@ -73,6 +74,7 @@ export function createSoulParticles(options: {
       context.drawImage(decodedImage(image), frame.x, frame.y, frame.w, frame.h, 0, 0, frame.w, frame.h);
     }
     tinted.set(key, canvas);
+    freezeEntry(tinted, key, canvas);
     return canvas;
   }
 

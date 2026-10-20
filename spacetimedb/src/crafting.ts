@@ -8,7 +8,6 @@ import {
   craftMaterialsKey, craftMaterialsShort, gradeCraftAction, gradeCraftLevel, gradeCraftMaterials, gradeCraftNeed, gradeCraftSkill, isCraftable,
 } from "../../shared/grade-craft";
 import { gradeOf } from "../../shared/grade-equipment";
-import { gradeShopNeed, gradeShopOpen, masteryLevels } from "../../shared/grade-shop";
 import type { WeaponSchool } from "../../shared/weapon-mastery";
 import { TOWN_FEET_OFFSET, TOWN_SCHOOL_POSITIONS, TOWN_SCHOOL_SERVER_REACH, isTownMap } from "../../shared/town";
 import type { OreId } from "../../shared/refine";
@@ -18,7 +17,6 @@ import { oreCount, setRefineLevel, standsAtTheSmith, takeOres } from "./item-ref
 import { readPlayerProgress } from "./wide-stats";
 import { collectItem, freeBagSlots, receiveDuplicateEquipment } from "./equipment-copies";
 import { activeItemUpgradeEntriesFor } from "./upgrade-bench-slots";
-import { weaponMasteryPoints } from "./weapon-mastery";
 import { ensureWeaponSkillRoll } from "./weapon-skills";
 import { luckInPlay } from "./luck-research";
 import { CRAFT_TOOL, toolExperience, toolSavedMaterials } from "../../shared/tools";
@@ -92,7 +90,7 @@ export type CraftingDeps = {
 
 /**
  * One graded piece crafted at the Smith, into a free bag slot as a bought one arrives (grade-shop.ts), but at
- * +2 and with better luck on a weapon's skills. Any grade Mastery and the craft's level open can be crafted, below
+ * +2 and with better luck on a weapon's skills. Any grade the craft's level opens can be crafted, Mastery or not, below
  * the best held too; a weapon already held is reforged instead (its skills rolled again, keeping the higher), which
  * needs no bag room. `expectedMaterials` is the recipe the player saw.
  */
@@ -111,7 +109,6 @@ export function craftGradeGearFor(ctx: Ctx, args: { itemId: string; expectedMate
   const owned = new Set([...inventory, ...activeItemUpgradeEntriesFor(ctx, ctx.sender).map(({ active }) => active.itemId)]);
   const action = gradeCraftAction(itemId, owned);
   if (action === "owned") throw new SenderError("You already have that.");
-  if (!gradeShopOpen(itemId, masteryLevels(weaponMasteryPoints(ctx, ctx.sender)))) throw new SenderError(`You need ${gradeShopNeed(itemId)}.`);
   if (craftLevel(craftSkillExperience(ctx, ctx.sender)[skill]) < gradeCraftLevel(itemId)) throw new SenderError(`You need ${gradeCraftNeed(itemId)}.`);
   const held = Object.fromEntries(Object.keys(materials).map(id => [id, oreCount(ctx, ctx.sender, id)]));
   const short = craftMaterialsShort(materials, held);

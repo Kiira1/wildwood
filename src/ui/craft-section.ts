@@ -1,8 +1,8 @@
 import { itemDisplayName, itemStats } from "../../shared/items";
 import { CRAFTED_REFINE, CRAFT_MAX_LEVEL, CRAFT_SKILLS, CRAFT_SKILL_NAMES, MATERIAL_NAMES, type CraftSkill } from "../../shared/crafting";
 import {
-  craftMaterialsShort, craftProgress, gradeCraftAction, gradeCraftLevel, gradeCraftMaterials, gradeCraftNeed, gradeCraftOffer, gradeCraftSkill,
-  lineCraftSkill, type GradeCraftAction,
+  craftMaterialsShort, craftProgress, gradeCraftAction, gradeCraftLevel, gradeCraftMaterials, gradeCraftOffer, lineCraftSkill,
+  type GradeCraftAction,
 } from "../../shared/grade-craft";
 import { ARMOR_CLASS_DETAILS, ARMOR_CLASS_NAMES, BOOT_STYLE_NAMES, GEAR_GRADE_NAMES, GRADE_MASTERY_LEVEL, type GearGrade } from "../../shared/gear-grades";
 import { armorClassOf, bootStyleOf, gradeEquipmentKindOf, gradeOf, type GradeItemId } from "../../shared/grade-equipment";
@@ -146,9 +146,10 @@ export type CraftSectionDeps = {
 
 /**
  * The Smith's crafting card: Smithing, Fletching and Enchanting side by side, each with its level and progress. His
- * shop rows take each line's craft line (craftLine), offering the best grade Mastery and that craft's level open, with
- * a stepper to pick any other open grade (gradeCraftOffer), its materials and a button: Craft for a new piece,
- * Reforge for a weapon already held, Owned for armor already held. The server decides (craft_grade_gear).
+ * shop rows take each line's craft line (craftLine), offering the best grade that craft's level opens, with
+ * a stepper to pick any other open grade (gradeCraftOffer), its materials and a button naming what it makes:
+ * "Craft Common Sword ★2", "Reforge Your Common Sword" for a weapon already held, Owned for armor already held.
+ * The server decides (craft_grade_gear).
  */
 export function createCraftSection(deps: CraftSectionDeps, options: { onChange?: () => void } = {}) {
   const section = document.createElement("section");
@@ -158,7 +159,7 @@ export function createCraftSection(deps: CraftSectionDeps, options: { onChange?:
     + CRAFT_SKILLS.map(skill => `<li class="craft-skill" data-skill="${skill}"><strong class="craft-name">${CRAFT_SKILL_NAMES[skill]}</strong>`
       + `<span class="craft-level"></span><span class="craft-bar" role="progressbar" aria-valuemin="0" aria-label="${CRAFT_SKILL_NAMES[skill]} progress"><span></span></span>`
       + `<span class="craft-points"></span></li>`).join("")
-    + `</ul><p class="craft-note">Crafted gear starts at ${refineStars(CRAFTED_REFINE)}, and a crafted weapon rolls its skills with more luck. Reforge a weapon you have to roll its skills again.</p></div>`;
+    + `</ul><p class="craft-note">Crafted gear starts at ${refineStars(CRAFTED_REFINE)} with luckier skills. Higher grades need a higher craft level.</p></div>`;
   let crafting: string | null = null, rendered = "";
   /** Crafted here before the server's row arrives. */
   const justCrafted = new Set<string>();
@@ -190,33 +191,39 @@ export function createCraftSection(deps: CraftSectionDeps, options: { onChange?:
   }
 
   const skillLevel = (skill: CraftSkill) => craftProgress(deps.craftSkills()[skill] ?? 0n).level;
-  /** What a piece needs of its craft and of Mastery, met or not. */
-  const needsOf = (itemId: GradeItemId): GradeNeed[] =>
-    [{ text: gradeCraftNeed(itemId), met: skillLevel(gradeCraftSkill(itemId)!) >= gradeCraftLevel(itemId) }, ...masteryNeed(itemId, deps.masteryLevels())];
 
   /**
-   * A line's craft line, by the craft that makes it, at the grade picked (or the best open): a grade stepper, the
-   * materials held against needed, and a button that says what it does or why it waits. ★2 follows the grade where
-   * the row's name does not say so.
+   * A line's craft line, by the craft that makes it, at the grade picked (or the best open): a labelled grade stepper
+   * with what the next grade needs, the materials held against needed, and a button naming what it makes, or why it waits.
    */
-  function craftLine(line: GradeShopLine, owned = held(), options: { stars?: boolean } = {}) {
-    const offer = gradeCraftOffer(line, deps.masteryLevels(), skillLevel(lineCraftSkill(line))), choice = picked.get(gradeShopLineKey(line));
+  function craftLine(line: GradeShopLine, owned = held()) {
+    const skill = lineCraftSkill(line), offer = gradeCraftOffer(line, skillLevel(skill)), choice = picked.get(gradeShopLineKey(line));
     const grade = choice && offer.grades.includes(choice) ? choice : offer.grade, itemId = gradeShopItemId(line, grade);
     const action = gradeCraftAction(itemId, owned), ores = deps.ores(), materials = gradeCraftMaterials(itemId)!;
+    const piece = `${GEAR_GRADE_NAMES[grade]} ${KIND_NAMES[gradeEquipmentKindOf(itemId)!]}`;
+    const lacking = craftMaterialsShort(materials, ores).length > 0, full = action === "craft" && deps.bagFull();
+    const ready = action !== "owned" && !lacking && !full && crafting === null;
     const text = crafting === itemId ? (action === "reforge" ? "Reforging…" : "Crafting…") : action === "owned" ? "Owned"
-      : craftMaterialsShort(materials, ores).length ? "Need More" : action === "craft" && deps.bagFull() ? "Bag Full"
-        : action === "reforge" ? "Reforge" : "Craft";
-    const button = offerButton(text, (text === "Craft" || text === "Reforge") && crafting === null, () => { void craft(itemId, action); });
-    const terms: Node[] = [gradeStepper(line, offer.grades, grade, options.stars !== false && action === "craft"), materialList(materials, ores)];
-    if (action === "reforge") terms.push(hint("Rolls its skills again, keeping the higher"));
+      : lacking ? (action === "reforge" ? "Need More To Reforge" : `Need More For ${piece}`) : full ? "Bag Full"
+        : action === "reforge" ? `Reforge Your ${piece}` : `Craft ${piece} ${refineStars(CRAFTED_REFINE)}`;
+    const button = offerButton(text, ready, () => { void craft(itemId, action); });
+    button.classList.add("craft-action");
+    const head = document.createElement("span");
+    head.className = "craft-head";
+    head.append(Object.assign(document.createElement("span"), { className: "craft-label", textContent: "Craft" }),
+      gradeStepper(line, offer.grades, grade));
+    // The grade past the best open one, and the craft level it waits for.
+    if (offer.next) head.append(hint(`${GEAR_GRADE_NAMES[gradeOf(offer.next)!]} needs ${CRAFT_SKILL_NAMES[skill]} Lv ${gradeCraftLevel(offer.next)}`, "craft-next"));
+    const terms: Node[] = [head, materialList(materials, ores)];
+    if (action === "reforge") terms.push(hint("Re-roll its skills, keeping the better roll"));
     const element = offerLine(terms, button);
-    element.classList.add("craft-offer");
+    element.classList.add("craft-offer", "craft-line");
     return { itemId, action, next: offer.next, line: element };
   }
 
-  function gradeStepper(line: GradeShopLine, grades: readonly GearGrade[], grade: GearGrade, stars: boolean) {
+  function gradeStepper(line: GradeShopLine, grades: readonly GearGrade[], grade: GearGrade) {
     return gradeStepperElement(grades, grade, {
-      label: "Grade to craft", busy: crafting !== null, name: stars ? `${GEAR_GRADE_NAMES[grade]} ${refineStars(CRAFTED_REFINE)}` : GEAR_GRADE_NAMES[grade],
+      label: "Grade to craft", busy: crafting !== null,
       onPick: to => { picked.set(gradeShopLineKey(line), to); changed(); },
     });
   }
@@ -268,7 +275,6 @@ export function createCraftSection(deps: CraftSectionDeps, options: { onChange?:
     element: section,
     render,
     craftLine,
-    needsOf,
     /** What the rows show, for the window that lists them. */
     state,
     /** Pieces crafted here whose rows have not arrived yet. */
@@ -279,9 +285,9 @@ export function createCraftSection(deps: CraftSectionDeps, options: { onChange?:
 }
 
 /** A short muted line of its own under an offer's terms. */
-function hint(text: string) {
+function hint(text: string, className = "craft-hint") {
   const line = document.createElement("span");
-  line.className = "craft-hint";
+  line.className = className;
   line.textContent = text;
   return line;
 }

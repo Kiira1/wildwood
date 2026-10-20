@@ -4,7 +4,7 @@ type OutlinedText = (text: string, x: number, y: number, color: string, strokeWi
 export function drawPlayerPowerLabel(
   ctx: CanvasRenderingContext2D,
   outlinedText: OutlinedText,
-  icon: HTMLCanvasElement | null,
+  icon: HTMLCanvasElement | ImageBitmap | null,
   value: string,
   centerX: number,
   bottom: number,

@@ -333,16 +333,18 @@ it("gives every line a Craft line under Buy, by the craft that makes it, with th
     expect(deals(itemId)[0]).toBe("Buy");
     expect(view.row(itemId).querySelector(".craft-offer .smith-shop-buy")).toBeTruthy();
   }
-  expect(deals("crude_warrior_boots")).toEqual(["Buy", "Craft"]);
-  expect(deals("crude_bow")).toEqual(["Buy", "Craft"]);
-  expect([...view.row("crude_bow").querySelectorAll(".craft-material")].map(item => item.textContent)).toEqual(["100 / 10 Pine Log", "8 / 2 Copper Ore"]);
-  expect(deals("crude_staff")).toEqual(["Buy", "Need More"]);
+  expect(deals("crude_warrior_boots")).toEqual(["Buy", "Craft Crude Boots ★2"]);
+  // Fletching 4 opens Common to craft, though no Mastery opens it to buy.
+  expect(deals("crude_bow")).toEqual(["Buy", "Craft Common Bow ★2"]);
+  expect(view.row("crude_bow").querySelector(".craft-next")!.textContent).toBe("Sturdy needs Fletching Lv 6");
+  expect([...view.row("crude_bow").querySelectorAll(".craft-material")].map(item => item.textContent)).toEqual(["100 / 13 Pine Log", "8 / 3 Copper Ore"]);
+  expect(deals("crude_staff")).toEqual(["Buy", "Need More For Crude Staff"]);
   const sword = view.row("crude_sword"), helm = view.row("crude_medium_helmet");
-  expect(deals("crude_sword")).toEqual(["Buy", "Need More"]);
+  expect(deals("crude_sword")).toEqual(["Buy", "Need More For Crude Sword"]);
   expect(sword.querySelector(".craft-material")!.textContent).toBe("8 / 10 Copper Ore");
   expect(sword.querySelector(".craft-needs")!.textContent).toBe("Next: Common at Lv 1 Swordplay");
-  expect(sword.querySelector(".craft-offer .craft-grade-name")!.textContent).toBe("Crude ★2");
-  expect(deals("crude_medium_helmet")).toEqual(["Buy", "Craft"]);
+  expect(sword.querySelector(".craft-offer .craft-grade-name")!.textContent).toBe("Crude");
+  expect(deals("crude_medium_helmet")).toEqual(["Buy", "Craft Crude Helmet ★2"]);
   // A craft moves the line on before the server's row arrives: the next grade to buy, the crafted helmet Owned.
   helm.querySelector<HTMLButtonElement>(".craft-offer .smith-shop-buy")!.click();
   expect(craft).toHaveBeenCalledWith("crude_medium_helmet");
@@ -361,14 +363,14 @@ it("crafts any grade Smithing opens on the line, and reforges a sword already he
   });
   view.controller.open();
   const sword = () => view.row("rare_sword");
-  expect(sword().querySelector(".craft-offer .craft-grade-name")!.textContent).toBe("Crude ★2");
-  expect([...sword().querySelectorAll(".smith-shop-buy")].map(button => button.textContent)).toEqual(["Buy", "Craft"]);
+  expect(sword().querySelector(".craft-offer .craft-grade-name")!.textContent).toBe("Crude");
+  expect([...sword().querySelectorAll(".smith-shop-buy")].map(button => button.textContent)).toEqual(["Buy", "Craft Crude Sword ★2"]);
   expect(sword().querySelector(".craft-needs")!.textContent).toBe("Next: Exquisite at Lv 6 Swordplay");
   held.push("crude_sword"); view.held.push("crude_sword");
   view.controller.render();
   expect(sword().querySelector(".craft-offer .craft-grade-name")!.textContent).toBe("Crude");
-  expect([...sword().querySelectorAll(".smith-shop-buy")].map(button => button.textContent)).toEqual(["Buy", "Reforge"]);
-  expect(sword().querySelector(".craft-offer .craft-hint")!.textContent).toBe("Rolls its skills again, keeping the higher");
+  expect([...sword().querySelectorAll(".smith-shop-buy")].map(button => button.textContent)).toEqual(["Buy", "Reforge Your Crude Sword"]);
+  expect(sword().querySelector(".craft-offer .craft-hint")!.textContent).toBe("Re-roll its skills, keeping the better roll");
 });
 
 it("opens on Gear when the Smith sells, keeps the view picked on the device, and hides the bar with one view", () => {

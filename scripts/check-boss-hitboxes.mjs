@@ -17,29 +17,22 @@ import sharp from "sharp";
 import { readFile } from "node:fs/promises";
 import ts from "typescript";
 
-// Load the same pure pixel transforms the client applies before drawing the
-// boss sheets. Measuring their raw green backgrounds reports entire cells as
-// bodies and gives misleading hitbox and status-bar recommendations.
+// Key out green backdrops as the client does before drawing. Measuring the raw
+// green reports entire cells as bodies and gives misleading recommendations.
 const pixelSource = await readFile("src/game/runtime/render/sprite-pixels.ts", "utf8");
 const pixelModule = ts.transpileModule(pixelSource, {
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022 },
 }).outputText;
-const { removeGreenPixels, keepLargestFrameComponents, centerFramesOnGround, repackLargestComponentsIntoFrames } =
-  await import(`data:text/javascript;base64,${Buffer.from(pixelModule).toString("base64")}`);
+const { removeGreenPixels } = await import(`data:text/javascript;base64,${Buffer.from(pixelModule).toString("base64")}`);
+const bossArt = JSON.parse(await readFile("src/game/boss-art.json", "utf8"));
+const frameCrops = JSON.parse(await readFile("src/game/boss-frame-crops.json", "utf8"));
+const greenSheets = new Set(Object.values(bossArt).filter((boss) => boss.preprocess === "green").map((boss) => boss.sheet));
 const processedSheets = new Map();
 async function processedSheet(path) {
   if (processedSheets.has(path)) return processedSheets.get(path);
   const { data, info } = await sharp(path).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
   const pixels = new Uint8ClampedArray(data.buffer, data.byteOffset, data.length);
-  const spider = path.includes("desert-scorpion");
-  if (spider || /frostclaw|magmalisk|gloomroot|tidewyrm|koi-shogun/.test(path)) {
-    removeGreenPixels(pixels, spider ? 135 : 145, spider ? 1.35 : 1.45);
-    if (path.includes("magmalisk")) repackLargestComponentsIntoFrames(pixels, info.width, info.height, 4);
-    else if (/desert-scorpion|frostclaw|tidewyrm|koi-shogun/.test(path)) {
-      keepLargestFrameComponents(pixels, info.width, info.height, 4);
-      centerFramesOnGround(pixels, info.width, info.height, 4);
-    }
-  }
+  if (greenSheets.has(path.split("/").pop())) removeGreenPixels(pixels, 145, 1.45);
   const sheet = { data: pixels, info };
   processedSheets.set(path, sheet);
   return sheet;
@@ -105,24 +98,27 @@ async function sheetExtent(path, { frames, drawWidth, groundOffset, groundBaseli
  * margin, which is why the status bar floats: it hangs off the cell's top edge
  * rather than the top of the creature.
  */
-async function cellExtent(path, { frames, rows = 1, drawWidth, drawHeight, offsetY, measureFrames }) {
+async function cellExtent(path, { frames, rows = 1, drawWidth, drawHeight, offsetY, measureFrames, crops = {} }) {
   const { data, info } = await processedSheet(path);
   const cellWidth = Math.floor(info.width / frames);
   const cellHeight = Math.floor(info.height / rows);
+  const scaleX = drawWidth / cellWidth, scaleY = drawHeight / cellHeight;
   const wanted = measureFrames ? new Set(measureFrames) : null;
   let left = Infinity, right = -Infinity, top = Infinity, bottom = -Infinity;
   for (let y = 0; y < info.height; y += 1) {
     for (let x = 0; x < info.width; x += 1) {
       if (data[(y * info.width + x) * 4 + 3] < 16) continue;
-      if (wanted && !wanted.has(Math.floor(x / cellWidth))) continue;
-      const withinX = x % cellWidth, withinY = y % cellHeight;
+      const frame = Math.floor(y / cellHeight) * frames + Math.floor(x / cellWidth);
+      if (wanted && !wanted.has(frame)) continue;
+      // The tuner's per-frame move, in cell pixels.
+      const crop = crops[frame] ?? {};
+      const withinX = x % cellWidth + (crop.offsetX ?? 0) / scaleX, withinY = y % cellHeight + (crop.offsetY ?? 0) / scaleY;
       if (withinX < left) left = withinX;
       if (withinX > right) right = withinX;
       if (withinY < top) top = withinY;
       if (withinY > bottom) bottom = withinY;
     }
   }
-  const scaleX = drawWidth / cellWidth, scaleY = drawHeight / cellHeight;
   return {
     left: (left - cellWidth / 2) * scaleX,
     right: (right + 1 - cellWidth / 2) * scaleX,
@@ -140,32 +136,34 @@ async function cellExtent(path, { frames, rows = 1, drawWidth, drawHeight, offse
  * least 60% as wide as the widest one are the body, which is what a player
  * aims at and what the hitbox should cover.
  */
-async function bodyExtent(path, { frames, rows = 1, drawWidth, drawHeight, offsetY, measureFrames }) {
+async function bodyExtent(path, { frames, rows = 1, drawWidth, drawHeight, offsetY, measureFrames, crops = {} }) {
   const { data, info } = await processedSheet(path);
   const cellWidth = Math.floor(info.width / frames);
   const cellHeight = Math.floor(info.height / rows);
+  const scaleX = drawWidth / cellWidth, scaleY = drawHeight / cellHeight;
   // Only the poses the hitbox should answer for. A wind-up that throws the
   // creature across its cell would otherwise set the body's size for every
   // frame, including the one it stands still in.
   const poses = measureFrames ?? Array.from({ length: frames }, (_, index) => index);
-  const widths = [];
-  for (let y = 0; y < cellHeight; y += 1) {
-    let left = Infinity, right = -Infinity;
-    for (const pose of poses) {
-      const base = pose * cellWidth;
+  const lefts = new Map(), rights = new Map();
+  for (const pose of poses) {
+    const base = pose * cellWidth;
+    const crop = crops[pose] ?? {};
+    const moveX = (crop.offsetX ?? 0) / scaleX, moveY = Math.round((crop.offsetY ?? 0) / scaleY);
+    for (let y = 0; y < cellHeight; y += 1) {
       for (let x = base; x < base + cellWidth; x += 1) {
         if (data[(y * info.width + x) * 4 + 3] < 16) continue;
-        const within = x - base;
-        if (within < left) left = within;
-        if (within > right) right = within;
+        const row = y + moveY, within = x - base + moveX;
+        if (within < (lefts.get(row) ?? Infinity)) lefts.set(row, within);
+        if (within > (rights.get(row) ?? -Infinity)) rights.set(row, within);
       }
     }
-    widths.push(right < 0 ? 0 : right - left + 1);
   }
-  const widest = Math.max(...widths);
-  const scaleY = drawHeight / cellHeight;
+  const rowsDrawn = [...lefts.keys()].sort((a, b) => a - b);
+  const widths = rowsDrawn.map((y) => ({ y, width: rights.get(y) - lefts.get(y) + 1 }));
+  const widest = Math.max(...widths.map((row) => row.width));
   const toWorld = (y) => offsetY + (y - cellHeight / 2) * scaleY;
-  const body = widths.map((width, y) => ({ width, y })).filter((row) => row.width >= widest * 0.6);
+  const body = widths.filter((row) => row.width >= widest * 0.6);
   if (!body.length) return null;
   const top = toWorld(body[0].y), bottom = toWorld(body[body.length - 1].y + 1);
   return { top, bottom, verticalRadius: (bottom - top) / 2, offsetY: (top + bottom) / 2 };
@@ -196,23 +194,28 @@ const prismshellHalf = (prismshell.right - prismshell.left) * prismshellScale / 
 report("prismshell", radii.PRISMSHELL, { left: -prismshellHalf, right: prismshellHalf, top: -170, bottom: 170 });
 
 report("spider", radii.SPIDER, await sheetExtent(
-  "public/assets/wildstat/desert-scorpion-boss-spritesheet-v1.webp",
-  { frames: 4, drawWidth: 330, groundOffset: 55, groundBaseline: 0.88 },
+  `public/assets/wildstat/${bossArt.SPIDER.sheet}`,
+  { frames: 4, drawWidth: bossArt.SPIDER.drawWidth, groundOffset: 55, groundBaseline: bossArt.SPIDER.groundBaseline },
 ));
 
+/** Sheet, cells and draw box as the game reads them from boss-art.json. */
+const sheetBoss = (key, extra = {}) => {
+  const { sheet, frames, rows, drawWidth, drawHeight } = bossArt[key];
+  return [sheet, { frames: key === "GLOOMROOT" ? 2 : frames, rows, drawWidth, drawHeight, crops: frameCrops[key], ...extra }];
+};
 const SHEETS = [
-  ["frostclaw", "FROSTCLAW", "frostclaw-boss-spritesheet.webp", { frames: 4, drawWidth: 330, drawHeight: 440, offsetY: -12 }],
-  ["magmalisk", "MAGMALISK", "magmalisk-boss-spritesheet.webp", { frames: 4, drawWidth: 390, drawHeight: 520, offsetY: -8 }],
-  ["gloomroot", "GLOOMROOT", "gloomroot-boss-spritesheet-v1.webp", { frames: 2, rows: 2, drawWidth: 430, drawHeight: 430, offsetY: -18 }],
-  ["tidewyrm", "TIDEWYRM", "tidewyrm-boss-spritesheet-v1.webp", { frames: 4, drawWidth: 440, drawHeight: 440, offsetY: -28 }],
+  ["frostclaw", "FROSTCLAW", ...sheetBoss("FROSTCLAW", { offsetY: -12 })],
+  ["magmalisk", "MAGMALISK", ...sheetBoss("MAGMALISK", { offsetY: -8 })],
+  ["gloomroot", "GLOOMROOT", ...sheetBoss("GLOOMROOT", { offsetY: -18 })],
+  ["tidewyrm", "TIDEWYRM", ...sheetBoss("TIDEWYRM", { offsetY: -28 })],
   // Frame 3 is each one's summoned attack — the whirlpools and the
   // thunderbolts — which throws the creature out of the shape it holds.
-  ["koi shogun", "KOI_SHOGUN", "koi-shogun-boss-spritesheet-v1.webp", { frames: 4, drawWidth: 330, drawHeight: 440, offsetY: -30, measureFrames: [0, 1, 2] }],
-  ["tempest kirin", "TEMPEST_KIRIN", "tempest-kirin-boss-spritesheet-v1.webp", { frames: 4, drawWidth: 356, drawHeight: 542, offsetY: -42, measureFrames: [0, 1, 2] }],
+  ["koi shogun", "KOI_SHOGUN", ...sheetBoss("KOI_SHOGUN", { offsetY: -30, measureFrames: [0, 1, 2] })],
+  ["tempest kirin", "TEMPEST_KIRIN", ...sheetBoss("TEMPEST_KIRIN", { offsetY: -42, measureFrames: [0, 1, 2] })],
   // The idle frame alone. The tongue reaches and the bog burst rears the toad
   // up out of its own body; sizing the hitbox to either hands back the reach
   // this is removing for every frame it is not doing it.
-  ["miremaw", "MIREMAW", "miremaw-boss-spritesheet-v1.webp", { frames: 4, drawWidth: 470, drawHeight: 532, offsetY: -45, measureFrames: [0] }],
+  ["miremaw", "MIREMAW", ...sheetBoss("MIREMAW", { offsetY: -45, measureFrames: [0] })],
 ];
 
 console.log("");

@@ -1,6 +1,6 @@
 import { actorShadowDimensions } from "/actor-shadow-geometry.js";
 import { bossSheetFrameGeometry } from "/boss-frame-geometry.js";
-import { centerFramesOnGround, keepLargestFrameComponents, removeGreenPixels, repackLargestComponentsIntoFrames } from "/sprite-pixels.js";
+import { removeGreenPixels } from "/sprite-pixels.js";
 
 // The preview mirrors boss-renderer: the sheet is drawn at drawWidth x
 // drawHeight centred on the anchor plus the sprite's Y offset, the hitbox is
@@ -126,16 +126,11 @@ function sheetFor(row) {
     canvas.height = image.naturalHeight;
     const context = canvas.getContext("2d", { willReadFrequently: true });
     context.drawImage(image, 0, 0);
-    // Use the game's exact preprocessing so the crop and hit area guides sit
-    // around the pixels players actually see, including its frame recentering.
-    if (["green", "center", "repack"].includes(row.preprocess)) {
+    // Key out a green backdrop as the game does, so the guides sit around the
+    // pixels players actually see.
+    if (row.preprocess === "green") {
       const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
-      removeGreenPixels(pixels.data, row.id === "SPIDER" ? 135 : 145, row.id === "SPIDER" ? 1.35 : 1.45);
-      if (row.preprocess === "repack") repackLargestComponentsIntoFrames(pixels.data, canvas.width, canvas.height, row.frames);
-      else if (row.preprocess === "center") {
-        keepLargestFrameComponents(pixels.data, canvas.width, canvas.height, 4);
-        centerFramesOnGround(pixels.data, canvas.width, canvas.height, 4);
-      }
+      removeGreenPixels(pixels.data, 145, 1.45);
       context.putImageData(pixels, 0, 0);
     }
     sheets.set(key, canvas);

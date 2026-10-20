@@ -14,6 +14,7 @@ import { ITEM_PRESENTATIONS, itemFinish, itemHasGalaxyFinish, itemPresentation, 
 import { galaxyFinishFrame } from "./galaxy-finish";
 import { PLAYER_WORLD_SCALE } from "./player-render-scale";
 import { residentDrawable } from "./runtime/render/resident-image";
+import { freezeEntry, releaseFrozen, type FrozenImage } from "./runtime/render/frozen-canvas";
 
 import { PLAYER_SKIN_TONES, DEFAULT_SKIN_TONE } from "../../shared/player-skin-tones";
 export { PLAYER_SKIN_TONES, PLAYER_SKIN_TONE_NAMES, DEFAULT_SKIN_TONE } from "../../shared/player-skin-tones";
@@ -48,7 +49,7 @@ type PlayerAppearanceWarmupOptions = {
 const PLAYER_BODY_WIDTH = 180;
 const PLAYER_BODY_HEIGHT = 171;
 const PLAYER_BODY_CACHE_LIMIT = 128;
-const playerBodyCaches = new WeakMap<PlayerAppearanceAssets, Map<string, HTMLCanvasElement>>();
+const playerBodyCaches = new WeakMap<PlayerAppearanceAssets, Map<string, FrozenImage>>();
 
 /** A layer is either loaded artwork or a canvas we tinted from it. */
 export type PlayerLayerAsset = HTMLImageElement | HTMLCanvasElement;
@@ -94,9 +95,12 @@ function cachedPlayerBody(
   context.scale(resolution, resolution);
   draw(context);
   cache.set(key, canvas);
+  // Drawn every frame for every player in view, so each finished body is frozen into a bitmap.
+  freezeEntry(cache, key, canvas);
   while (cache.size > PLAYER_BODY_CACHE_LIMIT) {
     const oldest = cache.keys().next().value;
     if (oldest === undefined) break;
+    releaseFrozen(cache.get(oldest));
     cache.delete(oldest);
   }
   return canvas;

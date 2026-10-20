@@ -91,9 +91,9 @@ describe("crafting graded gear", () => {
     expect(f.experience()).toEqual({ smithing: BigInt(crude), fletching: BigInt(3 * crude), enchanting: BigInt(3 * crude) });
   });
 
-  it("needs the grade open by Mastery, then the craft's level, and crafts any open grade, below the best held too", () => {
-    const f = crafter("archery", { levels: { archery: 5 }, crafts: { fletching: 19 } });
-    expect(() => f.craft("exquisite_bow")).toThrow("You need Lv 6 Archery.");
+  it("needs only the craft's level, no Mastery, and crafts any open grade, below the best held too", () => {
+    const f = crafter("archery", { crafts: { fletching: 19 } });
+    expect(() => f.craft("exquisite_bow")).toThrow("You need Lv 26 Fletching.");
     expect(() => f.craft("rare_bow")).toThrow("You need Lv 20 Fletching.");
     f.craft("superior_bow");
     expect(f.bag()).toContain("superior_bow");

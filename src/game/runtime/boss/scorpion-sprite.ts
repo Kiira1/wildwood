@@ -2,7 +2,7 @@ import { SPIDER_STAND_OFFSET } from "../../constants";
 
 /** Art-only replacement: the desert encounter keeps its existing server identity. */
 export const SCORPION_SPRITE = {
-  source: "assets/wildstat/desert-scorpion-boss-spritesheet-v1.webp",
+  source: "assets/wildstat/desert-scorpion-boss-spritesheet-v2.webp",
   frames: 4,
   framesPerSecond: 4,
   drawWidth: 330,

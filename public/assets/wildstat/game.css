@@ -5,17 +5,22 @@
   /* Above HUD controls (5–8), below full-screen windows (10+). */
   #hud > .stat-tracker { z-index: 6; }
   /* Quest tracker: top left under the gem row until dragged. Three quests in play, this map's first and bright. */
-  .quest-tracker { position: fixed; top: calc(var(--hud-safe-top) + var(--player-hud-visual-height) + 48px); left: var(--hud-safe-left); z-index: 5; width: min(196px, 46vw); padding: 0 0 4px; border: 2px solid var(--hud-frame); border-radius: var(--hud-radius-small); background: var(--hud-surface); box-shadow: 0 2px 0 rgba(0,0,0,.35); color: #fff; font: 700 11px/1.25 "Wildstat Chat", sans-serif; pointer-events: auto; }
+  .quest-tracker { position: fixed; top: calc(var(--hud-safe-top) + var(--player-hud-visual-height) + 40px); left: var(--hud-safe-left); z-index: 5; width: min(196px, 46vw); padding: 0 0 4px; border: 2px solid var(--hud-frame); border-radius: var(--hud-radius-small); background: var(--hud-surface); box-shadow: 0 2px 0 rgba(0,0,0,.35); color: #fff; font: 700 11px/1.25 "Wildstat Chat", sans-serif; pointer-events: auto; }
   .quest-tracker[hidden] { display: none; }
+  /* Under the FPS readout when it shows, the same 4px apart. */
+  body:has(#fpsStatus:not([hidden])) .quest-tracker { top: calc(var(--hud-safe-top) + var(--player-hud-visual-height) + 74px); }
   .quest-tracker .quest-tracker-header:active { cursor: grabbing; }
   .quest-tracker.is-world-gesture, .quest-tracker.is-world-gesture * { pointer-events: none; }
-  .quest-tracker .quest-tracker-header { display: flex; align-items: center; gap: 6px; width: 100%; min-height: 30px; margin: 0; padding: 4px 8px; border: 0; border-radius: 0; background: transparent; box-shadow: none; color: inherit; font: inherit; text-align: left; cursor: grab; touch-action: none; }
+  .quest-tracker .quest-tracker-header { display: flex; align-items: center; gap: 6px; width: 100%; min-height: 30px; margin: 0; padding: 4px 8px; border: 0; border-radius: 0; background: transparent; box-shadow: none; color: inherit; font: inherit; font-size: 13px; text-align: left; cursor: grab; touch-action: none; }
   .quest-tracker .quest-tracker-header:active { transform: none; }
   .quest-tracker .quest-tracker-header:focus-visible { outline: 2px solid var(--gold); outline-offset: -2px; }
   .quest-tracker-title { font-weight: 900; letter-spacing: .03em; }
   .quest-tracker-week { margin-left: auto; color: #ffd66b; font-variant-numeric: tabular-nums; }
   .quest-tracker-chevron { width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 5px solid currentColor; opacity: .8; transition: transform .15s; }
   .quest-tracker.is-collapsed { width: auto; padding-bottom: 0; }
+  /* Minimized, it is the same 30px chip as the stat tracker and FPS readout, border and all. */
+  .quest-tracker.is-collapsed { height: 30px; }
+  .quest-tracker.is-collapsed .quest-tracker-header { height: 100%; min-height: 0; padding: 0 8px; }
   .quest-tracker.is-collapsed .quest-tracker-chevron { transform: rotate(-90deg); }
   .quest-tracker.is-collapsed .quest-tracker-list { display: none; }
   .quest-tracker-list { display: grid; gap: 5px; margin: 0; padding: 0 8px; list-style: none; }
@@ -73,7 +78,7 @@
   .stat-tracker-prestige-reset { margin: 0 10px; padding-top: 6px; border-top: 1px solid var(--border); }
   @media (any-pointer: coarse) { .stat-tracker:not(.is-collapsed) button { min-height: 44px; } }
   /* Folded, it is one row the size of the folded quest tracker, not a tall touch block. */
-  .stat-tracker.is-collapsed { min-width: 0; border-radius: var(--hud-radius-small); font: 700 11px/1.25 "Wildstat Chat", sans-serif; }
+  .stat-tracker.is-collapsed { min-width: 0; border-radius: var(--hud-radius-small); font: 700 13px/1.25 "Wildstat Chat", sans-serif; }
   .stat-tracker.is-collapsed header { padding: 0; }
   /* Minimized, it stands as tall as the gem and mail row beside it, border and all. */
   .stat-tracker.is-collapsed { box-sizing: border-box; height: 30px; }
@@ -378,7 +383,7 @@
   #settingsBtn[aria-expanded="true"] { background: transparent; box-shadow: none; }
   .settings-button:active { filter: brightness(1.16); transform: none; }
 
-  .fps-status { position: fixed; top: calc(var(--hud-safe-top) + var(--player-hud-visual-height) + 40px); bottom: auto; left: var(--hud-safe-left); z-index: 5; display: flex; gap: 7px; padding: 5px 7px; border: 2px solid var(--hud-frame); border-radius: var(--hud-radius-small); background: var(--hud-surface); color: #fff; font: 900 8px/1 var(--font-rounded); letter-spacing: .03em; white-space: nowrap; pointer-events: none; }
+  .fps-status { position: fixed; top: calc(var(--hud-safe-top) + var(--player-hud-visual-height) + 40px); bottom: auto; left: var(--hud-safe-left); z-index: 5; display: flex; align-items: center; gap: 7px; height: 30px; padding: 0 8px; border: 2px solid var(--hud-frame); border-radius: var(--hud-radius-small); background: var(--hud-surface); box-shadow: 0 2px 0 rgba(0,0,0,.35); color: #fff; font: 700 13px/1.25 "Wildstat Chat", sans-serif; white-space: nowrap; pointer-events: none; }
   .fps-status[hidden] { display: none; }
 
   .card.settings-panel {
@@ -451,6 +456,11 @@
   .settings-panel > .settings-content::-webkit-scrollbar { display: none; }
   .settings-tab-panel[hidden] { display: none; }
   .settings-tab-panel .setting-reset { margin-top: 28px; }
+  /* The Graphics readout: plain read-only lines, the tip dimmer. */
+  .graphics-info { display: grid; gap: 4px; padding: 6px 0 2px; }
+  .graphics-info p { margin: 0; font-size: 13px; line-height: 1.35; color: #e6e6e6; overflow-wrap: anywhere; }
+  .graphics-info p[hidden] { display: none; }
+  .graphics-info .graphics-tip { color: #a8a8a8; }
 
   .card.inventory-panel {
     --inventory-surface: #1e1e1e;
@@ -4146,7 +4156,6 @@
    * text and an 11pt minimum on iOS; these selectors keep compact game labels
    * at that minimum while the semantic tokens above leave room for text scaling.
    */
-  .fps-status,
   #musicVolumeValue,
   #sfxVolumeValue,
   .account-button,

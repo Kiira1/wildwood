@@ -1,4 +1,14 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.916.5": [
+    "The quest tracker, stat tracker and FPS readout line up at the same height",
+    "Bosses no longer get cut off in their animations",
+    "Settings shows whether your browser draws with your graphics card, and your FPS",
+    "Smoother drawing in Firefox: glows no longer slow every frame",
+    "The Town river costs far less to draw, smoother in Firefox",
+    "Smoother long sessions in Firefox: cached art no longer gets copied back every frame",
+    "Crafting needs only your craft level, not Mastery",
+    "The Smith's Craft button says exactly what it makes, and Reforge is its own button",
+  ],
   "0.916.4": [
     "Mining and chopping send far fewer server calls",
     "Slot upgrade levels show on your equipment slots only, not on every item",
@@ -3673,6 +3683,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.916.5": "2026-10-19",
   "0.916.4": "2026-10-19",
   "0.916.3": "2026-10-19",
   "0.916.2": "2026-10-19",

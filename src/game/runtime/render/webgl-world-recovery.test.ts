@@ -79,3 +79,19 @@ it("isolates vertex attributes across terrain, projectiles, particles, and the n
   expect(f.layer.render(f.frame)).toBe(true);
   expect(f.gl.drawArrays).toHaveBeenCalledTimes(4);
 });
+
+it("draws the ground overlay over the tiles and under the sprites", () => {
+  const f = fixture();
+  f.frame.sprites = [{ source: f.document.createElement("canvas"), left: 10, top: 20, width: 10, height: 10 }];
+  const overlay = vi.fn((_gl: WebGLRenderingContext, _frame: StaticWorldLayerFrame) => true);
+  f.layer.setGroundOverlay!(overlay);
+  expect(f.layer.render(f.frame)).toBe(true);
+  expect(overlay.mock.calls[0][0]).toBe(f.gl);
+  expect(overlay.mock.calls[0][1]).toBe(f.frame);
+  const [tiles, sprites] = f.gl.drawArrays.mock.invocationCallOrder;
+  expect(overlay.mock.invocationCallOrder[0]).toBeGreaterThan(tiles);
+  expect(overlay.mock.invocationCallOrder[0]).toBeLessThan(sprites);
+  f.layer.setGroundOverlay!(null);
+  f.layer.render(f.frame);
+  expect(overlay).toHaveBeenCalledOnce();
+});

@@ -11,7 +11,7 @@ import { requiredCanvasContext } from "../dom";
 import { scheduleBackgroundTask, yieldToUser } from "../scheduler";
 import { PORTAL_SWIRL_SOURCE } from "../../portal-presentation";
 import { type MapId } from "../../world";
-import { centerFramesOnGround, keepLargestFrameComponents, removeGreenPixels, repackLargestComponentsIntoFrames } from "./sprite-pixels";
+import { removeGreenPixels } from "./sprite-pixels";
 import { MAP_ASSET_GROUPS, type MapArtAssetGroup } from "./map-asset-groups";
 import { savedMapDesign } from "../../map-design";
 import { BOSSES, BOSS_KINDS, perBoss, type BossArtAssets, type BossArtSource } from "../boss/boss-registry";
@@ -58,19 +58,10 @@ export function createAssetPreprocessor(onWorldAssetReady: () => void) {
     greenThreshold: number,
     ratio: number,
     complete: () => void,
-    frameColumns = 0,
-    repackFrameComponents = false,
   ) {
     const pixels = context.getImageData(0, 0, width, height);
     if (!worker) {
       removeGreenPixels(pixels.data, greenThreshold, ratio);
-      if (frameColumns > 1) {
-        if (repackFrameComponents) repackLargestComponentsIntoFrames(pixels.data, width, height, frameColumns);
-        else {
-          keepLargestFrameComponents(pixels.data, width, height, frameColumns);
-          centerFramesOnGround(pixels.data, width, height, frameColumns);
-        }
-      }
       context.putImageData(pixels, 0, 0);
       complete();
       return;
@@ -90,8 +81,6 @@ export function createAssetPreprocessor(onWorldAssetReady: () => void) {
         height,
         greenThreshold,
         ratio,
-        frameColumns,
-        repackFrameComponents,
       }, [pixels.data.buffer]);
     });
   }
@@ -198,12 +187,7 @@ export function createAssetPreprocessor(onWorldAssetReady: () => void) {
         settle();
       };
       if (!chroma) finish();
-      else if (chroma.inline) {
-        const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
-        removeGreenPixels(pixels.data, chroma.greenThreshold, chroma.ratio);
-        context.putImageData(pixels, 0, 0);
-        finish();
-      } else removeGreen(context, canvas.width, canvas.height, chroma.greenThreshold, chroma.ratio, finish, chroma.frameColumns, chroma.repack);
+      else removeGreen(context, canvas.width, canvas.height, chroma.greenThreshold, chroma.ratio, finish);
     }, () => { ready = false; emptyCanvas(canvas); });
     return { assets: [asset], art: { canvas, ready: () => ready } };
   }

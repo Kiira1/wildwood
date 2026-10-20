@@ -373,7 +373,8 @@ export function createSmithController(deps: {
     shopRows.replaceChildren(...lines.map(line => {
       const made = crafts?.craftLine(line, held) ?? null;
       if (!deps.buyGear) {
-        const { row, deal } = gradeItemRow(made!.itemId, 0, nextNeed(made!.next, crafts!.needsOf));
+        // The craft line says what the next grade needs.
+        const { row, deal } = gradeItemRow(made!.itemId);
         deal.append(made!.line);
         return row;
       }

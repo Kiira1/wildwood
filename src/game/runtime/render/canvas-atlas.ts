@@ -1,3 +1,5 @@
+import { freezeCopy, frozenCopyOf, thawCopy } from "./frozen-canvas";
+
 /**
  * A few large shared canvases ("pages") that many small pre-drawn images are packed onto, in place of
  * one canvas each. Hundreds of tiny canvases (every enemy's name label and name plate) can run past a
@@ -8,6 +10,7 @@
  * is full, the next allocation fails (the caller then makes its own canvas, as before) and the atlas
  * starts over at the next resetIfFull(): every page is cleared and every onReset listener drops what
  * it cached, so call resetIfFull() only where nothing from the atlas is held across the call.
+ * A page left unchanged for PAGE_SETTLE_MS is drawn from a frozen bitmap copy (frozen-canvas.ts) until it changes.
  */
 export type AtlasImage = {
   canvas: HTMLCanvasElement;
@@ -18,8 +21,11 @@ export type AtlasRegion = { canvas: HTMLCanvasElement; x: number; y: number; wid
 
 /** Space left between images, so smoothing never blends a neighbour's edge in. */
 const GAP = 2;
+/** Labels arrive in bursts as a map fills; a page is frozen once none has arrived for this long. */
+export const PAGE_SETTLE_MS = 500;
 
-type Page = { canvas: HTMLCanvasElement; context: CanvasRenderingContext2D | null; shelfTop: number; shelfHeight: number; cursorX: number };
+type Page = { canvas: HTMLCanvasElement; context: CanvasRenderingContext2D | null; shelfTop: number; shelfHeight: number; cursorX: number;
+  settle?: ReturnType<typeof setTimeout> };
 
 export function createCanvasAtlas(options: { pageSize?: number; maxPages?: number; createCanvas?: () => HTMLCanvasElement } = {}) {
   const pageSize = options.pageSize ?? 1024;
@@ -68,8 +74,10 @@ export function createCanvasAtlas(options: { pageSize?: number; maxPages?: numbe
    * to it. Use transform(), not setTransform(), inside, so the translation holds.
    */
   function drawInto(region: AtlasRegion, draw: (ctx: CanvasRenderingContext2D) => void) {
-    const ctx = pages.find(page => page.canvas === region.canvas)?.context;
-    if (!ctx) return false;
+    const page = pages.find(candidate => candidate.canvas === region.canvas);
+    const ctx = page?.context;
+    if (!page || !ctx) return false;
+    thaw(page);
     ctx.save();
     ctx.beginPath();
     ctx.rect(region.x, region.y, region.width, region.height);
@@ -77,7 +85,15 @@ export function createCanvasAtlas(options: { pageSize?: number; maxPages?: numbe
     ctx.translate(region.x, region.y);
     draw(ctx);
     ctx.restore();
+    page.settle = setTimeout(() => { page.settle = undefined; freezeCopy(page.canvas); }, PAGE_SETTLE_MS);
     return true;
+  }
+
+  /** The page is about to change: its frozen copy goes, and a pending freeze waits for it to settle again. */
+  function thaw(page: Page) {
+    thawCopy(page.canvas);
+    if (page.settle !== undefined) clearTimeout(page.settle);
+    page.settle = undefined;
   }
 
   /** Starts over if an allocation found the atlas full: pages cleared, listeners told to drop their caches. */
@@ -85,6 +101,7 @@ export function createCanvasAtlas(options: { pageSize?: number; maxPages?: numbe
     if (!full) return false;
     full = false;
     for (const page of pages) {
+      thaw(page);
       page.context?.clearRect(0, 0, pageSize, pageSize);
       page.shelfTop = 0; page.shelfHeight = 0; page.cursorX = 0;
     }
@@ -98,6 +115,7 @@ export type CanvasAtlas = ReturnType<typeof createCanvasAtlas>;
 
 /** Draws an atlas image (or a canvas of its own) at dx, dy, dw × dh. */
 export function drawAtlasImage(ctx: Pick<CanvasRenderingContext2D, "drawImage">, image: AtlasImage, dx: number, dy: number, dw: number, dh: number) {
-  if (image.sw === undefined || image.sh === undefined) ctx.drawImage(image.canvas, dx, dy, dw, dh);
-  else ctx.drawImage(image.canvas, image.sx ?? 0, image.sy ?? 0, image.sw, image.sh, dx, dy, dw, dh);
+  const source = frozenCopyOf(image.canvas);
+  if (image.sw === undefined || image.sh === undefined) ctx.drawImage(source, dx, dy, dw, dh);
+  else ctx.drawImage(source, image.sx ?? 0, image.sy ?? 0, image.sw, image.sh, dx, dy, dw, dh);
 }

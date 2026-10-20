@@ -32,6 +32,7 @@ import { snapWorldRenderCoordinate } from "./render-space";
 import { createSoulGroundRenderer, createSoulPropRenderer } from "../soul/soul-prop-renderer";
 import { createSoulParticles } from "../soul/soul-particles";
 import { createSoulWater } from "../soul/soul-water";
+import { createSoulWaterGL, routeRiver } from "../soul/soul-water-gl";
 import { createForestRoadPainter } from "./forest-road";
 import { mapVisualTheme } from "../../map-design";
 import { createSoulGroundPropPainter, createTownGroundTilePainter, soulGroundPropsIn, TOWN_GROUND_WORLD } from "../town/town-ground-tiles";
@@ -396,10 +397,15 @@ export function createWorldRenderRuntime(options: WorldRenderRuntimeOptions) {
         devicePixelRatio: options.devicePixelRatio }),
       decor: options.decor, drawProp: drawSoulProp, viewport: options.viewport, devicePixelRatio: options.devicePixelRatio, active: () => isGuildHallMap(options.currentMapId()) });
     // The Town's ground, rooms, flat props and shadows are baked into the static world's tiles: only its water moves.
+    // The WebGL world draws the river with its tiles when it can; the canvas draws it otherwise.
+    const drawRiver = routeRiver(options.staticWorldLayer,
+      createSoulWaterGL({ camera: options.camera, water: () => options.assets.soulWater, shore: () => options.assets.soulShore,
+        time: options.gameTime, active: () => isTownMap(options.currentMapId()) && !lowPerformance() }),
+      createSoulWater({ ctx: options.ctx, camera: options.camera, water: () => options.assets.soulWater, shore: () => options.assets.soulShore,
+        viewport: options.viewport, time: options.gameTime, active: () => !lowPerformance() }));
     soulGround = createSoulGroundRenderer({ ctx: options.ctx, camera: options.camera, ground: () => options.assets.soulVillageGround, interiors: () => options.assets.soulInteriors,
       decor: options.decor, drawProp: drawSoulProp, baked: true,
-      drawWater: createSoulWater({ ctx: options.ctx, camera: options.camera, water: () => options.assets.soulWater, shore: () => options.assets.soulShore,
-        viewport: options.viewport, time: options.gameTime, active: () => !lowPerformance() }),
+      drawWater: drawRiver,
       viewport: options.viewport, devicePixelRatio: options.devicePixelRatio, active: () => isTownMap(options.currentMapId()) });
     const depth = createDepthWorldRenderer({
       camera: options.camera,

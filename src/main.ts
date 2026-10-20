@@ -3,6 +3,7 @@ import { liveRewardText, rewardLabelContextFrom, soulRewardCapped } from "./game
 import { ownProfileInPlay, profileBonusDeps } from "./ui/profile-bonus-toggles";
 import { runtimeMapBalance } from '../shared/map-balance-runtime';
 import { installStatTracker } from './ui/stat-tracker';
+import { installGraphicsReport } from './app/graphics-report';
 import { createQuestTrackerSetting, installQuestTracker } from './ui/quest-tracker';
 import { createStatTrackerSource } from './ui/stat-tracker-source';
 import { refreshMapBalanceEnemies } from "./game/runtime/enemies/map-balance-enemies";
@@ -1566,6 +1567,7 @@ import {
     onLeaveDuelResult: () => { duelResultEl.hidden = true; playerController.finishDuelResult(); },
   });
 
+  installGraphicsReport({ canvas: () => canvas, snapshot: performanceMonitor.snapshot, playing: () => session.isRunning(), fullRate: () => session.fullFrameRate() });
   let refreshDailyGemBonus = () => {};
   installStatTracker({ storage: localStorage, read: createStatTrackerSource({ coop: () => coop, player, inventory,
     hasStarted: session.hasStarted, isLoadedFor: progress.isLoadedFor, inTutorial, researchRanks, kills: () => totalKills,

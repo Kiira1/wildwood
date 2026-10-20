@@ -7,15 +7,29 @@ import type { Camera } from "../render/camera";
 export const SOUL_WATER_SOURCE = "assets/wildstat/soul-dimension/village-water.webp";
 export const SOUL_SHORE_SOURCE = "assets/wildstat/soul-dimension/village-shore.webp";
 
-const GLINT_TILE = 192;
+export const GLINT_TILE = 192;
 /** The water's map: which squares of this many of the masks' pixels hold any water or foam. */
 const WATER_CELL_PIXELS = 32;
 /** The light's layer grows in steps of this many pixels, so a drifting view does not resize it every frame. */
 const LAYER_STEP = 256;
 /** The layer's edges snap out to this grid (world units), so walking does not move them every frame. */
 const LAYER_GRID = 128;
-/** How often the glints are relit: they drift a few units a second, so this is smooth. */
-const RELIGHT_SECONDS = 1 / 20;
+/** How often the glints are relit: they drift about a unit each time and fade slowly, so steps do not show. */
+export const RELIGHT_SECONDS = 1 / 8;
+/** How strongly the glints show over the water. */
+export const GLINT_STRENGTH = .3;
+/** The two glint layers' drift, world units a second. */
+export const GLINT_DRIFT = [[9, 3], [-6, 5]] as const;
+
+/** How strongly a glint layer shows at a moment: each fades in and out at its own pace. */
+export function glintStrength(t: number, index: number) {
+  return .55 + .45 * Math.sin(t * (1.1 + index * .7) + index * 2);
+}
+
+/** The shore's foam, breathing. */
+export function foamStrength(t: number) {
+  return .35 + .2 * Math.sin(t * 1.4);
+}
 
 /** Which cells of the village's ground hold water or foam, and where that grid lies in the world. */
 export type WaterCells = {
@@ -90,12 +104,13 @@ export function waterRowsInView(cells: WaterCells, view: { left: number; top: nu
   return spans;
 }
 
-/** Short soft strokes, like light catching ripples: tiled, they read as a moving surface. */
-function glintTile(seed: number) {
+/** Short soft strokes, like light catching ripples: tiled, they read as a moving surface. Drawn `size` pixels across. */
+export function glintTile(seed: number, size = GLINT_TILE) {
   const canvas = document.createElement("canvas");
-  canvas.width = canvas.height = GLINT_TILE;
+  canvas.width = canvas.height = size;
   const context = canvas.getContext("2d");
   if (!context) return canvas;
+  context.scale(size / GLINT_TILE, size / GLINT_TILE);
   let state = seed;
   const random = () => { state = (state * 1_103_515_245 + 12_345) >>> 0; return state / 4_294_967_296; };
   context.strokeStyle = "#ffffff";
@@ -121,13 +136,21 @@ export function waterCellsFromBits(table: { width: number; height: number; cellP
   return { columns, rows, wet, area, cellW: area.w / table.width * table.cellPixels, cellH: area.h / table.height * table.cellPixels };
 }
 
+function newCanvas(width: number, height: number) {
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  return canvas;
+}
+
 /**
  * The village river, moving: two layers of glints drifting across the open
  * water at different speeds, fading in and out, and foam along the shore that
  * breathes. The water itself is in the baked ground; this only lays light on
  * it, through masks baked with it (bake-forest-village-scene.mjs), so it
  * never spills onto a bank or a bridge. Only the part of the screen with water
- * in it is worked on: none at all when no water is in view.
+ * in it is worked on: none at all when no water is in view. This is the canvas's
+ * river, for when the WebGL world cannot draw it (soul-water-gl.ts).
  */
 export function createSoulWater(options: {
   ctx: CanvasRenderingContext2D;
@@ -143,9 +166,26 @@ export function createSoulWater(options: {
   let target: CanvasRenderingContext2D | null = null;
   let patterns: CanvasPattern[] | null = null;
   let cells: WaterCells | null = null;
+  /** The open water's mask and the shore's foam for the layer's stretch, a pixel per world unit, cut once per stretch. */
+  let mask: HTMLCanvasElement | null = null, foam: HTMLCanvasElement | null = null;
+  let maskKey = "", foamKey = "";
   const matrix = typeof DOMMatrix === "undefined" ? null : new DOMMatrix();
   /** Which stretch of water the layer was last lit for, and when. */
   let litKey = "", litAt = Number.NaN;
+
+  /** Cuts a sheet's part for the layer's stretch at a pixel per world unit, the east bridge's deck left out. */
+  function cut(into: HTMLCanvasElement, sheet: HTMLImageElement, left: number, top: number, width: number, height: number) {
+    const context = into.getContext("2d");
+    if (!context) return false;
+    const area = SOUL_VILLAGE_GROUND, scaleX = sheet.naturalWidth / area.w, scaleY = sheet.naturalHeight / area.h;
+    context.clearRect(0, 0, into.width, into.height);
+    context.imageSmoothingEnabled = true;
+    context.drawImage(decodedImage(sheet), (left - area.x) * scaleX, (top - area.y) * scaleY, width * scaleX, height * scaleY, 0, 0, width, height);
+    // The east bridge's deck was laid after the masks were baked: neither light nor foam shows on it.
+    const deck = EAST_BRIDGE_DECK;
+    context.clearRect(deck.left - left, deck.top - top, deck.right - deck.left, deck.bottom - deck.top);
+    return true;
+  }
 
   return function drawSoulWater() {
     if (options.active && !options.active()) return;
@@ -186,7 +226,6 @@ export function createSoulWater(options: {
     const showRight = Math.min(right, inView.right), showBottom = Math.min(bottom, inView.bottom);
     if (showLeft >= showRight || showTop >= showBottom) return;
     const t = options.time();
-    const scaleX = water.naturalWidth / area.w, scaleY = water.naturalHeight / area.h;
     const key = `${left},${top},${right},${bottom}`;
     if (key !== litKey || !(t >= litAt && t - litAt < RELIGHT_SECONDS)) {
       // The light is worked on in a layer just big enough for the water near the view, a pixel per world unit
@@ -196,11 +235,14 @@ export function createSoulWater(options: {
       // Grown when the water near the view outgrows it, shrunk when it is far bigger than it needs to be. A new layer
       // each time, never a resized one: Firefox's GPU canvas copied one made smaller hundreds of times slower, for good.
       if (!layer || layer.width < width || layer.height < height || layer.width * layer.height > 4 * fitWidth * fitHeight) {
-        layer = document.createElement("canvas");
-        layer.width = fitWidth;
-        layer.height = fitHeight;
-        target = null; patterns = null;
+        layer = newCanvas(fitWidth, fitHeight);
+        mask = newCanvas(fitWidth, fitHeight);
+        foam = newCanvas(fitWidth, fitHeight);
+        target = null; patterns = null; maskKey = foamKey = "";
       }
+      // Cut again only when the stretch moves: a scaled copy of a big sheet each relight was most of the cost.
+      if (maskKey !== key) maskKey = cut(mask!, water, left, top, width, height) ? key : "";
+      if (foamKey !== key && shore?.complete && shore.naturalWidth > 0) foamKey = cut(foam!, shore, left, top, width, height) ? key : "";
       target ??= layer.getContext("2d");
       if (!target) return;
       const glints = target;
@@ -211,19 +253,26 @@ export function createSoulWater(options: {
       glints.clearRect(0, 0, width, height);
       glints.save();
       clipTo(glints, left, top);
-      // Glints are pinned to the world, then slide with time, so the water moves rather than the camera.
-      const drift = [[t * 9, t * 3], [-t * 6, t * 5]] as const;
+      // Glints are pinned to the world, then slide with time, so the water moves rather than the camera. Whole units,
+      // so the tiles are copied, not resampled.
       for (const [index, pattern] of patterns.entries()) {
-        if (matrix) { matrix.e = -left + drift[index][0]; matrix.f = -top + drift[index][1]; pattern.setTransform(matrix); }
-        glints.globalAlpha = .55 + .45 * Math.sin(t * (1.1 + index * .7) + index * 2);
+        if (matrix) { matrix.e = Math.round(t * GLINT_DRIFT[index][0]) - left; matrix.f = Math.round(t * GLINT_DRIFT[index][1]) - top; pattern.setTransform(matrix); }
+        // The layer is laid at full strength, so the glints carry their own.
+        glints.globalAlpha = GLINT_STRENGTH * glintStrength(t, index);
         glints.fillStyle = pattern;
         glints.fillRect(0, 0, width, height);
       }
       // Keep only the open water, away from its shore.
       glints.globalAlpha = 1;
       glints.globalCompositeOperation = "destination-in";
-      glints.drawImage(decodedImage(water), (left - area.x) * scaleX, (top - area.y) * scaleY, width * scaleX, height * scaleY, 0, 0, width, height);
+      if (maskKey === key) glints.drawImage(mask!, 0, 0, width, height, 0, 0, width, height);
+      else glints.clearRect(0, 0, width, height);
+      // Foam along the shore, breathing, over the light: one layer to lay each frame.
       glints.globalCompositeOperation = "source-over";
+      if (foamKey === key) {
+        glints.globalAlpha = foamStrength(t);
+        glints.drawImage(foam!, 0, 0, width, height, 0, 0, width, height);
+      }
       glints.restore();
       litKey = key;
       litAt = t;
@@ -232,26 +281,12 @@ export function createSoulWater(options: {
     const showWidth = showRight - showLeft, showHeight = showBottom - showTop;
     ctx.save();
     clipTo(ctx, camera.x, camera.y);
-    // The east bridge's deck was laid after the masks were baked: neither light nor foam shows on it.
-    const deck = EAST_BRIDGE_DECK;
-    if (deck.left < showRight && deck.right > showLeft && deck.top < showBottom && deck.bottom > showTop) {
-      ctx.beginPath();
-      ctx.rect(showLeft - camera.x, showTop - camera.y, showWidth, showHeight);
-      ctx.rect(deck.left - camera.x, deck.top - camera.y, deck.right - deck.left, deck.bottom - deck.top);
-      ctx.clip("evenodd");
-    }
-    ctx.globalAlpha = .3;
-    // Smoothly scaled up to the screen, as the glints and the mask always were.
+    ctx.globalAlpha = 1;
+    // Smoothly scaled up to the screen, as the glints and the masks always were.
     const smoothing = ctx.imageSmoothingEnabled;
     ctx.imageSmoothingEnabled = true;
     ctx.drawImage(layer, showLeft - left, showTop - top, showWidth, showHeight, showLeft - camera.x, showTop - camera.y, showWidth, showHeight);
     ctx.imageSmoothingEnabled = smoothing;
-    // Foam along the shore, breathing.
-    if (shore?.complete && shore.naturalWidth > 0) {
-      ctx.globalAlpha = .35 + .2 * Math.sin(t * 1.4);
-      ctx.drawImage(decodedImage(shore), (showLeft - area.x) * scaleX, (showTop - area.y) * scaleY, showWidth * scaleX, showHeight * scaleY,
-        showLeft - camera.x, showTop - camera.y, showWidth, showHeight);
-    }
     ctx.restore();
   };
 }

@@ -95,11 +95,11 @@ export type BossAttackSlot<K extends BossKind> = {
 
 /**
  * Where a boss's artwork comes from. A sheet is drawn once into a canvas, with
- * its green backdrop keyed out first when it has one (`inline` keys it on the
- * main thread instead of the worker). An atlas is used as its page images.
+ * its green backdrop keyed out first when it has one. Its cells are used as
+ * shipped (scripts/art/bake-boss-sheets.mjs). An atlas is used as its page images.
  */
 export type BossArtSource =
-  | { sheet: string; chroma?: { greenThreshold: number; ratio: number; frameColumns?: number; repack?: boolean; inline?: boolean } }
+  | { sheet: string; chroma?: { greenThreshold: number; ratio: number } }
   | { pages: readonly string[]; used: readonly number[] };
 
 export type BossDefinitionOf<K extends BossKind> = {
@@ -152,7 +152,7 @@ export const BOSSES = {
     body: { radius: SPIDER_RADIUS, verticalRadius: SPIDER_VERTICAL_RADIUS, hitboxOffsetY: SPIDER_HITBOX_OFFSET_Y },
     maxHp: () => BOSS_RULES.SPIDER_MAX_HP,
     firstAttack: "web", attackSlots: ["web"],
-    assetGroup: "desertBoss", art: { sheet: SCORPION_SPRITE.source, chroma: { greenThreshold: 135, ratio: 1.35, frameColumns: SCORPION_SPRITE.frames } },
+    assetGroup: "desertBoss", art: { sheet: SCORPION_SPRITE.source },
   },
   frostclaw: {
     kind: "frostclaw", mapId: INTERMEDIATE_SNOWLANDS_MAP_ID, name: "Frostclaw", minimapColor: "#67dcff", depthOffset: FROSTCLAW_DEPTH_OFFSET,
@@ -160,7 +160,7 @@ export const BOSSES = {
     body: { radius: FROSTCLAW_RADIUS, verticalRadius: FROSTCLAW_VERTICAL_RADIUS, hitboxOffsetY: FROSTCLAW_HITBOX_OFFSET_Y },
     maxHp: () => BOSS_RULES.FROSTCLAW_MAX_HP,
     firstAttack: "roar", attackSlots: ["roar", "rift"],
-    assetGroup: "snowBoss", art: { sheet: sheet(BOSS_ART.FROSTCLAW.sheet), chroma: { greenThreshold: 145, ratio: 1.45, frameColumns: 4 } },
+    assetGroup: "snowBoss", art: { sheet: sheet(BOSS_ART.FROSTCLAW.sheet) },
   },
   magmalisk: {
     kind: "magmalisk", mapId: ADVANCED_LAVA_WASTES_MAP_ID, name: "Magmalisk", minimapColor: "#ff752f", depthOffset: MAGMALISK_DEPTH_OFFSET,
@@ -168,7 +168,7 @@ export const BOSSES = {
     body: { radius: MAGMALISK_RADIUS, verticalRadius: MAGMALISK_VERTICAL_RADIUS, hitboxOffsetY: MAGMALISK_HITBOX_OFFSET_Y },
     maxHp: () => BOSS_RULES.MAGMALISK_MAX_HP,
     firstAttack: "bite", attackSlots: ["bite"],
-    assetGroup: "lavaBoss", art: { sheet: sheet(BOSS_ART.MAGMALISK.sheet), chroma: { greenThreshold: 145, ratio: 1.45, frameColumns: 4, repack: true } },
+    assetGroup: "lavaBoss", art: { sheet: sheet(BOSS_ART.MAGMALISK.sheet) },
   },
   gloomroot: {
     kind: "gloomroot", mapId: INFERNAL_DEPTHS_MAP_ID, name: "Gloomroot", minimapColor: "#69f0e7", depthOffset: GLOOMROOT_DEPTH_OFFSET,
@@ -176,7 +176,7 @@ export const BOSSES = {
     body: { radius: GLOOMROOT_RADIUS, verticalRadius: GLOOMROOT_VERTICAL_RADIUS, hitboxOffsetY: GLOOMROOT_HITBOX_OFFSET_Y },
     maxHp: () => BOSS_RULES.GLOOMROOT_MAX_HP,
     firstAttack: "sweep", attackSlots: ["sweep"],
-    assetGroup: "nightBoss", art: { sheet: sheet(BOSS_ART.GLOOMROOT.sheet), chroma: { greenThreshold: 145, ratio: 1.45, inline: true } },
+    assetGroup: "nightBoss", art: { sheet: sheet(BOSS_ART.GLOOMROOT.sheet) },
   },
   tidewyrm: {
     kind: "tidewyrm", mapId: WATER_REACH_MAP_ID, name: "Tidewyrm", minimapColor: "#55ddf4", depthOffset: TIDEWYRM_DEPTH_OFFSET,
@@ -192,7 +192,7 @@ export const BOSSES = {
     body: { radius: KOI_SHOGUN_RADIUS, verticalRadius: KOI_SHOGUN_VERTICAL_RADIUS, hitboxOffsetY: KOI_SHOGUN_HITBOX_OFFSET_Y },
     maxHp: () => BOSS_RULES.KOI_SHOGUN_MAX_HP,
     firstAttack: "slash", attackSlots: ["slash"],
-    assetGroup: "samuraiBoss", art: { sheet: sheet(BOSS_ART.KOI_SHOGUN.sheet), chroma: { greenThreshold: 145, ratio: 1.45, frameColumns: 4 } },
+    assetGroup: "samuraiBoss", art: { sheet: sheet(BOSS_ART.KOI_SHOGUN.sheet) },
   },
   tempestKirin: {
     kind: "tempestKirin", mapId: CLOUDSPIRE_MAP_ID, name: "Tempest Kirin", minimapColor: "#7fd8ff", depthOffset: TEMPEST_KIRIN_DEPTH_OFFSET,

@@ -1,4 +1,5 @@
 import { ATTACK_ANIMATION_SECONDS } from "./attack-timeline";
+import { freezeCopy, frozenCopyOf } from "./runtime/render/frozen-canvas";
 
 /** Each staff's bolt colour, from its art; elemental effects keep their own (fire, lightning, frost). */
 const STAFF_BOLT_COLORS: Readonly<Record<string, string>> = {
@@ -104,6 +105,8 @@ export function boltSprite(color: string): HTMLCanvasElement | null {
   ctx.fillStyle = orb;
   ctx.beginPath(); ctx.arc(32, 12, 11, 0, Math.PI * 2); ctx.fill();
   boltSprites.set(color, canvas);
+  // The canvas stays the WebGL layer's texture key; drawBolt draws its frozen copy.
+  freezeCopy(canvas);
   return canvas;
 }
 
@@ -113,6 +116,6 @@ export function drawBolt(ctx: CanvasRenderingContext2D, x: number, y: number, an
   if (!sprite) { ctx.fillStyle = color; ctx.beginPath(); ctx.arc(x, y, 6, 0, Math.PI * 2); ctx.fill(); return; }
   ctx.save();
   ctx.translate(x, y); ctx.rotate(angle);
-  ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2);
+  ctx.drawImage(frozenCopyOf(sprite), -sprite.width / 2, -sprite.height / 2);
   ctx.restore();
 }

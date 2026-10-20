@@ -1,5 +1,7 @@
-import { describe, expect, it } from "vitest";
-import { waterCellsFromAlpha, waterRectInView, waterRowsInView } from "./soul-water";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { TOWN_WEST_BRIDGE } from "../../../../shared/town";
+import { createSoulWater, RELIGHT_SECONDS, waterCellsFromAlpha, waterRectInView, waterRowsInView } from "./soul-water";
+import { SOUL_WATER_CELLS } from "./soul-water-cells";
 
 /** An RGBA mask, `width` × `height`, opaque where `wet` says. */
 function mask(width: number, height: number, wet: (x: number, y: number) => boolean) {
@@ -47,5 +49,78 @@ describe("where the village's water is", () => {
     const edge = waterCellsFromAlpha(mask(60, 32, x => x >= 56), 60, 32, { x: 0, y: 0, w: 120, h: 64 }, 8);
     expect(edge.cellW).toBe(16);
     expect(waterRectInView(edge, { left: 0, top: 0, right: 120, bottom: 64 })).toEqual({ left: 112, top: 0, right: 120, bottom: 64 });
+  });
+});
+
+type Call = { canvas: unknown; name: string; args: unknown[] };
+/** Canvases whose 2D contexts record every call, all into one list. */
+function recordingCanvases() {
+  const calls: Call[] = [];
+  const context = (canvas: unknown) => new Proxy({ canvas } as Record<string, unknown>, {
+    get: (target, key) => key in target ? target[key as string]
+      : key === "createPattern" ? () => ({ setTransform: () => {} })
+      : (...args: unknown[]) => { calls.push({ canvas, name: String(key), args }); },
+    set: (target, key, value) => { target[key as string] = value; return true; },
+  });
+  const canvas = () => {
+    const element: Record<string, unknown> = { width: 0, height: 0 };
+    const ctx = context(element);
+    element.getContext = () => ctx;
+    return element;
+  };
+  return { calls, canvas, context };
+}
+
+describe("the village river on the canvas", () => {
+  afterEach(() => vi.unstubAllGlobals());
+  const sheet = (name: string) => ({ name, complete: true, naturalWidth: SOUL_WATER_CELLS.width, naturalHeight: SOUL_WATER_CELLS.height }) as unknown as HTMLImageElement;
+
+  function river(camera: { x: number; y: number; zoom: number }) {
+    const { calls, canvas, context } = recordingCanvases();
+    vi.stubGlobal("document", { createElement: canvas });
+    const main = { name: "main" };
+    const water = sheet("water"), shore = sheet("shore");
+    let t = 50;
+    const draw = createSoulWater({ ctx: context(main) as unknown as CanvasRenderingContext2D, camera, water: () => water, shore: () => shore,
+      viewport: () => ({ width: 1_280, height: 800 }), time: () => t });
+    return { calls, main, water, shore, draw, step: (dt: number) => { t += dt; draw(); } };
+  }
+  const nearWestBridge = () => ({ x: TOWN_WEST_BRIDGE.x - 640, y: TOWN_WEST_BRIDGE.y - 400, zoom: 1 });
+
+  it("lays one image on the screen a frame, and cuts the masks from their sheets only once while the view holds still", () => {
+    const r = river(nearWestBridge());
+    for (let frame = 0; frame < 60; frame++) r.step(1 / 60);
+    const onScreen = r.calls.filter(call => call.canvas === r.main && call.name === "drawImage");
+    expect(onScreen).toHaveLength(60);
+    const fromSheets = r.calls.filter(call => call.name === "drawImage" && (call.args[0] === r.water || call.args[0] === r.shore));
+    expect(fromSheets.map(call => call.args[0])).toEqual([r.water, r.shore]);
+  });
+
+  it("relights the glints a few times a second, not every frame", () => {
+    const r = river(nearWestBridge());
+    for (let frame = 0; frame < 60; frame++) r.step(1 / 60);
+    const relights = r.calls.filter(call => call.name === "fillRect").length / 2;
+    expect(relights).toBeGreaterThanOrEqual(Math.floor(1 / RELIGHT_SECONDS));
+    expect(relights).toBeLessThanOrEqual(Math.ceil(1 / RELIGHT_SECONDS) + 1);
+  });
+
+  it("cuts the masks again when the view moves to another stretch of water", () => {
+    const camera = nearWestBridge();
+    const r = river(camera);
+    r.step(1 / 60);
+    camera.y += 600;
+    r.step(1 / 60);
+    r.step(1 / 60);
+    const fromSheets = r.calls.filter(call => call.name === "drawImage" && (call.args[0] === r.water || call.args[0] === r.shore));
+    expect(fromSheets.map(call => call.args[0])).toEqual([r.water, r.shore, r.water, r.shore]);
+  });
+
+  it("draws nothing in Low Performance Mode", () => {
+    const { calls, canvas, context } = recordingCanvases();
+    vi.stubGlobal("document", { createElement: canvas });
+    const draw = createSoulWater({ ctx: context({}) as unknown as CanvasRenderingContext2D, camera: nearWestBridge(), water: () => sheet("water"), shore: () => sheet("shore"),
+      viewport: () => ({ width: 1_280, height: 800 }), time: () => 1, active: () => false });
+    draw();
+    expect(calls).toEqual([]);
   });
 });

@@ -7,8 +7,11 @@
  * an invisible character and missing sprites. Rebuilding each cache is a
  * dozen separate paths; instead a sentinel canvas, made the way they are, is
  * checked on every return, and a wiped one saves and reloads the game, which
- * builds everything again. The on-page game canvas is watched too: after a
- * GPU crash Chrome can leave its context lost for good, and the game drew
+ * builds everything again. Many caches now draw a bitmap frozen from their
+ * canvas (frozen-canvas.ts); the sentinel stays a canvas, since a purge that
+ * wipes canvases is what it watches for, and the reload rebuilds the bitmaps
+ * as well. The on-page game canvas is watched too: after a GPU crash Chrome
+ * can leave its context lost for good, and the game drew
  * every frame into nothing, so most of the screen stayed black.
  *
  * 0.899.0 reloaded far too readily: a desktop player was reloaded on every

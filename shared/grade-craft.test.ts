@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   CRAFT_LINES, craftLevels, craftMaterialsKey, craftMaterialsShort, craftProgress, gradeCraftLevel, gradeCraftMaterials, gradeCraftNeed,
-  gradeCraftAction, gradeCraftOffer, gradeCraftSkill, isCraftable,
+  gradeCraftAction, gradeCraftOffer, gradeCraftOpen, gradeCraftSkill, isCraftable,
 } from "./grade-craft";
 import { CRAFT_LEVEL, CRAFT_MAX_LEVEL, craftExperience, craftExperienceForLevel, craftLevel } from "./crafting";
 import { GEAR_GRADES } from "./gear-grades";
@@ -63,13 +63,14 @@ describe("crafting graded gear", () => {
     GEAR_GRADES.slice(1).forEach((grade, index) => expect(craftExperience(grade)).toBeGreaterThan(craftExperience(GEAR_GRADES[index])));
   });
 
-  it("offers every grade Mastery and the craft's level open, the best first, and names the next", () => {
+  it("offers every grade the craft's level opens, the best first, and names the next: Mastery plays no part", () => {
     const sword = CRAFT_LINES.smithing[0];
-    expect(gradeCraftOffer(sword, { swordplay: 8 }, 10)).toEqual({ itemId: "fine_sword", grade: "fine", grades: ["crude", "common", "sturdy", "fine"], next: "superior_sword" });
-    expect(gradeCraftOffer(sword, { swordplay: 2 }, 10)).toMatchObject({ itemId: "sturdy_sword", grades: ["crude", "common", "sturdy"], next: "fine_sword" });
-    expect(gradeCraftOffer(sword, {}, 1)).toEqual({ itemId: "crude_sword", grade: "crude", grades: ["crude"], next: "common_sword" });
-    const top = gradeCraftOffer(sword, { swordplay: 50 }, 99);
+    expect(gradeCraftOffer(sword, 10)).toEqual({ itemId: "fine_sword", grade: "fine", grades: ["crude", "common", "sturdy", "fine"], next: "superior_sword" });
+    expect(gradeCraftOffer(sword, 9)).toMatchObject({ itemId: "sturdy_sword", grades: ["crude", "common", "sturdy"], next: "fine_sword" });
+    expect(gradeCraftOffer(sword, 1)).toEqual({ itemId: "crude_sword", grade: "crude", grades: ["crude"], next: "common_sword" });
+    const top = gradeCraftOffer(sword, 99);
     expect([top.itemId, top.grades.length, top.next]).toEqual(["eternal_sword", 15, undefined]);
+    expect([gradeCraftOpen("rare_bow", 20), gradeCraftOpen("rare_bow", 19)]).toEqual([true, false]);
   });
 
   it("crafts a new piece, reforges a weapon already held, and has nothing for armor already held", () => {

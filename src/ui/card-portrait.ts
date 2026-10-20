@@ -3,7 +3,7 @@ import type { EnemySpriteSource } from "../game/enemies";
 import { createTintedImageCanvas } from "../game/runtime/render/image-tint";
 import { BOSS_ART } from "../game/runtime/boss/boss-art";
 import { bossForMap, type BossDefinition, type BossKind } from "../game/runtime/boss/boss-registry";
-import { centerFramesOnGround, keepLargestFrameComponents, removeGreenPixels, repackLargestComponentsIntoFrames } from "../game/runtime/render/sprite-pixels";
+import { removeGreenPixels } from "../game/runtime/render/sprite-pixels";
 import { drawBossSheetFrame } from "../game/runtime/boss/boss-frame-crop";
 import { CARAPACE_ANGLER_ATLAS } from "../game/runtime/boss/carapace-angler-sprite";
 import { IRONHORN_ATLAS } from "../game/runtime/boss/ironhorn-sprite";
@@ -71,7 +71,7 @@ async function drawEnemyPose(ctx: CanvasRenderingContext2D, source: EnemySpriteS
   }
 }
 
-/** A boss sheet cleaned the way the game cleans it at load: green backdrop out, frames tidied. */
+/** A boss sheet cleaned the way the game cleans it at load: green backdrop out. */
 async function bossSheet(boss: BossDefinition) {
   const image = await loadImage("sheet" in boss.art ? boss.art.sheet : boss.art.pages[0]);
   const chroma = "sheet" in boss.art ? boss.art.chroma : undefined;
@@ -83,14 +83,6 @@ async function bossSheet(boss: BossDefinition) {
   if (!chroma || !context) return canvas;
   const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
   removeGreenPixels(pixels.data, chroma.greenThreshold, chroma.ratio);
-  const columns = chroma.frameColumns ?? 0;
-  if (!chroma.inline && columns > 1) {
-    if (chroma.repack) repackLargestComponentsIntoFrames(pixels.data, canvas.width, canvas.height, columns);
-    else {
-      keepLargestFrameComponents(pixels.data, canvas.width, canvas.height, columns);
-      centerFramesOnGround(pixels.data, canvas.width, canvas.height, columns);
-    }
-  }
   context.putImageData(pixels, 0, 0);
   return canvas;
 }

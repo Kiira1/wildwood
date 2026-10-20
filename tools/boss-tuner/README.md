@@ -52,9 +52,13 @@ Radii are shared with the server, so a change to a hitbox needs
 
 `node scripts/check-boss-hitboxes.mjs` measures the artwork and prints what the
 numbers ought to be, which is the quickest way to find a boss worth opening
-here. The preview and checker apply the same green removal and frame alignment
-as the game before showing or measuring the artwork. The server only listens
-on `127.0.0.1`.
+here. The preview and checker apply the same green removal as the game before
+showing or measuring the artwork. The server only listens on `127.0.0.1`.
+
+Boss sheets ship already cut into padded cells, each pose whole and in place
+(`scripts/art/bake-boss-sheets.mjs`), so there is nothing to realign at load.
+To move a pose, use Move across and Move down; a crop that hides part of a pose
+fails `boss-sheet-frames.test.ts`.
 
 Bosses are discovered from `src/game/boss-art.json`, including atlas, sheet,
 and single-image bosses. Register future boss artwork there and it appears

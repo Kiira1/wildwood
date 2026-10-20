@@ -39,6 +39,8 @@ import { mapWorldLayout } from "../../map-layout";
 import { isGuildHallMap } from "../../../../shared/guild-hall";
 import { portalTravelScene } from "./portal-glimpse";
 import { createShrunkImages, deviceScale } from "./shrunk-image";
+import { freezeEntry, releaseFrozen, type FrozenImage } from "./frozen-canvas";
+import { createGlowCache } from "./glow-cache";
 
 export { snapWorldRenderCoordinate } from "./render-space";
 
@@ -250,7 +252,7 @@ export function createWorldRenderer(options: WorldRendererOptions) {
   const lavaRockBuckets = new Map<string, LavaRockDecor[]>();
   const visibleLavaRocks: LavaRockDecor[] = [];
   const gpuWorldSprites: StaticWorldSpriteFrame[] = [];
-  const tintedPortalSwirls = new Map<string, HTMLCanvasElement>();
+  const tintedPortalSwirls = new Map<string, FrozenImage>();
   /** More than any one map shows; the rest are rebuilt if a map is revisited. */
   const PORTAL_TINT_CACHE_LIMIT = 6;
   let lavaRocksRenderedByWebGL = false;
@@ -278,11 +280,16 @@ export function createWorldRenderer(options: WorldRendererOptions) {
       tint,
       true,
     );
-    if (canvas) tintedPortalSwirls.set(tint, canvas);
+    if (canvas) {
+      tintedPortalSwirls.set(tint, canvas);
+      freezeEntry(tintedPortalSwirls, tint, canvas);
+    }
     // Every Endless map has its own colour, and each copy is a 768px canvas,
     // so an unbounded cache grew by about 2 MB per map for the whole session.
     while (tintedPortalSwirls.size > PORTAL_TINT_CACHE_LIMIT) {
-      tintedPortalSwirls.delete(tintedPortalSwirls.keys().next().value!);
+      const oldest = tintedPortalSwirls.keys().next().value!;
+      releaseFrozen(tintedPortalSwirls.get(oldest));
+      tintedPortalSwirls.delete(oldest);
     }
     return canvas;
   }
@@ -868,6 +875,7 @@ if (options.getMapId() === ION_CITADEL_MAP_ID) { drawIonRoads(ctx, options.paths
   }
 
   const shrunkImages = createShrunkImages();
+  const benchItemGlow = createGlowCache();
   function drawPortalAt(portal: Portal, cutscene = false) {
     if (!options.portalArch.complete || options.portalArch.naturalWidth <= 0) return;
     const x = snapToWorldPixel(portal.x - camera.x);
@@ -1036,11 +1044,11 @@ if (options.getMapId() === ION_CITADEL_MAP_ID) { drawIonRoads(ctx, options.paths
       // which the mirrored bench puts right of center.
       const itemCenterX = x + Math.round(width * .18);
       const itemCenterY = y - height + height * .32 - 6;
-      ctx.save();
-      ctx.shadowColor = "rgba(116,225,255,.8)";
-      ctx.shadowBlur = 8;
-      ctx.drawImage(residentDrawable(upgrade.itemSprite), itemCenterX - itemWidth / 2, itemCenterY - itemHeight / 2, itemWidth, itemHeight);
-      ctx.restore();
+      const itemX = itemCenterX - itemWidth / 2, itemY = itemCenterY - itemHeight / 2;
+      const item = residentDrawable(upgrade.itemSprite);
+      // The glow is baked once; a live shadowBlur made Firefox draw every frame on the CPU.
+      benchItemGlow(ctx, upgrade.itemSprite, item, itemX, itemY, itemWidth, itemHeight, "rgba(116,225,255,.8)", 8);
+      ctx.drawImage(item, itemX, itemY, itemWidth, itemHeight);
     }
     if (options.getMapId() === "town" || options.getMapId() === "home_exterior") {
       drawHomeStationSign(ctx, x, y, "Loadout Upgrades", upgrade?.timer); return;

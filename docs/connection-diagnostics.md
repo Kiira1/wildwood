@@ -28,6 +28,18 @@ receipt time (`received_at`), and `details_json` containing:
 - Session-block reasons, actual title-screen transitions after gameplay, deliberate
   sign-out/update reload, client-requested connection resets, and page lifecycle.
 
+A `graphics` row is sent once per tab session after a minute of visible play. Its
+`details_json.graphics` holds the WebGL renderer and vendor (or `masked` when the
+browser hides them), `rendererClass` (`GPU`, `Software`, `Unknown`), the
+failIfMajorPerformanceCaveat result, WebGL2 support, device pixel ratio, canvas
+size, session FPS (average and 10th percentile, sampled only at the 60 FPS target),
+work FPS, browser family with major version, and OS family. Firefox ignores the
+caveat flag by default, so its class rests on the renderer string. List by class:
+
+```sh
+spacetime sql wildwood-coop --server maincloud "SELECT player_name, client_version, occurred_at, details_json FROM connection_diagnostic WHERE kind = 'graphics'" | grep '"rendererClass":"Software"'
+```
+
 Unexpected closes are captured before the SDK discards CloseEvent details. The
 transport preserves the SDK temporary-token exchange and tagged raw/gzip/Brotli
 frames. Diagnostic failures cannot throw into socket callbacks. Auth exchange

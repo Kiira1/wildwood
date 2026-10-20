@@ -30,7 +30,7 @@
     "barHeight": 22,
     "id": "SPIDER",
     "name": "Spider",
-    "sheet": "desert-scorpion-boss-spritesheet-v1.webp",
+    "sheet": "desert-scorpion-boss-spritesheet-v2.webp",
     "frames": 4,
     "drawWidth": 330,
     "drawHeight": 0,
@@ -47,7 +47,7 @@
       "walk 4"
     ],
     "frameNote": "Walk cycle: every frame plays, always.",
-    "preprocess": "center"
+    "preprocess": "none"
   },
   "FROSTCLAW": {
     "statusFollowsSprite": true,
@@ -56,9 +56,9 @@
     "barHeight": 22,
     "id": "FROSTCLAW",
     "name": "Frostclaw",
-    "sheet": "frostclaw-boss-spritesheet.webp",
+    "sheet": "frostclaw-boss-spritesheet-v2.webp",
     "frames": 4,
-    "drawWidth": 330,
+    "drawWidth": 334.861878,
     "drawHeight": 440,
     "spriteY": -12,
     "spriteNudge": 2,
@@ -71,7 +71,7 @@
       "idle 4 / icefall"
     ],
     "frameNote": "Idle cycles through all four; the same frames double as rift, roar and icefall.",
-    "preprocess": "center"
+    "preprocess": "none"
   },
   "MAGMALISK": {
     "statusFollowsSprite": true,
@@ -80,9 +80,9 @@
     "barHeight": 23,
     "id": "MAGMALISK",
     "name": "Magmalisk",
-    "sheet": "magmalisk-boss-spritesheet.webp",
+    "sheet": "magmalisk-boss-spritesheet-v2.webp",
     "frames": 4,
-    "drawWidth": 390,
+    "drawWidth": 427.348066,
     "drawHeight": 520,
     "spriteY": -8,
     "shadowWidth": 245,
@@ -94,7 +94,7 @@
       "never drawn"
     ],
     "frameNote": "Only three frames are ever chosen.",
-    "preprocess": "repack"
+    "preprocess": "none"
   },
   "GLOOMROOT": {
     "statusFollowsSprite": true,
@@ -103,10 +103,10 @@
     "barHeight": 23,
     "id": "GLOOMROOT",
     "name": "Gloomroot",
-    "sheet": "gloomroot-boss-spritesheet-v1.webp",
+    "sheet": "gloomroot-boss-spritesheet-v2.webp",
     "frames": 2,
     "rows": 2,
-    "drawWidth": 430,
+    "drawWidth": 449.202552,
     "drawHeight": 430,
     "spriteY": -18,
     "shadowWidth": 260,
@@ -118,7 +118,7 @@
       "bloom"
     ],
     "frameNote": "Frame 2 is never chosen.",
-    "preprocess": "green"
+    "preprocess": "none"
   },
   "TIDEWYRM": {
     "statusFollowsSprite": true,
@@ -140,7 +140,7 @@
       "surge windup",
       "whirlpool"
     ],
-    "preprocess": "center"
+    "preprocess": "green"
   },
   "KOI_SHOGUN": {
     "statusFollowsSprite": true,
@@ -149,9 +149,9 @@
     "barHeight": 23,
     "id": "KOI_SHOGUN",
     "name": "Koi Shogun",
-    "sheet": "koi-shogun-boss-spritesheet-v1.webp",
+    "sheet": "koi-shogun-boss-spritesheet-v2.webp",
     "frames": 4,
-    "drawWidth": 330,
+    "drawWidth": 393.20442,
     "drawHeight": 440,
     "spriteY": -30,
     "shadowWidth": 210,
@@ -162,7 +162,7 @@
       "slash windup",
       "whirlpool"
     ],
-    "preprocess": "center"
+    "preprocess": "none"
   },
   "TEMPEST_KIRIN": {
     "statusFollowsSprite": true,
@@ -171,10 +171,10 @@
     "barHeight": 23,
     "id": "TEMPEST_KIRIN",
     "name": "Tempest Kirin",
-    "sheet": "tempest-kirin-boss-spritesheet-v1.webp",
+    "sheet": "tempest-kirin-boss-spritesheet-v2.webp",
     "frames": 4,
-    "drawWidth": 356,
-    "drawHeight": 542,
+    "drawWidth": 456.913386,
+    "drawHeight": 547.602067,
     "spriteY": -42,
     "shadowWidth": 235,
     "barWidth": 320,
@@ -275,9 +275,9 @@
     "barHeight": 23,
     "id": "VOLTWARDEN",
     "name": "Voltwarden",
-    "sheet": "voltwarden-boss-spritesheet-v1.webp",
+    "sheet": "voltwarden-boss-spritesheet-v2.webp",
     "frames": 3,
-    "drawWidth": 400,
+    "drawWidth": 408.839779,
     "drawHeight": 400,
     "spriteTop": -204,
     "artTop": -200,

@@ -29,6 +29,7 @@ import { finishedEquipmentSprite } from "../../player-appearance";
 import type { StaticWorldSpriteFrame } from "./webgl-static-world-layer";
 import { drawScreenSpaceAt, snapWorldRenderCoordinate } from "./render-space";
 import { createTintedImageCanvas } from "./image-tint";
+import { freezeCanvas, freezeEntry, type FrozenImage } from "./frozen-canvas";
 import { drawTrainingDummy } from "./training-dummy-art";
 import { boltSprite, drawBolt, staffBoltColor } from "../../staff-look";
 import { createEnemyAnimationSampler } from "../enemies/enemy-animation";
@@ -42,12 +43,12 @@ type OutlinedText = (text: string, x: number, y: number, color: string, strokeWi
 type LabelBitmap = AtlasImage & { width: number; height: number; anchorY: number };
 type LabelSegment = { text: string; color: string };
 type EnemyLayerPlanPart =
-  | { kind: "STATIC"; canvas: HTMLCanvasElement; x: number; y: number }
+  | { kind: "STATIC"; image: FrozenImage; x: number; y: number }
   | { kind: "AIMED"; layer: LoadedSpriteLayer };
 const ENEMY_SPRITE_Y_OFFSET = -3;
 const enemyLayerPlanCache = new WeakMap<LoadedEnemySprite, EnemyLayerPlanPart[]>();
 const enemyBoundsCache = new WeakMap<LoadedEnemySprite, { top: number; bottom: number; height: number }>();
-const enemyTintedLayerCache = new WeakMap<LoadedSpriteLayer, HTMLCanvasElement>();
+const enemyTintedLayerCache = new WeakMap<LoadedSpriteLayer, FrozenImage>();
 
 function enemyLayerReady(layer: LoadedSpriteLayer) {
   return layer.image.complete && layer.image.naturalWidth > 0 && layer.image.naturalHeight > 0;
@@ -60,6 +61,7 @@ function tintedEnemyLayerImage(layer: LoadedSpriteLayer): CanvasImageSource {
   const canvas = createTintedImageCanvas(layer.image, layer.w, layer.h, layer.tint);
   if (!canvas) return layer.image;
   enemyTintedLayerCache.set(layer, canvas);
+  freezeEntry(enemyTintedLayerCache, layer, canvas);
   return canvas;
 }
 
@@ -93,7 +95,9 @@ function cachedEnemyLayerPlan(sprite: LoadedEnemySprite) {
         layer.h,
       );
     }
-    plan.push({ kind: "STATIC", canvas, x: left, y: top });
+    const part = { kind: "STATIC" as const, image: canvas as FrozenImage, x: left, y: top };
+    plan.push(part);
+    freezeCanvas(canvas, bitmap => { part.image = bitmap; return true; });
     staticLayers = [];
     return true;
   };
@@ -807,7 +811,7 @@ export function createActorRenderer(options: {
       if (layerPlan) {
         for (const part of layerPlan) {
           if (part.kind === "STATIC") {
-            ctx.drawImage(part.canvas, part.x, part.y);
+            ctx.drawImage(part.image, part.x, part.y);
             continue;
           }
           const layer = part.layer;

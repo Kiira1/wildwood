@@ -1,5 +1,7 @@
-/** The canvas copy of an image, or null until the image has loaded. */
-export type ResidentImage = () => HTMLCanvasElement | null;
+import { freezeCanvas, type FrozenImage } from "./frozen-canvas";
+
+/** The canvas copy of an image (frozen into a bitmap once made), or null until the image has loaded. */
+export type ResidentImage = () => FrozenImage | null;
 
 /**
  * iOS throws away the decoded pixels of an <img> that is not on the page when
@@ -10,7 +12,7 @@ export type ResidentImage = () => HTMLCanvasElement | null;
  * never flickered. Copy the image once, its longer side at most `maxSide` pixels.
  */
 export function residentImage(image: HTMLImageElement, maxSide = 64): ResidentImage {
-  let copy: HTMLCanvasElement | null = null;
+  let copy: FrozenImage | null = null;
   return () => {
     if (copy) return copy;
     if (!image.complete || !image.naturalWidth || !image.naturalHeight) return null;
@@ -24,6 +26,7 @@ export function residentImage(image: HTMLImageElement, maxSide = 64): ResidentIm
     context.imageSmoothingQuality = "high";
     context.drawImage(image, 0, 0, canvas.width, canvas.height);
     copy = canvas;
+    freezeCanvas(canvas, bitmap => { copy = bitmap; return true; });
     return copy;
   };
 }

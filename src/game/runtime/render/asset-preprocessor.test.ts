@@ -44,7 +44,7 @@ describe("map-scoped image preprocessing", () => {
     expect(requests).toContain("assets/wildstat/soul-dimension/soul-atlas.webp");
     expect(requests).not.toContain("assets/wildstat/tree-spritesheet-v1.webp");
     expect(requests).not.toContain(SCORPION_SPRITE.source);
-    expect(requests).not.toContain("assets/wildstat/frostclaw-boss-spritesheet.webp");
+    expect(requests).not.toContain("assets/wildstat/frostclaw-boss-spritesheet-v2.webp");
     expect(requests).not.toContain("assets/wildstat/lava/lava-pool-1.webp");
     expect(requests).not.toContain("assets/wildstat/night-tree-spritesheet-v1.webp");
     expect(requests).not.toContain(DUEL_SPACE_BACKGROUND_SOURCE);

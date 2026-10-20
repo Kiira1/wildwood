@@ -4,7 +4,7 @@ import {
 } from "./crafting";
 import { armorClassOf, bootStyleOf, gradeEquipmentKindOf, gradeOf, isGradeItemId, type GradeItemId } from "./grade-equipment";
 import { GEAR_GRADES, gradeIndex, type ArmorClass, type BootStyle, type GearGrade } from "./gear-grades";
-import { GRADE_SHOP_LINES, gradeShopItemId, gradeShopOpen, type GradeShopLine, type MasteryLevels } from "./grade-shop";
+import { GRADE_SHOP_LINES, gradeShopItemId, type GradeShopLine } from "./grade-shop";
 import { isSkillWeapon } from "./weapon-skills";
 
 /**
@@ -72,13 +72,12 @@ export type GradeCraftOffer = {
   next?: GradeItemId;
 };
 
-/** A piece Mastery and the craft's level both open. */
-export const gradeCraftOpen = (itemId: GradeItemId, levels: MasteryLevels, level: number) =>
-  gradeShopOpen(itemId, levels) && level >= gradeCraftLevel(itemId);
+/** A piece the craft's level opens: crafting needs no Mastery, only buying does. */
+export const gradeCraftOpen = (itemId: GradeItemId, level: number) => level >= gradeCraftLevel(itemId);
 
-/** What the Smith offers to craft on a line: every grade Mastery and the craft's level open, the best first. Crude always is. */
-export function gradeCraftOffer(line: GradeShopLine, levels: MasteryLevels, level: number): GradeCraftOffer {
-  const grades = GEAR_GRADES.filter(grade => gradeCraftOpen(gradeShopItemId(line, grade), levels, level));
+/** What the Smith offers to craft on a line: every grade the craft's level opens, the best first. Crude always is. */
+export function gradeCraftOffer(line: GradeShopLine, level: number): GradeCraftOffer {
+  const grades = GEAR_GRADES.filter(grade => gradeCraftOpen(gradeShopItemId(line, grade), level));
   const grade = grades.at(-1) ?? GEAR_GRADES[0], next = GEAR_GRADES[gradeIndex(grade) + 1];
   return { itemId: gradeShopItemId(line, grade), grade, grades: grades.length ? grades : [grade], ...(next ? { next: gradeShopItemId(line, next) } : {}) };
 }
