@@ -34,7 +34,8 @@ import { deliverDisconnectCompensation, deliverCombatUpdateGift, deliverOutageCo
 import { connectionDiagnosticTables, recordConnectionDiagnostics, cleanupConnectionDiagnostics } from "./connection-diagnostics";
 import { moderationTables, recordModerationAction, readModerationHistory, readPlayerModerationHistory, searchModerationHistory } from "./moderation-history";
 import { readDevConsole, readDevPlayerCard, warnPlayer } from "./dev-console";
-import { mailboxLetter, mailboxReceipt, mailboxEntryV2, mailboxForPlayerV2, playerJoinDate, publishMailboxLetter, syncPlayerJoinDate, updateMailboxReceipt, clearExpiredMail } from "./mailbox";
+import { mailboxLetter, mailboxReceipt, mailboxEntryV2, mailboxForPlayerV2, publishMailboxLetter, updateMailboxReceipt, clearExpiredMail } from "./mailbox";
+import { playerJoinDate, syncPlayerJoinDate } from "./player-join-date";
 import { rollbackPlayerProgression } from "./player-progression-rollback";
 import { playerItemGift, deliverAlphaTesterGifts, claimItemGift } from "./item-gifts";
 import { playerBowSkill } from "./bow-skills";
@@ -122,7 +123,7 @@ import {
   syncPlayerMapMarker, ensureWorldStatus, reconcileOnlinePlayers, requireScheduler, ensureRepeatingSchedule,
 } from "./presence-runtime";
 import { createDuelRuntime, activeDuelFor, clearExpiredDuelRequests } from "./duel-runtime";
-import { createAccountLifecycle, hasSpacetimeAuthAccount, clearExpiredAccountLinks, dailyGemBonusClaimReference } from "./account-lifecycle";
+import { createAccountLifecycle, clearExpiredAccountLinks, dailyGemBonusClaimReference } from "./account-lifecycle";
 import { analyticsTables, finishAnalyticsSession, readAnalyticsDashboard, recordAnalyticsConversion, recordAnalyticsMilestone, recordAnalyticsSessionStart } from "./analytics";
 import {
   DAILY_LOGIN_GEM_BONUS,
@@ -169,7 +170,7 @@ import {
 } from "../../shared/rules";
 import { readPlayerProgress, withDuelWide } from "./wide-stats";
 import { playerInventory, playerWideStats, duelWideStats, duelReplayWideStats, playerCombatRating } from "./wide-stats-table";
-import { LEGACY_CLIENT_ERRORS, sameConnection, sessionForContext, requireSession, blockedSession, isSupportedProtocol, requireCurrentLegalConsent, requireChatAge, requireSupportedSessionProtocol, requireControllingPlayer, isDeveloperIdentity, isDatabaseOwnerIdentity, isVirtualPlayer, requireDeveloperSession, requireDeveloper, touchPlayerAccessAudit, backfillKnownAccessAudit, sameIdentity } from "./session-guards";
+import { LEGACY_CLIENT_ERRORS, sameConnection, sessionForContext, requireSession, blockedSession, isSupportedProtocol, requireCurrentLegalConsent, requireChatAge, requireSupportedSessionProtocol, requireControllingPlayer, isDeveloperIdentity, isDatabaseOwnerIdentity, isVirtualPlayer, requireDeveloperSession, requireDeveloper, touchPlayerAccessAudit, backfillKnownAccessAudit, sameIdentity, hasSpacetimeAuthAccount } from "./session-guards";
 import { defaultPlayerProgress, samePlayerProgressValues, hasFreshProgress, resultIncludesContributor, contributedToLatestPrismshell, forestItemCountForProgress, inventoryForProgress, slotUpgradeKey, itemUpgradeLevelFor, itemLevelFor, playerOwnsItem, restoreItemToProgress, equippedHeadForProgress, equippedChestForProgress, equippedFeetForProgress, equippedRightHandForProgress, equippedLeftHandForProgress, cosmeticEquipmentForProgress, equipmentPresentationForProgress, leaderboardAppearanceForProgress, maxHealthForProgress } from "./progress-helpers";
 import { researchForPlayer, assertResearchAvailable, activeResearchIsAvailable, removeResearchCompletionSchedules, completeActiveResearch, ensureResearchCompletionSchedule, reconcileActiveResearch } from "./research-runtime";
 import { ensurePlayerLifetime, finishLifetimeSession, markPlayerBalanceCurrent, playerBalanceProgress, effectivePowerStatsForProgress, effectivePowerForProgress, powerFieldsForProgress, researchedDamage, researchedArmor, researchedRegen } from "./player-power";

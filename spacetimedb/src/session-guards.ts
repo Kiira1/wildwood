@@ -7,11 +7,10 @@ import { Identity } from "spacetimedb";
 import { DEVELOPER_IDENTITY as DEVELOPER_IDENTITY_HEX } from "../../shared/developer-identity";
 import { requireAllowedDefeatSession, defeatRestrictionError } from "./defeat-session";
 import { SenderError } from "spacetimedb/server";
-import { COMPATIBLE_PROTOCOL_VERSIONS } from "../../shared/rules";
+import { COMPATIBLE_PROTOCOL_VERSIONS, SPACETIME_AUTH_CLIENT_ID, SPACETIME_AUTH_ISSUER } from "../../shared/rules";
 import { CHAT_AGE_REQUIRED, TERMS_VERSION, isEligiblePlayerAgeBand, isPlayableAgeBand } from "../../shared/legal";
 import { playerWithMotion } from "./presence-runtime";
 import { auditPrivilegedAccess } from "./privileged-access-audit";
-import { hasSpacetimeAuthAccount } from "./account-lifecycle";
 
 // Cached clients parse these exact wire messages. Current clients rebrand them
 // for display; changing them would break reconnects and account linking in old tabs.
@@ -90,6 +89,16 @@ export function requireControllingPlayer(ctx: any) {
     throw new SenderError("Wildstat is active in another tab.");
   }
   return current;
+}
+
+export function hasSpacetimeAuthAccount(ctx: any) {
+  const jwt = ctx.senderAuth?.jwt;
+  return Boolean(
+    jwt &&
+    jwt.issuer === SPACETIME_AUTH_ISSUER &&
+    Array.isArray(jwt.audience) &&
+    jwt.audience.includes(SPACETIME_AUTH_CLIENT_ID),
+  );
 }
 
 export function isDeveloperIdentity(identity: any) {

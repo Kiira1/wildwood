@@ -36,7 +36,7 @@ import { balanceApologyTransactionReference, isBalanceApologyEligible } from "./
 import { BALANCE_APOLOGY_GEM_GIFT } from "../../shared/gems";
 import { grantGemHeartUnlock } from "./chat-reactions";
 import { GEM_KILL_CREDIT_PER_GEM } from "../../shared/gem-drops";
-import { syncPlayerJoinDate } from "./mailbox";
+import { syncPlayerJoinDate } from "./player-join-date";
 import { enrollInPrestigeChallenge } from "./prestige-challenge";
 import { readPlayerProgress, iterPlayerProgress, moveCombatColumnsOntoProgress } from "./wide-stats";
 import { moveSoloQuestsToGuild } from "./daily-quests";
