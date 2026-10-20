@@ -46,16 +46,15 @@ describe("private tutorial map", () => {
     expect(f.document.querySelectorAll("canvas")).toHaveLength(1);
     expect(f.document.querySelector(".onboarding-hint")?.textContent).toBe("Drag to move");
     expect(f.enemies).toHaveLength(0);
+    const progress = f.document.querySelector(".onboarding-progress")!;
+    expect([progress.getAttribute("aria-valuenow"), progress.getAttribute("aria-valuemax")]).toEqual(["1", "4"]);
+    // Walking goes straight to the first enemy; there is no portrait lesson in between.
     f.player.x += 70; f.scene.update(1 / 60); await settle();
-    expect(f.enemies).toHaveLength(0);
-    expect(f.scene.canOpenProfile()).toBe(true);
-    f.advanceTime(2);
-    expect(f.complete).toHaveBeenCalledTimes(1);
-    f.setProfileOpen(true); f.scene.update(1 / 60);
-    expect(f.document.querySelector<HTMLElement>(".onboarding-tutorial")?.hidden).toBe(true);
-    expect(f.scene.blocksInput()).toBe(true);
-    f.setProfileOpen(false); f.scene.update(1 / 60); await settle();
+    expect(f.complete).toHaveBeenCalledExactlyOnceWith(S.spitter);
     expect(f.enemies).toHaveLength(1);
+    expect(f.document.querySelector(".onboarding-instruction")?.textContent).toBe("Defeat the enemy slime");
+    expect(progress.getAttribute("aria-valuenow")).toBe("2");
+    expect(f.document.querySelector(".onboarding-pointer")).toBeNull();
     expect(f.enemies[0]).toMatchObject({ ...ONBOARDING_ENEMY_POSITION, speed: ENEMY_TYPES.Spitter.speed, damage: 10, type: "Spitter", displayName: "Baby Spitter", hp: 10, reward: { type: "damage", amount: 1 } });
     expect(f.scene.enemyDefeated()).toBe(true); await settle();
     expect(f.player.damage).toBe(4);
@@ -63,8 +62,10 @@ describe("private tutorial map", () => {
     f.advanceTime(3.1);
     expect(f.enemies).toHaveLength(1);
     expect(f.enemies[0]).toMatchObject({ type: "Brood", hp: 25, reward: { type: "regen", amount: .2 } });
+    expect(progress.getAttribute("aria-valuenow")).toBe("3");
     f.scene.enemyDefeated(); await settle();
     expect(f.player.regen).toBeCloseTo(.4);
+    expect(progress.getAttribute("aria-valuenow")).toBe("4");
     expect(f.logPickup.mock.calls).toEqual([
       [rewardLabel({ type: "damage", amount: 1 }), REWARD_DATA.damage.color],
       [rewardLabel({ type: "regen", amount: .2 }), REWARD_DATA.regen.color],
@@ -95,7 +96,7 @@ describe("private tutorial map", () => {
     expect(f.finish).not.toHaveBeenCalled();
     f.document.querySelector<HTMLButtonElement>(".onboarding-skip")!.click(); await settle();
     expect(f.setName).not.toHaveBeenCalled();
-    expect(f.complete.mock.calls.map(([step]) => step)).toEqual([2, 3, 4, 5, 6]);
+    expect(f.complete.mock.calls.map(([step]) => step)).toEqual([S.spitter, S.regen, S.death, S.complete]);
     expect(f.finish).toHaveBeenCalledOnce();
     expect(f.scene.isActive()).toBe(false);
     expect(f.document.body.classList.contains("is-onboarding")).toBe(false);
@@ -115,7 +116,7 @@ describe("private tutorial map", () => {
     expect(f.saved).toEqual({ damage: 3, regen: .2 });
   });
   it("keeps a username chosen in the profile and bypasses the second name prompt", async () => {
-    const f = fixture(S.profile);
+    const f = fixture(S.move);
     f.setChosenName(true);
     f.document.querySelector<HTMLButtonElement>(".onboarding-skip-tutorial")!.click(); await settle();
     expect(f.closeWindows).toHaveBeenCalledOnce();
@@ -125,7 +126,7 @@ describe("private tutorial map", () => {
     expect(f.finish).toHaveBeenCalledOnce();
   });
   it("waits for an in-flight profile rename before deciding whether a name is needed", async () => {
-    const f = fixture(S.profile);
+    const f = fixture(S.move);
     let resolveName!: () => void;
     f.waitForNameSave.mockImplementationOnce(() => new Promise<void>(resolve => { resolveName = resolve; }));
     f.document.querySelector<HTMLButtonElement>(".onboarding-skip-tutorial")!.click(); await settle();
@@ -136,7 +137,7 @@ describe("private tutorial map", () => {
     expect(f.finish).toHaveBeenCalledOnce();
   });
   it("does not finish onboarding for a different account after waiting on a rename", async () => {
-    const f = fixture(S.profile);
+    const f = fixture(S.move);
     let resolveName!: () => void;
     f.waitForNameSave.mockImplementationOnce(() => new Promise<void>(resolve => { resolveName = resolve; }));
     f.document.querySelector<HTMLButtonElement>(".onboarding-skip-tutorial")!.click(); await settle();
@@ -191,6 +192,24 @@ describe("private tutorial map", () => {
     expect(f.logPickup).toHaveBeenCalledOnce();
     f.advanceTime(3.1); expect(f.enemies[0].type).toBe("Brood");
   });
+  it("resumes a character saved on the retired portrait step at the first enemy", async () => {
+    const f = fixture(2);
+    expect(f.scene.required()).toBe(true);
+    expect(f.enemies[0]).toMatchObject({ type: "Spitter", displayName: "Baby Spitter" });
+    expect(f.document.querySelector(".onboarding-progress")?.getAttribute("aria-valuenow")).toBe("2");
+    f.scene.enemyDefeated(); await settle();
+    expect(f.complete).toHaveBeenCalledExactlyOnceWith(S.regen);
+    expect(f.player.damage).toBe(4);
+  });
+  it("hides the lesson and holds input while the profile is open", () => {
+    const f = fixture(S.spitter);
+    f.setProfileOpen(true); f.scene.update(1 / 60);
+    expect(f.document.querySelector<HTMLElement>(".onboarding-tutorial")?.hidden).toBe(true);
+    expect(f.scene.blocksInput()).toBe(true);
+    f.setProfileOpen(false); f.scene.update(1 / 60);
+    expect(f.document.querySelector<HTMLElement>(".onboarding-tutorial")?.hidden).toBe(false);
+    expect(f.scene.blocksInput()).toBe(false);
+  });
   it("pauses the death lesson offline and cleans up if the account changes", () => {
     const f = fixture(S.death);
     f.scene.died(); f.setConnected(false); f.advanceTime(20);
@@ -209,8 +228,7 @@ describe("replaying the tutorial from Settings", () => {
     expect(f.playWelcome).toHaveBeenCalledOnce();
     expect(f.document.querySelector(".onboarding-hint")?.textContent).toBe("Drag to move");
     f.player.x += 70; f.scene.update(1 / 60); await settle();
-    f.setProfileOpen(true); f.scene.update(1 / 60); f.setProfileOpen(false); f.scene.update(1 / 60); await settle();
-    expect(f.enemies[0]).toMatchObject({ type: "Spitter" });
+        expect(f.enemies[0]).toMatchObject({ type: "Spitter" });
     f.scene.enemyDefeated(); await settle();
     f.advanceUntil(() => f.enemies[0]?.type === "Brood");
     f.scene.enemyDefeated(); await settle();

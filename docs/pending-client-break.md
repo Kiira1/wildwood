@@ -23,3 +23,9 @@ remove their declarations, in the next release that breaks clients:
     spacetime sql -s maincloud wildwood-coop "DELETE FROM player_balance_version"
 
 (and the same for each table), run by Rymel just before that publish.
+
+## Waiting (tutorial portrait lesson removed after 0.916.14)
+
+- `advanceOnboarding` (`spacetimedb/src/onboarding.ts`) still accepts the retired portrait lesson
+  (step 2) after Move, for 0.916.14 tabs. Delete `oldClientPortrait` in the next release that
+  reloads every client. Rows already saved on step 2 keep working without it.

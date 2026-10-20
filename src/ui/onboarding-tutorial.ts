@@ -1,6 +1,6 @@
 import { chooseOnboardingName } from "./onboarding-name";
 import { DEFAULT_TUTORIAL_COPY, loadTutorialCopy, tutorialText } from "./tutorial-copy";
-import { ONBOARDING_ENEMY_HP, ONBOARDING_REGEN_ENEMY_HP, ONBOARDING_ENEMY_POSITION, ONBOARDING_MAP_ID, ONBOARDING_WORLD, ONBOARDING_STEP as S, onboardingPending } from "../../shared/onboarding";
+import { ONBOARDING_ENEMY_HP, ONBOARDING_REGEN_ENEMY_HP, ONBOARDING_ENEMY_POSITION, ONBOARDING_MAP_ID, ONBOARDING_WORLD, ONBOARDING_STEP as S, ONBOARDING_LESSONS, nextOnboardingStep, onboardingLessonAt, onboardingPending } from "../../shared/onboarding";
 import { ENEMY_TYPES, REWARD_DATA, rewardLabel } from "../game/enemies";
 import type { SpawnSite } from "../game/world";
 import type { EnemyState, PlayerState } from "../game/runtime/types";
@@ -37,10 +37,10 @@ export function createOnboardingTutorial(o: Options) {
   let walked = 0, lastX = 0, lastY = 0, deadFor = -1, finish: () => void = () => {};
   let afterHold: "enemy" | "death-intro" | "complete" | "fade" = "enemy";
   let host: HTMLElement | null = null;
-  let naming = false, profileSeen = false, abort = new AbortController();
+  let naming = false, abort = new AbortController();
   // A replay from Settings runs every lesson again without saving them; only an unfinished tutorial is marked done.
   let replaying = false, stopVoice: () => void = () => {};
-  let instruction: HTMLElement, hint: HTMLElement, progress: HTMLElement, retry: HTMLButtonElement, pointer: HTMLElement;
+  let instruction: HTMLElement, hint: HTMLElement, progress: HTMLElement, retry: HTMLButtonElement;
   let copy = DEFAULT_TUTORIAL_COPY, titleKey = "moveTitle", hintKey = "moveTouchHint", textValues: Record<string, number> = {};
   function showText(title: string, detail: string, values: Record<string, number> = {}) {
     titleKey = title; hintKey = detail; textValues = values;
@@ -54,35 +54,16 @@ export function createOnboardingTutorial(o: Options) {
   function clearEnemy() { o.enemies.length = 0; o.sites.length = 0; o.clearCombat(); }
   function dispose() {
     active = false; abort.abort(); host?.remove(); host = null; stopVoice(); stopVoice = () => {};
-    document.body.classList.remove("is-onboarding", "is-onboarding-profile");
+    document.body.classList.remove("is-onboarding");
   }
 
-  /**
-   * The lesson used to say "tap yourself", which a setting can now switch off,
-   * and the HUD it points at instead is hidden for the rest of the tutorial.
-   * Reveal it for this step only and put an arrow under the portrait, tracking
-   * it rather than guessing where the HUD sits on this screen.
-   */
-  function aimPointer(show: boolean) {
-    document.body.classList.toggle("is-onboarding-profile", show);
-    if (!pointer) return;
-    const target = show ? document.getElementById("playerHudProfileIcon") : null;
-    const box = target?.getBoundingClientRect();
-    pointer.hidden = !box || box.width === 0;
-    if (!box || box.width === 0) return;
-    // Centred under the portrait, and kept on screen: the HUD sits near the
-    // left edge, so a naive centre put half the arrow outside the viewport.
-    const width = pointer.offsetWidth || 38;
-    const centred = box.left + box.width / 2 - width / 2;
-    const maxLeft = Math.max(8, (pointer.ownerDocument.defaultView?.innerWidth ?? 0) - width - 8);
-    pointer.style.left = `${Math.max(8, Math.min(maxLeft, centred))}px`;
-    pointer.style.top = `${box.bottom + 10}px`;
-  }
   function labels() {
-    showText(step === S.move ? "moveTitle" : step === S.profile ? "profileTitle" : step === S.spitter ? "firstEnemyTitle" : step === S.regen ? "regenEnemyTitle" : step === S.death ? "deathTitle" : "completeTitle",
-      step === S.move ? (navigator.maxTouchPoints > 0 ? "moveTouchHint" : "moveKeyboardHint") : step === S.profile ? "profileHint" : step < S.death ? "combatHint" : step === S.death ? "deathHint" : "completeHint");
-    progress.setAttribute("aria-valuenow", String(Math.min(5, step)));
-    progress.style.setProperty("--lesson-progress", `${Math.min(5, step) / 5 * 100}%`);
+    showText(step === S.move ? "moveTitle" : step === S.spitter ? "firstEnemyTitle" : step === S.regen ? "regenEnemyTitle" : step === S.death ? "deathTitle" : "completeTitle",
+      step === S.move ? (navigator.maxTouchPoints > 0 ? "moveTouchHint" : "moveKeyboardHint") : step < S.death ? "combatHint" : step === S.death ? "deathHint" : "completeHint");
+    const lessons = ONBOARDING_LESSONS.length;
+    const done = step >= S.complete ? lessons : (ONBOARDING_LESSONS as readonly number[]).indexOf(step) + 1;
+    progress.setAttribute("aria-valuenow", String(done));
+    progress.style.setProperty("--lesson-progress", `${done / lessons * 100}%`);
   }
   function spawnLessonEnemy() {
     clearEnemy();
@@ -157,18 +138,16 @@ export function createOnboardingTutorial(o: Options) {
   return {
     isActive: () => active,
     required: () => onboardingPending(o.step()),
-    canOpenProfile: () => active && step === S.profile,
     blocksInput: () => active && (step >= S.complete || o.profileOpen() || deadFor >= 0 || !o.connected()),
     /** `replay`: from the first lesson whatever was finished, as Settings' Replay Tutorial does. */
     start(onComplete: () => void, replay = false) {
       if (active) return;
-      active = true; owner = o.identity(); replaying = replay; step = replay ? S.move : o.step(); finish = onComplete;
-      hold = pending = walked = 0; saving = failed = profileSeen = naming = false; afterHold = "enemy"; deadFor = -1; abort = new AbortController();
+      active = true; owner = o.identity(); replaying = replay; step = replay ? S.move : onboardingLessonAt(o.step()); finish = onComplete;
+      hold = pending = walked = 0; saving = failed = naming = false; afterHold = "enemy"; deadFor = -1; abort = new AbortController();
       host = document.createElement("section"); host.className = "onboarding-tutorial"; host.setAttribute("aria-label", "First adventure tutorial");
-      host.innerHTML = '<header><div class="onboarding-progress" role="progressbar" aria-label="Tutorial progress" aria-valuemin="1" aria-valuemax="5"></div><p class="onboarding-instruction" role="status"></p><p class="onboarding-hint"></p><button type="button" class="window-back-button" hidden>Retry</button></header><button type="button" class="onboarding-skip-tutorial">Skip tutorial</button><div class="onboarding-pointer" hidden aria-hidden="true"><svg viewBox="0 0 48 64" role="presentation"><path d="M24 5 L44 31 H33 V59 H15 V31 H4 Z" /></svg></div>';
+      host.innerHTML = `<header><div class="onboarding-progress" role="progressbar" aria-label="Tutorial progress" aria-valuemin="1" aria-valuemax="${ONBOARDING_LESSONS.length}"></div><p class="onboarding-instruction" role="status"></p><p class="onboarding-hint"></p><button type="button" class="window-back-button" hidden>Retry</button></header><button type="button" class="onboarding-skip-tutorial">Skip tutorial</button>`;
       instruction = host.querySelector(".onboarding-instruction")!; hint = host.querySelector(".onboarding-hint")!;
       progress = host.querySelector(".onboarding-progress")!;
-      pointer = host.querySelector(".onboarding-pointer")!;
       retry = host.querySelector("button")!;
       retry.addEventListener("click", () => { void saveStep(); });
       host.querySelector(".onboarding-skip-tutorial")!.addEventListener("click", showUsername);
@@ -186,7 +165,7 @@ export function createOnboardingTutorial(o: Options) {
     },
     enemyDefeated() {
       if (!active) return false;
-      if (!naming && (step === S.spitter || step === S.regen)) queueStep(step + 1);
+      if (!naming && (step === S.spitter || step === S.regen)) queueStep(nextOnboardingStep(step));
       return true;
     },
     died() {
@@ -200,13 +179,7 @@ export function createOnboardingTutorial(o: Options) {
       if (o.identity() !== owner) { clearEnemy(); dispose(); o.cancel(); return; }
       if (naming) return;
       if (!o.connected()) { o.clearInput(); hint.textContent = "Reconnecting…"; return; }
-      const profileOpen = o.profileOpen();
-      if (host) host.hidden = profileOpen || step >= S.complete;
-      aimPointer(step === S.profile && !profileOpen && !pending);
-      if (step === S.profile) {
-        if (profileOpen) profileSeen = true;
-        else if (profileSeen && !pending) { profileSeen = false; queueStep(S.spitter); }
-      }
+      if (host) host.hidden = o.profileOpen() || step >= S.complete;
       if (saving || failed) return;
       if (deadFor >= 0) {
         deadFor += dt;
@@ -236,7 +209,7 @@ export function createOnboardingTutorial(o: Options) {
       if (step === S.move) {
         walked += Math.hypot(o.player.x - lastX, o.player.y - lastY);
         lastX = o.player.x; lastY = o.player.y;
-        if (walked >= 60) queueStep(S.profile);
+        if (walked >= 60) queueStep(nextOnboardingStep(S.move));
       }
     },
     spawn: ONBOARDING_WORLD.spawn,
