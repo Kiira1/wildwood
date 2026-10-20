@@ -1,8 +1,7 @@
 import { CAMPAIGN_MAPS } from "./campaign-registry";
 import type { MapBalanceSnapshot } from "./map-balance-types";
 import { ENEMY_TYPES, type EnemyKind } from "./enemy-definitions";
-import * as camps from "./enemy-camps";
-import designs from "./map-designs.json";
+import { campaignPopulation, combatMap } from "./campaign-combat";
 import { endlessSiteLane, generateMap, generatedEnemyStats, isProceduralMap } from "./procedural-maps";
 import { isSoulMap, soulRewardType, soulStatFromEnemyId, SOUL_POPULATION, SOUL_STAT_DETAILS, SOUL_STAT_ORDER } from "./soul-dimension";
 import { MAX_ARMOR, MAX_PLAYER_STAT, MIN_ATTACK_INTERVAL, REGULAR_ENEMY_RESPAWN_SECONDS, REGULAR_KILL_REPORT_SECONDS } from "./rules";
@@ -34,32 +33,7 @@ export const DEFEAT_BUDGET_WINDOW_SECONDS = 300;
  * ten minutes once per ten minutes away.
  */
 export const SIM_CLOCK_BANK_SECONDS = 2 * DEFEAT_BUDGET_WINDOW_SECONDS;
-const CAMPS: Record<string, readonly camps.SpawnCamp[]> = {
-  tutorial_forest: camps.CAMPS, beginner_desert: camps.DESERT_CAMPS,
-  intermediate_snowlands: camps.SNOW_CAMPS, advanced_lava_wastes: camps.LAVA_CAMPS,
-  infernal_depths: camps.INFERNAL_CAMPS, water_reach: camps.WATER_CAMPS,
-  samurai_garden: camps.SAMURAI_CAMPS, cloudspire: camps.CLOUDSPIRE_CAMPS,
-  moonfen: camps.MOONFEN_CAMPS, crystal_hollows: camps.CRYSTAL_HOLLOWS_CAMPS,
-  clockwork_ruins: camps.CLOCKWORK_RUINS_CAMPS, duskfall_orchard: camps.DUSKFALL_ORCHARD_CAMPS,
-  neon_bastion: camps.NEON_BASTION_CAMPS, verdant_catacombs: camps.VERDANT_CATACOMBS_CAMPS,
-  ion_citadel: camps.ION_CITADEL_CAMPS,
-};
 const generatedMaps = new Map<string, ReturnType<typeof generateMap>>();
-const campaignPopulations = new Map<string, Map<string, number>>();
-function campaignPopulation(mapId: string) {
-  let populations = campaignPopulations.get(mapId);
-  if (populations) return populations;
-  const saved = (designs.maps as Record<string, { status: string; spawnCamps: camps.SpawnCamp[] }>)[mapId];
-  const rows = saved?.status === "live" && saved.spawnCamps.length ? saved.spawnCamps : CAMPS[mapId];
-  if (!rows) return null;
-  populations = new Map();
-  for (const camp of rows) for (let i = 0; i < camp.count; i++) {
-    const kind = camp.types[i % camp.types.length];
-    populations.set(kind, (populations.get(kind) ?? 0) + 1);
-  }
-  campaignPopulations.set(mapId, populations);
-  return populations;
-}
 function generatedDefinition(mapId: `endless_${number}`) {
   let map = generatedMaps.get(mapId);
   if (!map) {
@@ -121,7 +95,7 @@ export function mapEnemyPopulation(mapId: string) {
   mapPopulations.set(mapId, population);
   return population;
 }
-export function combatMap(mapId: string) { return CAMPAIGN_MAPS.some(map => map.id === mapId) || isProceduralMap(mapId); }
+export { combatMap };
 /** Maps whose kills are reported: the combat maps and the Soul Dimension. */
 export function killReportMap(mapId: string) { return combatMap(mapId) || isSoulMap(mapId); }
 

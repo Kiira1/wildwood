@@ -1,0 +1,209 @@
+import { CAMPAIGN_ENDPOINT } from "./campaign-registry";
+import type { ForestProgressionLane, RewardStat } from "./progression";
+// Endless map generation with no balance lookups, so map-balance can use it.
+// procedural-maps.ts re-exports all of this and adds the balance-backed stats.
+
+export type ProceduralMapId = `endless_${number}`;
+export const PROCEDURAL_PREFIX = "endless_";
+export const PROCEDURAL_MAP_VERSION = 3;
+export const PROCEDURAL_ENTRY_MAP = CAMPAIGN_ENDPOINT.mapId;
+export const PROCEDURAL_ENTRY_BOSS = CAMPAIGN_ENDPOINT.bossKind;
+export const PROCEDURAL_FIRST_TIER = CAMPAIGN_ENDPOINT.endlessTier;
+export const PROCEDURAL_WORLD = { width: 4800, height: 4800 };
+const PORTAL_CENTER = { x: PROCEDURAL_WORLD.width / 2, y: PROCEDURAL_WORLD.height / 2 };
+export function proceduralMapNumber(id: string): number | null {
+  if (!/^endless_[1-9]\d{0,15}$/.test(id)) return null;
+  const number = Number(id.slice(PROCEDURAL_PREFIX.length));
+  return Number.isSafeInteger(number) ? number : null;
+}
+export function isProceduralMap(id: string): id is ProceduralMapId {
+  return proceduralMapNumber(id) !== null;
+}
+export function proceduralMapId(index: number): ProceduralMapId {
+  if (!Number.isSafeInteger(index) || index < 1)
+    throw new RangeError("Invalid generated map number");
+  return `endless_${index}`;
+}
+/** Integer-only RNG: identical layouts in the browser and on the server. */
+export function mapRandom(seed: number) {
+  let state = seed >>> 0;
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let value = Math.imul(state ^ (state >>> 15), state | 1);
+    value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+    return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+  };
+}
+export type MapPoint = { x: number; y: number };
+export type MapPath = MapPoint & { w: number; h: number };
+export type GeneratedCamp = MapPoint & {
+  name: string;
+  lane: ForestProgressionLane;
+  stat: RewardStat;
+  count: number;
+  radius: number;
+};
+export type GeneratedMap = {
+  id: ProceduralMapId;
+  number: number;
+  name: string;
+  tier: number;
+  seed: number;
+  arrival: MapPoint;
+  boss: MapPoint;
+  portals: Array<
+    MapPoint & {
+      destination: string;
+      width: number;
+      height: number;
+      depth: number;
+    }
+  >;
+  camps: GeneratedCamp[];
+  paths: MapPath[];
+  palette: { ground: string; path: string; pathDetail: string; accent: string };
+};
+function hslHex(hue: number, saturation: number, lightness: number) {
+  const light = lightness / 100;
+  const amplitude = (saturation / 100) * Math.min(light, 1 - light);
+  const channel = (offset: number) => {
+    const position = (offset + hue / 30) % 12;
+    const value =
+      light - amplitude * Math.max(-1, Math.min(position - 3, 9 - position, 1));
+    return Math.round(value * 255)
+      .toString(16)
+      .padStart(2, "0");
+  };
+  return `#${channel(0)}${channel(8)}${channel(4)}`;
+}
+export function proceduralPalette(index: number) {
+  // Endless starts at forest green and then walks the whole spectrum, but at a
+  // forest's muted saturation and lightness rather than the pale wash it used
+  // to have. Saturation starts well above zero; at zero the first map was white.
+  const hue = (104 + (index - 1) * 7) % 360;
+  const saturation = Math.min(38, 24 + (index - 1) * 2);
+  // Hex colors work in both the canvas tile painter and the WebGL backdrop.
+  // Keep path lighter than ground, and both lighter than detail and accent.
+  // Ground sits near the Tutorial Forest's lightness (about 39%) since 0.867;
+  // at 53% with a 67% path, Endless read as a bright wash.
+  return {
+    ground: hslHex(hue, saturation, 41),
+    path: hslHex(hue, saturation * 0.6, 56),
+    pathDetail: hslHex(hue, saturation, 31),
+    accent: hslHex(hue, saturation, 23),
+  };
+}
+export const PROCEDURAL_CAMP_RADIUS = 520;
+export const PROCEDURAL_CAMP_JITTER = 80;
+/** Every Endless camp holds eight, as every campaign map has eight of each stat (0.901.47). */
+export const ENDLESS_CAMP_COUNT = 8;
+/** The damage camp's first four are regulars, the rest Dread Wardens. */
+export const ENDLESS_DAMAGE_REGULARS = 4;
+const ENDLESS_LANES: readonly (readonly [ForestProgressionLane, RewardStat])[] = [
+  ["Cindermaw", "damage"], ["Bramble", "health"], ["Mossback", "armor"], ["Brood", "regen"], ["Needle", "speed"], ["Striker", "crit"],
+];
+const ENDLESS_CAMP_NAMES: Readonly<Record<RewardStat, string>> = {
+  damage: "Damage", health: "Health", armor: "Armor", regen: "Regen", speed: "Attack Speed", crit: "Crit",
+};
+/** The reward lane of a camp's `index`th enemy: the damage camp's last ones are elites. */
+export function endlessSiteLane(camp: Pick<GeneratedCamp, "stat" | "lane">, index: number): ForestProgressionLane {
+  return camp.stat === "damage" && index >= ENDLESS_DAMAGE_REGULARS ? "Dread Warden" : camp.lane;
+}
+export function proceduralMapCore(id: string) {
+  const number = proceduralMapNumber(id);
+  if (number === null) throw new RangeError("Invalid generated map");
+  return { number, tier: Math.min(60, PROCEDURAL_FIRST_TIER + number - 1),
+    arrival: { x: PORTAL_CENTER.x, y: PORTAL_CENTER.y + 150 }, boss: { x: 4050, y: 4050 } };
+}
+export function generateMap(id: ProceduralMapId): GeneratedMap {
+  const { number, tier, arrival, boss } = proceduralMapCore(id);
+  const seed = Math.imul(number, 2654435761) ^ PROCEDURAL_MAP_VERSION;
+  const random = mapRandom(seed);
+  // Six camps since 0.901.47, one a reward stat, eight enemies each, so the
+  // regions shrank from 660 to 520. The slots keep a region jittered anywhere
+  // within ±80 clear of its neighbours by 120, the arrival by 450 and the
+  // boss's 900 arena (src/game/world.test.ts).
+  const slots = [
+    { x: 1150, y: 1120 },
+    { x: 2970, y: 900 },
+    { x: 1200, y: 2790 },
+    { x: 3620, y: 2430 },
+    { x: 680, y: 4080 },
+    { x: 2080, y: 3880 },
+  ];
+  const lanes = ENDLESS_LANES.map(lane => [...lane] as [ForestProgressionLane, RewardStat]);
+  for (let i = lanes.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [lanes[i], lanes[j]] = [lanes[j], lanes[i]];
+  }
+  const camps = slots.map((slot, i) => ({
+    x: slot.x + Math.round((random() - 0.5) * 2 * PROCEDURAL_CAMP_JITTER),
+    y: slot.y + Math.round((random() - 0.5) * 2 * PROCEDURAL_CAMP_JITTER),
+    name: `${ENDLESS_CAMP_NAMES[lanes[i][1]]} Camp`,
+    lane: lanes[i][0],
+    stat: lanes[i][1],
+    count: ENDLESS_CAMP_COUNT,
+    radius: PROCEDURAL_CAMP_RADIUS,
+  }));
+  const paths: MapPath[] = [
+    { x: PORTAL_CENTER.x - 240, y: PORTAL_CENTER.y - 230, w: 480, h: 470 },
+  ];
+  const connect = (a: MapPoint, b: MapPoint) => {
+    paths.push({
+      x: Math.min(a.x, b.x) - 90,
+      y: a.y - 90,
+      w: Math.abs(a.x - b.x) + 180,
+      h: 180,
+    });
+    paths.push({
+      x: b.x - 90,
+      y: Math.min(a.y, b.y) - 90,
+      w: 180,
+      h: Math.abs(a.y - b.y) + 180,
+    });
+  };
+  // A connected backbone plus camp branches; all spawn and boss clearings remain reachable.
+  let previous = arrival;
+  for (const camp of camps) {
+    connect(previous, camp);
+    previous = camp;
+  }
+  connect(previous, boss);
+  return {
+    id,
+    number,
+    name: `Endless - ${number}`,
+    tier,
+    seed,
+    arrival,
+    boss,
+    camps,
+    paths,
+    palette: proceduralPalette(number),
+    portals: [
+      {
+        x: PORTAL_CENTER.x - 110,
+        y: PORTAL_CENTER.y,
+        width: 198,
+        height: 198,
+        depth: PORTAL_CENTER.y,
+        destination:
+          number === 1 ? PROCEDURAL_ENTRY_MAP : proceduralMapId(number - 1),
+      },
+      ...(number < Number.MAX_SAFE_INTEGER
+        ? [
+            {
+              x: PORTAL_CENTER.x + 110,
+              y: PORTAL_CENTER.y,
+              width: 198,
+              height: 198,
+              depth: PORTAL_CENTER.y,
+              destination: proceduralMapId(number + 1),
+            },
+          ]
+        : []),
+    ],
+  };
+}
+/** An Endless boss returns a minute after it falls. */
+export const PROCEDURAL_BOSS_RESPAWN_SECONDS = 60;
