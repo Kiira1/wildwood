@@ -5,7 +5,11 @@ import { createEmptyResearchRanks } from "../../shared/research";
 import { FIRE_METAL_HELMET, FROST_ARMOR, FROST_BOW, STARTER_BOW, WOOD_FULL_HELM, WOODEN_ARMOR } from "../../shared/items";
 import { MIN_ATTACK_INTERVAL } from "../../shared/rules";
 import type { PlayerProgress } from "../wildstat-coop";
-import { effectiveProfileStats, profileActiveCardIds, profileAttackCap, profilePower, profilePresenceText, profileSoulInPlay, profileStatDisplayRows } from "./profile";
+import { computePlayerStats } from "../../shared/player-stats";
+
+/** A saved profile's final stats (shared/player-stats.ts), as the Stats tab reads them. */
+const effectiveProfileStats = (...args: Parameters<typeof profileStatInputs>) => computePlayerStats(profileStatInputs(...args));
+import { profileActiveCardIds, profileStatInputs, profileAttackCap, profilePower, profilePresenceText, profileSoulInPlay, profileStatDisplayRows } from "./profile";
 
 const progress = (equippedRightHand = "", equippedChest = ""): PlayerProgress => ({
   maxHp: 100,
@@ -64,12 +68,12 @@ describe("profile presence", () => {
 describe("effective profile equipment stats", () => {
   it("applies Move Speed research to a developer base-speed override", () => {
     const research = { ...createEmptyResearchRanks(), moveSpeed: 15 };
-    expect(effectiveProfileStats({ ...progress(), speedOverride: 262.5 }, research).speed).toBeCloseTo(341.25);
+    expect(effectiveProfileStats({ ...progress(), speedOverride: 262.5 }, research).moveSpeed).toBeCloseTo(341.25);
   });
 
   it("shows the flat Utility movement bonus in the profile speed", () => {
     const research = { ...createEmptyResearchRanks(), moveSpeed: 5, utilityMoveSpeed: 5 };
-    expect(effectiveProfileStats(progress(), research).speed).toBeCloseTo(progress().speed * 1.1 + 15);
+    expect(effectiveProfileStats(progress(), research).moveSpeed).toBeCloseTo(progress().speed * 1.1 + 15);
     const profile = { progress: progress(), research, itemUpgradeLevels: {} } as Parameters<typeof profileStatDisplayRows>[0];
     const speed = profileStatDisplayRows(profile, () => "0%", .25).find(row => row.kind === "speed");
     expect(speed?.total).toBe(Math.round(progress().speed * 1.1 + 15).toLocaleString());
@@ -81,15 +85,15 @@ describe("effective profile equipment stats", () => {
     const stats = effectiveProfileStats(cosmeticOnly);
     expect(stats.maxHp).toBe(100);
     expect(stats.damage).toBe(20);
-    expect(stats.attackRate).toBe(1);
-    expect(stats.regen).toBe(2);
+    expect(stats.attackInterval).toBe(1);
+    expect(stats.regenPerSecond).toBe(2);
   });
 
   it("adds equipped Bow damage to tech without changing attack speed", () => {
     const research = { ...createEmptyResearchRanks(), warcraft: 10 };
     const stats = effectiveProfileStats(progress(STARTER_BOW), research);
     expect(stats.damage).toBeCloseTo(25.2);
-    expect(stats.attackRate).toBeCloseTo(1);
+    expect(stats.attackInterval).toBeCloseTo(1);
   });
 
   it("includes equipped Wooden Armor max-health bonus", () => {
@@ -99,30 +103,30 @@ describe("effective profile equipment stats", () => {
   it("adds helmet regeneration alongside chest health", () => {
     const stats = effectiveProfileStats({ ...progress("", FROST_ARMOR), equippedHead: WOOD_FULL_HELM });
     expect(stats.maxHp).toBeCloseTo(111.43);
-    expect(stats.equipment.health).toBeCloseTo(.1143);
+    expect(stats.sources.maxHp.equipment).toBeCloseTo(.1143);
   });
 
   it("shows Frost Bow's percentage scaling with tech", () => {
     const research = { ...createEmptyResearchRanks(), warcraft: 10 };
     const stats = effectiveProfileStats(progress(FROST_BOW), research);
     expect(stats.damage).toBeCloseTo(26.7432);
-    expect(stats.attackRate).toBeCloseTo(1);
+    expect(stats.attackInterval).toBeCloseTo(1);
   });
 
   it("shows Frost Armor health without adding regeneration", () => {
     const research = { ...createEmptyResearchRanks(), regeneration: 10 };
     const stats = effectiveProfileStats(progress("", FROST_ARMOR), research);
     expect(stats.maxHp).toBeCloseTo(111.43);
-    expect(stats.regen).toBeCloseTo(2.4);
-    expect(stats.equipment.regen).toBeCloseTo(0);
-    expect(stats.multipliers.regenResearch).toBeCloseTo(1.2);
+    expect(stats.regenPerSecond).toBeCloseTo(2.4);
+    expect(stats.sources.regen.equipment).toBeCloseTo(0);
+    expect(stats.sources.regen.techPercent).toBe(20);
   });
 
   it("includes Fire Metal Helmet regeneration without adding health or damage", () => {
     const stats = effectiveProfileStats({ ...progress(FROST_BOW, FROST_ARMOR), equippedHead: FIRE_METAL_HELMET });
     expect(stats.damage).toBeCloseTo(22.286);
     expect(stats.maxHp).toBeCloseTo(111.43);
-    expect(stats.regen).toBeCloseTo(2.3036);
+    expect(stats.regenPerSecond).toBeCloseTo(2.3036);
   });
 
   it("includes completed slot upgrade levels in profile stats", () => {
@@ -130,10 +134,10 @@ describe("effective profile equipment stats", () => {
     // the lookup missed every time and the panel showed bare gear.
     const bow = effectiveProfileStats(progress(FROST_BOW), createEmptyResearchRanks(), { HAND: 1 });
     expect(bow.damage).toBeCloseTo(22.378);
-    expect(bow.attackRate).toBeCloseTo(1);
+    expect(bow.attackInterval).toBeCloseTo(1);
     const armor = effectiveProfileStats(progress("", FROST_ARMOR), createEmptyResearchRanks(), { CHEST: 1 });
     expect(armor.maxHp).toBeCloseTo(111.89);
-    expect(armor.regen).toBeCloseTo(2);
+    expect(armor.regenPerSecond).toBeCloseTo(2);
   });
 
   it("reads nothing from a map still keyed by item id", () => {
@@ -284,7 +288,7 @@ it("displays helmet percentages and research as the same calculation used for co
       { label: "Equipment", value: "+8.04%" },
       { label: "Slot Upgrade", value: "+0.32%" },
     ] });
-  expect(effectiveProfileStats(profile.progress, profile.research, profile.itemUpgradeLevels).regen).toBeCloseTo(13.0032);
+  expect(effectiveProfileStats(profile.progress, profile.research, profile.itemUpgradeLevels).regenPerSecond).toBeCloseTo(13.0032);
 });
 
 describe("prestige perks in the stat panel", () => {

@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { createEmptyResearchRanks } from "../../shared/research";
 import { MIN_ATTACK_INTERVAL, MAX_PLAYER_STAT } from "../../shared/rules";
 import { STARTER_BOW, WOODEN_ARMOR } from "../../shared/items";
-import { cardStatFactors, cardTotals } from "../../shared/card-effects";
+import { NO_CARDS, cardStatFactors, cardTotals } from "../../shared/card-effects";
+import { computePlayerStats } from "../../shared/player-stats";
 import { createResearchController } from "../game/runtime/research-controller";
 import { profilePower, profileStatDisplayRows } from "./profile";
 
@@ -21,10 +22,18 @@ describe("cards in the client's stats", () => {
     const plain = research(), carded = research(cardStatFactors(cardTotals(WORN)));
     expect(carded.damageMultiplier()).toBeCloseTo(plain.damageMultiplier() * 1.049, 9);
     expect(carded.effectiveArmor()).toBeCloseTo(plain.effectiveArmor() * 1.03, 9);
-    expect(carded.regenerationMultiplier()).toBeCloseTo(plain.regenerationMultiplier() * 1.04, 9);
     expect(carded.criticalChance()).toBeCloseTo(plain.criticalChance() + .01, 9);
     expect(carded.criticalDamageMultiplier(0, 40)).toBeCloseTo(plain.criticalDamageMultiplier(0, 40) * 1.06, 9);
-    expect(carded.movementSpeedMultiplier()).toBeCloseTo(plain.movementSpeedMultiplier() * 1.1, 9);
+  });
+
+  it("adds worn cards to regen and move speed in the player's final stats", () => {
+    const stats = (cards = NO_CARDS) => computePlayerStats({
+      base: { maxHp: 100, damage: 1, armor: 40, regen: 1, attackInterval: 1, attackRange: 200, moveSpeed: 200 },
+      loadout: { head: "", chest: "", feet: "", rightHand: "", leftHand: "" }, research: { ...createEmptyResearchRanks(), regeneration: 5 }, cards,
+    });
+    const plain = stats(), carded = stats(cardTotals(WORN));
+    expect(carded.regenPerSecond).toBeCloseTo(plain.regenPerSecond * 1.04, 9);
+    expect(carded.moveSpeed).toBeCloseTo(plain.moveSpeed * 1.1, 9);
   });
 });
 

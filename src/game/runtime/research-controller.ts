@@ -1,12 +1,13 @@
 import type { PlayerState } from "./types";
-import { createEmptyResearchRanks, researchStatRewardMultiplier, utilityMovementSpeedBonus, type ResearchRanks } from "../../../shared/research";
+import { createEmptyResearchRanks, researchStatRewardMultiplier, type ResearchRanks } from "../../../shared/research";
 import { applyPlayerMaxHealthMultiplierBonus } from "./player-health";
-import { movementSpeedMultiplier } from "../../../shared/rules";
 import { prestigeStatMultiplier } from "../../../shared/prestige";
-import { prestigePerkValue, type PrestigePerkRanks } from "../../../shared/prestige-perks";
+import type { PrestigePerkRanks } from "../../../shared/prestige-perks";
 import { criticalDamageMultiplier, type CriticalDamageParts } from "../../../shared/critical-damage";
 import type { CardStatFactors } from "../../../shared/card-effects";
 import { bootArmorFactor, type ItemLevel } from "../../../shared/items";
+import { researchStatFactors } from "../../../shared/player-power";
+import { critChanceFor } from "../../../shared/player-stats";
 
 export type { ResearchRanks } from "../../../shared/research";
 
@@ -45,14 +46,11 @@ export function createResearchController(options: ResearchControllerOptions) {
   return {
     ranks,
     /** Warcraft, and attack cards on top: what weapon damage is multiplied by beyond the gear. */
-    damageMultiplier: () => (1 + ranks().warcraft * .02) * (cards()?.damage ?? 1),
-    movementSpeedMultiplier: () => (movementSpeedMultiplier(ranks().moveSpeed) + utilityMovementSpeedBonus(ranks().utilityMoveSpeed) / Math.max(1, options.player.speed))
-      * (1 + prestigePerkValue(options.prestigePerks?.(), "fleetFoot") + (cards()?.moveSpeed ?? 0)),
+    damageMultiplier: () => researchStatFactors(ranks()).damage * (cards()?.damage ?? 1),
     rewardMultiplier: () => researchStatRewardMultiplier(ranks()) * prestigeStatMultiplier(options.prestigeLevel?.() ?? 0)
       * Math.max(1, options.guildQuestBonus?.() ?? 1),
-    effectiveArmor: () => options.player.armor * bootArmor() * (1 + ranks().precision * .02) * (cards()?.armor ?? 1),
-    regenerationMultiplier: () => (1 + ranks().regeneration * .02) * (cards()?.regen ?? 1),
-    criticalChance: () => ranks().criticalChance * .01 + prestigePerkValue(options.prestigePerks?.(), "keenEdge") + (cards()?.critChance ?? 0),
+    effectiveArmor: () => options.player.armor * bootArmor() * researchStatFactors(ranks()).armor * (cards()?.armor ?? 1),
+    criticalChance: () => critChanceFor(ranks(), options.prestigePerks?.(), cards()?.critChance ?? 0),
     /** Everything critical damage adds up from but the soul's share, and the cap's rank. */
     criticalDamageParts: (): CriticalDamageParts => ({ researchRank: ranks().criticalDamage, perks: options.prestigePerks?.(), capRank: ranks().critCap,
       card: cards()?.critDamage }),
