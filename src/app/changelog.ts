@@ -1,4 +1,13 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.916.15": [
+    "Signed-in players go straight into the game, and new players see the Terms once loading finishes",
+    "Signing in now lasts much longer before it asks again",
+    "Faster loading: profile pictures and other players' gear load after you enter the world",
+    "Icons and art load from cache on return visits",
+    "Smaller, evenly spaced name plates over players and enemies",
+    "The tutorial skips the portrait step and goes straight from moving to your first fight",
+    "Reward popups sit a little higher on screen",
+  ],
   "0.916.14": [
     "New players start right away: agree and press Play, and sign in or save your progress any time from Settings",
     "The game starts downloading as soon as the page opens, and loading is faster",
@@ -3735,6 +3744,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.916.15": "2026-10-20",
   "0.916.14": "2026-10-20",
   "0.916.13": "2026-10-20",
   "0.916.12": "2026-10-20",
