@@ -35,7 +35,7 @@ describe("upgrade bench touch latch", () => {
 
   it("warns that cancellation forfeits progress toward the next level", () => {
     expect(UPGRADE_CANCEL_CONFIRMATION).toBe(
-      "Are you sure you want to cancel? You will lose current progress to the next upgrade.",
+      "Are you sure you want to cancel? You will lose this Slot Upgrade's progress.",
     );
   });
 
@@ -43,7 +43,7 @@ describe("upgrade bench touch latch", () => {
     // Upgrades belong to the slot now, so the preview names the track and its
     // next tier, and reads the numbers off whatever is equipped there.
     expect(upgradePickerPreview("HAND", 0, FROST_BOW)).toEqual({
-      name: "WEAPON \u00b7 TIER 0 \u2192 1",
+      name: "Weapon \u00b7 +0 \u2192 +1",
       equippedItemId: FROST_BOW,
       changes: [
         { label: "DAMAGE", current: "+11.43%", next: "+11.89%" },
@@ -51,7 +51,7 @@ describe("upgrade bench touch latch", () => {
     });
     // An empty slot still shows the tier; there is nothing to measure.
     expect(upgradePickerPreview("HEAD", 4)).toEqual({
-      name: "HELMET \u00b7 TIER 4 \u2192 5", equippedItemId: "", changes: [],
+      name: "Helmet \u00b7 +4 \u2192 +5", equippedItemId: "", changes: [],
     });
     // A refined bow: both numbers stand on its refine, as the item window's do.
     const refined = upgradePickerPreview("HAND", 3, FROST_BOW, 5).changes[0];
@@ -343,5 +343,41 @@ describe("finished upgrade notification", () => {
     expect(JSON.parse(values.get("wildstat-upgrade-finished:player")!).waiting).toBe(false);
     // Disconnected, the cleared state is what is remembered.
     expect(controller.finishedUpgradeWaiting(false)).toBe(false);
+  });
+});
+
+describe("Slot Upgrades inside a host window", () => {
+  it("opens and closes through the host, and leaves Back to it", () => {
+    const names = ["slot", "slotTwo", "slotThree", "action", "speedUp", "back", "closePicker"];
+    const others = ["panel", "prompt", "statGain", "timer", "picker", "pickerItems"];
+    const { document } = parseHTML(`<html><body>${names.map((name) => `<button id="${name}"></button>`).join("")}${others.map((name) => `<div id="${name}" ${name === "panel" ? "hidden" : ""}></div>`).join("")}</body></html>`);
+    vi.stubGlobal("document", document);
+    const element = (name: string) => document.getElementById(name)!;
+    const host = { open: vi.fn(), close: vi.fn() };
+    const controller = createUpgradeBenchController({
+      panel: element("panel"), prompt: element("prompt"), slot: element("slot") as HTMLButtonElement,
+      slotTwo: element("slotTwo") as HTMLButtonElement, slotThree: element("slotThree") as HTMLButtonElement,
+      statGain: element("statGain"), timer: element("timer"), action: element("action") as HTMLButtonElement,
+      speedUp: element("speedUp") as HTMLButtonElement, back: element("back") as HTMLButtonElement,
+      picker: element("picker"), pickerItems: element("pickerItems"), closePicker: element("closePicker") as HTMLButtonElement,
+    }, {
+      playerPosition: () => ({ x: 0, y: 0 }), currentMapId: () => "town", benchMapId: "town", benchPosition: { x: 0, y: 0 },
+      activeUpgrades: () => [], secondSlotUnlocked: () => false, thirdSlotUnlocked: () => false, gemBalance: () => 0n,
+      upgradeLevel: () => 0, slotTier: () => 0, equippedIn: () => "",
+      startUpgrade: vi.fn(), cancelUpgrade: vi.fn(), speedUpUpgrade: vi.fn(), unlockSecondSlot: vi.fn(), unlockThirdSlot: vi.fn(),
+      beforeOpen: vi.fn(), clearPlayerInput: vi.fn(), setPaused: vi.fn(), onInventoryChanged: vi.fn(), showMessage: vi.fn(), host,
+    });
+    // The bench asks the host; the view shows once the host puts it on screen.
+    controller.open();
+    expect(host.open).toHaveBeenCalledTimes(1);
+    expect(controller.isOpen()).toBe(false);
+    controller.setShown(true);
+    expect(controller.isOpen()).toBe(true);
+    expect(element("prompt").textContent).toBe("Pick A Queue");
+    expect(element("back").hidden).toBe(true);
+    expect(element("slotTwo").getAttribute("aria-label")).toBe("Unlock A Second Queue For 150 Gems");
+    controller.close();
+    expect(host.close).toHaveBeenCalledTimes(1);
+    expect(controller.isOpen()).toBe(false);
   });
 });

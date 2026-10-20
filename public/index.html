@@ -68,7 +68,7 @@
     </div>
     <div id="toolbar" class="settings-wrap">
       <button id="leaderboardBtn" class="settings-button leaderboard-button" type="button" aria-label="Open leaderboard" aria-expanded="false"><img class="toolbar-icon" src="assets/wildstat/icons/Icon_Hero.webp" alt="" aria-hidden="true"><span class="toolbar-label">Leaderboard</span></button>
-      <button id="techTreeBtn" class="settings-button tech-tree-button" type="button" aria-label="Teleport to Town"><img class="toolbar-icon" src="assets/wildstat/icons/Icon_Home.svg" alt="" aria-hidden="true"><span id="techTreeNotice" class="tech-tree-notice" aria-label="Tech Tree research ready"></span><span class="toolbar-label">Town</span></button>
+      <button id="techTreeBtn" class="settings-button tech-tree-button" type="button" aria-label="Teleport to Town"><img class="toolbar-icon" src="assets/wildstat/icons/Icon_Home.svg" alt="" aria-hidden="true"><span class="toolbar-label">Town</span></button>
       <button id="inventoryBtn" class="settings-button inventory-button" type="button" aria-label="Open inventory" aria-expanded="false"><img class="toolbar-icon" src="assets/wildstat/icons/Icon_Inventory.webp" alt="" aria-hidden="true"><span class="toolbar-label">Inventory</span></button>
       <button id="shopBtn" class="settings-button shop-button" type="button" aria-label="Open gem offers"><img class="toolbar-icon" src="assets/wildstat/gems/gem-icon-v2.webp" alt="" aria-hidden="true"><span class="toolbar-label">Shop</span></button>
       <div id="fpsStatus" class="fps-status" aria-live="off" hidden><span id="gameFpsStatus">FPS: --</span><span id="latencyStatus" hidden>PING: --</span></div>
@@ -175,15 +175,14 @@
           <button id="closeInventoryBtn" class="window-back-button" type="button" aria-label="Back from inventory">Back</button>
         </footer>
       </div>
-      <div id="upgradeBenchPanel" class="upgrade-bench-panel" role="dialog" aria-modal="true" aria-labelledby="upgradeBenchTitle" hidden>
-        <h2 id="upgradeBenchTitle" class="window-banner window-banner--brown window-banner--long"><span>Loadout Upgrades</span></h2>
+      <div id="upgradeBenchPanel" class="upgrade-bench-panel" role="group" aria-label="Slot Upgrades" hidden>
         <div class="upgrade-bench-content">
-          <p id="upgradeBenchPrompt" class="upgrade-bench-prompt">Choose an upgrade slot</p>
-          <div class="upgrade-bench-slots" role="group" aria-label="Upgrade slots">
-            <button id="upgradeBenchSlot" class="inventory-item upgrade-bench-slot is-empty" type="button" aria-label="Choose a loadout slot to upgrade" aria-pressed="false">
+          <p id="upgradeBenchPrompt" class="upgrade-bench-prompt">Pick A Queue</p>
+          <div class="upgrade-bench-slots" role="group" aria-label="Upgrade Queues">
+            <button id="upgradeBenchSlot" class="inventory-item upgrade-bench-slot is-empty" type="button" aria-label="Pick A Slot For Queue 1" aria-pressed="false">
               <span class="inventory-item-empty-mark">+</span>
             </button>
-            <button id="upgradeBenchSlotTwo" class="inventory-item upgrade-bench-slot is-locked" type="button" aria-label="Unlock a second upgrade bench for 150 Gems" aria-pressed="false">
+            <button id="upgradeBenchSlotTwo" class="inventory-item upgrade-bench-slot is-locked" type="button" aria-label="Unlock A Second Queue For 150 Gems" aria-pressed="false">
               <span class="upgrade-bench-lock-symbol" aria-hidden="true">🔒</span>
               <span class="upgrade-bench-slot-cost"><img src="assets/wildstat/gems/gem-icon-v2.webp" alt="" aria-hidden="true" draggable="false" /><strong>150</strong></span>
             </button>
@@ -195,8 +194,8 @@
           <button id="upgradeBenchBack" class="upgrade-bench-back window-back-button" type="button">Back</button>
         </div>
         <div id="upgradeBenchPicker" class="upgrade-bench-picker" hidden>
-          <div class="upgrade-bench-picker-sheet" role="dialog" aria-modal="true" aria-label="Choose a loadout slot to upgrade">
-            <div class="upgrade-bench-picker-heading">CHOOSE A LOADOUT SLOT</div>
+          <div class="upgrade-bench-picker-sheet" role="dialog" aria-modal="true" aria-label="Choose A Slot To Upgrade">
+            <div class="upgrade-bench-picker-heading">Choose A Slot To Upgrade</div>
             <div id="upgradeBenchPickerItems" class="upgrade-bench-picker-items"></div>
             <button id="closeUpgradeBenchPickerBtn" class="upgrade-bench-picker-close window-back-button" type="button">Back</button>
           </div>

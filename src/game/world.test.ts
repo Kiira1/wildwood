@@ -324,7 +324,7 @@ describe("Home", () => {
   it("has adjacent workshop stations and no enemy spawns", () => {
     const layout = createWorldLayout({ x: 500, y: 700 }, "home_exterior");
     expect(layout.decor.filter(item => item.type === "upgradeBench")).toEqual([
-      { type: "upgradeBench", x: 480, y: 700, s: 1, label: "Upgrade Bench" },
+      { type: "upgradeBench", x: 480, y: 700, s: 1, label: "Slot Upgrades" },
       { type: "upgradeBench", x: 720, y: 700, s: 1, label: "Tech Research" },
       { type: "upgradeBench", x: 785, y: 1015, s: 1, label: "Quest Board" },
     ]);

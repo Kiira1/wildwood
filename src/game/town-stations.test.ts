@@ -17,12 +17,12 @@ import { soulFrame } from "./runtime/soul/soul-prop-renderer";
 vi.setConfig({ testTimeout: 30_000 });
 
 const STATIONS = [
-  { label: "Upgrade Bench", at: TOWN_BENCH_POSITION, door: 6 },
+  { label: "Slot Upgrades", at: TOWN_BENCH_POSITION, door: 6 },
   { label: "Tech Research", at: TOWN_RESEARCH_POSITION, door: 1 },
   { label: "Quest Board", at: TOWN_QUEST_BOARD_POSITION, door: 5 },
 ] as const;
 /** Where a player stands to use each station: on the floor in front of it. */
-const SPOTS = { "Upgrade Bench": { dx: 0, dy: -35 }, "Tech Research": { dx: 0, dy: -25 }, "Quest Board": { dx: 0, dy: -14 } } as const;
+const SPOTS = { "Slot Upgrades": { dx: 0, dy: -35 }, "Tech Research": { dx: 0, dy: -25 }, "Quest Board": { dx: 0, dy: -14 } } as const;
 
 /** The stations and people drawn in the decor window around a point, by label. */
 const stationLabels = (at: { x: number; y: number }) => townWindowDecor(at.x, at.y).flatMap(item => (item.type === "upgradeBench" ? [item.label] : []));
@@ -86,7 +86,7 @@ describe("Home's stations in the Town's buildings", () => {
       expect(reachable(door, spot)).toBe(true);
       Object.assign(player, spot);
       touch();
-      if (label === "Upgrade Bench") {
+      if (label === "Slot Upgrades") {
         expect(playerTouchesUpgradeBench(player, UPGRADE_BENCH_POSITION)).toBe(true);
         // Inside the server's reach check (75 from the bench's point).
         expect(Math.hypot(player.x - TOWN_BENCH_POSITION.x, player.y - TOWN_BENCH_POSITION.y)).toBeLessThan(75);
@@ -248,7 +248,7 @@ function walkable(from: { x: number; y: number }, to: { x: number; y: number }, 
 describe("the Smith at the forge house", () => {
   // Where a player stands when he is in reach: his own spot, the way the player's position is measured.
   const stand = { x: TOWN_SMITH_POSITION.x, y: TOWN_SMITH_POSITION.y - TOWN_FEET_OFFSET };
-  it("works outdoors in the village, right of the Upgrade Bench's building, drawn with the village", () => {
+  it("works outdoors in the village, right of the Slot Upgrades bench's building, drawn with the village", () => {
     expect(inTownVillage(TOWN_SMITH_POSITION.x, TOWN_SMITH_POSITION.y)).toBe(true);
     expect(townRoomAt(TOWN_SMITH_POSITION.x, TOWN_SMITH_POSITION.y)).toBeNull();
     // The forge house is the next building right of door 6, a little further down the square.

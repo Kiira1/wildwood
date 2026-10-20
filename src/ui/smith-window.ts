@@ -41,11 +41,13 @@ const percent = (chance: number) => {
   return `${Number(value.toFixed(value >= 10 ? 1 : value >= 1 ? 2 : 3))}%`;
 };
 
-/** The Smith's three views, and which lines the gear view lists; both kept on the device. */
-type SmithView = "gear" | "refine" | "tools";
+/** The Smith's views, and which lines the gear view lists; both kept on the device. */
+export type SmithView = "gear" | "refine" | "tools" | "slots";
+/** Slot Upgrades' window and its switch (upgrade-bench-controller.ts), for the Slots view. */
+type SmithSlots = { element: HTMLElement; setShown: (shown: boolean) => void };
 type GearShown = "yours" | "all";
 const VIEW_STORE = "wildstat.smithView", SHOWN_STORE = "wildstat.smithGearShown";
-const VIEW_NAMES: Readonly<Record<SmithView, string>> = { gear: "Gear", refine: "Refine", tools: "Tools" };
+const VIEW_NAMES: Readonly<Record<SmithView, string>> = { gear: "Gear", refine: "Refine", tools: "Tools", slots: "Slots" };
 function stored(key: string) {
   try { return localStorage.getItem(key); } catch { return null; }
 }
@@ -76,7 +78,7 @@ export function createSmithController(deps: {
   /** The gear shop: graded gear for gold, opened by Mastery (shared/grade-shop.ts); the server decides (buy_grade_gear). */
   gold?: () => bigint;
   masteryLevels?: () => MasteryLevels;
-  /** Every item held, worn or on the Upgrade Bench; crafting's or the bag's own when left out. */
+  /** Every item held or worn; crafting's or the bag's own when left out. */
   heldItems?: () => readonly string[];
   bagFull?: () => boolean;
   buyGear?: (itemId: string, expectedPrice: number) => Promise<Result>;
@@ -87,6 +89,8 @@ export function createSmithController(deps: {
   worn?: () => WornLoadout;
   /** Puts on a piece just bought, as the bag does; false when it could not. */
   equip?: (itemId: string) => boolean | Promise<boolean>;
+  /** Slot Upgrades, mounted and shown as the Slots view. */
+  slots?: () => SmithSlots | undefined;
 }) {
   const dialog = document.createElement("dialog");
   dialog.className = "farm-sheet quest-sheet smith-sheet";
@@ -102,6 +106,7 @@ export function createSmithController(deps: {
     + `<div class="inventory-filters smith-filters" role="group" aria-label="Show gear"></div>`
     + `<p class="smith-empty smith-filter-empty" hidden></p>`
     + `<div class="smith-items" role="listbox" aria-label="Your gear"></div></section>`
+    + `<section class="smith-view smith-slots-view" data-view="slots"></section>`
     + `<section class="smith-view smith-tools-view" data-view="tools">`
     + `<div class="smith-mining"><span class="smith-mining-text"></span></div>`
     + `<div class="smith-mining"><span class="smith-woodcutting-text"></span></div>`
@@ -132,6 +137,7 @@ export function createSmithController(deps: {
   const shopTitle = dialog.querySelector<HTMLElement>("#smithShopTitle")!;
   const viewBar = dialog.querySelector<HTMLElement>(".smith-views")!, shownBar = dialog.querySelector<HTMLElement>(".smith-shown")!;
   const itemsCount = dialog.querySelector<HTMLElement>(".smith-items-count")!;
+  const slotsView = dialog.querySelector<HTMLElement>(".smith-slots-view")!;
   const upgradeButton = dialog.querySelector<HTMLButtonElement>(".smith-upgrade-all-button")!;
   const upgradeTitle = dialog.querySelector<HTMLElement>(".smith-upgrade-all-title")!, upgradeSub = dialog.querySelector<HTMLElement>(".smith-upgrade-all-sub")!;
   const upgradePicks = dialog.querySelector<HTMLElement>(".smith-upgrade-all-picks")!;
@@ -142,7 +148,7 @@ export function createSmithController(deps: {
   // Gear for the casual player first; refining and tools a tap away.
   const views = ([
     ["gear", Boolean(deps.buyGear || deps.craft)], ["refine", true],
-    ["tools", Boolean(deps.tools || deps.mining || deps.woodcutting)],
+    ["tools", Boolean(deps.tools || deps.mining || deps.woodcutting)], ["slots", Boolean(deps.slots)],
   ] as const).filter(([, shown]) => shown).map(([view]) => view as SmithView);
   let view: SmithView = views.find(each => each === stored(VIEW_STORE)) ?? views[0];
   let gearShown: GearShown = stored(SHOWN_STORE) === "all" ? "all" : "yours";
@@ -282,7 +288,16 @@ export function createSmithController(deps: {
     focus.append(outcome);
   }
 
+  /** Mounts Slot Upgrades in its view on first use, and shows it only while the Slots view is on screen. */
+  function syncSlots() {
+    const slots = deps.slots?.();
+    if (!slots) return;
+    if (slots.element.parentElement !== slotsView) slotsView.append(slots.element);
+    slots.setShown(dialog.open && view === "slots");
+  }
+
   function render() {
+    syncSlots();
     crafts?.render();
     tools?.render();
     const items = choices();
@@ -496,12 +511,15 @@ export function createSmithController(deps: {
   function close() {
     if (!dialog.open) return false;
     dialog.close();
+    syncSlots();
     deps.clearInput?.();
     return true;
   }
 
-  function open() {
+  /** Opens on the view asked for (the bench asks for Slots), else the one last picked. */
+  function open(on?: SmithView) {
     if (!deps.inTown() || dialog.open) return;
+    view = on && views.includes(on) ? on : views.find(each => each === stored(VIEW_STORE)) ?? views[0];
     lastResult = null;
     // Each visit goes by the server's word on the bag.
     justBought.clear();
@@ -510,6 +528,7 @@ export function createSmithController(deps: {
     render();
     deps.clearInput?.();
     dialog.showModal();
+    syncSlots();
     back.focus();
   }
 
@@ -555,10 +574,12 @@ export function createSmithRuntime(deps: {
   showMessage: (text: string, color: string) => void;
   clearInput?: () => void;
   inTown: () => boolean;
+  /** Slot Upgrades, read when the Smith opens: main.ts builds it after the Smith. */
+  slots?: () => SmithSlots | undefined;
   /** The bag's own equip (main.ts's move), for Upgrade All. */
   equip?: (itemId: string, destination: EquipmentSlot) => boolean;
-  /** Where the dot goes while Upgrade All has something to buy: the Town button. */
-  noticeHost?: HTMLElement | null;
+  /** The HUD's Upgrades At The Smith chip, shown while Upgrade All has something to buy. */
+  notice?: HTMLElement | null;
 }) {
   const { inventory } = deps;
   const worn = () => new Set([inventory.equippedHead, inventory.equippedChest, inventory.equippedFeet ?? "", inventory.equippedRightHand, inventory.equippedLeftHand]);
@@ -587,18 +608,19 @@ export function createSmithRuntime(deps: {
     tools: toolDepsFor(deps.coop, deps.showMessage),
     worn: () => inventory,
     equip: deps.equip ? itemId => equipWhenHeld(inventory, itemId, deps.equip!) : undefined,
+    slots: deps.slots,
   });
-  const notice = smithNotice(deps.noticeHost === undefined ? document.getElementById("techTreeBtn") : deps.noticeHost);
+  const notice = deps.notice === undefined ? document.getElementById("smithUpgradeNotice") : deps.notice;
   let listening = false;
   return {
     ...smith,
-    /** Shows or hides the dot; the session's refresh calls it as rows change. */
+    /** Shows or hides the HUD chip; the session's refresh calls it as rows change. */
     refreshNotice() { if (notice) notice.hidden = !smith.upgradeReady(); },
-    open() {
+    open(view?: SmithView) {
       // Each try's verdict arrives as a row; listen from the first visit the session is up for.
       const coop = deps.coop();
       if (!listening && coop?.setOnRefineResult) { coop.setOnRefineResult(result => smith.showResult(result)); listening = true; }
-      smith.open();
+      smith.open(view);
     },
   };
 }
@@ -614,15 +636,4 @@ export async function equipWhenHeld(inventory: { itemIds: string[] }, itemId: st
   }
   const slot = itemDefinition(itemId)?.slot;
   return slot ? equip(itemId, slot === "HAND" ? "RIGHT_HAND" : slot) : false;
-}
-
-/** The Town button's red dot, as Tech Tree research shows, for upgrades waiting at the Smith. */
-export function smithNotice(host: HTMLElement | null) {
-  if (!host) return null;
-  const dot = document.createElement("span");
-  dot.className = "tech-tree-notice smith-upgrade-notice";
-  dot.setAttribute("aria-label", "Upgrades at the Smith");
-  dot.hidden = true;
-  host.append(dot);
-  return dot;
 }

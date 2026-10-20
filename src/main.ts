@@ -1361,7 +1361,7 @@ import {
     teleport: () => inTutorial() ? Promise.resolve(false) : mapController.teleportHome(),
     showFailure: failed => showMessage(failed ? "TELEPORT FAILED · TRY AGAIN" : "TELEPORT UNAVAILABLE", "#ffbc91"), showBlocked: text => showMessage(text, "#ffbc91"),
   });
-  const oxShop = createOxShopRuntime({ coop: () => coop, inventory, renderInventory, showMessage, clearInput: playerInput.clear, inTown: () => currentMapId === "town" }), smith = createSmithRuntime({ coop: () => coop, inventory, showMessage, clearInput: playerInput.clear, inTown: () => currentMapId === "town", equip: inventoryController.equip }), cardSeller = createCardSellerRuntime({ coop: () => coop, showMessage, clearInput: playerInput.clear, inTown: () => currentMapId === "town" }), schools = createSchoolWindowRuntime({ coop: () => coop, clearInput: playerInput.clear, inTown: () => currentMapId === "town" }), starterChest = createStarterChestRuntime({ coop: () => coop, player, showMessage, clearInput: playerInput.clear, inForest: () => currentMapId === TUTORIAL_FOREST_MAP_ID && !mapController.isMapTransitioning() });
+  const oxShop = createOxShopRuntime({ coop: () => coop, inventory, renderInventory, showMessage, clearInput: playerInput.clear, inTown: () => currentMapId === "town" }), smith = createSmithRuntime({ coop: () => coop, inventory, showMessage, clearInput: playerInput.clear, inTown: () => currentMapId === "town", equip: inventoryController.equip, slots: () => upgradeBenchController }), cardSeller = createCardSellerRuntime({ coop: () => coop, showMessage, clearInput: playerInput.clear, inTown: () => currentMapId === "town" }), schools = createSchoolWindowRuntime({ coop: () => coop, clearInput: playerInput.clear, inTown: () => currentMapId === "town" }), starterChest = createStarterChestRuntime({ coop: () => coop, player, showMessage, clearInput: playerInput.clear, inForest: () => currentMapId === TUTORIAL_FOREST_MAP_ID && !mapController.isMapTransitioning() });
   const updateHomeStations = createHomeStationTouchHandler(
     () => currentMapId === "town" && !mapController.isMapTransitioning(), player,
     () => { playerInput.clear(); techTree.open(); }, () => { upgradeBenchController.updateTouch(); quests.refreshAtHome(); },
@@ -1400,7 +1400,7 @@ import {
     speedUpUpgrade: async (slot) => coop?.speedUpItemUpgradeWithGems?.(slot),
     unlockSecondSlot: async () => coop?.unlockSecondUpgradeSlot?.(),
     unlockThirdSlot: async () => coop?.unlockThirdUpgradeSlot?.(),
-    beforeOpen: () => panels.closeAllExcept("upgradeBench"),
+    beforeOpen: () => panels.closeAllExcept("upgradeBench"), host: { open: () => smith.open("slots"), close: () => smith.close() },
     setPaused: () => {},
     clearPlayerInput: playerInput.clear,
     onInventoryChanged: () => {
@@ -1449,8 +1449,8 @@ import {
       profileWindow.close();
       panels.closeAllExcept("mapGuide");
     },
-    clearPlayerInput: playerInput.clear,
-    lootFilter: coop,
+    clearPlayerInput: playerInput.clear, power: () => playerPower(player), progress: coop, prestigeExpanded: expansionNotice.unlocked,
+    lootFilter: coop, travel: { inTown: () => currentMapId === "town", prefer: homeTravel.prefer, teleportToTown: () => !gameElements.techTreeBtn.disabled && (gameElements.techTreeBtn.click(), true) },
   });
 
   runtimeHud = createGameRuntimeHud({
@@ -1474,7 +1474,7 @@ import {
     showMessage,
     connected: () => Boolean(coop?.isConnected?.()),
     research: () => coop?.activeResearch?.() ?? null,
-    upgrades: () => coop?.activeItemUpgrades?.() ?? [],
+    upgrades: () => coop?.activeItemUpgrades?.() ?? [], inTown: () => currentMapId === "town",
   });
 
   function showCurrentUpdateNotice() {
@@ -1572,7 +1572,7 @@ import {
   installStatTracker({ storage: localStorage, read: createStatTrackerSource({ coop: () => coop, player, inventory,
     hasStarted: session.hasStarted, isLoadedFor: progress.isLoadedFor, inTutorial, researchRanks, kills: () => totalKills,
     displayedProgress: displayedPlayerPowerProgress, attackCap: () => coop?.attackCapInPlay?.(), critParts: () => ({ ...research.criticalDamageParts(), soul: soulDimension.critDamage(), rating: player.critRating }), criticalChance: research.criticalChance }) });
-  installQuestTracker({ storage: localStorage, enabled: questTracker.enabled, ensure: () => quests.refresh(), view: () => quests.trackerView(currentMapId), hiddenHere: () => !session.hasStarted() || inTutorial() || document.body.matches(".is-cutscene, .is-replaying, .is-dueling") });
+  installQuestTracker({ storage: localStorage, enabled: questTracker.enabled, set: questTracker.set, ensure: () => quests.refresh(), view: () => quests.trackerView(currentMapId), hiddenHere: () => !session.hasStarted() || inTutorial() || document.body.matches(".is-cutscene, .is-replaying, .is-dueling") });
   const mailbox = createGameMailbox(gameElements.mailboxToggle, gameElements.minimapVersionEl, coop,
     () => session.hasStarted() && !inTutorial());
 
@@ -1785,7 +1785,7 @@ import {
     hpText,
     watchDuelReplay: watchDuelReplayBtn,
     playerHudProfile: playerHudProfileIcon,
-    playerHudProfileGear,
+    playerHudProfileGear, onOpenSettings: () => settingsBtn.click(),
     playerProfileIcon,
     closeProfileIconPicker: closeProfileIconPickerBtn,
     onOpenOwnProfile: () => {

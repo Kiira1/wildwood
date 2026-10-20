@@ -154,3 +154,23 @@ it("has no hall row without a guild", () => {
   s.picker.open();
   expect(s.names()).not.toContain("Guild Hall");
 });
+
+it("opens once on the map the Map Guide's Travel button chose, Endless stage included", () => {
+  const s = setup({ desertUnlocked: true, snowlandsUnlocked: true }, { unlocked: false, completed: 0 }, "intermediate_snowlands");
+  s.picker.prefer("tutorial_forest" as MapId);
+  s.picker.open();
+  expect(s.selected()).toBe("tutorial_forest");
+  s.picker.close(); s.picker.open();
+  expect(s.selected()).toBe("intermediate_snowlands");
+  // A map that is not open is not chosen.
+  s.picker.close(); s.picker.prefer("advanced_lava_wastes" as MapId); s.picker.open();
+  expect(s.selected()).toBe("intermediate_snowlands");
+});
+
+it("opens on the Endless stage the Map Guide chose", () => {
+  const s = setup(campaignDone, { unlocked: true, completed: 9 });
+  s.picker.prefer("endless_3" as MapId);
+  s.picker.open();
+  expect(s.selected()).toBe("endless");
+  expect(s.document.querySelector<HTMLInputElement>(".travel-stage")!.value).toBe("3");
+});

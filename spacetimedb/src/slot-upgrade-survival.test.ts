@@ -92,9 +92,9 @@ it("requires slot two, charges 200 Gems once, and completes slot three beside tw
   const f = crystalFixture();
   f.patch("player", { mapId: "town", x: TOWN_BENCH_POSITION.x, y: TOWN_BENCH_POSITION.y });
   f.seed("playerGemWallet", { identity: f.ctx.sender, balance: UPGRADE_BENCH_THIRD_SLOT_GEM_COST });
-  expect(() => f.run(server.unlockThirdUpgradeSlot)).toThrow("second upgrade slot first");
+  expect(() => f.run(server.unlockThirdUpgradeSlot)).toThrow("second queue first");
   f.seed("playerUpgradeBench", { identity: f.ctx.sender, secondSlotUnlocked: true });
-  expect(() => f.run(server.startItemUpgrade, { slot: 3, itemId: "CHEST" })).toThrow("third upgrade slot first");
+  expect(() => f.run(server.startItemUpgrade, { slot: 3, itemId: "CHEST" })).toThrow("third queue first");
   f.patch("playerGemWallet", { balance: UPGRADE_BENCH_THIRD_SLOT_GEM_COST - 1n });
   expect(() => f.run(server.unlockThirdUpgradeSlot)).toThrow("Not enough Gems");
   expect(f.db.playerUpgradeBenchThirdSlot.identity.find(f.ctx.sender)).toBeNull();

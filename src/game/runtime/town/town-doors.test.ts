@@ -2,7 +2,7 @@ import { expect, it, vi } from "vitest";
 vi.mock("../../../app/developer", () => ({ isDeveloperIdentity: () => true }));
 import { TOWN_DOORS, TOWN_MAP_ID } from "../../../../shared/town";
 import { SOUL_DOORS_OPEN } from "../../soul-village";
-import { createTownRuntime } from "./town-runtime";
+import { createTownRuntime, TOWN_LOCKED_DOORS } from "./town-runtime";
 import type { PlayerState } from "../types";
 
 function world() {
@@ -21,7 +21,7 @@ function world() {
 }
 
 it("opens every village door as a player walks up, takes them in at its sill, and out through the room's doorway", () => {
-  for (const door of TOWN_DOORS) {
+  for (const door of TOWN_DOORS.filter(door => !TOWN_LOCKED_DOORS.has(door.index))) {
     const { player, runtime, useTownDoor, walk } = world();
     Object.assign(player, door.outside);
     runtime.update(1 / 60);
@@ -31,6 +31,26 @@ it("opens every village door as a player walks up, takes them in at its sill, an
     expect([player.x, player.y]).toEqual([door.inside.x, door.inside.y]);
     walk(4);
     expect(useTownDoor).toHaveBeenCalledTimes(2);
+    expect([player.x, player.y]).toEqual([door.outside.x, door.outside.y]);
+  }
+});
+
+it("keeps the doors onto empty rooms shut: walking into one does nothing, and anyone inside still walks out", () => {
+  expect([...TOWN_LOCKED_DOORS]).toEqual([0, 7]);
+  for (const index of TOWN_LOCKED_DOORS) {
+    const door = TOWN_DOORS[index];
+    const { player, runtime, useTownDoor, walk } = world();
+    Object.assign(player, door.outside);
+    runtime.update(1 / 60);
+    expect(SOUL_DOORS_OPEN.has(index)).toBe(false);
+    walk(-4);
+    expect(useTownDoor).not.toHaveBeenCalled();
+    expect(player.y).toBeGreaterThan(door.enter - 200);
+    // Someone left inside by an older client gets out through the room's doorway.
+    Object.assign(player, door.inside);
+    runtime.update(1 / 60);
+    walk(4);
+    expect(useTownDoor).toHaveBeenLastCalledWith(index);
     expect([player.x, player.y]).toEqual([door.outside.x, door.outside.y]);
   }
 });

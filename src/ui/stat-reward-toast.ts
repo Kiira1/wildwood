@@ -172,10 +172,10 @@ export function createCardCopyToast(copy: CardCopy) {
   return entry;
 }
 
-export type ProgressCompletionKind = "Research" | "Upgrade" | "Soul Level";
+export type ProgressCompletionKind = "Research" | "Slot Upgrade" | "Soul Level";
 /** Uses the enemy reward card for completed account progression, and a Soul Level reached. */
 export function createProgressCompletionToast(kind: ProgressCompletionKind, detail: string, iconText: string, color: string) {
-  const title = kind === "Soul Level" ? "Soul Level Up" : `${kind} complete`;
+  const title = kind === "Soul Level" ? "Soul Level Up" : `${kind} Complete`;
   const entry = document.createElement("div");
   entry.className = "pickup stat-reward-toast progress-completion-toast";
   entry.style.setProperty("--stat-reward-accent", color);

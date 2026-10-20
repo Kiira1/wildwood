@@ -2,13 +2,13 @@ import { renderBooleanSetting } from "./settings";
 
 export type HudTimerKind = "research" | "slotOne" | "slotTwo" | "slotThree" | "adTimer";
 const SETTINGS: readonly { kind: HudTimerKind; label: string; key: string; shownByDefault?: false }[] = [
-  { kind: "research", label: "TECH TIMER", key: "wildstat-hud-tech-timer-visible" },
-  { kind: "slotOne", label: "SLOT 1 TIMER", key: "wildstat-hud-slot-one-timer-visible" },
-  { kind: "slotTwo", label: "SLOT 2 TIMER", key: "wildstat-hud-slot-two-timer-visible" },
-  { kind: "slotThree", label: "SLOT 3 TIMER", key: "wildstat-hud-slot-three-timer-visible" },
+  { kind: "research", label: "Tech Timer", key: "wildstat-hud-tech-timer-visible" },
+  { kind: "slotOne", label: "Upgrade Queue 1 Timer", key: "wildstat-hud-slot-one-timer-visible" },
+  { kind: "slotTwo", label: "Upgrade Queue 2 Timer", key: "wildstat-hud-slot-two-timer-visible" },
+  { kind: "slotThree", label: "Upgrade Queue 3 Timer", key: "wildstat-hud-slot-three-timer-visible" },
   // The ad's wait until the next one. Hidden unless asked for; the ad button
   // itself still appears whenever an ad is ready.
-  { kind: "adTimer", label: "AD TIMER", key: "wildstat-hud-ad-timer-visible", shownByDefault: false },
+  { kind: "adTimer", label: "Ad Timer", key: "wildstat-hud-ad-timer-visible", shownByDefault: false },
 ];
 
 /** Each countdown has its own saved visibility switch in Settings. */

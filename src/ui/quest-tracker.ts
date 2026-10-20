@@ -1,12 +1,13 @@
 import { installMovableHudCard } from "./movable-hud-card";
 import type { QuestTrackerView } from "./quest-board-controller";
 import { REWARD_DATA, rewardStatLabel } from "../game/enemies";
+import { renderBooleanSetting } from "./settings";
 
 const COLLAPSED_KEY = "wildstat-quest-tracker-collapsed-v1";
 const POSITION_KEY = "wildstat-quest-tracker-position-v1";
 const ENABLED_KEY = "wildstat-quest-tracker-v1";
 
-/** Whether the HUD tracker is on: switched from the Quest Board, on unless turned off, remembered per device. */
+/** Whether the HUD tracker is on: switched from the Quest Board, Settings or the tracker's own ×, on unless turned off, remembered per device. */
 export function createQuestTrackerSetting(storage: Pick<Storage, "getItem" | "setItem">) {
   let enabled = (() => { try { return storage.getItem(ENABLED_KEY) !== "false"; } catch { return true; } })();
   return {
@@ -18,8 +19,8 @@ export function createQuestTrackerSetting(storage: Pick<Storage, "getItem" | "se
 /**
  * The quest tracker on the HUD, at home too while it is switched on: the three quests in play with
  * their counts, those on the current map first and bright, the rest dimmed
- * with where to find them. The header collapses it to a small chip; the Quest
- * Board turns it off. Rows are rebuilt only when what they show changes.
+ * with where to find them. The header collapses it to a small chip; its ×, the
+ * Quest Board and Settings turn it off. Rows are rebuilt only when what they show changes.
  */
 export function installQuestTracker(options: {
   view: () => QuestTrackerView | null;
@@ -29,14 +30,29 @@ export function installQuestTracker(options: {
   /** Draws this week's quests if they have not arrived (rate-limited by the caller). */
   ensure?: () => void;
   enabled: () => boolean;
+  /** Turns it on or off; the × and the Settings row need it. */
+  set?: (enabled: boolean) => void;
 }) {
   const panel = document.createElement("section");
   panel.className = "quest-tracker";
   panel.hidden = true;
   panel.setAttribute("aria-label", "Quest tracker");
-  panel.innerHTML = `<button type="button" class="quest-tracker-header" aria-expanded="true"><span class="quest-tracker-title">Quests</span><span class="quest-tracker-week"></span><span class="quest-tracker-chevron" aria-hidden="true"></span></button><ol class="quest-tracker-list"></ol>`;
+  panel.innerHTML = `<button type="button" class="quest-tracker-header" aria-expanded="true"><span class="quest-tracker-title">Quests</span><span class="quest-tracker-week"></span><span class="quest-tracker-chevron" aria-hidden="true"></span></button><button type="button" class="quest-tracker-hide" aria-label="Hide the quest tracker">×</button><ol class="quest-tracker-list"></ol>`
+    + `<div class="quest-tracker-confirm" hidden><p>Hide the quest tracker? Turn it back on at the Quest Board or in Settings.</p>`
+    + `<div class="quest-tracker-confirm-actions"><button type="button" class="quest-tracker-confirm-hide">Hide</button><button type="button" class="quest-tracker-confirm-keep">Keep</button></div></div>`;
   document.getElementById("hud")!.append(panel);
   const header = panel.querySelector<HTMLButtonElement>(".quest-tracker-header")!;
+  const hide = panel.querySelector<HTMLButtonElement>(".quest-tracker-hide")!;
+  const confirm = panel.querySelector<HTMLElement>(".quest-tracker-confirm")!;
+  // The Settings row turns it back on from anywhere; it and the × share the board's switch.
+  const toggle = document.getElementById("questTrackerToggle");
+  hide.hidden = !options.set;
+  panel.classList.toggle("has-hide", Boolean(options.set));
+  const confirming = (open: boolean) => { confirm.hidden = !open; panel.classList.toggle("is-confirming", open); };
+  hide.addEventListener("click", () => confirming(true));
+  panel.querySelector(".quest-tracker-confirm-keep")!.addEventListener("click", () => confirming(false));
+  panel.querySelector(".quest-tracker-confirm-hide")!.addEventListener("click", () => { confirming(false); options.set?.(false); render(); });
+  toggle?.addEventListener("click", () => { options.set?.(!options.enabled()); render(); });
   const week = panel.querySelector<HTMLElement>(".quest-tracker-week")!;
   const list = panel.querySelector<HTMLOListElement>(".quest-tracker-list")!;
   const read = () => { try { return options.storage.getItem(COLLAPSED_KEY) === "true"; } catch { return false; } };
@@ -50,6 +66,7 @@ export function installQuestTracker(options: {
   // Dragged by its header like the stat tracker (the shared HUD card); a double tap puts it back under the gem row.
   const movable = installMovableHudCard({ panel, handle: header, storage: () => options.storage, positionKey: POSITION_KEY, toggle: () => {
     collapsed = !collapsed;
+    confirming(false);
     try { options.storage.setItem(COLLAPSED_KEY, String(collapsed)); } catch { /* the choice still holds this session */ }
     applyCollapsed();
     movable.place();
@@ -57,6 +74,7 @@ export function installQuestTracker(options: {
   applyCollapsed();
 
   function render() {
+    if (toggle) renderBooleanSetting(toggle, options.enabled());
     const showing = options.enabled() && !options.hiddenHere();
     if (showing) options.ensure?.();
     const view = showing ? options.view() : null;

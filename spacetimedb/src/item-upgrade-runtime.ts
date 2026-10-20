@@ -3,7 +3,7 @@
 // data. Moved out of index.ts unchanged; the upgrade reducers stay there.
 import { normalizeUpgradeBenchSlot, deleteActiveItemUpgrade, rebaseActiveItemUpgradeTimer } from "./upgrade-bench-slots";
 import { removeEquipmentOffers, removeEquipmentCopies } from "./equipment-copies";
-import { removeRefineData } from "./item-refine";
+import { removeRefineData, standsAtTheSmith } from "./item-refine";
 import { removeCardData } from "./gear-cards";
 import { deleteSnapshotRow, updateSnapshotRow, insertSnapshotRow } from "./snapshot-row-writes";
 import { ScheduleAt } from "spacetimedb";
@@ -128,16 +128,17 @@ export const UPGRADE_BENCH_USE_RANGE = 75;
 export function startItemUpgradeFor(ctx: ModuleReducerCtx, { slot: requestedSlot, itemId }: { slot: number; itemId: string }) {
   const slot = requireUpgradeBenchSlot(requestedSlot);
   const playerAtBench = requireControllingPlayer(ctx);
-  if (!isTownMap(playerAtBench.mapId) ||
-    !withinStationReach(ctx, playerAtBench, TOWN_BENCH_POSITION, UPGRADE_BENCH_USE_RANGE)) {
-    throw new SenderError("Touch the Upgrade Bench first.");
+  // Slot Upgrades is a tab at the Smith as well as the smithy's bench: either reach will do.
+  const atBench = isTownMap(playerAtBench.mapId) && withinStationReach(ctx, playerAtBench, TOWN_BENCH_POSITION, UPGRADE_BENCH_USE_RANGE);
+  if (!atBench && !standsAtTheSmith(ctx, playerAtBench)) {
+    throw new SenderError("Go to the Smith or the Slot Upgrades bench first.");
   }
   if (activeDuelFor(ctx, ctx.sender)) throw new SenderError("Finish your duel first.");
   if (slot === UPGRADE_BENCH_SLOT_TWO && !secondUpgradeSlotUnlockedFor(ctx, ctx.sender)) {
-    throw new SenderError("Unlock the second upgrade slot first.");
+    throw new SenderError("Unlock the second queue first.");
   }
   if (slot === UPGRADE_BENCH_SLOT_THREE && !thirdUpgradeSlotUnlockedFor(ctx, ctx.sender)) {
-    throw new SenderError("Unlock the third upgrade slot first.");
+    throw new SenderError("Unlock the third queue first.");
   }
   // `itemId` carries the upgrade slot now: "HAND", "HEAD" or "CHEST". The
   // parameter keeps its name so the reducer signature is unchanged and no
@@ -148,7 +149,7 @@ export function startItemUpgradeFor(ctx: ModuleReducerCtx, { slot: requestedSlot
   const existing = activeItemUpgradeForSlot(ctx, ctx.sender, slot);
   if (existing) reconcileActiveItemUpgrade(ctx, existing, slot);
   const active = activeItemUpgradeForSlot(ctx, ctx.sender, slot);
-  if (active) throw new SenderError("That upgrade slot is already in use.");
+  if (active) throw new SenderError("That queue is already in use.");
   if (activeItemUpgradeEntriesFor(ctx, ctx.sender).some(({ active: other }) => other.itemId === upgradeSlot)) {
     throw new SenderError(`Your ${UPGRADE_SLOT_LABELS[upgradeSlot]} slot is already upgrading.`);
   }
@@ -157,7 +158,7 @@ export function startItemUpgradeFor(ctx: ModuleReducerCtx, { slot: requestedSlot
   // away while it runs and nothing has to be handed back when it finishes.
   const currentLevel = slotUpgradeTierFor(ctx, ctx.sender, upgradeSlot);
   if (currentLevel >= MAX_SLOT_UPGRADE_TIER) {
-    throw new SenderError(`Your ${UPGRADE_SLOT_LABELS[upgradeSlot]} slot is already at tier ${MAX_SLOT_UPGRADE_TIER}.`);
+    throw new SenderError(`Your ${UPGRADE_SLOT_LABELS[upgradeSlot]} slot is already +${MAX_SLOT_UPGRADE_TIER}.`);
   }
 
   const durationMicros = BigInt(slotUpgradeDurationWithResearch(itemUpgradeDurationMs(currentLevel), ctx.db.playerResearch.identity.find(ctx.sender)?.slotUpgradeSpeed ?? 0)) * 1_000n;

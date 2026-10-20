@@ -15,8 +15,8 @@ describe("HUD countdown settings", () => {
     };
 
     const first = setup();
-    first.click("slot 1 timer");
-    first.click("slot 3 timer");
+    first.click("upgrade queue 1 timer");
+    first.click("upgrade queue 3 timer");
     expect(first.settings.visible("slotOne")).toBe(false);
     expect(first.settings.visible("research")).toBe(true);
     expect(first.settings.visible("slotTwo")).toBe(true);

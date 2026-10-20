@@ -3087,7 +3087,7 @@ export const unlockSecondUpgradeSlot = spacetimedb.reducer((ctx) => {
     identity: ctx.sender,
     delta: -UPGRADE_BENCH_SECOND_SLOT_GEM_COST,
     kind: "upgrade_bench_slot_unlock",
-    note: "Permanently unlocked Upgrade Bench slot two.",
+    note: "Permanently unlocked Slot Upgrades queue two.",
     externalReference: `upgrade-bench-slot-two:${ctx.sender.toHexString()}`,
   });
   const next = {
@@ -3102,13 +3102,13 @@ export const unlockSecondUpgradeSlot = spacetimedb.reducer((ctx) => {
 export const unlockThirdUpgradeSlot = spacetimedb.reducer((ctx) => {
   requireControllingPlayer(ctx);
   const current = ctx.db.playerUpgradeBench.identity.find(ctx.sender);
-  if (!current?.secondSlotUnlocked) throw new SenderError("Unlock the second upgrade slot first.");
+  if (!current?.secondSlotUnlocked) throw new SenderError("Unlock the second queue first.");
   if (ctx.db.playerUpgradeBenchThirdSlot.identity.find(ctx.sender)) return;
   applyGemBalanceChange(ctx, {
     identity: ctx.sender,
     delta: -UPGRADE_BENCH_THIRD_SLOT_GEM_COST,
     kind: "upgrade_bench_slot_unlock",
-    note: "Permanently unlocked Upgrade Bench slot three.",
+    note: "Permanently unlocked Slot Upgrades queue three.",
     externalReference: `upgrade-bench-slot-three:${ctx.sender.toHexString()}`,
   });
   ctx.db.playerUpgradeBenchThirdSlot.insert({ identity: ctx.sender, updatedAt: ctx.timestamp });

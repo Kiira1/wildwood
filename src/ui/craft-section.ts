@@ -137,7 +137,7 @@ export type CraftSectionDeps = {
   craftSkills: () => Readonly<Partial<Record<CraftSkill, bigint>>>;
   ores: () => Ores;
   masteryLevels: () => MasteryLevels;
-  /** Every item held, worn or on the Upgrade Bench. */
+  /** Every item held, worn or in a Slot Upgrade. */
   heldItems: () => readonly string[];
   bagFull: () => boolean;
   craft: (itemId: string) => Promise<Result>;
@@ -305,7 +305,7 @@ export type CraftCoop = {
 };
 export type CraftInventory = { itemIds: string[]; equippedHead: string; equippedChest: string; equippedFeet?: string; equippedRightHand: string; equippedLeftHand: string };
 
-/** Every item held: the bag and worn, and the pieces on the Upgrade Bench. */
+/** Every item held: the bag and worn, and the pieces in a Slot Upgrade. */
 export const heldItemsFor = (coop: CraftCoop | null | undefined, inventory: CraftInventory) =>
   [...inventory.itemIds, ...(coop?.activeItemUpgrades?.() ?? []).map(active => active.itemId)];
 

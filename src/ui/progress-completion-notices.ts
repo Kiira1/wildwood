@@ -9,7 +9,7 @@ type ProgressSession = {
   isConnected?: () => boolean;
 };
 
-type ShowCompletion = (kind: "Research" | "Upgrade", detail: string, icon: string, color: string) => void;
+type ShowCompletion = (kind: "Research" | "Slot Upgrade", detail: string, icon: string, color: string) => void;
 
 export function createProgressCompletionNotices(
   inventoryButton: HTMLElement,
@@ -27,8 +27,8 @@ export function createProgressCompletionNotices(
       },
     },
     onUpgradeFinished: (job: ActiveItemUpgrade) => {
-      const track = isUpgradeSlot(job.itemId) ? UPGRADE_SLOT_LABELS[job.itemId] : "SLOT";
-      showCompletion("Upgrade", `${track} +${job.targetLevel}`, "◆", "#f3cf70");
+      const track = isUpgradeSlot(job.itemId) ? UPGRADE_SLOT_LABELS[job.itemId] : "Slot";
+      showCompletion("Slot Upgrade", `${track} +${job.targetLevel}`, "◆", "#f3cf70");
     },
     poll(
       techTree: { updateNotice: () => void },

@@ -8,6 +8,7 @@ import { refineSuccessChance, type OreId } from "../../shared/refine";
 import type { CraftSectionDeps } from "./craft-section";
 import { craftExperienceForLevel } from "../../shared/crafting";
 import type { WornLoadout } from "./smith-upgrades";
+import { hudReminderMarkup } from "./hud-reminders";
 afterEach(() => vi.unstubAllGlobals());
 
 // The server rolls every try (refine_item); the window shows the odds, sends the level the player saw, and shows the verdict.
@@ -516,8 +517,8 @@ it("puts a bought piece on once the server's row has brought it into the bag, an
   expect(equip).toHaveBeenLastCalledWith("rare_bow", "RIGHT_HAND");
 });
 
-it("shows the Town button's dot only while Upgrade All has something to buy", () => {
-  const { document, window } = parseHTML("<html><body><button id=\"techTreeBtn\"></button></body></html>");
+it("shows the HUD's Upgrades At The Smith chip only while Upgrade All has something to buy, and no dot on the Town button", () => {
+  const { document, window } = parseHTML(`<html><body><button id="techTreeBtn"></button>${hudReminderMarkup()}</body></html>`);
   vi.stubGlobal("document", document); vi.stubGlobal("HTMLElement", window.HTMLElement);
   vi.stubGlobal("localStorage", memoryStorage());
   let gold = 1_000n;
@@ -526,11 +527,46 @@ it("shows the Town button's dot only while Upgrade All has something to buy", ()
     inventory: { itemIds: ["starter_bow"], equippedHead: "", equippedChest: "", equippedFeet: "", equippedRightHand: "starter_bow", equippedLeftHand: "" },
     showMessage: vi.fn(), inTown: () => true,
   });
-  const dot = document.querySelector<HTMLElement>("#techTreeBtn .smith-upgrade-notice")!;
+  const dot = document.getElementById("smithUpgradeNotice")!;
+  expect(dot.textContent).toBe("Upgrades At The Smith");
+  expect(document.getElementById("techTreeBtn")!.children).toHaveLength(0);
   expect(dot.hidden).toBe(true);
   runtime.refreshNotice();
   expect(dot.hidden).toBe(false);
   gold = 0n;
   runtime.refreshNotice();
   expect(dot.hidden).toBe(true);
+});
+
+// Slot Upgrades (upgrade-bench-controller.ts) lives in the Smith as its Slots view; the bench opens it there.
+it("mounts Slot Upgrades as the Slots view and shows it only while that view is on screen", () => {
+  const { document, window } = parseHTML("<html><body><div id=\"bench\" hidden></div></body></html>");
+  vi.stubGlobal("document", document); vi.stubGlobal("HTMLElement", window.HTMLElement);
+  vi.stubGlobal("localStorage", memoryStorage());
+  const element = document.getElementById("bench") as unknown as HTMLElement;
+  const setShown = vi.fn((shown: boolean) => { element.hidden = !shown; });
+  const controller = createSmithController({
+    inTown: () => true, items: () => [], refine: vi.fn(), showMessage: vi.fn(), refineLevel: () => 0, slotTier: () => 0, ores: () => ({}),
+    slots: () => ({ element, setShown }),
+  });
+  const dialog = document.querySelector("dialog") as unknown as HTMLDialogElement;
+  Object.assign(dialog, { showModal() { dialog.setAttribute("open", ""); }, close() { dialog.removeAttribute("open"); } });
+  Object.defineProperty(dialog, "open", { get: () => dialog.hasAttribute("open") });
+  const pill = (label: string) => [...dialog.querySelectorAll<HTMLButtonElement>(".smith-views .inventory-filter")].find(button => button.textContent === label)!;
+  expect([...dialog.querySelectorAll(".smith-views .inventory-filter")].map(button => button.textContent)).toEqual(["Refine", "Slots"]);
+  // The bench asks for Slots: the window mounts in that view and shows.
+  controller.open("slots");
+  expect(dialog.querySelector(".smith-slots-view")!.contains(element as never)).toBe(true);
+  expect(element.hidden).toBe(false);
+  expect(pill("Slots").getAttribute("aria-pressed")).toBe("true");
+  pill("Refine").click();
+  expect(element.hidden).toBe(true);
+  pill("Slots").click();
+  expect(element.hidden).toBe(false);
+  controller.close();
+  expect(element.hidden).toBe(true);
+  expect(setShown).toHaveBeenLastCalledWith(false);
+  // Opened at the Smith with no view asked for, it goes back to the view last picked.
+  controller.open();
+  expect(element.hidden).toBe(false);
 });

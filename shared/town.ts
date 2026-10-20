@@ -153,7 +153,7 @@ export const TOWN_DOORS: readonly TownDoor[] = doorData.doors.map((door, index) 
 /**
  * The stations Home used to hold, each inside a Town building, against its back wall where a piece of the
  * room's own furniture stood (the client draws the station in its place and keeps its collider as the
- * station's): Loadout Upgrades in the smithy (door 6) for its tool table, Tech Research in the windmill
+ * station's): Slot Upgrades in the smithy (door 6) for its tool table, Tech Research in the windmill
  * (door 1) for its roped-off display, Weekly Quests in the Inn (door 5) for its notice board. Each is
  * (door, offset from the room's top-left corner). The server checks the bench's reach from the same point.
  */
@@ -184,7 +184,7 @@ export const TOWN_OX_POSITION = stationIn(8, 120, 100);
 export const TOWN_OX_REACH = 60;
 /**
  * The Smith refines gear (shared/refine.ts), after Ragnarok's refiner. He
- * works outdoors at the blue forge house right of the Upgrade Bench's building (door 6), the one with crossed
+ * works outdoors at the blue forge house right of the Slot Upgrades bench's building (door 6), the one with crossed
  * swords on its sign: in its yard, between the weapon rack and the forge, behind the anvil. Players walk in
  * from the road on the left. Where his feet are.
  */

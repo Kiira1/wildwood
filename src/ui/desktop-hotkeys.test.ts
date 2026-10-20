@@ -47,6 +47,17 @@ describe("PC keyboard", () => {
     expect(pressTopBack(s.document)).toBe(false);
   });
 
+  it("P opens the profile from the HUD portrait, not the gear, which opens Settings", () => {
+    const s = setup(`<button id="playerHudProfileIcon" aria-label="View your player profile"></button><button id="playerHudProfileGear" aria-label="Open settings" title="Settings"></button>`);
+    const clicks: string[] = [];
+    for (const id of ["playerHudProfileIcon", "playerHudProfileGear"]) s.pick(`#${id}`).addEventListener("click", () => clicks.push(id));
+    s.place(s.pick("#playerHudProfileIcon"), 0); s.place(s.pick("#playerHudProfileGear"), 20);
+    installDesktopHotkeys(s.document);
+    s.key("KeyP");
+    expect(clicks).toEqual(["playerHudProfileIcon"]);
+    expect(s.pick("#playerHudProfileGear").title).toBe("Settings");
+  });
+
   it("I opens the inventory like its button, and I again closes it", () => {
     const s = setup(`<button id="inventoryBtn" aria-label="Open inventory">Inventory</button><div id="panel" hidden><button id="close">Back</button></div>`);
     const open = s.pick("#inventoryBtn"), panel = s.pick("#panel"), close = s.pick("#close");

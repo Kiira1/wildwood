@@ -19,6 +19,10 @@ import { itemArtImage, itemPresentation } from "../game/item-presentation";
 import { drawPortalMapMarker } from "../game/portal-presentation";
 import { createLootFilterWindow, type LootFilterPort } from "./loot-filter-window";
 import { liveRewardText, type RewardLabelContext } from "../game/runtime/reward-labels";
+import { recommendedMapPower } from "../game/runtime/auto-farm/auto-farm-power";
+import { prestigeRequirementHint } from "../../shared/prestige";
+import { formatCompactNumber } from "../../shared/compact-number";
+import { baseName, unlockedBy } from "./home-travel-controller";
 import {
   ADVANCED_LAVA_WASTES_MAP_ID,
   BEGINNER_DESERT_MAP_ID,
@@ -73,6 +77,25 @@ type MapGuideDependencies = {
   mapUnlocked?: (mapId: MapId) => boolean;
   /** Another map's live balance, for its Enemy Index (null when it cannot load). */
   mapBalance?: (mapId: MapId) => Promise<MapBalanceSnapshot | null>;
+  /** The player's power, beside the shown map's recommended power. */
+  power?: () => number;
+  /** What the Next Goal reads for Prestige: the coop session, and whether its level cap is lifted. */
+  progress?: MapGuideProgress | null;
+  prestigeExpanded?: () => boolean;
+  /** The Travel button: the Town's travel portal is the only way to a chosen map. */
+  travel?: MapGuideTravelPort;
+};
+export type MapGuideProgress = {
+  prestige?: () => { level?: number } | null | undefined;
+  prestigeCampaignComplete?: (nextLevel: number) => boolean;
+  proceduralCompleted?: () => number;
+};
+export type MapGuideTravelPort = {
+  inTown: () => boolean;
+  /** The map the Travel picker opens on next. */
+  prefer: (mapId: MapId) => void;
+  /** Presses the toolbar's Town button; false while it is cooling down. */
+  teleportToTown: () => boolean;
 };
 
 export type MapGuideDrop = {
@@ -131,6 +154,30 @@ export function mapGuideBrowseRange(unlocked: (mapId: MapId) => boolean) {
   maps.forEach((mapId, index) => { if (index === 0 || unlocked(mapId)) furthest = index; });
   return { maps, last: Math.min(maps.length - 1, furthest + 1) };
 }
+
+/**
+ * The player's next goal, from the maps they have open: the boss that opens the next campaign map, then
+ * Endless, then the next Endless stage. Once the campaign is open, what Prestige needs too.
+ */
+export function mapGuideNextGoal(unlocked: (mapId: MapId) => boolean, mapName: (mapId: MapId) => string, progress?: MapGuideProgress | null, expanded = false) {
+  const next = CAMPAIGN_MAP_IDS.findIndex((mapId, index) => index > 0 && !unlocked(mapId as MapId));
+  if (next > 0) return { goal: `${unlockedBy(next - 1, mapName)} to unlock ${baseName(CAMPAIGN_MAP_IDS[next], mapName)}`, prestige: "" };
+  const level = progress?.prestige?.()?.level ?? 0;
+  const hint = prestigeRequirementHint(Boolean(progress?.prestigeCampaignComplete?.(level + 1)), progress?.proceduralCompleted?.() ?? 0, level + 1, undefined, expanded);
+  const prestige = hint.replace(/\.$/, "") || "Prestige is ready in your Profile";
+  if (!unlocked(proceduralMapId(1) as MapId)) return { goal: `${unlockedBy(CAMPAIGN_MAP_IDS.length - 1, mapName)} to unlock Endless`, prestige };
+  const { maps } = mapGuideBrowseRange(unlocked);
+  const stage = maps.filter(mapId => isProceduralMap(mapId) && unlocked(mapId)).length;
+  return { goal: `Defeat the Endless ${stage} boss to unlock Endless ${stage + 1}`, prestige };
+}
+
+/** The Travel button for the shown map: none on the player's own map, Locked past the open ones, and from outside the Town it goes there first. */
+export function mapGuideTravelButton(shown: MapId, current: MapId, unlocked: boolean, inTown: boolean) {
+  if (shown === current) return null;
+  if (!unlocked) return { label: "Locked", disabled: true };
+  return { label: inTown ? "Travel" : "Travel From Town", disabled: false };
+}
+export const MAP_GUIDE_PORTAL_HINT = "Walk into the Travel portal north of the square";
 
 /** What the map's regular enemies drop. Gear is not among it: that is bought at the Smith. */
 export function mapGuideDrops(mapId: MapId): readonly MapGuideDrop[] {
@@ -228,6 +275,59 @@ export function createMapGuideController(elements: MapGuideElements, dependencie
     const boss = bossForMap(mapId);
     return boss ? { ...boss.spawn, name: boss.name } : null;
   }
+  // The Next Goal, the shown map's recommended power and its Travel button, above the map.
+  const goalBlock = document.createElement("section");
+  goalBlock.className = "map-guide-goal";
+  goalBlock.setAttribute("aria-label", "Next Goal");
+  goalBlock.innerHTML = `<h3>Next Goal</h3><p class="map-guide-goal-text"></p><p class="map-guide-goal-prestige" hidden></p>`
+    + `<p class="map-guide-goal-power" hidden></p><div class="map-guide-travel" hidden><button type="button" class="map-guide-travel-button"></button>`
+    + `<p class="map-guide-travel-hint" aria-live="polite" hidden></p></div>`;
+  canvas.closest(".map-guide-content")?.prepend(goalBlock);
+  const goalPart = <T extends HTMLElement>(selector: string) => goalBlock.querySelector<T>(selector)!;
+  const travelButton = goalPart<HTMLButtonElement>(".map-guide-travel-button"), travelHint = goalPart(".map-guide-travel-hint");
+  /** What the last Travel tap said, for the map it was for. */
+  let travelNote: { mapId: MapId; text: string } | null = null;
+  let travelWatch = 0;
+  function renderGoal(mapId: MapId) {
+    const { goal, prestige } = mapGuideNextGoal(unlocked, dependencies.mapName, dependencies.progress, dependencies.prestigeExpanded?.() ?? false);
+    goalPart(".map-guide-goal-text").textContent = goal;
+    Object.assign(goalPart(".map-guide-goal-prestige"), { textContent: prestige, hidden: !prestige });
+    const recommended = dependencies.power ? recommendedMapPower(mapId) : null;
+    Object.assign(goalPart(".map-guide-goal-power"), { hidden: recommended === null,
+      textContent: recommended === null ? "" : `Your Power ${formatCompactNumber(dependencies.power!())} · Recommended ${formatCompactNumber(recommended)}` });
+    const port = dependencies.travel;
+    const button = port ? mapGuideTravelButton(mapId, dependencies.currentMapId(), unlocked(mapId), port.inTown()) : null;
+    goalPart(".map-guide-travel").hidden = !button;
+    if (!button) return;
+    travelButton.textContent = button.label;
+    travelButton.disabled = button.disabled;
+    const note = travelNote?.mapId === mapId ? travelNote.text : "";
+    Object.assign(travelHint, { textContent: note, hidden: !note });
+  }
+  function travelTo(mapId: MapId) {
+    const port = dependencies.travel;
+    if (!port || !unlocked(mapId)) return;
+    port.prefer(mapId);
+    const inTown = port.inTown();
+    const portal = `${MAP_GUIDE_PORTAL_HINT}. It opens on ${baseName(mapId, dependencies.mapName)}.`;
+    if (inTown) travelNote = { mapId, text: portal };
+    else if (!port.teleportToTown()) travelNote = { mapId, text: "The Town teleport is cooling down. Try again in a moment." };
+    else {
+      travelNote = { mapId, text: `Going to Town. ${portal}` };
+      // Once in Town the button reads Travel; the hint stays.
+      const watch = ++travelWatch, started = Date.now();
+      const check = () => {
+        if (watch !== travelWatch || overlay.hidden) return;
+        if (port.inTown()) { travelNote = { mapId, text: portal }; render(); return; }
+        if (Date.now() - started < 10_000) setTimeout(check, 100);
+        else { travelNote = null; render(); }
+      };
+      setTimeout(check, 100);
+    }
+    render();
+  }
+  travelButton.addEventListener("click", () => travelTo(shown()));
+
   const dropsHeader = dropItems.parentElement?.querySelector("header");
   const lootFilter = dropsHeader
     ? createLootFilterWindow({ anchor: dropsHeader, cards: dropItems, port: () => dependencies.lootFilter })
@@ -419,6 +519,7 @@ export function createMapGuideController(elements: MapGuideElements, dependencie
     if (kicker) kicker.textContent = index > 0 && !unlocked(mapId) ? `${place} · Locked` : live() ? `${place} · You are here` : place;
     if (prev) prev.disabled = index <= 0;
     if (next) next.disabled = index < 0 || index >= last;
+    renderGoal(mapId);
     if (enemyRows) renderEnemyRows(mapId);
     renderDrops(mapId);
     lootFilter?.setMap(dependencies.mapName(mapId), mapGuideDrops(mapId).map((drop) => drop.itemId));
@@ -473,6 +574,7 @@ export function createMapGuideController(elements: MapGuideElements, dependencie
   function close() {
     if (overlay.hidden) return;
     lootFilter?.close();
+    travelNote = null;
     overlay.hidden = true;
     trigger.setAttribute("aria-expanded", "false");
   }

@@ -31,7 +31,7 @@ export type WorldDecor = WorldDecorPlacement & (
   | { type: "desertGrass"; variant: number }
   | { type: "snowPine"; s: number }
   | { type: "snowTuft"; variant: number }
-  | { type: "upgradeBench"; s: number; label: "Upgrade Bench" | "Tech Research" | "Quest Board" | "Ox" | "Smith" | "Card Seller" | SchoolBuilding }
+  | { type: "upgradeBench"; s: number; label: "Slot Upgrades" | "Tech Research" | "Quest Board" | "Ox" | "Smith" | "Card Seller" | SchoolBuilding }
   | { type: "lavaPool"; s: number; variant: number }
   | { type: "lavaRock"; s: number; variant: number }
   | { type: "charredTree"; s: number; variant: number }
@@ -94,7 +94,7 @@ export const DUSKFALL_ORCHARD_MAP_ID = "duskfall_orchard";
 export const NEON_BASTION_MAP_ID = "neon_bastion";
 export const VERDANT_CATACOMBS_MAP_ID = "verdant_catacombs";
 export const ION_CITADEL_MAP_ID = "ion_citadel";
-/** The Loadout Upgrades bench, in the Town's smithy (Home, which held it before the Town, is retired). */
+/** The Slot Upgrades bench, in the Town's smithy (Home, which held it before the Town, is retired). */
 export const UPGRADE_BENCH_POSITION = TOWN_BENCH_POSITION;
 export type MapId =
   | typeof ONBOARDING_MAP_ID
@@ -622,7 +622,7 @@ export function createWorldLayout(playerSpawn: Point, mapId: MapId = TUTORIAL_FO
   if (mapId === HOME_EXTERIOR_MAP_ID) return {
     paths: [{ x: 230, y: 344, w: 540, h: 275 }, { x: 400, y: 530, w: 200, h: 140 }, { x: 450, y: 650, w: 100, h: 225 }].map(path => ({ ...path, x: path.x + HOME_ART_OFFSET.x, y: path.y + HOME_ART_OFFSET.y })),
     decor: [
-      { type: "upgradeBench", ...HOME_BENCH_POSITION, s: 1, label: "Upgrade Bench" },
+      { type: "upgradeBench", ...HOME_BENCH_POSITION, s: 1, label: "Slot Upgrades" },
       { type: "upgradeBench", ...HOME_RESEARCH_POSITION, s: 1, label: "Tech Research" },
       { type: "upgradeBench", ...HOME_QUEST_BOARD_POSITION, s: 1, label: "Quest Board" },
       ...[100, HOME_WORLD_WIDTH - 100].flatMap(x => [180, 420, 720, 940, HOME_WORLD_HEIGHT - 100].map((y, variant) => ({ type: "tree", x, y, s: 1, variant }))),

@@ -3,7 +3,7 @@ import { Timestamp } from "spacetimedb";
 import { crystalFixture, server } from "../../tests/helpers/crystal-hollows-fixture";
 import { HOME_BENCH_POSITION, HOME_TRAVEL_PORTAL } from "../../shared/home";
 import { AGE_BAND_ADULT, TERMS_VERSION } from "../../shared/legal";
-import { TOWN_ARRIVAL, TOWN_BENCH_POSITION, TOWN_CENTER, TOWN_DOORS, TOWN_FEET_OFFSET, TOWN_SOUL_PORTAL, TOWN_TRAVEL_PORTAL, TOWN_WALK_AREA, TOWN_WORLD } from "../../shared/town";
+import { TOWN_ARRIVAL, TOWN_BENCH_POSITION, TOWN_CENTER, TOWN_DOORS, TOWN_FEET_OFFSET, TOWN_SMITH_POSITION, TOWN_SOUL_PORTAL, TOWN_TRAVEL_PORTAL, TOWN_WALK_AREA, TOWN_WORLD } from "../../shared/town";
 import { DOOR_POSITION_TOLERANCE } from "./door-reach";
 import { MOVEMENT_POSITION_PACKET_TOLERANCE } from "./presence-runtime";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
@@ -69,12 +69,23 @@ it("answers Home's retired request as the Town's, and refuses Base to the dead",
 it("keeps the Upgrade Bench in the Town's smithy, not at Home's old spot", () => {
   const f = crystalFixture();
   f.patch("player", { mapId: "home_exterior", x: HOME_BENCH_POSITION.x, y: HOME_BENCH_POSITION.y });
-  expect(() => f.run(server.startItemUpgrade, { slot: 1, itemId: "HAND" })).toThrow(/Upgrade Bench/);
+  expect(() => f.run(server.startItemUpgrade, { slot: 1, itemId: "HAND" })).toThrow(/Slot Upgrades bench/);
   f.patch("player", { mapId: "town", x: HOME_BENCH_POSITION.x, y: HOME_BENCH_POSITION.y });
-  expect(() => f.run(server.startItemUpgrade, { slot: 1, itemId: "HAND" })).toThrow(/Upgrade Bench/);
+  expect(() => f.run(server.startItemUpgrade, { slot: 1, itemId: "HAND" })).toThrow(/Slot Upgrades bench/);
   f.patch("player", { mapId: "town", x: TOWN_BENCH_POSITION.x, y: TOWN_BENCH_POSITION.y });
   f.run(server.startItemUpgrade, { slot: 1, itemId: "HAND" });
   expect(f.db.activeItemUpgrade.identity.find(f.ctx.sender)).toBeTruthy();
+});
+
+it("starts a Slot Upgrade at the Smith too, where its tab is, but not out of both reaches", () => {
+  const f = crystalFixture();
+  f.patch("player", { mapId: "town", x: TOWN_SMITH_POSITION.x + 400, y: TOWN_SMITH_POSITION.y - TOWN_FEET_OFFSET });
+  expect(() => f.run(server.startItemUpgrade, { slot: 1, itemId: "HAND" })).toThrow(/Smith/);
+  f.patch("player", { mapId: "crystal_hollows", x: TOWN_SMITH_POSITION.x, y: TOWN_SMITH_POSITION.y - TOWN_FEET_OFFSET });
+  expect(() => f.run(server.startItemUpgrade, { slot: 1, itemId: "HAND" })).toThrow(/Smith/);
+  f.patch("player", { mapId: "town", x: TOWN_SMITH_POSITION.x, y: TOWN_SMITH_POSITION.y - TOWN_FEET_OFFSET });
+  f.run(server.startItemUpgrade, { slot: 1, itemId: "HAND" });
+  expect(f.db.activeItemUpgrade.identity.find(f.ctx.sender)).toMatchObject({ itemId: "HAND", targetLevel: 1 });
 });
 
 it("brings a player saved at Home into the Town's square, online or not", () => {
@@ -183,7 +194,7 @@ it("lets a player use the bench they walked up to after coming in, though the se
   // Standing on the square, just heard of: the bench in the smithy is far out of reach.
   f.patch("player", { mapId: "town", x: TOWN_ARRIVAL.x, y: TOWN_ARRIVAL.y });
   moveTo(f, TOWN_ARRIVAL.x, TOWN_ARRIVAL.y);
-  expect(() => f.run(server.startItemUpgrade, { slot: 1, itemId: "HAND" })).toThrow(/Upgrade Bench/);
+  expect(() => f.run(server.startItemUpgrade, { slot: 1, itemId: "HAND" })).toThrow(/Slot Upgrades bench/);
   // In through the smithy's door: the server's position is its doorway, the player walks on to the bench.
   const g = crystalFixture();
   g.patch("player", { mapId: "town", x: smithy.outside.x, y: smithy.outside.y });

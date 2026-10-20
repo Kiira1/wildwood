@@ -15,7 +15,7 @@ export function createInventoryNotice(button: HTMLElement) {
       if (visible === shown) return;
       shown = visible;
       dot.hidden = !visible;
-      button.setAttribute("aria-label", visible ? `${baseLabel} — slot upgrade finished` : baseLabel);
+      button.setAttribute("aria-label", visible ? `${baseLabel} — Slot Upgrade finished` : baseLabel);
     },
   };
 }

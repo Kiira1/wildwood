@@ -76,3 +76,21 @@ it("tracks the quests in play away from home, this map's first, counted as far a
   expect(questTrackerView({ ...week, quests: [week.quests[0]] }, "tutorial_forest", id => id)).toBeNull();
   expect(questTrackerView(null, "tutorial_forest", id => id)).toBeNull();
 });
+
+it("shows the tracker switch as it is now each time the board opens, after the tracker's × or Settings changed it", async () => {
+  const { document, window } = parseHTML("<html><body></body></html>");
+  const dialogProto = Object.getPrototypeOf(document.createElement("dialog"));
+  dialogProto.showModal ??= function (this: HTMLElement) { this.setAttribute("open", ""); };
+  vi.stubGlobal("document", document);
+  vi.stubGlobal("window", Object.assign(window, { setInterval: () => 0, clearInterval: () => {} }));
+  const { createQuestBoardController } = await import("./quest-board-controller");
+  let enabled = false;
+  const board = createQuestBoardController({ source: () => ({ dailyQuests: () => state }), atHome: () => true, pause: () => {}, mapName: id => id,
+    tracker: { enabled: () => enabled, set: next => { enabled = next; } } });
+  const toggle = document.querySelector(".quest-tracker-switch")!;
+  expect(toggle.textContent).toBe("OFF");
+  enabled = true;
+  board.open();
+  expect(toggle.textContent).toBe("ON");
+  vi.unstubAllGlobals();
+});

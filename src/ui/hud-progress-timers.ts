@@ -44,7 +44,7 @@ export function createHudProgressTimers(elements: TimerElements, sources: TimerS
     if (remaining === null) return;
     const text = `${label} ${remaining}`;
     if (element.textContent !== text) element.textContent = text;
-    const description = `${label === "Tech" ? "Tech research" : `Upgrade ${label.toLowerCase()}`} ${paused ? "paused with" : "finishes in"} ${remaining}`;
+    const description = `${label === "Tech" ? "Tech research" : `Slot Upgrade ${label}`} ${paused ? "paused with" : "finishes in"} ${remaining}`;
     if (element.getAttribute("aria-label") !== description) element.setAttribute("aria-label", description);
   };
 
@@ -52,9 +52,9 @@ export function createHudProgressTimers(elements: TimerElements, sources: TimerS
     const timers = hudProgressTimers(sources.connected(), sources.research(), sources.upgrades(), (sources.nowMs ?? Date.now)());
     const visible = sources.visible();
     render(elements.research, "Tech", visible.research ? timers.research : null);
-    render(elements.slotOne, "Slot 1", visible.slotOne ? timers.slotOne?.remaining ?? null : null, timers.slotOne?.paused);
-    render(elements.slotTwo, "Slot 2", visible.slotTwo ? timers.slotTwo?.remaining ?? null : null, timers.slotTwo?.paused);
-    render(elements.slotThree, "Slot 3", visible.slotThree ? timers.slotThree?.remaining ?? null : null, timers.slotThree?.paused);
+    render(elements.slotOne, "Queue 1", visible.slotOne ? timers.slotOne?.remaining ?? null : null, timers.slotOne?.paused);
+    render(elements.slotTwo, "Queue 2", visible.slotTwo ? timers.slotTwo?.remaining ?? null : null, timers.slotTwo?.paused);
+    render(elements.slotThree, "Queue 3", visible.slotThree ? timers.slotThree?.remaining ?? null : null, timers.slotThree?.paused);
   }
 
   tick();

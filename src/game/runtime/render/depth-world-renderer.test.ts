@@ -59,7 +59,7 @@ describe("depth world renderer", () => {
     const depth = renderer([
       { type: "tree", x: 100, y: 300, s: 1, variant: 0 },
       { type: "cactus", x: 100, y: 100, s: 1, variant: 0 },
-      { type: "upgradeBench", x: 100, y: 220, s: 1, label: "Upgrade Bench" },
+      { type: "upgradeBench", x: 100, y: 220, s: 1, label: "Slot Upgrades" },
     ], calls);
 
     depth.drawDepthSortedWorld([], false);

@@ -3,6 +3,7 @@ import type { ActiveResearch } from "./tech-tree-controller";
 import type { createGameElements } from "./game-elements";
 import { createHudProgressTimers } from "./hud-progress-timers";
 import { installHudProgressSettings } from "./hud-progress-settings";
+import { installHudReminders } from "./hud-reminders";
 import { createRewardedGemAdController } from "./rewarded-gem-ad-controller";
 import type { AdGemRewardRecord } from "../../shared/ad-gem-reward";
 
@@ -19,6 +20,7 @@ type Dependencies = {
   connected: () => boolean;
   research: () => ActiveResearch | null;
   upgrades: () => ActiveItemUpgrade[];
+  inTown: () => boolean;
 };
 
 /** The countdowns and reward entry share one column below the minimap. */
@@ -34,9 +36,9 @@ export function createHudTimerColumn(elements: Elements, dependencies: Dependenc
     return element;
   };
   const researchTimer = timer("tech", "Tech");
-  const slotOneTimer = timer("slot", "Slot 1");
-  const slotTwoTimer = timer("slot", "Slot 2");
-  const slotThreeTimer = timer("slot", "Slot 3");
+  const slotOneTimer = timer("slot", "Queue 1");
+  const slotTwoTimer = timer("slot", "Queue 2");
+  const slotThreeTimer = timer("slot", "Queue 3");
   // In the minimap's stack, under the map name, players online and version, so a
   // longer map name pushes the timers down instead of drawing over them.
   const meta = document.querySelector(".minimap-meta");
@@ -47,6 +49,7 @@ export function createHudTimerColumn(elements: Elements, dependencies: Dependenc
   try { storage = window.localStorage; } catch { /* Continue with session choices. */ }
   // Installed before the ad button, which reads its timer setting on its first render.
   const settings = installHudProgressSettings(elements.settingsPanel, () => { timers.tick(); rewardedGemAd.sync(); }, storage);
+  const reminders = installHudReminders({ column, before: elements.enemyRespawnAdBtn, townButton: elements.techTreeBtn, settingsPanel: elements.settingsPanel, inTown: dependencies.inTown, storage });
   const rewardedGemAd = createRewardedGemAdController({
     button: elements.enemyRespawnAdBtn,
     status: elements.enemyRespawnAdStatus,
@@ -71,7 +74,7 @@ export function createHudTimerColumn(elements: Elements, dependencies: Dependenc
     slotThree: settings.visible("slotThree"),
   }) });
   // The ad's wait counts down on the same second; it does nothing while hidden.
-  window.setInterval(() => { if (!document.hidden) { timers.tick(); rewardedGemAd.sync(); } }, 1_000);
+  window.setInterval(() => { if (!document.hidden) { timers.tick(); rewardedGemAd.sync(); reminders.refresh(); } }, 1_000);
   document.addEventListener("visibilitychange", () => { timers.tick(); rewardedGemAd.sync(); });
   return rewardedGemAd;
 }

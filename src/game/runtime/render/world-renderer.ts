@@ -1051,7 +1051,7 @@ if (options.getMapId() === ION_CITADEL_MAP_ID) { drawIonRoads(ctx, options.paths
       ctx.drawImage(item, itemX, itemY, itemWidth, itemHeight);
     }
     if (options.getMapId() === "town" || options.getMapId() === "home_exterior") {
-      drawHomeStationSign(ctx, x, y, "Loadout Upgrades", upgrade?.timer); return;
+      drawHomeStationSign(ctx, x, y, "Slot Upgrades", upgrade?.timer); return;
     }
     drawScreenSpaceAt(ctx, camera.zoom, x, y - height, () => {
       ctx.textAlign = "center";

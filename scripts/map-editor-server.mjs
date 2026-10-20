@@ -152,7 +152,7 @@ function normalizeDesign(value, enemyKinds, enemyRewards) {
     if (scalableDecor.has(item.type)) normalized.s = number(item.s ?? 1, `Decoration ${index + 1} scale`, .1, 5);
     if (variantDecor.has(item.type)) normalized.variant = Math.round(number(item.variant ?? 0, `Decoration ${index + 1} variant`, 0, 999));
     if (item.color) normalized.color = color(item.color, `Decoration ${index + 1} color`);
-    if (item.type === "upgradeBench") normalized.label = "Upgrade Bench";
+    if (item.type === "upgradeBench") normalized.label = "Slot Upgrades";
     return normalized;
   });
   if (knownMapIds.has(id)) {

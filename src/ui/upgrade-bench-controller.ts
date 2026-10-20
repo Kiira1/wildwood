@@ -68,13 +68,15 @@ type UpgradeBenchDependencies = {
   onInventoryChanged: () => void;
   onUpgradeFinished?: (job: ActiveItemUpgrade) => void;
   showMessage: (message: string, color?: string) => void;
+  /** The window this lives in (the Smith's Slots view): the bench opens and closes it there. */
+  host?: { open: () => void; close: () => void };
   nowMs?: () => number;
   storage?: Pick<Storage, "getItem" | "setItem">;
   localIdentity?: () => string;
 };
 
-export const UPGRADE_CANCEL_CONFIRMATION = "Are you sure you want to cancel? You will lose current progress to the next upgrade.";
-export const UPGRADE_SLOT_UNLOCK_ACTION = "permanently unlock a second upgrade bench, so two loadout slots can upgrade at once";
+export const UPGRADE_CANCEL_CONFIRMATION = "Are you sure you want to cancel? You will lose this Slot Upgrade's progress.";
+export const UPGRADE_SLOT_UNLOCK_ACTION = "permanently unlock a second Slot Upgrades queue, so two slots can upgrade at once";
 export const UPGRADE_SLOT_UNLOCK_CONFIRMATION = gemSpendConfirmationText(
   UPGRADE_SLOT_UNLOCK_ACTION,
   UPGRADE_BENCH_SECOND_SLOT_GEM_COST,
@@ -112,7 +114,7 @@ export function playerTouchesUpgradeBench(
 export function upgradePickerPreview(track: UpgradeSlot, tier: unknown, equippedItemId = "", refine = 0) {
   const level = normalizeSlotTier(tier);
   return {
-    name: `${UPGRADE_SLOT_LABELS[track]} \u00b7 TIER ${level} \u2192 ${level + 1}`,
+    name: `${UPGRADE_SLOT_LABELS[track]} \u00b7 +${level} \u2192 +${level + 1}`,
     changes: equippedItemId ? itemUpgradeStatChanges(equippedItemId, { tier: level, refine }) : [],
     equippedItemId,
   };
@@ -249,7 +251,7 @@ export function createUpgradeBenchController(elements: UpgradeBenchElements, dep
     elements.picker.hidden = true;
   }
 
-  function close() {
+  function hide() {
     if (elements.panel.hidden) return;
     closePicker();
     selectedSlot = null;
@@ -258,16 +260,29 @@ export function createUpgradeBenchController(elements: UpgradeBenchElements, dep
     dependencies.setPaused(false);
   }
 
-  function open() {
+  function show() {
     if (!elements.panel.hidden) return;
-    dependencies.beforeOpen();
-    dependencies.clearPlayerInput();
     elements.panel.hidden = false;
     dependencies.setPaused(true);
     selectedItems.clear();
     selectedSlot = activeUpgrades()[0]?.slot ?? null;
     lastRenderKey = "";
     render();
+  }
+
+  // With a host the window is the host's; it shows this view through setShown.
+  function close() {
+    if (elements.panel.hidden) return;
+    dependencies.host?.close();
+    hide();
+  }
+
+  function open() {
+    if (!elements.panel.hidden) return;
+    dependencies.beforeOpen();
+    dependencies.clearPlayerInput();
+    if (dependencies.host) dependencies.host.open();
+    else show();
   }
 
   function renderLockedSlot(button: HTMLButtonElement, cost: bigint) {
@@ -300,15 +315,15 @@ export function createUpgradeBenchController(elements: UpgradeBenchElements, dep
 
     if (locked) {
       const cost = slot === 2 ? UPGRADE_BENCH_SECOND_SLOT_GEM_COST : UPGRADE_BENCH_THIRD_SLOT_GEM_COST;
-      button.setAttribute("aria-label", `Unlock ${slot === 2 ? "second" : "third"} upgrade slot for ${cost} Gems`);
+      button.setAttribute("aria-label", `Unlock A ${slot === 2 ? "Second" : "Third"} Queue For ${cost} Gems`);
       renderLockedSlot(button, cost);
       return;
     }
 
     const track = isUpgradeSlot(itemId) ? itemId : null;
     button.setAttribute("aria-label", track
-      ? `${UPGRADE_SLOT_LABELS[track]} tier ${level} in upgrade slot ${slot}`
-      : `Choose what to upgrade in slot ${slot}`);
+      ? `${UPGRADE_SLOT_LABELS[track]} +${level} In Queue ${slot}`
+      : `Pick A Slot For Queue ${slot}`);
     if (!track) {
       const empty = document.createElement("span");
       empty.className = "inventory-item-empty-mark";
@@ -364,7 +379,7 @@ export function createUpgradeBenchController(elements: UpgradeBenchElements, dep
     elements.speedUp.replaceChildren(label, icon, amount);
     elements.speedUp.setAttribute(
       "aria-label",
-      `Finish this upgrade now for ${cost} Gems. One Gem is worth ten minutes. Your balance is ${dependencies.gemBalance()} Gems.`,
+      `Finish this Slot Upgrade now for ${cost} Gems. One Gem is worth ten minutes. Your balance is ${dependencies.gemBalance()} Gems.`,
     );
   }
 
@@ -424,15 +439,15 @@ export function createUpgradeBenchController(elements: UpgradeBenchElements, dep
     renderStatGain(itemId, level);
 
     const trackName = isUpgradeSlot(itemId) ? UPGRADE_SLOT_LABELS[itemId] : "";
-    if (!selectedSlot) elements.prompt.textContent = "Choose an upgrade slot";
-    else if (selectedJob) elements.prompt.textContent = `Upgrading ${trackName} to tier ${level + 1}`;
-    else if (trackName) elements.prompt.textContent = `${trackName} · tier ${level} → ${level + 1}`;
-    else elements.prompt.textContent = `Choose what to upgrade in slot ${selectedSlot}`;
+    if (!selectedSlot) elements.prompt.textContent = "Pick A Queue";
+    else if (selectedJob) elements.prompt.textContent = `Upgrading ${trackName} To +${level + 1}`;
+    else if (trackName) elements.prompt.textContent = `${trackName} · +${level} → +${level + 1}`;
+    else elements.prompt.textContent = `Pick A Slot For Queue ${selectedSlot}`;
 
     elements.timer.hidden = !itemId;
     elements.timer.textContent = selectedJob
-      ? `UPGRADING · ${formatTimerMs(remaining)}`
-      : itemId ? `UPGRADE TIME · ${formatTimerMs(slotUpgradeDurationWithResearch(itemUpgradeDurationMs(level), dependencies.slotUpgradeSpeedRank?.() ?? 0))}` : "";
+      ? `Upgrading · ${formatTimerMs(remaining)}`
+      : itemId ? `Upgrade Time · ${formatTimerMs(slotUpgradeDurationWithResearch(itemUpgradeDurationMs(level), dependencies.slotUpgradeSpeedRank?.() ?? 0))}` : "";
     elements.action.classList.toggle("is-cancel", Boolean(selectedJob));
     elements.action.textContent = selectedJob ? "Cancel" : "Upgrade";
     elements.action.hidden = !itemId;
@@ -442,7 +457,7 @@ export function createUpgradeBenchController(elements: UpgradeBenchElements, dep
       renderSpeedUp(speedUpCost);
       elements.speedUp.disabled = busy || dependencies.gemBalance() < speedUpCost;
     }
-    elements.back.hidden = false;
+    elements.back.hidden = Boolean(dependencies.host);
     elements.back.disabled = busy;
   }
 
@@ -495,7 +510,7 @@ export function createUpgradeBenchController(elements: UpgradeBenchElements, dep
       const empty = document.createElement("div");
       empty.className = "upgrade-bench-picker-heading";
       // Every track is either finished or already being worked on.
-      empty.textContent = "EVERY SLOT IS AT ITS LAST TIER";
+      empty.textContent = "Every Slot Is Fully Upgraded";
       elements.pickerItems.append(empty);
     }
   }
@@ -525,7 +540,7 @@ export function createUpgradeBenchController(elements: UpgradeBenchElements, dep
   async function unlockSecondSlot() {
     if (busy || confirming || dependencies.secondSlotUnlocked()) return;
     if (dependencies.gemBalance() < UPGRADE_BENCH_SECOND_SLOT_GEM_COST) {
-      dependencies.showMessage(`NOT ENOUGH GEMS · NEED ${UPGRADE_BENCH_SECOND_SLOT_GEM_COST}`, "#ff9b91");
+      dependencies.showMessage(`Not Enough Gems · Need ${UPGRADE_BENCH_SECOND_SLOT_GEM_COST}`, "#ff9b91");
       return;
     }
     if (!await ask(confirmUnlock, gemSpendConfirmation(UPGRADE_SLOT_UNLOCK_ACTION, UPGRADE_BENCH_SECOND_SLOT_GEM_COST, dependencies.gemBalance()))) return;
@@ -535,11 +550,11 @@ export function createUpgradeBenchController(elements: UpgradeBenchElements, dep
     busy = false;
     lastRenderKey = "";
     if (result?.ok) {
-      dependencies.showMessage("SECOND UPGRADE SLOT UNLOCKED", "#f3a6ce");
+      dependencies.showMessage("Second Queue Unlocked", "#f3a6ce");
       render();
       openPicker(2);
     } else {
-      dependencies.showMessage(result?.error ?? "COULD NOT UNLOCK SLOT", "#ff7a7a");
+      dependencies.showMessage(result?.error ?? "Could Not Unlock Queue", "#ff7a7a");
       render();
     }
   }
@@ -547,10 +562,10 @@ export function createUpgradeBenchController(elements: UpgradeBenchElements, dep
   async function unlockThirdSlot() {
     if (busy || confirming || !dependencies.secondSlotUnlocked() || dependencies.thirdSlotUnlocked()) return;
     if (dependencies.gemBalance() < UPGRADE_BENCH_THIRD_SLOT_GEM_COST) {
-      dependencies.showMessage(`NOT ENOUGH GEMS · NEED ${UPGRADE_BENCH_THIRD_SLOT_GEM_COST}`, "#ff9b91");
+      dependencies.showMessage(`Not Enough Gems · Need ${UPGRADE_BENCH_THIRD_SLOT_GEM_COST}`, "#ff9b91");
       return;
     }
-    const action = "permanently unlock a third upgrade bench, so three loadout slots can upgrade at once";
+    const action = "permanently unlock a third Slot Upgrades queue, so three slots can upgrade at once";
     if (!await ask(confirmUnlock, gemSpendConfirmation(action, UPGRADE_BENCH_THIRD_SLOT_GEM_COST, dependencies.gemBalance()))) return;
     busy = true;
     render(true);
@@ -558,11 +573,11 @@ export function createUpgradeBenchController(elements: UpgradeBenchElements, dep
     busy = false;
     lastRenderKey = "";
     if (result?.ok) {
-      dependencies.showMessage("THIRD UPGRADE SLOT UNLOCKED", "#f3a6ce");
+      dependencies.showMessage("Third Queue Unlocked", "#f3a6ce");
       render();
       openPicker(3);
     } else {
-      dependencies.showMessage(result?.error ?? "COULD NOT UNLOCK SLOT", "#ff7a7a");
+      dependencies.showMessage(result?.error ?? "Could Not Unlock Queue", "#ff7a7a");
       render();
     }
   }
@@ -601,9 +616,9 @@ export function createUpgradeBenchController(elements: UpgradeBenchElements, dep
       if (result?.ok) {
         selectedSlot = null;
         selectedItems.delete(slot);
-        dependencies.showMessage("UPGRADE CANCELED", "#f3cf70");
+        dependencies.showMessage("Slot Upgrade Canceled", "#f3cf70");
       } else {
-        dependencies.showMessage(result?.error ?? "COULD NOT CANCEL UPGRADE", "#ff7a7a");
+        dependencies.showMessage(result?.error ?? "Could Not Cancel Slot Upgrade", "#ff7a7a");
       }
     } else {
       // `itemId` is the track: the reducer takes the slot name here, and the
@@ -615,9 +630,9 @@ export function createUpgradeBenchController(elements: UpgradeBenchElements, dep
         runningSlots.add(slot);
         if (runningSlots.size >= (dependencies.thirdSlotUnlocked() ? 3 : dependencies.secondSlotUnlocked() ? 2 : 1)) rememberFinished(false);
         selectedItems.delete(slot);
-        dependencies.showMessage("UPGRADE STARTED", "#72ef58");
+        dependencies.showMessage("Slot Upgrade Started", "#72ef58");
       } else {
-        dependencies.showMessage(result?.error ?? "COULD NOT START UPGRADE", "#ff7a7a");
+        dependencies.showMessage(result?.error ?? "Could Not Start Slot Upgrade", "#ff7a7a");
       }
     }
     busy = false;
@@ -632,10 +647,10 @@ export function createUpgradeBenchController(elements: UpgradeBenchElements, dep
     if (!job) return;
     const cost = itemUpgradeSpeedUpGemCost(remainingFor(job));
     if (dependencies.gemBalance() < cost) {
-      dependencies.showMessage(`NOT ENOUGH GEMS · NEED ${cost}`, "#ff9b91");
+      dependencies.showMessage(`Not Enough Gems · Need ${cost}`, "#ff9b91");
       return;
     }
-    if (!await ask(confirmGemSpend, gemSpendConfirmation("finish this slot upgrade now", cost, dependencies.gemBalance()))) return;
+    if (!await ask(confirmGemSpend, gemSpendConfirmation("finish this Slot Upgrade now", cost, dependencies.gemBalance()))) return;
     busy = true;
     render(true);
     const result = await dependencies.speedUpUpgrade(slot);
@@ -643,9 +658,9 @@ export function createUpgradeBenchController(elements: UpgradeBenchElements, dep
       dependencies.onInventoryChanged();
       selectedSlot = null;
       selectedItems.delete(slot);
-      dependencies.showMessage("UPGRADE FINISHED", "#72ef58");
+      dependencies.showMessage("Slot Upgrade Finished", "#72ef58");
     } else {
-      dependencies.showMessage(result?.error ?? "COULD NOT FINISH UPGRADE", "#ff7a7a");
+      dependencies.showMessage(result?.error ?? "Could Not Finish Slot Upgrade", "#ff7a7a");
     }
     busy = false;
     lastRenderKey = "";
@@ -680,6 +695,9 @@ export function createUpgradeBenchController(elements: UpgradeBenchElements, dep
     close,
     isOpen: () => !elements.panel.hidden,
     open,
+    /** The view's element and switch, for a host window (the Smith) to mount and show. */
+    element: elements.panel,
+    setShown: (shown: boolean) => { if (shown) show(); else hide(); },
     render: () => render(true),
     tick: render,
     updateTouch,

@@ -1157,7 +1157,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
         return result;
       },
       async unlockThirdUpgradeSlot() {
-        if (!secondUpgradeSlotUnlocked) return { ok: false, error: "UNLOCK SLOT 2 FIRST" };
+        if (!secondUpgradeSlotUnlocked) return { ok: false, error: "Unlock Queue 2 First" };
         const result = await reducerResult("third upgrade slot unlock", (connection) => connection.reducers.unlockThirdUpgradeSlot({}))();
         if (result.ok) {
           thirdUpgradeSlotUnlocked = true;

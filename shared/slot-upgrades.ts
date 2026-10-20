@@ -25,11 +25,11 @@ export function normalizeSlotTier(tier: unknown) {
     : 0;
 }
 
-/** Human-facing name for a track, as the bench and the profile label it. */
+/** Human-facing name for a track, as Slot Upgrades labels it. */
 export const UPGRADE_SLOT_LABELS: Readonly<Record<UpgradeSlot, string>> = {
-  HAND: "WEAPON",
-  HEAD: "HELMET",
-  CHEST: "ARMOR",
+  HAND: "Weapon",
+  HEAD: "Helmet",
+  CHEST: "Armor",
 };
 
 /**

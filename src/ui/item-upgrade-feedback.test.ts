@@ -7,5 +7,5 @@ it("names the slot that finished, not an item", () => {
   const player = { hp: 10, maxHp: 10, baseMaxHp: 10 } as never;
   const show = createItemUpgradeFeedback({ inventory, player, healthMultiplierBonus: () => 0, renderInventory() {}, saveProgress() {}, showMessage });
   show({ itemId: "HAND", level: 37 });
-  expect(showMessage).toHaveBeenCalledWith("WEAPON SLOT +37 COMPLETE", "#72ef58");
+  expect(showMessage).toHaveBeenCalledWith("Slot Upgrade Complete · Weapon +37", "#72ef58");
 });

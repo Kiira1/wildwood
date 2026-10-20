@@ -41,7 +41,7 @@ export const lowEnough = (frame: SoulFrame, s: number) => SOUL_ATLAS.frames[fram
  * its room's furniture did, so that piece is not drawn (its collider stays, as the station's).
  */
 export const TOWN_STATION_DECOR: readonly WorldDecor[] = [
-  { type: "upgradeBench", x: TOWN_BENCH_POSITION.x, y: TOWN_BENCH_POSITION.y, s: 1, label: "Upgrade Bench" },
+  { type: "upgradeBench", x: TOWN_BENCH_POSITION.x, y: TOWN_BENCH_POSITION.y, s: 1, label: "Slot Upgrades" },
   { type: "upgradeBench", x: TOWN_RESEARCH_POSITION.x, y: TOWN_RESEARCH_POSITION.y, s: 1, label: "Tech Research" },
   { type: "upgradeBench", x: TOWN_QUEST_BOARD_POSITION.x, y: TOWN_QUEST_BOARD_POSITION.y, s: 1, label: "Quest Board" },
 ];
@@ -143,6 +143,13 @@ export const TOWN_SCHOOL_SIGNPOSTS: readonly WorldDecor[] = WEAPON_SCHOOLS.map(s
   const door = TOWN_DOORS[SCHOOL_DETAILS[school].door], at = SCHOOL_SIGNPOST_AT[school];
   return { type: "soulProp", frame: "", s: 1, x: door.x + at.dx, y: door.y + at.dy, signpost: SCHOOL_DETAILS[school].building, flip: at.flip };
 });
+/** The square's other stops, signed the same way: each sign beside its door (the Smith's beside his yard), pointing at it. */
+export const TOWN_STOP_SIGNPOSTS: readonly WorldDecor[] = ([
+  ["Smith", TOWN_SMITH_POSITION, -150, 30, true],
+  ["Quests", TOWN_DOORS[5], -100, 45, true],
+  ["Research", TOWN_DOORS[1], -95, 60, true],
+  ["Ox · Cosmetics", TOWN_DOORS[8], 250, 125, false],
+] as const).map(([signpost, at, dx, dy, flip]) => ({ type: "soulProp", frame: "", s: 1, x: at.x + dx, y: at.y + dy, signpost, flip }));
 
 // ---- The Copper Hills ----
 
@@ -446,7 +453,7 @@ function oreRockShadow(rock: Extract<WorldDecor, { type: "oreRock" }>): WorldDec
 
 /** Every prop in the chunk window around a point: the village's and its rooms' when they are near, and the countryside's. */
 export function townWindowDecor(x: number, y: number): WorldDecor[] {
-  const decor: WorldDecor[] = inTownVillage(x, y, TOWN_CHUNK_SIZE * 2.5) ? [...SOUL_VILLAGE_DECOR, TOWN_SIGNPOST, TOWN_RUNESTONE, TOWN_SMITH_DECOR, TOWN_CARD_SELLER_DECOR, TOWN_HILLS_SIGNPOST, ...TOWN_SCHOOL_SIGNPOSTS] : [];
+  const decor: WorldDecor[] = inTownVillage(x, y, TOWN_CHUNK_SIZE * 2.5) ? [...SOUL_VILLAGE_DECOR, TOWN_SIGNPOST, TOWN_RUNESTONE, TOWN_SMITH_DECOR, TOWN_CARD_SELLER_DECOR, TOWN_HILLS_SIGNPOST, ...TOWN_SCHOOL_SIGNPOSTS, ...TOWN_STOP_SIGNPOSTS] : [];
   if (inTownInteriors(x, y, TOWN_INTERIOR_MARGIN)) decor.push(...TOWN_INTERIOR_DECOR);
   for (const { cx, cy } of townWindowChunks(x, y)) decor.push(...townChunkDecor(cx, cy));
   return decor;

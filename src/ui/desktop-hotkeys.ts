@@ -12,7 +12,7 @@ export const DESKTOP_HOTKEYS = [
   { action: "leaderboard", selector: "#leaderboardBtn" },
   { action: "guild", selector: "#guildBtn" },
   { action: "map", selector: "#minimapButton" },
-  { action: "profile", selector: "#playerHudProfileGear" },
+  { action: "profile", selector: "#playerHudProfileIcon" },
 ] as const satisfies readonly { action: ControlAction; selector: string }[];
 // Auto Farm starts and stops itself (auto-farm-panel.ts), rather than opening its window.
 

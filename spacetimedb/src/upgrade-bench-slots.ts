@@ -17,7 +17,7 @@ export function normalizeUpgradeBenchSlot(slot: unknown) {
 export function requireUpgradeBenchSlot(slot: unknown) {
   const numericSlot = Number(slot);
   if (numericSlot !== UPGRADE_BENCH_SLOT_ONE && numericSlot !== UPGRADE_BENCH_SLOT_TWO && numericSlot !== UPGRADE_BENCH_SLOT_THREE) {
-    throw new SenderError("Unknown upgrade slot.");
+    throw new SenderError("Unknown upgrade queue.");
   }
   return numericSlot;
 }

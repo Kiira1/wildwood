@@ -185,7 +185,7 @@ export function createQuestBoardController(deps: {
     if (!deps.atHome() || dialog.open) return;
     // Draws today's quests on the server the first time anyone looks.
     void deps.source()?.refreshDailyQuests?.()?.catch?.(() => {});
-    render();
+    render(); paintTracker();
     deps.clearInput?.();
     deps.pause(true);
     dialog.showModal();

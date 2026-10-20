@@ -18,7 +18,7 @@ export function createItemUpgradeFeedback(options: {
     options.renderInventory();
     options.saveProgress(true);
     // The tier is the slot's (itemId is "HAND", "HEAD" or "CHEST"), so the message names the slot.
-    const slot = isUpgradeSlot(itemId) ? `${UPGRADE_SLOT_LABELS[itemId]} SLOT` : "SLOT";
-    options.showMessage(`${slot} +${level} COMPLETE`, "#72ef58");
+    const slot = isUpgradeSlot(itemId) ? UPGRADE_SLOT_LABELS[itemId] : "Slot";
+    options.showMessage(`Slot Upgrade Complete · ${slot} +${level}`, "#72ef58");
   };
 }

@@ -4,7 +4,7 @@ import { isProceduralMap, proceduralMapId, proceduralMapNumber } from "../../sha
 import type { MapId } from "../game/world";
 
 /** Each campaign map's boss, in MAP_IDS order. Beating one opens the next map. */
-const CAMPAIGN_BOSSES = ["the Dragon", "the Desert Spider", "Frostclaw", "Magmalisk", "Gloomroot", "Tidewyrm", "Koi Shogun",
+export const CAMPAIGN_BOSSES = ["the Dragon", "the Desert Spider", "Frostclaw", "Magmalisk", "Gloomroot", "Tidewyrm", "Koi Shogun",
   "Tempest Kirin", "Miremaw", "Prismshell", "Ironhorn", "Dreadreaper", "Voltwarden", "Gravebloom", "Aegis Prime"] as const;
 const ENDLESS = "endless";
 const FAILED = "Travel unavailable. Try again.";
@@ -18,8 +18,11 @@ export type HomeTravelSource = {
 
 type Entry = { key: string; mark: string; name: string; locked: string | null };
 
-const baseName = (mapId: string, mapName: (mapId: MapId) => string) =>
+export const baseName = (mapId: string, mapName: (mapId: MapId) => string) =>
   (mapName(mapId as MapId) || MAP_DISPLAY_NAMES[mapId as keyof typeof MAP_DISPLAY_NAMES] || mapId).replace(/ - \d+$/, "");
+/** What opens the campaign map after `index` (or Endless after the last): its boss, on its map. */
+export const unlockedBy = (index: number, mapName: (mapId: MapId) => string = () => "") =>
+  `Defeat ${CAMPAIGN_BOSSES[index]} in ${baseName(MAP_IDS[index], mapName)}`;
 
 /**
  * The destinations Home's portal offers: every unlocked campaign map in order,
@@ -32,15 +35,14 @@ export function homeTravelEntries(source: HomeTravelSource, mapName: (mapId: Map
   const entries: Entry[] = [];
   for (const [index, mapId] of MAP_IDS.entries()) {
     const unlocked = index === 0 || Boolean(progress[CAMPAIGN_UNLOCK_FIELDS[index - 1]]);
-    const previous = MAP_IDS[index - 1];
     entries.push({ key: mapId, mark: String(index + 1), name: baseName(mapId, mapName),
-      locked: unlocked ? null : `Defeat ${CAMPAIGN_BOSSES[index - 1]} in ${baseName(previous, mapName)} to unlock` });
+      locked: unlocked ? null : `${unlockedBy(index - 1, mapName)} to unlock` });
     if (!unlocked) return { entries, endlessHighest: 0 };
   }
   const endlessHighest = source?.proceduralMapUnlocked?.(proceduralMapId(1))
     ? Math.max(1, Math.floor((source.proceduralCompleted?.() ?? 0) + 1)) : 0;
   entries.push({ key: ENDLESS, mark: "∞", name: "Endless",
-    locked: endlessHighest ? null : `Defeat ${CAMPAIGN_BOSSES[MAP_IDS.length - 1]} in ${baseName(MAP_IDS[MAP_IDS.length - 1], mapName)} to unlock` });
+    locked: endlessHighest ? null : `${unlockedBy(MAP_IDS.length - 1, mapName)} to unlock` });
   return { entries, endlessHighest };
 }
 
@@ -74,6 +76,8 @@ export function createHomeTravelController(deps: {
   let endlessStage = 1;
   let pending = false;
   let endlessInput: HTMLInputElement | null = null;
+  /** A map the Map Guide's Travel button asked for: the next opening starts on it, when it is open. */
+  let preferred: MapId | null = null;
 
   const destination = () => selected === ENDLESS ? proceduralMapId(endlessStage) as MapId : selected as MapId | null;
   function setStatus(text: string) { status.textContent = text; status.hidden = !text; }
@@ -108,6 +112,10 @@ export function createHomeTravelController(deps: {
     endlessStage = departedStage && departedStage <= endlessHighest ? departedStage : Math.max(1, endlessHighest);
     const open = result.entries.filter(entry => !entry.locked);
     selected = open.some(entry => entry.key === departedKey) ? departedKey : open.at(-1)?.key ?? null;
+    const wanted = preferred, wantedStage = wanted ? proceduralMapNumber(wanted) : null;
+    preferred = null;
+    if (wantedStage && wantedStage <= endlessHighest) { selected = ENDLESS; endlessStage = wantedStage; }
+    else if (wanted && open.some(entry => entry.key === wanted)) selected = wanted;
     list.replaceChildren(); endlessInput = null;
     for (const entry of result.entries) {
       const row = document.createElement("button");
@@ -177,5 +185,5 @@ export function createHomeTravelController(deps: {
   back.addEventListener("click", close);
   go.addEventListener("click", () => { void travel(); });
   dialog.addEventListener("cancel", event => { event.preventDefault(); close(); });
-  return { open, close, isOpen: () => dialog.open, destroy() { close(); dialog.remove(); } };
+  return { open, close, isOpen: () => dialog.open, prefer: (mapId: MapId | null) => { preferred = mapId; }, destroy() { close(); dialog.remove(); } };
 }

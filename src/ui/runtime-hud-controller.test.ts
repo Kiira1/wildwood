@@ -111,11 +111,11 @@ describe("runtime reward notifications", () => {
   it("shows research and both bench-slot completions as separate reward-style cards", () => {
     const { controller, pickupLog } = setupHud();
     controller.showProgressCompletion("Research", "WARCRAFT Lv 6", "⚔", "#f3a6ce");
-    controller.showProgressCompletion("Upgrade", "WEAPON +1", "◆", "#f3cf70");
-    controller.showProgressCompletion("Upgrade", "HELMET +2", "◆", "#f3cf70");
+    controller.showProgressCompletion("Slot Upgrade", "Weapon +1", "◆", "#f3cf70");
+    controller.showProgressCompletion("Slot Upgrade", "Helmet +2", "◆", "#f3cf70");
     expect(pickupLog.children).toHaveLength(3);
     expect(pickupLog.children.map((entry) => entry.getAttribute("aria-label"))).toEqual([
-      "Research complete: WARCRAFT Lv 6", "Upgrade complete: WEAPON +1", "Upgrade complete: HELMET +2",
+      "Research Complete: WARCRAFT Lv 6", "Slot Upgrade Complete: Weapon +1", "Slot Upgrade Complete: Helmet +2",
     ]);
     expect(pickupLog.children.every((entry) => entry.className.includes("stat-reward-toast"))).toBe(true);
     vi.advanceTimersByTime(2_400);
