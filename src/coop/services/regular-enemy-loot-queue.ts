@@ -295,6 +295,15 @@ export function createRegularEnemyLootQueue(options: {
   return {
     begin, flush,
     hasPending: () => Boolean(state?.batches.length || adopted.length),
+    /** Kills on a map that the server has not taken yet, this page's own, by enemy. */
+    pendingKills(mapId: string): EnemyDefeat[] {
+      const counts = new Map<string, number>();
+      for (const batch of state?.batches ?? []) {
+        if (batch.mapId !== mapId) continue;
+        for (const entry of batch.enemies) counts.set(entry.enemy, (counts.get(entry.enemy) ?? 0) + entry.count);
+      }
+      return [...counts].map(([enemy, count]) => ({ enemy, count }));
+    },
     record(mapId: string, enemy: string, autoFarm = false) {
       if (owner !== options.identity()) begin();
       syncControl();

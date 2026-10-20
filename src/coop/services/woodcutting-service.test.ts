@@ -9,6 +9,9 @@ function fakeConnection() {
   const handlers: Array<() => void> = [];
   const applied: Array<() => void> = [];
   const rows = { woodcutting: [] as any[], felled: [] as any[] };
+  const oreInserts: Function[] = [];
+  /** Logs each kept fall gives on the server, hatchet bonus included. */
+  const gives = { count: WOODCUTTING_LOGS };
   const view = (list: unknown[]) => ({
     iter: () => list[Symbol.iterator](),
     onInsert: (handler: () => void) => handlers.push(handler),
@@ -19,6 +22,11 @@ function fakeConnection() {
     // The server's side: takes every fall but the ones listed, writes their rows, then answers.
     reportChopping: vi.fn(async (report: { chops: { treeId: number; atMs: bigint }[] }) => {
       const kept = report.chops.filter(entry => !refuse.has(entry.treeId));
+      const ctx = { event: { tag: "Reducer", value: { reducer: { args: report } } } };
+      for (const entry of kept) {
+        const log = WOOD_TREE_NODES.find(tree => tree.id === entry.treeId)!.log;
+        oreInserts.forEach(handler => handler(ctx, { oreId: log, count: gives.count }));
+      }
       if (!kept.length) return;
       const row = rows.woodcutting[0] ?? woodcuttingRow({ woodcutting: 0, treesChopped: 0 });
       rows.woodcutting[0] = { ...row, treesChopped: row.treesChopped + kept.length };
@@ -29,11 +37,14 @@ function fakeConnection() {
   const refuse = new Set<number>();
   const connection = {
     isActive: true,
-    db: { myWoodcutting: view(rows.woodcutting), myChoppedTrees: view(rows.felled) },
+    db: {
+      myWoodcutting: view(rows.woodcutting), myChoppedTrees: view(rows.felled),
+      myOres: { onInsert: (handler: Function) => oreInserts.push(handler), onUpdate: () => {}, onDelete: () => {} },
+    },
     reducers,
     subscriptionBuilder: () => ({ onApplied(callback: () => void) { applied.push(callback); return this; }, subscribe: vi.fn() }),
   };
-  return { connection: connection as never, rows, reducers, refuse, settle: () => applied.forEach(callback => callback()), fire: () => handlers.forEach(handler => handler()) };
+  return { connection: connection as never, rows, reducers, refuse, gives, settle: () => applied.forEach(callback => callback()), fire: () => handlers.forEach(handler => handler()) };
 }
 const woodcuttingRow = (overrides: Record<string, unknown> = {}) => ({
   woodcutting: 30, treesChopped: 3, lastTreeId: 7, hatchetAt: at(1), lastChopAt: at(2), ...overrides,
@@ -96,4 +107,26 @@ it("forgets unsent falls on a new connection", () => {
   service.api.queueTreeChop(pines[0].id, 4_000);
   service.watch(fakeConnection().connection, () => true);
   expect(service.api.choppedTreeAt(pines[0].id)).toBeNull();
+});
+
+it("tells what a report gave beyond what its falls showed: the hatchet's bonus logs", async () => {
+  vi.useFakeTimers();
+  try {
+    const fake = fakeConnection(), service = createWoodcuttingRows(vi.fn()), extra = vi.fn();
+    service.watch(fake.connection, () => true);
+    fake.settle();
+    service.api.setOnWoodcuttingExtra(extra);
+    service.api.queueTreeChop(pines[0].id, 9_000);
+    service.api.flushWoodcutting();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(extra).not.toHaveBeenCalled();
+    fake.gives.count = WOODCUTTING_LOGS + 1;
+    service.api.queueTreeChop(pines[1].id, 30_000);
+    service.api.queueTreeChop(pines[2].id, 40_000);
+    service.api.flushWoodcutting();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(extra).toHaveBeenCalledExactlyOnceWith({ [pines[1].log]: 2 });
+  } finally {
+    vi.useRealTimers();
+  }
 });

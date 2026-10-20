@@ -2,13 +2,13 @@ import {
   WOOD_STANDS, WOOD_TREE_NODES, WOODCUTTING_REACH, WOODCUTTING_RESPAWN_SECONDS, canChopTree, woodcuttingChopSeconds, woodcuttingYield, woodStandHint,
   type WoodTree,
 } from "../../../../shared/woodcutting";
-import { REFINE_ORES } from "../../../../shared/refine";
+import { REFINE_ORES, type OreId } from "../../../../shared/refine";
 import { inTownGrove, TOWN_FEET_OFFSET } from "../../../../shared/town";
 import { bagFullForOres, roomForOres, type BagSpace } from "../../../../shared/ore-bag";
 import type { ToolId } from "../../../../shared/tools";
 import { ATTACK_ANIMATION_SECONDS, ATTACK_WINDUP_SECONDS } from "../../attack-timeline";
 import type { PlayerState } from "../types";
-import { miningHitAt, miningHits } from "./mining-runtime";
+import { miningHitAt, miningHits, moreGatheredText } from "./mining-runtime";
 import { resetWoodcuttingScene, woodcuttingScene } from "./woodcutting-scene";
 import { LOG_COLORS } from "./wood-tree-renderer";
 
@@ -25,6 +25,8 @@ export type WoodcuttingSource = {
   queueTreeChop?: (treeId: number, atMs: number) => void;
   flushWoodcutting?: () => void;
   setOnWoodcuttingRejected?: (callback: ((text: string) => void) | null) => void;
+  /** Told what a report gave beyond what its falls showed (the hatchet's bonus logs). */
+  setOnWoodcuttingExtra?: (callback: ((ores: Partial<Record<OreId, number>>) => void) | null) => void;
   serverNowMs?: () => number;
 };
 
@@ -100,6 +102,7 @@ export function createWoodcuttingRuntime(deps: {
   function reset() {
     stop(); resetWoodcuttingScene(); inGrove = false;
     listeningTo?.setOnWoodcuttingRejected?.(null);
+    listeningTo?.setOnWoodcuttingExtra?.(null);
     listeningTo = null; session = null; stumpCheck = 0;
     hint = { text: "", at: -Infinity, tree: -1 };
   }
@@ -119,6 +122,12 @@ export function createWoodcuttingRuntime(deps: {
       if (session !== started || !sameSession(deps.source())) return;
       stumpCheck = 0;
       deps.message?.(text, "#ff9b91");
+    });
+    source.setOnWoodcuttingExtra?.(ores => {
+      if (session !== started || !sameSession(deps.source())) return;
+      for (const [logId, count] of Object.entries(ores)) {
+        if (count) deps.logPickup?.(moreGatheredText(logId as OreId, count), LOG_COLORS[logId as keyof typeof LOG_COLORS]?.face ?? CHIPS);
+      }
     });
   }
 

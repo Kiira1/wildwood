@@ -450,6 +450,41 @@ describe("server-calculated defeat batches", () => {
     } finally { vi.useRealTimers(); }
   });
 
+  it("reports the kill that finishes a quest at once, so the quest is done without waiting for the next report", async () => {
+    vi.useFakeTimers();
+    try {
+      const h = setup();
+      h.service.tables.upsertProgress({ ...progress(), identity: { toHexString: () => identity } } as never);
+      const quests = (progress: number) => JSON.stringify([
+        { mapId: "water_reach", enemy: "Tide Raider", target: 3, progress },
+        { mapId: "water_reach", enemy: "Coral Colossus", target: 50, progress: 0 },
+      ]);
+      const row = (progress: number) => ({ identity: { toHexString: () => identity }, day: 20_746, questsJson: quests(progress), bonus: 1, guildPoints: 0, guildName: "" }) as never;
+      h.service.tables.upsertDailyQuest(row(1));
+      // The server takes the report and its row shows the quest done before the answer, as a transaction does.
+      h.reportEnemyDefeats.mockImplementation(async (request: any) => {
+        const raiders = request.enemies.find((entry: any) => entry.enemy === "Tide Raider")?.count ?? 0;
+        h.service.tables.upsertDailyQuest(row(Math.min(3, 1 + raiders)));
+      });
+      h.service.recordRegularEnemyDefeat("water_reach", "Coral Colossus");
+      h.service.recordRegularEnemyDefeat("water_reach", "Tide Raider");
+      await vi.advanceTimersByTimeAsync(0);
+      expect(h.reportEnemyDefeats).not.toHaveBeenCalled();
+      h.service.recordRegularEnemyDefeat("water_reach", "Tide Raider");
+      await vi.advanceTimersByTimeAsync(0);
+      expect(h.reportEnemyDefeats).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
+        mapId: "water_reach", enemies: [{ enemy: "Coral Colossus", count: 1 }, { enemy: "Tide Raider", count: 2 }],
+      }));
+      expect(h.service.api.dailyQuests()?.quests[0].progress).toBe(3);
+      // The quest is done: later kills wait for the usual report.
+      h.service.recordRegularEnemyDefeat("water_reach", "Tide Raider");
+      h.service.recordRegularEnemyDefeat("water_reach", "Coral Colossus");
+      await vi.advanceTimersByTimeAsync(0);
+      expect(h.reportEnemyDefeats).toHaveBeenCalledOnce();
+      h.service.dispose();
+    } finally { vi.useRealTimers(); }
+  });
+
   it("saves a changed loadout on the timer even while kills wait for their report", async () => {
     vi.useFakeTimers();
     try {

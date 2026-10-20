@@ -4,7 +4,7 @@ import { prestigeBonusesOff, type AggroChallenge } from "../../../shared/aggro-c
 import { parseBonusOff, perksInPlayFor, prestigeStatGainOn, reflectRewardsOn, researchInPlayFor, serializeBonusOff } from "../../../shared/bonus-toggles";
 import { playerAttackCap } from "../../../shared/prestige-perks";
 import type { AttackCap } from "../../../shared/stat-rating";
-import { parseDailyQuests, type DailyQuest } from "../../../shared/daily-quests";
+import { applyQuestKills, parseDailyQuests, type DailyQuest } from "../../../shared/daily-quests";
 
 export type DailyQuestState = { day: number; quests: DailyQuest[]; bonus: number; guildPoints: number; guildName: string };
 import type { MailboxMessage } from "../../../shared/mailbox";
@@ -863,6 +863,14 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
     if (resetPending || dependencies.reducers.protocolBlocked() || dependencies.reducers.worldEntryBlocked()) return;
     enemyLoot.record(mapId, enemy, autoFarm);
     if (enemy === "boss") void flushEnemyLoot(true);
+    else reportFinishedQuest(mapId);
+  }
+
+  // A kill that finishes a quest goes out at once, so the quest is done and the next one up now, not at the next report.
+  let questReport: Promise<boolean> | null = null;
+  function reportFinishedQuest(mapId: string) {
+    if (questReport || !dailyQuest || !applyQuestKills(dailyQuest.quests, mapId, enemyLoot.pendingKills(mapId)).completed) return;
+    questReport = flushEnemyLoot(true).finally(() => { questReport = null; });
   }
 
   return {

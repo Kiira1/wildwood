@@ -1,7 +1,7 @@
 import {
   MINING_NODES, MINING_NODE_KINDS, MINING_REACH, canMineRock, miningBreakSeconds, miningRockHint, miningYield, type MiningNode,
 } from "../../../../shared/mining";
-import { REFINE_ORES } from "../../../../shared/refine";
+import { REFINE_ORES, type OreId } from "../../../../shared/refine";
 import { inTownHills, TOWN_FEET_OFFSET } from "../../../../shared/town";
 import { ATTACK_ANIMATION_SECONDS, ATTACK_WINDUP_SECONDS } from "../../attack-timeline";
 import type { PlayerState } from "../types";
@@ -25,8 +25,17 @@ export type MiningSource = {
   queueMiningBreak?: (nodeId: number, atMs: number) => void;
   flushMining?: () => void;
   setOnMiningRejected?: (callback: ((text: string) => void) | null) => void;
+  /** Told what a report gave beyond what its breaks showed (the server's rolls). */
+  setOnMiningExtra?: (callback: ((ores: Partial<Record<OreId, number>>) => void) | null) => void;
   serverNowMs?: () => number;
 };
+
+/** "+2 More Starshards": what a report gave beyond what the breaks showed. */
+export function moreGatheredText(oreId: OreId, count: number) {
+  const name = REFINE_ORES[oreId].name;
+  return `+${count} More ${count > 1 && !name.endsWith("Ore") ? `${name}s` : name}`;
+}
+const STARSHARD_COLOR = "#f6dcff";
 
 /** A pickaxe swing this often while mining. */
 const SWING_SECONDS = .7;
@@ -114,6 +123,7 @@ export function createMiningRuntime(deps: {
   function reset() {
     stop(); resetMiningScene(); inHills = false;
     listeningTo?.setOnMiningRejected?.(null);
+    listeningTo?.setOnMiningExtra?.(null);
     listeningTo = null; session = null; bareCheck = 0;
     hint = { text: "", at: -Infinity, rock: -1 };
   }
@@ -134,11 +144,20 @@ export function createMiningRuntime(deps: {
       bareCheck = 0;
       deps.message?.(text, "#ff9b91");
     });
+    source.setOnMiningExtra?.(ores => {
+      if (session !== started || !sameSession(deps.source())) return;
+      for (const [oreId, count] of Object.entries(ores)) {
+        const color = oreId === "starshard" ? STARSHARD_COLOR : ORE_COLORS[oreId as keyof typeof ORE_COLORS]?.light ?? STARSHARD_COLOR;
+        if (count) deps.logPickup?.(moreGatheredText(oreId as OreId, count), color);
+      }
+    });
   }
 
   function breakRock(source: MiningSource, rock: MiningNode, at: number) {
     const id = rock.id;
     source.queueMiningBreak?.(id, at);
+    // A Mysterious rock reports at once, so the Starshards the server rolls follow the break within a moment.
+    if (rock.kind === "mysterious") source.flushMining?.();
     miningScene.bare.add(id);
     stop();
     // The breaking hit fills the bar: it stays up a moment over the broken rock.
@@ -148,7 +167,7 @@ export function createMiningRuntime(deps: {
     // What it gives before the server's rolls (cards, the pickaxe's bonus): the same rule the bag counts.
     const color = ORE_COLORS[rock.ore].light, gives = miningYield(rock, 1);
     deps.logPickup?.(`+${gives[rock.ore] ?? 0} ${REFINE_ORES[rock.ore].name}`, color);
-    if (gives.starshard) deps.logPickup?.(`+${gives.starshard} Starshard`, "#f6dcff");
+    if (gives.starshard) deps.logPickup?.(`+${gives.starshard} Starshard`, STARSHARD_COLOR);
     deps.burst?.(rock.x, rock.y - 24, color, 12, 95);
   }
 

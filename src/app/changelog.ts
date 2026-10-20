@@ -1,5 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
   "0.916.10": [
+    "The Starshard and ore messages show the full amount you got",
+    "Quests finish as soon as you get the last kill",
     "Behind-the-scenes code cleanup; no gameplay changes",
   ],
   "0.916.9": [
