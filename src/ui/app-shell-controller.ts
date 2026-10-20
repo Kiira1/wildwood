@@ -141,6 +141,18 @@ export function createAppShellController(dependencies: AppShellDependencies) {
     refreshFullscreen();
   }
 
+  /** A new character starts with the range ring off, unless this device already chose. */
+  function useNewPlayerDefaults() {
+    try {
+      if (localStorage.getItem(dependencies.storageKeys.attackRange) !== null) return;
+    } catch {
+      return;
+    }
+    attackRangeVisible = false;
+    writeBoolean(dependencies.storageKeys.attackRange, false);
+    refreshSettings();
+  }
+
   attackRangeToggle.addEventListener("click", () => {
     attackRangeVisible = !attackRangeVisible;
     writeBoolean(dependencies.storageKeys.attackRange, attackRangeVisible);
@@ -273,6 +285,7 @@ export function createAppShellController(dependencies: AppShellDependencies) {
 
   return {
     attackRangeVisible: () => attackRangeVisible,
+    useNewPlayerDefaults,
     showBaseStatRewards: () => showBaseStatRewards,
     remoteGhostsEnabled: () => remoteGhostsEnabled,
     fpsVisible: () => fpsVisible,
