@@ -1,6 +1,6 @@
 /**
  * The local player's refines (★N by item id, the first copy's: the one a slot holds), so the character is drawn in
- * its graded gear's refine looks. The account's refine rows fill this in (item-refine-service.ts); until then all is +0.
+ * its graded gear's refine looks. The game reads them from the coop client (claimCoopClient); until then all is +0.
  */
 let read: (itemId: string) => number = () => 0;
 
