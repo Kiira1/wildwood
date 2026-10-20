@@ -1,7 +1,6 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
   "0.916.15": [
     "Signed-in players go straight into the game, and new players see the Terms once loading finishes",
-    "Signing in now lasts much longer before it asks again",
     "Faster loading: profile pictures and other players' gear load after you enter the world",
     "Icons and art load from cache on return visits",
     "Smaller, evenly spaced name plates over players and enemies",
