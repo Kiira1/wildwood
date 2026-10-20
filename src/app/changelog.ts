@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.916.8": [
+    "Fixed the game not loading your character",
+  ],
   "0.916.7": [
     "The HUD gear opens Settings",
     "Research Ready and Smith upgrades show as their own HUD hints, not dots on the Town button",
@@ -3695,6 +3698,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.916.8": "2026-10-19",
   "0.916.7": "2026-10-19",
   "0.916.6": "2026-10-19",
   "0.916.5": "2026-10-19",
