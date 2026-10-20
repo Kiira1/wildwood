@@ -1,12 +1,15 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { FROST_ARMOR, STARTER_BOW } from "./inventory";
+import { BASIC_PAPER_HAT, FROST_ARMOR, STARTER_BOW } from "./inventory";
 import {
   bowHeldAlignment,
   bowHeldAnchorX,
   bowHeldRotationRadians,
   drawStartingPlayer,
   equipmentSprite,
+  allPlayerPartsSettled,
   loadPlayerAppearanceAssets,
+  loadRemainingPlayerParts,
+  playerPartsReady,
   PLAYER_PART_RETRY_DELAYS_MS,
   heldWeaponRunMotion,
   type PlayerAppearanceAssets,
@@ -123,6 +126,38 @@ describe("body-part sprites that fail to load", () => {
     expect(leg.src).toContain(`?asset-retry=${PLAYER_PART_RETRY_DELAYS_MS.length + 2}`); // the last delay repeats
     leg.dispatchEvent(new Event("load"));
     expect(settled).toHaveBeenCalledTimes(2);           // a late arrival redraws
+  });
+});
+
+describe("gear sprites on the loading screen", () => {
+  afterEach(() => vi.unstubAllGlobals());
+  it("waits only for the bare body and the local outfit; other gear loads when drawn or after entry", () => {
+    const images: (EventTarget & { src: string; fetchPriority?: string })[] = [];
+    class FakeImage extends EventTarget {
+      src = "";
+      constructor() { super(); images.push(this); }
+    }
+    vi.stubGlobal("Image", FakeImage);
+    const settled = vi.fn();
+    const assets = loadPlayerAppearanceAssets(settled, { lazyEquipment: true });
+    const started = () => images.filter(image => image.src);
+    expect(started().map(image => image.src.split("/").pop())).toEqual(["basic-leg-front.webp", "basic-leg-back.webp", "default-chest.webp"]);
+    expect(playerPartsReady(assets, [BASIC_PAPER_HAT])).toBe(false);
+    const hat = assets.equipment[BASIC_PAPER_HAT].sprite!;
+    expect(started()).toHaveLength(4); expect(hat.src).toBeTruthy();
+    for (const image of started()) image.dispatchEvent(new Event("load"));
+    expect(playerPartsReady(assets, [BASIC_PAPER_HAT])).toBe(true);
+    expect(settled).toHaveBeenCalled();
+    expect(allPlayerPartsSettled(assets)).toBe(false);
+    // A piece someone else wears starts when it is first drawn.
+    const other = Object.keys(assets.equipment).find(id => id !== BASIC_PAPER_HAT && assets.equipment[id].sprite)!;
+    equipmentSprite(assets, other);
+    expect(assets.equipment[other].sprite!.src).toBeTruthy();
+    loadRemainingPlayerParts(assets);
+    expect(images.every(image => image.src)).toBe(true);
+    expect(images.filter(image => image.fetchPriority === "low").length).toBeGreaterThan(100);
+    for (const image of images) image.dispatchEvent(new Event("load"));
+    expect(allPlayerPartsSettled(assets)).toBe(true);
   });
 });
 

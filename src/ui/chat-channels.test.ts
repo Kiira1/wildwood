@@ -51,21 +51,18 @@ function setup() {
 }
 
 describe("chat channels", () => {
-  it("keeps a fetched page loading until its portraits are prepared", async () => {
+  it("shows a fetched page at once and leaves its portraits to fill in later", async () => {
     const h = setup();
-    let ready!: () => void;
-    const prepareChatPortraits = vi.fn(() => new Promise<void>(resolve => { ready = resolve; }));
-    Object.assign(h.coop, { prepareChatPortraits });
     Object.assign(h.coop.social, { loadChatHistory: vi.fn(async () => ({
       messages: [{ ...h.coop.social.guildMessages()[0], id: 15n, message: "new page with portrait" }],
       beforeId: 15n, hasMore: false,
     })) });
     h.document.getElementById("chatSizeToggle")!.click(); h.button("Guild").click();
     await settle();
-    expect(prepareChatPortraits).toHaveBeenCalledWith(["friend"]);
-    expect(h.history()).not.toContain("new page with portrait");
-    ready(); await settle();
     expect(h.history()).toContain("new page with portrait");
+    // No sheet has loaded (the player has not entered the world here): the portrait is its backdrop alone.
+    const portrait = [...h.document.querySelectorAll<HTMLElement>(".chat-profile-icon")].at(-1)!;
+    expect(portrait.style.backgroundImage).toBe("none");
   });
   it("does not request guild history without guild membership", async () => {
     const h = setup(), loadChatHistory = vi.fn(async () => { throw new Error("Join a guild first."); });

@@ -2,6 +2,7 @@ import { PROFILE_ICON_BACKGROUND_COLORS, PROFILE_ICON_GRID, PROFILE_ICON_SHEETS,
 import { OBJECT_ATLAS_SIZE, containedIconRect, objectIconCrop } from "./profile-icon-crops";
 import { onProfileSnapshotsChanged, profileSnapshotPortrait, watchProfileSnapshotElement, type ProfileSnapshotPortrait } from "./profile-snapshot-portraits";
 import { keepCanvasMoving } from "./moving-canvases";
+import { profileSheetReady, profileSheetRequested, rememberLoadedProfileSheet, requestProfileSheet } from "./profile-icon-sheets";
 
 const ZOOM = 1.03;
 const POSITION_STEP = ZOOM / (PROFILE_ICON_GRID * ZOOM - 1) * 100;
@@ -73,6 +74,51 @@ function removeMovingPortrait(element: HTMLElement) {
   canvas.remove();
 }
 
+const sheetRepaints = new WeakMap<HTMLElement, () => void>();
+const offScreen = new Map<Element, () => void>();
+let screenWatch: IntersectionObserver | undefined;
+
+/** Runs `show` once the element is on screen; a portrait in a closed panel or hidden chat asks for nothing. */
+function whenOnScreen(target: HTMLElement, show: () => void) {
+  const Observer = (target.ownerDocument.defaultView as (Window & typeof globalThis) | null)?.IntersectionObserver
+    ?? globalThis.IntersectionObserver;
+  if (typeof Observer !== "function") { show(); return; }
+  const watching = offScreen.has(target);
+  offScreen.set(target, show);
+  if (watching) return;
+  screenWatch ??= new Observer(entries => {
+    for (const entry of entries) {
+      if (!entry.isIntersecting) continue;
+      screenWatch?.unobserve(entry.target);
+      const shown = offScreen.get(entry.target);
+      offScreen.delete(entry.target);
+      shown?.();
+    }
+  });
+  // Rows that left the page while hidden are let go rather than watched forever.
+  if (offScreen.size > 64) for (const element of offScreen.keys()) {
+    if (element.isConnected || element === target) continue;
+    screenWatch.unobserve(element); offScreen.delete(element);
+  }
+  screenWatch.observe(target);
+}
+
+/** Shows a sheet as the target's background once it has loaded; its backdrop alone until then. */
+function showSheet(target: HTMLElement, path: string) {
+  target.dataset.profileSheet = path;
+  const image = `url("${path}")`;
+  if (profileSheetReady(path)) { if (target.style.backgroundImage !== image) target.style.backgroundImage = image; return; }
+  target.style.backgroundImage = "none";
+  const repaint = sheetRepaints.get(target) ?? (() => {
+    const wanted = target.dataset.profileSheet;
+    if (wanted && profileSheetReady(wanted)) target.style.backgroundImage = `url("${wanted}")`;
+  });
+  sheetRepaints.set(target, repaint);
+  const request = () => { const wanted = target.dataset.profileSheet; if (wanted) requestProfileSheet(wanted, repaint); };
+  if (profileSheetRequested(path)) request();
+  else whenOnScreen(target, request);
+}
+
 /**
  * Paints a saved profile icon (picture and backdrop) into any portrait element.
  * The backdrop is set here, inline, because the sheets are transparent and the
@@ -91,6 +137,7 @@ export function applyProfileIcon(element: HTMLElement, iconIndex: number, identi
   const portrait = icon.snapshot ? profileSnapshotPortrait(identity) : undefined;
   element.classList.toggle("profile-icon-is-snapshot", Boolean(portrait));
   if (portrait) {
+    delete element.dataset.profileSheet;
     element.querySelector(":scope > .profile-icon-art")?.remove();
     element.classList.remove("profile-icon-cropped");
     if (portrait.paint) { showMovingPortrait(element, portrait); return; }
@@ -118,15 +165,16 @@ export function applyProfileIcon(element: HTMLElement, iconIndex: number, identi
     const target = containedIconRect(crop);
     Object.assign(art.style, {
       left: `${target.x * 100}%`, top: `${target.y * 100}%`, width: `${target.width * 100}%`, height: `${target.height * 100}%`,
-      backgroundImage: `url("${icon.path}")`,
       backgroundSize: `${OBJECT_ATLAS_SIZE / crop.width * 100}% ${OBJECT_ATLAS_SIZE / crop.height * 100}%`,
       backgroundPosition: `${crop.x / (OBJECT_ATLAS_SIZE - crop.width) * 100}% ${crop.y / (OBJECT_ATLAS_SIZE - crop.height) * 100}%`,
     });
+    showSheet(art, icon.path);
+    delete element.dataset.profileSheet;
     element.style.backgroundImage = "none";
     return;
   }
   art?.remove();
-  element.style.backgroundImage = `url("${icon.path}")`;
+  showSheet(element, icon.path);
   element.style.backgroundRepeat = "no-repeat";
   element.style.backgroundSize = `${PROFILE_ICON_GRID * ZOOM * 100}% ${PROFILE_ICON_GRID * ZOOM * 100}%`;
   element.style.backgroundPosition = `${POSITION_START + icon.column * POSITION_STEP}% ${POSITION_START + icon.row * POSITION_STEP}%`;
@@ -156,7 +204,8 @@ export function createProfileIconCanvasPainter(onSheetLoaded: () => void) {
     let sheet = sheets.get(icon.sheetIndex);
     if (!sheet) {
       sheet = new Image(); sheets.set(icon.sheetIndex, sheet);
-      sheet.addEventListener("load", onSheetLoaded);
+      const path = PROFILE_ICON_SHEETS[icon.sheetIndex].path;
+      sheet.addEventListener("load", () => { rememberLoadedProfileSheet(path); onSheetLoaded(); });
       sheet.src = PROFILE_ICON_SHEETS[icon.sheetIndex].path;
     }
     if (!sheet.complete || !sheet.naturalWidth) return;

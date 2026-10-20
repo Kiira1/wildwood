@@ -3,6 +3,7 @@ import {
   DUSKFALL_ORCHARD_MAP_ID, INFERNAL_DEPTHS_MAP_ID, INTERMEDIATE_SNOWLANDS_MAP_ID, ION_CITADEL_MAP_ID, MOONFEN_MAP_ID,
   NEON_BASTION_MAP_ID, SAMURAI_GARDEN_MAP_ID, VERDANT_CATACOMBS_MAP_ID, WATER_REACH_MAP_ID, type MapId,
 } from "../world";
+import { afterEntry } from "../../app/after-entry";
 
 const FOREST_MUSIC_SOURCE = "assets/wildstat/audio/forest.mp3";
 const DESERT_MUSIC_SOURCE = "assets/wildstat/audio/desert.mp3";
@@ -259,7 +260,10 @@ export function createMapMusicController(
     })
     .catch(() => null);
   const encodedBowAttack = fetchEncoded(BOW_ATTACK_SOUND_SOURCE);
-  const encodedDeath = fetchEncoded(DEATH_SOUND_SOURCE);
+  // The death sting (~150 KB) waits until the player is in the world, unless asked for sooner.
+  let encodedDeath: Promise<ArrayBuffer | null> | null = null;
+  const encodedDeathClip = () => encodedDeath ??= fetchEncoded(DEATH_SOUND_SOURCE);
+  afterEntry(() => { void encodedDeathClip(); });
   const activeBowAttackVoices: BowAttackVoice[] = [];
   let swingNoise: AudioBuffer | null = null;
   let lastSwordSwingAt = Number.NEGATIVE_INFINITY;
@@ -344,7 +348,7 @@ export function createMapMusicController(
   function preloadDeathSound(context: AudioContext) {
     if (deathBuffer) return Promise.resolve(deathBuffer);
     if (deathBufferPromise) return deathBufferPromise;
-    deathBufferPromise = decodeClip(context, encodedDeath)
+    deathBufferPromise = decodeClip(context, encodedDeathClip())
       .then((decodedAudio) => { deathBuffer = decodedAudio; return decodedAudio; })
       .finally(() => { deathBufferPromise = null; });
     return deathBufferPromise;

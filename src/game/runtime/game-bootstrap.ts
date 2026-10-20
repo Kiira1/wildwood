@@ -8,7 +8,8 @@ import { generateMap, proceduralMapId, PROCEDURAL_ENTRY_MAP } from "../../../sha
 import { withGeneratedMaps } from "../procedural-maps";
 import { STARTER_STONE, type EquipmentSlot, type InventoryState } from "../inventory";
 import { loadActorShadowSprite, loadEnemySprites, type EnemyKind } from "../enemies";
-import { loadPlayerAppearanceAssets } from "../player-appearance";
+import { allPlayerPartsSettled, loadPlayerAppearanceAssets, loadRemainingPlayerParts, playerPartsReady } from "../player-appearance";
+import { afterEntry } from "../../app/after-entry";
 import { TUTORIAL_FOREST_MAP_ID, type MapId, type SpawnSite, type WorldDecor, type WorldPath } from "../world";
 import { createAssetPreprocessor } from "./render/asset-preprocessor";
 import { MAP_ENEMY_SPRITE_GROUPS } from "./render/map-asset-groups";
@@ -178,6 +179,8 @@ export function createGameBootstrapAssets(options: {
   inventoryCharacterCanvas: HTMLCanvasElement;
   onWorldArtReady: () => void;
   onPlayerAppearanceAssetReady: () => void;
+  /** The item ids the local player is drawn wearing: the only gear the loading screen waits for. */
+  localOutfit: () => readonly string[];
 }) {
   const preprocessedAssets = createAssetPreprocessor(options.onWorldArtReady);
   const spriteKinds = (mapId: MapId) => [...new Set([
@@ -221,12 +224,20 @@ export function createGameBootstrapAssets(options: {
   // The game hears the art is ready first, always: in 0.901.19 the snapshot
   // portraits went first, and a part that failed to load made Firefox throw
   // there, so players were never drawn. Snapshot pictures follow, and can fail alone.
+  // Only the bare body and the local outfit hold the loading screen; every
+  // other piece of gear loads after entry, and snapshots wait until it has.
+  let snapshotsReady = false;
   const playerAppearanceAssets = loadPlayerAppearanceAssets(() => {
     options.onPlayerAppearanceAssetReady();
+    if (snapshotsReady || !allPlayerPartsSettled(playerAppearanceAssets)) return;
+    snapshotsReady = true;
     try { setProfileSnapshotRenderer(createProfileSnapshotRenderer(playerAppearanceAssets)); }
     catch (error) { console.warn('WildStat snapshot portraits unavailable:', error); }
-  });
+  }, { lazyEquipment: true });
+  afterEntry(() => loadRemainingPlayerParts(playerAppearanceAssets));
   return {
+    /** The bare body and what the local player wears have loaded (each settled once). */
+    localPlayerArtReady: () => playerPartsReady(playerAppearanceAssets, options.localOutfit()),
     actorShadowSprite,
     assets,
     enemySprites: enemyAssets.sprites,

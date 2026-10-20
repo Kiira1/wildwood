@@ -10,7 +10,9 @@ vi.mock("./render/asset-preprocessor", () => ({ createAssetPreprocessor: () => (
   ensureMapAssets: async () => {}, mapAssetsReady: () => true,
   mapAssetLoadFailed: () => false, worldArtReady: () => true,
 }) }));
-vi.mock("../player-appearance", () => ({ loadPlayerAppearanceAssets: () => ({}) }));
+vi.mock("../player-appearance", () => ({
+  loadPlayerAppearanceAssets: () => ({}), allPlayerPartsSettled: () => false, loadRemainingPlayerParts: () => {}, playerPartsReady: () => true,
+}));
 vi.mock("./profile-character-preview", () => ({ createProfileCharacterPreview: () => ({}) }));
 vi.mock("./inventory-character-preview", () => ({ createInventoryCharacterPreview: () => ({}) }));
 vi.mock("./leaderboard-podium-preview", () => ({ createLeaderboardPodiumPreview: () => ({}) }));
@@ -26,7 +28,7 @@ it("prepares generated enemies and bosses through the actual startup asset wirin
   const { assets } = createGameBootstrapAssets({
     profileCharacterCanvas: {} as HTMLCanvasElement,
     inventoryCharacterCanvas: {} as HTMLCanvasElement,
-    onWorldArtReady: () => {}, onPlayerAppearanceAssetReady: () => {},
+    onWorldArtReady: () => {}, onPlayerAppearanceAssetReady: () => {}, localOutfit: () => [],
   });
   expect(assets.mapAssetsReady("endless_1")).toBe(false);
   for (const mapId of ["endless_1", "endless_2", "endless_40"] as const) {

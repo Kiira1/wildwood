@@ -3,6 +3,7 @@ import { isProceduralMap, proceduralMapId } from "../../shared/procedural-maps";
 import type { ResearchId, ResearchRanks } from "../../shared/research";
 import { isDeveloperIdentity } from "../app/developer";
 import type { InventoryState } from "../game/inventory";
+import { allPlayerPartsSettled } from "../game/player-appearance";
 import { bossForMap } from "../game/runtime/boss/boss-registry";
 import type { createProceduralBossController } from "../game/runtime/boss/procedural-boss-controller";
 import type { CoopAccess } from "../game/runtime/coop-access";
@@ -50,7 +51,6 @@ export type GamePanelsDeps = {
   assets: BootstrapAssets["assets"];
   playerAppearanceAssets: BootstrapAssets["playerAppearanceAssets"];
   leaderboardPodiumPreview: BootstrapAssets["leaderboardPodiumPreview"];
-  playerSpriteReady: () => boolean;
   paintProfileIconCanvas: ReturnType<typeof createPlayerIdentityRenderer>["paintProfileIconCanvas"];
   previewPrestigeUnlock: () => void;
   stopAutoFarm: (reason: string) => void;
@@ -132,7 +132,8 @@ export function createGamePanels(deps: GamePanelsDeps) {
     localIdentity: () => coop.localIdentity() || "",
     isDeveloper: isDeveloperIdentity,
     paintProfileIcon: (canvas: HTMLCanvasElement, identity: string) => deps.paintProfileIconCanvas(canvas, coop.profileIcon(identity), identity),
-    podiumAssetsReady: deps.playerSpriteReady,
+    // Podium characters wear anyone's gear: wait until every piece has loaded.
+    podiumAssetsReady: () => allPlayerPartsSettled(deps.playerAppearanceAssets),
     drawPodiumCharacter: (canvas: HTMLCanvasElement, entry: LeaderboardEntry, rank: 1 | 2 | 3) => deps.leaderboardPodiumPreview.draw(canvas, entry, rank),
     openProfile,
     loadPlayers: () => client?.social?.loadPlayerDirectory(),

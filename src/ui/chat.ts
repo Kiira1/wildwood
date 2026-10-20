@@ -92,7 +92,6 @@ type CoopClient = {
   ageVerified?: () => boolean;
   verifyAge?: (age: number) => Promise<{ ok?: boolean; error?: string; blocked?: boolean }>;
   profileIcon?: (identity: string) => number;
-  prepareChatPortraits?: (identities: readonly string[]) => Promise<void>;
   playerGender?: (identity: string) => PlayerGender;
   nameColor?: (identity: string) => number;
   chatRevision?: () => number;
@@ -240,11 +239,8 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
       ? (beforeId: bigint) => coop.social!.loadChatHistory!(channel === "guild" ? "guild" : "dm", privatePeerIdentity || privatePeer, beforeId) : undefined;
     if (!fetch) return;
     try {
-      const pending = history.load(async before => {
-        const page = await fetch(before);
-        await coop?.prepareChatPortraits?.([...new Set(page.messages.map(message => message.sender))]);
-        return page;
-      }, currentMessages(), latest);
+      // Messages show as soon as they arrive; their portraits fill in when their sheets load.
+      const pending = history.load(fetch, currentMessages(), latest);
       refresh();
       const changed = await pending;
       if (changed && key === conversationKey() && identity === getCoop()?.localIdentity?.()) {

@@ -260,6 +260,24 @@ describe("map music", () => {
     await vi.waitFor(() => expect(context.sources).toHaveLength(1));
   });
 
+  it("leaves the death sting off the loading screen: it downloads after entry, or when first needed", async () => {
+    vi.resetModules();
+    vi.useFakeTimers();
+    vi.stubGlobal("Audio", FakeAudio);
+    vi.stubGlobal("window", {});
+    vi.stubGlobal("localStorage", { getItem: () => null });
+    const fetchClip = vi.fn(async () => ({ ok: true, arrayBuffer: async () => new ArrayBuffer(4) }));
+    vi.stubGlobal("fetch", fetchClip);
+    const [{ createMapMusicController: create }, { markEntered }] = await Promise.all([import("./audio"), import("../../app/after-entry")]);
+    create("test-volume", "test-sfx-volume");
+    const fetched = () => fetchClip.mock.calls.map(call => (call as unknown as [string])[0]);
+    expect(fetched()).toEqual([BOW_ATTACK_SOUND_SOURCE]);
+    markEntered();
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(fetched()).toEqual([BOW_ATTACK_SOUND_SOURCE, DEATH_SOUND_SOURCE]);
+    vi.useRealTimers();
+  });
+
   it("plays the death sting as a decoded voice once the graph is up, and from the element before that", async () => {
     const context = new FakeAudioContext();
     context.decodeAudioData.mockResolvedValue({ duration: 4 });

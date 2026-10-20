@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { parseHTML } from "linkedom";
 import {
-  PROFILE_ICON_BLACK_BACKGROUND, PROFILE_ICON_COUNT, PROFILE_ICON_SNAPSHOT, encodeProfileIcon, isSnapshotProfileIcon,
+  PROFILE_ICON_BLACK_BACKGROUND, PROFILE_ICON_COUNT, PROFILE_ICON_SHEETS, PROFILE_ICON_SNAPSHOT, encodeProfileIcon, isSnapshotProfileIcon,
   isValidProfileIcon, normalizeProfileIcon, profileIconLocation, withProfileIconBackground,
 } from "../../shared/profile-icons";
 import { profileSnapshotKey, type ProfileSnapshotLook } from "../../shared/profile-snapshot";
@@ -11,6 +11,10 @@ import {
   setProfileSnapshotRenderer, setProfileSnapshotSource, watchedProfileSnapshotCount,
 } from "./profile-snapshot-portraits";
 import { keepCanvasMoving, movingCanvasCount } from "./moving-canvases";
+import { rememberLoadedProfileSheet } from "./profile-icon-sheets";
+
+// Every sheet is already in the browser cache here; profile-icon-sheets.test.ts covers loading them.
+for (const { path } of PROFILE_ICON_SHEETS) rememberLoadedProfileSheet(path);
 
 const look = (headItem = "basic_paper_hat", skinTone = 3): ProfileSnapshotLook =>
   ({ skinTone, headItem, chestItem: "", feetItem: "", rightHandItem: "starter_bow", leftHandItem: "" });

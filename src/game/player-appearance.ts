@@ -116,46 +116,109 @@ function cachedPlayerBody(
  */
 export const PLAYER_PART_RETRY_DELAYS_MS = [500, 1_000, 2_000, 4_000, 8_000, 30_000] as const;
 
-function image(source: string, settled: () => void) {
+/** Parts made but not yet asked for, with what starts each one. */
+const unstartedParts = new WeakMap<HTMLImageElement, () => void>();
+const settledParts = new WeakSet<HTMLImageElement>();
+type PartLoading = { started: number; settled: number; unstarted: Set<HTMLImageElement> };
+const partLoading = new WeakMap<PlayerAppearanceAssets, PartLoading>();
+
+/** `settled(first)`: on the first load or failure, and again (first false) when a part that failed arrives late. */
+function image(source: string, settled: (first: boolean) => void, start = true) {
   const asset = new Image();
   let retry = 0;
-  asset.addEventListener("load", settled, { once: true });
+  const settle = () => {
+    const first = !settledParts.has(asset);
+    settledParts.add(asset);
+    settled(first);
+  };
+  asset.addEventListener("load", settle, { once: true });
   asset.addEventListener("error", () => {
     const delay = PLAYER_PART_RETRY_DELAYS_MS[Math.min(retry, PLAYER_PART_RETRY_DELAYS_MS.length - 1)];
     retry += 1;
     // The first failure still counts the asset as settled so the world is not
     // held back for one sprite; the retries bring the part in when they can.
-    if (retry === 1) settled();
+    if (retry === 1) settle();
     globalThis.setTimeout(() => { asset.src = `${source}?asset-retry=${retry}`; }, delay);
   });
-  asset.src = source;
+  if (start) asset.src = source;
   return asset;
 }
 
-export function loadPlayerAppearanceAssets(settled: () => void): PlayerAppearanceAssets {
-  const expectedAssetCount = 3 + Object.values(ITEM_PRESENTATIONS).reduce((count, presentation) =>
-    count + (presentation.world?.kind === "LEGS" ? 2 : presentation.world ? 1 : 0), 0);
-  let settledAssetCount = 0;
-  const markAssetSettled = () => {
-    settledAssetCount += 1;
-    if (settledAssetCount >= expectedAssetCount) settled();
+/** Starts a part that was made without loading, the first time anything asks for it. */
+function startPart(asset: HTMLImageElement | undefined) {
+  const start = asset && unstartedParts.get(asset);
+  if (start) start();
+}
+
+/**
+ * Loads the bare body at once. Every equipment sprite (several hundred small
+ * files) loads at once too, unless `lazyEquipment`: then a part loads when it
+ * is first drawn or asked for by playerPartsReady, and the rest when
+ * loadRemainingPlayerParts says. `settled` is called whenever every part
+ * started so far has loaded or failed once.
+ */
+export function loadPlayerAppearanceAssets(settled: () => void, options: { lazyEquipment?: boolean } = {}): PlayerAppearanceAssets {
+  const loading: PartLoading = { started: 0, settled: 0, unstarted: new Set() };
+  const markAssetSettled = (first: boolean) => {
+    if (first) loading.settled += 1;
+    if (loading.settled >= loading.started) settled();
+  };
+  const part = (source: string, eager = !options.lazyEquipment) => {
+    const asset = image(source, markAssetSettled, false);
+    const start = () => {
+      unstartedParts.delete(asset); loading.unstarted.delete(asset);
+      loading.started += 1;
+      asset.src = source;
+    };
+    if (eager) start();
+    else { unstartedParts.set(asset, start); loading.unstarted.add(asset); }
+    return asset;
   };
   const equipment: PlayerAppearanceAssets["equipment"] = {};
   for (const [itemId, presentation] of Object.entries(ITEM_PRESENTATIONS)) {
     if (!presentation.world) continue;
     equipment[itemId] = presentation.world.kind === "LEGS"
-      ? {
-        frontLeg: image(presentation.world.frontSource, markAssetSettled),
-        backLeg: image(presentation.world.backSource, markAssetSettled),
-      }
-      : { sprite: image(presentation.world.source, markAssetSettled) };
+      ? { frontLeg: part(presentation.world.frontSource), backLeg: part(presentation.world.backSource) }
+      : { sprite: part(presentation.world.source) };
   }
-  return {
-    basicFrontLeg: image("assets/wildstat/player-parts/basic-leg-front.webp", markAssetSettled),
-    basicBackLeg: image("assets/wildstat/player-parts/basic-leg-back.webp", markAssetSettled),
-    defaultChest: image(DEFAULT_CHEST.source, markAssetSettled),
+  const assets = {
+    basicFrontLeg: part("assets/wildstat/player-parts/basic-leg-front.webp", true),
+    basicBackLeg: part("assets/wildstat/player-parts/basic-leg-back.webp", true),
+    defaultChest: part(DEFAULT_CHEST.source, true),
     equipment,
   };
+  partLoading.set(assets, loading);
+  return assets;
+}
+
+const settledOrMissing = (asset: HTMLImageElement | undefined) => !asset || settledParts.has(asset);
+
+/** Starts the bare body and these items' parts; true once each has loaded (or failed once). */
+export function playerPartsReady(assets: PlayerAppearanceAssets, itemIds: readonly (string | undefined)[]) {
+  let ready = [assets.basicFrontLeg, assets.basicBackLeg, assets.defaultChest].every(settledOrMissing);
+  for (const itemId of itemIds) {
+    const parts = itemId ? assets.equipment[itemId] : undefined;
+    for (const asset of [parts?.sprite, parts?.frontLeg, parts?.backLeg]) {
+      startPart(asset);
+      if (!settledOrMissing(asset)) ready = false;
+    }
+  }
+  return ready;
+}
+
+/** Starts every part nothing has asked for yet, at low priority. */
+export function loadRemainingPlayerParts(assets: PlayerAppearanceAssets) {
+  const loading = partLoading.get(assets);
+  for (const asset of [...loading?.unstarted ?? []]) {
+    (asset as HTMLImageElement & { fetchPriority?: string }).fetchPriority = "low";
+    startPart(asset);
+  }
+}
+
+/** Every part has been started and has loaded or failed once. */
+export function allPlayerPartsSettled(assets: PlayerAppearanceAssets) {
+  const loading = partLoading.get(assets);
+  return !loading || (loading.unstarted.size === 0 && loading.settled >= loading.started);
 }
 
 const skinSprites = new Map<string, HTMLImageElement>();
@@ -166,6 +229,7 @@ const skinSprites = new Map<string, HTMLImageElement>();
  */
 export function equipmentSprite(assets: PlayerAppearanceAssets, itemId: string | undefined, refineLevel = 0) {
   const base = itemId ? assets.equipment[itemId]?.sprite : undefined;
+  startPart(base);
   const world = refineLevel > 0 && base ? itemPresentation(itemId, refineLevel)?.world : undefined;
   if (world?.kind !== "SPRITE" || world === itemPresentation(itemId)?.world || typeof Image === "undefined") return base;
   let sprite = skinSprites.get(world.source);
@@ -176,6 +240,7 @@ export function equipmentSprite(assets: PlayerAppearanceAssets, itemId: string |
 /** Worn boots' legs at their refine: graded boots' ★10 or ★20 look, loaded as equipmentSprite loads one; any other pair's own legs. */
 export function equipmentLegs(assets: PlayerAppearanceAssets, itemId: string | undefined, refineLevel = 0) {
   const base = itemId ? assets.equipment[itemId] : undefined;
+  startPart(base?.frontLeg); startPart(base?.backLeg);
   const world = refineLevel > 0 && base?.frontLeg ? itemPresentation(itemId, refineLevel)?.world : undefined;
   if (world?.kind !== "LEGS" || world === itemPresentation(itemId)?.world || typeof Image === "undefined") return base;
   const load = (source: string) => {

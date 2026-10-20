@@ -2,8 +2,12 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { parseHTML } from "linkedom";
 import { createProfileIconPicker } from "./profile-icon-picker";
 import { applyProfileIcon, createProfileIconCanvasPainter } from "../app/profile-icons";
-import { PROFILE_ICON_BLACK_BACKGROUND, PROFILE_ICON_SNAPSHOT, isValidProfileIcon, profileIconLocation } from "../../shared/profile-icons";
+import { PROFILE_ICON_BLACK_BACKGROUND, PROFILE_ICON_SHEETS, PROFILE_ICON_SNAPSHOT, isValidProfileIcon, profileIconLocation } from "../../shared/profile-icons";
 import { OBJECT_ATLAS_SIZE, OBJECT_ICON_CROPS, containedIconRect, objectIconCrop } from "../app/profile-icon-crops";
+import { rememberLoadedProfileSheet } from "../app/profile-icon-sheets";
+
+// Every sheet is already in the browser cache here; profile-icon-sheets.test.ts covers loading them.
+for (const { path } of PROFILE_ICON_SHEETS) rememberLoadedProfileSheet(path);
 
 beforeEach(() => {
   const { document, window } = parseHTML('<html><body><div><div id="choices"></div></div></body></html>');
