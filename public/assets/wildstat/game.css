@@ -1428,7 +1428,7 @@
     position: fixed;
     /* Below the minimap and its online and version lines: on a short narrow
        phone 20% of the height put the reward toast on top of them. */
-    top: max(20%, calc(var(--hud-safe-top, 0px) + var(--hud-map-size) + 44px));
+    top: max(15%, calc(var(--hud-safe-top, 0px) + var(--hud-map-size) + 44px));
     left: 50%;
     bottom: auto;
     /* Developer Tools allows combat behind it; keep earned rewards visible. */
