@@ -94,15 +94,28 @@ exchange and refresh), retried once with the provider's `DPoP-Nonce`.
   A bound grant is always refreshed with a proof from that key, even after an
   opt-out. A missing or different key means sign in again. Unbound grants
   keep refreshing without DPoP until the next sign-in.
-- DPoP never keeps a player out: no WebCrypto/IndexedDB, a key store slower
-  than 3 s, a refused proof, or a request that fails only with the header all
-  fall back to a plain exchange (`dpop-fallback:exchange:*`). The last two
-  also pause DPoP on that browser for a week.
+- The key starts loading when the game loads, after waking WebKit's
+  IndexedDB (it can hang on the first request until `indexedDB.databases()`
+  is polled), so a sign-in return usually finds it ready.
+- Backup key: where IndexedDB is missing, fails, or is not ready within
+  1.75 s at sign-in, an extractable ES256 key is kept as a JWK in localStorage
+  (`wildstat-dpop-backup-key-v1`) and used instead
+  (`dpop-key:local-fallback:<why>`). Page script can read it, the same
+  exposure as the refresh token already in localStorage, so the
+  non-extractable IndexedDB key is preferred for every new sign-in. A grant
+  stays on the key it was bound to (`dpopStore` beside `jkt`), whichever store
+  holds it.
+- A sign-in waits at most 2 s for a key before its token request. DPoP never
+  keeps a player out: no key in time (`key-slow`), no WebCrypto, a refused
+  proof, or a request that fails only with the header all fall back to a
+  plain exchange (`dpop-fallback:exchange:*`). The last two also pause DPoP
+  on that browser for a week.
 - Only the ID token is used (for SpacetimeDB); nothing sends the access token,
   so no resource request needs a proof.
-- Diagnostics: `dpop=bound|unbound|off` on sign-in returns and refusals, and
+- Diagnostics: `dpop=bound:idb|bound:local|unbound|off` on sign-in returns
+  and refusals, and
   `renewal-chain:days=N;...;dpop=...` once per day a chain keeps renewing.
-  A `renewal-chain:days=1;...;dpop=bound` row is the proof it works.
+  A `renewal-chain:days=1;...;dpop=bound:*` row is the proof it works.
 
 ## Static-hosting policy limits
 

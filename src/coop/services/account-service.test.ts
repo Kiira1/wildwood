@@ -1134,8 +1134,25 @@ describe("DPoP at the code exchange", () => {
     window.location.href = `https://wildstat.example/game?code=one&state=${state}`;
     await f.service.restoreKnownAccount();
     expect(dpopHeader(request)).toMatch(/^[\w-]+\.[\w-]+\.[\w-]+$/);
-    expect(JSON.parse(f.local.getItem(`${keys.accountTokenKey}:refresh`)!)).toMatchObject({ token: "bound-grant", jkt: (await dpop.key(false))!.jkt });
-    expect(recordCarriedConnectionDiagnostic).toHaveBeenCalledWith("session-blocked", { detail: expect.stringMatching(/^sign-in-return:success:known-account:silent:\d+s:dpop=bound$/) });
+    expect(JSON.parse(f.local.getItem(`${keys.accountTokenKey}:refresh`)!)).toMatchObject({ token: "bound-grant", jkt: (await dpop.key())!.jkt, dpopStore: "idb" });
+    expect(recordCarriedConnectionDiagnostic).toHaveBeenCalledWith("session-blocked", { detail: expect.stringMatching(/^sign-in-return:success:known-account:silent:\d+s:dpop=bound:idb$/) });
+  });
+  it("binds to the localStorage backup key when IndexedDB is unavailable, and says so once", async () => {
+    const request = new FakeTokenRequest(200, { id_token: accountToken(), refresh_token: "bound-grant", token_type: "DPoP" });
+    stubTokenRequests(request);
+    let local: Storage | undefined;
+    const dpop = createDpop({ indexedDB: null, subtle: crypto.subtle, backupStorage: () => local });
+    const f = setup({ authCallback: true, dpop }); local = f.local;
+    await f.service.restoreKnownAccount();
+    expect(dpopHeader(request)).toBeDefined();
+    expect(JSON.parse(f.local.getItem(`${keys.accountTokenKey}:refresh`)!)).toMatchObject({ dpopStore: "local", jkt: (await dpop.key())!.jkt });
+    expect(recordCarriedConnectionDiagnostic).toHaveBeenCalledWith("session-blocked", { detail: "dpop-key:local-fallback:no-idb" });
+  });
+  it("starts loading the device key as soon as the service starts", () => {
+    const dpop = createDpop({ indexedDB: fakeIndexedDB().indexedDB, subtle: crypto.subtle });
+    const warm = vi.spyOn(dpop, "warm");
+    setup({ dpop });
+    expect(warm).toHaveBeenCalledOnce();
   });
   it("signs in without DPoP when the provider refuses the proof, noting the fallback", async () => {
     const dpop = createDpop({ indexedDB: fakeIndexedDB().indexedDB, subtle: crypto.subtle });

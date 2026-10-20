@@ -4,7 +4,7 @@
  * transactions on one store do), and requests made in a callback run in the
  * same transaction.
  */
-export function fakeIndexedDB() {
+export function fakeIndexedDB(options: { asleepUntilPoll?: number } = {}) {
   const stores = new Map<string, Map<IDBValidKey, unknown>>();
   let queue = Promise.resolve();
   type Request = { result?: unknown; error: null; onsuccess: (() => void) | null; onerror: (() => void) | null };
@@ -24,10 +24,19 @@ export function fakeIndexedDB() {
     return tx;
   }
 
+  // WebKit's launch bug: nothing answers until databases() has been polled enough.
+  let polls = 0;
+  let wake!: () => void;
+  const awake = options.asleepUntilPoll ? new Promise<void>(resolve => { wake = resolve; }) : Promise.resolve();
   const factory = {
+    databases() {
+      polls += 1;
+      if (options.asleepUntilPoll && polls >= options.asleepUntilPoll) wake();
+      return awake.then(() => []);
+    },
     open() {
       const r = { ...request(), onupgradeneeded: null as (() => void) | null };
-      queueMicrotask(() => {
+      void awake.then(() => {
         r.result = {
           objectStoreNames: { contains: (store: string) => stores.has(store) },
           createObjectStore: (store: string) => { stores.set(store, new Map()); },
@@ -39,5 +48,5 @@ export function fakeIndexedDB() {
       return r;
     },
   };
-  return { indexedDB: factory as unknown as IDBFactory, clear: () => stores.forEach(store => store.clear()) };
+  return { indexedDB: factory as unknown as IDBFactory, clear: () => stores.forEach(store => store.clear()), polls: () => polls };
 }

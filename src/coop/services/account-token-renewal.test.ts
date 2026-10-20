@@ -238,7 +238,7 @@ describe("DPoP-bound refresh", () => {
     const report = vi.fn();
     const renewal = createAccountTokenRenewal(s.storage, "account", undefined, { dpop: () => dpop, report });
     s.storage.setItem(DPOP_SWITCH_KEY, switchOn ? "on" : "off");
-    const key = (await dpop.key(true))!;
+    const key = (await dpop.key())!;
     s.storage.setItem("account:refresh", JSON.stringify({ subject: "player-a", token: "refresh-bound", jkt: key.jkt, chainAt: Date.now() - 3_600_000 }));
     return { ...s, renewal, dpop, db, key, report };
   }
@@ -261,13 +261,26 @@ describe("DPoP-bound refresh", () => {
     expect(headersOf(fetch.mock.calls[0]).DPoP).toBeUndefined();
     expect(JSON.parse(s.storage.getItem("account:refresh")!).jkt).toBeUndefined();
   });
+  it("keeps refreshing a grant bound to the localStorage backup key with that key, even once IndexedDB works", async () => {
+    const s = setup(); const db = fakeIndexedDB();
+    const local = (await createDpop({ indexedDB: null, subtle: crypto.subtle, backupStorage: () => s.storage }).key())!;
+    const dpop = createDpop({ indexedDB: db.indexedDB, subtle: crypto.subtle, backupStorage: () => s.storage });
+    expect((await dpop.key())!.store).toBe("idb");
+    s.storage.setItem("account:refresh", JSON.stringify({ subject: "player-a", token: "refresh-local", jkt: local.jkt, dpopStore: "local" }));
+    const renewal = createAccountTokenRenewal(s.storage, "account", undefined, { dpop: () => dpop });
+    const fetch = vi.fn(async (_url: string, _options: RequestInit) => okAnswer(fresh()));
+    vi.stubGlobal("fetch", fetch);
+    await renewal.resolve(s.old);
+    expect(decode(headersOf(fetch.mock.calls[0]).DPoP.split(".")[0]).jwk).toEqual(local.jwk);
+    expect(JSON.parse(s.storage.getItem("account:refresh")!)).toMatchObject({ jkt: local.jkt, dpopStore: "local" });
+  });
   it("asks for a sign-in when the key a token is bound to is gone, without spending the token", async () => {
     const s = await bound(); s.db.clear();
     const renewal = createAccountTokenRenewal(s.storage, "account", undefined, { dpop: () => createDpop({ indexedDB: s.db.indexedDB, subtle: crypto.subtle }) });
     const fetch = vi.fn(); vi.stubGlobal("fetch", fetch);
     const refused = await renewal.resolve(s.old).catch(error => error);
     expect(refused).toMatchObject({ reason: "grant-rejected" });
-    expect(refused.detail).toMatch(/;dpop=bound;desc=dpop-key-lost$/);
+    expect(refused.detail).toMatch(/;dpop=bound:idb;desc=dpop-key-lost$/);
     expect(fetch).not.toHaveBeenCalled();
     expect(s.storage.getItem("account:refresh")).toBeNull();
   });
@@ -287,7 +300,7 @@ describe("DPoP-bound refresh", () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, status: 400, headers: new Headers(), json: async () => ({ error: "invalid_dpop_proof", error_description: "bad" }) })));
     const refused = await s.renewal.resolve(s.old).catch(error => error);
     expect(refused).toMatchObject({ reason: "grant-rejected" });
-    expect(refused.detail).toMatch(/;dpop=bound;desc=dpop-invalid_dpop_proof:bad$/);
+    expect(refused.detail).toMatch(/;dpop=bound:idb;desc=dpop-invalid_dpop_proof:bad$/);
     expect(dpopWanted(s.storage)).toBe(false);
   });
   it("reports once per day a chain keeps renewing, so a bound chain past 24 hours shows up", async () => {
@@ -295,7 +308,7 @@ describe("DPoP-bound refresh", () => {
     s.storage.setItem("account:refresh", JSON.stringify({ subject: "player-a", token: "refresh-bound", jkt: s.key.jkt, chainAt: Date.now() - 25 * 3_600_000 }));
     vi.stubGlobal("fetch", vi.fn(async () => okAnswer(fresh())));
     await s.renewal.resolve(s.old);
-    expect(s.report).toHaveBeenCalledWith(expect.stringMatching(/^renewal-chain:days=1;chain-age=25\.0h;dpop=bound$/));
+    expect(s.report).toHaveBeenCalledWith(expect.stringMatching(/^renewal-chain:days=1;chain-age=25\.0h;dpop=bound:idb$/));
     await s.renewal.resolve(s.storage.getItem("account")!, true);
     expect(s.report).toHaveBeenCalledOnce();
   });

@@ -1,6 +1,6 @@
 import { DEFEAT_REAUTH } from "../../../shared/defeat-session";
 import { AccountRenewalRequired, createAccountTokenRenewal } from "./account-token-renewal";
-import { deviceDpop, exchangeCodeWithDpop, type DeviceDpop } from "./account-dpop";
+import { deviceDpop, dpopWanted, exchangeCodeWithDpop, type DeviceDpop } from "./account-dpop";
 import { accountLogoutUrl } from "./account-logout";
 import { createAutoFarmResumeStore } from '../../app/auto-farm-resume';
 import { recordCarriedConnectionDiagnostic, recordConnectionDiagnostic } from "./connection-diagnostic-runtime";
@@ -205,6 +205,9 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
   let takeoverRequested = false;
   let takeoverRevision = 0;
   const dpop = dependencies.dpop ?? deviceDpop;
+  // Loads the device key while the game loads, so a sign-in return finds it
+  // ready and any IndexedDB wake-up wait overlaps the loading bar.
+  try { if (dpopWanted(localStorage)) dpop().warm(); } catch {}
   const renewal = createAccountTokenRenewal(localStorage, keys.accountTokenKey, undefined, {
     dpop, report: detail => recordConnectionDiagnostic("session-blocked", { detail: `${detail}${accountTag()}` }),
   });
@@ -588,6 +591,7 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
         }), proof),
         networkFailure: error => error instanceof TokenExchangeRequestError && error.reason === "network",
       });
+      if (exchange.keyNote) recordCarriedConnectionDiagnostic("session-blocked", { detail: `dpop-key:local-fallback:${exchange.keyNote}` });
       if (exchange.fallback) recordCarriedConnectionDiagnostic("session-blocked", { detail: `dpop-fallback:exchange:${exchange.fallback}` });
       const { ok, result } = exchange.attempt;
       if (!ok || typeof result.id_token !== "string") {
@@ -601,7 +605,7 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
       await dependencies.validateAccountIdToken(result.id_token, expectedNonce);
       // A late OAuth response must not restore credentials after Sign Out.
       if (signingOut) { callbackFailure = "signed-out"; return "failed"; }
-      renewal.save(result.id_token, result.refresh_token, { jkt: exchange.jkt });
+      renewal.save(result.id_token, result.refresh_token, { jkt: exchange.jkt, dpopStore: exchange.store });
       callbackDpop = exchange.label;
       callbackWithoutGrant = typeof result.refresh_token !== "string" || !result.refresh_token;
       callbackWithoutOffline = typeof result.scope === "string" && !result.scope.split(" ").includes("offline_access");

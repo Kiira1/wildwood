@@ -1,7 +1,7 @@
 import { SPACETIME_AUTH_CLIENT_ID, SPACETIME_AUTH_ISSUER } from "../../../shared/rules";
 import { inspectSpacetimeIdToken, verifySpacetimeIdToken } from "../security/oidc-id-token";
 import { accountRenewalStartedAt, markAccountRenewal } from "../../app/account-renewal-flag";
-import { deviceDpop, dpopLabel, dpopProofRefused, sendWithDpop, suspendDpop, type DeviceDpop, type DpopKey, type TokenAttempt } from "./account-dpop";
+import { deviceDpop, dpopLabel, dpopProofRefused, sendWithDpop, suspendDpop, type DeviceDpop, type DpopKey, type DpopStore, type TokenAttempt } from "./account-dpop";
 
 export class AccountRenewalRequired extends Error {
   /** no-grant: nothing to refresh with. grant-rejected: the provider refused it. `detail` says why, for diagnostics. */
@@ -49,21 +49,21 @@ export function createAccountTokenRenewal(storage: Storage, key: string, tabStor
   }
   function clear() { storage.removeItem(refreshKey); }
   /** chainAt: when the sign-in that started this run of refresh tokens came back.
-   * jkt: the device key the refresh token is bound to (DPoP); chainDays: the last whole day of the chain reported. */
-  type Grant = { subject?: string; token?: string; nonce?: string; savedAt?: number; chainAt?: number; jkt?: string; chainDays?: number };
+   * jkt: the device key the refresh token is bound to (DPoP), held in dpopStore; chainDays: the last whole day of the chain reported. */
+  type Grant = { subject?: string; token?: string; nonce?: string; savedAt?: number; chainAt?: number; jkt?: string; dpopStore?: DpopStore; chainDays?: number };
   function grantFor(subject: string): Grant | null {
     let grant: Grant = {};
     try { grant = JSON.parse(storage.getItem(refreshKey) || "{}"); } catch {}
     return grant.subject === subject && grant.token ? grant : null;
   }
   /** A sign-in starts a new chain (chainAt now); a renewal passes the chain's start on, or null when unknown. */
-  function save(token: string, refresh: unknown, saved: { nonce?: string; chainAt?: number | null; jkt?: string; chainDays?: number } = {}) {
+  function save(token: string, refresh: unknown, saved: { nonce?: string; chainAt?: number | null; jkt?: string; dpopStore?: DpopStore; chainDays?: number } = {}) {
     const claims = inspectSpacetimeIdToken(token);
     const chainAt = saved.chainAt === undefined ? Date.now() : saved.chainAt;
     // Write the refresh grant before exposing the new ID token to other tabs.
     if (typeof refresh === "string" && refresh) storage.setItem(refreshKey, JSON.stringify({ subject: claims.sub, token: refresh,
       nonce: claims.nonce ?? saved.nonce, savedAt: Date.now(), ...(chainAt === null ? {} : { chainAt }),
-      ...(saved.jkt ? { jkt: saved.jkt } : {}), ...(saved.chainDays ? { chainDays: saved.chainDays } : {}) }));
+      ...(saved.jkt ? { jkt: saved.jkt, dpopStore: saved.dpopStore ?? "idb" } : {}), ...(saved.chainDays ? { chainDays: saved.chainDays } : {}) }));
     else clear();
     storage.setItem(key, token);
   }
@@ -84,6 +84,7 @@ export function createAccountTokenRenewal(storage: Storage, key: string, tabStor
       const grant = grantFor(subject);
       if (!grant?.token) throw new AccountRenewalRequired("no-grant");
       const hours = (ms: number) => `${(ms / 3_600_000).toFixed(1)}h`;
+      const label = dpopLabel(grant.jkt ? grant.dpopStore ?? "idb" : null, storage);
       const refused = (desc: unknown) => {
         const { iat, auth_time: authTime } = inspectSpacetimeIdToken(before, { allowExpired: true });
         // grant-age resets with every rotation; auth-age (since the player
@@ -95,15 +96,15 @@ export function createAccountTokenRenewal(storage: Storage, key: string, tabStor
           `token-age=${hours(Date.now() - iat * 1000)}`,
           `auth-age=${typeof authTime === "number" ? hours(Date.now() - authTime * 1000) : "unknown"}`,
           `interrupted=${interruptedBefore ? "yes" : "no"}`,
-          `dpop=${dpopLabel(Boolean(grant.jkt), storage)}`,
+          `dpop=${label}`,
           `desc=${String(desc ?? "none").slice(0, 80)}`,
         ].join(";"));
       };
-      // A bound refresh token only works with the key it was bound to, so
-      // it is always sent with a proof, whatever the switch says now.
+      // A bound refresh token only works with the key it was bound to, from
+      // whichever store holds it, so it is always sent with that key's proof.
       let dpopKey: DpopKey | null = null;
       if (grant.jkt) {
-        try { dpopKey = await dpop().key(false); } catch { throw refused("dpop-key-unreadable"); }
+        try { dpopKey = await dpop().keyFor(grant.jkt); } catch { throw refused("dpop-key-unreadable"); }
         if (dpopKey?.jkt !== grant.jkt) {
           if (storage.getItem(key) === before) clear();
           throw refused("dpop-key-lost");
@@ -154,10 +155,10 @@ export function createAccountTokenRenewal(storage: Storage, key: string, tabStor
         if (storage.getItem(key) !== before) throw new Error("Account changed during renewal");
         // Once a day of the chain, so diagnostics show whether a chain outlives 24 hours.
         const chainDays = typeof grant.chainAt === "number" ? Math.floor((Date.now() - grant.chainAt) / 86_400_000) : 0;
-        save(result.id_token, result.refresh_token ?? grant.token, { nonce: expectedNonce, chainAt: grant.chainAt ?? null, jkt: grant.jkt,
+        save(result.id_token, result.refresh_token ?? grant.token, { nonce: expectedNonce, chainAt: grant.chainAt ?? null, jkt: grant.jkt, dpopStore: grant.dpopStore,
           chainDays: Math.max(chainDays, grant.chainDays ?? 0) });
         if (chainDays > (grant.chainDays ?? 0)) {
-          options.report?.(`renewal-chain:days=${chainDays};chain-age=${hours(Date.now() - grant.chainAt!)};dpop=${dpopLabel(Boolean(grant.jkt), storage)}`);
+          options.report?.(`renewal-chain:days=${chainDays};chain-age=${hours(Date.now() - grant.chainAt!)};dpop=${label}`);
         }
         interruptedBefore = false;
         return result.id_token;
