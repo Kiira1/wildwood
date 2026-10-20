@@ -348,6 +348,8 @@ describe("account service startup identity selection", () => {
     const { notify, service } = setup({ authCallback: true, knownAccount: true });
 
     const restore = service.restoreKnownAccount();
+    // The request opens once the DPoP key is ready (none in this environment).
+    await vi.waitFor(() => expect(request.send).toHaveBeenCalled());
     expect(request.timeout).toBe(15_000);
     request.ontimeout?.({} as ProgressEvent);
     await restore;
@@ -673,6 +675,7 @@ describe("complete account sign-out", () => {
     const { service, local, connect } = setup({ authCallback: true });
     const restoring = service.restoreKnownAccount();
     await service.api.signOut();
+    await vi.waitFor(() => expect(request.send).toHaveBeenCalled());   // opens once the DPoP key is ready
     request.onload?.({} as ProgressEvent);
     await restoring;
     expect(local.getItem(keys.accountTokenKey)).toBeNull();
@@ -775,7 +778,7 @@ describe("sign-in round trips", () => {
     stubTokenRequest(new FakeTokenRequest(200, { id_token: accountToken(), refresh_token: "grant" }));
     window.location.href = `https://wildstat.example/game?code=one&state=${state}`;
     await f.service.restoreKnownAccount();
-    expect(recordCarriedConnectionDiagnostic).toHaveBeenCalledWith("session-blocked", { detail: "sign-in-return:success:known-account:silent:42s:dpop=off" });
+    expect(recordCarriedConnectionDiagnostic).toHaveBeenCalledWith("session-blocked", { detail: "sign-in-return:success:known-account:silent:42s:dpop=unbound" });
     expect(f.session.getItem(keys.authTripKey)).toBeNull();
   });
   it("connects a forced login straight away, noting a missing refresh grant or offline_access scope", async () => {
@@ -790,7 +793,7 @@ describe("sign-in round trips", () => {
     expect(f.assign).toHaveBeenCalledOnce();
     expect(f.connect).toHaveBeenCalledOnce();
     expect(recordCarriedConnectionDiagnostic).toHaveBeenCalledWith("session-blocked", {
-      detail: expect.stringMatching(/^sign-in-return:success:register:prompt:\d+s:no-grant:no-offline:dpop=off$/),
+      detail: expect.stringMatching(/^sign-in-return:success:register:prompt:\d+s:no-grant:no-offline:dpop=unbound$/),
     });
   });
   it("plays on without a grant rather than repeating the follow-up", async () => {
@@ -1148,11 +1151,25 @@ describe("DPoP at the code exchange", () => {
     expect(JSON.parse(f.local.getItem(`${keys.accountTokenKey}:refresh`)!).jkt).toBeUndefined();
     expect(recordCarriedConnectionDiagnostic).toHaveBeenCalledWith("session-blocked", { detail: "dpop-fallback:exchange:invalid_dpop_proof" });
   });
-  it("sends no DPoP header while the switch is off", async () => {
+  it("times out a stalled exchange after 15 s with DPoP on, as without it", async () => {
+    const dpop = createDpop({ indexedDB: fakeIndexedDB().indexedDB, subtle: crypto.subtle });
+    const request = new FakeTokenRequest(0, {}, false);
+    stubTokenRequests(request);
+    const f = setup({ authCallback: true, knownAccount: true, dpop });
+    const restore = f.service.restoreKnownAccount();
+    await vi.waitFor(() => expect(request.send).toHaveBeenCalled());
+    expect(dpopHeader(request)).toBeDefined();
+    expect(request.timeout).toBe(15_000);
+    request.ontimeout?.({} as ProgressEvent);
+    await restore;
+    expect(f.service.api.accountState()).toMatchObject({ authInProgress: false, notice: "SIGN-IN TIMED OUT · TRY AGAIN" });
+  });
+  it("sends no DPoP header on a browser that opted out", async () => {
     const dpop = createDpop({ indexedDB: fakeIndexedDB().indexedDB, subtle: crypto.subtle });
     const request = new FakeTokenRequest(200, { id_token: accountToken(), refresh_token: "grant" });
     stubTokenRequests(request);
     const f = setup({ authCallback: true, dpop });
+    f.local.setItem(DPOP_SWITCH_KEY, "off");
     await f.service.restoreKnownAccount();
     expect(dpopHeader(request)).toBeUndefined();
     expect(f.local.getItem(`${keys.accountTokenKey}:refresh`)).not.toContain("jkt");

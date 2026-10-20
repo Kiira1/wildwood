@@ -166,7 +166,7 @@ describe("account credential renewal", () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, status: 400, json: async () => ({ error: "invalid_grant", error_description: "grant request is invalid" }) })));
     const refused = await renewal.resolve(s.old).catch(error => error);
     expect(refused).toBeInstanceOf(AccountRenewalRequired);
-    expect(refused.detail).toMatch(/^grant-age=2\.0h;chain-age=unknown;token-age=\d+\.\dh;auth-age=unknown;interrupted=yes;dpop=off;desc=grant request is invalid$/);
+    expect(refused.detail).toMatch(/^grant-age=2\.0h;chain-age=unknown;token-age=\d+\.\dh;auth-age=unknown;interrupted=yes;dpop=unbound;desc=grant request is invalid$/);
   });
   it("says how long ago the sign-in that started the refresh chain was, across rotations", async () => {
     const s = setup(); const nowMs = Date.now();
@@ -237,13 +237,13 @@ describe("DPoP-bound refresh", () => {
     const dpop = createDpop({ indexedDB: db.indexedDB, subtle: crypto.subtle });
     const report = vi.fn();
     const renewal = createAccountTokenRenewal(s.storage, "account", undefined, { dpop: () => dpop, report });
-    if (switchOn) s.storage.setItem(DPOP_SWITCH_KEY, "on");
+    s.storage.setItem(DPOP_SWITCH_KEY, switchOn ? "on" : "off");
     const key = (await dpop.key(true))!;
     s.storage.setItem("account:refresh", JSON.stringify({ subject: "player-a", token: "refresh-bound", jkt: key.jkt, chainAt: Date.now() - 3_600_000 }));
     return { ...s, renewal, dpop, db, key, report };
   }
   const okAnswer = (id: string) => ({ ok: true, status: 200, headers: new Headers(), json: async () => ({ id_token: id, refresh_token: "refresh-rotated", token_type: "DPoP" }) });
-  it("always refreshes a bound token with a proof from the same key, even with the switch off, and keeps it bound", async () => {
+  it("always refreshes a bound token with a proof from the same key, even on a browser that opted out, and keeps it bound", async () => {
     const s = await bound(false); const updated = fresh();
     const fetch = vi.fn(async (_url: string, _options: RequestInit) => okAnswer(updated));
     vi.stubGlobal("fetch", fetch);
@@ -299,8 +299,8 @@ describe("DPoP-bound refresh", () => {
     await s.renewal.resolve(s.storage.getItem("account")!, true);
     expect(s.report).toHaveBeenCalledOnce();
   });
-  it("sends no DPoP header anywhere while the switch is off and the token is unbound", async () => {
-    const s = setup(); const fetch = vi.fn(async (_url: string, _options: RequestInit) => okAnswer(fresh()));
+  it("sends no DPoP header for an unbound token on a browser that opted out", async () => {
+    const s = setup(); s.storage.setItem(DPOP_SWITCH_KEY, "off"); const fetch = vi.fn(async (_url: string, _options: RequestInit) => okAnswer(fresh()));
     vi.stubGlobal("fetch", fetch);
     await s.renewal.resolve(s.old);
     expect(headersOf(fetch.mock.calls[0])).toEqual({ "content-type": "application/x-www-form-urlencoded" });

@@ -10,13 +10,15 @@ import { tokenClockNowMs } from "../security/token-clock";
  * The ID token sent to SpacetimeDB is unchanged.
  */
 
-/** Rollout switch: localStorage "wildstat-dpop-v1" = "on" | "off". */
+/** Per-browser override: localStorage "wildstat-dpop-v1" = "on" | "off". */
 export const DPOP_SWITCH_KEY = "wildstat-dpop-v1";
-/** Flip to true to turn DPoP on for everyone ("off" still opts a browser out). */
-const DPOP_DEFAULT_ON = false;
+/** On for everyone; "off" in localStorage opts one browser out. */
+const DPOP_DEFAULT_ON = true;
 /** Set after DPoP failed on this browser; new sign-ins skip it until then. */
 const DPOP_SUSPENDED_KEY = `${DPOP_SWITCH_KEY}:suspended-until`;
 const DPOP_SUSPEND_MS = 7 * 86_400_000;
+/** The exchange's own 15 s timeout starts after the key, so a slow key store is skipped, not waited on. */
+const DPOP_KEY_WAIT_MS = 3_000;
 
 type SwitchStorage = Pick<Storage, "getItem">;
 
@@ -229,8 +231,11 @@ export async function exchangeCodeWithDpop<A extends TokenAttempt & { result: { 
 }): Promise<DpopExchange<A>> {
   const { dpop, storage, endpoint, send } = options;
   if (!dpopWanted(storage)) return { attempt: await send(), label: dpopLabel(false, storage) };
-  const dpopKey = await dpop.key(true);
-  let fallback = "no-key";
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const slow = new Promise<"slow">(resolve => { timer = setTimeout(() => resolve("slow"), DPOP_KEY_WAIT_MS); });
+  const found = await Promise.race([dpop.key(true), slow]).finally(() => clearTimeout(timer));
+  const dpopKey = found === "slow" ? null : found;
+  let fallback = found === "slow" ? "key-slow" : "no-key";
   if (dpopKey) {
     try {
       const attempt = await sendWithDpop(dpop, dpopKey, endpoint, send);

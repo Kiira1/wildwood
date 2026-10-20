@@ -78,11 +78,11 @@ describe("DPoP device key", () => {
 });
 
 describe("DPoP rollout switch", () => {
-  it("is off unless this browser turned it on", () => {
-    expect(dpopSwitchOn(memory())).toBe(false);
-    expect(dpopSwitchOn(memory({ [DPOP_SWITCH_KEY]: "yes" }))).toBe(false);
+  it("is on unless this browser opted out", () => {
+    expect(dpopSwitchOn(memory())).toBe(true);
     expect(dpopSwitchOn(memory({ [DPOP_SWITCH_KEY]: "on" }))).toBe(true);
-    expect(dpopSwitchOn(undefined)).toBe(false);
+    expect(dpopSwitchOn(memory({ [DPOP_SWITCH_KEY]: "off" }))).toBe(false);
+    expect(dpopSwitchOn(undefined)).toBe(true);
   });
 });
 
@@ -93,7 +93,7 @@ describe("code exchange with DPoP", () => {
   it("sends no proof and touches no key while the switch is off", async () => {
     const dpop = dpopFor(); const key = vi.spyOn(dpop, "key");
     const send = vi.fn(async (_proof?: string) => ok("Bearer"));
-    const exchange = await exchangeCodeWithDpop({ dpop, storage: memory(), endpoint: ENDPOINT, send, networkFailure });
+    const exchange = await exchangeCodeWithDpop({ dpop, storage: memory({ [DPOP_SWITCH_KEY]: "off" }), endpoint: ENDPOINT, send, networkFailure });
     expect(send.mock.calls[0][0]).toBeUndefined();
     expect(key).not.toHaveBeenCalled();
     expect(exchange).toMatchObject({ label: "off" });
@@ -154,6 +154,22 @@ describe("DPoP key storage that hangs", () => {
     const create = dpop.key(true);
     await vi.advanceTimersByTimeAsync(5_000);
     await read; expect(await create).toBeNull();
+    vi.useRealTimers();
+  });
+});
+
+describe("code exchange with a slow key store", () => {
+  it("signs in plainly after 3 s instead of holding the exchange", async () => {
+    vi.useFakeTimers();
+    const stuck = { open: () => ({}) } as unknown as IDBFactory;
+    const send = vi.fn(async (_proof?: string): Promise<TokenAttempt> => ({ ok: true, result: {}, nonce: null }));
+    const exchange = exchangeCodeWithDpop({ dpop: createDpop({ indexedDB: stuck, subtle: crypto.subtle }), storage: memory(), endpoint: ENDPOINT,
+      send, networkFailure: () => false });
+    await vi.advanceTimersByTimeAsync(2_999);
+    expect(send).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(await exchange).toMatchObject({ label: "unbound", fallback: "key-slow" });
+    expect(send.mock.calls[0][0]).toBeUndefined();
     vi.useRealTimers();
   });
 });
