@@ -38,7 +38,7 @@ import { bossAggroRange } from '../boss-zone';
 import { createPowerGainMeter, type FarmPush } from '../auto-farm-brain';
 import { applyMapBalance } from '../../map-balance-loader';
 import { refreshMapBalanceEnemies } from '../../enemies/map-balance-enemies';
-import { playerRegenerationPerSecond } from '../../reward-display';
+import { createPlayerStatsRuntime } from '../../player-stats-runtime';
 import { setPlayerBaseMaxHealth } from '../../player-health';
 import { weaponAttackRange } from '../../../weapon-combat';
 import { WORLD } from '../../../constants';
@@ -53,7 +53,6 @@ import { MAP_IDS as CAMPAIGN_MAP_IDS } from '../../../../../shared/rules';
 import { campaignMapUnlocked, type CampaignAccess } from '../../../../../shared/equipment-access';
 import { isProceduralMap, proceduralMapNumber } from '../../../../../shared/procedural-maps';
 import { regularEnemySimulationTick } from '../../../../../shared/regular-enemy-simulation';
-import { equipmentMaxHealthMultiplierBonus } from '../../../../../shared/items';
 import { prestigePerkValue, type PrestigePerkRanks } from '../../../../../shared/prestige-perks';
 import { challengeMinimumInterval } from '../../../../../shared/prestige-challenge';
 import { createEmptyResearchRanks, type ResearchRanks } from '../../../../../shared/research';
@@ -318,16 +317,16 @@ export function createVirtualPlayer(profile: VirtualPlayerProfile, options: { du
     WORLD.h = worldBoundsFor(mapId).height;
   }
 
-  const healthMultiplierBonus = () => (1 + equipmentMaxHealthMultiplierBonus(inventory.equippedHead, inventory.equippedChest, 0, 0))
-    * (1 + Math.max(0, research.vitality ?? 0) * .02) - 1;
+  // As main.ts, with no slot tiers, refines or cards: the sim plays bare graded gear.
+  const playerStats = createPlayerStatsRuntime({ player, inventory, source: () => ({ researchInPlay: () => research, prestigePerks: () => perks }),
+    tailwind: () => playerCombat?.tailwind() ?? 0 });
+  const { healthMultiplierBonus, movementMultiplier } = playerStats;
   const researchController = createResearchController({
     prestigeLevel: () => profile.prestigeLevel ?? 0, guildQuestBonus: () => 1, prestigePerks: () => perks,
     player, getRanks: () => research, isDueling: () => false, maxPlayerStat: Number.MAX_VALUE, saveProgress: noop, healthMultiplierBonus,
     equippedFeet: () => inventory.equippedFeet,
   });
   const minAttackInterval = () => challengeMinimumInterval(challenge);
-  // As main.ts: Tailwind and the armor classes worn on top of research.
-  const movementMultiplier = () => (playerCombat?.moveSpeedFactor() ?? 1) * researchController.movementSpeedMultiplier();
   const weapon = () => inventory.equippedRightHand || inventory.equippedLeftHand;
 
   // Gold and Mastery, as the server keeps them. Gold rolls on a stream of its own, so combat draws the same numbers.
@@ -598,7 +597,7 @@ export function createVirtualPlayer(profile: VirtualPlayerProfile, options: { du
     applyBossKnockback: dt => bossController.applyBossKnockback(dt),
     viewport: () => ({ width: 1280, height: 720, zoom: 1 }), cameraPosition: () => ({ x: 0, y: 0 }),
     isConnected: () => false, syncSpeed: noop, movementSpeedMultiplier: movementMultiplier,
-    regenerationPerSecond: () => playerRegenerationPerSecond(player.regen, inventory, researchController.regenerationMultiplier(), () => 0),
+    regenerationPerSecond: playerStats.regenerationPerSecond,
     healthMultiplierBonus,
     syncMovementState: noop,
     autoAttack: () => playerCombat.attackNearest(autoFarm.attackType(), autoFarm.targetCamp(), autoFarm.attackPriority()),

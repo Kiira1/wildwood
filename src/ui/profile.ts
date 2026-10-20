@@ -1,19 +1,16 @@
 import type { PlayerProfileData, PlayerResearch } from "../wildstat-coop";
-import { createEmptyResearchRanks, researchStatRewardMultiplier, utilityMovementSpeedBonus } from "../../shared/research";
-import { prestigeStatMultiplier } from "../../shared/prestige";
+import { createEmptyResearchRanks } from "../../shared/research";
 import { PRESTIGE_PERKS, playerAttackCap, prestigePerkValue, type PrestigePerkRanks } from "../../shared/prestige-perks";
-import { CRITICAL_DAMAGE_BASE, criticalDamage, criticalDamageMultiplier } from "../../shared/critical-damage";
-import { effectivePlayerPower, effectivePlayerPowerStats } from "../../shared/player-power";
-import { armorMoveSpeedFactor } from "../../shared/armor-class-perks";
-import { bootArmorFactor, bootMoveSpeedFactor, classSetDamageMultiplier, equipmentDamageMultiplierBonus, equipmentMaxHealthMultiplierBonus, equipmentRegenerationMultiplierBonus } from "../../shared/items";
+import { CRITICAL_DAMAGE_BASE, criticalDamageMultiplier } from "../../shared/critical-damage";
+import { effectivePlayerPower } from "../../shared/player-power";
+import { computePlayerStats, type PlayerStatInputs } from "../../shared/player-stats";
+import { itemLevelFor, slotTierFor } from "../../shared/item-level";
 import { formatCompactNumber, formatRate } from "./number-format";
-import { attackCapInterval, attackSpeedLabel, attackSpeedRatingForInterval, critDamageLabel, type AttackCapArg } from "../../shared/stat-rating";
+import { attackSpeedLabel, attackSpeedRatingForInterval, critDamageLabel, type AttackCapArg } from "../../shared/stat-rating";
 import { formatRating } from "./rating-text";
-import { upgradeSlotForItem } from "../../shared/slot-upgrades";
-import { cleanSoulStats, soulAttackSpeedBonus, withSoulStats, type SoulStats } from "../../shared/soul-dimension";
+import { cleanSoulStats, withSoulStats, type SoulStats } from "../../shared/soul-dimension";
 import { challengeMinimumInterval } from "../../shared/prestige-challenge";
-import { weaponAttackRange } from "../game/weapon-combat";
-import { cardChance, cardStatFactors, cardTotals, cardValue } from "../../shared/card-effects";
+import { cardStatFactors, cardTotals } from "../../shared/card-effects";
 import { BASE_CARD_SLOTS, NO_ACTIVE_CARDS, activeCardSlots, activeCardsInPlay } from "../../shared/active-cards";
 import { STAT_NAMES } from "../../shared/card-text";
 
@@ -37,83 +34,34 @@ export function profilePresenceText(online: boolean, lastSeenAtMs: number) {
   return `LAST SEEN ${lastSeen.toLocaleString([], options).toUpperCase()}`;
 }
 
-export function effectiveProfileStats(
+/**
+ * A profile's stats as shared/player-stats.ts takes them: the saved run, its worn gear at each slot's tier
+ * and the item's refine, and the active cards. `extra` adds the soul, perks, cap and stat gain parts.
+ */
+export function profileStatInputs(
   progress: PlayerProfileData["progress"],
   research: PlayerResearch = createEmptyResearchRanks(),
   itemUpgradeLevels: Record<string, number> = {},
   itemRefines: Record<string, number> = {},
   activeCards: readonly string[] = [],
-) {
-  const multiplier = (rank = 0, percentPerRank = 0) => 1 + rank * percentPerRank / 100;
-  const weaponItem = progress.equippedRightHand || progress.equippedLeftHand;
-  const healthResearchMultiplier = multiplier(research.vitality, 2);
-  // The levels are keyed by slot, not by item: a tier belongs to the slot and
-  // whatever is in it inherits the tier. Looking one up by item id missed
-  // every time, so the panel showed the gear with no upgrades behind it.
-  const slotUpgradeLevel = (itemId: string) => slotUpgradeLevelFor(itemUpgradeLevels, itemId);
-  // What stats read: the slot's tier and the worn item's own refine (items.ts ItemLevel).
-  const itemLevel = (itemId: string) => ({ tier: slotUpgradeLevel(itemId), refine: itemRefines[itemId] ?? 0 });
-  const headUpgradeLevel = itemLevel(progress.equippedHead);
-  const chestUpgradeLevel = itemLevel(progress.equippedChest);
-  const weaponUpgradeLevel = itemLevel(weaponItem);
-  const healthEquipmentBonus = equipmentMaxHealthMultiplierBonus(progress.equippedHead, progress.equippedChest, headUpgradeLevel, chestUpgradeLevel);
-  // The same gear with its slot tiers but no refines: the step between the two is what refining added.
-  const tieredHealthBonus = equipmentMaxHealthMultiplierBonus(progress.equippedHead, progress.equippedChest, slotUpgradeLevel(progress.equippedHead), slotUpgradeLevel(progress.equippedChest));
-  const tieredDamageBonus = equipmentDamageMultiplierBonus(weaponItem, progress.equippedHead, progress.equippedChest,
-    slotUpgradeLevel(weaponItem), slotUpgradeLevel(progress.equippedHead), slotUpgradeLevel(progress.equippedChest));
-  const tieredRegenBonus = equipmentRegenerationMultiplierBonus(progress.equippedHead, progress.equippedChest, slotUpgradeLevel(progress.equippedHead), slotUpgradeLevel(progress.equippedChest));
-  // The same gear with no slot tiers behind it. The difference is what the
-  // bench has paid for, which is otherwise invisible inside one Equipment line.
-  const bareHealthBonus = equipmentMaxHealthMultiplierBonus(progress.equippedHead, progress.equippedChest, 0, 0);
-  const damageResearchMultiplier = multiplier(research.warcraft, 2);
-  const damageEquipmentBonus = equipmentDamageMultiplierBonus(weaponItem, progress.equippedHead, progress.equippedChest, weaponUpgradeLevel, headUpgradeLevel, chestUpgradeLevel);
-  const bareDamageBonus = equipmentDamageMultiplierBonus(weaponItem, progress.equippedHead, progress.equippedChest, 0, 0, 0);
-  const armorMultiplier = multiplier(research.precision, 2);
-  const regenResearchMultiplier = multiplier(research.regeneration, 2);
-  const regenEquipmentBonus = equipmentRegenerationMultiplierBonus(progress.equippedHead, progress.equippedChest, headUpgradeLevel, chestUpgradeLevel);
-  const bareRegenBonus = equipmentRegenerationMultiplierBonus(progress.equippedHead, progress.equippedChest, 0, 0);
-  const speedMultiplier = multiplier(research.moveSpeed, 2);
-  const baseSpeed = progress.speedOverride > 0 ? progress.speedOverride : progress.speed;
-  const utilitySpeed = utilityMovementSpeedBonus(research.utilityMoveSpeed);
-  const powerStats = effectivePlayerPowerStats({ ...progress, activeCards }, research, itemLevel);
-  const feet = progress.equippedFeet ?? "";
-  const cards = cardStatFactors(cardTotals(activeCards));
+  extra: Partial<PlayerStatInputs> = {},
+): PlayerStatInputs {
   return {
-    ...powerStats,
-    /** What the active cards multiply each stat by, and the crit and move speed they add (card-effects.ts). */
-    cards,
-    speed: baseSpeed * speedMultiplier + utilitySpeed,
-    equipment: { health: healthEquipmentBonus, damage: damageEquipmentBonus, regen: regenEquipmentBonus },
-    /** Warrior Boots' armor and Ranger Boots' move speed factors at the pair's refine, 1 without. */
-    boots: { armor: bootArmorFactor(feet, itemLevel(feet)), speed: bootMoveSpeedFactor(feet, itemLevel(feet)) },
-    /** The class set's damage factor (items.ts classSetDamageMultiplier), 1 when it is off. */
-    classSet: classSetDamageMultiplier(weaponItem, progress.equippedHead, progress.equippedChest),
-    gear: { health: bareHealthBonus, damage: bareDamageBonus, regen: bareRegenBonus },
-    slotTiers: {
-      health: Math.max(0, tieredHealthBonus - bareHealthBonus),
-      damage: Math.max(0, tieredDamageBonus - bareDamageBonus),
-      regen: Math.max(0, tieredRegenBonus - bareRegenBonus),
-    },
-    refines: {
-      health: Math.max(0, healthEquipmentBonus - tieredHealthBonus),
-      damage: Math.max(0, damageEquipmentBonus - tieredDamageBonus),
-      regen: Math.max(0, regenEquipmentBonus - tieredRegenBonus),
-    },
-    multipliers: {
-      healthResearch: healthResearchMultiplier,
-      damageResearch: damageResearchMultiplier,
-      attackSpeed: 1,
-      armor: armorMultiplier,
-      regenResearch: regenResearchMultiplier,
-      speed: speedMultiplier + utilitySpeed / Math.max(1, baseSpeed),
-    },
+    base: { maxHp: progress.maxHp, damage: progress.damage, armor: progress.armor, regen: progress.regen, attackInterval: progress.attackRate,
+      attackRange: progress.attackRange, moveSpeed: progress.speedOverride > 0 ? progress.speedOverride : progress.speed, critRating: progress.critRating },
+    loadout: { head: progress.equippedHead, chest: progress.equippedChest, feet: progress.equippedFeet ?? "",
+      rightHand: progress.equippedRightHand, leftHand: progress.equippedLeftHand },
+    // Tiers are keyed by slot, not by item: a lookup by item id missed every time and the panel showed bare gear.
+    itemLevel: itemId => itemLevelFor(itemUpgradeLevels, itemRefines, itemId),
+    research, cards: cardTotals(activeCards),
+    // The profile has never counted Black Boots' flat speed (docs/player-stats.md, known disagreements).
+    countBlackBoots: false,
+    ...extra,
   };
 }
 
 /** A tier is the slot's, so resolve the item to its slot before looking up. */
-export function slotUpgradeLevelFor(itemUpgradeLevels: Record<string, number>, itemId: string) {
-  return itemUpgradeLevels[upgradeSlotForItem(itemId) ?? ""] ?? 0;
-}
+export const slotUpgradeLevelFor = (itemUpgradeLevels: Record<string, number>, itemId: string) => slotTierFor(itemUpgradeLevels, itemId);
 
 /**
  * Another player's soul stats in play, as combat counts them: all of them in a normal run, none while
@@ -143,7 +91,7 @@ export function profileAttackCap(profile: PlayerProfileData) {
 /** The profile's power, with the soul stats in play added as combat adds them, and crits counted (critPowerFactor). */
 export function profilePower(profile: PlayerProfileData, soul: Partial<SoulStats> | null = null) {
   const clean = cleanSoulStats(soul);
-  const level = (itemId: string) => ({ tier: slotUpgradeLevelFor(profile.itemUpgradeLevels, itemId), refine: profile.itemRefines?.[itemId] ?? 0 });
+  const level = (itemId: string) => itemLevelFor(profile.itemUpgradeLevels, profile.itemRefines, itemId);
   const activeCards = profileActiveCardIds(profile);
   const cards = cardStatFactors(cardTotals(activeCards));
   const critChance = (profile.research?.criticalChance ?? 0) * .01 + prestigePerkValue(profile.prestigePerks, "keenEdge") + cards.critChance;
@@ -192,37 +140,34 @@ export function profileStatDisplayRows(
   // so each row's base includes them and its sources say how much was soul.
   const soul = cleanSoulStats(soulStats);
   const progress = withSoulStats(profile.progress, soul, attackCap);
-  const minAttackInterval = attackCapInterval(attackCap);
   const ranks = research ?? profile.research ?? createEmptyResearchRanks();
   const statValue = (value: number) => Math.abs(value) >= 1_000_000 ? formatCompactNumber(value) : Math.round(value).toLocaleString();
-  const effective = effectiveProfileStats({ ...progress, attackRate: Math.max(minAttackInterval, progress.attackRate) }, ranks, profile.itemUpgradeLevels, profile.itemRefines,
-    profileActiveCardIds(profile));
+  const inputs = profileStatInputs(progress, ranks, profile.itemUpgradeLevels, profile.itemRefines, profileActiveCardIds(profile), {
+    soul, attackCap, prestigeLevel, guildBonus,
+    // Long Shot and Fleet Foot pay outside an Aggro run, as the server pays them; the other perks show as given.
+    perks: profile.aggroChallenge?.active ? { ...perks, longShot: 0, fleetFoot: 0 } : perks,
+  });
+  const stats = computePlayerStats(inputs);
+  const from = stats.sources;
   // A card source: what the active cards multiply a stat by, as a percent, a cost included.
   const cardSource = (factor: number): ProfileStatDisplaySource[] => {
     const percent = Math.round((factor - 1) * 10000) / 100;
     return percent ? [{ label: "Cards", value: `${percent > 0 ? "+" : ""}${percent}%` }] : [];
   };
-  const researchBonus = (rank = 0, percentPerRank = 0) => rank * percentPerRank;
   const multiplierValue = (value: number) => value.toFixed(2);
   const equipmentBonusValue = (value: number) => `+${Math.round(value * 10000) / 100}%`;
-  const multiplierSources = (researchPercent?: number, equipmentBonus?: number, slotTierBonus?: number, refineBonus?: number): ProfileStatDisplaySource[] => {
+  const multiplierSources = (researchPercent?: number, gear?: { equipment: number; slotUpgrade: number; refine: number }): ProfileStatDisplaySource[] => {
     const sources: ProfileStatDisplaySource[] = [];
     if (researchPercent) sources.push({ label: "Tech", value: `+${researchPercent}%` });
-    if (equipmentBonus !== undefined && equipmentBonus > 0) {
-      sources.push({ label: "Equipment", value: equipmentBonusValue(equipmentBonus) });
-    }
+    if (gear && gear.equipment > 0) sources.push({ label: "Equipment", value: equipmentBonusValue(gear.equipment) });
     // What the bench has paid for, listed on its own. Folded into Equipment it
     // was impossible to tell a slot upgrade had done anything at all.
-    if (slotTierBonus !== undefined && slotTierBonus > 0) {
-      sources.push({ label: "Slot Upgrade", value: equipmentBonusValue(slotTierBonus) });
-    }
+    if (gear && gear.slotUpgrade > 0) sources.push({ label: "Slot Upgrade", value: equipmentBonusValue(gear.slotUpgrade) });
     // What the Smith's refines added on top, the same way.
-    if (refineBonus !== undefined && refineBonus > 0) {
-      sources.push({ label: "Refine", value: equipmentBonusValue(refineBonus) });
-    }
+    if (gear && gear.refine > 0) sources.push({ label: "Refine", value: equipmentBonusValue(gear.refine) });
     return sources;
   };
-  const baseAttackInterval = Math.max(minAttackInterval, progress.attackRate);
+  const minAttackInterval = stats.capInterval, baseAttackInterval = stats.attackInterval;
   // Attack Speed is a rating on a curve that only closes in on the cap (shared/stat-rating.ts): the
   // expanded line names the rating behind the rate, as Armor names its Block, and "(Max)" shows once
   // the rate reads the same as the cap.
@@ -231,132 +176,114 @@ export function profileStatDisplayRows(
   const ratingText = formatRating;
   const bracket = (label: string) => `(${label.replace(" (Max)", " Max")})`;
   const baseAttackSpeed = attackSpeedLabel(1 / baseAttackInterval, 1 / minAttackInterval);
-  const attackSpeed = `${(1 / effective.attackRate).toFixed(2)}/s`;
-  const regen = `${formatRate(effective.regen)}/s`;
-  const healthResearchBonus = researchBonus(ranks.vitality, 2);
-  const damageResearchBonus = researchBonus(ranks.warcraft, 2);
-  const armorResearchBonus = researchBonus(ranks.precision, 2);
-  const regenResearchBonus = researchBonus(ranks.regeneration, 2);
-  const speedResearchBonus = researchBonus(ranks.moveSpeed, 2);
-  const rangeResearchBonus = Math.min(5, Math.max(0, ranks.utilityAttackRange ?? 0)) * 10;
-  // Long Shot and Fleet Foot pay outside an Aggro run, as the server pays them: the saved range already holds Long Shot.
-  const perksInPlay = profile.aggroChallenge?.active ? null : perks;
-  const rangePerkBonus = prestigePerkValue(perksInPlay, "longShot"), speedPerkBonus = prestigePerkValue(perksInPlay, "fleetFoot");
-  // A sword reaches its own range, with the same Tech and Long Shot on top (weaponAttackRange).
-  const reach = weaponAttackRange(progress.equippedRightHand || progress.equippedLeftHand, progress.attackRange);
-  const baseRange = Math.max(1, reach - rangeResearchBonus - rangePerkBonus);
+  const attackSpeed = `${stats.attackRate.toFixed(2)}/s`;
+  // A sword reaches its own range, with the same Tech and Long Shot on top (weaponAttackRange); both are in the saved range.
+  const reach = stats.range, baseRange = Math.max(1, reach - from.range.tech - from.range.prestige);
+  const speed = from.moveSpeed;
   // Light armor walks faster and Heavy slower, a piece at a time (armor-class-perks.ts).
-  const armorSpeed = armorMoveSpeedFactor(progress.equippedHead, progress.equippedChest), bootSpeed = effective.boots.speed;
+  const armorSource = (factor: number) =>
+    factor !== 1 ? [{ label: "Armor" as const, value: `${factor > 1 ? "+" : ""}${Math.round((factor - 1) * 1000) / 10}%` }] : [];
   const bootsSource = (factor: number) => factor !== 1 ? [{ label: "Boots" as const, value: `+${Math.round((factor - 1) * 1000) / 10}%` }] : [];
-  const stats: ProfileStatDisplayRow[] = [
+  const rows: ProfileStatDisplayRow[] = [
     {
       kind: "health", label: "Max Hp:",
       // Saved health is the base: Vitality multiplies it live (0.883), it is not baked in.
       base: statValue(progress.maxHp),
       equationOperator: "×",
-      multiplier: multiplierValue(effective.multipliers.healthResearch * (1 + effective.equipment.health) * effective.cards.maxHp),
-      total: statValue(effective.maxHp),
-      sources: [...soulSource(soul.maxHp, statValue), ...multiplierSources(healthResearchBonus, effective.gear.health, effective.slotTiers.health, effective.refines.health),
-        ...cardSource(effective.cards.maxHp)],
+      multiplier: multiplierValue(stats.multipliers.maxHp),
+      total: statValue(stats.maxHp),
+      sources: [...soulSource(from.maxHp.soul, statValue), ...multiplierSources(from.maxHp.techPercent, from.maxHp), ...cardSource(from.maxHp.cards)],
     },
     {
       kind: "damage", label: "Damage:", base: statValue(progress.damage),
       equationOperator: "×",
-      multiplier: multiplierValue(effective.multipliers.damageResearch * (1 + effective.equipment.damage) * effective.classSet * effective.cards.damage), total: statValue(effective.damage),
-      sources: [...soulSource(soul.damage, statValue), ...multiplierSources(damageResearchBonus, effective.gear.damage, effective.slotTiers.damage, effective.refines.damage),
-        ...(effective.classSet > 1 ? [{ label: "Class Set" as const, value: `+${Math.round((effective.classSet - 1) * 100)}%` }] : []), ...cardSource(effective.cards.damage)],
+      multiplier: multiplierValue(stats.multipliers.damage), total: statValue(stats.damage),
+      sources: [...soulSource(from.damage.soul, statValue), ...multiplierSources(from.damage.techPercent, from.damage),
+        ...(from.damage.classSet > 1 ? [{ label: "Class Set" as const, value: `+${Math.round((from.damage.classSet - 1) * 100)}%` }] : []), ...cardSource(from.damage.cards)],
     },
     {
       kind: "armor", label: "Armor:", base: statValue(progress.armor),
       equationOperator: "×",
-      multiplier: multiplierValue(effective.multipliers.armor * effective.boots.armor * effective.cards.armor),
-      expandedDetail: `(${armorReduction(effective.armor)} Block)`,
-      total: statValue(effective.armor),
-      sources: [...soulSource(soul.armor, statValue), ...multiplierSources(armorResearchBonus), ...bootsSource(effective.boots.armor), ...cardSource(effective.cards.armor)],
+      multiplier: multiplierValue(stats.multipliers.armor),
+      expandedDetail: `(${armorReduction(stats.armor)} Block)`,
+      total: statValue(stats.armor),
+      sources: [...soulSource(from.armor.soul, statValue), ...multiplierSources(from.armor.techPercent), ...bootsSource(from.armor.boots), ...cardSource(from.armor.cards)],
     },
     {
       kind: "attack", label: "Attack Speed:", base: baseAttackSpeed,
       equationOperator: "×",
-      multiplier: multiplierValue(effective.multipliers.attackSpeed), total: ratingText(speedRating), equationTotal: attackSpeed,
+      multiplier: multiplierValue(1), total: ratingText(speedRating), equationTotal: attackSpeed,
       // The cap beside the rate, as critical damage shows its own: how close the player is to the fastest.
-      expandedDetail: `${bracket(attackSpeedLabel(1 / effective.attackRate, 1 / minAttackInterval))} · ${(1 / minAttackInterval).toFixed(2)}/s Cap`,
+      expandedDetail: `${bracket(attackSpeedLabel(stats.attackRate, 1 / minAttackInterval))} · ${(1 / minAttackInterval).toFixed(2)}/s Cap`,
       // The soul's own share, which adds to the run's and is kept through prestige.
       // The soul adds attacks a second flat (soulAttackSpeedBonus), so its line is that, not a rating.
-      sources: soulSource(soulAttackSpeedBonus(soul.attackSpeed), value => Number.isFinite(value) ? `${value.toFixed(3)}/s` : "Max"),
+      sources: soulSource(from.attackSpeed.soul, value => Number.isFinite(value) ? `${value.toFixed(3)}/s` : "Max"),
     },
     {
       kind: "range", label: "Attack Range:", base: statValue(baseRange),
       equationOperator: "×",
       multiplier: multiplierValue(reach / baseRange), total: statValue(reach),
-      sources: [...(rangeResearchBonus ? [{ label: "Tech" as const, value: `+${rangeResearchBonus} range` }] : []),
-        ...(rangePerkBonus ? [{ label: "Prestige" as const, value: `+${rangePerkBonus} range` }] : [])],
+      sources: [...(from.range.tech ? [{ label: "Tech" as const, value: `+${from.range.tech} range` }] : []),
+        ...(from.range.prestige ? [{ label: "Prestige" as const, value: `+${from.range.prestige} range` }] : [])],
     },
     {
       kind: "regen", label: "Regen:",
       base: `${formatRate(progress.regen)}/s`,
       equationOperator: "×",
-      multiplier: multiplierValue(effective.multipliers.regenResearch * (1 + effective.equipment.regen) * effective.cards.regen), total: regen,
-      sources: [...soulSource(soul.regen, value => `${formatRate(value)}/s`), ...multiplierSources(regenResearchBonus, effective.gear.regen, effective.slotTiers.regen, effective.refines.regen),
-        ...cardSource(effective.cards.regen)],
+      multiplier: multiplierValue(stats.multipliers.regen), total: `${formatRate(stats.regenPerSecond)}/s`,
+      sources: [...soulSource(from.regen.soul, value => `${formatRate(value)}/s`), ...multiplierSources(from.regen.techPercent, from.regen),
+        ...cardSource(from.regen.cards)],
     },
     {
-      kind: "speed", label: "Move Speed:", base: statValue(progress.speedOverride > 0 ? progress.speedOverride : progress.speed),
+      kind: "speed", label: "Move Speed:", base: statValue(inputs.base.moveSpeed),
       equationOperator: "×",
-      multiplier: multiplierValue(effective.multipliers.speed * (1 + speedPerkBonus + effective.cards.moveSpeed) * armorSpeed * bootSpeed),
-      total: statValue(effective.speed * (1 + speedPerkBonus + effective.cards.moveSpeed) * armorSpeed * bootSpeed),
-      sources: [...multiplierSources(speedResearchBonus), ...(ranks.utilityMoveSpeed > 0 ? [{ label: "Tech" as const, value: `+${utilityMovementSpeedBonus(ranks.utilityMoveSpeed)} speed` }] : []),
-        ...(speedPerkBonus ? [{ label: "Prestige" as const, value: `+${Math.round(speedPerkBonus * 1000) / 10}%` }] : []),
-        ...(effective.cards.moveSpeed ? [{ label: "Cards" as const, value: `+${Math.round(effective.cards.moveSpeed * 1000) / 10}%` }] : []),
-        ...(armorSpeed !== 1 ? [{ label: "Armor" as const, value: `${armorSpeed > 1 ? "+" : ""}${Math.round((armorSpeed - 1) * 1000) / 10}%` }] : []), ...bootsSource(bootSpeed)],
+      multiplier: multiplierValue(stats.multipliers.moveSpeed),
+      total: statValue(stats.moveSpeed),
+      sources: [...multiplierSources(speed.techPercent), ...(speed.techFlat > 0 ? [{ label: "Tech" as const, value: `+${speed.techFlat} speed` }] : []),
+        ...(speed.prestige ? [{ label: "Prestige" as const, value: `+${Math.round(speed.prestige * 1000) / 10}%` }] : []),
+        ...(speed.cards ? [{ label: "Cards" as const, value: `+${Math.round(speed.cards * 1000) / 10}%` }] : []),
+        ...armorSource(speed.armor), ...bootsSource(speed.boots)],
     },
   ];
   // Tech and prestige multiply each other, exactly as the server pays them, so
   // the total is the product rather than the two percentages added together.
-  const techGain = researchStatRewardMultiplier(ranks), prestigeGain = prestigeStatMultiplier(prestigeLevel);
-  // The guild's daily quest bonus multiplies in last, as the server pays it.
-  const guildGain = Math.max(1, Number.isFinite(guildBonus) ? guildBonus : 1);
-  // Active cards multiply on top: all-stat ones (Gravebloom) every reward, Bounty ones a single stat's.
-  const cardTotals = profileCardTotals(profile);
-  const cardGain = 1 + Math.max(0, cardValue(cardTotals, "allStatGain")) / 100;
-  const singleStatCards = (Object.entries(cardTotals.statGain) as [keyof typeof STAT_NAMES, number][]).filter(([, value]) => value > 0);
+  const { tech: techGain, prestige: prestigeGain, guild: guildGain, cards: cardGain, singleStat } = from.statGain;
   const percentPoints = (fraction: number) => `${Math.round(fraction * 1000) / 10}%`;
   // Both factors have whole-percent precision. Round their integer product
   // once so half-percent ties and the expanded/collapsed totals agree.
   const gainPercent = Math.round(Math.round(techGain * 100) * Math.round(prestigeGain * 100) / 100 * Math.round(guildGain * 100) / 100 * Math.round(cardGain * 100) / 100) - 100;
-  const statGain = `+${gainPercent}%`;
-  stats.push({
+  rows.push({
     kind: "stat-gain", label: "Stat Gain:", base: techGain.toFixed(2),
-    equationOperator: "×", multiplier: (prestigeGain * guildGain * cardGain).toFixed(2), total: statGain,
+    equationOperator: "×", multiplier: (prestigeGain * guildGain * cardGain).toFixed(2), total: `+${gainPercent}%`,
     equationTotal: `${((gainPercent + 100) / 100).toFixed(2)}×`,
     hideEquation: techGain <= 1 || prestigeGain * guildGain * cardGain <= 1,
     sources: [
       ...(techGain > 1 ? [{ label: "Tech" as const, value: `${techGain.toFixed(2)}×` }] : []),
       ...(prestigeGain > 1 ? [{ label: "Prestige" as const, value: `${prestigeGain.toFixed(2)}×` }] : []),
       ...(guildGain > 1 ? [{ label: "Guild" as const, value: `${guildGain.toFixed(2)}×` }] : []),
+      // Active cards multiply on top: all-stat ones (Gravebloom) every reward, Bounty ones a single stat's.
       ...(cardGain > 1 ? [{ label: "Cards" as const, value: `${cardGain.toFixed(2)}×` }] : []),
-      ...singleStatCards.map(([stat, value]) => ({ label: "Cards" as const, value: `+${Math.round(value * 10) / 10}% ${STAT_NAMES[stat]}` })),
+      ...singleStat.map(([stat, value]) => ({ label: "Cards" as const, value: `+${Math.round(value * 10) / 10}% ${STAT_NAMES[stat as keyof typeof STAT_NAMES]}` })),
     ],
   });
   // Keen Edge pays critical chance and critical damage on top of research, so
   // both rows read as combat rolls them rather than showing research alone.
-  const perkCritical = prestigePerkValue(perks, "keenEdge");
-  const criticalChance = ranks.criticalChance * .01 + perkCritical + effective.cards.critChance;
-  stats.push({
-    kind: "critical", label: "Critical Chance:", base: "0%", equationOperator: "+", multiplier: percentPoints(criticalChance), total: percentPoints(criticalChance),
+  const critChance = from.critChance;
+  rows.push({
+    kind: "critical", label: "Critical Chance:", base: "0%", equationOperator: "+", multiplier: percentPoints(stats.critChance), total: percentPoints(stats.critChance),
     sources: [
-      ...(ranks.criticalChance ? [{ label: "Tech" as const, value: `+${ranks.criticalChance}%` }] : []),
-      ...(perkCritical ? [{ label: "Prestige" as const, value: `+${percentPoints(perkCritical)}` }] : []),
-      ...(effective.cards.critChance ? [{ label: "Cards" as const, value: `+${percentPoints(effective.cards.critChance)}` }] : []),
+      ...(critChance.techPercent ? [{ label: "Tech" as const, value: `+${critChance.techPercent}%` }] : []),
+      ...(critChance.prestige ? [{ label: "Prestige" as const, value: `+${percentPoints(critChance.prestige)}` }] : []),
+      ...(critChance.cards ? [{ label: "Cards" as const, value: `+${percentPoints(critChance.cards)}` }] : []),
     ],
   });
   // A rating on a curve toward 100× (shared/stat-rating.ts): crit camps' rating, the soul's on top, then
   // research and Keen Edge, each a share closer. Combat stops at the cap (5×, 1× more a Crit Cap rank),
   // so the row does too, and says (Max) once it reads the same as the cap.
-  const crit = criticalDamage({ researchRank: ranks.criticalDamage, perks, soul: soul.critDamage, rating: profile.progress.critRating, capRank: ranks.critCap,
-    card: effective.cards.critDamage });
+  const crit = from.critDamage;
   const shown = (value: number) => `+${value.toFixed(2)}×`;
   const bonusShare = (part: number) => crit.research + crit.perk > 0 ? crit.fromBonuses * part / (crit.research + crit.perk) : 0;
-  stats.push({
+  rows.push({
     kind: "critical-damage", label: "Critical Damage:", base: `${CRITICAL_DAMAGE_BASE.toFixed(2)}×`, equationOperator: "+",
     multiplier: `${(crit.multiplier - CRITICAL_DAMAGE_BASE).toFixed(2)}×`, total: ratingText(crit.rating + crit.soul),
     equationTotal: `${crit.multiplier.toFixed(2)}×`, expandedDetail: `${bracket(critDamageLabel(crit.multiplier, crit.cap))} · ${crit.cap}× Cap`,
@@ -370,21 +297,20 @@ export function profileStatDisplayRows(
   });
   // The remaining perks have no research behind them, so a row only appears
   // once a point is spent or a worn card gives the chance, which combat adds to the perk's.
-  const worn = profileCardTotals(profile);
-  const perkRow = (perk: keyof PrestigePerkRanks, kind: string, expandedDetail: string, cardEffect: "doubleStrike" | "splitShot" | "reflect") => {
-    const chance = prestigePerkValue(perks, perk), card = cardChance(worn, cardEffect) / 100;
+  const perkRow = (perk: keyof PrestigePerkRanks, kind: string, expandedDetail: string, chances: { prestige: number; cards: number }) => {
+    const { prestige: chance, cards: card } = chances;
     if (!chance && !card) return;
-    stats.push({
+    rows.push({
       kind, label: `${PRESTIGE_PERKS[perk].title}:`, base: "0%", equationOperator: "+", multiplier: percentPoints(chance + card),
       expandedDetail, total: percentPoints(chance + card),
       sources: [...(chance ? [{ label: "Prestige" as const, value: `+${percentPoints(chance)}` }] : []),
         ...(card ? [{ label: "Cards" as const, value: `+${percentPoints(card)}` }] : [])],
     });
   };
-  perkRow("doubleStrike", "double-strike", "(Chance a hit lands twice)", "doubleStrike");
-  perkRow("splitShot", "split-shot", "(Chance to strike a second enemy)", "splitShot");
-  perkRow("riposte", "riposte", "(Reflects 100% of each hit before armor, up to half your max health; no cap in Reflect Only; half in duels)", "reflect");
-  return stats;
+  perkRow("doubleStrike", "double-strike", "(Chance a hit lands twice)", from.doubleStrike);
+  perkRow("splitShot", "split-shot", "(Chance to strike a second enemy)", from.splitShot);
+  perkRow("riposte", "riposte", "(Reflects 100% of each hit before armor, up to half your max health; no cap in Reflect Only; half in duels)", from.reflect);
+  return rows;
 }
 
 export function renderProfileStats(

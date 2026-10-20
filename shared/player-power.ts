@@ -78,16 +78,23 @@ export function effectivePlayerPowerStats(
   return preparePlayerPowerStats(progress, research, itemUpgradeLevel, cards)(progress);
 }
 
-/** Resolve fixed gear/research once; reuse while only the earned base stats change.
- * Keep equipment and research factors separate to preserve floating-point order.
- */
-export function preparePlayerPowerStats(
-  loadout: PlayerPowerProgress,
+/** What research multiplies the four core stats by: 2% a rank of Vitality, Warcraft, Precision and Regeneration. */
+export function researchStatFactors(research: PlayerPowerResearch | null | undefined) {
+  return {
+    maxHp: 1 + researchRank(research?.vitality) * .02,
+    damage: 1 + researchRank(research?.warcraft) * .02,
+    armor: 1 + researchRank(research?.precision) * .02,
+    regen: 1 + researchRank(research?.regeneration) * .02,
+  };
+}
+
+/** What gear, research and active cards each multiply the four core stats by, kept apart for floating-point order. */
+export function playerStatFactors(
+  loadout: Omit<PlayerPowerProgress, keyof PlayerPowerStats>,
   research: PlayerPowerResearch | null | undefined = null,
   itemUpgradeLevel: ItemUpgradeLevel = () => 0,
-  /** The active cards added up, when the caller has them; otherwise the loadout's activeCards. */
   activeCardTotals?: CardTotals,
-): (progress: PlayerPowerStats) => PlayerPowerStats {
+) {
   const weaponItem = loadout.equippedRightHand || loadout.equippedLeftHand || "";
   const headItem = loadout.equippedHead || "";
   const chestItem = loadout.equippedChest || "";
@@ -98,26 +105,42 @@ export function preparePlayerPowerStats(
   // Vitality multiplies saved health live, like every other research (0.883).
   // It used to be baked into the saved number by the client at each rank-up,
   // which the server stopped accepting in 0.695, so ranks since did nothing.
-  const health = 1 + equipmentMaxHealthMultiplierBonus(headItem, chestItem, headLevel, chestLevel);
-  const damage = equipmentDamageFactor(weaponItem, headItem, chestItem, weaponLevel, headLevel, chestLevel);
-  const regen = 1 + equipmentRegenerationMultiplierBonus(headItem, chestItem, headLevel, chestLevel);
-  const armorGear = feetItem ? bootArmorFactor(feetItem, itemUpgradeLevel(feetItem)) : 1;
-  const vitality = 1 + researchRank(research?.vitality) * .02;
-  const warcraft = 1 + researchRank(research?.warcraft) * .02;
-  const precision = 1 + researchRank(research?.precision) * .02;
-  const regeneration = 1 + researchRank(research?.regeneration) * .02;
+  const gear = {
+    maxHp: 1 + equipmentMaxHealthMultiplierBonus(headItem, chestItem, headLevel, chestLevel),
+    damage: equipmentDamageFactor(weaponItem, headItem, chestItem, weaponLevel, headLevel, chestLevel),
+    armor: feetItem ? bootArmorFactor(feetItem, itemUpgradeLevel(feetItem)) : 1,
+    regen: 1 + equipmentRegenerationMultiplierBonus(headItem, chestItem, headLevel, chestLevel),
+  };
   // The active cards; a factor of one without any.
   const cards = cardStatFactors(activeCardTotals ?? cardTotals(loadout.activeCards ?? []));
-  return progress => ({
-    maxHp: progress.maxHp * health * vitality * cards.maxHp,
-    damage: progress.damage * damage * warcraft * cards.damage,
+  return { gear, research: researchStatFactors(research), cards };
+}
+
+/** The four core stats from earned ones: base × gear × research × cards. */
+export function applyPlayerStatFactors(factors: ReturnType<typeof playerStatFactors>, progress: PlayerPowerStats): PlayerPowerStats {
+  const { gear, research, cards } = factors;
+  return {
+    maxHp: progress.maxHp * gear.maxHp * research.maxHp * cards.maxHp,
+    damage: progress.damage * gear.damage * research.damage * cards.damage,
     attackRate: Math.max(CHALLENGE_ABSOLUTE_MIN_INTERVAL, progress.attackRate),
-    armor: progress.armor * armorGear * precision * cards.armor,
-    regen: progress.regen * regen * regeneration * cards.regen,
+    armor: progress.armor * gear.armor * research.armor * cards.armor,
+    regen: progress.regen * gear.regen * research.regen * cards.regen,
     // Crit passes through as given (it is worked out from research, perks, the soul and the rating elsewhere).
     ...(progress.critChance !== undefined ? { critChance: progress.critChance } : {}),
     ...(progress.critMultiplier !== undefined ? { critMultiplier: progress.critMultiplier } : {}),
-  });
+  };
+}
+
+/** Resolve fixed gear/research once; reuse while only the earned base stats change. */
+export function preparePlayerPowerStats(
+  loadout: PlayerPowerProgress,
+  research: PlayerPowerResearch | null | undefined = null,
+  itemUpgradeLevel: ItemUpgradeLevel = () => 0,
+  /** The active cards added up, when the caller has them; otherwise the loadout's activeCards. */
+  activeCardTotals?: CardTotals,
+): (progress: PlayerPowerStats) => PlayerPowerStats {
+  const factors = playerStatFactors(loadout, research, itemUpgradeLevel, activeCardTotals);
+  return progress => applyPlayerStatFactors(factors, progress);
 }
 
 export function effectivePlayerPower(

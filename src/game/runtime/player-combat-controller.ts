@@ -14,7 +14,8 @@ import { createSpatialGrid } from "./spatial-grid";
 import type { BossTarget, EnemyState, PlayerState, Projectile, RuntimeReward } from "./types";
 import { bossStateForMap, type BossStates } from "./boss/boss-registry";
 import type { SpawnSite } from "../world";
-import { bootMoveSpeedFactor, bootSkillChanceFactor, equipmentDamage, itemDefinition, type ItemLevel } from "../../../shared/items";
+import { equipmentDamage, itemDefinition, type ItemLevel } from "../../../shared/items";
+import { gearMoveSpeedFactor, procChance, skillChanceFactor } from "../../../shared/player-stats";
 import { worldReflectDamage } from "../../../shared/prestige-perks";
 import { createMarbleBag } from "../../../shared/marble-bag";
 import { ARROW_STORM_DAMAGE_SHARE, ARROW_STORM_RADIUS, ARROW_STORM_SCORE_WEIGHT, RICOCHET_DAMAGE_SHARE, bowSkillChance, hasBowSkills, rollArrowSkillProcs, type BowSkillRoll } from "../../../shared/bow-skills";
@@ -30,10 +31,9 @@ import {
 } from "../../../shared/staff-skills";
 import { masteryBlastScale, masteryInPlay, rollWithProficiency, type MasteryInPlay, type MasteryPoints } from "../../../shared/weapon-mastery";
 import { createMasteryTechniqueRuntime } from "./mastery-technique-runtime";
-import { armorMoveSpeedFactor, armorSkillChanceFactor } from "../../../shared/armor-class-perks";
 import { staffBoltColor } from "../staff-look";
 import { createCardCombat } from "./card-combat";
-import { NO_CARDS, cardChance, cardStatGainFactor, cardValue, type CardTotals } from "../../../shared/card-effects";
+import { NO_CARDS, cardStatGainFactor, cardValue, type CardTotals } from "../../../shared/card-effects";
 import { bowSkillsWithCards } from "../../../shared/card-bounds";
 import { isSkillBow } from "../../../shared/bow-skills";
 import { addPlayerBaseMaxHealth } from "./player-health";
@@ -218,9 +218,9 @@ export function createPlayerCombatController(options: {
   const random = options.random ?? Math.random;
   const wornCards = () => options.cards?.() ?? NO_CARDS;
   // Card chances add to the perks of the same name (card-effects.ts).
-  const doubleStrikeChance = () => (options.prestigeDoubleStrike?.() ?? 0) + cardChance(wornCards(), "doubleStrike") / 100;
-  const splitShotChance = () => (options.prestigeSplitShot?.() ?? 0) + cardChance(wornCards(), "splitShot") / 100;
-  const reflectChanceInPlay = () => (options.prestigeReflect?.() ?? 0) + cardChance(wornCards(), "reflect") / 100;
+  const doubleStrikeChance = () => procChance(options.prestigeDoubleStrike?.() ?? 0, wornCards(), "doubleStrike");
+  const splitShotChance = () => procChance(options.prestigeSplitShot?.() ?? 0, wornCards(), "splitShot");
+  const reflectChanceInPlay = () => procChance(options.prestigeReflect?.() ?? 0, wornCards(), "reflect");
   const bossSlayer = () => (options.prestigeBossSlayer?.() ?? 0) + Math.max(0, cardValue(wornCards(), "bossSlayer")) / 100;
   // Mastery read again only when the points or the hands change (it is read for every arrow).
   let masteryKept: { points: MasteryPoints | null | undefined; right: string; weapon: string; value: MasteryInPlay } | null = null;
@@ -236,8 +236,8 @@ export function createPlayerCombatController(options: {
     const roll = options.weaponSkills?.() ?? options.bowSkills?.();
     // Bow skill cards add to a bow's own roll; Skill Proficiency and Magic armor raise the whole chance.
     const carded = wornCards() !== NO_CARDS && isSkillBow(options.equippedWeapon()) ? { ...roll, ...bowSkillsWithCards(roll, wornCards()) } : roll;
-    return rollWithProficiency(carded, mastery().level, armorSkillChanceFactor(options.equippedHead(), options.equippedChest())
-      * bootSkillChanceFactor(options.equippedFeet?.(), options.equippedFeetUpgradeLevel?.() ?? 0));
+    return rollWithProficiency(carded, mastery().level,
+      skillChanceFactor(options.equippedHead(), options.equippedChest(), options.equippedFeet?.(), options.equippedFeetUpgradeLevel?.() ?? 0));
   };
   const swordSkills = createSwordSkillRuntime({
     player, enemies, currentMapId: options.currentMapId, equippedWeapon: options.equippedWeapon,
@@ -1004,8 +1004,8 @@ export function createPlayerCombatController(options: {
     expectedBossDps: () => expectedDps() * (1 + bossSlayer()),
     cardShield: () => cardCombat.shield(),
     tailwind: techniques.tailwind,
-    moveSpeedFactor: () => (1 + techniques.tailwind()) * armorMoveSpeedFactor(options.equippedHead(), options.equippedChest())
-      * bootMoveSpeedFactor(options.equippedFeet?.(), options.equippedFeetUpgradeLevel?.() ?? 0),
+    moveSpeedFactor: () => (1 + techniques.tailwind())
+      * gearMoveSpeedFactor(options.equippedHead(), options.equippedChest(), options.equippedFeet?.(), options.equippedFeetUpgradeLevel?.() ?? 0),
     attackNearest,
     updateProjectiles,
     damagePlayer,

@@ -25,7 +25,7 @@ import { installCanvasPurgeRecovery } from "./app/canvas-purge-recovery";
 import { createPersonalBosses } from "./game/runtime/boss/personal-bosses";
 import { createLocalCorpses } from "./game/runtime/enemies/local-corpses";
 import { ONBOARDING_MAP_ID, ONBOARDING_WORLD } from "../shared/onboarding";
-import { createOutOfCombatSpeed } from "./game/runtime/out-of-combat-speed";
+import { createPlayerStatsRuntime } from "./game/runtime/player-stats-runtime";
 import { createOnboardingTutorial } from "./ui/onboarding-tutorial"; import { installTutorialReplay, tutorialReplayBlocked } from "./ui/tutorial-replay"; import { createBuildActions } from "./ui/build-actions";
 import { createItemGiftController } from "./ui/item-gift-controller";
 import { createReconnectRecovery } from "./ui/reconnect-recovery";
@@ -135,8 +135,8 @@ import type { ResearchId } from "../shared/research";
 import { PLAYER_GENDER_FEMALE, PLAYER_GENDER_MALE } from "../shared/player-gender";
 import { regularEnemySimulationTick } from "../shared/regular-enemy-simulation";
 import { equipComparisonPower } from "../shared/equip-best";
-import { equipmentMaxHealthMultiplierBonus, isWeaponItem, itemDisplayName } from "../shared/items";
-import { createRewardDisplay, playerRegenerationPerSecond } from "./game/runtime/reward-display"; import { cardsPort } from "./ui/cards-tab";
+import { isWeaponItem, itemDisplayName } from "../shared/items";
+import { createRewardDisplay } from "./game/runtime/reward-display"; import { cardsPort } from "./ui/cards-tab";
 import { createInventoryCommerceActions } from "./game/runtime/inventory-commerce";
 import {
   DEFAULT_ATTACK_INTERVAL as STARTING_ATTACK_INTERVAL,
@@ -237,10 +237,10 @@ import {
     singletons: [camera, player, ...BOSS_KINDS.map((kind) => bosses[kind])],
     collections: [enemies, projectiles, enemyShots, ...BOSS_KINDS.map((kind) => bossHazards[kind]), particles, damageNumbers],
   });
-  // Gear, Vitality and health cards together, as one bonus on saved health (Vitality is live since 0.883, like other research).
-  const healthMultiplierBonus = () => (1 + equipmentMaxHealthMultiplierBonus(inventory.equippedHead, inventory.equippedChest,
-    coop?.itemLevel?.(inventory.equippedHead) ?? 0, coop?.itemLevel?.(inventory.equippedChest) ?? 0))
-    * (1 + Math.max(0, coop?.researchInPlay?.()?.vitality ?? 0) * .02) * (coop?.activeCardStats?.().maxHp ?? 1) - 1;
+  // The live player's final stats (shared/player-stats.ts): max health's bonus, regen and move speed are read from here.
+  const playerStats = createPlayerStatsRuntime({ player, inventory, source: () => coop, soul: () => soulDimension.inPlay(),
+    tailwind: () => playerCombat?.tailwind() ?? 0, isDueling: () => isDueling() });
+  const { healthMultiplierBonus, regenerationPerSecond, movementMultiplier } = playerStats;
   const LEGACY_SAVE_KEY = "wildwood-player-progress-v1";
   const respawnMemory = createRespawnMemory(localStorage, () => coop?.localIdentity?.() ?? '');
   const bossFightMemory = createBossFightMemory(localStorage, () => coop?.localIdentity?.() ?? '');
@@ -502,7 +502,7 @@ import {
     onEscape: () => inTutorial() && playerProfileEl.hidden ? true : inputEscapeHandler(),
     desktop: {
       canMove: () => Boolean(session?.isRunning()) && !session.isPaused() && player.hp > 0 && !isArenaScene() && !mapController.isMapTransitioning() && !mapController.isCutsceneActive() && !onboarding?.blocksInput(),
-      player: () => player, speed: () => player.speed * movementMultiplier(),
+      player: () => player, speed: () => playerStats.moveSpeed(),
       view: () => ({ ...camera, ...canvasRuntime.viewport() }),
       bounds: () => ({ width: WORLD.w, height: WORLD.h, inset: player.r }),
     },
@@ -538,7 +538,7 @@ import {
       || mapController.isMapTransitioning() || mapController.isCutsceneActive()) ? 'recovering' : farmConnection,
     unavailable: farmUnavailable,
     paused: () => Boolean(session?.isPaused()) || isArenaScene(), feedsOnAdds: () => playerCombat.feedsOnAdds(),
-    speed: () => player.speed * movementMultiplier(),
+    speed: () => playerStats.moveSpeed(),
     obstacles: () => {
       const config = MAP_CONFIG[currentMapId];
       const obstacles = [config.portal, "secondaryPortal" in config ? config.secondaryPortal : null].flatMap(portal => portal
@@ -582,7 +582,7 @@ import {
       remotePlayers: () => (inTutorial() ? [] : coop?.remotePlayers?.() ?? [])
         .filter((remote) => !coop?.remotePlayerDeath?.(remote.id)),
       remoteCombatStats: (identity) => coop?.remoteCombatStats?.(identity),
-      playerMovementSpeed: () => player.speed * movementMultiplier(), playerAttackRange: () => weaponAttackRange(inventory.equippedRightHand || inventory.equippedLeftHand, player.attackRange),
+      playerMovementSpeed: () => playerStats.moveSpeed(), playerAttackRange: () => weaponAttackRange(inventory.equippedRightHand || inventory.equippedLeftHand, player.attackRange),
       spawnDamageNumber, remoteGhostsEnabled: appShell.remoteGhostsEnabled,
       spawnBurst,
       pullAggro: enemy => autoFarm.pulls(enemy) || autoFarm.forced(enemy),
@@ -603,8 +603,6 @@ import {
     ranks: researchRanks,
     damageMultiplier: researchDamageMultiplier,
     rewardMultiplier: researchRewardMultiplier,
-    movementSpeedMultiplier: researchMovementSpeedMultiplier,
-    regenerationMultiplier: researchRegenerationMultiplier,
     effectiveArmor,
     criticalChance: researchCriticalChance,
     criticalDamageMultiplier: researchCriticalDamageMultiplier,
@@ -612,11 +610,6 @@ import {
   } = research;
   const rewardDisplay = createRewardDisplay(researchRewardMultiplier, researchRanks, appShell.showBaseStatRewards,
     () => inventory, itemId => coop?.itemLevel?.(itemId) ?? 0, () => coop?.activeCardIds?.() ?? []);
-  const travelSpeed = createOutOfCombatSpeed();
-  const movementMultiplier = () => (playerCombat?.moveSpeedFactor() ?? 1) * (researchMovementSpeedMultiplier()
-    + travelSpeed.bonus(inventory.equippedFeet, isDueling()) / Math.max(1, player.speed));
-  const regenerationPerSecond = () => playerRegenerationPerSecond(player.regen, inventory, researchRegenerationMultiplier(),
-    itemId => coop?.itemLevel?.(itemId) ?? 0);
   progress = createProgressController({
     player,
     inventory,
@@ -1870,9 +1863,9 @@ import {
     running: session.isRunning,
     syncPlayerState: () => {
       if (inTutorial()) return;
-      coop?.syncSpeed?.(player.speed * movementMultiplier());
+      coop?.syncSpeed?.(playerStats.moveSpeed());
       const movement = playerInput.movement();
-      const movementSpeed = player.speed * movementMultiplier();
+      const movementSpeed = playerStats.moveSpeed();
       coop?.syncMovementState?.(
         player.x,
         player.y,
