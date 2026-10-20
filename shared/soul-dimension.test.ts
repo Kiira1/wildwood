@@ -167,19 +167,19 @@ describe("soul attack speed at the old pace (0.901.55)", () => {
 });
 
 describe("the Soul Level", () => {
-  it("needs 300 Soul XP for level 2 and 1.5 times as much for each level after, rounded, up to level 50", () => {
-    expect([SOUL_LEVEL_BASE_XP, SOUL_LEVEL_GROWTH, SOUL_LEVEL_CAP]).toEqual([300, 1.5, 50]);
-    expect([1, 2, 3, 4, 5, 9, 49].map(soulLevelXpNeeded)).toEqual([300, 450, 675, 1_013, 1_519, 7_689, 85_016_200_029]);
+  it("needs 300 Soul XP for level 2 and 1.3 times as much for each level after, rounded, up to level 50", () => {
+    expect([SOUL_LEVEL_BASE_XP, SOUL_LEVEL_GROWTH, SOUL_LEVEL_CAP]).toEqual([300, 1.3, 50]);
+    expect([1, 2, 3, 4, 5, 9, 49].map(soulLevelXpNeeded)).toEqual([300, 390, 507, 659, 857, 2_447, 88_389_803]);
     expect(soulLevelXpNeeded(SOUL_LEVEL_CAP)).toBe(0);
-    expect(soulLevelTotalXp({ level: 10, xp: 0 })).toBe(22_467);
-    expect(soulLevelTotalXp({ level: SOUL_LEVEL_CAP, xp: 0 })).toBe(255_048_599_487);
+    expect(soulLevelTotalXp({ level: 10, xp: 0 })).toBe(9_604);
+    expect(soulLevelTotalXp({ level: SOUL_LEVEL_CAP, xp: 0 })).toBe(383_021_477);
   });
 
   it("levels up as Soul XP comes in, carrying the rest, and stops at the cap", () => {
     expect(addSoulXp(null, 299)).toEqual({ level: 1, xp: 299 });
     expect(addSoulXp(null, 300)).toEqual({ level: 2, xp: 0 });
     expect(addSoulXp({ level: 1, xp: 290 }, 30)).toEqual({ level: 2, xp: 20 });
-    expect(addSoulXp(null, 750 + 5)).toEqual({ level: 3, xp: 5 });
+    expect(addSoulXp(null, 690 + 5)).toEqual({ level: 3, xp: 5 });
     expect(addSoulXp(null, 1e12)).toEqual({ level: SOUL_LEVEL_CAP, xp: 0 });
     expect(addSoulXp({ level: SOUL_LEVEL_CAP, xp: 0 }, 50)).toEqual({ level: SOUL_LEVEL_CAP, xp: 0 });
     expect(cleanSoulLevel({ level: 99, xp: 5 })).toEqual({ level: SOUL_LEVEL_CAP, xp: 0 });
