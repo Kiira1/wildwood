@@ -2,6 +2,7 @@ import { ENDLESS_ENEMY_ART } from "../../shared/endless-enemies";
 import { GENERATED_ENEMY_ART, generatedEnemyArt } from "../../shared/procedural-enemy-art";
 import { campaignMeleeChaseSpeed } from "../../shared/enemy-definitions";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { decodedImage } from "./runtime/render/decoded-image";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import {
   ENEMY_TYPES,
@@ -262,6 +263,39 @@ describe("enemy sprite loading", () => {
     forest.dispatchEvent(new Event("load"));
     await back;
     expect(assets.mapSpritesReady("forest")).toBe(true);
+  });
+
+  it("is ready only once a sheet is decoded off the main thread, draws that copy, and closes it when let go", async () => {
+    const images: FakeImage[] = [];
+    class FakeImage extends EventTarget {
+      decoding = "auto";
+      src = "";
+      currentSrc = "";
+      constructor() { super(); images.push(this); }
+      removeAttribute(name: string) { if (name === "src") this.src = ""; }
+    }
+    vi.stubGlobal("Image", FakeImage);
+    const bitmap = { close: vi.fn() };
+    const blob = { kind: "blob" };
+    let decode!: () => void;
+    const createImageBitmap = vi.fn(() => new Promise(resolve => { decode = () => resolve(bitmap); }));
+    vi.stubGlobal("createImageBitmap", createImageBitmap);
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, blob: async () => blob })));
+    const assets = createMapScopedEnemySpriteAssets({ forestEnemy: { src: "forest-enemy.webp", size: 40 } }, { forest: ["forestEnemy"], desert: [] });
+    const ready = assets.ensureMapSprites("forest");
+    const [sheet] = images;
+    sheet.dispatchEvent(new Event("load"));
+    await vi.waitFor(() => expect(createImageBitmap).toHaveBeenCalled());
+    // Decoded from the file, which Chrome does off the main thread, not from the <img>.
+    expect(createImageBitmap).toHaveBeenCalledWith(blob);
+    expect(assets.mapSpritesReady("forest")).toBe(false);
+    decode();
+    await ready;
+    expect(assets.mapSpritesReady("forest")).toBe(true);
+    expect(decodedImage(sheet as unknown as HTMLImageElement)).toBe(bitmap);
+    expect(assets.releaseMapSpritesExcept(["desert"])).toBe(1);
+    expect(bitmap.close).toHaveBeenCalledTimes(1);
+    expect(decodedImage(sheet as unknown as HTMLImageElement)).toBe(sheet);
   });
 
   it("shares animation pages between variants and only starts a family's images for its map", async () => {

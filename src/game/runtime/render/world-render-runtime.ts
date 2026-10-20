@@ -319,6 +319,7 @@ export function createWorldRenderRuntime(options: WorldRenderRuntimeOptions) {
     drawSpeechBubble: options.drawSpeechBubble,
     publicName: options.publicPlayerName,
     worldHealthBarHeight: options.worldHealthBarHeight,
+    mapId: options.currentMapId,
   });
 
   function createFrameRenderer(frame: FrameRendererOptions): RenderController {

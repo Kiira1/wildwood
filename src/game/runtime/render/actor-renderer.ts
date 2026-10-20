@@ -1,6 +1,7 @@
 import { SOUL_STAT_DETAILS, type SoulStatId } from "../../../../shared/soul-dimension";
 import { soulRewardText, soulStatOfCampName } from "../../soul-world";
 import { residentDrawable } from "./resident-image";
+import { decodedImage } from "./decoded-image";
 import { isMeleeWeapon } from "../../weapon-combat";
 import { paintArrowProjectile, paintRockProjectile, rockProjectileSize } from "./weapon-projectile-renderer";
 export { rockProjectileSize } from "./weapon-projectile-renderer";
@@ -49,6 +50,23 @@ const ENEMY_SPRITE_Y_OFFSET = -3;
 const enemyLayerPlanCache = new WeakMap<LoadedEnemySprite, EnemyLayerPlanPart[]>();
 const enemyBoundsCache = new WeakMap<LoadedEnemySprite, { top: number; bottom: number; height: number }>();
 const enemyTintedLayerCache = new WeakMap<LoadedSpriteLayer, FrozenImage>();
+const scaledEnemySpriteCache = new WeakMap<LoadedEnemySprite, Map<number, LoadedEnemySprite>>();
+
+/**
+ * A sprite drawn at another size, kept per source and scale. A fresh copy each frame missed every cache keyed by
+ * the sprite, so an Endless boss rebuilt its layer canvas and bitmap on every frame it was on screen.
+ */
+export function scaledEnemySprite(sprite: LoadedEnemySprite, scale: number): LoadedEnemySprite {
+  if (scale === 1) return sprite;
+  let sizes = scaledEnemySpriteCache.get(sprite);
+  if (!sizes) scaledEnemySpriteCache.set(sprite, sizes = new Map());
+  const cached = sizes.get(scale);
+  if (cached) return cached;
+  if (sizes.size >= 8) sizes.clear();
+  const scaled = { ...sprite, size: sprite.size * scale };
+  sizes.set(scale, scaled);
+  return scaled;
+}
 
 function enemyLayerReady(layer: LoadedSpriteLayer) {
   return layer.image.complete && layer.image.naturalWidth > 0 && layer.image.naturalHeight > 0;
@@ -238,18 +256,21 @@ export function createActorRenderer(options: {
   drawSpeechBubble: (identity: string | undefined, x: number, headTop: number) => void;
   publicName: (identity: string | undefined, name: string | undefined) => string;
   worldHealthBarHeight: number;
+  /** The map being drawn: its labels and plates replace the last map's on the shared pages. */
+  mapId?: () => string;
 }) {
   const { ctx, camera } = options;
   const sampleEnemyAnimation = createEnemyAnimationSampler();
   const screenX = (worldX: number) => snapWorldRenderCoordinate(worldX - camera.x, camera.zoom, options.devicePixelRatio());
   const screenY = (worldY: number) => snapWorldRenderCoordinate(worldY - camera.y, camera.zoom, options.devicePixelRatio());
-  const enemyLabelCache = new Map<string, { name: LabelBitmap; reward: LabelBitmap }>();
+  const enemyLabelCache = new Map<string, LabelBitmap>();
   // Labels and plates are packed onto a few shared pages instead of a canvas each (canvas-atlas.ts).
   // Two atlases: a plate is drawn from a label, and a page is never drawn onto itself.
   const labelAtlas = createCanvasAtlas();
   labelAtlas.onReset(() => enemyLabelCache.clear());
   const plateAtlas = createCanvasAtlas();
   const statusPlates = createEnemyStatusPlates({ pixelRatio: options.devicePixelRatio, atlas: plateAtlas });
+  let atlasMapId: string | undefined;
   /** Text is measured on its own small canvas, before the label's room is taken. */
   let labelMeasure: CanvasRenderingContext2D | null | undefined;
   // An enemy's "440 / 500" changes only when its health does: kept per enemy, not formatted every frame.
@@ -387,17 +408,14 @@ export function createActorRenderer(options: {
     const context = options.rewardContext?.();
     const capped = soulRewardCapped(stat, context);
     const multiplier = Math.max(1, context?.soulRewardMultiplier ?? 1);
-    const cacheKey = `soul:${stat}:${capped ? "capped" : ""}:${multiplier}`;
-    const cached = enemyLabelCache.get(cacheKey);
-    if (cached) return cached;
     const detail = SOUL_STAT_DETAILS[stat];
-    const amount = capped ? "Capped" : stat === "critDamage" ? `+${+(detail.reward * multiplier * 100).toFixed(1)}%` : soulRewardText(stat, multiplier);
-    const labels = {
-      name: createLabelBitmap([{ text: `Soul ${detail.label}`, color: "#f5e9c4" }], "bottom"),
-      reward: createLabelBitmap([{ text: amount, color: "#ffffff" }, { text: " ", color: "#ffffff" }, { text: detail.label, color: detail.color }], "top"),
+    return {
+      name: nameLabel(`Soul ${detail.label}`),
+      reward: cachedLabel(`soul:${stat}:${capped ? "capped" : ""}:${multiplier}`, () => {
+        const amount = capped ? "Capped" : stat === "critDamage" ? `+${+(detail.reward * multiplier * 100).toFixed(1)}%` : soulRewardText(stat, multiplier);
+        return createLabelBitmap([{ text: amount, color: "#ffffff" }, { text: " ", color: "#ffffff" }, { text: detail.label, color: detail.color }], "top");
+      }),
     };
-    enemyLabelCache.set(cacheKey, labels);
-    return labels;
   }
 
   /**
@@ -407,21 +425,28 @@ export function createActorRenderer(options: {
    */
 
 
+  // A name is cached apart from the reward under it. The reward text moves with the player's attack speed
+  // and crit; tied to it, the name and its plate were drawn again (and kept) at every step.
+  function cachedLabel(key: string, create: () => LabelBitmap) {
+    let label = enemyLabelCache.get(key);
+    if (!label) enemyLabelCache.set(key, label = create());
+    return label;
+  }
+
+  function nameLabel(text: string) {
+    return cachedLabel(`name:${text}`, () => createLabelBitmap([{ text, color: "#f5e9c4" }], "bottom"));
+  }
+
   function enemyLabels(type: string, reward: EnemyDefinition["reward"]) {
     const amountText = liveRewardText(reward, options.rewardContext?.()) ?? rewardAmountLabel(reward);
-    const cacheKey = `${type}:${reward.type}:${amountText}`;
-    const cached = enemyLabelCache.get(cacheKey);
-    if (cached) return cached;
-    const labels = {
-      name: createLabelBitmap([{ text: type, color: "#f5e9c4" }], "bottom"),
-      reward: createLabelBitmap([
+    return {
+      name: nameLabel(type),
+      reward: cachedLabel(`reward:${reward.type}:${amountText}`, () => createLabelBitmap([
         { text: amountText, color: "#ffffff" },
         { text: " ", color: "#ffffff" },
         { text: reward.type === "speed" ? "Atk Speed" : reward.type === "crit" ? "Crit Multiplier" : rewardStatLabel(reward), color: REWARD_DATA[reward.type].color },
-      ], "top"),
+      ], "top")),
     };
-    enemyLabelCache.set(cacheKey, labels);
-    return labels;
   }
 
   /** Where an actor's plate starts: the top of its head, or of the helmet drawn on it. */
@@ -762,7 +787,7 @@ export function createActorRenderer(options: {
     const sourceSprite = options.enemySprites[enemy.type];
     // An Endless boss borrows a map enemy's art: drawn to fit its own body, as a campaign boss's art does.
     const spriteScale = enemy.generatedBoss && sourceSprite ? 2 * enemy.r / BOSS_HITBOX_ART_SHARE / sourceSprite.size : enemy.spriteScale ?? 1;
-    const sprite = spriteScale !== 1 && sourceSprite ? { ...sourceSprite, size: sourceSprite.size * spriteScale } : sourceSprite;
+    const sprite = sourceSprite && scaledEnemySprite(sourceSprite, spriteScale);
     const margin = Math.max(80, sprite?.size ?? 0);
     if (x < -margin || y < -margin || x > width + margin || y > height + margin) return;
     const layers = sprite?.layers;
@@ -800,7 +825,7 @@ export function createActorRenderer(options: {
           // Normalize source art around its fixed actor origin, independently
           // of world facing and any original aimed equipment layers.
           if (animation.sourceFacingX === -1) ctx.scale(-1, 1);
-          ctx.drawImage(page.image, frame.x, frame.y, frame.w, frame.h,
+          ctx.drawImage(decodedImage(page.image), frame.x, frame.y, frame.w, frame.h,
             animation.x, animation.y + ENEMY_SPRITE_Y_OFFSET + (sprite.visualOffsetY ?? 0), animation.w, animation.h);
           ctx.restore();
         } else {
@@ -899,7 +924,13 @@ export function createActorRenderer(options: {
     drawScreenSpaceAt(ctx, camera.zoom, x, y, () => {
       ctx.globalAlpha = visibility;
       const displayAmount = (reward: EnemyDefinition["reward"]) => options.rewardAmount?.(reward.type, reward.amount) ?? reward.amount * options.rewardMultiplier();
-      // A full atlas starts over only here, before this enemy takes anything from it.
+      // A full atlas starts over only here, before this enemy takes anything from it; a new map lets every page go.
+      const mapId = options.mapId?.();
+      if (mapId !== atlasMapId) {
+        atlasMapId = mapId;
+        labelAtlas.release();
+        plateAtlas.release();
+      }
       labelAtlas.resetIfFull();
       plateAtlas.resetIfFull();
       const soulStat = soulStatOfCampName(enemy.campName);

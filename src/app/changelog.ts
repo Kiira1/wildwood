@@ -2,6 +2,9 @@ export const RELEASE_NOTES: Record<string, string[]> = {
   "0.916.12": [
     "The Starshard and ore messages show the full amount you got",
     "Quests finish as soon as you get the last kill",
+    "Verdant Catacombs runs smoother, and later maps no longer freeze for a moment when their monsters first appear",
+    "Long sessions no longer pile up enemy name labels from every map you visited",
+    "Some Endless bosses no longer slow the game down while on screen",
     "Behind-the-scenes code cleanup",
   ],
   "0.916.11": [
